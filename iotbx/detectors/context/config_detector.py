@@ -30,7 +30,13 @@ As of March 2012:
 8.3.1 s/n 907;
 '''
 
-known_als_detectors = [401,423,445,905,913,923,925,913]
+def known_als_detectors(iobj):
+  #new implementation.  Return [iobj.serial_number] if detector is at ALS
+  sn = iobj.serial_number
+  if sn in [401,423,445,905,913,923,925,913]:  return [sn]
+  if sn == 447 and ADSC447_at_ALS(iobj): return [sn]
+  else: return []
+
 known_als831_detectors = [907,442]
 
 def als_beam_rules(iobj): #take an ADSC image object
@@ -132,21 +138,23 @@ def ADSC910_at_BioCARS(iobj):
   cutoff_this = time.mktime(time.strptime("Mon Jan 01 00:00:00 2007"))
   return record_tse > cutoff_this
 
+def ADSC447_at_ALS(iobj):
+  if iobj.serial_number != 447: raise Exception("wrong sn")
+  record_date = iobj.parameters["DATE"]
+  record_tse = time.mktime(time.strptime(record_date))
+  cutoff_447 = time.mktime(time.strptime("Sun Nov 01 00:00:00 2009"))
+  return record_tse < cutoff_447
+
 def other_beamlines(iobj,passthru_convention):
   beam5 = [402,403,406,409,410,411,414,418,441,446,448,471,901,902,903,908]
   beam0 = [413,415,420,428,429,443,444,457,904,914,916,917,918,919,924,928]
   KEK = [474,912,449,472]
 
   if iobj.serial_number == 447:
-    record_date = iobj.parameters["DATE"]
-    record_tse = time.mktime(time.strptime(record_date))
-    cutoff_447 = time.mktime(time.strptime("Sun Nov 01 00:00:00 2009"))
-    if record_tse > cutoff_447:
+    if not ADSC447_at_ALS(iobj):
       KEK.append(447)
-    else:
-      known_als_detectors.append(447)
 
-  alld = beam5+beam0+known_als_detectors+known_als831_detectors+KEK
+  alld = beam5+beam0+known_als_detectors(iobj)+known_als831_detectors+KEK
   if iobj.serial_number in beam5:
     beam_center_convention = 5
   elif ADSC910_at_BioCARS(iobj):
@@ -175,7 +183,7 @@ def set_convention(value,phil_params):
 def beam_center_convention_from_image_object(imageobject,phil_params):
 
     if imageobject.vendortype == "ADSC":
-      if imageobject.serial_number in known_als_detectors:
+      if imageobject.serial_number in known_als_detectors(imageobject):
         beam_center_convention = als_beam_rules(imageobject)
       else:
         beam_center_convention = 0
