@@ -14,10 +14,12 @@ namespace mmtbx { namespace den {
 
   struct den_simple_proxy : bond_simple_proxy
   {
+    typedef af::tiny<unsigned, 2> i_seqs_type;
+
     den_simple_proxy() {}
 
     den_simple_proxy(
-      af::tiny<unsigned, 2> const& i_seqs_,
+      i_seqs_type const& i_seqs_,
       double eq_distance_,
       double eq_distance_start_,
       double weight_)
@@ -30,7 +32,20 @@ namespace mmtbx { namespace den {
       MMTBX_ASSERT((eq_distance > 0) && (eq_distance_start > 0));
     }
 
-    af::tiny<unsigned, 2> i_seqs;
+    // Support for proxy_select (and similar operations)
+    den_simple_proxy(
+      i_seqs_type const& i_seqs_,
+      den_simple_proxy const& proxy)
+    :
+      i_seqs(i_seqs_),
+      eq_distance(proxy.eq_distance),
+      eq_distance_start(proxy.eq_distance_start),
+      weight(proxy.weight)
+    {
+      MMTBX_ASSERT((eq_distance > 0) && (eq_distance_start > 0));
+    }
+
+    i_seqs_type i_seqs;
     double eq_distance;
     double eq_distance_start;
     double weight;
@@ -44,7 +59,6 @@ namespace mmtbx { namespace den {
     af::ref<scitbx::vec3<double> > const& gradient_array,
     double den_weight=1.0)
   {
-    //std::cout << "den_weight=" << den_weight << std::endl;
     double residual_sum = 0;
     double slack = 0.0;
     for (std::size_t i = 0; i < proxies.size(); i++) {

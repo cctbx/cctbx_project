@@ -66,6 +66,8 @@ den_params = iotbx.phil.parse("""
     .type = int
   sequence_separation_limit = 10
     .type = int
+  exclude_hydrogens = True
+    .type = bool
   ndistance_ratio = 1.0
     .type = float
   export_den_pairs = False
@@ -161,6 +163,8 @@ class den_restraints(object):
       params.restraint_network.sequence_separation_low
     self.sequence_separation_limit = \
       params.restraint_network.sequence_separation_limit
+    self.exclude_hydrogens = \
+      params.restraint_network.exclude_hydrogens
     self.den_network_file = \
       params.restraint_network.den_network_file
     self.export_den_pairs = \
@@ -239,9 +243,15 @@ class den_restraints(object):
                separation > self.sequence_separation_limit:
               continue
             for j, atom1 in enumerate(res1.atoms()):
+              if self.exclude_hydrogens:
+                if atom1.element_is_hydrogen():
+                  continue
               for atom2 in res2.atoms():
                 if atom2.i_seq <= atom1.i_seq:
                   continue
+                if self.exclude_hydrogens:
+                  if atom2.element_is_hydrogen():
+                    continue
                 dist = distance_squared(atom1.xyz, atom2.xyz)
                 if dist >= low_dist_sq and \
                    dist <= high_dist_sq:
@@ -279,7 +289,14 @@ class den_restraints(object):
         else:
           found_conformer = True
       if found_conformer:
-        atoms_per_chain[chain.id] = chain.atoms_size()
+        if self.exclude_hydrogens:
+          counter = 0
+          for atom in chain.atoms():
+            if not atom.element_is_hydrogen():
+              counter += 1
+          atoms_per_chain[chain.id] = counter
+        else:
+          atoms_per_chain[chain.id] = chain.atoms_size()
     return atoms_per_chain
 
   def select_random_den_restraints(self):
@@ -417,6 +434,8 @@ class den_restraints(object):
 
   def show_den_summary(self, sites_cart):
     print >> self.log, "DEN restraints summary:"
+    print >> self.log, "\ntotal number of DEN restraints: %s\n" % \
+      len(self.den_proxies)
     print >> self.log, "%s | %s | %s | %s | %s " % \
       ("    atom 1     ",
        "    atom 2     ",

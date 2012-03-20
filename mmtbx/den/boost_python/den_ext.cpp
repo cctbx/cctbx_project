@@ -8,9 +8,10 @@
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <boost/optional.hpp>
-#include <scitbx/array_family/boost_python/shared_wrapper.h>
 
 #include <mmtbx/den/den.h>
+#include <cctbx/geometry_restraints/proxy_select.h>
+#include <scitbx/array_family/boost_python/shared_wrapper.h>
 
 namespace mmtbx { namespace den {
 namespace {
@@ -35,7 +36,14 @@ namespace {
     {
       typedef return_internal_reference<> rir;
       scitbx::af::boost_python::shared_wrapper<den_simple_proxy, rir>::wrap(
-        "shared_den_simple_proxy");
+        "shared_den_simple_proxy")
+        .def("proxy_select",
+          (af::shared<w_t>(*)(
+           af::const_ref<w_t> const&,
+           std::size_t,
+           af::const_ref<std::size_t> const&))
+           cctbx::geometry_restraints::shared_proxy_select, (
+         arg("n_seq"), arg("iselection")));
     }
 
     def("den_simple_residual_sum",
