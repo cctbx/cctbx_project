@@ -106,6 +106,7 @@ class process_command_line_with_files (object) :
                 master_phil_string=None,
                 pdb_file_def=None,
                 reflection_file_def=None,
+                map_file_def=None,
                 cif_file_def=None,
                 seq_file_def=None,
                 pickle_file_def=None,
@@ -122,6 +123,7 @@ class process_command_line_with_files (object) :
     self.pdb_file_def = pdb_file_def
     self.reflection_file_def = reflection_file_def
     self.cif_file_def = cif_file_def
+    self.map_file_def = map_file_def
     self.seq_file_def = seq_file_def
     self.pickle_file_def = pickle_file_def
     self.directory_def = directory_def
@@ -141,6 +143,8 @@ class process_command_line_with_files (object) :
         file_def_name = self.pdb_file_def
       elif (f.file_type == "hkl") and (self.reflection_file_def is not None) :
         file_def_name = self.reflection_file_def
+      elif (f.file_type == "ccp4_map") and (self.map_file_def is not None) :
+        file_def_name = self.map_file_def
       elif (f.file_type == "cif") and (self.cif_file_def is not None) :
         file_def_name = self.cif_file_def
       elif (f.file_type == "seq") and (self.seq_file_def is not None) :
