@@ -66,7 +66,7 @@ def assign_r_free_flags_by_shells (n_refl, fraction_free, n_bins) :
   flags.resize(n_refl, False)
   return flags
 
-def export_r_free_flags (flags, test_flag_value) :
+def export_r_free_flags_for_ccp4 (flags, test_flag_value) :
   assert (test_flag_value == True) or isinstance(test_flag_value, int)
   from scitbx.array_family import flex
   if (isinstance(flags, flex.bool)) :
@@ -83,6 +83,19 @@ def export_r_free_flags (flags, test_flag_value) :
       new_flags[i] = 0
     else :
       new_flags[i] = iceil(random.random() * (n_bins - 1))
+  return new_flags
+
+def export_r_free_flags_for_shelx (flags, test_flag_value) :
+  assert (test_flag_value == True) or isinstance(test_flag_value, int)
+  from scitbx.array_family import flex
+  if (isinstance(flags, flex.bool)) :
+    test_flag_value = True
+  else :
+    assert isinstance(flags, flex.int)
+  new_flags = flex.int(flags.size(), 1)
+  for i in range(flags.size()) :
+    if (flags[i] == test_flag_value) :
+      new_flags[i] = -1
   return new_flags
 
 def looks_like_ccp4_flags (flags) :
@@ -133,12 +146,14 @@ def exercise () :
     fraction_free=0.05,
     n_bins=50)
   assert (flags_2.count(True) == 5000)
-  ccp4_flags = export_r_free_flags(flags_1, True)
+  ccp4_flags = export_r_free_flags_for_ccp4(flags_1, True)
   assert (ccp4_flags.count(0) == flags_1.count(True))
   assert (flex.max(ccp4_flags) == 19)
+  shelx_flags = export_r_free_flags_for_shelx(flags_1, True)
+  assert ((shelx_flags==-1).all_eq((ccp4_flags==0)))
   flags_3 = assign_random_r_free_flags(n_refl=100000, fraction_free=0.025)
   assert (flags_3.count(True) == 2500)
-  ccp4_flags = export_r_free_flags(flags_3, True)
+  ccp4_flags = export_r_free_flags_for_ccp4(flags_3, True)
   assert (ccp4_flags.count(0) == flags_3.count(True))
   assert (flex.max(ccp4_flags) == 39)
   # now with an actual Miller array
