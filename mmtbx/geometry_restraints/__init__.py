@@ -98,13 +98,19 @@ class manager (object) :
   def select (self,
               n_seq,
               iselection) :
+    ramachandran_proxies = hydrogen_bond_proxies = den_manager = None
     if (self.ramachandran_proxies is not None) :
-      self.ramachandran_proxies = self.ramachandran_proxies.proxy_select(
+      ramachandran_proxies = self.ramachandran_proxies.proxy_select(
         n_seq, iselection)
     if (self.hydrogen_bond_proxies is not None) :
-      self.hydrogen_bond_proxies = self.hydrogen_bond_proxies.proxy_select(
+      hydrogen_bond_proxies = self.hydrogen_bond_proxies.proxy_select(
         n_seq, iselection)
-    # TODO DEN restraint selection
     if (self.den_manager is not None) :
-      self.den_manager.den_proxies = self.den_manager.den_proxies.proxy_select(
-        n_seq, iselection)
+      den_manager = self.den_manager.select(n_seq, iselection)
+    return manager(
+      ramachandran_proxies=ramachandran_proxies,
+      ramachandran_lookup=self.ramachandran_lookup,
+      hydrogen_bond_proxies=hydrogen_bond_proxies,
+      hydrogen_bond_params=self.hydrogen_bond_params,
+      den_manager=den_manager,
+      flags=self.flags)

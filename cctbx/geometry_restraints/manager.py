@@ -378,8 +378,10 @@ class manager(object):
       if (n_seq is None): n_seq = get_n_seq()
       selected_planarity_proxies = self.planarity_proxies.proxy_select(
         n_seq, iselection)
+    generic_restraints_manager = None
     if (self.generic_restraints_manager is not None) :
-      self.generic_restraints_manager.select(n_seq, iselection)
+      generic_restraints_manager = self.generic_restraints_manager.select(
+        n_seq, iselection)
     return manager(
       crystal_symmetry=self.crystal_symmetry,
       model_indices=selected_model_indices,
@@ -398,7 +400,7 @@ class manager(object):
       angle_proxies=selected_angle_proxies,
       dihedral_proxies=selected_dihedral_proxies,
       reference_dihedral_proxies=selected_reference_dihedral_proxies,
-      generic_restraints_manager=self.generic_restraints_manager,
+      generic_restraints_manager=generic_restraints_manager,
       ncs_dihedral_proxies=selected_ncs_dihedral_proxies,
       chirality_proxies=selected_chirality_proxies,
       planarity_proxies=selected_planarity_proxies,

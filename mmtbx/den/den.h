@@ -61,12 +61,14 @@ namespace mmtbx { namespace den {
   {
     double residual_sum = 0;
     double slack = 0.0;
+    unsigned n_sites = sites_cart.size();
     for (std::size_t i = 0; i < proxies.size(); i++) {
       den_simple_proxy proxy = proxies[i];
       af::tiny<scitbx::vec3<double>, 2> sites;
       af::tiny<unsigned, 2> const& i_seqs = proxy.i_seqs;
       sites[0] = sites_cart[ i_seqs[0] ];
       sites[1] = sites_cart[ i_seqs[1] ];
+      MMTBX_ASSERT((i_seqs[0] < n_sites) && (i_seqs[1] < n_sites));
       //bond restraint(sites, proxy.eq_distance, proxy.weight, slack);
       bond restraint(sites, proxy.eq_distance, den_weight, slack);
       double residual = restraint.residual();
