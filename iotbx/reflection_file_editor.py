@@ -743,7 +743,7 @@ class process_arrays (object) :
             if (params.mtz_file.r_free_flags.preserve_input_values) :
               if (r_free_utils.looks_like_ccp4_flags(r_free_flags)) :
                 print >> log, "Exporting missing flags to CCP4 convention"
-                exported_flags = r_free_utils.export_r_free_flags(
+                exported_flags = r_free_utils.export_r_free_flags_for_ccp4(
                   flags=missing_flags.data(),
                   test_flag_value=test_flag_value)
                 output_array = r_free_flags.concatenate(
@@ -784,7 +784,8 @@ class process_arrays (object) :
             output_array = output_array.delete_index(hkl)
         if (params.mtz_file.r_free_flags.export_for_ccp4) :
           print >> log, "%s: converting to CCP4 convention" % array_name
-          output_array = export_r_free_flags(miller_array=output_array,
+          output_array = export_r_free_flags(
+            miller_array=output_array,
             test_flag_value=True)
         fake_label = "A" + string.uppercase[i+1]
         self.add_array_to_mtz_dataset(
@@ -814,7 +815,8 @@ class process_arrays (object) :
         r_free_params.new_label = "FreeR_flag"
       if params.mtz_file.r_free_flags.export_for_ccp4 :
         print >> log, "%s: converting to CCP4 convention" % array_name
-        output_array = export_r_free_flags(miller_array=new_r_free_array,
+        output_array = export_r_free_flags(
+          miller_array=new_r_free_array,
           test_flag_value=True)
       else:
         output_array = new_r_free_array
@@ -954,7 +956,7 @@ def is_rfree_array (miller_array, array_info) :
 
 def export_r_free_flags (miller_array, test_flag_value) :
   from cctbx import r_free_utils
-  new_flags = r_free_utils.export_r_free_flags(
+  new_flags = r_free_utils.export_r_free_flags_for_ccp4(
     flags=miller_array.data(),
     test_flag_value=test_flag_value)
   return miller_array.customized_copy(data=new_flags)

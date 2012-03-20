@@ -4,10 +4,12 @@ import iotbx.scalepack.merge
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
 from iotbx.option_parser import option_parser
+from cctbx import r_free_utils
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.array_family import flex
 from libtbx.utils import Sorry, date_and_time, plural_s
+from cStringIO import StringIO
 import random
 import os
 
@@ -65,6 +67,11 @@ def run(
       type="int",
       help="Maximum number of free reflections (default: 2000).",
       metavar="INT")
+    .option(None, "--r_free_flags_format",
+      choices=("cns", "ccp4", "shelx"),
+      default="cns",
+      help="Convention for generating R-free flags",
+      metavar="cns|ccp4")
     .option(None, "--random_seed",
       action="store",
       type="int",
@@ -471,8 +478,27 @@ def run(
       r_free_flags.data().count(False))
     r_free_info.append("  size of free set: %d" %
       r_free_flags.data().count(True))
+    r_free_info_str = StringIO()
+    r_free_flags.show_r_free_flags_info(prefix="  ", out=r_free_info_str)
+    print co.r_free_flags_format
+    if (co.r_free_flags_format == "ccp4") :
+      flags_ccp4 = r_free_utils.export_r_free_flags_for_ccp4(
+        flags=r_free_flags.data(),
+        test_flag_value=True)
+      r_free_flags = r_free_flags.customized_copy(data=flags_ccp4)
+      r_free_info.append("  convention: CCP4 (test=0, work=1-%d)" %
+        flex.max(flags_ccp4))
+    elif (co.r_free_flags_format == "shelx") :
+      flags_shelx = r_free_utils.export_r_free_flags_for_shelx(
+        flags=r_free_flags.data(),
+        test_flag_value=True)
+      r_free_flags = r_free_flags.customized_copy(data=flags_shelx)
+      r_free_info.append("  convention: SHELXL (test=-1, work=1)")
+    else :
+      r_free_info.append("  convention: CNS/X-PLOR (test=1, work=0)")
     print "\n".join(r_free_info[2:4])
-    r_free_flags.show_r_free_flags_info(prefix="  ")
+    print r_free_info[-1]
+    print r_free_info_str.getvalue()
     print
 
   n_output_files = 0
