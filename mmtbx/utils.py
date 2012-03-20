@@ -1829,7 +1829,8 @@ class pdb_file(object):
                                  )
       cif_file = prefix+time_stamp+".cif"
       if rc is not None:
-        hierarchy, cifs = rc
+        # XXX now there are three return values
+        hierarchy, cifs, something_else = rc
         if cifs:
           cif_lines = []
           for key in cifs:
