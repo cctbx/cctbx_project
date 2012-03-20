@@ -1,6 +1,7 @@
 import sys
 import libtbx.phil
 from libtbx.phil import interface
+import libtbx.load_env
 
 def exercise () :
   master_phil = libtbx.phil.parse("""
@@ -173,12 +174,11 @@ refinement.ncs.restraint_group {
 # XXX sorry about the cross-import here, but I really need to test this on
 # something large and complex
 def exercise_2 (verbose=False) :
-  try :
-    from phenix.refinement import runtime
-    import iotbx.phil
-  except ImportError :
-    print "PHENIX sources not found, skipping advanced tests"
-    return False
+  if (not libtbx.env.has_module(name="phenix")):
+    print "phenix module not available: skipping advanced tests"
+    return
+  from phenix.refinement import runtime
+  import iotbx.phil
   from time import time
   phil_str = """
 refinement.secondary_structure {
@@ -298,12 +298,11 @@ refinement.output.title = Test refinement run
   assert (str(submenu.get_items()[0]) == "refinement.refine.sites")
 
 def exercise_3 () :
+  if (not libtbx.env.has_module(name="phaser")):
+    print "phaser module not available: skipping advanced tests"
+    return
   import iotbx.phil
-  try :
-    import phaser.phenix_interface
-  except ImportError :
-    print "Phaser sources not found, skipping advanced tests"
-    return False
+  import phaser.phenix_interface
   master_phil = phaser.phenix_interface.master_phil
   i = interface.index(master_phil=master_phil,
     parse=iotbx.phil.parse)
