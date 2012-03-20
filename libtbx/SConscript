@@ -969,7 +969,7 @@ def enable_cuda_if_possible():
       Builder\
       (action = '$NVCC -c -o $TARGET $_CPPINCFLAGS $NVCCFLAGS $SOURCES',
        suffix = '.o',
-       src_suffix = '.cu',
+       src_suffix = ['.cu','.cpp'],
        source_scanner = SCons.Scanner.C.CScanner())
     shared_library_builder =\
       Builder\

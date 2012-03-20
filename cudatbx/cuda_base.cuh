@@ -20,10 +20,4 @@ inline void __cudaSafeCall( cudaError err, const char *file, const int line )
   }
 }
 
-namespace cudatbx {
-
-  int number_of_gpus();
-  void reset_gpu(const int&);
-
-}
 #endif // CUDA_BASE_H

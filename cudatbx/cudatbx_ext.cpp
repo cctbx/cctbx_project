@@ -2,7 +2,7 @@
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
 
-#include <cudatbx/cuda_base.h>
+#include <cudatbx/cuda_utilities.h>
 
 namespace cudatbx {
 namespace {

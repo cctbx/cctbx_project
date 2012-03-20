@@ -1,7 +1,7 @@
 #ifndef CUDATBX_FACTORIALS_H
 #define CUDATBX_FACTORIALS_H
 
-#include <cudatbx/cuda_base.h>
+#include <cudatbx/cuda_base.cuh>
 
 namespace cudatbx {
 namespace math {
