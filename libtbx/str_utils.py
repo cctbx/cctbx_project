@@ -43,11 +43,14 @@ def py_string_representation(string, preferred_quote, alternative_quote):
   rapp(quote)
   return "".join(result)
 
-try:
-  from boost.python import ext as _
-  string_representation = _.string_representation
-except Exception:
-  string_representation = py_string_representation
+def string_representation(string, preferred_quote, alternative_quote):
+  global string_representation
+  try:
+    from boost.python import ext as _
+    string_representation = _.string_representation
+  except Exception:
+    string_representation = py_string_representation
+  return string_representation(string, preferred_quote, alternative_quote)
 
 def split_keeping_spaces(s):
   result = []
@@ -436,6 +439,14 @@ to be reset.
 =================================== Header 2 ==================================
 
 """)
+  #
+  iset = range(130) + range(250,256)
+  for i in iset:
+    s = chr(i)
+    for j in iset:
+      ss = s + chr(j)
+      assert string_representation(
+        string=ss, preferred_quote="'", alternative_quote='"') == repr(ss)
   #
   print "OK"
 
