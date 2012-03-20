@@ -62,7 +62,7 @@ class fast_maps_from_hkl_file (object) :
     f_obs = None
     fallback_f_obs = []
     default_labels = ["F(+),SIGF(+),F(-),SIGF(-)", "I(+),SIGI(+),I(-),SIGI(-)",
-      "F,SIGF","FOBS,SIGFOBS", "FOBS_X"]
+      "F,SIGF","FOBS,SIGFOBS", "FOBS_X", "IOBS,SIGIOBS"]
     default_rfree_labels = ["FreeR_flag", "FREE", "R-free-flags"]
     all_labels = []
     best_label = sys.maxint
