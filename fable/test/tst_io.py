@@ -85,7 +85,7 @@ def exercise_mixed_read_write(opts):
 """ % tmp)
   for cmd in build_cmds(tst_f=tst_f, opts=opts):
     if (opts.verbose): print cmd
-    open(tmp, "wb").write("""\
+    open(tmp, "w").write("""\
 12
 34
 56
@@ -97,7 +97,7 @@ def exercise_mixed_read_write(opts):
     assert not show_diff(tmp_text, """\
 12
 78
-""")
+""".replace("\n", os.linesep))
 
 def exercise_read_from_non_existing_file(opts):
   tst_f = "exercise_read_from_non_existing_file.f"

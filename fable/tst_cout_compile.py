@@ -353,7 +353,7 @@ klmno
     easy_run.fully_buffered(command=cmd).raise_if_errors_or_output()
     assert op.isfile("read_lines_out")
     result = open("read_lines_out", "rb").read()
-    assert result == expected
+    assert result == expected.replace("\n", os.linesep)
 
 def exercise_compile_valid(regex_patterns, opts):
   from fable import cout
