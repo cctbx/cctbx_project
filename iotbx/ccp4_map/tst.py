@@ -27,7 +27,7 @@ def exercise_with_tst_input_map():
   m.show_summary(out=out)
   assert ("map grid:   (16, 8, 16)" in out.getvalue())
   uc = m.unit_cell()
-  assert approx_equal(m.unit_cell_parameters, m.unit_cell())
+  assert approx_equal(m.unit_cell_parameters, m.unit_cell().parameters())
 
 def exercise(args):
   exercise_with_tst_input_map()
