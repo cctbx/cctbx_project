@@ -8,6 +8,11 @@
 #include <vector>
 #include <cstdio>
 
+#if defined(_MSC_VER)
+# include <fcntl.h>
+# include <io.h>
+#endif
+
 namespace fem {
 
   inline
@@ -49,6 +54,19 @@ namespace fem {
     if (!check_fem_utils_int_types()) {
       return 255;
     }
+#if defined(_MSC_VER)
+# define FABLE_LOC(fp) \
+    if (_setmode(_fileno(fp), _O_BINARY) == -1) { \
+      std::cerr \
+        << "FATAL: error switching " #fp " to binary mode (" \
+        << __FILE__ << ", line " << __LINE__ << ")" << std::endl; \
+      return 255; \
+    }
+    FABLE_LOC(stderr)
+    FABLE_LOC(stdout)
+    FABLE_LOC(stdin)
+# undef FABLE_LOC
+#endif
     try {
       callable(argc, argv);
     }
