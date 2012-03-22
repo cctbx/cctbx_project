@@ -18,8 +18,10 @@ def run(args):
                           help="Directory for output files.")
                   .option("--roi",
                           type="string",
-                          help="Region of interest for summing up histograms"
-                          "from neighbouring pixels.")
+                          help="Region of interest for signal.")
+                  .option("--bg_roi",
+                          type="string",
+                          help="Region of interest for background")
                   .option("--gain_map_path",
                           type="string",
                           help="Path to a gain map that will be used instead of"
@@ -35,7 +37,7 @@ def run(args):
                           type="float",
                           default=2/3,
                           help="Threshold for counting photons (as a fraction of"
-                          "the distance between the zero and one photon peaks.")
+                          "the distance between the zero and one photon peaks).")
                   .option("--sum_adu",
                           action="store_true",
                           default=False,
@@ -45,6 +47,7 @@ def run(args):
   assert len(args) == 1
   output_dirname = command_line.options.output_dirname
   roi = cspad_tbx.getOptROI(command_line.options.roi)
+  bg_roi = cspad_tbx.getOptROI(command_line.options.bg_roi)
   gain_map_path = command_line.options.gain_map_path
   estimated_gain = command_line.options.estimated_gain
   nproc = command_line.options.nproc
@@ -58,191 +61,229 @@ def run(args):
     output_dirname = os.path.join(os.path.dirname(args[0]), "finalise")
     print output_dirname
   hist_d = easy_pickle.load(args[0])
-  if roi is not None:
-    for ij, hist in hist_d.items():
-      i, j = ij
-    for (i, j), hist in hist_d.items():
-      if (   i < roi[2]
-          or i > roi[3]
-          or j < roi[0]
-          or j > roi[1]):
-        del hist_d[(i,j)]
   pixel_histograms = view_pixel_histograms.pixel_histograms(
     hist_d, estimated_gain=estimated_gain)
-  xes_from_histograms(pixel_histograms, output_dirname=output_dirname,
-                      gain_map_path=gain_map_path, estimated_gain=estimated_gain,
-                      method=method, nproc=nproc,
-                      photon_threshold=photon_threshold)
+  result = xes_from_histograms(
+    pixel_histograms, output_dirname=output_dirname,
+    gain_map_path=gain_map_path, estimated_gain=estimated_gain,
+    method=method, nproc=nproc,
+    photon_threshold=photon_threshold, roi=roi)
 
-def xes_from_histograms(pixel_histograms, output_dirname=".", gain_map_path=None,
-                        method="photon_counting", estimated_gain=30, nproc=None,
-                        photon_threshold=2/3):
-  assert method in ("sum_adu", "photon_counting")
-  sum_img = flex.double(flex.grid(370,391), 0) # XXX define the image size some other way?
-  gain_img = flex.double(sum_img.accessor(), 0)
+  if bg_roi is not None:
+    bg_outdir = os.path.dirname(output_dirname)+"_bg"
+    bg_result = xes_from_histograms(
+      pixel_histograms, output_dirname=bg_outdir,
+      gain_map_path=gain_map_path, estimated_gain=estimated_gain,
+      method=method, nproc=nproc,
+      photon_threshold=photon_threshold, roi=bg_roi)
 
-  if gain_map_path is not None:
-    d = easy_pickle.load(gain_map_path)
-    gain_map = d["DATA"]
+    from xfel.command_line.subtract_background import subtract_background
+    signal = result.spectrum
+    background = bg_result.spectrum
+    signal = (signal[0].as_double(), signal[1])
+    background = (background[0].as_double(), background[1])
+    signal_x, background_subtracted = subtract_background(signal, background, plot=True)
+    f = open(os.path.join(output_dirname, "background_subtracted.txt"), "wb")
+    print >> f, "\n".join(["%i %f" %(x, y)
+                           for x, y in zip(signal_x, background_subtracted)])
+    f.close()
+
   else:
-    gain_map = None
+    from xfel.command_line import smooth_spectrum
+    from scitbx.smoothing import savitzky_golay_filter
+    x, y = result.spectrum[0].as_double(), result.spectrum[1]
+    x, y = smooth_spectrum.interpolate(x, y)
+    x, y_smoothed = savitzky_golay_filter(
+      x, y, 20, 4)
+    smooth_spectrum.estimate_signal_to_noise(x, y, y_smoothed)
 
-  two_photon_threshold = photon_threshold + 1
 
-  mask = flex.int(sum_img.accessor(), 0)
+class xes_from_histograms(object):
 
-  start_row = 370
-  end_row = 0
-  print len(pixel_histograms.histograms)
+  def __init__(self, pixel_histograms, output_dirname=".", gain_map_path=None,
+               method="photon_counting", estimated_gain=30, nproc=None,
+               photon_threshold=2/3, roi=None):
+    assert method in ("sum_adu", "photon_counting")
+    self.sum_img = flex.double(flex.grid(370,391), 0) # XXX define the image size some other way?
+    gain_img = flex.double(self.sum_img.accessor(), 0)
 
-  pixels = list(pixel_histograms.pixels())
-  if gain_map is None:
-    fixed_func = pixel_histograms.fit_one_histogram
-  else:
-    def fixed_func(pixel):
-      return pixel_histograms.fit_one_histogram(pixel, n_gaussians=1)
-  results = None
-  if nproc is None: nproc = easy_mp.Auto
-  nproc = easy_mp.get_processes(nproc)
-  print "nproc: ", nproc
-
-  stdout_and_results = easy_mp.pool_map(
-    processes=nproc,
-    fixed_func=fixed_func,
-    args=pixels,
-    func_wrapper="buffer_stdout_stderr")
-  results = [r for so, r in stdout_and_results]
-
-  gains = flex.double()
-
-  for i, pixel in enumerate(pixels):
-    #print i
-    start_row = min(start_row, pixel[0])
-    end_row = max(end_row, pixel[0])
-    n_photons = 0
-    if results is None:
-      # i.e. not multiprocessing
-      try:
-        gaussians = pixel_histograms.fit_one_histogram(pixel)
-      except RuntimeError, e:
-        print "Error fitting pixel %s" %pixel
-        print str(e)
-        mask[pixel] = 1
-        continue
+    if gain_map_path is not None:
+      d = easy_pickle.load(gain_map_path)
+      gain_map = d["DATA"]
     else:
-      gaussians = results[i]
-    hist = pixel_histograms.histograms[pixel]
-    if gaussians is None:
-      # Presumably the peak fitting failed in some way
-      print "Skipping pixel %s" %str(pixel)
-      continue
-    zero_peak_diff = gaussians[0].params[1]
+      gain_map = None
+
+    two_photon_threshold = photon_threshold + 1
+
+    mask = flex.int(self.sum_img.accessor(), 0)
+
+    start_row = 370
+    end_row = 0
+    print len(pixel_histograms.histograms)
+
+    pixels = list(pixel_histograms.pixels())
+    n_pixels = len(pixels)
+    if roi is not None:
+      for k, (i, j) in enumerate(reversed(pixels)):
+        if (   i < roi[2]
+            or i > roi[3]
+            or j < roi[0]
+            or j > roi[1]):
+          del pixels[n_pixels-k-1]
+
+
     if gain_map is None:
-      try:
-        view_pixel_histograms.check_pixel_histogram_fit(hist, gaussians)
-      except view_pixel_histograms.PixelFitError, e:
-        print "PixelFitError:", str(pixel), str(e)
-        mask[pixel] = 1
-        continue
-      gain = gaussians[1].params[1] - gaussians[0].params[1]
-      gain_img[pixel] = gain
-      gain_ratio = gain/estimated_gain
+      fixed_func = pixel_histograms.fit_one_histogram
     else:
-      gain = gain_map[pixel]
-      if gain == 0:
-        print "bad gain!!!!!", pixel
+      def fixed_func(pixel):
+        return pixel_histograms.fit_one_histogram(pixel, n_gaussians=1)
+    results = None
+    if nproc is None: nproc = easy_mp.Auto
+    nproc = easy_mp.get_processes(nproc)
+    print "nproc: ", nproc
+
+    stdout_and_results = easy_mp.pool_map(
+      processes=nproc,
+      fixed_func=fixed_func,
+      args=pixels,
+      func_wrapper="buffer_stdout_stderr")
+    results = [r for so, r in stdout_and_results]
+
+    gains = flex.double()
+
+    for i, pixel in enumerate(pixels):
+      #print i
+      start_row = min(start_row, pixel[0])
+      end_row = max(end_row, pixel[0])
+      n_photons = 0
+      if results is None:
+        # i.e. not multiprocessing
+        try:
+          gaussians = pixel_histograms.fit_one_histogram(pixel)
+        except RuntimeError, e:
+          print "Error fitting pixel %s" %pixel
+          print str(e)
+          mask[pixel] = 1
+          continue
+      else:
+        gaussians = results[i]
+      hist = pixel_histograms.histograms[pixel]
+      if gaussians is None:
+        # Presumably the peak fitting failed in some way
+        print "Skipping pixel %s" %str(pixel)
         continue
-      gain = 30/gain
-      gain_ratio = 1/gain
-    gains.append(gain)
+      zero_peak_diff = gaussians[0].params[1]
+      if gain_map is None:
+        try:
+          view_pixel_histograms.check_pixel_histogram_fit(hist, gaussians)
+        except view_pixel_histograms.PixelFitError, e:
+          print "PixelFitError:", str(pixel), str(e)
+          mask[pixel] = 1
+          continue
+        gain = gaussians[1].params[1] - gaussians[0].params[1]
+        gain_img[pixel] = gain
+        gain_ratio = gain/estimated_gain
+      else:
+        gain = gain_map[pixel]
+        if gain == 0:
+          print "bad gain!!!!!", pixel
+          continue
+        gain = 30/gain
+        gain_ratio = 1/gain
+      gains.append(gain)
 
-    #for g in gaussians:
-      #sigma = abs(g.params[2])
-      #if sigma < 1 or sigma > 10:
-        #print "bad sigma!!!!!", pixel, sigma
-        #mask[pixel] = 1
-        #continue
-    if method == "sum_adu":
-      #print "summing adus"
-      sum_adu = 0
-      one_photon_cutoff, two_photon_cutoff = [
-        (threshold * gain + zero_peak_diff)
-        for threshold in (photon_threshold, two_photon_threshold)]
-      i_one_photon_cutoff = hist.get_i_slot(one_photon_cutoff)
-      slots = hist.slots().as_double()
-      slot_centers = hist.slot_centers()
-      slots -= gaussians[0](slot_centers)
-      for j in range(i_one_photon_cutoff, len(slots)):
-        center = slot_centers[j]
-        sum_adu += slots[j] * (center - zero_peak_diff) * 30/gain
-      sum_img[pixel] = sum_adu
-    elif method == "photon_counting":
-      #print "counting photons"
-      one_photon_cutoff, two_photon_cutoff = [
-        (threshold * gain + zero_peak_diff)
-        for threshold in (photon_threshold, two_photon_threshold)]
-      #print "cutoffs: %s %.2f, %.2f" %(pixel, one_photon_cutoff, two_photon_cutoff)
-      i_one_photon_cutoff = hist.get_i_slot(one_photon_cutoff)
-      i_two_photon_cutoff = hist.get_i_slot(two_photon_cutoff)
-      slots = hist.slots()
-      for j in range(i_one_photon_cutoff, len(slots)):
-        if j == i_one_photon_cutoff:
-          center = hist.slot_centers()[j]
-          upper = center + 0.5 * hist.slot_width()
-          n_photons += int(round((upper - one_photon_cutoff)/hist.slot_width() * slots[j]))
-        elif j == i_two_photon_cutoff:
-          center = hist.slot_centers()[j]
-          upper = center + 0.5 * hist.slot_width()
-          n_photons += 2 * int(round((upper - two_photon_cutoff)/hist.slot_width() * slots[j]))
-        elif j < i_two_photon_cutoff:
-          n_photons += int(round(slots[j]))
-        else:
-          n_photons += 2 * int(round(slots[j]))
-      sum_img[pixel] = n_photons
+      #for g in gaussians:
+        #sigma = abs(g.params[2])
+        #if sigma < 1 or sigma > 10:
+          #print "bad sigma!!!!!", pixel, sigma
+          #mask[pixel] = 1
+          #continue
+      if method == "sum_adu":
+        #print "summing adus"
+        sum_adu = 0
+        one_photon_cutoff, two_photon_cutoff = [
+          (threshold * gain + zero_peak_diff)
+          for threshold in (photon_threshold, two_photon_threshold)]
+        i_one_photon_cutoff = hist.get_i_slot(one_photon_cutoff)
+        slots = hist.slots().as_double()
+        slot_centers = hist.slot_centers()
+        slots -= gaussians[0](slot_centers)
+        for j in range(i_one_photon_cutoff, len(slots)):
+          center = slot_centers[j]
+          sum_adu += slots[j] * (center - zero_peak_diff) * 30/gain
+        self.sum_img[pixel] = sum_adu
+      elif method == "photon_counting":
+        #print "counting photons"
+        one_photon_cutoff, two_photon_cutoff = [
+          (threshold * gain + zero_peak_diff)
+          for threshold in (photon_threshold, two_photon_threshold)]
+        #print "cutoffs: %s %.2f, %.2f" %(pixel, one_photon_cutoff, two_photon_cutoff)
+        i_one_photon_cutoff = hist.get_i_slot(one_photon_cutoff)
+        i_two_photon_cutoff = hist.get_i_slot(two_photon_cutoff)
+        slots = hist.slots()
+        for j in range(i_one_photon_cutoff, len(slots)):
+          if j == i_one_photon_cutoff:
+            center = hist.slot_centers()[j]
+            upper = center + 0.5 * hist.slot_width()
+            n_photons += int(round((upper - one_photon_cutoff)/hist.slot_width() * slots[j]))
+          elif j == i_two_photon_cutoff:
+            center = hist.slot_centers()[j]
+            upper = center + 0.5 * hist.slot_width()
+            n_photons += 2 * int(round((upper - two_photon_cutoff)/hist.slot_width() * slots[j]))
+          elif j < i_two_photon_cutoff:
+            n_photons += int(round(slots[j]))
+          else:
+            n_photons += 2 * int(round(slots[j]))
+        self.sum_img[pixel] = n_photons
 
-  stats = scitbx.math.basic_statistics(gains)
-  print "gain statistics:"
-  stats.show()
+    stats = scitbx.math.basic_statistics(gains)
+    print "gain statistics:"
+    stats.show()
 
-  mask.set_selected(sum_img == 0, 1)
-  unbound_pixel_mask = xes_finalise.cspad_unbound_pixel_mask()
-  mask.set_selected(unbound_pixel_mask > 0, 1)
+    mask.set_selected(self.sum_img == 0, 1)
+    unbound_pixel_mask = xes_finalise.cspad_unbound_pixel_mask()
+    mask.set_selected(unbound_pixel_mask > 0, 1)
 
-  for row in range(sum_img.all()[0]):
-    sum_img[row:row+1,:].count(0)
+    for row in range(self.sum_img.all()[0]):
+      self.sum_img[row:row+1,:].count(0)
 
-  spectrum_focus = sum_img[start_row:end_row,:]
-  mask_focus = mask[start_row:end_row,:]
+    spectrum_focus = self.sum_img[start_row:end_row,:]
+    mask_focus = mask[start_row:end_row,:]
 
-  print "Estimated no. photons counted: %i" %flex.sum(spectrum_focus)
+    print "Estimated no. photons counted: %i" %flex.sum(spectrum_focus)
+    print "Number of images used: %i" %flex.sum(
+      pixel_histograms.histograms.values()[0].slots())
 
-  d = cspad_tbx.dpack(
-    data=spectrum_focus,
-    distance=1,
-    ccd_image_saturation=2e8, # XXX
-  )
-  cspad_tbx.dwritef(d, output_dirname, 'sum_')
-
-  if gain_map is None:
-    gain_map = flex.double(gain_img.accessor(), 0)
-    img_sel = (gain_img > 0).as_1d()
     d = cspad_tbx.dpack(
-      data=gain_img,
-      distance=1
+      data=spectrum_focus,
+      distance=1,
+      ccd_image_saturation=2e8, # XXX
     )
-    cspad_tbx.dwritef(d, output_dirname, 'raw_gain_map_')
-    gain_map.as_1d().set_selected(img_sel.iselection(), 1/gain_img.as_1d().select(img_sel))
-    gain_map /= flex.mean(gain_map.as_1d().select(img_sel))
-    d = cspad_tbx.dpack(
-      data=gain_map,
-      distance=1
-    )
-    cspad_tbx.dwritef(d, output_dirname, 'gain_map_')
+    cspad_tbx.dwritef(d, output_dirname, 'sum_')
 
-  xes_finalise.output_spectrum(spectrum_focus.iround(), mask_focus=mask_focus,
-                               output_dirname=output_dirname)
+    if gain_map is None:
+      gain_map = flex.double(gain_img.accessor(), 0)
+      img_sel = (gain_img > 0).as_1d()
+      d = cspad_tbx.dpack(
+        data=gain_img,
+        distance=1
+      )
+      cspad_tbx.dwritef(d, output_dirname, 'raw_gain_map_')
+      gain_map.as_1d().set_selected(img_sel.iselection(), 1/gain_img.as_1d().select(img_sel))
+      gain_map /= flex.mean(gain_map.as_1d().select(img_sel))
+      d = cspad_tbx.dpack(
+        data=gain_map,
+        distance=1
+      )
+      cspad_tbx.dwritef(d, output_dirname, 'gain_map_')
 
-  xes_finalise.output_matlab_form(spectrum_focus, "%s/sum.m" %output_dirname)
+    plot_x, plot_y = xes_finalise.output_spectrum(
+      spectrum_focus.iround(), mask_focus=mask_focus,
+      output_dirname=output_dirname)
+    self.spectrum = (plot_x, plot_y)
+    self.spectrum_focus = spectrum_focus
+
+    xes_finalise.output_matlab_form(spectrum_focus, "%s/sum.m" %output_dirname)
 
 
 if __name__ == '__main__':
