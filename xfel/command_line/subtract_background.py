@@ -5,6 +5,8 @@ from matplotlib import pyplot
 
 from libtbx.option_parser import option_parser
 from scitbx.array_family import flex
+from scitbx import smoothing
+from xfel.command_line import smooth_spectrum
 
 
 def run(args):
@@ -41,9 +43,8 @@ def run(args):
 
 def subtract_background(signal, background, plot=False):
 
-  from xfel.command_line import smooth_spectrum
   x, y = smooth_spectrum.interpolate(background[0], background[1])
-  y_fitted = smooth_spectrum.savitzky_golay_filter(x, y, half_window=32, degree=3)[1]
+  y_fitted = smoothing.savitzky_golay_filter(x, y, half_window=32, degree=3)[1]
   signal_x, signal_y = signal
   signal_x, signal_y = smooth_spectrum.interpolate(signal[0], signal[1])
 
