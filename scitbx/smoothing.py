@@ -48,8 +48,6 @@ def savitzky_golay_coefficients(n_left, n_right, degree, derivative=0, wraparoun
 
 
 def savitzky_golay_filter(x, y, half_window, degree, derivative=0):
-  from scitbx import smoothing
-  #y = y.as_numpy_array()
   # pad the signal at the extremes with
   # values taken from the signal itself
   firstvals = y[1:half_window+1].reversed()
@@ -58,9 +56,9 @@ def savitzky_golay_filter(x, y, half_window, degree, derivative=0):
   firstvals.extend(lastvals)
   y = firstvals
   # discrete convolution
-  coeffs = smoothing.savitzky_golay_coefficients(
+  coeffs = savitzky_golay_coefficients(
     half_window, half_window, degree, derivative=derivative, wraparound=False)
-  x, y = x, smoothing.convolve(y, coeffs)[half_window:-half_window]
+  x, y = x, convolve(y, coeffs)[half_window:-half_window]
   y = y[half_window:-half_window]
   return x, y
 
