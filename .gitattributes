@@ -1937,6 +1937,7 @@ xfel/command_line/cxi_view.py -text
 xfel/command_line/histogram_finalise.py -text
 xfel/command_line/monitor_detectors.py -text
 xfel/command_line/overlay_spectra.py -text
+xfel/command_line/subtract_background.py -text
 xfel/command_line/view_pixel_histograms.py -text
 xfel/command_line/xes_finalise.py -text
 xfel/cxi/__init__.py -text
