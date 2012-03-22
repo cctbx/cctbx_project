@@ -2,7 +2,7 @@ from scitbx.array_family import flex
 import scitbx.matrix
 
 
-def savitzky_golay_coefficients(n_left, n_right, degree, derivative=0):
+def savitzky_golay_coefficients(n_left, n_right, degree, derivative=0, wraparound=True):
   """
     Compute the convolution coefficients to be used for smoothing data by the
     method of Savitzky and Golay [1].
@@ -11,6 +11,9 @@ def savitzky_golay_coefficients(n_left, n_right, degree, derivative=0):
     n_left and n_right are the number of past and future data points used. The
     total number of data points used is n_left + n_right + 1.
     degree is the degree or order of the smoothing polynomial.
+    wraparound: if True then the coefficients are returned in "wraparound" order
+    i.e. point 0 is at index[0], 1 at index[1], etc. and point -1 is at index[-1],
+    point -2 at index[-2], etc.
     Notes
     -----
     See also:
@@ -36,29 +39,50 @@ def savitzky_golay_coefficients(n_left, n_right, degree, derivative=0):
   for i, k in enumerate(range(-n_left, n_right+1)):
     c = scitbx.matrix.col([k**n for n in range(degree+1)]).dot(
       scitbx.matrix.row(x))
-    coefficients[i] = c
+    np = n_left+n_right+1
+    if wraparound:
+      coefficients[(np - k) %np] = c
+    else:
+      coefficients[i] = c
   return coefficients
 
 
+def savitzky_golay_filter(x, y, half_window, degree, derivative=0):
+  from scitbx import smoothing
+  #y = y.as_numpy_array()
+  # pad the signal at the extremes with
+  # values taken from the signal itself
+  firstvals = y[1:half_window+1].reversed()
+  lastvals = y[-half_window-1:-1].reversed()
+  firstvals.extend(y)
+  firstvals.extend(lastvals)
+  y = firstvals
+  # discrete convolution
+  coeffs = smoothing.savitzky_golay_coefficients(
+    half_window, half_window, degree, derivative=derivative, wraparound=False)
+  x, y = x, smoothing.convolve(y, coeffs)[half_window:-half_window]
+  y = y[half_window:-half_window]
+  return x, y
 
-def exercise_savitzky_golay_coefficients():
-  from libtbx.test_utils import approx_equal
-  coeffs = savitzky_golay_coefficients(5, 5, 4)
-  assert approx_equal(
-    coeffs,
-    (0.042, -0.105, -0.023, 0.140, 0.280, 0.333, 0.280, 0.140, -0.023, -0.105, 0.042), eps=1e-3)
 
-  coeffs = savitzky_golay_coefficients(4, 4, 4)
-  assert approx_equal(
-    coeffs,
-    (0.035, -0.128, 0.070, 0.315, 0.417, 0.315, 0.070, -0.128, 0.035), eps=1e-3)
-
-  coeffs = savitzky_golay_coefficients(4, 0, 2)
-  assert approx_equal(
-    coeffs,
-    (0.086, -0.143, -0.086, 0.257, 0.886), eps=1e-3)
-
-
-if __name__ == '__main__':
-  exercise_savitzky_golay_coefficients()
-  print "OK"
+def convolve(x, y, mode="full"):
+  assert mode in ("full", "same", "valid")
+  P, Q, N = len(x), len(y), len(x)+len(y)-1
+  z = []
+  for k in range(N):
+    t, lower, upper = 0, max(0, k-(Q-1)), min(P-1, k)
+    for i in range(lower, upper+1):
+      t = t + x[i] * y[k-i]
+    z.append(t)
+  z = flex.double(z)
+  if mode == "full":
+    return flex.double(z)
+  elif mode == "same":
+    padding = (N - P)//2
+    if (N - P) % 2 == 0:
+      return z[padding:-padding]
+    else:
+      return z[padding:-padding-1]
+  elif mode == "valid":
+    padding = N - P
+    return z[padding:-padding]
