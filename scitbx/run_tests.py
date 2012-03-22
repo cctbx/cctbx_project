@@ -3,7 +3,7 @@ import libtbx.load_env
 
 def run():
   tst_list = (
-  "$D/smoothing.py",
+  "$D/tst_smoothing.py",
   "$B/array_family/tst_af_1",
   "$B/array_family/tst_af_2",
   "$B/array_family/tst_af_3",

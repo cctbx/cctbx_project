@@ -1720,6 +1720,7 @@ scitbx/sparse/vector.h -text
 scitbx/stl/vector_io.h -text
 scitbx/tst_cubicle_neighbors.py svneol=native#text/x-python
 scitbx/tst_r3_utils.py svneol=native#text/x-python
+scitbx/tst_smoothing.py -text
 scitbx/wigner/SConscript -text
 scitbx/wigner/__init__.py -text
 scitbx/wigner/ext.cpp -text
