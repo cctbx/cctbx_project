@@ -1,8 +1,6 @@
 import os
 import sys
 
-from matplotlib import pyplot
-
 from libtbx.option_parser import option_parser
 from scitbx.array_family import flex
 from scitbx import smoothing
@@ -59,6 +57,7 @@ def subtract_background(signal, background, plot=False):
   background_subtracted = signal_y - y_fitted
 
   if plot:
+    from matplotlib import pyplot
     pyplot.plot(signal[0], signal[1], linewidth=2, label="signal+background")
     pyplot.plot(background[0], background[1], linewidth=2, label="background")
     pyplot.plot(signal_x, y_fitted, linewidth=2, label="background_fit")
