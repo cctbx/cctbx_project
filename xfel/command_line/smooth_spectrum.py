@@ -2,8 +2,6 @@ import math
 import os
 import sys
 
-from matplotlib import pyplot
-
 from libtbx.option_parser import option_parser
 from scitbx.array_family import flex
 from scitbx import smoothing
@@ -48,6 +46,7 @@ def run(args):
     elif fourier_cutoff is not None:
       x, y_smoothed = fourier_filter(x, y, cutoff_frequency=fourier_cutoff)
 
+    from matplotlib import pyplot
     pyplot.plot(x_orig, y_orig, color='black', linestyle='dotted', linewidth=2)
     pyplot.plot(x, y_smoothed, linewidth=2, color='red')
     pyplot.show()
@@ -93,7 +92,7 @@ def interpolate(x, y):
       # fit a 2nd order polynomial through the missing points
       polynomial = curve_fitting.univariate_polynomial(1, 1, 1)
       fit = curve_fitting.lbfgs_minimiser([polynomial], x_,y_).functions[0]
-      missing_x = flex.double(range(int(x[i]), int(x[i+1])))
+      missing_x = flex.double(range(int(x[i]+1), int(x[i+1])))
       x_all.extend(missing_x)
       y_all.extend(fit(missing_x))
 
