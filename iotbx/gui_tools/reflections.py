@@ -226,6 +226,9 @@ class reflections_handler (iotbx.gui_tools.manager) :
           labels.append(array.info().label_string())
     return labels
 
+  def has_anomalous_data (self, *args, **kwds) :
+    return (len(self.get_anomalous_data_labels(*args, **kwds)) > 0)
+
   def get_map_coeff_labels (self, *args, **kwds) :
     hkl_file = self.get_file(*args, **kwds)
     if hkl_file is not None :
