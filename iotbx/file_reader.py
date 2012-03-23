@@ -10,10 +10,12 @@
 # XXX note that there is some cross-importing from mmtbx here, but it is done
 # inline, not globally
 
-import sys, os, re
 from libtbx import smart_open
 from libtbx.utils import Sorry
 import cPickle
+import os
+import re
+import sys
 
 standard_file_types = ["hkl", "ccp4_map", "xplor_map", "pdb", "cif", "phil",
   "hhr", "aln", "seq", "xml", "pkl", "txt",]
@@ -123,7 +125,8 @@ def any_file (file_name,
               valid_types=supported_file_types,
               allow_directories=False,
               force_type=None,
-              input_class=None) :
+              input_class=None,
+              raise_sorry_if_errors=False) :
   if not os.path.exists(file_name) :
     raise Sorry("Couldn't find the file %s" % file_name)
   elif os.path.isdir(file_name) :
@@ -139,7 +142,8 @@ def any_file (file_name,
     return input_class(file_name=file_name,
       get_processed_file=get_processed_file,
       valid_types=valid_types,
-      force_type=force_type)
+      force_type=force_type,
+      raise_sorry_if_errors=raise_sorry_if_errors)
 
 def splitext (file_name) :
   (file_base, file_ext) = os.path.splitext(file_name)
@@ -153,7 +157,12 @@ class any_file_input (object) :
   __extensions__ = standard_file_extensions
   __descriptions__ = standard_file_descriptions
 
-  def __init__ (self, file_name, get_processed_file, valid_types, force_type) :
+  def __init__ (self,
+      file_name,
+      get_processed_file,
+      valid_types,
+      force_type,
+      raise_sorry_if_errors = False) :
     self.valid_types = valid_types
     self.file_name = file_name
     self.file_object = None
@@ -167,13 +176,19 @@ class any_file_input (object) :
     self.get_processed_file = get_processed_file
 
     (file_base, file_ext) = splitext(file_name)
-    if force_type is not None :
+    if (force_type not in [None, "None"]) :
       read_method = getattr(self, "try_as_%s" % force_type, None)
-      if read_method is None :
+      if (read_method is None) :
         raise Sorry("Couldn't force file type to '%s' - unrecognized format." %
                     force_type)
       else :
-        read_method()
+        if (raise_sorry_if_errors) :
+          try :
+            read_method()
+          except Exception, e :
+            raise Sorry(str(e))
+        else :
+          read_method()
     else :
       for file_type in valid_types :
         if file_ext[1:] in self.__extensions__[file_type] :
@@ -207,17 +222,15 @@ class any_file_input (object) :
       structure = pdb_input(source_info=None, lines=raw_records)
       self.file_type = "pdb"
       self.file_object = structure
+    else :
+      raise ValueError("Can't parse this as a PDB file.")
 
   def try_as_hkl (self) :
     from iotbx.reflection_file_reader import any_reflection_file
     from iotbx.reflection_file_utils import reflection_file_server
-    try :
-      # XXX this is unfortunate, but unicode breaks Boost.Python extensions
-      hkl_file = any_reflection_file(str(self.file_name))
-    except Exception, e :
-      print e
-      raise
-    assert hkl_file.file_type() is not None
+    # XXX this is unfortunate, but unicode breaks Boost.Python extensions
+    hkl_file = any_reflection_file(str(self.file_name))
+    assert (hkl_file.file_type() is not None), "Not a valid reflections file."
     self.file_server = reflection_file_server(
       crystal_symmetry=None,
       force_symmetry=True,
@@ -230,11 +243,7 @@ class any_file_input (object) :
     import iotbx.cif
     from iotbx.reflection_file_reader import any_reflection_file
     from iotbx.reflection_file_utils import reflection_file_server
-    try :
-      cif_file = any_reflection_file(str(self.file_name))
-    except Exception, e :
-      print e
-      raise
+    cif_file = any_reflection_file(str(self.file_name))
     if cif_file.file_type() is not None:
       self.file_server = reflection_file_server(
         crystal_symmetry=None,
@@ -251,19 +260,15 @@ class any_file_input (object) :
   def try_as_phil (self) :
     from iotbx.phil import parse as parse_phil
     phil_object = parse_phil(file_name=self.file_name, process_includes=True)
-    assert (len(phil_object.objects) > 0)
+    assert (len(phil_object.objects) > 0), "Empty parameter file."
     self.file_type = "phil"
     self.file_object = phil_object
 
   def try_as_seq (self) :
     from iotbx.bioinformatics import any_sequence_format
-    try :
-      objects, non_compliant = any_sequence_format(self.file_name)
-    except Exception, e :
-      print e
-      raise
-    assert (objects is not None)
-    assert (len(non_compliant) == 0)
+    objects, non_compliant = any_sequence_format(self.file_name)
+    assert (objects is not None), "No sequence data found in file."
+    assert (len(non_compliant) == 0), "Misformatted data in file."
     for seq_obj in objects :
       assert (not "-" in seq_obj.sequence)
     self.file_object = objects
@@ -390,6 +395,26 @@ class any_file_input (object) :
           standard_file_descriptions.get(self.file_type, "Unknown"),
           "\n  ".join([ standard_file_descriptions.get(f, "Unknown")
                         for f in multiple_formats ])))
+
+  def show_summary (self, out=sys.stdout) :
+    if (self.file_type is None) :
+      print >> out, "File type could not be determined."
+    else :
+      print >> out, "File name: %s" % self.file_name
+      print >> out, "Format: %s (%s)" % (self.file_type,
+        standard_file_descriptions.get(self.file_type, "unknown"))
+    if (self.file_type == "pdb") :
+      print >> out, "Atoms in file: %d" % (len(self.file_object.atoms()))
+      title = "\n".join(self.file_object.title_section())
+      if (title != "") :
+        print >> out, "Title section:"
+        print >> out, title
+    elif (self.file_type == "hkl") :
+      for array in self.file_server.miller_arrays :
+        print >> out, ""
+        array.show_comprehensive_summary(f=out)
+    elif (self.file_type == "ccp4_map") :
+      self.file_object.show_summary(out)
 
 # mimics any_file, but without parsing - will instead guess the file type from
 # the extension.  for most output files produced by cctbx/phenix this is
