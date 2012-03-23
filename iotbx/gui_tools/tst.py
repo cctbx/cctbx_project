@@ -41,6 +41,8 @@ def exercise_reflections () :
           file_param_name="refinement.input.xray_data.file_name") ==
           ["F-obs-neutron(+),SIGF-obs-neutron(+)," +
            "F-obs-neutron(-),SIGF-obs-neutron(-)"])
+  assert (hkl_handler.has_anomalous_data(
+          file_param_name="refinement.input.xray_data.file_name"))
   assert (hkl_handler.get_rfree_flag_value(array_name="F-obs,SIGF-obs",
     file_param_name="refinement.input.xray_data.file_name") is None)
   assert (hkl_handler.get_rfree_flag_value(array_name='R-free-flags',
@@ -135,6 +137,7 @@ def exercise_reflections () :
     'Amplitude', 'Phases', 'Weights', 'HL coeffs', 'R-free flag']
   handler = reflections.reflections_handler()
   handler.save_file(input_file=hkl_in)
+  assert (not handler.has_anomalous_data())
   assert (handler.get_resolution_range(file_name=file_name)=="(19.146 - 2.000)")
   assert (handler.get_resolution_limits(file_name=file_name) ==
           ('(19.146)', '(2.000)'))
