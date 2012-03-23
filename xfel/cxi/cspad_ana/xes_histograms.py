@@ -101,17 +101,16 @@ def run(args):
 class xes_from_histograms(object):
 
   def __init__(self, pixel_histograms, output_dirname=".", gain_map_path=None,
-               method="photon_counting", estimated_gain=30, nproc=None,
-               photon_threshold=2/3, roi=None):
+               gain_map=None, method="photon_counting", estimated_gain=30,
+               nproc=None, photon_threshold=2/3, roi=None):
     assert method in ("sum_adu", "photon_counting")
     self.sum_img = flex.double(flex.grid(370,391), 0) # XXX define the image size some other way?
     gain_img = flex.double(self.sum_img.accessor(), 0)
 
+    assert [gain_map, gain_map_path].count(None) < 2
     if gain_map_path is not None:
       d = easy_pickle.load(gain_map_path)
       gain_map = d["DATA"]
-    else:
-      gain_map = None
 
     two_photon_threshold = photon_threshold + 1
 
