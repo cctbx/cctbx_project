@@ -7,6 +7,7 @@ from mmtbx import utils
 from scitbx.array_family import flex
 from libtbx.str_utils import make_header, format_value
 from libtbx import runtime_utils
+from libtbx.utils import Usage, Sorry
 import libtbx.phil
 from libtbx import adopt_init_args, group_args
 from cStringIO import StringIO
@@ -362,7 +363,7 @@ def run (args, out=None) :
   if (out is None) : out = sys.stdout
   if (len(args) == 0) :
     phil_out = StringIO()
-    master_phil.show(f=phil_out)
+    master_phil.show(out=phil_out)
     raise Usage("""
 mmtbx.find_peaks_holes - difference map analysis
   Prints a summary of all peaks and holes above the specified cutoff in the
