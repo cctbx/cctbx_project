@@ -372,9 +372,9 @@ class any_file_input (object) :
 
   def assert_file_type (self, expected_type) :
     if (expected_type is None) :
-      return None
+      return self
     elif (self.file_type == expected_type) :
-      return True
+      return self
     else :
       raise Sorry(("Expected file type '%s' for %s, got '%s'.  This is " +
         "almost certainly a bug; please contact the developers.") %
@@ -395,6 +395,7 @@ class any_file_input (object) :
           standard_file_descriptions.get(self.file_type, "Unknown"),
           "\n  ".join([ standard_file_descriptions.get(f, "Unknown")
                         for f in multiple_formats ])))
+    return self
 
   def show_summary (self, out=sys.stdout) :
     if (self.file_type is None) :
