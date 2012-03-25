@@ -55,17 +55,12 @@ namespace fem {
       return 255;
     }
 #if defined(_MSC_VER)
-# define FABLE_LOC(fp) \
-    if (_setmode(_fileno(fp), _O_BINARY) == -1) { \
-      std::cerr \
-        << "FATAL: error switching " #fp " to binary mode (" \
-        << __FILE__ << ", line " << __LINE__ << ")" << std::endl; \
-      return 255; \
+    if (_setmode(_fileno(stdin), _O_BINARY) == -1) {
+      std::cerr
+        << "FATAL: error switching stdin to binary mode ("
+        << __FILE__ << ", line " << __LINE__ << ")" << std::endl;
+      return 255;
     }
-    FABLE_LOC(stderr)
-    FABLE_LOC(stdout)
-    FABLE_LOC(stdin)
-# undef FABLE_LOC
 #endif
     try {
       callable(argc, argv);
