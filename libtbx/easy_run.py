@@ -1,6 +1,6 @@
 import sys
 # XXX how early a version can we get away with using the built-in module?
-if (sys.version_info.minor >= 7) :
+if (sys.version_info[1] >= 7) :
   import subprocess
 else :
   try: import subprocess_with_fixes as subprocess
