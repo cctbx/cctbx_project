@@ -10,6 +10,10 @@ from scitbx.math import curve_fitting
 from scitbx.smoothing import savitzky_golay_filter, savitzky_golay_coefficients
 from scitbx.smoothing import convolve
 
+if (1): # fixed random seed to avoid rare failures
+  random.seed(0)
+  flex.set_random_seed(0)
+
 
 def exercise_convolve():
   data = flex.double(20, 0)
