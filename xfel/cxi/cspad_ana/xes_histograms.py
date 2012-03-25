@@ -107,7 +107,7 @@ class xes_from_histograms(object):
     self.sum_img = flex.double(flex.grid(370,391), 0) # XXX define the image size some other way?
     gain_img = flex.double(self.sum_img.accessor(), 0)
 
-    assert [gain_map, gain_map_path].count(None) < 2
+    assert [gain_map, gain_map_path].count(None) > 0
     if gain_map_path is not None:
       d = easy_pickle.load(gain_map_path)
       gain_map = d["DATA"]
