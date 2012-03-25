@@ -10,20 +10,26 @@
 #include <fem/utils/real_as_string.hpp>
 
 #if defined(_MSC_VER)
-# define FABLE_WRITE_CRLF
+# define FEM_WRITE_CRLF true
+#else
+# define FEM_WRITE_CRLF false
 #endif
 
 namespace fem {
 
   struct write_loop_base
   {
+    bool write_crlf;
     unsigned pos;
     bool prev_was_string;
     int exp_scale;
     unsigned number_of_x_held;
     bool suppress_new_line_at_end;
 
-    write_loop_base() :
+    write_loop_base(
+      bool write_crlf_=false)
+    :
+      write_crlf(write_crlf_),
       pos(0),
       prev_was_string(false),
       exp_scale(0),
@@ -49,6 +55,7 @@ namespace fem {
         int const& unit,
         unformatted_type const&)
       :
+        write_loop_base(FEM_WRITE_CRLF && !is_std_io_unit(unit)),
         out(cmn.io.simple_ostream(unit)),
         internal_file_len(-1),
         io_mode(io_unformatted),
@@ -60,6 +67,7 @@ namespace fem {
         int const& unit,
         star_type const&)
       :
+        write_loop_base(FEM_WRITE_CRLF && !is_std_io_unit(unit)),
         out(cmn.io.simple_ostream(unit)),
         internal_file_len(-1),
         io_mode(io_list_directed),
@@ -71,6 +79,7 @@ namespace fem {
         int const& unit,
         str_cref fmt)
       :
+        write_loop_base(FEM_WRITE_CRLF && !is_std_io_unit(unit)),
         out(cmn.io.simple_ostream(unit)),
         internal_file_len(-1),
         io_mode(io_formatted),
@@ -153,11 +162,12 @@ namespace fem {
               if(final) terminated_by_colon = true;
             }
             else if (tv[0] == '/') {
-#if defined(FABLE_WRITE_CRLF)
-              to_stream_fmt("\r\n", 2);
-#else
-              to_stream_fmt("\n", 1);
-#endif
+              if (write_crlf) {
+                to_stream_fmt("\r\n", 2);
+              }
+              else {
+                to_stream_fmt("\n", 1);
+              }
             }
             else if (tv[0] == '$') {
               suppress_new_line_at_end = true;
@@ -665,11 +675,12 @@ namespace fem {
               next_edit_descriptor(/*final*/ true);
             }
             if (!suppress_new_line_at_end) {
-#if defined(FABLE_WRITE_CRLF)
-              out->put("\r\n", 2);
-#else
-              out->put('\n');
-#endif
+              if (write_crlf) {
+                out->put("\r\n", 2);
+              }
+              else {
+                out->put('\n');
+              }
             }
           }
           out->flush();
@@ -749,11 +760,12 @@ namespace fem {
           pos = 1;
         }
         else if (pos + (space ? 1 : 0) + n > 80) {
-#if defined(FABLE_WRITE_CRLF)
-          out->put("\r\n ", 3);
-#else
-          out->put("\n ", 2);
-#endif
+          if (write_crlf) {
+            out->put("\r\n ", 3);
+          }
+          else {
+            out->put("\n ", 2);
+          }
           pos = 1;
         }
         else if (space) {
