@@ -782,6 +782,9 @@ def substitute_directory_name (phil_object, path_name, sub_name,
     path_name = path_name[:-1]
   for object in phil_object.objects :
     if object.is_definition :
+      if (object.type is None) :
+        raise RuntimeError("Missing type for PHIL parameter %s" %
+          object.full_path())
       if (object.type.phil_type == "path") :
         py_object = object.extract()
         if (py_object is None) or (py_object is Auto) : continue
