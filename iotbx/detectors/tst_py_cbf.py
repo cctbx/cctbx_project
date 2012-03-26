@@ -105,9 +105,26 @@ def get_ad_hoc_beam(model):
 
 from iotbx.detectors.cbf import CBFImage
 class pyCBFImage(CBFImage):
-  def __init__(self): pass
-  def readHeader(self,model,binaries):
+  def __init__(self, file_name):
 
+    raw = open(file_name, "rb").read()
+
+    self.binary_sections = get_binary_sections(raw)
+
+    self.header_sections = get_header_sections(raw, self.binary_sections)
+
+    assert len(self.binary_sections)==1
+
+    cif = iotbx.cif.fast_reader(input_string=self.header_sections)
+    self.cif_model = cif.model()
+    im1 = self.cif_model["image_1"]
+
+    self.vendortype = "CBF"
+    self.readHeader()
+
+  def readHeader(self):
+    model = self.cif_model["image_1"]
+    binaries = self.binary_sections
     goniometer = Goniometer(model)
     ad_hoc_beam = get_ad_hoc_beam(model)
 
@@ -128,6 +145,7 @@ class pyCBFImage(CBFImage):
                        'DETECTOR_SN':0
                        }
     self.binaries = binaries
+
   def read(self):
     assert len(self.binaries)==1
     self.linearintdata = self.binaries[0].uncompress_in_place()
@@ -161,25 +179,9 @@ class pyCBFImage(CBFImage):
   def cbf_simple_py_get_wavelength(self,model):
     return float(model["_diffrn_radiation_wavelength.wavelength"])
 
-def get_pyCBFImage_from_raw(raw):
-    binary_sections = get_binary_sections(raw)
-
-    header_sections = get_header_sections(raw,binary_sections)
-
-    assert len(binary_sections)==1
-
-    cif = iotbx.cif.fast_reader(input_string=header_sections)
-    model = cif.model()
-    im1 = model["image_1"]
-
-    new_image = pyCBFImage()
-    new_image.vendortype = "CBF"
-    new_image.readHeader(im1,binary_sections)
-    return new_image
-
 def run(file_name):
   from libtbx.test_utils import approx_equal
-  py_image_obj = get_pyCBFImage_from_raw(open(file_name, "rb").read())
+  py_image_obj = pyCBFImage(file_name)
   py_image_obj.read()
   c_image_obj = CBFImage(file_name)
   c_image_obj.read()
@@ -198,5 +200,6 @@ def run(file_name):
 if (__name__ == "__main__"):
   args = sys.argv[1:]
   for file_name in args:
+    #print file_name
     run(file_name)
   print "OK"
