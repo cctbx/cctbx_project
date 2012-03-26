@@ -13,6 +13,7 @@ from scitbx.smoothing import convolve
 if (1): # fixed random seed to avoid rare failures
   random.seed(0)
   flex.set_random_seed(0)
+  scitbx.random.set_random_seed(0)
 
 
 def exercise_convolve():
