@@ -9,7 +9,6 @@ XXX Better named cspad_base?
 
 __version__ = "$Revision$"
 
-import logging
 import numpy
 
 from parse_calib         import Section
