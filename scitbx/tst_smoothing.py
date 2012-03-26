@@ -2,7 +2,7 @@ from stdlib import math
 from stdlib import random
 
 from libtbx.utils import frange
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, is_below_limit
 from scitbx.array_family import flex
 import scitbx.math
 import scitbx.random
@@ -88,11 +88,17 @@ def exercise_savitzky_golay_smoothing():
     rms_noise = rms(noise)
     rms_extracted_noise = rms(extracted_noise)
 
-    assert abs(rand_norm.sigma - rms_noise)/rand_norm.sigma < 0.15
-    assert abs(rand_norm.sigma - rms_extracted_noise)/rand_norm.sigma < 0.15
+    assert is_below_limit(
+      value=abs(rand_norm.sigma - rms_noise)/rand_norm.sigma,
+      limit=0.15)
+    assert is_below_limit(
+      value=abs(rand_norm.sigma - rms_extracted_noise)/rand_norm.sigma,
+      limit=0.15)
 
     diff = y_filtered - y
-    assert (rms(diff)/ rand_norm.sigma) < 0.4
+    assert is_below_limit(
+      value=(rms(diff)/ rand_norm.sigma),
+      limit=0.4)
 
     if plot:
       from matplotlib import pyplot
