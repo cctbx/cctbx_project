@@ -13,6 +13,13 @@ def exercise_flex_miller_index():
              flex.int((2,3,4,5))]
   b = flex.miller_index(h, k, l)
   assert approx_equal(b, ((0,1,2),(1,2,3),(2,3,4),(3,4,5)))
+  #
+  i = flex.miller_index([(1,-2,3), (-2,3,4)])
+  c = flex.complex_double([3-4j, -7+8j])
+  x = (0.9284, -1.2845, -0.2293)
+  assert approx_equal(
+    i.fourier_transform_real_part_at_x(fourier_coeffs=c, x=x),
+    15.4357188164)
 
 def exercise_flex_hendrickson_lattman():
   a = flex.hendrickson_lattman()
@@ -74,7 +81,6 @@ def exercise_flex_hendrickson_lattman():
   d = flex.double([-4,7,8])
   h = flex.hendrickson_lattman(a=a, b=b, c=c, d=d)
   assert approx_equal(h, [(1,-3,4,-4), (2,4,5,7), (3,5,6,8)])
-
 
 def exercise_flex_xray_scatterer():
   from cctbx import uctbx, sgtbx, xray

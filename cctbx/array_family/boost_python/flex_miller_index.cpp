@@ -4,6 +4,7 @@
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/serialization/single_buffered.h>
 #include <boost/python/make_constructor.hpp>
+#include <tbxx/error_utils.hpp>
 
 namespace scitbx { namespace serialization { namespace single_buffered {
 
@@ -64,18 +65,42 @@ namespace {
     return result;
   }
 
+  double
+  fourier_transform_real_part_at_x(
+    af::const_ref<cctbx::miller::index<> > const& miller_indices,
+    af::const_ref<std::complex<double> > const& fourier_coeffs,
+    af::tiny<double, 3> const& x)
+  {
+    TBXX_ASSERT(fourier_coeffs.size() == miller_indices.size());
+    double result = 0;
+    double mtp = -constants::two_pi;
+    for(std::size_t i=0;i<miller_indices.size();i++) {
+      cctbx::miller::index<> const& h = miller_indices[i];
+      double mtphx = mtp * (h[0]*x[0] + h[1]*x[1] + h[2]*x[2]);
+      double a = std::cos(mtphx);
+      double b = std::sin(mtphx);
+      std::complex<double> const& fc = fourier_coeffs[i];
+      result += fc.real() * a - fc.imag() * b;
+    }
+    return result;
+  }
+
 } // namespace <anonymous>
 
   void wrap_flex_miller_index(boost::python::object const& flex_root_scope)
   {
-    using namespace cctbx;
+    namespace bp = boost::python;
+    namespace miller = cctbx::miller;
 
     flex_wrapper<miller::index<> >::ordered("miller_index", flex_root_scope)
-      .def("__init__", boost::python::make_constructor(join))
+      .def("__init__", bp::make_constructor(join))
       .def("__neg__", flex_wrapper<miller::index<> >::neg_a)
       .def_pickle(flex_pickle_single_buffered<miller::index<>,
         3*pickle_size_per_element<miller::index<>::value_type>::value>())
       .def("as_vec3_double", as_vec3_double)
+      .def("fourier_transform_real_part_at_x",
+        fourier_transform_real_part_at_x, (
+          bp::arg("fourier_coeffs"), bp::arg("x")))
     ;
   }
 
