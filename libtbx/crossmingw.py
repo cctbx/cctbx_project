@@ -17,6 +17,7 @@ prefixes = SCons.Util.Split("""
   i586-mingw32msvc-
   i686-mingw32msvc-
   i686-pc-mingw32-
+  i686-w64-mingw32-
 """)
 
 def find(env):
