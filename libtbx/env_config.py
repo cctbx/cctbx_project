@@ -171,13 +171,19 @@ def ld_library_path_var_name():
 
 def highlight_dispatcher_include_lines(lines):
   m = max([len(line) for line in lines])
-  lines.insert(0, "# " + "-"*(m-2))
+  if (os.name == "nt") :
+    lines.insert(0, "@REM " + "-"*(m-2))
+  else :
+    lines.insert(0, "# " + "-"*(m-2))
   lines.append(lines[0])
 
 def source_specific_dispatcher_include(pattern, source_file):
   try: source_lines = source_file.open().read().splitlines()
   except IOError: return []
-  lines = ["# lines marked " + pattern]
+  if (os.name == "nt") :
+    lines = ["@REM lines marked " + pattern]
+  else :
+    lines = ["# lines marked " + pattern]
   for line in source_lines:
     pattern_begin = line.find(pattern)
     if (pattern_begin >= 0):
@@ -747,21 +753,27 @@ Wait for the command to finish, then try again.""" % vars())
     return self._dispatcher_precall_commands
 
   def write_dispatcher_include_template(self):
-    if (os.name == "nt"): return
-    print "    dispatcher_include_template.sh"
-    f = self.under_build("dispatcher_include_template.sh",
-                         return_relocatable_path=True).open("w")
-    print >> f, "# include at start"
-    print >> f, "#   Commands to be executed at the start of the"
-    print >> f, "#   auto-generated dispatchers in bin."
-    print >> f, "#"
-    print >> f, "# include before command"
-    print >> f, "#   Commands to be executed before the target command"
-    print >> f, "#   is called by the auto-generated dispatchers in bin."
-    print >> f, "#"
-    print >> f, "# To see how the dispatchers work, look at an example:"
-    print >> f, "#   %s" % show_string(self.under_build("bin/libtbx.help"))
-    print >> f, "#"
+    if (os.name == "nt"):
+      print "    dispatcher_include_template.bat"
+      f = self.under_build("dispatcher_include_template.bat",
+                           return_relocatable_path=True).open("w")
+      cp = "@REM"
+    else :
+      print "    dispatcher_include_template.sh"
+      f = self.under_build("dispatcher_include_template.sh",
+                           return_relocatable_path=True).open("w")
+      cp = "#"
+    print >> f, cp+" include at start"
+    print >> f, cp+"   Commands to be executed at the start of the"
+    print >> f, cp+"   auto-generated dispatchers in bin."
+    print >> f, cp+""
+    print >> f, cp+" include before command"
+    print >> f, cp+"   Commands to be executed before the target command"
+    print >> f, cp+"   is called by the auto-generated dispatchers in bin."
+    print >> f, cp+""
+    print >> f, cp+" To see how the dispatchers work, look at an example:"
+    print >> f, cp+"   %s" % show_string(self.under_build("bin/libtbx.help"))
+    print >> f, cp+""
     f.close()
 
   def reset_dispatcher_bookkeeping(self):
@@ -773,8 +785,10 @@ Wait for the command to finish, then try again.""" % vars())
       path = self.under_build(file_name, return_relocatable_path=True)
       if not path.isfile(): continue
       if (    file_name.startswith("dispatcher_include")
-          and file_name.endswith(".sh")
-          and file_name != "dispatcher_include_template.sh"):
+          and ((file_name.endswith(".sh") and os.name != "nt") or
+               (file_name.endswith(".bat") and os.name == "nt"))
+          and file_name not in ["dispatcher_include_template.sh",
+                                "dispatcher_include_template.bat"]):
         include_files.append(path)
     include_files.sort()
     for path in include_files:
@@ -785,11 +799,11 @@ Wait for the command to finish, then try again.""" % vars())
       buffer = lines_before_command
       for line in lines:
         l = " ".join(line.split()).lower()
-        if (l.startswith("#include ")):
+        if (l.startswith("#include ") or l.startswith("REM include")):
           l = "# " + l[1:]
-        if   (l == "# include at start"):
+        if   (l in ["# include at start", "REM include at start"]):
           buffer = lines_at_start
-        elif (l == "# include before command"):
+        elif (l in ["# include before command", "REM include before command"]):
           buffer = lines_before_command
         else:
           buffer.append(line)
@@ -798,7 +812,10 @@ Wait for the command to finish, then try again.""" % vars())
                             (lines_before_command,
                              self._dispatcher_include_before_command)]:
         if (len(buffer) == 0): continue
-        buffer.insert(0, "# included from %s" % abs(path))
+        if (os.name == "nt") :
+          buffer.insert(0, "@REM included from %s" % abs(path))
+        else :
+          buffer.insert(0, "# included from %s" % abs(path))
         highlight_dispatcher_include_lines(buffer)
         target.extend(buffer)
 
@@ -982,6 +999,11 @@ Wait for the command to finish, then try again.""" % vars())
     print >>f, r'@for %%F in ("%LIBTBX_BUILD%") do @set LIBTBX_BUILD=%%~dpF'
     print >>f, '@set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%'
     print >>f, '@set LIBTBX_DISPATCHER_NAME=%~nx0'
+    for line in self.dispatcher_include(where="at_start"):
+      if (line.startswith("@")) :
+        print >> f, line
+      else :
+        print >> f, "@" + line
     essentials = [("PYTHONPATH", self.pythonpath)]
     essentials.append((ld_library_path_var_name(), [self.lib_path]))
     essentials.append(("PATH", [self.bin_path]))
@@ -990,6 +1012,11 @@ Wait for the command to finish, then try again.""" % vars())
       v = ';'.join([ op.join('%LIBTBX_BUILD%', p.relocatable) for p in v ])
       print >>f, '@set %s=%s;%%%s%%' % (n, v, n)
     print >>f, '@set LIBTBX_PYEXE=%s' % self.python_exe.bat_value()
+    for line in self.dispatcher_include(where="before_command"):
+      if (line.startswith("@")) :
+        print >> f, line
+      else :
+        print >> f, "@" + line
     if source_file.ext().lower() == '.py':
       print >>f, '@"%%LIBTBX_PYEXE%%"%s "%s" %%*' % (
         qnew, source_file.bat_value())
