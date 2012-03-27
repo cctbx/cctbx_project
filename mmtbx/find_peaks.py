@@ -18,18 +18,24 @@ master_params = iotbx.phil.parse("""\
   {
     min_model_peak_dist = 1.8
       .type=float
+      .short_caption = Minimum distance from model
     max_model_peak_dist = 6.0
       .type=float
+      .short_caption = Maximum distance from model
     min_peak_peak_dist = 1.8
       .type=float
+      .short_caption = Minimum distance between peaks
     use_hydrogens = False
       .type = bool
+      .short_caption = Use hydrogens
   }
   max_number_of_peaks = None
     .type=int
     .expert_level=1
   peak_search
     .expert_level=1
+    .short_caption = Search settings
+    .style = box auto_align
   {
     peak_search_level = 1
       .type=int
