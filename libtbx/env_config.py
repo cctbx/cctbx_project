@@ -172,7 +172,7 @@ def ld_library_path_var_name():
 def highlight_dispatcher_include_lines(lines):
   m = max([len(line) for line in lines])
   if (os.name == "nt") :
-    lines.insert(0, "@REM " + "-"*(m-2))
+    lines.insert(0, "@REM " + "-"*(m-5))
   else :
     lines.insert(0, "# " + "-"*(m-2))
   lines.append(lines[0])
