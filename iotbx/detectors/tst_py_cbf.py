@@ -1,6 +1,7 @@
 import iotbx.cif
 import sys, email.parser, copy, hashlib, base64
 from cbflib_adaptbx import uncompress,assert_equal
+from iotbx.detectors.detectorbase import DetectorImageBase
 
 class cif_binary_section:
   endline = "\r\n"
@@ -106,11 +107,9 @@ def get_ad_hoc_beam(model):
 from iotbx.detectors.cbf import CBFImage
 class pyCBFImage(CBFImage):
   def __init__(self, file_name):
-
+    DetectorImageBase.__init__(self, file_name)
     raw = open(file_name, "rb").read()
-
     self.binary_sections = get_binary_sections(raw)
-
     self.header_sections = get_header_sections(raw, self.binary_sections)
 
     assert len(self.binary_sections)==1
