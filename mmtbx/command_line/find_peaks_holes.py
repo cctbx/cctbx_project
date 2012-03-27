@@ -16,7 +16,9 @@ import sys
 
 master_phil = libtbx.phil.parse("""
 %s
-find_peaks {
+find_peaks
+  .style = auto_align
+{
   include scope mmtbx.find_peaks.master_params
 }
 map_cutoff = 3.0
@@ -417,6 +419,16 @@ def validate_params (params, callback=None) :
     raise Sorry("No reflection file defined.")
   elif params.input.xray_data.labels is None :
     raise Sorry("No labels chosen for reflection data.")
+  elif (params.input.xray_data.r_free_flags.label is None) :
+    raise Sorry("R-free flags not defined.  If you are trying to run this "+
+      "program with a reflections file that is missing R-free flags, use "+
+      "the reflection file editor to generate a new tests set.")
+  if (params.find_peaks.map_next_to_model.min_model_peak_dist < 0) :
+    raise Sorry("The parameter 'Minimum distance from model' must be at least"+
+      " zero.")
+  if (params.find_peaks.peak_search.min_cross_distance <= 0) :
+    raise Sorry("The parameter 'Minimum cross distance' must be greater than "+
+      "zero.")
 
 class launcher (runtime_utils.target_with_save_result) :
   def run (self) :
