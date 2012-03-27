@@ -904,6 +904,11 @@ class definition(slots_getstate_setstate):
     self.expert_level = expert_level
     self.deprecated = deprecated
 
+  def __setstate__ (self, *args, **kwds) :
+    slots_getstate_setstate.__setstate__(self, *args, **kwds)
+    # XXX backwards compatibility 2012-03-27
+    if (not hasattr(self, "deprecated")) : setattr(self, "deprecated", None)
+
   def copy(self):
     keyword_args = {}
     for keyword in self.__slots__:
