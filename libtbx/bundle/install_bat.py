@@ -1,8 +1,8 @@
 import sys
 
-def create_script(bundle, top_modules):
+def create_script(bundle, top_modules, single_dir=False):
   py_major, py_minor = sys.version_info[:2]
-  return r"""@echo off
+  script = r"""@echo off
 
 set PYTHONHOME=
 set PYTHONSTARTUP=
@@ -12,7 +12,12 @@ set PYTHONSUPPRESS=
 set PYTHONUNBUFFERED=
 set PYTHONVERBOSE=
 set PYTHONCASEOK=1
-
+"""
+  if (single_dir) :
+    script += r"""
+cd %(bundle)s
+"""
+  script += r"""
 if not exist %(bundle)s_sources\TAG goto find_python
 echo.
 echo Build tag:
@@ -76,7 +81,8 @@ if not %%LIBTBX_BATCH_INSTALL%% == 0 goto final_exit
 :end_prompt
 pause
 :final_exit
-""" % vars()
+"""
+  return script % vars()
 
 if (__name__ == "__main__"):
   assert len(sys.argv) == 3
