@@ -78,6 +78,10 @@ def ImageFactory(filename):
         if itype==BrukerImage:
           assert I.distance > 0.0 #needed to disambiguate from RAXIS
         return I
+      except IOError, e:
+        # We don't want to mask an IOError (e.g. permissions problem) with the
+        # catch all below
+        raise
       except Exception:
         pass
   A = url_support.potential_url_request(filename)
