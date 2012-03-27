@@ -999,11 +999,13 @@ Wait for the command to finish, then try again.""" % vars())
     print >>f, r'@for %%F in ("%LIBTBX_BUILD%") do @set LIBTBX_BUILD=%%~dpF'
     print >>f, '@set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%'
     print >>f, '@set LIBTBX_DISPATCHER_NAME=%~nx0'
-    for line in self.dispatcher_include(where="at_start"):
-      if (line.startswith("@")) :
-        print >> f, line
-      else :
-        print >> f, "@" + line
+    def write_dispatcher_include(where):
+      for line in self.dispatcher_include(where=where):
+        if (line.startswith("@")) :
+          print >> f, line
+        else :
+          print >> f, "@" + line
+    write_dispatcher_include(where="at_start")
     essentials = [("PYTHONPATH", self.pythonpath)]
     essentials.append((ld_library_path_var_name(), [self.lib_path]))
     essentials.append(("PATH", [self.bin_path]))
@@ -1012,11 +1014,7 @@ Wait for the command to finish, then try again.""" % vars())
       v = ';'.join([ op.join('%LIBTBX_BUILD%', p.relocatable) for p in v ])
       print >>f, '@set %s=%s;%%%s%%' % (n, v, n)
     print >>f, '@set LIBTBX_PYEXE=%s' % self.python_exe.bat_value()
-    for line in self.dispatcher_include(where="before_command"):
-      if (line.startswith("@")) :
-        print >> f, line
-      else :
-        print >> f, "@" + line
+    write_dispatcher_include(where="before_command")
     if source_file.ext().lower() == '.py':
       print >>f, '@"%%LIBTBX_PYEXE%%"%s "%s" %%*' % (
         qnew, source_file.bat_value())
