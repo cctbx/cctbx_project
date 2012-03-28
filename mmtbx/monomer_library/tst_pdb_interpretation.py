@@ -9,6 +9,32 @@ import iotbx.phil
 from cStringIO import StringIO
 import os
 
+def exercise_handle_case_insensitive(mon_lib_srv, ener_lib):
+  def check(a, r, e):
+    raw_records = ("""\
+HETATM    1 %s    %s F   1      -7.869  17.488  18.637  1.00 30.00          %s
+""" % (a,r,e)).splitlines()
+    log = StringIO()
+    processed_pdb_file = monomer_library.pdb_interpretation.process(
+      mon_lib_srv=mon_lib_srv,
+      ener_lib=ener_lib,
+      file_name=None,
+      raw_records=raw_records,
+      log=log)
+    log_lines = log.getvalue().splitlines()
+    lines=search_for(
+      pattern="""\
+          Unusual residues: {' %s': 1}""" % r,
+      mode="==",
+      lines=log_lines)
+    assert len(lines) == 1
+    assert len(log_lines) == 14
+  vars = ["ZN", "Zn"]
+  for a in vars:
+    for r in vars:
+      for e in vars:
+        check(a, r, e)
+
 def exercise_rna_v3(mon_lib_srv, ener_lib):
   raw_records = """\
 CRYST1  401.998  401.998  175.648  90.00  90.00  90.00 P 41 21 2
@@ -1262,6 +1288,7 @@ def run(args):
   assert len(args) == 0
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
+  exercise_handle_case_insensitive(mon_lib_srv, ener_lib)
   exercise_pdb_string(mon_lib_srv, ener_lib)
   exercise_cns_rna(mon_lib_srv, ener_lib)
   exercise_rna_3p_2p(mon_lib_srv, ener_lib)

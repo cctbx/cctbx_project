@@ -848,9 +848,13 @@ class monomer_mapping(slots_getstate_setstate):
         if (atom_name.find("'") >= 0): n_primes += 1
         if (atom_name.find("*") >= 0): n_stars += 1
       replace_primes = (n_primes != 0 and n_stars == 0)
+    _ = "".join([_ for _ in atom_dict.keys()])
+    handle_case_insensitive = (_.upper() == _ or _.lower() == _)
     rna_dna_bb_cif_by_ref = None
     for i_atom,atom in enumerate(self.active_atoms):
       atom_name_given = self.atom_names_given[i_atom]
+      if (handle_case_insensitive):
+        atom_name_given = atom_name_given.upper()
       if (self.mon_lib_names is None):
         atom_name = atom_name_given
       else:
