@@ -262,6 +262,7 @@ Example:
     bond_outliers = []
     angle_outliers = []
     geometry = self.processed_pdb_file.geometry_restraints_manager()
+    assert (geometry is not None)
     flags = geometry_restraints.flags.flags(default=True)
     i_seq_name_hash = self.build_name_hash(
                       pdb_hierarchy=self.processed_pdb_file.all_chain_proxies.pdb_hierarchy)
