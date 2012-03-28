@@ -500,12 +500,12 @@ class torsion_ncs(object):
   def generate_dihedral_ncs_restraints(self, sites_cart, log):
     self.ncs_dihedral_proxies = \
       cctbx.geometry_restraints.shared_dihedral_proxy()
+    #print self.sym_atom_hash
     for dp_set in self.dp_ncs:
       if len(dp_set) < 2:
         continue
       angles = []
       wrap_hash = {}
-
       for i, dp in enumerate(dp_set):
         di = cctbx.geometry_restraints.dihedral(
                sites_cart=sites_cart, proxy=dp)
@@ -514,22 +514,25 @@ class torsion_ncs(object):
         if wrap_chis:
           if angle > 90.0 or angle < -90.0:
             sym_i_seq = dp.i_seqs[3] #4th atom
-            swap_i_seq = self.sym_atom_hash[sym_i_seq]
-            swap_i_seqs = (dp.i_seqs[0],
-                           dp.i_seqs[1],
-                           dp.i_seqs[2],
-                           swap_i_seq)
-            dp_temp = cctbx.geometry_restraints.dihedral_proxy(
-              i_seqs=swap_i_seqs,
-              angle_ideal=0.0,
-              weight=1/self.sigma**2,
-              limit=self.limit,
-              top_out=TOP_OUT_FLAG,
-              slack=self.slack)
-            wrap_hash[i] = dp_temp
-            di = cctbx.geometry_restraints.dihedral(
-                   sites_cart=sites_cart, proxy=dp_temp)
-            angle = di.angle_model
+            swap_i_seq = self.sym_atom_hash.get(sym_i_seq)
+            if swap_i_seq is not None:
+              swap_i_seqs = (dp.i_seqs[0],
+                             dp.i_seqs[1],
+                             dp.i_seqs[2],
+                             swap_i_seq)
+              dp_temp = cctbx.geometry_restraints.dihedral_proxy(
+                i_seqs=swap_i_seqs,
+                angle_ideal=0.0,
+                weight=1/self.sigma**2,
+                limit=self.limit,
+                top_out=TOP_OUT_FLAG,
+                slack=self.slack)
+              wrap_hash[i] = dp_temp
+              di = cctbx.geometry_restraints.dihedral(
+                     sites_cart=sites_cart, proxy=dp_temp)
+              angle = di.angle_model
+            else:
+              angle = None
         angles.append(angle)
       target_angles = self.get_target_angles(
                         angles=angles)
@@ -647,10 +650,14 @@ class torsion_ncs(object):
     for i, ang_i in enumerate(angles):
       if i in used:
         continue
+      if ang_i is None:
+        continue
       for j, ang_j in enumerate(angles):
         if i == j:
           continue
         elif j in used:
+          continue
+        elif ang_j is None:
           continue
         else:
           if utils.angle_distance(ang_i, ang_j) <= self.params.cutoff:
