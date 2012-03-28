@@ -121,8 +121,9 @@ class reader(object):
     other_symmetry=crystal_symmetry
     for i, array in enumerate(arrays):
       if crystal_symmetry is not None:
-        crystal_symmetry = other_symmetry.join_symmetry(
-          other_symmetry=array.crystal_symmetry(),
+        crystal_symmetry_from_file = array.crystal_symmetry()
+        crystal_symmetry = crystal_symmetry_from_file.join_symmetry(
+          other_symmetry=other_symmetry,
           force=force_symmetry)
         arrays[i] = array.customized_copy(crystal_symmetry=crystal_symmetry)
         arrays[i].set_info(array.info())
