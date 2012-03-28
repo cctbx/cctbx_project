@@ -60,7 +60,7 @@ if (__name__ == "__main__") :
   assert (ctrl1.GetPhilValue() is None)
   assert (ctrl1.GetStringValue() == "None")
   assert (ctrl2.GetPhilValue() == "refine")
-  assert (ctrl2.GetStringValue() == '"refine"')
+  assert (ctrl2.GetStringValue() == '"""refine"""')
   frame.Bind(wx.EVT_BUTTON, OnOkay, btn)
   import wxtbx.phil_controls
   def OnChange (evt) :
