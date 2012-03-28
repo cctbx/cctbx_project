@@ -13,9 +13,9 @@ def exercise ():
   if (None in [pdb_file, mtz_file]) :
     print "Input files not found, skipping test"
     return
-  output = easy_run.fully_buffered("mmtbx.prune_model %s %s" % (pdb_file,
-    mtz_file)).stdout_lines
-  assert ("Removed 3 residues and 1 sidechains")
+  result = easy_run.fully_buffered("mmtbx.prune_model %s %s" % (pdb_file,
+    mtz_file))
+  assert ("Removed 3 residues and 1 sidechains" in result.stdout_lines)
 
 if (__name__ == "__main__") :
   exercise()
