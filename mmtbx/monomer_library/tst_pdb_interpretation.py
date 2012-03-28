@@ -1284,6 +1284,26 @@ def exercise_asp_glu_acid():
       assert processed_pdb_file.all_chain_proxies \
         .fatal_problems_message() is None
 
+# tests automatic aliasing of OP1/O1P etc. when the residue is not detected as
+# RNA/DNA but the monomer entry is
+def exercise_rna_dna_synonyms () :
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/PGP.pdb",
+    test=os.path.isfile)
+  cif_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/cif_files/PGP.cif",
+    test=os.path.isfile)
+  if (None in [pdb_file, cif_file]) :
+    print "Skipping exercise_rna_dna_synonyms() - input file(s) unavailable."
+  else :
+    log = StringIO()
+    processed_pdb_file = monomer_library.pdb_interpretation.run(
+      args=[pdb_file, cif_file], log=log)
+    msg = processed_pdb_file.all_chain_proxies.fatal_problems_message(
+      ignore_unknown_scattering_types=False,
+      ignore_unknown_nonbonded_energy_types=False)
+    assert (msg is None)
+
 def run(args):
   assert len(args) == 0
   mon_lib_srv = monomer_library.server.server()
@@ -1303,6 +1323,7 @@ def run(args):
   exercise_rna_v3(mon_lib_srv, ener_lib)
   exercise_scale_restraints()
   exercise_asp_glu_acid()
+  exercise_rna_dna_synonyms()
   print format_cpu_times()
 
 if (__name__ == "__main__"):
