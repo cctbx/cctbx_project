@@ -893,7 +893,7 @@ class monomer_mapping(slots_getstate_setstate):
               atom_name = atom_name_given
       if (    len(atom_name) != 0
           and not atom_dict.has_key(atom_name)
-          and self.is_rna_dna):
+          and ((self.is_rna_dna) or (self.monomer.normalized_rna_dna))) :
         aliases = pdb.rna_dna_atom_names_backbone_aliases
         if (rna_dna_bb_cif_by_ref is None):
           rna_dna_bb_cif_by_ref = {}

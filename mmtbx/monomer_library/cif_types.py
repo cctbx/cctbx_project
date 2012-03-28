@@ -174,7 +174,8 @@ class comp_comp_id(slots_getstate_setstate):
     "plane_atom_list",
     "rotamer_info_phil_str_list",
     "__rotamer_info",
-    "classification"]
+    "classification",
+    "normalized_rna_dna"]
 
   def __init__(self, source_info, chem_comp):
     self.source_info = source_info
@@ -188,22 +189,27 @@ class comp_comp_id(slots_getstate_setstate):
     self.rotamer_info_phil_str_list = []
     self.__rotamer_info = None
     self.classification = None
+    self.normalized_rna_dna = None
 
   def normalize_atom_ids_in_place(self):
     atom_ids_mod = []
     atom_ids_mod_set = set()
     is_rna_dna = (self.get_classification() in ["RNA", "RNAv3", "DNA", "DNAv3"])
+    normalized = False
     for atom in self.atom_list:
       atom_id = atom.atom_id.replace("'", "*")
       if is_rna_dna:
         if atom_id == "OP1":
+          normalized = True
           atom_id = "O1P"
         elif atom_id == "OP2":
+          normalized = True
           atom_id = "O2P"
       if (atom_id in atom_ids_mod_set):
         return False # changing ids results in ambiguity
       atom_ids_mod.append(atom_id)
       atom_ids_mod_set.add(atom_id)
+    self.normalized_rna_dna = (is_rna_dna) and (normalized)
     del atom_ids_mod_set
     #
     atom_id_map = {}
