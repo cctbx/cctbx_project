@@ -1,4 +1,6 @@
 
+# TODO trim sidechains one atom at a time
+
 import libtbx.phil
 from libtbx.str_utils import make_header
 from libtbx.utils import Usage, multi_out
@@ -17,11 +19,11 @@ model_prune_master_phil = """
   residues = True
     .type = bool
     .help = Remove entire residues in poor density
-  min_c_alpha_2fofc = 1.0
+  min_backbone_2fofc = 0.8
     .type = float
     .help = Minimum 2mFo-DFc sigma level at C-alpha to keep.  Residues with \
       C-alpha in density below this cutoff will be deleted.
-  max_c_alpha_fofc = -3.0
+  min_backbone_fofc = -3.0
     .type = float
     .help = Maximum mFo-DFc sigma level at C-alpha to keep.  Residues with \
       C-alpha in difference density below this cutoff will be deleted.
@@ -90,212 +92,208 @@ class residue_summary (object) :
     else :
       print >> out, "%s : not part of a continuous chain" % id_str
 
-def prune_model (
-    f_map_coeffs,
-    diff_map_coeffs,
-    model_map_coeffs,
-    pdb_hierarchy,
-    params,
-    out=None) :
-  if (out is None) :
-    out = sys.stdout
-  assert (len(pdb_hierarchy.models()) == 1)
-  from mmtbx.real_space_correlation import set_details_level_and_radius
-  from cctbx import maptbx
-  from scitbx.array_family import flex
-  unit_cell = f_map_coeffs.unit_cell()
-  f_map_fft = f_map_coeffs.fft_map(resolution_factor=params.resolution_factor)
-  f_map = f_map_fft.apply_sigma_scaling().real_map()
-  diff_map_fft = diff_map_coeffs.fft_map(
-    resolution_factor=params.resolution_factor)
-  diff_map = diff_map_fft.apply_sigma_scaling().real_map()
-  model_map_fft = model_map_coeffs.fft_map(
-    resolution_factor=params.resolution_factor)
-  model_map = model_map_fft.apply_sigma_scaling().real_map()
-  atom_detail, residue_detail, atom_radius = set_details_level_and_radius(
-    details_level="automatic",
-    d_min=f_map_coeffs.d_min(),
-    atom_radius=None)
-  n_res_removed = 0
-  n_sc_removed = 0
-  n_res_protein = 0
-  pruned = []
-  make_header("Pruning residues and sidechains", out=out)
-  for chain in pdb_hierarchy.models()[0].chains() :
-    residue_id_hash = {}
-    removed_resseqs = []
-    if (len(chain.conformers()) > 1) :
-      print >> out, "WARNING: chain '%s' has multiple conformers" % chain.id
-    first_conf = chain.conformers()[0]
-    if (not first_conf.is_protein()) :
-      continue
-    for j_seq, residue_group in enumerate(chain.residue_groups()) :
-      n_res_protein += 1
-      residue_id_hash[residue_group.resid()] = j_seq
-      for atom_group in residue_group.atom_groups() :
-        ag_id_str = id_str(chain, residue_group, atom_group)
-        remove_atom_group = False
-        sidechain_atoms = []
-        for atom in atom_group.atoms() :
-          if (atom.name == " CA ") :
-            if (not params.residues) : # sidechains only
-              continue
-            # first check the absolute map values at the C-alpha position
-            site_frac = unit_cell.fractionalize(atom.xyz)
-            map_value = f_map.tricubic_interpolation(site_frac)
-            diff_map_value = diff_map.tricubic_interpolation(site_frac)
-            if (map_value < params.min_c_alpha_2fofc) :
+class prune_model (object) :
+  def __init__ (self,
+                f_map_coeffs,
+                diff_map_coeffs,
+                model_map_coeffs,
+                pdb_hierarchy,
+                params) :
+    """
+    Removes atoms with poor electron density, as judged by several sigma-level
+    cutoffs and overall CC.  This is basically an attempt to apply the same
+    visual intuition we use when editing in Coot (etc.).
+    """
+    # XXX or, viewed a different way, this is one giant hack.  need to make
+    # the logic smarter!
+    assert (len(pdb_hierarchy.models()) == 1)
+    from mmtbx.real_space_correlation import set_details_level_and_radius
+    from cctbx import maptbx
+    from scitbx.array_family import flex
+    self.params = params
+    self.pdb_hierarchy = pdb_hierarchy
+    self.unit_cell = f_map_coeffs.unit_cell()
+    f_map_fft = f_map_coeffs.fft_map(resolution_factor=params.resolution_factor)
+    self.f_map = f_map_fft.apply_sigma_scaling().real_map()
+    diff_map_fft = diff_map_coeffs.fft_map(
+      resolution_factor=params.resolution_factor)
+    self.diff_map = diff_map_fft.apply_sigma_scaling().real_map()
+    model_map_fft = model_map_coeffs.fft_map(
+      resolution_factor=params.resolution_factor)
+    self.model_map = model_map_fft.apply_sigma_scaling().real_map()
+    atom_detail, residue_detail, self.atom_radius = \
+      set_details_level_and_radius(
+        details_level="automatic",
+        d_min=f_map_coeffs.d_min(),
+        atom_radius=None)
+
+  def get_map_stats_for_atoms (self, atoms) :
+    from cctbx import maptbx
+    from scitbx.array_family import flex
+    sites_cart = flex.vec3_double()
+    sites_cart_nonH = flex.vec3_double()
+    for atom in atoms :
+      sites_cart.append(atom.xyz)
+      if (not atom.element.strip() in ["H","D"]) :
+        sites_cart_nonH.append(atom.xyz)
+    if (len(sites_cart_nonH) == 0) :
+      return None
+    sel = maptbx.grid_indices_around_sites(
+      unit_cell=self.unit_cell,
+      fft_n_real=self.f_map.focus(),
+      fft_m_real=self.f_map.all(),
+      sites_cart=sites_cart,
+      site_radii=get_atom_radii(atoms, self.atom_radius))
+    f_map_sel = self.f_map.select(sel)
+    model_map_sel = self.model_map.select(sel)
+    diff_map_sel = self.diff_map.select(sel)
+    mean_f_value = flex.mean(f_map_sel.as_1d())
+    mean_diff_value = flex.mean(diff_map_sel.as_1d())
+    cc = flex.linear_correlation(x=f_map_sel,
+      y=model_map_sel).coefficient()
+    return group_args(cc=cc,
+      mean_2fofc=mean_f_value,
+      mean_fofc=mean_diff_value)
+
+  def process_residues (self, out=None) :
+    if (out is None) :
+      out = sys.stdout
+    n_res_removed = 0
+    n_sc_removed = 0
+    n_res_protein = 0
+    pruned = []
+    make_header("Pruning residues and sidechains", out=out)
+    for chain in self.pdb_hierarchy.models()[0].chains() :
+      residue_id_hash = {}
+      removed_resseqs = []
+      if (len(chain.conformers()) > 1) :
+        print >> out, "WARNING: chain '%s' has multiple conformers" % chain.id
+      first_conf = chain.conformers()[0]
+      if (not first_conf.is_protein()) :
+        continue
+      for j_seq, residue_group in enumerate(chain.residue_groups()) :
+        n_res_protein += 1
+        residue_id_hash[residue_group.resid()] = j_seq
+        for atom_group in residue_group.atom_groups() :
+          ag_id_str = id_str(chain, residue_group, atom_group)
+          remove_atom_group = False
+          sidechain_atoms = []
+          backbone_atoms = []
+          for atom in atom_group.atoms() :
+            if (atom.name.strip() in ["N", "O", "C", "H", "CA", "CB"]) :
+              backbone_atoms.append(atom)
+            else :
+              sidechain_atoms.append(atom)
+          if (len(backbone_atoms) > 0) and (self.params.residues) :
+            mc_stats = self.get_map_stats_for_atoms(backbone_atoms)
+            if (mc_stats.mean_2fofc < self.params.min_backbone_2fofc) :
               pruned.append(residue_summary(
                 chain_id=chain.id,
                 residue_group=residue_group,
                 atom_group=atom_group,
-                score=map_value,
+                score=mc_stats.mean_2fofc,
                 score_type="sigma",
                 atoms_type="C-alpha"))
               remove_atom_group = True
-            elif (diff_map_value < params.max_c_alpha_fofc) :
+            elif (mc_stats.mean_fofc < self.params.min_backbone_fofc) :
               pruned.append(residue_summary(
                 chain_id=chain.id,
                 residue_group=residue_group,
                 atom_group=atom_group,
-                score=diff_map_value,
+                score=mc_stats.mean_fofc,
                 score_type="sigma",
-                map_type="mFo-DFc",
                 atoms_type="C-alpha"))
               remove_atom_group = True
-            if (remove_atom_group) :
-              break
-          elif (not atom.name.strip() in ["N", "O", "C", "H", "CA", "CB"]) :
-            sidechain_atoms.append(atom)
-        if (not remove_atom_group) :
           # map values look okay - now check overall CC
-          atoms = atom_group.atoms()
-          sites_cart = atoms.extract_xyz()
-          radii = flex.double([atom_radius] * sites_cart.size())
-          sel = maptbx.grid_indices_around_sites(
-            unit_cell=unit_cell,
-            fft_n_real=f_map.focus(),
-            fft_m_real=f_map.all(),
-            sites_cart=sites_cart,
-            site_radii=get_atom_radii(atoms, atom_radius))
-          f_map_sel = f_map.select(sel)
-          model_map_sel = model_map.select(sel)
-          cc = flex.linear_correlation(x=f_map_sel,
-            y=model_map_sel).coefficient()
-          if (cc < params.min_cc) and (params.residues) :
+          if (not remove_atom_group) :
+            res_stats = self.get_map_stats_for_atoms(atom_group.atoms())
+            if (res_stats.cc < self.params.min_cc) and (self.params.residues) :
+              pruned.append(residue_summary(
+                chain_id=chain.id,
+                residue_group=residue_group,
+                atom_group=atom_group,
+                score=cc))
+              remove_atom_group = True
+            elif (len(sidechain_atoms) > 0) and (self.params.sidechains) :
+              # overall CC is acceptable - now look at sidechain alone
+              remove_sidechain = False
+              sc_stats = self.get_map_stats_for_atoms(sidechain_atoms)
+              if (sc_stats.cc < self.params.min_cc_sidechain) :
+                pruned.append(residue_summary(
+                  chain_id=chain.id,
+                  residue_group=residue_group,
+                  atom_group=atom_group,
+                  score=sc_stats.cc,
+                  atoms_type="sidechain"))
+                remove_sidechain = True
+              else :
+                if (sc_stats.mean_2fofc < self.params.min_sidechain_2fofc) :
+                  pruned.append(residue_summary(
+                    chain_id=chain.id,
+                    residue_group=residue_group,
+                    atom_group=atom_group,
+                    score=sc_stats.mean_2fofc,
+                    score_type="sigma",
+                    atoms_type="sidechain"))
+                  remove_sidechain = True
+                elif (sc_stats.mean_fofc < self.params.max_sidechain_fofc) :
+                  pruned.append(residue_summary(
+                    chain_id=chain.id,
+                    residue_group=residue_group,
+                    atom_group=atom_group,
+                    score=sc_stats.mean_fofc,
+                    score_type="sigma",
+                    atoms_type="sidechain",
+                    map_type="mFo-Dfc"))
+                  remove_sidechain = True
+              if (remove_sidechain) :
+                assert (self.params.sidechains)
+                for atom in sidechain_atoms :
+                  atom_group.remove_atom(atom)
+                n_sc_removed += 1
+          if (remove_atom_group) :
+            assert (self.params.residues)
+            residue_group.remove_atom_group(atom_group)
+        if (len(residue_group.atom_groups()) == 0) :
+          chain.remove_residue_group(residue_group)
+          n_res_removed += 1
+          removed_resseqs.append(residue_group.resseq_as_int())
+      # Final pass: remove lone single/pair residues
+      if ((self.params.residues) and
+          (self.params.min_fragment_size is not None)) :
+        n_rg = len(chain.residue_groups())
+        for j_seq, residue_group in enumerate(chain.residue_groups()) :
+          if (residue_group.icode.strip() != "") :
+            continue
+          resseq = residue_group.resseq_as_int()
+          remove = False
+          if (resseq - 1 in removed_resseqs) or (j_seq == 0) :
+            print "candidate:", resseq
+            for k in range(1, self.params.min_fragment_size+1) :
+              if (resseq + k in removed_resseqs) :
+                remove = True
+                break
+              elif ((j_seq + k) >= len(chain.residue_groups())) :
+                remove = True
+                break
+          if (remove) :
             pruned.append(residue_summary(
               chain_id=chain.id,
               residue_group=residue_group,
               atom_group=atom_group,
-              score=cc))
-            remove_atom_group = True
-          elif (len(sidechain_atoms) > 0) and (params.sidechains) :
-            # overall CC is acceptable - now look at sidechain alone
-            remove_sidechain = False
-            sites_cart = flex.vec3_double()
-            sites_cart_nonH = flex.vec3_double()
-            for atom in sidechain_atoms :
-              sites_cart.append(atom.xyz)
-              if (not atom.element.strip() in ["H","D"]) :
-                sites_cart_nonH.append(atom.xyz)
-            if (len(sites_cart_nonH) == 0) :
-              continue # ALA, GLY?
-            sel = maptbx.grid_indices_around_sites(
-              unit_cell=unit_cell,
-              fft_n_real=f_map.focus(),
-              fft_m_real=f_map.all(),
-              sites_cart=sites_cart,
-              site_radii=get_atom_radii(sidechain_atoms, atom_radius))
-            f_map_sel = f_map.select(sel)
-            model_map_sel = model_map.select(sel)
-            cc = flex.linear_correlation(x=f_map_sel,
-              y=model_map_sel).coefficient()
-            if (cc < params.min_cc_sidechain) :
-              pruned.append(residue_summary(
-                chain_id=chain.id,
-                residue_group=residue_group,
-                atom_group=atom_group,
-                score=cc,
-                atoms_type="sidechain"))
-              remove_sidechain = True
-            else :
-              # sidechain CC is okay - finally, check mean map values
-              sel = maptbx.grid_indices_around_sites(
-                unit_cell=unit_cell,
-                fft_n_real=f_map.focus(),
-                fft_m_real=f_map.all(),
-                sites_cart=sites_cart_nonH,
-                site_radii=flex.double([atom_radius] * len(sites_cart_nonH)))
-              f_map_sel = f_map.select(sel)
-              diff_map_sel = diff_map.select(sel)
-              mean_f_value = flex.mean(f_map_sel.as_1d())
-              mean_diff_value = flex.mean(diff_map_sel.as_1d())
-              if (mean_f_value < params.min_sidechain_2fofc) :
-                pruned.append(residue_summary(
-                  chain_id=chain.id,
-                  residue_group=residue_group,
-                  atom_group=atom_group,
-                  score=mean_f_value,
-                  score_type="sigma",
-                  atoms_type="sidechain"))
-                remove_sidechain = True
-              elif (mean_diff_value < params.max_sidechain_fofc) :
-                pruned.append(residue_summary(
-                  chain_id=chain.id,
-                  residue_group=residue_group,
-                  atom_group=atom_group,
-                  score=mean_diff_value,
-                  score_type="sigma",
-                  atoms_type="sidechain",
-                  map_type="mFo-Dfc"))
-                remove_sidechain = True
-            if (remove_sidechain) :
-              assert (params.sidechains)
-              for atom in sidechain_atoms :
-                atom_group.remove_atom(atom)
-              n_sc_removed += 1
-        if (remove_atom_group) :
-          assert (params.residues)
-          residue_group.remove_atom_group(atom_group)
-      if (len(residue_group.atom_groups()) == 0) :
-        chain.remove_residue_group(residue_group)
-        n_res_removed += 1
-        removed_resseqs.append(residue_group.resseq_as_int())
-    # Final pass: remove lone single/pair residues
-    if (params.residues) and (params.min_fragment_size is not None) :
-      n_rg = len(chain.residue_groups())
-      for j_seq, residue_group in enumerate(chain.residue_groups()) :
-        if (residue_group.icode.strip() != "") :
-          continue
-        resseq = residue_group.resseq_as_int()
-        remove = False
-        if (resseq - 1 in removed_resseqs) or (j_seq == 0) :
-          print "candidate:", resseq
-          for k in range(1, params.min_fragment_size+1) :
-            if (resseq + k in removed_resseqs) :
-              remove = True
-              break
-            elif ((j_seq + k) >= len(chain.residue_groups())) :
-              remove = True
-              break
-        if (remove) :
-          pruned.append(residue_summary(
-            chain_id=chain.id,
-            residue_group=residue_group,
-            atom_group=atom_group,
-            score=None))
-          chain.remove_residue_group(residue_group)
-          removed_resseqs.append(resseq)
-          n_res_removed += 1
-  for outlier in pruned :
-    outlier.show(out)
-  print >> out, "Removed %d residues and %d sidechains" % (n_res_removed,
-    n_sc_removed)
-  return group_args(
-    n_res_protein=n_res_protein,
-    n_res_removed=n_res_removed,
-    n_sc_removed=n_sc_removed,
-    outliers=pruned)
+              score=None))
+            chain.remove_residue_group(residue_group)
+            removed_resseqs.append(resseq)
+            n_res_removed += 1
+    for outlier in pruned :
+      outlier.show(out)
+    print >> out, "Removed %d residues and %d sidechains" % (n_res_removed,
+      n_sc_removed)
+    return group_args(
+      n_res_protein=n_res_protein,
+      n_res_removed=n_res_removed,
+      n_sc_removed=n_sc_removed,
+      outliers=pruned)
 
 def get_atom_radii (atoms, atom_radius) :
   from scitbx.array_family import flex
@@ -350,8 +348,7 @@ def run_post_refinement (
     diff_map_coeffs=diff_map_coeffs,
     model_map_coeffs=model_map_coeffs,
     pdb_hierarchy=pdb_hierarchy,
-    params=params,
-    out=out)
+    params=params).process_residues(out=out)
   if (write_model) :
     if (output_file is None) :
       base_name = os.path.basename(pdb_file)
@@ -407,8 +404,7 @@ Full parameters:
     diff_map_coeffs=diff_map_coeffs,
     model_map_coeffs=model_map_coeffs,
     pdb_hierarchy=cmdline.pdb_hierarchy,
-    params=params.prune,
-    out=out2)
+    params=params.prune).process_residues(out=out2)
   f = open(params.output.file_name, "w")
   cryst1 = iotbx.pdb.format_cryst1_record(fmodel.xray_structure)
   f.write("REMARK edited by mmtbx.prune_model\n")
