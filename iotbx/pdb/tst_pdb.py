@@ -13,6 +13,18 @@ from cStringIO import StringIO
 import sys, os
 op = os.path
 
+def exercise_systematic_chain_ids():
+  cids = iotbx.pdb.systematic_chain_ids()
+  assert len(cids) == 3906
+  assert cids[0] == "A"
+  assert cids[25] == "Z"
+  assert cids[26] == "a"
+  assert cids[51] == "z"
+  assert cids[52] == "0"
+  assert cids[61] == "9"
+  assert cids[62] == "AA"
+  assert cids[-1] == "99"
+
 def exercise_amino_acid_codes():
   from iotbx.pdb import amino_acid_codes as aac
   ogt = aac.one_letter_given_three_letter
@@ -534,6 +546,7 @@ def write_icosahedron():
 
 def run():
   verbose = "--verbose" in sys.argv[1:]
+  exercise_systematic_chain_ids()
   exercise_amino_acid_codes()
   exercise_records()
   exercise_make_atom_with_labels()

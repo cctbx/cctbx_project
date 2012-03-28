@@ -51,6 +51,22 @@ def ent_path_local_mirror(pdb_id, environ_key="PDB_MIRROR_PDB"):
     raise RuntimeError("No file with PDB ID %s (%s)" % (pdb_id, result))
   return result
 
+def systematic_chain_ids():
+  import string
+  u, l, d = string.ascii_uppercase, string.ascii_lowercase, string.digits
+  _ = result = list(u)
+  _.extend(l)
+  _.extend(d)
+  def xy(first, second):
+    for f in first:
+      for s in second:
+        _.append(f+s)
+  a = u+l+d
+  xy(u, a)
+  xy(l, a)
+  xy(d, a)
+  return result
+
 cns_dna_rna_residue_names = {
   "ADE": "A",
   "CYT": "C",
