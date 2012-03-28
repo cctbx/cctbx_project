@@ -287,8 +287,7 @@ refinement.output.title = Test refinement run
   assert (style.get_parent_params() == {"file_name" : "file_name"})
   file_map = i.get_file_type_map("pdb")
   assert (file_map.get_multiple_params() == \
-    ['refinement.reference_model.reference_group.file',
-     'refinement.input.pdb.file_name',
+    ['refinement.input.pdb.file_name',
      'refinement.reference_model.file'])
   assert (file_map.get_default_param() == "refinement.input.pdb.file_name")
   file_map = i.get_file_type_map("hkl")
