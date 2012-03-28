@@ -309,6 +309,9 @@ def run(args, log = sys.stdout):
   else:
     if([cryst1.unit_cell(), cryst1.space_group_info()].count(None) != 0):
       raise Sorry("CRYST1 record in input PDB file is incomplete or missing.")
+  if (miller_array is not None) :
+    if (miller_array.crystal_symmetry() is None) :
+      miller_array = miller_array.customized_copy(crystal_symmetry=cryst1)
   xray_structure = pdb_inp.xray_structure_simple(crystal_symmetry = cryst1)
   xray_structure.show_summary(f = log, prefix="  ")
   if(len(params.anomalous_scatterers.group) != 0):

@@ -2175,6 +2175,8 @@ class fmodel_from_xray_structure(object):
       if(params.low_resolution is not None):
         f_obs = f_obs.resolution_filter(d_max = lr)
     else:
+      assert (f_obs.crystal_symmetry() is not None)
+      assert (f_obs.unit_cell() is not None) and (f_obs.space_group() is not None)
       try: hr = params.high_resolution
       except Exception: hr = None
       try: lr = params.low_resolution
