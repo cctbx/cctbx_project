@@ -50,6 +50,7 @@ def r_work_and_completeness_in_resolution_bins(fmodel, reflections_per_bin=500,
   from cctbx.array_family import flex
   fo_w = fmodel.f_obs_work()
   fc_w = fmodel.f_model_scaled_with_k1_w()
+  reflections_per_bin = min(reflections_per_bin, fo_w.data().size())
   fo_w.setup_binner(reflections_per_bin = reflections_per_bin)
   fc_w.use_binning_of(fo_w)
   result = []
@@ -118,10 +119,6 @@ class info(object):
       something, matches = fmodel.f_obs().match_bijvoet_mates()
       self.number_of_reflections_merged = matches.pairs().size() + \
         matches.n_singles()
-    self.k_sol = fmodel.k_sols()
-    self.b_sol = fmodel.b_sol()
-    self.b_cart = fmodel.b_cart()
-    self.b_iso = fmodel.b_iso()
     self.mask_solvent_radius = mp.solvent_radius
     self.mask_shrink_radius = mp.shrink_truncation_radius
     self.mask_grid_step_factor = mp.grid_step_factor
@@ -172,8 +169,8 @@ class info(object):
     target_result = target_functor(compute_gradients=False)
     tpr = target_result.target_per_reflection()
     if(tpr.size() != 0):
-      tpr_w = tpr.select(fmodel.active_arrays.work_sel)
-      tpr_t = tpr.select(fmodel.active_arrays.free_sel)
+      tpr_w = tpr.select(fmodel.arrays.work_sel)
+      tpr_t = tpr.select(fmodel.arrays.free_sel)
     fo_t = fmodel.f_obs_free()
     fc_t = fmodel.f_model_scaled_with_k1_t()
     fo_w = fmodel.f_obs_work()
@@ -310,12 +307,6 @@ class info(object):
     print >> out,pr+" SOLVENT RADIUS     : %s"%format_value("%-8.2f", self.mask_solvent_radius)
     print >> out,pr+" SHRINKAGE RADIUS   : %s"%format_value("%-8.2f", self.mask_shrink_radius)
     print >> out,pr+" GRID STEP FACTOR   : %s"%format_value("%-8.2f", self.mask_grid_step_factor)
-    if( len(self.k_sol) == 1 ):
-      print >> out,pr+" K_SOL              : %s"%format_value("%-8.3f", self.k_sol[0])
-    else:
-      # TODO: pretty print
-      print >> out,pr," K_SOLS    : ", self.k_sol
-    print >> out,pr+" B_SOL              : %s"%format_value("%-8.3f", self.b_sol)
     print >> out,pr
     if(self.twin_fraction is not None):
       print >> out,pr+"TWINNING INFORMATION."
@@ -331,13 +322,6 @@ class info(object):
     print >> out,pr+"OVERALL SCALE FACTORS."
     print >> out,pr+" SCALE = SUM(|F_OBS|*|F_MODEL|)/SUM(|F_MODEL|**2) : %s"%\
       format_value("%-12.4f", self.overall_scale_k1)
-    print >> out,pr+" ANISOTROPIC SCALE MATRIX ELEMENTS (IN CARTESIAN BASIS)."
-    print >> out,pr+"  B11 : %s"%format_value("%-15.4f", self.b_cart[0])
-    print >> out,pr+"  B22 : %s"%format_value("%-15.4f", self.b_cart[1])
-    print >> out,pr+"  B33 : %s"%format_value("%-15.4f", self.b_cart[2])
-    print >> out,pr+"  B12 : %s"%format_value("%-15.4f", self.b_cart[3])
-    print >> out,pr+"  B13 : %s"%format_value("%-15.4f", self.b_cart[4])
-    print >> out,pr+"  B23 : %s"%format_value("%-15.4f", self.b_cart[5])
     print >> out,pr
     print >> out,pr+"R FACTOR FORMULA."
     print >> out,pr+" R = SUM(||F_OBS|-SCALE*|F_MODEL||)/SUM(|F_OBS|)"
@@ -389,25 +373,20 @@ class info(object):
     r_work = format_value("%6.4f",self.r_work).strip()
     r_free = format_value("%6.4f",self.r_free).strip()
     scale  = format_value("%6.3f",self.overall_scale_k1).strip()
-    if( len(self.k_sol)==1 ):
-      k_sol  = format_value("%4.2f",self.k_sol[0]).strip()
-    else:
-      k_sol = (('%4.2f '*len(self.k_sol))%tuple(self.k_sol)).strip()
-    b_sol  = format_value("%6.2f",self.b_sol).strip()
-    b0,b1,b2,b3,b4,b5 = n_as_s("%7.2f",self.b_cart)
-    b_iso  = format_value("%7.2f",self.b_iso).strip()
-    line = "| r_work= "+r_work+"   r_free= "+r_free+"   ksol= "+k_sol+\
-           "   Bsol= "+b_sol+"   scale= "+scale
+    #if( len(self.k_sol)==1 ):
+    #  k_sol  = format_value("%4.2f",self.k_sol[0]).strip()
+    #else:
+    #  k_sol = (('%4.2f '*len(self.k_sol))%tuple(self.k_sol)).strip()
+    #b_sol  = format_value("%6.2f",self.b_sol).strip()
+    #b0,b1,b2,b3,b4,b5 = n_as_s("%7.2f",self.b_cart)
+    #b_iso  = format_value("%7.2f",self.b_iso).strip()
+    #line = "| r_work= "+r_work+"   r_free= "+r_free+"   ksol= "+k_sol+\
+    #       "   Bsol= "+b_sol+"   scale= "+scale
+    line = "| r_work= "+r_work+"   r_free= "+r_free+ "     scale= "+scale
     np = 79 - (len(line) + 1)
     if(np < 0): np = 0
     print >> out, line + " "*np + "|"
     print >> out, "| "+"  "*38+"|"
-    print >> out, "| overall anisotropic scale matrix (Cartesian basis; B11,B22,B33,B12,B13,B23):|"
-    c = ","
-    line4 = "| ("+b0+c+b1+c+b2+c+b3+c+b4+c+b5+"); trace/3= "+b_iso
-    np = 79 - (len(line4) + 1)
-    line4 = line4 + " "*np + "|"
-    print >> out, line4
     out.flush()
 
   def show_rfactors_targets_scales_overall(self, header = None, out=None):
