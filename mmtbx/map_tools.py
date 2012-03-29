@@ -86,18 +86,14 @@ class kick_map(object):
         anomalous_flag   = self.map_coeffs.anomalous_flag()).array(
           data = map_coeff_data/counter)
       if (exclude_free_r_reflections) :
-        self.map_coeffs = self.map_coeffs.select(fmodel.active_arrays.work_sel)
+        self.map_coeffs = self.map_coeffs.select(fmodel.arrays.work_sel)
 
 class electron_density_map(object):
 
   def __init__(self,
                fmodel,
-               fill_missing_f_obs = False,
-               fill_mode = None,
-               update_scaling = True,
                map_calculation_helper = None):
-    self.fmodel = fmodel.deep_copy()
-    self.fill_missing_f_obs = fill_missing_f_obs
+    self.fmodel = fmodel
     self.anom_diff = None
     self.mch = map_calculation_helper
     if(self.fmodel.f_obs().anomalous_flag()):
@@ -109,11 +105,6 @@ class electron_density_map(object):
       assert anom_diff_common.indices().size()==self.anom_diff.indices().size()
       self.anom_diff = self._phase_transfer(miller_array = anom_diff_common,
         phase_source = fmodel_match_anom_diff)
-    if(self.fill_missing_f_obs and
-       flex.max(abs(self.fmodel.f_part1()).data()) == 0): # do not fill if F_part is used!
-      self.fmodel = self.fmodel.fill_missing_f_obs(fill_mode = fill_mode,
-        update_scaling = update_scaling)
-    #del self.fmodel # XXX
 
   def map_coefficients(self,
                        map_type,
@@ -222,7 +213,7 @@ class electron_density_map(object):
     if(force_anomalous_flag_false):
       map_coefficients = map_coefficients.average_bijvoet_mates()
     if(not use_all_data):
-      map_coefficients = map_coefficients.select(self.fmodel.active_arrays.work_sel)
+      map_coefficients = map_coefficients.select(self.fmodel.arrays.work_sel)
     if(other_fft_map is None):
       return map_coefficients.fft_map(
         resolution_factor = resolution_factor,
