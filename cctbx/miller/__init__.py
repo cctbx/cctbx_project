@@ -3029,6 +3029,65 @@ class array(set):
     else :
       return sum / self.unit_cell().volume()
 
+  def double_step_filtration(
+        self,
+        complete_set=None,
+        vol_cutoff_plus_percent=5.0,
+        vol_cutoff_minus_percent=5.0,
+        resolution_factor=0.25,
+        scale_to=None):
+    assert self.is_complex_array()
+    # Can this be done faster?
+    fft_map = self.fft_map(resolution_factor=resolution_factor)
+    fft_map.apply_sigma_scaling()
+    map_data = fft_map.real_map_unpadded()
+    s = flex.sort_permutation(flex.double(list(map_data)))
+    map_data_sorted = map_data.select(s)
+    i = map_data.size()-1-int(map_data.size()*(vol_cutoff_plus_percent/100.))
+    cutoffp = map_data_sorted[i]
+    j = int(map_data.size()*(vol_cutoff_minus_percent/100.))
+    cutoffm = map_data_sorted[j]
+    del map_data_sorted
+    map_data = maptbx.denmod_simple(
+      map_data = map_data,
+      n_real   = fft_map.n_real(),
+      cutoffp  = cutoffp,
+      cutoffm  = cutoffm)
+    if(complete_set is None): complete_set = self.complete_set()
+    sf = complete_set.structure_factors_from_map(
+      map            = map_data,
+      use_scale      = True,
+      anomalous_flag = self.anomalous_flag(),
+      use_sg         = True)
+    if(scale_to is None): scale_to = self
+    def scale(f1,f2,reflections_per_bin=500):
+      assert f2.data().size() >= f1.data().size()
+      f1_,f2_ = f1.common_sets(f2)
+      reflections_per_bin = min(500, f1_.data().size())
+      f1_.setup_binner(reflections_per_bin = reflections_per_bin)
+      f2_.use_binning_of(f1_)
+      ss = 1./flex.pow2(f1_.d_spacings().data()) / 4.
+      scale = flex.double()
+      ss_bin = flex.double()
+      for i_bin in f1_.binner().range_used():
+        sel = f1_.binner().selection(i_bin)
+        sel_f1 = abs(f1_).select(sel).data()
+        sel_f2 = abs(f2_).select(sel).data()
+        n = flex.sum(sel_f1*sel_f2)
+        d = flex.sum(sel_f2*sel_f2)
+        if(d == 0): return None
+        scale.append(n/d)
+        ss_bin.append(flex.mean(ss.select(sel)))
+      if(scale.size()>1):
+        r = scitbx.math.gaussian_fit_1d_analytical(x=flex.sqrt(ss_bin), y=scale)
+        ss = 1./flex.pow2(f2.d_spacings().data()) / 4.
+        k_isotropic = r.a*flex.exp(-ss*r.b)
+      else: k_isotropic = scale[0]
+      return f2.customized_copy(data = f2.data()*k_isotropic)
+    result = scale(f1=scale_to, f2=sf)
+    if(result is None): result = sf
+    return result
+
   def local_standard_deviation_map(self, radius,
                                          mean_solvent_density=0,
                                          resolution_factor=1/3,
