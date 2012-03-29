@@ -6,69 +6,122 @@ from cctbx import miller
 
 class init(object):
   def __init__(self,
-               f_obs,
                f_calc,
-               f_mask,
-               r_free_flags,
-               k_isotropic,
-               k_anisotropic,
-               k_mask):
+               f_masks=None,
+               f_part1=None,
+               f_part2=None,
+               k_masks=None,
+               k_isotropic=None,
+               k_anisotropic=None):
     adopt_init_args(self, locals())
-    assert f_obs.indices().all_eq(f_calc.indices())
-    assert f_obs.indices().all_eq(r_free_flags.indices())
-    assert f_obs.indices().all_eq(f_mask.indices())
-    assert k_isotropic.size() == k_anisotropic.size()
-    assert k_isotropic.size() == k_mask.size()
-    self.ss = 1./flex.pow2(self.f_calc.d_spacings().data()) / 4.
-    self.data = ext.core(
+    if(self.f_masks is None):
+      self.f_masks = [self.f_calc.customized_copy(
+        data=flex.complex_double(f_calc.data().size(), 0))]
+    else:
+      if(not (type(self.f_masks) in [list, tuple])):
+        self.f_masks = [self.f_masks]
+      for fm in self.f_masks:
+        assert self.f_calc.indices().all_eq(fm.indices())
+    if(self.k_isotropic is not None):
+      assert self.k_isotropic.size() == self.f_calc.indices().size()
+    else: self.k_isotropic = flex.double(f_calc.data().size(), 1)
+    if(self.k_anisotropic is not None):
+      assert self.k_anisotropic.size() == self.f_calc.indices().size()
+    else: self.k_anisotropic = flex.double(f_calc.data().size(), 1)
+    if(self.k_masks is None):
+      n=len(self.f_masks)
+      self.k_masks = [flex.double(f_calc.data().size(), 0)]*n
+    else:
+      if(not (type(self.k_masks) in [list, tuple])):
+        self.k_masks = [self.k_masks]
+    if(self.f_part1 is not None):
+      assert self.f_calc.indices().all_eq(self.f_part1.indices())
+    else:
+      self.f_part1 = self.f_calc.customized_copy(
+        data=flex.complex_double(f_calc.data().size(), 0))
+    if(self.f_part2 is not None):
+      assert self.f_calc.indices().all_eq(self.f_part2.indices())
+    else:
+      self.f_part2 = self.f_calc.customized_copy(
+        data=flex.complex_double(f_calc.data().size(), 0))
+    # assemble f_bulk
+    f_bulk_data = flex.complex_double(f_calc.data().size(), 0)
+    assert len(self.k_masks) == len(self.f_masks)
+    for i in xrange(len(self.k_masks)):
+      f_bulk_data += self.k_masks[i]*self.f_masks[i].data()
+    #
+    self.data = ext.data(
       f_calc        = self.f_calc.data(),
-      f_mask        = self.f_mask.data(),
+      f_bulk        = f_bulk_data,
       k_isotropic   = self.k_isotropic,
       k_anisotropic = self.k_anisotropic,
-      k_mask        = self.k_mask)
-    self.f_model = miller.array(miller_set=self.f_obs, data=self.data.f_model)
+      f_part1       = self.f_part1.data(),
+      f_part2       = self.f_part2.data())
+    self.f_model = miller.array(miller_set=self.f_calc, data=self.data.f_model)
     self.f_model_no_aniso_scale = miller.array(
-      miller_set=self.f_obs,
+      miller_set=self.f_calc,
       data      =self.data.f_model_no_aniso_scale)
-    self.selection_work = miller.array(
-      miller_set=self.f_obs,
-      data      =~self.r_free_flags.data())
+
+  def f_mask(self):
+    assert len(self.f_masks)==1
+    return self.f_masks[0]
+
+  def k_mask(self):
+    assert len(self.k_masks)==1
+    return self.k_masks[0]
 
   def select(self, selection=None):
     if(selection is None): return self
-    assert self.f_obs.indices().size() == selection.size()
+    assert self.f_calc.indices().size() == selection.size()
+    f_masks = [fm.select(selection=selection) for fm in self.f_masks]
+    k_masks = [km.select(selection) for km in self.k_masks]
     return init(
-      f_obs         = self.f_obs.select(selection),
       f_calc        = self.f_calc.select(selection),
-      f_mask        = self.f_mask.select(selection),
-      r_free_flags  = self.r_free_flags.select(selection),
+      f_masks       = f_masks,
       k_isotropic   = self.k_isotropic.select(selection),
-      k_mask        = self.k_mask.select(selection),
-      k_anisotropic = self.k_anisotropic.select(selection))
+      k_masks       = k_masks,
+      k_anisotropic = self.k_anisotropic.select(selection),
+      f_part1       = self.f_part1.select(selection),
+      f_part2       = self.f_part2.select(selection))
 
   def deep_copy(self):
-    return self.select(selection=flex.bool(self.f_obs.indices().size(), True))
+    return self.select(selection=flex.bool(self.f_calc.indices().size(), True))
+
+  def __getstate__(self):
+    return {"args": (
+      self.f_calc,
+      self.f_masks,
+      self.f_part1,
+      self.f_part2,
+      self.k_masks,
+      self.k_isotropic,
+      self.k_anisotropic)}
+
+  def __setstate__(self, state):
+    assert len(state) == 1
+    self.__init__(*state["args"])
 
   def update(self,
-             f_obs=None,
              f_calc=None,
-             f_mask=None,
-             r_free_flags=None,
+             f_masks=None,
              k_isotropic=None,
-             k_mask=None,
-             k_anisotropic=None):
-    if(f_obs is None):         f_obs         = self.f_obs
+             k_masks=None,
+             k_anisotropic=None,
+             f_part1=None,
+             f_part2=None):
     if(f_calc is None):        f_calc        = self.f_calc
-    if(f_mask is None):        f_mask        = self.f_mask
-    if(r_free_flags is None):  r_free_flags  = self.r_free_flags
+    if(f_masks is None):       f_masks       = self.f_masks
     if(k_isotropic is None):   k_isotropic   = self.k_isotropic
-    if(k_mask is None):        k_mask        = self.k_mask
+    if(k_masks is None):       k_masks       = self.k_masks
     if(k_anisotropic is None): k_anisotropic = self.k_anisotropic
-    return init(
-      f_obs         = f_obs,
+    if(f_part1 is None):       f_part1       = self.f_part1
+    if(f_part2 is None):       f_part2       = self.f_part2
+    self.__init__(
       f_calc        = f_calc,
-      f_mask        = f_mask,
-      r_free_flags  = r_free_flags,
+      f_masks       = f_masks,
       k_isotropic   = k_isotropic,
-      k_mask        = k_mask,
-      k_anisotropic = k_anisotropic)
+      k_masks       = k_masks,
+      k_anisotropic = k_anisotropic,
+      f_part1       = f_part1,
+      f_part2       = f_part2)
+    return self
