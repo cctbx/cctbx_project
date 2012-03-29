@@ -216,8 +216,9 @@ def run(args, log = sys.stdout):
     r_free_flags   = r_free_flags,
     f_obs          = f_obs,
     abcd           = experimental_phases)
-  if(params.remove_f_obs_outliers): fmodel = fmodel.remove_outliers()
-  if(params.bulk_solvent_and_scaling): fmodel.update_solvent_and_scale()
+  fmodel.update_all_scales(
+    remove_outliers = params.remove_f_obs_outliers,
+    bulk_solvent_and_scaling = params.bulk_solvent_and_scaling)
   print "Overall statistics:"
   fmodel.info().show_all()
   #
