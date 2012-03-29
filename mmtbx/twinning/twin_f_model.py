@@ -621,6 +621,7 @@ the percentage of R-free reflections).
       mask_params        = deepcopy(self.mask_params),
       out                = self.out,
       twin_law           = self.twin_law,
+      twin_law_str       = self.twin_law_str,
       start_fraction     = self.twin_fraction,
       n_refl_bin         = self.n_refl_bin,
       max_bins           = self.max_bins,
@@ -650,6 +651,7 @@ the percentage of R-free reflections).
       mask_params        = dc.mask_params,
       out                = dc.out,
       twin_law           = dc.twin_law,
+      twin_law_str       = dc.twin_law_str,
       start_fraction     = dc.twin_fraction,
       n_refl_bin         = dc.n_refl_bin,
       max_bins           = dc.max_bins,
@@ -744,14 +746,22 @@ the percentage of R-free reflections).
   def f_part1(self): # XXX for compatiblity with other fmodel
     return self.f_calc().customized_copy(data = self.f_calc().data()*0)
 
+  def update_all_scales(self, params=None, log=None, show=False,
+                        optimize_mask=False, nproc=None, fast=False,
+                        remove_outliers=False,refine_hd_scattering=False):
+    self.update_solvent_and_scale(show=show, log=log)
+
   def update_solvent_and_scale(self,
+                               show=False,
                                optimize_mask=True,
                                optimize_mask_thorough=False, # XXX ignored
                                params=None,
-                               out=None,
+                               log=None,
                                verbose=-1,
                                initialise=False,
                                nproc=None): # XXX ignored
+    if(self.twin_law_str is None and self.twin_law is not None):
+      self.twin_law_str = sgtbx.change_of_basis_op( self.twin_law ).as_hkl()
     self.fmodel_ts1 = mmtbx.f_model.manager(
       f_obs          = self.f_obs(),
       r_free_flags   = self.r_free_flags(),
@@ -760,30 +770,23 @@ the percentage of R-free reflections).
       mask_params    = self.mask_params,
       k_sol          = self.k_sol(),
       b_sol          = self.b_sol(),
-      b_cart         = self.b_cart())
+      b_cart         = self.b_cart(),
+      twin_fraction  = self.twin_fraction)
     self.twin_set = self.fmodel_ts1.twin_set
-    self.active_arrays = self.fmodel_ts1.active_arrays
-    self.passive_arrays = self.fmodel_ts1.passive_arrays
-    self.fmodel_ts1.update_twin_fraction()
     if(params is None):
       params = bss.master_params.extract()
     params.k_sol_b_sol_grid_search = False # XXX too slow otherwise
     params.number_of_macro_cycles=1 # XXX too slow otherwise, let's see may be ok
-    if(not initialise):
-      self.fmodel_ts1.update_solvent_and_scale(params = params, out=out,
-        verbose=verbose, optimize_mask=optimize_mask,
-        optimize_mask_thorough = optimize_mask_thorough)
-      self.fmodel_ts1.apply_back_b_iso()
-    else:
-      self.fmodel_ts1.update_twin_fraction()
-    assert len(self.fmodel_ts1.k_sols()) == 1 # XXX not implemented
+    result = self.fmodel_ts1.update_all_scales(show=show, fast=False, # XXX
+      params=params, log=log)
     self.update_core(
-      k_sol = self.fmodel_ts1.k_sols()[0], # XXX not implemented (see above)
-      b_sol = self.fmodel_ts1.b_sol(),
+      k_sol = result.k_sols()[0], # XXX not implemented (see above)
+      b_sol = result.b_sol(),
       twin_fraction = self.fmodel_ts1.twin_fraction,
-      b_cart = self.fmodel_ts1.b_cart(),
+      b_cart = result.b_cart(),
       k_overall = self.fmodel_ts1.scale_k1_w())
     self.mask_params = self.fmodel_ts1.mask_params
+    self.arrays = self.fmodel_ts1.arrays
 
   def update_core(self,
                   f_calc        = None,
