@@ -8,6 +8,9 @@ class detector_surface(wx.Window):
     O.Bind(wx.EVT_SIZE, O.OnSize)
     O.Bind(wx.EVT_PAINT, O.OnPaint)
     O.Bind(wx.EVT_CHAR, O.OnChar)
+    O.reset_state()
+
+  def reset_state(O):
     O.prev_work_phil_ewp_none_str = None
     O.prev_work_phil_str = None
     O.image = None
@@ -17,6 +20,9 @@ class detector_surface(wx.Window):
   def recompute(O):
     w, h = O.GetSizeTuple()
     p = min(w, h)
+    if (p == 0):
+      O.reset_state()
+      return False
     O.work_params.detector.pixels = (p, p)
     O.GetParent().wx_detector_pixels.SetLabel("%d x %d" % (p, p))
     ewp_save = O.work_params.ewald_proximity
@@ -45,6 +51,7 @@ class detector_surface(wx.Window):
           or O.prev_work_phil_ewp_none_str != work_phil_ewp_none_str):
         O.prev_work_phil_ewp_none_str = work_phil_ewp_none_str
         O.predicted_spots = None
+    return True
 
   def run_labelit_index(O, use_original_uc_cr=False):
     if (O.predicted_spots is not None):
@@ -121,8 +128,10 @@ class detector_surface(wx.Window):
     w, h = O.work_params.detector.pixels
     assert w == h
     p = w
+    assert p != 0
     wx_image = wx.EmptyImage(p, p)
-    wx_image.SetData(O.image)
+    if (O.image is not None):
+      wx_image.SetData(O.image)
     wx_bitmap = wx_image.ConvertToBitmap()
     dc = wx.PaintDC(win=O)
     dc = wx.BufferedDC(dc)
@@ -149,12 +158,13 @@ class detector_surface(wx.Window):
         dc.DrawCircle(x=w-p+y, y=x, radius=5)
 
   def OnSize(O, event):
-    O.recompute()
-    O.draw_image()
+    if (O.recompute()):
+      O.draw_image()
 
   def OnPaint(O, event):
     if (O.image is None):
-      O.recompute()
+      if (not O.recompute()):
+        return
     O.draw_image()
 
   def OnChar(O, event):
