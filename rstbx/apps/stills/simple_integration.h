@@ -49,9 +49,12 @@ namespace rstbx { namespace integration {
     typedef std::map<scitbx::vec2<int>, bool, fast_less_than<> > mask_t;
 
     /* member data */
-    scitbx::af::shared<double> peak;
-    scitbx::af::shared<double> background;
+    vector<double> peak;
+    vector<double> background;
     scitbx::vec2<int> origin, size;
+
+    patch() { }
+    ~patch() { }
 
     void set_origin(scitbx::vec2<int> const & _origin) {origin = _origin;}
     void set_size(scitbx::vec2<int> const & _size) {size = _size;}
@@ -86,7 +89,7 @@ namespace rstbx { namespace integration {
       jmin = + 1000000;
 
       for(mask_t::const_iterator k = peak_mask.begin();
-          k != peak_mask.end(); k ++) {
+          k != peak_mask.end(); ++ k) {
         int i = k->first[0];
         int j = k->first[1];
         if (i < imin) imin = i;
@@ -96,7 +99,7 @@ namespace rstbx { namespace integration {
       }
 
       for(mask_t::const_iterator k = background_mask.begin();
-          k != background_mask.end(); k ++) {
+          k != background_mask.end(); ++ k) {
         int i = k->first[0];
         int j = k->first[1];
         if (i < imin) imin = i;
@@ -115,7 +118,7 @@ namespace rstbx { namespace integration {
 
       counter = 0;
       for(mask_t::const_iterator k = peak_mask.begin();
-          k != peak_mask.end(); k ++) {
+          k != peak_mask.end(); ++ k) {
         int i = k->first[0] - imin;
         int j = k->first[1] - jmin;
         peak[i * size[1] + j] = peak_values[counter];
@@ -124,7 +127,7 @@ namespace rstbx { namespace integration {
 
       counter = 0;
       for(mask_t::const_iterator k = background_mask.begin();
-          k != background_mask.end(); k ++) {
+          k != background_mask.end(); ++ k) {
         int i = k->first[0] - imin;
         int j = k->first[1] - jmin;
         background[i * size[1] + j] = background_values[counter];
