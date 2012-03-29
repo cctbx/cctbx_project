@@ -181,8 +181,6 @@ maps {
     .help = Choices of scattering table for structure factors calculations
   bulk_solvent_correction = True
     .type = bool
-  apply_back_trace_of_b_cart = False
-    .type = bool
   anisotropic_scaling = True
     .type = bool
   skip_twin_detection = False
@@ -356,9 +354,7 @@ def map_coefficients_from_fmodel(fmodel, params):
   #XXX  save_k_part = fmodel.k_part()
   #XXX  save_b_part = fmodel.b_part()
   #XXX  fmodel.update_core(k_part=0, b_part=0)
-  e_map_obj = fmodel.electron_density_map(
-    fill_missing_f_obs = params.fill_missing_f_obs,
-    fill_mode          = "dfmodel")
+  e_map_obj = fmodel.electron_density_map()
   coeffs = None
   if(not params.kicked):
     coeffs = e_map_obj.map_coefficients(
@@ -412,6 +408,10 @@ def map_coefficients_from_fmodel(fmodel, params):
     coeffs = coeffs.select(~r_free_flags.data())
   #XXXif(mnm.k is not None and abs(mnm.k) == abs(mnm.n) and save_k_part is not None):
   #XXX  fmodel.update_core(k_part=save_k_part, b_part=save_b_part)
+  if(params.fill_missing_f_obs):
+    scale_to = fmodel.f_obs().average_bijvoet_mates()
+    coeffs = coeffs.complete_with(
+      other = coeffs.double_step_filtration(scale_to=scale_to))
   return coeffs
 
 def compute_xplor_maps(fmodel, params, atom_selection_manager=None,
