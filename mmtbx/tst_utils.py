@@ -676,8 +676,7 @@ END
       xray_structure               = xrs.deep_copy_scatterers(),
       target_name                  = target_name,
       sf_and_grads_accuracy_params = sfp)
-    fmodel = fmodel.remove_outliers()
-    fmodel.update_solvent_and_scale(optimize_mask = False)
+    fmodel.update_all_scales()
     alpha_beta = fmodel.alpha_beta()
     print "R-work: %6.4f"%fmodel.r_work()
     #
