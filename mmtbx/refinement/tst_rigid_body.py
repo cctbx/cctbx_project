@@ -194,6 +194,15 @@ def get_fmodel_from_pdb(pdb_file_name,
     params                = params,
     target                = target,
     r_free_flags_fraction = 0.01).fmodel
+  assert approx_equal(mmtbx.bulk_solvent.r_factor(fmodel.f_obs.data(),
+    fmodel.f_model.data()), 0)
+  sfg_params = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract()
+  sfg_params.algorithm = algorithm
+  fmodel = mmtbx.f_model.manager(
+    target_name    = target,
+    xray_structure = xray_structure,
+    f_obs          = abs(fmodel.f_model),
+    sf_and_grads_accuracy_params = sfg_params)
   assert approx_equal(fmodel.r_work(), 0)
   return fmodel
 
@@ -220,8 +229,9 @@ def finite_differences_test():
                                algorithm = "direct",
                                d_min = 2.0,
                                target = "ls_wunit_k1")
-  xray.set_scatterer_grad_flags(scatterers = fmodel.xray_structure.scatterers(),
-                                site       = True)
+  xray.set_scatterer_grad_flags(
+    scatterers = fmodel.xray_structure.scatterers(),
+    site       = True)
   for convention in ["zyz","xyz"]:
       rot_obj = mmtbx.refinement.rigid_body.euler(
         phi = 0, psi = 0, the = 0, convention = convention)
