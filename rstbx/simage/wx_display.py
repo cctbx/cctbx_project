@@ -251,7 +251,7 @@ class main_panel(wx.Panel):
       min_val=0.1,
       max_val=10,
       increment=0.1,
-      digits=2,
+      digits=6,
       label="Wavelength",
       value=O.work_params.wavelength)
 
@@ -261,7 +261,7 @@ class main_panel(wx.Panel):
       min_val=0.1,
       max_val=10,
       increment=0.1,
-      digits=2,
+      digits=6,
       label="d-min",
       value=O.work_params.d_min)
 
@@ -269,7 +269,7 @@ class main_panel(wx.Panel):
       min_val=-1,
       max_val=1,
       increment=0.01,
-      digits=3,
+      digits=6,
       label="Ewald proximity",
       value=O.work_params.ewald_proximity)
 
@@ -277,7 +277,7 @@ class main_panel(wx.Panel):
       min_val=1,
       max_val=500,
       increment=50,
-      digits=1,
+      digits=2,
       label="Detector distance",
       value=O.work_params.detector.distance)
 

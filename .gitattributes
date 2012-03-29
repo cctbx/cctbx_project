@@ -1360,6 +1360,7 @@ rstbx/cftbx/tests/example-xparm.xds -text
 rstbx/command_line/__init__.py -text
 rstbx/command_line/example_viewer.py -text
 rstbx/command_line/index.py -text
+rstbx/command_line/simage.create.py -text
 rstbx/command_line/simage.explore_completeness.py svneol=native#text/x-python
 rstbx/command_line/simage.solver.py svneol=native#text/x-python
 rstbx/command_line/simage.wx_display.py svneol=native#text/x-python

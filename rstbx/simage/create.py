@@ -252,24 +252,37 @@ def add_noise(work_params, pixels):
     noise.reshape(pixels.accessor())
     pixels += noise
 
-def compute_image(work_params):
+def compute(
+      work_params,
+      store_miller_index_i_seqs=False,
+      store_spots=False,
+      store_signals=False,
+      set_pixels=False):
   i_calc = build_i_calc(work_params)
   from scitbx.math.euler_angles import xyz_matrix
   crystal_rotation_matrix = xyz_matrix(*work_params.euler_angles_xyz)
   work_params.crystal_rotation_matrix = crystal_rotation_matrix
   from rstbx.simage import image_simple
-  pixels = image_simple(set_pixels=True).compute(
-    unit_cell=i_calc.p1_anom.unit_cell(),
-    miller_indices=i_calc.p1_anom.indices(),
-    spot_intensity_factors=i_calc.p1_anom.data(),
-    crystal_rotation_matrix=crystal_rotation_matrix,
-    ewald_radius=1/work_params.wavelength,
-    ewald_proximity=work_params.ewald_proximity,
-    signal_max=work_params.signal_max,
-    detector_distance=work_params.detector.distance,
-    detector_size=work_params.detector.size,
-    detector_pixels=work_params.detector.pixels,
-    point_spread=work_params.point_spread,
-    gaussian_falloff_scale=work_params.gaussian_falloff_scale).pixels
+  return i_calc, image_simple(
+    store_miller_index_i_seqs=store_miller_index_i_seqs,
+    store_spots=store_spots,
+    store_signals=store_signals,
+    set_pixels=set_pixels).compute(
+      unit_cell=i_calc.p1_anom.unit_cell(),
+      miller_indices=i_calc.p1_anom.indices(),
+      spot_intensity_factors=i_calc.p1_anom.data(),
+      crystal_rotation_matrix=crystal_rotation_matrix,
+      ewald_radius=1/work_params.wavelength,
+      ewald_proximity=work_params.ewald_proximity,
+      signal_max=work_params.signal_max,
+      detector_distance=work_params.detector.distance,
+      detector_size=work_params.detector.size,
+      detector_pixels=work_params.detector.pixels,
+      point_spread=work_params.point_spread,
+      gaussian_falloff_scale=work_params.gaussian_falloff_scale)
+
+def compute_image(work_params):
+  _, image_info = compute(work_params=work_params, set_pixels=True)
+  pixels = image_info.pixels
   add_noise(work_params, pixels=pixels)
   return pixels
