@@ -29,14 +29,17 @@ class manager (object) :
   def select_file (self,
                    parent,
                    message,
-                   style,
-                   wildcard,
+                   style=wx.OPEN,
+                   wildcard="All files (*.*)|*.*",
                    current_file=None,
                    multiple=False) :
     default_dir = self.last_dir
     default_file = ""
     if (current_file is not None) and (current_file != "") :
-      default_dir, default_file = os.path.split(current_file)
+      if (os.path.isabs(current_file)) :
+        default_dir, default_file = os.path.split(current_file)
+      else :
+        default_file = current_file
     dlg = wx.FileDialog(
       parent=parent,
       message=message,
