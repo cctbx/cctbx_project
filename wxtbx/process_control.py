@@ -171,7 +171,8 @@ class process_with_gui_callbacks (thread_utils.process_with_callbacks) :
 
 class simple_gui_process (process_with_gui_callbacks) :
   def __init__ (self, window, target, args=(), kwargs={}) :
-    proxy = event_agent(window, None, None)
+    # XXX fix for phenix gui - is this necessary?
+    proxy = event_agent(window, project_id=None, job_id=None)
     process_with_gui_callbacks.__init__(self,
       proxy=proxy,
       target=target,
