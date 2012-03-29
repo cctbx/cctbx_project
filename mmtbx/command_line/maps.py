@@ -267,7 +267,6 @@ def run(args, log = sys.stdout):
     outliers_rejection      = params.maps.input.reflection_data.outliers_rejection,
     skip_twin_detection     = params.maps.skip_twin_detection,
     bulk_solvent_correction = params.maps.bulk_solvent_correction,
-    apply_back_trace_of_b_cart = params.maps.apply_back_trace_of_b_cart,
     anisotropic_scaling     = params.maps.anisotropic_scaling)
   fmodel_info = fmodel.info()
   fmodel_info.show_rfactors_targets_scales_overall(out = log)
