@@ -33,7 +33,7 @@ def exercise_1 () :
   map_stats = real_space_correlation.map_statistics_for_fragment(
     fragment=hierarchy,
     fmodel=fmodel)
-  assert approx_equal(map_stats.cc, 0.9616, eps=0.0001)
+  assert approx_equal(map_stats.cc, 0.9549, eps=0.0001)
   map1_coeffs = fmodel.electron_density_map().map_coefficients("2mFo-DFc")
   map1 = map1_coeffs.fft_map(
     resolution_factor=0.25).apply_sigma_scaling().real_map()
