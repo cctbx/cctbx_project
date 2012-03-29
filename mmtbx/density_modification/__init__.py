@@ -202,18 +202,27 @@ class density_modification(object):
         self.params.initial_d_min = self.params.d_min
     self.complete_set = self.f_obs.complete_set()
 
-    ref_active = (self.f_obs.sigmas() > 0) \
+    if(self.f_obs.sigmas() is not None):
+      ref_active = (self.f_obs.sigmas() > 0) \
                & (self.f_obs.d_spacings().data() >= self.params.d_min)
+    else:
+      ref_active = (self.f_obs.d_spacings().data() >= self.params.d_min)
 
     sigma_cutoff = 0
     obs_rms = 1e4
     obs_high = rms(self.f_obs.select(ref_active).data()) * obs_rms
     obs_low = flex.min(self.f_obs.select(ref_active).data())
-    self.ref_flags_array = self.f_obs.array(data=(
-      (self.f_obs.data() > sigma_cutoff*self.f_obs.sigmas())
-      & (self.f_obs.data() >= obs_low)
-      & (self.f_obs.data() <= obs_high)
-      & (self.f_obs.d_spacings().data() > self.params.d_min)))
+    if(self.f_obs.sigmas() is not None):
+      self.ref_flags_array = self.f_obs.array(data=(
+        (self.f_obs.data() > sigma_cutoff*self.f_obs.sigmas())
+        & (self.f_obs.data() >= obs_low)
+        & (self.f_obs.data() <= obs_high)
+        & (self.f_obs.d_spacings().data() > self.params.d_min)))
+    else:
+      self.ref_flags_array = self.f_obs.array(data=(
+        (self.f_obs.data() >= obs_low)
+        & (self.f_obs.data() <= obs_high)
+        & (self.f_obs.d_spacings().data() > self.params.d_min)))
     # now setup for complete arrays
     self.ref_flags_array = self.ref_flags_array.complete_array(
       new_data_value=False, d_min=self.params.d_min)
