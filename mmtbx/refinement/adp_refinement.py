@@ -487,6 +487,7 @@ class refine_adp(object):
       verbose                  = 0,
       target_weights           = self.target_weights,
       h_params                 = self.h_params)
+    self.fmodels.fmodel_xray().xray_structure.tidy_us()
     self.model.xray_structure = self.fmodels.fmodel_xray().xray_structure
     assert minimized.xray_structure is self.model.xray_structure
     utils.assert_xray_structures_equal(
