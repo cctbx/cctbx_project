@@ -43,20 +43,16 @@ def run_00():
     #
     #print "Input b_cart :", " ".join(["%8.4f"%i for i in b_cart_start]), "tr:", tr
     F = xrs.structure_factors(d_min = 2.0).f_calc()
-    fmodel = mmtbx.f_model.manager(
-      f_obs          = abs(F),
-      xray_structure = xrs,
-      b_cart         = b_cart_start)
-    f_obs = abs(fmodel.f_model())
-    fmodel = mmtbx.f_model.manager(
-        f_obs          = f_obs,
-        xray_structure = xrs,
-        b_cart         = [0,0,0,0,0,0])
+    u_star = adptbx.u_cart_as_u_star(
+      F.unit_cell(), adptbx.b_as_u(b_cart_start))
+    fbc = mmtbx.f_model.ext.k_anisotropic(F.indices(), u_star)
+    fc = F.structure_factors_from_scatterers(xray_structure=xrs).f_calc()
+    f_obs = F.customized_copy(data = flex.abs(fc.data()*fbc))
     t0 = time.time()
     obj = bulk_solvent.aniso_u_scaler(
-      f_model        = fmodel.f_model().data(),
-      f_obs          = fmodel.f_obs().data(),
-      miller_indices = fmodel.f_obs().indices(),
+      f_model        = fc.data(),
+      f_obs          = f_obs.data(),
+      miller_indices = f_obs.indices(),
       adp_constraint_matrix = adp_constraints.gradient_sum_matrix())
     time_aniso_u_scaler += (time.time()-t0)
     b_cart_final = adptbx.u_as_b(adptbx.u_star_as_u_cart(f_obs.unit_cell(),
@@ -94,49 +90,40 @@ def run_01():
     #
     #print "Input b_cart :", " ".join(["%8.4f"%i for i in b_cart_start]), "tr:", tr
     F = xrs.structure_factors(d_min = 2.0).f_calc()
-    fmodel = mmtbx.f_model.manager(
-      f_obs          = abs(F),
-      xray_structure = xrs,
-      b_cart         = b_cart_start)
-    f_obs = abs(fmodel.f_model())
-    fmodel = mmtbx.f_model.manager(
-        f_obs          = f_obs,
-        xray_structure = xrs,
-        b_cart         = [0,0,0,0,0,0])
+    F = xrs.structure_factors(d_min = 2.0).f_calc()
+    u_star = adptbx.u_cart_as_u_star(
+      F.unit_cell(), adptbx.b_as_u(b_cart_start))
+    fbc = mmtbx.f_model.ext.k_anisotropic(F.indices(), u_star)
+    fc = F.structure_factors_from_scatterers(xray_structure=xrs).f_calc()
+    f_obs = F.customized_copy(data = flex.abs(fc.data()*fbc))
     #print bulk_solvent.r_factor(f_obs.data(), fmodel.f_model().data())
     obj = bulk_solvent.aniso_u_scaler(
-      f_model        = fmodel.f_model().data(),
-      f_obs          = fmodel.f_obs().data(),
-      miller_indices = fmodel.f_obs().indices(),
+      f_model        = fc.data(),
+      f_obs          = f_obs.data(),
+      miller_indices = f_obs.indices(),
       unit_cell      = f_obs.unit_cell())
     a = obj.a
     ####
     #print "Input a :", " ".join(["%7.3f"%i for i in a])
-    overall_anisotropic_scale = ext.overall_anisotropic_scale(
+    overall_anisotropic_scale = mmtbx.f_model.ext.k_anisotropic(
       f_obs.indices(), a, f_obs.unit_cell())
     #print bulk_solvent.r_factor(f_obs.data(), fmodel.f_model().data()*overall_anisotropic_scale)
-    fmodel = mmtbx.f_model.manager(
-      f_obs          = abs(F),
-      xray_structure = xrs)
-    f_obs = abs(fmodel.f_model())
+    f_obs = abs(fc)
     f_obs = f_obs.customized_copy(data = f_obs.data() * overall_anisotropic_scale)
     #print bulk_solvent.r_factor(f_obs.data(), fmodel.f_model().data())
-    fmodel = mmtbx.f_model.manager(
-        f_obs          = f_obs,
-        xray_structure = xrs)
     #print bulk_solvent.r_factor(f_obs.data(), fmodel.f_model().data())
     t0 = time.time()
     # XXX try "long double" to see if this decreases the tolerances
     obj = bulk_solvent.aniso_u_scaler(
-      f_model        = fmodel.f_model().data(),
-      f_obs          = fmodel.f_obs().data(),
-      miller_indices = fmodel.f_obs().indices(),
+      f_model        = fc.data(),
+      f_obs          = f_obs.data(),
+      miller_indices = f_obs.indices(),
       unit_cell      = f_obs.unit_cell())
     time_aniso_u_scaler += (time.time()-t0)
-    overall_anisotropic_scale = ext.overall_anisotropic_scale(
+    overall_anisotropic_scale = mmtbx.f_model.ext.k_anisotropic(
       f_obs.indices(), obj.a, f_obs.unit_cell())
     assert approx_equal(bulk_solvent.r_factor(f_obs.data(),
-      fmodel.f_model().data()*overall_anisotropic_scale), 0.0, 1.e-2) # XXX seems to be low
+      fc.data()*overall_anisotropic_scale), 0.0, 1.e-2) # XXX seems to be low
     #print "Output a:", " ".join(["%7.3f"%i for i in obj.a])
     assert approx_equal(a, obj.a, 1.e-3) # XXX can it be smaller?
   print "Time (aniso_u_scaler only): %6.4f"%time_aniso_u_scaler
@@ -178,49 +165,40 @@ def run_02():
     d = F.data()
     d.append(f_000)
     F = F.customized_copy(indices = i, data = d)
-    fmodel = mmtbx.f_model.manager(
-      f_obs          = abs(F),
-      xray_structure = xrs,
-      b_cart         = b_cart_start)
-    f_obs = abs(fmodel.f_model())
-    fmodel = mmtbx.f_model.manager(
-        f_obs          = f_obs,
-        xray_structure = xrs,
-        b_cart         = [0,0,0,0,0,0])
+
+    u_star = adptbx.u_cart_as_u_star(
+      F.unit_cell(), adptbx.b_as_u(b_cart_start))
+    fbc = mmtbx.f_model.ext.k_anisotropic(F.indices(), u_star)
+    fc = F.structure_factors_from_scatterers(xray_structure=xrs).f_calc()
+    f_obs = F.customized_copy(data = flex.abs(fc.data()*fbc))
     #print bulk_solvent.r_factor(f_obs.data(), fmodel.f_model().data())
     obj = bulk_solvent.aniso_u_scaler(
-      f_model        = fmodel.f_model().data(),
-      f_obs          = fmodel.f_obs().data(),
-      miller_indices = fmodel.f_obs().indices(),
+      f_model        = fc.data(),
+      f_obs          = f_obs.data(),
+      miller_indices = f_obs.indices(),
       unit_cell      = f_obs.unit_cell())
     a = obj.a
     ####
     #print "Input a :", " ".join(["%7.3f"%i for i in a])
-    overall_anisotropic_scale = ext.overall_anisotropic_scale(
+    overall_anisotropic_scale = mmtbx.f_model.ext.k_anisotropic(
       f_obs.indices(), a, f_obs.unit_cell())
     #print bulk_solvent.r_factor(f_obs.data(), fmodel.f_model().data()*overall_anisotropic_scale)
-    fmodel = mmtbx.f_model.manager(
-      f_obs          = abs(F),
-      xray_structure = xrs)
-    f_obs = abs(fmodel.f_model())
+    f_obs = abs(fc)
     f_obs = f_obs.customized_copy(data = f_obs.data() * overall_anisotropic_scale)
     #print bulk_solvent.r_factor(f_obs.data(), fmodel.f_model().data())
-    fmodel = mmtbx.f_model.manager(
-        f_obs          = f_obs,
-        xray_structure = xrs)
     #print bulk_solvent.r_factor(f_obs.data(), fmodel.f_model().data())
     t0 = time.time()
     # XXX try "long double" to see if this decreases the tolerances
     obj = bulk_solvent.aniso_u_scaler(
-      f_model        = fmodel.f_model().data(),
-      f_obs          = fmodel.f_obs().data(),
-      miller_indices = fmodel.f_obs().indices(),
+      f_model        = fc.data(),
+      f_obs          = f_obs.data(),
+      miller_indices = f_obs.indices(),
       unit_cell      = f_obs.unit_cell())
     time_aniso_u_scaler += (time.time()-t0)
-    overall_anisotropic_scale = ext.overall_anisotropic_scale(
+    overall_anisotropic_scale = mmtbx.f_model.ext.k_anisotropic(
       f_obs.indices(), obj.a, f_obs.unit_cell())
     assert approx_equal(bulk_solvent.r_factor(f_obs.data(),
-      fmodel.f_model().data()*overall_anisotropic_scale), 0.0, 1.e-2) # XXX seems to be low
+      fc.data()*overall_anisotropic_scale), 0.0, 1.e-2) # XXX seems to be low
     #print "Output a:", " ".join(["%7.3f"%i for i in obj.a])
     assert approx_equal(a, obj.a, 1.e-4) # XXX can it be smaller?
     assert overall_anisotropic_scale[len(overall_anisotropic_scale)-1]==1
