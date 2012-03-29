@@ -24,6 +24,7 @@ class DIPImage(DetectorImageBase):
     F = open(self.filename,'rb')
     F.seek(headerstart)
     self.rawheader = F.read(1024)
+    F.close()
     assert self.rawheader[0:3] # Image file self-identifies as a DIP
     #self.getEndian() not cached anyway
 
