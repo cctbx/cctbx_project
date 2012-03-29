@@ -15,13 +15,16 @@ class DTREKImage(DetectorImageBase):
 
   def read_vendor_header(self):
     G = open(self.filename, "rb")
-    assert G.read(14)=="{\nHEADER_BYTES"
-    raw = [charac for charac in G.read(6) if charac.isdigit()]
-    header_bytes = int("".join(raw))
-    assert header_bytes%512==0
-    G.seek(0)
-    padded_header = G.read(header_bytes)
-    G.close()
+    try:
+      assert G.read(14)=="{\nHEADER_BYTES"
+      raw = [charac for charac in G.read(6) if charac.isdigit()]
+      header_bytes = int("".join(raw))
+      assert header_bytes%512==0
+      G.seek(0)
+      padded_header = G.read(header_bytes)
+    finally:
+      # ensure that the file gets closed no matter what!
+      G.close()
     unpadded_header = padded_header.rstrip()
     assert unpadded_header[0:2]=="{\n"
     assert unpadded_header[-2:]=="\n}"
@@ -141,22 +144,25 @@ class DTREKImage(DetectorImageBase):
 
   def read(self):
     G = open(self.filename, "rb")
-    G.seek(self.keys["HEADER_BYTES"])
+    try:
+      G.seek(self.keys["HEADER_BYTES"])
 
-    endian_code = {'little_endian':'<','big_endian':'>'}[self.keys["BYTE_ORDER"]]
-    type_code = {'signed char':'b',
-                 'unsigned char':'B',
-                 'short int':'h',
-                 'long int':'i',
-                 'unsigned short int':'H',
-                 'unsigned long int':'I',
-                 'float IEEE':'f',
-                }[self.keys['Data_type']]
-    type_size = {'b':1,'B':1,'h':2,'H':2,'i':4,'I':4,'f':4}[type_code]
-    assert not type_code=="I" # for I, a flex.int() will exceed type limits
-    array_size = self.parameters['SIZE1'] * self.parameters['SIZE2']
-    rawdata = G.read(array_size * type_size)
-    G.close()
+      endian_code = {'little_endian':'<','big_endian':'>'}[self.keys["BYTE_ORDER"]]
+      type_code = {'signed char':'b',
+                   'unsigned char':'B',
+                   'short int':'h',
+                   'long int':'i',
+                   'unsigned short int':'H',
+                   'unsigned long int':'I',
+                   'float IEEE':'f',
+                  }[self.keys['Data_type']]
+      type_size = {'b':1,'B':1,'h':2,'H':2,'i':4,'I':4,'f':4}[type_code]
+      assert not type_code=="I" # for I, a flex.int() will exceed type limits
+      array_size = self.parameters['SIZE1'] * self.parameters['SIZE2']
+      rawdata = G.read(array_size * type_size)
+    finally:
+      # ensure that the file gets closed no matter what!
+      G.close()
       #Python prototype--
       #doesn't handle raxis uncompression & is 10x slower than C++ version
       #uncoded_data = struct.unpack(endian_code+type_code*array_size,rawdata)
