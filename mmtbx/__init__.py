@@ -61,6 +61,7 @@ class fmodels(object):
           self.fmodel_x.xray_structure = xray_structure
         self.fmodel_x.xray_structure.scattering_type_registry(custom_dict =
           self.xray_scattering_dict)
+      #assert not self.fmodel_x.xray_structure.guess_scattering_type_neutron()
     return self.fmodel_x
 
   def fmodel_neutron(self, xray_structure = None):
@@ -69,6 +70,7 @@ class fmodels(object):
         self.fmodel_n.xray_structure = xray_structure
       self.fmodel_n.xray_structure.scattering_type_registry(custom_dict =
         self.neutron_scattering_dict)
+      assert self.fmodel_n.xray_structure.guess_scattering_type_neutron()
     return self.fmodel_n
 
   def update_xray_structure(self, xray_structure = None,
@@ -109,51 +111,23 @@ class fmodels(object):
       print_statistics.make_sub_header("Neutron data", out = self.log)
       self.fmodel_neutron().info().show_all(header = message, out = self.log)
 
-  def update_bulk_solvent_and_scale(self, params = None, optimize_mask = False,
-        optimize_mask_thorough = False, force_update_f_mask = False,
-        nproc=1, log=None):
+  def update_all_scales(self, params = None, optimize_mask = False,
+        force_update_f_mask = False, nproc=1, log=None):
     if log is None: log = self.log
+    fast=True
+    if(params.mode=="slow"): fast=False
     from mmtbx.refinement import print_statistics
-    print_statistics.make_header("bulk solvent modeling and scaling",
-      out = log)
+    print_statistics.make_header("updating all scales", out = log)
     self.update_xray_structure(update_f_calc = True, update_f_mask = True,
       force_update_f_mask = force_update_f_mask)
     if(self.fmodel_x is not None):
-      self.fmodel_xray().update_solvent_and_scale(params = params,
-        out = log, verbose =-1, optimize_mask = optimize_mask,
-        optimize_mask_thorough = optimize_mask_thorough, nproc=nproc)
+      if(self.fmodel_n is not None): print >> log, "X-ray:"
+      self.fmodel_xray().update_all_scales(params = params, fast=fast,
+        log = log, show = True, optimize_mask = optimize_mask, nproc=nproc)
     if(self.fmodel_n is not None):
-      self.fmodel_neutron().update_solvent_and_scale(params = params,
-        out = log, verbose =-1, optimize_mask = optimize_mask,
-        optimize_mask_thorough = optimize_mask_thorough, nproc=nproc)
-    self.show_short(log=log)
-
-  def remove_outliers(self, xray=True, neutron=True):
-    from mmtbx.refinement import print_statistics
-    nx_old = self.fmodel_x.f_obs().size()
-    nn_old = None
-    have_header = False
-    if (self.fmodel_x is not None) and \
-       (xray):
-      print_statistics.make_sub_header("Outlier rejection", out = self.log)
-      have_header = True
-      if(self.fmodel_n is not None):
-        print_statistics.make_sub_header("x-ray data", out = self.log)
-      self.fmodel_x = self.fmodel_xray().remove_outliers(
-        show = True, log = self.log)
-    if(self.fmodel_n is not None) and \
-      (neutron):
-      if (not have_header) :
-        print_statistics.make_sub_header("Outlier rejection", out = self.log)
-      nn_old = self.fmodel_n.f_obs().size()
-      print_statistics.make_sub_header("neutron data", out = self.log)
-      self.fmodel_n = self.fmodel_neutron().remove_outliers(
-        show = True, log = self.log)
-      nn_new = self.fmodel_n.f_obs().size()
-    print >> self.log
-    nx_new = self.fmodel_x.f_obs().size()
-    if(nx_old != nx_new or (nn_old is not None and nn_old != nn_new)):
-      self.create_target_functors()
+      print >> log, "Neutron:"
+      self.fmodel_neutron().update_all_scales(params = params, fast=fast,
+        log = log, show = True, optimize_mask = optimize_mask, nproc=nproc)
 
   def show_targets(self, log, text=""):
     prefix_x = ""
