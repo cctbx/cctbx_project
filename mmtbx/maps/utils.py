@@ -135,11 +135,10 @@ class fast_maps_from_hkl_file (object) :
       outliers_rejection=True,
       skip_twin_detection=False,
       bulk_solvent_correction=True,
-      apply_back_trace_of_b_cart=False,
       anisotropic_scaling=True)
     if (self.save_fmodel) :
       self.fmodel = fmodel
-    (f_map, df_map) = get_maps_from_fmodel(fmodel, use_filled=self.fill_maps)
+    (f_map, df_map) = get_maps_from_fmodel(fmodel)
     anom_map = None
     if (self.anomalous_map) and (self.f_obs.anomalous_flag()) :
       anom_map = get_anomalous_map(fmodel)
@@ -151,9 +150,8 @@ class fast_maps_from_hkl_file (object) :
       self.map_out = os.path.splitext(self.file_name)[0] + "_map_coeffs.mtz"
     write_map_coeffs(f_map, df_map, self.map_out, anom_map)
 
-def get_maps_from_fmodel (fmodel, use_filled=False) :
-  map_manager = fmodel.electron_density_map(fill_missing_f_obs=use_filled,
-                                            fill_mode="dfmodel")
+def get_maps_from_fmodel (fmodel) :
+  map_manager = fmodel.electron_density_map()
   fwt_coeffs = map_manager.map_coefficients(map_type = "2mFo-DFc")
   if fwt_coeffs.anomalous_flag() :
     fwt_coeffs = fwt_coeffs.average_bijvoet_mates()
@@ -162,9 +160,8 @@ def get_maps_from_fmodel (fmodel, use_filled=False) :
     delfwt_coeffs = delfwt_coeffs.average_bijvoet_mates()
   return (fwt_coeffs, delfwt_coeffs)
 
-def get_anomalous_map (fmodel, use_filled=False) :
-  map_manager = fmodel.electron_density_map(fill_missing_f_obs=use_filled,
-                                            fill_mode="dfmodel")
+def get_anomalous_map (fmodel) :
+  map_manager = fmodel.electron_density_map()
   anom_coeffs = map_manager.map_coefficients(map_type="anom")
   if (anom_coeffs.anomalous_flag()) :
     anom_coeffs = anom_coeffs.average_bijvoet_mates()
