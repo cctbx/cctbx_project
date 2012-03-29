@@ -173,13 +173,9 @@ class mvd(object):
     print >> log, "   ", result
     #
     print >> log, "  Model_vs_Data:"
-    b_cart = " ".join([("%8.2f"%v).strip() for v in self.model_vs_data.b_cart])
     result = [
       "r_work(re-computed)                : %s"%format_value("%-6.4f",self.model_vs_data.r_work).strip(),
-      "r_free(re-computed)                : %s"%format_value("%-6.4f",self.model_vs_data.r_free).strip(),
-      "bulk_solvent_(k_sol,b_sol)         : %s %s"%(" ".join(["%-5.2f"%i for i in self.model_vs_data.k_sol]).strip(),
-                                                    format_value("%-7.2f",self.model_vs_data.b_sol)),
-      "overall_anisotropic_scale_(b_cart) : %-s"%b_cart]
+      "r_free(re-computed)                : %s"%format_value("%-6.4f",self.model_vs_data.r_free).strip()]
     sc = self.model_vs_data.solvent_content_via_mask
     if (sc is not None): sc *= 100
     result.append("solvent_content_estimated_via_mask : %-s %%"
@@ -567,9 +563,6 @@ def show_model_vs_data(fmodel):
     r_free                   = r_free,
     r_work_outer_shell       = r_work_outer_shell,
     r_free_outer_shell       = r_free_outer_shell,
-    k_sol                    = fmodel.k_sols(),
-    b_sol                    = fmodel.b_sol(),
-    b_cart                   = fmodel.b_cart(),
     solvent_content_via_mask = sc,
     sigmaa_plot              = sigmaa_plot)
 
@@ -1020,8 +1013,6 @@ def summarize_results (mvd_obj) :
     adp_mean_wat=convert_float(getattr(wat_stats, "b_mean", None)),
     n_aniso=getattr(xs_stats, "n_aniso", None),
     wilson_b=mvd_obj.data.wilson_b,
-    b_sol=mvd_obj.model_vs_data.b_sol,
-    k_sol=mvd_obj.model_vs_data.k_sol,
     solvent_content_via_mask=mvd_obj.model_vs_data.solvent_content_via_mask,
     bond_rmsd=getattr(geometry_stats, "b_mean", None),
     bond_max_deviation=getattr(geometry_stats, "b_max", None),
