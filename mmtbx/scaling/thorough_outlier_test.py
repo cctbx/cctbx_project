@@ -25,7 +25,7 @@ def exercise(d_min            = 3.5,
       ### get random structure
       xray_structure = random_structure.xray_structure(
                           space_group_info       = sgtbx.space_group_info(sg),
-                          elements               = (("O","C","N")*200),
+                          elements               = (("O","C","N")*50),
                           volume_per_atom        = 100,
                           min_distance           = 1.5,
                           general_positions_only = True,
@@ -59,7 +59,6 @@ def exercise(d_min            = 3.5,
           tmp1 = om.basic_wilson_outliers()
           tmp2 = om.extreme_wilson_outliers()
           tmp3 = om.beamstop_shadow_outliers()
-
           # start loop over distorted models
           for error in [0.0,  0.8]:
               for fraction in [0.0,0.5]:
@@ -69,19 +68,20 @@ def exercise(d_min            = 3.5,
                 xrs_dc = xrs_dc.select(sel)
                 xrs_dc.shake_sites_in_place(rms_difference=error)
                 xrs_dc.scattering_type_registry(table = scattering_table)
-
-                fmodel = mmtbx.f_model.manager(xray_structure    = xrs_dc,
-                                               r_free_flags      = flags,
-                                               target_name       = "ls_wunit_k1",
-                                               f_obs             = f_obs,
-                                               b_cart            = b_cart)
-                for k_sol in [0.10, 0.30, 0.50]:
-                  for b_sol in [60, 80]:
-                     fmodel.update(k_sols = [k_sol], b_sol = b_sol)
-                     a,b = fmodel.alpha_beta()
-                     o_sel =  om.model_based_outliers(f_model = fmodel.f_model())
-                     n_out = o_sel.data().count(False)
-                     assert (n_out < 50)
+                for k_sol in [0.50,]:
+                  for b_sol in [60.,]:
+                    fmodel = mmtbx.f_model.manager(
+                       xray_structure = xrs_dc,
+                       r_free_flags   = flags,
+                       target_name    = "ls_wunit_k1",
+                       f_obs          = f_obs,
+                       k_sol          = k_sol,
+                       b_sol          = b_sol,
+                       b_cart         = b_cart)
+                    a,b = fmodel.alpha_beta()
+                    o_sel =  om.model_based_outliers(f_model = fmodel.f_model())
+                    n_out = o_sel.data().count(False)
+                    assert (n_out < 5)
 
 def run_call_back(flags, space_group_info):
   exercise(space_group_info=space_group_info)
