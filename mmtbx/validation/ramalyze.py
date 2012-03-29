@@ -506,8 +506,11 @@ Example:
     if (resType == "general"):
       if (value < 0.0005): return True
       else: return False
+    elif (resType == "cis-proline"):
+      if (value < 0.0020): return True
+      else: return False
     else:
-      if (value < 0.002): return True
+      if (value < 0.0010): return True
       else: return False
   #}}}
 
