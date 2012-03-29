@@ -58,12 +58,25 @@ namespace rstbx { namespace integration {
 
     /* actually generate the profile */
 
-    void generate_profile(mask_t & peak_mask,
-                          scitbx::af::shared<double> & peak_values,
-                          mask_t & background_mask,
-                          scitbx::af::shared<double> & background_values)
+    void generate_profile(mask_t const & peak_mask,
+                          scitbx::af::shared<double> const & peak_values,
+                          mask_t const & background_mask,
+                          scitbx::af::shared<double> const & background_values)
     {
       int imin, imax, jmin, jmax, counter;
+      double peak_count;
+
+      /* check that this peak is worth printing e.g. has > 100 counts */
+
+      peak_count = 0.0;
+
+      for (int j = 0; j < peak_values.size(); j ++) {
+        peak_count += peak_values[j];
+      }
+
+      if (peak_count < 100.0) {
+        return;
+      }
 
       /* loop over mask to determine profile limits */
 
@@ -97,19 +110,15 @@ namespace rstbx { namespace integration {
       size[0] = imax - imin;
       size[1] = jmax - jmin;
 
-      for (int i = imin; i < imax; i ++ ){
-        for (int j = jmin; j < jmax; j ++) {
-          peak.push_back(0.0);
-          background.push_back(0.0);
-        }
-      }
+      peak.resize(size[0] * size[1], 0);
+      background.resize(size[0] * size[1], 0);
 
       counter = 0;
       for(mask_t::const_iterator k = peak_mask.begin();
           k != peak_mask.end(); k ++) {
         int i = k->first[0] - imin;
         int j = k->first[1] - jmin;
-        peak[i * size[0] + j] = peak_values[counter];
+        peak[i * size[1] + j] = peak_values[counter];
         counter ++;
       }
 
@@ -118,17 +127,17 @@ namespace rstbx { namespace integration {
           k != background_mask.end(); k ++) {
         int i = k->first[0] - imin;
         int j = k->first[1] - jmin;
-        background[i * size[0] + j] = background_values[counter];
+        background[i * size[1] + j] = background_values[counter];
         counter ++;
       }
 
       /* now print this out to see if it works */
 
-      printf("Peak %d %d\n", size[0], size[1]);
+      printf("Peak %d %d origin %d %d\n", size[0], size[1], origin[0], origin[1]);
 
       for (int i = 0; i < size[0]; i ++) {
         for (int j = 0; j < size[1]; j ++) {
-          printf(" %5.f", peak[i * size[0] + j]);
+          printf(" %5.f", peak[i * size[1] + j]);
         }
         printf("\n");
       }
@@ -137,7 +146,7 @@ namespace rstbx { namespace integration {
 
       for (int i = 0; i < size[0]; i ++) {
         for (int j = 0; j < size[1]; j ++) {
-          printf(" %5.f", background[i * size[0] + j]);
+          printf(" %5.f", background[i * size[1] + j]);
         }
         printf("\n");
       }
@@ -490,9 +499,6 @@ namespace rstbx { namespace integration {
         BP.finish();
 
         /*
-          don't write out patch information (i.e. spot profiles) for the moment
-          as I am not sure that this is working correctly.
-
         patch p;
         p.generate_profile(ISmasks[i], signal, BSmasks[i], bkgrnd);
         */
