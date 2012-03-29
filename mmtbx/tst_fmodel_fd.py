@@ -91,59 +91,64 @@ def exercise(space_group_info,
       xrs = xray_structure.deep_copy_scatterers()
       xrs.shake_sites_in_place(rms_difference=0.3)
       for target in mmtbx.refinement.targets.target_names:
-          if (quick):
-            if (target not in ["ls_wunit_k1", "ml", "mlhl", "ml_sad"]):
-              continue
-          if (target == "mlhl"):
-            if (have_non_zero_fdp): continue # XXX gradients not correct!
-            experimental_phases = generate_random_hl(miller_set=f_obs)
-          else:
-            experimental_phases = None
-          if (target == "ml_sad"
-                and (not anomalous_flag or mmtbx.refinement.targets.phaser is None)):
+        if (quick):
+          if (target not in ["ls_wunit_k1", "ml", "mlhl", "ml_sad"]):
             continue
-          print "  ",target
-          xray.set_scatterer_grad_flags(
-                                   scatterers = xrs.scatterers(),
-                                   site       = True)
-          fmodel = mmtbx.f_model.manager(
-            xray_structure               = xrs,
-            f_obs                        = f_obs,
-            r_free_flags                 = flags,
-            target_name                  = target,
-            abcd                         = experimental_phases,
-            sf_and_grads_accuracy_params = sfg_params,
-            k_sol                        = k_sol,
-            b_sol                        = b_sol,
-            b_cart                       = b_cart,
-            mask_params                  = masks.mask_master_params.extract())
-          fmodel.update_xray_structure(
-            xray_structure=xrs,
-            update_f_calc=True,
-            update_f_mask=True)
-          xray.set_scatterer_grad_flags(
-            scatterers=fmodel.xray_structure.scatterers(),
-            site=True)
-          fmodel.update()
-          t_f = fmodel.target_functor()
-          t_f.prepare_for_minimization()
-          gs = t_f(compute_gradients=True).d_target_d_site_cart().as_double()
-          gfd = finite_differences_site(target_functor=t_f)
-          cc = flex.linear_correlation(gs, gfd).coefficient()
-          if (0 or verbose):
-            print "ana:", list(gs)
-            print "fin:", list(gfd)
-            print "rat:", [f/a for a,f in zip(gs,gfd)]
-            print target, "corr:", cc, space_group_info
-            print
-          diff = gs - gfd
-          diff /= max(1, flex.max(flex.abs(gfd)))
-          tolerance = 1.2e-5
-          assert approx_equal(abs(flex.min(diff) ), 0.0, tolerance)
-          assert approx_equal(abs(flex.mean(diff)), 0.0, tolerance)
-          assert approx_equal(abs(flex.max(diff) ), 0.0, tolerance)
-          assert approx_equal(cc, 1.0, tolerance)
-          fmodel.model_error_ml()
+        if (target == "mlhl"):
+          if (have_non_zero_fdp): continue # XXX gradients not correct!
+          experimental_phases = generate_random_hl(miller_set=f_obs)
+        else:
+          experimental_phases = None
+        if (target == "ml_sad"
+              and (not anomalous_flag or mmtbx.refinement.targets.phaser is None)):
+          continue
+        print "  ",target
+        xray.set_scatterer_grad_flags(
+          scatterers = xrs.scatterers(),
+          site       = True)
+        ss = 1./flex.pow2(f_obs.d_spacings().data()) / 4.
+        u_star = adptbx.u_cart_as_u_star(
+          f_obs.unit_cell(), adptbx.b_as_u(b_cart))
+        k_anisotropic = mmtbx.f_model.ext.k_anisotropic(
+          f_obs.indices(), u_star)
+        k_mask = mmtbx.f_model.ext.k_mask(ss, k_sol, b_sol)
+        fmodel = mmtbx.f_model.manager(
+          xray_structure               = xrs,
+          f_obs                        = f_obs,
+          r_free_flags                 = flags,
+          target_name                  = target,
+          abcd                         = experimental_phases,
+          sf_and_grads_accuracy_params = sfg_params,
+          k_mask                       = k_mask,
+          k_anisotropic                = k_anisotropic,
+          mask_params                  = masks.mask_master_params.extract())
+        fmodel.update_xray_structure(
+          xray_structure=xrs,
+          update_f_calc=True,
+          update_f_mask=True)
+        xray.set_scatterer_grad_flags(
+          scatterers=fmodel.xray_structure.scatterers(),
+          site=True)
+        fmodel.update_xray_structure(update_f_calc=True)
+        t_f = fmodel.target_functor()
+        t_f.prepare_for_minimization()
+        gs = t_f(compute_gradients=True).d_target_d_site_cart().as_double()
+        gfd = finite_differences_site(target_functor=t_f)
+        cc = flex.linear_correlation(gs, gfd).coefficient()
+        if (0 or verbose):
+          print "ana:", list(gs)
+          print "fin:", list(gfd)
+          print "rat:", [f/a for a,f in zip(gs,gfd)]
+          print target, "corr:", cc, space_group_info
+          print
+        diff = gs - gfd
+        diff /= max(1, flex.max(flex.abs(gfd)))
+        tolerance = 1.2e-5
+        assert approx_equal(abs(flex.min(diff) ), 0.0, tolerance)
+        assert approx_equal(abs(flex.mean(diff)), 0.0, tolerance)
+        assert approx_equal(abs(flex.max(diff) ), 0.0, tolerance)
+        assert approx_equal(cc, 1.0, tolerance)
+        fmodel.model_error_ml()
 
 def run_call_back(flags, space_group_info):
   exercise(
