@@ -233,17 +233,12 @@ class refinement_monitor(object):
     if(self.model_ini is None): self.model_ini = model.deep_copy()
     if(wilson_b is not None): self.wilson_b = wilson_b
     self.steps.append(step)
-    ksols = tuple(fmodel.k_sols())
     ###
     self.r_works         .append(fmodel.r_work()                  )
     self.r_frees         .append(fmodel.r_free()                  )
     t_r = fmodel.target_functor()(compute_gradients=False)
     self.targets_w       .append(t_r.target_work())
     self.targets_t       .append(t_r.target_test())
-    self.k_sols          .append(  ksols      )
-    self.b_sols          .append(fmodel.b_sol()          )
-    self.b_anisos        .append(fmodel.b_cart()                  )
-    self.n_k_sols = max(self.n_k_sols,len(ksols))
     if(target_weights is not None):
        self.wxcs            .append(target_weights.wx_xyz()          )
        self.wxus            .append(target_weights.wx_adp()          )
@@ -657,22 +652,7 @@ class refinement_monitor(object):
               print >> out, format % (a,b)
           print >> out, remark + separator
     #
-    #
-#    if(not self.short):
-#       a,b,c,d,e,f,g,h,i,j = [None,]*10
-#       if(len(self.wus) > 0):
-#          print >> out, remark + " stage      adp_target      wu"
-#          format = remark + "%9s %12.4e %7.3f"
-#          for a,b,c in zip(self.steps,self.tus,self.wus):
-#              print >> out, format % (a,b,c)
-#       else:
-#          print >> out, remark + " stage      adp_target"
-#          format = remark + "%9s %12.4e"
-#          for a,b in zip(self.steps,self.tus):
-#              print >> out, format % (a,b)
-#       print >> out, remark + separator
     out.flush()
-    #
     #
     t2 = time.time()
     time_collect_and_process += (t2 - t1)
