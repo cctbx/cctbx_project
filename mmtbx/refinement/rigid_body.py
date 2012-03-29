@@ -508,9 +508,15 @@ class manager(object):
             if(bss is not None and params.bulk_solvent_and_scale):
                if(fmodel_copy.f_obs().d_min() > 3.0):
                   bss.anisotropic_scaling=False
-                  bss.apply_back_trace_of_b_cart=False
-               fmodel_copy.update_solvent_and_scale(
-                 params = bss, out = log, verbose = -1, optimize_mask=False)
+               fast=True
+               if(bss.mode=="slow"): fast=False
+               fmodel_copy.update_all_scales(
+                 params               = bss,
+                 fast                 = fast,
+                 log                  = log,
+                 remove_outliers      = False,
+                 optimize_mask        = False,
+                 refine_hd_scattering = False)
                if(fmodel_copy.f_obs().d_min() > 3.0):
                   assert save_bss_anisotropic_scaling is not None
                   bss.anisotropic_scaling = save_bss_anisotropic_scaling
@@ -552,8 +558,15 @@ class manager(object):
           update_f_calc  = True,
           update_f_mask  = True)
         if(bss is not None and params.bulk_solvent_and_scale):
-          fmodel.update_solvent_and_scale(params = bss, out = log, verbose= -1,
-            optimize_mask=False)
+          fast=True
+          if(bss.mode=="slow"): fast=False
+          fmodel_copy.update_all_scales(
+            params               = bss,
+            fast                 = fast,
+            log                  = log,
+            remove_outliers      = False,
+            optimize_mask        = False,
+            refine_hd_scattering = False)
         self.show(fmodel = fmodel,
                   r_mat  = self.total_rotation,
                   t_vec  = self.total_translation,
@@ -563,8 +576,15 @@ class manager(object):
           monitors_call_back_handler(
             monitor=None, model=None, fmodel=fmodel, method="rigid_body")
     if(bss is not None and params.bulk_solvent_and_scale):
-      fmodel.update_solvent_and_scale(params = bss, out=log, verbose=-1,
-        optimize_mask=False)
+      fast=True
+      if(bss.mode=="slow"): fast=False
+      fmodel_copy.update_all_scales(
+        params               = bss,
+        fast                 = fast,
+        log                  = log,
+        remove_outliers      = False,
+        optimize_mask        = False,
+        refine_hd_scattering = False)
     print >> log
     self.show(fmodel = fmodel,
               r_mat  = self.total_rotation,
@@ -582,8 +602,7 @@ class manager(object):
                          save_xray_structure, log):
     r_work = fmodel.r_work()
     r_free = fmodel.r_free()
-    if((r_work > save_r_work and abs(r_work-save_r_work) > 0.005) or
-       (r_free > save_r_free and abs(r_free-save_r_free) > 0.005)):
+    if((r_work > save_r_work and abs(r_work-save_r_work) > 0.01)):
       print >> log
       if (self.params.disable_final_r_factor_check) :
         print >> log, "Warning: R-factors increased during refinement."
