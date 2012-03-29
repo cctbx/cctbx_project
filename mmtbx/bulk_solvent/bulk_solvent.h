@@ -39,12 +39,12 @@ public:
         FloatType uvs_plus_usv = std::real(f_mdl*std::conj(f_m)+f_m*std::conj(f_mdl));
         k_f_mask += ksol * f_m;
         FloatType theta = (uvs_plus_usv)/(f_model_abs*2);
-        FloatType coeff = theta * fm.f_aniso[i];
+        FloatType coeff = theta * fm.k_anisotropic[i];
         grad_k_sols[j] =  coeff * f_b;
       }
       FloatType uvs_plus_usv_bsol =
         std::real(f_mdl*std::conj(k_f_mask)+k_f_mask*std::conj(f_mdl));
-      grad_b_sol =-uvs_plus_usv_bsol*fm.f_aniso[i]*f_b*fm.ss[i]/(f_model_abs*2);
+      grad_b_sol =-uvs_plus_usv_bsol*fm.k_anisotropic[i]*f_b*fm.ss[i]/(f_model_abs*2);
     }
   }
   FloatType grad_b_sol;
@@ -379,7 +379,7 @@ public:
         if(root>=0) {
           x.push_back(root);
         }
-        MMTBX_ASSERT(std::abs(*ceo.residual()[j]) < 1.e-4);
+        MMTBX_ASSERT(std::abs(*ceo.residual()[j]) < 1.e-4); 
       }
     }
     // put together plausible results
@@ -671,14 +671,14 @@ template <typename FloatType, typename ComplexType>
    af::const_ref<FloatType>   const& ss,
    FloatType                  const& scalar_scale,
    af::const_ref<FloatType>   const& overall_scale,
-   af::const_ref<FloatType>   const& overall_anisotropic_scale,
+   af::const_ref<FloatType>   const& k_anisotropic,
    FloatType                  const& r_ref)
  {
    MMTBX_ASSERT(f_mask.size() == f_obs.size());
    MMTBX_ASSERT(f_obs.size() == f_calc.size());
    MMTBX_ASSERT(ss.size() == f_calc.size());
    MMTBX_ASSERT(overall_scale.size() == f_calc.size());
-   MMTBX_ASSERT(overall_anisotropic_scale.size() == f_calc.size());
+   MMTBX_ASSERT(k_anisotropic.size() == f_calc.size());
    FloatType k_best = 0.0;
    FloatType b_best = 0.0;
    FloatType r_best = r_ref;
@@ -691,7 +691,7 @@ template <typename FloatType, typename ComplexType>
        for(std::size_t k=0; k < f_obs.size(); k++) {
          FloatType kbs = ks * std::exp(mbs * ss[k]);
          f_model[k] = scalar_scale * overall_scale[k] *
-           overall_anisotropic_scale[k] * (f_calc[k] + kbs * f_mask[k]);
+           k_anisotropic[k] * (f_calc[k] + kbs * f_mask[k]);
        }
        FloatType r = r_factor(f_obs, f_model.const_ref());
        if(r < r_best) {
@@ -709,7 +709,7 @@ template <typename FloatType, typename ComplexType>
 
 template <typename FloatType>
  af::shared<FloatType>
- set_to_liear_interpolated(
+ set_to_linear_interpolated(
    af::const_ref<FloatType> const& ss,
    FloatType                const& k,
    FloatType                const& b,
