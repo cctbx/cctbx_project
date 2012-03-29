@@ -57,9 +57,8 @@ def run():
 
   f_model_manager.info().show_all()
 
-  f_model_manager.update(
-    k_sols = [1.2],
-    b_sol = 30.0)
+  k_mask = mmtbx.f_model.ext.k_mask(f_model_manager.ss, 1.2, 30)
+  f_model_manager.update(k_mask = k_mask)
 
   f_model = f_model_manager.f_model()
   f_bulk = f_model_manager.f_bulk()
