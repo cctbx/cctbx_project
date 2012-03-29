@@ -505,6 +505,16 @@ class structure(crystal.special_position_settings):
                    .n_independent_params()] += 1
     return result
 
+  def guess_scattering_type_neutron(self):
+    ac,bc,cc = 0,0,0
+    result = False
+    for ugl in self.scattering_type_registry().unique_gaussians_as_list():
+      ac += len(ugl.array_of_a())
+      bc += len(ugl.array_of_b())
+      cc += ugl.c()
+    if(ac+bc == 0 and cc != 0): result = True
+    return result
+
   def scattering_types_counts_and_occupancy_sums(self):
     result = []
     reg = self.scattering_type_registry()

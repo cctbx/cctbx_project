@@ -1393,7 +1393,17 @@ def exercise_select_within():
   assert sw.count(True) > 0
   assert sw.count(True) < 100
 
+def exercise_guess_scattering_type_neutron():
+  xs = random_structure.xray_structure(
+    space_group_info = sgtbx.space_group_info("P1"),
+    elements         = ["N","H","Mn","D","Mg","Au","K"]*5,
+    unit_cell        = (10, 20, 30, 70, 80, 120))
+  assert not xs.guess_scattering_type_neutron()
+  xs.switch_to_neutron_scattering_dictionary()
+  assert xs.guess_scattering_type_neutron()
+
 def run():
+  exercise_guess_scattering_type_neutron()
   exercise_discard_scattering_type_registry()
   exercise_delta_sites_cart_measure()
   exercise_xray_structure_as_py_code()
