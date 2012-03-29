@@ -338,7 +338,7 @@ class target_result(target_result_mixin):
   def d_target_d_f_calc_work(self):
     return self.manager.f_obs_work().array(
       data=self.core_result.gradients_work()
-          *self.manager.fb_cart_work())
+          *self.manager.k_anisotropic_work()*self.manager.k_isotropic_work())
 
 def ls_ff_weights(f_obs, atom, B):
   d_star_sq_data = f_obs.d_star_sq().data()
