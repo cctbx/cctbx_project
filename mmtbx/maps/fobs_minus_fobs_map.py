@@ -84,9 +84,7 @@ def compute_fo_minus_fo_map(data_arrays, xray_structure, log, silent,
       target_name    = "ls_wunit_k1",
       f_obs          = d)
     fmodel.remove_outliers()
-    params = bss.master_params.extract()
-    params.apply_back_trace_of_b_cart=False
-    fmodel.update_solvent_and_scale(params=params)
+    fmodel.update_solvent_and_scale()
     if(not silent):
       fmodel.info().show_rfactors_targets_scales_overall()
       print >> log
@@ -95,9 +93,7 @@ def compute_fo_minus_fo_map(data_arrays, xray_structure, log, silent,
   f_obss = []
   for fmodel in fmodels:
     obs = fmodel.f_obs()
-    fb_cart  = fmodel.fb_cart()
-    scale_k2 = fmodel.scale_k2()
-    f_obs_scale   = 1.0 / fb_cart * scale_k2
+    f_obs_scale   = 1.0 / fmodel.k_anisotropic() / fmodel.k_isotropic()
     obs = miller.array(miller_set = fmodel.f_model(),
                        data       = obs.data()*f_obs_scale)
     f_obss.append(obs)
