@@ -1899,6 +1899,7 @@ wxtbx/layout.py -text
 wxtbx/listeditor.py -text
 wxtbx/metallicbutton.py -text
 wxtbx/monitor.py -text
+wxtbx/path_dialogs.py -text
 wxtbx/phil_controls/__init__.py -text
 wxtbx/phil_controls/array_label.py -text
 wxtbx/phil_controls/boolctrl.py -text
