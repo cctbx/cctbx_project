@@ -219,7 +219,7 @@ def simulate_f_obs(root, crystal_symmetry, params):
       mask_params    = params.f_obs.f_bulk.mask,
       sf_and_grads_accuracy_params = params.f_obs.f_calc.accuracy)
     fcd = fmodel.f_calc().data()
-    fms = fmodel.shell_f_masks()
+    fms = fmodel.f_masks()
     if(i_m==0):
       f_calc_data = fcd
       f_masks_data = []
