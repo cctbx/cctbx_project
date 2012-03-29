@@ -25,7 +25,7 @@ namespace {
                                      self.uc,
                                      self.f_model,
                                      self.f_bulk,
-                                     self.f_aniso,
+                                     self.k_anisotropic,
                                      self.f_b_sol,
                                      self.ss,
                                      self.f_model_no_aniso_scale);
@@ -73,12 +73,16 @@ namespace {
            af::shared<std::complex<double> > const&,
            af::shared<double> const&,
            af::shared<double> const&,
-           af::shared<double> const& >(
+           af::shared<double> const&,
+           af::shared<std::complex<double> > const&,
+           af::shared<std::complex<double> > const& >(
                                          (arg("f_calc"),
                                           arg("f_mask"),
                                           arg("k_isotropic"),
                                           arg("k_anisotropic"),
-                                          arg("k_mask"))))
+                                          arg("k_mask"),
+                                          arg("f_part1"),
+                                          arg("f_part2"))))
       .add_property("f_calc",        make_getter(&core<>::f_calc,       rbv()))
       .add_property("b_sol",         make_getter(&core<>::b_sol,        rbv()))
       .add_property("f_part1",       make_getter(&core<>::f_part1,      rbv()))
@@ -88,7 +92,7 @@ namespace {
       .add_property("uc",            make_getter(&core<>::uc,           rbv()))
       .add_property("f_model",       make_getter(&core<>::f_model,      rbv()))
       .add_property("f_bulk",        make_getter(&core<>::f_bulk,       rbv()))
-      .add_property("f_aniso",       make_getter(&core<>::f_aniso,      rbv()))
+      .add_property("k_anisotropic", make_getter(&core<>::k_anisotropic,rbv()))
       .add_property("f_b_sol",       make_getter(&core<>::f_b_sol,      rbv()))
       .add_property("ss",            make_getter(&core<>::ss,           rbv()))
       .add_property("f_model_no_aniso_scale", make_getter(&core<>::f_model_no_aniso_scale, rbv()))
@@ -102,17 +106,50 @@ namespace {
       .def("__getinitargs__", getinitargs)
     ;
 
-    def("overall_anisotropic_scale",
+    typedef return_value_policy<return_by_value> rbv;
+    class_<data<> >("data")
+      .def(init<
+           af::shared<std::complex<double> > const&,
+           af::shared<std::complex<double> > const&,
+           af::shared<double> const&,
+           af::shared<double> const&,
+           af::shared<std::complex<double> > const&,
+           af::shared<std::complex<double> > const& >(
+                                         (arg("f_calc"),
+                                          arg("f_bulk"),
+                                          arg("k_isotropic"),
+                                          arg("k_anisotropic"),
+                                          arg("f_part1"),
+                                          arg("f_part2"))))
+      .add_property("f_calc",        make_getter(&data<>::f_calc,       rbv()))
+      .add_property("f_bulk",        make_getter(&data<>::f_bulk,       rbv()))
+      .add_property("f_part1",       make_getter(&data<>::f_part1,      rbv()))
+      .add_property("f_part2",       make_getter(&data<>::f_part2,      rbv()))
+      .add_property("f_model",       make_getter(&data<>::f_model,      rbv()))
+      .add_property("k_anisotropic", make_getter(&data<>::k_anisotropic,rbv()))
+      .add_property("f_model_no_aniso_scale", make_getter(&data<>::f_model_no_aniso_scale, rbv()))
+      .enable_pickling()
+      .def("__getinitargs__", getinitargs)
+    ;
+
+    def("k_anisotropic",
       (af::shared<double>(*)
         (af::const_ref<cctbx::miller::index<> > const&,
-         scitbx::sym_mat3<double> const&)) overall_anisotropic_scale);
+         scitbx::sym_mat3<double> const&)) k_anisotropic);
    ;
 
-   def("overall_anisotropic_scale",
+   def("k_anisotropic",
       (af::shared<double>(*)
         (af::const_ref<cctbx::miller::index<> > const&,
          af::shared<double> const&,
-         cctbx::uctbx::unit_cell const&)) overall_anisotropic_scale);
+         cctbx::uctbx::unit_cell const&)) k_anisotropic);
+   ;
+
+   def("k_mask",
+      (af::shared<double>(*)
+        (af::const_ref<double> const&,
+         double const&,
+         double const&)) k_mask);
    ;
 
   }
