@@ -171,13 +171,13 @@ namespace {
          af::tiny<double, 4>   const& coeffs)) set_k_mask_to_cubic_polynom);
    ;
 
-   def("set_to_liear_interpolated",
+   def("set_to_linear_interpolated",
       (af::shared<double>(*)
         (af::const_ref<double> const& ss,
          double                const& k,
          double                const& b,
          af::const_ref<bool>   const& selection,
-         af::shared<double>           data)) set_to_liear_interpolated);
+         af::shared<double>           data)) set_to_linear_interpolated);
    ;
    //
     def("r_factor",
