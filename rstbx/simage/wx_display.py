@@ -158,8 +158,8 @@ class detector_surface(wx.Window):
         dc.DrawCircle(x=w-p+y, y=x, radius=5)
 
   def OnSize(O, event):
-    if (O.recompute()):
-      O.draw_image()
+    if (O.recompute()) :
+      O.Refresh()
 
   def OnPaint(O, event):
     if (O.image is None):
