@@ -61,6 +61,7 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
     drop_target = PathDropTarget(self)
     self.SetDropTarget(drop_target)
     self.SetValue(value)
+    self._pathmgr = None
 
   def SetFormats (self, formats) :
     if (isinstance(formats, str)) :
@@ -115,33 +116,36 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
       flags |= wx.FD_SAVE|wx.OVERWRITE_PROMPT
     else :
       flags |= wx.FD_OPEN
-    new_path = ""
+    path_manager = self.GetPathManager()
+    new_path = None
     if (self._path_style & WXTBX_PHIL_PATH_DIRECTORY) :
-      new_path = wx.DirSelector(
+      new_path = path_manager.select_directory(
         message="Choose a directory: %s" % self.GetName(),
-        defaultPath=self.GetValue(),
+        current_path=self.GetValue(),
         style=flags|wx.DD_NEW_DIR_BUTTON,
         parent=self)
     else :
       from iotbx import file_reader
       wildcard = file_reader.get_wildcard_strings(self._formats)
-      current_path = self.GetValue()
-      defaultDir = defaultFile = ""
-      if (current_path != "") :
-        defaultDir, defaultFile = os.path.split(current_path)
-      dlg = wx.FileDialog(
+      new_path = path_manager.select_file(
         parent=self,
         message="Choose a file: %s" % self.GetName(),
-        defaultDir=defaultDir,
-        defaultFile=defaultFile,
+        current_file=self.GetValue(),
         style=flags,
         wildcard=wildcard)
-      if (dlg.ShowModal() == wx.ID_OK) :
-        new_path = dlg.GetPath()
-      wx.CallAfter(dlg.Destroy)
-    if (new_path != "") :
+    if (new_path is not None) :
       self.SetValue(new_path)
       self.DoSendEvent()
+
+  def GetPathManager (self) :
+    if (self._pathmgr is None) :
+      main_window = self.GetTopLevelParent()
+      if hasattr(main_window, "get_path_manager") :
+        self._pathmgr = main_window.get_path_manager()
+    if (self._pathmgr is None) :
+      from wxtbx import path_dialogs
+      self._pathmgr = path_dialogs.manager()
+    return self._pathmgr
 
   def OnDisplayFile (self, event) :
     file_name = self.GetValue()
