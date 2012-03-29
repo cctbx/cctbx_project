@@ -44,6 +44,107 @@ namespace rstbx { namespace integration {
 
   static int MIN_BACKGROUND_SZ = 6;//Bare minimimum for OK statistics and invertible matrix
 
+  struct patch {
+    /* typedef */
+    typedef std::map<scitbx::vec2<int>, bool, fast_less_than<> > mask_t;
+
+    /* member data */
+    scitbx::af::shared<double> peak;
+    scitbx::af::shared<double> background;
+    scitbx::vec2<int> origin, size;
+
+    void set_origin(scitbx::vec2<int> const & _origin) {origin = _origin;}
+    void set_size(scitbx::vec2<int> const & _size) {size = _size;}
+
+    /* actually generate the profile */
+
+    void generate_profile(mask_t & peak_mask,
+                          scitbx::af::shared<double> & peak_values,
+                          mask_t & background_mask,
+                          scitbx::af::shared<double> & background_values)
+    {
+      int imin, imax, jmin, jmax, counter;
+
+      /* loop over mask to determine profile limits */
+
+      imax = - 1000000;
+      imin = + 1000000;
+      jmax = - 1000000;
+      jmin = + 1000000;
+
+      for(mask_t::const_iterator k = peak_mask.begin();
+          k != peak_mask.end(); k ++) {
+        int i = k->first[0];
+        int j = k->first[1];
+        if (i < imin) imin = i;
+        if (i > imax) imax = i;
+        if (j < jmin) jmin = j;
+        if (j > jmax) jmax = j;
+      }
+
+      for(mask_t::const_iterator k = background_mask.begin();
+          k != background_mask.end(); k ++) {
+        int i = k->first[0];
+        int j = k->first[1];
+        if (i < imin) imin = i;
+        if (i > imax) imax = i;
+        if (j < jmin) jmin = j;
+        if (j > jmax) jmax = j;
+      }
+
+      origin[0] = imin;
+      origin[1] = jmin;
+      size[0] = imax - imin;
+      size[1] = jmax - jmin;
+
+      for (int i = imin; i < imax; i ++ ){
+        for (int j = jmin; j < jmax; j ++) {
+          peak.push_back(0.0);
+          background.push_back(0.0);
+        }
+      }
+
+      counter = 0;
+      for(mask_t::const_iterator k = peak_mask.begin();
+          k != peak_mask.end(); k ++) {
+        int i = k->first[0] - imin;
+        int j = k->first[1] - jmin;
+        peak[i * size[0] + j] = peak_values[counter];
+        counter ++;
+      }
+
+      counter = 0;
+      for(mask_t::const_iterator k = background_mask.begin();
+          k != background_mask.end(); k ++) {
+        int i = k->first[0] - imin;
+        int j = k->first[1] - jmin;
+        background[i * size[0] + j] = background_values[counter];
+        counter ++;
+      }
+
+      /* now print this out to see if it works */
+
+      printf("Peak %d %d\n", size[0], size[1]);
+
+      for (int i = 0; i < size[0]; i ++) {
+        for (int j = 0; j < size[1]; j ++) {
+          printf(" %5.f", peak[i * size[0] + j]);
+        }
+        printf("\n");
+      }
+
+      printf("Background %d %d\n", size[0], size[1]);
+
+      for (int i = 0; i < size[0]; i ++) {
+        for (int j = 0; j < size[1]; j ++) {
+          printf(" %5.f", background[i * size[0] + j]);
+        }
+        printf("\n");
+      }
+
+    }
+  };
+
   struct simple_integration {
     /* member data */
     double pixel_size;
@@ -387,6 +488,14 @@ namespace rstbx { namespace integration {
                         rawdata(k->first[0],k->first[1]));
         }
         BP.finish();
+
+        /*
+          don't write out patch information (i.e. spot profiles) for the moment
+          as I am not sure that this is working correctly.
+
+        patch p;
+        p.generate_profile(ISmasks[i], signal, BSmasks[i], bkgrnd);
+        */
 
         af::shared<double> corr_signal;
         af::shared<double> corr_bkgrnd;
