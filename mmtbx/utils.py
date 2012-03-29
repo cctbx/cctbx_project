@@ -1456,6 +1456,8 @@ def fmodel_manager(
       f_calc                        = None,
       ignore_r_free_flags           = False,
       target_name                   = "ml",
+      k_mask                        = None,
+      k_anisotropic                 = None,
       hl_coeff                      = None,
       use_f_model_scaled            = False,
       twin_law                      = None,
@@ -1464,10 +1466,7 @@ def fmodel_manager(
       alpha_beta_params             = None,
       sf_and_grads_accuracy_params  = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract(),
       mask_params                   = None,
-      max_number_of_resolution_bins = None,
-      k_sol                         =0,
-      b_sol                         =0,
-      b_cart                        =[0,0,0,0,0,0]):
+      max_number_of_resolution_bins = None):
   if(r_free_flags is None or ignore_r_free_flags):
     r_free_flags = f_obs.array(data = flex.bool(f_obs.data().size(), False))
   if(twin_law is None):
@@ -1483,9 +1482,6 @@ def fmodel_manager(
       f_mask                       = f_mask,
       f_calc                       = f_calc,
       abcd                         = hl_coeff,
-      k_sol                        = k_sol,
-      b_sol                        = b_sol,
-      b_cart                       = b_cart,
       max_number_of_bins           = max_number_of_resolution_bins)
   else:
     from cctbx import sgtbx
@@ -1501,9 +1497,6 @@ def fmodel_manager(
       twin_law_str                 = twin_law,
       mask_params                  = mask_params,
       detwin_mode                  = detwin_mode,
-      #k_sol                        = k_sol, #XXX not supported by twin_f_model
-      #b_sol                        = b_sol, #XXX not supported by twin_f_model
-      #b_cart                       = b_cart,#XXX not supported by twin_f_model
       map_types                    = detwin_map_types)
     fmodel.twin = twin_law
   return fmodel
@@ -1543,7 +1536,6 @@ def fmodel_simple(f_obs,
                   twin_switch_tolerance    = 2.0,
                   outliers_rejection       = True,
                   bulk_solvent_correction  = True,
-                  apply_back_trace_of_b_cart = True,
                   anisotropic_scaling      = True,
                   log                      = None):
   assert f_obs.is_in_asu()
@@ -1554,7 +1546,6 @@ def fmodel_simple(f_obs,
     bss_params = bss.master_params.extract()
   bss_params.bulk_solvent = bulk_solvent_correction
   bss_params.anisotropic_scaling = anisotropic_scaling
-  bss_params.apply_back_trace_of_b_cart = apply_back_trace_of_b_cart
   #
   if(scattering_table != "neutron" and f_obs.d_min()>1.01):
     for xrs in xray_structures:
@@ -1570,17 +1561,11 @@ def fmodel_simple(f_obs,
       mask_params    = mp,
       twin_law       = tl)
     if(bssf):
-      if(tl is None and ro):
-        sel = fmodel.outlier_selection()
-        fmodel = fmodel.select(selection = sel)
-      fmodel.update_solvent_and_scale(params = bssp, verbose = -1, out = log,
-        optimize_mask=om)
+      fmodel.update_all_scales(params = bssp, log = log, optimize_mask=om)
     return fmodel
   if((twin_laws is None or twin_laws==[None]) and not skip_twin_detection):
     twin_laws = xtriage(f_obs = f_obs.deep_copy())
-
-  optimize_mask = True
-  if(twin_laws is not None and len(twin_laws)>1): optimize_mask=False
+  optimize_mask=False
   # DEBUG twin_laws=None
   if(len(xray_structures) == 1):
     if(twin_laws is None): twin_laws = [None]
@@ -1619,11 +1604,11 @@ def fmodel_simple(f_obs,
       if(i_seq == 0):
         f_model_data = fmodel.f_calc().data()
         f_masks_data = []
-        for f in fmodel.shell_f_masks():
+        for f in fmodel.f_masks():
           f_masks_data.append(f.data())
       else:
         f_model_data += fmodel.f_calc().data()
-        fmsks = fmodel.shell_f_masks()
+        fmsks = fmodel.f_masks()
         assert len(f_masks_data) == len(fmsks)
         for ifmd in range(len(f_masks_data)):
           f_masks_data[ifmd] += fmsks[ifmd].data()
@@ -1648,14 +1633,8 @@ def fmodel_simple(f_obs,
           mask_params    = mask_params,
           twin_law       = None)
     if(bulk_solvent_and_scaling):
-      fmodel_result.update_solvent_and_scale(verbose = -1)
-      sel = fmodel_result.outlier_selection()
-      fmodel_result = fmodel_result.select(selection = sel)
-      if(sel is not None and sel.count(False) > 0):
-        fmodel_result.update_solvent_and_scale(params = bss_params, verbose = -1)
+      fmodel_result.update_all_scales()
     fmodel = fmodel_result
-  if(scattering_table != "neutron" and f_obs.d_min()>1.01):
-    fmodel.update_f_hydrogens(log=log)
   return fmodel
 
 class process_command_line_args(object):
@@ -2022,7 +2001,7 @@ class guess_observation_type(object):
     #
     result_best_x, rbx = self.find_best(results = results_x)
     result_best_n, rbn = self.find_best(results = results_n)
-    if(rbx > rbn and abs(rbx - rbn)*100. > 10.):
+    if(rbx > rbn and abs(rbx - rbn)*100. > 8.):
       if(result_best_n is not None):
         self.result = result_best_n
       else:
@@ -2044,12 +2023,12 @@ class guess_observation_type(object):
     for r in results:
       if(abs(r[3]) < abs(r_best)):
         r_best = abs(r[3])
-        answer = r
+        answer = r[:]
     d0 = abs(results[0][3])
     d1 = abs(results[1][3])
     d2 = abs(results[2][3])
     diff = min(min(abs(d0-d1), abs(d0-d2)), abs(d1-d2))*100.
-    if(diff < 5.0): answer = None
+    if(diff < 4.0): answer = None
     #if(answer is not None):
     #  print "Answer: %s"%" ".join(["%6s"%str(r_) for r_ in answer])
     return answer, r_best
@@ -2099,16 +2078,6 @@ class guess_observation_type(object):
     if(not skip_twin_detection):
       twin_laws = xtriage(f_obs = f_obs)
       twin_laws.append(None)
-    #
-    #if(f_obs.data() > self.data_size): #XXX not reliable ?
-    #  random.seed(0)
-    #  flex.set_random_seed(0)
-    #  selection = flex.random_bool(size=f_obs.data().size(),
-    #    threshold=float(self.data_size)/f_obs.data().size())
-    #  f_obs = f_obs.select(selection)
-    #  f_calc = f_calc.select(selection)
-    #  r_free_flags = r_free_flags.select(selection)
-    #
     params = bss.master_params.extract()
     params.k_sol_grid_search_min = 0.0
     params.k_sol_grid_search_max = 0.35
@@ -2188,17 +2157,25 @@ class fmodel_from_xray_structure(object):
         xray_structure.scattering_type_registry(
           table = params.scattering_table, d_min = f_obs.d_min())
     r_free_flags = f_obs.generate_r_free_flags(fraction = r_free_flags_fraction)
-    fmodel = mmtbx.f_model.manager(
+    fmodel_ = mmtbx.f_model.manager(
       xray_structure               = xray_structure,
       sf_and_grads_accuracy_params = params.structure_factors_accuracy,
       r_free_flags                 = r_free_flags,
       mask_params                  = params.mask,
-      f_obs                        = abs(f_obs),
-      target_name                  = target,
-      k_sol                        = params.fmodel.k_sol,
-      b_sol                        = params.fmodel.b_sol,
-      b_cart                       = params.fmodel.b_cart)#[float(i) for i in params.b_cart])
-    f_model = fmodel.f_model()
+      f_obs                        = abs(f_obs))
+    u_star = adptbx.u_cart_as_u_star(
+      f_obs.unit_cell(), adptbx.b_as_u(params.fmodel.b_cart))
+    fmodel = mmtbx.f_model.manager_kbu(
+      f_obs   = fmodel_.f_obs(),
+      f_calc  = fmodel_.f_calc(),
+      f_masks = fmodel_.f_masks(),
+      f_part1 = fmodel_.f_part1(),
+      f_part2 = fmodel_.f_part2(),
+      u_star  = u_star,
+      k_sols  = params.fmodel.k_sol,
+      b_sol   = params.fmodel.b_sol,
+      ss      = fmodel_.ss)
+    f_model = fmodel.f_model
     f_model = f_model.array(data = f_model.data()*params.fmodel.scale)
     try:
       if(params.output.type == "real"):
@@ -2225,7 +2202,7 @@ class fmodel_from_xray_structure(object):
       sigmas = flex.double(self.f_model.data().size(),1)
       self.f_model._sigmas = sigmas
     if(params.r_free_flags_fraction is not None):
-      self.r_free_flags = fmodel.r_free_flags()
+      self.r_free_flags = fmodel_.r_free_flags()
 
   def Sorry_high_resolution_is_not_defined(self):
     raise Sorry("High resolution limit is not defined. "\
