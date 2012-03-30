@@ -286,6 +286,7 @@ class validation (object) :
     assert (len(alignments_and_names) == len(self.chains) == len(pdb_chains))
     for i, c in enumerate(self.chains) :
       alignment, seq_name = alignments_and_names[i]
+      if (alignment is None) : continue
       pdb_chain = pdb_chains[i]
       try :
         c.set_alignment(alignment, seq_name)
@@ -367,7 +368,7 @@ ATOM    234  CA  LEU A  26       4.518  28.425   7.577  1.00 47.63           C
 ATOM    253  CA  ALA A  27       2.095  31.320   7.634  1.00 38.61           C
 ATOM    263  CA  ARG A  28       1.589  34.719   9.165  1.00 37.04           C
 END""")
-  seq1 = iotbx.bioinformatics.sequence("MTTPSHLSDRYELGEILGFGGMSEVHLARD")
+  seq1 = iotbx.bioinformatics.sequence("MTTPSHLSDRYELGEILGFGGMSEVHLARD".lower())
   v = validation(
     pdb_hierarchy=pdb_in.construct_hierarchy(),
     sequences=[seq1],
