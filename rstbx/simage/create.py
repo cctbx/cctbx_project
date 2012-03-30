@@ -222,6 +222,7 @@ def build_i_calc(work_params):
         .build_derived_reflection_intensity_group(anomalous_flag=True).info()) \
       .map_to_asu() \
       .complete_array(new_data_value=0)
+  i_calc_asu = i_calc_asu.sort(by_value="resolution")
   assert not i_calc_asu.space_group().is_centric()
   assert i_calc_asu.space_group().n_ltr() == 1
   assert i_calc_asu.space_group_info().type().is_symmorphic()
