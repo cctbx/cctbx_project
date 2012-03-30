@@ -3,11 +3,6 @@ import iotbx.phil
 from cctbx.array_family import flex
 from scitbx import lbfgs
 from libtbx import adopt_init_args
-from libtbx.test_utils import approx_equal
-from libtbx.utils import Sorry
-from libtbx import easy_mp
-from libtbx import Auto
-from cctbx import miller
 from cctbx import adptbx
 
 import boost.python

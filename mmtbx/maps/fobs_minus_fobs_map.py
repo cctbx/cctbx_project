@@ -14,7 +14,6 @@ from mmtbx import utils
 from iotbx.pdb import combine_unique_pdb_files
 import iotbx.pdb
 from libtbx import runtime_utils
-import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 import libtbx.callbacks # import dependency
 
 fo_minus_fo_master_params_str = """\

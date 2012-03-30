@@ -11,7 +11,6 @@ import cctbx.sgtbx.bravais_types
 from cctbx.development import random_structure
 import libtbx.load_env
 from cctbx import adptbx
-from libtbx import Auto
 
 if (1): # fixed random seed to avoid rare failures
   random.seed(0)
@@ -278,7 +277,6 @@ def exercise_06_b_cart_only(d_min = 2.0):
   assert approx_equal(result.b_cart(), b_cart, eps = 1.e-6)
 
 def exercise_radial_shells(k_sol=0.33,d_min=2,grid_search=False,shell_width=0.3):
-  import sys
   xray_structure = get_xray_structure_from_file()
   b_sol = 34.0
   b_cart = [1,2,3,0,4,0]

@@ -15,7 +15,6 @@ from mmtbx.max_lik import maxlik
 from mmtbx.scaling.sigmaa_estimation import sigmaa_estimator
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 from cctbx import miller
-from iotbx.cns.miller_array import crystal_symmetry_as_cns_comments
 import cctbx.xray.structure_factors
 from cctbx.array_family import flex
 from stdlib import math
