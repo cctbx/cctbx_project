@@ -42,6 +42,7 @@ from libtbx.math_utils import ifloor, iceil
 from cctbx import maptbx
 from cctbx import uctbx
 from cctbx import xray
+from iotbx.cns.miller_array import crystal_symmetry_as_cns_comments
 
 import boost.python
 utils_ext = boost.python.import_ext("mmtbx_utils_ext")
@@ -824,6 +825,8 @@ def get_atom_selections(all_chain_proxies,
       else:
         s0.extend(s)
     selections = s0
+    if (iselection) :
+      selections = selections.select(flex.sort_permutation(selections))
   return selections
 
 def atom_selection(all_chain_proxies, string, allow_empty_selection = False):
@@ -2216,7 +2219,7 @@ class fmodel_from_xray_structure(object):
     op = self.params.output
     if(self.params.output.format == "cns"):
       ofo = open(file_name, "w")
-      iotbx.cns.miller_array.crystal_symmetry_as_cns_comments(
+      crystal_symmetry_as_cns_comments(
         crystal_symmetry=self.f_model, out=ofo)
       print >> ofo, "NREFlections=%d" % self.f_model.indices().size()
       print >> ofo, "ANOMalous=%s" % {0: "FALSE"}.get(
