@@ -115,6 +115,8 @@ ATOM      1  O   HOH     1      53.448  18.599 -10.134  1.00 20.00
     args=["model.pdb", "--use_geometry_restraints"],
     master_phil_string=master_phil_str,
     pdb_file_def="model")
+  assert (pcl.get_file_type_count("pdb") == 1)
+  assert (pcl.get_file_type_count("hkl") == 0)
   params = pcl.work.extract()
   assert (params.model == os.path.join(os.getcwd(), "model.pdb"))
   assert (params.use_geometry_restraints)

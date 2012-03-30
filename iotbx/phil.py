@@ -129,15 +129,23 @@ class process_command_line_with_files (object) :
     self.directory_def = directory_def
     self.integer_def = integer_def
     self.float_def = float_def
+    self._type_counts = {}
     cai=libtbx.phil.command_line.argument_interpreter(master_phil=self.master)
     self.work = cai.process_and_fetch(
        args=args,
        custom_processor=self)
 
+  def get_file_type_count (self, file_type) :
+    return self._type_counts.get(file_type, 0)
+
   def __call__ (self, arg) :
     if (os.path.isfile(arg)) :
       from iotbx import file_reader
       f = file_reader.any_file(os.path.abspath(arg))
+      if (f.file_type is not None) :
+        if (not f.file_type in self._type_counts) :
+          self._type_counts[f.file_type] = 0
+        self._type_counts[f.file_type] += 1
       file_def_name = None
       if (f.file_type == "pdb") and (self.pdb_file_def is not None) :
         file_def_name = self.pdb_file_def
