@@ -3,7 +3,6 @@ from scitbx.array_family import flex
 
 import boost.python
 ext = boost.python.import_ext("mmtbx_alignment_ext")
-from mmtbx_alignment_ext import *
 
 """
 Written by Tom Ioerger (http://faculty.cs.tamu.edu/ioerger).
@@ -82,6 +81,8 @@ class align(object):
     elif (isinstance(similarity_function, str)):
       raise RuntimeError(
         'Unknown similarity_function: "%s"' % similarity_function)
+    seq_a = seq_a.upper()
+    seq_b = seq_b.upper()
     adopt_init_args(self, locals())
     A,B = seq_a, seq_b
     m,n = self.m,self.n = len(A),len(B)
@@ -527,7 +528,7 @@ def exercise():
 
   # 1rra vs. 1bli
   A = "AESSADKFKRQHMDTEGPSKSSPTYCNQMMKRQGMTKGSCKPVNTFVHEPLEDVQAICSQGQVTCKNGRNNCHKSSSTLRITDCRLKGSSKYPNCDYTTTDSQKHIIIACDGNPYVPVHFDASV"
-  B = "DNSRYTHFLTQHYDAKPQGRDDRYCESIMRRRGLTSPCKDINTFIHGNKRSIKAICENKNGNPHRENLRISKSSFQVTTCKLHGGSPWPPCQYRATAGFRNVVVACENGLPVHLDQSIFRRP"
+  B = "DNSRYTHFLTQHYDAKPQGRDDRYCESIMRRRGLTSPCKDINTFIHGNKRSIKAICENKNGNPHRENLRISKSSFQVTTCKLHGGSPWPPCQYRATAGFRNVVVACENGLPVHLDQSIFRRP".lower()
   obj = align(A,B,gap_opening_penalty=150,gap_extension_penalty=20,similarity_function=dayhoff,style="global")
 
   print "\n1rra vs. 1bli; GLOBAL allignment; mdm78"
@@ -599,6 +600,12 @@ def exercise():
 
   print "OK" # necessary for auto_build checking
 
+class pairwise_global (ext.pairwise_global) :
+  def __init__ (self, seq1, seq2) :
+    seq1 = seq1.upper()
+    seq2 = seq2.upper()
+    ext.pairwise_global.__init__(self, seq1, seq2)
+
 class pairwise_global_wrapper(pairwise_global):
 
   def range_matches_from_aligned_sequences(self):
@@ -653,7 +660,7 @@ class pairwise_global_wrapper(pairwise_global):
 def exercise_ext():
   seq1="THEQUICKBOWNFOXJUMPSOVETHELAZY"
   seq2="QUICKBRWNFXJUMPSVERTH3LAZYDOG"
-  pg = pairwise_global(seq1,seq2)
+  pg = pairwise_global(seq1,seq2.lower())
   assert pg.result1 == "THEQUICKBOWNFOXJUMPSOVE-THELAZY---"
   assert pg.result2 == "---QUICKBRWNF-XJUMPS-VERTH3LAZYDOG"
   pg = pairwise_global_wrapper(seq1,seq2)
