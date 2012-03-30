@@ -329,6 +329,9 @@ Example:
     for model in hierarchy.models():
       for chain in model.chains():
         for conformer in chain.conformers():
+          altloc = conformer.altloc
+          if altloc == "":
+            altloc = " "
           residues = conformer.residues()
           for i_residue,residue in enumerate(residues):
             def _get_next_residue():
@@ -354,6 +357,7 @@ Example:
             self.pucker_states.append(ana)
             if ana.is_delta_outlier or ana.is_epsilon_outlier:
               key = residue.id_str()[8:-1]
+              key = altloc+key
               outliers.append([key,
                                [ana.delta,
                                ana.is_delta_outlier,
