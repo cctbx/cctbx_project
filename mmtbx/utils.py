@@ -1645,6 +1645,7 @@ class process_command_line_args(object):
     self.cif_objects      = []
     self.reflection_files = []
     self.reflection_file_names = []
+    self.phil_file_names  = []
     self.params           = None
     self.crystal_symmetry = None
     self.cmd_cs = cmd_cs
@@ -1681,6 +1682,7 @@ class process_command_line_args(object):
         if(params is not None):
           parsed_params.append(params)
           arg_is_processed = True
+          self.phil_file_names.append(arg_file)
         elif(pdb.is_pdb_file(file_name=arg_file)):
           self.pdb_file_names.append(arg_file)
           arg_is_processed = True

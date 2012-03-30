@@ -31,7 +31,7 @@ How to run the command line version:
      default, the file maps.params specifies 5 maps to be created: 2mFo-DFc,
      2mFo-DFc with missing Fobs filled with DFcalc, mFo-DFc and anomalous
      difference maps will be output in MTZ format, and one 2mFo-DFc map will be
-     output in X-plor formatted file.
+     output in CCP4 format.
      NOTE: the anomalous difference map will only be created if the input
      reflection data file contains Bijvoet maps (F+/F- or I+/I-).
 
@@ -43,7 +43,7 @@ Important Facts:
 
   - The scope of parameters 'map_coefficients' defines the map that will be
     output as Fourier map coefficients. The scope of parameters 'map' defines
-    the map that will be output as X-plor formatted map.
+    the maps that will be output as CCP4 or X-plor format.
 
   - To create several maps: duplicate either 'map_coefficients' or 'map' or both
     scopes of parameters as many times as many maps is desired. Then edit each
@@ -55,12 +55,12 @@ Important Facts:
     example: 2Fo-Fc, 2mFobs-DFcalc, 3Fobs-2Fmodel, Fo-Fc, mfobs-Dfcalc, anom.
     The 'map_type' parser will automatically recognize which map is requested.
 
-  - The program creates as many files with X-plor formatted maps as many X-plor
-    formatted maps is requested, and it creates only one MTZ formatted file with
+  - The program creates as many files with CCP4 or X-plor formatted maps as
+    is requested, and it creates only one MTZ formatted file with
     all Fourier map coefficients in it.
 
-  - The X-plor formatted map can be computed in the entire unit cell or around
-    selected atoms only.
+  - The CCP4 or X-plor formatted maps can be computed in the entire unit cell
+    or around selected atoms only.
 
   - Kick maps and missing Fobs filling is done (if requested) as described in
     Adams et al. (2010). Acta Cryst. D66, 213-221.
@@ -159,6 +159,7 @@ def analyze_input_params(params):
 def run(args, log = sys.stdout):
   print >> log, legend
   print >> log, "-"*79
+  master_params = mmtbx.maps.maps_including_IO_master_params()
   if(len(args)==0 or (len(args)==1 and args[0]=="NO_PARAMETER_FILE")):
     if(not (len(args)==1 and args[0]=="NO_PARAMETER_FILE")):
       parameter_file_name = "maps.params"
@@ -171,21 +172,40 @@ def run(args, log = sys.stdout):
     else:
       pfo = log
       print >> pfo, "\nAll phenix.maps parameters::\n"
-    master_params = mmtbx.maps.maps_including_IO_master_params()
     master_params = master_params.fetch(iotbx.phil.parse(default_params))
     master_params.show(out = pfo, prefix = " ", expert_level=1)
     return
-  processed_args = mmtbx.utils.process_command_line_args(args = args, log = log,
-    master_params = mmtbx.maps.maps_including_IO_master_params())
-  print >> log, "-"*79
-  print >> log, "\nParameters to compute maps::\n"
-  processed_args.params.show(out = log, prefix=" ")
-  params = processed_args.params.extract()
+  processed_args = mmtbx.utils.process_command_line_args(
+    args=args,
+    log=log,
+    master_params=master_params)
+  working_phil = processed_args.params
+  params = working_phil.extract()
+  if (len(params.maps.map_coefficients) == 0) and (len(params.maps.map) == 0) :
+    print >> log, "No map input specified - using default map types"
+    working_phil = master_params.fetch(sources=[working_phil,
+        iotbx.phil.parse(default_params)])
+    params = working_phil.extract()
   analyze_input_params(params=params)
+  have_phil_file_input = len(processed_args.phil_file_names) > 0
+  if (len(processed_args.pdb_file_names) > 1) :
+    raise Sorry("Only one PDB file is allowed as input.")
+  if ((params.maps.input.pdb_file_name is None) and
+      (len(processed_args.pdb_file_names) == 1)) :
+    params.maps.input.pdb_file_name = processed_args.pdb_file_names[0]
   if(not os.path.isfile(str(params.maps.input.pdb_file_name))):
     raise Sorry(
       "PDB file is not given: maps.input.pdb_file_name=%s is not a file"%\
       str(params.maps.input.pdb_file_name))
+  if ((params.maps.input.reflection_data.file_name is None) and
+      (params.maps.input.reflection_data.r_free_flags.file_name is None) and
+      (len(processed_args.reflection_file_names) == 1)) :
+    params.maps.input.reflection_data.file_name = \
+      processed_args.reflection_file_names[0]
+  working_phil = master_params.format(python_object=params)
+  print >> log, "-"*79
+  print >> log, "\nParameters to compute maps::\n"
+  working_phil.show(out = log, prefix=" ")
   pdb_inp = iotbx.pdb.input(file_name = params.maps.input.pdb_file_name)
   # get all crystal symmetries
   cs_from_coordinate_files = [pdb_inp.crystal_symmetry_from_cryst1()]
@@ -208,15 +228,17 @@ def run(args, log = sys.stdout):
         "unit cell and space group records, such as MTZ files.")
   #
   reflection_files = []
+  reflection_file_names = []
   for rfn in [params.maps.input.reflection_data.file_name,
              params.maps.input.reflection_data.r_free_flags.file_name]:
-    if(os.path.isfile(str(rfn))):
+    if(os.path.isfile(str(rfn))) and (not rfn in reflection_file_names) :
       reflection_files.append(reflection_file_reader.any_reflection_file(
         file_name = rfn, ensure_read_access = False))
+      reflection_file_names.append(rfn)
   reflection_file_server = reflection_file_utils.reflection_file_server(
     crystal_symmetry = crystal_symmetry,
     force_symmetry   = True,
-    reflection_files = [],
+    reflection_files = reflection_files, #[],
     err              = log)
   #
   reflection_data_master_params = mmtbx.utils.data_and_flags_master_params(
@@ -308,7 +330,7 @@ def run(args, log = sys.stdout):
   if (write_mtz_file_result) :
     print >> log, "Map coefficients: %s" % map_coeff_file_name
   for file_name in xplor_maps :
-    print >> log, "XPLOR or CCP4 map: %s" % file_name
+    print >> log, "CCP4 or XPLOR map: %s" % file_name
   print >> log, "-"*79
   return (map_coeff_file_name, xplor_maps)
 
