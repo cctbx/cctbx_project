@@ -230,7 +230,8 @@ Example:
                                         resCB.xyz])
     summary = 'SUMMARY: %d C-beta Deviation >= 0.25 Angstrom (Goal: 0)' % (cbetadev_ctr)
     self.summary = 'SUMMARY: %d C-beta Deviation >= 0.25 Angstrom (Goal: 0)' % (cbetadev_ctr)
-    return analysis.rstrip(), summary, output_list
+    self.analysis = analysis.rstrip()
+    return self.analysis, summary, output_list
   #}}}
 
   #{{{ idealized_calpha_angles
