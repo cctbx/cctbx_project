@@ -141,13 +141,13 @@ def exercise_ramalyze():
   output, output_list = r.analyze_pdb(pdb_io=pdb_io, outliers_only=True)
   assert output.count("OUTLIER") == 100
   assert output.count("Favored") == 0
-  assert output.count("Allowed") == 4
+  assert output.count("Allowed") == 0
   assert output.count("General") == 64
-  assert output.count("Glycine") == 7
+  assert output.count("Glycine") == 6
   assert output.count("Trans-proline") == 1
   assert output.count("Cis-proline") == 0
   assert output.count("Pre-proline") == 4
-  assert output.count("Isoleucine or valine") == 28
+  assert output.count("Isoleucine or valine") == 25
 
   output, output_list = r.analyze_pdb(pdb_io=pdb_io, outliers_only=False)
   assert output.count("OUTLIER") == 100
