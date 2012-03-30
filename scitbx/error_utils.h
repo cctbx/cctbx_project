@@ -86,7 +86,7 @@ namespace scitbx {
     std::ostringstream o;
     o << prefix;
     if (internal) o << " Internal";
-    o << "Error: " << file << "(" << line << ")";
+    o << " Error: " << file << "(" << line << ")";
     if (msg.size()) o << ": " << msg;
     msg_ = o.str();
   }
