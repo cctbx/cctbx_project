@@ -37,6 +37,13 @@ How to run the command line version:
 
   3. Run this command to compute requested maps: phenix.maps maps.params
 
+Alternately, you may specify input files (and additional parameters) directly
+on the command line:
+
+  % phenix.maps model.pdb data.mtz
+
+and it will automatically generate the default maps as described above.
+
 Important Facts:
 
   - phenix.maps is available in PHENIX GUI.
