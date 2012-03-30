@@ -50,7 +50,9 @@ namespace rstbx { namespace integration {
 
     /* member data */
     vector<double> peak;
+    vector<int> peak_used;
     vector<double> background;
+    vector<int> background_used;
     scitbx::vec2<int> origin, size;
 
     patch() { }
@@ -110,11 +112,13 @@ namespace rstbx { namespace integration {
 
       origin[0] = imin;
       origin[1] = jmin;
-      size[0] = imax - imin;
-      size[1] = jmax - jmin;
+      size[0] = imax - imin + 1;
+      size[1] = jmax - jmin + 1;
 
       peak.resize(size[0] * size[1], 0);
+      peak_used.resize(size[0] * size[1], 0);
       background.resize(size[0] * size[1], 0);
+      background_used.resize(size[0] * size[1], 0);
 
       counter = 0;
       for(mask_t::const_iterator k = peak_mask.begin();
@@ -122,6 +126,7 @@ namespace rstbx { namespace integration {
         int i = k->first[0] - imin;
         int j = k->first[1] - jmin;
         peak[i * size[1] + j] = peak_values[counter];
+        peak_used[i * size[1] + j] = 1;
         counter ++;
       }
 
@@ -131,6 +136,7 @@ namespace rstbx { namespace integration {
         int i = k->first[0] - imin;
         int j = k->first[1] - jmin;
         background[i * size[1] + j] = background_values[counter];
+        background_used[i * size[1] + j] = 1;
         counter ++;
       }
 
@@ -140,7 +146,11 @@ namespace rstbx { namespace integration {
 
       for (int i = 0; i < size[0]; i ++) {
         for (int j = 0; j < size[1]; j ++) {
-          printf(" %5.f", peak[i * size[1] + j]);
+          if (peak_used[i * size[1] + j]) {
+            printf(" %5.f", peak[i * size[1] + j]);
+          } else {
+            printf("     .");
+          }
         }
         printf("\n");
       }
@@ -149,7 +159,11 @@ namespace rstbx { namespace integration {
 
       for (int i = 0; i < size[0]; i ++) {
         for (int j = 0; j < size[1]; j ++) {
-          printf(" %5.f", background[i * size[1] + j]);
+          if (background_used[i * size[1] + j]) {
+            printf(" %5.f", background[i * size[1] + j]);
+          } else {
+            printf("     .");
+          }
         }
         printf("\n");
       }
