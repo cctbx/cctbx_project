@@ -964,6 +964,28 @@ def exercise_select():
   check([1,2,3,4], [2,4], [2,4])
   check([2,4], [1,2,3,4], [2,4])
   #
+  fs = flex.size_t
+  try: fs([1,1]).intersection(fs([1,2]))
+  except RuntimeError, e:
+    assert str(e).find("first") > 0
+    assert str(e).find("duplicate") > 0
+  else: raise Exception_expected
+  try: fs([2,1]).intersection(fs([1,2]))
+  except RuntimeError, e:
+    assert str(e).find("first") > 0
+    assert str(e).find("sorted") > 0
+  else: raise Exception_expected
+  try: fs([1,2]).intersection(fs([1,1]))
+  except RuntimeError, e:
+    assert str(e).find("second") > 0
+    assert str(e).find("duplicate") > 0
+  else: raise Exception_expected
+  try: fs([1,3]).intersection(fs([2,1]))
+  except RuntimeError, e:
+    assert str(e).find("second") > 0
+    assert str(e).find("sorted") > 0
+  else: raise Exception_expected
+  #
   a = flex.double(range(3,12))
   for stl_iterable in [stl.vector.unsigned, stl.set.unsigned]:
     assert a.select(selection=stl_iterable()).size() == 0
