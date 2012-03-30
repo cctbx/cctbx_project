@@ -66,6 +66,10 @@ namespace scitbx { namespace af {
       bool track_matching_elements,
       bool track_i_seqs)
     {
+      static const char* err1_dup = "the first array has duplicate elements.";
+      static const char* err1_not = "the first array is not sorted.";
+      static const char* err2_dup = "the second array has duplicate elements.";
+      static const char* err2_not = "the second array is not sorted.";
       if (self.size() > 0 && other.size() > 0) {
         IntType si = self[0];
         std::size_t i = 1;
@@ -74,13 +78,15 @@ namespace scitbx { namespace af {
         while (true) {
           while (si < oj) {
             if (i == self.size()) return;
-            SCITBX_ASSERT(si < self[i]);
+            if (si == self[i]) throw SCITBX_ERROR(err1_dup);
+            if (si > self[i]) throw SCITBX_ERROR(err1_not);
             si = self[i];
             i++;
           }
           while (oj < si) {
             if (j == other.size()) return;
-            SCITBX_ASSERT(oj < other[j]);
+            if (oj == other[j]) throw SCITBX_ERROR(err2_dup);
+            if (oj > other[j]) throw SCITBX_ERROR(err2_not);
             oj = other[j];
             j++;
           }
@@ -93,7 +99,8 @@ namespace scitbx { namespace af {
               other_i_seqs.push_back(j-1);
             }
             if (i == self.size()) break;
-            SCITBX_ASSERT(si < self[i]);
+            if (si == self[i]) throw SCITBX_ERROR(err1_dup);
+            if (si > self[i]) throw SCITBX_ERROR(err1_not);
             si = self[i];
             i++;
           }
