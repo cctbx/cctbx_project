@@ -3,7 +3,7 @@ import libtbx.load_env
 
 def run():
   tst_list = (
-  "$D/miller/tst_miller_double_step_filtration.py",
+  "$D/regression/tst_miller_double_step_filtration.py",
   "$D/miller/tst_reindexing.py",
   "$D/regression/tst_miller_ellipsoidal_truncation.py",
   "$D/omz/tst_bfgs.py",
