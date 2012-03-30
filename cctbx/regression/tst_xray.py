@@ -1403,7 +1403,6 @@ def exercise_guess_scattering_type_neutron():
   assert xs.guess_scattering_type_neutron()
 
 def run():
-  exercise_guess_scattering_type_neutron()
   exercise_discard_scattering_type_registry()
   exercise_delta_sites_cart_measure()
   exercise_xray_structure_as_py_code()
@@ -1421,6 +1420,7 @@ def run():
   exercise_structure()
   exercise_u_base()
   exercise_select_within()
+  exercise_guess_scattering_type_neutron()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
 
 if (__name__ == "__main__"):
