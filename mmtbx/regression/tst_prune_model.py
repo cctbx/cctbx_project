@@ -15,7 +15,9 @@ def exercise ():
     return
   result = easy_run.fully_buffered("mmtbx.prune_model %s %s" % (pdb_file,
     mtz_file))
-  assert ("Removed 3 residues and 1 sidechains" in result.stdout_lines)
+  if (not "Removed 3 residues and 1 sidechains" in result.stdout_lines) :
+    raise RuntimeError(("Program output differs from expected - last 20 lines "+
+      "shown below:\n\n%s") % "\n".join(result.stdout_lines[-20:]))
 
 if (__name__ == "__main__") :
   exercise()
