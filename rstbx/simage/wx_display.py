@@ -13,6 +13,7 @@ class detector_surface(wx.Window):
   def reset_state(O):
     O.prev_work_phil_ewp_none_str = None
     O.prev_work_phil_str = None
+    O.pixels = None
     O.image = None
     O.spots = None
     O.predicted_spots = None
@@ -35,26 +36,36 @@ class detector_surface(wx.Window):
         or O.prev_work_phil_str != work_phil_str):
       O.prev_work_phil_str = work_phil_str
       from rstbx.simage.create import compute_image
-      pixels = compute_image(O.work_params)
-      O.image = pixels.as_rgb_gray_scale_string(
+      O.pixels = compute_image(O.work_params)
+      O.image = O.pixels.as_rgb_gray_scale_string(
         saturation=O.work_params.signal_max)
-      dpx,dpy = O.work_params.detector.pixels
-      if (dpx >= 100 and dpy >= 100):
-        from rstbx.simage import run_spotfinder
-        O.spots = run_spotfinder.process(
-          work_params=O.work_params,
-          pixels=pixels,
-          show_spots=False)
-      else:
-        O.spots = None
       if (   O.prev_work_phil_ewp_none_str is None
           or O.prev_work_phil_ewp_none_str != work_phil_ewp_none_str):
         O.prev_work_phil_ewp_none_str = work_phil_ewp_none_str
+        O.spots = None
         O.predicted_spots = None
     return True
 
+  def run_spotfinder(O):
+    if (O.pixels is None):
+      return
+    if (O.spots is not None):
+      return
+    dpx,dpy = O.work_params.detector.pixels
+    if (dpx < 100 or dpy < 100):
+      return
+    from rstbx.simage import run_spotfinder
+    O.spots = run_spotfinder.process(
+      work_params=O.work_params,
+      pixels=O.pixels,
+      show_spots=False)
+    O.Refresh()
+
   def run_labelit_index(O, use_original_uc_cr=False):
     if (O.predicted_spots is not None):
+      return
+    O.run_spotfinder()
+    if (O.spots is None):
       return
     if (O.spots.size() < 10):
       print "Insufficient number of spotfinder spots."
@@ -168,7 +179,9 @@ class detector_surface(wx.Window):
 
   def OnChar(O, event):
     key = event.GetKeyCode()
-    if (key == ord("i")):
+    if (key == ord("s")):
+      O.run_spotfinder()
+    elif (key == ord("i")):
       O.predicted_spots = None
       O.run_labelit_index()
     elif (key == ord("I")):
