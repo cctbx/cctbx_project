@@ -122,7 +122,7 @@ class detector_surface(wx.Window):
         gaussian_falloff_scale=O.work_params.gaussian_falloff_scale).spots
       print "Number of predicted spots:", O.predicted_spots.size()
       print
-    O.draw_image()
+    O.Refresh()
 
   def draw_image(O):
     w, h = O.work_params.detector.pixels
@@ -158,13 +158,12 @@ class detector_surface(wx.Window):
         dc.DrawCircle(x=w-p+y, y=x, radius=5)
 
   def OnSize(O, event):
-    if (O.recompute()) :
+    if (O.recompute()):
       O.Refresh()
 
   def OnPaint(O, event):
-    if (O.image is None):
-      if (not O.recompute()):
-        return
+    if (O.image is None and not O.recompute()):
+      return
     O.draw_image()
 
   def OnChar(O, event):
