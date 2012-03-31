@@ -61,6 +61,11 @@ master_params_str = """\
 scattering_table = *n_gaussian wk1995 it1992 neutron
   .type = choice
   .help = Scattering table for structure factors calculations
+atom_selection = None
+  .type = str
+  .short_caption = Atom selection
+  .help = If defined, a single CC value will be calculated for these atoms \
+    collectively, instead of the default per-atom or per-residue statistics.
 details_level = atom residue *automatic
   .type = choice(multi=False)
   .help = Level of details to show CC for
@@ -303,6 +308,7 @@ def compute_map_from_model(high_resolution, low_resolution, xray_structure,
     fourier_coefficients = f_calc)
 
 def cmd_run(args, command_name):
+  args = list(args)
   msg = """\
 
 Tool to compute local map correlation coefficient.
@@ -313,34 +319,69 @@ How to use:
 3: Run the command with this parameters file:
    phenix.real_space_correlation parameters.txt
 """
-  if(len(args) == 0):
+  if(len(args) == 0) or (args == ["--help"]) or (args == ["--options"]):
     print msg
     print "*"*79
     master_params().show()
     print "*"*79
     return
   else :
-    arg = args[-1]
-    if(not os.path.isfile(arg)):
-      raise Sorry("%s is not a file."%arg)
-    parsed_params = None
-    try: parsed_params = iotbx.phil.parse(file_name=arg)
-    except KeyboardInterrupt: raise
-    except RuntimeError, e:
-      print e
-    params, unused_definitions = master_params().fetch(
-        sources = [parsed_params],
-        track_unused_definitions = True)
-    if(len(unused_definitions)):
-      print "*"*79
-      print "ERROR:",
-      print "Unused parameter definitions:"
-      for obj_loc in unused_definitions:
-        print " ", str(obj_loc)
-      print "*"*79
-      raise Sorry("Fix parameters file and run again.")
-      print
-    run(params = params.extract())
+    from iotbx.file_reader import any_file
+    pdb_files = []
+    reflection_files = []
+    phil_objects = []
+    for arg in args :
+      if (os.path.isfile(arg)) :
+        inp = any_file(arg)
+        if (inp.file_type == "phil") :
+          phil_objects.append(inp.file_object)
+        elif (inp.file_type == "pdb") :
+          pdb_files.append(inp)
+        elif (inp.file_type == "hkl") :
+          reflection_files.append(inp)
+        else :
+          raise Sorry(("Don't know how to deal with the file %s - unrecognized "+
+            "format '%s'.  Please verify that the syntax is correct.") % (arg,
+              str(inp.file_type)))
+      else :
+        try :
+          phil_objects.append(iotbx.phil.parse(arg))
+        except RuntimeError, e :
+          raise Sorry("Unrecognized parameter or command-line argument '%s'." %
+            arg)
+    working_phil = master_params().fetch(sources=phil_objects)
+    params = working_phil.extract()
+    if (len(pdb_files) > 2) :
+      raise Sorry("No more than two PDB files may be used as input.")
+    if (len(reflection_files) > 2) :
+      raise Sorry("No more than two reflection files may be used as input.")
+    if ((len(params.map_1.pdb_file_name) == 0) and
+        (len(params.map_2.pdb_file_name) == 0) and
+        (params.map_1.reflection_file_name is None) and
+        (params.map_2.reflection_file_name is None)) :
+      if (len(reflection_files) == 1) and (len(pdb_files) == 1) :
+        # one PDB file, one data file - compute CC of DFc to 2mFo-DFc
+        params.map_1.pdb_file_name = [ pdb_files[0].file_name ]
+        params.map_1.map_type = "DFc"
+        params.map_1.use = True
+        params.map_2.reflection_file_name = reflection_files[0].file_name
+        params.map_2.map_type = "2mFo-DFc"
+      elif (len(reflection_files) == 2) and (len(pdb_files) == 2) :
+        # two of each - compute CC of 2mFo-DFc maps
+        params.map_1.pdb_file_name = [ pdb_files[0].file_name ]
+        params.map_1.reflection_file_name = reflection_files[0].file_name
+        params.map_1.map_type = "2mFo-DFc"
+        params.map_1.use = True
+        params.map_1.pdb_file_name = [ pdb_files[1].file_name ]
+        params.map_2.reflection_file_name = reflection_files[1].file_name
+        params.map_2.map_type = "2mFo-DFc"
+      elif (len(reflection_files) != 0) or (len(pdb_files) != 0) :
+        raise Sorry("Ambiguous command-line arguments - please supply specific "+
+          "parameter names.  Run this command without arguments to see a full "+
+          "listing of recognized parameters.")
+      else :
+        raise Sorry("No input files supplied.")
+    run(params=params)
 
 def run(params, d_min_default=1.5, d_max_default=999.9) :
   # check for crystal_symmetry
@@ -379,12 +420,23 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
   # get map CC object
   def get_map_cc_obj(map_1, params, pdb_to_xrs_1, pdb_to_xrs_2, fft_map_1,
                      atom_detail, residue_detail, atom_radius,
-                     hydrogen_atom_radius):
+                     hydrogen_atom_radius, atom_selection):
     pdb_to_xrs_ = None
     if(params.map_1.use): pdb_to_xrs_ = pdb_to_xrs_1
     elif(params.map_2.use): pdb_to_xrs_ = pdb_to_xrs_2
     else: RuntimeError
     pdb_hierarchy = pdb_to_xrs_.pdb_hierarchy
+    cc_selection = None
+    if (atom_selection is not None) :
+      sel_cache = pdb_hierarchy.atom_selection_cache()
+      cc_selection_ = sel_cache.selection(atom_selection)
+      if (cc_selection_.count(True) == 0) :
+        raise Sorry("Atom selection '%s' is empty." % atom_selection)
+      # XXX mean occupancy ends up being less than zero in my test case when
+      # hydrogens are included.  we probably don't care about them anyway.
+      hd_selection = pdb_to_xrs_.xray_structure.hd_selection()
+      cc_selection_ &= ~hd_selection
+      cc_selection = cc_selection_.iselection()
     result = map_cc_funct(
       map_1          = map_1,
       map_1_name     = params.map_1.map_type,
@@ -394,7 +446,8 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
       atom_detail    = atom_detail,
       atom_radius    = atom_radius,
       hydrogen_atom_radius = hydrogen_atom_radius,
-      residue_detail = residue_detail)
+      residue_detail = residue_detail,
+      cc_selection   = cc_selection)
     del map_1
     return result
   #
@@ -426,6 +479,8 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
       details_level = params.details_level,
       d_min         = data_and_flags.f_obs.d_min(),
       atom_radius   = params.atom_radius)
+    if (params.atom_selection is not None) :
+      atom_detail = residue_detail = None
     grid_step = compute_grid_step_from_atom_radius_and_number_of_grid_points(
       r = atom_radius, n = params.number_of_grid_points,
       d_min = data_and_flags.f_obs.d_min())
@@ -448,7 +503,8 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
       pdb_to_xrs_1 = pdb_to_xrs_1, pdb_to_xrs_2 = pdb_to_xrs_2,
       fft_map_1 = fft_map_1, atom_detail = atom_detail,
       residue_detail = residue_detail, atom_radius = atom_radius,
-      hydrogen_atom_radius = params.hydrogen_atom_radius)
+      hydrogen_atom_radius = params.hydrogen_atom_radius,
+      atom_selection=params.atom_selection)
     #
     ### second
     if(xray_structure_2 is not None): xrs = xray_structure_2
@@ -497,6 +553,8 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
       details_level = params.details_level,
       d_min         = hr,
       atom_radius   = params.atom_radius)
+    if (params.atom_selection is not None) :
+      atom_detail = residue_detail = None
     grid_step = compute_grid_step_from_atom_radius_and_number_of_grid_points(
       r = atom_radius, n = params.number_of_grid_points, d_min = hr)
     #
@@ -515,7 +573,8 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
       pdb_to_xrs_1 = pdb_to_xrs_1, pdb_to_xrs_2 = pdb_to_xrs_2,
       fft_map_1 = fft_map_1, atom_detail = atom_detail,
       residue_detail = residue_detail, atom_radius = atom_radius,
-      hydrogen_atom_radius = params.hydrogen_atom_radius)
+      hydrogen_atom_radius = params.hydrogen_atom_radius,
+      atom_selection=params.atom_selection)
     #
     if(xray_structure_2 is not None): xrs = xray_structure_2
     else: xrs = xray_structure_1
@@ -564,7 +623,8 @@ class map_cc_funct(object):
                      residue_detail,
                      map_1_name = None,
                      selection = None,
-                     pdb_hierarchy = None):
+                     pdb_hierarchy = None,
+                     cc_selection = None):
     self.map_1_name = map_1_name
     self.xray_structure = xray_structure
     self.selection = selection
@@ -574,7 +634,10 @@ class map_cc_funct(object):
     self.result = []
     self.map_1_size = map_1.size()
     self.map_1_stat = maptbx.statistics(map_1)
-    assert [self.atom_detail, self.residue_detail].count(True) == 1
+    self.cc_selection = cc_selection
+    self.use_selection = False
+    assert (([self.atom_detail, self.residue_detail].count(True) == 1) or
+            (self.cc_selection is not None))
     self.atoms_with_labels = None
     if(pdb_hierarchy is not None and self.atom_detail):
       self.atoms_with_labels = list(pdb_hierarchy.atoms_with_labels())
@@ -588,6 +651,29 @@ class map_cc_funct(object):
     else :
       real_map_unpadded = fft_map.real_map_unpadded()
     sites_cart = self.xray_structure.sites_cart()
+    if (cc_selection is not None) and (len(cc_selection) > 0) :
+      assert (not self.atom_detail) and (not self.residue_detail)
+      self.use_selection = True
+      atom_radii = flex.double(cc_selection.size(), atom_radius)
+      assert self.pdb_hierarchy is not None
+      selected_sites_cart = sites_cart.select(cc_selection)
+      sel = maptbx.grid_indices_around_sites(
+        unit_cell  = self.xray_structure.unit_cell(),
+        fft_n_real = real_map_unpadded.focus(),
+        fft_m_real = real_map_unpadded.all(),
+        sites_cart = selected_sites_cart,
+        site_radii = flex.double(cc_selection.size(), atom_radius))
+      self.gifes = [ sel ]
+      m1 = map_1.select(sel)
+      ed1 = flex.double()
+      for i_seq in cc_selection :
+        ed1.append(map_1.eight_point_interpolation(scatterers[i_seq].site))
+      self._result = [ group_args(
+        atom_selection=cc_selection,
+        m1=m1,
+        ed1=flex.mean(ed1),
+        xyz=selected_sites_cart.mean(),
+        n_atoms=selected_sites_cart.size()) ]
     if(self.atom_detail):
       self.gifes = [None,]*scatterers.size()
       self._result = [None,]*scatterers.size()
@@ -648,7 +734,42 @@ class map_cc_funct(object):
     self.map_2_stat = maptbx.statistics(map_2)
     scatterers = self.xray_structure.scatterers()
     unit_cell = self.xray_structure.unit_cell()
-    if(self.atom_detail):
+    if (self.use_selection) :
+      assert (len(self._result) == 1)
+      scatterers = self.xray_structure.scatterers()
+      occupancies = scatterers.extract_occupancies()
+      b_isos = self.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
+      result = self._result[0]
+      assert (len(result.atom_selection) > 0)
+      sel = list(self.gifes[0])
+      m1 = result.m1
+      m2 = map_2.select(sel)
+      assert m1.size() == m2.size()
+      if(m1.size() < set_cc_to_zero_if_n_grid_points_less_than): corr = 0.
+      else: corr = flex.linear_correlation(x = m1, y = m2).coefficient()
+      ed1 = result.ed1
+      ed2_ = flex.double()
+      xyz = result.xyz
+      n_atoms = result.n_atoms
+      for i_seq in self.cc_selection :
+        ed2_.append(map_2.eight_point_interpolation(scatterers[i_seq].site))
+      ed2 = flex.mean(ed2_)
+      poor_flag = False
+      if(((ed2 < poor_map_2_value_threshold or ed1 < poor_map_1_value_threshold)
+         or corr < poor_cc_threshold)):
+        poor_flag = True
+      self.result.append(group_args(
+        atom_selection = self.cc_selection,
+        occupancy   = flex.mean(occupancies.select(self.cc_selection)),
+        xyz         = xyz,
+        n_atoms     = n_atoms,
+        b_iso       = flex.mean(b_isos.select(self.cc_selection)),
+        cc          = corr,
+        map_1_val   = ed1,
+        map_2_val   = ed2,
+        data_points = m2.size(),
+        poor_flag   = poor_flag))
+    elif(self.atom_detail):
       for i_seq, scatterer in enumerate(scatterers):
         if(self.selection[i_seq]):
           sel = list(self.gifes[i_seq])
@@ -961,6 +1082,20 @@ def show_result(result, show_hydrogens = False, log = None):
         r.map_1_val,
         r.map_2_val,
         r.data_points)
+  elif ("atom_selection" in keys) :
+    assert (not "atom" in keys) and (not "residue" in keys)
+    print >> log, \
+      "                  occ      b      CC   map1   map2  No. atoms  No.Points"
+    fmt = "atom selection: %5.2f %6.2f %7.4f %6.2f %6.2f   %8d   %8d"
+    for i_seq, r in enumerate(result):
+      print >> log, fmt % (
+        r.occupancy,
+        r.b_iso,
+        r.cc,
+        r.map_1_val,
+        r.map_2_val,
+        r.data_points,
+        r.atom_selection.size())
   else: raise RuntimeError
 
 def map_statistics_for_atom_selection (
