@@ -714,7 +714,7 @@ Q  fdp=4.000000)""")
     else:
       try: xs.u_iso_or_equiv(unit_cell=None)
       except RuntimeError, e:
-        assert str(e).startswith("cctbx InternalError: ")
+        assert str(e).startswith("cctbx Internal Error: ")
       else: raise Exception_expected
     results_u_cart_plus_u_iso.append(xs.u_cart_plus_u_iso(unit_cell=uc))
     if (not xs.flags.use_u_aniso()):
@@ -723,7 +723,7 @@ Q  fdp=4.000000)""")
     else:
       try: xs.u_cart_plus_u_iso(unit_cell=None)
       except RuntimeError, e:
-        assert str(e).startswith("cctbx InternalError: ")
+        assert str(e).startswith("cctbx Internal Error: ")
       else: raise Exception_expected
   assert approx_equal(results_u_cart_plus_u_iso, [
     (0,0,0,0,0,0),
