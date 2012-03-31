@@ -15,8 +15,10 @@ class detector_surface(wx.Window):
     O.prev_work_phil_str = None
     O.pixels = None
     O.image = None
+    O.image_2 = None
     O.spots = None
     O.predicted_spots = None
+    O.image_toggle = False
 
   def recompute(O):
     w, h = O.GetSizeTuple()
@@ -39,6 +41,10 @@ class detector_surface(wx.Window):
       O.pixels = compute_image(O.work_params)
       O.image = O.pixels.as_rgb_gray_scale_string(
         saturation=O.work_params.signal_max)
+      if (O.work_params.wavelength_2 is not None):
+        pixels_2 = compute_image(O.work_params, use_wavelength_2=True)
+        O.image_2 = pixels_2.as_rgb_gray_scale_string(
+          saturation=O.work_params.signal_max)
       if (   O.prev_work_phil_ewp_none_str is None
           or O.prev_work_phil_ewp_none_str != work_phil_ewp_none_str):
         O.prev_work_phil_ewp_none_str = work_phil_ewp_none_str
@@ -142,7 +148,9 @@ class detector_surface(wx.Window):
     assert p != 0
     wx_image = wx.EmptyImage(p, p)
     if (O.image is not None):
-      wx_image.SetData(O.image)
+      if (not O.image_toggle): im = O.image
+      else:                    im = O.image_2
+      wx_image.SetData(im)
     wx_bitmap = wx_image.ConvertToBitmap()
     dc = wx.PaintDC(win=O)
     dc = wx.BufferedDC(dc)
@@ -179,7 +187,11 @@ class detector_surface(wx.Window):
 
   def OnChar(O, event):
     key = event.GetKeyCode()
-    if (key == ord("s")):
+    if (key == ord("w")):
+      if (O.image_2 is not None):
+        O.image_toggle = not O.image_toggle
+        O.Refresh()
+    elif (key == ord("s")):
       O.run_spotfinder()
     elif (key == ord("i")):
       O.predicted_spots = None

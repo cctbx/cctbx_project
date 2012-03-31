@@ -1,12 +1,7 @@
 def run(args):
   from rstbx.simage import create
   from scitbx.array_family import flex
-  work_params = create.process_args(
-    args=args,
-    extra_phil_str="""\
-wavelength_2 = None
-  .type = float
-""")
+  work_params = create.process_args(args=args)
   i_calc, image_info = create.compute(
     work_params=work_params,
     store_miller_index_i_seqs=True,
@@ -21,9 +16,9 @@ wavelength_2 = None
       print "%3d %3d %3d" % h, "(%8.2f, %8.2f)" % tuple(x[:2]), "%.6g" % s
     print
   else:
-    work_params.wavelength = work_params.wavelength_2
     i_calc_2, image_info_2 = create.compute(
       work_params=work_params,
+      use_wavelength_2=True,
       store_miller_index_i_seqs=True,
       store_spots=True,
       store_signals=True)

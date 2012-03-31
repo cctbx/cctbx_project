@@ -25,6 +25,8 @@ crystal_rotation_matrix = None
   .type = floats(size=9)
 wavelength = 1
   .type = float
+wavelength_2 = None
+  .type = float
 d_min = 2
   .type = float
 ewald_proximity = 0.0025
@@ -255,6 +257,7 @@ def add_noise(work_params, pixels):
 
 def compute(
       work_params,
+      use_wavelength_2=False,
       store_miller_index_i_seqs=False,
       store_spots=False,
       store_signals=False,
@@ -263,6 +266,10 @@ def compute(
   from scitbx.math.euler_angles import xyz_matrix
   crystal_rotation_matrix = xyz_matrix(*work_params.euler_angles_xyz)
   work_params.crystal_rotation_matrix = crystal_rotation_matrix
+  if (not use_wavelength_2):
+    wavelength = work_params.wavelength
+  else:
+    wavelength = work_params.wavelength_2
   from rstbx.simage import image_simple
   return i_calc, image_simple(
     store_miller_index_i_seqs=store_miller_index_i_seqs,
@@ -273,7 +280,7 @@ def compute(
       miller_indices=i_calc.p1_anom.indices(),
       spot_intensity_factors=i_calc.p1_anom.data(),
       crystal_rotation_matrix=crystal_rotation_matrix,
-      ewald_radius=1/work_params.wavelength,
+      ewald_radius=1/wavelength,
       ewald_proximity=work_params.ewald_proximity,
       signal_max=work_params.signal_max,
       detector_distance=work_params.detector.distance,
@@ -282,8 +289,11 @@ def compute(
       point_spread=work_params.point_spread,
       gaussian_falloff_scale=work_params.gaussian_falloff_scale)
 
-def compute_image(work_params):
-  _, image_info = compute(work_params=work_params, set_pixels=True)
+def compute_image(work_params, use_wavelength_2=False):
+  _, image_info = compute(
+    work_params=work_params,
+    use_wavelength_2=use_wavelength_2,
+    set_pixels=True)
   pixels = image_info.pixels
   add_noise(work_params, pixels=pixels)
   return pixels
