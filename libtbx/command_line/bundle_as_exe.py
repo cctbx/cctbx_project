@@ -1,7 +1,7 @@
 import sys, os
 
 def create_autorun(bundle_prefix, single_dir=False):
-  if (single_dir) :
+  if (not single_dir) :
     return """\
 $AUTORUN$>.\\%(bundle_prefix)s_install_script.bat
 .
