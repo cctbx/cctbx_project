@@ -15,6 +15,7 @@ master_params = iotbx.phil.parse("""\
     .type=float
   map_next_to_model
     .expert_level=2
+    .style = noauto
   {
     min_model_peak_dist = 1.8
       .type=float
