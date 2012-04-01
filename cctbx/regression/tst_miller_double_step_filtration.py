@@ -1,5 +1,4 @@
 from scitbx.array_family import flex
-from libtbx.test_utils import approx_equal
 from cctbx import miller
 import iotbx.pdb
 

@@ -92,10 +92,13 @@ namespace scitbx { namespace af { namespace boost_python {
   }
 
   std::string
-  as_rgb_gray_scale_string(
+  as_rgb_scale_string(
     af::const_ref<int, af::flex_grid<> > const& O,
+    af::tiny<double, 3> const& rgb_scales,
     int saturation)
   {
+    SCITBX_ASSERT(rgb_scales.const_ref().all_ge(0));
+    SCITBX_ASSERT(rgb_scales.const_ref().all_le(1));
     SCITBX_ASSERT(saturation != 0);
     double scale = 1. / saturation;
     std::size_t n = O.accessor().size_1d();
@@ -105,12 +108,20 @@ namespace scitbx { namespace af { namespace boost_python {
       double f = O[i] * scale;
       if      (f < 0) f = 0;
       else if (f > 1) f = 1;
-      char c = static_cast<char>(static_cast<int>((1 - f) * 255 + 0.5));
-      result[j++] = c;
-      result[j++] = c;
-      result[j++] = c;
+      for(unsigned k=0;k<3;k++) {
+        double fs = f * rgb_scales[k];
+        result[j++] = static_cast<char>(static_cast<int>((1-fs) * 255 + 0.5));
+      }
     }
     return result;
+  }
+
+  std::string
+  as_rgb_gray_scale_string(
+    af::const_ref<int, af::flex_grid<> > const& O,
+    int saturation)
+  {
+    return as_rgb_scale_string(O, af::tiny<double, 3>(1,1,1), saturation);
   }
 
   void wrap_flex_int()
@@ -129,6 +140,9 @@ namespace scitbx { namespace af { namespace boost_python {
       .def("as_bool", as_bool, (arg("strict")=true))
       .def("as_long", as_long)
       .def("as_string", as_string, (arg("format_string")="%d"))
+      .def("as_rgb_scale_string", as_rgb_scale_string, (
+        arg("rgb_scales"),
+        arg("saturation")))
       .def("as_rgb_gray_scale_string", as_rgb_gray_scale_string, (
         arg("saturation")))
       .def("counts", counts<int, std::map<long, long> >::unlimited)
