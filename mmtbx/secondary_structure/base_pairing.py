@@ -127,9 +127,11 @@ class pair_database (object) :
       raise RuntimeError("No entry for base pair %s with type %s (H=%s)." %
         (base_pair, pair_type, str(use_hydrogens)))
 
-  def get_pair_type (self, base_pair, atom_pairs, use_hydrogens=False) :
+  def get_pair_type (self, base_pair, atom_pairs, use_hydrogens=False,
+      ignore_extra_pairs=True) :
     return_pair_type = None
     inverted_atom_pairs = invert_pairs(atom_pairs)
+    inverted_pair = self.invert_bases(base_pair)
     if use_hydrogens :
       db = self._h_bond_pairs
     else:
@@ -138,7 +140,10 @@ class pair_database (object) :
       if base_pair in db[pair_type]:
         db[pair_type][base_pair][0].sort(key=sort_tuple)
         atom_pairs.sort(key=sort_tuple)
-        if db[pair_type][base_pair][0] == atom_pairs:
+        db_pairs_set = set(db[pair_type][base_pair][0])
+        common_pairs = db_pairs_set.intersection(set(atom_pairs))
+        if ((db[pair_type][base_pair][0] == atom_pairs) or
+            ((ignore_extra_pairs) and  (common_pairs == db_pairs_set))) :
           if return_pair_type is None:
             return_pair_type = pair_type
           elif (not is_saenger(return_pair_type)) and (is_saenger(pair_type)):
@@ -148,11 +153,13 @@ class pair_database (object) :
           else:
             print return_pair_type, pair_type
             raise RuntimeError("Redundant entries found for base pair %s." % base_pair)
-      elif self.invert_bases(base_pair) in db[pair_type]:
+      elif (inverted_pair in db[pair_type]) :
         db[pair_type][self.invert_bases(base_pair)][0].sort(key=sort_tuple)
         inverted_atom_pairs.sort(key=sort_tuple)
-        if db[pair_type][self.invert_bases(base_pair)][0] == \
-           inverted_atom_pairs:
+        db_pairs_set = set(db[pair_type][inverted_pair][0])
+        common_pairs = db_pairs_set.intersection(set(inverted_atom_pairs))
+        if ((db[pair_type][inverted_pair][0] == inverted_atom_pairs) or
+            ((ignore_extra_pairs) and (common_pairs == db_pairs_set))) :
           if return_pair_type is None:
             return_pair_type = pair_type
           elif (not is_saenger(return_pair_type)) and (is_saenger(pair_type)):
@@ -263,7 +270,6 @@ def clean_single_base_name(base):
   clean_base = re.sub(r' ([ACGT])([Dd])',r' D\1',clean_base)
   return clean_base
 
-
 def run_reduce(hierarchy, remove_hydrogens=True):
   #log = sys.stderr
   trim = "phenix.reduce -quiet -trim -"
@@ -289,6 +295,7 @@ def run_reduce(hierarchy, remove_hydrogens=True):
     input_str = clean_pdb_string
   output = easy_run.fully_buffered(build,
                                    stdin_lines=input_str)
+  open("allatom.pdb", "w").write("\n".join(output.stdout_lines))
   return output
 
 def get_base_pairs(pdb_hierarchy, probe_flags=None):

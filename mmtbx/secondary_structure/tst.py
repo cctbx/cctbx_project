@@ -72,7 +72,10 @@ def exercise_nucleic_acids () :
   pdb_file_rna = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/1u8d.pdb",
     test=os.path.isfile)
-  if pdb_file_rna is None :
+  pdb_file_dna = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/dnatest.pdb",
+    test=os.path.isfile)
+  if (pdb_file_rna is None) :
     print "Skipping exercise_nucleic_acids(): input file not available."
     return False
   # Nucleic acids (requires REDUCE and PROBE)
@@ -101,6 +104,18 @@ def exercise_nucleic_acids () :
     assert db.get_pair_type("A-U", [('H61', 'O4'), ('N1', 'H3')], True) == "XX"
     assert db.get_pair_type("A-U", [('N1', 'H3'), ('H61', 'O4')], True) == "XX"
     assert db.get_pair_type("C-G", [('N4', 'O6'), ('N3', 'N1'), ('O2', 'N2')], False) == "XIX"
+    # DNA
+    pdb_in = file_reader.any_file(pdb_file_dna, force_type="pdb").file_object
+    pdb_hierarchy = pdb_in.construct_hierarchy()
+    pdb_hierarchy.atoms().reset_i_seq()
+    xray_structure = pdb_in.xray_structure_simple()
+    sec_str_from_pdb_file = pdb_in.extract_secondary_structure()
+    m = manager(pdb_hierarchy=pdb_hierarchy,
+      xray_structure=xray_structure,
+      sec_str_from_pdb_file=sec_str_from_pdb_file)
+    log = null_out()
+    m.find_automatically(log=log)
+    assert (len(m.params.nucleic_acids.base_pair) == 4)
   else:
     print "Skipping base-pairing tests: reduce or probe module not available."
     pass
