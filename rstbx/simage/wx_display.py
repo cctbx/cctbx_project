@@ -43,7 +43,8 @@ class detector_surface(wx.Window):
         saturation=O.work_params.signal_max)
       if (O.work_params.wavelength_2 is not None):
         pixels_2 = compute_image(O.work_params, use_wavelength_2=True)
-        O.image_2 = pixels_2.as_rgb_gray_scale_string(
+        O.image_2 = pixels_2.as_rgb_scale_string(
+          rgb_scales=(0,1,1),
           saturation=O.work_params.signal_max)
       if (   O.prev_work_phil_ewp_none_str is None
           or O.prev_work_phil_ewp_none_str != work_phil_ewp_none_str):
