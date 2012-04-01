@@ -279,6 +279,14 @@ class main_panel(wx.Panel):
       label="Wavelength",
       value=O.work_params.wavelength)
 
+    add_fs(
+      min_val=0.1,
+      max_val=10,
+      increment=0.1,
+      digits=6,
+      label="Wavelength 2",
+      value=O.work_params.wavelength_2)
+
     if (O.work_params.d_min is None):
       O.work_params.d_min = O.work_params.wavelength
     add_fs(
@@ -380,6 +388,8 @@ class main_panel(wx.Panel):
     label = O.variable_name_by_wx_id[event.GetId()]
     if (label == "Wavelength"):
       O.work_params.wavelength = val
+    elif (label == "Wavelength 2"):
+      O.work_params.wavelength_2 = val
     elif (label == "d-min"):
       O.work_params.d_min = val
     elif (label == "Ewald proximity"):
@@ -402,6 +412,8 @@ class main_panel(wx.Panel):
 def run(args):
   from rstbx.simage import run_spotfinder
   work_params = run_spotfinder.process_args(args)
+  if (work_params.wavelength_2 is None):
+    work_params.wavelength_2 = work_params.wavelength
   app = wx.App()
   frame = wx.Frame(
     parent=None,
