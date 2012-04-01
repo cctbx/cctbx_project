@@ -58,9 +58,9 @@ cd ..
 if not %%el%% == 0 goto end
 call %(bundle)s_build\setpaths_all.bat
 
-if not exist ..\%(bundle)s_install_finalize.bat goto run_tests
-echo Running final setup script ..\%(bundle)s_install_finalize.bat
-call ..\%(bundle)s_install_finalize.bat
+if not exist %(bundle)s_install_finalize.bat goto run_tests
+echo Running final setup script %(bundle)s_install_finalize.bat
+call %(bundle)s_install_finalize.bat
 
 :run_tests
 if not exist "%%BOOST_ADAPTBX_DIST%%\tst_rational.py" goto skip_test
