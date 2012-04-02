@@ -18,7 +18,7 @@ class detector_surface(wx.Window):
     O.image_2 = None
     O.spots = None
     O.predicted_spots = None
-    O.image_toggle = False
+    O.image_combination = 0
 
   def recompute(O):
     w, h = O.GetSizeTuple()
@@ -39,16 +39,17 @@ class detector_surface(wx.Window):
       O.prev_work_phil_str = work_phil_str
       from rstbx.simage.create import compute_image
       O.pixels = compute_image(O.work_params)
+      _ = O.work_params
       saturation = int(_.signal_max * _.saturation_level + 0.5)
       O.image = O.pixels.as_rgb_scale_string(
         rgb_scales_low=(1,1,1),
-        rgb_scales_high=(0,0,0),
+        rgb_scales_high=(1,0,0),
         saturation=saturation)
       if (O.work_params.wavelength_2 is not None):
         pixels_2 = compute_image(O.work_params, use_wavelength_2=True)
         O.image_2 = pixels_2.as_rgb_scale_string(
           rgb_scales_low=(1,1,1),
-          rgb_scales_high=(1,0,0),
+          rgb_scales_high=(0,0,1),
           saturation=saturation)
       if (   O.prev_work_phil_ewp_none_str is None
           or O.prev_work_phil_ewp_none_str != work_phil_ewp_none_str):
@@ -153,8 +154,12 @@ class detector_surface(wx.Window):
     assert p != 0
     wx_image = wx.EmptyImage(p, p)
     if (O.image is not None):
-      if (not O.image_toggle): im = O.image
-      else:                    im = O.image_2
+      _ = O.image_combination
+      if   (_ == 1): im = O.image
+      elif (_ == 2): im = O.image_2
+      else:
+        from rstbx.simage import combine_rgb_images
+        im = combine_rgb_images([O.image, O.image_2])
       wx_image.SetData(im)
     wx_bitmap = wx_image.ConvertToBitmap()
     dc = wx.PaintDC(win=O)
@@ -194,7 +199,7 @@ class detector_surface(wx.Window):
     key = event.GetKeyCode()
     if (key == ord("w")):
       if (O.image_2 is not None):
-        O.image_toggle = not O.image_toggle
+        O.image_combination = (O.image_combination + 1) % 3
         O.Refresh()
     elif (key == ord("s")):
       O.run_spotfinder()
