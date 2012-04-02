@@ -22,6 +22,8 @@ key_words = {
   "number_of_chunks" : int,
   "size_of_chunks"   : int,
   "code"             : str,
+  "js"               : int,
+  "qsub_cmd"         : str,
   }
 
 script_file = """
@@ -111,6 +113,8 @@ def run(phenix_source=None,
         size_of_chunks=1,
         number_of_chunks=None,
         code=None,
+        js=1,
+        qsub_cmd="qsub",
         ):
   if not phenix_source:
     print '-'*80
@@ -207,9 +211,10 @@ def run(phenix_source=None,
     )
   f.close()
 
-  cmd = "qsub -t 1-%s -js %d %s" % (
+  cmd = "%s -t 1-%s -js %d %s" % (
+    qsub_cmd,
     number_of_jobs,
-    1,
+    js,
     qsub_run_filename,
     )
   print '\n  Queue command\n'
