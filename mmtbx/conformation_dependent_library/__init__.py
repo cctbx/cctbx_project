@@ -316,6 +316,7 @@ def get_c_ca_n(atom_group):
       for atom in atom_group.atoms():
         outl.append(atom.format_atom_record())
       tmp = None
+      break
   return tmp, outl
 
 def round_to_ten(d):
