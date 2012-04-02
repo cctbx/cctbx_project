@@ -129,6 +129,11 @@ def exercise_image_simple():
 |*****|
 """.replace("*", star))
 
+def exercise_combine_rgb_images():
+  from rstbx.simage import combine_rgb_images as cri
+  assert cri(["de", "*/"]) == "GJ"
+  assert cri(["+-", "ac"]) == "FH"
+
 def exercise_create():
   from rstbx.simage import create
   from libtbx.test_utils import block_show_diff
@@ -257,6 +262,7 @@ def run(args):
   from libtbx.utils import show_times_at_exit
   show_times_at_exit()
   exercise_image_simple()
+  exercise_combine_rgb_images()
   exercise_create()
   exercise_explore_completeness()
   exercise_solver()
