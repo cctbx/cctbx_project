@@ -91,6 +91,8 @@ test_cdl_params = """\
 """
 
 master_params_str = """\
+  altloc_weighting = False
+    .type = bool
   cdl = False
     .type = bool
     .short_caption = Use Conformation-Dependent Library
