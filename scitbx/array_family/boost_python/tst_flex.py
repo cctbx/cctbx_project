@@ -529,11 +529,24 @@ def exercise_misc():
   for n in xrange(10):
     a = flex.size_t(range(n)).as_int()
     assert list(a) == range(n)
-    s = a.as_rgb_gray_scale_string(saturation=max(1,n))
+    s = a.as_rgb_scale_string(
+      rgb_scales_low=(1,1,1),
+      rgb_scales_high=(0,0,0),
+      saturation=max(1,n))
     assert len(s) == 3*n
-  s = flex.int([1,3,0,2,-1]).as_rgb_gray_scale_string(saturation=2)
+  a = flex.int([1,3,0,2,-1])
+  s = a.as_rgb_scale_string(
+    rgb_scales_low=(1,1,1),
+    rgb_scales_high=(0,0,0),
+    saturation=2)
   assert [ord(c) for c in s] \
       == [128, 128, 128, 0, 0, 0, 255, 255, 255, 0, 0, 0, 255, 255, 255]
+  s = a.as_rgb_scale_string(
+    rgb_scales_low=(1,1,1),
+    rgb_scales_high=(1,0,0),
+    saturation=2)
+  assert [ord(c) for c in s] \
+      == [255, 128, 128, 255, 0, 0, 255, 255, 255, 255, 0, 0, 255, 255, 255]
   #
   a = flex.double([1,2,3,-4,5,6])
   a.reshape(flex.grid(2,3))
