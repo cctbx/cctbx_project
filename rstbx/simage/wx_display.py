@@ -48,8 +48,6 @@ class detector_surface(wx.Window):
         rgb_scales_low=(1,1,1),
         rgb_scales_high=(0,0,1),
         saturation=saturation)
-      O.spots = None
-      O.predicted_spots = None
     return True
 
   def run_spotfinder(O):
@@ -214,20 +212,28 @@ class detector_surface(wx.Window):
       O.spots = None
       O.predicted_spots = None
       O.Refresh()
+    elif (key == ord("u")):
+      O.work_params.force_unit_spot_intensities = \
+        not O.work_params.force_unit_spot_intensities
+      if (O.recompute()):
+        O.Refresh()
     elif (key == ord("w")):
       if (O.image_2 is not None):
         O.active_wavelengths = (O.active_wavelengths + 1) % 3
         O.update_active_wavelengths()
         O.Refresh()
     elif (key == ord("s")):
-      O.predicted_spots = None
-      O.run_spotfinder()
-    elif (key == ord("i")):
-      O.predicted_spots = None
-      O.run_labelit_index()
-    elif (key == ord("I")):
-      O.predicted_spots = None
-      O.run_labelit_index(use_original_uc_cr=True)
+      if (O.spots is None):
+        O.run_spotfinder()
+      else:
+        O.spots = None
+        O.Refresh()
+    elif (key in [ord("i"), ord("I")]):
+      if (O.predicted_spots is None):
+        O.run_labelit_index(use_original_uc_cr=(key==ord("I")))
+      else:
+        O.predicted_spots = None
+        O.Refresh()
     else:
       print "No action for this key stroke."
 
