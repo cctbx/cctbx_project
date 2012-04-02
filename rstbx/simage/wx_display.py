@@ -39,13 +39,17 @@ class detector_surface(wx.Window):
       O.prev_work_phil_str = work_phil_str
       from rstbx.simage.create import compute_image
       O.pixels = compute_image(O.work_params)
-      O.image = O.pixels.as_rgb_gray_scale_string(
-        saturation=O.work_params.signal_max)
+      saturation = int(_.signal_max * _.saturation_level + 0.5)
+      O.image = O.pixels.as_rgb_scale_string(
+        rgb_scales_low=(1,1,1),
+        rgb_scales_high=(0,0,0),
+        saturation=saturation)
       if (O.work_params.wavelength_2 is not None):
         pixels_2 = compute_image(O.work_params, use_wavelength_2=True)
         O.image_2 = pixels_2.as_rgb_scale_string(
-          rgb_scales=(0,1,1),
-          saturation=O.work_params.signal_max)
+          rgb_scales_low=(1,1,1),
+          rgb_scales_high=(1,0,0),
+          saturation=saturation)
       if (   O.prev_work_phil_ewp_none_str is None
           or O.prev_work_phil_ewp_none_str != work_phil_ewp_none_str):
         O.prev_work_phil_ewp_none_str = work_phil_ewp_none_str
@@ -412,7 +416,11 @@ class main_panel(wx.Panel):
 
 def run(args):
   from rstbx.simage import run_spotfinder
-  work_params = run_spotfinder.process_args(args)
+  work_params = run_spotfinder.process_args(
+    args=args, extra_phil_str="""\
+saturation_level = 1.0
+  .type = float
+""")
   if (work_params.wavelength_2 is None):
     work_params.wavelength_2 = work_params.wavelength
   app = wx.App()
