@@ -35,7 +35,7 @@ cmds = [
 def run(only_i=None,
         chunk_n=1,
         chunk_size=len(cmds),
-       ):
+        ):
   try: only_i = int(only_i)
   except ValueError: only_i=None
 
@@ -75,7 +75,7 @@ limit datasize 2000000
 
 source %s
 
-python %s $SGE_TASK_ID $SGE_TASK_LAST >& %s.$SGE_TASK_ID.out
+phenix.python %s $SGE_TASK_ID $SGE_TASK_LAST >& %s.$SGE_TASK_ID.out
 
 exit
 
@@ -104,9 +104,14 @@ def run(phenix_source=None,
   print '-'*80
   print '  Inputs'
   print '    phenix_source',phenix_source
+  if phenix_source.find("phenix_env")==-1 and phenix_source.find("setup")==-1:
+    print '  Need to supply file to source. e.g. phenix_env'
+    return False
   print '    where',where
-  assert commands
-  if type(commands)==type([]):
+  if commands is None:
+    print '  Need to supply a list of commands, either by file or python list'
+    return False
+  elif type(commands)==type([]):
     if code is None: code = "easy_qsub"
     print '    commands',len(commands)
     if len(commands)>1:
@@ -117,6 +122,9 @@ def run(phenix_source=None,
     if code is None: code = commands[:8]
   print '    size_of_chunks',size_of_chunks
   print '    number_of_chunks',number_of_chunks
+  if number_of_chunks==1:
+    print '\n  Need to choose number_of_chunks>1'
+    return
   print '-'*80
   if where is None:
     where = os.getcwd()
