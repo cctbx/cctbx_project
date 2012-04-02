@@ -62,6 +62,7 @@ def run(only_i=None,
       else:
         if only_i!=i+1: continue
     print 'Running', i+1
+    print 'Command', cmd
     easy_run.call(cmd)
 
 if __name__=="__main__":
@@ -79,6 +80,16 @@ phenix.python %s $SGE_TASK_ID $SGE_TASK_LAST >& %s.$SGE_TASK_ID.out
 
 exit
 
+"""
+
+test_run_script = """
+import os, sys
+
+def run(only_i=None):
+  print "%s " % only_i
+
+if __name__=="__main__":
+  run(*tuple(sys.argv[1:]))
 """
 
 def process_args(args):
@@ -101,6 +112,22 @@ def run(phenix_source=None,
         number_of_chunks=None,
         code=None,
         ):
+  if not phenix_source:
+    print '-'*80
+    print "\n  Automatically setting phenix_source to current $PHENIX/phenix_env\n"
+    phenix_source = "%s/phenix_env" % os.environ.get("PHENIX", "")
+
+  if not commands:
+    print '-'*80
+    print "\n  Generating a test run script and queuing 10 times\n"
+    f=file("easy_qsub_test_script.py", "wb")
+    f.write(test_run_script)
+    f.close()
+    commands = []
+    for i in range(10):
+      commands.append("python easy_qsub_test_script.py %s" % (i+100))
+
+
   print '-'*80
   print '  Inputs'
   print '    phenix_source',phenix_source
@@ -108,14 +135,15 @@ def run(phenix_source=None,
     print '  Need to supply file to source. e.g. phenix_env'
     return False
   print '    where',where
-  if commands is None:
-    print '  Need to supply a list of commands, either by file or python list'
-    return False
-  elif type(commands)==type([]):
+  if type(commands)==type([]):
+#  if commands is None:
+#    print '  Need to supply a list of commands, either by file or python list'
+#    return False
+#  elif type(commands)==type([]):
     if code is None: code = "easy_qsub"
-    print '    commands',len(commands)
+    print '    commands',len(commands),
     if len(commands)>1:
-      print '      similar to\n  ',commands[0]
+      print 'similar to\n\n> %s\n' % (commands[0])
   else:
     print '    commands',commands
     assert os.path.exists(commands)
@@ -185,7 +213,7 @@ def run(phenix_source=None,
     qsub_run_filename,
     )
   print '\n  Queue command\n'
-  print cmd
+  print "> %s\n" % cmd
   easy_run.call(cmd)
 
 
