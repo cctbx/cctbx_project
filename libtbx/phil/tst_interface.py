@@ -392,6 +392,20 @@ phaser.search {
   i.set_prefix("phaser")
   assert (i.get_full_path(".hklin") == "phaser.hklin")
   assert (i.get_scope_by_name(".keywords") is not None)
+  # and now with Windows-style paths
+  interface.update_phil_file_paths(
+    master_phil=master_phil,
+    file_name="phaser2.eff",
+    old_path="/home/nat/projects/beta-blip",
+    new_path="C:\\projects\\xtal\\beta-blip", # \x and \b are key here
+    use_iotbx_parser=True)
+  i = interface.index(master_phil=master_phil,
+    parse=iotbx.phil.parse)
+  i.merge_phil(phil_file="phaser2.eff")
+  p = i.get_python_object().phaser
+  # XXX obviously these are not entirely transferrable between Unix and
+  # Windows - we need to caution users against this
+  assert (p.hklin == "C:\\projects\\xtal\\beta-blip/beta_blip_P3221.mtz")
 
 if __name__ == "__main__" :
   exercise()
