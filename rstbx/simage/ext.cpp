@@ -44,10 +44,38 @@ namespace rstbx { namespace simage { namespace ext {
     }
   };
 
+  std::string
+  combine_rgb_images(
+    boost::python::list const& rgb_images)
+  {
+    namespace bp = boost::python;
+    TBXX_ASSERT(bp::len(rgb_images) > 0);
+    std::size_t img_size = static_cast<std::size_t>(bp::len(rgb_images[0]));
+    std::string result(img_size, '\0');
+    std::size_t n_imgs = static_cast<std::size_t>(bp::len(rgb_images));
+    boost::scoped_array<const char*> img_ptrs(new const char*[n_imgs]);
+    for(std::size_t j=0;j!=n_imgs;j++) {
+      TBXX_ASSERT(bp::len(rgb_images[j]) == img_size);
+      img_ptrs[j] = bp::extract<const char*>(rgb_images[j])();
+    }
+    for(std::size_t i=0;i!=img_size;i++) {
+      unsigned sum = 0;
+      for(std::size_t j=0;j!=n_imgs;j++) {
+        sum += static_cast<unsigned>(img_ptrs[j][i]);
+      }
+      unsigned c = static_cast<unsigned>(
+        static_cast<double>(sum) / n_imgs + 0.5);
+      if (c > 255) c = 255;
+      result[i] = static_cast<char>(c);
+    }
+    return result;
+  }
+
   void init_module()
   {
     using namespace boost::python;
     image_simple_wrappers::wrap();
+    def("combine_rgb_images", combine_rgb_images);
   }
 
 }}} // namespace rstbx::simage::ext
