@@ -1,4 +1,5 @@
 import wx
+import sys
 
 class detector_surface(wx.Window):
 
@@ -15,10 +16,11 @@ class detector_surface(wx.Window):
     O.prev_work_phil_str = None
     O.pixels = None
     O.image = None
+    O.pixels_2 = None
     O.image_2 = None
     O.spots = None
     O.predicted_spots = None
-    O.image_combination = 0
+    O.active_wavelengths = 0
 
   def recompute(O):
     w, h = O.GetSizeTuple()
@@ -28,55 +30,66 @@ class detector_surface(wx.Window):
       return False
     O.work_params.detector.pixels = (p, p)
     O.GetParent().wx_detector_pixels.SetLabel("%d x %d" % (p, p))
-    ewp_save = O.work_params.ewald_proximity
-    O.work_params.ewald_proximity = None
-    work_phil_ewp_none_str = O.work_params.phil_master.format(
-      O.work_params).as_str()
-    O.work_params.ewald_proximity = ewp_save
+    O.update_active_wavelengths()
     work_phil_str = O.work_params.phil_master.format(O.work_params).as_str()
     if (   O.prev_work_phil_str is None
         or O.prev_work_phil_str != work_phil_str):
       O.prev_work_phil_str = work_phil_str
       from rstbx.simage.create import compute_image
-      O.pixels = compute_image(O.work_params)
-      _ = O.work_params
-      saturation = int(_.signal_max * _.saturation_level + 0.5)
+      wp = O.work_params
+      O.pixels = compute_image(wp)
+      saturation = int(wp.signal_max * wp.saturation_level + 0.5)
       O.image = O.pixels.as_rgb_scale_string(
         rgb_scales_low=(1,1,1),
         rgb_scales_high=(1,0,0),
         saturation=saturation)
-      if (O.work_params.wavelength_2 is not None):
-        pixels_2 = compute_image(O.work_params, use_wavelength_2=True)
-        O.image_2 = pixels_2.as_rgb_scale_string(
-          rgb_scales_low=(1,1,1),
-          rgb_scales_high=(0,0,1),
-          saturation=saturation)
-      if (   O.prev_work_phil_ewp_none_str is None
-          or O.prev_work_phil_ewp_none_str != work_phil_ewp_none_str):
-        O.prev_work_phil_ewp_none_str = work_phil_ewp_none_str
-        O.spots = None
-        O.predicted_spots = None
+      O.pixels_2 = compute_image(wp, use_wavelength_2=True)
+      O.image_2 = O.pixels_2.as_rgb_scale_string(
+        rgb_scales_low=(1,1,1),
+        rgb_scales_high=(0,0,1),
+        saturation=saturation)
+      O.spots = None
+      O.predicted_spots = None
     return True
 
   def run_spotfinder(O):
-    if (O.pixels is None):
+    _ = O.active_wavelengths
+    if   (_ == 1): px = O.pixels
+    elif (_ == 2): px = O.pixels_2
+    else:
+      if (O.pixels is None or O.pixels_2 is None):
+        px = None
+      else:
+        px = O.pixels + O.pixels_2
+        px /= 2
+    if (px is None):
       return
-    if (O.spots is not None):
-      return
+    if (O.work_params.noise.max == 0):
+      print
+      print "WARNING:"
+      print "  noise.max = 0: spotfinder is likely to crash..."
+      print
+      sys.stdout.flush()
     dpx,dpy = O.work_params.detector.pixels
     if (dpx < 100 or dpy < 100):
       return
     from rstbx.simage import run_spotfinder
     O.spots = run_spotfinder.process(
       work_params=O.work_params,
-      pixels=O.pixels,
+      pixels=px,
       show_spots=False)
     O.Refresh()
 
+  def update_active_wavelengths(O):
+    O.GetParent().wx_active_wavelengths.SetLabel({
+        0: "1+2",
+        1: "1",
+        2: "2"
+      }[O.active_wavelengths])
+
   def run_labelit_index(O, use_original_uc_cr=False):
-    if (O.predicted_spots is not None):
-      return
-    O.run_spotfinder()
+    if (O.spots is None):
+      O.run_spotfinder()
     if (O.spots is None):
       return
     if (O.spots.size() < 10):
@@ -154,7 +167,7 @@ class detector_surface(wx.Window):
     assert p != 0
     wx_image = wx.EmptyImage(p, p)
     if (O.image is not None):
-      _ = O.image_combination
+      _ = O.active_wavelengths
       if   (_ == 1): im = O.image
       elif (_ == 2): im = O.image_2
       else:
@@ -197,11 +210,17 @@ class detector_surface(wx.Window):
 
   def OnChar(O, event):
     key = event.GetKeyCode()
-    if (key == ord("w")):
+    if (key == ord("c")):
+      O.spots = None
+      O.predicted_spots = None
+      O.Refresh()
+    elif (key == ord("w")):
       if (O.image_2 is not None):
-        O.image_combination = (O.image_combination + 1) % 3
+        O.active_wavelengths = (O.active_wavelengths + 1) % 3
+        O.update_active_wavelengths()
         O.Refresh()
     elif (key == ord("s")):
+      O.predicted_spots = None
       O.run_spotfinder()
     elif (key == ord("i")):
       O.predicted_spots = None
@@ -221,6 +240,37 @@ class main_panel(wx.Panel):
     O.variable_name_by_wx_id = {}
     O.variable_values_by_name = {}
     v_sizer = wx.BoxSizer(orient=wx.VERTICAL)
+
+    def add_detector_pixels():
+      h_sizer = wx.BoxSizer(orient=wx.HORIZONTAL)
+      label = wx.StaticText(parent=O, id=-1, label="Detector pixels:")
+      h_sizer.Add(item=label)
+      dp = wx.StaticText(parent=O, id=-1, label="None")
+      f = dp.GetFont()
+      f.SetWeight(wx.BOLD)
+      dp.SetFont(f)
+      h_sizer.Add(item=dp, flag=wx.LEFT, border=5)
+      v_sizer.AddSpacer(3)
+      v_sizer.Add(item=h_sizer)
+      return dp
+
+    O.wx_detector_pixels = add_detector_pixels()
+
+    def add_active_wavelengths():
+      h_sizer = wx.BoxSizer(orient=wx.HORIZONTAL)
+      label = wx.StaticText(parent=O, id=-1, label="Active wavelengths:")
+      h_sizer.Add(item=label)
+      dp = wx.StaticText(parent=O, id=-1, label="None")
+      f = dp.GetFont()
+      f.SetWeight(wx.BOLD)
+      dp.SetFont(f)
+      h_sizer.Add(item=dp, flag=wx.LEFT, border=5)
+      v_sizer.AddSpacer(3)
+      v_sizer.Add(item=h_sizer)
+      return dp
+
+    O.wx_active_wavelengths = add_active_wavelengths()
+
     def add_slider(variable_name, val_min_max):
       h_sizer = wx.BoxSizer(orient=wx.HORIZONTAL)
       ctrl_id = wx.NewId()
@@ -240,17 +290,7 @@ class main_panel(wx.Panel):
       h_sizer.Add(item=label)
       v_sizer.Add(item=h_sizer)
       v_sizer.AddSpacer(3)
-    ucp = O.work_params.unit_cell.parameters()
-    for variable_name,value in zip(["a", "b", "c"], ucp[:3]):
-      add_slider(variable_name, (
-        value,
-        min(10, round(value-0.5, 0)),
-        max(100, round(value+5, -1))))
-    for variable_name,value in zip(["alpha", "beta", "gamma"], ucp[3:]):
-      add_slider(variable_name, (
-        value,
-        min(60, round(value-5, -1)),
-        max(105, round(value+5, -1))))
+
     from libtbx.math_utils import normalize_angle
     xyz = O.work_params.euler_angles_xyz
     for variable_name,value in zip(["rot x", "rot y", "rot z"], xyz):
@@ -258,6 +298,7 @@ class main_panel(wx.Panel):
         normalize_angle(value, deg=True, zero_centered=True),
         -180,
         180))
+    v_sizer.AddSpacer(3)
 
     def add_fs(min_val, max_val, increment, digits, label, value):
       import wx.lib.agw.floatspin as FS
@@ -286,7 +327,7 @@ class main_panel(wx.Panel):
       max_val=10,
       increment=0.1,
       digits=6,
-      label="Wavelength",
+      label="Wavelength 1",
       value=O.work_params.wavelength)
 
     add_fs(
@@ -345,20 +386,17 @@ class main_panel(wx.Panel):
       label="Gaussian falloff scale",
       value=O.work_params.gaussian_falloff_scale)
 
-    def add_detector_pixels():
-      h_sizer = wx.BoxSizer(orient=wx.HORIZONTAL)
-      label = wx.StaticText(parent=O, id=-1, label="Detector pixels:")
-      h_sizer.Add(item=label)
-      dp = wx.StaticText(parent=O, id=-1, label="None")
-      f = dp.GetFont()
-      f.SetWeight(wx.BOLD)
-      dp.SetFont(f)
-      h_sizer.Add(item=dp, flag=wx.LEFT, border=5)
-      v_sizer.AddSpacer(3)
-      v_sizer.Add(item=h_sizer)
-      return dp
-
-    O.wx_detector_pixels = add_detector_pixels()
+    ucp = O.work_params.unit_cell.parameters()
+    for variable_name,value in zip(["a", "b", "c"], ucp[:3]):
+      add_slider(variable_name, (
+        value,
+        min(10, round(value-0.5, 0)),
+        max(100, round(value+5, -1))))
+    for variable_name,value in zip(["alpha", "beta", "gamma"], ucp[3:]):
+      add_slider(variable_name, (
+        value,
+        min(60, round(value-5, -1)),
+        max(105, round(value+5, -1))))
 
     O.detector_surface = detector_surface(parent=O, work_params=O.work_params)
 
@@ -396,7 +434,7 @@ class main_panel(wx.Panel):
   def OnFloatSpin(O, event):
     val = event.GetEventObject().GetValue()
     label = O.variable_name_by_wx_id[event.GetId()]
-    if (label == "Wavelength"):
+    if (label == "Wavelength 1"):
       O.work_params.wavelength = val
     elif (label == "Wavelength 2"):
       O.work_params.wavelength_2 = val
