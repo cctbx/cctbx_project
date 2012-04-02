@@ -350,6 +350,26 @@ def is_above_limit(
         str(value), str(limit), str(eps))
   return False
 
+def precision_approx_equal(self,other,precision=24):
+  # Use concepts from IEEE-754 to determine if the difference between
+  # two numbers is within floating point error. Precision is expressed in
+  # bits (single precision=24; double precision=53). Not within scope to
+  # do this for double precision literals; only interested in the case
+  # where the data are from a ~single precision digital-analog converter.
+  if precision > 52: raise ValueError()
+  if self==other:
+    return True
+  if (self > 0.) != (other > 0.) :
+    return False
+  #compute the exponent
+  import math
+  T = abs(self)
+  Np = math.floor(precision-math.log(T,2))
+  significand = int(T * 2**Np)
+  val1 = significand/(2**Np) # nearest floating point representation of self
+  val2 = (significand+1)/(2**Np) # next-nearest
+  return abs(T-abs(other)) <= abs(val1-val2)
+
 def show_diff(a, b, selections=None, expected_number_of_lines=None):
   if (not isinstance(a, str)):
     a = "\n".join(a)+"\n"
@@ -739,6 +759,8 @@ ERROR: is_above_limit(value=None, limit=3, eps=1)
     assert k.unpickled_counter == 2
     assert k.counter == 0
   #
+  assert precision_approx_equal(0.799999,0.800004,precision=17)==True
+  assert precision_approx_equal(0.799999,0.800004,precision=18)==False
   print "OK"
 
 if (__name__ == "__main__"):
