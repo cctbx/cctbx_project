@@ -129,6 +129,11 @@ class mod_event_info(object):
     if self.injector_xyz is not None:
       self.logger.info("injector_z: %i" %self.injector_xyz[2].value)
 
+    self.laser_1_status = cspad_tbx.env_laser_status(env, laser_id=1)
+    self.logger.info("Laser 1 status: %i" %int(self.laser_1_status))
+    self.laser_4_status = cspad_tbx.env_laser_status(env, laser_id=4)
+    self.logger.info("Laser 4 status: %i" %int(self.laser_4_status))
+
 
   def endjob(self, env):
     return
