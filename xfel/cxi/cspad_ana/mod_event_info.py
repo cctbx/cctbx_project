@@ -1,7 +1,8 @@
 import logging
 
-from pypdsdata           import xtc
+from pypdsdata import xtc
 
+import libtbx
 from xfel.cxi.cspad_ana import cspad_tbx
 
 
@@ -34,6 +35,8 @@ class mod_event_info(object):
     self.distance = None
     self.sifoil = None
     self.wavelength = None # The current wavelength - set by self.event()
+    self.laser_1_status = laser_status(laser_id=1)
+    self.laser_4_status = laser_status(laser_id=4)
 
 
   def __del__(self):
@@ -95,7 +98,8 @@ class mod_event_info(object):
         (self.sifoil, sifoil))
     self.sifoil = sifoil
 
-    self.timestamp = cspad_tbx.evt_timestamp(evt)
+    self.timestamp = cspad_tbx.evt_timestamp(evt) # human readable format
+    self.evt_time = cspad_tbx.evt_time(evt) # tuple of seconds, milliseconds
     if (self.timestamp is None):
       self.nfail += 1
       self.logger.warn("event(): no timestamp, shot skipped")
@@ -129,11 +133,40 @@ class mod_event_info(object):
     if self.injector_xyz is not None:
       self.logger.info("injector_z: %i" %self.injector_xyz[2].value)
 
-    self.laser_1_status = cspad_tbx.env_laser_status(env, laser_id=1)
-    self.logger.info("Laser 1 status: %i" %int(self.laser_1_status))
-    self.laser_4_status = cspad_tbx.env_laser_status(env, laser_id=4)
-    self.logger.info("Laser 4 status: %i" %int(self.laser_4_status))
+    self.laser_1_status.set_status(cspad_tbx.env_laser_status(env, laser_id=1), self.evt_time)
+    self.laser_4_status.set_status(cspad_tbx.env_laser_status(env, laser_id=4), self.evt_time)
+    self.laser_1_ms_since_change = self.laser_1_status.ms_since_last_status_change(self.evt_time)
+    if self.laser_1_ms_since_change is not None:
+      self.logger.info("ms since laser 1 status change: %i" %self.laser_1_ms_since_change)
+    self.laser_4_ms_since_change = self.laser_4_status.ms_since_last_status_change(self.evt_time)
+    if self.laser_4_ms_since_change is not None:
+      self.logger.info("ms since laser 4 status change: %i" %self.laser_4_ms_since_change)
+    self.logger.info("Laser 1 status: %i" %int(self.laser_1_status.status))
+    self.logger.info("Laser 4 status: %i" %int(self.laser_4_status.status))
 
 
   def endjob(self, env):
     return
+
+
+class laser_status(object):
+
+  _status = None
+  status_change_timestamp = None
+
+  def __init__(self, laser_id, status=None):
+    self._status = status
+
+  class status(libtbx.property):
+    def fget(self):
+      return self._status
+
+  def set_status(self, status, evt_time):
+    if self._status is not None and self._status != status:
+      self.status_change_timestamp = evt_time
+    self._status = status
+
+  def ms_since_last_status_change(self, evt_time):
+    if self.status_change_timestamp is not None:
+      return (1000 * (evt_time[0] - self.status_change_timestamp[0])
+              + (evt_time[1] - self.status_change_timestamp[1]))
