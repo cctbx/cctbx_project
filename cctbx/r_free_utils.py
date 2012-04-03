@@ -29,23 +29,33 @@ generate_r_free_params_str = """\
       .short_caption = Number of resolution shells
 """
 
-def assign_random_r_free_flags (n_refl, fraction_free) :
+def assign_random_r_free_flags (n_refl, fraction_free, format="cns") :
   assert (fraction_free > 0) and (fraction_free < 0.5)
   from scitbx.array_family import flex
   from libtbx.math_utils import iround
   group_size = 1/(fraction_free)
   assert group_size >= 2
-  result = flex.bool(n_refl, False)
-  i_start = 0
-  for i_group in count(1):
-    i_end = min(n_refl, iround(i_group*group_size) )
-    if (i_start == i_end):
-      break
-    if (i_end + 1 == n_refl):
-      i_end += 1
-    assert i_end - i_start >= 2
-    result[random.randrange(i_start, i_end)] = True
-    i_start = i_end
+  if (format == "cns") or (format == "shelx") :
+    result = flex.bool(n_refl, False)
+    i_start = 0
+    for i_group in count(1):
+      i_end = min(n_refl, iround(i_group*group_size) )
+      if (i_start == i_end):
+        break
+      if (i_end + 1 == n_refl):
+        i_end += 1
+      assert i_end - i_start >= 2
+      result[random.randrange(i_start, i_end)] = True
+      i_start = i_end
+    if (format == "shelx") :
+      result_ = flex.int(n_refl, 1)
+      result_.set_selected(result, -1)
+      result = result_
+  elif (format == "ccp4") :
+    result = flex.int()
+    flag_max = iround(group_size)
+    for i in range(n_refl) :
+      result.append(random.randint(0, flag_max))
   return result
 
 def assign_r_free_flags_by_shells (n_refl, fraction_free, n_bins) :
@@ -142,6 +152,13 @@ def exercise () :
   from scitbx.array_family import flex
   flags_1 = assign_random_r_free_flags(n_refl=100000, fraction_free=0.05)
   assert (flags_1.count(True) == 5000)
+  flags_1_ccp4 = assign_random_r_free_flags(n_refl=100000, fraction_free=0.05,
+    format="ccp4")
+  # XXX this is the best we can do with the current method
+  assert (flags_1_ccp4.count(0) > 4000) and (flags_1_ccp4.count(0) < 6000)
+  flags_1_shelx = assign_random_r_free_flags(n_refl=100000, fraction_free=0.05,
+    format="shelx")
+  assert (flags_1_shelx.count(-1) == 5000)
   flags_2 = assign_r_free_flags_by_shells(n_refl=100000,
     fraction_free=0.05,
     n_bins=50)

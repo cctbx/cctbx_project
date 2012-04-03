@@ -781,12 +781,14 @@ class set(crystal.symmetry):
     return self.complete_with(other=la)
 
   def generate_r_free_flags (self,
-                             fraction=0.1,
-                             max_free=2000,
-                             lattice_symmetry_max_delta=5.0,
-                             use_lattice_symmetry=False,
-                             use_dataman_shells=False,
-                             n_shells=20) :
+        fraction=0.1,
+        max_free=2000,
+        lattice_symmetry_max_delta=5.0,
+        use_lattice_symmetry=False,
+        use_dataman_shells=False,
+        n_shells=20,
+        format="cns") :
+    assert (format in ["cns", "ccp4", "shelx"])
     if use_lattice_symmetry:
       assert lattice_symmetry_max_delta>=0
 
@@ -794,13 +796,15 @@ class set(crystal.symmetry):
       return self.generate_r_free_flags_basic(fraction=fraction,
         max_free=max_free,
         use_dataman_shells=use_dataman_shells,
-        n_shells=n_shells)
+        n_shells=n_shells,
+        format=format)
     else:
       return self.generate_r_free_flags_on_lattice_symmetry(fraction=fraction,
         max_free=max_free,
         max_delta=lattice_symmetry_max_delta,
         use_dataman_shells=use_dataman_shells,
-        n_shells=n_shells)
+        n_shells=n_shells,
+        format=format)
 
   def crystal_symmetry(self):
     """Get crystal symmetry of the miller set
@@ -835,13 +839,14 @@ class set(crystal.symmetry):
     return ms.array(data = result_data)
 
   def generate_r_free_flags_on_lattice_symmetry(self,
-                                                fraction=0.10,
-                                                max_free=2000,
-                                                max_delta=5.0,
-                                                return_integer_array=False,
-                                                n_partitions=None,
-                                                use_dataman_shells=False,
-                                                n_shells=20):
+        fraction=0.10,
+        max_free=2000,
+        max_delta=5.0,
+        return_integer_array=False,
+        n_partitions=None,
+        use_dataman_shells=False,
+        n_shells=20,
+        format="cns"):
     # the max_number of reflections is wrst the non anomalous set
     n_original = self.indices().size()
     if n_original<=0:
@@ -891,12 +896,16 @@ class set(crystal.symmetry):
     result = None
     if not return_integer_array:
       if use_dataman_shells :
+        if (format == "ccp4") :
+          raise Sorry("CCP4 convention not available when generating R-free "+
+            "flags in resolution shells.")
         result = r_free_utils.assign_r_free_flags_by_shells(
           n_refl=n,
           fraction_free=fraction,
           n_bins=n_shells)
       else :
-        result = r_free_utils.assign_random_r_free_flags(n, fraction)
+        result = r_free_utils.assign_random_r_free_flags(n, fraction,
+          format=format)
     else:
       result = flex.size_t()
       n_times = int(n/n_partitions)+1
@@ -935,10 +944,11 @@ class set(crystal.symmetry):
     return tmp_flags
 
   def generate_r_free_flags_basic (self,
-                                   fraction=0.1,
-                                   max_free=2000,
-                                   use_dataman_shells=False,
-                                   n_shells=20) :
+        fraction=0.1,
+        max_free=2000,
+        use_dataman_shells=False,
+        n_shells=20,
+        format="cns") :
     if not (fraction > 0 and fraction < 0.5) :
       raise Sorry("R-free flags fraction must be greater than 0 and less "+
           "than 0.5.")
@@ -960,6 +970,9 @@ class set(crystal.symmetry):
     if (max_free is not None):
       fraction = min(fraction, max_free/max(1,n))
     if use_dataman_shells :
+      if (format == "ccp4") :
+        raise Sorry("CCP4 convention not available when generating R-free "+
+          "flags in resolution shells.")
       result = r_free_utils.assign_r_free_flags_by_shells(
         n_refl=n,
         fraction_free=fraction,
@@ -967,7 +980,8 @@ class set(crystal.symmetry):
     else :
       result = r_free_utils.assign_random_r_free_flags(
         n_refl=n,
-        fraction_free=fraction)
+        fraction_free=fraction,
+        format=format)
     if (not self.anomalous_flag()):
       indices = self.indices()
     else:
