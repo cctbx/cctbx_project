@@ -70,6 +70,9 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
       assert (isinstance(formats, list) or isisntance(formats, tuple))
     self._formats = formats
 
+  def Clear (self) :
+    self._path_text.Clear()
+
   def GetPathStyle (self) :
     return self._path_style
 
