@@ -413,6 +413,18 @@ def dwritef(d, dirname = None, basename = None):
   return (path)
 
 
+def env_laser_status(env, laser_id):
+  """The return value is a bool that indicates whether the laser in question
+     was on for that particular shot. Bear in mind that sample hit by the laser
+     will only encounter the X-rays some time after, depending on the flow rate.
+  """
+  if (env is not None):
+    laser_off = env.epicsStore().value("CXI:LAS:SHT:%02i:IN" %laser_id).values[0]
+    laser_on = env.epicsStore().value("CXI:LAS:SHT:%02i:OUT" %laser_id).values[0]
+    assert not (laser_on and laser_off)
+    return bool(laser_on)
+
+
 def env_injector_xyz(env):
   """Returns the coordinates of the sample injector. XXX units unknown?"""
   if env is not None:
