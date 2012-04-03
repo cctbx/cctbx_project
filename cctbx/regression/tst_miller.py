@@ -12,6 +12,7 @@ import scitbx.math
 from libtbx import complex_math
 from libtbx.test_utils import \
   approx_equal, not_approx_equal, show_diff, Exception_expected
+from libtbx.utils import Sorry
 from libtbx import Auto
 from cStringIO import StringIO
 import pickle
@@ -235,9 +236,6 @@ def exercise_generate_r_free_flag_on_lat_sym(sg_info):
       float(integer_flags.data().size())/integer_flags.data().count( 2 ),3,eps=0.1 )
     assert ( integer_flags.data().count( 3 ) == 0 )
 
-
-
-
 def exercise_generate_r_free_flags(verbose=0, use_lattice_symmetry=False):
   for anomalous_flag in [False, True]:
     miller_set = miller.build_set(
@@ -301,6 +299,37 @@ def exercise_generate_r_free_flags(verbose=0, use_lattice_symmetry=False):
         assert flags.data().count(True) == 10
       else:
         assert 10 <= flags.data().count(True) <= 20
+  for anomalous_flag in [False, True]:
+    miller_set = miller.build_set(
+      crystal_symmetry=crystal.symmetry(
+        unit_cell=(28.174, 52.857, 68.929, 90, 90, 90),
+        space_group_symbol="P 21 21 21"),
+      anomalous_flag=anomalous_flag,
+      d_min=1.)
+    flags1 = miller_set.generate_r_free_flags(
+      fraction=0.1,
+      max_free=2000,
+      use_lattice_symmetry=True,
+      format="shelx")
+    flags2 = miller_set.generate_r_free_flags(
+      fraction=0.1,
+      max_free=2000,
+      use_lattice_symmetry=True,
+      format="ccp4")
+    assert (isinstance(flags1.data(), flex.int))
+    assert (isinstance(flags2.data(), flex.int))
+    if (anomalous_flag) :
+      flags1_ave = flags1.average_bijvoet_mates()
+      flags2_ave = flags2.average_bijvoet_mates()
+    try :
+      flags2 = miller_set.generate_r_free_flags(
+        fraction=0.1,
+        max_free=2000,
+        use_lattice_symmetry=True,
+        use_dataman_shells=True,
+        format="ccp4")
+    except Sorry : pass
+    else : raise Exception_expected
 
 def exercise_binner():
   crystal_symmetry = crystal.symmetry(
