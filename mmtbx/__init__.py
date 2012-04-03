@@ -121,13 +121,19 @@ class fmodels(object):
     self.update_xray_structure(update_f_calc = True, update_f_mask = True,
       force_update_f_mask = force_update_f_mask)
     if(self.fmodel_x is not None):
-      if(self.fmodel_n is not None): print >> log, "X-ray:"
+      msg = None
+      if(self.fmodel_n is not None):
+        msg = "X-ray:"
+        print >> log, msg
       self.fmodel_xray().update_all_scales(params = params, fast=fast,
         log = log, show = True, optimize_mask = optimize_mask, nproc=nproc)
+      self.fmodel_x.show(log = log, suffix = msg)
     if(self.fmodel_n is not None):
-      print >> log, "Neutron:"
+      msg = "Neutron:"
+      print >> log, msg
       self.fmodel_neutron().update_all_scales(params = params, fast=fast,
         log = log, show = True, optimize_mask = optimize_mask, nproc=nproc)
+      self.fmodel_n.show(log = log, suffix = msg)
 
   def show_targets(self, log, text=""):
     prefix_x = ""

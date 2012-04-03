@@ -116,6 +116,8 @@ class kbu_minimizer(object):
     if(twin_fraction == 0):
       twin_fraction = None
       self.twin_fraction = None
+      fmodel_core_data_twin=None
+      self.fmodel_core_data_twin=None
     assert [fmodel_core_data_twin,twin_fraction].count(None) in [0,2]
     self.n_shells = self.fmodel_core_data.data.n_shells()
     if not self.fmodel_core_data_twin is None:

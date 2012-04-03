@@ -40,8 +40,8 @@ class xh_connectivity_table(object):
   def __init__(self, geometry, xray_structure):
     bond_proxies_simple = geometry.geometry.pair_proxies(sites_cart =
       xray_structure.sites_cart()).bond_proxies.simple
-    self.table = []
     scatterers = xray_structure.scatterers()
+    self.table = []
     for proxy in bond_proxies_simple:
       i_seq, j_seq = proxy.i_seqs
       i_x, i_h = None, None
@@ -63,6 +63,41 @@ class xh_connectivity_table(object):
         distance_model = xray_structure.unit_cell().distance(site_x, site_h)
         self.table.append([i_x, i_h, const_vect, proxy.distance_ideal,
                            distance_model])
+
+class xh_connectivity_table2(object):
+  def __init__(self, geometry, xray_structure):
+    bond_proxies_simple = geometry.geometry.pair_proxies(sites_cart =
+      xray_structure.sites_cart()).bond_proxies.simple
+    scatterers = xray_structure.scatterers()
+    self.table = {}
+    for proxy in bond_proxies_simple:
+      i_seq, j_seq = proxy.i_seqs
+      i_x, i_h = None, None
+      if(scatterers[i_seq].element_symbol() in ["H", "D"]):
+        i_h = i_seq
+        i_x = j_seq
+      if(scatterers[j_seq].element_symbol() in ["H", "D"]):
+        i_h = j_seq
+        i_x = i_seq
+      if([i_x, i_h].count(None)==0):
+        site_x = scatterers[i_x].site
+        site_h = scatterers[i_h].site
+        const_vect = flex.double(site_h)-flex.double(site_x)
+        distance_model = xray_structure.unit_cell().distance(site_x, site_h)
+        self.table.setdefault(i_h, []).append([i_x, i_h, const_vect,
+          proxy.distance_ideal, distance_model])
+    for p in geometry.geometry.angle_proxies:
+      o = flex.double()
+      h = []
+      ih=None
+      for i in p.i_seqs:
+        s = scatterers[i]
+        o.append(s.occupancy)
+        sct = s.scattering_type.strip().upper()
+        h.append(sct)
+        if(sct in ["H","D"]): ih = i
+      if("H" in h and not o.all_eq(o[0])):
+        self.table.setdefault(ih).append(p.i_seqs)
 
 class manager(object):
   def __init__(self, xray_structure,
@@ -120,6 +155,18 @@ class manager(object):
         if(self.ias_selection and self.ias_selection.count(True) > 0):
           xray_structure = self.xray_structure.select(~self.ias_selection)
         result = xh_connectivity_table(
+          geometry       = self.restraints_manager,
+          xray_structure = xray_structure).table
+    return result
+
+  def xh_connectivity_table2(self):
+    result = None
+    if(self.restraints_manager is not None):
+      if(self.xray_structure.hd_selection().count(True) > 0):
+        xray_structure = self.xray_structure
+        if(self.ias_selection and self.ias_selection.count(True) > 0):
+          xray_structure = self.xray_structure.select(~self.ias_selection)
+        result = xh_connectivity_table2(
           geometry       = self.restraints_manager,
           xray_structure = xray_structure).table
     return result
@@ -187,9 +234,28 @@ class manager(object):
     if(hd_sel.count(True) > 0):
       xh_conn_table = self.xh_connectivity_table()
       qi = self.xray_structure.scatterers().extract_occupancies()
-      for t in self.xh_connectivity_table():
-        i_x, i_h = t[0], t[1]
-        qi[i_h] = qi[i_x]
+      ct = self.xh_connectivity_table2()
+      for t in ct.values():
+        i_x, i_h = t[0][0],t[0][1]
+        if(len(t)==1):
+          qi[i_h] = qi[i_x]
+        else:
+          occ = flex.double()
+          for ap in t[1:]:
+            for i in ap:
+              if(i != i_h):
+                occ.append(qi[i])
+          qi[i_h] = flex.min(occ)
+      if(self.refinement_flags.s_occupancies is not None):
+        for rf1 in self.refinement_flags.s_occupancies:
+          o=None
+          for rf2 in rf1:
+            for rf_ in rf2:
+              if(not hd_sel[rf_]):
+                o = qi[rf_]
+            for rf_ in rf2:
+              if(o is not None):
+                qi[rf_] = o
       self.xray_structure.scatterers().set_occupancies(qi, hd_sel)
 
   def reset_coordinates_for_exchangable_hd(self):

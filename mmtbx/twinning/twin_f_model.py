@@ -746,6 +746,12 @@ the percentage of R-free reflections).
   def f_part1(self): # XXX for compatiblity with other fmodel
     return self.f_calc().customized_copy(data = self.f_calc().data()*0)
 
+  def show(self, log=None, suffix=None):
+    fmt = "r_work=%6.4f r_free=%6.4f twin_fraction=%4.2f twin_law=%s"
+    print >> log
+    print >> log, fmt%(self.r_work(), self.r_free(), self.twin_fraction,
+      self.twin_law_str)
+
   def update_all_scales(self, params=None, log=None, show=False,
                         optimize_mask=False, nproc=None, fast=False,
                         remove_outliers=False,refine_hd_scattering=False):

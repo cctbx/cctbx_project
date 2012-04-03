@@ -163,9 +163,6 @@ class refinement_monitor(object):
     self.r_frees         = []
     self.targets_w       = []
     self.targets_t       = []
-    self.k_sols          = []
-    self.b_sols          = []
-    self.b_anisos        = []
     self.wxcs            = []
     self.wxus            = []
     self.wxc_scales      = []
@@ -219,7 +216,6 @@ class refinement_monitor(object):
     self.scale_ml        = []
     self.n_solv          = []
     self.rigid_body_shift_accumulator             = None
-    self.n_k_sols = 0
 
   def collect(self, model,
                     fmodel,
@@ -441,24 +437,6 @@ class refinement_monitor(object):
     else:
        assert len(self.wxcs)+len(self.wxus)+len(self.wxc_scales)+\
               len(self.wxu_scales)+len(self.angles_xc)+len(self.angles_xu) == 0
-    #
-    #
-    a,b,c,d,e,f,g,h,i,j = [None,]*10
-    if( self.n_k_sols == 1 ):
-      print >> out, remark + \
-      " stage     k_sol   b_sol     b11     b22     b33     b12     b13     b23"
-    else:
-      print >> out, remark + \
-      " stage       k_sols"+((self.n_k_sols-1)*6*" ") \
-      +"  b_sol     b11     b22     b33     b12     b13     b23"
-    for a,b,c,d in zip(self.steps, self.k_sols, self.b_sols, self.b_anisos):
-      if( len(b)==1 ):
-        format = remark + "%9s  %5.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f"
-      else:
-        format = remark + "%9s ("+(" %5.3f"*len(b))+") %7.3f %7.3f %7.3f %7.3f" \
-          + " %7.3f %7.3f %7.3f"
-      print >> out, format % ((a,)+b+(c,d[0],d[1],d[2],d[3],d[4],d[5]))
-    print >> out, remark + separator
     #
     #
     a,b,c,d,e,f,g,h,i,j = [None,]*10

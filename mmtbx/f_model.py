@@ -38,6 +38,8 @@ import mmtbx.scaling.ta_alpha_beta_calc
 import mmtbx.refinement.targets
 from libtbx import Auto
 import mmtbx.arrays
+import mmtbx.bulk_solvent.scaler
+
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
@@ -448,6 +450,9 @@ class manager(manager_mixin):
     self._wilson_b = None
     self.k_h = None
     self.b_h = None
+    self.bin_selections = mmtbx.bulk_solvent.scaler.binning(
+      unit_cell      = self.f_obs().unit_cell(),
+      miller_indices = self.f_obs().indices())
 
   def __getstate__(self):
     self._structure_factor_gradients_w = None
@@ -1033,6 +1038,46 @@ class manager(manager_mixin):
     #     prefix="Final:", log=log)
     #print >> log
 
+  def show(self, log=None, suffix=None):
+    if(log is None): log = sys.stdout
+    l="Statistics in resolution bins"
+    if(suffix is not None): l += " %s"%suffix
+    f1 = "Total model structure factor:"
+    f2 = "  F_model = k_isotropic * k_anisotropic * (F_calc + k_mask * F_mask)\n"
+    m=(77-len(l))//2
+    print >> log, "\n","="*m,l,"="*m,"\n"
+    print >> log, f1
+    print >> log, f2
+    fmt="%7.3f-%-7.3f %6.2f %5d %5d %6.4f %9.3f %9.3f %5.3f %5.3f %s"
+    print >> log, "   Resolution    Compl Nwork Nfree R_work    <Fobs>  <Fmodel> kiso   kani kmask"
+    k_masks       = self.k_masks()
+    k_isotropic   = self.k_isotropic()
+    k_anisotropic = self.k_anisotropic()
+    f_model       = self.f_model()
+    f_obs         = self.f_obs()
+    work_flags    =~self.r_free_flags().data()
+    free_flags    = self.r_free_flags().data()
+    kmf = "%4.2f "*len(k_masks)
+    for sel in self.bin_selections:
+      d        = self.arrays.d_spacings.select(sel)
+      d_min    = flex.min(d)
+      d_max    = flex.max(d)
+      sel_work = sel & work_flags
+      nw       = sel_work.count(True)
+      nf       = (sel & free_flags).count(True)
+      fo       = f_obs.select(sel)
+      fm       = f_model.select(sel)
+      fo_mean  = flex.mean(fo.data())
+      fm_mean  = flex.mean(flex.abs(fm.data()))
+      cmpl     = fo.completeness(d_max=d_max)*100.
+      ki       = flex.mean(k_isotropic.select(sel))
+      ka       = flex.mean(k_anisotropic.select(sel))
+      r        = bulk_solvent.r_factor(
+        f_obs.select(sel_work).data(),
+        f_model.select(sel_work).data(), 1)
+      km = " ".join(["%5.3f"%flex.mean(km_.select(sel)) for km_ in k_masks])
+      print >> log, fmt % (d_max,d_min,cmpl,nw,nf,r,fo_mean,fm_mean,ki,ka,km)
+
   def update_all_scales(self,
                         params = None, # XXX DUMMY
                         nproc = None,  # XXX DUMMY
@@ -1099,17 +1144,13 @@ class manager(manager_mixin):
       f_calc_data=self.f_calc_twin().data()+self.f_part1_twin().data()+self.f_part2_twin().data()
       f_calc_twin = self.f_calc_twin().customized_copy(data = f_calc_data)
     if(fast):
-      from mmtbx.bulk_solvent import scaler
       f_masks = self.f_masks()
       assert len(f_masks) == 1
       if(verbose < 0): verbose=False
       # XXX TWINNING
-      bin_selections = scaler.binning(
-        unit_cell      = self.f_obs().unit_cell(),
-        miller_indices = self.f_obs().indices())
       bulk_solvent = True
       if(params is not None): bulk_solvent = params.bulk_solvent
-      result = scaler.run(
+      result = mmtbx.bulk_solvent.scaler.run(
         f_obs          = self.f_obs(),
         f_calc         = f_calc,
         f_mask         = f_masks,
@@ -1120,7 +1161,7 @@ class manager(manager_mixin):
         #try_expmin=True,
         #try_poly=False,
         #try_expanal=False,
-        bin_selections = bin_selections,
+        bin_selections = self.bin_selections,
         verbose        = verbose)
       k_anisotropic_twin = None
       if(result.scale_matrices is not None):
@@ -1868,13 +1909,7 @@ class manager(manager_mixin):
     class result(object):
       def __init__(self, fmodel, free_reflections_per_bin, interpolation):
         self.f_obs = fmodel.f_obs()
-        self.f_model = fmodel.f_model_scaled_with_k1()
-        #b_cart = fmodel.b_cart()
-        #trace = (b_cart[0]+b_cart[1]+b_cart[2])/3.
-        if 1:#(abs(trace)>20): # XXX BAD!!! fix asap by refining Biso applied to Fobs XXX
-          fb_cart = 1./fmodel.k_anisotropic() # XXX USE k_iso*k_aniso ?
-          self.f_obs = self.f_obs.array(data = self.f_obs.data()*fb_cart)
-          self.f_model = self.f_model.array(data = self.f_model.data()*fb_cart)
+        self.f_model = fmodel.f_model()
         self.alpha, self.beta = maxlik.alpha_beta_est_manager(
           f_obs                    = self.f_obs,
           f_calc                   = self.f_model,
@@ -1896,52 +1931,19 @@ class manager(manager_mixin):
 
   def isotropize_helper(self):
     if(self.xray_structure is None): return None
-    #def subtract_min_eigenvalue(x):
-    #  from scitbx import linalg
-    #  import scitbx.linalg.eigensystem
-    #  es = linalg.eigensystem.real_symmetric(x)
-    #  from scitbx import matrix
-    #  vals = matrix.col((es.values()))
-    #  min_v = min(vals.elems)
-    #  vals = matrix.col([e-min_v for e in vals])
-    #  vecs = matrix.sqr((es.vectors()))
-    #  vecs_inv = vecs.inverse()
-    #  m = vecs_inv * matrix.sym(sym_mat3=vals.elems+(0,0,0)) * vecs_inv.transpose()
-    #  m = m.as_sym_mat3()
-    #  return m
-    #  tmp = [i for i in m.elems]
-    #  return flex.sym_mat3_double([tmp])[0]
-    #b_cart = self.b_cart()
-    #trace = (b_cart[0]+b_cart[1]+b_cart[2])/3.
-    #b_cart_new = [b_cart[0]-trace,b_cart[1]-trace,b_cart[2]-trace,
-    #                  b_cart[3],      b_cart[4],      b_cart[5]]
-    ###
-    ##print "b_cart_new", list(b_cart_new)
-    ##b_cart_new = subtract_min_eigenvalue(b_cart_new)
-    ##print "b_cart_new", list(b_cart_new)
-    ###
-    #u_star = adptbx.u_cart_as_u_star(
-    #    self.f_obs().unit_cell(),adptbx.b_as_u(b_cart_new))
-    #fmasks = self.shell_f_masks()
-    #core_ = core(
-    #  f_calc  = self.f_calc(),
-    #  f_mask  = fmasks,
-    #  k_sols  = [0.]*len(fmasks),
-    #  b_sol   = 0.,
-    #  f_part1 = self.f_part1(),
-    #  u_star  = u_star,
-    #  fmodel  = None,
-    #  ss      = None)
     fb = miller.set(crystal_symmetry=self.f_obs().crystal_symmetry(),
       indices = self.f_obs().indices(),
-      anomalous_flag=False).array(data= self.arrays.core.data.k_anisotropic )#core_.data.k_anisotropic)
+      anomalous_flag=False).array(
+        data= self.k_anisotropic()*self.k_isotropic())
     fb = fb.average_bijvoet_mates()
     ss = 1./flex.pow2(fb.d_spacings().data()) / 4.
     #if(abs(trace)>20): # XXX BAD!!! fix asap by refining Biso applied to Fobs XXX
     #  scale = fb.data()
     #else:
     #  scale = 1./fb.data()
-    scale = 1./fb.data() #XXX
+    #scale = 1./fb.data() #XXX
+    #
+    scale = 1./fb.data()
     scale = miller.set(crystal_symmetry=self.f_obs().crystal_symmetry(),
       indices = self.f_obs().deep_copy().average_bijvoet_mates().indices(),
       anomalous_flag=False).array(data=scale)
