@@ -410,8 +410,29 @@ def map_coefficients_from_fmodel(fmodel, params):
   #XXX  fmodel.update_core(k_part=save_k_part, b_part=save_b_part)
   if(params.fill_missing_f_obs):
     scale_to = fmodel.f_obs().average_bijvoet_mates()
-    coeffs = coeffs.complete_with(
-      other = coeffs.double_step_filtration(scale_to=scale_to))
+    dsf = coeffs.double_step_filtration(
+      vol_cutoff_plus_percent =1.0,
+      vol_cutoff_minus_percent=1.0,
+      scale_to=scale_to).resolution_filter(d_min=4) # XXX do not fill higher
+    #
+    fo = fmodel.f_obs().average_bijvoet_mates().discard_sigmas()
+    fo = fo.complete_with(other = abs(dsf))
+    import mmtbx.f_model
+    fmdc = mmtbx.f_model.manager(
+      f_obs = fo,
+      xray_structure = fmodel.xray_structure)
+    fmdc.update_all_scales()
+    #dsf = fmdc.f_model().resolution_filter(d_min=4)
+    dsf = fmdc.f_model().array(data = fmdc.f_model().data() *
+      fmdc.alpha_beta()[0].data()).resolution_filter(d_min=4)
+    #
+#    coeffs_ = fmdc.electron_density_map().map_coefficients(map_type = params.map_type)
+#    k = fmdc.k_isotropic()*fmdc.k_anisotropic()
+#    coeffs_ = coeffs_.customized_copy(data = coeffs_.data()*(1/k) )
+
+#    coeffs = coeffs.complete_with(other = coeffs_) #3
+    coeffs = coeffs.complete_with(other = dsf) #2
+#    coeffs = coeffs_ # 1
   return coeffs
 
 def compute_xplor_maps(fmodel, params, atom_selection_manager=None,

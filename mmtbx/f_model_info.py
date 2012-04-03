@@ -319,21 +319,6 @@ class info(object):
     print >> out,pr+" PHASE ERROR (DEGREES, MAXIMUM-LIKELIHOOD BASED) : %s"%\
       format_value("%-8.2f", self.ml_phase_error)
     print >> out,pr
-    print >> out,pr+"OVERALL SCALE FACTORS."
-    print >> out,pr+" SCALE = SUM(|F_OBS|*|F_MODEL|)/SUM(|F_MODEL|**2) : %s"%\
-      format_value("%-12.4f", self.overall_scale_k1)
-    print >> out,pr
-    print >> out,pr+"R FACTOR FORMULA."
-    print >> out,pr+" R = SUM(||F_OBS|-SCALE*|F_MODEL||)/SUM(|F_OBS|)"
-    print >> out,pr
-    print >> out,pr+"TOTAL MODEL STRUCTURE FACTOR (F_MODEL)."
-    print >> out,pr+" F_MODEL = FB_CART * (F_CALC_ATOMS + F_BULK)"
-    print >> out,pr+"  F_BULK = K_SOL * EXP(-B_SOL * S**2 / 4) * F_MASK"
-    print >> out,pr+"  F_CALC_ATOMS = ATOMIC MODEL STRUCTURE FACTORS"
-    print >> out,pr+"  FB_CART = EXP(-H(t) * A(-1) * B * A(-1t) * H)"
-    print >> out,pr+"   A = orthogonalization matrix, H = MILLER INDEX"
-    print >> out,pr+"   (t) = TRANSPOSE, (-1) = INVERSE"
-    print >> out,pr
     print >> out,pr+"STRUCTURE FACTORS CALCULATION ALGORITHM : %-s"%\
       self.sf_algorithm.upper()
     out.flush()
@@ -356,13 +341,16 @@ class info(object):
 
   def _header_resolutions_nreflections(self, header, out):
     if(header is None): header = ""
+    percent="%"
+    frac_free = self.number_of_test_reflections/self.number_of_reflections*100
     line1 = "(resolution: "
     line2 = format_value("%6.2f",self.d_min).strip()
     line3 = format_value("%6.2f",self.d_max).strip()
     line4 = " - "
-    line5 = " A; n_refl. = "
+    line5 = " A, n_refl.="
     line6 = format_value("%d",self.number_of_reflections).strip()
-    tl = header+"-"+line1+line2+line4+line3+line5+line6+")"
+    line7 = " (all), %-6.2f%s free"%(frac_free, percent)
+    tl = header+"-"+line1+line2+line4+line3+line5+line6+line7+")"
     line_len = len("|-"+"|"+tl)
     fill_len = 80-line_len-1
     print >> out, "|-"+tl+"-"*(fill_len)+"|"
@@ -373,16 +361,9 @@ class info(object):
     r_work = format_value("%6.4f",self.r_work).strip()
     r_free = format_value("%6.4f",self.r_free).strip()
     scale  = format_value("%6.3f",self.overall_scale_k1).strip()
-    #if( len(self.k_sol)==1 ):
-    #  k_sol  = format_value("%4.2f",self.k_sol[0]).strip()
-    #else:
-    #  k_sol = (('%4.2f '*len(self.k_sol))%tuple(self.k_sol)).strip()
-    #b_sol  = format_value("%6.2f",self.b_sol).strip()
-    #b0,b1,b2,b3,b4,b5 = n_as_s("%7.2f",self.b_cart)
-    #b_iso  = format_value("%7.2f",self.b_iso).strip()
-    #line = "| r_work= "+r_work+"   r_free= "+r_free+"   ksol= "+k_sol+\
-    #       "   Bsol= "+b_sol+"   scale= "+scale
-    line = "| r_work= "+r_work+"   r_free= "+r_free+ "     scale= "+scale
+    err    = format_value("%-4.2f",self.ml_coordinate_error)
+    errl   =" coordinate error (max.-lik. estimate): %s A"%err
+    line = "| r_work= "+r_work+" r_free= "+r_free+errl
     np = 79 - (len(line) + 1)
     if(np < 0): np = 0
     print >> out, line + " "*np + "|"
@@ -397,12 +378,6 @@ class info(object):
     self._header_resolutions_nreflections(header=header, out=out)
     print >> out, "| "+"  "*38+"|"
     self._rfactors_and_bulk_solvent_and_scale_params(out=out)
-    err = format_value("%6.2f",self.ml_coordinate_error)
-    print >> out, "| "+"  "*38+"|"
-    line6="| maximum likelihood estimate for coordinate error: "+err+" A"
-    np = 79 - (len(line6) + 1)
-    line6 = line6 + " "*np + "|"
-    print >> out, line6
     line7="| x-ray target function (%s) for work reflections: %s"% (
       self.target_name, n_as_s("%15.6f",self.target_work))
     np = 79 - (len(line7) + 1)
