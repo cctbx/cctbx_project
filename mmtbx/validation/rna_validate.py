@@ -16,9 +16,9 @@ def get_master_phil():
     pdb = None
       .type = path
       .help = '''Enter a PDB file name'''
-    outliers_only = False
+    suite_outliers_only = True
       .type = bool
-      .help = '''Only print rotamer outliers'''
+      .help = '''Only print suite outliers'''
     rna_sugar_pucker_analysis
       .short_caption = RNA sugar pucker analysis
       .style = box noauto auto_align menu_item parent_submenu:advanced
@@ -42,11 +42,11 @@ phenix.rna_validate file.pdb [params.eff] [options ...]
 Options:
 
   pdb=input_file        input PDB file
-  outliers_only=False   only print outliers
+  outliers_only=True    only print suite outliers
 
 Example:
 
-  phenix.rna_validate pdb=1u8d.pdb outliers_only=True
+  phenix.rna_validate pdb=1u8d.pdb outliers_only=False
 
 """
 
@@ -76,14 +76,16 @@ Example:
     else:
       print "Please enter a file name"
       return
-    self.analyze_pdb(pdb_io=pdb_io)
+    self.analyze_pdb(pdb_io=pdb_io,
+                     outliers_only=\
+                       self.params.rna_validate.suite_outliers_only)
     self.print_results()
 
   def analyze_pdb(self,
                   params=None,
                   pdb_io=None,
                   processed_pdb_file=None,
-                  outliers_only=False,
+                  outliers_only=True,
                   show_errors = False,
                   out=sys.stdout):
     if processed_pdb_file is None:
@@ -96,11 +98,14 @@ Example:
         substitute_non_crystallographic_unit_cell_if_necessary=True)
     else:
       self.processed_pdb_file=processed_pdb_file
-    self.pdb_hierarchy = self.processed_pdb_file.all_chain_proxies.pdb_hierarchy
-    self.pucker_outliers = self.pucker_evaluate(
-                           hierarchy=self.pdb_hierarchy)
-    self.bond_outliers, self.angle_outliers = self.bond_and_angle_evaluate()
-    self.suite_outliers = self.run_suitename()
+    self.outliers_only = outliers_only
+    self.pdb_hierarchy = \
+      self.processed_pdb_file.all_chain_proxies.pdb_hierarchy
+    self.pucker_outliers = \
+      self.pucker_evaluate(hierarchy=self.pdb_hierarchy)
+    self.bond_outliers, self.angle_outliers = \
+      self.bond_and_angle_evaluate()
+    self.suite_validation = self.run_suitename()
 
   def print_results(self):
     print "RNA Validation"
@@ -142,25 +147,39 @@ Example:
       for pair in outlier[1]:
         print "%s:%s:%s:%s:%.3f" % (outlier[0], pair[0], pair[1], pair[2], pair[3])
     print "\n-----------------------------------------------"
-    print "Suite Outliers:"
-    print "#suiteID:triaged_angle"
-    for outlier in self.suite_outliers:
-      print "%s:%s" % (outlier[0], outlier[1])
+    if self.outliers_only:
+      print "Suite Outliers:"
+    else:
+      print "Suite Validation:"
+    print "#suiteID:suite:suiteness:triaged_angle"
+    for outlier in self.suite_validation:
+      if len(outlier) == 3:
+        print "%s:%s:%s:" % (outlier[0], outlier[1], outlier[2])
+      else:
+        print "%s:%s:%s:%s" % (outlier[0],
+                               outlier[1],
+                               outlier[2],
+                               outlier[3])
 
   def run_suitename(self):
-    suite_outliers = []
+    suite_validation = []
     suitename = "phenix.suitename -report -"
     backbone_dihedrals = self.get_rna_backbone_dihedrals()
     suitename_out = easy_run.fully_buffered(suitename,
                          stdin_lines=backbone_dihedrals).stdout_lines
     for line in suitename_out:
-      if '!!' in line:
+      if line.startswith(' :'):
         temp = line.split(":")
         key = ' '+temp[5][0:3]+temp[2]+temp[3]+temp[4]
+        suite = temp[5][9:11]
+        suiteness = temp[5][12:17]
         temp2 = temp[5].split(" ")
-        suite_outliers.append([key,temp2[len(temp2)-1]])
-    return suite_outliers
-
+        if '!!' in line:
+          suite_validation.append(
+            [key,suite,suiteness,temp2[len(temp2)-1]])
+        elif not self.outliers_only:
+          suite_validation.append([key,suite,suiteness])
+    return suite_validation
 
   def match_dihedral_to_name(self, atoms):
     name = None
@@ -261,13 +280,17 @@ Example:
     angle_hash = {}
     bond_outliers = []
     angle_outliers = []
+    cutoff = 4
     geometry = self.processed_pdb_file.geometry_restraints_manager()
     assert (geometry is not None)
     flags = geometry_restraints.flags.flags(default=True)
     i_seq_name_hash = self.build_name_hash(
-                      pdb_hierarchy=self.processed_pdb_file.all_chain_proxies.pdb_hierarchy)
-    pair_proxies = geometry.pair_proxies(flags=flags,
-                            sites_cart=self.processed_pdb_file.all_chain_proxies.sites_cart)
+      pdb_hierarchy=\
+        self.processed_pdb_file.all_chain_proxies.pdb_hierarchy)
+    pair_proxies = geometry.pair_proxies(
+                     flags=flags,
+                     sites_cart=\
+                       self.processed_pdb_file.all_chain_proxies.sites_cart)
     bond_proxies = pair_proxies.bond_proxies
     sites_cart=self.processed_pdb_file.all_chain_proxies.sites_cart
     for proxy in bond_proxies.simple:
@@ -282,7 +305,7 @@ Example:
         continue
       sigma = (1/restraint.weight)**(.5)
       num_sigmas = restraint.delta / sigma
-      if abs(num_sigmas) >= 4:
+      if abs(num_sigmas) >= cutoff:
         try:
           bond_hash[residue].append((atom1,atom2,num_sigmas))
         except Exception:
@@ -304,7 +327,7 @@ Example:
       # weighting
       sigma = ((1/restraint.weight)**(.5))*2
       num_sigmas = restraint.delta / sigma
-      if abs(num_sigmas) >= 4:
+      if abs(num_sigmas) >= cutoff:
         try:
           angle_hash[residue].append((atom1,atom2,atom3,num_sigmas))
         except Exception:
