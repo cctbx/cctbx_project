@@ -9,7 +9,6 @@ initial placement (e.g. LigandFit CC) is sufficiently good.
 
 from libtbx.utils import Sorry
 from libtbx.str_utils import make_header
-from libtbx.test_utils import approx_equal
 from libtbx import adopt_init_args, group_args
 import copy
 from math import sqrt
@@ -18,15 +17,17 @@ import sys
 debug = True
 
 ncs_ligand_phil = """
+d_min = 2.5
+  .type = float
 max_rmsd = 2.0
   .type = float
 min_cc = 0.7
   .type = float
 min_cc_reference = 0.85
   .type = float
-max_cc_to_replace = 0.85
-  .type = float
 min_2fofc = 1.0
+  .type = float
+min_dist_center = 5
   .type = float
 remove_clashing_atoms = True
   .type = bool
@@ -40,6 +41,8 @@ master_phil_str = """
 include scope mmtbx.utils.cmdline_input_phil_str
 ligand_code = LIG
   .type = str
+add_to_model = True
+  .type = bool
 output_file = None
   .type = path
 output_map = None
@@ -55,6 +58,11 @@ def resid_str (atom) :
   labels = atom.fetch_labels()
   return "%s %s" % (labels.resname, labels.resid())
 
+def distance (xyz1, xyz2) :
+  x1,y1,z1 = xyz1
+  x2,y2,z2 = xyz2
+  return sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
+
 class group_operators (object) :
   def __init__ (self, selection, sele_str, sites_cart) :
     self.selection = selection
@@ -69,9 +77,7 @@ class group_operators (object) :
 
   def distance_from_center (self, sites) :
     c_o_m = sites.mean()
-    x1,y1,z1 = c_o_m
-    x2,y2,z2 = self.center_of_mass
-    return sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
+    return distance(c_o_m, self.center_of_mass)
 
   def show_summary (self, out=None) :
     if (out is None) : out = sys.stdout
@@ -109,7 +115,7 @@ def find_ncs_operators (pdb_hierarchy, max_rmsd=2.0, log=None) :
   sites_cart = pdb_atoms.extract_xyz()
   operators = []
   def get_selection (sele_str) :
-    sele_str = "(%s) and name CA" % sele_str
+    sele_str = "(%s) and name CA and (altloc ' ' or altloc A)" % sele_str
     return selection_cache.selection(sele_str).iselection()
   for restraint_group in ncs_groups :
     group_ops = []
@@ -120,7 +126,9 @@ def find_ncs_operators (pdb_hierarchy, max_rmsd=2.0, log=None) :
       assert (len(sele_j) > 0)
       calpha_ids = []
       for i_seq in sele_j :
-        calpha_ids.append(resid_str(pdb_atoms[i_seq]))
+        resid = resid_str(pdb_atoms[i_seq])
+        if (not resid in calpha_ids) :
+          calpha_ids.append(resid)
       for k, sele_str_k in enumerate(restraint_group) :
         if (k == j) : continue
         sele_k = get_selection(sele_str_k)
@@ -130,6 +138,8 @@ def find_ncs_operators (pdb_hierarchy, max_rmsd=2.0, log=None) :
         # poor man's sequence alignment
         for i_seq in sele_k :
           id_str = resid_str(pdb_atoms[i_seq])
+          if (id_str in group_ids) :
+            continue
           group_ids.append(id_str)
           if (id_str in calpha_ids) :
             group_sele.append(i_seq)
@@ -181,6 +191,7 @@ class sample_operators (object) :
     best_cc = 0
     best_k = -1
     best_ligand = None
+    other_ligands = []
     print >> log, "Identifying reference ligand..."
     def show_map_stats (prefix, stats) :
       print >> log, "   %s: CC = %5.3f  mean = %6.2f" % (prefix, stats.cc,
@@ -196,6 +207,10 @@ class sample_operators (object) :
     if (best_ligand is None) :
       raise Sorry("No ligand with acceptable CC (>%.2f) found." %
         params.min_cc_reference)
+    best_atoms = best_ligand.atoms()
+    for k, ligand in enumerate(ligands) :
+      if (ligand is not best_ligand) :
+        other_ligands.append(ligand)
     print >> log, "Copy #%d was the best, using that as reference" % (best_k+1)
     print >> log, ""
     sites_ref = best_ligand.atoms().extract_xyz()
@@ -209,82 +224,43 @@ class sample_operators (object) :
     if (best_group is not None) :
       print >> log, "This appears to be bound to the selection \"%s\"" % \
         best_group.selection_string
-    self.n_moved = 0
-    self.n_removed = 0
-    used_ops = []
-    for k, ligand in enumerate(ligands) :
-      if (k == best_k) :
-        continue
-      print >> log, "Sampling new positions for ligand %d..." % (k+1)
-      atoms = ligand.atoms()
-      start = self.get_sites_cc(atoms)
-      show_map_stats("     start", start)
-      if ((start.cc >= params.max_cc_to_replace) and
-          (start.map_mean > params.min_2fofc)) :
-        print >> log, "  CC is above cutoff for moving (%g), will skip" % \
-          params.max_cc_to_replace
-        continue
-      cc_best = start.cc
-      map_best = start.map_mean
-      sites_best = None
-      op_best = None
-      sites = atoms.extract_xyz()
-      for j, operator in enumerate(best_group.operators) :
-        if (operator in used_ops) :
+    self.new_ligands = []
+    for j, operator in enumerate(best_group.operators) :
+      new_ligand = best_ligand.detached_copy()
+      atoms = new_ligand.atoms()
+      sites_new = operator.r.elems * sites_ref + operator.t.elems
+      sites_mean = sites_new.mean()
+      for other in other_ligands :
+        sites_other_mean = other.atoms().extract_xyz().mean()
+        if (abs(sites_other_mean - sites_new.mean()) < params.min_dist_center) :
+          print >> log, "  operator %d specifies an existing ligand" % (j+1)
           continue
-        sites_new = operator.r.elems * sites_ref + operator.t.elems
-        stats_new = self.get_sites_cc(atoms, sites_new)
-        show_map_stats("NCS op. %2d" % (j+1), stats_new)
-        if (params.write_sampled_pdbs) :
-          lig_new = ligand.detached_copy()
-          lig_rg = hierarchy.residue_group()
-          lig_rg.resseq = k+1
-          lig_rg.append_atom_group(lig_new)
-          lig_new.atoms().set_xyz(sites_new)
-          f = open("ncs_ligand_%d_%d.pdb" % (k+1, j+1), "w")
-          for atom in lig_new.atoms() :
-            f.write(atom.format_atom_record()+"\n")
-          f.close()
-        if ((stats_new.cc > params.min_cc) and
-            (stats_new.cc > cc_best) and
-            (stats_new.map_mean > map_best)) : # arams.min_2fofc) and
-          cc_best = stats_new.cc
-          sites_best = sites_new
-          map_best = stats_new.map_mean
-          op_best = operator
-      if (op_best is not None) :
-        used_ops.append(op_best)
-      if (sites_best is None) :
-        print >> log, "  no acceptable sites found."
-      elif ((cc_best > start.cc) or (map_best > start.map_mean)) :
-        print >> log, "  applying best sites"
-        ligand.atoms().set_xyz(sites_best)
-        all_sites = xrs_ncs.sites_cart()
-        all_sites.set_selected(ligand.atoms().extract_i_seq(), sites_best)
-        xrs_ncs.set_sites_cart(all_sites)
-        self.n_moved += 1
-    self.xray_structure = xrs_ncs
-    if (debug) :
-      sites_cart = xrs_ncs.sites_cart()
-      for i_seq, atom in enumerate(pdb_hierarchy.atoms()) :
-        assert approx_equal(atom.xyz, sites_cart[i_seq], eps=0.001)
-    self.fmodel.update_xray_structure(
-      xray_structure=xrs_ncs,
-      update_f_calc=True,
-      update_f_mask=True)
-    if (self.n_moved == 0) :
-      print >> log, "No NCS operators applied."
+      atoms.set_xyz(sites_new)
+      stats_new = self.get_sites_cc(best_atoms, sites_new)
+      show_map_stats("NCS op. %2d" % (j+1), stats_new)
+      if (params.write_sampled_pdbs) :
+        lig_rg = hierarchy.residue_group()
+        lig_rg.resseq = j+1
+        lig_rg.append_atom_group(new_ligand)
+        f = open("ncs_ligand_%d.pdb" % (j+1), "w")
+        for atom in new_ligand.atoms() :
+          f.write(atom.format_atom_record()+"\n")
+        f.close()
+      if (stats_new.cc > params.min_cc) :
+        print >> log, "  operator %d has acceptable CC (%.3f)" % (j+1,
+          stats_new.cc)
+        self.new_ligands.append(new_ligand)
 
   def setup_maps (self) :
     map_helper = self.fmodel.electron_density_map()
     map_coeffs = map_helper.map_coefficients("2mFo-DFc")
     diff_map_coeffs = map_helper.map_coefficients("mFo-DFc")
-    fft_map = map_coeffs.fft_map(resolution_factor=0.25)
-    diff_fft_map = diff_map_coeffs.fft_map(resolution_factor=0.25)
+    fft_map = map_coeffs.fft_map(resolution_factor=1/3.)
+    diff_fft_map = diff_map_coeffs.fft_map(resolution_factor=1/3.)
     fft_map.apply_sigma_scaling()
     diff_fft_map.apply_sigma_scaling()
     fcalc = map_helper.map_coefficients("Fc")
-    fcalc_map = fcalc.fft_map(resolution_factor=0.25)
+    fcalc_map = fcalc.fft_map(resolution_factor=1/3.)
     fcalc_map.apply_sigma_scaling()
     self.unit_cell = map_coeffs.unit_cell()
     self.real_map = fft_map.real_map()
@@ -303,7 +279,7 @@ class sample_operators (object) :
       update_f_calc=True,
       update_f_mask=True)
     fcalc = self.fmodel.electron_density_map().map_coefficients("Fc")
-    fcalc_map = fcalc.fft_map(resolution_factor=0.25)
+    fcalc_map = fcalc.fft_map(resolution_factor=1/3.)
     fcalc_map.apply_sigma_scaling()
     # XXX now revert to original xray structure
     self.fmodel.update_xray_structure(
@@ -469,7 +445,7 @@ def get_final_maps_and_cc (
     mtz_dat.add_miller_array(diff_map,
       column_root_label="FOFCWT",
       label_decorator=dec)
-    mtz_dat.mtz_object().write(output_map)
+    mtz_dat.mtz_object().write(params.output_map)
     print >> log, "Wrote %s" % params.output_map
   return final_cc
 
@@ -483,11 +459,40 @@ def extract_ligand_residues (pdb_hierarchy, ligand_code) :
           ligands.append(atom_group)
   return ligands
 
+def combine_ligands_and_hierarchy (pdb_hierarchy, ligands) :
+  from iotbx.pdb import hierarchy
+  chain_id_counts = {}
+  model = pdb_hierarchy.models()[0]
+  for ligand in ligands :
+    xyz_mean = ligand.atoms().extract_xyz().mean()
+    best_chain = None
+    min_dist = sys.maxint
+    for chain in model.chains() :
+      chain_xyz_mean = chain.atoms().extract_xyz().mean()
+      dist = distance(chain_xyz_mean, xyz_mean)
+      if (dist < min_dist) :
+        min_dist = dist
+        best_chain = chain
+    best_chain_id = " "
+    if (best_chain is not None) :
+      best_chain_id = best_chain.id
+    new_chain = hierarchy.chain(id=best_chain_id)
+    new_rg = hierarchy.residue_group()
+    new_resseq = 1
+    if (best_chain_id in chain_id_counts) :
+      new_resseq = chain_id_counts[best_chain_id] + 1
+    new_rg.resseq = new_resseq
+    new_rg.append_atom_group(ligand)
+    new_chain.append_residue_group(new_rg)
+    model.append_chain(new_chain)
+    chain_id_counts[best_chain_id] = new_resseq
+
 # Main function
 def apply_ligand_ncs (
     pdb_hierarchy,
     fmodel,
     params=None,
+    add_new_ligands_to_pdb=False,
     log=None) :
   if (log is None) : log = sys.stdout
   if (params is None) :
@@ -517,38 +522,49 @@ def apply_ligand_ncs (
     params=params,
     ligands=ligands,
     log=log)
-  if (sampler.n_moved > 0) and (params.remove_clashing_atoms) :
-    make_header("Removing clashing atoms", log)
-    xrs_new = remove_clashing_atoms(
-      xray_structure=sampler.xray_structure,
-      pdb_hierarchy=pdb_hierarchy,
-      ligands=ligands,
-      params=params,
-      log=log)
-    fmodel.update_xray_structure(
-      xray_structure=xrs_new,
-      update_f_calc=True,
-      update_f_mask=True)
-  make_header("Statistics for final ligands", log)
-  final_cc = get_final_maps_and_cc(
+  if (len(sampler.new_ligands) > 0) :
+    if (params.remove_clashing_atoms) :
+      make_header("Removing clashing atoms", log)
+      xrs_new = remove_clashing_atoms(
+        xray_structure=sampler.xray_structure,
+        pdb_hierarchy=pdb_hierarchy,
+        ligands=sampler.new_ligands,
+        params=params,
+        log=log)
+      fmodel.update_xray_structure(
+        xray_structure=xrs_new,
+        update_f_calc=True,
+        update_f_mask=True)
+    if (add_new_ligands_to_pdb) :
+      combine_ligands_and_hierarchy(
+        pdb_hierarchy=pdb_hierarchy,
+        ligands=sampler.new_ligands)
+      xrs_new = pdb_hierarchy.extract_xray_structure(
+        crystal_symmetry=fmodel.xray_structure)
+      fmodel.update_xray_structure(
+        xray_structure=xrs_new,
+        update_f_calc=True,
+        update_f_mask=True)
+  final_ligands = extract_ligand_residues(pdb_hierarchy, params.ligand_code)
+  final_cc = get_final_maps_and_cc (
     fmodel=fmodel,
-    ligands=ligands,
+    ligands=final_ligands,
     params=params,
     log=log)
   if (params.output_file is not None) :
+    import iotbx.pdb
     f = open(params.output_file, "w")
     cryst1 = iotbx.pdb.format_cryst1_record(fmodel.xray_structure)
     f.write("%s\n" % cryst1)
     f.write(pdb_hierarchy.as_pdb_string())
     f.close()
-    print >> out, ""
-    print >> out, "Wrote %s" % params.output_file
-  return final_cc
+    print >> log, ""
+    print >> log, "Wrote %s" % params.output_file
+  return len(ligands) + len(sampler.new_ligands)
 
 def run (args, out=None) :
   if (out is None) : out = sys.stdout
   from mmtbx.utils import cmdline_load_pdb_and_data
-  import iotbx.pdb
   cmdline = cmdline_load_pdb_and_data(
     args=args,
     master_phil=master_phil(),
@@ -565,6 +581,7 @@ def run (args, out=None) :
     pdb_hierarchy=pdb_hierarchy,
     fmodel=fmodel,
     params=params,
+    add_new_ligands_to_pdb=params.add_to_model,
     log=out)
   return final_cc
 
