@@ -235,17 +235,17 @@ class manager(object):
       xh_conn_table = self.xh_connectivity_table()
       qi = self.xray_structure.scatterers().extract_occupancies()
       ct = self.xh_connectivity_table2()
-      for t in ct.values():
-        i_x, i_h = t[0][0],t[0][1]
-        if(len(t)==1):
-          qi[i_h] = qi[i_x]
-        else:
-          occ = flex.double()
-          for ap in t[1:]:
-            for i in ap:
+      for t_ in ct.values():
+        i_x, i_h = t_[0][0],t_[0][1]
+        occ = flex.double()
+        for t in t_:
+          if(len(t) != 5):
+            for i in t:
               if(i != i_h):
                 occ.append(qi[i])
-          qi[i_h] = flex.min(occ)
+            qi[i_h] = flex.min(occ)
+          else:
+            qi[i_h] = qi[i_x]
       if(self.refinement_flags.s_occupancies is not None):
         for rf1 in self.refinement_flags.s_occupancies:
           o=None

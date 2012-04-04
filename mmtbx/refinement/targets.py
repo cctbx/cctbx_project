@@ -234,8 +234,6 @@ class target_functor(object):
   def prepare_for_minimization(self):
     if (self.manager.target_name == "ml_sad"):
       self.core.prepare_for_minimization()
-      self.manager.adopt_external_b_iso_adjustments(
-        overall_b_iso_shift=self.core.refined_overall_b_iso)
 
   def target_function_is_invariant_under_allowed_origin_shifts(self):
     return (self.manager.target_name != "mlhl")
