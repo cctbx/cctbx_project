@@ -41,7 +41,10 @@ class common_mode_correction(mod_event_info):
                dark_stddev=None,
                gain_map_path=None,
                cache_image=True,
-               roi=None):
+               roi=None,
+               laser_1_status=None,
+               laser_4_status=None,
+               laser_wait_time=None):
     """The common_mode_correction class constructor stores the
     parameters passed from the pyana configuration file in instance
     variables.
@@ -52,6 +55,12 @@ class common_mode_correction(mod_event_info):
     @param dark_path       Path to input average dark image
     @param dark_stddev     Path to input standard deviation dark
                            image, required if @p dark_path is given
+    @param laser_1_status  0 or 1 to indicate that the laser should be off or on respectively
+    @param laser_4_status  0 or 1 to indicate that the laser should be off or on respectively
+    @param laser_wait_time Length of time in milliseconds to wait after a laser
+                           change of status to begin accepting images again.
+                           (rejection of images occurs immediately after status
+                           change).
     """
 
     mod_event_info.__init__(self, address=address)
@@ -65,6 +74,9 @@ class common_mode_correction(mod_event_info):
     self.photon_threshold = cspad_tbx.getOptFloat(photon_threshold)
     self.two_photon_threshold = cspad_tbx.getOptFloat(two_photon_threshold)
     self.cache_image = cspad_tbx.getOptBool(cache_image)
+    self.filter_laser_1_status = bool(cspad_tbx.getOptInteger(laser_1_status))
+    self.filter_laser_4_status = bool(cspad_tbx.getOptInteger(laser_4_status))
+    self.filter_laser_wait_time = cspad_tbx.getOptInteger(laser_wait_time)
 
     self.cspad_img = None # The current image - set by self.event()
     self.sum_common_mode = 0
@@ -219,6 +231,19 @@ class common_mode_correction(mod_event_info):
     super(common_mode_correction, self).event(evt, env)
     if (evt.get("skip_event")):
       return
+
+    if self.filter_laser_1_status is not None:
+      if (self.laser_1_status.status != self.filter_laser_1_status or
+          (self.laser_1_ms_since_change is not None and
+           self.laser_1_ms_since_change < self.filter_laser_wait_time)):
+        evt.put(True, "skip_event")
+        return
+    if self.filter_laser_4_status is not None:
+      if (self.laser_4_status.status != self.filter_laser_4_status or
+          (self.laser_4_ms_since_change is not None and
+           self.laser_4_ms_since_change < self.filter_laser_wait_time)):
+        evt.put(True, "skip_event")
+        return
 
     # Early return if the full detector image is already stored in the
     # event.  Otherwise, get it from the stream as a double-precision
