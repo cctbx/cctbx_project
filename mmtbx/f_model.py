@@ -2157,16 +2157,6 @@ class manager(manager_mixin):
       out.close()
       mtz_object.write(file_name=file_name)
 
-  def adopt_external_b_iso_adjustments(self, overall_b_iso_shift):
-    b_cart = self.b_cart()
-    self.update_core(b_cart=[
-      b_cart[0]+overall_b_iso_shift,
-      b_cart[1]+overall_b_iso_shift,
-      b_cart[2]+overall_b_iso_shift,
-      b_cart[3],
-      b_cart[4],
-      b_cart[5]])
-
   def estimate_f000(self) :
     assert (self.xray_structure is not None)
     # XXX no account for solvent, and other scales
