@@ -385,15 +385,6 @@ class miller_array_builder(crystal_symmetry_builder):
                   array.set_info(
                     info.customized_copy(labels=info.labels+[sigmas_label]))
                   continue
-                elif key in refln_loop:
-                  sigmas = array
-                  array = self.flex_std_string_as_miller_array(
-                    value, wavelength_id=w_id, crystal_id=crys_id,
-                    scale_group_code=scale_group)
-                  check_array_sizes(array, sigmas, key, sigmas_label)
-                  sigmas = as_flex_double(sigmas, sigmas_label)
-                  array.set_sigmas(sigmas.data())
-                  labels = labels[:-1]+[key, sigmas_label]
               elif key.endswith('PHWT'):
                 phwt_label = label
                 fwt_label = label[:-4] + 'FWT'
@@ -447,12 +438,6 @@ class miller_array_builder(crystal_symmetry_builder):
                     self._arrays[key].set_info(
                       info.customized_copy(labels=info.labels+[key_b]))
                     continue
-                  else:
-                    a_part = self.flex_std_string_as_miller_array(
-                      refln_loop[label], wavelength_id=w_id, crystal_id=crys_id,
-                      scale_group_code=scale_group).data()
-                    array = array.array(data=flex.complex_double(a_part, b_part))
-                    labels = labels+[label, label_b]
               elif ('phase_' in key and not key.endswith('_meas') and
                     self.crystal_symmetry.space_group() is not None):
                 alt_key1 = label.replace('phase_', 'F_')
