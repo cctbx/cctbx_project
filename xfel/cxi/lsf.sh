@@ -41,9 +41,9 @@ if ! test -x "${PYANA}"; then
     exit 1
 fi
 
-args=`getopt c:o:p:r:x: $*`
+args=`getopt c:o:p:q:r:x: $*`
 if test $? -ne 0; then
-    echo "Usage: lsf.sh -c config -r runno [-o output] [-p num-cpu] [-x exp]" > /dev/stderr
+    echo "Usage: lsf.sh -c config -r runno [-o output] [-p num-cpu] [-q queue] [-x exp]" > /dev/stderr
     exit 1
 fi
 
@@ -82,6 +82,12 @@ while test $# -ge 0; do
             shift
             ;;
 
+        -q)
+            queue="$2"
+            shift
+            shift
+            ;;
+
         -r)
             # Set ${run} to a zero-padded, four-digit string
             # representation of the integer.  XXX Rename runno?
@@ -111,6 +117,11 @@ while test $# -ge 0; do
             ;;
     esac
 done
+
+# If no queue is given on the command line then submit to default queue
+if [ -z "${queue}" ]; then
+    queue="psfehq"
+fi
 
 # Ensure the two mandatory arguments given, and no extraneous
 # arguments are present.
@@ -201,7 +212,7 @@ for s in ${streams}; do
     i=`expr "${s}" \+ 1`
     cat >> "${tmpdir}/submit.sh" << EOF
 bsub -J "r${run}[${i}]" -n "1,${nproc}" -o "\${OUT}/stdout/s${s}.out" \\
-    -q "psfehq" -R "span[hosts=1]" "\${OUT}/pyana_s${s}.sh"
+    -q ${queue} -R "span[hosts=1]" "\${OUT}/pyana_s${s}.sh"
 EOF
 
     # Create the run-script for stream ${s}.  Fall back on using a
