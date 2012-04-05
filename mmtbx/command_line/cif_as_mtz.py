@@ -242,6 +242,13 @@ def extract(file_name,
         break
       elif miller_array.is_hendrickson_lattman_array():
         label = "HL"
+      elif (miller_array.is_complex_array()) :
+        if (l.endswith("DELFWT")) :
+          label = "DELFWT"
+          break
+        elif (l.endswith("FWT")) :
+          label = "FWT"
+          break
     if label is not None:
       label_base = label
       i = 1
@@ -355,7 +362,12 @@ def extract(file_name,
       ma = ma.select_indices(indices=flex.miller_index(((0,0,0),)),negate=True) \
         .set_info(ma.info()) # Get rid of fake (0,0,0) reflection in some CIFs
       column_labels.add(label)
-      dataset.add_miller_array(ma, column_root_label=label)
+      dec = None
+      if ("FWT" in label) :
+        dec = iotbx.mtz.ccp4_label_decorator()
+      dataset.add_miller_array(ma,
+        column_root_label=label,
+        label_decorator=dec)
   return mtz_object
 
 ########################################################################
