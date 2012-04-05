@@ -13,4 +13,7 @@ for MODULE in $MODULES
 do
   ./generate_modules.py --doc-header $MODULE -s rst -d ./$MODULE ../../sources/cctbx_project/$MODULE
 done
-make html -b coverage
+make coverage
+cp ./_build/coverage/python.txt ./python.rst
+cp ./_build/coverage/c.txt ./c.rst
+make html
