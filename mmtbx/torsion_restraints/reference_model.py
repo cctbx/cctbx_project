@@ -1079,7 +1079,7 @@ def get_matching_chains(pdb_hierarchy,
         segid_j = utils.get_unique_segid(chain_j)
         if segid_j == None:
           continue
-        if (use_segid) :
+        if (use_segid_ref) :
           chain_j_str = "chain '%s' and segid '%s'" % (chain_j.id, segid_j)
         else :
           chain_j_str = "chain '%s'" % chain_j.id
