@@ -395,8 +395,7 @@ class miller_array_builder(crystal_symmetry_builder):
                   check_array_sizes(array, phwt_array, fwt_label, phwt_label)
                   phases = as_flex_double(phwt_array, phwt_label)
                   info = array.info()
-                  array = array.customized_copy(
-                    data=flex.complex_double(array.data(), phwt_array.data()))
+                  array = array.phase_transfer(phases, deg=True)
                   array.set_info(
                     info.customized_copy(labels=info.labels+[phwt_label]))
                   self._arrays[fwt_label] = array
