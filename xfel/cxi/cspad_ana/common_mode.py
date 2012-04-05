@@ -74,8 +74,12 @@ class common_mode_correction(mod_event_info):
     self.photon_threshold = cspad_tbx.getOptFloat(photon_threshold)
     self.two_photon_threshold = cspad_tbx.getOptFloat(two_photon_threshold)
     self.cache_image = cspad_tbx.getOptBool(cache_image)
-    self.filter_laser_1_status = bool(cspad_tbx.getOptInteger(laser_1_status))
-    self.filter_laser_4_status = bool(cspad_tbx.getOptInteger(laser_4_status))
+    self.filter_laser_1_status = cspad_tbx.getOptInteger(laser_1_status)
+    self.filter_laser_4_status = cspad_tbx.getOptInteger(laser_4_status)
+    if self.filter_laser_1_status is not None:
+      self.filter_laser_1_status = bool(self.filter_laser_1_status)
+    if self.filter_laser_4_status is not None:
+      self.filter_laser_4_status = bool(self.filter_laser_4_status)
     self.filter_laser_wait_time = cspad_tbx.getOptInteger(laser_wait_time)
 
     self.cspad_img = None # The current image - set by self.event()
