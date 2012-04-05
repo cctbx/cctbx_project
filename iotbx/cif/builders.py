@@ -336,7 +336,7 @@ class miller_array_builder(crystal_symmetry_builder):
           elif key.endswith('scale_group_code'):
             self.scale_group_array = array
             scale_groups = counts.keys()
-      for label, value in refln_loop.iteritems():
+      for label, value in sorted(refln_loop.items()):
         for w_id in wavelength_ids:
           for crys_id in crystal_ids:
             for scale_group in scale_groups:
@@ -394,6 +394,22 @@ class miller_array_builder(crystal_symmetry_builder):
                   sigmas = as_flex_double(sigmas, sigmas_label)
                   array.set_sigmas(sigmas.data())
                   labels = labels[:-1]+[key, sigmas_label]
+              elif key.endswith('PHWT'):
+                phwt_label = label
+                fwt_label = label[:-4] + 'FWT'
+                if fwt_label not in refln_loop: continue
+                phwt_array = array
+                if fwt_label in self._arrays:
+                  array = self._arrays[fwt_label]
+                  check_array_sizes(array, phwt_array, fwt_label, phwt_label)
+                  phases = as_flex_double(phwt_array, phwt_label)
+                  info = array.info()
+                  array = array.customized_copy(
+                    data=flex.complex_double(array.data(), phwt_array.data()))
+                  array.set_info(
+                    info.customized_copy(labels=info.labels+[phwt_label]))
+                  self._arrays[fwt_label] = array
+                  continue
               elif 'HL_' in key:
                 hl_letter = key[key.find('HL_')+3]
                 hl_key = 'HL_' + hl_letter

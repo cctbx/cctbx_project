@@ -486,8 +486,16 @@ def exercise_mmcif_structure_factors():
   #
   miller_arrays = cif.reader(input_string=integer_observations).as_miller_arrays()
   assert len(miller_arrays) == 2
-  assert isinstance(miller_arrays[1].data(), flex.double)
-  assert isinstance(miller_arrays[1].sigmas(), flex.double)
+  assert isinstance(miller_arrays[0].data(), flex.double)
+  assert isinstance(miller_arrays[0].sigmas(), flex.double)
+  #
+  miller_arrays = cif.reader(input_string=r3v56sf).as_miller_arrays()
+  assert len(miller_arrays) == 2
+  for ma in miller_arrays: assert ma.is_complex_array()
+  assert miller_arrays[0].info().labels == [
+    'r3v56sf', '_refln.pdbx_DELFWT', '_refln.pdbx_DELPHWT']
+  assert miller_arrays[1].info().labels == [
+    'r3v56sf', '_refln.pdbx_FWT', '_refln.pdbx_PHWT']
 
 
 def find_miller_array_from_labels(miller_arrays, labels):
@@ -610,6 +618,48 @@ _refln.fom
 1 2 1       0    0   36 o     317.8   30.4   1993.3     0.0  0.05
 1 2 1       0    0   42 o   12026.4  286.2   6514.5   180.0  1.00
 1 2 1       0    0   48 o    1972.6   51.4   1357.9   180.0  0.91
+"""
+
+r3v56sf = """
+data_r3v56sf
+
+_cell.length_a  121.6330
+_cell.length_b  121.6330
+_cell.length_c  157.2140
+_cell.angle_alpha  90.0000
+_cell.angle_beta  90.0000
+_cell.angle_gamma  120.0000
+
+loop_
+_symmetry_equiv.id
+_symmetry_equiv.pos_as_xyz
+1  'X,  Y,  Z'
+2  'X-Y,  X,  Z+5/6'
+3  '-Y,  X-Y,  Z+2/3'
+4  '-X,  -Y,  Z+1/2'
+5  '-X+Y,  -X,  Z+1/3'
+6  'Y,  -X+Y,  Z+1/6'
+
+loop_
+_refln.index_h
+_refln.index_k
+_refln.index_l
+_refln.pdbx_FWT
+_refln.pdbx_PHWT
+_refln.pdbx_DELFWT
+_refln.pdbx_DELPHWT
+0    0    6 1793.541 297.538 758.340 297.538
+0    0   12 926.361   8.616  79.780   8.616
+0    0   18 2789.494   3.915 158.391 183.915
+0    0   24  18.715 196.581 133.229 196.581
+0    0   30 1040.906 174.397 370.046 174.397
+0    0   36 2065.720 180.659 163.982   0.659
+0    0   42 1850.858 199.047 1496.942 199.047
+0    0   48 882.296 190.106 289.614  10.106
+0    1    6 161.907 235.025 332.891 235.025
+0    1    7 168.822  39.648 511.322  39.648
+0    1    8  42.963  55.666 347.014  55.666
+0    1    9  81.428  68.620  89.690 248.620
 """
 
 integer_observations = """
