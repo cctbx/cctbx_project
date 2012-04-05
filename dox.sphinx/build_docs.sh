@@ -13,4 +13,4 @@ for MODULE in $MODULES
 do
   ./generate_modules.py --doc-header $MODULE -s rst -d ./$MODULE ../../sources/cctbx_project/$MODULE
 done
-make html
+make html -b coverage

@@ -33,8 +33,8 @@ import optparse
 # automodule options
 OPTIONS = ['members',
            'undoc-members',
-           # 'private-members', # will be supported in sphinx 1.1 (e.g. _myprivatedef(...))
-           # 'special-members', # will be supported in sphinx 1.1 (e.g. __call__(...))
+           'private-members', # needs sphinx 1.1+ (e.g. _myprivatedef(...))
+           'special-members', # needs sphinx 1.1+ (e.g. __call__(...))
            'inherited-members',
            'show-inheritance',
           ]
