@@ -124,11 +124,14 @@ def get_spectrum(spectrum_focus, mask_focus=None):
   omit_col = True
   if omit_col is True:
     #omit_columns = [181,193,194,195,196,197,378] # run 4
-    omit_columns = [193,194,195,196,197] # run 5
+    omit_columns = set([193,194,195,196,197]) # run 5
     for column_i in range(1, spectrum.size()-1):
+      if (column_i in omit_columns
+          or column_i+1 in omit_columns
+          or column_i-1 in omit_columns): continue
       if spectrum[column_i] < 0.3 * (spectrum[column_i-1]+spectrum[column_i+1]):
         # row 13
-        omit_columns.append(column_i)
+        omit_columns.add(column_i)
     plot_x = flex.int(xrange(spectrum.size()))
     plot_y = spectrum.deep_copy()
     for i in reversed(sorted(omit_columns)):
@@ -148,6 +151,8 @@ def output_spectrum(spectrum_focus, mask_focus=None, output_dirname="."):
   f = open(os.path.join(output_dirname, "spectrum.txt"), "wb")
   print >> f, "\n".join(["%i %f" %(x, y) for x, y in zip(plot_x, plot_y)])
   f.close()
+
+  return plot_x, plot_y
 
   ## first moment analysis
   ## XXX columns of interest for CXI run 5
