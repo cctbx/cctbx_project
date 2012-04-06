@@ -601,11 +601,10 @@ class reference_model(object):
           continue
         else:
           key = ""
+          ref_match = True
           for i_seq in dp.i_seqs:
-            ref_match = True
             if ref_match:
               map_part = match_map[file].get(i_seq)
-              #print i_seq, map_part
               if map_part is not None:
                 key_part = \
                   self.i_seq_name_hash_ref[file].get(map_part)
