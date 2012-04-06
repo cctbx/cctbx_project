@@ -1711,6 +1711,14 @@ class manager(manager_mixin):
   def r_all(self):
     return self._r_factor(type="all")
 
+  def scale_k1_w_for_twin_targets(self):
+    s = ~self.r_free_flags().data()
+    fo = self.f_obs_work().data()
+    fmask = self.f_masks()[0].data().select(s)
+    fm = self.k_anisotropic_work() * (self.f_calc_w().data() +
+      self.k_masks()[0].select(s) * fmask)
+    return _scale_helper(num=fo, den=flex.abs(fm), selection=None)
+
   #XXX Fix k1 option for TA
   set_scale_switch = 0
   def scale_k1(self, selection = None):

@@ -790,7 +790,7 @@ the percentage of R-free reflections).
       b_sol = result.b_sol(),
       twin_fraction = self.fmodel_ts1.twin_fraction,
       b_cart = result.b_cart(),
-      k_overall = self.fmodel_ts1.scale_k1_w())
+      k_overall = self.fmodel_ts1.scale_k1_w_for_twin_targets())
     self.mask_params = self.fmodel_ts1.mask_params
     self.arrays = self.fmodel_ts1.arrays
 
