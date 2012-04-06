@@ -1,3 +1,6 @@
+#ifndef SCITBX_MATH_CUBIC_EQUATION_H
+#define SCITBX_MATH_CUBIC_EQUATION_H
+
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/ref.h>
 #include <tbxx/error_utils.hpp>
@@ -10,7 +13,7 @@ namespace cubic_equation {
 //! Analytical solution of ax**3 + bx**2 + cx + d = 0.
 // Returns zero in case of imaginary roots (so the name 'real')
 
-template <typename FTW=long double,
+template <typename FTW=double,
           typename FTO=double>
 class real
 {
@@ -62,9 +65,8 @@ public:
   }
 
   FTW fractional_power(FTW const& arg, FTW const& pwr) {
-    FTW r;
-    arg<0. ? r = -std::pow(-arg, pwr) : r = std::pow(arg, pwr);
-    return r;
+    if (arg<0) return -std::pow(-arg, pwr);
+    return std::pow(arg, pwr);
   }
 
   void case_0() {
@@ -76,10 +78,8 @@ public:
   void case_1() {
     FTW sqrtD = std::sqrt(D);
     FTW minus_b_over_2 = -B/2.;
-    FTW M = minus_b_over_2 + sqrtD;
-    FTW N = minus_b_over_2 - sqrtD;
-    M = fractional_power(M, one_over_three);
-    N = fractional_power(N, one_over_three);
+    FTW M = fractional_power(minus_b_over_2 + sqrtD, one_over_three);
+    FTW N = fractional_power(minus_b_over_2 - sqrtD, one_over_three);
     FTW p_over_3 = p/3.;
     x[0] = static_cast<FTO>(M+N-p_over_3);
     x[1] = static_cast<FTO>(-(M+N)/2.-p_over_3);
@@ -136,3 +136,5 @@ template <typename FTW, typename FTO>
 const FTW real<FTW, FTO>::one_over_three = 1/3.;
 
 }}}
+
+#endif // GUARD

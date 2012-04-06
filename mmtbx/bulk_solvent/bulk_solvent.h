@@ -326,7 +326,7 @@ private:
 template <
   typename FloatType=double,
   typename ComplexType=std::complex<double>,
-  typename CubicEqType=scitbx::math::cubic_equation::real<long double, double> >
+  typename CubicEqType=scitbx::math::cubic_equation::real<double, double> >
 class bulk_solvent_scale_coefficients_analytical
 {
 public:
@@ -415,7 +415,7 @@ public:
 template <
   typename FloatType=double,
   typename ComplexType=std::complex<double>,
-  typename CubicEqType=scitbx::math::cubic_equation::real<long double,double> >
+  typename CubicEqType=scitbx::math::cubic_equation::real<double,double> >
 class overall_and_bulk_solvent_scale_coefficients_analytical
 {
 public:
@@ -573,8 +573,6 @@ public:
   /* SHELXL-like scale: Acta Cryst. (1999). D55, 1158-1167, page 1163
      Note: in the paper it is applied to Fcalc^2, here it is applied to Fcalc.
            The code computes coefficients a. */
-  /* XXX try 'long double' to see if that pushed regression test tolerances
-     to lower values */
   aniso_u_scaler(
     af::const_ref<ComplexType> const& f_model,
     af::const_ref<FloatType> const& f_obs,
