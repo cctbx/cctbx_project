@@ -13,17 +13,15 @@ from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
 
 master_params_str = """\
-d_min = None
-  .type = float
-bulk_solvent = False
-  .type = bool
-map_filter = 6.0
+bulk_solvent_mode = *fast slow
+  .type=choice(multi=False)
+map_filter = None
   .type = float
 f_obs_label = None
   .type = str
 r_free_flags_label = None
   .type = str
-grid_step = 0.1
+grid_step = 0.2
   .type = float
 map_type = Fo-Fc
   .type = str
@@ -74,64 +72,7 @@ def get_f_obs_and_flags(reflection_file_name,
   r_free_flags = determine_data_and_flags_result.r_free_flags
   return f_obs, r_free_flags
 
-
-def get_stats(pdb_file_name,
-              f_obs,
-              r_free_flags,
-              bulk_solvent,
-              map_filter,
-              map_type,
-              grid_step,
-              apply_volume_scaling,
-              apply_sigma_scaling,
-              d_min):
-  xrs = iotbx.pdb.input(file_name = pdb_file_name).xray_structure_simple()
-  #
-  fmodel = mmtbx.f_model.manager(
-    f_obs          = f_obs,
-    xray_structure = xrs,
-    r_free_flags   = r_free_flags)
-  fmodel = fmodel.resolution_filter(d_min=d_min)
-  fmodel.remove_outliers()
-  #
-  fmodel.info().show_rfactors_targets_scales_overall()
-  #params = bss.master_params.extract()
-  #params.bulk_solvent=bulk_solvent
-  fmodel.update_solvent_and_scale()#(params = params)
-  fmodel.info().show_rfactors_targets_scales_overall()
-  fmodel.remove_outliers()
-  if(not bulk_solvent):
-    fmodel.update(k_sol=0, b_sol=0)
-  fmodel.info().show_rfactors_targets_scales_overall()
-  #
-  print
-  fft_map = fmodel.electron_density_map().fft_map(
-    map_type          = map_type,
-    resolution_factor = grid_step/d_min,
-    acentrics_scale   = 1.,
-    symmetry_flags    = maptbx.use_space_group_symmetry)
-  #
-  assert [apply_sigma_scaling, apply_volume_scaling].count(True) == 1
-  if(apply_sigma_scaling):    fft_map.apply_sigma_scaling()
-  elif(apply_volume_scaling): fft_map.apply_volume_scaling()
-  else: assert RuntimeError
-  nx,ny,nz = fft_map.n_real()
-  print "n_real:", nx,ny,nz
-  map_data = fft_map.real_map_unpadded()
-  unit_cell = xrs.unit_cell()
-  a,b,c = unit_cell.parameters()[:3]
-  print "unit cell:", a,b,c
-  #
-  grid_sites_frac = flex.vec3_double()
-  map_values = flex.double()
-  for ix in xrange(nx):
-    for iy in xrange(ny):
-      for iz in xrange(nz):
-        xf,yf,zf = ix/float(nx), iy/float(ny), iz/float(nz)
-        grid_sites_frac.append([xf,yf,zf])
-        map_at_ixiyiz = map_data[(ix,iy,iz)]
-        map_values.append(map_at_ixiyiz)
-  #
+def expand_to_p1(xrs):
   xrsp1 = xrs.expand_to_p1()
   for sc in xrsp1.scatterers():
     site = sc.site
@@ -152,34 +93,10 @@ def get_stats(pdb_file_name,
     assert site[0] >= 0 and site[0] <= 1
     assert site[1] >= 0 and site[1] <= 1
     assert site[2] >= 0 and site[2] <= 1
-  #
-  print
-  show_histogram(data = map_values, n_slots=10)
-  if(map_filter is not None):
-    #for i in xrange(1000):
-    #  map_values.set_selected(map_values == flex.max(map_values), 0)
-    #  map_values.set_selected(map_values == flex.min(map_values), 0)
-    mva = flex.abs(map_values)
-    mmax =  flex.mean(mva)*map_filter
-    mmin = -flex.mean(mva)*map_filter
-    selp = map_values >= mmax
-    seln = map_values <= mmin
-    map_values.set_selected(selp, mmax)
-    map_values.set_selected(seln, mmin)
-    show_histogram(data = map_values, n_slots=10)
-    print
-  #
-  print "ok up to here..."
-  res = mmtbx.utils.density_distribution_per_atom(
-    sites_frac_atoms = xrsp1.sites_frac(),
-    sites_frac_peaks = grid_sites_frac,
-    density_values   = map_values,
-    unit_cell        = unit_cell)
-  distances = res.distances()
-  map_values = res.map_values()
-  #
-  print
-  print "number of points", distances.size()
+  return xrsp1
+
+def map_stat(distances, map_values):
+  result = []
   #
   inc = 0.1
   n_points_max = -1
@@ -201,9 +118,94 @@ def get_stats(pdb_file_name,
     sel &= distances < r
     mv = map_values.select(sel)
     if(mv.size()>0):
-      rms = math.sqrt( flex.sum(mv*mv)/mv.size() )
-      print "%4.2f-%4.2f %8.4f %8.4f %10d %10.4f" % (l, r, flex.mean(mv), rms,
-        mv.size(), mv.size()*1./n_points_max)
+      sz = mv.size()
+      rms = math.sqrt( flex.sum(mv*mv)/sz )
+      result.append([l, r, flex.mean(mv), rms, sz, sz*1./n_points_max])
+  return result
+
+def get_map_values_and_grid_sites_frac(
+      fmodel,
+      map_type,
+      grid_step,
+      d_min,
+      apply_sigma_scaling,
+      apply_volume_scaling):
+  fft_map = fmodel.electron_density_map().fft_map(
+    map_type          = map_type,
+    resolution_factor = grid_step/d_min,
+    symmetry_flags    = maptbx.use_space_group_symmetry)
+  assert [apply_sigma_scaling, apply_volume_scaling].count(True) == 1
+  if(apply_sigma_scaling):    fft_map.apply_sigma_scaling()
+  elif(apply_volume_scaling): fft_map.apply_volume_scaling()
+  else: assert RuntimeError
+  map_data = fft_map.real_map_unpadded()
+  nx,ny,nz = fft_map.n_real()
+  print "n_real:", nx,ny,nz
+  grid_sites_frac = flex.vec3_double()
+  map_values = flex.double()
+  for ix in xrange(nx):
+    for iy in xrange(ny):
+      for iz in xrange(nz):
+        xf,yf,zf = ix/float(nx), iy/float(ny), iz/float(nz)
+        grid_sites_frac.append([xf,yf,zf])
+        map_at_ixiyiz = map_data[(ix,iy,iz)]
+        map_values.append(map_at_ixiyiz)
+  return map_values, grid_sites_frac
+
+def show_fmodel(fmodel, prefix=""):
+  print "%s r_work=%6.4f r_free=%6.4f d_min=%6.4f nref=%d"%(prefix,
+    fmodel.r_work(),fmodel.r_free(),fmodel.f_obs().d_min(),
+    fmodel.f_obs().data().size())
+
+def get_stats(pdb_file_name,
+              f_obs,
+              r_free_flags,
+              map_filter,
+              map_type,
+              grid_step,
+              apply_volume_scaling,
+              apply_sigma_scaling,
+              mode):
+  results = []
+  for bulk_solvent in [True, False]:
+    xrs = iotbx.pdb.input(file_name = pdb_file_name).xray_structure_simple()
+    fmodel = mmtbx.f_model.manager(
+      f_obs          = f_obs,
+      xray_structure = xrs,
+      r_free_flags   = r_free_flags)
+    #
+    show_fmodel(fmodel=fmodel, prefix="start:")
+    params = bss.master_params.extract()
+    params.bulk_solvent=bulk_solvent
+    if(mode=="fast"): fast=True
+    elif(mode=="slow"): fast=False
+    else: assert 0
+    fmodel.update_all_scales(params = params, fast=fast)
+    show_fmodel(fmodel=fmodel, prefix="final:")
+    #
+    map_values, grid_sites_frac = get_map_values_and_grid_sites_frac(
+      fmodel               = fmodel,
+      map_type             = map_type,
+      grid_step            = grid_step,
+      d_min                = f_obs.d_min(),
+      apply_sigma_scaling  = apply_sigma_scaling,
+      apply_volume_scaling = apply_volume_scaling)
+    #
+    res = mmtbx.utils.density_distribution_per_atom(
+      sites_frac_atoms = expand_to_p1(xrs = xrs).sites_frac(),
+      sites_frac_peaks = grid_sites_frac,
+      density_values   = map_values,
+      unit_cell        = xrs.unit_cell())
+    distances = res.distances()
+    map_values = res.map_values()
+    #
+    result = map_stat(distances=distances, map_values=map_values)
+    results.append(result)
+  for result in zip(results[0],results[1]):
+    l,r,p = result[0][0], result[0][1], result[0][5]
+    m1,r1 = result[0][2], result[0][3]
+    m2,r2 = result[1][2], result[1][3]
+    print "%4.2f-%4.2f %10.4f | %8.4f %8.4f | %8.4f %8.4f" % (l, r, p, m1,r1, m2,r2)
 
 def run(args, log = None):
   if(log is None): log = sys.stdout
@@ -229,13 +231,12 @@ def run(args, log = None):
   get_stats(pdb_file_name        = processed_args.pdb_file_names[0],
             f_obs                = f_obs,
             r_free_flags         = r_free_flags,
-            bulk_solvent         = params.bulk_solvent,
             map_filter           = params.map_filter,
             grid_step            = params.grid_step,
             map_type             = params.map_type,
             apply_volume_scaling = params.apply_volume_scaling,
             apply_sigma_scaling  = params.apply_sigma_scaling,
-            d_min                = params.d_min)
+            mode                 = params.bulk_solvent_mode)
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
