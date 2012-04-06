@@ -113,7 +113,6 @@ def run_01():
     #print bulk_solvent.r_factor(f_obs.data(), fmodel.f_model().data())
     #print bulk_solvent.r_factor(f_obs.data(), fmodel.f_model().data())
     t0 = time.time()
-    # XXX try "long double" to see if this decreases the tolerances
     obj = bulk_solvent.aniso_u_scaler(
       f_model        = fc.data(),
       f_obs          = f_obs.data(),
@@ -188,7 +187,6 @@ def run_02():
     #print bulk_solvent.r_factor(f_obs.data(), fmodel.f_model().data())
     #print bulk_solvent.r_factor(f_obs.data(), fmodel.f_model().data())
     t0 = time.time()
-    # XXX try "long double" to see if this decreases the tolerances
     obj = bulk_solvent.aniso_u_scaler(
       f_model        = fc.data(),
       f_obs          = f_obs.data(),
