@@ -26,6 +26,7 @@ den_params = iotbx.phil.parse("""
     of the weight and gamma parameters for DEN refinement.  This is very \
     slow, but highly recommended, and can be parallelized across multiple \
     CPU cores.
+   .style = bold noauto
  opt_gamma_values = 0.0, 0.2, 0.4, 0.6, 0.8, 1.0
    .type = floats
    .short_caption = Gamma values for optimization
@@ -34,7 +35,7 @@ den_params = iotbx.phil.parse("""
    .short_caption = Weight values for optimization
  num_cycles = 10
    .type = int
-   .short_caption = Number of cycles
+   .short_caption = Number of DEN cycles
  kappa_burn_in_cycles = 2
    .type = int
    .short_caption = Number of cycles where kappa is set to 0.0
