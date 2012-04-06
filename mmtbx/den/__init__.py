@@ -15,7 +15,9 @@ den_params = iotbx.phil.parse("""
    .type = float
  kappa = 0.1
    .type = float
- weight = 1.0
+ weight = 30.0
+   .type = float
+ sigma = 0.44
    .type = float
  optimize = False
    .type = bool
@@ -27,13 +29,13 @@ den_params = iotbx.phil.parse("""
  opt_gamma_values = 0.0, 0.2, 0.4, 0.6, 0.8, 1.0
    .type = floats
    .short_caption = Gamma values for optimization
- opt_weight_values = 0.5, 1.0, 3.0, 5.0, 10.0, 25.0, 50.0, 100.0
+ opt_weight_values = 3.0, 10.0, 30.0, 100.0, 300.0
    .type = floats
    .short_caption = Weight values for optimization
  num_cycles = 10
    .type = int
    .short_caption = Number of cycles
- kappa_burn_in_cycles = 3
+ kappa_burn_in_cycles = 2
    .type = int
    .short_caption = Number of cycles where kappa is set to 0.0
  bulk_solvent_and_scale = True
@@ -150,6 +152,7 @@ class den_restraints(object):
     self.kappa_burn_in_cycles = params.kappa_burn_in_cycles
     self.gamma = params.gamma
     self.weight = params.weight
+    self.sigma = params.sigma
     self.num_cycles = params.num_cycles
     self.annealing_type = params.annealing_type
     self.ndistance_ratio = \
@@ -386,6 +389,7 @@ class den_restraints(object):
     return den_atom_pairs
 
   def build_den_restraints(self):
+    den_weight = self.weight*(1.0/(self.sigma**2))
     print >> self.log, "building DEN restraints..."
     den_proxies = self.ext.shared_den_simple_proxy()
     for chain in self.den_atom_pairs.keys():
@@ -398,9 +402,19 @@ class den_restraints(object):
           i_seqs=i_seqs,
           eq_distance=distance_ideal,
           eq_distance_start=distance_ideal,
-          weight=self.weight)
+          weight=den_weight)
         den_proxies.append(proxy)
     self.den_proxies = den_proxies
+
+  def get_current_eq_distances(self):
+    current_eq_distances = []
+    for dp in self.den_proxies:
+      current_eq_distances.append(dp.eq_distance)
+    return current_eq_distances
+
+  def import_eq_distances(self, eq_distances):
+    for i, dp in enumerate(self.den_proxies):
+      dp.eq_distance = eq_distances[i]
 
   def target_and_gradients(self,
                            sites_cart,
@@ -448,10 +462,18 @@ class den_restraints(object):
       b_xyz = sites_cart[i_seqs[1]]
       distance_sq = distance_squared(a_xyz, b_xyz)
       distance = distance_sq**(0.5)
+      if self.name_hash[i_seqs[0]].endswith("    "):
+        name1 = self.name_hash[i_seqs[0]][:-4]
+      else:
+        name1 = self.name_hash[i_seqs[0]]
+      if self.name_hash[i_seqs[1]].endswith("    "):
+        name2 = self.name_hash[i_seqs[1]][:-4]
+      else:
+        name2 = self.name_hash[i_seqs[1]]
       print >> self.log, \
         "%s | %s |   %6.3f   |   %6.3f   |   %6.3f  " % \
-        (self.name_hash[i_seqs[0]],
-         self.name_hash[i_seqs[1]],
+        (name1,
+         name2,
          distance,
          dp.eq_distance,
          dp.eq_distance_start)

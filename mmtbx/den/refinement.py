@@ -90,6 +90,7 @@ class manager(object):
       raise "error in DEN annealing type"
     low_r_free = 1.0
     best_xray_structure = None
+    best_eq_distances = None
     best_gamma =  None
     best_weight = None
     best_so_i = None
@@ -100,6 +101,7 @@ class manager(object):
         best_gamma = result[0]
         best_weight = result[1]
         best_xray_structure = result[3]
+        best_eq_distances = result[4]
         best_so_i = i
     assert best_xray_structure is not None
     if params.den.optimize:
@@ -116,10 +118,12 @@ class manager(object):
     utils.assert_xray_structures_equal(
       x1 = fmodels.fmodel_xray().xray_structure,
       x2 = model.xray_structure)
+    model.restraints_manager.geometry.generic_restraints_manager.\
+      den_manager.import_eq_distances(eq_distances=best_eq_distances)
 
   def try_den_weight_torsion(self, grid_pair):
-    backup_k_rep = self.params.tardy.\
-      prolsq_repulsion_function_changes.k_rep
+    #backup_k_rep = self.params.tardy.\
+    #  prolsq_repulsion_function_changes.k_rep
     self.fmodels.fmodel_xray().xray_structure.replace_scatterers(
       self.save_scatterers_local.deep_copy())
     self.fmodels.update_xray_structure(
@@ -149,12 +153,12 @@ class manager(object):
     print >> self.log, "  ...trying gamma %.1f, weight %.1f" % (
       gamma_local, weight_local)
     while cycle < num_den_cycles:
-      if self.model.restraints_manager.geometry.\
-           generic_restraints_manager.den_manager.current_cycle == \
-           self.model.restraints_manager.geometry.\
-           generic_restraints_manager.den_manager.torsion_mid_point+1:
-        self.params.tardy.\
-          prolsq_repulsion_function_changes.k_rep = 1.0
+      #if self.model.restraints_manager.geometry.\
+      #     generic_restraints_manager.den_manager.current_cycle == \
+      #     self.model.restraints_manager.geometry.\
+      #     generic_restraints_manager.den_manager.torsion_mid_point+1:
+      #  self.params.tardy.\
+      #    prolsq_repulsion_function_changes.k_rep = 1.0
       print >> local_log, "DEN cycle %s" % (cycle+1)
       r_free = self.fmodels.fmodel_xray().r_free()
       print >> local_log, "rfree at start of SA cycle: %.4f" % r_free
@@ -182,12 +186,17 @@ class manager(object):
     r_free = self.fmodels.fmodel_xray().r_free()
     step_xray_structure = self.fmodels.fmodel_xray().\
       xray_structure.deep_copy_scatterers().scatterers()
-    self.params.tardy.\
-      prolsq_repulsion_function_changes.k_rep = backup_k_rep
+    #step_den_proxies = self.model.restraints_manager.geometry.\
+    #       generic_restraints_manager.den_manager.den_proxies
+    step_eq_distances = self.model.restraints_manager.geometry.\
+      generic_restraints_manager.den_manager.get_current_eq_distances()
+    #self.params.tardy.\
+    #  prolsq_repulsion_function_changes.k_rep = backup_k_rep
     return (gamma_local,
             weight_local,
             r_free,
-            step_xray_structure)
+            step_xray_structure,
+            step_eq_distances)
 
   def try_den_weight_cartesian(self, grid_pair):
     self.fmodels.fmodel_xray().xray_structure.replace_scatterers(
@@ -250,10 +259,13 @@ class manager(object):
     r_free = self.fmodels.fmodel_xray().r_free()
     step_xray_structure = self.fmodels.fmodel_xray().\
       xray_structure.deep_copy_scatterers().scatterers()
+    step_eq_distances = self.model.restraints_manager.geometry.\
+      generic_restraints_manager.den_manager.get_current_eq_distances()
     return (gamma_local,
             weight_local,
             r_free,
-            step_xray_structure)
+            step_xray_structure,
+            step_eq_distances)
 
   def show_den_opt_summary_torsion(self, grid_results):
     print_statistics.make_header(
