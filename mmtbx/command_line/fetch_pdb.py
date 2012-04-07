@@ -133,8 +133,8 @@ Command-line options:
             "manually (and check %s-sf.cif for format errors)." % id)
       if (maps) :
         assert os.path.isfile("%s.mtz" % id)
-        from mmtbx.maps.utils import create_map_from_downloaded_pdb
-        create_map_from_downloaded_pdb(
+        from mmtbx.maps.utils import create_map_from_pdb_and_mtz
+        create_map_from_pdb_and_mtz(
           pdb_file="%s.pdb" % id,
           mtz_file="%s.mtz" % id,
           output_file="%s_maps.mtz" % id,
