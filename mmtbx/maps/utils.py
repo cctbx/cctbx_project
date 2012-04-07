@@ -14,7 +14,7 @@ import sys
 #-----------------------------------------------------------------------
 # MAP COEFFICIENT MANIPULATION
 
-def create_map_from_downloaded_pdb (
+def create_map_from_pdb_and_mtz (
     pdb_file,
     mtz_file,
     output_file,
