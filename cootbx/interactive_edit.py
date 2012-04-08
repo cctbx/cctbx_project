@@ -1,5 +1,6 @@
 
 # standard imports
+import shutil
 import time
 import os
 import sys
@@ -21,20 +22,27 @@ def start_coot_and_wait (
   from libtbx import easy_run
   base_script = __file__.replace(".pyc", ".py")
   os.chdir(work_dir)
-  f = open("edit_in_coot", "w")
+  if (os.path.exists("coot_out_tmp.pdb")) :
+    os.remove("coot_out_tmp.pdb")
+  if (os.path.exists("coot_out.pdb")) :
+    os.remove("coot_out.pdb")
+  f = open("edit_in_coot.py", "w")
   f.write(open(base_script).read())
   f.write("\n")
   f.write("import coot\n")
   f.write("m = manager(\"%s\", \"%s\")\n" % (pdb_file, map_file))
+  f.close()
   make_header("Interactive editing in Coot", log)
-  easy_run.call("\"%s\" --script edit_coot.py &" % coot_cmd)
-  print >> log, "  Waiting for coot_out.pdb to appear at %s" %str(time.asctime())
+  easy_run.call("\"%s\" --script edit_in_coot.py &" % coot_cmd)
+  print >> log, "  Waiting for coot_out_tmp.pdb to appear at %s" % \
+    str(time.asctime())
   while (True) :
-    if (os.path.isfile("coot_out.pdb")) :
+    if (os.path.isfile("coot_out_tmp.pdb")) :
       print >> log, "  Coot editing complete at %s" % str(time.asctime())
       break
     else :
       time.sleep(1)
+  shutil.move("coot_out_tmp.pdb", "coot_out.pdb")
   import mmtbx.maps.utils
   mmtbx.maps.utils.create_map_from_pdb_and_mtz(
     pdb_file="coot_out.pdb",
@@ -76,7 +84,7 @@ class manager (object) :
     import coot
     import gtk
     dir_name = os.path.dirname(self.file_name)
-    pdb_out = os.path.join(dir_name, "coot_out.pdb")
+    pdb_out = os.path.join(dir_name, "coot_out_tmp.pdb")
     write_pdb_file(self._imol, pdb_out)
     dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO,
       gtk.BUTTONS_OK,
