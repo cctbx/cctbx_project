@@ -71,7 +71,7 @@ class manager (object) :
     toolbar.insert(return_button, -1)
     return_button.connect("clicked", self.OnReturn)
     return_button.show()
-    self._imol = read_pdb(file_name)
+    self._imol = read_pdb(pdb_file)
     dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO,
       gtk.BUTTONS_OK, "You may now edit your model to prepare for further "+
       "building and refinement.   When you are finished, "+
