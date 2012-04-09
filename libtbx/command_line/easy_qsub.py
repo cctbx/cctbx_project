@@ -135,7 +135,7 @@ def run(phenix_source=None,
   print '-'*80
   print '  Inputs'
   print '    phenix_source',phenix_source
-  if phenix_source.find("phenix_env")==-1 and phenix_source.find("setup")==-1:
+  if phenix_source.find("phenix_env")==-1 and phenix_source.find("setpath")==-1:
     print '  Need to supply file to source. e.g. phenix_env'
     return False
   print '    where',where
