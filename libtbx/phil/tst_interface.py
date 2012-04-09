@@ -171,6 +171,26 @@ refinement.ncs.restraint_group {
     "refinement.input.xray_data.file_name", "labels") ==
     "refinement.input.xray_data.labels")
 
+  master_phil = libtbx.phil.parse("""
+pdb_in = None
+  .type = path
+  .short_caption = Input model
+  .style = file_type:pdb input_file
+pdb_out = None
+  .type = path
+  .style = file_type:pdb new_file
+""")
+  working_phil = master_phil.fetch(source=libtbx.phil.parse("""
+pdb_in = foo.pdb
+pdb_out = foo.modified.pdb
+"""))
+  i = libtbx.phil.interface.index(master_phil=master_phil,
+    working_phil=working_phil,
+    fetch_new=False)
+  pdb_map = i.get_file_type_map("pdb")
+  assert (pdb_map.get_param_names() == ['pdb_in'])
+  assert (i.get_input_files() == [('foo.pdb', 'Input model', 'pdb_in')])
+
 # XXX sorry about the cross-import here, but I really need to test this on
 # something large and complex
 def exercise_2 (verbose=False) :

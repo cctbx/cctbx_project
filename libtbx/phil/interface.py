@@ -598,7 +598,8 @@ class index (object) :
       if (def_style.file_type is not None) :
         def_types = def_style.get_list("file_type")
         if (file_type in def_types) :
-          if def_style.no_map or (path_name in exclude_params) :
+          if ((def_style.no_map) or (def_style.new_file) or
+              (path_name in exclude_params)) :
             continue
           phil_object = self.get_scope_by_name(path_name)
           if isinstance(phil_object, list) :
