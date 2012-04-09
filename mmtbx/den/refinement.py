@@ -4,7 +4,8 @@ from mmtbx.refinement import tardy
 from libtbx import easy_mp, Auto
 from mmtbx.refinement import print_statistics
 from mmtbx.refinement import adp_refinement
-import sys
+from cctbx.array_family import flex
+import sys, random
 
 class manager(object):
   def __init__(
@@ -27,10 +28,14 @@ class manager(object):
     self.adp_refinement_manager = None
     self.macro_cycle = macro_cycle
     self.tan_b_iso_max = 0
+    self.random_seed = params.main.random_seed
     self.save_scatterers_local = fmodels.fmodel_xray().\
         xray_structure.deep_copy_scatterers().scatterers()
     den_manager = model.restraints_manager. \
       geometry.generic_restraints_manager.den_manager
+    #DEN refinement start, turn on
+    model.restraints_manager. \
+      geometry.generic_restraints_manager.flags.den = True
     print_statistics.make_header("DEN refinement", out=self.log)
     if params.den.optimize:
       grid = den_manager.get_optimization_grid()
@@ -120,10 +125,16 @@ class manager(object):
       x2 = model.xray_structure)
     model.restraints_manager.geometry.generic_restraints_manager.\
       den_manager.import_eq_distances(eq_distances=best_eq_distances)
+    #DEN refinement done, turn off
+    model.restraints_manager. \
+      geometry.generic_restraints_manager.flags.den = False
 
   def try_den_weight_torsion(self, grid_pair):
     #backup_k_rep = self.params.tardy.\
     #  prolsq_repulsion_function_changes.k_rep
+    local_seed = int(self.random_seed+grid_pair[1])
+    flex.set_random_seed(value=local_seed)
+    random.seed(local_seed)
     self.fmodels.fmodel_xray().xray_structure.replace_scatterers(
       self.save_scatterers_local.deep_copy())
     self.fmodels.update_xray_structure(
@@ -159,7 +170,8 @@ class manager(object):
       #     generic_restraints_manager.den_manager.torsion_mid_point+1:
       #  self.params.tardy.\
       #    prolsq_repulsion_function_changes.k_rep = 1.0
-      print >> local_log, "DEN cycle %s" % (cycle+1)
+      print >> local_log, "DEN cycle %d" % (cycle+1)
+      #print >> local_log, "Random seed: %d" % flex.get_random_seed()
       r_free = self.fmodels.fmodel_xray().r_free()
       print >> local_log, "rfree at start of SA cycle: %.4f" % r_free
       print >> local_log, "k_rep = %.2f" % \
@@ -186,12 +198,8 @@ class manager(object):
     r_free = self.fmodels.fmodel_xray().r_free()
     step_xray_structure = self.fmodels.fmodel_xray().\
       xray_structure.deep_copy_scatterers().scatterers()
-    #step_den_proxies = self.model.restraints_manager.geometry.\
-    #       generic_restraints_manager.den_manager.den_proxies
     step_eq_distances = self.model.restraints_manager.geometry.\
       generic_restraints_manager.den_manager.get_current_eq_distances()
-    #self.params.tardy.\
-    #  prolsq_repulsion_function_changes.k_rep = backup_k_rep
     return (gamma_local,
             weight_local,
             r_free,
@@ -199,6 +207,9 @@ class manager(object):
             step_eq_distances)
 
   def try_den_weight_cartesian(self, grid_pair):
+    local_seed = int(self.random_seed+grid_pair[1])
+    flex.set_random_seed(value=local_seed)
+    random.seed(local_seed)
     self.fmodels.fmodel_xray().xray_structure.replace_scatterers(
       self.save_scatterers_local.deep_copy())
     self.fmodels.update_xray_structure(
