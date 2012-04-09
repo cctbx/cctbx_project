@@ -8,12 +8,14 @@
 # CIF  uncompressed http://www.rcsb.org/pdb/files/2vz8.cif
 # XML  uncompressed http://www.rcsb.org/pdb/files/2vz8.xml
 # Data uncompressed http://www.rcsb.org/pdb/files/2vz8-sf.cif
+# CIF  uncompressed http://www.rcsb.org/pdb/files/ligand/ATP.cif
 #
 # For the PDBe:
 # http://www.ebi.ac.uk/pdbe-srv/view/files/2vz8.ent
 # http://www.ebi.ac.uk/pdbe-srv/view/files/r2vz8sf.ent
 
 from libtbx.utils import Sorry
+import libtbx.load_env
 import urllib2
 import urllib
 import time
@@ -158,3 +160,31 @@ def get_ebi_pdb_wublast (sequence, email, file_name=None, blast_type="blastp",
       raise RuntimeError("The EBI server can't find the job!")
     else :
       raise RuntimeError("Unknown status %s" % status)
+
+def get_chemical_components_cif (code, return_none_if_already_present=False) :
+  assert (code is not None)
+  if (len(code) == 0) or (len(code) > 3) :
+    raise Sorry("PDB residue codes must be at least 1 but no more than 3 "+
+      "characters.")
+  first_char = code[0].lower()
+  code = code.upper()
+  chem_comp_cif = libtbx.env.find_in_repositories(
+    relative_path="chem_data/chemical_components/%s/data_%s.cif" % (first_char,
+      code),
+    test=os.path.isfile)
+  if (chem_comp_cif is None) :
+    url = "http://www.rcsb.org/pdb/files/ligand/%s.cif" % code
+    try :
+      data = urllib2.urlopen(url)
+    except urllib2.HTTPError, e :
+      if e.getcode() == 404 :
+        raise RuntimeError("Couldn't download sequence for %s." % id)
+      else :
+        raise
+    else :
+      file_name = "%s.cif" % code
+      open(file_name, "w").write(data.read())
+      return file_name
+  elif (not return_none_if_already_present) :
+    return chem_comp_cif
+  return None
