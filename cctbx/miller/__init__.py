@@ -996,14 +996,23 @@ class set(crystal.symmetry):
     if (not self.anomalous_flag()):
       return self.array(data=result)
     del indices
-    result_full = flex.bool(self.indices().size(), False)
+    if (format == "ccp4") :
+      test_flag_value = 0
+      # XXX are we sure this is the right thing to do?
+      result_full = flex.int(self.indices().size(), 1)
+    elif (format == "shelx") :
+      test_flag_value = -1
+      result_full = flex.int(self.indices().size(), 1)
+    else :
+      test_flag_value = True
+      result_full = flex.bool(self.indices().size(), False)
     i_pp = sel_pp.size()
     i_pp_sp = i_pp + sel_sp.size()
     r_pp = result[:i_pp]
     result_full.set_selected(sel_pp, r_pp)
-    assert result_full.count(True) == r_pp.count(True)
+    assert result_full.count(test_flag_value) == r_pp.count(test_flag_value)
     result_full.set_selected(sel_pm, r_pp)
-    assert result_full.count(True) == 2*r_pp.count(True)
+    assert result_full.count(test_flag_value) == 2*r_pp.count(test_flag_value)
     del r_pp
     del sel_pm
     del sel_pp
