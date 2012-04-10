@@ -214,7 +214,7 @@ for s in ${streams}; do
 bsub -J "r${run}[${i}]" -n "1,${nproc}" -o "\${OUT}/stdout/s${s}.out" \\
     -q ${queue} -R "span[hosts=1]" "\${OUT}/pyana_s${s}.sh"
 EOF
-
+    # limited cores/user:  psfehq.  unlimited: psfehmpiq
     # Create the run-script for stream ${s}.  Fall back on using a
     # single processor if the number of available processors cannot be
     # obtained from the environment.
