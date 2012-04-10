@@ -115,6 +115,7 @@ class IntegrateCharacters:
 
       integrate_worker.basic_algorithm()
       integrate_worker.initialize_increments(i)
+      integrate_worker.horizons_phil = self.horizons_phil
       #P = Profiler("concept")
       integrate_worker.integration_concept(image_number = i,
         cb_op_to_primitive = setting["cb_op_inp_best"].inverse(),
@@ -396,7 +397,11 @@ class ResolutionAnalysisMetaClass(get_limits):
     self.integration_dict["resolution"] = self.value
 
   def stats_mtz(self,integration_dict,file):
-    get_limits.__init__(self,params=integration_dict,file=file,horizons_phil=self.horizons_phil)
+    try:
+      get_limits.__init__(self,params=integration_dict,file=file,horizons_phil=self.horizons_phil)
+    except: # intentional
+      #Numpy multiarray.error raises an object not derived from Exception
+      print "Catch any problem with stats mtz & numpy masked arrays"
 
   def retest_required(self):
     return self.status.require_expanded_limit != None
