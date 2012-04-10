@@ -660,6 +660,7 @@ Wait for the command to finish, then try again.""" % vars())
 
   def process_args(self, pre_processed_args):
     command_line = pre_processed_args.command_line
+    self.no_bin_python = command_line.options.no_bin_python
     for path in pre_processed_args.repository_paths:
       if not op.isabs(path):
         path = abs(self.build_path / path)
@@ -1421,7 +1422,7 @@ selfx:
     if not self.bin_path.isdir():
       self.bin_path.makedirs()
     python_dispatchers = ["libtbx.python"]
-    if (self.is_development_environment()):
+    if (self.is_development_environment() and not self.no_bin_python):
       python_dispatchers.append("python")
     for file_name in python_dispatchers:
       self._write_dispatcher_in_bin(
@@ -2003,6 +2004,11 @@ class pre_process_args:
       action="store_true",
       default=False,
       help="remove scons build signatures and config cache")
+    parser.option(None, "--no_bin_python",
+                  action="store_true",
+                  default=False,
+                  help="do not create <build directory>/bin/python even in a development "
+                       "environment")
     self.command_line = parser.process(args=args)
     if (len(self.command_line.args) == 0):
       raise RuntimeError(
@@ -2165,6 +2171,9 @@ def unpickle():
   if (hasattr(env.build_path, "reset")): # future: unconditional
     if (op.realpath(build_path) != op.realpath(abs(env.build_path))):
       env.build_path.reset(build_path)
+  # XXX backward compatibility 2012-4-1: this is no April Fool ;-)
+  if not hasattr(env, 'no_bin_python'):
+    env.no_bin_python = False
   return env
 
 def warm_start(args):
