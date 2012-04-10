@@ -5,6 +5,7 @@ cd $cctbxroot
 ${XCODE_CCTBX_BUILD}/bin/python -u <<PYSCRIPT
 import sys, os, re
 import libtbx.load_env
+from libtbx import easy_run
 from libtbx.command_line import scons
 
 print; print; print '-'*80
@@ -20,6 +21,10 @@ libtbx.env.build_options.report()
 
 print
 print '-'*80
+for compiler in ('gcc', 'clang',):
+  print easy_run.fully_buffered('type %s' % compiler).stdout_lines[0]
+print '-'*80
+
 os.chdir(os.environ['XCODE_CCTBX_BUILD'])
 sys.argv[1:] = os.environ['XCODE_SCONS_OPTIONS'].split()
 if os.environ.get('XCODE_SCONS_LIB_TARGET'):
