@@ -4,6 +4,7 @@
 #include <scitbx/vec3.h>
 #include <scitbx/vec2.h>
 #include <map>
+#include <numeric>
 #include <annlib_adaptbx/ann_adaptor.h>
 #include <spotfinder/core_toolbox/distl.h>
 #include <cctbx/miller.h>
@@ -69,17 +70,10 @@ namespace rstbx { namespace integration {
                           scitbx::af::shared<double> const & background_values)
     {
       int imin, imax, jmin, jmax, counter;
-      double peak_count;
 
       /* check that this peak is worth printing e.g. has > 100 counts */
 
-      peak_count = 0.0;
-
-      for (int j = 0; j < peak_values.size(); j ++) {
-        peak_count += peak_values[j];
-      }
-
-      if (peak_count < 100.0) {
+      if (std::accumulate(peak_values.begin(), peak_values.end(), 0.0) < 100.0) {
         return;
       }
 

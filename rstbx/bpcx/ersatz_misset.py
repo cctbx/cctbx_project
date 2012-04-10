@@ -133,12 +133,18 @@ def ersatz_misset_predict(xparm_xds, spot_xds):
         ry_s[j].append(ry)
         rz_s[j].append(rz)
 
-    for j in sorted(rx_s):
+    j = min(rx_s)
+    ms_x0 = meansd(rx_s[j])[0]
+    ms_y0 = meansd(ry_s[j])[0]
+    ms_z0 = meansd(rz_s[j])[0]
+
+    for j in sorted(rx_s)[1:]:
         ms_x = meansd(rx_s[j])
         ms_y = meansd(ry_s[j])
         ms_z = meansd(rz_s[j])
 
-        print '%4d %6.3f %6.3f %6.3f' % (j, ms_x[0], ms_y[0], ms_z[0])
+        print '%4d %6.3f %6.3f %6.3f' % \
+            (j, ms_x[0] - ms_x0, ms_y[0] - ms_y0, ms_z[0] - ms_z0)
 
 
 if __name__ == '__main__':
