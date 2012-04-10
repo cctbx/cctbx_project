@@ -53,7 +53,7 @@ def assign_random_r_free_flags (n_refl, fraction_free, format="cns") :
       result = result_
   elif (format == "ccp4") :
     result = flex.int()
-    flag_max = iround(group_size)
+    flag_max = iround(group_size) - 1
     for i in range(n_refl) :
       result.append(random.randint(0, flag_max))
   return result
