@@ -793,6 +793,41 @@ else:
     flg = opts.env_cppflags.split(" ")
     env_etc.ccflags_base.extend(flg)
 
+""" ************************ Custom Builders and Emitters ********************************* """
+
+
+""" ****************** Change _CPPINCFLAGS ****************************************************
+For each absolute path <path> in CPPPATH, we want -I<path> and only that.
+By default, when <path> is inside the build directory, e.g. /path/to/cctbx_build/foo/bar,
+SCons will add -Ifoo/bar and then -I<repository>/foo/bar for each <repository> declared
+with Repository(...). This behaviour is welcome when <path> has the form #foo/bar but not
+when <path> is an absolute path.
+******************************************************************************************* """
+
+def _absolute_path_concat(prefix, list, suffix, env, f=lambda x: x, target=None, source=None):
+  """ This is parrotted from _concat as defined in scons/src/engine/SCons/Defaults.py
+  This does not handle the case when prefix has a trailing white space or suffix has a leading
+  white space as SCons does with _concat.
+  """
+  if not list: return list
+  new_list = []
+  relatives = []
+  for p in list:
+    if op.isabs(p): new_list.append(p)
+    else: relatives.append(p)
+  from_relatives = f(SCons.PathList.PathList(relatives).subst_path(env, target, source))
+  if from_relatives is not None: new_list.extend([ str(p) for p in from_relatives ])
+  prefix = str(env.subst(prefix, SCons.Subst.SUBST_RAW))
+  suffix = str(env.subst(suffix, SCons.Subst.SUBST_RAW))
+  result = [ "%s%s%s" % (prefix, p, suffix) for p in new_list ]
+  return result
+
+env_base['_absolute_path_concat'] = _absolute_path_concat
+
+env_base['_CPPINCFLAGS'] = '$( ${_absolute_path_concat(INCPREFIX, CPPPATH, INCSUFFIX, __env__, RDirs)} $)'
+
+""" *************************************************************************************** """
+
 if ARGUMENTS.get('TERSE') == '1':
   compiling_message = "Compiling $TARGET"
   linking_message   = "Linking $TARGET"
