@@ -334,8 +334,22 @@ class HKLViewFrame (wx.Frame) :
       wx.CallAfter(dlg.Destroy)
     details = []
     if (not array.is_unique_set_under_symmetry()) :
-      details.append("unmerged data")
-      self.update_settings_for_unmerged()
+      merge = wx.MessageBox("The data in the selected array are not symmetry-"+
+        "unique, which usually means they are unmerged (but could also be due "+
+        "to different indexing conventions).  Do you want to merge equivalent "+
+        "observations (preserving anomalous data if present), or view the "+
+        "array unmodified?  (Note that if you do not merge the array, the "+
+        "options to expand to P1 or generate Friedel pairs will be be disabled"+
+        ", and the 2D view will only show indices present in the file, rather "+
+        "than a full pseudo-precession view.)",
+        style=wx.YES_NO)
+      if (merge == wx.YES) :
+        array = array.merge_equivalents().array().set_info(info)
+        details.append("merged")
+        self.update_settings_for_merged()
+      else :
+        details.append("unmerged data")
+        self.update_settings_for_unmerged()
     else :
       self.update_settings_for_merged()
     if array.is_complex_array() :
