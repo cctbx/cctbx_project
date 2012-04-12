@@ -413,7 +413,7 @@ def map_coefficients_from_fmodel(fmodel, params):
     dsf = coeffs.double_step_filtration(
       vol_cutoff_plus_percent =1.0,
       vol_cutoff_minus_percent=1.0,
-      scale_to=scale_to).resolution_filter(d_min=4) # XXX do not fill higher
+      scale_to=scale_to) #XXX disable # .resolution_filter(d_min=4) # XXX do not fill higher
     #
     fo = fmodel.f_obs().average_bijvoet_mates().discard_sigmas()
     fo = fo.complete_with(other = abs(dsf))
@@ -424,7 +424,7 @@ def map_coefficients_from_fmodel(fmodel, params):
     fmdc.update_all_scales()
     #dsf = fmdc.f_model().resolution_filter(d_min=4)
     dsf = fmdc.f_model().array(data = fmdc.f_model().data() *
-      fmdc.alpha_beta()[0].data()).resolution_filter(d_min=4)
+      fmdc.alpha_beta()[0].data()) # .resolution_filter(d_min=4)
     #
 #    coeffs_ = fmdc.electron_density_map().map_coefficients(map_type = params.map_type)
 #    k = fmdc.k_isotropic()*fmdc.k_anisotropic()

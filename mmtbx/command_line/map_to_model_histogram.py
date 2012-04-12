@@ -5,12 +5,13 @@ import iotbx.pdb
 import iotbx.phil
 import mmtbx.f_model
 from iotbx import reflection_file_reader
-from scitbx.array_family import flex
+from cctbx.array_family import flex
 from cctbx import maptbx
 import mmtbx.utils
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
+import mmtbx.masks
 
 master_params_str = """\
 bulk_solvent_mode = *fast slow
@@ -21,7 +22,7 @@ f_obs_label = None
   .type = str
 r_free_flags_label = None
   .type = str
-grid_step = 0.2
+grid_step = 0.3
   .type = float
 map_type = Fo-Fc
   .type = str
@@ -29,6 +30,10 @@ apply_sigma_scaling = False
   .type = bool
 apply_volume_scaling = True
   .type = bool
+neutron = False
+  .type = bool
+n_radial_shells = 1
+  .type = int
 """
 
 def master_params():
@@ -130,26 +135,50 @@ def get_map_values_and_grid_sites_frac(
       d_min,
       apply_sigma_scaling,
       apply_volume_scaling):
-  fft_map = fmodel.electron_density_map().fft_map(
-    map_type          = map_type,
-    resolution_factor = grid_step/d_min,
-    symmetry_flags    = maptbx.use_space_group_symmetry)
+  #
+  resolution_factor = grid_step/d_min
+  mp = mmtbx.masks.mask_master_params.extract()
+  mp.grid_step_factor = 1./resolution_factor
+  mmtbx_masks_asu_mask_obj = mmtbx.masks.asu_mask(
+    xray_structure = fmodel.xray_structure,
+    d_min          = d_min,
+    mask_params    = mp)
+  bulk_solvent_mask = mmtbx_masks_asu_mask_obj.mask_data_whole_uc()
+  sel = bulk_solvent_mask > 0
+  bulk_solvent_mask = bulk_solvent_mask.set_selected(sel, 1)
+  cr_gr = maptbx.crystal_gridding(
+    unit_cell             = fmodel.xray_structure.unit_cell(),
+    space_group_info      = fmodel.f_obs().space_group_info(),
+    pre_determined_n_real = bulk_solvent_mask.focus())
+  from mmtbx import map_tools
+  from cctbx import miller
+  mc = map_tools.electron_density_map(fmodel = fmodel).map_coefficients(
+    map_type = map_type,
+    acentrics_scale = 1.0,
+    centrics_pre_scale = 1.0)
+  fft_map = miller.fft_map(
+    crystal_gridding     = cr_gr,
+    fourier_coefficients = mc)
+  #
   assert [apply_sigma_scaling, apply_volume_scaling].count(True) == 1
   if(apply_sigma_scaling):    fft_map.apply_sigma_scaling()
   elif(apply_volume_scaling): fft_map.apply_volume_scaling()
   else: assert RuntimeError
-  map_data = fft_map.real_map_unpadded()
   nx,ny,nz = fft_map.n_real()
-  print "n_real:", nx,ny,nz
+  map_data = fft_map.real_map_unpadded()
+  map_data = map_data * bulk_solvent_mask
+  print "n_real:", nx,ny,nz, map_data.size()
   grid_sites_frac = flex.vec3_double()
   map_values = flex.double()
   for ix in xrange(nx):
     for iy in xrange(ny):
       for iz in xrange(nz):
-        xf,yf,zf = ix/float(nx), iy/float(ny), iz/float(nz)
-        grid_sites_frac.append([xf,yf,zf])
-        map_at_ixiyiz = map_data[(ix,iy,iz)]
-        map_values.append(map_at_ixiyiz)
+        mv = map_data[(ix,iy,iz)]
+        if(mv != 0):
+          xf,yf,zf = ix/float(nx), iy/float(ny), iz/float(nz)
+          grid_sites_frac.append([xf,yf,zf])
+          map_at_ixiyiz = map_data[(ix,iy,iz)]
+          map_values.append(map_at_ixiyiz)
   return map_values, grid_sites_frac
 
 def show_fmodel(fmodel, prefix=""):
@@ -165,14 +194,21 @@ def get_stats(pdb_file_name,
               grid_step,
               apply_volume_scaling,
               apply_sigma_scaling,
-              mode):
+              mode,
+              neutron,
+              n_radial_shells):
   results = []
   for bulk_solvent in [True, False]:
     xrs = iotbx.pdb.input(file_name = pdb_file_name).xray_structure_simple()
+    if(neutron):
+      xrs.switch_to_neutron_scattering_dictionary()
+    mask_params = mmtbx.masks.mask_master_params.extract()
+    mask_params.n_radial_shells = n_radial_shells
     fmodel = mmtbx.f_model.manager(
       f_obs          = f_obs,
       xray_structure = xrs,
-      r_free_flags   = r_free_flags)
+      r_free_flags   = r_free_flags,
+      mask_params    = mask_params)
     #
     show_fmodel(fmodel=fmodel, prefix="start:")
     params = bss.master_params.extract()
@@ -236,7 +272,9 @@ def run(args, log = None):
             map_type             = params.map_type,
             apply_volume_scaling = params.apply_volume_scaling,
             apply_sigma_scaling  = params.apply_sigma_scaling,
-            mode                 = params.bulk_solvent_mode)
+            mode                 = params.bulk_solvent_mode,
+            neutron              = params.neutron,
+            n_radial_shells      = params.n_radial_shells)
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
