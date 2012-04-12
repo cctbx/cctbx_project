@@ -136,11 +136,12 @@ class run(object):
                f_mask, # only one shell is supported
                r_free_flags,
                ss,
-               bin_selections,
+               bin_selections=None,
                scale_method="combo",
                number_of_cycles=20, # termination occures much earlier
                auto_convergence_tolerance = 1.e-4,
                log=None,
+               auto=True,
                auto_convergence=True,
                bulk_solvent = True,
                try_poly = True,
@@ -152,6 +153,7 @@ class run(object):
     self.verbose = verbose
     self.r_free_flags = r_free_flags
     self.ss = ss
+    self.bulk_solvent = bulk_solvent
     self.try_poly    = try_poly
     self.try_expanal = try_expanal
     self.try_expmin  = try_expmin
@@ -160,10 +162,11 @@ class run(object):
     self.poly_approx_cutoff = None
     self.f_obs = f_obs
     self.r_free_flags = r_free_flags
-    self.bulk_solvent=True
     self.auto_convergence = auto_convergence
     self.auto_convergence_tolerance = auto_convergence_tolerance
     self.scale_matrices = None
+    self.auto = auto
+    self.bin_selections = bin_selections
     self.selection_work = miller.array(
       miller_set=self.f_obs,
       data      =~self.r_free_flags.data())
@@ -190,7 +193,10 @@ class run(object):
     self.core = mmtbx.arrays.init(f_calc = f_calc, f_masks = f_mask)
     if(abs(self.core.f_mask()).data().all_eq(0)): self.bulk_solvent=False
     self.cores_and_selections = []
-    self.bin_selections = bin_selections
+    if(self.bin_selections is None):
+      self.bin_selections = mmtbx.bulk_solvent.scaler.binning(
+        unit_cell      = self.f_obs.unit_cell(),
+        miller_indices = self.f_obs.indices())
     self.low_resolution_selection = self._low_resolution_selection()
     self.high_resolution_selection = self._high_resolution_selection()
     if(verbose):
@@ -634,7 +640,7 @@ class run(object):
         print >> self.log, "      r_poly   : %6.4f"%r_poly
     # pre-analyze
     force_to_use_expmin=False
-    if(r_poly<r_expanal and (k_anisotropic_poly<=0).count(True)>0):
+    if(self.auto and r_poly<r_expanal and (k_anisotropic_poly<=0).count(True)>0):
       force_to_use_expmin = True
       self.try_expmin = True
     # try expmin

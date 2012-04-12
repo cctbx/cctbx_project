@@ -1224,7 +1224,6 @@ class manager(manager_mixin):
       #
       #fmodel_kbu.update(f_calc=f_calc, f_part1=z, f_part2=z)
       #fmodel_kbu_twin.update(f_calc=f_calc_twin, f_part1=zt, f_part2=zt)
-
       result = bss.bulk_solvent_and_scales(
         #fmodel_kbu      = self.fmodel_kbu(),
         #fmodel_kbu_twin = self.fmodel_kbu_twin(),
