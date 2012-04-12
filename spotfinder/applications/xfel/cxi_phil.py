@@ -85,17 +85,17 @@ def cxi_versioned_extract(*args):
   elif cxi_version in ["CXI 5.1"]:
     working_extract = working_phil.command_extractor
 
-    # The auxiliary translations are identical to CXI 4.1.  If the
+    # The auxiliary translations are modified with respect to CXI 4.1.  If the
     # SLAC-provided metrology were to be trusted, this would be be all
     # zeros?
     corrected_auxiliary_translations = [
-                               0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-                               0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,-1,
-                               0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-                               0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-                               0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-2,
-                               0,0,0,-1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-                               0,0,0,0,0,0,0,0]
+                               1,-1,1,0,0,-1,0,-1,2,0,0,0,3,1,2,0,2,-1,2,-1,
+                               0,0,1,0,1,-2,1,-3,0,-1,0,-1,-2,1,0,1,-1,0,0,0,
+                               0,2,-1,1,0,2,-1,2,0,0,0,0,0,0,1,1,1,0,0,0,
+                               -1,0,-1,0,1,1,0,0,0,1,0,1,0,-1,0,0,1,-2,0,0,
+                               -1,-2,-1,-1,0,0,-1,-1,0,0,0,1,-1,-1,0,0,1,-2,1,-1,
+                               1,-1,0,0,0,-2,0,-3,1,-4,1,-4,-2,0,-1,-1,0,0,-1,0,
+                               -1,1,-1,0,0,1,0,1]
 
     from scitbx.array_family import flex
     total_tile_translations = flex.int(corrected_auxiliary_translations)
