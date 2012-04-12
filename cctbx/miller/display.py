@@ -329,6 +329,9 @@ class render_2d (object) :
       else :
         self._missing = (0.,0.,0.)
 
+  def get_scale_factor (self) :
+    return 100.
+
   def render (self, canvas) :
     self._points_2d = []
     self._radii_2d = []
@@ -364,7 +367,7 @@ class render_2d (object) :
       self.draw_text(canvas, axes[1], center_x + y_end[0] + 6,
         center_y - y_end[1])
     max_radius = self.scene.max_radius * r / max(x_max, y_max)
-    r_scale = ( 1/ self.scene.d_min) * 100.
+    r_scale = ( 1/ self.scene.d_min) * self.get_scale_factor() # FIXME
     for k, hkl in enumerate(self.scene.points) :
       x_, y_ = hkl[i_x], hkl[i_y]
       x = center_x + r * x_ / r_scale
