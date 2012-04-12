@@ -3,11 +3,12 @@
 #  - cached scenes
 
 from crys3d import hklview
+import cctbx.miller.display
 import wx
 from math import sqrt
 import sys
 
-class hklview_2d (wx.PyPanel) :
+class hklview_2d (wx.PyPanel, cctbx.miller.display.render_2d) :
   def __init__ (self, *args, **kwds) :
     wx.PyPanel.__init__(self, *args, **kwds)
     font = wx.Font(14, wx.MODERN, wx.NORMAL, wx.NORMAL)
@@ -26,6 +27,9 @@ class hklview_2d (wx.PyPanel) :
     self._radii_2d = []
     self._clicked = None
 
+  def GetSize (self) :
+    return wx.PyPanel.GetSize(self)
+
   # XXX silent keyword 'zoom=False' is for compatibility with view_3d.py
   def set_miller_array (self, array, zoom=False) :
     self.miller_array = array
@@ -36,133 +40,70 @@ class hklview_2d (wx.PyPanel) :
     self.scene = hklview.scene(miller_array=self.miller_array,
       settings=self.settings)
     self._clicked = None
+    self.setup_colors()
 
   def update_settings (self) :
     self.construct_reciprocal_space()
     self.Refresh()
 
-  def get_center_and_radius (self) :
-    w, h = self.GetSize()
-    r = (min(w,h) // 2) - 20
-    center_x = max(w // 2, r + 20)
-    center_y = max(h // 2, r + 20)
-    return center_x, center_y, r
+  def get_color (self, c) :
+    return (int(c[0]*255), int(c[1]*255), int(c[2]*255))
+
+  def draw_line (self, canvas, x1, y1, x2, y2) :
+    gc = canvas
+    x_axis = gc.CreatePath()
+    x_axis.MoveToPoint(x1, y1)
+    x_axis.AddLineToPoint(x2, y2)
+    x_axis.CloseSubpath()
+    gc.SetPen(wx.Pen(self.get_color(self._foreground)))
+    gc.PushState()
+    gc.StrokePath(x_axis)
+    gc.PopState()
+
+  def draw_text (self, canvas, text, x, y) :
+    gc = canvas
+    gc.SetPen(wx.Pen(self.get_color(self._foreground)))
+    gc.DrawText(text, x, y)
+
+  def draw_open_circle (self, canvas, x, y, radius, color=None) :
+    gc = canvas
+    path = gc.CreatePath()
+    path.AddCircle(0, 0, radius)
+    path.CloseSubpath()
+    gc.PushState()
+    gc.Translate(x,y)
+    gc.SetBrush(wx.TRANSPARENT_BRUSH)
+    if (color is None) :
+      color = self._foreground
+    pen = wx.Pen(self.get_color(color))
+    gc.SetPen(pen)
+    gc.StrokePath(path)
+    gc.PopState()
+
+  def draw_filled_circle (self, canvas, x, y, radius, color) :
+    gc = canvas
+    path = gc.CreatePath()
+    path.AddCircle(0, 0, radius)
+    path.CloseSubpath()
+    gc.PushState()
+    gc.Translate(x,y)
+    if (color is None) :
+      color = self._foreground
+    pen = wx.Pen(self.get_color(color))
+    brush = wx.Brush(self.get_color(color))
+    gc.SetPen(pen)
+    gc.SetBrush(brush)
+    gc.FillPath(path)
+    gc.PopState()
 
   def paint (self, gc) :
-    self._points_2d = []
-    self._radii_2d = []
-    assert (self.settings.slice_mode)
-    if (self.settings.slice_axis == "h") :
-      i_x, i_y = 1, 2
-      axes = ("k", "l")
-    elif (self.settings.slice_axis == "k") :
-      i_x, i_y = 0, 2
-      axes = ("h", "l")
-    else :
-      i_x, i_y = 0, 1
-      axes = ("h", "k")
-    center_x, center_y, r = self.get_center_and_radius()
-    x_max = self.scene.axes[i_x][i_x] * 100.
-    y_max = self.scene.axes[i_y][i_y] * 100.
     font = self.GetFont()
     font.SetFamily(wx.FONTFAMILY_MODERN)
     if (self.settings.black_background) :
       gc.SetFont(gc.CreateFont(font, (255,255,255)))
     else :
       gc.SetFont(gc.CreateFont(font, (0,0,0)))
-    if (self.settings.show_axes) :
-      # FIXME dimensions not right?
-      x_end = self.scene.axes[i_x][i_x], self.scene.axes[i_x][i_y]
-      y_end = self.scene.axes[i_y][i_x], self.scene.axes[i_y][i_y]
-      x_len = sqrt(x_end[0]**2 + x_end[1]**2)
-      y_len = sqrt(y_end[0]**2 + y_end[1]**2)
-      x_scale = (r+10) / x_len
-      y_scale = (r+10) / y_len
-      x_end = (x_end[0] * x_scale, x_end[1] * x_scale)
-      y_end = (y_end[0] * y_scale, y_end[1] * y_scale)
-      x_axis = gc.CreatePath()
-      x_axis.MoveToPoint(center_x, center_y)
-      x_axis.AddLineToPoint(center_x + x_end[0], center_y - x_end[1])
-      x_axis.CloseSubpath()
-      #x_axis.MoveToPoint(center_x + r + 15, center_y - 5)
-      #x_axis.AddLineToPoint(center_x + r + 20, center_y)
-      #x_axis.CloseSubpath()
-      #x_axis.MoveToPoint(center_x + r + 20, center_y)
-      #x_axis.AddLineToPoint(center_x + r + 15, center_y + 5)
-      #x_axis.CloseSubpath()
-      if (self.settings.black_background) :
-        gc.SetPen(wx.Pen('white'))
-      else :
-        gc.SetPen(wx.Pen('black'))
-      gc.PushState()
-      gc.StrokePath(x_axis)
-      gc.PopState()
-      y_axis = gc.CreatePath()
-      y_axis.MoveToPoint(center_x, center_y)
-      y_axis.AddLineToPoint(center_x + y_end[0], center_y - y_end[1])
-      y_axis.CloseSubpath()
-      #y_axis.MoveToPoint(center_x - 5, center_y - r - 15)
-      #y_axis.AddLineToPoint(center_x, center_y - r - 20)
-      #y_axis.CloseSubpath()
-      #y_axis.MoveToPoint(center_x, center_y - r - 20)
-      #y_axis.AddLineToPoint(center_x + 5, center_y - r - 15)
-      #y_axis.CloseSubpath()
-      gc.PushState()
-      gc.StrokePath(y_axis)
-      gc.PopState()
-      gc.DrawText(axes[0], center_x + x_end[0] - 6, center_y - x_end[1] - 20)
-      gc.DrawText(axes[1], center_x + y_end[0] + 6, center_y - y_end[1])
-    gc.SetPen(wx.TRANSPARENT_PEN)
-    if (self.settings.black_background) :
-      main_pen = wx.Pen('white')
-      main_brush = wx.Brush('white')
-      missing_brush = wx.Brush((1,1,1))
-      if (self.settings.color_scheme == "heatmap") :
-        missing_pen = wx.Pen('green')
-      elif (not self.settings.color_scheme in ["rainbow", "redblue"]) :
-        missing_pen = wx.Pen('red')
-      else :
-        missing_pen = wx.Pen('white')
-    else :
-      main_pen = wx.Pen('black')
-      main_brush = wx.Brush('black')
-      missing_brush = wx.Brush((250,250,250))
-      if (self.settings.color_scheme != "rainbow") :
-        missing_pen = wx.Pen('red')
-      else :
-        missing_pen = wx.Pen('black')
-    max_radius = self.scene.max_radius * r / max(x_max, y_max)
-    r_scale = ( 1/ self.scene.d_min) * 100.
-    for k, hkl in enumerate(self.scene.points) :
-      x_, y_ = hkl[i_x], hkl[i_y]
-      x = center_x + r * x_ / r_scale
-      y = center_y - r * y_ / r_scale
-      r_point = self.scene.radii[k] * r / max(x_max, y_max)
-      if (self.settings.uniform_size) :
-        r_point = max_radius
-      else :
-        r_point = max(0.5, r_point)
-      self._points_2d.append((x,y))
-      self._radii_2d.append(r_point)
-      path = gc.CreatePath()
-      path.AddCircle(0, 0, r_point)
-      path.CloseSubpath()
-      gc.PushState()
-      gc.Translate(x,y)
-      if (self.scene.missing_flags[k]) :
-        gc.SetBrush(wx.TRANSPARENT_BRUSH)
-        gc.SetPen(missing_pen)
-        gc.StrokePath(path)
-      elif (self.scene.sys_absent_flags[k]) :
-        gc.SetBrush(wx.TRANSPARENT_BRUSH)
-        c = self.scene.colors[k]
-        gc.SetPen(wx.Pen((c[0]*255,c[1]*255,c[2]*255)))
-        gc.StrokePath(path)
-      else :
-        c = self.scene.colors[k]
-        gc.SetBrush(wx.Brush((c[0]*255,c[1]*255,c[2]*255)))
-        gc.FillPath(path)
-      gc.PopState()
+    self.render(gc)
 
   def save_screen_shot (self, **kwds) :
     pass
