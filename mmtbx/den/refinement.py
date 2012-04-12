@@ -115,8 +115,9 @@ class manager(object):
       print >> self.log, "\nbest gamma: %.1f" % best_gamma
       print >> self.log, "best weight: %.1f\n" % best_weight
       if params.den.verbose:
-        print >> self.log, "\nBest annealing results:\n"
-        print >> self.log, grid_so[best_so_i]
+        if len(grid_so) >= (best_so_i+1):
+          print >> self.log, "\nBest annealing results:\n"
+          print >> self.log, grid_so[best_so_i]
     fmodels.fmodel_xray().xray_structure.replace_scatterers(
       best_xray_structure.deep_copy())
     fmodels.update_xray_structure(
