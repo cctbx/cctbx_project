@@ -253,7 +253,9 @@ class server (object) :
     f, phi, fom = self.get_amplitudes_and_phases(f_label, phi_label, fom_label)
     if (f is None) or ((not f.is_complex_array()) and (phi is None)) :
       raise MapNotFound(("Couldn't find amplitude or phase arrays in %s.\n"+
-        "File contents:\n%s") % (self.file_name, "\n".join(self.array_labels)))
+        "File contents:\n%s\nExpected labels: F=%s PHI=%s FOM=%s") %
+        (self.file_name, "\n".join(self.array_labels), str(f_label),
+         str(phi_label), str(fom_label)))
     if (f.anomalous_flag()) :
       f = f.merge_bijvoet_mates()
     if (f.is_complex_array()) :
