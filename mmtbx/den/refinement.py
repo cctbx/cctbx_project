@@ -5,6 +5,7 @@ from libtbx import easy_mp, Auto
 from mmtbx.refinement import print_statistics
 from mmtbx.refinement import adp_refinement
 from cctbx.array_family import flex
+from cStringIO import StringIO
 import sys, random
 
 class manager(object):
@@ -20,7 +21,11 @@ class manager(object):
             log=None):
     if log is None:
       log = sys.stdout
-    self.ncs_manager=ncs_manager
+    self.ncs_manager = ncs_manager
+    self.nproc = params.main.nproc
+    if self.nproc is Auto:
+      self.nproc = 1
+    self.verbose = params.den.verbose
     self.log = log
     self.fmodels = fmodels
     self.model = model
@@ -52,7 +57,7 @@ class manager(object):
     if "torsion" in params.den.annealing_type:
       print >> self.log, "Running torsion simulated annealing"
       if ( (params.den.optimize) and
-           ( (params.main.nproc is Auto) or (params.main.nproc > 1) )):
+           ( (self.nproc is Auto) or (self.nproc > 1) )):
         stdout_and_results = easy_mp.pool_map(
           processes=params.main.nproc,
           fixed_func=self.try_den_weight_torsion,
@@ -74,7 +79,7 @@ class manager(object):
     elif "cartesian" in params.den.annealing_type:
       print >> self.log, "Running Cartesian simulated annealing"
       if ( (params.den.optimize) and
-           ( (params.main.nproc is Auto) or (params.main.nproc > 1) )):
+           ( (self.nproc is Auto) or (self.nproc > 1) )):
         stdout_and_results = easy_mp.pool_map(
           processes=params.main.nproc,
           fixed_func=self.try_den_weight_cartesian,
@@ -165,8 +170,16 @@ class manager(object):
       cycle+1
     num_den_cycles = self.model.restraints_manager.geometry.\
       generic_restraints_manager.den_manager.num_cycles
-    if self.params.den.optimize:
+    if self.params.den.optimize and \
+       self.nproc != Auto and \
+       self.nproc > 1:
       local_log = sys.stdout
+    elif self.params.den.optimize and \
+         self.nproc == 1:
+      if self.verbose:
+        local_log = self.log
+      else:
+        local_log = StringIO()
     else:
       local_log = self.log
     print >> self.log, "  ...trying gamma %.1f, weight %.1f" % (
@@ -245,8 +258,16 @@ class manager(object):
       cycle+1
     num_den_cycles = self.model.restraints_manager.geometry.\
       generic_restraints_manager.den_manager.num_cycles
-    if self.params.den.optimize:
+    if self.params.den.optimize and \
+       self.nproc != Auto and \
+       self.nproc > 1:
       local_log = sys.stdout
+    elif self.params.den.optimize and \
+         self.nproc == 1:
+      if self.verbose:
+        local_log = self.log
+      else:
+        local_log = StringIO()
     else:
       local_log = self.log
     print >> self.log, "  ...trying gamma %f, weight %f" % (
