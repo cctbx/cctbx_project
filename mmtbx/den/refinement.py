@@ -16,9 +16,11 @@ class manager(object):
             target_weights,
             monitors,
             macro_cycle,
+            ncs_manager=None,
             log=None):
     if log is None:
       log = sys.stdout
+    self.ncs_manager=ncs_manager
     self.log = log
     self.fmodels = fmodels
     self.model = model
@@ -125,6 +127,11 @@ class manager(object):
       x2 = model.xray_structure)
     model.restraints_manager.geometry.generic_restraints_manager.\
       den_manager.import_eq_distances(eq_distances=best_eq_distances)
+    if self.ncs_manager is not None:
+      self.ncs_manager.update_dihedral_ncs_restraints(
+        geometry=self.model.restraints_manager.geometry,
+        sites_cart=self.model.xray_structure.sites_cart(),
+        log=self.log)
     #DEN refinement done, turn off
     model.restraints_manager. \
       geometry.generic_restraints_manager.flags.den = False
@@ -190,6 +197,11 @@ class manager(object):
         self.bulk_solvent_and_scale(log=local_log)
       if self.params.den.refine_adp:
         self.adp_refinement(log=local_log)
+      if self.ncs_manager is not None:
+        self.ncs_manager.update_dihedral_ncs_restraints(
+          geometry=self.model.restraints_manager.geometry,
+          sites_cart=self.model.xray_structure.sites_cart(),
+          log=local_log)
       cycle += 1
       self.model.restraints_manager.geometry.\
         generic_restraints_manager.den_manager.current_cycle += 1

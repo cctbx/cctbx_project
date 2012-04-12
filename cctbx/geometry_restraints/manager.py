@@ -196,6 +196,7 @@ class manager(object):
         shell_sym_tables=reduced_shell_sym_tables,
         angle_proxies=reduced_angle_proxies,
         dihedral_proxies=reduced_dihedral_proxies,
+        ncs_dihedral_proxies=self.ncs_dihedral_proxies,
         generic_restraints_manager=self.generic_restraints_manager)
 
   def sites_cart_used_for_pair_proxies(self):
