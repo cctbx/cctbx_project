@@ -84,9 +84,9 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb") :
         raise
   return data
 
-def get_pdb (id, data_type, mirror, log, quiet=False) :
+def get_pdb (id, data_type, mirror, log, quiet=False, format="pdb") :
   try :
-    data = fetch(id, data_type, mirror=mirror)
+    data = fetch(id, data_type, mirror=mirror, format=format)
   except RuntimeError, e :
     raise Sorry(str(e))
   file_name = None
@@ -101,7 +101,7 @@ def get_pdb (id, data_type, mirror, log, quiet=False) :
     if not quiet :
       print >> log, "Sequence saved to %s" % file_name
   else :
-    file_name = os.path.join(os.getcwd(), "%s.pdb" % id)
+    file_name = os.path.join(os.getcwd(), "%s.%s" %(id, format))
     open(file_name, "w").write(data.read())
     if not quiet :
       print >> log, "Model saved to %s" % file_name
