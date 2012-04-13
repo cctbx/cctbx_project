@@ -320,7 +320,9 @@ def run_function_as_process_in_dialog (
     thread_function,
     title,
     message,
-    callback=None) :
+    callback=None,
+    project_id=None,
+    job_id=None) :
   dlg = ProcessDialog(
     parent=parent,
     message=message,
@@ -330,7 +332,7 @@ def run_function_as_process_in_dialog (
     window=dlg,
     OnExcept=dlg.OnError,
     OnComplete=dlg.OnComplete)
-  cb = event_agent(dlg)
+  cb = event_agent(dlg, project_id=project_id, job_id=job_id)
   p = thread_utils.process_with_callbacks(
     target=thread_function,
     callback_final=cb.callback_final,
