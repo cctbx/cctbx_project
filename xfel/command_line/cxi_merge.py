@@ -120,6 +120,18 @@ def load_result (file_name,
   print >> out, file_name
   print >> out, sg_info
   print >> out, unit_cell
+
+  HARD_CODED_PIXEL_SZ_MM = 0.11
+  assert obj['mapped_predictions'][0].size() == obj["observations"][0].size()
+  mm_predictions = HARD_CODED_PIXEL_SZ_MM*(obj['mapped_predictions'][0])
+  mm_displacements = flex.vec3_double()
+  cos_two_polar_angle = flex.double()
+  for pred in mm_predictions:
+    mm_displacements.append((pred[0]-obj["xbeam"],pred[1]-obj["ybeam"],0.0))
+    cos_two_polar_angle.append( math.cos( 2. * math.atan2(pred[1]-obj["ybeam"],pred[0]-obj["xbeam"]) ) )
+  obj["cos_two_polar_angle"] = cos_two_polar_angle
+  #then convert to polar angle and compute polarization correction
+
   if (not bravais_lattice(sg_info.type().number()) == ref_bravais_type) :
     raise WrongBravaisError("Skipping cell in different Bravais type (%s)" %
       str(sg_info))
@@ -546,7 +558,39 @@ class scaling_manager (intensity_data) :
         wrong_bravais=wrong_bravais,
         wrong_cell=wrong_cell)
       return null
+
+    # The wavelength from the command line overrides the wavelength in
+    # the pickled integration file.  XXX The wavelength parameter
+    # should probably be removed from master_phil once all integration
+    # pickle files contain it.
+    if (self.params.wavelength is not None):
+      wavelength = self.params.wavelength
+    elif (result.has_key("wavelength")):
+      wavelength = result["wavelength"]
+    else:
+      # XXX Give error, or raise exception?
+      return None
+    assert (wavelength > 0)
+
     observations = result["observations"][0]
+    cos_two_polar_angle = result["cos_two_polar_angle"]
+
+    assert observations.size() == cos_two_polar_angle.size()
+    tt_vec = observations.two_theta(wavelength)
+    cos_tt_vec = flex.cos( tt_vec.data() )
+    sin_tt_vec = flex.sin( tt_vec.data() )
+    cos_sq_tt_vec = cos_tt_vec * cos_tt_vec
+    sin_sq_tt_vec = sin_tt_vec * sin_tt_vec
+    P_nought_vec = 0.5 * (1. + cos_sq_tt_vec)
+
+    F_prime = -1.0 # Hard-coded value defines the incident polarization axis
+    P_prime = 0.5 * F_prime * cos_two_polar_angle * sin_sq_tt_vec
+    observations = observations / ( P_nought_vec - P_prime )
+    # This corrects observations for polarization assuming 100% polarization on
+    # one axis (thus the F_prime = -1.0 rather than the perpendicular axis, 1.0)
+    # Polarization model as described by Kahn, Fourme, Gadet, Janin, Dumas & Andre
+    # (1982) J. Appl. Cryst. 15, 330-337, equations 13 - 15.
+
     indexed_cell = observations.unit_cell()
     # Now do manipulate the data to conform to unit cell, asu, and space group
     # of reference
@@ -570,18 +614,6 @@ class scaling_manager (intensity_data) :
     # reflections with negative intensities, too.
     data.completeness +=  (~matches.single_selection(0)).as_int()
 
-    # The wavelength from the command line overrides the wavelength in
-    # the pickled integration file.  XXX The wavelength parameter
-    # should probably be removed from master_phil once all integration
-    # pickle files contain it.
-    if (self.params.wavelength is not None):
-      wavelength = self.params.wavelength
-    elif (result.has_key("wavelength")):
-      wavelength = result["wavelength"]
-    else:
-      # XXX Give error, or raise exception?
-      return None
-    assert (wavelength > 0)
     data.wavelength = wavelength
 
     # Initialise first- and second-order statistics.
@@ -596,13 +628,10 @@ class scaling_manager (intensity_data) :
       if (observations.data()[pair[1]] <= 0):
         data.n_rejected += 1
         continue
-      cos_tt = math.cos(observations.two_theta(wavelength).data()[pair[1]])
-      cos_sq_tt = cos_tt * cos_tt
-      pfactor = (1.+cos_sq_tt)/2.
       # Update statistics using reference intensities (I_r), and
       # observed intensities (I_o).
       I_r = self.i_model.data()[pair[0]]
-      I_o = observations.data()[pair[1]] * pfactor
+      I_o = observations.data()[pair[1]]
       N      += 1
       sum_xx += I_r**2
       sum_yy += I_o**2
@@ -627,12 +656,7 @@ class scaling_manager (intensity_data) :
       for pair in matches.pairs():
         if (observations.data()[pair[1]] <= 0) :
           continue
-        # pfactor is the polarization correction for reflected light (doesn't
-        # account for incident polarization)
-        cos_tt = math.cos(observations.two_theta(wavelength).data()[pair[1]])
-        cos_sq_tt = cos_tt * cos_tt
-        pfactor = (1.+cos_sq_tt)/2.
-        Intensity = observations.data()[pair[1]] * pfactor / slope
+        Intensity = observations.data()[pair[1]] /  slope
 
         # Add the reflection as a two-tuple of intensity and I/sig(I)
         # to the dictionary of observations.
@@ -644,7 +668,7 @@ class scaling_manager (intensity_data) :
         else:
           data.ISIGI[index] = [isigi]
 
-        sigma = observations.sigmas()[pair[1]] * pfactor / slope
+        sigma = observations.sigmas()[pair[1]] /  slope
         variance = sigma * sigma
         data.summed_N[pair[0]] += 1
         data.summed_wt_I[pair[0]] += Intensity / variance
@@ -652,6 +676,10 @@ class scaling_manager (intensity_data) :
     else :
       print >> out, "Skipping these data - correlation too low."
     data.set_log_out(out.getvalue())
+    if corr > 0.5:
+      print "Selected file %s"%file_name.replace("integration","out").replace("int","idx")
+      print "Selected distance %6.2f mm"%float(result["distance"])
+      data.show_log_out(sys.stdout)
     return data
 
 #-----------------------------------------------------------------------
@@ -807,6 +835,12 @@ def show_overall_observations(
   # numerator and the denominator.
   R_iso_tot = [0, 0]
   R_merge_tot = [0, 0]
+
+  cumulative_unique = 0
+  cumulative_meas   = 0
+  cumulative_theor  = 0
+  cumulative_Isigma = 0.0
+
   for i_bin in obs.binner().range_used():
     sel_w = obs.binner().selection(i_bin)
     sel_fo_all = obs.select(sel_w)
@@ -866,6 +900,11 @@ def show_overall_observations(
         R_merge      = R_merge[0] / R_merge[1],
         )
       result.append(bin)
+    cumulative_unique += n_present
+    cumulative_meas   += sel_measurements
+    cumulative_theor  += sel_redundancy.size()
+    cumulative_Isigma += I_sigI_sum
+
   if (title is not None) :
     print >> out, title
   print >>out, "\n Bin  Resolution Range  Completeness <Redundancy>  n_meas      <I> <I/sig(I)>    R_iso  R_merge"
@@ -881,6 +920,17 @@ def show_overall_observations(
       format_value("%8.3f", bin.mean_I_sigI),
       format_value("%8.3f", bin.R_iso),
       format_value("%8.3f", bin.R_merge)
+    )
+  print >>out,fmt%(
+      format_value("%3s",   "All"),
+      format_value("%-13s", "                 "),
+      format_value("%13s",  "[%d/%d]"%(cumulative_unique,cumulative_theor)),
+      format_value("%6.2f", cumulative_meas/cumulative_theor),
+      format_value("%6d",   cumulative_meas),
+      format_value("%8.0f", 0.),
+      format_value("%8.3f", cumulative_Isigma/cumulative_meas),
+      format_value("%8.3f", 0.),
+      format_value("%8.3f", 0.)
     )
   print "Global R_iso   ", R_iso_tot[0] / R_iso_tot[1]
   print "Global R_merge ", R_merge_tot[0] / R_merge_tot[1]
