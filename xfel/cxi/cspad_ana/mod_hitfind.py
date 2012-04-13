@@ -218,7 +218,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
 
     elif (self.m_dispatch == "view"): #interactive image viewer
 
-      from xfel_targets import targets
+      from cxi_user.xfel_targets import targets
       args = ["indexing.data=dummy",
               "distl.detector_format_version=CXI 5.1",
               ] + targets[self.m_xtal_target]
@@ -233,7 +233,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
 
     elif (self.m_dispatch == "spots"): #interactive spotfinder viewer
 
-      from xfel_targets import targets
+      from cxi_user.xfel_targets import targets
       args = ["indexing.data=dummy",
               "distl.detector_format_version=CXI 5.1",
               ] + targets[self.m_xtal_target]

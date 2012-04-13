@@ -4,7 +4,7 @@ def integrate_one_image(data, **kwargs):
   from display_spots import run_one_index_core
   from labelit.dptbx.error import NoAutoIndex
   from libtbx.utils import Sorry
-  from xfel_targets import targets
+  from cxi_user.xfel_targets import targets
 
   basename = kwargs.get("integration_basename")
   if (basename is None):
