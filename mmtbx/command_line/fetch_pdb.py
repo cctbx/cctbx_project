@@ -71,6 +71,7 @@ phenix.fetch_pdb [-x|-f|--all] [--mtz] [--maps] [-q] ID1 [ID2, ...]
 
 Command-line options:
   -x      Get structure factors (mmCIF file)
+  -c      Get model file in mmCIF format
   -f      Get sequence (FASTA file)
   --all   Download all available data
   --mtz   Download structure factors and PDB file, and generate MTZ
@@ -82,6 +83,7 @@ Command-line options:
   quiet = False
   convert_to_mtz = maps = fill_maps = False
   data_type = "pdb"
+  format = "pdb"
   ids = []
   for arg in args :
     if (arg == "--all") :
@@ -99,6 +101,8 @@ Command-line options:
       convert_to_mtz = True
       data_type = "all"
       maps = True
+    elif (arg == "-c") :
+      format = "cif"
     elif (arg.startswith("--mirror=")) :
       mirror = arg.split("=")[1]
       if (not mirror in ["rcsb", "pdbe"]) :
@@ -112,7 +116,7 @@ Command-line options:
   if (data_type != "all") :
     files = []
     for id in ids :
-      files.append(get_pdb(id, data_type, mirror, log))
+      files.append(get_pdb(id, data_type, mirror, log, format=format))
     if (len(files) == 1) :
       return files[0]
     return files
