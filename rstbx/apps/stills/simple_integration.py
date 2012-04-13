@@ -123,13 +123,13 @@ class api:
               )
     return P
 
-def show_observations(obs,out=None):
+def show_observations(obs, out=None, n_bins=12):
   if out==None:
     import sys
     out = sys.stdout
   from libtbx.str_utils import format_value
 
-  obs.setup_binner(n_bins = 12)
+  obs.setup_binner(n_bins = n_bins)
   result = []
   counts_given = obs.binner().counts_given()
   counts_complete = obs.binner().counts_complete()
