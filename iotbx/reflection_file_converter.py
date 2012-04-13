@@ -50,10 +50,15 @@ def run(
       help="Generates a new array of random R-free flags"
            " (MTZ and CNS output only).")
     .option(None, "--use_lattice_symmetry_in_r_free_flag_generation",
+      dest="use_lattice_symmetry_in_r_free_flag_generation",
       action="store_true",
-      default=False,
+      default=True,
       help="group twin/pseudo symmetry related reflections together"
-           " in r-free set.")
+           " in r-free set (this is the default).")
+    .option(None, "--no_lattice_symmetry_in_r_free_flag_generation",
+      dest="use_lattice_symmetry_in_r_free_flag_generation",
+      action="store_false",
+      help="opposite of --use-lattice-symmetry-in-r-free-flag-generation")
     .option(None, "--r_free_flags_fraction",
       action="store",
       default=0.10,
