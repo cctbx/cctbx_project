@@ -26,3 +26,16 @@ class _(boost.python.injector, ext.map_reader) :
   def statistics (self) :
     from cctbx import maptbx
     return maptbx.statistics(self.data)
+
+  def grid_unit_cell (self) :
+    """
+    If we want to use maptbx.non_crystallographic_eight_point_interpolation,
+    the "unit cell" is actually the original unit cell divided by the original
+    grid size.
+    """
+    from cctbx import uctbx
+    a = self.unit_cell_parameters[0] / self.unit_cell_grid[0]
+    b = self.unit_cell_parameters[1] / self.unit_cell_grid[1]
+    c = self.unit_cell_parameters[2] / self.unit_cell_grid[2]
+    alpha,beta,gamma = self.unit_cell_parameters[3:6]
+    return uctbx.unit_cell((a,b,c,alpha,beta,gamma))

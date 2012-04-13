@@ -28,6 +28,8 @@ def exercise_with_tst_input_map():
   assert ("map grid:   (16, 8, 16)" in out.getvalue())
   uc = m.unit_cell()
   assert approx_equal(m.unit_cell_parameters, m.unit_cell().parameters())
+  assert approx_equal(m.grid_unit_cell().parameters(),
+    (5.13094, 4.68175, 4.35225, 90, 101.476, 90))
 
 def exercise(args):
   exercise_with_tst_input_map()
