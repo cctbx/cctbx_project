@@ -30,6 +30,7 @@
 
 #include <scitbx/array_family/tiny.h>
 #include <scitbx/array_family/type_traits.h>
+#include <scitbx/array_family/memory.h>
 
 namespace scitbx { namespace af {
 
@@ -42,6 +43,14 @@ namespace scitbx { namespace af {
 
   class sharing_handle {
     public:
+
+      static bool const ensures_aligned_memory =
+#ifdef SCITBX_AF_HAS_ALIGNED_MALLOC
+        true;
+#else
+        false;
+#endif
+
       sharing_handle()
         : use_count(1), weak_count(0), size(0), capacity(0),
           data(0)
@@ -55,24 +64,24 @@ namespace scitbx { namespace af {
       explicit
       sharing_handle(std::size_t const& sz)
         : use_count(1), weak_count(0), size(0), capacity(sz),
-#if defined(SCITBX_ARRAY_FAMILY_SHARED_PLAIN_USE_STD_ALLOCATOR)
-          data(alloc_.allocate(sz))
+#ifdef SCITBX_AF_HAS_ALIGNED_MALLOC
+          data(reinterpret_cast<char *>(aligned_malloc(sz)))
 #else
           data(new char[sz])
 #endif
       {}
 
       ~sharing_handle() {
-#if defined(SCITBX_ARRAY_FAMILY_SHARED_PLAIN_USE_STD_ALLOCATOR)
-        if (data) alloc_.deallocate(data, capacity);
+#ifdef SCITBX_AF_HAS_ALIGNED_MALLOC
+        aligned_free(data);
 #else
         delete[] data;
 #endif
       }
 
       void deallocate() {
-#if defined(SCITBX_ARRAY_FAMILY_SHARED_PLAIN_USE_STD_ALLOCATOR)
-        alloc_.deallocate(data, capacity);
+#ifdef SCITBX_AF_HAS_ALIGNED_MALLOC
+        aligned_free(data);
 #else
         delete[] data;
 #endif
@@ -93,9 +102,6 @@ namespace scitbx { namespace af {
       char* data;
 
     private:
-#if defined(SCITBX_ARRAY_FAMILY_SHARED_PLAIN_USE_STD_ALLOCATOR)
-      std::allocator<char> alloc_;
-#endif
       sharing_handle(sharing_handle const&);
       sharing_handle& operator=(sharing_handle const&);
   };
