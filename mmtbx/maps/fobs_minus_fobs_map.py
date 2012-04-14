@@ -314,15 +314,21 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
     print >> log, "*** Model summary:"
     xray_structure.show_summary(f = log)
     print >> log
+  info0 = f_obss[0].info()
+  info1 = f_obss[1].info()
   f_obss[0] = f_obss[0].resolution_filter(d_min = params.high_resolution,
-    d_max = params.low_resolution)
+    d_max = params.low_resolution).set_info(info0)
   f_obss[1] = f_obss[1].resolution_filter(d_min = params.high_resolution,
-    d_max = params.low_resolution)
+    d_max = params.low_resolution).set_info(info1)
   if(params.sigma_cutoff is not None):
     for i in [0,1]:
       if(f_obss[i].sigmas() is not None):
         sel = f_obss[i].data() > f_obss[i].sigmas()*params.sigma_cutoff
-        f_obss[i] = f_obss[i].select(sel)
+        f_obss[i] = f_obss[i].select(sel).set_info(info0)
+  for k, f_obs in enumerate(f_obss) :
+    if (f_obs.indices().size() == 0) :
+      raise Sorry("No data left in array %d (labels=%s) after filtering!" % (k+1,
+        f_obs.info().label_string()))
   output_file = compute_fo_minus_fo_map(
     data_arrays = f_obss,
     xray_structure = xray_structure,
