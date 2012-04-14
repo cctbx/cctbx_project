@@ -218,8 +218,10 @@ class server (object) :
     return all_maps
 
   def get_resolve_map (self) :
-    map_coeffs = self._convert_amplitudes_and_phases(f_label="FP",
-      phi_label="PHIM", fom_label="FOMM", weighted=True)
+    map_coeffs, null_value = self.get_ccp4_maps()
+    if (map_coeffs is None) :
+      map_coeffs = self._convert_amplitudes_and_phases(f_label="FP",
+        phi_label="PHIM", fom_label="FOMM", weighted=True)
     from cctbx.miller import array_info
     info = array_info(labels=["FWT","PHWT"])
     return map_coeffs.set_info(info)
