@@ -261,6 +261,9 @@ class polygon_layout (object) :
       if (not histogram.name in stats) :
         continue
       stat = stats[histogram.name]
+      if (isinstance(stat, list)) :
+        raise RuntimeError(("Invalid type 'list' for POLYGON statistic '%s' "+
+          "(values: %s).") % (histogram.name, str(stat)))
       (x, y), point_on_histogram = histogram.get_polygon_intersection(stat)
       intersections.append((x,y))
       on_histogram.append(point_on_histogram)
