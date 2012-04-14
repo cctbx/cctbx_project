@@ -39,9 +39,9 @@ torsion_search
 local_fix_params_str = """\
   number_of_macro_cycles = 1
     .type = int
-    .short_caption = Run overall real-space refinement (RSR)
   real_space_refine_overall = False
     .type = bool
+    .short_caption = Run overall real-space refinement (RSR)
   validate_change = True
     .type = bool
   exclude_hydrogens = True
