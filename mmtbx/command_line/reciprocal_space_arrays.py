@@ -253,7 +253,9 @@ def validate_params (params) :
   elif (params.f_obs_label is None) :
     raise Sorry("No data label selected.")
   elif (params.r_free_flags_label is None) :
-    raise Sorry("No R-free flags label selected.")
+    raise Sorry("No R-free flags label selected.  This program requires R-free "+
+      "flags to run and will not generate them automatically; use the "+
+      "reflection file editor to add them to your data file.")
   elif (params.space_group is None) or (params.unit_cell is None) :
     raise Sorry("Missing or incomplete symmetry information.")
   return True
