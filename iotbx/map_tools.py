@@ -101,7 +101,10 @@ class server (object) :
                                  phi_label=None,
                                  fom_label=None) :
     f_array, phi_array, fom_array = None, None, None
-    for array in self.data_arrays+self.map_coeffs :
+    allowed_arrays = self.data_arrays + self.map_coeffs
+    if (f_label in ["FC", "FMODEL", "F-model"]) :
+      allowed_arrays += self.fcalc_arrays
+    for array in allowed_arrays :
       if (f_array is None) :
         labels = array.info().labels
         label_string = array.info().label_string()

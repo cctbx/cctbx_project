@@ -503,10 +503,13 @@ def get_map_coeff_labels (server, build_only=False, include_fom=True,
     if miller_array.is_hendrickson_lattman_array() :
       continue
     elif miller_array.is_complex_array() :
-      # note: Phaser outputs FWT/DELFWT for *anomalous difference* map!
       if build_only :
-        if (not labels.startswith("FOFC")) and (labels != "FWT,DELFWT") :
-          all_labels.append(labels)
+        if (not labels[0:4] in ["FOFC", "DELF", "ANOM"]) :
+          # list these first
+          if (labels in ["FWT,PHWT", "2FOFCWT,PH2FOFCWT"]) :
+            all_labels.insert(0, labels)
+          else :
+            all_labels.append(labels)
       else :
         all_labels.append(labels)
     elif miller_array.info().labels[0].startswith("PHI") :
