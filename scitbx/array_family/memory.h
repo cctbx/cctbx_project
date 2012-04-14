@@ -32,6 +32,11 @@ defined(_WIN64)
 #define SCITBX_AF_HAS_ALIGNED_MALLOC 1
 #define SCITBX_AF_USE_POSIX_FOR_ALIGNED_MALLOC 1
 
+#elif defined(_MSC_VER)
+
+#define SCITBX_AF_HAS_ALIGNED_MALLOC 1
+#define SCITBX_AF_USE_WIN32_FOR_ALIGNED_MALLOC 1
+
 #endif
 
 
@@ -78,6 +83,18 @@ namespace scitbx { namespace af {
   inline
   void aligned_free(void *p) {
     std::free(p);
+  }
+#endif
+
+#ifdef SCITBX_AF_USE_WIN32_FOR_ALIGNED_MALLOC
+  inline
+  void *aligned_malloc(std::size_t n) {
+    return _aligned_malloc(n, 16);
+  }
+
+  inline
+  void aligned_free(void *p) {
+    _aligned_free(p);
   }
 #endif
 
