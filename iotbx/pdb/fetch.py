@@ -164,8 +164,8 @@ def get_ebi_pdb_wublast (sequence, email, file_name=None, blast_type="blastp",
 def get_chemical_components_cif (code, return_none_if_already_present=False) :
   assert (code is not None)
   if (len(code) == 0) or (len(code) > 3) :
-    raise Sorry("PDB residue codes must be at least 1 but no more than 3 "+
-      "characters.")
+    raise Sorry(("Bad code '%s': PDB residue codes must be at least 1 but no "+
+      "more than 3 characters.") % code)
   first_char = code[0].lower()
   code = code.upper()
   chem_comp_cif = libtbx.env.find_in_repositories(
