@@ -244,10 +244,12 @@ class unit_cell_distribution (object) :
     def _show_each (edges) :
       for edge, ref_edge, label in zip(edges, ref_edges, labels) :
         h = flex.histogram(edge, n_slots=n_slots)
-        min, max = flex.min(edge), flex.max(edge)
+        smin, smax = flex.min(edge), flex.max(edge)
+        stats = flex.mean_and_variance(edge)
         print >> out, "  %s edge" % label
-        print >> out, "     range:     %6.2f - %.2f" % (min, max)
-        print >> out, "     mean:      %6.2f" % flex.mean(edge)
+        print >> out, "     range:     %6.2f - %.2f" % (smin, smax)
+        print >> out, "     mean:      %6.2f +/- %6.2 on N = %d" % (
+          flex.mean(edge), stats.unweighted_sample_standard_deviation(), edge.size())
         print >> out, "     reference: %6.2f" % ref_edge
         h.show(f=out, prefix="    ", format_cutoffs="%6.2f")
         print >> out, ""
