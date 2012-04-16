@@ -24,6 +24,9 @@ key_words = {
   "code"             : str,
   "js"               : int,
   "qsub_cmd"         : str,
+  "start"            : int,
+  "end"              : int,
+  "host_scratch_dir" : str,
   }
 
 script_file = """
@@ -71,6 +74,37 @@ if __name__=="__main__":
   run(*tuple(sys.argv[1:]))
 """
 
+host_scratch_dir_pre = """
+set work_dir=$PWD
+
+set host_scratch_dir=/net/$host/scratch1/$user/%s
+if (! -d $host_scratch_dir) then
+  echo "================================"
+  echo " Creating host scratch directory $host_scratch_dir"
+  echo "================================"
+  mkdir $host_scratch_dir
+endif
+
+set host_scratch_dir=/net/$host/scratch1/$user/%s/$SGE_TASK_ID
+if (! -d $host_scratch_dir) then
+  echo "================================"
+  echo " Creating host scratch directory $host_scratch_dir"
+  echo "================================"
+  mkdir $host_scratch_dir
+endif
+
+echo "=============="
+echo " Changing into $host_scratch_dir"
+echo "=============="
+cd $host_scratch_dir
+"""
+host_scratch_dir_post = """
+echo "==================="
+echo " Move files back to $work_dir"
+echo "==================="
+mv * $work_dir
+"""
+
 run_file = """#! /bin/csh -q
 #$ -cwd
 #$ -o %s_queue.output -j y -N %s
@@ -78,7 +112,11 @@ limit datasize 2000000
 
 source %s
 
+%s
+
 phenix.python %s $SGE_TASK_ID $SGE_TASK_LAST >& %s.$SGE_TASK_ID.out
+
+%s
 
 exit
 
@@ -89,6 +127,9 @@ import os, sys
 
 def run(only_i=None):
   print "%s " % only_i
+  f=file("test_%s.output" % only_i, "wb")
+  f.write("Testing %s\\n" % only_i)
+  f.close()
 
 if __name__=="__main__":
   run(*tuple(sys.argv[1:]))
@@ -115,6 +156,9 @@ def run(phenix_source=None,
         code=None,
         js=1,
         qsub_cmd="qsub",
+        start=1,
+        end=None,
+        host_scratch_dir=None,
         ):
   if not phenix_source:
     print '-'*80
@@ -129,7 +173,12 @@ def run(phenix_source=None,
     f.close()
     commands = []
     for i in range(10):
-      commands.append("python easy_qsub_test_script.py %s" % (i+100))
+      commands.append("python %s %s" % (os.path.join(
+                                           os.getcwd(),
+                                           "easy_qsub_test_script.py"),
+                                           i+100,
+                                           )
+        )
 
 
   print '-'*80
@@ -185,7 +234,16 @@ def run(phenix_source=None,
   print '\n  Number of queue jobs',number_of_jobs
   print '  Number of command in each queue job',size_of_chunks
 
+  #print '\n  Changing to work directory : %s' % where
   os.chdir(where)
+
+  if host_scratch_dir:
+    print '\n  Setting up scratch directories on queue hosts'
+    pre = host_scratch_dir_pre % (host_scratch_dir, host_scratch_dir)
+    post = host_scratch_dir_post
+  else:
+    pre = ""
+    post = ""
 
   python_run_filename = "easy_qsub_python_script.py"
   qsub_run_filename = "easy_qsub_qsub_script.sh"
@@ -194,26 +252,34 @@ def run(phenix_source=None,
   for line in lines:
     if line[-1]=="\n": line = line[:-1]
     outl += "  '%s',\n" % line
-  print "  Writing queue python script:", python_run_filename
+  python_run_filename = os.path.join(os.getcwd(), python_run_filename)
+  print "  Writing queue python script:\n    %s" % python_run_filename
   f=file(python_run_filename, "wb")
   f.write(script_file % outl)
   f.close()
 
-  print "  Writing queue command script:",qsub_run_filename
+  qsub_run_filename = os.path.join(os.getcwd(), qsub_run_filename)
+  print "  Writing queue command script:\n    %s" % qsub_run_filename
   f=file(qsub_run_filename, "wb")
   f.write(run_file % (
     code,
     code,
     phenix_source,
+    pre,
     python_run_filename,
     code,
+    post,
     )
     )
   f.close()
 
-  cmd = "%s -t 1-%s -js %d %s" % (
+  if end is None:
+    end = number_of_jobs
+
+  cmd = "%s -t %d-%d -js %d %s" % (
     qsub_cmd,
-    number_of_jobs,
+    start,
+    end, #number_of_jobs,
     js,
     qsub_run_filename,
     )
