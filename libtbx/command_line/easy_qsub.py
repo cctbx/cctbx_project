@@ -77,6 +77,14 @@ if __name__=="__main__":
 host_scratch_dir_pre = """
 set work_dir=$PWD
 
+set host_scratch_dir=/net/$host/scratch1/$user
+if (! -d $host_scratch_dir) then
+  echo "================================"
+  echo " Creating host scratch directory $host_scratch_dir"
+  echo "================================"
+  mkdir $host_scratch_dir
+endif
+
 set host_scratch_dir=/net/$host/scratch1/$user/%s
 if (! -d $host_scratch_dir) then
   echo "================================"
