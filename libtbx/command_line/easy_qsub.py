@@ -14,6 +14,7 @@ where [list of commands]) is
 
 import os, sys
 from libtbx import easy_run
+from libtbx.utils import Sorry
 
 key_words = {
   "phenix_source"    : str,
@@ -195,6 +196,8 @@ def run(phenix_source=None,
   if phenix_source.find("phenix_env")==-1 and phenix_source.find("setpath")==-1:
     print '  Need to supply file to source. e.g. phenix_env'
     return False
+  if not os.path.exists(phenix_source):
+    raise Sorry('source file for PHENIX environment not found "%s"' % phenix_source)
   print '    where',where
   if type(commands)==type([]):
 #  if commands is None:
