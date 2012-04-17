@@ -57,6 +57,23 @@ include_bulk_solvent = True
   .type = bool
 wavelength = None
   .type = float
+significance_filter {
+  apply = True
+    .type = bool
+    .help = Apply a sigma cutoff (on unmerged data) to limit resolution from each diffraction pattern
+  n_bins = 12
+    .type = int (value_min=2)
+    .help = Initial target number of resolution bins for sigma cutoff calculation
+  min_ct = 10
+    .type = int
+    .help = Decrease number of resolution bins to require mean bin population >= min_ct
+  max_ct = 50
+    .type = int
+    .help = Increase number of resolution bins to require mean bin population <= max_ct
+  sigma = 0.5
+    .type = float
+    .help = Remove highest resolution bins such that all accepted bins have <I/sigma> >= sigma
+}
 min_corr = 0.1
   .type = float
   .help = Correlation cutoff for rejecting individual frames
@@ -248,7 +265,7 @@ class unit_cell_distribution (object) :
         stats = flex.mean_and_variance(edge)
         print >> out, "  %s edge" % label
         print >> out, "     range:     %6.2f - %.2f" % (smin, smax)
-        print >> out, "     mean:      %6.2f +/- %6.2 on N = %d" % (
+        print >> out, "     mean:      %6.2f +/- %6.2f on N = %d" % (
           flex.mean(edge), stats.unweighted_sample_standard_deviation(), edge.size())
         print >> out, "     reference: %6.2f" % ref_edge
         h.show(f=out, prefix="    ", format_cutoffs="%6.2f")
@@ -603,6 +620,37 @@ class scaling_manager (intensity_data) :
     print >> out, "Data in reference setting:"
     #observations.show_summary(f=out, prefix="  ")
     show_observations(observations, out=out)
+
+    if self.params.significance_filter.apply is True: #------------------------------------
+      # Apply an I/sigma filter ... accept resolution bins only if they
+      #   have significant signal; tends to screen out higher resolution observations
+      #   if the integration model doesn't quite fit
+      N_obs_pre_filter = observations.size()
+      N_bins_small_set = N_obs_pre_filter // self.params.significance_filter.min_ct
+      N_bins_large_set = N_obs_pre_filter // self.params.significance_filter.max_ct
+      N_bins = max(
+        [ min([self.params.significance_filter.n_bins,N_bins_small_set]), N_bins_large_set ]
+      )
+      print "Total obs %d Choose n bins = %d"%(N_obs_pre_filter,N_bins)
+      bin_results = show_observations(observations, out=out, n_bins=N_bins)
+      show_observations(observations, out=sys.stdout, n_bins=N_bins)
+      acceptable_resolution_bins = [
+        bin.mean_I_sigI > self.params.significance_filter.sigma for bin in bin_results]
+      acceptable_nested_bin_sequences = [i for i in xrange(len(acceptable_resolution_bins))
+                                         if False not in acceptable_resolution_bins[:i+1]]
+      if len(acceptable_nested_bin_sequences)==0:
+        return None
+      else:
+        N_acceptable_bins = max(acceptable_nested_bin_sequences) + 1
+        imposed_res_filter = float(bin_results[N_acceptable_bins-1].d_range.split()[2])
+        observations = observations.resolution_filter(d_min =
+          imposed_res_filter
+          )
+        print "New resolution filter at %7.2f"%imposed_res_filter
+      print "N acceptable bins",N_acceptable_bins
+      print "Old n_obs: %d, new n_obs: %d"%(N_obs_pre_filter,observations.size())
+      # Finished applying the binwise I/sigma filter---------------------------------------
+
     # Match up the observed intensities against the reference data
     # set, i_model, instead of the pre-generated miller set,
     # miller_set.
@@ -647,6 +695,33 @@ class scaling_manager (intensity_data) :
     offset = (sum_xx * sum_y - sum_x * sum_xy) / (N * sum_xx - sum_x**2)
     corr  = (N * sum_xy - sum_x * sum_y) / (math.sqrt(N * sum_xx - sum_x**2) *
              math.sqrt(N * sum_yy - sum_y**2))
+
+    if False:
+      # ******************************************************
+      # try a new procedure to scale obs to the reference data with K & B,
+      # to minimize (for positive Iobs only) functional...
+      # ahead of doing this, section simply plots calc & obs...
+      # ******************************************************
+      print "For %d reflections, got slope %f, correlation %f" % \
+          (N, slope, corr)
+      print "average obs",sum_y/N, "average calc",sum_x/N, "offset",offset
+      print "Rejected %d reflections with negative intensities" % \
+          (len(matches.pairs()) - N)
+
+      reference= flex.double()
+      observed=flex.double()
+      for pair in matches.pairs():
+        if (observations.data()[pair[1]] -offset <= 0):
+          continue
+        I_r = self.i_model.data()[pair[0]]
+        I_o = observations.data()[pair[1]]
+        reference.append(I_r)
+        observed.append((I_o - offset)/slope)
+
+      from matplotlib import pyplot as plt
+      plt.plot(flex.log10(observed),flex.log10(reference),"r.")
+      plt.show()
+
     data.corr = corr
     print >> out, "For %d reflections, got slope %f, correlation %f" % \
         (N, slope, corr)
