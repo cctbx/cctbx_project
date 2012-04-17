@@ -243,7 +243,9 @@ class common_setpaths(object):
         os.pathsep.join([
           self.path_script_value(_) for _ in self.env.pythonpath]))
       self.update_path(
-        ld_library_path_var_name(), self.path_script_value(self.env.lib_path))
+        ld_library_path_var_name(),
+        os.pathsep.join([self.path_script_value(_)
+          for _ in self.env.ld_library_path_additions()]))
 
   def set_unset_vars(self):
     if (self.suffix != ""):
@@ -865,6 +867,18 @@ Wait for the command to finish, then try again.""" % vars())
       result.append(p)
     return ":".join(result)
 
+  def ld_library_path_additions(self):
+    result = [self.lib_path]
+    dirs = []
+    if (is_64bit_architecture()):
+      dirs.append("lib64")
+    dirs.append("lib")
+    for d in dirs:
+      p = op.join(sys.prefix, d)
+      if (op.isdir(p)):
+        result.append(self.as_relocatable_path(p))
+    return result
+
   def write_bin_sh_dispatcher(self,
         source_file, target_file, source_is_python_exe=False):
     f = target_file.open("w")
@@ -917,7 +931,9 @@ Wait for the command to finish, then try again.""" % vars())
     for line in self.dispatcher_include(where="at_start"):
       print >> f, line
     essentials = [("PYTHONPATH", self.pythonpath)]
-    essentials.append((ld_library_path_var_name(), [self.lib_path]))
+    essentials.append((
+      ld_library_path_var_name(),
+      self.ld_library_path_additions()))
     essentials.append(("PATH", [self.bin_path]))
     for n,v in essentials:
       if (len(v) == 0): continue
