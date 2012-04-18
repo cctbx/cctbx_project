@@ -266,7 +266,7 @@ class unit_cell_distribution (object) :
         print >> out, "  %s edge" % label
         print >> out, "     range:     %6.2f - %.2f" % (smin, smax)
         print >> out, "     mean:      %6.2f +/- %6.2f on N = %d" % (
-          flex.mean(edge), stats.unweighted_sample_standard_deviation(), edge.size())
+          stats.mean(), stats.unweighted_sample_standard_deviation(), edge.size())
         print >> out, "     reference: %6.2f" % ref_edge
         h.show(f=out, prefix="    ", format_cutoffs="%6.2f")
         print >> out, ""
@@ -733,7 +733,7 @@ class scaling_manager (intensity_data) :
       for pair in matches.pairs():
         if (observations.data()[pair[1]] <= 0) :
           continue
-        Intensity = observations.data()[pair[1]] /  slope
+        Intensity = observations.data()[pair[1]] / slope
 
         # Add the reflection as a two-tuple of intensity and I/sig(I)
         # to the dictionary of observations.
@@ -745,7 +745,7 @@ class scaling_manager (intensity_data) :
         else:
           data.ISIGI[index] = [isigi]
 
-        sigma = observations.sigmas()[pair[1]] /  slope
+        sigma = observations.sigmas()[pair[1]] / slope
         variance = sigma * sigma
         data.summed_N[pair[0]] += 1
         data.summed_wt_I[pair[0]] += Intensity / variance
