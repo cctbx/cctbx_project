@@ -64,12 +64,25 @@ ignore_non_isomorphous_unit_cells = False
   .type = bool
   .short_caption = Ignore non-isomorphous unit cells
 include scope libtbx.phil.interface.tracking_params
+find_peaks_holes = False
+  .type = bool
+  .short_caption = Find peaks and holes in map
+map_cutoff = 3.0
+  .type = float
+  .short_caption = Sigma-level cutoff for peak search
+peak_search
+  .short_caption = Peak search parameters
+  .style = auto_align box menu_item
+{
+include scope mmtbx.find_peaks.master_params
+}
 """
 def fo_minus_fo_master_params():
   return iotbx.phil.parse(fo_minus_fo_master_params_str, process_includes=True)
 
 def compute_fo_minus_fo_map(data_arrays, xray_structure, log, silent,
-    output_file=None):
+    output_file=None, peak_search=False, map_cutoff=None,
+    peak_search_params=None):
   fmodels = []
   for i_seq, d in enumerate(data_arrays):
     if(not silent):
@@ -169,7 +182,40 @@ def compute_fo_minus_fo_map(data_arrays, xray_structure, log, silent,
   mtz_object = mtz_dataset.mtz_object()
   mtz_object.add_history(mtz_history_buffer)
   mtz_object.write(file_name=file_name)
-  return file_name
+  file_names = [ file_name ]
+  if (peak_search) :
+    from mmtbx.command_line import find_peaks_holes
+    from mmtbx import find_peaks
+    peak_search_log = log
+    if (silent) : peak_search_log = null_out()
+    peaks = find_peaks.manager(
+      fmodel=fmodel,
+      map_type=None,
+      map_coeffs=map_coeff,
+      map_cutoff=map_cutoff,
+      params=peak_search_params,
+      log=peak_search_log).peaks_mapped()
+    peaks.sites = fmodel.xray_structure.unit_cell().orthogonalize(peaks.sites)
+    holes = find_peaks.manager(
+      fmodel=fmodel,
+      map_type=None,
+      map_coeffs=map_coeff,
+      map_cutoff=-map_cutoff,
+      params=peak_search_params,
+      log=peak_search_log).peaks_mapped()
+    holes.sites = fmodel.xray_structure.unit_cell().orthogonalize(holes.sites)
+    result = find_peaks_holes.peaks_holes_container(
+      peaks=peaks,
+      holes=holes,
+      map_cutoff=map_cutoff)
+    pdb_out = os.path.splitext(file_name)[0] + "_peaks.pdb"
+    result.save_pdb_file(
+      file_name=pdb_out,
+      include_anom=False,
+      include_water=False,
+      log=peak_search_log)
+    file_names.append(pdb_out)
+  return file_names
 
 def run(args, command_name = "phenix.fobs_minus_fobs_map"):
   if(len(args) == 0): args = ["--help"]
@@ -329,13 +375,16 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
     if (f_obs.indices().size() == 0) :
       raise Sorry("No data left in array %d (labels=%s) after filtering!" % (k+1,
         f_obs.info().label_string()))
-  output_file = compute_fo_minus_fo_map(
+  output_files = compute_fo_minus_fo_map(
     data_arrays = f_obss,
     xray_structure = xray_structure,
     log = log,
     silent = command_line.options.silent,
-    output_file = params.output_file)
-  return output_file
+    output_file = params.output_file,
+    peak_search=params.find_peaks_holes,
+    map_cutoff=params.map_cutoff,
+    peak_search_params=params.peak_search)
+  return output_files
 
 class launcher (runtime_utils.target_with_save_result) :
   def run (self) :
@@ -360,6 +409,9 @@ def validate_params (params, callback=None) :
 
 def finish_job (result) :
   output_files = []
-  if (result is not None) and os.path.isfile(result) :
-    output_files.append(("Map coefficients", result))
+  if (result is not None) :
+    assert (isinstance(result, list)) and (len(result) > 0)
+    output_files.append((result[0], "Map coefficients"))
+    if (len(result) > 1) :
+      output_files.append((result[1], "Map peaks and holes"))
   return (output_files, [])
