@@ -33,7 +33,6 @@ torsion_ncs_params = iotbx.phil.parse("""
  similarity = .80
    .type = float
    .short_caption = Sequence similarity cutoff
-   .short_caption = Include sidechain atoms
  fix_outliers = Auto
    .type = bool
    .short_caption = Fix rotamer outliers first
