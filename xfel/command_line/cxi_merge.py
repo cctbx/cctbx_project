@@ -578,14 +578,14 @@ class scaling_manager (intensity_data) :
         wrong_cell=wrong_cell)
       return null
 
-    # The wavelength from the command line overrides the wavelength in
-    # the pickled integration file.  XXX The wavelength parameter
-    # should probably be removed from master_phil once all integration
-    # pickle files contain it.
-    if (self.params.wavelength is not None):
-      wavelength = self.params.wavelength
-    elif (result.has_key("wavelength")):
+    # If the pickled integration file does not contain a wavelength,
+    # fall back on the value given on the command line.  XXX The
+    # wavelength parameter should probably be removed from master_phil
+    # once all pickled integration files contain it.
+    if (result.has_key("wavelength")):
       wavelength = result["wavelength"]
+    elif (self.params.wavelength is not None):
+      wavelength = self.params.wavelength
     else:
       # XXX Give error, or raise exception?
       return None
@@ -930,6 +930,15 @@ def show_overall_observations(
     sel_complete_tag = "[%d/%d]" % (n_present, sel_redundancy.size())
     sel_measurements = flex.sum(sel_redundancy)
 
+    # Alternatively, redundancy (XXX or multiplicity?  the table
+    # header "redundancy2" is really bad) is calculated as the average
+    # number of observations for the observed reflections--missing
+    # reflections do not affect the redundancy adversely, and the
+    # reported value becomes completeness-independent.
+    val_redundancy_alt = 0
+    if (n_present > 0):
+      val_redundancy_alt = flex.sum(sel_redundancy) / n_present
+
     # Per-bin sum of I and I/sig(I) for each observation.  Accumulate
     # numerators for R_merge (Stout & Jensen, 1968) and R_iso (Chapman
     # et al., 2011).
@@ -962,12 +971,14 @@ def show_overall_observations(
       R_iso_tot[i] += R_iso[i]
       R_merge_tot[i] += R_merge[i]
 
+    # XXX Bugs in table? I/sig(I) is going bananas!
     if (sel_measurements > 0 and R_iso[1] > 0 and R_merge[1] > 0):
       bin = resolution_bin(
         i_bin        = i_bin,
         d_range      = d_range,
         d_min        = obs.binner().bin_d_min(i_bin),
         redundancy   = flex.mean(sel_redundancy.as_double()),
+        redundancy2  = val_redundancy_alt,
         complete_tag = sel_complete_tag,
         completeness = n_present / sel_redundancy.size(),
         measurements = sel_measurements,
@@ -984,14 +995,15 @@ def show_overall_observations(
 
   if (title is not None) :
     print >> out, title
-  print >>out, "\n Bin  Resolution Range  Completeness <Redundancy>  n_meas      <I> <I/sig(I)>    R_iso  R_merge"
+  print >>out, "\n Bin  Resolution Range  Completeness <Redundancy>  <Redundancy2> n_meas      <I> <I/sig(I)>    R_iso  R_merge"
   for bin in result:
-    fmt = " %s %s %s       %s  %s %s   %s %s %s"
+    fmt = " %s %s %s       %s  %s %s %s   %s %s %s"
     print >>out,fmt%(
       format_value("%3d",   bin.i_bin),
       format_value("%-13s", bin.d_range), # XXX This doesn't always work, compare thermolysin runs with PSII with spots out to 181 A.
       format_value("%13s",  bin.complete_tag),
       format_value("%6.2f", bin.redundancy),
+      format_value("%6.2f", bin.redundancy2),
       format_value("%6d",   bin.measurements),
       format_value("%8.0f", bin.mean_I),
       format_value("%8.3f", bin.mean_I_sigI),
@@ -1003,6 +1015,7 @@ def show_overall_observations(
       format_value("%-13s", "                 "),
       format_value("%13s",  "[%d/%d]"%(cumulative_unique,cumulative_theor)),
       format_value("%6.2f", cumulative_meas/cumulative_theor),
+      format_value("%6.2f", cumulative_meas/cumulative_unique),
       format_value("%6d",   cumulative_meas),
       format_value("%8.0f", 0.),
       format_value("%8.3f", cumulative_Isigma/cumulative_meas),
@@ -1054,6 +1067,7 @@ class resolution_bin(object):
                d_range       = None,
                d_min         = None,
                redundancy    = None,
+               redundancy2   = None,
                absent        = None,
                complete_tag  = None,
                completeness  = None,
