@@ -168,9 +168,10 @@ class peaks_holes_container (object) :
       k += 1
     f = open(file_name, "w")
     f.write("REMARK  Interesting sites from mmtbx.find_peaks_holes\n")
-    f.write("REMARK  Chain A is mFo-DFc peaks (> %g sigma)\n" % self.map_cutoff)
+    f.write("REMARK  Chain A is difference map peaks (> %g sigma)\n" %
+      self.map_cutoff)
     if (include_holes) :
-      f.write("REMARK  Chain B is mFo-DFc holes (< -%g sigma)\n" %
+      f.write("REMARK  Chain B is difference map holes (< %g sigma)\n" %
         (- self.map_cutoff))
       holes_chain = iotbx.pdb.hierarchy.chain(id="B")
       model.append_chain(holes_chain)
