@@ -789,7 +789,12 @@ def substitute_directory_name (phil_object, path_name, sub_name,
       if (object.type.phil_type == "path") :
         py_object = object.extract()
         if (py_object is None) or (py_object is Auto) : continue
-        assert isinstance(py_object, str)
+        if (not isinstance(py_object, str)) :
+          if isinstance(py_object, unicode) : # FIXME need to prevent this!
+            py_object = str(py_object)
+          else :
+            raise RuntimeError("Disallowed type '%s' for path parameter '%s'." %
+              (type(py_object), object.full_path()))
         py_object = py_object.replace(path_name, sub_var)
         new_object = object.format(python_object=py_object)
         object.words = new_object.words
