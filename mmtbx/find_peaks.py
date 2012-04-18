@@ -96,13 +96,25 @@ class peaks_holder(object):
 class manager(object):
   def __init__(self, fmodel, map_type, map_cutoff, params = None, log = None,
                      use_kick_map = False, kick_map_params = None,
-                     use_all_data = True, silent = False):
+                     use_all_data = True, silent = False, map_coeffs=None):
     adopt_init_args(self, locals())
+    assert (map_type is not None) or (map_coeffs is not None)
     self.mapped = False
     self.peaks_ = None
     if(self.log is None): self.log = sys.stdout
     if(self.params is None): self.params = master_params.extract()
-    if(use_kick_map):
+    if (map_coeffs is not None) :
+      fft_map = map_coeffs.fft_map(
+        resolution_factor=self.params.resolution_factor,
+        symmetry_flags=maptbx.use_space_group_symmetry)
+      if(self.params.use_sigma_scaled_maps):
+        fft_map.apply_sigma_scaling()
+        map_units = "sigma"
+      else:
+        fft_map.apply_volume_scaling()
+        map_units = "e/A**3"
+      fft_map_data = fft_map.real_map_unpadded()
+    elif(use_kick_map):
       from mmtbx import map_tools
       km = map_tools.kick_map(
         fmodel            = self.fmodel,
