@@ -10,8 +10,8 @@ def map_cc(map_coeffs_1, map_coeffs_2):
     fourier_coefficients = map_coeffs_2)
   map_2 = fft_map_2.real_map_unpadded()
   assert map_1.size() == map_2.size()
-  m1 = flex.double(list(map_1))
-  m2 = flex.double(list(map_2))
+  m1 = map_1.as_1d()
+  m2 = map_2.as_1d()
   return flex.linear_correlation(x = m1, y = m2).coefficient()
 
 def run():
