@@ -4,6 +4,7 @@ import cStringIO
 import re
 import operator
 import os.path
+import sys
 
 # Wrap lines that are longer than 'width'
 def wrap(text, width):
