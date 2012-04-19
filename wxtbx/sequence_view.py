@@ -911,7 +911,7 @@ class sequence_window (object) :
     self.control_panel.Layout()
     if auto_select :
       self.control_panel.chain_select.SetSelection(0)
-      chain_id = self.control_panel.chain_select.GetStringSelection()
+      chain_id = str(self.control_panel.chain_select.GetStringSelection())
       self.set_current_chain(chain_id)
 
   def set_current_chain (self, chain_id) :
@@ -968,7 +968,7 @@ class sequence_window (object) :
     self.seq_panel.apply_missing_residue_highlights()
 
   def get_selection_base (self) :
-    chain_id = self.control_panel.chain_select.GetStringSelection()
+    chain_id = str(self.control_panel.chain_select.GetStringSelection())
     return "chain '%s'" % chain_id
 
   def callback_on_select (self) :
@@ -978,7 +978,7 @@ class sequence_window (object) :
     if (getattr(self, "_seq_data", None) is not None) :
       self.set_current_alignemnt(evt.GetEventObject().GetSelection())
     else :
-      chain_id = evt.GetEventObject().GetStringSelection()
+      chain_id = str(evt.GetEventObject().GetStringSelection())
       self.set_current_chain(chain_id)
 
   def OnClose (self, evt) :
