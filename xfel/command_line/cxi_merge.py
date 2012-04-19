@@ -907,9 +907,8 @@ def show_overall_observations(
   obs.setup_binner(n_bins=n_bins)
   result = []
 
-  # R_iso_tot and R_merge_tot are two-membered lists, holding the
+  # R_merge_tot are two-membered lists, holding the
   # numerator and the denominator.
-  R_iso_tot = [0, 0]
   R_merge_tot = [0, 0]
 
   cumulative_unique = 0
@@ -939,11 +938,9 @@ def show_overall_observations(
       val_redundancy_alt = flex.sum(sel_redundancy) / n_present
 
     # Per-bin sum of I and I/sig(I) for each observation.  Accumulate
-    # numerators for R_merge (Stout & Jensen, 1968) and R_iso (Chapman
-    # et al., 2011).
+    # numerators for R_merge (Stout & Jensen, 1968)
     I_sum = 0
     I_sigI_sum = 0
-    R_iso = [0, 0]
     R_merge = [0, 0]
     for i in obs.binner().array_indices(i_bin) :
       index = obs.indices()[i]
@@ -959,19 +956,16 @@ def show_overall_observations(
         I_sum += m
         if (N > 0):
           m /= N
-          R_iso[0] += abs(m - obs.data()[i])
-          R_iso[1] += m
           for t in ISIGI[index] :
             R_merge[0] += abs(t[0] - m)
             R_merge[1] += t[0]
 
     # Keep track of total sums for global statistics.
     for i in xrange(2) :
-      R_iso_tot[i] += R_iso[i]
       R_merge_tot[i] += R_merge[i]
 
     # XXX Bugs in table? I/sig(I) is going bananas!
-    if (sel_measurements > 0 and R_iso[1] > 0 and R_merge[1] > 0):
+    if (sel_measurements > 0 and R_merge[1] > 0):
       bin = resolution_bin(
         i_bin        = i_bin,
         d_range      = d_range,
@@ -983,7 +977,6 @@ def show_overall_observations(
         measurements = sel_measurements,
         mean_I       = I_sum / sel_measurements,
         mean_I_sigI  = I_sigI_sum / sel_measurements,
-        R_iso        = R_iso[0] / R_iso[1],
         R_merge      = R_merge[0] / R_merge[1],
         )
       result.append(bin)
@@ -995,8 +988,8 @@ def show_overall_observations(
   if (title is not None) :
     print >> out, title
   from libtbx import table_utils
-  table_header = ["","","","<asu","<obs","","","","",""]
-  table_header2 = ["Bin","Resolution Range","Completeness","redun>","redun>","n_meas","<I>","<I/sig(I)>","R_iso","R_merge"]
+  table_header = ["","","","<asu","<obs","","","",""]
+  table_header2 = ["Bin","Resolution Range","Completeness","redun>","redun>","n_meas","<I>","<I/sig(I)>","R_merge"]
   table_data = []
   table_data.append(table_header)
   table_data.append(table_header2)
@@ -1010,7 +1003,6 @@ def show_overall_observations(
     table_row.append("%6d"% bin.measurements)
     table_row.append("%8.0f"% bin.mean_I)
     table_row.append("%8.3f"% bin.mean_I_sigI)
-    table_row.append("%8.3f"% bin.R_iso)
     table_row.append("%8.3f"% bin.R_merge)
     table_data.append(table_row)
   table_data.append([""]*len(table_header))
@@ -1023,7 +1015,6 @@ def show_overall_observations(
       format_value("%6d",   cumulative_meas),
       format_value("%8.0f", 0.),
       format_value("%8.3f", cumulative_Isigma/cumulative_meas),
-      format_value("%8.3f", R_iso_tot[0] / R_iso_tot[1]),
       format_value("%8.3f", R_merge_tot[0] / R_merge_tot[1]) ])
 
   print
@@ -1080,7 +1071,6 @@ class resolution_bin(object):
                measurements  = None,
                mean_I        = None,
                mean_I_sigI   = None,
-               R_iso         = None,
                R_merge       = None,
                sigmaa        = None):
     adopt_init_args(self, locals())
