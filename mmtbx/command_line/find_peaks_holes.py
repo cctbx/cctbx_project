@@ -395,8 +395,7 @@ mmtbx.find_peaks_holes - difference map analysis
   if (cmdline.params.write_maps) :
     import mmtbx.maps.utils
     import iotbx.mtz
-    f_map, diff_map = mmtbx.maps.utils.get_maps_from_fmodel(cmdline.fmodel,
-      use_filled=False)
+    f_map, diff_map = mmtbx.maps.utils.get_maps_from_fmodel(cmdline.fmodel)
     dec = iotbx.mtz.label_decorator(phases_prefix="PH")
     mtz_dat = f_map.as_mtz_dataset(
       column_root_label="2FOFCWT",
