@@ -410,7 +410,6 @@ class scaling_manager (intensity_data) :
       self.d_min_values.append(data.d_min)
     self.corr_values.append(data.corr)
     self.wavelength.append(data.wavelength)
-    del data
 
   def _add_all_frames (self, data) :
     """The _add_all_frames() function collects the statistics
@@ -995,22 +994,27 @@ def show_overall_observations(
 
   if (title is not None) :
     print >> out, title
-  print >>out, "\n Bin  Resolution Range  Completeness <Redundancy>  <Redundancy2> n_meas      <I> <I/sig(I)>    R_iso  R_merge"
+  from libtbx import table_utils
+  table_header = ["","","","<asu","<obs","","","","",""]
+  table_header2 = ["Bin","Resolution Range","Completeness","redun>","redun>","n_meas","<I>","<I/sig(I)>","R_iso","R_merge"]
+  table_data = []
+  table_data.append(table_header)
+  table_data.append(table_header2)
   for bin in result:
-    fmt = " %s %s %s       %s  %s %s %s   %s %s %s"
-    print >>out,fmt%(
-      format_value("%3d",   bin.i_bin),
-      format_value("%-13s", bin.d_range), # XXX This doesn't always work, compare thermolysin runs with PSII with spots out to 181 A.
-      format_value("%13s",  bin.complete_tag),
-      format_value("%6.2f", bin.redundancy),
-      format_value("%6.2f", bin.redundancy2),
-      format_value("%6d",   bin.measurements),
-      format_value("%8.0f", bin.mean_I),
-      format_value("%8.3f", bin.mean_I_sigI),
-      format_value("%8.3f", bin.R_iso),
-      format_value("%8.3f", bin.R_merge)
-    )
-  print >>out,fmt%(
+    table_row = []
+    table_row.append("%3d"%bin.i_bin)
+    table_row.append("%-13s"%bin.d_range)
+    table_row.append("%13s"%bin.complete_tag)
+    table_row.append("%6.2f"%bin.redundancy)
+    table_row.append("%6.2f"% bin.redundancy2)
+    table_row.append("%6d"% bin.measurements)
+    table_row.append("%8.0f"% bin.mean_I)
+    table_row.append("%8.3f"% bin.mean_I_sigI)
+    table_row.append("%8.3f"% bin.R_iso)
+    table_row.append("%8.3f"% bin.R_merge)
+    table_data.append(table_row)
+  table_data.append([""]*len(table_header))
+  table_data.append(  [
       format_value("%3s",   "All"),
       format_value("%-13s", "                 "),
       format_value("%13s",  "[%d/%d]"%(cumulative_unique,cumulative_theor)),
@@ -1019,11 +1023,13 @@ def show_overall_observations(
       format_value("%6d",   cumulative_meas),
       format_value("%8.0f", 0.),
       format_value("%8.3f", cumulative_Isigma/cumulative_meas),
-      format_value("%8.3f", 0.),
-      format_value("%8.3f", 0.)
-    )
-  print "Global R_iso   ", R_iso_tot[0] / R_iso_tot[1]
-  print "Global R_merge ", R_merge_tot[0] / R_merge_tot[1]
+      format_value("%8.3f", R_iso_tot[0] / R_iso_tot[1]),
+      format_value("%8.3f", R_merge_tot[0] / R_merge_tot[1]) ])
+
+  print
+  print >>out,table_utils.format(table_data,has_header=2,justify='center',delim=" ")
+
+
   # XXX generate table object for displaying plots
   if (title is None) :
     title = "Data statistics by resolution"
