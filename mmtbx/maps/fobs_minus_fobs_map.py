@@ -127,7 +127,7 @@ def compute_fo_minus_fo_map(data_arrays, xray_structure, log, silent,
   if(not silent):
     print >> log, "Fobs1_vs_Fobs2 statistics:"
     print >> log, "Bin# Resolution range  Compl.  No.of refl. R-factor"
-    fobs_1.setup_binner(reflections_per_bin = 500)
+    fobs_1.setup_binner(reflections_per_bin = min(500, fobs_1.data().size()))
     fobs_2.use_binning_of(fobs_1)
     for i_bin in fobs_1.binner().range_used():
       sel = fobs_1.binner().selection(i_bin)
