@@ -187,7 +187,8 @@ class manager(object):
         bond_params_table=self.bond_params_table,
         shell_sym_tables=reduced_shell_sym_tables,
         angle_proxies=reduced_angle_proxies,
-        dihedral_proxies=reduced_dihedral_proxies)
+        dihedral_proxies=reduced_dihedral_proxies,
+        ncs_dihedral_proxies=self.ncs_dihedral_proxies)
     else:
       return manager(
         crystal_symmetry=self.crystal_symmetry,
