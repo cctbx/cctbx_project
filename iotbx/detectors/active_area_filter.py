@@ -18,18 +18,24 @@ class active_area_filter:
       reference.append(center[1])
     self.adapt = AnnAdaptor(data=reference,dim=2,k=self.NEAR)
   def __call__(self,predictions,hkllist,pxlsz):
-    query = flex.double()
-    for pred in predictions:
-      query.append(pred[0]/pxlsz)
-      query.append(pred[1]/pxlsz)
-    self.adapt.query(query)
+    if len(self.IT) == 4:
+      # We have only one tile, AnnAdaptor chokes in this case but then there is
+      # only one choice of nearest neighbour anyway!
+      nearest_neighbours = flex.int(len(predictions)*self.NEAR, 0)
+    else:
+      query = flex.double()
+      for pred in predictions:
+        query.append(pred[0]/pxlsz)
+        query.append(pred[1]/pxlsz)
+      self.adapt.query(query)
+      assert len(self.adapt.nn)==len(predictions)*self.NEAR
+      nearest_neighbours = self.adapt.nn
     selection = flex.bool()
     self.tile_id = flex.int()
-    assert len(self.adapt.nn)==len(predictions)*self.NEAR
     for p in xrange(len(predictions)):
       is_in_active_area = False
       for n in xrange(self.NEAR):
-        itile = self.adapt.nn[p*self.NEAR+n]
+        itile = nearest_neighbours[p*self.NEAR+n]
         if self.IT[4*itile]<predictions[p][0]/pxlsz<self.IT[4*itile+2] and\
            self.IT[4*itile+1]<predictions[p][1]/pxlsz<self.IT[4*itile+3]:
           is_in_active_area = True;break
@@ -38,4 +44,3 @@ class active_area_filter:
       selection.append(is_in_active_area)
     assert selection.count(True) == len(self.tile_id)
     return predictions.select(selection),hkllist.select(selection)
-
