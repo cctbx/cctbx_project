@@ -285,3 +285,50 @@ CCD_IMAGE_SATURATION=65535;
       return self.linearintdata[(int(coords[0]), int(coords[1]))]
     except IndexError:
       return None
+
+  def get_tile_manager(self, phil):
+    return tile_manager_base(
+      phil,beam=(int(self.beamx/self.pixel_size),
+                 int(self.beamy/self.pixel_size)),
+           size1=self.size1,
+           size2=self.size2)
+
+
+class tile_manager_base(object):
+
+  def __init__(self,working_params,beam=None, size1=None, size2=None):
+    self.working_params = working_params
+    self.beam = beam # direct beam position supplied as slow,fast pixels
+    self.size1 = size1
+    self.size2 = size2
+
+  def effective_tiling_as_flex_int(self, reapply_peripheral_margin=False, **kwargs):
+    """Some documentation goes here"""
+
+    IT = self.effective_tiling_as_flex_int_impl(**kwargs)
+
+    # Inactive margin around the edge of the sensor
+    if reapply_peripheral_margin:
+      try:    peripheral_margin = self.working_params.distl.peripheral_margin
+      except Exception: peripheral_margin = 2
+      for i in xrange(len(IT) // 4):
+          IT[4 * i + 0] += peripheral_margin
+          IT[4 * i + 1] += peripheral_margin
+          IT[4 * i + 2] -= peripheral_margin
+          IT[4 * i + 3] -= peripheral_margin
+
+    if self.working_params.distl.tile_flags is not None:
+      #sensors whose flags are set to zero are not analyzed by spotfinder
+      expand_flags=[]
+      for flag in self.working_params.distl.tile_flags :
+        expand_flags=expand_flags + [flag]*4
+      bool_flags = flex.bool( flex.int(expand_flags)==1 )
+      return IT.select(bool_flags)
+
+    return IT
+
+  def effective_tiling_as_flex_int_impl(self, **kwargs):
+    """The detector is composed of a single tile"""
+    from scitbx.array_family import flex
+    assert [self.size1, self.size2].count(None) == 0
+    return flex.int([0, 0, self.size1, self.size2])
