@@ -297,8 +297,7 @@ namespace boost_python { namespace {
             (arg("mos"),arg("degrees")))
       .def("predict",
             &rp_predict,
-           (arg("observed_indices"),arg("observed_angles")))
-    ;
+           (arg("observed_indices"),arg("observed_angles")));
 
     def("full_sphere_indices",&full_sphere_indices,
       (arg("unit_cell"), arg("resolution_limit"),
