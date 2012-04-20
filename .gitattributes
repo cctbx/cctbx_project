@@ -1336,6 +1336,8 @@ rstbx/apps/SConscript -text
 rstbx/apps/__init__.py -text
 rstbx/apps/integration_ext.cpp -text
 rstbx/apps/stills/__init__.py -text
+rstbx/apps/stills/ersatz_nexus.cpp -text
+rstbx/apps/stills/ersatz_nexus.h -text
 rstbx/apps/stills/simple_integration.h -text
 rstbx/apps/stills/simple_integration.py -text
 rstbx/array_family/__init__.py -text
