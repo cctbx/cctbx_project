@@ -422,6 +422,9 @@ class SettingsPanel (wx.Panel) :
     self.integ_ctrl = wx.CheckBox(self, -1, "Show integration results")
     self.integ_ctrl.SetValue(self.settings.show_integration)
     s.Add(self.integ_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    self.tiling_ctrl = wx.CheckBox(self, -1, "Show effective tiling")
+    self.tiling_ctrl.SetValue(self.settings.show_effective_tiling)
+    s.Add(self.tiling_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
 #    self.invert_ctrl = wx.CheckBox(self, -1, "Invert beam center axes")
 #    self.invert_ctrl.SetValue(self.settings.invert_beam_center_axes)
 #    s.Add(self.invert_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
@@ -430,6 +433,7 @@ class SettingsPanel (wx.Panel) :
     self.Bind(wx.EVT_SLIDER, self.OnUpdateBrightness, self.brightness_ctrl)
     self.Bind(wx.EVT_CHECKBOX, self.OnUpdate2, self.center_ctrl)
     self.Bind(wx.EVT_CHECKBOX, self.OnUpdate2, self.spots_ctrl)
+    self.Bind(wx.EVT_CHECKBOX, self.OnUpdate2, self.tiling_ctrl)
     txt3 = wx.StaticText(self, -1, "Thumbnail view:")
     s.Add(txt3, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self.thumb_panel = rstbx.viewer.display.ThumbnailView(
@@ -446,6 +450,7 @@ class SettingsPanel (wx.Panel) :
       self.settings.show_beam_center = self.center_ctrl.GetValue()
       self.settings.show_spotfinder_spots = self.spots_ctrl.GetValue()
       self.settings.show_integration = self.integ_ctrl.GetValue()
+      self.settings.show_effective_tiling = self.tiling_ctrl.GetValue()
       self.settings.color_scheme = self.color_ctrl.GetSelection()
 #     self.settings.invert_beam_center_axes = self.invert_ctrl.GetValue()
 
