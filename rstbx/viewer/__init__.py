@@ -591,6 +591,6 @@ class settings (object) :
     self.invert_beam_center_axes = False
     self.show_spotfinder_spots = True
     self.show_integration = True
-    self.show_effective_tiling = True
+    self.show_effective_tiling = False # doesn't appear in GUI, only for debugging
     self.enable_collect_values = True
     self.color_scheme = 0
