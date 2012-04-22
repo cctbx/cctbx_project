@@ -117,6 +117,9 @@ class IntegrateCharacters:
       integrate_worker.initialize_increments(i)
       integrate_worker.horizons_phil = self.horizons_phil
       #P = Profiler("concept")
+      if self.horizons_phil.indexing.verbose_cv:
+        print "EFFECTIVE TILING"," ".join(
+          ["%d"%z for z in refimage.get_tile_manager(self.horizons_phil).effective_tiling_as_flex_int()])
       integrate_worker.integration_concept(image_number = i,
         cb_op_to_primitive = setting["cb_op_inp_best"].inverse(),
         verbose_cv = self.horizons_phil.indexing.verbose_cv)
@@ -263,13 +266,17 @@ class IntegrateCharacters:
       if index['counter']==1 and index.has_key('integration'):
         results = index['integration']["results"]
         obs = [item.get_obs(index['integration']["spacegroup"]) for item in results]
-
-        get_limits(params = index['integration'],
+        try:
+          get_limits(params = index['integration'],
                    file = obs,
                    verbose = False,
                    sublattice_flag = True,
                    override_maximum_bins = 12,
                    horizons_phil = self.horizons_phil)
+        except: # intentional
+          #Numpy multiarray.error raises an object not derived from Exception
+          print "Catch any problem with sublattice analysis & numpy masked arrays"
+          return
 
 class limits_fix_engine:
   def __init__(self):
