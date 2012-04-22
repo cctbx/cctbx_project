@@ -283,6 +283,9 @@ class probe_clashscore_manager(object):
       bad_clashes += k+':'+str(clash_hash[k])+'\n'
     probe_info = easy_run.fully_buffered(self.probe_atom_txt,
       stdin_lines=pdb_string).raise_if_errors().stdout_lines
+    if (len(probe_info) == 0) :
+      raise RuntimeError("Empty PROBE output.")
+    natoms = 0
     for line in probe_info :
       dump, natoms = line.split(":")
 
