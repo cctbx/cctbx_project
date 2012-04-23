@@ -6,9 +6,18 @@ import iotbx.pdb
 def update_restraints(hierarchy,
                       restraints_manager,
                       altloc_weights_object={},
+                      sqrt_func=True,
+                      func_factor=1,
+                      bond_weighting=True,
+                      angle_weighting=True,
                       log=None,
                       verbose=False,
                       ):
+  if verbose:
+    print 'sqrt_func',sqrt_func
+    print 'func_factor',func_factor
+    print 'bond_weighting',bond_weighting
+    print 'angle_weighting',angle_weighting
   bond_params_table = restraints_manager.geometry.bond_params_table
   altloc_bonds = {}
   previous_residue_group = None
@@ -113,7 +122,6 @@ def update_restraints(hierarchy,
                 print atom2.format_atom_record()
                 print bond.distance_ideal, bond.weight
 
-  sqrt_occ = True #and False
   factor = 10
   i_seqs = {}
   for key in altloc_bonds:
@@ -123,21 +131,24 @@ def update_restraints(hierarchy,
     else:
       altloc_weights_object[key] = bond.weight
     occ = max(0.1, occ)
-    if sqrt_occ:
-      bond.weight = bond.weight/math.sqrt(occ)
-    else:
-      bond.weight = bond.weight/occ*factor
+    if bond_weighting:
+      #print 'weight',key,bond.weight,occ,
+      if sqrt_func:
+        bond.weight = bond.weight/math.sqrt(occ)
+      else:
+        bond.weight = bond.weight/occ*factor
+      #print bond.weight
     i_seqs[key[0]]=occ
     i_seqs[key[1]]=occ
 
-  if False:
+  if angle_weighting:
     for angle_proxy in restraints_manager.geometry.angle_proxies:
       if angle_proxy.i_seqs[0] not in i_seqs: continue
       if angle_proxy.i_seqs[1] not in i_seqs: continue
       if angle_proxy.i_seqs[2] not in i_seqs: continue
       occ = i_seqs[angle_proxy.i_seqs[1]]
       occ = max(0.1, occ)
-      if sqrt_occ:
+      if sqrt_func:
         angle_proxy.weight = angle_proxy.weight/math.sqrt(occ)
       else:
         angle_proxy.weight = angle_proxy.weight/occ*factor

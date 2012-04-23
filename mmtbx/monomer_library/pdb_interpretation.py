@@ -91,8 +91,19 @@ test_cdl_params = """\
 """
 
 master_params_str = """\
-  altloc_weighting = False
-    .type = bool
+  altloc_weighting
+  {
+    weight = False
+      .type = bool
+    bonds = True
+      .type = bool
+    angles = True
+      .type = bool
+    factor = 1
+      .type = float
+    sqrt = True
+      .type = bool
+  }
   cdl = False
     .type = bool
     .short_caption = Use Conformation-Dependent Library

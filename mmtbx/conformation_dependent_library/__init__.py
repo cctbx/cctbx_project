@@ -384,6 +384,7 @@ def update_restraints(hierarchy,
       atom.xyz = sites_cart[j_seq]
       #atom_lookup[atom.id_str()] = j_seq
 
+  threes = None
   for threes in generate_protein_threes(hierarchy,
                                         restraints_manager,
                                         #verbose=verbose,
@@ -408,7 +409,7 @@ def update_restraints(hierarchy,
                          )
   if registry.n: threes.apply_average_updates(registry)
   restraints_manager.geometry.reset_internals()
-  if verbose and threes.errors:
+  if verbose and threes and threes.errors:
     if log:
       log.write("  Residues not completely updated with CDL restraints\n\n")
     for line in threes.errors:
