@@ -40,6 +40,8 @@ def exercise_get_amplitudes_and_get_phases_deg():
     parameter_scope="amplitudes",
     parameter_name="labels")
   assert str(ampl.info()) == "tmp1.mtz:F0"
+  ampl = reflection_file_srv.get_miller_array(labels="F0")
+  assert str(ampl.info()) == "tmp1.mtz:F0"
   mtz_dataset.add_miller_array(
     miller_array=input_arrays[1], column_root_label="F1")
   mtz_dataset.mtz_object().write("tmp2.mtz")
