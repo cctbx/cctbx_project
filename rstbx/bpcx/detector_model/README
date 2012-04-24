@@ -1,0 +1,18 @@
+This README is somewhat of a temporary document while this code is
+developed, before it is incorporated into the CCTBX build system.
+
+Here we are transferring code from the bpcx_regression repository that
+deals with the detector model, and translating it into C++. Following
+this, Python bindings will be made and the tests in the original code
+will be run, leaning on the C++ classes. Finally, the BPCX Use Case
+code will be modified to use the detector model.
+
+That, at least, is a statement of intention. 
+
+At this moment, a trivial test can be compiled with something similar to
+the following:
+
+export CCTBX_SRC=/home/david/bsx/cctbx-svn/sources
+g++ -Wall -c  -I$CCTBX_SRC/boost -I$CCTBX_SRC/cctbx_project -Iinclude -I$CCTBX_SRC/include -I$CCTBX_SRC/cctbx_project/include -I$CCTBX_SRC/annlib -I$CCTBX_SRC/annlib/src -I$CCTBX_SRC/annlib/include -I$CCTBX_SRC/annlib_adaptbx/include -I$CCTBX_SRC/cctbx_project/annlib_adaptbx/include $CCTBX_SRC/cctbx_project/rstbx/bpcx/detector_model/sensor.cpp
+g++ -Wall -c  -I$CCTBX_SRC/boost -I$CCTBX_SRC/cctbx_project -Iinclude -I$CCTBX_SRC/include -I$CCTBX_SRC/cctbx_project/include -I$CCTBX_SRC/annlib -I$CCTBX_SRC/annlib/src -I$CCTBX_SRC/annlib/include -I$CCTBX_SRC/annlib_adaptbx/include -I$CCTBX_SRC/cctbx_project/annlib_adaptbx/include $CCTBX_SRC/cctbx_project/rstbx/bpcx/detector_model/tst_sensor.cpp
+g++ sensor.o tst_sensor.o -o tst_sensor
