@@ -24,10 +24,6 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
 
   def __init__(self,
                address,
-               calib_dir              = None,
-               common_mode_correction = "none",
-               dark_path              = None,
-               dark_stddev            = None,
                dispatch               = None,
                integration_dirname    = None,
                integration_basename   = None,
@@ -38,18 +34,14 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
                distl_flags            = None,
                threshold              = None,
                xtal_target            = None,
-               negate_hits            = False):
+               negate_hits            = False,
+               **kwds):
     """The mod_hitfind class constructor stores the parameters passed
     from the pyana configuration file in instance variables.  All
     parameters, except @p address are optional, and hence need not be
     defined in pyana.cfg.
 
     @param address      Address string XXX Que?!
-    @param calib_dir    Directory with calibration information
-    @param common_mode_correction The type of common mode correction to apply
-    @param dark_path    Path to input average dark image XXX dark_avg_path
-    @param dark_stddev  Path to input standard deviation dark image,
-                        required if @p dark_path is given XXX dark_stddev_path
     @param dispatch     Function to call
     @param out_dirname  Directory portion of output image
     @param out_basename Filename prefix of output image
@@ -58,12 +50,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     @param threshold    Minimum value in region of interest to pass
     """
 
-    super(mod_hitfind, self).__init__(
-      address                = address,
-      calib_dir              = calib_dir,
-      common_mode_correction = common_mode_correction,
-      dark_path              = dark_path,
-      dark_stddev            = dark_stddev)
+    super(mod_hitfind, self).__init__(address=address, **kwds)
 
     self.m_dispatch             = cspad_tbx.getOptString(dispatch)
     self.m_integration_basename = cspad_tbx.getOptString(integration_basename)
@@ -160,7 +147,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       elif (self.m_distl_min_peaks is not None):
 
         peak_heights,outvalue = self.distl_filter(
-          self.cspad_img.iround(),
+          self.cspad_img.iround(), # XXX correct?
           self.distance,
           self.timestamp,
           self.wavelength)
@@ -194,7 +181,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       active_areas    = self.active_areas,
       beam_center_x   = cspad_tbx.pixel_size * self.beam_center[0],
       beam_center_y   = cspad_tbx.pixel_size * self.beam_center[1],
-      data            = self.cspad_img.iround(),
+      data            = self.cspad_img.iround(), # XXX ouch!
       distance        = self.distance,
       timestamp       = self.timestamp,
       sequence_number = self.nshots,
