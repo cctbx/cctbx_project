@@ -36,7 +36,8 @@ public:
                        const string & name,
                        const int rank,
                        const hsize_t * dimensions,
-                       const double * data);
+                       const double * data,
+		       const bool signal);
 };
 
 string ersatz_nexus_file_name(const int index);

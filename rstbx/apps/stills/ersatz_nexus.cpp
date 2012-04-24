@@ -8,6 +8,8 @@ ersatz_nexus::ersatz_nexus(const string & name)
   H5Pset_fclose_degree(fapl, H5F_CLOSE_STRONG);
   fid = H5Fcreate(name.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, fapl);
   H5Pclose(fapl);
+
+  create_attribute(fid, "NXroot");
 }
 
 ersatz_nexus::~ersatz_nexus()
@@ -20,8 +22,8 @@ hid_t ersatz_nexus::create_group(const string & name)
 {
   hid_t gid;
 
-  gid = H5Gcreate(fid, (char *) name.c_str(), H5P_DEFAULT, H5P_DEFAULT, 
-		  H5P_DEFAULT);
+  gid = H5Gcreate(fid, (char *) name.c_str(), H5P_DEFAULT, H5P_DEFAULT,
+                  H5P_DEFAULT);
 
   return gid;
 }
@@ -79,7 +81,8 @@ void ersatz_nexus::add_double_data(const hid_t gid,
                                    const string & name,
                                    const int rank,
                                    const hsize_t * dimensions,
-                                   const double * data)
+                                   const double * data,
+				   const bool signal)
 {
   hid_t datatype, dataspace, dataprop, dataid;
   hid_t atts, atttype, attid;
@@ -97,15 +100,30 @@ void ersatz_nexus::add_double_data(const hid_t gid,
 
   /* add the signal flag as value 1, no idea what this does */
 
+  if (signal) {
+    atts = H5Screate(H5S_SCALAR);
+    atttype = H5Tcopy(H5T_NATIVE_INT);
+    H5Tset_size(atttype, 1);
+    attid = H5Acreate(dataid, "signal", atttype, atts, H5P_DEFAULT, H5P_DEFAULT);
+    signal_flag = 1;
+    H5Awrite(attid, atttype, & signal_flag);
+    H5Sclose(atts);
+    H5Tclose(atttype);
+    H5Aclose(attid);
+  }
+
+  /* tell the interpreting program to do so as an image */
+
   atts = H5Screate(H5S_SCALAR);
-  atttype = H5Tcopy(H5T_NATIVE_INT);
-  H5Tset_size(atttype, 1);
-  attid = H5Acreate(dataid, "signal", atttype, atts, H5P_DEFAULT, H5P_DEFAULT);
-  signal_flag = 1;
-  H5Awrite(attid, atttype, & signal_flag);
+  atttype = H5Tcopy(H5T_C_S1);
+  H5Tset_size(atttype, strlen("image"));
+  attid = H5Acreate(dataid, "interpretation", atttype, atts, 
+		    H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(attid, atttype, (char *) "image");
   H5Sclose(atts);
   H5Tclose(atttype);
   H5Aclose(attid);
+
   H5Dclose(dataid);
 }
 
@@ -123,16 +141,16 @@ string group_name(const char * prefix,
 {
     ostringstream group_name;
     group_name << prefix <<
-      setw(4) << h <<
-      setw(4) << k <<
-      setw(4) << l;
+      "(" << h <<
+      "," << k <<
+      "," << l << ")";
     return group_name.rdbuf()->str();
 }
 
 int main_test(int argc,
               char ** argv)
 {
-  int * data;
+  double * data;
   int i, j, k, rank, nx, ny;
   hid_t gid;
   hsize_t dim[2];
@@ -150,7 +168,7 @@ int main_test(int argc,
   nx = 100;
   ny = 100;
 
-  data = (int *) malloc (sizeof(int) * nx * ny);
+  data = (double *) malloc (sizeof(double) * nx * ny);
 
   dim[0] = ny; dim[1] = nx;
   rank = 2;
@@ -172,7 +190,7 @@ int main_test(int argc,
 
     sprintf(data_name, "data%03d", k);
 
-    en.add_int_data(gid, data_name, rank, dim, data);
+    en.add_double_data(gid, data_name, rank, dim, data, true);
   }
 
   free(data);
