@@ -61,7 +61,7 @@ class manager (object) :
   def save_file (self, input_file=None, file_name=None) :
     if (input_file is None) :
       input_file = self.open_file(file_name)
-    input_file.assert_file_type(self.file_type)
+    input_file.check_file_type(self.file_type)
     file_name = input_file.file_name
     self._cached_input_files[file_name] = input_file
     self.add_file_callback(file_name)
