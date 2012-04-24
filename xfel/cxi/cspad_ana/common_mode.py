@@ -63,9 +63,10 @@ class common_mode_correction(mod_event_info):
                            change).
     """
 
+    # Cannot use the super().__init__() construct here, because
+    # common_mode_correction refers to the argument, and not the
+    # class.
     mod_event_info.__init__(self, address=address)
-    # this doesn't work because the class name is reused as an argument!
-    #super(common_mode_correction, self).__init__(address=address)
 
     self.dark_path = cspad_tbx.getOptString(dark_path)
     self.dark_stddev = cspad_tbx.getOptString(dark_stddev)
