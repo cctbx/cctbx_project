@@ -476,6 +476,22 @@ class reflection_file_server(object):
       raise Sorry("No reflection data in file: %s" % file_name)
     return result
 
+  def get_miller_array (self, labels, file_name=None) :
+    if (file_name is None) :
+      miller_arrays = self.miller_arrays
+    else :
+      canonical_file_name = libtbx.path.canonical_path(file_name)
+      miller_arrays = self.file_name_miller_arrays[canonical_file_name]
+    for array in miller_arrays :
+      if (isinstance(labels, str)) :
+        if (array.info().label_string() == labels) :
+          return array
+      else :
+        assert (isinstance(labels, list))
+        if (array.info().labels == labels) :
+          return array
+    return None
+
   def get_amplitudes(self,
         file_name,
         labels,
