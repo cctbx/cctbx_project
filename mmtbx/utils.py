@@ -1699,7 +1699,7 @@ class process_command_line_args(object):
                 self.reflection_file_names.append(arg)
                 arg_is_processed = True
               else:
-                cif_object = cif.reader(file_path=arg).model()
+                cif_object = cif.reader(file_path=arg, strict=False).model()
           except KeyboardInterrupt: raise
           except Exception: pass
           else:
