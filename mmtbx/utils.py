@@ -205,9 +205,8 @@ data_and_flags_str = """\
       .expert_level=2
     generate = False
       .type=bool
-      .short_caption = Generate new test set
+      .short_caption = Generate new R-free flags
       .help = Generate R-free flags (if not available in input files)
-      .expert_level=2
     %s
   }
 """ % (data_and_flags_str_part1,
