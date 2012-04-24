@@ -532,6 +532,7 @@ class compute_map_coefficients(object):
         # XXX
         if(fmodel.__class__.__name__ == "twin_model_manager") :
           if (mcp.map_type == "anomalous") :
+            print >> log, "Anomalous maps not supported when a twin law is used."
             continue
           elif (mcp.isotropize) :
             mcp.isotropize = False
