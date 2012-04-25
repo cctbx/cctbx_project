@@ -3,6 +3,7 @@ import os
 def integrate_one_image(data, **kwargs):
   from display_spots import run_one_index_core
   from labelit.dptbx.error import NoAutoIndex
+  from labelit.exception import AutoIndexError
   from libtbx.utils import Sorry
   from cxi_user.xfel_targets import targets
 
@@ -35,15 +36,29 @@ def integrate_one_image(data, **kwargs):
           ] + targets[data["xtal_target"]]
 
   from spotfinder.applications.xfel import cxi_phil
+  from spotfinder.exception import SpotfinderError
   horizons_phil = cxi_phil.cxi_versioned_extract(args)
   horizons_phil.indexing.data = data
 
   try:
     return run_one_index_core(horizons_phil)
+  except AutoIndexError,e:
+    print "AutoIndexError"
+    print e
+    import traceback
+    traceback.print_exc()
+  except ImportError,e:
+    print "ImportError"
+    print e
+    import traceback
+    traceback.print_exc()
   except NoAutoIndex,e:
     print "NoAutoIndex"
     print e
   except Sorry,e:
+    print e
+  except SpotfinderError,e:
+    print "SpotfinderError"
     print e
   except ZeroDivisionError,e:
     print "ZeroDivisionError"
@@ -51,6 +66,8 @@ def integrate_one_image(data, **kwargs):
   except Exception,e:
     print "ANOTHER exception"
     print e
+    import traceback
+    traceback.print_exc()
 
 if __name__=="__main__":
   pass
