@@ -290,20 +290,27 @@ CCD_IMAGE_SATURATION=65535;
     return tile_manager_base(
       phil,beam=(int(self.beamx/self.pixel_size),
                  int(self.beamy/self.pixel_size)),
+           reference_image=self,
            size1=self.size1,
            size2=self.size2)
 
 
 class tile_manager_base(object):
 
-  def __init__(self,working_params,beam=None, size1=None, size2=None):
+  def __init__(self, working_params, beam=None, size1=None, size2=None,
+               reference_image=None):
     self.working_params = working_params
     self.beam = beam # direct beam position supplied as slow,fast pixels
     self.size1 = size1
     self.size2 = size2
+    self.reference_image = reference_image
 
-  def effective_tiling_as_flex_int(self, reapply_peripheral_margin=False, **kwargs):
+  def effective_tiling_as_flex_int(self, reapply_peripheral_margin=False,
+                                   reference_image=None, **kwargs):
     """Some documentation goes here"""
+
+    if reference_image is not None:
+      self.reference_image = reference_image
 
     IT = self.effective_tiling_as_flex_int_impl(**kwargs)
 
@@ -312,10 +319,10 @@ class tile_manager_base(object):
       try:    peripheral_margin = self.working_params.distl.peripheral_margin
       except Exception: peripheral_margin = 2
       for i in xrange(len(IT) // 4):
-          IT[4 * i + 0] += peripheral_margin
-          IT[4 * i + 1] += peripheral_margin
-          IT[4 * i + 2] -= peripheral_margin
-          IT[4 * i + 3] -= peripheral_margin
+        IT[4 * i + 0] += peripheral_margin
+        IT[4 * i + 1] += peripheral_margin
+        IT[4 * i + 2] -= peripheral_margin
+        IT[4 * i + 3] -= peripheral_margin
 
     if self.working_params.distl.tile_flags is not None:
       #sensors whose flags are set to zero are not analyzed by spotfinder
@@ -328,7 +335,28 @@ class tile_manager_base(object):
     return IT
 
   def effective_tiling_as_flex_int_impl(self, **kwargs):
-    """The detector is composed of a single tile"""
     from scitbx.array_family import flex
-    assert [self.size1, self.size2].count(None) == 0
-    return flex.int([0, 0, self.size1, self.size2])
+    assert self.reference_image is not None
+
+    IT = flex.int()
+    from iotbx.detectors import image_divider
+    # XXX TODO: replace this with DetectorImageBase.vendor_specific_null_value
+    from iotbx.detectors.adsc_module import vendor_specific_null_value
+    if self.reference_image.linearintdata is None:
+      self.reference_image.readHeader()
+      self.reference_image.read()
+    null_value = vendor_specific_null_value(self.reference_image)
+    divider = image_divider(
+      self.reference_image.linearintdata,
+      null_value
+      )
+
+    for i in range(divider.module_count()):
+      slow = divider.tile_slow_interval(i)
+      fast = divider.tile_fast_interval(i)
+      IT.append(slow.first)
+      IT.append(fast.first)
+      IT.append(slow.last+1)
+      IT.append(fast.last+1)
+
+    return IT
