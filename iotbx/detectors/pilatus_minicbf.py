@@ -127,47 +127,6 @@ class PilatusImage(DetectorImageBase):
       elif self.size1==619 and self.size2==487:
         self.vendortype="Pilatus-300K"
 
-  def get_tile_manager(self, phil):
-    TM = tile_manager(phil,beam=(int(self.beamx/self.pixel_size),
-                                 int(self.beamy/self.pixel_size)))
-    TM.size1 = self.size1
-    TM.size2 = self.size2
-    return TM
-
-class tile_manager:
-  def __init__(self,working_params,beam=None):
-    self.working_params = working_params
-    self.beam = beam # direct beam position supplied as slow,fast pixels
-
-  def effective_tiling_as_flex_int(self,reapply_peripheral_margin=False,**kwargs):
-    from scitbx.array_family import flex
-    IT = flex.int()
-
-    for islow in xrange(0,self.size1,212):
-      for ifast in xrange(0,self.size2,494):
-        IT.append(islow)
-        IT.append(ifast)
-        IT.append(islow+195)
-        IT.append(ifast+487)
-
-    if reapply_peripheral_margin:
-      try:    peripheral_margin = self.working_params.distl.peripheral_margin
-      except Exception: peripheral_margin = 0
-      for i in xrange(len(IT) // 4):
-          IT[4 * i + 0] += peripheral_margin
-          IT[4 * i + 1] += peripheral_margin
-          IT[4 * i + 2] -= peripheral_margin
-          IT[4 * i + 3] -= peripheral_margin
-
-    if self.working_params.distl.tile_flags is not None:
-      #sensors whose flags are set to zero are not analyzed by spotfinder
-      expand_flags=[]
-      for flag in self.working_params.distl.tile_flags :
-        expand_flags=expand_flags + [flag]*4
-      bool_flags = flex.bool( flex.int(expand_flags)==1 )
-      return IT.select(bool_flags)
-
-    return IT
 
 if __name__=='__main__':
   import sys
