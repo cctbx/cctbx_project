@@ -875,6 +875,7 @@ Si(2)
     y,-x+y,-z    3.1094
     x-y,x,-z     3.1094  sym. equiv.
 """)
+      #
       structure_plus = structure.deep_copy_scatterers()
       structure_plus.add_scatterer(xray.scatterer(
         label="O",
@@ -1141,6 +1142,25 @@ i_seq: 2
   assert asu_table.table()[2].size() == 0
   apat = asu_table.angle_pair_asu_table()
   assert apat.as_nested_lists() == [[0], [1], [2]]
+
+def exercise_pair_sym_table_tidy():
+  xs = trial_structure().select(flex.size_t([0,1]))
+  for s10 in [sgtbx.rt_mx(_) for _ in ["-y+1,x-y+1,-z+1/2", "-y+1,x-y+1,z"]]:
+    def check(i, j, s):
+      _ = crystal.pair_sym_table(size=2)
+      _[i].setdefault(j)
+      _[i][j].append(s)
+      sym_table = _.tidy(site_symmetry_table=xs.site_symmetry_table())
+      sio = StringIO()
+      sym_table.show(f=sio)
+      assert not show_diff(sio.getvalue(), """\
+i_seq: 0
+  j_seq: 1
+    -y+1,x-y+1,-z+1/2
+i_seq: 1
+""")
+    check(0, 1, s10)
+    check(1, 0, s10.inverse())
 
 def exercise_fix_for_missed_interaction_inside_asu():
   """
@@ -1566,6 +1586,7 @@ def run():
   exercise_symmetry()
   exercise_direct_space_asu()
   exercise_pair_tables()
+  exercise_pair_sym_table_tidy()
   exercise_fix_for_missed_interaction_inside_asu()
   exercise_all_bonds_from_inside_asu()
   exercise_coordination_sequences_simple()

@@ -1014,22 +1014,24 @@ class _(boost.python.injector, pair_sym_table):
   def tidy(self, site_symmetry_table):
     result = pair_sym_table(size=self.size())
     for i_seq,pair_sym_dict in enumerate(self):
-      ri = result[i_seq]
       for j_seq,sym_ops in pair_sym_dict.items():
-        if (j_seq < i_seq):
-          continue
         sepi_objs = []
         for rt_mx_ji in sym_ops:
+          if (i_seq <= j_seq):
+            i, j = i_seq, j_seq
+          else:
+            i, j, rt_mx_ji = j_seq, i_seq, rt_mx_ji.inverse()
           for sepi_obj in sepi_objs:
             if (sepi_obj.is_equivalent(rt_mx_ji=rt_mx_ji)):
               break
           else:
             sepi_obj = site_symmetry_table \
               .symmetry_equivalent_pair_interactions(
-                i_seq=i_seq, j_seq=j_seq, rt_mx_ji=rt_mx_ji)
+                i_seq=i, j_seq=j, rt_mx_ji=rt_mx_ji)
             sepi_objs.append(sepi_obj)
-        ri[j_seq] = pair_sym_ops()
-        rij = ri[j_seq]
+        ri = result[i]
+        ri[j] = pair_sym_ops()
+        rij = ri[j]
         for rt_mx_ji in sorted([sepi_obj.get()[0] for sepi_obj in sepi_objs]):
           rij.append(rt_mx_ji)
     return result
