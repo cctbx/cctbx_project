@@ -492,12 +492,13 @@ class manager(manager_mixin):
         crystal_symmetry = miller_array.crystal_symmetry())
     return result
 
-  def compute_f_calc(self, miller_array = None, twin=False):
+  def compute_f_calc(self, miller_array = None, twin=False, xray_structure=None):
+    xrs = xray_structure
+    if(xrs is None): xrs = self.xray_structure
     if(miller_array is None): miller_array = self.f_obs()
     p = self.sfg_params
     if(miller_array.indices().size()==0):
       raise RuntimeError("Empty miller_array.")
-    xrs = self.xray_structure
     return miller_array.structure_factors_from_scatterers(
       xray_structure               = xrs,
       algorithm                    = p.algorithm,

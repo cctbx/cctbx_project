@@ -73,10 +73,10 @@ class xh_connectivity_table2(object):
     for proxy in bond_proxies_simple:
       i_seq, j_seq = proxy.i_seqs
       i_x, i_h = None, None
-      if(scatterers[i_seq].element_symbol() in ["H", "D"]):
+      if(scatterers[i_seq].element_symbol().upper() in ["H", "D"]):
         i_h = i_seq
         i_x = j_seq
-      if(scatterers[j_seq].element_symbol() in ["H", "D"]):
+      if(scatterers[j_seq].element_symbol().upper() in ["H", "D"]):
         i_h = j_seq
         i_x = i_seq
       if([i_x, i_h].count(None)==0):
@@ -87,17 +87,22 @@ class xh_connectivity_table2(object):
         self.table.setdefault(i_h, []).append([i_x, i_h, const_vect,
           proxy.distance_ideal, distance_model])
     for p in geometry.geometry.angle_proxies:
+      k,l,m = p.i_seqs
+      els = [scatterers[k].element_symbol().upper(),
+             scatterers[l].element_symbol().upper(),
+             scatterers[m].element_symbol().upper()]
       o = flex.double()
       h = []
       ih=None
-      for i in p.i_seqs:
-        s = scatterers[i]
-        o.append(s.occupancy)
-        sct = s.scattering_type.strip().upper()
-        h.append(sct)
-        if(sct in ["H","D"]): ih = i
-      if("H" in h and not o.all_eq(o[0])):
-        self.table.setdefault(ih).append(p.i_seqs)
+      if(els.count("H")<2 and els.count("D")<2):
+        for i in p.i_seqs:
+          s = scatterers[i]
+          o.append(s.occupancy)
+          sct = s.scattering_type.strip().upper()
+          h.append(sct)
+          if(sct in ["H","D"]): ih = i
+        if("H" in h and not o.all_eq(o[0])):
+          self.table.setdefault(ih).append(p.i_seqs)
 
 class manager(object):
   def __init__(self, xray_structure,
@@ -231,21 +236,26 @@ class manager(object):
   def reset_occupancies_for_hydrogens(self):
     if(self.restraints_manager is None): return
     hd_sel = self.xray_structure.hd_selection()
+    scatterers = self.xray_structure.scatterers()
     if(hd_sel.count(True) > 0):
       xh_conn_table = self.xh_connectivity_table()
       qi = self.xray_structure.scatterers().extract_occupancies()
       ct = self.xh_connectivity_table2()
       for t_ in ct.values():
         i_x, i_h = t_[0][0],t_[0][1]
-        occ = flex.double()
-        for t in t_:
-          if(len(t) != 5):
-            for i in t:
-              if(i != i_h):
-                occ.append(qi[i])
-            qi[i_h] = flex.min(occ)
-          else:
-            qi[i_h] = qi[i_x]
+        assert scatterers[i_h].element_symbol() in ["H", "D"]
+        if(scatterers[i_x].element_symbol() == "N"):
+          occ = flex.double()
+          for t in t_:
+            if(len(t) != 5):
+              for i in t:
+                if(i != i_h):
+                  occ.append(qi[i])
+              qi[i_h] = flex.min(occ)
+            else:
+              qi[i_h] = qi[i_x]
+        else:
+          qi[i_h] = qi[i_x]
       if(self.refinement_flags.s_occupancies is not None):
         for rf1 in self.refinement_flags.s_occupancies:
           o=None
