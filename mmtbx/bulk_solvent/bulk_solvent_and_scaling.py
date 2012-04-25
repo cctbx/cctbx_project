@@ -367,8 +367,6 @@ class bulk_solvent_and_scales(object):
       if( do_update ):
         if( ksols.count(0) == len(ksols) ):
           bsol = 0.
-        else:
-          bsol = fmodel.b_sol()
         self.fmodels.update(k_sols = ksols, b_sol = bsol)
 
   def k_sol(self, i):
