@@ -11,7 +11,7 @@ class mod_event_info(object):
   """
 
 
-  def __init__(self, address):
+  def __init__(self, address, verbose=False):
     """The mod_event_info class constructor stores the
     parameters passed from the pyana configuration file in instance
     variables.
@@ -32,6 +32,7 @@ class mod_event_info(object):
     self.stats_logger.setLevel(logging.INFO)
 
     self.address = cspad_tbx.getOptString(address)
+    self.verbose = cspad_tbx.getOptBool(verbose)
     self.distance = None
     self.sifoil = None
     self.wavelength = None # The current wavelength - set by self.event()
@@ -86,6 +87,7 @@ class mod_event_info(object):
       self.logger.warn("event(): distance changed mid-run: % 8.4f -> % 8.4f" %
         (self.distance, distance))
     self.distance = distance
+    if self.verbose: self.logger.info("Distance: %.4f" %distance)
 
     sifoil = cspad_tbx.env_sifoil(env)
     if (sifoil is None):
@@ -97,6 +99,7 @@ class mod_event_info(object):
       self.logger.warn("event(): Si-foil changed mid-run: % 8i -> % 8d" %
         (self.sifoil, sifoil))
     self.sifoil = sifoil
+    if self.verbose: self.logger.info("Si-foil thickness: %i" %sifoil)
 
     self.timestamp = cspad_tbx.evt_timestamp(evt) # human readable format
     self.evt_time = cspad_tbx.evt_time(evt) # tuple of seconds, milliseconds
@@ -105,6 +108,7 @@ class mod_event_info(object):
       self.logger.warn("event(): no timestamp, shot skipped")
       evt.put(True, "skip_event")
       return
+    if self.verbose: self.logger.info(self.timestamp)
 
     self.wavelength = cspad_tbx.evt_wavelength(evt)
     if (self.wavelength is None):
@@ -112,6 +116,7 @@ class mod_event_info(object):
       self.logger.warn("event(): no wavelength, shot skipped")
       evt.put(True, "skip_event")
       return
+    if self.verbose: self.logger.info("Wavelength: %.4f" %self.wavelength)
 
     self.pulse_length = cspad_tbx.evt_pulse_length(evt)
     if (self.pulse_length is None):
@@ -119,7 +124,7 @@ class mod_event_info(object):
       self.logger.warn("event(): no pulse length, shot skipped")
       evt.put(True, "skip_event")
       return
-    self.logger.info("Pulse length: %s" %self.pulse_length)
+    if self.verbose: self.logger.info("Pulse length: %s" %self.pulse_length)
 
     self.beam_charge = cspad_tbx.evt_beam_charge(evt)
     if (self.beam_charge is None):
@@ -127,22 +132,23 @@ class mod_event_info(object):
       self.logger.warn("event(): no beam charge, shot skipped")
       evt.put(True, "skip_event")
       return
-    self.logger.info("Beam charge: %s" %self.beam_charge)
+    if self.verbose: self.logger.info("Beam charge: %s" %self.beam_charge)
 
     self.injector_xyz = cspad_tbx.env_injector_xyz(env)
-    if self.injector_xyz is not None:
-      self.logger.info("injector_z: %i" %self.injector_xyz[2].value)
+    #if self.injector_xyz is not None:
+      #self.logger.info("injector_z: %i" %self.injector_xyz[2].value)
 
     self.laser_1_status.set_status(cspad_tbx.env_laser_status(env, laser_id=1), self.evt_time)
     self.laser_4_status.set_status(cspad_tbx.env_laser_status(env, laser_id=4), self.evt_time)
     self.laser_1_ms_since_change = self.laser_1_status.ms_since_last_status_change(self.evt_time)
-    if self.laser_1_ms_since_change is not None:
-      self.logger.info("ms since laser 1 status change: %i" %self.laser_1_ms_since_change)
     self.laser_4_ms_since_change = self.laser_4_status.ms_since_last_status_change(self.evt_time)
-    if self.laser_4_ms_since_change is not None:
-      self.logger.info("ms since laser 4 status change: %i" %self.laser_4_ms_since_change)
-    self.logger.info("Laser 1 status: %i" %int(self.laser_1_status.status))
-    self.logger.info("Laser 4 status: %i" %int(self.laser_4_status.status))
+    if self.verbose:
+      if self.laser_1_ms_since_change is not None:
+        self.logger.info("ms since laser 1 status change: %i" %self.laser_1_ms_since_change)
+      if self.laser_4_ms_since_change is not None:
+        self.logger.info("ms since laser 4 status change: %i" %self.laser_4_ms_since_change)
+      self.logger.info("Laser 1 status: %i" %int(self.laser_1_status.status))
+      self.logger.info("Laser 4 status: %i" %int(self.laser_4_status.status))
 
 
   def endjob(self, env):
