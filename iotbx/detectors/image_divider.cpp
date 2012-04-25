@@ -98,15 +98,17 @@ Distl::image_divider::tile_slow_interval(const int& module_number)const{
   int n_fast = fast_tiles.size();
 
   int idx_slow = module_number / n_fast;
+  SCITBX_ASSERT(idx_slow < slow_tiles.size());
 
   return slow_tiles[idx_slow];
 }
 
 Distl::interval
 Distl::image_divider::tile_fast_interval(const int& module_number)const{
-  int n_slow = slow_tiles.size();
+  int n_fast = fast_tiles.size();
 
-  int idx_fast = module_number % n_slow;
+  int idx_fast = module_number % n_fast;
+  SCITBX_ASSERT(idx_fast < fast_tiles.size());
 
   return fast_tiles[idx_fast];
 }
