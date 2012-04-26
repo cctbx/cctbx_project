@@ -33,20 +33,12 @@ def run(args, distance_cutoff=3.5):
       default=1,
       help="Number of macro cycles per trial",
       metavar="INT")
-    .option(None, "--dev",
-      action="store_true",
-      default=False)
   ).process(args=args)
   if (len(command_line.args) == 0):
     command_line.parser.show_help()
     return
   co = command_line.options
-  if (co.dev):
-    print "DEVELOPMENT VERSION"
-    from cctbx.geometry_restraints import distance_least_squares_dev as dls
-    print
-  else:
-    from cctbx.geometry_restraints import distance_least_squares as dls
+  from cctbx.geometry_restraints import distance_least_squares as dls
   from iotbx.kriber import strudat
   for file_name in command_line.args:
     strudat_entries = strudat.read_all_entries(open(file_name))
