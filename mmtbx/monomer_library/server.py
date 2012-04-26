@@ -61,6 +61,12 @@ def mon_lib_list_cif(path=None, strict=False):
     relative_path_components=["list", "mon_lib_list.cif"],
     strict=strict)
 
+def geostd_list_cif(path=None, strict=False):
+  return mon_lib_cif_loader(
+    path=path,
+    relative_path_components=["list", "geostd_list.cif"],
+    strict=strict)
+
 def mon_lib_ener_lib_cif(path=None, strict=False):
   return mon_lib_cif_loader(
     path=path,
@@ -211,9 +217,55 @@ class process_cif_mixin(object):
 
 class server(process_cif_mixin):
 
-  def __init__(self, list_cif=None):
+  def __init__(self, list_cif=None, another_list_cif=None, verbose = False):
     if (list_cif is None):
       list_cif = mon_lib_list_cif()
+    if (another_list_cif is None):
+      # get the geostd CIF links object and merge
+      geostd_list_cif_obj = geostd_list_cif()
+      mon_lib_cif = list_cif.cif
+      geostd_cif = geostd_list_cif_obj.cif
+      for geostd_block_key in geostd_cif:
+        geostd_block = geostd_cif[geostd_block_key]
+        mon_lib_block = mon_lib_cif.get(geostd_block_key)
+        if mon_lib_block:
+          # add to loops row-wise
+          geostd_loop_key = geostd_block.keys()
+          if not geostd_loop_key: continue
+          geostd_loop_key = geostd_loop_key[0]
+          if geostd_loop_key.find(".")==-1: continue
+          geostd_loop_key = geostd_loop_key.split(".")[0]
+          geostd_loop = geostd_block.get(geostd_loop_key)
+          mon_lib_loop = mon_lib_block.get(geostd_loop_key)
+          if not mon_lib_loop: continue
+          if verbose: print '''
+%s
+  Adding rows to CIF
+    block "%s"
+      loop "%s
+%s
+''' % (
+            "-"*80,
+            geostd_block_key,
+            geostd_loop_key,
+            "-"*80,
+            )
+          for row in geostd_loop.iterrows():
+            if verbose:
+              for key in row:
+                print "    %-20s : %s" % (
+                  key.replace("%s." % geostd_loop_key, ""),
+                  row[key],
+                  )
+              print
+            mon_lib_loop.add_row(row.values())
+        else:
+          # add block
+          if verbose:
+            print '\n%s\n  Adding CIF block\n%s' % ("-"*80, "-"*80)
+            print geostd_block
+          mon_lib_cif[geostd_block_key] = geostd_block
+
     self.root_path = os.path.dirname(os.path.dirname(list_cif.path))
     self.geostd_path = os.path.join(os.path.dirname(self.root_path), "geostd")
     self.deriv_list_dict = {}
