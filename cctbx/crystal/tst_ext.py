@@ -464,6 +464,32 @@ def exercise_pair_tables():
   assert [len(d) for d in td] == [0,1,0]
   assert str(td[1][10][0])=="x,y,z"
   #
+  t = crystal.pair_sym_table(size=3)
+  t[0].setdefault(1)
+  t[0][1].append(sgtbx.rt_mx("-x,y,z"))
+  t[1].setdefault(0)
+  t[1][0].append(sgtbx.rt_mx("x,-y,-z"))
+  u = crystal.pair_sym_table(size=2)
+  u[0].setdefault(0)
+  u[0][0].append(sgtbx.rt_mx("x,-y,z"))
+  u[0].setdefault(1)
+  u[0][1].append(sgtbx.rt_mx("x,y,-z"))
+  t.add_pair_sym_table_in_place(other=u)
+  sio = StringIO()
+  t.show(f=sio)
+  assert not show_diff(sio.getvalue(), """\
+i_seq: 0
+  j_seq: 0
+    x,-y,z
+  j_seq: 1
+    -x,y,z
+    x,y,-z
+i_seq: 1
+  j_seq: 0
+    x,-y,-z
+i_seq: 2
+""")
+  #
   t = crystal.pair_asu_table_table(3)
   for d in t:
     assert len(d) == 0
