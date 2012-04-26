@@ -1268,6 +1268,15 @@ class _(boost.python.injector, pair_sym_table):
       result.append(d)
     return result
 
+  def add_pair_sym_table_in_place(self, other):
+    self_size = self.size()
+    assert other.size() <= self_size
+    for self_pair_sym_dict,other_pair_sym_dict in zip(self, other):
+      for j_seq,other_sym_ops in other_pair_sym_dict.items():
+        assert j_seq < self_size
+        self_pair_sym_dict.setdefault(j_seq)
+        self_pair_sym_dict[j_seq].extend(other_sym_ops)
+
 class _clustering_mix_in(object):
 
   def sites_cart(self):
