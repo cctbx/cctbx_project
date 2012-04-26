@@ -10,7 +10,7 @@ import cStringIO,operator
 
 def format(rows,
            comments=None,
-           has_header=False,
+           has_header=0,
            header_char='-',
            delim=' | ',
            justify='left',
@@ -33,6 +33,8 @@ def format(rows,
        - postfix: A string appended to each printed row.
        - wrapfunc: A function f(text) for wrapping text; each element in
          the table is first wrapped by this function."""
+    if has_header is True: has_header=1
+    if has_header is False: has_header=0
     # closure for breaking logical rows to physical, using wrapfunc
     def row_wrapper(row):
         new_rows = [wrapfunc(item).split('\n') for item in row]
@@ -63,7 +65,8 @@ def format(rows,
                 + delim.join([justify(str(item),width) for (item,width) in zip(row,max_widths)]) \
                 + postfix
             print >> output, line
-        if separate_rows or has_header: print >> output, row_separator; has_header=False
+        if separate_rows or has_header == 1: print >> output, row_separator
+        if has_header : has_header-=1
     if not separate_rows:
         if leading_and_terminal_separator:
             print >> output, row_separator
