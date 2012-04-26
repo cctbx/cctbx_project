@@ -303,7 +303,7 @@ class distance_and_repulsion_least_squares:
     print >> out
     minimized_structure.show_distances(
       pair_asu_table=si_o_bond_asu_table,
-      out=out).distances_info
+      out=out)
     print >> out
     sites_cart = minimized_structure.sites_cart()
     pair_proxies = geometry_restraints_manager.pair_proxies(
