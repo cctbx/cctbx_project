@@ -60,17 +60,7 @@ class mod_illumination_filter(object):
 
 
   def beginjob(self, evt, env):
-    """The beginjob() function initialises the last status change to
-    the beginning of the Unix epoch.  XXX Arbitrary--could choose the
-    smallest (negative) integers instead, the earliest time possible.
-
-    @param evt Event data object, a configure object
-    @param env Environment object
-    """
-
-    t = (0, 0)
-    self.laser_1.set_status(cspad_tbx.env_laser_status(env, laser_id=1), t)
-    self.laser_4.set_status(cspad_tbx.env_laser_status(env, laser_id=4), t)
+    pass
 
 
   def event(self, evt, env):
@@ -96,9 +86,11 @@ class mod_illumination_filter(object):
     self.laser_1.set_status(cspad_tbx.env_laser_status(env, laser_id=1), t)
     self.laser_4.set_status(cspad_tbx.env_laser_status(env, laser_id=4), t)
 
+    t1 = self.laser_1.ms_since_last_status_change(t)
+    t4 = self.laser_4.ms_since_last_status_change(t)
     if (self.laser_4.status or
-        self.laser_1.ms_since_last_status_change(t) < self._wait or
-        self.laser_4.ms_since_last_status_change(t) < self._wait):
+        (t4 is not None and t4 < self._wait) or
+        (t1 is not None and t1 < self._wait)):
       # If laser 4 is on or was switched off less than self._wait ms
       # ago, the shot falls in the "other" category.  If laser 1
       # changed its state less than self._wait ms ago the shot falls
