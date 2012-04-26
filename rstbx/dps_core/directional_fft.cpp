@@ -27,6 +27,7 @@ rstbx::Directional_FFT::Directional_FFT (
 
       m = 1 + (sztype)((pmax - pmin) * granularity * amax );
       m = primecheck(m);
+      m = std::max<int>(2,m); //Guard against extremely rare divide by zero with m==1
 
       delta_p = (pmax - pmin) / (m-1);
 
