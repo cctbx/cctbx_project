@@ -513,7 +513,7 @@ class loop(DictMixin):
   def iterrows(self):
     keys = self.keys()
     for j in range(self.size()):
-      yield dict(zip(keys, [self.values()[i][j] for i in range(len(self))]))
+      yield OrderedDict(zip(keys, [self.values()[i][j] for i in range(len(self))]))
 
   def sort(self, key=None, reverse=False):
     self._columns = OrderedDict(
