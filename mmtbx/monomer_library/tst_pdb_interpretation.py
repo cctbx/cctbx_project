@@ -1304,10 +1304,66 @@ def exercise_rna_dna_synonyms () :
       ignore_unknown_nonbonded_energy_types=False)
     assert (msg is None)
 
+def exercise_geostd_cif_links(mon_lib_srv, ener_lib):
+  raw_records = """\
+ATOM   6707  C1  MAN D9032     -82.149  64.388 127.264  1.00 20.00           C
+ATOM   6708  C2  MAN D9032     -82.661  63.644 128.508  1.00 20.00           C
+ATOM   6709  O2  MAN D9032     -81.755  62.603 128.885  1.00 20.00           O
+ATOM   6710  C3  MAN D9032     -83.112  64.561 129.660  1.00 20.00           C
+ATOM   6711  O3  MAN D9032     -83.036  63.857 130.877  1.00 20.00           O
+ATOM   6712  C4  MAN D9032     -82.378  65.900 129.641  1.00 20.00           C
+ATOM   6713  O4  MAN D9032     -82.870  66.786 130.611  1.00 20.00           O
+ATOM   6714  C5  MAN D9032     -82.589  66.508 128.255  1.00 20.00           C
+ATOM   6715  O5  MAN D9032     -81.778  65.758 127.405  1.00 20.00           O
+ATOM   6716  C6  MAN D9032     -82.234  68.002 128.113  1.00 20.00           C
+ATOM   6717  O6  MAN D9032     -83.296  68.629 127.421  1.00 20.00           O
+ATOM   6718  O1  MAN D8032     -82.173  69.386 124.623  1.00 20.00           O
+ATOM   6719  C1  MAN D8032     -82.135  70.338 125.650  1.00 20.00           C
+ATOM   6720  C2  MAN D8032     -83.046  69.904 126.785  1.00 20.00           C
+ATOM   6721  C3  MAN D8032     -83.124  71.033 127.800  1.00 20.00           C
+ATOM   6722  O3  MAN D8032     -83.760  70.573 128.974  1.00 20.00           O
+ATOM   6723  C4  MAN D8032     -81.746  71.580 128.181  1.00 20.00           C
+ATOM   6724  O4  MAN D8032     -81.878  72.934 128.571  1.00 20.00           O
+ATOM   6725  C5  MAN D8032     -80.638  71.462 127.125  1.00 20.00           C
+ATOM   6726  O5  MAN D8032     -80.827  70.430 126.159  1.00 20.00           O
+ATOM   6727  C6  MAN D8032     -79.314  71.191 127.833  1.00 20.00           C
+ATOM   6728  O6  MAN D8032     -79.563  70.916 129.196  1.00 20.00           O
+""".splitlines()
+  link_def = """\
+apply_cif_link {
+  data_link = ALPHA2-6
+  residue_selection_1 = chain D and resname MAN and resseq 9032
+  residue_selection_2 = chain D and resname MAN and resseq 8032
+}
+"""  
+  links_phil = iotbx.phil.parse(
+    mmtbx.monomer_library.pdb_interpretation.master_params_str,
+    process_includes=True,
+    )
+  links = libtbx.phil.parse(link_def)
+  params_links = links_phil.fetch(source=links)
+  #params_links.show()
+  params_links = params_links.extract()
+
+  log = StringIO()
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    file_name=None,
+    raw_records=raw_records,
+    #force_symmetry=True,
+    params=params_links,
+    log=log,
+    )
+  #print log.getvalue()
+  pat = "data_link: ALPHA2-6"
+  assert log.getvalue().find(pat) >= 0
+
 def run(args):
   assert len(args) == 0
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
+  exercise_geostd_cif_links(mon_lib_srv, ener_lib)
   exercise_handle_case_insensitive(mon_lib_srv, ener_lib)
   exercise_pdb_string(mon_lib_srv, ener_lib)
   exercise_cns_rna(mon_lib_srv, ener_lib)
