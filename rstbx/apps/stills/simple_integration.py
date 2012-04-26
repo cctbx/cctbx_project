@@ -236,6 +236,9 @@ class IntegrationMetaProcedure(simple_integration):
     self.incr_focus = []
     for frame in self.frames:
       focus = self.inputpd['masks'][frame][0:2]
+      if len(self.inputpd['masks'][frame]) < 3 or self.inputpd['masks'][frame][2] is None:
+        self.incr_focus.append( None )
+        continue; #no average profile; no pred/obs agreement; nothing possible
       average_profile = self.inputpd['masks'][frame][2]
       if verbose:
         box = self.inputpd['masks'][frame][3]
@@ -693,6 +696,7 @@ class IntegrationMetaProcedure(simple_integration):
     from scitbx.array_family import flex
     Incr = []
     Distsq = flex.double()
+    if self.incr_focus[image_number] == None: return []
     for i in xrange(-self.incr_focus[image_number][0],1+self.incr_focus[image_number][0]):
       for j in xrange(-self.incr_focus[image_number][1],1+self.incr_focus[image_number][1]):
         Incr.append(matrix.col((i,j)))
