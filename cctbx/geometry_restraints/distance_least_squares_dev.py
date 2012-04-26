@@ -63,12 +63,12 @@ def setup_nonbonded_params():
 
 class add_oxygen(object):
 
-  def __init__(self, si_structure, si_pair_sym_table):
+  def __init__(self, si_structure, si_si_sym_table):
     self.structure = si_structure.deep_copy_scatterers()
-    bond_sym_table = crystal.pair_sym_table(si_pair_sym_table.size())
+    bond_sym_table = crystal.pair_sym_table(si_si_sym_table.size())
     sites_frac = si_structure.sites_frac()
     i_oxygen = count(1)
-    for i_seq,pair_sym_dict in enumerate(si_pair_sym_table):
+    for i_seq,pair_sym_dict in enumerate(si_si_sym_table):
       site_frac_i = mx.col(sites_frac[i_seq])
       for j_seq,sym_ops in pair_sym_dict.items():
         assert j_seq >= i_seq
@@ -136,26 +136,26 @@ class distance_and_repulsion_least_squares:
     si_structure.show_summary(f=out).show_scatterers(f=out)
     print >> out
     out.flush()
-    def get_si_pair_sym_table():
+    def get_si_si_sym_table():
       si_asu_mappings = si_structure.asu_mappings(
         buffer_thickness=distance_cutoff)
-      si_pair_asu_table = crystal.pair_asu_table(
-        asu_mappings=si_asu_mappings)
-      si_pair_asu_table.add_all_pairs(distance_cutoff=distance_cutoff)
-      si_pair_sym_table = si_pair_asu_table.extract_pair_sym_table()
+      asu_table = crystal.pair_asu_table(asu_mappings=si_asu_mappings)
+      asu_table.add_all_pairs(distance_cutoff=distance_cutoff)
+      si_si_sym_table = asu_table.extract_pair_sym_table()
       si_pair_counts = si_structure.pair_sym_table_show_distances(
-        pair_sym_table=si_pair_sym_table,
+        pair_sym_table=si_si_sym_table,
         out=out)
       if (connectivities is not None):
         assert list(si_pair_counts) == connectivities
       print >> out
-      return si_pair_sym_table, si_pair_counts
-    si_pair_sym_table, si_pair_counts = get_si_pair_sym_table()
+      return si_si_sym_table, si_pair_counts
+    si_si_sym_table, si_pair_counts = get_si_si_sym_table()
     out.flush()
     si_o = add_oxygen(
       si_structure=si_structure,
-      si_pair_sym_table=si_pair_sym_table)
+      si_si_sym_table=si_si_sym_table)
     si_o.structure.show_summary(f=out).show_scatterers(f=out)
+    si_o_sst = si_o.structure.site_symmetry_table()
     print >> out
     out.flush()
     si_o_pair_counts = si_o.structure.pair_sym_table_show_distances(
@@ -178,19 +178,17 @@ class distance_and_repulsion_least_squares:
       assert o_si_o_pair_counts[n_si:].all_eq(6)
     print >> out
     out.flush()
-    return # XXX
-    shell_asu_tables = crystal.coordination_sequences.shell_asu_tables(
-      pair_asu_table=si_o_bond_asu_table,
+    shell_sym_tables = crystal.coordination_sequences.shell_sym_tables(
+      full_pair_sym_table=si_o.bond_sym_table.full_connectivity(
+        site_symmetry_table=si_o_sst),
+      site_symmetry_table=si_o_sst,
       max_shell=3)
     if (1):
-      si_o_bond_asu_table.add_pair_sym_table(
-        sym_table=si_pair_asu_table.extract_pair_sym_table())
+      shell_sym_tables[0].add_pair_sym_table_in_place(other=si_si_sym_table)
     if (1):
-      si_o_bond_asu_table.add_pair_sym_table(
-        sym_table=o_si_o_asu_table.extract_pair_sym_table())
-    shell_sym_tables = [si_o_bond_asu_table.extract_pair_sym_table()]
-    for shell_asu_table in shell_asu_tables[1:]:
-      shell_sym_tables.append(shell_asu_table.extract_pair_sym_table())
+      shell_sym_tables[0].add_pair_sym_table_in_place(other=o_si_o_sym_table)
+    shell_sym_tables = [_.tidy(site_symmetry_table=si_o_sst)
+      for _ in shell_sym_tables]
     bond_params_table = setup_bond_params_table(
       structure=si_o.structure,
       bond_sym_table=shell_sym_tables[0])
@@ -212,7 +210,7 @@ class distance_and_repulsion_least_squares:
       nonbonded_function = geometry_restraints.prolsq_repulsion_function()
     geometry_restraints_manager = geometry_restraints.manager.manager(
       crystal_symmetry=si_o.structure,
-      site_symmetry_table=si_o.structure.site_symmetry_table(),
+      site_symmetry_table=si_o_sst,
       bond_params_table=bond_params_table,
       shell_sym_tables=shell_sym_tables,
       nonbonded_params=nonbonded_params,
@@ -300,9 +298,9 @@ class distance_and_repulsion_least_squares:
       print >> out, "WARNING: LARGE final target value: %.6g" % (
         minimized[-1].final_target_result.target)
     print >> out
-    minimized_structure.show_distances(
-      pair_asu_table=si_o_bond_asu_table,
-      out=out).distances_info
+    minimized_structure.pair_sym_table_show_distances(
+      pair_sym_table=shell_sym_tables[0],
+      out=out)
     print >> out
     sites_cart = minimized_structure.sites_cart()
     pair_proxies = geometry_restraints_manager.pair_proxies(
