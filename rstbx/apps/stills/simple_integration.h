@@ -507,7 +507,11 @@ namespace rstbx { namespace integration {
           BP.accumulate(k->first[0],k->first[1],
                         rawdata(k->first[0],k->first[1]));
         }
-        BP.finish();
+        try{
+          BP.finish();
+        } catch (rstbx::backplane_zero_determinant) {
+          continue; // not possible to fit backplane, skip this spot
+        }
 
         /*
         patch p;
