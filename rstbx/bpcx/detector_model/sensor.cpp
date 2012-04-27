@@ -15,7 +15,7 @@ rstbx::detector_model::sensor::sensor(
     D()
 {
     distance = origin * normal;
-    update();    
+    update();
 }
 
 // other getters are inline

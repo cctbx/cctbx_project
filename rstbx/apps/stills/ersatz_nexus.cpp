@@ -82,7 +82,7 @@ void ersatz_nexus::add_double_data(const hid_t gid,
                                    const int rank,
                                    const hsize_t * dimensions,
                                    const double * data,
-				   const bool signal)
+                                   const bool signal)
 {
   hid_t datatype, dataspace, dataprop, dataid;
   hid_t atts, atttype, attid;
@@ -117,8 +117,8 @@ void ersatz_nexus::add_double_data(const hid_t gid,
   atts = H5Screate(H5S_SCALAR);
   atttype = H5Tcopy(H5T_C_S1);
   H5Tset_size(atttype, strlen("image"));
-  attid = H5Acreate(dataid, "interpretation", atttype, atts, 
-		    H5P_DEFAULT, H5P_DEFAULT);
+  attid = H5Acreate(dataid, "interpretation", atttype, atts,
+                    H5P_DEFAULT, H5P_DEFAULT);
   H5Awrite(attid, atttype, (char *) "image");
   H5Sclose(atts);
   H5Tclose(atttype);
