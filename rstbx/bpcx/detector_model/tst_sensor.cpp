@@ -12,8 +12,8 @@ int main()
     scitbx::vec2<double> lim(0, 50);
 
     rstbx::detector_model::sensor s(origin, dir1, dir2, lim, lim);
-    
+
     cout << s.get_distance() << endl;
-    
+
     return 0;
 }
