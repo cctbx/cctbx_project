@@ -1,0 +1,6 @@
+Import("env_etc")
+if (not env_etc.no_boost_python):
+  Import("env_boost_python_ext")
+  env_boost_python_ext.SharedLibrary(
+    target="#lib/ipctbx_ext",
+    source="ext.cpp")
