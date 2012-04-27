@@ -345,7 +345,7 @@ class IntegrationMetaProcedure(simple_integration):
       ACCEPTABLE_LIMIT = 2
       limit = int(0.33 * len(sorted_cl)) # best 1/3 of data are assumed to be correctly modeled.
       if (limit <= ACCEPTABLE_LIMIT):
-        raise Sorry("Not enough indexed spots to reject outliers; have %d need %d" % (limit, ACCEPTABLE_LIMIT))
+        raise Sorry("Not enough indexed spots to reject outliers; have %d need >%d" % (limit, ACCEPTABLE_LIMIT))
 
       y_data = flex.double(len(sorted_cl))
       for i in xrange(len(y_data)):
@@ -462,6 +462,8 @@ class IntegrationMetaProcedure(simple_integration):
     MAXOVER=6
     OS_adapt = AnnAdaptor(data=query,dim=2,k=MAXOVER) #six near nbrs
     OS_adapt.query(query)
+    if self.incr_focus[self.image_number] is None:
+      raise Sorry("No observed/predicted spot agreement; no Spotfinder masks; skip integration")
     nbr_cutoff = 2.0* max(self.incr_focus[self.image_number])
     FRAME = int(nbr_cutoff/2)
     #print "The overlap cutoff is %d pixels"%nbr_cutoff
