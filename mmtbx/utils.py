@@ -649,7 +649,14 @@ will become meaningful only after many cycles of refinement.
       for i in xrange(2): print >> log, "*"*79
       print >> log
       if (not ignore_pdb_hexdigest):
-        raise Sorry("Please resolve the R-free flags mismatch.")
+        if ("PHENIX_GUI_ENVIRONMENT" in os.environ) :
+          log.flush()
+          raise Sorry("This model appears to have previously been refined "+
+            "against a different set of R-free flags.  Please resolve the "+
+            "mismatch; additional information and instructions are available "+
+            "at the end of the log output.")
+        else :
+          raise Sorry("Please resolve the R-free flags mismatch.")
 
 map_coefficents_params_str = """\
   file_name=None
