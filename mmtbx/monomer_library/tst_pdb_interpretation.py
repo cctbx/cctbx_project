@@ -1335,7 +1335,7 @@ apply_cif_link {
   residue_selection_1 = chain D and resname MAN and resseq 9032
   residue_selection_2 = chain D and resname MAN and resseq 8032
 }
-"""  
+"""
   links_phil = iotbx.phil.parse(
     mmtbx.monomer_library.pdb_interpretation.master_params_str,
     process_includes=True,
