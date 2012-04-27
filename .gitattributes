@@ -987,6 +987,12 @@ iotbx/tst_data_plots.py -text
 iotbx/tst_file_reader.py -text
 iotbx/tst_poscar.py svneol=native#text/x-python
 iotbx/utils.py svneol=native#text/x-python
+ipctbx/SConscript -text
+ipctbx/__init__.py svneol=native#text/x-python
+ipctbx/command_line/delete_all_segments.py svneol=native#text/x-python
+ipctbx/ext.cpp svneol=native#text/plain
+ipctbx/libtbx_config -text
+ipctbx/tst_ext.py svneol=native#text/x-python
 libtbx/assert_utils.py -text
 libtbx/binary_search.py svneol=native#text/x-python
 libtbx/callbacks.py -text
