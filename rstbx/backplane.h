@@ -2,7 +2,7 @@
 #define RSTBX_BACKPLANE_H
 
 namespace rstbx {
-
+struct backplane_zero_determinant {};
 struct backplane {
  public:
   int boxnbg;
@@ -95,6 +95,7 @@ struct corrected_backplane: public backplane {
                           Sum_pq,Sum_q2,Sum_q,
                           Sum_p,Sum_q,boxnbg);
     //scitbx::vec3<double> obs(Sum_xp,Sum_xq,Sum_x);
+    if (rossmann.determinant()==0.) {throw backplane_zero_determinant();}
     scitbx::mat3<double> rinv = rossmann.inverse();
     //scitbx::vec3<double> abc = rossmann.inverse()*obs;
     //a=abc[0]; b= abc[1]; c=abc[2];
