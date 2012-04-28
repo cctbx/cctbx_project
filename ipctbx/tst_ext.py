@@ -5,9 +5,9 @@ def exercise_1(repetition_factor=5, keep_segments=False):
   shmids = []
   for i in range(repetition_factor):
     data = flex.int_range(i,2*i+3)
-    shmids.append(ipctbx.copy_to_new_segment_int(data=data))
+    shmids.append(ipctbx.copy_to_new_segment(data=data))
     data = flex.int_range(i,2*i+4).as_double()
-    shmids.append(ipctbx.copy_to_new_segment_double(data=data))
+    shmids.append(ipctbx.copy_to_new_segment(data=data))
   for i,shmid in enumerate(shmids):
     if (i % 2 == 0):
       data = ipctbx.copy_from_segment_int(shmid)
