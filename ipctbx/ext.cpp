@@ -63,25 +63,27 @@ list_segment_ids(
   bool ignore_errors=false)
 {
   boost::python::list result;
-  struct shmid_ds shm_info;
-  int max_id = shmctl(0, SHM_INFO, &shm_info);
+  struct shm_info shm_info;
+  int max_id = shmctl(0, SHM_INFO,
+    reinterpret_cast<struct shmid_ds*>(&shm_info));
   if (max_id < 0) {
     if (ignore_errors) return result;
     std::string msg = strerror(errno);
     throw std::runtime_error("shmctl(SHM_INFO) failure: " + msg);
   }
-  for (int i=0;i<=max_id;i++) {
-    struct shmid_ds shm_stat;
-    int shmid = shmctl(i, SHM_STAT, &shm_stat);
-    if (shmid < 0) {
-      if (i == 0 && max_id == 0) break;
-      if (ignore_errors) continue;
-      std::string msg = strerror(errno);
-      throw std::runtime_error("shmctl(SHM_STAT) failure: " + msg);
-    }
-    if (attached_status == 0
-        || ((attached_status < 0) == (shm_stat.shm_nattch == 0))) {
-      result.append(shmid);
+  if (shm_info.used_ids > 0) {
+    for (int i=0;i<=max_id;i++) {
+      struct shmid_ds shm_stat;
+      int shmid = shmctl(i, SHM_STAT, &shm_stat);
+      if (shmid < 0) {
+        if (ignore_errors) continue;
+        std::string msg = strerror(errno);
+        throw std::runtime_error("shmctl(SHM_STAT) failure: " + msg);
+      }
+      if (attached_status == 0
+          || ((attached_status < 0) == (shm_stat.shm_nattch == 0))) {
+        result.append(shmid);
+      }
     }
   }
   return result;
