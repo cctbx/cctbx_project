@@ -381,6 +381,17 @@ class bulk_solvent_and_scales(object):
   def b_cart(self):
     return self.fmodels.fmodel.b_cart()
 
+  def format_scale_matrix(self, m=None, log=None):
+    sm = m
+    if(sm is None): sm = self.b_cart()
+    out = log
+    if(sm is None):
+      print >> log, "  k_anisotropic=1"
+      return
+    if(len(sm)<=6):
+      print >> out, "      b_cart(11,22,33,12,13,23):",\
+        ",".join([str("%8.4f"%i).strip() for i in sm])
+
   def u_star(self):
     return self.fmodels.fmodel.u_star()
 

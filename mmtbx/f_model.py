@@ -1125,7 +1125,11 @@ class manager(manager_mixin):
         print >> log, "    HD scattering refinement: %s k_h=%4.2f b_h=%-7.2f"%(
           get_r(self), self.k_h, self.b_h)
     if(remove_outliers): self.remove_outliers(use_model=True)
-    if(show): print >> log, "final: %s"%get_r(self)
+    if(show):
+      print >> log, "final: %s"%get_r(self)
+      print >> log
+      print >> log, "overall anisotropic scale matrix:"
+      russ.format_scale_matrix(log=log)
     return russ
 
   def update_solvent_and_scale(self, params = None, out = None, verbose=None,

@@ -602,6 +602,27 @@ class run(object):
       result_[i]=r
     return result_
 
+  def format_scale_matrix(self, m=None, log=None):
+    sm = m
+    if(sm is None): sm = self.scale_matrices
+    out = log
+    if(sm is None):
+      print >> log, "  k_anisotropic=1"
+      return
+    if(len(sm)<=6):
+      print >> out, "      b_cart(11,22,33,12,13,23):",\
+        ",".join([str("%8.4f"%i).strip() for i in sm])
+    else:
+      v0=[]
+      v1=[]
+      for i, a in enumerate(sm):
+        if(i in [0,2,4,6,8,10]): v1.append(a)
+        else: v0.append(a)
+      print >> out, "      V0:",\
+        ",".join([str("%8.4f"%i).strip() for i in v0])
+      print >> out, "      V1:",\
+        ",".join([str("%8.4f"%i).strip() for i in v1])
+
   def anisotropic_scaling(self, r_start):
     r_expanal, r_poly, r_expmin = None,None,None
     k_anisotropic_expanal, k_anisotropic_poly, \
@@ -640,7 +661,8 @@ class run(object):
         print >> self.log, "      r_poly   : %6.4f"%r_poly
     # pre-analyze
     force_to_use_expmin=False
-    if(self.auto and r_poly<r_expanal and (k_anisotropic_poly<=0).count(True)>0):
+    if(k_anisotropic_poly is not None and self.auto and r_poly<r_expanal and
+       (k_anisotropic_poly<=0).count(True)>0):
       force_to_use_expmin = True
       self.try_expmin = True
     # try expmin
@@ -672,8 +694,7 @@ class run(object):
       if(force_to_use_expmin):
         self.core = self.core.update(k_anisotropic = k_anisotropic_expmin)
         if(self.verbose):
-          print >> self.log, "      b_cart(11,22,33,12,13,23):",\
-            ",".join([str("%8.4f"%i).strip() for i in scale_matrix_expmin])
+          self.format_scale_matrix(m=scale_matrix_expmin)
         return
     # select best
     r = [(r_expanal, k_anisotropic_expanal, scale_matrix_expanal),
@@ -696,17 +717,5 @@ class run(object):
       self.core = self.core.update(k_anisotropic = k_anisotropic_best)
       r_aniso = self.r_factor()
       if(self.verbose):
+        self.format_scale_matrix()
         print >> self.log, "      r_final  : %6.4f"%r_aniso
-        if(len(scale_matrix_best)<=6):
-          print >> self.log, "      b_cart(11,22,33,12,13,23):",\
-            ",".join([str("%8.4f"%i).strip() for i in scale_matrix_best])
-        else:
-          v0=[]
-          v1=[]
-          for i, a in enumerate(scale_matrix_best):
-            if(i in [0,2,4,6,8,10]): v1.append(a)
-            else: v0.append(a)
-          print >> self.log, "      V0:",\
-            ",".join([str("%8.4f"%i).strip() for i in v0])
-          print >> self.log, "      V1:",\
-            ",".join([str("%8.4f"%i).strip() for i in v1])
