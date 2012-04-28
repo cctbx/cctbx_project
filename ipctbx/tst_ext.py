@@ -1,14 +1,20 @@
-def exercise_1(
-      number_of_segments=5,
-      number_of_integers=20,
-      keep_segments=False):
+def exercise_1(repetition_factor=5, keep_segments=False):
   import ipctbx
+  from scitbx.array_family import flex
+  from libtbx.math_utils import iround
   shmids = []
-  for _ in range(number_of_segments):
-    shmids.append(ipctbx.exercise_create_segment(number_of_integers))
-  for shmid in shmids:
-    matches = ipctbx.exercise_read_segment(shmid, number_of_integers)
-    assert matches == number_of_integers
+  for i in range(repetition_factor):
+    data = flex.int_range(i,2*i+3)
+    shmids.append(ipctbx.copy_to_new_segment_int(data=data))
+    data = flex.int_range(i,2*i+4).as_double()
+    shmids.append(ipctbx.copy_to_new_segment_double(data=data))
+  for i,shmid in enumerate(shmids):
+    if (i % 2 == 0):
+      data = ipctbx.copy_from_segment_int(shmid)
+      assert list(data) == range(i//2,i+3)
+    else:
+      data = ipctbx.copy_from_segment_double(shmid)
+      assert [iround(_) for _ in list(data)] == range(i//2,2*(i//2)+4)
   shmids_kernel = ipctbx.list_segment_ids(
     attached_status=1, ignore_errors=False)
   assert set(shmids_kernel).issuperset(set(shmids))
