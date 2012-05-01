@@ -2,7 +2,7 @@
 #
 # $Id$
 
-from iotbx.detectors.detectorbase import DetectorImageBase
+from iotbx.detectors.detectorbase import DetectorImageBase, tile_manager_base
 from scitbx.array_family          import flex
 import cPickle as pickle
 
@@ -178,12 +178,12 @@ class NpyImage(DetectorImageBase):
 
   def get_tile_manager(self, phil):
     return tile_manager(phil,beam=(int(self.beamx/self.pixel_size),
-                                   int(self.beamy/self.pixel_size)))
+                                   int(self.beamy/self.pixel_size)),
+                             size1=self.size1,
+                             size2=self.size2)
 
-class tile_manager:
-  def __init__(self,working_params,beam=None):
-    self.working_params = working_params
-    self.beam = beam # direct beam position supplied as slow,fast pixels
+
+class tile_manager(tile_manager_base):
 
   def effective_translations(self):
 
@@ -208,7 +208,7 @@ class tile_manager:
        yield (self.working_params.distl.tile_translations[2 * i + 0],
               self.working_params.distl.tile_translations[2 * i + 1])
 
-  def effective_tiling_as_flex_int(self,reapply_peripheral_margin=False,**kwargs):
+  def effective_tiling_as_flex_int_impl(self, **kwargs):
     import copy
     IT = flex.int(copy.copy(self.working_params.distl.detector_tiling))
 
@@ -231,24 +231,6 @@ class tile_manager:
         IT[4 * i + 1] += shift_fast
         IT[4 * i + 2] += shift_slow
         IT[4 * i + 3] += shift_fast
-
-    if reapply_peripheral_margin:
-      try:    peripheral_margin = self.working_params.distl.peripheral_margin
-      except Exception: peripheral_margin = 0
-      for i in xrange(len(self.working_params.distl.detector_tiling) // 4):
-          IT[4 * i + 0] += peripheral_margin
-          IT[4 * i + 1] += peripheral_margin
-          IT[4 * i + 2] -= peripheral_margin
-          IT[4 * i + 3] -= peripheral_margin
-
-    if self.working_params.distl.tile_flags is not None:
-      #ASICs whose flags are set to zero are not analyzed by spotfinder
-      expand_flags=[]
-      for flag in self.working_params.distl.tile_flags :
-        expand_flags=expand_flags + [flag]*4
-      bool_flags = flex.bool( flex.int(expand_flags)==1 )
-      return IT.select(bool_flags)
-
     return IT
 
 #if __name__=='__main__':
