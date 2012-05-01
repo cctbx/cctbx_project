@@ -80,10 +80,11 @@ def setup_process_gui_events (
 class event_agent (object) :
   def __init__ (self, window, **kwds) :
     self.window = window
+    self._kwds = dict(kwds)
     self.__dict__.update(kwds)
 
   def get_kwds (self) :
-    return {}
+    return self._kwds
 
   def callback_start (self, data) :
     kwds = self.get_kwds()
