@@ -61,6 +61,7 @@ mtz_file
     disable_unit_cell_check = False
       .type = bool
       .style = noauto
+      .short_caption = Disable unit cell isomorphism check
     disable_space_group_check = False
       .type = bool
       .style = noauto
@@ -412,7 +413,9 @@ class process_arrays (object) :
       if (array_uc is not None) and (not ignore_uc) :
         if not array_uc.is_similar_to(input_symm.unit_cell()) :
           raise Sorry(("The unit cell for the Miller array %s (%s) is "+
-            "significantly different than the output unit cell (%s).") %
+            "significantly different than the output unit cell (%s).  You "+
+            "can ignore this by setting disable_unit_cell_check=True (in "+
+            "the GUI, enable \"Disable unit cell isomorphism check\").") %
             (array_name, str(array_uc), str(input_symm.unit_cell())))
       new_array = miller_array.customized_copy(
         crystal_symmetry=input_symm).map_to_asu()
