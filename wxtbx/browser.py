@@ -33,7 +33,8 @@ class browser_frame (wx.Frame) :
         "and Windows at present.  (Original error: %s)") % _import_error)
     szr.Add(self.viewer, 1, wx.EXPAND)
     self.statusbar = self.CreateStatusBar()
-    self.SetInitialSize((1024,640))
+    if (wx.Platform != "__WXMSW__") :
+      self.SetInitialSize((1024,640))
     #self.Bind(wx.EVT_WINDOW_CREATE, self.OnShow)
 
   def SetHomepage (self, url) :
