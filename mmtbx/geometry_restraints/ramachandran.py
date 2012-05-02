@@ -32,10 +32,12 @@ master_phil = iotbx.phil.parse("""
   %s
   oldfield
     .short_caption = Oldfield potential parameters
+    .style = box auto_align
   {
     esd = 10.0
       .type = float
       .expert_level = 2
+      .short_caption = E.S.D.
     weight_scale = 1.0
       .type = float
       .expert_level = 2
@@ -53,6 +55,7 @@ master_phil = iotbx.phil.parse("""
   rama_exclude_sec_str = False
     .type = bool
     .expert_level = 1
+    .short_caption = Exclude secondary structure from Ramachandran restraints
 """ % potential_phil)
 
 def load_tables (params=None) :

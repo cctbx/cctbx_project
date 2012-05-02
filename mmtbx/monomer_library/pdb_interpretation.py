@@ -92,6 +92,8 @@ test_cdl_params = """\
 
 master_params_str = """\
   altloc_weighting
+    .expert_level = 2
+    .style = box noauto auto_align
   {
     weight = False
       .type = bool
@@ -150,6 +152,7 @@ master_params_str = """\
   chir_volume_esd = 0.2
     .type=float
     .optional=False
+    .short_caption = Chiral volume E.S.D.
   peptide_link
     .short_caption = Peptide link settings
     .style = box auto_align noauto
@@ -162,6 +165,7 @@ master_params_str = """\
         low resolution.  Probably not useful (and maybe even harmful) at \
         resolutions much higher than 3.5A.
       .expert_level = 2
+      .short_caption = Ramachandran restraints (not recommended)
     cis_threshold = 45
       .type = float
       .optional = False
@@ -184,9 +188,11 @@ master_params_str = """\
   default_vdw_distance = 1
     .type=float
     .optional=False
+    .short_caption = Default VDW distance
   min_vdw_distance = 1
     .type=float
     .optional=False
+    .short_caption = Minimum VDW distance
   nonbonded_buffer = 1
     .type=float
     .optional=False
@@ -206,8 +212,10 @@ master_params_str = """\
   vdw_1_4_factor = 0.8
     .type=float
     .optional=False
+    .short_caption = Scale factor for 1-4 VDW interactions
   min_distance_sym_equiv = 0.5
     .type=float
+    .short_caption = Min. symmetry-equivalent distance
   custom_nonbonded_symmetry_exclusions = None
     .optional = True
     .type = atom_selection
@@ -215,6 +223,7 @@ master_params_str = """\
   translate_cns_dna_rna_residue_names = None
     .type=bool
     .optional=False
+    .short_caption = Translate CNS DNA/RNA names
   proceed_with_excessive_length_bonds = False
     .type=bool
   rna_sugar_pucker_analysis
