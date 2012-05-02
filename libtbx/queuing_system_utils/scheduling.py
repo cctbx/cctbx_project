@@ -18,6 +18,21 @@ class Identifier(object):
     return "Identifier(id = %s)" % id( self )
 
 
+class Result(object):
+  """
+  Empty calculation result
+  """
+
+  def __init__(self, identifier):
+
+    self.identifier = identifier
+
+
+  def __repr__(self):
+
+    return "Result(id = %s)" % id( self.identifier )
+
+
 class NullProcessor(object):
   """
   A singleton class to not do anything
@@ -32,7 +47,7 @@ class NullProcessor(object):
   @staticmethod
   def finalize(identifier):
 
-    return identifier
+    return Result( identifier = identifier )
 
 
 class RetrieveTarget(object):
@@ -61,21 +76,6 @@ class RetrieveResult(object):
 
     self.identifier = identifier
     self.result = result
-
-
-  def __eq__(self, other):
-
-    return self.identifier == other
-
-
-  def __ne__(self, other):
-
-    return not ( self == other )
-
-
-  def __hash__(self):
-
-    return hash( self.identifier )
 
 
   def __repr__(self):
@@ -244,7 +244,15 @@ class Manager(object):
 
 class Adapter(object):
   """
-  Behaves like a manager, but uses a global resource to run the jobs
+  Behaves like a manager, but uses an external resource to run the jobs
+
+  Unintuitive feature:
+    It is possible to have adapter.empty() == True and adapter.full() == True
+    simultaneously, even if the number of cpus is not zero. This is because
+    adapter.empty() report the status of the adapter queue, while adapter.full()
+    reports that of the manager. This gives the behaviour one normally expects,
+    i.e. no submission if there are no free cpus, and empty status when
+    jobs submitted through the adaptor have all been processed.
   """
 
   def __init__(self, manager):
@@ -286,7 +294,7 @@ class Adapter(object):
 
   def full(self):
 
-    return self.manager.full() and not self.empty()
+    return self.manager.full()
 
 
   def wait(self):
@@ -314,8 +322,8 @@ class Adapter(object):
   def transfer_finished_jobs(self):
 
     for ( index, result ) in enumerate( list( self.manager.completed_jobs ) ):
-      if result in self.active_jobs:
+      if result.identifier in self.active_jobs:
         self.manager.completed_jobs.remove( result )
-        self.active_jobs.remove( result )
+        self.active_jobs.remove( result.identifier )
         self.completed_jobs.append( result )
 
