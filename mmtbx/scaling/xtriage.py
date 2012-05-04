@@ -753,10 +753,10 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
     reference_structure = None
     reference_params = params.scaling.input.xray_data.reference
     if (params.scaling.input.xray_data.calc_labels is not None) :
-      f_calc_miller = xray_data_server.get_xray_data(
+      f_calc_miller = xray_data_server.get_amplitudes(
         file_name = params.scaling.input.xray_data.file_name,
         labels = params.scaling.input.xray_data.calc_labels,
-        ignore_all_zeros = True,
+        convert_to_amplitudes_if_necessary=False,
         parameter_scope = 'scaling.input.xray_data',
         parameter_name = 'calc_labels'
       )
