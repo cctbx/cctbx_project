@@ -251,6 +251,7 @@ namespace cctbx { namespace geometry_restraints {
         bond_params(proxy.distance_ideal, proxy.weight, proxy.slack,
           proxy.limit, proxy.top_out)
       {
+        CCTBX_ASSERT(!proxy.rt_mx_ji || proxy.rt_mx_ji->is_unit_mx());
         for(int i=0;i<2;i++) {
           std::size_t i_seq = proxy.i_seqs[i];
           CCTBX_ASSERT(i_seq < sites_cart.size());
