@@ -1015,8 +1015,11 @@ class process_pdb_file_srv(object):
           for file_name in pdb_combined.unique_file_names]
       raw_records = pdb_combined.raw_records
     self.raw_records = raw_records
-    pdb_inp = iotbx.pdb.input(source_info = None,
-                              lines       = flex.std_string(raw_records))
+    try :
+      pdb_inp = iotbx.pdb.input(source_info = None,
+                                lines       = flex.std_string(raw_records))
+    except ValueError, e :
+      raise Sorry("PDB format error:\n%s" % str(e))
     if(pdb_inp.atoms().size() == 0):
       msg = ["No atomic coordinates found in PDB files:"]
       if(pdb_file_names is not None):
