@@ -25,17 +25,26 @@ crystal.symmetry(
   cs2 = eval(cspc)
   assert cs2.is_similar_symmetry(cs)
 
-def trial_structure():
+def trial_structure(choice_of_coordinates=0):
+  # zeolite framework type AFG
   from cctbx import xray
+  if (choice_of_coordinates == 0):
+    sites = [
+      (0.2466,0.9965,0.2500),
+      (0.5817,0.6706,0.1254),
+      (0.2478,0.0000,0.0000)]
+  else:
+    sites = [
+      (0.2466,0.9965,0.2500),
+      (0.2478,1.0000,0.5000),
+      (0.3294,0.9111,0.3746)]
   return xray.structure(
     crystal_symmetry=crystal.symmetry(
       unit_cell="12.548 12.548 20.789 90.000 90.000 120.000",
       space_group_symbol="P63/mmc"),
     scatterers=flex.xray_scatterer(
-      [xray.scatterer(label="Si", site=site) for site in [
-        (0.2466,0.9965,0.2500),
-        (0.5817,0.6706,0.1254),
-        (0.2478,0.0000,0.0000)]]))
+      [xray.scatterer(label="Si"+str(i), site=site)
+        for i,site in enumerate(sites)]))
 
 def trial_structure_2():
   from cctbx import xray
@@ -654,8 +663,8 @@ i_seq: 2
   f = StringIO()
   asu_table.show(
     f=f,
-    site_labels=[scatterer.label for scatterer in structure.scatterers()])
-  assert f.getvalue() == """\
+    site_labels=["Si"]*3)
+  assert not show_diff(f.getvalue(), """\
 Si(0)
   Si(0)
     j_syms: [2]
@@ -675,7 +684,7 @@ Si(2)
     j_syms: [0, 11]
   Si(2)
     j_syms: [1, 2]
-"""
+""")
   assert not asu_table.contains(i_seq=1, j_seq=1, j_sym=10)
   pair = asu_mappings.make_trial_pair(i_seq=1, j_seq=1, j_sym=10)
   assert not pair in asu_table
@@ -810,7 +819,7 @@ i_seq: 2
       f = StringIO()
       sym_table.show(
         f=f,
-        site_labels=[scatterer.label for scatterer in structure.scatterers()])
+        site_labels=["Si"]*3)
       assert f.getvalue() == """\
 Si(0)
   Si(0)
@@ -831,7 +840,7 @@ Si(2)
       f = StringIO()
       sym_table.show(
         f=f,
-        site_labels=[scatterer.label for scatterer in structure.scatterers()],
+        site_labels=["Si"]*3,
         site_symmetry_table=structure.site_symmetry_table())
       assert not show_diff(f.getvalue(), """\
 Si(0)
@@ -855,7 +864,7 @@ Si(2)
       f = StringIO()
       sym_table.show(
         f=f,
-        site_labels=[scatterer.label for scatterer in structure.scatterers()],
+        site_labels=["Si"]*3,
         sites_frac=structure.sites_frac(),
         unit_cell=structure.unit_cell())
       assert not show_diff(f.getvalue(), """\
@@ -878,7 +887,7 @@ Si(2)
       f = StringIO()
       sym_table.show(
         f=f,
-        site_labels=[scatterer.label for scatterer in structure.scatterers()],
+        site_labels=["Si"]*3,
         site_symmetry_table=structure.site_symmetry_table(),
         sites_frac=structure.sites_frac(),
         unit_cell=structure.unit_cell())
@@ -913,19 +922,19 @@ Si(2)
         skip_j_seq_less_than_i_seq=True,
         out=sio)
       assert not show_diff(sio.getvalue(), """\
-Si  pair count:   4       <<  0.2466,  0.9965,  0.2500>>
-  Si:   3.0504             (  0.0035,  0.7534,  0.2500) sym=-y+1,-x+1,-z+1/2
-  Si:   3.1703             (  0.3294,  0.9111,  0.3746) sym=-y+1,x-y+1,-z+1/2
-  Si:   3.1703 sym. equiv. (  0.3294,  0.9111,  0.1254) sym=-y+1,x-y+1,z
-  Si:   3.1822             (  0.2466,  1.2501,  0.2500) sym=x,x-y+2,-z+1/2
-Si  pair count:   3       <<  0.5817,  0.6706,  0.1254>>
-  Si:   3.0178             (  0.5817,  0.9111,  0.1254) sym=x,x-y+1,z
-  Si:   3.1659             (  0.3294,  0.4183,  0.1254) sym=-y+1,-x+1,z
-  Si:   3.1986             (  0.7522,  0.7522,  0.0000) sym=-x+y+1,-x+1,z
-Si  pair count:   2       <<  0.2478,  0.0000,  0.0000>>
-  Si:   3.1094             (  0.0000, -0.2478,  0.0000) sym=y,-x+y,-z
-  Si:   3.1094 sym. equiv. (  0.2478,  0.2478,  0.0000) sym=x-y,x,-z
-O   pair count:   0       <<  0.0000,  0.0000,  0.0000>>
+Si0  pair count:   4       <<  0.2466,  0.9965,  0.2500>>
+  Si0:   3.0504             (  0.0035,  0.7534,  0.2500) sym=-y+1,-x+1,-z+1/2
+  Si1:   3.1703             (  0.3294,  0.9111,  0.3746) sym=-y+1,x-y+1,-z+1/2
+  Si1:   3.1703 sym. equiv. (  0.3294,  0.9111,  0.1254) sym=-y+1,x-y+1,z
+  Si0:   3.1822             (  0.2466,  1.2501,  0.2500) sym=x,x-y+2,-z+1/2
+Si1  pair count:   3       <<  0.5817,  0.6706,  0.1254>>
+  Si1:   3.0178             (  0.5817,  0.9111,  0.1254) sym=x,x-y+1,z
+  Si1:   3.1659             (  0.3294,  0.4183,  0.1254) sym=-y+1,-x+1,z
+  Si2:   3.1986             (  0.7522,  0.7522,  0.0000) sym=-x+y+1,-x+1,z
+Si2  pair count:   2       <<  0.2478,  0.0000,  0.0000>>
+  Si2:   3.1094             (  0.0000, -0.2478,  0.0000) sym=y,-x+y,-z
+  Si2:   3.1094 sym. equiv. (  0.2478,  0.2478,  0.0000) sym=x-y,x,-z
+O    pair count:   0       <<  0.0000,  0.0000,  0.0000>>
   no neighbors
 """)
       assert list(pair_counts) == [4,3,2,0]
@@ -958,18 +967,18 @@ site_3 pair count:   2        <<    3.11,    0.00,    0.00>>
         skip_sym_equiv=True,
         out=sio)
       assert not show_diff(sio.getvalue(), """\
-Si  pair count:   3       <<  0.2466,  0.9965,  0.2500>>
-  Si:   3.0504             (  0.0035,  0.7534,  0.2500) sym=-y+1,-x+1,-z+1/2
-  Si:   3.1703             (  0.3294,  0.9111,  0.3746) sym=-y+1,x-y+1,-z+1/2
-  Si:   3.1822             (  0.2466,  1.2501,  0.2500) sym=x,x-y+2,-z+1/2
-Si  pair count:   4       <<  0.5817,  0.6706,  0.1254>>
-  Si:   3.0178             (  0.5817,  0.9111,  0.1254) sym=x,x-y+1,z
-  Si:   3.1659             (  0.3294,  0.4183,  0.1254) sym=-y+1,-x+1,z
-  Si:   3.1703             (  0.7499,  0.7534,  0.2500) sym=-x+y,-x+1,-z+1/2
-  Si:   3.1986             (  0.7522,  0.7522,  0.0000) sym=-x+y+1,-x+1,z
-Si  pair count:   2       <<  0.2478,  0.0000,  0.0000>>
-  Si:   3.1094             (  0.0000, -0.2478,  0.0000) sym=y,-x+y,-z
-  Si:   3.1986             (  0.3294, -0.0889,  0.1254) sym=-y+1,x-y,z
+Si0  pair count:   3       <<  0.2466,  0.9965,  0.2500>>
+  Si0:   3.0504             (  0.0035,  0.7534,  0.2500) sym=-y+1,-x+1,-z+1/2
+  Si1:   3.1703             (  0.3294,  0.9111,  0.3746) sym=-y+1,x-y+1,-z+1/2
+  Si0:   3.1822             (  0.2466,  1.2501,  0.2500) sym=x,x-y+2,-z+1/2
+Si1  pair count:   4       <<  0.5817,  0.6706,  0.1254>>
+  Si1:   3.0178             (  0.5817,  0.9111,  0.1254) sym=x,x-y+1,z
+  Si1:   3.1659             (  0.3294,  0.4183,  0.1254) sym=-y+1,-x+1,z
+  Si0:   3.1703             (  0.7499,  0.7534,  0.2500) sym=-x+y,-x+1,-z+1/2
+  Si2:   3.1986             (  0.7522,  0.7522,  0.0000) sym=-x+y+1,-x+1,z
+Si2  pair count:   2       <<  0.2478,  0.0000,  0.0000>>
+  Si2:   3.1094             (  0.0000, -0.2478,  0.0000) sym=y,-x+y,-z
+  Si1:   3.1986             (  0.3294, -0.0889,  0.1254) sym=-y+1,x-y,z
 """)
       sio = StringIO()
       structure_plus.pair_sym_table_show_distances(
@@ -978,16 +987,16 @@ Si  pair count:   2       <<  0.2478,  0.0000,  0.0000>>
         skip_sym_equiv=True,
         out=sio)
       assert not show_diff(sio.getvalue(), """\
-Si  pair count:   3       <<  0.2466,  0.9965,  0.2500>>
-  Si:   3.0504             (  0.0035,  0.7534,  0.2500) sym=-y+1,-x+1,-z+1/2
-  Si:   3.1703             (  0.3294,  0.9111,  0.3746) sym=-y+1,x-y+1,-z+1/2
-  Si:   3.1822             (  0.2466,  1.2501,  0.2500) sym=x,x-y+2,-z+1/2
-Si  pair count:   3       <<  0.5817,  0.6706,  0.1254>>
-  Si:   3.0178             (  0.5817,  0.9111,  0.1254) sym=x,x-y+1,z
-  Si:   3.1659             (  0.3294,  0.4183,  0.1254) sym=-y+1,-x+1,z
-  Si:   3.1986             (  0.7522,  0.7522,  0.0000) sym=-x+y+1,-x+1,z
-Si  pair count:   1       <<  0.2478,  0.0000,  0.0000>>
-  Si:   3.1094             (  0.0000, -0.2478,  0.0000) sym=y,-x+y,-z
+Si0  pair count:   3       <<  0.2466,  0.9965,  0.2500>>
+  Si0:   3.0504             (  0.0035,  0.7534,  0.2500) sym=-y+1,-x+1,-z+1/2
+  Si1:   3.1703             (  0.3294,  0.9111,  0.3746) sym=-y+1,x-y+1,-z+1/2
+  Si0:   3.1822             (  0.2466,  1.2501,  0.2500) sym=x,x-y+2,-z+1/2
+Si1  pair count:   3       <<  0.5817,  0.6706,  0.1254>>
+  Si1:   3.0178             (  0.5817,  0.9111,  0.1254) sym=x,x-y+1,z
+  Si1:   3.1659             (  0.3294,  0.4183,  0.1254) sym=-y+1,-x+1,z
+  Si2:   3.1986             (  0.7522,  0.7522,  0.0000) sym=-x+y+1,-x+1,z
+Si2  pair count:   1       <<  0.2478,  0.0000,  0.0000>>
+  Si2:   3.1094             (  0.0000, -0.2478,  0.0000) sym=y,-x+y,-z
 """)
   #
   sites_cart = flex.vec3_double([(0,0,0), (2,0,0), (0,3,0)])
@@ -1398,7 +1407,7 @@ def exercise_coordination_sequences_shell_asu_tables():
   structure.show_distances(pair_asu_table=s1_asu_table, out=s)
   print >> s
   s = s.getvalue().replace("-0.0000", " 0.0000")
-  if (hashlib_md5(s).hexdigest() != "dc417b69cea0d23298eea2ecd6648f22"):
+  if (hashlib_md5(s).hexdigest() != "f5c02727352d26dc36762de0834199fd"):
     sys.stderr.write(s)
     print "New hexdigest:", hashlib_md5(s).hexdigest()
     raise AssertionError("Unexpected show_distances() output.")
