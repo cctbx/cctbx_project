@@ -2768,9 +2768,73 @@ Planarity restraints: 2
 >     e-f        5.967 5.77e-01 3.00e+00
 """)
 
+def exercise_bonds_with_symops():
+  from cctbx.crystal.tst_ext import trial_structure
+  xs = trial_structure(choice_of_coordinates=1)
+  pst = xs.pair_asu_table(distance_cutoff=3.2).extract_pair_sym_table()
+  proxies = geometry_restraints.shared_bond_simple_proxy([
+    geometry_restraints.bond_simple_proxy(
+      i_seqs=[_.i_seq, _.j_seq],
+      rt_mx_ji=_.rt_mx_ji,
+      distance_ideal=3.1,
+      weight=1/0.01**2)
+        for _ in pst.iterator()])
+  assert not show_diff(
+    "\n".join([p.rt_mx_ji.as_xyz() for p in proxies]),
+    """\
+-y+1,-x+1,-z+1/2
+x,x-y+2,-z+1/2
+x,y,z
+x-y+1,x+1,-z+1
+x,y,z
+-y+1,-x+1,z
+-x+y,y,z""")
+  deltas = geometry_restraints.bond_deltas(
+    unit_cell=xs.unit_cell(),
+    sites_cart=xs.sites_cart(),
+    proxies=proxies)
+  assert approx_equal(deltas, [
+    0.0495812, -0.0821728, -0.07030907, -0.0093944,
+    -0.09861225, 0.082206, -0.0658604])
+  residuals = geometry_restraints.bond_residuals(
+    unit_cell=xs.unit_cell(),
+    sites_cart=xs.sites_cart(),
+    proxies=proxies)
+  assert approx_equal(residuals, [
+    24.58295, 67.52369, 49.43365, 0.8825475, 97.24376, 67.57826, 43.37592])
+  grads_ana = flex.vec3_double(xs.scatterers().size(), (0,0,0))
+  sites_cart = xs.sites_cart()
+  residual_sum = geometry_restraints.bond_residual_sum(
+    unit_cell=xs.unit_cell(),
+    sites_cart=sites_cart,
+    proxies=proxies,
+    gradient_array=grads_ana)
+  eps = 1e-6
+  grads_fin = flex.vec3_double()
+  for i_site in xrange(sites_cart.size()):
+    sori = sites_cart[i_site]
+    gs = []
+    for ix in xrange(3):
+      fs = []
+      for signed_eps in [eps, -eps]:
+        seps = list(sori)
+        seps[ix] += signed_eps
+        sites_cart[i_site] = seps
+        residual_sum = geometry_restraints.bond_residual_sum(
+          unit_cell=xs.unit_cell(),
+          sites_cart=sites_cart,
+          proxies=proxies,
+          gradient_array=None)
+        fs.append(residual_sum)
+      gs.append((fs[0]-fs[1])/(2*eps))
+    grads_fin.append(gs)
+    sites_cart[i_site] = sori
+  assert approx_equal(grads_ana, grads_fin)
+
 def exercise():
   exercise_bond_similarity()
   exercise_bond()
+  exercise_bonds_with_symops()
   exercise_nonbonded()
   exercise_nonbonded_cos()
   exercise_angle()

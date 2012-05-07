@@ -59,12 +59,14 @@ namespace cctbx { namespace geometry_restraints {
   //! Grouping of indices into array of sites (i_seqs) and bond_params.
   struct bond_simple_proxy : bond_params
   {
+    typedef af::tiny<unsigned, 2> i_seqs_type;
+
     //! Default constructor. Some data members are not initialized!
     bond_simple_proxy() {}
 
     //! Constructor.
     bond_simple_proxy(
-      af::tiny<unsigned, 2> const& i_seqs_,
+      i_seqs_type const& i_seqs_,
       double distance_ideal_,
       double weight_,
       double slack_=0,
@@ -77,7 +79,7 @@ namespace cctbx { namespace geometry_restraints {
 
     //! Constructor.
     bond_simple_proxy(
-      af::tiny<unsigned, 2> const& i_seqs_,
+      i_seqs_type const& i_seqs_,
       sgtbx::rt_mx const& rt_mx_ji_,
       double distance_ideal_,
       double weight_,
@@ -94,7 +96,7 @@ namespace cctbx { namespace geometry_restraints {
     /*! Not available in Python.
      */
     bond_simple_proxy(
-      af::tiny<unsigned, 2> const& i_seqs_,
+      i_seqs_type const& i_seqs_,
       bond_params const& params)
     :
       bond_params(params),
@@ -105,7 +107,7 @@ namespace cctbx { namespace geometry_restraints {
     /*! Not available in Python.
      */
     bond_simple_proxy(
-      af::tiny<unsigned, 2> const& i_seqs_,
+      i_seqs_type const& i_seqs_,
       sgtbx::rt_mx const& rt_mx_ji_,
       bond_params const& params)
     :
@@ -126,7 +128,7 @@ namespace cctbx { namespace geometry_restraints {
     }
 
     //! Indices into array of sites.
-    af::tiny<unsigned, 2> i_seqs;
+    i_seqs_type i_seqs;
 
     //! Optional symmetry operation operating on i_seqs[1]
     tbxx::optional_copy<sgtbx::rt_mx> rt_mx_ji;
@@ -140,7 +142,7 @@ namespace cctbx { namespace geometry_restraints {
 
     //! Constructor.
     bond_sym_proxy(
-      af::tiny<unsigned, 2> const& i_seqs_,
+      bond_simple_proxy::i_seqs_type const& i_seqs_,
       sgtbx::rt_mx const& rt_mx_ji_,
       double distance_ideal_,
       double weight_,
@@ -157,7 +159,7 @@ namespace cctbx { namespace geometry_restraints {
     /*! Not available in Python.
      */
     bond_sym_proxy(
-      af::tiny<unsigned, 2> const& i_seqs_,
+      bond_simple_proxy::i_seqs_type const& i_seqs_,
       sgtbx::rt_mx const& rt_mx_ji_,
       bond_params const& params)
     :
@@ -167,7 +169,7 @@ namespace cctbx { namespace geometry_restraints {
     {}
 
     //! Indices into array of sites.
-    af::tiny<unsigned, 2> i_seqs;
+    bond_simple_proxy::i_seqs_type i_seqs;
 
     //! Symmetry operation to be applied to i_seqs[1].
     /*! The bond is between sites_frac[i_seqs[0]] and
@@ -209,7 +211,7 @@ namespace cctbx { namespace geometry_restraints {
     as_simple_proxy() const
     {
       return bond_simple_proxy(
-        af::tiny<unsigned, 2>(i_seq, j_seq),
+        bond_simple_proxy::i_seqs_type(i_seq, j_seq),
         distance_ideal,
         weight,
         slack);
@@ -394,11 +396,35 @@ namespace cctbx { namespace geometry_restraints {
       void
       add_gradients(
         af::ref<scitbx::vec3<double> > const& gradient_array,
-        af::tiny<unsigned, 2> const& i_seqs) const
+        bond_simple_proxy::i_seqs_type const& i_seqs) const
       {
         vec3 g0 = gradient_0();
         gradient_array[i_seqs[0]] += g0;
         gradient_array[i_seqs[1]] += -g0;
+      }
+
+      //! Support for bond_residual_sum.
+      /*! Not available in Python.
+       */
+      void
+      add_gradients(
+        uctbx::unit_cell const& unit_cell,
+        af::ref<scitbx::vec3<double> > const& gradient_array,
+        bond_simple_proxy const& proxy) const
+      {
+        bond_simple_proxy::i_seqs_type const& i_seqs = proxy.i_seqs;
+        vec3 g0 = gradient_0();
+        gradient_array[i_seqs[0]] += g0;
+        if (!proxy.rt_mx_ji || proxy.rt_mx_ji->is_unit_mx()) {
+          gradient_array[i_seqs[1]] += -g0;
+        }
+        else {
+          scitbx::mat3<double> m =
+              unit_cell.orthogonalization_matrix()
+            * proxy.rt_mx_ji->r().as_double()
+            * unit_cell.fractionalization_matrix();
+          gradient_array[i_seqs[1]] += (-g0) * m;
+        }
       }
 
       //! Support for bond_residual_sum.
@@ -442,7 +468,7 @@ namespace cctbx { namespace geometry_restraints {
         cctbx::xray::parameter_map<cctbx::xray::scatterer<double> > const &parameter_map,
         bond_simple_proxy const& proxy) const
       {
-        af::tiny<unsigned, 2> const& i_seqs = proxy.i_seqs;
+        bond_simple_proxy::i_seqs_type const& i_seqs = proxy.i_seqs;
         af::tiny<scitbx::vec3<double>, 2> grads;
         if (delta < -slack || delta > slack) {
           grads[0] = d_distance_d_site_0();
@@ -502,7 +528,8 @@ namespace cctbx { namespace geometry_restraints {
     bond_params_table tab(n_seq);
     af::ref<bond_params_dict> tab_ref = tab.ref();
     for(std::size_t i_proxy=0;i_proxy<bond_simple_proxies.size();i_proxy++) {
-      af::tiny<unsigned, 2> const& i_seqs=bond_simple_proxies[i_proxy].i_seqs;
+      bond_simple_proxy::i_seqs_type const&
+        i_seqs = bond_simple_proxies[i_proxy].i_seqs;
       CCTBX_ASSERT(i_seqs[0] < tab_ref.size());
       CCTBX_ASSERT(i_seqs[1] < tab_ref.size());
       if (i_seqs[0] < i_seqs[1]) {
@@ -594,6 +621,19 @@ namespace cctbx { namespace geometry_restraints {
   {
     return detail::generic_residual_sum<bond_simple_proxy, bond>::get(
       sites_cart, proxies, gradient_array);
+  }
+
+  //! See overload.
+  inline
+  double
+  bond_residual_sum(
+    uctbx::unit_cell const& unit_cell,
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<bond_simple_proxy> const& proxies,
+    af::ref<scitbx::vec3<double> > const& gradient_array)
+  {
+    return detail::generic_residual_sum<bond_simple_proxy, bond>::get(
+      unit_cell, sites_cart, proxies, gradient_array);
   }
 
   //! Managed group of bond_simple_proxy and bond_asu_proxy arrays.
