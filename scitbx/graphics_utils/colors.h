@@ -65,11 +65,14 @@ namespace scitbx { namespace graphics_utils {
   af::shared< scitbx::vec3<double> >
   make_rainbow_gradient (unsigned nbins)
   {
-    SCITBX_ASSERT(nbins > 1);
+    SCITBX_ASSERT(nbins > 0);
     af::shared< scitbx::vec3<double> > color_gradient(nbins);
     double f_nbins(nbins);
     for (unsigned i = 0; i < nbins; i++) {
-      double gradient_ratio = i / (f_nbins-1);
+      double gradient_ratio = 0;
+      if (nbins > 1) {
+        gradient_ratio = i / (f_nbins-1);
+      }
       color_gradient[i] = hsv2rgb(240.0 - (240 * gradient_ratio), 1., 1.);
     }
     return color_gradient;
