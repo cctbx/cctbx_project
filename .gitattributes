@@ -1360,6 +1360,7 @@ rstbx/bpcx/detector_model/sensor.h -text
 rstbx/bpcx/detector_model/tst_sensor.cpp -text
 rstbx/bpcx/doc/diffraction_geometry.pdf -text
 rstbx/bpcx/doc/diffraction_geometry.svg -text
+rstbx/bpcx/doc/diffraction_geometry_general.svg -text
 rstbx/bpcx/doc/prediction_formulae.tex -text
 rstbx/bpcx/doc/readme.txt -text
 rstbx/bpcx/ersatz_misset.py -text
