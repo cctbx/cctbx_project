@@ -25,6 +25,26 @@ def get_phi_psi_atoms (prev_res, residue, next_res) :
       n3 = atom
   return (c1, n2, ca2, c2, n3)
 
+def get_omega_atoms (prev_atoms, atoms) :
+  prevCA, prevC, thisN, thisCA = None, None, None, None
+  if (prev_atoms is not None):
+    for atom in prev_atoms:
+      if (atom.name == " CA "): prevCA = atom
+      if (atom.name == " C  "): prevC = atom
+  if (atoms is not None):
+    for atom in atoms:
+      if (atom.name == " N  "): thisN = atom
+      if (atom.name == " CA "): thisCA = atom
+  return prevCA, prevC, thisN, thisCA
+
+def is_cis_peptide (prev_atoms, atoms) :
+  prevCA, prevC, thisN, thisCA = get_omega_atoms(prev_atoms, atoms)
+  if (not None in [ prevCA, prevC, thisN, thisCA]) :
+    omega = omega_from_atoms(prevCA, prevC, thisN, thisCA)
+    if(omega > -30 and omega < 30):
+      return True
+  return False
+
 def get_phi_psi_indices (prev_res, residue, next_res) :
   (c1, n2, ca2, c2, n3) = get_phi_psi_atoms(
     prev_res=prev_res,
@@ -134,6 +154,8 @@ def extract_phi_psi (pdb_hierarchy, atom_selection=None) :
             if (pep1.distance_model > 4) or (pep2.distance_model > 4) :
               continue
             residue_name = residue.resname
+            # XXX this is totally obsolete with respect to the distributions
+            # used for validation - it will still work for Rama. restraints
             if (residue_name == "PRO") :
               residue_type = "pro"
             elif (residue_name == "GLY") :
