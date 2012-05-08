@@ -1425,8 +1425,16 @@ class add_bond_proxies(object):
     for bond in bond_list:
       if (   not m_i.monomer_atom_dict.has_key(bond.atom_id_1)
           or not m_j.monomer_atom_dict.has_key(bond.atom_id_2)):
-        counters.corrupt_monomer_library_definitions += 1
-        continue
+        #
+        # replace primes with stars to see if that will work!!!
+        #
+        if (   m_i.monomer_atom_dict.has_key(bond.atom_id_1.replace("'", "*"))
+            or m_j.monomer_atom_dict.has_key(bond.atom_id_2.replace("'", "*"))):
+          bond.atom_id_1 = bond.atom_id_1.replace("'", "*")
+          bond.atom_id_2 = bond.atom_id_2.replace("'", "*")
+        else:
+          counters.corrupt_monomer_library_definitions += 1
+          continue
       atoms = (m_i.expected_atoms.get(bond.atom_id_1, None),
                m_j.expected_atoms.get(bond.atom_id_2, None))
       if (None in atoms):
@@ -1485,8 +1493,15 @@ class add_angle_proxies(object):
       if (   not m_1.monomer_atom_dict.has_key(angle.atom_id_1)
           or not m_2.monomer_atom_dict.has_key(angle.atom_id_2)
           or not m_3.monomer_atom_dict.has_key(angle.atom_id_3)):
-        counters.corrupt_monomer_library_definitions += 1
-        continue
+        if (   m_1.monomer_atom_dict.has_key(angle.atom_id_1)
+            or m_2.monomer_atom_dict.has_key(angle.atom_id_2)
+            or m_3.monomer_atom_dict.has_key(angle.atom_id_3)):
+          angle.atom_id_1 = angle.atom_id_1.replace("'", "*")
+          angle.atom_id_2 = angle.atom_id_2.replace("'", "*")
+          angle.atom_id_3 = angle.atom_id_3.replace("'", "*")
+        else:
+          counters.corrupt_monomer_library_definitions += 1
+          continue
       atoms = (m_1.expected_atoms.get(angle.atom_id_1, None),
                m_2.expected_atoms.get(angle.atom_id_2, None),
                m_3.expected_atoms.get(angle.atom_id_3, None))
@@ -1551,8 +1566,17 @@ class add_dihedral_proxies(object):
           or not m_2.monomer_atom_dict.has_key(tor.atom_id_2)
           or not m_3.monomer_atom_dict.has_key(tor.atom_id_3)
           or not m_4.monomer_atom_dict.has_key(tor.atom_id_4)):
-        counters.corrupt_monomer_library_definitions += 1
-        continue
+        if (   m_1.monomer_atom_dict.has_key(angle.atom_id_1)
+            or m_2.monomer_atom_dict.has_key(angle.atom_id_2)
+            or m_3.monomer_atom_dict.has_key(angle.atom_id_3)
+            or m_4.monomer_atom_dict.has_key(angle.atom_id_4)):
+          angle.atom_id_1 = angle.atom_id_1.replace("'", "*")
+          angle.atom_id_2 = angle.atom_id_2.replace("'", "*")
+          angle.atom_id_3 = angle.atom_id_3.replace("'", "*")
+          angle.atom_id_4 = angle.atom_id_4.replace("'", "*")
+        else:
+          counters.corrupt_monomer_library_definitions += 1
+          continue
       atoms = (m_1.expected_atoms.get(tor.atom_id_1, None),
                m_2.expected_atoms.get(tor.atom_id_2, None),
                m_3.expected_atoms.get(tor.atom_id_3, None),
@@ -1663,8 +1687,17 @@ class add_chirality_proxies(object):
           or not m_1.monomer_atom_dict.has_key(chir.atom_id_1)
           or not m_2.monomer_atom_dict.has_key(chir.atom_id_2)
           or not m_3.monomer_atom_dict.has_key(chir.atom_id_3)):
-        counters.corrupt_monomer_library_definitions += 1
-        continue
+        if (   m_1.monomer_atom_dict.has_key(angle.atom_id_1)
+            or m_2.monomer_atom_dict.has_key(angle.atom_id_2)
+            or m_3.monomer_atom_dict.has_key(angle.atom_id_3)
+            or m_c.monomer_atom_dict.has_key(angle.atom_id_centre)):
+          angle.atom_id_1 = angle.atom_id_1.replace("'", "*")
+          angle.atom_id_2 = angle.atom_id_2.replace("'", "*")
+          angle.atom_id_3 = angle.atom_id_3.replace("'", "*")
+          angle.atom_id_centre = angle.atom_id_centre.replace("'", "*")
+        else:
+          counters.corrupt_monomer_library_definitions += 1
+          continue
       atoms = (m_c.expected_atoms.get(chir.atom_id_centre, None),
                m_1.expected_atoms.get(chir.atom_id_1, None),
                m_2.expected_atoms.get(chir.atom_id_2, None),
@@ -1733,8 +1766,11 @@ class add_planarity_proxies(object):
           assert plane_atom.atom_comp_id in (1,2)
           m_x = (m_i, m_j)[plane_atom.atom_comp_id-1]
         if (not m_x.monomer_atom_dict.has_key(plane_atom.atom_id)):
-          counters.corrupt_monomer_library_definitions += 1
-          continue
+          if (   m_x.monomer_atom_dict.has_key(angle.atom_id)):
+            angle.atom_id = angle.atom_id.replace("'", "*")
+          else:
+            counters.corrupt_monomer_library_definitions += 1
+            continue
         atom = m_x.expected_atoms.get(plane_atom.atom_id, None)
         if (atom is None):
           if (m_x.monomer_atom_dict[plane_atom.atom_id].type_symbol == "H"):
