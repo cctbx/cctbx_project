@@ -78,7 +78,7 @@ class manager (object) :
     new_path = wx.DirSelector(
       message=message,
       defaultPath=default_path,
-      style=style,
+      style=style|wx.DD_NEW_DIR_BUTTON,
       parent=parent)
     if (new_path != "") :
       return new_path
