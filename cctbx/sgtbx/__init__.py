@@ -674,6 +674,41 @@ class _(boost.python.injector, ext.site_symmetry_table):
       i_seq_eq_j_seq=(i_seq == j_seq),
       rt_mx_ji=rt_mx_ji)
 
+  def pack_coordinates(self, sites_frac):
+    assert sites_frac.size() == self.indices().size()
+    result = flex.double()
+    for i_seq,x in enumerate(sites_frac):
+      if (self.is_special_position(i_seq)):
+        x = self.get(i_seq).site_constraints().independent_params(x)
+      for _ in x: result.append(_)
+    return result
+
+  def unpack_coordinates(self, packed_coordinates):
+    result = flex.vec3_double()
+    ix = 0
+    jx = 0
+    for i_tab in self.indices():
+      if (i_tab == 0):
+        jx = ix + 3
+        x = list(packed_coordinates[ix:jx])
+      else:
+        sc = self.table()[i_tab].site_constraints()
+        jx = ix + sc.n_independent_params()
+        x = sc.all_params(list(packed_coordinates[ix:jx]))
+      ix = jx
+      result.append(x)
+    assert jx == packed_coordinates.size()
+    return result
+
+  def pack_gradients(self, g_frac):
+    assert g_frac.size() == self.indices().size()
+    result = flex.double()
+    for i_seq,g in enumerate(g_frac):
+      if (self.is_special_position(i_seq)):
+        g = self.get(i_seq).site_constraints().independent_gradients(g)
+      for _ in g: result.append(_)
+    return result
+
 class _(boost.python.injector, wyckoff_position):
 
   def special_op_simplified(self):

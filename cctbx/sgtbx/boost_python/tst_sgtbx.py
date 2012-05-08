@@ -1665,6 +1665,48 @@ def exercise_site_symmetry():
   g = sgtbx.space_group("R 3 (-y+z, x+z, -x+y+z)")
   site_c = site_symmetry(u, g, (0.1, 0.1, 0.1)).site_constraints()
   assert site_c.all_shifts((0.128,)) == (0.128, 0.128, 0.128)
+  #
+  # zeolite framework type AFX
+  u = uctbx.unit_cell((13.674, 13.674, 19.695, 90, 90, 120))
+  g = sgtbx.space_group_info(symbol="P 63/m m c").group()
+  sites_frac = flex.vec3_double([
+    (0.0003, 0.2268, 0.0788),
+    (0.3328, 0.4398, 0.1712),
+    (0.1134, 0.2268, 0.0788),
+    (-1.38778e-17, 0.22665, 0),
+    (-0.11325, 0.11325, 0.0788),
+    (0.05365, 0.3333, 0.125),
+    (0.2199, 0.4398, 0.1712),
+    (0.3328, 0.4398, 0.25),
+    (0.4465, 0.5535, 0.1712)])
+  t = sgtbx.site_symmetry_table()
+  t.process(
+    unit_cell=u,
+    space_group=g,
+    original_sites_frac=sites_frac)
+  p = t.pack_coordinates(sites_frac=sites_frac)
+  assert approx_equal(p, [
+    0.0003, 0.2268, 0.0788, 0.3328, 0.4398, 0.1712, 0.2268, 0.0788,
+    0.22665, 0.11325, 0.0788, 0.05365, 0.3333, 0.125, 0.4398, 0.1712,
+    0.3328, 0.4398, 0.5535, 0.1712])
+  u = t.unpack_coordinates(packed_coordinates=p)
+  assert approx_equal(u, sites_frac)
+  g_frac = flex.vec3_double([
+    (1.839276, -1.015489, -1.653259),
+    (-2.14052, 1.040399, 1.653738),
+    (9.844995, -2.218571, -2.054126),
+    (2.329357, -4.063528, -12.55558),
+    (-1.555214, -2.032991, -6.204481),
+    (8.35847, -4.185706, 0.005703849),
+    (-3.121928, -1.143936, 2.110444),
+    (-1.765163, 4.062308, 12.57375),
+    (1.473678, 1.973169, 6.160302)])
+  p = t.pack_gradients(g_frac=g_frac)
+  assert approx_equal(p, [
+    1.839276, -1.015489, -1.653259, -2.14052, 1.040399, 1.653738,
+    2.703927, -2.054126, -4.063528, -0.477777, -6.204481, 8.35847,
+    -4.185706, 0.005703849, -2.7049, 2.110444, -1.765163, 4.062308,
+    0.499491, 6.160302])
 
 def exercise_wyckoff():
   space_group_type = sgtbx.space_group_type
