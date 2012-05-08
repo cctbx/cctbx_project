@@ -176,6 +176,13 @@ namespace {
             arg("slack")=0,
             arg("limit")=-1.0,
             arg("top_out")=false)))
+        .def(init<
+          af::tiny<unsigned, 2> const&,
+          sgtbx::rt_mx const&,
+          bond_params const&>((
+            arg("i_seqs"),
+            arg("rt_mx_ji"),
+            arg("params"))))
         .def("sort_i_seqs", &w_t::sort_i_seqs)
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .add_property("rt_mx_ji", make_getter(&w_t::rt_mx_ji, rbv()))

@@ -104,8 +104,6 @@ namespace cctbx { namespace geometry_restraints {
     {}
 
     //! Constructor.
-    /*! Not available in Python.
-     */
     bond_simple_proxy(
       i_seqs_type const& i_seqs_,
       sgtbx::rt_mx const& rt_mx_ji_,

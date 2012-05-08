@@ -2772,12 +2772,14 @@ def exercise_bonds_with_symops():
   from cctbx.crystal.tst_ext import trial_structure
   xs = trial_structure(choice_of_coordinates=1)
   pst = xs.pair_asu_table(distance_cutoff=3.2).extract_pair_sym_table()
+  bp = geometry_restraints.bond_params(
+    distance_ideal=3.1,
+    weight=1/0.01**2)
   proxies = geometry_restraints.shared_bond_simple_proxy([
     geometry_restraints.bond_simple_proxy(
       i_seqs=[_.i_seq, _.j_seq],
       rt_mx_ji=_.rt_mx_ji,
-      distance_ideal=3.1,
-      weight=1/0.01**2)
+      params=bp)
         for _ in pst.iterator()])
   assert not show_diff(
     "\n".join([p.rt_mx_ji.as_xyz() for p in proxies]),
