@@ -33,6 +33,9 @@ def run(args, distance_cutoff=3.5):
       default=1,
       help="Number of macro cycles per trial",
       metavar="INT")
+    .option(None, "--dev",
+      action="store_true",
+      default=False)
   ).process(args=args)
   if (len(command_line.args) == 0):
     command_line.parser.show_help()
@@ -54,7 +57,8 @@ def run(args, distance_cutoff=3.5):
         nonbonded_max_residual_bond_stretch_factor=co.bond_stretch_factor,
         n_trials=co.n_trials,
         n_macro_cycles=co.n_macro_cycles,
-        connectivities=entry.connectivities(all_or_nothing=True))
+        connectivities=entry.connectivities(all_or_nothing=True),
+        dev=co.dev)
 
 if (__name__ == "__main__"):
   import sys

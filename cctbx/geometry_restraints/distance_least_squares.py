@@ -127,7 +127,8 @@ class distance_and_repulsion_least_squares:
         n_macro_cycles=2,
         max_exceptions_handled=10,
         connectivities=None,
-        out=None):
+        out=None,
+        dev=False):
     assert nonbonded_repulsion_function_type in ["gaussian", "cos", "prolsq"]
     assert n_trials > 0
     assert n_macro_cycles > 0
@@ -240,8 +241,28 @@ class distance_and_repulsion_least_squares:
           geometry_restraints_flags = geometry_restraints.flags.flags(
             bond=True,
             nonbonded=((i_macro_cycle % 2) != (n_macro_cycles % 2)))
-          try:
-            m = geometry_restraints.lbfgs.lbfgs(
+          if (not dev):
+            try:
+              m = geometry_restraints.lbfgs.lbfgs(
+                sites_cart=trial_sites_cart,
+                geometry_restraints_manager=geometry_restraints_manager,
+                geometry_restraints_flags=geometry_restraints_flags,
+                lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
+                  max_iterations=100),
+                lbfgs_exception_handling_params=
+                  scitbx.lbfgs.exception_handling_parameters(
+                    ignore_line_search_failed_step_at_lower_bound=True))
+            except RuntimeError, lbfgs_error:
+              if (i_trial == 0): raise
+              if (not str(lbfgs_error).startswith(
+                    "Bond distance > max_reasonable_bond_distance: ")): raise
+              m = None
+              break
+            else:
+              trial_minimized.append(m)
+              trial_structure.set_sites_cart(sites_cart=trial_sites_cart)
+          else:
+            m = dev_lbfgs(
               sites_cart=trial_sites_cart,
               geometry_restraints_manager=geometry_restraints_manager,
               geometry_restraints_flags=geometry_restraints_flags,
@@ -250,13 +271,6 @@ class distance_and_repulsion_least_squares:
               lbfgs_exception_handling_params=
                 scitbx.lbfgs.exception_handling_parameters(
                   ignore_line_search_failed_step_at_lower_bound=True))
-          except RuntimeError, lbfgs_error:
-            if (i_trial == 0): raise
-            if (not str(lbfgs_error).startswith(
-                  "Bond distance > max_reasonable_bond_distance: ")): raise
-            m = None
-            break
-          else:
             trial_minimized.append(m)
             trial_structure.set_sites_cart(sites_cart=trial_sites_cart)
         if (m is not None):
@@ -320,3 +334,80 @@ class distance_and_repulsion_least_squares:
     self.geometry_restraints_manager = geometry_restraints_manager
     self.start_structure = si_o.structure
     self.minimized_structure = minimized_structure
+
+class dev_target_result(object):
+
+  def __init__(O, target, n_bond_proxies, bond_residual_sum):
+    O.target = target
+    O.n_bond_proxies = n_bond_proxies
+    O.bond_residual_sum = bond_residual_sum
+    O.n_nonbonded_proxies = None
+    O.nonbonded_residual_sum = 0
+
+  def show(O, f=None, prefix=""):
+    if (f is None): f = sys.stdout
+    print >> f, prefix+"target: %.6g" % O.target
+    if (O.n_bond_proxies is not None):
+      print >> f, prefix+"  bond_residual_sum (n=%d): %.6g" % (
+        O.n_bond_proxies, O.bond_residual_sum)
+    if (O.n_nonbonded_proxies is not None):
+      print >> f, prefix+"  nonbonded_residual_sum (n=%d): %.6g" % (
+        O.n_nonbonded_proxies, O.nonbonded_residual_sum)
+
+class dev_lbfgs(object):
+
+  __slots__ = [
+    "grm", "x", "proxies", "minimizer",
+    "first_target_result",
+    "final_target_result"]
+
+  def __init__(O,
+        sites_cart,
+        geometry_restraints_manager,
+        geometry_restraints_flags,
+        lbfgs_termination_params,
+        lbfgs_exception_handling_params):
+    O.grm = geometry_restraints_manager
+    cs = O.grm.crystal_symmetry
+    sst = O.grm.site_symmetry_table
+    sites_frac = cs.unit_cell().fractionalize(sites_cart)
+    O.x = sst.pack_coordinates(sites_frac=sites_frac)
+    O.proxies = geometry_restraints.shared_bond_simple_proxy()
+    for i_seq,pair_sym_dict in enumerate(O.grm.shell_sym_tables[0]):
+      for j_seq,sym_ops in pair_sym_dict.items():
+        assert i_seq <= j_seq
+        bond_params = O.grm.bond_params_table[i_seq][j_seq]
+        for rt_mx_ji in sym_ops:
+          O.proxies.append(geometry_restraints.bond_simple_proxy(
+            i_seqs=[i_seq, j_seq],
+            rt_mx_ji=rt_mx_ji,
+            params=bond_params))
+    def get_target_result():
+      f, _ = O.compute_functional_and_gradients()
+      return dev_target_result(
+        target=f,
+        n_bond_proxies=O.proxies.size(),
+        bond_residual_sum=f)
+    O.first_target_result = get_target_result()
+    import scitbx.lbfgs
+    O.minimizer = scitbx.lbfgs.run(
+      target_evaluator=O,
+      termination_params=lbfgs_termination_params,
+      exception_handling_params=lbfgs_exception_handling_params)
+    f, _ = O.compute_functional_and_gradients()
+    O.final_target_result = get_target_result()
+
+  def compute_functional_and_gradients(O):
+    cs = O.grm.crystal_symmetry
+    sst = O.grm.site_symmetry_table
+    sites_frac = sst.unpack_coordinates(packed_coordinates=O.x)
+    sites_cart = cs.unit_cell().orthogonalize(sites_frac)
+    g_cart = flex.vec3_double(sites_cart.size(), (0,0,0))
+    f = geometry_restraints.bond_residual_sum(
+      unit_cell=cs.unit_cell(),
+      sites_cart=sites_cart,
+      proxies=O.proxies,
+      gradient_array=g_cart)
+    g_frac = g_cart * cs.unit_cell().orthogonalization_matrix()
+    g = sst.pack_gradients(g_frac=g_frac)
+    return f, g
