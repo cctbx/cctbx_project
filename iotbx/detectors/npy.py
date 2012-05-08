@@ -23,8 +23,6 @@ class NpyImage(DetectorImageBase):
 #    return [typefunc(I) for I in parsed]
 
   def readHeader(self, horizons_phil):
-    import numpy
-
     version_control = horizons_phil.distl.detector_format_version
 
     if self.source_data == None:
@@ -39,6 +37,7 @@ class NpyImage(DetectorImageBase):
     self.parameters                         = {}
 
     if version_control == "CXI 3.1":
+      import numpy
       self.parameters['SIZE1']                = cspad_data['image'].shape[0] # XXX order?
       self.parameters['SIZE2']                = cspad_data['image'].shape[1] # XXX order?
       self.parameters['PIXEL_SIZE']           = 110e-3 # XXX fiction
