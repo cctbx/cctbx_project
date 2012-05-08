@@ -228,12 +228,14 @@ def residue_iteration (pdb_hierarchy,
               continue # don't waste time on incomplete peptides
             # pre-validation against Ramachandran plot
             rama_res_type = "general"
-            if (residue1.resname == "PRO") :
-              rama_res_type = "proline"
+            if (residue1.resname in ["ILE","VAL"]) :
+              rama_res_type = "isoleucine or valine"
+            elif (residue1.resname == "PRO") :
+              continue # FIXME
             elif (residue1.resname == "GLY") :
               rama_res_type = "glycine"
             elif (residue2.resname == "PRO") :
-              rama_res_type = "prepro"
+              rama_res_type = "pre-proline"
             phi_psi_i_seqs = [None] * 5
             (phi, psi) = (None, None)
             if (residue0 is not None) :
