@@ -1,0 +1,17 @@
+import libtbx.load_env
+
+Import("env_base", "env_etc")
+env = env_base.Clone()
+env.Prepend(LIBS=["cctbx"])
+env.Append(LIBS=env_etc.libm)
+env_etc.enable_more_warnings(env=env)
+env_etc.include_registry.append(
+  env=env,
+  paths=env_etc.rstbx_common_includes)
+
+exe = env.Program(
+  target="tst_sensor",
+  source=["detector_model/sensor.cpp", "detector_model/tst_sensor.cpp"])
+libtbx.env.write_dispatcher_in_bin(
+    source_file=exe[0].get_abspath(),
+    target_file="rstbx.tst_sensor")
