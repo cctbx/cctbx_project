@@ -10,9 +10,16 @@ code will be modified to use the detector model.
 That, at least, is a statement of intention. 
 
 At this moment, a trivial test can be compiled with something similar to
-the following:
+the following (from a top level build directory):
 
-export CCTBX_SRC=/home/david/bsx/cctbx-svn/sources
-g++ -Wall -c  -I$CCTBX_SRC/boost -I$CCTBX_SRC/cctbx_project -Iinclude -I$CCTBX_SRC/include -I$CCTBX_SRC/cctbx_project/include -I$CCTBX_SRC/annlib -I$CCTBX_SRC/annlib/src -I$CCTBX_SRC/annlib/include -I$CCTBX_SRC/annlib_adaptbx/include -I$CCTBX_SRC/cctbx_project/annlib_adaptbx/include $CCTBX_SRC/cctbx_project/rstbx/bpcx/detector_model/sensor.cpp
-g++ -Wall -c  -I$CCTBX_SRC/boost -I$CCTBX_SRC/cctbx_project -Iinclude -I$CCTBX_SRC/include -I$CCTBX_SRC/cctbx_project/include -I$CCTBX_SRC/annlib -I$CCTBX_SRC/annlib/src -I$CCTBX_SRC/annlib/include -I$CCTBX_SRC/annlib_adaptbx/include -I$CCTBX_SRC/cctbx_project/annlib_adaptbx/include $CCTBX_SRC/cctbx_project/rstbx/bpcx/detector_model/tst_sensor.cpp
-g++ sensor.o tst_sensor.o -o tst_sensor
+cctbx.python ../sources/cctbx_project/libtbx/configure.py rstbx
+libtbx.scons ./rstbx/bpcx/tst_sensor
+
+and run using its dispatcher
+
+rstbx.tst_sensor
+
+All this does is print '100' if it works, which is fairly obscure. But
+this test is not going to persist. Next step is to get the Python
+bindings for the sensor class, then use it in the Python tests already
+written in the bpcx_regression/detector_model repository

@@ -1352,6 +1352,7 @@ rstbx/array_family/ext.cpp -text
 rstbx/array_family/flex.py -text
 rstbx/array_family/flex_rstbx_arrays.cpp -text
 rstbx/backplane.h -text
+rstbx/bpcx/SConscript -text
 rstbx/bpcx/__init__.py -text
 rstbx/bpcx/compare_mosflm_xds.py -text
 rstbx/bpcx/detector_model/README -text

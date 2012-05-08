@@ -28,8 +28,11 @@ class sensor {
   scitbx::mat3<double> get_d() const;
 
   //setters
-  //Not yet implemented. Each must call update()
 
+  /* Not yet implemented. Each must call update(). set all three
+     properties of the sensor at once (i.e. dir1, dir2, origin) as we
+     want to maintain the same "shape" coordinate frame. */
+  
  private:
 
   //members
