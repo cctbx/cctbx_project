@@ -51,16 +51,14 @@ class subgroups(object):
       result.append(g.change_basis(p2z_op))
     return result
 
-def show_all():
-  for space_group_number in xrange(1,231):
-    parent_group_info = sgtbx.space_group_info(space_group_number)
-    parent_group_info.show_summary()
-    subgrs = subgroups(parent_group_info).groups_parent_setting()
-    print "number of subgroups:", len(subgrs)
-    for subgroup in subgrs:
-      subgroup_info = sgtbx.space_group_info(group=subgroup)
-      subgroup_info.show_summary()
-    print
+def show(parent_group_info):
+  parent_group_info.show_summary()
+  subgrs = subgroups(parent_group_info).groups_parent_setting()
+  print "number of subgroups:", len(subgrs)
+  for subgroup in subgrs:
+    subgroup_info = sgtbx.space_group_info(group=subgroup)
+    subgroup_info.show_summary()
+  print
 
 if (__name__ == "__main__"):
-  show_all()
+  raise RuntimeError("Please use the cctbx.subgroups command.")
