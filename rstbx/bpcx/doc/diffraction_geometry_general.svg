@@ -14,7 +14,10 @@
    id="svg2"
    version="1.1"
    inkscape:version="0.48.1 r9760"
-   sodipodi:docname="diffraction_geometry_general.svg">
+   sodipodi:docname="diffraction_geometry_general.svg"
+   inkscape:export-filename="/home/david/bsx/cctbx-svn/sources/cctbx_project/rstbx/bpcx/doc/diffraction_geometry_general.png"
+   inkscape:export-xdpi="90"
+   inkscape:export-ydpi="90">
   <defs
      id="defs4">
     <marker
@@ -103,9 +106,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="2.0089709"
-     inkscape:cx="331.64228"
-     inkscape:cy="790.86035"
+     inkscape:zoom="1.420557"
+     inkscape:cx="431.07553"
+     inkscape:cy="706.70006"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"

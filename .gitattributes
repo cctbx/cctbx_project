@@ -1357,6 +1357,7 @@ rstbx/bpcx/SConscript -text
 rstbx/bpcx/__init__.py -text
 rstbx/bpcx/compare_mosflm_xds.py -text
 rstbx/bpcx/detector_model/README -text
+rstbx/bpcx/detector_model/detector_model_ext.cpp -text
 rstbx/bpcx/detector_model/sensor.cpp -text
 rstbx/bpcx/detector_model/sensor.h -text
 rstbx/bpcx/detector_model/tst_sensor.cpp -text
