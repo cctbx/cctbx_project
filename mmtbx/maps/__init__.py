@@ -523,7 +523,10 @@ class compute_map_coefficients(object):
                fmodel,
                params,
                mtz_dataset = None,
+               post_processing_callback=None,
                log=sys.stdout):
+    assert ((post_processing_callback is None) or
+            (hasattr(post_processing_callback, "__call__")))
     self.mtz_dataset = mtz_dataset
     coeffs = None
     self.map_coeffs = []
@@ -538,6 +541,10 @@ class compute_map_coefficients(object):
             mcp.isotropize = False
         # XXX
         coeffs = map_coefficients_from_fmodel(fmodel = fmodel, params = mcp)
+        if (post_processing_callback is not None) and (coeffs is not None) :
+          coeffs = post_processing_callback(
+            map_coeffs=coeffs,
+            fmodel=fmodel)
         if("mtz" in mcp.format and coeffs is not None):
           lbl_mgr = map_coeffs_mtz_label_manager(map_params = mcp)
           if(self.mtz_dataset is None):
