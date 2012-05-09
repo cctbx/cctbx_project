@@ -241,27 +241,29 @@ class ncs_averager (object) :
 
   def __call__ (self, map_coeffs, fmodel) :
     from solve_resolve.resolve_python.ncs_average import ncs_average
-    from mmtbx import masks
     from cctbx import maptbx
+    from scitbx.array_family import flex
     fft_map = map_coeffs.fft_map(
       symmetry_flags=maptbx.use_space_group_symmetry,
       resolution_factor=self.params.resolution_factor)
     real_map = fft_map.apply_volume_scaling().real_map_unpadded()
-    #mask = fmodel.mask_manager.bulk_solvent_mask()
-    mask = masks.bulk_solvent(
-      xray_structure=fmodel.xray_structure,
-      ignore_zero_occupancy_atoms=False,
-      solvent_radius=1.11,
-      shrink_truncation_radius=0.9,
-      ignore_hydrogen_atoms=True,
-      gridding_n_real=fft_map.n_real())
+    mask = flex.float(real_map.size(), 0)
+    sites_cart = fmodel.xray_structure.sites_cart()
+    indices = maptbx.grid_indices_around_sites(
+      unit_cell=fmodel.xray_structure.unit_cell(),
+      fft_n_real=real_map.focus(),
+      fft_m_real=real_map.all(),
+      sites_cart=sites_cart,
+      site_radii=flex.double(sites_cart.size(), 1.5))
+    mask.set_selected(indices, 1)
+    mask.reshape(real_map.accessor())
     if (self.verbose) :
       out = self.log
     else :
       out = null_out()
     averaged = ncs_average(
       map=real_map.as_float(),
-      mask=mask.data.as_double().as_float(),
+      mask=mask,
       ncs_object=self.ncs_object,
       space_group=map_coeffs.space_group(),
       unit_cell=map_coeffs.unit_cell(),
