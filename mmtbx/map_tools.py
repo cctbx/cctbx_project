@@ -229,8 +229,15 @@ class electron_density_map(object):
 ncs_averaging_params = """
 resolution_factor = 0.25
   .type = float
+averaging_radius = 5.0
+  .type = float
+exclude_hd = True
+  .type = bool
 """
 
+# XXX it would be more useful to have this integrated with the rest of the
+# code, instead of making map averaging an afterthought.  however, the
+# external overhead is currently substantial.
 class ncs_averager (object) :
   def __init__ (self, ncs_object, params=None, log=None, verbose=False) :
     if (params is None) :
@@ -249,12 +256,14 @@ class ncs_averager (object) :
     real_map = fft_map.apply_volume_scaling().real_map_unpadded()
     mask = flex.float(real_map.size(), 0)
     sites_cart = fmodel.xray_structure.sites_cart()
+    if (self.params.exclude_hd) :
+      sites_cart = sites_cart.select(~fmodel.xray_structure.hd_selection())
     indices = maptbx.grid_indices_around_sites(
       unit_cell=fmodel.xray_structure.unit_cell(),
       fft_n_real=real_map.focus(),
       fft_m_real=real_map.all(),
       sites_cart=sites_cart,
-      site_radii=flex.double(sites_cart.size(), 1.5))
+      site_radii=flex.double(sites_cart.size(), self.params.radius))
     mask.set_selected(indices, 1)
     mask.reshape(real_map.accessor())
     if (self.verbose) :
