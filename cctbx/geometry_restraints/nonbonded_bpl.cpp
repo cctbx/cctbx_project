@@ -55,9 +55,12 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("nonbonded_simple_proxy", no_init)
-        .def(init<af::tiny<unsigned, 2> const&, double>(
-            (arg("i_seqs"), arg("vdw_distance"))))
+        .def(init<af::tiny<unsigned, 2> const&, double>((
+          arg("i_seqs"), arg("vdw_distance"))))
+        .def(init<af::tiny<unsigned, 2> const&, sgtbx::rt_mx const&, double>((
+          arg("i_seqs"), arg("rt_mx_ji"), arg("vdw_distance"))))
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
+        .add_property("rt_mx_ji", make_getter(&w_t::rt_mx_ji, rbv()))
         .def_readwrite("vdw_distance", &w_t::vdw_distance)
       ;
       {

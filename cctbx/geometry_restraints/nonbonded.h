@@ -3,6 +3,7 @@
 
 #include <cctbx/geometry_restraints/asu_cache.h>
 #include <cctbx/geometry_restraints/sorted_asu_proxies.h>
+#include <tbxx/optional_copy.hpp>
 #include <set>
 
 namespace cctbx { namespace geometry_restraints {
@@ -198,20 +199,37 @@ namespace cctbx { namespace geometry_restraints {
   //! Grouping of indices into array of sites (i_seqs) and vdw_distance.
   struct nonbonded_simple_proxy
   {
+    typedef af::tiny<unsigned, 2> i_seqs_type;
+
     //! Default constructor. Some data members are not initialized!
     nonbonded_simple_proxy() {}
 
     //! Constructor.
     nonbonded_simple_proxy(
-      af::tiny<unsigned, 2> const& i_seqs_,
+      i_seqs_type const& i_seqs_,
       double vdw_distance_)
     :
       i_seqs(i_seqs_),
       vdw_distance(vdw_distance_)
     {}
 
+    //! Constructor.
+    nonbonded_simple_proxy(
+      i_seqs_type const& i_seqs_,
+      sgtbx::rt_mx const& rt_mx_ji_,
+      double vdw_distance_)
+    :
+      i_seqs(i_seqs_),
+      rt_mx_ji(rt_mx_ji_),
+      vdw_distance(vdw_distance_)
+    {}
+
     //! Indices into array of sites.
-    af::tiny<unsigned, 2> i_seqs;
+    i_seqs_type i_seqs;
+
+    //! Optional symmetry operation operating on i_seqs[1]
+    tbxx::optional_copy<sgtbx::rt_mx> rt_mx_ji;
+
     //! VDW distance.
     double vdw_distance;
   };
@@ -238,7 +256,7 @@ namespace cctbx { namespace geometry_restraints {
     as_simple_proxy() const
     {
       return nonbonded_simple_proxy(
-        af::tiny<unsigned, 2>(i_seq, j_seq),
+        nonbonded_simple_proxy::i_seqs_type(i_seq, j_seq),
         vdw_distance);
     }
 
@@ -544,6 +562,7 @@ namespace cctbx { namespace geometry_restraints {
         vdw_distance(proxy.vdw_distance),
         function(function_)
       {
+        CCTBX_ASSERT(!proxy.rt_mx_ji);
         for(int i=0;i<2;i++) {
           std::size_t i_seq = proxy.i_seqs[i];
           CCTBX_ASSERT(i_seq < sites_cart.size());
@@ -614,7 +633,7 @@ namespace cctbx { namespace geometry_restraints {
       void
       add_gradients(
         af::ref<scitbx::vec3<double> > const& gradient_array,
-        af::tiny<unsigned, 2> const& i_seqs) const
+        nonbonded_simple_proxy::i_seqs_type const& i_seqs) const
       {
         vec3 g0 = gradient_0();
         gradient_array[i_seqs[0]] += g0;
