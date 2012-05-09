@@ -30,6 +30,7 @@ class settings_window (wxtbx.utils.SettingsPanel) :
 
   def add_controls (self) :
     self._index_span = None
+    self._last_sg_sel = None
     self.d_min_ctrl = floatspin.FloatSpin(parent=self, increment=0.05, digits=2)
     self.d_min_ctrl.Bind(wx.EVT_SET_FOCUS, lambda evt: None)
     if (wx.VERSION >= (2,9)) : # XXX FloatSpin bug in 2.9.2/wxOSX_Cocoa
@@ -65,7 +66,16 @@ class settings_window (wxtbx.utils.SettingsPanel) :
       setting="sqrt_scale_colors",
       label="Scale colors to sqrt(value)")
     self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
+    self.sg_ctrl = oop.null()
     if (self.is_3d_view) :
+      self.sg_ctrl = wx.Choice(self.panel, -1,
+        choices=[],
+        size=(160,-1))
+      self.Bind(wx.EVT_CHOICE, self.OnChangeSpaceGroup, self.sg_ctrl)
+      box = wx.BoxSizer(wx.HORIZONTAL)
+      self.panel_sizer.Add(box)
+      box.Add(wx.StaticText(self.panel, -1, "Space group:"), 0, wx.ALL, 5)
+      box.Add(self.sg_ctrl, 0, wx.ALL, 5)
       ctrls = self.create_controls(
         setting="expand_to_p1",
         label="Expand data to P1")
@@ -179,6 +189,24 @@ class settings_window (wxtbx.utils.SettingsPanel) :
       value_str = format_value("%.3g", value, replace_none_with="---")
       self.value_info.SetValue(value_str)
 
+  def update_space_group_choices (self, miller_array) :
+    from cctbx.sgtbx.subgroups import subgroups
+    from cctbx import sgtbx
+    sg_info  = miller_array.space_group_info()
+    subgrs = subgroups(sg_info).groups_parent_setting()
+    choices = []
+    for subgroup in subgrs :
+      subgroup_info = sgtbx.space_group_info(group=subgroup)
+      choices.append(str(subgroup_info))
+    if (str(sg_info) in choices) :
+      current = choices.index(str(sg_info))
+    else :
+      choices.insert(0, str(sg_info))
+      current = 0
+    self.sg_ctrl.SetItems(choices)
+    self.sg_ctrl.SetSelection(current)
+    self._last_sg_sel = str(sg_info)
+
   def OnSetSlice (self, event) :
     self.settings.slice_axis = self.hkl_choice.GetStringSelection()
     axis_index = ["h","k","l"].index(self.settings.slice_axis)
@@ -198,6 +226,13 @@ class settings_window (wxtbx.utils.SettingsPanel) :
       except ValueError, e : # TODO set limits
         raise Sorry(str(e))
 
+  def OnChangeSpaceGroup (self, event) :
+    sg_sel = self.sg_ctrl.GetStringSelection()
+    if (sg_sel != self._last_sg_sel) :
+      from cctbx import sgtbx
+      sg_info = sgtbx.space_group_info(sg_sel)
+      self.parent.set_space_group(sg_info)
+
   def OnChangeResolution (self, event) :
     self.settings.d_min = self.d_min_ctrl.GetValue()
     self.parent.update_settings()
@@ -216,6 +251,7 @@ class HKLViewFrame (wx.Frame) :
     self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS|wx.TB_TEXT)
     self.toolbar.SetToolBitmapSize((32,32))
     self.sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.miller_array = None
     app = wx.GetApp()
     if (getattr(app, "hklview_settings", None) is not None) :
       # XXX copying the initial settings avoids awkward interactions when
@@ -372,6 +408,7 @@ class HKLViewFrame (wx.Frame) :
     self.settings_panel.d_min_ctrl.SetValue(array.d_min())
     self.settings_panel.d_min_ctrl.SetRange(array.d_min(), 20.0)
     self.settings_panel.set_index_span(array.index_span())
+    self.settings_panel.update_space_group_choices(array)
     if (type(self).__name__ == "HKLViewFrame") :
       if (array.indices().size() > 100000) :
         if (self.settings.spheres) :
@@ -383,6 +420,7 @@ class HKLViewFrame (wx.Frame) :
           if (cnf == wx.YES) :
             self.settings.spheres = False
             self.settings_panel.spheres_ctrl.SetValue(False)
+    self.miller_array = array
     self.viewer.set_miller_array(array, zoom=True)
     self.viewer.Refresh()
     if (self.view_2d is not None) :
@@ -390,6 +428,17 @@ class HKLViewFrame (wx.Frame) :
 
   def update_settings (self, *args, **kwds) :
     self.viewer.update_settings(*args, **kwds)
+
+  def set_space_group (self, space_group_info) :
+    from cctbx import crystal
+    symm = crystal.symmetry(
+      space_group_info=space_group_info,
+      unit_cell=self.miller_array.unit_cell())
+    array = self.miller_array.expand_to_p1().customized_copy(
+      crystal_symmetry=symm)
+    array = array.merge_equivalents().array()
+    self.viewer.set_miller_array(array, zoom=False)
+    self.viewer.Refresh()
 
   def load_reflections_file (self, file_name) :
     if (isinstance(file_name, unicode)) :
