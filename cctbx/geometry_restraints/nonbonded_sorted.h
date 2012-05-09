@@ -112,32 +112,20 @@ namespace cctbx { namespace geometry_restraints {
                  donor_acceptor_excl_groups[pair.j_seq]) {
             donor_acceptor_adjust = false;
           }*/
-          if (   shell_asu_tables_size > 2
-              && shell_asu_tables[2].contains(pair)) {
-            nonbonded_asu_proxy proxy = make_nonbonded_asu_proxy(
-              nonbonded_params, nonbonded_types, nonbonded_charges, pair,
-              /*is_1_4_interaction*/ true, /*donor_acceptor_adjust*/ false);
-            if (min_vdw_distance < 0 || min_vdw_distance > proxy.vdw_distance){
-              min_vdw_distance = proxy.vdw_distance;
-            }
-            if (max_vdw_distance < proxy.vdw_distance) {
-              max_vdw_distance = proxy.vdw_distance;
-            }
-            process(proxy, sym_excl_flag);
-            continue;
+          bool is_1_4_interaction = (
+               shell_asu_tables_size > 2
+            && shell_asu_tables[2].contains(pair));
+          nonbonded_asu_proxy proxy = make_nonbonded_asu_proxy(
+            nonbonded_params, nonbonded_types, nonbonded_charges, pair,
+            is_1_4_interaction,
+            donor_acceptor_adjust && !is_1_4_interaction);
+          if (min_vdw_distance < 0 || min_vdw_distance > proxy.vdw_distance) {
+            min_vdw_distance = proxy.vdw_distance;
           }
-          {
-            nonbonded_asu_proxy proxy = make_nonbonded_asu_proxy(
-              nonbonded_params, nonbonded_types, nonbonded_charges, pair,
-              /*is_1_4_interaction*/ false, donor_acceptor_adjust);
-            if (min_vdw_distance < 0 || min_vdw_distance > proxy.vdw_distance){
-              min_vdw_distance = proxy.vdw_distance;
-            }
-            if (max_vdw_distance < proxy.vdw_distance) {
-              max_vdw_distance = proxy.vdw_distance;
-            }
-            process(proxy, sym_excl_flag);
+          if (max_vdw_distance < proxy.vdw_distance) {
+            max_vdw_distance = proxy.vdw_distance;
           }
+          process(proxy, sym_excl_flag);
         }
       }
 
