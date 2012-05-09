@@ -121,20 +121,32 @@ class python_reflection_prediction:
         return observed_reflection_positions
 
 class make_prediction_list:
-  def predict_observations(self,configuration_file, img_range, dmin = None,
-                           rocking_curve = "none", mosaicity_deg=0.0):
-    d2r = math.pi / 180.0
 
-    cfc = coordinate_frame_converter(configuration_file)
+  def __init__(self, configuration_file, img_range, dmin = None,
+               rocking_curve = "none", mosaicity_deg = 0.0):
+      self._configuration_file = configuration_file
+      self._img_range = img_range
+      self._dmin = dmin
+      self._rocking_curve = rocking_curve
+      self._mosaicity_deg = mosaicity_deg
+      return
+
+  def predict_observations(self):
+    '''Actually perform the prediction calculations.'''
+
+    d2r = math.pi / 180.0
+    cfc = coordinate_frame_converter(self._configuration_file)
 
     self.img_start, self.osc_start, self.osc_range = parse_xds_xparm_scan_info(
-        configuration_file)
+        self._configuration_file)
 
-    if dmin is None:
-        dmin = cfc.derive_detector_highest_resolution()
+    if self._dmin is None:
+        self._dmin = cfc.derive_detector_highest_resolution()
 
-    phi_start = ((img_range[0] - self.img_start) * self.osc_range + self.osc_start) * d2r
-    phi_end = ((img_range[1] - self.img_start + 1) * self.osc_range + self.osc_start) * d2r
+    phi_start = ((self._img_range[0] - self.img_start) * self.osc_range + \
+                 self.osc_start) * d2r
+    phi_end = ((self._img_range[1] - self.img_start + 1) * self.osc_range + \
+               self.osc_start) * d2r
 
     # in principle this should come from the crystal model - should that
     # crystal model record the cell parameters or derive them from the
@@ -155,7 +167,7 @@ class make_prediction_list:
 
     indices = full_sphere_indices(
       unit_cell = self.uc,
-      resolution_limit = dmin,
+      resolution_limit = self._dmin,
       space_group = space_group(space_group_symbols(sg).hall()))
 
     # then get the UB matrix according to the Rossmann convention which
@@ -170,12 +182,12 @@ class make_prediction_list:
 
     # work out which reflections should be observed (i.e. pass through the
     # Ewald sphere)
-    ra = rotation_angles(dmin, ub, wavelength, axis)
+    ra = rotation_angles(self._dmin, ub, wavelength, axis)
 
-    observed_indices, observed_angles = ra.observed_indices_and_angles_from_angle_range(
-        phi_start_rad=phi_start,
-        phi_end_rad=phi_end,
-        indices=indices)
+    obs_indices, obs_angles = ra.observed_indices_and_angles_from_angle_range(
+        phi_start_rad = phi_start,
+        phi_end_rad = phi_end,
+        indices = indices)
 
     # convert all of these to full scattering vectors in a laboratory frame
     # (for which I will use the CBF coordinate frame) and calculate which
@@ -196,30 +208,32 @@ class make_prediction_list:
     detector_fast = cfc.get_c('detector_fast')
     detector_slow = cfc.get_c('detector_slow')
     sample_to_source = cfc.get_c('sample_to_source')
-    self.pixel_size_fast, self.pixel_size_slow = cfc.get('detector_pixel_size_fast_slow')
+    self.pixel_size_fast, self.pixel_size_slow = cfc.get(
+        'detector_pixel_size_fast_slow')
     size_fast, size_slow = cfc.get('detector_size_fast_slow')
 
     dimension_fast = size_fast * self.pixel_size_fast
     dimension_slow = size_slow * self.pixel_size_slow
 
     detector_normal = detector_fast.cross(detector_slow)
-    self.distance = detector_origin.dot(detector_normal) # used for polarization correction
+    # used for polarization correction
+    self.distance = detector_origin.dot(detector_normal)
 
     rp = reflection_prediction(axis, s0, ub, detector_origin,
                                    detector_fast, detector_slow,
                                    0, dimension_fast,
                                    0, dimension_slow)
-    if rocking_curve is not None:
-      assert rocking_curve!="none"
-      rp.set_rocking_curve(rocking_curve)
-      rp.set_mosaicity(mosaicity_deg, degrees=True)
-    return rp.predict(observed_indices,observed_angles)
+    if self._rocking_curve is not None:
+      assert self._rocking_curve != "none"
+      rp.set_rocking_curve(self._rocking_curve)
+      rp.set_mosaicity(self._mosaicity_deg, degrees = True)
+    return rp.predict(obs_indices, obs_angles)
 
-  def main(self,configuration_file, img_range, dmin = None):
+def test(configuration_file, img_range, dmin = None):
     '''Perform the calculations needed for use case 1.1.'''
 
-    obs_hkl,obs_fast,obs_slow,obs_angle = \
-      self.predict_observations(configuration_file, img_range, dmin)
+    mp = make_prediction_list(configuration_file, img_range, dmin)
+    obs_hkl,obs_fast,obs_slow,obs_angle = mp.predict_observations()
 
     r2d = 180.0 / math.pi
 
@@ -230,19 +244,17 @@ class make_prediction_list:
       angle = obs_angle[iobs]
       print '%5d %5d %5d' % hkl, '%11.4f %11.4f %9.2f' % (
             f / self.pixel_size_fast, s / self.pixel_size_slow,
-            (self.img_start - 1) + ((angle * r2d) - self.osc_start) / self.osc_range)
+            (self.img_start - 1) + ((angle * r2d) - self.osc_start) / \
+          self.osc_range)
 
 if __name__ == '__main__':
-
-    # FIXME we should perhaps use Phil here to learn how to do this?!
 
     if len(sys.argv) < 4:
         msg = "Requires 3 arguments: path/to/xparm.xds start_image_no end_image_no"
         sys.exit(msg)
     else:
-        M = make_prediction_list()
         if len(sys.argv) == 4:
-            M.main(sys.argv[1], (int(sys.argv[2]), int(sys.argv[3])))
+            test(sys.argv[1], (int(sys.argv[2]), int(sys.argv[3])))
         else:
-            M.main(sys.argv[1], (int(sys.argv[2]), int(sys.argv[3])),
-                 float(sys.argv[4]))
+            test(sys.argv[1], (int(sys.argv[2]), int(sys.argv[3])),
+                float(sys.argv[4]))
