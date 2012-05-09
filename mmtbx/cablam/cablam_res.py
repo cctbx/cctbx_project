@@ -3,7 +3,7 @@
 #  and access instances of it.
 
 import sys
-from mmtbx.cablam.cjw_vectormath import veclen, vectorize
+from mmtbx.cablam.cablam_math import veclen, vectorize
 
 #{{{ linked_residue class
 #This class holds information on protein residues (as defined by residue_group
@@ -17,12 +17,12 @@ from mmtbx.cablam.cjw_vectormath import veclen, vectorize
 #  anything, so you have to do your own error catching, usually of the form:
 #  if self.nextres: return self.nextres.resnum
 #The class was designed for use with cablam, which requires forward and backward
-#  sequence awareness. But it could be used elsewhere. It contains a generic
-#  results={} dictionary used by cablam, but usable by anyone willing to make
-#  unique keys for their data.
+#  sequence awareness, but it could be used elsewhere. It contains a generic
+#  results={} dictionary  usable by anyone willing to make unique keys for their
+#  data.
 #It is recommended that all instances of this class for a protein be members of
 #  some iterable (I use a dictionary keyed with the cablam_key() function in
-#  this module). Do not rely on sequence connectivity (which breaks due to
+#  this module). Do not rely on sequence connectivity alone (which breaks due to
 #  multiple chains or missing atoms) to let you find all residues.
 #The class should deal with insertion codes well, since different icodes seem to
 #  be in different rg's in the hierarchy.
@@ -33,33 +33,33 @@ from mmtbx.cablam.cjw_vectormath import veclen, vectorize
 #-------------------------------------------------------------------------------
 class linked_residue():
 
-  #printrec is a simple debugging function to print the contents of a pdb to
-  #  screen to give an idea of where and how values are stored
-  def printrec(self):
-    print self.pdbid, self.model, self.chain, self.resnum, self.icode
-    for alt in self.alts:
-      print self.alts[alt]['resname'], self.alts[alt]['alt']
-      print ' ', self.atomxyz[alt], self.atomb[alt]
-
+  #Prints kinemage point-style output for a list of measures given in kinorder
   def printtokin(self, kinorder, writeto=sys.stdout):
-    outline = ['{'+self.id_with_resname(sep=' ')+' '+self.dssp+'}']
+    outline = ['{'+self.id_with_resname(sep=' ')+'}']
     for order in kinorder:
       try:
-        outline.append(str(self.results[order]))
+        outline.append(str(self.measures[order]))
       except KeyError:
         return
     writeto.write(' '.join(outline)+'\n')
 
-  def printtocsv(self, kinorder, writeto=sys.stdout):
-    outline = [self.id_with_resname(sep=':')]
+  #Prints comma-separated output for a list of measures given in kinorder
+  def printtocsv(self, kinorder, doconnections=False, writeto=sys.stdout):
+    outline = [self.id_with_resname(sep=':',alt=self.firstalt('CA'))]
     for order in kinorder:
       try:
-        outline.append(str(self.results[order]))
+        outline.append(str(self.measures[order]))
       except KeyError:
-        return
-    outline.append(self.dssp)
+        outline.append('NULL')
+    if doconnections:
+      if self.prevres: outline.append(self.prevres.id_with_resname(sep=':', alt=self.prevres.firstalt('CA')))
+      else: outline.append('NULL')
+      if self.nextres: outline.append(self.nextres.id_with_resname(sep=':', alt=self.nextres.firstalt('CA')))
+      else: outline.append('NULL')
     writeto.write(','.join(outline)+'\n')  #note the ',' in the join here
 
+  #id_to_string and id_with_resname return string concatenations of residue
+  #  identifiers.  The identifier order should be standard with other RLab
   def id_to_str(self, sep=' '):
     resid_string = sep.join(
       [self.pdbid, self.model, self.chain, str(self.resnum), self.icode])
@@ -69,10 +69,12 @@ class linked_residue():
     try:
       resname = self.alts[alt]['resname']
     except KeyError:
+      #Some default was necessary
       resname = 'XXX'
+      alt = ''
     resid_string = sep.join(
-      [self.pdbid, self.model, self.chain, resname+alt,
-      str(self.resnum), self.icode])
+      [self.pdbid, self.model, self.chain, str(self.resnum), self.icode,
+      resname+alt])
     return resid_string
 
   #Removes the references that sequence-adjacent linked_residue class instances
@@ -85,7 +87,7 @@ class linked_residue():
     if self.nextres:
       self.nextres.prevres = None
 
-  #Returns the first alt in alts that has an atom of the requested name
+  #Returns the first alt index in alts that has an atom of the requested name
   #  Removes some guesswork from atom lookup, but really just acrobatics around
   #  the problem of how to store and access alts usefully
   def firstalt(self, atomname):
@@ -99,6 +101,23 @@ class linked_residue():
         continue
     else:
       return None
+
+  #simplified retrieval around firstalt for the common case of atom coords
+  def getatomxyz(self, atomname):
+    firstalt = self.firstalt(atomname)
+    try:
+      return self.atomxyz[firstalt][atomname]
+    except KeyError:
+      return None
+
+  #Simplified access for probe data storage, returns a dotcount for bonds that
+  #  exist, int 0 for bonds that do not
+  #In future, mingap distance might be returned
+  def getprobe(self, atomtype=None, seqdist=None):
+    if not self.probe[atomtype] or not self.probe[atomtype][seqdist]:
+      return 0
+    else:
+      return self.probe[atomtype][seqdist]
 
   #There needs to be a CA-only consecutive check. Adding one is a high priority.
   def consecutive(self, res1, res2):
@@ -123,10 +142,6 @@ class linked_residue():
         return False
     else:
       return False
-
-  def dssprob_sort(self):
-    self.dssprob_decending = self.dssprob.keys()  #list of dsspkeys
-    self.dssprob_decending.sort(reverse=True, key=lambda x: self.dssprob[x])
 
   def __init__(self,
     rg, prevres=None, pdbid='pdbid', modelid='', chainid='',
@@ -162,7 +177,7 @@ class linked_residue():
     #Note that a reference to the related residue is stored, not a dictionary
     #  key for the wrapper dictionary
     #Someone clever may want to teach me how to use weakref() if the mutual
-    #  references that reault from this cause memory leaking or something
+    #  references that result from this cause memory problems
     if prevres and self.consecutive(prevres, self):
       self.prevres = prevres     #Connect this residue to previous
       prevres.nextres = self     #And the previous residue to this one
@@ -170,22 +185,20 @@ class linked_residue():
       self.prevres = None #Adjacency is handled in an outside function
     self.nextres = None
 
-    #self.resname = self.alts[self.firstalt('CA')]['resname']
+    self.probe = {'O':{},'H':{}}   #holder for hydrogen bonding, indexed by i+/-X relation
+    self.probeH = []
+    self.probeO = []
 
-    self.dssp = ''    #space fo DSSP code if needed
-
-    self.results = {} #Holder for calcuated values of interest
-    self.dssprob = {} #Holder for probabilities of various secondary structures
-    #Yes, dssprob and dsspath are the sorts of over-clever names for which I
-    #  should probably be scolded.
-    self.dssprob_decending = []
+    self.measures = {} #Holder for cablam-space geometric measures
+    self.motifs = {} #Holder for identified motifs from fingerprints/probetrain
+    self.results = {} #Generic holder for calcuated values of interest
 
 #-------------------------------------------------------------------------------
 #}}}
 
 #{{{ cablam_key function
-#The "protein" or "resdata" dictionary returned by rollongRecords() below uses
-#a   particular key construction to access (and order) its contents
+#The "protein" or "resdata" dictionary returned by construct_linked_residues()
+#  below uses a particular key construction to access (and order) its contents
 #This function provides that construction so that residues in resdata may be
 #  accessed from anywhere. The string returned is .sort()able
 #-------------------------------------------------------------------------------
@@ -194,7 +207,7 @@ def cablam_key(modelid=None, chainid=None, resnum=None, icode=None):
     resid_string = ' '.join([modelid, chainid, '%04i' % resnum, icode])
     #The bit of string formatting here ('%04i' % resnum) helps .sort() later by
     #  adding 0's to the left side of resnum until resnum is 4 characters long.
-    #  May or may not be campatible with Hybrid36 or other numbering schemes.
+    #  May or may not be compatible with Hybrid36 or other numbering schemes.
     return resid_string
   else:
     sys.stderr.write("""
