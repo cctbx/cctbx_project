@@ -2,6 +2,9 @@ from cctbx.array_family import flex
 from cctbx import miller
 from cctbx import maptbx
 import boost.python
+import libtbx.phil
+from libtbx.utils import null_out
+from libtbx import adopt_init_args
 import mmtbx
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
@@ -222,3 +225,49 @@ class electron_density_map(object):
       return miller.fft_map(
         crystal_gridding     = other_fft_map,
         fourier_coefficients = map_coefficients)
+
+ncs_averaging_params = """
+resolution_factor = 0.25
+  .type = float
+"""
+
+class ncs_averager (object) :
+  def __init__ (self, ncs_object, params=None, log=None, verbose=False) :
+    if (params is None) :
+      params = libtbx.phil.parse(ncs_averaging_params).extract()
+    if (log is None) :
+      log = null_out()
+    adopt_init_args(self, locals())
+
+  def __call__ (self, map_coeffs, fmodel) :
+    from solve_resolve.resolve_python.ncs_average import ncs_average
+    from mmtbx import masks
+    from cctbx import maptbx
+    fft_map = map_coeffs.fft_map(
+      symmetry_flags=maptbx.use_space_group_symmetry,
+      resolution_factor=self.params.resolution_factor)
+    real_map = fft_map.apply_volume_scaling().real_map_unpadded()
+    #mask = fmodel.mask_manager.bulk_solvent_mask()
+    mask = masks.bulk_solvent(
+      xray_structure=fmodel.xray_structure,
+      ignore_zero_occupancy_atoms=False,
+      solvent_radius=1.11,
+      shrink_truncation_radius=0.9,
+      ignore_hydrogen_atoms=True,
+      gridding_n_real=fft_map.n_real())
+    if (self.verbose) :
+      out = self.log
+    else :
+      out = null_out()
+    averaged = ncs_average(
+      map=real_map.as_float(),
+      mask=mask.data.as_double().as_float(),
+      ncs_object=self.ncs_object,
+      space_group=map_coeffs.space_group(),
+      unit_cell=map_coeffs.unit_cell(),
+      resolution=map_coeffs.d_min(),
+      out=out)
+    new_map_coeffs = map_coeffs.structure_factors_from_map(
+      map=averaged.average_map.as_double(),
+      use_sg=True)
+    return new_map_coeffs
