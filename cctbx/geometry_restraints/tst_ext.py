@@ -785,7 +785,15 @@ def exercise_nonbonded():
     i_seqs=[0,1],
     vdw_distance=5)
   assert p.i_seqs == (0,1)
+  assert p.rt_mx_ji is None
   assert approx_equal(p.vdw_distance, 5)
+  ps = geometry_restraints.nonbonded_simple_proxy(
+    i_seqs=[2,3],
+    rt_mx_ji=sgtbx.rt_mx("y,y-x,0.5+Z"),
+    vdw_distance=4)
+  assert ps.i_seqs == (2,3)
+  assert str(ps.rt_mx_ji) == "y,-x+y,z+1/2"
+  assert approx_equal(ps.vdw_distance, 4)
   r = geometry_restraints.nonbonded_prolsq(
     sites=[(1,2,3),(2,4,6)],
     vdw_distance=5,
