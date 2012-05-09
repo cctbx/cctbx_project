@@ -1,17 +1,12 @@
-import libtbx.load_env
+Import("env_rstbx_boost_python_ext", "env_etc")
 
-Import("env_base", "env_etc")
-env = env_base.Clone()
-env.Prepend(LIBS=["cctbx"])
-env.Append(LIBS=env_etc.libm)
+env = env_rstbx_boost_python_ext.Clone()
 env_etc.enable_more_warnings(env=env)
-env_etc.include_registry.append(
-  env=env,
-  paths=env_etc.rstbx_common_includes)
 
-exe = env.Program(
-  target="tst_sensor",
-  source=["detector_model/sensor.cpp", "detector_model/tst_sensor.cpp"])
-libtbx.env.write_dispatcher_in_bin(
-    source_file=exe[0].get_abspath(),
-    target_file="rstbx.tst_sensor")
+env.SharedLibrary(
+  target="#lib/rstbx_bpcx_detector_model_ext",
+  source=[
+    "detector_model/detector_model_ext.cpp",
+    "detector_model/sensor.cpp",
+  ]
+)
