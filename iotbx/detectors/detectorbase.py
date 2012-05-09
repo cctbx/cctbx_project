@@ -1,5 +1,6 @@
 import copy
 from iotbx.detectors import ReadADSC
+from scitbx.array_family import flex
 import sys
 
 class DetectorImageBase(object):
@@ -335,7 +336,6 @@ class tile_manager_base(object):
     return IT
 
   def effective_tiling_as_flex_int_impl(self, **kwargs):
-    from scitbx.array_family import flex
     assert self.reference_image is not None
 
     IT = flex.int()
