@@ -157,6 +157,8 @@ mtz_file
       .short_caption = Output non-anomalous data
       .help = If enabled, anomalous arrays will be merged first.  Note that \
         this will cut the number of output labels in half.
+    shuffle_values = False
+      .type = bool
   }
   r_free_flags
     .short_caption = R-free flags generation
@@ -571,8 +573,8 @@ class process_arrays (object) :
           (array_params.add_b_aniso is not None)) :
         if (not isinstance(new_array.data(), flex.double) or
                 isinstance(new_array.data(), flex.complex_double)) :
-          raise Sorry(("Applying a B-factor to the data in %s:%s is not "+
-            "permitted.") % (file_name, array_params.labels))
+          raise Sorry(("Applying a B-factor to the data in %s is not "+
+            "permitted.") % array_name)
         if (array_params.add_b_iso is not None) :
           new_array = new_array.apply_debye_waller_factors(
             b_iso=array_params.add_b_iso,
@@ -581,6 +583,14 @@ class process_arrays (object) :
           new_array = new_array.apply_debye_waller_factors(
             b_cart=array_params.add_b_aniso,
             apply_to_sigmas=True)
+      if (array_params.shuffle_values) :
+        print >> log, "Shuffling values for %s" % array_name
+        perm = flex.random_permutation(new_array.data().size())
+        sigmas = new_array.sigmas()
+        if (sigmas is not None) :
+          sigmas = sigmas.select(perm)
+        data = new_array.data().select(perm)
+        new_array = new_array.customized_copy(data=data, sigmas=sigmas)
 
       #-----------------------------------------------------------------
       # MISCELLANEOUS
@@ -748,7 +758,7 @@ class process_arrays (object) :
                 print >> log, "Exporting missing flags to CCP4 convention"
                 exported_flags = r_free_utils.export_r_free_flags_for_ccp4(
                   flags=missing_flags.data(),
-                  test_flag_value=test_flag_value)
+                  test_flag_value=True) #test_flag_value)
                 output_array = r_free_flags.concatenate(
                   other=missing_flags.customized_copy(data=exported_flags))
               else :
