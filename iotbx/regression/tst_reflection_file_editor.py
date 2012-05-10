@@ -133,6 +133,12 @@ mtz_file {
   data_b = miller_arrays[0].data()
   sigmas_b = miller_arrays[0].sigmas()
   assert approx_equal(data_b[0], 72.68358, eps=0.00001)
+  # shuffle data randomly
+  params = master_phil.fetch(source=new_phil).extract()
+  params.mtz_file.miller_array[0].shuffle_values = True
+  miller_arrays = run_and_reload(params, "tst1.mtz")
+  data_shuffled = miller_arrays[0].data()
+  assert (not data0.all_eq(data_shuffled))
   # improper operations on R-free flags
   params = master_phil.fetch(source=new_phil).extract()
   params.mtz_file.miller_array[0].scale_factor = None

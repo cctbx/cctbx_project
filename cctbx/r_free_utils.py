@@ -87,7 +87,11 @@ def export_r_free_flags_for_ccp4 (flags, test_flag_value) :
   if len(unique_values) > 2 : # XXX: is this safe?
     return flags
   new_flags = flex.int(flags.size())
-  n_bins = iceil(flags.size() / flags.count(test_flag_value))
+  n_free = flags.count(test_flag_value)
+  if (n_free > 0) :
+    n_bins = iceil(flags.size() / n_free)
+  else :
+    n_bins = 1 # XXX dangerous!  but necessary for tiny sets
   for i in range(flags.size()) :
     if flags[i] == test_flag_value :
       new_flags[i] = 0
