@@ -611,6 +611,14 @@ class host_and_user:
     self.vendor = os.environ.get("VENDOR")
     self.user = os.environ.get("USER")
     self.username = os.environ.get("USERNAME")
+    self.homedir = None
+    if (os.name == "nt") :
+      homedrive = os.environ.get("HOMEDRIVE")
+      homepath = os.environ.get("HOMEPATH")
+      if (not None in [homedrive, homepath]) :
+        self.homedir = os.path.join(homedrive, homepath)
+    else :
+      self.homedir = os.environ.get("HOME")
     getpid = getattr(os, "getpid", None)
     if (getpid is None):
       self.pid = None
@@ -618,6 +626,12 @@ class host_and_user:
       self.pid = getpid()
     self.sge_info = sge_utils.info()
     self.pbs_info = pbs_utils.chunk_info()
+
+  def get_user_name (self) :
+    if (self.user is not None) :
+      return self.user
+    else :
+      return self.username
 
   def get_host_name (self) :
     if (self.host is not None) :
