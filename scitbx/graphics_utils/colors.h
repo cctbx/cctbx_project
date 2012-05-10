@@ -95,7 +95,10 @@ namespace scitbx { namespace graphics_utils {
     if (color_all) f_bins = (double) selection.size();
     for (unsigned i_seq = 0; i_seq < selection.size(); i_seq++) {
       if ((selection[i_seq]) || (color_all)) {
-        double gradient_ratio = j / (f_bins-1);
+        double gradient_ratio = 0;
+        if (n_selected > 0) {
+          gradient_ratio = j / (f_bins-1);
+        }
         colors[i_seq] = hsv2rgb(240.0 - (240 * gradient_ratio), 1., 1.);
         j++;
       } else {
@@ -143,6 +146,10 @@ namespace scitbx { namespace graphics_utils {
       if ((! color_all) && (! selection[i_seq])) continue;
       if (properties[i_seq] > vmax) vmax = properties[i_seq];
       if (properties[i_seq] < vmin) vmin = properties[i_seq];
+    }
+    if (vmax == vmin) {
+      vmax = 1.0;
+      vmin = 0.0;
     }
     for (unsigned i_seq = 0; i_seq < properties.size(); i_seq++) {
       double gradient_ratio = (properties[i_seq]-vmin) / (vmax-vmin);
