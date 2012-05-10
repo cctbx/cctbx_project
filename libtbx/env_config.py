@@ -1427,6 +1427,7 @@ selfx:
     self.write_lib_dispatcher_head()
     self.write_setpath_files()
     self.pickle()
+    libtbx.env = self
     os.environ["LIBTBX_BUILD"] = abs(self.build_path) # to support libtbx.load_env
     if (self.is_ready_for_build()):
       self.write_SConstruct()
