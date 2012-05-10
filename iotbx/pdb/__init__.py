@@ -588,7 +588,7 @@ def input(
     file_name = ent_path_local_mirror(pdb_id=pdb_id)
   if (file_name is not None):
     return ext.input(
-      source_info="file " + file_name,
+      source_info="file " + str(file_name), # XXX unicode hack - dangerous
       lines=flex.split_lines(smart_open.for_reading(file_name).read()))
   assert source_info is not Please_pass_string_or_None
   if (isinstance(lines, str)):
