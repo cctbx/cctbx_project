@@ -1369,7 +1369,6 @@ rstbx/bpcx/reeke.py -text
 rstbx/bpcx/uc1_2.py -text
 rstbx/bpcx/uc1_2_positions.py -text
 rstbx/bpcx/uc1_2_positions_idx.py -text
-rstbx/bpcx/uc1_2_reeke.py -text
 rstbx/bpcx/uc1_2_validate.py -text
 rstbx/bpcx/xparm-uc1-2.xds -text
 rstbx/cftbx/__init__.py -text
