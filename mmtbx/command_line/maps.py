@@ -224,6 +224,7 @@ def run(args, log = sys.stdout):
         cs_from_reflection_files.append(crystal_symmetry_from_any.extract_from(rfn))
       except KeyboardInterrupt: raise
       except RuntimeError: pass
+  crystal_symmetry = None
   try :
     crystal_symmetry = crystal.select_crystal_symmetry(
       from_coordinate_files=cs_from_coordinate_files,
