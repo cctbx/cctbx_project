@@ -907,10 +907,6 @@ def show_overall_observations(
   obs.setup_binner(n_bins=n_bins)
   result = []
 
-  # R_merge_tot are two-membered lists, holding the
-  # numerator and the denominator.
-  R_merge_tot = [0, 0]
-
   cumulative_unique = 0
   cumulative_meas   = 0
   cumulative_theor  = 0
@@ -937,11 +933,14 @@ def show_overall_observations(
     if (n_present > 0):
       val_redundancy_alt = flex.sum(sel_redundancy) / n_present
 
-    # Per-bin sum of I and I/sig(I) for each observation.  Accumulate
-    # numerators for R_merge (Stout & Jensen, 1968)
+    # Per-bin sum of I and I/sig(I) for each observation.
+    # R-merge statistics have been removed because
+    #  >> R-merge is defined on whole structure factor intensities, either
+    #     full observations or summed partials from the rotation method.
+    #     For XFEL data all reflections are assumed to be partial; no
+    #     method exists now to convert partials to fulls.
     I_sum = 0
     I_sigI_sum = 0
-    R_merge = [0, 0]
     for i in obs.binner().array_indices(i_bin) :
       index = obs.indices()[i]
       if (index in ISIGI) :
@@ -954,18 +953,8 @@ def show_overall_observations(
           N += 1
           m += t[0]
         I_sum += m
-        if (N > 0):
-          m /= N
-          for t in ISIGI[index] :
-            R_merge[0] += abs(t[0] - m)
-            R_merge[1] += t[0]
 
-    # Keep track of total sums for global statistics.
-    for i in xrange(2) :
-      R_merge_tot[i] += R_merge[i]
-
-    # XXX Bugs in table? I/sig(I) is going bananas!
-    if (sel_measurements > 0 and R_merge[1] > 0):
+    if (sel_measurements > 0):
       bin = resolution_bin(
         i_bin        = i_bin,
         d_range      = d_range,
@@ -977,7 +966,6 @@ def show_overall_observations(
         measurements = sel_measurements,
         mean_I       = I_sum / sel_measurements,
         mean_I_sigI  = I_sigI_sum / sel_measurements,
-        R_merge      = R_merge[0] / R_merge[1],
         )
       result.append(bin)
     cumulative_unique += n_present
@@ -989,7 +977,7 @@ def show_overall_observations(
     print >> out, title
   from libtbx import table_utils
   table_header = ["","","","<asu","<obs","","","",""]
-  table_header2 = ["Bin","Resolution Range","Completeness","redun>","redun>","n_meas","<I>","<I/sig(I)>","R_merge"]
+  table_header2 = ["Bin","Resolution Range","Completeness","redun>","redun>","n_meas","<I>","<I/sig(I)>"]
   table_data = []
   table_data.append(table_header)
   table_data.append(table_header2)
@@ -1003,7 +991,6 @@ def show_overall_observations(
     table_row.append("%6d"% bin.measurements)
     table_row.append("%8.0f"% bin.mean_I)
     table_row.append("%8.3f"% bin.mean_I_sigI)
-    table_row.append("%8.3f"% bin.R_merge)
     table_data.append(table_row)
   table_data.append([""]*len(table_header))
   table_data.append(  [
@@ -1015,11 +1002,10 @@ def show_overall_observations(
       format_value("%6d",   cumulative_meas),
       format_value("%8.0f", 0.),
       format_value("%8.3f", cumulative_Isigma/cumulative_meas),
-      format_value("%8.3f", R_merge_tot[0] / R_merge_tot[1]) ])
+  ])
 
   print
   print >>out,table_utils.format(table_data,has_header=2,justify='center',delim=" ")
-
 
   # XXX generate table object for displaying plots
   if (title is None) :
@@ -1071,7 +1057,6 @@ class resolution_bin(object):
                measurements  = None,
                mean_I        = None,
                mean_I_sigI   = None,
-               R_merge       = None,
                sigmaa        = None):
     adopt_init_args(self, locals())
 
