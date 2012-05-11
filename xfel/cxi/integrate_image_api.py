@@ -4,6 +4,8 @@ def integrate_one_image(data, **kwargs):
   from display_spots import run_one_index_core
   from labelit.dptbx.error import NoAutoIndex
   from libtbx.utils import Sorry
+  from spotfinder.exception import SpotfinderError
+  from labelit.exception import AutoIndexError
   from cxi_user.xfel_targets import targets
 
   basename = kwargs.get("integration_basename")
@@ -43,10 +45,17 @@ def integrate_one_image(data, **kwargs):
   except NoAutoIndex,e:
     print "NoAutoIndex"
     print e
+  except AutoIndexError,e:
+    print "FailedAutoIndex"
+    print e
   except Sorry,e:
+    print "Sorry"
     print e
   except ZeroDivisionError,e:
     print "ZeroDivisionError"
+    print e
+  except SpotfinderError,e:
+    print "Too few spots from Spotfinder"
     print e
   except Exception,e:
     print "ANOTHER exception"
