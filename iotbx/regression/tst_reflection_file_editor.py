@@ -139,6 +139,10 @@ mtz_file {
   miller_arrays = run_and_reload(params, "tst1.mtz")
   data_shuffled = miller_arrays[0].data()
   assert (not data0.all_eq(data_shuffled))
+  params.mtz_file.miller_array[0].reset_values_to = 12345.6
+  miller_arrays = run_and_reload(params, "tst1.mtz")
+  data_reset = miller_arrays[0].data()
+  assert (data_reset.all_eq(data_reset[0]))
   # improper operations on R-free flags
   params = master_phil.fetch(source=new_phil).extract()
   params.mtz_file.miller_array[0].scale_factor = None

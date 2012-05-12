@@ -124,6 +124,11 @@ mtz_file
       .short_caption = Output diffraction data as
       .help = If the Miller array is amplitudes or intensities, this flag \
         determines the output data type.
+    output_non_anomalous = False
+      .type = bool
+      .short_caption = Output non-anomalous data
+      .help = If enabled, anomalous arrays will be merged first.  Note that \
+        this will cut the number of output labels in half.
     force_type = *auto amplitudes intensities
       .type = choice
       .short_caption = Force observation type
@@ -152,13 +157,14 @@ mtz_file
     add_b_aniso = 0 0 0 0 0 0
       .type = floats(size=6)
       .short_caption = Add anisotropic B-factor
-    output_non_anomalous = False
-      .type = bool
-      .short_caption = Output non-anomalous data
-      .help = If enabled, anomalous arrays will be merged first.  Note that \
-        this will cut the number of output labels in half.
     shuffle_values = False
       .type = bool
+    reset_values_to = None
+      .type = float
+      .short_caption = Reset values to
+      .help = If defined, all data values will be set to this number.  Sigmas \
+        will be left unmodified.  Only applies to single-value floating-point \
+        data (I, F, PHI, etc.).
   }
   r_free_flags
     .short_caption = R-free flags generation
@@ -591,6 +597,12 @@ class process_arrays (object) :
           sigmas = sigmas.select(perm)
         data = new_array.data().select(perm)
         new_array = new_array.customized_copy(data=data, sigmas=sigmas)
+      if (array_params.reset_values_to) :
+        print >> log, "Resetting values for %s to %g" % (array_name,
+          array_params.reset_values_to)
+        data = new_array.data().deep_copy()
+        data.fill(array_params.reset_values_to)
+        new_array = new_array.customized_copy(data=data)
 
       #-----------------------------------------------------------------
       # MISCELLANEOUS
