@@ -1,5 +1,5 @@
 # (jEdit options) :folding=explicit:collapseFolds=1:
-import os, sys
+import sys
 
 #{{{ fingerprint superclass, hold top-level methods and data
 class ssfingerprint():
@@ -289,7 +289,7 @@ class member_residue():
     return True #if it gets through all of the above without hitting a return False, it must be okay
     #Egad, the whitespace in this function is a nightmare!
 
-  #}}}    
+  #}}}
 
   #{{{ do_move method
   def do_move(self, srcres, foundres, debug=False):

@@ -349,7 +349,7 @@ def kin_print_probe_header(full_label_list, kinorder, kinranges):
 
 #For producing distributions of points in cablam space
 #Generic output is one point (many dimensions) for each residue that matches a
-#  motif definition/fingerprint.  
+#  motif definition/fingerprint.
 def kin_print_probe(resdata, kinorder, outfiles, skiplist=[], inclist=[]):
   reskeys = resdata.keys()
   reskeys.sort()
@@ -481,7 +481,7 @@ def run():
   parser.add_argument('--probepath',
     help='Stores path to dir of probed files')
   parser.add_argument('--listmotifs',action='store_true',
-    help='print motifs/fingerprints available')  
+    help='print motifs/fingerprints available')
   parser.add_argument('--probemode',
     help='=kin for dotlist kins (default) =annote for ball on model, =instance for vectorlist kins')
 
@@ -565,12 +565,12 @@ def run():
     kinorder.append('tau'), kinranges.append('0 180')
   else:
     pass
-  
+
   if args.omega:
     kinorder.append('omega'), kinranges.append('-180 180')
   else:
     pass
-  
+
   if args.cablam:
     if 'CA_d_in' not in kinorder:
       kinorder.append('CA_d_in'),  kinranges.append('-180 180')
@@ -709,7 +709,7 @@ def run():
         open_probe_file.close()
       else:
         continue
-     
+
     if args.probe:
       #motif_list = args.probe.split(',') (this was actually done earlier)
       for motif_name in motif_list:
@@ -742,7 +742,7 @@ def run():
     #--separatefiles writes a separate file for each input file to working dir
     #--kin prints kinemage file, dotlist, one point per residue
     #--doconnections adds connectivity information to csv output
-    else: 
+    else:
       if args.kin:
         if args.separatefiles:
           outfile = open(pdbid+'_cablam.kin','w')
