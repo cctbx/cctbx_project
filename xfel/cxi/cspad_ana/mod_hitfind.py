@@ -184,7 +184,6 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       data            = self.cspad_img.iround(), # XXX ouch!
       distance        = self.distance,
       timestamp       = self.timestamp,
-      sequence_number = self.nshots,
       wavelength      = self.wavelength,
       xtal_target     = self.m_xtal_target)
 

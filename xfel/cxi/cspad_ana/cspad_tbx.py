@@ -323,7 +323,6 @@ def dpack(active_areas         = None,
           size1                = None,
           size2                = None,
           timestamp            = None,
-          sequence_number      = 0,
           wavelength           = None,
           xtal_target          = None):
   """XXX Check completeness.  Should fill in sensible defaults.  Must
@@ -377,40 +376,40 @@ def dpack(active_areas         = None,
                SIZE1                = size1,
                SIZE2                = size2,
                TIMESTAMP            = timestamp,
-               SEQUENCE_NUMBER      = sequence_number,
+               SEQUENCE_NUMBER      = 0, # XXX Deprecated
                WAVELENGTH           = wavelength,
                xtal_target          = xtal_target))
 
 
-def dwritef(d, dirname = None, basename = None):
+def dwritef(d, dirname=None, basename=None):
   """The dwritef() function pickles the dictionary pointed to by @p d
   to the file whose directory and filename portions are pointed to by
   @p dirname and @p basename, respectively.  The directory at @p
   dirname, as well as any intermediate directories, are recursively
   created if they do not already exist.  The name of the written file
-  is the concatenation of the @p basename parameter, and the timestamp
-  and sequence number from the dictionary, @p d.  In order to be able
-  to read the file later on, the file name must be of the form
-  path_NNN.ext, where path and ext are arbitrary leaders and trailers,
-  and NNN is a zero-padded integer number of arbitrary length.
+  is the concatenation of the @p basename parameter and a sequence
+  number derived from the timestamp in the dictionary, @p d.
 
   @param d        Dictionary, as created by e.g. dpack()
   @param dirname  Directory portion of output file
   @param basename Filename prefix of output file
   """
 
-  if (basename is None):
+  if basename is None:
     basename = ""
-  if (dirname is None):
+  if dirname is None:
     dirname = "."
-  if (not os.path.isdir(dirname)):
+  if not os.path.isdir(dirname):
     os.makedirs(dirname)
 
-  path   = os.path.join(dirname, basename       \
-                          +      d['TIMESTAMP'] \
-                          +      ("_%05d.pickle" % d['SEQUENCE_NUMBER']))
+  # The output path should not contain any funny characters which may
+  # not work in all environments.
+  t = d['TIMESTAMP']
+  s = t[0:4] + t[5:7] + t[8:10] + t[11:13] + t[14:16] + t[17:19] + t[20:23]
+
+  path = os.path.join(dirname, basename + s + '.pkl')
   easy_pickle.dump(path, d)
-  return (path)
+  return path
 
 
 def env_laser_status(env, laser_id):
@@ -544,24 +543,43 @@ def evt_beam_charge(evt):
   return None
 
 
+def evt_seqno(evt=None):
+  """The evt_seqno() function returns string representation of a
+  sequence number.  If @p evt is not @c None the return value reflects
+  the time at which @p evt occurred, otherwise the current time is
+  used.  If @p evt does not contain a time, evt_seqno() returns @c
+  None.
+
+  @param evt Event data object, a configure object
+  @return    String representation of sequence number
+  """
+
+  t = evt_time(evt=evt)
+  if t is None:
+    return None
+  return time.strftime("%Y%m%d%H%M%S", time.gmtime(t[0])) + \
+      ("%03d" % t[1])
+
+
 def evt_time(evt=None):
   """The evt_time() function returns a tuple of the time in seconds
   and milliseconds.  If @p evt is not @c None the return value
   reflects the time at which @p evt occurred, otherwise the current
   time is used.  If @p evt does not contain a time, evt_time() returns
-  @c None.
+  @c None.  Millisecond accuracy is sufficient, because at 120 Hz,
+  shots are taken at 8.3 ms intervals.
 
   @param evt Event data object, a configure object
   @return    Tuple of the time in seconds and milliseconds
   """
 
-  if (evt is None):
+  if evt is None:
     t = time.time()
     s = int(math.floor(t))
     return (s, int(round((t - s) * 1000)))
 
   t = evt.getTime()
-  if (t is None):
+  if t is None:
     return None
   return (t.seconds(), t.nanoseconds() // 1000000)
 
@@ -571,11 +589,7 @@ def evt_timestamp(evt=None):
   an extended human-readable ISO 8601 timestamp.  If @p evt is not
   None the return value reflects the time at which @p evt occurred,
   otherwise the current time is used.  If @p evt does not contain a
-  time, evt_timestamp() returns @c None.  Millisecond accuracy is
-  sufficient, because at 120 Hz, shots are taken at 8.3 ms intervals.
-
-  @note The string contains colons which, if used in paths, may look
-        funny in the Finder and require escaping in the shell.
+  time, evt_timestamp() returns @c None.
 
   @param evt Event data object, a configure object
   @return    Human-readable ISO 8601 timestamp in string
@@ -583,7 +597,7 @@ def evt_timestamp(evt=None):
   """
 
   t = evt_time(evt=evt)
-  if (t is None):
+  if t is None:
     return None
   return time.strftime("%Y-%m-%dT%H:%MZ%S", time.gmtime(t[0])) + \
       (".%03d" % t[1])
