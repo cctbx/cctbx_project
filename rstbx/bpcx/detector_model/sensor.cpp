@@ -29,4 +29,5 @@ void rstbx::detector_model::sensor::update()
     D.set_column(0, dir1);
     D.set_column(1, dir2);
     D.set_column(2, origin);
+    D = D.inverse();
 }
