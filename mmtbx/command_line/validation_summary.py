@@ -62,9 +62,10 @@ class summary (object) :
       from iotbx.pdb import extract_rfactors_resolutions_sigma
       published_results = extract_rfactors_resolutions_sigma.extract(
         file_name=pdb_file)
-      self.r_work = published_results.r_work
-      self.r_free = published_results.r_free
-      self.d_min   = published_results.high
+      if (published_results is not None) :
+        self.r_work = published_results.r_work
+        self.r_free = published_results.r_free
+        self.d_min   = published_results.high
       lines = open(pdb_file).readlines()
       for line in lines :
         if (line.startswith("REMARK Final:")) :
