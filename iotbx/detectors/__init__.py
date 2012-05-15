@@ -65,7 +65,10 @@ names_and_types = { "ADSC"          : ADSCImage,
 
 def ImageFactory(filename):
   from iotbx.detectors import url_support
+  from libtbx.utils import Sorry
   if os.path.isfile(filename):
+    if not os.access(filename, os.R_OK):
+      raise Sorry("No read access to file %s" % filename)
     for itype in all_image_types:
       try:
         I = itype(filename)
@@ -78,10 +81,6 @@ def ImageFactory(filename):
         if itype==BrukerImage:
           assert I.distance > 0.0 #needed to disambiguate from RAXIS
         return I
-      except IOError, e:
-        # We don't want to mask an IOError (e.g. permissions problem) with the
-        # catch all below
-        raise
       except Exception:
         pass
   A = url_support.potential_url_request(filename)
