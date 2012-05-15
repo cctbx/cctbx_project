@@ -8,7 +8,7 @@ namespace math {
 namespace special_functions {
 
   scitbx::af::shared<double> cuda_spherical_bessel_jn
-    (const int&, const scitbx::af::const_ref<double>&, const int&);
+    (const int&, const scitbx::af::const_ref<double>&);
 
 }
 }

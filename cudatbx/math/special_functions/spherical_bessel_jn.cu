@@ -72,10 +72,7 @@ namespace special_functions {
   }
 
   scitbx::af::shared<double> cuda_spherical_bessel_jn
-  (const int& order, const scitbx::af::const_ref<double>& z, const int& gpu_id) {
-
-    // start GPU
-    cudaSafeCall( cudaSetDevice(gpu_id) );
+  (const int& order, const scitbx::af::const_ref<double>& z) {
 
     // allocate and initialize arrays
     int n_order = order + 1;
