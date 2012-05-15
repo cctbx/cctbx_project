@@ -1341,6 +1341,7 @@ rstbx/__init__.py -text
 rstbx/apps/SConscript -text
 rstbx/apps/__init__.py -text
 rstbx/apps/integration_ext.cpp -text
+rstbx/apps/slip_helpers.py -text
 rstbx/apps/stills/__init__.py -text
 rstbx/apps/stills/ersatz_nexus.cpp -text
 rstbx/apps/stills/ersatz_nexus.h -text
@@ -1351,6 +1352,9 @@ rstbx/array_family/ext.cpp -text
 rstbx/array_family/flex.py -text
 rstbx/array_family/flex_rstbx_arrays.cpp -text
 rstbx/backplane.h -text
+rstbx/bandpass/SConscript -text
+rstbx/bandpass/__init__.py -text
+rstbx/bandpass/ext.cpp -text
 rstbx/bpcx/SConscript -text
 rstbx/bpcx/__init__.py -text
 rstbx/bpcx/compare_mosflm_xds.py -text
