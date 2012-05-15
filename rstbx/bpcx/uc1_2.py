@@ -157,7 +157,8 @@ class make_prediction_list:
                  self.osc_start) * d2r
     phi_end = ((self._img_range[1] - self.img_start + 1) * self.osc_range + \
                self.osc_start) * d2r
-
+    self.phi_start_rad = phi_start
+    self.phi_end_rad = phi_end
     # in principle this should come from the crystal model - should that
     # crystal model record the cell parameters or derive them from the
     # axis directions?
