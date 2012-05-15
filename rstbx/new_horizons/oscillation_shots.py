@@ -122,7 +122,8 @@ class IntegrateCharacters:
           ["%d"%z for z in refimage.get_tile_manager(self.horizons_phil).effective_tiling_as_flex_int()])
       integrate_worker.integration_concept(image_number = i,
         cb_op_to_primitive = setting["cb_op_inp_best"].inverse(),
-        verbose_cv = self.horizons_phil.indexing.verbose_cv)
+        verbose_cv = self.horizons_phil.indexing.verbose_cv,
+        background_factor = self.horizons_phil.integration.background_factor)
       #P = Profiler("proper")
       integrate_worker.integration_proper()
       local["results"].append(integrate_worker)

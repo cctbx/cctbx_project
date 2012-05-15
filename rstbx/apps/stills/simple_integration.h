@@ -174,6 +174,7 @@ namespace rstbx { namespace integration {
     masks_t ISmasks, BSmasks;
     scitbx::af::shared<scitbx::vec2<int> > detector_xy_draft;
     int FRAME;
+    int BACKGROUND_FACTOR;
     const int MAXOVER; //number of nearest neighbors
     double nbr_cutoff_sq;
     int NEAR;
@@ -183,7 +184,8 @@ namespace rstbx { namespace integration {
     scitbx::af::shared<cctbx::miller::index<> > integrated_miller;
     scitbx::af::shared<scitbx::vec2<double> > detector_xy;
 
-    simple_integration(): MAXOVER(6),NEAR(10),check_tiles(false){}
+    simple_integration(): BACKGROUND_FACTOR(1),MAXOVER(6),NEAR(10),
+      check_tiles(false) {}
 
     /* accessors and mutators */
     void set_pixel_size(double const& pxsz) {pixel_size=pxsz;}
@@ -192,6 +194,8 @@ namespace rstbx { namespace integration {
      {detector_size = scitbx::vec2<int>(x,y);}
 
     void set_frame(int const& f) {FRAME=f;}
+
+    void set_background_factor(int const& f) {BACKGROUND_FACTOR=f;}
 
     void set_nbr_cutoff_sq(double const& b) {nbr_cutoff_sq=b;}
 
@@ -445,7 +449,7 @@ namespace rstbx { namespace integration {
             }
             altB_S_mask[candidate_bkgd] = true;
             alt_bs+=1;
-            if (alt_bs == base_spot_size){break;}
+            if (alt_bs == BACKGROUND_FACTOR * base_spot_size){break;}
           }
           /* Diagnostics only
           af::flex_bool b_mask = spot_grid.deep_copy();
@@ -460,8 +464,8 @@ namespace rstbx { namespace integration {
 
         /*  insist that the background mask pixel count meets/exceeds that of
             the spot mask, otherwise flag the spot to be skipped: */
-        if (
-          altB_S_mask.size() >= std::max(I_S_mask.size(),(std::size_t)MIN_BACKGROUND_SZ)
+        if (  //makes better Figures for grant proposal with factor of two; add this as a phil parameter.
+          altB_S_mask.size() >= BACKGROUND_FACTOR * std::max(I_S_mask.size(),(std::size_t)MIN_BACKGROUND_SZ)
         ) {
           BSmasks.push_back(altB_S_mask);
         } else {

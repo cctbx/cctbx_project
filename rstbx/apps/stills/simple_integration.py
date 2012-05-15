@@ -471,6 +471,7 @@ class IntegrationMetaProcedure(simple_integration):
 
     #print "Optimized C++ section...",
     self.set_frame(FRAME)
+    self.set_background_factor(kwargs["background_factor"])
     self.set_nbr_cutoff_sq(nbr_cutoff_sq)
     flex_sorted = flex.int()
     for item in self.sorted:
