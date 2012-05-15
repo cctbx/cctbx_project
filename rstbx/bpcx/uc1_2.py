@@ -23,6 +23,16 @@ from rstbx.diffraction import full_sphere_indices
 from cctbx.sgtbx import space_group, space_group_symbols
 from cctbx.uctbx import unit_cell
 
+# here we require the bpcx_regression directory on sys.path.
+if __name__ == '__main__':    
+    if len(sys.argv) < 5:
+        msg = "Requires 4 arguments: path/to/bpcx_regression path/to/xparm.xds start_image_no end_image_no"
+        sys.exit(msg)    
+        
+    sys.path.append(sys.argv[1])
+    
+from detector_model.instrument_specifics import pilatus, detector_factory_from_cfc
+
 def Py_generate_indices(unit_cell_constants, resolution_limit):
     '''Generate all possible reflection indices out to a given resolution
     limit, ignoring symmetry and centring.'''
@@ -232,7 +242,7 @@ class make_prediction_list:
 def test(configuration_file, img_range, dmin = None):
     '''Perform the calculations needed for use case 1.1.'''
 
-    mp = make_prediction_list(configuration_file, img_range, dmin)
+    mp = make_prediction_list(configuration_file, img_range, dmin, None)
     obs_hkl,obs_fast,obs_slow,obs_angle = mp.predict_observations()
 
     r2d = 180.0 / math.pi
@@ -242,6 +252,7 @@ def test(configuration_file, img_range, dmin = None):
       f = obs_fast[iobs]
       s = obs_slow[iobs]
       angle = obs_angle[iobs]
+#FIXME this is not a class, should not see 'self'      
       print '%5d %5d %5d' % hkl, '%11.4f %11.4f %9.2f' % (
             f / self.pixel_size_fast, s / self.pixel_size_slow,
             (self.img_start - 1) + ((angle * r2d) - self.osc_start) / \
@@ -249,12 +260,8 @@ def test(configuration_file, img_range, dmin = None):
 
 if __name__ == '__main__':
 
-    if len(sys.argv) < 4:
-        msg = "Requires 3 arguments: path/to/xparm.xds start_image_no end_image_no"
-        sys.exit(msg)
+    if len(sys.argv) == 5:
+        test(sys.argv[2], (int(sys.argv[3]), int(sys.argv[4])))
     else:
-        if len(sys.argv) == 4:
-            test(sys.argv[1], (int(sys.argv[2]), int(sys.argv[3])))
-        else:
-            test(sys.argv[1], (int(sys.argv[2]), int(sys.argv[3])),
-                float(sys.argv[4]))
+        test(sys.argv[2], (int(sys.argv[3]), int(sys.argv[4])),
+            float(sys.argv[5]))
