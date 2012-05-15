@@ -1,6 +1,5 @@
 import time
 
-from cudatbx import number_of_gpus, reset_gpu
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
 
@@ -9,7 +8,6 @@ def spherical_bessel_jn_test(write_output = False):
   from scitbx.math import spherical_bessel_array
   from cudatbx.math.special_functions import cuda_spherical_bessel_jn
 
-  gpu_id = 0
   z_size = 10000
   z_max = 200.0
   order = 50
@@ -21,7 +19,7 @@ def spherical_bessel_jn_test(write_output = False):
 
   # GPU
   t0 = time.time()
-  jn_gpu = cuda_spherical_bessel_jn(order,z,gpu_id)
+  jn_gpu = cuda_spherical_bessel_jn(order,z)
   t1 = time.time()
   dt[0] = t1 - t0
   if write_output:
@@ -68,9 +66,5 @@ if (__name__ == '__main__'):
   import libtbx.load_env
   if (libtbx.env.build_options.enable_cuda):
     t = spherical_bessel_jn_test()
-
-    n_gpus = number_of_gpus()
-    for i in xrange(n_gpus):
-      reset_gpu(i)
 
   print 'Ok'
