@@ -189,8 +189,9 @@ class resolution_bin(object):
 from labelit.dptbx.profile_support import show_profile
 from libtbx.development.timers import Timer
 from rstbx.apps import simple_integration
+from rstbx.apps.slip_helpers import slip_callbacks
 
-class IntegrationMetaProcedure(simple_integration):
+class IntegrationMetaProcedure(simple_integration,slip_callbacks):
   def __init__(self,inputs): # inputs is an instance of class api
     simple_integration.__init__(self)
     self.inputai = inputs.solution_setting_ai #C++ autoindex engine
