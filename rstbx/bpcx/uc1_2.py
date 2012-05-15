@@ -24,14 +24,14 @@ from cctbx.sgtbx import space_group, space_group_symbols
 from cctbx.uctbx import unit_cell
 
 # here we require the bpcx_regression directory on sys.path.
-if __name__ == '__main__':    
+if __name__ == '__main__':
     if len(sys.argv) < 5:
         msg = "Requires 4 arguments: path/to/bpcx_regression path/to/xparm.xds start_image_no end_image_no"
-        sys.exit(msg)    
-        
+        sys.exit(msg)
+
     sys.path.append(sys.argv[1])
-    
-from detector_model.instrument_specifics import pilatus, detector_factory_from_cfc
+
+from detector_model.instrument_specifics import detector_factory_from_cfc
 
 def Py_generate_indices(unit_cell_constants, resolution_limit):
     '''Generate all possible reflection indices out to a given resolution
@@ -214,6 +214,9 @@ class make_prediction_list:
     # need some detector properties for this as well... this should be
     # abstracted to a detector model.
 
+    df = detector_factory_from_cfc(cfc)
+    d = df.build()
+
     detector_origin = cfc.get_c('detector_origin')
     detector_fast = cfc.get_c('detector_fast')
     detector_slow = cfc.get_c('detector_slow')
@@ -252,7 +255,7 @@ def test(configuration_file, img_range, dmin = None):
       f = obs_fast[iobs]
       s = obs_slow[iobs]
       angle = obs_angle[iobs]
-#FIXME this is not a class, should not see 'self'      
+#FIXME this is not a class, should not see 'self'
       print '%5d %5d %5d' % hkl, '%11.4f %11.4f %9.2f' % (
             f / self.pixel_size_fast, s / self.pixel_size_slow,
             (self.img_start - 1) + ((angle * r2d) - self.osc_start) / \
