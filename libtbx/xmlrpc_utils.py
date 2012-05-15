@@ -81,9 +81,12 @@ class TimeoutTransport(xmlrpclib.Transport):
       timeout=self.timeout)
     return self._connection[1]
 
+default_timeout = 5.0
+if (sys.platform == "win32") :
+  default_timeout = 1.0
 class ServerProxy (object) :
   def __init__(self, uri, transport=None, encoding=None, verbose=0,
-               allow_none=0, use_datetime=0, timeout=5.0):
+               allow_none=0, use_datetime=0, timeout=default_timeout):
     self._pending = []
     # establish a "logical" server connection
 
@@ -114,7 +117,8 @@ class ServerProxy (object) :
     self._pending.append((methodname, params))
     return self.flush_requests()
 
-  def flush_requests (self) :
+  def flush_requests (self, show_timings=False) :
+    t1 = time.time()
     result = None
     while len(self._pending) > 0 :
       (methodname, params) = self._pending.pop(0)
@@ -156,6 +160,9 @@ class ServerProxy (object) :
           print str(e)
           raise Exception("XMLRPC error: %s\nMethod: %s\nParams: %s\n" %
             (str(e), str(methodname), ", ".join([ str(p) for p in params ])))
+    t2 = time.time()
+    if (show_timings) :
+      sys.stderr.write("flush_requests: %.3fs\n" % (t2-t1))
     return result
 
 
@@ -249,11 +256,11 @@ class external_program_server (object) :
       self._server = proxy_class(uri="http://127.0.0.1:%d/RPC2" %
                                              self._port)
 
-  def flush_requests (self) :
+  def flush_requests (self, *args, **kwds) :
     if not self.cache_requests :
       return False
     elif self._server is not None :
-      return self._server.flush_requests()
+      return self._server.flush_requests(*args, **kwds)
 
   def restart (self) :
     self._process = None
