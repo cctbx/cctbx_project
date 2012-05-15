@@ -132,8 +132,44 @@ class IntegrateCharacters:
       local["r_distance"]=setting["refined distance"]
       local["r_residual"]=integrate_worker.r_residual
       local["r_mosaicity"]=setting["mosaicity"]
-
       if (self.horizons_phil.indexing.open_wx_viewer) :
+       if True: #use updated slip viewer
+        try:
+          import wx
+          from cxi_xdr_xes.slip_viewer.frame import XrayFrame as SlipXrayFrame
+          from cxi_xdr_xes.command_line.slip_viewer import master_str as slip_params
+          from libtbx import phil
+          from spotfinder import phil_str
+          from spotfinder.command_line.signal_strength import additional_spotfinder_phil_defs
+
+          work_phil = phil.process_command_line("",master_string=slip_params + phil_str + additional_spotfinder_phil_defs)
+          work_params = work_phil.work.extract()
+
+          app = wx.App(0)
+          wx.SystemOptions.SetOptionInt("osx.openfiledialog.always-show-types", 1)
+          frame = SlipXrayFrame(None, -1, "X-ray image display", size=(800,720))
+
+          # Update initial settings with values from the command line.  Needs
+          # to be done before image is loaded (but after the frame is
+          # instantiated).
+          frame.params = work_params
+          frame.pyslip.tiles.user_requests_antialiasing = work_params.anti_aliasing
+          frame.settings_frame.panel.center_ctrl.SetValue(True)
+          frame.settings_frame.panel.integ_ctrl.SetValue(True)
+          frame.settings_frame.panel.spots_ctrl.SetValue(False)
+          frame.settings.show_effective_tiling = work_params.show_effective_tiling
+          frame.settings_frame.panel.collect_values()
+          paths = work_phil.remaining_args
+
+          frame.user_callback = integrate_worker.slip_callback
+          frame.load_image(self.files.filenames()[i])
+          frame.Show()
+          app.MainLoop()
+          del app
+        except Exception:
+          pass # must use phenix.wxpython for wx display
+
+       elif False : #original wx viewer
         try:
           from rstbx.viewer.frame import XrayFrame
           import wx
