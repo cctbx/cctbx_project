@@ -490,6 +490,7 @@ class reference_model(object):
       utils.build_cbetadev_hash(pdb_hierarchy=pdb_hierarchy)
     for cp in geometry.chirality_proxies:
       c_beta = True
+      wrong_atoms_for_c_beta = False
       key = ""
       CAxyz = None
       Cxyz = None
@@ -499,10 +500,12 @@ class reference_model(object):
       Ckey = None
       Nkey = None
       CBkey = None
+      CBi_seq = None
       for i_seq in cp.i_seqs:
         if i_seq_name_hash[i_seq][0:4] \
           not in [' CA ', ' N  ', ' C  ', ' CB ']:
           c_beta = False
+          wrong_atoms_for_c_beta = True
         if i_seq_name_hash[i_seq][0:4] == ' CA ':
           CAxyz = sites_cart[i_seq]
           CAkey = i_seq_name_hash[i_seq]
@@ -515,13 +518,15 @@ class reference_model(object):
         elif i_seq_name_hash[i_seq][0:4] == ' CB ':
           CBxyz = sites_cart[i_seq]
           CBkey = i_seq_name_hash[i_seq]
+          CBi_seq = i_seq
           try:
             if float(cbetadev_hash[i_seq_name_hash[i_seq][4:14]]) >= 0.25:
               c_beta = False
-              print >> self.log, "skipping C-beta restraint for %s" % \
-                i_seq_name_hash[i_seq][4:14]
           except Exception:
               c_beta = False
+      if not c_beta and not wrong_atoms_for_c_beta:
+        print >> self.log, "skipping C-beta restraint for %s" % \
+          i_seq_name_hash[CBi_seq][4:14]
       if c_beta:
         assert CAxyz is not None
         assert Cxyz is not None

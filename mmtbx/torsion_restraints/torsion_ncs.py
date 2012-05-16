@@ -212,29 +212,33 @@ class torsion_ncs(object):
       Nkey = None
       CBkey = None
       cbeta = True
+      wrong_atoms_for_c_beta = False
+      used_atoms = []
       for i_seq in cp.i_seqs:
         if self.name_hash[i_seq][0:4] not in \
           [' CA ', ' N  ', ' C  ', ' CB ']:
           cbeta = False
-        if self.name_hash[i_seq][0:4] == ' CA ':
+          wrong_atoms_for_c_beta = True
+        elif cbeta and self.name_hash[i_seq][0:4] == ' CA ':
           CAkey = self.name_hash[i_seq]
           CAsite = i_seq
-        elif self.name_hash[i_seq][0:4] == ' CB ':
+        elif cbeta and self.name_hash[i_seq][0:4] == ' CB ':
           CBkey = self.name_hash[i_seq]
           CBsite = i_seq
           try:
             if float(cbetadev_hash[name_hash[i_seq][4:14]]) >= 0.25:
-              c_beta = False
-              print >> self.log, "skipping C-beta restraint for %s" % \
-                name_hash[i_seq][4:14]
+              cbeta = False
           except Exception:
-              c_beta = False
-        elif self.name_hash[i_seq][0:4] == ' C  ':
+              cbeta = False
+        elif cbeta and self.name_hash[i_seq][0:4] == ' C  ':
           Ckey = self.name_hash[i_seq]
           Csite = i_seq
-        elif self.name_hash[i_seq][0:4] == ' N  ':
+        elif cbeta and self.name_hash[i_seq][0:4] == ' N  ':
           Nkey = self.name_hash[i_seq]
           Nsite = i_seq
+      if not cbeta and not wrong_atoms_for_c_beta:
+        print >> self.log, "skipping C-beta restraint for %s" % \
+          name_hash[CBsite][4:14]
       if cbeta:
         i_seqs = [Csite, Nsite, CAsite, CBsite]
         dp = cctbx.geometry_restraints.dihedral_proxy(
