@@ -30,7 +30,6 @@ if __name__ == '__main__':
         sys.exit(msg)
 
     sys.path.append(sys.argv[1])
-
 from detector_model.instrument_specifics import detector_factory_from_cfc
 
 def Py_generate_indices(unit_cell_constants, resolution_limit):
@@ -212,31 +211,25 @@ class make_prediction_list:
     s0 = (- 1.0 / wavelength) * sample_to_source_vec
     ub = u * b
 
-    # need some detector properties for this as well... this should be
-    # abstracted to a detector model.
-
+    # need some detector properties for this as well... starting to
+    # abstract these to a detector model.
     df = detector_factory_from_cfc(cfc)
     d = df.build()
 
-    detector_origin = cfc.get_c('detector_origin')
-    detector_fast = cfc.get_c('detector_fast')
-    detector_slow = cfc.get_c('detector_slow')
-    sample_to_source = cfc.get_c('sample_to_source')
-    self.pixel_size_fast, self.pixel_size_slow = cfc.get(
-        'detector_pixel_size_fast_slow')
-    size_fast, size_slow = cfc.get('detector_size_fast_slow')
+    # the Use Case assumes the detector consists of a single sensor
+    sensor = d.sensors()[0]
 
-    dimension_fast = size_fast * self.pixel_size_fast
-    dimension_slow = size_slow * self.pixel_size_slow
+    self.pixel_size_fast, self.pixel_size_slow = d.px_size_fast(), \
+        d.px_size_slow()
 
-    detector_normal = detector_fast.cross(detector_slow)
     # used for polarization correction
-    self.distance = detector_origin.dot(detector_normal)
+    self.distance = sensor.distance
 
-    rp = reflection_prediction(axis, s0, ub, detector_origin,
-                                   detector_fast, detector_slow,
-                                   0, dimension_fast,
-                                   0, dimension_slow)
+    rp = reflection_prediction(axis, s0, ub, sensor.origin,
+                                   sensor.dir1,
+                                   sensor.dir2,
+                                   sensor.lim1[0], sensor.lim1[1],
+                                   sensor.lim2[0], sensor.lim2[1])
     if self._rocking_curve is not None:
       assert self._rocking_curve != "none"
       rp.set_rocking_curve(self._rocking_curve)
