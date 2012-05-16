@@ -2,14 +2,12 @@
 def exercise_real_to_complex_3d (benchmark=True) :
   sizes_1 = [((32,32,32), 16, 0.0000001),
              ((64,64,64), 8, 0.000001),
-             ((128,128,128), 8, 0.000001)]#,
-# FIXME the 512^3 transform does not yield similar results - why?
-#   possibly a FFTW-compatibility issue
-#             ((512,512,512), 4, 0.01)]
+             ((128,128,128), 8, 0.000001),
+             ((512,512,512), 4, 0.01)]
   sizes_2 = [((36,58,97), 8, 0.000001),
              ((70,120,130), 8, 0.000001),
-             ((209,444,320), 4, 0.001),
-             ((532,460,485), 4, 0.01)]
+             ((209,444,320), 4, 0.01),]
+#             ((532,460,485), 4, 0.01)]
   print "real_to_complex_3d"
   _exercise_real_to_complex_3d(sizes_1, benchmark)
   _exercise_real_to_complex_3d(sizes_2, benchmark)
@@ -39,8 +37,8 @@ def _exercise_real_to_complex_3d (sizes, benchmark=True) :
     mmm = map2_values.min_max_mean()
     mmm_cuda = map2_cuda_values.min_max_mean()
     assert (map2.size() == map2_cuda.size())
-    #assert approx_equal(mmm.min, mmm_cuda.min, eps=0.00001)
-    #assert approx_equal(mmm.max, mmm_cuda.max, eps=0.00001)
+    assert approx_equal(mmm.min, mmm_cuda.min, eps=eps)
+    assert approx_equal(mmm.max, mmm_cuda.max, eps=eps)
     assert approx_equal(mmm.mean, mmm_cuda.mean, eps=eps)
     if (benchmark) :
       map_bak = map.deep_copy()
@@ -79,8 +77,9 @@ def _exercise_real_to_complex_3d (sizes, benchmark=True) :
       maptbx.unpad_in_place(map=last_cufft)
       mmm = last_fftpack.as_1d().min_max_mean()
       mmm_cuda = last_cufft.as_1d().min_max_mean()
-      #assert approx_equal(mmm.min, mmm_cuda.min, eps=0.00001)
-      #assert approx_equal(mmm.max, mmm_cuda.max, eps=0.00001)
+      # FIXME why doesn't this work?
+      #assert approx_equal(mmm.min, mmm_cuda.min, eps=eps)
+      assert approx_equal(mmm.max, mmm_cuda.max, eps=eps)
       assert approx_equal(mmm.mean, mmm_cuda.mean, eps=eps)
       print ""
 
@@ -92,7 +91,7 @@ def exercise_complex_to_complex_3d () :
   import sys
   print ""
   print "complex_to_complex_3d"
-  for n_complex,n_repeats in [((100,80,90),4), ((200,160,180),4)]:
+  for n_complex,n_repeats in [((100,80,90),16), ((200,160,180),16)]:
     print "  dimensions:", n_complex
     print "  repeats:", n_repeats
     np = n_complex[0]*n_complex[1]*n_complex[2]
@@ -107,7 +106,7 @@ def exercise_complex_to_complex_3d () :
     overhead = time.time()-t0
     print "    overhead: %.2f seconds" % overhead
     #
-    # XXX extra CuFFT to initialize device
+    # XXX extra CuFFT to initialize device - can we avoid this somehow?
     d = d0.deep_copy()
     cufft.complex_to_complex_3d_in_place(data=d, direction=-1)
     cufft.complex_to_complex_3d_in_place(data=d, direction=+1)
