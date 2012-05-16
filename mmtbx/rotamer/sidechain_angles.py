@@ -87,6 +87,17 @@ class SidechainAngles:
         rotamers[rotamer] = [ float(x) for x in self.anglesForRot[key] ]
     return rotamers
 
+  def get_rotamer_angles(self, residue_name, rotamer_name):
+    return_angles = []
+    aa = residue_name.lower()
+    key = aa + '.' + rotamer_name
+    angles = self.anglesForRot.get(key)
+    if angles is None:
+      return None
+    for angle in angles:
+      return_angles.append(float(angle))
+    return return_angles
+
   def measureChiAngles(
         self,
         res,
