@@ -402,7 +402,9 @@ def dwritef(d, dirname=None, basename=None):
   t = d['TIMESTAMP']
   s = t[0:4] + t[5:7] + t[8:10] + t[11:13] + t[14:16] + t[17:19] + t[20:23]
 
-  path = os.path.join(dirname, basename + s + '.pkl')
+  # XXX Several non-pyana tools rely on the .pickle extension.  Fix
+  # those before migrating to .pkl.
+  path = os.path.join(dirname, basename + s + '.pickle')
   easy_pickle.dump(path, d)
   return path
 
