@@ -290,6 +290,33 @@ mtz_file {
   miller_arrays = run_and_reload(params, "tst4.mtz")
   new_selection = (miller_arrays[1].data() == 1)
   assert (free_selection.all_eq(new_selection))
+  #
+  # XXX note that the tests for adjust_fraction in cctbx.r_free_utils are
+  # much more rigorous, because they use a larger test set - I keep it small
+  # here to save on speed (especially I/O time).
+  #
+  # expand the test set
+  params = master_phil.fetch(source=new_phil).extract()
+  params.mtz_file.output_file = "tst4.mtz"
+  params.mtz_file.r_free_flags.fraction = 0.15
+  params.mtz_file.r_free_flags.adjust_fraction = True
+  try :
+    miller_arrays = run_and_reload(params, "tst4.mtz")
+  except Sorry, s :
+    assert ("resizing" in str(s))
+  else :
+    raise Exception_expected
+  params.mtz_file.r_free_flags.preserve_input_values = False
+  miller_arrays = run_and_reload(params, "tst4.mtz")
+  flags_expanded = miller_arrays[-1]
+  fraction_free = flags_expanded.data().count(1) / flags_expanded.data().size()
+  assert (fraction_free > 0.145) and (fraction_free < 0.155)
+  # now shrink it
+  params.mtz_file.r_free_flags.fraction = 0.05
+  miller_arrays = run_and_reload(params, "tst4.mtz")
+  flags_shrunken = miller_arrays[-1]
+  fraction_free = flags_shrunken.data().count(1) / flags_shrunken.data().size()
+  assert (fraction_free > 0.049) and (fraction_free < 0.051)
   # more R-free manipulations
   mtz2 = array0.as_mtz_dataset(column_root_label="I-obs")
   flags2 = flags.generate_bijvoet_mates()

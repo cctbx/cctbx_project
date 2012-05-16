@@ -1,7 +1,9 @@
 from __future__ import division
 from libtbx.math_utils import iceil
+from libtbx.utils import null_out
 from itertools import count
 import random
+import sys
 
 generate_r_free_params_str = """\
     fraction = 0.1
@@ -117,6 +119,69 @@ def looks_like_ccp4_flags (flags) :
   assert isinstance(flags.data(), flex.int)
   return (flex.max(flags.data()) >= 4)
 
+def adjust_fraction (miller_array, fraction, log=None) :
+  """
+  Expand or shrink an existing set of R-free flags to match the target
+  fraction.
+  """
+  from scitbx.array_family import flex
+  assert (isinstance(miller_array.data(), flex.bool))
+  assert (fraction > 0) and (fraction < 1)
+  if (log is None) : log = sys.stdout
+  n_refl = miller_array.data().size()
+  n_free = miller_array.data().count(True)
+  assert (n_refl > 0)
+  current_fraction = n_free / n_refl
+  print >> log, "  current fraction free: %g" % current_fraction
+  print >> log, "                 target: %g" % fraction
+  new_flags = None
+  # XXX this should probably be more approximate
+  if (current_fraction == fraction) :
+    new_flags = miller_array
+  elif (current_fraction > fraction) :
+    # move existing flags to work set
+    sub_fraction = fraction / current_fraction
+    print >> log, "  shrinking old test set by a factor of %g" % sub_fraction
+    work_set = miller_array.select(~miller_array.data())
+    free_set = miller_array.select(miller_array.data())
+    # XXX the code in cctbx.miller requires a fraction between 0 and 0.5 -
+    # since I'm not sure if this is an implementation detail or just something
+    # to prevent users from doing something stupid, I'm using this clumsy
+    # workaround.
+    assert (sub_fraction > 0) and (sub_fraction < 1.0)
+    if (sub_fraction == 0.5) :
+      sub_fraction = 0.501
+    if (sub_fraction >= 0.5) :
+      free_set_new = free_set.generate_r_free_flags(
+        fraction=1.0-sub_fraction,
+        max_free=None,
+        use_lattice_symmetry=True)
+      free_set_new = free_set_new.customized_copy(
+        data=~free_set_new.data())
+    else :
+      free_set_new = free_set.generate_r_free_flags(
+        fraction=sub_fraction,
+        max_free=None,
+        use_lattice_symmetry=True)
+    new_flags = work_set.complete_with(other=free_set_new)
+  else :
+    # generate additional flags
+    fraction_new = (fraction - current_fraction) / (1 - current_fraction)
+    print >> log, "  flagging %g of current work set for R-free" % fraction_new
+    assert (fraction_new > 0)
+    work_set = miller_array.select(~miller_array.data())
+    free_set = miller_array.select(miller_array.data())
+    assert (work_set.indices().size() > 0)
+    flags_new = work_set.generate_r_free_flags(
+      fraction=fraction_new,
+      max_free=None,
+      use_lattice_symmetry=True)
+    new_flags = flags_new.complete_with(other=free_set)#miller_array)
+  assert (new_flags.indices().size() == miller_array.indices().size())
+  print >> log, "    old flags: %d free (out of %d) " % (n_free, n_refl)
+  print >> log, "    new flags: %d free" % new_flags.data().count(True)
+  return new_flags
+
 def get_r_free_stats (miller_array, test_flag_value) :
   from scitbx.array_family import flex
   array = get_r_free_as_bool(miller_array, test_flag_value)
@@ -154,6 +219,7 @@ def exercise () :
   from cctbx import sgtbx
   from cctbx import uctbx
   from scitbx.array_family import flex
+  from libtbx.test_utils import approx_equal
   flags_1 = assign_random_r_free_flags(n_refl=100000, fraction_free=0.05)
   assert (flags_1.count(True) == 5000)
   flags_1_ccp4 = assign_random_r_free_flags(n_refl=100000, fraction_free=0.05,
@@ -188,6 +254,21 @@ def exercise () :
   flags_4 = set1.generate_r_free_flags()
   stats = get_r_free_stats(flags_4, True)
   assert (20 <= stats[0] <= 24) # XXX is this even necessary?
+  # much larger for the last few tests
+  symm = crystal.symmetry(
+    space_group_info=sgtbx.space_group_info("P212121"),
+    unit_cell=uctbx.unit_cell((60,70,80,90,90,90)))
+  set1 = miller.build_set(
+    crystal_symmetry=symm,
+    anomalous_flag=True,
+    d_min=1.0)
+  flags_5 = set1.generate_r_free_flags(fraction=0.1, max_free=None)
+  flags_6 = adjust_fraction(flags_5, 0.15, log=null_out())
+  frac_6 = flags_6.data().count(True) / flags_6.data().size()
+  assert approx_equal(frac_6, 0.15, eps=0.001)
+  flags_7 = adjust_fraction(flags_5, 0.05, log=null_out())
+  frac_7 = flags_7.data().count(True) / flags_7.data().size()
+  assert approx_equal(frac_7, 0.05, eps=0.001)
 
 if (__name__ == "__main__") :
   exercise()

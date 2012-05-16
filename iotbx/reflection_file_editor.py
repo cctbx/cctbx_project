@@ -219,6 +219,15 @@ mtz_file
     warn_if_all_same_value = True
       .type = bool
       .short_caption = Warn if R-free flags are all the same value
+    adjust_fraction = False
+      .type = bool
+      .short_caption = Adjust test set size to specified fraction
+      .help = If True, the R-free flags will be resized as necessary.  This \
+        may be useful when the current set is too large or too small, but \
+        needs to be preserved (at least in part).  The target fraction will \
+        be relative to all possible reflections, even those not measured in \
+        the input.  Note that this option is not compatible with preserving \
+        input values.
   }
 }""", process_includes=True)
 
@@ -736,6 +745,14 @@ class process_arrays (object) :
             # XXX can't do this operation on a miller set - will expand the
             # r-free flags later
             generate_bijvoet_mates = True
+        if (params.mtz_file.r_free_flags.adjust_fraction) :
+          print >> log, "Resizing test set in %s" % array_name
+          r_free_as_bool = get_r_free_as_bool(r_free_flags,
+            test_flag_value)
+          r_free_flags = r_free_utils.adjust_fraction(
+            miller_array=r_free_as_bool,
+            fraction=params.mtz_file.r_free_flags.fraction,
+            log=log)
         if (params.mtz_file.r_free_flags.extend) :
           assert (test_flag_value is not None)
           r_free_as_bool = get_r_free_as_bool(r_free_flags,
@@ -1094,6 +1111,10 @@ def validate_params (params) :
       params.mtz_file.r_free_flags.preserve_input_values) :
     raise Sorry("r_free_flags.preserve_input_values and "+
       "r_free_flags.export_for_ccp4 may not be used together.")
+  if (params.mtz_file.r_free_flags.adjust_fraction and
+      params.mtz_file.r_free_flags.preserve_input_values) :
+    raise Sorry("Preserving input values of R-free flags is not supported "+
+      "when resizing a test set to the specified fraction.")
   output_base = os.path.dirname(params.mtz_file.output_file)
   if (output_base != "") and (not os.path.isdir(output_base)) :
     raise Sorry(("The directory specified for the output file (%s) does not "+
