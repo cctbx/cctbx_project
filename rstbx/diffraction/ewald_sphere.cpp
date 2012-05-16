@@ -235,16 +235,33 @@ rstbx::reflection_prediction::reflection_prediction(
 bool rstbx::reflection_prediction::operator()(scitbx::vec3<double> const & hkl,
                                               const double & angle)
 {
-  scitbx::vec3<double> s, q, r;
-  double x, y, q_dot_n;
+  scitbx::vec3<double> s, q;
 
   s = (ub * hkl).rotate_around_origin(axis, angle);
   q = (s + s0).normalize();
-  q_dot_n = q * normal;
 
-  if (q_dot_n == 0) return false;
+  if (!this->reflection_range::operator()(q,s)) {
+    //printf("Too close to the spindle for full measurement. %4d %4d %4d angle %7.4f\n",
+    //  int(hkl[0]),int(hkl[1]),int(hkl[2]),angle*180./scitbx::constants::pi);
+    /* come back to this later.  These spots are not fully recorded since they are too close
+       to the spindle, but we may want to remember their location for future creation
+       of overlap masks
+    */
+    return false;
+  }
 
-  r = (q * distance / q_dot_n) - origin;
+  return intersect(q); // sets prediction if true
+}
+
+bool rstbx::reflection_prediction::intersect(scitbx::vec3<double> const & ray)
+{
+  scitbx::vec3<double> r;
+  double ray_dot_n, x, y;
+
+  ray_dot_n = ray * normal;
+  if (ray_dot_n == 0) return false;
+
+  r = (ray * distance / ray_dot_n) - origin;
 
   x = r * fast;
   y = r * slow;
@@ -256,16 +273,6 @@ bool rstbx::reflection_prediction::operator()(scitbx::vec3<double> const & hkl,
 
   prediction[0] = x;
   prediction[1] = y;
-
-  if (!this->reflection_range::operator()(q,s)) {
-    //printf("Too close to the spindle for full measurement. %4d %4d %4d angle %7.4f\n",
-    //  int(hkl[0]),int(hkl[1]),int(hkl[2]),angle*180./scitbx::constants::pi);
-    /* come back to this later.  These spots are not fully recorded since they are too close
-       to the spindle, but we may want to remember their location for future creation
-       of overlap masks
-    */
-    return false;
-  }
   return true;
 }
 
