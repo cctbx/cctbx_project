@@ -35,7 +35,8 @@ torsion_ncs_params = iotbx.phil.parse("""
    .short_caption = Fix rotamer outliers first
  check_rotamer_consistency = Auto
    .type = bool
-   .short_caption = Check for rotamer differences between NCS matched \
+   .short_caption = Check for consistency between NCS-related sidechains
+   .help = Check for rotamer differences between NCS matched \
      sidechains and search for best fit amongst candidate rotamers
  target_damping = False
    .type = bool
