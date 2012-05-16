@@ -225,6 +225,10 @@ class reflection_prediction : public reflection_range {
   bool operator()(scitbx::vec3<double> const & hkl,
                   const double & angle);
 
+  //aim to make intersect virtual and implemented by derived classes
+  //see e.g. detector_model in bpcx_regression
+  bool intersect(scitbx::vec3<double> const & ray);
+
   scitbx::vec2<double> get_prediction();
 
  protected:
