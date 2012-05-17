@@ -1,25 +1,14 @@
-This README is somewhat of a temporary document while this code is
-developed, before it is incorporated into the CCTBX build system.
+Development of a detector model for BPCX
+========================================
+
+As described on google documents, a framework to describe the detector in an
+X-ray diffraction experiment. This will be implemented in terms of an interface
+and a set of implementations starting off with a trivial one.
+
+A detector is defined as a set of sensors with fixed orientation and translation
+with respect to each other. A sensor is a an abstract plane with a rectangular
+window defined by limits in its two orthogonal directions. This corresponds
+to the "Virtual Detector" of the LURE Phase I-III documents.
 
 Here we are transferring code from the bpcx_regression repository that
-deals with the detector model, and translating it into C++. Following
-this, Python bindings will be made and the tests in the original code
-will be run, leaning on the C++ classes. Finally, the BPCX Use Case
-code will be modified to use the detector model.
-
-That, at least, is a statement of intention. 
-
-At this moment, a trivial test can be compiled with something similar to
-the following (from a top level build directory):
-
-cctbx.python ../sources/cctbx_project/libtbx/configure.py rstbx
-libtbx.scons ./rstbx/bpcx/tst_sensor
-
-and run using its dispatcher
-
-rstbx.tst_sensor
-
-All this does is print '100' if it works, which is fairly obscure. But
-this test is not going to persist. Next step is to get the Python
-bindings for the sensor class, then use it in the Python tests already
-written in the bpcx_regression/detector_model repository
+deals with the detector model, and translating it into C++.
