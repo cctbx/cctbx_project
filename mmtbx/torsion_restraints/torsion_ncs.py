@@ -707,11 +707,11 @@ class torsion_ncs(object):
   def fix_rotamer_outliers(self,
                            xray_structure,
                            geometry_restraints_manager,
+                           pdb_hierarchy,
                            outliers_only=False,
                            log=None,
                            quiet=False):
     self.last_round_outlier_fixes = 0
-    pdb_hierarchy=self.pdb_hierarchy
     sites_cart = xray_structure.sites_cart()
     for atom in pdb_hierarchy.atoms():
       i_seq = atom.i_seq
@@ -909,10 +909,10 @@ class torsion_ncs(object):
   def fix_rotamer_consistency(self,
                               xray_structure,
                               geometry_restraints_manager,
+                              pdb_hierarchy,
                               log=None,
                               quiet=False):
     self.last_round_rotamer_changes = 0
-    pdb_hierarchy=self.pdb_hierarchy
     sites_cart = xray_structure.sites_cart()
     for atom in pdb_hierarchy.atoms():
       i_seq = atom.i_seq
