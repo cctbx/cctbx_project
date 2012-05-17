@@ -241,11 +241,11 @@ def test(configuration_file, img_range, dmin = None):
       f = obs_fast[iobs]
       s = obs_slow[iobs]
       angle = obs_angle[iobs]
-#FIXME this is not a class, should not see 'self'
+
       print '%5d %5d %5d' % hkl, '%11.4f %11.4f %9.2f' % (
-            f / self.pixel_size_fast, s / self.pixel_size_slow,
-            (self.img_start - 1) + ((angle * r2d) - self.osc_start) / \
-          self.osc_range)
+            f / mp.pixel_size_fast, s / mp.pixel_size_slow,
+            (mp.img_start - 1) + ((angle * r2d) - mp.osc_start) / \
+             mp.osc_range)
 
 if __name__ == '__main__':
     if len(sys.argv) < 4:
