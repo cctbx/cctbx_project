@@ -22,15 +22,7 @@ from rstbx.diffraction import rotation_angles, reflection_prediction
 from rstbx.diffraction import full_sphere_indices
 from cctbx.sgtbx import space_group, space_group_symbols
 from cctbx.uctbx import unit_cell
-
-# here we require the bpcx_regression directory on sys.path.
-if __name__ == '__main__':
-    if len(sys.argv) < 5:
-        msg = "Requires 4 arguments: path/to/bpcx_regression path/to/xparm.xds start_image_no end_image_no"
-        sys.exit(msg)
-
-    sys.path.append(sys.argv[1])
-from detector_model.instrument_specifics import detector_factory_from_cfc
+from rstbx.bpcx.detector_model.instrument_specifics import detector_factory_from_cfc
 
 def Py_generate_indices(unit_cell_constants, resolution_limit):
     '''Generate all possible reflection indices out to a given resolution
@@ -256,9 +248,11 @@ def test(configuration_file, img_range, dmin = None):
           self.osc_range)
 
 if __name__ == '__main__':
-
-    if len(sys.argv) == 5:
-        test(sys.argv[2], (int(sys.argv[3]), int(sys.argv[4])))
+    if len(sys.argv) < 4:
+        msg = "Requires 3 arguments: path/to/xparm.xds start_image_no end_image_no"
+        sys.exit(msg)
+    if len(sys.argv) == 4:
+        test(sys.argv[1], (int(sys.argv[2]), int(sys.argv[3])))
     else:
-        test(sys.argv[2], (int(sys.argv[3]), int(sys.argv[4])),
-            float(sys.argv[5]))
+        test(sys.argv[1], (int(sys.argv[2]), int(sys.argv[3])),
+            float(sys.argv[4]))
