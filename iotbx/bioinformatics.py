@@ -1181,8 +1181,8 @@ class hhpred_parser(object):
 
   SPLIT = re.compile(
     r"""
-    ( Query .*? ) \n\n
-    ( \s+ No \s+ Hit .*? ) \n\n
+    ( Query .*? ) ( \n | \r\n | \r ) \2
+    ( \s+ No \s+ Hit .*? ) \2 \2
     ( .*? )
     (?= (?:Done!) | (?:\Z) )
     """,
@@ -1192,12 +1192,12 @@ class hhpred_parser(object):
   HEADER = re.compile(
     r"""
     \A
-    Query \s+ ( \S .* ) \n
-    Match_columns \s+ ( \d+ ) \n
-    No_of_seqs \s+ ( \d + ) \s out \s of \s ( \d+ ) \n
-    Neff \s+ (\S[^\n]*) \n
-    Searched_HMMs \s+ ( \d+ ) \n
-    Date \s+ (\S[^\n]*) \n
+    Query \s+ ( \S .* ) (?: \n | \r\n | \r )
+    Match_columns \s+ ( \d+ ) (?: \n | \r\n | \r )
+    No_of_seqs \s+ ( \d + ) \s out \s of \s ( \d+ ) (?: \n | \r\n | \r )
+    Neff \s+ (\S[^\n^\r]*) (?: \n | \r\n | \r )
+    Searched_HMMs \s+ ( \d+ ) (?: \n | \r\n | \r )
+    Date \s+ (\S[^\n^\r]*) (?: \n | \r\n | \r )
     Command \s+ (\S.*)
     \Z
     """,
@@ -1212,7 +1212,7 @@ class hhpred_parser(object):
     if not res:
       raise ValueError, "Incorrect file format"
 
-    ( header, summary, hits ) = res.groups()
+    ( header, linefeed, summary, hits ) = res.groups()
     self.process_header( header = header )
     self.process_hits( hits = hits )
 
@@ -1307,30 +1307,30 @@ class hhsearch_parser(hhpred_parser):
 
   HITS = re.compile(
     r"""
-    No \s ( \d+) \s* \n
-    >( [\w]{4} ) _  ( [\w]? ) \s ( [^\n]* )\n
+    No \s ( \d+) \s* (?: \n | \r\n | \r )
+    >( [\w]{4} ) _  ( [\w]? ) \s ( [^\n]* )(?: \n | \r\n | \r )
     Probab = ( [+-]? \d+ \. \d* ) \s+
     E-value = ( \d+ \.? \d* )( e[+-]? \d+ )? \s+
     Score = ( \d+\.\d+ ) \s+
     Aligned_cols = ( \d+ ) \s+
     Identities = ( \d+ ) % \s+
     Similarity = ( -? \d+ \. \d+ ) \s+
-    Sum_probs = ( \d+ \. \d+ ) \n
+    Sum_probs = ( \d+ \. \d+ ) (?: \n | \r\n | \r )
     (?P<blocks> .*? )(?= (?:^No) | (?:\Z) )
     """,
     re.VERBOSE | re.DOTALL | re.MULTILINE
     )
   BLOCKS = re.compile(
     r"""
-    Q \s+ ss_pred \s+ ( [\w-]+ ) \s* \n
-    Q \s+ [\w:\.|]* \s+ ( \d+ ) \s+ ( [\w-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* \n
-    Q \s+ Consensus \s+ ( \d+ ) \s+ ( [\w~-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* \n
-    \s* ( [ \.\-+|=]* ) \n
-    T \s+ Consensus \s+ ( \d+ ) \s+ ( [\w~-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* \n
-    T \s+ \w+ \s+ ( \d+ ) \s+ ( [\w-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* \n
-    (?: T \s+ ss_dssp \s+ ( [\w-]+ ) \s* \n )?
-    T \s+ ss_pred \s+ ( [\w-]+ ) \s* \n
-    (?: Confidence \s+ ( [\w ]+ ) \s* \n)?
+    Q \s+ ss_pred \s+ ( [\w-]+ ) \s* (?: \n | \r\n | \r )
+    Q \s+ [\w:\.|]* \s+ ( \d+ ) \s+ ( [\w-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* (?: \n | \r\n | \r )
+    Q \s+ Consensus \s+ ( \d+ ) \s+ ( [\w~-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* (?: \n | \r\n | \r )
+    \s* ( [ \.\-+|=]* ) (?: \n | \r\n | \r )
+    T \s+ Consensus \s+ ( \d+ ) \s+ ( [\w~-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* (?: \n | \r\n | \r )
+    T \s+ \w+ \s+ ( \d+ ) \s+ ( [\w-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* (?: \n | \r\n | \r )
+    (?: T \s+ ss_dssp \s+ ( [\w-]+ ) \s* (?: \n | \r\n | \r ) )?
+    T \s+ ss_pred \s+ ( [\w-]+ ) \s* (?: \n | \r\n | \r )
+    (?: Confidence \s+ ( [\w ]+ ) \s* (?: \n | \r\n | \r ))?
     """,
     re.VERBOSE
     )
@@ -1512,28 +1512,28 @@ class hhalign_parser(hhpred_parser):
 
   HITS = re.compile(
     r"""
-    No \s ( \d+) \s* \n
-    > \s* ( [^\n]* ) \n
+    No \s ( \d+) \s* (?: \n | \r\n | \r )
+    > \s* ( [^\n]* ) (?: \n | \r\n | \r )
     Probab = ( [+-]? \d+ \. \d* ) \s+
     E-value = ( \d+ \.? \d* )( e[+-]? \d+ )? \s+
     Score = ( \d+\.\d+ ) \s+
     Aligned_columns = ( \d+ ) \s+
-    Identities = ( \d+ ) % \n
+    Identities = ( \d+ ) % (?: \n | \r\n | \r )
     (?P<blocks> .*? )(?= (?:^No) | (?:\Z) )
     """,
     re.VERBOSE | re.DOTALL | re.MULTILINE
     )
   BLOCKS = re.compile(
     r"""
-    Q \s+ ss_pred \s+ ( [\w-]+ ) \s* \n
-    Q \s+ ss_conf \s+ ( [\w-]+ ) \s* \n
-    Q \s+ [\w:\.]+ \s+ ( \d+ ) \s+ ( [\w-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* \n
-    Q \s+ Consensus \s+ ( \d+ ) \s+ ( [\w~-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* \n
-    \s+ ( [ \.\-+|=]+ ) \n
-    T \s+ Consensus \s+ ( \d+ ) \s+ ( [\w~-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* \n
-    T \s+ [\w\.]+ \s+ ( \d+ ) \s+ ( [\w-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* \n
-    T \s+ ss_pred \s+ ( [\w-]+ ) \s* \n
-    T \s+ ss_conf \s+ ( [\w-]+ ) \s* \n
+    Q \s+ ss_pred \s+ ( [\w-]+ ) \s* (?: \n | \r\n | \r )
+    Q \s+ ss_conf \s+ ( [\w-]+ ) \s* (?: \n | \r\n | \r )
+    Q \s+ [\w:\.]+ \s+ ( \d+ ) \s+ ( [\w-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* (?: \n | \r\n | \r )
+    Q \s+ Consensus \s+ ( \d+ ) \s+ ( [\w~-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* (?: \n | \r\n | \r )
+    \s+ ( [ \.\-+|=]+ ) (?: \n | \r\n | \r )
+    T \s+ Consensus \s+ ( \d+ ) \s+ ( [\w~-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* (?: \n | \r\n | \r )
+    T \s+ [\w\.]+ \s+ ( \d+ ) \s+ ( [\w-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* (?: \n | \r\n | \r )
+    T \s+ ss_pred \s+ ( [\w-]+ ) \s* (?: \n | \r\n | \r )
+    T \s+ ss_conf \s+ ( [\w-]+ ) \s* (?: \n | \r\n | \r )
     """,
     re.VERBOSE
     )
