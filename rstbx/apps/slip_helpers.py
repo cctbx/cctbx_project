@@ -1,11 +1,187 @@
 import math
 from libtbx.test_utils import approx_equal
+from scitbx.array_family import flex
+from scitbx import lbfgs
+
+class minimizer(object):
+  def __init__(self,data,stuff,frame,max_iterations=50):
+
+    self.n = len(data)
+    self.values = data
+    self.initial = data.deep_copy()
+
+
+    #mosaicity,hi energy wave, lo energy wave
+    #want mosaicity between 0.1 and 1.0 of input value.
+    self.lower_bound = flex.double([0.1*data[0],0.98*data[1],(data[1]+data[2])/2.])
+    upper_bound = flex.double([10.*data[0],(data[1]+data[2])/2.,1.02*data[2]])
+    mean_value = (upper_bound - self.lower_bound)/2.
+    self.full_range = upper_bound - self.lower_bound
+    starting_params = flex.tan(math.pi*(((data - self.lower_bound)/self.full_range)-0.5))
+    self.x = starting_params.deep_copy()
+    print "staerting params",list(self.x)
+
+
+    self.stuff = stuff
+    self.frame = frame
+    # optimize parameters
+    self.minimizer = lbfgs.run(target_evaluator=self,
+      termination_params = lbfgs.termination_parameters(max_calls=20))
+
+  def compute_functional_and_gradients(self):
+    print "trying",list(self.x)
+
+    # try to constrain rather than restrain.  Use arctan function to get this right
+    # minimizer can choose any value from -inf to inf but we'll keep values carefully in range
+    # mos
+
+    #if self.x[0]/self.initial[0] >2.: self.x[0]=2.*self.initial[0]
+    #assert self.x[1]<self.x[2]
+    #if self.x[1]/self.initial[1] <0.99: self.x[1]=0.99*self.initial[1]
+    #if self.x[2]/self.initial[2] >1.01: self.x[2]=1.01*self.initial[2]
+    #print "adjust",list(self.x)
+
+    def get_score(x):
+      unpacked = self.lower_bound + self.full_range*(
+        0.5 + (flex.atan(x)/math.pi)
+      )
+      #print "          trying",list(unpacked)
+      return self.stuff.use_case_3_score_only(
+      self.frame,unpacked[0],unpacked[1],unpacked[2])
+
+    #f = self.stuff.use_case_3_score_only(
+    #  self.frame,self.values[0],self.values[1],self.values[2])
+    f = get_score(self.x)
+
+    gradients = flex.double(len(self.x))
+    for i in xrange(self.n):
+      #factors = [1.000]*self.n
+     # factors[i] *= 1.001
+     # D_i = 0.001 * self.x[i]
+      #f_i_plus_D_i = self.stuff.use_case_3_score_only(
+     #   self.frame,self.x[0]*factors[0],self.x[1]*factors[1],self.x[2]*factors[2])
+      trial_x = self.x.deep_copy()
+      trial_x[i]+=1.
+      f_i_plus_D_i = get_score(trial_x)
+      df_di = (f_i_plus_D_i - f)/1.
+      gradients[i]=df_di
+    return f,gradients
+
+  def unpacked(self,x):
+    return self.lower_bound + self.full_range*(
+        0.5 + (flex.atan(x)/math.pi)
+      )
+
+class wrapper_of_use_case_bp3(object):
+  def __init__(self, raw_image, spotfinder, imageindex, inputai, limiting_resolution, phil_params):
+    """MODEL:  polychromatic beam with top hat bandpass profile.
+               isotropic mosaicity with top hat half-width; spots are brought into reflecting condition
+               by a finite rotation about the axis that is longitudinal to the projection of the q-vector
+               onto the detector plane.
+    """
+    from rstbx.bandpass import use_case_bp3,parameters_bp3
+    from scitbx.matrix import col
+    from math import pi
+    from cctbx.crystal import symmetry
+
+    self.detector_origin = col((-inputai.getBase().xbeam, -inputai.getBase().ybeam, 0.))
+    crystal = symmetry(unit_cell=inputai.getOrientation().unit_cell(),space_group = "P1")
+    indices = crystal.build_miller_set(anomalous_flag=True, d_min = limiting_resolution)
+    parameters = parameters_bp3(
+       indices=indices.indices(), orientation=inputai.getOrientation(),
+       incident_beam=col((0.,0.,1.)),
+       packed_tophat=col((0.,0.,0.)),
+       detector_normal=col((0.,0.,-1.)), detector_fast=col((0.,1.,0.)),detector_slow=col((1.,0.,0.)),
+       pixel_size=col((raw_image.pixel_size,raw_image.pixel_size,0)),
+       pixel_offset=col((0.5,0.5,0.0)), distance=inputai.getBase().distance,
+       detector_origin=self.detector_origin
+    )
+
+    self.ucbp3 = use_case_bp3(parameters=parameters)
+    self.ucbp3.set_active_areas(
+      raw_image.get_tile_manager(phil_params).effective_tiling_as_flex_int(
+      reapply_peripheral_margin=True))
+    # Reduce Miller indices to a manageable set.  NOT VALID if the crystal rotates significantly
+    self.ucbp3.prescreen_indices(inputai.wavelength)
+    # done with Miller set reduction
+    from annlib_ext import AnnAdaptorSelfInclude as AnnAdaptor
+    body_pixel_reference = flex.double()
+    for spot in spotfinder.images[imageindex]["goodspots"]:
+      for pxl in spot.bodypixels:
+        body_pixel_reference.append(pxl.y + 0.5)
+        body_pixel_reference.append(pxl.x + 0.5)
+    self.adapt = AnnAdaptor(data=body_pixel_reference,dim=2,k=1)
+
+    self.N_bodypix = body_pixel_reference.size()//2
+    self.ucbp3.set_adaptor(body_pixel_reference)
+
+  def set_variables(self, orientation, wave_HI, wave_LO, half_mosaicity_deg):
+    half_mosaicity_rad = half_mosaicity_deg * math.pi/180.
+    self.ucbp3.set_mosaicity(half_mosaicity_rad)
+    self.ucbp3.set_bandpass(wave_HI,wave_LO)
+    self.ucbp3.set_orientation(orientation)
+
+  def score_only(self):
+    self.ucbp3.picture_fast_slow()
+    # not sure why x and y origin shifts are swapped here, but this seemed to work
+    swapped_origin = (-self.detector_origin[1],-self.detector_origin[0],0.)
+    self.ucbp3.spot_rectangles(swapped_origin)
+    self.ucbp3.spot_rectregions(swapped_origin,1.0)
+    self.ucbp3.enclosed_pixels_and_margin_pixels()
+
+    return self.ucbp3.score_only_detail(weight=50.)
+
 
 class slip_callbacks:
+  def use_case_3_grid_refine(self,frame):
+    reserve_orientation = self.inputai.getOrientation()
+
+    wrapbp3 = wrapper_of_use_case_bp3( raw_image = frame.pyslip.tiles.raw_image,
+      spotfinder = self.spotfinder, imageindex = self.frames[self.image_number],
+      inputai = self.inputai,
+      limiting_resolution = self.limiting_resolution,
+      phil_params = frame.inherited_params)
+    wrapbp3.set_variables( orientation = self.inputai.getOrientation(),
+                           wave_HI = self.inputai.wavelength*0.9975,
+                           wave_LO = self.inputai.wavelength*1.0025,
+                           half_mosaicity_deg = 0.1)
+    #print "score...",wrapbp3.score_only()
+
+    wave_HI = self.inputai.wavelength*0.9975
+    wave_LO = self.inputai.wavelength*1.0025
+    low_score = None
+    for half_deg in [0.06, 0.08, 0.10, 0.12, 0.14]:
+      for bandpass in [0.004, 0.005, 0.006, 0.007, 0.008]:
+        for mean_multiplier in [0.9990, 1.0000, 1.0010, 1.0020]:
+#               A1=0.;A2=0.;A3=0.
+          for A1 in (math.pi/180.)*flex.double([-0.1,0.0,0.1]):
+            for A2 in (math.pi/180.)*flex.double([-0.1,0.0,0.1]):
+              for A3 in (math.pi/180.)*flex.double([-0.1,0.0,0.1]):
+                ori = reserve_orientation.rotate_thru((1,0,0),A1).rotate_thru((0,1,0),A2).rotate_thru((0,0,1),A3)
+                self.inputai.setOrientation(ori)
+                HI = self.inputai.wavelength*(mean_multiplier-(bandpass/2.))
+                LO = self.inputai.wavelength*(mean_multiplier+(bandpass/2.))
+                #score = self.use_case_3_score_only(
+                #       frame,half_deg,HI,LO)
+                wrapbp3.set_variables( orientation = self.inputai.getOrientation(),
+                           wave_HI = HI,wave_LO = LO,half_mosaicity_deg = half_deg)
+
+                score = wrapbp3.score_only()
+                if low_score == None or score < low_score:
+                  low_score = score
+                  best_params = (half_deg,HI,LO,ori,A1,A2,A3)
+                  print "wave %7.4f - %7.4f bandpass %.2f half %7.4f score %7.1f"%(HI,LO,100.*(LO-HI)/LO,half_deg,score)
+    print "Rendering image with wave %7.4f - %7.4f bandpass %.2f half %7.4f score %7.1f"%(
+      best_params[1],best_params[2],100.*(best_params[2]-best_params[1])/best_params[1],best_params[0],low_score)
+    print "rotation angles",best_params[4],best_params[5],best_params[6]
+    return best_params
+
   def slip_callback(self,frame):
+    #best_params = self.use_case_3_grid_refine(frame)
+    #self.inputai.setOrientation(best_params[3])
+    #self.use_case_3_refactor(frame,best_params[0],best_params[1], best_params[2])
 
-    self.use_case_3box(frame)
-
+    normal = True
     # BLUE: predictions
     blue_data = []
     for ix,pred in enumerate(self.predicted):
@@ -14,7 +190,7 @@ class slip_callbacks:
           (pred[1]/self.pixel_size) +0.5,
           (pred[0]/self.pixel_size) +0.5)
         blue_data.append((x,y))
-    self.blue_layer = frame.pyslip.AddPointLayer(
+    if normal: self.blue_layer = frame.pyslip.AddPointLayer(
           blue_data, color="blue", name="<blue_layer>",
           radius=2,
           renderer = frame.pyslip.LightweightDrawPointLayer,
@@ -37,12 +213,12 @@ class slip_callbacks:
         yellow_data.append(
           frame.pyslip.tiles.picture_fast_slow_to_map_relative(
             key[1] + 0.5 ,key[0] + 0.5))
-    self.cyan_layer = frame.pyslip.AddPointLayer(
+    if normal: self.cyan_layer = frame.pyslip.AddPointLayer(
           cyan_data, color="cyan", name="<cyan_layer>",
           radius=1.5,
           renderer = frame.pyslip.LightweightDrawPointLayer,
           show_levels=[-2, -1, 0, 1, 2, 3, 4, 5])
-    self.yellow_layer = frame.pyslip.AddPointLayer(
+    if normal: self.yellow_layer = frame.pyslip.AddPointLayer(
           yellow_data, color="yellow", name="<yellow_layer>",
           radius=1.5,
           renderer = frame.pyslip.LightweightDrawPointLayer,
@@ -67,7 +243,7 @@ class slip_callbacks:
           radius=1.5,
           renderer = frame.pyslip.LightweightDrawPointLayer,
           show_levels=[-2, -1, 0, 1, 2, 3, 4, 5])
-    self.green_layer = frame.pyslip.AddPointLayer(
+    if normal: self.green_layer = frame.pyslip.AddPointLayer(
           green_data, color="green", name="<green_layer>",
           radius=1.5,
           renderer = frame.pyslip.LightweightDrawPointLayer,
@@ -353,6 +529,267 @@ class slip_callbacks:
           polydata, color="red", name="<red_layer>",
           width=1.0,
           show_levels=[-2, -1, 0, 1, 2, 3, 4, 5])
+
+  def use_case_3_refactor(self,frame,half_deg,wave_HI, wave_LO):
+    from rstbx.bandpass import use_case_bp3,parameters_bp3
+    # Extend the model.  Assume polychromatic beam with top hat profile.  Assume finite radial mosaicity.  Dispense
+    # with the "ewald proximity" mechanism; now spots are brought into reflecting condition
+    # by a finite rotation about the axis that is longitudinal to the projection of the q-vector
+    # onto the detector plane.
+
+    from scitbx.matrix import col
+    from math import pi
+
+    detector_origin = col((-self.inputai.getBase().xbeam, -self.inputai.getBase().ybeam, 0.))
+
+    from cctbx.crystal import symmetry
+    crystal = symmetry(unit_cell=self.inputai.getOrientation().unit_cell(),space_group = "P1")
+    indices = crystal.build_miller_set(anomalous_flag=True, d_min = self.limiting_resolution)
+    half_mosaicity_rad = half_deg*pi/180.
+    parameters = parameters_bp3(
+       indices=indices.indices(), orientation=self.inputai.getOrientation(),
+       incident_beam=col((0.,0.,1.)),
+       packed_tophat=col((wave_HI,wave_LO,half_mosaicity_rad)),
+       detector_normal=col((0.,0.,-1.)), detector_fast=col((0.,1.,0.)),detector_slow=col((1.,0.,0.)),
+       pixel_size=col((self.pixel_size,self.pixel_size,0)),
+       pixel_offset=col((0.5,0.5,0.0)), distance=self.inputai.getBase().distance,
+       detector_origin=detector_origin
+    )
+
+    cpp_results = use_case_bp3(parameters=parameters)
+    cpp_results.set_active_areas(
+      frame.pyslip.tiles.raw_image.get_tile_manager(frame.inherited_params).effective_tiling_as_flex_int(
+      reapply_peripheral_margin=True))
+    cpp_results.picture_fast_slow()
+    picture_fast_slow = cpp_results.hi_E_limit.select(cpp_results.observed_flag)
+    map_relative_hi = frame.pyslip.tiles.vec_picture_fast_slow_to_map_relative(picture_fast_slow)
+    picture_fast_slow = cpp_results.lo_E_limit.select(cpp_results.observed_flag)
+    map_relative_lo = frame.pyslip.tiles.vec_picture_fast_slow_to_map_relative(picture_fast_slow)
+
+    poly = cpp_results.spot_rectangles((self.inputai.getBase().ybeam,self.inputai.getBase().xbeam,0.))
+    map_relative_poly = frame.pyslip.tiles.vec_picture_fast_slow_to_map_relative(poly)
+    cpp_polydata = []
+    for idx in xrange(0,len(map_relative_poly),5):
+      cpp_polydata.append( ([ map_relative_poly[idx+0],
+                              map_relative_poly[idx+1],
+                              map_relative_poly[idx+2],
+                              map_relative_poly[idx+3],
+                              map_relative_poly[idx+4]
+                     ],{}) )
+
+    self.red_layer = frame.pyslip.AddPolygonLayer( # needs to be changed for Linx (antialiasing removed)
+          cpp_polydata, color="red", name="<red_layer>",
+          width=1.0,
+          show_levels=[-2, -1, 0, 1, 2, 3, 4, 5])
+
+    poly = cpp_results.spot_rectregions((self.inputai.getBase().ybeam,self.inputai.getBase().xbeam,0.),1.0)
+    map_relative_poly = frame.pyslip.tiles.vec_picture_fast_slow_to_map_relative(poly)
+    cpp_polydata = []
+    for idx in xrange(0,len(map_relative_poly),5):
+      cpp_polydata.append( ([ map_relative_poly[idx+0],
+                              map_relative_poly[idx+1],
+                              map_relative_poly[idx+2],
+                              map_relative_poly[idx+3],
+                              map_relative_poly[idx+4]
+                     ],{}) )
+
+    self.pink_layer = frame.pyslip.AddPolygonLayer( # needs to be changed for Linx (antialiasing removed)
+          cpp_polydata, color="pink", name="<pink_layer>",
+          width=1.0,
+          show_levels=[-2, -1, 0, 1, 2, 3, 4, 5])
+    print "Entering C++ pixels"
+    cpp_results.enclosed_pixels_and_margin_pixels()
+    print "Done with C++ pixels"
+    internal = cpp_results.enclosed_px
+    map_relative_pixels = frame.pyslip.tiles.vec_picture_fast_slow_to_map_relative(internal)
+    self.yellow_layer = frame.pyslip.AddPointLayer(
+          map_relative_pixels, color="yellow", name="<yellow_layer>",
+          radius=1.0,
+          renderer = frame.pyslip.LightweightDrawPointLayer,
+          show_levels=[-2, -1, 0, 1, 2, 3, 4, 5])
+    internal = cpp_results.margin_px
+    map_relative_pixels = frame.pyslip.tiles.vec_picture_fast_slow_to_map_relative(internal)
+    self.green_layer = frame.pyslip.AddPointLayer(
+          map_relative_pixels, color="green", name="<green_layer>",
+          radius=1.0,
+          renderer = frame.pyslip.LightweightDrawPointLayer,
+          show_levels=[-2, -1, 0, 1, 2, 3, 4, 5])
+
+    map_relative_pixels = frame.pyslip.tiles.vec_picture_fast_slow_to_map_relative(
+                          cpp_results.selected_predictions())
+
+    self.blue_layer = frame.pyslip.AddPointLayer(
+          map_relative_pixels, color="blue", name="<blue_layer>",
+          radius=2.0,
+          renderer = frame.pyslip.LightweightDrawPointLayer,
+          show_levels=[-2, -1, 0, 1, 2, 3, 4, 5])
+
+    # Now figure out how to implement the scoring function. Do this in picture fast low coordinates
+    # FIRST Set:  spot bodypixels:
+    from annlib_ext import AnnAdaptorSelfInclude as AnnAdaptor
+    body_pixel_reference = flex.double()
+    for spot in self.spotfinder.images[self.frames[self.image_number]]["goodspots"]:
+      for pxl in spot.bodypixels:
+        body_pixel_reference.append(pxl.y + 0.5)
+        body_pixel_reference.append(pxl.x + 0.5)
+    self.adapt = AnnAdaptor(data=body_pixel_reference,dim=2,k=1)
+
+    N_bodypix = body_pixel_reference.size()//2
+
+    # second set:  predict box
+    enclosed_pixels = cpp_results.enclosed_px
+    N_enclosed = enclosed_pixels.size()
+    N_enclosed_body_pixels = 0
+    query = flex.double()
+    for pixel in enclosed_pixels:
+      query.append(pixel[0]); query.append(pixel[1])
+    self.adapt.query(query)
+    import math
+    for p in xrange(N_enclosed):
+      if math.sqrt(self.adapt.distances[p]) < 0.1:
+        N_enclosed_body_pixels += 1
+
+    # third set:  marginal
+    marginal_pixels = cpp_results.margin_px
+    margin_distances = cpp_results.margin_distances
+
+    N_marginal = marginal_pixels.size()
+    N_marginal_body_pixels = 0
+    marginal_body = 0
+    marginal_nonbody = 0
+    query = flex.double()
+    for pixel in marginal_pixels:
+      query.append(pixel[0]); query.append(pixel[1])
+    self.adapt.query(query)
+    for p in xrange(N_marginal):
+      if math.sqrt(self.adapt.distances[p]) < 0.1:
+        N_marginal_body_pixels += 1
+        marginal_body += 0.5 + 0.5 * math.cos (-math.pi * margin_distances[p]) #taking MARGIN==1
+      else:
+        marginal_nonbody += 0.5 + 0.5 * math.cos (math.pi * margin_distances[p])
+    print "marginal body/nonbody",marginal_body, marginal_nonbody
+
+    print "There are %d body pixels of which %d are enclosed and %d are marginal leaving %d remote"%(
+      N_bodypix,N_enclosed_body_pixels,N_marginal_body_pixels,
+      N_bodypix-N_enclosed_body_pixels-N_marginal_body_pixels)
+    print "There are %d enclosed pixels of which %d are body, %d are nonbody"%(
+      N_enclosed,N_enclosed_body_pixels,N_enclosed-N_enclosed_body_pixels)
+    print "There are %d marginal pixels of which %d are body, %d are nonbody"%(
+      N_marginal,N_marginal_body_pixels,N_marginal-N_marginal_body_pixels)
+    Score = 0
+    # the scoring function to account for these spots:
+    #    pink -- spot body pixels inside predict box = 0
+    #    red  -- spot body pixels > 2 pxl away from predict box = 1
+    Score += N_bodypix-N_enclosed_body_pixels-N_marginal_body_pixels
+    #    gradation -- body pixels within the marginal zone
+    Score += marginal_body + marginal_nonbody
+    #    blank -- nonbody pixels outside of 2 pixel margin = 0
+    #    yellow -- nonbody pixels inside predict box = 1
+    Score += N_enclosed-N_enclosed_body_pixels
+    #    gradation -- in between zone, within margin
+    print "The score is",Score
+
+  def use_case_3_score_only(self,frame,half_deg,wave_HI, wave_LO):
+    from rstbx.bandpass import use_case_bp3,parameters_bp3
+    # Extend the model.  Assume polychromatic beam with top hat profile.  Assume finite radial mosaicity.  Dispense
+    # with the "ewald proximity" mechanism; now spots are brought into reflecting condition
+    # by a finite rotation about the axis that is longitudinal to the projection of the q-vector
+    # onto the detector plane.
+
+    from scitbx.matrix import col
+    from math import pi
+
+    detector_origin = col((-self.inputai.getBase().xbeam, -self.inputai.getBase().ybeam, 0.))
+
+    from cctbx.crystal import symmetry
+    crystal = symmetry(unit_cell=self.inputai.getOrientation().unit_cell(),space_group = "P1")
+    indices = crystal.build_miller_set(anomalous_flag=True, d_min = self.limiting_resolution)
+    half_mosaicity_rad = half_deg*pi/180.
+    parameters = parameters_bp3(
+       indices=indices.indices(), orientation=self.inputai.getOrientation(),
+       incident_beam=col((0.,0.,1.)),
+       packed_tophat=col((wave_HI,wave_LO,half_mosaicity_rad)),
+       detector_normal=col((0.,0.,-1.)), detector_fast=col((0.,1.,0.)),detector_slow=col((1.,0.,0.)),
+       pixel_size=col((self.pixel_size,self.pixel_size,0)),
+       pixel_offset=col((0.5,0.5,0.0)), distance=self.inputai.getBase().distance,
+       detector_origin=detector_origin
+    )
+
+    cpp_results = use_case_bp3(parameters=parameters)
+    cpp_results.set_active_areas(
+      frame.pyslip.tiles.raw_image.get_tile_manager(frame.inherited_params).effective_tiling_as_flex_int(
+      reapply_peripheral_margin=True))
+    cpp_results.picture_fast_slow()
+    poly = cpp_results.spot_rectangles((self.inputai.getBase().ybeam,self.inputai.getBase().xbeam,0.))
+
+    poly = cpp_results.spot_rectregions((self.inputai.getBase().ybeam,self.inputai.getBase().xbeam,0.),1.0)
+    cpp_results.enclosed_pixels_and_margin_pixels()
+
+    # Now figure out how to implement the scoring function. Do this in picture fast low coordinates
+    # FIRST Set:  spot bodypixels:
+    from annlib_ext import AnnAdaptorSelfInclude as AnnAdaptor
+    body_pixel_reference = flex.double()
+    for spot in self.spotfinder.images[self.frames[self.image_number]]["goodspots"]:
+      for pxl in spot.bodypixels:
+        body_pixel_reference.append(pxl.y + 0.5)
+        body_pixel_reference.append(pxl.x + 0.5)
+    self.adapt = AnnAdaptor(data=body_pixel_reference,dim=2,k=1)
+
+    N_bodypix = body_pixel_reference.size()//2
+
+    # second set:  predict box
+    enclosed_pixels = cpp_results.enclosed_px
+    N_enclosed = enclosed_pixels.size()
+    N_enclosed_body_pixels = 0
+    query = flex.double()
+    for pixel in enclosed_pixels:
+      query.append(pixel[0]); query.append(pixel[1])
+    self.adapt.query(query)
+    import math
+    for p in xrange(N_enclosed):
+      if math.sqrt(self.adapt.distances[p]) < 0.1:
+        N_enclosed_body_pixels += 1
+
+    # third set:  marginal
+    marginal_pixels = cpp_results.margin_px
+    margin_distances = cpp_results.margin_distances
+    WGT = 50.
+    N_marginal = marginal_pixels.size()
+    N_marginal_body_pixels = 0
+    marginal_body = 0
+    marginal_nonbody = 0
+    query = flex.double()
+    for pixel in marginal_pixels:
+      query.append(pixel[0]); query.append(pixel[1])
+    self.adapt.query(query)
+    for p in xrange(N_marginal):
+      if math.sqrt(self.adapt.distances[p]) < 0.1:
+        N_marginal_body_pixels += 1
+        marginal_body += 0.5 + 0.5 * math.cos (-math.pi * margin_distances[p]) #taking MARGIN==1
+      else:
+        marginal_nonbody += 0.5 + 0.5 * math.cos (math.pi * margin_distances[p])
+    marginal_body *=WGT
+    if False:
+      print "marginal body/nonbody",marginal_body, marginal_nonbody
+      print "There are %d body pixels of which %d are enclosed and %d are marginal leaving %d remote"%(
+        N_bodypix,N_enclosed_body_pixels,N_marginal_body_pixels,
+        N_bodypix-N_enclosed_body_pixels-N_marginal_body_pixels)
+      print "There are %d enclosed pixels of which %d are body, %d are nonbody"%(
+        N_enclosed,N_enclosed_body_pixels,N_enclosed-N_enclosed_body_pixels)
+      print "There are %d marginal pixels of which %d are body, %d are nonbody"%(
+        N_marginal,N_marginal_body_pixels,N_marginal-N_marginal_body_pixels)
+    Score = 0
+    # the scoring function to account for these spots:
+    #    pink -- spot body pixels inside predict box = 0
+    #    red  -- spot body pixels > 2 pxl away from predict box = 1
+    Score += WGT*(N_bodypix-N_enclosed_body_pixels-N_marginal_body_pixels)
+    #    gradation -- body pixels within the marginal zone
+    Score += marginal_body + marginal_nonbody
+    #    blank -- nonbody pixels outside of 2 pixel margin = 0
+    #    yellow -- nonbody pixels inside predict box = 1
+    Score += N_enclosed-N_enclosed_body_pixels
+    #    gradation -- in between zone, within margin
+    return Score
 
 
 # are there more spots than inliers?  all good spots?

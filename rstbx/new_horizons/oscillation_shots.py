@@ -152,6 +152,7 @@ class IntegrateCharacters:
           # Update initial settings with values from the command line.  Needs
           # to be done before image is loaded (but after the frame is
           # instantiated).
+          frame.inherited_params = integrate_worker.horizons_phil
           frame.params = work_params
           frame.pyslip.tiles.user_requests_antialiasing = work_params.anti_aliasing
           frame.settings_frame.panel.center_ctrl.SetValue(True)
