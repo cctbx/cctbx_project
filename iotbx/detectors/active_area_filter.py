@@ -5,7 +5,6 @@ class active_area_filter:
   def __init__(self,IT):
     from scitbx import matrix
     self.IT = IT
-    self.centers = []
     from annlib_ext import AnnAdaptor
 
     reference = flex.double()
