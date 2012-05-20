@@ -208,7 +208,7 @@ class settings_window (wxtbx.utils.SettingsPanel) :
     self._last_sg_sel = str(sg_info)
 
   def OnSetSlice (self, event) :
-    self.settings.slice_axis = self.hkl_choice.GetStringSelection()
+    self.settings.slice_axis = str(self.hkl_choice.GetStringSelection())
     axis_index = ["h","k","l"].index(self.settings.slice_axis)
     min_value = self._index_span.min()[axis_index]
     max_value = self._index_span.max()[axis_index]
@@ -227,7 +227,7 @@ class settings_window (wxtbx.utils.SettingsPanel) :
         raise Sorry(str(e))
 
   def OnChangeSpaceGroup (self, event) :
-    sg_sel = self.sg_ctrl.GetStringSelection()
+    sg_sel = str(self.sg_ctrl.GetStringSelection())
     if (sg_sel != self._last_sg_sel) :
       from cctbx import sgtbx
       sg_info = sgtbx.space_group_info(sg_sel)
@@ -238,7 +238,7 @@ class settings_window (wxtbx.utils.SettingsPanel) :
     self.parent.update_settings()
 
   def OnChangeColor (self, event) :
-    self.settings.color_scheme = self.color_ctrl.GetStringSelection()
+    self.settings.color_scheme = str(self.color_ctrl.GetStringSelection())
     self.parent.update_settings()
 
 class HKLViewFrame (wx.Frame) :
