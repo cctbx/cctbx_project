@@ -95,10 +95,10 @@ def compute_fo_minus_fo_map(data_arrays, xray_structure, log, silent,
       r_free_flags   = r_free_flags,
       target_name    = "ls_wunit_k1",
       f_obs          = d)
-    fmodel.remove_outliers()
-    fmodel.update_solvent_and_scale()
+    fmodel.remove_outliers(log=log)
+    fmodel.update_solvent_and_scale(out=log)
     if(not silent):
-      fmodel.info().show_rfactors_targets_scales_overall()
+      fmodel.info().show_rfactors_targets_scales_overall(out=log)
       print >> log
     fmodels.append(fmodel)
   # prepare Fobs for map calculation (apply scaling):
@@ -217,7 +217,7 @@ def compute_fo_minus_fo_map(data_arrays, xray_structure, log, silent,
     file_names.append(pdb_out)
   return file_names
 
-def run(args, command_name = "phenix.fobs_minus_fobs_map"):
+def run(args, command_name = "phenix.fobs_minus_fobs_map", log=None):
   if(len(args) == 0): args = ["--help"]
   examples = """Examples:
 
@@ -237,7 +237,8 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
     .enable_symmetry_comprehensive()
     ).process(args=args)
   #
-  log = sys.stdout
+  if (log is None) :
+    log = sys.stdout
   if(not command_line.options.silent):
     utils.print_header("phenix.fobs_minus_fobs_map", out = log)
     print >> log, "Command line arguments: "
