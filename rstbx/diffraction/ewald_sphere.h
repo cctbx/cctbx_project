@@ -7,6 +7,7 @@
 #include <scitbx/array_family/shared.h>
 #include <cctbx/crystal_orientation.h>
 #include <rstbx/diffraction/reflection_range.h>
+#include <rstbx/bpcx/detector_model/sensor.h>
 
 namespace af = scitbx::af;
 namespace rstbx {
@@ -211,16 +212,12 @@ class reflection_prediction : public reflection_range {
 
  public:
 
+  typedef rstbx::detector_model::sensor sensor_type;
+
   reflection_prediction(const scitbx::vec3<double> & axis,
                         const scitbx::vec3<double> & s0,
                         const scitbx::mat3<double> & ub,
-                        const scitbx::vec3<double> & origin,
-                        const scitbx::vec3<double> & fast,
-                        const scitbx::vec3<double> & slow,
-                        const double & f_min,
-                        const double & f_max,
-                        const double & s_min,
-                        const double & s_max);
+                        const sensor_type & sensor);
 
   bool operator()(scitbx::vec3<double> const & hkl,
                   const double & angle);
@@ -236,12 +233,13 @@ class reflection_prediction : public reflection_range {
   scitbx::vec3<double> axis;
   scitbx::vec3<double> s0;
   scitbx::mat3<double> ub;
-  scitbx::vec3<double> origin;
-  scitbx::vec3<double> fast;
-  scitbx::vec3<double> slow;
-  scitbx::vec3<double> normal;
-  double limits[4];
-  double distance;
+  //scitbx::vec3<double> origin;
+  //scitbx::vec3<double> fast;
+  //scitbx::vec3<double> slow;
+  //scitbx::vec3<double> normal;
+  sensor_type sensor;
+  //double limits[4];
+  //double distance;
 
   scitbx::vec2<double> prediction;
 

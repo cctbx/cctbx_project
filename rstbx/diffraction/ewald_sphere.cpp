@@ -207,29 +207,20 @@ rstbx::reflection_prediction::reflection_prediction(
   const scitbx::vec3<double> & _axis,
   const scitbx::vec3<double> & _s0,
   const scitbx::mat3<double> & _ub,
-  const scitbx::vec3<double> & _origin,
-  const scitbx::vec3<double> & _fast,
-  const scitbx::vec3<double> & _slow,
-  const double & f_min,
-  const double & f_max,
-  const double & s_min,
-  const double & s_max):
+  //const scitbx::vec3<double> & _origin,
+  //const scitbx::vec3<double> & _fast,
+  //const scitbx::vec3<double> & _slow,
+  //const double & f_min,
+  //const double & f_max,
+  //const double & s_min,
+  //const double & s_max
+  const sensor_type & _sensor):
     reflection_range( _axis, _s0,  _ub )
 {
   axis = _axis;
   s0 = _s0;
   ub = _ub;
-  origin = _origin;
-  fast = _fast;
-  slow = _slow;
-
-  normal = fast.cross(slow);
-  distance = origin * normal;
-
-  limits[0] = f_min;
-  limits[1] = f_max;
-  limits[2] = s_min;
-  limits[3] = s_max;
+  sensor = _sensor;
 }
 
 bool rstbx::reflection_prediction::operator()(scitbx::vec3<double> const & hkl,
@@ -258,18 +249,21 @@ bool rstbx::reflection_prediction::intersect(scitbx::vec3<double> const & ray)
   scitbx::vec3<double> r;
   double ray_dot_n, x, y;
 
-  ray_dot_n = ray * normal;
+  ray_dot_n = ray * sensor.get_normal();
   if (ray_dot_n == 0) return false;
 
-  r = (ray * distance / ray_dot_n) - origin;
+  r = (ray * sensor.get_distance() / ray_dot_n) - sensor.get_origin();
 
-  x = r * fast;
-  y = r * slow;
+  x = r * sensor.get_dir1();
+  y = r * sensor.get_dir2();
 
-  if (x < limits[0]) return false;
-  if (y < limits[2]) return false;
-  if (x > limits[1]) return false;
-  if (y > limits[3]) return false;
+  scitbx::vec2<double> lim1 = sensor.get_lim1();
+  scitbx::vec2<double> lim2 = sensor.get_lim2();
+
+  if (x < lim1[0]) return false;
+  if (y < lim2[0]) return false;
+  if (x > lim1[1]) return false;
+  if (y > lim2[1]) return false;
 
   prediction[0] = x;
   prediction[1] = y;

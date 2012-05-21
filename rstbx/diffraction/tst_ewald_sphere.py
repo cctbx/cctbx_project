@@ -4,6 +4,7 @@ import math
 from cctbx.uctbx import unit_cell
 from scitbx import matrix
 from rstbx.diffraction import rotation_angles, reflection_prediction
+from rstbx.bpcx import sensor
 from libtbx.test_utils import approx_equal
 
 # This script (provided by Graeme Winter) will take the quartz structure and
@@ -54,13 +55,13 @@ def scattering_prediction(reflections, UB_mat, rotation_vector,
     detector_size = 100
     detector_distance = 100
 
-    rp = reflection_prediction(rotation_vector, beam_vector, UB_mat,
-                               matrix.col((- 0.5 * detector_size,
-                                           - 0.5 * detector_size,
-                                           detector_distance)),
-                               matrix.col((1, 0, 0)),
-                               matrix.col((0, 1, 0)),
-                               0, detector_size, 0, detector_size)
+    s =  sensor(matrix.col((- 0.5 * detector_size,
+                            - 0.5 * detector_size,
+                            detector_distance)),
+                matrix.col((1, 0, 0)),
+                matrix.col((0, 1, 0)),
+                (0, detector_size), (0, detector_size))
+    rp = reflection_prediction(rotation_vector, beam_vector, UB_mat, s)
 
     for hkl in reflections:
         if ra(hkl):

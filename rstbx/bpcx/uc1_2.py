@@ -217,11 +217,7 @@ class make_prediction_list:
     # used for polarization correction
     self.distance = sensor.distance
 
-    rp = reflection_prediction(axis, s0, ub, sensor.origin,
-                                   sensor.dir1,
-                                   sensor.dir2,
-                                   sensor.lim1[0], sensor.lim1[1],
-                                   sensor.lim2[0], sensor.lim2[1])
+    rp = reflection_prediction(axis, s0, ub, sensor)
     if self._rocking_curve is not None:
       assert self._rocking_curve != "none"
       rp.set_rocking_curve(self._rocking_curve)
