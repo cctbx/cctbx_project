@@ -10,6 +10,8 @@ class sensor {
 
  public:
 
+  sensor(){}
+
   sensor(const scitbx::vec3<double>& origin,
          const scitbx::vec3<double>& dir1,
          const scitbx::vec3<double>& dir2,
@@ -32,7 +34,7 @@ class sensor {
   /* Not yet implemented. Each must call update(). set all three
      properties of the sensor at once (i.e. dir1, dir2, origin) as we
      want to maintain the same "shape" coordinate frame. */
-  
+
  private:
 
   //members

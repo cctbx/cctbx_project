@@ -281,15 +281,8 @@ namespace boost_python { namespace {
                                   init<const scitbx::vec3<double> &,
                                   const scitbx::vec3<double> &,
                                   const scitbx::mat3<double> &,
-                                  const scitbx::vec3<double> &,
-                                  const scitbx::vec3<double> &,
-                                  const scitbx::vec3<double> &,
-                                  const double &, const double &,
-                                  const double &, const double &>
-      ((arg("axis"), arg("s0"), arg("ub"),
-        arg("origin"), arg("fast"), arg("slow"),
-        arg("f_min"), arg("f_max"),
-        arg("s_min"), arg("s_max"))))
+                                  const reflection_prediction::sensor_type &>
+      ((arg("axis"), arg("s0"), arg("ub"), arg("sensor"))))
       .def("__call__", & reflection_prediction::operator())
       .def("get_prediction", & reflection_prediction::get_prediction)
       .def("set_rocking_curve", & reflection_prediction::set_rocking_curve)
