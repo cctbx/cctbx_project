@@ -512,6 +512,31 @@ namespace rstbx { namespace bandpass {
     }
 
     scitbx::af::shared<vec3 >
+    selected_predictions_labelit_format()const{
+      scitbx::af::shared<vec3 > data;
+
+      for (int idx = 0; idx < lo_E_limit.size(); ++idx){
+        if (!observed_flag[idx]) {continue;}
+        vec3 hi_pos = hi_E_limit[idx];
+        vec3 lo_pos = lo_E_limit[idx];
+        vec3 temp = (hi_pos + lo_pos)/2.;
+        data.push_back( vec3(temp[1]*P.pixel_size[1],temp[0]*P.pixel_size[0],temp[2]) );
+      }
+      return data;
+    }
+
+    scitbx::af::shared<cctbx::miller::index<> >
+    selected_hkls()const{
+      scitbx::af::shared<cctbx::miller::index<> > data;
+
+      for (int idx = 0; idx < lo_E_limit.size(); ++idx){
+        if (!observed_flag[idx]) {continue;}
+        data.push_back( P.indices[idx] );
+      }
+      return data;
+    }
+
+    scitbx::af::shared<vec3 >
     restricted_to_active_areas(scitbx::af::shared<int> active_areas, scitbx::af::shared<vec3 > candidates)const{
       // calculation is done in picture_fast_slow coordinates (units of pixels)
       scitbx::af::shared<vec3 > active_area_traps;
@@ -733,6 +758,9 @@ namespace ext {
         .add_property("margin_distances",make_getter(&use_case_bp3::margin_distances, rbv()))
         .def("enclosed_pixels", &use_case_bp3::enclosed_pixels)
         .def("selected_predictions", &use_case_bp3::selected_predictions)
+        .def("selected_predictions_labelit_format",
+        &use_case_bp3::selected_predictions_labelit_format)
+        .def("selected_hkls", &use_case_bp3::selected_hkls)
         .def("restricted_to_active_areas", &use_case_bp3::restricted_to_active_areas)
         .def("set_mosaicity", &use_case_bp3::set_mosaicity)
         .def("set_bandpass", &use_case_bp3::set_bandpass)
