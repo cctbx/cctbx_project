@@ -11,10 +11,9 @@ rstbx::detector_model::sensor::sensor(
     dir2(_dir2),
     lim1(_lim1),
     lim2(_lim2),
-    normal(dir1.cross(dir2)),
+    normal(),
     D()
 {
-    distance = origin * normal;
     update();
 }
 
@@ -26,6 +25,9 @@ scitbx::mat3<double> rstbx::detector_model::sensor::get_d() const
 
 void rstbx::detector_model::sensor::update()
 {
+    normal = (dir1.cross(dir2)).normalize();
+    distance = origin * normal;
+
     D.set_column(0, dir1);
     D.set_column(1, dir2);
     D.set_column(2, origin);
