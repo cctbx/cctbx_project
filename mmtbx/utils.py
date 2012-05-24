@@ -409,6 +409,7 @@ class determine_data_and_flags(object):
         ).set_info(miller.array_info(labels = ["R-free-flags"]))
       params.label = r_free_flags.info().label_string()
       params.test_flag_value = 1
+      params.generate = False
     return r_free_flags
 
   def data_as_f_obs(self, f_obs):
