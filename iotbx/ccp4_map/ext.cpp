@@ -15,6 +15,13 @@
 
 #include <cmaplib.h>
 
+#if !defined(CCP4_BYTE)
+# define CCP4_BYTE BYTE
+#endif
+#if !defined(CCP4_FLOAT32)
+# define CCP4_FLOAT32 FLOAT32
+#endif
+
 namespace iotbx {
 
 //! Interfaces to CCP4 cmaplib.
@@ -53,7 +60,7 @@ namespace ccp4_map {
             + file_name + "\"");
         }
         int datamode = CMap_io::ccp4_cmap_get_datamode(mfile.get());
-        if (datamode != BYTE && datamode != FLOAT32) {
+        if (datamode != CCP4_BYTE && datamode != CCP4_FLOAT32) {
           throw std::runtime_error(
             "iotbx.ccp4_map: unsupported map data mode.");
         }
@@ -104,7 +111,7 @@ namespace ccp4_map {
         unsigned section_size = n_crs[0] * n_crs[1];
         boost::scoped_array<float> section(new float [section_size]);
         unsigned char* section_char = 0;
-        if (datamode == BYTE) {
+        if (datamode == CCP4_BYTE) {
           section_char = reinterpret_cast<unsigned char*>(section.get());
         }
         unsigned i_crs[3];
@@ -120,7 +127,7 @@ namespace ccp4_map {
               unsigned i = i_crs[order_xyz[0]];
               unsigned j = i_crs[order_xyz[1]];
               unsigned k = i_crs[order_xyz[2]];
-              if (datamode == BYTE) {
+              if (datamode == CCP4_BYTE) {
                 data_ref(i,j,k) = static_cast<float>(section_char[index++]);
               }
               else {
@@ -163,7 +170,7 @@ namespace ccp4_map {
         "iotbx.ccp4_map: error opening file for writing: \""
         + file_name + "\"");
     }
-    CMap_io::ccp4_cmap_set_datamode(mfile.get(), FLOAT32);
+    CMap_io::ccp4_cmap_set_datamode(mfile.get(), CCP4_FLOAT32);
     for (int i = 0; i < labels.size(); i++) {
       CMap_io::ccp4_cmap_set_label(mfile.get(), labels[i].c_str(), i);
     }
