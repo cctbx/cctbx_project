@@ -267,6 +267,20 @@ class IntegrationMetaProcedure(simple_integration,slip_callbacks):
   """
 
   def get_predictions_accounting_for_centering(self,cb_op_to_primitive=None):
+
+    if self.horizons_phil.integration.model == "use_case_3_simulated_annealing":
+      if cb_op_to_primitive==None:
+        raise Sorry("Can't use model_3 simulated annealing for non-primitive cells, contact authors.")
+      best_params=self.use_case_3_simulated_annealing()
+      #best_params is the tuple (half_mos_deg, waveHE, waveLE, ori, angle1, angle2, angle3)
+      BPpredicted = self.bp3_wrapper.ucbp3.selected_predictions_labelit_format()
+      BPhkllist = self.bp3_wrapper.ucbp3.selected_hkls()
+      self.predicted,self.hkllist = BPpredicted, BPhkllist
+      if self.inputai.active_areas != None:
+        self.predicted,self.hkllist = self.inputai.active_areas(
+                                      self.predicted,self.hkllist,self.pixel_size)
+      return
+
     if cb_op_to_primitive==None:
 
       predicted = self.inputai.predict_all(
@@ -289,6 +303,12 @@ class IntegrationMetaProcedure(simple_integration,slip_callbacks):
     if self.inputai.active_areas != None:
       self.predicted,self.hkllist = self.inputai.active_areas(
                                     self.predicted,self.hkllist,self.pixel_size)
+
+    if False: #development only; compare the two methods:
+      from matplotlib import pyplot as plt
+      plt.plot([i[0] for i in BPpredicted],[i[1] for i in BPpredicted],"r.")
+      plt.plot([i[0] for i in predicted],[i[1] for i in predicted],"b.")
+      plt.show()
 
   def get_observations_with_outlier_removal(self):
     spots = self.spotfinder.images[self.frames[self.image_number]]["inlier_spots"]
