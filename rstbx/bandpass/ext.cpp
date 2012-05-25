@@ -346,8 +346,8 @@ namespace rstbx { namespace bandpass {
         double fast_max = std::max<double>(spot_rectangle_vertices[idx][1],spot_rectangle_vertices[idx+1][1]);
                fast_max = std::max<double>(spot_rectangle_vertices[idx+2][1],fast_max);
                fast_max = std::max<double>(spot_rectangle_vertices[idx+3][1],fast_max);
-        for (int islow = std::floor(slow_min); islow < std::ceil(slow_max); ++islow){
-          for (int ifast = std::floor(fast_min); ifast < std::ceil(fast_max); ++ifast){
+        for (int islow = (int)std::floor(slow_min); islow < (int)std::ceil(slow_max); ++islow){
+          for (int ifast = (int)std::floor(fast_min); ifast < (int)std::ceil(fast_max); ++ifast){
             vec3 candidate_pixel(islow+0.5,ifast+0.5,0.0);
             //algorithm to determine if the pixel is enclosed in the rectangle
             bool inside = false;
@@ -407,8 +407,8 @@ namespace rstbx { namespace bandpass {
         double fast_max = std::max<double>(spot_rectregion_vertices[idx][1],spot_rectregion_vertices[idx+1][1]);
                fast_max = std::max<double>(spot_rectregion_vertices[idx+2][1],fast_max);
                fast_max = std::max<double>(spot_rectregion_vertices[idx+3][1],fast_max);
-        for (int islow = std::floor(slow_min); islow < std::ceil(slow_max); ++islow){
-          for (int ifast = std::floor(fast_min); ifast < std::ceil(fast_max); ++ifast){
+        for (int islow = (int)std::floor(slow_min); islow < (int)std::ceil(slow_max); ++islow){
+          for (int ifast = (int)std::floor(fast_min); ifast < (int)std::ceil(fast_max); ++ifast){
             vec3 candidate_pixel(islow+0.5,ifast+0.5,0.0);
             //algorithm to determine if the pixel is enclosed in the rectangle
             bool inside_margin = false;
