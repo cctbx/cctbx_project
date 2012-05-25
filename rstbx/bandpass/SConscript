@@ -2,6 +2,7 @@ Import("env_rstbx_boost_python_ext", "env_etc")
 
 env = env_rstbx_boost_python_ext.Clone()
 env_etc.enable_more_warnings(env=env)
+env.Prepend(LIBS=["ann"])
 env.SharedLibrary(
   target="#lib/rstbx_bandpass_ext",
   source=["ext.cpp"])
