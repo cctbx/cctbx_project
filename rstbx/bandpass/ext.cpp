@@ -87,6 +87,7 @@ namespace rstbx { namespace bandpass {
          detector_normal(detector_normal), detector_fast(detector_fast),detector_slow(detector_slow),
          pixel_size(pixel_size), pixel_offset(pixel_offset), distance(distance),detector_origin(detector_origin) {
           SCITBX_ASSERT (wavelengthHE <= wavelengthLE);
+          SCITBX_ASSERT (wavelengthHE>0.);
          }
   };
 
@@ -145,6 +146,8 @@ namespace rstbx { namespace bandpass {
       scitbx::vec3<double> s1 = (1./P.wavelengthLE) * P.incident_beam;
       double s1_length = s1.length();
       scitbx::vec3<double> s1_unit = s1.normalize();
+      SCITBX_ASSERT (s0_length > 0.);
+      SCITBX_ASSERT (s1_length > 0.);
 
       //  Cn, the circular section through the Ewald sphere.
       for (int idx = 0; idx < P.indices.size(); ++idx){
@@ -152,6 +155,7 @@ namespace rstbx { namespace bandpass {
           scitbx::vec3<double> H(P.indices[idx][0],P.indices[idx][1], P.indices[idx][2]); // the Miller index
           scitbx::vec3<double> s = A * H; //s, the reciprocal space coordinates, lab frame, of the oriented Miller index
           double s_rad_sq = s.length_sq();
+          SCITBX_ASSERT(s_rad_sq > 0.);
           scitbx::vec3<double> rotax = s.normalize().cross(s0_unit); //The axis that most directly brings the Bragg spot onto Ewald sphere
           scitbx::vec3<double> chord_direction =      (rotax.cross(s0)).normalize();
 
@@ -173,7 +177,7 @@ namespace rstbx { namespace bandpass {
           // check if diffracted ray parallel to detector face
 
           double q_dot_n = q_unit * P.detector_normal;
-
+          SCITBX_ASSERT(q_dot_n != 0.);
           scitbx::vec3<double> r = (q_unit * P.distance / q_dot_n) - P.detector_origin;
 
           double x = r * P.detector_fast;
@@ -201,7 +205,7 @@ namespace rstbx { namespace bandpass {
           // check if diffracted ray parallel to detector face
 
           double q_dot_n = q_unit * P.detector_normal;
-
+          SCITBX_ASSERT(q_dot_n != 0.);
           scitbx::vec3<double> r = (q_unit * P.distance / q_dot_n) - P.detector_origin;
 
           double x = r * P.detector_fast;
@@ -216,6 +220,7 @@ namespace rstbx { namespace bandpass {
           if (limit_types[idx]%2 == 0) { // ==3 or ==1 means that hiE test is unnecessary
             scitbx::vec3<double> s_rot_hi = s.rotate_around_origin(rotax,P.half_mosaicity_rad);
             double a_hi = -s_rot_hi * s0_unit;
+            SCITBX_ASSERT(a_hi != 0.);
             double r_n_hi = s_rad_sq/(2.*a_hi);
             double wavelength_hi = 1./r_n_hi;
             if (P.wavelengthHE < wavelength_hi && wavelength_hi < P.wavelengthLE) {
@@ -224,7 +229,7 @@ namespace rstbx { namespace bandpass {
               scitbx::vec3<double> q_unit = q.normalize();
 
               double q_dot_n = q_unit * P.detector_normal;
-
+              SCITBX_ASSERT(q_dot_n != 0.);
               scitbx::vec3<double> r = (q_unit * P.distance / q_dot_n) - P.detector_origin;
 
               double x = r * P.detector_fast;
@@ -238,6 +243,7 @@ namespace rstbx { namespace bandpass {
           if (limit_types[idx] < 2) { // >=2 means that loE test is unnecessary
             scitbx::vec3<double> s_rot_lo = s.rotate_around_origin(rotax,-P.half_mosaicity_rad);
             double a_lo = -s_rot_lo * s0_unit;
+            SCITBX_ASSERT(a_lo != 0.);
             double r_n_lo = s_rad_sq/(2.*a_lo);
             double wavelength_lo = 1./r_n_lo;
             if (P.wavelengthHE < wavelength_lo && wavelength_lo < P.wavelengthLE) {
@@ -246,7 +252,7 @@ namespace rstbx { namespace bandpass {
               scitbx::vec3<double> q_unit = q.normalize();
 
               double q_dot_n = q_unit * P.detector_normal;
-
+              SCITBX_ASSERT(q_dot_n != 0.);
               scitbx::vec3<double> r = (q_unit * P.distance / q_dot_n) - P.detector_origin;
 
               double x = r * P.detector_fast;
@@ -551,7 +557,7 @@ namespace rstbx { namespace bandpass {
     void set_bandpass(double const& wave_HI,double const& wave_LO){
       P.wavelengthHE = wave_HI;
       P.wavelengthLE = wave_LO;
-      SCITBX_ASSERT (P.wavelengthHE <= P.wavelengthLE);    }
+      SCITBX_ASSERT (P.wavelengthHE <= P.wavelengthLE); SCITBX_ASSERT (P.wavelengthHE > 0.);   }
     void set_orientation(cctbx::crystal_orientation const& orientation){
       P.orientation = orientation; }
     annlib_adaptbx::AnnAdaptorSelfInclude adapt;
