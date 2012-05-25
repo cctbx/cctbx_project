@@ -2,13 +2,13 @@
 #include <rstbx/bpcx/detector_model/sensor.h>
 
 namespace rstbx { namespace detector_model {
-    
+
     struct detector_model_wrappers
     {
         static void wrap()
         {
             using namespace boost::python;
-            
+
             class_<sensor>("sensor", init<const scitbx::vec3<double>&,
                                           const scitbx::vec3<double>&,
                                           const scitbx::vec3<double>&,
@@ -26,13 +26,13 @@ namespace rstbx { namespace detector_model {
             ;
         }
     };
-    
+
     void init_module()
     {
         using namespace boost::python;
         detector_model_wrappers::wrap();
     }
-    
+
 }} //namespace rstbx::detector_model
 
 BOOST_PYTHON_MODULE(rstbx_bpcx_detector_model_ext)
