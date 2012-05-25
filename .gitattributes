@@ -1355,6 +1355,7 @@ rstbx/backplane.h -text
 rstbx/bandpass/SConscript -text
 rstbx/bandpass/__init__.py -text
 rstbx/bandpass/ext.cpp -text
+rstbx/bandpass/simulated_annealing.py -text
 rstbx/bpcx/SConscript -text
 rstbx/bpcx/__init__.py -text
 rstbx/bpcx/compare_mosflm_xds.py -text

@@ -90,7 +90,7 @@ class wrapper_of_use_case_bp3(object):
     parameters = parameters_bp3(
        indices=indices.indices(), orientation=inputai.getOrientation(),
        incident_beam=col((0.,0.,1.)),
-       packed_tophat=col((0.,0.,0.)),
+       packed_tophat=col((1.,1.,0.)),
        detector_normal=col((0.,0.,-1.)), detector_fast=col((0.,1.,0.)),detector_slow=col((1.,0.,0.)),
        pixel_size=col((raw_image.pixel_size,raw_image.pixel_size,0)),
        pixel_offset=col((0.5,0.5,0.0)), distance=inputai.getBase().distance,
@@ -133,50 +133,8 @@ class wrapper_of_use_case_bp3(object):
 
 
 class slip_callbacks:
-  def use_case_3_grid_refine(self,frame):
-    reserve_orientation = self.inputai.getOrientation()
-
-    wrapbp3 = wrapper_of_use_case_bp3( raw_image = frame.pyslip.tiles.raw_image,
-      spotfinder = self.spotfinder, imageindex = self.frames[self.image_number],
-      inputai = self.inputai,
-      limiting_resolution = self.limiting_resolution,
-      phil_params = frame.inherited_params)
-    wrapbp3.set_variables( orientation = self.inputai.getOrientation(),
-                           wave_HI = self.inputai.wavelength*0.9975,
-                           wave_LO = self.inputai.wavelength*1.0025,
-                           half_mosaicity_deg = 0.1)
-    #print "score...",wrapbp3.score_only()
-
-    wave_HI = self.inputai.wavelength*0.9975
-    wave_LO = self.inputai.wavelength*1.0025
-    low_score = None
-    for half_deg in [0.06, 0.08, 0.10, 0.12, 0.14]:
-      for bandpass in [0.004, 0.005, 0.006, 0.007, 0.008]:
-        for mean_multiplier in [0.9990, 1.0000, 1.0010, 1.0020]:
-#               A1=0.;A2=0.;A3=0.
-          for A1 in (math.pi/180.)*flex.double([-0.1,0.0,0.1]):
-            for A2 in (math.pi/180.)*flex.double([-0.1,0.0,0.1]):
-              for A3 in (math.pi/180.)*flex.double([-0.1,0.0,0.1]):
-                ori = reserve_orientation.rotate_thru((1,0,0),A1).rotate_thru((0,1,0),A2).rotate_thru((0,0,1),A3)
-                self.inputai.setOrientation(ori)
-                HI = self.inputai.wavelength*(mean_multiplier-(bandpass/2.))
-                LO = self.inputai.wavelength*(mean_multiplier+(bandpass/2.))
-                #score = self.use_case_3_score_only(
-                #       frame,half_deg,HI,LO)
-                wrapbp3.set_variables( orientation = self.inputai.getOrientation(),
-                           wave_HI = HI,wave_LO = LO,half_mosaicity_deg = half_deg)
-
-                score = wrapbp3.score_only()
-                if low_score == None or score < low_score:
-                  low_score = score
-                  best_params = (half_deg,HI,LO,ori,A1,A2,A3)
-                  print "wave %7.4f - %7.4f bandpass %.2f half %7.4f score %7.1f"%(HI,LO,100.*(LO-HI)/LO,half_deg,score)
-    print "Rendering image with wave %7.4f - %7.4f bandpass %.2f half %7.4f score %7.1f"%(
-      best_params[1],best_params[2],100.*(best_params[2]-best_params[1])/best_params[1],best_params[0],low_score)
-    print "rotation angles",best_params[4],best_params[5],best_params[6]
-    return best_params
-
   def slip_callback(self,frame):
+    #best_params=self.use_case_3_simulated_annealing()
     #best_params = self.use_case_3_grid_refine(frame)
     #self.inputai.setOrientation(best_params[3])
     #self.use_case_3_refactor(frame,best_params[0],best_params[1], best_params[2])
@@ -791,8 +749,132 @@ class slip_callbacks:
     #    gradation -- in between zone, within margin
     return Score
 
+  def use_case_3_grid_refine(self,frame):
+    reserve_orientation = self.inputai.getOrientation()
 
-# are there more spots than inliers?  all good spots?
-# can we refine the 3-parameters to get a better model based on spot positions?
-#figure out a good correlation coefficient matching predictions & spotfinder bodypixels.
-#can the cc be continuous-valued instead of discrete.
+    wrapbp3 = wrapper_of_use_case_bp3( raw_image = frame.pyslip.tiles.raw_image,
+      spotfinder = self.spotfinder, imageindex = self.frames[self.image_number],
+      inputai = self.inputai,
+      limiting_resolution = self.limiting_resolution,
+      phil_params = frame.inherited_params)
+    wrapbp3.set_variables( orientation = self.inputai.getOrientation(),
+                           wave_HI = self.inputai.wavelength*0.9975,
+                           wave_LO = self.inputai.wavelength*1.0025,
+                           half_mosaicity_deg = 0.1)
+    #print "score...",wrapbp3.score_only()
+
+    wave_HI = self.inputai.wavelength*0.9975
+    wave_LO = self.inputai.wavelength*1.0025
+    low_score = None
+    for half_deg in [0.06, 0.08, 0.10, 0.12, 0.14]:
+      for bandpass in [0.004, 0.005, 0.006, 0.007, 0.008]:
+        for mean_multiplier in [0.9990, 1.0000, 1.0010, 1.0020]:
+#               A1=0.;A2=0.;A3=0.
+          for A1 in (math.pi/180.)*flex.double([-0.1,0.0,0.1]):
+            for A2 in (math.pi/180.)*flex.double([-0.1,0.0,0.1]):
+              for A3 in (math.pi/180.)*flex.double([-0.1,0.0,0.1]):
+                ori = reserve_orientation.rotate_thru((1,0,0),A1).rotate_thru((0,1,0),A2).rotate_thru((0,0,1),A3)
+                self.inputai.setOrientation(ori)
+                HI = self.inputai.wavelength*(mean_multiplier-(bandpass/2.))
+                LO = self.inputai.wavelength*(mean_multiplier+(bandpass/2.))
+                #score = self.use_case_3_score_only(
+                #       frame,half_deg,HI,LO)
+                wrapbp3.set_variables( orientation = self.inputai.getOrientation(),
+                           wave_HI = HI,wave_LO = LO,half_mosaicity_deg = half_deg)
+
+                score = wrapbp3.score_only()
+                if low_score == None or score < low_score:
+                  low_score = score
+                  best_params = (half_deg,HI,LO,ori,A1,A2,A3)
+                  print "wave %7.4f - %7.4f bandpass %.2f half %7.4f score %7.1f"%(HI,LO,100.*(LO-HI)/LO,half_deg,score)
+    print "Rendering image with wave %7.4f - %7.4f bandpass %.2f half %7.4f score %7.1f"%(
+      best_params[1],best_params[2],100.*(best_params[2]-best_params[1])/best_params[1],best_params[0],low_score)
+    print "rotation angles",best_params[4],best_params[5],best_params[6]
+    return best_params
+
+  def use_case_3_simulated_annealing(self):
+    reserve_orientation = self.inputai.getOrientation()
+
+    wrapbp3 = wrapper_of_use_case_bp3( raw_image = self.imagefiles.images[self.image_number],
+      spotfinder = self.spotfinder, imageindex = self.frames[self.image_number],
+      inputai = self.inputai,
+      limiting_resolution = self.limiting_resolution,
+      phil_params = self.horizons_phil)
+
+    from rstbx.bandpass.simulated_annealing import SALight
+
+    SA = SALight()
+
+    # Half mosaicity in degrees
+    # Mid-wavelength adjustment factor
+    # Bandpass fractional full width
+    # adjustment angle in degrees
+    # adjustment angle in degrees
+    # adjustment angle in degrees
+
+    # starting values; likely expected values
+    SA.x = flex.double([0.1,1.00,0.006,0.0,0.0,0.0])
+    SA.initial = SA.x.deep_copy()
+
+    # reasonable length scale (expected interval, half width)
+    SA.L = flex.double([0.02,0.001,0.001,0.05,0.05,0.05])
+
+    SA.format = "Mosaicity %6.3f Wave mean %7.4f bandpass %7.4f Angles %8.5f %8.5f %8.5f"
+
+    def set_variables_from_sa_x(x):
+      ori = reserve_orientation.rotate_thru((1,0,0),(math.pi/180.)*x[3]
+                              ).rotate_thru((0,1,0),(math.pi/180.)*x[4]
+                              ).rotate_thru((0,0,1),(math.pi/180.)*x[5])
+      self.inputai.setOrientation(ori)
+      mean_multiplier = x[1]
+      bandpass = x[2]
+      HI = self.inputai.wavelength*(mean_multiplier-(bandpass/2.))
+      LO = self.inputai.wavelength*(mean_multiplier+(bandpass/2.))
+      wrapbp3.set_variables( orientation = self.inputai.getOrientation(),
+                           wave_HI = HI,wave_LO = LO,half_mosaicity_deg = x[0])
+      #pack into format for calling function
+      these_params = (x[0],HI,LO,ori,(math.pi/180.)*x[3],(math.pi/180.)*x[4],(math.pi/180.)*x[5])
+      return these_params
+
+    set_variables_from_sa_x(SA.x)
+    last_score = wrapbp3.score_only()
+    low_score = last_score + 0 # makes a copy
+    Tstart = 600
+    for T in xrange(Tstart, 1, -1):
+      decreasing_increment = (T/Tstart)*SA.random_increment()
+      last_x = SA.x.deep_copy()
+      test_params = SA.x + decreasing_increment
+      if test_params[2]<=0: continue # can't have negative bandpass; unphysical!
+      if test_params[0]<=0: continue # can't have negative mosaicity; unphysical!
+      SA.x += decreasing_increment
+      print T, SA.format%tuple(SA.x),
+      set_variables_from_sa_x(SA.x)
+      new_score = wrapbp3.score_only()
+      print "Score %8.1f"%new_score,
+
+      if new_score < low_score:
+        low_score = 1.0*new_score
+      if new_score < last_score:
+        probability_of_acceptance=1.0
+      else:
+        probability_of_acceptance = math.exp(-(new_score-last_score)/(2.5*T))
+      if flex.random_double(1)[0] < probability_of_acceptance:
+        #new position accepted
+        last_score = 1.0*new_score
+        print "accepted"
+      else:
+        SA.x = last_x.deep_copy()
+        print "rejected"
+
+    print "Final"
+    print T, SA.format%tuple(SA.x),"Score %8.1f"%last_score,"final"
+
+    #these three lines set the bp3 wrapper so it can be used from the calling class (simple_integration.py)
+    best_params = set_variables_from_sa_x(SA.x)
+    wrapbp3.score_only()
+    self.bp3_wrapper = wrapbp3
+
+    print "Rendering image with wave %7.4f - %7.4f bandpass %.2f half %7.4f score %7.1f"%(
+      best_params[1],best_params[2],100.*(best_params[2]-best_params[1])/best_params[1],best_params[0],last_score)
+    print "rotation angles",best_params[4],best_params[5],best_params[6]
+    return best_params
