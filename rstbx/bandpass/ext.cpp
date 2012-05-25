@@ -165,8 +165,9 @@ namespace rstbx { namespace bandpass {
           double b = std::sqrt(s.length_sq() - (a*a));   //  Calculate half-length of the chord of intersection
 
           scitbx::vec3<double> intersection = -a * s0_unit- b*chord_direction;
-          double iangle_1= std::acos ( (intersection * s) / (s_rad_sq));
 
+          double acos_argument = (intersection * s) / (s_rad_sq);
+          double iangle_1= std::acos ( std::min(1.0,acos_argument) );//avoid math domain error
           // assert approx_equal((intersection+s0).length()-s0_length,0. )
 
           if (iangle_1 < P.half_mosaicity_rad) {
@@ -193,7 +194,8 @@ namespace rstbx { namespace bandpass {
           double blow = std::sqrt(s.length_sq() - (alow*alow));   //  Calculate half-length of the chord of intersection
 
           scitbx::vec3<double> intersectionlow = -alow * s0_unit- blow*chord_direction;
-          double iangle_1low= std::acos ( (intersectionlow * s) / (s_rad_sq));
+          acos_argument = (intersectionlow * s) / (s_rad_sq);
+          double iangle_1low= std::acos ( std::min(1.0,acos_argument) );//avoid math domain error
 
           // assert approx_equal((intersection+s0).length()-s0_length,0. )
 

@@ -65,7 +65,7 @@ class reflection_predictor:
         '''Compute intersection of sensor with ray from frame origin, returning
         none if intersection not within limits.'''
         raise RuntimeError, 'overload me'
-        
+
 class reflection_predictor_thomas(reflection_predictor):
     '''Implementation of reflection_predictor using David Thomas' matrix
     formalism'''
@@ -74,18 +74,18 @@ class reflection_predictor_thomas(reflection_predictor):
         v = matrix.sqr(sensor.D) * ray
         x1 = v[0] / v[2]
         x2 = v[1] / v[2]
-        
+
         if x1 < sensor.lim1[0] or x1 > sensor.lim1[1]:
             return None
         if x2 < sensor.lim2[0] or x2 > sensor.lim2[1]:
             return None
-        
+
         return (x1, x2)
 
 class reflection_predictor_trivial(reflection_predictor):
     '''Implementation of reflection_predictor using the vectors directly'''
 
-    def intersect(self, ray, sensor):        
+    def intersect(self, ray, sensor):
         scale = ray.dot(matrix.col(sensor.normal))
         r = (ray * sensor.distance / scale) - matrix.col(sensor.origin)
         x1 = r.dot(matrix.col(sensor.dir1))
@@ -94,7 +94,7 @@ class reflection_predictor_trivial(reflection_predictor):
             return None
         if x2 < sensor.lim2[0] or x2 > sensor.lim2[1]:
             return None
-        
+
         return (x1, x2)
 
 def predictor_factory(selection):
@@ -142,7 +142,7 @@ def test_work():
     overlapping square sensors, with lots of rays.'''
 
     import random, time
-    
+
     nrays = 10000
 
     d1 = matrix.col((1, 0, 0))
@@ -160,7 +160,7 @@ def test_work():
                         random.random() - 0.5)) for j in range(nrays)]
 
     rpi = { }
-    
+
     for ver in ('matrix', 'vector'):
         t0 = time.time()
         rp = predictor_factory(ver)(rays, d.sensors())

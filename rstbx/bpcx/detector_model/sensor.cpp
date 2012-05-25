@@ -28,7 +28,7 @@ void rstbx::detector_model::sensor::update()
     // ensure dir1, dir2 are orthonormal
     normal = (dir1.cross(dir2)).normalize();
     dir2 = normal.cross(dir1);
-    
+
     distance = origin * normal;
 
     D.set_column(0, dir1);
