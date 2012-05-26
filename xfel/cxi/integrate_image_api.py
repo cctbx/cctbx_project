@@ -39,7 +39,7 @@ def integrate_one_image(data, **kwargs):
   from spotfinder.applications.xfel import cxi_phil
   horizons_phil = cxi_phil.cxi_versioned_extract(args)
   horizons_phil.indexing.data = data
-
+  print "XFEL processing: %s"%path
   try:
     return run_one_index_core(horizons_phil)
   except NoAutoIndex,e:
