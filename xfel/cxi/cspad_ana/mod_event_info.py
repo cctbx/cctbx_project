@@ -11,12 +11,14 @@ class mod_event_info(object):
   """
 
 
-  def __init__(self, address, verbose=False):
+  def __init__(self, address, detz_offset="575", verbose=False):
     """The mod_event_info class constructor stores the
     parameters passed from the pyana configuration file in instance
     variables.
 
-    @param address         Address string XXX Que?!
+    @param address     Address string XXX Que?!
+    @param detz_offset Detector-sample offset in mm, corresponding to
+                       longest detector-sample distance
     """
 
     self.logger = logging.getLogger(self.__class__.__name__)
@@ -30,6 +32,8 @@ class mod_event_info(object):
     self.stats_logger.addHandler(handler)
     self.stats_logger.removeHandler(self.stats_logger.handlers[0])
     self.stats_logger.setLevel(logging.INFO)
+
+    self._detz_offset = cspad_tbx.getOptFloat(detz_offset)
 
     self.address = cspad_tbx.getOptString(address)
     self.verbose = cspad_tbx.getOptBool(verbose)
@@ -77,7 +81,7 @@ class mod_event_info(object):
     if (evt.get("skip_event")):
       return
 
-    distance = cspad_tbx.env_distance(env)
+    distance = cspad_tbx.env_distance(env, self._detz_offset)
     if (distance is None):
       self.nfail += 1
       self.logger.warn("event(): no distance, shot skipped")
