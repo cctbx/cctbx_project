@@ -398,7 +398,8 @@ def dwritef(d, dirname=None, basename=None):
     os.makedirs(dirname)
 
   # The output path should not contain any funny characters which may
-  # not work in all environments.
+  # not work in all environments.  This constructs a sequence number a
+  # la evt_seqno() from the dictionary's timestamp.
   t = d['TIMESTAMP']
   s = t[0:4] + t[5:7] + t[8:10] + t[11:13] + t[14:16] + t[17:19] + t[20:23]
 
@@ -450,21 +451,24 @@ def env_detz(env):
   return (None)
 
 
-def env_distance(env):
+def env_distance(env, offset=500 + 75):
   """The env_distance() function returns distance from the sample to
-  the detector in mm.  According to an e-mail from Garth Williams, a
-  value of -500 mm corresponds to a sample-detector distance of about
-  73 mm.
+  the detector in mm.  Experience indicates that a value of -500 mm
+  corresponds to a sample-detector distance of about 75 mm.
 
-  @param env Environment object
-  @return    Detector-sample distance, in mm
+  XXX The default value should go.  Instead one would be required to
+  provide the offset through the pyana configuration files.
+
+  @param env    Environment object
+  @param offset Detector-sample offset in mm, corresponding to longest
+                detector-sample distance
+  @return       Detector-sample distance, in mm
   """
 
   detz = env_detz(env)
-  if (detz is not None):
-    #return (detz + (500 + 73))
-    return (detz + 578) # Experimentally determined for run 22
-  return (None)
+  if detz is not None:
+    return detz + offset
+  return None
 
 
 def env_sifoil(env):
