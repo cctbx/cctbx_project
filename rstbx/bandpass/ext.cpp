@@ -55,8 +55,8 @@ namespace rstbx { namespace bandpass {
       bool is_in_active_area = false;
       for (int n = 0; n< NEAR;++n){
         int itile = nearest_neighbours[n];
-        if (tiles[4*itile]<prediction[0] && prediction[0] < tiles[4*itile+2] &&
-            tiles[4*itile+1]<prediction[1] &&prediction[1] < tiles[4*itile+3]){
+        if (tiles[4*itile] <= prediction[0] && prediction[0] <= tiles[4*itile+2] &&
+            tiles[4*itile+1] <= prediction[1] &&prediction[1] <= tiles[4*itile+3]){
           is_in_active_area = true;tile_id=itile;break;
           }
       }
@@ -554,6 +554,9 @@ namespace rstbx { namespace bandpass {
       }
       return active_area_traps;
     }
+    scitbx::af::shared<double> subpixel;
+    void set_subpixel(scitbx::af::shared<double> s){
+      subpixel=s;}
     void set_mosaicity(double const& half_mosaicity_rad){
       P.half_mosaicity_rad=half_mosaicity_rad;}
     void set_bandpass(double const& wave_HI,double const& wave_LO){
@@ -565,8 +568,8 @@ namespace rstbx { namespace bandpass {
     annlib_adaptbx::AnnAdaptorSelfInclude adapt;
     int N_bodypix;
     void set_adaptor(af::shared<ANNcoord> body_pixel_reference){
-          adapt = annlib_adaptbx::AnnAdaptorSelfInclude(body_pixel_reference,2,1);
           N_bodypix = body_pixel_reference.size()/2;
+          adapt = annlib_adaptbx::AnnAdaptorSelfInclude(body_pixel_reference,2,1);
     }
     double
     score_only_detail(double const& WEIGHT){
@@ -770,6 +773,7 @@ namespace ext {
         &use_case_bp3::selected_predictions_labelit_format)
         .def("selected_hkls", &use_case_bp3::selected_hkls)
         .def("restricted_to_active_areas", &use_case_bp3::restricted_to_active_areas)
+        .def("set_subpixel", &use_case_bp3::set_subpixel)
         .def("set_mosaicity", &use_case_bp3::set_mosaicity)
         .def("set_bandpass", &use_case_bp3::set_bandpass)
         .def("set_orientation", &use_case_bp3::set_orientation)

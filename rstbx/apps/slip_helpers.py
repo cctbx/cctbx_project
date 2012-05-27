@@ -110,7 +110,6 @@ class wrapper_of_use_case_bp3(object):
       for pxl in spot.bodypixels:
         body_pixel_reference.append(pxl.y + 0.5)
         body_pixel_reference.append(pxl.x + 0.5)
-    self.adapt = AnnAdaptor(data=body_pixel_reference,dim=2,k=1)
 
     self.N_bodypix = body_pixel_reference.size()//2
     self.ucbp3.set_adaptor(body_pixel_reference)

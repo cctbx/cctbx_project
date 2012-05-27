@@ -336,14 +336,15 @@ class IntegrationMetaProcedure(simple_integration,slip_callbacks):
 
     IS_adapt = AnnAdaptor(data=reference,dim=2,k=NEAR)
     IS_adapt.query(query)
-
+    print "Calculate correction vectors for %d observations & %d predictions"%(len(spots),len(self.predicted))
     indexed_pairs_provisional = []
     correction_vectors_provisional = []
     idx_cutoff = float(min(self.inputpd['masks'][self.frames[self.image_number]][0:2]))
     if verbose:
       print "idx_cutoff distance in pixels",idx_cutoff
     for i in xrange(len(self.predicted)): # loop over predicteds
-      for n in xrange(NEAR): # loop over near spotfinder spots
+      #for n in xrange(NEAR): # loop over near spotfinder spots
+      for n in xrange(1): # only consider the nearest spotfinder spots
         Match = dict(spot=IS_adapt.nn[i*NEAR+n],pred=i)
         if n==0 and math.sqrt(IS_adapt.distances[i*NEAR+n]) < idx_cutoff:
           indexed_pairs_provisional.append(Match)
@@ -352,7 +353,7 @@ class IntegrationMetaProcedure(simple_integration,slip_callbacks):
             [spots[Match["spot"]].ctr_mass_x() - self.predicted[Match["pred"]][0]/pxlsz,
              spots[Match["spot"]].ctr_mass_y() - self.predicted[Match["pred"]][1]/pxlsz])
           correction_vectors_provisional.append(vector)
-
+    print "... %d provisional matches"%len(correction_vectors_provisional)
     #insert code here to remove correction length outliers...
     # they are causing terrible
     # problems for finding legitimate correction vectors (print out the list)
