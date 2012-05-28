@@ -140,15 +140,19 @@ struct camera {
 
     /* count divsteps sweep over solid angle of beam divergence */
     int divsteps = 0;
+    double hdivrange2;
+    double vdivrange2;
     for(double hdiv=-hdivrange/2;hdiv<=hdivrange/2+1e-11;hdiv+=hdivstep){
     for(double vdiv=-vdivrange/2;vdiv<=vdivrange/2+1e-11;vdiv+=vdivstep){
     //   printf("%d divergence steps %g %g\n",divsteps,hdiv,vdiv);
       /* force an elliptical divergence */
       if( hdivrange != 0 && vdivrange != 0) {
-        SCITBX_ASSERT( hdivrange != 0); // assertion works around an
+        SCITBX_ASSERT( hdivrange != 0); // these lines to work around an
         SCITBX_ASSERT( vdivrange != 0); // apparent optimizer bug
-        if( (hdiv*hdiv/hdivrange/hdivrange +
-             vdiv*vdiv/vdivrange/vdivrange)*4.0 > 1.0 ) continue;
+        hdivrange2 = hdivrange*hdivrange; //
+        vdivrange2 = vdivrange*vdivrange; //
+        if( (hdiv*hdiv/hdivrange2 +
+             vdiv*vdiv/vdivrange2)*4.0 > 1.0 ) continue;
       }
       ++divsteps;
     }
