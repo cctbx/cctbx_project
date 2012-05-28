@@ -379,7 +379,7 @@ class environment:
     if (prev_pvmm is None):
       prev_pvmm = "%d.%d" % self.python_version_major_minor
     raise RuntimeError("Python version incompatible with this build:\n"
-      + "  Build directory: %s\n" % show_string(self.build_path)
+      + "  Build directory: %s\n" % show_string(abs(self.build_path))
       + "  Python version used initially: %s\n" % prev_pvmm
       + "  Python version in use now:     %d.%d" % sys.version_info[:2])
 
