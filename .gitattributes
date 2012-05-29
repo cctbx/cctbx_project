@@ -1080,6 +1080,7 @@ libtbx/queuing_system_utils/sge/core.py svneol=native#text/x-python
 libtbx/queuing_system_utils/sge_utils.py svneol=native#text/x-python
 libtbx/queuing_system_utils/tst.py svneol=native#text/x-python
 libtbx/runtime_utils.py -text
+libtbx/sge_utils.py -text
 libtbx/simplexml.py -text
 libtbx/smart_open.py svneol=native#text/x-python
 libtbx/smp_utils.py -text
