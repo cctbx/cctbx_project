@@ -1,12 +1,23 @@
-import os, sys
-import time
 from libtbx import easy_run
 from libtbx import test_utils
 from multiprocessing import Pool
+import time
+import os
+import sys
 
 results=[]
 def process_callback(arg):
   results.append(arg)
+
+def find_tests (dir_name) :
+  assert os.path.isdir(dir_name)
+  all_tests = []
+  for root, dirnames, filenames in os.walk(dir_name):
+    for file_name in filenames :
+      base, ext = os.path.splitext(file_name)
+      if (file_name.startswith("tst")) and (ext in [".py", ".csh", ".sh"]) :
+        all_tests.append(os.path.join(root, file_name))
+  return all_tests
 
 def run_command(command,
                 verbose=False,
@@ -100,6 +111,19 @@ def run_command_list(cmd_list,
   print >> log, "  NProcs    :",nprocs
   print >> log, "  Tests run :",success
   print >> log, "  Failures  :",failure
+
+def run_all_tests (files, **kwds) :
+  commands = []
+  for file_name in files :
+    if (file_name.endswith(".py")) :
+      commands.append("libtbx.python %s" % file_name)
+    elif (file_name.endswith(".sh")) :
+      commands.append("/bin/sh %s" % file_name)
+    elif (file_name.endswith(".csh")) :
+      commands.append("/bin/csh %s" % file_name)
+    else :
+      raise RuntimeError("Don't know how to run %s!" % file_name)
+  return run_command_list(commands, **kwds)
 
 if __name__=="__main__":
   cwd = os.path.join(os.environ["PHENIX"],
