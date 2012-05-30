@@ -1034,6 +1034,7 @@ libtbx/command_line/raise_exception_for_testing.py svneol=native#text/x-python
 libtbx/command_line/refresh.bat -text
 libtbx/command_line/refresh.sh svneol=native#text/x-sh
 libtbx/command_line/run_pickled_function.py -text
+libtbx/command_line/run_tests_parallel.py svneol=native#text/x-python
 libtbx/command_line/sge_available_slots.py svneol=native#text/x-python
 libtbx/command_line/sge_qstat_counts.py svneol=native#text/x-python
 libtbx/command_line/sh.sh -text
