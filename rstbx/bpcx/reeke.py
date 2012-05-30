@@ -4,6 +4,7 @@
 from scitbx import matrix
 import scitbx.math
 import math
+from rstbx.cftbx.coordinate_frame_converter import coordinate_frame_converter
 
 class reeke_model:
     """Model and methods for the Reeke algorithm"""
@@ -17,7 +18,7 @@ class reeke_model:
         self._permutation = None
 
         # the source vector and wavelength
-        self._s0 = s0
+        self._source = -s0
         self._wavelength = 1 / math.sqrt(s0.dot(s0))
 
         # the rotation axis and angular range
@@ -84,25 +85,25 @@ class reeke_model:
 
         # Define a new coordinate system concentric with the Ewald sphere.
         #
-        # X' = X - s0_x
-        # Y' = Y - s0_y
-        # Z' = Z - s0_z
+        # X' = X - source_x
+        # Y' = Y - source_y
+        # Z' = Z - source_z
         #
         # X = P' h'
         # -   =  -
-        #                                    p11 p12 p13 -s0_X
-        # where h' = (p, q, r, 1)^T and P' = p21 p22 p23 -s0_y
-        #       -                       =    p31 p32 p33 -s0_z
+        #                                    p11 p12 p13 -source_X
+        # where h' = (p, q, r, 1)^T and P' = p21 p22 p23 -source_y
+        #       -                       =    p31 p32 p33 -source_z
         #
 
         # Calculate P' matrices for the beginning and end orientations
 
-        pp_beg = matrix.rec(self._p_beg.elems[0:3] + (-1.*self._s0[0],) +
-                            self._p_beg.elems[3:6] + (-1.*self._s0[1],) +
-                            self._p_beg.elems[6:9] + (-1.*self._s0[2],), n=(3, 4))
-        pp_end = matrix.rec(self._p_end.elems[0:3] + (-1.*self._s0[0],) +
-                            self._p_end.elems[3:6] + (-1.*self._s0[1],) +
-                            self._p_end.elems[6:9] + (-1.*self._s0[2],), n=(3, 4))
+        pp_beg = matrix.rec(self._p_beg.elems[0:3] + (-1.*self._source[0],) +
+                            self._p_beg.elems[3:6] + (-1.*self._source[1],) +
+                            self._p_beg.elems[6:9] + (-1.*self._source[2],), n=(3, 4))
+        pp_end = matrix.rec(self._p_end.elems[0:3] + (-1.*self._source[0],) +
+                            self._p_end.elems[3:6] + (-1.*self._source[1],) +
+                            self._p_end.elems[6:9] + (-1.*self._source[2],), n=(3, 4))
 
         # Various quantities of interest are obtained from the reciprocal metric
         # tensor T of P'. These quantities are to be used (later) for solving the
@@ -149,8 +150,8 @@ class reeke_model:
 
         return
 
-    def get_s0(self):
-        return self._s0
+    def get_source(self):
+        return self._source
 
     def get_ub(self):
         return self._ub
@@ -167,7 +168,7 @@ class reeke_model:
 
     def _permute_axes(self, ub):
         """Find permutation of the columns of an orientation matrix so that
-        column p is closest to the X-ray beam direction s0, column r is
+        column p is closest to the source direction, column r is
         closest of q and r to the spindle axis and column q is the remaining
         direction."""
 
@@ -175,9 +176,9 @@ class reeke_model:
         rl_dirs = [matrix.col(v).normalize() for v in \
                    ub.transpose().as_list_of_lists()]
 
-        # Find reciprocal lattice axis closest to s0 by checking magnitude
-        # of dot products between normalised axes and s0, then swap as required
-        along_beam = [math.fabs(rl_dirs[j].dot(self._s0)) for j in range(3)]
+        # Find reciprocal lattice axis closest to source direction by checking magnitude
+        # of dot products between normalised axes and source, then swap as required
+        along_beam = [math.fabs(rl_dirs[j].dot(self._source)) for j in range(3)]
 
         col1 = along_beam.index(max(along_beam))
 
@@ -254,8 +255,8 @@ class reeke_model:
         # Find distances between p = 0 and the plane passing through the
         # centre of the Ewald sphere
 
-        dp_beg = abs(v_beg.dot(self._s0))
-        dp_end = abs(v_end.dot(self._s0))
+        dp_beg = abs(v_beg.dot(self._source))
+        dp_end = abs(v_end.dot(self._source))
 
         # There are two planes of constant p that are tangential to the Ewald
         # sphere, on either side of the sphere. The smaller in magnitude of p
@@ -268,16 +269,16 @@ class reeke_model:
         # The correct sign is determined by whether the plane normal vector is
         # more closely parallel or antiparallel to the beam direction.
 
-        sign = cmp(v_beg.dot(self._s0), 0)
+        sign = cmp(v_beg.dot(self._source), 0)
 
-        limits = [(sign * s * (self._s0.length() + s *  dp_beg) / p_dist) \
+        limits = [(sign * s * (self._source.length() + s *  dp_beg) / p_dist) \
                   for s in (-1, 1)]
 
         self._ewald_p_lim_beg = tuple(sorted(limits))
 
-        sign = cmp(v_end.dot(self._s0), 0)
+        sign = cmp(v_end.dot(self._source), 0)
 
-        limits = [(sign * s * (self._s0.length() + s *  dp_end) / p_dist) \
+        limits = [(sign * s * (self._source.length() + s *  dp_end) / p_dist) \
                   for s in (-1, 1)]
 
         self._ewald_p_lim_end = tuple(sorted(limits))
@@ -526,7 +527,7 @@ class reeke_model:
         f.write("p_ax <- c(%.9f, %.9f, %.9f)\n" % self._rlv_beg[0].elems)
         f.write("q_ax <- c(%.9f, %.9f, %.9f)\n" % self._rlv_beg[1].elems)
         f.write("r_ax <- c(%.9f, %.9f, %.9f)\n" % self._rlv_beg[2].elems)
-        f.write("s0 <- c(%.9f, %.9f, %.9f)\n" % self._s0.elems)
+        f.write("source <- c(%.9f, %.9f, %.9f)\n" % self._source.elems)
         f.write("rot_ax <- c(%.9f, %.9f, %.9f)\n" % self._axis.elems)
         f.write("phi_range <- c(%.9f, %.9f)\n" % self._phi_range)
         f.write("half_osc <- matrix(data = c(" + \
@@ -539,37 +540,37 @@ class reeke_model:
                 "), nrow=3, byrow=T))\n")
         f.write("\n# draw the Ewald and limiting spheres\n" + \
                 "open3d()\n" + \
-                "spheres3d(s0,radius=sqrt(sum(s0*s0)),color='#CCCCFF'," + \
+                "spheres3d(source,radius=sqrt(sum(source*source)),color='#CCCCFF'," + \
                 "alpha=0.3)\n" + \
                 "spheres3d(c(0,0,0),radius=dstarmax," + \
                 "color='red',alpha=0.1)\n" + \
                 "\n# draw the source vector and rotation axis\n" + \
-                "lines3d(rbind(c(0,0,0),s0))\n" + \
+                "lines3d(rbind(c(0,0,0),source))\n" + \
                 "lines3d(rbind(c(0,0,0),rot_ax))\n" + \
                 "\n# draw the reciprocal lattice axes at ten times their " + \
                 "length\n" + \
                 "lines3d(rbind(c(0,0,0),10*p_ax),col='red')\n" + \
                 "lines3d(rbind(c(0,0,0),10*q_ax),col='green')\n" + \
                 "lines3d(rbind(c(0,0,0),10*r_ax),col='blue')\n"
-                "s0mag <- sqrt(sum(s0*s0))\n" + \
-                "s0unit <- s0 / s0mag\n" + \
-                "\n# two unit vectors orthogonal to s0\n" + \
-                "s0unitx1 <- c((-s0unit[3]),(0),(s0unit[1]))\n" + \
-                "s0unitx2 <- c((s0unit[2]*s0unitx1[3] - " + \
-                "s0unit[3]*s0unitx1[2]),\n" + \
-                "   (s0unit[1]*s0unitx1[3] - s0unit[3]*s0unitx1[1]),\n" + \
-                "   (s0unit[1]*s0unitx1[2] - s0unit[2]*s0unitx1[1]))\n" + \
-                "sin_theta <- dstarmax/(2*s0mag)\n" + \
+                "sourcemag <- sqrt(sum(source*source))\n" + \
+                "sourceunit <- source / sourcemag\n" + \
+                "\n# two unit vectors orthogonal to source\n" + \
+                "sourceunitx1 <- c((-sourceunit[3]),(0),(sourceunit[1]))\n" + \
+                "sourceunitx2 <- c((sourceunit[2]*sourceunitx1[3] - " + \
+                "sourceunit[3]*sourceunitx1[2]),\n" + \
+                "   (sourceunit[1]*sourceunitx1[3] - sourceunit[3]*sourceunitx1[1]),\n" + \
+                "   (sourceunit[1]*sourceunitx1[2] - sourceunit[2]*sourceunitx1[1]))\n" + \
+                "sin_theta <- dstarmax/(2*sourcemag)\n" + \
                 "sin_2theta <- sin(2*asin(sin_theta))\n" + \
                 "\n# distance to the centre of the circle of" + \
-                "intersection, along s0\n" + \
-                "e <- 2 * sqrt(sum(s0*s0)) * sin_theta ^2\n" + \
+                "intersection, along source\n" + \
+                "e <- 2 * sqrt(sum(source*source)) * sin_theta ^2\n" + \
                 "\n# radius of the circle of intersection\n" + \
-                "R <- s0mag * sin_2theta\n" + \
+                "R <- sourcemag * sin_2theta\n" + \
                 "\n# make points around the circle\n" + \
                 "tau <- seq(from=0,to=2*pi,by=0.01)\n" + \
                 "circ <- t(sapply(tau, function(x){\n" + \
-                "  e * s0unit + R*sin(x) * s0unitx1 + R*cos(x) * s0unitx2}))\n" + \
+                "  e * sourceunit + R*sin(x) * sourceunitx1 + R*cos(x) * sourceunitx2}))\n" + \
                 "\n# draw the circle\n" + \
                 "lines3d(circ)\n" + \
                 "\n# load the generated indices\n"
@@ -624,27 +625,27 @@ def regression_test():
     indices = r.generate_indices()
 
     h, k, l = zip(*indices)
-    assert (min(h), max(h)) == (-47, 37)
-    assert (min(k), max(k)) == (0, 32)
-    assert (min(l), max(l)) == (-124, 109)
+    assert (min(h), max(h)) == (-37, 47)
+    assert (min(k), max(k)) == (-32, 0)
+    assert (min(l), max(l)) == (-109, 124)
 
     # test reduced margin size
     r = reeke_model_for_use_case(0, 0.2, 1)
     indices = r.generate_indices()
 
     h, k, l = zip(*indices)
-    assert (min(h), max(h)) == (-47, 37)
-    assert (min(k), max(k)) == (2, 31)
-    assert (min(l), max(l)) == (-122, 107)
+    assert (min(h), max(h)) == (-37, 47)
+    assert (min(k), max(k)) == (-31, -2)
+    assert (min(l), max(l)) == (-107, 122)
 
     # test increased wedge angle
     r = reeke_model_for_use_case(0, 1.0, 3)
     indices = r.generate_indices()
 
     h, k, l = zip(*indices)
-    assert (min(h), max(h)) == (-47, 37)
-    assert (min(k), max(k)) == (-1, 32)
-    assert (min(l), max(l)) == (-124, 109)
+    assert (min(h), max(h)) == (-37, 47)
+    assert (min(k), max(k)) == (-32, 1)
+    assert (min(l), max(l)) == (-109, 124)
 
     #TODO Tests for an oblique cell
     #TODO Better tests than ranges of generated indices
@@ -660,15 +661,25 @@ if __name__ == '__main__':
 
     elif len(sys.argv) < 3:
         from libtbx.utils import Sorry
-        raise Sorry("Expecting either 2 or 3 arguments: start_phi end_phi margin=3")
+        raise Sorry("Expecting either 3 or 4 arguments: path/to/xparm.xds start_phi end_phi margin=3")
 
     else:
 
-        phi_beg, phi_end = float(sys.argv[1]), float(sys.argv[2])
-        margin = int(sys.argv[3]) if len(sys.argv) == 4 else 3
+        cfc = coordinate_frame_converter(sys.argv[1])
+        phi_beg, phi_end = float(sys.argv[2]), float(sys.argv[3])
+        margin = int(sys.argv[4]) if len(sys.argv) == 5 else 3
 
-        # test run for development/debugging. Values come from the use case data
-        r = reeke_model_for_use_case(phi_beg, phi_end, margin)
+        # test run for development/debugging.
+        u, b = cfc.get_u_b(convention = cfc.ROSSMANN)
+        ub = matrix.sqr(u * b)
+        axis = matrix.col(cfc.get('rotation_axis', convention = cfc.ROSSMANN))
+        wavelength = cfc.get('wavelength')
+        sample_to_source_vec = matrix.col(cfc.get_c('sample_to_source').normalize())
+        s0 = (- 1.0 / wavelength) * sample_to_source_vec
+        dmin = 1.20117776325
+        
+        r = reeke_model(ub, axis, s0, dmin, phi_beg, phi_end, margin)
+        
         indices = r.generate_indices()
 
         for hkl in indices:
