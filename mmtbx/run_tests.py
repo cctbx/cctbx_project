@@ -1,8 +1,7 @@
 from libtbx import test_utils
 import libtbx.load_env
 
-def run():
-  tst_list = (
+tst_list = (
   "$D/monomer_library/tst_idealized_aa.py",
   "$D/regression/tst_ml_estimate.py",
   "$D/density_modification/tst_density_modification.py",
@@ -73,6 +72,7 @@ def run():
   "$D/regression/tst_real_space_correlation.py",
   )
 
+def run():
   build_dir = libtbx.env.under_build("mmtbx")
   dist_dir = libtbx.env.dist_path("mmtbx")
 

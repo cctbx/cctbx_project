@@ -1,8 +1,7 @@
 from libtbx import test_utils
 import libtbx.load_env
 
-def run():
-  tst_list = (
+tst_list = (
   "$D/tst_smoothing.py",
   "$B/array_family/tst_af_1",
   "$B/array_family/tst_af_2",
@@ -117,6 +116,7 @@ def run():
   "$D/lstbx/tests/tst_normal_equations.py",
   )
 
+def run () :
   build_dir = libtbx.env.under_build("scitbx")
   dist_dir = libtbx.env.dist_path("scitbx")
 

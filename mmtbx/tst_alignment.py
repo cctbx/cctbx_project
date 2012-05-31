@@ -97,7 +97,7 @@ alltests = unittest.TestSuite(
 def exercise():
   exercise_align()
   sys.stdout.flush()
-  unittest.TextTestRunner( verbosity = 2 ).run( alltests )
+  unittest.TextTestRunner(stream=sys.stdout, verbosity = 2 ).run( alltests )
 
 if (__name__ == "__main__"):
   exercise()

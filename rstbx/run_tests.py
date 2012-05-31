@@ -17,8 +17,7 @@ def run():
   assert test_reduction()
   print "OK"
 
-def run_standalones():
-  tst_list = (
+tst_list = (
   "$D/simage/tst.py",
   "$D/dps_core/tst_iotbx_converter.py",
   "$D/diffraction/tst_predict.py",
@@ -27,6 +26,7 @@ def run_standalones():
   "$D/diffraction/fastbragg/tst_bragg_minimal.py",
   )
 
+def run_standalones():
   build_dir = libtbx.env.under_build("rstbx")
   dist_dir = libtbx.env.dist_path("rstbx")
 
