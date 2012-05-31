@@ -83,7 +83,7 @@ class xes_finalise(object):
       # XXX we should really figure out automatically the area where the spectrum is
       #write an integrated spectrum from lines 186-227
       #spectrum_focus = self.sum_img.as_numpy_array()[186:228,:]
-      img = self.avg_img
+      img = self.sum_img
       if self.roi is None:
         spectrum_focus = img
         mask_focus = self.mask
@@ -121,6 +121,11 @@ def get_spectrum(spectrum_focus, mask_focus=None):
         if sum_column_weights > 0:
           spectrum[j] *= (1/sum_column_weights)
 
+  # Elongated pixels span the gap between a pair of ASICs.
+  # These are 2.5x the width of normal pixels, consequently by excluding these
+  # pixels we will have a 5 pixel gap in our spectrum.
+  # For further details see:
+  #   https://confluence.slac.stanford.edu/download/attachments/112107361/PixelPitch.pdf
   omit_col = True
   if omit_col is True:
     #omit_columns = [181,193,194,195,196,197,378] # run 4
