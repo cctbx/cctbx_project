@@ -7,7 +7,7 @@ from libtbx.utils import null_out
 from libtbx import adopt_init_args
 import mmtbx
 
-#ext = boost.python.import_ext("mmtbx_f_model_ext")
+ext = boost.python.import_ext("mmtbx_f_model_ext")
 
 class kick_map(object):
 
@@ -113,10 +113,7 @@ class electron_density_map(object):
                        map_type,
                        acentrics_scale = 2.0,
                        centrics_pre_scale = 1.0,
-                       external_alpha_fom_source = None,
-                       exclude_free_r_reflections=False,
-                       fill_missing_f_obs=False,
-                       post_processing_callback=None):
+                       external_alpha_fom_source = None):
     map_name_manager = mmtbx.map_names(map_name_string = map_type)
     if(map_name_manager.anomalous):
       if(self.anom_diff is not None):
@@ -150,15 +147,14 @@ class electron_density_map(object):
     else:
       fo_scale *= map_name_manager.k
       fc_scale *= map_name_manager.n
-    coeffs = None
     if(not map_name_manager.ml_map):
        self.mch = self.fmodel.map_calculation_helper()
-       coeffs = self._map_coeff(
+       return self._map_coeff(
          f_obs         = self.fmodel.f_obs(),
          f_model       = self.fmodel.f_model_scaled_with_k1(),
          f_obs_scale   = fo_scale,
          f_model_scale = fc_scale)
-    else :
+    if(map_name_manager.ml_map):
       if(self.mch is None):
         self.mch = self.fmodel.map_calculation_helper()
       alpha = self.mch.alpha
@@ -167,7 +163,7 @@ class electron_density_map(object):
         alpha = external_alpha_fom_source.alpha
         fom = external_alpha_fom_source.fom
       if(self.fmodel.hl_coeffs() is None):
-        coeffs = self._map_coeff(
+        return self._map_coeff(
           f_obs         = self.mch.f_obs,
           f_model       = self.mch.f_model,
           f_obs_scale   = fo_scale*fom,
@@ -178,29 +174,9 @@ class electron_density_map(object):
           comb_p.f_obs_phase_and_fom_source()
         fc_all_scales = self.mch.f_model.data()*\
           fc_scale*alpha.data()
-        coeffs = miller.array(
+        return miller.array(
           miller_set = self.fmodel.f_calc(),
           data       = fo_all_scales + fc_all_scales)
-    assert (coeffs is not None)
-    if (exclude_free_r_reflections) :
-      if (coeffs.anomalous_flag()) :
-        coeffs = coeffs.average_bijvoet_mates()
-      r_free_flags = self.fmodel.r_free_flags()
-      if (r_free_flags.anomalous_flag()) :
-        r_free_flags = r_free_flags.average_bijvoet_mates()
-      coeffs = coeffs.select(~r_free_flags.data())
-    if (fill_missing_f_obs) :
-      if (coeffs.anomalous_flag()) :
-        coeffs = coeffs.average_bijvoet_mates()
-      coeffs = fill_missing_f_obs(coeffs, self.fmodel)
-    if (post_processing_callback is not None) :
-      # XXX NCS averaging done here
-      assert hasattr(post_processing_callback, "__call__")
-      coeffs = post_processing_callback(
-        map_coeffs=coeffs,
-        fmodel=self.fmodel,
-        is_fofc_map=(map_type in ["mFo-DFc", "Fo-Fc"]))
-    return coeffs
 
   def _phase_transfer(self, miller_array, phase_source):
     # XXX could be a method in miller.py under a better name in future
@@ -250,76 +226,12 @@ class electron_density_map(object):
         crystal_gridding     = other_fft_map,
         fourier_coefficients = map_coefficients)
 
-def fill_missing_f_obs (coeffs, fmodel) :
-  scale_to = fmodel.f_obs().average_bijvoet_mates()
-  dsf = coeffs.double_step_filtration(
-    vol_cutoff_plus_percent=1.0,
-    vol_cutoff_minus_percent=1.0,
-    scale_to=scale_to) #XXX disable # .resolution_filter(d_min=4) # XXX do not fill higher
-  #
-  fo = fmodel.f_obs().average_bijvoet_mates().discard_sigmas()
-  fo = fo.complete_with(other = abs(dsf))
-  import mmtbx.f_model
-  fmdc = mmtbx.f_model.manager(
-    f_obs = fo,
-    xray_structure = fmodel.xray_structure)
-  fmdc.update_all_scales()
-  dsf = fmdc.f_model().array(data = fmdc.f_model().data() *
-    fmdc.alpha_beta()[0].data()) # .resolution_filter(d_min=4)
-  coeffs = coeffs.complete_with(other = dsf) #2
-  return coeffs
-
-def sharp_evaluation_target(sites_frac, map_coeffs, resolution_factor = 0.25):
-  fft_map = map_coeffs.fft_map(resolution_factor=resolution_factor)
-  fft_map.apply_sigma_scaling()
-  map_data = fft_map.real_map_unpadded()
-  target = 0
-  cntr = 0
-  for site_frac in sites_frac:
-    mv = map_data.eight_point_interpolation(site_frac)
-    if(mv >0):
-      target += mv
-      cntr += 1
-  t_mean = target/cntr
-  return t_mean
-
-def sharp_map(sites_frac, map_coeffs, ss = None, b_sharp=None, b_min = -150,
-              b_max = 150, step = 10):
-  if(ss is None):
-    ss = 1./flex.pow2(map_coeffs.d_spacings().data()) / 4.
-  from cctbx import miller
-  if(b_sharp is None):
-    t=-1
-    map_coeffs_best = None
-    b_sharp_best = None
-    for b_sharp in range(b_min,b_max,step):
-      map_coeffs_ = map_coeffs.deep_copy()
-      sc2 = flex.exp(b_sharp*ss)
-      map_coeffs_ = map_coeffs_.customized_copy(data = map_coeffs_.data()*sc2)
-      t_=sharp_evaluation_target(sites_frac=sites_frac, map_coeffs=map_coeffs_)
-      if(t_>t):
-        t=t_
-        b_sharp_best = b_sharp
-        map_coeffs_best = map_coeffs_.deep_copy()
-    print "b_sharp:", b_sharp_best, t
-  else:
-    scale = flex.exp(b_sharp*ss)
-    map_coeffs_best = map_coeffs.customized_copy(data=map_coeffs.data()*scale)
-    b_sharp_best = b_sharp
-  return map_coeffs_best, b_sharp_best
-
 ncs_averaging_params = """
 resolution_factor = 0.25
   .type = float
-use_molecule_mask = False
-  .type = bool
 averaging_radius = 5.0
   .type = float
-solvent_content = 0.5
-  .type = float
 exclude_hd = True
-  .type = bool
-skip_difference_map = True
   .type = bool
 """
 
@@ -333,67 +245,34 @@ class ncs_averager (object) :
     if (log is None) :
       log = null_out()
     adopt_init_args(self, locals())
-    self.mask = None
 
-  def __call__ (self,
-                map_coeffs,
-                fmodel,
-                generate_new_mask=False,
-                is_fofc_map=False) :
-    if (is_fofc_map) and (self.params.skip_difference_map) :
-      return map_coeffs
-    from solve_resolve.resolve_python.resolve_utils import get_map_mask_sg_cell
+  def __call__ (self, map_coeffs, fmodel) :
     from solve_resolve.resolve_python.ncs_average import ncs_average
     from cctbx import maptbx
     from scitbx.array_family import flex
-    if (map_coeffs.anomalous_flag()) :
-      map_coeffs = coeffs.average_bijvoet_mates()
     fft_map = map_coeffs.fft_map(
       symmetry_flags=maptbx.use_space_group_symmetry,
       resolution_factor=self.params.resolution_factor)
-    map = fft_map.apply_volume_scaling().real_map_unpadded().as_float()
+    real_map = fft_map.apply_volume_scaling().real_map_unpadded()
+    mask = flex.float(real_map.size(), 0)
+    sites_cart = fmodel.xray_structure.sites_cart()
+    if (self.params.exclude_hd) :
+      sites_cart = sites_cart.select(~fmodel.xray_structure.hd_selection())
+    indices = maptbx.grid_indices_around_sites(
+      unit_cell=fmodel.xray_structure.unit_cell(),
+      fft_n_real=real_map.focus(),
+      fft_m_real=real_map.all(),
+      sites_cart=sites_cart,
+      site_radii=flex.double(sites_cart.size(), self.params.radius))
+    mask.set_selected(indices, 1)
+    mask.reshape(real_map.accessor())
     if (self.verbose) :
       out = self.log
     else :
       out = null_out()
-    if (self.mask is None) or (generate_new_mask) :
-      if (self.params.use_molecule_mask) :
-        self.mask = flex.float(real_map.size(), 0)
-        sites_cart = fmodel.xray_structure.sites_cart()
-        if (self.params.exclude_hd) :
-          sites_cart = sites_cart.select(~fmodel.xray_structure.hd_selection())
-        indices = maptbx.grid_indices_around_sites(
-          unit_cell=map_coeffs.unit_cell(),
-          fft_n_real=real_map.focus(),
-          fft_m_real=real_map.all(),
-          sites_cart=sites_cart,
-          site_radii=flex.double(sites_cart.size(),
-            self.params.averaging_radius))
-        mask.set_selected(indices, 1)
-        mask.reshape(real_map.accessor())
-      else :
-        mask_map_coeffs = fmodel.electron_density_map().map_coefficients(
-          map_type="2mFo-DFc")
-        mask_fft_map = mask_map_coeffs.fft_map(
-          symmetry_flags=maptbx.use_space_group_symmetry,
-          resolution_factor=self.params.resolution_factor)
-        mask_map = mask_fft_map.apply_volume_scaling().real_map_unpadded().as_float()
-        map_db,mask_map_db,space_group_object,unit_cell_object=\
-          get_map_mask_sg_cell(
-            map_coeffs=mask_map_coeffs,
-            map=mask_map,
-            space_group=map_coeffs.space_group(),
-            unit_cell=map_coeffs.unit_cell(),
-            solvent_content=self.params.solvent_content,
-            wang_radius=self.params.averaging_radius,
-            resolution=map_coeffs.d_min(),
-            out=out,
-            resolve_command_list=None)
-        #map = map_db.map
-        self.mask = mask_map_db.map
     averaged = ncs_average(
-      map=map,
-      mask=self.mask,
+      map=real_map.as_float(),
+      mask=mask,
       ncs_object=self.ncs_object,
       space_group=map_coeffs.space_group(),
       unit_cell=map_coeffs.unit_cell(),
