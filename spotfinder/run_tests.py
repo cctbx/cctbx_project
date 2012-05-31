@@ -1,13 +1,13 @@
 from libtbx import test_utils
 import libtbx.load_env
 
-def run_standalones():
-  tst_list = (
+tst_list = (
   "$D/core_toolbox/boost_python/tst_small_image.py",
   "$D/diffraction/geometry.py",
   "$D/math_support/sphere_formulae.py"
   )
 
+def run_standalones():
   build_dir = libtbx.env.under_build("spotfinder")
   dist_dir = libtbx.env.dist_path("spotfinder")
 

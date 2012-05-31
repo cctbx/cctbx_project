@@ -1,8 +1,7 @@
 from libtbx import test_utils
 import libtbx.load_env
 
-def run():
-  tst_list = (
+tst_list = (
   "$D/tst_wildcard.py",
   "$D/tst_simple_parser.py",
   "$D/tst_phil.py",
@@ -62,6 +61,7 @@ def run():
   "$D/regression/tst_split_models.py",
   )
 
+def run():
   build_dir = libtbx.env.under_build("iotbx")
   dist_dir = libtbx.env.dist_path("iotbx")
 

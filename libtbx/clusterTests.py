@@ -22,6 +22,7 @@ http://pypi.python.org/pypi/cluster/1.1.1b3
 from libtbx.cluster import *
 from difflib import SequenceMatcher
 import unittest
+import sys
 
 def compare_list(x, y):
    """
@@ -182,7 +183,7 @@ class KClusterSFBugs(unittest.TestCase):
             expected ),
             "Elements differ!\n%s\n%s" % (clusters, expected))
 
-unittest.TextTestRunner(verbosity=0).run(
+unittest.TextTestRunner(stream=sys.stdout, verbosity=0).run(
       unittest.TestSuite((
             unittest.makeSuite(HClusterSmallListTestCase),
             unittest.makeSuite(HClusterIntegerTestCase),

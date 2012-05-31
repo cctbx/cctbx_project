@@ -1,8 +1,7 @@
 from libtbx import test_utils
 import libtbx.load_env
 
-def run():
-  tst_list = (
+tst_list = (
   "$D/regression/tst_miller_double_step_filtration.py",
   "$D/miller/tst_reindexing.py",
   "$D/regression/tst_miller_ellipsoidal_truncation.py",
@@ -118,6 +117,7 @@ def run():
    "$D/xray/observations/tst_observations.py",
   )
 
+def run():
   build_dir = libtbx.env.under_build("cctbx")
   dist_dir = libtbx.env.dist_path("cctbx")
 

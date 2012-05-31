@@ -1,13 +1,35 @@
 from libtbx import easy_run
 from libtbx import test_utils
+import libtbx.load_env
+from libtbx.utils import import_python_object, Sorry
 from multiprocessing import Pool
 import time
 import os
 import sys
 
-results=[]
-def process_callback(arg):
-  results.append(arg)
+
+def get_module_tests (module_name) :
+  dist_path = libtbx.env.dist_path(module_name)
+  if (dist_path is None) :
+    raise Sorry("'%s' is not a valid CCTBX module." % module_name)
+  elif (not os.path.isfile(os.path.join(dist_path, "run_tests.py"))) :
+    raise Sorry("%s/run_tests.py does not exist." % module_name)
+  tst_list = import_python_object(
+    import_path="%s.run_tests.tst_list" % module_name,
+    error_prefix="",
+    target_must_be="",
+    where_str="").object
+  assert (isinstance(tst_list, tuple) or isinstance(tst_list, list))
+  build_path = libtbx.env.under_build(module_name)
+  assert (build_path is not None) and (dist_path is not None)
+  commands = []
+  for cmd in test_utils.iter_tests_cmd(
+      co=None,
+      build_dir=build_path,
+      dist_dir=dist_path,
+      tst_list=tst_list) :
+    commands.append(cmd)
+  return commands
 
 def find_tests (dir_name) :
   assert os.path.isdir(dir_name)
@@ -78,41 +100,54 @@ def run_command_list(cmd_list,
   if nprocs>1:
     pool = Pool(processes=nprocs)
 
-  success = 0
-  failure = 0
+  results = []
+  def save_result (result) :
+    results.append(result)
+    display_result(result, log=log)
   for command in cmd_list:
     if nprocs>1:
-      rc = pool.apply_async(
+      pool.apply_async(
         run_command,
         [command, True],
-        callback=process_callback,
-        )
+        callback=save_result)
     else:
       rc = run_command(command, verbose=True)
       display_result(rc, log=log)
-      success+=1
-      if (len(result.stderr_lines) != 0):
-        failure+=1
-
+      results.append(rc)
   if nprocs>1:
     pool.close()
     pool.join()
     print '\nProcesses have joined : %d\n' % len(results)
-    for result in results:
-      display_result(result, log=log)
-      success+=1
-      if (len(result.stderr_lines) != 0):
-        failure+=1
+  finished = 0
+  warning = 0
+  failure = 0
+  long_jobs = []
+  for result in results :
+    finished += 1
+    if (result.return_code != 0) :
+      failure += 1
+    elif (len(result.stderr_lines) != 0):
+      warning += 1
+    if (result.wall_time > 60) :
+      long_jobs.append(result.command)
   print 'Done with output'
   print "  NProcs    :",nprocs
-  print "  Tests run :",success
+  print "  Tests run :",finished
   print "  Failures  :",failure
+  print "  Warnings  :",warning
+  if (len(long_jobs) > 0) :
+    print ""
+    print "WARNING: the following jobs took at least 60 seconds each:"
+    for cmd in long_jobs :
+      print "  " + cmd
+    print "Please try to reduce overall runtime - consider splitting up these tests."
   print >> log, '\n\nDone with output'
   print >> log, "  NProcs    :",nprocs
-  print >> log, "  Tests run :",success
+  print >> log, "  Tests run :",finished
   print >> log, "  Failures  :",failure
+  print >> log, "  Warnings  :",warning
 
-def run_all_tests (files, **kwds) :
+def make_commands (files) :
   commands = []
   for file_name in files :
     if (file_name.endswith(".py")) :
@@ -123,7 +158,7 @@ def run_all_tests (files, **kwds) :
       commands.append("/bin/csh %s" % file_name)
     else :
       raise RuntimeError("Don't know how to run %s!" % file_name)
-  return run_command_list(commands, **kwds)
+  return commands
 
 if __name__=="__main__":
   cwd = os.path.join(os.environ["PHENIX"],

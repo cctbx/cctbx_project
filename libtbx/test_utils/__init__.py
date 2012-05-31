@@ -160,12 +160,12 @@ def iter_tests_cmd(co, build_dir, dist_dir, tst_list):
   for tst in tst_list:
     cmd_args = ""
     if (type(tst) == type([])):
-      if (co.verbose):
+      if (co is not None) and (co.verbose):
         cmd_args = " " + " ".join(["--Verbose"] + tst[1:])
-      elif (co.quick):
+      elif (co is not None) and (co.quick):
         cmd_args = " " + " ".join(tst[1:])
       tst = tst[0]
-    elif (co.verbose):
+    elif (co is not None) and (co.verbose):
       continue
     if (tst.startswith("$B")):
       tst_path = tst.replace("$B", build_dir)
@@ -176,11 +176,11 @@ def iter_tests_cmd(co, build_dir, dist_dir, tst_list):
     tst_path = os.path.normpath(tst_path)
     cmd = ""
     if (tst_path.endswith(".py")):
-      if (co.valgrind):
+      if (co is not None) and (co.valgrind):
         cmd = "libtbx.valgrind "
       cmd += "libtbx.python "
     else:
-      if (co.valgrind):
+      if (co is not None) and (co.valgrind):
         cmd = os.environ.get(
           "LIBTBX_VALGRIND", "valgrind --tool=memcheck") + " "
     cmd += '"' + tst_path + '"'

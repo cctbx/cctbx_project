@@ -1,11 +1,10 @@
 from libtbx import test_utils
 import libtbx.load_env
 
-def run():
-  tst_list = (
+tst_list = (
   "$D/metric_prefixes.py",
   "$D/tst_utils.py",
-  "$D/test_utils.py",
+  "$D/test_utils/__init__.py",
   "$D/queuing_system_utils/pbs_utils.py",
   "$D/queuing_system_utils/sge_utils.py",
   "$D/introspection.py",
@@ -32,6 +31,7 @@ def run():
   "$D/tst_lzw.py",
   )
 
+def run():
   build_dir = None
   dist_dir = libtbx.env.dist_path("libtbx")
 

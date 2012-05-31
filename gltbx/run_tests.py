@@ -2,11 +2,11 @@ from libtbx import test_utils
 import libtbx.load_env
 
 
-def run():
-  tst_list = (
+tst_list = (
     "$D/tst_ellipsoids.py",
   )
 
+def run():
   build_dir = libtbx.env.under_build("gltbx")
   dist_dir = libtbx.env.dist_path("gltbx")
 
