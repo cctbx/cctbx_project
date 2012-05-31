@@ -131,9 +131,9 @@ class ExecutionUnit(object):
     return self.processor.finalize( identifier = identifier )
 
 
-class JobIterator(object):
+class ResultIterator(object):
   """
-  Iterate over completed jobs
+  Iterate over completed results
   """
 
   def __init__(self, manager):
@@ -146,12 +146,12 @@ class JobIterator(object):
     self.manager.wait()
 
     try:
-      identifier = self.manager.completed_jobs.popleft()
+      result = self.manager.completed_results.popleft()
 
     except IndexError:
       raise StopIteration
 
-    return identifier
+    return result
 
 
   def __iter__(self):
@@ -169,7 +169,7 @@ class Manager(object):
     self.available_units = set( units )
     self.execinfo_for = {}
     self.waiting_jobs = deque()
-    self.completed_jobs = deque()
+    self.completed_results = deque()
     self.polling_interval = polling_interval
 
 
@@ -180,9 +180,21 @@ class Manager(object):
 
 
   @property
-  def finished_jobs(self):
+  def completed_jobs(self):
 
-    return JobIterator( manager = self )
+    return [ result.identifier for result in self.completed_results ]
+
+
+  @property
+  def known_jobs(self):
+
+    return list( self.waiting_jobs ) + self.running_jobs + self.completed_jobs
+
+
+  @property
+  def results(self):
+
+    return ResultIterator( manager = self )
 
 
   def submit(self, target, args = (), kwargs = {}):
@@ -193,26 +205,46 @@ class Manager(object):
     return identifier
 
 
-  def empty(self):
+  def is_empty(self):
 
     return not self.execinfo_for
 
 
-  def full(self):
+  def is_full(self):
 
     return not self.available_units
 
 
   def wait(self):
 
-    while not self.completed_jobs and not self.empty():
+    while not self.completed_results and not self.is_empty():
       self.poll()
       time.sleep( self.polling_interval )
 
 
+  def wait_for(self, identifier):
+
+    if identifier not in self.known_jobs:
+      raise RuntimeError, "Job identifier not known"
+
+    while identifier not in self.completed_jobs and not self.is_empty():
+      self.poll()
+      time.sleep( self.polling_interval )
+
+
+  def result_for(self, identifier):
+
+    self.wait_for( identifier = identifier )
+    index = self.completed_jobs.index( identifier )
+    result = self.completed_results[ index ]
+    self.completed_results.remove( result )
+
+    return result
+
+
   def join(self):
 
-    while not self.empty():
+    while not self.is_empty():
       self.poll()
       time.sleep( self.polling_interval )
 
@@ -227,10 +259,10 @@ class Manager(object):
         result = unit.finalize( identifier = identifier )
         del self.execinfo_for[ job ]
         self.available_units.add( unit )
-        self.completed_jobs.append( result )
+        self.completed_results.append( result )
 
     # Submit new jobs
-    while not self.full() and self.waiting_jobs:
+    while not self.is_full() and self.waiting_jobs:
       identifier = self.waiting_jobs.popleft()
       unit = max( self.available_units, key = lambda s: s.priority )
       self.available_units.remove( unit )
@@ -247,18 +279,19 @@ class Adapter(object):
   Behaves like a manager, but uses an external resource to run the jobs
 
   Unintuitive feature:
-    It is possible to have adapter.empty() == True and adapter.full() == True
+    adapter.is_empty() == True and adapter.is_full() == True is possible
     simultaneously, even if the number of cpus is not zero. This is because
-    adapter.empty() report the status of the adapter queue, while adapter.full()
-    reports that of the manager. This gives the behaviour one normally expects,
-    i.e. no submission if there are no free cpus, and empty status when
-    jobs submitted through the adaptor have all been processed.
+    adapter.is_empty() report the status of the adapter queue, while
+    adapter.is_full() reports that of the manager. This gives the behaviour
+    one normally expects, i.e. no submission if there are no free cpus, and
+    empty status when jobs submitted through the adaptor have all been
+    processed.
   """
 
   def __init__(self, manager):
 
     self.manager = manager
-    self.completed_jobs = deque()
+    self.completed_results = deque()
     self.active_jobs = set()
 
 
@@ -275,9 +308,21 @@ class Adapter(object):
 
 
   @property
-  def finished_jobs(self):
+  def completed_jobs(self):
 
-    return JobIterator( manager = self )
+    return [ result.identifier for result in self.completed_results ]
+
+
+  @property
+  def known_jobs(self):
+
+    return self.waiting_jobs + self.running_jobs + self.completed_jobs
+
+
+  @property
+  def results(self):
+
+    return ResultIterator( manager = self )
 
 
   def submit(self, target, args = (), kwargs = {}):
@@ -287,28 +332,51 @@ class Adapter(object):
     return identifier
 
 
-  def empty(self):
+  def is_empty(self):
 
     return ( not self.running_jobs and not self.waiting_jobs )
 
 
-  def full(self):
+  def is_full(self):
 
-    return self.manager.full()
+    return self.manager.is_full()
 
 
   def wait(self):
 
     self.transfer_finished_jobs()
 
-    while not self.completed_jobs and not self.empty():
+    while not self.completed_jobs and not self.is_empty():
       self.poll()
       time.sleep( self.manager.polling_interval )
 
 
+  def wait_for(self, identifier):
+
+    if identifier not in self.completed_jobs:
+      if identifier not in self.known_jobs:
+        raise RuntimeError, "Job identifier not known"
+
+      assert identifier in self.manager.known_jobs
+      self.manager.wait_for( identifier = identifier )
+      self.transfer_finished_jobs()
+
+    assert identifier in self.completed_jobs
+
+
+  def result_for(self, identifier):
+
+    self.wait_for( identifier = identifier )
+    index = self.completed_jobs.index( identifier )
+    result = self.completed_results[ index ]
+    self.completed_results.remove( result )
+
+    return result
+
+
   def join(self):
 
-    while not self.empty():
+    while not self.is_empty():
       self.poll()
       time.sleep( self.manager.polling_interval )
 
@@ -321,9 +389,9 @@ class Adapter(object):
 
   def transfer_finished_jobs(self):
 
-    for ( index, result ) in enumerate( list( self.manager.completed_jobs ) ):
+    for result in list( self.manager.completed_results ):
       if result.identifier in self.active_jobs:
-        self.manager.completed_jobs.remove( result )
+        self.manager.completed_results.remove( result )
         self.active_jobs.remove( result.identifier )
-        self.completed_jobs.append( result )
+        self.completed_results.append( result )
 
