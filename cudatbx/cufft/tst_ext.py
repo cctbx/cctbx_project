@@ -28,8 +28,9 @@ def _exercise_real_to_complex_3d (sizes, benchmark=True) :
     map.reshape(g)
     sfs = fft.forward(map.deep_copy())
     map2 = fft.backward(sfs)
-    sfs_cuda = cufft.real_to_complex_3d_in_place(map)
-    map2_cuda = cufft.complex_to_real_3d_in_place(sfs_cuda, n_real)
+    fft_cuda = cufft.real_to_complex_3d((nx,ny,nz))
+    sfs_cuda = fft_cuda.forward(map)#cufft.real_to_complex_3d_in_place(map)
+    map2_cuda = fft_cuda.backward(sfs_cuda)#cufft.complex_to_real_3d_in_place(sfs_cuda, n_real)
     maptbx.unpad_in_place(map=map2)
     maptbx.unpad_in_place(map=map2_cuda)
     map2_values = map2.as_1d()
@@ -42,14 +43,8 @@ def _exercise_real_to_complex_3d (sizes, benchmark=True) :
     assert approx_equal(mmm.mean, mmm_cuda.mean, eps=eps)
     if (benchmark) :
       map_bak = map.deep_copy()
-      class c2r_cufft (object) :
-        def __init__ (self, n_real) :
-          self.n_real = n_real
-        def __call__ (self, data) :
-          return cufft.complex_to_real_3d_in_place(data, self.n_real)
-      cufft_c2r_fn = c2r_cufft(n_real)
-      r2c = [fft.forward, cufft.real_to_complex_3d_in_place]
-      c2r = [fft.backward, cufft_c2r_fn]
+      r2c = [ fft.forward, fft_cuda.forward ]
+      c2r = [ fft.backward, fft_cuda.backward ]
       modules = ["fftpack:", "cufft:  "]
       last_real = [None, None]
       print "  dimensions:", n_real
@@ -108,14 +103,14 @@ def exercise_complex_to_complex_3d () :
     #
     # XXX extra CuFFT to initialize device - can we avoid this somehow?
     d = d0.deep_copy()
-    cufft.complex_to_complex_3d_in_place(data=d, direction=-1)
-    cufft.complex_to_complex_3d_in_place(data=d, direction=+1)
+    cufft.complex_to_complex_3d(n_complex).forward(d)
+    cufft.complex_to_complex_3d(n_complex).backward(d)
     # benchmarking run
     t0 = time.time()
     for i_trial in xrange(n_repeats):
       d = d0.deep_copy()
-      cufft.complex_to_complex_3d_in_place(data=d, direction=-1)
-      cufft.complex_to_complex_3d_in_place(data=d, direction=+1)
+      cufft.complex_to_complex_3d(n_complex).forward(d)
+      cufft.complex_to_complex_3d(n_complex).backward(d)
     print "    cufft:    %6.2f seconds" % ((time.time()-t0-overhead)/n_repeats)
     rw = d / np
     #
