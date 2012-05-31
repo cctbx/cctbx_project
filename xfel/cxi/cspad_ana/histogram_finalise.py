@@ -65,7 +65,7 @@ class finalise_one_run(object):
       print "Read %d images from %s" % (d["nmemb"], path)
 
     print "Number of images used: %i" %self.nmemb
-    assert self.nmemb > 0
+    #assert self.nmemb > 0
 
 def update_histograms(hist_dict1, hist_dict2):
   for key, value in hist_dict1.iteritems():
