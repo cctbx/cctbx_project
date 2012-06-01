@@ -2113,3 +2113,13 @@ def process_command_line(args, master_string, parse=None):
   from libtbx.phil import command_line
   return command_line.process(
     args=args, master_string=master_string, parse=parse)
+
+def find_scope (current_phil, scope_name) :
+  i = 0
+  while (i < len(current_phil.objects)) :
+    full_path = current_phil.objects[i].full_path()
+    if (full_path == scope_name) :
+      return current_phil.objects[i]
+    elif (scope_name.startswith(full_path + ".")) :
+      return find_scope(current_phil.objects[i], scope_name)
+    i += 1
