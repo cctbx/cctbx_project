@@ -39,7 +39,7 @@ def run (args) :
     raise Sorry("Please specify modules and/or directories to test.")
   all_tests = []
   for dir_name in params.directory :
-    dir_tests = libtbx.test_utils.parallel.find_tests(params.dir_name)
+    dir_tests = libtbx.test_utils.parallel.find_tests(dir_name)
     all_tests.extend(libtbx.test_utils.parallel.make_commands(dir_tests))
   for module_name in params.module :
     module_tests = libtbx.test_utils.parallel.get_module_tests(module_name)
