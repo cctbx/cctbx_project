@@ -32,7 +32,8 @@ def get_module_tests (module_name) :
   return commands
 
 def find_tests (dir_name) :
-  assert os.path.isdir(dir_name)
+  if (not os.path.isdir(dir_name)) :
+    raise RuntimeError("'%s' is not a directory." % dir_name)
   all_tests = []
   for root, dirnames, filenames in os.walk(dir_name):
     for file_name in filenames :
