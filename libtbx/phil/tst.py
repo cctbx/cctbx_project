@@ -5587,7 +5587,30 @@ scope2 {
 }
 """)
 
+def exercise_path():
+  master = phil.parse("""\
+a = None
+  .type = path
+b = None
+  .type = path
+c = None
+  .type = path
+""")
+  tilde_path = "~/tmp"
+  user = phil.parse("""\
+a = %s
+b = None
+c = Auto
+""" %tilde_path)
+  phil_scope = master.fetch(source=user)
+  params = phil_scope.extract()
+  assert not show_diff(params.a, os.path.expanduser(tilde_path))
+  assert params.b is None
+  assert params.c is Auto
+
+
 def exercise():
+  exercise_path()
   exercise_find_scope()
   exercise_string_quote_and_tokenize()
   exercise_parse_and_show()

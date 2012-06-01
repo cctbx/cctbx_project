@@ -156,6 +156,12 @@ class path_converters(str_converters):
 
   def __str__(self): return self.phil_type
 
+  def from_words(self, words, master):
+    path = str_from_words(words=words)
+    if path not in (None, Auto):
+      path = os.path.expanduser(path)
+    return path
+
 class key_converters(str_converters):
 
   phil_type = "key"
