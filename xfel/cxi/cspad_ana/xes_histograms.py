@@ -3,7 +3,7 @@ import sys
 
 from libtbx import easy_mp
 from libtbx import easy_pickle
-from libtbx.option_parser import option_parser
+import iotbx.phil
 from scitbx.array_family import flex
 import scitbx.math
 
@@ -11,54 +11,60 @@ from xfel.command_line import view_pixel_histograms # XXX
 from xfel.cxi.cspad_ana import cspad_tbx
 from xfel.cxi.cspad_ana import xes_finalise
 
+
+master_phil_str = """
+xes {
+  output_dirname = None
+    .type = path
+    .help = Directory for output files.
+  roi = None
+    .type = str
+    .help = Region of interest for signal.
+  bg_roi = None
+    .type = str
+    .help = Region of interest for background.
+  gain_map = None
+    .type = path
+    .help = "Path to a gain map that will be used instead of"
+            "fitting the one photon peak to estimate the gain."
+  estimated_gain = 30
+    .type = float
+    .help = The approximate position of the one photon peak.
+  nproc = Auto
+    .type = int
+    .help = Number of processors to use.
+  photon_threshold = 2/3
+    .type = float
+    .help = "Threshold for counting photons (as a fraction of"
+            "the distance between the zero and one photon peaks)."
+  method = *photon_counting sum_adu
+    .type = choice
+    .help = "Method for summing up the individual images to obtain the final 2D"
+            "spectrum. Either attempt to count individual photons, or sum up the"
+            "ADU values for each pixel."
+}
+"""
+
+master_phil = iotbx.phil.parse(master_phil_str)
+
+
 def run(args):
-  command_line = (option_parser()
-                  .option("--output_dirname", "-o",
-                          type="string",
-                          help="Directory for output files.")
-                  .option("--roi",
-                          type="string",
-                          help="Region of interest for signal.")
-                  .option("--bg_roi",
-                          type="string",
-                          help="Region of interest for background")
-                  .option("--gain_map_path",
-                          type="string",
-                          help="Path to a gain map that will be used instead of"
-                          "fitting the one photon peak to estimate the gain.")
-                  .option("--estimated_gain",
-                          type="float",
-                          default=30,
-                          help="The approximate position of the one photon peak.")
-                  .option("--nproc", "-p",
-                          type="int",
-                          help="Number of processors to use.")
-                  .option("--photon_threshold",
-                          type="float",
-                          default=2/3,
-                          help="Threshold for counting photons (as a fraction of"
-                          "the distance between the zero and one photon peaks).")
-                  .option("--sum_adu",
-                          action="store_true",
-                          default=False,
-                          help="Sum the ADUs instead of counting photons.")
-                  ).process(args=args)
-  args = command_line.args
+  processed = iotbx.phil.process_command_line(
+    args=args, master_string=master_phil_str)
+  args = processed.remaining_args
+  work_params = processed.work.extract().xes
   assert len(args) == 1
-  output_dirname = command_line.options.output_dirname
-  roi = cspad_tbx.getOptROI(command_line.options.roi)
-  bg_roi = cspad_tbx.getOptROI(command_line.options.bg_roi)
-  gain_map_path = command_line.options.gain_map_path
-  estimated_gain = command_line.options.estimated_gain
-  nproc = command_line.options.nproc
-  photon_threshold = command_line.options.photon_threshold
-  if command_line.options.sum_adu:
-    method = "sum_adu"
-  else:
-    method = "photon_counting"
+  output_dirname = work_params.output_dirname
+  roi = cspad_tbx.getOptROI(work_params.roi)
+  bg_roi = cspad_tbx.getOptROI(work_params.bg_roi)
+  gain_map_path = work_params.gain_map
+  estimated_gain = work_params.estimated_gain
+  nproc = work_params.nproc
+  photon_threshold = work_params.photon_threshold
+  method = work_params.method
   print output_dirname
   if output_dirname is None:
-    output_dirname = os.path.join(os.path.dirname(args[0]), "finalise")
+    output_dirname = os.path.join(os.path.dirname(args[0]), "finalise/")
     print output_dirname
   hist_d = easy_pickle.load(args[0])
   pixel_histograms = view_pixel_histograms.pixel_histograms(
@@ -249,6 +255,7 @@ class xes_from_histograms(object):
     spectrum_focus = self.sum_img[start_row:end_row,:]
     mask_focus = mask[start_row:end_row,:]
 
+    print "Number of rows: %i" %spectrum_focus.all()[0]
     print "Estimated no. photons counted: %i" %flex.sum(spectrum_focus)
     print "Number of images used: %i" %flex.sum(
       pixel_histograms.histograms.values()[0].slots())
