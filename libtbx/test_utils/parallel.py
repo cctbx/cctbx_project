@@ -94,6 +94,7 @@ def run_command_list(cmd_list,
                      nprocs=1,
                      log=sys.stdout,
                      ):
+  nprocs = min(nprocs, len(cmd_list))
   print "\n  Starting command list"
   print "    NProcs :",nprocs
   print "    Cmds   :",len(cmd_list)
@@ -149,15 +150,33 @@ def run_command_list(cmd_list,
 
 def make_commands (files) :
   commands = []
+  non_executable = []
+  unrecognized = []
   for file_name in files :
     if (file_name.endswith(".py")) :
       commands.append("libtbx.python %s" % file_name)
-    elif (file_name.endswith(".sh")) :
-      commands.append("/bin/sh %s" % file_name)
-    elif (file_name.endswith(".csh")) :
-      commands.append("/bin/csh %s" % file_name)
+    elif (file_name.endswith(".sh")) or (file_name.endswith(".csh")) :
+      if (not os.access(file_name, os.X_OK)) :
+        non_executable.append(file_name)
+      else :
+        commands.append(file_name)
     else :
-      raise RuntimeError("Don't know how to run %s!" % file_name)
+      unrecognized.append(file_name)
+  if (len(unrecognized) > 0) :
+    raise RuntimeError("""\
+The following files could not be recognized as programs:
+
+  %s
+
+Please use the extensions .py, .sh, or .csh for all tests.  Shell scripts will
+also need to be made executable.""" % "\n  ".join(unrecognized))
+  if (len(non_executable) > 0) :
+    raise RuntimeError("""\
+The following shell scripts are not executable:
+
+  %s
+
+Please enable execution of these to continue.""" % "\n  ".join(non_executable))
   return commands
 
 if __name__=="__main__":
