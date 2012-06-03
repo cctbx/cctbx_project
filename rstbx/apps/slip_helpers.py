@@ -73,7 +73,7 @@ class minimizer(object):
       )
 
 class wrapper_of_use_case_bp3(object):
-  def __init__(self, raw_image, spotfinder, imageindex, inputai, limiting_resolution, phil_params):
+  def __init__(self, raw_image, spotfinder, imageindex, inputai, limiting_resolution, phil_params, sub=None):
     """MODEL:  polychromatic beam with top hat bandpass profile.
                isotropic mosaicity with top hat half-width; spots are brought into reflecting condition
                by a finite rotation about the axis that is longitudinal to the projection of the q-vector
@@ -101,6 +101,7 @@ class wrapper_of_use_case_bp3(object):
     self.ucbp3.set_active_areas(
       raw_image.get_tile_manager(phil_params).effective_tiling_as_flex_int(
       reapply_peripheral_margin=True))
+    if sub != None:  self.ucbp3.set_subpixel( flex.double(sub) )
     # Reduce Miller indices to a manageable set.  NOT VALID if the crystal rotates significantly
     self.ucbp3.prescreen_indices(inputai.wavelength)
     # done with Miller set reduction
@@ -791,14 +792,15 @@ class slip_callbacks:
     print "rotation angles",best_params[4],best_params[5],best_params[6]
     return best_params
 
-  def use_case_3_simulated_annealing(self):
+  def use_case_3_simulated_annealing(self,subpixel=None):
     reserve_orientation = self.inputai.getOrientation()
 
     wrapbp3 = wrapper_of_use_case_bp3( raw_image = self.imagefiles.images[self.image_number],
       spotfinder = self.spotfinder, imageindex = self.frames[self.image_number],
       inputai = self.inputai,
       limiting_resolution = self.limiting_resolution,
-      phil_params = self.horizons_phil)
+      phil_params = self.horizons_phil,
+      sub = subpixel)
 
     from rstbx.bandpass.simulated_annealing import SALight
 
