@@ -98,7 +98,7 @@ namespace rstbx { namespace bandpass {
     scitbx::af::shared<bool > observed_flag;
     scitbx::af::shared<vec3 > spot_rectangle_vertices;
     scitbx::af::shared<vec3 > spot_rectregion_vertices;
-    use_case_bp3 (parameters_bp3 const& P):P(P){}
+    use_case_bp3 (parameters_bp3 const& P):P(P),subpixel_translations_set(false){}
     active_area_filter aaf;
     void set_active_areas(scitbx::af::shared<int> IT){
       aaf = active_area_filter(IT);
@@ -269,6 +269,10 @@ namespace rstbx { namespace bandpass {
             vec3 central_position = ((lo_E_limit[idx]+hi_E_limit[idx])/2.);//already in pixel units
             if (!aaf(vec3(central_position[1],central_position[0],0.))){
               observed_flag[idx]=false;
+            } else if (subpixel_translations_set) {
+              vec3 subpixel_trans(subpixel[2*aaf.tile_id],subpixel[1+2*aaf.tile_id],0.0);
+              lo_E_limit[idx] += subpixel_trans;
+              hi_E_limit[idx] += subpixel_trans;
             }
           }
       }
@@ -529,7 +533,7 @@ namespace rstbx { namespace bandpass {
         vec3 lo_pos = lo_E_limit[idx];
         vec3 temp = (hi_pos + lo_pos)/2.;
         data.push_back(
-	 vec3((temp[1]-P.pixel_offset[1])*P.pixel_size[1],(temp[0]-P.pixel_offset[0])*P.pixel_size[0],temp[2]) );
+        vec3((temp[1]-P.pixel_offset[1])*P.pixel_size[1],(temp[0]-P.pixel_offset[0])*P.pixel_size[0],temp[2]) );
       }
       return data;
     }
@@ -555,6 +559,7 @@ namespace rstbx { namespace bandpass {
       }
       return active_area_traps;
     }
+    bool subpixel_translations_set;
     scitbx::af::shared<double> subpixel;
     void set_subpixel(scitbx::af::shared<double> s){
       subpixel=s;}
