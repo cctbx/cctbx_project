@@ -342,7 +342,8 @@ def compute_f_calc(fmodel, params):
     coeffs = coeffs_partial_set
   return coeffs
 
-def map_coefficients_from_fmodel(fmodel, params):
+def map_coefficients_from_fmodel (fmodel, params,
+    post_processing_callback=None):
   from mmtbx import map_tools
   import mmtbx
   from cctbx import miller
@@ -360,7 +361,8 @@ def map_coefficients_from_fmodel(fmodel, params):
     coeffs = e_map_obj.map_coefficients(
       map_type           = params.map_type,
       acentrics_scale    = params.acentrics_scale,
-      centrics_pre_scale = params.centrics_pre_scale)
+      centrics_pre_scale = params.centrics_pre_scale,
+      post_processing_callback=post_processing_callback)
     if (coeffs is None) : return None
     if(coeffs.anomalous_flag() and not
        mmtbx.map_names(params.map_type).anomalous):
@@ -375,7 +377,8 @@ def map_coefficients_from_fmodel(fmodel, params):
         indices = coeffs.indices(),
         anomalous_flag=False).array(data=coeffs.data()*isc)
     if(params.sharpening):
-      coeffs, b_sharp = sharp_map(
+      from mmtbx import map_tools
+      coeffs, b_sharp = map_tools.sharp_map(
         sites_frac = fmodel.xray_structure.sites_frac(),
         map_coeffs = coeffs,
         b_sharp    = params.sharpening_b_factor)
@@ -409,30 +412,8 @@ def map_coefficients_from_fmodel(fmodel, params):
   #XXXif(mnm.k is not None and abs(mnm.k) == abs(mnm.n) and save_k_part is not None):
   #XXX  fmodel.update_core(k_part=save_k_part, b_part=save_b_part)
   if(params.fill_missing_f_obs):
-    scale_to = fmodel.f_obs().average_bijvoet_mates()
-    dsf = coeffs.double_step_filtration(
-      vol_cutoff_plus_percent =1.0,
-      vol_cutoff_minus_percent=1.0,
-      scale_to=scale_to) #XXX disable # .resolution_filter(d_min=4) # XXX do not fill higher
-    #
-    fo = fmodel.f_obs().average_bijvoet_mates().discard_sigmas()
-    fo = fo.complete_with(other = abs(dsf))
-    import mmtbx.f_model
-    fmdc = mmtbx.f_model.manager(
-      f_obs = fo,
-      xray_structure = fmodel.xray_structure)
-    fmdc.update_all_scales()
-    #dsf = fmdc.f_model().resolution_filter(d_min=4)
-    dsf = fmdc.f_model().array(data = fmdc.f_model().data() *
-      fmdc.alpha_beta()[0].data()) # .resolution_filter(d_min=4)
-    #
-#    coeffs_ = fmdc.electron_density_map().map_coefficients(map_type = params.map_type)
-#    k = fmdc.k_isotropic()*fmdc.k_anisotropic()
-#    coeffs_ = coeffs_.customized_copy(data = coeffs_.data()*(1/k) )
-
-#    coeffs = coeffs.complete_with(other = coeffs_) #3
-    coeffs = coeffs.complete_with(other = dsf) #2
-#    coeffs = coeffs_ # 1
+    from mmtbx import map_tools
+    coeffs = map_tools.fill_missing_f_obs(coeffs, fmodel)
   return coeffs
 
 def compute_xplor_maps(fmodel, params, atom_selection_manager=None,
@@ -462,61 +443,6 @@ def compute_xplor_maps(fmodel, params, atom_selection_manager=None,
       output_files.append(mp.file_name)
   return output_files
 
-def sharp_evaluation_target(sites_frac, map_coeffs, resolution_factor = 0.25):
-  fft_map = map_coeffs.fft_map(resolution_factor=resolution_factor)
-  fft_map.apply_sigma_scaling()
-  map_data = fft_map.real_map_unpadded()
-  target = 0
-  cntr = 0
-  for site_frac in sites_frac:
-    mv = map_data.eight_point_interpolation(site_frac)
-    if(mv >0):
-      target += mv
-      cntr += 1
-  t_mean = target/cntr
-  return t_mean
-
-#def sharp_evaluation_target(sites_frac, b_isos, map_coeffs, resolution_factor = 0.25):
-#  fft_map = map_coeffs.fft_map(resolution_factor=resolution_factor)
-#  fft_map.apply_sigma_scaling()
-#  map_data = fft_map.real_map_unpadded()
-#  target = 0
-#  cntr = 0
-#  for site_frac, b_iso in zip(sites_frac, b_isos):
-#    target += map_data.eight_point_interpolation(site_frac)
-#  t_mean = target/sites_frac.size()
-#  target = 0
-#  for site_frac, b_iso in zip(sites_frac, b_isos):
-#    t_ = map_data.eight_point_interpolation(site_frac)
-#    if(t_ < t_mean): target += t_
-#  return target/sites_frac.size()
-
-
-def sharp_map(sites_frac, map_coeffs, ss = None, b_sharp=None, b_min = -150,
-              b_max = 150, step = 10):
-  if(ss is None):
-    ss = 1./flex.pow2(map_coeffs.d_spacings().data()) / 4.
-  from cctbx import miller
-  if(b_sharp is None):
-    t=-1
-    map_coeffs_best = None
-    b_sharp_best = None
-    for b_sharp in range(b_min,b_max,step):
-      map_coeffs_ = map_coeffs.deep_copy()
-      sc2 = flex.exp(b_sharp*ss)
-      map_coeffs_ = map_coeffs_.customized_copy(data = map_coeffs_.data()*sc2)
-      t_=sharp_evaluation_target(sites_frac=sites_frac, map_coeffs=map_coeffs_)
-      if(t_>t):
-        t=t_
-        b_sharp_best = b_sharp
-        map_coeffs_best = map_coeffs_.deep_copy()
-    print "b_sharp:", b_sharp_best, t
-  else:
-    scale = flex.exp(b_sharp*ss)
-    map_coeffs_best = map_coeffs.customized_copy(data=map_coeffs.data()*scale)
-    b_sharp_best = b_sharp
-  return map_coeffs_best, b_sharp_best
-
 class compute_map_coefficients(object):
 
   def __init__(self,
@@ -540,11 +466,9 @@ class compute_map_coefficients(object):
           elif (mcp.isotropize) :
             mcp.isotropize = False
         # XXX
-        coeffs = map_coefficients_from_fmodel(fmodel = fmodel, params = mcp)
-        if (post_processing_callback is not None) and (coeffs is not None) :
-          coeffs = post_processing_callback(
-            map_coeffs=coeffs,
-            fmodel=fmodel)
+        coeffs = map_coefficients_from_fmodel(fmodel = fmodel,
+          params = mcp,
+          post_processing_callback=post_processing_callback)
         if("mtz" in mcp.format and coeffs is not None):
           lbl_mgr = map_coeffs_mtz_label_manager(map_params = mcp)
           if(self.mtz_dataset is None):
