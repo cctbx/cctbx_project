@@ -528,7 +528,8 @@ namespace rstbx { namespace bandpass {
         vec3 hi_pos = hi_E_limit[idx];
         vec3 lo_pos = lo_E_limit[idx];
         vec3 temp = (hi_pos + lo_pos)/2.;
-        data.push_back( vec3(temp[1]*P.pixel_size[1],temp[0]*P.pixel_size[0],temp[2]) );
+        data.push_back(
+	 vec3((temp[1]-P.pixel_offset[1])*P.pixel_size[1],(temp[0]-P.pixel_offset[0])*P.pixel_size[0],temp[2]) );
       }
       return data;
     }
