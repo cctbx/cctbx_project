@@ -391,8 +391,35 @@ namespace rstbx { namespace bandpass {
     scitbx::af::shared<vec3 > margin_px;
     scitbx::af::shared<double > margin_distances;
     scitbx::af::shared<vec3 > enclosed_px;
+    struct unlimited_pixel_accept_policy {
+      static bool accept_pixel(vec3 const& vec,use_case_bp3* const thisuc){
+        return true;
+      }
+    };
+    struct resolution_limited_pixel_accept_policy {
+      static bool accept_pixel(vec3 const& vec,use_case_bp3* const thisuc){
+        vec3 pixel_center = vec*thisuc->P.pixel_size;
+        vec3 offs = thisuc->P.detector_origin+pixel_center;
+        double radius_mm = std::sqrt(offs[0]*offs[0]+offs[1]*offs[1]);
+        double pixel_two_theta_rad = std::atan(radius_mm/thisuc->P.distance);
+        double pixel_d_ang =   thisuc->P.wavelengthLE / (2.*std::sin (pixel_two_theta_rad/2.)) ;
+        return (pixel_d_ang > thisuc->model_refinement_limiting_resolution);
+      }
+    };
+    double model_refinement_limiting_resolution;
+    void
+    enclosed_pixels_and_margin_pixels(double const& model_refinement_limiting_resolution){
+      //use this pointer to override the automatic variable
+      this->model_refinement_limiting_resolution = model_refinement_limiting_resolution;
+      enclosed_pixels_and_margin_pixels_detail<resolution_limited_pixel_accept_policy>();
+    }
     void
     enclosed_pixels_and_margin_pixels(){
+      enclosed_pixels_and_margin_pixels_detail<unlimited_pixel_accept_policy>();
+    }
+    template <typename pixel_accept_policy>
+    void
+    enclosed_pixels_and_margin_pixels_detail(){
       // The effect of this function is to set these three state vectors:
       margin_px = scitbx::af::shared<vec3 > ();
       margin_distances = scitbx::af::shared<double > ();
@@ -472,17 +499,19 @@ namespace rstbx { namespace bandpass {
               p1y = p2y;
             }
             }
-
-            if (inside_rectangle){enclosed_px.push_back(vec3(islow+0.5,ifast+0.5,0.0));}
-            else {
-              vec3 margin_point(islow+0.5,ifast+0.5,0.0);
-              //margin_px.push_back(margin_point);
+            vec3 candidate_point(islow+0.5,ifast+0.5,0.0);
+            if (inside_rectangle) {
+              if (pixel_accept_policy::accept_pixel(candidate_point,this)) {
+                enclosed_px.push_back(candidate_point);
+              }
+            } else {
+              //margin_px.push_back(candidate_point);
               //This is a margin pixel; but let's determine the distance-to-rectangle for the scoring function
               int is_positive = 0;
               double distance = 0;
               for (int iv = 1; iv < 5; ++iv){
                 vec3 side = spot_rectangle_vertices[idx+iv]-spot_rectangle_vertices[idx+iv-1];
-                vec3 to_point = margin_point - spot_rectangle_vertices[idx+iv];
+                vec3 to_point = candidate_point - spot_rectangle_vertices[idx+iv];
                 double potential_distance = (to_point[0]*side[1]-side[0]*to_point[1])/side.length();
                 if (potential_distance >= 0) {
                   is_positive += 1;
@@ -490,17 +519,21 @@ namespace rstbx { namespace bandpass {
                 }
               }
               if (is_positive == 1) {
-                //we got our distance.
-                margin_px.push_back(margin_point);
-                margin_distances.push_back(distance);
+                if (pixel_accept_policy::accept_pixel(candidate_point,this)) {
+                  //we got our distance.
+                  margin_px.push_back(candidate_point);
+                  margin_distances.push_back(distance);
+                }
               } else {
                 //pixel is in the corner.  Need to find out which corner is closest
                 for (int iv = 1; iv < 5; ++iv){
-                  vec3 to_point = margin_point - spot_rectangle_vertices[idx+iv];
+                  vec3 to_point = candidate_point - spot_rectangle_vertices[idx+iv];
                   double potential_distance = to_point.length();
                   if (potential_distance < margin){ // this test makes the margin a rounded rectangle rather than rectangle proper.
-                    margin_px.push_back(margin_point);
-                    margin_distances.push_back(potential_distance);
+                    if (pixel_accept_policy::accept_pixel(candidate_point,this)) {
+                      margin_px.push_back(candidate_point);
+                      margin_distances.push_back(potential_distance);
+                    }
                   }
                 }
               }
@@ -769,7 +802,10 @@ namespace ext {
         .add_property("observed_flag",make_getter(&use_case_bp3::observed_flag, rbv()))
         .def("spot_rectangles", &use_case_bp3::spot_rectangles)
         .def("spot_rectregions", &use_case_bp3::spot_rectregions)
-        .def("enclosed_pixels_and_margin_pixels", &use_case_bp3::enclosed_pixels_and_margin_pixels)
+        .def("enclosed_pixels_and_margin_pixels",
+              (void(use_case_bp3::*)()) &use_case_bp3::enclosed_pixels_and_margin_pixels)
+        .def("enclosed_pixels_and_margin_pixels",
+              (void(use_case_bp3::*)(double const&)) &use_case_bp3::enclosed_pixels_and_margin_pixels)
         .add_property("margin_px",make_getter(&use_case_bp3::margin_px, rbv()))
         .add_property("enclosed_px",make_getter(&use_case_bp3::enclosed_px, rbv()))
         .add_property("margin_distances",make_getter(&use_case_bp3::margin_distances, rbv()))
