@@ -1,14 +1,15 @@
 from libtbx import easy_run
 from libtbx import test_utils
 import libtbx.load_env
-from libtbx.utils import import_python_object, Sorry
+from libtbx.utils import import_python_object, Sorry, multi_out
+from libtbx import group_args
 from multiprocessing import Pool
 import time
 import os
 import sys
 
 
-def get_module_tests (module_name) :
+def get_module_tests (module_name, verbose=True, quick=False, valgrind=False) :
   dist_path = libtbx.env.dist_path(module_name)
   if (dist_path is None) :
     raise Sorry("'%s' is not a valid CCTBX module." % module_name)
@@ -23,8 +24,12 @@ def get_module_tests (module_name) :
   build_path = libtbx.env.under_build(module_name)
   assert (build_path is not None) and (dist_path is not None)
   commands = []
+  co = group_args(
+    verbose=verbose,
+    quick=quick,
+    valgrind=valgrind)
   for cmd in test_utils.iter_tests_cmd(
-      co=None,
+      co=None,#co,
       build_dir=build_path,
       dist_dir=dist_path,
       tst_list=tst_list) :
@@ -57,6 +62,8 @@ def run_command(command,
       print '!'*80
       print "command"
       print command
+      if (cmd_result.exit_code != 0) :
+        print "ERROR - exit code %d" % cmd_result.exit_code
       print "stderr"
       #print "\n".join(cmd_result.stdout_lines)
       print "\n".join(cmd_result.stderr_lines)
@@ -71,7 +78,20 @@ def run_command(command,
   sys.stdout.flush()
   sys.stderr.flush()
   cmd_result.wall_time = time.time()-t0
+  cmd_result.error_lines = evaluate_output(cmd_result)
   return cmd_result
+
+def evaluate_output (cmd_result) :
+  have_regression = libtbx.env.has_module("phenix_regression")
+  bad_lines = []
+  if (have_regression) :
+    from phenix_regression.command_line import find_errors_and_warnings
+    out = cmd_result.stdout_lines
+    err = cmd_result.stderr_lines
+    for i, line in enumerate(out) :
+      if (find_errors_and_warnings.is_error_or_warning(line, line.lower())) :
+        bad_lines.append(line)
+  return bad_lines
 
 def display_result(result, log=sys.stdout):
   #print dir(result)
@@ -83,6 +103,9 @@ def display_result(result, log=sys.stdout):
   if (len(result.stderr_lines) != 0):
     print >> log, 'stderr-'*10
     print >> log, "\n".join(result.stderr_lines)
+  if (len(result.error_lines) > 0) :
+    print >> log, "possible errors:"
+    print >> log, "\n".join(result.error_lines)
   print >> log, "time : %5.2fs" % result.wall_time
   if result.wall_time>60:
     print >> log, '!'*78
@@ -93,19 +116,28 @@ def display_result(result, log=sys.stdout):
 
 def run_command_list(cmd_list,
                      nprocs=1,
-                     log=sys.stdout,
-                     ):
+                     out=sys.stdout,
+                     log=None,
+                     verbose=0):
   nprocs = min(nprocs, len(cmd_list))
-  print "\n  Starting command list"
-  print "    NProcs :",nprocs
-  print "    Cmds   :",len(cmd_list)
+  if (log is None) : log = null_out()
+  out_ = multi_out()
+  out_.register("stdout", out)
+  out_.register("log", log)
+  print >> out_, "\n  Starting command list"
+  print >> out_, "    NProcs :",nprocs
+  print >> out_, "    Cmds   :",len(cmd_list)
+  t_start = time.time()
   if nprocs>1:
     pool = Pool(processes=nprocs)
 
   results = []
   def save_result (result) :
     results.append(result)
-    display_result(result, log=log)
+    if (verbose > 0) :
+      display_result(result, log=out_)
+    else :
+      display_result(result, log=log)
   for command in cmd_list:
     if nprocs>1:
       pool.apply_async(
@@ -119,35 +151,47 @@ def run_command_list(cmd_list,
   if nprocs>1:
     pool.close()
     pool.join()
-    print '\nProcesses have joined : %d\n' % len(results)
+    print >> out_, '\nProcesses have joined : %d\n' % len(results)
+  t_end = time.time()
+  print >> out_, ""
+  print >> out_, "Elapsed time: %.2fs" %(t_end-t_start)
+  print >> out_, ""
   finished = 0
   warning = 0
+  extra_stderr = 0
   failure = 0
+  failures = []
   long_jobs = []
+  runtimes = []
   for result in results :
     finished += 1
     if (result.return_code != 0) :
       failure += 1
-    elif (len(result.stderr_lines) != 0):
-      warning += 1
+      failures.append(result.command)
+    else :
+      if (result.error_lines != 0) :
+        warning += 1
+      if (len(result.stderr_lines) != 0):
+        extra_stderr += 1
     if (result.wall_time > 60) :
       long_jobs.append(result.command)
-  print 'Done with output'
-  print "  NProcs    :",nprocs
-  print "  Tests run :",finished
-  print "  Failures  :",failure
-  print "  Warnings  :",warning
+      runtimes.append(result.wall_time)
+  print >> out_, "Summary:"
+  print >> out_, "  Tests run                    :",finished
+  print >> out_, "  Failures                     :",failure
+  print >> out_, "  Warnings (possible failures) :",warning
+  print >> out_, "  Stderr output (discouraged)  :",extra_stderr
   if (len(long_jobs) > 0) :
-    print ""
-    print "WARNING: the following jobs took at least 60 seconds each:"
-    for cmd in long_jobs :
-      print "  " + cmd
-    print "Please try to reduce overall runtime - consider splitting up these tests."
-  print >> log, '\n\nDone with output'
-  print >> log, "  NProcs    :",nprocs
-  print >> log, "  Tests run :",finished
-  print >> log, "  Failures  :",failure
-  print >> log, "  Warnings  :",warning
+    print >> out_, ""
+    print >> out_, "WARNING: the following jobs took at least 60 seconds each:"
+    for cmd, runtime in zip(long_jobs, runtimes) :
+      print >> out_, "  " + cmd + " : %.1fs" % runtime
+    print >> out_, "Please try to reduce overall runtime - consider splitting up these tests."
+  if (len(failures) > 0) :
+    print >> out_, "ERROR: the following jobs returned non-zero exit codes:"
+    for command in failures :
+      print >> out_, "  " + command
+    print >> out_, "Please verify these tests manually."
 
 def make_commands (files) :
   commands = []
