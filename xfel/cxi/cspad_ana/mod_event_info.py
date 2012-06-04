@@ -11,7 +11,7 @@ class mod_event_info(object):
   """
 
 
-  def __init__(self, address, detz_offset="575", verbose=False):
+  def __init__(self, address, detz_offset=575, verbose=False):
     """The mod_event_info class constructor stores the
     parameters passed from the pyana configuration file in instance
     variables.
