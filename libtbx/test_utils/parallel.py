@@ -62,8 +62,8 @@ def run_command(command,
       print '!'*80
       print "command"
       print command
-      if (cmd_result.exit_code != 0) :
-        print "ERROR - exit code %d" % cmd_result.exit_code
+      if (cmd_result.return_code != 0) :
+        print "ERROR - return code %d" % cmd_result.return_code
       print "stderr"
       #print "\n".join(cmd_result.stdout_lines)
       print "\n".join(cmd_result.stderr_lines)
@@ -94,12 +94,17 @@ def evaluate_output (cmd_result) :
   return bad_lines
 
 def display_result(result, log=sys.stdout):
-  #print dir(result)
   print >> log, '_'*80
   print >> log, '\ncommand : "%s"' % result.command
   print >> log, 'return_code : %s' % result.return_code
   print >> log, 'stdout-'*10
-  print >> log, "\n".join(result.stdout_lines)
+  stdout_lines = "\n".join(result.stdout_lines)
+  print >> log, stdout_lines
+  oks = 0
+  for line in result.stdout_lines:
+    if line.find("OK")>-1:
+      oks += 1
+  print >> log, 'Found %d "OK"' % oks
   if (len(result.stderr_lines) != 0):
     print >> log, 'stderr-'*10
     print >> log, "\n".join(result.stderr_lines)
@@ -169,7 +174,7 @@ def run_command_list(cmd_list,
       failure += 1
       failures.append(result.command)
     else :
-      if (result.error_lines != 0) :
+      if (len(result.error_lines) != 0) :
         warning += 1
       if (len(result.stderr_lines) != 0):
         extra_stderr += 1
