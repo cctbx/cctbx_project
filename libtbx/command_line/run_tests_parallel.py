@@ -39,13 +39,17 @@ def run (args) :
     raise Sorry("Please specify modules and/or directories to test.")
   all_tests = []
   for dir_name in params.directory :
+    if dir_name.find("cctbx_project")>-1:
+      print 'DANGER '*10
+      print 'Using the directory option in cctbx_project can be very time consuming'
+      print 'DANGER '*10
     dir_tests = libtbx.test_utils.parallel.find_tests(dir_name)
     all_tests.extend(libtbx.test_utils.parallel.make_commands(dir_tests))
   for module_name in params.module :
     module_tests = libtbx.test_utils.parallel.get_module_tests(module_name)
     all_tests.extend(module_tests)
   if (len(all_tests) == 0) :
-    raise Sorry("No test scripts found in %s." % params.dir_name)
+    raise Sorry("No test scripts found in %s." % params.directory)
   print "Running the following %d tests on %d processors:" % (len(all_tests),
     params.nproc)
   for test in all_tests :
