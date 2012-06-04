@@ -39,6 +39,7 @@ class common_mode_correction(mod_event_info):
                two_photon_threshold=None,
                dark_path=None,
                dark_stddev=None,
+               detz_offset="575",
                gain_map_path=None,
                cache_image=True,
                roi=None,
@@ -55,6 +56,8 @@ class common_mode_correction(mod_event_info):
     @param dark_path       Path to input average dark image
     @param dark_stddev     Path to input standard deviation dark
                            image, required if @p dark_path is given
+    @param detz_offset     Detector-sample offset in mm, corresponding
+                           to longest detector-sample distance
     @param laser_1_status  0 or 1 to indicate that the laser should be off or on respectively
     @param laser_4_status  0 or 1 to indicate that the laser should be off or on respectively
     @param laser_wait_time Length of time in milliseconds to wait after a laser
@@ -66,7 +69,7 @@ class common_mode_correction(mod_event_info):
     # Cannot use the super().__init__() construct here, because
     # common_mode_correction refers to the argument, and not the
     # class.
-    mod_event_info.__init__(self, address=address)
+    mod_event_info.__init__(self, address=address, detz_offset=detz_offset)
 
     self.dark_path = cspad_tbx.getOptString(dark_path)
     self.dark_stddev = cspad_tbx.getOptString(dark_stddev)
