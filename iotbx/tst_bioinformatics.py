@@ -1,6 +1,7 @@
 from iotbx import bioinformatics
 
 import unittest
+import sys
 
 sequence1 = "VVKMDGRKHRLILPEAKVQDSGEFECRTEGVSAFFGVTVQDPSGPS"
 sequence2 = "LVKFYGRKFVLLFMDQKTFDKYESKLETSGYEKFFIFCMASPISPA"
@@ -1824,4 +1825,4 @@ alltests = unittest.TestSuite(
   )
 
 if __name__ == "__main__":
-  unittest.TextTestRunner( verbosity = 2 ).run( alltests )
+  unittest.TextTestRunner( stream=sys.stdout, verbosity = 2 ).run( alltests )
