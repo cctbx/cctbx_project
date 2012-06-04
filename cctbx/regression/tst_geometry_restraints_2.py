@@ -397,9 +397,9 @@ def exercise_with_pdb(verbose):
     out = sys.stdout
   else:
     out = StringIO()
-  open("tmp.pdb", "w").write(enk_pdb)
+  open("tmp_cctbx_geometry_restraints.pdb", "w").write(enk_pdb)
   processed_pdb_file = pdb_interpretation.run(
-    args=["tmp.pdb"],
+    args=["tmp_cctbx_geometry_restraints.pdb"],
     strict_conflict_handling=False,
     log=out)
   geo = processed_pdb_file.geometry_restraints_manager()

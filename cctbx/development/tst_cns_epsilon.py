@@ -80,10 +80,10 @@ def write_cns_input(crystal_symmetry, anomalous_flag, d_min):
   l("  do (cns_a = 1) (acentric)")
   l("  do (cns_p = -1) (all)")
   l("  do (cns_p = centric_phase) (centric)")
-  l("  write reflections output=\"tmp.hkl\" end")
+  l("  write reflections output=\"tmp_cns_input.hkl\" end")
   l("end")
   l("stop")
-  f = open("tmp.cns", "w")
+  f = open("tmp_cns_input.cns", "w")
   for l in cns_input:
     print >> f, l
   f.close()
@@ -93,12 +93,13 @@ def exercise(space_group_info, anomalous_flag=False, d_min=2., verbose=0):
     space_group_info.any_compatible_unit_cell(1000),
     space_group_info=space_group_info)
   write_cns_input(crystal_symmetry, anomalous_flag, d_min)
-  try: os.unlink("tmp.hkl")
+  try: os.unlink("tmp_cns_input.hkl")
   except KeyboardInterrupt: raise
   except Exception: pass
-  easy_run.fully_buffered(command="cns < tmp.cns > tmp.out") \
-    .raise_if_errors_or_output()
-  f = open("tmp.hkl", "r")
+  easy_run.fully_buffered(
+    command="cns < tmp_cns_input.cns > tmp_cns_input.out") \
+      .raise_if_errors_or_output()
+  f = open("tmp_cns_input.hkl", "r")
   reflection_file = reflection_reader.cns_reflection_file(f)
   f.close()
   if (0 or verbose):

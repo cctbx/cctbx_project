@@ -41,8 +41,8 @@ def recycle(miller_array, column_root_label, column_types=None, verbose=0):
   written = original_dataset.mtz_object()
   if (0 or verbose):
     written.show_summary()
-  original_dataset.mtz_object().write(file_name="tmp.mtz")
-  restored = mtz.object(file_name="tmp.mtz")
+  original_dataset.mtz_object().write(file_name="tmp_iotbx_mtz.mtz")
+  restored = mtz.object(file_name="tmp_iotbx_mtz.mtz")
   if (0 or verbose):
     restored.show_summary()
   assert restored.title() == written.title()
@@ -269,12 +269,12 @@ def exercise_miller_array_data_types():
         flex.double([0,1]),
         flex.complex_double([0,1])]:
     miller_array = miller_set.array(data=data)
-    if (op.isfile("tmp.mtz")): os.remove("tmp.mtz")
-    assert not op.isfile("tmp.mtz")
+    if (op.isfile("tmp_iotbx_mtz.mtz")): os.remove("tmp_iotbx_mtz.mtz")
+    assert not op.isfile("tmp_iotbx_mtz.mtz")
     miller_array.as_mtz_dataset(column_root_label="DATA").mtz_object().write(
-      file_name="tmp.mtz")
-    assert op.isfile("tmp.mtz")
-    mtz_obj = mtz.object(file_name="tmp.mtz")
+      file_name="tmp_iotbx_mtz.mtz")
+    assert op.isfile("tmp_iotbx_mtz.mtz")
+    mtz_obj = mtz.object(file_name="tmp_iotbx_mtz.mtz")
     miller_arrays_read_back = mtz_obj.as_miller_arrays()
     assert len(miller_arrays_read_back) == 1
     miller_array_read_back = miller_arrays_read_back[0]

@@ -126,8 +126,10 @@ def run_call_back_1(flags, space_group_info):
   test_r(space_group_info = space_group_info)
 
 def run():
-  debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back_1)
-  debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
+  debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back_1,
+    symbols_to_stdout=True, symbols_to_stderr=False)
+  debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back,
+    symbols_to_stdout=True, symbols_to_stderr=False)
   test_grid_step()
   print "OK"
 

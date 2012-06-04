@@ -634,7 +634,8 @@ def run_call_back(flags, space_group_info):
   exercise_mask_data_2(space_group_info)
 
 if (__name__ == "__main__"):
-  debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
+  debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back,
+    symbols_to_stdout=True, symbols_to_stderr=False)
   try:
     run()
   except Exception :
