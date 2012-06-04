@@ -158,7 +158,8 @@ def run_call_back(flags, space_group_info):
 
 def run():
   debug_utils.parse_options_loop_space_groups(
-    argv=sys.argv[1:], call_back=run_call_back, keywords=("quick",))
+    argv=sys.argv[1:], call_back=run_call_back, keywords=("quick",),
+    symbols_to_stdout=True, symbols_to_stderr=False)
 
 if (__name__ == "__main__"):
   run()

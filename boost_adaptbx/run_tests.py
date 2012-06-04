@@ -1,9 +1,7 @@
 from libtbx import test_utils
 import libtbx.load_env
 
-
-def run():
-  tst_list = (
+tst_list = (
   "$B/tests/tst_optional_copy",
   "$D/tests/tst_libc_backtrace.py",
   "$D/tests/tst_rational.py",
@@ -16,6 +14,8 @@ def run():
   "$D/tests/tst_stderr_stdout.py",
   )
 
+
+def run():
   build_dir = libtbx.env.under_build("boost_adaptbx")
   dist_dir = libtbx.env.dist_path("boost_adaptbx")
 

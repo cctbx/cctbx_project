@@ -50,10 +50,10 @@ END
 
 def exercise(args):
   assert len(args) == 0
-  open("tmp.pdb", "w").write(pdb1exr_fragment)
+  open("tmp_altloc_chain_break.pdb", "w").write(pdb1exr_fragment)
   command = " ".join([
     "phenix.pdbtools",
-    "tmp.pdb",
+    "tmp_altloc_chain_break.pdb",
     "--geometry_regularization",
     "pdb_interpretation.nonbonded_weight=16",
     "geometry_minimization.macro_cycles=2"])

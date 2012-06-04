@@ -141,7 +141,7 @@ def exercise_atom_selections():
   log = None
   if (verbose):
     log = sys.stdout
-  open("tmp.pdb", "w").write(test_pdb_file)
+  open("tmp_selection.pdb", "w").write(test_pdb_file)
   try:
     mon_lib_srv = monomer_library.server.server()
   except monomer_library.server.MonomerLibraryServerError:
@@ -151,7 +151,7 @@ def exercise_atom_selections():
   processed_pdb = monomer_library.pdb_interpretation.process(
     mon_lib_srv=mon_lib_srv,
     ener_lib=ener_lib,
-    file_name="tmp.pdb",
+    file_name="tmp_selection.pdb",
     log=log)
   isel = processed_pdb.all_chain_proxies.iselection
   assert list(isel("peptide")) == range(52) + range(114,122)

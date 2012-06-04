@@ -9,7 +9,7 @@ import os
 import sys
 
 
-def get_module_tests (module_name, verbose=True, quick=False, valgrind=False) :
+def get_module_tests (module_name, verbose=True, quick=True, valgrind=False) :
   dist_path = libtbx.env.dist_path(module_name)
   if (dist_path is None) :
     raise Sorry("'%s' is not a valid CCTBX module." % module_name)
