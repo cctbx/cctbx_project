@@ -64,7 +64,7 @@ def run(args):
   method = work_params.method
   print output_dirname
   if output_dirname is None:
-    output_dirname = os.path.join(os.path.dirname(args[0]), "finalise/")
+    output_dirname = os.path.join(os.path.dirname(args[0]), "finalise")
     print output_dirname
   hist_d = easy_pickle.load(args[0])
   pixel_histograms = view_pixel_histograms.pixel_histograms(
@@ -76,7 +76,7 @@ def run(args):
     photon_threshold=photon_threshold, roi=roi)
 
   if bg_roi is not None:
-    bg_outdir = os.path.dirname(output_dirname)+"_bg"
+    bg_outdir = os.path.normpath(output_dirname)+"_bg"
     bg_result = xes_from_histograms(
       pixel_histograms, output_dirname=bg_outdir,
       gain_map_path=gain_map_path, estimated_gain=estimated_gain,
