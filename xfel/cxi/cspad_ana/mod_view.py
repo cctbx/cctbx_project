@@ -99,7 +99,7 @@ class _XrayFrameThread(threading.Thread):
     self.setDaemon(1)
     self._hold = hold
     self._init_lock = threading.Lock()
-    self._next_lock = threading.Semaphore()
+    self._next_semaphore = threading.Semaphore()
     self._start_orig = self.start
     self._frame = None
     self.start = self._start_local
@@ -114,7 +114,7 @@ class _XrayFrameThread(threading.Thread):
     one.
     """
 
-    self._next_lock.release()
+    self._next_semaphore.release()
 
 
   def _start_local(self):
@@ -150,7 +150,7 @@ class _XrayFrameThread(threading.Thread):
 
     # Avoid deadlock where the send_data() function is waiting for the
     # semaphore after the frame has closed.
-    self._next_lock.release()
+    self._next_semaphore.release()
 
 
   def send_data(self, img, title):
@@ -166,7 +166,7 @@ class _XrayFrameThread(threading.Thread):
     if (self._hold):
       # Decrement the counter by one and return immediately if the
       # counter is larger than zero.
-      self._next_lock.acquire()
+      self._next_semaphore.acquire()
     if (self.isAlive()):
       try:
         self._frame.AddPendingEvent(event)
