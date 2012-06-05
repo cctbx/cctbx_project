@@ -309,6 +309,12 @@ cudatbx/math/special_functions/spherical_bessel_jn.cuh -text
 cudatbx/math/special_functions/spherical_bessel_jn.h -text
 cudatbx/math/special_functions/tst_spherical_bessel_jn.py -text
 cudatbx/run_tests.py -text
+cudatbx/scattering/__init__.py -text
+cudatbx/scattering/direct_summation.cu -text
+cudatbx/scattering/direct_summation.cuh -text
+cudatbx/scattering/direct_summation.h -text
+cudatbx/scattering/scattering_ext.cpp -text
+cudatbx/scattering/tst_direct_summation.py -text
 dox.sphinx/Makefile -text
 dox.sphinx/build_docs.sh -text
 dox.sphinx/conf.py -text

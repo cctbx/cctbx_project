@@ -32,3 +32,9 @@ if (env_etc.enable_cuda):
 	      'cufft/ext_double.cpp',
 	      'cufft/ext_float.cpp',
 	     ])
+
+  env_bpl.cudaSharedLibrary(
+    target = "#lib/cudatbx_scattering_ext",
+    source = ['scattering/scattering_ext.cpp',
+              'scattering/direct_summation.cu',
+              ])

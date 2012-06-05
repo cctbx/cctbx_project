@@ -1,4 +1,4 @@
 {
-  "modules_required_for_use": ["scitbx"],
-  "modules_required_for_build": ["scitbx"],
+  "modules_required_for_use": ["iotbx","scitbx"],
+  "modules_required_for_build": ["iotbx","scitbx"],
 }

@@ -3,6 +3,7 @@ import libtbx.load_env
 
 def run():
   tst_list = (
+  "$D/scattering/tst_direct_summation.py",
   "$D/math/special_functions/tst_spherical_bessel_jn.py",
   )
 
