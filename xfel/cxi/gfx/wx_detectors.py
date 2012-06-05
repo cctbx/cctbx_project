@@ -37,9 +37,11 @@ class DetectorPlotFrame (wxtbx.plots.plot_frame) :
     self._t1 = flex.double()
     self._t2 = flex.double()
     self._t3 = flex.double()
+    self._t4 = flex.double()
     self._hit_sample_last = 0
     self._bragg = flex.int()
     self._skewness = flex.double()
+    self._photon_counts = flex.double()
     self._hit_ratio = flex.double()
     wxtbx.plots.plot_frame.__init__(self, *args, **kwds)
 
@@ -93,6 +95,11 @@ class DetectorPlotFrame (wxtbx.plots.plot_frame) :
             fields2 = fields1[-1].strip().split()
             self._t2.append(float(fields2[1]))
             self._skewness.append(float(fields2[2]))
+          elif ("N_PHOTONS" in line) :
+            fields1 = line.split(":")
+            fields2 = fields1[-1].strip().split()
+            self._t4.append(float(fields2[1]))
+            self._photon_counts.append(float(fields2[2]))
       if (force_update_hits) :
         self.update_hit_rate()
       self.plot_panel.show_plot(
@@ -101,7 +108,10 @@ class DetectorPlotFrame (wxtbx.plots.plot_frame) :
         t2=self._t2,
         skewness=self._skewness,
         t3=self._t3,
-        hit_rate=self._hit_ratio)
+        hit_rate=self._hit_ratio,
+        t4=self._t4,
+        photon_counts=self._photon_counts,
+      )
 
   def update_hit_rate (self) :
     if (len(self._t1) >= self.params.average_window) :
@@ -125,7 +135,8 @@ class DetectorPlot (wxtbx.plots.plot_container) :
   def set_run_id (self, run_id) :
     self.run_id = run_id
 
-  def show_plot (self, t1, bragg, t2, skewness, t3, hit_rate) :
+  def show_plot (self, t1, bragg, t2, skewness, t3, hit_rate,
+                 t4, photon_counts) :
     assert (self.run_id is not None)
     self.figure.clear()
     xmin = xmax = None
@@ -136,6 +147,9 @@ class DetectorPlot (wxtbx.plots.plot_container) :
         xmin, xmax = min(min(t2), xmin), max(max(t2), xmax)
       else :
         xmin, xmax = min(t2), max(t2)
+    perm = flex.sort_permutation(t3)
+    t3 = t3.select(perm)
+    hit_rate = hit_rate.select(perm)
     ax1 = self.figure.add_axes([0.1, 0.05, 0.8, 0.4])
     ax2 = self.figure.add_axes([0.1, 0.45, 0.8, 0.15], sharex=ax1)
     ax3 = self.figure.add_axes([0.1, 0.6, 0.8, 0.25], sharex=ax1)
@@ -144,12 +158,12 @@ class DetectorPlot (wxtbx.plots.plot_container) :
     ax3.grid(True, color="0.75")
     ax1.plot(t1, bragg, 'd', color=[0.0,0.5,1.0])
     ax2.plot(t3, hit_rate, 'o-', color=[0.0,1.0,0.0])
-    ax3.plot(t2, skewness, '^', color=[0.8,0.0,0.2])
+    ax3.plot(t4, photon_counts, '^', color=[0.8,0.0,0.2])
     ax1.set_ylabel("# of Bragg spots")
     ax2.set_ylabel("Hit rate (%)")
-    ax3.set_ylabel("XES skewness")
-    if (len(skewness) > 0) :
-      ax3.set_ylim(-1, max(skewness))
+    ax3.set_ylabel("XES photon count")
+    if (len(photon_counts) > 0) :
+      ax3.set_ylim(-1, max(photon_counts))
     ax1.set_xlim(xmin, xmax)
     ax1.set_xlabel("Time")
     for ax in ax1, ax2, ax3:

@@ -281,7 +281,7 @@ class common_mode_correction(mod_event_info):
         # the threshold tunable?
         cspad_mask = self.dark_mask.deep_copy()
 
-        if self.roi is not None:
+        if self.roi is not None and self.common_mode_correction == "chebyshev":
           roi_mask = cspad_mask[self.roi[2]:self.roi[3], :]
           roi_mask = flex.bool(roi_mask.accessor(), False)
           cspad_mask.matrix_paste_block_in_place(
@@ -529,3 +529,6 @@ class common_mode_correction(mod_event_info):
     self.logger.debug("one photon counts: %i" %self.cspad_img.count(1))
     self.logger.debug("two photon counts: %i" %self.cspad_img.count(2))
     self.logger.info("No. photons: %i" %flex.sum(self.cspad_img))
+    s, ms = self.evt_time
+    evt_time = s + ms/1000
+    self.stats_logger.info("N_PHOTONS %.3f %s" %(evt_time, flex.sum(self.cspad_img)))
