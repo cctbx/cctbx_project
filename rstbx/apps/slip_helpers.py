@@ -73,7 +73,8 @@ class minimizer(object):
       )
 
 class wrapper_of_use_case_bp3(object):
-  def __init__(self, raw_image, spotfinder, imageindex, inputai, limiting_resolution, phil_params, sub=None):
+  def __init__(self, raw_image, spotfinder, imageindex, inputai, spot_prediction_limiting_resolution,
+               phil_params, sub=None):
     """MODEL:  polychromatic beam with top hat bandpass profile.
                isotropic mosaicity with top hat half-width; spots are brought into reflecting condition
                by a finite rotation about the axis that is longitudinal to the projection of the q-vector
@@ -86,7 +87,7 @@ class wrapper_of_use_case_bp3(object):
 
     self.detector_origin = col((-inputai.getBase().xbeam, -inputai.getBase().ybeam, 0.))
     crystal = symmetry(unit_cell=inputai.getOrientation().unit_cell(),space_group = "P1")
-    indices = crystal.build_miller_set(anomalous_flag=True, d_min = limiting_resolution)
+    indices = crystal.build_miller_set(anomalous_flag=True, d_min = spot_prediction_limiting_resolution)
     parameters = parameters_bp3(
        indices=indices.indices(), orientation=inputai.getOrientation(),
        incident_beam=col((0.,0.,1.)),
@@ -96,6 +97,12 @@ class wrapper_of_use_case_bp3(object):
        pixel_offset=col((0.5,0.5,0.0)), distance=inputai.getBase().distance,
        detector_origin=self.detector_origin
     )
+
+    from rstbx.apps.dual_resolution_helpers import get_model_ref_limits
+    model_refinement_limiting_resolution = get_model_ref_limits(self,raw_image,spotfinder,
+      imageindex,inputai,spot_prediction_limiting_resolution)
+    print "resolution limits: model refinement %7.2f  spot prediction %7.2f"%(
+      model_refinement_limiting_resolution,spot_prediction_limiting_resolution)
 
     self.ucbp3 = use_case_bp3(parameters=parameters)
     self.ucbp3.set_active_areas(
@@ -107,13 +114,27 @@ class wrapper_of_use_case_bp3(object):
     # done with Miller set reduction
     from annlib_ext import AnnAdaptorSelfInclude as AnnAdaptor
     body_pixel_reference = flex.double()
+    limited_body_pixel_reference = flex.double()
     for spot in spotfinder.images[imageindex]["goodspots"]:
       for pxl in spot.bodypixels:
         body_pixel_reference.append(pxl.y + 0.5)
         body_pixel_reference.append(pxl.x + 0.5)
+        pixel_center = col((pxl.x,pxl.y,0.0))*raw_image.pixel_size
+        offs = self.detector_origin+pixel_center
+        radius_mm = math.hypot(offs[0],offs[1])
+        pixel_two_theta_rad = math.atan(radius_mm/inputai.getBase().distance)
+        pixel_d_ang = (  inputai.wavelength / (2.*math.sin (pixel_two_theta_rad/2.)) )
+        if pixel_d_ang > model_refinement_limiting_resolution:
+          limited_body_pixel_reference.append(pxl.y + 0.5)
+          limited_body_pixel_reference.append(pxl.x + 0.5)
 
-    self.N_bodypix = body_pixel_reference.size()//2
-    self.ucbp3.set_adaptor(body_pixel_reference)
+    self.model_refinement_limiting_resolution = model_refinement_limiting_resolution
+    # model refinement resolution limits must be applied in two places: 1) the reference
+    #  list of body pixels to the ann adaptor, and 2) the enclosed_pixels_and_margin_pixels() function call
+    if self.model_refinement_limiting_resolution > 0.:
+      self.ucbp3.set_adaptor(limited_body_pixel_reference)
+    else:
+      self.ucbp3.set_adaptor(body_pixel_reference)
 
   def set_variables(self, orientation, wave_HI, wave_LO, half_mosaicity_deg):
     half_mosaicity_rad = half_mosaicity_deg * math.pi/180.
@@ -127,7 +148,10 @@ class wrapper_of_use_case_bp3(object):
     swapped_origin = (-self.detector_origin[1],-self.detector_origin[0],0.)
     self.ucbp3.spot_rectangles(swapped_origin)
     self.ucbp3.spot_rectregions(swapped_origin,1.0)
-    self.ucbp3.enclosed_pixels_and_margin_pixels()
+    if self.model_refinement_limiting_resolution > 0.:
+      self.ucbp3.enclosed_pixels_and_margin_pixels(self.model_refinement_limiting_resolution)
+    else:
+      self.ucbp3.enclosed_pixels_and_margin_pixels()
 
     return self.ucbp3.score_only_detail(weight=50.)
 
@@ -755,7 +779,7 @@ class slip_callbacks:
     wrapbp3 = wrapper_of_use_case_bp3( raw_image = frame.pyslip.tiles.raw_image,
       spotfinder = self.spotfinder, imageindex = self.frames[self.image_number],
       inputai = self.inputai,
-      limiting_resolution = self.limiting_resolution,
+      spot_prediction_limiting_resolution = self.limiting_resolution,
       phil_params = frame.inherited_params)
     wrapbp3.set_variables( orientation = self.inputai.getOrientation(),
                            wave_HI = self.inputai.wavelength*0.9975,
@@ -798,7 +822,7 @@ class slip_callbacks:
     wrapbp3 = wrapper_of_use_case_bp3( raw_image = self.imagefiles.images[self.image_number],
       spotfinder = self.spotfinder, imageindex = self.frames[self.image_number],
       inputai = self.inputai,
-      limiting_resolution = self.limiting_resolution,
+      spot_prediction_limiting_resolution = self.limiting_resolution,
       phil_params = self.horizons_phil,
       sub = subpixel)
 
