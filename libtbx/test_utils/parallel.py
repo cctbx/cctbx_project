@@ -189,7 +189,9 @@ def run_command_list(cmd_list,
   if (len(long_jobs) > 0) :
     print >> out_, ""
     print >> out_, "WARNING: the following jobs took at least 60 seconds each:"
-    for cmd, runtime in zip(long_jobs, runtimes) :
+    jobs_and_timings = list(zip(long_jobs, runtimes))
+    jobs_and_timings.sort(lambda x,y: cmp(x[1], y[1]))
+    for cmd, runtime in jobs_and_timings :
       print >> out_, "  " + cmd + " : %.1fs" % runtime
     print >> out_, "Please try to reduce overall runtime - consider splitting up these tests."
   if (len(failures) > 0) :
