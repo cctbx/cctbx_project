@@ -29,6 +29,9 @@ data = None
   .multiple = True
   .help = Directory containing integrated data in pickle format.  Repeat to \
     specify additional directories.
+data_subset = 0
+  .type = int
+  .help = 0: use all data / 1: use odd-numbered frames / 2: use even-numbered frames
 model = None
   .type = str
   .help = PDB filename containing atomic coordinates & isomorphous cryst1 record
@@ -96,14 +99,24 @@ output {
     .type = str
     .help = Title for run - will appear in MTZ file header
 }
+plot_single_index_histograms = False
+  .type = bool
 """
 
-def get_observations (data_dirs):
+def get_observations (data_dirs,data_subset):
   file_names = []
   for dir_name in data_dirs :
     for file_name in os.listdir(dir_name):
-      if (file_name.endswith(".pickle")):
-        file_names.append(os.path.join(dir_name, file_name))
+      if (file_name.endswith("_00000.pickle")):
+        if data_subset==0 or \
+          (data_subset==1 and (int(os.path.basename(file_name).split("_00000.pickle")[0][-1])%2==1)) or \
+          (data_subset==2 and (int(os.path.basename(file_name).split("_00000.pickle")[0][-1])%2==0)):
+          file_names.append(os.path.join(dir_name, file_name))
+      elif (file_name.endswith(".pickle")):
+        if data_subset==0 or \
+          (data_subset==1 and (int(os.path.basename(file_name).split(".pickle")[0][-1])%2==1)) or \
+          (data_subset==2 and (int(os.path.basename(file_name).split(".pickle")[0][-1])%2==0)):
+          file_names.append(os.path.join(dir_name, file_name))
   print "Number of pickle files found:", len(file_names)
   print
   return file_names
@@ -814,7 +827,7 @@ def run(args):
   #resolution_cells = recip_sphere_volume/recip_cell_volume
   #print "Number of asu's in sphere=",resolution_cells/miller_set.size()
 
-  frame_files = get_observations(work_params.data)
+  frame_files = get_observations(work_params.data, work_params.data_subset)
   scaler = scaling_manager(
     miller_set=miller_set,
     i_model=i_model,
@@ -941,6 +954,7 @@ def show_overall_observations(
     #     method exists now to convert partials to fulls.
     I_sum = 0
     I_sigI_sum = 0
+    if work_params.plot_single_index_histograms: import numpy as np
     for i in obs.binner().array_indices(i_bin) :
       index = obs.indices()[i]
       if (index in ISIGI) :
@@ -953,6 +967,15 @@ def show_overall_observations(
           N += 1
           m += t[0]
         I_sum += m
+        if work_params.plot_single_index_histograms is False or N<30: continue
+        print "Miller %20s n-obs=%4d  sum-I=%10.0f"%(index, N, m)
+        plot_n_bins = N//10
+        hist,bins = np.histogram([t[0] for t in ISIGI[index]])
+        width = 0.7*(bins[1]-bins[0])
+        center = (bins[:-1]+bins[1:])/2
+        import matplotlib.pyplot as plt
+        plt.bar(center, hist, align="center", width=width)
+        plt.show()
 
     if (sel_measurements > 0):
       bin = resolution_bin(
