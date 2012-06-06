@@ -415,9 +415,16 @@ def env_laser_status(env, laser_id):
      was on for that particular shot. Bear in mind that sample hit by the laser
      will only encounter the X-rays some time after, depending on the flow rate.
   """
-  if (env is not None):
-    laser_off = env.epicsStore().value("CXI:LAS:SHT:%02i:IN" %laser_id).values[0]
-    laser_on = env.epicsStore().value("CXI:LAS:SHT:%02i:OUT" %laser_id).values[0]
+
+  if env is not None:
+    pv_in = env.epicsStore().value('CXI:LAS:SHT:%02i:IN' % laser_id)
+    if pv_in is None or len(pv_in.values) != 1:
+      return
+    pv_out = env.epicsStore().value('CXI:LAS:SHT:%02i:OUT' % laser_id)
+    if pv_out is None or len(pv_out.values) != 1:
+      return
+    laser_off = pv_in.values[0]
+    laser_on = pv_out.values[0]
     assert not (laser_on and laser_off)
     return bool(laser_on)
 
