@@ -9,7 +9,7 @@ import os
 import sys
 
 
-def get_module_tests (module_name, verbose=True, quick=True, valgrind=False) :
+def get_module_tests (module_name, valgrind=False) :
   dist_path = libtbx.env.dist_path(module_name)
   if (dist_path is None) :
     raise Sorry("'%s' is not a valid CCTBX module." % module_name)
@@ -25,11 +25,11 @@ def get_module_tests (module_name, verbose=True, quick=True, valgrind=False) :
   assert (build_path is not None) and (dist_path is not None)
   commands = []
   co = group_args(
-    verbose=verbose,
-    quick=quick,
+    verbose=False,
+    quick=True,
     valgrind=valgrind)
   for cmd in test_utils.iter_tests_cmd(
-      co=None,#co,
+      co=co,
       build_dir=build_path,
       dist_dir=dist_path,
       tst_list=tst_list) :
@@ -193,10 +193,12 @@ def run_command_list(cmd_list,
       print >> out_, "  " + cmd + " : %.1fs" % runtime
     print >> out_, "Please try to reduce overall runtime - consider splitting up these tests."
   if (len(failures) > 0) :
+    print >> out_, ""
     print >> out_, "ERROR: the following jobs returned non-zero exit codes:"
     for command in failures :
       print >> out_, "  " + command
     print >> out_, "Please verify these tests manually."
+    print >> out_, ""
 
 def make_commands (files) :
   commands = []
