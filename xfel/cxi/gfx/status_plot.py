@@ -33,23 +33,31 @@ def format_time(x, pos=None):
   lt = time.localtime(x)
   return time.strftime("%H:%M:%S", lt)
 
-def draw_plot (figure, t, det_z, si_foil, wavelength, bragg=None,
-                run_id=None) :
+def draw_plot (figure, t, det_z, laser01, laser04, laser04_power, si_foil,
+               wavelength, bragg=None, run_id=None) :
   assert (len(t) == len(si_foil))
   import matplotlib.ticker as ticker
   left, width = 0.1, 0.8
-  rect1 = [left, 0.65, width, 0.25] # detector Z
-  rect2 = [left, 0.40, width, 0.25] # mm of Si-foil
-  rect3 = [left, 0.15, width, 0.25] # wavelength
+  rect1 = [left, 0.65, width, 0.15] # detector Z
+  rect2 = [left, 0.50, width, 0.15] # mm of Si-foil
+  rect3 = [left, 0.35, width, 0.15] # wavelength
   #rect4 = [left, 0.05, width, 0.4] # bragg spots
+  rect5 = [left, 0.20, width, 0.15] # Laser #1 & #4
+  rect6 = [left, 0.05, width, 0.15] # Laser #4 power
   ax1 = figure.add_axes(rect1)
   ax2 = figure.add_axes(rect2, sharex=ax1)
   ax3 = figure.add_axes(rect3, sharex=ax1)
   #ax4 = figure.add_axes(rect4, sharex=ax1)
+  ax51 = figure.add_axes(rect5, sharex=ax1)
+  ax52 = ax51.twinx()
+  ax6 = figure.add_axes(rect6, sharex=ax1)
   ax1.grid(True, color="0.75")
   ax2.grid(True, color="0.75")
   ax3.grid(True, color="0.75")
   #ax4.grid(True, color="0.75")
+  ax51.grid(True, color="0.75")
+  ax52.grid(True, color="0.75")
+  ax6.grid(True, color="0.75")
   try :
     ax1.plot(t, det_z, linewidth=1, color=[1.0, 0.0, 0.0])
   except ValueError, e :
@@ -63,17 +71,23 @@ def draw_plot (figure, t, det_z, si_foil, wavelength, bragg=None,
   ax3.plot(t, wavelength, linewidth=1, color=[0.0,1.0,0.5])
   #ax4.bar(t, bragg, facecolor=[0.0,0.5,1.0], edgecolor=[0.0,0.5,1.0])
   #ax4.plot(t, bragg, linewidth=1, color=[0.0,0.5,1.0])
+  ax51.plot(t, laser01, linewidth=1, color=[1.0,0.0,0.5])
+  ax52.plot(t, laser04, linewidth=1, color=[0.0,1.0,0.5])
+  ax6.plot(t, laser04_power, linewidth=1, color=[0.0,1.0,0.5])
   ax1.set_ylabel("Detector Z (mm)")
   ax2.set_ylabel("Si foil (mm)")
-  ax3.set_ylabel("Wavelength")
+  ax3.set_ylabel("Wavelength (A)")
   #ax4.set_ylabel("Bragg spots")
+  ax51.set_ylabel("Laser #1", color=[1.0,0.0,0.5])
+  ax52.set_ylabel("Laser #4", color=[0.0,1.0,0.5])
+  ax6.set_ylabel("Laser #4 power")
   ax1.set_xlabel("Time")
-  for ax in ax1, ax2, ax3: #, ax4:
-    if (ax is not ax3) :
+  for ax in ax1, ax2, ax3, ax51, ax52, ax6: #, ax4:
+    if (ax is not ax6) :
       for label in ax.get_xticklabels():
         label.set_visible(False)
       ax.get_yticklabels()[0].set_visible(False)
-  ax3.xaxis.set_major_formatter(ticker.FuncFormatter(format_time))
+  ax6.xaxis.set_major_formatter(ticker.FuncFormatter(format_time))
   if (run_id is not None) :
     ax1.set_title("CXI experiment status - run %d" % run_id)
   else :
@@ -88,8 +102,9 @@ class UpdateEvent (wx.PyEvent) :
   """
   Contains new data for plotting (one x series and three y series).
   """
-  def __init__ (self, t, det_z, si_foil, wavelength) :
-    self.data = (t, det_z, si_foil, wavelength)
+  def __init__ (self, t, det_z, laser01, laser04, laser04_power, si_foil,
+                wavelength) :
+    self.data = (t, det_z, laser01, laser04, laser04_power, si_foil, wavelength)
     wx.PyEvent.__init__(self)
     self.SetEventType(UPDATE_ID)
 
@@ -127,9 +142,9 @@ class StatusFrame (wxtbx.plots.plot_frame) :
       figure_size=(16,10))
 
   def OnUpdate (self, event) :
-    t, det_z, si_foil, wavelength = event.data
-    self.plot_panel.show_plot(t, det_z, si_foil, wavelength,
-      run_id=self.run_id)
+    t, det_z, laser01, laser04, laser04_power, si_foil, wavelength = event.data
+    self.plot_panel.show_plot(t, det_z, laser01, laser04, laser04_power,
+                              si_foil, wavelength, run_id=self.run_id)
 
   def OnSetRunNumber (self, event) :
     self.run_id = event.run_id

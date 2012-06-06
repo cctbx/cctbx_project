@@ -1,6 +1,3 @@
-# XXX Get the laser 4 status into this thing!
-
-
 import logging
 import threading
 import wx
@@ -44,8 +41,7 @@ class StatusFrame_thread(threading.Thread):
     self.lock.acquire()
 
 class mod_daq_status (object) :
-  def __init__ (self, address) :
-    self.address = address
+  def __init__ (self) :
     self.initialize()
     self.logger = logging.getLogger(__name__)
     self.logger.setLevel(logging.INFO)
@@ -62,6 +58,9 @@ class mod_daq_status (object) :
     self._t = []
     self._wavelength = []
     self._det_z = []
+    self._laser01 = []
+    self._laser04 = []
+    self._laser04_power = []
     self._si_foil = []
 
   def beginjob(self, evt, env):
@@ -74,12 +73,10 @@ class mod_daq_status (object) :
   def event (self, evt, env) :
     if (evt.get("skip_event")) :
       return
-    det_z = cspad_tbx.env_detz(env)
-    si_foil = cspad_tbx.env_sifoil(env)
-    wavelength = cspad_tbx.evt_wavelength(evt)
-    t = evt.getTime()
-    s = None
     self.nshots += 1
+
+    s = None
+    t = evt.getTime()
     if (t is not None):
       s = t.seconds() + (t.nanoseconds() / 1000000000)
     else :
@@ -87,29 +84,68 @@ class mod_daq_status (object) :
       self.logger.warn("event(): no timestamp, shot skipped")
       evt.put(True, "skip_event")
       return
+    if (not isinstance(s, float)) :
+      raise RuntimeError("Wrong type for 's': %s" % type(s).__name__)
+
+    det_z = cspad_tbx.env_detz(env)
     if (det_z is None):
       self.nfail += 1
       self.logger.warn("event(): no distance, shot skipped")
       evt.put(True, "skip_event")
       return
+
+    laser01 = cspad_tbx.env_laser_status(env, 1)
+    if laser01 is None:
+      self.nfail += 1
+      self.logger.warn("event(): no status for laser 1, shot skipped")
+      evt.put(True, 'skip_event')
+      return
+
+    laser04 = cspad_tbx.env_laser_status(env, 4)
+    if laser04 is None:
+      self.nfail += 1
+      self.logger.warn("event(): no status for laser 4, shot skipped")
+      evt.put(True, 'skip_event')
+      return
+
+    # Laser power for fourth laser.  The control name was provided by
+    # Jan Kern.  XXX Move to its own function in cspad_tbx?
+    laser04_power = None
+    if env is not None:
+      pv = env.epicsStore().value('CXI:LAS:MMN:02:ROT.RBV')
+      if pv is not None and len(pv.values) == 1:
+        laser04_power = pv.values[0]
+    if laser04_power is None:
+      self.nfail += 1
+      self.logger.warn("event(): no power for laser 4, shot skipped")
+      evt.put(True, 'skip_event')
+      return
+
+    si_foil = cspad_tbx.env_sifoil(env)
     if (si_foil is None):
       self.nfail += 1
       self.logger.warn("event(): no Si-foil thickness, shot skipped")
       evt.put(True, "skip_event")
       return
+    if (not (isinstance(si_foil, float) or isinstance(si_foil, int))) :
+      raise RuntimeError("Wrong type for 'si_foil': %s"% type(si_foil).__name__)
+
+    wavelength = cspad_tbx.evt_wavelength(evt)
     if (wavelength is None):
       self.nfail += 1
       self.logger.warn("event(): no wavelength, shot skipped")
       evt.put(True, "skip_event")
       return
-    if (not isinstance(s, float)) :
-      raise RuntimeError("Wrong type for 's': %s" % type(s).__name__)
-    if (not (isinstance(si_foil, float) or isinstance(si_foil, int))) :
-      raise RuntimeError("Wrong type for 'si_foil': %s"% type(si_foil).__name__)
+
+    # In order to keep all arrays the same length, only append once
+    # all values have been successfully obtained.
     self._t.append(s)
     self._si_foil.append(si_foil)
     self._wavelength.append(wavelength)
     self._det_z.append(det_z)
+    self._laser01.append(laser01)
+    self._laser04.append(laser04)
+    self._laser04_power.append(laser04_power)
     if (self.nshots % 120 == 0) :
       self.update_plot()
 
@@ -117,8 +153,9 @@ class mod_daq_status (object) :
     """
     Post an update event with current plot values to redraw the window.
     """
-    event = status_plot.UpdateEvent(self._t, self._det_z, self._si_foil,
-      self._wavelength)
+    event = status_plot.UpdateEvent(
+      self._t, self._det_z, self._laser01, self._laser04, self._laser04_power,
+      self._si_foil, self._wavelength)
     wx.PostEvent(self.window, event)
 
   def endjob (self, env) :
