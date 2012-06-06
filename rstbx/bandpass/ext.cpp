@@ -595,6 +595,7 @@ namespace rstbx { namespace bandpass {
     bool subpixel_translations_set;
     scitbx::af::shared<double> subpixel;
     void set_subpixel(scitbx::af::shared<double> s){
+      subpixel_translations_set=true;
       subpixel=s;}
     void set_mosaicity(double const& half_mosaicity_rad){
       P.half_mosaicity_rad=half_mosaicity_rad;}
