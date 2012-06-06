@@ -57,6 +57,22 @@ Exception_not_expected = RuntimeError("Exception not expected.")
 
 class Default: pass
 
+def test_usage (cmd) :
+  result = easy_run.fully_buffered(cmd)
+  if (result.return_code == 0) :
+    return True
+  else :
+    if (len(result.stderr_lines) > 0) :
+      if ("Usage" in result.stdout_lines[0]) :
+        return True
+      else :
+        raise Sorry("Bad stderr output from %s:\n%s" % (cmd,
+          "\n".join(result.stderr_lines)))
+    else :
+      raise Sorry("Bad return code from %s - dumping stdout:\n%s" %
+        (cmd, "\n".join(result.stdout_lines)))
+  assert 0
+
 def run_tests(build_dir, dist_dir, tst_list, display_times=False):
   if display_times:
     t0=time.time()

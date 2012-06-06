@@ -1052,6 +1052,7 @@ libtbx/command_line/show_numpy_version.py svneol=native#text/x-python
 libtbx/command_line/show_python_sys_executable.py svneol=native#text/x-python
 libtbx/command_line/start_process.py -text
 libtbx/command_line/tcsh.sh -text
+libtbx/command_line/test_usage.py svneol=native#text/x-python
 libtbx/command_line/wait_for_file.py svneol=native#text/x-python
 libtbx/cpp_function_name.py -text
 libtbx/crossmingw.py -text
