@@ -63,6 +63,13 @@ def pre_screen_file(filename, atom_exch, alt_atom_exch):
     line=line.ljust(80)
     type_test = line[0:6]
     if type_test in ("ATOM  ", "HETATM", "TER   ", "ANISOU", "SIGATM", "SIGUIJ", "LINK  "):
+      #--make any left-justified residue names right-justified------------------
+      if re.match(r'.{17}([a-zA-Z0-9])  ',line):
+        line = re.sub(r'\A(.{17})(.)\s\s',r'\g<1>  \g<2>',line)
+      elif re.match(r'.{17}([a-zA-Z0-9][a-zA-Z0-9]) ',line):
+        line = re.sub(r'\A(.{17})(..)\s',r'\g<1> \g<2>',line)
+      #-------------------------------------------------------------------------
+
       #--pre-screen for CNS Xplor RNA base names and Coot RNA base names--------
       if re.match(r'.{17}(GUA|ADE|CYT|THY|URI)',line):
         line = re.sub(r'\A(.{17})(.)..',r'\g<1>  \g<2>',line)
@@ -70,12 +77,6 @@ def pre_screen_file(filename, atom_exch, alt_atom_exch):
         line = re.sub(r'\A(.{17}).(.).',r'\g<1>  \g<2>',line)
       #-------------------------------------------------------------------------
 
-      #--make any left-justified residue names right-justified------------------
-      if re.match(r'.{17}([a-zA-Z])  ',line):
-        line = re.sub(r'\A(.{17})(.)\s\s',r'\g<1>  \g<2>',line)
-      elif re.match(r'.{17}([a-zA-Z][a-zA-Z]) ',line):
-        line = re.sub(r'\A(.{17})(..)\s',r'\g<1> \g<2>',line)
-      #-------------------------------------------------------------------------
       entry = line[12:20]
       clean_entry = entry[0:4] + " " + entry[5:8]
       if atom_exch.has_key(clean_entry):
@@ -165,6 +166,13 @@ def remediate(filename, atom_exch, remediated_out, remark4, f=None):
       if remark_flag == False:
         print_line += remark4 + "\n"
         remark_flag = True
+      #--make any left-justified residue names right-justified------------------
+      if re.match(r'.{17}([a-zA-Z0-9])  ',line):
+        line = re.sub(r'\A(.{17})(.)\s\s',r'\g<1>  \g<2>',line)
+      elif re.match(r'.{17}([a-zA-Z0-9][a-zA-Z0-9]) ',line):
+        line = re.sub(r'\A(.{17})(..)\s',r'\g<1> \g<2>',line)
+      #-------------------------------------------------------------------------
+
       #--pre-screen for CNS Xplor RNA base names and Coot RNA base names--------
       if re.match(r'.{17}(GUA|ADE|CYT|THY|URI)',line):
         line = re.sub(r'\A(.{17})(.)..',r'\g<1>  \g<2>',line)
@@ -172,12 +180,6 @@ def remediate(filename, atom_exch, remediated_out, remark4, f=None):
         line = re.sub(r'\A(.{17}).(.).',r'\g<1>  \g<2>',line)
       #-------------------------------------------------------------------------
 
-      #--make any left-justified residue names right-justified------------------
-      if re.match(r'.{17}([a-zA-Z])  ',line):
-        line = re.sub(r'\A(.{17})(.)\s\s',r'\g<1>  \g<2>',line)
-      elif re.match(r'.{17}([a-zA-Z][a-zA-Z]) ',line):
-        line = re.sub(r'\A(.{17})(..)\s',r'\g<1> \g<2>',line)
-      #-------------------------------------------------------------------------
       entry = line[12:20]
       previous = current
       current = line[18:26]
