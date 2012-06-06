@@ -677,9 +677,9 @@ if __name__ == '__main__':
         sample_to_source_vec = matrix.col(cfc.get_c('sample_to_source').normalize())
         s0 = (- 1.0 / wavelength) * sample_to_source_vec
         dmin = 1.20117776325
-        
+
         r = reeke_model(ub, axis, s0, dmin, phi_beg, phi_end, margin)
-        
+
         indices = r.generate_indices()
 
         for hkl in indices:
