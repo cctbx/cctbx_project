@@ -351,7 +351,7 @@ class common_mode_correction(mod_event_info):
               self.sum_common_mode += common_mode
               self.sumsq_common_mode += common_mode**2
 
-              # Apply the rounded integer common mode correction to the
+              # Apply the common mode correction to the
               # section, and paste it back into the image.
               self.cspad_img.matrix_paste_block_in_place(
                 block    = section_img - common_mode,
