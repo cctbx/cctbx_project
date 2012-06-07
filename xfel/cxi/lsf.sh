@@ -131,7 +131,7 @@ fi
 test -n "${EXP}" -a -z "${exp}" && exp="${EXP}"
 exp=`ssh ${NODE} \
     "find /reg/data -maxdepth 3 -name \"${exp}\" -type d 2> /dev/null"`
-if ! test -d "${exp}" 2> /dev/null; then
+if ! ssh ${NODE} "test -d \"${exp}\" 2> /dev/null"; then
     echo "Could not find experiment subdirectory for ${exp}" > /dev/stderr
     exit 1
 fi
