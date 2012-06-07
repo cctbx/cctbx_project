@@ -539,15 +539,17 @@ def evt_pulse_length(evt):
 
 
 def evt_beam_charge(evt):
-  """The evt_beam_charge() function returns the charge of the pulse (in nC).
+  """The evt_beam_charge() function returns the charge of the pulse in
+  nC.
 
   @param evt Event data object, a configure object
-  @return    Pulse charge, in fs
+  @return    Pulse charge, in nC
   """
 
-  if (evt is not None):
+  if evt is not None:
     ebeam = evt.getEBeam()
-    return ebeam.fEbeamCharge
+    if ebeam is not None:
+      return ebeam.fEbeamCharge
   return None
 
 
