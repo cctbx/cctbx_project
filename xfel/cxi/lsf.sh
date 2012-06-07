@@ -244,12 +244,13 @@ directories=`awk -F=                                    \
 ssh ${NODE} "mkdir -p \"${out}/stdout\" ${directories}"
 
 # Copy the configuration files and the submission script to ${out}.
-# Submit the analysis of all streams to the queueing system.
+# Submit the analysis of all streams to the queueing system from
+# ${NODE}.
 scp -pq "${cfg}"                         "${NODE}:${out}/pyana.cfg"
 scp -pq "${tmpdir}"/pyana_s[0-9][0-9].cfg \
         "${tmpdir}"/pyana_s[0-9][0-9].sh  \
         "${tmpdir}/submit.sh"             "${NODE}:${out}"
-"${tmpdir}/submit.sh"
+ssh ${NODE} "cd \"${PWD}\" && \"${out}/submit.sh\""
 rm -fr "${tmpdir}"
 
 echo "Output directory: ${out}"
