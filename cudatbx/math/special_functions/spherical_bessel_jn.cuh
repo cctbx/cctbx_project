@@ -2,7 +2,7 @@
 #define CUDATBX_SPHERICAL_BESSEL_JN_CUH
 
 #include <cudatbx/cuda_base.cuh>
-#include <cudatbx/math/factorials.h>
+#include <cudatbx/math/factorials.cuh>
 #include <cudatbx/math/special_functions/spherical_bessel_jn.h>
 
 namespace cudatbx {

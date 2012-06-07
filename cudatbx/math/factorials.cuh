@@ -1,5 +1,5 @@
-#ifndef CUDATBX_FACTORIALS_H
-#define CUDATBX_FACTORIALS_H
+#ifndef CUDATBX_FACTORIALS_CUH
+#define CUDATBX_FACTORIALS_CUH
 
 #include <cudatbx/cuda_base.cuh>
 
@@ -36,4 +36,4 @@ namespace math {
 
 }
 }
-#endif // CUDATBX_FACTORIALS_H
+#endif // CUDATBX_FACTORIALS_CUH
