@@ -150,7 +150,14 @@ def cbcaa(config, sections):
     return ([npix_quad, npix_quad], aa)
 
   bc     = [0, 0]
-  q_mask = config.quadMask()
+
+  # XXX Make up a quadrant mask for the emission detector.  Needs to
+  # be checked!
+  if len(sections) == 1:
+    q_mask = 1
+  else:
+    q_mask = config.quadMask()
+
   for q in xrange(len(sections)):
     if (not((1 << q) & q_mask)):
       continue
@@ -159,7 +166,12 @@ def cbcaa(config, sections):
     bc     = [bc[0] + corner[1] / len(sections),
               bc[1] + corner[0] / len(sections)]
 
-    s_mask = config.roiMask(q)
+    # XXX Make up section mask for the emission detector.  Needs to be
+    # checked!
+    if len(sections) == 1:
+      s_mask = config.roiMask()
+    else:
+      s_mask = config.roiMask(q)
     for s in xrange(len(sections[q])):
       if (not((1 << s) & s_mask)):
         continue
@@ -183,7 +195,13 @@ def CsPad2x2Image(data, config, sections):
   assert (data.shape[2] == 2)
 
   det  = numpy.zeros((2 * 185, 2 * 194 + 3))
-  mask = map(config.sections, xrange(2))
+
+  # XXX config.sections is now a function returning a list?  Since the
+  # masking was disabled in December commenting out this bit does not
+  # cause any further breakage XXX Does this still work for runs 4 and
+  # 5?
+#  s = config.sections
+#  mask = map(s, xrange(2))
 
   # For this detector, the quadrant index is always zero.
   q_idx = 0

@@ -142,8 +142,16 @@ class common_mode_correction(mod_event_info):
     # XXX Not needed now that the distance is read in the event?
     env.update(evt)
 
-    self.config = env.getConfig(xtc.TypeId.Type.Id_CspadConfig, self.address)
-    if (self.config is None):
+    # XXX Quick hack to get the config object for the detector at
+    # self.address.
+    if self.address == 'CxiDs1-0|Cspad-0':
+      self.config = env.getConfig(
+        xtc.TypeId.Type.Id_CspadConfig, self.address)
+    elif self.address == 'CxiSc1-0|Cspad2x2-0':
+      self.config = env.getConfig(
+        xtc.TypeId.Type.Id_Cspad2x2Config, self.address)
+
+    if self.config is None:
       self.logger.error("beginjob(): no config")
 
     (self.beam_center, self.active_areas) = \
