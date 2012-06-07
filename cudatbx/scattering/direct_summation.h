@@ -19,6 +19,9 @@
 #include <scitbx/vec3.h>
 #include <scitbx/array_family/shared.h>
 
+// set precision for calculations on GPU
+#define fType float
+
 namespace cudatbx {
 namespace scattering {
 
@@ -38,7 +41,7 @@ namespace scattering {
 
   private:
     int sf_size;
-    float* sf_real, * sf_imag;
+    fType* sf_real, * sf_imag;
   };
 
   /* ==========================================================================
