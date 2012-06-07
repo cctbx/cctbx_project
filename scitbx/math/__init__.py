@@ -34,6 +34,24 @@ def r3_rotation_cos_rotation_angle_from_matrix(r):
     -1.0
     )
 
+def r3_rotation_matrix_logarithm(r):
+  """
+  Chirikjian, G. Stochastic models, information theory, and Lie groups.
+  Volume 2, pp 39-40.
+  Applied and Numerical Harmonic Analysis, Birkhauser
+  """
+
+  cos_theta = r3_rotation_cos_rotation_angle_from_matrix( r )
+
+  if cos_theta < 1.0:
+      theta = math.acos( cos_theta )
+      a1 = theta / math.sin( theta )
+
+  else:
+      a1 = 1.0
+
+  return 0.5 * a1 * ( r - r.transpose() )
+
 def r3_rotation_average_rotation_matrix_from_matrices(*matrices):
   """
   Calculates an approximation of the Riemannian (geometric) mean through
@@ -56,6 +74,43 @@ def r3_rotation_average_rotation_matrix_from_matrices(*matrices):
     )
 
   return r3_rotation_unit_quaternion_as_matrix( average.normalize() )
+
+def r3_rotation_average_rotation_via_lie_algebra(matrices, maxiter = 100, convergence = 1E-4):
+  """
+  Calculates an approximation of the Riemannian (geometric) mean by iteratively
+  averaging the rotation matrix logarithms
+
+  Nonparametric Second-order Theory of Error Propagation on Motion Groups (2008).
+  Y. Wang & G. S. Chirikjian, The International Journal of Robotics Research 27, 1258-1273
+  """
+
+  if not matrices:
+    raise TypeError, "Average of empty sequence"
+
+  if maxiter < 0 or convergence <= 0:
+    raise ValueError, "Invalid iteration parameters"
+
+  from scitbx.math import so3_lie_algebra
+  import operator
+
+  conv_sq = convergence * convergence
+  norm = 1.0 / len( matrices )
+  current = matrices[0]
+
+  for i in range( maxiter ):
+    inverse = current.inverse()
+    log_diff = norm * reduce(
+      operator.add,
+      [ so3_lie_algebra.element.from_rotation_matrix( matrix = inverse * m )
+        for m in matrices ]
+      )
+
+    if log_diff.norm_sq() < conv_sq:
+      return current
+
+    current *= log_diff.exponential()
+
+  raise RuntimeError, "Iteration limit exceeded"
 
 def euler_angles_as_matrix(angles, deg=False):
   if (deg):
