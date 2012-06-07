@@ -298,13 +298,23 @@ class common_mode_correction(mod_event_info):
             i_column=0)
 
         # Extract each active section from the assembled detector
-        # image and apply the common mode correction.
-        q_mask = self.config.quadMask()
+        # image and apply the common mode correction.  XXX Make up a
+        # quadrant mask for the emission detector.  Needs to be
+        # checked!
+        if len(self.sections) == 1:
+          q_mask = 1
+        else:
+          q_mask = self.config.quadMask()
         for q in xrange(len(self.sections)):
           if (not((1 << q) & q_mask)):
             continue
 
-          s_mask = self.config.roiMask(q)
+          # XXX Make up section mask for the emission detector.  Needs
+          # to be checked!
+          if len(self.sections) == 1:
+            s_mask = self.config.roiMask()
+          else:
+            s_mask = self.config.roiMask(q)
           for s in xrange(len(self.sections[q])):
             # XXX DAQ misconfiguration?  This mask appears not to work
             # reliably for the Sc1 detector.
