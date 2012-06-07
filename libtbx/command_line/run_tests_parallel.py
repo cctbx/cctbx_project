@@ -2,6 +2,7 @@
 import libtbx.test_utils.parallel
 from libtbx.utils import Sorry, Usage
 import libtbx.phil
+import random
 import os
 import sys
 
@@ -14,6 +15,8 @@ module = None
   .multiple = True
 nproc = 1
   .type=  int
+shuffle = False
+  .type = bool
 """)
 
 def run (args) :
@@ -50,6 +53,8 @@ def run (args) :
     all_tests.extend(module_tests)
   if (len(all_tests) == 0) :
     raise Sorry("No test scripts found in %s." % params.directory)
+  if (params.shuffle) :
+    random.shuffle(all_tests)
   print "Running the following %d tests on %d processors:" % (len(all_tests),
     params.nproc)
   for test in all_tests :
