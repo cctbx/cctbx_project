@@ -21,9 +21,6 @@ if ! relinfo > /dev/null 2>&1; then
     exit 1
 fi
 
-# Absolute path to the cxi directory.
-CXI="/reg/data/ana11/cxi"
-
 # A random host that has the scratch directory mounted.  psexport is
 # preferred over psanafeh, since the latter is not accessible from
 # everywhere.
@@ -101,11 +98,6 @@ while test $# -ge 0; do
             ;;
 
         -x)
-            # Experiment subdirectory within the ${CXI}.
-            if ! ssh ${NODE} "test -d \"${CXI}/$2\" 2> /dev/null"; then
-                echo "exp must be a subdirectory of ${CXI}" > /dev/stderr
-                exit 1
-            fi
             exp="$2"
             shift
             shift
@@ -135,10 +127,18 @@ if test $# -gt 0; then
 fi
 
 # Take ${exp} from the environment unless overridden on the command
-# line.  Construct an absolute path to the directory with the XTC
-# files as well as a sorted list of unique stream numbers for ${run}.
-test -n "${EXP}" -a -z "${exp}"&& exp="${EXP}"
-xtc="${CXI}/${exp}/xtc"
+# line, and find its absolute path under /reg/data.
+test -n "${EXP}" -a -z "${exp}" && exp="${EXP}"
+exp=`ssh ${NODE} \
+    "find /reg/data -maxdepth 3 -name \"${exp}\" -type d 2> /dev/null"`
+if ! test -d "${exp}" 2> /dev/null; then
+    echo "Could not find experiment subdirectory for ${exp}" > /dev/stderr
+    exit 1
+fi
+
+# Construct an absolute path to the directory with the XTC files as
+# well as a sorted list of unique stream numbers for ${run}.
+xtc="${exp}/xtc"
 streams=`ssh ${NODE} "ls ${xtc}/e*-r${run}-s* 2> /dev/null" \
     | sed -e "s:.*-s\([[:digit:]]\+\)-c.*:\1:"              \
     | sort -u                                               \
@@ -168,7 +168,7 @@ fi
 # three-digit sequence number of the current analysis, by increasing
 # the highest existing sequence number by one.
 if test -z "${out}"; then
-    out="${CXI}/${exp}/scratch/results"
+    out="${exp}/scratch/results"
 fi
 out="${out}/r${run}"
 seq=`ssh ${NODE} "mkdir -p \"${out}\" ; ls \"${out}\"" | sort -n | tail -n 1`
