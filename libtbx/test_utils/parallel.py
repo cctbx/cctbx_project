@@ -8,6 +8,7 @@ import time
 import os
 import sys
 
+max_time = 200 # XXX the lower the better
 
 def get_module_tests (module_name, valgrind=False) :
   dist_path = libtbx.env.dist_path(module_name)
@@ -124,11 +125,18 @@ def run_command_list(cmd_list,
                      out=sys.stdout,
                      log=None,
                      verbose=0):
-  nprocs = min(nprocs, len(cmd_list))
   if (log is None) : log = null_out()
   out_ = multi_out()
   out_.register("stdout", out)
   out_.register("log", log)
+  unfiltered = list(cmd_list)
+  cmd_list = []
+  for cmd in unfiltered :
+    if (not cmd in cmd_list) :
+      cmd_list.append(cmd)
+    else :
+      print >> out_, "  test %s repeated, skipping" % cmd
+  nprocs = min(nprocs, len(cmd_list))
   print >> out_, "\n  Starting command list"
   print >> out_, "    NProcs :",nprocs
   print >> out_, "    Cmds   :",len(cmd_list)
@@ -154,8 +162,14 @@ def run_command_list(cmd_list,
       display_result(rc, log=log)
       results.append(rc)
   if nprocs>1:
-    pool.close()
-    pool.join()
+    try :
+      try :
+        pool.close()
+      except KeyboardInterrupt :
+        print >> out_, "Caught KeyboardInterrupt, terminating"
+        pool.terminate()
+    finally :
+      pool.join()
     print >> out_, '\nProcesses have joined : %d\n' % len(results)
   t_end = time.time()
   print >> out_, ""
@@ -167,36 +181,46 @@ def run_command_list(cmd_list,
   failure = 0
   failures = []
   long_jobs = []
+  long_runtimes = []
   runtimes = []
   for result in results :
     finished += 1
+    runtimes.append(result.wall_time)
     if (result.return_code != 0) :
       failure += 1
       failures.append(result.command)
     else :
       if (len(result.error_lines) != 0) :
         warning += 1
+        failures.append(result.command)
       if (len(result.stderr_lines) != 0):
         extra_stderr += 1
-    if (result.wall_time > 60) :
+    if (result.wall_time > max_time) :
       long_jobs.append(result.command)
-      runtimes.append(result.wall_time)
+      long_runtimes.append(result.wall_time)
   print >> out_, "Summary:"
   print >> out_, "  Tests run                    :",finished
   print >> out_, "  Failures                     :",failure
   print >> out_, "  Warnings (possible failures) :",warning
   print >> out_, "  Stderr output (discouraged)  :",extra_stderr
+  if (libtbx.env.has_module("scitbx")) :
+    from scitbx.array_family import flex
+    print >> out_, "Distribution of test runtimes:"
+    hist = flex.histogram(flex.double(runtimes), n_slots=20)
+    hist.show(f=out_, prefix="  ", format_cutoffs="%.1fs")
+    print >> out_, ""
   if (len(long_jobs) > 0) :
     print >> out_, ""
-    print >> out_, "WARNING: the following jobs took at least 60 seconds each:"
-    jobs_and_timings = list(zip(long_jobs, runtimes))
+    print >> out_, "WARNING: the following jobs took at least %d seconds:" % \
+      max_time
+    jobs_and_timings = list(zip(long_jobs, long_runtimes))
     jobs_and_timings.sort(lambda x,y: cmp(x[1], y[1]))
     for cmd, runtime in jobs_and_timings :
       print >> out_, "  " + cmd + " : %.1fs" % runtime
     print >> out_, "Please try to reduce overall runtime - consider splitting up these tests."
   if (len(failures) > 0) :
     print >> out_, ""
-    print >> out_, "ERROR: the following jobs returned non-zero exit codes:"
+    print >> out_, "ERROR: the following jobs returned non-zero exit codes or suspicious stderr output:"
     for command in failures :
       print >> out_, "  " + command
     print >> out_, "Please verify these tests manually."
@@ -208,11 +232,13 @@ def make_commands (files) :
   unrecognized = []
   for file_name in files :
     if (file_name.endswith(".py")) :
-      commands.append("libtbx.python %s" % file_name)
+      cmd = "libtbx.python \"%s\"" % file_name
+      if (not cmd in commands) :
+        commands.append(cmd)
     elif (file_name.endswith(".sh")) or (file_name.endswith(".csh")) :
       if (not os.access(file_name, os.X_OK)) :
         non_executable.append(file_name)
-      else :
+      elif (not file_name in commands) :
         commands.append(file_name)
     else :
       unrecognized.append(file_name)
