@@ -109,7 +109,7 @@ def exercise_2(eps = 1.e-6):
   sfg_params.algorithm = "direct"
   sfg_params.cos_sin_table = False
   dummy = xray_structure.structure_factors(algorithm = sfg_params.algorithm,
-                                           d_min     = 1.5).f_calc()
+                                           d_min     = 2.0).f_calc()
   f_obs = abs(dummy.structure_factors_from_scatterers(
                            xray_structure = xray_structure,
                            algorithm      = sfg_params.algorithm,
