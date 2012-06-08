@@ -1,8 +1,7 @@
 from libtbx import test_utils
 import libtbx.load_env
 
-def run():
-  tst_list = (
+tst_list = (
     ["$D/absolute_structure/tests/tst_absolute_structure.py",
      "--fix_random_seeds"],
     "$D/ab_initio/tests/tst_ab_initio_ext.py",
@@ -29,6 +28,8 @@ def run():
      '--verbose', '--scatterers=5', '--resolution=0.2'],
     "$D/tests/tst_utils.py",
     )
+
+def run():
   build_dir = libtbx.env.under_build("smtbx")
   dist_dir = libtbx.env.dist_path("smtbx")
   test_utils.run_tests(build_dir, dist_dir, tst_list)
