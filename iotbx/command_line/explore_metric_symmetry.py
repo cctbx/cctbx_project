@@ -79,9 +79,14 @@ The program "dot" is not on PATH:
   buffer = StringIO()
   pg_object.graphviz_pg_graph(out=buffer)
   command = "%s -Tpng > %s" % (show_string(dot_path), show_string(file_name))
-  easy_run.fully_buffered(
+  # XXX warning - Fontconfig error messages cause raise_if_errors_or_output()
+  # to crash even if 'dot' ran successfully.
+  rc = easy_run.fully_buffered(
     command=command,
-    stdin_lines=buffer.getvalue().splitlines()).raise_if_errors_or_output()
+    stdin_lines=buffer.getvalue().splitlines())#.raise_if_errors_or_output()
+  if (rc.return_code != 0) :
+    raise RuntimeError("Fatal error running %s:\n%s" % (dot_path,
+      "\n".join(rc.stderr_lines)))
   print >> out, "A file named", show_string(file_name), \
     "contains a graphical representation "
   print >> out, "of the point group relations."
