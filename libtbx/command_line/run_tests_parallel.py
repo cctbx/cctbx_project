@@ -17,6 +17,8 @@ nproc = 1
   .type=  int
 shuffle = False
   .type = bool
+quiet = False
+  .type = bool
 """)
 
 def run (args) :
@@ -55,16 +57,24 @@ def run (args) :
     raise Sorry("No test scripts found in %s." % params.directory)
   if (params.shuffle) :
     random.shuffle(all_tests)
-  print "Running the following %d tests on %d processors:" % (len(all_tests),
-    params.nproc)
-  for test in all_tests :
-    print "  " + test
+  if (not params.quiet) :
+    print "Running the following %d tests on %d processors:" % (len(all_tests),
+      params.nproc)
+    for test in all_tests :
+      print "  " + test
   log = open("zlog", "wb")
   libtbx.test_utils.parallel.run_command_list(
     cmd_list=all_tests,
     nprocs=params.nproc,
-    log=log)
+    log=log,
+    quiet=params.quiet)
   log.close()
+  print """
+============================================================================
+Reminder: Please do not forget: libtbx.find_clutter
+          See also: cctbx_project/libtbx/development/dev_guidelines.txt
+============================================================================
+"""
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
