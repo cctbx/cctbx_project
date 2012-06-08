@@ -253,7 +253,7 @@ def exercise () :
     d_min=1.0)
   flags_4 = set1.generate_r_free_flags()
   stats = get_r_free_stats(flags_4, True)
-  assert (20 <= stats[0] <= 24) # XXX is this even necessary?
+  assert (19 <= stats[0] <= 25) # XXX is this even necessary?
   # much larger for the last few tests
   symm = crystal.symmetry(
     space_group_info=sgtbx.space_group_info("P212121"),
