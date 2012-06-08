@@ -42,8 +42,8 @@ def loop_space_groups(
       argv,
       flags,
       call_back,
-      symbols_to_stdout=False,
-      symbols_to_stderr=True,
+      symbols_to_stdout=True,
+      symbols_to_stderr=False,
       show_cpu_times=True,
       **kwds):
   call_back_results = []
