@@ -873,7 +873,8 @@ def run(args):
     ISIGI=scaler.ISIGI,
     n_bins=work_params.output.n_bins,
     title="Statistics for all reflections",
-    out=out)
+    out=out,
+    work_params=work_params)
   print >> out, ""
   n_refl, corr = scaler.get_overall_correlation(sum_I)
   print >> out, "\n"
@@ -883,7 +884,8 @@ def run(args):
     ISIGI=scaler.ISIGI,
     n_bins=work_params.output.n_bins,
     title="Statistics for reflections where I > 0",
-    out=out)
+    out=out,
+    work_params=work_params)
   #from libtbx import easy_pickle
   #easy_pickle.dump(file_name="stats.pickle", obj=stats)
   #stats.report(plot=work_params.plot)
@@ -914,7 +916,7 @@ def run(args):
   return result
 
 def show_overall_observations(
-  obs, redundancy, ISIGI, n_bins=15, out=None, title=None):
+  obs, redundancy, ISIGI, n_bins=15, out=None, title=None, work_params=None):
   if out==None:
     out = sys.stdout
   obs.setup_binner(n_bins=n_bins)
@@ -967,7 +969,7 @@ def show_overall_observations(
           N += 1
           m += t[0]
         I_sum += m
-        if work_params.plot_single_index_histograms is False or N<30: continue
+        if work_params is not None and work_params.plot_single_index_histograms is False or N<30: continue
         print "Miller %20s n-obs=%4d  sum-I=%10.0f"%(index, N, m)
         plot_n_bins = N//10
         hist,bins = np.histogram([t[0] for t in ISIGI[index]])
