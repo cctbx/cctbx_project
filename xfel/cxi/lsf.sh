@@ -129,8 +129,7 @@ fi
 # Take ${exp} from the environment unless overridden on the command
 # line, and find its absolute path under /reg/data.
 test -n "${EXP}" -a -z "${exp}" && exp="${EXP}"
-exp=`ssh ${NODE} \
-    "find /reg/data -maxdepth 3 -name \"${exp}\" -type d 2> /dev/null"`
+exp="/reg/d/psdm/cxi/${exp}"
 if ! ssh ${NODE} "test -d \"${exp}\" 2> /dev/null"; then
     echo "Could not find experiment subdirectory for ${exp}" > /dev/stderr
     exit 1
