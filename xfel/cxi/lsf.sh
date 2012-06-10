@@ -48,23 +48,24 @@ set -- ${args}
 while test $# -ge 0; do
     case "$1" in
         -c)
-            if ! test -r "$2" 2> /dev/null; then
+            cfg="$2"
+            if ! test -r "${cfg}" 2> /dev/null; then
                 echo "config must be a readable file" > /dev/stderr
                 exit 1
             fi
-            cfg="$2"
             shift
             shift
             ;;
 
         -o)
-            if ssh ${NODE} "test -e \"$2\" -a ! -d \"$2\" 2> /dev/null"; then
+            out=`readlink -fn "$2"`
+            if ssh ${NODE} \
+                "test -e \"${out}\" -a ! -d \"${out}\" 2> /dev/null"; then
                 echo "output exists but is not a directory" > /dev/stderr
                 exit 1
             fi
-            ssh ${NODE} "test -d \"$2\" 2> /dev/null" || \
+            ssh ${NODE} "test -d \"${out}\" 2> /dev/null" || \
                 echo "output directory will be created" > /dev/stderr
-            out="$2"
             shift
             shift
             ;;
