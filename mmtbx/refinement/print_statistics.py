@@ -11,8 +11,8 @@ from stdlib import math
 from cctbx import xray
 import cctbx.xray.structure_factors.global_counters
 from mmtbx import max_lik
+from libtbx import easy_pickle
 from itertools import count
-
 
 enable_show_process_info = getenv_bool(
   "MMTBX_PRINT_STATISTICS_ENABLE_SHOW_PROCESS_INFO")
@@ -143,6 +143,66 @@ def show_rigid_body_rotations_and_translations(
   out.flush()
 
 class refinement_monitor(object):
+  __arrays__ = [
+    "steps",
+    "r_works",
+    "r_frees",
+    "targets_w",
+    "targets_t",
+    "wxcs",
+    "wxus",
+    "wxc_scales",
+    "wxu_scales",
+    "angles_xc",
+    "angles_xu",
+    "alphas",
+    "betas",
+    "foms",
+    "phers",
+    "as_ave",
+    "as_max",
+    "bs_ave",
+    "bs_max",
+    "cs_ave",
+    "cs_max",
+    "ds_ave",
+    "ds_max",
+    "ps_ave",
+    "ps_max",
+    "rs_ave",
+    "rs_min",
+    "targets_c",
+    "gs_c_norm",
+    "wcs",
+    "bs_iso_max_a",
+    "bs_iso_min_a",
+    "bs_iso_ave_a",
+    "bs_iso_max_p",
+    "bs_iso_min_p",
+    "bs_iso_ave_p",
+    "bs_iso_max_s",
+    "bs_iso_min_s",
+    "bs_iso_ave_s",
+    "tus",
+    "wus",
+    "ds_ic_min",
+    "ds_ic_max",
+    "ds_ic_ave",
+    "ds_rc_min",
+    "ds_rc_max",
+    "ds_rc_ave",
+    "dopts_ic",
+    "dopts_rc",
+    "n_zeros",
+    "n_zeros_p",
+    "k1s_w",
+    "k1s_t",
+    "k3s_w",
+    "k3s_t",
+    "scale_ml",
+    "n_solv",
+  ]
+
   def __init__(self, params,
                      model_ref = None,
                      out=None,
@@ -153,69 +213,20 @@ class refinement_monitor(object):
     adopt_init_args(self, locals())
     if (self.out is None): self.out = sys.stdout
     self.model_ini = None
-    self.steps = []
     self.wilson_b = None
     self.bond_start = None
     self.angle_start= None
     self.bond_final = None
     self.angle_final= None
-    self.r_works         = []
-    self.r_frees         = []
-    self.targets_w       = []
-    self.targets_t       = []
-    self.wxcs            = []
-    self.wxus            = []
-    self.wxc_scales      = []
-    self.wxu_scales      = []
-    self.angles_xc       = []
-    self.angles_xu       = []
-    self.alphas          = []
-    self.betas           = []
-    self.foms            = []
-    self.phers           = []
-    self.as_ave          = []
-    self.as_max          = []
-    self.bs_ave          = []
-    self.bs_max          = []
-    self.cs_ave          = []
-    self.cs_max          = []
-    self.ds_ave          = []
-    self.ds_max          = []
-    self.ps_ave          = []
-    self.ps_max          = []
-    self.rs_ave          = []
-    self.rs_min          = []
-    self.targets_c       = []
-    self.gs_c_norm       = []
-    self.wcs             = []
-    self.bs_iso_max_a    = []
-    self.bs_iso_min_a    = []
-    self.bs_iso_ave_a    = []
-    self.bs_iso_max_p    = []
-    self.bs_iso_min_p    = []
-    self.bs_iso_ave_p    = []
-    self.bs_iso_max_s    = []
-    self.bs_iso_min_s    = []
-    self.bs_iso_ave_s    = []
-    self.tus             = []
-    self.wus             = []
-    self.ds_ic_min       = []
-    self.ds_ic_max       = []
-    self.ds_ic_ave       = []
-    self.ds_rc_min       = []
-    self.ds_rc_max       = []
-    self.ds_rc_ave       = []
-    self.dopts_ic        = []
-    self.dopts_rc        = []
-    self.n_zeros         = []
-    self.n_zeros_p       = []
-    self.k1s_w           = []
-    self.k1s_t           = []
-    self.k3s_w           = []
-    self.k3s_t           = []
-    self.scale_ml        = []
-    self.n_solv          = []
     self.rigid_body_shift_accumulator             = None
+    for name in self.__arrays__ :
+      setattr(self, name, [])
+
+  def dump_statistics (self, file_name) :
+    stats = {}
+    for name in self.__arrays__ :
+      stats[name] = getattr(self, name)
+    easy_pickle.dump(file_name, stats)
 
   def collect(self, model,
                     fmodel,
