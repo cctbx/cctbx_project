@@ -880,6 +880,7 @@ class structure(crystal.special_position_settings):
   def heavy_selection(self,
     ignore_atoms_with_alternative_conformations=False,
     include_only_atoms_with_alternative_conformations=False,
+    only_protein=False,
                    ):
     if ( ignore_atoms_with_alternative_conformations and
          include_only_atoms_with_alternative_conformations
@@ -897,6 +898,35 @@ class structure(crystal.special_position_settings):
         if scatterers[i].label[9:10]==" ":
           result.append(False)
           continue
+      if only_protein:
+        for resname in [
+            "ALA",
+            "CYS",
+            "ASP",
+            "GLU",
+            "PHE",
+            "GLY",
+            "HIS",
+            "ILE",
+            "LYS",
+            "LEU",
+            "MET",
+            "ASN",
+            "PRO",
+            "GLN",
+            "ARG",
+            "SER",
+            "THR",
+            "VAL",
+            "TRP",
+            "TYR",
+            ]:
+          if scatterers[i].label[10:13]==resname:
+            break
+        else:
+          result.append(False)
+          continue
+
       if(sct.strip() in ['H','D']): result.append(False)
       else: result.append(True)
     return result
