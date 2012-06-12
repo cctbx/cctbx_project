@@ -495,6 +495,7 @@ class run(object):
     k_mask_trial_range = flex.double([i/1000. for i in range(0,1000,10)])
     scale_k1 = self.estimate_scale_k1()
     def get_k_mask_trial_range(x, shift=0.05):
+      if(x > 1): x = 1
       result = flex.double()
       inc = max(0,x-shift)
       while inc<=x+shift+1.e-3:
