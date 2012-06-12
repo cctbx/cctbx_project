@@ -109,6 +109,50 @@ namespace {
         .def("values", &w_t::values)
       ;
     }
+
+    {
+      typedef histogramm w_t;
+
+      class_<w_t>("histogramm", no_init)
+        .def(init<af::const_ref<double, af::c_grid<3> > const&,
+                  int const& >(
+                    (arg("map"),
+                     arg("n_bins"))))
+        .def("values",    &w_t::values)
+        .def("c_values",  &w_t::c_values)
+        .def("v_values",  &w_t::v_values)
+        .def("bin_width", &w_t::bin_width)
+      ;
+    }
+
+    {
+      typedef volume_scale w_t;
+
+      class_<w_t>("volume_scale", no_init)
+        .def(init<af::const_ref<double, af::c_grid<3> > const&,
+                  int const& >(
+                    (arg("map"),
+                     arg("n_bins"))))
+        .def("map_data", &w_t::map_data)
+        .def("v_values", &w_t::v_values)
+      ;
+    }
+
+    {
+      typedef ccv w_t;
+
+      class_<w_t>("ccv", no_init)
+        .def(init<af::const_ref<double, af::c_grid<3> > const&,
+                  af::const_ref<double, af::c_grid<3> > const&,
+                  double const& >(
+                    (arg("map_1"),
+                     arg("map_2"),
+                     arg("v"))))
+        .def("values_1", &w_t::values_1)
+        .def("values_2", &w_t::values_2)
+      ;
+    }
+
     //
     {
       typedef one_gaussian_peak_approximation w_t;

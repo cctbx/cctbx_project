@@ -178,6 +178,149 @@ af::versa<double, af::c_grid<3> > box_map_averaging(
     return new_data;
 }
 
+//--------------------------
+class histogramm {
+public:
+  af::shared<double> hist;
+  af::shared<double> c_values_;
+  af::shared<double> v_values_;
+  double bin_width_;
+  histogramm(
+    af::const_ref<double, af::c_grid<3> > const& map,
+    int const& n_bins)
+  {
+    int nx = map.accessor()[0];
+    int ny = map.accessor()[1];
+    int nz = map.accessor()[2];
+    double max = af::max(map);
+    double min = af::min(map);
+    double size = map.size();
+    CCTBX_ASSERT(size > 0);
+    CCTBX_ASSERT(n_bins > 0);
+    hist.resize(n_bins, 0);
+    bin_width_ = (max-min)/n_bins;
+    CCTBX_ASSERT(bin_width_ > 0);
+    for (int i = 0; i < nx; i++) {
+      for (int j = 0; j < ny; j++) {
+        for (int k = 0; k < nz; k++) {
+          double rho = map(i,j,k);
+          int index = nint((rho-min)/bin_width_);
+          if(index<0) index=0;
+          if(index>=n_bins) index=n_bins-1;
+          hist[index] += 1;
+        }
+      }
+    }
+    for (int i = 0; i < n_bins; i++) {
+      hist[i] = hist[i] / size;
+    }
+    c_values_.resize(n_bins, 0);
+    for (int i = 0; i < n_bins; i++) {
+      double sum = 0;
+      for (int j = 0; j < i; j++) {
+        sum += hist[j];
+      }
+      c_values_[i] = sum;
+    }
+    v_values_.resize(n_bins, 0);
+    for (int i = 0; i < n_bins; i++) {
+      v_values_[i] = 1. - c_values_[i];
+    }
+  }
+
+  af::shared<double> values()   {return hist;}
+  af::shared<double> c_values() {return c_values_;}
+  af::shared<double> v_values() {return v_values_;}
+  double bin_width()            {return bin_width_;}
+
+};
+
+class volume_scale {
+public:
+  af::versa<double, af::c_grid<3> > map_new;
+  af::shared<double> v_values_;
+
+  volume_scale(
+    af::const_ref<double, af::c_grid<3> > const& map,
+    int const& n_bins)
+  {
+    int nx = map.accessor()[0];
+    int ny = map.accessor()[1];
+    int nz = map.accessor()[2];
+    map_new.resize(af::c_grid<3>(nx,ny,nz), 0);
+    double rho_min = af::min(map);
+    histogramm hist = histogramm(map, n_bins);
+    double bin_width = hist.bin_width();
+    v_values_ = hist.c_values(); // XXX actually CUM, not vol !
+    for (int i = 0; i < nx; i++) {
+      for (int j = 0; j < ny; j++) {
+        for (int k = 0; k < nz; k++) {
+          double rho = map(i,j,k);
+          int index = nint((rho-rho_min)/bin_width);
+          if(index<0) index=0;
+          if(index>=n_bins) index=n_bins-1;
+          double rho_new = 0;
+          if(index+1<n_bins) {
+            double rho_n = rho_min + index*bin_width;
+            rho_new = v_values_[index] +
+              (v_values_[index+1]-v_values_[index]) * (rho-rho_n)/bin_width;
+          }
+          else {
+            rho_new = v_values_[index];
+          }
+          map_new(i,j,k) = rho_new;
+        }
+      }
+    }
+    double d1 = std::abs(af::min(map_new.ref()));
+    double d2 = std::abs(1.-af::max(map_new.ref()));
+    if(d1 > 1.e-3 || d2 > 1.e-3) {
+      std::cout<<"WARNING: "<<d1<<" "<<d2<<std::endl;
+    }
+    //CCTBX_ASSERT(std::abs(af::min(map_new.ref())) < 1.e-3);
+    //CCTBX_ASSERT(std::abs(1.-af::max(map_new.ref())) < 1.e-3);
+  }
+
+  af::versa<double, af::c_grid<3> > map_data() {return map_new;}
+  af::shared<double> v_values() {return v_values_;}
+
+};
+
+class ccv {
+public:
+  af::shared<double> values_1_;
+  af::shared<double> values_2_;
+
+  ccv(
+    af::const_ref<double, af::c_grid<3> > const& map_1,
+    af::const_ref<double, af::c_grid<3> > const& map_2,
+    double const& v)
+  {
+    int nx = map_1.accessor()[0];
+    int ny = map_1.accessor()[1];
+    int nz = map_1.accessor()[2];
+    CCTBX_ASSERT(map_1.size() == map_2.size());
+    for (int i = 0; i < nx; i++) {
+      for (int j = 0; j < ny; j++) {
+        for (int k = 0; k < nz; k++) {
+          double rho1 = map_1(i,j,k);
+          double rho2 = map_2(i,j,k);
+          if(rho1 < v || rho2 < v) {
+            values_1_.push_back(rho1);
+            values_2_.push_back(rho2);
+          }
+        }
+      }
+    }
+  }
+
+  af::shared<double> values_1() {return values_1_;}
+  af::shared<double> values_2() {return values_2_;}
+
+};
+
+//----------------------------------
+
 class cumulative_histogramm {
 public:
   af::shared<double> sigs;
