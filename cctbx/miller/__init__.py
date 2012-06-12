@@ -3019,22 +3019,29 @@ class array(set):
   def fft_map(self, resolution_factor=1/3,
                     d_min=None,
                     grid_step=None,
+                    crystal_gridding=None,
                     symmetry_flags=None,
                     mandatory_factors=None,
                     max_prime=5,
                     assert_shannon_sampling=True,
                     f_000=None):
-    return fft_map(
-      crystal_gridding=self.crystal_gridding(
-        d_min=d_min,
-        resolution_factor=resolution_factor,
-        grid_step=grid_step,
-        symmetry_flags=symmetry_flags,
-        mandatory_factors=mandatory_factors,
-        max_prime=max_prime,
-        assert_shannon_sampling=assert_shannon_sampling),
-      fourier_coefficients=self,
-      f_000=f_000)
+    if(crystal_gridding is not None):
+      return fft_map(
+        crystal_gridding=crystal_gridding,
+        fourier_coefficients=self,
+        f_000=f_000)
+    else:
+      return fft_map(
+        crystal_gridding=self.crystal_gridding(
+          d_min=d_min,
+          resolution_factor=resolution_factor,
+          grid_step=grid_step,
+          symmetry_flags=symmetry_flags,
+          mandatory_factors=mandatory_factors,
+          max_prime=max_prime,
+          assert_shannon_sampling=assert_shannon_sampling),
+        fourier_coefficients=self,
+        f_000=f_000)
 
   def direct_summation_at_point (self, site_frac, sigma=None) :
     assert (self.is_complex_array())
