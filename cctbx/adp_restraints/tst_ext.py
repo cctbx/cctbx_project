@@ -1,5 +1,4 @@
 from libtbx.test_utils import approx_equal, show_diff
-from iotbx.shelx import from_ins
 from cctbx.array_family import flex
 from cctbx import adptbx
 from cctbx import uctbx
@@ -9,6 +8,7 @@ from scitbx import matrix
 import libtbx.load_env
 import math, os, sys
 from cStringIO import StringIO
+import cctbx.xray
 
 def finite_difference_gradients(restraint_type,
                                 proxy,
@@ -148,7 +148,7 @@ def exercise_rigid_bond_test():
   if (ins_file is None):
     print "Skipping exercise_rigid_bond_test(): input file not available"
     return
-  ins_xray_structure = from_ins.from_ins(file_name = ins_file)
+  ins_xray_structure = cctbx.xray.structure.from_shelx(file=open(ins_file))
   sites_frac = ins_xray_structure.sites_frac()
   sites_cart = ins_xray_structure.sites_cart()
   ustars = ins_xray_structure.scatterers().extract_u_star()
