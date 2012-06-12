@@ -3,11 +3,11 @@
 from iotbx import crystal_symmetry_from_any
 import iotbx.pdb
 from iotbx.cns import sdb_reader
-from iotbx.shelx import from_ins
 from iotbx.kriber import strudat
 from iotbx.option_parser import option_parser
 from cctbx import euclidean_model_matching as emma
 import sys, os
+import cctbx.xray
 
 class MultipleEntriesError(RuntimeError): pass
 
@@ -80,7 +80,7 @@ def get_emma_model_from_solve(file_name, crystal_symmetry):
   return result
 
 def get_emma_model_from_ins(file_name):
-  return from_ins.from_ins(file_name=file_name).as_emma_model()
+  return cctbx.xray.structure.from_shelx(file=open(file_name)).as_emma_model()
 
 def get_emma_model_from_strudat(file_name):
   strudat_entries = strudat.read_all_entries(open(file_name))
