@@ -205,10 +205,12 @@ namespace {
         .def(init<
           af::const_ref<float_t> const&,
           af::const_ref<float_t> const&,
-          float_t const&>(
+          float_t const&,
+          bool const&>(
             (arg("x"),
              arg("y"),
-             arg("epsilon")=1.e-15)))
+             arg("epsilon")=1.e-15,
+             arg("subtract_mean")=true)))
         .def("is_well_defined", &w_t::is_well_defined)
         .def("n", &w_t::n)
         .def("mean_x", &w_t::mean_x)
