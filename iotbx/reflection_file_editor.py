@@ -704,7 +704,6 @@ class process_arrays (object) :
         # XXX this is important for guessing the right flag when dealing
         # with CCP4-style files, primarily when the flag values are not
         # very evenly distributed
-        output_array = None
         new_array.set_info(info)
         test_flag_value = None
         flag_scores = get_r_free_flags_scores(miller_arrays=[new_array],
@@ -738,9 +737,8 @@ class process_arrays (object) :
         if not r_free_flags.is_unique_set_under_symmetry() :
           r_free_flags = r_free_flags.merge_equivalents().array()
         if (r_free_flags.anomalous_flag()) :
-          if (len(output_labels) == 1) :
-            r_free_flags = r_free_flags.average_bijvoet_mates()
-          else :
+          r_free_flags = r_free_flags.average_bijvoet_mates()
+          if (len(output_labels) != 1) :
             assert (not complete_set.anomalous_flag())
             # XXX can't do this operation on a miller set - will expand the
             # r-free flags later
@@ -754,71 +752,16 @@ class process_arrays (object) :
             fraction=params.mtz_file.r_free_flags.fraction,
             log=log)
         if (params.mtz_file.r_free_flags.extend) :
-          assert (test_flag_value is not None)
-          r_free_as_bool = get_r_free_as_bool(r_free_flags,
-            test_flag_value).data()
-          assert isinstance(r_free_as_bool, flex.bool)
-          fraction_free = r_free_as_bool.count(True) / r_free_as_bool.size()
-          print >>log, "%s: fraction_free=%.3f" %(info.labels[0],fraction_free)
-          if complete_set is not None :
-            missing_set = complete_set.lone_set(r_free_flags)
-          else :
-            missing_set = r_free_flags.complete_set(d_min=d_min,
-              d_max=d_max).lone_set(r_free_flags.map_to_asu())
-          n_missing = missing_set.indices().size()
-          print >>log, "%s: missing %d reflections" % (info.labels[0],n_missing)
-          if (n_missing != 0) :
-            if (n_missing <= 20) :
-              # FIXME: MASSIVE CHEAT necessary for tiny sets
-              missing_flags = missing_set.array(data=flex.bool(n_missing,False))
-            else :
-              if accumulation_callback is not None :
-                if not accumulation_callback(miller_array=new_array,
-                                             test_flag_value=test_flag_value,
-                                             n_missing=n_missing,
-                                             column_label=info.labels[0]) :
-                  continue
-              missing_flags = missing_set.generate_r_free_flags(
-                fraction=fraction_free,
-                max_free=None,
-                use_lattice_symmetry=True)
-            if (params.mtz_file.r_free_flags.preserve_input_values) :
-              if (r_free_utils.looks_like_ccp4_flags(r_free_flags)) :
-                print >> log, "Exporting missing flags to CCP4 convention"
-                exported_flags = r_free_utils.export_r_free_flags_for_ccp4(
-                  flags=missing_flags.data(),
-                  test_flag_value=True) #test_flag_value)
-                output_array = r_free_flags.concatenate(
-                  other=missing_flags.customized_copy(data=exported_flags))
-              else :
-                # XXX this is gross too - what conventions (if any) should be
-                # followed here?
-                work_flag_value = None
-                if (test_flag_value in [1,-1]) :
-                  work_flag_value = 0
-                elif (test_flag_value == 0) :
-                  work_flag_value = 1
-                if (work_flag_value is None) :
-                  raise Sorry(("PHENIX doesn't know how to deal with the "+
-                    "R-free flag convention in %s:%s; you will need to "+
-                    "disable either extending the flags or preserving the "+
-                    "input values.") % (file_name, info.label_string()))
-                exported_flags = flex.int()
-                new_flags = missing_flags.data()
-                for i_seq in range(missing_flags.data().size()) :
-                  if (new_flags[i_seq]) :
-                    exported_flags.append(test_flag_value)
-                  else :
-                    exported_flags.append(work_flag_value)
-                output_array = r_free_flags.concatenate(
-                  other=missing_flags.customized_copy(data=exported_flags))
-            else :
-              output_array = r_free_flags.concatenate(other=missing_flags)
-          # XXX if the flags don't actually need extending, the original
-          # values will be preserved.  I think this is a good thing, but does
-          # this inconsistency cause problems elsewhere?
-        if (output_array is None) :
-          output_array = r_free_flags
+          r_free_flags = r_free_utils.extend_flags(
+            r_free_flags=r_free_flags,
+            test_flag_value=test_flag_value,
+            array_label=array_name,
+            complete_set=complete_set,
+            accumulation_callback=accumulation_callback,
+            preserve_input_values=\
+              params.mtz_file.r_free_flags.preserve_input_values,
+            log=log)
+        output_array = r_free_flags
         if (generate_bijvoet_mates) :
           output_array = output_array.generate_bijvoet_mates()
         if (len(params.mtz_file.exclude_reflection) > 0) :
