@@ -429,9 +429,18 @@ options {
   merge = False
     .type = bool
     .short_caption = Merge non-unique data
+  map_to_asu = True
+    .type = bool
+    .short_caption = Map HKL indices to ASU
+  eliminate_sys_absent = False
+    .type = bool
+    .short_caption = Remove systematic absences
   show_details_if_error = True
     .type = bool
     .short_caption = Show data details for some errors
+  incompatible_flags_to_work_set = False
+    .type = bool
+    .short_caption = Move incompatible flags to work set
   show_log = True
     .type = bool
 }
@@ -507,7 +516,12 @@ def run2 (args,
     wavelength_id=params.input.wavelength_id,
     crystal_id=params.input.crystal_id,
     show_details_if_error=params.options.show_details_if_error,
-    output_r_free_label="FreeR_flag")
+    output_r_free_label="FreeR_flag",
+    merge_non_unique_under_symmetry=params.options.merge,
+    map_to_asu=params.options.map_to_asu,
+    remove_systematic_absences=params.options.eliminate_sys_absent,
+    incompatible_flags_to_work_set=\
+      params.options.incompatible_flags_to_work_set)
   return (params.output_file_name, n_refl)
 
 def validate_params (params) :

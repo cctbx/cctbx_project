@@ -1956,6 +1956,8 @@ class guess_observation_type(object):
     self.r_free_flags_original = None
     if(r_free_flags is not None):
       self.r_free_flags_original = r_free_flags.deep_copy()
+      r_free_flags = r_free_flags.map_to_asu().remove_systematic_absences()
+    f_obs = f_obs.map_to_asu().remove_systematic_absences()
     f_obs = f_obs.set_observation_type(observation_type = None)
     #
     sigmas = f_obs.sigmas()
