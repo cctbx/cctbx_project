@@ -1329,7 +1329,7 @@ class hhsearch_parser(hhpred_parser):
     T \s+ Consensus \s+ ( \d+ ) \s+ ( [\w~-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* (?: \n | \r\n | \r )
     T \s+ \w+ \s+ ( \d+ ) \s+ ( [\w-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* (?: \n | \r\n | \r )
     (?: T \s+ ss_dssp \s+ ( [\w-]+ ) \s* (?: \n | \r\n | \r ) )?
-    T \s+ ss_pred \s+ ( [\w-]+ ) \s* (?: \n | \r\n | \r )
+    (?: T \s+ ss_pred \s+ ( [\w-]+ ) \s* (?: \n | \r\n | \r ) )?
     (?: Confidence \s+ ( [\w ]+ ) \s* (?: \n | \r\n | \r ))?
     """,
     re.VERBOSE
@@ -1425,6 +1425,9 @@ class hhsearch_parser(hhpred_parser):
 
     if sequences[5] == ( None, ) * len( sequences[5] ):
       sequences[5] = tuple( [ " " * len( d ) for d in sequences[0] ] )
+
+    if sequences[6] == ( None, ) * len( sequences[6] ):
+      sequences[6] = tuple( [ " " * len( d ) for d in sequences[0] ] )
 
     midlines = []
 
