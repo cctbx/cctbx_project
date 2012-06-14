@@ -5,6 +5,7 @@ from libtbx.utils import import_python_object, Sorry, multi_out
 from libtbx import group_args
 from multiprocessing import Pool
 from cStringIO import StringIO
+import traceback
 import time
 import os
 import sys
@@ -60,18 +61,18 @@ def run_command(command,
       command=command,
       #join_stdout_stderr=join_stdout_stderr,
       )
-    if (len(cmd_result.stderr_lines) != 0):
-      if verbose :
-        print '!'*80
-        print "command"
-        print command
-        if (cmd_result.return_code != 0) :
-          print "ERROR - return code %d" % cmd_result.return_code
-        print "stderr"
-        #print "\n".join(cmd_result.stdout_lines)
-        print "\n".join(cmd_result.stderr_lines)
-        #cmd_result.raise_if_errors()
-        print '!'*80
+    #if (len(cmd_result.stderr_lines) != 0):
+    #  if verbose :
+    #    print '!'*80
+    #    print "command"
+    #    print command
+    #    if (cmd_result.return_code != 0) :
+    #      print "ERROR - return code %d" % cmd_result.return_code
+    #    print "stderr"
+    #    #print "\n".join(cmd_result.stdout_lines)
+    #    print "\n".join(cmd_result.stderr_lines)
+    #    #cmd_result.raise_if_errors()
+    #    print '!'*80
     if 0:
       test_utils._check_command_output(
         lines=cmd_result.stdout_lines,
@@ -84,6 +85,8 @@ def run_command(command,
     cmd_result.error_lines = evaluate_output(cmd_result)
     return cmd_result
   except KeyboardInterrupt :
+    traceback_str = "\n".join(traceback.format_tb(sys.exc_info()[2]))
+    sys.stdout.write(traceback_str)
     return None
 
 def evaluate_output (cmd_result) :
@@ -171,15 +174,6 @@ class run_command_list (object) :
       if (result.wall_time > max_time) :
         long_jobs.append(result.command)
         long_runtimes.append(result.wall_time)
-    print >> self.out, "Summary:"
-    print >> self.out, "  Tests run                    :",finished
-    print >> self.out, "  Failures                     :",failure
-    print >> self.out, "  Warnings (possible failures) :",warning
-    print >> self.out, "  Stderr output (discouraged)  :",extra_stderr
-    if (finished != len(self.cmd_list)) :
-      print >> self.out, "*" * 80
-      print >> self.out, "  WARNING: NOT ALL TESTS FINISHED!"
-      print >> self.out, "*" * 80
     if (libtbx.env.has_module("scitbx")) :
       from scitbx.array_family import flex
       print >> self.out, "Distribution of test runtimes:"
@@ -208,6 +202,16 @@ class run_command_list (object) :
         print >> self.out, ""
       print >> self.out, "Please verify these tests manually."
       print >> self.out, ""
+    print >> self.out, "Summary:"
+    print >> self.out, "  Tests run                    :",finished
+    print >> self.out, "  Failures                     :",failure
+    print >> self.out, "  Warnings (possible failures) :",warning
+    print >> self.out, "  Stderr output (discouraged)  :",extra_stderr
+    if (finished != len(self.cmd_list)) :
+      print >> self.out, "*" * 80
+      print >> self.out, "  WARNING: NOT ALL TESTS FINISHED!"
+      print >> self.out, "*" * 80
+
 
   def save_result (self, result) :
     if (result is None ):
