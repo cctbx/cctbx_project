@@ -641,9 +641,11 @@ def check_adp(u_iso, step=10, out=None) :
     out = sys.stdout
   min_adp = flex.min(u_iso)
   if(min_adp<=0):
-    raise Sorry("Negative or zero isotropic B-factors found in input file. "+
-      "Run 'phenix.pdbtools --show-adp-statistics model.pdb' to identify "+
-      "the problem atoms.")
+    bad_i_seqs = []
+    for i_seq in range(len(u_iso)) :
+      if (u_iso[i_seq] <= 0) :
+        bad_i_seqs.append(i_seq)
+    return bad_i_seqs
   i = 0
   while i < u_iso.size():
     if(i+step < u_iso.size()):
@@ -656,7 +658,7 @@ def check_adp(u_iso, step=10, out=None) :
       if(abs(min_adp-max_adp)<0.1):
         raise Sorry("At least 10 bonded atoms have identical ADPs.")
     i+=step
-  return True
+  return None
 
 def merge_groups_by_connectivity(pdb_hierarchy, xray_structure,
                                  selection_strings=None, selection_arrays=None):
@@ -717,7 +719,18 @@ def find_tls (params,
   sites_cart = xray_structure.sites_cart()
   u_cart = None
   u_iso  = xray_structure.extract_u_iso_or_u_equiv()#*adptbx.u_as_b(1.) # ?
-  if(not check_adp(u_iso=u_iso, out=out)): return None
+  bad_i_seqs = check_adp(u_iso=u_iso, out=out)
+  if (bad_i_seqs is not None) :
+    atoms = pdb_hierarchy.atoms()
+    bad_atom_strings = []
+    for i_seq in bad_i_seqs[:10] :
+      atom_str = atoms[i_seq].format_atom_record()
+      bad_atom_strings.append(atom_str)
+    if (len(bad_i_seqs) > 10) :
+      bad_atom_strings.append("... (remaining %d not shown)" %
+        (len(bad_i_seqs)-10))
+    raise Sorry(("%d atoms in the model contain isotropic B-factors <= 0:\n"+
+      "\n".join(bad_atom_strings)) % (len(bad_i_seqs)))
   #
   ssm = mmtbx.secondary_structure.manager(
     pdb_hierarchy                = pdb_hierarchy,

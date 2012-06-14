@@ -270,7 +270,7 @@ def clean_single_base_name(base):
   clean_base = re.sub(r' ([ACGT])([Dd])',r' D\1',clean_base)
   return clean_base
 
-def run_reduce(hierarchy, remove_hydrogens=True):
+def run_reduce(hierarchy, remove_hydrogens=True, debug=False):
   #log = sys.stderr
   trim = "phenix.reduce -quiet -trim -"
   build = "phenix.reduce -quiet -build -allalt -"
@@ -295,7 +295,8 @@ def run_reduce(hierarchy, remove_hydrogens=True):
     input_str = clean_pdb_string
   output = easy_run.fully_buffered(build,
                                    stdin_lines=input_str)
-  open("allatom.pdb", "w").write("\n".join(output.stdout_lines))
+  if (debug) :
+    open("allatom.pdb", "w").write("\n".join(output.stdout_lines))
   return output
 
 def get_base_pairs(pdb_hierarchy, probe_flags=None):
