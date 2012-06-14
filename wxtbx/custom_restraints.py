@@ -131,7 +131,7 @@ class CustomRestraintsPanel (wx.Panel) :
     for i in range(self.n_atom_selections) :
       field = self.GetSelectionControl(i)
       value = field.GetValue()
-      if (value.isspace()) :
+      if (value.isspace()) or (value == "") :
         value = None
       selections.append(value)
     self.lc.SetSelections(selections)
@@ -343,7 +343,7 @@ class BondRestraintsList (RestraintsListBase) :
       bond = self._params[item]
       bond.atom_selection_1 = selections[0]
       bond.atom_selection_2 = selections[1]
-      sele_text = "; ".join(selections)
+      sele_text = "; ".join([ str(s) for s in selections ])
       self.SetStringItem(item, 0, sele_text)
 
   def OnSetDistance (self, event) :
