@@ -1,7 +1,4 @@
 
-# XXX note abuse of the multiprocessing module below.  it would be useful to
-# refactor this test, or pick test data that runs faster.
-
 from libtbx.test_utils import approx_equal
 from libtbx import easy_run
 import libtbx.load_env
@@ -70,8 +67,8 @@ def exercise_1 (args) :
     sys.stdout.flush()
     rcs.append(easy_run.call(cmd))
     evaluate(pdb_file = output_file_prefix+"_001.pdb",
-             rw_tol   = 0.015,
-             rf_tol   = 0.015,
+             rw_tol   = 0.0155,
+             rf_tol   = 0.0155,
              n_water  = 186,
              n_water_tol = 0)
   else :
