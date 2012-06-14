@@ -421,6 +421,7 @@ def exercise_format_fasta(regression_pdb, coverage=0.1):
         ['> chain " A" conformer ""', "CCGAATTCGG"]]
       assert is_protein == [False] and is_na == [True]
       looking_for.remove(node)
+      assert (hierarchy.models()[0].chains()[0].is_na())
     elif (node == "1ee3_stripped.pdb"):
       assert fasta == [
         ['> chain " P" conformer "A"', 'IMEHTV'],
