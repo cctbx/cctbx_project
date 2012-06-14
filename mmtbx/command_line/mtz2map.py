@@ -141,6 +141,11 @@ def run (args, log=sys.stdout) :
     raise Sorry("Please specify an MTZ file containing map coefficients.")
   if params.output.directory is None :
     params.output.directory = os.getcwd()
+  if (not os.path.exists(params.output.directory)) :
+    os.makedirs(params.output.directory)
+  elif (not os.path.isdir(params.output.directory)) :
+    raise Sorry("The specified output path '%s' is not a directory!" %
+      params.output.directory)
   if params.output.prefix is None :
     params.output.prefix = os.path.splitext(
       os.path.basename(params.mtz_file))[0]
