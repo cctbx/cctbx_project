@@ -377,15 +377,16 @@ ATOM      6  CA  ASN A 777      -6.522   2.038   2.831  1.00 14.10           C
 ATOM     14  CA  ASN A   1      -3.193   1.904   4.589  1.00 11.74           C
 ATOM     22  CA  GLN A   2       0.384   1.888   3.199  1.00 10.53           C
 ATOM     31  CA  GLN A   3       3.270   2.361   5.640  1.00 11.39           C
-ATOM     40  CA  ASN A   4       6.831   2.310   4.318  1.00 12.30           C
+ATOM     40  CA AASN A   4       6.831   2.310   4.318  1.00 12.30           C
+ATOM     41  CA BASN A   4       6.831   2.310   4.318  1.00 12.30           C
 TER
 END
 """)).construct_hierarchy()
   sel_cache = hierarchy.atom_selection_cache()
   sele = sel_cache.iselection("resid 2 through 4")
-  assert (list(sele) == [2,6,7,8])
+  assert (list(sele) == [2,6,7,8,9])
   sele = sel_cache.iselection("chain A and resid 2 through 4")
-  assert (list(sele) == [6,7,8])
+  assert (list(sele) == [6,7,8,9])
 
 def run():
   exercise_selection()

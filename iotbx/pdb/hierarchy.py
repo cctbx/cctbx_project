@@ -750,6 +750,12 @@ class _(boost.python.injector, ext.chain, __hash_eq_mixin):
   def residues(self):
     return self.only_conformer().residues()
 
+  def is_protein (self) :
+    return self.only_conformer().is_protein()
+
+  def is_na (self) :
+    return self.only_conformer().is_na()
+
   def occupancy_groups_simple(self, common_residue_name_class_only=None):
     result = []
     residue_groups = self.residue_groups()

@@ -141,6 +141,7 @@ namespace {
     boost::int64_t o_start = base_256_ordinal(start.c_str());
     boost::int64_t o_stop = base_256_ordinal(stop.c_str());
     bool in_sequence = false;
+    bool is_last_residue = false;
     std::size_t chain_id_last = 0;
     for (unsigned i_seq = 0; i_seq < resid_list.size(); i_seq++) {
       std::string resid = resid_list[i_seq];
@@ -148,16 +149,19 @@ namespace {
       std::size_t chain_id_current = chain_break_list[i_seq];
       if (chain_id_current != chain_id_last) {
         in_sequence = false;
+        is_last_residue = false;
       }
       chain_id_last = chain_id_current;
       if (resid_os == o_start) {
         in_sequence = true;
       }
+      if ((resid_os == o_stop) && (in_sequence)) {
+        is_last_residue = true;
+      } else if (is_last_residue) {
+        in_sequence = false;
+      }
       if (in_sequence) {
         result.push_back(i_seq);
-      }
-      if (resid_os == o_stop) {
-        in_sequence = false;
       }
     }
     return result;
