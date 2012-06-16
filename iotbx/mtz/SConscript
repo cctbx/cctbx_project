@@ -1,3 +1,4 @@
+import os
 Import("iotbx_mtz_env", "env_etc")
 
 env = iotbx_mtz_env.Clone()
@@ -23,6 +24,8 @@ if (not env_etc.no_boost_python):
   env.Append(CXXFLAGS=env_etc.ccp4io_defines)
   env.Append(SHCXXFLAGS=env_etc.ccp4io_defines)
   env.Prepend(LIBS=["iotbx_mtz", "cctbx", ccp4io_lib, "scitbx_boost_python"])
+  if (os.name == "nt") :
+    env.Prepend(LIBS=["Advapi32"])
   env_etc.enable_more_warnings(env=env)
   env.SharedLibrary(
     target="#lib/iotbx_mtz_ext",
