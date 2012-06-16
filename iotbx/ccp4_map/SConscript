@@ -1,3 +1,5 @@
+import os
+
 Import("env_etc")
 
 if (    not env_etc.no_boost_python
@@ -8,6 +10,8 @@ if (    not env_etc.no_boost_python
   env.Append(CXXFLAGS=env_etc.ccp4io_defines)
   env.Append(SHCXXFLAGS=env_etc.ccp4io_defines)
   env.Prepend(LIBS=["cctbx", "ccp4io"])
+  if (os.name == "nt") :
+    env.Prepend(LIBS=["Advapi32"])
   env_etc.enable_more_warnings(env=env)
   env.SharedLibrary(
     target="#lib/iotbx_ccp4_map_ext",
