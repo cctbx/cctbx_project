@@ -1231,3 +1231,43 @@ def sites_diff (hierarchy_1,
     return hierarchy_new
   else :
     return deltas
+
+def expand_ncs (
+    pdb_hierarchy,
+    matrices,
+    write_segid=True,
+    #preserve_chain_id=True,
+    log=None) :
+  from scitbx import matrix
+  if (log is None) : log = null_out()
+  if (len(matrices) == 0) :
+    raise Sorry("No MTRIX records found in PDB file!")
+  if (len(pdb_hierarchy.models()) > 1) :
+    raise Sorry("Multi-MODEL PDB files not supported.")
+  hierarchy_new = root()
+  model_new = model()
+  hierarchy_new.append_model(model_new)
+  for chain_ in pdb_hierarchy.models()[0].chains() :
+    chain_new = chain_.detached_copy()
+    atoms_tmp = chain_new.atoms()
+    if (write_segid) :
+      for atom in atoms_tmp :
+        atom.set_segid("0")
+    model_new.append_chain(chain_new)
+  print >> log, "Applying %d MTRIX records..." % len(matrices)
+  for matrix_ in matrices :
+    if (matrix_.coordinates_present) :
+      print >> log, "  skipping matrix %s, coordinates already present" % \
+        matrix_.serial_number
+      continue
+    rt = matrix.rt(matrix_.values)
+    for chain_ in pdb_hierarchy.models()[0].chains() :
+      chain_new = chain_.detached_copy()
+      atoms_tmp = chain_new.atoms()
+      if (write_segid) :
+        for atom in atoms_tmp :
+          atom.set_segid("%s" % matrix_.serial_number)
+      xyz = atoms_tmp.extract_xyz()
+      atoms_tmp.set_xyz(rt.r.elems * xyz + rt.t.elems)
+      model_new.append_chain(chain_new)
+  return hierarchy_new

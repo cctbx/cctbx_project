@@ -59,6 +59,7 @@ tst_list = (
   "$D/regression/tst_reindex.py",
   "$D/regression/tst_reflection_file_editor.py",
   "$D/regression/tst_split_models.py",
+  "$D/regression/tst_expand_ncs.py",
   )
 
 def run():
