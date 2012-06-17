@@ -90,6 +90,16 @@ class CustomRestraintsPanel (wx.Panel) :
       else :
         field.SetValue("")
 
+  def GetSelectionEdits (self) :
+    selections = []
+    for i in range(self.n_atom_selections) :
+      field = self.GetSelectionControl(i)
+      value = field.GetValue()
+      if (value.isspace()) or (value == "") :
+        value = None
+      selections.append(value)
+    return selections
+
   def GetSelectionControl (self, i) :
     return getattr(self, "selection_%d" % (i+1))
 
@@ -121,19 +131,20 @@ class CustomRestraintsPanel (wx.Panel) :
     raise NotImplementedError()
 
   def OnAdd (self, event) :
+    selections = self.GetSelectionEdits()
+    # XXX if no list item is selected but the selection fields have been
+    # edited, apply those to the new selection
+    item_selected = (self.lc.GetFirstSelected() >= 0)
     self.lc.AddRestraint()
+    if (not item_selected) and (selections != ([None]*len(selections))) :
+      self.lc.SetSelections(selections)
+    self.FillSelections()
 
   def OnDelete (self, event) :
     self.lc.DeleteRestraint()
 
   def OnUpdate (self, event) :
-    selections = []
-    for i in range(self.n_atom_selections) :
-      field = self.GetSelectionControl(i)
-      value = field.GetValue()
-      if (value.isspace()) or (value == "") :
-        value = None
-      selections.append(value)
+    selections = self.GetSelectionEdits()
     self.lc.SetSelections(selections)
 
   def CreateAtomSelectionButton (self, selection_ctrl) :
