@@ -12,15 +12,17 @@ rstbx::detector_model::sensor::sensor(
     lim1(_lim1),
     lim2(_lim2),
     normal(),
-    D()
+    d()
 {
     update();
 }
 
 // other getters are inline
-scitbx::mat3<double> rstbx::detector_model::sensor::get_d() const
+scitbx::mat3<double> rstbx::detector_model::sensor::get_D() const
 {
-    return D.inverse();
+    // inherently dangerous code. Prefer a mechanism to catch exceptions
+    // and return 'None' at the Python level
+    return d.inverse();
 }
 
 // setters
@@ -55,8 +57,7 @@ void rstbx::detector_model::sensor::update()
 
     distance = origin * normal;
 
-    D.set_column(0, dir1);
-    D.set_column(1, dir2);
-    D.set_column(2, origin);
-    D = D.inverse();
+    d.set_column(0, dir1);
+    d.set_column(1, dir2);
+    d.set_column(2, origin);
 }
