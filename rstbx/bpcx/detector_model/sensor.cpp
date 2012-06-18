@@ -24,24 +24,23 @@ scitbx::mat3<double> rstbx::detector_model::sensor::get_d() const
 }
 
 // setters
-void rstbx::detector_model::sensor::set_frame(const scitbx::vec3<double>& _origin)
+void rstbx::detector_model::sensor::set_origin(
+                 const scitbx::vec3<double>& _origin)
 {
     origin = _origin;
     update();
 }
 
-void rstbx::detector_model::sensor::set_frame(const scitbx::vec3<double>& _origin,
-                 const scitbx::vec3<double>& _dir1)
-{
-    origin = _origin;
-    dir1 = _dir1.normalize();
-    update();
-}
-
-void rstbx::detector_model::sensor::set_frame(const scitbx::vec3<double>& _origin,
+void rstbx::detector_model::sensor::set_frame(
+                 const scitbx::vec3<double>& _origin,
                  const scitbx::vec3<double>& _dir1,
                  const scitbx::vec3<double>& _dir2)
 {
+
+  /* add some tests that the input directions _dir1, _dir2 are not colinear */
+
+  /* assert(fabs(_dir1.angle(_dir2, deg = true) % 180.0) > 1.0); */
+
     origin = _origin;
     dir1 = _dir1.normalize();
     dir2 = _dir2.normalize();
