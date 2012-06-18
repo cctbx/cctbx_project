@@ -22,7 +22,7 @@ class StrCtrl (ValidatedTextCtrl) :
   def GetPhilValue (self) :
     self.Validate()
     val_str = self.GetValue()
-    if (val_str == "") :
+    if (val_str in ["", "none", "None"]) :
       return self.ReturnNoneIfOptional()
     return val_str
 
@@ -38,6 +38,8 @@ class StrCtrl (ValidatedTextCtrl) :
 
 class StrValidator (TextCtrlValidator) :
   def CheckFormat (self, value) :
+    if (";" in value) :
+      raise ValueError("Semicolons are not allowed in text input.")
     return value # XXX does anything else need to be done here?
 
 if (__name__ == "__main__") :
