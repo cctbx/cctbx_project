@@ -539,6 +539,11 @@ def validate_params (params) :
     if ((params.crystal_symmetry.space_group is None) or
         (params.crystal_symmetry.unit_cell is None)) :
       raise Sorry("Crystal symmetry missing or incomplete.")
+  if (params.output_file_name is not None) :
+    output_dir = os.path.dirname(params.output_file_name)
+    if (not os.path.isdir(output_dir)) :
+      raise Sorry(("The output directory %s does not exist or is not a "+
+        "directory.") % output_dir)
   return True
 
 class launcher (runtime_utils.target_with_save_result) :
