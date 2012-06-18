@@ -199,10 +199,9 @@ class reeke_model:
 
         # permutation matrix such that h, k, l = M * (p, q, r)
         elems = [int(0)] * 9
-        elems[col1] = int(1)
-        elems[col2 + 3] = int(1)
-        elems[col3 + 6] = int(1)
-
+        elems[3 * col1] = int(1)
+        elems[3 * col2 + 1] = int(1)
+        elems[3 * col3 + 2] = int(1)
         self._permutation = matrix.sqr(elems)
 
         # Return the permuted order of the columns
@@ -307,9 +306,27 @@ class reeke_model:
 
         self._res_p_lim_end = tuple(sorted(limits))
 
-        # select most restrictive of Ewald and resolution limits
-        p_lim_beg = sorted(self._ewald_p_lim_beg + self._res_p_lim_beg)[1:3]
-        p_lim_end = sorted(self._ewald_p_lim_end + self._res_p_lim_end)[1:3]
+        # select between Ewald and resolution limits on the basis of sign
+        if sign < 0: # p axis aligned with beam, against source
+
+            p_min_beg = max(min(self._res_p_lim_beg), min(self._ewald_p_lim_beg))
+            p_min_end = max(min(self._res_p_lim_end), min(self._ewald_p_lim_end))
+
+            p_max_beg = max(max(self._res_p_lim_beg), max(self._ewald_p_lim_beg))
+            p_max_end = max(max(self._res_p_lim_end), max(self._ewald_p_lim_end))
+
+        else: # p axis aligned with source, against beam
+
+            p_min_beg = min(min(self._res_p_lim_beg), min(self._ewald_p_lim_beg))
+            p_min_end = min(min(self._res_p_lim_end), min(self._ewald_p_lim_end))
+
+            p_max_beg = min(max(self._res_p_lim_beg), max(self._ewald_p_lim_beg))
+            p_max_end = min(max(self._res_p_lim_end), max(self._ewald_p_lim_end))
+
+        p_lim_beg = (p_min_beg, p_max_beg)
+        p_lim_end = (p_min_end, p_max_end)
+        #p_lim_beg = sorted(self._ewald_p_lim_beg + self._res_p_lim_beg)[1:3]
+        #p_lim_end = sorted(self._ewald_p_lim_end + self._res_p_lim_end)[1:3]
 
         # single set of limits covering overall range
         p_lim = sorted(p_lim_beg + p_lim_end)[0::3]
@@ -622,44 +639,12 @@ def reeke_model_for_use_case(phi_beg, phi_end, margin):
     return reeke_model(ub, axis, s0, dmin, phi_beg, phi_end, margin)
 
 def regression_test():
-    """Perform a regression test by generating indices for a small wedge in
-    phi for the Use Case data, and compare to expected results."""
+    """Perform a regression test by comparing to indices generating
+    by the brute force method used in the Use Case."""
 
-    r = reeke_model_for_use_case(0, 0.2, 3)
-    indices = r.generate_indices()
+    # cubic, 50A cell, 1A radiation, everything ideal
 
-    h, k, l = zip(*indices)
-    assert (min(h), max(h)) == (-37, 47)
-    assert (min(k), max(k)) == (-32, 0)
-    assert (min(l), max(l)) == (-109, 124)
-
-    # test reduced margin size
-    r = reeke_model_for_use_case(0, 0.2, 1)
-    indices = r.generate_indices()
-
-    h, k, l = zip(*indices)
-    assert (min(h), max(h)) == (-37, 47)
-    assert (min(k), max(k)) == (-31, -2)
-    assert (min(l), max(l)) == (-107, 122)
-
-    # test increased wedge angle
-    r = reeke_model_for_use_case(0, 1.0, 3)
-    indices = r.generate_indices()
-
-    h, k, l = zip(*indices)
-    assert (min(h), max(h)) == (-37, 47)
-    assert (min(k), max(k)) == (-32, 1)
-    assert (min(l), max(l)) == (-109, 124)
-
-    #TODO Tests for an oblique cell
-    #TODO Better tests than ranges of generated indices
-
-    print "OK"
-
-def compare_with_brute_force():
-    # cubic, 10A cell, 1A radiation, everything ideal
-
-    a = 5.0
+    a = 50.0
 
     ub = matrix.sqr((1.0 / a, 0.0, 0.0,
                      0.0, 1.0 / a, 0.0,
@@ -672,7 +657,7 @@ def compare_with_brute_force():
     axis = matrix.col((0, 1, 0))
 
     wavelength = 1.0
-    dmin = 0.5
+    dmin = 1.5
 
     indices = full_sphere_indices(
         unit_cell = uc, resolution_limit = dmin, space_group = sg)
@@ -684,28 +669,18 @@ def compare_with_brute_force():
         phi_end_rad = 1.0 * math.pi / 180.0,
         indices = indices)
 
-    print 'brute force'
-
-    for j in range(len(obs_indices)):
-        print tuple(map(int, obs_indices[j]))
-
     r = reeke_model(ub, axis, s0, dmin, 0.0, 1.0, 1.0)
     reeke_indices = r.generate_indices()
-
-    print 'reeke'
-
-    for r in reeke_indices:
-        print r
+    r.visualize_with_rgl()
 
     for oi in obs_indices:
         assert(tuple(map(int, oi)) in reeke_indices)
 
-    print 'OK'
+    #TODO Tests for an oblique cell
+
+    print "OK"
 
 if __name__ == '__main__':
-    compare_with_brute_force()
-
-if __name__ == '__main_old__':
 
     import sys
 
