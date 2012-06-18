@@ -26,8 +26,8 @@ class sensor {
   scitbx::vec3<double> get_dir2() const {return dir2;}
   scitbx::vec2<double> get_lim1() const {return lim1;}
   scitbx::vec2<double> get_lim2() const {return lim2;}
-  scitbx::mat3<double> get_D() const {return D;}
-  scitbx::mat3<double> get_d() const;
+  scitbx::mat3<double> get_d() const {return d;}
+  scitbx::mat3<double> get_D() const;
 
   //setters
 
@@ -51,10 +51,10 @@ class sensor {
   scitbx::vec2<double> lim2;
 
   scitbx::vec3<double> normal;
-  scitbx::mat3<double> D;
+  scitbx::mat3<double> d;
   double distance;
 
-  //Update the D() matrix, according to Lure I-II Contribution 8
+  //Update the d matrix, according to Lure I-II Contribution 8
   //(D. Thomas) amongst other things. Call this from any set method.
   void update();
 
