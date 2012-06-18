@@ -34,10 +34,8 @@ class sensor {
   /* Each must call update(). set all three
      properties of the sensor at once (i.e. dir1, dir2, origin) as we
      want to maintain the same "shape" coordinate frame. */
-  void set_frame(const scitbx::vec3<double>& origin);
 
-  void set_frame(const scitbx::vec3<double>& origin,
-                 const scitbx::vec3<double>& dir1);
+  void set_origin(const scitbx::vec3<double>& origin);
 
   void set_frame(const scitbx::vec3<double>& origin,
                  const scitbx::vec3<double>& dir1,
