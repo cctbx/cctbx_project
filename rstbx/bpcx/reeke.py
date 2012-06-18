@@ -5,6 +5,10 @@ from scitbx import matrix
 import scitbx.math
 import math
 from rstbx.cftbx.coordinate_frame_converter import coordinate_frame_converter
+from rstbx.diffraction import rotation_angles, reflection_prediction
+from rstbx.diffraction import full_sphere_indices
+from cctbx.sgtbx import space_group, space_group_symbols
+from cctbx.uctbx import unit_cell
 
 class reeke_model:
     """Model and methods for the Reeke algorithm"""
@@ -652,7 +656,56 @@ def regression_test():
 
     print "OK"
 
+def compare_with_brute_force():
+    # cubic, 10A cell, 1A radiation, everything ideal
+
+    a = 5.0
+
+    ub = matrix.sqr((1.0 / a, 0.0, 0.0,
+                     0.0, 1.0 / a, 0.0,
+                     0.0, 0.0, 1.0 / a))
+
+    uc = unit_cell((a, a, a, 90, 90, 90))
+    sg = space_group(space_group_symbols('P23').hall())
+
+    s0 = matrix.col((0, 0, 1))
+    axis = matrix.col((0, 1, 0))
+
+    wavelength = 1.0
+    dmin = 0.5
+
+    indices = full_sphere_indices(
+        unit_cell = uc, resolution_limit = dmin, space_group = sg)
+
+    ra = rotation_angles(dmin, ub, wavelength, axis)
+
+    obs_indices, obs_angles = ra.observed_indices_and_angles_from_angle_range(
+        phi_start_rad = 0.0 * math.pi / 180.0,
+        phi_end_rad = 1.0 * math.pi / 180.0,
+        indices = indices)
+
+    print 'brute force'
+
+    for j in range(len(obs_indices)):
+        print tuple(map(int, obs_indices[j]))
+
+    r = reeke_model(ub, axis, s0, dmin, 0.0, 1.0, 1.0)
+    reeke_indices = r.generate_indices()
+
+    print 'reeke'
+
+    for r in reeke_indices:
+        print r
+
+    for oi in obs_indices:
+        assert(tuple(map(int, oi)) in reeke_indices)
+
+    print 'OK'
+
 if __name__ == '__main__':
+    compare_with_brute_force()
+
+if __name__ == '__main_old__':
 
     import sys
 
