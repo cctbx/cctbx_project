@@ -230,6 +230,8 @@ def run (args, log=sys.stdout) :
       phi = phi.common_set(f)
       if (fom is not None) :
         fom = fom.common_set(f)
+        f = f.common_set(fom)
+        phi = phi.common_set(f)
         map_coeffs = (f * fom).phase_transfer(phi, deg=True)
       else :
         map_coeffs = f.phase_transfer(phi, deg=True)
