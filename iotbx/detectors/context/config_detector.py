@@ -141,7 +141,10 @@ def ADSC910_at_BioCARS(iobj):
 def ADSC447_at_ALS(iobj):
   if iobj.serial_number != 447: raise Exception("wrong sn")
   record_date = iobj.parameters["DATE"]
-  record_tse = time.mktime(time.strptime(record_date))
+  try:
+    record_tse = time.mktime(time.strptime(record_date))
+  except ValueError:
+    record_tse = time.mktime(time.strptime(record_date,"%a %b %d %H:%M:%S %Z %Y"))
   cutoff_447 = time.mktime(time.strptime("Sun Nov 01 00:00:00 2009"))
   return record_tse < cutoff_447
 
