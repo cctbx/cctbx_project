@@ -671,7 +671,7 @@ def regression_test():
 
     r = reeke_model(ub, axis, s0, dmin, 0.0, 1.0, 1.0)
     reeke_indices = r.generate_indices()
-    r.visualize_with_rgl()
+    #r.visualize_with_rgl()
 
     for oi in obs_indices:
         assert(tuple(map(int, oi)) in reeke_indices)
