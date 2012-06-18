@@ -23,6 +23,31 @@ scitbx::mat3<double> rstbx::detector_model::sensor::get_d() const
     return D.inverse();
 }
 
+// setters
+void rstbx::detector_model::sensor::set_frame(const scitbx::vec3<double>& _origin)
+{
+    origin = _origin;
+    update();
+}
+
+void rstbx::detector_model::sensor::set_frame(const scitbx::vec3<double>& _origin,
+                 const scitbx::vec3<double>& _dir1)
+{
+    origin = _origin;
+    dir1 = _dir1.normalize();
+    update();
+}
+
+void rstbx::detector_model::sensor::set_frame(const scitbx::vec3<double>& _origin,
+                 const scitbx::vec3<double>& _dir1,
+                 const scitbx::vec3<double>& _dir2)
+{
+    origin = _origin;
+    dir1 = _dir1.normalize();
+    dir2 = _dir2.normalize();
+    update();
+}
+
 void rstbx::detector_model::sensor::update()
 {
     // ensure dir1, dir2 are orthonormal
