@@ -1,3 +1,10 @@
+# -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
+#
+# XXX Could include injector positions.  What about laser intensities
+# as read out from the diodes?
+#
+# $Id$
+
 import logging
 import threading
 import wx
@@ -41,6 +48,7 @@ class StatusFrame_thread(threading.Thread):
     self.lock.acquire()
 
 class mod_daq_status (object) :
+  # XXX Could inherit from mod_event?
   def __init__ (self) :
     self.initialize()
     self.logger = logging.getLogger(__name__)
@@ -138,7 +146,8 @@ class mod_daq_status (object) :
       return
 
     # In order to keep all arrays the same length, only append once
-    # all values have been successfully obtained.
+    # all values have been successfully obtained.  XXX Still bugs: see
+    # June run 119.
     self._t.append(s)
     self._si_foil.append(si_foil)
     self._wavelength.append(wavelength)
@@ -159,6 +168,10 @@ class mod_daq_status (object) :
     wx.PostEvent(self.window, event)
 
   def endjob (self, env) :
+    # Make sure any remaining shots are taken into account.  XXX
+    # Hardcoded update frequency.
+    if (self.nshots % 120 != 0) :
+      self.update_plot()
     print "END OF RUN"
     wx.PostEvent(self.window, status_plot.SaveImageEvent())
 
