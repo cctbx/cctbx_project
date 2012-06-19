@@ -976,6 +976,7 @@ iotbx/ranges.py -text
 iotbx/reflection_file_editor.py -text
 iotbx/regression/tst_add_conformations.py -text
 iotbx/regression/tst_expand_ncs.py -text
+iotbx/regression/tst_file_reader.py -text
 iotbx/regression/tst_lattice_symmetry.py svneol=native#text/x-python
 iotbx/regression/tst_map_tools.py -text
 iotbx/regression/tst_pdb_as_fasta.py -text
@@ -993,7 +994,6 @@ iotbx/shelx/tst_lex_parse_build.py -text
 iotbx/symmetry.py -text
 iotbx/tst_bioinformatics.py -text
 iotbx/tst_data_plots.py -text
-iotbx/tst_file_reader.py -text
 iotbx/tst_poscar.py svneol=native#text/x-python
 iotbx/utils.py svneol=native#text/x-python
 ipctbx/SConscript -text

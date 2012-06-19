@@ -193,6 +193,9 @@ class any_file_input (object) :
         else :
           read_method()
     else :
+      # XXX this is probably not the best way to do this - if the file format
+      # is obviously something we don't want, this should be determined first
+      # isntead of trying the limited set of parsers which won't work.
       for file_type in valid_types :
         if file_ext[1:] in self.__extensions__[file_type] :
           read_method = getattr(self, "try_as_%s" % file_type)
@@ -243,6 +246,8 @@ class any_file_input (object) :
     self.file_object = hkl_file
 
   def try_as_cif (self) :
+    # XXX hack to avoid choking on CCP4 maps
+    assert (not self.file_name.endswith(".ccp4"))
     import iotbx.cif
     from iotbx.reflection_file_reader import any_reflection_file
     from iotbx.reflection_file_utils import reflection_file_server
@@ -268,6 +273,8 @@ class any_file_input (object) :
     self.file_object = phil_object
 
   def try_as_seq (self) :
+    # XXX hack to avoid choking on CCP4 maps
+    assert (not self.file_name.endswith(".ccp4"))
     from iotbx.bioinformatics import any_sequence_format
     objects, non_compliant = any_sequence_format(self.file_name)
     assert (objects is not None), "No sequence data found in file."

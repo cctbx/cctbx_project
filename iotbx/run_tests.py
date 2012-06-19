@@ -52,7 +52,7 @@ tst_list = (
   ["$D/regression/tst_reflection_statistics.py", "Fdd2 P31m"],
   "$D/tst_data_plots.py",
   "$D/tst_csv_utils.py",
-  "$D/tst_file_reader.py",
+  "$D/regression/tst_file_reader.py",
   "$D/tst_bioinformatics.py",
   "$D/regression/tst_add_conformations.py",
   "$D/regression/tst_symmetry.py",
