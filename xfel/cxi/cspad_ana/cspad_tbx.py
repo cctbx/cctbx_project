@@ -476,13 +476,13 @@ def env_detz(env):
   return (None)
 
 
-def env_distance(env, offset=500 + 75):
-  """The env_distance() function returns distance from the sample to
-  the detector in mm.  Experience indicates that a value of -500 mm
-  corresponds to a sample-detector distance of about 75 mm.
-
-  XXX The default value should go.  Instead one would be required to
-  provide the offset through the pyana configuration files.
+def env_distance(env, offset):
+  """The env_distance() function returns the distance between the
+  sample and the Ds1 detector in mm.  The distance between the sample
+  and the the detector's zero-point can vary by an inch or more
+  between different LCLS runs.  According to Sebastien Boutet the
+  offset should be stable to within +/-0.5 mm during a normal
+  experiment.
 
   @param env    Environment object
   @param offset Detector-sample offset in mm, corresponding to longest
@@ -530,7 +530,8 @@ def env_sifoil(env):
     # XXX Why is this an EpicsPvTime object?  The absorption
     # coefficient of Si is E-18 * n_{0} * lambda^2, (for lambda >= 5
     # um, Schroder, D. K., R. N. Thomos, and J. C. Swartz, IEEE
-    # Trans. Electron. Dev. ED-25, 2(1978) 254-261)
+    # Trans. Electron. Dev. ED-25, 2(1978) 254-261).  See also
+    # http://henke.lbl.gov/optical_constants/filter2.html
 
     #print "For ", pvname, " got ", pv, " and ", pv.values[0]
     if (pv is not None # and pv.units          == "mm"
