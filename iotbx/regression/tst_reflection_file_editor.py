@@ -206,6 +206,14 @@ mtz_file {
   miller_arrays = run_and_reload(params, "tst1.mtz")
   assert (miller_arrays[0].unit_cell().parameters() ==
     (7.0, 6.0, 8.0, 90.0, 90.0, 90.0))
+  # again, with bad operator
+  params.mtz_file.crystal_symmetry.change_of_basis = "P222"
+  try :
+    miller_arrays = run_and_reload(params, "tst1.mtz")
+  except Sorry :
+    pass
+  else :
+    raise Exception_expected
   # expand symmetry (expand_to_p1=True)
   params = master_phil.fetch(source=new_phil).extract()
   params.mtz_file.crystal_symmetry.expand_to_p1 = True

@@ -472,7 +472,11 @@ class process_arrays (object) :
         elif c_o_b == "to_inverse_hand" :
           cb_op = new_array.change_of_basis_op_to_inverse_hand()
         else:
-          cb_op = sgtbx.change_of_basis_op(c_o_b)
+          try :
+            cb_op = sgtbx.change_of_basis_op(c_o_b)
+          except ValueError, e :
+            raise Sorry(("The change-of-basis operator '%s' is invalid "+
+              "(original error: %s)") % (c_o_b, str(e)))
         if (cb_op.c_inv().t().is_zero()):
           print >> log, ("  Change of basis operator in both h,k,l and "+
                          "x,y,z notation:")
