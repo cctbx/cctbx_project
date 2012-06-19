@@ -96,10 +96,11 @@ class api:
     print "Limiting resolution",limiting_resolution
 
     #predict the spots
-    pre2m = ai.predict_all(image_centers[0],limiting_resolution)
+    spots = ai.predict_all(image_centers[0],limiting_resolution)
+    pre2m = spots.vec3()
     self.pre2m = pre2m
 
-    hkllist = ai.hklpredict()
+    hkllist = spots.hkl()
     cell = ai.getOrientation().unit_cell()
     print cell
     for hkl in hkllist:
@@ -285,8 +286,8 @@ class IntegrationMetaProcedure(simple_integration,slip_callbacks):
 
       predicted = self.inputai.predict_all(
                   self.image_centers[self.image_number],self.limiting_resolution)
-      self.predicted = predicted #only good for integrating one frame...
-      self.hkllist = self.inputai.hklpredict()
+      self.predicted = predicted.vec3() #only good for integrating one frame...
+      self.hkllist = predicted.hkl()
 
     else:
       rot_mat = matrix.sqr(cb_op_to_primitive.c().r().as_double()).transpose()
@@ -295,8 +296,8 @@ class IntegrationMetaProcedure(simple_integration,slip_callbacks):
       self.inputai.setOrientation(primitive_orientation)
       predicted = self.inputai.predict_all(
                   self.image_centers[self.image_number],self.limiting_resolution)
-      self.predicted = predicted #only good for integrating one frame...
-      primitive_hkllist = self.inputai.hklpredict()
+      self.predicted = predicted.vec3() #only good for integrating one frame...
+      primitive_hkllist = predicted.hkl()
       #not sure if matrix needs to be transposed first for outputting HKL's???:
       self.hkllist = cb_op_to_primitive.inverse().apply(primitive_hkllist)
       self.inputai.setOrientation(centered_orientation)

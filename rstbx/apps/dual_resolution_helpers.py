@@ -45,8 +45,8 @@ def get_model_ref_limits(self,raw_image,spotfinder,imageindex,inputai,
 
       #for the moment, assume image center = 0 (always true for xfel stills)
       inputai.setMosaicity(mos_test)
-      pred = inputai.predict_all( 0.0,obs_limited_d )
-      pred_two_theta_rad = inputai.getOrientation().unit_cell().two_theta(inputai.hklpredict(),
+      spots = inputai.predict_all( 0.0,obs_limited_d )
+      pred_two_theta_rad = inputai.getOrientation().unit_cell().two_theta(spots.hkl(),
         wavelength=inputai.wavelength)
 
       obs_tt_sort = tt.select(flex.sort_permutation(tt))
