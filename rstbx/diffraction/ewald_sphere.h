@@ -136,6 +136,11 @@ struct scattering_list {
                            const double& resolution,
                            const double& detector_distance);
 
+  inline scattering_list(scitbx::af::shared<scitbx::vec3<double> >a,
+                         scitbx::af::shared<cctbx::miller::index<> >hkl):
+                         mm_coord_result(a),reflections_result(hkl)
+  {/* for use as a general spot positions container, no unit of measure or ref frame implied*/}
+
   inline
   scitbx::af::shared<scitbx::vec3<double> >
   mm_coord()const {return mm_coord_result;}

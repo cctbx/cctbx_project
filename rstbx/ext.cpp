@@ -316,11 +316,11 @@ namespace boost_python { namespace {
                            const double&>())
       .def("mm_coord", &scattering_list::mm_coord)
       .def("reflections", &scattering_list::reflections)
+
+      .def("vec3", &scattering_list::mm_coord) // when used as a spot positions container
+      .def("hkl", &scattering_list::reflections) // when used as a spot positions container
     ;
-
-
-  }
-
+}
 }}} // namespace omptbx::boost_python::<anonymous>
 
 BOOST_PYTHON_MODULE(rstbx_ext)
