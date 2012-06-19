@@ -27,7 +27,8 @@ class sensor {
   scitbx::vec2<double> get_lim1() const {return lim1;}
   scitbx::vec2<double> get_lim2() const {return lim2;}
   scitbx::mat3<double> get_d() const {return d;}
-  scitbx::mat3<double> get_D() const;
+  scitbx::mat3<double> get_D() const {return D;}
+  bool get_d_is_invertible() const {return d_is_invertible;}
 
   //setters
 
@@ -52,6 +53,8 @@ class sensor {
 
   scitbx::vec3<double> normal;
   scitbx::mat3<double> d;
+  scitbx::mat3<double> D;
+  bool d_is_invertible;
   double distance;
 
   //Update the d matrix, according to Lure I-II Contribution 8

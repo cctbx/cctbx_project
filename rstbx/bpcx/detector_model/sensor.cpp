@@ -1,3 +1,4 @@
+#include <scitbx/error.h>
 #include "sensor.h"
 
 rstbx::detector_model::sensor::sensor(
@@ -6,23 +7,14 @@ rstbx::detector_model::sensor::sensor(
             const scitbx::vec3<double>& _dir2,
             const scitbx::vec2<double>& _lim1,
             const scitbx::vec2<double>& _lim2):
-    origin(_origin),
-    dir1(_dir1.normalize()),
-    dir2(_dir2.normalize()),
     lim1(_lim1),
     lim2(_lim2),
     normal(),
-    d()
+    d(),
+    D(),
+    d_is_invertible(false)
 {
-    update();
-}
-
-// other getters are inline
-scitbx::mat3<double> rstbx::detector_model::sensor::get_D() const
-{
-    // inherently dangerous code. Prefer a mechanism to catch exceptions
-    // and return 'None' at the Python level
-    return d.inverse();
+    set_frame(_origin, _dir1, _dir2);
 }
 
 // setters
@@ -39,9 +31,9 @@ void rstbx::detector_model::sensor::set_frame(
                  const scitbx::vec3<double>& _dir2)
 {
 
-  /* add some tests that the input directions _dir1, _dir2 are not colinear */
-
-  /* assert(fabs(_dir1.angle(_dir2, deg = true) % 180.0) > 1.0); */
+    // test that the input directions are not collinear
+    // FIXME this assert apparently ineffective. Optimised out?
+    assert(fabs(_dir1.angle(_dir2, deg = true) % 180.0) > 1.0);
 
     origin = _origin;
     dir1 = _dir1.normalize();
@@ -60,4 +52,12 @@ void rstbx::detector_model::sensor::update()
     d.set_column(0, dir1);
     d.set_column(1, dir2);
     d.set_column(2, origin);
+    try {
+        D = d.inverse();
+        d_is_invertible = true;
+    }
+    catch (scitbx::error const&) {
+        D = scitbx::mat3<double>(.0,.0,.0,.0,.0,.0,.0,.0,.0);
+        d_is_invertible = false;
+    }
 }

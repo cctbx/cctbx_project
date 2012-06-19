@@ -27,6 +27,8 @@ namespace rstbx { namespace detector_model {
                 .add_property("lim2", &sensor::get_lim2)
                 .add_property("D", &sensor::get_D)
                 .add_property("d", &sensor::get_d)
+                .add_property("d_is_invertible",
+                              &sensor::get_d_is_invertible)
                 .def("set_frame", &sensor::set_frame)
                 .def("set_origin", &sensor::set_origin);
         }
