@@ -30,10 +30,12 @@ void rstbx::detector_model::sensor::set_frame(
                  const scitbx::vec3<double>& _dir1,
                  const scitbx::vec3<double>& _dir2)
 {
+    // test that input directions are not close to zero length
+    SCITBX_ASSERT(_dir1.length() > 1.e-6);
+    SCITBX_ASSERT(_dir2.length() > 1.e-6);
 
     // test that the input directions are not collinear
-    // FIXME this assert apparently ineffective. Optimised out?
-    assert(fabs(_dir1.angle(_dir2, deg = true) % 180.0) > 1.0);
+    SCITBX_ASSERT(fabs(_dir1.angle(_dir2)) > 1.e-6);
 
     origin = _origin;
     dir1 = _dir1.normalize();
