@@ -1,7 +1,8 @@
 #! /bin/sh
 
-# This script executes several commands over ssh.  It is probably a
-# good idea to have an ssh-agent(1) running.  XXX Check again with
+# This script executes several commands over a shared SSH-connection.
+# It is probably a good idea to have an ssh-agent(1) running (XXX not
+# anymore--should only request password once).  XXX Check again with
 # notes to see that all this is sane.
 #
 # Note: A valid AFS token can be obtained by "kinit" followed by
@@ -21,11 +22,6 @@ if ! relinfo > /dev/null 2>&1; then
     exit 1
 fi
 
-# A random host that has the scratch directory mounted.  psexport is
-# preferred over psanafeh, since the latter is not accessible from
-# everywhere.
-NODE="psexport.slac.stanford.edu"
-
 # Path to the chosen pyana script.  This should not need to be
 # changed.  According to Marc Messerschmidt following ana-current
 # should always be fine, unless one really wants to make sure
@@ -37,6 +33,23 @@ if ! test -x "${PYANA}"; then
     echo "Cannot execute ${PYANA}" > /dev/stderr
     exit 1
 fi
+
+# IP-address of a random host that has the scratch directory mounted.
+# psexport is preferred over psanafeh, since the latter is not
+# accessible from everywhere.
+NODE="psexport.slac.stanford.edu"
+NODE=`host "${NODE}" | grep "has address" | head -n 1 | cut -d ' ' -f 1`
+
+# Create a directory for temporary files and open a master connection
+# to ${NODE}.  Install a trap to clean it all up.
+tmpdir=`mktemp -d` || exit 1
+ssh -fMN -o "ControlPath ${tmpdir}/control.socket" ${NODE}
+NODE=`ssh -S "${tmpdir}/control.socket" ${NODE} "hostname -f"`
+
+trap "ssh -S \"${tmpdir}/control.socket\" ${NODE} \"rm -fr \\\"${out}\\\"\"; \
+      ssh -O exit -S \"${tmpdir}/control.socket\" ${NODE} > /dev/null 2>&1;  \
+      rm -fr \"${tmpdir}\";                                                  \
+      exit 1" HUP INT QUIT TERM
 
 args=`getopt c:o:p:q:r:x: $*`
 if test $? -ne 0; then
@@ -59,12 +72,13 @@ while test $# -ge 0; do
 
         -o)
             out=`readlink -fn "$2"`
-            if ssh ${NODE} \
+            if ssh -S "${tmpdir}/control.socket" ${NODE} \
                 "test -e \"${out}\" -a ! -d \"${out}\" 2> /dev/null"; then
                 echo "output exists but is not a directory" > /dev/stderr
                 exit 1
             fi
-            ssh ${NODE} "test -d \"${out}\" 2> /dev/null" || \
+            ssh -S "${tmpdir}/control.socket" ${NODE} \
+                "test -d \"${out}\" 2> /dev/null" ||      \
                 echo "output directory will be created" > /dev/stderr
             shift
             shift
@@ -111,13 +125,9 @@ while test $# -ge 0; do
     esac
 done
 
-# If no queue is given on the command line then submit to default queue
-if [ -z "${queue}" ]; then
-    queue="psfehq"
-fi
-
 # Ensure the two mandatory arguments given, and no extraneous
-# arguments are present.
+# arguments are present.  XXX Since the corresponding options are not
+# optional, they should perhaps be positional arguments instead?
 if test -z "${cfg}" -o -z "${run}"; then
     echo "Must specify -c and -r options" > /dev/stderr
     exit 1
@@ -131,7 +141,8 @@ fi
 # line, and find its absolute path under /reg/data.
 test -n "${EXP}" -a -z "${exp}" && exp="${EXP}"
 exp="/reg/d/psdm/cxi/${exp}"
-if ! ssh ${NODE} "test -d \"${exp}\" 2> /dev/null"; then
+if ! ssh -S "${tmpdir}/control.socket" ${NODE} \
+    "test -d \"${exp}\" 2> /dev/null"; then
     echo "Could not find experiment subdirectory for ${exp}" > /dev/stderr
     exit 1
 fi
@@ -139,9 +150,10 @@ fi
 # Construct an absolute path to the directory with the XTC files as
 # well as a sorted list of unique stream numbers for ${run}.
 xtc="${exp}/xtc"
-streams=`ssh ${NODE} "ls ${xtc}/e*-r${run}-s* 2> /dev/null" \
-    | sed -e "s:.*-s\([[:digit:]]\+\)-c.*:\1:"              \
-    | sort -u                                               \
+streams=`ssh -S "${tmpdir}/control.socket" ${NODE} \
+      "ls ${xtc}/e*-r${run}-s* 2> /dev/null"       \
+    | sed -e "s:.*-s\([[:digit:]]\+\)-c.*:\1:"     \
+    | sort -u                                      \
     | tr -s "\n" " "`
 if test -z "${streams}"; then
     echo "No streams in ${xtc}" > /dev/stderr
@@ -162,6 +174,10 @@ elif test -z "${nproc}"; then
     nproc="8"
 fi
 
+# If no queue is given on the command line then submit to default
+# queue.
+test -z "${queue}" && queue="psfehq"
+
 # Write output to the results subdirectory within the experiment's
 # scratch space, unless specified on the command line.  Create the
 # directory for the run on the cluster.  Determine the zero-padded,
@@ -171,7 +187,8 @@ if test -z "${out}"; then
     out="${exp}/scratch/results"
 fi
 out="${out}/r${run}"
-seq=`ssh ${NODE} "mkdir -p \"${out}\" ; ls \"${out}\"" | sort -n | tail -n 1`
+seq=`ssh -S "${tmpdir}/control.socket" ${NODE} \
+    "mkdir -p \"${out}\" ; ls \"${out}\"" | sort -n | tail -n 1`
 if test -z "${seq}" || ! test "${seq}" -ge 0 2> /dev/null; then
     seq="000"
 else
@@ -180,18 +197,13 @@ else
 fi
 out="${out}/${seq}"
 
-# Create a directory for temporary files, and install a trap to clean
-# it all up.
-tmpdir=`mktemp -d` || exit 1
-trap "ssh ${NODE} \"rm -fr \\\"${out}\\\"\"; \
-      rm -fr \"${tmpdir}\";                  \
-      exit 1" HUP INT QUIT TERM
-
 # Write a configuration file for the analysis of each stream by
 # substituting the directory names with appropriate directories in
 # ${out}, and appending the stream number to the base name.  Create a
 # run-script for each job, as well as a convenience script to submit
 # all the jobs to the queue.  XXX Dump the environment in here, too?
+# XXX What about an option to submit all streams to a single host, so
+# as to do averaging?
 cat > "${tmpdir}/submit.sh" << EOF
 #! /bin/sh
 
@@ -203,16 +215,16 @@ for s in ${streams}; do
         -e "s:\([[:alnum:]]\+_basename[[:space:]]*=.*\)[[:space:]]*:\1s${s}-:" \
         "${cfg}" > "${tmpdir}/pyana_s${s}.cfg"
 
-    # Process each stream on a single host as a base-1 indexed job.
-    # Allocate no more than ${nproc} processors.  Allow the job to
-    # start if at least one processor is available on the host.
-    # Cannot use an indented here-document (<<-), because that would
-    # require leading tabs which are not permitted by
-    # libtbx.find_clutter.
+    # Process each stream on a single host as a base-1 indexed job,
+    # because base-0 will not work.  Allocate no more than ${nproc}
+    # processors.  Allow the job to start if at least one processor is
+    # available on the host.  Cannot use an indented here-document
+    # (<<-), because that would require leading tabs which are not
+    # permitted by libtbx.find_clutter.
     i=`expr "${s}" \+ 1`
     cat >> "${tmpdir}/submit.sh" << EOF
 bsub -J "r${run}[${i}]" -n "1,${nproc}" -o "\${OUT}/stdout/s${s}.out" \\
-    -q ${queue} -R "span[hosts=1]" "\${OUT}/pyana_s${s}.sh"
+    -q "${queue}" -R "span[hosts=1]" "\${OUT}/pyana_s${s}.sh"
 EOF
     # limited cores/user:  psfehq.  unlimited: psfehmpiq
     # Create the run-script for stream ${s}.  Fall back on using a
@@ -241,16 +253,22 @@ directories=`awk -F=                                    \
          gsub(/ $/, "", $2);                            \
          printf("\"%s\"\n", $2);                        \
      }' "${tmpdir}"/pyana_s[0-9][0-9].cfg | sort -u | tr -s "\n" " "`
-ssh ${NODE} "mkdir -p \"${out}/stdout\" ${directories}"
+ssh -S "${tmpdir}/control.socket" ${NODE} \
+    "mkdir -p \"${out}/stdout\" ${directories}"
 
 # Copy the configuration files and the submission script to ${out}.
 # Submit the analysis of all streams to the queueing system from
 # ${NODE}.
-scp -pq "${cfg}"                         "${NODE}:${out}/pyana.cfg"
-scp -pq "${tmpdir}"/pyana_s[0-9][0-9].cfg \
-        "${tmpdir}"/pyana_s[0-9][0-9].sh  \
-        "${tmpdir}/submit.sh"             "${NODE}:${out}"
-ssh ${NODE} "cd \"${PWD}\" && \"${out}/submit.sh\""
+scp -o "ControlPath ${tmpdir}/control.socket" -pq \
+    "${cfg}"                         "${NODE}:${out}/pyana.cfg"
+scp -o "ControlPath ${tmpdir}/control.socket" -pq \
+    "${tmpdir}"/pyana_s[0-9][0-9].cfg             \
+    "${tmpdir}"/pyana_s[0-9][0-9].sh              \
+    "${tmpdir}/submit.sh"             "${NODE}:${out}"
+ssh -S "${tmpdir}/control.socket" ${NODE} \
+    "cd \"${PWD}\" && \"${out}/submit.sh\""
+
+ssh -O exit -S "${tmpdir}/control.socket" ${NODE} > /dev/null 2>&1
 rm -fr "${tmpdir}"
 
 echo "Output directory: ${out}"
