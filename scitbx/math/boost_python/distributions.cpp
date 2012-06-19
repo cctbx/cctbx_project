@@ -75,29 +75,51 @@ namespace {
   {
     typedef Distribution wt;
 
+    #define NEW_MEMBER(name)                \
+    static FloatType name(wt const &self) { \
+      return boost::math::name(self);                    \
+    }
+
+    NEW_MEMBER(mean);
+    NEW_MEMBER(median);
+    NEW_MEMBER(mode);
+    NEW_MEMBER(variance);
+    NEW_MEMBER(standard_deviation);
+    NEW_MEMBER(skewness);
+    NEW_MEMBER(kurtosis);
+
+    #undef NEW_MEMBER
+
+    #define NEW_MEMBER(name)                               \
+    static FloatType name(wt const &self, FloatType arg) { \
+      return boost::math::name(self, arg);                              \
+    }
+
+    NEW_MEMBER(pdf);
+    NEW_MEMBER(cdf);
+    NEW_MEMBER(quantile);
+
+    #undef NEW_MEMBER
+
+    static scitbx::af::shared<FloatType> quantiles(wt const &self, std::size_t n) {
+      return scitbx::math::quantiles<FloatType>(self, n);
+    }
+
     static void
     wrap()
     {
       using namespace boost::python;
-      def("mean", (FloatType(*)(wt const&)) boost::math::mean);
-      def("median", (FloatType(*)(wt const&)) boost::math::median);
-      def("mode", (FloatType(*)(wt const&)) boost::math::mode);
-      def("variance", (FloatType(*)(wt const&)) boost::math::variance);
-      def("standard_deviation",
-        (FloatType(*)(wt const&)) boost::math::standard_deviation);
-      def("skewness", (FloatType(*)(wt const&)) boost::math::skewness);
-      def("kurtosis", (FloatType(*)(wt const&)) boost::math::kurtosis);
-      def("pdf", (FloatType(*)(wt const&, FloatType const&)) boost::math::pdf);
-      def("cdf", (FloatType(*)(wt const&, FloatType const&)) boost::math::cdf);
-      def("quantile", (FloatType(*)(wt const&, FloatType const&))
-        boost::math::quantile);
-      def("quantiles",
-#if BOOST_WORKAROUND(__EDG_VERSION__, BOOST_TESTED_AT(306))
-        (scitbx::af::shared<FloatType>(*)(wt const&, std::size_t)) quantiles
-#else
-        quantiles<FloatType, wt>
-#endif
-        );
+      def("mean"              , mean);
+      def("median"            , median);
+      def("mode"              , mode);
+      def("variance"          , variance);
+      def("standard_deviation", standard_deviation);
+      def("skewness"          , skewness);
+      def("kurtosis"          , kurtosis);
+      def("pdf"               , pdf);
+      def("cdf"               , cdf);
+      def("quantile"          , quantile);
+      def("quantiles"         , quantiles);
     }
   };
 
