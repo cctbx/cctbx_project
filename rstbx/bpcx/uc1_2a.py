@@ -71,6 +71,126 @@ def import_xds_integrate_hkl(xds_integrate_hkl_file):
 # appear in prediction list. N.B. lists not identical, as some reflections on dead
 # regions of camera. Compare HKL, (x, y, phi)
 
+def verify_predictions_against_integrate_hkl(xds_integrate_hkl_file,
+                                             phi_range):
+    from rstbx.cftbx.coordinate_frame_converter import coordinate_frame_converter
+    from rstbx.diffraction import rotation_angles, reflection_prediction
+    from rstbx.diffraction import full_sphere_indices
+    from cctbx.sgtbx import space_group, space_group_symbols
+    from cctbx.uctbx import unit_cell
+    import math
+
+    cfc = coordinate_frame_converter(xds_integrate_hkl_file)
+
+    d2r = math.pi / 180.0
+
+    dmin = cfc.derive_detector_highest_resolution()
+
+    A = cfc.get_c('real_space_a')
+    B = cfc.get_c('real_space_b')
+    C = cfc.get_c('real_space_c')
+
+    cell = (A.length(), B.length(), C.length(), B.angle(C, deg = True),
+            C.angle(A, deg = True), A.angle(B, deg = True))
+
+    uc = unit_cell(cell)
+    sg = cfc.get('space_group_number')
+
+    indices = full_sphere_indices(
+        unit_cell = uc,
+        resolution_limit = dmin,
+        space_group = space_group(space_group_symbols(sg).hall()))
+
+    u, b = cfc.get_u_b(convention = cfc.ROSSMANN)
+    axis = cfc.get('rotation_axis', convention = cfc.ROSSMANN)
+    ub = u * b
+
+    wavelength = cfc.get('wavelength')
+
+    ra = rotation_angles(dmin, ub, wavelength, axis)
+
+    obs_indices, obs_angles = ra.observed_indices_and_angles_from_angle_range(
+        phi_start_rad = phi_range[0] * d2r,
+        phi_end_rad = phi_range[1] * d2r,
+        indices = indices)
+
+    # in here work in internal (i.e. not Rossmann) coordinate frame
+
+    u, b = cfc.get_u_b()
+    axis = cfc.get_c('rotation_axis')
+    sample_to_source_vec = cfc.get_c('sample_to_source').normalize()
+    s0 = (- 1.0 / wavelength) * sample_to_source_vec
+    ub = u * b
+
+    detector_origin = cfc.get_c('detector_origin')
+    detector_fast = cfc.get_c('detector_fast')
+    detector_slow = cfc.get_c('detector_slow')
+    detector_normal = detector_fast.cross(detector_slow)
+    distance = detector_origin.dot(detector_normal.normalize())
+    nx, ny = cfc.get('detector_size_fast_slow')
+    px, py = cfc.get('detector_pixel_size_fast_slow')
+
+    limits = [0, nx * px, 0, ny * py]
+
+    xyz_to_hkl = { }
+
+    for hkl, angle in zip(obs_indices, obs_angles):
+        s = (ub * hkl).rotate(axis, angle)
+        q = (s + s0).normalize()
+
+        # check if diffracted ray parallel to detector face
+
+        q_dot_n = q.dot(detector_normal)
+
+        if q_dot_n == 0:
+            continue
+
+        r = (q * distance / q_dot_n) - detector_origin
+
+        x = r.dot(detector_fast)
+        y = r.dot(detector_slow)
+
+        if x < limits[0] or y < limits[2]:
+            continue
+        if x > limits[1] or y > limits[3]:
+            continue
+
+        xyz = (x, y, angle / d2r)
+        xyz_to_hkl[xyz] = map(int, hkl)
+
+    xyz_to_hkl_xds = import_xds_integrate_hkl(xds_integrate_hkl_file)
+
+    # construct ann to perform search...
+
+    from cctbx.array_family import flex
+    from annlib_ext import AnnAdaptor as ann_adaptor
+
+    reference = flex.double()
+
+    xyzs = [xyz for xyz in xyz_to_hkl]
+
+    for xyz in xyzs:
+        reference.append(xyz[0])
+        reference.append(xyz[1])
+        reference.append(xyz[2])
+
+    ann = ann_adaptor(data = reference, dim = 3, k = 1)
+
+    n_correct = 0
+    n_wrong = 0
+
+    for xyz in xyz_to_hkl_xds:
+        query = flex.double(xyz)
+        ann.query(query)
+        nnxyz = xyzs[ann.nn[0]]
+        if xyz_to_hkl_xds[xyz] == xyz_to_hkl[nnxyz]:
+            n_correct += 1
+        else:
+            n_wrong += 1
+
+    return n_correct, n_wrong
+
+
 # 3 same as #2 verify that the predictions are all correct.
 
 # 4 define 'matrix' and 'hkl' file formats - or follow d*TREK model:
@@ -87,7 +207,10 @@ def import_xds_integrate_hkl(xds_integrate_hkl_file):
 
 def work():
     import sys
-    xyz_to_hkl = import_xds_integrate_hkl(sys.argv[1])
+    n_correct, n_wrong = verify_predictions_against_integrate_hkl(
+        sys.argv[1], (0, 90))
+    assert(float(n_correct) / float(n_correct + n_wrong) > 0.999)
+
     print 'OK'
 
 if __name__ == '__main__':
