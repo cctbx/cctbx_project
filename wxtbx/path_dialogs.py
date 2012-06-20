@@ -53,8 +53,8 @@ class manager (object) :
         new_path = dlg.GetPaths()
         if (new_path is not None) and (len(new_path) > 0) :
           new_dir = os.path.dirname(new_path[0])
-          assert os.path.isdir(new_dir)
-          self.last_dir = new_dir
+          if (os.path.isdir(new_dir)) :
+            self.last_dir = new_dir
       else :
         new_path = dlg.GetPath()
         if (new_path != "") :
