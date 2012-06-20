@@ -163,15 +163,113 @@ def is_xds_xparm(putative_xds_xparm_file):
     '''See if this file looks like an XDS XPARM file i.e. it consists of 42
     floating point values and nothing else.'''
 
-    tokens = open(putative_xds_xparm_file).read().split()
+    tokens = open(putative_xds_xparm_file).read(1000).split()
     if len(tokens) != 42:
         return False
     try:
         values = map(float, tokens)
     except ValueError, e:
         return False
-
     return True
+
+def is_xds_integrate_hkl(putative_integrate_hkl_file):
+    '''See if this looks like an XDS INTEGRATE.HKL file.'''
+
+    first_record = open(putative_integrate_hkl_file).readline()
+
+    if '!OUTPUT_FILE=INTEGRATE.HKL' in first_record:
+        return True
+
+    return False
+
+def import_xds_integrate_hkl(integrate_hkl_file):
+    '''Read an XDS INTEGRATE.HKL file, transform the parameters contained therein
+    into the standard coordinate frame, record this as a dictionary.'''
+
+    assert(is_xds_integrate_hkl(integrate_hkl_file))
+
+    header = []
+
+    for record in open(integrate_hkl_file):
+        if not record.startswith('!'):
+            break
+
+        header.append(record)
+
+    # now need to dig out the values I want, convert and return
+
+    for record in header:
+        if record.startswith('!ROTATION_AXIS='):
+            axis = map(float, record.split()[-3:])
+            continue
+        if record.startswith('!INCIDENT_BEAM_DIRECTION='):
+            beam = map(float, record.split()[-3:])
+            continue
+        if record.startswith('!DIRECTION_OF_DETECTOR_X-AXIS='):
+            x = map(float, record.split()[-3:])
+            continue
+        if record.startswith('!DIRECTION_OF_DETECTOR_Y-AXIS='):
+            y = map(float, record.split()[-3:])
+            continue
+        if record.startswith('!UNIT_CELL_A-AXIS='):
+            a = map(float, record.split()[-3:])
+            continue
+        if record.startswith('!UNIT_CELL_B-AXIS='):
+            b = map(float, record.split()[-3:])
+            continue
+        if record.startswith('!UNIT_CELL_C-AXIS='):
+            c = map(float, record.split()[-3:])
+            continue
+        if record.startswith('!X-RAY_WAVELENGTH='):
+            wavelength = float(record.split()[-1])
+            continue
+        if record.startswith('!DETECTOR_DISTANCE='):
+            distance = float(record.split()[-1])
+            continue
+        if record.startswith('!SPACE_GROUP_NUMBER='):
+            space_group_number = int(record.split()[-1])
+            continue
+        if record.startswith('!NX='):
+            nx = int(record.split()[1])
+            ny = int(record.split()[3])
+            px = float(record.split()[5])
+            py = float(record.split()[7])
+            continue
+        if record.startswith('!ORGX='):
+            ox = float(record.split()[1])
+            oy = float(record.split()[3])
+            continue
+
+    # XDS defines the beam vector as s0 rather than from sample -> source.
+    # Keep in mind that any inversion of a vector needs to be made with great
+    # care!
+
+    B = - matrix.col(beam).normalize()
+    A = matrix.col(axis).normalize()
+
+    X = matrix.col(x).normalize()
+    Y = matrix.col(y).normalize()
+    N = X.cross(Y)
+
+    _X = matrix.col([1, 0, 0])
+    _Y = matrix.col([0, 1, 0])
+    _Z = matrix.col([0, 0, 1])
+
+    R = align_reference_frame(A, _X, B, _Z)
+
+    detector_origin = R * (distance * N - ox * px * X - oy * py * Y)
+    detector_fast = R * X
+    detector_slow = R * Y
+    rotation_axis = R * A
+    sample_to_source = R * B
+    real_space_a = R * matrix.col(a)
+    real_space_b = R * matrix.col(b)
+    real_space_c = R * matrix.col(c)
+
+    return coordinate_frame_information(
+        detector_origin, detector_fast, detector_slow, (nx, ny), (px, py),
+        rotation_axis, sample_to_source, wavelength,
+        real_space_a, real_space_b, real_space_c, space_group_number)
 
 def import_xds_xparm(xparm_file):
     '''Read an XDS XPARM file, transform the parameters contained therein
@@ -320,5 +418,10 @@ def find_closest_matrix(moving, target):
 
     return reindex
 
+def work():
+    import sys
+    import_xds_integrate_hkl(sys.argv[1])
+    print 'OK'
+
 if __name__ == '__main__':
-    test_align_reference_frame_brute()
+    work()
