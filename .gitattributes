@@ -1388,6 +1388,7 @@ rstbx/bpcx/uc1_2.py -text
 rstbx/bpcx/uc1_2_positions.py -text
 rstbx/bpcx/uc1_2_positions_idx.py -text
 rstbx/bpcx/uc1_2_validate.py -text
+rstbx/bpcx/uc1_2a.py -text
 rstbx/bpcx/xparm-uc1-2.xds -text
 rstbx/cftbx/__init__.py -text
 rstbx/cftbx/coordinate_frame_converter.py -text
