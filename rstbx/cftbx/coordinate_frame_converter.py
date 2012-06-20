@@ -5,6 +5,8 @@ from scitbx import matrix
 from cctbx import uctbx
 
 from coordinate_frame_helpers import is_xds_xparm, import_xds_xparm
+from coordinate_frame_helpers import is_xds_integrate_hkl, \
+    import_xds_integrate_hkl
 
 class coordinate_frame_converter:
     '''A class which is instantiated from a supported file (initially an
@@ -22,6 +24,10 @@ class coordinate_frame_converter:
 
         if is_xds_xparm(configuration_file):
             self._coordinate_frame_information = import_xds_xparm(
+                configuration_file)
+
+        elif is_xds_integrate_hkl(configuration_file):
+            self._coordinate_frame_information = import_xds_integrate_hkl(
                 configuration_file)
 
         else:
