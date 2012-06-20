@@ -211,6 +211,9 @@ public:
   double get_majoraxis();
   double get_minoraxis();
   //
+
+  scitbx::vec2<double> get_radial_and_azimuthal_size(double, double);
+
   double resolution;//added Feb. 2006 for C++ manipulation of large-cell problems
   void setstate(Distl::point const&);//only used in unpickling
   virtual
