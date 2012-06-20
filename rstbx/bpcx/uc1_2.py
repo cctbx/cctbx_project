@@ -224,11 +224,13 @@ class make_prediction_list:
       rp.set_mosaicity(self._mosaicity_deg, degrees = True)
     return rp.predict(obs_indices, obs_angles)
 
+# FIXME this test below should e.g. compare with INTEGRATE.HKL from XDS?
+
 def test(configuration_file, img_range, dmin = None):
     '''Perform the calculations needed for use case 1.1.'''
 
     mp = make_prediction_list(configuration_file, img_range, dmin, None)
-    obs_hkl,obs_fast,obs_slow,obs_angle = mp.predict_observations()
+    obs_hkl, obs_fast, obs_slow, obs_angle = mp.predict_observations()
 
     r2d = 180.0 / math.pi
 
