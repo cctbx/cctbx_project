@@ -4,6 +4,7 @@ from libtbx import easy_pickle
 from libtbx import group_args
 from math import sqrt
 import os
+import sys
 
 def parse_database (file_name) :
   from cctbx import crystal
@@ -95,5 +96,23 @@ def symmetry_search (
   scores.sort(lambda x,y: cmp(x.rmsd, y.rmsd))
   return scores
 
+def download_crystal_db () :
+  import urllib2
+  host = "ftp.wwpdb.org"
+  file = "pub/pdb/derived_data/index/crystal.idx"
+  url = "ftp://%s/%s" % (host, file)
+  print "Retrieving %s" % url
+  data = urllib2.urlopen(url)
+  dest_dir = libtbx.env.find_in_repositories(
+    relative_path="chem_data/pdb",
+    test=os.path.isdir)
+  dest_file = os.path.join(dest_dir, "crystal.idx")
+  f = open(dest_file, "w")
+  f.write(data.read())
+  f.close()
+  print "Wrote %s" % dest_file
+
 if (__name__ == "__main__") :
+  if ("--update" in sys.argv) :
+    download_crystal_db()
   load_db(save_pickle=True)
