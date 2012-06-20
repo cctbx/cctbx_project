@@ -125,6 +125,8 @@ BOOST_PYTHON_MODULE(spotfinder_distltbx_ext)
      .def("shape",                 &w_spot::get_shape)
      .def("majoraxis",             &w_spot::get_majoraxis)
      .def("minoraxis",             &w_spot::get_minoraxis)
+     .def("get_radial_and_azimuthal_size",
+                                   &w_spot::get_radial_and_azimuthal_size)
      .def("skewness",              &w_spot::skewness)
      .add_property("peakintensity",make_getter(&w_spot::peakintensity,rbv()),
                                    make_setter(&w_spot::peakintensity,dcp()))

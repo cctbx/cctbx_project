@@ -1,3 +1,5 @@
+/* -*- Mode: C++; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*- */
+
 #include <boost/tokenizer.hpp>
 #include <spotfinder/core_toolbox/distl.h>
 #include <scitbx/vec3.h>
@@ -100,6 +102,60 @@ void di::w_spot::setstate(Distl::point const& pk){
   nmaxima=0;
   p_gotaxes=false;
   peak=pk;
+}
+
+
+/*
+ * Does not take any charge sharing into account.  beam_center_x and
+ * beam_center_y must be given in pixel units.
+ */
+scitbx::vec2<double>
+di::w_spot::get_radial_and_azimuthal_size(
+  double beam_center_x, double beam_center_y)
+{
+  if (bodypixels.size() == 0)
+    return (scitbx::vec2<double>(0, 0));
+
+  /*
+   * Calculate unit-length radial and azimuthal (tangential) direction
+   * vectors, r and a, respectively.  The azimuthal direction vector
+   * is the radial vector rotated by 90 degrees counter-clockwise.
+   */
+  const scitbx::vec2<double> center(model_center());
+  scitbx::vec2<double> r(center[0] - beam_center_x,
+                         center[1] - beam_center_y);
+  double h(r.length());
+  if (h <= 0)
+    return (scitbx::vec2<double>(0, 0));
+  r /= h;
+  scitbx::vec2<double> a(-r[1], +r[0]);
+
+  /*
+   * Determine the extent of the spot along the radial and azimuthal
+   * directions from its center.
+   */
+  double a_max(-std::numeric_limits<double>::infinity());
+  double a_min(+std::numeric_limits<double>::infinity());
+  double r_max(-std::numeric_limits<double>::infinity());
+  double r_min(+std::numeric_limits<double>::infinity());
+  for (point_list_t::const_iterator q = bodypixels.begin();
+       q != bodypixels.end();
+       q++) {
+    const scitbx::vec2<double> p(q->x - center[0], q->y - center[1]);
+    const double pa(p * a);
+    const double pr(p * r);
+
+    if (pa > a_max)
+      a_max = pa;
+    if (pa < a_min)
+      a_min = pa;
+    if (pr > r_max)
+      r_max = pr;
+    if (pr < r_min)
+      r_min = pr;
+  }
+
+  return (scitbx::vec2<double>(r_max - r_min, a_max - a_min));
 }
 
 
