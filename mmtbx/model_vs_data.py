@@ -670,7 +670,7 @@ def run(args,
         out                      = None,
         log                      = sys.stdout):
   import mmtbx.f_model_info
-  if(len(args)==0):
+  if(len(args)==0) or (args == ["--help"]) :
     print >> log, msg
     defaults(log=log, silent=False)
     return
