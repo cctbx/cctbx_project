@@ -698,9 +698,9 @@ if __name__ == '__main__':
         margin = int(sys.argv[4]) if len(sys.argv) == 5 else 3
 
         # test run for development/debugging.
-        u, b = cfc.get_u_b(convention = cfc.ROSSMANN)
+        u, b = cfc.get_u_b()
         ub = matrix.sqr(u * b)
-        axis = matrix.col(cfc.get('rotation_axis', convention = cfc.ROSSMANN))
+        axis = matrix.col(cfc.get('rotation_axis'))
         wavelength = cfc.get('wavelength')
         sample_to_source_vec = matrix.col(cfc.get_c('sample_to_source').normalize())
         s0 = (- 1.0 / wavelength) * sample_to_source_vec
