@@ -105,6 +105,10 @@ def regenerate_predictions_brute(xds_integrate_hkl_file, phi_range):
         resolution_limit = dmin,
         space_group = space_group(space_group_symbols(sg).hall()))
 
+    print "full_sphere_indices"
+    print "is of type", type(indices)
+    print "and has length", len(indices)
+
     u, b = cfc.get_u_b(convention = cfc.ROSSMANN)
     axis = cfc.get('rotation_axis', convention = cfc.ROSSMANN)
     ub = u * b
@@ -117,6 +121,10 @@ def regenerate_predictions_brute(xds_integrate_hkl_file, phi_range):
         phi_start_rad = phi_range[0] * d2r,
         phi_end_rad = phi_range[1] * d2r,
         indices = indices)
+
+    print "obs_indices from full_sphere_indices"
+    print "is of type", type(obs_indices)
+    print "and has length", len(obs_indices)
 
     # in here work in internal (i.e. not Rossmann) coordinate frame
 
@@ -199,6 +207,12 @@ def regenerate_predictions_reeke(xds_integrate_hkl_file, phi_range):
     rm = reeke_model(ub, axis, s0, dmin, phi_range[0], phi_range[1], 3)
     indices = rm.generate_indices()
 
+    print "reeke indices"
+    print "is of type", type(indices)
+    print "and has length", len(indices)
+
+    #rm.visualize_with_rgl()
+
     # the following are in Rossmann coordinate frame to fit in with
     # Labelit code...
 
@@ -212,6 +226,10 @@ def regenerate_predictions_reeke(xds_integrate_hkl_file, phi_range):
         phi_start_rad = phi_range[0] * d2r,
         phi_end_rad = phi_range[1] * d2r,
         indices = indices)
+
+    print "obs_indices from reeke"
+    print "is of type", type(obs_indices)
+    print "and has length", len(obs_indices)
 
     detector_origin = cfc.get_c('detector_origin')
     detector_fast = cfc.get_c('detector_fast')
