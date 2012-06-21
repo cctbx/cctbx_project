@@ -46,6 +46,7 @@ tst_list = (
   "$D/tst_reflection_file_utils.py",
   "$D/detectors/tst_adsc.py",
   "$D/detectors/tst_debug_write.py",
+  "$D/detectors/tst_detectors.py",
   "$D/xplor/tst_xplormap.py",
   ["$D/tst_phases.py", "P31"],
   "$D/regression/tst_lattice_symmetry.py",
