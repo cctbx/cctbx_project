@@ -215,7 +215,7 @@ def extend_flags (
       missing_flags = missing_set.array(data=flex.bool(n_missing,False))
     else :
       if accumulation_callback is not None :
-        if not accumulation_callback(miller_array=new_array,
+        if not accumulation_callback(miller_array=r_free_flags,
                                      test_flag_value=test_flag_value,
                                      n_missing=n_missing,
                                      column_label=info.labels[0]) :
