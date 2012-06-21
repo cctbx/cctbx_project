@@ -894,6 +894,7 @@ iotbx/detectors/pilatus_minicbf.py -text
 iotbx/detectors/pilatus_slice.py -text
 iotbx/detectors/scanbox.h -text
 iotbx/detectors/tst_cbf_comp_read_meth.py -text
+iotbx/detectors/tst_detectors.py -text
 iotbx/detectors/tst_py_cbf.py -text
 iotbx/detectors/url_support.py -text
 iotbx/detectors/util/__init__.py -text

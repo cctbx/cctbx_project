@@ -83,6 +83,9 @@ class DetectorImageBase(object):
     if typehash.find("int")>=0: return "int"
     elif typehash.find("double")>=0: return "double"
 
+  def get_raw_data(self):
+    return self.linearintdata
+
   def get_flex_image(self,binning=1,brightness=1.0):
     datatype = self.get_data_type()
     if datatype=="int":
