@@ -368,6 +368,8 @@ def parse_scala (lines) :
   d_max = None
   for i, line in enumerate(lines) :
     if ("Summary data for " in line) :
+      if (lines[i+1].startswith("</p>")) or ("<br" in line) :
+        continue
       j = i
       n_refl = None
       n_refl_all = None
@@ -389,6 +391,8 @@ def parse_scala (lines) :
           info.add_overall_stat("completeness", float(line.split()[1]))
         elif line.startswith("Multiplicity") :
           info.add_overall_stat("multiplicity", float(line.split()[1]))
+        elif ("Outlier rejection" in line) or ("$$" in line) :
+          break
         j += 1
   assert (d_max is not None)
   for table in tables :
