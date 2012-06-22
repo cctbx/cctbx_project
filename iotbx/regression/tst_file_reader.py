@@ -115,6 +115,26 @@ END
     raise Exception_expected
   pdb.check_file_type(multiple_formats=["hkl","pdb"])
   os.remove("tmp1.pdb")
+  f = open("tmp1.ent.txt", "w")
+  f.write(pdb_data)
+  f.close()
+  pdb = any_file("tmp1.ent.txt")
+  pdb.assert_file_type("pdb")
+  pdb_data_bad = """
+HEADER    HYDROLASE(METALLOPROTEINASE)            17-NOV-93   1THL
+ATOM      1  N   ILE     1       9.581  51.813  -0.720  1.00 31.90      1THL 158
+ATOM      2  CA  ILE     1       8.335  52.235  -0.041  1.00 52.95      1THL 159
+ATOM      3  C   ILE     1       7.959  53.741   0.036  1,00 26.88      1THL 160
+END"""
+  f = open("tmp1_bad.pdb", "w")
+  f.write(pdb_data_bad)
+  f.close()
+  try :
+    pdb = any_file("tmp1_bad.pdb", raise_sorry_if_not_expected_format=True)
+  except Sorry :
+    pass
+  else :
+    raise Exception_expected
 
 def exercise_phil () :
   phil_data = """\
