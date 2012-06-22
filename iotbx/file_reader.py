@@ -129,7 +129,8 @@ def any_file (file_name,
               allow_directories=False,
               force_type=None,
               input_class=None,
-              raise_sorry_if_errors=False) :
+              raise_sorry_if_errors=False,
+              raise_sorry_if_not_expected_format=False) :
   if not os.path.exists(file_name) :
     raise Sorry("Couldn't find the file %s" % file_name)
   elif os.path.isdir(file_name) :
@@ -146,7 +147,8 @@ def any_file (file_name,
       get_processed_file=get_processed_file,
       valid_types=valid_types,
       force_type=force_type,
-      raise_sorry_if_errors=raise_sorry_if_errors)
+      raise_sorry_if_errors=raise_sorry_if_errors,
+      raise_sorry_if_not_expected_format=raise_sorry_if_not_expected_format)
 
 def splitext (file_name) :
   (file_base, file_ext) = os.path.splitext(file_name)
@@ -165,7 +167,8 @@ class any_file_input (object) :
       get_processed_file,
       valid_types,
       force_type,
-      raise_sorry_if_errors = False) :
+      raise_sorry_if_errors=False,
+      raise_sorry_if_not_expected_format=False) : # XXX should probably be True
     self.valid_types = valid_types
     self.file_name = file_name
     self.file_object = None
@@ -197,7 +200,8 @@ class any_file_input (object) :
       # is obviously something we don't want, this should be determined first
       # isntead of trying the limited set of parsers which won't work.
       for file_type in valid_types :
-        if file_ext[1:] in self.__extensions__[file_type] :
+        if ((file_ext[1:] in self.__extensions__[file_type]) and
+            (not file_ext in [".txt"])) :
           read_method = getattr(self, "try_as_%s" % file_type)
           self._tried_types.append(file_type)
           try :
@@ -207,6 +211,9 @@ class any_file_input (object) :
           except FormatError, e :
             raise e
           except Exception, e :
+            if ((raise_sorry_if_not_expected_format) and
+                (file_ext in [".pdb",".mtz",".cif"])) :
+              raise Sorry(str(e))
             self._errors[file_type] = str(e)
             self.file_type = None
             self.file_object = None
@@ -225,7 +232,10 @@ class any_file_input (object) :
       raw_records = flex.std_string()
       pdb_file = smart_open.for_reading(file_name=self.file_name)
       raw_records.extend(flex.split_lines(pdb_file.read()))
-      structure = pdb_input(source_info=None, lines=raw_records)
+      try :
+        structure = pdb_input(source_info=None, lines=raw_records)
+      except ValueError, e :
+        raise Sorry(str(e))
       self.file_type = "pdb"
       self.file_object = structure
     else :
