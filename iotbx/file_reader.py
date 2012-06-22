@@ -213,7 +213,7 @@ class any_file_input (object) :
           except Exception, e :
             if ((raise_sorry_if_not_expected_format) and
                 (file_ext in [".pdb",".mtz",".cif"])) :
-              raise Sorry(str(e))
+              raise Sorry("File format error:\n" + str(e))
             self._errors[file_type] = str(e)
             self.file_type = None
             self.file_object = None
