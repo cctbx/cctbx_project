@@ -870,6 +870,11 @@ class structure(crystal.special_position_settings):
     return neutron_scattering_dict
 
   def hd_selection(self):
+    """Get a selector array for all hydrogen and deuterium scatterers of the structure.
+
+    :returns: an array to select all H and D scatterers of the structure
+    :rtype: boolean[]
+    """
     scattering_types = self._scatterers.extract_scattering_types()
     result = flex.bool()
     for sct in scattering_types:
@@ -882,6 +887,18 @@ class structure(crystal.special_position_settings):
     include_only_atoms_with_alternative_conformations=False,
     only_protein=False,
                    ):
+    """Get a selector array for heavy (= non H or D) scatterers of the structure.
+
+    :param ignore_atoms_with_alternative_conformations: select normal atoms/conformations only
+    :type ignore_atoms_with_alternative_conformations: boolean
+    :param include_only_atoms_with_alternative_conformations: select only scatterers with alternative conformations
+    :type include_only_atoms_with_alternative_conformations: boolean
+    :param only_protein: select only protein scatterers
+    :type only_protein: boolean
+
+    :returns: an array to select the desired scatterers of the structure
+    :rtype: boolean[]
+    """
     if ( ignore_atoms_with_alternative_conformations and
          include_only_atoms_with_alternative_conformations
          ):
@@ -936,6 +953,18 @@ class structure(crystal.special_position_settings):
     ignore_atoms_with_alternative_conformations=False,
     include_only_atoms_with_alternative_conformations=False,
     ):
+    """Get a selector array for scatterers of the structure by "atom" names.
+
+    :param atom_names: list of labels of scatterers to select
+    :type atom_names: list(string)
+    :param ignore_atoms_with_alternative_conformations: select normal atoms/conformations only
+    :type ignore_atoms_with_alternative_conformations: boolean
+    :param include_only_atoms_with_alternative_conformations: select only scatterers with alternative conformations
+    :type include_only_atoms_with_alternative_conformations: boolean
+
+    :returns: an array to select the desired scatterers of the structure
+    :rtype: boolean[]
+    """
     #XXX may need a better function
     if ( ignore_atoms_with_alternative_conformations and
          include_only_atoms_with_alternative_conformations
@@ -969,6 +998,19 @@ class structure(crystal.special_position_settings):
     ignore_atoms_with_alternative_conformations=False,
     include_only_atoms_with_alternative_conformations=False,
                          ):
+    """Get a selector array for scatterers of the backbone of the structure.
+    (This is just an alias for atom_names_selection.)
+
+    :param atom_names: list of labels of scatterers to select
+    :type atom_names: list(string)
+    :param ignore_atoms_with_alternative_conformations: select normal atoms/conformations only
+    :type ignore_atoms_with_alternative_conformations: boolean
+    :param include_only_atoms_with_alternative_conformations: select only scatterers with alternative conformations
+    :type include_only_atoms_with_alternative_conformations: boolean
+
+    :returns: an array to select the desired scatterers of the structure
+    :rtype: boolean[]
+    """
     return self.atom_names_selection(
       atom_names=atom_names,
       ignore_atoms_with_alternative_conformations=ignore_atoms_with_alternative_conformations,
@@ -980,6 +1022,19 @@ class structure(crystal.special_position_settings):
     ignore_atoms_with_alternative_conformations=False,
     include_only_atoms_with_alternative_conformations=False,
                            ):
+    """Get a selector array for scatterers of the main chain of the structure.
+    (This is just an alias for atom_names_selection with a different default selection.)
+
+    :param atom_names: list of labels of scatterers to select
+    :type atom_names: list(string)
+    :param ignore_atoms_with_alternative_conformations: select normal atoms/conformations only
+    :type ignore_atoms_with_alternative_conformations: boolean
+    :param include_only_atoms_with_alternative_conformations: select only scatterers with alternative conformations
+    :type include_only_atoms_with_alternative_conformations: boolean
+
+    :returns: an array to select the desired scatterers of the structure
+    :rtype: boolean[]
+    """
     return self.atom_names_selection(
       atom_names=atom_names,
       ignore_atoms_with_alternative_conformations=ignore_atoms_with_alternative_conformations,
@@ -991,6 +1046,19 @@ class structure(crystal.special_position_settings):
     ignore_atoms_with_alternative_conformations=False,
     include_only_atoms_with_alternative_conformations=False,
                                  ):
+    """Get a selector array for peptide dihedral scatterers of the structure.
+    (This is just an alias for atom_names_selection with a different default selection.)
+
+    :param atom_names: list of labels of scatterers to select
+    :type atom_names: list(string)
+    :param ignore_atoms_with_alternative_conformations: select normal atoms/conformations only
+    :type ignore_atoms_with_alternative_conformations: boolean
+    :param include_only_atoms_with_alternative_conformations: select only scatterers with alternative conformations
+    :type include_only_atoms_with_alternative_conformations: boolean
+
+    :returns: an array to select the desired scatterers of the structure
+    :rtype: boolean[]
+    """
     return self.atom_names_selection(
       atom_names=atom_names,
       ignore_atoms_with_alternative_conformations=ignore_atoms_with_alternative_conformations,
@@ -998,13 +1066,38 @@ class structure(crystal.special_position_settings):
       )
 
   def element_selection(self, *elements):
+    """Get a selector array for scatterers of specified element type(s) of the structure.
+
+    :param elements: tuple of element symbols to select
+    :type elements: list(string) or set(string) or tuple(string)
+
+    :returns: an array to select the desired scatterers of the structure
+    :rtype: boolean[]
+    """
     return flex.bool([ sc.element_symbol().strip() in elements
                        for sc in self.scatterers() ])
 
   def label_selection(self, *labels):
+    """Get a selector array for scatterers of specified labels from the structure.
+
+    :param labels: tuple of scatterer labels to select
+    :type labels: list(string) or set(string) or tuple(string)
+
+    :returns: an array to select the desired scatterers of the structure
+    :rtype: boolean[]
+    """
     return flex.bool([ sc.label in labels for sc in self.scatterers() ])
 
   def label_regex_selection(self, label_regex):
+    """Get a selector array for scatterers of specified labels (via regular
+    expression) from the structure.
+
+    :param label_regex: a regular expression matching scatterer labels to select
+    :type label_regex: string or re
+
+    :returns: an array to select the desired scatterers of the structure
+    :rtype: boolean[]
+    """
     if is_string(label_regex):
       import re
       label_regex = re.compile(label_regex)
