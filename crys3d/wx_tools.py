@@ -152,7 +152,7 @@ class ModelControlPanel (wx.MiniFrame) :
     self.parent.Refresh()
 
   def OnChooseDrawMode (self, event) :
-    mode_label = event.GetEventObject().GetStringSelection()
+    mode_label = str(event.GetEventObject().GetStringSelection())
     model = self.parent.get_model(self.model_id)
     if (model is not None) :
       for mode, label in draw_modes :
@@ -163,7 +163,7 @@ class ModelControlPanel (wx.MiniFrame) :
           break
 
   def OnChooseColorMode (self, event) :
-    mode_label = event.GetEventObject().GetStringSelection()
+    mode_label = str(event.GetEventObject().GetStringSelection())
     model = self.parent.get_model(self.model_id)
     if (model is not None) :
       for mode, label in color_modes :
@@ -176,7 +176,7 @@ class ModelControlPanel (wx.MiniFrame) :
   def OnSetFlag (self, event) :
     box = event.GetEventObject()
     flag_value = box.GetValue()
-    label = box.GetLabel()
+    label = str(box.GetLabel())
     model = self.parent.get_model(self.model_id)
     if (model is not None) :
       for flag_name, flag_label in draw_flags :
