@@ -115,7 +115,7 @@ class electron_density_map(object):
                        centrics_pre_scale = 1.0,
                        external_alpha_fom_source = None,
                        exclude_free_r_reflections=False,
-                       fill_missing_f_obs=False,
+                       fill_missing=False,
                        post_processing_callback=None):
     map_name_manager = mmtbx.map_names(map_name_string = map_type)
     if(map_name_manager.anomalous):
@@ -189,7 +189,7 @@ class electron_density_map(object):
       if (r_free_flags.anomalous_flag()) :
         r_free_flags = r_free_flags.average_bijvoet_mates()
       coeffs = coeffs.select(~r_free_flags.data())
-    if (fill_missing_f_obs) :
+    if (fill_missing) :
       if (coeffs.anomalous_flag()) :
         coeffs = coeffs.average_bijvoet_mates()
       coeffs = fill_missing_f_obs(coeffs, self.fmodel)
