@@ -244,7 +244,7 @@ class selection_editor_mixin (model_viewer_mixin) :
 
   def add_model (self, model_id, pdb_hierarchy, atomic_bonds,
       mmtbx_selection_function=None) :
-    assert isinstance(model_id, str)
+    assert isinstance(model_id, str) or isinstance(model_id, unicode)
     model = model_data_with_selection(model_id, pdb_hierarchy, atomic_bonds,
       base_color=self.settings.opengl.base_atom_color)
     model.set_mmtbx_selection_function(mmtbx_selection_function)
