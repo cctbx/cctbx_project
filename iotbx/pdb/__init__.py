@@ -582,20 +582,33 @@ def input(
     file_name=None,
     source_info=Please_pass_string_or_None,
     lines=None,
-    pdb_id=None):
+    pdb_id=None,
+    raise_sorry_if_format_error=False):
   if (pdb_id is not None):
     assert file_name is None
     file_name = ent_path_local_mirror(pdb_id=pdb_id)
   if (file_name is not None):
-    return ext.input(
-      source_info="file " + str(file_name), # XXX unicode hack - dangerous
-      lines=flex.split_lines(smart_open.for_reading(file_name).read()))
+    try :
+      return ext.input(
+        source_info="file " + str(file_name), # XXX unicode hack - dangerous
+        lines=flex.split_lines(smart_open.for_reading(file_name).read()))
+    except ValueError, e :
+      if (raise_sorry_if_format_error) :
+        raise Sorry("Format error in %s:\n%s" % (str(file_name), str(e)))
+      else :
+        raise
   assert source_info is not Please_pass_string_or_None
   if (isinstance(lines, str)):
     lines = flex.split_lines(lines)
   elif (isinstance(lines, (list, tuple))):
     lines = flex.std_string(lines)
-  return ext.input(source_info=source_info, lines=lines)
+  try :
+    return ext.input(source_info=source_info, lines=lines)
+  except ValueError, e :
+    if (raise_sorry_if_format_error) :
+      raise Sorry("Format error:\n%s" % str(e))
+    else :
+      raise
 
 default_atom_names_scattering_type_const = ["PEAK", "SITE"]
 
