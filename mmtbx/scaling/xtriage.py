@@ -782,7 +782,8 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
       assert f_calc_miller is None
       reference_structure = iotbx.pdb.input(
         file_name=reference_params.structure.file_name).xray_structure_simple(
-        crystal_symmetry = miller_array.crystal_symmetry())
+        crystal_symmetry = miller_array.crystal_symmetry(),
+        raise_sorry_if_format_error=True)
       tmp_obj = mmtbx.utils.fmodel_from_xray_structure(
         xray_structure = reference_structure,
         f_obs = miller_array)

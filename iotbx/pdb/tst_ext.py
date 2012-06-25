@@ -147,6 +147,17 @@ some.pdb, line 2:
   ---------------------------------^
   unexpected plus sign.""")
   else: raise Exception_expected
+  try :
+    pdb.input(
+      source_info="some.pdb",
+      lines=flex.split_lines("""\
+HETATM    9 2H3  MPR B   5      16.388   0.289   6.613  1.00  0.08
+ANISOU    9 2H3  MPR B   5      8+8    848    848      0      0      0
+"""),
+      raise_sorry_if_format_error=True)
+  except Sorry :
+    pass
+  else: raise Exception_expected
   try:
     pdb.input(
       source_info=None,
