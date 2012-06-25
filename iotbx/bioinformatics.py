@@ -1323,7 +1323,7 @@ class hhsearch_parser(hhpred_parser):
   BLOCKS = re.compile(
     r"""
     Q \s+ ss_pred \s+ ( [\w-]+ ) \s* (?: \n | \r\n | \r )
-    Q \s+ [\w:\.|]* \s+ ( \d+ ) \s+ ( [\w-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* (?: \n | \r\n | \r )
+    Q \s+ [\w:\.|-]* \s+ ( \d+ ) \s+ ( [\w-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* (?: \n | \r\n | \r )
     Q \s+ Consensus \s+ ( \d+ ) \s+ ( [\w~-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* (?: \n | \r\n | \r )
     \s* ( [ \.\-+|=]* ) (?: \n | \r\n | \r )
     T \s+ Consensus \s+ ( \d+ ) \s+ ( [\w~-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* (?: \n | \r\n | \r )
