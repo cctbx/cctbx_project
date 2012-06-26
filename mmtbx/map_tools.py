@@ -116,6 +116,7 @@ class electron_density_map(object):
                        external_alpha_fom_source = None,
                        exclude_free_r_reflections=False,
                        fill_missing=False,
+                       ncs_average=False,
                        post_processing_callback=None):
     map_name_manager = mmtbx.map_names(map_name_string = map_type)
     if(map_name_manager.anomalous):
@@ -193,7 +194,7 @@ class electron_density_map(object):
       if (coeffs.anomalous_flag()) :
         coeffs = coeffs.average_bijvoet_mates()
       coeffs = fill_missing_f_obs(coeffs, self.fmodel)
-    if (post_processing_callback is not None) :
+    if (ncs_average) and (post_processing_callback is not None) :
       # XXX NCS averaging done here
       assert hasattr(post_processing_callback, "__call__")
       coeffs = post_processing_callback(
@@ -319,7 +320,7 @@ solvent_content = 0.5
   .type = float
 exclude_hd = True
   .type = bool
-skip_difference_map = True
+skip_difference_map = Auto
   .type = bool
 """
 
@@ -341,13 +342,8 @@ class ncs_averager (object) :
                 generate_new_mask=False,
                 map_type=None) :
     # XXX probably not a good idea to average anomalous maps
-    if (map_type is not None) and (map_type.lower().startswith("anom")) :
-      return map_coeffs
-    # XXX probably better to leave Fo-Fc maps alone too, pending further
-    # experiments
-    is_difference_map = (map_type in ["mFo-DFc", "Fo-Fc"])
-    if (is_difference_map) and (self.params.skip_difference_map) :
-      return map_coeffs
+    #if (map_type is not None) and (map_type.lower().startswith("anom")) :
+    #  return map_coeffs
     from solve_resolve.resolve_python.resolve_utils import get_map_mask_sg_cell
     from solve_resolve.resolve_python.ncs_average import ncs_average
     from cctbx import maptbx

@@ -8,7 +8,7 @@ import os
 import sys
 from scitbx.array_family import flex
 
-map_coeff_params_str = """\
+map_coeff_params_base_str = """\
   map_coefficients
     .multiple = True
     .short_caption = Map coefficients
@@ -64,10 +64,25 @@ map_coeff_params_str = """\
       aply_same_incompleteness_to_complete_set_at = randomly low high
         .type = choice(multi=False)
     }
+    %s
   }
 """
 
-map_params_str ="""\
+ncs_average_param_str = """
+ncs_average = False
+  .type = bool
+  .expert_level = 2
+  .help = Perform NCS averaging on map using RESOLVE (without density \
+      modification).  Will be ignored if NCS is not present.
+  .short_caption = NCS average
+"""
+
+# for phenix.maps
+map_coeff_params_str = map_coeff_params_base_str % ""
+# for phenix.refine
+map_coeff_params_ncs_str = map_coeff_params_base_str % ncs_average_param_str
+
+map_params_base_str ="""\
   map
     .short_caption = XPLOR or CCP4 map
     .multiple = True
@@ -129,13 +144,25 @@ map_params_str ="""\
       .help = Exclude free-R selected reflections from map calculation
     isotropize = True
       .type = bool
+    %s
   }
 """
 
+map_params_str = map_params_base_str % ""
+map_params_ncs_str = map_params_base_str % ncs_average_param_str
+
+# XXX for phenix.maps
 map_and_map_coeff_params_str = """\
 %s
 %s
 """%(map_coeff_params_str, map_params_str)
+
+# XXX for phenix.refine
+map_and_map_coeff_params_ncs_str = """\
+%s
+%s
+"""%(map_coeff_params_ncs_str, map_params_ncs_str)
+
 
 def map_and_map_coeff_master_params():
   return iotbx.phil.parse(map_and_map_coeff_params_str, process_includes=False)
@@ -362,6 +389,7 @@ def map_coefficients_from_fmodel (fmodel, params,
       map_type           = params.map_type,
       acentrics_scale    = params.acentrics_scale,
       centrics_pre_scale = params.centrics_pre_scale,
+      ncs_average=getattr(params, "ncs_average", False),
       post_processing_callback=post_processing_callback)
     if (coeffs is None) : return None
     if(coeffs.anomalous_flag() and not
@@ -416,12 +444,20 @@ def map_coefficients_from_fmodel (fmodel, params,
     coeffs = map_tools.fill_missing_f_obs(coeffs, fmodel)
   return coeffs
 
-def compute_xplor_maps(fmodel, params, atom_selection_manager=None,
-                       file_name_prefix=None, file_name_base=None):
+def compute_xplor_maps(
+    fmodel,
+    params,
+    atom_selection_manager=None,
+    file_name_prefix=None,
+    file_name_base=None,
+    post_processing_callback=None) :
+  assert ((post_processing_callback is None) or
+          (hasattr(post_processing_callback, "__call__")))
   output_files = []
   for mp in params:
     if(mp.map_type is not None):
-      coeffs = map_coefficients_from_fmodel(fmodel = fmodel, params = mp)
+      coeffs = map_coefficients_from_fmodel(fmodel = fmodel, params = mp,
+        post_processing_callback=post_processing_callback)
       if (coeffs is None) :
         raise Sorry("Couldn't generate map type '%s'." % mp.map_type)
       if(mp.file_name is None):

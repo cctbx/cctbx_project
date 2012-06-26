@@ -1687,6 +1687,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                        n        = None,
                        w1       = None,
                        w2       = None,
+                       ncs_average = None,
                        ):
     supported_types = ("Fo-Fc", "Fobs-Fmodel",
                         "2mFo-DFc", "2mFobs-DFmodel",
@@ -1812,6 +1813,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                            map_type=None,
                            acentrics_scale=None,
                            centrics_pre_scale=None,
+                           ncs_average=None,
                            post_processing_callback=None):
         map_name_manager = mmtbx.map_names(map_name_string = map_type)
         k = map_name_manager.k
