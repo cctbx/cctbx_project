@@ -33,6 +33,17 @@ class direct_space_asu(object):
     return self
 
   def is_inside(self, point, shape_only=False):
+    """Check if a given point in direct space is inside the asymmetric unit.
+    The coordinates of the point are expected to be factional coordinates.
+    To use cartesian coordinates you can use something like:
+    asu.is_inside(unit_cell.fractionalize(site_cart)).
+
+    :param shape_only: If set to 'True' ??? #XXX what exactly is this option for?
+    :type shape_only: boolean
+
+    :returns: True if point is inside the asymmetric unit
+    :rtype: boolean
+    """
     if (shape_only):
       for cut in self.cuts:
         if (cut.evaluate(point) < 0): return False
