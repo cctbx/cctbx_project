@@ -313,12 +313,13 @@ def french_wilson_scale(
     params.max_bins = 60
   if log == None:
     log = sys.stdout
-  if sigma_iobs_rejection_criterion is None:
+  if (sigma_iobs_rejection_criterion is None) :
     sigma_iobs_rejection_criterion = -4.0
-  if sigma_iobs_rejection_criterion < -4.0 or \
-     sigma_iobs_rejection_criterion > -1.0 :
-    raise Sorry("For French and Wilson scaling, sigma_iobs_rejection_criterion " +\
-                "must be set between -4.0 and -1.0")
+  elif ((sigma_iobs_rejection_criterion < -4.0) or
+        (sigma_iobs_rejection_criterion > -1.0)) :
+    raise Sorry(
+      "For French and Wilson scaling, sigma_iobs_rejection_criterion " +
+      "must be a value between -4.0 and -1.0, or None.")
   rejected = []
   make_sub_header("Scaling input intensities via French-Wilson Method",
     out=log)
