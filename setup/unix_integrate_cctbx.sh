@@ -158,12 +158,19 @@ action_libs() {
     fi
 }
 
-# includes -- install symlinks to the header files ---------------------------
+# includes -- copy header files to the include directory ---------------------
 
-rsync_headers() {
-    rsync -rl --chmod=a+r,go-w,Da+x,Fa-x --prune-empty-dirs \
-        --include='*/' --include='*.h' --include='*.hpp' --exclude='*' \
-        "$@"
+copy_headers_to_includedir() {
+    local h
+    for h; do
+        if ! test -e "$h"; then
+            echo "Skipped non-existing header files $h"
+            continue
+        fi
+        rsync -rl --chmod=a+r,go-w,Da+x,Fa-x --prune-empty-dirs \
+            --include='*/' --include='*.h' --include='*.hpp' --exclude='*' \
+            "$h" "${act_includedir}"/
+    done
 }
 
 action_includes() {
@@ -172,24 +179,22 @@ action_includes() {
     test -d "${act_includedir}" || mkdir -v "${act_includedir}"
     # we need to copy the files to merge the source and build include trees
     ( cd "${my_libtbx_repository}"
-      rsync_headers annlib/include/ANN "${act_includedir}"/
-      rsync_headers annlib_adaptbx/include/annlib_adaptbx "${act_includedir}"/
+      copy_headers_to_includedir annlib/include/ANN
+      copy_headers_to_includedir annlib_adaptbx/include/annlib_adaptbx
       # skipped antlr3 boost
-      rsync_headers boost_adaptbx "${act_includedir}"/
+      copy_headers_to_includedir boost_adaptbx
       # skipped cbflib cbflib_adaptbx ccp4io ccp4io_adaptbx
-      rsync_headers cctbx chiltbx "${act_includedir}"/
+      copy_headers_to_includedir cctbx chiltbx
       # skipped clipper clipper_adaptbx
-      rsync_headers fable/fem.hpp fable/fem "${act_includedir}"/
+      copy_headers_to_includedir fable/fem.hpp fable/fem
       # skipped gltbx
-      rsync_headers \
-          iotbx mmtbx omptbx rstbx scitbx smtbx spotfinder tbxx \
-          "${act_includedir}"/
+      copy_headers_to_includedir \
+          iotbx mmtbx omptbx rstbx scitbx smtbx spotfinder tbxx
       # skipped tntbx
     )
-    rsync_headers \
+    copy_headers_to_includedir \
         "${my_libtbx_build}"/include/ \
-        "${my_libtbx_build}"/annlib_adaptbx/include/ \
-            "${act_includedir}"/
+        "${my_libtbx_build}"/annlib_adaptbx/include/
 }
 
 # scripts -- install symbolic links to the cctbx scripts ---------------------
