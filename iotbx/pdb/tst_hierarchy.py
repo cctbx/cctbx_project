@@ -4542,8 +4542,8 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
       assert d == "c4089359af431bb2962d6a8e457dd86f"
     else:
       assert d == "a1dd6605ed08b56862b9d7ae6b9a547b"
-    h.write_pdb_file(file_name="tmp.pdb")
-    assert not show_diff(open("tmp.pdb").read(), s)
+    h.write_pdb_file(file_name="tmp_tst_hierarchy.pdb")
+    assert not show_diff(open("tmp_tst_hierarchy.pdb").read(), s)
     h = pdb.input(
       source_info=None, lines=flex.split_lines(s)).construct_hierarchy()
   #
@@ -4572,12 +4572,12 @@ def check_wpf(hierarchy, kwargs={}, trailing=None, expected=None):
     sys.stdout.write(pdb_str)
   else:
     assert not show_diff(pdb_str, expected)
-  hierarchy.write_pdb_file(file_name="tmp.pdb", **kwargs)
-  pdb_file = open("tmp.pdb").read()
+  hierarchy.write_pdb_file(file_name="tmp_tst_hierarchy.pdb", **kwargs)
+  pdb_file = open("tmp_tst_hierarchy.pdb").read()
   if (trailing is not None): pdb_file = pdb_file.replace(trailing, "")
   assert not show_diff(pdb_file, pdb_str)
   #
-  pdb_inp = pdb.input(file_name="tmp.pdb")
+  pdb_inp = pdb.input(file_name="tmp_tst_hierarchy.pdb")
   assert pdb_inp.atoms().size() == hierarchy.atoms_size()
   kwargs = dict(kwargs)
   for discard in ["atoms_reset_serial_first_value", "interleaved_conf"]:
@@ -4787,11 +4787,11 @@ ATOM    146  C8 ADA7  3015       9.021 -13.845  22.131  0.50 26.57           C
   check_wpf(hierarchy, expected=pdb_string+"TER\n")
   rem = "REMARK EXERCISE"
   for obj in [pdb_inp, hierarchy]:
-    print >> open("tmp.pdb", "w"), rem
+    print >> open("tmp_tst_hierarchy.pdb", "w"), rem
     obj.write_pdb_file(
-      file_name="tmp.pdb", open_append=True, append_end=True)
+      file_name="tmp_tst_hierarchy.pdb", open_append=True, append_end=True)
     assert not show_diff(
-      open("tmp.pdb").read(), rem+"\n"+pdb_string+"TER\nEND\n")
+      open("tmp_tst_hierarchy.pdb").read(), rem+"\n"+pdb_string+"TER\nEND\n")
   check_wpf(
     hierarchy,
     kwargs={"crystal_symmetry": (2,3,4,80,90,100), "cryst1_z": 5},
@@ -4808,13 +4808,13 @@ SCALE3      0.000000  0.000000  0.253979        0.00000
 CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1           7
 """ + pdb_string+"TER\n")
   for obj in [pdb_inp, hierarchy]:
-    print >> open("tmp.pdb", "w"), rem
+    print >> open("tmp_tst_hierarchy.pdb", "w"), rem
     obj.write_pdb_file(
-      file_name="tmp.pdb",
+      file_name="tmp_tst_hierarchy.pdb",
       cryst1_z="",
       write_scale_records=False,
       open_append=True)
-    assert not show_diff(open("tmp.pdb").read(), rem + """
+    assert not show_diff(open("tmp_tst_hierarchy.pdb").read(), rem + """
 CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1
 """ + pdb_string+"TER\n")
   #
@@ -4866,7 +4866,7 @@ TER
   assert h1.is_similar_hierarchy(other=h2)
   assert h2.is_similar_hierarchy(other=h1)
   #
-  open("tmp.pdb", "wb").write("""\
+  open("tmp_tst_hierarchy.pdb", "wb").write("""\
 CRYST1    2.000    3.000    4.000  90.00  80.00  90.00 P 2           5
 ATOM      0  S   SO4     0       3.302   8.419   8.560  1.00 10.00           S
 ATOM      1  O1  SO4     0       3.497   8.295   7.118  1.00 10.00           O
@@ -4876,7 +4876,7 @@ ATOM      4  O3  SO4     0       4.481   9.037   9.159  1.00 10.00           O
 ATOM      5  O4  SO4     0       2.131   9.251   8.823  1.00 10.00           O
 """)
   pdb.rewrite_normalized(
-    input_file_name="tmp.pdb",
+    input_file_name="tmp_tst_hierarchy.pdb",
     output_file_name="tmp_norm.pdb")
   assert not show_diff(open("tmp_norm.pdb").read(), """\
 CRYST1    2.000    3.000    4.000  90.00  80.00  90.00 P 1 2 1
@@ -4893,7 +4893,7 @@ TER
 END
 """)
   pdb.rewrite_normalized(
-    input_file_name="tmp.pdb",
+    input_file_name="tmp_tst_hierarchy.pdb",
     output_file_name="tmp_norm.pdb",
     keep_original_crystallographic_section=True,
     keep_original_atom_serial=True)
@@ -5159,8 +5159,8 @@ ENDMDL
   for append_end in [False, True]:
     if (append_end): expected += "END\n"
     assert not show_diff(pdb_inp.as_pdb_string(append_end=append_end),expected)
-    pdb_inp.write_pdb_file(file_name="tmp.pdb", append_end=append_end)
-    assert not show_diff(open("tmp.pdb").read(), expected)
+    pdb_inp.write_pdb_file(file_name="tmp_tst_hierarchy.pdb", append_end=append_end)
+    assert not show_diff(open("tmp_tst_hierarchy.pdb").read(), expected)
   #
   lines = flex.split_lines("""\
 MODEL     SKDI
