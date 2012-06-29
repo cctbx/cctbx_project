@@ -11,8 +11,8 @@ Options:
 
   --prefix          installation prefix directory [/usr/local]
   --libdir          directory for dynamic load libraries [prefix/lib]
-  --with-bp         install the cctbx boost_python dynamic library.
-                    rely on the system library instead.
+  --with-bp         install the boost_python dynamic library build with cctbx.
+                    Otherwise rely on the system boost_python library.
   --includedir      directory for C and C++ header files [prefix/include]
   --bindir          directory for executable files [prefix/bin]
   --pythondir       installation directory for Python .pth files
