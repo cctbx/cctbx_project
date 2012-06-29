@@ -218,7 +218,7 @@ def extend_flags (
         if not accumulation_callback(miller_array=r_free_flags,
                                      test_flag_value=test_flag_value,
                                      n_missing=n_missing,
-                                     column_label=info.labels[0]) :
+                                     column_label=array_label) :
           return r_free_flags
       missing_flags = missing_set.generate_r_free_flags(
         fraction=fraction_free,
