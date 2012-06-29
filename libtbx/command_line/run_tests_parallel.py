@@ -44,7 +44,7 @@ def run (args) :
     raise Sorry("Please specify modules and/or directories to test.")
   all_tests = []
   for dir_name in params.directory :
-    if dir_name.find("cctbx_project")>-1:
+    if os.path.split(dir_name)[-1].find("cctbx_project")>-1:
       print 'DANGER '*10
       print 'Using the directory option in cctbx_project can be very time consuming'
       print 'DANGER '*10
