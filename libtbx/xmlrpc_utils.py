@@ -86,7 +86,8 @@ if (sys.platform == "win32") :
   default_timeout = 1.0
 class ServerProxy (object) :
   def __init__(self, uri, transport=None, encoding=None, verbose=0,
-               allow_none=0, use_datetime=0, timeout=default_timeout):
+               allow_none=0, use_datetime=0, timeout=default_timeout,
+               raise_errors=True):
     self._pending = []
     # establish a "logical" server connection
 
@@ -112,6 +113,7 @@ class ServerProxy (object) :
     self.__allow_none = allow_none
     self._timeouts = 0
     self._errors = []
+    self.raise_errors = raise_errors
 
   def __request(self, methodname, params):
     self._pending.append((methodname, params))
@@ -157,9 +159,12 @@ class ServerProxy (object) :
           self._pending = []
           break
         else :
-          print str(e)
-          raise Exception("XMLRPC error: %s\nMethod: %s\nParams: %s\n" %
-            (str(e), str(methodname), ", ".join([ str(p) for p in params ])))
+          msg = "XMLRPC error: %s\nMethod: %s\nParams: %s\n" % \
+            (str(e), str(methodname), ", ".join([ str(p) for p in params ]))
+          if (not self.raise_errors) :
+            print >> sys.stderr, msg
+          else :
+            raise RuntimeError(msg)
     t2 = time.time()
     if (show_timings) :
       sys.stderr.write("flush_requests: %.3fs\n" % (t2-t1))
