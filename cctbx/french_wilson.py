@@ -2,6 +2,7 @@ import sys, math
 from libtbx.str_utils import make_sub_header
 from libtbx.utils import Sorry
 import libtbx.phil
+import libtbx.callbacks
 
 #acentric tables from French-Wilson supplement, 1978
 ac_zj =    [ 0.226,0.230,0.235,0.240,0.246,0.251,0.257,0.263,0.270,
@@ -314,6 +315,12 @@ def french_wilson_scale(
   if log == None:
     log = sys.stdout
   if (sigma_iobs_rejection_criterion is None) :
+    sigma_iobs_rejection_criterion = -4.0
+  elif (sigma_iobs_rejection_criterion == 0.0) :
+    libtbx.warn(
+      "For French and Wilson scaling, sigma_iobs_rejection_criterion " +
+      "must be a value between -4.0 and -1.0, or None. " +
+      "Setting sigma_iobs_rejection_criteriont to -4.0.")
     sigma_iobs_rejection_criterion = -4.0
   elif ((sigma_iobs_rejection_criterion < -4.0) or
         (sigma_iobs_rejection_criterion > -1.0)) :
