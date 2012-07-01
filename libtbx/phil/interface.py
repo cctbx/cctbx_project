@@ -779,7 +779,7 @@ def substitute_directory_name (phil_object, path_name, sub_name,
     sub_var = "$(" + sub_name + ")"
   else :
     sub_var = sub_name
-  if path_name.endswith("/") :
+  if path_name.endswith("/") or path_name.endswith("\\") :
     path_name = path_name[:-1]
   for object in phil_object.objects :
     if object.is_definition :
