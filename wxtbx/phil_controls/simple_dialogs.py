@@ -1,5 +1,5 @@
 
-from wxtbx.phil_controls import intctrl, floatctrl, symop
+from wxtbx.phil_controls import intctrl, floatctrl, symop, strctrl
 from libtbx.utils import Abort
 import wx
 
@@ -59,6 +59,12 @@ class IntegerDialog (SimpleInputDialog) :
 class FloatDialog (SimpleInputDialog) :
   def CreatePhilControl (self, value) :
     return floatctrl.FloatCtrl(
+      parent=self,
+      value=value)
+
+class StringDialog (SimpleInputDialog) :
+  def CreatePhilControl (self, value) :
+    return strctrl.StrCtrl(
       parent=self,
       value=value)
 
