@@ -415,6 +415,14 @@ class rec(object):
     c, s = math.cos(angle), math.sin(angle)
     return x*c + n*n.dot(x)*(1-c) + n.cross(x)*s
 
+  def rotate_2d(self, angle, deg=False):
+    # implements right-hand rotation of the vector
+    assert self.n in ((2,1),) # treats column vector only; easily extended to row
+    if deg: angle *= math.pi/180
+    c, s = math.cos(angle), math.sin(angle)
+    rotmat = sqr((c,-s,s,c))
+    return rotmat*self
+
   def rotate(self, axis, angle, deg=False):
     import warnings
     warnings.warn(
