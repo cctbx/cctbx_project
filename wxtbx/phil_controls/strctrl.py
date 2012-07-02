@@ -1,6 +1,7 @@
 
 from wxtbx.phil_controls.text_base import ValidatedTextCtrl, TextCtrlValidator
 import wx
+import sys
 
 class StrCtrl (ValidatedTextCtrl) :
   def __init__ (self, *args, **kwds) :
@@ -8,6 +9,8 @@ class StrCtrl (ValidatedTextCtrl) :
     if (kwds.get("size", wx.DefaultSize) == wx.DefaultSize) :
       kwds['size'] = (200,-1)
     super(StrCtrl, self).__init__(*args, **kwds)
+    self._min_len = 0
+    self._max_len = sys.maxint
 
   def CreateValidator (self) :
     return StrValidator()
@@ -36,10 +39,31 @@ class StrCtrl (ValidatedTextCtrl) :
   def FormatValue (self, value) :
     return str(value)
 
+  def SetMinLength (self, n) :
+    assert (n >= 0)
+    self._min_len = n
+
+  def SetMaxLength (self, n) :
+    assert (n >= 1)
+    self._max_len = n
+
+  def GetMinLength (self) :
+    return self._min_len
+
+  def GetMaxLength (self) :
+    return self._max_len
+
 class StrValidator (TextCtrlValidator) :
   def CheckFormat (self, value) :
+    window = self.GetWindow()
     if (";" in value) :
       raise ValueError("Semicolons are not allowed in text input.")
+    if (len(value) > window.GetMaxLength()) :
+      raise ValueError("Value must be %d characters or less." %
+        window.GetMaxLength())
+    elif (len(value) < window.GetMinLength()) :
+      raise ValueError("Value must be at least %d characters." %
+        window.GetMinLength())
     return value # XXX does anything else need to be done here?
 
 if (__name__ == "__main__") :
