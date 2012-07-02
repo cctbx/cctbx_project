@@ -7,6 +7,23 @@ class lines:
     self.params = params
     self.tiles = None
   def literals(self):
+    if self.params.run_numbers is None:
+      path = self.params.outdir_template
+      stream = open(path,"r")
+      print path
+      reading_setting = False
+      for line in stream.readlines():
+        if line.find("Cell in setting %d"%self.params.bravais_setting_id)>=0:
+          reading_setting = True
+        if line.find("-----END")>=0:
+          reading_setting = False
+        if reading_setting and line.find("CV OBSCENTER")==0:
+          yield line.strip(),0
+        if reading_setting and self.tiles is None and line.find("EFFEC")==0:
+          self.tiles = [int(a) for a in line.strip().split()[2:]]
+          assert len(self.tiles)==256
+          print self.tiles
+      return
     for run in self.params.run_numbers:
         templ = self.params.outdir_template%run
         items = os.listdir(templ)
