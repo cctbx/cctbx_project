@@ -14,6 +14,7 @@ master_phil="""
 run_numbers = None
   .type = ints
   .help = List of run numbers to be aggregated together to make the plots.
+  .help = Set run_numbers to None IF the outdir_template field gives a single file containing all log results.
 outdir_template = None
   .type = str
   .help = Full path directory containing the stdout logs, with %%04d tag for run number
@@ -33,7 +34,7 @@ def run(args):
     libtbx.phil.parse(master_phil.show())
     return
 
-  if ((work_params.run_numbers is None) or
+  if ((work_params.run_numbers is None and work_params.outdir_template is None) or
       (work_params.outdir_template is None) or
       (work_params.bravais_setting_id is None)) :
     raise Usage("cxi.plotcv "

@@ -60,6 +60,8 @@ def integrate_one_image(data, **kwargs):
   except Exception,e:
     print "ANOTHER exception"
     print e
+    import traceback
+    traceback.print_exc()
 
 if __name__=="__main__":
   pass
