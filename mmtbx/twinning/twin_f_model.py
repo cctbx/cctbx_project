@@ -779,10 +779,10 @@ the percentage of R-free reflections).
       b_cart         = self.b_cart(),
       twin_fraction  = self.twin_fraction)
     self.twin_set = self.fmodel_ts1.twin_set
-    if(params is None):
-      params = bss.master_params.extract()
-    params.k_sol_b_sol_grid_search = False # XXX too slow otherwise
-    params.number_of_macro_cycles=1 # XXX too slow otherwise, let's see may be ok
+    #if(params is None):
+    #  params = bss.master_params.extract()
+    #params.k_sol_b_sol_grid_search = False # XXX too slow otherwise
+    #params.number_of_macro_cycles=1 # XXX too slow otherwise, let's see may be ok
     result = self.fmodel_ts1.update_all_scales(show=show, fast=False, # XXX
       params=params, log=log)
     self.update_core(
