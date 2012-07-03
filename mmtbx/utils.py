@@ -1982,7 +1982,11 @@ class guess_observation_type(object):
     for dtype in ["X","N"]:
       xrs = xray_structure.deep_copy_scatterers()
       if(dtype=="N"):
-        xrs.switch_to_neutron_scattering_dictionary()
+        try:
+          xrs.switch_to_neutron_scattering_dictionary()
+        except Exception, e:
+          if(str(e) == "cctbx Error: Unknown element label."):
+            pass
       f_calc = f_obs.structure_factors_from_scatterers(
         xray_structure = xrs).f_calc()
       for ftype in ["F","FFORCE","IFORCE"]:
