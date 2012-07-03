@@ -829,26 +829,22 @@ class target_and_grads(object):
   def gradients_wrt_t(self):
     return self.grads_wrt_t
 
-# XXX per Paul's request, don't exclude non-protein chains/residues
-def identify_rigid_groups (pdb_hierarchy) :
+def rigid_groups_from_pdb_chains(pdb_hierarchy, min_chain_size=2):
   assert (not pdb_hierarchy.atoms().extract_i_seq().all_eq(0))
-  model = pdb_hierarchy.models()[0]
+  sel_string = "not (not pepnames and single_atom_residue)"
+  selection = pdb_hierarchy.atom_selection_cache().selection(string=sel_string)    
+  pdb_hierarchy = pdb_hierarchy.select(selection)  
+  models = pdb_hierarchy.models()
+  assert len(models) == 1
   atom_labels = list(pdb_hierarchy.atoms_with_labels())
-  segids = flex.std_string([ a.segid for a in atom_labels ])
-  use_segid = not segids.all_eq('    ')
-  selections = []
-  for chain in model.chains() :
-    main_conf = chain.conformers()[0]
-    chain_sele = "(chain '%s'" % chain.id
-    if (use_segid) :
-      first_atom_labels = main_conf.atoms()[0].fetch_labels()
-      chain_sele += " and segid '%s'" % first_atom_labels.segid
-    resseq_first = main_conf.residues()[0].resseq_as_int()
-    resseq_last = main_conf.residues()[-1].resseq_as_int()
-    if (resseq_first > resseq_last) :
-      chain_sele += " and resseq %s:%s" % (resseq_last, resseq_first)
-    else :
-      chain_sele += " and resseq %s:%s" % (resseq_first, resseq_last)
-    chain_sele += ")"
-    selections.append(chain_sele)
+  selections = []  
+  for chain in models[0].chains():
+    if(chain.atoms().size() >= min_chain_size):
+      rgs = chain.residue_groups()
+      chain_sele = "(chain '%s'" % chain.id
+      resid_first = rgs[0].resid().strip()
+      resid_last  = rgs[-1].resid().strip()
+      chain_sele += " and resid %s through %s"%(resid_first, resid_last)
+      chain_sele += ")"
+      selections.append(chain_sele)
   return selections
