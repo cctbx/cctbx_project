@@ -125,6 +125,9 @@ class Queue(object):
 
       waiting.append( ( number, fname ) )
 
+    if not waiting:
+      raise StopIteration
+
     selected = min( waiting, key = lambda p: p[0] )[1]
     data = pickle.load( open( selected, "rb" ) )
     os.remove( selected )
@@ -136,7 +139,7 @@ class TemporaryFileInput(object):
   Sends data by writing out a temporary file
   """
 
-  SCRIPT= "( target, args, kwargs ) = pickle.load( open( \"%s.target\" ) )"
+  SCRIPT= "( target, args, kwargs ) = pickle.load( open( \"%s\" ) )"
 
   def __init__(self, name, target, args, kwargs):
 
@@ -206,8 +209,8 @@ EOF
     self.data = self.qinterface.input(
         name = self.name,
         target = target,
-        args = (),
-        kwargs = {},
+        args = args,
+        kwargs = kwargs,
         )
     self.status = None
 
@@ -385,7 +388,7 @@ class Submission(object):
 
     try:
       process = subprocess.Popen(
-        commmand_list + self.switches,
+        command_list + self.switches,
         stdin = subprocess.PIPE,
         stdout = subprocess.PIPE,
         stderr = subprocess.PIPE,

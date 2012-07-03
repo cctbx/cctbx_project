@@ -88,9 +88,11 @@ class RetrieveProcessor(object):
   Adds a retrieve step
   """
 
-  def __init__(self, queue):
+  def __init__(self, queue, block = True, timeout = None):
 
     self.queue = queue
+    self.block = block
+    self.timeout = timeout
 
 
   def prepare(self, target):
@@ -100,7 +102,10 @@ class RetrieveProcessor(object):
 
   def finalize(self, identifier):
 
-    return RetrieveResult( identifier = identifier, result = self.queue.get() )
+    return RetrieveResult(
+      identifier = identifier,
+      result = self.queue.get( block = self.block, timeout = self.timeout ),
+      )
 
 
 class ExecutionUnit(object):
