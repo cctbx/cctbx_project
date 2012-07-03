@@ -56,6 +56,11 @@ class SymmetryDialog (wx.Dialog) :
   def SetSpaceGroup (self, sg) :
     self.space_group_ctrl.SetValue(sg)
 
+  def SetSymmetry (self, symm) :
+    if (symm is not None) :
+      self.SetSpaceGroup(symm.space_group_info())
+      self.SetUnitCell(symm.unit_cell())
+
   def GetSymmetry (self, allow_incomplete=False) :
     uc = self.unit_cell_ctrl.GetPhilValue()
     sg = self.space_group_ctrl.GetPhilValue()

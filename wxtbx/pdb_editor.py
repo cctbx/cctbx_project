@@ -2,8 +2,9 @@
 import wxtbx.app
 import wxtbx.bitmaps
 from wxtbx.phil_controls import simple_dialogs
+from wxtbx import symmetry_dialog
 from wxtbx import path_dialogs
-from libtbx.utils import Abort
+from libtbx.utils import Abort, Sorry
 from wx.lib.agw import customtreectrl
 import wx
 import sys
@@ -40,9 +41,11 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     self._state = []
     self._state_tmp = []
     self._changes_made = False
+    self._hierarchy = None
 
   def SetHierarchy (self, pdb_hierarchy) :
     self.DeleteAllItems()
+    self._hierarchy = pdb_hierarchy
     self._state.append(pdb_hierarchy)
     self.PopulateTree(pdb_hierarchy)
 
@@ -87,13 +90,13 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     pass
 
   def OnRightClick (self, event) :
-    self.ActionsForSelection()
+    self.ActionsForSelection(source_window=self)
 
   def OnDoubleClick (self, event) :
     pass
   #  self.ActionsForSelection()
 
-  def ActionsForSelection (self) :
+  def ActionsForSelection (self, source_window) :
     if (self.flag_multiple_selections) :
       pass
     else :
@@ -102,58 +105,80 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       if (pdb_object is not None) :
         pdb_type = type(pdb_object).__name__
         if (pdb_type == "atom") :
-          self.ShowAtomMenu(pdb_object)
+          self.ShowAtomMenu(
+            atom=pdb_object,
+            source_window=source_window)
         elif (pdb_type == "atom_group") :
-          self.ShowAtomGroupMenu(pdb_object)
+          self.ShowAtomGroupMenu(
+            atom_group=pdb_object,
+            source_window=source_window)
         elif (pdb_type == "residue_group") :
-          self.ShowResidueGroupMenu()
+          self.ShowResidueGroupMenu(
+            residue_group=pdb_object,
+            source_window=source_window)
         elif (pdb_type == "chain") :
-          self.ShowChainMenu()
+          self.ShowChainMenu(
+            chain=pdb_object,
+            source_window=source_window)
         elif (pdb_type == "model") :
-          self.ShowModelMenu()
+          self.ShowModelMenu(
+            model=pdb_object,
+            source_window=source_window)
         else :
           raise RuntimeError("Unrecognized object type '%s'" % pdb_type)
 
-  def ShowAtomMenu (self, atom) :
+  def ShowAtomMenu (self, atom, source_window) :
     labels_and_actions = [
-      ("Delete atom", self.OnDeleteObject),
       ("Set name...", self.OnSetName),
       ("Set occupancy...", self.OnSetOccupancy),
       ("Set B-factor...", self.OnSetBfactor),
       ("Set element...", self.OnSetElement),
       ("Set charge...", self.OnSetCharge),
+      ("Delete atom", self.OnDeleteObject),
     ]
-    self.ShowMenu(labels_and_actions)
+    self.ShowMenu(labels_and_actions, source_window)
 
-  def ShowAtomGroupMenu (self, atom_group) :
+  def ShowAtomGroupMenu (self, atom_group, source_window) :
     labels_and_actions = [
-      ("Delete atom group", self.OnDeleteObject),
       ("Set altloc...", self.OnSetAltloc),
       ("Set occupancy...", self.OnSetOccupancy),
       ("Set B-factor...", self.OnSetBfactor),
       ("Set residue name...", self.OnSetResname),
+      ("Delete atom group", self.OnDeleteObject),
+      ("Clone atom group", self.OnCloneAtoms),
     ]
     if (atom_group.resname == "MET") :
       labels_and_actions.append(("Convert to SeMet", self.OnConvertMet))
     elif (atom_group.resname == "MSE") :
       labels_and_actions.append(("Convert to Met", self.OnConvertSeMet))
-    self.ShowMenu(labels_and_actions)
+    self.ShowMenu(labels_and_actions, source_window)
 
-  def ShowResidueGroupMenu (self) :
+  def ShowResidueGroupMenu (self, residue_group, source_window) :
+    labels_and_actions = [
+      ("Set residue number...", self.OnSetResseq),
+      ("Set insertion code...", self.OnSetIcode),
+      ("Delete residue", self.OnDeleteObject),
+      ("Split residue", self.OnSplitResidue),
+    ]
+    self.ShowMenu(labels_and_actions, source_window)
+
+  def ShowChainMenu (self, residue_group, source_window) :
+    labels_and_actions = [
+      ("Set chain ID...", self.OnSetChainID),
+      ("Set segment ID...", self.OnSetSegID),
+      ("Delete chain", self.OnDeleteObject),
+    ]
+    self.ShowMenu(labels_and_actions, source_window)
+
+  def ShowModelMenu (self, residue_group, source_window) :
     pass
 
-  def ShowChainMenu (self) :
-    pass
-
-  def ShowModelMenu (self) :
-    pass
-
-  def ShowMenu (self, items) :
+  def ShowMenu (self, items, source_window) :
     menu = wx.Menu()
     for label, action in items :
       item = menu.Append(-1, label)
       self.Bind(wx.EVT_MENU, action, item)
-    self.PopupMenu(menu)
+    source_window.PopupMenu(menu)
     menu.Destroy()
 
   def GetSelectedObject (self, object_type=None) :
@@ -164,13 +189,21 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     return item, pdb_object
 
   #---------------------------------------------------------------------
-  # EDITING ACTIONS
-  def OnDeleteObject (self, event) :
-    pass
-
+  # PROPERTY EDITING ACTIONS
   # atom
   def OnSetName (self, event) :
-    pass
+    item, atom = self.GetSelectedObject('atom')
+    new_name = self.GetNewName(atom.name)
+    assert (new_name is not None) and (1 <= len(new_name) <= 4)
+    atom_group = atom.parent()
+    for other_atom in atom_group.atoms() :
+      if (other_atom.name == new_name) and (atom is not other_atom) :
+        confirm_action(("The atom group to which this atom belongs already has "+
+          "another atom named \"%s\".  Are you sure you want to rename the "+
+          "selected atom?") % new_name)
+    self._changes_made = True
+    atom.name = "%-4s" % new_name
+    self.SetItemText(item, format_atom(atom))
 
   # atom
   def OnSetElement (self, event) :
@@ -208,7 +241,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     if (new_altloc in [None, '']) :
       rg = atom_group.parent()
       if (len(rg.atom_groups()) > 1) :
-        self.Confirm("You have specified a blank altloc ID for this atom "+
+        confirm_action("You have specified a blank altloc ID for this atom "+
           "group, but it is part of a residue containing multiple "+
           "conformations.  Are you sure this is what you want to do?")
       atom_group.altloc = ''
@@ -262,7 +295,15 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
 
   # residue_group
   def OnSetResseq (self, event) :
-    pass
+    item, residue_group = self.GetSelectedObject('residue_group')
+    new_resseq = self.GetNewResseq(residue_group.resseq_as_int())
+    assert (new_resseq is not None)
+    self._changes_made = True
+    if (new_resseq > 9999) or (new_resseq < -999) :
+      raise NotImplementedError("Hybrid36 support not available.")
+    else :
+      residue_group.resseq = "%4d" % new_resseq
+    self.SetItemText(item, format_residue_group(residue_group))
 
   # residue_group
   def OnSetIcode (self, event) :
@@ -270,6 +311,11 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     new_icode = self.GetNewIcode(residue_group.icode)
     assert (new_icode is None) or (len(new_icode) == 1)
     self._changes_made = True
+    if (new_icode is None) :
+      residue_group.icode = ' '
+    else :
+      residue_group.icode = new_icode
+    self.SetItemText(item, format_residue_group(residue_group))
 
   # chain
   def OnSetChainID (self, event) :
@@ -332,15 +378,105 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
           atom.b = new_b
         self.PropagateAtomChanges(item)
 
+  def OnSetSegID (self, event) :
+    if (self.flag_multiple_selections) :
+      assert 0
+    else :
+      item = self.GetSelection()
+      pdb_object = self._node_lookup.get(item, None)
+      pdb_type = type(pdb_object).__name__
+      segid = None
+      if (pdb_type == 'atom') :
+        segid = pdb_object.segid
+      else :
+        from scitbx.array_family import flex
+        segids = flex.std_string([ a.segid for a in pdb_object.atoms() ])
+        if (segids.all_eq(segids[0])) :
+          segid = segids[0]
+      if (segid is not None) and (segid.isspace()) :
+        segid = None
+      new_segid = self.GetNewSegID(segid)
+      if (new_segid != segid) :
+        self._changes_made = True
+        if (pdb_type == 'atom') :
+          pdb_object.segid = new_segid
+          self.SetItemText(item, format_atom(pdb_object))
+        else :
+          for atom in pdb_object.atoms() :
+            atom.segid = new_segid
+          self.PropagateAtomChanges(item)
+
+  #---------------------------------------------------------------------
+  # HIERARCHY EDITING
+  def OnDeleteObject (self, event) :
+    if (self.flag_multiple_selections) :
+      assert 0
+    else :
+      item = self.GetSelection()
+      pdb_object = self._node_lookup.get(item, None)
+      pdb_type = type(pdb_object).__name__
+      n_atoms = None
+      if (pdb_type == 'atom') :
+        n_atoms = 1
+      else :
+        n_atoms = len(pdb_object.atoms())
+      confirm_action("Are you sure you want to delete the selected %d atom(s)?" %
+        n_atoms)
+      parent = pdb_object.parent()
+      clean_up = True
+      if (pdb_type == 'atom') :
+        parent.remove_atom(pdb_object)
+      elif (pdb_type == 'atom_group') :
+        parent.remove_atom_group(pdb_object)
+      elif (pdb_type == 'residue_group') :
+        parent.remove_residue_group(pdb_object)
+      elif (pdb_type == 'chain') :
+        parent.remove_chain(pdb_object)
+      else :
+        if (len(self._hierarchy.models()) == 1) :
+          raise Sorry("You must have at least one MODEL in the PDB file.")
+        parent.remove_model(pdb_object)
+      parent_item = self.GetItemParent(item)
+      self.DeleteChildren(item)
+      self.DeleteItem(item)
+      while (not self.HasChildren(parent_item)) :
+        del_item = parent_item
+        parent_itme = self.GetItemParent(del_item)
+        self.DeleteItem(del_item)
+
+  # model
+  def OnAddChain (self, event) :
+    pass
+
+  # chain
+  def OnAddResidues (self, event) :
+    pass
+
+  # residue_group
+  def OnSplitResidue (self, event) :
+    pass
+
+  # atom_group
+  def OnCloneAtoms (self, event) :
+    pass
+
   #---------------------------------------------------------------------
   # USER INPUT
-  def Confirm (self, msg) :
-    confirm = wx.MessageBox(
-      message=msg,
-      style=wx.YES_NO)
-    if (confirm == wx.NO) :
-      raise Abort()
-    return True
+  def GetNewName (self, name=None) :
+    dlg = simple_dialogs.StringDialog(
+      parent=self,
+      title="Set atom name",
+      label="New name",
+      caption="Please specify the atom name.  This is four characters in length, "+
+        "but spaces will be added to the end if necessary.  Note that leading "+
+        "spaces are significant, since they determine the column alignment and "+
+        "the identity of the atom.  (For instance, 'CA  ' and ' CA ' have very "+
+        "different meanings.)",
+      value=name)
+    dlg.SetMinLength(1)
+    dlg.SetMaxLength(4)
+    dlg.SetOptional(False)
+    return simple_dialogs.get_phil_value_from_dialog(dlg)
 
   def GetNewOccupancy (self, occ=None) :
     dlg = simple_dialogs.FloatDialog(
@@ -357,8 +493,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     dlg.SetMin(0.0)
     dlg.SetMax(1.0)
     dlg.SetOptional(False)
-    new_occ = simple_dialogs.get_phil_value_from_dialog(dlg)
-    return new_occ
+    return simple_dialogs.get_phil_value_from_dialog(dlg)
 
   def GetNewBiso (self, b=None) :
     dlg = simple_dialogs.FloatDialog(
@@ -374,11 +509,10 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     dlg.SetMin(0.01)
     dlg.SetMax(999.99)
     dlg.SetOptional(False)
-    new_b = simple_dialogs.get_phil_value_from_dialog(dlg)
-    return new_b
+    return simple_dialogs.get_phil_value_from_dialog(dlg)
 
   def GetNewCharge (self, charge=None) :
-    if (charge.isspace()) :
+    if (charge is not None) and (charge.isspace()) :
       charge = None
     elif (charge is not None) :
       charge = int(charge)
@@ -393,11 +527,10 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     dlg.SetMin(-9)
     dlg.SetMax(9)
     dlg.SetOptional(True)
-    new_charge = simple_dialogs.get_phil_value_from_dialog(dlg)
-    return new_charge
+    return simple_dialogs.get_phil_value_from_dialog(dlg)
 
   def GetNewElement (self, elem=None) :
-    if (elem.isspace()) :
+    if (elem is not None) and (elem.isspace()) :
       elem = None
     dlg = simple_dialogs.StringDialog(
       parent=self,
@@ -409,10 +542,22 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       value=elem)
     dlg.SetMaxLength(2)
     dlg.SetOptional(True)
-    new_elem = simple_dialogs.get_phil_value_from_dialog(dlg)
-    return new_elem
+    return simple_dialogs.get_phil_value_from_dialog(dlg)
 
-  def GetNewIcode (self, icode=None) :
+  def GetNewResseq (self, resseq) :
+    dlg = simple_dialogs.IntegerDialog(
+      parent=self,
+      title="Set residue number",
+      label="Residue number",
+      caption="The residue number can be any value, but the official PDB format "+
+        "limits it to a range from -999 to 9999.  If you specify a value "+
+        "outside of this range, it will be converted to Hybrid36 encoding, which "+
+        "is recognized by Phenix, Coot, and CCP4, but not by the PDB.",
+      value=resseq)
+    dlg.SetOptional(False)
+    return simple_dialogs.get_phil_value_from_dialog(dlg)
+
+  def GetNewIcode (self, icode) :
     if (icode.isspace()) :
       icode = None
     dlg = simple_dialogs.StringDialog(
@@ -427,10 +572,9 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       value=icode)
     dlg.SetMaxLength(1)
     dlg.SetOptional(True)
-    new_icode = simple_dialogs.get_phil_value_from_dialog(dlg)
-    return new_icode
+    return simple_dialogs.get_phil_value_from_dialog(dlg)
 
-  def GetNewChainID (self, chain_id=None) :
+  def GetNewChainID (self, chain_id) :
     if (chain_id.isspace()) :
       chain_id = None
     dlg = simple_dialogs.StringDialog(
@@ -442,11 +586,28 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         "labeling it 'A' instead.  Otherwise the chain ID may be up to two "+
         "characters in Phenix, Coot, and CCP4, but the official limit for "+
         "the format is one character.",
-      chain_id=chain_id)
+      value=chain_id)
     #dlg.SetMinLength(1)
     dlg.SetMaxLength(2)
-    new_id = simple_dialogs.get_phil_value_from_dialog(dlg)
-    return new_id
+    return simple_dialogs.get_phil_value_from_dialog(dlg)
+
+  def GetNewSegID (self, segid) :
+    if (segid.isspace()) :
+      segid = None
+    dlg = simple_dialogs.StringDialog(
+      parent=self,
+      title="Set segment ID",
+      label="New ID",
+      caption="The segment ID (segid) is an optional field for disambiguating "+
+        "between chains with identical IDs, or for otherwise flagging part of "+
+        "the model.  It may be up to four characters in length (with spaces "+
+        "significant).  Note that while most programs in Phenix should preserve "+
+        "the segid and use it for atom selections, it is no longer accepted as "+
+        "part of the official PDB format.",
+      value=segid)
+    dlg.SetMaxLength(4)
+    dlg.SetOptional(True)
+    return simple_dialogs.get_phil_value_from_dialog(dlg)
 
 ########################################################################
 class PDBTreeFrame (wx.Frame) :
@@ -454,12 +615,22 @@ class PDBTreeFrame (wx.Frame) :
     wx.Frame.__init__(self, *args, **kwds)
     self.statusbar = self.CreateStatusBar()
     self.statusbar.SetStatusText("Right-click any item for a list of editing actions")
+    # toolbar setup
     self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS|wx.TB_TEXT)
     bmp = wxtbx.bitmaps.fetch_custom_icon_bitmap("phenix.pdbtools")
     btn = self.toolbar.AddLabelTool(-1, "Load file", bmp,
       shortHelp="Load file", kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self.OnOpen, btn)
+    bmp = wxtbx.bitmaps.fetch_icon_bitmap("actions", "save_all")
+    btn = self.toolbar.AddLabelTool(-1, "Save file", bmp,
+      shortHelp="Save file", kind=wx.ITEM_NORMAL)
+    self.Bind(wx.EVT_MENU, self.OnSave, btn)
+    bmp = wxtbx.bitmaps.fetch_custom_icon_bitmap("tools")
+    btn = self.toolbar.AddLabelTool(-1, "Edit...", bmp, shortHelp="Edit...",
+      kind=wx.ITEM_NORMAL)
+    self.Bind(wx.EVT_MENU, self.OnEdit, btn)
     self.toolbar.Realize()
+    #
     szr = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(szr)
     self.panel = wx.Panel(self, -1)
@@ -482,6 +653,7 @@ class PDBTreeFrame (wx.Frame) :
     self._tree.SetMinSize((640,400))
     pszr.Add(self._tree, 1, wx.EXPAND, 2)
     self._pdb_in = None
+    self._crystal_symmetry = None
     szr.Layout()
     self.Fit()
     self.Bind(wx.EVT_CLOSE, self.OnClose)
@@ -494,7 +666,9 @@ class PDBTreeFrame (wx.Frame) :
       force_type="pdb",
       raise_sorry_if_errors=True)
     self._pdb_in = f
+    self._crystal_symmetry = f.file_object.crystal_symmetry()
     hierarchy = f.file_object.construct_hierarchy()
+    self._hierarchy = hierarchy
     atoms = hierarchy.atoms()
     atoms.set_chemical_element_simple_if_necessary()
     self._tree.SetHierarchy(hierarchy)
@@ -510,7 +684,44 @@ class PDBTreeFrame (wx.Frame) :
     self.LoadPDB(file_name)
 
   def OnSave (self, event) :
+    if (self._pdb_in is None) :
+      return
+    file_name = self.path_mgr.select_file(
+      parent=self,
+      message="Save PDB file",
+      style=wx.SAVE,
+      wildcard=file_reader.get_wildcard_strings(["pdb"]),
+      current_file=self._pdb_in.file_name)
     save_header = self._header_box.GetValue()
+    f = open(file_name, "w")
+    if (save_header) :
+      for method in [
+          "title_section",
+          "remark_section",
+          "heterogen_section",
+          "secondary_structure_section",] :
+        section_lines = getattr(self._pdb_in.file_object, method)()
+        for line in section_lines :
+          f.write(line + "\n")
+    f.write(self._hierarchy.as_pdb_string(
+      crystal_symmetry=self._crystal_symmetry))
+    f.close()
+    wx.MessageBox("Modified structure saved to %s." % file_name)
+    self._tree.SaveChanges()
+
+  def OnEditSymmetry (self, event) :
+    dlg = symmetry_dialog.SymmetryDialog(parent=self,
+      title="Edit model symmetry (CRYST1 record)")
+    dlg.SetSymmetry(self._crystal_symmetry)
+    if (dlg.ShowModal() == wx.ID_OK) :
+      old_symm = self._crystal_symmetry
+      symm = dlg.GetSymmetry(allow_incomplete=True)
+      #if (symm.space_group() is None) and (old_symm.space_group() is not None) :
+      self._crystal_symmetry = symm
+    wx.CallAfter(dlg.Destroy)
+
+  def OnEditModel (self, event) :
+    self._tree.ActionsForSelection(source_window=event.GetEventObject())
 
   def OnClose (self, event) :
     if (self._tree.HaveUnsavedChanges()) :
@@ -519,6 +730,14 @@ class PDBTreeFrame (wx.Frame) :
 
   def OnDestroy (self, event) :
     pass
+
+def confirm_action (msg) :
+  confirm = wx.MessageBox(
+    message=msg,
+    style=wx.YES_NO)
+  if (confirm == wx.NO) :
+    raise Abort()
+  return True
 
 if (__name__ == "__main__") :
   app = wxtbx.app.CCTBXApp(0)
