@@ -7,6 +7,7 @@ from wxtbx import path_dialogs
 from libtbx.utils import Abort, Sorry
 from wx.lib.agw import customtreectrl
 import wx
+import string
 import sys
 
 def format_residue_group (rg) :
@@ -135,6 +136,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       ("Set element...", self.OnSetElement),
       ("Set charge...", self.OnSetCharge),
       ("Delete atom", self.OnDeleteObject),
+      ("Apply rotation/translation...", self.OnMoveSites),
     ]
     self.ShowMenu(labels_and_actions, source_window)
 
@@ -146,6 +148,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       ("Set residue name...", self.OnSetResname),
       ("Delete atom group", self.OnDeleteObject),
       ("Clone atom group", self.OnCloneAtoms),
+      ("Apply rotation/translation...", self.OnMoveSites),
     ]
     if (atom_group.resname == "MET") :
       labels_and_actions.append(("Convert to SeMet", self.OnConvertMet))
@@ -159,6 +162,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       ("Set insertion code...", self.OnSetIcode),
       ("Delete residue", self.OnDeleteObject),
       ("Split residue", self.OnSplitResidue),
+      ("Apply rotation/translation...", self.OnMoveSites),
     ]
     self.ShowMenu(labels_and_actions, source_window)
 
@@ -167,17 +171,24 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       ("Set chain ID...", self.OnSetChainID),
       ("Set segment ID...", self.OnSetSegID),
       ("Delete chain", self.OnDeleteObject),
+      ("Delete alternate conformers", self.OnDeleteAltConfs),
+      ("Apply rotation/translation...", self.OnMoveSites),
     ]
     self.ShowMenu(labels_and_actions, source_window)
 
   def ShowModelMenu (self, residue_group, source_window) :
-    pass
+    labels_and_actions = [
+      ("Set model ID...", self.OnSetChainID),
+      ("Delete model", self.OnDeleteObject),
+      ("Apply rotation/translation...", self.OnMoveSites),
+    ]
+    self.ShowMenu(labels_and_actions, source_window)
 
   def ShowMenu (self, items, source_window) :
     menu = wx.Menu()
     for label, action in items :
       item = menu.Append(-1, label)
-      self.Bind(wx.EVT_MENU, action, item)
+      source_window.Bind(wx.EVT_MENU, action, item)
     source_window.PopupMenu(menu)
     menu.Destroy()
 
@@ -195,29 +206,31 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     item, atom = self.GetSelectedObject('atom')
     new_name = self.GetNewName(atom.name)
     assert (new_name is not None) and (1 <= len(new_name) <= 4)
-    atom_group = atom.parent()
-    for other_atom in atom_group.atoms() :
-      if (other_atom.name == new_name) and (atom is not other_atom) :
-        confirm_action(("The atom group to which this atom belongs already has "+
-          "another atom named \"%s\".  Are you sure you want to rename the "+
-          "selected atom?") % new_name)
-    self._changes_made = True
-    atom.name = "%-4s" % new_name
-    self.SetItemText(item, format_atom(atom))
+    if (new_name != atom.name) :
+      atom_group = atom.parent()
+      for other_atom in atom_group.atoms() :
+        if (other_atom.name == new_name) and (atom is not other_atom) :
+          confirm_action(("The atom group to which this atom belongs already "+
+          "has another atom named \"%s\".  Are you sure you want to rename "+
+          "the selected atom?") % new_name)
+      self._changes_made = True
+      atom.name = "%-4s" % new_name
+      self.SetItemText(item, format_atom(atom))
 
   # atom
   def OnSetElement (self, event) :
     item, atom = self.GetSelectedObject('atom')
     new_elem = self.GetNewElement(atom.element)
     assert (new_elem is None) or (len(new_elem) <= 2)
-    self._changes_made = True
-    if (new_elem is None) :
-      atom.element = '  '
-    elif (new_elem.strip() == '') :
-      new_elem = new_elem.strip()
-      atom.element = '%2d' % new_elem
-    # TODO validate element symbol
-    self.SetItemText(item, format_atom(atom))
+    if (new_elem != atom.element) :
+      self._changes_made = True
+      if (new_elem is None) :
+        atom.element = '  '
+      elif (new_elem.strip() == '') :
+        new_elem = new_elem.strip()
+        atom.element = '%2d' % new_elem
+      # TODO validate element symbol
+      self.SetItemText(item, format_atom(atom))
 
   # atom
   def OnSetCharge (self, event) :
@@ -233,33 +246,39 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       atom.charge = '%d+' % new_charge
     self.SetItemText(item, format_atom(atom))
 
+  # atom
+  def OnSetXYZ (self, event) :
+    pass
+
   # atom_group
   def OnSetAltloc (self, event) :
     item, atom_group = self.GetSelectedObject('atom_group')
     new_altloc = self.GetNewAltloc(atom_group.altloc)
     assert (new_altloc is None) or (len(new_altloc) in [0,1])
-    if (new_altloc in [None, '']) :
-      rg = atom_group.parent()
-      if (len(rg.atom_groups()) > 1) :
-        confirm_action("You have specified a blank altloc ID for this atom "+
-          "group, but it is part of a residue containing multiple "+
-          "conformations.  Are you sure this is what you want to do?")
-      atom_group.altloc = ''
-    else :
-      atom_group.altloc = new_altloc
-    self._changes_made = True
-    self.SetItemText(item, format_atom_group(atom_group))
+    if (new_altloc != atom_group.altloc) :
+      if (new_altloc in [None, '']) :
+        rg = atom_group.parent()
+        if (len(rg.atom_groups()) > 1) :
+          confirm_action("You have specified a blank altloc ID for this atom "+
+            "group, but it is part of a residue containing multiple "+
+            "conformations.  Are you sure this is what you want to do?")
+        atom_group.altloc = ''
+      else :
+        atom_group.altloc = new_altloc
+      self._changes_made = True
+      self.SetItemText(item, format_atom_group(atom_group))
 
   # atom_group
   def OnSetResname (self, event) :
     item, atom_group = self.GetSelectedObject('atom_group')
     new_resname = self.GetNewResname(atom_group.resname)
     assert (new_resname is not None) and (len(new_resname) in [1,2,3])
-    self._changes_made = True
-    atom_group.resname = new_resname
-    self.SetItemText(item, format_atom_group(atom_group))
-    rg_item = self.GetItemParent(item)
-    self.SetItemText(rg_item, format_residue_group(atom_group.parent()))
+    if (atom_group.resname != new_resname) :
+      self._changes_made = True
+      atom_group.resname = new_resname
+      self.SetItemText(item, format_atom_group(atom_group))
+      rg_item = self.GetItemParent(item)
+      self.SetItemText(rg_item, format_residue_group(atom_group.parent()))
 
   # atom_group (resname == MET)
   def OnConvertMet (self, event) :
@@ -298,28 +317,94 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     item, residue_group = self.GetSelectedObject('residue_group')
     new_resseq = self.GetNewResseq(residue_group.resseq_as_int())
     assert (new_resseq is not None)
-    self._changes_made = True
-    if (new_resseq > 9999) or (new_resseq < -999) :
-      raise NotImplementedError("Hybrid36 support not available.")
-    else :
-      residue_group.resseq = "%4d" % new_resseq
-    self.SetItemText(item, format_residue_group(residue_group))
+    if (new_resseq != residue_group.resseq_as_int()) :
+      self._changes_made = True
+      if (new_resseq > 9999) or (new_resseq < -999) :
+        raise NotImplementedError("Hybrid36 support not available.")
+      else :
+        residue_group.resseq = "%4d" % new_resseq
+      self.SetItemText(item, format_residue_group(residue_group))
 
   # residue_group
   def OnSetIcode (self, event) :
     item, residue_group = self.GetSelectedObject('residue_group')
     new_icode = self.GetNewIcode(residue_group.icode)
     assert (new_icode is None) or (len(new_icode) == 1)
-    self._changes_made = True
-    if (new_icode is None) :
-      residue_group.icode = ' '
-    else :
-      residue_group.icode = new_icode
-    self.SetItemText(item, format_residue_group(residue_group))
+    if (new_icode != residue_group.icode) :
+      self._changes_made = True
+      if (new_icode is None) :
+        residue_group.icode = ' '
+      else :
+        residue_group.icode = new_icode
+      self.SetItemText(item, format_residue_group(residue_group))
 
   # chain
   def OnSetChainID (self, event) :
-    pass
+    item, chain = self.GetSelectedObject('chain')
+    new_id = self.GetNewChainID(chain.id)
+    if (new_id != chain.id) :
+      sefl._changes_made = True
+      if (new_id is None) or (new_id.isspace()) :
+        chain.id = ' '
+      else :
+        chain.id = "%2s" % new_id
+
+  # chain
+  def OnRenumber (self, event) :
+    item, chain = self.GetSelectedObject('chain')
+    resseq_shift = self.GetResseqShift()
+    if (resseq_shift is not None) and (resseq_shift != 0) :
+      self._changes_made = True
+      child, cookie = self.GetFirstChild(item)
+      while (child is not None) :
+        residue_group = self._node_lookup.get(child, None)
+        assert (type(residue_group).__name__ == 'residue_group')
+        resseq = residue_group.resseq_as_int()
+        new_resseq = resseq + resseq_shift
+        if (new_resseq > 9999) or (new_resseq < -999) :
+          raise NotImplementedError("Hybrid36 support not available.")
+        else :
+          residue_group.resseq = "%4d" % new_resseq
+        self.SetItemText(child, format_residue_group(residue_group))
+        child, cookie = self.GetNextChild(node, cookie)
+
+  # chain
+  def OnDeleteAltConfs (self, event) :
+    item, chain = self.GetSelectedObject('chain')
+    n_alt_atoms = 0
+    n_alt_residues = 0
+    for residue_group in chain.residue_groups() :
+      atom_groups = residue_group.atom_groups()
+      if (len(atom_groups) > 1) :
+        n_alt_residues += 1
+        for ag in atom_groups[1:] :
+          n_alt_atoms += len(ag.atoms())
+    if (len(n_alt_atoms) == 0) :
+      raise Sorry("No alternate conformations found in this chain.")
+    confirm_action(("There are %d residues with alternate conformations; "+
+      "removing these will delete %d atoms from the model.  Are you sure "+
+      "you want to continue?") % (n_alt_residues, n_alt_atoms))
+    # TODO more control over what happens to remaining atom_groups
+    child, cookie = self.GetFirstChild(item)
+    while (child is not None) :
+      residue_group = self._node_lookup.get(child, None)
+      assert (type(residue_group).__name__ == 'residue_group')
+      atom_groups = residue_group.atom_groups()
+      if (len(atom_groups) > 1) :
+        first_group = atom_groups[0]
+        first_group.altloc = ''
+        for atom in first_group.atoms() :
+          atom.occ = 1.0
+        child2, cookie2 = self.GetFirstChild(child)
+        self.SetItemText(child2, format_atom_group(first_group))
+        for atom_group in atom_groups[1:]
+          residue_group.remove_atom_group(atom_group)
+          for item2, pdb_object in self._node_lookup.iteritems() :
+            if (pdb_object is atom_group) :
+              self.DeleteChildren(item2)
+              self.DeleteItem(item2)
+        self.SetItemText(child, format_residue_group(residue_group))
+      child, cookie = self.GetNextchild(item, cookie)
 
   # model
   def OnSetModelID (self, event) :
@@ -378,6 +463,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
           atom.b = new_b
         self.PropagateAtomChanges(item)
 
+  # all
   def OnSetSegID (self, event) :
     if (self.flag_multiple_selections) :
       assert 0
@@ -406,6 +492,28 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
             atom.segid = new_segid
           self.PropagateAtomChanges(item)
 
+  # all
+  def OnMoveSites (self, event) :
+    if (self.flag_multiple_selections) :
+      assert 0
+    else :
+      item = self.GetSelection()
+      pdb_object = self._node_lookup.get(item, None)
+      pdb_type = type(pdb_object).__name__
+      rt = simple_dialogs.get_rt_matrix(self)
+      if (pdb_type == 'atom') :
+        from scitbx.array_family import flex
+        v = flex.vec3_double([pdb_object.xyz])
+        v = rt.r.elems * v + rt.t.elems
+        pdb_object.xyz = v[0]
+        self.SetItemText(item, format_atom(pdb_object))
+      else :
+        atoms = pdb_object.atoms()
+        sites = atoms.extract_xyz()
+        sites = rt.r.elems * v + rt.t.elems
+        atoms.set_xyz(sites)
+        self.PropagateAtomChanges(item)
+
   #---------------------------------------------------------------------
   # HIERARCHY EDITING
   def OnDeleteObject (self, event) :
@@ -420,8 +528,8 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         n_atoms = 1
       else :
         n_atoms = len(pdb_object.atoms())
-      confirm_action("Are you sure you want to delete the selected %d atom(s)?" %
-        n_atoms)
+      confirm_action("Are you sure you want to delete the selected %d atom(s)?"
+        % n_atoms)
       parent = pdb_object.parent()
       clean_up = True
       if (pdb_type == 'atom') :
@@ -454,7 +562,43 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
 
   # residue_group
   def OnSplitResidue (self, event) :
-    pass
+    print 1
+    item, residue_group = self.GetSelectedObject('residue_group')
+    atom_groups = residue_group.atom_groups()
+    self._changes_made = True
+    assert (len(atom_groups) > 0)
+    start_occ = 1/(len(atom_groups) + 1)
+    new_occ = self.GetNewOccupancy(start_occ, new=True)
+    new_group = atom_groups[0].detached_copy()
+    for atom in new_group.atoms() :
+      atom.occ = new_occ
+    for atom_group in atom_groups :
+      for atom in atom_group.atoms() :
+        atom.occ = max(0, atom.occ - new_occ/len(atom_groups))
+    if (len(atom_groups) == 1) :
+      atom_groups[0].altloc = 'A'
+      new_group.altloc = 'B'
+    else :
+      new_altloc = None
+      for char in string.uppercase :
+        for atom_group in atom_groups :
+          if (atom_group.altloc == char) :
+            break
+        else :
+          new_altloc = char
+      new_group.altloc = char
+    residue_group.append_atom_group(new_group)
+    ag_item = self.AppendItem(item, format_atom_group(new_group))
+    self._node_lookup[ag_item] = new_group
+    for atom in new_group.atoms() :
+      new_item = self.AppendItem(ag_item, format_atom(atom))
+      self._node_lookup[new_item] = atom
+    child, cookie = self.GetFirstChild(item)
+    while (child is not None) :
+      atom_group = self._node_lookup.get(child, None)
+      assert (type(atom_group).__name__ == 'atom_group')
+      self.SetItemText(child, format_atom_group(atom_group))
+      child, cookie = self.GetNextChild(item, cookie)
 
   # atom_group
   def OnCloneAtoms (self, event) :
@@ -467,28 +611,31 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       parent=self,
       title="Set atom name",
       label="New name",
-      caption="Please specify the atom name.  This is four characters in length, "+
-        "but spaces will be added to the end if necessary.  Note that leading "+
-        "spaces are significant, since they determine the column alignment and "+
-        "the identity of the atom.  (For instance, 'CA  ' and ' CA ' have very "+
-        "different meanings.)",
+      caption="Please specify the atom name.  This is four characters in "+
+        "length, but spaces will be added to the end if necessary.  Note that "+
+        "leading spaces are significant, since they determine the column "+
+        "alignment and the identity of the atom.  (For instance, 'CA  ' and "+
+        "' CA ' have very different meanings.)",
       value=name)
     dlg.SetMinLength(1)
     dlg.SetMaxLength(4)
     dlg.SetOptional(False)
     return simple_dialogs.get_phil_value_from_dialog(dlg)
 
-  def GetNewOccupancy (self, occ=None) :
+  def GetNewOccupancy (self, occ=None, new=False) :
+    desc_str = "selected"
+    if (new) :
+      desc_str = "new"
     dlg = simple_dialogs.FloatDialog(
       parent=self,
       title="Set new occupancy",
       label="New occupancy",
-      caption="Please specify the occupancy for the selected atom(s); this "+
+      caption=("Please specify the occupancy for the %s atom(s); this "+
         "value represents the fraction of unit cells in which the atom(s) "+
         "is/are present, and must be a value between 0 (no contribution to "+
         "F_calc) and 1.0; note that atoms with multiple conformers should "+
         "always have a sum of occupancies of 1.0.  The precision will be "+
-        "truncated to two digits after the decimal point.",
+        "truncated to two digits after the decimal point.") % desc_str,
       value=occ)
     dlg.SetMin(0.0)
     dlg.SetMax(1.0)
@@ -549,10 +696,11 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       parent=self,
       title="Set residue number",
       label="Residue number",
-      caption="The residue number can be any value, but the official PDB format "+
-        "limits it to a range from -999 to 9999.  If you specify a value "+
-        "outside of this range, it will be converted to Hybrid36 encoding, which "+
-        "is recognized by Phenix, Coot, and CCP4, but not by the PDB.",
+      caption="The residue number can be any value, but the official PDB "+
+        "format limits it to a range from -999 to 9999.  If you specify a "+
+        "value outside of this range, it will be converted to Hybrid36 "+
+        "encoding, which is recognized by Phenix, Coot, and CCP4, but not "+
+        "by the PDB.",
       value=resseq)
     dlg.SetOptional(False)
     return simple_dialogs.get_phil_value_from_dialog(dlg)
@@ -601,9 +749,9 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       caption="The segment ID (segid) is an optional field for disambiguating "+
         "between chains with identical IDs, or for otherwise flagging part of "+
         "the model.  It may be up to four characters in length (with spaces "+
-        "significant).  Note that while most programs in Phenix should preserve "+
-        "the segid and use it for atom selections, it is no longer accepted as "+
-        "part of the official PDB format.",
+        "significant).  Note that while most programs in Phenix should "+
+        "preserve the segid and use it for atom selections, it is no longer "+
+        "accepted as part of the official PDB format.",
       value=segid)
     dlg.SetMaxLength(4)
     dlg.SetOptional(True)
@@ -628,7 +776,7 @@ class PDBTreeFrame (wx.Frame) :
     bmp = wxtbx.bitmaps.fetch_custom_icon_bitmap("tools")
     btn = self.toolbar.AddLabelTool(-1, "Edit...", bmp, shortHelp="Edit...",
       kind=wx.ITEM_NORMAL)
-    self.Bind(wx.EVT_MENU, self.OnEdit, btn)
+    self.Bind(wx.EVT_MENU, self.OnEditModel, btn)
     self.toolbar.Realize()
     #
     szr = wx.BoxSizer(wx.VERTICAL)
