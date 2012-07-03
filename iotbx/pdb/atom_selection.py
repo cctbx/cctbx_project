@@ -126,7 +126,8 @@ class cache(slots_getstate_setstate):
     "charge",
     "anisou",
     "pepnames",
-    "single_atom_residue"]
+    "single_atom_residue",
+    "water"]
 
   def __init__(self, root, wildcard_escape_char='\\'):
     self.root = root
@@ -134,6 +135,7 @@ class cache(slots_getstate_setstate):
     root.get_atom_selection_cache(self)
     self.pepnames = None
     self.single_atom_residue = None
+    self.water = None
 
   def get_name(self, pattern):
     return _get_map_string(
@@ -244,6 +246,22 @@ class cache(slots_getstate_setstate):
   def get_anisou(self):
     return [self.anisou]
 
+  def get_water(self):
+    if (self.water is None):
+      import iotbx.pdb
+      get_class = iotbx.pdb.common_residue_names_get_class
+      atoms = self.root.atoms()
+      sentinel = atoms.reset_tmp(first_value=0, increment=0)
+      for model in self.root.models():
+        for chain in model.chains():
+          for conformer in chain.conformers():
+            for residue in conformer.residues():
+              if(get_class(name = residue.resname) == "common_water"):
+                for atom in residue.atoms():
+                  atom.tmp = 1
+      self.water = (atoms.extract_tmp_as_size_t() == 1).iselection()
+    return [self.water]
+
   def get_pepnames(self):
     if (self.pepnames is None):
       import iotbx.pdb
@@ -352,6 +370,9 @@ class cache(slots_getstate_setstate):
 
   def sel_single_atom_residue(self):
     return self.union(iselections=self.get_single_atom_residue())
+
+  def sel_water(self):
+    return self.union(iselections=self.get_water())
 
   def selection_tokenizer(self, string, contiguous_word_characters=None):
     return selection_tokenizer(string, contiguous_word_characters)
@@ -496,6 +517,8 @@ class cache(slots_getstate_setstate):
           result_stack.append(self.sel_pepnames())
         elif (lword == "single_atom_residue"):
           result_stack.append(self.sel_single_atom_residue())
+        elif (lword == "water"):
+          result_stack.append(self.sel_water())
         elif (callback is not None):
           if (not callback(
                     word=word,
