@@ -20,6 +20,7 @@ tst_list = (
   "$D/refinement/tst_fit_rotamers.py",
   ["$D/refinement/tst_anomalous_scatterer_groups.py", "P3"],
   "$D/refinement/tst_rigid_body.py",
+  "$D/refinement/tst_rigid_body_groups_from_pdb_chains.py",
   "$D/refinement/tst_refinement_flags.py",
   "$D/torsion_restraints/tst_reference_model.py",
   "$D/tst_model.py",
