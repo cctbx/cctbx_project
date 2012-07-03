@@ -415,6 +415,19 @@ class IntegrationMetaProcedure(simple_integration,slip_callbacks):
       correction_vectors = correction_vectors_provisional
     ########### finished with outlier rejection
 
+    if self.horizons_phil.integration.spot_shape_verbose:
+        from rstbx.new_horizons.spot_shape import spot_shape_verbose
+        spot_shape_verbose(rawdata = self.imagefiles.images[self.image_number].linearintdata,
+           beam_center_pix = matrix.col((self.inputai.xbeam()/pxlsz, self.inputai.ybeam()/pxlsz)),
+           indexed_pairs = indexed_pairs,
+           spotfinder_observations = spots,
+           distance_mm = self.inputai.distance(),
+           mm_per_pixel = pxlsz,
+           hkllist = self.hkllist,
+           unit_cell = self.cell,
+           wavelength_ang = self.inputai.wavelength
+        )
+
     #Other checks to be implemented (future):
     # spot is within active area of detector on a circular detector such as the Mar IP
     # integration masks do not overlap; or deconvolute
