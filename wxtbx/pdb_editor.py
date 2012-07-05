@@ -397,7 +397,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
           atom.occ = 1.0
         child2, cookie2 = self.GetFirstChild(child)
         self.SetItemText(child2, format_atom_group(first_group))
-        for atom_group in atom_groups[1:]
+        for atom_group in atom_groups[1:] :
           residue_group.remove_atom_group(atom_group)
           for item2, pdb_object in self._node_lookup.iteritems() :
             if (pdb_object is atom_group) :
@@ -757,6 +757,70 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     dlg.SetOptional(True)
     return simple_dialogs.get_phil_value_from_dialog(dlg)
 
+ADD_RESIDUES_START = 0
+ADD_RESIDUES_END = 1
+ADD_RESIDUES_AFTER = 2
+class AddResiduesDialog (wx.Dialog) :
+  def __init__ (self, *args, **kwds) :
+    super(AddResiduesDialog, self).__init__(*args, **kwds)
+    style = self.GetWindowStyle()
+    style |= wx.WS_EX_VALIDATE_RECURSIVELY|wx.RAISED_BORDER|wx.CAPTION
+    self.SetWindowStyle(style)
+    szr = wx.BoxSizer(wx.VERTICAL)
+    self.SetSizer(szr)
+    caption_txt = wx.StaticText(self, -1, "Please specify where to insert "+
+      "the new residue.  The residue ID is the combination of residue number "+
+      "and insertion code, but you only need to specify the residue number "+
+      "if the insertion code is blank or irrelevant.")
+    szr.Add(caption_txt, 0, wx.ALL, 5)
+    box = wx.BoxSizer(wx.HORIZONTAL)
+    txt1 = wx.StaticText(self, -1, "Insert residues:")
+    box.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    self._insert_choice = wx.Choice(self, -1,
+      choices=["at the end of the chain",
+               "at the start of the chain",
+               "after residue"])
+    self._insert_choice.SetSelection(0)
+    self.Bind(wx.EVT_CHOICE, self.OnChangeInsertion, self._insert_choice)
+    box.Add(self._insert_choice, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    txt2 = wx.StaticText(self, -1, "residue ID:")
+    box.Add(txt2, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    self._resid_txt = phil_controls.strctrl(
+      parent=self,
+      value=None,
+      size=(80,-1))
+    self._resid_txt.SetOptional(True)
+    self._resid_txt.Enable(False)
+    self._resid_txt.SetMaxLength(5)
+    self._resid_txt.SetMinLength(1)
+    box.Add(self._resid_txt, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    szr.Add(box)
+    cancel_btn = wx.Button(self, wx.ID_CANCEL)
+    ok_btn = wx.Button(self, wx.ID_OK)
+    ok_btn.SetDefault()
+    szr4 = wx.StdDialogButtonSizer()
+    szr4.Add(cancel_btn)
+    szr4.Add(ok_btn, 0, wx.LEFT, 5)
+    szr.Add(szr4, 0, wx.ALL|wx.ALIGN_RIGHT, 5)
+    szr.Layout()
+    self.Fit()
+    self.Centre(wx.BOTH)
+
+  def OnChangeInsertion (self, event) :
+    insert_type = self._insert_choice.GetSelection()
+    if (insert_type == ADD_RESIDUES_AFTER) :
+      self._resid_txt.SetOptional(False)
+      self._resid_txt.Enable()
+    else :
+      self._resid_txt.SetOptional(True)
+      self._resid_txt.Enable(False)
+
+  def GetInsertionType (self) :
+    return self._insert_choice.GetSelection()
+
+  def GetResID (self) :
+    return self._resid_txt.GetPhilValue()
+
 ########################################################################
 class PDBTreeFrame (wx.Frame) :
   def __init__ (self, *args, **kwds) :
@@ -777,6 +841,10 @@ class PDBTreeFrame (wx.Frame) :
     btn = self.toolbar.AddLabelTool(-1, "Edit...", bmp, shortHelp="Edit...",
       kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self.OnEditModel, btn)
+    bmp = wxtbx.bitmaps.fetch_custom_icon_bitmap("symmetry")
+    btn = self.toolbar.AddLabelTool(-1, "Symmetry", bmp, shortHelp="Symmetry",
+      kind=wx.ITEM_NORMAL)
+    self.Bind(wx.EVT_MENU, self.OnEditSymmetry, btn)
     self.toolbar.Realize()
     #
     szr = wx.BoxSizer(wx.VERTICAL)
@@ -859,7 +927,10 @@ class PDBTreeFrame (wx.Frame) :
 
   def OnEditSymmetry (self, event) :
     dlg = symmetry_dialog.SymmetryDialog(parent=self,
-      title="Edit model symmetry (CRYST1 record)")
+      title="Edit model symmetry (CRYST1 record)",
+      caption="Please enter the symmetry information for the PDB file; this "+
+        "is optional or ignored in some cases (such as molecular replacement "+
+        "search models), but required for many crystallography programs.")
     dlg.SetSymmetry(self._crystal_symmetry)
     if (dlg.ShowModal() == wx.ID_OK) :
       old_symm = self._crystal_symmetry

@@ -5,6 +5,11 @@ import wx
 
 class SymmetryDialog (wx.Dialog) :
   def __init__ (self, *args, **kwds) :
+    caption = kwds.get("caption",
+      "Missing or incomplete symmetry information.  Please enter a space "+
+      "group and unit cell.")
+    if ("caption" in kwds) :
+      del kwds['caption']
     super(SymmetryDialog, self).__init__(*args, **kwds)
     style = self.GetWindowStyle()
     style |= wx.WS_EX_VALIDATE_RECURSIVELY|wx.RAISED_BORDER|wx.CAPTION
@@ -13,9 +18,7 @@ class SymmetryDialog (wx.Dialog) :
     self.SetSizer(szr)
     szr2 = wx.BoxSizer(wx.VERTICAL)
     szr.Add(szr2, 1, wx.ALL|wx.EXPAND, 10)
-    txt = wx.StaticText(self, -1,
-      "Missing or incomplete symmetry information.  Please enter a space "+
-      "group and unit cell.")
+    txt = wx.StaticText(self, -1, caption)
     txt.Wrap(480)
     szr2.Add(txt, 0, wx.ALL, 5)
     szr3 = wx.FlexGridSizer(rows=3, cols=2)
