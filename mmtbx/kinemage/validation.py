@@ -881,7 +881,8 @@ def run(args):
         mon_lib_srv=mon_lib_srv,
         ener_lib=ener_lib,
         pdb_inp=pdb_io,
-        for_dihedral_reference=True)
+        for_dihedral_reference=True,
+        substitute_non_crystallographic_unit_cell_if_necessary=True)
   if work_params.kinemage.out_file is not None:
     outfile = work_params.kinemage.out_file
   else :
