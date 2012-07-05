@@ -116,14 +116,15 @@ namespace rstbx { namespace bandpass {
       scitbx::vec3<double> s0_unit = s0.normalize();
 
       for (int idx = 0; idx < P.indices.size(); ++idx){
-
-          scitbx::vec3<double> H(P.indices[idx][0],P.indices[idx][1], P.indices[idx][2]); // the Miller index
-          scitbx::vec3<double> s = A * H; //s, the reciprocal space coordinates, lab frame, of the oriented Miller index
+          // the Miller index
+          scitbx::vec3<double> H(P.indices[idx][0],P.indices[idx][1], P.indices[idx][2]);
+          //s, the reciprocal space coordinates, lab frame, of the oriented Miller index
+          scitbx::vec3<double> s = A * H;
 
           scitbx::vec3<double> q = (s + s0);
           double q_len = q.length();
           double ratio = q_len/s0_length;
-          if (ratio > 0.95 && ratio < 1.05) indices_subset.push_back(P.indices[idx]);
+          if (ratio > 0.96 && ratio < 1.04) indices_subset.push_back(P.indices[idx]);
       }
       //SCITBX_EXAMINE(P.indices.size());
       //SCITBX_EXAMINE(indices_subset.size());
@@ -151,6 +152,8 @@ namespace rstbx { namespace bandpass {
 
       //  Cn, the circular section through the Ewald sphere.
       for (int idx = 0; idx < P.indices.size(); ++idx){
+          double spot_resolution_ang = P.orientation.unit_cell().d(P.indices[idx]);
+          double effective_half_mosaicity_rad = (p_domain_size_ang > 0.)? P.half_mosaicity_rad + spot_resolution_ang / (2. * p_domain_size_ang) : P.half_mosaicity_rad;
 
           scitbx::vec3<double> H(P.indices[idx][0],P.indices[idx][1], P.indices[idx][2]); // the Miller index
           scitbx::vec3<double> s = A * H; //s, the reciprocal space coordinates, lab frame, of the oriented Miller index
@@ -170,7 +173,7 @@ namespace rstbx { namespace bandpass {
           double iangle_1= std::acos ( std::min(1.0,acos_argument) );//avoid math domain error
           // assert approx_equal((intersection+s0).length()-s0_length,0. )
 
-          if (iangle_1 < P.half_mosaicity_rad) {
+          if (iangle_1 < effective_half_mosaicity_rad) {
 
           scitbx::vec3<double> q = (intersection + s0);
           scitbx::vec3<double> q_unit = q.normalize();
@@ -199,7 +202,7 @@ namespace rstbx { namespace bandpass {
 
           // assert approx_equal((intersection+s0).length()-s0_length,0. )
 
-          if (iangle_1low < P.half_mosaicity_rad) {
+          if (iangle_1low < effective_half_mosaicity_rad) {
 
           scitbx::vec3<double> q = (intersectionlow + s1);
           scitbx::vec3<double> q_unit = q.normalize();
@@ -220,7 +223,7 @@ namespace rstbx { namespace bandpass {
 
          //  ###########  Look at rocking the crystal along rotax toward hiE reflection condition
           if (limit_types[idx]%2 == 0) { // ==3 or ==1 means that hiE test is unnecessary
-            scitbx::vec3<double> s_rot_hi = s.rotate_around_origin(rotax,P.half_mosaicity_rad);
+            scitbx::vec3<double> s_rot_hi = s.rotate_around_origin(rotax,effective_half_mosaicity_rad);
             double a_hi = -s_rot_hi * s0_unit;
             SCITBX_ASSERT(a_hi != 0.);
             double r_n_hi = s_rad_sq/(2.*a_hi);
@@ -243,7 +246,7 @@ namespace rstbx { namespace bandpass {
           }
          //  ###########  Look at rocking the crystal along rotax toward loE reflection condition
           if (limit_types[idx] < 2) { // >=2 means that loE test is unnecessary
-            scitbx::vec3<double> s_rot_lo = s.rotate_around_origin(rotax,-P.half_mosaicity_rad);
+            scitbx::vec3<double> s_rot_lo = s.rotate_around_origin(rotax,-effective_half_mosaicity_rad);
             double a_lo = -s_rot_lo * s0_unit;
             SCITBX_ASSERT(a_lo != 0.);
             double r_n_lo = s_rad_sq/(2.*a_lo);
@@ -277,13 +280,13 @@ namespace rstbx { namespace bandpass {
           }
       }
     }
-
     scitbx::af::shared<vec3 >
     spot_rectangles(vec3ref beam_coor){
       vec3 beam_pos(
         beam_coor[0]/P.pixel_size[0]+P.pixel_offset[0],
          beam_coor[1]/P.pixel_size[1]+P.pixel_offset[1],0.);
       scitbx::af::shared<vec3 > polydata;
+      vec3 crystal_to_detector = -P.distance * P.detector_normal;
 
       for (int idx = 0; idx < lo_E_limit.size(); ++idx){
         if (!observed_flag[idx]) {continue;}
@@ -294,6 +297,12 @@ namespace rstbx { namespace bandpass {
         double radius = radial_vector.length();
         vec3 tangential_unit_vec(-radial_unit_vec[1],radial_unit_vec[0],0.); // 90-degree rotation
         vec3 tangential_excursion = tangential_unit_vec * radius * P.half_mosaicity_rad;
+        if (p_domain_size_ang > 0.) {
+          double half_scherrer_broadening = (crystal_to_detector + radius).length() * P.wavelengthHE / (2.*p_domain_size_ang);
+          tangential_excursion += tangential_unit_vec * half_scherrer_broadening;
+          hi_pos -= half_scherrer_broadening*radial_unit_vec;
+          lo_pos += half_scherrer_broadening*radial_unit_vec;
+        }
         polydata.push_back( hi_pos + tangential_excursion);
         polydata.push_back( hi_pos - tangential_excursion);
         polydata.push_back( lo_pos - tangential_excursion);
@@ -311,6 +320,7 @@ namespace rstbx { namespace bandpass {
         beam_coor[0]/P.pixel_size[0]+P.pixel_offset[0],
          beam_coor[1]/P.pixel_size[1]+P.pixel_offset[1],0.);
       scitbx::af::shared<vec3 > polydata;
+      vec3 crystal_to_detector = -P.distance * P.detector_normal;
 
       for (int idx = 0; idx < lo_E_limit.size(); ++idx){
         if (!observed_flag[idx]) {continue;}
@@ -323,6 +333,12 @@ namespace rstbx { namespace bandpass {
         lo_pos += MARGIN*radial_unit_vec;
         vec3 tangential_unit_vec(-radial_unit_vec[1],radial_unit_vec[0],0.); // 90-degree rotation
         vec3 tangential_excursion = tangential_unit_vec * (radius * P.half_mosaicity_rad + MARGIN);
+        if (p_domain_size_ang > 0.) {
+          double half_scherrer_broadening = (crystal_to_detector + radius).length() * P.wavelengthHE / (2.*p_domain_size_ang);
+          tangential_excursion += tangential_unit_vec * half_scherrer_broadening;
+          hi_pos -= half_scherrer_broadening*radial_unit_vec;
+          lo_pos += half_scherrer_broadening*radial_unit_vec;
+        }
         polydata.push_back( hi_pos + tangential_excursion);
         polydata.push_back( hi_pos - tangential_excursion);
         polydata.push_back( lo_pos - tangential_excursion);
@@ -599,6 +615,9 @@ namespace rstbx { namespace bandpass {
       subpixel=s;}
     void set_mosaicity(double const& half_mosaicity_rad){
       P.half_mosaicity_rad=half_mosaicity_rad;}
+    double p_domain_size_ang;
+    void set_domain_size(double const& value){
+      p_domain_size_ang=value;}
     void set_bandpass(double const& wave_HI,double const& wave_LO){
       P.wavelengthHE = wave_HI;
       P.wavelengthLE = wave_LO;
@@ -818,6 +837,7 @@ namespace ext {
         .def("restricted_to_active_areas", &use_case_bp3::restricted_to_active_areas)
         .def("set_subpixel", &use_case_bp3::set_subpixel)
         .def("set_mosaicity", &use_case_bp3::set_mosaicity)
+        .def("set_domain_size", &use_case_bp3::set_domain_size)
         .def("set_bandpass", &use_case_bp3::set_bandpass)
         .def("set_orientation", &use_case_bp3::set_orientation)
         .def("set_adaptor", &use_case_bp3::set_adaptor)
