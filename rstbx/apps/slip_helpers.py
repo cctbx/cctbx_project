@@ -136,11 +136,12 @@ class wrapper_of_use_case_bp3(object):
     else:
       self.ucbp3.set_adaptor(body_pixel_reference)
 
-  def set_variables(self, orientation, wave_HI, wave_LO, half_mosaicity_deg):
+  def set_variables(self, orientation, wave_HI, wave_LO, half_mosaicity_deg, domain_size=0.):
     half_mosaicity_rad = half_mosaicity_deg * math.pi/180.
     self.ucbp3.set_mosaicity(half_mosaicity_rad)
     self.ucbp3.set_bandpass(wave_HI,wave_LO)
     self.ucbp3.set_orientation(orientation)
+    self.ucbp3.set_domain_size(domain_size)
 
   def score_only(self):
     self.ucbp3.picture_fast_slow()
@@ -162,6 +163,9 @@ class slip_callbacks:
     #best_params = self.use_case_3_grid_refine(frame)
     #self.inputai.setOrientation(best_params[3])
     #self.use_case_3_refactor(frame,best_params[0],best_params[1], best_params[2])
+    #self.inputai.set_orientation_reciprocal_matrix( (0.001096321006219932, -0.0007452314870693856, 0.007577824826005684, 0.0009042576974140007, -0.010205656871417366, -0.0009746502046169632, 0.012357726864252296, 0.00701297199602489, -0.0005717102325987258))
+    #self.use_case_3_refactor(frame,0.0995603664049, 1.29155605957, 1.30470696644 )
+    #self.use_case_3_refactor(frame,0.0995603664049, 1.29155605957, 1.30470696644,domain_size=2000. )
 
     normal = True
     # BLUE: predictions
@@ -512,7 +516,7 @@ class slip_callbacks:
           width=1.0,
           show_levels=[-2, -1, 0, 1, 2, 3, 4, 5])
 
-  def use_case_3_refactor(self,frame,half_deg,wave_HI, wave_LO):
+  def use_case_3_refactor(self,frame,half_deg,wave_HI, wave_LO,domain_size=0.):
     from rstbx.bandpass import use_case_bp3,parameters_bp3
     # Extend the model.  Assume polychromatic beam with top hat profile.  Assume finite radial mosaicity.  Dispense
     # with the "ewald proximity" mechanism; now spots are brought into reflecting condition
@@ -542,6 +546,8 @@ class slip_callbacks:
     cpp_results.set_active_areas(
       frame.pyslip.tiles.raw_image.get_tile_manager(frame.inherited_params).effective_tiling_as_flex_int(
       reapply_peripheral_margin=True))
+    cpp_results.prescreen_indices(self.inputai.wavelength)
+    cpp_results.set_domain_size(domain_size)
     cpp_results.picture_fast_slow()
     picture_fast_slow = cpp_results.hi_E_limit.select(cpp_results.observed_flag)
     map_relative_hi = frame.pyslip.tiles.vec_picture_fast_slow_to_map_relative(picture_fast_slow)
@@ -902,4 +908,95 @@ class slip_callbacks:
     print "Rendering image with wave %7.4f - %7.4f bandpass %.2f half %7.4f score %7.1f"%(
       best_params[1],best_params[2],100.*(best_params[2]-best_params[1])/best_params[1],best_params[0],last_score)
     print "rotation angles",best_params[4],best_params[5],best_params[6]
+    return best_params
+
+  def use_case_3_simulated_annealing_7(self,subpixel=None):
+    reserve_orientation = self.inputai.getOrientation()
+    lowest_cell = max(reserve_orientation.unit_cell().parameters()[0:3])
+
+    wrapbp3 = wrapper_of_use_case_bp3( raw_image = self.imagefiles.images[self.image_number],
+      spotfinder = self.spotfinder, imageindex = self.frames[self.image_number],
+      inputai = self.inputai,
+      spot_prediction_limiting_resolution = self.limiting_resolution,
+      phil_params = self.horizons_phil,
+      sub = subpixel)
+
+    from rstbx.bandpass.simulated_annealing import SALight
+
+    SA = SALight()
+
+    # Half mosaicity in degrees
+    # Mid-wavelength adjustment factor
+    # Bandpass fractional full width
+    # adjustment angle in degrees
+    # adjustment angle in degrees
+    # adjustment angle in degrees
+
+    # starting values; likely expected values
+    SA.x = flex.double([0.1,1.00,0.006,0.0,0.0,0.0,lowest_cell*10.])
+    SA.initial = SA.x.deep_copy()
+
+    # reasonable length scale (expected interval, half width)
+    SA.L = flex.double([0.02,0.001,0.001,0.05,0.05,0.05,lowest_cell*2.])
+
+    SA.format = "Mosaicity %6.3f Wave mean %7.4f bandpass %7.4f Angles %8.5f %8.5f %8.5f, Domain %6.0f"
+
+    def set_variables_from_sa_x(x):
+      ori = reserve_orientation.rotate_thru((1,0,0),(math.pi/180.)*x[3]
+                              ).rotate_thru((0,1,0),(math.pi/180.)*x[4]
+                              ).rotate_thru((0,0,1),(math.pi/180.)*x[5])
+      self.inputai.setOrientation(ori)
+      mean_multiplier = x[1]
+      bandpass = x[2]
+      HI = self.inputai.wavelength*(mean_multiplier-(bandpass/2.))
+      LO = self.inputai.wavelength*(mean_multiplier+(bandpass/2.))
+      wrapbp3.set_variables( orientation = self.inputai.getOrientation(),
+                           wave_HI = HI,wave_LO = LO,half_mosaicity_deg = x[0],
+                           domain_size = x[6])
+      #pack into format for calling function
+      these_params = (x[0],HI,LO,ori,(math.pi/180.)*x[3],(math.pi/180.)*x[4],(math.pi/180.)*x[5],x[6])
+      return these_params
+
+    set_variables_from_sa_x(SA.x)
+    last_score = wrapbp3.score_only()
+    low_score = last_score + 0 # makes a copy
+    Tstart = 600
+    for T in xrange(Tstart, 1, -1):
+      decreasing_increment = (T/Tstart)*SA.random_increment()
+      last_x = SA.x.deep_copy()
+      test_params = SA.x + decreasing_increment
+      if test_params[2]<=0: continue # can't have negative bandpass; unphysical!
+      if test_params[0]<=0: continue # can't have negative mosaicity; unphysical!
+      if test_params[6]<lowest_cell: continue # crystal domain can't be lower than 1 unit cell
+      SA.x += decreasing_increment
+      print T, SA.format%tuple(SA.x),
+      set_variables_from_sa_x(SA.x)
+      new_score = wrapbp3.score_only()
+      print "Score %8.1f"%new_score,
+
+      if new_score < low_score:
+        low_score = 1.0*new_score
+      if new_score < last_score:
+        probability_of_acceptance=1.0
+      else:
+        probability_of_acceptance = math.exp(-(new_score-last_score)/(2.5*T))
+      if flex.random_double(1)[0] < probability_of_acceptance:
+        #new position accepted
+        last_score = 1.0*new_score
+        print "accepted"
+      else:
+        SA.x = last_x.deep_copy()
+        print "rejected"
+
+    print "Final"
+    print T, SA.format%tuple(SA.x),"Score %8.1f"%last_score,"final"
+
+    #these three lines set the bp3 wrapper so it can be used from the calling class (simple_integration.py)
+    best_params = set_variables_from_sa_x(SA.x)
+    wrapbp3.score_only()
+    self.bp3_wrapper = wrapbp3
+
+    print "Rendering image with wave %7.4f - %7.4f bandpass %.2f half %7.4f score %7.1f"%(
+      best_params[1],best_params[2],100.*(best_params[2]-best_params[1])/best_params[1],best_params[0],last_score)
+    print "rotation angles",best_params[4],best_params[5],best_params[6],"Domain",best_params[7]
     return best_params
