@@ -4422,6 +4422,8 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
     "    1", "    2", "    3", "    4", "    5", "    6", "    7"]
   assert list(atoms.extract_name()) == [
     " N  ", " CA ", " Q  ", " O  ", "1CB ", "CA  ", "CA  "]
+  assert (list(atoms.extract_segid()) == [
+    '    ', '    ', '    ', 'STUV', '    ', '    ', '    '])
   xyz = atoms.extract_xyz()
   assert approx_equal(xyz, [
     (35.299,11.075,19.070),

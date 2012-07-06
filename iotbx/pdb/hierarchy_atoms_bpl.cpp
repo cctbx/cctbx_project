@@ -89,6 +89,7 @@ namespace {
       atom, af::shared<atom> >::wrap(wa);
     wa.def("extract_serial", extract_serial)
       .def("extract_name", extract_name)
+      .def("extract_segid", extract_segid)
       .def("extract_xyz", extract_xyz)
       .def("extract_sigxyz", extract_sigxyz)
       .def("extract_occ", extract_occ)

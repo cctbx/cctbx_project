@@ -29,6 +29,18 @@ namespace iotbx { namespace pdb { namespace hierarchy { namespace atoms {
     return result;
   }
 
+  af::shared<std::string>
+  extract_segid(
+    af::const_ref<atom> const& atoms)
+  {
+    af::shared<std::string> result((af::reserve(atoms.size())));
+    const hierarchy::atom* atoms_end = atoms.end(); \
+    for(const hierarchy::atom* a=atoms.begin();a!=atoms_end;a++) {
+      result.push_back(a->data->segid.elems);
+    }
+    return result;
+  }
+
 #define IOTBX_LOC(attr, attr_type) \
   af::shared<attr_type > \
   extract_##attr( \
