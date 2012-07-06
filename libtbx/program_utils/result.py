@@ -19,6 +19,9 @@ class program_result (object) :
                 statistics={}) :
     adopt_init_args(self, locals())
 
+  def get_output_dir (self) :
+    return self.directory
+
   def get_statistic (self, name) :
     return self.statistics.get(name, None)
 
@@ -48,6 +51,9 @@ class program_result (object) :
 
   def get_data_file (self) :
     return self.get_file_path(self.data_file)
+
+  def get_phil_files (self) :
+    return [ self.get_file_path(fn) for fn in self.phil_files ]
 
   def r_free (self) :
     return self.get_statistic("r_free")
