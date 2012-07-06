@@ -13,6 +13,10 @@ namespace iotbx { namespace pdb { namespace hierarchy { namespace atoms {
   extract_name(
     af::const_ref<atom> const& atoms);
 
+  af::shared<std::string>
+  extract_segid(
+    af::const_ref<atom> const& atoms);
+
   af::shared<vec3>
   extract_xyz(
     af::const_ref<atom> const& atoms);
