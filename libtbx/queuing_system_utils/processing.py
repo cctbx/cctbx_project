@@ -64,9 +64,9 @@ class Queue(object):
   Queue objects in the same directory, even with a matching identifier
   """
 
-  def __init__(self, identifier, poll_interval = 1):
+  def __init__(self, identifier, waittime = 1):
 
-    self.poll_interval = poll_interval
+    self.waittime = waittime
     self.root = "%s_%d_%d" % ( identifier, os.getpid(), id( self ) )
     self.count = itertools.count()
 
