@@ -92,6 +92,11 @@ def run(args, command_name = "phenix.cif_as_mtz"):
       .option("--show_log",
           action="store_true",
           help="Show some output.")
+      .option("--ignore_bad_sigmas",
+          action="store_true",
+          help="Set sigmas to None instead of raising an error when bad sigmas "
+               "are present.")
+
     ).process(args=args)
   except Exception, e:
     if(str(e) != "0"): print str(e)
@@ -132,7 +137,8 @@ def run(args, command_name = "phenix.cif_as_mtz"):
     merge_non_unique_under_symmetry=command_line.options.merge,
     map_to_asu=command_line.options.map_to_asu,
     remove_systematic_absences=command_line.options.remove_systematic_absences,
-    incompatible_flags_to_work_set=command_line.options.incompatible_flags_to_work_set)
+    incompatible_flags_to_work_set=command_line.options.incompatible_flags_to_work_set,
+    ignore_bad_sigmas=command_line.options.ignore_bad_sigmas)
 
 def process_files (file_name,
                    crystal_symmetry,
@@ -145,7 +151,8 @@ def process_files (file_name,
                    merge_non_unique_under_symmetry=False,
                    map_to_asu=False,
                    remove_systematic_absences=False,
-                   incompatible_flags_to_work_set=False) :
+                   incompatible_flags_to_work_set=False,
+                   ignore_bad_sigmas=False) :
   mtz_object = extract(
     file_name                       = file_name,
     crystal_symmetry                = crystal_symmetry,
@@ -156,7 +163,8 @@ def process_files (file_name,
     merge_non_unique_under_symmetry = merge_non_unique_under_symmetry,
     map_to_asu                      = map_to_asu,
     remove_systematic_absences      = remove_systematic_absences,
-    incompatible_flags_to_work_set  = incompatible_flags_to_work_set)
+    incompatible_flags_to_work_set  = incompatible_flags_to_work_set,
+    ignore_bad_sigmas               = ignore_bad_sigmas)
   if(mtz_object is not None):
     if (pdb_file_name):
       pdb_raw_records = smart_open.for_reading(
@@ -213,7 +221,8 @@ def extract(file_name,
             merge_non_unique_under_symmetry,
             map_to_asu,
             remove_systematic_absences,
-            incompatible_flags_to_work_set=False):
+            incompatible_flags_to_work_set=False,
+            ignore_bad_sigmas=False):
   import iotbx.cif
   all_miller_arrays = iotbx.cif.reader(file_path=file_name).build_miller_arrays()
   if (len(all_miller_arrays) == 0) :
@@ -320,6 +329,15 @@ def extract(file_name,
           name="dataset",
           wavelength=0)
       dataset = datasets[w_id]
+      # if all sigmas for an array are set to zero either raise an error, or set sigmas to None
+      if ma.sigmas() is not None and (ma.sigmas() == 0).count(False) == 0:
+        if ignore_bad_sigmas:
+          print "Warning: bad sigmas, setting sigmas to None."
+          ma.set_sigmas(None)
+        else:
+          raise Sorry(
+  """Bad sigmas: all sigmas are equal to zero.
+  Add --ignore_bad_sigmas to command arguments to leave out sigmas from mtz file.""")
       if not ma.is_unique_set_under_symmetry():
         if merge_non_unique_under_symmetry:
           print "Warning: merging non-unique data"
