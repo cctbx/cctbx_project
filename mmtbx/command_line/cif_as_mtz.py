@@ -366,13 +366,15 @@ def extract(file_name,
           sel_dup = ~flex.bool(n_all, sel_unique)
           n_duplicate = sel_dup.count(True)
           n_uus = sel_unique.size()
-          print "Miller indices not unique under symmetry:", file_name, \
-                "(%d redundant indices out of %d)" % (n_all-n_uus, n_all)
-          print "Add --merge to command arguments to force merging data."
-          return None
+          msg = (
+            "Miller indices not unique under symmetry: " + file_name + \
+            "(%d redundant indices out of %d)" % (n_all-n_uus, n_all) +
+            "Add --merge to command arguments to force merging data.")
           if (show_details_if_error):
+            print msg
             ma.show_comprehensive_summary(prefix="  ")
             ma.map_to_asu().sort().show_array(prefix="  ")
+          raise Sorry(msg)
       if(map_to_asu):
         ma = ma.map_to_asu().set_info(ma.info())
       if(remove_systematic_absences):
@@ -439,6 +441,7 @@ crystal_symmetry {
 output_file_name = None
   .type = path
   .style = new_file bold
+include scope libtbx.phil.interface.tracking_params
 options {
   use_model = False
     .type = bool
@@ -459,10 +462,12 @@ options {
   incompatible_flags_to_work_set = False
     .type = bool
     .short_caption = Move incompatible flags to work set
+  ignore_bad_sigmas = False
+    .type = bool
   show_log = True
     .type = bool
 }
-""")
+""", process_includes=True)
 
 # TODO replace the old 'run' method
 #
@@ -539,7 +544,8 @@ def run2 (args,
     map_to_asu=params.options.map_to_asu,
     remove_systematic_absences=params.options.eliminate_sys_absent,
     incompatible_flags_to_work_set=\
-      params.options.incompatible_flags_to_work_set)
+      params.options.incompatible_flags_to_work_set,
+    ignore_bad_sigmas=params.options.ignore_bad_sigmas)
   return (params.output_file_name, n_refl)
 
 def validate_params (params) :
