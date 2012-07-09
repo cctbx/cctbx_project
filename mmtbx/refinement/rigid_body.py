@@ -832,12 +832,12 @@ class target_and_grads(object):
 def rigid_groups_from_pdb_chains(pdb_hierarchy, min_chain_size=2):
   assert (not pdb_hierarchy.atoms().extract_i_seq().all_eq(0))
   sel_string = "not (not pepnames and single_atom_residue)"
-  selection = pdb_hierarchy.atom_selection_cache().selection(string=sel_string)    
-  pdb_hierarchy = pdb_hierarchy.select(selection)  
+  selection = pdb_hierarchy.atom_selection_cache().selection(string=sel_string)
+  pdb_hierarchy = pdb_hierarchy.select(selection)
   models = pdb_hierarchy.models()
   assert len(models) == 1
   atom_labels = list(pdb_hierarchy.atoms_with_labels())
-  selections = []  
+  selections = []
   for chain in models[0].chains():
     if(chain.atoms().size() >= min_chain_size):
       rgs = chain.residue_groups()
