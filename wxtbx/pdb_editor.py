@@ -34,6 +34,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     self.Bind(wx.EVT_LEFT_DCLICK, self.OnDoubleClick)
     self.DeleteAllItems()
     self.flag_multiple_selections = False
+    self.path_mgr = path_dialogs.manager()
 
   def DeleteAllItems (self) :
     customtreectrl.CustomTreeCtrl.DeleteAllItems(self)
@@ -163,6 +164,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       ("Delete residue", self.OnDeleteObject),
       ("Split residue", self.OnSplitResidue),
       ("Apply rotation/translation...", self.OnMoveSites),
+      ("Insert residues after...", self.OnInsertAfter),
     ]
     self.ShowMenu(labels_and_actions, source_window)
 
@@ -173,6 +175,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       ("Delete chain", self.OnDeleteObject),
       ("Delete alternate conformers", self.OnDeleteAltConfs),
       ("Apply rotation/translation...", self.OnMoveSites),
+      ("Add residues...", self.OnAddResidues),
     ]
     self.ShowMenu(labels_and_actions, source_window)
 
@@ -181,6 +184,8 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       ("Set model ID...", self.OnSetChainID),
       ("Delete model", self.OnDeleteObject),
       ("Apply rotation/translation...", self.OnMoveSites),
+      ("Add chain(s)...", self.OnAddChain),
+      ("Split model...", self.OnSplitModel),
     ]
     self.ShowMenu(labels_and_actions, source_window)
 
@@ -198,6 +203,17 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     if (object_type is not None) :
       assert (type(pdb_object).__name__ == object_type)
     return item, pdb_object
+
+  def _ApplyToAtoms (self, item, pdb_object, modify_action) :
+    assert (hasattr(modify_action, "__call__"))
+    self._changes_made = True
+    if (type(pdb_object).__name__ == 'atom') :
+      modify_action(pdb_object)
+      self.SetItemText(item, format_atom(pdb_object))
+    else :
+      for atom in pdb_object.atoms() :
+        modify_action(atom)
+      self.PropagateAtomChanges(item)
 
   #---------------------------------------------------------------------
   # PROPERTY EDITING ACTIONS
@@ -428,14 +444,8 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       new_occ = self.GetNewOccupancy(occ)
       print new_occ
       assert (0 <= occ <= 1.0)
-      self._changes_made = True
-      if (pdb_type == 'atom') :
-        pdb_object.occ = new_occ
-        self.SetItemText(item, format_atom(pdb_object))
-      else :
-        for atom in pdb_object.atoms() :
-          atom.occ = new_occ
-        self.PropagateAtomChanges(item)
+      def apply_occ (atom) : atom.occ = new_occ
+      self._ApplyToAtoms(pdb_object, apply_occ)
 
   # all
   def OnSetBfactor (self, event) :
@@ -454,14 +464,8 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
           b_iso = all_b[0]
       new_b = self.GetNewBiso(b_iso)
       assert (0 < new_b < 1000)
-      self._changes_made = True
-      if (pdb_type == 'atom') :
-        pdb_object.b = new_b
-        self.SetItemText(item, format_atom(pdb_object))
-      else :
-        for atom in pdb_object.atoms() :
-          atom.b = new_b
-        self.PropagateAtomChanges(item)
+      def apply_b (atom) : atom.b = new_b
+      self._ApplyToAtoms(pdb_objct, apply_b)
 
   # all
   def OnSetSegID (self, event) :
@@ -483,14 +487,8 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         segid = None
       new_segid = self.GetNewSegID(segid)
       if (new_segid != segid) :
-        self._changes_made = True
-        if (pdb_type == 'atom') :
-          pdb_object.segid = new_segid
-          self.SetItemText(item, format_atom(pdb_object))
-        else :
-          for atom in pdb_object.atoms() :
-            atom.segid = new_segid
-          self.PropagateAtomChanges(item)
+        def apply_segid (atom) : atom.segid = new_segid
+        self._ApplyToAtoms(pdb_object, apply_segid)
 
   # all
   def OnMoveSites (self, event) :
@@ -552,12 +550,8 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         parent_itme = self.GetItemParent(del_item)
         self.DeleteItem(del_item)
 
-  # model
-  def OnAddChain (self, event) :
-    pass
-
-  # chain
-  def OnAddResidues (self, event) :
+  # atom_group
+  def OnCloneAtoms (self, event) :
     pass
 
   # residue_group
@@ -600,8 +594,20 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       self.SetItemText(child, format_atom_group(atom_group))
       child, cookie = self.GetNextChild(item, cookie)
 
-  # atom_group
-  def OnCloneAtoms (self, event) :
+  # residue_group
+  def OnInsertAfter (self, event) :
+    pass
+
+  # chain
+  def OnAddResidues (self, event) :
+    pass
+
+  # model
+  def OnAddChain (self, event) :
+    pass
+
+  # model
+  def OnCloneModel (self, event) :
     pass
 
   #---------------------------------------------------------------------
@@ -757,6 +763,62 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     dlg.SetOptional(True)
     return simple_dialogs.get_phil_value_from_dialog(dlg)
 
+  def _GetPDBFile (self) :
+    from iotbx import file_reader
+    file_name = self.path_mgr.select_file(
+      parent=self,
+      message="Select PDB file to insert",
+      wildcard=file_reader.get_wildcard_strings(["pdb"]))
+    pdb_in = file_reader.any_file(file_name,
+      force_type="pdb",
+      raise_sorry_if_errors=True)
+    hierarchy = pdb_in.file_object.construct_hierarchy()
+    if (len(hierarchy.models()) > 1) :
+      raise Sorry("Multi-MODEL PDB files not supported for this action.")
+    return hierarchy
+
+  def GetChainsFromFile (self) :
+    hierarchy = self._GetPDBFile()
+    chains = hierarchy.models()[0].chains()
+    if (len(chains) == 1) :
+      return [ chains[0].detached_copy() ]
+    else :
+      dlg = SelectChainDialog(
+        parent=self,
+        title="Select chains to add",
+        message="Multiple chains were found in this PDB file; you may insert "+
+          "them all at once, or one at a time.",
+        chains=chains,
+        allow_all_chains=True)
+      add_chain = None
+      if (dlg.ShowModal() == wx.ID_OK) :
+        add_chain = dlg.GetChains()
+      wx.CallAfter(dlg.Destroy)
+      if (add_chain is None) : raise Abort()
+      return [ c.detached_copy() for c in add_chains ]
+
+  def GetResiduesFromFile (self) :
+    hierarchy = self._GetPDBFile()
+    chains = hierarchy.models()[0].chains()
+    if (len(chains) == 1) :
+      return [ rg.detached_copy() for rg in chains[0].residue_groups() ]
+    else :
+      dlg = SelectChainDialog(
+        parent=self,
+        title="Select residues to add",
+        message="Multiple chains were found in this PDB file; please select "+
+          "the one containing the residues you wish to insert into the "+
+          "selected chain.",
+        chains=chains,
+        allow_all_chains=False,
+        show_residue_range=True)
+      add_chain = resseq_start = resseq_end = None
+      if (dlg.ShowModal() == wx.ID_OK) :
+        add_chain = dlg.GetChains()
+        resseq_start, resseq_end = dlg.GetResseqRange()
+      wx.CallAfter(dlg.Destroy)
+      if (add_chain is None) : raise Abort()
+
 ADD_RESIDUES_START = 0
 ADD_RESIDUES_END = 1
 ADD_RESIDUES_AFTER = 2
@@ -821,6 +883,77 @@ class AddResiduesDialog (wx.Dialog) :
   def GetResID (self) :
     return self._resid_txt.GetPhilValue()
 
+class SelectChainDialog (wx.Dialog) :
+  def __init__ (self, parent, title, message, chains, allow_all_chains=False,
+      show_residue_range=False) :
+    self._chains = chains
+    self.allow_all_chains = allow_all_chains
+    super(AddResiduesDialog, self).__init__(parent=parent, title=title,
+      style=wx.WS_EX_VALIDATE_RECURSIVELY|wx.RAISED_BORDER|wx.CAPTION)
+    style = self.GetWindowStyle()
+    style |= wx.WS_EX_VALIDATE_RECURSIVELY|wx.RAISED_BORDER|wx.CAPTION
+    self.SetWindowStyle(style)
+    szr = wx.BoxSizer(wx.VERTICAL)
+    self.SetSizer(szr)
+    caption_txt = wx.StaticText(self, -1, message)
+    szr.Add(caption_txt, 0, wx.ALL, 5)
+    box = wx.FlexGridSizer(rows=2, cols=2)
+    txt1 = wx.StaticText(self, -1, "Select chain:")
+    box.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    choices = []
+    if (allow_all_chains) :
+      choices.append("All")
+    for chain in chains :
+      n_rg = len(chain.residue_groups())
+      choices.append("chain '%s' (%d residues)" % (chain.id, n_rg))
+    self._chain_choice = wx.Choice(self, -1, choices=choices)
+    box.Add(self._chain_choice, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    if (show_residue_range) :
+      txt2 = wx.StaticText(self, -1, "Residue range (optional):")
+      box.Add(txt2, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+      box2 = wx.BoxSizer(wx.HORIZONTAL)
+      box.Add(box2)
+      self._resseq_start = intctrl.IntCtrl(
+        parent=self,
+        name="Starting resseq",
+        value=None)
+      self._resseq_start.SetOptional(True)
+      self._resseq_end = intctrl.IntCtrl(
+        parent=self,
+        name="Ending resseq",
+        value=None)
+      self._resseq_end.SetOptional(False)
+      txt3 = wx.StaticText(self, -1, "to")
+      box2.Add(self._resseq_start, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+      box2.Add(txt3, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+      box2.Add(self._resseq_end, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    else :
+      self._resseq_start = self._resseq_end = None
+    szr.Add(box)
+    cancel_btn = wx.Button(self, wx.ID_CANCEL)
+    ok_btn = wx.Button(self, wx.ID_OK)
+    ok_btn.SetDefault()
+    szr4 = wx.StdDialogButtonSizer()
+    szr4.Add(cancel_btn)
+    szr4.Add(ok_btn, 0, wx.LEFT, 5)
+    szr.Add(szr4, 0, wx.ALL|wx.ALIGN_RIGHT, 5)
+    szr.Layout()
+    self.Fit()
+    self.Centre(wx.BOTH)
+
+  def GetChains (self) :
+    chain_sel = self._chain_choice.GetSelection()
+    if (self.allow_all_chains) :
+      if (chain_sel == 0) :
+        return self._chains
+      else :
+        chain_sel -= 1
+    return [ self._chains[chain_sel] ]
+
+  def GetResseqRange (self) :
+    assert (not None in [self._resseq_start, self._resseq_end])
+    return self._resseq_start.GetPhilValue(), self._resseq_end.GetPhilValue()
+
 ########################################################################
 class PDBTreeFrame (wx.Frame) :
   def __init__ (self, *args, **kwds) :
@@ -874,7 +1007,7 @@ class PDBTreeFrame (wx.Frame) :
     self.Fit()
     self.Bind(wx.EVT_CLOSE, self.OnClose)
     self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy, self)
-    self.path_mgr = path_dialogs.manager()
+    self.path_mgr = self._tree.path_mgr
 
   def LoadPDB (self, file_name) :
     from iotbx import file_reader
