@@ -16,7 +16,7 @@ def do_main_apache(filepath, host, port):
 
 def single_thread(idx):
   for x in xrange(1):
-    filepath, host, port = [ABS_TEMPLATE%idx,HOST,PORT]
+    filepath, host, port = [ABS_DATA_TEMPLATE%idx,HOST,PORT]
     port = int(port)
     print do_main_apache(filepath, host, port)
 
@@ -32,12 +32,12 @@ def multi_thread():
     item.wait()
 
 if __name__=="__main__":
-  ABS_TEMPLATE = "/net/sunbird/raid1/sauter/rawdata/pilatus/ssrl_P6/all/I3_1_%04d.cbf"
-  HOST = "localhost"
+  ABS_DATA_TEMPLATE = "/net/sunbird/raid1/sauter/rawdata/pilatus/ssrl_P6/all/I3_1_%04d.cbf"
+  HOST = "viper"
   PORT = "8125"
   N_CLIENT_THREADS = 48
   IMAGE_RANGE = xrange(1,721)
-  DISTL_OPTIONS = ["distl.res.outer=4.9","distl.bins.verbose=True"]
+  DISTL_OPTIONS = ["distl.res.outer=3.3","distl.bins.verbose=True"]
   SERVER_TYPE = ["Python","Apache"][0] # choose 0=Python, 1=Apache mod-python
   TIME_DELAY = 0.10 # seconds per-image throughput, depends on server
   multi_thread()
