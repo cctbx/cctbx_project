@@ -10,6 +10,9 @@ import wx
 import string
 import sys
 
+def format_chain (chain) :
+  return "chain '%s'" % chain.id
+
 def format_residue_group (rg) :
   return "residue %s (resseq='%s', icode='%s') [%s]" % \
     (rg.resid().strip(), rg.resseq, rg.icode,
@@ -54,20 +57,35 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
   def PopulateTree (self, pdb_hierarchy) :
     root_node = self.GetRootItem()
     for model in pdb_hierarchy.models() :
-      model_node = self.AppendItem(root_node, "model '%s'" % model.id)
-      self._node_lookup[model_node] = model
-      for chain in model.chains() :
-        chain_node = self.AppendItem(model_node, "chain '%s'" % chain.id)
-        self._node_lookup[chain_node] = chain
-        for rg in chain.residue_groups() :
-          rg_node = self.AppendItem(chain_node, format_residue_group(rg))
-          self._node_lookup[rg_node] = rg
-          for ag in rg.atom_groups() :
-            ag_node = self.AppendItem(rg_node, format_atom_group(ag))
-            self._node_lookup[ag_node] = ag
-            for atom in ag.atoms() :
-              atom_node = self.AppendItem(ag_node, format_atom(atom))
-              self._node_lookup[atom_node] = atom
+      self._AppendModelItem(root_node, model)
+
+  def _AppendModelItem (self, root_node, model) :
+    model_node = self.AppendItem(root_node, "model '%s'" % model.id)
+    self._node_lookup[model_node] = model
+    for chain in model.chains() :
+      self._AppendChainItem(model_node, chain)
+
+  def _AppendChainItem (self, model_node, chain) :
+    chain_node = self.AppendItem(model_node, "chain '%s'" % chain.id)
+    self._node_lookup[chain_node] = chain
+    for rg in chain.residue_groups() :
+      self._AppendResidueGroupItem(chain_node, rg)
+
+  def _AppendResidueGroupItem (self, chain_node, residue_group) :
+    rg_node = self.AppendItem(chain_node, format_residue_group(residue_group))
+    self._node_lookup[rg_node] = residue_group
+    for ag in residue_group.atom_groups() :
+      self._AppendAtomGroupItem(rg_node, ag)
+
+  def _AppendAtomGroupItem (self, rg_node, atom_group) :
+    ag_node = self.AppendItem(rg_node, format_atom_group(atom_group))
+    self._node_lookup[ag_node] = atom_group
+    for atom in atom_group.atoms() :
+      self._AppendAtomItem(ag_node, atom)
+
+  def _AppendAtomItem (self, ag_node, atom) :
+    atom_node = self.AppendItem(ag_node, format_atom(atom))
+    self._node_lookup[atom_node] = atom
 
   def PropagateAtomChanges (self, node) :
     child, cookie = self.GetFirstChild(node)
@@ -136,6 +154,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       ("Set B-factor...", self.OnSetBfactor),
       ("Set element...", self.OnSetElement),
       ("Set charge...", self.OnSetCharge),
+      ("Convert to isotropic", self.OnSetIsotropic),
       ("Delete atom", self.OnDeleteObject),
       ("Apply rotation/translation...", self.OnMoveSites),
     ]
@@ -147,6 +166,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       ("Set occupancy...", self.OnSetOccupancy),
       ("Set B-factor...", self.OnSetBfactor),
       ("Set residue name...", self.OnSetResname),
+      ("Convert to isotropic", self.OnSetIsotropic),
       ("Delete atom group", self.OnDeleteObject),
       ("Clone atom group", self.OnCloneAtoms),
       ("Apply rotation/translation...", self.OnMoveSites),
@@ -161,6 +181,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     labels_and_actions = [
       ("Set residue number...", self.OnSetResseq),
       ("Set insertion code...", self.OnSetIcode),
+      ("Convert to isotropic", self.OnSetIsotropic),
       ("Delete residue", self.OnDeleteObject),
       ("Split residue", self.OnSplitResidue),
       ("Apply rotation/translation...", self.OnMoveSites),
@@ -168,20 +189,29 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     ]
     self.ShowMenu(labels_and_actions, source_window)
 
-  def ShowChainMenu (self, residue_group, source_window) :
+  def ShowChainMenu (self, chain, source_window) :
     labels_and_actions = [
       ("Set chain ID...", self.OnSetChainID),
       ("Set segment ID...", self.OnSetSegID),
+      ("Set B-factor...", self.OnSetBfactor),
+      ("Convert to isotropic", self.OnSetIsotropic),
       ("Delete chain", self.OnDeleteObject),
-      ("Delete alternate conformers", self.OnDeleteAltConfs),
       ("Apply rotation/translation...", self.OnMoveSites),
       ("Add residues...", self.OnAddResidues),
     ]
+    if (len(chain.conformers()) > 1) :
+      labels_and_actions.append(
+        ("Delete alternate conformers", self.OnDeleteAltConfs))
+    model = chain.parent()
+    if (len(model.chains()) > 1) :
+      labels_and_actions.append(
+        ("Merge with other chain...", self.OnMergeChain))
     self.ShowMenu(labels_and_actions, source_window)
 
-  def ShowModelMenu (self, residue_group, source_window) :
+  def ShowModelMenu (self, model, source_window) :
     labels_and_actions = [
       ("Set model ID...", self.OnSetChainID),
+      ("Convert to isotropic", self.OnSetIsotropic),
       ("Delete model", self.OnDeleteObject),
       ("Apply rotation/translation...", self.OnMoveSites),
       ("Add chain(s)...", self.OnAddChain),
@@ -359,11 +389,12 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     item, chain = self.GetSelectedObject('chain')
     new_id = self.GetNewChainID(chain.id)
     if (new_id != chain.id) :
-      sefl._changes_made = True
+      self._changes_made = True
       if (new_id is None) or (new_id.isspace()) :
         chain.id = ' '
       else :
         chain.id = "%2s" % new_id
+      self.SetItemText(item, format_chain(chain))
 
   # chain
   def OnRenumber (self, event) :
@@ -468,6 +499,17 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       self._ApplyToAtoms(pdb_objct, apply_b)
 
   # all
+  def OnSetIsotropic (self, event) :
+    if (self.flag_multiple_selections) :
+      assert 0
+    else :
+      item = self.GetSelection()
+      pdb_object = self._node_lookup.get(item, None)
+      def set_isotropic (atom) :
+        atom.set_uij(new_uij=(-1.0, -1.0, -1.0, -1.0, -1.0, -1.0))
+      self._ApplyToAtoms(pdb_object, set_isotropic)
+
+  # all
   def OnSetSegID (self, event) :
     if (self.flag_multiple_selections) :
       assert 0
@@ -542,28 +584,47 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         if (len(self._hierarchy.models()) == 1) :
           raise Sorry("You must have at least one MODEL in the PDB file.")
         parent.remove_model(pdb_object)
-      parent_item = self.GetItemParent(item)
-      self.DeleteChildren(item)
-      self.DeleteItem(item)
-      while (not self.HasChildren(parent_item)) :
-        del_item = parent_item
-        parent_itme = self.GetItemParent(del_item)
-        self.DeleteItem(del_item)
+
+  def _RemoveItem (self, item) :
+    parent_item = self.GetItemParent(item)
+    self.DeleteChildren(item)
+    self.DeleteItem(item)
+    while (not self.HasChildren(parent_item)) :
+      del_item = parent_item
+      parent_item = self.GetItemParent(del_item)
+      self.DeleteItem(del_item)
 
   # atom_group
   def OnCloneAtoms (self, event) :
-    pass
-
-  # residue_group
-  def OnSplitResidue (self, event) :
-    print 1
-    item, residue_group = self.GetSelectedObject('residue_group')
+    item, target_atom_group = self.GetSelectedObject('atom_group')
+    residue_group = target_atom_group.parent()
     atom_groups = residue_group.atom_groups()
-    self._changes_made = True
     assert (len(atom_groups) > 0)
     start_occ = 1/(len(atom_groups) + 1)
     new_occ = self.GetNewOccupancy(start_occ, new=True)
-    new_group = atom_groups[0].detached_copy()
+    self._changes_made = True
+    self._AddAtomGroup(
+      item=self.GetItemParent(item),
+      residue_group=residue_group,
+      new_group=target_atom_group.detached_copy(),
+      new_occ=new_occ)
+
+  # residue_group
+  def OnSplitResidue (self, event) :
+    item, residue_group = self.GetSelectedObject('residue_group')
+    atom_groups = residue_group.atom_groups()
+    assert (len(atom_groups) > 0)
+    start_occ = 1/(len(atom_groups) + 1)
+    new_occ = self.GetNewOccupancy(start_occ, new=True)
+    self._changes_made = True
+    self._AddAtomGroup(
+      item=item,
+      residue_group=residue_group,
+      new_group=atom_groups[0].detached_copy(),
+      new_occ=new_occ)
+
+  def _AddAtomGroup (self, item, residue_group, new_group, new_occ) :
+    atom_groups = residue_group.atom_groups()
     for atom in new_group.atoms() :
       atom.occ = new_occ
     for atom_group in atom_groups :
@@ -582,11 +643,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
           new_altloc = char
       new_group.altloc = char
     residue_group.append_atom_group(new_group)
-    ag_item = self.AppendItem(item, format_atom_group(new_group))
-    self._node_lookup[ag_item] = new_group
-    for atom in new_group.atoms() :
-      new_item = self.AppendItem(ag_item, format_atom(atom))
-      self._node_lookup[new_item] = atom
+    self._AppendAtomGroupItem(item, new_group)
     child, cookie = self.GetFirstChild(item)
     while (child is not None) :
       atom_group = self._node_lookup.get(child, None)
@@ -596,19 +653,77 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
 
   # residue_group
   def OnInsertAfter (self, event) :
-    pass
+    item, residue_group = self.GetSelectedObject('residue_group')
+    new_residues = self.GetResiduesFromFile()
+    chain = residue_group.parent()
+    index = None
+    for k, other_rg in enumerate(chain.residue_groups()) :
+      if (other_rg is residue_group) :
+        index = k+1
+        break
+    assert (index is not None)
+    self._changes_made = True
+    self._InsertResidues(
+      chain=chain,
+      chain_node=self.GetItemParent(item),
+      residues=new_residues,
+      index=index)
 
   # chain
   def OnAddResidues (self, event) :
-    pass
+    item, chain = self.GetSelectedObject('chain')
+    new_residues = self.GetResiduesFromFile()
+    index = self.GetInsertionIndex(chain)
+    self._changes_made = True
+    self._InsertResidues(
+      chain=chain,
+      chain_node=item,
+      residues=new_residues,
+      index=index)
+
+  # chain
+  def OnMergeChain (self, event) :
+    item, chain = self.GetSelectedObject('chain')
+    model = chain.parent()
+    assert (len(model.chains()) > 1)
+    target_chain = self.GetChainForMerging(model.chains(), chain)
+    target_item = None
+    for item, pdb_object in self._node_lookup :
+      if (pdb_object is target_chain) :
+        target_item = item
+    assert (target_item is not None)
+    index = self.GetInsertionIndex(target_chain)
+    self._changes_made = True
+    merge_residues = [ rg.detached_copy() for rg in chain.residue_groups() ]
+    model.remove_chain(chain)
+    self._InsertResidues(
+      chain=target_chain,
+      chain_node=target_item,
+      residues=merge_residues,
+      index=index)
 
   # model
   def OnAddChain (self, event) :
-    pass
+    item, model = self.GetSelectedObject('model')
+    new_chains = self.GetChainsFromFile()
+    self._changes_made = True
+    for chain in new_chains :
+      model.append_chain(chain)
+      self._AppendChainItem(item, chain)
+    self.Refresh()
 
   # model
   def OnCloneModel (self, event) :
     pass
+
+  def _InsertResidues (self, chain, chain_node, residues, index=None) :
+    for rg in residues :
+      if (index is None) :
+        chain.append_residue_group(rg)
+      else :
+        chain.insert_residue_group(index, rg)
+        index += 1
+      self._AppendResidueGroupItem(chain_node, rg)
 
   #---------------------------------------------------------------------
   # USER INPUT
@@ -763,6 +878,20 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     dlg.SetOptional(True)
     return simple_dialogs.get_phil_value_from_dialog(dlg)
 
+  def GetResseqShift (self) :
+    dlg = simple_dialogs.IntegerDialog(
+      parent=self,
+      title="Shift residue numbers",
+      label="Increment by",
+      caption="You may shift the residue numbers by any amount, even if this "+
+        "will make them negative; note however that the official PDB format "+
+        "is limited to residue numbers between -999 and 999.  (PHENIX and "+
+        "other programs can handle a much larger range using Hybrid36 "+
+        "encoding, but this is not supported by the PDB.)",
+      value=None)
+    dlg.SetOptional(False)
+    return simple_dialogs.get_phil_value_from_dialog(dlg)
+
   def _GetPDBFile (self) :
     from iotbx import file_reader
     file_name = self.path_mgr.select_file(
@@ -777,6 +906,22 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       raise Sorry("Multi-MODEL PDB files not supported for this action.")
     return hierarchy
 
+  def GetChainForMerging (self, chains, merge_chain) :
+    assert (len(chains) > 1)
+    dlg = SelectChainDialog(
+      parent=self,
+      title="Select chain to merge with",
+      message="You have selected to merge the chain '%s' (%d residues) with "+
+        "another chain in the model; please select a target chain.",
+      chains=chains,
+      exclude_chain=marge_chain)
+    target_chain = None
+    if (dlg.ShowModal() == wx.ID_OK) :
+      target_chain = dlg.GetChain()
+    wx.CallAfter(dlg.Destroy)
+    if (target_chain is None) : raise Abort()
+    return target_chain
+
   def GetChainsFromFile (self) :
     hierarchy = self._GetPDBFile()
     chains = hierarchy.models()[0].chains()
@@ -790,11 +935,11 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
           "them all at once, or one at a time.",
         chains=chains,
         allow_all_chains=True)
-      add_chain = None
+      add_chains = None
       if (dlg.ShowModal() == wx.ID_OK) :
-        add_chain = dlg.GetChains()
+        add_chains = dlg.GetChains()
       wx.CallAfter(dlg.Destroy)
-      if (add_chain is None) : raise Abort()
+      if (add_chains is None) : raise Abort()
       return [ c.detached_copy() for c in add_chains ]
 
   def GetResiduesFromFile (self) :
@@ -812,12 +957,37 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         chains=chains,
         allow_all_chains=False,
         show_residue_range=True)
-      add_chain = resseq_start = resseq_end = None
+      add_chains = resseq_start = resseq_end = None
       if (dlg.ShowModal() == wx.ID_OK) :
-        add_chain = dlg.GetChains()
+        add_chains = dlg.GetChains()
         resseq_start, resseq_end = dlg.GetResseqRange()
       wx.CallAfter(dlg.Destroy)
-      if (add_chain is None) : raise Abort()
+      if (add_chains is None) : raise Abort()
+      return [ rg.detached_copy() for rg in add_chains[0].residue_groups() ]
+
+  def GetInsertionIndex (self, chain) :
+    dlg = AddResiduesDialog(
+      parent=self,
+      title="Insert residues")
+    insert_type = resid = None
+    if (dlg.ShowModal() == wx.ID_OK) :
+      insert_type = dlg.GetInsertionType()
+      resid = dlg.GetResID()
+    wx.CallAfter(dlg.Destroy)
+    if (insert_type is None) :
+      raise Abort()
+    elif (insert_type == ADD_RESIDUES_START) :
+      return 0
+    elif (insert_type == ADD_RESIDUES_END) :
+      return None
+    else :
+      if (resid is None) :
+        raise Sorry("You need to specify a residue ID to insert after.")
+      for k, residue_group in enumerate(chain.residue_groups()) :
+        if (residue_group.resid().strip() == resid.strip()) :
+          return k + 1
+      raise Sorry("The residue ID %s was not found in the target chain." %
+        resid.strip())
 
 ADD_RESIDUES_START = 0
 ADD_RESIDUES_END = 1
@@ -885,8 +1055,11 @@ class AddResiduesDialog (wx.Dialog) :
 
 class SelectChainDialog (wx.Dialog) :
   def __init__ (self, parent, title, message, chains, allow_all_chains=False,
-      show_residue_range=False) :
-    self._chains = chains
+      show_residue_range=False, exclude_chain=None) :
+    self._chains = []
+    for chain in chains :
+      if (chain is not exclude_chain) :
+        self._chains.append(chain)
     self.allow_all_chains = allow_all_chains
     super(AddResiduesDialog, self).__init__(parent=parent, title=title,
       style=wx.WS_EX_VALIDATE_RECURSIVELY|wx.RAISED_BORDER|wx.CAPTION)
@@ -903,7 +1076,7 @@ class SelectChainDialog (wx.Dialog) :
     choices = []
     if (allow_all_chains) :
       choices.append("All")
-    for chain in chains :
+    for chain in self._chains :
       n_rg = len(chain.residue_groups())
       choices.append("chain '%s' (%d residues)" % (chain.id, n_rg))
     self._chain_choice = wx.Choice(self, -1, choices=choices)
@@ -949,6 +1122,10 @@ class SelectChainDialog (wx.Dialog) :
       else :
         chain_sel -= 1
     return [ self._chains[chain_sel] ]
+
+  def GetChain (self) :
+    assert (not self.allow_all_chains)
+    return self.GetChains()[0]
 
   def GetResseqRange (self) :
     assert (not None in [self._resseq_start, self._resseq_end])
@@ -1035,6 +1212,7 @@ class PDBTreeFrame (wx.Frame) :
   def OnSave (self, event) :
     if (self._pdb_in is None) :
       return
+    from iotbx import file_reader
     file_name = self.path_mgr.select_file(
       parent=self,
       message="Save PDB file",
