@@ -4,7 +4,7 @@ output_lock = threading.RLock()
 
 def do_main_apache(filepath, host, port):
   absfile = os.path.abspath(filepath)
-  base_url = "http://%s:%d/spotfinder/distl.signal_strength_bcsb?distl.image=%s"%(host,port,absfile)
+  base_url = "http://%s:%d/spotfinder/distl.signal_strength?distl.image=%s"%(host,port,absfile)
   if len(DISTL_OPTIONS) > 0:
     base_url = base_url + "&" + "&".join(DISTL_OPTIONS)
   import urllib2
@@ -49,5 +49,5 @@ if __name__=="__main__":
   DISTL_OPTIONS = ["distl.res.outer=3.3","distl.bins.verbose=True"]
   SERVER_TYPE = ["Python","Apache"][1] # choose 0=Python, 1=Apache mod-python
   TIME_DELAY = 0.10 # seconds per-image throughput, depends on server
-  OUTPUT_FILE = "/net/viper/raid1/sauter/apache/bcsb_results.txt"
+  OUTPUT_FILE = "/net/viper/raid1/sauter/apache/spotfinder_results.txt"
   multi_thread()
