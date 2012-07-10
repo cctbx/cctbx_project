@@ -226,6 +226,8 @@ def run (args, log=sys.stdout) :
       assert f.is_xray_amplitude_array()
       assert phi.is_real_array()
       assert (fom is None) or (fom.is_real_array())
+      if (f.anomalous_flag()) :
+        f = f.average_bijvoet_mates()
       f = f.common_set(phi)
       phi = phi.common_set(f)
       if (fom is not None) :
