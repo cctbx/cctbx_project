@@ -117,10 +117,13 @@ class RTDialog (wx.Dialog) :
       if (i > 0) :
         grid.Add((1,1))
       for j in range(3) :
+        _value = 0.0
+        if (j == i) :
+          _value = 1.0
         ctrl = floatctrl.FloatCtrl(
           parent=self,
           name="Rotation",
-          value=0)
+          value=_value)
         ctrl.SetOptional(False)
         grid.Add(ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
         self._r_ctrls.append(ctrl)
