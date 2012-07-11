@@ -31,6 +31,7 @@ class settings_window (wxtbx.utils.SettingsPanel) :
   def add_controls (self) :
     self._index_span = None
     self._last_sg_sel = None
+    # d_min control
     self.d_min_ctrl = floatspin.FloatSpin(parent=self, increment=0.05, digits=2)
     self.d_min_ctrl.Bind(wx.EVT_SET_FOCUS, lambda evt: None)
     if (wx.VERSION >= (2,9)) : # XXX FloatSpin bug in 2.9.2/wxOSX_Cocoa
@@ -41,6 +42,20 @@ class settings_window (wxtbx.utils.SettingsPanel) :
     box.Add(label, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     box.Add(self.d_min_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self.Bind(floatspin.EVT_FLOATSPIN, self.OnChangeResolution, self.d_min_ctrl)
+    # scale control
+    box = wx.BoxSizer(wx.HORIZONTAL)
+    self.panel_sizer.Add(box)
+    label = wx.StaticText(self, -1, "Scale:")
+    box.Add(label, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    self.scale_ctrl = wx.Slider(self, size=(120,-1), style=wx.SL_AUTOTICKS)
+    self.scale_ctrl.SetMin(0)
+    self.scale_ctrl.SetMax(16)
+    self.scale_ctrl.SetTickFreq(4, 1)
+    self.Bind(wx.EVT_SLIDER, self.OnSetScale, self.scale_ctrl)
+    for x in [0, 4, 8, 12, 16] :
+      self.scale_ctrl.SetTick(x)
+    box.Add(self.scale_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    #
     ctrls = self.create_controls(
       setting="black_background",
       label="Black background")
@@ -239,6 +254,10 @@ class settings_window (wxtbx.utils.SettingsPanel) :
 
   def OnChangeColor (self, event) :
     self.settings.color_scheme = str(self.color_ctrl.GetStringSelection())
+    self.parent.update_settings()
+
+  def OnSetScale (self, event) :
+    self.settings.scale = (self.scale_ctrl.GetValue() + 4) / 4
     self.parent.update_settings()
 
 class HKLViewFrame (wx.Frame) :

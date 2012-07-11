@@ -367,6 +367,7 @@ class render_2d (object) :
       self.draw_text(canvas, axes[1], center_x + y_end[0] + 6,
         center_y - y_end[1])
     max_radius = self.scene.max_radius * r / max(x_max, y_max)
+    max_radius *= self.settings.scale
     r_scale = ( 1/ self.scene.d_min) * self.get_scale_factor() # FIXME
     for k, hkl in enumerate(self.scene.points) :
       x_, y_ = hkl[i_x], hkl[i_y]
@@ -377,6 +378,7 @@ class render_2d (object) :
         r_point = max_radius
       else :
         r_point = max(0.5, r_point)
+      r_point *= self.settings.scale
       self._points_2d.append((x,y))
       self._radii_2d.append(r_point)
       if (self.scene.missing_flags[k]) :
@@ -448,6 +450,8 @@ master_phil = libtbx.phil.parse("""
     .type = bool
   d_min = None
     .type = float
+  scale = 1
+    .type = int
 """)
 
 def settings () :
