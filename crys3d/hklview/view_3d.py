@@ -137,7 +137,7 @@ class hklview_3d (wxGLWindow) :
         glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, col)
         glPushMatrix()
         glTranslated(*hkl)
-        gltbx.util.SolidSphere(radius=radii[i],
+        gltbx.util.SolidSphere(radius=radii[i] * self.settings.scale,
           slices=detail,
           stacks=detail)
         glPopMatrix()
