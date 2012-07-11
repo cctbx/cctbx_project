@@ -1,14 +1,16 @@
 
-import wxtbx.app
 import wxtbx.bitmaps
 from wxtbx.phil_controls import simple_dialogs
+from wxtbx.phil_controls import strctrl, intctrl
 from wxtbx import symmetry_dialog
 from wxtbx import path_dialogs
 from libtbx.utils import Abort, Sorry
 from wx.lib.agw import customtreectrl
 import wx
 import string
-import sys
+
+def format_model (model) :
+  return "model '%s'" % model.id
 
 def format_chain (chain) :
   return "chain '%s'" % chain.id
@@ -42,7 +44,6 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
   def DeleteAllItems (self) :
     customtreectrl.CustomTreeCtrl.DeleteAllItems(self)
     self.AddRoot("pdb_hierarchy")
-    self._node_lookup = {}
     self._state = []
     self._state_tmp = []
     self._changes_made = False
@@ -60,37 +61,34 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       self._AppendModelItem(root_node, model)
 
   def _AppendModelItem (self, root_node, model) :
-    model_node = self.AppendItem(root_node, "model '%s'" % model.id)
-    self._node_lookup[model_node] = model
+    model_node = self.AppendItem(root_node, format_model(model), data=model)
     for chain in model.chains() :
       self._AppendChainItem(model_node, chain)
 
   def _AppendChainItem (self, model_node, chain) :
-    chain_node = self.AppendItem(model_node, "chain '%s'" % chain.id)
-    self._node_lookup[chain_node] = chain
+    chain_node = self.AppendItem(model_node, format_chain(chain), data=chain)
     for rg in chain.residue_groups() :
       self._AppendResidueGroupItem(chain_node, rg)
 
   def _AppendResidueGroupItem (self, chain_node, residue_group) :
-    rg_node = self.AppendItem(chain_node, format_residue_group(residue_group))
-    self._node_lookup[rg_node] = residue_group
+    rg_node = self.AppendItem(chain_node, format_residue_group(residue_group),
+      data=residue_group)
     for ag in residue_group.atom_groups() :
       self._AppendAtomGroupItem(rg_node, ag)
 
   def _AppendAtomGroupItem (self, rg_node, atom_group) :
-    ag_node = self.AppendItem(rg_node, format_atom_group(atom_group))
-    self._node_lookup[ag_node] = atom_group
+    ag_node = self.AppendItem(rg_node, format_atom_group(atom_group),
+      data=atom_group)
     for atom in atom_group.atoms() :
       self._AppendAtomItem(ag_node, atom)
 
   def _AppendAtomItem (self, ag_node, atom) :
-    atom_node = self.AppendItem(ag_node, format_atom(atom))
-    self._node_lookup[atom_node] = atom
+    atom_node = self.AppendItem(ag_node, format_atom(atom), data=atom)
 
   def PropagateAtomChanges (self, node) :
     child, cookie = self.GetFirstChild(node)
     if (child is None) :
-      pdb_object = self._node_lookup.get(node, None)
+      pdb_object = self.GetItemPyData(node)
       if (type(pdb_object).__name__ == 'atom') :
         self.SetItemText(node, format_atom(pdb_object))
       else :
@@ -99,6 +97,25 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       while (child is not None) :
         self.PropagateAtomChanges(child)
         child, cookie = self.GetNextChild(node, cookie)
+
+  def FindItem (self, pdb_object) :
+    root_node = self.GetRootItem()
+    return self._FindItem(root_node, pdb_object)
+
+  def _FindItem (self, node, pdb_object) :
+    child, cookie = self.GetFirstChild(node)
+    if (child is None) :
+      if (self.GetItemPyData(node) == pdb_object) :
+        return child
+      return None
+    while (child is not None) :
+      if (self.GetItemPyData(child) == pdb_object) :
+        return child
+      item = self._FindItem(child, pdb_object)
+      if (item is not None) :
+        return item
+      child, cookie = self.GetNextChild(node, cookie)
+    return None
 
   def HaveUnsavedChanges (self) :
     return self._changes_made
@@ -121,7 +138,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       pass
     else :
       sel = self.GetSelection()
-      pdb_object = self._node_lookup.get(sel, None)
+      pdb_object = self.GetItemPyData(sel)
       if (pdb_object is not None) :
         pdb_type = type(pdb_object).__name__
         if (pdb_type == "atom") :
@@ -229,7 +246,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
 
   def GetSelectedObject (self, object_type=None) :
     item = self.GetSelection()
-    pdb_object = self._node_lookup.get(item, None)
+    pdb_object = self.GetItemPyData(item)
     if (object_type is not None) :
       assert (type(pdb_object).__name__ == object_type)
     return item, pdb_object
@@ -404,7 +421,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       self._changes_made = True
       child, cookie = self.GetFirstChild(item)
       while (child is not None) :
-        residue_group = self._node_lookup.get(child, None)
+        residue_group = self.GetItemPyData(child)
         assert (type(residue_group).__name__ == 'residue_group')
         resseq = residue_group.resseq_as_int()
         new_resseq = resseq + resseq_shift
@@ -434,7 +451,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     # TODO more control over what happens to remaining atom_groups
     child, cookie = self.GetFirstChild(item)
     while (child is not None) :
-      residue_group = self._node_lookup.get(child, None)
+      residue_group = self.GetItemPyData(child)
       assert (type(residue_group).__name__ == 'residue_group')
       atom_groups = residue_group.atom_groups()
       if (len(atom_groups) > 1) :
@@ -446,10 +463,10 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         self.SetItemText(child2, format_atom_group(first_group))
         for atom_group in atom_groups[1:] :
           residue_group.remove_atom_group(atom_group)
-          for item2, pdb_object in self._node_lookup.iteritems() :
-            if (pdb_object is atom_group) :
-              self.DeleteChildren(item2)
-              self.DeleteItem(item2)
+          item2 = self.FindItem(atom_group)
+          assert (item2 is not None)
+          self.DeleteChildren(item2)
+          self.DeleteItem(item2)
         self.SetItemText(child, format_residue_group(residue_group))
       child, cookie = self.GetNextchild(item, cookie)
 
@@ -463,7 +480,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       assert 0
     else :
       item = self.GetSelection()
-      pdb_object = self._node_lookup.get(item, None)
+      pdb_object = self.GetItemPyData(item)
       pdb_type = type(pdb_object).__name__
       occ = None
       if (pdb_type == 'atom') :
@@ -484,7 +501,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       assert 0
     else :
       item = self.GetSelection()
-      pdb_object = self._node_lookup.get(item, None)
+      pdb_object = self.GetItemPyData(item)
       pdb_type = type(pdb_object).__name__
       b_iso = None
       if (pdb_type == 'atom') :
@@ -504,7 +521,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       assert 0
     else :
       item = self.GetSelection()
-      pdb_object = self._node_lookup.get(item, None)
+      pdb_object = self.GetItemPyData(item)
       def set_isotropic (atom) :
         atom.set_uij(new_uij=(-1.0, -1.0, -1.0, -1.0, -1.0, -1.0))
       self._ApplyToAtoms(pdb_object, set_isotropic)
@@ -515,7 +532,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       assert 0
     else :
       item = self.GetSelection()
-      pdb_object = self._node_lookup.get(item, None)
+      pdb_object = self.GetItemPyData(item)
       pdb_type = type(pdb_object).__name__
       segid = None
       if (pdb_type == 'atom') :
@@ -538,7 +555,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       assert 0
     else :
       item = self.GetSelection()
-      pdb_object = self._node_lookup.get(item, None)
+      pdb_object = self.GetItemPyData(item)
       pdb_type = type(pdb_object).__name__
       rt = simple_dialogs.get_rt_matrix(self)
       if (pdb_type == 'atom') :
@@ -561,7 +578,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       assert 0
     else :
       item = self.GetSelection()
-      pdb_object = self._node_lookup.get(item, None)
+      pdb_object = self.GetItemPyData(item)
       pdb_type = type(pdb_object).__name__
       n_atoms = None
       if (pdb_type == 'atom') :
@@ -570,29 +587,34 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         n_atoms = len(pdb_object.atoms())
       confirm_action("Are you sure you want to delete the selected %d atom(s)?"
         % n_atoms)
-      parent = pdb_object.parent()
-      clean_up = True
-      if (pdb_type == 'atom') :
-        parent.remove_atom(pdb_object)
-      elif (pdb_type == 'atom_group') :
-        parent.remove_atom_group(pdb_object)
-      elif (pdb_type == 'residue_group') :
-        parent.remove_residue_group(pdb_object)
-      elif (pdb_type == 'chain') :
-        parent.remove_chain(pdb_object)
-      else :
-        if (len(self._hierarchy.models()) == 1) :
-          raise Sorry("You must have at least one MODEL in the PDB file.")
-        parent.remove_model(pdb_object)
+      self._DeleteObject(item, pdb_object)
+
+  def _DeleteObject (self, item, pdb_object) :
+    pdb_type = type(pdb_object).__name__
+    parent = pdb_object.parent()
+    clean_up = True
+    if (pdb_type == 'atom') :
+      parent.remove_atom(pdb_object)
+    elif (pdb_type == 'atom_group') :
+      parent.remove_atom_group(pdb_object)
+    elif (pdb_type == 'residue_group') :
+      parent.remove_residue_group(pdb_object)
+    elif (pdb_type == 'chain') :
+      parent.remove_chain(pdb_object)
+    else :
+      if (len(self._hierarchy.models()) == 1) :
+        raise Sorry("You must have at least one MODEL in the PDB file.")
+      parent.remove_model(pdb_object)
+    self._RemoveItem(item)
 
   def _RemoveItem (self, item) :
     parent_item = self.GetItemParent(item)
     self.DeleteChildren(item)
-    self.DeleteItem(item)
+    self.Delete(item)
     while (not self.HasChildren(parent_item)) :
       del_item = parent_item
       parent_item = self.GetItemParent(del_item)
-      self.DeleteItem(del_item)
+      self.Delete(del_item)
 
   # atom_group
   def OnCloneAtoms (self, event) :
@@ -644,9 +666,10 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       new_group.altloc = char
     residue_group.append_atom_group(new_group)
     self._AppendAtomGroupItem(item, new_group)
+    self.PropagateAtomChanges(item)
     child, cookie = self.GetFirstChild(item)
     while (child is not None) :
-      atom_group = self._node_lookup.get(child, None)
+      atom_group = self.GetItemPyData(child)
       assert (type(atom_group).__name__ == 'atom_group')
       self.SetItemText(child, format_atom_group(atom_group))
       child, cookie = self.GetNextChild(item, cookie)
@@ -687,15 +710,13 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     model = chain.parent()
     assert (len(model.chains()) > 1)
     target_chain = self.GetChainForMerging(model.chains(), chain)
-    target_item = None
-    for item, pdb_object in self._node_lookup :
-      if (pdb_object is target_chain) :
-        target_item = item
+    assert (chain != target_chain)
+    target_item = self.FindItem(target_chain)
     assert (target_item is not None)
     index = self.GetInsertionIndex(target_chain)
     self._changes_made = True
     merge_residues = [ rg.detached_copy() for rg in chain.residue_groups() ]
-    model.remove_chain(chain)
+    self._DeleteObject(item, chain)
     self._InsertResidues(
       chain=target_chain,
       chain_node=target_item,
@@ -713,7 +734,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     self.Refresh()
 
   # model
-  def OnCloneModel (self, event) :
+  def OnSplitModel (self, event) :
     pass
 
   def _InsertResidues (self, chain, chain_node, residues, index=None) :
@@ -723,6 +744,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       else :
         chain.insert_residue_group(index, rg)
         index += 1
+      # FIXME insert, not append!
       self._AppendResidueGroupItem(chain_node, rg)
 
   #---------------------------------------------------------------------
@@ -911,10 +933,11 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     dlg = SelectChainDialog(
       parent=self,
       title="Select chain to merge with",
-      message="You have selected to merge the chain '%s' (%d residues) with "+
-        "another chain in the model; please select a target chain.",
+      message=("You have selected to merge the chain '%s' (%d residues) with "+
+        "another chain in the model; please select a target chain.") %
+        (merge_chain.id, len(merge_chain.residue_groups())),
       chains=chains,
-      exclude_chain=marge_chain)
+      exclude_chain=merge_chain)
     target_chain = None
     if (dlg.ShowModal() == wx.ID_OK) :
       target_chain = dlg.GetChain()
@@ -1004,6 +1027,7 @@ class AddResiduesDialog (wx.Dialog) :
       "the new residue.  The residue ID is the combination of residue number "+
       "and insertion code, but you only need to specify the residue number "+
       "if the insertion code is blank or irrelevant.")
+    caption_txt.Wrap(480)
     szr.Add(caption_txt, 0, wx.ALL, 5)
     box = wx.BoxSizer(wx.HORIZONTAL)
     txt1 = wx.StaticText(self, -1, "Insert residues:")
@@ -1012,12 +1036,12 @@ class AddResiduesDialog (wx.Dialog) :
       choices=["at the end of the chain",
                "at the start of the chain",
                "after residue"])
-    self._insert_choice.SetSelection(0)
+    self._insert_choice.SetSelection(1)
     self.Bind(wx.EVT_CHOICE, self.OnChangeInsertion, self._insert_choice)
     box.Add(self._insert_choice, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     txt2 = wx.StaticText(self, -1, "residue ID:")
     box.Add(txt2, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-    self._resid_txt = phil_controls.strctrl(
+    self._resid_txt = strctrl.StrCtrl(
       parent=self,
       value=None,
       size=(80,-1))
@@ -1058,10 +1082,10 @@ class SelectChainDialog (wx.Dialog) :
       show_residue_range=False, exclude_chain=None) :
     self._chains = []
     for chain in chains :
-      if (chain is not exclude_chain) :
+      if (chain != exclude_chain) :
         self._chains.append(chain)
     self.allow_all_chains = allow_all_chains
-    super(AddResiduesDialog, self).__init__(parent=parent, title=title,
+    super(SelectChainDialog, self).__init__(parent=parent, title=title,
       style=wx.WS_EX_VALIDATE_RECURSIVELY|wx.RAISED_BORDER|wx.CAPTION)
     style = self.GetWindowStyle()
     style |= wx.WS_EX_VALIDATE_RECURSIVELY|wx.RAISED_BORDER|wx.CAPTION
@@ -1069,6 +1093,7 @@ class SelectChainDialog (wx.Dialog) :
     szr = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(szr)
     caption_txt = wx.StaticText(self, -1, message)
+    caption_txt.Wrap(480)
     szr.Add(caption_txt, 0, wx.ALL, 5)
     box = wx.FlexGridSizer(rows=2, cols=2)
     txt1 = wx.StaticText(self, -1, "Select chain:")
@@ -1137,26 +1162,7 @@ class PDBTreeFrame (wx.Frame) :
     wx.Frame.__init__(self, *args, **kwds)
     self.statusbar = self.CreateStatusBar()
     self.statusbar.SetStatusText("Right-click any item for a list of editing actions")
-    # toolbar setup
-    self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS|wx.TB_TEXT)
-    bmp = wxtbx.bitmaps.fetch_custom_icon_bitmap("phenix.pdbtools")
-    btn = self.toolbar.AddLabelTool(-1, "Load file", bmp,
-      shortHelp="Load file", kind=wx.ITEM_NORMAL)
-    self.Bind(wx.EVT_MENU, self.OnOpen, btn)
-    bmp = wxtbx.bitmaps.fetch_icon_bitmap("actions", "save_all")
-    btn = self.toolbar.AddLabelTool(-1, "Save file", bmp,
-      shortHelp="Save file", kind=wx.ITEM_NORMAL)
-    self.Bind(wx.EVT_MENU, self.OnSave, btn)
-    bmp = wxtbx.bitmaps.fetch_custom_icon_bitmap("tools")
-    btn = self.toolbar.AddLabelTool(-1, "Edit...", bmp, shortHelp="Edit...",
-      kind=wx.ITEM_NORMAL)
-    self.Bind(wx.EVT_MENU, self.OnEditModel, btn)
-    bmp = wxtbx.bitmaps.fetch_custom_icon_bitmap("symmetry")
-    btn = self.toolbar.AddLabelTool(-1, "Symmetry", bmp, shortHelp="Symmetry",
-      kind=wx.ITEM_NORMAL)
-    self.Bind(wx.EVT_MENU, self.OnEditSymmetry, btn)
-    self.toolbar.Realize()
-    #
+    # panel setup
     szr = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(szr)
     self.panel = wx.Panel(self, -1)
@@ -1178,6 +1184,31 @@ class PDBTreeFrame (wx.Frame) :
     self._tree = PDBTree(self.panel, -1, style=wx.RAISED_BORDER)
     self._tree.SetMinSize((640,400))
     pszr.Add(self._tree, 1, wx.EXPAND, 2)
+    # toolbar setup
+    self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS|wx.TB_TEXT)
+    bmp = wxtbx.bitmaps.fetch_custom_icon_bitmap("phenix.pdbtools")
+    btn = self.toolbar.AddLabelTool(-1, "Load file", bmp,
+      shortHelp="Load file", kind=wx.ITEM_NORMAL)
+    self.Bind(wx.EVT_MENU, self.OnOpen, btn)
+    bmp = wxtbx.bitmaps.fetch_icon_bitmap("actions", "save_all")
+    btn = self.toolbar.AddLabelTool(-1, "Save file", bmp,
+      shortHelp="Save file", kind=wx.ITEM_NORMAL)
+    self.Bind(wx.EVT_MENU, self.OnSave, btn)
+    self.toolbar.AddSeparator()
+    bmp = wxtbx.bitmaps.fetch_custom_icon_bitmap("tools")
+    btn = self.toolbar.AddLabelTool(-1, "Edit...", bmp, shortHelp="Edit...",
+      kind=wx.ITEM_NORMAL)
+    self.Bind(wx.EVT_MENU, self.OnEditModel, btn)
+    bmp = wxtbx.bitmaps.fetch_custom_icon_bitmap("symmetry")
+    btn = self.toolbar.AddLabelTool(-1, "Symmetry", bmp, shortHelp="Symmetry",
+      kind=wx.ITEM_NORMAL)
+    self.Bind(wx.EVT_MENU, self.OnEditSymmetry, btn)
+    bmp = wxtbx.bitmaps.fetch_icon_bitmap("actions", "editdelete")
+    btn = self.toolbar.AddLabelTool(-1, "Delete", bmp, shortHelp="Delete",
+      kind=wx.ITEM_NORMAL)
+    self.Bind(wx.EVT_MENU, self._tree.OnDeleteObject, btn)
+    self.toolbar.Realize()
+    #
     self._pdb_in = None
     self._crystal_symmetry = None
     szr.Layout()
@@ -1268,11 +1299,3 @@ def confirm_action (msg) :
   if (confirm == wx.NO) :
     raise Abort()
   return True
-
-if (__name__ == "__main__") :
-  app = wxtbx.app.CCTBXApp(0)
-  frame = PDBTreeFrame(None, -1, "PDB Editor")
-  frame.Show()
-  if (len(sys.argv) > 1) :
-    frame.LoadPDB(sys.argv[1])
-  app.MainLoop()
