@@ -28,6 +28,30 @@ def format_atom (atom) :
            atom.element, atom.charge)
   #return "atom '%s'" % atom.name
 
+def remove_objects_recursive (pdb_object) :
+  parent = pdb_object.parent()
+  pdb_type = type(pdb_object).__name__
+  if (pdb_type == 'atom') :
+    parent.remove_atom(pdb_object)
+    if (len(parent.atoms()) == 0) :
+      remove_objects_recursive(parent)
+  elif (pdb_type == 'atom_group') :
+    parent.remove_atom_group(pdb_object)
+    if (len(parent.atom_groups()) == 0) :
+      remove_objects_recursive(parent)
+  elif (pdb_type == 'residue_group') :
+    parent.remove_residue_group(pdb_object)
+    if (len(parent.residue_groups()) == 0) :
+      remove_objects_recursive(parent)
+  elif (pdb_type == 'chain') :
+    parent.remove_chain(pdb_object)
+    if (len(parent.chains()) == 0) :
+      remove_objects_recursive(parent)
+  else :
+    if (len(parent.models()) == 1) :
+      raise Sorry("You must have at least one MODEL in the PDB file.")
+    parent.remove_model(pdb_object)
+
 class PDBTree (customtreectrl.CustomTreeCtrl) :
   def __init__ (self, *args, **kwds) :
     kwds = dict(kwds)
@@ -58,32 +82,53 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
   def PopulateTree (self, pdb_hierarchy) :
     root_node = self.GetRootItem()
     for model in pdb_hierarchy.models() :
-      self._AppendModelItem(root_node, model)
+      self._InsertModelItem(root_node, model)
 
-  def _AppendModelItem (self, root_node, model) :
-    model_node = self.AppendItem(root_node, format_model(model), data=model)
+  def _InsertModelItem (self, root_node, model, index=None) :
+    if (index is None) :
+      model_node = self.AppendItem(root_node, format_model(model), data=model)
+    else :
+      model_node = self.InsertItemByIndex(root_node, index,
+        format_model(model), data=model)
     for chain in model.chains() :
-      self._AppendChainItem(model_node, chain)
+      self._InsertChainItem(model_node, chain)
 
-  def _AppendChainItem (self, model_node, chain) :
-    chain_node = self.AppendItem(model_node, format_chain(chain), data=chain)
+  def _InsertChainItem (self, model_node, chain, index=None) :
+    if (index is None) :
+      chain_node = self.AppendItem(model_node, format_chain(chain), data=chain)
+    else :
+      chain_node = self.InsertItemByIndex(model_node, index,
+        format_chain(chain), data=chain)
     for rg in chain.residue_groups() :
-      self._AppendResidueGroupItem(chain_node, rg)
+      self._InsertResidueGroupItem(chain_node, rg)
 
-  def _AppendResidueGroupItem (self, chain_node, residue_group) :
-    rg_node = self.AppendItem(chain_node, format_residue_group(residue_group),
-      data=residue_group)
+  def _InsertResidueGroupItem (self, chain_node, residue_group, index=None) :
+    if (index is None) :
+      rg_node = self.AppendItem(chain_node, format_residue_group(residue_group),
+        data=residue_group)
+    else :
+      print "index =", index
+      rg_node = self.InsertItemByIndex(chain_node, index,
+        format_residue_group(residue_group), data=residue_group)
     for ag in residue_group.atom_groups() :
-      self._AppendAtomGroupItem(rg_node, ag)
+      self._InsertAtomGroupItem(rg_node, ag)
 
-  def _AppendAtomGroupItem (self, rg_node, atom_group) :
-    ag_node = self.AppendItem(rg_node, format_atom_group(atom_group),
-      data=atom_group)
+  def _InsertAtomGroupItem (self, rg_node, atom_group, index=None) :
+    if (index is None) :
+      ag_node = self.AppendItem(rg_node, format_atom_group(atom_group),
+        data=atom_group)
+    else :
+      ag_node = self.InsertItemByIndex(rg_node, index,
+        format_atom_group(atom_group), data=atom_group)
     for atom in atom_group.atoms() :
-      self._AppendAtomItem(ag_node, atom)
+      self._InsertAtomItem(ag_node, atom)
 
-  def _AppendAtomItem (self, ag_node, atom) :
-    atom_node = self.AppendItem(ag_node, format_atom(atom), data=atom)
+  def _InsertAtomItem (self, ag_node, atom, index=None) :
+    if (index is None) :
+      atom_node = self.AppendItem(ag_node, format_atom(atom), data=atom)
+    else :
+      atom_node = self.InsertItemByIndex(ag_node, index, format_atom(atom),
+        data=atom)
 
   def PropagateAtomChanges (self, node) :
     child, cookie = self.GetFirstChild(node)
@@ -116,6 +161,9 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         return item
       child, cookie = self.GetNextChild(node, cookie)
     return None
+
+  def FindInsertionIndex (self, pdb_object) :
+    pass
 
   def HaveUnsavedChanges (self) :
     return self._changes_made
@@ -449,6 +497,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       "removing these will delete %d atoms from the model.  Are you sure "+
       "you want to continue?") % (n_alt_residues, n_alt_atoms))
     # TODO more control over what happens to remaining atom_groups
+    self._changes_made = True
     child, cookie = self.GetFirstChild(item)
     while (child is not None) :
       residue_group = self.GetItemPyData(child)
@@ -558,16 +607,17 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       pdb_object = self.GetItemPyData(item)
       pdb_type = type(pdb_object).__name__
       rt = simple_dialogs.get_rt_matrix(self)
+      self._changes_made = True
       if (pdb_type == 'atom') :
         from scitbx.array_family import flex
-        v = flex.vec3_double([pdb_object.xyz])
-        v = rt.r.elems * v + rt.t.elems
-        pdb_object.xyz = v[0]
+        sites = flex.vec3_double([pdb_object.xyz])
+        sites = rt.r.elems * sites + rt.t.elems
+        pdb_object.xyz = sites[0]
         self.SetItemText(item, format_atom(pdb_object))
       else :
         atoms = pdb_object.atoms()
         sites = atoms.extract_xyz()
-        sites = rt.r.elems * v + rt.t.elems
+        sites = rt.r.elems * sites + rt.t.elems
         atoms.set_xyz(sites)
         self.PropagateAtomChanges(item)
 
@@ -590,21 +640,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       self._DeleteObject(item, pdb_object)
 
   def _DeleteObject (self, item, pdb_object) :
-    pdb_type = type(pdb_object).__name__
-    parent = pdb_object.parent()
-    clean_up = True
-    if (pdb_type == 'atom') :
-      parent.remove_atom(pdb_object)
-    elif (pdb_type == 'atom_group') :
-      parent.remove_atom_group(pdb_object)
-    elif (pdb_type == 'residue_group') :
-      parent.remove_residue_group(pdb_object)
-    elif (pdb_type == 'chain') :
-      parent.remove_chain(pdb_object)
-    else :
-      if (len(self._hierarchy.models()) == 1) :
-        raise Sorry("You must have at least one MODEL in the PDB file.")
-      parent.remove_model(pdb_object)
+    remove_objects_recursive(pdb_object)
     self._RemoveItem(item)
 
   def _RemoveItem (self, item) :
@@ -665,7 +701,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
           new_altloc = char
       new_group.altloc = char
     residue_group.append_atom_group(new_group)
-    self._AppendAtomGroupItem(item, new_group)
+    self._InsertAtomGroupItem(item, new_group)
     self.PropagateAtomChanges(item)
     child, cookie = self.GetFirstChild(item)
     while (child is not None) :
@@ -686,7 +722,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         break
     assert (index is not None)
     self._changes_made = True
-    self._InsertResidues(
+    self._AddResidues(
       chain=chain,
       chain_node=self.GetItemParent(item),
       residues=new_residues,
@@ -698,7 +734,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     new_residues = self.GetResiduesFromFile()
     index = self.GetInsertionIndex(chain)
     self._changes_made = True
-    self._InsertResidues(
+    self._AddResidues(
       chain=chain,
       chain_node=item,
       residues=new_residues,
@@ -717,7 +753,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     self._changes_made = True
     merge_residues = [ rg.detached_copy() for rg in chain.residue_groups() ]
     self._DeleteObject(item, chain)
-    self._InsertResidues(
+    self._AddResidues(
       chain=target_chain,
       chain_node=target_item,
       residues=merge_residues,
@@ -730,22 +766,22 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     self._changes_made = True
     for chain in new_chains :
       model.append_chain(chain)
-      self._AppendChainItem(item, chain)
+      self._InsertChainItem(item, chain)
     self.Refresh()
 
   # model
   def OnSplitModel (self, event) :
     pass
 
-  def _InsertResidues (self, chain, chain_node, residues, index=None) :
+  def _AddResidues (self, chain, chain_node, residues, index=None) :
     for rg in residues :
       if (index is None) :
         chain.append_residue_group(rg)
       else :
         chain.insert_residue_group(index, rg)
+      self._InsertResidueGroupItem(chain_node, rg, index=index)
+      if (index is not None) :
         index += 1
-      # FIXME insert, not append!
-      self._AppendResidueGroupItem(chain_node, rg)
 
   #---------------------------------------------------------------------
   # USER INPUT
@@ -1033,10 +1069,10 @@ class AddResiduesDialog (wx.Dialog) :
     txt1 = wx.StaticText(self, -1, "Insert residues:")
     box.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self._insert_choice = wx.Choice(self, -1,
-      choices=["at the end of the chain",
-               "at the start of the chain",
+      choices=["at the start of the chain",
+               "at the end of the chain",
                "after residue"])
-    self._insert_choice.SetSelection(1)
+    self._insert_choice.SetSelection(ADD_RESIDUES_END)
     self.Bind(wx.EVT_CHOICE, self.OnChangeInsertion, self._insert_choice)
     box.Add(self._insert_choice, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     txt2 = wx.StaticText(self, -1, "residue ID:")
@@ -1243,6 +1279,9 @@ class PDBTreeFrame (wx.Frame) :
   def OnSave (self, event) :
     if (self._pdb_in is None) :
       return
+    self.Save()
+
+  def Save (self) :
     from iotbx import file_reader
     file_name = self.path_mgr.select_file(
       parent=self,
@@ -1285,8 +1324,11 @@ class PDBTreeFrame (wx.Frame) :
     self._tree.ActionsForSelection(source_window=event.GetEventObject())
 
   def OnClose (self, event) :
-    if (self._tree.HaveUnsavedChanges()) :
-      pass
+    if (self._pdb_in is not None) and (self._tree.HaveUnsavedChanges()) :
+      confirm = wx.MessageBox("You have unsaved changes - do you want to "+
+        "save the modified PDB file now?")
+      if (confirm == wx.ID_YES) :
+        self.Save()
     self.Destroy()
 
   def OnDestroy (self, event) :
