@@ -286,10 +286,12 @@ class manager (object) :
                 tmp_dir=None,
                 verbose=-1) :
     adopt_init_args(self, locals())
-    i_seqs = pdb_hierarchy.atoms().extract_i_seq()
+    atoms = pdb_hierarchy.atoms()
+    i_seqs = atoms.extract_i_seq()
     if (i_seqs.all_eq(0)) :
-      pdb_hierarchy.atoms().reset_i_seq()
-      i_seqs = pdb_hierarchy.atoms().extract_i_seq()
+      atoms.reset_i_seq()
+      i_seqs = atoms.extract_i_seq()
+    self.n_atoms = atoms.size()
     self._was_initialized = False
     if self.params is None :
       self.params = sec_str_master_phil.fetch().extract()
@@ -539,7 +541,7 @@ class manager (object) :
     return [ helix.helix_type for helix in self.params.helix ]
 
   def helix_selection (self, **kwds) :
-    whole_selection = flex.bool(self.xray_structure.sites_cart().size())
+    whole_selection = flex.bool(self.n_atoms)
     for helix in self.helix_selections(**kwds) :
       whole_selection |= helix
     return whole_selection
@@ -555,7 +557,7 @@ class manager (object) :
     sele = self.selection_cache.selection
     all_selections = []
     for sheet in self.params.sheet :
-      sheet_selection = flex.bool(self.xray_structure.sites_cart().size())
+      sheet_selection = flex.bool(self.n_atoms)
       clauses = []
       if (limit is not None) :
         assert isinstance(limit, str)
