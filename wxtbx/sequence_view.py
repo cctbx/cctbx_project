@@ -60,6 +60,7 @@ multiple residues."
     self.selection_color = (255, 255, 0)
     self._last_x = None
     self._last_y = None
+    self.resseq_offset = 0
     self._style = WXTBX_SEQ_DEFAULT_STYLE | WXTBX_SEQ_SELECT_ANY
     self.txt_font = wx.Font(14, wx.MODERN, wx.NORMAL, wx.NORMAL)
     self.Bind(wx.EVT_PAINT, self.OnPaint)
@@ -173,10 +174,11 @@ multiple residues."
     panel_h += n_lines * self.get_line_spacing()
     return (max(480, panel_w), max(240, panel_h))
 
-  def set_sequence (self, seq) :
+  def set_sequence (self, seq, resseq_offset=0) :
     self.set_sequences([seq])
+    self.resseq_offset = resseq_offset
 
-  def set_sequences (self, seqs, labels=()) :
+  def set_sequences (self, seqs, labels=(), resseq_offset=0) :
     self.sequences = [ "".join(seq.splitlines()) for seq in seqs ]
     assert (len(set([ len(s) for s in self.sequences ])) == 1)
     assert (len(labels) == 0) or (len(labels) == len(seqs))
@@ -184,6 +186,7 @@ multiple residues."
       assert (len(self.sequence_labels) == len(seqs))
     else :
       self.sequence_labels = labels
+    self.resseq_offset = resseq_offset
     self.build_boxes()
     self.clear_highlights()
     self.clear_selection()
@@ -208,7 +211,7 @@ multiple residues."
     return ((self.n_seqs() - 1) * self.line_height) + self.get_line_sep()
 
   def get_line_labels (self, k_seq, i_seq) :
-    line_start = self.start_offset + i_seq + 1
+    line_start = self.resseq_offset + i_seq + 1
     line_end = line_start + self.line_width - 1
     if (self._style & WXTBX_SEQ_SHOW_LABELS) :
       label_start = self.sequence_labels[k_seq]
@@ -339,29 +342,31 @@ multiple residues."
 
   def get_selection_info (self) :
     ranges = self.get_selected_ranges()
+    inc = self.resseq_offset + 1
     if len(ranges) == 0 :
       txt = ""
     elif len(ranges) == 1 and ranges[0][0] == ranges[0][1] :
-      txt = "SELECTED: residue %d" % (ranges[0][0] + 1)
+      txt = "SELECTED: residue %d" % (ranges[0][0] + inc)
     else :
       txt_ranges = []
       for (x, y) in ranges :
-        if x == y : txt_ranges.append(str(x+1))
-        else : txt_ranges.append("%d-%d" % (x+1, y+1))
+        if x == y : txt_ranges.append(str(x+inc))
+        else : txt_ranges.append("%d-%d" % (x+inc, y+inc))
       txt = "SELECTED: residues %s" % ", ".join(txt_ranges)
     return txt
 
   def get_atom_selection (self) :
     ranges = self.get_selected_ranges()
+    inc = self.resseq_offset + 1
     if len(ranges) == 0 :
       return None
     elif len(ranges) == 1 and ranges[0][0] == ranges[0][1] :
-      return "(resseq %d)" % (ranges[0][0] + 1)
+      return "(resseq %d)" % (ranges[0][0] + inc)
     else :
       resseqs = []
       for (x, y) in ranges :
-        if x == y : resseqs.append("resseq %d" % (x + 1))
-        else : resseqs.append("resseq %d:%d" % (x+1, y+1))
+        if x == y : resseqs.append("resseq %d" % (x + inc))
+        else : resseqs.append("resseq %d:%d" % (x+inc, y+inc))
       return "(" + " or ".join(resseqs) + ")"
 
   def deselect_chars (self, i_start, i_end) :
@@ -928,7 +933,20 @@ class sequence_window (object) :
         ss = chain_conf.as_sec_str_sequence(helix_sele, sheet_sele)
         self._seq_cache[chain_id] = seq
         self._ss_cache[chain_id] = ss
-      self.set_sequence(seq)
+      offset = 0
+      n_res = len(seq)
+      while (offset < n_res) :
+        if (seq[0:50] == "X"*50) :
+          seq = seq[50:]
+          ss = ss[50:]
+        else :
+          print "seq:", seq[offset:offset+50]
+          break
+        offset += 50
+      print seq
+      print ss
+      print offset, n_res
+      self.set_sequence(seq, resseq_offset=offset)
       self.set_structure(ss)
       self.reset_layout()
       self.seq_panel.Refresh()
@@ -1051,8 +1069,8 @@ def run_test () :
 
 def exercise_simple_frame () :
   frame = sequence_frame(None, -1, "Demo of sequence display")
-  frame.set_sequence('VLSEGEWQLVLHVWAKVEADVAGHGQDILIRLFKSHPETLEKFDRFKHLKTEAEMKASEDLKKHGVTVLTALGAILKKKGHHEAELKPLAQSHATKHKIPIKYLEFISEAIIHVLHSRHPGDFGADAQGAMNKALELFRKDIAAKYKELGYQG')
-  frame.set_structure('LLLHHHHHHHHHHHHHHHHLHHHHHHHHHHHHHHHLHHHHHLLHHHHLLLLHHHHHHLHHHHHHHHHHHHHHHHHHHHLLLLHHHHHHHHHHHHHLLLLLHHHHHHHHHHHHHHHHHHLLLLLLHHHHHHHHHHHHHHHHHHHHHHHHHLLLL')
+  frame.set_sequence(("X" * 5) + 'VLSEGEWQLVLHVWAKVEADVAGHGQDILIRLFKSHPETLEKFDRFKHLKTEAEMKASEDLKKHGVTVLTALGAILKKKGHHEAELKPLAQSHATKHKIPIKYLEFISEAIIHVLHSRHPGDFGADAQGAMNKALELFRKDIAAKYKELGYQG', resseq_offset=50)
+  frame.set_structure(("X" * 5) + 'LLLHHHHHHHHHHHHHHHHLHHHHHHHHHHHHHHHLHHHHHLLHHHHLLLLHHHHHHLHHHHHHHHHHHHHHHHHHHHLLLLHHHHHHHHHHHHHLLLLLHHHHHHHHHHHHHHHHHHLLLLLLHHHHHHHHHHHHHHHHHHHHHHHHHLLLL')
   frame.reset_layout()
   frame.Show()
 
