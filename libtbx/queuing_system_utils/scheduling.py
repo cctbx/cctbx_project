@@ -164,6 +164,28 @@ class ResultIterator(object):
     return self
 
 
+class OrderedResultIterator(object):
+  """
+  Iterate over completed results in specified order
+  """
+
+  def __init__(self, manager, identifiers):
+
+    self.manager = manager
+    self.identifiers = iter( identifiers )
+
+
+  def next(self):
+
+    identifier = self.identifiers.next() # raise StopIteration
+    return self.manager.result_for( identifier = identifier )
+
+
+  def __iter__(self):
+
+    return self
+
+
 class Manager(object):
   """
   Process queue
@@ -200,6 +222,11 @@ class Manager(object):
   def results(self):
 
     return ResultIterator( manager = self )
+
+
+  def results_in_order_of(self, identifiers):
+
+    return OrderedResultIterator( manager = self, identifiers = identifiers )
 
 
   def submit(self, target, args = (), kwargs = {}):
