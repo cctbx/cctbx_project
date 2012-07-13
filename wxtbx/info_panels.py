@@ -7,6 +7,7 @@ import wx
 import re
 import cStringIO
 import os
+import sys
 
 class InfoPanelBase (wx.MiniFrame) :
   def __init__ (self, *args, **kwds) :
@@ -153,7 +154,10 @@ class PDBFileInfo (InfoPanelBase) :
     import iotbx.pdb
     self._pdb_in = file_reader.any_file(file_name, force_type="pdb")
     self._pdb_in.assert_file_type("pdb")
-    info_list = iotbx.pdb.show_file_summary(self._pdb_in.file_object)
+    self._hierarchy = self._pdb_in.file_object.construct_hierarchy()
+    info_list = iotbx.pdb.show_file_summary(
+      pdb_in=self._pdb_in.file_object,
+      hierarchy=self._hierarchy)
     self.SetTitle("Info for %s" % self.file_name)
     self.file_txt.SetLabel(self.file_name)
     if (self.info_panel is not None) :
@@ -188,7 +192,82 @@ class PDBFileInfo (InfoPanelBase) :
         txt1.SetForegroundColour((200,0,0))
       txt2.SetFont(font2)
       grid.Add(txt2, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    if (len(self._hierarchy.models()) == 1) :
+      if (len(self._hierarchy.models()[0].chains()) > 1) :
+        btn = wx.Button(self.info_panel, -1, "B-factors by chain...")
+        szr.Add(btn, 0, wx.ALL, 5)
+        self.Bind(wx.EVT_BUTTON, self.OnShowChainBstats, btn)
     szr.Fit(self.info_panel)
+    self.panel.Layout()
+    self.panel_sizer.Fit(self.panel)
+    self.Fit()
+
+  def OnShowChainBstats (self, event) :
+    assert (self._hierarchy is not None)
+    b_panel = PDBChainBisoPanel(self)
+    b_panel.set_file(
+      file_name=self.file_name,
+      hierarchy=self._hierarchy)
+    b_panel.Show()
+
+class PDBChainBisoPanel (InfoPanelBase) :
+  def __init__ (self, *args, **kwds) :
+    super(PDBChainBisoPanel, self).__init__(*args, **kwds)
+    self._hierarchy = None
+    box = wx.BoxSizer(wx.HORIZONTAL)
+    self.panel_sizer.Add(box, 0)
+    bmp = wx.StaticBitmap(self.panel, -1, wxtbx.icons.pdb_file.GetBitmap())
+    box.Add(bmp, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    grid = wx.FlexGridSizer(cols=2)
+    box.Add(grid, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    txt1 = wx.StaticText(self.panel, -1, "File name:")
+    font = txt1.GetFont()
+    font.SetWeight(wx.FONTWEIGHT_BOLD)
+    txt1.SetFont(font)
+    grid.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    self.file_txt = wx.StaticText(self.panel, -1, "(None)")
+    grid.Add(self.file_txt, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    self.Centre(wx.BOTH)
+
+  def set_file (self, file_name, hierarchy=None) :
+    self.file_name = os.path.abspath(file_name)
+    from scitbx.array_family import flex
+    if (hierarchy is None) :
+      from iotbx import file_reader
+      import iotbx.pdb
+      pdb_in = file_reader.any_file(file_name, force_type="pdb")
+      pdb_in.assert_file_type("pdb")
+      hierarchy = pdb_in.file_object.construct_hierarchy()
+    if (len(hierarchy.models()) > 1) :
+      raise Sorry("Multi-MODEL PDB files not supported.")
+    self._hierarchy = hierarchy
+    self.SetTitle("B-factors by chain for %s" % self.file_name)
+    self.file_txt.SetLabel(self.file_name)
+    chain_list = wx.ListCtrl(self.panel, -1, style=wx.LC_REPORT, size=(480,160))
+    chain_list.InsertColumn(0, "Chain info")
+    chain_list.InsertColumn(1, "Mean B-iso (range)")
+    chain_list.SetColumnWidth(0, 260)
+    chain_list.SetColumnWidth(1, 200)
+    for chain in hierarchy.models()[0].chains() :
+      n_res = len(chain.residue_groups())
+      chain_atoms = chain.atoms()
+      n_atoms = len(chain_atoms)
+      main_conf = chain.conformers()[0]
+      chain_type = "other"
+      if (main_conf.is_protein()) :
+        chain_type = "protein"
+      elif (main_conf.is_na()) :
+        chain_type = "nucleic acid"
+      chain_info = "'%s' (%s, %d res., %d atoms)" % (chain.id, chain_type,
+        n_res, n_atoms)
+      b_iso = chain_atoms.extract_b()
+      b_max = flex.max(b_iso)
+      b_min = flex.min(b_iso)
+      b_mean = flex.mean(b_iso)
+      b_info = "%.2f (%.2f - %.2f)" % (b_mean, b_min, b_max)
+      item = chain_list.InsertStringItem(sys.maxint, chain_info)
+      chain_list.SetStringItem(item, 1, b_info)
+    self.panel_sizer.Add(chain_list, 1, wx.EXPAND|wx.ALL, 5)
     self.panel.Layout()
     self.panel_sizer.Fit(self.panel)
     self.Fit()
@@ -353,6 +432,9 @@ if (__name__ == "__main__") :
   frame2 = PDBFileInfo(None)
   frame2.set_file(pdb1)
   frame2.Show()
+  frame2b = PDBChainBisoPanel(None)
+  frame2b.set_file(pdb1)
+  frame2b.Show()
   if (os.path.exists(img1)) :
     frame3 = ImageFileInfo(None)
     frame3.set_file(img1)
