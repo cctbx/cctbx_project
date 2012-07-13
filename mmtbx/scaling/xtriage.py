@@ -784,9 +784,12 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
         file_name=reference_params.structure.file_name,
         raise_sorry_if_format_error=True).xray_structure_simple(
           crystal_symmetry = miller_array.crystal_symmetry())
+      miller_tmp = miller_array
+      if (not miller_tmp.is_unique_set_under_symmetry()) :
+        miller_tmp = miller_tmp.merge_equivalents().array()
       tmp_obj = mmtbx.utils.fmodel_from_xray_structure(
         xray_structure = reference_structure,
-        f_obs = miller_array)
+        f_obs = miller_tmp)
       f_calc_miller_complex = tmp_obj.f_model
       f_calc_miller = abs( tmp_obj.f_model ).eliminate_sys_absent(
         integral_only=True,
