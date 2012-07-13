@@ -163,7 +163,7 @@ def analyze_input_params(params):
       mp_.sharpening_b_factor = None
     i += 1
 
-def run(args, log = sys.stdout):
+def run (args, log = sys.stdout, use_output_directory=True):
   print >> log, legend
   print >> log, "-"*79
   master_params = mmtbx.maps.maps_including_IO_master_params()
@@ -302,7 +302,9 @@ def run(args, log = sys.stdout):
   fmodel_info.show_rfactors_targets_scales_overall(out = log)
   print >> log, "-"*79
   print >> log, "Compute maps."
-  if params.maps.output.directory is not None :
+  # XXX if run from the Phenix GUI, the output directory parameter is actually
+  # one level up from the current directory, and use_output_directory=False
+  if (params.maps.output.directory is not None) and (use_output_directory) :
     assert os.path.isdir(params.maps.output.directory)
     output_dir = params.maps.output.directory
   else :
@@ -344,8 +346,11 @@ def run(args, log = sys.stdout):
 
 class launcher (runtime_utils.target_with_save_result) :
   def run (self) :
+    os.mkdir(self.output_dir)
     os.chdir(self.output_dir)
-    return run(args=list(self.args), log=sys.stdout)
+    return run(args=list(self.args),
+      log=sys.stdout,
+      use_output_directory=False)
 
 def validate_params (params, callback=None) :
   if params.maps.input.pdb_file_name is None :
