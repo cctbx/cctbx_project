@@ -108,11 +108,12 @@ class IntegrateCharacters:
       integrate_worker.image_centers = image_centers
 
       integrate_worker.limiting_resolution = integration_limit
-
+      integrate_worker.setting_id = setting["counter"]
       integrate_worker.pixel_size = self.pixel_size
       integrate_worker.set_pixel_size(self.pixel_size)
       integrate_worker.set_detector_size(int(local["size1"]),int(local["size2"]))
 
+      integrate_worker.set_detector_saturation(refimage.saturation)
       integrate_worker.basic_algorithm()
       integrate_worker.initialize_increments(i)
       integrate_worker.horizons_phil = self.horizons_phil
