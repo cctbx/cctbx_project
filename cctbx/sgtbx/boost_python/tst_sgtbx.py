@@ -1134,6 +1134,11 @@ cctbx Error: Rotation matrix is not invertible.""")
   assert sa <= sb
   assert not (sa > sb)
   assert not (sa >= sb)
+  #
+  a = sgtbx.rt_mx("-z,-y,-x+2*z", r_den=1, t_den=12)
+  b = sgtbx.rt_mx("x,y,z", r_den=1, t_den=12)
+  assert not a == b
+  assert a != b
 
 def exercise_space_group_type():
   space_group = sgtbx.space_group
