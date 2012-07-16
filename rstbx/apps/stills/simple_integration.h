@@ -185,6 +185,7 @@ namespace rstbx { namespace integration {
     scitbx::af::shared<scitbx::vec2<double> > detector_xy;
 
     simple_integration(): BACKGROUND_FACTOR(1),MAXOVER(6),NEAR(10),
+      detector_saturation(std::numeric_limits<double>::max()),
       check_tiles(false) {}
 
     /* accessors and mutators */
@@ -198,6 +199,9 @@ namespace rstbx { namespace integration {
     void set_background_factor(int const& f) {BACKGROUND_FACTOR=f;}
 
     void set_nbr_cutoff_sq(double const& b) {nbr_cutoff_sq=b;}
+
+    double detector_saturation;
+    void set_detector_saturation(double const& b) {detector_saturation = b;}
 
     void append_ISmask(scitbx::af::shared<int> mask){
       mask_t newmask;
@@ -497,20 +501,25 @@ namespace rstbx { namespace integration {
       for (int i=0; i<predicted.size(); ++i){
         af::shared<double> signal;
         af::shared<double> bkgrnd;
+        bool sig_bkg_is_overload = false;
 
         if (BSmasks[i].size()==0){continue;} // out-of-boundary spots
 
         for (mask_t::const_iterator k=ISmasks[i].begin();
                                     k != ISmasks[i].end(); ++k){
-          signal.push_back(double(rawdata(k->first[0],k->first[1])));
+          double dvalue(rawdata(k->first[0],k->first[1]));
+          if (dvalue > detector_saturation) {sig_bkg_is_overload=true;}
+          signal.push_back(dvalue);
         }
         rstbx::corrected_backplane BP(0,0);
         for (mask_t::const_iterator k=BSmasks[i].begin();
                                     k != BSmasks[i].end(); ++k){
-          bkgrnd.push_back(double(rawdata(k->first[0],k->first[1])));
-          BP.accumulate(k->first[0],k->first[1],
-                        rawdata(k->first[0],k->first[1]));
+          int ivalue(rawdata(k->first[0],k->first[1]));
+          if (ivalue > detector_saturation) {sig_bkg_is_overload=true;}
+          bkgrnd.push_back(double(ivalue));
+          BP.accumulate(k->first[0],k->first[1],ivalue);
         }
+        if (sig_bkg_is_overload) {continue;} // do not integrate if the pixels are overloaded
         try{
           BP.finish();
         } catch (rstbx::backplane_zero_determinant) {

@@ -25,6 +25,7 @@ namespace rstbx { namespace integration { namespace ext {
         .def("set_frame",&simple_integration::set_frame)
         .def("set_background_factor",&simple_integration::set_background_factor)
         .def("set_nbr_cutoff_sq",&simple_integration::set_nbr_cutoff_sq)
+        .def("set_detector_saturation",&simple_integration::set_detector_saturation)
         .def("get_bsmask",&simple_integration::get_bsmask)
         .def("get_ISmask",&simple_integration::get_ISmask)
         .def("positional_correction_mapping",

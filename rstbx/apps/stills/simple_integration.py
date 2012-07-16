@@ -269,14 +269,18 @@ class IntegrationMetaProcedure(simple_integration,slip_callbacks):
 
   def get_predictions_accounting_for_centering(self,cb_op_to_primitive=None):
 
-    if self.horizons_phil.integration.model in ["use_case_3_simulated_annealing",
-                                                "use_case_3_simulated_annealing_7"]:
+    if (self.horizons_phil.known_setting is None or self.horizons_phil.known_setting == self.setting_id ) and \
+        self.horizons_phil.integration.model in ["use_case_3_simulated_annealing",
+                                                "use_case_3_simulated_annealing_7",
+                                                "use_case_3_simulated_annealing_9"]:
       if cb_op_to_primitive==None:
         raise Sorry("Can't use model_3 simulated annealing for non-primitive cells, contact authors.")
       if self.horizons_phil.integration.model=="use_case_3_simulated_annealing":
         best_params=self.use_case_3_simulated_annealing(self.horizons_phil.integration.use_subpixel_translations)
-      else:
+      elif self.horizons_phil.integration.model=="use_case_3_simulated_annealing_7":
         best_params=self.use_case_3_simulated_annealing_7(self.horizons_phil.integration.use_subpixel_translations)
+      elif self.horizons_phil.integration.model=="use_case_3_simulated_annealing_9":
+        best_params=self.use_case_3_simulated_annealing_9(self.horizons_phil.integration.use_subpixel_translations)
       #best_params is the tuple (half_mos_deg, waveHE, waveLE, ori, angle1, angle2, angle3)
       BPpredicted = self.bp3_wrapper.ucbp3.selected_predictions_labelit_format()
       BPhkllist = self.bp3_wrapper.ucbp3.selected_hkls()
