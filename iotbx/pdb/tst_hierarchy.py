@@ -5792,6 +5792,24 @@ Space group:              P 21 21 21
 Unit cell:                59.781 66.674 96.999 90 90 90
 """
   assert (out.getvalue() == expected), "\n"+out.getvalue()
+  # get_contiguous_ranges
+  pdb_hierarchy = pdb.input(source_info=None, lines="""\
+ATOM      2  CA  GLY A  -1      -9.052   4.207   4.651  1.00 16.57           C
+ATOM      6  CA  ASN A   0      -6.522   2.038   2.831  1.00 14.10           C
+ATOM     14  CA  ASN A   1      -3.193   1.904   4.589  1.00 11.74           C
+ATOM     22  CA  GLN A   2       0.384   1.888   3.199  1.00 10.53           C
+ATOM     22  CA  ALA A   2A      0.384   1.888   3.199  1.00 10.53           C
+ATOM     22  CA  GLY A   2B      0.384   1.888   3.199  1.00 10.53           C
+ATOM     31  CA  GLN A   4       3.270   2.361   5.640  1.00 11.39           C
+ATOM     40  CA  ASN A   5       6.831   2.310   4.318  1.00 12.30           C
+ATOM     48  CA  TYR A   6       9.159   2.144   7.299  1.00 15.18           C
+TER
+ATOM      5  O   HOH S   1      -9.523   5.521  11.381  0.10  6.78           O
+""").construct_hierarchy()
+  selections = pdb.hierarchy.get_contiguous_ranges(pdb_hierarchy)
+  assert (selections == [
+   "chain 'A' and ((resid   -1  through    2B) or (resid    4  through    6 ))",
+   "chain 'S' and ((resid    1 ))"])
 
 def exercise_equality_and_hashing():
 
