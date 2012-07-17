@@ -1160,6 +1160,40 @@ def find_and_replace_chains (original_hierarchy, partial_hierarchy,
             j += 1
           i += 1
 
+def get_contiguous_ranges (hierarchy) :
+  assert (len(hierarchy.models()) == 1)
+  chain_clauses = []
+  for chain in hierarchy.models()[0].chains() :
+    resid_ranges = []
+    start_resid = None
+    last_resid = None
+    last_resseq = - sys.maxint
+    for residue_group in chain.residue_groups() :
+      resseq = residue_group.resseq_as_int()
+      resid = residue_group.resid()
+      if (resseq != last_resseq) and (resseq != (last_resseq + 1)) :
+        if (start_resid is not None) :
+          resid_ranges.append((start_resid, last_resid))
+        start_resid = resid
+        last_resid = resid
+      else :
+        if (start_resid is None) :
+          start_resid = resid
+        last_resid = resid
+      last_resseq = resseq
+    if (start_resid is not None) :
+      resid_ranges.append((start_resid, last_resid))
+    resid_clauses = []
+    for r1, r2 in resid_ranges :
+      if (r1 == r2) :
+        resid_clauses.append("resid %s" % r1)
+      else :
+        resid_clauses.append("resid %s through %s" % (r1,r2))
+    sele = ("chain '%s' and ((" + ") or (".join(resid_clauses) + "))") % \
+      chain.id
+    chain_clauses.append(sele)
+  return chain_clauses
+
 # used for reporting build results in phenix
 def get_residue_and_fragment_count (pdb_file=None, pdb_hierarchy=None) :
   from iotbx.pdb import amino_acid_codes
