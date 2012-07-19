@@ -15,7 +15,7 @@ from wx.lib.agw import floatspin
 import wx
 from libtbx import object_oriented_patterns as oop
 from libtbx.str_utils import format_value
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, Abort
 import libtbx.load_env
 from math import sqrt
 import copy
@@ -269,8 +269,6 @@ class HKLViewFrame (wx.Frame) :
     self.view_2d = None
     self.view_3d = None # used by 2D subclass
     self.statusbar = self.CreateStatusBar()
-    self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS|wx.TB_TEXT)
-    self.toolbar.SetToolBitmapSize((32,32))
     self.sizer = wx.BoxSizer(wx.HORIZONTAL)
     self.miller_array = None
     app = wx.GetApp()
@@ -284,6 +282,21 @@ class HKLViewFrame (wx.Frame) :
     self.sizer.Add(self.settings_panel, 0, wx.EXPAND)
     self.create_viewer_panel()
     self.sizer.Add(self.viewer, 1, wx.EXPAND|wx.ALL)
+    self.SetupToolbar()
+    self.SetupMenus()
+    self.add_view_specific_functions()
+    self.SetMenuBar(self.menubar)
+    self.toolbar.Realize()
+    self.SetSizer(self.sizer)
+    self.sizer.SetSizeHints(self)
+    self.Bind(wx.EVT_CLOSE, self.OnClose, self)
+    self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy, self)
+    self.Bind(wx.EVT_ACTIVATE, self.OnActive)
+    self.viewer.SetFocus()
+
+  def SetupToolbar (self) :
+    self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS|wx.TB_TEXT)
+    self.toolbar.SetToolBitmapSize((32,32))
     btn = self.toolbar.AddLabelTool(id=-1,
       label="Load file",
       bitmap=icons.hkl_file.GetBitmap(),
@@ -302,9 +315,11 @@ class HKLViewFrame (wx.Frame) :
       shortHelp="Delete reflection",
       kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self.OnDeleteReflection, btn)
-    menubar = wx.MenuBar(-1)
+
+  def SetupMenus (self) :
+    self.menubar = wx.MenuBar(-1)
     self.file_menu = wx.Menu()
-    menubar.Append(self.file_menu, "File")
+    self.menubar.Append(self.file_menu, "File")
     item = wx.MenuItem(self.file_menu, -1, "Load data...\tCtrl-O")
     self.Bind(wx.EVT_MENU, self.OnLoadFile, item)
     self.file_menu.AppendItem(item)
@@ -326,15 +341,6 @@ class HKLViewFrame (wx.Frame) :
           submenu.AppendItem(item)
           self.Bind(wx.EVT_MENU,
             lambda evt, f=example_file: self.load_reflections_file(f), item)
-    self.add_view_specific_functions()
-    self.SetMenuBar(menubar)
-    self.toolbar.Realize()
-    self.SetSizer(self.sizer)
-    self.sizer.SetSizeHints(self)
-    self.Bind(wx.EVT_CLOSE, self.OnClose, self)
-    self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy, self)
-    self.Bind(wx.EVT_ACTIVATE, self.OnActive)
-    self.viewer.SetFocus()
 
   def OnActive (self, event) :
     if (self.IsShown()) :
@@ -379,7 +385,7 @@ class HKLViewFrame (wx.Frame) :
     self.settings_panel.get_control("expand_to_p1").Enable(True)
     self.settings_panel.get_control("expand_anomalous").Enable(True)
 
-  def set_miller_array (self, array) :
+  def process_miller_array (self, array) :
     if (array.is_hendrickson_lattman_array()) :
       raise Sorry("Hendrickson-Lattman coefficients are not supported.")
     info = array.info()
@@ -430,8 +436,18 @@ class HKLViewFrame (wx.Frame) :
     details_str = ""
     if (len(details) > 0) :
       details_str = "(%s)" % ", ".join(details)
+    array_info = group_args(
+      labels=labels,
+      details_str=details_str,
+      sg=sg,
+      uc=uc)
+    return array, array_info
+
+  def set_miller_array (self, array) :
+    array, array_info = self.process_miller_array(array)
     self.statusbar.SetStatusText("Data: %s %s (Space group: %s  Unit Cell: %s)"
-      % (labels, details_str, sg, uc))
+      % (array_info.labels, array_info.details_str, array_info.sg,
+          array_info.uc))
     self.settings_panel.d_min_ctrl.SetValue(array.d_min())
     self.settings_panel.d_min_ctrl.SetRange(array.d_min(), 20.0)
     self.settings_panel.set_index_span(array.index_span())
@@ -467,7 +483,12 @@ class HKLViewFrame (wx.Frame) :
     self.viewer.set_miller_array(array, zoom=False)
     self.viewer.Refresh()
 
-  def load_reflections_file (self, file_name) :
+  def delete_miller_index (self, hkl) :
+    self.miller_array = self.miller_array.delete_index(hkl)
+    self.viewer.set_miller_array(self.miller_array, zoom=True)
+    self.viewer.Refresh()
+
+  def load_reflections_file (self, file_name, set_array=True) :
     if (isinstance(file_name, unicode)) :
       file_name = str(file_name)
     if (file_name != "") :
@@ -491,7 +512,9 @@ class HKLViewFrame (wx.Frame) :
       if (len(valid_arrays) == 0) :
         raise Sorry("No arrays of the supported types in this file.")
       elif (len(valid_arrays) == 1) :
-        self.set_miller_array(valid_arrays[0])
+        if (set_array) :
+          self.set_miller_array(valid_arrays[0])
+        return valid_arrays[0]
       else :
         #dlg = SelectArrayDialog(self, -1, "Select data")
         dlg = wx.SingleChoiceDialog(parent=self,
@@ -500,8 +523,11 @@ class HKLViewFrame (wx.Frame) :
           choices=array_info)
         if (dlg.ShowModal() == wx.ID_OK) :
           sel = dlg.GetSelection()
-          self.set_miller_array(valid_arrays[sel])
+          if (set_array) :
+            self.set_miller_array(valid_arrays[sel])
+          return valid_arrays[sel]
         wx.CallAfter(dlg.Destroy)
+    raise Abort()
 
   def OnLoadFile (self, evt) :
     file_name = wx.FileSelector("Reflections file",
@@ -537,9 +563,7 @@ class HKLViewFrame (wx.Frame) :
         "to delete.  This will only delete a single value; Friedel mates "+
         "and unmerged symmetry-related observations will not be affected.")
     if (hkl is not None) :
-      self.miller_array = self.miller_array.delete_index(hkl)
-      self.viewer.set_miller_array(self.miller_array, zoom=True)
-      self.viewer.Refresh()
+      self.delete_miller_index(hkl)
 
   def OnClearLabels (self, evt) :
     self.viewer.clear_labels()
