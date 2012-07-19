@@ -12,6 +12,10 @@ import sys
 
 def run (args) :
   ma = None
+  show_2d = False
+  if ("--2d" in args) :
+    show_2d = True
+    args.remove("--2d")
   if (len(args) == 0) :
     from cctbx import miller, crystal
     from cctbx.array_family import flex
@@ -39,7 +43,10 @@ def run (args) :
     tb_icon = wx.TaskBarIcon()
   tb_icon.SetIcon(app_icon, "PHENIX data viewer")
   a.hklview_settings = settings
-  f = HKLViewFrame(None, -1, "Reflection data viewer", size=(1024,768))
+  viewer_class = HKLViewFrame
+  if (show_2d) :
+    viewer_class = HKLViewFrame2D
+  f = viewer_class(None, -1, "Reflection data viewer", size=(1024,768))
   f.Show()
   if (ma is not None) :
     f.set_miller_array(ma)

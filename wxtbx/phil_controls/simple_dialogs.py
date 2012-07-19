@@ -1,5 +1,5 @@
 
-from wxtbx.phil_controls import intctrl, floatctrl, symop, strctrl
+from wxtbx.phil_controls import intctrl, floatctrl, symop, strctrl, ints
 from libtbx.utils import Abort
 import wx
 
@@ -74,6 +74,12 @@ class SymopDialog (SimpleInputDialog) :
       parent=self,
       value=value)
 
+class IntegersDialog (SimpleInputDialog) :
+  def CreatePhilControl (self, value) :
+    return ints.IntsCtrl(
+      parent=self,
+      value=value)
+
 def get_phil_value_from_dialog (dlg) :
   abort = False
   if (dlg.ShowModal() == wx.ID_OK) :
@@ -92,6 +98,16 @@ def get_float_value (**kwds) :
 def get_integer_value (**kwds) :
   dlg = IntegerDialog(**kwds)
   return get_phil_value_from_dialog(dlg)
+
+def get_miller_index (**kwds) :
+  dlg = IntegersDialog(**kwds)
+  dlg.SetSizeMin(3)
+  dlg.SetSizeMax(3)
+  dlg.SetOptional(False)
+  result = get_phil_value_from_dialog(dlg)
+  if (isinstance(result, list)) :
+    return tuple(result)
+  return result
 
 class RTDialog (wx.Dialog) :
   def __init__ (self, *args, **kwds) :
