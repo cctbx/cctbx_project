@@ -955,7 +955,9 @@ class set(crystal.symmetry):
     if (use_dataman_shells and n_shells < 5) :
       raise Sorry("You must use at least 5 resolution shells when assigning "+
         "R-free flags this way.")
-    assert max_free is None or max_free > 0
+    if (max_free is not None) and (max_free <= 0) :
+      raise Sorry("The maximum number of free reflections must either be "+
+        "None, or a positive number.")
     if (self.anomalous_flag()):
       matches = self.match_bijvoet_mates()[1]
       sel_pp = matches.pairs_hemisphere_selection("+")
