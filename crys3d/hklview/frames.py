@@ -5,7 +5,9 @@
 
 from crys3d.hklview import view_2d, view_3d
 from cctbx.miller.display import settings
+from wxtbx.phil_controls import simple_dialogs
 from wxtbx import icons
+from wxtbx import bitmaps
 import wxtbx.symmetry_dialog
 import wxtbx.utils
 import wx.glcanvas
@@ -294,6 +296,12 @@ class HKLViewFrame (wx.Frame) :
       shortHelp="Save image",
       kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self.OnSave, btn)
+    btn = self.toolbar.AddLabelTool(id=-1,
+      label="Delete reflection",
+      bitmap=bitmaps.fetch_icon_bitmap("actions","editdelete"), # FIXME
+      shortHelp="Delete reflection",
+      kind=wx.ITEM_NORMAL)
+    self.Bind(wx.EVT_MENU, self.OnDeleteReflection, btn)
     menubar = wx.MenuBar(-1)
     self.file_menu = wx.Menu()
     menubar.Append(self.file_menu, "File")
@@ -517,6 +525,21 @@ class HKLViewFrame (wx.Frame) :
       self.view_2d.set_miller_array(self.viewer.miller_array)
       self.view_2d.Show()
     self.view_2d.Raise()
+
+  def OnDeleteReflection (self, event) :
+    if (self.miller_array is None) :
+      raise Sorry("No data loaded!")
+    hkl = simple_dialogs.get_miller_index(
+      parent=self,
+      title="Delete reflection",
+      label="h,k,l",
+      caption="Please specify the Miller index (h,k,l) of the reflection "+
+        "to delete.  This will only delete a single value; Friedel mates "+
+        "and unmerged symmetry-related observations will not be affected.")
+    if (hkl is not None) :
+      self.miller_array = self.miller_array.delete_index(hkl)
+      self.viewer.set_miller_array(self.miller_array, zoom=True)
+      self.viewer.Refresh()
 
   def OnClearLabels (self, evt) :
     self.viewer.clear_labels()
