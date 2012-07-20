@@ -484,6 +484,8 @@ class HKLViewFrame (wx.Frame) :
     self.viewer.Refresh()
 
   def delete_miller_index (self, hkl) :
+    if (self.miller_array is None) :
+      raise Sorry("No data loaded!")
     self.miller_array = self.miller_array.delete_index(hkl)
     self.viewer.set_miller_array(self.miller_array, zoom=True)
     self.viewer.Refresh()
@@ -553,8 +555,6 @@ class HKLViewFrame (wx.Frame) :
     self.view_2d.Raise()
 
   def OnDeleteReflection (self, event) :
-    if (self.miller_array is None) :
-      raise Sorry("No data loaded!")
     hkl = simple_dialogs.get_miller_index(
       parent=self,
       title="Delete reflection",

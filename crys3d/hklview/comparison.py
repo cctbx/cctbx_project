@@ -103,3 +103,8 @@ class ComparisonFrame (HKLViewFrame) :
 
   def add_view_specific_functions (self) :
     pass
+
+  def delete_miller_index (self, hkl) :
+    self._array1 = self._array1.delete_index(hkl)
+    self._array2 = self._array2.delete_index(hkl)
+    self.viewer.set_miller_arrays(self._array1, self._array2)
