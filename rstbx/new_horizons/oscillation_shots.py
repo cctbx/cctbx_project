@@ -4,7 +4,7 @@ from rstbx.apps.stills.simple_integration import IntegrationMetaProcedure
 from rstbx.apps import simple_integration
 from libtbx.utils import Sorry
 from libtbx.test_utils import approx_equal
-from rstbx.apps.stills.simple_integration import show_observations
+from rstbx.dials_core.integration_core import show_observations
 
 class integrate_one_frame(IntegrationMetaProcedure):
   def __init__(self):

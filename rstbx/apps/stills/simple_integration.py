@@ -1,243 +1,15 @@
-import pickle,math
-from labelit.preferences import labelit_commands,labelit_phil
-from labelit.command_line.default_param import establish_dict_for_refinement
-from labelit.dptbx.autoindex import index_and_refine
-from labelit.command_line.stats_index import best_character_to_IndexPrinter
-from labelit.command_line.stats_index import AutoIndexOrganizer
+import math
 from cctbx.array_family import flex
 from scitbx import matrix
 from libtbx.utils import Sorry
 
 #234567890123456789212345678931234567894123456789512345678961234567897123456789812
 
-class Empty:pass
-
-class api:
-  def __init__(self,*args):
-    #application programmer interface for screen, using identical inputs
-    # to the command line interface
-    args = list(args)
-    labelit_phil.merge_command_line(args)
-    E = Empty()
-    E.argv=['Empty']
-    for x in xrange(len(args)):
-      E.argv.append(args[x])
-    E.horizons_phil=labelit_commands
-
-    self.establish_dict_for_refinement = establish_dict_for_refinement
-    self.index_and_refine = index_and_refine
-    self.best_character_to_IndexPrinter = best_character_to_IndexPrinter
-
-    self.Org = AutoIndexOrganizer(
-      verbose=labelit_commands.distl.bins.verbose,argument_module=E)
-    self.Org.setIndexingDelegate(self.index_and_integrate)
-      # legacy:algorithm control could be excercised here
-    self.horizons_phil = labelit_commands
-
-  def __call__(self):
-    return self.Org.process()
-
-  def index_and_integrate(self,frames,files,spotfinder_results):
-    self.frames = frames
-    self.files = files
-    self.spotfinder_results = spotfinder_results
-    pd = self.establish_dict_for_refinement(frames,spotfinder_results)
-    #------------------------------------------------------------
-    ai,P = self.index_and_refine(pd,files,spotfinder_results,0)
-    self.indexing_ai = ai
-    #------------------------------------------------------------
-    if labelit_commands.compatibility_allow==False:
-      M = self.best_character_to_IndexPrinter(ai,P,pd,horizons_phil=self.horizons_phil)
-    else:
-      from labelit.diffraction.compatibility import \
-        best_compatibility_to_IndexPrinter
-      M = best_compatibility_to_IndexPrinter(ai,P,pd,files,spotfinder_results,horizons_phil=self.horizons_phil)
-    #------------------------------------------------------------
-    if labelit_commands.__dict__.has_key("writer"):
-      labelit_commands.writer.make_image_plots_detail(
-        ai=ai,pd=pd,inframes=files,spotfinder_results=spotfinder_results)
-    if not labelit_commands.index_only:
-      IC = IntegrateCharacters(M,pd)
-      IC.write_mosflm_matrices()
-      IC.find_best()
-      IC.show()
-    return pd
-
-  def create_case_only(self,frames,file,spotfinder_results):
-    self.pd = self.establish_dict_for_refinement(frames)
-
-  def analyze_one(self,solution):
-    inputpd = self.Org.process()
-
-    settings = pickle.load(open("LABELIT_possible","rb"))
-    setting = [setting for setting in settings if setting["counter"]==solution][0]
-
-    from labelit.preferences import labelit_commands as param
-
-    pixel_size = float(inputpd['pixel_size'])
-    self.pixel_size = pixel_size
-
-    from labelit.dptbx import AutoIndexEngine, Parameters
-    ai = AutoIndexEngine(inputpd['endstation'])
-
-    P = Parameters(xbeam=setting["refined x beam"],ybeam=setting["refined y beam"],
-             distance=setting["refined distance"],twotheta=float(inputpd["twotheta"]))
-    ai.setBase(P)
-    ai.setWavelength(float(inputpd['wavelength']))
-    ai.setMaxcell(float(inputpd['ref_maxcel']))
-    print "Deltaphi is",float(inputpd['deltaphi'])
-    ai.setDeltaphi(float(inputpd['deltaphi'])*math.pi/180.)
-    ai.setMosaicity(setting["mosaicity"])
-    ai.setOrientation(setting["orient"])
-    #why aren't hexagonal constraints applied here???
-    print inputpd["osc_start"]
-
-    image_centers = [(math.pi/180.)*float(x) for x in inputpd["osc_start"].values()]
-
-    limiting_resolution = param.distl_highres_limit
-    print "Limiting resolution",limiting_resolution
-
-    #predict the spots
-    spots = ai.predict_all(image_centers[0],limiting_resolution)
-    pre2m = spots.vec3()
-    self.pre2m = pre2m
-
-    hkllist = spots.hkl()
-    cell = ai.getOrientation().unit_cell()
-    print cell
-    for hkl in hkllist:
-      #print "%25s %5.2f"%(str(hkl),cell.d(hkl))
-      assert cell.d(hkl)>=limiting_resolution
-    print "Number of hkls:",(hkllist).size(),
-    print "all inside the %4.2f Angstrom limiting sphere."%limiting_resolution
-    print "The unit cell is",cell
-    self.solution_setting_ai = ai
-    self.solution_pd = inputpd
-    self.image_centers = image_centers
-    return [ai.getOrientation().unit_cell(),hkllist]
-
-  def parameters(self):
-    image_centers = [(math.pi/180.)*float(x) for x in self.solution_pd["osc_start"].values()]
-    P = dict( image_center_radians = image_centers,
-              wavelength = float(self.solution_pd['wavelength']),
-              deltaphi = float(self.solution_pd['deltaphi']),
-              mosaicity_degrees = self.solution_setting_ai.getMosaicity(),
-              orientation = self.solution_setting_ai.getOrientation(),
-              )
-    return P
-
-def show_observations(obs, out=None, n_bins=12):
-  if out==None:
-    import sys
-    out = sys.stdout
-  from libtbx.str_utils import format_value
-
-  obs.setup_binner(n_bins = n_bins)
-  result = []
-  counts_given = obs.binner().counts_given()
-  counts_complete = obs.binner().counts_complete()
-  for i_bin in obs.binner().range_used():
-    sel_w = obs.binner().selection(i_bin)
-    sel_fo_all = obs.select(sel_w)
-    d_max_,d_min_ = sel_fo_all.d_max_min()
-    d_range = obs.binner().bin_legend(
-      i_bin=i_bin, show_bin_number=False, show_counts=True)
-    sel_data = obs.select(sel_w).data()
-    sel_sig = obs.select(sel_w).sigmas()
-
-    if(sel_data.size() > 0):
-      bin = resolution_bin(
-        i_bin        = i_bin,
-        d_range      = d_range,
-        mean_I       = flex.mean(sel_data),
-        n_work       = sel_data.size(),
-        mean_I_sigI  = flex.mean(sel_data/sel_sig),
-        d_max_min    = (d_max_, d_min_),
-        completeness = (counts_given[i_bin], counts_complete[i_bin]))
-      result.append(bin)
-  print >>out, "\n Bin  Resolution Range  Compl.         <I>     <I/sig(I)>"
-  for bin in result:
-    fmt = " %s %s    %s  %s"
-    print >>out,fmt%(
-      format_value("%3d",   bin.i_bin),
-      format_value("%-17s", bin.d_range),
-      format_value("%8.1f", bin.mean_I),
-      format_value("%8.1f", bin.mean_I_sigI),
-      )
-  return result
-
-class resolution_bin(object):
-  def __init__(self,
-               i_bin         = None,
-               d_range       = None,
-               completeness  = None,
-               alpha_work    = None,
-               beta_work     = None,
-               mean_I        = None,
-               mean_I_sigI   = None,
-               target_work   = None,
-               target_free   = None,
-               n_work        = None,
-               n_free        = None,
-               mean_f_obs    = None,
-               fom_work      = None,
-               scale_k1_work = None,
-               pher_work     = None,
-               pher_free     = None,
-               sigmaa        = None,
-               d_max_min     = None):
-    from libtbx import adopt_init_args
-    adopt_init_args(self, locals())
-
 from labelit.dptbx.profile_support import show_profile
-from libtbx.development.timers import Timer
-from rstbx.apps import simple_integration
 from rstbx.apps.slip_helpers import slip_callbacks
+from rstbx.dials_core.integration_core import integration_core
 
-class IntegrationMetaProcedure(simple_integration,slip_callbacks):
-  def __init__(self,inputs,backcompat_horizons_phil): # inputs is an instance of class api
-    self.horizons_phil = backcompat_horizons_phil
-    simple_integration.__init__(self)
-    self.inputai = inputs.solution_setting_ai #C++ autoindex engine
-    self.indexing_ai = inputs.indexing_ai
-
-    #Note...here we may be working with a non-primitive cell, so
-    # must work with systematic absences...not implemented yet.
-    if self.indexing_ai.getData().size() < 40: return # initial protection
-
-    self.inputpd = inputs.solution_pd #parameter dictionary
-    self.inputframes = inputs.frames
-    self.imagefiles = inputs.files
-    self.spotfinder = inputs.spotfinder_results
-    self.image_centers = inputs.image_centers
-    print "IMAGE CENTERS",self.image_centers
-
-    # initial resolution from DISTL
-    resolution_est = float(self.inputpd['resolution_inspection'])
-    print "initial resolution from DISTL",resolution_est
-
-    # resolution limit of the strong spots used for indexing
-    resolution_str = self.indexing_ai.high().reciprocal_spacing
-    resolution = max(resolution_est,resolution_str)
-    print "resolution limit of the strong spots used for indexing",resolution
-    self.limiting_resolution = resolution
-
-    #print "resolution: %.2f %.2f"%(resolution_est,resolution_str)
-    self.pixel_size = inputs.pixel_size
-    self.set_pixel_size(inputs.pixel_size)
-    self.set_detector_size(int(self.inputpd["size1"]),int(self.inputpd["size2"]))
-
-    self.pre2m = inputs.pre2m
-    self.basic_algorithm()
-    self.initialize_increments()
-    T = Timer("concept")
-    from cctbx import sgtbx
-    self.integration_concept(image_number = 0,
-        cb_op_to_primitive = sgtbx.change_of_basis_op(), #identity; supports only primitive lattices
-        verbose_cv = self.horizons_phil.indexing.verbose_cv,
-        background_factor = self.horizons_phil.integration.background_factor)
-    T = Timer("proper")
-    self.integration_proper()
+class IntegrationMetaProcedure(integration_core,slip_callbacks):
 
   def basic_algorithm(self,verbose=False):
     Amat = matrix.sqr(self.inputai.getOrientation().direct_matrix())
@@ -258,21 +30,6 @@ class IntegrationMetaProcedure(simple_integration,slip_callbacks):
         print "Box:"
         show_profile( box )
       self.incr_focus.append( average_profile.focus() )
-
-  """Integration concept.  Focus on each predicted spot position S.
-     I(S): the integration mask for S is constructed by superimposing the
-           bodypixels of the 10 nearest spotfinder spots; thus getting
-           the maximum envelope.
-     B(S): the background mask for S is obtained by finding an equal number
-           of pixels as are in I(S).  Choose the nearest pixels to I(S)
-           that are not within an exclusion distance (guard=3 pixels).
-     P(S): A positional correction for I(S)--adjust the position of the mask
-           away from the predicted position, before integrating.  This is constructed
-           by considering the 10 closest tuples of (spotfinder spot,prediction).
-           P(S) is the average positional offset for this set of 10.
-     O(S): The set of spots close enough to S that they must be included
-           in calculating where B(S) can be sampled.
-  """
 
   def get_predictions_accounting_for_centering(self,cb_op_to_primitive=None):
 
@@ -472,42 +229,6 @@ class IntegrationMetaProcedure(simple_integration,slip_callbacks):
                                         PS_adapt = PS_adapt,
                                         IS_adapt = IS_adapt,
                                         spots = spots)
-    """this section is now pushed down to C++
-    self.ISmasks = []
-    corrections = []
-    for i in xrange(len(predicted)): # loop over predicteds
-      # calculate the positional correction for this prediction
-      # ....average over the 10 nearest positional corrections
-      correction = matrix.col([0.0,0.0])
-      for n in xrange(NEAR): # loop over near indexed pairs
-        correction += correction_vectors[PS_adapt.nn[i*NEAR+n]]
-      correction/=NEAR
-
-      I_S_mask = {} #indexed by tuples giving relative xy positions.
-      pred = predicted[i]
-      predX = pred[0]/pxlsz
-      predY = pred[1]/pxlsz
-      for n in xrange(NEAR): # loop over near spotfinder spots
-        Match = dict(spot=IS_adapt.nn[i*NEAR+n],pred=i)
-        #print "       index %6d distance %4.1f"%(
-        #      IS_adapt.nn[i*NEAR+n],math.sqrt(IS_adapt.distances[i*NEAR+n]))
-
-        spot = spots[Match["spot"]]
-        S_minus_P_vector = matrix.col(
-          (spot.ctr_mass_x() - predX,
-           spot.ctr_mass_y() - predY))
-        for pxl in spot.bodypixels:
-          deltaX = pxl.x - spot.ctr_mass_x()
-          deltaY = pxl.y - spot.ctr_mass_y()
-          I_S_mask[ ( round(predX + deltaX + correction[0]),
-                      round(predY + deltaY + correction[1]) )]=True
-      self.ISmasks.append(I_S_mask)
-      key_pairs = flex.int()
-      for key in I_S_mask.keys():
-        key_pairs.append(int(key[0])); key_pairs.append(int(key[1]))
-      self.append_ISmask(key_pairs)
-      corrections.append(correction)
-    """
 
     # which spots are close enough to interfere with background?
     MAXOVER=6
@@ -603,59 +324,6 @@ class IntegrationMetaProcedure(simple_integration,slip_callbacks):
     self.detector_xy = self.get_detector_xy()
     return # function has been recoded in C++
 
-    self.integrated_data = flex.double()
-    self.integrated_sigma= flex.double()
-    self.integrated_miller=flex.miller_index()
-    self.detector_xy = flex.vec2_double()
-    from rstbx.diffraction import corrected_backplane
-    for i in xrange(len(self.predicted)):
-      signal = flex.double()
-      bkgrnd = flex.double()
-      if self.BSmasks[i].keys()==[]:continue # out-of-boundary spots
-      #print "Integrating ",self.hkllist[i],
-      keys = self.get_ISmask(i)
-      smask = []
-      for ks in xrange(0,len(keys),2):
-        smask.append((keys[ks],keys[ks+1]))
-      bmask = self.BSmasks[i]
-      for spixel in smask:
-        ispixel = int(spixel[0]),int(spixel[1])
-        signal.append(rawdata[ispixel])
-      BP = corrected_backplane(0,0)
-      for bpixel in bmask:
-        ibpixel = int(bpixel[0]),int(bpixel[1])
-        bkgrnd.append(rawdata[ibpixel])
-        BP.accumulate(int(bpixel[0]),int(bpixel[1]),rawdata[ibpixel])
-      BP.finish()
-      #print "<background>=%7.2f"%flex.mean(bkgrnd),
-      #print "<signal>=%7.2f"%flex.mean(signal),
-
-      corr_signal = flex.double()
-      corr_bkgrnd = flex.double()
-      for spixel in smask:
-        ispixel = int(spixel[0]),int(spixel[1])
-        corr_signal.append(rawdata[ispixel] -
-                           BP.localmean(ispixel[0],ispixel[1]))
-      for bpixel in bmask:
-        ibpixel = int(bpixel[0]),int(bpixel[1])
-        corr_bkgrnd.append(rawdata[ibpixel] - BP.localmean(ibpixel[0],ibpixel[1]))
-      #print "<corr. background>=%7.2f"%flex.mean(corr_bkgrnd),
-      #print "<corr. signal>=%7.2f"%flex.mean(corr_signal)
-
-      summation_intensity = flex.sum(corr_signal)
-      uncorrected_signal = flex.sum(signal)
-      mcount = len(signal)
-      ncount = len(bkgrnd)
-      sum_background = flex.sum(bkgrnd)
-      # Use gain == 1
-      # variance formula from Andrew Leslie, Int Tables article
-      variance = uncorrected_signal + sum_background*(float(mcount)/ncount)**2
-      sigma = math.sqrt(variance)
-      self.integrated_data.append(summation_intensity)
-      self.integrated_sigma.append(sigma)
-      self.integrated_miller.append(self.hkllist[i])
-      self.detector_xy.append(self.detector_xy_draft[i])
-
   def get_obs(self,space_group_symbol):
     from cctbx.crystal import symmetry
     from cctbx import miller
@@ -670,22 +338,6 @@ class IntegrationMetaProcedure(simple_integration,slip_callbacks):
     miller_array.set_observation_type_xray_intensity()
     miller_array.set_info("Raw partials from rstbx, not in ASU, no polarization correction")
     return miller_array
-
-  def integration_masks_as_xy_tuples(self):
-    values = []
-    for imsk in xrange(len(self.BSmasks)):
-      smask_keys = self.get_ISmask(imsk)
-      for ks in xrange(0,len(smask_keys),2):
-        values.append((smask_keys[ks],smask_keys[ks+1]))
-    return values
-
-  def background_masks_as_xy_tuples(self):
-    values = []
-    for imsk in xrange(len(self.BSmasks)):
-      bmask = self.BSmasks[imsk]
-      for key in bmask.keys():
-        values.append((key[0],key[1]))
-    return values
 
   def user_callback(self,dc,wxpanel,wx):
     # arguments are a wx Device Context, an Xray Frame, and the wx Module itself
@@ -736,12 +388,6 @@ class IntegrationMetaProcedure(simple_integration,slip_callbacks):
       dc.SetPen(wx.Pen('green'))
       dc.SetBrush(wx.GREEN_BRUSH)
       dc.DrawCircle(x,y,1)
-
-  def user_callback1(self,dc,wxpanel,wx):
-    x,y = wxpanel._img.image_coords_as_screen_coords(100,100)
-    dc.SetPen(wx.Pen('green'))
-    dc.SetBrush(wx.GREEN_BRUSH)
-    dc.DrawCircle(x,y,10)
 
   def initialize_increments(self,image_number=0):
     #initialize a data structure that contains possible vectors
