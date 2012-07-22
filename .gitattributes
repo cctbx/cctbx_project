@@ -1411,6 +1411,8 @@ rstbx/command_line/simage.explore_completeness.py svneol=native#text/x-python
 rstbx/command_line/simage.solver.py svneol=native#text/x-python
 rstbx/command_line/simage.wx_display.py svneol=native#text/x-python
 rstbx/command_line/viewer.py -text
+rstbx/dials_core/__init__.py -text
+rstbx/dials_core/integration_core.py -text
 rstbx/diffraction/__init__.py -text
 rstbx/diffraction/ewald_sphere.cpp -text
 rstbx/diffraction/ewald_sphere.h -text
