@@ -1459,6 +1459,10 @@ rstbx/new_horizons/pixel_spread.py -text
 rstbx/new_horizons/speckfinder.py -text
 rstbx/new_horizons/spot_shape.py -text
 rstbx/new_horizons/stats_index.py -text
+rstbx/phil/__init__.py -text
+rstbx/phil/phil_preferences.py -text
+rstbx/phil/preferences.py -text
+rstbx/phil/scope.py -text
 rstbx/run_tests.py -text
 rstbx/simage/SConscript -text
 rstbx/simage/__init__.py svneol=native#text/x-python
