@@ -4,7 +4,7 @@
 #
 # $Id$
 
-from rstbx.apps.stills.simple_integration import show_observations
+from rstbx.dials_core.integration_core import show_observations
 import iotbx.phil
 from iotbx import data_plots
 from cctbx.array_family import flex
@@ -972,7 +972,7 @@ def show_overall_observations(
         if work_params is not None and work_params.plot_single_index_histograms is False or N<30: continue
         print "Miller %20s n-obs=%4d  sum-I=%10.0f"%(index, N, m)
         plot_n_bins = N//10
-        hist,bins = np.histogram([t[0] for t in ISIGI[index]])
+        hist,bins = np.histogram([t[0] for t in ISIGI[index]],bins=25)
         width = 0.7*(bins[1]-bins[0])
         center = (bins[:-1]+bins[1:])/2
         import matplotlib.pyplot as plt
