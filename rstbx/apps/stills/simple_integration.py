@@ -22,6 +22,7 @@ class api:
     E.argv=['Empty']
     for x in xrange(len(args)):
       E.argv.append(args[x])
+    E.horizons_phil=labelit_commands
 
     self.establish_dict_for_refinement = establish_dict_for_refinement
     self.index_and_refine = index_and_refine
@@ -31,6 +32,7 @@ class api:
       verbose=labelit_commands.distl.bins.verbose,argument_module=E)
     self.Org.setIndexingDelegate(self.index_and_integrate)
       # legacy:algorithm control could be excercised here
+    self.horizons_phil = labelit_commands
 
   def __call__(self):
     return self.Org.process()
@@ -45,11 +47,11 @@ class api:
     self.indexing_ai = ai
     #------------------------------------------------------------
     if labelit_commands.compatibility_allow==False:
-      M = self.best_character_to_IndexPrinter(ai,P,pd)
+      M = self.best_character_to_IndexPrinter(ai,P,pd,horizons_phil=self.horizons_phil)
     else:
       from labelit.diffraction.compatibility import \
         best_compatibility_to_IndexPrinter
-      M = best_compatibility_to_IndexPrinter(ai,P,pd,files,spotfinder_results)
+      M = best_compatibility_to_IndexPrinter(ai,P,pd,files,spotfinder_results,horizons_phil=self.horizons_phil)
     #------------------------------------------------------------
     if labelit_commands.__dict__.has_key("writer"):
       labelit_commands.writer.make_image_plots_detail(
@@ -193,7 +195,8 @@ from rstbx.apps import simple_integration
 from rstbx.apps.slip_helpers import slip_callbacks
 
 class IntegrationMetaProcedure(simple_integration,slip_callbacks):
-  def __init__(self,inputs): # inputs is an instance of class api
+  def __init__(self,inputs,backcompat_horizons_phil): # inputs is an instance of class api
+    self.horizons_phil = backcompat_horizons_phil
     simple_integration.__init__(self)
     self.inputai = inputs.solution_setting_ai #C++ autoindex engine
     self.indexing_ai = inputs.indexing_ai
@@ -228,7 +231,11 @@ class IntegrationMetaProcedure(simple_integration,slip_callbacks):
     self.basic_algorithm()
     self.initialize_increments()
     T = Timer("concept")
-    self.integration_concept()
+    from cctbx import sgtbx
+    self.integration_concept(image_number = 0,
+        cb_op_to_primitive = sgtbx.change_of_basis_op(), #identity; supports only primitive lattices
+        verbose_cv = self.horizons_phil.indexing.verbose_cv,
+        background_factor = self.horizons_phil.integration.background_factor)
     T = Timer("proper")
     self.integration_proper()
 
