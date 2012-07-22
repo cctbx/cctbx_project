@@ -5,6 +5,8 @@ import os
 import sys
 
 morph_params_str = """
+debug = False
+  .type = bool
 morph {
   pdb_file = None
     .type = path
@@ -47,7 +49,7 @@ morph {
       .type = bool
     n_min_steps = 60
       .type = int
-    exclude_dihedrals = False
+    exclude_dihedrals = True
       .type = bool
     interpolate_dihedrals = False
       .type = bool
@@ -60,7 +62,7 @@ pdb_interpretation {
 }
 """
 
-def morph_models (params, out=None) :
+def morph_models (params, out=None, debug=False) :
   assert len(params.morph.pdb_file) > 1
   assert (len(params.morph.frames) == (len(params.morph.pdb_file) - 1))
   if (out is None) : out = sys.stdout
@@ -74,7 +76,8 @@ def morph_models (params, out=None) :
     pdb_hierarchies.append(hierarchy)
   new_pdb = homogenize_structures(
     pdb_hierarchies=pdb_hierarchies,
-    delete_waters=params.morph.delete_waters)
+    delete_waters=params.morph.delete_waters,
+    debug=debug)
   mon_lib_srv = server.server()
   ener_lib = server.ener_lib()
   for cif_file in params.morph.cif_file :
@@ -113,12 +116,13 @@ def morph_models (params, out=None) :
             sites_fixed=sites_fixed,
             sites_moving=sites_moving,
             selection=selection)
-          sites_moving_new = lsq_fit.other_sites_best_fit()
+          sites_moving_new = lsq_fit.r.elems * sites_moving + lsq_fit.t.elems
         else :
           sites_moving_new = fit_sites(
             sites_fixed=sites_fixed,
             sites_moving=sites_moving,
             selection=selection)
+        assert (sites_moving_new.size() == sites_moving.size())
         static_coords[j] = sites_moving_new
       j += 1
   print "Ready to morph"
@@ -148,13 +152,15 @@ def morph_models (params, out=None) :
       pause_at_end=(i == (len(morphs) - 1)))
   f = open("%s.pml" % output_base, "w")
   for i in range(1, serial) :
-    print >> f, "load %s_%04d.pdb, morph" % (output_base, i)
+    format_base = "%s_%s" % (output_base, params.morph.serial_format)
+    print >> f, "load %s.pdb, morph" % (format_base % i)
   f.close()
   print >> out, "PyMOL script is %s.pml" % output_base
 
 def homogenize_structures (pdb_hierarchies,
                            delete_heteroatoms=False,
-                           delete_waters=True) :
+                           delete_waters=True,
+                           debug=False) :
   """
   Eliminate atoms not present in all models.  This ignores residue names, so
   corresponding mainchain atoms should be preserved in most cases.
@@ -181,7 +187,7 @@ def homogenize_structures (pdb_hierarchies,
     raise RuntimeError("No atoms left in structure.")
   print "%d atoms in common." % len(common_set)
   atom_lists = []
-  for hierarchy in pdb_hierarchies :
+  for k, hierarchy in enumerate(pdb_hierarchies) :
     atom_set = set([])
     atoms = hierarchy.atoms()
     i = 0
@@ -190,6 +196,8 @@ def homogenize_structures (pdb_hierarchies,
       labels = atom.fetch_labels()
       atom_info = (labels.chain_id, labels.resid(), atom.name, labels.altloc)
       if (not atom_info in common_set) :
+        if (debug) :
+          print "deleting %s in model %d" % (atom.id_str(), k+1)
         del atoms[i]
       else :
         i += 1
@@ -213,9 +221,13 @@ def homogenize_structures (pdb_hierarchies,
     assert (not None in sorted_atoms)
     atoms_out.append(sorted_atoms)
   pdb_out = []
-  for atoms_strings in atoms_out :
+  for k, atoms_strings in enumerate(atoms_out) :
     pdb_in = iotbx.pdb.input(source_info=None, lines=atoms_strings)
     pdb_out.append(pdb_in)
+    if (debug) :
+      f = open("processed_%d.pdb" % k, "w")
+      f.write(pdb_in.as_pdb_string())
+      f.close()
   return pdb_out
 
 def fit_sites (sites_fixed, sites_moving, selection) : # TODO
@@ -288,16 +300,22 @@ def adiabatic_mapping (pdb_hierarchy,
   from mmtbx.command_line import geometry_minimization
   from cctbx import geometry_restraints
   import scitbx.lbfgs
-  assert (start_coords.size() == end_coords.size())
+  if (start_coords.size() != end_coords.size()) :
+    raise RuntimeError("Coordinate size mismatch: %d versus %d" %
+      (start_coords.size(), end_coords.size()))
   grm = restraints_manager
+  include_dihedrals = (params.interpolate_dihedrals or
+                       (not params.exclude_dihedrals))
   grm_flags = geometry_restraints.flags.flags(
     default=True,
-    dihedral=(not params.exclude_dihedrals))
+    dihedral=include_dihedrals)
   term_params = scitbx.lbfgs.termination_parameters(
     max_iterations=params.n_min_steps)
   dihedral_steps = []
   n = nsteps - 1
   if (params.interpolate_dihedrals) :
+    # FIXME this needs work - should find the optimal path instead of the
+    # simplistic assumption currently made
     for proxy in grm.dihedral_proxies :
       sites1 = []
       sites2 = []
@@ -387,7 +405,7 @@ Full parameter list:
   working_phil.show(out=eff_out)
   #working_phil.show(out=sys.stdout)
   eff_out.close()
-  morph_models(params, out=out)
+  morph_models(params, out=out, debug=params.debug)
 
 if __name__ == "__main__" :
   run(sys.argv[1:])
