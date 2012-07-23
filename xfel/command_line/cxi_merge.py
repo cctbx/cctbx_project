@@ -658,7 +658,7 @@ class scaling_manager (intensity_data) :
         observations = observations.resolution_filter(d_min =
           imposed_res_filter
           )
-        print "New resolution filter at %7.2f"%imposed_res_filter
+        print "New resolution filter at %7.2f"%imposed_res_filter,file_name
       print "N acceptable bins",N_acceptable_bins
       print "Old n_obs: %d, new n_obs: %d"%(N_obs_pre_filter,observations.size())
       # Finished applying the binwise I/sigma filter---------------------------------------
