@@ -16,7 +16,7 @@ variety of platforms. It is most convenient to use these binary bundles
 if possible. Installation is very simple and fast. The minimal
 instructions are shown at the download page.
 
-Source code bundles are also available. Under Unix, if Python 2.3
+Source code bundles are also available. Under Unix, if Python 2.4
 through 2.7 is pre-installed on the target platform, the smaller
 ``cctbx_bundle.selfx`` can be used. However, in general it will be
 best to download the ``cctbx_python_*_bundle.selfx`` file because
@@ -43,7 +43,7 @@ Please note: **The following instructions are for developers!** The
 self-extracting (.selfx) source bundles perform all the steps
 automatically.
 
-Building from sources requires Python 2.3 through 2.7 and a C++
+Building from sources requires Python 2.4 through 2.7 and a C++
 compiler. If you like to use the most recent Python, it can be
 installed in the following way::
 
