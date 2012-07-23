@@ -17,6 +17,7 @@ from libtbx import object_oriented_patterns as oop
 from libtbx.str_utils import format_value
 from libtbx.utils import Sorry, Abort
 import libtbx.load_env
+from libtbx import group_args
 from math import sqrt
 import copy
 import os
