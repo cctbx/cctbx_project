@@ -1369,6 +1369,7 @@ rstbx/apps/stills/ersatz_nexus.cpp -text
 rstbx/apps/stills/ersatz_nexus.h -text
 rstbx/apps/stills/simple_integration.h -text
 rstbx/apps/stills/simple_integration.py -text
+rstbx/apps/stills/stills_integration.py -text
 rstbx/array_family/__init__.py -text
 rstbx/array_family/ext.cpp -text
 rstbx/array_family/flex.py -text
@@ -1461,6 +1462,8 @@ rstbx/new_horizons/pixel_spread.py -text
 rstbx/new_horizons/speckfinder.py -text
 rstbx/new_horizons/spot_shape.py -text
 rstbx/new_horizons/stats_index.py -text
+rstbx/outlier_spots/__init__.py -text
+rstbx/outlier_spots/fit_distribution.py -text
 rstbx/phil/__init__.py -text
 rstbx/phil/phil_preferences.py -text
 rstbx/phil/preferences.py -text
