@@ -1,4 +1,4 @@
-import math,cPickle as pickle,cStringIO as StringIO
+import math,os, cPickle as pickle,cStringIO as StringIO
 from labelit.dptbx.status import cellstr
 from rstbx.apps.stills.simple_integration import IntegrationMetaProcedure
 from rstbx.apps import simple_integration
@@ -57,7 +57,7 @@ class IntegrateCharacters:
 
     print "Cell in setting",setting["counter"],local["cell"]
 
-    frames = local['osc_start'].keys()
+    frames = self.spotfinder_results.pd['osc_start'].keys()
     frames.sort()
 
     local['maxcel']='0'
@@ -69,9 +69,7 @@ class IntegrateCharacters:
     from labelit.steps import primaries
     local['spacegroup'] = primaries[setting['bravais']]
 
-    keys = local['osc_start'].keys()
-    keys.sort()
-    local['procstart'] = local['procend'] = "%d"%keys[0]
+    local['procstart'] = local['procend'] = "%d"%frames[0]
 
     self.pixel_size = float(local['pixel_size'])
 
@@ -96,13 +94,15 @@ class IntegrateCharacters:
 
     print "Limiting resolution",integration_limit
     local["results"] = []
-    for i in xrange(len(keys)):
-      print "---------BEGIN Integrate one frame",keys[i],self.files.filenames()[i]
+    for i in xrange(len(frames)):
+      print "---------BEGIN Integrate one frame %d %s" % \
+          (frames[i], os.path.split(self.files.filenames()[i])[-1])
       #P = Profiler("worker")
       integrate_worker = integrate_one_frame()
       integrate_worker.inputai = ai
 
       integrate_worker.inputpd = local
+      integrate_worker.frame_numbers = frames
       integrate_worker.imagefiles = self.files
       integrate_worker.spotfinder = self.spotfinder_results
       integrate_worker.image_centers = image_centers
@@ -114,7 +114,7 @@ class IntegrateCharacters:
       integrate_worker.set_detector_size(int(local["size1"]),int(local["size2"]))
 
       integrate_worker.set_detector_saturation(refimage.saturation)
-      integrate_worker.basic_algorithm()
+      integrate_worker.set_up_mask_focus()
       integrate_worker.initialize_increments(i)
       integrate_worker.horizons_phil = self.horizons_phil
       #P = Profiler("concept")
@@ -219,7 +219,7 @@ class IntegrateCharacters:
         assert info["predictions"].size() == info["hkllist"].size()
         G = open(filename,"wb")
         pickle.dump(info,G,pickle.HIGHEST_PROTOCOL)
-      print "---------END Integrate one frame",keys[i]
+      print "---------END Integrate one frame",frames[i]
 
     return local
 

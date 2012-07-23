@@ -11,14 +11,12 @@ from rstbx.dials_core.integration_core import integration_core
 
 class IntegrationMetaProcedure(integration_core,slip_callbacks):
 
-  def basic_algorithm(self,verbose=False):
-    Amat = matrix.sqr(self.inputai.getOrientation().direct_matrix())
-    self.frames = self.inputpd['osc_start'].keys()
-    self.incr_focus = []
-    for frame in self.frames:
+  def set_up_mask_focus(self,verbose=False):
+    self.mask_focus = []
+    for frame in self.frame_numbers:
       focus = self.inputpd['masks'][frame][0:2]
       if len(self.inputpd['masks'][frame]) < 3 or self.inputpd['masks'][frame][2] is None:
-        self.incr_focus.append( None )
+        self.mask_focus.append( None )
         continue; #no average profile; no pred/obs agreement; nothing possible
       average_profile = self.inputpd['masks'][frame][2]
       if verbose:
@@ -29,7 +27,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
         show_profile( average_profile )
         print "Box:"
         show_profile( box )
-      self.incr_focus.append( average_profile.focus() )
+      self.mask_focus.append( average_profile.focus() )
 
   def get_predictions_accounting_for_centering(self,cb_op_to_primitive=None):
 
@@ -84,7 +82,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
       plt.show()
 
   def get_observations_with_outlier_removal(self):
-    spots = self.spotfinder.images[self.frames[self.image_number]]["inlier_spots"]
+    spots = self.spotfinder.images[self.frame_numbers[self.image_number]]["inlier_spots"]
     return spots
 
   def integration_concept(self,image_number=0,cb_op_to_primitive=None,verbose=False,**kwargs):
@@ -112,12 +110,12 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
     print "Calculate correction vectors for %d observations & %d predictions"%(len(spots),len(self.predicted))
     indexed_pairs_provisional = []
     correction_vectors_provisional = []
-    idx_cutoff = float(min(self.inputpd['masks'][self.frames[self.image_number]][0:2]))
+    idx_cutoff = float(min(self.mask_focus[image_number]))
     if verbose:
       print "idx_cutoff distance in pixels",idx_cutoff
     for i in xrange(len(self.predicted)): # loop over predicteds
       #for n in xrange(NEAR): # loop over near spotfinder spots
-      for n in xrange(1): # only consider the nearest spotfinder spots
+      for n in xrange(1): # only consider the nearest spotfinder spot
         Match = dict(spot=IS_adapt.nn[i*NEAR+n],pred=i)
         if n==0 and math.sqrt(IS_adapt.distances[i*NEAR+n]) < idx_cutoff:
           indexed_pairs_provisional.append(Match)
@@ -127,7 +125,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
              spots[Match["spot"]].ctr_mass_y() - self.predicted[Match["pred"]][1]/pxlsz])
           correction_vectors_provisional.append(vector)
     print "... %d provisional matches"%len(correction_vectors_provisional)
-    #insert code here to remove correction length outliers...
+    # insert code here to remove correction length outliers...
     # they are causing terrible
     # problems for finding legitimate correction vectors (print out the list)
     # also remove outliers for the purpose of reporting RMS
@@ -147,7 +145,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
         y_data[i] = float(i)/float(len(y_data))
 
       # ideas are explained in Sauter & Poon (2010) J Appl Cryst 43, 611-616.
-      from labelit.outlier_spots.fit_distribution import fit_cdf,rayleigh
+      from rstbx.outlier_spots.fit_distribution import fit_cdf,rayleigh
       fitted_rayleigh = fit_cdf(x_data = sorted_cl[0:limit],
                                 y_data = y_data[0:limit],
                                 distribution=rayleigh)
@@ -234,9 +232,9 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
     MAXOVER=6
     OS_adapt = AnnAdaptor(data=query,dim=2,k=MAXOVER) #six near nbrs
     OS_adapt.query(query)
-    if self.incr_focus[self.image_number] is None:
+    if self.mask_focus[image_number] is None:
       raise Sorry("No observed/predicted spot agreement; no Spotfinder masks; skip integration")
-    nbr_cutoff = 2.0* max(self.incr_focus[self.image_number])
+    nbr_cutoff = 2.0* max(self.mask_focus[image_number])
     FRAME = int(nbr_cutoff/2)
     #print "The overlap cutoff is %d pixels"%nbr_cutoff
     nbr_cutoff_sq = nbr_cutoff * nbr_cutoff
@@ -268,55 +266,11 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
     #print "Done"
     return
 
-    # Never get here...replaced with C++ code
-    for i in xrange(len(predicted)): # loop over predicteds
-      pred = predicted[i]
-      predX = pred[0]/pxlsz
-      predY = pred[1]/pxlsz
-      correction = corrections[i]
-      I_S_mask = self.ISmasks[i]
-      # now consider the background
-      B_S_mask = {}
-      i_bs = 0
-      spot_position = matrix.col(( round(predX + correction[0]),
-                                  round(predY + correction[1]) ))
-      self.detector_xy_draft.append(( round(predX + correction[0]),
-                                  round(predY + correction[1]) ))
-
-      #insert a test to make sure spot is within FRAME
-      if spot_position[0] > FRAME and spot_position[1] > FRAME and \
-         spot_position[0] < int(self.inputpd["size1"]) - FRAME and \
-         spot_position[1] < int(self.inputpd["size2"]) - FRAME:
-
-         spot_keys = I_S_mask.keys()
-         spot_size = len(spot_keys)
-
-         #Look for potential overlaps
-         for n in xrange(MAXOVER):
-           distance = OS_adapt.distances[i*MAXOVER+n]
-           if distance < nbr_cutoff_sq:
-             spot_keys += self.ISmasks[ OS_adapt.nn[i*MAXOVER+n] ].keys()
-
-         for increment in self.sorted:
-           candidate_bkgd = spot_position + increment
-           b_s_key = (candidate_bkgd[0],candidate_bkgd[1])
-           if b_s_key not in spot_keys:
-             #eliminate if in guard region
-             guard = False
-             for key in spot_keys:
-               if (b_s_key[0]-key[0])**2 + (b_s_key[1]-key[1])**2  < 10:
-                 guard = True
-                 break
-             if guard: continue
-             i_bs += 1
-             B_S_mask[b_s_key] = True
-           if i_bs == spot_size: break
-      self.BSmasks.append(B_S_mask)
-      # private interface.  If B_S_mask is the empty dictionary, the spot
-      # was out of boundary and it is not possible to integrate
-
   def integration_proper(self):
-    rawdata = self.imagefiles.images[self.image_number].linearintdata # assume image #1
+    image_obj = self.imagefiles.imageindex(self.frame_numbers[self.image_number])
+    image_obj.read()
+    rawdata = image_obj.linearintdata # assume image #1
+
     self.integration_proper_fast(rawdata,self.predicted,self.hkllist,self.detector_xy_draft)
     self.integrated_data = self.get_integrated_data()
     self.integrated_sigma= self.get_integrated_sigma()
@@ -338,71 +292,3 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
     miller_array.set_observation_type_xray_intensity()
     miller_array.set_info("Raw partials from rstbx, not in ASU, no polarization correction")
     return miller_array
-
-  def user_callback(self,dc,wxpanel,wx):
-    # arguments are a wx Device Context, an Xray Frame, and the wx Module itself
-    # BLUE: predictions
-    for ix,pred in enumerate(self.predicted):
-        if self.BSmasks[ix].keys()==[]:continue
-        x,y = wxpanel._img.image_coords_as_screen_coords(
-          pred[1]/self.pixel_size,
-          pred[0]/self.pixel_size)
-        dc.SetPen(wx.Pen('blue'))
-        dc.SetBrush(wx.BLUE_BRUSH)
-        dc.DrawCircle(x,y,1)
-
-    for imsk in xrange(len(self.BSmasks)):
-      smask_keys = self.get_ISmask(imsk)
-      bmask = self.BSmasks[imsk]
-      if len(bmask.keys())==0: continue
-
-      # CYAN: integration mask
-      for ks in xrange(0,len(smask_keys),2):
-        x,y = wxpanel._img.image_coords_as_screen_coords(smask_keys[ks+1],
-                                                         smask_keys[ks])
-        dc.SetPen(wx.Pen('cyan'))
-        dc.SetBrush(wx.CYAN_BRUSH)
-        dc.DrawCircle(x,y,1)
-
-      # YELLOW: background mask
-      for key in bmask.keys():
-        x,y = wxpanel._img.image_coords_as_screen_coords(key[1],key[0])
-        dc.SetPen(wx.Pen('yellow'))
-        dc.SetBrush(wx.CYAN_BRUSH)
-        dc.DrawCircle(x,y,1)
-
-    for spot in self.spotfinder.images[self.frames[self.image_number]]["inlier_spots"]:
-      # RED: spotfinder spot pixels
-      for pxl in spot.bodypixels:
-        x,y = wxpanel._img.image_coords_as_screen_coords(
-          pxl.y,
-          pxl.x)
-        dc.SetPen(wx.Pen('red'))
-        dc.SetBrush(wx.RED_BRUSH)
-        dc.DrawCircle(x,y,1)
-
-      # GREEN: spotfinder centers of mass
-      x,y = wxpanel._img.image_coords_as_screen_coords(
-        spot.ctr_mass_y(),
-        spot.ctr_mass_x())
-      dc.SetPen(wx.Pen('green'))
-      dc.SetBrush(wx.GREEN_BRUSH)
-      dc.DrawCircle(x,y,1)
-
-  def initialize_increments(self,image_number=0):
-    #initialize a data structure that contains possible vectors
-    # background_pixel - spot_center
-    # consider a large box 4x as large as the presumptive mask.
-    from scitbx.array_family import flex
-    Incr = []
-    Distsq = flex.double()
-    if self.incr_focus[image_number] == None: return []
-    for i in xrange(-self.incr_focus[image_number][0],1+self.incr_focus[image_number][0]):
-      for j in xrange(-self.incr_focus[image_number][1],1+self.incr_focus[image_number][1]):
-        Incr.append(matrix.col((i,j)))
-        Distsq.append(i*i+j*j)
-    order = flex.sort_permutation(Distsq)
-    self.sorted = [] # a generic list of points close in distance to a central point
-    for i in xrange(len(order)):
-      #print i,order[i],Distsq[order[i]],Incr[order[i]]
-      self.sorted.append(Incr[order[i]])

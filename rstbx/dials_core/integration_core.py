@@ -1,4 +1,5 @@
 from cctbx.array_family import flex
+from scitbx import matrix
 
 def show_observations(obs,out=None, n_bins=12):
   if out==None:
@@ -102,8 +103,77 @@ class integration_core(simple_integration):
         values.append((key[0],key[1]))
     return values
 
+  def user_callback(self,dc,wxpanel,wx):
+    # arguments are a wx Device Context, an Xray Frame, and the wx Module itself
+    # BLUE: predictions
+    for ix,pred in enumerate(self.predicted):
+        if self.BSmasks[ix].keys()==[]:continue
+        x,y = wxpanel._img.image_coords_as_screen_coords(
+          pred[1]/self.pixel_size,
+          pred[0]/self.pixel_size)
+        dc.SetPen(wx.Pen('blue'))
+        dc.SetBrush(wx.BLUE_BRUSH)
+        dc.DrawCircle(x,y,1)
+
+    for imsk in xrange(len(self.BSmasks)):
+      smask_keys = self.get_ISmask(imsk)
+      bmask = self.BSmasks[imsk]
+      if len(bmask.keys())==0: continue
+
+      # CYAN: integration mask
+      for ks in xrange(0,len(smask_keys),2):
+        x,y = wxpanel._img.image_coords_as_screen_coords(smask_keys[ks+1],
+                                                         smask_keys[ks])
+        dc.SetPen(wx.Pen('cyan'))
+        dc.SetBrush(wx.CYAN_BRUSH)
+        dc.DrawCircle(x,y,2)
+
+      # YELLOW: background mask
+      for key in bmask.keys():
+        x,y = wxpanel._img.image_coords_as_screen_coords(key[1],key[0])
+        dc.SetPen(wx.Pen('yellow'))
+        dc.SetBrush(wx.CYAN_BRUSH)
+        dc.DrawCircle(x,y,2)
+
+    for spot in self.spotfinder.images[self.frame_numbers[self.image_number]]["inlier_spots"]:
+      # RED: spotfinder spot pixels
+      for pxl in spot.bodypixels:
+        x,y = wxpanel._img.image_coords_as_screen_coords(
+          pxl.y,
+          pxl.x)
+        dc.SetPen(wx.Pen('red'))
+        dc.SetBrush(wx.RED_BRUSH)
+        dc.DrawCircle(x,y,1)
+
+      # GREEN: spotfinder centers of mass
+      x,y = wxpanel._img.image_coords_as_screen_coords(
+        spot.ctr_mass_y(),
+        spot.ctr_mass_x())
+      dc.SetPen(wx.Pen('green'))
+      dc.SetBrush(wx.GREEN_BRUSH)
+      dc.DrawCircle(x,y,1)
+
   def user_callback1(self,dc,wxpanel,wx):
     x,y = wxpanel._img.image_coords_as_screen_coords(100,100)
     dc.SetPen(wx.Pen('green'))
     dc.SetBrush(wx.GREEN_BRUSH)
     dc.DrawCircle(x,y,10)
+
+  def initialize_increments(self,image_number=0):
+    #initialize a data structure that contains possible vectors
+    # background_pixel - spot_center
+    # consider a large box 4x as large as the presumptive mask.
+    from scitbx.array_family import flex
+    Incr = []
+    Distsq = flex.double()
+    self.sorted = [] # a generic list of points close in distance to a central point
+    if self.mask_focus[image_number] == None: return
+    for i in xrange(-self.mask_focus[image_number][0],1+self.mask_focus[image_number][0]):
+      for j in xrange(-self.mask_focus[image_number][1],1+self.mask_focus[image_number][1]):
+        Incr.append(matrix.col((i,j)))
+        Distsq.append(i*i+j*j)
+    order = flex.sort_permutation(Distsq)
+    for i in xrange(len(order)):
+      #print i,order[i],Distsq[order[i]],Incr[order[i]]
+      self.sorted.append(Incr[order[i]])
+
