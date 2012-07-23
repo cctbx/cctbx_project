@@ -14,8 +14,8 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
   def set_up_mask_focus(self,verbose=False):
     self.mask_focus = []
     for frame in self.frame_numbers:
-      focus = self.inputpd['masks'][frame][0:2]
-      if len(self.inputpd['masks'][frame]) < 3 or self.inputpd['masks'][frame][2] is None:
+      focus = self.spotfinder.pd['masks'][frame][0:2]
+      if len(self.spotfinder.pd['masks'][frame]) < 3 or self.spotfinder.pd['masks'][frame][2] is None:
         self.mask_focus.append( None )
         continue; #no average profile; no pred/obs agreement; nothing possible
       average_profile = self.inputpd['masks'][frame][2]
