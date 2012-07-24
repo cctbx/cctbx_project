@@ -1305,3 +1305,51 @@ def expand_ncs (
       atoms_tmp.set_xyz(rt.r.elems * xyz + rt.t.elems)
       model_new.append_chain(chain_new)
   return hierarchy_new
+
+def substitute_atom_group (
+    current_group,
+    new_group,
+    substitute_cbeta=True,
+    exclude_hydrogens=False,
+    log=None) :
+  """
+  Substitute the sidechain atoms from one residue for another, using
+  least-squares superposition to align the backbone atoms.
+  """
+  if (log is None) : log = null_out()
+  if (new_group.resname == "GLY") :
+    substitute_cbeta = False
+  from scitbx.math import superpose
+  sites_fixed = flex.vec3_double()
+  sites_moving = flex.vec3_double()
+  new_atoms = new_group.detached_copy().atoms()
+  for atom in current_group.atoms() :
+    if ((atom.name in [" CA ", " C  ", " N  "]) or
+        ((atom.name == " CB ") and (not substitute_cbeta))) :
+      sites_fixed.append(atom.xyz)
+      for other in new_atoms :
+        if (other.name == atom.name) :
+          sites_moving.append(other.xyz)
+          break
+      else :
+        raise Sorry("Missing atom '%s' in new residue.  Please note that "+
+          "the substitute_atom_group method only works for amino acids.")
+  assert (len(sites_fixed) == len(sites_moving))
+  lsq_fit = superpose.least_squares_fit(
+    reference_sites=sites_fixed,
+    other_sites=sites_moving)
+  sites_new = new_atoms.extract_xyz()
+  sites_new = lsq_fit.r.elems * sites_new + lsq_fit.t.elems
+  new_atoms.set_xyz(sites_new)
+  keep_atoms = [" CA ", " C  ", " N  ", " H  ", " O  "]
+  if (not substitute_cbeta) :
+    keep_atoms.append(" CB ")
+  for atom in current_group.atoms() :
+    if (not atom.name in keep_atoms) :
+      current_group.remove_atom(atom)
+  for atom in new_atoms :
+    if ((not atom.name in keep_atoms) and
+        ((atom.element != "H ") or (not exclude_hydrogens))) :
+      current_group.append_atom(atom)
+  current_group.resname = new_group.resname
+  return current_group

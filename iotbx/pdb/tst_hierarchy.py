@@ -5933,6 +5933,65 @@ ANISOU    6  O   HOH     1      788    626    677   -344    621   -232       O
   except RuntimeError, e: pass
   assert str(e) == "Incompatible size of hierarchy and scatterers array."
 
+def exercise_substitute_atom_group () :
+  hierarchy1 = pdb.input(source_info=None, lines="""\
+ATOM     39  N   ASN A   6       5.514   2.664   4.856  1.00 11.99           N
+ATOM     40  CA  ASN A   6       6.831   2.310   4.318  1.00 12.30           C
+ATOM     41  C   ASN A   6       7.854   2.761   5.324  1.00 13.40           C
+ATOM     42  O   ASN A   6       8.219   3.943   5.374  1.00 13.92           O
+ATOM     43  CB  ASN A   6       7.065   3.016   2.993  1.00 12.13           C
+ATOM     44  CG  ASN A   6       5.961   2.735   2.003  1.00 12.77           C
+ATOM     45  OD1 ASN A   6       5.798   1.604   1.551  1.00 14.27           O
+ATOM     46  ND2 ASN A   6       5.195   3.747   1.679  1.00 10.07           N
+ATOM      0  H   ASN A   6       5.376   3.649   4.962  1.00 11.99           H
+ATOM      0  HA  ASN A   6       6.900   1.226   4.142  1.00 12.30           H
+ATOM      0 1HB  ASN A   6       7.137   4.100   3.163  1.00 12.13           H
+ATOM      0 2HB  ASN A   6       8.027   2.692   2.570  1.00 12.13           H
+ATOM      0 1HD2 ASN A   6       4.439   3.617   1.038  1.00 10.07           H
+ATOM      0 2HD2 ASN A   6       5.366   4.650   2.073  1.00 10.07           H
+""").construct_hierarchy()
+  hierarchy2 = pdb.input(source_info=None, lines="""\
+ATOM     47  N   TYR A   7       8.292   1.817   6.147  1.00 14.70           N
+ATOM     48  CA  TYR A   7       9.159   2.144   7.299  1.00 15.18           C
+ATOM     49  C   TYR A   7      10.603   2.331   6.885  1.00 15.91           C
+ATOM     50  O   TYR A   7      11.041   1.811   5.855  1.00 15.76           O
+ATOM     51  CB  TYR A   7       9.061   1.065   8.369  1.00 15.35           C
+ATOM     52  CG  TYR A   7       7.665   0.929   8.902  1.00 14.45           C
+ATOM     53  CD1 TYR A   7       6.771   0.021   8.327  1.00 15.68           C
+ATOM     54  CD2 TYR A   7       7.210   1.756   9.920  1.00 14.80           C
+ATOM     55  CE1 TYR A   7       5.480  -0.094   8.796  1.00 13.46           C
+ATOM     56  CE2 TYR A   7       5.904   1.649  10.416  1.00 14.33           C
+ATOM     57  CZ  TYR A   7       5.047   0.729   9.831  1.00 15.09           C
+ATOM     58  OH  TYR A   7       3.766   0.589  10.291  1.00 14.39           O
+ATOM     59  OXT TYR A   7      11.358   2.999   7.612  1.00 17.49           O
+""").construct_hierarchy()
+  chain1 = hierarchy1.models()[0].chains()[0]
+  chain2 = hierarchy2.models()[0].chains()[0]
+  current_group = chain1.residue_groups()[0].atom_groups()[0]
+  new_group = chain2.residue_groups()[0].atom_groups()[0]
+  pdb.hierarchy.substitute_atom_group(
+    current_group=current_group,
+    new_group=new_group,
+    substitute_cbeta=True,
+    log=None)
+  assert (hierarchy1.as_pdb_string() == """\
+ATOM     39  N   TYR A   6       5.514   2.664   4.856  1.00 11.99           N
+ATOM     40  CA  TYR A   6       6.831   2.310   4.318  1.00 12.30           C
+ATOM     41  C   TYR A   6       7.854   2.761   5.324  1.00 13.40           C
+ATOM     42  O   TYR A   6       8.219   3.943   5.374  1.00 13.92           O
+ATOM      0  H   TYR A   6       5.376   3.649   4.962  1.00 11.99           H
+ATOM     51  CB  TYR A   6       7.076   2.957   2.982  1.00 15.35           C
+ATOM     52  CG  TYR A   6       6.109   2.461   1.948  1.00 14.45           C
+ATOM     53  CD1 TYR A   6       4.910   3.142   1.713  1.00 15.68           C
+ATOM     54  CD2 TYR A   6       6.346   1.277   1.264  1.00 14.80           C
+ATOM     55  CE1 TYR A   6       4.006   2.681   0.781  1.00 13.46           C
+ATOM     56  CE2 TYR A   6       5.443   0.796   0.307  1.00 14.33           C
+ATOM     57  CZ  TYR A   6       4.270   1.503   0.089  1.00 15.09           C
+ATOM     58  OH  TYR A   6       3.365   1.070  -0.842  1.00 14.39           O
+ATOM     59  OXT TYR A   6       9.013   2.201   5.278  1.00 17.49           O
+TER
+""")
+
 def exercise(args):
   comprehensive = "--comprehensive" in args
   forever = "--forever" in args
@@ -5984,6 +6043,7 @@ def exercise(args):
     exercise_other()
     exercise_equality_and_hashing()
     exercise_atom_is_in_same_conformer_as()
+    exercise_substitute_atom_group()
     if (not forever): break
   print format_cpu_times()
 
