@@ -121,10 +121,10 @@ class plot_container (wx.BoxSizer) :
   def process_mouse_click (self, mpl_event) :
     pass
 
-  def save_image (self, default_path="") :
+  def save_image (self, default_path="", default_filename="plot.png") :
     output_file = wx.FileSelector("Saved image name",
       default_path=default_path,
-      default_filename="plot.png",
+      default_filename=default_filename,
       wildcard="Adobe PDF figure (*.pdf)|*.pdf|" + \
                "PNG image (*.png)|*.png|" + \
                "Postscript figure (*.ps)|*.ps", flags=wx.SAVE)
