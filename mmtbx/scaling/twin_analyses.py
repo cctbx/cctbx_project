@@ -17,6 +17,7 @@ import math
 import sys
 from iotbx import data_plots
 from libtbx import table_utils
+from libtbx.str_utils import format_value
 
 class obliquity(object):
   def __init__(self, reduced_cell, rot_mx, deg=True):
@@ -1826,10 +1827,7 @@ class twin_results_summary(object):
     self.in_short=None
 
   def string_it(self, x ):
-     if x is None:
-       return("None")
-     else:
-       return( str("%4.3f"%(x)) )
+    return format_value("%4.3f", x).strip()
 
   def make_sym_op_table(self):
     if self.r_calc[0]==None:
@@ -1850,7 +1848,6 @@ class twin_results_summary(object):
                 self.string_it( self.murray_rust_alpha[item]) ]
         table_data.append( tmp )
 
-
     else:
       legend = ('Operator',
                  'type',
@@ -1864,15 +1861,12 @@ class twin_results_summary(object):
       for item in range( len(self.twin_laws) ):
         tmp = [ self.twin_laws[item],
                 self.twin_law_type[item],
-                str("%4.3f"%(self.r_obs[item])),
-                str("%4.3f"%(self.r_calc[item])),
-                str("%4.3f"%(self.britton_alpha[item])),
-                str("%4.3f"%(self.h_alpha[item])),
-                str("%4.3f"%(self.murray_rust_alpha[item])) ]
+                self.string_it(self.r_obs[item]),
+                self.string_it(self.r_calc[item]),
+                self.string_it(self.britton_alpha[item]),
+                self.string_it(self.h_alpha[item]),
+                self.string_it(self.murray_rust_alpha[item]) ]
         table_data.append( tmp )
-
-
-
 
     self.table = table_utils.format( [legend]+table_data,
                                 comments=None,
