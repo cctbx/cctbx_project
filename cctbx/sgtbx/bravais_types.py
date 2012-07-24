@@ -38,9 +38,14 @@ class bravais_lattice(object):
   ed. Theo Hahn, Fourth, revised edition, Kluwer Academic Publishers, 1996.
   """
 
-  def __init__(self,symbol):
+  def __init__(self,
+               symbol=None,
+               group=None,
+               number=None):
     from cctbx import sgtbx
-    self.space_group_info = sgtbx.space_group_info(symbol)
+    self.space_group_info = sgtbx.space_group_info(symbol=symbol,
+                                                   group=group,
+                                                   number=number)
     self.space_group = self.space_group_info.group()
     self.crystal_system = self.space_group.crystal_system()
     self.centring_symbol = self.space_group.conventional_centring_type_symbol()
@@ -78,7 +83,12 @@ def tst_bravais_types(verbose):
   for key in crystal_systems_reference: crystal_systems_tally[key]=0
 
   for space_group_number in xrange(1,231):
-    GC = bravais_lattice(space_group_number)
+    space_group_info = sgtbx.space_group_info(number=space_group_number)
+    GC = bravais_lattice(number=space_group_number)
+    GC_1 = bravais_lattice(group=space_group_info.group())
+    GC_2 = bravais_lattice(symbol=str(space_group_info))
+    assert GC == GC_1
+    assert GC == GC_2
     bravais_types_tally[str(GC)]+=1
     crystal_systems_tally[GC.crystal_system]+=1
     if verbose:
