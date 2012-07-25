@@ -232,6 +232,7 @@ class reflection_prediction : public reflection_range {
   bool intersect(scitbx::vec3<double> const & ray);
 
   scitbx::vec2<double> get_prediction();
+  scitbx::vec3<double> get_s();
 
  protected:
 
@@ -247,6 +248,7 @@ class reflection_prediction : public reflection_range {
   //double distance;
 
   scitbx::vec2<double> prediction;
+  scitbx::vec3<double> s;
 
 };
 

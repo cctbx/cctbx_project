@@ -226,7 +226,7 @@ rstbx::reflection_prediction::reflection_prediction(
 bool rstbx::reflection_prediction::operator()(scitbx::vec3<double> const & hkl,
                                               const double & angle)
 {
-  scitbx::vec3<double> s, q;
+  scitbx::vec3<double> q;
 
   q = (ub * hkl).rotate_around_origin(axis, angle);
   s = (q + s0).normalize();
@@ -273,4 +273,9 @@ bool rstbx::reflection_prediction::intersect(scitbx::vec3<double> const & ray)
 scitbx::vec2<double> rstbx::reflection_prediction::get_prediction()
 {
   return scitbx::vec2<double>(prediction[0], prediction[1]);
+}
+
+scitbx::vec3<double> rstbx::reflection_prediction::get_s()
+{
+  return scitbx::vec3<double>(s[0], s[1], s[2]);
 }
