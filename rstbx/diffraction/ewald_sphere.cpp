@@ -228,10 +228,10 @@ bool rstbx::reflection_prediction::operator()(scitbx::vec3<double> const & hkl,
 {
   scitbx::vec3<double> s, q;
 
-  s = (ub * hkl).rotate_around_origin(axis, angle);
-  q = (s + s0).normalize();
+  q = (ub * hkl).rotate_around_origin(axis, angle);
+  s = (q + s0).normalize();
 
-  if (!this->reflection_range::operator()(q,s)) {
+  if (!this->reflection_range::operator()(s,q)) {
     //printf("Too close to the spindle for full measurement. %4d %4d %4d angle %7.4f\n",
     //  int(hkl[0]),int(hkl[1]),int(hkl[2]),angle*180./scitbx::constants::pi);
     /* come back to this later.  These spots are not fully recorded since they are too close
@@ -241,7 +241,7 @@ bool rstbx::reflection_prediction::operator()(scitbx::vec3<double> const & hkl,
     return false;
   }
 
-  return intersect(q); // sets prediction if true
+  return intersect(s); // sets prediction if true
 }
 
 bool rstbx::reflection_prediction::intersect(scitbx::vec3<double> const & ray)
