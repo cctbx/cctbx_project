@@ -80,7 +80,7 @@ static boost::python::tuple
 observed_indices_and_angles_from_rotation_angles_range(rotation_angles& ra,
   double const& phi_start_rad,double const& phi_end_rad,
   const scitbx::af::shared<cctbx::miller::index<> >& indices){
-    //This is going to require some revision to assure it works in an arbitrary
+    // This is going to require some revision to assure it works in an arbitrary
     // principle value region for phi_start_rad and phi_end_rad
 
     scitbx::af::shared<scitbx::vec3<double> > return_indices;
@@ -114,33 +114,38 @@ rp_predict(reflection_prediction& rp,
     scitbx::af::shared<double> return_angle_rad;
     scitbx::af::shared<double> return_angle_full_width_rad;
     scitbx::af::shared<double> return_lorentz_factor;
+    scitbx::af::shared<scitbx::vec3<double> > return_s;
 
     if (rp.use_gh1982a){
       for (int ihkl = 0; ihkl < observed_indices.size(); ++ihkl) {
         if (rp( observed_indices[ihkl], observed_angles[ihkl] )) {
            scitbx::vec2<double> xy = rp.get_prediction();
+	   scitbx::vec3<double> s = rp.get_s();
            return_indices.push_back(observed_indices[ihkl]);
            return_angle_rad.push_back(observed_angles[ihkl]);
            return_fast_px.push_back(xy[0]);
            return_slow_px.push_back(xy[1]);
            return_lorentz_factor.push_back(rp.lorentz_factor());
            return_angle_full_width_rad.push_back(rp.get_full_width());
+	   return_s.push_back(s);
          }
        }
        return make_tuple(return_indices,return_fast_px,return_slow_px,return_angle_rad,
-         return_lorentz_factor, return_angle_full_width_rad);
+			 return_lorentz_factor, return_angle_full_width_rad, return_s);
     }
     for (int ihkl = 0; ihkl < observed_indices.size(); ++ihkl) {
        if (rp( observed_indices[ihkl], observed_angles[ihkl] )) {
          scitbx::vec2<double> xy = rp.get_prediction();
+	 scitbx::vec3<double> s = rp.get_s();
 
                  return_indices.push_back(observed_indices[ihkl]);
                  return_angle_rad.push_back(observed_angles[ihkl]);
                  return_fast_px.push_back(xy[0]);
                  return_slow_px.push_back(xy[1]);
+	   return_s.push_back(s);
        }
      }
-     return make_tuple(return_indices,return_fast_px,return_slow_px,return_angle_rad);
+      return make_tuple(return_indices,return_fast_px,return_slow_px,return_angle_rad, return_s);
 }
 
 static af::shared<cctbx::miller::index<> >
@@ -285,6 +290,7 @@ namespace boost_python { namespace {
       ((arg("axis"), arg("s0"), arg("ub"), arg("sensor"))))
       .def("__call__", & reflection_prediction::operator())
       .def("get_prediction", & reflection_prediction::get_prediction)
+      .def("get_s", & reflection_prediction::get_s)
       .def("set_rocking_curve", & reflection_prediction::set_rocking_curve)
       .def("set_mosaicity", & reflection_prediction::set_mosaicity,
             (arg("mos"),arg("degrees")))
