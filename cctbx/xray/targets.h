@@ -813,6 +813,71 @@ namespace cctbx { namespace xray { namespace targets {
       }
   };
 
+  template <typename FloatType=double,
+            typename ComplexType=std::complex<double> >
+  class r_factor
+  {
+    public:
+      FloatType r_;
+      FloatType scale_ls_;
+      FloatType scale_r_;
+
+      r_factor() {}
+
+      r_factor(af::const_ref<FloatType> const& fo,
+               af::const_ref<ComplexType> const& fc)
+      {
+        CCTBX_ASSERT(fo.size()==fc.size());
+        compute_scale(fo, fc);
+        r_ = compute_r_factor(fo, fc, scale_r_);
+      };
+
+      FloatType compute_r_factor(af::const_ref<FloatType> const& fo,
+                                 af::const_ref<ComplexType> const& fc,
+                                 FloatType scale)
+      {
+        CCTBX_ASSERT(fo.size()==fc.size());
+        FloatType num=0.0;
+        FloatType denum=0.0;
+        for(std::size_t i=0; i < fo.size(); i++) {
+          num += std::abs(fo[i] - std::abs(fc[i]) * scale);
+          denum += fo[i];
+        }
+        if(denum == 0) return 1.e+9;
+        return num/denum;
+      };
+
+      void compute_scale(af::const_ref<FloatType> const& fo,
+                         af::const_ref<ComplexType> const& fc,
+                         FloatType offset_factor = 3.,
+                         FloatType step_factor = 20.) {
+        FloatType num=0.0;
+        FloatType denum=0.0;
+        for(std::size_t i=0; i < fo.size(); i++) {
+          FloatType fc_abs = std::abs(fc[i]);
+          num += fo[i] * fc_abs;
+          denum += fc_abs * fc_abs;
+        }
+        scale_ls_ = (denum == 0 ? 0 : num/denum);
+        FloatType scale_ = scale_ls_ - scale_ls_/offset_factor;
+        FloatType r_best = 1.e+9;
+        FloatType step = scale_ls_/step_factor;
+        while(scale_ <= scale_ls_ + scale_ls_/offset_factor) {
+          FloatType r_trial = compute_r_factor(fo, fc, scale_);
+          if(r_trial < r_best) {
+            r_best = r_trial;
+            scale_r_ = scale_;
+          }
+          scale_ += step;
+        }
+      }
+
+      FloatType value() { return r_; }
+      FloatType scale_ls() { return scale_ls_; }
+      FloatType scale_r() { return scale_r_; }
+  };
+
+
 }}} // namespace cctbx::xray::targets
 
 #endif // CCTBX_XRAY_TARGETS_H
