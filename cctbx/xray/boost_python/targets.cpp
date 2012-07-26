@@ -214,6 +214,26 @@ namespace {
     }
   };
 
+  struct r_factor_wrappers
+  {
+    //typedef r_factor w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+
+      class_<cctbx::xray::targets::r_factor<> >("r_factor")
+      .def(init<
+           af::const_ref<double> const&,
+           af::const_ref<std::complex<double> > const& >((arg("fo"),arg("fc"))))
+      .def("value", &cctbx::xray::targets::r_factor<>::value)
+      .def("scale_ls", &cctbx::xray::targets::r_factor<>::scale_ls)
+      .def("scale_r", &cctbx::xray::targets::r_factor<>::scale_r)
+      ;
+    }
+  };
+
 } // namespace <anoymous>
 
 }} // namespace targets::boost_python
@@ -233,6 +253,7 @@ namespace boost_python {
       "targets_least_squares_residual_for_intensity");
     targets::boost_python::maximum_likelihood_criterion_wrappers::wrap();
     targets::boost_python::maximum_likelihood_criterion_hl_wrappers::wrap();
+    targets::boost_python::r_factor_wrappers::wrap();
   }
 
 }}} // namespace cctbx::xray::boost_python
