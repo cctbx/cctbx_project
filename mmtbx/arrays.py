@@ -11,6 +11,7 @@ class init(object):
                f_part1=None,
                f_part2=None,
                k_masks=None,
+               k_isotropic_exp=None,
                k_isotropic=None,
                k_anisotropic=None):
     adopt_init_args(self, locals())
@@ -22,6 +23,9 @@ class init(object):
         self.f_masks = [self.f_masks]
       for fm in self.f_masks:
         assert self.f_calc.indices().all_eq(fm.indices())
+    if(self.k_isotropic_exp is not None):
+      assert self.k_isotropic_exp.size() == self.f_calc.indices().size()
+    else: self.k_isotropic_exp = flex.double(f_calc.data().size(), 1)
     if(self.k_isotropic is not None):
       assert self.k_isotropic.size() == self.f_calc.indices().size()
     else: self.k_isotropic = flex.double(f_calc.data().size(), 1)
@@ -51,12 +55,13 @@ class init(object):
       f_bulk_data += self.k_masks[i]*self.f_masks[i].data()
     #
     self.data = ext.data(
-      f_calc        = self.f_calc.data(),
-      f_bulk        = f_bulk_data,
-      k_isotropic   = self.k_isotropic,
-      k_anisotropic = self.k_anisotropic,
-      f_part1       = self.f_part1.data(),
-      f_part2       = self.f_part2.data())
+      f_calc          = self.f_calc.data(),
+      f_bulk          = f_bulk_data,
+      k_isotropic_exp = self.k_isotropic_exp,
+      k_isotropic     = self.k_isotropic,
+      k_anisotropic   = self.k_anisotropic,
+      f_part1         = self.f_part1.data(),
+      f_part2         = self.f_part2.data())
     self.f_model = miller.array(miller_set=self.f_calc, data=self.data.f_model)
     self.f_model_no_aniso_scale = miller.array(
       miller_set=self.f_calc,
@@ -76,13 +81,14 @@ class init(object):
     f_masks = [fm.select(selection=selection) for fm in self.f_masks]
     k_masks = [km.select(selection) for km in self.k_masks]
     return init(
-      f_calc        = self.f_calc.select(selection),
-      f_masks       = f_masks,
-      k_isotropic   = self.k_isotropic.select(selection),
-      k_masks       = k_masks,
-      k_anisotropic = self.k_anisotropic.select(selection),
-      f_part1       = self.f_part1.select(selection),
-      f_part2       = self.f_part2.select(selection))
+      f_calc          = self.f_calc.select(selection),
+      f_masks         = f_masks,
+      k_isotropic_exp = self.k_isotropic_exp.select(selection),
+      k_isotropic     = self.k_isotropic.select(selection),
+      k_masks         = k_masks,
+      k_anisotropic   = self.k_anisotropic.select(selection),
+      f_part1         = self.f_part1.select(selection),
+      f_part2         = self.f_part2.select(selection))
 
   def deep_copy(self):
     return self.select(selection=flex.bool(self.f_calc.indices().size(), True))
@@ -94,6 +100,7 @@ class init(object):
       self.f_part1,
       self.f_part2,
       self.k_masks,
+      self.k_isotropic_exp,
       self.k_isotropic,
       self.k_anisotropic)}
 
@@ -104,24 +111,27 @@ class init(object):
   def update(self,
              f_calc=None,
              f_masks=None,
+             k_isotropic_exp=None,
              k_isotropic=None,
              k_masks=None,
              k_anisotropic=None,
              f_part1=None,
              f_part2=None):
-    if(f_calc is None):        f_calc        = self.f_calc
-    if(f_masks is None):       f_masks       = self.f_masks
-    if(k_isotropic is None):   k_isotropic   = self.k_isotropic
-    if(k_masks is None):       k_masks       = self.k_masks
-    if(k_anisotropic is None): k_anisotropic = self.k_anisotropic
-    if(f_part1 is None):       f_part1       = self.f_part1
-    if(f_part2 is None):       f_part2       = self.f_part2
+    if(f_calc is None):          f_calc          = self.f_calc
+    if(f_masks is None):         f_masks         = self.f_masks
+    if(k_isotropic_exp is None): k_isotropic_exp = self.k_isotropic_exp
+    if(k_isotropic is None):     k_isotropic     = self.k_isotropic
+    if(k_masks is None):         k_masks         = self.k_masks
+    if(k_anisotropic is None):   k_anisotropic   = self.k_anisotropic
+    if(f_part1 is None):         f_part1         = self.f_part1
+    if(f_part2 is None):         f_part2         = self.f_part2
     self.__init__(
-      f_calc        = f_calc,
-      f_masks       = f_masks,
-      k_isotropic   = k_isotropic,
-      k_masks       = k_masks,
-      k_anisotropic = k_anisotropic,
-      f_part1       = f_part1,
-      f_part2       = f_part2)
+      f_calc          = f_calc,
+      f_masks         = f_masks,
+      k_isotropic_exp = k_isotropic_exp,
+      k_isotropic     = k_isotropic,
+      k_masks         = k_masks,
+      k_anisotropic   = k_anisotropic,
+      f_part1         = f_part1,
+      f_part2         = f_part2)
     return self

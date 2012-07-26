@@ -39,7 +39,7 @@ import mmtbx.refinement.targets
 from libtbx import Auto
 import mmtbx.arrays
 import mmtbx.bulk_solvent.scaler
-
+import scitbx.math
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
@@ -1044,11 +1044,13 @@ class manager(manager_mixin):
     l="Statistics in resolution bins"
     if(suffix is not None): l += " %s"%suffix
     f1 = "Total model structure factor:"
-    f2 = "  F_model = k_isotropic * k_anisotropic * (F_calc + k_mask * F_mask)\n"
+    f2 = "  F_model = k_total * (F_calc + k_mask * F_mask)\n"
+    f3 = "    k_total = k_isotropic * k_anisotropic"
     m=(77-len(l))//2
     print >> log, "\n","="*m,l,"="*m,"\n"
     print >> log, f1
     print >> log, f2
+    print >> log, f3
     fmt="%7.3f-%-7.3f %6.2f %5d %5d %6.4f %9.3f %9.3f %5.3f %5.3f %s"
     print >> log, "   Resolution    Compl Nwork Nfree R_work    <Fobs>  <Fmodel> kiso   kani kmask"
     k_masks       = self.k_masks()
@@ -1078,8 +1080,20 @@ class manager(manager_mixin):
         f_model.select(sel_work).data(), 1)
       km = " ".join(["%5.3f"%flex.mean(km_.select(sel)) for km_ in k_masks])
       print >> log, fmt % (d_max,d_min,cmpl,nw,nf,r,fo_mean,fm_mean,ki,ka,km)
+    def overall_isotropic_kb_estimate(self):
+      k_total = self.k_isotropic() * self.k_anisotropic()
+      assert self.ss.size() == self.k_isotropic().size()
+      r = scitbx.math.gaussian_fit_1d_analytical(x=flex.sqrt(self.ss), y=k_total)
+      return r.a, r.b
+    k_overall, b_overall = overall_isotropic_kb_estimate(self)
+    print >> log
+    f3="  Approximation of k_total with k_overall*exp(-b_overall*s**2/4)"
+    f4="    k_overall=%-8.4f b_overall=%-8.4f"%(k_overall, b_overall)
+    print >> log, f3
+    print >> log, f4
 
   def update_all_scales(self,
+                        apply_back_trace=False,
                         params = None, # XXX DUMMY
                         nproc = None,  # XXX DUMMY
                         cycles = None,
@@ -1117,7 +1131,7 @@ class manager(manager_mixin):
       if(not mask_defined): params.bulk_solvent=False
       if(bulk_solvent_and_scaling):
         russ = self.update_solvent_and_scale(fast=fast, params=params,
-          optimize_mask=optimize_mask)
+          optimize_mask=optimize_mask, apply_back_trace=apply_back_trace)
         if(show):
           print >> log, "    bulk-solvent and scaling: %s"%get_r(self)
       if(refine_hd_scattering): self.update_f_hydrogens()
@@ -1133,7 +1147,7 @@ class manager(manager_mixin):
     return russ
 
   def update_solvent_and_scale(self, params = None, out = None, verbose=None,
-        optimize_mask = False, nproc=1, fast=True):
+        optimize_mask = False, nproc=1, fast=True, apply_back_trace=False):
     #
     global time_bulk_solvent_and_scale
     timer = user_plus_sys_time()
@@ -1163,9 +1177,6 @@ class manager(manager_mixin):
         bulk_solvent   = bulk_solvent,
         ss             = self.ss,
         number_of_cycles = 100,
-        #try_expmin=True,
-        #try_poly=False,
-        #try_expanal=False,
         bin_selections = self.bin_selections,
         verbose        = verbose)
       k_anisotropic_twin = None
@@ -1182,11 +1193,27 @@ class manager(manager_mixin):
           if(self.twin_set is not None):
             k_anisotropic_twin = mmtbx.f_model.ext.k_anisotropic(self.twin_set.indices(),
               result.scale_matrices, self.f_obs().unit_cell())
-      self.update_core(
-        k_mask        = result.core.k_mask(),
-        k_isotropic   = result.core.k_isotropic,
-        k_anisotropic = result.core.k_anisotropic,
-        k_anisotropic_twin = k_anisotropic_twin)
+      if(apply_back_trace):
+        r = result.apply_back_trace_of_overall_exp_scale_matrix(
+          xray_structure = self.xray_structure)
+        if(r is not None):
+          r1 = self.r_work()
+          self.update_xray_structure(
+            xray_structure = r.xray_structure,
+            update_f_calc  = True)
+          self.update_core(
+            k_isotropic        = r.k_isotropic,
+            k_mask             = r.k_mask,
+            k_anisotropic      = r.k_anisotropic,
+            k_anisotropic_twin = k_anisotropic_twin)
+          r2 = fmodel.r_work()
+          assert approx_equal(r1, r2)
+      else:
+        self.update_core(
+          k_mask        = result.core.k_mask(),
+          k_isotropic   = result.core.k_isotropic*result.core.k_isotropic_exp,
+          k_anisotropic = result.core.k_anisotropic,
+          k_anisotropic_twin = k_anisotropic_twin)
     else:
       #self.update_core()
       #if(self.twin_set is not None): self.update_twin_fraction()
@@ -1965,7 +1992,8 @@ class manager(manager_mixin):
       sites_frac = self.xray_structure.sites_frac(),
       b_isos = self.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.))
 
-  def f_model_phases_as_hl_coefficients(self, map_calculation_helper):
+  def f_model_phases_as_hl_coefficients(self, map_calculation_helper,
+        k_blur=None, b_blur=None):
     if(map_calculation_helper is not None):
       mch = map_calculation_helper
     else:
@@ -1973,11 +2001,15 @@ class manager(manager_mixin):
     f_model_phases = mch.f_model.phases().data()
     sin_f_model_phases = flex.sin(f_model_phases)
     cos_f_model_phases = flex.cos(f_model_phases)
-    t = maxlik.fo_fc_alpha_over_eps_beta(
-      f_obs   = mch.f_obs,
-      f_model = mch.f_model,
-      alpha   = mch.alpha,
-      beta    = mch.beta)
+    if([k_blur, b_blur].count(None) == 2):
+      t = maxlik.fo_fc_alpha_over_eps_beta(
+        f_obs   = mch.f_obs,
+        f_model = mch.f_model,
+        alpha   = mch.alpha,
+        beta    = mch.beta)
+    else:
+      assert [k_blur, b_blur].count(None) == 0
+      t = 2*k_blur * flex.exp(-b_blur*self.ss)
     hl_a_model = t * cos_f_model_phases
     hl_b_model = t * sin_f_model_phases
     return flex.hendrickson_lattman(a = hl_a_model, b = hl_b_model)

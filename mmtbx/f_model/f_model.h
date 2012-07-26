@@ -268,6 +268,7 @@ class data
     af::shared<ComplexType> f_part1;
     af::shared<ComplexType> f_part2;
     af::shared<ComplexType> f_model;
+    af::shared<FloatType>   k_isotropic_exp;
     af::shared<FloatType>   k_isotropic;
     af::shared<FloatType>   k_anisotropic;
     af::shared<ComplexType> f_model_no_aniso_scale;
@@ -276,6 +277,7 @@ class data
 
     data(af::shared<ComplexType> const& f_calc_,
          af::shared<ComplexType> const& f_bulk_,
+         af::shared<FloatType>   const& k_isotropic_exp_,
          af::shared<FloatType>   const& k_isotropic_,
          af::shared<FloatType>   const& k_anisotropic_,
          af::shared<ComplexType> const& f_part1_,
@@ -283,6 +285,7 @@ class data
     :
       f_calc(f_calc_),
       f_bulk(f_bulk_),
+      k_isotropic_exp(k_isotropic_exp_),
       k_isotropic(k_isotropic_),
       f_part1(f_part1_),
       f_part2(f_part2_),
@@ -296,13 +299,14 @@ class data
       ComplexType* f_model_  = f_model.begin();
       ComplexType* f_calc__  = f_calc.begin();
       ComplexType* f_bulk__  = f_bulk.begin();
+      FloatType* k_isotropic_exp__   = k_isotropic_exp.begin();
       FloatType* k_isotropic__   = k_isotropic.begin();
       FloatType* k_anisotropic__ = k_anisotropic.begin();
       ComplexType* f_part1__ = f_part1.begin();
       ComplexType* f_part2__ = f_part2.begin();
       ComplexType* f_model_no_aniso_scale_ = f_model_no_aniso_scale.begin();
       for(std::size_t i=0; i < f_calc.size(); i++) {
-        ComplexType fmnas = k_isotropic__[i]*(
+        ComplexType fmnas = k_isotropic_exp__[i] * k_isotropic__[i]*(
           f_calc__[i] + f_bulk__[i]+f_part1_[i]+f_part2__[i]);
         f_model_no_aniso_scale_[i] = fmnas;
         f_model_[i] = k_anisotropic[i]*fmnas;

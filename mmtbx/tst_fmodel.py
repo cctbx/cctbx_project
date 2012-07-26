@@ -348,24 +348,6 @@ def exercise_2():
       delta = flex.abs(f_calc_1-f_calc_2)
       assert approx_equal(flex.sum(delta), 0.0)
 
-def get_random_and_traceless_b_cart(crystal_symmetry):
-  symbol = crystal_symmetry.space_group().type().lookup_symbol()
-  point_group = sgtbx.space_group_info(
-    symbol=symbol).group().build_derived_point_group()
-  adp_constraints = sgtbx.tensor_rank_2_constraints(
-    space_group=point_group,
-    reciprocal_space=True)
-  u_star = adptbx.u_cart_as_u_star(crystal_symmetry.unit_cell(),
-    adptbx.random_u_cart(u_scale=1,u_min=0.1))
-  u_indep = adp_constraints.independent_params(all_params=u_star)
-  u_star = adp_constraints.all_params(independent_params=u_indep)
-  b_cart = adptbx.u_as_b(adptbx.u_star_as_u_cart(
-    crystal_symmetry.unit_cell(), u_star))
-  tr = (b_cart[0]+b_cart[1]+b_cart[2])/3
-  b_cart = [b_cart[0]-tr, b_cart[1]-tr, b_cart[2]-tr,
-           b_cart[3],b_cart[4],b_cart[5]]
-  return b_cart
-
 def exercise_5_bulk_sol_and_scaling(symbol = "C 2"):
   x = random_structure.xray_structure(
     space_group_info       = sgtbx.space_group_info(symbol=symbol),
@@ -381,7 +363,6 @@ def exercise_5_bulk_sol_and_scaling(symbol = "C 2"):
   f_mask = mask_manager.shell_f_masks(xray_structure = x)[0]
   assert flex.mean(abs(f_mask).data()) > 0
   b_cart=[-15,-5,20, 0,6,0]
-  #b_cart=get_random_and_traceless_b_cart(crystal_symmetry=x.crystal_symmetry())
   u_star = adptbx.u_cart_as_u_star(x.unit_cell(), adptbx.b_as_u(b_cart))
   k_anisotropic = mmtbx.f_model.ext.k_anisotropic(f_calc.indices(), u_star)
   ss = 1./flex.pow2(f_calc.d_spacings().data()) / 4.
@@ -452,7 +433,7 @@ def exercise_5_bulk_sol_and_scaling(symbol = "C 2"):
     sf_and_grads_accuracy_params = sfg_params)
   assert fmodel.r_work() > 0.3
   fmodel.update_solvent_and_scale(fast=True)
-  assert fmodel.r_work() < 0.015
+  assert fmodel.r_work() < 0.026, fmodel.r_work()
   # part 2 of test 4
   d=fmodel.k_isotropic()*fmodel.k_anisotropic()*(
     f_calc.data()+fmodel.k_masks()[0]*f_mask.data())
@@ -483,7 +464,7 @@ def exercise_5_bulk_sol_and_scaling_and_H(symbol = "C 2"):
   mask_manager = mmtbx.masks.manager(miller_array = f_calc)
   f_mask = mask_manager.shell_f_masks(xray_structure = x)[0]
   assert flex.mean(abs(f_mask).data()) > 0
-  b_cart=get_random_and_traceless_b_cart(crystal_symmetry=x.crystal_symmetry())
+  b_cart=adptbx.random_traceless_symmetry_constrained_b_cart(crystal_symmetry=x.crystal_symmetry())
   u_star = adptbx.u_cart_as_u_star(x.unit_cell(), adptbx.b_as_u(b_cart))
   k_anisotropic = mmtbx.f_model.ext.k_anisotropic(f_calc.indices(), u_star)
   ss = 1./flex.pow2(f_calc.d_spacings().data()) / 4.
@@ -532,16 +513,16 @@ def exercise_5_bulk_sol_and_scaling_and_H(symbol = "C 2"):
   fmodel.update_all_scales(cycles=6, fast=True, show=False)
   assert approx_equal(fmodel.k_h, 0.9)
   assert approx_equal(fmodel.b_h, 0)
-  assert fmodel.r_work() < 0.01
+  assert fmodel.r_work() < 0.016
 
 def run(args):
   assert len(args) == 0
   exercise_5_bulk_sol_and_scaling()
-  exercise_5_bulk_sol_and_scaling_and_H()
   exercise_1()
   exercise_2()
   exercise_3_f_part1_and_f_part2()
   exercise_4_f_hydrogens()
+  exercise_5_bulk_sol_and_scaling_and_H()
   print format_cpu_times()
 
 if (__name__ == "__main__"):
