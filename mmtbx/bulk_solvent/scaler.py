@@ -11,30 +11,13 @@ import math
 from libtbx import group_args
 import scitbx.math
 from cctbx import miller
-
 import mmtbx.arrays
+import scitbx.math
+import cctbx.xray
+from libtbx import group_args
+from libtbx.test_utils import approx_equal
 
-def moving_average(x, anchor_left, anchor_right):
-  x_ = [anchor_left] + list(x) + [anchor_right]
-  result = flex.double()
-  for i in xrange(len(x_)):
-    if(i!=0 and i!=len(x_)-1 and i!=1):
-      result.append( (x_[i-1]+x_[i]+x_[i+1])/3. )
-    elif(i==1): result.append(x_[i])
-  return result
-
-def moving_average0(x):
-  try:
-    result = flex.double(x.size(), -1)
-    for i in xrange(x.size()):
-      if(i==0): result[i]=(x[i]+x[i+1])/2.
-      elif(i==x.size()-1): result[i]=(x[i-1]+x[i])/2.
-      else: result[i]=(x[i-1]+x[i]+x[i+1])/3.
-    assert (result<0).count(True)==0
-  except Exception: return x
-  return result
-
-def moving_average2(x):
+def moving_average(x):
   x_ = x_ = [x[0]] + list(x) + [x[len(x)-1]]
   for cycle in xrange(5):
     result = x_[:]
@@ -114,21 +97,6 @@ def binning(unit_cell, miller_indices):
     r = set_bin_selections(d_spacings = d_spacings, min_ref_low = 100)
   return r
 
-#def gs(fo, fc, fm):
-#  def target(fo, fc, fm, x, scale):
-#    fmodel = flex.abs(scale * (fc + x * fm))
-#    diff = (fmodel*fmodel-(fo*fo))
-#    return flex.sum(diff*diff)
-#  k_mask_trial_range = flex.double([i/1000. for i in range(0,1000,10)])
-#  t_best = target(fo=fo, fc=fc, fm=fm, x=0, scale=1)
-#  x_best = 0
-#  for x in k_mask_trial_range:
-#    t = target(fo=fo, fc=fc, fm=fm, x=x, scale=1)
-#    if(t<t_best):
-#      t_best = t
-#      x_best = x
-#  return x_best
-
 class run(object):
   def __init__(self,
                f_obs,
@@ -167,6 +135,7 @@ class run(object):
     self.scale_matrices = None
     self.auto = auto
     self.bin_selections = bin_selections
+    self.k_exp_overall, self.b_exp_overall = None,None
     self.selection_work = miller.array(
       miller_set=self.f_obs,
       data      =~self.r_free_flags.data())
@@ -208,19 +177,7 @@ class run(object):
     for i_sel, sel in enumerate(self.bin_selections):
       core_selected = self.core.select(selection=sel)
       sel_use = self.selection_work.data().select(sel)
-      #
-      #f_obs_data = self.core.f_obs.data()
-      #fodim = flex.mean(core_selected.f_obs.data())
-      #sel_use_  = (f_obs_data < fodim*2)
-      #sel_use_ &= (f_obs_data > fodim/2)
-      #
-      #sel_use_ = self.f_obs.select(selection=sel).data()>0
-      #sel_use &= sel_use_
-      sel_work = sel & self.selection_work.data() #& sel_positive <<<
-      #print sel_use.count(True), sel_work.count(True)
-      #sel_work &= sel_use_
-      #print sel_work.count(True)
-      #print
+      sel_work = sel & self.selection_work.data()
       self.cores_and_selections.append([sel, core_selected, sel_use, sel_work])
       ss = self.ss.select(sel)
       self.ss_bin_values.append([
@@ -228,17 +185,23 @@ class run(object):
         flex.max(ss),
         flex.mean(ss)])
     for cycle in xrange(number_of_cycles):
-      r_start = self.r_factor()
+      r_start = self.r_factor(use_scale=True)
       r_start0 = r_start
+      use_scale_r=False
+      if(cycle==0): use_scale_r=True
       if(verbose):
         print >> log, "  cycle %d:"%cycle
         print >> log, "    r(start): %6.4f"%(r_start)
       # bulk-solvent and overall isotropic scale
       if(self.bulk_solvent):
         if(cycle==0):
+          r_start = self.set_k_isotropic_exp(r_start = r_start,
+            use_scale_r=use_scale_r, verbose=verbose)
           r_start = self.k_mask_grid_search(r_start=r_start)
           if(verbose):
             print >> self.log, "    r(bulk_solvent_grid_search): %6.4f"%r_start
+          r_start = self.set_k_isotropic_exp(r_start = r_start,
+            use_scale_r=use_scale_r, verbose=verbose)
         else:
           r_start = self.bulk_solvent_scaling(r_start = r_start)
       # anisotropic scale
@@ -265,27 +228,66 @@ class run(object):
       print >> log, "-"*80
     self.r_final = self.r_factor()
 
+  def set_k_isotropic_exp(self, r_start,use_scale_r, verbose,
+                          b_lower_limit = -100):
+    arrays = mmtbx.arrays.init(
+      f_calc          = self.core.f_calc,
+      f_masks         = self.core.f_mask(),
+      k_isotropic     = self.core.k_isotropic,
+      k_anisotropic   = self.core.k_anisotropic,
+      k_masks         = self.core.k_mask())
+    sel = self.selection_work.data()
+    rf = scitbx.math.gaussian_fit_1d_analytical(
+      x = flex.sqrt(self.ss).select(sel),
+      y = self.f_obs.data().select(sel),
+      z = abs(arrays.f_model).data().select(sel))
+    if(rf.b < b_lower_limit): return r_start
+    k = rf.a * flex.exp(-self.ss * rf.b)
+    r = self.try_scale(k_isotropic_exp = k, use_scale_r=use_scale_r)
+    if(r<r_start):
+      if(verbose):
+        print >> self.log, "    r(set_k_isotropic_exp): %6.4f"%r
+      self.k_exp_overall, self.b_exp_overall = rf.a, rf.b
+      self.core = self.core.update(k_isotropic_exp = k)
+      r_start = self.r_factor()
+    else:
+      if(verbose):
+        print >> self.log, "    r(set_k_isotropic_exp): %6.4f (rejected)"%r
+    return r_start
+
   def try_scale(self,
+                k_isotropic_exp=None,
                 k_isotropic=None,
                 k_mask=None,
                 k_anisotropic=None,
-                selection=None):
-    if(k_isotropic is None):   k_isotropic   = self.core.k_isotropic
-    if(k_mask is None):        k_mask        = self.core.k_mask()
-    if(k_anisotropic is None): k_anisotropic = self.core.k_anisotropic
+                selection=None,
+                use_scale_r=False):
+    if(k_isotropic_exp is None): k_isotropic_exp = self.core.k_isotropic_exp
+    if(k_isotropic is None):     k_isotropic     = self.core.k_isotropic
+    if(k_mask is None):          k_mask          = self.core.k_mask()
+    if(k_anisotropic is None):   k_anisotropic   = self.core.k_anisotropic
     c = mmtbx.arrays.init(
-      f_calc       = self.core.f_calc,
-      f_masks      = self.core.f_mask(),
-      k_isotropic  = k_isotropic,
-      k_anisotropic= k_anisotropic,
-      k_masks      = k_mask)
+      f_calc          = self.core.f_calc,
+      f_masks         = self.core.f_mask(),
+      k_isotropic_exp = k_isotropic_exp,
+      k_isotropic     = k_isotropic,
+      k_anisotropic   = k_anisotropic,
+      k_masks         = k_mask)
     sel = self.selection_work.data()
-    if(selection is not None): sel = selection & sel
-    return bulk_solvent.r_factor(self.f_obs.data(), c.f_model.data(), sel)
+    if(not use_scale_r):
+      if(selection is not None): sel = selection & sel
+      return bulk_solvent.r_factor(self.f_obs.data(), c.f_model.data(), sel) # XXX
+    else:
+      return cctbx.xray.r_factor(
+        self.f_obs.data().select(sel), c.f_model.data().select(sel)).value()
 
-  def r_factor(self):
-    return bulk_solvent.r_factor(self.f_obs.data(),
-      self.core.f_model.data(), self.selection_work.data(), 1)
+  def r_factor(self, use_scale=False):
+    if(use_scale):
+      return bulk_solvent.r_factor(self.f_obs.data(),
+        self.core.f_model.data(), self.selection_work.data())
+    else:
+      return bulk_solvent.r_factor(self.f_obs.data(),
+        self.core.f_model.data(), self.selection_work.data(), 1)
 
   def _r_high(self):
     return bulk_solvent.r_factor(self.f_obs.data(),
@@ -346,12 +348,13 @@ class run(object):
 
   def k_mask_grid_search(self, r_start):
     k_mask_trial_range = flex.double([i/1000. for i in range(0,650,50)])
-    k_mask      = flex.double(self.f_obs.size(), -1)
-    k_isotropic = flex.double(self.f_obs.size(), -1)
+    k_mask      = flex.double(self.f_obs.size(), 0)
     k_mask_bin = flex.double()
     for i_cas, cas in enumerate(self.cores_and_selections):
       selection, core, selection_use, sel_work = cas
-      scale = self.core.k_anisotropic.select(selection)
+      scale = self.core.k_anisotropic.select(selection) * \
+              self.core.k_isotropic.select(selection) * \
+              self.core.k_isotropic_exp.select(selection)
       f_obs = self.f_obs.select(selection)
       k_mask_bin_, k_isotropic_bin_ = \
           bulk_solvent.k_mask_and_k_overall_grid_search(
@@ -362,23 +365,20 @@ class run(object):
             selection_use)
       k_mask_bin.append(k_mask_bin_)
       k_mask.set_selected(selection, k_mask_bin_)
-      fm =core.k_anisotropic*(core.f_calc.data()+k_mask_bin_*core.f_mask().data())
-      scale_k1 = bulk_solvent.scale(f_obs.data(), fm)
-      k_isotropic.set_selected(selection, scale_k1)
     k_mask_bin_smooth = self.smooth(k_mask_bin)
     k_mask = self.populate_bin_to_individual_k_mask_linear_interpolation(
       k_mask_bin = k_mask_bin_smooth)
-    k_isotropic = self._k_isotropic_as_scale_k1(k_mask = k_mask)
+    k_isotropic = self._k_isotropic_as_scale_k1(r_start = r_start, k_mask = k_mask)
     self.core = self.core.update(k_masks = k_mask, k_isotropic = k_isotropic)
     self.bss_result.k_mask_bin_orig   = k_mask_bin
     self.bss_result.k_mask_bin_smooth = k_mask_bin_smooth
     self.bss_result.k_mask            = k_mask
     self.bss_result.k_isotropic       = k_isotropic
+    r_start = self.r_factor()
     ####
     if(len(self.cores_and_selections)>2):
       x=flex.double()
       y=flex.double()
-      # XXX use much much finer bins !!!
       for i_sel, cas in enumerate(self.cores_and_selections):
         selection, core, selection_use, sel_work = cas
         sel = sel_work
@@ -393,7 +393,8 @@ class run(object):
       r = self.try_scale(k_isotropic = k_isotropic)
       if(r<r_start):
         self.core = self.core.update(k_isotropic = k_isotropic)
-    return self.r_factor()
+        r_start = self.r_factor()
+    return r_start
 
   def apply_overall_scale(self):
     scale_k1 = bulk_solvent.scale(self.f_obs.data(),
@@ -442,39 +443,27 @@ class run(object):
         k_mask_bin_orig_, k_mask_bin_smooth_,k_mask_bin_averaged_,
         k_isotropic_, k_anisotropic_, f_obs_mean_, r_)
 
-  def _k_isotropic_as_scale_k1(self, k_mask):
-    result = flex.double(self.ss.size(), -1)
+  def _k_isotropic_as_scale_k1(self, r_start, k_mask=None):
+    k_isotropic = flex.double(self.ss.size(), -1)
+    if(k_mask is None): k_mask = self.core.k_mask()
     core_data = mmtbx.arrays.init(
-      f_calc        = self.core.f_calc,
-      f_masks       = self.core.f_mask(),
-      k_anisotropic = self.core.k_anisotropic,
-      k_masks       = k_mask).data
+      f_calc          = self.core.f_calc,
+      f_masks         = self.core.f_mask(),
+      k_isotropic_exp = self.core.k_isotropic_exp,
+      k_anisotropic   = self.core.k_anisotropic,
+      k_masks         = k_mask).data
     for i_cas, cas in enumerate(self.cores_and_selections):
       selection, core, selection_use, sel_work = cas
       scale_k1 = bulk_solvent.scale(self.f_obs.data(),
         core_data.f_model, sel_work)
-      result = result.set_selected(selection, scale_k1)
-    assert result.count(-1.) == 0
-    return result
-
-  def accept_scale(self, r_ref, k_isotropic=None, k_mask=None,
-                   k_anisotropic=None, prefix=""):
-    assert [k_isotropic, k_mask, k_anisotropic].count(None)>0
-    r = self.try_scale(
-      k_isotropic   = k_isotropic,
-      k_mask        = k_mask,
-      k_anisotropic = k_anisotropic)
-    better = r<r_ref
-    suffix = ""
-    if(not better): suffix = "(result rejected)"
-    if(self.verbose):
-      print >> self.log, "    %s: %6.4f %s"%(prefix, r, suffix)
-    if(better):
-      self.core = self.core.update(
-        k_isotropic   = k_isotropic,
-        k_mask        = k_mask,
-        k_anisotropic = k_anisotropic)
-    return better
+      k_isotropic = k_isotropic.set_selected(selection, scale_k1)
+    assert k_isotropic.count(-1.) == 0
+    #
+    r = self.try_scale(k_isotropic = k_isotropic, k_mask=k_mask)
+    if(r<=r_start):
+      self.core = self.core.update(k_isotropic = k_isotropic, k_masks=k_mask)
+      r_start = r
+    return k_isotropic
 
   def estimate_scale_k1(self, cutoff=4, width=1, min_reflections=500):
     cutoff = min(cutoff, self.f_obs.d_min()+width)
@@ -484,7 +473,7 @@ class run(object):
     if(sel_high.count(True)>min_reflections):
       core = self.core.select(selection = sel_high)
       f_obs = self.f_obs.select(sel_high)
-      fm = core.k_anisotropic * (core.f_calc.data() +
+      fm = core.k_isotropic_exp * core.k_anisotropic * (core.f_calc.data() +
         core.k_mask() * core.f_mask().data())
       scale_k1 = bulk_solvent.scale(f_obs.data(), fm)
     return scale_k1
@@ -504,7 +493,8 @@ class run(object):
       return result
     for i_cas, cas in enumerate(self.cores_and_selections):
       selection, core, selection_use, sel_work = cas
-      scale = self.core.k_anisotropic.select(selection)*scale_k1
+      scale = self.core.k_anisotropic.select(selection)*scale_k1*\
+        self.core.k_isotropic_exp.select(selection)
       f_obs  = self.f_obs.select(selection).data()
       f_calc = core.f_calc.data()*scale
       f_mask = core.f_mask().data()*scale
@@ -577,7 +567,7 @@ class run(object):
     k_mask_bin_smooth = self.smooth(k_mask_bin)
     k_mask = self.populate_bin_to_individual_k_mask_linear_interpolation(
       k_mask_bin = k_mask_bin_smooth)
-    k_isotropic = self._k_isotropic_as_scale_k1(k_mask = k_mask)
+    k_isotropic = self._k_isotropic_as_scale_k1(r_start=r_start,k_mask = k_mask)
     #
     r = self.try_scale(k_mask = k_mask, k_isotropic = k_isotropic)
     if(r<=r_start or (r>r_start and abs(r-r_start)*100<0.5)): # may be 0.5?
@@ -595,7 +585,7 @@ class run(object):
     return self.r_factor()
 
   def smooth(self, x):
-    result = moving_average2(x = x)
+    result = moving_average(x = x)
     result_ = flex.double(len(result), 0)
     for i, r in enumerate(result):
       d = 1/math.sqrt(self.ss_bin_values[i][1])/2
@@ -720,3 +710,38 @@ class run(object):
       if(self.verbose):
         self.format_scale_matrix()
         print >> self.log, "      r_final  : %6.4f"%r_aniso
+
+  def overall_isotropic_kb_estimate(self):
+    k_total = self.core.k_isotropic * self.core.k_anisotropic * \
+      self.core.k_isotropic_exp
+    r = scitbx.math.gaussian_fit_1d_analytical(x=flex.sqrt(self.ss), y=k_total)
+    return r.a, r.b
+
+  def apply_back_trace_of_overall_exp_scale_matrix(self, xray_structure):
+    result = None
+    def accept(b1,b2,eps=0.5): return abs(b1-b2)<abs((abs(b1)+abs(b2))/2)*eps
+    if([self.k_exp_overall, xray_structure].count(None)==0):
+      assert self.b_exp_overall is not None
+      r = accept(b1=self.b_exp_overall,
+                 b2=self.overall_isotropic_kb_estimate()[1])
+      if(r):
+        bs1 = xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
+        def split(b_trace, xray_structure):
+          b_min = xray_structure.min_u_cart_eigenvalue()*adptbx.u_as_b(1.)
+          b_res = min(0, b_min + b_trace)
+          b_adj = b_trace-b_res
+          xray_structure.shift_us(b_shift = b_adj)
+          assert xray_structure.min_u_cart_eigenvalue()*adptbx.u_as_b(1.) >= 0.0
+          return b_adj, b_res
+        b_adj,b_res=split(b_trace=self.b_exp_overall,xray_structure=xray_structure)
+        k_new = self.k_exp_overall*flex.exp(-self.ss*b_res)
+        result = group_args(
+          xray_structure= xray_structure,
+          k_isotropic = self.core.k_isotropic*k_new,
+          k_mask      = [m*flex.exp(-self.ss*b_adj) for m in self.core.k_masks],
+          k_anisotropic = self.core.k_anisotropic)
+        bs2 = xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
+        diff = bs2-bs1
+        assert approx_equal(flex.min(diff), flex.max(diff))
+        assert approx_equal(flex.max(diff), b_adj)
+    return result
