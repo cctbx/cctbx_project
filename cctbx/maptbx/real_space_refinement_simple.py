@@ -189,7 +189,6 @@ class lbfgs(object):
         O.sites_cart.set_selected(O.selection_variable, O.sites_cart_variable)
       gr_e = O.geometry_restraints_manager.energies_sites(
         sites_cart=O.sites_cart,
-        flags=O.energies_sites_flags,
         compute_gradients=True)
       gr_e_gradients = gr_e.gradients
       if (O.selection_variable is not None):
