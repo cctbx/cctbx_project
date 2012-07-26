@@ -1966,8 +1966,22 @@ def exercise_extinction_correction():
   c_g_n = c_g_n*fc_sq/step
   assert approx_equal(c[1], c_g_n)
 
+def exercise_r_factor():
+  f_obs  = flex.double([1,2,3,4,5,6,7,8,9])
+  f_calc = flex.complex_double([1,2,3,4,5,6,7,8,9])
+  r = xray.r_factor(fo=f_obs, fc=f_calc)
+  assert approx_equal(r.value(), 0)
+  assert approx_equal(r.scale_ls(), 1)
+  assert approx_equal(r.scale_ls(), 1)
+  f_obs  = flex.double([1,2,3,4,5,6,7,8,9])
+  f_calc = flex.complex_double([10,20,30,40,50,60,70,80,90])
+  r = xray.r_factor(fo=f_obs, fc=f_calc)
+  assert approx_equal(r.value(), 0)
+  assert approx_equal(r.scale_ls(), 0.1)
+  assert approx_equal(r.scale_ls(), 0.1)
 
 def run():
+  exercise_r_factor()
   exercise_extinction_correction()
   exercise_twin_components()
   exercise_scatterer_flags()
