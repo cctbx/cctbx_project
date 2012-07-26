@@ -113,10 +113,12 @@ namespace {
            af::shared<std::complex<double> > const&,
            af::shared<double> const&,
            af::shared<double> const&,
+           af::shared<double> const&,
            af::shared<std::complex<double> > const&,
            af::shared<std::complex<double> > const& >(
                                          (arg("f_calc"),
                                           arg("f_bulk"),
+                                          arg("k_isotropic_exp"),
                                           arg("k_isotropic"),
                                           arg("k_anisotropic"),
                                           arg("f_part1"),
