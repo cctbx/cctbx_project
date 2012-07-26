@@ -754,7 +754,8 @@ the percentage of R-free reflections).
 
   def update_all_scales(self, params=None, log=None, show=False,
                         optimize_mask=False, nproc=None, fast=False,
-                        remove_outliers=False,refine_hd_scattering=False):
+                        remove_outliers=False,refine_hd_scattering=False,
+                        apply_back_trace=False):
     self.update_solvent_and_scale(show=show, log=log)
 
   def update_solvent_and_scale(self,

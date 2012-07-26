@@ -1197,7 +1197,6 @@ class manager(manager_mixin):
         r = result.apply_back_trace_of_overall_exp_scale_matrix(
           xray_structure = self.xray_structure)
         if(r is not None):
-          r1 = self.r_work()
           self.update_xray_structure(
             xray_structure = r.xray_structure,
             update_f_calc  = True)
@@ -1206,8 +1205,12 @@ class manager(manager_mixin):
             k_mask             = r.k_mask,
             k_anisotropic      = r.k_anisotropic,
             k_anisotropic_twin = k_anisotropic_twin)
-          r2 = fmodel.r_work()
-          assert approx_equal(r1, r2)
+        else:
+          self.update_core(
+            k_mask        = result.core.k_mask(),
+            k_isotropic   = result.core.k_isotropic*result.core.k_isotropic_exp,
+            k_anisotropic = result.core.k_anisotropic,
+            k_anisotropic_twin = k_anisotropic_twin)
       else:
         self.update_core(
           k_mask        = result.core.k_mask(),

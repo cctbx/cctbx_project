@@ -728,10 +728,9 @@ class run(object):
         bs1 = xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
         def split(b_trace, xray_structure):
           b_min = xray_structure.min_u_cart_eigenvalue()*adptbx.u_as_b(1.)
-          b_res = min(0, b_min + b_trace)
+          b_res = min(0, b_min + b_trace+1.e-6)
           b_adj = b_trace-b_res
           xray_structure.shift_us(b_shift = b_adj)
-          assert xray_structure.min_u_cart_eigenvalue()*adptbx.u_as_b(1.) >= 0.0
           return b_adj, b_res
         b_adj,b_res=split(b_trace=self.b_exp_overall,xray_structure=xray_structure)
         k_new = self.k_exp_overall*flex.exp(-self.ss*b_res)
