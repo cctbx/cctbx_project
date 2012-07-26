@@ -331,6 +331,13 @@ namespace {
     class_<smg::compute<> >("gaussian_fit_1d_analytical")
       .def(init<
            af::const_ref<double> const&,
+           af::const_ref<double> const&,
+           af::const_ref<double> const& >(
+             (arg("x"),
+              arg("y"),
+              arg("z"))))
+      .def(init<
+           af::const_ref<double> const&,
            af::const_ref<double> const& >(
              (arg("x"),
               arg("y"))))
