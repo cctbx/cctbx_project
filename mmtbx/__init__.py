@@ -112,7 +112,7 @@ class fmodels(object):
       self.fmodel_neutron().info().show_all(header = message, out = self.log)
 
   def update_all_scales(self, params = None, optimize_mask = False,
-        force_update_f_mask = False, nproc=1, log=None):
+        force_update_f_mask = False, nproc=1, log=None, apply_back_trace=False):
     if log is None: log = self.log
     fast=True
     if(params.mode=="slow"): fast=False
@@ -120,19 +120,22 @@ class fmodels(object):
     print_statistics.make_header("updating all scales", out = log)
     self.update_xray_structure(update_f_calc = True, update_f_mask = True,
       force_update_f_mask = force_update_f_mask)
+    if([self.fmodel_x, self.fmodel_n].count(None)==0): apply_back_trace=False
     if(self.fmodel_x is not None):
       msg = None
       if(self.fmodel_n is not None):
         msg = "X-ray:"
         print >> log, msg
       self.fmodel_xray().update_all_scales(params = params, fast=fast,
-        log = log, show = True, optimize_mask = optimize_mask, nproc=nproc)
+        log = log, show = True, optimize_mask = optimize_mask, nproc=nproc,
+        apply_back_trace = apply_back_trace)
       self.fmodel_x.show(log = log, suffix = msg)
     if(self.fmodel_n is not None):
       msg = "Neutron:"
       print >> log, msg
       self.fmodel_neutron().update_all_scales(params = params, fast=fast,
-        log = log, show = True, optimize_mask = optimize_mask, nproc=nproc)
+        log = log, show = True, optimize_mask = optimize_mask, nproc=nproc,
+        apply_back_trace = apply_back_trace)
       self.fmodel_n.show(log = log, suffix = msg)
 
   def show_targets(self, log, text=""):
