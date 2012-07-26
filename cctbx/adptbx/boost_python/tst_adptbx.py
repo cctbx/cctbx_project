@@ -258,12 +258,23 @@ def exercise_eigen(n_trials=100):
         diag = [random.random()] * 3
       exercise_eigen_core(diag)
 
+def exercise_random_traceless_symmetry_constrained_b_cart():
+  from cctbx import crystal
+  cs = crystal.symmetry((10,20,30,90,90,90), "P212121")
+  bc = adptbx.random_traceless_symmetry_constrained_b_cart(
+    crystal_symmetry = cs, u_scale=1, u_min=0.1)
+  assert approx_equal(bc[0]+bc[1]+bc[2], 0)
+  assert approx_equal(bc[3],0)
+  assert approx_equal(bc[4],0)
+  assert approx_equal(bc[5],0)
+
 def run():
   exercise_interface()
   exercise_factor_u_star_u_iso()
   exercise_debye_waller()
   exercise_grad_u_transformations()
   exercise_eigen()
+  exercise_random_traceless_symmetry_constrained_b_cart()
   print "OK"
 
 if (__name__ == "__main__"):
