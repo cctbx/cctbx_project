@@ -268,12 +268,13 @@ def run(args, log = sys.stdout):
     pdb_file_names = params.pdb_file # for GUI
   pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=pdb_file_names)
   pdb_combined.report_non_unique(out = log)
-  if(len(pdb_combined.unique_file_names) == 0): return
+  if(len(pdb_combined.unique_file_names) == 0):
+    raise Sorry("PDB file is not provided.")
   print >> log, "-"*79
   print >> log, "\nInput PDB file(s):", " ".join(processed_args.pdb_file_names)
   pdb_inp = iotbx.pdb.input(source_info = None,
     lines = flex.std_string(pdb_combined.raw_records))
-  #
+  # select miller array to use as a set of miller indices for f_model
   miller_array = None
   if(len(processed_args.reflection_files) > 1):
     raise Sorry("Multiple reflection files found at input.")
@@ -300,6 +301,9 @@ def run(args, log = sys.stdout):
         "\n".join(all_labels),"Please select one using 'data_column_label=' keyword."))
     else:
       miller_array.show_comprehensive_summary(f = log, prefix="  ")
+  if(miller_array is not None):
+    miller_array = miller_array.customized_copy(
+      data = flex.double(miller_array.data().size(), 1))
   #
   cryst1 = pdb_inp.crystal_symmetry_from_cryst1()
   if(cryst1 is None and miller_array is not None):
@@ -334,6 +338,8 @@ def run(args, log = sys.stdout):
     ofn = os.path.basename(processed_args.pdb_file_names[0])
     if(len(processed_args.pdb_file_names)==1): ofn = ofn + extension
     else: ofn = ofn + "_et_al" + extension
+  if([miller_array, params.high_resolution].count(None)==2):
+    raise Sorry("Input data file or high_resolution has to be provided.")
   mmtbx.utils.fmodel_from_xray_structure(
     xray_structure = xray_structure,
     f_obs          = miller_array,
