@@ -112,7 +112,7 @@ class density_distribution_per_atom
       for(std::size_t i=0; i<sites_frac_peaks.size(); i+=1) {
         FloatType dist_min = 999.;
         FloatType map_at_closest_site=0.0;
-        if(density_values[i] != 0.0) {
+        //if(density_values[i] != 0.0) {
           for(std::size_t j=0; j<sites_frac_atoms.size(); j+=1) {
             FloatType dist = unit_cell.distance(
               cctbx::fractional<>(sites_frac_atoms[j]),
@@ -122,11 +122,11 @@ class density_distribution_per_atom
               map_at_closest_site = density_values[i];
             }
           }
-          if(dist_min <= 10.0) {
+          if(dist_min <= 8.0) {
             distances_.push_back(dist_min);
             map_values_.push_back(map_at_closest_site);
           }
-        }
+       // }
       }
     }
 
