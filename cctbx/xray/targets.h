@@ -860,8 +860,9 @@ namespace cctbx { namespace xray { namespace targets {
         }
         scale_ls_ = (denum == 0 ? 0 : num/denum);
         FloatType scale_ = scale_ls_ - scale_ls_/offset_factor;
-        FloatType r_best = 1.e+9;
+        FloatType r_best = compute_r_factor(fo, fc, scale_ls_);
         FloatType step = scale_ls_/step_factor;
+        scale_r_ = scale_ls_;
         while(scale_ <= scale_ls_ + scale_ls_/offset_factor) {
           FloatType r_trial = compute_r_factor(fo, fc, scale_);
           if(r_trial < r_best) {
