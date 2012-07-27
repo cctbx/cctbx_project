@@ -261,9 +261,3 @@ class HistogramFrame (plots.plot_frame) :
 
   def show_histogram (self, *args, **kwds) :
     self.plot_panel.show_histogram(*args, **kwds)
-
-if (__name__ == "__main__") :
-  app = wx.App(0)
-  frame = ConfigFrame(None, -1, "PDB statistics from POLYGON database")
-  frame.Show()
-  app.MainLoop()
