@@ -1950,6 +1950,7 @@ wxtbx/command_line/b_plot.py -text
 wxtbx/command_line/inspect_r_free_flags.py -text
 wxtbx/command_line/loggraph.py -text
 wxtbx/command_line/pdb_editor.py -text
+wxtbx/command_line/pdb_statistics.py -text
 wxtbx/command_line/show_file_info.py -text
 wxtbx/custom_restraints.py -text
 wxtbx/errors.py -text
