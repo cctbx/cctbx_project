@@ -328,7 +328,8 @@ class reference_model(object):
                       reference_chain = ref_h,
                       moving_chain = mod_h)
         except RuntimeError, e:
-          if str(e) != "can't make graph for first structure":
+          if (str(e) != "can't make graph for first structure" and \
+              str(e) != "secondary structure does not match"):
             raise e
           else:
             print >> log, "SSM alignment failed..."
