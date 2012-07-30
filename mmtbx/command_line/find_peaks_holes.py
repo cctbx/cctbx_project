@@ -66,35 +66,7 @@ class peaks_holes_container (object) :
     self.map_file = None
 
   def show_summary (self, out=sys.stdout) :
-    print >> out, ""
-    print >> out, "SUMMARY OF MAP PEAKS:"
-    cutoffs = [self.map_cutoff, self.map_cutoff + 3.0, self.map_cutoff + 6.0]
-    for cutoff in cutoffs :
-      n_peaks = (self.peaks.heights > cutoff).count(True)
-      print >> out, "  mFo-DFc >  %-4g   : %6d" % (cutoff, n_peaks)
-    if (len(self.peaks.heights) > 0) :
-      peak_max = flex.max(self.peaks.heights)
-    else :
-      peak_max = None
-    print >> out, "  mFo-DFc max       : %s" % format_value("%6.2f", peak_max)
-    for cutoff in cutoffs :
-      n_holes = (self.holes.heights < -cutoff).count(True)
-      print >> out, "  mFo-DFc < -%-4g   : %6d" % (cutoff, n_holes)
-    if (len(self.holes.heights) > 0) :
-      hole_max = flex.min(self.holes.heights)
-    else :
-      hole_max = None
-    print >> out, "  mFo-DFc min       : %s" % format_value("%6.2f", hole_max)
-    if (self.anom_peaks is not None) :
-      print >> out, "  anomalous > %-4g : %6d" % (self.anom_map_cutoff,
-        len(self.anom_peaks.heights))
-    if (self.water_peaks is not None) :
-      print >> out, "  suspicious H2O (mFo-DFC > %g) : %6d" % (self.map_cutoff,
-        len(self.water_peaks))
-    if (self.water_anom_peaks is not None) :
-      print >> out, "  anomalous H2O (anomalous > %g): %6d" % (self.map_cutoff,
-        len(self.water_anom_peaks))
-    print >> out, ""
+    self.get_summary().show(out=out)
 
   def get_summary (self) :
     """
@@ -108,18 +80,25 @@ class peaks_holes_container (object) :
       n_water_peaks = len(self.water_peaks)
     if (self.water_anom_peaks is not None) :
       n_water_anom_peaks = len(self.water_anom_peaks)
-    return group_args(
+    hole_max = peak_max = None
+    if (len(self.peaks.heights) > 0) :
+      peak_max = flex.max(self.peaks.heights)
+    if (len(self.holes.heights) > 0) :
+      hole_max = flex.min(self.holes.heights)
+    return summary(
       n_peaks_1=(self.peaks.heights > self.map_cutoff).count(True),
       n_peaks_2=(self.peaks.heights > self.map_cutoff + 3).count(True),
       n_peaks_3=(self.peaks.heights > self.map_cutoff + 6).count(True),
       n_holes_1=(self.holes.heights < -self.map_cutoff).count(True),
       n_holes_2=(self.holes.heights < -self.map_cutoff - 3).count(True),
       n_holes_3=(self.holes.heights < -self.map_cutoff - 6).count(True),
-      peak_max=flex.max(self.peaks.heights),
-      hole_max=flex.min(self.holes.heights),
+      peak_max=peak_max,
+      hole_max=hole_max,
       n_anom_peaks=n_anom_peaks,
       n_water_peaks=n_water_peaks,
-      n_water_anom_peaks=n_water_anom_peaks)
+      n_water_anom_peaks=n_water_anom_peaks,
+      map_cutoff=self.map_cutoff,
+      anom_map_cutoff=self.anom_map_cutoff)
 
   def n_peaks_above_cutoff (self, cutoff) :
     assert (cutoff > 0)
@@ -218,6 +197,32 @@ class peaks_holes_container (object) :
     if (self.map_file is not None) :
       output_files.append((self.map_file, "Map coefficients"))
     return output_files
+
+class summary (group_args) :
+  def show (self, out=sys.stdout) :
+    print >> out, ""
+    print >> out, "SUMMARY OF MAP PEAKS:"
+    cutoffs = [self.map_cutoff, self.map_cutoff + 3.0, self.map_cutoff + 6.0]
+    peaks = [ self.n_peaks_1, self.n_peaks_2, self.n_peaks_3 ]
+    for cutoff, n_peaks in zip(cutoffs, peaks) :
+      print >> out, "  mFo-DFc >  %-4g   : %6d" % (cutoff, n_peaks)
+    print >> out, "  mFo-DFc max       : %s" % format_value("%6.2f",
+      self.peak_max)
+    holes = [ self.n_holes_1, self.n_holes_2, self.n_holes_3 ]
+    for cutoff, n_holes in zip(cutoffs, holes) :
+      print >> out, "  mFo-DFc < -%-4g   : %6d" % (cutoff, n_holes)
+    print >> out, "  mFo-DFc min       : %s" % format_value("%6.2f",
+      self.hole_max)
+    if (self.n_anom_peaks is not None) :
+      print >> out, "  anomalous > %-4g : %6d" % (self.anom_map_cutoff,
+        self.n_anom_peaks)
+    if (self.n_water_peaks is not None) :
+      print >> out, "  suspicious H2O (mFo-DFC > %g) : %6d" % (self.map_cutoff,
+        self.n_water_peaks)
+    if (self.n_water_anom_peaks is not None) :
+      print >> out, "  anomalous H2O (anomalous > %g): %6d" % (self.map_cutoff,
+        self.n_water_anom_peaks)
+    print >> out, ""
 
 class water_peak (object) :
   def __init__ (self, id_str, xyz, peak_height, map_type="mFo-DFc") :
