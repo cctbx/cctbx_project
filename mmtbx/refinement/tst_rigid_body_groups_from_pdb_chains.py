@@ -1,4 +1,3 @@
-from scitbx.array_family import flex
 import iotbx.pdb
 from libtbx.test_utils import approx_equal
 import mmtbx.refinement.rigid_body
