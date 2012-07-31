@@ -174,7 +174,13 @@ class _XrayFrameThread(threading.Thread):
         pass
 
 
-def _xray_frame_process(pipe, hold=False, wait=None):
+  def stop(self):
+    # XXX It may be safer to post an event than to call Close()
+    # directly.  See also mod_daq_status.
+    self._frame.Close()
+
+
+def _xray_frame_process(pipe, hold=False, linger=False, wait=None):
   """The _xray_frame_process() function starts the viewer in a
   separate thread.  It then continuously reads data from @p pipe and
   dispatches update events to the viewer.  The function returns when
@@ -189,10 +195,16 @@ def _xray_frame_process(pipe, hold=False, wait=None):
   thread = _XrayFrameThread(hold)
   send_data = thread.send_data
 
-  while (True):
+  while True:
     payload = pipe.recv()
-    if (payload is None or not thread.isAlive()):
-      break
+    if payload is None:
+      if linger:
+        thread.join()
+      else:
+        thread.stop()
+      return
+    if not thread.isAlive():
+      return
     if wait is not None:
       time.sleep(wait)
     send_data(rstbx.viewer.image(payload[0]), payload[1])
@@ -245,13 +257,14 @@ class mod_view(common_mode.common_mode_correction):
       self.ncollate = self.nupdate
       self.logger.warn("n_collate capped to %d" % self.nupdate)
 
-    wait = cspad_tbx.getOptFloat(wait)
     hold = cspad_tbx.getOptBool(hold)
+    linger = False
+    wait = cspad_tbx.getOptFloat(wait)
     # Create a unidirectional pipe and hand its read end to the viewer
     # process.  The write end is kept for sending updates.
     pipe_recv, self._pipe = multiprocessing.Pipe(False)
     self._proc = multiprocessing.Process(
-      target=_xray_frame_process, args=(pipe_recv, hold, wait))
+      target=_xray_frame_process, args=(pipe_recv, hold, linger, wait))
     self._proc.start()
 
 
@@ -271,7 +284,7 @@ class mod_view(common_mode.common_mode_correction):
     if (not self._proc.is_alive()):
       sys.exit(self._proc.exitcode)
 
-    # Early exit if the next update to the viewer is more than
+    # Early return if the next update to the viewer is more than
     # self.ncollate shots away.  XXX Since the common_mode.event()
     # function does quite a bit of processing, the savings are
     # probably not so big.
