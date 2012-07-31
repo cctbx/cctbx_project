@@ -480,14 +480,15 @@ class HKLViewFrame (wx.Frame) :
       unit_cell=self.miller_array.unit_cell())
     array = self.miller_array.expand_to_p1().customized_copy(
       crystal_symmetry=symm)
-    array = array.merge_equivalents().array()
+    array = array.merge_equivalents().array().set_info(self.miller_array.info())
     self.viewer.set_miller_array(array, zoom=False)
     self.viewer.Refresh()
 
   def delete_miller_index (self, hkl) :
     if (self.miller_array is None) :
       raise Sorry("No data loaded!")
-    self.miller_array = self.miller_array.delete_index(hkl)
+    info = self.miller_array.info()
+    self.miller_array = self.miller_array.delete_index(hkl).set_info(info)
     self.viewer.set_miller_array(self.miller_array, zoom=True)
     self.viewer.Refresh()
 
