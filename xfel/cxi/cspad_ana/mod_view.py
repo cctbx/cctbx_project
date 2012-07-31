@@ -113,8 +113,10 @@ class _XrayFrameThread(threading.Thread):
     for the viewer's "Next"-button.  It increments the semaphore by
     one.
     """
+    from wx import ID_FORWARD
 
     self._next_semaphore.release()
+    event.GetEventObject().EnableTool(ID_FORWARD, False)
 
 
   def _start_local(self):
@@ -158,7 +160,7 @@ class _XrayFrameThread(threading.Thread):
     @p img and @p title by sending it an ExternalUpdateEvent()."""
 
     from rstbx.viewer.frame import ExternalUpdateEvent
-    from wx import PyDeadObjectError
+    from wx import ID_FORWARD
 
     event = ExternalUpdateEvent()
     event.img = img
@@ -168,10 +170,7 @@ class _XrayFrameThread(threading.Thread):
       # counter is larger than zero.
       self._next_semaphore.acquire()
     if (self.isAlive()):
-      try:
-        self._frame.AddPendingEvent(event)
-      except PyDeadObjectError:
-        pass
+      self._frame.AddPendingEvent(event)
 
 
   def stop(self):
@@ -189,14 +188,23 @@ def _xray_frame_process(pipe, hold=False, linger=False, wait=None):
   """
 
   import rstbx.viewer
+  from wx import ID_BACKWARD, ID_FORWARD, PyDeadObjectError
 
   # Start the viewer's main loop in its own thread, and get the
   # interface for sending updates to the frame.
   thread = _XrayFrameThread(hold)
   send_data = thread.send_data
 
+  # XXX Accessing thread._frame breaks privacy.  Rename to process()
+  # and make it a publicly accessible static method instead
+  # [http://docs.python.org/library/functions.html#staticmethod]?
+  thread._frame.toolbar.EnableTool(ID_BACKWARD, False)
+  thread._frame.toolbar.EnableTool(ID_FORWARD, False)
+
+  pipe.send(1)
   while True:
     payload = pipe.recv()
+    pipe.send(1)
     if payload is None:
       if linger:
         thread.join()
@@ -204,10 +212,17 @@ def _xray_frame_process(pipe, hold=False, linger=False, wait=None):
         thread.stop()
       return
     if not thread.isAlive():
+      pipe.recv()
       return
     if wait is not None:
       time.sleep(wait)
-    send_data(rstbx.viewer.image(payload[0]), payload[1])
+
+    try:
+      send_data(rstbx.viewer.image(payload[0]), payload[1])
+    except PyDeadObjectError:
+      pass
+    if hold:
+      thread._frame.toolbar.EnableTool(ID_FORWARD, True)
 
 
 class mod_view(common_mode.common_mode_correction):
@@ -262,7 +277,7 @@ class mod_view(common_mode.common_mode_correction):
     wait = cspad_tbx.getOptFloat(wait)
     # Create a unidirectional pipe and hand its read end to the viewer
     # process.  The write end is kept for sending updates.
-    pipe_recv, self._pipe = multiprocessing.Pipe(False)
+    pipe_recv, self._pipe = multiprocessing.Pipe()
     self._proc = multiprocessing.Process(
       target=_xray_frame_process, args=(pipe_recv, hold, linger, wait))
     self._proc.start()
@@ -282,6 +297,7 @@ class mod_view(common_mode.common_mode_correction):
       return
 
     if (not self._proc.is_alive()):
+      # XXX Prevents pyana from printing its pyana's status line!
       sys.exit(self._proc.exitcode)
 
     # Early return if the next update to the viewer is more than
@@ -315,11 +331,18 @@ class mod_view(common_mode.common_mode_correction):
     # Update the viewer to display the current average image, and
     # start a new collation, if appropriate.
     if (next_update == 0):
-      from time import localtime, strftime
+      from time import clock, localtime, strftime
 
       time_str = strftime("%H:%M:%S", localtime(evt.getTime().seconds()))
       title = "r%04d@%s: average of %d last images" \
           % (evt.run(), time_str, self.nvalid)
+
+      # Wait for "clear to send".
+      t = clock() + 2
+      while not self._pipe.poll():
+        if clock() >= t:
+          return
+      self._pipe.recv()
 
       self._pipe.send((dict(
           BEAM_CENTER = self.beam_center,
