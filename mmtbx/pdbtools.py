@@ -154,6 +154,9 @@ clear_seg_id = False
   .short_caption = Clear segID field
   .help = Erases the segID field.
   .style = noauto
+convert_semet_to_met = False
+  .type = bool
+  .short_caption = Convert SeMet residues to Met
 rename_chain_id
   .help = Rename chains
   .short_caption = Rename chain ID
@@ -831,6 +834,17 @@ def run(args, command_name="phenix.pdbtools"):
   elif (params.modify.clear_seg_id) :
     for atom in pdb_hierarchy.atoms() :
       atom.segid = "    "
+### convert MSE to MET
+  if (params.modify.convert_semet_to_met) :
+    scatterers = xray_structure.scatterers()
+    for i_seq, atom in enumerate(pdb_hierarchy.atoms()) :
+      if (atom.name == " SE ") :
+        atom_group = atom.parent()
+        atom_group.resname = "MET"
+        atom.name = " SD "
+        atom.element = " S"
+        scatterer = scatterers[i_seq]
+        scatterer.scattering_type = 'S'
 ### set atomic charge
   if (params.modify.set_charge.charge_selection is not None) :
     set_atomic_charge(

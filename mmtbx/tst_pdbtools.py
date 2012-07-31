@@ -587,6 +587,30 @@ def exercise_remove_first_n_atoms_fraction(pdb_dir, verbose):
     file_name="enk_gbr.pdb_modified.pdb").xray_structure_simple().scatterers().size()
   assert n_atoms_final*1./n_atoms_start == 0.4
 
+def exercise_convert_semet_to_met () :
+  open("tmp_semet.pdb", "w").write("""\
+ATOM    507  N   MSE A 106      53.211  45.681  34.889  1.00  1.05           N
+ATOM    508  CA  MSE A 106      51.827  45.381  35.207  1.00  1.35           C
+ATOM    509  C   MSE A 106      50.937  45.462  33.968  1.00  3.57           C
+ATOM    510  O   MSE A 106      49.956  44.737  33.860  1.00  4.67           O
+ATOM    511  CB  MSE A 106      51.318  46.310  36.304  1.00  1.07           C
+ATOM    512  CG  MSE A 106      49.833  46.180  36.603  1.00  1.06           C
+ATOM    513  SE  MSE A 106      49.249  47.284  38.129  0.82 10.02          Se
+ATOM    514  CE  MSE A 106      50.851  47.140  39.206  1.00  1.19           C
+""")
+  cmd = "phenix.pdbtools tmp_semet.pdb convert_semet_to_met=True"
+  run_command(command=cmd, verbose=False)
+  pdb_inp = iotbx.pdb.hierarchy.input(file_name="tmp_semet.pdb_modified.pdb")
+  found_sd = False
+  for atom in pdb_inp.hierarchy.atoms() :
+    labels = atom.fetch_labels()
+    assert (labels.resname == "MET")
+    if (atom.name == " SD ") :
+      found_sd = True
+      assert (atom.element == ' S')
+      break
+  assert (found_sd)
+
 def exercise(args):
   if ("--show-everything" in args):
     verbose = 2
@@ -612,6 +636,7 @@ def exercise(args):
   exercise_remove_first_n_atoms_fraction(**eargs)
   exercise_set_seg_id()
   exercise_set_charge()
+  exercise_convert_semet_to_met()
   print "OK"
 
 if (__name__ == "__main__"):
