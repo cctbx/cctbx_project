@@ -22,9 +22,6 @@ class ExternalUpdateEvent (wx.PyCommandEvent) :
     self.title = None
 
 class XrayFrame (wx.Frame) :
-  # Maximum number of entries in the cache.
-  CACHE_SIZE = 16
-
   # Maximum number of entries in the chooser.
   CHOOSER_SIZE = 1024
 
@@ -40,16 +37,7 @@ class XrayFrame (wx.Frame) :
     self.settings_frame = None
     self.zoom_frame = None
     self.plot_frame = None
-
-    # Currently displayed image.  XXX This is always the first image
-    # from the cache!
     self._img = None
-
-    # Ordered list of (key, image) tuples, most recently viewed image
-    # first.  The key is either an ASCII-encoded absolute path string
-    # or a timestamp.
-    self._img_cache = []
-
     self._distl = None
     self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS|wx.TB_TEXT)
     self.setup_toolbar()
@@ -149,34 +137,19 @@ class XrayFrame (wx.Frame) :
 
   def load_image (self, file_name_or_data) :
     """The load_image() function displays the image from @p
-    file_name_or_data.  The cache and the chooser are updated
-    appropriately.
+    file_name_or_data.  The chooser is updated appropriately.
     """
 
-    # If the image is cached, retrieve it and move it to the head of
-    # the cache.  Otherwise, prepend the image to the cache, pruning
-    # the last entry if necessary.  XXX This may lead to stale entries
-    # for dictionary images in the chooser.
-    img = None
     key = self.get_key(file_name_or_data)
-    for i in xrange(len(self._img_cache)) :
-      if (key == self._img_cache[i][0]) :
-        img = self._img_cache.pop(i)[1]
-        self._img_cache.insert(0, (key, img))
-    if (img is None) :
-      if (len(self._img_cache) >= self.CACHE_SIZE) :
-        self._img_cache.pop()
-      if (type(file_name_or_data) is dict) :
-        img = rstbx.viewer.image(file_name_or_data)
-      else :
-        img = rstbx.viewer.image(key)
-      self._img_cache.insert(0, (key, img))
+    if (type(file_name_or_data) is dict) :
+      self._img = rstbx.viewer.image(file_name_or_data)
+    else :
+      self._img = rstbx.viewer.image(key)
 
     # Update the selection in the chooser.
     i = self.add_file_name_or_data(file_name_or_data)
     self.image_chooser.SetSelection(i)
 
-    self._img = img # XXX
     self.viewer.set_image(self._img)
     self.settings_frame.set_image(self._img)
     self.SetTitle(key)
