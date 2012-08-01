@@ -8,7 +8,7 @@ from cctbx import maptbx
 import iotbx.phil
 from iotbx import crystal_symmetry_from_any
 from cctbx import adptbx
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, null_out
 import os, math
 from cctbx import miller
 from mmtbx import map_tools
@@ -1155,3 +1155,65 @@ def map_statistics_for_fragment (fragment, **kwds) :
   i_seqs = atoms.extract_i_seq()
   assert (not i_seqs.all_eq(0))
   return map_statistics_for_atom_selection(i_seqs, **kwds)
+
+def find_suspicious_residues (
+    fmodel,
+    pdb_hierarchy,
+    hetatms_only=True,
+    skip_single_atoms=True,
+    skip_alt_confs=True,
+    min_acceptable_cc=0.8,
+    min_acceptable_2fofc=1.0,
+    max_frac_atoms_below_min=0.5,
+    log=None) :
+  if (log is None) : log = null_out()
+  xray_structure = fmodel.xray_structure
+  assert (len(pdb_hierarchy.atoms()) == xray_structure.scatterers().size())
+  map_coeffs1 = fmodel.electron_density_map().map_coefficients(
+    map_type="2mFo-DFc",
+    fill_missing=False)
+  map1 = map_coeffs1.fft_map(
+    resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
+  map_coeffs2 = fmodel.electron_density_map().map_coefficients(
+    map_type="Fc",
+    fill_missing=False)
+  map2 = map_coeffs2.fft_map(
+    resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
+  unit_cell = xray_structure.unit_cell()
+  outliers = []
+  for chain in pdb_hierarchy.models()[0].chains() :
+    for residue_group in chain.residue_groups() :
+      atom_groups = residue_group.atom_groups()
+      if (len(atom_groups) > 1) and (skip_alt_confs) :
+        continue
+      for atom_group in residue_group.atom_groups() :
+        atoms = atom_group.atoms()
+        assert (len(atoms) > 0)
+        if (len(atoms) == 1) and (skip_single_atoms) :
+          continue
+        if (hetatms_only) :
+          if (not atoms[0].hetero) :
+            continue
+        map_stats = map_statistics_for_fragment(
+          fragment=atom_group,
+          map1=map1,
+          map2=map2,
+          xray_structure=fmodel.xray_structure)
+        sites = atoms.extract_xyz()
+        n_below_min = 0
+        for site in sites :
+          site_frac = unit_cell.fractionalize(site)
+          map_value = map1.tricubic_interpolation(site_frac)
+          if (map_value < min_acceptable_2fofc) :
+            n_below_min += 1
+        frac_below_min = n_below_min / len(sites)
+        if ((map_stats.cc < min_acceptable_cc) or
+            (frac_below_min < max_frac_atoms_below_min) or
+            (map_stats.map1_mean < min_acceptable_2fofc)) :
+          residue_info = "%1s%3s%2s%5s" % (atom_group.altloc,
+            atom_group.resname, chain.id, residue_group.resid())
+          xyz_mean = sites.mean()
+          outliers.append((residue_info, xyz_mean))
+          print >> log, "  suspicious residue '%s': %.2f %.2f %.2f" % \
+            (residue_info, map_stats.cc, frac_below_min, map_stats.map1_mean)
+  return outliers
