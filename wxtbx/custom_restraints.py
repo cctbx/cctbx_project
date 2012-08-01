@@ -466,7 +466,7 @@ class AngleRestraintsList (RestraintsListBase) :
       angle.atom_selection_1 = selections[0]
       angle.atom_selection_2 = selections[1]
       angle.atom_selection_3 = selections[2]
-      sele_text = "; ".join(selections)
+      sele_text = "; ".join([ str(s) for s in selections ])
       self.SetStringItem(item, 0, sele_text)
 
   def OnSetAngle (self, event) :
