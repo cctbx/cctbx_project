@@ -41,6 +41,30 @@ def build_boost_thread():
 
 build_boost_thread()
 
+def determine_boost_version():
+  test_code = """\
+#include <iostream>
+#include <boost/version.hpp>
+int main()
+{
+  std::cout << BOOST_VERSION << std::endl;
+  return 0;
+}
+"""
+  env = env_base.Clone(
+    CPPPATH=[env_etc.boost_include],
+    CFLAGS=env_etc.cflags_base,
+    CCFLAGS=env_etc.ccflags_base,
+    CXXFLAGS=env_etc.cxxflags_base)
+  conf = env.Configure()
+  flag, output = conf.TryRun(test_code, extension='.cpp')
+  conf.Finish()
+  if (not flag): return -1
+  return int(output)
+
+env_etc.boost_version = determine_boost_version()
+print "BOOST_VERSION: %i" %env_etc.boost_version
+
 if (not env_etc.no_boost_python):
   env_etc.cxxflags_bpl_defines_base = [
     "-DBOOST_PYTHON_MAX_BASES=2"]
