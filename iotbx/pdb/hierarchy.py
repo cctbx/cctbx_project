@@ -1309,7 +1309,7 @@ def expand_ncs (
 def substitute_atom_group (
     current_group,
     new_group,
-    substitute_cbeta=True,
+    backbone_only=True,
     exclude_hydrogens=False,
     log=None) :
   """
@@ -1319,21 +1319,26 @@ def substitute_atom_group (
   if (log is None) : log = null_out()
   if (new_group.resname == "GLY") :
     substitute_cbeta = False
+  from iotbx.pdb import common_residue_names_get_class
   from scitbx.math import superpose
-  sites_fixed = flex.vec3_double()
-  sites_moving = flex.vec3_double()
   new_atoms = new_group.detached_copy().atoms()
-  for atom in current_group.atoms() :
-    if ((atom.name in [" CA ", " C  ", " N  "]) or
-        ((atom.name == " CB ") and (not substitute_cbeta))) :
-      sites_fixed.append(atom.xyz)
-      for other in new_atoms :
-        if (other.name == atom.name) :
-          sites_moving.append(other.xyz)
-          break
-      else :
-        raise Sorry("Missing atom '%s' in new residue.  Please note that "+
-          "the substitute_atom_group method only works for amino acids.")
+  selection_fixed = flex.size_t()
+  selection_moving = flex.size_t()
+  res_class = common_residue_names_get_class(current_group.resname)
+  # TODO nucleic acids?
+  backbone_atoms = [" CA ", " C  ", " O  ", " N  "]
+  for i_seq, atom in enumerate(current_group.atoms()) :
+    if (atom.element == " H") and (exclude_hydrogens) :
+      continue
+    if (res_class == "common_amino_acid") and (backbone_only) :
+      if (not atom.name in backbone_atoms) :
+        continue
+    for j_seq, other_atom in enumerate(new_group.atoms()) :
+      if (atom.name == other_atom.name) :
+        selection_fixed.append(i_seq)
+        selection_moving.append(j_seq)
+  sites_fixed = current_group.atoms().extract_xyz().select(selection_fixed)
+  sites_moving = new_atoms.extract_xyz().select(selection_moving)
   assert (len(sites_fixed) == len(sites_moving))
   lsq_fit = superpose.least_squares_fit(
     reference_sites=sites_fixed,
@@ -1341,9 +1346,9 @@ def substitute_atom_group (
   sites_new = new_atoms.extract_xyz()
   sites_new = lsq_fit.r.elems * sites_new + lsq_fit.t.elems
   new_atoms.set_xyz(sites_new)
-  keep_atoms = [" CA ", " C  ", " N  ", " H  ", " O  "]
-  if (not substitute_cbeta) :
-    keep_atoms.append(" CB ")
+  keep_atoms = []
+  if (backbone_only) and (res_class == "common_amino_acid") :
+    keep_atoms = backbone_atoms
   for atom in current_group.atoms() :
     if (not atom.name in keep_atoms) :
       current_group.remove_atom(atom)
