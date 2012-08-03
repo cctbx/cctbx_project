@@ -232,7 +232,8 @@ class sample_operators (object) :
       sites_mean = sites_new.mean()
       for other in other_ligands :
         sites_other_mean = other.atoms().extract_xyz().mean()
-        if (abs(sites_other_mean - sites_new.mean()) < params.min_dist_center) :
+        dxyz = distance(sites_other_mean, sites_new.mean())
+        if (dxyz < params.min_dist_center) :
           print >> log, "  operator %d specifies an existing ligand" % (j+1)
           continue
       atoms.set_xyz(sites_new)
