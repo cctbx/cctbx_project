@@ -305,6 +305,10 @@ class miller_array_builder(crystal_symmetry_builder):
 
   def __init__(self, cif_block, base_array_info=None):
     crystal_symmetry_builder.__init__(self, cif_block)
+    if base_array_info is not None:
+      self.crystal_symmetry = self.crystal_symmetry.join_symmetry(
+        other_symmetry=base_array_info.crystal_symmetry_from_file,
+      force=True)
     self._arrays = OrderedDict()
     if base_array_info is None:
       base_array_info = miller.array_info(source_type="cif")

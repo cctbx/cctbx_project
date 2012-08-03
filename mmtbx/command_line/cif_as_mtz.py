@@ -224,7 +224,11 @@ def extract(file_name,
             incompatible_flags_to_work_set=False,
             ignore_bad_sigmas=False):
   import iotbx.cif
-  all_miller_arrays = iotbx.cif.reader(file_path=file_name).build_miller_arrays()
+  from cctbx import miller
+  base_array_info = miller.array_info(
+    crystal_symmetry_from_file=crystal_symmetry)
+  all_miller_arrays = iotbx.cif.reader(file_path=file_name).build_miller_arrays(
+    base_array_info=base_array_info)
   if (len(all_miller_arrays) == 0) :
     raise Sorry("No data arrays were found in this CIF file.  Please make "+
       "sure that the file contains reflection data, rather than the refined "+
