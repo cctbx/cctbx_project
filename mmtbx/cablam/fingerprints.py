@@ -24,10 +24,10 @@ class ssfingerprint():
     #adds to residue.motifs True or False, keyed by the string name of the fingerprint
     currentres = startres
     for memberres in self.members:
-      if debug: print ' member '
+      if debug: print ' member', self.members.index(memberres)
       if currentres: #should catch a stray None
         if currentres == 'Done': break
-        if memberres.checkthis(currentres, foundres):
+        if memberres.checkthis(currentres, foundres, debug):
           currentres = memberres.do_move(currentres,foundres)
         else:
           if debug: print 'checkthis returned false'
@@ -80,19 +80,23 @@ class member_residue():
       return True
 
   #{{{ Check for correct index
-  def indexcheck(self, residue, index, foundres):
+  def indexcheck(self, residue, index, foundres, debug=False):
     #Four cases:
     #1 no index, no res = pass
     #2 correctly paired index and res = pass
     #3 unique index w/wrong res = fail
     if index and index in foundres.keys():
-      if foundres[index] != residue: return False
+      if foundres[index] != residue:
+        if debug: print 'index FAIL: index', index, 'matches wrong residue'
+        return False
       else: pass #okay
     else: pass
     #4 nonunique res w/wrong index
     if index and residue in foundres.values():
       for key in foundres:
-        if foundres[key] == residue and key != index: return False
+        if foundres[key] == residue and key != index:
+          if debug: print 'index FAIL: residue matches wrong index: is', key,'should be', index
+          return False
         else: pass
     else:
       pass
@@ -101,27 +105,36 @@ class member_residue():
 
   #{{{ checkthis - all checks for current residue
   def checkthis(self, srcres, foundres, debug=False):
-    if not self.indexcheck(srcres, self.index, foundres): return False
+    if not self.indexcheck(srcres, self.index, foundres, debug):
+      if debug: print '  index FAIL', self.index
+      return False
     if debug: print '  index pass '
 
     if self.resaccept or self.resbanned:
-      if not resnamecheck(srcres): return False
+      if not resnamecheck(srcres):
+        if debug: print '  resname FAIL'
+        return False
       else: pass
     else: pass
 
+    #{{{
     if self.Obonding:
       if debug: print '  try Obond '
       #verify Obonding
       if len(self.Obonding) == 1:
         bondjump = self.Obonding[0]
         if bondjump == 'any': #0 or 1 bonds, no preference which
-          if len(srcres.probeO) > 1: return False
+          if len(srcres.probeO) > 1:
+            if debug: print '  FAIL: Wrong bond count', len(srcres.probeO), '> 1'
+            return False
           else: pass
         elif bondjump == "!":
-          if len(srcres.probeO) > 0: return False
+          if len(srcres.probeO) > 0:
+            if debug: print '  FAIL: Wrong bond count', len(srcres.probeO), '> 0'
+            return False
           else: pass
         elif len(srcres.probeO) != 1:
-          if debug: print '  FAIL: Wrong bond count', len(srcres.probeO)
+          if debug: print '  FAIL: Wrong bond count', len(srcres.probeO), '!= 1'
           return False
         else:
           #single trgres confirmed, procede with testing
@@ -136,7 +149,9 @@ class member_residue():
             foundres[bondjump] = trgres #bondjump *is* the trgres index, as specified in the fingerprint definition
             pass #I'm using 'pass' to help me keep tabs on where bits of logic end
           else: #(if bondjump is an int)
-            if self.find_bond_jump(srcres,trgres) != bondjump: return False
+            if self.find_bond_jump(srcres,trgres) != bondjump:
+              if debug: print '  FAIL: Wrong bond jump', self.find_bond_jump(srcres,trgres), 'should be', bondjump
+              return False
             else:
               if not self.indexcheck(srcres, self.index, foundres): return False #Redundant?
               else:
@@ -144,7 +159,9 @@ class member_residue():
                 #Don't know the index for trgres
                 pass
       elif len(self.Obonding) == 2:
-        if len(srcres.probeO) > 2: return False
+        if len(srcres.probeO) > 2:
+          if debug: print '  FAIL: Wrong bond count', len(srcres.probeO), '> 2'
+          return False
         else: pass #The above checks against too many bonds
         requestsfilled = [] #Will hold T/F values to be checked later
         requestidx = -1
@@ -173,26 +190,34 @@ class member_residue():
                   requestsfilled[requestidx] = True
                   break #exit the for loop
         for request in requestsfilled:
-          if not request: return False
+          if not request:
+            if debug: print '  FAIL: bifurcated bond problem'
+            return False
         foundres[self.index] = srcres
         pass #end of logic block
 
       else:
         pass
+    #}}}
 
+    #{{{
     if self.Hbonding:
       if debug: print '  try Hbond '
       #verify Hbonding
       if len(self.Hbonding) == 1:
         bondjump = self.Hbonding[0]
         if bondjump == 'any': #0 or 1 bonds, no preference which
-          if len(srcres.probeH) > 1: return False
+          if len(srcres.probeH) > 1:
+            if debug: print '  FAIL: Wrong bond count', len(srcres.probeH), '> 1'
+            return False
           else: pass
         elif bondjump == "!":
-          if len(srcres.probeO) > 0: return False
+          if len(srcres.probeH) > 0:
+            if debug: print '  FAIL: Wrong bond count', len(srcres.probeH), '> 0'
+            return False
           else: pass
         elif len(srcres.probeH) != 1:
-          if debug: print '  FAIL: Wrong bond count', len(srcres.probeH)
+          if debug: print '  FAIL: Wrong bond count', len(srcres.probeH), '!= 1'
           return False
         else:
           #single trgres confirmed, procede with testing
@@ -207,9 +232,9 @@ class member_residue():
             foundres[bondjump] = trgres #bondjump *is* the trgres index, as specified in the fingerprint definition
             pass #I'm using 'pass' to help me keep tabs on where bits of logic end
           else: #(if bondjump is an int)
-            if debug: print '  **doing check'
-            if debug: print self.find_bond_jump(srcres,trgres)
-            if self.find_bond_jump(srcres,trgres) != bondjump: return False
+            if self.find_bond_jump(srcres,trgres) != bondjump:
+              if debug: print '  FAIL: Wrong bond jump', self.find_bond_jump(srcres,trgres), 'should be', bondjump
+              return False
             else:
               if not self.indexcheck(srcres, self.index, foundres): return False #Redundant?
               else:
@@ -217,7 +242,9 @@ class member_residue():
                 #Don't know the index for trgres
                 pass
       elif len(self.Hbonding) == 2:
-        if len(srcres.probeH) > 2: return False
+        if len(srcres.probeH) > 2:
+          if debug: print '  FAIL: Wrong bond count', len(srcres.probeH), '> 2'
+          return False
         else: pass #The above checks against too many bonds
         requestsfilled = [] #Will hold T/F values to be checked later
         requestidx = -1
@@ -246,12 +273,15 @@ class member_residue():
                   requestsfilled[requestidx] = True
                   break #exit the for loop
         for request in requestsfilled:
-          if not request: return False
+          if not request:
+            if debug: print '  FAIL: bifurcated bond problem'
+            return False
         foundres[self.index] = srcres
         pass #end of logic block
 
       else:
         pass
+    #}}}
 
     #Obanned and Hbanned list hydrogen bonding to be specifically disallowed
     if self.Obanned:
@@ -386,6 +416,100 @@ alpha_helix_3.members.append(member_residue())
 alpha_helix_3.members[2].Obonding = [4]
 alpha_helix_3.members[2].move = None #a number means sequence, a string means index
 alpha_helix_3.members[2].index = 'c'
+
+alpha_helix_3os = ssfingerprint('alpha_helix_3os')
+alpha_helix_3os.labelhash = {'b':'alpha_helix_3os'}
+alpha_helix_3os.labellist = ['alpha_helix_3os']
+alpha_helix_3os.members.append(member_residue())
+alpha_helix_3os.members[0].Obonding = [4]
+alpha_helix_3os.members[0].move = 1
+alpha_helix_3os.members[0].index = 'a'
+alpha_helix_3os.members.append(member_residue())
+alpha_helix_3os.members[1].Obonding = [4]
+alpha_helix_3os.members[1].move = 1
+alpha_helix_3os.members[1].index = 'b'
+alpha_helix_3os.members.append(member_residue())
+alpha_helix_3os.members[2].Obonding = [4]
+alpha_helix_3os.members[2].move = None
+alpha_helix_3os.members[2].index = 'c'
+
+alpha_helix_3hs = ssfingerprint('alpha_helix_3hs')
+alpha_helix_3hs.labelhash = {'b':'alpha_helix_3hs'}
+alpha_helix_3hs.labellist = ['alpha_helix_3hs']
+alpha_helix_3hs.members.append(member_residue())
+alpha_helix_3hs.members[0].Hbonding = [-4]
+alpha_helix_3hs.members[0].move = 1
+alpha_helix_3hs.members[0].index = 'a'
+alpha_helix_3hs.members.append(member_residue())
+alpha_helix_3hs.members[1].Hbonding = [-4]
+alpha_helix_3hs.members[1].move = 1
+alpha_helix_3hs.members[1].index = 'b'
+alpha_helix_3hs.members.append(member_residue())
+alpha_helix_3hs.members[2].Hbonding = [-4]
+alpha_helix_3hs.members[2].move = None
+alpha_helix_3hs.members[2].index = 'c'
+
+alpha_helix_4os = ssfingerprint('alpha_helix_4os')
+alpha_helix_4os.labelhash = {
+'b':'alpha_helix_4os',
+'c':'alpha_helix_4os'}
+alpha_helix_4os.labellist = ['alpha_helix_4os']
+alpha_helix_4os.members.append(member_residue())
+alpha_helix_4os.members[0].Obonding = [4]
+alpha_helix_4os.members[0].move = 1
+alpha_helix_4os.members[0].index = 'a'
+alpha_helix_4os.members.append(member_residue())
+alpha_helix_4os.members[1].Obonding = [4]
+alpha_helix_4os.members[1].move = 1
+alpha_helix_4os.members[1].index = 'b'
+alpha_helix_4os.members.append(member_residue())
+alpha_helix_4os.members[2].Obonding = [4]
+alpha_helix_4os.members[2].move = 1
+alpha_helix_4os.members[2].index = 'c'
+alpha_helix_4os.members.append(member_residue())
+alpha_helix_4os.members[3].Obonding = [4]
+alpha_helix_4os.members[3].move = None
+alpha_helix_4os.members[3].index = 'd'
+
+alpha_helix_4hs = ssfingerprint('alpha_helix_4hs')
+alpha_helix_4hs.labelhash = {
+#'a':'alpha_helix_4hs',
+'b':'alpha_helix_4hs',
+'c':'alpha_helix_4hs'}#,
+#'d':'alpha_helix_4hs'}
+alpha_helix_4hs.labellist = ['alpha_helix_4hs']
+alpha_helix_4hs.members.append(member_residue())
+alpha_helix_4hs.members[0].Hbonding = [-4]
+alpha_helix_4hs.members[0].move = 1
+alpha_helix_4hs.members[0].index = 'a'
+alpha_helix_4hs.members.append(member_residue())
+alpha_helix_4hs.members[1].Hbonding = [-4]
+alpha_helix_4hs.members[1].move = 1
+alpha_helix_4hs.members[1].index = 'b'
+alpha_helix_4hs.members.append(member_residue())
+alpha_helix_4hs.members[2].Hbonding = [-4]
+alpha_helix_4hs.members[2].move = 1
+alpha_helix_4hs.members[2].index = 'c'
+alpha_helix_4hs.members.append(member_residue())
+alpha_helix_4hs.members[3].Hbonding = [-4]
+alpha_helix_4hs.members[3].move = None
+alpha_helix_4hs.members[3].index = 'd'
+
+alpha_helix_2 = ssfingerprint('alpha_helix_2')
+alpha_helix_2.labelhash = {
+'a':'alpha_helix_2',
+'b':'alpha_helix_2'}
+alpha_helix_2.labellist = ['alpha_helix_2']
+alpha_helix_2.members.append(member_residue())
+alpha_helix_2.members[0].Obonding = [4]
+alpha_helix_2.members[0].Hbonding = [-4]
+alpha_helix_2.members[0].move = 1
+alpha_helix_2.members[0].index = 'a'
+alpha_helix_2.members.append(member_residue())
+alpha_helix_2.members[1].Obonding = [4]
+alpha_helix_2.members[1].Hbonding = [-4]
+alpha_helix_2.members[1].move = None
+alpha_helix_2.members[1].index = 'b'
 
 alpha_turn = ssfingerprint('alpha_turn')
 alpha_turn.labelhash = {
@@ -582,126 +706,312 @@ pi_helix_single.members[0].move = None
 
 #{{{ beta definitions
 #-------------------------------------------------------------------------------
-
+#Bridge/loose definitions, use 4 bonds
 #Two strands:
 # g (h) i (j) k
 # r (q) p (o) n
 #Might want to include h,j,q,o in .labels at some point. Depends.
-antiparallel_beta_close = ssfingerprint('antiparallel_beta_close')
-antiparallel_beta_close.labelhash = {
-'i':'antiparallel_beta_close',
-'p':'antiparallel_beta_close'}
-antiparallel_beta_close.labellist = ['antiparallel_beta_close']
-antiparallel_beta_close.members.append(member_residue())
-antiparallel_beta_close.members[0].Obonding = ['p']
-antiparallel_beta_close.members[0].Hbonding = ['p']
-antiparallel_beta_close.members[0].move = 'p'
-antiparallel_beta_close.members[0].index = 'i'
-antiparallel_beta_close.members.append(member_residue())
-antiparallel_beta_close.members[1].Obonding = ['i']
-antiparallel_beta_close.members[1].Hbonding = ['i']
-antiparallel_beta_close.members[1].move = 2
-antiparallel_beta_close.members[1].index = 'p'
-antiparallel_beta_close.members.append(member_residue())
-antiparallel_beta_close.members[2].Hbonding = ['g']
-antiparallel_beta_close.members[2].move = 'g'
-antiparallel_beta_close.members[2].index = 'r'
-antiparallel_beta_close.members.append(member_residue())
-antiparallel_beta_close.members[3].Obonding = ['r']
-antiparallel_beta_close.members[3].move = 4
-antiparallel_beta_close.members[3].index = 'g'
-antiparallel_beta_close.members.append(member_residue())
-antiparallel_beta_close.members[4].Hbonding = ['n']
-antiparallel_beta_close.members[4].move = 'n'
-antiparallel_beta_close.members[4].index = 'k'
-antiparallel_beta_close.members.append(member_residue())
-antiparallel_beta_close.members[5].Obonding = ['k']
-antiparallel_beta_close.members[5].move = 2
-antiparallel_beta_close.members[5].index = 'n'
-antiparallel_beta_close.members.append(member_residue())
-antiparallel_beta_close.members[6].Obonding = ['i']
-antiparallel_beta_close.members[6].Hbonding = ['i']
-antiparallel_beta_close.members[6].move = None
-antiparallel_beta_close.members[6].index = 'p'
+antiparallel_beta_bridge_close = ssfingerprint('antiparallel_beta_bridge_close')
+antiparallel_beta_bridge_close.labelhash = {
+'i':'antiparallel_beta_bridge_close',
+'p':'antiparallel_beta_bridge_close'}
+antiparallel_beta_bridge_close.labellist = ['antiparallel_beta_bridge_close']
+antiparallel_beta_bridge_close.members.append(member_residue())
+antiparallel_beta_bridge_close.members[0].Obonding = ['p']
+antiparallel_beta_bridge_close.members[0].Hbonding = ['p']
+antiparallel_beta_bridge_close.members[0].move = 'p'
+antiparallel_beta_bridge_close.members[0].index = 'i'
+antiparallel_beta_bridge_close.members.append(member_residue())
+antiparallel_beta_bridge_close.members[1].Obonding = ['i']
+antiparallel_beta_bridge_close.members[1].Hbonding = ['i']
+antiparallel_beta_bridge_close.members[1].move = 2
+antiparallel_beta_bridge_close.members[1].index = 'p'
+antiparallel_beta_bridge_close.members.append(member_residue())
+antiparallel_beta_bridge_close.members[2].Hbonding = ['g']
+antiparallel_beta_bridge_close.members[2].move = 'g'
+antiparallel_beta_bridge_close.members[2].index = 'r'
+antiparallel_beta_bridge_close.members.append(member_residue())
+antiparallel_beta_bridge_close.members[3].Obonding = ['r']
+antiparallel_beta_bridge_close.members[3].move = 4
+antiparallel_beta_bridge_close.members[3].index = 'g'
+antiparallel_beta_bridge_close.members.append(member_residue())
+antiparallel_beta_bridge_close.members[4].Hbonding = ['n']
+antiparallel_beta_bridge_close.members[4].move = 'n'
+antiparallel_beta_bridge_close.members[4].index = 'k'
+antiparallel_beta_bridge_close.members.append(member_residue())
+antiparallel_beta_bridge_close.members[5].Obonding = ['k']
+antiparallel_beta_bridge_close.members[5].move = 2
+antiparallel_beta_bridge_close.members[5].index = 'n'
+antiparallel_beta_bridge_close.members.append(member_residue())
+antiparallel_beta_bridge_close.members[6].Obonding = ['i']
+antiparallel_beta_bridge_close.members[6].Hbonding = ['i']
+antiparallel_beta_bridge_close.members[6].move = None
+antiparallel_beta_bridge_close.members[6].index = 'p'
 
 #Two strands:
 # (g) h i j (k)
 # (r) q p o (n)
-antiparallel_beta_wide = ssfingerprint('antiparallel_beta_wide')
-antiparallel_beta_wide.labelhash = {
-'i':'antiparallel_beta_wide',
-'q':'antiparallel_beta_wide'}
-antiparallel_beta_wide.labellist = ['antiparallel_beta_wide']
-antiparallel_beta_wide.members.append(member_residue())
-antiparallel_beta_wide.members[0].move = 1
-antiparallel_beta_wide.members[0].index = 'i'
-antiparallel_beta_wide.members.append(member_residue())
-antiparallel_beta_wide.members[1].Obonding = ['o']
-antiparallel_beta_wide.members[1].Hbonding = ['o']
-antiparallel_beta_wide.members[1].move = 'o'
-antiparallel_beta_wide.members[1].index = 'j'
-antiparallel_beta_wide.members.append(member_residue())
-antiparallel_beta_wide.members[2].Obonding = ['j']
-antiparallel_beta_wide.members[2].Hbonding = ['j']
-antiparallel_beta_wide.members[2].move = 1
-antiparallel_beta_wide.members[2].index = 'o'
-antiparallel_beta_wide.members.append(member_residue())
-antiparallel_beta_wide.members[3].move = 1
-antiparallel_beta_wide.members[3].index = 'p'
-antiparallel_beta_wide.members.append(member_residue())
-antiparallel_beta_wide.members[4].Obonding = ['h']
-antiparallel_beta_wide.members[4].Hbonding = ['h']
-antiparallel_beta_wide.members[4].move = 'h'
-antiparallel_beta_wide.members[4].index = 'q'
-antiparallel_beta_wide.members.append(member_residue())
-antiparallel_beta_wide.members[5].Obonding = ['q']
-antiparallel_beta_wide.members[5].Hbonding = ['q']
-antiparallel_beta_wide.members[5].move = 1
-antiparallel_beta_wide.members[5].index = 'h'
-antiparallel_beta_wide.members.append(member_residue())
-antiparallel_beta_wide.members[6].move = None
-antiparallel_beta_wide.members[6].index = 'i'
+antiparallel_beta_bridge_wide = ssfingerprint('antiparallel_beta_bridge_wide')
+antiparallel_beta_bridge_wide.labelhash = {
+'i':'antiparallel_beta_bridge_wide',
+'q':'antiparallel_beta_bridge_wide'}
+antiparallel_beta_bridge_wide.labellist = ['antiparallel_beta_bridge_wide']
+antiparallel_beta_bridge_wide.members.append(member_residue())
+antiparallel_beta_bridge_wide.members[0].move = 1
+antiparallel_beta_bridge_wide.members[0].index = 'i'
+antiparallel_beta_bridge_wide.members.append(member_residue())
+antiparallel_beta_bridge_wide.members[1].Obonding = ['o']
+antiparallel_beta_bridge_wide.members[1].Hbonding = ['o']
+antiparallel_beta_bridge_wide.members[1].move = 'o'
+antiparallel_beta_bridge_wide.members[1].index = 'j'
+antiparallel_beta_bridge_wide.members.append(member_residue())
+antiparallel_beta_bridge_wide.members[2].Obonding = ['j']
+antiparallel_beta_bridge_wide.members[2].Hbonding = ['j']
+antiparallel_beta_bridge_wide.members[2].move = 1
+antiparallel_beta_bridge_wide.members[2].index = 'o'
+antiparallel_beta_bridge_wide.members.append(member_residue())
+antiparallel_beta_bridge_wide.members[3].move = 1
+antiparallel_beta_bridge_wide.members[3].index = 'p'
+antiparallel_beta_bridge_wide.members.append(member_residue())
+antiparallel_beta_bridge_wide.members[4].Obonding = ['h']
+antiparallel_beta_bridge_wide.members[4].Hbonding = ['h']
+antiparallel_beta_bridge_wide.members[4].move = 'h'
+antiparallel_beta_bridge_wide.members[4].index = 'q'
+antiparallel_beta_bridge_wide.members.append(member_residue())
+antiparallel_beta_bridge_wide.members[5].Obonding = ['q']
+antiparallel_beta_bridge_wide.members[5].Hbonding = ['q']
+antiparallel_beta_bridge_wide.members[5].move = 1
+antiparallel_beta_bridge_wide.members[5].index = 'h'
+antiparallel_beta_bridge_wide.members.append(member_residue())
+antiparallel_beta_bridge_wide.members[6].move = None
+antiparallel_beta_bridge_wide.members[6].index = 'i'
 
 #Two strands:
 # (g) h i j (k)
 # (n) o p q (r)
+parallel_beta_bridge = ssfingerprint('parallel_beta_bridge')
+parallel_beta_bridge.labelhash = {
+'i':'parallel_beta_bridge_close',
+'q':'parallel_beta_bridge_wide'}
+parallel_beta_bridge.labellist = ['parallel_beta_bridge_close','parallel_beta_bridge_wide']
+parallel_beta_bridge.members.append(member_residue())
+parallel_beta_bridge.members[0].Obonding = ['q']
+parallel_beta_bridge.members[0].Hbonding = ['o']
+parallel_beta_bridge.members[0].move = 2
+parallel_beta_bridge.members[0].index = 'i'
+parallel_beta_bridge.members.append(member_residue())
+parallel_beta_bridge.members[1].Hbonding = ['q']
+parallel_beta_bridge.members[1].move = 'q'
+parallel_beta_bridge.members[1].index = 'k'
+parallel_beta_bridge.members.append(member_residue())
+parallel_beta_bridge.members[2].Obonding = ['k']
+parallel_beta_bridge.members[2].Hbonding = ['i']
+parallel_beta_bridge.members[2].move = -1
+parallel_beta_bridge.members[2].index = 'q'
+parallel_beta_bridge.members.append(member_residue())
+parallel_beta_bridge.members[3].move = -1
+parallel_beta_bridge.members[3].index = 'p'
+parallel_beta_bridge.members.append(member_residue())
+parallel_beta_bridge.members[4].Obonding = ['i']
+parallel_beta_bridge.members[4].Hbonding = ['g']
+parallel_beta_bridge.members[4].move = 'g'
+parallel_beta_bridge.members[4].index = 'o'
+parallel_beta_bridge.members.append(member_residue())
+parallel_beta_bridge.members[5].Obonding = ['o']
+parallel_beta_bridge.members[5].move = 2
+parallel_beta_bridge.members[5].index = 'g'
+parallel_beta_bridge.members.append(member_residue())
+#parallel_beta_bridge.members[6].Obonding = ['r']
+#parallel_beta_bridge.members[6].Hbonding = ['p']
+#Don't need to re-check the bonds if the index is right
+parallel_beta_bridge.members[6].move = None
+parallel_beta_bridge.members[6].index = 'i'
+
+#restrictive beta definitions, use 6 bonds:
+
+#Two strands:
+# e (f) g* (h)* i* (j) k
+# t (s) r* (q)* p* (o) n
+#g,h,i and p,q,r will all get marked, I think
+antiparallel_beta_cwc = ssfingerprint('antiparallel_beta_cwc')
+antiparallel_beta_cwc.labelhash = {
+#'i':'antiparallel_beta_close',
+#'p':'antiparallel_beta_close',
+#'g':'antiparallel_beta_close',
+#'r':'antiparallel_beta_close',
+'h':'antiparallel_beta_wide',
+'q':'antiparallel_beta_wide'
+}
+antiparallel_beta_cwc.labellist = ['antiparallel_beta_close','antiparallel_beta_wide']
+antiparallel_beta_cwc.members.append(member_residue())
+antiparallel_beta_cwc.members[0].Obonding = ['p']
+antiparallel_beta_cwc.members[0].Hbonding = ['p']
+antiparallel_beta_cwc.members[0].move = 'p'
+antiparallel_beta_cwc.members[0].index = 'i'
+antiparallel_beta_cwc.members.append(member_residue())
+antiparallel_beta_cwc.members[1].Obonding = ['i']
+antiparallel_beta_cwc.members[1].Hbonding = ['i']
+antiparallel_beta_cwc.members[1].move = 1
+antiparallel_beta_cwc.members[1].index = 'p'
+antiparallel_beta_cwc.members.append(member_residue())
+antiparallel_beta_cwc.members[2].move = 1
+antiparallel_beta_cwc.members[2].index = 'q'
+antiparallel_beta_cwc.members.append(member_residue())
+antiparallel_beta_cwc.members[3].Hbonding = ['g']
+antiparallel_beta_cwc.members[3].Obonding = ['g']
+antiparallel_beta_cwc.members[3].move = 'g'
+antiparallel_beta_cwc.members[3].index = 'r'
+antiparallel_beta_cwc.members.append(member_residue())
+antiparallel_beta_cwc.members[4].Obonding = ['r']
+antiparallel_beta_cwc.members[4].Hbonding = ['r']
+antiparallel_beta_cwc.members[4].move = 1
+antiparallel_beta_cwc.members[4].index = 'g'
+antiparallel_beta_cwc.members.append(member_residue())
+antiparallel_beta_cwc.members[5].move = 1
+antiparallel_beta_cwc.members[5].index = 'h'
+antiparallel_beta_cwc.members.append(member_residue())
+antiparallel_beta_cwc.members[6].Obonding = ['p']
+antiparallel_beta_cwc.members[6].Hbonding = ['p']
+antiparallel_beta_cwc.members[6].move = 2
+antiparallel_beta_cwc.members[6].index = 'i'
+antiparallel_beta_cwc.members.append(member_residue())
+antiparallel_beta_cwc.members[7].Hbonding = ['n']
+antiparallel_beta_cwc.members[7].move = 'n'
+antiparallel_beta_cwc.members[7].index = 'k'
+antiparallel_beta_cwc.members.append(member_residue())
+antiparallel_beta_cwc.members[8].Obonding = ['k']
+antiparallel_beta_cwc.members[8].move = 6 #to 't'
+antiparallel_beta_cwc.members[8].index = 'n'
+antiparallel_beta_cwc.members.append(member_residue())
+antiparallel_beta_cwc.members[9].Hbonding = ['e']
+antiparallel_beta_cwc.members[9].move = 'e'
+antiparallel_beta_cwc.members[9].index = 't'
+antiparallel_beta_cwc.members.append(member_residue())
+antiparallel_beta_cwc.members[10].Obonding = ['t']
+antiparallel_beta_cwc.members[10].move = 2
+antiparallel_beta_cwc.members[10].index = 'e'
+antiparallel_beta_cwc.members.append(member_residue())
+antiparallel_beta_cwc.members[11].move = None
+antiparallel_beta_cwc.members[11].index = 'g'
+
+#Two strands:
+# g (h)* i* (j)* k
+# r (q)* p* (o)* n
+antiparallel_beta_wcw = ssfingerprint('antiparallel_beta_wcw')
+antiparallel_beta_wcw.labelhash = {
+#'h':'antiparallel_beta_wide',
+#'q':'antiparallel_beta_wide',
+#'j':'antiparallel_beta_wide',
+#'o':'antiparallel_beta_wide',
+'i':'antiparallel_beta_close',
+'p':'antiparallel_beta_close'
+}
+antiparallel_beta_wcw.labellist = ['antiparallel_beta_wide','antiparallel_beta_close']
+antiparallel_beta_wcw.members.append(member_residue())
+antiparallel_beta_wcw.members[0].Obonding = ['p']
+antiparallel_beta_wcw.members[0].Hbonding = ['p']
+antiparallel_beta_wcw.members[0].move = 'p'
+antiparallel_beta_wcw.members[0].index = 'i'
+antiparallel_beta_wcw.members.append(member_residue())
+antiparallel_beta_wcw.members[1].Obonding = ['i']
+antiparallel_beta_wcw.members[1].Hbonding = ['i']
+antiparallel_beta_wcw.members[1].move = 1
+antiparallel_beta_wcw.members[1].index = 'p'
+antiparallel_beta_wcw.members.append(member_residue())
+antiparallel_beta_wcw.members[2].move = 1
+antiparallel_beta_wcw.members[2].index = 'q'
+antiparallel_beta_wcw.members.append(member_residue())
+antiparallel_beta_wcw.members[3].Obonding = ['g']
+antiparallel_beta_wcw.members[3].Hbonding = ['g']
+antiparallel_beta_wcw.members[3].move = 'g'
+antiparallel_beta_wcw.members[3].index = 'r'
+antiparallel_beta_wcw.members.append(member_residue())
+antiparallel_beta_wcw.members[4].Obonding = ['r']
+antiparallel_beta_wcw.members[4].Hbonding = ['r']
+antiparallel_beta_wcw.members[4].move = 1
+antiparallel_beta_wcw.members[4].index = 'g'
+antiparallel_beta_wcw.members.append(member_residue())
+antiparallel_beta_wcw.members[5].move = 2
+antiparallel_beta_wcw.members[5].index = 'h'
+antiparallel_beta_wcw.members.append(member_residue())
+antiparallel_beta_wcw.members[6].move = 1
+antiparallel_beta_wcw.members[6].index = 'j'
+antiparallel_beta_wcw.members.append(member_residue())
+antiparallel_beta_wcw.members[7].Obonding = ['n']
+antiparallel_beta_wcw.members[7].Hbonding = ['n']
+antiparallel_beta_wcw.members[7].move = 'n'
+antiparallel_beta_wcw.members[7].index = 'k'
+antiparallel_beta_wcw.members.append(member_residue())
+antiparallel_beta_wcw.members[8].Obonding = ['k']
+antiparallel_beta_wcw.members[8].Hbonding = ['k']
+antiparallel_beta_wcw.members[8].move = 1
+antiparallel_beta_wcw.members[8].index = 'n'
+antiparallel_beta_wcw.members.append(member_residue())
+antiparallel_beta_wcw.members[9].move = 1
+antiparallel_beta_wcw.members[9].index = 'o'
+antiparallel_beta_wcw.members.append(member_residue())
+antiparallel_beta_wcw.members[10].Obonding = ['i']
+antiparallel_beta_wcw.members[10].Hbonding = ['i']
+antiparallel_beta_wcw.members[10].move = None
+antiparallel_beta_wcw.members[10].index = 'p'
+
+
+#Two strands:
+#   (g) h* i* j* (k)
+# m (n) o* p* q* (r) s
 parallel_beta = ssfingerprint('parallel_beta')
 parallel_beta.labelhash = {
-'i':'parallel_beta',
-'q':'parallel_beta'}
-parallel_beta.labellist = ['parallel_beta']
+'i':'parallel_beta_close',
+'p':'parallel_beta_wide'
+}
+parallel_beta.labellist = ['parallel_beta_close','parallel_beta_wide']
 parallel_beta.members.append(member_residue())
 parallel_beta.members[0].Obonding = ['q']
 parallel_beta.members[0].Hbonding = ['o']
-parallel_beta.members[0].move = 2
+parallel_beta.members[0].move = 1
 parallel_beta.members[0].index = 'i'
 parallel_beta.members.append(member_residue())
-parallel_beta.members[1].Hbonding = ['q']
-parallel_beta.members[1].move = 'q'
-parallel_beta.members[1].index = 'k'
+parallel_beta.members[1].move = 1
+parallel_beta.members[1].index = 'j'
 parallel_beta.members.append(member_residue())
-parallel_beta.members[2].Obonding = ['k']
-parallel_beta.members[2].Hbonding = ['i']
-parallel_beta.members[2].move = -1
-parallel_beta.members[2].index = 'q'
+parallel_beta.members[2].Hbonding = ['q']
+parallel_beta.members[2].Obonding = ['s']
+parallel_beta.members[2].move = 's'
+parallel_beta.members[2].index = 'k'
 parallel_beta.members.append(member_residue())
-parallel_beta.members[3].move = -1
-parallel_beta.members[3].index = 'p'
+parallel_beta.members[3].Hbonding = ['k']
+parallel_beta.members[3].move = -2
+parallel_beta.members[3].index = 's'
 parallel_beta.members.append(member_residue())
-parallel_beta.members[4].Obonding = ['i']
-parallel_beta.members[4].Hbonding = ['g']
-parallel_beta.members[4].move = 'g'
-parallel_beta.members[4].index = 'o'
+parallel_beta.members[4].Obonding = ['k']
+parallel_beta.members[4].Hbonding = ['i']
+parallel_beta.members[4].move = -1
+parallel_beta.members[4].index = 'q'
 parallel_beta.members.append(member_residue())
-parallel_beta.members[5].Obonding = ['o']
-parallel_beta.members[5].move = 2
-parallel_beta.members[5].index = 'g'
+parallel_beta.members[5].move = -1
+parallel_beta.members[5].index = 'p'
 parallel_beta.members.append(member_residue())
-#parallel_beta.members[6].Obonding = ['r']
-#parallel_beta.members[6].Hbonding = ['p']
-#Don't need to re-check the bonds if the index is right
-parallel_beta.members[6].move = None
-parallel_beta.members[6].index = 'i'
+parallel_beta.members[6].Obonding = ['i']
+parallel_beta.members[6].Hbonding = ['g']
+parallel_beta.members[6].move = -2
+parallel_beta.members[6].index = 'o'
+parallel_beta.members.append(member_residue())
+parallel_beta.members[7].Obonding = ['g']
+parallel_beta.members[7].move = 'g'
+parallel_beta.members[7].index = 'm'
+parallel_beta.members.append(member_residue())
+parallel_beta.members[8].Obonding = ['o']
+parallel_beta.members[8].Hbonding = ['m']
+parallel_beta.members[8].move = 1
+parallel_beta.members[8].index = 'g'
+parallel_beta.members.append(member_residue())
+parallel_beta.members[9].move = 1
+parallel_beta.members[9].index = 'h'
+parallel_beta.members.append(member_residue())
+parallel_beta.members[10].move = None
+parallel_beta.members[10].index = 'i'
+
+
 #-------------------------------------------------------------------------------
 #}}}
 
@@ -1006,8 +1316,12 @@ narrow_5.members[5].move = None
 
 fingerprints = {'alpha_helix_3':alpha_helix_3,
 'alpha_helix_single':alpha_helix_single, 'threeten_helix_single':threeten_helix_single, 'pi_helix_single':pi_helix_single,
-'antiparallel_beta_close':antiparallel_beta_close,'antiparallel_beta_wide':antiparallel_beta_wide,
-'parallel_beta':parallel_beta,
+'alpha_helix_3hs':alpha_helix_3hs, 'alpha_helix_3os':alpha_helix_3os,
+'alpha_helix_4hs':alpha_helix_4hs, 'alpha_helix_4os':alpha_helix_4os,
+'alpha_helix_2':alpha_helix_2,
+'antiparallel_beta_bridge_close':antiparallel_beta_bridge_close,'antiparallel_beta_bridge_wide':antiparallel_beta_bridge_wide,
+'parallel_beta_bridge':parallel_beta_bridge,
+'antiparallel_beta_cwc':antiparallel_beta_cwc,'antiparallel_beta_wcw':antiparallel_beta_wcw,'parallel_beta':parallel_beta,
 'wide_helix_turn':wide_helix_turn,
 'reg_alpha':reg_alpha,
 'alpha_turn':alpha_turn,
@@ -1031,22 +1345,22 @@ def get_all_labels(fingerprint_list):
       continue
   return label_list
 
-def annote_motif_residue(residue, fingerprint_name):
+def annote_motif_residue(residue, fingerprint_name, debug=False):
   #The idea here is to check a residue against a fingerprint
   #probably checking against the i residue, at least for a start
   #residue objects contain links to sequence-adjacent residues, but space-adjacent ones will be a problem
   #
   #Found motif information will be stored in residue.motifs for the time being
   fingerprint = fingerprints[fingerprint_name]
-  fingerprint.checkall(residue)
+  fingerprint.checkall(residue,debug)
 
-def annote_motif_protein(resdata, fingerprint_name):
+def annote_motif_protein(resdata, fingerprint_name, debug=False):
   #Wraps the above 'annote_motif_residue' function for a whole protein
   reslist = resdata.keys()
   reslist.sort()
   for resid in reslist:
     residue = resdata[resid]
-    annote_motif_residue(residue, fingerprint_name)
+    annote_motif_residue(residue, fingerprint_name, debug)
 
 ###cablam_access.py
 ###def make_cablam_object(hierarchy):

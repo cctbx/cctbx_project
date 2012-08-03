@@ -25,23 +25,6 @@ from mmtbx.cablam import cablam_math #contains geometric measure calculators
 from mmtbx.cablam import fingerprints #contains motif definitions
 #  Storage for motif definitions subject to change
 
-#{{{ prunerestype function
-#Deletes all members of a given residue type from a dictionary of residues
-#"Residue type" is determined from pdb.hierarchy's ag.resname, the upshot being
-#  that non-residues like "HOH" waters and het groups can also be pruned to
-#  improve performance if their three-letter codes are known.
-#-------------------------------------------------------------------------------
-def prunerestype(resdata, restype):
-  reslist = resdata.keys()
-  for residue in reslist:
-    for alt in resdata[residue].alts:
-      if resdata[residue].alts[alt]['resname'].strip() == restype:
-        resdata[residue].removelinks()
-        trash = resdata.pop(residue)
-        break
-#-------------------------------------------------------------------------------
-#}}}
-
 #{{{ stripB function
 #Deletes all residues containing any atom of interest with atom.b > bmax from
 #  a dictionary of residues, so that the uncertainty in these atoms cannot
@@ -647,9 +630,9 @@ def run():
 
     #{{{ preprocessing
     #---------------------------------------------------------------------------
-    prunerestype(resdata, 'HOH')
+    cablam_res.prunerestype(resdata, 'HOH')
     for restype in prunelist:
-      prunerestype(resdata, restype)
+      cablam_res.prunerestype(resdata, restype)
 
     if args.bmax:
       stripB(resdata,float(args.bmax))
@@ -713,7 +696,7 @@ def run():
     if args.probe:
       #motif_list = args.probe.split(',') (this was actually done earlier)
       for motif_name in motif_list:
-        fingerprints.annote_motif_protein(resdata,motif_name)
+        fingerprints.annote_motif_protein(resdata,motif_name,args.debug)
     #---------------------------------------------------------------------------
     #}}}
 

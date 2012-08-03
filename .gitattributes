@@ -1133,6 +1133,7 @@ mmtbx/cablam/__init__.py -text
 mmtbx/cablam/cablam_math.py -text
 mmtbx/cablam/cablam_res.py -text
 mmtbx/cablam/cablam_training.py -text
+mmtbx/cablam/cablam_validate.py -text
 mmtbx/cablam/fingerprints.py -text
 mmtbx/chemical_components/__init__.py -text
 mmtbx/chemical_components/cif_parser.py -text
