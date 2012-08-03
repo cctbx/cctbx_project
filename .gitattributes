@@ -847,6 +847,7 @@ iotbx/cif/restraints.py -text
 iotbx/cif/tests/analyse_cod_stats.py -text
 iotbx/cif/tests/tst_cod.py -text
 iotbx/cif/tests/tst_parser.py svneol=native#text/x-python
+iotbx/cif/tests/tst_pdb_hierarchy.py -text
 iotbx/cif/tests/tst_restraints.py -text
 iotbx/cif/tests/tst_ucif_examples_compilation.py -text
 iotbx/cns/crystal_symmetry_utils.py svneol=native#text/x-python
