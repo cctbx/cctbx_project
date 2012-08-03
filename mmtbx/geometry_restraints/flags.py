@@ -7,11 +7,13 @@ class flags(object):
         ramachandran=None,
         hydrogen_bond=None,
         rotamer=None,
+        reference_coordinate=None,
         den=None,
         default=False):
     if (ramachandran is None): ramachandran = default
     if (hydrogen_bond is None): hydrogen_bond = default
     if (rotamer is None): rotamer = default
+    if (reference_coordinate is None): reference_coordinate = default
     if (den is None): den = False #always off by default
     adopt_init_args(self, locals())
 
@@ -21,4 +23,5 @@ class flags(object):
     print >> f, "  ramachandran:", self.ramachandran
     print >> f, "  hydrogen_bond:", self.hydrogen_bond
     print >> f, "  rotamer:", self.rotamer
+    print >> f, "  reference_coordinate:", self.reference_coordinate
     print >> f, "  den:", self.den

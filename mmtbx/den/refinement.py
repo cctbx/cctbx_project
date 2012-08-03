@@ -4,6 +4,7 @@ from mmtbx.refinement import tardy
 from libtbx import easy_mp, Auto
 from mmtbx.refinement import print_statistics
 from mmtbx.refinement import adp_refinement
+from mmtbx.geometry_restraints import reference_coordinate
 from cctbx.array_family import flex
 from cStringIO import StringIO
 import sys, random
@@ -36,14 +37,30 @@ class manager(object):
     self.macro_cycle = macro_cycle
     self.tan_b_iso_max = 0
     self.random_seed = params.main.random_seed
-    self.save_scatterers_local = fmodels.fmodel_xray().\
-        xray_structure.deep_copy_scatterers().scatterers()
     den_manager = model.restraints_manager. \
       geometry.generic_restraints_manager.den_manager
+    print_statistics.make_header("DEN refinement", out=self.log)
+    print_statistics.make_sub_header(
+      "coordinate minimization before annealing", out=self.log)
+    self.minimize()
+    self.save_scatterers_local = fmodels.fmodel_xray().\
+      xray_structure.deep_copy_scatterers().scatterers()
+    pdb_hierarchy = self.model.pdb_hierarchy(sync_with_xray_structure=True)
+    if len(den_manager.den_proxies) == 0:
+      print_statistics.make_sub_header(
+        "DEN restraint nework", out = self.log)
+      den_manager.build_den_proxies(pdb_hierarchy=pdb_hierarchy)
+      den_manager.build_den_restraints()
+      den_manager.show_den_summary(
+        sites_cart=self.model.xray_structure.sites_cart())
+    if den_manager.params.output_kinemage:
+      den_manager.output_kinemage(
+        self.model.xray_structure.sites_cart())
+    #pdb_hierarchy.write_pdb_file(
+    #  file_name = 'minimized.pdb')
     #DEN refinement start, turn on
     model.restraints_manager. \
       geometry.generic_restraints_manager.flags.den = True
-    print_statistics.make_header("DEN refinement", out=self.log)
     if params.den.optimize:
       grid = den_manager.get_optimization_grid()
       print >> log, \
@@ -209,6 +226,7 @@ class manager(object):
         call_back_after_step=False)
       if self.params.den.bulk_solvent_and_scale:
         self.bulk_solvent_and_scale(log=local_log)
+        self.fmodels.fmodel_xray().xray_structure = self.model.xray_structure
       if self.params.den.refine_adp:
         self.adp_refinement(log=local_log)
       if self.ncs_manager is not None:
@@ -401,3 +419,30 @@ class manager(object):
     #self.monitors.collect(step    = str(self.macro_cycle)+"_adp:",
     #                 model   = self.model,
     #                 fmodels = self.fmodels)
+
+  def minimize(self):
+    pdb_hierarchy = self.model.pdb_hierarchy(sync_with_xray_structure=True)
+    self.model.restraints_manager.geometry.generic_restraints_manager.\
+         reference_coordinate_proxies = \
+      reference_coordinate.build_proxies(
+        sites_cart=self.model.xray_structure.sites_cart(),
+        pdb_hierarchy=pdb_hierarchy,
+        c_alpha_only=True).reference_coordinate_proxies
+    self.model.restraints_manager.geometry.generic_restraints_manager.\
+         flags.reference_coordinate=True
+    selection = self.model.selection_moving
+    minimized = self.model.geometry_minimization(
+      max_number_of_iterations       = 500,
+      number_of_macro_cycles         = 1,
+      selection                      = selection,
+      bond                           = True,
+      nonbonded                      = True,
+      angle                          = True,
+      dihedral                       = True,
+      chirality                      = True,
+      planarity                      = True,
+      generic_restraints             = True)
+    self.model.restraints_manager.geometry.generic_restraints_manager.\
+         reference_coordinate_proxies = None
+    self.model.restraints_manager.geometry.generic_restraints_manager.\
+         flags.reference_coordinate = False

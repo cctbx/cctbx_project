@@ -109,9 +109,6 @@ class den_restraints(object):
     if(log is None): log = sys.stdout
     self.log = log
     self.den_proxies = den_proxies
-    if self.den_proxies is None:
-      print_statistics.make_header(
-        "DEN restraint nework", out = self.log)
     if len(pdb_hierarchy.models()) > 1:
       raise Sorry("More than one model in input model. DEN refinement "+
                   "is only available for a single model.")
@@ -144,7 +141,6 @@ class den_restraints(object):
     elif self.use_model_segid and (not self.use_ref_segid):
       raise Sorry("Working model contains SEGIDs that do not match "+\
                   "the reference model.")
-    from mmtbx.torsion_restraints import utils
     import boost.python
     self.ext = boost.python.import_ext("mmtbx_den_restraints_ext")
     self.params = params
@@ -175,36 +171,38 @@ class den_restraints(object):
     self.den_atom_pairs = None
     self.den_pair_count = 0
     self.torsion_mid_point = int(round(self.num_cycles / 2))
+    if self.den_proxies is None:
+      self.den_proxies = self.ext.shared_den_simple_proxy()
 
-    if (self.den_proxies is None) :
-      self.atoms_per_chain = \
-        self.count_atoms_per_chain(pdb_hierarchy=pdb_hierarchy)
-      self.atoms_per_chain_ref = \
-        self.count_atoms_per_chain(pdb_hierarchy=self.pdb_hierarchy_ref)
-      self.resid_hash_ref = \
-        utils.build_resid_hash(pdb_hierarchy=self.pdb_hierarchy_ref)
-      self.i_seq_hash = \
-        utils.build_i_seq_hash(pdb_hierarchy=pdb_hierarchy)
-      self.i_seq_hash_ref = \
-        utils.build_i_seq_hash(pdb_hierarchy=self.pdb_hierarchy_ref)
-      self.name_hash = \
-        utils.build_name_hash(pdb_hierarchy=pdb_hierarchy)
-      self.name_hash_ref = \
-        utils.build_name_hash(pdb_hierarchy=self.pdb_hierarchy_ref)
-      self.ref_atom_pairs, self.ref_distance_hash = \
-        self.find_atom_pairs(pdb_hierarchy=self.pdb_hierarchy_ref,
-                             resid_hash=self.resid_hash_ref)
-      self.remove_non_matching_pairs()
-      if self.den_network_file is not None:
-        self.den_atom_pairs = self.load_den_network()
-      else:
-        self.random_ref_atom_pairs = \
-          self.select_random_den_restraints()
-        self.den_atom_pairs = self.get_den_atom_pairs()
-      self.check_den_pair_consistency()
-      if self.export_den_pairs:
-        self.dump_den_network()
-      self.build_den_restraints()
+  def build_den_proxies(self, pdb_hierarchy):
+    from mmtbx.torsion_restraints import utils
+    self.atoms_per_chain = \
+      self.count_atoms_per_chain(pdb_hierarchy=pdb_hierarchy)
+    self.atoms_per_chain_ref = \
+      self.count_atoms_per_chain(pdb_hierarchy=self.pdb_hierarchy_ref)
+    self.resid_hash_ref = \
+      utils.build_resid_hash(pdb_hierarchy=self.pdb_hierarchy_ref)
+    self.i_seq_hash = \
+      utils.build_i_seq_hash(pdb_hierarchy=pdb_hierarchy)
+    self.i_seq_hash_ref = \
+      utils.build_i_seq_hash(pdb_hierarchy=self.pdb_hierarchy_ref)
+    self.name_hash = \
+      utils.build_name_hash(pdb_hierarchy=pdb_hierarchy)
+    self.name_hash_ref = \
+      utils.build_name_hash(pdb_hierarchy=self.pdb_hierarchy_ref)
+    self.ref_atom_pairs, self.ref_distance_hash = \
+      self.find_atom_pairs(pdb_hierarchy=self.pdb_hierarchy_ref,
+                           resid_hash=self.resid_hash_ref)
+    self.remove_non_matching_pairs()
+    if self.den_network_file is not None:
+      self.den_atom_pairs = self.load_den_network()
+    else:
+      self.random_ref_atom_pairs = \
+        self.select_random_den_restraints()
+      self.den_atom_pairs = self.get_den_atom_pairs()
+    self.check_den_pair_consistency()
+    if self.export_den_pairs:
+      self.dump_den_network()
 
   def check_den_pair_consistency(self):
     if self.den_pair_count == 0:
@@ -391,7 +389,6 @@ class den_restraints(object):
   def build_den_restraints(self):
     den_weight = self.weight*(1.0/(self.sigma**2))
     print >> self.log, "building DEN restraints..."
-    den_proxies = self.ext.shared_den_simple_proxy()
     for chain in self.den_atom_pairs.keys():
       for pair in self.den_atom_pairs[chain]:
         i_seq_a = self.i_seq_hash_ref[self.name_hash[pair[0]]]
@@ -403,8 +400,7 @@ class den_restraints(object):
           eq_distance=distance_ideal,
           eq_distance_start=distance_ideal,
           weight=den_weight)
-        den_proxies.append(proxy)
-    self.den_proxies = den_proxies
+        self.den_proxies.append(proxy)
 
   def get_current_eq_distances(self):
     current_eq_distances = []

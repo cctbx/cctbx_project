@@ -10,6 +10,7 @@ class manager (object) :
                 ramachandran_lookup=None,
                 hydrogen_bond_proxies=None,
                 hydrogen_bond_params=None,
+                reference_coordinate_proxies=None,
                 den_manager=None,
                 flags=None) :
     adopt_init_args(self, locals())
@@ -30,6 +31,8 @@ class manager (object) :
         n_proxies += len(self.hydrogen_bond_proxies)
       else :
         n_proxies += self.hydrogen_bond_proxies.size()
+    if (self.reference_coordinate_proxies is not None):
+      n_proxies += len(self.reference_coordinate_proxies)
     if (self.den_manager is not None) :
       n_proxies += len(self.den_manager.den_proxies)
     return n_proxies
@@ -62,6 +65,12 @@ class manager (object) :
         gradient_array=gradient_array,
         falloff_distance=self.hydrogen_bond_params.falloff_distance,
         lennard_jones_potential=lj_potential)
+    if (self.reference_coordinate_proxies is not None and
+        self.flags.reference_coordinate) :
+      target += reference_coordinate.target_and_gradients(
+        proxies=self.reference_coordinate_proxies,
+        sites_cart=sites_cart,
+        gradient_array=gradient_array)
     if (self.den_manager is not None and
         self.flags.den) :
       #print "DEN target is in geneneric manager"
