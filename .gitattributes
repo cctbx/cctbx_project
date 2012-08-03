@@ -1139,6 +1139,7 @@ mmtbx/chemical_components/__init__.py -text
 mmtbx/chemical_components/cif_parser.py -text
 mmtbx/chemical_components/tst.py -text
 mmtbx/command_line/cablam_training.py -text
+mmtbx/command_line/cablam_validate.py -text
 mmtbx/command_line/cbetadev.py -text
 mmtbx/command_line/cif_as_mtz.py -text
 mmtbx/command_line/clashscore.py -text
