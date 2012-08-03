@@ -148,6 +148,9 @@ class linked_residue():
     targetatoms=["CA","O","C","N"]
     ):
 
+    self.rg = rg #the source residue group is preserved for additional data and
+    #ease in transfering back to hierarchy mode
+
     self.pdbid = pdbid
     self.model = modelid
     self.chain = chainid
@@ -193,6 +196,23 @@ class linked_residue():
     self.motifs = {} #Holder for identified motifs from fingerprints/probetrain
     self.results = {} #Generic holder for calcuated values of interest
 
+#-------------------------------------------------------------------------------
+#}}}
+
+#{{{ prunerestype function
+#Deletes all members of a given residue type from a dictionary of residues
+#"Residue type" is determined from pdb.hierarchy's ag.resname, the upshot being
+#  that non-residues like "HOH" waters and het groups can also be pruned to
+#  improve performance if their three-letter codes are known.
+#-------------------------------------------------------------------------------
+def prunerestype(resdata, restype):
+  reslist = resdata.keys()
+  for residue in reslist:
+    for alt in resdata[residue].alts:
+      if resdata[residue].alts[alt]['resname'].strip() == restype:
+        resdata[residue].removelinks()
+        trash = resdata.pop(residue)
+        break
 #-------------------------------------------------------------------------------
 #}}}
 
