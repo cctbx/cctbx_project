@@ -3764,10 +3764,12 @@ class build_all_chain_proxies(object):
         log=log)
       ramachandran_lookup = ramachandran.lookup_manager(
         params=self.params.peptide_link)
+    reference_coordinate_proxies = None
     generic_restraints_manager = mmtbx.geometry_restraints.manager(
       ramachandran_proxies=ramachandran_proxies,
       ramachandran_lookup=ramachandran_lookup,
       hydrogen_bond_proxies=hydrogen_bond_proxies,
+      reference_coordinate_proxies=reference_coordinate_proxies,
       hydrogen_bond_params=hydrogen_bond_params,
       den_manager=den_manager)
     nonbonded_params = ener_lib_as_nonbonded_params(

@@ -575,6 +575,7 @@ class manager(object):
                             dihedral                       = False,
                             chirality                      = False,
                             planarity                      = False,
+                            generic_restraints             = False,
                             rmsd_bonds_termination_cutoff  = 0,
                             rmsd_angles_termination_cutoff = 0):
     assert max_number_of_iterations+number_of_macro_cycles > 0
@@ -584,12 +585,13 @@ class manager(object):
     lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
       max_iterations = max_number_of_iterations)
     geometry_restraints_flags = geometry_restraints.flags.flags(
-      bond      = bond,
-      nonbonded = nonbonded,
-      angle     = angle,
-      dihedral  = dihedral,
-      chirality = chirality,
-      planarity = planarity)
+      bond               = bond,
+      nonbonded          = nonbonded,
+      angle              = angle,
+      dihedral           = dihedral,
+      chirality          = chirality,
+      planarity          = planarity,
+      generic_restraints = generic_restraints)
     for i in xrange(number_of_macro_cycles):
       sites_cart = self.xray_structure.sites_cart()
       sites_cart_orig = sites_cart.deep_copy()
