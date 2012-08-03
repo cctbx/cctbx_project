@@ -1173,6 +1173,7 @@ mmtbx/command_line/prune_model.py -text
 mmtbx/command_line/r_factor_statistics.py -text
 mmtbx/command_line/ramalyze.py -text
 mmtbx/command_line/real_space_correlation.py -text
+mmtbx/command_line/real_space_refine.py -text
 mmtbx/command_line/reciprocal_space_arrays.py -text
 mmtbx/command_line/rna_validate.py svneol=native#text/x-python
 mmtbx/command_line/rotalyze.py -text
