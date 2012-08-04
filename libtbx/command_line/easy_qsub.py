@@ -182,11 +182,11 @@ def run(phenix_source=None,
     f.close()
     commands = []
     for i in range(10):
-      commands.append("python %s %s" % (os.path.join(
-                                           os.getcwd(),
-                                           "easy_qsub_test_script.py"),
-                                           i+100,
-                                           )
+      commands.append("phenix.python %s %s" % (os.path.join(
+                                               os.getcwd(),
+                                               "easy_qsub_test_script.py"),
+                                               i+100,
+                                              )
         )
 
 
@@ -262,7 +262,7 @@ def run(phenix_source=None,
   outl = ""
   for line in lines:
     if line[-1]=="\n": line = line[:-1]
-    outl += "  '%s',\n" % line
+    outl += "  '''%s ''',\n" % line
   python_run_filename = os.path.join(os.getcwd(), python_run_filename)
   print "  Writing queue python script:\n    %s" % python_run_filename
   f=file(python_run_filename, "wb")
