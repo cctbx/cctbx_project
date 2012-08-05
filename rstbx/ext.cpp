@@ -120,29 +120,29 @@ rp_predict(reflection_prediction& rp,
       for (int ihkl = 0; ihkl < observed_indices.size(); ++ihkl) {
         if (rp( observed_indices[ihkl], observed_angles[ihkl] )) {
            scitbx::vec2<double> xy = rp.get_prediction();
-	   scitbx::vec3<double> s = rp.get_s();
+           scitbx::vec3<double> s = rp.get_s();
            return_indices.push_back(observed_indices[ihkl]);
            return_angle_rad.push_back(observed_angles[ihkl]);
            return_fast_px.push_back(xy[0]);
            return_slow_px.push_back(xy[1]);
            return_lorentz_factor.push_back(rp.lorentz_factor());
            return_angle_full_width_rad.push_back(rp.get_full_width());
-	   return_s.push_back(s);
+           return_s.push_back(s);
          }
        }
        return make_tuple(return_indices,return_fast_px,return_slow_px,return_angle_rad,
-			 return_lorentz_factor, return_angle_full_width_rad, return_s);
+                         return_lorentz_factor, return_angle_full_width_rad, return_s);
     }
     for (int ihkl = 0; ihkl < observed_indices.size(); ++ihkl) {
        if (rp( observed_indices[ihkl], observed_angles[ihkl] )) {
          scitbx::vec2<double> xy = rp.get_prediction();
-	 scitbx::vec3<double> s = rp.get_s();
+         scitbx::vec3<double> s = rp.get_s();
 
                  return_indices.push_back(observed_indices[ihkl]);
                  return_angle_rad.push_back(observed_angles[ihkl]);
                  return_fast_px.push_back(xy[0]);
                  return_slow_px.push_back(xy[1]);
-	   return_s.push_back(s);
+           return_s.push_back(s);
        }
      }
       return make_tuple(return_indices,return_fast_px,return_slow_px,return_angle_rad, return_s);
