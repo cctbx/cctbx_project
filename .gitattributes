@@ -1418,6 +1418,7 @@ rstbx/command_line/simage.create.py -text
 rstbx/command_line/simage.explore_completeness.py svneol=native#text/x-python
 rstbx/command_line/simage.solver.py svneol=native#text/x-python
 rstbx/command_line/simage.wx_display.py svneol=native#text/x-python
+rstbx/command_line/slip_viewer.py -text
 rstbx/command_line/viewer.py -text
 rstbx/dials_core/__init__.py -text
 rstbx/dials_core/integration_core.py -text
@@ -1497,6 +1498,13 @@ rstbx/simulation/sim_pdf.py -text
 rstbx/simulation/sim_utils.py -text
 rstbx/simulation/sim_xfel1.h -text
 rstbx/simulation/tst_xfel1_simple.py -text
+rstbx/slip_viewer/__init__.py -text
+rstbx/slip_viewer/calibration_frame.py -text
+rstbx/slip_viewer/frame.py -text
+rstbx/slip_viewer/pyslip.py -text
+rstbx/slip_viewer/ring_frame.py -text
+rstbx/slip_viewer/slip_display.py -text
+rstbx/slip_viewer/tile_generation.py -text
 rstbx/symmetry/__init__.py -text
 rstbx/symmetry/sgtbx_adaptor.py -text
 rstbx/symmetry/subgroup.py -text
