@@ -298,6 +298,8 @@ CCD_IMAGE_SATURATION=65535;
            size1=self.size1,
            size2=self.size2)
 
+  def supports_quadrant_calibration(self): return False
+  def implements_metrology_matrices(self): return False
 
 class tile_manager_base(object):
 
