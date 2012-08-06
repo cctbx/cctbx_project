@@ -212,7 +212,7 @@ class prune_model (object) :
                 chain_id=chain.id,
                 residue_group=residue_group,
                 atom_group=atom_group,
-                score=cc))
+                score=res_stats.cc))
               remove_atom_group = True
             elif (len(sidechain_atoms) > 0) and (self.params.sidechains) :
               # overall CC is acceptable - now look at sidechain alone
