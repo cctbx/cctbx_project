@@ -581,6 +581,9 @@ class miller_array_builder(crystal_symmetry_builder):
 
 class pdb_hierarchy_builder(crystal_symmetry_builder):
 
+  # The recommended translation for ATOM records can be found at:
+  #   http://mmcif.rcsb.org/dictionaries/pdb-correspondence/pdb2mmcif-2010.html#ATOM
+
   def __init__(self, cif_block):
     crystal_symmetry_builder.__init__(self, cif_block)
     from iotbx.pdb import hierarchy
@@ -589,12 +592,20 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
 
     # These items are mandatory for the _atom_site loop, all others are optional
     type_symbol = cif_block.get("_atom_site.type_symbol")
-    atom_labels = cif_block.get("_atom_site.label_atom_id") # corresponds to chem comp atom name
+    atom_labels = cif_block.get("_atom_site.auth_atom_id")
+    if atom_labels is None:
+      atom_labels = cif_block.get("_atom_site.label_atom_id") # corresponds to chem comp atom name
     alt_id = cif_block.get("_atom_site.label_alt_id") # alternate conformer id
-    asym_id = cif_block.get("_atom_site.label_asym_id") # chain id
-    comp_id = cif_block.get("_atom_site.label_comp_id") # residue name
+    asym_id = cif_block.get("_atom_site.auth_asym_id")
+    if asym_id is None:
+      asym_id = cif_block.get("_atom_site.label_asym_id") # chain id
+    comp_id = cif_block.get("_atom_site.auth_comp_id")
+    if comp_id is None:
+      comp_id = cif_block.get("_atom_site.label_comp_id") # residue name
     entity_id = cif_block.get("_atom_site.label_entity_id")
-    seq_id = cif_block.get("_atom_site.label_seq_id") # residue number
+    seq_id = cif_block.get("_atom_site.auth_seq_id")
+    if seq_id is None:
+      seq_id = cif_block.get("_atom_site.label_seq_id") # residue number
     assert [atom_labels, alt_id, asym_id, comp_id, entity_id, seq_id].count(None) == 0
     assert type_symbol is not None
 
