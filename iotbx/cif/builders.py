@@ -471,9 +471,15 @@ class miller_array_builder(crystal_symmetry_builder):
                     labels = labels+[label, phase_key]
               if base_array_info.labels is not None:
                 labels = base_array_info.labels + labels
+              def rstrip_substrings(string, substrings):
+                for substr in substrings:
+                  if substr == '': continue
+                  if string.endswith(substr):
+                    string = string[:-len(substr)]
+                return string
               # determine observation type
-              stripped_key = key.rstrip(key_suffix).rstrip('_au').rstrip('_meas')\
-                           .rstrip('_calc').rstrip('_plus').rstrip('_minus')
+              stripped_key = rstrip_substrings(
+                key, [key_suffix, '_au', '_meas', '_calc', '_plus', '_minus'])
               if (stripped_key.endswith('F_squared') or
                   stripped_key.endswith('intensity') or
                   stripped_key.endswith('.I') or
