@@ -436,6 +436,12 @@ def all_atoms_are_in_main_conf(atoms):
     if (atom.parent().altloc != ""): return False
   return True
 
+def residue_id_str (residue, suppress_segid=0) :
+  try :
+    return residue.id_str(suppress_segid=suppress_segid)
+  except ValueError, e :
+    raise Sorry(str(e))
+
 class counters(object):
 
   def __init__(self, label):
@@ -746,7 +752,7 @@ class monomer_mapping(slots_getstate_setstate):
     self.is_first_conformer_in_chain = is_first_conformer_in_chain
     self.conf_altloc = conf_altloc
     self.pdb_residue = pdb_residue
-    self.pdb_residue_id_str = pdb_residue.id_str(suppress_segid=-1)
+    self.pdb_residue_id_str = residue_id_str(pdb_residue, suppress_segid=-1)
     self.residue_name = pdb_residue.resname
     atom_id_str_pdbres_list = self._collect_atom_names()
     self.monomer, self.atom_name_interpretation \
@@ -1132,7 +1138,7 @@ Please contact cctbx@cci.lbl.gov for more information.""" % (id, id, h))
       msg = traceback.format_exc().splitlines()
       msg.extend([
         "apply_mod failure:",
-        "  %s" % self.pdb_residue.id_str(),
+        "  %s" % residue_id_str(self.pdb_residue),
         "  comp id: %s" % self.monomer.chem_comp.id,
         "  mod id: %s" % mod_mod_id.chem_mod.id])
       raise Sorry("\n".join(msg))
@@ -2088,7 +2094,8 @@ class build_chain_proxies(object):
         if (    mm.is_terminus == True
             and i_residue > 0
             and i_residue < conformer.residues_size()-1):
-          inner_chain_residues_flagged_as_termini.append(residue.id_str())
+          inner_chain_residues_flagged_as_termini.append(
+            residue_id_str(residue))
         n_expected_atoms += len(mm.expected_atoms)
         for atom_name in mm.unexpected_atoms.keys():
           unexpected_atoms[mm.residue_name+","+atom_name] += 1
@@ -2227,7 +2234,7 @@ class build_chain_proxies(object):
           for pair in mm_pairs_not_linked[:show_max]:
             print >> log, "            Not linked:"
             for mm in pair:
-              print >> log, "              %s" % mm.pdb_residue.id_str()
+              print >> log, "              %s" % residue_id_str(mm.pdb_residue)
           if (n_not_shown != 0):
             print >> log, \
               "            ... (remaining %d not shown)" % n_not_shown
