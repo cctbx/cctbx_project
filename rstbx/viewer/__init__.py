@@ -2,6 +2,7 @@
 import rstbx.utils
 from libtbx.math_utils import ifloor, iceil
 from libtbx.str_utils import format_value
+from libtbx.utils import Sorry
 import math
 
 pi_over_180 = math.pi / 180
@@ -223,8 +224,11 @@ class image (screen_params) :
   def __init__ (self, file_name) :
     screen_params.__init__(self)
     self.file_name = file_name
-    from iotbx.detectors import ImageFactory
-    img = ImageFactory(file_name)
+    from iotbx.detectors import ImageFactory, ImageException
+    try :
+      img = ImageFactory(file_name)
+    except ImageException, e :
+      raise Sorry(str(e))
     img.read()
     self._raw = img
     print img.show_header()
