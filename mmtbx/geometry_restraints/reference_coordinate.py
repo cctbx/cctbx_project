@@ -37,7 +37,6 @@ class build_proxies(object):
 
   def get_c_alpha_iselection(self, pdb_hierarchy):
     ca_iselection = flex.size_t()
-    #pdb_hierarchy = self.model.pdb_hierarchy(sync_with_xray_structure=True)
     for atom in pdb_hierarchy.atoms():
       if atom.name == " CA ":
         ca_iselection.append(atom.i_seq)
@@ -46,7 +45,6 @@ class build_proxies(object):
 def target_and_gradients(proxies,
                          sites_cart,
                          gradient_array):
-  #print "reference_coord target"
   import boost.python
   ext = boost.python.import_ext("mmtbx_reference_coordinate_ext")
   return ext.reference_coordinate_residual_sum(
