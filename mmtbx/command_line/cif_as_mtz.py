@@ -303,6 +303,10 @@ def extract(file_name,
       elif label.startswith(output_r_free_label):
         ma, _ = cif_status_flags_as_int_r_free_flags(
           ma, test_flag_value="f")
+        if isinstance(ma.data(), flex.double):
+          data_int = ma.data().iround()
+          assert data_int.as_double().all_eq(ma.data())
+          ma = ma.customized_copy(data=data_int).set_info(ma.info())
       crys_id = 0
       for l in labels:
         if 'crystal_id' in l:
