@@ -58,7 +58,7 @@ def resid_str (atom) :
   labels = atom.fetch_labels()
   return "%s %s" % (labels.resname, labels.resid())
 
-def distance (xyz1, xyz2) :
+def xyz_distance (xyz1, xyz2) :
   x1,y1,z1 = xyz1
   x2,y2,z2 = xyz2
   return sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
@@ -77,7 +77,7 @@ class group_operators (object) :
 
   def distance_from_center (self, sites) :
     c_o_m = sites.mean()
-    return distance(c_o_m, self.center_of_mass)
+    return xyz_distance(c_o_m, self.center_of_mass)
 
   def show_summary (self, out=None) :
     if (out is None) : out = sys.stdout
@@ -217,10 +217,10 @@ class sample_operators (object) :
     min_dist = sys.maxint
     best_group = None
     for op_group in ncs_operators :
-      distance = op_group.distance_from_center(sites_ref)
-      if (distance < min_dist) :
+      dxyz = op_group.distance_from_center(sites_ref)
+      if (dxyz < min_dist) :
         best_group = op_group
-        min_dist = distance
+        min_dist = dxyz
     if (best_group is not None) :
       print >> log, "This appears to be bound to the selection \"%s\"" % \
         best_group.selection_string
@@ -232,7 +232,7 @@ class sample_operators (object) :
       sites_mean = sites_new.mean()
       for other in other_ligands :
         sites_other_mean = other.atoms().extract_xyz().mean()
-        dxyz = distance(sites_other_mean, sites_new.mean())
+        dxyz = xyz_distance(sites_other_mean, sites_new.mean())
         if (dxyz < params.min_dist_center) :
           print >> log, "  operator %d specifies an existing ligand" % (j+1)
           continue
@@ -470,7 +470,7 @@ def combine_ligands_and_hierarchy (pdb_hierarchy, ligands) :
     min_dist = sys.maxint
     for chain in model.chains() :
       chain_xyz_mean = chain.atoms().extract_xyz().mean()
-      dist = distance(chain_xyz_mean, xyz_mean)
+      dist = dxyz(chain_xyz_mean, xyz_mean)
       if (dist < min_dist) :
         min_dist = dist
         best_chain = chain
