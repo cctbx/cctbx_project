@@ -2,7 +2,6 @@ import iotbx.phil
 from cctbx.array_family import flex
 from libtbx import easy_pickle
 from libtbx.utils import Sorry
-from mmtbx.refinement import print_statistics
 import sys
 
 den_params = iotbx.phil.parse("""
