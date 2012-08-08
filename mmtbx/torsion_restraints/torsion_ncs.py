@@ -599,7 +599,7 @@ class torsion_ncs(object):
         angle_id = self.get_torsion_id(dp, chi_only=True)
         if angle_id is not None:
           key = angle_id[4:6].strip()+angle_id[6:10]+' '+angle_id[0:4]
-          rot_id = model_hash[key]
+          rot_id = model_hash.get(key)
           rotamer_state.append(rot_id)
 
       target_angles = self.get_target_angles(
