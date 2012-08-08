@@ -1680,9 +1680,11 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
     return miller.array(miller_set = f_model,
                         data       = d_obs.data()-f_model.data()*f_model_scale)
 
+  def map_coefficients (self, **kwds) :
+    emap = self.electron_density_map()
+    return emap.map_coefficients(**kwds)
 
-
-  def map_coefficients(self,
+  def compute_map_coefficients(self,
                        map_type = None,
                        k        = None,
                        n        = None,
@@ -1817,16 +1819,18 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                            ncs_average=None,
                            post_processing_callback=None,
                            fill_missing=None):
-        map_name_manager = mmtbx.map_names(map_name_string = map_type)
-        k = map_name_manager.k
-        n = map_name_manager.n
-        map_coefficients = self.fmodel.map_coefficients(
-          map_type          = map_type,
-          k                 = k,
-          n                 = n,
-          w1                = w1,
-          w2                = w2)
-        return map_coefficients
+        if (map_type in ["gradient", "m_gradient"]) :
+          return self.fmodel.compute_map_coefficients(map_type=map_type)
+        else :
+          map_name_manager = mmtbx.map_names(map_name_string = map_type)
+          k = map_name_manager.k
+          n = map_name_manager.n
+          return self.fmodel.compute_map_coefficients(
+            map_type          = map_type,
+            k                 = k,
+            n                 = n,
+            w1                = w1,
+            w2                = w2)
       def fft_map(self, resolution_factor = None,
                   symmetry_flags = None,
                   map_coefficients = None,
@@ -1837,15 +1841,19 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
           resolution_factor = self.resolution_factor
         if(symmetry_flags is None):
           symmetry_flags =  self.symmetry_flags
-        map_name_manager = mmtbx.map_names(map_name_string = map_type)
-        k = map_name_manager.k
-        n = map_name_manager.n
-        map_coefficients = self.fmodel.map_coefficients(
-          map_type          = map_type,
-          k                 = k,
-          n                 = n,
-          w1                = w1,
-          w2                = w2)
+        if (map_type in ["gradient", "m_gradient"]) :
+          map_coefficients = self.fmodel.compute_map_coefficients(
+            map_type=map_type)
+        else :
+          map_name_manager = mmtbx.map_names(map_name_string = map_type)
+          k = map_name_manager.k
+          n = map_name_manager.n
+          map_coefficients = self.fmodel.compute_map_coefficients(
+            map_type          = map_type,
+            k                 = k,
+            n                 = n,
+            w1                = w1,
+            w2                = w2)
         return map_coefficients.fft_map(
           resolution_factor = resolution_factor,
           symmetry_flags    = symmetry_flags)

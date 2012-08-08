@@ -514,6 +514,7 @@ def exercise_5_bulk_sol_and_scaling_and_H(symbol = "C 2"):
   assert approx_equal(fmodel.k_h, 0.9)
   assert approx_equal(fmodel.b_h, 0)
   assert fmodel.r_work() < 0.016
+  map_coeffs = fmodel.map_coefficients(map_type="2mFo-DFc")
 
 def run(args):
   assert len(args) == 0

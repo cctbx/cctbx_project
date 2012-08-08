@@ -2056,6 +2056,10 @@ class manager(manager_mixin):
   def electron_density_map(self):
     return map_tools.electron_density_map(fmodel = self)
 
+  def map_coefficients (self, **kwds) :
+    emap = self.electron_density_map()
+    return emap.map_coefficients(**kwds)
+
   def info(self, free_reflections_per_bin = None, max_number_of_bins = None):
     if(free_reflections_per_bin is None):
       free_reflections_per_bin= self.alpha_beta_params.free_reflections_per_bin
