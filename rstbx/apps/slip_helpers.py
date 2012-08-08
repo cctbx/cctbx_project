@@ -212,7 +212,7 @@ class slip_callbacks:
 
     red_data = []; green_data = []
 
-    for spot in self.spotfinder.images[self.frames[self.image_number]]["goodspots"]:
+    for spot in self.spotfinder.images[self.frame_numbers[self.image_number]]["goodspots"]:
       # RED: spotfinder spot pixels
       for pxl in spot.bodypixels:
         red_data.append(
@@ -616,7 +616,7 @@ class slip_callbacks:
     # FIRST Set:  spot bodypixels:
     from annlib_ext import AnnAdaptorSelfInclude as AnnAdaptor
     body_pixel_reference = flex.double()
-    for spot in self.spotfinder.images[self.frames[self.image_number]]["goodspots"]:
+    for spot in self.spotfinder.images[self.frame_numbers[self.image_number]]["goodspots"]:
       for pxl in spot.bodypixels:
         body_pixel_reference.append(pxl.y + 0.5)
         body_pixel_reference.append(pxl.x + 0.5)
@@ -717,7 +717,7 @@ class slip_callbacks:
     # FIRST Set:  spot bodypixels:
     from annlib_ext import AnnAdaptorSelfInclude as AnnAdaptor
     body_pixel_reference = flex.double()
-    for spot in self.spotfinder.images[self.frames[self.image_number]]["goodspots"]:
+    for spot in self.spotfinder.images[self.frame_numbers[self.image_number]]["goodspots"]:
       for pxl in spot.bodypixels:
         body_pixel_reference.append(pxl.y + 0.5)
         body_pixel_reference.append(pxl.x + 0.5)
@@ -783,7 +783,7 @@ class slip_callbacks:
     reserve_orientation = self.inputai.getOrientation()
 
     wrapbp3 = wrapper_of_use_case_bp3( raw_image = frame.pyslip.tiles.raw_image,
-      spotfinder = self.spotfinder, imageindex = self.frames[self.image_number],
+      spotfinder = self.spotfinder, imageindex = self.frame_numbers[self.image_number],
       inputai = self.inputai,
       spot_prediction_limiting_resolution = self.limiting_resolution,
       phil_params = frame.inherited_params)
@@ -826,7 +826,7 @@ class slip_callbacks:
     reserve_orientation = self.inputai.getOrientation()
 
     wrapbp3 = wrapper_of_use_case_bp3( raw_image = self.imagefiles.images[self.image_number],
-      spotfinder = self.spotfinder, imageindex = self.frames[self.image_number],
+      spotfinder = self.spotfinder, imageindex = self.frame_numbers[self.image_number],
       inputai = self.inputai,
       spot_prediction_limiting_resolution = self.limiting_resolution,
       phil_params = self.horizons_phil,
@@ -915,7 +915,7 @@ class slip_callbacks:
     lowest_cell = max(reserve_orientation.unit_cell().parameters()[0:3])
 
     wrapbp3 = wrapper_of_use_case_bp3( raw_image = self.imagefiles.images[self.image_number],
-      spotfinder = self.spotfinder, imageindex = self.frames[self.image_number],
+      spotfinder = self.spotfinder, imageindex = self.frame_numbers[self.image_number],
       inputai = self.inputai,
       spot_prediction_limiting_resolution = self.limiting_resolution,
       phil_params = self.horizons_phil,
@@ -1006,7 +1006,7 @@ class slip_callbacks:
     lowest_cell = max(reserve_orientation.unit_cell().parameters()[0:3])
 
     wrapbp3 = wrapper_of_use_case_bp3( raw_image = self.imagefiles.images[self.image_number],
-      spotfinder = self.spotfinder, imageindex = self.frames[self.image_number],
+      spotfinder = self.spotfinder, imageindex = self.frame_numbers[self.image_number],
       inputai = self.inputai,
       spot_prediction_limiting_resolution = self.limiting_resolution,
       phil_params = self.horizons_phil,
