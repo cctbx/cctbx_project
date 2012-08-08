@@ -267,15 +267,19 @@ def angle_distance(angle1, angle2):
   return math.fabs(distance)
 
 def get_angle_average(angles):
-  n_angles = len(angles)
+  local_angles = []
+  for angle in angles:
+    if angle is not None:
+      local_angles.append(angle)
+  n_angles = len(local_angles)
   sum = 0.0
-  a1 = angles[0]
+  a1 = local_angles[0]
   if a1 > 180.0:
     a1 -= 360.0
   elif a1 < -180.0:
     a1 += 360.0
   sum += a1
-  for angle in angles[1:]:
+  for angle in local_angles[1:]:
     a2 = angle
     if (a1 - a2) > 180.0:
       a2 += 360.0

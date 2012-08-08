@@ -1,6 +1,7 @@
 import cctbx.geometry_restraints
 from mmtbx.validation.rotalyze import rotalyze
-from mmtbx.refinement import fit_rotamers, real_space
+from mmtbx.validation.ramalyze import ramalyze
+from mmtbx.refinement import fit_rotamers
 from mmtbx.rotamer.sidechain_angles import SidechainAngles
 import mmtbx.monomer_library
 from cctbx.array_family import flex
@@ -18,7 +19,7 @@ from libtbx import Auto
 TOP_OUT_FLAG = True
 
 torsion_ncs_params = iotbx.phil.parse("""
- sigma = 3.0
+ sigma = 2.5
    .type = float
    .short_caption = Restraint sigma (degrees)
  limit = 15.0
@@ -46,6 +47,12 @@ torsion_ncs_params = iotbx.phil.parse("""
    .expert_level = 1
  verbose = True
    .type = bool
+ use_cc_for_target_angles = False
+   .type = bool
+   .expert_level = 4
+ filter_phi_psi_outliers = True
+   .type = bool
+   .expert_level = 4
  restraint_group
   .multiple=True
   .optional=True
@@ -85,13 +92,16 @@ class torsion_ncs(object):
     self.sigma = params.sigma
     self.limit = params.limit
     self.slack = params.slack
+    self.use_cc_for_target_angles = params.use_cc_for_target_angles
+    self.filter_phi_psi_outliers = params.filter_phi_psi_outliers
     self.b_factor_weight = b_factor_weight
     self.coordinate_sigma = coordinate_sigma
     self.pdb_hierarchy = pdb_hierarchy
     self.fmodel = fmodel
     self.ncs_groups = []
     self.dp_ncs = []
-    self.chi_tracker = {}
+    self.phi_list = []
+    self.psi_list = []
     self.ncs_dihedral_proxies = None
     self.name_hash = utils.build_name_hash(pdb_hierarchy)
     self.segid_hash = utils.build_segid_hash(pdb_hierarchy)
@@ -103,6 +113,8 @@ class torsion_ncs(object):
     self.min_length = 10
     self.sa = SidechainAngles(False)
     self.sidechain_angle_hash = self.build_sidechain_angle_hash()
+    self.c_alpha_hinges = None
+    self.r = rotalyze()
     print >> self.log, "Determining NCS matches..."
     dp_hash = {}
     self.use_segid = False
@@ -343,19 +355,20 @@ class torsion_ncs(object):
       if len(dp_match) > 1:
         self.dp_ncs.append(dp_match)
 
+    #initialize tracking hashes
     for dp_set in self.dp_ncs:
       for dp in dp_set:
         angle_atoms = self.get_torsion_atoms(dp)
         angle_resname = self.get_torsion_resname(dp)
         angle_id = self.get_torsion_id(dp)
-        cur_dict = self.sidechain_angle_hash.get(angle_resname)
-        if cur_dict != None:
-          angle_name = \
-            cur_dict.get(angle_atoms)
-          if angle_name != None:
-            if self.chi_tracker.get(angle_id) is None:
-              self.chi_tracker[angle_id] = {}
-            self.chi_tracker[angle_id][angle_name] = False
+        #phi
+        if angle_atoms == ' C  '+' N  '+' CA '+' C  ':
+          phi_id = self.get_torsion_id(dp, phi_psi=True)
+          self.phi_list.append(dp.i_seqs)
+        #psi
+        elif angle_atoms == ' N  '+' CA '+' C  '+' N  ':
+          psi_id = self.get_torsion_id(dp, phi_psi=True)
+          self.psi_list.append(dp.i_seqs)
 
     match_counter = {}
     inclusive_range = {}
@@ -438,6 +451,7 @@ class torsion_ncs(object):
     if self.params.verbose:
       self.show_ncs_summary(log=log)
     print >> self.log, "Initializing torsion NCS restraints..."
+    self.rama = ramalyze()
     self.generate_dihedral_ncs_restraints(sites_cart=sites_cart,
                                           log=log)
 
@@ -487,29 +501,54 @@ class torsion_ncs(object):
         return None
     return resname
 
-  def get_torsion_id(self, dp):
+  def get_torsion_id(self, dp, phi_psi=False, chi_only=False):
     id = None
+    chi_atoms = False
+    atom_list = []
+    if phi_psi:
+      return self.name_hash[dp.i_seqs[1]][4:]
     for i_seq in dp.i_seqs:
       cur_id = self.name_hash[i_seq][4:]
+      atom = self.name_hash[i_seq][:4]
+      atom_list.append(atom)
       if id == None:
         id = cur_id
       elif cur_id != id:
         return None
+      if chi_only:
+        if atom not in [' N  ', ' CA ', ' C  ', ' O  ', ' CB ', ' OXT']:
+          chi_atoms = True
+    if chi_only and not chi_atoms:
+      return None
     return id
-
-  def reset_chi_tracker(self):
-    for key1 in self.chi_tracker.keys():
-      for key2 in self.chi_tracker[key1].keys():
-        self.chi_tracker[key1][key2] = False
 
   def generate_dihedral_ncs_restraints(self, sites_cart, log):
     self.ncs_dihedral_proxies = \
       cctbx.geometry_restraints.shared_dihedral_proxy()
-    #print self.sym_atom_hash
+    target_map_data = None
+    if self.fmodel is not None and self.use_cc_for_target_angles:
+      target_map_data, residual_map_data = self.prepare_map(
+                                             fmodel=self.fmodel)
+    for atom in self.pdb_hierarchy.atoms():
+      i_seq = atom.i_seq
+      atom.xyz = sites_cart[i_seq]
+    model_hash, model_score, all_rotamers, model_chis = \
+      self.get_rotamer_data(pdb_hierarchy=self.pdb_hierarchy)
+    self.rama_outliers = None
+    rama_outlier_list = []
+    if self.filter_phi_psi_outliers:
+      self.rama_outliers = \
+        self.get_ramachandran_outliers(self.pdb_hierarchy)
+      for outlier in self.rama_outliers.splitlines():
+        temp = outlier.split(':')
+        rama_outlier_list.append(temp[0])
     for dp_set in self.dp_ncs:
       if len(dp_set) < 2:
         continue
       angles = []
+      cc_s = []
+      is_rama_outlier = []
+      rotamer_state = []
       wrap_hash = {}
       for i, dp in enumerate(dp_set):
         di = cctbx.geometry_restraints.dihedral(
@@ -539,8 +578,35 @@ class torsion_ncs(object):
             else:
               angle = None
         angles.append(angle)
+        rama_out = False
+        if (dp.i_seqs in self.phi_list) or (dp.i_seqs in self.psi_list):
+          angle_id = self.get_torsion_id(dp, phi_psi=True)
+          key = angle_id[4:6].strip()+angle_id[6:10]+' '+angle_id[0:4]
+          if key in rama_outlier_list:
+            rama_out = True
+        is_rama_outlier.append(rama_out)
+
+        if target_map_data is not None:
+          tor_iselection = flex.size_t()
+          for i_seq in dp.i_seqs:
+            tor_iselection.append(i_seq)
+          tor_sites_cart = \
+            sites_cart.select(tor_iselection)
+          di_cc = self.get_sites_cc(sites_cart=tor_sites_cart,
+                                    target_map_data=target_map_data)
+          cc_s.append(di_cc)
+
+        angle_id = self.get_torsion_id(dp, chi_only=True)
+        if angle_id is not None:
+          key = angle_id[4:6].strip()+angle_id[6:10]+' '+angle_id[0:4]
+          rot_id = model_hash[key]
+          rotamer_state.append(rot_id)
+
       target_angles = self.get_target_angles(
-                        angles=angles)
+                        angles=angles,
+                        cc_s=cc_s,
+                        is_rama_outlier=is_rama_outlier,
+                        rotamer_state=rotamer_state)
       for i, dp in enumerate(dp_set):
         target_angle = target_angles[i]
         angle_atoms = self.get_torsion_atoms(dp)
@@ -557,30 +623,6 @@ class torsion_ncs(object):
           angle_id = self.get_torsion_id(dp)
           cur_dict = self.sidechain_angle_hash.get(angle_resname)
           angle_name = None
-          if cur_dict is not None:
-            angle_name = \
-              cur_dict.get(angle_atoms)
-          if angle_name is not None:
-            if angle_name[-1:] == '1':
-              self.chi_tracker[angle_id][angle_name] = True
-            elif angle_name[-1:].isdigit() :
-              current_chi_number = int(angle_name[-1:])
-              previous_chi_number = current_chi_number - 1
-              previous_chi_id = "chi%d" % previous_chi_number
-              previous_chi_state = \
-                self.chi_tracker[angle_id].get(previous_chi_id)
-              if previous_chi_state == False:
-                #if angle_id.endswith("    "):
-                #  print >> self.log, \
-                #    "skipping %s, chi%d" % \
-                #    (angle_id[:-4], current_chi_number)
-                #else:
-                #  print >> self.log, \
-                #    "skipping %s, chi%d" % \
-                #    (angle_id, current_chi_number)
-                continue
-              else:
-                self.chi_tracker[angle_id][angle_name] = True
           dp_sym = wrap_hash.get(i)
           if dp_sym is not None:
             dp_add = cctbx.geometry_restraints.dihedral_proxy(
@@ -617,7 +659,6 @@ class torsion_ncs(object):
     make_sub_header(
       "Updating torsion NCS restraints",
       out=log)
-    self.reset_chi_tracker()
     self.generate_dihedral_ncs_restraints(sites_cart=sites_cart,
                                           log=log)
     self.add_ncs_dihedral_proxies(geometry=geometry)
@@ -647,11 +688,28 @@ class torsion_ncs(object):
         return True
     return False
 
-  def get_target_angles(self, angles):
+  def get_target_angles(self,
+                        angles,
+                        cc_s,
+                        is_rama_outlier,
+                        rotamer_state):
+    assert (len(rotamer_state) == len(angles)) or \
+           (len(rotamer_state) == 0)
     clusters = {}
     used = []
     target_angles = angles[:]
-    wrapped = [False]*len(angles)
+    if is_rama_outlier.count(False) == 0:
+      for i, target in enumerate(target_angles):
+        target_angles[i] = None
+      return target_angles
+    max_i = None
+    for i, cc in enumerate(cc_s):
+      if is_rama_outlier[i]:
+        continue
+      if max_i is None:
+        max_i = i
+      elif max < cc:
+        max_i = i
     for i, ang_i in enumerate(angles):
       if i in used:
         continue
@@ -665,7 +723,13 @@ class torsion_ncs(object):
         elif ang_j is None:
           continue
         else:
-          #if utils.angle_distance(ang_i, ang_j) <= self.params.cutoff:
+          if len(rotamer_state) > 0:
+            #require rotamers to match to restrain chi angles
+            #WHAT ABOUT OUTLIERS?
+            if (rotamer_state[i] != rotamer_state[j]) or \
+               (rotamer_state[i] == "OUTLIER" and
+                rotamer_state[j] == "OUTLIER"):
+              continue
           if i not in used:
             clusters[i] = []
             clusters[i].append(i)
@@ -684,8 +748,14 @@ class torsion_ncs(object):
       else:
         cluster_angles = []
         for i in cluster:
-          cluster_angles.append(angles[i])
-        target_angle = utils.get_angle_average(cluster_angles)
+          if is_rama_outlier[i]:
+            cluster_angles.append(None)
+          else:
+            cluster_angles.append(angles[i])
+        if max_i is not None:
+          target_angle = angles[max_i]
+        else:
+          target_angle = utils.get_angle_average(cluster_angles)
         if self.params.target_damping:
           for c in cluster:
             c_dist = utils.angle_distance(angles[c], target_angle)
@@ -704,53 +774,46 @@ class torsion_ncs(object):
     geometry.ncs_dihedral_proxies= \
       self.ncs_dihedral_proxies
 
-  def fix_rotamer_outliers(self,
-                           xray_structure,
-                           geometry_restraints_manager,
-                           pdb_hierarchy,
-                           outliers_only=False,
-                           log=None,
-                           quiet=False):
-    self.last_round_outlier_fixes = 0
-    sites_cart = xray_structure.sites_cart()
-    for atom in pdb_hierarchy.atoms():
-      i_seq = atom.i_seq
-      atom.xyz = sites_cart[i_seq]
-    selection_radius = 5
-    fmodel = self.fmodel
-    if(log is None): log = self.log
-    make_sub_header(
-      "Correcting NCS rotamer outliers",
-      out=log)
-    r = rotalyze()
-    sa = SidechainAngles(False)
-    exclude_free_r_reflections = False
-    unit_cell = xray_structure.unit_cell()
-    mon_lib_srv = mmtbx.monomer_library.server.server()
-    rot_list_model, coot_model = r.analyze_pdb(hierarchy=pdb_hierarchy)
+  def rotamer_correction_init(self, xray_structure, pdb_hierarchy):
+    self.mon_lib_srv = mmtbx.monomer_library.server.server()
+    self.unit_cell = xray_structure.unit_cell()
+    self.exclude_free_r_reflections = False
+    self.torsion_params = \
+      fit_rotamers.torsion_search_params().extract().torsion_search
+    self.torsion_params.range_start = -10.0
+    self.torsion_params.range_stop = 10.0
+    self.torsion_params.step = 1.0
+    self.torsion_params.min_angle_between_solutions = 0.5
+    self.c_alpha_hinges = get_c_alpha_hinges(xray_structure=xray_structure,
+                                        pdb_hierarchy=pdb_hierarchy)
 
-    map_obj = self.fmodel.electron_density_map()
+  def prepare_map(self, fmodel):
+    map_obj = fmodel.electron_density_map()
     fft_map = map_obj.fft_map(resolution_factor = 1./4,
-      map_type = "2mFo-DFc", use_all_data=(not exclude_free_r_reflections))
+      map_type = "2mFo-DFc", use_all_data=(
+        not self.exclude_free_r_reflections))
     fft_map.apply_sigma_scaling()
     target_map_data = fft_map.real_map_unpadded()
     fft_map = map_obj.fft_map(resolution_factor = 1./4,
-      map_type = "mFo-DFc", use_all_data=(not exclude_free_r_reflections))
+      map_type = "mFo-DFc", use_all_data=(
+        not self.exclude_free_r_reflections))
     fft_map.apply_sigma_scaling()
     residual_map_data = fft_map.real_map_unpadded()
+    return target_map_data, residual_map_data
 
-    brm = real_space.box_refinement_manager(
-            xray_structure = xray_structure,
-            pdb_hierarchy = pdb_hierarchy,
-            target_map = target_map_data,
-            geometry_restraints_manager = geometry_restraints_manager)
+  def get_ramachandran_outliers(self, pdb_hierarchy):
+    rama_outliers, output_list = \
+      self.rama.analyze_pdb(hierarchy=pdb_hierarchy,
+                            outliers_only=True)
+    return rama_outliers
 
+  def get_rotamer_data(self, pdb_hierarchy):
+    rot_list_model, coot_model = \
+      self.r.analyze_pdb(hierarchy=pdb_hierarchy)
     model_hash = {}
     model_score = {}
-    model_chis = {}
-    fix_list = {}
-    rotamer_targets = {}
     all_rotamers = {}
+    model_chis = {}
     for line in rot_list_model.splitlines():
       res, occ, rotamericity, chi1, chi2, chi3, chi4, name = line.split(':')
       model_hash[res]=name
@@ -767,6 +830,57 @@ class torsion_ncs(object):
         if j_rot is not None and j_rot != "OUTLIER":
           if j_rot not in all_rotamers[res_key]:
             all_rotamers[res_key].append(j_rot)
+
+    for model in pdb_hierarchy.models():
+      for chain in model.chains():
+        for residue_group in chain.residue_groups():
+            all_dict = \
+              self.r.construct_complete_sidechain(residue_group)
+            for atom_group in residue_group.atom_groups():
+              try:
+                atom_dict = all_dict.get(atom_group.altloc)
+                chis = \
+                  self.r.sa.measureChiAngles(atom_group, atom_dict)
+                if chis is not None:
+                  key = '%s%5s %s' % (
+                      chain.id, residue_group.resid(),
+                      atom_group.altloc+atom_group.resname)
+                  model_chis[key] = chis
+              except Exception:
+                print >> self.log, \
+                  '  %s%5s %s is missing some sidechain atoms, **skipping**' % (
+                      chain.id, residue_group.resid(),
+                      atom_group.altloc+atom_group.resname)
+    return model_hash, model_score, all_rotamers, model_chis
+
+  def fix_rotamer_outliers(self,
+                           xray_structure,
+                           geometry_restraints_manager,
+                           pdb_hierarchy,
+                           outliers_only=False,
+                           log=None,
+                           quiet=False):
+    self.last_round_outlier_fixes = 0
+    if self.c_alpha_hinges is None:
+      self.rotamer_correction_init(xray_structure, pdb_hierarchy)
+    sites_cart = xray_structure.sites_cart()
+    for atom in pdb_hierarchy.atoms():
+      i_seq = atom.i_seq
+      atom.xyz = sites_cart[i_seq]
+    selection_radius = 5
+    fmodel = self.fmodel
+    if(log is None): log = self.log
+    make_sub_header(
+      "Correcting NCS rotamer outliers",
+      out=log)
+
+    target_map_data, residual_map_data = self.prepare_map(fmodel=fmodel)
+
+    model_hash, model_score, all_rotamers, model_chis = \
+      self.get_rotamer_data(pdb_hierarchy=pdb_hierarchy)
+
+    fix_list = {}
+    rotamer_targets = {}
 
     for key in self.res_match_master.keys():
       res_key = key[5:10]+' '+key[0:4]
@@ -793,118 +907,87 @@ class torsion_ncs(object):
           fix_list[res_key] = rotamer
           rotamer_targets[res_key] = target
 
-    for model in pdb_hierarchy.models():
-      for chain in model.chains():
-        for residue_group in chain.residue_groups():
-            all_dict = r.construct_complete_sidechain(residue_group)
-            for atom_group in residue_group.atom_groups():
-              try:
-                atom_dict = all_dict.get(atom_group.altloc)
-                chis = r.sa.measureChiAngles(atom_group, atom_dict)
-                if chis is not None:
-                  key = '%s%5s %s' % (
-                      chain.id, residue_group.resid(),
-                      atom_group.altloc+atom_group.resname)
-                  model_chis[key] = chis
-              except Exception:
-                print >> log, \
-                  '  %s%5s %s is missing some sidechain atoms, **skipping**' % (
-                      chain.id, residue_group.resid(),
-                      atom_group.altloc+atom_group.resname)
-
     sites_cart_moving = xray_structure.sites_cart()
     sites_cart_backup = sites_cart_moving.deep_copy()
     for model in pdb_hierarchy.models():
       for chain in model.chains():
         for residue_group in chain.residue_groups():
-          all_dict = r.construct_complete_sidechain(residue_group)
+          all_dict = \
+            self.r.construct_complete_sidechain(residue_group)
           for atom_group in residue_group.atom_groups():
-            if atom_group.resname == "PRO":
+            if atom_group.resname in ["PRO", "GLY", "HOH"]:
               continue
             key = '%s%5s %s' % (
                       chain.id, residue_group.resid(),
                       atom_group.altloc+atom_group.resname)
             if key in fix_list.keys():
               m_chis = model_chis.get(key)
-              r_chis = model_chis.get(fix_list[key])
+              residue_name = key[-3:]
+              cur_rotamer = rotamer_targets[key]
+              r_chis = self.r.sa.get_rotamer_angles(
+                             residue_name=residue_name,
+                             rotamer_name=cur_rotamer)
               if m_chis is not None and r_chis is not None:
-                axis_and_atoms_to_rotate= \
-                  fit_rotamers.axes_and_atoms_aa_specific(
-                      residue=atom_group,
-                      mon_lib_srv=mon_lib_srv,
-                      remove_clusters_with_all_h=True,
-                      log=None)
-                if (axis_and_atoms_to_rotate is None) :
-                  print >> log, "Skipped %s rotamer (TARDY error)" % key
-                  continue
-                assert len(m_chis) == len(r_chis)
-                #exclude H-only clusters if necessary
-                while len(axis_and_atoms_to_rotate) > len(m_chis):
-                  axis_and_atoms_to_rotate = \
-                    axis_and_atoms_to_rotate[:-1]
-                assert len(m_chis) == len(axis_and_atoms_to_rotate)
-                counter = 0
-                residue_iselection = atom_group.atoms().extract_i_seq()
-                sites_cart_residue = \
-                  sites_cart_moving.select(residue_iselection)
-                sites_cart_residue_start = sites_cart_residue.deep_copy()
-                selection = flex.bool(
-                              len(sites_cart_moving),
-                              residue_iselection)
-                rev = fit_rotamers.rotamer_evaluator(
-                  sites_cart_start = sites_cart_residue,
-                  unit_cell        = unit_cell,
-                  two_mfo_dfc_map  = target_map_data,
-                  mfo_dfc_map      = residual_map_data)
-
-                for aa in axis_and_atoms_to_rotate:
-                  axis = aa[0]
-                  atoms = aa[1]
-                  new_xyz = flex.vec3_double()
-                  angle_deg = r_chis[counter] - m_chis[counter]
-                  if angle_deg < 0:
-                    angle_deg += 360.0
-                  for atom in atoms:
-                    new_xyz = rotate_point_around_axis(
-                                axis_point_1=sites_cart_residue[axis[0]],
-                                axis_point_2=sites_cart_residue[axis[1]],
-                                point=sites_cart_residue[atom],
-                                angle=angle_deg, deg=True)
-                    sites_cart_residue[atom] = new_xyz
-                  counter += 1
-
-                sites_cart_moving.set_selected(
-                    residue_iselection, sites_cart_residue)
-                xray_structure.set_sites_cart(sites_cart_moving)
-                rotamer, value = r.evaluate_rotamer(
+                status = self.rotamer_search(
                   atom_group=atom_group,
                   all_dict=all_dict,
-                  sites_cart=sites_cart_moving)
-                brm.refine(selection=selection,
-                           monitor_clashscore=False)
-                sites_cart_refined_residue = \
-                  brm.sites_cart.select(residue_iselection)
-                rotamer, value = r.evaluate_rotamer(
-                  atom_group=atom_group,
-                  all_dict=all_dict,
-                  sites_cart=brm.sites_cart)
-                xray_structure.set_sites_cart(brm.sites_cart)
-                rotamer_match = (rotamer == rotamer_targets[key])
-                if rev.is_better(sites_cart_refined_residue) and \
-                   rotamer_match:
-                  sites_cart_moving.set_selected(
-                    residue_iselection, sites_cart_refined_residue)
-                  xray_structure.set_sites_cart(sites_cart_moving)
-                  mmtbx.utils.assert_xray_structures_equal(
-                    x1 = xray_structure,
-                    x2 = brm.xray_structure)
+                  m_chis=m_chis,
+                  r_chis=r_chis,
+                  rotamer=cur_rotamer,
+                  sites_cart_moving=sites_cart_moving,
+                  xray_structure=xray_structure,
+                  target_map_data=target_map_data,
+                  residual_map_data=residual_map_data,
+                  log=log)
+                if status:
                   print >> log, "Set %s to %s rotamer" % \
-                    (key, rotamer)
+                    (key, cur_rotamer)
                   self.last_round_outlier_fixes += 1
-                else:
-                  sites_cart_moving.set_selected(
-                    residue_iselection, sites_cart_residue_start)
-                  xray_structure.set_sites_cart(sites_cart_moving)
+
+  def get_sites_cc(self,
+                   sites_cart,
+                   target_map_data):
+    t = fit_rotamers.target(sites_cart,
+                            self.unit_cell,
+                            target_map_data)
+    return t
+
+
+  def get_sidechain_map_correlation(self,
+                                    xray_structure,
+                                    pdb_hierarchy):
+    map_cc_hash = {}
+    sigma_cutoff_hash = {}
+    fmodel = self.fmodel
+    target_map_data, residual_map_data = self.prepare_map(fmodel=fmodel)
+    sites_cart_moving = xray_structure.sites_cart()
+    for model in pdb_hierarchy.models():
+      for chain in model.chains():
+        for residue_group in chain.residue_groups():
+          all_dict = self.r.construct_complete_sidechain(residue_group)
+          for atom_group in residue_group.atom_groups():
+            if atom_group.resname in ["PRO", "GLY", "HOH"]:
+              continue
+            key = atom_group.atoms()[0].pdb_label_columns()[4:]+\
+                  atom_group.atoms()[0].segid
+            residue_iselection = atom_group.atoms().extract_i_seq()
+            sidechain_only_iselection = flex.size_t()
+            for i_seq in residue_iselection:
+              atom_name = self.name_hash[i_seq][0:4]
+              if atom_name not in [' N  ', ' CA ', ' C  ', ' O  ']:
+                sidechain_only_iselection.append(i_seq)
+            sites_cart_residue = \
+              sites_cart_moving.select(sidechain_only_iselection)
+            t_test = self.get_sites_cc(sites_cart_residue,
+                                       target_map_data)
+            map_cc_hash[key] = t_test
+            sigma_state = fit_rotamers.all_sites_above_sigma_cutoff(
+                            sites_cart_residue,
+                            self.unit_cell,
+                            target_map_data,
+                            1.0)
+            sigma_cutoff_hash[key] = sigma_state
+    return map_cc_hash, sigma_cutoff_hash
 
   def fix_rotamer_consistency(self,
                               xray_structure,
@@ -913,194 +996,307 @@ class torsion_ncs(object):
                               log=None,
                               quiet=False):
     self.last_round_rotamer_changes = 0
+    if self.c_alpha_hinges is None:
+      self.rotamer_correction_init(xray_structure, pdb_hierarchy)
     sites_cart = xray_structure.sites_cart()
     for atom in pdb_hierarchy.atoms():
       i_seq = atom.i_seq
       atom.xyz = sites_cart[i_seq]
-    selection_radius = 5
     fmodel = self.fmodel
     if(log is None): log = self.log
     make_sub_header(
       "Checking NCS rotamer consistency",
       out=log)
-    r = rotalyze()
-    sa = SidechainAngles(False)
     exclude_free_r_reflections = False
-    unit_cell = xray_structure.unit_cell()
-    mon_lib_srv = mmtbx.monomer_library.server.server()
-    rot_list_model, coot_model = r.analyze_pdb(hierarchy=pdb_hierarchy)
+    rot_list_model, coot_model = \
+      self.r.analyze_pdb(hierarchy=pdb_hierarchy)
 
-    map_obj = self.fmodel.electron_density_map()
-    fft_map = map_obj.fft_map(resolution_factor = 1./4,
-      map_type = "2mFo-DFc", use_all_data=(not exclude_free_r_reflections))
-    fft_map.apply_sigma_scaling()
-    target_map_data = fft_map.real_map_unpadded()
-    fft_map = map_obj.fft_map(resolution_factor = 1./4,
-      map_type = "mFo-DFc", use_all_data=(not exclude_free_r_reflections))
-    fft_map.apply_sigma_scaling()
-    residual_map_data = fft_map.real_map_unpadded()
+    target_map_data, residual_map_data = self.prepare_map(fmodel=fmodel)
 
-    brm = real_space.box_refinement_manager(
-            xray_structure = xray_structure,
-            pdb_hierarchy = pdb_hierarchy,
-            target_map = target_map_data,
-            geometry_restraints_manager = geometry_restraints_manager)
-
-    model_hash = {}
-    model_score = {}
-    model_chis = {}
-    fix_list = {}
-    rotamer_targets = {}
-    all_rotamers = {}
-    for line in rot_list_model.splitlines():
-      res, occ, rotamericity, chi1, chi2, chi3, chi4, name = line.split(':')
-      model_hash[res]=name
-      model_score[res]=rotamericity
-
-    for key in self.res_match_master.keys():
-      res_key = key[5:10]+' '+key[0:4]
-      all_rotamers[res_key] = []
-      model_rot = model_hash.get(res_key)
-      if model_rot is not None and model_rot != "OUTLIER":
-        all_rotamers[res_key].append(model_rot)
-      for match_res in self.res_match_master[key]:
-        j_key = match_res[5:10]+' '+match_res[0:4]
-        j_rot = model_hash.get(j_key)
-        if j_rot is not None and j_rot != "OUTLIER":
-          if j_rot not in all_rotamers[res_key]:
-            all_rotamers[res_key].append(j_rot)
-
-    for model in pdb_hierarchy.models():
-      for chain in model.chains():
-        for residue_group in chain.residue_groups():
-            all_dict = r.construct_complete_sidechain(residue_group)
-            for atom_group in residue_group.atom_groups():
-              try:
-                atom_dict = all_dict.get(atom_group.altloc)
-                chis = r.sa.measureChiAngles(atom_group, atom_dict)
-                if chis is not None:
-                  key = '%s%5s %s' % (
-                      chain.id, residue_group.resid(),
-                      atom_group.altloc+atom_group.resname)
-                  model_chis[key] = chis
-              except Exception:
-                print >> log, \
-                  '  %s%5s %s is missing some sidechain atoms, **skipping**' % (
-                      chain.id, residue_group.resid(),
-                      atom_group.altloc+atom_group.resname)
+    model_hash, model_score, all_rotamers, model_chis = \
+      self.get_rotamer_data(pdb_hierarchy=pdb_hierarchy)
 
     sites_cart_moving = xray_structure.sites_cart()
+    map_cc_hash, sigma_cutoff_hash = \
+      self.get_sidechain_map_correlation(xray_structure, pdb_hierarchy)
+    cc_candidate_list = []
+    for key in self.ncs_match_hash.keys():
+      whole_set = []
+      value = map_cc_hash.get(key)
+      max = None
+      max_key = None
+      if value is not None:
+        whole_set.append( (key, value) )
+        max = value
+        max_key = key
+      for member in self.ncs_match_hash[key]:
+        value = map_cc_hash.get(member)
+        if value is not None:
+          whole_set.append( (member, value) )
+          if max is None:
+            max = value
+            max_key = member
+          else:
+            if value > max:
+              max = value
+              max_key = member
+      if max is None or max <= 0.0:
+        continue
+      for set in whole_set:
+        cur_key = set[0]
+        cur_value  = set[1]
+        #fudge factor to account for zero cur_value
+        if cur_value <= 0.0:
+          cur_value = 0.0001
+        percentage = (max - cur_value) / cur_value
+        if percentage > 0.2:
+          cc_candidate_list.append(cur_key)
 
-    #fix rotamer consistency
     for model in pdb_hierarchy.models():
       for chain in model.chains():
         for residue_group in chain.residue_groups():
-          all_dict = r.construct_complete_sidechain(residue_group)
+          all_dict = self.r.construct_complete_sidechain(residue_group)
           for atom_group in residue_group.atom_groups():
-            if atom_group.resname == "PRO":
+            if atom_group.resname in ["PRO", "GLY", "HOH"]:
               continue
             key = '%s%5s %s' % (
                       chain.id, residue_group.resid(),
                       atom_group.altloc+atom_group.resname)
             if key in all_rotamers:
               if (len(all_rotamers[key]) >= 2):
+                cc_key = atom_group.atoms()[0].pdb_label_columns()[4:]+\
+                  atom_group.atoms()[0].segid
+                if cc_key not in cc_candidate_list:
+                  continue
                 m_chis = model_chis.get(key)
                 residue_name = key[-3:]
                 model_rot = model_hash.get(key)
+                if model_rot == "OUTLIER":
+                  continue
                 current_best = model_rot
+                #C-alpha prep
+                cur_ca = None
+                for atom in atom_group.atoms():
+                  if atom.name == " CA ":
+                    cur_ca = atom.i_seq
+                if cur_ca is not None:
+                  cur_c_alpha_hinges = self.c_alpha_hinges.get(cur_ca)
                 for cur_rotamer in all_rotamers.get(key):
                   if cur_rotamer == model_rot:
                     continue
-                  r_chis = sa.get_rotamer_angles(
+                  r_chis = self.r.sa.get_rotamer_angles(
                              residue_name=residue_name,
                              rotamer_name=cur_rotamer)
                   if m_chis is not None and r_chis is not None:
-                    axis_and_atoms_to_rotate= \
-                      fit_rotamers.axes_and_atoms_aa_specific(
-                          residue=atom_group,
-                          mon_lib_srv=mon_lib_srv,
-                          remove_clusters_with_all_h=True,
-                          log=None)
-                    if (axis_and_atoms_to_rotate is None) :
-                      print >> log, "Skipped %s rotamer (TARDY error)" % key
-                      continue
-                    assert len(m_chis) == len(r_chis)
-                    #exclude H-only clusters if necessary
-                    while len(axis_and_atoms_to_rotate) > len(m_chis):
-                      axis_and_atoms_to_rotate = \
-                        axis_and_atoms_to_rotate[:-1]
-                    assert len(m_chis) == len(axis_and_atoms_to_rotate)
-                    counter = 0
-                    residue_iselection = atom_group.atoms().extract_i_seq()
-                    sites_cart_residue = \
-                      sites_cart_moving.select(residue_iselection)
-                    sites_cart_residue_start = sites_cart_residue.deep_copy()
-                    selection = flex.bool(
-                                  len(sites_cart_moving),
-                                  residue_iselection)
-                    rev = fit_rotamers.rotamer_evaluator(
-                      sites_cart_start = sites_cart_residue,
-                      unit_cell        = unit_cell,
-                      two_mfo_dfc_map  = target_map_data,
-                      mfo_dfc_map      = residual_map_data)
-
-                    for aa in axis_and_atoms_to_rotate:
-                      axis = aa[0]
-                      atoms = aa[1]
-                      new_xyz = flex.vec3_double()
-                      angle_deg = r_chis[counter] - m_chis[counter]
-                      if angle_deg < 0:
-                        angle_deg += 360.0
-                      for atom in atoms:
-                        new_xyz = rotate_point_around_axis(
-                                    axis_point_1=sites_cart_residue[axis[0]],
-                                    axis_point_2=sites_cart_residue[axis[1]],
-                                    point=sites_cart_residue[atom],
-                                    angle=angle_deg, deg=True)
-                        sites_cart_residue[atom] = new_xyz
-                      counter += 1
-
-                    sites_cart_moving.set_selected(
-                        residue_iselection, sites_cart_residue)
-                    xray_structure.set_sites_cart(sites_cart_moving)
-                    rotamer, value = r.evaluate_rotamer(
+                    status = self.rotamer_search(
                       atom_group=atom_group,
                       all_dict=all_dict,
-                      sites_cart=sites_cart_moving)
-                    brm.refine(selection=selection,
-                               monitor_clashscore=False)
-                    sites_cart_refined_residue = \
-                      brm.sites_cart.select(residue_iselection)
-                    rotamer, value = r.evaluate_rotamer(
-                      atom_group=atom_group,
-                      all_dict=all_dict,
-                      sites_cart=brm.sites_cart)
-                    xray_structure.set_sites_cart(brm.sites_cart)
-                    rotamer_match = (rotamer == cur_rotamer)
-                    if rev.is_better(sites_cart_refined_residue) and \
-                      rotamer_match:
-                      sites_cart_moving.set_selected(
-                        residue_iselection, sites_cart_refined_residue)
-                      xray_structure.set_sites_cart(sites_cart_moving)
-                      mmtbx.utils.assert_xray_structures_equal(
-                        x1 = xray_structure,
-                        x2 = brm.xray_structure)
+                      m_chis=m_chis,
+                      r_chis=r_chis,
+                      rotamer=cur_rotamer,
+                      sites_cart_moving=sites_cart_moving,
+                      xray_structure=xray_structure,
+                      target_map_data=target_map_data,
+                      residual_map_data=residual_map_data,
+                      log=log)
+                    if status:
                       current_best = cur_rotamer
-                    else:
-                      sites_cart_moving.set_selected(
-                        residue_iselection, sites_cart_residue_start)
-                      xray_structure.set_sites_cart(sites_cart_moving)
+                      atom_dict = all_dict.get(atom_group.altloc)
+                      m_chis = \
+                        self.r.sa.measureChiAngles(atom_group,
+                                                   atom_dict,
+                                                   sites_cart_moving)
                 if current_best != model_rot:
                   print >> self.log, "Set %s to %s rotamer" % \
                     (key,
                      current_best)
                   self.last_round_rotamer_changes += 1
                 else:
-                  rotamer, value = r.evaluate_rotamer(
+                  rotamer, value = self.r.evaluate_rotamer(
                       atom_group=atom_group,
                       all_dict=all_dict,
                       sites_cart=sites_cart_moving)
                   assert rotamer == model_rot
+
+  def rotamer_search(
+        self,
+        atom_group,
+        all_dict,
+        m_chis,
+        r_chis,
+        rotamer,
+        sites_cart_moving,
+        xray_structure,
+        target_map_data,
+        residual_map_data,
+        log):
+    include_ca_hinge = False
+    axis_and_atoms_to_rotate, tardy_labels= \
+      fit_rotamers.axes_and_atoms_aa_specific(
+          residue=atom_group,
+          mon_lib_srv=self.mon_lib_srv,
+          remove_clusters_with_all_h=True,
+          include_labels=True,
+          log=None)
+    if (axis_and_atoms_to_rotate is None) :
+      print >> log, "Skipped %s rotamer (TARDY error)" % key
+      return False
+    assert len(m_chis) == len(r_chis)
+    #exclude H-only clusters if necessary
+    while len(axis_and_atoms_to_rotate) > len(m_chis):
+      axis_and_atoms_to_rotate = \
+        axis_and_atoms_to_rotate[:-1]
+    assert len(m_chis) == len(axis_and_atoms_to_rotate)
+    counter = 0
+    residue_iselection = atom_group.atoms().extract_i_seq()
+    cur_ca = None
+    ca_add = None
+    ca_axes = []
+    for atom in atom_group.atoms():
+      if atom.name == " CA ":
+        cur_ca = atom.i_seq
+    if cur_ca is not None:
+      cur_c_alpha_hinges = self.c_alpha_hinges.get(cur_ca)
+      if cur_c_alpha_hinges is not None:
+        residue_length = len(tardy_labels)
+        for ca_pt in cur_c_alpha_hinges[0]:
+          residue_iselection.append(ca_pt)
+          tardy_labels.append(self.name_hash[ca_pt][0:4])
+        for bb_pt in cur_c_alpha_hinges[1]:
+          residue_iselection.append(bb_pt)
+          tardy_labels.append(self.name_hash[bb_pt][0:4])
+        end_pts = (residue_length, residue_length+1)
+        group = []
+        for i, value in enumerate(tardy_labels):
+          if i not in end_pts:
+            group.append(i)
+        ca_add = [end_pts, group]
+        ca_axes.append(ca_add)
+        for ax in axis_and_atoms_to_rotate:
+          ca_axes.append(ax)
+    sites_cart_residue = \
+      sites_cart_moving.select(residue_iselection)
+    sites_cart_residue_start = sites_cart_residue.deep_copy()
+    selection = flex.bool(
+                  len(sites_cart_moving),
+                  residue_iselection)
+    rev_first_atoms = []
+
+    rev_start = fit_rotamers.rotamer_evaluator(
+      sites_cart_start = sites_cart_residue_start,
+      unit_cell        = self.unit_cell,
+      two_mfo_dfc_map  = target_map_data,
+      mfo_dfc_map      = residual_map_data)
+
+    for aa in axis_and_atoms_to_rotate:
+      axis = aa[0]
+      atoms = aa[1]
+      new_xyz = flex.vec3_double()
+      angle_deg = r_chis[counter] - m_chis[counter]
+      if angle_deg < 0:
+        angle_deg += 360.0
+      for atom in atoms:
+        new_xyz = rotate_point_around_axis(
+                    axis_point_1=sites_cart_residue[axis[0]],
+                    axis_point_2=sites_cart_residue[axis[1]],
+                    point=sites_cart_residue[atom],
+                    angle=angle_deg, deg=True)
+        sites_cart_residue[atom] = new_xyz
+      counter += 1
+
+    #***** TEST *****
+    sites_cart_moving.set_selected(
+      residue_iselection, sites_cart_residue)
+    cur_rotamer, value = self.r.evaluate_rotamer(
+      atom_group=atom_group,
+      all_dict=all_dict,
+      sites_cart=sites_cart_moving)
+    assert rotamer == cur_rotamer
+    #****************
+
+    if len(ca_axes) == 0:
+      eval_axes = axis_and_atoms_to_rotate
+    else:
+      eval_axes = ca_axes
+      include_ca_hinge = True
+    for i_aa, aa in enumerate(eval_axes):
+      if(i_aa == len(eval_axes)-1):
+        sites_aa = flex.vec3_double()
+        for aa_ in aa[1]:
+          sites_aa.append(sites_cart_residue[aa_])
+      elif i_aa == 0 and include_ca_hinge:
+        sites_aa = flex.vec3_double()
+        for aa_ in aa[1]:
+          sites_aa.append(sites_cart_residue[aa_])
+      else:
+        sites_aa = flex.vec3_double([sites_cart_residue[aa[1][0]]])
+      rev_i = fit_rotamers.rotamer_evaluator(
+        sites_cart_start = sites_aa,
+        unit_cell        = self.unit_cell,
+        two_mfo_dfc_map  = target_map_data,
+        mfo_dfc_map      = residual_map_data)
+      rev_first_atoms.append(rev_i)
+
+
+    rev = fit_rotamers.rotamer_evaluator(
+      sites_cart_start = sites_cart_residue,
+      unit_cell        = self.unit_cell,
+      two_mfo_dfc_map  = target_map_data,
+      mfo_dfc_map      = residual_map_data)
+
+    residue_sites_best = sites_cart_residue.deep_copy()
+    residue_sites_best, rotamer_id_best = \
+      fit_rotamers.torsion_search(
+        residue_evaluator=rev,
+        cluster_evaluators=rev_first_atoms,
+        axes_and_atoms_to_rotate=eval_axes,
+        rotamer_sites_cart=sites_cart_residue,
+        rotamer_id_best=rotamer,
+        residue_sites_best=residue_sites_best,
+        params = self.torsion_params,
+        rotamer_id = rotamer,
+        include_ca_hinge = include_ca_hinge)
+    sites_cart_moving.set_selected(
+        residue_iselection, residue_sites_best)
+    xray_structure.set_sites_cart(sites_cart_moving)
+    cur_rotamer, value = self.r.evaluate_rotamer(
+      atom_group=atom_group,
+      all_dict=all_dict,
+      sites_cart=sites_cart_moving)
+    rotamer_match = (cur_rotamer == rotamer)
+    if rev_start.is_better(sites_cart=residue_sites_best,
+                           percent_cutoff=0.15, verbose=True) and \
+       rotamer_match:
+      sidechain_only_iselection = flex.size_t()
+      for i_seq in residue_iselection:
+        atom_name = self.name_hash[i_seq][0:4]
+        if atom_name not in [' N  ', ' CA ', ' C  ', ' O  ',
+                             ' OXT', ' H  ', ' HA ']:
+          sidechain_only_iselection.append(i_seq)
+      selection = flex.bool(
+                    len(sites_cart_moving),
+                    sidechain_only_iselection)
+      selection_within = xray_structure.selection_within(
+      radius    = 1.0,
+      selection = selection)
+      #check for bad steric clashes
+      created_clash = False
+      for i, state in enumerate(selection_within):
+        if state:
+          if i not in sidechain_only_iselection:
+            #print >> self.log, "atom clash: ", self.name_hash[i]
+            created_clash = True
+      if created_clash:
+        sites_cart_moving.set_selected(
+          residue_iselection, sites_cart_residue_start)
+        xray_structure.set_sites_cart(sites_cart_moving)
+        return False
+      return True
+    else:
+      sites_cart_moving.set_selected(
+        residue_iselection, sites_cart_residue_start)
+      xray_structure.set_sites_cart(sites_cart_moving)
+      return False
 
   def process_ncs_restraint_groups(self, model, processed_pdb_file):
     log = self.log
@@ -1188,8 +1384,6 @@ class get_ncs_groups(object):
         continue
       segid_i = utils.get_unique_segid(chain_i)
       if segid_i == None:
-        #print >> log, \
-        #  "chain %s has conflicting segid values - skipping" % chain_i.id
         continue
       if (use_segid) :
         chain_i_str = "chain '%s' and segid '%s'" % \
@@ -1287,6 +1481,62 @@ def determine_ncs_groups(pdb_hierarchy,
                          params=params,
                          log=log)
   return ncs_groups_manager.ncs_groups
+
+def check_residues_are_connected (ca_1, ca_2, max_sep=4.0, min_sep=0.) :
+  from scitbx import matrix
+  ca_1_mat = matrix.col(ca_1.xyz)
+  ca_2_mat = matrix.col(ca_2.xyz)
+  dist = (ca_1_mat - ca_2_mat).length()
+  if (dist > max_sep) or (dist < min_sep) :
+    return False
+  return True
+
+def get_c_alpha_hinges(xray_structure,
+                       pdb_hierarchy):
+  c_alphas = []
+  c_alpha_hinges = {}
+  sites_cart = xray_structure.sites_cart()
+  for model in pdb_hierarchy.models():
+    for chain in model.chains():
+      for residue_group in chain.residue_groups():
+        for atom_group in residue_group.atom_groups():
+          cur_ca = None
+          cur_c = None
+          cur_o = None
+          cur_n = None
+          cur_h = None
+          for atom in atom_group.atoms():
+            if atom.name == " CA ":
+              cur_ca = atom
+            elif atom.name == " C  ":
+              cur_c = atom
+            elif atom.name == " N  ":
+              cur_n = atom
+            elif atom.name == " O  ":
+              cur_o = atom
+            elif atom.name == " H  ":
+              cur_h = atom
+          if cur_ca is not None and cur_c is not None and \
+             cur_n is not None and cur_o is not None:
+            moving_tpl = (cur_n, cur_c, cur_o)
+            if cur_h is not None:
+              moving_tpl += tuple([cur_h])
+            c_alphas.append( (cur_ca, moving_tpl) )
+  for i, ca in enumerate(c_alphas):
+    if i < 1 or i == (len(c_alphas)-1):
+      continue
+    current = ca
+    previous = c_alphas[i-1]
+    next = c_alphas[i+1]
+    prev_connected = check_residues_are_connected(previous[0], current[0])
+    next_connected = check_residues_are_connected(current[0], next[0])
+    if prev_connected and next_connected:
+      nodes = (previous[0].i_seq, next[0].i_seq)
+      moving = (previous[1][1].i_seq, previous[1][2].i_seq, next[1][0].i_seq)
+      if len(next[1]) > 3:
+        moving += tuple([next[1][3].i_seq])
+      c_alpha_hinges[current[0].i_seq] = [nodes, moving]
+  return c_alpha_hinges
 
 # XXX wrapper for running in Phenix GUI
 class _run_determine_ncs_groups (object) :
