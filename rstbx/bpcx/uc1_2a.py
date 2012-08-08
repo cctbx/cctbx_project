@@ -176,7 +176,7 @@ def regenerate_predictions_brute(xds_integrate_hkl_file, phi_range):
 
 def regenerate_predictions_reeke(xds_integrate_hkl_file, phi_range):
     from rstbx.cftbx.coordinate_frame_converter import coordinate_frame_converter
-    from rstbx.diffraction import rotation_angles, reflection_prediction
+    from rstbx.diffraction import rotation_angles
     from cctbx.sgtbx import space_group, space_group_symbols
     from cctbx.uctbx import unit_cell
     import math
