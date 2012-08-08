@@ -182,17 +182,26 @@ def tardy_model_one_residue(residue, mon_lib_srv, log = None):
   return tardy_model
 
 def axes_and_atoms_aa_specific(residue, mon_lib_srv,
-                               remove_clusters_with_all_h=False, log=None):
+                               remove_clusters_with_all_h=False,
+                               include_labels=False, log=None):
   get_class = iotbx.pdb.common_residue_names_get_class
   if 0: print residue.id_str(suppress_segid=1)[-12:]
   if(not (get_class(residue.resname) == "common_amino_acid")): return None
   tardy_model = tardy_model_one_residue(residue = residue,
     mon_lib_srv = mon_lib_srv, log = log)
-  if(tardy_model is None): return None
+  if(tardy_model is None):
+    if include_labels:
+      return None, None
+    else:
+      return None
   clusters = tardy_model.tardy_tree.cluster_manager.clusters[1:]
   axes = tardy_model.tardy_tree.cluster_manager.hinge_edges[1:]
   assert len(clusters) == len(axes)
-  if(len(axes)==0): return None
+  if(len(axes)==0):
+    if include_labels:
+      return None, None
+    else:
+      return None
   if 0:
     print "clusters:", clusters
     print "    axes:", axes
@@ -246,7 +255,10 @@ def axes_and_atoms_aa_specific(residue, mon_lib_srv,
       if(count_h != len(cluster)):
         tmp.append([axis, cluster])
     axes_and_atoms_to_rotate = tmp
-  return axes_and_atoms_to_rotate
+  if include_labels:
+    return axes_and_atoms_to_rotate, tardy_model.labels
+  else:
+    return axes_and_atoms_to_rotate
 
 class residue_rsr_monitor(object):
   def __init__(self,
@@ -327,7 +339,6 @@ class refiner(object):
     self.real_space_gradients_delta = real_space_gradients_delta
     self.geometry_restraints_manager = geometry_restraints_manager
     self.pdb_hierarchy = pdb_hierarchy
-    #self.pdb_atoms = pdb_hierarchy.atoms()
     self.lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
       max_iterations = max_iterations)
     self.lbfgs_exception_handling_params = scitbx.lbfgs.exception_handling_parameters(
@@ -377,6 +388,15 @@ def target(sites_cart_residue, unit_cell, m):
     result += m.eight_point_interpolation(rsf)
   return result
 
+def all_sites_above_sigma_cutoff(sites_cart_residue,
+                                 unit_cell,
+                                 m,
+                                 sigma_cutoff):
+  sites_frac_residue = unit_cell.fractionalize(sites_cart_residue)
+  for rsf in sites_frac_residue:
+    if m.eight_point_interpolation(rsf) < sigma_cutoff:
+      return False
+  return True
 
 class rotamer_evaluator(object):
   def __init__(self, sites_cart_start,
@@ -395,7 +415,11 @@ class rotamer_evaluator(object):
     self.t2_start = t2
     self.t2_best = self.t2_start
 
-  def is_better(self, sites_cart):
+  def is_better(
+                self,
+                sites_cart,
+                percent_cutoff=0.0,
+                verbose=False):
     t1 = target(sites_cart, self.unit_cell, self.two_mfo_dfc_map)
     t2 = target(sites_cart, self.unit_cell, self.mfo_dfc_map)
     t = t1+t2#*3 # XXX very promising thing to do, but reaaly depends on resolution
@@ -403,6 +427,10 @@ class rotamer_evaluator(object):
     size = sites_cart.size()
     if 1:
       if(t > self.t_best):
+        if percent_cutoff > 0.0 and self.t_best > 0.0:
+          percent = (t - self.t_best) / self.t_best
+          if percent < percent_cutoff:
+            return False
         if((t2 > 0 and self.t2_best > 0 and t2 > self.t2_best) or
            (t2 < 0 and self.t2_best < 0 and abs(t2)<abs(self.t2_best)) or
            (t2 > 0 and self.t2_best < 0)):
@@ -437,7 +465,8 @@ def torsion_search(residue_evaluator,
                    rotamer_id_best,
                    residue_sites_best,
                    params = None,
-                   rotamer_id = None):
+                   rotamer_id = None,
+                   include_ca_hinge = False):
   if(params is None):
     params = torsion_search_params().extract().torsion_search
     params.range_start = 0
@@ -447,19 +476,36 @@ def torsion_search(residue_evaluator,
   n_clusters = len(axes_and_atoms_to_rotate)
   c_counter = 0
   for cluster_evaluator, aa in zip(cluster_evaluators,axes_and_atoms_to_rotate):
+    #account for CA hinge at beginning of search
+    if include_ca_hinge and c_counter == 0:
+      cur_range_start = -6.0
+      cur_range_stop = 6.0
+    else:
+      cur_range_start = params.range_start
+      cur_range_stop = params.range_stop
     c_counter += 1
     axis = aa[0]
     atoms = aa[1]
     angle_deg_best = None
     angle_deg_good = None
-    for angle_deg in generate_range(start = params.range_start, stop =
-                                    params.range_stop, step = params.step):
+    for angle_deg in generate_range(start = cur_range_start, stop =
+                                    cur_range_stop, step = params.step):
       if(c_counter != n_clusters):
-        new_xyz = flex.vec3_double([rotate_point_around_axis(
-          axis_point_1 = rotamer_sites_cart[axis[0]],
-          axis_point_2 = rotamer_sites_cart[axis[1]],
-          point  = rotamer_sites_cart[atoms[0]],
-          angle = angle_deg, deg=True)])
+        if include_ca_hinge and c_counter == 1:
+          new_xyz = flex.vec3_double()
+          for atom in atoms:
+            new_xyz.append(rotate_point_around_axis(
+              axis_point_1 = rotamer_sites_cart[axis[0]],
+              axis_point_2 = rotamer_sites_cart[axis[1]],
+              point  = rotamer_sites_cart[atom],
+              angle = angle_deg, deg=True))
+        else:
+          point_local = rotamer_sites_cart[atoms[0]]
+          new_xyz = flex.vec3_double([rotate_point_around_axis(
+            axis_point_1 = rotamer_sites_cart[axis[0]],
+            axis_point_2 = rotamer_sites_cart[axis[1]],
+            point  = point_local,
+            angle = angle_deg, deg=True)])
       else:
         new_xyz = flex.vec3_double()
         for atom in atoms:
@@ -495,7 +541,6 @@ def torsion_search(residue_evaluator,
       rotamer_id_best = rotamer_id
       residue_sites_best = rsc.deep_copy()
   return residue_sites_best, rotamer_id_best
-
 
 def residue_iteration(pdb_hierarchy,
                       xray_structure,
