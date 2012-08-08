@@ -261,6 +261,7 @@ compcomm/newsletter09/sf_times_digest.py svneol=native#text/x-python
 compcomm/newsletter09/time_tables -text
 compcomm/smtbx_news_09/news.tex -text
 cootbx/__init__.py -text
+cootbx/hydrogens_button.py -text
 cootbx/interactive_edit.py -text
 cootbx/simple_zoom_list.py -text
 crys3d/__init__.py -text
