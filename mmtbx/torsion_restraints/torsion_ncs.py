@@ -938,6 +938,7 @@ class torsion_ncs(object):
                   xray_structure=xray_structure,
                   target_map_data=target_map_data,
                   residual_map_data=residual_map_data,
+                  key=key,
                   log=log)
                 if status:
                   print >> log, "Set %s to %s rotamer" % \
@@ -1098,6 +1099,7 @@ class torsion_ncs(object):
                       xray_structure=xray_structure,
                       target_map_data=target_map_data,
                       residual_map_data=residual_map_data,
+                      key=key,
                       log=log)
                     if status:
                       current_best = cur_rotamer
@@ -1129,6 +1131,7 @@ class torsion_ncs(object):
         xray_structure,
         target_map_data,
         residual_map_data,
+        key,
         log):
     include_ca_hinge = False
     axis_and_atoms_to_rotate, tardy_labels= \
