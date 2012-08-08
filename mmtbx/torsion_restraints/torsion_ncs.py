@@ -96,7 +96,6 @@ class torsion_ncs(object):
     self.filter_phi_psi_outliers = params.filter_phi_psi_outliers
     self.b_factor_weight = b_factor_weight
     self.coordinate_sigma = coordinate_sigma
-    self.pdb_hierarchy = pdb_hierarchy
     self.fmodel = fmodel
     self.ncs_groups = []
     self.dp_ncs = []
@@ -177,11 +176,11 @@ class torsion_ncs(object):
         self.ncs_groups.append(ncs_set)
       self.alignments = alignments
     else:
-      atom_labels = list(self.pdb_hierarchy.atoms_with_labels())
+      atom_labels = list(pdb_hierarchy.atoms_with_labels())
       segids = flex.std_string([ a.segid for a in atom_labels ])
       self.use_segid = not segids.all_eq('    ')
       ncs_groups_manager = get_ncs_groups(
-          pdb_hierarchy=self.pdb_hierarchy,
+          pdb_hierarchy=pdb_hierarchy,
           use_segid=self.use_segid,
           params=self.params,
           log=self.log)
@@ -211,7 +210,7 @@ class torsion_ncs(object):
         dp_hash[dp.i_seqs] = dp
 
     cbetadev_hash = utils.build_cbetadev_hash(
-                      pdb_hierarchy=self.pdb_hierarchy)
+                      pdb_hierarchy=pdb_hierarchy)
     self.cbeta_proxies = []
     for cp in geometry.chirality_proxies:
       key = ""
@@ -275,7 +274,7 @@ class torsion_ncs(object):
         selection = utils.selection(
                      string=chain_i,
                      cache=sel_cache)
-        c_atoms = self.pdb_hierarchy.select(selection).atoms()
+        c_atoms = pdb_hierarchy.select(selection).atoms()
         for atom in c_atoms:
           for chain_j in group:
             if chain_i == chain_j:
@@ -453,6 +452,7 @@ class torsion_ncs(object):
     print >> self.log, "Initializing torsion NCS restraints..."
     self.rama = ramalyze()
     self.generate_dihedral_ncs_restraints(sites_cart=sites_cart,
+                                          pdb_hierarchy=pdb_hierarchy,
                                           log=log)
 
   def show_ncs_summary(self, log=None):
@@ -522,23 +522,24 @@ class torsion_ncs(object):
       return None
     return id
 
-  def generate_dihedral_ncs_restraints(self, sites_cart, log):
+  def generate_dihedral_ncs_restraints(
+        self,
+        sites_cart,
+        pdb_hierarchy,
+        log):
     self.ncs_dihedral_proxies = \
       cctbx.geometry_restraints.shared_dihedral_proxy()
     target_map_data = None
     if self.fmodel is not None and self.use_cc_for_target_angles:
       target_map_data, residual_map_data = self.prepare_map(
                                              fmodel=self.fmodel)
-    for atom in self.pdb_hierarchy.atoms():
-      i_seq = atom.i_seq
-      atom.xyz = sites_cart[i_seq]
     model_hash, model_score, all_rotamers, model_chis = \
-      self.get_rotamer_data(pdb_hierarchy=self.pdb_hierarchy)
+      self.get_rotamer_data(pdb_hierarchy=pdb_hierarchy)
     self.rama_outliers = None
     rama_outlier_list = []
     if self.filter_phi_psi_outliers:
       self.rama_outliers = \
-        self.get_ramachandran_outliers(self.pdb_hierarchy)
+        self.get_ramachandran_outliers(pdb_hierarchy)
       for outlier in self.rama_outliers.splitlines():
         temp = outlier.split(':')
         rama_outlier_list.append(temp[0])
@@ -653,6 +654,7 @@ class torsion_ncs(object):
   def update_dihedral_ncs_restraints(self,
                                      geometry,
                                      sites_cart,
+                                     pdb_hierarchy,
                                      log=None):
     if log is None:
       log = sys.stdout
@@ -660,6 +662,7 @@ class torsion_ncs(object):
       "Updating torsion NCS restraints",
       out=log)
     self.generate_dihedral_ncs_restraints(sites_cart=sites_cart,
+                                          pdb_hierarchy=pdb_hierarchy,
                                           log=log)
     self.add_ncs_dihedral_proxies(geometry=geometry)
 
