@@ -3,7 +3,7 @@
 # $Id$
 
 """Toolbox for images from the Cornell SLAC Pixel Array Detector
-(CSPad).
+(CSpad).
 
 XXX Better named cspad_common?
 """
@@ -22,8 +22,9 @@ from scitbx.array_family import flex
 from xfel.cxi.cspad_ana.parse_calib import Section
 
 
-# The CSPad counters are 14 bits wide (Philipp et al., 2007).  XXX
-# Capitalise these constants.
+# The CSpad counters are 14 bits wide (Philipp et al., 2007).  XXX
+# Capitalise these constants.  XXX Should really clarify this with
+# Sol.
 dynamic_range = 2**14 - 1
 
 # The side length of a square quadrant from the old XtcExplorer code.
@@ -31,7 +32,9 @@ dynamic_range = 2**14 - 1
 npix_quad = 850
 
 # The pixel size in mm.  The pixel size is fixed and square at 110 um
-# by 110 um (Philipp et al., 2007).  XXX UTF-8 comments?
+# by 110 um (Philipp et al., 2007).  XXX UTF-8 comments?  XXX Should
+# really clarify this with Sol and Chris.  For the CAMP the pixel size
+# is 75 um by 75 um (Struder et al., 2010).
 pixel_size = 110e-3
 
 # origin of section in quad coordinate system.  x-position
@@ -56,7 +59,7 @@ def cbcaa(config, sections):
   quadrant.  Note that first corner index is vertical coordinate,
   second index is the horizontal coordinate.  XXX Construct the active
   areas in "spotfinder format", i.e. opposing corners.  XXX This is a
-  really bad function name!  XXX The beam centre may be excracted from
+  really bad function name!  XXX The beam centre may be extracted from
   the ebeam object?
 
   @param config   XXX
@@ -354,9 +357,12 @@ def dpack(active_areas=None,
   # For unknown historical reasons, the dictionary must contain both
   # CCD_IMAGE_SATURATION and SATURATED_VALUE items.
   if ccd_image_saturation is None:
-    ccd_image_saturation = dynamic_range
+    if saturated_value is None:
+      ccd_image_saturation = dynamic_range
+    else:
+      ccd_image_saturation = saturated_value
   if saturated_value is None:
-    saturated_value = dynamic_range
+    saturated_value = ccd_image_saturation
 
   # By default, the beam center is the center of the image.  The slow
   # (vertical) and fast (horizontal) axes correspond to x and y,
@@ -366,10 +372,12 @@ def dpack(active_areas=None,
   if beam_center_y is None:
     beam_center_y = pixel_size * data.focus()[0] / 2
 
-  # There is no sensible default for the active areas, distance, nor
-  # wavelength.  XXX But setting wavelength to zero may be disastrous?
+  # By default, the entire detector image is an active area.  There is
+  # no sensible default for distance nor wavelength.  XXX But setting
+  # wavelength to zero may be disastrous?
   if active_areas is None:
-    active_areas = flex.int()
+    # XXX Verify order with non-square detector
+    active_areas = flex.int((0, 0, data.focus()[0], data.focus()[1]))
   if distance is None:
     distance = 0
   if wavelength is None:
@@ -429,9 +437,10 @@ def dwritef(d, dirname=None, basename=None):
 
 
 def env_laser_status(env, laser_id):
-  """The return value is a bool that indicates whether the laser in question
-     was on for that particular shot. Bear in mind that sample hit by the laser
-     will only encounter the X-rays some time after, depending on the flow rate.
+  """The return value is a bool that indicates whether the laser in
+  question was on for that particular shot.  Bear in mind that sample
+  hit by the laser will only encounter the X-rays some time after,
+  depending on the flow rate.
   """
 
   if env is not None:
@@ -448,7 +457,7 @@ def env_laser_status(env, laser_id):
 
 
 def env_injector_xyz(env):
-  """Returns the coordinates of the sample injector. XXX units unknown?"""
+  """Returns the coordinates of the sample injector.  XXX units unknown?"""
   if env is not None:
     return tuple([
       env.epicsStore().value("CXI:USR:MZM:0%i:ENCPOSITIONGET" %(i+1))
@@ -460,7 +469,8 @@ def env_detz(env):
   on the z-axis in mm.  The zero-point is as far away as possible from
   the sample, and values decrease as the detector is moved towards the
   sample.  According to Marvin Seibert, the current configuration
-  allows for approximately 50 cm of in-vacuum motion.
+  allows for approximately 50 cm of in-vacuum motion.  XXX This only
+  applies to the CSpad at CXI!
 
   @param env Environment object
   @return    Detector z-position, in mm
@@ -734,7 +744,7 @@ def getOptROI(s):
     return tuple(roi)
 
 
-def image(address, config, evt, env, sections):
+def image(address, config, evt, env, sections=None):
   """Assemble the uint16 detector image, and sum it up as int32.  Sum
   the image of squared intensities as uint64.  XXX Documentation! XXX
   Would be nice to get rid of the constant string names.  XXX Better
@@ -748,26 +758,25 @@ def image(address, config, evt, env, sections):
   @return         XXX
   """
 
-  if (address == "CxiDs1-0|Cspad-0"):
+  if address == 'CxiDs1-0|Cspad-0':
     quads = evt.getCsPadQuads(address, env)
-    if (quads is not None):
-      if (sections is not None):
-        return (CsPadDetector(quads, config, sections))
+    if quads is not None:
+      if sections is not None:
+        return CsPadDetector(quads, config, sections)
       else:
         # XXX This is obsolete code, provided for backwards
         # compatibility with the days before detector metrology was
         # used.
-        qimages = numpy.empty((4, npix_quad, npix_quad), dtype = "uint16")
+        qimages = numpy.empty((4, npix_quad, npix_quad), dtype='uint16')
         for q in quads:
           qimages[q.quad()] = CsPadElement(q.data(), q.quad(), config)
-        return (numpy.vstack((numpy.hstack((qimages[0], qimages[1])),
-                              numpy.hstack((qimages[3], qimages[2])))))
+        return numpy.vstack((numpy.hstack((qimages[0], qimages[1])),
+                             numpy.hstack((qimages[3], qimages[2]))))
 
-  elif (address == "CxiSc1-0|Cspad2x2-0"):
+  elif address == 'CxiSc1-0|Cspad2x2-0':
     quads = evt.get(xtc.TypeId.Type.Id_Cspad2x2Element, address)
-    if (quads is not None):
-      return (CsPad2x2Image(quads.data(), config, sections))
-  return (None)
+    if quads is not None:
+      return CsPad2x2Image(quads.data(), config, sections)
 
 
 def image_central(address, config, evt, env):
