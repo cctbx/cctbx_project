@@ -980,7 +980,8 @@ class kernel_normalisation(object):
       kernel_width = self.kernel_width
       )
 
-    sel_pos = (self.mean_I_array > 0).iselection()
+    eps = 1e-16 # XXX Maybe this should be larger?
+    sel_pos = (self.mean_I_array > eps).iselection()
     # FIXME rare bug: this crashes when the majority of the data are zero,
     # e.g. because resolution limit was set too high and F/I filled in with 0.
     # it would be good to catch such cases in advance by inspecting the binned
