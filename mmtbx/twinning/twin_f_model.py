@@ -1692,11 +1692,17 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                        w2       = None,
                        ncs_average = None,
                        ):
+    if (map_type == "Fmodel") :
+      map_type = "Fc"
+    elif (map_type == "DFmodel") :
+      map_type = "DFc"
     supported_types = ("Fo-Fc", "Fobs-Fmodel",
                         "2mFo-DFc", "2mFobs-DFmodel",
                         "mFo-DFc", "mFobs-DFmodel",
                         "gradient",
-                        "m_gradient"
+                        "m_gradient",
+                        "Fc",
+                        "DFc",
                         )
     if not map_type in supported_types :
       raise Sorry(("Map type '%s' not supported for twinned structures. "+
@@ -1726,7 +1732,20 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
 
     if map_type not in ["gradient","m_gradient"]:
       result = None
-      if (map_type in ["Fo-Fc", "Fobs-Fmodel"]) :
+      if (map_type == "Fc") :
+        result = tmp_f_model
+      elif (map_type == "DFc") :
+        sigmaa_object = self.sigmaa_object(
+          detwinned_data=dt_f_obs,
+          f_model_data=tmp_f_model,
+          tmp_free=tmp_free,
+          forced_update=True)
+        m, dt_f_obs = sigmaa_object.fom().common_sets( dt_f_obs )
+        d, dt_f_obs = sigmaa_object.alpha_beta()[0].common_sets( dt_f_obs )
+        dt_f_obs, tmp_f_model = dt_f_obs.common_sets( tmp_f_model )
+        result = tmp_f_model.customized_copy(
+          data=tmp_f_model.data()*d.data())
+      elif (map_type in ["Fo-Fc", "Fobs-Fmodel"]) :
         if ([k,n]).count(None) > 0:
           raise Sorry("Map coefficient multipliers (k and n) must be provided to generate detwinned maps")
         result = self._map_coeff( f_obs         = dt_f_obs,
@@ -1735,8 +1754,11 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                                   f_model_scale = n )
         assert result is not None
       else:
-        sigmaa_object = self.sigmaa_object( detwinned_data=dt_f_obs,f_model_data=tmp_f_model, tmp_free=tmp_free,forced_update=True)
-        #def sigmaa_object(self, detwinned_data=None, f_model_data=None, tmp_free=None, forced_update=False):
+        sigmaa_object = self.sigmaa_object(
+          detwinned_data=dt_f_obs,
+          f_model_data=tmp_f_model,
+          tmp_free=tmp_free,
+          forced_update=True)
         dt_f_obs, tmp_f_model = dt_f_obs.common_sets( tmp_f_model )
         m, dt_f_obs = sigmaa_object.fom().common_sets( dt_f_obs )
         d, dt_f_obs = sigmaa_object.alpha_beta()[0].common_sets( dt_f_obs )
