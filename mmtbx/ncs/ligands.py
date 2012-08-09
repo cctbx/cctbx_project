@@ -470,7 +470,7 @@ def combine_ligands_and_hierarchy (pdb_hierarchy, ligands) :
     min_dist = sys.maxint
     for chain in model.chains() :
       chain_xyz_mean = chain.atoms().extract_xyz().mean()
-      dist = dxyz(chain_xyz_mean, xyz_mean)
+      dist = xyz_distance(chain_xyz_mean, xyz_mean)
       if (dist < min_dist) :
         min_dist = dist
         best_chain = chain
