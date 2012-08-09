@@ -402,6 +402,74 @@ def dpack(active_areas=None,
           'xtal_target': xtal_target}
 
 
+def hdf5pack(hdf5_file,
+             active_areas=None,
+             address=None,
+             attenuation=None,
+             beam_center_x=None,
+             beam_center_y=None,
+             ccd_image_saturation=None,
+             data=None,
+             distance=None,
+             pixel_size=None,
+             pulse_length=None,
+             saturated_value=None,
+             timestamp=None,
+             wavelength=None,
+             xtal_target=None):
+  """Similar but far from identical to the HDF5 output from CASS.  XXX
+  Poor diagnostics--we don't know if it failed or not.
+
+  @note Does not include the deprecated SEQUENCE_NUMBER attribute.
+        While some redundant items are written in order to keep the
+        HDF5 synchronised to the pickle format, neither SIZE1 nor
+        SIZE2 are included.
+  """
+
+  # Need this because we cannot write None values to the HDF5 file.
+  if address is None:
+    address = repr(None)
+  if attenuation is None:
+    attenuation = 0
+  if xtal_target is None:
+    xtal_target = repr(None)
+  if pixel_size is None:
+    pixel_size = globals()['pixel_size'] # XXX CSpad-specific!
+  if pulse_length is None:
+    pulse_length = 0
+
+  d = dpack(active_areas=active_areas,
+            beam_center_x=beam_center_x,
+            beam_center_y=beam_center_y,
+            ccd_image_saturation=ccd_image_saturation,
+            data=data,
+            distance=distance,
+            pixel_size=pixel_size,
+            saturated_value=saturated_value,
+            timestamp=timestamp,
+            wavelength=wavelength,
+            xtal_target=xtal_target)
+  if d is None:
+    return
+
+  grp_event = hdf5_file.create_group(d['TIMESTAMP'])
+  grp_detector = grp_event.create_group(address)
+  for (key, value) in d.iteritems():
+    if key == 'ACTIVE_AREAS':
+      grp_detector.create_dataset(key, data=value.as_numpy_array())
+    elif key == 'DATA':
+      # Compress the image data with gzip at the default level (4).
+      # CASS seems to use maximum compression level (9), which gives a
+      # moderate decrease in file size at the price of much longer
+      # running time.
+      grp_detector.create_dataset(
+        key, compression='gzip', data=value.as_numpy_array())
+    else:
+      grp_event.create_dataset(key, data=[value])
+  grp_event.create_dataset('ATTENUATION', data=[attenuation])
+  grp_event.create_dataset('PULSE_LENGTH', data=[pulse_length])
+
+
 def dwritef(d, dirname=None, basename=None):
   """The dwritef() function pickles the dictionary pointed to by @p d
   to the file whose directory and filename portions are pointed to by
