@@ -3,6 +3,7 @@ from cctbx import miller
 from iotbx import cif
 from iotbx.cif import CifParserError
 from iotbx.cif.builders import CifBuilderError
+from iotbx import crystal_symmetry_from_any
 from iotbx.reflection_file_reader import any_reflection_file
 from libtbx.test_utils import \
      approx_equal, show_diff, Exception_expected, open_tmp_file
@@ -445,6 +446,12 @@ def exercise_crystal_symmetry():
   cs_builder = cif.builders.crystal_symmetry_builder(cm["r1e5xsf"])
   assert cs_builder.crystal_symmetry.space_group_info().symbol_and_number() \
          == 'P 1 (No. 1)'
+  file_object = open_tmp_file(suffix=".cif")
+  file_object.write(p1_sym_ops)
+  file_object.close()
+  cs = crystal_symmetry_from_any.extract_from(file_name=file_object.name)
+  assert cs.space_group_info().symbol_and_number() == 'P 1 (No. 1)'
+
 
 def exercise_mmcif_structure_factors():
   miller_arrays = cif.reader(input_string=r3adsrf).as_miller_arrays()
