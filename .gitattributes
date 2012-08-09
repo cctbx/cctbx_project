@@ -1182,6 +1182,7 @@ mmtbx/command_line/rna_validate.py svneol=native#text/x-python
 mmtbx/command_line/rotalyze.py -text
 mmtbx/command_line/search_pdb_symmetry.py -text
 mmtbx/command_line/secondary_structure_restraints.py -text
+mmtbx/command_line/show_suspicious_residues.py -text
 mmtbx/command_line/simulate_low_res_data.py -text
 mmtbx/command_line/tls.py -text
 mmtbx/command_line/validation_summary.py -text
