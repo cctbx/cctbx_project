@@ -1107,7 +1107,8 @@ def map_statistics_for_atom_selection (
     xray_structure=None,
     map1_type="2mFo-DFc",
     map2_type="Fmodel",
-    atom_radius=1.5) :
+    atom_radius=1.5,
+    exclude_hydrogens=False) :
   """
   Simple-but-flexible function to give the model-to-map CC and mean density
   values (sigma-scaled, unless pre-calculated maps are provided) for any
@@ -1126,6 +1127,18 @@ def map_statistics_for_atom_selection (
   else :
     assert (not None in [map1, map2, xray_structure])
     assert isinstance(map1, flex.double) and isinstance(map2, flex.double)
+  if (exclude_hydrogens) :
+    hd_selection = xray_structure.hd_selection()
+    if (type(atom_selection).__name__ == "size_t") :
+      atom_selection_new = flex.size_t()
+      for i_seq in atom_selection :
+        if (not hd_selection[i_seq]) :
+          atom_selection_new.append(i_seq)
+      atom_selection = atom_selection_new
+      assert (len(atom_selection) > 0)
+    else :
+      assert (type(atom_selection).__name__ == "bool")
+      atom_selection &= ~hd_selection
   sites = xray_structure.sites_cart().select(atom_selection)
   scatterers = xray_structure.scatterers().select(atom_selection)
   atom_radii = flex.double(sites.size(), atom_radius)
@@ -1180,6 +1193,7 @@ def find_suspicious_residues (
   map2 = map_coeffs2.fft_map(
     resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
   unit_cell = xray_structure.unit_cell()
+  hd_selection = xray_structure.hd_selection()
   outliers = []
   for chain in pdb_hierarchy.models()[0].chains() :
     for residue_group in chain.residue_groups() :
@@ -1198,22 +1212,31 @@ def find_suspicious_residues (
           fragment=atom_group,
           map1=map1,
           map2=map2,
-          xray_structure=fmodel.xray_structure)
-        sites = atoms.extract_xyz()
-        n_below_min = 0
-        for site in sites :
+          xray_structure=fmodel.xray_structure,
+          exclude_hydrogens=True)
+        n_below_min = n_heavy = sum = 0
+        for atom in atoms :
+          if (hd_selection[atom.i_seq]) :
+            continue
+          n_heavy += 1
+          site = atom.xyz
           site_frac = unit_cell.fractionalize(site)
           map_value = map1.tricubic_interpolation(site_frac)
           if (map_value < min_acceptable_2fofc) :
             n_below_min += 1
-        frac_below_min = n_below_min / len(sites)
+          sum += map_value
+        map_mean = sum / n_heavy
+        frac_below_min = n_below_min / n_heavy
         if ((map_stats.cc < min_acceptable_cc) or
-            (frac_below_min < max_frac_atoms_below_min) or
-            (map_stats.map1_mean < min_acceptable_2fofc)) :
+            (frac_below_min > max_frac_atoms_below_min) or
+            (map_mean < min_acceptable_2fofc)) :
           residue_info = "%1s%3s%2s%5s" % (atom_group.altloc,
             atom_group.resname, chain.id, residue_group.resid())
-          xyz_mean = sites.mean()
+          xyz_mean = atoms.extract_xyz().mean()
           outliers.append((residue_info, xyz_mean))
-          print >> log, "  suspicious residue '%s': %.2f %.2f %.2f" % \
-            (residue_info, map_stats.cc, frac_below_min, map_stats.map1_mean)
+          print >> log, "Suspicious residue: %s" % residue_info
+          print >> log, "  Overall CC to 2mFo-DFc map = %.2f" % map_stats.cc
+          print >> log, "  Fraction of atoms where 2mFo-DFc < %.2f = %.2f" % \
+            (min_acceptable_2fofc, frac_below_min)
+          print >> log, "  Mean 2mFo-DFc value = %.2f" % map_mean
   return outliers
