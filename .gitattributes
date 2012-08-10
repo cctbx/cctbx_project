@@ -2011,6 +2011,7 @@ wxtbx/segmentedctrl.py -text
 wxtbx/sequence_view.py -text
 wxtbx/symmetry_dialog.py -text
 wxtbx/utils.py -text
+xfel/SConscript -text
 xfel/__init__.py -text
 xfel/command_line/__init__.py -text
 xfel/command_line/convert_gain_map.py -text
@@ -2045,4 +2046,5 @@ xfel/cxi/integrate_image_api.py -text
 xfel/cxi/merging/__init__.py -text
 xfel/cxi/merging/general_fcalc.py -text
 xfel/cxi/strong_zulu.py -text
+xfel/ext.cpp -text
 xfel/libtbx_config -text
