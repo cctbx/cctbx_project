@@ -180,8 +180,13 @@ class table_data (object) :
         elif (sections_passed == 4) :
           break
     for i, column in enumerate(self.data) :
-      column_is_ints = [ x is None or int(x)==x for x in column ]
-      if not False in column_is_ints :
+      column_is_ints = []
+      for x in column :
+        if (x is None) or (math.isnan(x)) or (int(x) == x) :
+          column_is_ints.append(True)
+        else :
+          column_is_ints.append(False)
+      if (not False in column_is_ints) :
         newcol = []
         for x in column :
           if x is None : newcol.append(x)
