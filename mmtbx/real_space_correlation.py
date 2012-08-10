@@ -1178,6 +1178,7 @@ def find_suspicious_residues (
     min_acceptable_cc=0.8,
     min_acceptable_2fofc=1.0,
     max_frac_atoms_below_min=0.5,
+    ignore_resnames=(),
     log=None) :
   if (log is None) : log = null_out()
   xray_structure = fmodel.xray_structure
@@ -1201,6 +1202,8 @@ def find_suspicious_residues (
       if (len(atom_groups) > 1) and (skip_alt_confs) :
         continue
       for atom_group in residue_group.atom_groups() :
+        if (atom_group.resname in ignore_resnames) :
+          continue
         atoms = atom_group.atoms()
         assert (len(atoms) > 0)
         if (len(atoms) == 1) and (skip_single_atoms) :
