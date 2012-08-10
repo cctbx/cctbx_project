@@ -10,6 +10,7 @@
 #include <scitbx/array_family/shared.h>
 #include <scitbx/vec3.h>
 #include <scitbx/vec2.h>
+#include <scitbx/constants.h>
 
 using namespace boost::python;
 
@@ -76,21 +77,61 @@ struct correction_vector_store {
     master_tiles.push_back(itile);
     master_cv.push_back(correction_vector);
     master_coords.push_back(prediction);
-    all_tile_obs_spo.push_back(observed_spot - vec2(tilecenters[itile][0],tilecenters[itile][1]));
+    all_tile_obs_spo.push_back(observed_spot -
+                               vec2(tilecenters[itile][0],tilecenters[itile][1]));
     overall_cv += correction_vector;
     sum_sq_cv += correction_vector.length_sq();
+  }
 
+  double
+  weighted_average_angle_deg_from_tile(int const& itile) const {
+
+    scitbx::af::shared<vec2> selected_cv;
+    scitbx::af::shared<vec2> selected_tile_obs_spo;
+    scitbx::af::shared<vec2> translated_correction_vectors;
+    scitbx::af::shared<vec2> all_tile_pred_spo;
+
+    for (int x = 0; x < master_tiles.size(); ++x){
+      if (master_tiles[x]==itile){
+        selected_cv.push_back( master_cv[x] );
+        selected_tile_obs_spo.push_back( all_tile_obs_spo[x] );
+        translated_correction_vectors.push_back( master_cv[x] - mean_cv[itile] );
+        all_tile_pred_spo.push_back( all_tile_obs_spo[x] + master_cv[x] );
+      }
+    }
+
+    double numerator = 0.;
+    double denominator = 0.;
+
+    for (int x = 0; x < selected_cv.size(); ++x){
+      vec2 co = selected_tile_obs_spo[x];
+      vec2 cp = all_tile_pred_spo[x];
+      double co_cp_norm = co.length()*cp.length();
+      double co_dot_cp = co*cp;
+      double co_cross_cp_coeff = (co[0]*cp[1]-cp[0]*co[1]);
+      double sin_theta = co_cross_cp_coeff / co_cp_norm;
+      double cos_theta = co_dot_cp / co_cp_norm;
+      double angle_deg = std::atan2(sin_theta,cos_theta)/scitbx::constants::pi_180;
+      double weight = std::sqrt(co_cp_norm);
+      numerator += weight*angle_deg;
+      denominator += weight;
+    }
+    return numerator/denominator;
   }
 };
 
 static boost::python::tuple
-bar(){
-    // This is going to require some revision to assure it works in an arbitrary
-    // principle value region for phi_start_rad and phi_end_rad
+get_correction_vector_xy(correction_vector_store const& L, int const& itile){
 
-    scitbx::af::shared<scitbx::vec3<double> > return_indices;
-    scitbx::af::shared<double> return_angles_rad;
-    return make_tuple(return_indices,return_angles_rad);
+    scitbx::af::shared<double> xcv;
+    scitbx::af::shared<double> ycv;
+    for (int x = 0; x < L.master_tiles.size(); ++x){
+      if (L.master_tiles[x]==itile){
+        xcv.push_back( L.master_cv[x][0] );
+        ycv.push_back( L.master_cv[x][1] );
+      }
+    }
+    return make_tuple(xcv,ycv);
 }
 
 namespace boost_python { namespace {
@@ -108,7 +149,7 @@ namespace boost_python { namespace {
     typedef return_value_policy<return_by_value> rbv;
     typedef default_call_policies dcp;
 
-    def("foo2", &foo2);
+    def("get_correction_vector_xy", &get_correction_vector_xy);
 
     class_<correction_vector_store>("correction_vector_store",init<>())
       .add_property("tiles",
@@ -137,6 +178,8 @@ namespace boost_python { namespace {
         make_getter(&correction_vector_store::master_coords, rbv()))
       .add_property("all_tile_obs_spo",
         make_getter(&correction_vector_store::all_tile_obs_spo, rbv()))
+      .def("weighted_average_angle_deg_from_tile",
+           &correction_vector_store::weighted_average_angle_deg_from_tile)
     ;
 
 }
