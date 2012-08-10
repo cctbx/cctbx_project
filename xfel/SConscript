@@ -1,0 +1,44 @@
+import libtbx.load_env
+import os
+Import("env_base", "env_etc")
+
+env_etc.xfel_dist = libtbx.env.dist_path("xfel")
+env_etc.xfel_include = os.path.dirname(env_etc.xfel_dist)
+env_etc.xfel_common_includes = [
+  env_etc.xfel_include,
+  env_etc.libtbx_include,
+  env_etc.cctbx_include,
+  env_etc.scitbx_include,
+  env_etc.chiltbx_include,
+  env_etc.omptbx_include,
+  env_etc.boost_include,
+  env_etc.annlib_dist,
+  env_etc.annlib_include[0],
+  env_etc.annlib_include[1],
+  env_etc.annlib_adaptbx_include[0],
+  env_etc.annlib_adaptbx_include[1],
+]
+
+env = env_base.Clone(SHLINKFLAGS=env_etc.shlinkflags)
+env.Append(LIBS=["cctbx"] + env_etc.libm)
+env_etc.include_registry.append(
+  env=env,
+  paths=env_etc.xfel_common_includes)
+if (env_etc.static_libraries): builder = env.StaticLibrary
+else:                          builder = env.SharedLibrary
+builder(
+  target="#lib/xfel",
+  source=[
+  ])
+
+if (not env_etc.no_boost_python):
+  Import("env_boost_python_ext")
+  env_xfel_boost_python_ext = env_boost_python_ext.Clone()
+  env_xfel_boost_python_ext.Prepend(
+                 LIBS=["xfel", "cctbx", "scitbx_boost_python"])
+  env_xfel_boost_python_ext.SharedLibrary(
+                 target="#lib/xfel_ext", source="ext.cpp")
+  env_etc.include_registry.append(
+    env=env_xfel_boost_python_ext,
+    paths=env_etc.xfel_common_includes)
+  Export("env_xfel_boost_python_ext")
