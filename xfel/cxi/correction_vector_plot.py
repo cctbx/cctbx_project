@@ -1,7 +1,7 @@
 import os,math
 from scitbx import matrix
 from cctbx.array_family import flex
-from xfel import correction_vector_store
+from xfel import correction_vector_store,get_correction_vector_xy
 
 class lines(correction_vector_store):
   def __init__(self,params):
@@ -137,38 +137,14 @@ def run_correction_vector_plot(working_phil):
         x, L.radii[x], L.tilecounts[x], L.mean_cv[x][0], L.mean_cv[x][1],
         L.tile_rmsd[x]
         ),
-
-      selection = (L.master_tiles == x)
-      selected_cv = [matrix.col(i) for i in L.master_cv.select(selection)]
-      selected_tile_obs_spo = [matrix.col(i) for i in L.all_tile_obs_spo.select(selection)]
-      mean_cv = matrix.col(L.mean_cv[x])
-
-      from matplotlib import pyplot as plt
-      xcv = [point[0] for point in selected_cv]
-      ycv = [point[1] for point in selected_cv]
-
-      translated_cvs = [point - mean_cv for point in selected_cv]
-      txcv = [point[0] for point in translated_cvs]
-      tycv = [point[1] for point in translated_cvs]
-
-      all_tile_pred_spo = [point+cv for point,cv in zip(selected_tile_obs_spo, selected_cv)]
-      co_cp_norm = flex.double([co.length()*cp.length() for co,cp in zip(selected_tile_obs_spo,all_tile_pred_spo)])
-      co_dot_cp  = [co.dot(cp) for co,cp in zip(selected_tile_obs_spo,all_tile_pred_spo)]
-      co_cross_cp_coeff = [(co[0]*cp[1]-cp[0]*co[1]) for co,cp in zip(selected_tile_obs_spo,all_tile_pred_spo)]
-      sin_theta = [cross/norm for cross,norm in zip(co_cross_cp_coeff,co_cp_norm)]
-      cos_theta = [dot/norm for dot,norm in zip(co_dot_cp,co_cp_norm)]
-      angle_deg = flex.double([math.atan2(y1,x1)*180./math.pi for x1,y1 in zip(cos_theta,sin_theta)])
-      #treat co*cp as a weight
-      tpxcv = [point[0] for point in selected_tile_obs_spo]
-      tpycv = [point[1] for point in selected_tile_obs_spo]
-
-      if len(txcv)==0:
+      if L.tilecounts[x] < 3:
         print
       else:
-        weight = flex.sqrt(co_cp_norm)
-        weighted_average_angle_deg = flex.sum(weight*angle_deg) / flex.sum(weight)
-        print "Tile rotation %.2f degrees"%weighted_average_angle_deg
+        wtaveg = L.weighted_average_angle_deg_from_tile(x)
+        print "Tile rotation %.2f degrees"%wtaveg
 
+      from matplotlib import pyplot as plt
+      xcv,ycv = get_correction_vector_xy(L,x)
       plt.plot(xcv,ycv,"r.")
       plt.plot([L.mean_cv[x][0]],[L.mean_cv[x][1]],"go")
       plt.axes().set_aspect("equal")
