@@ -2,6 +2,7 @@ import os,math
 from scitbx import matrix
 from cctbx.array_family import flex
 from xfel import correction_vector_store,get_correction_vector_xy
+from xfel import get_radial_tangential_vectors
 
 class lines(correction_vector_store):
   def __init__(self,params):
@@ -139,13 +140,26 @@ def run_correction_vector_plot(working_phil):
         ),
       if L.tilecounts[x] < 3:
         print
+        radial = (0,0)
+        tangential = (0,0)
+        rmean,tmean,rsigma,tsigma=(0,0,1,1)
       else:
         wtaveg = L.weighted_average_angle_deg_from_tile(x)
-        print "Tile rotation %.2f degrees"%wtaveg
+        print "Tile rotation %6.2f deg"%wtaveg,
+        radial,tangential,rmean,tmean,rsigma,tsigma = get_radial_tangential_vectors(L,x)
+        print "%6.2f %6.2f"%(rsigma,tsigma)
 
       from matplotlib import pyplot as plt
       xcv,ycv = get_correction_vector_xy(L,x)
       plt.plot(xcv,ycv,"r.")
       plt.plot([L.mean_cv[x][0]],[L.mean_cv[x][1]],"go")
+      plt.plot([L.mean_cv[x][0]+radial[0]],[L.mean_cv[x][1]+radial[1]],"yo")
+      plt.plot([L.mean_cv[x][0]+tangential[0]],[L.mean_cv[x][1]+tangential[1]],"bo")
+      from matplotlib.patches import Ellipse
+      ell = Ellipse(xy=(L.mean_cv[x][0],L.mean_cv[x][1]),
+                    width=2.*rsigma, height=2.*tsigma,
+                    angle=math.atan2(-(radial[1]),-(radial[0]))*180./math.pi,
+                    edgecolor="y", linewidth=2, fill=False, zorder=100)
+      plt.axes().add_artist(ell)
       plt.axes().set_aspect("equal")
       plt.show()

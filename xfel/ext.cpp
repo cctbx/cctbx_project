@@ -11,6 +11,7 @@
 #include <scitbx/vec3.h>
 #include <scitbx/vec2.h>
 #include <scitbx/constants.h>
+#include <scitbx/math/mean_and_variance.h>
 
 using namespace boost::python;
 
@@ -121,6 +122,37 @@ struct correction_vector_store {
 };
 
 static boost::python::tuple
+get_radial_tangential_vectors(correction_vector_store const& L, int const& itile){
+
+    scitbx::vec2<double> radial(0,0);
+    scitbx::vec2<double> tangential;
+    for (int x = 0; x < L.master_tiles.size(); ++x){
+      if (L.master_tiles[x]==itile){
+        radial += L.master_coords[x];
+      }
+    }
+    radial = radial.normalize();
+    tangential = scitbx::vec2<double>( -radial[1], radial[0] );
+
+    // Now consider 2D Gaussian distribution of all the observations
+    scitbx::af::shared<double> radi_projection;
+    scitbx::af::shared<double> tang_projection;
+    for (int x = 0; x < L.master_tiles.size(); ++x){
+      if (L.master_tiles[x]==itile){
+        scitbx::vec2<double> recentered_cv = L.master_cv[x] - L.mean_cv[itile];
+        radi_projection.push_back( recentered_cv*radial );
+        tang_projection.push_back( recentered_cv*tangential );
+      }
+    }
+    scitbx::math::mean_and_variance<double> radistats(radi_projection.const_ref());
+    scitbx::math::mean_and_variance<double> tangstats(tang_projection.const_ref());
+
+    return make_tuple(radial,tangential,radistats.mean(),tangstats.mean(),
+                      radistats.unweighted_sample_standard_deviation(),
+                      tangstats.unweighted_sample_standard_deviation());
+}
+
+static boost::python::tuple
 get_correction_vector_xy(correction_vector_store const& L, int const& itile){
 
     scitbx::af::shared<double> xcv;
@@ -150,6 +182,7 @@ namespace boost_python { namespace {
     typedef default_call_policies dcp;
 
     def("get_correction_vector_xy", &get_correction_vector_xy);
+    def("get_radial_tangential_vectors", &get_radial_tangential_vectors);
 
     class_<correction_vector_store>("correction_vector_store",init<>())
       .add_property("tiles",
