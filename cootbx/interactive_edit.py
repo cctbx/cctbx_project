@@ -36,13 +36,15 @@ def start_coot_and_wait (
   easy_run.call("\"%s\" --script edit_in_coot.py &" % coot_cmd)
   print >> log, "  Waiting for coot_out_tmp.pdb to appear at %s" % \
     str(time.asctime())
+  base_dir = os.path.dirname(pdb_file)
+  tmp_file = os.path.join(base_dir, "coot_out_tmp.pdb")
   while (True) :
-    if (os.path.isfile("coot_out_tmp.pdb")) :
+    if (os.path.isfile(tmp_file)) :
       print >> log, "  Coot editing complete at %s" % str(time.asctime())
       break
     else :
       time.sleep(1)
-  shutil.move("coot_out_tmp.pdb", "coot_out.pdb")
+  shutil.move(tmp_file, "coot_out.pdb")
   import mmtbx.maps.utils
   mmtbx.maps.utils.create_map_from_pdb_and_mtz(
     pdb_file="coot_out.pdb",
