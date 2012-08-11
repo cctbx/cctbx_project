@@ -615,6 +615,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     assert [atom_labels, alt_id, asym_id, comp_id, entity_id, seq_id].count(None) == 0
     assert type_symbol is not None
 
+    pdb_ins_code = cif_block.get("_atom_site.pdbx_PDB_ins_code") # insertion code
     model_ids = cif_block.get("_atom_site.pdbx_PDB_model_num")
     atom_site_id = cif_block.get("_atom_site.id")
     # only permitted values are ATOM or HETATM
@@ -671,36 +672,52 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
         # XXX do we need to sort the residue ids, or leave them in the order we found them?
         for i_residue in unique_residue_ids:
           residue_sel = (seq_id == i_residue) & chain_sel
-          residue_group = hierarchy.residue_group(resseq=i_residue)
-          chain.append_residue_group(residue_group)
-          unique_altloc_ids = OrderedSet(alt_id.select(residue_sel))
-          residue_group.pre_allocate_atom_groups(len(unique_altloc_ids))
-          for i_altloc in unique_altloc_ids:
-            atom_group_sel = (alt_id == i_altloc) & residue_sel
-            resnames = comp_id.select(atom_group_sel)
-            assert len(set(resnames)) == 1 # should all in the atom group have the same resname?
-            if i_altloc == ".": i_altloc = "" # Main chain atoms
-            atom_group = hierarchy.atom_group(altloc=i_altloc, resname=resnames[0])
-            residue_group.append_atom_group(atom_group)
-            atom_group_isel = atom_group_sel.iselection()
-            atom_group.pre_allocate_atoms(len(atom_group_isel))
-            for i_atom in atom_group_isel:
-              atom = hierarchy.atom()
-              atom_group.append_atom(atom)
-              atom.set_element(type_symbol[i_atom])
-              atom.set_name(atom_labels[i_atom])
-              atom.set_xyz(
-                new_xyz=(cart_x[i_atom], cart_y[i_atom], cart_z[i_atom]))
-              atom.set_b(B_iso_or_equiv[i_atom])
-              atom.set_occ(occu[i_atom])
-              atom.set_serial(atom_site_id[i_atom])
-              if anisotrop_id is not None and adps is not None:
-                u_ij_index = flex.first_index(anisotrop_id, atom.serial)
-                if u_ij_index is not None:
-                  u_ij = adps[u_ij_index]
-                  atom.set_uij(u_ij)
-                else:
-                  pass
+          if pdb_ins_code is not None:
+            ins_codes = pdb_ins_code.select(residue_sel)
+            unique_pdb_ins_codes = OrderedSet(ins_codes)
+          else:
+            unique_pdb_ins_codes = [None]
+          for ins_code in unique_pdb_ins_codes:
+            if ins_code is not None:
+              ins_code_sel = (ins_code == pdb_ins_code) & residue_sel
+            else:
+              ins_code_sel = residue_sel
+            if ins_code in ("?", "."): ins_code = None
+            residue_group = hierarchy.residue_group(
+              resseq=i_residue, icode=ins_code)
+            chain.append_residue_group(residue_group)
+            unique_altloc_ids = OrderedSet(alt_id.select(ins_code_sel))
+            residue_group.pre_allocate_atom_groups(len(unique_altloc_ids))
+            for i_altloc in unique_altloc_ids:
+              atom_group_sel = (alt_id == i_altloc) & ins_code_sel
+              resnames = comp_id.select(atom_group_sel)
+              unique_resnames = OrderedSet(resnames)
+              # by this point there should be only one resname left
+              assert len(unique_resnames) == 1 # should all in the atom group have the same resname?
+              for resname in unique_resnames:
+                resname_sel = (comp_id == resname) & atom_group_sel
+                if i_altloc == ".": i_altloc = "" # Main chain atoms
+                atom_group = hierarchy.atom_group(altloc=i_altloc, resname=resname)
+                residue_group.append_atom_group(atom_group)
+                atom_group_isel = atom_group_sel.iselection()
+                atom_group.pre_allocate_atoms(len(atom_group_isel))
+                for i_atom in atom_group_isel:
+                  atom = hierarchy.atom()
+                  atom_group.append_atom(atom)
+                  atom.set_element(type_symbol[i_atom])
+                  atom.set_name(atom_labels[i_atom])
+                  atom.set_xyz(
+                    new_xyz=(cart_x[i_atom], cart_y[i_atom], cart_z[i_atom]))
+                  atom.set_b(B_iso_or_equiv[i_atom])
+                  atom.set_occ(occu[i_atom])
+                  atom.set_serial(atom_site_id[i_atom])
+                  if anisotrop_id is not None and adps is not None:
+                    u_ij_index = flex.first_index(anisotrop_id, atom.serial)
+                    if u_ij_index is not None:
+                      u_ij = adps[u_ij_index]
+                      atom.set_uij(u_ij)
+                    else:
+                      pass
 
 
 def as_flex_double(array, key):
