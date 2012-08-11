@@ -234,6 +234,77 @@ model id="1" #chains=2
       altloc="" resname="MN" #atoms=1
         "MN"
 """)
+  #
+  input_1ezu = """\
+data_1EZU
+#
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_entity_id
+_atom_site.label_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.auth_seq_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_atom_id
+_atom_site.pdbx_PDB_model_num
+ATOM   3422 N  N   . GLY C 2 164 ? -25.713 -9.765  41.937  1.00 38.56 584 GLY C N   1
+ATOM   3423 C  CA  . GLY C 2 164 ? -27.027 -9.485  41.364  1.00 38.07 584 GLY C CA  1
+ATOM   3424 C  C   . GLY C 2 164 ? -27.645 -10.541 40.476  1.00 35.83 584 GLY C C   1
+ATOM   3425 O  O   . GLY C 2 164 ? -27.554 -11.745 40.752  1.00 35.99 584 GLY C O   1
+ATOM   3426 N  N   . PHE C 2 165 A -28.265 -10.093 39.385  1.00 34.13 584 PHE C N   1
+ATOM   3427 C  CA  . PHE C 2 165 A -28.937 -11.016 38.471  1.00 36.09 584 PHE C CA  1
+ATOM   3428 C  C   . PHE C 2 165 A -28.697 -10.685 37.018  1.00 36.74 584 PHE C C   1
+ATOM   3429 O  O   . PHE C 2 165 A -28.853 -9.536  36.627  1.00 39.19 584 PHE C O   1
+ATOM   3430 C  CB  . PHE C 2 165 A -30.444 -10.982 38.748  1.00 35.84 584 PHE C CB  1
+ATOM   3431 C  CG  . PHE C 2 165 A -30.802 -11.298 40.174  1.00 39.04 584 PHE C CG  1
+ATOM   3432 C  CD1 . PHE C 2 165 A -30.914 -10.282 41.119  1.00 39.32 584 PHE C CD1 1
+ATOM   3433 C  CD2 . PHE C 2 165 A -30.983 -12.614 40.579  1.00 36.86 584 PHE C CD2 1
+ATOM   3434 C  CE1 . PHE C 2 165 A -31.203 -10.572 42.458  1.00 35.08 584 PHE C CE1 1
+ATOM   3435 C  CE2 . PHE C 2 165 A -31.271 -12.924 41.904  1.00 32.57 584 PHE C CE2 1
+ATOM   3436 C  CZ  . PHE C 2 165 A -31.379 -11.898 42.850  1.00 32.97 584 PHE C CZ  1
+"""
+  cif_model = iotbx.cif.reader(input_string=input_1ezu).model()
+  cif_block = cif_model["1EZU"]
+  builder = pdb_hierarchy_builder(cif_block)
+  hierarchy = builder.hierarchy
+  atoms = hierarchy.atoms()
+  s = StringIO()
+  hierarchy.show(out=s)
+  assert not show_diff(s.getvalue(), """\
+model id="1" #chains=1
+  chain id="C" #residue_groups=2
+    resid=" 584 " #atom_groups=1
+      altloc="" resname="GLY" #atoms=4
+        "N"
+        "CA"
+        "C"
+        "O"
+    resid=" 584A" #atom_groups=1
+      altloc="" resname="PHE" #atoms=11
+        "N"
+        "CA"
+        "C"
+        "O"
+        "CB"
+        "CG"
+        "CD1"
+        "CD2"
+        "CE1"
+        "CE2"
+        "CZ"
+""")
 
 
 def run():
