@@ -602,9 +602,9 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     if atom_labels is None:
       atom_labels = cif_block.get("_atom_site.label_atom_id") # corresponds to chem comp atom name
     alt_id = cif_block.get("_atom_site.label_alt_id") # alternate conformer id
-    asym_id = cif_block.get("_atom_site.auth_asym_id")
+    asym_id = cif_block.get("_atom_site.label_asym_id") # chain id
     if asym_id is None:
-      asym_id = cif_block.get("_atom_site.label_asym_id") # chain id
+      asym_id = cif_block.get("_atom_site.auth_asym_id")
     comp_id = cif_block.get("_atom_site.auth_comp_id")
     if comp_id is None:
       comp_id = cif_block.get("_atom_site.label_comp_id") # residue name
