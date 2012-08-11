@@ -273,7 +273,7 @@ Example:
                 atom_group.resname.lower().strip(),
                 chis)
     except Exception:
-      return None, None
+      return None, None, None
     wrap_chis = \
       self.rot_id.wrap_chis(resname.strip(), chis, symmetry=False)
     rotamer_name = self.rot_id.identify(resname.strip(), wrap_chis)
