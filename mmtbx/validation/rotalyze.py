@@ -278,11 +278,11 @@ Example:
       self.rot_id.wrap_chis(resname.strip(), chis, symmetry=False)
     rotamer_name = self.rot_id.identify(resname.strip(), wrap_chis)
     if (value is None):
-      return None, None
+      return None, None, None
     elif (value < 0.01):
-      return 'OUTLIER', value
+      return 'OUTLIER', chis, value
     else:
-      return rotamer_name, value
+      return rotamer_name, chis, value
 
   #{{{ get functions
   def get_outliers_count_and_fraction(self):

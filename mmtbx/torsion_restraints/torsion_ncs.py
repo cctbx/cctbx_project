@@ -924,7 +924,10 @@ class torsion_ncs(object):
                       chain.id, residue_group.resid(),
                       atom_group.altloc+atom_group.resname)
             if key in fix_list.keys():
-              m_chis = model_chis.get(key)
+              model_rot, m_chis, value = self.r.evaluate_rotamer(
+                  atom_group=atom_group,
+                  all_dict=all_dict,
+                  sites_cart=sites_cart_moving)
               residue_name = key[-3:]
               cur_rotamer = rotamer_targets[key]
               r_chis = self.r.sa.get_rotamer_angles(
@@ -1072,9 +1075,12 @@ class torsion_ncs(object):
                   atom_group.atoms()[0].segid
                 if cc_key not in cc_candidate_list:
                   continue
-                m_chis = model_chis.get(key)
+                model_rot, m_chis, value = self.r.evaluate_rotamer(
+                  atom_group=atom_group,
+                  all_dict=all_dict,
+                  sites_cart=sites_cart_moving)
                 residue_name = key[-3:]
-                model_rot = model_hash.get(key)
+                # why do I not try to fix outliers here?
                 if model_rot == "OUTLIER":
                   continue
                 current_best = model_rot
@@ -1083,8 +1089,6 @@ class torsion_ncs(object):
                 for atom in atom_group.atoms():
                   if atom.name == " CA ":
                     cur_ca = atom.i_seq
-                if cur_ca is not None:
-                  cur_c_alpha_hinges = self.c_alpha_hinges.get(cur_ca)
                 for cur_rotamer in all_rotamers.get(key):
                   if cur_rotamer == model_rot:
                     continue
@@ -1117,7 +1121,7 @@ class torsion_ncs(object):
                      current_best)
                   self.last_round_rotamer_changes += 1
                 else:
-                  rotamer, value = self.r.evaluate_rotamer(
+                  rotamer, chis, value = self.r.evaluate_rotamer(
                       atom_group=atom_group,
                       all_dict=all_dict,
                       sites_cart=sites_cart_moving)
@@ -1213,7 +1217,7 @@ class torsion_ncs(object):
     #***** TEST *****
     sites_cart_moving.set_selected(
       residue_iselection, sites_cart_residue)
-    cur_rotamer, value = self.r.evaluate_rotamer(
+    cur_rotamer, cur_chis, cur_value = self.r.evaluate_rotamer(
       atom_group=atom_group,
       all_dict=all_dict,
       sites_cart=sites_cart_moving)
@@ -1243,7 +1247,6 @@ class torsion_ncs(object):
         mfo_dfc_map      = residual_map_data)
       rev_first_atoms.append(rev_i)
 
-
     rev = fit_rotamers.rotamer_evaluator(
       sites_cart_start = sites_cart_residue,
       unit_cell        = self.unit_cell,
@@ -1265,7 +1268,7 @@ class torsion_ncs(object):
     sites_cart_moving.set_selected(
         residue_iselection, residue_sites_best)
     xray_structure.set_sites_cart(sites_cart_moving)
-    cur_rotamer, value = self.r.evaluate_rotamer(
+    cur_rotamer, cur_chis, cur_value = self.r.evaluate_rotamer(
       atom_group=atom_group,
       all_dict=all_dict,
       sites_cart=sites_cart_moving)
