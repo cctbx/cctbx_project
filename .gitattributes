@@ -1423,6 +1423,8 @@ rstbx/command_line/simage.solver.py svneol=native#text/x-python
 rstbx/command_line/simage.wx_display.py svneol=native#text/x-python
 rstbx/command_line/slip_viewer.py -text
 rstbx/command_line/viewer.py -text
+rstbx/detectors/__init__.py -text
+rstbx/detectors/silicon.py -text
 rstbx/dials_core/__init__.py -text
 rstbx/dials_core/integration_core.py -text
 rstbx/diffraction/__init__.py -text
