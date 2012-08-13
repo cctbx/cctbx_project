@@ -13,6 +13,7 @@ def start_coot_and_wait (
     data_file,
     work_dir=None,
     coot_cmd="coot",
+    needs_rebuild=False,
     log=None) :
   if (log is None) : log = sys.stdout
   if (work_dir is None) : work_dir = os.getcwd()
@@ -20,6 +21,7 @@ def start_coot_and_wait (
     os.makedirs(work_dir)
   from libtbx.str_utils import make_header
   from libtbx import easy_run
+  from libtbx import group_args
   base_script = __file__.replace(".pyc", ".py")
   os.chdir(work_dir)
   if (os.path.exists("coot_out_tmp.pdb")) :
@@ -30,10 +32,12 @@ def start_coot_and_wait (
   f.write(open(base_script).read())
   f.write("\n")
   f.write("import coot\n")
-  f.write("m = manager(\"%s\", \"%s\")\n" % (pdb_file, map_file))
+  f.write("m = manager(\"%s\", \"%s\", needs_rebuild=%s)\n" %
+    (pdb_file, map_file, needs_rebuild))
   f.close()
   make_header("Interactive editing in Coot", log)
-  easy_run.call("\"%s\" --script edit_in_coot.py &" % coot_cmd)
+  easy_run.call("\"%s\" --no-state-script --script edit_in_coot.py &" %
+    coot_cmd)
   print >> log, "  Waiting for coot_out_tmp.pdb to appear at %s" % \
     str(time.asctime())
   base_dir = os.path.dirname(pdb_file)
@@ -54,13 +58,23 @@ def start_coot_and_wait (
     out=log)
   new_model = os.path.join(work_dir, "coot_out.pdb")
   new_map = os.path.join(work_dir, "coot_out_maps.mtz")
-  return (new_model, new_map)
+  skip_rebuild = None
+  if (needs_rebuild) :
+    if (os.path.isfile(os.path.join(base_dir, "NO_BUILD"))) :
+      skip_rebuild = True
+    else :
+      skip_rebuild = False
+  return group_args(
+    pdb_file=new_model,
+    map_file=new_map,
+    skip_rebuild=skip_rebuild)
 
 #-----------------------------------------------------------------------
 # Coot side
 class manager (object) :
-  def __init__ (self, pdb_file, map_file) :
+  def __init__ (self, pdb_file, map_file, needs_rebuild=False) :
     self.file_name = pdb_file
+    self.needs_rebuild = needs_rebuild
     import gtk
     import coot
     import coot_python
@@ -74,6 +88,7 @@ class manager (object) :
     return_button.connect("clicked", self.OnReturn)
     return_button.show()
     self._imol = read_pdb(pdb_file)
+    set_molecule_bonds_colour_map_rotation(self._imol, 30)
     dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO,
       gtk.BUTTONS_OK, "You may now edit your model to prepare for further "+
       "building and refinement.   When you are finished, "+
@@ -87,6 +102,17 @@ class manager (object) :
     import gtk
     dir_name = os.path.dirname(self.file_name)
     pdb_out = os.path.join(dir_name, "coot_out_tmp.pdb")
+    if (self.needs_rebuild) :
+      dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO,
+        gtk.BUTTONS_YES_NO,
+        "Phenix has determined that your model needs to rebuilt in "+
+        "AutoBuild; however, if you have made significant changes manually "+
+        "this may no longer be necessary.  Do you want to run AutoBuild now? "+
+        "(Clicking \"No\" will skip to the next step.")
+      response = dialog.run()
+      if (dialog != gtk.RESPONSE_YES) :
+        open(os.path.join(dir_name, "NO_BUILD"), "w").write("1")
+      dialog.destroy()
     write_pdb_file(self._imol, pdb_out)
     dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO,
       gtk.BUTTONS_OK,
