@@ -91,8 +91,33 @@ namespace rstbx { namespace bandpass {
          }
   };
 
+  struct pad_sensor_model {
+    double thickness_mm;
+    double mu_rho;      //product of mass attenuation * amorphous silicon density in units of 1/mm
+    pad_sensor_model(): thickness_mm(0.5),mu_rho(8.36644){} //ersatz values for CS-PAD detector at 1.3 Angstrom
+
+    vec3
+    sensor_coords_in_pixels(double const& signal_penetration, parameters_bp3 const& camera,
+                            vec3 const& q_unit, double const& q_dot_n){
+      // signal penetration is the fraction of signal height lost at the returned position;
+      // sensor top==0; sensor bottom approaches 1 at low Energy
+      double path_thru_sensor = -thickness_mm/q_dot_n;
+      double target_distance_thru_sensor = -std::log( 1. - signal_penetration )/mu_rho;
+      double observed_thru_sensor_path = std::min(path_thru_sensor,target_distance_thru_sensor);
+      vec3 diffraction_vec = (q_unit * camera.distance / q_dot_n);
+      diffraction_vec = diffraction_vec * (1. + observed_thru_sensor_path/diffraction_vec.length());
+      vec3 r_mod = diffraction_vec - camera.detector_origin;
+      double x_mod = r_mod * camera.detector_fast;
+      double y_mod = r_mod * camera.detector_slow;
+      return vec3 ( (x_mod/camera.pixel_size[0])+camera.pixel_offset[0],
+                    (y_mod/camera.pixel_size[1])+camera.pixel_offset[1],0. );
+    }
+  };
+
   struct use_case_bp3 {
     parameters_bp3 P;
+    pad_sensor_model sensor;
+    double signal_penetration;
     scitbx::af::shared<vec3 > hi_E_limit;
     scitbx::af::shared<vec3 > lo_E_limit;
     scitbx::af::shared<bool > observed_flag;
@@ -102,6 +127,11 @@ namespace rstbx { namespace bandpass {
     active_area_filter aaf;
     void set_active_areas(scitbx::af::shared<int> IT){
       aaf = active_area_filter(IT);
+    }
+    void set_sensor_model(double const& thickness_mm, double const& mu_rho, double const& sp){
+      sensor.thickness_mm = thickness_mm;
+      sensor.mu_rho = mu_rho;
+      signal_penetration = sp;
     }
     void
     prescreen_indices(double const& wavelength){
@@ -211,14 +241,10 @@ namespace rstbx { namespace bandpass {
 
           double q_dot_n = q_unit * P.detector_normal;
           SCITBX_ASSERT(q_dot_n != 0.);
-          scitbx::vec3<double> r = (q_unit * P.distance / q_dot_n) - P.detector_origin;
-
-          double x = r * P.detector_fast;
-          double y = r * P.detector_slow;
 
           limit_types[idx] += 2; // indicate that the low-energy boundary is found
           observed_flag[idx] = true;
-          lo_E_limit[idx] = scitbx::vec3<double> ( (x/P.pixel_size[0])+P.pixel_offset[0],(y/P.pixel_size[1])+P.pixel_offset[1],0. );
+          lo_E_limit[idx] = sensor.sensor_coords_in_pixels(signal_penetration, P, q_unit, q_dot_n);
           }
 
          //  ###########  Look at rocking the crystal along rotax toward hiE reflection condition
@@ -258,13 +284,10 @@ namespace rstbx { namespace bandpass {
 
               double q_dot_n = q_unit * P.detector_normal;
               SCITBX_ASSERT(q_dot_n != 0.);
-              scitbx::vec3<double> r = (q_unit * P.distance / q_dot_n) - P.detector_origin;
 
-              double x = r * P.detector_fast;
-              double y = r * P.detector_slow;
               limit_types[idx] += 2; // indicate that the hi-energy boundary is found
               observed_flag[idx] = true;
-              lo_E_limit[idx] = scitbx::vec3<double> ( (x/P.pixel_size[0])+P.pixel_offset[0],(y/P.pixel_size[1])+P.pixel_offset[1],0. );
+              lo_E_limit[idx] = sensor.sensor_coords_in_pixels(signal_penetration, P, q_unit, q_dot_n);
             }
           }
           if (observed_flag[idx]) {
@@ -815,6 +838,8 @@ namespace ext {
       class_<use_case_bp3>("use_case_bp3",
         init<parameters_bp3 const&>(arg("parameters")))
         .def("set_active_areas", &use_case_bp3::set_active_areas)
+        .def("set_sensor_model", &use_case_bp3::set_sensor_model,(
+           arg("thickness_mm"), arg("mu_rho"), arg("signal_penetration")))
         .def("prescreen_indices", &use_case_bp3::prescreen_indices)
         .def("picture_fast_slow", &use_case_bp3::picture_fast_slow)
         .add_property("hi_E_limit",make_getter(&use_case_bp3::hi_E_limit, rbv()))

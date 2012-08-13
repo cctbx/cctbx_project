@@ -108,6 +108,8 @@ class wrapper_of_use_case_bp3(object):
     self.ucbp3.set_active_areas(
       raw_image.get_tile_manager(phil_params).effective_tiling_as_flex_int(
       reapply_peripheral_margin=True))
+    self.ucbp3.set_sensor_model( thickness_mm = 0.5, mu_rho = 8.36644, # CS_PAD detector at 1.3 Angstrom
+      signal_penetration = phil_params.integration.signal_penetration)
     if sub != None:  self.ucbp3.set_subpixel( flex.double(sub) )
     # Reduce Miller indices to a manageable set.  NOT VALID if the crystal rotates significantly
     self.ucbp3.prescreen_indices(inputai.wavelength)

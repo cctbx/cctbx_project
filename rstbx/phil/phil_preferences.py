@@ -75,6 +75,10 @@ integration {
   spot_shape_verbose = False
     .type = bool
     .help = analysis of radial and azimuthal spot shapes.
+  signal_penetration = 0.5
+    .type = float
+    .help = For computing parallax effect due to finite sensor thickness, fraction of signal to attenuate before
+    .help = ignoring the remaining trailing parallax.  Small value (0.0) means do not account for parallax.
 }
 
 viewer {
