@@ -266,6 +266,8 @@ class IntegrateCharacters:
             pointgroup = local["spacegroup"],
             observations = [a.get_obs(local["spacegroup"]) for a in local["results"]],
             mapped_predictions = [a.detector_xy for a in local["results"]],
+            model_partialities = [getattr(a,"partialities",None) for a in local["results"]],
+            sa_parameters = [getattr(a,"best_params","None") for a in local["results"]]
           )
           G = open(file,"wb")
           pickle.dump(info,G,pickle.HIGHEST_PROTOCOL)
@@ -299,6 +301,30 @@ class IntegrateCharacters:
         print index['integration']["r_mosaicity"],
         print "  ",
         print "%5.3f"%index['integration']["r_residual"]
+
+        continue # the following code merely demonstrates the unpacking of partiality info
+        if hasattr(index["integration"]["results"][0],"partialities"):
+          hackobs = index["integration"]["results"][0].get_obs(index["integration"]["spacegroup"])
+          hackpart = index["integration"]["results"][0].partialities["data"]
+          hackhkl = list(index["integration"]["results"][0].partialities["indices"])
+          from scitbx.array_family import flex
+          xx = flex.double()
+          yy = flex.double()
+          for idx in xrange(hackobs.indices().size()):
+            hkl = hackobs.indices()[idx]
+            thisobs = hackobs.data()[idx]
+            lookupidx = hackhkl.index(hkl)
+            print hkl,thisobs,hackhkl[lookupidx],hackpart[lookupidx]
+            if thisobs>0.:
+              resolution = hackobs.unit_cell().d(hkl)
+              if resolution > 2.5 and resolution < 4.0:
+                # correlation between partiality & Iobs only within resolution shells
+                xx.append(math.log(thisobs))
+                yy.append(hackpart[lookupidx])
+          from matplotlib import pyplot as plt
+          plt.plot(xx,yy,"r.")
+          plt.show()
+
 
     #Sublattice analysis
     for index in self.M.best():

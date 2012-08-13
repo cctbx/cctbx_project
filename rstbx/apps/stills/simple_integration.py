@@ -38,15 +38,37 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
       if cb_op_to_primitive==None:
         raise Sorry("Can't use model_3 simulated annealing for non-primitive cells, contact authors.")
       if self.horizons_phil.integration.model=="use_case_3_simulated_annealing":
-        best_params=self.use_case_3_simulated_annealing(self.horizons_phil.integration.use_subpixel_translations)
+        self.best_params = dict(zip(("half_mosaicity_deg","wave_HE_ang","wave_LE_ang",
+         "reserve_orientation","rotation100_rad","rotation010_rad","rotation001_rad"),
+         self.use_case_3_simulated_annealing(self.horizons_phil.integration.use_subpixel_translations))
+        )
       elif self.horizons_phil.integration.model=="use_case_3_simulated_annealing_7":
-        best_params=self.use_case_3_simulated_annealing_7(self.horizons_phil.integration.use_subpixel_translations)
+        self.best_params = dict(zip(("half_mosaicity_deg","wave_HE_ang","wave_LE_ang",
+         "reserve_orientation","rotation100_rad","rotation010_rad","rotation001_rad",
+         "domain_size_ang"),
+         self.use_case_3_simulated_annealing_7(self.horizons_phil.integration.use_subpixel_translations))
+        )
       elif self.horizons_phil.integration.model=="use_case_3_simulated_annealing_9":
-        best_params=self.use_case_3_simulated_annealing_9(self.horizons_phil.integration.use_subpixel_translations)
-      #best_params is the tuple (half_mos_deg, waveHE, waveLE, ori, angle1, angle2, angle3)
+        self.best_params = dict(zip(("half_mosaicity_deg","wave_HE_ang","wave_LE_ang",
+         "reserve_orientation","rotation100_rad","rotation010_rad","rotation001_rad",
+         "domain_size_ang","ab_factor","c_factor"),
+         self.use_case_3_simulated_annealing_9(self.horizons_phil.integration.use_subpixel_translations))
+        )
+
       BPpredicted = self.bp3_wrapper.ucbp3.selected_predictions_labelit_format()
       BPhkllist = self.bp3_wrapper.ucbp3.selected_hkls()
       self.predicted,self.hkllist = BPpredicted, BPhkllist
+      self.partialities = dict(indices=BPhkllist.deep_copy(),
+                               data=self.bp3_wrapper.ucbp3.selected_partialities())
+      #self.hi = self.bp3_wrapper.ucbp3.selected_hi_predictions()
+      #self.lo = self.bp3_wrapper.ucbp3.selected_lo_predictions()
+      #print list(self.partialities)
+      #for x in xrange(len(self.hi)):
+      #  print "%4d %4d %4d  %7.1f %7.1f %7.1f %7.1f PARTIAL %7.2f"%(
+      #  self.hkllist[x][0], self.hkllist[x][1],self.hkllist[x][2],
+      #  self.hi[x][0], self.hi[x][1],
+      #  self.lo[x][0], self.lo[x][1], self.partialities[x])
+
       if self.inputai.active_areas != None:
         self.predicted,self.hkllist = self.inputai.active_areas(
                                       self.predicted,self.hkllist,self.pixel_size)

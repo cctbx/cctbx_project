@@ -123,7 +123,7 @@ namespace rstbx { namespace bandpass {
     scitbx::af::shared<bool > observed_flag;
     scitbx::af::shared<vec3 > spot_rectangle_vertices;
     scitbx::af::shared<vec3 > spot_rectregion_vertices;
-    use_case_bp3 (parameters_bp3 const& P):P(P),subpixel_translations_set(false){}
+    use_case_bp3 (parameters_bp3 const& P):P(P),subpixel_translations_set(false){set_ellipse_model();}
     active_area_filter aaf;
     void set_active_areas(scitbx::af::shared<int> IT){
       aaf = active_area_filter(IT);
@@ -160,6 +160,79 @@ namespace rstbx { namespace bandpass {
       //SCITBX_EXAMINE(indices_subset.size());
       P.indices = indices_subset;
     }
+
+    int ellip_gran;
+    double ellip_vol;
+    void set_ellipse_model(){
+      // ad hoc initialization to calculate partialities
+      ellip_gran = 20;
+      ellip_vol = 0.;
+      for (double x = -1. + 0.5 * (2./ellip_gran); x < 1. ; x += 2./ellip_gran){
+        for (double y = -1. + 0.5 * (2./ellip_gran); y < 1. ; y += 2./ellip_gran){
+          for (double z = -1. + 0.5 * (2./ellip_gran); z < 1. ; z += 2./ellip_gran){
+            if (x*x + y*y + z*z <= 1.0){
+              ellip_vol += 1.;
+            }}}}
+      /* Crude model for partialities, treating Bragg spots as ellipsoids of rotation.
+         This initialization normalizes the volume of a sphere when pixelated within
+         a box of dimensions ellip_gran x ellip_gran x ellip_gran */
+    }
+
+    scitbx::af::shared<double >
+    selected_partialities()const{
+      scitbx::af::shared<double > data;
+      scitbx::mat3<double> A = P.orientation.reciprocal_matrix();
+      cctbx::uctbx::unit_cell uc = P.orientation.unit_cell();
+
+      //s0:  parallel to the direction of incident radiation
+      scitbx::vec3<double> s0 = (1./P.wavelengthHE) * P.incident_beam.normalize();
+      double s0_length = s0.length();
+      scitbx::vec3<double> s0_unit = s0.normalize();
+      scitbx::vec3<double> s1 = (1./P.wavelengthLE) * P.incident_beam.normalize();
+      double s1_length = s1.length();
+      scitbx::vec3<double> s1_unit = s1.normalize();
+      SCITBX_ASSERT (s0_length > 0.);
+      SCITBX_ASSERT (s1_length > 0.);
+
+      for (int idx = 0; idx < lo_E_limit.size(); ++idx){
+        if (!observed_flag[idx]) {continue;}
+        scitbx::vec3<double> H(P.indices[idx][0],P.indices[idx][1], P.indices[idx][2]); // the Miller index
+        double spot_resolution_ang = P.orientation.unit_cell().d(P.indices[idx]);
+
+        // constructing the reciprocal space model of the spot
+        // Use new notation, reciprocal vector is qvec
+        scitbx::vec3<double> qvec = A * H; //qvec, the reciprocal space coordinates, lab frame,
+                                           // of the oriented Miller index
+        scitbx::vec3<double> qnorm= qvec.normalize();
+        scitbx::vec3<double> rotax = qnorm.cross(s0_unit); //Tangent to Ewald sphere at the Bragg spot
+        scitbx::vec3<double> chord_direction =      (rotax.cross(s0)).normalize();
+        // These last three vectors are taken as principle unit axes of an ellipsoid of rotation
+        // used to model the spot.  The semimajor axes in these directions are respecively,
+        // half_domain, half_domain+half_mosaic, half_domain+half_mosaic
+        double a_semi = 0.5/p_domain_size_ang;
+        double b_semi = a_semi + P.half_mosaicity_rad/spot_resolution_ang;
+        double test_volume = 0;
+        for (double x = -1. + 0.5 * (2./ellip_gran); x < 1. ; x += 2./ellip_gran){
+          for (double y = -1. + 0.5 * (2./ellip_gran); y < 1. ; y += 2./ellip_gran){
+            for (double z = -1. + 0.5 * (2./ellip_gran); z < 1. ; z += 2./ellip_gran){
+              if (x*x + y*y + z*z <= 1.0){
+                scitbx::vec3<double> test_vector = qvec+ x * a_semi * qnorm +
+                                                   y * b_semi * rotax + z * b_semi * chord_direction;
+                // if vector is in between the two limiting spheres, increment test_volume
+                scitbx::vec3<double> test_scatterHE = test_vector + s0;
+                scitbx::vec3<double> test_scatterLE = test_vector + s1;
+
+                if (test_scatterHE.length() < (1./P.wavelengthHE) &&
+                    test_scatterLE.length() > (1./P.wavelengthLE)){
+                  test_volume += 1.;
+                }
+              }}}}
+
+        data.push_back( test_volume/ellip_vol );
+      }
+      return data;
+    }
+
     void
     picture_fast_slow(){
       //The effect of this function is to set the following three state vectors:
@@ -583,6 +656,28 @@ namespace rstbx { namespace bandpass {
     }
 
     scitbx::af::shared<vec3 >
+    selected_hi_predictions()const{
+      scitbx::af::shared<vec3 > data;
+
+      for (int idx = 0; idx < lo_E_limit.size(); ++idx){
+        if (!observed_flag[idx]) {continue;}
+        data.push_back(hi_E_limit[idx]);
+      }
+      return data;
+    }
+
+    scitbx::af::shared<vec3 >
+    selected_lo_predictions()const{
+      scitbx::af::shared<vec3 > data;
+
+      for (int idx = 0; idx < lo_E_limit.size(); ++idx){
+        if (!observed_flag[idx]) {continue;}
+        data.push_back(lo_E_limit[idx]);
+      }
+      return data;
+    }
+
+    scitbx::af::shared<vec3 >
     selected_predictions()const{
       scitbx::af::shared<vec3 > data;
 
@@ -855,9 +950,12 @@ namespace ext {
         .add_property("enclosed_px",make_getter(&use_case_bp3::enclosed_px, rbv()))
         .add_property("margin_distances",make_getter(&use_case_bp3::margin_distances, rbv()))
         .def("enclosed_pixels", &use_case_bp3::enclosed_pixels)
+        .def("selected_partialities", &use_case_bp3::selected_partialities)
+        .def("selected_hi_predictions",&use_case_bp3::selected_hi_predictions)
+        .def("selected_lo_predictions",&use_case_bp3::selected_lo_predictions)
         .def("selected_predictions", &use_case_bp3::selected_predictions)
         .def("selected_predictions_labelit_format",
-        &use_case_bp3::selected_predictions_labelit_format)
+              &use_case_bp3::selected_predictions_labelit_format)
         .def("selected_hkls", &use_case_bp3::selected_hkls)
         .def("restricted_to_active_areas", &use_case_bp3::restricted_to_active_areas)
         .def("set_subpixel", &use_case_bp3::set_subpixel)
