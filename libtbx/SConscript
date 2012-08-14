@@ -355,8 +355,6 @@ libtbx.scons: Warning: compiling with /MDd:
     else:
       opts = ["/Od"]
     opts.append("/DBOOST_ALL_NO_LIB")
-    if not libtbx.env.build_options.enable_boost_threads:
-      opts.append('/DBOOST_DISABLE_THREADS')
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = ["/nologo", "/incremental:no", "/dll", "/MANIFEST"]
     if (libtbx.env.build_options.debug_symbols):
@@ -398,7 +396,6 @@ libtbx.scons: Warning: compiling with /MDd:
       /GR
       /EHsc
       /DBOOST_ALL_NO_LIB
-      /DBOOST_DISABLE_THREADS
     """.split()
     if (libtbx.env.build_options.optimization):
       opts = [
@@ -459,10 +456,6 @@ libtbx.scons: Warning: compiling with /MDd:
     elif (libtbx.env.build_options.debug_symbols):
       opts.insert(0, "-g")
     opts.append("-DBOOST_ALL_NO_LIB")
-    if (libtbx.env.build_options.enable_boost_threads):
-      opts.append("-pthread")
-    else:
-      opts.append('-DBOOST_DISABLE_THREADS')
     env_etc.ccflags_base.extend(opts)
     if (static_exe):
       env_base.Prepend(LINKFLAGS=["-static"])
@@ -575,10 +568,6 @@ else:
     elif (libtbx.env.build_options.debug_symbols):
       opts.insert(0, "-g")
     opts.append("-DBOOST_ALL_NO_LIB")
-    if (libtbx.env.build_options.enable_boost_threads):
-      opts.append("-pthread")
-    else:
-      opts.append('-DBOOST_DISABLE_THREADS')
     env_etc.ccflags_base.extend(opts)
     if (static_exe):
       env_base.Prepend(LINKFLAGS=["-static"])
@@ -626,7 +615,6 @@ else:
     if (libtbx.env.build_options.debug_symbols):
       opts.insert(0, "-g")
     opts.append("-DBOOST_ALL_NO_LIB")
-    opts.append('-DBOOST_DISABLE_THREADS')
     env_etc.ccflags_base.extend(opts)
     if (static_exe):
       env_base.Prepend(LINKFLAGS=["-static"])
@@ -658,8 +646,6 @@ else:
     if (libtbx.env.build_options.debug_symbols):
       opts.insert(0, "-g")
     opts.append("-DBOOST_ALL_NO_LIB")
-    if not libtbx.env.build_options.enable_boost_threads:
-      opts.append('-DBOOST_DISABLE_THREADS')
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = ["-shared"]
     env_etc.shlinkflags_bpl = list(env_etc.shlinkflags)
@@ -679,14 +665,6 @@ else:
         cxx = 'clang++'
       else:
         cxx = cc.replace('gcc', 'g++')
-        if env_etc.compiler.endswith("4.2"):
-          if libtbx.env.build_options.enable_boost_threads:
-            build_nb = libtbx.env_config.get_darwin_gcc_build_number(gcc=cxx)
-            min_build_nb = 5564 # XCode 3.1 beta distributed as part of
-                                # the iPhone SDK and XCode 3.1
-            if build_nb < min_build_nb:
-              raise RuntimeError("Apple GCC 4.2 (build %i) incompatible with "
-                                 "--enable_boost_threads" % build_nb)
     link_flags = ["-w"] # suppress "source/lib does not exist" warning
     if (env_etc.gcc_version >= 40201 and libtbx.env.build_options.force_32bit) :
       link_flags.extend(["-arch", "i386"])
@@ -723,8 +701,6 @@ else:
     if (env_etc.gcc_version < 40000):
       env_etc.cxxflags_base.append("-fcoalesce-templates")
     env_etc.cxxflags_base.append("-DBOOST_ALL_NO_LIB")
-    if not libtbx.env.build_options.enable_boost_threads:
-      env_etc.cxxflags_base.append("-DBOOST_DISABLE_THREADS")
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O3", "-ffast-math"]
       if (cxx == "c++"
@@ -906,10 +882,6 @@ int main() {
     return
   if env_etc.compiler == "darwin_clang":
     print "libtbx.scons: OpenMP is not supported by clang yet."
-    return
-  if (libtbx.env.build_options.enable_boost_threads):
-    if (libtbx.env.build_options.enable_openmp_if_possible):
-      print "libtbx.scons: OpenMP is disabled because Boost.Thread is enabled."
     return
   if (not libtbx.env.build_options.enable_openmp_if_possible):
     print "libtbx.scons: OpenMP is disabled."
