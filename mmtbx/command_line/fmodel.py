@@ -302,7 +302,7 @@ def run(args, log = sys.stdout):
     else:
       miller_array.show_comprehensive_summary(f = log, prefix="  ")
   if(miller_array is not None):
-    miller_array = miller_array.customized_copy(
+    miller_array = miller_array.map_to_asu().customized_copy(
       data = flex.double(miller_array.data().size(), 1))
   #
   cryst1 = pdb_inp.crystal_symmetry_from_cryst1()

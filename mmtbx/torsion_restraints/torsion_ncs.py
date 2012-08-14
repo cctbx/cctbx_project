@@ -53,6 +53,9 @@ torsion_ncs_params = iotbx.phil.parse("""
  filter_phi_psi_outliers = True
    .type = bool
    .expert_level = 4
+ silence_warnings = False
+   .type = bool
+   .expert_level = 4
  restraint_group
   .multiple=True
   .optional=True
@@ -643,9 +646,10 @@ class torsion_ncs(object):
               slack=self.slack)
           self.ncs_dihedral_proxies.append(dp_add)
     if len(self.ncs_dihedral_proxies) == 0:
-      print >> log, \
-        "** WARNING: No torsion NCS found!!" + \
-        "  Please check parameters. **"
+      if (not self.params.silence_warnings) :
+        print >> log, \
+          "** WARNING: No torsion NCS found!!" + \
+          "  Please check parameters. **"
     else:
       print >> log, \
         "Number of torsion NCS restraints: %d" \
