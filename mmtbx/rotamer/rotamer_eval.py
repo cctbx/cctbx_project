@@ -6,6 +6,9 @@ from libtbx.utils import Sorry
 from mmtbx.rotamer.sidechain_angles import PropertyFile, SidechainAngles
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
+from mmtbx.refinement import fit_rotamers
+from scitbx.matrix import rotate_point_around_axis
+from cctbx.array_family import flex
 import weakref
 import sys, os
 
@@ -124,11 +127,20 @@ class RotamerEval:
   # It holds a LOT of read-only data, so this helps save memory.
   aaTables = {} # maps "his" to a NDimTable object for histidine, etc.
 
-  def __init__(self, sidechain_angles=None):
+  def __init__(
+               self,
+               sidechain_angles=None,
+               mon_lib_srv=None,
+               log=None):
     if sidechain_angles is None:
-      self.sidechain_angles = SidechainAngles(True)
-    else:
-      self.sidechain_angles = sidechain_angles
+      sidechain_angles = SidechainAngles(True)
+    self.sidechain_angles = sidechain_angles
+    if mon_lib_srv is None:
+      mon_lib_srv = mmtbx.monomer_library.server.server()
+    if log is None:
+      log = sys.stdout
+    self.log = log
+    self.mon_lib_srv = mon_lib_srv
     self.rot_id = RotamerID()
     main_aaTables = RotamerEval.aaTables
     self.aaTables = {}
@@ -165,16 +177,9 @@ class RotamerEval:
     if (ndt is None): return None
     return ndt.valueAt(chiAngles)
 
-  def evaluate_residue(
-                       self,
-                       residue=None,
-                       residue_group=None):
-    if residue is not None:
-      atoms = residue.atoms()
-      resname = residue.resname.lower().strip()
-    if resname == 'gly':
-      return None
+  def get_atom_dict(self, residue):
     atom_dict = {}
+    atoms = residue.atoms()
     for atom in atoms:
       #handle hydrogen/deuterium swaps
       if atom_dict.get(atom.name) == None:
@@ -183,6 +188,19 @@ class RotamerEval:
         elif atom_dict.get(atom.name.replace("D","H",1)) != None:
           del(atom_dict[atom.name.replace("D","H",1)])
         atom_dict[atom.name] = atom
+    return atom_dict
+
+  def evaluate_residue(
+                       self,
+                       residue=None,
+                       residue_group=None):
+    assert [residue, residue_group].count(None) == 1
+    if residue is not None:
+      atoms = residue.atoms()
+      resname = residue.resname.lower().strip()
+    if resname == 'gly':
+      return None
+    atom_dict = self.get_atom_dict(residue)
     chis = self.sidechain_angles.measureChiAngles(
              res=residue,
              atom_dict=atom_dict)
@@ -196,6 +214,50 @@ class RotamerEval:
       return "OUTLIER"
     else:
       return rotamer_name
+
+  def get_rotamer_sites(
+                        self,
+                        residue,
+                        rotamer=None,
+                        chis=None):
+    assert [rotamer, chis].count(None) == 1
+    resname = residue.resname.lower().strip()
+    sites_cart_residue = residue.atoms().extract_xyz().deep_copy()
+    if chis is None:
+      chis = self.sidechain_angles.get_rotamer_angles(
+               residue_name=resname,
+               rotamer_name=rotamer)
+    axes_and_atoms_to_rotate, tardy_labels= \
+      fit_rotamers.axes_and_atoms_aa_specific(
+        residue=residue,
+        mon_lib_srv=self.mon_lib_srv,
+        remove_clusters_with_all_h=True,
+        include_labels=True,
+        log=None)
+    if (axes_and_atoms_to_rotate is None) :
+      print >> self.log, "Skipped %s rotamer (TARDY error)" % resname
+      return None
+
+    atom_dict = self.get_atom_dict(residue)
+    model_chis = self.sidechain_angles.measureChiAngles(
+                   res=residue,
+                   atom_dict=atom_dict)
+
+    for i, aa in enumerate(axes_and_atoms_to_rotate):
+      axis = aa[0]
+      atoms = aa[1]
+      new_xyz = flex.vec3_double()
+      angle_deg = chis[i] - model_chis[i]
+      if angle_deg < 0:
+        angle_deg += 360.0
+      for atom in atoms:
+        new_xyz = rotate_point_around_axis(
+                    axis_point_1=sites_cart_residue[axis[0]],
+                    axis_point_2=sites_cart_residue[axis[1]],
+                    point=sites_cart_residue[atom],
+                    angle=angle_deg, deg=True)
+        sites_cart_residue[atom] = new_xyz
+    return sites_cart_residue
 
 #{{{ RotamerID (new for reading in rotamer names from rotamer_names.props)
 class RotamerID:
