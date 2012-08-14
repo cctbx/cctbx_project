@@ -15,6 +15,7 @@ from iotbx.pdb import combine_unique_pdb_files
 import iotbx.pdb
 from libtbx import runtime_utils
 import libtbx.callbacks # import dependency
+from libtbx import adopt_init_args
 
 fo_minus_fo_master_params_str = """\
 f_obs_1_file_name = None
@@ -80,142 +81,159 @@ include scope mmtbx.find_peaks.master_params
 def fo_minus_fo_master_params():
   return iotbx.phil.parse(fo_minus_fo_master_params_str, process_includes=True)
 
-def compute_fo_minus_fo_map(data_arrays, xray_structure, log, silent,
-    output_file=None, peak_search=False, map_cutoff=None,
-    peak_search_params=None):
-  fmodels = []
-  for i_seq, d in enumerate(data_arrays):
+class compute_fo_minus_fo_map (object) :
+  def __init__ (self,
+      data_arrays,
+      xray_structure,
+      log=sys.stdout,
+      silent=False,
+      output_file=None,
+      peak_search=False,
+      map_cutoff=None,
+      peak_search_params=None,
+      write_map=True) :
+    adopt_init_args(self, locals())
+    fmodels = []
+    for i_seq, d in enumerate(data_arrays):
+      if(not silent):
+        print >> log, "Data set: %d"%i_seq
+      if(d.anomalous_flag()):
+        d = d.average_bijvoet_mates()
+      r_free_flags = d.array(data = flex.bool(d.data().size(), False))
+      fmodel = mmtbx.f_model.manager(
+        xray_structure = xray_structure,
+        r_free_flags   = r_free_flags,
+        target_name    = "ls_wunit_k1",
+        f_obs          = d)
+      fmodel.remove_outliers(log=log)
+      fmodel.update_solvent_and_scale(out=log)
+      if(not silent):
+        fmodel.info().show_rfactors_targets_scales_overall(out=log)
+        print >> log
+      fmodels.append(fmodel)
+    self.fmodel = fmodels[0]
+    # prepare Fobs for map calculation (apply scaling):
+    f_obss = []
+    for fmodel in fmodels:
+      obs = fmodel.f_obs()
+      f_obs_scale   = 1.0 / fmodel.k_anisotropic() / fmodel.k_isotropic()
+      obs = miller.array(miller_set = fmodel.f_model(),
+                         data       = obs.data()*f_obs_scale)
+      f_obss.append(obs)
+    # given two Fobs sets, make them one-to-one matching, get phases and map coefficients
+    # Note: f_calc below is just f_calc from atoms (no bulk solvent etc applied)
+    fobs_1, f_model = f_obss[0].common_sets(other = fmodels[1].f_model())
+    fobs_1, fobs_2 = fobs_1.common_sets(other = f_obss[1])
+    fobs_1, f_model = fobs_1.common_sets(other = f_model)
+    self.f_model = f_model
+    assert fobs_2.indices().all_eq(fobs_1.indices())
+    assert f_model.indices().all_eq(fobs_1.indices())
+    # scale again
+    scale_k1 = 1
+    den = flex.sum(flex.abs(fobs_2.data())*flex.abs(fobs_2.data()))
+    if(den != 0):
+      scale_k1 = flex.sum(flex.abs(fobs_1.data())*flex.abs(fobs_2.data())) / den
+    #
+    fobs_2 = fobs_2.array(data = fobs_2.data()*scale_k1)
+    if 0: fobs_1 = fobs_2.multiscale(other = fobs_1, reflections_per_bin=250)
     if(not silent):
-      print >> log, "Data set: %d"%i_seq
-    if(d.anomalous_flag()):
-      d = d.average_bijvoet_mates()
-    r_free_flags = d.array(data = flex.bool(d.data().size(), False))
-    fmodel = mmtbx.f_model.manager(
-      xray_structure = xray_structure,
-      r_free_flags   = r_free_flags,
-      target_name    = "ls_wunit_k1",
-      f_obs          = d)
-    fmodel.remove_outliers(log=log)
-    fmodel.update_solvent_and_scale(out=log)
-    if(not silent):
-      fmodel.info().show_rfactors_targets_scales_overall(out=log)
-      print >> log
-    fmodels.append(fmodel)
-  # prepare Fobs for map calculation (apply scaling):
-  f_obss = []
-  for fmodel in fmodels:
-    obs = fmodel.f_obs()
-    f_obs_scale   = 1.0 / fmodel.k_anisotropic() / fmodel.k_isotropic()
-    obs = miller.array(miller_set = fmodel.f_model(),
-                       data       = obs.data()*f_obs_scale)
-    f_obss.append(obs)
-  # given two Fobs sets, make them one-to-one matching, get phases and map coefficients
-  # Note: f_calc below is just f_calc from atoms (no bulk solvent etc applied)
-  fobs_1, f_model = f_obss[0].common_sets(other = fmodels[1].f_model())
-  fobs_1, fobs_2 = fobs_1.common_sets(other = f_obss[1])
-  fobs_1, f_model = fobs_1.common_sets(other = f_model)
-  assert fobs_2.indices().all_eq(fobs_1.indices())
-  assert f_model.indices().all_eq(fobs_1.indices())
-  # scale again
-  scale_k1 = 1
-  den = flex.sum(flex.abs(fobs_2.data())*flex.abs(fobs_2.data()))
-  if(den != 0):
-    scale_k1 = flex.sum(flex.abs(fobs_1.data())*flex.abs(fobs_2.data())) / den
-  #
-  fobs_2 = fobs_2.array(data = fobs_2.data()*scale_k1)
-  if 0: fobs_1 = fobs_2.multiscale(other = fobs_1, reflections_per_bin=250)
-  if(not silent):
-    print >> log, "Fobs1_vs_Fobs2 statistics:"
-    print >> log, "Bin# Resolution range  Compl.  No.of refl. R-factor"
-    fobs_1.setup_binner(reflections_per_bin = min(500, fobs_1.data().size()))
-    fobs_2.use_binning_of(fobs_1)
-    for i_bin in fobs_1.binner().range_used():
-      sel = fobs_1.binner().selection(i_bin)
-      f1  = fobs_1.select(sel)
-      f2  = fobs_2.select(sel)
-      d_max, d_min = fobs_1.d_max_min()
-      compl = fobs_1.completeness(d_max = d_max)
-      n_ref = sel.count(True)
-      r = flex.sum(flex.abs(f1.data()-f2.data())) / \
-        flex.sum(flex.abs(f1.data()+f2.data())/2)
-      d_range = fobs_1.binner().bin_legend(
-                     i_bin = i_bin, show_bin_number = False, show_counts = False)
-      fmt = "%3d: %-17s   %4.2f %6d         %6.4f"
-      print >> log, fmt % (i_bin, d_range, compl, n_ref, r)
-  # map coefficients
-  diff = miller.array(
-    miller_set = f_model,
-    data       = fobs_1.data()-fobs_2.data())
-  def phase_transfer(miller_array, phase_source):
-    tmp = miller.array(miller_set = miller_array,
-      data = flex.double(miller_array.indices().size(), 1)
-      ).phase_transfer(phase_source = phase_source)
-    return miller.array(miller_set = miller_array,
-      data = miller_array.data() * tmp.data() )
-  map_coeff = phase_transfer(
-    miller_array = diff,
-    phase_source = f_model)
+      print >> log, "Fobs1_vs_Fobs2 statistics:"
+      print >> log, "Bin# Resolution range  Compl.  No.of refl. R-factor"
+      fobs_1.setup_binner(reflections_per_bin = min(500, fobs_1.data().size()))
+      fobs_2.use_binning_of(fobs_1)
+      for i_bin in fobs_1.binner().range_used():
+        sel = fobs_1.binner().selection(i_bin)
+        f1  = fobs_1.select(sel)
+        f2  = fobs_2.select(sel)
+        d_max, d_min = fobs_1.d_max_min()
+        compl = fobs_1.completeness(d_max = d_max)
+        n_ref = sel.count(True)
+        r = flex.sum(flex.abs(f1.data()-f2.data())) / \
+          flex.sum(flex.abs(f1.data()+f2.data())/2)
+        d_range = fobs_1.binner().bin_legend(
+                       i_bin = i_bin, show_bin_number = False, show_counts = False)
+        fmt = "%3d: %-17s   %4.2f %6d         %6.4f"
+        print >> log, fmt % (i_bin, d_range, compl, n_ref, r)
+    # map coefficients
+    diff = miller.array(
+      miller_set = f_model,
+      data       = fobs_1.data()-fobs_2.data())
+    def phase_transfer(miller_array, phase_source):
+      tmp = miller.array(miller_set = miller_array,
+        data = flex.double(miller_array.indices().size(), 1)
+        ).phase_transfer(phase_source = phase_source)
+      return miller.array(miller_set = miller_array,
+        data = miller_array.data() * tmp.data() )
+    self.map_coeff = phase_transfer(
+      miller_array = diff,
+      phase_source = f_model)
+    if(self.map_coeff.anomalous_flag()):
+      self.map_coeff = map_coeff.average_bijvoet_mates()
+    self.file_names = []
+    if (write_map) :
+      self.file_names = self.write_map_file()
+
+  def write_map_file (self) :
   # output MTZ file with map coefficients
-  class map_coeffs_mtz_label_manager:
-    def __init__(self, amplitudes, phases):
-      self._amplitudes = amplitudes
-      self._phases = phases
-    def amplitudes(self):
-      return self._amplitudes
-    def phases(self, root_label, anomalous_sign=None):
-      assert anomalous_sign is None or not anomalous_sign
-      return self._phases
-  mtz_history_buffer = flex.std_string()
-  lbl_mgr = map_coeffs_mtz_label_manager(amplitudes = "FoFo", phases = "PHFc")
-  if(map_coeff.anomalous_flag()):
-    map_coeff = map_coeff.average_bijvoet_mates()
-  mtz_dataset = map_coeff.as_mtz_dataset(
-    column_root_label=lbl_mgr.amplitudes(),
-    label_decorator=lbl_mgr)
-  mtz_history_buffer.append("> column label %s = phenix %s" % (
-      lbl_mgr.amplitudes(), "FoFoPHFc"))
-  if output_file is not None :
-    file_name = output_file
-  else :
-    file_name = "FoFoPHFc.mtz"
-  mtz_history_buffer.append("file name %s"%file_name)
-  mtz_object = mtz_dataset.mtz_object()
-  mtz_object.add_history(mtz_history_buffer)
-  mtz_object.write(file_name=file_name)
-  file_names = [ file_name ]
-  if (peak_search) :
-    from mmtbx.command_line import find_peaks_holes
-    from mmtbx import find_peaks
-    peak_search_log = log
-    if (silent) : peak_search_log = null_out()
-    peaks = find_peaks.manager(
-      fmodel=fmodel,
-      map_type=None,
-      map_coeffs=map_coeff,
-      map_cutoff=map_cutoff,
-      params=peak_search_params,
-      log=peak_search_log).peaks_mapped()
-    peaks.sites = fmodel.xray_structure.unit_cell().orthogonalize(peaks.sites)
-    holes = find_peaks.manager(
-      fmodel=fmodel,
-      map_type=None,
-      map_coeffs=map_coeff,
-      map_cutoff=-map_cutoff,
-      params=peak_search_params,
-      log=peak_search_log).peaks_mapped()
-    holes.sites = fmodel.xray_structure.unit_cell().orthogonalize(holes.sites)
-    result = find_peaks_holes.peaks_holes_container(
-      peaks=peaks,
-      holes=holes,
-      map_cutoff=map_cutoff)
-    pdb_out = os.path.splitext(file_name)[0] + "_peaks.pdb"
-    result.save_pdb_file(
-      file_name=pdb_out,
-      include_anom=False,
-      include_water=False,
-      log=peak_search_log)
-    file_names.append(pdb_out)
-  return file_names
+    class map_coeffs_mtz_label_manager:
+      def __init__(self, amplitudes, phases):
+        self._amplitudes = amplitudes
+        self._phases = phases
+      def amplitudes(self):
+        return self._amplitudes
+      def phases(self, root_label, anomalous_sign=None):
+        assert anomalous_sign is None or not anomalous_sign
+        return self._phases
+    mtz_history_buffer = flex.std_string()
+    lbl_mgr = map_coeffs_mtz_label_manager(amplitudes = "FoFo", phases = "PHFc")
+    mtz_dataset = self.map_coeff.as_mtz_dataset(
+      column_root_label=lbl_mgr.amplitudes(),
+      label_decorator=lbl_mgr)
+    mtz_history_buffer.append("> column label %s = phenix %s" % (
+        lbl_mgr.amplitudes(), "FoFoPHFc"))
+    if self.output_file is not None :
+      file_name = self.output_file
+    else :
+      file_name = "FoFoPHFc.mtz"
+    mtz_history_buffer.append("file name %s"%file_name)
+    mtz_object = mtz_dataset.mtz_object()
+    mtz_object.add_history(mtz_history_buffer)
+    mtz_object.write(file_name=file_name)
+    self.file_names = [ file_name ]
+    if (self.peak_search) :
+      from mmtbx.command_line import find_peaks_holes
+      from mmtbx import find_peaks
+      peak_search_log = self.log
+      if (self.silent) : peak_search_log = null_out()
+      fmodel = self.fmodel
+      peaks = find_peaks.manager(
+        fmodel=fmodel,
+        map_type=None,
+        map_coeffs=self.map_coeff,
+        map_cutoff=self.map_cutoff,
+        params=self.peak_search_params,
+        log=peak_search_log).peaks_mapped()
+      peaks.sites = fmodel.xray_structure.unit_cell().orthogonalize(peaks.sites)
+      holes = find_peaks.manager(
+        fmodel=fmodel,
+        map_type=None,
+        map_coeffs=self.map_coeff,
+        map_cutoff=-self.map_cutoff,
+        params=self.peak_search_params,
+        log=peak_search_log).peaks_mapped()
+      holes.sites = fmodel.xray_structure.unit_cell().orthogonalize(holes.sites)
+      result = find_peaks_holes.peaks_holes_container(
+        peaks=peaks,
+        holes=holes,
+        map_cutoff=self.map_cutoff)
+      pdb_out = os.path.splitext(file_name)[0] + "_peaks.pdb"
+      result.save_pdb_file(
+        file_name=pdb_out,
+        include_anom=False,
+        include_water=False,
+        log=peak_search_log)
+      self.file_names.append(pdb_out)
+    return self.file_names
 
 def run(args, command_name = "phenix.fobs_minus_fobs_map", log=None):
   if(len(args) == 0): args = ["--help"]
@@ -384,7 +402,7 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
     output_file = params.output_file,
     peak_search=params.find_peaks_holes,
     map_cutoff=params.map_cutoff,
-    peak_search_params=params.peak_search)
+    peak_search_params=params.peak_search).file_names
   return output_files
 
 class launcher (runtime_utils.target_with_save_result) :
