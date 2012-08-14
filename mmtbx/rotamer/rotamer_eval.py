@@ -210,7 +210,7 @@ class RotamerEval:
     wrap_chis = \
       self.rot_id.wrap_chis(resname, chis, symmetry=False)
     rotamer_name = self.rot_id.identify(resname, wrap_chis)
-    if rotamer_name == "":
+    if rotamer_name == "" or (value < 0.01):
       return "OUTLIER"
     else:
       return rotamer_name
