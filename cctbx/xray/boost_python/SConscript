@@ -29,13 +29,5 @@ sources = [
   "extinction.cpp",
   "../targets/shelxl_wght_ls_bpl.cpp",
 ]
-
-raw_multithreaded_sources = [
-  "raw_multithreading/structure_factors_direct.cpp",
-]
-
-if libtbx.env.build_options.enable_boost_threads:
-  libs.append("boost_thread")
-  sources.extend(raw_multithreaded_sources)
 env.Prepend(LIBS=libs)
 env.SharedLibrary(target="#lib/cctbx_xray_ext", source=sources)
