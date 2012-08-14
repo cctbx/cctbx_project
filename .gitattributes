@@ -154,7 +154,6 @@ cctbx/regression/tst_miller_ellipsoidal_truncation.py -text
 cctbx/regression/tst_refine_xray_curvs.py svneol=native#text/x-python
 cctbx/regression/tst_sgtbx_special_op_simplifier.py svneol=native#text/x-python
 cctbx/regression/tst_show_cosets.py -text
-cctbx/regression/tst_structure_factors_multithread.py -text
 cctbx/regression/tst_web_change_basis.py svneol=native#text/x-python
 cctbx/regression/tst_weighting_schemes.py -text
 cctbx/regression/tst_xray_minimization_failure.py -text
@@ -204,12 +203,10 @@ cctbx/web/change_basis.html svneol=native#text/html
 cctbx/web/change_basis.py svneol=native#text/x-python
 cctbx/xray/boost_python/curvatures_simple.cpp svneol=native#text/plain
 cctbx/xray/boost_python/grouped_data.cpp -text
-cctbx/xray/boost_python/raw_multithreading/structure_factors_direct.cpp -text
 cctbx/xray/boost_python/tst_targets_fd.py svneol=native#text/x-python
 cctbx/xray/curvatures_simple.h svneol=native#text/plain
 cctbx/xray/grouped_data.h -text
 cctbx/xray/least-squares.tex -text
-cctbx/xray/raw_multithreading/structure_factors_direct.h -text
 cctbx/xray/structure_factors/from_scatterers_direct_parallel.py -text
 cctbx/xray/targets/__init__.py svneol=native#text/x-python
 cctbx/xray/targets/common_results.h svneol=native#text/plain
