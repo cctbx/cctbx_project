@@ -31,7 +31,6 @@ def bool_literal(b):
 default_write_full_flex_fwd_h = sys.platform.startswith("irix")
 default_msvc_arch_flag = ["None", "SSE2"][int(os.name == "nt")]
 default_build_boost_python_extensions = True
-default_enable_boost_threads = False
 default_enable_openmp_if_possible = False
 default_enable_cuda = False
 default_opt_resources = False
@@ -707,7 +706,6 @@ Wait for the command to finish, then try again.""" % vars())
           =command_line.options.boost_python_no_py_signatures,
         boost_python_bool_int_strict
           =command_line.options.boost_python_bool_int_strict,
-        enable_boost_threads=command_line.options.enable_boost_threads,
         enable_openmp_if_possible
           =command_line.options.enable_openmp_if_possible,
         enable_cuda=command_line.options.enable_cuda,
@@ -1765,7 +1763,6 @@ class build_options:
         build_boost_python_extensions=default_build_boost_python_extensions,
         boost_python_no_py_signatures=False,
         boost_python_bool_int_strict=True,
-        enable_boost_threads=default_enable_boost_threads,
         enable_openmp_if_possible=default_enable_openmp_if_possible,
         enable_cuda=default_enable_cuda,
         opt_resources=default_opt_resources,
@@ -1820,7 +1817,6 @@ class build_options:
       self.boost_python_no_py_signatures
     print >> f, "Define BOOST_PYTHON_BOOL_INT_STRICT:", \
       self.boost_python_bool_int_strict
-    print >> f, "Boost threads enabled:", self.enable_boost_threads
     print >> f, "Enable OpenMP if possible:", self.enable_openmp_if_possible
     print >> f, "Enable CUDA:", self.enable_cuda
     print >> f, "Use opt_resources if available:", self.opt_resources
@@ -1982,10 +1978,6 @@ class pre_process_args:
       help="build Boost.Python extension modules (default: %s)"
         % bool_literal(default_build_boost_python_extensions),
       metavar="True|False")
-    parser.option(None, "--enable_boost_threads",
-      action="store_true",
-      default=False,
-      help="enable threads in Boost")
     parser.option(None, "--enable_openmp_if_possible",
       action="store",
       type="bool",
@@ -2191,6 +2183,11 @@ def unpickle():
   # XXX backward compatibility 2012-4-1: this is no April Fool ;-)
   if not hasattr(env, 'no_bin_python'):
     env.no_bin_python = False
+  # XXX backward compatibility 2012-8-14
+  try:
+    del env.enable_boost_threads
+  except AttributeError:
+    pass
   return env
 
 def warm_start(args):

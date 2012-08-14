@@ -13,33 +13,6 @@ env_etc.boost_include = env_etc.boost_dist
 env_etc.boost_adaptbx_dist = libtbx.env.dist_path("boost_adaptbx")
 env_etc.boost_adaptbx_include = os.path.dirname(env_etc.boost_adaptbx_dist)
 
-def build_boost_thread():
-  if (not libtbx.env.build_options.enable_boost_threads):
-    return
-  if (sys.platform == "win32"): s = "win32"
-  else:                         s = "pthread"
-  join = os.path.join
-  src = join("libs", "thread", "src", s)
-  prefix = "#" + join(os.path.basename(env_etc.boost_dist), src)
-  source = []
-  for node in sorted(os.listdir(join(env_etc.boost_dist, src))):
-    if (not node.lower().endswith(".cpp")): continue
-    source.append(join(prefix, node))
-  env = env_base.Clone(
-    SHLINKFLAGS=env_etc.shlinkflags)
-  env.Append(SHCXXFLAGS=["-DBOOST_THREAD_BUILD_DLL"])
-  env_etc.include_registry.append(
-    env=env,
-    paths=[env_etc.boost_include])
-  darwin_shlinkcom(env_etc, env,
-                   lo="boost/libs/thread/src/libboost_thread.lo",
-                   dylib="lib/libboost_thread.dylib")
-  env.Repository(os.path.dirname(env_etc.boost_dist))
-  env.SharedLibrary(
-    target='#lib/boost_thread',
-    source=source)
-
-build_boost_thread()
 
 def determine_boost_version():
   test_code = """\
