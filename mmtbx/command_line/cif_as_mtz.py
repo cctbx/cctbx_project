@@ -107,11 +107,6 @@ def run(args, command_name = "phenix.cif_as_mtz"):
     if(command_line.options.use_model):
       crystal_symmetry = crystal_symmetry_from_pdb.extract_from(
          file_name=command_line.options.use_model)
-  if(crystal_symmetry.unit_cell() is None or
-     crystal_symmetry.space_group_info() is None):
-    raise Sorry(
-      "Crystal symmetry is not defined. Please use the --symmetry option.\n"
-      "Type %s without arguments to see more options."%command_name)
   if(len(command_line.args) > 1):
     print "%d arguments are given from the command line:"% \
       len(command_line.args), command_line.args
@@ -270,14 +265,7 @@ def extract(file_name,
         i += 1
     return label
 
-  mtz_object = iotbx.mtz.object() \
-    .set_title(title="phenix.cif_as_mtz") \
-    .set_space_group_info(space_group_info=crystal_symmetry.space_group_info())
-  unit_cell=crystal_symmetry.unit_cell()
-  mtz_crystals = {}
-  mtz_object.set_hkl_base(unit_cell=unit_cell)
-  from iotbx.reflection_file_utils import cif_status_flags_as_int_r_free_flags
-  for i, (data_name, miller_arrays) in enumerate(all_miller_arrays.iteritems()):
+  for (data_name, miller_arrays) in all_miller_arrays.iteritems():
     for ma in miller_arrays.values():
       other_symmetry = crystal_symmetry
       try:
@@ -295,6 +283,20 @@ def extract(file_name,
           raise Sorry(str_e)
         else:
           raise
+  if(crystal_symmetry.unit_cell() is None or
+     crystal_symmetry.space_group_info() is None):
+    raise Sorry(
+      "Crystal symmetry is not defined. Please use the --symmetry option.")
+
+  mtz_object = iotbx.mtz.object() \
+    .set_title(title="phenix.cif_as_mtz") \
+    .set_space_group_info(space_group_info=crystal_symmetry.space_group_info())
+  unit_cell=crystal_symmetry.unit_cell()
+  mtz_crystals = {}
+  mtz_object.set_hkl_base(unit_cell=unit_cell)
+  from iotbx.reflection_file_utils import cif_status_flags_as_int_r_free_flags
+  for i, (data_name, miller_arrays) in enumerate(all_miller_arrays.iteritems()):
+    for ma in miller_arrays.values():
       ma = ma.customized_copy(
         crystal_symmetry=crystal_symmetry).set_info(ma.info())
       labels = ma.info().labels
