@@ -3,7 +3,7 @@ from mmtbx.rotamer.n_dim_table import NDimTable
 from libtbx import easy_pickle
 from libtbx import dlite
 from libtbx.utils import Sorry
-from mmtbx.rotamer.sidechain_angles import PropertyFile
+from mmtbx.rotamer.sidechain_angles import PropertyFile, SidechainAngles
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import weakref
@@ -120,45 +120,82 @@ def eval_sidechain_completeness(pdb_hierarchy,
 
 class RotamerEval:
 
-    # This is shared among all instances of RotamerEval -- a class variable.
-    # It holds a LOT of read-only data, so this helps save memory.
-    aaTables = {} # maps "his" to a NDimTable object for histidine, etc.
+  # This is shared among all instances of RotamerEval -- a class variable.
+  # It holds a LOT of read-only data, so this helps save memory.
+  aaTables = {} # maps "his" to a NDimTable object for histidine, etc.
 
-    def __init__(self):
-        main_aaTables = RotamerEval.aaTables
-        self.aaTables = {}
-        for aa,ndt_weakref in main_aaTables.items():
-            # convert existing weak references to strong references
-            self.aaTables[aa] = ndt_weakref()
-        rotamer_data_dir = find_rotarama_data_dir()
-        target_db = open_rotarama_dlite(rotarama_data_dir=rotamer_data_dir)
-        for aa, aafile in aminoAcids.items():
-                if (self.aaTables.get(aa) is not None): continue
-                data_file = "rota500-"+aafile+".data"
-                pickle_file = "rota500-"+aafile+".pickle"
-                pair_info = target_db.pair_info(
-                  source_path=data_file,
-                  target_path=pickle_file,
-                  path_prefix=rotamer_data_dir)
-                if pair_info.needs_update:
-                    raise Sorry(
-                        "chem_data/rotarama_data/*.pickle files are missing or out of date.\n"
-                        "  Please run\n"
-                        "    mmtbx.rebuild_rotarama_cache\n"
-                        "  to resolve this problem.\n")
-                ndt = easy_pickle.load(file_name=os.path.join(
-                  rotamer_data_dir, pair_info.target.path))
-                self.aaTables[aa] = ndt
-                main_aaTables[aa] = weakref.ref(ndt)
+  def __init__(self, sidechain_angles=None):
+    if sidechain_angles is None:
+      self.sidechain_angles = SidechainAngles(True)
+    else:
+      self.sidechain_angles = sidechain_angles
+    self.rot_id = RotamerID()
+    main_aaTables = RotamerEval.aaTables
+    self.aaTables = {}
+    for aa,ndt_weakref in main_aaTables.items():
+        # convert existing weak references to strong references
+        self.aaTables[aa] = ndt_weakref()
+    rotamer_data_dir = find_rotarama_data_dir()
+    target_db = open_rotarama_dlite(rotarama_data_dir=rotamer_data_dir)
+    for aa, aafile in aminoAcids.items():
+      if (self.aaTables.get(aa) is not None): continue
+      data_file = "rota500-"+aafile+".data"
+      pickle_file = "rota500-"+aafile+".pickle"
+      pair_info = target_db.pair_info(
+                    source_path=data_file,
+                    target_path=pickle_file,
+                    path_prefix=rotamer_data_dir)
+      if pair_info.needs_update:
+        raise Sorry(
+          "chem_data/rotarama_data/*.pickle files are missing or out of date.\n"
+          "  Please run\n"
+          "    mmtbx.rebuild_rotarama_cache\n"
+          "  to resolve this problem.\n")
+      ndt = easy_pickle.load(file_name=os.path.join(
+              rotamer_data_dir, pair_info.target.path))
+      self.aaTables[aa] = ndt
+      main_aaTables[aa] = weakref.ref(ndt)
 
-    def evaluate(self, aaName, chiAngles):
-        '''Evaluates the specified rotamer from 0.0 (worst) to 1.0 (best).
+  def evaluate(self, aaName, chiAngles):
+    '''Evaluates the specified rotamer from 0.0 (worst) to 1.0 (best).
 
-        Values below 0.01 are generally considered outliers.
-        If the 3-letter amino acid name is not recognized, returns None.'''
-        ndt = self.aaTables.get(aaName.lower())
-        if (ndt is None): return None
-        return ndt.valueAt(chiAngles)
+       Values below 0.01 are generally considered outliers.
+       If the 3-letter amino acid name is not recognized, returns None.'''
+    ndt = self.aaTables.get(aaName.lower())
+    if (ndt is None): return None
+    return ndt.valueAt(chiAngles)
+
+  def evaluate_residue(
+                       self,
+                       residue=None,
+                       residue_group=None):
+    if residue is not None:
+      atoms = residue.atoms()
+      resname = residue.resname.lower().strip()
+    if resname == 'gly':
+      return None
+    atom_dict = {}
+    for atom in atoms:
+      #handle hydrogen/deuterium swaps
+      if atom_dict.get(atom.name) == None:
+        if atom_dict.get(atom.name.replace("H","D",1)) != None:
+          del(atom_dict[atom.name.replace("H","D",1)])
+        elif atom_dict.get(atom.name.replace("D","H",1)) != None:
+          del(atom_dict[atom.name.replace("D","H",1)])
+        atom_dict[atom.name] = atom
+    chis = self.sidechain_angles.measureChiAngles(
+             res=residue,
+             atom_dict=atom_dict)
+    value = self.evaluate(
+              resname,
+              chis)
+    wrap_chis = \
+      self.rot_id.wrap_chis(resname, chis, symmetry=False)
+    rotamer_name = self.rot_id.identify(resname, wrap_chis)
+    if rotamer_name == "":
+      return "OUTLIER"
+    else:
+      return rotamer_name
 
 #{{{ RotamerID (new for reading in rotamer names from rotamer_names.props)
 class RotamerID:
