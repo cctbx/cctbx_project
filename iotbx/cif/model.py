@@ -406,7 +406,9 @@ class loop(DictMixin):
       assert len(value) == self.size()
     if not isinstance(value, flex.std_string):
       for flex_numeric_type in (flex.int, flex.double):
-        if not isinstance(value, flex_numeric_type):
+        if isinstance(value, flex_numeric_type):
+          value = value.as_string()
+        else:
           try:
             value = flex_numeric_type(value).as_string()
           except TypeError:

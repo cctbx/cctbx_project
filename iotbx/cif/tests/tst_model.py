@@ -12,7 +12,7 @@ def exercise_cif_model():
   from iotbx.cif import model
 
   loop = model.loop()
-  loop["_loop_a"] = (1,2,3)
+  loop["_loop_a"] = flex.double((1,2,3))
   loop.add_columns({'_loop_c': [4,5,6],
                     '_loop_b': ['7','8','9']})
   loop.add_row((4,7,'0'))
