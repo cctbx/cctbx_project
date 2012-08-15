@@ -7,11 +7,12 @@ from libtbx.utils import Sorry
 from mmtbx.rotamer.sidechain_angles import PropertyFile, SidechainAngles
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
-from mmtbx.refinement import fit_rotamers
+from mmtbx.utils import rotatable_bonds
 from scitbx.matrix import rotate_point_around_axis
 from cctbx.array_family import flex
 import weakref
 import sys, os
+import iotbx.pdb
 
 def find_rotarama_data_dir(optional=False):
   result = libtbx.env.find_in_repositories(
@@ -219,49 +220,28 @@ class RotamerEval:
     else:
       return rotamer_name
 
-  def get_rotamer_sites(
-                        self,
-                        residue,
-                        rotamer=None,
-                        chis=None):
-    assert [rotamer, chis].count(None) == 1
-    resname = residue.resname.lower().strip()
-    sites_cart_residue = residue.atoms().extract_xyz().deep_copy()
-    if chis is None:
-      chis = self.sidechain_angles.get_rotamer_angles(
-               residue_name=resname,
-               rotamer_name=rotamer)
-    axes_and_atoms_to_rotate, tardy_labels= \
-      fit_rotamers.axes_and_atoms_aa_specific(
-        residue=residue,
-        mon_lib_srv=self.mon_lib_srv,
-        remove_clusters_with_all_h=True,
-        include_labels=True,
-        log=None)
-    if (axes_and_atoms_to_rotate is None) :
-      print >> self.log, "Skipped %s rotamer (TARDY error)" % resname
-      return None
-
-    atom_dict = self.get_atom_dict(residue)
-    model_chis = self.sidechain_angles.measureChiAngles(
-                   res=residue,
-                   atom_dict=atom_dict)
-
-    for i, aa in enumerate(axes_and_atoms_to_rotate):
-      axis = aa[0]
-      atoms = aa[1]
-      new_xyz = flex.vec3_double()
-      angle_deg = chis[i] - model_chis[i]
-      if angle_deg < 0:
-        angle_deg += 360.0
-      for atom in atoms:
-        new_xyz = rotate_point_around_axis(
-                    axis_point_1=sites_cart_residue[axis[0]],
-                    axis_point_2=sites_cart_residue[axis[1]],
-                    point=sites_cart_residue[atom],
-                    angle=angle_deg, deg=True)
-        sites_cart_residue[atom] = new_xyz
-    return sites_cart_residue
+  def nearest_rotamer_sites_cart(self, residue):
+    sites_cart_result = residue.atoms().extract_xyz()
+    get_class = iotbx.pdb.common_residue_names_get_class
+    if(get_class(residue.resname) == "common_amino_acid"):
+      sites_cart = residue.atoms().extract_xyz()
+      rotamer_iterator = self.mon_lib_srv.rotamer_iterator(
+          fine_sampling = True,
+          comp_id       = residue.resname,
+          atom_names    = residue.atoms().extract_name(),
+          sites_cart    = sites_cart)
+      if(rotamer_iterator is None or
+         rotamer_iterator.problem_message is not None or
+         rotamer_iterator.rotamer_info is None):
+        rotamer_iterator = None
+      if(rotamer_iterator is not None):
+        dist_min = 1.e+9
+        for r, rotamer_sites_cart in rotamer_iterator:
+          d= flex.mean(flex.sqrt((sites_cart - rotamer_sites_cart).dot()))
+          if(d < dist_min):
+            dist_min = d
+            sites_cart_result = rotamer_sites_cart
+    return sites_cart_result
 
 #{{{ RotamerID (new for reading in rotamer names from rotamer_names.props)
 class RotamerID:
@@ -291,7 +271,8 @@ class RotamerID:
 
   def identify(self, aa_name, chis):
     aa_name = aa_name.lower()
-    if aa_name not in self.names: raise Sorry("Unknown residue name")
+    if aa_name not in self.names:
+      raise Sorry("Unknown residue name: %s", aa_name)
     wrap_chis = self.wrap_chis(aa_name, chis)
     rotList = self.names[aa_name]
     for rot in rotList:
