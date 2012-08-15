@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.rigid_body.essence import tst_tardy
 from scitbx.array_family import flex
 import sys

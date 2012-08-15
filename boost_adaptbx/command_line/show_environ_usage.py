@@ -1,3 +1,4 @@
+from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME boost_adaptbx.show_environ_usage
 
 import sys

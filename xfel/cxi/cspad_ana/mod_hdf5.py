@@ -6,6 +6,7 @@
 (hierarchical data format, version 5) file.  XXX Not sure how this
 module will behave under multiprocessing.
 """
+from __future__ import division
 
 __version__ = "$Revision$"
 

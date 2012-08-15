@@ -1,3 +1,4 @@
+from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.real_space_refine
 
 from mmtbx.refinement import real_space

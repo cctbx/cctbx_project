@@ -1,3 +1,4 @@
+from __future__ import division
 def run(args):
   assert len(args) == 0
   from libtbx import easy_run

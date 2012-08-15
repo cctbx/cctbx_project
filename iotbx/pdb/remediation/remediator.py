@@ -1,3 +1,4 @@
+from __future__ import division
 #!/usr/bin/python
 # remediator.py - version 1.61.110622 6/22/11
 # Copyright 2007-2011, Jeffrey J. Headd and Robert Immormino

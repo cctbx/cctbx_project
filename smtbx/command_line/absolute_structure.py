@@ -1,3 +1,4 @@
+from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME smtbx.absolute_structure
 
 from cctbx.array_family import flex

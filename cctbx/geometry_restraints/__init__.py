@@ -1,3 +1,4 @@
+from __future__ import division
 import cctbx.crystal.direct_space_asu # import dependency
 from cctbx.array_family import flex
 import scitbx.array_family.shared # import dependency

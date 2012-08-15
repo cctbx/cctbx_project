@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx.utils import format_cpu_times, Sorry
 import mmtbx
 

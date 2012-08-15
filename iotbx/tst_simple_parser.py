@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx import simple_parser
 from libtbx.phil import tokenizer
 import sys

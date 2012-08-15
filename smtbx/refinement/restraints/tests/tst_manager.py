@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx.test_utils import show_diff
 from smtbx.refinement import restraints
 from smtbx.refinement.restraints import adp_restraints

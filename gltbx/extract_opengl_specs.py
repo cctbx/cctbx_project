@@ -7,6 +7,7 @@ To update opengl_specs.txt:
   2. In $GLTBX_DIST run:
        python extract_opengl_specs.py /tmpdir/html/*/*.html > opengl_specs.txt
 """
+from __future__ import division
 
 import sys, os
 

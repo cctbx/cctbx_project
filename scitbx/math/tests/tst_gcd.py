@@ -1,3 +1,4 @@
+from __future__ import division
 import scitbx.math
 import boost.rational
 import time

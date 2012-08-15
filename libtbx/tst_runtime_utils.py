@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx import runtime_utils
 from libtbx import easy_pickle
 from libtbx import easy_run

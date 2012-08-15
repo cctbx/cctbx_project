@@ -1,3 +1,4 @@
+from __future__ import division
 
 # TODO:
 #  - prompt user for missing symmetry

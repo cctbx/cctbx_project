@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx.scalepack import merge
 from iotbx.scalepack import no_merge_original_index
 from cctbx import crystal

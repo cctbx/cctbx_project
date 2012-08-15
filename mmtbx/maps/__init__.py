@@ -1,3 +1,4 @@
+from __future__ import division
 import mmtbx.utils
 from libtbx.utils import Sorry, date_and_time
 import iotbx.phil

@@ -1,3 +1,4 @@
+from __future__ import division
 import iotbx.pdb.hierarchy
 from cctbx import adptbx
 from cStringIO import StringIO

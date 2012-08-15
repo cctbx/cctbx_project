@@ -1,3 +1,4 @@
+from __future__ import division
 import cctbx.eltbx.xray_scattering
 from cctbx import adptbx
 from cctbx import eltbx

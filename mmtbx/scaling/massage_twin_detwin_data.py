@@ -33,6 +33,7 @@ The following phil scope is expected for the massage_data class:
    }
 
 """
+from __future__ import division
 
 
 

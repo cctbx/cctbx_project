@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx.cns.crystal_symmetry_utils import crystal_symmetry_as_sg_uc
 from cctbx.array_family import flex
 

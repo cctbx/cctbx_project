@@ -1,3 +1,4 @@
+from __future__ import division
 import libtbx.load_env
 
 from iotbx.scalepack import crystal_symmetry_from_hkl as from_scalepack_hkl

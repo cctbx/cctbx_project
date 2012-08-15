@@ -1,3 +1,4 @@
+from __future__ import division
 import sys
 
 def create_script(bundle, top_modules, single_dir=False):

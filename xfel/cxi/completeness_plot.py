@@ -1,3 +1,4 @@
+from __future__ import division
 import os,math
 from cctbx.array_family import flex
 from cctbx.crystal import symmetry

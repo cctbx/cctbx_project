@@ -1,3 +1,4 @@
+from __future__ import division
 import sys, os
 import re
 from libtbx import cpp_function_name

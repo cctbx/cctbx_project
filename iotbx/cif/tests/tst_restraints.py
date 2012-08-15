@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import crystal, sgtbx, xray
 from cctbx import geometry_restraints
 from cctbx.array_family import flex

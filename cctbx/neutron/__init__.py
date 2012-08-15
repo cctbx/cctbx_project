@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.eltbx.neutron import neutron_news_1992_table
 from cctbx import miller
 from cctbx import crystal

@@ -1,3 +1,4 @@
+from __future__ import division
 from __future__ import generators
 from cctbx import sgtbx
 from cctbx import uctbx

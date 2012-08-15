@@ -1,3 +1,4 @@
+from __future__ import division
 import mmtbx.monomer_library.pdb_interpretation
 from mmtbx import monomer_library
 from mmtbx.torsion_restraints.reference_model import reference_model

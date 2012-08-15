@@ -1,3 +1,4 @@
+from __future__ import division
 import sys
 import copy
 from string import letters, digits

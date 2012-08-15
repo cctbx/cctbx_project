@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.sgtbx.direct_space_asu import direct_space_asu
 from cctbx.sgtbx.direct_space_asu.short_cuts import *
 

@@ -1,3 +1,4 @@
+from __future__ import division
 def run(args, distance_cutoff=3.5):
   from iotbx.option_parser import option_parser
   command_line = (option_parser(

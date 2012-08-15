@@ -1,3 +1,4 @@
+from __future__ import division
 
 from mmtbx.secondary_structure import manager
 from mmtbx.secondary_structure.base_pairing import pair_database

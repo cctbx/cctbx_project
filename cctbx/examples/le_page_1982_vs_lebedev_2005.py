@@ -3,6 +3,7 @@ Plot of Le Page 1982 deltas vs. Lebedev 2005 perturbations based on
 random sampling of distorted unit cells compatible with the 81 2-fold
 symmetry operations possible for reduced cells.
 """
+from __future__ import division
 
 from cctbx import sgtbx
 from cctbx import uctbx

@@ -1,3 +1,4 @@
+from __future__ import division
 #! /usr/bin/env python
 import sys, os, string
 from libtbx.utils import Sorry

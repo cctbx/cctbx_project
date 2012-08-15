@@ -1,3 +1,4 @@
+from __future__ import division
 from exceptions import Exception
 
 class SpotfinderError(Exception):

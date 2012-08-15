@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx import bulk_solvent
 import iotbx.phil
 from cctbx.array_family import flex

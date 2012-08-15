@@ -1,3 +1,4 @@
+from __future__ import division
 import cctbx.xray.structure_factors
 from cctbx.xray import ext
 from cctbx import crystal

@@ -1,3 +1,4 @@
+from __future__ import division
 import v0_getting_started
 import v1_loop_over_atoms
 import v2_simple

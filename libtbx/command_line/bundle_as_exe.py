@@ -1,3 +1,4 @@
+from __future__ import division
 import sys, os
 
 def create_autorun(bundle_prefix, single_dir=False):

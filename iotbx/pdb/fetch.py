@@ -1,3 +1,4 @@
+from __future__ import division
 # TODO other PDB sites?
 #
 # See RCSB documentation at:

@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx.pdb.tst_pdb import dump_pdb
 from cctbx.crystal import close_packing
 from cctbx import crystal

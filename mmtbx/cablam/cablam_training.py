@@ -1,3 +1,4 @@
+from __future__ import division
 # (jEdit options) :folding=explicit:collapseFolds=1:
 #This module contains the training/exploration components of cablam
 #It can be run stand-alone with many commandline options

@@ -1,3 +1,4 @@
+from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.reflection_statistics
 
 from iotbx import reflection_file_reader

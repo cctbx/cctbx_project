@@ -1,3 +1,4 @@
+from __future__ import division
 from labelit.command_line.stats_index import best_character_to_IndexPrinter
 from labelit.command_line.default_param import establish_dict_for_refinement
 from labelit.dptbx.autoindex import index_and_refine

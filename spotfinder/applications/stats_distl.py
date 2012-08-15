@@ -1,3 +1,4 @@
+from __future__ import division
 
 def pretty_filename(spotfinder,key):
   nwildcard = spotfinder.pd['template'].count('#')

@@ -1,3 +1,4 @@
+from __future__ import division
 
 from crys3d.hklview.frames import *
 from crys3d.hklview import view_2d

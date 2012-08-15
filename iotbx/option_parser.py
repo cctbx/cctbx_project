@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx import crystal_symmetry_from_any
 from cctbx import crystal
 from cctbx import sgtbx

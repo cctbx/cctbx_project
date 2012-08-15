@@ -1,3 +1,4 @@
+from __future__ import division
 
 # base control for 'ints' and 'floats' phil types.  see corresponding code
 # in ../../libtbx/phil/__init__.py - these should probably be consolidated

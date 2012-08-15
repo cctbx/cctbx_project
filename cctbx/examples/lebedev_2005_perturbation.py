@@ -12,6 +12,7 @@ This script reproduces the perturbations ("scores") given by Andrey.
 It also shows the Le Page (1982, J. Appl. Cryst. 15, 255-259) deltas
 in radians for comparison.
 """
+from __future__ import division
 
 from cctbx import sgtbx
 from cctbx import uctbx

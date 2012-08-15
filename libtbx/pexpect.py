@@ -60,6 +60,7 @@ SOFTWARE.
 Pexpect Copyright (c) 2008 Noah Spurrier
 http://pexpect.sourceforge.net/
 """
+from __future__ import division
 
 try:
     import os, sys, time

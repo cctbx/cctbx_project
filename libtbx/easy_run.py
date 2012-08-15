@@ -1,3 +1,4 @@
+from __future__ import division
 import sys
 # XXX how early a version can we get away with using the built-in module?
 if (sys.version_info[1] >= 7) :

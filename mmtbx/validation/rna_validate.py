@@ -1,3 +1,4 @@
+from __future__ import division
 import os, sys
 from iotbx import pdb
 from mmtbx.monomer_library import rna_sugar_pucker_analysis

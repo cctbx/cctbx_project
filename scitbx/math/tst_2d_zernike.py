@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx import math
 from scitbx import differential_evolution as de
 from scitbx import simplex

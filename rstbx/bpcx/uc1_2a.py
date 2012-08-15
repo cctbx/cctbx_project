@@ -1,3 +1,4 @@
+from __future__ import division
 #!/usr/bin/env cctbx.python
 #
 # Use case 1.2A - going back to the use case for predictions and making sure that

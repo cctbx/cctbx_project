@@ -5,6 +5,7 @@ mmtbx.monomer_library.pdb_interpretation).  Currently only bonds and angles
 are supported.  The parameters are specific to phenix.refine right now but
 they could theoretically be used in other programs.
 """
+from __future__ import division
 
 import wxtbx.bitmaps
 from wxtbx import metallicbutton

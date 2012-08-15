@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.source_generators.array_family import operator_functor_info
 from scitbx.source_generators import utils
 

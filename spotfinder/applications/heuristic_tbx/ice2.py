@@ -1,3 +1,4 @@
+from __future__ import division
 import math
 from spotfinder.array_family import flex
 from spotfinder.applications.heuristic_tbx.method2_resolution\

@@ -1,3 +1,4 @@
+from __future__ import division
 
 # this will try to guess file type based on extensions.  since this will
 # frequently break, it will also try every other file type if necessary,

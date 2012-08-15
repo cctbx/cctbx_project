@@ -1,3 +1,4 @@
+from __future__ import division
 #
 # Command to run this example:
 #   iotbx.python iotbx_cif.py

@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx import pdb
 from libtbx.str_utils import show_string
 from libtbx import adopt_init_args

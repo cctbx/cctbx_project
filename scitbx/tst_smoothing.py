@@ -1,3 +1,4 @@
+from __future__ import division
 from stdlib import math
 from stdlib import random
 

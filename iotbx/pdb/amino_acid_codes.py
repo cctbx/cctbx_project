@@ -1,3 +1,4 @@
+from __future__ import division
 one_letter_given_three_letter = {
 "ALA": "A",
 "ARG": "R",

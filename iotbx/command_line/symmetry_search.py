@@ -1,3 +1,4 @@
+from __future__ import division
 def run(args):
   import iotbx.phil
   pcl = iotbx.phil.process_command_line(args=args, master_string="""\

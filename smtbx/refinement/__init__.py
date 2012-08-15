@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import xray
 from smtbx.refinement import constraints, least_squares, restraints
 import smtbx.utils

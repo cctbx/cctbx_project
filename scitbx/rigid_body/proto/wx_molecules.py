@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.rigid_body.proto import tst_molecules
 from scitbx.math import minimum_covering_sphere, sphere_3d
 from scitbx.array_family import flex

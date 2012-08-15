@@ -1,3 +1,4 @@
+from __future__ import division
 class parse_options(object):
 
   def __init__(self, argv, keywords, case_sensitive=True):

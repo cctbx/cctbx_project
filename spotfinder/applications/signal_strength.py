@@ -1,3 +1,4 @@
+from __future__ import division
 from spotfinder.array_family import flex
 from spotfinder.applications.wrappers import DistlOrganizer
 

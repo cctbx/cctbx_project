@@ -1,3 +1,4 @@
+from __future__ import division
 import glob, os, sys
 import urllib2
 

@@ -20,6 +20,7 @@ This module provides a function, convert_beam_instrument_to_imageblock() to give
   beam position in the imageblock reference frame.  The Image Object attribute "beam_center_reference_frame"
   defines in which reference frame the beam is expressed.
 """
+from __future__ import division
 
 class beam_center_convention_definitions:
   def __init__(self,beam_center_convention):

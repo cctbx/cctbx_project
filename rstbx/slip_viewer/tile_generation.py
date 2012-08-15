@@ -1,3 +1,4 @@
+from __future__ import division
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # $Id: tile_generation.py 321 2012-05-15 19:31:42Z sauter $

@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.xray import ext
 import boost.python
 import sys

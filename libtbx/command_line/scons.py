@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx.utils import Sorry, show_times_at_exit
 from libtbx.str_utils import show_string
 import libtbx.load_env

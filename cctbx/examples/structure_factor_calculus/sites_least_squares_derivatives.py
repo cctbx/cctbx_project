@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.examples.exp_i_alpha_derivatives import least_squares
 from scitbx import matrix
 from scitbx.array_family import flex

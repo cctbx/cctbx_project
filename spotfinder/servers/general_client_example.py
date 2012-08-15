@@ -1,3 +1,4 @@
+from __future__ import division
 import os,time
 
 def do_main_apache(filepath, host, port):

@@ -1,3 +1,4 @@
+from __future__ import division
 def stable(connections):
   ranks = {}
   for node, deps in connections:

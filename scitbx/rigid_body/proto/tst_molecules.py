@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.rigid_body.proto.tst_joint_lib import exercise_sim
 from scitbx.rigid_body.proto import joint_lib
 from scitbx.rigid_body.proto.test_simulation import simulation

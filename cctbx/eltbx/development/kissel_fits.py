@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.eltbx.development import kissel_io
 from cctbx.eltbx.development.create_n_gaussian_raw_cpp import identifier
 from cctbx.eltbx import xray_scattering

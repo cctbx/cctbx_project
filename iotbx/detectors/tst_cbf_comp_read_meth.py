@@ -1,3 +1,4 @@
+from __future__ import division
 # test comparative read methods for cbf library
 # default method provided by CBFlib-0.8.1; second method is optimized read
 import os

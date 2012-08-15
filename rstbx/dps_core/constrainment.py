@@ -1,3 +1,4 @@
+from __future__ import division
 import exceptions
 from scitbx import lbfgs
 from libtbx import adopt_init_args

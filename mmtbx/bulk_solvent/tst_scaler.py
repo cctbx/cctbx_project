@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx.test_utils import approx_equal
 import mmtbx.f_model
 import random, time

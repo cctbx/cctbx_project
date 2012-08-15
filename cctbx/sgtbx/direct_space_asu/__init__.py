@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import sgtbx
 from cctbx.sgtbx.direct_space_asu import cut_plane
 from cctbx.sgtbx.direct_space_asu.short_cuts import r1

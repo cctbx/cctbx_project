@@ -1,3 +1,4 @@
+from __future__ import division
 import copy,cPickle
 from iotbx.detectors.pilatus_minicbf import PilatusImage
 from iotbx.detectors import ImageException

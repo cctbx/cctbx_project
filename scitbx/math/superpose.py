@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.linalg import eigensystem
 from scitbx.math import superpose_kearsley_rotation
 from scitbx import matrix

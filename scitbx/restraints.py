@@ -1,3 +1,4 @@
+from __future__ import division
 class energies(object):
 
   def __init__(O,

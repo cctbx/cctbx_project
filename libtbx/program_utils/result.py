@@ -1,3 +1,4 @@
+from __future__ import division
 
 from libtbx.program_utils import statistics_info
 from libtbx import adopt_init_args

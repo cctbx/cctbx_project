@@ -1,3 +1,4 @@
+from __future__ import division
 import sys, os, random, re
 from cctbx.array_family import flex
 from iotbx import pdb

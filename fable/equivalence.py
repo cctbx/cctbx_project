@@ -1,3 +1,4 @@
+from __future__ import division
 def array_alignment(members_size, i_mbr_byte_offset_pairs):
   n = members_size
   diff_matrix = [None] * (n*(n-1))

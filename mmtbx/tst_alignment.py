@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx.alignment import align
 from mmtbx.alignment import amino_acid_codes, blosum62
 import sys

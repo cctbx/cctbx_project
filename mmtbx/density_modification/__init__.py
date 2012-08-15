@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx.scaling import absolute_scaling, relative_scaling
 import iotbx.data_plots
 from cctbx import adptbx

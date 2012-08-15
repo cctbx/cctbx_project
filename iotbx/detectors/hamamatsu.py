@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx.detectors.adsc import ADSCImage
 from iotbx.detectors.detectorbase import DetectorImageBase
 

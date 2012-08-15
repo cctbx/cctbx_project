@@ -1,3 +1,4 @@
+from __future__ import division
 import scitbx.math
 import scitbx.linalg
 from scitbx import matrix

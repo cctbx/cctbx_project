@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx import easy_pickle
 from libtbx.utils import format_cpu_times
 from libtbx.str_utils import show_string

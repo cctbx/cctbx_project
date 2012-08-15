@@ -1,3 +1,4 @@
+from __future__ import division
 
 from libtbx.utils import Sorry
 from libtbx import object_oriented_patterns as oop

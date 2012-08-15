@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.array_family import flex
 from cctbx.eltbx import tiny_pse
 from smtbx.refinement.restraints import origin_fixing as base

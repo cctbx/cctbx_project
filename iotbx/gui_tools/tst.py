@@ -1,3 +1,4 @@
+from __future__ import division
 
 from iotbx.gui_tools import reflections, models
 from iotbx import file_reader

@@ -1,3 +1,4 @@
+from __future__ import division
 import mmtbx.f_model
 from scitbx.array_family import flex
 from cctbx.development import random_structure

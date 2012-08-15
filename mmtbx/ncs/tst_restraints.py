@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx import ncs
 import mmtbx.ncs.restraints
 from cctbx.array_family import flex

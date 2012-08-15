@@ -1,3 +1,4 @@
+from __future__ import division
 def str_ev(ev):
   return "[%d,%d,%d]" % ev
 

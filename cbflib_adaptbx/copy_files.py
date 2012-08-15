@@ -1,3 +1,4 @@
+from __future__ import division
 # svn co https://cbflib.svn.sourceforge.net/svnroot/cbflib/trunk/CBFlib_bleeding_edge sourceforge_cbflib
 
 class info_counters(object):

@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx.utils import write_this_is_auto_generated # implicit import
 import os
 

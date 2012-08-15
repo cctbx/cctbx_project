@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.sgtbx.direct_space_asu.cut_plane import cut
 from boost import rational
 

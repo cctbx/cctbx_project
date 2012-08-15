@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.math import euler_angles as euler
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times

@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.uctbx import reduction_base
 from cctbx.uctbx import krivy_gruber_1976
 from cctbx.uctbx import gruber_1973

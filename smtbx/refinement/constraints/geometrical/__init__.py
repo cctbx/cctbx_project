@@ -1,4 +1,5 @@
 """ Constraints on scatterer sites """
+from __future__ import division
 
 class any(object):
   """ Base class for any constraints of scatterer sites """

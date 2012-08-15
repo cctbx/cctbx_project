@@ -1,3 +1,4 @@
+from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.fetch_pdb
 
 # XXX most of this code is unused when run from the command line, but the

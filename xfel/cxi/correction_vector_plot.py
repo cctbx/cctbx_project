@@ -1,3 +1,4 @@
+from __future__ import division
 import os,math
 from scitbx import matrix
 from cctbx.array_family import flex

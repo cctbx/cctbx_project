@@ -1,3 +1,4 @@
+from __future__ import division
 class InfeasibleError(RuntimeError): pass
 
 class refinery(object):

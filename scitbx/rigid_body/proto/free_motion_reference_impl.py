@@ -17,6 +17,7 @@ Shabana (2005):
   Cambridge University Press, 3 edition, 2005
   ISBN-10: 0521850118
 """
+from __future__ import division
 
 try:
   from scitbx import matrix

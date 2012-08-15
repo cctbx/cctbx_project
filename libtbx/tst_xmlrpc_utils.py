@@ -1,3 +1,4 @@
+from __future__ import division
 
 import os, time
 import libtbx.load_env

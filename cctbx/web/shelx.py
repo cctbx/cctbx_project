@@ -1,3 +1,4 @@
+from __future__ import division
 # Generate SHELX LATT and SYMM cards for a given space group.
 
 from cctbx import sgtbx

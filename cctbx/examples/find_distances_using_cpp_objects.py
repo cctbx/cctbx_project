@@ -1,3 +1,4 @@
+from __future__ import division
 import cctbx.crystal.direct_space_asu
 import cctbx.sgtbx.direct_space_asu.reference_table
 from cctbx.sgtbx.direct_space_asu import proto

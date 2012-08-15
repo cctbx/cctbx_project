@@ -9,6 +9,7 @@ http://dx.doi.org/10.1107/S0021889811041161
 http://cctbx.sourceforge.net/iotbx_cif
 
 """
+from __future__ import division
 
 import boost.python
 ext = boost.python.import_ext("iotbx_cif_ext")

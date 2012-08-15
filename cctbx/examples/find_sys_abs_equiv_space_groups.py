@@ -6,6 +6,7 @@ From first principles; inelegant theoretically, but compact and practical.
 
 See also: International Tables for Crystallography, Volume A, section 3.
 """
+from __future__ import division
 
 def run(args):
   assert args in [[], ["python"], ["c++"]]

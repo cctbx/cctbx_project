@@ -1,3 +1,4 @@
+from __future__ import division
 ## Peter Zwart Mai 10, 2005
 ## refactored by Gabor & Nat 20111104
 import math

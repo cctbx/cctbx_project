@@ -1,3 +1,4 @@
+from __future__ import division
 
 # XXX this is mostly redundant with wx.IntCtrl, but that control doesn't have
 # a way to deal with None.

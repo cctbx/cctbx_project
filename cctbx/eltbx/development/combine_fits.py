@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.eltbx.development import itvc_section61_io
 from cctbx.eltbx.development.format_gaussian_fits import expected_labels
 from cctbx.eltbx.gaussian_fit import international_tables_stols

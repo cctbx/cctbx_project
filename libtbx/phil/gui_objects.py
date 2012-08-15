@@ -1,3 +1,4 @@
+from __future__ import division
 
 # various containers for gui directives and objects
 

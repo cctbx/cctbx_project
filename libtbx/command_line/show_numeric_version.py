@@ -1,3 +1,4 @@
+from __future__ import division
 def run():
   try: import Numeric
   except ImportError: print "None"

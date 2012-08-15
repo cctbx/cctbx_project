@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx.monomer_library import server
 from libtbx.test_utils import show_diff
 from cStringIO import StringIO

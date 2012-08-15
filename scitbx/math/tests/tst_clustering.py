@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.math import clustering
 from scitbx.array_family import flex
 

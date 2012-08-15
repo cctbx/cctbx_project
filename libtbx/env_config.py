@@ -1,3 +1,4 @@
+from __future__ import division
 import libtbx.path
 from libtbx.path import relocatable_path, absolute_path
 from libtbx.str_utils import show_string

@@ -1,3 +1,4 @@
+from __future__ import division
 import os
 from spotfinder.applications.stats_distl import pretty_image_stats,notes
 

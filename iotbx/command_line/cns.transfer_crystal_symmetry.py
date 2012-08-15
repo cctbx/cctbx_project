@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx import cns
 import iotbx.cns.space_group_symbols
 from iotbx import crystal_symmetry_from_any

@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.math import orthonormal_basis
 from scitbx import matrix
 from libtbx.test_utils import approx_equal

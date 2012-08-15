@@ -1,3 +1,4 @@
+from __future__ import division
 def range_parser( txt ):
   splitter = " "
   if "," in txt:

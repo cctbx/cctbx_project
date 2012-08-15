@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx.monomer_library import cif_triage
 from libtbx.str_utils import show_string
 from libtbx.utils import Sorry, Usage

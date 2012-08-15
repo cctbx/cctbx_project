@@ -1,3 +1,4 @@
+from __future__ import division
 try:
   from PyQt4 import uic
 except ImportError:

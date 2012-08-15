@@ -1,3 +1,4 @@
+from __future__ import division
 
 from libtbx.math_utils import ifloor, iceil
 from libtbx import adopt_init_args

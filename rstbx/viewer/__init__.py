@@ -1,3 +1,4 @@
+from __future__ import division
 
 import rstbx.utils
 from libtbx.math_utils import ifloor, iceil

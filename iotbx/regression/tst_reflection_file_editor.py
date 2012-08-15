@@ -1,3 +1,4 @@
+from __future__ import division
 
 from iotbx import reflection_file_editor, file_reader
 from iotbx.reflection_file_editor import master_phil

@@ -1,3 +1,4 @@
+from __future__ import division
 #!/usr/bin/env cctbx.python
 #
 # Biostruct-X Data Reduction Use Case 1.2:

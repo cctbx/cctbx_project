@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.python_utils import graph_tools as gt
 
 def tst_graph():

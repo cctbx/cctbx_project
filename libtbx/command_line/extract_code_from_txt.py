@@ -1,3 +1,4 @@
+from __future__ import division
 from itertools import count
 import sys, os
 

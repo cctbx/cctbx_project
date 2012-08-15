@@ -1,3 +1,4 @@
+from __future__ import division
 
 from scitbx.array_family import flex, shared
 import gltbx.viewer_utils

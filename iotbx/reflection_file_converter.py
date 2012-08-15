@@ -1,3 +1,4 @@
+from __future__ import division
 import iotbx.mtz
 import iotbx.cns.miller_array
 import iotbx.scalepack.merge

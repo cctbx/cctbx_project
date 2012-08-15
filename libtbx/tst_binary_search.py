@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx import binary_search
 import random
 import sys

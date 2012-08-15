@@ -1,3 +1,4 @@
+from __future__ import division
 import math
 from rstbx.array_family import flex
 from rstbx.dps_core import Direction, directional_show, SimpleSamplerTool

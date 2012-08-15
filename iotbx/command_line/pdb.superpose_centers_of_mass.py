@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx import pdb
 import iotbx.phil
 from iotbx.option_parser import option_parser

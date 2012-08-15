@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import xray
 from scitbx.math import tensor_rank_2_gradient_transform_matrix
 from scitbx import matrix

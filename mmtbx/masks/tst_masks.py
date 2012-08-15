@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx import masks
 from cctbx.eltbx import van_der_waals_radii
 from cctbx import maptbx

@@ -1,3 +1,4 @@
+from __future__ import division
 
 from libtbx.test_utils import contains_lines, Exception_expected
 from libtbx.utils import Sorry

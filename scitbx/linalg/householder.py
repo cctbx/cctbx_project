@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.linalg import ext
 
 class householder_qr_decomposition(ext.householder_qr_decomposition):

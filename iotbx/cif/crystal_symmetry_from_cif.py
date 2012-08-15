@@ -1,3 +1,4 @@
+from __future__ import division
 import iotbx.cif
 from iotbx.cif.builders import crystal_symmetry_builder
 

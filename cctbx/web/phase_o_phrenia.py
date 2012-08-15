@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.examples import phase_o_phrenia
 from iotbx.cns import sdb_reader
 from cctbx import uctbx

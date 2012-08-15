@@ -1,3 +1,4 @@
+from __future__ import division
 
 from wxtbx import phil_controls
 from libtbx.utils import Abort

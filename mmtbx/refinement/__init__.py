@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx import adopt_init_args
 
 class monitors(object):

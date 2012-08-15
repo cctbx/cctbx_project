@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.source_generators.utils import join_open
 from scitbx.source_generators.utils import write_this_is_auto_generated
 import libtbx.load_env

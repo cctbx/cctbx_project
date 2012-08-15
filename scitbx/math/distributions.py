@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.math import ext
 from ext import normal_distribution
 if (hasattr(ext, "students_t_distribution")):

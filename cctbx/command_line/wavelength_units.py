@@ -1,3 +1,4 @@
+from __future__ import division
 def raise_usage():
   from libtbx.utils import Usage
   import libtbx.load_env

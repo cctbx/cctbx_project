@@ -1,3 +1,4 @@
+from __future__ import division
 class operator_priority_evaluator(object):
 
   def __init__(self, operator_dict):

@@ -1,3 +1,4 @@
+from __future__ import division
 
 from wxtbx import errors
 import wx

@@ -1,3 +1,4 @@
+from __future__ import division
 ## This file conatins some usefull transformations
 ## for the generation of specific random variables
 import random

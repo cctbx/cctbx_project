@@ -1,3 +1,4 @@
+from __future__ import division
 
 from rstbx.viewer import controls, results_base
 from libtbx import str_utils

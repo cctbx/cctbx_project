@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx.clear_paths \
   import remove_or_rename_files_and_directories_if_possible
 import sys

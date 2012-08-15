@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import miller
 import mmtbx.scaling
 from mmtbx.scaling import absolute_scaling

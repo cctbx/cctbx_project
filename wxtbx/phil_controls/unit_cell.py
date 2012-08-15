@@ -1,3 +1,4 @@
+from __future__ import division
 
 from wxtbx.phil_controls.text_base import ValidatedTextCtrl, TextCtrlValidator
 import wx

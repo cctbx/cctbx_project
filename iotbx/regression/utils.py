@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.development import random_structure
 from cctbx import miller
 from cctbx.array_family import flex

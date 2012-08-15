@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx.utils import Sorry
 from mmtbx.scaling import sad_scale, sir_scale, rip_scale, siras_scale
 from mmtbx.scaling import twmad_scale

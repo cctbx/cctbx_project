@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.array_family import flex
 import math, sys, random
 from libtbx.test_utils import approx_equal

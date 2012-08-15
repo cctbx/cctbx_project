@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx.queuing_system_utils.sge_utils import qstat_parse
 from libtbx import dict_with_default_0
 import sys

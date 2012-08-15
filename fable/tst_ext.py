@@ -1,3 +1,4 @@
+from __future__ import division
 import fable
 from libtbx.test_utils import Exception_expected
 

@@ -1,3 +1,4 @@
+from __future__ import division
 import iotbx.mtz
 import sys, os
 

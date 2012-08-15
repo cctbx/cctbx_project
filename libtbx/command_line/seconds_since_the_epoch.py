@@ -1,3 +1,4 @@
+from __future__ import division
 def run(args):
   import time
   show = args + [str(time.time())]

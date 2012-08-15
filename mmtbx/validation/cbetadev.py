@@ -1,3 +1,4 @@
+from __future__ import division
 import sys, os, math
 from cctbx import geometry_restraints
 import iotbx.phil

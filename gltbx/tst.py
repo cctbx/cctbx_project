@@ -1,3 +1,4 @@
+from __future__ import division
 from gltbx import gl
 from gltbx import glu
 from libtbx.test_utils import Exception_expected, show_diff

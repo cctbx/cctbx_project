@@ -1,3 +1,4 @@
+from __future__ import division
 def crystal_symmetry(cs):
   if (cs.unit_cell() is None):
     u = "None"

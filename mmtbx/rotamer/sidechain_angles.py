@@ -1,3 +1,4 @@
+from __future__ import division
 import scitbx.math
 from libtbx.utils import Sorry
 import libtbx.load_env

@@ -1,3 +1,4 @@
+from __future__ import division
 import iotbx.cns.xray_structure
 import iotbx.cns.miller_array
 import iotbx.cns.reflection_reader

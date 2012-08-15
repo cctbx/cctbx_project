@@ -1,3 +1,4 @@
+from __future__ import division
 import mmtbx.dynamics
 from mmtbx.dynamics import constants
 from mmtbx.dynamics import cartesian_dynamics

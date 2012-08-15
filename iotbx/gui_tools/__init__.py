@@ -1,3 +1,4 @@
+from __future__ import division
 
 # This module is used by the PHENIX GUI to manage file objects and associated
 # phil parameters.

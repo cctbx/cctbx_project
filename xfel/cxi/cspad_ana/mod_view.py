@@ -16,6 +16,7 @@ XXX Known issues, wishlist:
 
 XXX
 """
+from __future__ import division
 
 __version__ = "$Revision$"
 

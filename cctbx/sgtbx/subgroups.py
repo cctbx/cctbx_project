@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import sgtbx
 
 def anomalous_reflection_intensity_primitive_cell(space_group):

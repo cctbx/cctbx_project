@@ -1,3 +1,4 @@
+from __future__ import division
 import math
 """assume data collection at two-theta angle of zero.
    assume a flat square detector normal to beam.

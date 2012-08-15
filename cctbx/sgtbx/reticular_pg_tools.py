@@ -6,6 +6,7 @@ that cannot be handled by the current cctbx implementation, some code duplicatio
 unavoidable.
 
 """
+from __future__ import division
 
 
 from cctbx import sgtbx

@@ -1,3 +1,4 @@
+from __future__ import division
 import mmtbx.monomer_library.server
 import mmtbx.rotamer.sidechain_angles
 import sys, os

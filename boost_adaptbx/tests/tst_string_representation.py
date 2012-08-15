@@ -1,3 +1,4 @@
+from __future__ import division
 def exercise():
   import boost.python
   csr = boost.python.ext.string_representation

@@ -1,3 +1,4 @@
+from __future__ import division
 def exercise_rational():
   from scitbx.matrix import row_echelon
   from scitbx import matrix

@@ -26,6 +26,7 @@ based on the FORTRAN program CONVROT:
 Revision history:
   2002 Jan: Created (Ralf W. Grosse-Kunstleve)
 """
+from __future__ import division
 
 import math, types
 

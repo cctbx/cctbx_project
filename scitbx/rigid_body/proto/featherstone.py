@@ -17,6 +17,7 @@ See also:
   Springer, New York, 2007.
   ISBN-10: 0387743146
 """
+from __future__ import division
 
 try:
   import scitbx

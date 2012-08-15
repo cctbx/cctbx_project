@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import crystal
 from libtbx.utils import Sorry, date_and_time, multi_out
 import iotbx.phil

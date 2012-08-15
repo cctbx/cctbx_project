@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx import model_vs_data
 import sys
 

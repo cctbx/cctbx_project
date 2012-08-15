@@ -1,3 +1,4 @@
+from __future__ import division
 def report_fraction_of_negative_observations_if_any(id_code, obs):
   d = obs.data()
   n_neg = (d < 0).count(True)

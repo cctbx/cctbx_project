@@ -1,3 +1,4 @@
+from __future__ import division
 import pickle, StringIO
 from cctbx import crystal,sgtbx,uctbx
 from cctbx.sgtbx import lattice_symmetry

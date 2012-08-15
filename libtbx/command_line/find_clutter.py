@@ -1,3 +1,4 @@
+from __future__ import division
 import sys
 from libtbx.command_line.file_clutter import gather
 

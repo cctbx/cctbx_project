@@ -1,3 +1,4 @@
+from __future__ import division
 def number_from_string(s):
   flds = s.split("/")
   if (len(flds) == 2):

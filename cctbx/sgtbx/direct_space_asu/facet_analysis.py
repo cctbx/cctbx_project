@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.sgtbx.direct_space_asu import cut_plane
 from cctbx.array_family import flex
 from scitbx import matrix

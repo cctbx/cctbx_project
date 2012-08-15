@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx.dtrek import reflnlist_reader
 
 def extract_from(file_name):

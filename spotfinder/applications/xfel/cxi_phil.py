@@ -1,3 +1,4 @@
+from __future__ import division
 #Phil parameters required to process data from Stanford LCLS CXI instrument
 
 def cxi_basic_start():

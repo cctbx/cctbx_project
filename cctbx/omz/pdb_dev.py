@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx.utils import date_and_time, user_plus_sys_time
 from libtbx.str_utils import show_string
 import traceback

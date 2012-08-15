@@ -1,3 +1,4 @@
+from __future__ import division
 import iotbx.pdb
 from libtbx.test_utils import approx_equal
 import mmtbx.refinement.rigid_body

@@ -1,3 +1,4 @@
+from __future__ import division
 #from mmtbx.kinemage import validation
 from mmtbx.cablam import cablam_annote, cablam_res, cablam_math
 #import cablam_annote, cablam_res, cablam_math

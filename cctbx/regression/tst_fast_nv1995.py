@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import translation_search
 from cctbx import crystal
 from cctbx import miller

@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx.bundle import copy_runtime_sources
 from libtbx.bundle import copy_build_libtbx
 import sys

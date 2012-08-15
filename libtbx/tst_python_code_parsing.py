@@ -1,3 +1,4 @@
+from __future__ import division
 
 
 def exercise_unused_imports():

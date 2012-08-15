@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.rigid_body.proto import featherstone
 from scitbx.rigid_body.proto import joint_lib
 from scitbx.rigid_body.proto.utils import \

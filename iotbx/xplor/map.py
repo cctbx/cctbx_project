@@ -27,6 +27,7 @@ That is:
 ...-9999
 ...map average and standard deviation
 """
+from __future__ import division
 
 import iotbx.xplor.ext as ext
 from cctbx import miller

@@ -1,3 +1,4 @@
+from __future__ import division
 
 import wxtbx.phil_controls.floatctrl
 import wx.lib.mixins.listctrl

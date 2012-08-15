@@ -12,6 +12,7 @@ spectrum; summation-reduction so as to form a single spectrum.
 
 XXX mod_xes must be run as a single process--guard against it!
 """
+from __future__ import division
 
 __version__ = "$Revision$"
 

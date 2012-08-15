@@ -1,3 +1,4 @@
+from __future__ import division
 import sys
 sys.stderr = sys.stdout
 

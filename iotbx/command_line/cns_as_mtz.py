@@ -1,3 +1,4 @@
+from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.cns_as_mtz
 
 import iotbx.cns.reflection_reader

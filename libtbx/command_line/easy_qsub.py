@@ -11,6 +11,7 @@ where [list of commands]) is
 ...,
 "python run.py modelN.pdb dataN.mtz" ]
 """
+from __future__ import division
 
 import os, sys
 from libtbx import easy_run

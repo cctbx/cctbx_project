@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx import matrix
 from rstbx.dps_core import dps_core
 from rstbx.dps_core.sampling import hemisphere_shortcut

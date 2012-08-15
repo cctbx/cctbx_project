@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx import reflection_file_reader
 import sys
 

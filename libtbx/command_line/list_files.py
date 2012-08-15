@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx.utils import detect_binary_file
 from libtbx.path import walk_source_tree
 from libtbx.option_parser import option_parser

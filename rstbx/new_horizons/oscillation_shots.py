@@ -1,3 +1,4 @@
+from __future__ import division
 import math,os, cPickle as pickle,cStringIO as StringIO
 from labelit.dptbx.status import cellstr
 from rstbx.apps.stills.simple_integration import IntegrationMetaProcedure

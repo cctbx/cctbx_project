@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx.detectors.raxisbase import Raxis
 from iotbx.detectors.raxis import RAXISImage
 from iotbx.detectors import ReadRAXIS,MakeSquareRAXIS

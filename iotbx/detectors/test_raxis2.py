@@ -1,3 +1,4 @@
+from __future__ import division
 # basic test reading an Raxis II image & producing a png file
 # requires LABELIT and Python Image Library
 # future: remove the LABELIT dependency

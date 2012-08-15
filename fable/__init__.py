@@ -1,3 +1,4 @@
+from __future__ import division
 try:
   import boost.python
 except Exception:

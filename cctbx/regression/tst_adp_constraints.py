@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import miller
 from cctbx import adptbx
 from cctbx.development import debug_utils

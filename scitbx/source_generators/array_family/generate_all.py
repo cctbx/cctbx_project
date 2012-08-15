@@ -1,3 +1,4 @@
+from __future__ import division
 import generate_reductions
 import generate_std_imports
 import generate_operator_functors

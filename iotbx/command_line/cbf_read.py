@@ -1,3 +1,4 @@
+from __future__ import division
 import iotbx.cif
 import iotbx.cif.validation
 import libtbx.load_env

@@ -1,4 +1,5 @@
 "Extracts crystal symmetry from MTZ file."
+from __future__ import division
 
 from iotbx import mtz
 from cctbx import crystal

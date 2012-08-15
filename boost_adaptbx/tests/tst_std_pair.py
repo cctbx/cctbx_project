@@ -1,3 +1,4 @@
+from __future__ import division
 import boost.std_pair
 from libtbx.test_utils import Exception_expected
 

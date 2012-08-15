@@ -1,3 +1,4 @@
+from __future__ import division
 from functions import Function
 
 from scitbx import simplex

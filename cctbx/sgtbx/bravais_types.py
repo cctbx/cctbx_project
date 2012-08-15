@@ -1,3 +1,4 @@
+from __future__ import division
 acentric = (
 "P 1",
 "P 1 2 1",

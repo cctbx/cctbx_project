@@ -1,3 +1,4 @@
+from __future__ import division
 
 import wxtbx.bitmaps
 from libtbx.queuing_system_utils import sge_utils

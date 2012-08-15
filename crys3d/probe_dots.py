@@ -1,3 +1,4 @@
+from __future__ import division
 
 import gltbx.gl_managed
 from gltbx.gl import *

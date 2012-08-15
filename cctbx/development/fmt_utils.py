@@ -1,3 +1,4 @@
+from __future__ import division
 def dot6g_list(l):
   s = ""
   for x in l: s += (" %.6g" % (x,))

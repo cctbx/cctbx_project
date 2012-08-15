@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.xray.targets import r1
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal

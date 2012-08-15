@@ -1,3 +1,4 @@
+from __future__ import division
 import iotbx.cif
 import sys, email.parser, copy, hashlib, base64
 from cbflib_adaptbx import uncompress,assert_equal

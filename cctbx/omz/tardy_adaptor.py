@@ -1,3 +1,4 @@
+from __future__ import division
 class potential_object(object):
 
   def __init__(O, f_obs, xray_structure):

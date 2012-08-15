@@ -1,3 +1,4 @@
+from __future__ import division
 # XXX: internal data for mouse selections in wx_selection_editor.py
 
 from libtbx.utils import Sorry

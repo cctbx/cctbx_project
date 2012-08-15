@@ -1,3 +1,4 @@
+from __future__ import division
 from types import FrameType
 from StringIO import StringIO
 import gc

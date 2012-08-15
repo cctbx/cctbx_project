@@ -1,3 +1,4 @@
+from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME distl.signal_strength
 import spotfinder
 import libtbx.phil

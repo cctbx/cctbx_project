@@ -1,3 +1,4 @@
+from __future__ import division
 expected_output_test1  = """Left cosets of :
   subgroup  H: P 3
   and group G: P 6 2 2

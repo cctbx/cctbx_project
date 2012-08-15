@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.source_generators.array_family import generate_algebras
 from scitbx.source_generators import utils
 

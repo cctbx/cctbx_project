@@ -1,4 +1,5 @@
 "Minimalistic, pragmatic implementation. Absolutely no bells and whistles."
+from __future__ import division
 
 def run(args):
   assert args[0] == "--yes-i-know-this-overwrites-the-original-files"

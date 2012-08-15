@@ -1,3 +1,4 @@
+from __future__ import division
 
 from libtbx import object_oriented_patterns as oop
 import wx.lib.colourselect

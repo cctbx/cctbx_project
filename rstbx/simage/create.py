@@ -1,3 +1,4 @@
+from __future__ import division
 phil_str = """\
 base36_timestamp = None
   .type = str

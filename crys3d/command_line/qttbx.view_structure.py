@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import xray
 from crys3d.qttbx import xray_structure_viewer
 try:

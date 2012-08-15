@@ -1,3 +1,4 @@
+from __future__ import division
 import mmtbx.monomer_library.server
 import iotbx.pdb.amino_acid_codes
 import cctbx.geometry_restraints

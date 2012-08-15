@@ -1,3 +1,4 @@
+from __future__ import division
 #(jEdit options) :folding=explicit:collapseFolds=1:
 from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.validation.rotalyze import rotalyze

@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import xray
 import sys, os
 op = os.path

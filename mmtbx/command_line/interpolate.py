@@ -1,3 +1,4 @@
+from __future__ import division
 
 from libtbx.utils import Sorry
 from cStringIO import StringIO

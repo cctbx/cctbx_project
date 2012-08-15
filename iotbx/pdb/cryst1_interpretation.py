@@ -1,3 +1,4 @@
+from __future__ import division
 import iotbx.pdb
 from cctbx import crystal
 from cctbx import sgtbx

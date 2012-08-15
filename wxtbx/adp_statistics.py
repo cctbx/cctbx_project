@@ -1,3 +1,4 @@
+from __future__ import division
 
 from wxtbx import plots
 from libtbx.utils import Sorry, null_out

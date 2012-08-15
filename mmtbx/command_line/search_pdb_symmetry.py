@@ -1,3 +1,4 @@
+from __future__ import division
 
 import iotbx.phil
 from libtbx.utils import Sorry, Usage

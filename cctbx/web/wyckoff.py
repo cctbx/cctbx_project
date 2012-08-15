@@ -1,3 +1,4 @@
+from __future__ import division
 # When studying a crystal structure it can be helpful to know the Wyckoff
 # positions of the atoms in the structure. This script can be used to
 # assign Wyckoff letters.

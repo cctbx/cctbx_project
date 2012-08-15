@@ -1,3 +1,4 @@
+from __future__ import division
 import gcd
 from boost.rational import lcm
 import sys

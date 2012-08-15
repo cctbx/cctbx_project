@@ -16,6 +16,7 @@ See also:
     Acta Cryst. 2008, D64, 99-107.
     http://scripts.iucr.org/cgi-bin/paper?ba5111
 """
+from __future__ import division
 
 from cctbx import sgtbx
 

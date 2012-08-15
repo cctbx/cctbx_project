@@ -1,3 +1,4 @@
+from __future__ import division
 import mmtbx.rotamer
 from mmtbx.rotamer.n_dim_table import NDimTable
 from mmtbx.rotamer.rotamer_eval import find_rotarama_data_dir

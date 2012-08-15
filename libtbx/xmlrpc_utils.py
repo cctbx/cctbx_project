@@ -1,3 +1,4 @@
+from __future__ import division
 
 # see also xmlrpc_server_example.py
 

@@ -1,3 +1,4 @@
+from __future__ import division
 import smtbx.refinement.constraints as _
 
 class shared_site(object):

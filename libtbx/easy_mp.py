@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx.str_utils import show_string
 from libtbx.math_utils import ifloor
 from libtbx import Auto

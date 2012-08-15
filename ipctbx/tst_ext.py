@@ -1,3 +1,4 @@
+from __future__ import division
 def exercise_1(repetition_factor=5, keep_segments=False):
   import ipctbx
   from scitbx.array_family import flex

@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.array_family import flex
 import scitbx.math.euler_angles
 from scitbx import matrix

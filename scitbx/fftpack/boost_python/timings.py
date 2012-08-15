@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx import fftpack
 from scitbx.array_family import flex
 import omptbx # initializes OpenMP environment

@@ -1,3 +1,4 @@
+from __future__ import division
 def get_spots_high_resolution(work_params, spots):
   from scitbx.array_family import flex
   import math

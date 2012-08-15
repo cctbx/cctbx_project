@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.array_family import flex
 from libtbx.utils import Sorry, null_out
 import iotbx.phil

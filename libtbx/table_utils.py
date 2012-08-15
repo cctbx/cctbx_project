@@ -1,3 +1,4 @@
+from __future__ import division
 ## Some functionality for formatted printing,
 ## indentation and simple tables
 ##

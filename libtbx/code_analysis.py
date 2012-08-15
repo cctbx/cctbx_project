@@ -1,4 +1,5 @@
 """ Tools to statically analyse source code in various languages """
+from __future__ import division
 
 import os
 import re

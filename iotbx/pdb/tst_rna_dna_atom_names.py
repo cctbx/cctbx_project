@@ -1,3 +1,4 @@
+from __future__ import division
 import iotbx.pdb
 
 def exercise_rna_dna_atom_names():

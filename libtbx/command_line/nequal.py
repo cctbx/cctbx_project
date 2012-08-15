@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx.utils import Usage
 import fileinput
 import sys, os

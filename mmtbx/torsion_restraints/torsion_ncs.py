@@ -1,3 +1,4 @@
+from __future__ import division
 import cctbx.geometry_restraints
 from mmtbx.validation.rotalyze import rotalyze
 from mmtbx.validation.ramalyze import ramalyze

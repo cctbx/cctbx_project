@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx.detectors import adsc
 from libtbx.test_utils import approx_equal
 import urllib

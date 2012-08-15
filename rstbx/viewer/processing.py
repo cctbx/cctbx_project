@@ -1,3 +1,4 @@
+from __future__ import division
 
 from rstbx.viewer import dataset, results_base, indexing, integration
 from rstbx.viewer.frame import XrayFrame

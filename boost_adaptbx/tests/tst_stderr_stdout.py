@@ -1,3 +1,4 @@
+from __future__ import division
 import boost.python
 from boost.python import ostream
 import libtbx.object_oriented_patterns as oop

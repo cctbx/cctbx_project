@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx.containers import OrderedDict, OrderedSet
 from libtbx.utils import Sorry
 import sys

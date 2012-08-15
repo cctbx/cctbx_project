@@ -1,3 +1,4 @@
+from __future__ import division
 import libtbx.utils
 import time
 import sys

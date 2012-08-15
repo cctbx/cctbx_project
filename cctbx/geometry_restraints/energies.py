@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx import adopt_init_args
 from cctbx import geometry_restraints
 from cctbx.array_family import flex

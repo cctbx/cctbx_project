@@ -1,3 +1,4 @@
+from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME iotbx.cif.validate
 
 import glob, os, sys

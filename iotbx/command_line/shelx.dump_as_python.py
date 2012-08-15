@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import xray
 
 def run(file_name, exclude_hydrogens=False):

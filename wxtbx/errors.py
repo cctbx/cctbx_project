@@ -1,3 +1,4 @@
+from __future__ import division
 
 from libtbx.utils import Abort, Sorry
 from traceback import format_exception

@@ -1,3 +1,4 @@
+from __future__ import division
 import math
 from mmtbx import f_model
 import iotbx.pdb.fetch

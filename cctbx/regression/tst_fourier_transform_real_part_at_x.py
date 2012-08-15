@@ -1,3 +1,4 @@
+from __future__ import division
 def set_up_random_structure(space_group_info):
   from cctbx.development import random_structure
   xray_structure = random_structure.xray_structure(

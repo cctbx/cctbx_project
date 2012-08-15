@@ -12,6 +12,7 @@ By default, only events whose timestamps match are passed through to
 downwind modules.  If @c negate is @c True, mismatching events are
 selected instead.  Events with missing timestamps are always skipped.
 """
+from __future__ import division
 
 __version__ = "$Revision$"
 

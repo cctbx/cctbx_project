@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import crystal
 import cctbx.crystal.direct_space_asu
 from cctbx.array_family import flex

@@ -1,3 +1,4 @@
+from __future__ import division
 import example
 import boost_python_swig_args_ext
 import sys

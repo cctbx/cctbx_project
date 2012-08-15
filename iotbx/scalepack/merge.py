@@ -1,4 +1,5 @@
 "Reading and writing of scalepack merge reflection files."
+from __future__ import division
 
 # Sample scalepack OUTPUT FILE
 #    1

@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx.math_utils import prime_factors_of
 import sys
 

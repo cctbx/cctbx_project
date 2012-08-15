@@ -1,3 +1,4 @@
+from __future__ import division
 import math
 from scitbx.array_family import flex
 from scitbx.matrix import col

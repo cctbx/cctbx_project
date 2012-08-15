@@ -1,3 +1,4 @@
+from __future__ import division
 import sys
 from time_cmd import run_string
 

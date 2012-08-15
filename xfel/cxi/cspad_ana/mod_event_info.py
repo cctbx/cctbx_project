@@ -1,3 +1,4 @@
+from __future__ import division
 import logging
 
 from pypdsdata import xtc

@@ -1,3 +1,4 @@
+from __future__ import division
 import os
 
 if self.env.is_ready_for_build():

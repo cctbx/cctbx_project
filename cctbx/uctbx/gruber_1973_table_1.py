@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx import matrix
 
 raw_mk2 = """

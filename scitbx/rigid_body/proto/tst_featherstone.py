@@ -1,3 +1,4 @@
+from __future__ import division
 try:
   import scitbx
 except ImportError:

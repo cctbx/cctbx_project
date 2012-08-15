@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx.kriber import strudat
 import iotbx.pdb
 import iotbx.cif

@@ -1,3 +1,4 @@
+from __future__ import division
 import libtbx.load_env
 if (libtbx.env.has_module("ccp4io")):
   from iotbx.examples import mtz_free_flipper

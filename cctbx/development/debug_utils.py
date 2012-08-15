@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import sgtbx
 from scitbx.python_utils.command_line import parse_options
 from libtbx.utils import format_cpu_times

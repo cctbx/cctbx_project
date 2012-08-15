@@ -1,3 +1,4 @@
+from __future__ import division
 import featherstone
 import body_lib
 import joint_lib

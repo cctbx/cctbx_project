@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.array_family import flex
 import time, random
 from mmtbx_rsr_ext import *

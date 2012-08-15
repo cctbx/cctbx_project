@@ -1,3 +1,4 @@
+from __future__ import division
 from BaseHTTPServer import BaseHTTPRequestHandler
 from scitbx.array_family import flex
 from libtbx.development.timers import Timer

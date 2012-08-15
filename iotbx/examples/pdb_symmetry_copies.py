@@ -4,6 +4,7 @@ Uses two-character chain ids in output pdb file.
 Therefore it only works for space groups with less than
 ten symmetry operations.
 """
+from __future__ import division
 
 def run(args):
   assert len(args) == 1, "pdb_file_name"

@@ -1,3 +1,4 @@
+from __future__ import division
 import cStringIO as StringIO
 from iotbx.detectors.adsc_module import ADSCModule
 from iotbx.detectors.pilatus_slice import PilatusSlice

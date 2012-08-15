@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.array_family import flex
 from scitbx import sparse
 from scitbx.lstbx import normal_eqns, normal_eqns_solving

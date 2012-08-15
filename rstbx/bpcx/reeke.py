@@ -1,3 +1,4 @@
+from __future__ import division
 # A class for producing efficient looping limits for reflection
 # prediction based on the Reeke algorithm (see Mosflm).
 

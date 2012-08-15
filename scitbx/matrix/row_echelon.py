@@ -1,3 +1,4 @@
+from __future__ import division
 def form_rational(m, t=None):
   free_vars = []
   n_rows = len(m)

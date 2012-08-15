@@ -1,3 +1,4 @@
+from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.remove_outliers
 
 from mmtbx.scaling import remove_outliers

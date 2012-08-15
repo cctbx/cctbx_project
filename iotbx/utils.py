@@ -1,3 +1,4 @@
+from __future__ import division
 class try_read_file(object):
 
   def __init__(O, file_name, input_types):

@@ -1,3 +1,4 @@
+from __future__ import division
 import re,struct
 from iotbx.detectors.detectorbase import DetectorImageBase
 

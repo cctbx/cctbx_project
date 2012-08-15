@@ -4,6 +4,7 @@
    - Computes fft map
    - Determines skewness of map
 """
+from __future__ import division
 
 from cctbx import sgtbx
 from cctbx.development import random_structure

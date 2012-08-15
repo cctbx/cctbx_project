@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx.xmanip import write_as_pdb_file
 import iotbx.pdb
 from iotbx import reflection_file_utils

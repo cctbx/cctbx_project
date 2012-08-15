@@ -1,3 +1,4 @@
+from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME distl.mp_spotfinder_server_read_file
 from libtbx.utils import Sorry
 from spotfinder.command_line.signal_strength import master_params

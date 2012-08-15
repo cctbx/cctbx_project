@@ -82,6 +82,7 @@ See also:
 
 Ralf W. Grosse-Kunstleve, Feb 2007.
 """
+from __future__ import division
 
 digits_upper = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 digits_lower = digits_upper.lower()

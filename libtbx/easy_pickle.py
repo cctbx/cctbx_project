@@ -1,3 +1,4 @@
+from __future__ import division
 def _open(file_name, mode):
   import os
   file_name = os.path.expanduser(file_name)

@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx import math
 from stdlib import math as smath
 from scitbx.array_family import flex

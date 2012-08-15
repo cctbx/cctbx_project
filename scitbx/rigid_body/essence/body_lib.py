@@ -1,3 +1,4 @@
+from __future__ import division
 import joint_lib
 import spatial_lib
 matrix = spatial_lib.matrix

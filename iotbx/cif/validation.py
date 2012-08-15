@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx.cif import builders, model, errors
 import libtbx.load_env
 from libtbx import smart_open

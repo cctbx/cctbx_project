@@ -1,3 +1,4 @@
+from __future__ import division
 import boost.python
 import libtbx.load_env
 if (libtbx.env.build_options.enable_cuda):

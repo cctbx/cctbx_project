@@ -1,3 +1,4 @@
+from __future__ import division
 # (jEdit options) :folding=explicit:collapseFolds=1:
 #This module contains the linked_residue class and the functions needed to build
 #  and access instances of it.

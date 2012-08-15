@@ -1,3 +1,4 @@
+from __future__ import division
 
 ########################################################################
 # (excerpted and paraphrased) email from JH 11-23-11:

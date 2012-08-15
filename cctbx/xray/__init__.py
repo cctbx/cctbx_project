@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.xray.ext import *
 from cctbx.xray.observation_types import *
 from cctbx.xray.scatterer import *

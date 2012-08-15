@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import miller
 from cctbx.array_family import flex
 from libtbx.utils import Sorry

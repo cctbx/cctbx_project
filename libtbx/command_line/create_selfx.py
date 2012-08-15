@@ -1,3 +1,4 @@
+from __future__ import division
 import sys, os
 
 buf_size = 1000000

@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx.monomer_library import conformation_dependent_restraints
 import iotbx.pdb
 from cctbx.array_family import flex

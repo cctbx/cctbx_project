@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.array_family import flex
 from cctbx import sgtbx
 from cctbx.crystal.find_best_cell import alternative_find_best_cell

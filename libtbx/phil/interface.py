@@ -1,3 +1,4 @@
+from __future__ import division
 
 # XXX: this module is used exclusively by the Phenix GUI, which needs an
 # index of all current phil parameters, and an easy way to change them.

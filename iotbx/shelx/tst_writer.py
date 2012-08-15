@@ -1,3 +1,4 @@
+from __future__ import division
 import itertools
 import cStringIO
 from libtbx.test_utils import approx_equal, Exception_expected

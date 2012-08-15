@@ -1,3 +1,4 @@
+from __future__ import division
 import pickle
 from libtbx import adopt_init_args
 from cctbx.sgtbx import subgroups

@@ -1,3 +1,4 @@
+from __future__ import division
 import boost.optional # import dependency
 import boost.std_pair # import dependency
 

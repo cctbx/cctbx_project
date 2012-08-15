@@ -1,3 +1,4 @@
+from __future__ import division
 def run(args):
   if (len(args) == 0): args = ["."]
   from libtbx.math_utils import iround

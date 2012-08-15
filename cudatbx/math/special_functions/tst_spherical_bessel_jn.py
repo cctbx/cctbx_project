@@ -1,3 +1,4 @@
+from __future__ import division
 import time
 
 from libtbx.test_utils import approx_equal

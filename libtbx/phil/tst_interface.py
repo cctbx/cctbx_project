@@ -1,3 +1,4 @@
+from __future__ import division
 import sys
 import libtbx.phil
 from libtbx.phil import interface

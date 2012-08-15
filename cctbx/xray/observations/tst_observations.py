@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import sgtbx, uctbx, crystal, xray
 from cctbx.xray import observations
 from iotbx.shelx import hklf

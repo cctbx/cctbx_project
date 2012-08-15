@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.eltbx.development.format_gaussian_fits import read_pickled_fits
 from cctbx.eltbx import xray_scattering
 import cctbx.eltbx.gaussian_fit

@@ -1,3 +1,4 @@
+from __future__ import division
 import httplib
 
 def get_spotfinder_url(host,port):

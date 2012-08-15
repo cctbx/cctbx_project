@@ -1,3 +1,4 @@
+from __future__ import division
 import compileall
 import cStringIO
 import sys, os

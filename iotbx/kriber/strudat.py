@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import xray
 from cctbx import crystal
 from cctbx import sgtbx

@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import xray
 from cctbx import miller
 from cctbx.examples.structure_factor_derivatives_4 import structure_factors

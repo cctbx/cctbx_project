@@ -1,3 +1,4 @@
+from __future__ import division
 import iotbx.pdb
 from libtbx.utils import Usage, format_cpu_times
 import sys, os

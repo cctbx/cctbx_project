@@ -1,3 +1,4 @@
+from __future__ import division
 import os
 import mmtbx.model
 import libtbx.load_env

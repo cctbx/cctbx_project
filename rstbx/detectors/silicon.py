@@ -1,3 +1,4 @@
+from __future__ import division
 crystalline_density = 2.3290 / 1000.# g/(mm^3) #wikipedia
 
 # Custer JS et al (1994) Density of amorphous Si. Applied Phys. Lett. 64: 437-439.

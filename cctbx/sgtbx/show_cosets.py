@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.sgtbx import cosets
 from cctbx import sgtbx
 import sys

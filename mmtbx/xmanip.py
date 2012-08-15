@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx import xmanip_tasks
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils

@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.math import dmatrix
 from stdlib import math as smath
 

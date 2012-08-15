@@ -1,3 +1,4 @@
+from __future__ import division
 
 # XXX this should probably be moved to iotbx/command_line at some point (once
 # code for handling command-line arguments is added).  However, it is very

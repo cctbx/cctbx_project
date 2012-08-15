@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx.path import walk_source_tree
 from libtbx.str_utils import show_string
 from libtbx.utils import Sorry

@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.sgtbx import space_group_info
 
 #take care of R vs. H nomenclature, as well as ambiguous I-centered groups

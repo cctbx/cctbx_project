@@ -53,6 +53,7 @@ Hello from 4 and bar
 >>> sum(results)
 45.0
 """
+from __future__ import division
 
 
 import libtbx.load_env

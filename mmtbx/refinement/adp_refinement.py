@@ -1,3 +1,4 @@
+from __future__ import division
 import mmtbx.refinement.group
 from mmtbx.refinement import minimization
 from mmtbx.refinement import print_statistics

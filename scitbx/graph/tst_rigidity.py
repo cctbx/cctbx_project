@@ -1,3 +1,4 @@
+from __future__ import division
 from rigidity import \
   gcd, \
   float_row_echelon_form_back_substitution, \

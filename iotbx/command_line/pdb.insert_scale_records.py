@@ -1,3 +1,4 @@
+from __future__ import division
 import iotbx.pdb
 from cctbx import uctbx
 import sys

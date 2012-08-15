@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.web.asu_gallery import jvx
 from cctbx.web.asu_gallery import jv_index
 from cctbx.web.asu_gallery import guide_to_notation

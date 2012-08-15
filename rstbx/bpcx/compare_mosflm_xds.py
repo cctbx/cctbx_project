@@ -1,3 +1,4 @@
+from __future__ import division
 # Compare intensities and positions of measurements from XDS INTEGRATE (which
 # are not necessarily correctly LP corrected) and from Mosflm via sortmtz and
 # scala to sum partials but not merge or scale e.g.

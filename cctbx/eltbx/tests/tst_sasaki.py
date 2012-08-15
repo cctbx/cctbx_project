@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.eltbx import sasaki
 from libtbx.test_utils import approx_equal
 

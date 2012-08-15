@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.graph.tardy_tree import find_paths, construct
 from scitbx.graph import rigidity
 from scitbx.graph import utils

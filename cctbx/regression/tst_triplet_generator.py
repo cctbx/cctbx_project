@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx.test_utils import approx_equal
 from cctbx import dmtbx
 from cctbx import maptbx
