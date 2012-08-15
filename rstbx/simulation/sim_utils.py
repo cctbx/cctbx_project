@@ -1,3 +1,4 @@
+from __future__ import division
 import math,random
 from libtbx.test_utils import approx_equal
 from scitbx import matrix

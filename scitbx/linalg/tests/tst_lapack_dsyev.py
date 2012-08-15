@@ -1,3 +1,4 @@
+from __future__ import division
 def exercise(use_fortran):
   from scitbx.linalg import lapack_dsyev
   from scitbx.array_family import flex

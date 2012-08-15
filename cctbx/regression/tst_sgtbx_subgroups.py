@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.sgtbx import subgroups
 from cctbx import sgtbx
 

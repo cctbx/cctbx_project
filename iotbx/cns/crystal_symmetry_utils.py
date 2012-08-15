@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx.cns.space_group_symbols import cns_format
 from cctbx import crystal
 

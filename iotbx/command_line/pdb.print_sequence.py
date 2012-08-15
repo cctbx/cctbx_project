@@ -1,3 +1,4 @@
+from __future__ import division
 import os, sys
 
 protein_sequence_to_three = {

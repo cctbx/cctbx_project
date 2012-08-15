@@ -1,3 +1,4 @@
+from __future__ import division
 import iotbx.phil
 import libtbx.load_env
 from libtbx.str_utils import make_header

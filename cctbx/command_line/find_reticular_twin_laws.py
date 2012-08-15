@@ -1,3 +1,4 @@
+from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.find_reticular_twin_laws
 
 import sys

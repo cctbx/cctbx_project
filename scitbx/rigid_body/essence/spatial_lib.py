@@ -11,6 +11,7 @@ See also: RBDA:
   Springer, New York, 2007.
   ISBN-10: 0387743146
 """
+from __future__ import division
 
 try: import scitbx
 except ImportError: import scitbx_matrix as matrix

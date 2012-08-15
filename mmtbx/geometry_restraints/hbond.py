@@ -1,3 +1,4 @@
+from __future__ import division
 
 from libtbx import easy_mp
 from libtbx.str_utils import make_header

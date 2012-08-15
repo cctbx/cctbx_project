@@ -1,3 +1,4 @@
+from __future__ import division
 class error(RuntimeError):
   def __init__(self, msg, line, *args):
     msg = "ShelX: " + msg % args

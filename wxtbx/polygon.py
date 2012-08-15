@@ -1,3 +1,4 @@
+from __future__ import division
 
 import wxtbx.polygon_db_viewer
 import wxtbx.bitmaps

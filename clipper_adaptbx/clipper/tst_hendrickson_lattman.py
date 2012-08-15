@@ -1,3 +1,4 @@
+from __future__ import division
 import clipper
 from iotbx import reflection_file_converter
 from cctbx.array_family import flex

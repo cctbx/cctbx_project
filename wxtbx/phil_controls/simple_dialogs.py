@@ -1,3 +1,4 @@
+from __future__ import division
 
 from wxtbx.phil_controls import intctrl, floatctrl, symop, strctrl, ints
 from libtbx.utils import Abort

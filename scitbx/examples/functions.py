@@ -1,3 +1,4 @@
+from __future__ import division
 import math as m
 
 def Function(name):

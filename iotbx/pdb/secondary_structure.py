@@ -1,3 +1,4 @@
+from __future__ import division
 #
 # XXX: see also mmtbx.monomer_library.secondary_structure
 #

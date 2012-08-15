@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx import unpicklable
 from libtbx.test_utils import Exception_expected
 from libtbx import Auto

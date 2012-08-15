@@ -1,3 +1,4 @@
+from __future__ import division
 import boost.python
 import boost.optional # import dependency
 # Indeed Boost.Python binding needs boost::optional

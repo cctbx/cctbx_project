@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx.hydrogens import find as find_hydrogens
 import mmtbx.utils
 import mmtbx.model

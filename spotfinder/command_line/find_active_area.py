@@ -1,3 +1,4 @@
+from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME distl.find_active_area
 import os, sys
 from iotbx.detectors.npy import NpyImage

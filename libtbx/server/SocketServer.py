@@ -99,6 +99,7 @@ XXX Open problems:
 - What to do with out-of-band data?
 
 """
+from __future__ import division
 
 
 __version__ = "0.2"

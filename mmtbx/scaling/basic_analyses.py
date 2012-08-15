@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import adptbx
 from cctbx.array_family import flex
 from libtbx.utils import Sorry, show_exception_info_if_full_testing

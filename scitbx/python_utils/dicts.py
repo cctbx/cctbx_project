@@ -1,3 +1,4 @@
+from __future__ import division
 class easy(dict):
 
   def __init__(self, **kw):

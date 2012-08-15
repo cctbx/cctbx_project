@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx import pdb
 import iotbx.pdb.cryst1_interpretation
 import iotbx.pdb.remark_290_interpretation

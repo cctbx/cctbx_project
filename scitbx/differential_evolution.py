@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.array_family import flex
 from stdlib import random
 class differential_evolution_optimizer(object):

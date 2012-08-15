@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import crystal
 from cctbx import sgtbx
 import iotbx.command_line.lattice_symmetry

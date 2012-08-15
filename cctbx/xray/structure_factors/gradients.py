@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.xray.structure_factors.manager import manager
 from cctbx.xray.structure_factors.gradients_direct \
   import gradients_direct

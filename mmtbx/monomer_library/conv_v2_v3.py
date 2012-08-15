@@ -1,3 +1,4 @@
+from __future__ import division
 import iotbx.pdb
 from libtbx.str_utils import split_keeping_spaces
 import sys

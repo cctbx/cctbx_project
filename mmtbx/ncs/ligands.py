@@ -6,6 +6,7 @@ successfully but another misses due to interfering protein atoms, weak density,
 false positive in empty protein density, etc.  Should not be used when the
 initial placement (e.g. LigandFit CC) is sufficiently good.
 """
+from __future__ import division
 
 from libtbx.utils import Sorry
 from libtbx.str_utils import make_header

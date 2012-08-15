@@ -1,5 +1,6 @@
 """ Tags to identify commonplace constraints (as those featured by ShelXL)
 """
+from __future__ import division
 
 (independent_parameter,
  constant_parameter,

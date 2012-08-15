@@ -1,3 +1,4 @@
+from __future__ import division
 import math
 from iotbx import pdb
 from scitbx.array_family import flex

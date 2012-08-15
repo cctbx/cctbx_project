@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.source_generators.utils import join_open
 import cctbx
 from cctbx.sgtbx.direct_space_asu import reference_table

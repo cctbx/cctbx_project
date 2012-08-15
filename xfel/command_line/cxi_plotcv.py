@@ -6,6 +6,7 @@
    vectors", but do so separately for each ASIC tile, giving an independent
    check on whether a tile is positioned properly by the tile_translation
    parameters."""
+from __future__ import division
 
 import iotbx.phil
 import sys

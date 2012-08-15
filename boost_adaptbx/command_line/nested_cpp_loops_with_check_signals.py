@@ -1,3 +1,4 @@
+from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME boost_adaptbx.nested_cpp_loops_with_check_signals
 
 def run(args):

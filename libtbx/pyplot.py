@@ -1,3 +1,4 @@
+from __future__ import division
 from matplotlib.pyplot import *
 
 def plot_pairs(xy, *a, **k):

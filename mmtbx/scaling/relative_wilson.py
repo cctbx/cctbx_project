@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx.scaling import absolute_scaling
 from iotbx import data_plots
 from scitbx.array_family import flex

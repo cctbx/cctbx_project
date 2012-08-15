@@ -1,4 +1,5 @@
 """ A library of object-oriented patterns """
+from __future__ import division
 
 import new, weakref
 

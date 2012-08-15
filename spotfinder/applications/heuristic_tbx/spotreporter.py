@@ -1,3 +1,4 @@
+from __future__ import division
 import math
 from libtbx.table_utils import Spreadsheet
 from spotfinder.core_toolbox import bin_populations

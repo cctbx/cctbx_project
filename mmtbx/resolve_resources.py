@@ -1,3 +1,4 @@
+from __future__ import division
 import libtbx.phil
 
 phenix_masks_master_params = """\

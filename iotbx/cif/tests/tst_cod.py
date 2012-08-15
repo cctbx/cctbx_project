@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx.cif import cod_tools
 import iotbx.cif
 from iotbx.cif.builders import CifBuilderError

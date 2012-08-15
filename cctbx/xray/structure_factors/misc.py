@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import adptbx
 
 def quality_factor_from_any(d_min=None,

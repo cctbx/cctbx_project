@@ -1,3 +1,4 @@
+from __future__ import division
 import iotbx.xplor.map
 from cctbx import maptbx
 from cctbx import sgtbx

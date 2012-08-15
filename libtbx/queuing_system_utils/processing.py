@@ -5,6 +5,7 @@ Provides drop-in replacement classes to those defined in the multiprocessing
 module (Queue and Process), with certain restrictions placed by the pickle
 module
 """
+from __future__ import division
 
 import cPickle as pickle
 import subprocess

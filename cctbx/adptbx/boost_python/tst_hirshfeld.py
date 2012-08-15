@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import adp_restraints, uctbx, adptbx, sgtbx
 import scitbx.random
 from scitbx import linalg, matrix

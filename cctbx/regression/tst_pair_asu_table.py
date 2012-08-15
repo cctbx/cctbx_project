@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx.kriber import strudat
 from cctbx import geometry_restraints
 from cctbx import crystal

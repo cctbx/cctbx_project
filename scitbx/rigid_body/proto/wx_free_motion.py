@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.rigid_body.proto.free_motion_reference_impl import simulation
 from gltbx import wx_viewer
 from scitbx.math import minimum_covering_sphere, sphere_3d

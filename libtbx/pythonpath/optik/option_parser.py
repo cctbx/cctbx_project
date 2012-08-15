@@ -2,6 +2,7 @@
 
 Provides the OptionParser and Values classes.
 """
+from __future__ import division
 
 # Copyright (c) 2001-2006 Gregory P. Ward.  All rights reserved.
 # See the README.txt distributed with Optik for licensing terms.

@@ -1,4 +1,5 @@
 """ Parsing of ins/res files """
+from __future__ import division
 
 import re
 

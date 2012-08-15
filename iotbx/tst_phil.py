@@ -1,3 +1,4 @@
+from __future__ import division
 import iotbx.phil
 from libtbx.test_utils import show_diff
 from libtbx import Auto

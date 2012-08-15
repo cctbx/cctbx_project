@@ -1,3 +1,4 @@
+from __future__ import division
 import os
 from rstbx.phil import phil_preferences
 from rstbx.phil.scope import scope

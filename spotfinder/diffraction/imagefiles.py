@@ -1,3 +1,4 @@
+from __future__ import division
 import os, re
 from iotbx.detectors import ImageFactory, url_support
 from iotbx.detectors.beam_center_convention import convert_beam_instrument_to_imageblock

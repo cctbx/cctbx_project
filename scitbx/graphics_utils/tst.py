@@ -1,3 +1,4 @@
+from __future__ import division
 
 from scitbx import graphics_utils
 from scitbx.array_family import flex

@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx import reflection_file_reader
 from cctbx import miller
 from cctbx.array_family import flex

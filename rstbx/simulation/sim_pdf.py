@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.array_family import flex
 page_origin = (20.,220.)
 boxedge = 500.

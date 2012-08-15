@@ -1,3 +1,4 @@
+from __future__ import division
 
 def exercise_1 () :
   from rstbx.viewer import screen_params

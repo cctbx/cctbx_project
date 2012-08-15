@@ -1,3 +1,4 @@
+from __future__ import division
 import cctbx.maptbx # import dependency
 
 import boost.python

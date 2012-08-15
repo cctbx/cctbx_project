@@ -1,3 +1,4 @@
+from __future__ import division
 
 import iotbx.gui_tools
 from iotbx import file_reader

@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx.kriber import strudat
 from cctbx import crystal
 import cctbx.crystal.coordination_sequences

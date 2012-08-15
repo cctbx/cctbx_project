@@ -1,3 +1,4 @@
+from __future__ import division
 # A *VERY* lightweight graph class
 # More efficient implementation can be found in the BGL I guess
 #

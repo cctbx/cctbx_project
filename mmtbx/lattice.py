@@ -1,3 +1,4 @@
+from __future__ import division
 import sys
 
 def find_crystal_contacts (xray_structure,

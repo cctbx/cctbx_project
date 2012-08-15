@@ -1,3 +1,4 @@
+from __future__ import division
 #coding: utf-8
 import random
 from scitbx.array_family import flex

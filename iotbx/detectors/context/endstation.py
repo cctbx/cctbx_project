@@ -1,3 +1,4 @@
+from __future__ import division
 import math,time
 from iotbx.detectors.context.camera_convention import Cameras
 from iotbx.detectors.context.config_detector import ADSC910_at_BioCARS

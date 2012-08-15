@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx.pdb import cryst1_interpretation
 from iotbx.cns import pdb_remarks as cns_pdb_remarks
 from libtbx import smart_open

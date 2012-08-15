@@ -1,3 +1,4 @@
+from __future__ import division
 import scitbx.array_family.flex
 
 import boost.python

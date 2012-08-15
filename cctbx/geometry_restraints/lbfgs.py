@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import crystal
 from cctbx.array_family import flex
 import scitbx.lbfgs

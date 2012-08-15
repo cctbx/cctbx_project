@@ -1,3 +1,4 @@
+from __future__ import division
 prios = ["boost", "scitbx", "cctbx", "rstbx", "labelit"]
 prios = dict(zip(prios, range(len(prios))))
 

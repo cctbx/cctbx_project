@@ -1,3 +1,4 @@
+from __future__ import division
 # This script reports a number of space group properties given a space
 # group symbol or symmetry matrices, or a combination of the two.
 

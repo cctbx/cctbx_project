@@ -1,3 +1,4 @@
+from __future__ import division
 import sys
 
 from matplotlib import pyplot

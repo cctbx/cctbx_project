@@ -1,3 +1,4 @@
+from __future__ import division
 import boost.python
 iotbx_shelx_ext = boost.python.import_ext("iotbx_shelx_ext")
 import sys

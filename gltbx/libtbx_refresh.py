@@ -1,3 +1,4 @@
+from __future__ import division
 from gltbx import generate_defines_bpl
 from gltbx import generate_functions_bpl
 from gltbx import generate_fonts_ucs_cpp

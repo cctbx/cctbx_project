@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx import easy_pickle
 from libtbx.option_parser import option_parser
 from scitbx.python_utils import dicts

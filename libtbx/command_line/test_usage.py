@@ -1,3 +1,4 @@
+from __future__ import division
 
 from libtbx.test_utils import test_usage
 from libtbx.utils import Usage

@@ -1,3 +1,4 @@
+from __future__ import division
 class accu_builder(object):
 
   __slots__ = ["accu"]

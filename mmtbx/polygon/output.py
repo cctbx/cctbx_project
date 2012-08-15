@@ -1,3 +1,4 @@
+from __future__ import division
 import sys
 from mmtbx import polygon, model_vs_data
 from math import pi, cos, sin, radians, degrees, floor

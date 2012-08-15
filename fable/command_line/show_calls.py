@@ -1,3 +1,4 @@
+from __future__ import division
 def run(args):
   if (len(args) == 0): args = ["--help"]
   from libtbx.option_parser import option_parser

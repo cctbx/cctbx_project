@@ -1,3 +1,4 @@
+from __future__ import division
 class potential_url_request:
   def __init__(self,text):
     self.text = text

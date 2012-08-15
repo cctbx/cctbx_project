@@ -1,3 +1,4 @@
+from __future__ import division
 import os
 
 def integrate_one_image(data, **kwargs):

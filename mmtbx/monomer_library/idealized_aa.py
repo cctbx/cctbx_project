@@ -1,3 +1,4 @@
+from __future__ import division
 import iotbx.pdb
 import iotbx.pdb.amino_acid_codes
 

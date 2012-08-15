@@ -1,3 +1,4 @@
+from __future__ import division
 def run(args):
   if (args not in [["--with-quotes"], ["--no-quotes"]]):
     from libtbx.utils import Usage

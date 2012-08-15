@@ -1,3 +1,4 @@
+from __future__ import division
 
 from iotbx import data_plots
 import libtbx.load_env

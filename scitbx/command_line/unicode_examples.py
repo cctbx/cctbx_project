@@ -1,4 +1,5 @@
 "Please help adding characters commonly used in science."
+from __future__ import division
 
 import sys
 

@@ -1,3 +1,4 @@
+from __future__ import division
 import iotbx.phil
 from cctbx.array_family import flex
 from libtbx import easy_pickle

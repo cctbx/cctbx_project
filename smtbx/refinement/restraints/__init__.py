@@ -1,3 +1,4 @@
+from __future__ import division
 import scitbx.sparse # import dependency
 
 import boost.python

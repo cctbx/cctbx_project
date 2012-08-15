@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx.utils import Sorry
 from libtbx.queuing_system_utils import chunk_manager
 import copy

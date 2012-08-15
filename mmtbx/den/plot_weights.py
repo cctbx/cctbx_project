@@ -1,3 +1,4 @@
+from __future__ import division
 
 def _plot_weights (figure, gamma, weight, z) :
   from matplotlib import cm

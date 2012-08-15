@@ -1,3 +1,4 @@
+from __future__ import division
 from boost_python_hybrid_times_ext import run_c_plus_plus
 import sys, os
 

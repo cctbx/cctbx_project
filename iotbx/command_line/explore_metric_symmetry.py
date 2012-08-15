@@ -1,3 +1,4 @@
+from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.explore_metric_symmetry
 
 from cctbx import sgtbx

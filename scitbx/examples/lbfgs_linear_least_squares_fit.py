@@ -1,3 +1,4 @@
+from __future__ import division
 import scitbx.lbfgs
 from scitbx.array_family import flex
 import math

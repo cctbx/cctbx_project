@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx import cif
 from iotbx.cif import validation
 from iotbx.cif.validation import smart_load_dictionary

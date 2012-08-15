@@ -1,4 +1,5 @@
 """ Tools for the Python integrated development environment Wing IDE """
+from __future__ import division
 
 def log(stop=False, **kwds):
   """ Helper to ease putting watchpoints

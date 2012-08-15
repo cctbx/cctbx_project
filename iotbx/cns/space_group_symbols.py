@@ -1,3 +1,4 @@
+from __future__ import division
 # CNS 1.1 spacegroup.lib symbols
 sgtbx_lookup_symbol_as_cns_symbol = {
 "P1": "P1",

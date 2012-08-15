@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx import only_element
 from cStringIO import StringIO
 import sys

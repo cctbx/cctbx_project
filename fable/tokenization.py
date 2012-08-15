@@ -1,3 +1,4 @@
+from __future__ import division
 from fable \
   import unsigned_integer_scan, \
   identifier_scan, \

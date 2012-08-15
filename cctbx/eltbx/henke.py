@@ -1,3 +1,4 @@
+from __future__ import division
 import cctbx.eltbx.fp_fdp # import dependency
 
 import boost.python

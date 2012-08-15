@@ -1,3 +1,4 @@
+from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.pdb_atom_selection
 
 from mmtbx.monomer_library import pdb_interpretation

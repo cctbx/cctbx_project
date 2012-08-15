@@ -1,3 +1,4 @@
+from __future__ import division
 from gltbx import wx_viewer
 import wx
 from gltbx.gl import *

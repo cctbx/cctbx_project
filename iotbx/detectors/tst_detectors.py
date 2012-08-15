@@ -1,3 +1,4 @@
+from __future__ import division
 def tst_detectors():
     import libtbx.load_env
     import os

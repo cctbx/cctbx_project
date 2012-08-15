@@ -1,3 +1,4 @@
+from __future__ import division
 import fable.cout
 
 def compute_hexdigest(text):

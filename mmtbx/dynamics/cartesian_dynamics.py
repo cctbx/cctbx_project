@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx import dynamics
 from mmtbx.dynamics.constants import \
   boltzmann_constant_akma, \

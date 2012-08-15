@@ -1,3 +1,4 @@
+from __future__ import division
 import fftw3tbx
 from libtbx import easy_run
 from libtbx.utils import Sorry, Usage

@@ -1,3 +1,4 @@
+from __future__ import division
 
 # TODO:
 #  - handle 2theta properly

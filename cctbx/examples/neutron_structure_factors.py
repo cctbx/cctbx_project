@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import neutron
 from cctbx import crystal
 

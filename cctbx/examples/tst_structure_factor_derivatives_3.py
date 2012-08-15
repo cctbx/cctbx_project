@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import miller
 from cctbx.examples.structure_factor_derivatives_3 \
   import scatterer_as_list, scatterer_from_list, structure_factors

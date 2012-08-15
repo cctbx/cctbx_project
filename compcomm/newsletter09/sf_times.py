@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx.test_utils import approx_equal
 from libtbx.utils import Usage
 from libtbx import easy_run

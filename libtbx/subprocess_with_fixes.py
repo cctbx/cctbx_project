@@ -351,6 +351,7 @@ except that:
 
 
 """
+from __future__ import division
 
 import sys
 mswindows = (sys.platform == "win32")

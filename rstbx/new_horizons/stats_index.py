@@ -1,3 +1,4 @@
+from __future__ import division
 import os
 from labelit.command_line.imagefiles import ImageFiles
 

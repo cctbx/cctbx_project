@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.linalg.ext import *
 from scitbx.linalg.householder import *
 from scitbx.array_family import flex

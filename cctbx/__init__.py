@@ -1,3 +1,4 @@
+from __future__ import division
 factor_kev_angstrom = 6.6260755 * 2.99792458 / 1.60217733
 factor_ev_angstrom  = 6626.0755 * 2.99792458 / 1.60217733
 

@@ -1,3 +1,4 @@
+from __future__ import division
 import os
 from spotfinder.diffraction.imagefiles import quick_image
 from spotfinder.servers.multipart_encoder import post_multipart

@@ -1,3 +1,4 @@
+from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.twin_map_utils
 
 from mmtbx.twinning import twin_map_utils

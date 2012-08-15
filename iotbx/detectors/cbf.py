@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx.detectors.detectorbase import DetectorImageBase
 from iotbx.detectors.marIP import MARIPImage
 

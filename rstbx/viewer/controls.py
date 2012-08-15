@@ -1,3 +1,4 @@
+from __future__ import division
 
 from rstbx.viewer import results_base
 import wx

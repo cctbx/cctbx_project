@@ -1,3 +1,4 @@
+from __future__ import division
 def exercise_cubicles_max_memory():
   import scitbx.cubicle_neighbors as cn
   assert cn.cubicles_max_memory_allocation_get() != 0

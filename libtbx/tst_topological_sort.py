@@ -1,3 +1,4 @@
+from __future__ import division
 def exercise_specific():
   from libtbx.topological_sort import stable
   from libtbx.topological_sort import strongly_connected_components as scc

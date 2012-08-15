@@ -1,3 +1,4 @@
+from __future__ import division
 
 #-----------------------------------------------------------------------
 # more-or-less real-time plotting of Bragg peak count and XES detector

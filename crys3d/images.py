@@ -1,3 +1,4 @@
+from __future__ import division
 from gltbx.images import img_data
 
 inspector_img = img_data(width=32, height=32, mask=-1, encoded_data = """\

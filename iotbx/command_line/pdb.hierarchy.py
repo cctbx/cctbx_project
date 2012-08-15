@@ -1,3 +1,4 @@
+from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.pdb.hierarchy
 
 from iotbx import pdb

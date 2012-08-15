@@ -1,4 +1,5 @@
 "light-weight, simple source_path, target_path dependency management"
+from __future__ import division
 
 from libtbx import easy_pickle
 from libtbx.utils import hashlib_md5

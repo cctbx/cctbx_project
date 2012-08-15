@@ -1,3 +1,4 @@
+from __future__ import division
 import iotbx.phil
 from mmtbx.refinement import rigid_body
 from mmtbx import utils

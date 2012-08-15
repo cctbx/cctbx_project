@@ -1,3 +1,4 @@
+from __future__ import division
 from wxtbx.phil_controls import text_base
 from wxtbx import phil_controls
 import wxtbx.icons

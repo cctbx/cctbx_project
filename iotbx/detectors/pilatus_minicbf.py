@@ -1,3 +1,4 @@
+from __future__ import division
 import copy,re
 from iotbx.detectors.detectorbase import DetectorImageBase
 from iotbx.detectors import ImageException

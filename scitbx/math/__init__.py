@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.math.ext import *
 import scitbx.linalg.eigensystem
 import scitbx.math.gaussian # implicit import

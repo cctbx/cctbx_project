@@ -1,3 +1,4 @@
+from __future__ import division
 ## Peter Zwart July 5, 2005
 from cctbx.array_family import flex
 from cctbx import crystal

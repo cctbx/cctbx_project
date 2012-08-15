@@ -1,3 +1,4 @@
+from __future__ import division
 
 # Copyright 2010 University of California
 # derived from wx.lib.platebtn (see copyright below).

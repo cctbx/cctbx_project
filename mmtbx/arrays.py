@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.array_family import flex
 from libtbx import adopt_init_args
 import boost.python

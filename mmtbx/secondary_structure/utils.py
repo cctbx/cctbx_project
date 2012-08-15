@@ -1,3 +1,4 @@
+from __future__ import division
 
 def hydrogen_bond_from_selection_pair (donor_sele, acceptor_sele,
     selection_cache) :

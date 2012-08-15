@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import uctbx
 
 def d_star_sq(unit_cell, miller_index):

@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx.monomer_library import cif_types
 import iotbx.cif
 from iotbx.pdb import residue_name_plus_atom_names_interpreter

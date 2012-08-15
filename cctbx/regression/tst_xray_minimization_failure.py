@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import xray
 from cctbx.array_family import flex
 from cctbx.regression import tst_xray_minimization

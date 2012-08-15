@@ -1,3 +1,4 @@
+from __future__ import division
 import scitbx.lbfgs
 from cctbx.array_family import flex
 from cctbx import maptbx

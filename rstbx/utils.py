@@ -1,3 +1,4 @@
+from __future__ import division
 
 # XXX please keep all shared-library imports inline
 import math

@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import miller
 from cctbx import maptbx
 from cctbx import sgtbx

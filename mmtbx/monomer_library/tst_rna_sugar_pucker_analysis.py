@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx.monomer_library import rna_sugar_pucker_analysis
 from libtbx.test_utils import approx_equal
 import sys

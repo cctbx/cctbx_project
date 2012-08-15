@@ -6,6 +6,7 @@
 
 XXX Better named cspad_base?
 """
+from __future__ import division
 
 __version__ = "$Revision$"
 

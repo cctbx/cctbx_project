@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.array_family import flex
 
 "Transformation specifically meant for use by spotfinder & labelit"

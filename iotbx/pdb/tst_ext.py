@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx import pdb
 from iotbx.pdb import hybrid_36
 from cctbx import crystal

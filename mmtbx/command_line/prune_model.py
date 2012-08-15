@@ -1,3 +1,4 @@
+from __future__ import division
 
 # TODO trim sidechains one atom at a time
 

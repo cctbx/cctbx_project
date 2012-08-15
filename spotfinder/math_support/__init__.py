@@ -1,3 +1,4 @@
+from __future__ import division
 def pixels_to_mmPos(x,y,pixel_size):
   return [pixel_size*x,pixel_size*y]
 

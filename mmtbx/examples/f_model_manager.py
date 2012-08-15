@@ -1,3 +1,4 @@
+from __future__ import division
 def run():
   # complete exact model
   from cctbx.development import random_structure

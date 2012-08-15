@@ -1,3 +1,4 @@
+from __future__ import division
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # $Id: calibration_frame.py 289 2012-03-06 05:08:56Z hattne $

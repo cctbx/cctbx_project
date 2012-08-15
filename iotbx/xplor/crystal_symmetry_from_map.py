@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx import xplor
 import iotbx.xplor.map
 from cctbx import crystal

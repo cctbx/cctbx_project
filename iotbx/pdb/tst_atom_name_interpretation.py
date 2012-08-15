@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx.pdb.atom_name_interpretation import interpreters
 from cStringIO import StringIO
 from libtbx.test_utils import show_diff

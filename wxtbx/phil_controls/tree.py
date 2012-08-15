@@ -1,3 +1,4 @@
+from __future__ import division
 
 from wx.lib.agw import customtreectrl
 import wx

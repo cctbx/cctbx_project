@@ -1,3 +1,4 @@
+from __future__ import division
 def predict_spot_positions(
       work_params,
       miller_indices,

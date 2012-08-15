@@ -1,3 +1,4 @@
+from __future__ import division
 import os
 from libtbx.utils import warn_if_unexpected_md5_hexdigest
 

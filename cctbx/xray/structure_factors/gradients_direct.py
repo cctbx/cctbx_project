@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.xray.structure_factors.gradients_base import gradients_base
 from cctbx.xray.structure_factors.manager import default_cos_sin_table
 from cctbx.xray.structure_factors.misc import expensive_function_call_message

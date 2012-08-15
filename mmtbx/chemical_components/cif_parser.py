@@ -1,3 +1,4 @@
+from __future__ import division
 import os, sys
 
 cif_keyword_dictionary = {

@@ -1,3 +1,4 @@
+from __future__ import division
 # This example uses an internal table, with 530 space group settings,
 # that is based on Table 4.3.1 in the International Tables for
 # Crystallography, Volume A (1983). Via the web interface the user

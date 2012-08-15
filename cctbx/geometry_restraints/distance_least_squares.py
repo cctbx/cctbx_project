@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import geometry_restraints
 import cctbx.geometry_restraints.flags
 import cctbx.geometry_restraints.manager

@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx_xray_observations_ext import *
 
 def customized_copy(obs, twin_fractions=None, twin_components=None):

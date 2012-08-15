@@ -1,3 +1,4 @@
+from __future__ import division
 
 # Rules of thumb for interpreting program statistics (used in Phenix GUI)
 

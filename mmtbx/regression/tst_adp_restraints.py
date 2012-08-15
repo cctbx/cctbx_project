@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 from mmtbx.monomer_library import pdb_interpretation

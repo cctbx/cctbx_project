@@ -1,3 +1,4 @@
+from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME libtbx.assert_stdin_contains_strings
 # LIBTBX_SET_DISPATCHER_NAME libtbx.assert_stdin_does_not_contain_strings
 import libtbx.load_env

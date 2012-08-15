@@ -1,4 +1,5 @@
 """ Functions useful to write assertions, especially preconditions """
+from __future__ import division
 
 def is_numeric(x):
   try: x+1.

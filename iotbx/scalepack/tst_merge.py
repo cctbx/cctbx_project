@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx.scalepack import merge
 from iotbx.regression.utils import random_f_calc
 from cctbx import miller

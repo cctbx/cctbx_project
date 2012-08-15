@@ -1,3 +1,4 @@
+from __future__ import division
 import os
 import glob
 from scitbx.array_family import flex # import dependency

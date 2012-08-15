@@ -1,3 +1,4 @@
+from __future__ import division
 def run(args):
   import fable.read
   out_names_used = set()

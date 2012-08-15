@@ -1,3 +1,4 @@
+from __future__ import division
 ## Peter Zwart, April 18, 2005
 from cctbx.array_family import flex
 from mmtbx import scaling

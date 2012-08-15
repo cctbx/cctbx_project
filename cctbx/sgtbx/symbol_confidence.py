@@ -1,3 +1,4 @@
+from __future__ import division
 def level(space_group_info):
   """\
 Determine the level of confidence in a given space group symbol. Often

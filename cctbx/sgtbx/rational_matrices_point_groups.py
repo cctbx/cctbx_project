@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import sgtbx
 from cctbx.sgtbx import sub_lattice_tools
 from scitbx import matrix

@@ -1,3 +1,4 @@
+from __future__ import division
 from stdlib import random
 
 import libtbx.load_env

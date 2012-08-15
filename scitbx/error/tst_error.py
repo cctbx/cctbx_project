@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx import easy_run
 import libtbx.load_env
 import sys, os

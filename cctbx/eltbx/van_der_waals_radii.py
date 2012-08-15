@@ -1,3 +1,4 @@
+from __future__ import division
 # Van-der-Waals radii for known elements.
 #
 # Created: Pavel Afonine.

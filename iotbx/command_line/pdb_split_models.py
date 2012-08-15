@@ -1,3 +1,4 @@
+from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME iotbx.pdb.split_models
 
 from libtbx.utils import Sorry, Usage, null_out

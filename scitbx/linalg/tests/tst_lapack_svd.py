@@ -1,3 +1,4 @@
+from __future__ import division
 def exercise_impl(svd_impl_name, use_fortran):
   import scitbx.linalg
   svd_impl = getattr(scitbx.linalg, "lapack_%s" % svd_impl_name)

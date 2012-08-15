@@ -1,3 +1,4 @@
+from __future__ import division
 
 from libtbx import str_utils
 from libtbx import group_args, adopt_init_args

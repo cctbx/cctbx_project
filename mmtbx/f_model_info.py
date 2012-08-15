@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx import adopt_init_args
 from libtbx.str_utils import format_value
 import sys, re, string

@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx import mtz
 from iotbx.scalepack import merge as scalepack_merge
 from iotbx.scalepack import no_merge_original_index as scalepack_no_merge

@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.eltbx import xray_scattering
 from cctbx.array_family import flex
 import scitbx.math.gaussian

@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import miller
 import cctbx.xray.structure_factors
 from libtbx.utils import Sorry

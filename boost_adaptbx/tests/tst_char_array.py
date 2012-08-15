@@ -1,3 +1,4 @@
+from __future__ import division
 import boost_adaptbx_char_array_ext as ext
 import sys
 

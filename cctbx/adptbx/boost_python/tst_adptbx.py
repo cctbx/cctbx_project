@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import uctbx
 from cctbx import adptbx
 from cctbx.array_family import flex

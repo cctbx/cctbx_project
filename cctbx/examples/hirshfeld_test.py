@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import crystal, adp_restraints, xray
 
 def run(structure_file_path):

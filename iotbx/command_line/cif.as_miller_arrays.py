@@ -1,3 +1,4 @@
+from __future__ import division
 import iotbx.cif
 from libtbx import easy_pickle, smart_open
 from libtbx.str_utils import show_string

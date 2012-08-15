@@ -1,3 +1,4 @@
+from __future__ import division
 import math, random
 from scitbx import matrix
 from scitbx.array_family import flex

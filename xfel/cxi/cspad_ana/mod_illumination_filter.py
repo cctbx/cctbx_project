@@ -8,6 +8,7 @@ should always be off, and laser 1 must have had its state changed for
 least laser_wait_time ms before the event.  Events with missing
 timestamps are always skipped.
 """
+from __future__ import division
 
 __version__ = "$Revision$"
 

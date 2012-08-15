@@ -1,3 +1,4 @@
+from __future__ import division
 
 from wxtbx.phil_controls import path, ints
 from wxtbx import phil_controls

@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx.kriber import strudat
 from cctbx.regression import tst_direct_space_asu
 from cctbx import crystal

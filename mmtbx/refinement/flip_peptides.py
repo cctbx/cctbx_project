@@ -1,3 +1,4 @@
+from __future__ import division
 
 # XXX liberally copied from mmtbx.refinement.fit_rotamers - it would probably
 # be a good idea to consolidate these modules into one framework.

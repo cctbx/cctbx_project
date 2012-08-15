@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx.option_parser import option_parser
 from libtbx.utils import Sorry
 from libtbx.str_utils import show_string

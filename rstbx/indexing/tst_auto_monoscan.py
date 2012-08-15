@@ -1,3 +1,4 @@
+from __future__ import division
 import math,os
 from libtbx.path import norm_join
 from libtbx.test_utils import approx_equal

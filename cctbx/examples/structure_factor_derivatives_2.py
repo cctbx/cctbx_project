@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import xray
 from cctbx.examples import g_exp_i_alpha_derivatives
 from scitbx import matrix

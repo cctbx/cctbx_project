@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx.refinement import print_statistics
 from cctbx.array_family import flex
 from libtbx import adopt_init_args

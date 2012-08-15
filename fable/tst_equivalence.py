@@ -1,3 +1,4 @@
+from __future__ import division
 import fable.equivalence
 
 def fem_array_alignment(members_size, i_mbr_byte_offset_pairs):

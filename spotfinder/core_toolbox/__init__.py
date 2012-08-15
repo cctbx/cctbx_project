@@ -1,3 +1,4 @@
+from __future__ import division
 import spotfinder.array_family.flex # implicit import
 
 import boost.python

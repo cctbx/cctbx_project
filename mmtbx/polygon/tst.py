@@ -1,3 +1,4 @@
+from __future__ import division
 import iotbx.phil
 from mmtbx import polygon
 import libtbx, os

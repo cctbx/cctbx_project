@@ -1,3 +1,4 @@
+from __future__ import division
 
 # detached process management (used in Phenix GUI)
 # This is intended to imitate running a process using libtbx.thread_utils,

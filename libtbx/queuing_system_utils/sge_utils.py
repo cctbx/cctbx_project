@@ -1,4 +1,5 @@
 "Sun Grid Engine utilities"
+from __future__ import division
 
 import sys, os
 

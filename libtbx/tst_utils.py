@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx import utils
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 from cStringIO import StringIO

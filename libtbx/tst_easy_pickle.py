@@ -1,3 +1,4 @@
+from __future__ import division
 def exercise(n, use_dumps=False):
   from libtbx import easy_pickle
   import time

@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx.cns import sdb_reader
 
 def extract_from(file_name=None, file=None):

@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx.monomer_library import cif_triage
 import iotbx.pdb.amino_acid_codes
 import libtbx.load_env

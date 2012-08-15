@@ -7,6 +7,7 @@ This script parses a directory tree looking for python modules and packages and
 creates ReST files appropriately to create code documentation with Sphinx.
 It also creates a modules index (named modules.<suffix>).
 """
+from __future__ import division
 
 # Copyright 2008 Société des arts technologiques (SAT), http://www.sat.qc.ca/
 # Copyright 2010 Thomas Waldmann <tw AT waldmann-edv DOT de>

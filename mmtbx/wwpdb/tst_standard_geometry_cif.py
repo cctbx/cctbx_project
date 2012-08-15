@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx.wwpdb import standard_geometry_cif
 import libtbx.load_env
 import sys, os

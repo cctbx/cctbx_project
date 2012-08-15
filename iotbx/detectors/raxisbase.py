@@ -1,3 +1,4 @@
+from __future__ import division
 import struct
 
 header_struct = [

@@ -1,3 +1,4 @@
+from __future__ import division
 # Simple example for the use of the adptbx.
 
 from cctbx import crystal

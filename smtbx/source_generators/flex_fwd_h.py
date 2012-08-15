@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.source_generators.flex_fwd_h import write
 
 this = "cctbx.source_generators.flex_fwd_h"

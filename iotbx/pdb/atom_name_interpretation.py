@@ -1,3 +1,4 @@
+from __future__ import division
 import sys
 
 class dict_with_add(dict):

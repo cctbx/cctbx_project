@@ -1,3 +1,4 @@
+from __future__ import division
 import scitbx.linalg
 import scitbx.linalg.eigensystem
 from scitbx.array_family import flex

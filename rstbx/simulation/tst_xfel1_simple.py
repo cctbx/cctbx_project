@@ -1,3 +1,4 @@
+from __future__ import division
 from rstbx.diffraction.fastbragg import detector,standard_camera,crystal_structure
 from rstbx.simulation.constants import electron_radius
 from rstbx.simulation import xfel1

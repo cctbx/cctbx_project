@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx.mtz import extract_from_symmetry_lib
 from cctbx import sgtbx
 from libtbx.utils import format_cpu_times

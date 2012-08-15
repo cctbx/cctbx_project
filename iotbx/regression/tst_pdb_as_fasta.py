@@ -1,3 +1,4 @@
+from __future__ import division
 
 def exercise () :
   from iotbx.command_line import pdb_as_fasta

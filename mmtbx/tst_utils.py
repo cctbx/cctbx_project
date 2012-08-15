@@ -1,3 +1,4 @@
+from __future__ import division
 import sys, os
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times

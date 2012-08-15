@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.web import cgi_utils
 import pydoc
 import cgi

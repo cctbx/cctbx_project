@@ -1,3 +1,4 @@
+from __future__ import division
 
 from wxtbx.phil_controls import space_group, unit_cell
 from libtbx.utils import Sorry

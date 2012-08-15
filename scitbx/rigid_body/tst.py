@@ -1,3 +1,4 @@
+from __future__ import division
 import scitbx.rigid_body.essence
 from scitbx.rigid_body.essence import tst_tardy
 from scitbx.graph import test_cases_tardy_pdb

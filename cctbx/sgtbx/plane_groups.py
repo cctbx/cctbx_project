@@ -1,3 +1,4 @@
+from __future__ import division
 hermann_mauguin_hall_table = (
   ('p_1',     'P 1'),
   ('p_2',     'P 2'),

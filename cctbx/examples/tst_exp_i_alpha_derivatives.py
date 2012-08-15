@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.examples.exp_i_alpha_derivatives \
   import least_squares, exp_i_alpha_sum
 from libtbx.test_utils import approx_equal

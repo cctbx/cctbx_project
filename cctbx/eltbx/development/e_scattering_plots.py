@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.eltbx import e_scattering
 import sys
 

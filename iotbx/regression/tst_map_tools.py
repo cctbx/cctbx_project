@@ -1,3 +1,4 @@
+from __future__ import division
 
 from iotbx import map_tools
 from libtbx import easy_run

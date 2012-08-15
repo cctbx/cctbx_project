@@ -1,3 +1,4 @@
+from __future__ import division
 from BaseHTTPServer import HTTPServer
 import cgi, sys
 from multiprocessing import Process, current_process

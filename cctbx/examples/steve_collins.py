@@ -1,3 +1,4 @@
+from __future__ import division
 def examples():
   # Generate space groups (in matrix/vector form) based on spacegroup number
   # (names are *not* a pain)

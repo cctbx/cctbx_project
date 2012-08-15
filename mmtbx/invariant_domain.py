@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.array_family import flex
 from scitbx.math import euler_angles_as_matrix
 from scitbx.math import superpose

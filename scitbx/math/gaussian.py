@@ -1,3 +1,4 @@
+from __future__ import division
 import scitbx.array_family.flex # for tuple mappings
 
 from scitbx.math.ext import gaussian_term as term # implicit import

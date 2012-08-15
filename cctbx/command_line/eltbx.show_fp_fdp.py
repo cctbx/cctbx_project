@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.eltbx import henke, sasaki, wavelengths
 from libtbx.option_parser import option_parser
 

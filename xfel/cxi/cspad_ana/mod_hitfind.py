@@ -6,6 +6,7 @@
 
 XXX
 """
+from __future__ import division
 
 __version__ = "$Revision$"
 

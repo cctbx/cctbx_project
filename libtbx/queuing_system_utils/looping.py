@@ -1,3 +1,4 @@
+from __future__ import division
 def isodd(n):
   return n & 1 and True or False
 

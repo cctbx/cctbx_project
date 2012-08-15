@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.web.asu_gallery import web_links
 from cctbx.web.asu_gallery import html_head_title
 from cctbx import sgtbx

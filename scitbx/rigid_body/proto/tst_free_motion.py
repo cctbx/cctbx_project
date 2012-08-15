@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.rigid_body.proto import free_motion_reference_impl as fmri
 from scitbx.rigid_body.proto import featherstone
 import scitbx.math

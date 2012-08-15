@@ -1,3 +1,4 @@
+from __future__ import division
 import scitbx.rigid_body
 import scitbx.graph.tardy_tree
 import scitbx.math

@@ -1,3 +1,4 @@
+from __future__ import division
 import rstbx.viewer.display
 import wx
 from rstbx.viewer.frame import XrayFrame,SettingsFrame,SettingsPanel

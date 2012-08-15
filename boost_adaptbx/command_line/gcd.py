@@ -1,3 +1,4 @@
+from __future__ import division
 from boost.rational import gcd
 from libtbx.utils import Usage
 import libtbx.load_env

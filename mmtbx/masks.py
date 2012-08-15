@@ -1,3 +1,4 @@
+from __future__ import division
 import boost.python
 from cctbx.array_family import flex
 ext = boost.python.import_ext("mmtbx_masks_ext")

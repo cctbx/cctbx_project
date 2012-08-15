@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx import density_modification
 import mmtbx.utils
 from cctbx.array_family import flex

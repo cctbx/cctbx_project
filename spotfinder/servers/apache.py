@@ -1,3 +1,4 @@
+from __future__ import division
 from mod_python import apache
 import StringIO
 

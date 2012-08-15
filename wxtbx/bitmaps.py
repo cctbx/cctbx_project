@@ -1,3 +1,4 @@
+from __future__ import division
 
 from wx.lib.embeddedimage import PyEmbeddedImage
 import wx

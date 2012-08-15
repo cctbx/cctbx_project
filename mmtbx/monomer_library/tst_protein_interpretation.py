@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx.monomer_library.tst_rna_dna_interpretation import run
 import sys
 

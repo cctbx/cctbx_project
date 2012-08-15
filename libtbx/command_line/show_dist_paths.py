@@ -1,3 +1,4 @@
+from __future__ import division
 def run(args):
   import libtbx.load_env
   remaining_args = []

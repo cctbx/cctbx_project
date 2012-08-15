@@ -1,3 +1,4 @@
+from __future__ import division
 from spotfinder.applications.wrappers import DistlOrganizer
 
 class Empty: pass

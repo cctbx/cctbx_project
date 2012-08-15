@@ -1,3 +1,4 @@
+from __future__ import division
 import scitbx.graph.utils as graph_utils
 from scitbx import matrix
 from libtbx.utils import Sorry

@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx import shelx, builders
 
 def extract_from(file_name=None, file=None, max_characters=100000):

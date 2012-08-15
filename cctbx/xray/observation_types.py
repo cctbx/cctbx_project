@@ -1,3 +1,4 @@
+from __future__ import division
 class any(object):
 
   def __repr__(self):

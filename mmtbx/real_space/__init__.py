@@ -1,3 +1,4 @@
+from __future__ import division
 import cctbx.array_family.flex
 from scitbx.array_family import flex
 from cctbx.xray import ext

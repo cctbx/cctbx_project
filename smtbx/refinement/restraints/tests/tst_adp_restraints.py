@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx.test_utils import approx_equal
 from smtbx.refinement.restraints import adp_restraints
 from smtbx import development

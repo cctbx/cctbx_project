@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.graph import utils
 import sys
 

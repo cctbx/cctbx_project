@@ -10,6 +10,7 @@ References:
   Grosse-Kunstleve (1999). Acta Cryst. A55, 383-395.
   Zwart et al. (2008). Acta Cryst. D64, 99-107. Section 2.1
 """
+from __future__ import division
 
 from cctbx import sgtbx
 from libtbx.utils import Usage

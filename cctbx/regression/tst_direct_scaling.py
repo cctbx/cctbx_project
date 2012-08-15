@@ -1,3 +1,4 @@
+from __future__ import division
 import random
 random.seed(0)
 from scitbx.array_family import flex

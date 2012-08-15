@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx.monomer_library import cif_types
 import cStringIO as StringIO
 

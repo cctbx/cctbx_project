@@ -1,3 +1,4 @@
+from __future__ import division
 def run():
   available = []
   missing = []

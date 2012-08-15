@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import uctbx
 from cctbx.eltbx import wavelengths
 from cctbx.array_family import flex

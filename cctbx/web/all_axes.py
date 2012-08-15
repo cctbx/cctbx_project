@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.examples import all_axes
 from cctbx import sgtbx
 from cctbx.web import cgi_utils

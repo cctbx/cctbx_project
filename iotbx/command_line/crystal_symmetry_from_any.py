@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx import crystal_symmetry_from_any
 from iotbx.pdb import format_cryst1_and_scale_records
 from iotbx.cns.crystal_symmetry_utils import crystal_symmetry_as_cns_inp_defines

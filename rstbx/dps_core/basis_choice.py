@@ -1,3 +1,4 @@
+from __future__ import division
 import exceptions,math,types
 from scitbx import matrix
 from cctbx.uctbx.reduction_base import iteration_limit_exceeded as KGerror

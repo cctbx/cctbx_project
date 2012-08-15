@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx import matrix
 from libtbx.math_utils import iround
 from cctbx import sgtbx

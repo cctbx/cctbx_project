@@ -1,6 +1,7 @@
 """
 Construct all subgroup graphs and their relations between them from a single space group.
 """
+from __future__ import division
 
 
 from cctbx import sgtbx

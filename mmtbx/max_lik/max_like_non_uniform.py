@@ -1,3 +1,4 @@
+from __future__ import division
 import math
 from cctbx.array_family import flex
 from cctbx.eltbx import van_der_waals_radii

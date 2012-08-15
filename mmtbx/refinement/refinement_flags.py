@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.array_family import flex
 import sys
 from libtbx import adopt_init_args

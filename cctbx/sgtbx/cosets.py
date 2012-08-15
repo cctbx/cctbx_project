@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import sgtbx
 from scitbx.array_family import flex
 import sys

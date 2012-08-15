@@ -1,3 +1,4 @@
+from __future__ import division
 # It is common that a certain crystal structure is published in the
 # literature in two or more different settings of the same space group. A
 # typical example is that of a rhombohedral space group (e.g. R 3) where

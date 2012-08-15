@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx.shelx.errors import *
 from iotbx.shelx.lexer import *
 from iotbx.shelx.parsers import *

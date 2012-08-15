@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.xray.structure_factors.manager import managed_calculation_base
 
 class gradients_base(managed_calculation_base):

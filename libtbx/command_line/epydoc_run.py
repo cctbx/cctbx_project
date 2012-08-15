@@ -1,3 +1,4 @@
+from __future__ import division
 import epydoc
 import epydoc.docwriter
 import epydoc.docwriter.xlink

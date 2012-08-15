@@ -1,3 +1,4 @@
+from __future__ import division
 electron_radius = 2.818E-15 # classical electron radius in meters
 
 plank_constant = 6.62606896E-34 # Joule-seconds

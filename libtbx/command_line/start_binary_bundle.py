@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx.bundle import copy_all
 from libtbx.bundle import install_csh
 from libtbx.bundle import install_bat

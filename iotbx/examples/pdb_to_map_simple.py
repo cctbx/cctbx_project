@@ -1,4 +1,5 @@
 "input pdb -> structure factors -> x-plor map files"
+from __future__ import division
 
 import iotbx.pdb
 import iotbx.xplor.map

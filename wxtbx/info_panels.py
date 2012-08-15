@@ -1,3 +1,4 @@
+from __future__ import division
 
 # Assorted info boxes for displaying essential file information
 

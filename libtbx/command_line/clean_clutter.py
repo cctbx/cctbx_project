@@ -1,3 +1,4 @@
+from __future__ import division
 import sys
 import os.path
 from fileinput import input, isfirstline, filename, isstdin

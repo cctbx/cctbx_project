@@ -1,3 +1,4 @@
+from __future__ import division
 class easy_profile(object):
   """ cProfile.Profile easy-to-use wrapper """
 

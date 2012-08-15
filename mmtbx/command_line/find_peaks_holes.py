@@ -1,3 +1,4 @@
+from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.find_peaks_holes
 
 # simple frontend to mmtbx.find_peaks, primarily intended for use in quickly

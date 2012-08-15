@@ -1,3 +1,4 @@
+from __future__ import division
 import os, sys
 import libtbx.option_parser
 from cctbx.development import debug_utils

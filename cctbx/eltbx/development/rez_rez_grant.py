@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.eltbx import xray_scattering
 import scitbx.math.gaussian_fit
 import cctbx.eltbx.gaussian_fit

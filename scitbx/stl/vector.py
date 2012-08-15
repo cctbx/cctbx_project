@@ -1,3 +1,4 @@
+from __future__ import division
 import scitbx.stl.set # import dependency
 
 import boost.python

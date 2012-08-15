@@ -1,3 +1,4 @@
+from __future__ import division
 def binTable(binners, labels):
   pass
   size = binners[0].size()

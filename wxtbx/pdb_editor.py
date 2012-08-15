@@ -1,3 +1,4 @@
+from __future__ import division
 
 import wxtbx.bitmaps
 from wxtbx.phil_controls import simple_dialogs

@@ -1,3 +1,4 @@
+from __future__ import division
 def run(args):
   if (len(args) != 2):
     from libtbx.utils import Usage

@@ -1,3 +1,4 @@
+from __future__ import division
 
 # This is an example of how a 3rd-party program with Python embedded, such
 # as Coot or PyMOL, can be interfaced with CCTBX-based software.  Something

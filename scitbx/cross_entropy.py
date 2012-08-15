@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.array_family import flex
 from scitbx.python_utils import random_transform
 import sys

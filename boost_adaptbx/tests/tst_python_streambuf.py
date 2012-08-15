@@ -1,3 +1,4 @@
+from __future__ import division
 import boost.python
 from boost.python import streambuf, ostream
 ext = boost.python.import_ext("boost_adaptbx_python_streambuf_test_ext")

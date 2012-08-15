@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx import simple_parser
 from iotbx import wildcard
 from scitbx.array_family import flex

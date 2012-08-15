@@ -1,3 +1,4 @@
+from __future__ import division
 # Hardware specific code that makes use of the abstract definitions in
 # module detector
 

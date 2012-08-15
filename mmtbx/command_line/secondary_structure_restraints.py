@@ -1,3 +1,4 @@
+from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.secondary_structure_restraints
 
 from mmtbx.secondary_structure import *

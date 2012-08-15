@@ -1,3 +1,4 @@
+from __future__ import division
 
 # basic window for displaying a list of features of interest - these could
 # be ligands, difference map peaks, validation outliers, etc. (adapted from

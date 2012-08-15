@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.eltbx import covalent_radii
 from libtbx.test_utils import approx_equal
 

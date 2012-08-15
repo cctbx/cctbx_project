@@ -1,3 +1,4 @@
+from __future__ import division
 import libtbx.load_env
 from mmtbx.rotamer.n_dim_table import NDimTable
 from libtbx import easy_pickle

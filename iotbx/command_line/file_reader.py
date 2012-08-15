@@ -1,3 +1,4 @@
+from __future__ import division
 
 from iotbx import file_reader
 import libtbx.phil

@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx import slots_getstate_setstate
 
 class compute(slots_getstate_setstate):

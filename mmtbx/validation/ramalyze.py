@@ -1,3 +1,4 @@
+from __future__ import division
 # (jEdit options) :folding=explicit:collapseFolds=1:
 
 #{{{ coot_script_header

@@ -50,6 +50,7 @@ True
 
 
 """
+from __future__ import division
 
 __author__ = "Joe Bowers"
 __license__ = "MIT License"

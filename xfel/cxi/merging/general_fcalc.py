@@ -1,3 +1,4 @@
+from __future__ import division
 import mmtbx.command_line.fmodel
 import mmtbx.utils
 from iotbx import file_reader

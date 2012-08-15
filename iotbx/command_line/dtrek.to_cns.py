@@ -1,3 +1,4 @@
+from __future__ import division
 def iobs_as_fobs(iobs, isigma):
   import math
   if (iobs >= 0):

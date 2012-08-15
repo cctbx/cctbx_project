@@ -1,3 +1,4 @@
+from __future__ import division
 class SimpleNode:
   def __init__(self,tag,contents='',indent=True):
     self.tag=tag

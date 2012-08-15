@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.rigid_body.proto import joint_lib
 from scitbx.rigid_body.proto import test_utils
 from scitbx.rigid_body.proto.utils import center_of_mass_from_sites

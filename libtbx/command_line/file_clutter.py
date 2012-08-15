@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx.command_line import find_unused_imports_crude
 import sys, os
 import re

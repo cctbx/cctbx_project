@@ -1,3 +1,4 @@
+from __future__ import division
 
 import libtbx.load_env
 from libtbx.utils import null_out

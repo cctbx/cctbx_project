@@ -1,3 +1,4 @@
+from __future__ import division
 import struct
 from scitbx.array_family import flex
 

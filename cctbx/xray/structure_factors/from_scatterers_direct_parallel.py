@@ -1,3 +1,4 @@
+from __future__ import division
 # -*- coding: utf-8 -*-
 import copy,math
 from scitbx.array_family import flex

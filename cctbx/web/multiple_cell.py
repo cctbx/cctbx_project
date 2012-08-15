@@ -1,3 +1,4 @@
+from __future__ import division
 URL_cctbx_web = "cctbx_web.cgi"
 URL_target_module = "explore_symmetry"
 

@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.examples import phase_o_phrenia
 from cctbx.development import random_structure
 from cctbx.development import debug_utils

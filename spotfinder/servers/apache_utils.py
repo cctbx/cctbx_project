@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx.simplexml import SimpleNode
 
 class LongLineSimpleNode(SimpleNode):

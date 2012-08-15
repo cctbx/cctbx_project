@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx import xray

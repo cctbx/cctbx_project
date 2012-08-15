@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import crystal
 from libtbx.utils import detect_binary_file
 

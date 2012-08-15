@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.array_family import shared
 from libtbx.test_utils import approx_equal
 import pickle

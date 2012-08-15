@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.math import so3_lie_algebra
 
 import scitbx.matrix

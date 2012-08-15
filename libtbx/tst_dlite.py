@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx import dlite
 from libtbx.utils import null_out
 import time

@@ -1,3 +1,4 @@
+from __future__ import division
 class spot_wrapper:
   def __init__(self,working_phil):
       self.working_phil = working_phil

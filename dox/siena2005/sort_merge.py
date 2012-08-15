@@ -1,3 +1,4 @@
+from __future__ import division
 #
 # cctbx sort-merge solution for Siena exercise given by George Sheldrick
 #

@@ -1,4 +1,5 @@
 "Portable Batch System (PBS) utilities"
+from __future__ import division
 
 import sys, os
 

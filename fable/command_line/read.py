@@ -1,3 +1,4 @@
+from __future__ import division
 def process_each(process, file_names, report_success=False):
   import traceback
   n_fail = 0

@@ -1,3 +1,4 @@
+from __future__ import division
 import os, sys, string
 from iotbx import pdb
 from mmtbx import monomer_library

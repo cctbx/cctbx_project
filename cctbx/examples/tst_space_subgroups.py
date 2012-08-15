@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.examples import space_subgroups
 import sys
 

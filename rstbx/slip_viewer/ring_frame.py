@@ -1,3 +1,4 @@
+from __future__ import division
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # $Id: ring_frame.py 291 2012-03-08 05:35:12Z hattne $

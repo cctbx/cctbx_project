@@ -1,3 +1,4 @@
+from __future__ import division
 import libtbx.load_env
 import sys, os, string
 from libtbx.utils import Usage

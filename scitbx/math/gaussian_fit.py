@@ -1,3 +1,4 @@
+from __future__ import division
 import scitbx.math.gaussian
 from scitbx.math import golay_24_12_generator
 from scitbx import lbfgs

@@ -1,3 +1,4 @@
+from __future__ import division
 import iotbx.phil
 from mmtbx.refinement import print_statistics
 from cctbx.maptbx import real_space_target_and_gradients

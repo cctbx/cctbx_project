@@ -1,3 +1,4 @@
+from __future__ import division
 # Note: some related tests are in
 #       cctbx/regression/tst_sgtbx_special_op_simplifier.py
 

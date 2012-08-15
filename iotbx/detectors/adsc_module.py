@@ -1,3 +1,4 @@
+from __future__ import division
 import copy
 from iotbx.detectors.adsc import ADSCImage
 from scitbx.array_family import flex

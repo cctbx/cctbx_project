@@ -1,5 +1,6 @@
 """ All X-H bond lengths are in Angstrom and their values are taken from
 ShelXL documentation (p. 4-3) """
+from __future__ import division
 
 import smtbx.refinement.constraints as _
 from smtbx.refinement.constraints import InvalidConstraint, geometrical

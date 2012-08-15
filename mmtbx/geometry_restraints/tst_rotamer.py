@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx.monomer_library import server, pdb_interpretation
 import mmtbx.geometry_restraints.rotamer
 from iotbx import file_reader

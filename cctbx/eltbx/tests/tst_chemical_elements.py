@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.eltbx import chemical_elements
 from scitbx import stl
 import scitbx.stl.set

@@ -1,3 +1,4 @@
+from __future__ import division
 import sys, math
 from libtbx.str_utils import make_sub_header
 from libtbx.utils import Sorry

@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx.utils import escape_sh_double_quoted, gzip_open, bz2_open
 from libtbx import easy_run
 from libtbx.str_utils import show_string

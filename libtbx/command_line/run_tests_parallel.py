@@ -1,3 +1,4 @@
+from __future__ import division
 
 import libtbx.test_utils.parallel
 from libtbx.utils import Sorry, Usage

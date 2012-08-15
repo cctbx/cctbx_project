@@ -1,3 +1,4 @@
+from __future__ import division
 # -*- coding: utf-8 -*-
 #
 # cctbx documentation build configuration file, created by

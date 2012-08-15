@@ -2,6 +2,7 @@
 Updated example from IUCr Computing Commission Newsletter No. 1:
 http://cci.lbl.gov/publications/download/iucrcompcomm_jan2003.pdf
 """
+from __future__ import division
 
 from cctbx import xray
 from cctbx import crystal

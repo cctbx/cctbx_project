@@ -1,3 +1,4 @@
+from __future__ import division
 def get_resolution(st):
   result = None
   q1 = (st.count("REMARK   2 ")==1 and st.count("RESOLUTION")>0 and

@@ -1,3 +1,4 @@
+from __future__ import division
 def exercise():
   from cctbx.web import change_basis
   from libtbx.utils import Sorry

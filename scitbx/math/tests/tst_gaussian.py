@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.examples import immoptibox_ports
 from scitbx.math import gaussian
 from scitbx.array_family import flex

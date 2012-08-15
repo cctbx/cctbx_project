@@ -1,3 +1,4 @@
+from __future__ import division
 import mmtbx.alignment
 from iotbx.pdb import amino_acid_codes
 from libtbx import group_args

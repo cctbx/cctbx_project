@@ -1,3 +1,4 @@
+from __future__ import division
 import fileinput, re
 
 class empty: pass

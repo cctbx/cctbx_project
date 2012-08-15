@@ -1,3 +1,4 @@
+from __future__ import division
 def process(work_params, pixels, show_spots=True):
   from spotfinder import core_toolbox
   import time

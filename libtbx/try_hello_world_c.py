@@ -6,6 +6,7 @@ Intended use:
       "(status=$status)."
   endif
 """
+from __future__ import division
 
 import sys, os
 

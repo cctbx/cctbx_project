@@ -1,3 +1,4 @@
+from __future__ import division
 
 from wxtbx import metallicbutton
 import wxtbx.bitmaps

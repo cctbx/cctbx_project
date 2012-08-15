@@ -1,3 +1,4 @@
+from __future__ import division
 def exercise_oset():
   from libtbx.containers import OrderedSet as oset
   o = oset()

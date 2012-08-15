@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.eltbx import tiny_pse
 from scitbx.math import continued_fraction
 

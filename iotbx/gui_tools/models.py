@@ -1,3 +1,4 @@
+from __future__ import division
 
 # TODO: TESTS!, manage CIF files better, detect duplicates
 

@@ -1,3 +1,4 @@
+from __future__ import division
 import sys, os, time
 import iotbx.pdb
 import iotbx.pdb.remark_2_interpretation

@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import crystal
 import cctbx.crystal.coordination_sequences
 from cctbx import sgtbx, xray

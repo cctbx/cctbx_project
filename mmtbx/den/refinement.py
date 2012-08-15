@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx import utils
 from mmtbx.dynamics import simulated_annealing
 from mmtbx.refinement import tardy

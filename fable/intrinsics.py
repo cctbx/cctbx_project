@@ -1,3 +1,4 @@
+from __future__ import division
 set_lower = set("""\
 abs
 acos

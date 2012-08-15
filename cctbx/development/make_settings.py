@@ -1,3 +1,4 @@
+from __future__ import division
 # This script generates a list of non-standard space group settings.
 # The settings are used for testing.
 #

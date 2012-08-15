@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx.xds import read_ascii
 
 def extract_from(file_name):

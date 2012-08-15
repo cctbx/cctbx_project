@@ -12,6 +12,7 @@ Tables is apparently uncorrected from the 1989 edition.
 
 Author: N.K. Sauter
 '''
+from __future__ import division
 
 from cctbx import crystal
 from cctbx.uctbx import unit_cell

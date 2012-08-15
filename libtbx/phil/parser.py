@@ -1,3 +1,4 @@
+from __future__ import division
 import libtbx.phil
 
 def collect_assigned_words(word_iterator, lead_word):

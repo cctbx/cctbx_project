@@ -1,3 +1,4 @@
+from __future__ import division
 arithmetic_unary_ops = ("-")
 arithmetic_binary_ops = ("+", "-", "*", "/", "%")
 arithmetic_in_place_binary_ops = ("+=", "-=", "*=", "/=", "%=")

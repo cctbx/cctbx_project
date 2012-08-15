@@ -1,3 +1,4 @@
+from __future__ import division
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # XXX Module summary here

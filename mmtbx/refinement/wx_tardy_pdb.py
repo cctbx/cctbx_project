@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx.refinement import tst_tardy_pdb
 from gltbx import wx_viewer
 from gltbx import gl_managed

@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx import maptbx
 from cctbx.development import random_structure
 from cctbx import miller

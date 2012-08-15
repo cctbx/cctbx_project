@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx.cns import reflection_reader
 import sys
 if (__name__ == "__main__"):

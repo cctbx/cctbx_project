@@ -1,3 +1,4 @@
+from __future__ import division
 
 # TODO display indices of plane on image
 #      adjustable minimum spot size

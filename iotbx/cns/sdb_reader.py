@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx.cns.crystal_symmetry_utils import \
   re_sg_uc, crystal_symmetry_from_re_match
 from cctbx import crystal

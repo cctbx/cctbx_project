@@ -1,3 +1,4 @@
+from __future__ import division
 from FileServer import StartServer, GetServerClient, WriteServerFile
 
 def run():

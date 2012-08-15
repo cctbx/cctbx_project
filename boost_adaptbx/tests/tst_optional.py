@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx.test_utils import Exception_expected
 import boost.optional
 import sys

@@ -1,3 +1,4 @@
+from __future__ import division
 
 class hydrogen_toggle (object) :
   def __init__ (self, separator=False) :

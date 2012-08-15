@@ -1,3 +1,4 @@
+from __future__ import division
 import clipper
 from cctbx import xray
 from cctbx import miller

@@ -1,3 +1,4 @@
+from __future__ import division
 import boost.python
 boost.python.import_ext("scitbx_lstbx_normal_equations_ext")
 import scitbx_lstbx_normal_equations_ext as ext

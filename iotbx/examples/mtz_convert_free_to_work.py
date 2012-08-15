@@ -1,3 +1,4 @@
+from __future__ import division
 import iotbx.mtz
 from cctbx.array_family import flex
 import sys, os
