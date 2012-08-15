@@ -367,6 +367,11 @@ class miller_arrays_as_cif_block(crystal_symmetry_as_cif_block,
       else:
         data = [flex.abs(array.data()).as_string(),
                  array.phases().data().as_string()]
+    elif array.is_hendrickson_lattman_array():
+      if column_names is None:
+        column_names = [self.prefix+'HL_%s_iso' %abcd for abcd in 'ABCD']
+      else: assert len(column_names) == 4
+      data = [d.as_string() for d in array.data().as_abcd()]
     else:
       if array_type is not None:
         if array.is_xray_intensity_array():

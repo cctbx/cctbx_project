@@ -464,6 +464,16 @@ def exercise_mmcif_structure_factors():
       '_refln.pdbx_HL_C_iso', '_refln.pdbx_HL_D_iso']))
   assert hl_coeffs.is_hendrickson_lattman_array()
   assert hl_coeffs.size() == 2
+  mas_as_cif_block = cif.miller_arrays_as_cif_block(
+    hl_coeffs, column_names=('_refln.pdbx_HL_A_iso', '_refln.pdbx_HL_B_iso',
+                             '_refln.pdbx_HL_C_iso', '_refln.pdbx_HL_D_iso'))
+  abcd = []
+  for key in ('_refln.pdbx_HL_A_iso', '_refln.pdbx_HL_B_iso',
+              '_refln.pdbx_HL_C_iso', '_refln.pdbx_HL_D_iso'):
+    assert key in mas_as_cif_block.cif_block.keys()
+    abcd.append(flex.double(mas_as_cif_block.cif_block[key]))
+  hl_coeffs_from_cif_block = flex.hendrickson_lattman(*abcd)
+  assert approx_equal(hl_coeffs.data(), hl_coeffs_from_cif_block)
   f_meas_au = find_miller_array_from_labels(
     miller_arrays, ','.join([
       'scale_group_code=1', 'crystal_id=1', 'wavelength_id=1',
