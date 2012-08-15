@@ -226,7 +226,6 @@ class any_file_input (object) :
       self.file_description = self.__descriptions__[self.file_type]
 
   def try_as_pdb (self) :
-    from iotbx.pdb import is_pdb_file
     from iotbx.pdb import input as pdb_input
     from scitbx.array_family import flex
     raw_records = flex.std_string()

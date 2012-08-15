@@ -767,3 +767,22 @@ def construct_output_file_name(input_file_names,
       and os.path.samefile(user_file_name, input_file_names[0])):
     user_file_name += extension_seperator + file_extension
   return user_file_name
+
+def make_joined_set (miller_arrays) :
+  from cctbx import miller
+  master_set = miller.set(
+    crystal_symmetry=miller_arrays[0].crystal_symmetry(),
+    indices=miller_arrays[0].indices(),
+    anomalous_flag=False)
+  master_indices = miller_arrays[0].indices().deep_copy()
+  for array in miller_arrays[1:] :
+    current_indices = array.indices()
+    missing_isel = miller.match_indices(master_indices,
+      current_indices).singles(1)
+    missing_indices = current_indices.select(missing_isel)
+    master_indices.extend(missing_indices)
+  master_set = miller.set(
+    crystal_symmetry=miller_arrays[0].crystal_symmetry(),
+    indices=master_indices,
+    anomalous_flag=False)
+  return master_set.unique_under_symmetry().map_to_asu()

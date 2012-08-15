@@ -697,7 +697,8 @@ class process_arrays (object) :
     #-------------------------------------------------------------------
     # EXISTING R-FREE ARRAYS
     if len(r_free_arrays) > 0 :
-      from iotbx.reflection_file_utils import get_r_free_flags_scores
+      from iotbx.reflection_file_utils import get_r_free_flags_scores, \
+        make_joined_set
       have_r_free_array = True
       if len(self.final_arrays) > 0 :
         complete_set = make_joined_set(self.final_arrays).complete_set()
@@ -791,6 +792,7 @@ class process_arrays (object) :
     # NEW R-FREE ARRAY
     if ((params.mtz_file.r_free_flags.generate and not have_r_free_array) or
         params.mtz_file.r_free_flags.force_generate) :
+      from iotbx.reflection_file_utils import make_joined_set
       complete_set = make_joined_set(self.final_arrays).complete_set()
       r_free_params = params.mtz_file.r_free_flags
       new_r_free_array = complete_set.generate_r_free_flags(
@@ -917,25 +919,6 @@ def get_best_resolution (miller_arrays) :
     except Exception, e :
       pass
   return (best_d_max, best_d_min)
-
-def make_joined_set (miller_arrays) :
-  from cctbx import miller
-  master_set = miller.set(
-    crystal_symmetry=miller_arrays[0].crystal_symmetry(),
-    indices=miller_arrays[0].indices(),
-    anomalous_flag=False)
-  master_indices = miller_arrays[0].indices().deep_copy()
-  for array in miller_arrays[1:] :
-    current_indices = array.indices()
-    missing_isel = miller.match_indices(master_indices,
-      current_indices).singles(1)
-    missing_indices = current_indices.select(missing_isel)
-    master_indices.extend(missing_indices)
-  master_set = miller.set(
-    crystal_symmetry=miller_arrays[0].crystal_symmetry(),
-    indices=master_indices,
-    anomalous_flag=False)
-  return master_set.unique_under_symmetry().map_to_asu()
 
 def is_rfree_array (miller_array, array_info) :
   from iotbx import reflection_file_utils
