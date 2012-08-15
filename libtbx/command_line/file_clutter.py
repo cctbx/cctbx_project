@@ -1,7 +1,11 @@
 from libtbx.command_line import find_unused_imports_crude
 import sys, os
+import re
 
 class file_clutter(object):
+
+  from_future_import_division_pat = re.compile(
+    '^ from [ ]+ __future__ [ ]+ import [ \w,]+ division', re.VERBOSE)
 
   def __init__(self, path, find_unused_imports=False):
     self.path = path
@@ -12,6 +16,7 @@ class file_clutter(object):
     self.missing_eol = False
     self.n_bare_excepts = 0
     self.unused_imports = None
+    self.n_from_future_import_division = None
     bytes = open(path, "rb").read()
     if (len(bytes) > 0):
       if (bytes[-1] != "\n"):
@@ -28,8 +33,11 @@ class file_clutter(object):
         if (len(clean_line) == 0): self.n_trailing_empty_lines += 1
         else: self.n_trailing_empty_lines = 0
       if (path.endswith(".py")):
+        self.n_from_future_import_division = 0
         py_lines = bytes.splitlines()
         for line in py_lines:
+          if self.from_future_import_division_pat.search(line):
+            self.n_from_future_import_division += 1
           ls = line.strip()
           if (    ls.startswith("except")
               and ls[6:].strip().startswith(":")
@@ -75,6 +83,10 @@ class file_clutter(object):
       sapp("bare excepts=%d" % self.n_bare_excepts)
     if (self.has_unused_imports()):
       sapp("unused imports=%d" % len(self.unused_imports))
+    if self.n_from_future_import_division == 0:
+      sapp("missing 'from __future__ import division'")
+    elif self.n_from_future_import_division > 1:
+      sapp("more than one appearance of 'from __future__ import division'")
     return ", ".join(status)
 
   def show(self, flag_x, flag_dos_format=True, append=None):

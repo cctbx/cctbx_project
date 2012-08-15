@@ -20,6 +20,8 @@ def run(args):
   n_bare_excepts = 0
   n_has_unused_imports = 0
   message_lines = []
+  n_missing_from_future_import_division = 0
+  n_too_many_from_future_import_division = 0
   for info in gather(paths=paths, find_unused_imports=not flag_ni):
     if (info.is_cluttered(flag_x=flag_x)):
       n_is_cluttered += 1
@@ -27,6 +29,10 @@ def run(args):
       n_bare_excepts += info.n_bare_excepts
     if (info.has_unused_imports()):
       n_has_unused_imports += 1
+    if info.n_from_future_import_division == 0:
+      n_missing_from_future_import_division += 1
+    elif info.n_from_future_import_division > 1:
+      n_too_many_from_future_import_division += 1
     info.show(
       flag_x=flag_x,
       flag_dos_format=flag_dos_format,
@@ -36,6 +42,8 @@ def run(args):
     please_use.append("libtbx.clean_clutter")
   if (n_has_unused_imports != 0):
     please_use.append("libtbx.find_unused_imports_crude")
+  if n_missing_from_future_import_division:
+    please_use.append('libtbx.add_from_future_import_division')
   if (len(please_use) != 0):
     message_lines.append("")
     message_lines.append(
