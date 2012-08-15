@@ -127,8 +127,9 @@ Command-line options:
       for data_type_ in ["pdb", "fasta", "xray"] :
         files.append(get_pdb(id, data_type_, mirror, log))
       if (convert_to_mtz) :
-        easy_run.call("phenix.cif_as_mtz %s-sf.cif --symmetry=%s.pdb --merge" %
-          (id,id))
+        misc_args = ["--merge", "--map_to_asu", "--extend_flags"]
+        easy_run.call("phenix.cif_as_mtz %s-sf.cif --symmetry=%s.pdb %s" %
+          (id,id, " ".join(misc_args)))
         if os.path.isfile("%s-sf.mtz" % id) :
           os.rename("%s-sf.mtz" % id, "%s.mtz" % id)
           os.remove("%s-sf.cif" % id)

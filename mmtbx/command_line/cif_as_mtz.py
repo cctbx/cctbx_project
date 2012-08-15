@@ -97,6 +97,9 @@ def run(args, command_name = "phenix.cif_as_mtz"):
           action="store_true",
           help="Set sigmas to None instead of raising an error when bad sigmas "
                "are present.")
+      .option("--extend_flags",
+          action="store_true",
+          help="Extend R-free flags to cover all reflections if necessary.")
 
     ).process(args=args)
   except Exception, e:
@@ -134,7 +137,8 @@ def run(args, command_name = "phenix.cif_as_mtz"):
     map_to_asu=command_line.options.map_to_asu,
     remove_systematic_absences=command_line.options.remove_systematic_absences,
     incompatible_flags_to_work_set=command_line.options.incompatible_flags_to_work_set,
-    ignore_bad_sigmas=command_line.options.ignore_bad_sigmas)
+    ignore_bad_sigmas=command_line.options.ignore_bad_sigmas,
+    extend_flags=command_line.options.extend_flags)
 
 def process_files (file_name,
                    crystal_symmetry,
@@ -148,7 +152,8 @@ def process_files (file_name,
                    map_to_asu=False,
                    remove_systematic_absences=False,
                    incompatible_flags_to_work_set=False,
-                   ignore_bad_sigmas=False) :
+                   ignore_bad_sigmas=False,
+                   extend_flags=False) :
   mtz_object = extract(
     file_name                       = file_name,
     crystal_symmetry                = crystal_symmetry,
@@ -160,7 +165,8 @@ def process_files (file_name,
     map_to_asu                      = map_to_asu,
     remove_systematic_absences      = remove_systematic_absences,
     incompatible_flags_to_work_set  = incompatible_flags_to_work_set,
-    ignore_bad_sigmas               = ignore_bad_sigmas)
+    ignore_bad_sigmas               = ignore_bad_sigmas,
+    extend_flags                    = extend_flags)
   if(mtz_object is not None):
     if (pdb_file_name):
       pdb_raw_records = smart_open.for_reading(
@@ -218,7 +224,8 @@ def extract(file_name,
             map_to_asu,
             remove_systematic_absences,
             incompatible_flags_to_work_set=False,
-            ignore_bad_sigmas=False):
+            ignore_bad_sigmas=False,
+            extend_flags=False):
   import iotbx.cif
   from cctbx import miller
   base_array_info = miller.array_info(
@@ -230,7 +237,8 @@ def extract(file_name,
       "sure that the file contains reflection data, rather than the refined "+
       "model.")
   column_labels = set()
-
+  if (extend_flags) :
+    map_to_asu = True
   def get_label(miller_array):
     label = None
     for l in miller_array.info().labels:
@@ -296,6 +304,14 @@ def extract(file_name,
   mtz_crystals = {}
   mtz_object.set_hkl_base(unit_cell=unit_cell)
   from iotbx.reflection_file_utils import cif_status_flags_as_int_r_free_flags
+  complete_set = None
+  if (extend_flags) :
+    from iotbx.reflection_file_utils import make_joined_set
+    all_arrays = []
+    for (data_name, miller_arrays) in all_miller_arrays.iteritems() :
+      for ma in miller_arrays.values() :
+        all_arrays.append(ma)
+    complete_set = make_joined_set(all_arrays)
   for i, (data_name, miller_arrays) in enumerate(all_miller_arrays.iteritems()):
     for ma in miller_arrays.values():
       ma = ma.customized_copy(
@@ -390,8 +406,20 @@ def extract(file_name,
         ma = ma.map_to_asu().set_info(ma.info())
       if(remove_systematic_absences):
         ma = ma.remove_systematic_absences()
-      ma = ma.select_indices(indices=flex.miller_index(((0,0,0),)),negate=True) \
-        .set_info(ma.info()) # Get rid of fake (0,0,0) reflection in some CIFs
+      if (label.startswith(output_r_free_label)) and (extend_flags) :
+        missing_set = complete_set.lone_set(other=ma)
+        if (len(missing_set.indices()) > 0) :
+          from cctbx import r_free_utils
+          ma = r_free_utils.extend_flags(
+            r_free_flags=ma,
+            test_flag_value=0,
+            array_label=label,
+            complete_set=complete_set,
+            preserve_input_values=True,
+            log=sys.stdout)
+      # Get rid of fake (0,0,0) reflection in some CIFs
+      ma = ma.select_indices(indices=flex.miller_index(((0,0,0),)),
+        negate=True).set_info(ma.info())
       column_labels.add(label)
       dec = None
       if ("FWT" in label) :
