@@ -936,8 +936,10 @@ class manager(object):
     if(out is None): out = sys.stdout
     print >> out, "|-"+text+"-"*(80 - len("| "+text+"|") - 1)+"|"
     hd_sel = self.xray_structure.hd_selection()
-    occ = self.xray_structure.scatterers().extract_occupancies().select(~hd_sel)
-    less_than_zero = occ < 0.0
+    occ = self.xray_structure.scatterers().extract_occupancies()
+    # this needs to stay the same size - mask out HD selection
+    less_than_zero = (occ < 0.0) & ~hd_sel
+    occ = occ.select(~hd_sel)
     occ_min = flex.min(occ)
     occ_max = flex.max(occ)
     n_zeros = (occ < 0.1).count(True)
