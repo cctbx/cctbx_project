@@ -1,3 +1,4 @@
+from __future__ import division
 import mmtbx.monomer_library
 from scitbx.array_family import flex
 import iotbx.pdb
