@@ -235,6 +235,8 @@ class any_file_input (object) :
       structure = pdb_input(source_info=None, lines=raw_records)
     except ValueError, e :
       raise Sorry(str(e))
+    if (len(structure.atoms()) == 0) :
+      raise ValueError("No ATOM or HETATM records found.")
     self.file_type = "pdb"
     self.file_object = structure
 
