@@ -201,12 +201,15 @@ class RotamerEval:
     if resname == 'gly':
       return None
     atom_dict = self.get_atom_dict(residue)
-    chis = self.sidechain_angles.measureChiAngles(
-             res=residue,
-             atom_dict=atom_dict)
-    value = self.evaluate(
-              resname,
-              chis)
+    try:
+      chis = self.sidechain_angles.measureChiAngles(
+               res=residue,
+               atom_dict=atom_dict)
+      value = self.evaluate(
+                resname,
+                chis)
+    except Exception:
+      return None
     wrap_chis = \
       self.rot_id.wrap_chis(resname, chis, symmetry=False)
     rotamer_name = self.rot_id.identify(resname, wrap_chis)
