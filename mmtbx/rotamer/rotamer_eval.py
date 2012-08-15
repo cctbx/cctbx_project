@@ -215,6 +215,9 @@ class RotamerEval:
     wrap_chis = \
       self.rot_id.wrap_chis(resname, chis, symmetry=False)
     rotamer_name = self.rot_id.identify(resname, wrap_chis)
+    if(rotamer_name == "EXCEPTION"):
+      assert value is None
+      return rotamer_name
     if rotamer_name == "" or (value < 0.01):
       return "OUTLIER"
     else:
@@ -271,12 +274,12 @@ class RotamerID:
 
   def identify(self, aa_name, chis):
     aa_name = aa_name.lower()
+    if(aa_name == "ala"): return "EXCEPTION"
     if aa_name not in self.names:
       raise Sorry("Unknown residue name: %s", aa_name)
     wrap_chis = self.wrap_chis(aa_name, chis)
     rotList = self.names[aa_name]
     for rot in rotList:
-      #print rot
       if(rot.contains(wrap_chis)): return rot.rotamer_name
     return ""
 
