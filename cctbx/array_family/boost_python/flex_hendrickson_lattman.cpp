@@ -75,6 +75,28 @@ namespace {
       result, result.size());
   }
 
+  af::tiny<af::shared<double>, 4>
+  to_a_b_c_d(
+    af::const_ref<cctbx::hendrickson_lattman<> > const& hl)
+  {
+    af::shared<double> a;
+    af::shared<double> b;
+    af::shared<double> c;
+    af::shared<double> d;
+    a.reserve(hl.size());
+    b.reserve(hl.size());
+    c.reserve(hl.size());
+    d.reserve(hl.size());
+    for(std::size_t i=0;i<hl.size();i++) {
+      a.push_back(hl[i].a());
+      b.push_back(hl[i].b());
+      c.push_back(hl[i].c());
+      d.push_back(hl[i].d());
+    }
+    af::tiny<af::shared<double>, 4> result(a, b, c, d);
+    return result;
+  }
+
   flex<cctbx::hendrickson_lattman<> >::type*
   from_phase_integrals(
     af::const_ref<bool> const& centric_flags,
@@ -164,7 +186,9 @@ namespace {
       .def("__ne__", f_w::ne_a_s)
       .def("slice", slice, (arg("self"), arg("i_param")))
       .def("conj", conj)
+      .def("as_abcd", to_a_b_c_d)
     ;
   }
+
 
 }}} // namespace scitbx::af::boost_python

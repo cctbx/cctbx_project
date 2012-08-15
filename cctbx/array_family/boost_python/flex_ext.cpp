@@ -25,6 +25,14 @@ namespace scitbx { namespace af { namespace boost_python {
 
 namespace {
 
+  void
+  register_cctbx_to_tuple()
+  {
+    // used by flex_hendrickson_lattman.cpp
+    using namespace scitbx::boost_python::container_conversions;
+    to_tuple_mapping<af::tiny<af::shared<double>, 4> >();
+  }
+
   void register_cctbx_tuple_mappings()
   {
     using namespace scitbx::boost_python::container_conversions;
@@ -67,6 +75,7 @@ namespace {
     // Therefore it is convenient to register all tuple mappings from here.
     register_cctbx_tuple_mappings();
     register_cctbx_c_grid_conversions();
+    register_cctbx_to_tuple();
   }
 
 } // namespace <anonymous>
