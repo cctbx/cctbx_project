@@ -1347,7 +1347,7 @@ mmtbx/validation/ramalyze.py svneol=native#text/x-python
 mmtbx/validation/rna_validate.py svneol=native#text/x-python
 mmtbx/validation/rotalyze.py svneol=native#text/x-python
 mmtbx/validation/sequence.py -text
-mmtbx/validation/tst_rotalize.py -text
+mmtbx/validation/tst_rotalyze.py -text
 mmtbx/validation/utils.py -text
 mmtbx/wwpdb/__init__.py -text
 mmtbx/wwpdb/standard_geometry_cif.py -text
