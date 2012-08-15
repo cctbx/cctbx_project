@@ -875,29 +875,39 @@ class sequence_window (object) :
     if getattr(self, "seq_panel", None) is not None :
       self.control_panel.bind_events(self, self.seq_panel)
 
-  def load_pdb_file (self, file_name) :
+  def load_pdb_file (self, file_name, ignore_unk=False) :
     from iotbx import file_reader
     pdb_in = file_reader.any_file(file_name, force_type="pdb").file_object
     pdb_hierarchy = pdb_in.construct_hierarchy()
     pdb_hierarchy.atoms().reset_i_seq()
     xray_structure = pdb_in.xray_structure_simple()
-    self.set_pdb_data(pdb_hierarchy, xray_structure)
+    self.set_pdb_data(pdb_hierarchy, xray_structure, ignore_unk=ignore_unk)
 
-  def set_pdb_data (self, pdb_hierarchy, xray_structure) :
+  def set_pdb_data (self, pdb_hierarchy, xray_structure, ignore_unk=False) :
     from mmtbx import secondary_structure
     sec_str = secondary_structure.manager(pdb_hierarchy, xray_structure)
     out = cStringIO.StringIO()
     sec_str.find_automatically(log=out)
     sec_str.show_summary()
-    self.set_data(pdb_hierarchy, sec_str, auto_select=True)
+    self.set_data(
+      pdb_hierarchy=pdb_hierarchy,
+      sec_str=sec_str,
+      auto_select=True,
+      ignore_unk=ignore_unk)
 
-  def set_data (self, pdb_hierarchy, sec_str, auto_select=True) :
+  def set_data (self, pdb_hierarchy, sec_str, auto_select=True,
+      ignore_unk=False) :
     self.pdb_hierarchy = pdb_hierarchy
     self.sec_str = sec_str
     self._chain_cache = {}
     self._seq_cache = {}
     self._ss_cache = {}
     for chain in pdb_hierarchy.models()[0].chains() :
+      if (ignore_unk) :
+        segids = chain.atoms().extract_segid()
+        if (segids.all_eq('UNK ')) :
+          print "Skipping unknown residues in chain %s" % chain.id
+          continue
       conf = chain.conformers()[0]
       if not conf.is_protein() :
         print "Skipping non-protein chain %s" % chain.id
