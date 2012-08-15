@@ -1,11 +1,11 @@
-from __future__ import division
 import mmtbx.monomer_library
 from scitbx.array_family import flex
 import iotbx.pdb
+from mmtbx.validation import rotalyze
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 from libtbx.test_utils import approx_equal
 
-pdb_str = """\
+pdb_str1 = """\
 CRYST1   16.960   19.455   19.841  90.00  90.00  90.00 P 1
 SCALE1      0.058962  0.000000  0.000000        0.00000
 SCALE2      0.000000  0.051401  0.000000        0.00000
@@ -83,7 +83,17 @@ TER      54      SER A  24
 END
 """
 
-def run():
+pdb_str2 = """\
+ATOM     28  N   PRO C  29      61.293  16.365  38.366  1.00 45.42           N
+ATOM     29  CA  PRO C  29      61.610  17.144  39.554  1.00 51.27           C
+ATOM     30  C   PRO C  29      60.399  17.813  40.109  1.00 50.43           C
+ATOM     31  O   PRO C  29      59.324  17.664  39.560  1.00 47.67           O
+ATOM     32  CB  PRO C  29      62.495  18.235  38.993  1.00 49.45           C
+ATOM     33  CG  PRO C  29      61.908  18.507  37.705  1.00 55.39           C
+ATOM     34  CD  PRO C  29      61.575  17.152  37.157  1.00 56.41           C
+"""
+
+def run(pdb_str, expected_ids):
   get_class = iotbx.pdb.common_residue_names_get_class
   mon_lib_srv = mmtbx.monomer_library.server.server()
   rotamer_manager = RotamerEval()
@@ -109,23 +119,18 @@ def run():
             rotamer_iterator = None
           if(rotamer_iterator is not None):
             d1_min, d2_min = 1.e+9, 1.e+9
-            id_1, id_2 = None, None
             for r, rotamer_sites_cart in rotamer_iterator:
-              sites_cart_rot = rotamer_manager.get_rotamer_sites(
-                residue=residue,
-                rotamer=r.id)
+              sites_cart_rot = rotamer_manager.nearest_rotamer_sites_cart(
+                residue=residue)
               d1= flex.mean(flex.sqrt((sites_cart - sites_cart_rot).dot()))
               d2= flex.mean(flex.sqrt((sites_cart - rotamer_sites_cart).dot()))
               if(d1 < d1_min):
                 d1_min = d1
-                id_1 = r.id
               if(d2 < d2_min):
                 d2_min = d2
-                id_2 = r.id
-            print "  %s %6.4f %s %6.4f" % (id_1, d1_min, id_2, d2_min)
             assert approx_equal(d1_min, d2_min)
-            assert id_1 == id_2
-  assert result_ids == ['m-85', 'OUTLIER', 'm95', 'OUTLIER', None, 'm-85', 'p']
+  assert result_ids == expected_ids
 
 if(__name__ == "__main__"):
-  run()
+  run(pdb_str = pdb_str1, expected_ids=['m-85', 'OUTLIER', 'm95', 'OUTLIER', None, 'm-85', 'p'])
+  run(pdb_str = pdb_str2, expected_ids=['Cg_endo'])
