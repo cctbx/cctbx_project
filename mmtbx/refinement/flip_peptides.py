@@ -377,7 +377,9 @@ def run(fmodel,
   selection &= backbone_selections
   fmt = "Macro-cycle %2d: r_work=%6.4f r_free=%6.4f"
   print >> log, fmt%(0, fmodel.r_work(), fmodel.r_free())
-  for macro_cycle in range(1,params.number_of_macro_cycles+1):
+  n_mac = params.number_of_macro_cycles
+  if (n_mac is None) : n_mac = 0
+  for macro_cycle in range(1,n_mac+1) :
     target_map_data, fft_map_1 = fit_rotamers.get_map_data(
       fmodel=fmodel,
       map_type=params.target_map,
