@@ -93,6 +93,27 @@ ATOM     33  CG  PRO C  29      61.908  18.507  37.705  1.00 55.39           C
 ATOM     34  CD  PRO C  29      61.575  17.152  37.157  1.00 56.41           C
 """
 
+pdb_str3 = """\
+ATOM    127  N   PRO L  18      18.596 -78.410  66.845  1.00 33.30           N
+ATOM    128  CA  PRO L  18      19.467 -77.234  66.790  1.00 32.71           C
+ATOM    129  C   PRO L  18      20.924 -77.585  66.494  1.00 30.96           C
+ATOM    130  O   PRO L  18      21.369 -78.705  66.735  1.00 30.74           O
+ATOM    131  CB  PRO L  18      19.289 -76.622  68.173  1.00 31.82           C
+ATOM    132  CG  PRO L  18      19.175 -77.838  69.037  1.00 33.36           C
+ATOM    133  CD  PRO L  18      18.236 -78.728  68.240  1.00 34.01           C
+ATOM    134  N   ALA L  19      21.657 -76.614  65.963  1.00 28.50           N
+ATOM    135  CA  ALA L  19      23.064 -76.802  65.641  1.00 27.23           C
+ATOM    136  C   ALA L  19      23.816 -75.537  66.027  1.00 27.07           C
+ATOM    137  O   ALA L  19      23.265 -74.434  65.976  1.00 24.32           O
+ATOM    138  CB  ALA L  19      23.231 -77.079  64.157  1.00 30.04           C
+ATOM    139  N   SER L  20      25.075 -75.694  66.411  1.00 24.81           N
+ATOM    140  CA  SER L  20      25.874 -74.549  66.816  1.00 27.97           C
+ATOM    141  C   SER L  20      27.304 -74.675  66.310  1.00 26.96           C
+ATOM    142  O   SER L  20      27.912 -75.739  66.408  1.00 27.07           O
+ATOM    143  CB  SER L  20      25.863 -74.436  68.344  1.00 29.31           C
+ATOM    144  OG  SER L  20      26.505 -73.254  68.779  1.00 39.96           O
+"""
+
 def run(pdb_str, expected_ids):
   get_class = iotbx.pdb.common_residue_names_get_class
   mon_lib_srv = mmtbx.monomer_library.server.server()
@@ -134,3 +155,4 @@ def run(pdb_str, expected_ids):
 if(__name__ == "__main__"):
   run(pdb_str = pdb_str1, expected_ids=['m-85', 'OUTLIER', 'm95', 'OUTLIER', None, 'm-85', 'p'])
   run(pdb_str = pdb_str2, expected_ids=['Cg_endo'])
+  run(pdb_str = pdb_str3, expected_ids=['Cg_endo', 'EXCEPTION', 't'])
