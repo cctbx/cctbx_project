@@ -198,10 +198,10 @@ maps {
       .short_caption = Job title
       .input_size = 400
       .style = noauto
-    fmodel_data_file_format = mtz cns
+    fmodel_data_file_format = mtz
       .optional=True
       .type=choice
-      .help=Write Fobs, Fmodel, various scales and more to MTZ or CNS file
+      .help=Write Fobs, Fmodel, various scales and more to MTZ file
   }
   scattering_table = wk1995  it1992  *n_gaussian  neutron
     .type = choice
