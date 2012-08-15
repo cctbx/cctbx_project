@@ -82,6 +82,7 @@ def exercise_flex_hendrickson_lattman():
   d = flex.double([-4,7,8])
   h = flex.hendrickson_lattman(a=a, b=b, c=c, d=d)
   assert approx_equal(h, [(1,-3,4,-4), (2,4,5,7), (3,5,6,8)])
+  assert approx_equal(h.as_abcd(), [a, b, c, d])
 
 def exercise_flex_xray_scatterer():
   from cctbx import uctbx, sgtbx, xray
