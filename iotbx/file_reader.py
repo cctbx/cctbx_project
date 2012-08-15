@@ -227,20 +227,17 @@ class any_file_input (object) :
 
   def try_as_pdb (self) :
     from iotbx.pdb import is_pdb_file
-    if is_pdb_file(self.file_name) :
-      from iotbx.pdb import input as pdb_input
-      from scitbx.array_family import flex
-      raw_records = flex.std_string()
-      pdb_file = smart_open.for_reading(file_name=self.file_name)
-      raw_records.extend(flex.split_lines(pdb_file.read()))
-      try :
-        structure = pdb_input(source_info=None, lines=raw_records)
-      except ValueError, e :
-        raise Sorry(str(e))
-      self.file_type = "pdb"
-      self.file_object = structure
-    else :
-      raise ValueError("Can't parse this as a PDB file.")
+    from iotbx.pdb import input as pdb_input
+    from scitbx.array_family import flex
+    raw_records = flex.std_string()
+    pdb_file = smart_open.for_reading(file_name=self.file_name)
+    raw_records.extend(flex.split_lines(pdb_file.read()))
+    try :
+      structure = pdb_input(source_info=None, lines=raw_records)
+    except ValueError, e :
+      raise Sorry(str(e))
+    self.file_type = "pdb"
+    self.file_object = structure
 
   def try_as_hkl (self) :
     from iotbx.reflection_file_reader import any_reflection_file
