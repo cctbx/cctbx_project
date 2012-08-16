@@ -4,6 +4,7 @@ from mmtbx.validation.rotalyze import rotalyze
 from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.utils import rotatable_bonds
 from mmtbx.rotamer.sidechain_angles import SidechainAngles
+from mmtbx.refinement import fit_rotamers
 import mmtbx.monomer_library
 from cctbx.array_family import flex
 import iotbx.phil
