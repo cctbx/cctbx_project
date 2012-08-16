@@ -6,7 +6,7 @@ from mmtbx.refinement import fit_rotamers
 from scitbx.array_family import flex
 from scitbx import matrix
 from cctbx import adptbx
-import mmtbx.refinement.fit_rotamers
+from mmtbx.utils import rotatable_bonds
 
 def get_axes_and_atoms_i_seqs(pdb_hierarchy, mon_lib_srv):
   get_class = iotbx.pdb.common_residue_names_get_class
@@ -17,7 +17,7 @@ def get_axes_and_atoms_i_seqs(pdb_hierarchy, mon_lib_srv):
         for conformer in residue_group.conformers():
           for residue in conformer.residues():
             if(get_class(residue.resname) == "common_amino_acid"):
-              aaa = mmtbx.refinement.fit_rotamers.axes_and_atoms_aa_specific(
+              aaa = rotatable_bonds.axes_and_atoms_aa_specific(
                 residue = residue, mon_lib_srv = mon_lib_srv)
               if(aaa is not None):
                 for aaa_ in aaa:

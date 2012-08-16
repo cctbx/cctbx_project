@@ -1337,6 +1337,8 @@ mmtbx/tst_pdbtools.py -text
 mmtbx/tst_utils.py -text
 mmtbx/utils/LICENSE.txt -text
 mmtbx/utils/SConscript -text
+mmtbx/utils/__init__.py -text
+mmtbx/utils/rotatable_bonds.py -text
 mmtbx/utils/utils.h -text
 mmtbx/utils/utils_ext.cpp -text
 mmtbx/validation/__init__.py svneol=native#text/x-python
