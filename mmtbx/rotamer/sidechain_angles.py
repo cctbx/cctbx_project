@@ -3,6 +3,7 @@ import scitbx.math
 from libtbx.utils import Sorry
 import libtbx.load_env
 from libtbx import group_args
+import iotbx.pdb
 import sys, os
 
 def find_source_dir(optional=False):
@@ -105,18 +106,23 @@ class SidechainAngles:
         atom_dict = None,
         sites_cart = None):
     resName = res.resname.lower().strip()
-    try:
-      numChis = int(self.chisPerAA[resName])
-      values = []
-      for i in range(numChis):
-        values.append(self.measureAngle(
-                        angleName="chi"+str(i+1),
-                        res=res,
-                        atom_dict=atom_dict,
-                        sites_cart=sites_cart))
-      return values
-    except KeyError:
-      if self.show_errors: print resName + " is an unknown residue type"
+    get_class = iotbx.pdb.common_residue_names_get_class
+    if(get_class(res.resname) == "common_amino_acid"):
+      try:
+        numChis = int(self.chisPerAA[resName])
+        values = []
+        for i in range(numChis):
+          values.append(self.measureAngle(
+                          angleName="chi"+str(i+1),
+                          res=res,
+                          atom_dict=atom_dict,
+                          sites_cart=sites_cart))
+        return values
+      except KeyError:
+        if self.show_errors: print resName + " is an unknown residue type"
+        return None
+    else:
+      return None
 
 #  def measureChiAnglesDict(self, atom_dict, resName):
 #    try:

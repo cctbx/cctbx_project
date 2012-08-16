@@ -212,6 +212,8 @@ class RotamerEval:
                 chis)
     except Exception:
       return None
+    if chis is None:
+      return None
     wrap_chis = \
       self.rot_id.wrap_chis(resname, chis, symmetry=False)
     rotamer_name = self.rot_id.identify(resname, wrap_chis)
