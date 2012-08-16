@@ -2,7 +2,7 @@ from __future__ import division
 import cctbx.geometry_restraints
 from mmtbx.validation.rotalyze import rotalyze
 from mmtbx.validation.ramalyze import ramalyze
-from mmtbx.refinement import fit_rotamers
+from mmtbx.utils import rotatable_bonds
 from mmtbx.rotamer.sidechain_angles import SidechainAngles
 import mmtbx.monomer_library
 from cctbx.array_family import flex
@@ -1147,7 +1147,7 @@ class torsion_ncs(object):
         log):
     include_ca_hinge = False
     axis_and_atoms_to_rotate, tardy_labels= \
-      fit_rotamers.axes_and_atoms_aa_specific(
+      rotatable_bonds.axes_and_atoms_aa_specific(
           residue=atom_group,
           mon_lib_srv=self.mon_lib_srv,
           remove_clusters_with_all_h=True,

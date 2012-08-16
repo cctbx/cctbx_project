@@ -13,6 +13,7 @@ from cctbx import miller
 import mmtbx.refinement.real_space
 import random
 from scitbx.array_family import flex
+from libtbx.utils import user_plus_sys_time
 
 if (1):
   random.seed(0)
@@ -73,8 +74,8 @@ def process_inputs(args, log):
       broadcast(m="Processing input CCP4 map file: %s"%afo.file_name, log=log)
       ccp4_map = iotbx.ccp4_map.map_reader(file_name=afo.file_name)
       ccp4_map.show_summary(prefix="  ")
-      if(ccp4_map.space_group_number != 1):
-        raise Sorry("Map must be given in P1 box. Use phenix.map_box.")
+      #if(ccp4_map.space_group_number != 1):
+      #  raise Sorry("Map must be given in P1 box. Use phenix.map_box.")
     elif(afo.file_type == "hkl"):
       broadcast(m="Processing input file: %s"%afo.file_name, log=log)
       miller_arrays = reflection_file_reader.any_reflection_file(file_name =
@@ -168,6 +169,7 @@ Feedback:
   print >> log, "-"*79
 
 def run(args, log = None, resolution_factor=1./4):
+  timer = user_plus_sys_time()
   if(log is None): log = sys.stdout
   format_usage_message(log = log)
   if(len(args)==0): return
@@ -179,16 +181,25 @@ def run(args, log = None, resolution_factor=1./4):
     xray_structure     = inputs.xray_structure)
   target_map = extract_target_map_data_and_crystal_gridding(inputs=inputs,
     resolution_factor=resolution_factor)
-  xray_structure_refined = mmtbx.refinement.real_space.run_tmp(
+  pdb_hierarchy = inputs.processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  time_startup = timer.elapsed()
+  broadcast(m="Refinement start:", log=log)
+  xray_structure_refined = mmtbx.refinement.real_space.run(
     target_map                  = target_map,
+    pdb_hierarchy               = pdb_hierarchy,
     xray_structure              = inputs.xray_structure,
     geometry_restraints_manager = geometry_restraints_manager,
-    max_iterations = 50,
-    macro_cycles   = 10)
-  pdb_hierarchy = inputs.processed_pdb_file.all_chain_proxies.pdb_hierarchy
+    max_iterations = 150,
+    macro_cycles   = 30)
   pdb_hierarchy.adopt_xray_structure(xray_structure_refined)
   pdb_hierarchy.write_pdb_file(file_name=inputs.pdb_file_name[:-4]+"_real_space_refined.pdb",
     crystal_symmetry = xray_structure_refined.crystal_symmetry())
+  broadcast(m="Almost done... Run time infromation:", log=log)
+  mmtbx.refinement.real_space.show_time(
+    external=[["  time_startup      : %6.3f", time_startup]])
 
 if(__name__ == "__main__"):
+  timer = user_plus_sys_time()
   run(sys.argv[1:])
+  print "Total time: %8.3f" % timer.elapsed()
+  print "All done."

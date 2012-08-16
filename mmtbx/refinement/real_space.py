@@ -8,9 +8,11 @@ import scitbx.lbfgs
 from cctbx import maptbx
 from cctbx.array_family import flex
 from mmtbx import utils
-from mmtbx.validation import clashscore
+from mmtbx.rotamer.rotamer_eval import RotamerEval
 from cctbx import miller
 from libtbx.test_utils import approx_equal
+import mmtbx.monomer_library
+from libtbx.utils import user_plus_sys_time
 
 master_params_str = """\
 real_space_refinement
@@ -65,150 +67,32 @@ real_space_refinement
   }
 """
 
+time_target_simple = 0
+time_compute_map   = 0
+time_map_cc        = 0
+time_update        = 0
+time_states        = 0
+
+def show_time(external):
+  total = 0
+  print "Detailed:"
+  print "  time_target_simple: %6.3f" % time_target_simple
+  print "  time_compute_map  : %6.3f" % time_compute_map
+  print "  time_map_cc       : %6.3f" % time_map_cc
+  print "  time_update       : %6.3f" % time_update
+  print "  time_states       : %6.3f" % time_states
+  total = time_target_simple+\
+          time_compute_map+\
+          time_map_cc+\
+          time_update+\
+          time_states
+  for e in external:
+    print e[0]%e[1]
+    total += e[1]
+  print "    sub-total       : %6.3f" % total
+
 def master_params():
   return iotbx.phil.parse(master_params_str, process_includes=False)
-
-class run(object):
-
-  def __init__(self, fmodel, model, params=None, log=None):
-    adopt_init_args(self, locals())
-    if(params is None):
-      params = master_params().extract()
-      params = params.real_space_refinement
-      self.params = params
-    if(log is None): log = sys.stdout
-    if(params.verbose):
-      print_statistics.make_header("Real-space coordinate refinement", out=log)
-    fft_map_target = self.compute_map(map_type = params.target_map_name)
-    geom = self.show()
-    step = self.fmodel.f_obs_work().d_min()*\
-      params.grid_resolution_factor
-    if(params.real_space_target_weight is not None):
-      real_space_target_weight = params.real_space_target_weight
-    else:
-      real_space_target_weight = 1.
-    if(params.target_weights == "grid_search"):
-      restraints_target_weights = params.grid_search_scales
-    elif(params.target_weights == "value"):
-      assert [params.real_space_target_weight,
-              params.restraints_target_weight].count(None)==0
-      if(params.real_space_target_weight is not None):
-        real_space_target_weight = params.real_space_target_weight
-      if(params.restraints_target_weight is not None):
-        restraints_target_weights = [params.restraints_target_weight]
-    elif(params.target_weights == "gradients_ratio"):
-      real_space_target_weight = 1.
-      restraints_target_weights = [1.,]
-    if(params.target_weights == "gradients_ratio" or
-       params.target_weights == "grid_search"):
-      map_current = None
-      if(params.mode == "diff_map"):
-          map_current = self.compute_map(map_type =
-            params.model_map_name).real_map_unpadded()
-      restraints_target_weight_ = \
-        real_space_target_and_gradients.target_and_gradients(
-          unit_cell                   = self.fmodel.xray_structure.unit_cell(),
-          map_target                  = fft_map_target.real_map_unpadded(),
-          map_current                 = map_current,
-          real_space_gradients_delta  = step,
-          sites_frac                  = self.fmodel.xray_structure.sites_frac(),
-          geometry_restraints_manager = model.restraints_manager,
-          real_space_target_weight    = 1,
-          restraints_target_weight    = 1,
-          sites_cart                  = self.fmodel.xray_structure.sites_cart(),
-          target_type                 = params.mode).weight()
-    self.fmodel.update_xray_structure(
-      xray_structure = self.fmodel.xray_structure,
-      update_f_calc  = True,
-      update_f_mask  = True)
-    xrs_start = self.fmodel.xray_structure.deep_copy_scatterers()
-    geom = model.geometry_statistics(ignore_hd = True) # XXX
-    b_start, a_start = geom.b_mean, geom.a_mean
-    best_weight_scale = None
-    for i_w, restraints_target_weight in enumerate(restraints_target_weights):
-      self.fmodel.update_xray_structure(
-        xray_structure = xrs_start,
-        update_f_calc  = True,
-        update_f_mask  = True)
-      model.xray_structure = self.fmodel.xray_structure
-      for cycle in range(1,params.number_of_cycles+1):
-        map_current = None
-        if(params.mode == "diff_map"):
-            map_current = self.compute_map(map_type =
-              params.model_map_name).real_map_unpadded()
-        if(params.target_weights == "gradients_ratio" or
-           params.target_weights == "grid_search"):
-          if(params.target_weights == "grid_search"):
-            restraints_target_weight = restraints_target_weight_*\
-              restraints_target_weight
-          else: restraints_target_weight = restraints_target_weight_
-        minimized = real_space_target_and_gradients.minimization(
-          xray_structure              = xrs_start.deep_copy_scatterers(),
-          miller_array                = self.fmodel.f_obs_work(),
-          crystal_gridding            = fft_map_target,
-          map_target                  = fft_map_target.real_map_unpadded(),
-          step                        = step,
-          restraints_target_weight    = restraints_target_weight,
-          target_type                 = params.mode,
-          geometry_restraints_manager = model.restraints_manager)
-        self.fmodel.update_xray_structure(
-          xray_structure = minimized.xray_structure,
-          update_f_calc  = True,
-          update_f_mask  = True)
-        model.xray_structure = self.fmodel.xray_structure
-        self.show(weight=restraints_target_weight)
-        if(i_w == 0):
-          xrs_best = self.fmodel.xray_structure.deep_copy_scatterers()
-          r_free_best = self.fmodel.r_free()
-        else:
-          r_free = self.fmodel.r_free()
-          geom = model.geometry_statistics(ignore_hd = True) # XXX
-          if(r_free < r_free_best and ((geom.b_mean <= params.rmsd_max_bonds and
-             geom.a_mean <= params.rmsd_max_angles) or
-             ((geom.b_mean > params.rmsd_max_bonds or geom.a_mean > params.rmsd_max_angles)
-             and (geom.b_mean <= b_start or geom.a_mean <= a_start)) )):
-            r_free_best = r_free
-            xrs_best = minimized.xray_structure.deep_copy_scatterers()
-            best_weight_scale = restraints_target_weight/restraints_target_weight_
-    self.fmodel.update_xray_structure(
-      xray_structure = xrs_best,
-      update_f_calc  = True,
-      update_f_mask  = True)
-    model.xray_structure = self.fmodel.xray_structure
-    self.show()
-    print >> self.log, "Best weight scale: %s"%format_value("%8.4f",best_weight_scale)
-
-  def compute_map(self, map_type=None, use_all_data=False):
-    e_map_manager = self.fmodel.electron_density_map() # XXX pass in map filling options
-    fft_map = e_map_manager.fft_map(
-      resolution_factor = self.params.grid_resolution_factor,
-      map_type          = map_type,
-      use_all_data      = use_all_data)
-    fft_map.apply_sigma_scaling()
-    return fft_map
-
-  def show(self, weight=None):
-    geom = self.model.geometry_statistics(ignore_hd = True) # XXX
-    if(self.params.verbose):
-      p1 = "|-real space refinement (target=%s)"%self.params.mode
-      p1 +="-"*(78-len(p1))+"|"
-      print >> self.log, p1
-      if(weight is not None):
-        p2 = "| r_work=%s r_free=%s  rmsd bonds=%s angles=%s  weight=%s  |"%(
-          format_value("%6.4f", self.fmodel.r_work()),
-          format_value("%6.4f", self.fmodel.r_free()),
-          format_value("%5.3f", geom.b_mean),
-          format_value("%5.2f", geom.a_mean),
-          format_value("%7.2f", weight))
-      else:
-        p2 = "| r_work=%s r_free=%s rmsd bonds=%s angles=%s%s|"%(
-          format_value("%6.4f", self.fmodel.r_work()),
-          format_value("%6.4f", self.fmodel.r_free()),
-          format_value("%5.3f", geom.b_mean),
-          format_value("%5.2f", geom.a_mean), " "*19)
-      print >> self.log, p2
-      print >> self.log, "|"+"-"*77+"|"
-    return geom
 
 class simple(object):
   def __init__(self,
@@ -369,64 +253,307 @@ class refinery(object):
     elif(weight <= 1.0):   self.weight_sample_rate=0.1
     elif(weight <= 0.1):   self.weight_sample_rate=0.01
 
+class states(object):
+  def __init__(self, xray_structure, pdb_hierarchy):
+    adopt_init_args(self, locals())
+    self.counter = 0
+    self.root = iotbx.pdb.hierarchy.root()
+    self.sites_carts = []
+
+  def add(self, sites_cart):
+    global time_states
+    timer = user_plus_sys_time()
+    self.sites_carts.append(sites_cart)
+    ph = self.pdb_hierarchy.deep_copy()
+    xrs = self.xray_structure.replace_sites_cart(new_sites = sites_cart)
+    ph.adopt_xray_structure(xrs)
+    models = ph.models()
+    md = models[0].detached_copy()
+    md.id = str(self.counter)
+    self.root.append_model(md)
+    self.counter += 1
+    time_states += timer.elapsed()
+
+  def write(self, file_name):
+    self.root.write_pdb_file(file_name = file_name)
+
+def target_simple(target_map, sites_cart=None, sites_frac=None, unit_cell=None):
+  global time_target_simple
+  timer = user_plus_sys_time()
+  assert [sites_cart, sites_frac].count(None) == 1
+  if(sites_frac is None):
+    assert unit_cell is not None
+    sites_frac = unit_cell.fractionalize(sites_cart)
+  result = 0
+  for site_frac in sites_frac:
+    result += target_map.eight_point_interpolation(site_frac)
+  scale = 1
+  if(sites_cart.size() > 0): scale = 1./sites_cart.size()
+  time_target_simple += timer.elapsed()
+  return result*scale
+
+class evaluator(object):
+  def __init__(self, sites_cart, target_map, unit_cell):
+    adopt_init_args(self, locals())
+    self.target = target_simple(
+      target_map = self.target_map,
+      sites_cart = self.sites_cart,
+      unit_cell  = self.unit_cell)
+
+  def evaluate(self, sites_cart):
+    t = target_simple(
+      target_map = self.target_map,
+      sites_cart = sites_cart,
+      unit_cell  = self.unit_cell)
+    print "  ", t
+    if(t >= self.target):
+      self.sites_cart = sites_cart
+      self.target = t
+
+class rsr_residue(object):
+  def __init__(self,
+               pdb_hierarchy_residue,
+               selection_sidechain,
+               selection_backbone,
+               selection_all,
+               map_cc_sidechain=None,
+               map_cc_backbone=None,
+               map_cc_all=None,
+               map_value_sidechain=None,
+               map_value_backbone=None,
+               distance_to_closest_rotamer=None,
+               rotamer_status=None):
+    adopt_init_args(self, locals())
+
+def rotamer_fit(residue, target_map, mon_lib_srv, unit_cell):
+  sites_cart_result = residue.atoms().extract_xyz()
+  rotamer_iterator = get_rotamer_iterator(
+    mon_lib_srv = mon_lib_srv, residue = residue)
+  if(rotamer_iterator is not None):
+    e = evaluator(
+      sites_cart = residue.atoms().extract_xyz(),
+      target_map = target_map,
+      unit_cell  = unit_cell)
+    print residue.resname,residue.resseq, e.target
+    for rotamer, rotamer_sites_cart in rotamer_iterator:
+      e.evaluate(sites_cart=rotamer_sites_cart.deep_copy())
+    sites_cart_result = e.sites_cart
+  return sites_cart_result
+
+def get_rotamer_iterator(mon_lib_srv, residue):
+  get_class = iotbx.pdb.common_residue_names_get_class
+  rotamer_iterator = None
+  if(get_class(residue.resname) == "common_amino_acid"):
+    rotamer_iterator = mon_lib_srv.rotamer_iterator(
+        fine_sampling = True,
+        comp_id       = residue.resname,
+        atom_names    = residue.atoms().extract_name(),
+        sites_cart    = residue.atoms().extract_xyz())
+    if(rotamer_iterator is None or
+       rotamer_iterator.problem_message is not None or
+       rotamer_iterator.rotamer_info is None):
+      rotamer_iterator = None
+  return rotamer_iterator
 
 class monitor(object):
   def __init__(self,
+               pdb_hierarchy,
                xray_structure,
                target_map,
                geometry_restraints_manager,
                xray_structure_reference = None):
     adopt_init_args(self, locals())
+    self.unit_cell = self.xray_structure.unit_cell()
     self.xray_structure_start = xray_structure.deep_copy_scatterers()
-    self.map_cc = None
+    self.states_collector = states(
+      pdb_hierarchy  = self.pdb_hierarchy,
+      xray_structure = self.xray_structure)
+    self.cc = None
     self.rmsd_b = None
     self.rmsd_a = None
     self.dist_from_start = None
     self.dist_from_ref = None
-    self.update(xray_structure=xray_structure)
+    self.set_globals()
+    self.mon_lib_srv = mmtbx.monomer_library.server.server()
+    self.rotamer_manager = RotamerEval()
+    self.residues = self.get_residues()
+    self.set_rsr_residue_attributes()
+
+  def compute_map(self, xray_structure):
+    global time_compute_map
+    timer = user_plus_sys_time()
+    mc = self.target_map.miller_array.structure_factors_from_scatterers(
+      xray_structure = xray_structure).f_calc()
+    fft_map = miller.fft_map(
+      crystal_gridding     = self.target_map.crystal_gridding,
+      fourier_coefficients = mc)
+    fft_map.apply_sigma_scaling()
+    time_compute_map += timer.elapsed()
+    return fft_map.real_map_unpadded()
+
+  def map_cc(self, map, sites_cart = None):
+    global time_map_cc
+    timer = user_plus_sys_time()
+    result = None
+    if(sites_cart is not None):
+      sel = maptbx.grid_indices_around_sites(
+        unit_cell  = self.unit_cell,
+        fft_n_real = map.focus(),
+        fft_m_real = map.all(),
+        sites_cart = sites_cart,
+        site_radii = flex.double(sites_cart.size(), 2))
+      result = flex.linear_correlation(
+        x=map.select(sel).as_1d(),
+        y=self.target_map.data.select(sel).as_1d()).coefficient()
+    else:
+      result = flex.linear_correlation(
+        x=map.as_1d(),
+        y=self.target_map.data.as_1d()).coefficient()
+    time_map_cc += timer.elapsed()
+    return result
+
+  def show_residues(self):
+    fmt="%s %s %6.3f %6.3f %6.3f %6s %s"
+    for r in self.residues:
+      print fmt % (
+        r.pdb_hierarchy_residue.resname,
+        r.pdb_hierarchy_residue.resseq,
+        r.map_cc_sidechain,
+        r.map_cc_backbone,
+        r.map_cc_all,
+        str(r.rotamer_status),
+        format_value("%6.3f",r.distance_to_closest_rotamer))
+
+  def set_rsr_residue_attributes(self):
+    get_class = iotbx.pdb.common_residue_names_get_class
+    unit_cell = self.xray_structure.unit_cell()
+    current_map = self.compute_map(xray_structure = self.xray_structure)
+    sites_cart = self.xray_structure.sites_cart()
+    for r in self.residues:
+      sca = sites_cart.select(r.selection_all)
+      scs = sites_cart.select(r.selection_sidechain)
+      scb = sites_cart.select(r.selection_backbone)
+      r.map_cc_all       = self.map_cc(sites_cart = sca, map = current_map)
+      r.map_cc_sidechain = self.map_cc(sites_cart = scs, map = current_map)
+      r.map_cc_backbone  = self.map_cc(sites_cart = scb, map = current_map)
+      r.rotamer_status = self.rotamer_manager.evaluate_residue(
+        residue=r.pdb_hierarchy_residue)
+      r.map_value_sidechain = target_simple(target_map=current_map,
+        sites_cart=scs, unit_cell=self.unit_cell)
+      r.map_value_backbone = target_simple(target_map=current_map,
+        sites_cart=scb, unit_cell=self.unit_cell)
+      rotamer_iterator = get_rotamer_iterator(
+        mon_lib_srv = self.mon_lib_srv,
+        residue     = r.pdb_hierarchy_residue)
+      if(rotamer_iterator is not None):
+        dist_min = 1.e+9
+        for ro, rotamer_sites_cart in rotamer_iterator:
+          d=flex.mean(flex.sqrt((sites_cart.select(r.selection_all) - rotamer_sites_cart).dot()))
+          if(d < dist_min):
+            dist_min = d
+        r.distance_to_closest_rotamer = dist_min
+
+  def get_residues(self):
+    from mmtbx.command_line import lockit
+    residue_groups = self.pdb_hierarchy.residue_groups()
+    backbone_atoms = ["N","CA","C","O","CB"]
+    selections_all = []
+    result = []
+    for residue_group in residue_groups:
+      for conformer in residue_group.conformers():
+        for residue in conformer.residues():
+          residue_i_seqs_backbone  = flex.size_t()
+          residue_i_seqs_sidechain = flex.size_t()
+          residue_i_seqs_all = flex.size_t()
+          for atom in residue.atoms():
+            an = atom.name.strip()
+            bb = an in backbone_atoms
+            residue_i_seqs_all.append(atom.i_seq)
+            if(bb): residue_i_seqs_backbone.append(atom.i_seq)
+            else:   residue_i_seqs_sidechain.append(atom.i_seq)
+          selections_all.append(residue_i_seqs_all)
+          result.append(rsr_residue(
+            pdb_hierarchy_residue = residue,
+            selection_sidechain   = residue_i_seqs_sidechain,
+            selection_backbone    = residue_i_seqs_backbone,
+            selection_all         = residue_i_seqs_all))
+    sa = flex.size_t()
+    for s in selections_all: sa.extend(s)
+    assert self.xray_structure.select(sa).scatterers().size() == \
+           self.xray_structure.scatterers().size()
+    return result
+
+  def set_globals(self):
+    self.cc = self.map_cc(map=self.compute_map(
+      xray_structure = self.xray_structure))
+    es = self.geometry_restraints_manager.energies_sites(
+      sites_cart = self.xray_structure.sites_cart())
+    self.rmsd_a = es.angle_deviations()[2]
+    self.rmsd_b = es.bond_deviations()[2]
+    self.dist_from_start = flex.mean(self.xray_structure_start.distances(
+      other = self.xray_structure))
+    if(self.xray_structure_reference is not None):
+      self.dist_from_ref = flex.mean(self.xray_structure_reference.distances(
+        other = self.xray_structure))
 
   def update(self, xray_structure, accept_any=False):
-    def cc(xray_structure):
-      mc = self.target_map.miller_array.structure_factors_from_scatterers(
-        xray_structure = xray_structure).f_calc()
-      fft_map = miller.fft_map(
-        crystal_gridding     = self.target_map.crystal_gridding,
-        fourier_coefficients = mc)
-      fft_map.apply_sigma_scaling()
-      current_map = fft_map.real_map_unpadded()
-      return flex.linear_correlation(x=current_map.as_1d(),
-        y=self.target_map.data.as_1d()).coefficient()
-    map_cc = cc(xray_structure=xray_structure)
-    if(accept_any or (self.map_cc is None or self.map_cc < map_cc)):
-      self.map_cc = map_cc
-      es = self.geometry_restraints_manager.energies_sites(
-        sites_cart = xray_structure.sites_cart())
-      self.rmsd_a = es.angle_deviations()[2]
-      self.rmsd_b = es.bond_deviations()[2]
-      self.dist_from_start = flex.mean(self.xray_structure_start.distances(
-        other = xray_structure))
-      if(self.xray_structure_reference is not None):
-        self.dist_from_ref = flex.mean(self.xray_structure_reference.distances(
-          other = xray_structure))
-      self.xray_structure = xray_structure # must be last line in this function
+    global time_update
+    timer = user_plus_sys_time()
+    unit_cell = xray_structure.unit_cell()
+    current_map = self.compute_map(xray_structure = xray_structure)
+    sites_cart  = xray_structure.sites_cart()
+    sites_cart_ = self.xray_structure.sites_cart()
+    for r in self.residues:
+      sca = sites_cart.select(r.selection_all)
+      scs = sites_cart.select(r.selection_sidechain)
+      scb = sites_cart.select(r.selection_backbone)
+      map_cc_all       = self.map_cc(sites_cart = sca, map = current_map)
+      map_cc_sidechain = self.map_cc(sites_cart = scs, map = current_map)
+      map_cc_backbone  = self.map_cc(sites_cart = scb, map = current_map)
+
+      map_value_sidechain = target_simple(target_map=current_map,
+        sites_cart=scs, unit_cell=self.unit_cell)
+      map_value_backbone = target_simple(target_map=current_map,
+        sites_cart=scb, unit_cell=self.unit_cell)
+
+      b1 = accept_any
+      b2 = map_cc_all      > r.map_cc_all and \
+           map_cc_backbone > r.map_cc_backbone and \
+           map_cc_backbone > map_cc_sidechain
+      flag = b1 or b2
+      if(r.map_value_backbone > r.map_value_sidechain):
+        if(map_value_backbone < map_value_sidechain):
+          flag = False
+      if(flag):
+        residue_sites_cart_new = sites_cart.select(r.selection_all)
+        sites_cart_.set_selected(r.selection_all, residue_sites_cart_new)
+        r.pdb_hierarchy_residue.atoms().set_xyz(residue_sites_cart_new)
+    self.xray_structure= self.xray_structure.replace_sites_cart(sites_cart_)
+    self.set_globals()
+    self.set_rsr_residue_attributes()
+    self.states_collector.add(sites_cart = sites_cart_)
+    time_update += timer.elapsed()
 
   def show(self, suffix=""):
     if(self.dist_from_ref is None):
       f="cc: %6.4f rmsd_b: %6.4f rmsd_a: %5.2f d(start): %6.3f"
-      print f%(self.map_cc,self.rmsd_b,self.rmsd_a,self.dist_from_start),suffix
+      print f%(self.cc,self.rmsd_b,self.rmsd_a,self.dist_from_start),suffix
     else:
       f="cc: %6.4f rmsd_b: %6.4f rmsd_a: %5.2f d(start): %6.3f d(ref): %6.3f"
       print f%(self.map_cc,self.rmsd_b,self.rmsd_a,self.dist_from_start,
         self.dist_from_ref),suffix
 
-def run_tmp(target_map,
-            xray_structure,
-            geometry_restraints_manager,
-            xray_structure_reference = None,
-            max_iterations = 500,
-            macro_cycles   = 10): # XXX Replace run() above with this run_tmp
+def run(target_map,
+        pdb_hierarchy,
+        xray_structure,
+        geometry_restraints_manager,
+        xray_structure_reference = None,
+        max_iterations = 500,
+        macro_cycles   = 20):
   sel = flex.bool(xray_structure.scatterers().size(), True)
   d_min = target_map.miller_array.d_min()
+  #
+  #geometry_restraints_manager.geometry.remove_dihedrals_in_place(sel)
   #
   rsr_simple_refiner = simple(
     target_map                  = target_map.data,
@@ -444,49 +571,50 @@ def run_tmp(target_map,
     max_iterations              = max_iterations,
     min_iterations              = max_iterations)
   #
-  #restraints_manager.geometry.remove_dihedrals_in_place(sel)
   if(xray_structure_reference is not None):
     xray_structure_reference = xray_structure_reference.deep_copy_scatterers()
   monitor_object = monitor(
+    pdb_hierarchy = pdb_hierarchy,
     xray_structure = xray_structure.deep_copy_scatterers(),
     target_map = target_map,
     geometry_restraints_manager = geometry_restraints_manager.geometry,
     xray_structure_reference = xray_structure_reference)
   monitor_object.show(suffix="start")
+  monitor_object.show_residues()
   #
   tmp = monitor_object.xray_structure.deep_copy_scatterers()
   weight_d = 50
   weight_s = 50
   #
-  b_upper_limit = 0.03#0.2
-  b_lower_limit = 0.03#0.02
-  b_inc = (b_upper_limit-b_lower_limit)/macro_cycles
-  a_upper_limit = 3.0#20.0
-  a_lower_limit = 3.0#2.5
-  a_inc = (a_upper_limit-a_lower_limit)/macro_cycles
+  #b_upper_limit = 0.03#0.2
+  #b_lower_limit = 0.03#0.02
+  #b_inc = (b_upper_limit-b_lower_limit)/macro_cycles
+  #a_upper_limit = 3.0#20.0
+  #a_lower_limit = 3.0#2.5
+  #a_inc = (a_upper_limit-a_lower_limit)/macro_cycles
   #
-  rms_bonds_limit  = b_upper_limit
-  rms_angles_limit = a_upper_limit
+  rms_bonds_limit  = 0.03
+  rms_angles_limit = 3.0
   for i in range(macro_cycles):
     if(i>3 and i%2==0):
-      tmp.shake_sites_in_place(mean_distance=1)
+      tmp.shake_sites_in_place(mean_distance=3)
 
-    if(0):
-      target_type = "diff_map"
-      refined = refinery(
-        refiner          = rsr_diff_map_refiner,
-        xray_structure   = tmp,
-        start_trial_weight_value = weight_d,
-        rms_bonds_limit  = rms_bonds_limit,
-        rms_angles_limit = rms_angles_limit)
-      if(refined.sites_cart_result is not None):
-        tmp = tmp.replace_sites_cart(refined.sites_cart_result)
-        weight_d = refined.weight_final
-        monitor_object.update(xray_structure=tmp)#, accept_any=True)
-        monitor_object.show(suffix=" | target=%s weight: %s"%(target_type, str(weight_d)))
-        tmp = monitor_object.xray_structure.deep_copy_scatterers()
-        if(weight_d<0.1): weight_d=1
-      else: print "Refinement failed."
+    #if(0):
+    #  target_type = "diff_map"
+    #  refined = refinery(
+    #    refiner          = rsr_diff_map_refiner,
+    #    xray_structure   = tmp,
+    #    start_trial_weight_value = weight_d,
+    #    rms_bonds_limit  = rms_bonds_limit,
+    #    rms_angles_limit = rms_angles_limit)
+    #  if(refined.sites_cart_result is not None):
+    #    tmp = tmp.replace_sites_cart(refined.sites_cart_result)
+    #    weight_d = refined.weight_final
+    #    monitor_object.update(xray_structure=tmp)#, accept_any=True)
+    #    monitor_object.show(suffix=" | target=%s weight: %s"%(target_type, str(weight_d)))
+    #    tmp = monitor_object.xray_structure.deep_copy_scatterers()
+    #    if(weight_d<0.1): weight_d=1
+    #  else: print "Refinement failed."
     #
     if(1):
       target_type = "simple"
@@ -502,9 +630,38 @@ def run_tmp(target_map,
         monitor_object.update(xray_structure=tmp)#, accept_any=True)
         monitor_object.show(suffix=" | target=%s weight: %s"%(target_type, str(weight_s)))
         tmp = monitor_object.xray_structure.deep_copy_scatterers()
+        #
+        if (i>macro_cycles/2):
+          sites_cart = tmp.sites_cart()
+          for r in monitor_object.residues:
+            sites_cart_ = rotamer_fit(
+              residue     = r.pdb_hierarchy_residue,
+              target_map  = target_map.data,
+              mon_lib_srv = monitor_object.mon_lib_srv,
+              unit_cell   = tmp.unit_cell())
+            sites_cart.set_selected(r.selection_all, sites_cart_)
+          tmp = tmp.replace_sites_cart(sites_cart)
+          monitor_object.update(xray_structure=tmp)
+          tmp = monitor_object.xray_structure.deep_copy_scatterers()
+        #
       else: print "Refinement failed."
-    rms_bonds_limit -= b_inc
-    rms_angles_limit-= a_inc
+    #rms_bonds_limit -= b_inc
+    #rms_angles_limit-= a_inc
+  #
+  refined = refinery(
+    refiner          = rsr_simple_refiner,
+    xray_structure   = tmp,
+    start_trial_weight_value = weight_s,
+    rms_bonds_limit  = 0.02,
+    rms_angles_limit = 2.5)
+  if(refined.sites_cart_result is not None):
+    tmp = tmp.replace_sites_cart(refined.sites_cart_result)
+    weight_s = refined.weight_final
+    monitor_object.update(xray_structure=tmp, accept_any=True)
+    monitor_object.show(suffix=" | target=%s weight: %s"%(target_type, str(weight_s)))
+  #
+  monitor_object.show_residues()
+  monitor_object.states_collector.write(file_name = "all.pdb")
   return monitor_object.xray_structure
 
 

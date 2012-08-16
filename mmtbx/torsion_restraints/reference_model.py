@@ -4,7 +4,7 @@ from iotbx.pdb import amino_acid_codes
 from libtbx import group_args
 import cctbx.geometry_restraints
 from mmtbx.validation.rotalyze import rotalyze
-from mmtbx.refinement import fit_rotamers
+from mmtbx.utils import rotatable_bonds
 from mmtbx.rotamer.sidechain_angles import SidechainAngles
 import mmtbx.monomer_library
 from cctbx.array_family import flex
@@ -934,7 +934,7 @@ class reference_model(object):
                     reference_hash[file][key] != 'OUTLIER'): # or \
                     #atom_group.resname in ["LEU", "VAL", "THR"]:
                   axis_and_atoms_to_rotate= \
-                    fit_rotamers.axes_and_atoms_aa_specific(
+                    rotatable_bonds.axes_and_atoms_aa_specific(
                         residue=residue,
                         mon_lib_srv=mon_lib_srv,
                         remove_clusters_with_all_h=True,
@@ -969,7 +969,7 @@ class reference_model(object):
                   (model_rot != 'OUTLIER' and reference_rot != 'OUTLIER'):
                   if model_rot != reference_rot:
                     axis_and_atoms_to_rotate= \
-                      fit_rotamers.axes_and_atoms_aa_specific(
+                      rotatable_bonds.axes_and_atoms_aa_specific(
                         residue=residue,
                         mon_lib_srv=mon_lib_srv,
                         remove_clusters_with_all_h=True,
