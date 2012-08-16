@@ -1335,7 +1335,6 @@ mmtbx/tst_alignment.py -text
 mmtbx/tst_map_type_parser.py -text
 mmtbx/tst_pdbtools.py -text
 mmtbx/tst_utils.py -text
-mmtbx/utils.py -text
 mmtbx/utils/LICENSE.txt -text
 mmtbx/utils/SConscript -text
 mmtbx/utils/utils.h -text
