@@ -183,7 +183,9 @@ class table_data (object) :
     for i, column in enumerate(self.data) :
       column_is_ints = []
       for x in column :
-        if (x is None) or (math.isnan(x)) or (int(x) == x) :
+        if (x is None) or (str(x).lower() == 'nan') :
+          column_is_ints.append(None)
+        elif (int(x) == x) :
           column_is_ints.append(True)
         else :
           column_is_ints.append(False)
