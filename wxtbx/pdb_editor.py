@@ -276,7 +276,6 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
 
   def ShowModelMenu (self, model, source_window) :
     labels_and_actions = [
-      ("Set model ID...", self.OnSetChainID),
       ("Convert to isotropic", self.OnSetIsotropic),
       ("Delete model", self.OnDeleteObject),
       ("Apply rotation/translation...", self.OnMoveSites),
@@ -772,7 +771,22 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
 
   # model
   def OnSplitModel (self, event) :
-    pass
+    item, model = self.GetSelectedObject('model')
+    n_models = len(self._hierarchy.models())
+    new_model = model.detached_copy()
+    new_model.id = str(n_models + 1)
+    self._hierarchy.append_model(new_model)
+    root_node = self.GetRootItem()
+    self._InsertModelItem(root_node, new_model)
+    child, cookie = self.GetFirstChild(root_node)
+    i_model = 1
+    while (child is not None) :
+      other_model = self.GetItemPyData(child)
+      assert (type(other_model).__name__ == 'model')
+      other_model.id = str(i_model)
+      self.SetItemText(child, format_model(other_model))
+      child, cookie = self.GetNextChild(root_node, cookie)
+      i_model += 1
 
   def _AddResidues (self, chain, chain_node, residues, index=None) :
     for rg in residues :
