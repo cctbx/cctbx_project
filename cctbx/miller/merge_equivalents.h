@@ -68,15 +68,18 @@ namespace cctbx { namespace miller {
     {
       FloatType sum_num = scitbx::fn::absolute(data_group[0] - result);
       FloatType sum_den = scitbx::fn::absolute(data_group[0]);
+      FloatType sum_merge_den = data_group[0];
       for(std::size_t i=1;i<n;i++) {
         sum_num += scitbx::fn::absolute(data_group[i] - result);
         sum_den += scitbx::fn::absolute(data_group[i]);
+        sum_merge_den += data_group[i];
       }
       if (sum_den == 0) self.r_linear.push_back(0);
       else self.r_linear.push_back(sum_num / sum_den);
       if (n != 1) {
         self.r_int_num += sum_num;
         self.r_int_den += sum_den;
+        self.r_merge_den += sum_merge_den;
         self.r_meas_num += std::sqrt((FloatType)n/(FloatType)(n-1)) * sum_num;
         self.r_pim_num += std::sqrt(1.0 / (FloatType)(n-1)) * sum_num;
       }
@@ -171,12 +174,13 @@ namespace cctbx { namespace miller {
   struct merge_equivalents_real : merge_equivalents_impl<FloatType>
   {
     merge_equivalents_real()
-      : r_int_num(0), r_int_den(0), r_meas_num(0), r_pim_num(0) {}
+      : r_int_num(0), r_int_den(0), r_merge_den(0), r_meas_num(0), r_pim_num(0)
+    {}
 
     merge_equivalents_real(
       af::const_ref<index<> > const& unmerged_indices,
       af::const_ref<FloatType> const& unmerged_data)
-    : r_int_num(0), r_int_den(0), r_meas_num(0), r_pim_num(0)
+    : r_int_num(0), r_int_den(0), r_merge_den(0), r_meas_num(0), r_pim_num(0)
     {
       merge_equivalents_impl<FloatType>
         ::loop_over_groups(*this, unmerged_indices, unmerged_data);
@@ -194,7 +198,10 @@ namespace cctbx { namespace miller {
     same as for r_linear, i.e. the mean for the group of symmetry
     equivalent reflections.
     */
-    FloatType r_int_num, r_int_den, r_meas_num, r_pim_num;
+    FloatType r_int_num, r_int_den;
+    // r_merge = sum(abs(data - mean(data))) / sum(data)
+    // almost identical to r_int, but without abs() in the denominator
+    FloatType r_merge_den, r_meas_num, r_pim_num;
 
     FloatType
     merge(
@@ -212,12 +219,16 @@ namespace cctbx { namespace miller {
       return r_int_den == 0 ? 0 : r_int_num / r_int_den;
     }
 
+    FloatType r_merge() {
+      return r_merge_den == 0 ? 0 : r_int_num / r_merge_den;
+    }
+
     FloatType r_meas() {
-      return r_int_den == 0 ? 0 : r_meas_num / r_int_den;
+      return r_merge_den == 0 ? 0 : r_meas_num / r_merge_den;
     }
 
     FloatType r_pim() {
-      return r_int_den == 0 ? 0 : r_pim_num / r_int_den;
+      return r_merge_den == 0 ? 0 : r_pim_num / r_merge_den;
     }
   };
 
@@ -225,8 +236,9 @@ namespace cctbx { namespace miller {
   class merge_equivalents_obs
   {
     public:
-      merge_equivalents_obs()
-        : r_int_num(0), r_int_den(0), r_meas_num(0), r_pim_num(0)  {}
+      merge_equivalents_obs() :
+        r_int_num(0), r_int_den(0), r_merge_den(0), r_meas_num(0), r_pim_num(0)
+      {}
 
       merge_equivalents_obs(
         af::const_ref<index<> > const& unmerged_indices,
@@ -237,6 +249,7 @@ namespace cctbx { namespace miller {
         sigma_dynamic_range(sigma_dynamic_range_),
         r_int_num(0),
         r_int_den(0),
+        r_merge_den(0),
         r_meas_num(0),
         r_pim_num(0)
       {
@@ -260,18 +273,22 @@ namespace cctbx { namespace miller {
         equivalent reflections.
       */
       FloatType r_int_num, r_int_den;
-      FloatType r_meas_num, r_pim_num;
+      FloatType r_merge_den, r_meas_num, r_pim_num;
 
       FloatType r_int() {
         return r_int_den == 0 ? 0 : r_int_num / r_int_den;
       }
 
+      FloatType r_merge() {
+        return r_merge_den == 0 ? 0 : r_int_num / r_merge_den;
+      }
+
       FloatType r_meas() {
-        return r_int_den == 0 ? 0 : r_meas_num / r_int_den;
+        return r_merge_den == 0 ? 0 : r_meas_num / r_merge_den;
       }
 
       FloatType r_pim() {
-        return r_int_den == 0 ? 0 : r_pim_num / r_int_den;
+        return r_merge_den == 0 ? 0 : r_pim_num / r_merge_den;
       }
 
     protected:
@@ -379,7 +396,7 @@ namespace cctbx { namespace miller {
         af::const_ref<index<> > const& unmerged_indices,
         af::const_ref<FloatType> const& unmerged_data,
         af::const_ref<FloatType> const& unmerged_sigmas)
-      : r_int_num(0), r_int_den(0), r_meas_num(0), r_pim_num(0)
+      : r_int_num(0), r_int_den(0), r_merge_den(0), r_meas_num(0), r_pim_num(0)
       {
         CCTBX_ASSERT(unmerged_data.size() == unmerged_indices.size());
         CCTBX_ASSERT(unmerged_sigmas.size() == unmerged_indices.size());
@@ -400,7 +417,7 @@ namespace cctbx { namespace miller {
       be calculated in the same way as in the merge_equivalents_obs
       */
       FloatType r_int_num, r_int_den;
-      FloatType r_meas_num, r_pim_num;
+      FloatType r_merge_den, r_meas_num, r_pim_num;
       /** number of inconsistent equivalents:
       sum(data-mean(data))/(n*(n-1)^0.5) > 5/sum(1/sig^2),
       where n is the number of reflections in the group and mean value is
@@ -410,12 +427,19 @@ namespace cctbx { namespace miller {
       std::size_t inconsistent_eq;
 
       FloatType r_int() { return (r_int_den == 0 ? 0 : r_int_num / r_int_den); }
+
+      FloatType r_merge() {
+        return (r_merge_den == 0 ? 0 : r_int_num / r_merge_den);
+      }
+
       FloatType r_meas() {
-        return (r_int_den == 0 ? 0 : r_meas_num / r_int_den);
+        return (r_merge_den == 0 ? 0 : r_meas_num / r_merge_den);
       }
+
       FloatType r_pim() {
-        return (r_int_den == 0 ? 0 : r_pim_num / r_int_den);
+        return (r_merge_den == 0 ? 0 : r_pim_num / r_merge_den);
       }
+
       std::size_t inconsistent_equivalents() const { return inconsistent_eq; }
     protected:
       void
