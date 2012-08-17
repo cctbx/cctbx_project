@@ -3623,7 +3623,7 @@ class merge_equivalents(object):
     assert algorithm in ["gaussian", "shelx"]
     self._r_linear = None
     self._r_square = None
-    self._r_int = None
+    self._r_int = self._r_meas = self._r_pim = None
     self._inconsistent_equivalents = None
     self.n_incompatible_flags = None
     data_type_str = miller_array.data().__class__.__name__
@@ -3681,6 +3681,8 @@ class merge_equivalents(object):
       self._r_linear = merge_ext.r_linear
       self._r_square = merge_ext.r_square
       self._r_int = merge_ext.r_int
+      self._r_meas = merge_ext.r_meas
+      self._r_pim = merge_ext.r_pim
     else:
       raise RuntimeError(
         "cctbx.miller.merge_equivalents: unsupported array type:\n"
@@ -3714,6 +3716,12 @@ class merge_equivalents(object):
 
   def r_int(self):
     return self._r_int
+
+  def r_meas (self) :
+    return self._r_meas
+
+  def r_pim (self) :
+    return self._r_pim
 
   def inconsistent_equivalents(self):
     if self._inconsistent_equivalents != None:
