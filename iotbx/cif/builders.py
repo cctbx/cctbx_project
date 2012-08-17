@@ -594,6 +594,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
   def __init__(self, cif_block):
     crystal_symmetry_builder.__init__(self, cif_block)
     from iotbx.pdb import hierarchy
+    from iotbx.pdb import hy36encode
 
     self.hierarchy = hierarchy.root()
 
@@ -685,7 +686,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
               ins_code_sel = residue_sel
             if ins_code in ("?", "."): ins_code = None
             residue_group = hierarchy.residue_group(
-              resseq=i_residue, icode=ins_code)
+              resseq=hy36encode(width=4, value=int(i_residue)), icode=ins_code)
             chain.append_residue_group(residue_group)
             unique_altloc_ids = OrderedSet(alt_id.select(ins_code_sel))
             residue_group.pre_allocate_atom_groups(len(unique_altloc_ids))
@@ -706,7 +707,8 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
                   atom = hierarchy.atom()
                   atom_group.append_atom(atom)
                   atom.set_element(type_symbol[i_atom])
-                  atom.set_name(atom_labels[i_atom])
+                  atom.set_name(
+                    format_pdb_atom_name(atom_labels[i_atom], type_symbol[i_atom]))
                   atom.set_xyz(
                     new_xyz=(cart_x[i_atom], cart_y[i_atom], cart_z[i_atom]))
                   atom.set_b(B_iso_or_equiv[i_atom])
@@ -719,6 +721,29 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
                       atom.set_uij(u_ij)
                     else:
                       pass
+
+def format_pdb_atom_name(atom_name, atom_type):
+  # The PDB-format atom name is 4 characters long (columns 13 - 16):
+  #   "Alignment of one-letter atom name such as C starts at column 14,
+  #    while two-letter atom name such as FE starts at column 13."
+  # http://www.wwpdb.org/documentation/format33/sect9.html#ATOM
+  # Here we assume that "atom name" refers to the atom/element TYPE.
+
+  if len(atom_name) > 4:
+    # XXX will bad things happen if the atom name is more than 4 characters?
+    return atom_name
+  elif len(atom_name) == 4:
+    return atom_name
+  atom_name = atom_name.strip()
+  if len(atom_type) == 1:
+    if atom_name.upper()[0] == atom_type.upper():
+      atom_name = " %s" %atom_name
+  elif len(atom_type) == 2:
+    if atom_name.upper()[0] == atom_type.upper():
+      atom_name = atom_name
+  while len(atom_name) < 4:
+    atom_name = "%s " %atom_name
+  return atom_name
 
 
 def as_flex_double(array, key):
