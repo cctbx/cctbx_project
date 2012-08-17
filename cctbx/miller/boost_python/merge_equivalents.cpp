@@ -28,6 +28,8 @@ namespace {
         .add_property("r_linear", make_getter(&w_t::r_linear, rbv()))
         .add_property("r_square", make_getter(&w_t::r_square, rbv()))
         .add_property("r_int", &w_t::r_int)
+        .add_property("r_meas", &w_t::r_meas)
+        .add_property("r_pim", &w_t::r_pim)
       ;
     }
   };
@@ -122,6 +124,8 @@ namespace {
         .add_property("r_linear", make_getter(&w_t::r_linear, rbv()))
         .add_property("r_square", make_getter(&w_t::r_square, rbv()))
         .add_property("r_int", &w_t::r_int)
+        .add_property("r_meas", &w_t::r_meas)
+        .add_property("r_pim", &w_t::r_pim)
       ;
     }
   };
@@ -146,6 +150,8 @@ namespace {
         .add_property("r_linear", make_getter(&w_t::r_linear, rbv()))
         .add_property("r_square", make_getter(&w_t::r_square, rbv()))
         .add_property("r_int", &w_t::r_int)
+        .add_property("r_meas", &w_t::r_meas)
+        .add_property("r_pim", &w_t::r_pim)
         .add_property("inconsistent_equivalents", &w_t::inconsistent_equivalents)
       ;
     }
