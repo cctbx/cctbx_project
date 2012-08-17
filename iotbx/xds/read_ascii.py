@@ -10,12 +10,12 @@ def get_rhs(line):
 
 class reader(object):
 
-  def __init__(self, file_handle, header_only=False):
+  def __init__(self, file_handle, header_only=False, allow_unmerged=True):
     "http://www.mpimf-heidelberg.mpg.de/~kabsch/xds/"
     f = iter(file_handle)
     flds = f.next().split()
     assert flds[0] == "!FORMAT=XDS_ASCII"
-    assert flds[1] == "MERGE=TRUE"
+    assert (allow_unmerged) or (flds[1] == "MERGE=TRUE")
     if   (flds[2] == "FRIEDEL'S_LAW=FALSE"):
       self.anomalous_flag = True
     elif (flds[2] == "FRIEDEL'S_LAW=TRUE"):
