@@ -71,38 +71,38 @@ model id="1" #chains=2
   chain id="A" #residue_groups=1
     resid="   2 " #atom_groups=3
       altloc="A" resname="THR" #atoms=8
-        "CA"
-        "CB"
-        "OG1"
-        "CG2"
-        "HB"
+        " CA "
+        " CB "
+        " OG1"
+        " CG2"
+        " HB "
         "HG21"
         "HG22"
         "HG23"
       altloc="B" resname="THR" #atoms=8
-        "CA"
-        "CB"
-        "OG1"
-        "CG2"
-        "HB"
+        " CA "
+        " CB "
+        " OG1"
+        " CG2"
+        " HB "
         "HG21"
         "HG22"
         "HG23"
       altloc="" resname="THR" #atoms=4
-        "C"
-        "O"
-        "H"
-        "HA"
+        " C  "
+        " O  "
+        " H  "
+        " HA "
   chain id="B" #residue_groups=1
     resid="  66 " #atom_groups=2
       altloc="A" resname="EOH" #atoms=3
-        "C1"
-        "C2"
-        "O"
+        " C1 "
+        " C2 "
+        " O  "
       altloc="B" resname="EOH" #atoms=3
-        "C1"
-        "C2"
-        "O"
+        " C1 "
+        " C2 "
+        " O  "
 """)
 
   input_missing_mandatory_items = """\
@@ -199,22 +199,25 @@ _atom_site_anisotrop.U[2][3]
   assert builder.crystal_symmetry.space_group_info().symbol_and_number() == \
          'P 61 (No. 169)'
   hierarchy = builder.hierarchy
+  residue_group = hierarchy.residue_groups().next()
+  assert residue_group.resseq == ' 108'
+  assert residue_group.resseq_as_int() == 108
   atoms = hierarchy.atoms()
   assert atoms[0].serial == '1'
-  assert atoms[0].name == 'N'
+  assert atoms[0].name == ' N  '
   assert atoms[0].b == 23.68
   assert atoms[0].uij_is_defined()
   assert approx_equal(
     atoms[0].uij, (0.4097, 0.2916, 0.1984, 0.113, 0.0328, 0.0375))
   assert atoms[1].serial == '2'
-  assert atoms[1].name == 'CA'
+  assert atoms[1].name == ' CA '
   assert atoms[1].b == 22.98
   assert atoms[1].uij_is_defined()
   assert approx_equal(
     atoms[1].uij, (0.4035, 0.2848, 0.1847, 0.1242, 0.0297, 0.0347))
   assert not atoms[6].uij_is_defined()
   assert atoms[6].serial == '2650'
-  assert atoms[6].name == 'MN'
+  assert atoms[6].name == 'MN  '
   assert atoms[6].b == 44.18
   assert approx_equal(atoms[6].uij, (-1, -1, -1, -1, -1, -1))
   s = StringIO()
@@ -224,16 +227,16 @@ model id="1" #chains=2
   chain id="A" #residue_groups=1
     resid=" 108 " #atom_groups=1
       altloc="" resname="SER" #atoms=6
-        "N"
-        "CA"
-        "C"
-        "O"
-        "CB"
-        "OG"
+        " N  "
+        " CA "
+        " C  "
+        " O  "
+        " CB "
+        " OG "
   chain id="F" #residue_groups=1
     resid=" 505 " #atom_groups=1
       altloc="" resname="MN" #atoms=1
-        "MN"
+        "MN  "
 """)
   #
   input_1ezu = """\
@@ -288,23 +291,23 @@ model id="1" #chains=1
   chain id="C" #residue_groups=2
     resid=" 584 " #atom_groups=1
       altloc="" resname="GLY" #atoms=4
-        "N"
-        "CA"
-        "C"
-        "O"
+        " N  "
+        " CA "
+        " C  "
+        " O  "
     resid=" 584A" #atom_groups=1
       altloc="" resname="PHE" #atoms=11
-        "N"
-        "CA"
-        "C"
-        "O"
-        "CB"
-        "CG"
-        "CD1"
-        "CD2"
-        "CE1"
-        "CE2"
-        "CZ"
+        " N  "
+        " CA "
+        " C  "
+        " O  "
+        " CB "
+        " CG "
+        " CD1"
+        " CD2"
+        " CE1"
+        " CE2"
+        " CZ "
 """)
 
 
