@@ -3,7 +3,7 @@ import sys, math
 from libtbx.str_utils import make_sub_header
 from libtbx.utils import Sorry
 import libtbx.phil
-import libtbx.callbacks
+import libtbx.callbacks # import dependency
 
 #acentric tables from French-Wilson supplement, 1978
 ac_zj =    [ 0.226,0.230,0.235,0.240,0.246,0.251,0.257,0.263,0.270,
