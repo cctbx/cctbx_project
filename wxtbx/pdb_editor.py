@@ -542,7 +542,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       print new_occ
       assert (0 <= occ <= 1.0)
       def apply_occ (atom) : atom.occ = new_occ
-      self._ApplyToAtoms(pdb_object, apply_occ)
+      self._ApplyToAtoms(item, pdb_object, apply_occ)
 
   # all
   def OnSetBfactor (self, event) :
@@ -562,7 +562,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       new_b = self.GetNewBiso(b_iso)
       assert (0 < new_b < 1000)
       def apply_b (atom) : atom.b = new_b
-      self._ApplyToAtoms(pdb_objct, apply_b)
+      self._ApplyToAtoms(item, pdb_objct, apply_b)
 
   # all
   def OnSetIsotropic (self, event) :
@@ -573,7 +573,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       pdb_object = self.GetItemPyData(item)
       def set_isotropic (atom) :
         atom.set_uij(new_uij=(-1.0, -1.0, -1.0, -1.0, -1.0, -1.0))
-      self._ApplyToAtoms(pdb_object, set_isotropic)
+      self._ApplyToAtoms(item, pdb_object, set_isotropic)
 
   # all
   def OnSetSegID (self, event) :
@@ -596,7 +596,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       new_segid = self.GetNewSegID(segid)
       if (new_segid != segid) :
         def apply_segid (atom) : atom.segid = new_segid
-        self._ApplyToAtoms(pdb_object, apply_segid)
+        self._ApplyToAtoms(item, pdb_object, apply_segid)
 
   # all
   def OnMoveSites (self, event) :
@@ -1341,8 +1341,8 @@ class PDBTreeFrame (wx.Frame) :
   def OnClose (self, event) :
     if (self._pdb_in is not None) and (self._tree.HaveUnsavedChanges()) :
       confirm = wx.MessageBox("You have unsaved changes - do you want to "+
-        "save the modified PDB file now?")
-      if (confirm == wx.ID_YES) :
+        "save the modified PDB file now?", style=wx.YES_NO)
+      if (confirm == wx.YES) :
         self.Save()
     self.Destroy()
 
