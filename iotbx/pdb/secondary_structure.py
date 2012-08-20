@@ -204,20 +204,27 @@ def parse_helix_records (records) :
       length = string.atoi(line[71:76])
     except ValueError :
       length = 0
-    current_helix = pdb_helix(
-      serial=string.atoi(line[7:10]),
-      helix_id=line[11:14].strip(),
-      start_resname=line[15:18],
-      start_chain_id=parse_chain_id(line[18:20]),
-      start_resseq=string.atoi(line[21:25]),
-      start_icode=line[25],
-      end_resname=line[27:30],
-      end_chain_id=parse_chain_id(line[30:32]),
-      end_resseq=string.atoi(line[33:37]),
-      end_icode=line[37],
-      helix_class=string.atoi(line[38:40]),
-      comment=line[40:70],
-      length=length) #string.atoi(line[71:76]))
+    try :
+      helix_class = string.atoi(line[38:40])
+    except ValueError :
+      continue
+    try :
+      current_helix = pdb_helix(
+        serial=string.atoi(line[7:10]),
+        helix_id=line[11:14].strip(),
+        start_resname=line[15:18],
+        start_chain_id=parse_chain_id(line[18:20]),
+        start_resseq=string.atoi(line[21:25]),
+        start_icode=line[25],
+        end_resname=line[27:30],
+        end_chain_id=parse_chain_id(line[30:32]),
+        end_resseq=string.atoi(line[33:37]),
+        end_icode=line[37],
+        helix_class=helix_class,
+        comment=line[40:70],
+        length=length) #string.atoi(line[71:76]))
+    except ValueError, e :
+      raise RuntimeError("Bad HELIX record:\n%s" % line)
     helices.append(current_helix)
   return helices
 
