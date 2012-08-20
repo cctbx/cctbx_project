@@ -53,6 +53,7 @@ class target_with_save_result (object) :
     adopt_init_args(self, locals())
     if (output_dir is None) :
       self.output_dir = os.getcwd()
+    self._out = None
 
   def __call__ (self) :
     if (self.log_file is not None) :
@@ -61,8 +62,12 @@ class target_with_save_result (object) :
       new_out.register("log", log)
       new_out.register("stdout", sys.stdout)
       sys.stdout = new_out
+      self._out = new_out
     result = self.run()
     easy_pickle.dump(self.file_name, result)
+    if (self._out is not None) :
+      self._out.flush()
+      self._out.close()
     return result
 
   def run (self) :
