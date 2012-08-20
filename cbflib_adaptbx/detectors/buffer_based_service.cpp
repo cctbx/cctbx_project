@@ -2,6 +2,8 @@
 #include <cbflib_adaptbx/detectors/buffer_based_service.h>
 namespace ide = iotbx::detectors;
 
+/* FIXME should add same functions to work for UNSIGNED values */
+
 //Code contributed by Graeme Winter, Diamond Light Source:
 typedef union {
   char b[2];
