@@ -86,13 +86,14 @@ class compute_fo_minus_fo_map (object) :
   def __init__ (self,
       data_arrays,
       xray_structure,
-      log=sys.stdout,
+      log=None,
       silent=False,
       output_file=None,
       peak_search=False,
       map_cutoff=None,
       peak_search_params=None,
       write_map=True) :
+    if (log is None) : log = sys.stdout
     adopt_init_args(self, locals())
     fmodels = []
     for i_seq, d in enumerate(data_arrays):
