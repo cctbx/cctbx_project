@@ -940,12 +940,13 @@ class _(boost.python.injector, ext.input):
     if (atom_names_scattering_type_const is None):
       atom_names_scattering_type_const = []
     loop = xray_structures_simple_extension(
-      self,
       one_structure_for_each_model,
       unit_cube_pseudo_crystal,
       fractional_coordinates,
       scattering_type_exact,
       enable_scattering_type_unknown,
+      self.atoms_with_labels(),
+      self.model_indices(),
       scitbx.stl.set.stl_string(atom_names_scattering_type_const),
       unit_cell,
       scale_r,

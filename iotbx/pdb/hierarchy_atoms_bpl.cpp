@@ -87,6 +87,10 @@ namespace {
     class_<wat::w_t> wa = wat::wrap("af_shared_atom");
     scitbx::af::boost_python::select_wrappers<
       atom, af::shared<atom> >::wrap(wa);
+    typedef scitbx::af::boost_python::shared_wrapper<atom_with_labels> wawl_t;
+    class_<wawl_t::w_t> wawl = wawl_t::wrap("af_shared_atom_with_labels");
+    scitbx::af::boost_python::select_wrappers<
+      atom_with_labels, af::shared<atom_with_labels> >::wrap(wawl);
     wa.def("extract_serial", extract_serial)
       .def("extract_name", extract_name)
       .def("extract_segid", extract_segid)
