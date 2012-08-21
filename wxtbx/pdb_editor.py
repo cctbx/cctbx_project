@@ -63,6 +63,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     self.Bind(wx.EVT_TREE_KEY_DOWN, self.OnChar)
     self.Bind(wx.EVT_TREE_ITEM_RIGHT_CLICK, self.OnRightClick)
     self.Bind(wx.EVT_LEFT_DCLICK, self.OnDoubleClick)
+    self.Bind(wx.EVT_TREE_BEGIN_DRAG, self.OnStartDrag)
     self.DeleteAllItems()
     self.path_mgr = path_dialogs.manager()
 
@@ -93,6 +94,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         format_model(model), data=model)
     for chain in model.chains() :
       self._InsertChainItem(model_node, chain)
+    self.Expand(model_node)
 
   def _InsertChainItem (self, model_node, chain, index=None) :
     if (index is None) :
@@ -163,6 +165,39 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       child, cookie = self.GetNextChild(node, cookie)
     return None
 
+  def _ApplyToAtoms (self, item, pdb_object, modify_action) :
+    assert (hasattr(modify_action, "__call__"))
+    self._changes_made = True
+    if (type(pdb_object).__name__ == 'atom') :
+      modify_action(pdb_object)
+      self.SetItemText(item, format_atom(pdb_object))
+    else :
+      for atom in pdb_object.atoms() :
+        modify_action(atom)
+      self.PropagateAtomChanges(item)
+
+  def GetSelectedObject (self, object_type=None) :
+    item = self.GetSelection()
+    pdb_object = self.GetItemPyData(item)
+    if (object_type is not None) :
+      assert (type(pdb_object).__name__ == object_type)
+    return item, pdb_object
+
+  def GetSelectionInfo (self) :
+    from scitbx.array_family import flex
+    selection = flex.bool(self._hierarchy.atoms().size(), False)
+    object_types = set([])
+    for item in self.GetSelections() :
+      pdb_object = self.GetItemPyData(item)
+      pdb_type = type(pdb_object).__name__
+      object_types.add(pdb_type)
+      if (pdb_type == 'atom') :
+        selection[pdb_object.i_seq] = True
+      else :
+        for atom in pdb_object.atoms() :
+          selection[atom.i_seq] = True
+    return list(object_types), selection.count(True)
+
   def FindInsertionIndex (self, pdb_object) :
     pass
 
@@ -172,16 +207,94 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
   def SaveChanges (self) :
     self._changes_made = False
 
+  def DeselectAll (self) :
+    items = self.GetSelections()
+    for item in items :
+      self.SelectItem(item, False)
+
+  #---------------------------------------------------------------------
+  # UI events
   def OnChar (self, event) :
-    pass
+    evt2 = event.GetKeyEvent()
+    key = evt2.GetKeyCode()
+    shift_down = evt2.ShiftDown()
+    all_items = self.GetSelections()
+    last_item = None
+    if (len(all_items) > 0) :
+      last_item = all_items[-1]
+    if (last_item is None) :
+      first_item, cookie = self.GetFirstChild(self.GetRootItem())
+      if (first_item is not None) :
+        self.SelectItem(first_item)
+    elif (key == wx.WXK_SPACE) or (key == wx.WXK_TAB) :
+      for item in all_items :
+        if (self.IsExpanded(item)) :
+          self.Collapse(item)
+        else :
+          self.Expand(item)
+    elif (key == wx.WXK_LEFT) :
+      parent = self.GetItemParent(last_item)
+      if (parent != self.GetRootItem()) :
+        if (not shift_down) :
+            self.DeselectAll()
+        self.SelectItem(parent)
+    elif (key == wx.WXK_RIGHT) :
+      first_child, cookie = self.GetFirstChild(last_item)
+      if (first_child is not None) :
+        if (not shift_down) :
+          self.DeselectAll()
+        self.SelectItem(first_child)
+    elif (key == wx.WXK_DOWN) :
+      next_item = self.GetNextSibling(last_item)
+      if (next_item is None) :
+        parent = self.GetItemParent(last_item)
+        first_sibling, cookie = self.GetFirstChild(parent)
+        # if the current node has no siblings, select the first child instead
+        if (first_sibling == last_item) :
+          next_item, cookie = self.GetFirstChild(last_item)
+        else :
+          next_item = first_sibling
+      if (next_item is not None) :
+        if (not shift_down) :
+          self.DeselectAll()
+        self.SelectItem(next_item)
+    elif (key == wx.WXK_UP) :
+      first_item = all_items[0]
+      prev_item = self.GetPrevSibling(first_item)
+      if (prev_item is None) :
+        parent = self.GetItemParent(first_item)
+        prev_item = self.GetLastChild(parent)
+      if (prev_item is not None) :
+        if (not shift_down) :
+          self.DeselectAll()
+        self.SelectItem(prev_item)
+    elif (key == wx.WXK_DELETE) or (key == wx.WXK_BACK) :
+      self.DeleteSelected()
+    elif (key == wx.WXK_RETURN) :
+      self.ActionsForSelection(source_window=self)
 
   def OnRightClick (self, event) :
     self.ActionsForSelection(source_window=self)
 
+  # XXX is this useful or not?
   def OnDoubleClick (self, event) :
     pass
-  #  self.ActionsForSelection()
 
+  # TODO
+  def OnStartDrag (self, event) :
+    items = self.GetSelections()
+    object_types, n_atoms = self.GetSelectionInfo()
+    if (len(object_types) == 1) :
+      event.Allow()
+      data = wx.DataObjectSimple()
+      data.SetData(object_types[0])
+      drop_source = wx.DropSource(self)
+      drop_source.SetData(data)
+      result = drop_source.DoDragDrop(flags=wx.Drag_DefaultMove)
+      self.Refresh()
+
+  #---------------------------------------------------------------------
+  # action menus
   def ActionsForSelection (self, source_window) :
     all_sel = self.GetSelections()
     if (len(all_sel) > 1) :
@@ -311,39 +424,6 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       source_window.Bind(wx.EVT_MENU, action, item)
     source_window.PopupMenu(menu)
     menu.Destroy()
-
-  def GetSelectedObject (self, object_type=None) :
-    item = self.GetSelection()
-    pdb_object = self.GetItemPyData(item)
-    if (object_type is not None) :
-      assert (type(pdb_object).__name__ == object_type)
-    return item, pdb_object
-
-  def _ApplyToAtoms (self, item, pdb_object, modify_action) :
-    assert (hasattr(modify_action, "__call__"))
-    self._changes_made = True
-    if (type(pdb_object).__name__ == 'atom') :
-      modify_action(pdb_object)
-      self.SetItemText(item, format_atom(pdb_object))
-    else :
-      for atom in pdb_object.atoms() :
-        modify_action(atom)
-      self.PropagateAtomChanges(item)
-
-  def GetSelectionInfo (self) :
-    from scitbx.array_family import flex
-    selection = flex.bool(self._hierarchy.atoms().size(), False)
-    object_types = set([])
-    for item in self.GetSelections() :
-      pdb_object = self.GetItemPyData(item)
-      pdb_type = type(pdb_object).__name__
-      object_types.add(pdb_type)
-      if (pdb_type == 'atom') :
-        selection[pdb_object.i_seq] = True
-      else :
-        for atom in pdb_object.atoms() :
-          selection[atom.i_seq] = True
-    return list(object_types), selection.count(True)
 
   #---------------------------------------------------------------------
   # PROPERTY EDITING ACTIONS
@@ -631,12 +711,16 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
   #---------------------------------------------------------------------
   # HIERARCHY EDITING
   def OnDeleteObject (self, event) :
+    self.DeleteSelected()
+
+  def DeleteSelected (self) :
     object_types, n_atoms = self.GetSelectionInfo()
     if (len(object_types) > 1) :
       raise Sorry(("Multiple object types selected (%s) - you may only delete "+
         "one type of object at a time.") % (" ".join(object_types)))
     confirm_action("Are you sure you want to delete the selected %d atom(s)?"
       % n_atoms)
+    self._changes_made = True
     for item in self.GetSelections() :
       pdb_object = self.GetItemPyData(item)
       self._DeleteObject(item, pdb_object)
@@ -1314,6 +1398,15 @@ class PDBTreeFrame (wx.Frame) :
       kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self._tree.OnDeleteObject, btn)
     self.toolbar.Realize()
+    # menu setup
+    menu_bar = wx.MenuBar()
+    file_menu = wx.Menu()
+    menu_bar.Append(file_menu, "File")
+    item = file_menu.Append(-1, "&Open file\tCtrl-O")
+    self.Bind(wx.EVT_MENU, self.OnOpen, item)
+    item = file_menu.Append(-1, "&Quit\tCtrl-Q")
+    self.Bind(wx.EVT_MENU, self.OnClose, item)
+    self.SetMenuBar(menu_bar)
     #
     self._pdb_in = None
     self._crystal_symmetry = None
@@ -1333,9 +1426,11 @@ class PDBTreeFrame (wx.Frame) :
     hierarchy = f.file_object.construct_hierarchy()
     self._hierarchy = hierarchy
     atoms = hierarchy.atoms()
+    atoms.reset_i_seq()
     atoms.set_chemical_element_simple_if_necessary()
     self._tree.SetHierarchy(hierarchy)
     self._path_field.SetValue(os.path.abspath(f.file_name))
+    self._tree.SetFocus()
     self.Refresh()
 
   def OnOpen (self, event) :
