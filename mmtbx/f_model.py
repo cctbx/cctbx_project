@@ -1103,6 +1103,7 @@ class manager(manager_mixin):
                         bulk_solvent_and_scaling = True,
                         remove_outliers = True,
                         show = False,
+                        verbose=None,
                         log = None):
     if(log is None): log = sys.stdout
     def get_r(self):
@@ -1131,7 +1132,8 @@ class manager(manager_mixin):
       if(not mask_defined): params.bulk_solvent=False
       if(bulk_solvent_and_scaling):
         russ = self.update_solvent_and_scale(fast=fast, params=params,
-          optimize_mask=optimize_mask, apply_back_trace=apply_back_trace)
+          optimize_mask=optimize_mask, apply_back_trace=apply_back_trace,
+          verbose=verbose)
         if(show):
           print >> log, "    bulk-solvent and scaling: %s"%get_r(self)
       if(refine_hd_scattering): self.update_f_hydrogens()
@@ -1965,35 +1967,10 @@ class manager(manager_mixin):
           beta           = self.beta.data(),
           space_group    = fmodel.r_free_flags().space_group(),
           miller_indices = fmodel.r_free_flags().indices()).fom()
-        self.isotropize_helper = fmodel.isotropize_helper()
     return result(
       fmodel                   = self,
       free_reflections_per_bin = free_reflections_per_bin,
       interpolation            = interpolation)
-
-  def isotropize_helper(self):
-    if(self.xray_structure is None): return None
-    fb = miller.set(crystal_symmetry=self.f_obs().crystal_symmetry(),
-      indices = self.f_obs().indices(),
-      anomalous_flag=False).array(
-        data= self.k_anisotropic()*self.k_isotropic())
-    fb = fb.average_bijvoet_mates()
-    ss = 1./flex.pow2(fb.d_spacings().data()) / 4.
-    #if(abs(trace)>20): # XXX BAD!!! fix asap by refining Biso applied to Fobs XXX
-    #  scale = fb.data()
-    #else:
-    #  scale = 1./fb.data()
-    #scale = 1./fb.data() #XXX
-    #
-    scale = 1./fb.data()
-    scale = miller.set(crystal_symmetry=self.f_obs().crystal_symmetry(),
-      indices = self.f_obs().deep_copy().average_bijvoet_mates().indices(),
-      anomalous_flag=False).array(data=scale)
-    return group_args(
-      iso_scale = scale,
-      ss = ss,
-      sites_frac = self.xray_structure.sites_frac(),
-      b_isos = self.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.))
 
   def f_model_phases_as_hl_coefficients(self, map_calculation_helper,
         k_blur=None, b_blur=None):
