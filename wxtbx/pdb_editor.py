@@ -1,5 +1,5 @@
-from __future__ import division
 
+from __future__ import division
 import wxtbx.bitmaps
 from wxtbx.phil_controls import simple_dialogs
 from wxtbx.phil_controls import strctrl, intctrl
@@ -9,6 +9,7 @@ from libtbx.utils import Abort, Sorry
 from wx.lib.agw import customtreectrl
 import wx
 import string
+import os
 
 def format_model (model) :
   return "model '%s'" % model.id
@@ -57,13 +58,12 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
   def __init__ (self, *args, **kwds) :
     kwds = dict(kwds)
     kwds['agwStyle'] = wx.TR_HAS_VARIABLE_ROW_HEIGHT|wx.TR_HAS_BUTTONS| \
-      wx.TR_TWIST_BUTTONS|wx.TR_HIDE_ROOT|wx.TR_SINGLE
+      wx.TR_TWIST_BUTTONS|wx.TR_HIDE_ROOT|wx.TR_MULTIPLE
     customtreectrl.CustomTreeCtrl.__init__(self, *args, **kwds)
     self.Bind(wx.EVT_TREE_KEY_DOWN, self.OnChar)
     self.Bind(wx.EVT_TREE_ITEM_RIGHT_CLICK, self.OnRightClick)
     self.Bind(wx.EVT_LEFT_DCLICK, self.OnDoubleClick)
     self.DeleteAllItems()
-    self.flag_multiple_selections = False
     self.path_mgr = path_dialogs.manager()
 
   def DeleteAllItems (self) :
@@ -183,8 +183,25 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
   #  self.ActionsForSelection()
 
   def ActionsForSelection (self, source_window) :
-    if (self.flag_multiple_selections) :
-      pass
+    all_sel = self.GetSelections()
+    if (len(all_sel) > 1) :
+      object_types, n_atoms = self.GetSelectionInfo()
+      labels_and_actions = [
+        ("Set occupancy...", self.OnSetOccupancy),
+        ("Set B-factor...", self.OnSetBfactor),
+        ("Set segment ID...", self.OnSetSegID),
+        ("Convert to isotropic", self.OnSetIsotropic),
+      ]
+      if (len(object_types) == 1) :
+        labels_and_actions.extend([
+          ("Delete object(s)...", self.OnDeleteObject),
+          ("Apply rotation/translation...", self.OnMoveSites),
+        ])
+      if (object_types == ["residue_group"]) :
+        labels_and_actions.extend([
+          ("Renumber residues...", self.OnRenumberResidues),
+        ])
+      self.ShowMenu(labels_and_actions, source_window)
     else :
       sel = self.GetSelection()
       pdb_object = self.GetItemPyData(sel)
@@ -247,11 +264,13 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     labels_and_actions = [
       ("Set residue number...", self.OnSetResseq),
       ("Set insertion code...", self.OnSetIcode),
+      ("Set segment ID...", self.OnSetSegID),
       ("Convert to isotropic", self.OnSetIsotropic),
       ("Delete residue", self.OnDeleteObject),
       ("Split residue", self.OnSplitResidue),
       ("Apply rotation/translation...", self.OnMoveSites),
       ("Insert residues after...", self.OnInsertAfter),
+      ("Renumber residue...", self.OnRenumberResidues),
     ]
     self.ShowMenu(labels_and_actions, source_window)
 
@@ -264,6 +283,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       ("Delete chain", self.OnDeleteObject),
       ("Apply rotation/translation...", self.OnMoveSites),
       ("Add residues...", self.OnAddResidues),
+      ("Renumber residues...", self.OnRenumberChain),
     ]
     if (len(chain.conformers()) > 1) :
       labels_and_actions.append(
@@ -309,6 +329,21 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       for atom in pdb_object.atoms() :
         modify_action(atom)
       self.PropagateAtomChanges(item)
+
+  def GetSelectionInfo (self) :
+    from scitbx.array_family import flex
+    selection = flex.bool(self._hierarchy.atoms().size(), False)
+    object_types = set([])
+    for item in self.GetSelections() :
+      pdb_object = self.GetItemPyData(item)
+      pdb_type = type(pdb_object).__name__
+      object_types.add(pdb_type)
+      if (pdb_type == 'atom') :
+        selection[pdb_object.i_seq] = True
+      else :
+        for atom in pdb_object.atoms() :
+          selection[atom.i_seq] = True
+    return list(object_types), selection.count(True)
 
   #---------------------------------------------------------------------
   # PROPERTY EDITING ACTIONS
@@ -449,6 +484,21 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         residue_group.icode = new_icode
       self.SetItemText(item, format_residue_group(residue_group))
 
+  def OnRenumberResidues (self, event) :
+    items = self.GetSelections()
+    resseq_shift = self.GetResseqShift()
+    if (resseq_shift is not None) and (resseq_shift != 0) :
+      for item in items :
+        residue_group = self.GetItemPyData(item)
+        assert (type(residue_group).__name__ == 'residue_group')
+        resseq = residue_group.resseq_as_int()
+        new_resseq = resseq + resseq_shift
+        if (new_resseq > 9999) or (new_resseq < -999) :
+          raise NotImplementedError("Hybrid36 support not available.")
+        else :
+          residue_group.resseq = "%4d" % new_resseq
+        self.SetItemText(item, format_residue_group(residue_group))
+
   # chain
   def OnSetChainID (self, event) :
     item, chain = self.GetSelectedObject('chain')
@@ -462,7 +512,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       self.SetItemText(item, format_chain(chain))
 
   # chain
-  def OnRenumber (self, event) :
+  def OnRenumberChain (self, event) :
     item, chain = self.GetSelectedObject('chain')
     resseq_shift = self.GetResseqShift()
     if (resseq_shift is not None) and (resseq_shift != 0) :
@@ -479,6 +529,131 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
           residue_group.resseq = "%4d" % new_resseq
         self.SetItemText(child, format_residue_group(residue_group))
         child, cookie = self.GetNextChild(node, cookie)
+
+  # model
+  def OnSetModelID (self, event) :
+    pass
+
+  # all
+  def OnSetOccupancy (self, event) :
+    items = self.GetSelections()
+    new_occ = None
+    for item in items :
+      pdb_object = self.GetItemPyData(item)
+      pdb_type = type(pdb_object).__name__
+      occ = None
+      if (pdb_type == 'atom') :
+        occ = pdb_object.occ
+      else :
+        all_occ = pdb_object.atoms().extract_occ()
+        if (all_occ.all_eq(all_occ[0])) :
+          occ = all_occ[0]
+      if (new_occ is None) :
+        new_occ = self.GetNewOccupancy(occ)
+      print new_occ
+      assert (0 <= occ <= 1.0)
+      def apply_occ (atom) : atom.occ = new_occ
+      self._ApplyToAtoms(item, pdb_object, apply_occ)
+
+  # all
+  def OnSetBfactor (self, event) :
+    items = self.GetSelections()
+    new_b = None
+    for item in items :
+      pdb_object = self.GetItemPyData(item)
+      pdb_type = type(pdb_object).__name__
+      b_iso = None
+      if (pdb_type == 'atom') :
+        b_iso = pdb_object.b
+      else :
+        all_b = pdb_object.atoms().extract_b()
+        if (all_b.all_eq(all_b[0])) :
+          b_iso = all_b[0]
+      if (new_b is None) :
+        new_b = self.GetNewBiso(b_iso)
+        assert (0 < new_b < 1000)
+      def apply_b (atom) : atom.b = new_b
+      self._ApplyToAtoms(item, pdb_objct, apply_b)
+
+  # all
+  def OnSetIsotropic (self, event) :
+    items = self.GetSelections()
+    for item in items :
+      pdb_object = self.GetItemPyData(item)
+      def set_isotropic (atom) :
+        atom.set_uij(new_uij=(-1.0, -1.0, -1.0, -1.0, -1.0, -1.0))
+      self._ApplyToAtoms(item, pdb_object, set_isotropic)
+
+  # all
+  def OnSetSegID (self, event) :
+    items = self.GetSelections()
+    new_segid = None
+    for item in items :
+      pdb_object = self.GetItemPyData(item)
+      pdb_type = type(pdb_object).__name__
+      segid = None
+      if (pdb_type == 'atom') :
+        segid = pdb_object.segid
+      else :
+        from scitbx.array_family import flex
+        segids = flex.std_string([ a.segid for a in pdb_object.atoms() ])
+        if (segids.all_eq(segids[0])) :
+          segid = segids[0]
+      if (segid is not None) and (segid.isspace()) :
+        segid = None
+      if (new_segid is None) :
+        new_segid = self.GetNewSegID(segid)
+      if (new_segid != segid) :
+        def apply_segid (atom) : atom.segid = new_segid
+        self._ApplyToAtoms(item, pdb_object, apply_segid)
+
+  # all
+  def OnMoveSites (self, event) :
+    items = self.GetSelections()
+    rt = simple_dialogs.get_rt_matrix(self)
+    for item in items :
+      pdb_object = self.GetItemPyData(item)
+      pdb_type = type(pdb_object).__name__
+      self._changes_made = True
+      if (pdb_type == 'atom') :
+        from scitbx.array_family import flex
+        sites = flex.vec3_double([pdb_object.xyz])
+        sites = rt.r.elems * sites + rt.t.elems
+        pdb_object.xyz = sites[0]
+        self.SetItemText(item, format_atom(pdb_object))
+      else :
+        atoms = pdb_object.atoms()
+        sites = atoms.extract_xyz()
+        sites = rt.r.elems * sites + rt.t.elems
+        atoms.set_xyz(sites)
+        self.PropagateAtomChanges(item)
+
+  #---------------------------------------------------------------------
+  # HIERARCHY EDITING
+  def OnDeleteObject (self, event) :
+    object_types, n_atoms = self.GetSelectionInfo()
+    if (len(object_types) > 1) :
+      raise Sorry(("Multiple object types selected (%s) - you may only delete "+
+        "one type of object at a time.") % (" ".join(object_types)))
+    confirm_action("Are you sure you want to delete the selected %d atom(s)?"
+      % n_atoms)
+    for item in self.GetSelections() :
+      pdb_object = self.GetItemPyData(item)
+      self._DeleteObject(item, pdb_object)
+    self._hierarchy.atoms().reset_i_seq()
+
+  def _DeleteObject (self, item, pdb_object) :
+    remove_objects_recursive(pdb_object)
+    self._RemoveItem(item)
+
+  def _RemoveItem (self, item) :
+    parent_item = self.GetItemParent(item)
+    self.DeleteChildren(item)
+    self.Delete(item)
+    while (not self.HasChildren(parent_item)) :
+      del_item = parent_item
+      parent_item = self.GetItemParent(del_item)
+      self.Delete(del_item)
 
   # chain
   def OnDeleteAltConfs (self, event) :
@@ -518,139 +693,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
           self.DeleteItem(item2)
         self.SetItemText(child, format_residue_group(residue_group))
       child, cookie = self.GetNextchild(item, cookie)
-
-  # model
-  def OnSetModelID (self, event) :
-    pass
-
-  # all
-  def OnSetOccupancy (self, event) :
-    if (self.flag_multiple_selections) :
-      assert 0
-    else :
-      item = self.GetSelection()
-      pdb_object = self.GetItemPyData(item)
-      pdb_type = type(pdb_object).__name__
-      occ = None
-      if (pdb_type == 'atom') :
-        occ = pdb_object.occ
-      else :
-        all_occ = pdb_object.atoms().extract_occ()
-        if (all_occ.all_eq(all_occ[0])) :
-          occ = all_occ[0]
-      new_occ = self.GetNewOccupancy(occ)
-      print new_occ
-      assert (0 <= occ <= 1.0)
-      def apply_occ (atom) : atom.occ = new_occ
-      self._ApplyToAtoms(item, pdb_object, apply_occ)
-
-  # all
-  def OnSetBfactor (self, event) :
-    if (self.flag_multiple_selections) :
-      assert 0
-    else :
-      item = self.GetSelection()
-      pdb_object = self.GetItemPyData(item)
-      pdb_type = type(pdb_object).__name__
-      b_iso = None
-      if (pdb_type == 'atom') :
-        b_iso = pdb_object.b
-      else :
-        all_b = pdb_object.atoms().extract_b()
-        if (all_b.all_eq(all_b[0])) :
-          b_iso = all_b[0]
-      new_b = self.GetNewBiso(b_iso)
-      assert (0 < new_b < 1000)
-      def apply_b (atom) : atom.b = new_b
-      self._ApplyToAtoms(item, pdb_objct, apply_b)
-
-  # all
-  def OnSetIsotropic (self, event) :
-    if (self.flag_multiple_selections) :
-      assert 0
-    else :
-      item = self.GetSelection()
-      pdb_object = self.GetItemPyData(item)
-      def set_isotropic (atom) :
-        atom.set_uij(new_uij=(-1.0, -1.0, -1.0, -1.0, -1.0, -1.0))
-      self._ApplyToAtoms(item, pdb_object, set_isotropic)
-
-  # all
-  def OnSetSegID (self, event) :
-    if (self.flag_multiple_selections) :
-      assert 0
-    else :
-      item = self.GetSelection()
-      pdb_object = self.GetItemPyData(item)
-      pdb_type = type(pdb_object).__name__
-      segid = None
-      if (pdb_type == 'atom') :
-        segid = pdb_object.segid
-      else :
-        from scitbx.array_family import flex
-        segids = flex.std_string([ a.segid for a in pdb_object.atoms() ])
-        if (segids.all_eq(segids[0])) :
-          segid = segids[0]
-      if (segid is not None) and (segid.isspace()) :
-        segid = None
-      new_segid = self.GetNewSegID(segid)
-      if (new_segid != segid) :
-        def apply_segid (atom) : atom.segid = new_segid
-        self._ApplyToAtoms(item, pdb_object, apply_segid)
-
-  # all
-  def OnMoveSites (self, event) :
-    if (self.flag_multiple_selections) :
-      assert 0
-    else :
-      item = self.GetSelection()
-      pdb_object = self.GetItemPyData(item)
-      pdb_type = type(pdb_object).__name__
-      rt = simple_dialogs.get_rt_matrix(self)
-      self._changes_made = True
-      if (pdb_type == 'atom') :
-        from scitbx.array_family import flex
-        sites = flex.vec3_double([pdb_object.xyz])
-        sites = rt.r.elems * sites + rt.t.elems
-        pdb_object.xyz = sites[0]
-        self.SetItemText(item, format_atom(pdb_object))
-      else :
-        atoms = pdb_object.atoms()
-        sites = atoms.extract_xyz()
-        sites = rt.r.elems * sites + rt.t.elems
-        atoms.set_xyz(sites)
-        self.PropagateAtomChanges(item)
-
-  #---------------------------------------------------------------------
-  # HIERARCHY EDITING
-  def OnDeleteObject (self, event) :
-    if (self.flag_multiple_selections) :
-      assert 0
-    else :
-      item = self.GetSelection()
-      pdb_object = self.GetItemPyData(item)
-      pdb_type = type(pdb_object).__name__
-      n_atoms = None
-      if (pdb_type == 'atom') :
-        n_atoms = 1
-      else :
-        n_atoms = len(pdb_object.atoms())
-      confirm_action("Are you sure you want to delete the selected %d atom(s)?"
-        % n_atoms)
-      self._DeleteObject(item, pdb_object)
-
-  def _DeleteObject (self, item, pdb_object) :
-    remove_objects_recursive(pdb_object)
-    self._RemoveItem(item)
-
-  def _RemoveItem (self, item) :
-    parent_item = self.GetItemParent(item)
-    self.DeleteChildren(item)
-    self.Delete(item)
-    while (not self.HasChildren(parent_item)) :
-      del_item = parent_item
-      parent_item = self.GetItemParent(del_item)
-      self.Delete(del_item)
+    self._hierarchy.atoms().reset_i_seq()
 
   # atom_group
   def OnCloneAtoms (self, event) :
@@ -666,6 +709,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       residue_group=residue_group,
       new_group=target_atom_group.detached_copy(),
       new_occ=new_occ)
+    self._hierarchy.atoms().reset_i_seq()
 
   # residue_group
   def OnSplitResidue (self, event) :
@@ -680,6 +724,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       residue_group=residue_group,
       new_group=atom_groups[0].detached_copy(),
       new_occ=new_occ)
+    self._hierarchy.atoms().reset_i_seq()
 
   def _AddAtomGroup (self, item, residue_group, new_group, new_occ) :
     atom_groups = residue_group.atom_groups()
@@ -709,6 +754,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       assert (type(atom_group).__name__ == 'atom_group')
       self.SetItemText(child, format_atom_group(atom_group))
       child, cookie = self.GetNextChild(item, cookie)
+    self._hierarchy.atoms().reset_i_seq()
 
   # residue_group
   def OnInsertAfter (self, event) :
@@ -727,6 +773,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       chain_node=self.GetItemParent(item),
       residues=new_residues,
       index=index)
+    self._hierarchy.atoms().reset_i_seq()
 
   # chain
   def OnAddResidues (self, event) :
@@ -739,6 +786,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       chain_node=item,
       residues=new_residues,
       index=index)
+    self._hierarchy.atoms().reset_i_seq()
 
   # chain
   def OnMergeChain (self, event) :
@@ -758,6 +806,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       chain_node=target_item,
       residues=merge_residues,
       index=index)
+    self._hierarchy.atoms().reset_i_seq()
 
   # model
   def OnAddChain (self, event) :
@@ -767,6 +816,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     for chain in new_chains :
       model.append_chain(chain)
       self._InsertChainItem(item, chain)
+    self._hierarchy.atoms().reset_i_seq()
     self.Refresh()
 
   # model
@@ -787,6 +837,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       self.SetItemText(child, format_model(other_model))
       child, cookie = self.GetNextChild(root_node, cookie)
       i_model += 1
+    self._hierarchy.atoms().reset_i_seq()
 
   def _AddResidues (self, chain, chain_node, residues, index=None) :
     for rg in residues :
@@ -1231,6 +1282,10 @@ class PDBTreeFrame (wx.Frame) :
       "Preserve header records when saving file")
     self._header_box.SetValue(True)
     szr3.Add(self._header_box, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    self._serial_box = wx.CheckBox(self.panel, -1,
+      "Reset atom serial numbers")
+    self._serial_box.SetValue(True)
+    szr3.Add(self._serial_box, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     pszr.Add(szr3, 0, wx.EXPAND)
     self._tree = PDBTree(self.panel, -1, style=wx.RAISED_BORDER)
     self._tree.SetMinSize((640,400))
@@ -1280,7 +1335,7 @@ class PDBTreeFrame (wx.Frame) :
     atoms = hierarchy.atoms()
     atoms.set_chemical_element_simple_if_necessary()
     self._tree.SetHierarchy(hierarchy)
-    self._path_field.SetValue(f.file_name)
+    self._path_field.SetValue(os.path.abspath(f.file_name))
     self.Refresh()
 
   def OnOpen (self, event) :
@@ -1298,12 +1353,14 @@ class PDBTreeFrame (wx.Frame) :
 
   def Save (self) :
     from iotbx import file_reader
+    input_file = os.path.abspath(self._pdb_in.file_name)
+    output_file = os.path.splitext(input_file)[0] + "_edited.pdb"
     file_name = self.path_mgr.select_file(
       parent=self,
       message="Save PDB file",
       style=wx.SAVE,
       wildcard=file_reader.get_wildcard_strings(["pdb"]),
-      current_file=self._pdb_in.file_name)
+      current_file=output_file)
     save_header = self._header_box.GetValue()
     f = open(file_name, "w")
     if (save_header) :
@@ -1315,8 +1372,12 @@ class PDBTreeFrame (wx.Frame) :
         section_lines = getattr(self._pdb_in.file_object, method)()
         for line in section_lines :
           f.write(line + "\n")
+    reset_serial = self._serial_box.GetValue()
+    if (reset_serial) :
+      self._hierarchy.atoms().reset_serial()
     f.write(self._hierarchy.as_pdb_string(
       crystal_symmetry=self._crystal_symmetry))
+    f.write("END")
     f.close()
     wx.MessageBox("Modified structure saved to %s." % file_name)
     self._tree.SaveChanges()
