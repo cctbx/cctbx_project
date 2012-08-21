@@ -14,8 +14,6 @@ from iotbx import pdb
 from libtbx import easy_pickle
 from cStringIO import StringIO
 from mmtbx import model_statistics
-from iotbx.pdb import extract_rfactors_resolutions_sigma
-import iotbx.pdb.remark_3_interpretation
 from libtbx import group_args
 import mmtbx.restraints
 import mmtbx.find_peaks
@@ -226,58 +224,6 @@ class mvd(object):
       for resolution, sigmaa in zip(self.model_vs_data.sigmaa_plot.resolution,
                                      self.model_vs_data.sigmaa_plot.sigmaa):
         print >> log, "        %10.3f%8.3f"%(float(resolution), float(sigmaa))
-
-def get_program_name(file_lines):
-  result = None
-  for line in file_lines:
-    line = line.strip()
-    result = iotbx.pdb.remark_3_interpretation.get_program(st = line)
-    if(result is not None): return result
-  if(result is not None):
-    result = "_".join(result.split())
-  return result
-
-def get_solvent_content(file_lines):
-  mc = []
-  for remark in file_lines:
-    remark = remark.upper()
-    if(remark.count("SOLVENT")==1 and
-       remark.count("CONTENT")==1 and
-       remark.count("REMARK 280")==1):
-      try:
-        mc.append(remark.split()[6])
-      except Exception:
-        try:
-          mc.append(remark[remark.index(":")+1:])
-        except Exception:
-          mc.append(remark)
-  result = None
-  if(len(mc) == 1):
-    try: result = float(mc[0])
-    except IndexError: pass
-    except ValueError: pass
-  return result
-
-def get_matthews_coeff(file_lines):
-  mc = []
-  for remark in file_lines:
-    remark = remark.upper()
-    if(remark.count("MATTHEWS")==1 and
-       remark.count("COEFFICIENT")==1 and
-       remark.count("REMARK 280")==1):
-      try:
-        mc.append(remark.split()[6])
-      except Exception:
-        try:
-          mc.append(remark[remark.index(":")+1:])
-        except Exception:
-          mc.append(remark)
-  result = None
-  if(len(mc) == 1):
-    try: result = float(mc[0])
-    except IndexError: pass
-    except ValueError: pass
-  return result
 
 def molprobity_stats(model_statistics_geometry, resname_classes):
   result = None
@@ -776,9 +722,7 @@ def run(args,
   #
   # Extract TLS
   pdb_tls = None
-  pdb_inp_tls = mmtbx.tls.tools.tls_from_pdb_inp(
-    remark_3_records = pdb_inp.extract_remark_iii_records(3),
-    pdb_hierarchy    = hierarchy)
+  pdb_inp_tls = pdb_inp.extract_tls_params(hierarchy)
   pdb_tls = group_args(pdb_inp_tls           = pdb_inp_tls,
                        tls_selections        = [],
                        tls_selection_strings = [])
@@ -828,17 +772,16 @@ def run(args,
   pub_program_name = None
   pub_solv_cont    = None
   pub_matthews     = None
-  published_results = extract_rfactors_resolutions_sigma.extract(
-    file_name = pdb_file_names[0])
+  published_results = pdb_inp.get_r_rfree_sigma(file_name=pdb_file_names[0])
   if(published_results is not None):
     pub_r_work = published_results.r_work
     pub_r_free = published_results.r_free
     pub_high   = published_results.high
     pub_low    = published_results.low
     pub_sigma  = published_results.sigma
-  pub_program_name = get_program_name(file_lines = pdb_raw_records)
-  pub_solv_cont    = get_solvent_content(file_lines = pdb_raw_records)
-  pub_matthews     = get_matthews_coeff(file_lines = pdb_raw_records)
+  pub_program_name = pdb_inp.get_program_name()
+  pub_solv_cont    = pdb_inp.get_solvent_content()
+  pub_matthews     = pdb_inp.get_matthews_coeff()
   mvd_obj.collect(pdb_header = group_args(
     program_name    = pub_program_name,
     year            = pdb_inp.extract_header_year(),

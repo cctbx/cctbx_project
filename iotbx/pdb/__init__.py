@@ -964,6 +964,79 @@ class _(boost.python.injector, ext.input):
       raise Sorry(str(e))
     return result
 
+  def get_r_rfree_sigma(self, file_name=None):
+    from iotbx.pdb import extract_rfactors_resolutions_sigma
+    remark_2_and_3_records = self.extract_remark_iii_records(2)
+    remark_2_and_3_records.extend(self.extract_remark_iii_records(3))
+    return extract_rfactors_resolutions_sigma.get_r_rfree_sigma(
+      remark_2_and_3_records, file_name)
+
+  def get_program_name(self):
+    remark_3_lines = self.extract_remark_iii_records(3)
+    result = None
+    for line in remark_3_lines:
+      line = line.strip()
+      result = iotbx.pdb.remark_3_interpretation.get_program(st = line)
+      if(result is not None): return result
+    if(result is not None):
+      result = "_".join(result.split())
+    return result
+
+  def get_solvent_content(self):
+    remark_280_lines = self.extract_remark_iii_records(280)
+    mc = []
+    for remark in remark_280_lines:
+      remark = remark.upper()
+      if(remark.count("SOLVENT")==1 and
+         remark.count("CONTENT")==1):
+        try:
+          mc.append(remark.split()[6])
+        except Exception:
+          try:
+            mc.append(remark[remark.index(":")+1:])
+          except Exception:
+            mc.append(remark)
+    result = None
+    if(len(mc) == 1):
+      try: result = float(mc[0])
+      except IndexError: pass
+      except ValueError: pass
+    return result
+
+  def get_matthews_coeff(self):
+    remark_280_lines = self.extract_remark_iii_records(280)
+    mc = []
+    for remark in remark_280_lines:
+      remark = remark.upper()
+      if(remark.count("MATTHEWS")==1 and
+         remark.count("COEFFICIENT")==1):
+        try:
+          mc.append(remark.split()[6])
+        except Exception:
+          try:
+            mc.append(remark[remark.index(":")+1:])
+          except Exception:
+            mc.append(remark)
+    result = None
+    if(len(mc) == 1):
+      try: result = float(mc[0])
+      except IndexError: pass
+      except ValueError: pass
+    return result
+
+  def extract_tls_params(self, pdb_hierarchy):
+    import iotbx.pdb.remark_3_interpretation
+    remark_3_records = self.extract_remark_iii_records(3)
+    chain_ids = []
+    for model in pdb_hierarchy.models():
+      for chain in model.chains():
+        chain_ids.append(chain.id)
+    return iotbx.pdb.remark_3_interpretation.extract_tls_parameters(
+      remark_3_records = remark_3_records,
+      pdb_hierarchy    = pdb_hierarchy,
+      chain_ids        = chain_ids)
+
+
 class rewrite_normalized(object):
 
   def __init__(self,
