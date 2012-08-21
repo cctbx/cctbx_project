@@ -633,83 +633,8 @@ input_sections = (
   "connectivity_section",
   "bookkeeping_section")
 
-class _(boost.python.injector, ext.input):
 
-  def __getinitargs__(self):
-    lines = flex.std_string()
-    for section in input_sections[:-2]:
-      lines.extend(getattr(self, section)())
-    pdb_string = StringIO()
-    self._as_pdb_string_cstringio(
-      cstringio=pdb_string,
-      append_end=False,
-      atom_hetatm=True,
-      sigatm=True,
-      anisou=True,
-      siguij=True)
-    lines.extend(flex.split_lines(pdb_string.getvalue()))
-    for section in input_sections[-2:]:
-      lines.extend(getattr(self, section)())
-    return ("pickle", lines)
-
-  def extract_header_year(self):
-    for line in self.title_section():
-      if (line.startswith("HEADER ")):
-        return header_year(line)
-    return None
-
-  def extract_remark_iii_records(self, iii):
-    result = []
-    pattern = "REMARK %3d " % iii
-    for line in self.remark_section():
-      if (line.startswith(pattern)):
-        result.append(line)
-    return result
-
-  def extract_secondary_structure (self) :
-    from iotbx.pdb import secondary_structure
-    records = self.secondary_structure_section()
-    if records.size() != 0 :
-      return secondary_structure.annotation(records)
-    return None
-
-  def crystal_symmetry_from_cryst1(self):
-    from iotbx.pdb import cryst1_interpretation
-    for line in self.crystallographic_section():
-      if (line.startswith("CRYST1")):
-        return cryst1_interpretation.crystal_symmetry(cryst1_record=line)
-    return None
-
-  def extract_cryst1_z_columns(self):
-    for line in self.crystallographic_section():
-      if (line.startswith("CRYST1")):
-        result = line[66:]
-        if (len(result) < 4): result += " " * (4-len(result))
-        return result
-    return None
-
-  def crystal_symmetry_from_cns_remark_sg(self):
-    from iotbx.cns import pdb_remarks
-    for line in self.remark_section():
-      if (line.startswith("REMARK sg=")):
-        crystal_symmetry = pdb_remarks.extract_symmetry(pdb_record=line)
-        if (crystal_symmetry is not None):
-          return crystal_symmetry
-    return None
-
-  def crystal_symmetry(self,
-        crystal_symmetry=None,
-        weak_symmetry=False):
-    self_symmetry = self.crystal_symmetry_from_cryst1()
-    if (self_symmetry is None):
-      self_symmetry = self.crystal_symmetry_from_cns_remark_sg()
-    if (crystal_symmetry is None):
-      return self_symmetry
-    if (self_symmetry is None):
-      return crystal_symmetry
-    return self_symmetry.join_symmetry(
-      other_symmetry=crystal_symmetry,
-      force=not weak_symmetry)
+class pdb_input_mixin(object):
 
   def special_position_settings(self,
         special_position_settings=None,
@@ -726,62 +651,6 @@ class _(boost.python.injector, ext.input):
     return crystal_symmetry.special_position_settings(
       min_distance_sym_equiv=min_distance_sym_equiv,
       u_star_tolerance=u_star_tolerance)
-
-  def scale_matrix(self):
-    if (not hasattr(self, "_scale_matrix")):
-      source_info = self.source_info()
-      if (len(source_info) > 0): source_info = " (%s)" % source_info
-      self._scale_matrix = [[None]*9,[None]*3]
-      done_set = set()
-      done_list = []
-      for line in self.crystallographic_section():
-        if (line.startswith("SCALE") and line[5:6] in ["1", "2", "3"]):
-          r = read_scale_record(line=line, source_info=source_info)
-          if (r.n not in done_set):
-            for i_col,v in enumerate(r.r):
-              self._scale_matrix[0][(r.n-1)*3+i_col] = v
-            self._scale_matrix[1][r.n-1] = r.t
-            done_set.add(r.n)
-          done_list.append(r.n)
-      if (len(done_list) == 0):
-        self._scale_matrix = None
-      elif (sorted(done_list[:3]) != [1,2,3]):
-        raise RuntimeError(
-          "Improper set of PDB SCALE records%s" % source_info)
-    return self._scale_matrix
-
-  def process_mtrix_records(self):
-    source_info = self.source_info()
-    if (len(source_info) > 0): source_info = " (%s)" % source_info
-    storage = {}
-    for line in self.crystallographic_section():
-      if (line.startswith("MTRIX") and line[5:6] in ["1", "2", "3"]):
-        r = read_mtrix_record(line=line, source_info=source_info)
-        stored = storage.get(r.serial_number)
-        if (stored is None):
-          values = [[None]*9,[None]*3]
-          done = []
-          present = []
-          stored = storage[r.serial_number] = (values, done, present)
-        else:
-          values, done, present = stored
-        for i_col,v in enumerate(r.r):
-          values[0][(r.n-1)*3+i_col] = v
-        values[1][r.n-1] = r.t
-        done.append(r.n)
-        present.append(r.coordinates_present)
-    from libtbx import group_args
-    result = []
-    for serial_number in sorted(storage.keys()):
-      values, done, present = storage[serial_number]
-      if (sorted(done) != [1,2,3] or len(set(present)) != 1):
-        raise RuntimeError(
-          "Improper set of PDB MTRIX records%s" % source_info)
-      result.append(group_args(
-        values=values,
-        coordinates_present=present[0],
-        serial_number=serial_number))
-    return result
 
   def as_pdb_string(self,
         crystal_symmetry=Auto,
@@ -962,6 +831,141 @@ class _(boost.python.injector, ext.input):
             non_unit_occupancy_implies_min_distance_sym_equiv_zero))
     except ValueError, e :
       raise Sorry(str(e))
+    return result
+
+
+class _(boost.python.injector, ext.input, pdb_input_mixin):
+
+  def __getinitargs__(self):
+    lines = flex.std_string()
+    for section in input_sections[:-2]:
+      lines.extend(getattr(self, section)())
+    pdb_string = StringIO()
+    self._as_pdb_string_cstringio(
+      cstringio=pdb_string,
+      append_end=False,
+      atom_hetatm=True,
+      sigatm=True,
+      anisou=True,
+      siguij=True)
+    lines.extend(flex.split_lines(pdb_string.getvalue()))
+    for section in input_sections[-2:]:
+      lines.extend(getattr(self, section)())
+    return ("pickle", lines)
+
+  def extract_header_year(self):
+    for line in self.title_section():
+      if (line.startswith("HEADER ")):
+        return header_year(line)
+    return None
+
+  def extract_remark_iii_records(self, iii):
+    result = []
+    pattern = "REMARK %3d " % iii
+    for line in self.remark_section():
+      if (line.startswith(pattern)):
+        result.append(line)
+    return result
+
+  def extract_secondary_structure (self) :
+    from iotbx.pdb import secondary_structure
+    records = self.secondary_structure_section()
+    if records.size() != 0 :
+      return secondary_structure.annotation(records)
+    return None
+
+  def crystal_symmetry_from_cryst1(self):
+    from iotbx.pdb import cryst1_interpretation
+    for line in self.crystallographic_section():
+      if (line.startswith("CRYST1")):
+        return cryst1_interpretation.crystal_symmetry(cryst1_record=line)
+    return None
+
+  def extract_cryst1_z_columns(self):
+    for line in self.crystallographic_section():
+      if (line.startswith("CRYST1")):
+        result = line[66:]
+        if (len(result) < 4): result += " " * (4-len(result))
+        return result
+    return None
+
+  def crystal_symmetry_from_cns_remark_sg(self):
+    from iotbx.cns import pdb_remarks
+    for line in self.remark_section():
+      if (line.startswith("REMARK sg=")):
+        crystal_symmetry = pdb_remarks.extract_symmetry(pdb_record=line)
+        if (crystal_symmetry is not None):
+          return crystal_symmetry
+    return None
+
+  def crystal_symmetry(self,
+        crystal_symmetry=None,
+        weak_symmetry=False):
+    self_symmetry = self.crystal_symmetry_from_cryst1()
+    if (self_symmetry is None):
+      self_symmetry = self.crystal_symmetry_from_cns_remark_sg()
+    if (crystal_symmetry is None):
+      return self_symmetry
+    if (self_symmetry is None):
+      return crystal_symmetry
+    return self_symmetry.join_symmetry(
+      other_symmetry=crystal_symmetry,
+      force=not weak_symmetry)
+
+  def scale_matrix(self):
+    if (not hasattr(self, "_scale_matrix")):
+      source_info = self.source_info()
+      if (len(source_info) > 0): source_info = " (%s)" % source_info
+      self._scale_matrix = [[None]*9,[None]*3]
+      done_set = set()
+      done_list = []
+      for line in self.crystallographic_section():
+        if (line.startswith("SCALE") and line[5:6] in ["1", "2", "3"]):
+          r = read_scale_record(line=line, source_info=source_info)
+          if (r.n not in done_set):
+            for i_col,v in enumerate(r.r):
+              self._scale_matrix[0][(r.n-1)*3+i_col] = v
+            self._scale_matrix[1][r.n-1] = r.t
+            done_set.add(r.n)
+          done_list.append(r.n)
+      if (len(done_list) == 0):
+        self._scale_matrix = None
+      elif (sorted(done_list[:3]) != [1,2,3]):
+        raise RuntimeError(
+          "Improper set of PDB SCALE records%s" % source_info)
+    return self._scale_matrix
+
+  def process_mtrix_records(self):
+    source_info = self.source_info()
+    if (len(source_info) > 0): source_info = " (%s)" % source_info
+    storage = {}
+    for line in self.crystallographic_section():
+      if (line.startswith("MTRIX") and line[5:6] in ["1", "2", "3"]):
+        r = read_mtrix_record(line=line, source_info=source_info)
+        stored = storage.get(r.serial_number)
+        if (stored is None):
+          values = [[None]*9,[None]*3]
+          done = []
+          present = []
+          stored = storage[r.serial_number] = (values, done, present)
+        else:
+          values, done, present = stored
+        for i_col,v in enumerate(r.r):
+          values[0][(r.n-1)*3+i_col] = v
+        values[1][r.n-1] = r.t
+        done.append(r.n)
+        present.append(r.coordinates_present)
+    from libtbx import group_args
+    result = []
+    for serial_number in sorted(storage.keys()):
+      values, done, present = storage[serial_number]
+      if (sorted(done) != [1,2,3] or len(set(present)) != 1):
+        raise RuntimeError(
+          "Improper set of PDB MTRIX records%s" % source_info)
+      result.append(group_args(
+        values=values,
+        coordinates_present=present[0],
+        serial_number=serial_number))
     return result
 
   def get_r_rfree_sigma(self, file_name=None):
