@@ -1696,7 +1696,8 @@ class process_command_line_args(object):
           parsed_params.append(params)
           arg_is_processed = True
           self.phil_file_names.append(arg_file)
-        elif(pdb.is_pdb_file(file_name=arg_file)):
+        elif(pdb.is_pdb_file(file_name=arg_file) or
+             pdb.is_pdb_mmcif_file(file_name=arg_file)):
           self.pdb_file_names.append(arg_file)
           arg_is_processed = True
         else:

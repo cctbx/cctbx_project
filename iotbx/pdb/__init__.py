@@ -668,9 +668,6 @@ def input(
     pdb_id=pdb_id,
     raise_sorry_if_format_error=raise_sorry_if_format_error).file_content()
 
-# XXX comment out this line to enable support for reading mmCIF
-input = pdb_input
-
 default_atom_names_scattering_type_const = ["PEAK", "SITE"]
 
 input_sections = (
