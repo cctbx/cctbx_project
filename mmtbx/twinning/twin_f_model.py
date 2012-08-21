@@ -1690,6 +1690,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                        n        = None,
                        w1       = None,
                        w2       = None,
+                       isotropize=None,
                        ncs_average = None,
                        ):
     if (map_type == "Fmodel") :
@@ -1839,6 +1840,8 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                            acentrics_scale=None,
                            centrics_pre_scale=None,
                            ncs_average=None,
+                           isotropize=None,
+                           exclude_free_r_reflections=False,
                            post_processing_callback=None,
                            fill_missing=None):
         if (map_type in ["gradient", "m_gradient"]) :
