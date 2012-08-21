@@ -63,9 +63,13 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     self.Bind(wx.EVT_TREE_KEY_DOWN, self.OnChar)
     self.Bind(wx.EVT_TREE_ITEM_RIGHT_CLICK, self.OnRightClick)
     self.Bind(wx.EVT_LEFT_DCLICK, self.OnDoubleClick)
-    self.Bind(wx.EVT_TREE_BEGIN_DRAG, self.OnStartDrag)
+    # FIXME
+    #self.Bind(wx.EVT_TREE_BEGIN_DRAG, self.OnStartDrag)
+    #self.Bind(wx.EVT_TREE_END_DRAG, self.OnEndDrag)
     self.DeleteAllItems()
     self.path_mgr = path_dialogs.manager()
+    self.dt = PDBTreeDropTarget(self)
+    self.SetDropTarget(self.dt)
 
   def DeleteAllItems (self) :
     customtreectrl.CustomTreeCtrl.DeleteAllItems(self)
@@ -286,12 +290,20 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     object_types, n_atoms = self.GetSelectionInfo()
     if (len(object_types) == 1) :
       event.Allow()
-      data = wx.DataObjectSimple()
+      data = wx.CustomDataObject(wx.CustomDataFormat('pdb_object'))
       data.SetData(object_types[0])
       drop_source = wx.DropSource(self)
       drop_source.SetData(data)
       result = drop_source.DoDragDrop(flags=wx.Drag_DefaultMove)
+      print result
       self.Refresh()
+
+  def OnDrop (self, x, y) :
+    print x, y
+    return True
+
+  def OnEndDrag (self, event) :
+    print 1
 
   #---------------------------------------------------------------------
   # action menus
@@ -1198,6 +1210,31 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       raise Sorry("The residue ID %s was not found in the target chain." %
         resid.strip())
 
+########################################################################
+# AUXILARY GUI CLASSES
+class PDBTreeDropTarget (wx.PyDropTarget) :
+  def __init__ (self, tree) :
+    wx.PyDropTarget.__init__(self)
+    self.tree = tree
+    #self.df = wx.CustomDataFormat("pdb_object")
+    #self.cdo = wx.CustomDataObject(self.df)
+    #self.SetDataObject(self.cdo)
+
+  def OnDrop (self, x, y) :
+    return self.tree.OnDrop(x,y)
+
+  def OnEnter (self, x, y, d) :
+    return d
+
+  def OnDragOver (self, x, y, d) :
+    print x, y, d
+    return d
+
+  def OnData (self, x, y, d) :
+    return d
+
+########################################################################
+# INPUT DIALOGS
 ADD_RESIDUES_START = 0
 ADD_RESIDUES_END = 1
 ADD_RESIDUES_AFTER = 2
