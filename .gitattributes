@@ -971,6 +971,7 @@ iotbx/pdb/tst_extract_rfactors_resolutions_sigma.py -text
 iotbx/pdb/tst_hierarchy.py svneol=native#text/x-python
 iotbx/pdb/tst_mmcif_hierarchy.py -text
 iotbx/pdb/tst_rna_dna_atom_names.py -text
+iotbx/pdb/tst_tls.py -text
 iotbx/pdb/utils.cpp svneol=native#text/plain
 iotbx/pdb/utils.h svneol=native#text/plain
 iotbx/pdb/write_utils.cpp svneol=native#text/plain

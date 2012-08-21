@@ -4,6 +4,8 @@ from libtbx.containers import OrderedSet
 import iotbx.pdb
 from iotbx.pdb import hierarchy
 from iotbx.pdb import hy36encode
+from iotbx.pdb.remark_3_interpretation import \
+     refmac_range_to_phenix_string_selection, tls
 import iotbx.cif
 from iotbx.cif.builders import crystal_symmetry_builder
 
@@ -166,6 +168,68 @@ def format_pdb_atom_name(atom_name, atom_type):
   return atom_name
 
 
+class extract_tls_from_cif_block(object):
+  def __init__(self, cif_block, pdb_hierarchy):
+    self.tls_params = []
+    self.tls_present = False
+    self.error_string = None
+    tls_ids = cif_block.get('_pdbx_refine_tls.id')
+    if tls_ids is None:
+      return
+
+    T_ijs = [cif_block.get('_pdbx_refine_tls.T[%s][%s]' %(i, j))
+            for i, j in ('11', '22', '33', '12', '13', '23')]
+    assert T_ijs.count(None) in (0, 6)
+    L_ijs = [cif_block.get('_pdbx_refine_tls.L[%s][%s]' %(i, j))
+            for i, j in ('11', '22', '33', '12', '13', '23')]
+    assert L_ijs.count(None) in (0, 6)
+    S_ijs = [cif_block.get('_pdbx_refine_tls.S[%s][%s]' %(i, j))
+            for i, j in ('11', '12', '13', '21', '22', '23', '31', '32', '33')]
+    assert S_ijs.count(None) in (0, 9)
+    origin_xyzs = [cif_block.get('_pdbx_refine_tls.origin_%s' %x) for x in 'xyz']
+    assert origin_xyzs.count(None) in (0, 3)
+    if T_ijs.count(None) == 6:
+      return
+
+    tls_group_ids = cif_block.get('_pdbx_refine_tls_group.id')
+    refine_tls_ids = cif_block.get('_pdbx_refine_tls_group.refine_tls_id')
+    beg_chain_ids = cif_block.get('_pdbx_refine_tls_group.beg_auth_asym_id')
+    beg_seq_ids = cif_block.get('_pdbx_refine_tls_group.beg_auth_seq_id')
+    end_chain_ids = cif_block.get('_pdbx_refine_tls_group.end_auth_asym_id')
+    end_seq_ids = cif_block.get('_pdbx_refine_tls_group.end_auth_seq_id')
+    selection_details = cif_block.get('_pdbx_refine_tls_group.selection_details')
+
+    selection_cache = pdb_hierarchy.atom_selection_cache()
+
+    for i, tls_id in enumerate(tls_ids):
+      T = [float(T_ij[i]) for T_ij in T_ijs]
+      L = [float(L_ij[i]) for L_ij in L_ijs]
+      S = [float(S_ij[i]) for S_ij in S_ijs]
+      origin = [float(origin_x[i]) for origin_x in origin_xyzs]
+      i_groups = (refine_tls_ids == tls_id).iselection()
+      sel_strings = []
+      for i_group in i_groups:
+        if selection_details is not None and not selection_details.all_eq('?'):
+          # phenix selection
+          sel_strings.append(selection_details[i_group].strip())
+          # check it is a valid selection string
+          selection_cache.selection(sel_strings[-1])
+        else:
+          sel_strings.append(refmac_range_to_phenix_string_selection(
+            pdb_hierarchy=pdb_hierarchy,
+            chain_start=beg_chain_ids[i_group],
+            resseq_start=beg_seq_ids[i_group],
+            chain_end=end_chain_ids[i_group],
+            resseq_end=end_seq_ids[i_group]))
+      sel_str = " or ".join(sel_strings)
+      self.tls_params.append(tls(
+        t=T, l=L, s=S, origin=origin, selection_string=sel_str))
+    self.tls_present = True
+
+  def extract(self):
+    return self.tls_params
+
+
 class cif_input(iotbx.pdb.pdb_input_mixin):
   def __init__(self,
                file_name=None,
@@ -269,6 +333,10 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
     if software_classifications is not None:
       i = flex.first_index(software_classifications, 'refinement')
       if i > 0: return software_names[i]
+
+  def extract_tls_params(self, hierarchy):
+    from iotbx.pdb.mmcif import extract_tls_from_cif_block
+    return extract_tls_from_cif_block(self.cif_block, hierarchy)
 
   def scale_matrix(self):
     fractionalization_matrix = [
