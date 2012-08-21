@@ -23,7 +23,8 @@ class kick_map(object):
                      exclude_free_r_reflections = False):
     self.map_coeffs = None
     fmodel_tmp = fmodel.deep_copy()
-    isotropize_helper = fmodel.isotropize_helper()
+    scale = fmodel.k_isotropic()*fmodel.k_anisotropic()
+    scale = 1./scale
     map_helper_obj = fmodel.map_calculation_helper()
     map_coeff_data = None
     counter = 0
@@ -48,12 +49,10 @@ class kick_map(object):
         self.map_coeffs = fmodel_tmp.electron_density_map().map_coefficients(
             map_type = map_type,
             external_alpha_fom_source = map_helper_obj).average_bijvoet_mates()
-        assert isotropize_helper.iso_scale.indices().all_eq(
-          self.map_coeffs.indices())
         #
         if(isotropize):
           self.map_coeffs = self.map_coeffs.array(
-            data = self.map_coeffs.data()*isotropize_helper.iso_scale.data())
+            data = self.map_coeffs.data()*scale)
         ##############################################
         if(0): #XXX experimental
           fft_map = self.map_coeffs.fft_map(resolution_factor=1./3)
@@ -118,6 +117,8 @@ class electron_density_map(object):
                        exclude_free_r_reflections=False,
                        fill_missing=False,
                        ncs_average=False,
+                       isotropize=True,
+                       sharp=False,
                        post_processing_callback=None):
     map_name_manager = mmtbx.map_names(map_name_string = map_type)
     if(map_name_manager.anomalous):
@@ -191,10 +192,11 @@ class electron_density_map(object):
       if (r_free_flags.anomalous_flag()) :
         r_free_flags = r_free_flags.average_bijvoet_mates()
       coeffs = coeffs.select(~r_free_flags.data())
-    if (fill_missing) :
-      if (coeffs.anomalous_flag()) :
+    scale=None
+    if(fill_missing):
+      if(coeffs.anomalous_flag()):
         coeffs = coeffs.average_bijvoet_mates()
-      coeffs = fill_missing_f_obs(coeffs, self.fmodel)
+      coeffs, scale = fill_missing_f_obs(coeffs, self.fmodel)
     if (ncs_average) and (post_processing_callback is not None) :
       # XXX NCS averaging done here
       assert hasattr(post_processing_callback, "__call__")
@@ -202,6 +204,19 @@ class electron_density_map(object):
         map_coeffs=coeffs,
         fmodel=self.fmodel,
         map_type=map_type)
+    if(isotropize):
+      if(scale is None):
+        scale = 1. / (self.fmodel.k_isotropic()*self.fmodel.k_anisotropic())
+        if(exclude_free_r_reflections) :
+          scale = scale.select(~r_free_flags.data())
+      coeffs = coeffs.customized_copy(data = coeffs.data()*scale)
+    if(sharp):
+      ss = 1./flex.pow2(coeffs.d_spacings().data()) / 4.
+      from cctbx import adptbx
+      b = flex.mean(self.fmodel.xray_structure.extract_u_iso_or_u_equiv() *
+        adptbx.u_as_b(1))/2
+      k_sharp = 1./flex.exp(-ss * b)
+      coeffs = coeffs.customized_copy(data = coeffs.data()*k_sharp)
     return coeffs
 
   def _phase_transfer(self, miller_array, phase_source):
@@ -252,7 +267,11 @@ class electron_density_map(object):
         crystal_gridding     = other_fft_map,
         fourier_coefficients = map_coefficients)
 
-def fill_missing_f_obs (coeffs, fmodel) :
+def fill_missing_f_obs(coeffs, fmodel) :
+  scale_data = 1. / (fmodel.k_isotropic()*fmodel.k_anisotropic())
+  scale = fmodel.f_obs().customized_copy(data = scale_data)
+  scale = scale.average_bijvoet_mates()
+  #
   scale_to = fmodel.f_obs().average_bijvoet_mates()
   dsf = coeffs.double_step_filtration(
     vol_cutoff_plus_percent=1.0,
@@ -266,10 +285,15 @@ def fill_missing_f_obs (coeffs, fmodel) :
     f_obs = fo,
     xray_structure = fmodel.xray_structure)
   fmdc.update_all_scales()
+  #
+  scale_data_c = 1. / (fmdc.k_isotropic()*fmdc.k_anisotropic())
+  scale_c = fmdc.f_obs().customized_copy(data = scale_data_c)
+  #
   dsf = fmdc.f_model().array(data = fmdc.f_model().data() *
     fmdc.alpha_beta()[0].data()) # .resolution_filter(d_min=4)
   coeffs = coeffs.complete_with(other = dsf) #2
-  return coeffs
+  scale = scale.complete_with(other = scale_c)
+  return coeffs, scale.data()
 
 def sharp_evaluation_target(sites_frac, map_coeffs, resolution_factor = 0.25):
   fft_map = map_coeffs.fft_map(resolution_factor=resolution_factor)

@@ -390,21 +390,15 @@ def map_coefficients_from_fmodel (fmodel, params,
       map_type           = params.map_type,
       acentrics_scale    = params.acentrics_scale,
       centrics_pre_scale = params.centrics_pre_scale,
+      fill_missing       = params.fill_missing_f_obs,
+      isotropize         = params.isotropize,
+      exclude_free_r_reflections=params.exclude_free_r_reflections,
       ncs_average=getattr(params, "ncs_average", False),
       post_processing_callback=post_processing_callback)
     if (coeffs is None) : return None
     if(coeffs.anomalous_flag() and not
        mmtbx.map_names(params.map_type).anomalous):
       coeffs = coeffs.average_bijvoet_mates()
-    if(params.isotropize and e_map_obj.mch is not None):
-      isotropize_helper = e_map_obj.fmodel.map_calculation_helper().isotropize_helper
-      if(isotropize_helper is not None):
-        isc = isotropize_helper.iso_scale.data()
-      else: isc = 1
-      coeffs = miller.set(
-        crystal_symmetry=coeffs.crystal_symmetry(),
-        indices = coeffs.indices(),
-        anomalous_flag=False).array(data=coeffs.data()*isc)
     if(params.sharpening):
       from mmtbx import map_tools
       coeffs, b_sharp = map_tools.sharp_map(
@@ -433,16 +427,8 @@ def map_coefficients_from_fmodel (fmodel, params,
   if(coeffs.anomalous_flag() and not
      mmtbx.map_names(params.map_type).anomalous):
     coeffs = coeffs.average_bijvoet_mates()
-  if(params.exclude_free_r_reflections):
-    r_free_flags = e_map_obj.fmodel.r_free_flags()
-    if (r_free_flags.anomalous_flag()) :
-      r_free_flags = r_free_flags.average_bijvoet_mates()
-    coeffs = coeffs.select(~r_free_flags.data())
   #XXXif(mnm.k is not None and abs(mnm.k) == abs(mnm.n) and save_k_part is not None):
   #XXX  fmodel.update_core(k_part=save_k_part, b_part=save_b_part)
-  if(params.fill_missing_f_obs):
-    from mmtbx import map_tools
-    coeffs = map_tools.fill_missing_f_obs(coeffs, fmodel)
   return coeffs
 
 def compute_xplor_maps(
