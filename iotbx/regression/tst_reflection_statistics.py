@@ -36,7 +36,7 @@ def generate_mtz_files(space_group_info, anomalous_flag):
         .array() \
         .as_reference_setting() \
         .set_observation_type_xray_intensity()
-    file_name = "tmp%d.mtz" % i_subgroup
+    file_name = "tmp_refl_stats%d.mtz" % i_subgroup
     mtz_object = subgroup_miller_array.as_mtz_dataset(
       column_root_label="FOBS").mtz_object().write(file_name=file_name)
     miller_arrays.append(
