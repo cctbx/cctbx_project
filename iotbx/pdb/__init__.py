@@ -42,6 +42,15 @@ def is_pdb_file(file_name):
           return True
   return False
 
+def is_pdb_mmcif_file(file_name):
+  try:
+    cif_model = iotbx.cif.reader(file_path=file_name).model()
+    cif_block = cif_model.values()[0]
+    if "_atom_site" in cif_block:
+      return True
+  except Exception, e:
+    return False
+
 def ent_path_local_mirror(pdb_id, environ_key="PDB_MIRROR_PDB"):
   if (len(pdb_id) != 4):
     raise RuntimeError("Invalid PDB ID: %s (must be four characters)" % pdb_id)
@@ -586,7 +595,35 @@ def header_year(record):
 
 class Please_pass_string_or_None(object): pass
 
-def input(
+class pdb_input_from_any(object):
+
+  def __init__(self,
+               file_name=None,
+               source_info=Please_pass_string_or_None,
+               lines=None,
+               pdb_id=None,
+               raise_sorry_if_format_error=False):
+    content = None
+    from iotbx.pdb.mmcif import cif_input
+    for file_input in (pdb_input, cif_input):
+      try:
+        content = file_input(
+          file_name=file_name,
+          source_info=source_info,
+          lines=lines,
+          pdb_id=pdb_id,
+          raise_sorry_if_format_error=raise_sorry_if_format_error)
+      except Exception, e: continue
+      break
+
+    if content is None:
+      raise Sorry("Could not interpret input as any file type.")
+    self._file_content = content
+
+  def file_content(self):
+    return self._file_content
+
+def pdb_input(
     file_name=None,
     source_info=Please_pass_string_or_None,
     lines=None,
@@ -617,6 +654,22 @@ def input(
       raise Sorry("Format error:\n%s" % str(e))
     else :
       raise
+
+def input(
+    file_name=None,
+    source_info=Please_pass_string_or_None,
+    lines=None,
+    pdb_id=None,
+    raise_sorry_if_format_error=False):
+  return pdb_input_from_any(
+    file_name=file_name,
+    source_info=source_info,
+    lines=lines,
+    pdb_id=pdb_id,
+    raise_sorry_if_format_error=raise_sorry_if_format_error).file_content()
+
+# XXX comment out this line to enable support for reading mmCIF
+input = pdb_input
 
 default_atom_names_scattering_type_const = ["PEAK", "SITE"]
 
