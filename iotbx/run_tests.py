@@ -10,7 +10,7 @@ tst_list = (
   "$D/tst_crystal_symmetry_from_any.py",
   "$D/tst_poscar.py",
   "$D/kriber/tst_strudat.py",
-  "$D/cif/tests/tst_pdb_hierarchy.py",
+  "$D/pdb/tst_mmcif_hierarchy.py",
   "$D/cif/tests/tst_geometry.py",
   "$D/cif/tests/tst_lex_parse_build.py",
   "$D/cif/tests/tst_model.py",
