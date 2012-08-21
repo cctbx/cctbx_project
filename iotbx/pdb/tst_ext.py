@@ -132,10 +132,10 @@ END
   assert e.is_old_style
 
 def exercise_line_info_exceptions():
-  pdb.input(source_info=None, lines=flex.std_string(["ATOM"]))
+  pdb.pdb_input(source_info=None, lines=flex.std_string(["ATOM"]))
   #
   try:
-    pdb.input(
+    pdb.pdb_input(
       source_info="some.pdb",
       lines=flex.split_lines("""\
 HETATM    9 2H3  MPR B   5      16.388   0.289   6.613  1.00  0.08
@@ -149,7 +149,7 @@ some.pdb, line 2:
   unexpected plus sign.""")
   else: raise Exception_expected
   try :
-    pdb.input(
+    pdb.pdb_input(
       source_info="some.pdb",
       lines=flex.split_lines("""\
 HETATM    9 2H3  MPR B   5      16.388   0.289   6.613  1.00  0.08
@@ -160,7 +160,7 @@ ANISOU    9 2H3  MPR B   5      8+8    848    848      0      0      0
     pass
   else: raise Exception_expected
   try:
-    pdb.input(
+    pdb.pdb_input(
       source_info=None,
       lines=flex.split_lines("""\
 HETATM    9 2H3  MPR B   5      16.388   0.289   6.613  1.00  0.08
@@ -175,7 +175,7 @@ input line 3:
   unexpected minus sign.""")
   else: raise Exception_expected
   try:
-    pdb.input(
+    pdb.pdb_input(
       source_info=None,
       lines=flex.split_lines("""\
 HETATM    9 2H3  MPR B   5      16.388   0.289   6.613  1.00  0.08
@@ -190,7 +190,7 @@ input line 2:
   else: raise Exception_expected
   #
   try:
-    pdb.input(
+    pdb.pdb_input(
       source_info="some.pdb",
       lines=flex.std_string([
         "ATOM   1045  O   HOH    30    x  0.530  42.610  45.267  1.00 33.84"]))
@@ -202,7 +202,7 @@ some.pdb, line 1:
   not a floating-point number.""")
   else: raise Exception_expected
   try:
-    pdb.input(
+    pdb.pdb_input(
       source_info="some.pdb",
       lines=flex.std_string([
         "ATOM   1045  O   HOH    30     x 0.530  42.610  45.267  1.00 33.84"]))
@@ -214,7 +214,7 @@ some.pdb, line 1:
   not a floating-point number.""")
   else: raise Exception_expected
   try:
-    pdb.input(
+    pdb.pdb_input(
       source_info="some.pdb",
       lines=flex.std_string([
         "HETATM 4160  O   HOH S 272         nan   0.000   0.000  1.00 54.72"]))
@@ -226,7 +226,7 @@ some.pdb, line 1:
   not a floating-point number.""")
   else: raise Exception_expected
   try:
-    pdb.input(
+    pdb.pdb_input(
       source_info="some.pdb",
       lines=flex.std_string([
         "ATOM   1045  O   HOH    30       0x530  42.610  45.267  1.00 33.84"]))
@@ -326,7 +326,7 @@ END
 
 def exercise_pdb_input():
   for i_trial in xrange(3):
-    pdb_inp = pdb.input(
+    pdb_inp = pdb.pdb_input(
       source_info=None,
       lines=flex.split_lines(""))
     assert pdb_inp.source_info() == ""
@@ -350,7 +350,7 @@ def exercise_pdb_input():
     assert pdb_inp.connectivity_section().size() == 0
     assert pdb_inp.bookkeeping_section().size() == 0
     assert pdb_inp.model_atom_counts().size() == 0
-    pdb_inp = pdb.input(
+    pdb_inp = pdb.pdb_input(
       source_info="file/name",
       lines=pdb_string_all_sections)
     assert pdb_inp.source_info() == "file/name"
@@ -445,7 +445,7 @@ MASTER       81    0    0    7    3    0    0    645800   20    0   12
 END""")
     assert list(pdb_inp.model_atom_counts()) == [4,2]
   #
-  pdb_inp = pdb.input(
+  pdb_inp = pdb.pdb_input(
     source_info=None,
     lines=flex.split_lines("""\
 ATOM      1  CB  LYS   109      16.113   7.345  47.084  1.00 20.00      A
@@ -461,7 +461,7 @@ pdb=" CG  LYS   109 " segid="B   "
 """.splitlines()
   for awl,eids in zip(pdb_inp.atoms_with_labels(), expected_id_strs):
     assert not show_diff(awl.id_str(), eids)
-  pdb_inp = pdb.input(
+  pdb_inp = pdb.pdb_input(
     source_info=None,
     lines=flex.split_lines("""\
 ATOM  12345qN123AR12 C1234Ixyz1234.6781234.6781234.678123.56213.56abcdefS123E1C1
@@ -476,7 +476,7 @@ HETATM12345qN123AR12 C1234Ixyz1234.6781234.6781234.678123.56213.56abcdefS123E1C1
     assert awl.icode == "I"
     assert awl.segid == "S123"
     assert awl.id_str() == 'pdb="N123AR12 C1234I" segid="S123"'
-  pdb_inp = pdb.input(
+  pdb_inp = pdb.pdb_input(
     source_info=None,
     lines=flex.split_lines("""\
 ATOM  12345qN123AR12 C1234Ixyz1234.6781234.6781234.678123.56213.56abcdef    E1C1
@@ -491,7 +491,7 @@ HETATM12345qN123AR12 C1234Ixyz1234.6781234.6781234.678123.56213.56abcdef    E1C1
     assert awl.icode == "I"
     assert awl.segid == "    "
     assert awl.id_str() == 'pdb="N123AR12 C1234I"'
-  pdb_inp = pdb.input(
+  pdb_inp = pdb.pdb_input(
     source_info=None,
     lines=flex.split_lines("""\
 ATOM
@@ -507,20 +507,20 @@ HETATM
     assert awl.segid == "    "
     assert awl.id_str() == 'pdb="               "'
   #
-  pdb_inp = pdb.input(
+  pdb_inp = pdb.pdb_input(
     source_info=None,
     lines=flex.split_lines("""\
 """))
   assert list(pdb_inp.model_indices()) == []
   assert list(pdb_inp.chain_indices()) == []
-  pdb_inp = pdb.input(
+  pdb_inp = pdb.pdb_input(
     source_info=None,
     lines=flex.split_lines("""\
 ATOM
 """))
   assert list(pdb_inp.model_indices()) == [1]
   assert [list(v) for v in pdb_inp.chain_indices()] == [[1]]
-  pdb_inp = pdb.input(
+  pdb_inp = pdb.pdb_input(
     source_info=None,
     lines=flex.split_lines("""\
 MODEL        1
@@ -528,7 +528,7 @@ ENDMDL
 """))
   assert list(pdb_inp.model_indices()) == [0]
   assert [list(v) for v in pdb_inp.chain_indices()] == [[]]
-  pdb_inp = pdb.input(
+  pdb_inp = pdb.pdb_input(
     source_info=None,
     lines=flex.split_lines("""\
 MODEL        1
@@ -537,7 +537,7 @@ ENDMDL
 """))
   assert list(pdb_inp.model_indices()) == [1]
   assert [list(v) for v in pdb_inp.chain_indices()] == [[1]]
-  pdb_inp = pdb.input(
+  pdb_inp = pdb.pdb_input(
     source_info=None,
     lines=flex.split_lines("""\
 MODEL        1
@@ -547,7 +547,7 @@ ENDMDL
 """))
   assert list(pdb_inp.model_indices()) == [0,0]
   assert [list(v) for v in pdb_inp.chain_indices()] == [[],[]]
-  pdb_inp = pdb.input(
+  pdb_inp = pdb.pdb_input(
     source_info=None,
     lines=flex.split_lines("""\
 MODEL        1
@@ -559,7 +559,7 @@ ENDMDL
   assert list(pdb_inp.model_indices()) == [0,1]
   assert [list(v) for v in pdb_inp.chain_indices()] == [[],[1]]
   try:
-    pdb.input(
+    pdb.pdb_input(
       source_info=None,
       lines=flex.split_lines("""\
 MODEL        1
@@ -574,7 +574,7 @@ input line 3:
   ATOM or HETATM record is outside MODEL/ENDMDL block.""")
   else: raise Exception_expected
   try:
-    pdb.input(
+    pdb.pdb_input(
       source_info=None,
       lines=flex.split_lines("""\
 MODEL        1
@@ -588,7 +588,7 @@ input line 2:
   Missing ENDMDL for previous MODEL record.""")
   else: raise Exception_expected
   try:
-    pdb.input(
+    pdb.pdb_input(
       source_info=None,
       lines=flex.split_lines("""\
 ATOM
@@ -602,7 +602,7 @@ input line 2:
   MODEL record must appear before any ATOM or HETATM records.""")
   else: raise Exception_expected
   try:
-    pdb.input(
+    pdb.pdb_input(
       source_info=None,
       lines=flex.split_lines("""\
 ATOM
@@ -618,7 +618,7 @@ input line 2:
   #
   for record_name in ["SIGATM", "ANISOU", "SIGUIJ"]:
     try:
-      pdb.input(source_info=None, lines=flex.std_string([record_name]))
+      pdb.pdb_input(source_info=None, lines=flex.std_string([record_name]))
     except ValueError, e:
       assert not show_diff(str(e), """\
 input line 1:
@@ -627,7 +627,7 @@ input line 1:
   no matching ATOM or HETATM record.""" % record_name)
     else: raise Exception_expected
   #
-  pdb_inp = pdb.input(
+  pdb_inp = pdb.pdb_input(
     source_info=None,
     lines=flex.split_lines("""\
 MODEL        1
@@ -664,14 +664,14 @@ ENDMDL
       == [[2,3,5],[7,9,10],[11,13,15], [18,20]]
   #
   open("tmp.pdb", "w")
-  pdb_inp = pdb.input(file_name="tmp.pdb")
+  pdb_inp = pdb.pdb_input(file_name="tmp.pdb")
   assert pdb_inp.source_info() == "file tmp.pdb"
   open("tmp.pdb", "w").write("""\
 ATOM      1  CA  SER     1       1.212 -12.134   3.757  1.00  0.00
 ATOM      2  CA  LEU     2       1.118  -9.777   0.735  1.00  0.00
 """)
-  pdb_inp = pdb.input(file_name="tmp.pdb")
-  try: pdb.input(file_name="")
+  pdb_inp = pdb.pdb_input(file_name="tmp.pdb")
+  try: pdb.pdb_input(file_name="")
   except IOError, e:
     assert str(e).startswith('Cannot open file for reading: ""')
   else: raise Exception_expected
@@ -706,7 +706,7 @@ ATOM      2  CA  LEU     2       1.118  -9.777   0.735  1.00  0.00
 CRYST1   61.410   54.829   43.543  90.00  90.00  90.00 P 21 21 21    8
 REMARK sg= P2(1)2(1)2(1) a= 61.410 b= 54.829 c= 43.543 alpha= 90 beta= 90 gamma= 90
 """.splitlines():
-    pdb_inp = pdb.input(source_info=None, lines=flex.std_string([line]))
+    pdb_inp = pdb.pdb_input(source_info=None, lines=flex.std_string([line]))
     cs = pdb_inp.crystal_symmetry()
     assert str(cs.unit_cell()) == "(61.41, 54.829, 43.543, 90, 90, 90)"
     assert str(cs.space_group_info()) == "P 21 21 21"
@@ -732,7 +732,7 @@ REMARK sg= P2(1)2(1)2(1) a= 61.410 b= 54.829 c= 43.543 alpha= 90 beta= 90 gamma=
   #
   assert pdb_inp.extract_header_year() is None
   assert pdb_inp.extract_remark_iii_records(iii=2) == []
-  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+  pdb_inp = pdb.pdb_input(source_info=None, lines=flex.split_lines("""\
 HEADER                                            02-JUL-92
 REMARK   2 RESOLUTION. 1.7  ANGSTROMS.
 """))
@@ -741,7 +741,7 @@ REMARK   2 RESOLUTION. 1.7  ANGSTROMS.
       == ['REMARK   2 RESOLUTION. 1.7  ANGSTROMS.']
 
 def exercise_input_pickling():
-  pdb_inp = pdb.input(source_info="file/name", lines=pdb_string_all_sections)
+  pdb_inp = pdb.pdb_input(source_info="file/name", lines=pdb_string_all_sections)
   for p in [pickle, cPickle]:
     s = p.dumps(pdb_inp, 1)
     l = p.loads(s)
@@ -759,7 +759,7 @@ def exercise_input_pickling():
       assert d == "7375e96fd52794a785284580730de20c"
 
 def exercise_xray_structure_simple():
-  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+  pdb_inp = pdb.pdb_input(source_info=None, lines=flex.split_lines("""\
 CRYST1   61.410   54.829   43.543  90.00  90.00  90.00 P 21 21 21    8
 ORIGX1      1.000000  0.000000  0.000000        0.00000
 ORIGX2      0.000000  1.000000  0.000000        0.00000
@@ -831,7 +831,7 @@ pdb="CA  AION B   1 " Ca2+   1 (32.3600 11.0920 17.3080) 0.92 0.4554 [ - ]
 pdb="CA   ION B   2 " Ca     1 (30.8220 10.6650 17.1900) 1.00 0.4670 [ - ]
 """)
   #
-  pdb_inp = pdb.input(
+  pdb_inp = pdb.pdb_input(
     source_info=None,
     lines=flex.split_lines("""\
 ATOM      1  N   GLN A   3      35.299  11.075  99.070  1.00 36.89      STUV A
@@ -848,7 +848,7 @@ Unknown chemical element type:
   To resolve this problem, specify a chemical element type in
   columns 77-78 of the PDB file, right justified (e.g. " C").""")
   else: raise Exception_expected
-  pdb_inp = pdb.input(
+  pdb_inp = pdb.pdb_input(
     source_info=None,
     lines=flex.split_lines("""\
 ATOM      1 1A   GLN A   3      35.299  11.075  99.070  1.00 36.89
@@ -865,7 +865,7 @@ Unknown chemical element type:
   To resolve this problem, specify a chemical element type in
   columns 77-78 of the PDB file, right justified (e.g. " C").""")
   else: raise Exception_expected
-  pdb_inp = pdb.input(
+  pdb_inp = pdb.pdb_input(
     source_info=None,
     lines=flex.split_lines("""\
 ATOM      1  N   GLN A   3      35.299  11.075  99.070  1.00 36.89           Bx5
@@ -881,7 +881,7 @@ Unknown charge:
   "ATOM      1  N   GLN A   3 .*.     Bx5"
                                        ^^''')
   else: raise Exception_expected
-  pdb_inp = pdb.input(
+  pdb_inp = pdb.pdb_input(
     source_info=None,
     lines=flex.split_lines("""\
 ATOM      1  N   GLN A   3      35.299  11.075  99.070  1.00 36.89          Cs3-
@@ -909,7 +909,7 @@ Unknown scattering type:
                ^^^^                  ^^^^''')
   else: raise Exception_expected
   #
-  pdb_inp = pdb.input(
+  pdb_inp = pdb.pdb_input(
     source_info=None,
     lines=flex.split_lines("""\
 MODEL        1
@@ -957,7 +957,7 @@ model="   2" pdb=" CA  GLN A   3 " C      1 (24.4820 -1.9270  8.7940)\
  1.00 0.3531 [ - ]
 """)
   #
-  pdb_inp = pdb.input(
+  pdb_inp = pdb.pdb_input(
     source_info=None,
     lines=flex.split_lines("""\
 ATOM    369 PEAK PEAK    1      61.114  12.134   8.619  1.00 20.00      PEAK
@@ -968,13 +968,13 @@ ATOM    504 SITE SITE    2      67.707   2.505  14.951  1.00 20.00      SITE
       == {"const": 0}
   assert list(xray_structure.scattering_type_registry().unique_counts) == [2]
   #
-  pdb_inp = pdb.input(
+  pdb_inp = pdb.pdb_input(
     source_info=None,
     lines=flex.split_lines("""\
 """))
   assert pdb_inp.xray_structure_simple().scatterers().size() == 0
   assert len(pdb_inp.xray_structures_simple()) == 1
-  pdb_inp = pdb.input(
+  pdb_inp = pdb.pdb_input(
     source_info=None,
     lines=flex.split_lines("""\
 MODEL        1
@@ -982,7 +982,7 @@ ENDMDL
 """))
   assert pdb_inp.xray_structure_simple().scatterers().size() == 0
   assert len(pdb_inp.xray_structures_simple()) == 1
-  pdb_inp = pdb.input(
+  pdb_inp = pdb.pdb_input(
     source_info=None,
     lines=flex.split_lines("""\
 MODEL        1
@@ -992,7 +992,7 @@ ENDMDL
 """))
   assert pdb_inp.xray_structure_simple().scatterers().size() == 0
   assert len(pdb_inp.xray_structures_simple()) == 2
-  pdb_inp = pdb.input(
+  pdb_inp = pdb.pdb_input(
     source_info=None,
     lines=flex.split_lines("""\
 MODEL        1
@@ -1007,7 +1007,7 @@ ENDMDL
   assert xray_structures[0].scatterers().size() == 1
   assert xray_structures[1].scatterers().size() == 0
   assert xray_structures[0].scatterers()[0].scattering_type == "O2-"
-  pdb_inp = pdb.input(
+  pdb_inp = pdb.pdb_input(
     source_info=None,
     lines=flex.split_lines("""\
 MODEL        1
@@ -1032,7 +1032,7 @@ HETATM    6 CA   ION B   1      32.360  11.092  17.308  0.92 35.96           X
 HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87          FE4+
 ATOM      8  O   MET A   5       6.215  22.789  24.067  1.00  0.00            -2
 """
-  pdb_inp = pdb.input(
+  pdb_inp = pdb.pdb_input(
     source_info=None,
     lines=flex.split_lines(input_pdb_string))
   assert [scatterer.scattering_type
@@ -1051,7 +1051,7 @@ ATOM      8  O   MET A   5       6.215  22.789  24.067  1.00  0.00            -2
 ATOM      1  N   GLN A   3      35.299  11.075  19.070  1.00 36.89           N
 ATOM      2  CA  GLN A   3      34.482   9.927  18.794  0.63 37.88           C
 """
-  pdb_inp = pdb.input(source_info=None, lines=input_pdb_string)
+  pdb_inp = pdb.pdb_input(source_info=None, lines=input_pdb_string)
   xs = pdb_inp.xray_structure_simple()
   assert xs.is_similar_symmetry(cs1)
   xs = pdb_inp.xray_structure_simple(crystal_symmetry=cs2)
@@ -1061,7 +1061,7 @@ CRYST1   10.000   20.000   30.000  80.00  85.00  95.00
 ATOM      1  N   GLN A   3      35.299  11.075  19.070  1.00 36.89           N
 ATOM      2  CA  GLN A   3      34.482   9.927  18.794  0.63 37.88           C
 """
-  pdb_inp = pdb.input(source_info=None, lines=input_pdb_string)
+  pdb_inp = pdb.pdb_input(source_info=None, lines=input_pdb_string)
   xs = pdb_inp.xray_structure_simple()
   assert xs.is_similar_symmetry(
     cs1.customized_copy(unit_cell=cs2.unit_cell()))
@@ -1072,7 +1072,7 @@ CRYST1                                                 P -1
 ATOM      1  N   GLN A   3      35.299  11.075  19.070  1.00 36.89           N
 ATOM      2  CA  GLN A   3      34.482   9.927  18.794  0.63 37.88           C
 """
-  pdb_inp = pdb.input(source_info=None, lines=input_pdb_string)
+  pdb_inp = pdb.pdb_input(source_info=None, lines=input_pdb_string)
   xs = pdb_inp.xray_structure_simple()
   assert xs.is_similar_symmetry(cs1.customized_copy(
     space_group_info=cs2.space_group_info()))
@@ -1083,7 +1083,7 @@ CRYST1   10.000   20.000   30.000  80.00  85.00  95.00 P -1
 ATOM      1  N   GLN A   3      35.299  11.075  19.070  1.00 36.89           N
 ATOM      2  CA  GLN A   3      34.482   9.927  18.794  0.63 37.88           C
 """
-  pdb_inp = pdb.input(source_info=None, lines=input_pdb_string)
+  pdb_inp = pdb.pdb_input(source_info=None, lines=input_pdb_string)
   xs = pdb_inp.xray_structure_simple()
   assert xs.is_similar_symmetry(cs2)
   xs = pdb_inp.xray_structure_simple(crystal_symmetry=cs1)

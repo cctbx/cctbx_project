@@ -1,8 +1,10 @@
 from __future__ import division
 from cctbx.array_family import flex
 from libtbx.containers import OrderedSet
+import iotbx.pdb
 from iotbx.pdb import hierarchy
 from iotbx.pdb import hy36encode
+import iotbx.cif
 from iotbx.cif.builders import crystal_symmetry_builder
 
 
@@ -162,3 +164,155 @@ def format_pdb_atom_name(atom_name, atom_type):
   while len(atom_name) < 4:
     atom_name = "%s " %atom_name
   return atom_name
+
+
+class cif_input(iotbx.pdb.pdb_input_mixin):
+  def __init__(self,
+               file_name=None,
+               source_info=iotbx.pdb.Please_pass_string_or_None,
+               lines=None,
+               pdb_id=None,
+               raise_sorry_if_format_error=False):
+    if (pdb_id is not None):
+      assert file_name is None
+      file_name = iotbx.pdb.ent_path_local_mirror(pdb_id=pdb_id)
+    if file_name is not None:
+      reader = iotbx.cif.reader(file_path=file_name)
+    elif lines is not None:
+      reader = iotbx.cif.reader(input_string="\n".join(lines))
+    self.cif_model = reader.model()
+    self.cif_block = self.cif_model.values()[0]
+    self.builder = pdb_hierarchy_builder(reader.model().blocks.values()[0])
+    self.hierarchy = self.builder.hierarchy
+    self._source_info = "file %s" %file_name
+
+  def construct_hierarchy(self):
+    return self.hierarchy
+
+  def source_info(self):
+    return self._source_info
+
+  def atoms(self):
+    return self.hierarchy.atoms()
+
+  def atoms_with_labels(self):
+    return self.hierarchy.atoms_with_labels()
+
+  def model_indices(self):
+    return flex.size_t([m.atoms_size() for m in self.hierarchy.models()])
+
+  def crystal_symmetry(self,
+        crystal_symmetry=None,
+        weak_symmetry=False):
+    self_symmetry = self.builder.crystal_symmetry
+    if (crystal_symmetry is None):
+      return self_symmetry
+    if (self_symmetry is None):
+      return crystal_symmetry
+    return self_symmetry.join_symmetry(
+      other_symmetry=crystal_symmetry,
+      force=not weak_symmetry)
+
+  def crystal_symmetry_from_cryst1(self):
+    return self.builder.crystal_symmetry
+
+  def extract_cryst1_z_columns(self):
+    return self.cif_model.values()[0].get("_cell.Z_PDB")
+
+  def connectivity_section(self):
+    # XXX Should we extract something from the CIF and return a PDB-like
+    # CONECT record, or rework this whole thing?
+    return ""
+
+  def connectivity_annotation_section(self):
+    return ""
+
+  def remark_section(self):
+    return ""
+
+  def heterogen_section(self):
+    return ""
+
+  def crystallographic_section(self):
+    return ""
+
+  def extract_header_year(self):
+    yyyymmdd = self.deposition_date()
+    if yyyymmdd is not None:
+      return int(yyyymmdd[:4])
+
+  def deposition_date(self):
+    # date format: yyyy-mm-dd
+    cif_block = self.cif_model.values()[0]
+    rev_num = cif_block.get('_database_PDB_rev.num')
+    if rev_num is not None:
+      date_original = cif_block.get('_database_PDB_rev.date_original')
+      if isinstance(rev_num, basestring):
+        return date_original
+      else:
+        i = flex.first_index(rev_num, '1')
+        if date_original is not None:
+          return date_original[i]
+
+  def get_r_rfree_sigma(self, file_name):
+    return _cif_get_r_rfree_sigma_object(self.cif_block, file_name)
+
+  def get_solvent_content(self):
+    return _float_or_None(self.cif_block.get('_exptl_crystal.density_percent_sol'))
+
+  def get_matthews_coeff(self):
+    return _float_or_None(self.cif_block.get('_exptl_crystal.density_Matthews'))
+
+  def get_program_name(self):
+    software_names = self.cif_block.get('_software.name')
+    software_classifications = self.cif_block.get('_software.classification')
+    if software_classifications is not None:
+      i = flex.first_index(software_classifications, 'refinement')
+      if i > 0: return software_names[i]
+
+  def scale_matrix(self):
+    fractionalization_matrix = [
+      self.cif_block.get('_atom_sites.fract_transf_matrix[%s][%s]' %(i, j))
+      for i,j in ('11', '12', '13', '21', '22', '23', '31','32', '33')]
+    if fractionalization_matrix.count(None) == 9:
+      return None
+    assert fractionalization_matrix.count(None) == 0
+    fractionalization_vector = [
+      self.cif_block.get('_atom_sites.fract_transf_vector[%s]' %i) for i in '123']
+    assert fractionalization_matrix.count(None) == 0
+    return [[float(i) for i in fractionalization_matrix],
+            [float(i) for i in fractionalization_vector]]
+
+
+def _float_or_None(value):
+  if value is not None:
+    if value == '?' or value == '.':
+      return None
+    return float(value)
+
+
+class _cif_get_r_rfree_sigma_object(object):
+  def __init__(self, cif_block, file_name):
+    self.file_name = file_name
+    self.r_work = _float_or_None(cif_block.get('_refine.ls_R_factor_R_work'))
+    self.r_free = _float_or_None(cif_block.get('_refine.ls_R_factor_R_free'))
+    self.sigma = _float_or_None(cif_block.get('_refine.pdbx_ls_sigma_F'))
+    self.high = _float_or_None(cif_block.get('_refine.ls_d_res_high'))
+    self.low = _float_or_None(cif_block.get('_refine.ls_d_res_low'))
+    self.resolution = _float_or_None(cif_block.get('_reflns.d_resolution_high'))
+
+  def formatted_string(self):
+    result = "%s %s %s %s %s %s %s" % (
+      format_value("%6s",self.file_name),
+      format_value("%6s",str(self.r_work)),
+      format_value("%6s",str(self.r_free)),
+      format_value("%6s",str(self.sigma)),
+      format_value("%6s",str(self.high)),
+      format_value("%6s",str(self.low)),
+      format_value("%6s",str(self.resolution)))
+    return result
+
+  def show(self, log = None):
+    if(log is None): log = sys.stdout
+    print >> self.log, self.formatted_string()
+
