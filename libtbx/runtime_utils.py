@@ -67,7 +67,8 @@ class target_with_save_result (object) :
     easy_pickle.dump(self.file_name, result)
     if (self._out is not None) :
       self._out.flush()
-      self._out.close()
+      # FIXME
+      #self._out.close()
     return result
 
   def run (self) :
