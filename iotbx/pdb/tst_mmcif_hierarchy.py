@@ -6,7 +6,7 @@ from libtbx.test_utils import Exception_expected
 from libtbx.test_utils import show_diff
 
 import iotbx.cif
-from iotbx.cif.builders import pdb_hierarchy_builder
+from iotbx.pdb.mmcif import pdb_hierarchy_builder
 
 
 def exercise_pdb_hierachy_builder():

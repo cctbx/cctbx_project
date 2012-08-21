@@ -846,7 +846,6 @@ iotbx/cif/restraints.py -text
 iotbx/cif/tests/analyse_cod_stats.py -text
 iotbx/cif/tests/tst_cod.py -text
 iotbx/cif/tests/tst_parser.py svneol=native#text/x-python
-iotbx/cif/tests/tst_pdb_hierarchy.py -text
 iotbx/cif/tests/tst_restraints.py -text
 iotbx/cif/tests/tst_ucif_examples_compilation.py -text
 iotbx/cns/crystal_symmetry_utils.py svneol=native#text/x-python
@@ -956,6 +955,7 @@ iotbx/pdb/hybrid_36_cpp.h svneol=native#text/plain
 iotbx/pdb/input.cpp svneol=native#text/plain
 iotbx/pdb/input_write.cpp svneol=native#text/plain
 iotbx/pdb/mining.py svneol=native#text/x-python
+iotbx/pdb/mmcif.py -text
 iotbx/pdb/namespace.h svneol=native#text/plain
 iotbx/pdb/overall_counts.cpp svneol=native#text/plain
 iotbx/pdb/records.py svneol=native#text/x-python
@@ -969,6 +969,7 @@ iotbx/pdb/secondary_structure.py -text
 iotbx/pdb/tst_atom_selection.py svneol=native#text/x-python
 iotbx/pdb/tst_extract_rfactors_resolutions_sigma.py -text
 iotbx/pdb/tst_hierarchy.py svneol=native#text/x-python
+iotbx/pdb/tst_mmcif_hierarchy.py -text
 iotbx/pdb/tst_rna_dna_atom_names.py -text
 iotbx/pdb/utils.cpp svneol=native#text/plain
 iotbx/pdb/utils.h svneol=native#text/plain
