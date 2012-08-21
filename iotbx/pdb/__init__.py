@@ -537,13 +537,14 @@ class combine_unique_pdb_files(object):
     if (n_ignored != 0 or n_identical != 0):
       print >> out, prefix.rstrip()
 
-class header_date:
+class header_date(object):
 
   def __init__(self, field):
     "Expected format: DD-MMM-YY"
     self.dd = None
     self.mmm = None
     self.yy = None
+    self.yyyy = None
     if (len(field) != 9): return
     if (field.count("-") != 2): return
     if (field[2] != "-" or field[6] != "-"): return
@@ -560,21 +561,27 @@ class header_date:
     except ValueError: pass
     else:
       if (self.yy < 0 or self.yy > 99): self.yy = None
+    if self.yy is not None:
+      if self.yy < 60: # I hope by 2060 no one uses the PDB format seriously!
+        self.yyyy = 2000 + self.yy
+      else:
+        self.yyyy = 1900 + self.yy
 
   def is_fully_defined(self):
     return self.dd is not None \
        and self.mmm is not None \
-       and self.yy is not None
+       and self.yy is not None \
+       and self.yyyy is not None
 
 def header_year(record):
   if (record.startswith("HEADER")):
     date = header_date(field=record[50:59])
-    if (date.is_fully_defined()): return date.yy
+    if (date.is_fully_defined()): return date.yyyy
     fields = record.split()
     fields.reverse()
     for field in fields:
       date = header_date(field=field)
-      if (date.is_fully_defined()): return date.yy
+      if (date.is_fully_defined()): return date.yyyy
   return None
 
 class Please_pass_string_or_None(object): pass
