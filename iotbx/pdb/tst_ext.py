@@ -736,7 +736,7 @@ REMARK sg= P2(1)2(1)2(1) a= 61.410 b= 54.829 c= 43.543 alpha= 90 beta= 90 gamma=
 HEADER                                            02-JUL-92
 REMARK   2 RESOLUTION. 1.7  ANGSTROMS.
 """))
-  assert pdb_inp.extract_header_year() == 92
+  assert pdb_inp.extract_header_year() == 1992
   assert pdb_inp.extract_remark_iii_records(iii=2) \
       == ['REMARK   2 RESOLUTION. 1.7  ANGSTROMS.']
 
