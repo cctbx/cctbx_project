@@ -34,18 +34,6 @@ namespace {
     }
   };
 
-  struct input_atoms_with_labels_list : input_atoms_with_labels_generator
-  {
-    boost::python::list result;
-
-    bool
-    process_atom(hierarchy::atom_with_labels const& awl)
-    {
-      result.append(awl);
-      return true;
-    }
-  };
-
   struct input_wrappers
   {
     typedef input w_t;
@@ -62,15 +50,6 @@ namespace {
         result[i->first.elems] = i->second;
       }
       return result;
-    }
-
-    static boost::python::list
-    atoms_with_labels(
-      w_t const& self)
-    {
-      input_atoms_with_labels_list g;
-      g.run(self);
-      return g.result;
     }
 
     static void
@@ -134,7 +113,7 @@ namespace {
         .def("connectivity_section", &w_t::connectivity_section, rbv())
         .def("bookkeeping_section", &w_t::bookkeeping_section, rbv())
         .def("model_atom_counts", &w_t::model_atom_counts)
-        .def("atoms_with_labels", atoms_with_labels)
+        .def("atoms_with_labels", &w_t::atoms_with_labels)
         .def("_as_pdb_string_cstringio", as_pdb_string_cstringio, (
           arg("self"),
           arg("cstringio"),

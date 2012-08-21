@@ -20,12 +20,13 @@ namespace {
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("xray_structures_simple_extension", no_init)
         .def(init<
-               boost::shared_ptr<input> const&,
                bool,
                bool,
                bool,
                bool,
                bool,
+               af::shared<hierarchy::atom_with_labels> const&,
+               af::shared<std::size_t> const&,
                std::set<std::string> const&,
                cctbx::uctbx::unit_cell const&,
                scitbx::mat3<double> const&,

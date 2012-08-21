@@ -12,8 +12,8 @@ namespace iotbx { namespace pdb {
   struct xray_structures_simple_extension
   {
     protected:
-      boost::shared_ptr<input> self_;
       af::shared<hierarchy::atom_with_labels> atoms_with_labels_;
+      af::shared<std::size_t> model_indices_;
       bool unit_cube_pseudo_crystal_;
       bool fractional_coordinates_;
       bool scattering_type_exact_;
@@ -27,19 +27,20 @@ namespace iotbx { namespace pdb {
       xray_structures_simple_extension() {}
 
       xray_structures_simple_extension(
-        boost::shared_ptr<input> const& self,
         bool one_structure_for_each_model,
         bool unit_cube_pseudo_crystal,
         bool fractional_coordinates,
         bool scattering_type_exact,
         bool enable_scattering_type_unknown,
+        af::shared<hierarchy::atom_with_labels> const& atoms_with_labels,
+        af::shared<std::size_t> const& model_indices,
         std::set<std::string> const& atom_names_scattering_type_const,
         cctbx::uctbx::unit_cell const& unit_cell,
         scitbx::mat3<double> const& scale_r,
         scitbx::vec3<double> const& scale_t)
       :
-        self_(self),
-        atoms_with_labels_(self_->atoms_with_labels()),
+        atoms_with_labels_(atoms_with_labels),
+        model_indices_(model_indices),
         unit_cube_pseudo_crystal_(unit_cube_pseudo_crystal),
         fractional_coordinates_(fractional_coordinates),
         scattering_type_exact_(scattering_type_exact),
@@ -51,7 +52,7 @@ namespace iotbx { namespace pdb {
         //
         loop_state(0),
         use_scale_matrix(scale_r.determinant() != 0),
-        model_range(self_->model_indices().const_ref()),
+        model_range(model_indices.const_ref()),
         i_atom(0),
         atom(atoms_with_labels_.begin()),
         scatterer("", cctbx::fractional<>(0,0,0), 0, 0, "", 0, 0)
