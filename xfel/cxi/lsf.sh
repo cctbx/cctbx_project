@@ -71,7 +71,8 @@ while test $# -ge 0; do
             ;;
 
         -o)
-            out=`readlink -fn "$2"`
+            out=`ssh -S "${tmpdir}/control.socket" ${NODE} \
+                "cd \"${PWD}\" ; readlink -fn \"$2\""`
             if ssh -S "${tmpdir}/control.socket" ${NODE} \
                 "test -e \"${out}\" -a ! -d \"${out}\" 2> /dev/null"; then
                 echo "output exists but is not a directory" > /dev/stderr
