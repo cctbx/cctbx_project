@@ -23,12 +23,12 @@ class build_proxies(object):
         len(sites_cart),
         True)
     if sites_cart_reference is None:
-      sites_cart_reference = sites_cart
+      sites_cart_reference = sites_cart.deep_copy()
     assert len(sites_cart) == len(sites_cart_reference)
     weight = 1.0 / (sigma**2)
     for i_seq, sel in enumerate(selection):
       if sel:
-        i_seqs = tuple([i_seq])
+        i_seqs = [i_seq]
         ref_sites = sites_cart_reference[i_seq]
         proxy = self.ext.reference_coordinate_proxy(
                   i_seqs=i_seqs,
