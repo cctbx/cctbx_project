@@ -847,25 +847,14 @@ def run(args,
   # report map cc
   if(params.comprehensive and not fmodel_cut.twin and
      fmodel_cut.xray_structure is not None):
-    show_hydrogens = False
-    if(fmodel_cut.f_calc().d_min() <= 1.0 or
-       params.scattering_table == "neutron"): show_hydrogens=True
+    rsc_params = real_space_correlation.master_params().extract()
+    rsc_params.scattering_table = params.scattering_table
     real_space_correlation.simple(
-      fmodel                = fmodel_cut,
-      pdb_hierarchy         = hierarchy,
-      map_1_name            = "Fc",
-      map_2_name            = "2mFo-DFc",
-      details_level         = "automatic",
-      atom_radius           = None,
-      number_of_grid_points = 100,
-      show                  = True,
-      log                   = None,
-      show_hydrogens        = show_hydrogens,
-      selection             = None,
-      set_cc_to_zero_if_n_grid_points_less_than = 50,
-      poor_cc_threshold                         = 0.7,
-      poor_map_1_value_threshold                = 1.0,
-      poor_map_2_value_threshold                = 1.0)
+       fmodel        = fmodel_cut,
+       pdb_hierarchy = hierarchy,
+       params        = rsc_params,
+       log           = log,
+       show_results  = True)
   #
   if(params.dump_result_object_as_pickle):
     output_prefixes = []
