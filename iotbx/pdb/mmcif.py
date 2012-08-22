@@ -300,6 +300,9 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
   def crystallographic_section(self):
     return ""
 
+  def title_section(self):
+    return ""
+
   def extract_header_year(self):
     yyyymmdd = self.deposition_date()
     if yyyymmdd is not None:
