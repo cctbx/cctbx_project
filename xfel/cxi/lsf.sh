@@ -149,7 +149,8 @@ if ! ssh -S "${tmpdir}/control.socket" ${NODE} \
 fi
 
 # Construct an absolute path to the directory with the XTC files as
-# well as a sorted list of unique stream numbers for ${run}.
+# well as a sorted list of unique stream numbers for ${run}.  XXX May
+# need some filtering as suggested by Amedeo.
 xtc="${exp}/xtc"
 streams=`ssh -S "${tmpdir}/control.socket" ${NODE} \
       "ls ${xtc}/e*-r${run}-s* 2> /dev/null"       \
@@ -164,6 +165,9 @@ fi
 # If num-cpu is given in ${cfg}, use that instead of whatever might be
 # given on the command line.  Otherwise, the number of processes per
 # host should be between 7 and 9 according to Marc Messerschmidt.
+# Using only two processors may decrease performance, because
+# distributing data from the master process to a single worker process
+# introduces overhead.
 t=`awk -F= '/^[[:space:]]*num-cpu[[:space:]]*=/ { \
                 printf("%d\n", $2);               \
             }' "${cfg}"`
@@ -230,11 +234,12 @@ EOF
     # limited cores/user:  psfehq.  unlimited: psfehmpiq
     # Create the run-script for stream ${s}.  Fall back on using a
     # single processor if the number of available processors cannot be
-    # obtained from the environment.
+    # obtained from the environment or is less than or equal to two.
     cat > "${tmpdir}/pyana_s${s}.sh" << EOF
 #! /bin/sh
 
-NPROC=\`printenv LSB_MCPU_HOSTS | awk '{ printf("%d\n", \$2); }'\`
+NPROC=\`printenv LSB_MCPU_HOSTS \
+    | awk '{ printf("%d\n", \$2 > 2 ? \$2 : 1); }'\`
 
 test "\${NPROC}" -gt 0 2> /dev/null || NPROC="1"
 "${PYANA}" \\
