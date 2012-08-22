@@ -270,9 +270,14 @@ class any_file_input (object) :
       self.file_object = cif_file
       self.file_type = "hkl"
     else:
-      self.file_object = iotbx.cif.reader(file_path=str(self.file_name),
-        strict=False)
-      self.file_type = "cif"
+      from iotbx.pdb.mmcif import cif_input
+      try:
+        self.file_object = cif_input(file_name=self.file_name)
+        self.file_type = "pdb"
+      except Exception, e:
+        self.file_object = iotbx.cif.reader(file_path=self.file_name,
+          strict=False)
+        self.file_type = "cif"
 
   def try_as_phil (self) :
     from iotbx.phil import parse as parse_phil
