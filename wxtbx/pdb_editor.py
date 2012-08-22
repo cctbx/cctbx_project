@@ -5,11 +5,37 @@ from wxtbx.phil_controls import simple_dialogs
 from wxtbx.phil_controls import strctrl, intctrl
 from wxtbx import symmetry_dialog
 from wxtbx import path_dialogs
-from libtbx.utils import Abort, Sorry
+from wx.lib.embeddedimage import PyEmbeddedImage
 from wx.lib.agw import customtreectrl
 import wx
+from libtbx.utils import Abort, Sorry
 import string
 import os
+
+b_iso_icon = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAADnRFWHRTb2Z0d2FyZQBQeU1P"
+    "TPa/er0AAAAYdEVYdFVSTABodHRwOi8vd3d3LnB5bW9sLm9yZ5iPN04AAAHrSURBVDiNxZLP"
+    "TlNBFMa/mTNzL4XeIt6SCIKmRBKXpTSRujDxDdy4dmMXJr6BCzcufAX/4BPwFK4sxMREEzeG"
+    "KpoiNo2tFHrnzp05LtqiWOKWb3Uy853fmZz5gPOW+Pdgfv5hOQiW6lovVaXMVQDJRNGmMc2d"
+    "vb36q/8CFhYeV7S+/CwIrla1vgSiCEIoMDs412VjvjR2d+/UzgTE8b21XG7t+dTU9WoQLEOp"
+    "GER5EGkADGuPYe0PHgzev2k2794c98lxQTRXVyquKnURRLMgilAoTGN1NUCpFGJmZhZaF0UY"
+    "XrmxsrJVmQAAqEuZhxAhhNAgUigWBTY2gFoNiGMJohyILkhA3h83KQDI52+VpZyWgIAQAgCD"
+    "mZEkQLsNCAFk2Z+ZQ+9fAADw3oA5hfcJmFM4Z9DpaGxvD729noNzQw9zilOAfv/1uzC85p3r"
+    "Sef6kLIPIRSShJGmwWhACucO4VwX1u77M15w9MLa/QdEhdHXeRAZCKFH9wmc+4k0/eq9P355"
+    "svxxEQTLLcCvC6EWh3vwYDbwfgDnfiHLOrD2Gw8GHxqt1qMnEwBjPn0Pw9Jb7w/XvTeLw30c"
+    "wbkesqwNaz9zknxsHBw8PcnAqSCNFUW3y1JGdaK5qpRhBRBMVNg0prnT7W5NRPn89RuLodCO"
+    "WgQHYQAAAABJRU5ErkJggg==")
+
+b_aniso_icon = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAADnRFWHRTb2Z0d2FyZQBQeU1P"
+    "TPa/er0AAAAYdEVYdFVSTABodHRwOi8vd3d3LnB5bW9sLm9yZ5iPN04AAAFnSURBVDiNzdLP"
+    "ahNRHMXxz0xCtCOaYkVpFLLpSnHTCdLH6MJHsNZtt6661wew6COIO5/CjAbciBRBkSYtBNv0"
+    "nzOxuS4yDbEVXepZ/S6X7zmH3738a0V/unxKeoGVeaIaCtr3ef5Xg8ekV9lokt7ELGo4xjbZ"
+    "e1bWeAeVs/A6aZ03d2ks4Baux7F6FElCENE4JrzkNVSn4bVx5fYdNHEDV+p1cbNJv0+36+Jo"
+    "JGbxlIlPh3ssJmwsYB5zuJwk4qUlWi2iyDAEOYZToZMGt2ldI51DHQkqMzPs7rK5Ke/1DELw"
+    "Dd/pnDOIeDBbglUEnOzv0+nIi8JeCHbwFV9onzNAq1KCQxyhKAo/yrlfwp/J1qeecmIQ8/aI"
+    "9BB7yMet5OV5Gx84OWB1evETgwFZlzQpoRpGOCjTd8gGrD4hmzaY/IMGW0NaOY3DEuriEz7S"
+    "7vHo2Rm43N2vWubhJdLqOH0UePHqN+D/o5/JPnJ7ZjEAWAAAAABJRU5ErkJggg==")
 
 def format_model (model) :
   return "model '%s'" % model.id
@@ -60,6 +86,10 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     kwds['agwStyle'] = wx.TR_HAS_VARIABLE_ROW_HEIGHT|wx.TR_HAS_BUTTONS| \
       wx.TR_TWIST_BUTTONS|wx.TR_HIDE_ROOT|wx.TR_MULTIPLE
     customtreectrl.CustomTreeCtrl.__init__(self, *args, **kwds)
+    self.il = wx.ImageList(16,16)
+    self.il.Add(b_iso_icon.GetBitmap())
+    self.il.Add(b_aniso_icon.GetBitmap())
+    self.SetImageList(self.il)
     self.Bind(wx.EVT_TREE_KEY_DOWN, self.OnChar)
     self.Bind(wx.EVT_TREE_ITEM_RIGHT_CLICK, self.OnRightClick)
     self.Bind(wx.EVT_LEFT_DCLICK, self.OnDoubleClick)
@@ -136,6 +166,10 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     else :
       atom_node = self.InsertItemByIndex(ag_node, index, format_atom(atom),
         data=atom)
+    if (atom.uij == (-1,-1,-1,-1,-1,-1)) :
+      self.SetItemImage(atom_node, 0)
+    else :
+      self.SetItemImage(atom_node, 1)
 
   def PropagateAtomChanges (self, node) :
     child, cookie = self.GetFirstChild(node)
@@ -143,6 +177,10 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       pdb_object = self.GetItemPyData(node)
       if (type(pdb_object).__name__ == 'atom') :
         self.SetItemText(node, format_atom(pdb_object))
+        if (pdb_object.uij == (-1,-1,-1,-1,-1,-1)) :
+          self.SetItemImage(node, 0)
+        else :
+          self.SetItemImage(node, 1)
       else :
         print "Can't modify object %s'" % type(pdb_object).__name__
     else :
