@@ -121,6 +121,7 @@ class electron_density_map(object):
                        sharp=False,
                        post_processing_callback=None):
     map_name_manager = mmtbx.map_names(map_name_string = map_type)
+    # Special case #1: anomalous map
     if(map_name_manager.anomalous):
       if(self.anom_diff is not None):
         # Formula from page 141 in "The Bijvoet-Difference Fourier Synthesis",
@@ -128,6 +129,15 @@ class electron_density_map(object):
         return miller.array(miller_set = self.anom_diff,
                             data       = self.anom_diff.data()/(2j))
       else: return None
+    # Special case #2: Fcalc map
+    mnm = mmtbx.map_names(map_name_string = map_type)
+    if(mnm.k==0 and abs(mnm.n)==1):
+      if(fill_missing):
+        return self.fmodel.xray_structure.structure_factors(
+          d_min = self.fmodel.f_obs().d_min()).f_calc()
+      else:
+        return self.fmodel.f_obs().structure_factors_from_scatterers(
+          xray_structure = self.fmodel.xray_structure).f_calc()
     #
     # R.Read, SIGMAA: 2mFo-DFc (acentrics) & mFo (centrics)
     #

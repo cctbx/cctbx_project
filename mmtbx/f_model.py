@@ -1039,7 +1039,7 @@ class manager(manager_mixin):
     #     prefix="Final:", log=log)
     #print >> log
 
-  def show(self, log=None, suffix=None):
+  def show(self, log=None, suffix=None, show_header=True):
     if(log is None): log = sys.stdout
     l="Statistics in resolution bins"
     if(suffix is not None): l += " %s"%suffix
@@ -1047,7 +1047,7 @@ class manager(manager_mixin):
     f2 = "  F_model = k_total * (F_calc + k_mask * F_mask)\n"
     f3 = "    k_total = k_isotropic * k_anisotropic"
     m=(77-len(l))//2
-    print >> log, "\n","="*m,l,"="*m,"\n"
+    if(show_header): print >> log, "\n","="*m,l,"="*m,"\n"
     print >> log, f1
     print >> log, f2
     print >> log, f3

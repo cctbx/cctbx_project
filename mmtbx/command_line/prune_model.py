@@ -108,7 +108,7 @@ class prune_model (object) :
     # XXX or, viewed a different way, this is one giant hack.  need to make
     # the logic smarter!
     assert (len(pdb_hierarchy.models()) == 1)
-    from mmtbx.real_space_correlation import set_details_level_and_radius
+    from mmtbx.real_space_correlation import set_detail_level_and_radius
     from cctbx import maptbx
     from scitbx.array_family import flex
     self.params = params
@@ -122,9 +122,9 @@ class prune_model (object) :
     model_map_fft = model_map_coeffs.fft_map(
       resolution_factor=params.resolution_factor)
     self.model_map = model_map_fft.apply_sigma_scaling().real_map()
-    atom_detail, residue_detail, self.atom_radius = \
-      set_details_level_and_radius(
-        details_level="automatic",
+    detail, self.atom_radius = \
+      set_detail_level_and_radius(
+        detail="automatic",
         d_min=f_map_coeffs.d_min(),
         atom_radius=None)
 
@@ -152,6 +152,8 @@ class prune_model (object) :
     mean_diff_value = flex.mean(diff_map_sel.as_1d())
     cc = flex.linear_correlation(x=f_map_sel,
       y=model_map_sel).coefficient()
+    # XXX PA: This should be density at atomic centers. Mean is too atom radius
+    # XXX PA: dependent, and has no reference values.
     return group_args(cc=cc,
       mean_2fofc=mean_f_value,
       mean_fofc=mean_diff_value)

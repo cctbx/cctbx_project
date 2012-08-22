@@ -11,13 +11,9 @@ from mmtbx import find_peaks
 from mmtbx.refinement import minimization
 import scitbx.lbfgs
 import mmtbx.utils
-from mmtbx import real_space_correlation
-
-real_space_correlation_core_params_str = real_space_correlation.core_params_str
-assert real_space_correlation_core_params_str.find("atom_radius = None") >= 0
-real_space_correlation_core_params_str = \
-  real_space_correlation_core_params_str.replace("atom_radius = None",
-  "atom_radius = 1.5")
+from cctbx import miller
+from cctbx import maptbx
+from libtbx.test_utils import approx_equal
 
 master_params_str = """\
   low_resolution = 2.8
@@ -58,7 +54,10 @@ master_params_str = """\
       .type = str
     cc_map_2_type = 2mFo-DFmodel
       .type = str
-    %s
+    poor_cc_threshold = 0.7
+      .type = float
+    poor_map_value_threshold = 1.0
+      .type = float
   }
   h_bond_min_mac = 1.8
     .type = float
@@ -141,7 +140,7 @@ master_params_str = """\
      number_of_kicks = 100
        .type = int
   }
-"""%real_space_correlation_core_params_str
+"""
 
 def master_params():
   return iotbx.phil.parse(master_params_str)
@@ -435,35 +434,49 @@ class manager(object):
     assert self.fmodel.xray_structure is self.model.xray_structure
     assert len(list(self.model.pdb_hierarchy().atoms_with_labels())) == \
       self.model.xray_structure.scatterers().size()
-    from mmtbx import real_space_correlation
     par = self.params.secondary_map_and_map_cc_filter
     selection = self.model.solvent_selection()
-    rscc_and_map_result = real_space_correlation.simple(
-      fmodel                = self.fmodel,
-      pdb_hierarchy         = self.model.pdb_hierarchy(),
-      map_1_name            = par.cc_map_1_type,
-      map_2_name            = par.cc_map_2_type,
-      diff_map_name         = None,
-      number_of_grid_points = par.number_of_grid_points,
-      atom_radius           = par.atom_radius,
-      details_level         = "atom",
-      selection             = selection,
-      show                  = False,
-      set_cc_to_zero_if_n_grid_points_less_than = par.set_cc_to_zero_if_n_grid_points_less_than,
-      poor_cc_threshold                         = par.poor_cc_threshold,
-      poor_map_1_value_threshold                = par.poor_map_value_threshold,
-      poor_map_2_value_threshold                = par.poor_map_value_threshold)
+    # filter by map cc and value
+    e_map_obj = self.fmodel.electron_density_map()
+    coeffs_1 = e_map_obj.map_coefficients(
+      map_type     = par.cc_map_1_type,
+      fill_missing = False,
+      isotropize   = True)
+    coeffs_2 = e_map_obj.map_coefficients(
+      map_type     = par.cc_map_2_type,
+      fill_missing = False,
+      isotropize   = True)
+    fft_map_1 = coeffs_1.fft_map(resolution_factor = 1./4)
+    fft_map_1.apply_sigma_scaling()
+    map_1 = fft_map_1.real_map_unpadded()
+    fft_map_2 = miller.fft_map(
+      crystal_gridding     = fft_map_1,
+      fourier_coefficients = coeffs_2)
+    fft_map_2.apply_sigma_scaling()
+    map_2 = fft_map_2.real_map_unpadded()
+    sites_cart = self.fmodel.xray_structure.sites_cart()
+    sites_frac = self.fmodel.xray_structure.sites_frac()
     scatterers = self.model.xray_structure.scatterers()
-    for rcc_res in rscc_and_map_result:
-      try:
-        i_seqs = [rcc_res.i_seq]
-      except Exception:
-        i_seqs = rcc_res.residue.selection
-      for i_seq in i_seqs:
-        assert selection[i_seq]
-        if(rcc_res.poor_flag and not
-           rcc_res.scatterer.element_symbol().strip().upper() in ["H","D"]):
-          selection[i_seq] = False
+    assert approx_equal(self.model.xray_structure.sites_frac(), sites_frac)
+    unit_cell = self.fmodel.xray_structure.unit_cell()
+    for i, sel_i in enumerate(selection):
+      if(sel_i):
+        sel = maptbx.grid_indices_around_sites(
+          unit_cell  = unit_cell,
+          fft_n_real = map_1.focus(),
+          fft_m_real = map_1.all(),
+          sites_cart = flex.vec3_double([sites_cart[i]]),
+          site_radii = flex.double([1.5]))
+        cc = flex.linear_correlation(x=map_1.select(sel),
+          y=map_2.select(sel)).coefficient()
+        map_value_1 = map_1.eight_point_interpolation(sites_frac[i])
+        map_value_2 = map_2.eight_point_interpolation(sites_frac[i])
+        if((cc < par.poor_cc_threshold or
+           map_value_1 < par.poor_map_value_threshold or
+           map_value_2 < par.poor_map_value_threshold) and not
+           scatterers[i].element_symbol().strip().upper() in ["H","D"]):
+          selection[i]=False
+    #
     sol_sel = self.model.solvent_selection()
     hd_sel = self.model.xray_structure.hd_selection()
     selection.set_selected(hd_sel, True)
