@@ -68,6 +68,7 @@ tst_list = (
   "$D/invariant_domain.py",
   "$D/secondary_structure/tst.py",
   "$D/geometry_restraints/tst_hbond.py",
+  "$D/geometry_restraints/tst_reference_coordinate.py",
   "$D/conformation_dependent_library/test_cdl.py",
   "$D/validation/sequence.py",
   "$D/regression/tst_prune_model.py",
