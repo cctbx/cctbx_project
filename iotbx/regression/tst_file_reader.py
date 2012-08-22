@@ -4,7 +4,7 @@ import sys
 import libtbx.load_env
 from libtbx.utils import Sorry
 from libtbx import easy_run
-from libtbx.test_utils import Exception_expected
+from libtbx.test_utils import Exception_expected, open_tmp_file
 from iotbx import file_reader
 from iotbx.file_reader import any_file, sort_by_file_type, group_files
 from cctbx import miller
@@ -79,6 +79,56 @@ _chem_comp_angle.value_angle_esd
   lines = easy_run.fully_buffered("iotbx.file_reader tmp1.cif").stdout_lines
   assert ("cif" in lines[0])
   os.remove("tmp1.cif")
+
+def exercise_mmcif():
+  input_4edr = """\
+data_4EDR
+_cell.length_a           150.582
+_cell.length_b           150.582
+_cell.length_c           38.633
+_cell.angle_alpha        90.000
+_cell.angle_beta         90.000
+_cell.angle_gamma        120.000
+#
+_symmetry.space_group_name_H-M             'P 61'
+#
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_entity_id
+_atom_site.label_seq_id
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.auth_seq_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_atom_id
+_atom_site.pdbx_PDB_model_num
+ATOM   1    N  N     . SER A 1 1 21.138  -69.073 17.360  1.00 23.68 108 SER A N     1
+ATOM   2    C  CA    . SER A 1 1 22.164  -68.793 18.358  1.00 22.98 108 SER A CA    1
+ATOM   3    C  C     . SER A 1 1 23.173  -67.799 17.805  1.00 21.13 108 SER A C     1
+ATOM   4    O  O     . SER A 1 1 23.251  -67.594 16.595  1.00 19.34 108 SER A O     1
+ATOM   5    C  CB    . SER A 1 1 22.882  -70.080 18.766  1.00 22.68 108 SER A CB    1
+ATOM   6    O  OG    . SER A 1 1 23.683  -70.569 17.703  1.00 24.00 108 SER A OG    1
+HETATM 2650 MN MN    . MN  F 4 . 9.296   -44.783 -6.320  1.00 44.18 505 MN  A MN    1
+"""
+  f = open_tmp_file(suffix="cif", mode="w")
+  print >> f, input_4edr
+  f.close()
+  mmcif = any_file(f.name)
+  mmcif.assert_file_type("pdb")
+  mmcif.check_file_type("pdb")
+  assert mmcif.file_description == 'Model'
+  hierarchy = mmcif.file_object.construct_hierarchy()
+  assert len(hierarchy.atoms()) == 7
 
 def exercise_pdb () :
   pdb_data = """
@@ -398,6 +448,7 @@ def exercise_groups () :
   ])
 
 def exercise () :
+  exercise_mmcif()
   exercise_groups()
   exercise_misc()
   exercise_cif()
