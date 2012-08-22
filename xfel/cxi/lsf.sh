@@ -139,9 +139,9 @@ if test $# -gt 0; then
 fi
 
 # Take ${exp} from the environment unless overridden on the command
-# line, and find its absolute path under /reg/data.
+# line, and find its absolute path under /reg/d/psdm.
 test -n "${EXP}" -a -z "${exp}" && exp="${EXP}"
-exp="/reg/d/psdm/cxi/${exp}"
+exp=`find "/reg/d/psdm" -maxdepth 2 -name "${exp}"`
 if ! ssh -S "${tmpdir}/control.socket" ${NODE} \
     "test -d \"${exp}\" 2> /dev/null"; then
     echo "Could not find experiment subdirectory for ${exp}" > /dev/stderr
