@@ -52,8 +52,12 @@ def format_atom_group (ag) :
   return "atom group %s (altloc='%s')" % (ag.resname, ag.altloc)
 
 def format_atom (atom) :
-  return "atom '%s' (x=%.3f, y=%.3f, z=%.3f, b=%.2f, occ=%.2f, elem='%s', charge='%s')" % (atom.name, atom.xyz[0], atom.xyz[1], atom.xyz[2], atom.b, atom.occ,
-           atom.element, atom.charge)
+  if (atom.hetero) :
+    prefix = "hetatm"
+  else :
+    prefix = "atom"
+  return "%s '%s' (x=%.3f, y=%.3f, z=%.3f, b=%.2f, occ=%.2f, elem='%s', charge='%s')" % (prefix, atom.name, atom.xyz[0], atom.xyz[1], atom.xyz[2], atom.b,
+      atom.occ, atom.element, atom.charge)
   #return "atom '%s'" % atom.name
 
 def remove_objects_recursive (pdb_object) :
@@ -364,6 +368,9 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         labels_and_actions.extend([
           ("Renumber residues...", self.OnRenumberResidues),
         ])
+      labels_and_actions.extend([
+          ("Toggle ATOM/HETATM...", self.OnSetAtomType),
+      ])
       self.ShowMenu(labels_and_actions, source_window)
     else :
       sel = self.GetSelection()
@@ -403,6 +410,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       ("Convert to isotropic", self.OnSetIsotropic),
       ("Delete atom", self.OnDeleteObject),
       ("Apply rotation/translation...", self.OnMoveSites),
+      ("Toggle ATOM/HETATM...", self.OnSetAtomType),
     ]
     self.ShowMenu(labels_and_actions, source_window)
 
@@ -416,6 +424,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       ("Delete atom group", self.OnDeleteObject),
       ("Clone atom group", self.OnCloneAtoms),
       ("Apply rotation/translation...", self.OnMoveSites),
+      ("Toggle ATOM/HETATM...", self.OnSetAtomType),
     ]
     if (atom_group.resname == "MET") :
       labels_and_actions.append(("Convert to SeMet", self.OnConvertMet))
@@ -434,6 +443,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       ("Apply rotation/translation...", self.OnMoveSites),
       ("Insert residues after...", self.OnInsertAfter),
       ("Renumber residue...", self.OnRenumberResidues),
+      ("Toggle ATOM/HETATM...", self.OnSetAtomType),
     ]
     self.ShowMenu(labels_and_actions, source_window)
 
@@ -445,6 +455,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       ("Convert to isotropic", self.OnSetIsotropic),
       ("Delete chain", self.OnDeleteObject),
       ("Apply rotation/translation...", self.OnMoveSites),
+      ("Toggle ATOM/HETATM...", self.OnSetAtomType),
       ("Add residues...", self.OnAddResidues),
       ("Renumber residues...", self.OnRenumberChain),
     ]
@@ -464,6 +475,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       ("Apply rotation/translation...", self.OnMoveSites),
       ("Add chain(s)...", self.OnAddChain),
       ("Split model...", self.OnSplitModel),
+      ("Toggle ATOM/HETATM...", self.OnSetAtomType),
     ]
     self.ShowMenu(labels_and_actions, source_window)
 
@@ -757,6 +769,45 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         sites = rt.r.elems * sites + rt.t.elems
         atoms.set_xyz(sites)
         self.PropagateAtomChanges(item)
+
+  # all
+  def OnSetAtomType (self, event) :
+    items = self.GetSelections()
+    n_hetatm = n_atom = 0
+    for item in items :
+      pdb_object = self.GetItemPyData(item)
+      pdb_type = type(pdb_object).__name__
+      if (pdb_type == 'atom') :
+        if (pdb_object.hetero) :
+          n_hetatm += 1
+        else :
+          n_atom += 1
+      else :
+        for atom in pdb_object.atoms() :
+          if (atom.hetero) :
+            n_hetatm += 1
+          else :
+            n_atom += 1
+    atom_type = "ATOM"
+    if (n_atom == 0) and (n_hetatm > 0) :
+      atom_type = "HETATM"
+    new_type = self.GetAtomType(atom_type)
+    self._changes_made = True
+    for item in items :
+      pdb_object = self.GetItemPyData(item)
+      pdb_type = type(pdb_object).__name__
+      if (pdb_type == 'atom') :
+        if (new_type == "HETATM") :
+          pdb_object.hetero = True
+        else :
+          pdb_object.hetero = False
+      else :
+        for atom in pdb_object.atoms() :
+          if (new_type == "HETATM") :
+            atom.hetero = True
+          else :
+            atom.hetero = False
+      self.PropagateAtomChanges(item)
 
   #---------------------------------------------------------------------
   # HIERARCHY EDITING
@@ -1247,6 +1298,28 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
           return k + 1
       raise Sorry("The residue ID %s was not found in the target chain." %
         resid.strip())
+
+  def GetAtomType (self, atom_type) :
+    dlg = simple_dialogs.ChoiceDialog(
+      parent=self,
+      title="Set atom record type",
+      label="Record type",
+      value=None,
+      caption="Please select the label for the selected atom record(s).  "+
+        "This will not affect the refinement or visualization of these "+
+        "atoms, but HETATM records may be handled differently by some "+
+        "programs (including Phaser).")
+    if (atom_type in ["ATOM", None]) :
+      dlg.SetChoices(["*ATOM", "HETATM"])
+    else :
+      dlg.SetChoices(["ATOM", "*HETATM"])
+    new_type = None
+    if (dlg.ShowModal() == wx.ID_OK) :
+      new_type = dlg.GetPhilValue()
+    wx.CallAfter(dlg.Destroy)
+    if (new_type is None) :
+      raise Abort()
+    return new_type
 
 ########################################################################
 # AUXILARY GUI CLASSES
