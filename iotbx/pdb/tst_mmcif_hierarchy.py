@@ -68,7 +68,7 @@ HETATM 684 O O    B EOH B 2 . 14.811 2.078  12.602 0.40 5.53  66 EOH A O    1
   hierarchy.show(out=s)
   assert not show_diff(s.getvalue(), """\
 model id="1" #chains=2
-  chain id="A" #residue_groups=1
+  chain id="A" #residue_groups=1  ### WARNING: duplicate chain id ###
     resid="   2 " #atom_groups=3
       altloc="A" resname="THR" #atoms=8
         " CA "
@@ -93,7 +93,7 @@ model id="1" #chains=2
         " O  "
         " H  "
         " HA "
-  chain id="B" #residue_groups=1
+  chain id="A" #residue_groups=1  ### WARNING: duplicate chain id ###
     resid="  66 " #atom_groups=2
       altloc="A" resname="EOH" #atoms=3
         " C1 "
@@ -224,7 +224,7 @@ _atom_site_anisotrop.U[2][3]
   hierarchy.show(out=s)
   assert not show_diff(s.getvalue(), """\
 model id="1" #chains=2
-  chain id="A" #residue_groups=1
+  chain id="A" #residue_groups=1  ### WARNING: duplicate chain id ###
     resid=" 108 " #atom_groups=1
       altloc="" resname="SER" #atoms=6
         " N  "
@@ -233,7 +233,7 @@ model id="1" #chains=2
         " O  "
         " CB "
         " OG "
-  chain id="F" #residue_groups=1
+  chain id="A" #residue_groups=1  ### WARNING: duplicate chain id ###
     resid=" 505 " #atom_groups=1
       altloc="" resname="MN" #atoms=1
         "MN  "

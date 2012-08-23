@@ -26,9 +26,10 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     if atom_labels is None:
       atom_labels = cif_block.get("_atom_site.label_atom_id") # corresponds to chem comp atom name
     alt_id = cif_block.get("_atom_site.label_alt_id") # alternate conformer id
-    asym_id = cif_block.get("_atom_site.label_asym_id") # chain id
-    if asym_id is None:
-      asym_id = cif_block.get("_atom_site.auth_asym_id")
+    label_asym_id = cif_block.get("_atom_site.label_asym_id") # chain id
+    auth_asym_id = cif_block.get("_atom_site.auth_asym_id")
+    if label_asym_id is None: label_asym_id = auth_asym_id
+    if auth_asym_id is None: auth_asym_id = label_asym_id
     comp_id = cif_block.get("_atom_site.auth_comp_id")
     if comp_id is None:
       comp_id = cif_block.get("_atom_site.label_comp_id") # residue name
@@ -36,7 +37,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     seq_id = cif_block.get("_atom_site.auth_seq_id")
     if seq_id is None:
       seq_id = cif_block.get("_atom_site.label_seq_id") # residue number
-    assert [atom_labels, alt_id, asym_id, comp_id, entity_id, seq_id].count(None) == 0
+    assert [atom_labels, alt_id, auth_asym_id, comp_id, entity_id, seq_id].count(None) == 0
     assert type_symbol is not None
 
     pdb_ins_code = cif_block.get("_atom_site.pdbx_PDB_ins_code") # insertion code
@@ -85,11 +86,18 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
       model_sel = (model_ids == i_model)
       model = hierarchy.model(id=i_model)
       self.hierarchy.append_model(model)
-      unique_chain_ids = OrderedSet(asym_id.select(model_sel))
+      unique_chain_ids = OrderedSet(label_asym_id.select(model_sel))
       model.pre_allocate_chains(len(unique_chain_ids))
       for i_chain in unique_chain_ids:
-        chain_sel = (asym_id == i_chain) & model_sel
-        chain = hierarchy.chain(id=i_chain)
+        # we use label_asym_id to identify the separate chains because this
+        # separates chains properly in the absence of TER records in the mmcif,
+        # however we need to use auth_asym_id for the chain id so that they match
+        # e.g. the TLS selections
+        chain_sel = (label_asym_id == i_chain) & model_sel
+        chain_id = set(auth_asym_id.select(chain_sel))
+        assert len(chain_id) == 1
+        chain_id = list(chain_id)[0]
+        chain = hierarchy.chain(id=chain_id)
         model.append_chain(chain)
         unique_residue_ids = OrderedSet(seq_id.select(chain_sel))
         chain.pre_allocate_residue_groups(len(unique_residue_ids))
