@@ -1094,7 +1094,8 @@ namespace iotbx { namespace mtz {
   {
     IOTBX_ASSERT(file_name != 0);
     if (!CMtz::MtzPut(ptr(), file_name)) {
-      throw cctbx::error("MTZ write failed.");
+      std::string msg(CMtz::mtz_put_error_message);
+      throw cctbx::error("MTZ write failed. "+msg);
     }
   }
 

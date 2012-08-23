@@ -60,8 +60,13 @@ class fmodels(object):
       if(self.fmodel_n is not None):
         if(xray_structure is not None):
           self.fmodel_x.xray_structure = xray_structure
-        self.fmodel_x.xray_structure.scattering_type_registry(custom_dict =
-          self.xray_scattering_dict)
+        # mrt: discard old scattering dictionary to avoid mixing xray and neutron
+        self.fmodel_x.xray_structure._scattering_type_registry = None
+        # XXX: xray tables could mix here
+        # update possibly changed xray dictionary
+        self.xray_scattering_dict = \
+          self.fmodel_x.xray_structure.scattering_type_registry(custom_dict =
+          self.xray_scattering_dict).as_type_gaussian_dict()
       #assert not self.fmodel_x.xray_structure.guess_scattering_type_neutron()
     return self.fmodel_x
 
@@ -69,8 +74,12 @@ class fmodels(object):
     if(self.fmodel_n is not None):
       if(xray_structure is not None):
         self.fmodel_n.xray_structure = xray_structure
-      self.fmodel_n.xray_structure.scattering_type_registry(custom_dict =
-        self.neutron_scattering_dict)
+      # mrt: discard old scattering dictionary to avoid mixing xray and neutron
+      self.fmodel_n.xray_structure._scattering_type_registry = None
+      # update possibly changed xray dictionary
+      self.neutron_scattering_dict = \
+        self.fmodel_n.xray_structure.scattering_type_registry(custom_dict =
+        self.neutron_scattering_dict, table="neutron").as_type_gaussian_dict()
       assert self.fmodel_n.xray_structure.guess_scattering_type_neutron()
     return self.fmodel_n
 

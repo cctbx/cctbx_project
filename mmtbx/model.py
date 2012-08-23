@@ -373,7 +373,7 @@ class manager(object):
       rg.resseq = pdb.resseq_encode(value=i+1)
       rg.icode = " "
 
-  def add_hydrogens(self, element = "H", neutron = False):
+  def add_hydrogens(self, element = "H", neutron = False, occupancy=0.01):
     result = []
     xs = self.xray_structure
     if(neutron): element = "D"
@@ -398,7 +398,7 @@ class manager(object):
           h.xyz = [a+b for a,b in zip(xyz, (-1,0,0))]
           sign = True
         h.sigxyz = (0,0,0)
-        h.occ = 0.01
+        h.occ = occupancy
         h.sigocc = 0
         h.b = adptbx.u_as_b(u_isos[i_seq])
         h.sigb = 0
@@ -409,7 +409,7 @@ class manager(object):
         ag.append_atom(atom=h)
         scatterer = xray.scatterer(
           label           = h.name,
-          scattering_type = h.element,
+          scattering_type = h.element.strip(),
           site            = frac(h.xyz),
           u               = adptbx.b_as_u(h.b),
           occupancy       = h.occ)
@@ -479,8 +479,12 @@ class manager(object):
         next_to_i_seqs=next_to_i_seqs,
         sites_individual = True,
         s_occupancies    = neutron)
+    self.reprocess_pdb_hierarchy_inefficient()
+    self.idealize_h()
+
+  def reprocess_pdb_hierarchy_inefficient(self):
     # XXX very inefficient: re-process PDB from scratch and create restraints
-    raw_records = [pdb.format_cryst1_record(
+    raw_records = [iotbx.pdb.format_cryst1_record(
       crystal_symmetry=self.xray_structure)]
     raw_records.extend(self._pdb_hierarchy.as_pdb_string().splitlines())
     if(self.processed_pdb_files_srv.pdb_interpretation_params is not None):
@@ -521,7 +525,6 @@ class manager(object):
       geometry      = geometry,
       normalization = self.restraints_manager.normalization)
     self.restraints_manager = new_restraints_manager
-    self.idealize_h()
 
   def backbone_selections(self, bool=True):
     get_class = iotbx.pdb.common_residue_names_get_class
