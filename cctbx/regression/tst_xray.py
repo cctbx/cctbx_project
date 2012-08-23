@@ -237,7 +237,7 @@ Number of scattering types: 2
   assert reg.gaussian("Si").n_terms() == 5
   reg = ys.scattering_type_registry(table="it1992")
   assert reg.gaussian("Si").n_terms() == 4
-  reg = ys.scattering_type_registry(
+  reg = ys.scattering_type_registry(explicitly_allow_mixing=True,
     custom_dict={"Si":eltbx.xray_scattering.gaussian(1)})
   assert reg.gaussian("Si").n_terms() == 0
   s = StringIO()
@@ -286,7 +286,7 @@ Number of scattering types: 2
   assert tgd["O"].n_terms() == 4
   assert tgd["Si"].n_terms() == 0
   #
-  reg = ys.scattering_type_registry()
+  reg = ys.scattering_type_registry(explicitly_allow_mixing=True)
   assert reg.type_index_pairs_as_dict() == {"Si": 0, "O": 1}
   assert list(reg.unique_indices(scatterers=ys.scatterers())) == [0,1]
   assert reg.type_count_dict() == {"Si": 1, "O": 1}

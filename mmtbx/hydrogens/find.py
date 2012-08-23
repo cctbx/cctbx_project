@@ -11,6 +11,7 @@ import mmtbx.utils
 from cctbx import maptbx
 from libtbx.test_utils import approx_equal
 from cctbx import sgtbx
+import cctbx
 
 master_params_part1 = iotbx.phil.parse("""\
 map_type = mFobs-DFmodel
@@ -238,12 +239,359 @@ def run(fmodel, model, log, params = None):
               params          = params,
               log             = log)
   # adjust ADP for H
+  # TODO mrt: probably H bfactors should be equal to those
+  # of the bonded atom
   u_isos = model.xray_structure.extract_u_iso_or_u_equiv()
   u_iso_mean = flex.mean(u_isos)
   sel_big = u_isos > u_iso_mean*2
   hd_sel = model.xray_structure.hd_selection()
   sel_big.set_selected(~hd_sel, False)
   model.xray_structure.set_u_iso(value = u_iso_mean, selection = sel_big)
+
+def run2(model, fmodels, log=None):
+  if log is None:
+    log = fmodels.log
+    import sys
+    log = sys.stdout
+  if fmodels.fmodel_n is not None:
+    fmodel = fmodels.fmodel_neutron()
+  else:
+    fmodel = fmodels.fmodel_xray()
+  title = "xray"
+  if fmodel.xray_structure.guess_scattering_type_neutron():
+    title="neutron"
+  print_statistics.make_header("Build water hydrogens into "+title+" difference"
+    " map", out=log)
+  build_water_hydrogens_from_map(model, fmodel)
+  ### TODO: refinement flags???
+  model.reprocess_pdb_hierarchy_inefficient()
+  fmodels.update_xray_structure(
+    xray_structure = model.xray_structure,
+    update_f_calc  = True,
+    update_f_mask  = True)
+  fmodels.show_short()
+  fout = file("/tmp/tst1_with_my_h.pdb", 'w')
+  model.write_pdb_file(fout)
+  fout.close()
+  #
+  water_map_correlations(model, fmodels)
+  fout3 = file("/tmp/tst3.pdb", 'w');
+  model.write_pdb_file(fout3)
+  fout3.close()
+  model = remove_zero_occupancy(model)
+  fmodels.update_xray_structure(xray_structure = model.xray_structure,
+    update_f_calc  = True,
+    update_f_mask  = True)
+  # fmodels.update_all_scales(params=bss_params)
+  fout4 = file("/tmp/tst4.pdb", 'w');
+  model.write_pdb_file(fout4)
+  fout4.close()
+  fmodels.show_short()
+
+def remove_zero_occupancy(model, min_occupancy=0.01):
+  atoms = model.xray_structure.scatterers()
+  sel = flex.bool()
+  for s in atoms:
+    if s.occupancy < min_occupancy:
+      sel.append( False )
+    else:
+      sel.append( True )
+  return model.select( selection = sel)
+
+# TODO code duplicate in model.add_hydrogens.insert_atoms
+def insert_atom_into_model(xs, atom, atom_name, site_frac, occupancy, uiso, element):
+  i_seq = atom.i_seq
+  cart = xs.unit_cell().orthogonalize
+  xyz = cart(site_frac)
+  h = atom.detached_copy()
+  h.name = atom_name
+  h.xyz = xyz
+  h.sigxyz = (0,0,0)
+  h.occ = occupancy
+  h.sigocc = 0
+  h.b = cctbx.adptbx.u_as_b(uiso)
+  h.sigb = 0
+  h.uij = (-1,-1,-1,-1,-1,-1)
+  if (iotbx.pdb.hierarchy.atom.has_siguij()):
+    h.siguij = (-1,-1,-1,-1,-1,-1)
+  h.element = "%2s" % element.strip()
+  ag = atom.parent() # atom group
+  rg = ag.parent()
+  na =  ag.atoms().size()
+  print "inserting for O resid: ", rg.resid(), ' b: ', atom.b, ' i: ', i_seq, \
+      ' h.b: ', h.b, ' h.i: ', h.i_seq, ' nh: ', na, ' xyz: ', xyz
+  ag.append_atom(atom=h)
+  scatterer = cctbx.xray.scatterer(
+    label           = h.name,
+    scattering_type = h.element.strip(),
+    site            = site_frac,
+    u               = uiso,
+    occupancy       = h.occ)
+  j_seq = i_seq+1
+  if na==2:
+    j_seq = j_seq +1
+  assert na==2 or na==1
+  xs.add_scatterer(
+    scatterer = scatterer,
+    insert_at_index = j_seq)
+
+def distances_to_peaks(xray_structure, sites_frac, peak_heights,
+    distance_cutoff, use_selection=None):
+  asu_mappings = xray_structure.asu_mappings(buffer_thickness =
+    distance_cutoff)
+  asu_mappings.process_sites_frac(sites_frac, min_distance_sym_equiv =
+    xray_structure.min_distance_sym_equiv())
+  pair_generator = cctbx.crystal.neighbors_fast_pair_generator(asu_mappings =
+    asu_mappings, distance_cutoff = distance_cutoff)
+  n_xray = xray_structure.scatterers().size()
+  print "N peaks: ", sites_frac.size()
+  result = {}
+  for pair in pair_generator:
+    if(pair.i_seq < n_xray):
+      if (pair.j_seq < n_xray): continue
+      # i_seq = molecule
+      # j_seq = site
+      rt_mx_i = asu_mappings.get_rt_mx_i(pair)
+      rt_mx_j = asu_mappings.get_rt_mx_j(pair)
+      rt_mx_ji = rt_mx_i.inverse().multiply(rt_mx_j)
+      i_seq_new_site_frac = pair.j_seq - n_xray
+      new_site_frac = rt_mx_ji * sites_frac[i_seq_new_site_frac]
+      jn = pair.i_seq
+    else:
+      if(pair.j_seq >= n_xray): continue
+      # i_seq = site
+      # j_seq = molecule
+      rt_mx_i = asu_mappings.get_rt_mx_i(pair)
+      rt_mx_j = asu_mappings.get_rt_mx_j(pair)
+      rt_mx_ij = rt_mx_j.inverse().multiply(rt_mx_i)
+      i_seq_new_site_frac = pair.i_seq - n_xray
+      new_site_frac = rt_mx_ij * sites_frac[i_seq_new_site_frac]
+      jn = pair.j_seq
+    if use_selection is not None:
+      height = peak_heights[i_seq_new_site_frac]
+      if(use_selection[jn]):
+        print " peak: ", i_seq_new_site_frac, " atom: ", jn, " dist: ", math.sqrt(pair.dist_sq)
+        print "    site: ", new_site_frac
+        if result.has_key(jn):
+          result[jn].extend( [(height, new_site_frac)] )
+        else:
+          result[jn] = [(height, new_site_frac)]
+  return result
+
+def choose_h_for_water(unit_cell, o_site, xyz_h, h1_site=None):
+  hh1_site = h1_site
+  if hh1_site is None:
+    mx = max(xyz_h)
+    xyz_h.remove(mx)
+    hh1_site = mx[1]
+  h_max = -1.e300
+  h2_site = None
+  for h,s in xyz_h:
+    a = unit_cell.angle(s, o_site, hh1_site)
+    if a>105-15 and a<105+15 :
+      if h>h_max:
+        h_max = h
+        h2_site = s
+  result = []
+  if h1_site is None:
+    result = [hh1_site]
+  if not h2_site is None :
+    result.extend( [h2_site] )
+  return result
+
+def build_water_hydrogens_from_map(model, fmodel, params=None, log=None):
+  if log is None:
+    import sys
+    log = sys.stdout
+  if params is None:
+    params = all_master_params().extract()
+  params.map_next_to_model.max_model_peak_dist = 1.35
+  peaks = find_hydrogen_peaks(
+    fmodel = fmodel,
+    pdb_atoms = model.pdb_atoms,
+    params = params,
+    log = log)
+  self = model
+  xs = self.xray_structure
+  hs = peaks.heights
+  scatterers = xs.scatterers()
+  unit_cell = xs.unit_cell()
+  sol_O = model.solvent_selection().set_selected(
+    model.xray_structure.hd_selection(), False)
+  print "N solvent molecules: ", sol_O.count(True)
+  pks = distances_to_peaks(xs, peaks.sites, hs, 1.15, use_selection=sol_O)
+  water_rgs = self.extract_water_residue_groups()
+  water_rgs.reverse()
+  element='D'
+  for rg in water_rgs:
+    if (rg.atom_groups_size() != 1):
+      raise RuntimeError(
+        "Not implemented: cannot handle water with alt. conf.")
+    ag = rg.only_atom_group()
+    atoms = ag.atoms()
+    h1=0
+    if atoms.size()==2:
+      o_atom = None
+      h_atom = None
+      for atom in atoms:
+        if (atom.element.strip() == "O"): o_atom = atom
+        else:                             h_atom = atom
+      assert [o_atom, h_atom].count(None) == 0
+      h1_site=scatterers[h_atom.i_seq].site
+      if h_atom.name.strip().endswith('1'):
+        h1=1
+      elif h_atom.name.strip().endswith('2'):
+        h1=2
+    elif atoms.size()==1:
+      o_atom = atoms[0]
+      h1_site = None
+    elif atoms.size()==3:
+      continue
+    else:
+      assert False
+    o_i = o_atom.i_seq
+    if pks.has_key(o_i) :
+      o_site = scatterers[o_i].site
+      o_u = scatterers[o_i].u_iso_or_equiv(unit_cell)
+      h_sites = pks[o_i]
+      hh = choose_h_for_water(unit_cell, o_site, h_sites, h1_site=h1_site)
+      print 'O: ', o_atom.name, ' ', o_i, ' resid: ',\
+        o_atom.parent().parent().resid(), ' hh: ', hh, ' h1: ', h1_site
+      for i,site_frac in enumerate(hh):
+        assert (h1>0 and i<1) or (h1==0 and i<2)
+        if h1==1: j=2
+        elif h1==2: j=1
+        else: j=i+1
+        name = element+str(j)
+        # this breaks atom sequence: o_atom.i_seq
+        insert_atom_into_model(xs, atom=o_atom, atom_name=name, site_frac=site_frac,
+          occupancy=1, uiso=o_u, element=element)
+
+def select_one_water(water_residue_group, n_atoms):
+  rg = water_residue_group
+  if (rg.atom_groups_size() != 1):
+    raise RuntimeError(
+      "Not implemented: cannot handle water with alt. conf.")
+  ag = rg.only_atom_group()
+  atoms = ag.atoms()
+  ws = []
+  for atom in atoms:
+    i = atom.i_seq
+    ws.append(i)
+  result = flex.bool()
+  for j in xrange(0,n_atoms):
+    if j in ws:
+      result.append(True)
+    else:
+      result.append(False)
+  nw = result.count(True)
+  assert nw>0 and nw <= 3
+  return result
+
+def get_pdb_oxygen(water_residue_group):
+  rg = water_residue_group
+  if (rg.atom_groups_size() != 1):
+    raise RuntimeError(
+      "Not implemented: cannot handle water with alt. conf.")
+  ag = rg.only_atom_group()
+  atoms = ag.atoms()
+  for atom in atoms:
+    if atom.element.strip() == 'O':
+      return atom
+  assert False
+
+def one_water_correlation(model, fmodels, water):
+  import mmtbx.solvent.ordered_solvent as ordered_solvent
+  from mmtbx import real_space_correlation
+  params = ordered_solvent.master_params().extract()
+  par = params.secondary_map_and_map_cc_filter
+  #
+  if fmodels.fmodel_n is not None:
+    fmodel = fmodels.fmodel_neutron()
+  else:
+    fmodel = fmodels.fmodel_xray()
+  title = "xray"
+  if fmodel.xray_structure.guess_scattering_type_neutron():
+    title="neutron"
+  scatterers = model.xray_structure.scatterers()
+  assert scatterers is fmodel.xray_structure.scatterers()
+  nrscc_and_map_result = real_space_correlation.simple(
+    fmodel                = fmodel,
+    pdb_hierarchy         = model.pdb_hierarchy(),
+    map_1_name            = par.cc_map_1_type,
+    map_2_name            = par.cc_map_2_type,
+    diff_map_name         = None,
+    number_of_grid_points = par.number_of_grid_points,
+    atom_radius           = par.atom_radius,
+    details_level         = "residue",
+    selection             = water,
+    show                  = False,
+    set_cc_to_zero_if_n_grid_points_less_than = \
+      par.set_cc_to_zero_if_n_grid_points_less_than,
+    poor_cc_threshold                         = par.poor_cc_threshold,
+    poor_map_1_value_threshold                = par.poor_map_value_threshold,
+    poor_map_2_value_threshold                = par.poor_map_value_threshold)
+  assert len(nrscc_and_map_result)==1
+  rcc_res = nrscc_and_map_result[0]
+  print title+"! cc: " , ("%4.2f"%rcc_res.cc), " res: ", rcc_res.residue.name, \
+    " id: ", rcc_res.residue.resid, ", chain: ", rcc_res.residue.chain_id, " occupancy: ", rcc_res.occupancy
+  assert rcc_res.n_atoms >0 and rcc_res.n_atoms <=3
+  return rcc_res.cc
+
+def scatterers_info(scatterers, selection):
+  r = str()
+  for s,u in zip(scatterers,selection):
+    if u:
+      r += s.element_symbol().strip()
+      r += " : "
+      r += ("%4.2f %6.3f"%(s.occupancy,s.u_iso))
+      r += " = "
+      r += s.label
+      r += ";   "
+  return r
+
+def water_map_correlations(model, fmodels):
+  print_statistics.make_header("Water real space correlations")
+  scatterers = model.xray_structure.scatterers()
+  #fmodels.update_xray_structure(update_f_calc=True, update_f_mask=True)
+  #fmodels.update_solvent_and_scale()
+  fmodels.show_short()
+  waters = model.solvent_selection()
+  water_rgs = model.extract_water_residue_groups()
+  #print "DEBUG!!! water_rgs[0].class: ", water_rgs[0].__class__, " dir,water_rgs[0]:\n", dir(water_rgs[0])
+  n_atoms = len(scatterers)
+  for rg in water_rgs:
+    o_atom = get_pdb_oxygen(rg)
+    o_scat = scatterers[o_atom.i_seq]
+    water = select_one_water(rg, n_atoms)
+    if water.count(True) < 2:
+      continue
+    # print "<<<<<<<<<<<<<< Correlations for group: ", rg.only_atom_group()
+    print "<<<<<<<<  ", scatterers_info(scatterers, water), " >>>>>>>>>>>>>"
+    neutron_cc = one_water_correlation(model, fmodels, water)
+    for s,u in zip(scatterers,water):
+      if u:
+        e = s.element_symbol().strip()
+        if e=='D':
+          if s.occupancy <= 0.02 or s.occupancy >=0.98:
+            keep_occ = s.occupancy
+            if s.occupancy <= 0.02:
+              s.occupancy = 1.0
+              s.u_iso = o_scat.u_iso
+            else:
+              s.occupancy = 0.0
+            fmodels.update_xray_structure(update_f_calc=True, update_f_mask=True)
+            fmodels.fmodel_xray().update_solvent_and_scale()
+            fmodels.fmodel_neutron().update_solvent_and_scale()
+            fmodels.show_short()
+            print " >> ", scatterers_info(scatterers, water)
+            ncc = one_water_correlation(model, fmodels, water)
+            if ncc < neutron_cc:
+              s.occupancy = keep_occ
+              fmodels.update_xray_structure(update_f_calc=True, update_f_mask=True)
+            else:
+              neutron_cc = ncc
+  return True
 
 def rotate_point_about_axis(a1, a2, s, angle_deg):
   angle_rad = angle_deg*math.pi/180.

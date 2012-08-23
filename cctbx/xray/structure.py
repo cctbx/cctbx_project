@@ -516,6 +516,29 @@ class structure(crystal.special_position_settings):
     if(ac+bc == 0 and cc != 0): result = True
     return result
 
+  def guess_scattering_type_is_a_mixture_of_xray_and_neutron(self):
+    has_xray = False
+    has_neutron = False
+    for ugl in self._scattering_type_registry.unique_gaussians_as_list():
+      if ugl is None:
+        continue
+      if len(ugl.array_of_a())!=0 or len(ugl.array_of_b())!=0:
+        has_xray = True
+      elif ugl.c() != 0:
+        has_neutron = True
+    return has_neutron and has_xray
+
+  def scattering_dictionary_as_string(self):
+    result = ""
+    for tg in self._scattering_type_registry.as_type_gaussian_dict().items():
+      stype = tg[0]
+      gaussian = tg[1]
+      aa = gaussian.array_of_a()
+      ab = gaussian.array_of_b()
+      c = gaussian.c()
+      result += "\n  Element: "+stype +"  a: "+ str(aa)+ "  b: "+ str(ab)+ "  c: "+str(c)
+    return result
+
   def scattering_types_counts_and_occupancy_sums(self):
     result = []
     reg = self.scattering_type_registry()
@@ -859,16 +882,7 @@ class structure(crystal.special_position_settings):
     # XXX First step. In future: better to do bookkeeping and be able to swith
     # XXX back and forth between original scat_dict and neutron.
     # XXX Add regression test.
-    neutron_scattering_dict = {}
-    reg = self.scattering_type_registry()
-    for scattering_type in reg.type_index_pairs_as_dict().keys():
-      scattering_info = neutron_news_1992_table(scattering_type, True)
-      b = scattering_info.bound_coh_scatt_length()
-      if(b.imag != 0.0): return None
-      neutron_scattering_dict[scattering_type] = \
-        eltbx.xray_scattering.gaussian(b.real)
-    self.scattering_type_registry(custom_dict = neutron_scattering_dict)
-    return neutron_scattering_dict
+    return self.scattering_type_registry(table="neutron").as_type_gaussian_dict()
 
   def hd_selection(self):
     """Get a selector array for all hydrogen and deuterium scatterers of the structure.
@@ -1214,8 +1228,10 @@ class structure(crystal.special_position_settings):
         custom_dict=None,
         d_min=None,
         table=None,
-        types_without_a_scattering_contribution=None):
-    assert table in [None, "n_gaussian", "it1992", "wk1995", "xray", "electron"]
+        types_without_a_scattering_contribution=None,
+        explicitly_allow_mixing=False):
+    assert table in [None, "n_gaussian", "it1992", "wk1995", "xray", "electron",
+        "neutron"]
     if (table == "it1992"): assert d_min in [0,None] or d_min >= 1/4.
     if (table == "wk1995"): assert d_min in [0,None] or d_min >= 1/12.
     if (table == "electron"): assert d_min in [0,None] or d_min >= 1/4.
@@ -1262,7 +1278,15 @@ class structure(crystal.special_position_settings):
               from cctbx.eltbx.e_scattering import \
                 ito_vol_c_2011_table_4_3_2_2_entry_as_gaussian as _
               val = _(label=std_lbl, exact=True)
+            elif (table == "neutron"):
+              scattering_info = neutron_news_1992_table(std_lbl, True)
+              b = scattering_info.bound_coh_scatt_length()
+              if(b.imag != 0.0):
+                raise RuntimeError("Non-zero imaginary component in neutron"
+                  " scattering length is not supported.")
+              val = eltbx.xray_scattering.gaussian(b.real)
             else:
+              # TODO mrt: this may lead to a mix of xray/neutron dictionary
               val = eltbx.xray_scattering.n_gaussian_table_entry(
                 std_lbl, d_min, 0).gaussian()
         if (val is None):
@@ -1270,6 +1294,11 @@ class structure(crystal.special_position_settings):
         if (val is not None):
           self._scattering_type_registry.assign(t_undef, val)
       self._scattering_type_registry_is_out_of_date = False
+    if not explicitly_allow_mixing:
+      if self.guess_scattering_type_is_a_mixture_of_xray_and_neutron():
+        errmsg = "Mixed xray and neutron scattering table! "
+        errmsg += self.scattering_dictionary_as_string()
+        raise RuntimeError(errmsg)
     return self._scattering_type_registry
 
   def set_inelastic_form_factors(self, photon, table, set_use_fp_fdp=True):

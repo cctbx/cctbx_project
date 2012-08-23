@@ -36,9 +36,11 @@ namespace cctbx { namespace maptbx {
           m[i] = boost::numeric_cast<svt>(fft_m_real[i]);
         }
         if (scitbx::math::unsigned_product_leads_to_overflow(m, 3U)) {
+          std::ostringstream ostr;
+          ostr << " Grid: " << m[0] << ", " << m[1] << ", " << m[2];
           throw std::runtime_error(
             "product of fft_m_real grid dimensions leads to unsigned"
-            " integer overflow (i.e. the grid is too large).");
+            " integer overflow (i.e. the grid is too large)."+ostr.str());
         }
       }
       scitbx::vec3<double> fft_n_real_f;

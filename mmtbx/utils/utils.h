@@ -138,8 +138,7 @@ class density_distribution_per_atom
     af::shared<FloatType> map_values_;
 };
 
-//
-
+// TODO: mrt! it seems that it is all broken
 template <typename FloatType>
 af::shared<std::size_t>
   select_water_by_distance(af::shared<vec3<FloatType> > const& sites_frac_all,
@@ -160,6 +159,8 @@ af::shared<std::size_t>
     std::string closest_element;
     for(std::size_t j=0; j<sites_frac_all.size(); j+=1) {
       if(element_symbols_all[j]!="H"&&element_symbols_all[j]!="D"&&j!=i_wat) {
+        // TODO: mrt what about symmetry equivalents?
+        // the atoms that do not actually exceed dist_max may be filtered out
         FloatType dist = unit_cell.distance(
           cctbx::fractional<>(sites_frac_all[i_wat]),
           cctbx::fractional<>(sites_frac_all[j]));
@@ -180,6 +181,9 @@ af::shared<std::size_t>
     double dist_min = dist_min_mac;
     if(is_closest_index_water) dist_min = dist_min_sol;
     if(dist_closest<=dist_max&&dist_closest>=dist_min && closest_element!="C") {
+      // TODO! mrt
+      // Carbon may be the closest atom to water oxygen as long as
+      // the C -- O distance is greater than 1,3 distance, approx 2.44 A
       result_selection.push_back(i_wat);
     }
   }
