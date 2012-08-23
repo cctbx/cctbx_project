@@ -296,22 +296,14 @@ class manager(object):
       r_free = self.fmodels.fmodel_xray().r_free()
       print >> local_log, "rfree at start of SA cycle: %f" % r_free
       simulated_annealing.manager(
-        params                     = self.params.simulated_annealing,
-        #bulk_solvent_parameters    = self.params.bulk_solvent_and_scale,
-        #refinement_parameters      = self.params.main,
-        #alpha_beta_parameters      = self.params.alpha_beta,
-        #mask_parameters            = self.params.mask,
-        target_weights             = self.target_weights,
-        #tan_b_iso_max              = self.tan_b_iso_max,
-        macro_cycle                = self.macro_cycle,
-        h_params                   = self.params.hydrogens,
-        fmodels                    = self.fmodels,
-        model                      = self.model,
-        all_params                 = self.params,
-        out                        = local_log#,
-        #monitor                    = self.monitors.monitor_xray,
-        #call_back_after_step       = False
-        )
+        params         = self.params.simulated_annealing,
+        target_weights = self.target_weights,
+        macro_cycle    = self.macro_cycle,
+        h_params       = self.params.hydrogens,
+        fmodels        = self.fmodels,
+        model          = self.model,
+        all_params     = self.params,
+        out            = local_log)
       if self.params.den.bulk_solvent_and_scale:
         self.bulk_solvent_and_scale(log=local_log)
       if self.params.den.refine_adp:
