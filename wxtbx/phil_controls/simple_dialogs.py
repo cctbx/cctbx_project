@@ -1,6 +1,6 @@
 from __future__ import division
 
-from wxtbx.phil_controls import intctrl, floatctrl, symop, strctrl, ints
+from wxtbx.phil_controls import intctrl, floatctrl, symop, strctrl, ints, choice
 from libtbx.utils import Abort
 import wx
 
@@ -80,6 +80,15 @@ class IntegersDialog (SimpleInputDialog) :
     return ints.IntsCtrl(
       parent=self,
       value=value)
+
+class ChoiceDialog (SimpleInputDialog) :
+  def CreatePhilControl (self, value=None) :
+    return choice.ChoiceCtrl(
+      parent=self)
+
+  def SetChoices (self, *args, **kwds) :
+    self.phil_ctrl.SetChoices(*args, **kwds)
+    self.Layout()
 
 def get_phil_value_from_dialog (dlg) :
   abort = False
