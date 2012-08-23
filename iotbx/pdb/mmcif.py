@@ -339,11 +339,14 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
     return _float_or_None(self.cif_block.get('_exptl_crystal.density_Matthews'))
 
   def get_program_name(self):
-    software_names = self.cif_block.get('_software.name')
-    software_classifications = self.cif_block.get('_software.classification')
-    if software_classifications is not None:
-      i = flex.first_index(software_classifications, 'refinement')
-      if i > 0: return software_names[i]
+    software_name = self.cif_block.get('_software.name')
+    software_classification = self.cif_block.get('_software.classification')
+    if (isinstance(software_classification, basestring) and
+        software_classification == 'refinement'):
+      return software_name
+    if software_classification is not None:
+      i = flex.first_index(software_classification, 'refinement')
+      if i > 0: return software_name[i]
 
   def extract_tls_params(self, hierarchy):
     from iotbx.pdb.mmcif import extract_tls_from_cif_block
