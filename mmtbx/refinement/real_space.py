@@ -1,6 +1,5 @@
 from __future__ import division
 import iotbx.phil
-from mmtbx.refinement import print_statistics
 from cctbx.maptbx import real_space_target_and_gradients
 from libtbx import adopt_init_args
 from libtbx.str_utils import format_value
@@ -293,19 +292,22 @@ def target_simple(target_map, sites_cart=None, sites_frac=None, unit_cell=None):
   return result*scale
 
 class evaluator(object):
-  def __init__(self, sites_cart, target_map, unit_cell):
+  def __init__(self, sites_cart, target_map, unit_cell, target):
     adopt_init_args(self, locals())
-    self.target = target_simple(
-      target_map = self.target_map,
-      sites_cart = self.sites_cart,
-      unit_cell  = self.unit_cell)
+    if(target is not None):
+      self.target = -9999
+    else:
+      self.target = target_simple(
+        target_map = self.target_map,
+        sites_cart = self.sites_cart,
+        unit_cell  = self.unit_cell)
 
   def evaluate(self, sites_cart):
     t = target_simple(
       target_map = self.target_map,
       sites_cart = sites_cart,
       unit_cell  = self.unit_cell)
-    print "  ", t
+    #print "  ", t
     if(t >= self.target):
       self.sites_cart = sites_cart
       self.target = t
@@ -325,19 +327,32 @@ class rsr_residue(object):
                rotamer_status=None):
     adopt_init_args(self, locals())
 
-def rotamer_fit(residue, target_map, mon_lib_srv, unit_cell):
+def rotamer_fit(residue, target_map, mon_lib_srv, unit_cell, rotamer_manager):
   sites_cart_result = residue.atoms().extract_xyz()
+  sc_start = sites_cart_result.deep_copy() #XXX DEBUG
   rotamer_iterator = get_rotamer_iterator(
     mon_lib_srv = mon_lib_srv, residue = residue)
   if(rotamer_iterator is not None):
+    rotamer_status = rotamer_manager.evaluate_residue(residue=residue)
+    target = None
+    if(rotamer_status == "OUTLIER"): target = -9999
     e = evaluator(
       sites_cart = residue.atoms().extract_xyz(),
       target_map = target_map,
-      unit_cell  = unit_cell)
-    print residue.resname,residue.resseq, e.target
+      unit_cell  = unit_cell,
+      target = target)
+    #print residue.resname,residue.resseq, e.target, rotamer_status
     for rotamer, rotamer_sites_cart in rotamer_iterator:
       e.evaluate(sites_cart=rotamer_sites_cart.deep_copy())
+      residue.atoms().set_xyz(rotamer_sites_cart) # XXX DEBUG
+      rotamer_status = rotamer_manager.evaluate_residue(residue=residue) # XXX DEBUG
+      #print dir(residue)
+      #STOP()
+      #print "      ",rotamer.id
+      assert rotamer_status != "OUTLIER"
     sites_cart_result = e.sites_cart
+    #print "  final", e.target
+  residue.atoms().set_xyz(sc_start) # XXX DEBUG
   return sites_cart_result
 
 def get_rotamer_iterator(mon_lib_srv, residue):
@@ -345,10 +360,10 @@ def get_rotamer_iterator(mon_lib_srv, residue):
   rotamer_iterator = None
   if(get_class(residue.resname) == "common_amino_acid"):
     rotamer_iterator = mon_lib_srv.rotamer_iterator(
-        fine_sampling = True,
-        comp_id       = residue.resname,
-        atom_names    = residue.atoms().extract_name(),
-        sites_cart    = residue.atoms().extract_xyz())
+      fine_sampling = True,
+      comp_id       = residue.resname,
+      atom_names    = residue.atoms().extract_name(),
+      sites_cart    = residue.atoms().extract_xyz())
     if(rotamer_iterator is None or
        rotamer_iterator.problem_message is not None or
        rotamer_iterator.rotamer_info is None):
@@ -373,10 +388,11 @@ class monitor(object):
     self.rmsd_a = None
     self.dist_from_start = None
     self.dist_from_ref = None
-    self.set_globals()
-    self.mon_lib_srv = mmtbx.monomer_library.server.server()
+    self.number_of_rotamer_outliers = 0
     self.rotamer_manager = RotamerEval()
     self.residues = self.get_residues()
+    self.set_globals()
+    self.mon_lib_srv = mmtbx.monomer_library.server.server()
     self.set_rsr_residue_attributes()
 
   def compute_map(self, xray_structure):
@@ -413,18 +429,22 @@ class monitor(object):
     return result
 
   def show_residues(self):
-    fmt="%s %s %6.3f %6.3f %6.3f %6s %s"
+    fmt="%s %s %6.3f %6.3f %6.3f %7s %s"
     for r in self.residues:
+      ms = max(-1, r.map_cc_sidechain)
+      mb = max(-1, r.map_cc_backbone )
+      ma = max(-1, r.map_cc_all      )
       print fmt % (
         r.pdb_hierarchy_residue.resname,
         r.pdb_hierarchy_residue.resseq,
-        r.map_cc_sidechain,
-        r.map_cc_backbone,
-        r.map_cc_all,
+        ms,
+        mb,
+        ma,
         str(r.rotamer_status),
         format_value("%6.3f",r.distance_to_closest_rotamer))
 
   def set_rsr_residue_attributes(self):
+    small = -1.e9
     get_class = iotbx.pdb.common_residue_names_get_class
     unit_cell = self.xray_structure.unit_cell()
     current_map = self.compute_map(xray_structure = self.xray_structure)
@@ -433,15 +453,22 @@ class monitor(object):
       sca = sites_cart.select(r.selection_all)
       scs = sites_cart.select(r.selection_sidechain)
       scb = sites_cart.select(r.selection_backbone)
-      r.map_cc_all       = self.map_cc(sites_cart = sca, map = current_map)
-      r.map_cc_sidechain = self.map_cc(sites_cart = scs, map = current_map)
-      r.map_cc_backbone  = self.map_cc(sites_cart = scb, map = current_map)
       r.rotamer_status = self.rotamer_manager.evaluate_residue(
         residue=r.pdb_hierarchy_residue)
-      r.map_value_sidechain = target_simple(target_map=current_map,
-        sites_cart=scs, unit_cell=self.unit_cell)
-      r.map_value_backbone = target_simple(target_map=current_map,
-        sites_cart=scb, unit_cell=self.unit_cell)
+      if(r.rotamer_status != "OUTLIER"):
+        r.map_cc_all       = self.map_cc(sites_cart = sca, map = current_map)
+        r.map_cc_sidechain = self.map_cc(sites_cart = scs, map = current_map)
+        r.map_cc_backbone  = self.map_cc(sites_cart = scb, map = current_map)
+        r.map_value_sidechain = target_simple(target_map=current_map,
+          sites_cart=scs, unit_cell=self.unit_cell)
+        r.map_value_backbone = target_simple(target_map=current_map,
+          sites_cart=scb, unit_cell=self.unit_cell)
+      else:
+        r.map_cc_all          = small
+        r.map_cc_sidechain    = small
+        r.map_cc_backbone     = small
+        r.map_value_sidechain = small
+        r.map_value_backbone  = small
       rotamer_iterator = get_rotamer_iterator(
         mon_lib_srv = self.mon_lib_srv,
         residue     = r.pdb_hierarchy_residue)
@@ -495,6 +522,12 @@ class monitor(object):
     if(self.xray_structure_reference is not None):
       self.dist_from_ref = flex.mean(self.xray_structure_reference.distances(
         other = self.xray_structure))
+    for r in self.residues:
+      self.number_of_rotamer_outliers = 0
+      rotamer_status = self.rotamer_manager.evaluate_residue(
+        residue=r.pdb_hierarchy_residue)
+      if(rotamer_status == "OUTLIER"):
+        self.number_of_rotamer_outliers += 1
 
   def update(self, xray_structure, accept_any=False):
     global time_update
@@ -510,20 +543,17 @@ class monitor(object):
       map_cc_all       = self.map_cc(sites_cart = sca, map = current_map)
       map_cc_sidechain = self.map_cc(sites_cart = scs, map = current_map)
       map_cc_backbone  = self.map_cc(sites_cart = scb, map = current_map)
-
       map_value_sidechain = target_simple(target_map=current_map,
         sites_cart=scs, unit_cell=self.unit_cell)
       map_value_backbone = target_simple(target_map=current_map,
         sites_cart=scb, unit_cell=self.unit_cell)
-
-      b1 = accept_any
-      b2 = map_cc_all      > r.map_cc_all and \
-           map_cc_backbone > r.map_cc_backbone and \
-           map_cc_backbone > map_cc_sidechain
-      flag = b1 or b2
+      flag = map_cc_all      > r.map_cc_all and \
+             map_cc_backbone > r.map_cc_backbone and \
+             map_cc_backbone > map_cc_sidechain
       if(r.map_value_backbone > r.map_value_sidechain):
         if(map_value_backbone < map_value_sidechain):
           flag = False
+      if(accept_any): flag=True
       if(flag):
         residue_sites_cart_new = sites_cart.select(r.selection_all)
         sites_cart_.set_selected(r.selection_all, residue_sites_cart_new)
@@ -536,8 +566,9 @@ class monitor(object):
 
   def show(self, suffix=""):
     if(self.dist_from_ref is None):
-      f="cc: %6.4f rmsd_b: %6.4f rmsd_a: %5.2f d(start): %6.3f"
-      print f%(self.cc,self.rmsd_b,self.rmsd_a,self.dist_from_start),suffix
+      f="cc: %6.4f rmsd_b: %6.4f rmsd_a: %5.2f d(start): %6.3f rota: %d"
+      print f%(self.cc,self.rmsd_b,self.rmsd_a,self.dist_from_start,
+               self.number_of_rotamer_outliers),suffix
     else:
       f="cc: %6.4f rmsd_b: %6.4f rmsd_a: %5.2f d(start): %6.3f d(ref): %6.3f"
       print f%(self.map_cc,self.rmsd_b,self.rmsd_a,self.dist_from_start,
@@ -548,8 +579,14 @@ def run(target_map,
         xray_structure,
         geometry_restraints_manager,
         xray_structure_reference = None,
-        max_iterations = 500,
-        macro_cycles   = 20):
+        rms_bonds_limit  = 0.03,
+        rms_angles_limit = 3.0,
+        max_iterations   = 500,
+        macro_cycles     = 20,
+        minimization     = True,
+        expload          = True,
+        rotamer_search   = True,
+        verbose          = True):
   sel = flex.bool(xray_structure.scatterers().size(), True)
   d_min = target_map.miller_array.d_min()
   #
@@ -579,44 +616,19 @@ def run(target_map,
     target_map = target_map,
     geometry_restraints_manager = geometry_restraints_manager.geometry,
     xray_structure_reference = xray_structure_reference)
-  monitor_object.show(suffix="start")
-  monitor_object.show_residues()
+  if(verbose):
+    monitor_object.show(suffix="start")
+    monitor_object.show_residues()
   #
   tmp = monitor_object.xray_structure.deep_copy_scatterers()
   weight_d = 50
   weight_s = 50
   #
-  #b_upper_limit = 0.03#0.2
-  #b_lower_limit = 0.03#0.02
-  #b_inc = (b_upper_limit-b_lower_limit)/macro_cycles
-  #a_upper_limit = 3.0#20.0
-  #a_lower_limit = 3.0#2.5
-  #a_inc = (a_upper_limit-a_lower_limit)/macro_cycles
-  #
-  rms_bonds_limit  = 0.03
-  rms_angles_limit = 3.0
   for i in range(macro_cycles):
-    if(i>3 and i%2==0):
-      tmp.shake_sites_in_place(mean_distance=3)
-
-    #if(0):
-    #  target_type = "diff_map"
-    #  refined = refinery(
-    #    refiner          = rsr_diff_map_refiner,
-    #    xray_structure   = tmp,
-    #    start_trial_weight_value = weight_d,
-    #    rms_bonds_limit  = rms_bonds_limit,
-    #    rms_angles_limit = rms_angles_limit)
-    #  if(refined.sites_cart_result is not None):
-    #    tmp = tmp.replace_sites_cart(refined.sites_cart_result)
-    #    weight_d = refined.weight_final
-    #    monitor_object.update(xray_structure=tmp)#, accept_any=True)
-    #    monitor_object.show(suffix=" | target=%s weight: %s"%(target_type, str(weight_d)))
-    #    tmp = monitor_object.xray_structure.deep_copy_scatterers()
-    #    if(weight_d<0.1): weight_d=1
-    #  else: print "Refinement failed."
-    #
-    if(1):
+    if(expload and i>1 and i%2==0):
+      tmp_dc = tmp.deep_copy_scatterers()
+      tmp.shake_sites_in_place(mean_distance=3) # reverse back if refinement failed
+    if(minimization):
       target_type = "simple"
       refined = refinery(
         refiner          = rsr_simple_refiner,
@@ -628,39 +640,45 @@ def run(target_map,
         tmp = tmp.replace_sites_cart(refined.sites_cart_result)
         weight_s = refined.weight_final
         monitor_object.update(xray_structure=tmp)#, accept_any=True)
-        monitor_object.show(suffix=" | target=%s weight: %s"%(target_type, str(weight_s)))
+        if(verbose):
+          monitor_object.show(suffix=" weight: %s"%str(weight_s))
         tmp = monitor_object.xray_structure.deep_copy_scatterers()
+      else:
+        tmp = tmp_dc
+        print "Refinement failed."
         #
-        if (i>macro_cycles/2):
-          sites_cart = tmp.sites_cart()
-          for r in monitor_object.residues:
-            sites_cart_ = rotamer_fit(
-              residue     = r.pdb_hierarchy_residue,
-              target_map  = target_map.data,
-              mon_lib_srv = monitor_object.mon_lib_srv,
-              unit_cell   = tmp.unit_cell())
-            sites_cart.set_selected(r.selection_all, sites_cart_)
-          tmp = tmp.replace_sites_cart(sites_cart)
-          monitor_object.update(xray_structure=tmp)
-          tmp = monitor_object.xray_structure.deep_copy_scatterers()
+    if(rotamer_search or ((not expload or (expload and minimization)) and i>macro_cycles/2)):
+      sites_cart = tmp.sites_cart()
+      for r in monitor_object.residues:
+        sites_cart_ = rotamer_fit(
+          residue     = r.pdb_hierarchy_residue,
+          target_map  = target_map.data,
+          mon_lib_srv = monitor_object.mon_lib_srv,
+          unit_cell   = tmp.unit_cell(),
+          rotamer_manager = monitor_object.rotamer_manager)
+        sites_cart.set_selected(r.selection_all, sites_cart_)
+      tmp = tmp.replace_sites_cart(sites_cart)
+      monitor_object.update(xray_structure=tmp, accept_any=True)
+      tmp = monitor_object.xray_structure.deep_copy_scatterers()
         #
-      else: print "Refinement failed."
-    #rms_bonds_limit -= b_inc
-    #rms_angles_limit-= a_inc
+
   #
-  refined = refinery(
-    refiner          = rsr_simple_refiner,
-    xray_structure   = tmp,
-    start_trial_weight_value = weight_s,
-    rms_bonds_limit  = 0.02,
-    rms_angles_limit = 2.5)
-  if(refined.sites_cart_result is not None):
-    tmp = tmp.replace_sites_cart(refined.sites_cart_result)
-    weight_s = refined.weight_final
-    monitor_object.update(xray_structure=tmp, accept_any=True)
-    monitor_object.show(suffix=" | target=%s weight: %s"%(target_type, str(weight_s)))
+  if(minimization):
+    refined = refinery(
+      refiner          = rsr_simple_refiner,
+      xray_structure   = tmp,
+      start_trial_weight_value = weight_s,
+      rms_bonds_limit  = 0.02,
+      rms_angles_limit = 2.5)
+    if(verbose):
+      print "FINAL:", refined.rms_bonds_final,refined.rms_angles_final
+    if(refined.sites_cart_result is not None):
+      tmp = tmp.replace_sites_cart(refined.sites_cart_result)
+      weight_s = refined.weight_final
+      monitor_object.update(xray_structure=tmp)#, accept_any=True) # XXX ???
+      if(verbose): monitor_object.show(suffix=" weight: %s"%str(weight_s))
   #
-  monitor_object.show_residues()
+  if(verbose): monitor_object.show_residues()
   monitor_object.states_collector.write(file_name = "all.pdb")
   return monitor_object.xray_structure
 
