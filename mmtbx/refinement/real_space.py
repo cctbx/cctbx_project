@@ -429,11 +429,16 @@ class monitor(object):
     return result
 
   def show_residues(self):
-    fmt="%s %s %6.3f %6.3f %6.3f %7s %s"
+    print 
+    print "resid    CC(sc) CC(bb) CC(sb)   Rotamer  Dist. to nearest rotamer"
+    fmt="%s %s %6.3f %6.3f %6.3f %9s %s"
     for r in self.residues:
-      ms = max(-1, r.map_cc_sidechain)
-      mb = max(-1, r.map_cc_backbone )
-      ma = max(-1, r.map_cc_all      )
+      ms=r.map_cc_sidechain
+      mb=r.map_cc_backbone 
+      ma=r.map_cc_all
+      if(ms<-1): ms = -1
+      if(mb<-1): mb = -1
+      if(ma<-1): ma = -1
       print fmt % (
         r.pdb_hierarchy_residue.resname,
         r.pdb_hierarchy_residue.resseq,
@@ -522,10 +527,10 @@ class monitor(object):
     if(self.xray_structure_reference is not None):
       self.dist_from_ref = flex.mean(self.xray_structure_reference.distances(
         other = self.xray_structure))
+    self.number_of_rotamer_outliers = 0
     for r in self.residues:
-      self.number_of_rotamer_outliers = 0
       rotamer_status = self.rotamer_manager.evaluate_residue(
-        residue=r.pdb_hierarchy_residue)
+        residue=r.pdb_hierarchy_residue)      
       if(rotamer_status == "OUTLIER"):
         self.number_of_rotamer_outliers += 1
 
@@ -558,6 +563,9 @@ class monitor(object):
         residue_sites_cart_new = sites_cart.select(r.selection_all)
         sites_cart_.set_selected(r.selection_all, residue_sites_cart_new)
         r.pdb_hierarchy_residue.atoms().set_xyz(residue_sites_cart_new)
+        rotamer_status = self.rotamer_manager.evaluate_residue(
+          residue=r.pdb_hierarchy_residue)
+        r.rotamer_status = rotamer_status
     self.xray_structure= self.xray_structure.replace_sites_cart(sites_cart_)
     self.set_globals()
     self.set_rsr_residue_attributes()
@@ -566,7 +574,7 @@ class monitor(object):
 
   def show(self, suffix=""):
     if(self.dist_from_ref is None):
-      f="cc: %6.4f rmsd_b: %6.4f rmsd_a: %5.2f d(start): %6.3f rota: %d"
+      f="cc: %6.4f rmsd_b: %6.4f rmsd_a: %5.2f d(start): %6.3f rota: %3d"
       print f%(self.cc,self.rmsd_b,self.rmsd_a,self.dist_from_start,
                self.number_of_rotamer_outliers),suffix
     else:
@@ -659,6 +667,8 @@ def run(target_map,
         sites_cart.set_selected(r.selection_all, sites_cart_)
       tmp = tmp.replace_sites_cart(sites_cart)
       monitor_object.update(xray_structure=tmp, accept_any=True)
+      if(verbose):
+        monitor_object.show(suffix=" weight: %s"%str(None))
       tmp = monitor_object.xray_structure.deep_copy_scatterers()
         #
 
