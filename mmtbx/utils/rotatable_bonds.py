@@ -1,10 +1,8 @@
 from __future__ import division
-from cctbx.array_family import flex
 import iotbx.pdb
 import sys
 import scitbx.graph.tardy_tree
 import mmtbx.monomer_library.rotamer_utils
-from scitbx.matrix import rotate_point_around_axis
 
 def tardy_model_one_residue(residue, mon_lib_srv, log = None):
   if(log is None): log = sys.stdout

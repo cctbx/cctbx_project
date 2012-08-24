@@ -7,12 +7,10 @@ from cctbx import geometry_restraints
 from cctbx import xray
 from cctbx.array_family import flex
 import scitbx.lbfgs
-from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 import random
 import time
 import math
-import sys
 import iotbx.phil
 
 def random_velocities(

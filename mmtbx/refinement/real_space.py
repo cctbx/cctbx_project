@@ -429,12 +429,12 @@ class monitor(object):
     return result
 
   def show_residues(self):
-    print 
+    print
     print "resid    CC(sc) CC(bb) CC(sb)   Rotamer  Dist. to nearest rotamer"
     fmt="%s %s %6.3f %6.3f %6.3f %9s %s"
     for r in self.residues:
       ms=r.map_cc_sidechain
-      mb=r.map_cc_backbone 
+      mb=r.map_cc_backbone
       ma=r.map_cc_all
       if(ms<-1): ms = -1
       if(mb<-1): mb = -1
@@ -530,7 +530,7 @@ class monitor(object):
     self.number_of_rotamer_outliers = 0
     for r in self.residues:
       rotamer_status = self.rotamer_manager.evaluate_residue(
-        residue=r.pdb_hierarchy_residue)      
+        residue=r.pdb_hierarchy_residue)
       if(rotamer_status == "OUTLIER"):
         self.number_of_rotamer_outliers += 1
 
