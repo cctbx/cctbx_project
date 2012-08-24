@@ -114,7 +114,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
               ins_code_sel = (ins_code == pdb_ins_code) & residue_sel
             else:
               ins_code_sel = residue_sel
-            if ins_code in ("?", "."): ins_code = None
+            if ins_code in ("?", ".", None): ins_code = " "
             residue_group = hierarchy.residue_group(
               resseq=hy36encode(width=4, value=int(i_residue)), icode=ins_code)
             chain.append_residue_group(residue_group)
