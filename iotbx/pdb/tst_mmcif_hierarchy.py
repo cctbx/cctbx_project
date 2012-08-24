@@ -283,7 +283,9 @@ ATOM   3436 C  CZ  . PHE C 2 165 A -31.379 -11.898 42.850  1.00 32.97 584 PHE C 
   cif_block = cif_model["1EZU"]
   builder = pdb_hierarchy_builder(cif_block)
   hierarchy = builder.hierarchy
-  atoms = hierarchy.atoms()
+  residue_groups = list(hierarchy.residue_groups())
+  assert residue_groups[0].icode == " "
+  assert residue_groups[1].icode == "A"
   s = StringIO()
   hierarchy.show(out=s)
   assert not show_diff(s.getvalue(), """\
