@@ -77,9 +77,13 @@ def exercise_00(inputs, verbose=0):
   structure_ = inputs.xray_structure.deep_copy_scatterers()
   if (verbose): log = sys.stdout
   else:         log = StringIO()
-  cartesian_dynamics.cartesian_dynamics(
-    structure = structure_,
+  gradients_calculator=cartesian_dynamics.gradients_calculator_reciprocal_space(
     restraints_manager = inputs.restraints_manager,
+    sites_cart         = structure_.sites_cart(),
+    wc                 = 1)
+  cartesian_dynamics.cartesian_dynamics(
+    gradients_calculator=gradients_calculator,
+    xray_structure = structure_,
     temperature = 300,
     n_steps = 200,
     time_step = 0.0005,
@@ -121,9 +125,13 @@ def exercise_01(inputs, verbose=0):
   else:         log = StringIO()
   for l,v in [(None,-1), (log, verbose)]:
     structure_ = inputs.xray_structure.deep_copy_scatterers()
-    inst = cartesian_dynamics.cartesian_dynamics(
-      structure = structure_,
+    gradients_calculator=cartesian_dynamics.gradients_calculator_reciprocal_space(
       restraints_manager = inputs.restraints_manager,
+      sites_cart         = structure_.sites_cart(),
+      wc                 = 1)
+    inst = cartesian_dynamics.cartesian_dynamics(
+      xray_structure = structure_,
+      gradients_calculator = gradients_calculator,
       temperature = 0,
       n_steps = 200,
       time_step = 0.0005,
@@ -144,9 +152,13 @@ def exercise_02(inputs, verbose=0):
   structure_ = inputs.xray_structure.deep_copy_scatterers()
   if (verbose): log = sys.stdout
   else:         log = StringIO()
-  cartesian_dynamics.cartesian_dynamics(
-    structure = structure_,
+  gradients_calculator=cartesian_dynamics.gradients_calculator_reciprocal_space(
     restraints_manager = inputs.restraints_manager,
+    sites_cart         = structure_.sites_cart(),
+    wc                 = 1)
+  cartesian_dynamics.cartesian_dynamics(
+    xray_structure = structure_,
+    gradients_calculator = gradients_calculator,
     temperature = 300,
     n_steps = 0,
     time_step = 0.0005,
@@ -180,9 +192,13 @@ def exercise_03(mon_lib_srv, ener_lib, verbose=0):
   restraints_manager = mmtbx.restraints.manager(
     geometry=processed_pdb.geometry_restraints_manager())
   structure_ = xray_structure.deep_copy_scatterers()
-  cartesian_dynamics.cartesian_dynamics(
-    structure = structure_,
+  gradients_calculator=cartesian_dynamics.gradients_calculator_reciprocal_space(
     restraints_manager = restraints_manager,
+    sites_cart         = xray_structure.sites_cart(),
+    wc                 = 1)
+  cartesian_dynamics.cartesian_dynamics(
+    xray_structure = xray_structure,
+    gradients_calculator = gradients_calculator,
     temperature = 300,
     n_steps = 200,
     time_step = 0.0005,

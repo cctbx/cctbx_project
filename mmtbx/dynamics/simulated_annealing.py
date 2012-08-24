@@ -114,11 +114,9 @@ def run_simulated_annealing(params,
                             out = None,
                             verbose=True):
   if(out is None): out = sys.stdout
-  xray_structure_last_updated = fmodel.xray_structure.deep_copy_scatterers()
   sites_cart_start = fmodel.xray_structure.sites_cart()
   sa_temp = params.start_temperature
   verbose = params.verbose
-  xray_gradient = None
   reset_velocities = True
   vxyz = None
   cd_manager = None
@@ -136,9 +134,19 @@ def run_simulated_annealing(params,
     if(sa_temp==params.start_temperature):
       cmremove=True
     else: cmremove=False
+    #
+    from mmtbx.dynamics import cartesian_dynamics as cd
+    gradients_calculator = cd.gradients_calculator_reciprocal_space(
+      restraints_manager        = restraints_manager,
+      fmodel                    = fmodel,
+      sites_cart                = fmodel.xray_structure.sites_cart(),
+      wx                        = wx,
+      wc                        = wc,
+      update_gradient_threshold = params.update_grads_shift)
+    #
     cd_manager = cartesian_dynamics.cartesian_dynamics(
-      structure                   = fmodel.xray_structure,
-      restraints_manager          = restraints_manager,
+      xray_structure              = fmodel.xray_structure,
+      gradients_calculator        = gradients_calculator,
       temperature                 = sa_temp,
       vxyz                        = vxyz,
       n_steps                     = params.number_of_steps,
@@ -146,20 +154,11 @@ def run_simulated_annealing(params,
       initial_velocities_zero_fraction \
         = params.initial_velocities_zero_fraction,
       n_print                     = params.n_print,
-      fmodel                      = fmodel,
       stop_cm_motion              = cmremove,
-      xray_target_weight          = wx,
-      chem_target_weight          = wc,
-      xray_structure_last_updated = xray_structure_last_updated,
-      shift_update                = params.update_grads_shift,
-      xray_gradient               = xray_gradient,
       reset_velocities            = reset_velocities,
       log=out,
       verbose=verbose)
     reset_velocities = False
-    xray_structure_last_updated = \
-                  cd_manager.xray_structure_last_updated.deep_copy_scatterers()
-    xray_gradient = cd_manager.xray_gradient
     fmodel.update_xray_structure(
       xray_structure = fmodel.xray_structure,
       update_f_calc  = True,
@@ -175,6 +174,6 @@ def run_simulated_annealing(params,
     if(cartesian_den_restraints):
       print >> out, "update DEN eq distances at temp=%.1f" % sa_temp
       den_manager.update_eq_distances(
-        sites_cart=xray_structure_last_updated.sites_cart())
+        sites_cart=fmodel.xray_structure.sites_cart())
   if(den_manager is not None):
     restraints_manager.geometry.generic_restraints_manager.flags.den = False
