@@ -70,6 +70,11 @@ HETATM 684 O O    B EOH B 2 . 14.811 2.078  12.602 0.40 5.53  66 EOH A O    1
 model id="1" #chains=2
   chain id="A" #residue_groups=1  ### WARNING: duplicate chain id ###
     resid="   2 " #atom_groups=3
+      altloc="" resname="THR" #atoms=4
+        " C  "
+        " O  "
+        " H  "
+        " HA "
       altloc="A" resname="THR" #atoms=8
         " CA "
         " CB "
@@ -88,11 +93,6 @@ model id="1" #chains=2
         "HG21"
         "HG22"
         "HG23"
-      altloc="" resname="THR" #atoms=4
-        " C  "
-        " O  "
-        " H  "
-        " HA "
   chain id="A" #residue_groups=1  ### WARNING: duplicate chain id ###
     resid="  66 " #atom_groups=2
       altloc="A" resname="EOH" #atoms=3

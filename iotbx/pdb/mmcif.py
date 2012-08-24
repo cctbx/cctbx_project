@@ -119,6 +119,10 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
               resseq=hy36encode(width=4, value=int(i_residue)), icode=ins_code)
             chain.append_residue_group(residue_group)
             unique_altloc_ids = OrderedSet(alt_id.select(ins_code_sel))
+            if len(unique_altloc_ids) > 1 and "." in unique_altloc_ids:
+              # main chain atoms should appear before altlocs in the hierarchy
+              unique_altloc_ids.discard(".")
+              unique_altloc_ids = ["."] + list(unique_altloc_ids)
             residue_group.pre_allocate_atom_groups(len(unique_altloc_ids))
             for i_altloc in unique_altloc_ids:
               atom_group_sel = (alt_id == i_altloc) & ins_code_sel
