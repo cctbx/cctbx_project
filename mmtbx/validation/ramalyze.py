@@ -271,37 +271,36 @@ Example:
     r = ramachandran_eval.RamachandranEval()
     prev_rezes, next_rezes = None, None
     prev_resid = None
-    cur_resid = None
-    next_resid = None
+    cur_resseq = None
+    next_resseq = None
     for model in hierarchy.models():
       for chain in model.chains():
         residues = list(chain.residue_groups())
         for i, residue_group in enumerate(residues):
-          #The reason I pass lists of atom_groups to get_phi and get_psi is to deal with the
-          #particular issue where some residues have an A alt conf that needs some atoms from
-          #a "" alt conf to get calculated correctly.
-          #See 1jxt.pdb for examples.  This way I can search both the alt conf atoms and
-          #the "" atoms if necessary.
+          # The reason I pass lists of atom_groups to get_phi and get_psi is to
+          # deal with the particular issue where some residues have an A alt
+          # conf that needs some atoms from a "" alt conf to get calculated
+          # correctly.  See 1jxt.pdb for examples.  This way I can search both
+          # the alt conf atoms and the "" atoms if necessary.
           prev_atom_list, next_atom_list, atom_list = None, None, None
-          if cur_resid is not None:
+          if cur_resseq is not None:
             prev_rezes = rezes
-            prev_resid = cur_resid
+            prev_resseq = cur_resseq
           rezes = self.construct_complete_residues(residues[i])
-          cur_resid = residue_group.resseq_as_int()
+          cur_resseq = residue_group.resseq_as_int()
+          cur_icode = residue_group.icode.strip()
           if (i > 0):
             #check for insertion codes
-            if residue_group.resseq_as_int() == \
-               residues[i-1].resseq_as_int():
-              if residue_group.icode == ' ':
+            if (cur_resseq == residues[i-1].resseq_as_int()) :
+              if (cur_icode == '') and (residues[i-1].icode.strip() == '') :
                 continue
-            elif (residue_group.resseq_as_int() != \
-               (residues[i-1].resseq_as_int())+1):
+            elif (cur_resseq != (residues[i-1].resseq_as_int())+1):
               continue
           if (i < len(residues)-1):
             #find next residue
             if residue_group.resseq_as_int() == \
                residues[i+1].resseq_as_int():
-              if residues[i+1].icode == ' ':
+              if (cur_icode == '') and (residues[i+1].icode.strip() == '') :
                 continue
             elif residue_group.resseq_as_int() != \
                (residues[i+1].resseq_as_int())-1:
@@ -462,19 +461,24 @@ Example:
     if (res_group is not None):
       complete_dict = {}
       nit, ca, co, oxy = None, None, None, None
-      for ag in res_group.atom_groups():
+      atom_groups = res_group.atom_groups()
+      reordered = []
+      # XXX always process blank-altloc atom group first
+      for ag in atom_groups :
+        if (ag.altloc == '') :
+          reordered.insert(0, ag)
+        else :
+          reordered.append(ag)
+      for ag in reordered :
         changed = False
         for atom in ag.atoms():
           if (atom.name == " N  "): nit = atom
           if (atom.name == " CA "): ca = atom
           if (atom.name == " C  "): co = atom
           if (atom.name == " O  "): oxy = atom
-          if (atom.name == " N  " or
-              atom.name == " CA " or
-              atom.name == " C  " or
-              atom.name == " O  "):
+          if (atom.name in [" N  ", " CA ", " C  ", " O  "]) :
             changed = True
-        if (nit is not None and ca is not None and co is not None and oxy is not None and changed):
+        if (not None in [nit, ca, co, oxy]) and (changed) :
           # complete residue backbone found
           complete_dict[ag.altloc] = [nit, ca, co, oxy]
       if len(complete_dict) > 0:
