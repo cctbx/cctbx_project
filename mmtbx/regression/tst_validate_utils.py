@@ -235,6 +235,39 @@ def exercise_ramalyze():
   assert output_lines[45] == "A  43  BASP:56.98:-88.69:-0.12:Favored:General"
   assert output_lines[46] == "A  44  TYR:1.76:-133.10:58.75:Allowed:General"
   assert output_lines[47] == "A  45  ALA:57.37:-86.61:-8.57:Favored:General"
+  # 2plx excerpt (unusual icode usage)
+  pdb_io = pdb.input(source_info=None, lines="""\
+ATOM   1468  N   GLY A 219       3.721  21.322  10.752  1.00 14.12           N
+ATOM   1469  CA  GLY A 219       3.586  21.486  12.188  1.00 14.85           C
+ATOM   1470  C   GLY A 219       4.462  20.538  12.995  1.00 15.63           C
+ATOM   1471  O   GLY A 219       5.513  20.090  12.512  1.00 14.55           O
+ATOM   1472  N   CYS A 220       4.036  20.213  14.235  1.00 15.02           N
+ATOM   1473  CA  CYS A 220       4.776  19.228  15.068  1.00 15.56           C
+ATOM   1474  C   CYS A 220       3.773  18.322  15.741  1.00 14.69           C
+ATOM   1475  O   CYS A 220       2.799  18.828  16.338  1.00 15.54           O
+ATOM   1476  CB  CYS A 220       5.620  19.906  16.174  1.00 15.72           C
+ATOM   1477  SG  CYS A 220       6.762  21.133  15.448  1.00 15.45           S
+ATOM   1478  N   ALA A 221A      4.054  17.017  15.707  1.00 14.77           N
+ATOM   1479  CA  ALA A 221A      3.274  16.015  16.507  1.00 14.01           C
+ATOM   1480  C   ALA A 221A      1.774  15.992  16.099  1.00 14.50           C
+ATOM   1481  O   ALA A 221A      0.875  15.575  16.881  1.00 14.46           O
+ATOM   1482  CB  ALA A 221A      3.440  16.318  17.935  1.00 12.28           C
+ATOM   1483  N   GLN A 221       1.523  16.390  14.848  1.00 14.52           N
+ATOM   1484  CA  GLN A 221       0.159  16.391  14.325  1.00 15.19           C
+ATOM   1485  C   GLN A 221      -0.229  15.044  13.717  1.00 14.43           C
+ATOM   1486  O   GLN A 221       0.641  14.280  13.307  1.00 16.88           O
+ATOM   1487  CB  GLN A 221       0.002  17.491  13.272  1.00 16.41           C
+ATOM   1488  CG  GLN A 221       0.253  18.906  13.805  1.00 16.52           C
+ATOM   1489  CD  GLN A 221      -0.640  19.181  14.995  1.00 17.87           C
+ATOM   1490  OE1 GLN A 221      -1.857  19.399  14.826  1.00 13.54           O
+ATOM   1491  NE2 GLN A 221      -0.050  19.149  16.228  1.00 16.18           N
+ATOM   1492  N   LYS A 222      -1.537  14.773  13.694  1.00 14.34           N
+ATOM   1493  CA  LYS A 222      -2.053  13.536  13.125  1.00 15.07           C
+ATOM   1494  C   LYS A 222      -1.679  13.455  11.655  1.00 14.88           C
+ATOM   1495  O   LYS A 222      -1.856  14.424  10.883  1.00 14.32           O
+""")
+  output, output_list = r.analyze_pdb(pdb_io=pdb_io, outliers_only=False)
+  assert (len(output_list) == 3)
 
 #}}}
 
