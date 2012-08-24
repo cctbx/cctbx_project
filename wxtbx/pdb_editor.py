@@ -85,6 +85,7 @@ def remove_objects_recursive (pdb_object) :
     parent.remove_model(pdb_object)
 
 class PDBTree (customtreectrl.CustomTreeCtrl) :
+  max_states = 5 # maximum number of reverts possible
   def __init__ (self, *args, **kwds) :
     kwds = dict(kwds)
     kwds['agwStyle'] = wx.TR_HAS_VARIABLE_ROW_HEIGHT|wx.TR_HAS_BUTTONS| \
@@ -97,6 +98,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     self.Bind(wx.EVT_TREE_KEY_DOWN, self.OnChar)
     self.Bind(wx.EVT_TREE_ITEM_RIGHT_CLICK, self.OnRightClick)
     self.Bind(wx.EVT_LEFT_DCLICK, self.OnDoubleClick)
+    self.frame = self.GetTopLevelParent()
     # FIXME
     #self.Bind(wx.EVT_TREE_BEGIN_DRAG, self.OnStartDrag)
     #self.Bind(wx.EVT_TREE_END_DRAG, self.OnEndDrag)
@@ -108,16 +110,44 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
   def DeleteAllItems (self) :
     customtreectrl.CustomTreeCtrl.DeleteAllItems(self)
     self.AddRoot("pdb_hierarchy")
-    self._state = []
-    self._state_tmp = []
+    self._hierarchy_stack = []
+    self._hierarchy_actions = []
     self._changes_made = False
     self._hierarchy = None
+    self._hierarchy_start = None
+    self._i_state = 0
+
+  def PushState (self, action="edit") :
+    del self._hierarchy_stack[self._i_state+1:]
+    del self._hierarchy_actions[self._i_state+1:]
+    self._hierarchy_stack.append(self._hierarchy.deep_copy())
+    self._hierarchy_actions.append(action)
+    if (len(self._hierarchy_stack) > self.max_states) :
+      del self._hierarchy_stack[0]
+      del self._hierarchy_actions[0]
+    self._changes_made = True
+    self._i_state = len(self._hierarchy_stack) - 1
+    self.frame.EnableUndo(True)
+    #print self._hierarchy_stack
+    #print self._hierarchy_actions
+    #print self._i_state
 
   def SetHierarchy (self, pdb_hierarchy) :
     self.DeleteAllItems()
     self._hierarchy = pdb_hierarchy
-    self._state.append(pdb_hierarchy)
+    self._hierarchy_start = pdb_hierarchy
+    self.PushState("starting model")
     self.PopulateTree(pdb_hierarchy)
+
+  def SetState (self) :
+    #print "SetState(): n_states:", len(self._hierarchy_stack)
+    #print "SetState(): i_state:", self._i_state
+    #print "SetState(): action:", self._hierarchy_actions[self._i_state]
+    customtreectrl.CustomTreeCtrl.DeleteAllItems(self)
+    self.AddRoot("pdb_hierarchy")
+    self._hierarchy = self._hierarchy_stack[self._i_state]
+    self.PopulateTree(self._hierarchy)
+    self.Refresh()
 
   def PopulateTree (self, pdb_hierarchy) :
     root_node = self.GetRootItem()
@@ -213,7 +243,6 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
 
   def _ApplyToAtoms (self, item, pdb_object, modify_action) :
     assert (hasattr(modify_action, "__call__"))
-    self._changes_made = True
     if (type(pdb_object).__name__ == 'atom') :
       modify_action(pdb_object)
       self.SetItemText(item, format_atom(pdb_object))
@@ -257,6 +286,29 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     items = self.GetSelections()
     for item in items :
       self.SelectItem(item, False)
+
+  def Undo (self) :
+    if (self._i_state == 0) :
+      raise Sorry(("No more changes left to undo (only the previous %d "+
+        "states will be remembered)") % self.max_states)
+    else :
+      print "Undoing action: %s" % self._hierarchy_actions[self._i_state]
+      self._i_state -= 1
+      self.SetState()
+      if (self._i_state == 0) :
+        self.frame.EnableUndo(False)
+      self.frame.EnableRedo(True)
+
+  def Redo (self) :
+    if (self._i_state == len(self._hierarchy_stack) - 1) :
+      raise Sorry("No more changes to redo.")
+    else :
+      self._i_state += 1
+      print "Restoring action: %s" % self._hierarchy_actions[self._i_state]
+      self.SetState()
+      self.frame.EnableUndo(True)
+      if (self._i_state == len(self._hierarchy_stack) - 1) :
+        self.frame.EnableRedo(False)
 
   #---------------------------------------------------------------------
   # UI events
@@ -501,9 +553,9 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
           confirm_action(("The atom group to which this atom belongs already "+
           "has another atom named \"%s\".  Are you sure you want to rename "+
           "the selected atom?") % new_name)
-      self._changes_made = True
       atom.name = "%-4s" % new_name
       self.SetItemText(item, format_atom(atom))
+      self.PushState("changed atom name ('%s' -> '%s')" % (atom.name,new_name))
 
   # atom
   def OnSetElement (self, event) :
@@ -511,7 +563,6 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     new_elem = self.GetNewElement(atom.element)
     assert (new_elem is None) or (len(new_elem) <= 2)
     if (new_elem != atom.element) :
-      self._changes_made = True
       if (new_elem is None) :
         atom.element = '  '
       elif (new_elem.strip() == '') :
@@ -519,13 +570,13 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         atom.element = '%2d' % new_elem
       # TODO validate element symbol
       self.SetItemText(item, format_atom(atom))
+      self.PushState("changed atom element to '%s'" % atom.element)
 
   # atom
   def OnSetCharge (self, event) :
     item, atom = self.GetSelectedObject('atom')
     new_charge = self.GetNewCharge(atom.charge)
     assert (new_charge is None) or (-9 <= new_charge <= 9)
-    self._changes_made = True
     if (new_charge in [0, None]) :
       atom.charge = '  '
     elif (new_charge < 0) :
@@ -533,6 +584,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     else :
       atom.charge = '%d+' % new_charge
     self.SetItemText(item, format_atom(atom))
+    self.PushState("set atom charge to %s" % new_charge)
 
   # atom
   def OnSetXYZ (self, event) :
@@ -553,8 +605,8 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         atom_group.altloc = ''
       else :
         atom_group.altloc = new_altloc
-      self._changes_made = True
       self.SetItemText(item, format_atom_group(atom_group))
+      self.PushState("set altloc to '%s'" % new_altloc)
 
   # atom_group
   def OnSetResname (self, event) :
@@ -562,17 +614,16 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     new_resname = self.GetNewResname(atom_group.resname)
     assert (new_resname is not None) and (len(new_resname) in [1,2,3])
     if (atom_group.resname != new_resname) :
-      self._changes_made = True
       atom_group.resname = new_resname
       self.SetItemText(item, format_atom_group(atom_group))
       rg_item = self.GetItemParent(item)
       self.SetItemText(rg_item, format_residue_group(atom_group.parent()))
+      self.PushState("set resname to '%s" % new_resname)
 
   # atom_group (resname == MET)
   def OnConvertMet (self, event) :
     item, atom_group = self.GetSelectedObject('atom_group')
     assert (atom_group.resname == "MET")
-    self._changes_made = True
     atom_group.resname = "MSE"
     for atom in atom_group.atoms() :
       if (atom.name == ' SD ') :
@@ -583,12 +634,12 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     rg_item = self.GetItemParent(item)
     self.SetItemText(rg_item, format_residue_group(atom_group.parent()))
     self.PropagateAtomChanges(item)
+    self.PushState("converted MET to MSE")
 
   # atom_group (resname == MSE)
   def OnConvertSeMet (self, event) :
     item, atom_group = self.GetSelectedObject('atom_group')
     assert (atom_group.resname == "MSE")
-    self._changes_made = True
     atom_group.resname = "MET"
     for atom in atom_group.atoms() :
       if (atom.name == ' SE ') :
@@ -599,6 +650,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     rg_item = self.GetItemParent(item)
     self.SetItemText(rg_item, format_residue_group(atom_group.parent()))
     self.PropagateAtomChanges(item)
+    self.PushState("converted MSE to MET")
 
   # residue_group
   def OnSetResseq (self, event) :
@@ -606,12 +658,12 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     new_resseq = self.GetNewResseq(residue_group.resseq_as_int())
     assert (new_resseq is not None)
     if (new_resseq != residue_group.resseq_as_int()) :
-      self._changes_made = True
       if (new_resseq > 9999) or (new_resseq < -999) :
         raise NotImplementedError("Hybrid36 support not available.")
       else :
         residue_group.resseq = "%4d" % new_resseq
       self.SetItemText(item, format_residue_group(residue_group))
+      self.PushState("set residue number to %s" % new_resseq)
 
   # residue_group
   def OnSetIcode (self, event) :
@@ -619,12 +671,12 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     new_icode = self.GetNewIcode(residue_group.icode)
     assert (new_icode is None) or (len(new_icode) == 1)
     if (new_icode != residue_group.icode) :
-      self._changes_made = True
       if (new_icode is None) :
         residue_group.icode = ' '
       else :
         residue_group.icode = new_icode
       self.SetItemText(item, format_residue_group(residue_group))
+      self.PushState("set insertion code to '%s'" % new_icode)
 
   def OnRenumberResidues (self, event) :
     items = self.GetSelections()
@@ -646,19 +698,18 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     item, chain = self.GetSelectedObject('chain')
     new_id = self.GetNewChainID(chain.id)
     if (new_id != chain.id) :
-      self._changes_made = True
       if (new_id is None) or (new_id.isspace()) :
         chain.id = ' '
       else :
         chain.id = "%2s" % new_id
       self.SetItemText(item, format_chain(chain))
+      self.PushState("set chain ID to '%s'" % new_id)
 
   # chain
   def OnRenumberChain (self, event) :
     item, chain = self.GetSelectedObject('chain')
     resseq_shift = self.GetResseqShift()
     if (resseq_shift is not None) and (resseq_shift != 0) :
-      self._changes_made = True
       child, cookie = self.GetFirstChild(item)
       while (child is not None) :
         residue_group = self.GetItemPyData(child)
@@ -670,7 +721,8 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         else :
           residue_group.resseq = "%4d" % new_resseq
         self.SetItemText(child, format_residue_group(residue_group))
-        child, cookie = self.GetNextChild(node, cookie)
+        child, cookie = self.GetNextChild(item, cookie)
+      self.PushState("incremented residue numbers by %d" % resseq_shift)
 
   # model
   def OnSetModelID (self, event) :
@@ -756,7 +808,6 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     for item in items :
       pdb_object = self.GetItemPyData(item)
       pdb_type = type(pdb_object).__name__
-      self._changes_made = True
       if (pdb_type == 'atom') :
         from scitbx.array_family import flex
         sites = flex.vec3_double([pdb_object.xyz])
@@ -769,6 +820,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         sites = rt.r.elems * sites + rt.t.elems
         atoms.set_xyz(sites)
         self.PropagateAtomChanges(item)
+      self.PushState("moved sites")
 
   # all
   def OnSetAtomType (self, event) :
@@ -792,7 +844,6 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     if (n_atom == 0) and (n_hetatm > 0) :
       atom_type = "HETATM"
     new_type = self.GetAtomType(atom_type)
-    self._changes_made = True
     for item in items :
       pdb_object = self.GetItemPyData(item)
       pdb_type = type(pdb_object).__name__
@@ -808,6 +859,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
           else :
             atom.hetero = False
       self.PropagateAtomChanges(item)
+    self.PushState("set record types to %s" % new_type)
 
   #---------------------------------------------------------------------
   # HIERARCHY EDITING
@@ -821,11 +873,11 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         "one type of object at a time.") % (" ".join(object_types)))
     confirm_action("Are you sure you want to delete the selected %d atom(s)?"
       % n_atoms)
-    self._changes_made = True
     for item in self.GetSelections() :
       pdb_object = self.GetItemPyData(item)
       self._DeleteObject(item, pdb_object)
     self._hierarchy.atoms().reset_i_seq()
+    self.PushState("deleted %d atoms" % n_atoms)
 
   def _DeleteObject (self, item, pdb_object) :
     remove_objects_recursive(pdb_object)
@@ -857,7 +909,6 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       "removing these will delete %d atoms from the model.  Are you sure "+
       "you want to continue?") % (n_alt_residues, n_alt_atoms))
     # TODO more control over what happens to remaining atom_groups
-    self._changes_made = True
     child, cookie = self.GetFirstChild(item)
     while (child is not None) :
       residue_group = self.GetItemPyData(child)
@@ -879,6 +930,8 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         self.SetItemText(child, format_residue_group(residue_group))
       child, cookie = self.GetNextchild(item, cookie)
     self._hierarchy.atoms().reset_i_seq()
+    self.PushState("deleted %d atoms with alternate conformations" %
+      n_alt_atoms)
 
   # atom_group
   def OnCloneAtoms (self, event) :
@@ -888,13 +941,13 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     assert (len(atom_groups) > 0)
     start_occ = 1/(len(atom_groups) + 1)
     new_occ = self.GetNewOccupancy(start_occ, new=True)
-    self._changes_made = True
     self._AddAtomGroup(
       item=self.GetItemParent(item),
       residue_group=residue_group,
       new_group=target_atom_group.detached_copy(),
       new_occ=new_occ)
     self._hierarchy.atoms().reset_i_seq()
+    self.PushState("cloned atom group")
 
   # residue_group
   def OnSplitResidue (self, event) :
@@ -903,13 +956,13 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     assert (len(atom_groups) > 0)
     start_occ = 1/(len(atom_groups) + 1)
     new_occ = self.GetNewOccupancy(start_occ, new=True)
-    self._changes_made = True
     self._AddAtomGroup(
       item=item,
       residue_group=residue_group,
       new_group=atom_groups[0].detached_copy(),
       new_occ=new_occ)
     self._hierarchy.atoms().reset_i_seq()
+    self.PushState("split residue")
 
   def _AddAtomGroup (self, item, residue_group, new_group, new_occ) :
     atom_groups = residue_group.atom_groups()
@@ -952,26 +1005,26 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         index = k+1
         break
     assert (index is not None)
-    self._changes_made = True
     self._AddResidues(
       chain=chain,
       chain_node=self.GetItemParent(item),
       residues=new_residues,
       index=index)
     self._hierarchy.atoms().reset_i_seq()
+    self.PushState("inserted %d residues" % len(new_residues))
 
   # chain
   def OnAddResidues (self, event) :
     item, chain = self.GetSelectedObject('chain')
     new_residues = self.GetResiduesFromFile()
     index = self.GetInsertionIndex(chain)
-    self._changes_made = True
     self._AddResidues(
       chain=chain,
       chain_node=item,
       residues=new_residues,
       index=index)
     self._hierarchy.atoms().reset_i_seq()
+    self.PushState("added %d residues" % len(new_residues))
 
   # chain
   def OnMergeChain (self, event) :
@@ -983,7 +1036,6 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     target_item = self.FindItem(target_chain)
     assert (target_item is not None)
     index = self.GetInsertionIndex(target_chain)
-    self._changes_made = True
     merge_residues = [ rg.detached_copy() for rg in chain.residue_groups() ]
     self._DeleteObject(item, chain)
     self._AddResidues(
@@ -992,16 +1044,18 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       residues=merge_residues,
       index=index)
     self._hierarchy.atoms().reset_i_seq()
+    self.PushState("merged chain '%s' with chain '%s'" % (chain.id,
+      target_chain.id))
 
   # model
   def OnAddChain (self, event) :
     item, model = self.GetSelectedObject('model')
     new_chains = self.GetChainsFromFile()
-    self._changes_made = True
     for chain in new_chains :
       model.append_chain(chain)
       self._InsertChainItem(item, chain)
     self._hierarchy.atoms().reset_i_seq()
+    self.PushState("added %d chain(s) to model" % len(new_chains))
     self.Refresh()
 
   # model
@@ -1023,6 +1077,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       child, cookie = self.GetNextChild(root_node, cookie)
       i_model += 1
     self._hierarchy.atoms().reset_i_seq()
+    self.PushState("split model '%s'" % model.id)
 
   def _AddResidues (self, chain, chain_node, residues, index=None) :
     for rg in residues :
@@ -1554,6 +1609,14 @@ class PDBTreeFrame (wx.Frame) :
     self.Bind(wx.EVT_MENU, self.OnOpen, item)
     item = file_menu.Append(-1, "&Quit\tCtrl-Q")
     self.Bind(wx.EVT_MENU, self.OnClose, item)
+    edit_menu = wx.Menu()
+    #menu_bar.Append(edit_menu, "Edit")
+    self.undo_item = edit_menu.Append(-1, "&Undo\tCtrl-Z")
+    self.redo_item = edit_menu.Append(-1, "&Redo\tCtrl-Y")
+    self.undo_item.Enable(False)
+    self.redo_item.Enable(False)
+    self.Bind(wx.EVT_MENU, self.OnUndo, self.undo_item)
+    self.Bind(wx.EVT_MENU, self.OnRedo, self.redo_item)
     self.SetMenuBar(menu_bar)
     #
     self._pdb_in = None
@@ -1649,6 +1712,18 @@ class PDBTreeFrame (wx.Frame) :
       if (confirm == wx.YES) :
         self.Save()
     self.Destroy()
+
+  def OnUndo (self, event) :
+    self._tree.Undo()
+
+  def OnRedo (self, event) :
+    self._tree.Redo()
+
+  def EnableRedo (self, enable=True) :
+    self.redo_item.Enable(enable)
+
+  def EnableUndo (self, enable=True) :
+    self.undo_item.Enable(enable)
 
   def OnDestroy (self, event) :
     pass
