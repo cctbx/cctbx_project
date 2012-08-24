@@ -1983,31 +1983,36 @@ class guess_observation_type(object):
     results = []
     for dtype in ["X","N"]:
       xrs = xray_structure.deep_copy_scatterers()
+      err = None
       if(dtype=="N"):
         try:
           xrs.switch_to_neutron_scattering_dictionary()
         except Exception, e:
-          if(str(e) == "cctbx Error: Unknown element label."):
-            pass
-      f_calc = f_obs.structure_factors_from_scatterers(
-        xray_structure = xrs).f_calc()
-      for ftype in ["F","FFORCE","IFORCE"]:
-        f = f_obs.deep_copy()
-        if(ftype=="FFORCE"):
-          f = f_obs.f_sq_as_f()
-        elif(ftype=="IFORCE"):
-          f = f_obs.f_as_f_sq()
-        f.set_observation_type_xray_amplitude()
-        scattering_table = "wk1995"
-        if(dtype=="N"): scattering_table="neutron"
-        fmodel = self.get_r_factor(
-          f_obs               = f.deep_copy(),
-          f_calc              = f_calc.deep_copy(),
-          scattering_table    = scattering_table,
-          xray_structure      = xrs.deep_copy_scatterers(),
-          twin_switch_tolerance = 5.,
-          skip_twin_detection = True)
-        results.append([dtype,ftype,fmodel.twin,fmodel.r_work()])
+          err = str(e)
+      if(err is None):
+        f_calc = f_obs.structure_factors_from_scatterers(
+          xray_structure = xrs).f_calc()
+        for ftype in ["F","FFORCE","IFORCE"]:
+          f = f_obs.deep_copy()
+          if(ftype=="FFORCE"):
+            f = f_obs.f_sq_as_f()
+          elif(ftype=="IFORCE"):
+            f = f_obs.f_as_f_sq()
+          f.set_observation_type_xray_amplitude()
+          scattering_table = "wk1995"
+          if(dtype=="N"): scattering_table="neutron"
+          fmodel = self.get_r_factor(
+            f_obs               = f.deep_copy(),
+            f_calc              = f_calc.deep_copy(),
+            scattering_table    = scattering_table,
+            xray_structure      = xrs.deep_copy_scatterers(),
+            twin_switch_tolerance = 5.,
+            skip_twin_detection = True)
+          results.append([dtype,ftype,fmodel.twin,fmodel.r_work()])
+      else:
+        results.append([dtype,ftype,False,1.e9])
+        results.append([dtype,ftype,False,1.e9])
+        results.append([dtype,ftype,False,1.e9])
     #
     print "All scores (stage 1):"
     for r in results:
