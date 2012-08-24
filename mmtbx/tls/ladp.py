@@ -2,7 +2,6 @@ from __future__ import division
 from libtbx.test_utils import approx_equal
 import math
 import iotbx.pdb
-from mmtbx.refinement import fit_rotamers
 from scitbx.array_family import flex
 from scitbx import matrix
 from cctbx import adptbx

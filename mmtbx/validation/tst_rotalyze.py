@@ -2,7 +2,6 @@ from __future__ import division
 import mmtbx.monomer_library
 from scitbx.array_family import flex
 import iotbx.pdb
-from mmtbx.validation import rotalyze
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 from libtbx.test_utils import approx_equal
 

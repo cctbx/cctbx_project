@@ -9,16 +9,12 @@ import scitbx.lbfgs
 import iotbx.pdb
 import mmtbx.monomer_library
 import mmtbx.model
-import mmtbx.refinement.real_space
 from mmtbx import map_tools
 from cctbx import maptbx
 import sys
 import mmtbx.monomer_library.server
-import iotbx.pdb.atom_name_interpretation
-import scitbx.graph.tardy_tree
 import iotbx.phil
 import mmtbx.monomer_library
-import mmtbx.monomer_library.rotamer_utils
 from scitbx.matrix import rotate_point_around_axis
 from mmtbx.utils import rotatable_bonds
 

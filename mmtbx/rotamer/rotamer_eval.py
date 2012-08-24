@@ -7,8 +7,6 @@ from libtbx.utils import Sorry
 from mmtbx.rotamer.sidechain_angles import PropertyFile, SidechainAngles
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
-from mmtbx.utils import rotatable_bonds
-from scitbx.matrix import rotate_point_around_axis
 from cctbx.array_family import flex
 import weakref
 import sys, os
