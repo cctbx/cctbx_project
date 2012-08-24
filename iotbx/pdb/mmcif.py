@@ -84,6 +84,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     self.hierarchy.pre_allocate_models(len(unique_model_ids))
     for i_model in unique_model_ids:
       model_sel = (model_ids == i_model)
+      if len(unique_model_ids) == 1: i_model = ""
       model = hierarchy.model(id=i_model)
       self.hierarchy.append_model(model)
       unique_chain_ids = OrderedSet(label_asym_id.select(model_sel))

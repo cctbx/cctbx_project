@@ -67,7 +67,7 @@ HETATM 684 O O    B EOH B 2 . 14.811 2.078  12.602 0.40 5.53  66 EOH A O    1
   s = StringIO()
   hierarchy.show(out=s)
   assert not show_diff(s.getvalue(), """\
-model id="1" #chains=2
+model id="" #chains=2
   chain id="A" #residue_groups=1  ### WARNING: duplicate chain id ###
     resid="   2 " #atom_groups=3
       altloc="" resname="THR" #atoms=4
@@ -223,7 +223,7 @@ _atom_site_anisotrop.U[2][3]
   s = StringIO()
   hierarchy.show(out=s)
   assert not show_diff(s.getvalue(), """\
-model id="1" #chains=2
+model id="" #chains=2
   chain id="A" #residue_groups=1  ### WARNING: duplicate chain id ###
     resid=" 108 " #atom_groups=1
       altloc="" resname="SER" #atoms=6
@@ -289,7 +289,7 @@ ATOM   3436 C  CZ  . PHE C 2 165 A -31.379 -11.898 42.850  1.00 32.97 584 PHE C 
   s = StringIO()
   hierarchy.show(out=s)
   assert not show_diff(s.getvalue(), """\
-model id="1" #chains=1
+model id="" #chains=1
   chain id="C" #residue_groups=2
     resid=" 584 " #atom_groups=1
       altloc="" resname="GLY" #atoms=4
