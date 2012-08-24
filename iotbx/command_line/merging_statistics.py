@@ -203,6 +203,9 @@ Full parameters:
     symm = crystal.symmetry(
       space_group=sg,
       unit_cell=uc)
+  if (i_obs.is_unique_set_under_symmetry()) :
+    raise Sorry(("The data in %s are already merged.  Only unmerged (but "+
+      "scaled) data may be used in this program.")%i_obs.info().label_string())
   show_merging_statistics(
     i_obs=i_obs,
     crystal_symmetry=symm,
