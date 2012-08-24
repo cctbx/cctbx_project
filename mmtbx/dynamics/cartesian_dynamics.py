@@ -255,8 +255,8 @@ class cartesian_dynamics(object):
     for cycle in range(1,self.n_steps+1,1):
       if(self.stop_at_diff is not None):
         dist = flex.mean(flex.sqrt((self.sites_cart_start -
-          self.xray_structure.sites_cart).dot()))
-        if(diff >= self.stop_at_diff): return
+          self.xray_structure.sites_cart()).dot()))
+        if(dist >= self.stop_at_diff): return
       accelerations = self.accelerations()
       print_flag = 0
       switch = math.modf(float(cycle)/self.n_print)[0]
