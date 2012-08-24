@@ -685,7 +685,7 @@ def run(target_map,
     if(refined.sites_cart_result is not None):
       tmp = tmp.replace_sites_cart(refined.sites_cart_result)
       weight_s = refined.weight_final
-      monitor_object.update(xray_structure=tmp)#, accept_any=True) # XXX ???
+      monitor_object.update(xray_structure=tmp, accept_any=True) # XXX ???
       if(verbose): monitor_object.show(suffix=" weight: %s"%str(weight_s))
   #
   if(verbose): monitor_object.show_residues()

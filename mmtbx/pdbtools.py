@@ -792,9 +792,13 @@ def run(args, command_name="phenix.pdbtools"):
     sites_cart_start = xray_structure.sites_cart().deep_copy()
     from mmtbx.dynamics import cartesian_dynamics
     dyna_params = params.cartesian_dynamics
+    gradients_calculator=cartesian_dynamics.gradients_calculator_reciprocal_space(
+      restraints_manager = restraints_manager,
+      sites_cart         = xray_structure.sites_cart(),
+      wc                 = 1)
     cartesian_dynamics.cartesian_dynamics(
-      structure=xray_structure,
-      restraints_manager=restraints_manager,
+      xray_structure=xray_structure,
+      gradients_calculator=gradients_calculator,
       temperature=dyna_params.temperature,
       n_steps=dyna_params.number_of_steps,
       time_step=dyna_params.time_step,

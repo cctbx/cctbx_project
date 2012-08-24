@@ -287,9 +287,13 @@ def regularize_geometry(xray_structure, restraints_manager, params):
   return xray_structure
 
 def cd(xray_structure, restraints_manager, params):
+  gradients_calculator=cartesian_dynamics.gradients_calculator_reciprocal_space(
+    restraints_manager = restraints_manager,
+    sites_cart         = xray_structure.sites_cart(),
+    wc                 = 1)
   cartesian_dynamics.cartesian_dynamics(
-    restraints_manager               = restraints_manager,
-    structure                        = xray_structure,
+    gradients_calculator             = gradients_calculator,
+    xray_structure                   = xray_structure,
     temperature                      = 3000,
     n_steps                          = 500000,
     time_step                        = 0.0005,
