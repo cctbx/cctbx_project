@@ -55,7 +55,7 @@ class ListEditor (wx.Panel) :
       style=wx.LC_REPORT|wx.LC_SINGLE_SEL)
     self.list.InsertColumn(0, "Items", width=460)
     self.list.SetMinSize((480,160))
-    if (hasattr(self.list, "SetItemSpacing")) :
+    if (hasattr(self.list, "SetItemSpacing")) and (wx.VERSION < (2,9)) :
       self.list.SetItemSpacing(5)
     self.Bind(wx.EVT_LIST_ITEM_SELECTED, self.OnSelect, self.list)
     self.Bind(wx.EVT_LIST_ITEM_DESELECTED, self.OnDeSelect, self.list)
