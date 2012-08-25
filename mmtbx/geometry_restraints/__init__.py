@@ -105,6 +105,22 @@ class manager (object) :
       params=self.hydrogen_bond_params,
       log=log).proxies
 
+  def add_reference_restraints(self,
+                               sites_cart,
+                               pdb_hierarchy,
+                               sites_cart_reference=None,
+                               selection=None,
+                               function=None,
+                               method=None):
+    from mmtbx.geometry_restraints import reference_coordinate
+    self.reference_coordinate_proxies = \
+      reference_coordinate.build_proxies(
+        sites_cart=sites_cart,
+        pdb_hierarchy=pdb_hierarchy,
+        sites_cart_reference=sites_cart_reference,
+        selection=selection).reference_coordinate_proxies
+    self.flags.reference_coordinate=True
+
   def select (self,
               n_seq,
               iselection) :
