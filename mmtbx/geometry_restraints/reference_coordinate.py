@@ -25,6 +25,7 @@ class build_proxies(object):
     if sites_cart_reference is None:
       sites_cart_reference = sites_cart.deep_copy()
     assert len(sites_cart) == len(sites_cart_reference)
+    assert len(sites_cart_reference) == len(selection)
     weight = 1.0 / (sigma**2)
     for i_seq, sel in enumerate(selection):
       if sel:
