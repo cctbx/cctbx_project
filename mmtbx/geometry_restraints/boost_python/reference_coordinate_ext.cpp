@@ -41,7 +41,14 @@ namespace boost_python {
            std::size_t,
            af::const_ref<std::size_t> const&))
            cctbx::geometry_restraints::shared_proxy_select, (
-         arg("n_seq"), arg("iselection")));
+         arg("n_seq"), arg("iselection")))
+        .def("proxy_remove",
+          (af::shared<w_t>(*)(
+           af::const_ref<w_t> const&,
+           af::const_ref<bool> const&))
+           cctbx::geometry_restraints::shared_proxy_remove, (
+         arg("selection")))
+      ;
     }
 
     def("reference_coordinate_residual_sum",
