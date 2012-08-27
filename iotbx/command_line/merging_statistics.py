@@ -2,6 +2,7 @@ from __future__ import division
 from libtbx.str_utils import make_sub_header
 from libtbx.utils import Sorry, Usage
 from math import sqrt
+import random
 import sys
 
 merging_params_str = """
@@ -30,6 +31,29 @@ symmetry_file = None
 debug = False
   .type = bool
 """ % merging_params_str
+
+def compute_cc_one_half (merged, unmerged, n_trials=1) :
+  from cctbx.array_family import flex
+  indices = merged.indices()
+  cc_all = []
+  for x in range(n_trials) :
+    data_1 = flex.double()
+    data_2 = flex.double()
+    for hkl in indices :
+      sele = (unmerged.indices() == hkl)
+      hkl_array = unmerged.select(sele)
+      n_obs = [0, 0]
+      i_sum = [0, 0]
+      for i_obs in range(len(hkl_array.indices())) :
+        i_rand = random.randint(0,1)
+        n_obs[i_rand] += 1
+        i_sum[i_rand] += hkl_array.data()[i_obs]
+      if (n_obs[0] > 0) and (n_obs[1] > 0) :
+        data_1.append(i_sum[0] / n_obs[0])
+        data_2.append(i_sum[1] / n_obs[1])
+    cc = flex.linear_correlation(data_1, data_2).coefficient()
+    cc_all.append(cc)
+  return sum(cc_all) / n_trials
 
 class merging_stats (object) :
   def __init__ (self, array, anomalous=False, debug=None) :
@@ -72,14 +96,20 @@ class merging_stats (object) :
       assert (approx_equal(self.r_merge, r_merge_num / r_merge_den))
       assert (approx_equal(self.r_meas, r_meas_num / r_merge_den))
       assert (approx_equal(self.r_pim, r_pim_num / r_merge_den))
+    #self.cc_one_half = compute_cc_one_half(
+    #  merged=self.array_merged,
+    #  unmerged=array)
+    #self.cc_star = sqrt((2*self.cc_one_half) / (1 + self.cc_one_half))
 
   def format (self) :
+    #return "%6.2f  %6.2f %6d %6d   %5.2f  %8.1f  %6.1f  %5.3f  %5.3f  %5.3f  %5.3f  %5.3f" % (
     return "%6.2f  %6.2f %6d %6d   %5.2f  %8.1f  %6.1f  %5.3f  %5.3f  %5.3f" % (
       self.d_max, self.d_min,
       self.n_obs, self.n_uniq,
       self.mean_redundancy,
       self.i_mean, self.i_over_sigma_mean,
-      self.r_merge, self.r_meas, self.r_pim)
+      self.r_merge, self.r_meas, self.r_pim)#,
+#      self.cc_one_half, self.cc_star)
 
   def show_summary (self, out=sys.stdout) :
     print >> out, "Resolution: %.2f - %.2f" % (self.d_max, self.d_min)
@@ -125,6 +155,9 @@ def show_merging_statistics (
   print >> out, """\
 Statistics by resolution bin:
  d_min   d_max   #obs  #uniq   mult.       <I>  <I/sI>  r_mrg r_meas  r_pim"""
+#  print >> out, """\
+#Statistics by resolution bin:
+# d_min   d_max   #obs  #uniq   mult.       <I>  <I/sI>  r_mrg r_meas  r_pim  cc1/2    cc*"""
   # statistics by bin
   for bin in i_obs.binner().range_used() :
     sele_unmerged = i_obs.binner().selection(bin)
@@ -218,7 +251,10 @@ def show_citations (out=sys.stdout) :
   print >> out, """
 References:
   Diederichs K & Karplus PA (1997) Nature Structural Biology 4:269-275
+    (also erratum in: Nat Struct Biol 1997 Jul;4(7):592)
   Weiss MS (2001) J Appl Cryst 34:130-135.
 """
+  # Karplus PA & Diederichs K (2012) Science 336:1030-3.
+
 if (__name__ == "__main__") :
   run(sys.argv[1:])
