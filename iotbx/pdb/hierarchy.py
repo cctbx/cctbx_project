@@ -692,13 +692,8 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
 
   def get_c_alpha_selection (self) :
     atoms = self.atoms()
-    ca_iselection = flex.size_t()
-    for atom in atoms:
-      if atom.name == " CA ":
-        ca_iselection.append(atom.i_seq)
-    selection = flex.bool(
-      len(atoms),
-      ca_iselection)
+    names = atoms.extract_name()
+    selection = names == " CA "
     return selection
 
 class _(boost.python.injector, ext.model, __hash_eq_mixin):
