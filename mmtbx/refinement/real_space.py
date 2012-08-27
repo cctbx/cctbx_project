@@ -246,11 +246,17 @@ class refinery(object):
     return b,a
 
   def adjust_weight_sample_rate(self, weight):
-    if(  weight <= 1000.): self.weight_sample_rate=100.
-    if(  weight <= 100.):  self.weight_sample_rate=10.
-    if(  weight <= 10.):   self.weight_sample_rate=1.
+    if(  weight <= 0.1):   self.weight_sample_rate=0.01
     elif(weight <= 1.0):   self.weight_sample_rate=0.1
-    elif(weight <= 0.1):   self.weight_sample_rate=0.01
+    elif(weight <= 10.):   self.weight_sample_rate=1.
+    elif(weight <= 100.):  self.weight_sample_rate=10.
+    elif(weight <= 1000.): self.weight_sample_rate=100.
+
+    #if(  weight <= 1000.): self.weight_sample_rate=100.
+    #if(  weight <= 100.):  self.weight_sample_rate=10.
+    #if(  weight <= 10.):   self.weight_sample_rate=1.
+    #elif(weight <= 1.0):   self.weight_sample_rate=0.1
+    #elif(weight <= 0.1):   self.weight_sample_rate=0.01
 
 class states(object):
   def __init__(self, xray_structure, pdb_hierarchy):
