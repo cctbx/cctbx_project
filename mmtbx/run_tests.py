@@ -58,6 +58,7 @@ tst_list = (
   "$D/masks/tst_asu_mask.py",
   "$D/max_lik/tst_max_lik.py",
   "$D/dynamics/tst_cartesian_dynamics.py",
+  "$D/dynamics/tst_sa.py",
   "$D/tls/tst_tls.py",
   "$D/tls/tst_get_t_scheme.py",
   "$D/tls/tst_tls_refinement_fft.py",
