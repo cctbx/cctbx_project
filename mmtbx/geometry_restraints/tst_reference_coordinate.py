@@ -171,7 +171,8 @@ def exercise_2():
     force_symmetry           = True,
     log                      = None)
   geometry = processed_pdb_file.geometry_restraints_manager()
-  restraints_manager = mmtbx.restraints.manager(geometry = geometry)
+  restraints_manager = mmtbx.restraints.manager(geometry = geometry, 
+    normalization=True)
   awl2 = processed_pdb_file.all_chain_proxies.pdb_hierarchy.atoms_with_labels()
   ph3 = iotbx.pdb.input(source_info=None, lines=pdb_str_3).construct_hierarchy()
   ph3.atoms().reset_i_seq()
