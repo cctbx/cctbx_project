@@ -1,9 +1,19 @@
+# LIBTBX_SET_DISPATCHER_NAME phenix.merging_statistics
+
 from __future__ import division
 from libtbx.str_utils import make_sub_header
 from libtbx.utils import Sorry, Usage
 from math import sqrt
 import random
 import sys
+
+citations_str = """
+References:
+  Diederichs K & Karplus PA (1997) Nature Structural Biology 4:269-275
+    (with erratum in: Nat Struct Biol 1997 Jul;4(7):592)
+  Weiss MS (2001) J Appl Cryst 34:130-135.
+"""
+#   Karplus PA & Diederichs K (2012) Science 336:1030-3.
 
 merging_params_str = """
 high_resolution = None
@@ -33,6 +43,11 @@ debug = False
 """ % merging_params_str
 
 def compute_cc_one_half (merged, unmerged, n_trials=1) :
+  """
+  Calculate the correlation between two randomly assigned pools of unmerged
+  data ("CC 1/2").  If desired the mean over multiple trials can be taken.
+  See Karplus PA & Diederichs K (2012) Science 336:1030-3 for motivation.
+  """
   from cctbx.array_family import flex
   indices = merged.indices()
   cc_all = []
@@ -174,14 +189,17 @@ def run (args, out=None) :
   master_params = iotbx.phil.parse(master_phil)
   if (len(args) == 0) :
     raise Usage("""\
-iotbx.merging_statistics [data_file] [options...]
+phenix.merging_statistics [data_file] [options...]
 
 Calculate merging statistics for non-unique data, including R-merge, R-meas,
-R-pim, and redundancy.
+R-pim, and redundancy.  Any format supported by Phenix is allowed, including
+MTZ, unmerged Scalepack, or XDS/XSCALE (and possibly others).  Data should
+already be on a common scale, but with individual observations unmerged.
+%s
 
 Full parameters:
 %s
-""" % master_params.as_str(prefix="  "))
+""" % (citations_str, master_params.as_str(prefix="  ")))
   import iotbx.phil
   cmdline = iotbx.phil.process_command_line_with_files(
     args=args,
@@ -245,16 +263,7 @@ Full parameters:
     params=params,
     debug=params.debug,
     out=out)
-  show_citations(out=out)
-
-def show_citations (out=sys.stdout) :
-  print >> out, """
-References:
-  Diederichs K & Karplus PA (1997) Nature Structural Biology 4:269-275
-    (also erratum in: Nat Struct Biol 1997 Jul;4(7):592)
-  Weiss MS (2001) J Appl Cryst 34:130-135.
-"""
-  # Karplus PA & Diederichs K (2012) Science 336:1030-3.
+  print >> out, citations_str
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])

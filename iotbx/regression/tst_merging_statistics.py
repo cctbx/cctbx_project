@@ -13,7 +13,7 @@ def exercise (debug=False) :
     relative_path="phenix_regression/wizards/p9_se_w2.sca",
     test=os.path.isfile)
   args = [
-    "iotbx.merging_statistics",
+    "phenix.merging_statistics",
     hkl_file,
     "space_group=I4",
     "unit_cell=113.949,113.949,32.474,90,90,90",
