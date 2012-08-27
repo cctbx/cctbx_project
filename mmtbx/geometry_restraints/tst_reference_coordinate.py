@@ -123,9 +123,7 @@ def exercise_1():
   sites_cart = pdb_hierarchy.atoms().extract_xyz()
   reference_coordinate_proxies = \
     reference_coordinate.build_proxies(
-      sites_cart=sites_cart,
-      pdb_hierarchy=pdb_hierarchy,
-      c_alpha_only=True).reference_coordinate_proxies
+      sites_cart=sites_cart).reference_coordinate_proxies
   grads = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
   residual = reference_coordinate.target_and_gradients(
                proxies=reference_coordinate_proxies,
@@ -136,8 +134,7 @@ def exercise_1():
   assert grm.generic_restraints_manager.reference_coordinate_proxies is None
 
   grm.generic_restraints_manager.add_reference_restraints(
-    sites_cart=sites_cart,
-    pdb_hierarchy=pdb_hierarchy)
+    sites_cart=sites_cart)
 
   assert grm.generic_restraints_manager.reference_coordinate_proxies \
     is not None
@@ -145,6 +142,12 @@ def exercise_1():
     == 29
 
   #test selection
+  ca_selection = pdb_hierarchy.get_c_alpha_selection()
+  grm.generic_restraints_manager.add_reference_restraints(
+    sites_cart=sites_cart,
+    selection=ca_selection)
+  assert len(grm.generic_restraints_manager.reference_coordinate_proxies) \
+    == 3
   tst_iselection = flex.size_t()
   for atom in pdb_hierarchy.atoms():
     if atom.name == " CA " or atom.name == " N  ":
@@ -152,7 +155,6 @@ def exercise_1():
   selection = flex.bool(len(sites_cart), tst_iselection)
   grm.generic_restraints_manager.add_reference_restraints(
     sites_cart=sites_cart,
-    pdb_hierarchy=pdb_hierarchy,
     selection=selection)
   assert len(grm.generic_restraints_manager.reference_coordinate_proxies) \
     == 6
