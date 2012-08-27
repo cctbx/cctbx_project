@@ -1202,6 +1202,7 @@ mmtbx/den/refinement.py svneol=native#text/x-python
 mmtbx/density_modification/__init__.py -text
 mmtbx/density_modification/tst_density_modification.py -text
 mmtbx/dynamics/constants.py svneol=native#text/x-python
+mmtbx/dynamics/tst_sa.py -text
 mmtbx/email_ralf_042910.txt -text
 mmtbx/f_model_info.py -text
 mmtbx/find_peaks.py -text
