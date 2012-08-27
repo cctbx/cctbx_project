@@ -107,8 +107,7 @@ class manager (object) :
 
   def add_reference_restraints(self,
                                sites_cart,
-                               pdb_hierarchy,
-                               sites_cart_reference=None,
+                               sigma=0.5,
                                selection=None,
                                function=None,
                                method=None):
@@ -116,9 +115,8 @@ class manager (object) :
     self.reference_coordinate_proxies = \
       reference_coordinate.build_proxies(
         sites_cart=sites_cart,
-        pdb_hierarchy=pdb_hierarchy,
-        sites_cart_reference=sites_cart_reference,
-        selection=selection).reference_coordinate_proxies
+        selection=selection,
+        sigma=sigma).reference_coordinate_proxies
     self.flags.reference_coordinate=True
 
   def select (self,
