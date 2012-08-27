@@ -7,6 +7,11 @@ from cctbx.array_family import flex
 from cctbx import adp_restraints # import dependency
 from mmtbx.monomer_library import server, pdb_interpretation
 from cStringIO import StringIO
+import random
+
+if(1):
+  random.seed(0)
+  flex.set_random_seed(0)
 
 def simple_pdb () :
   import iotbx.pdb
@@ -179,54 +184,67 @@ def exercise_1():
   assert rest.size() == 3
 
 def exercise_2():
-  processed_pdb_file = pdb_interpretation.process(
-    mon_lib_srv              = server.server(),
-    ener_lib                 = server.ener_lib(),
-    raw_records              = flex.std_string(pdb_str_2.splitlines()),
-    strict_conflict_handling = True,
-    force_symmetry           = True,
-    log                      = None)
-  grm = processed_pdb_file.geometry_restraints_manager()
-  xrs2 = processed_pdb_file.xray_structure(show_summary = False)
-  awl2 = processed_pdb_file.all_chain_proxies.pdb_hierarchy.atoms_with_labels()
-  pdb_inp3 = iotbx.pdb.input(source_info=None, lines=pdb_str_3)
-  xrs3 = pdb_inp3.xray_structure_simple()
-  ph3 = pdb_inp3.construct_hierarchy()
-  ph3.atoms().reset_i_seq()
-  awl3 =  ph3.atoms_with_labels()
-  sites_cart_reference = flex.vec3_double()
-  selection = flex.size_t()
-  reference_names = ["CG", "CD", "NE", "CZ", "NH1", "NH2"]
-  for a2,a3 in zip(tuple(awl2), tuple(awl3)):
-    assert a2.resname == a3.resname
-    assert a2.name == a3.name
-    assert a2.i_seq == a3.i_seq
-    if(a2.resname == "ARG" and a2.name.strip() in reference_names):
-      selection.append(a2.i_seq)
-      sites_cart_reference.append(a3.xyz)
-  assert selection.size() == len(reference_names)
-  #
-  grm.generic_restraints_manager.add_reference_restraints(
-    sites_cart = sites_cart_reference,
-    selection = selection)
-  #
-  d1 = flex.mean(flex.sqrt((xrs2.sites_cart() - xrs3.sites_cart()).dot()))
-  print "distance start: %6.4f"%d1
-  from cctbx import geometry_restraints
-  import mmtbx.command_line.geometry_minimization
-  import scitbx.lbfgs
-  grf = geometry_restraints.flags.flags(default=True)
-  sites_cart = xrs2.sites_cart()
-  minimized = mmtbx.command_line.geometry_minimization.lbfgs(
-    sites_cart                  = sites_cart,
-    geometry_restraints_manager = grm,
-    sites_cart_selection        = flex.bool(sites_cart.size(), selection),
-    geometry_restraints_flags   = grf,
-    lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
-      max_iterations=5000))
-  xrs2.set_sites_cart(sites_cart = sites_cart)
-  d2 = flex.mean(flex.sqrt((xrs2.sites_cart() - xrs3.sites_cart()).dot()))
-  print "distance final: %6.4f"%d2
+  for use_reference in [True, False]:
+    processed_pdb_file = pdb_interpretation.process(
+      mon_lib_srv              = server.server(),
+      ener_lib                 = server.ener_lib(),
+      raw_records              = flex.std_string(pdb_str_2.splitlines()),
+      strict_conflict_handling = True,
+      force_symmetry           = True,
+      log                      = None)
+    grm = processed_pdb_file.geometry_restraints_manager()
+    xrs2 = processed_pdb_file.xray_structure(show_summary = False)
+    awl2 = processed_pdb_file.all_chain_proxies.pdb_hierarchy.atoms_with_labels()
+    pdb_inp3 = iotbx.pdb.input(source_info=None, lines=pdb_str_3)
+    xrs3 = pdb_inp3.xray_structure_simple()
+    ph3 = pdb_inp3.construct_hierarchy()
+    ph3.atoms().reset_i_seq()
+    awl3 =  ph3.atoms_with_labels()
+    sites_cart_reference = flex.vec3_double()
+    selection = flex.size_t()
+    reference_names = ["CG", "CD", "NE", "CZ", "NH1", "NH2"]
+    for a2,a3 in zip(tuple(awl2), tuple(awl3)):
+      assert a2.resname == a3.resname
+      assert a2.name == a3.name
+      assert a2.i_seq == a3.i_seq
+      if(a2.resname == "ARG" and a2.name.strip() in reference_names):
+        selection.append(a2.i_seq)
+        sites_cart_reference.append(a3.xyz)
+    assert selection.size() == len(reference_names)
+    if(use_reference):
+      grm.generic_restraints_manager.add_reference_restraints(
+        sites_cart = sites_cart_reference,
+        selection = selection,
+        sigma = 0.01)
+    d1 = flex.mean(flex.sqrt((xrs2.sites_cart().select(selection) -
+                              xrs3.sites_cart().select(selection)).dot()))
+    print "distance start (use_reference: %s): %6.4f"%(str(use_reference), d1)
+    assert d1>4.0
+    selection_bool = flex.bool(xrs2.scatterers().size(), selection)
+    assert approx_equal(
+      flex.max(flex.sqrt((xrs2.sites_cart().select(~selection_bool) -
+                          xrs3.sites_cart().select(~selection_bool)).dot())), 0)
+    from cctbx import geometry_restraints
+    import mmtbx.command_line.geometry_minimization
+    import scitbx.lbfgs
+    grf = geometry_restraints.flags.flags(default=True)
+    sites_cart = xrs2.sites_cart()
+    minimized = mmtbx.command_line.geometry_minimization.lbfgs(
+      sites_cart                  = sites_cart,
+      geometry_restraints_manager = grm,
+      sites_cart_selection        = flex.bool(sites_cart.size(), selection),
+      geometry_restraints_flags   = grf,
+      lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
+        max_iterations=5000))
+    xrs2.set_sites_cart(sites_cart = sites_cart)
+    d2 = flex.mean(flex.sqrt((xrs2.sites_cart().select(selection) -
+                              xrs3.sites_cart().select(selection)).dot()))
+    print "distance start (use_reference: %s): %6.4f"%(str(use_reference), d2)
+    if(use_reference): assert d2<0.005
+    else: assert d2>4.0, d2
+    assert approx_equal(
+      flex.max(flex.sqrt((xrs2.sites_cart().select(~selection_bool) -
+                          xrs3.sites_cart().select(~selection_bool)).dot())), 0)
 
 if (__name__ == "__main__") :
   exercise_1()
