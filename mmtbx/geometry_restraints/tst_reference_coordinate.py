@@ -142,8 +142,9 @@ def exercise_1():
 
   #test selection
   ca_selection = pdb_hierarchy.get_c_alpha_selection()
+  ca_sites_cart = sites_cart.select(ca_selection)
   grm.generic_restraints_manager.add_reference_restraints(
-    sites_cart=sites_cart,
+    sites_cart=ca_sites_cart,
     selection=ca_selection)
   assert len(grm.generic_restraints_manager.reference_coordinate_proxies) \
     == 3
@@ -151,10 +152,10 @@ def exercise_1():
   for atom in pdb_hierarchy.atoms():
     if atom.name == " CA " or atom.name == " N  ":
       tst_iselection.append(atom.i_seq)
-  selection = flex.bool(len(sites_cart), tst_iselection)
+  tst_sites_cart = sites_cart.select(tst_iselection)
   grm.generic_restraints_manager.add_reference_restraints(
-    sites_cart=sites_cart,
-    selection=selection)
+    sites_cart=tst_sites_cart,
+    selection=tst_iselection)
   assert len(grm.generic_restraints_manager.reference_coordinate_proxies) \
     == 6
 
