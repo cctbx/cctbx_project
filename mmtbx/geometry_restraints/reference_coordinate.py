@@ -10,21 +10,23 @@ class build_proxies(object):
     self.ext = boost.python.import_ext("mmtbx_reference_coordinate_ext")
     self.reference_coordinate_proxies = \
       self.ext.shared_reference_coordinate_proxy()
+    if (selection is not None):
+      if (isinstance(selection, flex.bool)):
+        selection = selection.iselection()
     if selection is None:
       selection = flex.bool(
         len(sites_cart),
-        True)
+        True).iselection()
     assert len(sites_cart) == len(selection)
     weight = 1.0 / (sigma**2)
-    for i_seq, sel in enumerate(selection):
-      if sel:
-        i_seqs = [i_seq]
-        ref_sites = sites_cart[i_seq]
-        proxy = self.ext.reference_coordinate_proxy(
-                  i_seqs=i_seqs,
-                  ref_sites=ref_sites,
-                  weight=weight)
-        self.reference_coordinate_proxies.append(proxy)
+    for k, i_seq in enumerate(selection):
+      i_seqs = [i_seq]
+      ref_sites = sites_cart[k]
+      proxy = self.ext.reference_coordinate_proxy(
+                i_seqs=i_seqs,
+                ref_sites=ref_sites,
+                weight=weight)
+      self.reference_coordinate_proxies.append(proxy)
 
 def target_and_gradients(proxies,
                          sites_cart,

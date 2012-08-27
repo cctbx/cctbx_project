@@ -417,10 +417,12 @@ class manager(object):
   def minimize(self):
     pdb_hierarchy = self.model.pdb_hierarchy(sync_with_xray_structure=True)
     ca_selection = pdb_hierarchy.get_c_alpha_selection()
+    ca_sites_cart = self.model.xray_structure.sites_cart().\
+      deep_copy().select(ca_selection)
     self.model.restraints_manager.geometry.generic_restraints_manager.\
          reference_coordinate_proxies = \
       reference_coordinate.build_proxies(
-        sites_cart=self.model.xray_structure.sites_cart(),
+        sites_cart=ca_sites_cart,
         selection=ca_selection).reference_coordinate_proxies
     self.model.restraints_manager.geometry.generic_restraints_manager.\
          flags.reference_coordinate=True
