@@ -302,12 +302,12 @@ def align_pdb_hierarchies (hierarchies,
     reference_sequence_resids = [ strip(resid) for resid in resids ]
     msa_manager = align_pdb_residues(
       pdb_sequences=pdb_sequences,
-      pdb_names=pdb_names,
+      pdb_names=hierarchy_names,
       pdb_resids=pdb_resids,
       reference_sequence=reference_sequence,
       reference_sequence_resids=reference_sequence_resids,
       substitute_names=substitute_names,
-      out=self.log)
+      out=log)
   return msa_manager
 
 def run_muscle (fasta_sequences, group_sequences=True) :
