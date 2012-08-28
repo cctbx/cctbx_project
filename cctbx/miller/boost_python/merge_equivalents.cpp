@@ -159,6 +159,30 @@ namespace {
       ;
     }
   };
+
+  struct split_unmerged_wrappers
+  {
+    typedef split_unmerged<> w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      typedef return_value_policy<return_by_value> rbv;
+      class_<w_t>("split_unmerged", no_init)
+        .def(init<af::const_ref<index<> > const&,
+                  af::const_ref<double> const&,
+                  af::const_ref<double> const&>((
+            arg("unmerged_indices"),
+            arg("unmerged_data"),
+            arg("unmerged_sigmas"))))
+        .add_property("data_1", make_getter(&w_t::data_1, rbv()))
+        .add_property("data_2", make_getter(&w_t::data_2, rbv()));
+
+//        .add_property("coefficient", &w_t::coefficient);
+    }
+  };
+
 } // namespace <anoymous>
 
   void wrap_merge_equivalents()
@@ -172,6 +196,7 @@ namespace {
       "merge_equivalents_exact_int");
     merge_equivalents_obs_wrappers::wrap();
     merge_equivalents_shelx_wrappers::wrap();
+    split_unmerged_wrappers::wrap();
   }
 
 }}} // namespace cctbx::miller::boost_python

@@ -23,6 +23,7 @@ from libtbx.str_utils import show_string
 from libtbx.utils import Sorry, Keep, plural_s
 from libtbx import group_args, Auto
 from itertools import count, izip
+import random
 import math
 import types
 import sys
@@ -3929,3 +3930,51 @@ def patterson_map(crystal_gridding, f_patt, f_000=None,
   if (f_000 is not None):
     f_000 = f_000 * f_000
   return fft_map(crystal_gridding, i_patt, f_000)
+
+# this is tested as part of phenix.merging_statistics (note that the exact
+# values are not reproducible)
+def compute_cc_one_half (unmerged, n_trials=10, debug=False) :
+  """
+  Calculate the correlation between two randomly assigned pools of unmerged
+  data ("CC 1/2").  If desired the mean over multiple trials can be taken.
+  See Karplus PA & Diederichs K (2012) Science 336:1030-3 for motivation.
+  """
+  cc_all = []
+  unmerged = unmerged.select(unmerged.sigmas() > 0)
+  for x in range(n_trials) :
+    data_1 = data_2 = None
+    # XXX Pure-Python reference implementation (very slow)
+    # this is currently sub-optimal, because it won't guarantee an even
+    # distribution of observations between the two half-datasets.  taking the
+    # mean of multiple trials is a very hackish attempt to compensate.
+    if (debug) :
+      merged = unmerged.merge_equivalents().array()
+      indices = merged.indices()
+      data_1 = flex.double()
+      data_2 = flex.double()
+      for hkl in indices :
+        sele = (unmerged.indices() == hkl)
+        hkl_array = unmerged.select(sele)
+        n_obs = [0, 0]
+        i_sum = [0, 0]
+        if (len(hkl_array.indices()) == 2) :
+          n_obs = [1, 1]
+          i_sum = [ hkl_array.data()[0], hkl_array.data()[1] ]
+        else :
+          for i_obs in range(len(hkl_array.indices())) :
+            i_rand = random.randint(0,1)
+            n_obs[i_rand] += 1
+            i_sum[i_rand] += hkl_array.data()[i_obs]
+        if (n_obs[0] > 0) and (n_obs[1] > 0) :
+          data_1.append(i_sum[0] / n_obs[0])
+          data_2.append(i_sum[1] / n_obs[1])
+    else :
+      split_datasets = split_unmerged(
+        unmerged_indices=unmerged.indices(),
+        unmerged_data=unmerged.data(),
+        unmerged_sigmas=unmerged.sigmas())
+      data_1 = split_datasets.data_1
+      data_2 = split_datasets.data_2
+    cc = flex.linear_correlation(data_1, data_2).coefficient()
+    cc_all.append(cc)
+  return sum(cc_all) / n_trials

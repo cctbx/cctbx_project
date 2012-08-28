@@ -5,6 +5,7 @@
 
 #include <cctbx/sgtbx/space_group.h>
 #include <scitbx/math/mean_and_variance.h>
+#include <scitbx/math/linear_regression.h>
 
 namespace cctbx { namespace miller {
 
@@ -517,6 +518,74 @@ namespace cctbx { namespace miller {
         data.push_back(i_wght_sum/w_sum);
         sigmas.push_back(sig);
         redundancies.push_back(n);
+      }
+  };
+
+  template <typename FloatType=double>
+  class split_unmerged {
+    public :
+      af::shared<FloatType> data_1;
+      af::shared<FloatType> data_2;
+
+      split_unmerged (
+        af::const_ref<index<> > const& unmerged_indices,
+        af::const_ref<FloatType> const& unmerged_data,
+        af::const_ref<FloatType> const& unmerged_sigmas)
+      {
+        if (unmerged_indices.size() == 0) return;
+        CCTBX_ASSERT(unmerged_sigmas.all_gt(0.0));
+        std::size_t group_begin = 0;
+        std::size_t group_end = 1;
+        for(;group_end<unmerged_indices.size();group_end++) {
+          if (unmerged_indices[group_end] != unmerged_indices[group_begin]) {
+            process_group(group_begin, group_end,
+                          unmerged_indices[group_begin],
+                          unmerged_data);
+            group_begin = group_end;
+          }
+        }
+        process_group(group_begin, group_end,
+                      unmerged_indices[group_begin],
+                      unmerged_data);
+      }
+
+// XXX why doesn't this work?
+//      FloatType cc_one_half () {
+//        return scitbx::math::linear_regression<FloatType>(data_1,
+//          data_2).coefficient();
+//      }
+
+    protected:
+
+      void process_group (
+        std::size_t group_begin,
+        std::size_t group_end,
+        index<> const& current_index,
+        af::const_ref<FloatType> const& unmerged_data)
+      {
+        std::size_t n = group_end - group_begin;
+        if (n < 2) {
+          return;
+        } else if (n == 2) {
+          data_1.push_back(unmerged_data[group_begin]);
+          data_2.push_back(unmerged_data[group_begin+1]);
+        } else {
+          static const FloatType _i_obs[] = {0., 0.};
+          static const std::size_t _n_obs[] = {0, 0};
+          std::vector<FloatType> i_obs(_i_obs, _i_obs+2);
+          std::vector<std::size_t> n_obs(_n_obs, _n_obs+2);
+          // FIXME using the random number generator will not guarantee
+          // even distribution of observations; need something smarter
+          for(std::size_t i=0;i<n;i++) {
+            std::size_t index = std::rand() % 2;
+            i_obs[index] += unmerged_data[group_begin+i];
+            n_obs[index] += 1;
+          }
+          if ((n_obs[0] > 0) && (n_obs[1] > 0)) {
+            data_1.push_back(i_obs[0] / (FloatType) n_obs[0]);
+            data_2.push_back(i_obs[1] / (FloatType) n_obs[1]);
+          }
+        }
       }
   };
 
