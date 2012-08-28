@@ -165,23 +165,20 @@ def exercise_1():
     == 6
 
   #test remove
-  rest = \
-    grm.generic_restraints_manager.reference_coordinate_proxies.\
-      proxy_remove(selection=flex.bool([True]*29))
-  assert rest.size() == 0
-  rest = \
-    grm.generic_restraints_manager.reference_coordinate_proxies.\
-      proxy_remove(selection=flex.bool([False]*29))
-  assert rest.size() == 6
-  rm_iselection = flex.size_t()
-  for atom in pdb_hierarchy.atoms():
-    if atom.name == " N  ":
-      rm_iselection.append(atom.i_seq)
-  selection = flex.bool(len(sites_cart), rm_iselection)
-  rest = \
-    grm.generic_restraints_manager.reference_coordinate_proxies.\
-      proxy_remove(selection=selection)
-  assert rest.size() == 3
+  selection = flex.bool([False]*29)
+  grm.generic_restraints_manager.remove_reference_restraints(
+    selection=selection)
+  assert len(grm.generic_restraints_manager.reference_coordinate_proxies) \
+    == 6
+  grm.generic_restraints_manager.remove_reference_restraints(
+    selection=ca_selection)
+  assert len(grm.generic_restraints_manager.reference_coordinate_proxies) \
+    == 3
+  selection = flex.bool([True]*29)
+  grm.generic_restraints_manager.remove_reference_restraints(
+    selection=selection)
+  assert len(grm.generic_restraints_manager.reference_coordinate_proxies) \
+    == 0
 
 def exercise_2():
   for use_reference in [True, False]:
