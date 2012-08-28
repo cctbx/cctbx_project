@@ -303,7 +303,7 @@ def find_peaks_holes (
   print >> out, ""
   out.flush()
   anom = None
-  if (fmodel.f_obs().anomalous_flag()) :
+  if (fmodel.f_obs().anomalous_flag()) and (not fmodel.twin) :
     make_header("Anomalous difference map peaks", out=out)
     anom_result = find_peaks.manager(
       fmodel=fmodel,
@@ -330,7 +330,7 @@ def find_peaks_holes (
   if (len(water_isel) > 0) :
     sites_frac = fmodel.xray_structure.sites_frac()
     map_types = ["mFo-DFc"]
-    if (fmodel.f_obs().anomalous_flag()) :
+    if (fmodel.f_obs().anomalous_flag()) and (not fmodel.twin) :
       map_types.append("anomalous")
     for k, map_type in enumerate(map_types) :
       fft_map = fmodel.electron_density_map().fft_map(
@@ -386,9 +386,10 @@ mmtbx.find_peaks_holes - difference map analysis
     out=out,
     process_pdb_file=False,
     create_fmodel=True)
+  fmodel = cmdline.fmodel
   out.flush()
   result = find_peaks_holes(
-    fmodel=cmdline.fmodel,
+    fmodel=fmodel,
     pdb_hierarchy=cmdline.pdb_hierarchy,
     params=cmdline.params.find_peaks,
     map_cutoff=cmdline.params.map_cutoff,
@@ -400,10 +401,10 @@ mmtbx.find_peaks_holes - difference map analysis
     result.save_pdb_file(file_name="%s.pdb" % prefix, log=out)
   if (cmdline.params.write_maps) :
     import mmtbx.maps.utils
-    f_map, diff_map = mmtbx.maps.utils.get_maps_from_fmodel(cmdline.fmodel)
+    f_map, diff_map = mmtbx.maps.utils.get_maps_from_fmodel(fmodel)
     anom_map = None
-    if (cmdline.fmodel.f_obs().anomalous_flag()) :
-      anom_map = mmtbx.maps.utils.get_anomalous_map(cmdline.fmodel)
+    if (fmodel.f_obs().anomalous_flag()) and (not fmodel.twin) :
+      anom_map = mmtbx.maps.utils.get_anomalous_map(fmodel)
     mmtbx.maps.utils.write_map_coeffs(
       fwt_coeffs=f_map,
       delfwt_coeffs=diff_map,
