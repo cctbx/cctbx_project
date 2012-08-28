@@ -181,7 +181,7 @@ def exercise_1():
     == 0
 
 def exercise_2():
-  for use_reference in [True, False]:
+  for use_reference in [True, False, None]:
     processed_pdb_file = pdb_interpretation.process(
       mon_lib_srv              = server.server(),
       ener_lib                 = server.ener_lib(),
@@ -208,16 +208,23 @@ def exercise_2():
         selection.append(a2.i_seq)
         sites_cart_reference.append(a3.xyz)
     assert selection.size() == len(reference_names)
+    selection_bool = flex.bool(xrs2.scatterers().size(), selection)
     if(use_reference):
       grm.generic_restraints_manager.add_reference_restraints(
         sites_cart = sites_cart_reference,
         selection = selection,
         sigma = 0.01)
+    elif(use_reference is None):
+      grm.generic_restraints_manager.add_reference_restraints(
+        sites_cart = sites_cart_reference,
+        selection = selection,
+        sigma = 0.01)
+      grm.generic_restraints_manager.remove_reference_restraints(
+        selection = selection_bool) # XXX add support for integer selection
     d1 = flex.mean(flex.sqrt((xrs2.sites_cart().select(selection) -
                               xrs3.sites_cart().select(selection)).dot()))
     print "distance start (use_reference: %s): %6.4f"%(str(use_reference), d1)
     assert d1>4.0
-    selection_bool = flex.bool(xrs2.scatterers().size(), selection)
     assert approx_equal(
       flex.max(flex.sqrt((xrs2.sites_cart().select(~selection_bool) -
                           xrs3.sites_cart().select(~selection_bool)).dot())), 0)
