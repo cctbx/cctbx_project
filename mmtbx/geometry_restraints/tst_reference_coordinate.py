@@ -239,7 +239,7 @@ def exercise_2():
     xrs2.set_sites_cart(sites_cart = sites_cart)
     d2 = flex.mean(flex.sqrt((xrs2.sites_cart().select(selection) -
                               xrs3.sites_cart().select(selection)).dot()))
-    print "distance start (use_reference: %s): %6.4f"%(str(use_reference), d2)
+    print "distance final (use_reference: %s): %6.4f"%(str(use_reference), d2)
     if(use_reference): assert d2<0.005
     else: assert d2>4.0, d2
     assert approx_equal(
