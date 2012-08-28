@@ -103,6 +103,33 @@ namespace cctbx { namespace geometry_restraints {
     return result;
   }
 
+  template <typename ProxyType>
+  af::shared<ProxyType>
+  shared_proxy_remove(
+    af::const_ref<ProxyType> const& self,
+    af::const_ref<size_t> const& selection)
+  {
+    af::shared<ProxyType> result;
+    for(std::size_t i_proxy=0;i_proxy<self.size();i_proxy++) {
+      ProxyType const& p = self[i_proxy];
+      af::const_ref<typename ProxyType::i_seqs_type::value_type>
+        i_seqs = p.i_seqs.const_ref();
+      int match_ctr = 0;
+      for(unsigned i=0;i<i_seqs.size();i++) {
+        unsigned i_seq = i_seqs[i];
+        for(unsigned j=0;j<selection.size();j++) {
+          if (i_seq == selection[j]) {
+            match_ctr++;
+          }
+        }
+      }
+      if (match_ctr != i_seqs.size()) {
+        result.push_back(p);
+      }
+    }
+    return result;
+  }
+
 }} // namespace cctbx::geometry_restraints
 
 #endif // CCTBX_GEOMETRY_RESTRAINTS_PROXY_SELECT_H
