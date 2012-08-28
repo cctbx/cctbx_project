@@ -4,7 +4,6 @@ from __future__ import division
 from libtbx.str_utils import make_sub_header
 from libtbx.utils import Sorry, Usage
 from math import sqrt
-import random
 import sys
 
 citations_str = """
@@ -12,8 +11,8 @@ References:
   Diederichs K & Karplus PA (1997) Nature Structural Biology 4:269-275
     (with erratum in: Nat Struct Biol 1997 Jul;4(7):592)
   Weiss MS (2001) J Appl Cryst 34:130-135.
+  Karplus PA & Diederichs K (2012) Science 336:1030-3.
 """
-#   Karplus PA & Diederichs K (2012) Science 336:1030-3.
 
 merging_params_str = """
 high_resolution = None
@@ -42,36 +41,9 @@ debug = False
   .type = bool
 """ % merging_params_str
 
-def compute_cc_one_half (merged, unmerged, n_trials=1) :
-  """
-  Calculate the correlation between two randomly assigned pools of unmerged
-  data ("CC 1/2").  If desired the mean over multiple trials can be taken.
-  See Karplus PA & Diederichs K (2012) Science 336:1030-3 for motivation.
-  """
-  from cctbx.array_family import flex
-  indices = merged.indices()
-  cc_all = []
-  for x in range(n_trials) :
-    data_1 = flex.double()
-    data_2 = flex.double()
-    for hkl in indices :
-      sele = (unmerged.indices() == hkl)
-      hkl_array = unmerged.select(sele)
-      n_obs = [0, 0]
-      i_sum = [0, 0]
-      for i_obs in range(len(hkl_array.indices())) :
-        i_rand = random.randint(0,1)
-        n_obs[i_rand] += 1
-        i_sum[i_rand] += hkl_array.data()[i_obs]
-      if (n_obs[0] > 0) and (n_obs[1] > 0) :
-        data_1.append(i_sum[0] / n_obs[0])
-        data_2.append(i_sum[1] / n_obs[1])
-    cc = flex.linear_correlation(data_1, data_2).coefficient()
-    cc_all.append(cc)
-  return sum(cc_all) / n_trials
-
 class merging_stats (object) :
   def __init__ (self, array, anomalous=False, debug=None) :
+    import cctbx.miller
     from scitbx.array_family import flex
     array = array.customized_copy(anomalous_flag=anomalous).map_to_asu()
     self.merge = array.merge_equivalents()
@@ -79,11 +51,15 @@ class merging_stats (object) :
     self.d_max, self.d_min = array.d_max_min()
     self.n_obs = array.indices().size()
     self.n_uniq = self.array_merged.indices().size()
+    complete_set = self.array_merged.complete_set().resolution_filter(
+      d_min=self.d_min, d_max=self.d_max)
+    n_expected = len(complete_set.indices())
+    self.completeness = min(self.n_uniq / n_expected, 1.)
     self.redundancies = self.merge.redundancies().data()
     self.mean_redundancy = flex.mean(self.redundancies.as_double())
     self.i_mean = flex.mean(self.array_merged.data())
     self.sigi_mean = flex.mean(self.array_merged.sigmas())
-    nonzero_array = self.array_merged.select(self.array_merged.sigmas() != 0)
+    nonzero_array = self.array_merged.select(self.array_merged.sigmas() > 0)
     i_over_sigma = nonzero_array.data() / nonzero_array.sigmas()
     self.i_over_sigma_mean = flex.mean(i_over_sigma)
     self.r_merge = self.merge.r_merge()
@@ -111,26 +87,25 @@ class merging_stats (object) :
       assert (approx_equal(self.r_merge, r_merge_num / r_merge_den))
       assert (approx_equal(self.r_meas, r_meas_num / r_merge_den))
       assert (approx_equal(self.r_pim, r_pim_num / r_merge_den))
-    #self.cc_one_half = compute_cc_one_half(
-    #  merged=self.array_merged,
-    #  unmerged=array)
-    #self.cc_star = sqrt((2*self.cc_one_half) / (1 + self.cc_one_half))
+    self.cc_one_half = cctbx.miller.compute_cc_one_half(
+      unmerged=array)
+    self.cc_star = sqrt((2*self.cc_one_half) / (1 + self.cc_one_half))
 
   def format (self) :
-    #return "%6.2f  %6.2f %6d %6d   %5.2f  %8.1f  %6.1f  %5.3f  %5.3f  %5.3f  %5.3f  %5.3f" % (
-    return "%6.2f  %6.2f %6d %6d   %5.2f  %8.1f  %6.1f  %5.3f  %5.3f  %5.3f" % (
+    return "%6.2f  %6.2f %6d %6d   %5.2f %6.2f  %8.1f  %6.1f  %5.3f  %5.3f  %5.3f  %5.3f  %5.3f" % (
       self.d_max, self.d_min,
       self.n_obs, self.n_uniq,
-      self.mean_redundancy,
+      self.mean_redundancy, self.completeness*100,
       self.i_mean, self.i_over_sigma_mean,
-      self.r_merge, self.r_meas, self.r_pim)#,
-#      self.cc_one_half, self.cc_star)
+      self.r_merge, self.r_meas, self.r_pim,
+      self.cc_one_half, self.cc_star)
 
   def show_summary (self, out=sys.stdout) :
     print >> out, "Resolution: %.2f - %.2f" % (self.d_max, self.d_min)
     print >> out, "Observations: %d" % self.n_obs
     print >> out, "Unique reflections: %d" % self.n_uniq
     print >> out, "Redundancy: %.1f" % self.mean_redundancy
+    print >> out, "Completeness: %.2f%%" % (self.completeness*100)
     print >> out, "Mean intensity: %.1f" % self.i_mean
     print >> out, "Mean I/sigma(I): %.1f" % self.i_over_sigma_mean
     print >> out, "R-merge: %5.3f" % self.r_merge
@@ -146,6 +121,7 @@ def show_merging_statistics (
   if (out is None) : out = sys.stdout
   if (params is None) :
     params = iotbx.phil.parase(merging_params_str).extract()
+  assert (i_obs.sigmas() is not None)
   info = i_obs.info()
   i_obs = i_obs.customized_copy(
     crystal_symmetry=crystal_symmetry).set_info(info)
@@ -169,10 +145,7 @@ def show_merging_statistics (
   print >> out, ""
   print >> out, """\
 Statistics by resolution bin:
- d_min   d_max   #obs  #uniq   mult.       <I>  <I/sI>  r_mrg r_meas  r_pim"""
-#  print >> out, """\
-#Statistics by resolution bin:
-# d_min   d_max   #obs  #uniq   mult.       <I>  <I/sI>  r_mrg r_meas  r_pim  cc1/2    cc*"""
+ d_min   d_max   #obs  #uniq   mult.  %comp       <I>  <I/sI>  r_mrg r_meas  r_pim  cc1/2    cc*"""
   # statistics by bin
   for bin in i_obs.binner().range_used() :
     sele_unmerged = i_obs.binner().selection(bin)
@@ -257,6 +230,8 @@ Full parameters:
   if (i_obs.is_unique_set_under_symmetry()) :
     raise Sorry(("The data in %s are already merged.  Only unmerged (but "+
       "scaled) data may be used in this program.")%i_obs.info().label_string())
+  if (i_obs.sigmas() is None) :
+    raise Sorry("Sigma(I) values required for this application.")
   show_merging_statistics(
     i_obs=i_obs,
     crystal_symmetry=symm,
