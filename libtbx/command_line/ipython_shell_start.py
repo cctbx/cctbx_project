@@ -3,4 +3,10 @@ from __future__ import division
 
 import IPython
 if (__name__ == "__main__"):
-  IPython.Shell.start().mainloop()
+  try:
+    IPython.Shell.start().mainloop()
+  except AttributeError:
+    from IPython import embed
+    embed()
+
+
