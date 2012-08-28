@@ -121,8 +121,9 @@ Example:
     else:
       print >> log, "Please enter a file name"
       return
+    keep_hydrogens = self.params.clashscore.keep_hydrogens
     clashscore, bad_clashes = self.analyze_clashes(pdb_io=pdb_io,
-        keep_hydrogens=self.params.clashscore.keep_hydrogens)
+        keep_hydrogens=keep_hydrogens)
     if not quiet :
       self.print_clashlist(out)
       self.print_clashscore(out)
@@ -168,7 +169,8 @@ Example:
       if duplicate_chain_ids:
         utils.force_unique_chain_ids(pdb_hierarchy=tmp_r)
       input_str = tmp_r.as_pdb_string()
-      pcm = probe_clashscore_manager(pdb_string=input_str)
+      pcm = probe_clashscore_manager(pdb_string=input_str,
+                                     keep_hydrogens=keep_hydrogens)
       self.pdb_hierarchy = pdb.hierarchy.\
         input(pdb_string=pcm.h_pdb_string).hierarchy
       self.clashscore.append(pcm.clashscore)
