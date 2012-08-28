@@ -171,7 +171,7 @@ def exercise_1():
   assert len(grm.generic_restraints_manager.reference_coordinate_proxies) \
     == 6
   grm.generic_restraints_manager.remove_reference_restraints(
-    selection=ca_selection)
+    selection=ca_selection.iselection())
   assert len(grm.generic_restraints_manager.reference_coordinate_proxies) \
     == 3
   selection = flex.bool([True]*29)
@@ -220,7 +220,7 @@ def exercise_2():
         selection = selection,
         sigma = 0.01)
       grm.generic_restraints_manager.remove_reference_restraints(
-        selection = selection_bool) # XXX add support for integer selection
+        selection = selection)
     d1 = flex.mean(flex.sqrt((xrs2.sites_cart().select(selection) -
                               xrs3.sites_cart().select(selection)).dot()))
     print "distance start (use_reference: %s): %6.4f"%(str(use_reference), d1)

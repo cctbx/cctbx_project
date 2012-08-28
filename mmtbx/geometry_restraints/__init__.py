@@ -120,9 +120,8 @@ class manager (object) :
     self.flags.reference_coordinate=True
 
   def remove_reference_restraints(self, selection):
-    rest = \
+    self.reference_coordinate_proxies = \
       self.reference_coordinate_proxies.proxy_remove(selection=selection)
-    self.reference_coordinate_proxies = rest
 
   def select (self,
               n_seq,
