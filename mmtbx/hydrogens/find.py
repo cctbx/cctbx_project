@@ -454,8 +454,7 @@ def build_water_hydrogens_from_map(model, fmodel, params=None, log=None):
         next_to_i_seqs.append(i_seq)
   print >> log, "Number of H added:", len(next_to_i_seqs)
   if( len(next_to_i_seqs)!=0 and model.refinement_flags is not None):
-    # TODO: 
-    #   adp_group=True according to params.dod_and_od_group_adp
+    # TODO: adp_group=True according to params.dod_and_od_group_adp
     model.refinement_flags.add(
       next_to_i_seqs=next_to_i_seqs,
       sites_individual = True,
