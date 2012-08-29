@@ -229,7 +229,8 @@ class extract_tls_from_cif_block(object):
       beg_seq_ids = [beg_seq_ids]
       end_chain_ids = [end_chain_ids]
       end_seq_ids = [end_seq_ids]
-      selection_details = flex.std_string([selection_details])
+      if selection_details is not None:
+        selection_details = flex.std_string([selection_details])
 
     selection_cache = pdb_hierarchy.atom_selection_cache()
 
