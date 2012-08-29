@@ -89,16 +89,19 @@ class merging_stats (object) :
       assert (approx_equal(self.r_pim, r_pim_num / r_merge_den))
     self.cc_one_half = cctbx.miller.compute_cc_one_half(
       unmerged=array)
-    self.cc_star = sqrt((2*self.cc_one_half) / (1 + self.cc_one_half))
+    mult = 1.
+    if (self.cc_one_half < 0) :
+      mult = -1.
+    self.cc_star = mult * sqrt((2*self.cc_one_half) / (1 + self.cc_one_half))
 
   def format (self) :
-    return "%6.2f  %6.2f %6d %6d   %5.2f %6.2f  %8.1f  %6.1f  %5.3f  %5.3f  %5.3f  %5.3f  %5.3f" % (
+    return "%6.2f  %6.2f %6d %6d   %5.2f %6.2f  %8.1f  %6.1f  %5.3f  %5.3f  %5.3f  %5.3f" % (
       self.d_max, self.d_min,
       self.n_obs, self.n_uniq,
       self.mean_redundancy, self.completeness*100,
       self.i_mean, self.i_over_sigma_mean,
       self.r_merge, self.r_meas, self.r_pim,
-      self.cc_one_half, self.cc_star)
+      self.cc_one_half)
 
   def show_summary (self, out=sys.stdout) :
     print >> out, "Resolution: %.2f - %.2f" % (self.d_max, self.d_min)
@@ -145,7 +148,7 @@ def show_merging_statistics (
   print >> out, ""
   print >> out, """\
 Statistics by resolution bin:
- d_min   d_max   #obs  #uniq   mult.  %comp       <I>  <I/sI>  r_mrg r_meas  r_pim  cc1/2    cc*"""
+ d_min   d_max   #obs  #uniq   mult.  %comp       <I>  <I/sI>  r_mrg r_meas  r_pim  cc1/2"""
   # statistics by bin
   for bin in i_obs.binner().range_used() :
     sele_unmerged = i_obs.binner().selection(bin)
