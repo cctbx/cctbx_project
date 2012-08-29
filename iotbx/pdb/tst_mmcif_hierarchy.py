@@ -312,6 +312,61 @@ model id="" #chains=1
         " CZ "
 """)
 
+  input_charges = """\
+data_charges
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_entity_id
+_atom_site.label_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.Cartn_x_esd
+_atom_site.Cartn_y_esd
+_atom_site.Cartn_z_esd
+_atom_site.occupancy_esd
+_atom_site.B_iso_or_equiv_esd
+_atom_site.pdbx_formal_charge
+_atom_site.auth_seq_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_atom_id
+_atom_site.pdbx_PDB_model_num
+HETATM 2932 CA CA  . CA  J 2 .   ? 221.154 27.397 60.094 1.00 49.40  ? ? ? ? ? 2 1123 CA  C CA  1
+HETATM 2996 O  O1S . MES D 4 .   ? 47.470 -6.157  23.319 1.00 13.84 ? ? ? ? ? -1 1653 MES F O1S 1
+HETATM 2997 O  O2S . MES D 4 .   ? 47.327 -5.296  20.939 1.00 15.26 ? ? ? ? ? ?  1653 MES F O2S 1
+"""
+  cif_model = iotbx.cif.reader(input_string=input_charges).model()
+  cif_block = cif_model["charges"]
+  builder = pdb_hierarchy_builder(cif_block)
+  hierarchy = builder.hierarchy
+  atoms = hierarchy.atoms()
+  assert atoms[0].charge == "2+"
+  assert atoms[1].charge == "1-"
+  assert atoms[2].charge == ""
+  s = StringIO()
+  hierarchy.show(out=s)
+  assert not show_diff(s.getvalue(), """\
+model id="" #chains=2
+  chain id="C" #residue_groups=1
+    resid="1123 " #atom_groups=1
+      altloc="" resname="CA" #atoms=1
+        "CA  "
+  chain id="F" #residue_groups=1
+    resid="1653 " #atom_groups=1
+      altloc="" resname="MES" #atoms=2
+        " O1S"
+        " O2S"
+""")
 
 def run():
   exercise_pdb_hierachy_builder()
