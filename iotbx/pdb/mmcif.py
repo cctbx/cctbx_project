@@ -187,20 +187,28 @@ class extract_tls_from_cif_block(object):
     self.tls_present = False
     self.error_string = None
     tls_ids = cif_block.get('_pdbx_refine_tls.id')
-    if tls_ids is None:
-      return
 
     T_ijs = [cif_block.get('_pdbx_refine_tls.T[%s][%s]' %(i, j))
             for i, j in ('11', '22', '33', '12', '13', '23')]
-    assert T_ijs.count(None) in (0, 6)
     L_ijs = [cif_block.get('_pdbx_refine_tls.L[%s][%s]' %(i, j))
             for i, j in ('11', '22', '33', '12', '13', '23')]
-    assert L_ijs.count(None) in (0, 6)
     S_ijs = [cif_block.get('_pdbx_refine_tls.S[%s][%s]' %(i, j))
             for i, j in ('11', '12', '13', '21', '22', '23', '31', '32', '33')]
-    assert S_ijs.count(None) in (0, 9)
     origin_xyzs = [cif_block.get('_pdbx_refine_tls.origin_%s' %x) for x in 'xyz']
+
+    if isinstance(tls_ids, basestring):
+      # in case the TLS items are not in a loop
+      tls_ids = [tls_ids]
+      T_ijs = [[T_ij] for T_ij in T_ijs]
+      L_ijs = [[L_ij] for L_ij in L_ijs]
+      S_ijs = [[S_ij] for S_ij in S_ijs]
+      origin_xyzs = [[origin_xyz] for origin_xyz in origin_xyzs]
+
+    assert T_ijs.count(None) in (0, 6)
+    assert L_ijs.count(None) in (0, 6)
+    assert S_ijs.count(None) in (0, 9)
     assert origin_xyzs.count(None) in (0, 3)
+
     if T_ijs.count(None) == 6:
       return
 
@@ -211,6 +219,17 @@ class extract_tls_from_cif_block(object):
     end_chain_ids = cif_block.get('_pdbx_refine_tls_group.end_auth_asym_id')
     end_seq_ids = cif_block.get('_pdbx_refine_tls_group.end_auth_seq_id')
     selection_details = cif_block.get('_pdbx_refine_tls_group.selection_details')
+
+    assert tls_group_ids is not None
+
+    if isinstance(tls_group_ids, basestring):
+      # in case the TLS group items are not in a loop
+      refine_tls_ids = flex.std_string([refine_tls_ids])
+      beg_chain_ids = [beg_chain_ids]
+      beg_seq_ids = [beg_seq_ids]
+      end_chain_ids = [end_chain_ids]
+      end_seq_ids = [end_seq_ids]
+      selection_details = flex.std_string([selection_details])
 
     selection_cache = pdb_hierarchy.atom_selection_cache()
 
