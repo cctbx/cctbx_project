@@ -1190,7 +1190,7 @@ namespace twinning {
                   -sito1*sito1*t
                   +ito1*1.0*t;
           FloatType tmp2 = std::sqrt(2.0)*sito1*1.0*t;
-          if(tmp1 != 0) {
+          if(tmp2 != 0) {
             tmp_b = tmp_b / tmp2;
             tmp_b = qerf_.erf( tmp_b );
             if(t != 1.) {
