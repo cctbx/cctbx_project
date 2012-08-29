@@ -189,9 +189,11 @@ namespace cctbx { namespace xray { namespace grouped_data {
       std::vector<FloatType> combine_quadratics(FloatType ma, FloatType sa, FloatType mb, FloatType sb)
       {
         FloatType new_mean, new_var, weight;
-        new_mean = (sa*sa*mb + sb*sb*ma)/(sa*sa+sb*sb);
-        new_var  = (sa*sa*sb*sb)/(sa*sa+sb*sb);
-        weight   = -(ma-mb)*(ma-mb)/(2.0*(sa*sa+sb*sb));
+        FloatType denominator = sa*sa+sb*sb;
+        SCITBX_ASSERT(denominator != 0);
+        new_mean = (sa*sa*mb + sb*sb*ma)/denominator;
+        new_var  = (sa*sa*sb*sb)/denominator;
+        weight   = -(ma-mb)*(ma-mb)/(2.0*denominator);
         std::vector<FloatType> result;
         result.push_back( new_mean );
         result.push_back( std::sqrt(new_var) );
@@ -205,6 +207,7 @@ namespace cctbx { namespace xray { namespace grouped_data {
 
         new_mean = i_obs_[ map_asu_to_obs_[this_index][0] ];
         new_sig  = s_obs_[ map_asu_to_obs_[this_index][0] ];
+        SCITBX_ASSERT(new_sig > 0); // FIXME rjgildea 2012-08-28
         norma = -std::log(2.0*scitbx::constants::pi)/2.0-std::log(new_sig);
         std::vector<FloatType> tmp_result;
         for (int ii=1;ii<map_asu_to_obs_[this_index].size();ii++){
@@ -214,6 +217,7 @@ namespace cctbx { namespace xray { namespace grouped_data {
           weight += tmp_result[2];
           new_mean = tmp_result[0];
           new_sig = tmp_result[1];
+          SCITBX_ASSERT(this_s > 0);
           norma+=-std::log(2.0*scitbx::constants::pi)/2.0-std::log(this_s);
         }
         std::vector<FloatType> result;
@@ -254,6 +258,7 @@ namespace cctbx { namespace xray { namespace grouped_data {
           tmp_result = combine_obs( ii );
           result += tmp_result[2];// - 0.5*std::log( tmp_result[4] );
         }
+        SCITBX_ASSERT(i_obs_.size() > 0);
         return (result-asu_hkl_.size()
           * std::log(static_cast<FloatType>(i_obs_.size()))*0.5 );
       }
@@ -265,6 +270,7 @@ namespace cctbx { namespace xray { namespace grouped_data {
         std::vector<FloatType> tmp_result;
         for (long int ii=0;ii<asu_hkl_.size();ii++){
           tmp_result = combine_obs( ii );
+          SCITBX_ASSERT(tmp_result[4] != 0);
           top += tmp_result[5]/tmp_result[4];
           bottom += tmp_result[0];
         }
