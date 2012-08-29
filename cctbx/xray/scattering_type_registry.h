@@ -176,6 +176,7 @@ namespace cctbx { namespace xray {
       assign_from_table(std::string const& table)
       {
         CCTBX_ASSERT(table == "IT1992" || table == "WK1995");
+        bool has_assigned = false;
         af::ref<boost::optional<gaussian_t> > ugs = unique_gaussians.ref();
         if (table == "IT1992") {
           for(type_index_pairs_t::const_iterator
@@ -186,6 +187,7 @@ namespace cctbx { namespace xray {
             if (ugs[ui]) continue;
             ugs[ui] = eltbx::xray_scattering::it1992(
               pair->first, true).fetch();
+            has_assigned = true;
           }
         }
         else {
@@ -197,8 +199,11 @@ namespace cctbx { namespace xray {
             if (ugs[ui]) continue;
             ugs[ui] = eltbx::xray_scattering::wk1995(
               pair->first, true).fetch();
+            has_assigned = true;
           }
         }
+        if( has_assigned )
+          this->set_last_table(table);
       }
 
       std::string
@@ -247,6 +252,16 @@ namespace cctbx { namespace xray {
         }
         return result;
       }
+
+      void set_last_table(const std::string &table)
+      {
+        last_table_ = table;
+      }
+
+      const std::string& last_table() const {return last_table_;}
+
+    private:
+      std::string last_table_;
   };
 
 }} // namespace cctbx::xray
