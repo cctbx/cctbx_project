@@ -1,5 +1,5 @@
 from __future__ import division
-import os, sys, string
+import os, string
 from iotbx import pdb
 from mmtbx import monomer_library
 from mmtbx.chemical_components import get_bond_pairs
@@ -54,6 +54,7 @@ def get_angle_outliers(angle_proxies, chain, sites_cart, hierarchy):
     restraint = geometry_restraints.angle(sites_cart=sites_cart,
                                           proxy=ap)
     res = i_seq_name_hash[ap.i_seqs[0]][5:]
+    altloc = i_seq_name_hash[ap.i_seqs[0]][4:5].lower()
     cur_chain = i_seq_name_hash[ap.i_seqs[0]][8:10]
     if chain.id.strip() is not cur_chain.strip():
       continue
@@ -65,7 +66,7 @@ def get_angle_outliers(angle_proxies, chain, sites_cart, hierarchy):
     sigma = ((1/restraint.weight)**(.5))
     num_sigmas = - (restraint.delta / sigma) #negative to match MolProbity direction
     if abs(num_sigmas) >= 4.0:
-      angle_key = res[0:3].lower()+res[3:]+' '+atom1.lower()+ \
+      angle_key = altloc+res[0:3].lower()+res[3:]+' '+atom1.lower()+ \
                   '-'+atom2.lower()+'-'+atom3.lower()
       kin = add_fan(sites=restraint.sites,
                     delta=restraint.delta,
@@ -81,6 +82,7 @@ def get_bond_outliers(bond_proxies, chain, sites_cart, hierarchy):
     restraint = geometry_restraints.bond(sites_cart=sites_cart,
                                          proxy=bp)
     res = i_seq_name_hash[bp.i_seqs[0]][5:]
+    altloc = i_seq_name_hash[bp.i_seqs[0]][4:5].lower()
     cur_chain = i_seq_name_hash[bp.i_seqs[0]][8:10]
     if chain.id.strip() is not cur_chain.strip():
       continue
@@ -92,7 +94,8 @@ def get_bond_outliers(bond_proxies, chain, sites_cart, hierarchy):
     sigma = ((1/restraint.weight)**(.5))
     num_sigmas = -(restraint.delta / sigma) #negative to match MolProbity direction
     if abs(num_sigmas) >= 4.0:
-      bond_key = res[0:3].lower()+res[3:]+' '+atom1.lower()+'-'+atom2.lower()
+      bond_key = altloc+res[0:3].lower()+res[3:]+\
+                 ' '+atom1.lower()+'-'+atom2.lower()
       kin = add_spring(sites=restraint.sites,
                        num_sigmas=num_sigmas,
                        bond_key=bond_key)
@@ -190,23 +193,37 @@ def get_residue_bonds(residue):
   return bonds
 
 def kin_vec(start_key, start_xyz, end_key, end_xyz, width=None):
+  start_altloc = start_key[4:5]
+  if start_altloc == ' ':
+    start_altloc_txt = ""
+  else:
+    start_altloc_txt = " '%s'" % start_altloc
+  end_altloc = end_key[4:5]
+  if end_altloc == ' ':
+    end_altloc_txt = ""
+  else:
+    end_altloc_txt = " '%s'" % end_altloc
   if width is None:
-    return "{%s} P %.3f %.3f %.3f {%s} L %.3f %.3f %.3f\n" % (
+    return "{%s} P%s %.3f %.3f %.3f {%s} L%s %.3f %.3f %.3f\n" % (
            start_key,
+           start_altloc_txt,
            start_xyz[0],
            start_xyz[1],
            start_xyz[2],
            end_key,
+           end_altloc_txt,
            end_xyz[0],
            end_xyz[1],
            end_xyz[2])
   else:
-    return "{%s} P %.3f %.3f %.3f {%s} L width%d %.3f %.3f %.3f\n" % (
+    return "{%s} P%s %.3f %.3f %.3f {%s} L%s width%d %.3f %.3f %.3f\n" % (
            start_key,
+           start_altloc_txt,
            start_xyz[0],
            start_xyz[1],
            start_xyz[2],
            end_key,
+           end_altloc_txt,
            width,
            end_xyz[0],
            end_xyz[1],
@@ -502,197 +519,250 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hy
     sc_h_veclist = \
       "@vectorlist {sc H} color= gray nobutton master= {sidechain} master= {H's}\n"
   prev_resid = None
-  prev_C_xyz = None
-  prev_C_key = None
-  prev_CA_xyz = None
-  prev_CA_key = None
   cur_resid = None
-  cur_C_xyz = None
-  cur_C_key = None
-  cur_CA_xyz = None
-  cur_CA_key = None
-  prev_O3_xyz = None
-  prev_O3_key = None
-  cur_O3_xyz = None
-  cur_O3_key = None
+  prev_C_xyz = {}
+  prev_C_key = {}
+  prev_CA_xyz = {}
+  prev_CA_key = {}
+  prev_O3_xyz = {}
+  prev_O3_key = {}
   p_hash_key = {}
   p_hash_xyz = {}
   c1_hash_key = {}
   c1_hash_xyz = {}
   c4_hash_key = {}
   c4_hash_xyz = {}
+  drawn_bonds = []
   for residue_group in chain.residue_groups():
-    cur_resid = residue_group.resid()
+    altloc_hash = {}
+    iseq_altloc = {}
+    cur_C_xyz = {}
+    cur_C_key = {}
+    cur_CA_xyz = {}
+    cur_CA_key = {}
+    cur_O3_xyz = {}
+    cur_O3_key = {}
     for atom_group in residue_group.atom_groups():
-      key_hash = {}
-      xyz_hash = {}
-      het_hash = {}
+      altloc = atom_group.altloc
       for atom in atom_group.atoms():
-        #print dir(atom)
-        #sys.exit()
-        key = "%s %s %s%s  B%.2f %s" % (
-              atom.name.lower(),
-              atom_group.resname.lower(),
-              chain.id,
-              residue_group.resid(),
-              atom.b,
-              pdbID)
-        key_hash[atom.name.strip()] = key
-        xyz_hash[atom.name.strip()] = atom.xyz
-        if(common_residue_names_get_class(atom_group.resname) == "common_amino_acid"):
-          if atom.name == ' C  ':
-            cur_C_xyz = atom.xyz
-            cur_C_key = key
-          if atom.name == ' CA ':
-            cur_CA_key = key
-            cur_CA_xyz = atom.xyz
-            if prev_CA_key != None and prev_CA_xyz != None:
-              if int(residue_group.resseq_as_int()) - int(prev_resid[0:4]) == 1:
-                try:
-                  ca_trace += kin_vec(prev_CA_key, prev_CA_xyz, key, atom.xyz)
-                except Exception:
-                  pass
-          if atom.name == ' N  ':
-            if prev_C_key != None and prev_C_xyz != None:
-              if int(residue_group.resseq_as_int()) - int(prev_resid[0:4]) == 1:
-                try:
-                  mc_veclist += kin_vec(prev_C_key, prev_C_xyz, key, atom.xyz)
-                except Exception:
-                  pass
-        elif(common_residue_names_get_class(atom_group.resname) == "common_rna_dna"):
-          if atom.name == " O3'":
-            cur_O3_xyz = atom.xyz
-            cur_O3_key = key
-          elif atom.name == ' P  ':
-            if prev_O3_key != None and prev_O3_xyz != None:
-              if int(residue_group.resseq_as_int()) - int(prev_resid[0:4]) == 1:
-                try:
-                  mc_veclist += kin_vec(prev_O3_key, prev_O3_xyz, key, atom.xyz)
-                except Exception:
-                  pass
-            p_hash_key[residue_group.resseq_as_int()] = key
-            p_hash_xyz[residue_group.resseq_as_int()] = atom.xyz
-          elif atom.name == " C1'":
-            c1_hash_key[residue_group.resseq_as_int()] = key
-            c1_hash_xyz[residue_group.resseq_as_int()] = atom.xyz
-          elif atom.name == " C4'":
-            c4_hash_key[residue_group.resseq_as_int()] = key
-            c4_hash_xyz[residue_group.resseq_as_int()] = atom.xyz
-        elif atom_group.resname.lower() == 'hoh':
-            if atom.name == ' O  ':
-              water_list += "{%s} P %.3f %.3f %.3f\n" % (
-                       key,
-                       atom.xyz[0],
-                       atom.xyz[1],
-                       atom.xyz[2])
-        else:
-          het_hash[atom.name.strip()] = [key, atom.xyz]
+        if altloc_hash.get(atom.name.strip()) is None:
+          altloc_hash[atom.name.strip()] = []
+        altloc_hash[atom.name.strip()].append(altloc)
+        iseq_altloc[atom.i_seq] = altloc
+    #print dir(residue_group)
+    cur_resid = residue_group.resid()
+    for conformer in residue_group.conformers():
+      for residue in conformer.residues():
+        cur_resid = residue.resid()
+        key_hash = {}
+        xyz_hash = {}
+        het_hash = {}
+        altloc = conformer.altloc
+        if altloc == '':
+          altloc = ' '
+        for atom in residue.atoms():
+          cur_altlocs = altloc_hash.get(atom.name.strip())
+          if cur_altlocs == ['']:
+            cur_altloc = ' '
+          elif altloc in cur_altlocs:
+            cur_altloc = altloc
+          else:
+            # TO_DO: handle branching from altlocs
+            cur_altloc == ' '
+          key = "%s%s%s %s%s  B%.2f %s" % (
+                atom.name.lower(),
+                cur_altloc.lower(),
+                residue.resname.lower(),
+                chain.id,
+                residue_group.resid(),
+                atom.b,
+                pdbID)
+          key_hash[atom.name.strip()] = key
+          xyz_hash[atom.name.strip()] = atom.xyz
+          if(common_residue_names_get_class(residue.resname) == "common_amino_acid"):
+            if atom.name == ' C  ':
+              cur_C_xyz[altloc] = atom.xyz
+              cur_C_key[altloc] = key
+            if atom.name == ' CA ':
+              cur_CA_xyz[altloc] = atom.xyz
+              cur_CA_key[altloc] = key
+              if len(prev_CA_key) > 0 and len(prev_CA_xyz) > 0:
+                if int(residue_group.resseq_as_int()) - int(prev_resid[0:4]) == 1:
+                  try:
+                    prev_key = prev_CA_key.get(altloc)
+                    prev_xyz = prev_CA_xyz.get(altloc)
+                    if prev_key is None:
+                      prev_key = prev_CA_key.get(' ')
+                      prev_xyz = prev_CA_xyz.get(' ')
+                    if prev_key is None:
+                      continue
+                    ca_trace += kin_vec(prev_key, prev_xyz, key, atom.xyz)
+                  except Exception:
+                    pass
+            if atom.name == ' N  ':
+              if len(prev_C_key) > 0 and len(prev_C_xyz) > 0:
+                if int(residue_group.resseq_as_int()) - int(prev_resid[0:4]) == 1:
+                  try:
+                    prev_key = prev_C_key.get(altloc)
+                    prev_xyz = prev_C_xyz.get(altloc)
+                    if prev_key is None:
+                      prev_key = prev_C_key.get(' ')
+                      prev_xyz = prev_C_xyz.get(' ')
+                    if prev_key is None:
+                      continue
+                    mc_veclist += kin_vec(prev_key, prev_xyz, key, atom.xyz)
+                  except Exception:
+                    pass
+          elif(common_residue_names_get_class(residue.resname) == "common_rna_dna"):
+            if atom.name == " O3'":
+              cur_O3_xyz[altloc] = atom.xyz
+              cur_O3_key[altloc] = key
+            elif atom.name == ' P  ':
+              if len(prev_O3_key) > 0 and len(prev_O3_xyz) > 0:
+                if int(residue_group.resseq_as_int()) - int(prev_resid[0:4]) == 1:
+                  try:
+                    prev_key = prev_O3_key.get(altloc)
+                    prev_xyz = prev_O3_xyz.get(altloc)
+                    if prev_key is None:
+                      prev_key = prev_O3_key.get(' ')
+                      prev_xyz = prev_O3_xyz.get(' ')
+                    if prev_key is None:
+                      continue
+                    mc_veclist += kin_vec(prev_key, prev_xyz, key, atom.xyz)
+                  except Exception:
+                    pass
+              p_hash_key[residue_group.resseq_as_int()] = key
+              p_hash_xyz[residue_group.resseq_as_int()] = atom.xyz
+            elif atom.name == " C1'":
+              c1_hash_key[residue_group.resseq_as_int()] = key
+              c1_hash_xyz[residue_group.resseq_as_int()] = atom.xyz
+            elif atom.name == " C4'":
+              c4_hash_key[residue_group.resseq_as_int()] = key
+              c4_hash_xyz[residue_group.resseq_as_int()] = atom.xyz
+          elif residue.resname.lower() == 'hoh':
+              if atom.name == ' O  ':
+                water_list += "{%s} P %.3f %.3f %.3f\n" % (
+                  key,
+                  atom.xyz[0],
+                  atom.xyz[1],
+                  atom.xyz[2])
+          else:
+            het_hash[atom.name.strip()] = [key, atom.xyz]
 
-      if(common_residue_names_get_class(atom_group.resname) == "common_rna_dna"):
-        try:
-          virtual_bb += kin_vec(c4_hash_key[residue_group.resseq_as_int()-1],
-                                c4_hash_xyz[residue_group.resseq_as_int()-1],
-                                p_hash_key[residue_group.resseq_as_int()],
-                                p_hash_xyz[residue_group.resseq_as_int()])
-        except Exception:
-          pass
-        try:
-          virtual_bb += kin_vec(p_hash_key[residue_group.resseq_as_int()],
-                                p_hash_xyz[residue_group.resseq_as_int()],
-                                c4_hash_key[residue_group.resseq_as_int()],
-                                c4_hash_xyz[residue_group.resseq_as_int()])
-        except Exception:
-          pass
-        try:
-          virtual_bb += kin_vec(c4_hash_key[residue_group.resseq_as_int()],
-                                c4_hash_xyz[residue_group.resseq_as_int()],
-                                c1_hash_key[residue_group.resseq_as_int()],
-                                c1_hash_xyz[residue_group.resseq_as_int()])
-        except Exception:
-          pass
+        if(common_residue_names_get_class(residue.resname) == "common_rna_dna"):
+          try:
+            virtual_bb += kin_vec(c4_hash_key[residue_group.resseq_as_int()-1],
+                                  c4_hash_xyz[residue_group.resseq_as_int()-1],
+                                  p_hash_key[residue_group.resseq_as_int()],
+                                  p_hash_xyz[residue_group.resseq_as_int()])
+          except Exception:
+            pass
+          try:
+            virtual_bb += kin_vec(p_hash_key[residue_group.resseq_as_int()],
+                                  p_hash_xyz[residue_group.resseq_as_int()],
+                                  c4_hash_key[residue_group.resseq_as_int()],
+                                  c4_hash_xyz[residue_group.resseq_as_int()])
+          except Exception:
+            pass
+          try:
+            virtual_bb += kin_vec(c4_hash_key[residue_group.resseq_as_int()],
+                                  c4_hash_xyz[residue_group.resseq_as_int()],
+                                  c1_hash_key[residue_group.resseq_as_int()],
+                                  c1_hash_xyz[residue_group.resseq_as_int()])
+          except Exception:
+            pass
 
-      prev_CA_xyz = cur_CA_xyz
-      prev_CA_key = cur_CA_key
-      prev_C_xyz = cur_C_xyz
-      prev_C_key = cur_C_key
-      prev_resid = cur_resid
-      prev_O3_key = cur_O3_key
-      prev_O3_xyz = cur_O3_xyz
+        cur_i_seqs = []
+        for atom in residue.atoms():
+          cur_i_seqs.append(atom.i_seq)
 
-      cur_i_seqs = []
-      for atom in atom_group.atoms():
-        cur_i_seqs.append(atom.i_seq)
-
-      for atom in atom_group.atoms():
-        try:
-          cur_bonds = bond_hash[atom.i_seq]
-        except Exception:
-          continue
-        for bond in cur_bonds:
-          atom_1 = i_seq_name_hash[atom.i_seq][0:4].strip()
-          atom_2 = i_seq_name_hash[bond][0:4].strip()
-          if (common_residue_names_get_class(atom_group.resname) == 'other' or \
-              common_residue_names_get_class(atom_group.resname) == 'common_small_molecule'):
-            if atom_1.startswith('H') or atom_2.startswith('H') or \
-               atom_1.startswith('D') or atom_2.startswith('D'):
-              if show_hydrogen:
-                try:
-                  het_h += kin_vec(het_hash[atom_1][0],
-                                   het_hash[atom_1][1],
-                                   het_hash[atom_2][0],
-                                   het_hash[atom_2][1])
-                except Exception:
-                  pass
-            else:
-              try:
-                hets += kin_vec(het_hash[atom_1][0],
-                                het_hash[atom_1][1],
-                                het_hash[atom_2][0],
-                                het_hash[atom_2][1])
-              except Exception:
-                pass
-          elif common_residue_names_get_class(atom_group.resname) == "common_amino_acid" or \
-               common_residue_names_get_class(atom_group.resname) == "common_rna_dna":
-            if atom_1 in mc_atoms and atom_2 in mc_atoms:
-              try:
-                 if atom_1 == "C" and atom_2 == "N":
-                   pass
-                 elif atom_1 == "O3'" and atom_2 == "P":
-                   pass
-                 else:
-                   mc_veclist += kin_vec(key_hash[atom_1],
-                                         xyz_hash[atom_1],
-                                         key_hash[atom_2],
-                                         xyz_hash[atom_2])
-              except Exception:
-                pass
-            elif atom_1.startswith('H') or atom_2.startswith('H') or \
+        for atom in residue.atoms():
+          try:
+            cur_bonds = bond_hash[atom.i_seq]
+          except Exception:
+            continue
+          for bond in cur_bonds:
+            atom_1 = i_seq_name_hash[atom.i_seq][0:4].strip()
+            atom_2 = i_seq_name_hash[bond][0:4].strip()
+            # handle altlocs ########
+            drawn_key = key_hash[atom_1]+key_hash[atom_2]
+            if drawn_key in drawn_bonds:
+              continue
+            altloc_2 = iseq_altloc.get(bond)
+            if altloc_2 != altloc and altloc_2 != '':
+              continue
+            #########################
+            if (common_residue_names_get_class(residue.resname) == 'other' or \
+                common_residue_names_get_class(residue.resname) == 'common_small_molecule'):
+              if atom_1.startswith('H') or atom_2.startswith('H') or \
                  atom_1.startswith('D') or atom_2.startswith('D'):
-              if show_hydrogen:
-                if (atom_1 in mc_atoms or atom_2 in mc_atoms):
+                if show_hydrogen:
                   try:
-                    mc_h_veclist += kin_vec(key_hash[atom_1],
-                                            xyz_hash[atom_1],
-                                            key_hash[atom_2],
-                                            xyz_hash[atom_2])
+                    het_h += kin_vec(het_hash[atom_1][0],
+                                     het_hash[atom_1][1],
+                                     het_hash[atom_2][0],
+                                     het_hash[atom_2][1])
                   except Exception:
                     pass
-                else:
-                  try:
-                    sc_h_veclist += kin_vec(key_hash[atom_1],
-                                            xyz_hash[atom_1],
-                                            key_hash[atom_2],
-                                            xyz_hash[atom_2])
-                  except Exception:
-                    pass
-            else:
-              try:
-                sc_veclist += kin_vec(key_hash[atom_1],
-                                      xyz_hash[atom_1],
-                                      key_hash[atom_2],
-                                      xyz_hash[atom_2])
-              except Exception:
-                pass
+              else:
+                try:
+                  hets += kin_vec(het_hash[atom_1][0],
+                                  het_hash[atom_1][1],
+                                  het_hash[atom_2][0],
+                                  het_hash[atom_2][1])
+                except Exception:
+                  pass
+            elif common_residue_names_get_class(residue.resname) == "common_amino_acid" or \
+                 common_residue_names_get_class(residue.resname) == "common_rna_dna":
+              if atom_1 in mc_atoms and atom_2 in mc_atoms:
+                try:
+                   if atom_1 == "C" and atom_2 == "N":
+                     pass
+                   elif atom_1 == "O3'" and atom_2 == "P":
+                     pass
+                   else:
+                     mc_veclist += kin_vec(key_hash[atom_1],
+                                           xyz_hash[atom_1],
+                                           key_hash[atom_2],
+                                           xyz_hash[atom_2])
+                except Exception:
+                  pass
+              elif atom_1.startswith('H') or atom_2.startswith('H') or \
+                   atom_1.startswith('D') or atom_2.startswith('D'):
+                if show_hydrogen:
+                  if (atom_1 in mc_atoms or atom_2 in mc_atoms):
+                    try:
+                      mc_h_veclist += kin_vec(key_hash[atom_1],
+                                              xyz_hash[atom_1],
+                                              key_hash[atom_2],
+                                              xyz_hash[atom_2])
+                    except Exception:
+                      pass
+                  else:
+                    try:
+                      sc_h_veclist += kin_vec(key_hash[atom_1],
+                                              xyz_hash[atom_1],
+                                              key_hash[atom_2],
+                                              xyz_hash[atom_2])
+                    except Exception:
+                      pass
+              else:
+                try:
+                  sc_veclist += kin_vec(key_hash[atom_1],
+                                        xyz_hash[atom_1],
+                                        key_hash[atom_2],
+                                        xyz_hash[atom_2])
+                except Exception:
+                  pass
+              drawn_bonds.append(drawn_key)
+    prev_CA_xyz = cur_CA_xyz
+    prev_CA_key = cur_CA_key
+    prev_C_xyz = cur_C_xyz
+    prev_C_key = cur_C_key
+    prev_resid = cur_resid
+    prev_O3_key = cur_O3_key
+    prev_O3_xyz = cur_O3_xyz
+
   #clean up empty lists:
   if len(mc_veclist.splitlines()) > 1:
     kin_out += mc_veclist
@@ -750,6 +820,27 @@ def get_footer():
 """
   return footer
 
+def get_altid_controls(hierarchy):
+  #print hierarchy.get_conformer_indices()
+  #STOP()
+  altids = []
+  altid_controls = ""
+  txt = "@pointmaster 'a' {alta} on"
+  for model in hierarchy.models():
+    for chain in model.chains():
+      for conformer in chain.conformers():
+        altloc = conformer.altloc
+        if altloc not in altids and altloc != '':
+          altids.append(altloc)
+  for i, altid in enumerate(altids):
+    altid_controls += "@pointmaster '%s' {alt%s} " % (altid.lower(),
+                                                      altid.lower())
+    if i == 0:
+      altid_controls += "on\n"
+    else:
+      altid_controls += "off\n"
+  return altid_controls
+
 def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False):
   if pdbID == None:
     pdbID = "PDB"
@@ -764,12 +855,13 @@ def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False):
   bond_proxies = pair_proxies.bond_proxies
   quick_bond_hash = {}
   for bp in bond_proxies.simple:
-    try:
-      quick_bond_hash[bp.i_seqs[0]].append(bp.i_seqs[1])
-    except Exception:
+    if quick_bond_hash.get(bp.i_seqs[0]) is None:
       quick_bond_hash[bp.i_seqs[0]] = []
-      quick_bond_hash[bp.i_seqs[0]].append(bp.i_seqs[1])
+    quick_bond_hash[bp.i_seqs[0]].append(bp.i_seqs[1])
   kin_out = get_default_header()
+  altid_controls = get_altid_controls(hierarchy=hierarchy)
+  if altid_controls != "":
+    kin_out += altid_controls
   kin_out += "@group {%s} dominant animate\n" % pdbID
   initiated_chains = []
   rt = rotalyze()
