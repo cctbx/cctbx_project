@@ -111,6 +111,8 @@ namespace {
              &w_t::dilated_form_factors_at_d_star_sq,
              (arg("d_star_sq"), arg("dilation_coeffs"),
               arg("unique_indices")))
+        .def("set_last_table", &w_t::set_last_table, (arg("table")))
+        .def("last_table", &w_t::last_table, ccr())
         .enable_pickling()
         .def("__getinitargs__", getinitargs)
         .def("__init__", make_constructor(constructor_for_pickle),

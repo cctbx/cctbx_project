@@ -23,6 +23,9 @@ map_cutoff = 2.0
 angular_step = 3.0
   .type = float
   .help = Step in degrees for 6D rigid body search for best fit
+dod_and_od = False
+  .type = bool
+  .help = Build DOD/OD/O types of waters for neutron models
 """)
 
 master_params_part2 = find_peaks.master_params.fetch(iotbx.phil.parse("""\
@@ -248,11 +251,9 @@ def run(fmodel, model, log, params = None):
   sel_big.set_selected(~hd_sel, False)
   model.xray_structure.set_u_iso(value = u_iso_mean, selection = sel_big)
 
-def run2(model, fmodels, log=None):
+def build_dod_and_od(model, fmodels, log=None, params=None):
   if log is None:
     log = fmodels.log
-    import sys
-    log = sys.stdout
   if fmodels.fmodel_n is not None:
     fmodel = fmodels.fmodel_neutron()
   else:
@@ -262,30 +263,17 @@ def run2(model, fmodels, log=None):
     title="neutron"
   print_statistics.make_header("Build water hydrogens into "+title+" difference"
     " map", out=log)
-  build_water_hydrogens_from_map(model, fmodel)
-  ### TODO: refinement flags???
+  build_water_hydrogens_from_map(model, fmodel, params=params, log=log)
   model.reprocess_pdb_hierarchy_inefficient()
-  fmodels.update_xray_structure(
-    xray_structure = model.xray_structure,
-    update_f_calc  = True,
-    update_f_mask  = True)
-  fmodels.show_short()
-  fout = file("/tmp/tst1_with_my_h.pdb", 'w')
-  model.write_pdb_file(fout)
-  fout.close()
   #
-  water_map_correlations(model, fmodels)
-  fout3 = file("/tmp/tst3.pdb", 'w');
-  model.write_pdb_file(fout3)
-  fout3.close()
-  model = remove_zero_occupancy(model)
+  # TODO previous step might add false Hydrogens:
+  # water_map_correlations(model, fmodels)
+  # model = remove_zero_occupancy(model)
+  # model.reprocess_pdb_hierarchy_inefficient()
   fmodels.update_xray_structure(xray_structure = model.xray_structure,
     update_f_calc  = True,
     update_f_mask  = True)
   # fmodels.update_all_scales(params=bss_params)
-  fout4 = file("/tmp/tst4.pdb", 'w');
-  model.write_pdb_file(fout4)
-  fout4.close()
   fmodels.show_short()
 
 def remove_zero_occupancy(model, min_occupancy=0.01):
@@ -318,8 +306,6 @@ def insert_atom_into_model(xs, atom, atom_name, site_frac, occupancy, uiso, elem
   ag = atom.parent() # atom group
   rg = ag.parent()
   na =  ag.atoms().size()
-  print "inserting for O resid: ", rg.resid(), ' b: ', atom.b, ' i: ', i_seq, \
-      ' h.b: ', h.b, ' h.i: ', h.i_seq, ' nh: ', na, ' xyz: ', xyz
   ag.append_atom(atom=h)
   scatterer = cctbx.xray.scatterer(
     label           = h.name,
@@ -344,7 +330,6 @@ def distances_to_peaks(xray_structure, sites_frac, peak_heights,
   pair_generator = cctbx.crystal.neighbors_fast_pair_generator(asu_mappings =
     asu_mappings, distance_cutoff = distance_cutoff)
   n_xray = xray_structure.scatterers().size()
-  print "N peaks: ", sites_frac.size()
   result = {}
   for pair in pair_generator:
     if(pair.i_seq < n_xray):
@@ -370,8 +355,6 @@ def distances_to_peaks(xray_structure, sites_frac, peak_heights,
     if use_selection is not None:
       height = peak_heights[i_seq_new_site_frac]
       if(use_selection[jn]):
-        print " peak: ", i_seq_new_site_frac, " atom: ", jn, " dist: ", math.sqrt(pair.dist_sq)
-        print "    site: ", new_site_frac
         if result.has_key(jn):
           result[jn].extend( [(height, new_site_frac)] )
         else:
@@ -401,11 +384,11 @@ def choose_h_for_water(unit_cell, o_site, xyz_h, h1_site=None):
 
 def build_water_hydrogens_from_map(model, fmodel, params=None, log=None):
   if log is None:
-    import sys
-    log = sys.stdout
+    log = model.log
   if params is None:
     params = all_master_params().extract()
-  params.map_next_to_model.max_model_peak_dist = 1.35
+  # TODO: default value 1.05, need 1.15
+  # params.map_next_to_model.max_model_peak_dist = 1.15
   peaks = find_hydrogen_peaks(
     fmodel = fmodel,
     pdb_atoms = model.pdb_atoms,
@@ -418,11 +401,14 @@ def build_water_hydrogens_from_map(model, fmodel, params=None, log=None):
   unit_cell = xs.unit_cell()
   sol_O = model.solvent_selection().set_selected(
     model.xray_structure.hd_selection(), False)
-  print "N solvent molecules: ", sol_O.count(True)
-  pks = distances_to_peaks(xs, peaks.sites, hs, 1.15, use_selection=sol_O)
+  print >>log, "Number of solvent molecules: ", sol_O.count(True)
+  cutoff = params.map_next_to_model.max_model_peak_dist # 1.15
+  pks = distances_to_peaks(xs, peaks.sites, hs, cutoff, use_selection=sol_O)
+  # TODO it is less than n added H : print >>log, "Number of close peaks: ", len(pks)
   water_rgs = self.extract_water_residue_groups()
   water_rgs.reverse()
   element='D'
+  next_to_i_seqs = []
   for rg in water_rgs:
     if (rg.atom_groups_size() != 1):
       raise RuntimeError(
@@ -455,17 +441,26 @@ def build_water_hydrogens_from_map(model, fmodel, params=None, log=None):
       o_u = scatterers[o_i].u_iso_or_equiv(unit_cell)
       h_sites = pks[o_i]
       hh = choose_h_for_water(unit_cell, o_site, h_sites, h1_site=h1_site)
-      print 'O: ', o_atom.name, ' ', o_i, ' resid: ',\
-        o_atom.parent().parent().resid(), ' hh: ', hh, ' h1: ', h1_site
       for i,site_frac in enumerate(hh):
         assert (h1>0 and i<1) or (h1==0 and i<2)
         if h1==1: j=2
         elif h1==2: j=1
         else: j=i+1
         name = element+str(j)
+        i_seq = o_atom.i_seq
         # this breaks atom sequence: o_atom.i_seq
         insert_atom_into_model(xs, atom=o_atom, atom_name=name, site_frac=site_frac,
           occupancy=1, uiso=o_u, element=element)
+        next_to_i_seqs.append(i_seq)
+  print >> log, "Number of H added:", len(next_to_i_seqs)
+  if( len(next_to_i_seqs)!=0 and model.refinement_flags is not None):
+    # TODO: 
+    #   adp_group=True according to params.dod_and_od_group_adp
+    model.refinement_flags.add(
+      next_to_i_seqs=next_to_i_seqs,
+      sites_individual = True,
+      s_occupancies    = False,
+      adp_individual_iso=True)
 
 def select_one_water(water_residue_group, n_atoms):
   rg = water_residue_group
@@ -505,6 +500,12 @@ def one_water_correlation(model, fmodels, water):
   from mmtbx import real_space_correlation
   params = ordered_solvent.master_params().extract()
   par = params.secondary_map_and_map_cc_filter
+  rcparams = real_space_correaltion.master_params().extract()
+  rcparams.detail = "residue"
+  rcparams.selection = water
+  print "DEBUG"
+  dir(par)
+  exit(1)
   #
   if fmodels.fmodel_n is not None:
     fmodel = fmodels.fmodel_neutron()
@@ -518,19 +519,20 @@ def one_water_correlation(model, fmodels, water):
   nrscc_and_map_result = real_space_correlation.simple(
     fmodel                = fmodel,
     pdb_hierarchy         = model.pdb_hierarchy(),
-    map_1_name            = par.cc_map_1_type,
-    map_2_name            = par.cc_map_2_type,
-    diff_map_name         = None,
-    number_of_grid_points = par.number_of_grid_points,
-    atom_radius           = par.atom_radius,
+    # map_1_name            = par.cc_map_1_type,
+    # map_2_name            = par.cc_map_2_type,
+    # diff_map_name         = None,
+    # number_of_grid_points = par.number_of_grid_points,
+    # atom_radius           = par.atom_radius,
     details_level         = "residue",
     selection             = water,
-    show                  = False,
-    set_cc_to_zero_if_n_grid_points_less_than = \
-      par.set_cc_to_zero_if_n_grid_points_less_than,
-    poor_cc_threshold                         = par.poor_cc_threshold,
-    poor_map_1_value_threshold                = par.poor_map_value_threshold,
-    poor_map_2_value_threshold                = par.poor_map_value_threshold)
+    show_results          = False,
+    #set_cc_to_zero_if_n_grid_points_less_than = \
+    #  par.set_cc_to_zero_if_n_grid_points_less_than,
+    #poor_cc_threshold                         = par.poor_cc_threshold,
+    #poor_map_1_value_threshold                = par.poor_map_value_threshold,
+    #poor_map_2_value_threshold                = par.poor_map_value_threshold
+  )
   assert len(nrscc_and_map_result)==1
   rcc_res = nrscc_and_map_result[0]
   print title+"! cc: " , ("%4.2f"%rcc_res.cc), " res: ", rcc_res.residue.name, \
@@ -558,7 +560,6 @@ def water_map_correlations(model, fmodels):
   fmodels.show_short()
   waters = model.solvent_selection()
   water_rgs = model.extract_water_residue_groups()
-  #print "DEBUG!!! water_rgs[0].class: ", water_rgs[0].__class__, " dir,water_rgs[0]:\n", dir(water_rgs[0])
   n_atoms = len(scatterers)
   for rg in water_rgs:
     o_atom = get_pdb_oxygen(rg)

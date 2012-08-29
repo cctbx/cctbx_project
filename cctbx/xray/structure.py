@@ -530,12 +530,18 @@ class structure(crystal.special_position_settings):
 
   def scattering_dictionary_as_string(self):
     result = ""
+    if self._scattering_type_registry is None:
+      return result
     for tg in self._scattering_type_registry.as_type_gaussian_dict().items():
       stype = tg[0]
       gaussian = tg[1]
-      aa = gaussian.array_of_a()
-      ab = gaussian.array_of_b()
-      c = gaussian.c()
+      aa = "None"
+      ab = "None"
+      c = "None"
+      if gaussian is not None:
+        aa = gaussian.array_of_a()
+        ab = gaussian.array_of_b()
+        c = gaussian.c()
       result += "\n  Element: "+stype +"  a: "+ str(aa)+ "  b: "+ str(ab)+ "  c: "+str(c)
     return result
 
@@ -1249,7 +1255,9 @@ class structure(crystal.special_position_settings):
                types_without_a_scattering_contribution)
       new_dict = {"const": eltbx.xray_scattering.gaussian(1)}
       old_dict = {}
+      last_used_scattering_table = None
       if (self._scattering_type_registry is not None):
+        last_used_scattering_table = self._scattering_type_registry.last_table()
         ugs = self._scattering_type_registry.unique_gaussians_as_list()
         tip = self._scattering_type_registry.type_index_pairs_as_dict()
         for t,i in tip.items():
@@ -1270,6 +1278,10 @@ class structure(crystal.special_position_settings):
           std_lbl = eltbx.xray_scattering.get_standard_label(
             label=t_undef, exact=True, optional=True)
           if (std_lbl is not None):
+            if table is None:
+              table = last_used_scattering_table
+            else:
+              last_used_scattering_table = table
             if (table == "it1992"):
               val = eltbx.xray_scattering.it1992(std_lbl, True).fetch()
             elif (table == "wk1995"):
@@ -1289,10 +1301,13 @@ class structure(crystal.special_position_settings):
               # TODO mrt: this may lead to a mix of xray/neutron dictionary
               val = eltbx.xray_scattering.n_gaussian_table_entry(
                 std_lbl, d_min, 0).gaussian()
+              last_used_scattering_table = "n_gaussian"
         if (val is None):
           val = old_dict.get(t_undef, None)
         if (val is not None):
           self._scattering_type_registry.assign(t_undef, val)
+          if last_used_scattering_table is not None:
+            self._scattering_type_registry.set_last_table(last_used_scattering_table)
       self._scattering_type_registry_is_out_of_date = False
     if not explicitly_allow_mixing:
       if self.guess_scattering_type_is_a_mixture_of_xray_and_neutron():
