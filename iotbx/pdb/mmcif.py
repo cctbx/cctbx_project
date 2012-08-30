@@ -398,6 +398,9 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
     return [[float(i) for i in fractionalization_matrix],
             [float(i) for i in fractionalization_vector]]
 
+  def model_ids(self):
+    return flex.std_string([model.id for model in self.hierarchy.models()])
+
 
 def _float_or_None(value):
   if value is not None:
