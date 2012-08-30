@@ -796,7 +796,7 @@ def run(args, command_name="phenix.pdbtools"):
       restraints_manager = restraints_manager,
       sites_cart         = xray_structure.sites_cart(),
       wc                 = 1)
-    cartesian_dynamics.cartesian_dynamics(
+    cartesian_dynamics.run(
       xray_structure=xray_structure,
       gradients_calculator=gradients_calculator,
       temperature=dyna_params.temperature,
@@ -805,7 +805,7 @@ def run(args, command_name="phenix.pdbtools"):
       initial_velocities_zero_fraction=dyna_params.initial_velocities_zero_fraction,
       n_print=dyna_params.n_print,
       log=log,
-      verbose=1)#dyna_params.verbose)
+      verbose=1)
     sites_cart_end = xray_structure.sites_cart()
     rmsd = sites_cart_end.rms_difference(sites_cart_start)
     print >> log, ""

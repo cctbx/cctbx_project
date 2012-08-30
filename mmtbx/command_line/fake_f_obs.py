@@ -291,7 +291,7 @@ def cd(xray_structure, restraints_manager, params):
     restraints_manager = restraints_manager,
     sites_cart         = xray_structure.sites_cart(),
     wc                 = 1)
-  cartesian_dynamics.cartesian_dynamics(
+  cartesian_dynamics.run(
     gradients_calculator             = gradients_calculator,
     xray_structure                   = xray_structure,
     temperature                      = 3000,

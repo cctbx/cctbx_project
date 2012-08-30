@@ -20,7 +20,9 @@ if (1):
   flex.set_random_seed(0)
 
 # XXX TO BE MOVED OR RESTRUCTURED
-def get_processed_pdb_object(pdb_file_name, rama_potential, log):
+def get_processed_pdb_object(rama_potential, log,
+      raw_records=None, pdb_file_name=None):
+  assert [raw_records, pdb_file_name].count(None) == 1
   master_params = iotbx.phil.parse(
     input_string=mmtbx.monomer_library.pdb_interpretation.master_params_str,
     process_includes=True).extract()
@@ -33,6 +35,7 @@ def get_processed_pdb_object(pdb_file_name, rama_potential, log):
     ener_lib                 = monomer_library.server.ener_lib(),
     params                   = master_params,
     file_name                = pdb_file_name,
+    raw_records              = raw_records,
     strict_conflict_handling = True,
     force_symmetry           = True,
     log                      = log)
