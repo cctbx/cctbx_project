@@ -42,11 +42,9 @@ class interleaved_lbfgs_minimization(object):
 
   def __init__(self,
         restraints_manager,
-        conservative_pair_proxies,
         sites_cart,
         max_iterations):
     self.restraints_manager = restraints_manager
-    self.conservative_pair_proxies = conservative_pair_proxies
     self.x = sites_cart.as_double()
     self.minimizer = scitbx.lbfgs.run(
       target_evaluator=self,
@@ -61,19 +59,10 @@ class interleaved_lbfgs_minimization(object):
 
   def compute_functional_and_gradients(self):
     sites_cart = flex.vec3_double(self.x)
-    f = 0
-    g = flex.vec3_double(sites_cart.size(), (0,0,0))
     tmp = self.restraints_manager.energies_sites(sites_cart = sites_cart,
       compute_gradients=True)
     f = tmp.target
     g = tmp.gradients
-    #for sorted_asu_proxies in [self.conservative_pair_proxies.bond,
-    #                           self.conservative_pair_proxies.angle]:
-    #  if (sorted_asu_proxies is None): continue
-    #  f += geometry_restraints.bond_residual_sum(
-    #    sites_cart=sites_cart,
-    #    sorted_asu_proxies=sorted_asu_proxies,
-    #    gradient_array=g)
     return f, g.as_double()
 
 master_params = iotbx.phil.parse("""\
@@ -219,6 +208,7 @@ class run(object):
                initial_velocities_zero_fraction = 0,
                vxyz                             = None,
                n_print                          = 20,
+               interleaved_minimization         = False,
                reset_velocities                 = True,
                stop_cm_motion                   = False,
                log                              = None,
@@ -241,24 +231,6 @@ class run(object):
       self.vxyz = flex.vec3_double(self.atomic_weights.size(),(0,0,0))
     else:
       self.vxyz = vxyz
-    #
-    self.interleaved_minimization_params = group_args(
-      number_of_iterations = 0,
-      time_step_factor = 1,
-      restraints=["bonds", "angles"])
-    imp = self.interleaved_minimization_params
-    self.interleaved_minimization_flag = (
-      imp is not None and imp.number_of_iterations > 0)
-    if (self.interleaved_minimization_flag):
-      assert imp.time_step_factor > 0
-      self.time_step *= imp.time_step_factor
-      if ("bonds" not in imp.restraints):
-        raise Sorry(
-          'Invalid choice: %s.restraints: "bonds" must always be included.'
-            % imp.__phil_path__())
-      self.interleaved_minimization_angles = "angles" in imp.restraints
-    else:
-      self.interleaved_minimization_angles = False
     #
     self.tstep = self.time_step / self.timfac
     self()
@@ -306,19 +278,13 @@ class run(object):
     if(self.verbose >= 1):
       self.print_dynamics_stat(text="after final integration step")
 
-  def interleaved_minimization(self):
+  def run_interleaved_minimization(self):
     geo_manager = self.gradients_calculator.restraints_manager.geometry
-    assert geo_manager.shell_sym_tables is not None
-    assert len(geo_manager.shell_sym_tables) > 0
-    conservative_pair_proxies = self.xray_structure.conservative_pair_proxies(
-      bond_sym_table=geo_manager.shell_sym_tables[0],
-      conserve_angles=self.interleaved_minimization_angles)
     sites_cart = self.xray_structure.sites_cart()
     interleaved_lbfgs_minimization(
       restraints_manager = self.gradients_calculator.restraints_manager,
       sites_cart=sites_cart,
-      conservative_pair_proxies=conservative_pair_proxies,
-      max_iterations=self.interleaved_minimization_params.number_of_iterations)
+      max_iterations=5)
     self.xray_structure.set_sites_cart(sites_cart=sites_cart)
     self.xray_structure.apply_symmetry_sites()
 
@@ -400,10 +366,8 @@ class run(object):
       self.xray_structure.set_sites_cart(
         sites_cart=self.xray_structure.sites_cart() + self.vxyz * self.tstep)
       self.xray_structure.apply_symmetry_sites()
-      #
-      if(self.interleaved_minimization_flag and cycle == self.n_steps):
-        self.interleaved_minimization()
-      #
+      # prevent explosions by doing very quick model geometry regularization
+      if(self.interleaved_minimization): self.run_interleaved_minimization()
       kt=dynamics.kinetic_energy_and_temperature(self.vxyz,self.atomic_weights)
       self.current_temperature = kt.temperature
       self.ekin = kt.kinetic_energy
