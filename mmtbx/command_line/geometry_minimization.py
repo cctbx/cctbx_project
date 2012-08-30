@@ -57,7 +57,7 @@ def run(processed_pdb_file, params=master_params.extract(), log=sys.stdout):
   reference_coordinate_proxies = None
   if (co.restrain_c_alpha_positions):
     from mmtbx.geometry_restraints import reference_coordinate
-    ca_selection = all_chain_proxies.pdb_hierarchy.get_c_alpha_selection()
+    ca_selection=all_chain_proxies.pdb_hierarchy.get_peptide_c_alpha_selection()
     ca_sites_cart = \
       all_chain_proxies.sites_cart.deep_copy().select(ca_selection)
     reference_coordinate_proxies = \
