@@ -12,6 +12,8 @@ import random
 import time
 import math
 import iotbx.phil
+from cctbx import maptbx
+from libtbx import group_args
 
 def random_velocities(
       masses,
@@ -39,9 +41,11 @@ def random_velocities(
 class interleaved_lbfgs_minimization(object):
 
   def __init__(self,
+        restraints_manager,
         conservative_pair_proxies,
         sites_cart,
         max_iterations):
+    self.restraints_manager = restraints_manager
     self.conservative_pair_proxies = conservative_pair_proxies
     self.x = sites_cart.as_double()
     self.minimizer = scitbx.lbfgs.run(
@@ -59,13 +63,17 @@ class interleaved_lbfgs_minimization(object):
     sites_cart = flex.vec3_double(self.x)
     f = 0
     g = flex.vec3_double(sites_cart.size(), (0,0,0))
-    for sorted_asu_proxies in [self.conservative_pair_proxies.bond,
-                               self.conservative_pair_proxies.angle]:
-      if (sorted_asu_proxies is None): continue
-      f += geometry_restraints.bond_residual_sum(
-        sites_cart=sites_cart,
-        sorted_asu_proxies=sorted_asu_proxies,
-        gradient_array=g)
+    tmp = self.restraints_manager.energies_sites(sites_cart = sites_cart,
+      compute_gradients=True)
+    f = tmp.target
+    g = tmp.gradients
+    #for sorted_asu_proxies in [self.conservative_pair_proxies.bond,
+    #                           self.conservative_pair_proxies.angle]:
+    #  if (sorted_asu_proxies is None): continue
+    #  f += geometry_restraints.bond_residual_sum(
+    #    sites_cart=sites_cart,
+    #    sorted_asu_proxies=sorted_asu_proxies,
+    #    gradient_array=g)
     return f, g.as_double()
 
 master_params = iotbx.phil.parse("""\
@@ -83,6 +91,23 @@ master_params = iotbx.phil.parse("""\
     .type = int
 """)
 
+class gradients_calculator_geometry_restraints(object):
+  def __init__(self, restraints_manager = None):
+    adopt_init_args(self, locals())
+    self.gc = 0, 0
+
+  def gradients(self, xray_structure, force_update_mask=False):
+    factor = 1.0
+    sites_cart = xray_structure.sites_cart()
+    c = self.restraints_manager.energies_sites(sites_cart = sites_cart,
+      compute_gradients=True)
+    if(c.normalization_factor is not None): factor *= c.normalization_factor
+    result = c.gradients
+    #factor = 0.0001
+    if(factor != 1.0): result *= 1.0 / factor
+    #print flex.min(result.as_double()), flex.max(result.as_double()), \
+    #  flex.mean(result.as_double()), result.norm()
+    return result
 
 class gradients_calculator_reciprocal_space(object):
   def __init__(self,
@@ -131,10 +156,60 @@ class gradients_calculator_reciprocal_space(object):
       if(result is None): result = gcw
       else: result = result + gcw
     if(factor != 1.0): result *= 1.0 / factor
+    #print "norms:", self.gc.norm(), self.gx.norm(), result.norm()
     return result
 
+class gradients_calculator_real_space_simple(object):
+  def __init__(self,
+               restraints_manager        = None,
+               real_space_gradients_delta= 1./4,
+               unit_cell                 = None,
+               target_map                = None,
+               sites_cart                = None,
+               wx                        = None,
+               wc                        = None,
+               update_gradient_threshold = 0):
+    adopt_init_args(self, locals())
+    assert [self.target_map,         self.wx].count(None) in [0,2]
+    assert [self.restraints_manager, self.wc].count(None) in [0,2]
+    self.gx, self.gc = 0, 0
+    if(self.target_map is not None):
+      self.gx = self._compute_gradients()
 
-class cartesian_dynamics(object):
+  def _compute_gradients(self):
+    return -1.*maptbx.real_space_gradients_simple(
+      unit_cell   = self.unit_cell,
+      density_map = self.target_map,
+      sites_cart  = self.sites_cart,
+      delta       = self.real_space_gradients_delta,
+      selection   = flex.bool(self.sites_cart.size(), True))
+
+  def gradients(self, xray_structure, force_update_mask=False):
+    factor = 1.0
+    sites_cart = xray_structure.sites_cart()
+    if(self.target_map is not None):
+      max_shift = flex.max(flex.sqrt((self.sites_cart - sites_cart).dot()))
+      if(max_shift > self.update_gradient_threshold):
+        self.sites_cart = sites_cart
+        self.gx = self._compute_gradients()
+    if(self.restraints_manager is not None):
+      c = self.restraints_manager.energies_sites(sites_cart = sites_cart,
+        compute_gradients=True)
+      self.gc = c.gradients
+      factor *= self.wc
+      if(c.normalization_factor is not None): factor *= c.normalization_factor
+    result = None
+    if(self.wx is not None):
+      result = self.wx * self.gx
+    if(self.wc is not None):
+      gcw = self.wc * self.gc
+      if(result is None): result = gcw
+      else: result = result + gcw
+    if(factor != 1.0): result *= 1.0 / factor
+    #print "norms:", self.gc.norm(), self.gx.norm(), result.norm()
+    return result
+
+class run(object):
   def __init__(self,
                xray_structure,
                gradients_calculator,
@@ -166,13 +241,34 @@ class cartesian_dynamics(object):
       self.vxyz = flex.vec3_double(self.atomic_weights.size(),(0,0,0))
     else:
       self.vxyz = vxyz
+    #
+    self.interleaved_minimization_params = group_args(
+      number_of_iterations = 0,
+      time_step_factor = 1,
+      restraints=["bonds", "angles"])
+    imp = self.interleaved_minimization_params
+    self.interleaved_minimization_flag = (
+      imp is not None and imp.number_of_iterations > 0)
+    if (self.interleaved_minimization_flag):
+      assert imp.time_step_factor > 0
+      self.time_step *= imp.time_step_factor
+      if ("bonds" not in imp.restraints):
+        raise Sorry(
+          'Invalid choice: %s.restraints: "bonds" must always be included.'
+            % imp.__phil_path__())
+      self.interleaved_minimization_angles = "angles" in imp.restraints
+    else:
+      self.interleaved_minimization_angles = False
+    #
     self.tstep = self.time_step / self.timfac
     self()
 
   def __call__(self):
     self.center_of_mass_info()
+    #print "0:",self.temperature, self.current_temperature
     kt = dynamics.kinetic_energy_and_temperature(self.vxyz,self.atomic_weights)
     self.current_temperature = kt.temperature
+    #print "1:",self.temperature, self.current_temperature
     self.ekin = kt.kinetic_energy
     if(self.verbose >= 1):
       self.print_dynamics_stat(text="restrained dynamics start")
@@ -196,6 +292,7 @@ class cartesian_dynamics(object):
     self.center_of_mass_info()
     kt = dynamics.kinetic_energy_and_temperature(self.vxyz,self.atomic_weights)
     self.current_temperature = kt.temperature
+    #print "2:",self.temperature, self.current_temperature
     self.ekin = kt.kinetic_energy
     if(self.verbose >= 1):
       self.print_dynamics_stat(text="velocities rescaled")
@@ -208,6 +305,22 @@ class cartesian_dynamics(object):
     self.ekin = kt.kinetic_energy
     if(self.verbose >= 1):
       self.print_dynamics_stat(text="after final integration step")
+
+  def interleaved_minimization(self):
+    geo_manager = self.gradients_calculator.restraints_manager.geometry
+    assert geo_manager.shell_sym_tables is not None
+    assert len(geo_manager.shell_sym_tables) > 0
+    conservative_pair_proxies = self.xray_structure.conservative_pair_proxies(
+      bond_sym_table=geo_manager.shell_sym_tables[0],
+      conserve_angles=self.interleaved_minimization_angles)
+    sites_cart = self.xray_structure.sites_cart()
+    interleaved_lbfgs_minimization(
+      restraints_manager = self.gradients_calculator.restraints_manager,
+      sites_cart=sites_cart,
+      conservative_pair_proxies=conservative_pair_proxies,
+      max_iterations=self.interleaved_minimization_params.number_of_iterations)
+    self.xray_structure.set_sites_cart(sites_cart=sites_cart)
+    self.xray_structure.apply_symmetry_sites()
 
   def set_velocities(self):
     self.vxyz.clear()
@@ -287,6 +400,10 @@ class cartesian_dynamics(object):
       self.xray_structure.set_sites_cart(
         sites_cart=self.xray_structure.sites_cart() + self.vxyz * self.tstep)
       self.xray_structure.apply_symmetry_sites()
+      #
+      if(self.interleaved_minimization_flag and cycle == self.n_steps):
+        self.interleaved_minimization()
+      #
       kt=dynamics.kinetic_energy_and_temperature(self.vxyz,self.atomic_weights)
       self.current_temperature = kt.temperature
       self.ekin = kt.kinetic_energy

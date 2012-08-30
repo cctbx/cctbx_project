@@ -6,6 +6,7 @@ import mmtbx.refinement.minimization
 from scitbx.array_family import flex
 import iotbx.phil
 import sys
+from libtbx import adopt_init_args
 
 master_params_str = """\
 start_temperature = 5000
@@ -98,82 +99,114 @@ def manager(params,
   print_statistics.make_header("simulated annealing", out = out)
   wx = target_weights.xyz_weights_result.wx * \
     target_weights.xyz_weights_result.wx_scale
-  run_simulated_annealing(
+  run(
     params = params,
     restraints_manager = model.restraints_manager,
     fmodel             = fmodel,
     wx                 = wx,
     wc                 = target_weights.xyz_weights_result.w,
-    out                = out)
+    log                = out)
 
-def run_simulated_annealing(params,
-                            fmodel,
-                            restraints_manager,
-                            wx,
-                            wc,
-                            out = None,
-                            verbose=True):
-  if(out is None): out = sys.stdout
-  sites_cart_start = fmodel.xray_structure.sites_cart()
-  sa_temp = params.start_temperature
-  verbose = params.verbose
-  reset_velocities = True
-  vxyz = None
-  cd_manager = None
-  den_manager = getattr(restraints_manager.geometry.generic_restraints_manager,
-    "den_manager", None)
-  cartesian_den_restraints = False
-  if(den_manager is not None):
-    if("cartesian" in den_manager.params.annealing_type):
-      restraints_manager.geometry.generic_restraints_manager.flags.den = True
-      cartesian_den_restraints = True
-      verbose = False
-  if(verbose):
-    print >> out, "  sa_temp r_work r_free distance_moved rmsd_bond rmsd_angle"
-  while params.final_temperature <= sa_temp:
-    if(sa_temp==params.start_temperature):
-      cmremove=True
-    else: cmremove=False
-    #
-    from mmtbx.dynamics import cartesian_dynamics as cd
-    gradients_calculator = cd.gradients_calculator_reciprocal_space(
-      restraints_manager        = restraints_manager,
-      fmodel                    = fmodel,
-      sites_cart                = fmodel.xray_structure.sites_cart(),
-      wx                        = wx,
-      wc                        = wc,
-      update_gradient_threshold = params.update_grads_shift)
-    #
-    cd_manager = cartesian_dynamics.cartesian_dynamics(
-      xray_structure              = fmodel.xray_structure,
-      gradients_calculator        = gradients_calculator,
-      temperature                 = sa_temp,
-      vxyz                        = vxyz,
-      n_steps                     = params.number_of_steps,
-      time_step                   = params.time_step,
-      initial_velocities_zero_fraction \
-        = params.initial_velocities_zero_fraction,
-      n_print                     = params.n_print,
-      stop_cm_motion              = cmremove,
-      reset_velocities            = reset_velocities,
-      log=out,
-      verbose=verbose)
-    reset_velocities = False
-    fmodel.update_xray_structure(
-      xray_structure = fmodel.xray_structure,
-      update_f_calc  = True,
-      update_f_mask  = True)
-    if(verbose):
-      sites_cart = fmodel.xray_structure.sites_cart()
-      es = restraints_manager.geometry.energies_sites(sites_cart = sites_cart)
-      dist = flex.mean(flex.sqrt((sites_cart_start - sites_cart).dot()))
-      fmt="  %7.1f %6.4f %6.4f         %6.2f    %6.3f     %6.2f"
-      print >> out, fmt%(sa_temp, fmodel.r_work(), fmodel.r_free(), dist,
-        es.bond_deviations()[2], es.angle_deviations()[2])
-    sa_temp -= params.cool_rate
-    if(cartesian_den_restraints):
-      print >> out, "update DEN eq distances at temp=%.1f" % sa_temp
-      den_manager.update_eq_distances(
-        sites_cart=fmodel.xray_structure.sites_cart())
-  if(den_manager is not None):
-    restraints_manager.geometry.generic_restraints_manager.flags.den = False
+class run(object):
+  def __init__(self,
+               params,
+               restraints_manager,
+               xray_structure = None,
+               wx = None,
+               wc = None,
+               fmodel = None,
+               target_map = None,
+               real_space = False,
+               log = None,
+               states_collector = None,
+               verbose=True):
+    adopt_init_args(self, locals())
+    if(self.params is None): self.params = master_params().extract()
+    if(log is None): self.log = sys.stdout
+    if(self.fmodel is not None):
+      self.xray_structure = self.fmodel.xray_structure
+    self.sites_cart_start = self.xray_structure.sites_cart()
+    self.curr_temp = params.start_temperature
+    verbose = params.verbose
+    reset_velocities = True
+    vxyz = None
+    den_manager = getattr(restraints_manager.geometry.generic_restraints_manager,
+      "den_manager", None)
+    cartesian_den_restraints = False
+    if(den_manager is not None):
+      if("cartesian" in den_manager.params.annealing_type):
+        restraints_manager.geometry.generic_restraints_manager.flags.den = True
+        cartesian_den_restraints = True
+        verbose = False
+    while params.final_temperature <= self.curr_temp:
+      if(self.curr_temp == params.start_temperature):
+        cmremove=True
+      else: cmremove=False
+      cd_manager = cartesian_dynamics.run(
+        xray_structure       = self.xray_structure,
+        gradients_calculator = self.gradients_calculator(),
+        temperature          = self.curr_temp,
+        vxyz                 = vxyz,
+        n_steps              = self.params.number_of_steps,
+        time_step            = self.params.time_step,
+        n_print              = self.params.n_print,
+        stop_cm_motion       = cmremove,
+        reset_velocities     = reset_velocities,
+        log                  = self.log,
+        verbose              = verbose)
+      reset_velocities = False
+      vxyz = cd_manager.vxyz
+      self.xray_structure = cd_manager.xray_structure
+      if(states_collector is not None):
+        self.states_collector.add(sites_cart = cd_manager.xray_structure.sites_cart())
+      if(self.fmodel is not None):
+        self.fmodel.update_xray_structure(
+          xray_structure = self.xray_structure,
+          update_f_calc  = True,
+          update_f_mask  = True)
+      self.show(curr_temp = self.curr_temp)
+      self.curr_temp -= params.cool_rate
+      if(cartesian_den_restraints):
+        print >> self.log, "update DEN eq distances at temp=%.1f" % self.curr_temp
+        den_manager.update_eq_distances(
+          sites_cart=fmodel.xray_structure.sites_cart())
+    if(den_manager is not None):
+      restraints_manager.geometry.generic_restraints_manager.flags.den = False
+
+  def show(self, curr_temp):
+    if(self.verbose):
+      sites_cart = self.xray_structure.sites_cart()
+      es=self.restraints_manager.geometry.energies_sites(sites_cart=sites_cart)
+      a,b = es.bond_deviations()[2], es.angle_deviations()[2]
+      dist = flex.mean(flex.sqrt((self.sites_cart_start - sites_cart).dot()))
+      if(self.fmodel is not None):
+        fmt="  temp=%7.1f r_work=%6.4f r_free=%6.4f dist_moved=%6.2f angles=%6.2f bonds=%6.3f"
+        print >> self.log, fmt%(curr_temp, self.fmodel.r_work(),
+          self.fmodel.r_free(), dist, b, a)
+      else:
+        fmt="  temp=%7.1f dist_moved=%6.2f angles=%6.2f bonds=%6.3f"
+        print >> self.log, fmt%(curr_temp, dist, b, a)
+
+  def gradients_calculator(self):
+    if(not self.real_space):
+      if(self.fmodel is not None):
+        grad_calc = cartesian_dynamics.gradients_calculator_reciprocal_space(
+          restraints_manager        = self.restraints_manager, # XXX WHY?
+          fmodel                    = self.fmodel,
+          sites_cart                = self.fmodel.xray_structure.sites_cart(),
+          wx                        = self.wx,
+          wc                        = self.wc,
+          update_gradient_threshold = self.params.update_grads_shift)
+      else:
+        grad_calc = cartesian_dynamics.gradients_calculator_geometry_restraints(
+          restraints_manager = self.restraints_manager)
+    else:
+      grad_calc = cartesian_dynamics.gradients_calculator_real_space_simple(
+        restraints_manager        = self.restraints_manager.geometry, # XXX WHY?
+        target_map                = self.target_map,
+        unit_cell                 = self.xray_structure.unit_cell(),
+        sites_cart                = self.xray_structure.sites_cart(),
+        wx                        = self.wx,
+        wc                        = self.wc,
+        update_gradient_threshold = 0)
+    return grad_calc

@@ -81,7 +81,7 @@ def exercise_00(inputs, verbose=0):
     restraints_manager = inputs.restraints_manager,
     sites_cart         = structure_.sites_cart(),
     wc                 = 1)
-  cartesian_dynamics.cartesian_dynamics(
+  cartesian_dynamics.run(
     gradients_calculator=gradients_calculator,
     xray_structure = structure_,
     temperature = 300,
@@ -129,7 +129,7 @@ def exercise_01(inputs, verbose=0):
       restraints_manager = inputs.restraints_manager,
       sites_cart         = structure_.sites_cart(),
       wc                 = 1)
-    inst = cartesian_dynamics.cartesian_dynamics(
+    inst = cartesian_dynamics.run(
       xray_structure = structure_,
       gradients_calculator = gradients_calculator,
       temperature = 0,
@@ -156,7 +156,7 @@ def exercise_02(inputs, verbose=0):
     restraints_manager = inputs.restraints_manager,
     sites_cart         = structure_.sites_cart(),
     wc                 = 1)
-  cartesian_dynamics.cartesian_dynamics(
+  cartesian_dynamics.run(
     xray_structure = structure_,
     gradients_calculator = gradients_calculator,
     temperature = 300,
@@ -196,7 +196,7 @@ def exercise_03(mon_lib_srv, ener_lib, verbose=0):
     restraints_manager = restraints_manager,
     sites_cart         = xray_structure.sites_cart(),
     wc                 = 1)
-  cartesian_dynamics.cartesian_dynamics(
+  cartesian_dynamics.run(
     xray_structure = xray_structure,
     gradients_calculator = gradients_calculator,
     temperature = 300,
