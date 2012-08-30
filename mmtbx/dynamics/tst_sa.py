@@ -6,10 +6,9 @@ from libtbx.utils import user_plus_sys_time
 import mmtbx.f_model
 from mmtbx.dynamics import simulated_annealing as sa
 import random
-
-if(1):
-  random.seed(0)
-  flex.set_random_seed(0)
+from mmtbx.dynamics import cartesian_dynamics
+from mmtbx.refinement import real_space
+import mmtbx.utils
 
 pdb_str_1 = """\
 CRYST1   26.960   29.455   29.841  90.00  90.00  90.00 P 21 21 21
@@ -86,6 +85,22 @@ TER
 END
 """
 
+def shake_sites(xrs, random, shift, grm=None):
+  if(random):
+    xrs.shake_sites_in_place(mean_distance = shift)
+  else:
+    grad_calc = cartesian_dynamics.gradients_calculator_geometry_restraints(
+      restraints_manager = grm)
+    cartesian_dynamics.run(
+      xray_structure       = xrs,
+      gradients_calculator = grad_calc,
+      temperature          = 1000,
+      n_steps              = 100000,
+      time_step            = 0.0005,
+      stop_cm_motion       = True,
+      stop_at_diff         = shift)
+  return xrs
+
 def get_pdb_inputs(pdb_str):
   raw_records = flex.std_string(pdb_str.splitlines())
   processed_pdb_file = rs.get_processed_pdb_object(raw_records=raw_records,
@@ -101,11 +116,22 @@ def get_pdb_inputs(pdb_str):
     xrs = xrs)
 
 def exercise_1():
+  random.seed(2679941)
+  flex.set_random_seed(2679941)
   pi = get_pdb_inputs(pdb_str=pdb_str_1)
   f_obs = abs(pi.xrs.structure_factors(d_min = 1.5).f_calc())
   r_free_flags = f_obs.generate_r_free_flags()
-  xrs_poor = pi.xrs.deep_copy_scatterers()
-  xrs_poor.shake_sites_in_place(mean_distance=3)
+  if(0):
+    pi.ph.adopt_xray_structure(pi.xrs)
+    pi.ph.write_pdb_file(file_name="start.pdb",
+      crystal_symmetry = pi.xrs.crystal_symmetry())
+  xrs_poor = shake_sites(xrs = pi.xrs.deep_copy_scatterers(), random=False,
+   shift = 1.5, grm=pi.grm)
+  if(0):
+    pi.ph.adopt_xray_structure(xrs_poor)
+    pi.ph.write_pdb_file(file_name="poor.pdb",
+      crystal_symmetry = xrs_poor.crystal_symmetry())
+
   fmodel = mmtbx.f_model.manager(
     f_obs          = f_obs,
     r_free_flags   = r_free_flags,
@@ -116,14 +142,14 @@ def exercise_1():
   params.start_temperature=5000
   params.final_temperature=0
   params.cool_rate = 100
-  params.number_of_steps = 50
+  params.number_of_steps = 100
   params.update_grads_shift = 0.3
   #
-  sa.run_simulated_annealing(
+  sa.run(
     params = params,
     fmodel = fmodel,
     restraints_manager = pi.grm,
-    wx                 = 5,
+    wx                 = 20,
     wc                 = 1,
     verbose            = True)
   #
@@ -133,14 +159,111 @@ def exercise_1():
   dist = flex.mean(flex.sqrt((pi.xrs.sites_cart() -
           fmodel.xray_structure.sites_cart()).dot()))
   print "Distance(refined, answer): %6.4f"%dist
-  assert dist < 0.075
+  assert dist < 0.15
   if(0):
     pi.ph.adopt_xray_structure(fmodel.xray_structure)
     pi.ph.write_pdb_file(file_name="refined.pdb",
       crystal_symmetry = fmodel.xray_structure.crystal_symmetry())
 
+def exercise_2(d_min = 1.5):
+  random.seed(2679941)
+  flex.set_random_seed(2679941)
+  for shake in [True, False]:
+    pi = get_pdb_inputs(pdb_str=pdb_str_1)
+    f_obs = abs(pi.xrs.structure_factors(d_min = d_min).f_calc())
+    r_free_flags = f_obs.generate_r_free_flags()
+    xrs_poor = pi.xrs.deep_copy_scatterers()
+    if(shake):
+      xrs_poor = shake_sites(xrs = pi.xrs.deep_copy_scatterers(), random=False,
+       shift = 2.0, grm=pi.grm)
+    fmodel = mmtbx.f_model.manager(
+      f_obs          = f_obs,
+      r_free_flags   = r_free_flags,
+      xray_structure = xrs_poor)
+    print "start r_work:", fmodel.r_work()
+    #
+    f_calc = pi.xrs.structure_factors(d_min = d_min).f_calc()
+    fft_map = f_calc.fft_map(resolution_factor=0.25)
+    fft_map.apply_sigma_scaling()
+    target_map = fft_map.real_map_unpadded()
+    # find optimal weight
+    from mmtbx.refinement import real_space
+    rsr_simple_refiner = real_space.simple(
+      target_map                  = target_map,
+      selection                   = flex.bool(pi.xrs.scatterers().size(), True),
+      real_space_gradients_delta  = d_min/4,
+      max_iterations              = 150,
+      geometry_restraints_manager = pi.grm.geometry)
+    refined = real_space.refinery(
+      refiner                  = rsr_simple_refiner,
+      xray_structure           = xrs_poor.deep_copy_scatterers(),
+      start_trial_weight_value = 1,
+      rms_bonds_limit          = 0.02,
+      rms_angles_limit         = 2)
+    print refined.weight_final, refined.rms_bonds_final, refined.rms_angles_final
+    #
+    params = sa.master_params().extract()
+    params.start_temperature=5000
+    params.final_temperature=0
+    params.cool_rate = 100
+    params.number_of_steps = 100
+    params.update_grads_shift = 0. # does not change runtime visibly
+    #
+    sa.run(
+      params             = params,
+      fmodel             = fmodel,
+      real_space         = True,
+      target_map         = target_map,
+      restraints_manager = pi.grm,
+      wx                 = refined.weight_final,
+      wc                 = 1.,
+      verbose            = True)
+    #
+    r = fmodel.r_work()
+    print "final r_work:", r
+    if(shake):
+      assert r < 0.07
+    else:
+      assert r < 0.04
+    dist = flex.mean(flex.sqrt((pi.xrs.sites_cart() -
+            fmodel.xray_structure.sites_cart()).dot()))
+    print "Distance(refined, answer): %6.4f"%dist
+    if(shake):
+      assert dist < 0.25
+    else:
+      assert dist < 0.05
+    if(0):
+      pi.ph.adopt_xray_structure(fmodel.xray_structure)
+      pi.ph.write_pdb_file(file_name="refined.pdb",
+        crystal_symmetry = fmodel.xray_structure.crystal_symmetry())
+
+def exercise_3():
+  pi = get_pdb_inputs(pdb_str=pdb_str_1)
+  xrs = pi.xrs.deep_copy_scatterers()
+  sites_cart_start = xrs.sites_cart()
+  states_collector = mmtbx.utils.states(
+    pdb_hierarchy  = pi.ph,
+    xray_structure = xrs)
+  #
+  params = sa.master_params().extract()
+  params.start_temperature=5000
+  params.final_temperature=0
+  params.cool_rate = 100
+  params.number_of_steps = 100
+  params.update_grads_shift = 0.
+  params.time_step = 0.0005
+  #
+  sa.run(
+    params = params,
+    xray_structure     = xrs,
+    restraints_manager = pi.grm,
+    states_collector   = states_collector)
+  states_collector.write(file_name = "all.pdb")
+
 
 if(__name__ == "__main__"):
   timer = user_plus_sys_time()
   exercise_1()
+  exercise_2()
+  exercise_3()
   print "Time: %6.2f" % timer.elapsed()
