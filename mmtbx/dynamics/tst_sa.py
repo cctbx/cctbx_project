@@ -252,6 +252,7 @@ def exercise_3():
   params.number_of_steps = 100
   params.update_grads_shift = 0.
   params.time_step = 0.0005
+  params.interleaved_minimization=True
   #
   sa.run(
     params = params,

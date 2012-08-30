@@ -23,17 +23,8 @@ time_step = 0.0005
 initial_velocities_zero_fraction = 0
   .type = float
   .expert_level=2
-interleaved_minimization
-  .expert_level=2
-  .style = box
-{
-  number_of_iterations = 0
-    .type = float
-  time_step_factor = 10
-    .type = float
-  restraints = *bonds *angles
-    .type = choice(multi=True)
-}
+interleaved_minimization = False
+  .type = bool
 n_print = 100
   .type = int
   .short_caption = Steps between log output
@@ -143,9 +134,10 @@ class run(object):
         cmremove=True
       else: cmremove=False
       cd_manager = cartesian_dynamics.run(
-        xray_structure       = self.xray_structure,
-        gradients_calculator = self.gradients_calculator(),
-        temperature          = self.curr_temp,
+        xray_structure           = self.xray_structure,
+        gradients_calculator     = self.gradients_calculator(),
+        temperature              = self.curr_temp,
+        interleaved_minimization = self.params.interleaved_minimization,
         vxyz                 = vxyz,
         n_steps              = self.params.number_of_steps,
         time_step            = self.params.time_step,
