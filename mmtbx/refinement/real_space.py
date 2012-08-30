@@ -206,7 +206,12 @@ class refinery(object):
           weight -= self.weight_sample_rate
         else:
           weight += self.weight_sample_rate
-        #print ">>> ", "%6.2f %6.2f"%(weight, weight_last), "%6.4f %5.2f"%(bd, ad)
+        if(weight<0 or abs(weight)<1.e-6):
+          self.adjust_weight_sample_rate(weight=weight)
+          weight = weight_last
+          weight -= self.weight_sample_rate
+        #print ">>> ", "%8.4f %8.4f"%(weight, weight_last), "%6.4f %5.2f"%(bd, ad),\
+        #  self.weight_sample_rate
         if((weight<0 or weight>1000) or weight in weights): break
     else:
       refiner.refine(
@@ -214,27 +219,31 @@ class refinery(object):
         weight     = weight)
       sites_cart_result = refiner.sites_cart()
     # select results
-    sel  = bonds <= rms_bonds_limit
-    sel &= angles <= rms_angles_limit
-    bonds   = bonds  .select(sel)
-    angles  = angles .select(sel)
-    weights = weights.select(sel)
-    if(sel.count(True)>0):
-      bond_max = flex.max(bonds)
-      ind = None
-      for i, b in enumerate(bonds):
-        if(b==bond_max):
-          ind = i
-          break
-      assert ind is not None
-      self.weight_final = weights[ind]
-      self.sites_cart_result = pool[self.weight_final][0][0]
-      self.rms_bonds_final,self.rms_angles_final = \
-        self.rmsds(sites_cart=self.sites_cart_result)
-      assert approx_equal(pool[self.weight_final][0][2], angles[ind])
-      assert approx_equal(pool[self.weight_final][0][1], bonds[ind])
-      assert approx_equal(self.rms_angles_final, angles[ind])
-      assert approx_equal(self.rms_bonds_final, bonds[ind])
+    if(optimize_weight):
+      sel  = bonds <= rms_bonds_limit
+      sel &= angles <= rms_angles_limit
+      bonds   = bonds  .select(sel)
+      angles  = angles .select(sel)
+      weights = weights.select(sel)
+      if(sel.count(True)>0):
+        bond_max = flex.max(bonds)
+        ind = None
+        for i, b in enumerate(bonds):
+          if(b==bond_max):
+            ind = i
+            break
+        assert ind is not None
+        self.weight_final = weights[ind]
+        self.sites_cart_result = pool[self.weight_final][0][0]
+        self.rms_bonds_final,self.rms_angles_final = \
+          self.rmsds(sites_cart=self.sites_cart_result)
+        assert approx_equal(pool[self.weight_final][0][2], angles[ind])
+        assert approx_equal(pool[self.weight_final][0][1], bonds[ind])
+        assert approx_equal(self.rms_angles_final, angles[ind])
+        assert approx_equal(self.rms_bonds_final, bonds[ind])
+    else:
+      self.weight_final = self.weight_start
+      self.sites_cart_result = sites_cart_result
 
   def rmsds(self, sites_cart):
     b,a = None,None
@@ -246,17 +255,12 @@ class refinery(object):
     return b,a
 
   def adjust_weight_sample_rate(self, weight):
-    if(  weight <= 0.1):   self.weight_sample_rate=0.01
-    elif(weight <= 1.0):   self.weight_sample_rate=0.1
-    elif(weight <= 10.):   self.weight_sample_rate=1.
-    elif(weight <= 100.):  self.weight_sample_rate=10.
+    if(  weight <= 0.01 ): self.weight_sample_rate=0.001
+    elif(weight <= 0.1  ): self.weight_sample_rate=0.01
+    elif(weight <= 1.0  ): self.weight_sample_rate=0.1
+    elif(weight <= 10.  ): self.weight_sample_rate=1.
+    elif(weight <= 100. ): self.weight_sample_rate=10.
     elif(weight <= 1000.): self.weight_sample_rate=100.
-
-    #if(  weight <= 1000.): self.weight_sample_rate=100.
-    #if(  weight <= 100.):  self.weight_sample_rate=10.
-    #if(  weight <= 10.):   self.weight_sample_rate=1.
-    #elif(weight <= 1.0):   self.weight_sample_rate=0.1
-    #elif(weight <= 0.1):   self.weight_sample_rate=0.01
 
 class states(object):
   def __init__(self, xray_structure, pdb_hierarchy):
@@ -638,14 +642,30 @@ def run(target_map,
   weight_d = 50
   weight_s = 50
   #
+  weights = flex.double()
+  optimize_weight = True
   for i in range(macro_cycles):
     if(expload and i>1 and i%2==0):
       tmp_dc = tmp.deep_copy_scatterers()
       tmp.shake_sites_in_place(mean_distance=3) # reverse back if refinement failed
+      #
+      #from mmtbx.dynamics import cartesian_dynamics
+      #grad_calc = cartesian_dynamics.gradients_calculator_geometry_restraints(
+      #  restraints_manager = geometry_restraints_manager.geometry)
+      #cartesian_dynamics.run(
+      #  xray_structure       = tmp,
+      #  gradients_calculator = grad_calc,
+      #  temperature          = 3000,
+      #  n_steps              = 100000,
+      #  time_step            = 0.0005,
+      #  stop_cm_motion       = True,
+      #  stop_at_diff         = 5.0)
+      #
     if(minimization):
       target_type = "simple"
       refined = refinery(
         refiner          = rsr_simple_refiner,
+        optimize_weight  = optimize_weight,
         xray_structure   = tmp,
         start_trial_weight_value = weight_s,
         rms_bonds_limit  = rms_bonds_limit,
@@ -657,6 +677,10 @@ def run(target_map,
         if(verbose):
           monitor_object.show(suffix=" weight: %s"%str(weight_s))
         tmp = monitor_object.xray_structure.deep_copy_scatterers()
+        weights.append(refined.weight_final)
+        if(weights.size() == 2):
+          weight_s = flex.mean(weights)
+          optimize_weight = False
       else:
         tmp = tmp_dc
         print "Refinement failed."
