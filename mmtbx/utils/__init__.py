@@ -2869,3 +2869,24 @@ class experimental_data_target_and_gradients(object):
     for i, sc in enumerate(self.fmodel.xray_structure.scatterers()):
       print >> log, fmt%(sites_cart[i][0], sites_cart[i][1], sites_cart[i][2],
         sc.occupancy,adptbx.u_as_b(sc.u_iso), go[i], gs[i][0],gs[i][1],gs[i][2])
+
+class states(object):
+  def __init__(self, xray_structure, pdb_hierarchy):
+    adopt_init_args(self, locals())
+    self.counter = 0
+    self.root = iotbx.pdb.hierarchy.root()
+    self.sites_carts = []
+
+  def add(self, sites_cart):
+    self.sites_carts.append(sites_cart)
+    ph = self.pdb_hierarchy.deep_copy()
+    xrs = self.xray_structure.replace_sites_cart(new_sites = sites_cart)
+    ph.adopt_xray_structure(xrs)
+    models = ph.models()
+    md = models[0].detached_copy()
+    md.id = str(self.counter)
+    self.root.append_model(md)
+    self.counter += 1
+
+  def write(self, file_name):
+    self.root.write_pdb_file(file_name = file_name)
