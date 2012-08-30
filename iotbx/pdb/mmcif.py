@@ -1,6 +1,7 @@
 from __future__ import division
 from cctbx.array_family import flex
 from libtbx.containers import OrderedSet
+from libtbx import group_args
 import iotbx.pdb
 from iotbx.pdb import hierarchy
 from iotbx.pdb import hy36encode
@@ -401,6 +402,9 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
   def model_ids(self):
     return flex.std_string([model.id for model in self.hierarchy.models()])
 
+  def extract_f_model_core_constants(self):
+    return extract_f_model_core_constants(self.cif_block)
+
 
 def _float_or_None(value):
   if value is not None:
@@ -434,3 +438,29 @@ class _cif_get_r_rfree_sigma_object(object):
     if(log is None): log = sys.stdout
     print >> self.log, self.formatted_string()
 
+
+def extract_f_model_core_constants(cif_block):
+  k_sol = _float_or_None(cif_block.get('_refine.solvent_model_param_ksol'))
+  b_sol = _float_or_None(cif_block.get('_refine.solvent_model_param_bsol'))
+  b_cart = [_float_or_None(cif_block.get('_refine.aniso_B[%s][%s]' %(i, j)))
+            for i, j in ('11', '22', '33', '12', '13', '23')]
+  assert b_cart.count(None) in (0, 6)
+  r_solv = _float_or_None(cif_block.get('_refine.pdbx_solvent_vdw_probe_radii'))
+  r_shrink = _float_or_None(cif_block.get('_refine.pdbx_solvent_shrinkage_radii'))
+  r_work = _float_or_None(cif_block.get('_refine.ls_R_factor_R_work'))
+  r_free = _float_or_None(cif_block.get('_refine.ls_R_factor_R_free'))
+  # TODO: extract these from the CIF?
+  twin_fraction = None
+  twin_law = None
+  grid_step_factor = None
+  return group_args(
+    k_sol            = k_sol,
+    b_sol            = b_sol,
+    b_cart           = b_cart,
+    twin_fraction    = twin_fraction,
+    twin_law         = twin_law,
+    r_solv           = r_solv,
+    r_shrink         = r_shrink,
+    grid_step_factor = grid_step_factor,
+    r_work           = r_work,
+    r_free           = r_free)
