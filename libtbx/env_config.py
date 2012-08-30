@@ -353,6 +353,41 @@ def remove_or_rename(path):
       try: os.rename(path, path+".old")
       except OSError: pass
 
+# Constant used in class environment.write_bin_sh_dispatcher -----------------
+
+_SHELLREALPATH_CODE = '''
+# ----------------------------------------------------------------------------
+# The shellrealpath function resolves an absolute physical path of its
+# first argument and stores it in a global shell variable RESULT.
+# The function returns nonzero for unreadable or invalid symlinks
+# and resets the RESULT to an empty string.
+
+shellrealpath() {
+    local ORGDIR="$PWD"
+    local TARGET="$1"
+    RESULT=""
+    # This test fails for a symlink loop.  We can do without resolution
+    # of symlinks that point to existing unreadable files.
+    [ -r "$TARGET" ] || return $?
+    # Check if the readlink command exists.
+    type readlink >/dev/null || return $?
+    while true; do
+        cd "$(dirname "$TARGET")"
+        TARGET="$(basename "$TARGET")"
+        if [ -L "$TARGET" ]; then
+            TARGET="$(readlink "$TARGET")"
+            continue
+        fi
+        RESULT="$(pwd -P)/$TARGET"
+        break
+    done
+    cd "$ORGDIR"
+}
+# ----------------------------------------------------------------------------
+'''
+
+# ----------------------------------------------------------------------------
+
 class environment:
 
   def __init__(self, build_path):
@@ -908,10 +943,11 @@ Wait for the command to finish, then try again.""" % vars())
     print >> f, '#   %s' \
       % show_string(self.under_build("dispatcher_include_template.sh"))
     print >> f, '#'
+    print >> f, _SHELLREALPATH_CODE
     print >> f, 'unset PYTHONHOME'
     print >> f, 'LC_ALL=C'
     print >> f, 'export LC_ALL'
-    print >> f, 'LIBTBX_BUILD="$(cd "$(dirname "$0")" && cd .. && pwd -P)"'
+    print >> f, 'LIBTBX_BUILD="$(shellrealpath "$0" && cd "$(dirname "$RESULT")/.." && pwd)"'
     print >> f, 'export LIBTBX_BUILD'
     print >> f, 'LIBTBX_PYEXE_BASENAME="%s"' % self.python_exe.basename()
     print >> f, 'export LIBTBX_PYEXE_BASENAME'
