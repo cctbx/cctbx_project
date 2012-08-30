@@ -116,10 +116,10 @@ def get_pdb_inputs(pdb_str):
     xrs = xrs)
 
 def exercise_1():
-  random.seed(2679941)
-  flex.set_random_seed(2679941)
+  random.seed(0)
+  flex.set_random_seed(0)
   pi = get_pdb_inputs(pdb_str=pdb_str_1)
-  f_obs = abs(pi.xrs.structure_factors(d_min = 1.5).f_calc())
+  f_obs = abs(pi.xrs.structure_factors(d_min = 2.5).f_calc())
   r_free_flags = f_obs.generate_r_free_flags()
   if(0):
     pi.ph.adopt_xray_structure(pi.xrs)
@@ -139,11 +139,11 @@ def exercise_1():
   print "start r_work:", fmodel.r_work()
   #
   params = sa.master_params().extract()
-  params.start_temperature=5000
+  params.start_temperature=3000
   params.final_temperature=0
   params.cool_rate = 100
   params.number_of_steps = 100
-  params.update_grads_shift = 0.3
+  params.update_grads_shift = 0.0
   #
   sa.run(
     params = params,
@@ -155,11 +155,11 @@ def exercise_1():
   #
   r = fmodel.r_work()
   print "final r_work:", r
-  assert r < 0.025
+  assert r < 0.006, r
   dist = flex.mean(flex.sqrt((pi.xrs.sites_cart() -
           fmodel.xray_structure.sites_cart()).dot()))
   print "Distance(refined, answer): %6.4f"%dist
-  assert dist < 0.15
+  assert dist < 0.16, dist
   if(0):
     pi.ph.adopt_xray_structure(fmodel.xray_structure)
     pi.ph.write_pdb_file(file_name="refined.pdb",
