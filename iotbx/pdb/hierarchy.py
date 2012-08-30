@@ -690,11 +690,21 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     if (i_seqs.all_eq(0)) :
       atoms.reset_i_seq()
 
-  def get_c_alpha_selection (self) :
-    atoms = self.atoms()
-    names = atoms.extract_name()
-    selection = names == " CA "
-    return selection
+  def get_peptide_c_alpha_selection(self):
+    result = flex.size_t()
+    import iotbx.pdb
+    get_class = iotbx.pdb.common_residue_names_get_class
+    i_seqs = self.atoms().extract_i_seq()
+    if(i_seqs.size()>1): assert i_seqs[1:].all_ne(0)
+    for model in self.models():
+      for chain in model.chains():
+        for rg in chain.residue_groups():
+          for ag in rg.atom_groups():
+            if(get_class(ag.resname) == "common_amino_acid"):
+              for atom in ag.atoms():
+                if(atom.name.strip() == "CA"):
+                  result.append(atom.i_seq)
+    return result
 
 class _(boost.python.injector, ext.model, __hash_eq_mixin):
 
