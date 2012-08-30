@@ -146,7 +146,7 @@ def exercise_1():
     == 29
 
   #test selection
-  ca_selection = pdb_hierarchy.get_c_alpha_selection()
+  ca_selection = pdb_hierarchy.get_peptide_c_alpha_selection()
   ca_sites_cart = sites_cart.select(ca_selection)
   grm.generic_restraints_manager.add_reference_restraints(
     sites_cart=ca_sites_cart,
@@ -171,7 +171,7 @@ def exercise_1():
   assert len(grm.generic_restraints_manager.reference_coordinate_proxies) \
     == 6
   grm.generic_restraints_manager.remove_reference_restraints(
-    selection=ca_selection.iselection())
+    selection=ca_selection)
   assert len(grm.generic_restraints_manager.reference_coordinate_proxies) \
     == 3
   selection = flex.bool([True]*29)
