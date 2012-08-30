@@ -1090,6 +1090,11 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
       pdb_hierarchy    = pdb_hierarchy,
       chain_ids        = chain_ids)
 
+  def extract_f_model_core_constants(self):
+    import iotbx.pdb.remark_3_interpretation
+    remark_3_records = self.extract_remark_iii_records(3)
+    return remark_3_interpretation.extract_f_model_core_constants(remark_3_records)
+
 
 class rewrite_normalized(object):
 
