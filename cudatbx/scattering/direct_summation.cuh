@@ -3,6 +3,7 @@
 
 #include <cudatbx/scattering/direct_summation.h>
 #include <cudatbx/cuda_base.cuh>
+#include <cudatbx/scattering/form_factors.cuh>
 
 /* ============================================================================
    Changing fType will affect the number of values that can be stored in shared
@@ -11,21 +12,12 @@
    single-precision.
  */
 const int threads_per_block = 1024;        // threads/block for GPU
-const int max_types = 50;                  // number of atom types
 const int padding = 128 / sizeof(fType);   // padding for data arrays
 /* ============================================================================
  */
 
 namespace cudatbx {
 namespace scattering {
-
-  // form factors
-  const int max_terms = 10;
-  __device__ __constant__ fType d_a[max_types * max_terms];
-  __device__ __constant__ fType d_b[max_types * max_terms];
-  __device__ __constant__ fType d_c[max_types];
-  __device__ __constant__ int d_n_types;
-  __device__ __constant__ int d_n_terms;
 
   // constants
   __device__ __constant__ fType two_pi = fType(2.0)*CUDART_PI_F;
@@ -147,12 +139,7 @@ namespace scattering {
       // last form factor is always for boundary solvent layer
       stol_sq = float(0.25) * (h_i*h_i + k_i*k_i + l_i*l_i);
       for (int type=0; type<d_n_types; type++) {
-        f[type] = 0.0;
-        for (int term=0; term<d_n_terms; term++) {
-          f[type] += d_a[type*d_n_terms + term] *
-            __expf(-d_b[type*d_n_terms + term] * stol_sq);
-        }
-        f[type] += d_c[type];
+        f[type] = form_factor(type,stol_sq);
       }
     }
 

@@ -313,6 +313,7 @@ cudatbx/scattering/__init__.py -text
 cudatbx/scattering/direct_summation.cu -text
 cudatbx/scattering/direct_summation.cuh -text
 cudatbx/scattering/direct_summation.h -text
+cudatbx/scattering/form_factors.cuh -text
 cudatbx/scattering/scattering_ext.cpp -text
 cudatbx/scattering/tst_direct_summation.py -text
 dox.sphinx/Makefile -text
