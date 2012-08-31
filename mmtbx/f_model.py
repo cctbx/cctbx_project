@@ -1272,18 +1272,56 @@ class manager(manager_mixin):
         nproc           = nproc)
       #print >> out, result.k_sols()
       #print >> out, result.b_sol()
-      #print >> out, result.b_cart()
+      #print >> out, (result.b_cart()[0]+result.b_cart()[1]+result.b_cart()[2])/3
       u_star = adptbx.u_cart_as_u_star(self.f_obs().unit_cell(), adptbx.b_as_u(result.b_cart()))
       k_anisotropic = mmtbx.f_model.ext.k_anisotropic(self.f_obs().indices(),u_star)
       k_anisotropic_twin = None
       if(self.twin_set is not None):
         k_anisotropic_twin = mmtbx.f_model.ext.k_anisotropic(self.twin_set.indices(),u_star)
       assert approx_equal(k_anisotropic, result.fmodels.fmodel.k_anisotropic())
-      self.update_core(
-        k_mask             = result.fmodels.fmodel.k_masks(),
-        k_anisotropic      = result.fmodels.fmodel.k_anisotropic(),
-        k_isotropic        = result.fmodels.fmodel.k_isotropic(),
-        k_anisotropic_twin = k_anisotropic_twin)
+      ### XXX apply back overall b to b_atoms.
+      def apply_back_b_iso(xrs, k_sol, b_sol, b_cart, ss, f_obs, f_model):
+        if(xrs is None): return
+        b_min = min(b_sol, xrs.min_u_cart_eigenvalue()*adptbx.u_as_b(1.))
+        if(b_min < 0): xrs.tidy_us()
+        b_iso = (b_cart[0]+b_cart[1]+b_cart[2])/3.0
+        b_test = b_min+b_iso
+        if(b_test < 0.0): b_adj = b_iso + abs(b_test) + 0.001
+        else: b_adj = b_iso
+        b_cart_new = [b_cart[0]-b_adj,b_cart[1]-b_adj,b_cart[2]-b_adj,
+                      b_cart[3],      b_cart[4],      b_cart[5]]
+        b_sol_new = b_sol + b_adj
+        xrs.shift_us(b_shift = b_adj)
+        b_min = min(b_sol_new, xrs.min_u_cart_eigenvalue()*adptbx.u_as_b(1.))
+        assert b_min >= 0.0
+        xrs.tidy_us()
+        #
+        k_masks = [ext.k_mask(ss, k_sol, b_sol_new)]
+        u_star = adptbx.u_cart_as_u_star(f_obs.unit_cell(), adptbx.b_as_u(b_cart_new))
+        k_anisotropic = ext.k_anisotropic(f_obs.indices(), u_star)
+        from mmtbx import bulk_solvent as bss
+        x = f_obs.data()
+        y = f_model.data()
+        return k_masks, k_anisotropic, xrs
+      if(apply_back_trace and len(result.k_sols())==1):
+        k_masks, k_anisotropic, xrs = apply_back_b_iso(
+          xrs=self.xray_structure, k_sol=result.k_sols()[0],
+          b_sol=result.b_sol(), b_cart=result.b_cart(), ss=self.ss,
+          f_obs=self.f_obs(), f_model=self.f_model())
+        k_isotropic = flex.double(self.f_obs().data().size(), self.scale_k1())
+        self.update_core(
+          k_mask             = k_masks,
+          k_anisotropic      = k_anisotropic,
+          k_isotropic        = k_isotropic,
+          k_anisotropic_twin = k_anisotropic)
+        self.update_xray_structure(xray_structure=xrs, update_f_calc=True)
+      else:
+      ###
+        self.update_core(
+          k_mask             = result.fmodels.fmodel.k_masks(),
+          k_anisotropic      = result.fmodels.fmodel.k_anisotropic(),
+          k_isotropic        = result.fmodels.fmodel.k_isotropic(),
+          k_anisotropic_twin = k_anisotropic_twin)
     if(params.bulk_solvent and optimize_mask):
       self.optimize_mask(params = params, out = out, nproc=nproc)
     self.update_core()

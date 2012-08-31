@@ -130,9 +130,10 @@ class run(object):
         cartesian_den_restraints = True
         verbose = False
     while params.final_temperature <= self.curr_temp:
-      if(self.curr_temp == params.start_temperature):
-        cmremove=True
-      else: cmremove=False
+      #if(self.curr_temp == params.start_temperature):
+      #  cmremove=True
+      #else: cmremove=False
+      cmremove=True
       cd_manager = cartesian_dynamics.run(
         xray_structure           = self.xray_structure,
         gradients_calculator     = self.gradients_calculator(),

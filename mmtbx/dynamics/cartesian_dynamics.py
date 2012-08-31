@@ -3,7 +3,6 @@ from mmtbx import dynamics
 from mmtbx.dynamics.constants import \
   boltzmann_constant_akma, \
   akma_time_as_pico_seconds
-from cctbx import geometry_restraints
 from cctbx import xray
 from cctbx.array_family import flex
 import scitbx.lbfgs
@@ -13,7 +12,6 @@ import time
 import math
 import iotbx.phil
 from cctbx import maptbx
-from libtbx import group_args
 
 def random_velocities(
       masses,
@@ -367,7 +365,8 @@ class run(object):
         sites_cart=self.xray_structure.sites_cart() + self.vxyz * self.tstep)
       self.xray_structure.apply_symmetry_sites()
       # prevent explosions by doing very quick model geometry regularization
-      if(self.interleaved_minimization): self.run_interleaved_minimization()
+      if(self.interleaved_minimization and cycle==self.n_steps):
+        self.run_interleaved_minimization()
       kt=dynamics.kinetic_energy_and_temperature(self.vxyz,self.atomic_weights)
       self.current_temperature = kt.temperature
       self.ekin = kt.kinetic_energy
