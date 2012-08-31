@@ -4,6 +4,8 @@ from libtbx.utils import Sorry
 import libtbx.load_env
 from libtbx import group_args
 import iotbx.pdb
+from cctbx.array_family import flex
+import mmtbx.rotamer
 import sys, os
 
 def find_source_dir(optional=False):
@@ -179,6 +181,13 @@ def makeAtomDict(res):
 def collect_sidechain_chi_angles (pdb_hierarchy, atom_selection=None) :
   angle_lookup = SidechainAngles(False)
   residue_chis = []
+  if atom_selection is not None:
+    if (isinstance(atom_selection, flex.bool)):
+      atom_selection = atom_selection.iselection()
+  if atom_selection is None:
+    atom_selection = flex.bool(
+      len(pdb_hierarchy.atoms().extract_xyz()),
+      True).iselection()
   for model in pdb_hierarchy.models() :
     for chain in model.chains() :
       for conformer in chain.conformers() :
@@ -198,7 +207,12 @@ def collect_sidechain_chi_angles (pdb_hierarchy, atom_selection=None) :
             else :
               i_seqs = [ atom.i_seq for atom in atoms ]
               chis.append(group_args(chi_id=i, i_seqs=i_seqs))
-          if (len(chis) > 0) :
+          atoms_in_selection = True
+          for i_seq in i_seqs:
+            if i_seq not in atom_selection:
+              atoms_in_selection = False
+              break
+          if (len(chis) > 0) and (atoms_in_selection) :
             residue_info = group_args(
               residue_name=residue.resname,
               chain_id=chain.id,
@@ -207,3 +221,142 @@ def collect_sidechain_chi_angles (pdb_hierarchy, atom_selection=None) :
               chis=chis)
             residue_chis.append(residue_info)
   return residue_chis
+
+def collect_residue_torsion_angles (pdb_hierarchy, atom_selection=None) :
+  residue_torsions = []
+
+  ### chi angles ###
+  residue_chis = collect_sidechain_chi_angles(
+                   pdb_hierarchy=pdb_hierarchy,
+                   atom_selection=atom_selection)
+  residue_torsions = residue_chis
+  ##################
+
+  if atom_selection is not None:
+    if (isinstance(atom_selection, flex.bool)):
+      atom_selection = atom_selection.iselection()
+  if atom_selection is None:
+    atom_selection = flex.bool(
+      len(pdb_hierarchy.atoms().extract_xyz()),
+      True).iselection()
+  previous_residue = None
+  next_residue = None
+  for model in pdb_hierarchy.models() :
+    for chain in model.chains() :
+      for conformer in chain.conformers() :
+        for i_res, residue in enumerate(conformer.residues()) :
+          if i_res < (len(conformer.residues())-1):
+            next_residue = conformer.residues()[i_res+1]
+          else:
+            next_residue = None
+          torsions = []
+          curN = None
+          curCA = None
+          curC = None
+          for atom in residue.atoms():
+            if atom.name == " N  ":
+              curN = atom
+            elif atom.name == " CA ":
+              curCA = atom
+            elif atom.name == " C  ":
+              curC = atom
+          if curN is None or curCA is None or curC is None:
+            continue
+
+          ### omega ###
+          if previous_residue is not None:
+            prevCA = None
+            prevC = None
+            for atom in previous_residue.atoms():
+              if atom.name == " CA ":
+                prevCA = atom
+              elif atom.name == " C  ":
+                prevC = atom
+            if prevCA is not None and prevC is not None:
+              atoms_in_selection = True
+              for atom in [prevCA, prevC, curN, curCA]:
+                if atom.i_seq not in atom_selection:
+                  atoms_in_selection = False
+              if atoms_in_selection:
+                omega = \
+                  mmtbx.rotamer.omega_from_atoms(prevCA, prevC, curN, curCA)
+                if omega is not None:
+                  i_seqs = [prevCA.i_seq, prevC.i_seq, curN.i_seq, curCA.i_seq]
+                  torsions.append(group_args(chi_id="omega", i_seqs=i_seqs))
+          ###########
+
+          ### phi ###
+          if previous_residue is not None:
+            prevC = None
+            for atom in previous_residue.atoms():
+              if atom.name == " C  ":
+                prevC = atom
+            if prevC is not None:
+              atoms_in_selection = True
+              for atom in [prevC, curN, curCA, curC]:
+                if atom.i_seq not in atom_selection:
+                  atoms_in_selection = False
+              if atoms_in_selection:
+                phi = mmtbx.rotamer.phi_from_atoms(prevC, curN, curCA, curC)
+                if phi is not None:
+                  i_seqs = [prevC.i_seq, curN.i_seq, curCA.i_seq, curC.i_seq]
+                  torsions.append(group_args(chi_id="phi", i_seqs=i_seqs))
+          ###########
+
+          ### psi ###
+          if next_residue is not None:
+            nextN = None
+            for atom in next_residue.atoms():
+              if atom.name == " N  ":
+                nextN = atom
+            if nextN is not None:
+              atoms_in_selection = True
+              for atom in [curN, curCA, curC, nextN]:
+                if atom.i_seq not in atom_selection:
+                  atoms_in_selection = False
+              if atoms_in_selection:
+                psi = mmtbx.rotamer.psi_from_atoms(curN, curCA, curC, nextN)
+                if psi is not None:
+                  i_seqs = [curN.i_seq, curCA.i_seq, curC.i_seq, nextN.i_seq]
+                  torsions.append(group_args(chi_id="psi", i_seqs=i_seqs))
+          ###########
+
+          ### c-beta ###
+          curCB = None
+          for atom in residue.atoms():
+            if atom.name == " CB ":
+              curCB = atom
+          if curCB is not None:
+            atoms_in_selection = True
+            for atom in [curN, curC, curCA, curCB]:
+              if atom.i_seq not in atom_selection:
+                atoms_in_selection = False
+            if atoms_in_selection:
+              ncab = \
+                mmtbx.rotamer.improper_ncab_from_atoms(curN,
+                                                       curC,
+                                                       curCA,
+                                                       curCB)
+              i_seqs = [curN.i_seq, curC.i_seq, curCA.i_seq, curCB.i_seq]
+              torsions.append(group_args(chi_id="ncab", i_seqs=i_seqs))
+              cnab = \
+                mmtbx.rotamer.improper_ncab_from_atoms(curC,
+                                                       curN,
+                                                       curCA,
+                                                       curCB)
+              i_seqs = [curC.i_seq, curN.i_seq, curCA.i_seq, curCB.i_seq]
+              torsions.append(group_args(chi_id="cnab", i_seqs=i_seqs))
+          ##############
+
+          altloc = residue.atoms()[0].fetch_labels().altloc
+          atoms_in_selection = True
+          if (len(torsions) > 0) and (atoms_in_selection) :
+            residue_info = group_args(
+              residue_name=residue.resname,
+              chain_id=chain.id,
+              altloc=altloc,
+              resid=residue.resid(),
+              chis=torsions)
+            residue_torsions.append(residue_info)
+          previous_residue = residue
+  return residue_torsions
