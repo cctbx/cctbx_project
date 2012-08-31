@@ -11,6 +11,10 @@ master_phil = libtbx.phil.parse("""
 include scope mmtbx.utils.cmdline_input_phil_str
 hetatms_only = True
   .type = bool
+skip_xtal_solution_mols = False
+  .type = bool
+  .help = If True, common crystallization components such as sulfate or \
+    glycerol will be ignored.
 skip_single_atoms = True
   .type = bool
 skip_alt_confs = True
@@ -26,6 +30,10 @@ write_coot_script = True
 write_maps = Auto
   .type = bool
 """, process_includes=True)
+
+common_xtal_mols = [
+  "SO4", "GOL", "EDO", "PEG", "ACT", "BME",
+]
 
 def run (args, out=sys.stdout) :
   if (len(args) == 0) or (args == ["--help"]) :
@@ -47,12 +55,16 @@ Full parameters:
     process_pdb_file=False,
     scattering_table="n_gaussian")
   params = cmdline.params
+  ignore_list = []
+  if (params.skip_xtal_solution_mols) :
+    ignore_list = common_xtal_mols
   outliers = real_space_correlation.find_suspicious_residues(
     fmodel=cmdline.fmodel,
     pdb_hierarchy=cmdline.pdb_hierarchy,
     hetatms_only=params.hetatms_only,
     skip_single_atoms=params.skip_single_atoms,
     skip_alt_confs=params.skip_alt_confs,
+    ignore_resnames=ignore_list,
     min_acceptable_cc=params.min_acceptable_cc,
     min_acceptable_2fofc=params.min_acceptable_2fofc,
     max_frac_atoms_below_min=params.max_frac_atoms_below_min,
