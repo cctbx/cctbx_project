@@ -133,10 +133,15 @@ class prune_model (object) :
     from scitbx.array_family import flex
     sites_cart = flex.vec3_double()
     sites_cart_nonH = flex.vec3_double()
+    values_2fofc = flex.double()
+    values_fofc = flex.double()
     for atom in atoms :
       sites_cart.append(atom.xyz)
-      if (not atom.element.strip() in ["H","D"]) :
+      if (not atom.element.strip() in ["H","D"]) : #XXX trap: neutrons?
         sites_cart_nonH.append(atom.xyz)
+        site_frac = self.unit_cell.fractionalize(atom.xyz)
+        values_2fofc.append(self.f_map.eight_point_interpolation(site_frac))
+        values_fofc.append(self.diff_map.eight_point_interpolation(site_frac))
     if (len(sites_cart_nonH) == 0) :
       return None
     sel = maptbx.grid_indices_around_sites(
@@ -148,15 +153,10 @@ class prune_model (object) :
     f_map_sel = self.f_map.select(sel)
     model_map_sel = self.model_map.select(sel)
     diff_map_sel = self.diff_map.select(sel)
-    mean_f_value = flex.mean(f_map_sel.as_1d())
-    mean_diff_value = flex.mean(diff_map_sel.as_1d())
-    cc = flex.linear_correlation(x=f_map_sel,
-      y=model_map_sel).coefficient()
-    # XXX PA: This should be density at atomic centers. Mean is too atom radius
-    # XXX PA: dependent, and has no reference values.
+    cc = flex.linear_correlation(x=f_map_sel, y=model_map_sel).coefficient()
     return group_args(cc=cc,
-      mean_2fofc=mean_f_value,
-      mean_fofc=mean_diff_value)
+      mean_2fofc=flex.mean(values_2fofc),
+      mean_fofc=flex.mean(values_fofc))
 
   def process_residues (self, out=None) :
     if (out is None) :
