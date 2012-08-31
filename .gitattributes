@@ -1219,8 +1219,8 @@ mmtbx/geometry_restraints/hbond.h -text
 mmtbx/geometry_restraints/hbond.py -text
 mmtbx/geometry_restraints/ramachandran.h -text
 mmtbx/geometry_restraints/ramachandran.py -text
+mmtbx/geometry_restraints/reference.py svneol=native#text/x-python
 mmtbx/geometry_restraints/reference_coordinate.h svneol=native#text/plain
-mmtbx/geometry_restraints/reference_coordinate.py svneol=native#text/x-python
 mmtbx/geometry_restraints/rotamer.h svneol=native#text/plain
 mmtbx/geometry_restraints/rotamer.py svneol=native#text/x-python
 mmtbx/geometry_restraints/tst_hbond.py -text

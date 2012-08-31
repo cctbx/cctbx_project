@@ -1,7 +1,6 @@
 from __future__ import division
 
 from libtbx.test_utils import approx_equal
-from mmtbx.geometry_restraints import reference_coordinate
 import iotbx.pdb
 from cctbx.array_family import flex
 from cctbx import adp_restraints # import dependency
@@ -125,60 +124,66 @@ def exercise_1():
   grm = processed_pdb_file.geometry_restraints_manager()
   pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
   sites_cart = pdb_hierarchy.atoms().extract_xyz()
-  reference_coordinate_proxies = \
-    reference_coordinate.build_proxies(
-      sites_cart=sites_cart).reference_coordinate_proxies
+
+  assert grm.generic_restraints_manager.reference_manager is not None
+  assert grm.generic_restraints_manager.\
+         reference_manager.reference_coordinate_proxies is None
+  assert grm.generic_restraints_manager.\
+         reference_manager.reference_torsion_proxies is None
+
+  grm.generic_restraints_manager.\
+    reference_manager.add_reference_coordinate_proxies(
+      sites_cart=sites_cart)
+  assert grm.generic_restraints_manager.\
+         reference_manager.reference_coordinate_proxies is not None
+  assert len(grm.generic_restraints_manager.reference_manager.
+             reference_coordinate_proxies) == 29
   grads = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
-  residual = reference_coordinate.target_and_gradients(
-               proxies=reference_coordinate_proxies,
-               sites_cart=sites_cart,
-               gradient_array=grads)
+  residual = grm.generic_restraints_manager.reference_manager.\
+               target_and_gradients(
+                 sites_cart=sites_cart,
+                 gradient_array=grads)
   assert approx_equal(residual, 0.0)
-
-  assert grm.generic_restraints_manager.reference_coordinate_proxies is None
-
-  grm.generic_restraints_manager.add_reference_restraints(
-    sites_cart=sites_cart)
-
-  assert grm.generic_restraints_manager.reference_coordinate_proxies \
-    is not None
-  assert len(grm.generic_restraints_manager.reference_coordinate_proxies) \
-    == 29
 
   #test selection
   ca_selection = pdb_hierarchy.get_peptide_c_alpha_selection()
   ca_sites_cart = sites_cart.select(ca_selection)
-  grm.generic_restraints_manager.add_reference_restraints(
-    sites_cart=ca_sites_cart,
-    selection=ca_selection)
-  assert len(grm.generic_restraints_manager.reference_coordinate_proxies) \
-    == 3
+  grm.generic_restraints_manager.\
+    reference_manager.add_coordinate_restraints(
+      sites_cart=ca_sites_cart,
+      selection=ca_selection)
+  assert len(grm.generic_restraints_manager.reference_manager.
+             reference_coordinate_proxies) == 3
   tst_iselection = flex.size_t()
   for atom in pdb_hierarchy.atoms():
     if atom.name == " CA " or atom.name == " N  ":
       tst_iselection.append(atom.i_seq)
   tst_sites_cart = sites_cart.select(tst_iselection)
-  grm.generic_restraints_manager.add_reference_restraints(
+  grm.generic_restraints_manager.\
+    reference_manager.add_coordinate_restraints(
     sites_cart=tst_sites_cart,
     selection=tst_iselection)
-  assert len(grm.generic_restraints_manager.reference_coordinate_proxies) \
-    == 6
+  assert len(grm.generic_restraints_manager.reference_manager.
+             reference_coordinate_proxies) == 6
 
   #test remove
   selection = flex.bool([False]*29)
-  grm.generic_restraints_manager.remove_reference_restraints(
-    selection=selection)
-  assert len(grm.generic_restraints_manager.reference_coordinate_proxies) \
-    == 6
-  grm.generic_restraints_manager.remove_reference_restraints(
-    selection=ca_selection)
-  assert len(grm.generic_restraints_manager.reference_coordinate_proxies) \
-    == 3
+  grm.generic_restraints_manager.reference_manager.\
+    remove_coordinate_restraints(
+      selection=selection)
+  assert len(grm.generic_restraints_manager.reference_manager.
+             reference_coordinate_proxies) == 6
+  grm.generic_restraints_manager.reference_manager.\
+    remove_coordinate_restraints(
+      selection=ca_selection)
+  assert len(grm.generic_restraints_manager.reference_manager.
+             reference_coordinate_proxies) == 3
   selection = flex.bool([True]*29)
-  grm.generic_restraints_manager.remove_reference_restraints(
-    selection=selection)
-  assert len(grm.generic_restraints_manager.reference_coordinate_proxies) \
-    == 0
+  grm.generic_restraints_manager.reference_manager.\
+    remove_coordinate_restraints(
+      selection=selection)
+  assert len(grm.generic_restraints_manager.reference_manager.
+             reference_coordinate_proxies) == 0
 
 def exercise_2():
   for use_reference in [True, False, None]:
@@ -210,17 +215,20 @@ def exercise_2():
     assert selection.size() == len(reference_names)
     selection_bool = flex.bool(xrs2.scatterers().size(), selection)
     if(use_reference):
-      grm.generic_restraints_manager.add_reference_restraints(
-        sites_cart = sites_cart_reference,
-        selection = selection,
-        sigma = 0.01)
+      grm.generic_restraints_manager.reference_manager.\
+        add_coordinate_restraints(
+          sites_cart = sites_cart_reference,
+          selection = selection,
+          sigma = 0.01)
     elif(use_reference is None):
-      grm.generic_restraints_manager.add_reference_restraints(
-        sites_cart = sites_cart_reference,
-        selection = selection,
-        sigma = 0.01)
-      grm.generic_restraints_manager.remove_reference_restraints(
-        selection = selection)
+      grm.generic_restraints_manager.reference_manager.\
+        add_coordinate_restraints(
+          sites_cart = sites_cart_reference,
+          selection = selection,
+          sigma = 0.01)
+      grm.generic_restraints_manager.reference_manager.\
+        remove_coordinate_restraints(
+          selection = selection)
     d1 = flex.mean(flex.sqrt((xrs2.sites_cart().select(selection) -
                               xrs3.sites_cart().select(selection)).dot()))
     print "distance start (use_reference: %s): %6.4f"%(str(use_reference), d1)
@@ -250,7 +258,90 @@ def exercise_2():
       flex.max(flex.sqrt((xrs2.sites_cart().select(~selection_bool) -
                           xrs3.sites_cart().select(~selection_bool)).dot())), 0)
 
+def exercise_3():
+  #test torsion restraints
+  for use_reference in [True, False, None]:
+    processed_pdb_file = pdb_interpretation.process(
+      mon_lib_srv              = server.server(),
+      ener_lib                 = server.ener_lib(),
+      raw_records              = flex.std_string(pdb_str_2.splitlines()),
+      strict_conflict_handling = True,
+      force_symmetry           = True,
+      log                      = None)
+    grm = processed_pdb_file.geometry_restraints_manager()
+    xrs2 = processed_pdb_file.xray_structure(show_summary = False)
+    awl2 = processed_pdb_file.all_chain_proxies.pdb_hierarchy.atoms_with_labels()
+    pdb2 = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+    pdb_inp3 = iotbx.pdb.input(source_info=None, lines=pdb_str_3)
+    xrs3 = pdb_inp3.xray_structure_simple()
+    ph3 = pdb_inp3.construct_hierarchy()
+    ph3.atoms().reset_i_seq()
+    awl3 =  ph3.atoms_with_labels()
+    sites_cart_reference = flex.vec3_double()
+    selection = flex.size_t()
+    min_selection = flex.size_t()
+    reference_names = ["N", "CA", "CB", "CG", "CD", "NE", "CZ", "NH1", "NH2"]
+    minimize_names = ["CG", "CD", "NE", "CZ", "NH1", "NH2"]
+    for a2,a3 in zip(tuple(awl2), tuple(awl3)):
+      assert a2.resname == a3.resname
+      assert a2.name == a3.name
+      assert a2.i_seq == a3.i_seq
+      if(a2.resname == "ARG" and a2.name.strip() in reference_names):
+        selection.append(a2.i_seq)
+        sites_cart_reference.append(a3.xyz)
+        if a2.name.strip() in minimize_names:
+          min_selection.append(a2.i_seq)
+    assert selection.size() == len(reference_names)
+    selection_bool = flex.bool(xrs2.scatterers().size(), min_selection)
+    if(use_reference):
+      grm.generic_restraints_manager.reference_manager.\
+        add_torsion_restraints(
+          pdb_hierarchy = pdb2,
+          sites_cart = sites_cart_reference,
+          selection = selection,
+          sigma = 2.5)
+    elif(use_reference is None):
+      grm.generic_restraints_manager.reference_manager.\
+        add_torsion_restraints(
+          pdb_hierarchy = pdb2,
+          sites_cart = sites_cart_reference,
+          selection = selection,
+          sigma = 2.5)
+      grm.generic_restraints_manager.reference_manager.\
+        remove_torsion_restraints(
+          selection = selection)
+    d1 = flex.mean(flex.sqrt((xrs2.sites_cart().select(min_selection) -
+                              xrs3.sites_cart().select(min_selection)).dot()))
+    print "distance start (use_reference: %s): %6.4f"%(str(use_reference), d1)
+    assert d1>4.0
+    assert approx_equal(
+      flex.max(flex.sqrt((xrs2.sites_cart().select(~selection_bool) -
+                          xrs3.sites_cart().select(~selection_bool)).dot())), 0)
+    from cctbx import geometry_restraints
+    import mmtbx.command_line.geometry_minimization
+    import scitbx.lbfgs
+    grf = geometry_restraints.flags.flags(default=True)
+    grf.nonbonded = False
+    sites_cart = xrs2.sites_cart()
+    minimized = mmtbx.command_line.geometry_minimization.lbfgs(
+      sites_cart                  = sites_cart,
+      geometry_restraints_manager = grm,
+      sites_cart_selection        = flex.bool(sites_cart.size(), min_selection),
+      geometry_restraints_flags   = grf,
+      lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
+        max_iterations=5000))
+    xrs2.set_sites_cart(sites_cart = sites_cart)
+    d2 = flex.mean(flex.sqrt((xrs2.sites_cart().select(min_selection) -
+                              xrs3.sites_cart().select(min_selection)).dot()))
+    print "distance final (use_reference: %s): %6.4f"%(str(use_reference), d2)
+    if(use_reference): assert d2<0.02
+    else: assert d2>4.0, d2
+    assert approx_equal(
+      flex.max(flex.sqrt((xrs2.sites_cart().select(~selection_bool) -
+                          xrs3.sites_cart().select(~selection_bool)).dot())), 0)
+
 if (__name__ == "__main__") :
   exercise_1()
   exercise_2()
+  exercise_3()
   print "OK"
