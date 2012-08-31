@@ -4,6 +4,14 @@ import libtbx.load_env
 from libtbx import group_args
 import os
 
+def improper_ncab_from_atoms(thisN, thisC, thisCA, thisCB):
+  assert (not None in [thisN, thisC, thisCA, thisCB])
+  return phi_from_sites(thisN.xyz, thisC.xyz, thisCA.xyz, thisCB.xyz)
+
+def improper_cnab_from_atoms(thisC, thisN, thisCA, thisCB):
+  assert (not None in [thisC, thisN, thisCA, thisCB])
+  return phi_from_sites(thisC.xyz, thisN.xyz, thisCA.xyz, thisCB.xyz)
+
 def omega_from_atoms(prevCA, prevC, thisN, thisCA):
   assert (not None in [prevCA, prevC, thisN, thisCA])
   return phi_from_sites(prevCA.xyz, prevC.xyz, thisN.xyz, thisCA.xyz)
