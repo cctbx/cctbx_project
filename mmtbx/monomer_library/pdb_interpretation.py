@@ -181,8 +181,6 @@ master_params_str = """\
       .short_caption = Omega-ESD override value
     include scope mmtbx.geometry_restraints.ramachandran.master_phil
   }
-  restrain_c_alpha_positions = False
-    .type = bool
   max_reasonable_bond_distance = 50.0
     .type=float
   nonbonded_distance_cutoff = None
@@ -3645,7 +3643,7 @@ class build_all_chain_proxies(object):
         external_energy_function=None,
         ramachandran_atom_selection=None,
         den_manager=None,
-        reference_coordinate_proxies=None,
+        reference_manager=None,
         log=None):
     assert self.special_position_settings is not None
     timer = user_plus_sys_time()
@@ -3774,18 +3772,11 @@ class build_all_chain_proxies(object):
         log=log)
       ramachandran_lookup = ramachandran.lookup_manager(
         params=self.params.peptide_link)
-    if self.params.restrain_c_alpha_positions:
-      from mmtbx.geometry_restraints import reference_coordinate
-      reference_coordinate_proxies = \
-        reference_coordinate.build_proxies(
-          sites_cart=self.sites_cart,
-          pdb_hierarchy=self.pdb_hierarchy,
-          c_alpha_only=True).reference_coordinate_proxies
     generic_restraints_manager = mmtbx.geometry_restraints.manager(
       ramachandran_proxies=ramachandran_proxies,
       ramachandran_lookup=ramachandran_lookup,
       hydrogen_bond_proxies=hydrogen_bond_proxies,
-      reference_coordinate_proxies=reference_coordinate_proxies,
+      reference_manager=reference_manager,
       hydrogen_bond_params=hydrogen_bond_params,
       den_manager=den_manager)
     nonbonded_params = ener_lib_as_nonbonded_params(
@@ -4128,7 +4119,7 @@ class process(object):
         external_energy_function=None,
         ramachandran_atom_selection=None,
         den_manager=None,
-        reference_coordinate_proxies=None):
+        reference_manager=None):
     if (    self.all_chain_proxies.sites_cart is not None
         and self.all_chain_proxies.special_position_settings is not None
         and self._geometry_restraints_manager is None):
@@ -4146,7 +4137,7 @@ class process(object):
             external_energy_function=external_energy_function,
             ramachandran_atom_selection=ramachandran_atom_selection,
             den_manager=den_manager,
-            reference_coordinate_proxies=reference_coordinate_proxies,
+            reference_manager=reference_manager,
             log=self.log)
       if (self.log is not None):
         print >> self.log, \
