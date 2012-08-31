@@ -11,7 +11,7 @@ class manager (object) :
                 ramachandran_lookup=None,
                 hydrogen_bond_proxies=None,
                 hydrogen_bond_params=None,
-                reference_coordinate_proxies=None,
+                reference_manager=None,
                 den_manager=None,
                 flags=None) :
     adopt_init_args(self, locals())
@@ -22,6 +22,9 @@ class manager (object) :
     if (self.hydrogen_bond_params is None) :
       from mmtbx.geometry_restraints import hbond
       self.hydrogen_bond_params = hbond.master_phil.fetch().extract()
+    if (self.reference_manager is None) :
+      from mmtbx.geometry_restraints import reference
+      self.reference_manager = reference.manager()
 
   def get_n_proxies (self) :
     n_proxies = 0
@@ -32,8 +35,13 @@ class manager (object) :
         n_proxies += len(self.hydrogen_bond_proxies)
       else :
         n_proxies += self.hydrogen_bond_proxies.size()
-    if (self.reference_coordinate_proxies is not None):
-      n_proxies += len(self.reference_coordinate_proxies)
+    if (self.reference_manager is not None):
+      if (self.reference_manager.reference_coordinate_proxies is not None):
+        n_proxies += \
+          len(self.reference_manager.reference_coordinate_proxies)
+      if (self.reference_manager.reference_torsion_proxies is not None):
+        n_proxies += \
+          len(self.reference_manager.reference_torsion_proxies)
     if (self.den_manager is not None) :
       n_proxies += len(self.den_manager.den_proxies)
     return n_proxies
@@ -66,12 +74,13 @@ class manager (object) :
         gradient_array=gradient_array,
         falloff_distance=self.hydrogen_bond_params.falloff_distance,
         lennard_jones_potential=lj_potential)
-    if (self.reference_coordinate_proxies is not None and
-        self.flags.reference_coordinate) :
-      target += reference_coordinate.target_and_gradients(
-        proxies=self.reference_coordinate_proxies,
-        sites_cart=sites_cart,
-        gradient_array=gradient_array)
+    if (self.reference_manager is not None and
+        self.flags.reference) :
+      if (self.reference_manager.reference_coordinate_proxies is not None or
+          self.reference_manager.reference_torsion_proxies is not None):
+        target += self.reference_manager.target_and_gradients(
+          sites_cart=sites_cart,
+          gradient_array=gradient_array)
     if (self.den_manager is not None and
         self.flags.den) :
       #print "DEN target is in geneneric manager"
@@ -104,24 +113,6 @@ class manager (object) :
       xray_structure=xray_structure,
       params=self.hydrogen_bond_params,
       log=log).proxies
-
-  def add_reference_restraints(self,
-                               sites_cart,
-                               sigma=0.5,
-                               selection=None,
-                               function=None,
-                               method=None):
-    from mmtbx.geometry_restraints import reference_coordinate
-    self.reference_coordinate_proxies = \
-      reference_coordinate.build_proxies(
-        sites_cart=sites_cart,
-        selection=selection,
-        sigma=sigma).reference_coordinate_proxies
-    self.flags.reference_coordinate=True
-
-  def remove_reference_restraints(self, selection):
-    self.reference_coordinate_proxies = \
-      self.reference_coordinate_proxies.proxy_remove(selection=selection)
 
   def select (self,
               n_seq,
