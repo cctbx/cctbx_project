@@ -143,7 +143,7 @@ def exercise_1():
   params.final_temperature=0
   params.cool_rate = 100
   params.number_of_steps = 100
-  params.update_grads_shift = 0.0
+  params.update_grads_shift = 0.
   #
   sa.run(
     params = params,
@@ -229,7 +229,7 @@ def exercise_2(d_min = 1.5):
             fmodel.xray_structure.sites_cart()).dot()))
     print "Distance(refined, answer): %6.4f"%dist
     if(shake):
-      assert dist < 0.25
+      assert dist < 0.35
     else:
       assert dist < 0.05
     if(0):

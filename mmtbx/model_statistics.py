@@ -95,6 +95,13 @@ class geometry(object):
     self.nonbonded_distances_histogram = flex.histogram(
       data = flex.abs(nonbonded_distances), n_slots = n_histogram_slots)
     # molprobity scores
+    self.clashscore            = -1
+    self.ramachandran_outliers = -1
+    self.ramachandran_allowed  = -1
+    self.ramachandran_favored  = -1
+    self.rotamer_outliers      = -1
+    self.c_beta_dev            = -1
+    self.mpscore               = -1
     if(molprobity_scores):
       from mmtbx.validation.ramalyze import ramalyze
       from mmtbx.validation.rotalyze import rotalyze
@@ -229,16 +236,17 @@ class geometry(object):
 
   def show_molprobity_scores(self, out = None, prefix = ""):
     pr = prefix
-    print >> out, pr+"MOLPROBITY STATISTICS."
-    print >> out, pr+" ALL-ATOM CLASHSCORE : %-6.2f"%self.clashscore
-    print >> out, pr+" RAMACHANDRAN PLOT:"
-    print >> out, pr+"   OUTLIERS : %-5.2f %s"%(self.ramachandran_outliers,"%")
-    print >> out, pr+"   ALLOWED  : %-5.2f %s"%(self.ramachandran_allowed,"%")
-    print >> out, pr+"   FAVORED  : %-5.2f %s"%(self.ramachandran_favored,"%")
-    print >> out, pr+" ROTAMER OUTLIERS : %s %s"%(
-      str("%6.2f"%(self.rotamer_outliers)).strip(),"%")
-    print >> out, pr+" CBETA DEVIATIONS : %-d"%self.c_beta_dev
-    out.flush()
+    if(self.ramachandran_outliers != -1):
+      print >> out, pr+"MOLPROBITY STATISTICS."
+      print >> out, pr+" ALL-ATOM CLASHSCORE : %-6.2f"%self.clashscore
+      print >> out, pr+" RAMACHANDRAN PLOT:"
+      print >> out, pr+"   OUTLIERS : %-5.2f %s"%(self.ramachandran_outliers,"%")
+      print >> out, pr+"   ALLOWED  : %-5.2f %s"%(self.ramachandran_allowed,"%")
+      print >> out, pr+"   FAVORED  : %-5.2f %s"%(self.ramachandran_favored,"%")
+      print >> out, pr+" ROTAMER OUTLIERS : %s %s"%(
+        str("%6.2f"%(self.rotamer_outliers)).strip(),"%")
+      print >> out, pr+" CBETA DEVIATIONS : %-d"%self.c_beta_dev
+      out.flush()
 
   def _bond_angle_nonbonded_histogram(self, out, prefix, format):
     h_1 = self.bond_deltas_histogram
@@ -505,9 +513,9 @@ class adp(object):
     out.flush()
 
 class model(object):
-  def __init__(self, model, ignore_hd):
+  def __init__(self, model, ignore_hd, use_molprobity=True):
     self.geometry = model.geometry_statistics(ignore_hd = ignore_hd,
-      molprobity_scores=True)
+      molprobity_scores=use_molprobity)
     self.content = model_content(model)
     self.adp = adp(model)
     self.tls_groups = model.tls_groups
@@ -589,10 +597,11 @@ class info(object):
                      fmodel_x          = None,
                      fmodel_n          = None,
                      refinement_params = None,
-                     ignore_hd         = True):
+                     ignore_hd         = True,
+                     use_molprobity    = True):
     ref_par = refinement_params
     self.model = mmtbx.model_statistics.model(model = model,
-      ignore_hd = ignore_hd)
+      ignore_hd = ignore_hd, use_molprobity=use_molprobity)
     self.data_x, self.data_n = None, None
     if(fmodel_x is not None):
       self.data_x = fmodel_x.info(
