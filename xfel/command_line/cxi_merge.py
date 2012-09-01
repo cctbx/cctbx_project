@@ -105,6 +105,7 @@ plot_single_index_histograms = False
 """
 
 def get_observations (data_dirs,data_subset):
+  print "Step 1.  Get a list of all files"
   file_names = []
   for dir_name in data_dirs :
     for file_name in os.listdir(dir_name):
@@ -133,6 +134,7 @@ def load_result (file_name,
                  reference_cell,
                  params,
                  out) :
+  print "Step 2.  Load pickle file into dictionary obj and filter on lattice & cell"
   """
   Take a pickle file, confirm that it contains the appropriate data, and
   check the lattice type and unit cell against the reference settings - if
@@ -338,6 +340,15 @@ class scaling_manager (intensity_data) :
       self._scale_all_serial(file_names)
     else :
       if (self.params.nproc == 1) :
+        # in the case of only one process; initialize text-based database for data dump
+        open(self.params.output.prefix+"_observation.db","w")
+        open(self.params.output.prefix+"_frame.db","w")
+        self.frame_id=0
+        hkl_id=0
+        H = open(self.params.output.prefix+"_miller.db","w")
+        for item in self.i_model.indices():
+          print >>H, "%7d  %5d %5d %5d"%(hkl_id,item[0],item[1],item[2])
+          hkl_id+=1
         self._scale_all_serial(file_names)
       else :
         self._scale_all_parallel(file_names)
@@ -623,6 +634,7 @@ class scaling_manager (intensity_data) :
     # Polarization model as described by Kahn, Fourme, Gadet, Janin, Dumas & Andre
     # (1982) J. Appl. Cryst. 15, 330-337, equations 13 - 15.
 
+    print "Step 3. Correct for polarization."
     indexed_cell = observations.unit_cell()
     # Now do manipulate the data to conform to unit cell, asu, and space group
     # of reference
@@ -630,6 +642,7 @@ class scaling_manager (intensity_data) :
     observations = observations.customized_copy(
       crystal_symmetry=self.miller_set.crystal_symmetry()
       ).resolution_filter(d_min=self.params.d_min).map_to_asu()
+    print "Step 4. Filter on global resolution and map to asu"
     print >> out, "Data in reference setting:"
     #observations.show_summary(f=out, prefix="  ")
     show_observations(observations, out=out)
@@ -662,8 +675,10 @@ class scaling_manager (intensity_data) :
         print "New resolution filter at %7.2f"%imposed_res_filter,file_name
       print "N acceptable bins",N_acceptable_bins
       print "Old n_obs: %d, new n_obs: %d"%(N_obs_pre_filter,observations.size())
+      print "Step 5. Frame by frame resolution filter"
       # Finished applying the binwise I/sigma filter---------------------------------------
 
+    print "Step 6.  Match to reference intensities, filter by correlation, filter out negative intensities."
     # Match up the observed intensities against the reference data
     # set, i_model, instead of the pre-generated miller set,
     # miller_set.
@@ -704,10 +719,40 @@ class scaling_manager (intensity_data) :
     # Linearly fit I_r to I_o, i.e. find slope and offset such that
     # I_o = slope * I_r + offset, optimal in a least-squares sense.
     # XXX This is backwards, really.
+    if (N * sum_xx - sum_x**2)==0:
+      print "Skipping frame with",N,sum_xx,sum_x**2
+      return data
     slope = (N * sum_xy - sum_x * sum_y) / (N * sum_xx - sum_x**2)
     offset = (sum_xx * sum_y - sum_x * sum_xy) / (N * sum_xx - sum_x**2)
     corr  = (N * sum_xy - sum_x * sum_y) / (math.sqrt(N * sum_xx - sum_x**2) *
              math.sqrt(N * sum_yy - sum_y**2))
+
+    if (self.params.nproc == 1) :
+      F = open(self.params.output.prefix+"_frame.db","a")
+      print >>F, "%7d %14.8f %14.8f %14.8f"%(self.frame_id,wavelength,result["xbeam"],result["ybeam"]),
+
+      #cell_params = data.indexed_cell.parameters()
+      #reserve_cell_params = result["sa_parameters"][0]["reserve_orientation"].unit_cell().parameters()
+      # cell params and reserve cell params are essentially equal within numerical precision
+
+      print >>F, "%14.8f %10.7f"%(result["distance"],corr),
+      print >>F,  "%11.8f %10.2f"%(slope,offset),
+      res_ori_direct = result["sa_parameters"][0]["reserve_orientation"].direct_matrix()
+      print >>F, "%14.8f %14.8f %14.8f %14.8f %14.8f %14.8f %14.8f %14.8f %14.8f"%res_ori_direct,
+      print >>F, "%(rotation100_rad)10.7f %(rotation010_rad)10.7f %(rotation001_rad)10.7f %(half_mosaicity_deg)10.7f %(wave_HE_ang)14.8f %(wave_LE_ang)14.8f %(domain_size_ang)10.2f"%result["sa_parameters"][0],
+
+      print >>F, data.file_name
+
+      xypred = result["mapped_predictions"][0]
+      G = open(self.params.output.prefix+"_observation.db","a")
+      for pair in matches.pairs():
+        Intensity = observations.data()[pair[1]]
+        index = self.i_model.indices()[pair[0]]
+        Sigma = observations.sigmas()[pair[1]]
+        print >>G, "%7d %14.8f %14.8f %8.2f %8.2f %7d"%(pair[0], Intensity, Sigma,
+          xypred[pair[1]][0], xypred[pair[1]][1], self.frame_id), False
+      self.frame_id += 1
+
 
     if False:
       # ******************************************************
