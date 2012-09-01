@@ -339,7 +339,7 @@ class miller_arrays_as_cif_block(crystal_symmetry_as_cif_block,
       self, array.indices(), prefix=miller_index_prefix,
       separator=self.separator)
     self.prefix = miller_index_prefix + self.separator
-    self.indices = array.indices()
+    self.indices = array.indices().deep_copy()
     self.add_miller_array(array, array_type, column_name, column_names)
     self.cif_block.add_loop(self.refln_loop)
 
@@ -354,7 +354,6 @@ class miller_arrays_as_cif_block(crystal_symmetry_as_cif_block,
       assert array_type in ('calc', 'meas')
     elif column_name is not None:
       column_names = [column_name]
-    assert array.size() == self.indices.size()
     if array.is_complex_array():
       if column_names is None:
         column_names = [self.prefix+'F_'+array_type,
@@ -366,7 +365,7 @@ class miller_arrays_as_cif_block(crystal_symmetry_as_cif_block,
                  flex.imag(array.data()).as_string()]
       else:
         data = [flex.abs(array.data()).as_string(),
-                 array.phases().data().as_string()]
+                 array.phases(deg=True).data().as_string()]
     elif array.is_hendrickson_lattman_array():
       if column_names is None:
         column_names = [self.prefix+'HL_%s_iso' %abcd for abcd in 'ABCD']
@@ -386,6 +385,35 @@ class miller_arrays_as_cif_block(crystal_symmetry_as_cif_block,
         data = [array.data().as_string()]
       if array.sigmas() is not None and len(column_names) == 2:
         data.append(array.sigmas().as_string())
+    if not (self.indices.size() == array.indices().size() and
+            self.indices.all_eq(array.indices())):
+      from cctbx.miller import match_indices
+      other_indices = array.indices().deep_copy()
+      match = match_indices(self.indices, other_indices)
+      if match.singles(0).size():
+        # array is missing some reflections indices that already appear in the loop
+        # therefore pad the data with '?' values
+        other_indices.extend(self.indices.select(match.single_selection(0)))
+        for d in data:
+          d.extend(flex.std_string(['?']*(other_indices.size() - d.size())))
+        for d in data:
+          assert d.size() == other_indices.size()
+        match = match_indices(self.indices, other_indices)
+      if match.singles(1).size():
+        # this array contains some reflections that are not already present in the
+        # cif loop, therefore need to add rows of '?' values
+        single_indices = other_indices.select(match.single_selection(1))
+        self.indices.extend(single_indices)
+        n_data_columns = len(self.refln_loop.keys()) - 3
+        for hkl in single_indices:
+          row = list(hkl) + ['?'] * n_data_columns
+          self.refln_loop.add_row(row)
+        match = match_indices(self.indices, other_indices)
+
+      match = match_indices(self.indices, other_indices)
+      perm = match.permutation()
+      data = [d.select(perm) for d in data]
+
     columns = OrderedDict(zip(column_names, data))
     for key in columns:
       assert key not in self.refln_loop
