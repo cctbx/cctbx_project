@@ -460,6 +460,7 @@ def map_statistics_for_atom_selection (
       assert (type(atom_selection).__name__ == "bool")
       atom_selection &= ~hd_selection
   sites = xray_structure.sites_cart().select(atom_selection)
+  sites_frac = xray_structure.sites_fract().select(atom_selection)
   scatterers = xray_structure.scatterers().select(atom_selection)
   atom_radii = flex.double(sites.size(), atom_radius)
   for i_seq, sc in enumerate(scatterers):
@@ -473,11 +474,16 @@ def map_statistics_for_atom_selection (
     site_radii = atom_radii)
   map1_sel = map1.select(sel)
   map2_sel = map2.select(sel)
+  values_1 = flex.double()
+  values_2 = flex.double()
+  for site_frac in sites_frac:
+    values_1.append(map1.eight_point_interpolation(site_frac))
+    values_2.append(map2.eight_point_interpolation(site_frac))
   cc = flex.linear_correlation(x=map1_sel, y=map2_sel).coefficient()
   return group_args(
     cc=cc,
-    map1_mean=flex.mean(map1_sel.as_1d()),
-    map2_mean=flex.mean(map2_sel.as_1d()))
+    map1_mean=flex.mean(values_1),
+    map2_mean=flex.mean(values_2))
 
 def map_statistics_for_fragment (fragment, **kwds) :
   """
