@@ -1,6 +1,6 @@
 from __future__ import division
 from cctbx.array_family import flex
-from cctbx import miller
+from cctbx import crystal, miller, sgtbx, uctbx
 from iotbx import cif
 from iotbx.cif import CifParserError
 from iotbx.cif.builders import CifBuilderError
@@ -60,6 +60,36 @@ data_1
 _c                                3
 _d                                4
 """)
+  # exercise adding miller arrays with non-matching indices
+  cs = crystal.symmetry(unit_cell=uctbx.unit_cell((10, 10, 10, 90, 90, 90)),
+                        space_group_info=sgtbx.space_group_info(symbol="P1"))
+  mi = flex.miller_index(((1,0,0), (1,2,3), (2,3,4)))
+  ms1 = miller.set(cs, mi)
+  ma1 = miller.array(ms1, data=flex.double((1,2,3)))
+  mas_as_cif_block = cif.miller_arrays_as_cif_block(
+    ma1, column_name="_refln.F_meas_au")
+  ms2 = miller.set(cs, mi[:2])
+  ma2 = miller.array(ms2, data=flex.complex_double([1-2j]*ms2.size()))
+  mas_as_cif_block.add_miller_array(
+    ma2, column_names=("_refln.F_calc_au", "_refln.phase_calc")),
+  ms3 = miller.set(cs, flex.miller_index(((1,0,0), (5,6,7), (2,3,4))))
+  ma3 = miller.array(ms3, data=flex.double((4,5,6)))
+  mas_as_cif_block.add_miller_array(ma3, column_name="_refln.F_squared_meas")
+  ms4 = miller.set(cs, flex.miller_index(((1,2,3), (5,6,7), (1,1,1), (1,0,0), (2,3,4))))
+  ma4 = ms4.d_spacings()
+  mas_as_cif_block.add_miller_array(ma4, column_name="_refln.d_spacing")
+  # extract arrays from cif block and make sure we get back what we started with
+  arrays = cif.builders.miller_array_builder(mas_as_cif_block.cif_block).arrays()
+  recycled_arrays = (arrays['_refln.F_meas_au'],
+                     arrays['_refln.F_calc_au'],
+                     arrays['_refln.F_squared_meas'],
+                     arrays['_refln.d_spacing'])
+  for orig, recycled in zip((ma1, ma2, ma3, ma4), recycled_arrays):
+    assert orig.size() == recycled.size()
+    recycled = recycled.customized_copy(anomalous_flag=orig.anomalous_flag())
+    orig, recycled = orig.common_sets(recycled)
+    assert orig.indices().all_eq(recycled.indices())
+    assert approx_equal(orig.data(), recycled.data(), eps=1e-5)
 
 
 def exercise_lex_parse_build():
