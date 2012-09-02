@@ -1227,6 +1227,7 @@ mmtbx/geometry_restraints/rotamer.py svneol=native#text/x-python
 mmtbx/geometry_restraints/tst_hbond.py -text
 mmtbx/geometry_restraints/tst_ramachandran.py -text
 mmtbx/geometry_restraints/tst_reference_coordinate.py svneol=native#text/x-python
+mmtbx/geometry_restraints/tst_reference_coordinate2.py -text
 mmtbx/geometry_restraints/tst_rotamer.py svneol=native#text/x-python
 mmtbx/grow_density.py -text
 mmtbx/hydrogens/find.py -text
