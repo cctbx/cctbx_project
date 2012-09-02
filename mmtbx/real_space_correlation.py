@@ -460,7 +460,7 @@ def map_statistics_for_atom_selection (
       assert (type(atom_selection).__name__ == "bool")
       atom_selection &= ~hd_selection
   sites = xray_structure.sites_cart().select(atom_selection)
-  sites_frac = xray_structure.sites_fract().select(atom_selection)
+  sites_frac = xray_structure.sites_frac().select(atom_selection)
   scatterers = xray_structure.scatterers().select(atom_selection)
   atom_radii = flex.double(sites.size(), atom_radius)
   for i_seq, sc in enumerate(scatterers):
