@@ -94,7 +94,12 @@ class torsion_ncs(object):
                coordinate_sigma=None,
                log=None):
     if(log is None): log = sys.stdout
+    #parameter initialization
+    if params.sigma is None or params.sigma < 0:
+      raise Sorry("torsion NCS sigma parameter must be >= 0.0")
     self.sigma = params.sigma
+    if params.limit is None or params.sigma < 0:
+      raise Sorry("torsion NCS limit parameter must be >= 0.0")
     self.limit = params.limit
     self.slack = params.slack
     self.use_cc_for_target_angles = params.use_cc_for_target_angles
