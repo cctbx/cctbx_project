@@ -98,7 +98,7 @@ class torsion_ncs(object):
     if params.sigma is None or params.sigma < 0:
       raise Sorry("torsion NCS sigma parameter must be >= 0.0")
     self.sigma = params.sigma
-    if params.limit is None or params.sigma < 0:
+    if params.limit is None or params.limit < 0:
       raise Sorry("torsion NCS limit parameter must be >= 0.0")
     self.limit = params.limit
     self.slack = params.slack
