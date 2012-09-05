@@ -1,17 +1,21 @@
 #include <cctbx/boost_python/flex_fwd.h>
+#include <boost/tokenizer.hpp>
 
 #include <boost/python/module.hpp>
-#include <boost/python/scope.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
-#include <boost/python/tuple.hpp>
-#include <boost/python/enum.hpp>
+#include <boost/python/dict.hpp>
+#include <boost/python/list.hpp>
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/vec3.h>
 #include <scitbx/vec2.h>
 #include <scitbx/constants.h>
 #include <scitbx/math/mean_and_variance.h>
+#include <cctbx/miller.h>
+#include <cctbx/uctbx.h>
+#include <vector>
+#include <map>
 
 using namespace boost::python;
 
@@ -166,6 +170,175 @@ get_correction_vector_xy(correction_vector_store const& L, int const& itile){
     return make_tuple(xcv,ycv);
 }
 
+struct column_parser {
+  std::vector<scitbx::af::shared<int> > int_columns;
+  std::vector<scitbx::af::shared<double> > double_columns;
+  std::map<std::string,int> int_column_lookup;
+  std::map<std::string,int> double_column_lookup;
+  std::vector<int> int_token_addresses;
+  std::vector<int> double_token_addresses;
+  column_parser(){}
+
+  void set_int(std::string const& key, int const& optional_column){
+    int_columns.push_back(scitbx::af::shared<int>());
+    int_token_addresses.push_back(optional_column);
+    int_column_lookup[key]=int_columns.size()-1;
+  }
+  void set_double(std::string const& key, int const& optional_column){
+    double_columns.push_back(scitbx::af::shared<double>());
+    double_token_addresses.push_back(optional_column);
+    double_column_lookup[key]=double_columns.size()-1;
+  }
+  scitbx::af::shared<int> get_int(std::string const& key) {
+    return int_columns[int_column_lookup[key]];
+  }
+  scitbx::af::shared<double> get_double(std::string const& key) {
+    return double_columns[double_column_lookup[key]];
+  }
+  void parse_from_line(std::string const& line){
+    typedef boost::tokenizer<boost::char_separator<char> > tokenizer;
+    boost::char_separator<char> sep(" ");
+    tokenizer tok(line,sep);
+    tokenizer::iterator tok_iter = tok.begin();
+    std::vector<std::string> tokens;
+    for (; tok_iter!=tok.end(); ++tok_iter){
+      tokens.push_back( (*tok_iter) );
+    }
+
+    //parse the integers
+    for (int i = 0; i<int_columns.size(); ++i){
+      int_columns[i].push_back( atoi( tokens[int_token_addresses[i]].c_str()) );
+    }
+    //parse the doubles
+    for (int i = 0; i<double_columns.size(); ++i){
+      double_columns[i].push_back( atof(tokens[double_token_addresses[i]].c_str()) );
+    }
+  }
+};
+
+struct scaling_results {
+  int frame_id_dwell;
+  typedef scitbx::af::shared<int> shared_int;
+  typedef scitbx::af::shared<double> shared_double;
+  typedef scitbx::af::versa<bool, scitbx::af::flex_grid<> > shared_bool;
+  typedef
+   scitbx::af::versa<cctbx::miller::index<>, scitbx::af::flex_grid<> > shared_miller;
+  typedef scitbx::vec3<double> vec3;
+  typedef scitbx::af::shared<vec3> shared_vec3;
+  column_parser& observations, frames;
+  shared_miller& merged_asu_hkl;
+  shared_bool& selected_frames;
+
+  shared_double sum_I,sum_I_SIGI,summed_wt_I,summed_weight;
+  shared_double n_rejected, n_obs, d_min_values;
+  shared_int completeness, summed_N;
+  shared_vec3 i_isig_list;
+  int Nhkl;
+
+  scaling_results (column_parser &observations, column_parser &frames,
+                   shared_miller& hkls, shared_bool& data_subset):
+    observations(observations),frames(frames),merged_asu_hkl(hkls),
+    selected_frames(data_subset){}
+  void mark0 (double const& params_min_corr,
+              cctbx::uctbx::unit_cell const& params_unit_cell) {
+    frame_id_dwell=-1;
+    shared_int hkl_id = observations.get_int("hkl_id");
+    shared_int frame_id = observations.get_int("frame_id");
+    shared_double intensity = observations.get_double("i");
+    shared_double sigi = observations.get_double("sigi");
+    shared_double cc = frames.get_double("cc");
+    shared_double slope = frames.get_double("slope");
+    int Nframes = frame_id.size();
+    int Nhkl = merged_asu_hkl.accessor().focus()[0];
+
+    // result values
+    sum_I = shared_double(Nhkl, 0.);
+    sum_I_SIGI = shared_double(Nhkl, 0.);
+    completeness = shared_int(Nhkl, 0.);
+    summed_N = shared_int(Nhkl, 0.);
+    summed_wt_I = shared_double(Nhkl, 0.);
+    summed_weight = shared_double(Nhkl, 0.);
+    n_rejected = shared_double(Nframes, 0.);
+    n_obs = shared_double(Nframes, 0.);
+    d_min_values = shared_double(Nframes, 0.);
+    i_isig_list = shared_vec3();
+
+    for (int iobs = 0; iobs < hkl_id.size(); ++iobs){
+      int this_frame_id = frame_id[iobs];
+      if (!selected_frames[this_frame_id]) {continue;}
+      int this_hkl_id = hkl_id[iobs];
+      double this_cc, this_slope;
+      if (this_frame_id != frame_id_dwell){
+        frame_id_dwell = this_frame_id;
+        this_cc = cc[this_frame_id];
+        this_slope = slope[this_frame_id];
+      }
+      if (this_cc <= params_min_corr){
+        continue;
+      }
+      completeness[this_hkl_id] += 1;
+      double this_i = intensity[iobs];
+      double this_sig = sigi[iobs];
+      n_obs[this_frame_id] += 1;
+      if (this_i <=0.){
+        n_rejected[this_frame_id] += 1;
+        continue;
+      }
+      summed_N[this_hkl_id] += 1;
+      double Intensity = this_i / this_slope;
+      double isigi = this_i/this_sig;
+      sum_I[this_hkl_id] += Intensity;
+      sum_I_SIGI[this_hkl_id] += isigi;
+      cctbx::miller::index<> this_index( merged_asu_hkl[this_hkl_id] );
+      i_isig_list.push_back( vec3(
+        this_hkl_id, Intensity, isigi));
+      double this_d_spacing = params_unit_cell.d(this_index);
+      double this_frame_d_min = d_min_values[this_frame_id];
+      if (this_frame_d_min==0.){
+        d_min_values[this_frame_id] = this_d_spacing;
+      } else if (this_d_spacing < this_frame_d_min) {
+        d_min_values[this_frame_id] = this_d_spacing;
+      }
+
+      double sigma = this_sig / this_slope;
+      double variance = sigma * sigma;
+      summed_wt_I[this_hkl_id] += Intensity / variance;
+      summed_weight[this_hkl_id] += 1. / variance;
+
+    }
+  }
+};
+
+static boost::python::tuple
+get_scaling_results(scaling_results const& L){
+  return make_tuple(    L.sum_I, L.sum_I_SIGI,
+    L.completeness, L.summed_N,
+    L.summed_wt_I, L.summed_weight,
+    L.n_rejected, L.n_obs,
+    L.d_min_values, L.i_isig_list );
+}
+
+static boost::python::dict
+get_isigi_dict(scaling_results const& L){
+  boost::python::dict ISIGI;
+  std::map<int, boost::python::list> cpp_mapping;
+  for (int ditem=0; ditem<L.i_isig_list.size(); ++ditem){
+    scaling_results::vec3 dataitem = L.i_isig_list[ditem];
+    if (cpp_mapping.find(dataitem[0]) == cpp_mapping.end()) {
+      cpp_mapping[dataitem[0]]=boost::python::list();
+    }
+    boost::python::tuple i_isigi = make_tuple( dataitem[1], dataitem[2] );
+    cpp_mapping[dataitem[0]].append( i_isigi );
+  }
+  for (std::map<int, boost::python::list>::const_iterator item = cpp_mapping.begin();
+       item != cpp_mapping.end(); ++item) {
+    cctbx::miller::index<> this_index( L.merged_asu_hkl[item->first] );
+    boost::python::tuple miller_index = make_tuple( this_index[0],this_index[1],this_index[2] );
+    ISIGI[miller_index] = item->second;
+  }
+  return ISIGI;
+}
+
 namespace boost_python { namespace {
 
   boost::python::tuple
@@ -183,6 +356,14 @@ namespace boost_python { namespace {
 
     def("get_correction_vector_xy", &get_correction_vector_xy);
     def("get_radial_tangential_vectors", &get_radial_tangential_vectors);
+
+    class_<scaling_results>("scaling_results",no_init)
+      .def(init<column_parser&, column_parser&, scaling_results::shared_miller&,
+                scaling_results::shared_bool&>())
+      .def("mark0",&scaling_results::mark0)
+    ;
+    def("get_scaling_results", &get_scaling_results);
+    def("get_isigi_dict", &get_isigi_dict);
 
     class_<correction_vector_store>("correction_vector_store",init<>())
       .add_property("tiles",
@@ -213,6 +394,14 @@ namespace boost_python { namespace {
         make_getter(&correction_vector_store::all_tile_obs_spo, rbv()))
       .def("weighted_average_angle_deg_from_tile",
            &correction_vector_store::weighted_average_angle_deg_from_tile)
+    ;
+
+    class_<column_parser>("column_parser",init<>())
+      .def("set_int",&column_parser::set_int)
+      .def("set_double",&column_parser::set_double)
+      .def("get_int",&column_parser::get_int)
+      .def("get_double",&column_parser::get_double)
+      .def("parse_from_line",&column_parser::parse_from_line)
     ;
 
 }

@@ -2051,6 +2051,7 @@ xfel/cxi/cspad_ana/mod_event_info.py -text
 xfel/cxi/cspad_ana/pixel_histograms.py -text
 xfel/cxi/cspad_ana/pyana_hitfind.cfg -text
 xfel/cxi/cspad_ana/xes_histograms.py -text
+xfel/cxi/cxi_cc.py -text
 xfel/cxi/display_powder_arcs.py -text
 xfel/cxi/gfx/__init__.py -text
 xfel/cxi/gfx/wx_detectors.py -text
