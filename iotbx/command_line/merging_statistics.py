@@ -45,9 +45,17 @@ class merging_stats (object) :
   def __init__ (self, array, anomalous=False, debug=None) :
     import cctbx.miller
     from scitbx.array_family import flex
+    assert (array.sigmas() is not None)
     array = array.customized_copy(anomalous_flag=anomalous).map_to_asu()
+    # reject negative sigmas (these flag bad observations)
+    non_negative_sel = array.sigmas() >= 0
+    self.n_neg_sigmas = non_negative_sel.count(False)
+    array = array.select(non_negative_sel)
     self.merge = array.merge_equivalents()
     self.array_merged = self.merge.array()
+    reject_sel = (self.array_merged.data() < -3*self.array_merged.sigmas())
+    self.n_rejected = reject_sel.count(True)
+    self.array_merged = self.array_merged.select(~reject_sel)
     self.d_max, self.d_min = array.d_max_min()
     self.n_obs = array.indices().size()
     self.n_uniq = self.array_merged.indices().size()
@@ -89,10 +97,14 @@ class merging_stats (object) :
       assert (approx_equal(self.r_pim, r_pim_num / r_merge_den))
     self.cc_one_half = cctbx.miller.compute_cc_one_half(
       unmerged=array)
-    mult = 1.
-    if (self.cc_one_half < 0) :
-      mult = -1.
-    self.cc_star = mult * sqrt((2*self.cc_one_half) / (1 + self.cc_one_half))
+    if (self.cc_one_half == 0) :
+      self.cc_star = 0
+    else :
+      mult = 1.
+      if (self.cc_one_half < 0) :
+        mult = -1.
+      self.cc_star = mult * sqrt((2*abs(self.cc_one_half)) /
+                                 (1 + self.cc_one_half))
 
   def format (self) :
     return "%6.2f  %6.2f %6d %6d   %5.2f %6.2f  %8.1f  %6.1f  %5.3f  %5.3f  %5.3f  %5.3f" % (
@@ -111,6 +123,10 @@ class merging_stats (object) :
     print >> out, "Completeness: %.2f%%" % (self.completeness*100)
     print >> out, "Mean intensity: %.1f" % self.i_mean
     print >> out, "Mean I/sigma(I): %.1f" % self.i_over_sigma_mean
+    if (self.n_neg_sigmas > 0) :
+      print >> out, "SigI < 0 (rejected): %d reflections" % self.n_neg_sigmas
+    if (self.n_rejected > 0) :
+      print >> out, "I < -3*SigI (rejected): %d reflections" % self.n_rejected
     print >> out, "R-merge: %5.3f" % self.r_merge
     print >> out, "R-meas:  %5.3f" % self.r_meas
     print >> out, "R-pim:   %5.3f" % self.r_pim
