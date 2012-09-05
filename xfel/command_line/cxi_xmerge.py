@@ -19,6 +19,7 @@ from xfel.command_line.cxi_merge import master_phil,scaling_manager
 from xfel.command_line.cxi_merge import unit_cell_distribution,show_overall_observations
 from xfel.command_line.cxi_merge import scaling_result
 from cctbx.crystal_orientation import crystal_orientation
+from xfel import column_parser
 
 #-----------------------------------------------------------------------
 class xscaling_manager (scaling_manager) :
@@ -48,26 +49,32 @@ class xscaling_manager (scaling_manager) :
                         cc=flex.double(),
                         slope=flex.double(),
                         offset=flex.double(),
+                        odd_numbered=flex.bool(),
                         orientation=[],
                         unit_cell=[])
-    self.observations = dict(hkl_id=flex.int(),
-                             i=flex.double(),
-                             sigi=flex.double(),
-                             frame_id=flex.int(),
-                             )
-    self.millers = dict(merged_asu_hkl=[])
+    self.millers = dict(merged_asu_hkl=flex.miller_index())
     G = open(self.params.output.prefix+"_miller.db","r")
     for line in G.xreadlines():
       tokens = line.strip().split()
       self.millers["merged_asu_hkl"].append((int(tokens[1]),int(tokens[2]),int(tokens[3])))
 
+# --- start C++ read
+    parser = column_parser()
+    parser.set_int("hkl_id",0)
+    parser.set_double("i",1)
+    parser.set_double("sigi",2)
+    parser.set_int("frame_id",5)
     G = open(self.params.output.prefix+"_observation.db","r")
     for line in G.xreadlines():
-      tokens = line.strip().split()
-      self.observations["hkl_id"].append(int(tokens[0]))
-      self.observations["i"].append(float(tokens[1]))
-      self.observations["sigi"].append(float(tokens[2]))
-      self.observations["frame_id"].append(int(tokens[5]))
+      parser.parse_from_line(line)
+    self.observations = dict(hkl_id=parser.get_int("hkl_id"),
+                             i=parser.get_double("i"),
+                             sigi=parser.get_double("sigi"),
+                             frame_id=parser.get_int("frame_id"),
+                             )
+    self._observations = parser
+    G.close()
+# --- done with C++ read
 
     G = open(self.params.output.prefix+"_frame.db","r")
     for line in G.xreadlines():
@@ -77,6 +84,7 @@ class xscaling_manager (scaling_manager) :
       self.frames["cc"].append(float(tokens[5]))
       self.frames["slope"].append(float(tokens[6]))
       self.frames["offset"].append(float(tokens[7]))
+      self.frames["odd_numbered"].append( is_odd_numbered(tokens[24]) )
       # components of orientation direct matrix
       odm = (float(tokens[8]), float(tokens[9]), float(tokens[10]),
              float(tokens[11]), float(tokens[12]), float(tokens[13]),
@@ -84,6 +92,23 @@ class xscaling_manager (scaling_manager) :
       CO = crystal_orientation(odm, False)
       self.frames["orientation"].append(CO)
       self.frames["unit_cell"].append(CO.unit_cell())
+    G.close()
+    parser = column_parser()
+    parser.set_int("frame_id",0)
+    parser.set_double("wavelength",1)
+    parser.set_double("cc",5)
+    parser.set_double("slope",6)
+    parser.set_double("offset",7)
+    G = open(self.params.output.prefix+"_frame.db","r")
+    for line in G.xreadlines():
+      parser.parse_from_line(line)
+    self._frames = parser
+
+def is_odd_numbered(file_name):
+      if (file_name.endswith("_00000.pickle")):
+        return int(os.path.basename(file_name).split("_00000.pickle")[0][-1])%2==1
+      elif (file_name.endswith(".pickle")):
+        return int(os.path.basename(file_name).split(".pickle")[0][-1])%2==1
 
 #-----------------------------------------------------------------------
 def run(args):
@@ -166,115 +191,100 @@ def run(args):
       print "  %s" % str(e)
   print >> out, "\n"
 
-  #sanity check
-  for mod,obs in zip(i_model.indices(),scaler.millers["merged_asu_hkl"]):
-    assert mod==obs
+  reserve_prefix = work_params.output.prefix
+  for data_subset in [1,2,0]:
+    work_params.data_subset = data_subset
+    work_params.output.prefix = "%s_s%1d_%s"%(reserve_prefix,data_subset,"mark0")
 
-  # Sum the observations of I and I/sig(I) for each reflection.
-  sum_I = flex.double(i_model.size(), 0.)
-  sum_I_SIGI = flex.double(i_model.size(), 0.)
-  scaler.completeness = flex.int(i_model.size(), 0)
-  scaler.summed_N = flex.int(i_model.size(), 0)
-  scaler.summed_wt_I = flex.double(i_model.size(), 0.)
-  scaler.summed_weight = flex.double(i_model.size(), 0.)
-  scaler.n_rejected = flex.double(scaler.frames["frame_id"].size(), 0.)
-  scaler.n_obs = flex.double(scaler.frames["frame_id"].size(), 0.)
-  scaler.d_min_values = flex.double(scaler.frames["frame_id"].size(), 0.)
+    if work_params.data_subset == 0:
+      scaler.frames["data_subset"] = flex.bool(scaler.frames["frame_id"].size(),True)
+    elif work_params.data_subset == 1:
+      scaler.frames["data_subset"] = scaler.frames["odd_numbered"]
+    elif work_params.data_subset == 2:
+      scaler.frames["data_subset"] = scaler.frames["odd_numbered"]==False
 
-  scaler.ISIGI = {}
-  frame_id_dwell = -1
-  for iobs in xrange(scaler.observations["hkl_id"].size()):
-    this_frame_id = scaler.observations["frame_id"][iobs]
-    this_hkl_id = scaler.observations["hkl_id"][iobs]
-    if this_frame_id != frame_id_dwell:
-      frame_id_dwell = this_frame_id
-      this_cc = scaler.frames["cc"][this_frame_id]
-      this_slope = scaler.frames["slope"][this_frame_id]
-    if this_cc <= scaler.params.min_corr:
-      continue
-    scaler.completeness[this_hkl_id] += 1
-    this_i = scaler.observations["i"][iobs]
-    this_sig = scaler.observations["sigi"][iobs]
-    scaler.n_obs[this_frame_id] += 1
-    if this_i <=0.:
-      scaler.n_rejected[this_frame_id] += 1
-      continue
-    scaler.summed_N[this_hkl_id] += 1
-    Intensity = this_i / this_slope
-    isigi = this_i/this_sig
-    sum_I[this_hkl_id] += Intensity
-    sum_I_SIGI[this_hkl_id] += isigi
-    this_index = scaler.millers["merged_asu_hkl"][this_hkl_id]
-    if this_index in scaler.ISIGI:
-      scaler.ISIGI[this_index].append( (Intensity, isigi) )
-    else:
-      scaler.ISIGI[this_index] = [ (Intensity, isigi) ]
-    this_d_spacing = work_params.target_unit_cell.d(this_index)
-    this_frame_d_min = scaler.d_min_values[this_frame_id]
-    if this_frame_d_min==0.:
-      scaler.d_min_values[this_frame_id] = this_d_spacing
-    elif this_d_spacing < this_frame_d_min:
-      scaler.d_min_values[this_frame_id] = this_d_spacing
+  # --------- New code ------------------
+    #sanity check
+    for mod,obs in zip(i_model.indices(),scaler.millers["merged_asu_hkl"]):
+      assert mod==obs
 
-    sigma = this_sig / this_slope
-    variance = sigma * sigma
-    scaler.summed_wt_I[this_hkl_id] += Intensity / variance
-    scaler.summed_weight[this_hkl_id] += 1. / variance
+    """Sum the observations of I and I/sig(I) for each reflection.
+    sum_I = flex.double(i_model.size(), 0.)
+    sum_I_SIGI = flex.double(i_model.size(), 0.)
+    scaler.completeness = flex.int(i_model.size(), 0)
+    scaler.summed_N = flex.int(i_model.size(), 0)
+    scaler.summed_wt_I = flex.double(i_model.size(), 0.)
+    scaler.summed_weight = flex.double(i_model.size(), 0.)
+    scaler.n_rejected = flex.double(scaler.frames["frame_id"].size(), 0.)
+    scaler.n_obs = flex.double(scaler.frames["frame_id"].size(), 0.)
+    scaler.d_min_values = flex.double(scaler.frames["frame_id"].size(), 0.)
+    scaler.ISIGI = {}"""
 
-  scaler.wavelength = scaler.frames["wavelength"]
-  scaler.corr_values = scaler.frames["cc"]
+    from xfel import scaling_results, get_scaling_results, get_isigi_dict
+    results = scaling_results(scaler._observations, scaler._frames,
+              scaler.millers["merged_asu_hkl"],scaler.frames["data_subset"])
+    results.mark0(scaler.params.min_corr, scaler.params.target_unit_cell)
 
-  scaler.rejected_fractions = flex.double(scaler.frames["frame_id"].size(), 0.)
-  for irej in xrange(len(scaler.rejected_fractions)):
-    if scaler.n_obs[irej] > 0:
-      scaler.rejected_fractions = scaler.n_rejected[irej]/scaler.n_obs[irej]
+    sum_I, sum_I_SIGI, \
+    scaler.completeness, scaler.summed_N, \
+    scaler.summed_wt_I, scaler.summed_weight, scaler.n_rejected, scaler.n_obs, \
+    scaler.d_min_values, i_sigi_list = get_scaling_results(results)
 
-  table1 = show_overall_observations(
-    obs=i_model,
-    redundancy=scaler.completeness,
-    ISIGI=scaler.ISIGI,
-    n_bins=work_params.output.n_bins,
-    title="Statistics for all reflections",
-    out=out,
-    work_params=work_params)
-  print >> out, ""
-  n_refl, corr = scaler.get_overall_correlation(sum_I)
-  print >> out, "\n"
-  table2 = show_overall_observations(
-    obs=i_model,
-    redundancy=scaler.summed_N,
-    ISIGI=scaler.ISIGI,
-    n_bins=work_params.output.n_bins,
-    title="Statistics for reflections where I > 0",
-    out=out,
-    work_params=work_params)
-  #from libtbx import easy_pickle
-  #easy_pickle.dump(file_name="stats.pickle", obj=stats)
-  #stats.report(plot=work_params.plot)
-  #miller_counts = miller_set_p1.array(data=stats.counts.as_double()).select(
-  #  stats.counts != 0)
-  #miller_counts.as_mtz_dataset(column_root_label="NOBS").mtz_object().write(
-  #  file_name="nobs.mtz")
-  print >> out, ""
-  mtz_file, miller_array = scaler.finalize_and_save_data()
-  #table_pickle_file = "%s_graphs.pkl" % work_params.output.prefix
-  #easy_pickle.dump(table_pickle_file, [table1, table2])
-  loggraph_file = os.path.abspath("%s_graphs.log" % work_params.output.prefix)
-  f = open(loggraph_file, "w")
-  f.write(table1.format_loggraph())
-  f.write("\n")
-  f.write(table2.format_loggraph())
-  f.close()
-  result = scaling_result(
-    miller_array=miller_array,
-    plots=scaler.get_plot_statistics(),
-    mtz_file=mtz_file,
-    loggraph_file=loggraph_file,
-    obs_table=table1,
-    all_obs_table=table2,
-    n_reflections=n_refl,
-    overall_correlation=corr)
-  easy_pickle.dump("%s.pkl" % work_params.output.prefix, result)
+    scaler.ISIGI = get_isigi_dict(results)
+
+    scaler.wavelength = scaler.frames["wavelength"]
+    scaler.corr_values = scaler.frames["cc"]
+
+    scaler.rejected_fractions = flex.double(scaler.frames["frame_id"].size(), 0.)
+    for irej in xrange(len(scaler.rejected_fractions)):
+      if scaler.n_obs[irej] > 0:
+        scaler.rejected_fractions = scaler.n_rejected[irej]/scaler.n_obs[irej]
+  # ---------- End of new code ----------------
+
+    table1 = show_overall_observations(
+      obs=i_model,
+      redundancy=scaler.completeness,
+      ISIGI=scaler.ISIGI,
+      n_bins=work_params.output.n_bins,
+      title="Statistics for all reflections",
+      out=out,
+      work_params=work_params)
+    print >> out, ""
+    n_refl, corr = scaler.get_overall_correlation(sum_I)
+    print >> out, "\n"
+    table2 = show_overall_observations(
+      obs=i_model,
+      redundancy=scaler.summed_N,
+      ISIGI=scaler.ISIGI,
+      n_bins=work_params.output.n_bins,
+      title="Statistics for reflections where I > 0",
+      out=out,
+      work_params=work_params)
+
+    print >> out, ""
+    mtz_file, miller_array = scaler.finalize_and_save_data()
+
+    loggraph_file = os.path.abspath("%s_graphs.log" % work_params.output.prefix)
+    f = open(loggraph_file, "w")
+    f.write(table1.format_loggraph())
+    f.write("\n")
+    f.write(table2.format_loggraph())
+    f.close()
+    result = scaling_result(
+      miller_array=miller_array,
+      plots=scaler.get_plot_statistics(),
+      mtz_file=mtz_file,
+      loggraph_file=loggraph_file,
+      obs_table=table1,
+      all_obs_table=table2,
+      n_reflections=n_refl,
+      overall_correlation=corr)
+    easy_pickle.dump("%s.pkl" % work_params.output.prefix, result)
+  work_params.output.prefix = reserve_prefix
+
+  from xfel.cxi.cxi_cc import run_cc
+  run_cc(work_params,output=out)
+
   return result
 
 if (__name__ == "__main__"):

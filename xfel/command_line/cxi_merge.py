@@ -100,6 +100,16 @@ output {
     .type = str
     .help = Title for run - will appear in MTZ file header
 }
+scaling {
+  mtz_file = None
+    .type = str
+    .help = for Riso/ CCiso, the reference structure factors
+  log_cutoff = None
+    .type = float
+    .help = for CC calculation, log(intensity) cutoff, ignore values less than this
+  show_plots = False
+    .type = bool
+}
 plot_single_index_histograms = False
   .type = bool
 """
