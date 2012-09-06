@@ -157,7 +157,7 @@ class manager (object) :
       if (dialog != gtk.RESPONSE_YES) :
         open(os.path.join(dir_name, "NO_BUILD"), "w").write("1")
       dialog.destroy()
-    write_pdb_file(self._imol, pdb_out)
+    save_coordinates(self._imol, pdb_out)
     dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO,
       gtk.BUTTONS_OK,
       "The PDB file has been saved to %s.  You may now close Coot." % pdb_out)
