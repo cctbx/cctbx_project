@@ -549,7 +549,6 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hy
           altloc_hash[atom.name.strip()] = []
         altloc_hash[atom.name.strip()].append(altloc)
         iseq_altloc[atom.i_seq] = altloc
-    #print dir(residue_group)
     cur_resid = residue_group.resid()
     for conformer in residue_group.conformers():
       for residue in conformer.residues():
@@ -682,8 +681,14 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hy
           except Exception:
             continue
           for bond in cur_bonds:
-            atom_1 = i_seq_name_hash[atom.i_seq][0:4].strip()
-            atom_2 = i_seq_name_hash[bond][0:4].strip()
+            atom_1 = i_seq_name_hash.get(atom.i_seq)
+            if atom_1 is not None:
+              atom_1 = atom_1[0:4].strip()
+            atom_2 = i_seq_name_hash.get(bond)
+            if atom_2 is not None:
+              atom_2 = atom_2[0:4].strip()
+            if atom_1 is None or atom_2 is None:
+              continue
             # handle altlocs ########
             drawn_key = key_hash[atom_1]+key_hash[atom_2]
             if drawn_key in drawn_bonds:
@@ -855,9 +860,11 @@ def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False):
   bond_proxies = pair_proxies.bond_proxies
   quick_bond_hash = {}
   for bp in bond_proxies.simple:
-    if quick_bond_hash.get(bp.i_seqs[0]) is None:
-      quick_bond_hash[bp.i_seqs[0]] = []
-    quick_bond_hash[bp.i_seqs[0]].append(bp.i_seqs[1])
+    if (i_seq_name_hash[bp.i_seqs[0]][9:14] ==
+        i_seq_name_hash[bp.i_seqs[1]][9:14]):
+      if quick_bond_hash.get(bp.i_seqs[0]) is None:
+        quick_bond_hash[bp.i_seqs[0]] = []
+      quick_bond_hash[bp.i_seqs[0]].append(bp.i_seqs[1])
   kin_out = get_default_header()
   altid_controls = get_altid_controls(hierarchy=hierarchy)
   if altid_controls != "":
