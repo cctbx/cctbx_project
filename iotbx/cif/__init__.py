@@ -144,41 +144,42 @@ class crystal_symmetry_as_cif_block(object):
     self.cif_block = model.block()
     sg_prefix = '_space_group%s' %self.separator
     cell_prefix = '_cell%s' %self.separator
-    sym_loop = model.loop(data=OrderedDict((
-      (sg_prefix+'symop_id',
-       range(1, len(crystal_symmetry.space_group())+1)),
-      (sg_prefix+'symop_operation_xyz',
-       [s.as_xyz() for s in crystal_symmetry.space_group()]))))
-    self.cif_block.add_loop(sym_loop)
-    #
-    sg_type = crystal_symmetry.space_group_info().type()
-    sg = sg_type.group()
-    self.cif_block[sg_prefix+'crystal_system'] = sg.crystal_system().lower()
-    self.cif_block[sg_prefix+'IT_number'] = sg_type.number()
-    self.cif_block[sg_prefix+'name_H-M_alt'] = sg_type.lookup_symbol()
-    self.cif_block[sg_prefix+'name_Hall'] = sg_type.hall_symbol()
-    #
-    uc = crystal_symmetry.unit_cell()
-    params = list(uc.parameters())
-    volume = uc.volume()
-    if cell_covariance_matrix is not None:
-      diag = cell_covariance_matrix.matrix_packed_u_diagonal()
-      for i in range(6):
-        if diag[i] > 0:
-          params[i] = format_float_with_su(params[i], math.sqrt(diag[i]))
-      d_v_d_params = matrix.row(uc.d_volume_d_params())
-      vcv = matrix.sqr(
-        cell_covariance_matrix.matrix_packed_u_as_symmetric())
-      var_v = (d_v_d_params * vcv).dot(d_v_d_params)
-      volume = format_float_with_su(volume, math.sqrt(var_v))
-    a,b,c,alpha,beta,gamma = params
-    self.cif_block[cell_prefix+'length_a'] = a
-    self.cif_block[cell_prefix+'length_b'] = b
-    self.cif_block[cell_prefix+'length_c'] = c
-    self.cif_block[cell_prefix+'angle_alpha'] = alpha
-    self.cif_block[cell_prefix+'angle_beta'] = beta
-    self.cif_block[cell_prefix+'angle_gamma'] = gamma
-    self.cif_block[cell_prefix+'volume'] = volume
+    if crystal_symmetry.space_group() is not None:
+      sym_loop = model.loop(data=OrderedDict((
+        (sg_prefix+'symop_id',
+         range(1, len(crystal_symmetry.space_group())+1)),
+        (sg_prefix+'symop_operation_xyz',
+         [s.as_xyz() for s in crystal_symmetry.space_group()]))))
+      self.cif_block.add_loop(sym_loop)
+      sg_type = crystal_symmetry.space_group_info().type()
+      sg = sg_type.group()
+      self.cif_block[sg_prefix+'crystal_system'] = sg.crystal_system().lower()
+      self.cif_block[sg_prefix+'IT_number'] = sg_type.number()
+      self.cif_block[sg_prefix+'name_H-M_alt'] = sg_type.lookup_symbol()
+      self.cif_block[sg_prefix+'name_Hall'] = sg_type.hall_symbol()
+
+    if crystal_symmetry.unit_cell() is not None:
+      uc = crystal_symmetry.unit_cell()
+      params = list(uc.parameters())
+      volume = uc.volume()
+      if cell_covariance_matrix is not None:
+        diag = cell_covariance_matrix.matrix_packed_u_diagonal()
+        for i in range(6):
+          if diag[i] > 0:
+            params[i] = format_float_with_su(params[i], math.sqrt(diag[i]))
+        d_v_d_params = matrix.row(uc.d_volume_d_params())
+        vcv = matrix.sqr(
+          cell_covariance_matrix.matrix_packed_u_as_symmetric())
+        var_v = (d_v_d_params * vcv).dot(d_v_d_params)
+        volume = format_float_with_su(volume, math.sqrt(var_v))
+      a,b,c,alpha,beta,gamma = params
+      self.cif_block[cell_prefix+'length_a'] = a
+      self.cif_block[cell_prefix+'length_b'] = b
+      self.cif_block[cell_prefix+'length_c'] = c
+      self.cif_block[cell_prefix+'angle_alpha'] = alpha
+      self.cif_block[cell_prefix+'angle_beta'] = beta
+      self.cif_block[cell_prefix+'angle_gamma'] = gamma
+      self.cif_block[cell_prefix+'volume'] = volume
 
 
 class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
