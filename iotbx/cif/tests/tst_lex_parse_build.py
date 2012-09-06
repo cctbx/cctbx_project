@@ -90,6 +90,51 @@ _d                                4
     orig, recycled = orig.common_sets(recycled)
     assert orig.indices().all_eq(recycled.indices())
     assert approx_equal(orig.data(), recycled.data(), eps=1e-5)
+  #
+  cif_model = reader(input_string=r3adrsf,
+                     builder=cif.builders.cif_model_builder()).model()
+  cs = cif.builders.crystal_symmetry_builder(cif_model["r3adrsf"]).crystal_symmetry
+
+  ma_builder = cif.builders.miller_array_builder(
+    cif_model['r3adrAsf'],
+    base_array_info=miller.array_info(crystal_symmetry_from_file=cs))
+  miller_arrays = ma_builder.arrays().values()
+  assert len(miller_arrays) == 4
+  mas_as_cif_block = cif.miller_arrays_as_cif_block(
+    miller_arrays[0].map_to_asu(), column_names=miller_arrays[0].info().labels)
+  for array in miller_arrays[1:]:
+    mas_as_cif_block.add_miller_array(
+      array=array.map_to_asu(), column_names=array.info().labels)
+  s = StringIO()
+  print >> s, mas_as_cif_block.refln_loop
+  assert not show_diff(s.getvalue(), """\
+loop_
+  _refln_index_h
+  _refln_index_k
+  _refln_index_l
+  _refln.crystal_id
+  _refln.scale_group_code
+  _refln.wavelength_id
+  _refln.pdbx_I_plus
+  _refln.pdbx_I_plus_sigma
+  _refln.pdbx_I_minus
+  _refln.pdbx_I_minus_sigma
+   -87 5 46 1 1 3 40.2 40.4 6.7 63.9
+   -87 5 45 1 1 3 47.8 29.7 35.1 30.5
+   -87 5 44 1 1 3 18.1 33.2 0.5 34.6
+   -87 5 43 1 1 3 6.1 45.4 12.9 51.6
+   -87 5 42 1 1 3 -6.6 45.6 -15.5 55.8
+   -87 7 37 1 1 3 6.3 43.4 ? ?
+   -87 7 36 1 1 3 -67.2 55.4 ? ?
+   -88 2 44 1 1 3 0 -1 35 38.5
+   -88 2 43 1 1 3 0 -1 57.4 41.5
+   -88 4 45 1 1 3 -1 46.1 -9.1 45.6
+   -88 4 44 1 1 3 -19.8 49.2 0.3 34.7
+   -88 6 44 1 1 3 -1.8 34.8 ? ?
+
+""")
+
+
 
 
 def exercise_lex_parse_build():
@@ -485,7 +530,7 @@ def exercise_crystal_symmetry():
 
 
 def exercise_mmcif_structure_factors():
-  miller_arrays = cif.reader(input_string=r3adsrf).as_miller_arrays()
+  miller_arrays = cif.reader(input_string=r3adrsf).as_miller_arrays()
   assert len(miller_arrays) == 16
   hl_coeffs = find_miller_array_from_labels(
     miller_arrays, ','.join([
@@ -552,7 +597,7 @@ def find_miller_array_from_labels(miller_arrays, labels):
       return ma
   raise RuntimeError("Could not find miller array with labels %s" %labels)
 
-r3adsrf = """
+r3adrsf = """
 data_r3adrsf
 _cell.length_a  163.970
 _cell.length_b  45.230
