@@ -390,9 +390,9 @@ class miller_array_builder(crystal_symmetry_builder):
                   array.set_info(
                     info.customized_copy(labels=info.labels+[sigmas_label]))
                   continue
-              elif key.endswith('PHWT'):
+              elif 'PHWT' in key:
                 phwt_label = label
-                fwt_label = label[:-4] + 'FWT'
+                fwt_label = label.replace('PHWT', 'FWT')
                 if fwt_label not in refln_loop: continue
                 phwt_array = array
                 if fwt_label in self._arrays:
