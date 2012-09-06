@@ -15,7 +15,7 @@ import boost.python
 ext = boost.python.import_ext("iotbx_cif_ext")
 
 from cctbx.array_family import flex
-from cctbx import adptbx
+from cctbx import adptbx, miller
 from cctbx import covariance
 from iotbx.cif import model, builders, geometry
 from libtbx.containers import OrderedDict
@@ -108,7 +108,6 @@ class reader(object):
                        merge_equivalents=True,
                        base_array_info=None):
     if base_array_info is None:
-      from cctbx import miller
       base_array_info = miller.array_info(
         source=self.file_path, source_type="cif")
     if data_block_name is not None:
@@ -317,18 +316,15 @@ Newsletter of the IUCr Commission on Crystallographic Computing 2004, 3, 22-31."
     self.cif_block.add_loop(atom_type_loop)
 
 
-class miller_indices_as_cif_loop(object):
-
-  def __init__(self, indices, prefix='_refln', separator='_'):
-    prefix += separator
-    self.refln_loop = model.loop(header=(
+def miller_indices_as_cif_loop(indices, prefix='_refln_'):
+    refln_loop = model.loop(header=(
       '%sindex_h' %prefix, '%sindex_k' %prefix, '%sindex_l' %prefix))
     for hkl in indices:
-      self.refln_loop.add_row(hkl)
+      refln_loop.add_row(hkl)
+    return refln_loop
 
 
-class miller_arrays_as_cif_block(crystal_symmetry_as_cif_block,
-                                 miller_indices_as_cif_loop):
+class miller_arrays_as_cif_block(crystal_symmetry_as_cif_block):
 
   def __init__(self, array, array_type=None,
                column_name=None, column_names=None,
@@ -336,11 +332,9 @@ class miller_arrays_as_cif_block(crystal_symmetry_as_cif_block,
                format="coreCIF"):
     crystal_symmetry_as_cif_block.__init__(
       self, array.crystal_symmetry(), format=format)
-    miller_indices_as_cif_loop.__init__(
-      self, array.indices(), prefix=miller_index_prefix,
-      separator=self.separator)
     self.prefix = miller_index_prefix + self.separator
     self.indices = array.indices().deep_copy()
+    self.refln_loop = None
     self.add_miller_array(array, array_type, column_name, column_names)
     self.cif_block.add_loop(self.refln_loop)
 
@@ -384,6 +378,32 @@ class miller_arrays_as_cif_block(crystal_symmetry_as_cif_block,
         data = [array.data()]
       else:
         data = [array.data().as_string()]
+      if array.anomalous_flag():
+        if ((array.sigmas() is not None and len(column_names) == 4) or
+            (array.sigmas() is None and len(column_names) == 2)):
+          data = []
+          asu, matches = array.match_bijvoet_mates()
+          for anomalous_sign in ("+", "-"):
+            sel = matches.pairs_hemisphere_selection(anomalous_sign)
+            sel.extend(matches.singles_hemisphere_selection(anomalous_sign))
+            if (anomalous_sign == "+"):
+              indices = asu.indices().select(sel)
+              hemisphere_column_names = column_names[:len(column_names)//2]
+            else:
+              indices = -asu.indices().select(sel)
+              hemisphere_column_names = column_names[len(column_names)//2:]
+            hemisphere_data = asu.data().select(sel)
+            hemisphere_array = miller.array(miller.set(
+              array.crystal_symmetry(), indices), hemisphere_data)
+            if array.sigmas() is not None:
+              hemisphere_array.set_sigmas(asu.sigmas().select(sel))
+            if self.refln_loop is None:
+              # then this is the first array to be added to the loop,
+              # hack so we don't have both hemispheres of indices
+              self.indices = indices
+            self.add_miller_array(
+              hemisphere_array, column_names=hemisphere_column_names)
+          return
       if array.sigmas() is not None and len(column_names) == 2:
         data.append(array.sigmas().as_string())
     if not (self.indices.size() == array.indices().size() and
@@ -415,6 +435,8 @@ class miller_arrays_as_cif_block(crystal_symmetry_as_cif_block,
       perm = match.permutation()
       data = [d.select(perm) for d in data]
 
+    if self.refln_loop is None:
+      self.refln_loop = miller_indices_as_cif_loop(self.indices, prefix=self.prefix)
     columns = OrderedDict(zip(column_names, data))
     for key in columns:
       assert key not in self.refln_loop

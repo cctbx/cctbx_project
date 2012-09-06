@@ -516,7 +516,8 @@ class miller_array_builder(crystal_symmetry_builder):
             minus_array, assert_is_similar_symmetry=False)
           array = array.customized_copy(anomalous_flag=True)
           array.set_info(minus_array.info().customized_copy(
-            labels=OrderedSet(plus_array.info().labels+minus_array.info().labels)))
+            labels=list(
+              OrderedSet(plus_array.info().labels+minus_array.info().labels))))
           array.set_observation_type(plus_array.observation_type())
           self._arrays.setdefault(key, array)
 
