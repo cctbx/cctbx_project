@@ -694,6 +694,57 @@ threeten_helix_single.members[0].Hbonding = [-3]
 threeten_helix_single.members[0].index = 'a'
 threeten_helix_single.members[0].move = None
 
+threeten_3os = ssfingerprint('threeten_3os')
+threeten_3os.labelhash = {'b':'threeten_3os'}
+threeten_3os.labellist = ['threeten_3os']
+threeten_3os.members.append(member_residue())
+threeten_3os.members[0].Obonding = [3]
+threeten_3os.members[0].index = 'a'
+threeten_3os.members[0].move = 1
+threeten_3os.members.append(member_residue())
+threeten_3os.members[1].Obonding = [3]
+threeten_3os.members[1].index = 'b'
+threeten_3os.members[1].move = 1
+threeten_3os.members.append(member_residue())
+threeten_3os.members[2].Obonding = [3]
+threeten_3os.members[2].index = 'c'
+threeten_3os.members[2].move = None
+
+threeten_3hs = ssfingerprint('threeten_3hs')
+threeten_3hs.labelhash = {'b':'threeten_3hs'}
+threeten_3hs.labellist = ['threeten_3hs']
+threeten_3hs.members.append(member_residue())
+threeten_3hs.members[0].Hbonding = [-3]
+threeten_3hs.members[0].index = 'a'
+threeten_3hs.members[0].move = 1
+threeten_3hs.members.append(member_residue())
+threeten_3hs.members[1].Hbonding = [-3]
+threeten_3hs.members[1].index = 'b'
+threeten_3hs.members[1].move = 1
+threeten_3hs.members.append(member_residue())
+threeten_3hs.members[2].Hbonding = [-3]
+threeten_3hs.members[2].index = 'c'
+threeten_3hs.members[2].move = None
+
+threeten_3full = ssfingerprint('threeten_3full')
+threeten_3full.labelhash = {'b':'threeten_3full'}
+threeten_3full.labellist = ['threeten_3full']
+threeten_3full.members.append(member_residue())
+threeten_3full.members[0].Obonding = [3]
+threeten_3full.members[0].Hbonding = [-3]
+threeten_3full.members[0].index = 'a'
+threeten_3full.members[0].move = 1
+threeten_3full.members.append(member_residue())
+threeten_3full.members[1].Obonding = [3]
+threeten_3full.members[1].Hbonding = [-3]
+threeten_3full.members[1].index = 'b'
+threeten_3full.members[1].move = 1
+threeten_3full.members.append(member_residue())
+threeten_3full.members[2].Obonding = [3]
+threeten_3full.members[2].Hbonding = [-3]
+threeten_3full.members[2].index = 'c'
+threeten_3full.members[2].move = None
+
 pi_helix_single = ssfingerprint('pi_helix_single')
 pi_helix_single.labelhash = {'a':'pi_helix_single'}
 pi_helix_single.labellist = ['pi_helix_single']
@@ -1320,6 +1371,7 @@ fingerprints = {'alpha_helix_3':alpha_helix_3,
 'alpha_helix_3hs':alpha_helix_3hs, 'alpha_helix_3os':alpha_helix_3os,
 'alpha_helix_4hs':alpha_helix_4hs, 'alpha_helix_4os':alpha_helix_4os,
 'alpha_helix_2':alpha_helix_2,
+'threeten_3hs':threeten_3hs,'threeten_3os':threeten_3os,'threeten_3full':threeten_3full,
 'antiparallel_beta_bridge_close':antiparallel_beta_bridge_close,'antiparallel_beta_bridge_wide':antiparallel_beta_bridge_wide,
 'parallel_beta_bridge':parallel_beta_bridge,
 'antiparallel_beta_cwc':antiparallel_beta_cwc,'antiparallel_beta_wcw':antiparallel_beta_wcw,'parallel_beta':parallel_beta,
