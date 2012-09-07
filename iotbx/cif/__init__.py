@@ -186,7 +186,7 @@ class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
     "it1992": "International Tables Volume C Table 6.1.1.4 (pp. 500-502)",
     "wk1995": "Waasmaier & Kirfel (1995), Acta Cryst. A51, 416-431",
   }
-  inelatic_references = {
+  inelastic_references = {
     "henke" : "Henke, Gullikson and Davis, At. Data and Nucl. Data Tables, 1993, 54, 2",
     "sasaki" : "Sasaki, KEK Report, 1989, 88-14, 1",
   }
@@ -294,7 +294,7 @@ class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
     scattering_type_registry = xray_structure.scattering_type_registry()
     params = xray_structure.scattering_type_registry_params
     scat_source = self.sources.get(params.table)
-    disp_source = self.inelatic_references.get(
+    disp_source = self.inelastic_references.get(
       xray_structure.inelastic_form_factors_source)
     # custom?
     if disp_source is None:
