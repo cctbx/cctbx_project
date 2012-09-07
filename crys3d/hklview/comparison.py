@@ -157,6 +157,14 @@ class ComparisonFrame (HKLViewFrame) :
         space_group_info=space_group_1,
         unit_cell=unit_cell_1)
       array2 = array2.customized_copy(crystal_symmetry=symm)
+    if (array1.anomalous_flag() != array2.anomalous_flag()) :
+      wx.MessageBox("Warning: only one array contains anomalous data; to "+
+        "allow comparison, Bijvoet mates will be generated for the "+
+        "non-anomalous array.")
+      if (not array1.anomalous_flag()) :
+        array1 = array1.generate_bijvoet_mates()
+      else :
+        array2 = array2.generate_bijvoet_mates()
     array1 = array1.common_set(other=array2)
     array2 = array2.common_set(other=array1)
     is_intensities = [ array1.is_xray_intensity_array(),
