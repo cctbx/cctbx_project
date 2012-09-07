@@ -135,8 +135,7 @@ class hklview_2d (wx.PyPanel, cctbx.miller.display.render_2d) :
         break
     hkl = d_min = value = None
     if (self._clicked is not None) :
-      hkl, d_min, value = self.scene.get_reflection_info(self._clicked)
-    self.GetParent().update_clicked(hkl, d_min, value)
+      self.GetParent().update_clicked(self._clicked)
     self.Refresh()
 
   # placeholder - mimics gltbx.wx_viewer.wxGLWindow.fit_into_viewport
