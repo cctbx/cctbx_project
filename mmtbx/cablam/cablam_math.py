@@ -16,16 +16,20 @@ from __future__ import division
 #2012-03-02, This module has taken over the functions formerly in
 #  cjw_vectormath.py  Also, results of these calculations will be stored in
 #  linked_residue.measures instead of .results
+#2012-09-03, The old cablam_measures() is now ca_measures(), and a new
+#  cablam_measures() function has been written to return CA_d_in, CA_d_out, and
+#  CO_d_in, in correspondence with the current version of cablam_validate
+#  contours
 
-#Note that all the geometry measures will currently break on alternate backbone
-#  trace.  This will have to be fixed.  Plan: default to 'first_alt' in all
-#  cases, develop special-use program to deal with alternates more completely.
+#Note that geometry measures currently default to 'first_alt' in all cases for
+#  all atoms retrieved by getatomxyz()
+#Plan to develop special-use program to deal with alternates more completely.
 
 import math
 from cctbx import geometry_restraints
 
 #{{{ vector math functions, formerly in cjw_vectormath.py
-#rolling cjw_vectormath into cablam_math is a potential source of bugs
+#-------------------------------------------------------------------------------
 
 #Returns a vector connecting point p1 to point p2
 def vectorize(p1, p2):
@@ -63,7 +67,7 @@ def perpdist(a1, a2, b1):
   b2 = perptersect(a1, a2, b1)
   distance = veclen(vectorize(b1,b2))
   return distance
-
+#-------------------------------------------------------------------------------
 #}}}
 
 #{{{ CA pseudodihedral/angle calculator
@@ -117,48 +121,6 @@ def CApseudos(protein, dodihedrals = True, doangles = True):
 #-------------------------------------------------------------------------------
 #}}}
 
-#{{{ cablam measures calculator (CA_d_in, CA_d_out, CA_a)
-#Adds 'CA_d_in', 'CA_d_out', and 'CA_a' only to residue.measures={} for each
-#  residue in portein where protein is a dictionary of cablem_res classes.
-#This function is a condensed version of CApseudos() above, returning only the
-#  measures currently in use by cablam annotation.
-def cablam_measures(protein):
-  for resid2 in protein:
-    res2 = protein[resid2]  #residue n
-    gotall = False
-    if res2.prevres:
-      res1 = res2.prevres  # n-1
-      if res1.prevres:
-        res0 = res1.prevres  # n-2
-        if res2.nextres:
-          res3 = res2.nextres  # n+1
-          if res3.nextres:
-            res4 = res3.nextres  # n+2
-            gotall = True
-    if not gotall:
-      continue
-
-    CA_0 = res0.getatomxyz('CA')
-    CA_1 = res1.getatomxyz('CA')
-    CA_2 = res2.getatomxyz('CA')
-    CA_3 = res3.getatomxyz('CA')
-    CA_4 = res4.getatomxyz('CA')
-    if None in [CA_0,CA_1,CA_2,CA_3,CA_4]:
-      #getatomxyz returns either an xyz list (tuple?) or None
-      continue
-
-    d_in = geometry_restraints.dihedral(sites=[CA_0,CA_1,CA_2,CA_3],
-      angle_ideal=-40, weight=1)
-    d_out = geometry_restraints.dihedral(sites=[CA_1,CA_2,CA_3,CA_4],
-      angle_ideal=-40, weight=1)
-    a     = geometry_restraints.angle(sites=[CA_1,CA_2,CA_3],
-      angle_ideal=120, weight=1)
-
-    res2.measures['CA_d_in']  = d_in.angle_model
-    res2.measures['CA_d_out'] = d_out.angle_model
-    res2.measures['CA_a']     = a.angle_model
-#}}}
-
 #{{{ CO pseudodihedral calculator
 #Adds 'CO_d_in' and 'CA_O_out' dihedrals to residue.measures={} for each residue
 #  in protein where protein is a dictionary of cablam_res classes
@@ -195,6 +157,95 @@ def COpseudodihedrals(protein):
 
     res2.measures['CO_d_in']  = d_in.angle_model
     res2.measures['CO_d_out'] = d_out.angle_model
+#-------------------------------------------------------------------------------
+#}}}
+
+#{{{ cablam measures calculator (CA_d_in, CA_d_out, CO_d_in)
+#Adds 'CA_d_in', 'CA_d_out', and 'CA_a' only to residue.measures={} for each
+#  residue in portein where protein is a dictionary of cablem_res classes.
+#This function is a condensed version of CApseudos() and COpsedudodihedrals()
+#  above, returning only the measures currently in use by cablam annotation.
+#-------------------------------------------------------------------------------
+def cablam_measures(protein):
+  for resid2 in protein:
+    res2 = protein[resid2]  #residue n
+    gotall = False
+    if res2.prevres:
+      res1 = res2.prevres  # n-1
+      if res1.prevres:
+        res0 = res1.prevres  # n-2
+        if res2.nextres:
+          res3 = res2.nextres  # n+1
+          if res3.nextres:
+            res4 = res3.nextres  # n+2
+            gotall = True
+    if not gotall:
+      continue
+
+    CA_0 = res0.getatomxyz('CA')
+    CA_1, O_1 = res1.getatomxyz('CA'),res1.getatomxyz('O')
+    CA_2, O_2 = res2.getatomxyz('CA'),res2.getatomxyz('O')
+    CA_3 = res3.getatomxyz('CA')
+    CA_4 = res4.getatomxyz('CA')
+    if None in [CA_0,CA_1,CA_2,CA_3,CA_4,O_1,O_2]:
+      #getatomxyz returns either an xyz list (tuple?) or None
+      continue
+
+    d_in = geometry_restraints.dihedral(sites=[CA_0,CA_1,CA_2,CA_3],
+      angle_ideal=-40, weight=1)
+    d_out = geometry_restraints.dihedral(sites=[CA_1,CA_2,CA_3,CA_4],
+      angle_ideal=-40, weight=1)
+    pseudoC_1 = perptersect(CA_1,CA_2,O_1)
+    pseudoC_2 = perptersect(CA_2,CA_3,O_2)
+    co_in = geometry_restraints.dihedral(sites=[O_1, pseudoC_1, pseudoC_2, O_2],
+      angle_ideal=-40, weight=1)
+
+    res2.measures['CA_d_in']  = d_in.angle_model
+    res2.measures['CA_d_out'] = d_out.angle_model
+    res2.measures['CO_d_in']  = co_in.angle_model
+#-------------------------------------------------------------------------------
+#}}}
+
+#{{{ ca measures calculator (CA_d_in, CA_d_out, CA_a)
+#Adds 'CA_d_in', 'CA_d_out', and 'CA_a' only to residue.measures={} for each
+#  residue in portein where protein is a dictionary of cablem_res classes.
+#This function is a condensed version of CApseudos() above.
+#-------------------------------------------------------------------------------
+def ca_measures(protein):
+  for resid2 in protein:
+    res2 = protein[resid2]  #residue n
+    gotall = False
+    if res2.prevres:
+      res1 = res2.prevres  # n-1
+      if res1.prevres:
+        res0 = res1.prevres  # n-2
+        if res2.nextres:
+          res3 = res2.nextres  # n+1
+          if res3.nextres:
+            res4 = res3.nextres  # n+2
+            gotall = True
+    if not gotall:
+      continue
+
+    CA_0 = res0.getatomxyz('CA')
+    CA_1 = res1.getatomxyz('CA')
+    CA_2 = res2.getatomxyz('CA')
+    CA_3 = res3.getatomxyz('CA')
+    CA_4 = res4.getatomxyz('CA')
+    if None in [CA_0,CA_1,CA_2,CA_3,CA_4]:
+      #getatomxyz returns either an xyz list (tuple?) or None
+      continue
+
+    d_in = geometry_restraints.dihedral(sites=[CA_0,CA_1,CA_2,CA_3],
+      angle_ideal=-40, weight=1)
+    d_out = geometry_restraints.dihedral(sites=[CA_1,CA_2,CA_3,CA_4],
+      angle_ideal=-40, weight=1)
+    a     = geometry_restraints.angle(sites=[CA_1,CA_2,CA_3],
+      angle_ideal=120, weight=1)
+
+    res2.measures['CA_d_in']  = d_in.angle_model
+    res2.measures['CA_d_out'] = d_out.angle_model
+    res2.measures['CA_a']     = a.angle_model
 #-------------------------------------------------------------------------------
 #}}}
 

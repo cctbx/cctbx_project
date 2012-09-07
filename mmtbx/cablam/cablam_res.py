@@ -2,6 +2,9 @@ from __future__ import division
 # (jEdit options) :folding=explicit:collapseFolds=1:
 #This module contains the linked_residue class and the functions needed to build
 #  and access instances of it.
+#2012-09-05:
+#  prunerestype() moved to this module from cablam_training
+#  linked_residue.id_with_resname() changed to return pdb-column-formatted ids
 
 import sys
 from mmtbx.cablam.cablam_math import veclen, vectorize
@@ -36,7 +39,7 @@ class linked_residue():
 
   #Prints kinemage point-style output for a list of measures given in kinorder
   def printtokin(self, kinorder, writeto=sys.stdout):
-    outline = ['{'+self.id_with_resname(sep=' ')+'}']
+    outline = ['{'+self.pdbid+' '+self.id_with_resname(sep=' ')+'}']
     for order in kinorder:
       try:
         outline.append(str(self.measures[order]))
@@ -73,9 +76,7 @@ class linked_residue():
       #Some default was necessary
       resname = 'XXX'
       alt = ''
-    resid_string = sep.join(
-      [self.pdbid, self.model, self.chain, str(self.resnum), self.icode,
-      resname+alt])
+    resid_string = self.rg.atoms()[0].pdb_label_columns()[5:]
     return resid_string
 
   #Removes the references that sequence-adjacent linked_residue class instances

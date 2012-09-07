@@ -23,6 +23,10 @@ from __future__ import division
 #  functionality.
 #
 #2012-08-03: Initial upload
+#  A "run whole protein to find probable structure" function might be nice
+#2012-09-05:
+#  General cleanup. usage() help message and interpretation() guide to output.
+#  analyze_pdb() is now the easiest way to run the script from within phenix.
 
 import os, sys
 import libtbx.phil.command_line #argument parsing
@@ -36,6 +40,8 @@ from mmtbx.rotamer.n_dim_table import NDimTable #handles contours
 from libtbx import easy_pickle #NDimTables are stored as pickle files
 import libtbx.load_env
 
+#{{{ phil
+#-------------------------------------------------------------------------------
 master_phil = libtbx.phil.parse("""
 cablam_validate {
   pdb_infile = None
@@ -50,14 +56,16 @@ cablam_validate {
   give_points = False
     .type = bool
     .help = '''print cablam-space points to sys.stdout, in kinemage dotlist format'''
-  give_hierarchy = False
-    .type = bool
-    .help = '''return a list of dictionaries, each dict has a hierarchy rg and validation on it'''
   outlier_cutoff = 0.05
     .type = float
     .help = '''sets the contour level for detecting outliers, e.g. outlier_cutoff=0.01 for accepting the top 99%, defaults to 0.05'''
+  help = False
+    .type = bool
+    .help = '''help and data interpretation messages'''
 }
 """, process_includes=True)
+#-------------------------------------------------------------------------------
+#}}}
 
 #{{{ cablam_validation class
 #-------------------------------------------------------------------------------
@@ -92,15 +100,79 @@ Options:
                              defaults to 0.05
   give_kin=False           prints markup kinemage to screen
   give_text=False          prints machine-readable columnated data to screen
+                           (default output)
   give_points=False        prints cablam-space points to screen,
                              in kinemage dotlist format
-  give_hierarchy=False     returns a list of validations objects
-                             each object contains validation data for one
-                             residue, plus the hierarchy 'rg' object for that
-                             residue
-                           Intended for developer use, this will only work if
-                             cablam_validate is given a hierarchy object to work
-                             on (not possible from commandline)
+  help=False               prints This usage text, plus notes on data
+                             interpretation to screen
+
+Example:
+
+phenix.cablam_validate file.pdb give_text=True
+--------------------------------------------------------------------------------
+""")
+#-------------------------------------------------------------------------------
+#}}}
+
+#{{{ interpretation
+#-------------------------------------------------------------------------------
+#This function holds a print-to-screen explanation of what the numbers mean
+def interpretation():
+  sys.stderr.write("""
+cablam_validate data interpretation:
+
+Text:
+  Text output is provided in comma-separated format:
+  residue,contour_level,loose_alpha,regular_alpha,loose_beta,regular_beta
+
+  'residue' is a residue identifier formatted as pdb columns 18 to 27 (1 index)
+
+  'contour_level' is the 3D outlier contour at which this residue was found.
+    Smaller values are worse outliers.  Residues with values <=0.05 are worth
+    concern.
+
+  'loose_alpha' is a 2D percentile contour for this residue's similarity to
+    alpha helix.  A high value indicates some amount of helix character, but not
+    necessarily the presence of a regular helix.
+
+  'regular_alpha' is a 2D percentile contour for this residue's similarity to
+    regular alpha helix.  The contours for regular helix are very tight, and any
+    value > 0 here, even 0.0001, is a strong indicator for helical behavior.
+
+  'loose_beta' is a 2D percentile contour for this residue's similarity to
+    beta strand.  A high value indicates some amount of strand character, but
+    not necessarily the presence of a regular strand.
+
+  'regular_beta' is a 2D percentile contour for this residue's similarity to
+    regular beta sheet.  Beta structure contours are generally more permissive
+    than helix contours, and the contour values should not be judged on the same
+    scale.
+
+Kin:
+  Kin output is provided in a kinemage format and should be appended to an open
+    kinemage of the structure of interest.  This provides validation markup of
+    the structure.  Markup takes the form of purple lines, drawn to follow the
+    peptide plane diherdrals used to determine outliers.  Clicking on the
+    vertices or on a point in the middle of the center line will bring up
+    validation numbers.
+  
+  The first value corresponds to 'contour_level' in the text output.
+  
+  The values preceded by 'a' and 'rega' correspond to 'loose_alpha' and
+    'regular_alpha', respectively.
+  
+  The values preceded by 'b' and 'regb' correspond to 'loose_beta' and
+    'regular_beta', respectively.
+
+Points:
+  Points output is provided in kinemage dotlist format.  Each point corresponds
+    to one outlier residue and is plotted in the 3D cablam space used to
+    determine outliers (dimensions are CA_pseudodihedral_in,
+    CA_pseudodihedral_out, and peptide_plane_psedudodihedral).  These points may
+    be appended to contour kinemages to visualize outliers in that space.
+  This output is intended primarily for developer and exploratory use, rather
+    than for validation per se.
+
 """)
 #-------------------------------------------------------------------------------
 #}}}
@@ -214,11 +286,6 @@ def helix_or_sheet_res(residue, motifs):
 
 #{{{ output functions
 #-------------------------------------------------------------------------------
-def give_hierarchy(outliers):
-  #Yes, this is a bit trivial at the moment. It exists for symmetry and in case
-  #  I need custom treatment for this in the future
-  return outliers
-
 def give_kin(outliers, writeto=sys.stdout):
   #The kinemage markup is purple dihedrals following outlier CO angles
   #This angle was chosen because it is indicative of the most likely source of
@@ -250,6 +317,7 @@ def give_kin(outliers, writeto=sys.stdout):
     writeto.write('\n{'+stats+'} '+ str(midpoint[0]) +' '+ str(midpoint[1]) +' '+ str(midpoint[2]))
     writeto.write('\n{'+stats+'} '+ str(pseudoC_2[0]) +' '+ str(pseudoC_2[1]) +' '+ str(pseudoC_2[2]))
     writeto.write('\n{'+stats+'} '+ str(O_2[0]) +' '+ str(O_2[1]) +' '+ str(O_2[2]))
+  writeto.write('\n')
 
 def give_points(outliers, writeto=sys.stdout):
   #This prints a dotlist in kinemage format
@@ -263,6 +331,7 @@ def give_points(outliers, writeto=sys.stdout):
     if 'CA_d_in' in residue.measures and 'CA_d_out' in residue.measures and 'CO_d_in' in residue.measures:
       cablam_point = [residue.measures['CA_d_in'],residue.measures['CA_d_out'],residue.measures['CO_d_in']]
       writeto.write('{'+residue.id_with_resname(sep=' ')+'} '+'%.3f' %cablam_point[0]+' '+'%.3f' %cablam_point[1]+' '+'%.3f' %cablam_point[2]+'\n')
+  writeto.write('\n')
 
 def give_text(outliers, writeto=sys.stdout):
   #This prints a comma-separated line of data for each outlier residue
@@ -271,12 +340,35 @@ def give_text(outliers, writeto=sys.stdout):
   for outlier in outliers:
     outlist = [outlier.residue.id_with_resname(), '%.5f' %outlier.outlier_level, '%.5f' %outlier.loose_alpha, '%.5f' %outlier.regular_alpha, '%.5f' %outlier.loose_beta, '%.5f' %outlier.regular_beta]
     writeto.write('\n'+','.join(outlist))
+  writeto.write('\n')
+#-------------------------------------------------------------------------------
+#}}}
+
+#{{{ analyze_pdb
+#-------------------------------------------------------------------------------
+#Returns a list of cablam_validation objects, one for each residue identified as
+#  a potential outliers.  This list is the object of choice for internal access
+#  to cablam output.
+#The default outlier_cutoff = 0.05 catches most outliers of interest, although
+#  it may also flag loops and other low-population motifs as potential outliers.
+#  Setting outlier_cutoff=1.0 will return a validation object for every residue.
+def analyze_pdb(hierarchy, outlier_cutoff=0.05, pdbid='pdbid'):
+  resdata=setup(hierarchy,pdbid)
+  expectations = fetch_expectations()
+  motifs = fetch_motifs()
+
+  outliers = find_outliers(resdata, expectations, cutoff=outlier_cutoff)
+  helix_or_sheet(outliers, motifs)
+
+  return outliers
 #-------------------------------------------------------------------------------
 #}}}
 
 #{{{ run
 #-------------------------------------------------------------------------------
-def run(args, hierarchy=None):
+#Run is intended largely for commandline access.  Its default output is comma-
+#  sepparated text to stdout.
+def run(args):
   #{{{ phil parsing
   #-----------------------------------------------------------------------------
   interpreter = libtbx.phil.command_line.argument_interpreter(master_phil=master_phil)
@@ -297,28 +389,31 @@ def run(args, hierarchy=None):
   if not work_params.cablam_validate.pdb_infile:
     usage()
     sys.exit()
-    #sys.stderr.write('\nNo input file specified or could not find input file\n')
   params = work_params.cablam_validate
   #-----------------------------------------------------------------------------
   #}}} end phil parsing
 
+  if params.help:
+    usage()
+    interpretation()
+    sys.exit()
+
   pdbid = 'pdbid'
-  if not hierarchy:
-    if params.pdb_infile:
-      pdbid = os.path.basename(params.pdb_infile)
-      pdb_io = pdb.input(params.pdb_infile)
-      hierarchy = pdb_io.construct_hierarchy()
-    else:
-      sys.stdout.write(
-        '\nMissing input data, please provide .pdb file or hierarchy\n')
-      sys.exit()
+  if params.pdb_infile:
+    pdbid = os.path.basename(params.pdb_infile)
+    pdb_io = pdb.input(params.pdb_infile)
+    hierarchy = pdb_io.construct_hierarchy()
+  else:
+    sys.stdout.write(
+      '\nMissing input data, please provide .pdb file\n')
+    sys.exit()
 
-  resdata=setup(hierarchy,pdbid)
-  expectations = fetch_expectations()
-  motifs = fetch_motifs()
+  outliers = analyze_pdb(
+    hierarchy, outlier_cutoff=params.outlier_cutoff, pdbid=pdbid)  
 
-  outliers = find_outliers(resdata, expectations, cutoff=params.outlier_cutoff)
-  helix_or_sheet(outliers, motifs)
+  if not (params.give_kin or params.give_points):
+    #Set default output as text
+    params.give_text = True
 
   if params.give_kin:
     give_kin(outliers)
@@ -326,8 +421,6 @@ def run(args, hierarchy=None):
     give_points(outliers)
   if params.give_text:
     give_text(outliers)
-  if params.give_hierarchy:
-    return give_hierarchy(outliers)
 #-------------------------------------------------------------------------------
 #}}}
 
