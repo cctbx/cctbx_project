@@ -1,16 +1,17 @@
 from __future__ import division
-# LIBTBX_SET_DISPATCHER_NAME cctbx.compare_data_view
+# LIBTBX_SET_DISPATCHER_NAME phenix.compare_datasets
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 
 from crys3d.hklview import comparison
 from wxtbx import icons
 import iotbx.phil
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, Usage
 import wx
 import os
 import sys
 
+# TODO
 master_phil = iotbx.phil.parse("""
 file_name_1 = None
   .type = path
@@ -24,6 +25,14 @@ include scope cctbx.miller.display.master_phil
 """, process_includes=True)
 
 def run (args) :
+  if ("--help" in args) or ("--options" in args) :
+    raise Usage("""\
+phenix.compare_datasets data1.mtz data2.mtz
+
+Side-by-side visualization of pseudo-precession planes through reciprocal
+space for a pair of datasets - essentially a duplex version of 2D view in
+phenix.data_viewer.
+""")
   a = wx.App(0)
   app_icon = wx.EmptyIcon()
   app_icon.CopyFromBitmap(icons.hklview_2d.GetBitmap())

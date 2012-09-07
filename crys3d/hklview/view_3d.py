@@ -248,11 +248,12 @@ class hklview_3d (wxGLWindow) :
     if (self.closest_point_i_seq is not None) :
       self.scene.label_points.add(self.closest_point_i_seq)
       self.labels_display_list = None
-      hkl, d_min, value = self.scene.get_reflection_info(
-        self.closest_point_i_seq)
-      self.GetParent().update_clicked(hkl, d_min, value)
+      self.GetParent().update_clicked(index=self.closest_point_i_seq)
+      #hkl, d_min, value = self.scene.get_reflection_info(
+      #  self.closest_point_i_seq)
+      #self.GetParent().update_clicked(hkl, d_min, value)
     else :
-      self.GetParent().update_clicked(hkl=None)
+      self.GetParent().update_clicked(index=None)
 
   def clear_labels (self) :
     if (self.scene is not None) :

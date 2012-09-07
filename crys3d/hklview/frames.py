@@ -186,11 +186,14 @@ class settings_window (wxtbx.utils.SettingsPanel) :
     self.d_min_info = wx.TextCtrl(self.panel, -1, size=(80,-1),
       style=wx.TE_READONLY)
     grid_szr.Add(self.d_min_info, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-    grid_szr.Add(wx.StaticText(self.panel, -1, "Value:"), 0,
+    self.add_value_widgets(grid_szr)
+
+  def add_value_widgets (self, sizer) :
+    sizer.Add(wx.StaticText(self.panel, -1, "Value:"), 0,
       wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self.value_info = wx.TextCtrl(self.panel, -1, size=(80,-1),
       style=wx.TE_READONLY)
-    grid_szr.Add(self.value_info, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    sizer.Add(self.value_info, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
 
   def set_index_span (self, index_span) :
     self._index_span = index_span
@@ -372,8 +375,12 @@ class HKLViewFrame (wx.Frame) :
       kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self.OnClearLabels, btn)
 
-  def update_clicked (self, hkl, d_min=None, value=None) :
-    self.settings_panel.update_reflection_info(hkl, d_min, value)
+  def update_clicked (self, index) :#hkl, d_min=None, value=None) :
+    if (index is None) :
+      self.settings_panel.clear_reflection_info()
+    else :
+      hkl, d_min, value = self.viewer.scene.get_reflection_info(index)
+      self.settings_panel.update_reflection_info(hkl, d_min, value)
 
   def update_settings_for_unmerged (self) :
     self.settings.expand_to_p1 = False
@@ -493,7 +500,8 @@ class HKLViewFrame (wx.Frame) :
     self.viewer.set_miller_array(self.miller_array, zoom=True)
     self.viewer.Refresh()
 
-  def load_reflections_file (self, file_name, set_array=True) :
+  def load_reflections_file (self, file_name, set_array=True,
+      data_only=False) :
     if (isinstance(file_name, unicode)) :
       file_name = str(file_name)
     if (file_name != "") :
@@ -510,12 +518,16 @@ class HKLViewFrame (wx.Frame) :
       for array in arrays :
         if array.is_complex_array() or array.is_hendrickson_lattman_array() :
           continue
+        elif (data_only) :
+          if (not array.is_real_array()) and (not array.is_complex_array()) :
+            continue
         labels = array.info().label_string()
         desc = get_array_description(array)
         array_info.append("%s (%s)" % (labels, desc))
         valid_arrays.append(array)
       if (len(valid_arrays) == 0) :
-        raise Sorry("No arrays of the supported types in this file.")
+        msg = "No arrays of the supported types in this file."
+        raise Sorry(msg)
       elif (len(valid_arrays) == 1) :
         if (set_array) :
           self.set_miller_array(valid_arrays[0])
