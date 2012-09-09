@@ -8,5 +8,3 @@ if (__name__ == "__main__"):
   except AttributeError:
     from IPython import embed
     embed()
-
-
