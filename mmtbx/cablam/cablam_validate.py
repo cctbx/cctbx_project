@@ -155,12 +155,12 @@ Kin:
     peptide plane diherdrals used to determine outliers.  Clicking on the
     vertices or on a point in the middle of the center line will bring up
     validation numbers.
-  
+
   The first value corresponds to 'contour_level' in the text output.
-  
+
   The values preceded by 'a' and 'rega' correspond to 'loose_alpha' and
     'regular_alpha', respectively.
-  
+
   The values preceded by 'b' and 'regb' correspond to 'loose_beta' and
     'regular_beta', respectively.
 
@@ -409,7 +409,7 @@ def run(args):
     sys.exit()
 
   outliers = analyze_pdb(
-    hierarchy, outlier_cutoff=params.outlier_cutoff, pdbid=pdbid)  
+    hierarchy, outlier_cutoff=params.outlier_cutoff, pdbid=pdbid)
 
   if not (params.give_kin or params.give_points):
     #Set default output as text
