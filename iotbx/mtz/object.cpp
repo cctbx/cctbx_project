@@ -1,4 +1,3 @@
-#include <ccp4_spg.h>
 #include <csymlib.h>
 #include <iotbx/mtz/batch.h>
 #include <iotbx/mtz/column.h>
@@ -446,36 +445,45 @@ namespace iotbx { namespace mtz {
 
     CMtz::MTZ* p = ptr();
     using CSym::ccp4_symop;
-    scitbx::af::shared<ccp4_symop> op1(p->mtzsymm.nsym);
 
-    for(int im=0;im<p->mtzsymm.nsym;++im) {
-      for (int k=0;k<3;++k) {
-        for (int ic=0;ic<3;++ic) {
-          op1[im].rot[k][ic] = p->mtzsymm.sym[im][k][ic];
+    scitbx::af::shared<ccp4_symop> op1(p->mtzsymm.nsym);
+    for(int i = 0 ; i < p->mtzsymm.nsym; ++i) {
+      for (int k = 0; k < 3; ++k) {
+        for (int l=0; l<3; ++l) {
+          op1[i].rot[k][l] = p->mtzsymm.sym[i][k][l];
         }
-        op1[im].trn[k] = p->mtzsymm.sym[im][k][3];
+        op1[i].trn[k] = p->mtzsymm.sym[i][k][3];
       }
     }
-    ccp4_symop * op1_ptr( &(op1[0]) );
 
-    CSym::CCP4SPG * spacegroup = CSym::ccp4_spgrp_reverse_lookup(p->mtzsymm.nsym, op1_ptr);
-    if (spacegroup == NULL) {
-      throw scitbx::error("space group not constructed correctly in extract_original_index_miller_indices()");
+    scitbx::af::shared<ccp4_symop> invsymop(p->mtzsymm.nsym);
+    for(int i = 0 ; i < p->mtzsymm.nsym; ++i) {
+      invsymop[i] = CSym::ccp4_symop_invert(op1[i]);
     }
+
     for (int i_refl=0; i_refl<n_refl; ++i_refl){
       // Take the CCP4 definition M/ISYM = 256M+ISYM, where M=0 (full) or M=1 (partial).
       // Therefore we discard the partiality flag M, just getting ISYM.
       int isym_value = m_isym.data[i_refl] % 256;
+      int jsym = (isym_value - 1) / 2;
+      int isign = (isym_value % 2) ? 1 : -1 ;
 
       cctbx::miller::index<> asu_hkl = m_isym.indices[i_refl];
 
-      int horig,korig,lorig;
-      CSym::ccp4spg_generate_indices(spacegroup, isym_value,
-        asu_hkl[0], asu_hkl[1], asu_hkl[2],
-        & horig, & korig, & lorig);
-      result.push_back(cctbx::miller::index<>(horig, korig, lorig));
+      //algorithm borrowed from CSym::ccp4spg_generate_indices(...)
+      result.push_back(cctbx::miller::index<>(
+         isign * (int) rint(asu_hkl[0]*invsymop[jsym].rot[0][0] +
+                                 asu_hkl[1]*invsymop[jsym].rot[1][0] +
+                                 asu_hkl[2]*invsymop[jsym].rot[2][0]),
+         isign * (int) rint(asu_hkl[0]*invsymop[jsym].rot[0][1] +
+                                 asu_hkl[1]*invsymop[jsym].rot[1][1] +
+                                 asu_hkl[2]*invsymop[jsym].rot[2][1]),
+         isign * (int) rint(asu_hkl[0]*invsymop[jsym].rot[0][2] +
+                                 asu_hkl[1]*invsymop[jsym].rot[1][2] +
+                                 asu_hkl[2]*invsymop[jsym].rot[2][2])
+
+      ));
     }
-    CSym::ccp4spg_free(&spacegroup);
     return result;
   }
 
