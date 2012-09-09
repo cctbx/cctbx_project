@@ -934,6 +934,7 @@ iotbx/logfiles.py -text
 iotbx/map_tools.py -text
 iotbx/mtz/tst_dano.py svneol=native#text/x-python
 iotbx/mtz/tst_extract_from_symmetry_lib.py svneol=native#text/x-python
+iotbx/mtz/tst_unmerged.py -text
 iotbx/pdb/Hy36.java svneol=native#text/plain
 iotbx/pdb/atom_selection.cpp svneol=native#text/plain
 iotbx/pdb/atom_selection.py svneol=native#text/x-python

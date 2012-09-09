@@ -136,6 +136,10 @@ namespace {
         .def("has_column", &w_t::has_column, (arg("label")))
         .def("get_column", &w_t::get_column, (arg("label")))
         .def("extract_miller_indices", &w_t::extract_miller_indices)
+        .def("extract_original_index_miller_indices",
+              &w_t::extract_original_index_miller_indices,
+              (arg("column_label_m_isym")=std::string("M_ISYM").c_str())
+            )
         .def("replace_miller_indices", &w_t::replace_miller_indices, (
           (arg("miller_indices"))))
         .def("extract_integers",
