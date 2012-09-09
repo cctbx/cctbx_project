@@ -392,6 +392,12 @@ namespace mtz {
       replace_miller_indices(
         af::const_ref<cctbx::miller::index<> > const& miller_indices);
 
+      //! Copies Miller indices from columns H, K, L.
+      /*! Use the M/ISYM code along with space group to determine original index
+       */
+      af::shared<cctbx::miller::index<> >
+      extract_original_index_miller_indices(const char*) const;
+
       //! Read-only access.
       integer_group
       extract_integers(

@@ -1,3 +1,5 @@
+#include <ccp4_spg.h>
+#include <csymlib.h>
 #include <iotbx/mtz/batch.h>
 #include <iotbx/mtz/column.h>
 #include <iotbx/error.h>
@@ -430,6 +432,51 @@ namespace iotbx { namespace mtz {
     for(int i_refl=0;i_refl<miller_indices.size();i_refl++) {
       hkl.replace_miller_index(i_refl, miller_indices[i_refl]);
     }
+  }
+
+  af::shared<cctbx::miller::index<> >
+  object::extract_original_index_miller_indices(
+    const char* column_label_m_isym) const
+  {
+    integer_group m_isym( extract_integers(column_label_m_isym) );
+    int n_refl = n_reflections();
+    af::shared<cctbx::miller::index<> > result;
+    // Use of the CCP4 library suggested by David Waterman;
+    // code example documented at ftp://ftp.ccp4.ac.uk/mdw/csym/cmtz_csym_eg.c
+
+    CMtz::MTZ* p = ptr();
+    using CSym::ccp4_symop;
+    scitbx::af::shared<ccp4_symop> op1(p->mtzsymm.nsym);
+
+    for(int im=0;im<p->mtzsymm.nsym;++im) {
+      for (int k=0;k<3;++k) {
+        for (int ic=0;ic<3;++ic) {
+          op1[im].rot[k][ic] = p->mtzsymm.sym[im][k][ic];
+        }
+        op1[im].trn[k] = p->mtzsymm.sym[im][k][3];
+      }
+    }
+    ccp4_symop * op1_ptr( &(op1[0]) );
+
+    CSym::CCP4SPG * spacegroup = CSym::ccp4_spgrp_reverse_lookup(p->mtzsymm.nsym, op1_ptr);
+    if (spacegroup == NULL) {
+      throw scitbx::error("space group not constructed correctly in extract_original_index_miller_indices()");
+    }
+    for (int i_refl=0; i_refl<n_refl; ++i_refl){
+      // Take the CCP4 definition M/ISYM = 256M+ISYM, where M=0 (full) or M=1 (partial).
+      // Therefore we discard the partiality flag M, just getting ISYM.
+      int isym_value = m_isym.data[i_refl] % 256;
+
+      cctbx::miller::index<> asu_hkl = m_isym.indices[i_refl];
+
+      int horig,korig,lorig;
+      CSym::ccp4spg_generate_indices(spacegroup, isym_value,
+        asu_hkl[0], asu_hkl[1], asu_hkl[2],
+        & horig, & korig, & lorig);
+      result.push_back(cctbx::miller::index<>(horig, korig, lorig));
+    }
+    CSym::ccp4spg_free(&spacegroup);
+    return result;
   }
 
   integer_group
