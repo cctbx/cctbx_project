@@ -269,6 +269,9 @@ def select_matching(key, choices, default=None):
 class Keep: pass
 
 class Sorry(Exception):
+  """
+  Basic exception type for user errors; the traceback will be suppressed.
+  """
   __orig_module__ = __module__
   # trick to get just "Sorry" instead of "libtbx.utils.Sorry"
   __module__ = Exception.__module__
@@ -297,9 +300,17 @@ def sorry_excepthook(type, value, traceback):
 sys.excepthook = sorry_excepthook
 
 class Usage(Sorry):
+  """
+  Subclass of Sorry, for printing out usage instructions upon program
+  invocation without arguments (or --help, etc.).
+  """
   __module__ = Exception.__module__
 
 class Abort(Sorry) :
+  """
+  Subclass of Sorry, primarily used in the Phenix GUI in response to user
+  input.
+  """
   __module__ = Exception.__module__
 
 class Failure(Sorry) :
@@ -755,6 +766,7 @@ class buffered_indentor(indentor):
     self.buffer = []
 
 class null_out(object):
+  """Pseudo-filehandle for suppressing printed output."""
 
   def isatty(self): return False
   def close(self): pass
@@ -772,6 +784,10 @@ class raise_if_output(object):
   def writelines(self, sequence): raise RuntimeError
 
 class multi_out(object):
+  """
+  Multiplexing output stream, e.g. for simultaneously printing to stdout
+  and a logfile.
+  """
 
   def __init__(self):
     self.labels = []
@@ -787,6 +803,7 @@ class multi_out(object):
         if (a is not None): a.write(f.getvalue())
 
   def register(self, label, file_object, atexit_send_to=None):
+    """Adds an output stream to the list."""
     assert not self.closed
     self.labels.append(label)
     self.file_objects.append(file_object)
