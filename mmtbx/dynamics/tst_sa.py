@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.array_family import flex
 import iotbx.pdb
 import mmtbx.command_line.real_space_refine as rs

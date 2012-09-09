@@ -108,7 +108,7 @@ cablam_training {
   help = False
     .type = bool
     .help = '''print help text to screen'''
-}  
+}
 """, process_includes=True)
 #-------------------------------------------------------------------------------
 #}}}
@@ -151,12 +151,12 @@ include_types=restype3,restype4
   If only include_types is used, only the listed restypes will be printed
   If include_types and skip_types are both used, then the types given to
   include_types will override those skipped by skip_types.
-  
+
   List restypes by their 3-letter code and separated by commas withoug spaces,
   e.g. GLY,PRO,ALA,TRP
   Sequence relationships may be represented with underscores, e.g. _PRO is
   pre-proline, and GLY__ (2 underscores) is post-post-glycine
-  
+
   examples:
   skip_types=PRO would print every residue except proline
   include_types=PRO,GLY would print *only* glycines and prolines
@@ -446,7 +446,7 @@ def make_probe_data(hierarchy):
   #  probe_out = easy_run.fully_buffered(probe, stdin_lines=input_str).stdout_lines
   #  for line in probe_out:
   #    probe_return += line+'\n'
-  #return probe_return  
+  #return probe_return
 #-------------------------------------------------------------------------------
 #}}}
 
