@@ -132,7 +132,8 @@ Command-line options:
           (id,id, " ".join(misc_args)))
         if os.path.isfile("%s-sf.mtz" % id) :
           os.rename("%s-sf.mtz" % id, "%s.mtz" % id)
-          os.remove("%s-sf.cif" % id)
+          print >> log, "Converted structure factors saved to %s.mtz" % id
+        #  os.remove("%s-sf.cif" % id)
         files[-1] = os.path.abspath("%s.mtz" % id)
         if (not os.path.isfile("%s.mtz" % id)) :
           raise Sorry("MTZ conversion failed - try running phenix.cif_as_mtz "+

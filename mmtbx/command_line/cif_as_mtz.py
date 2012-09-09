@@ -416,6 +416,7 @@ def extract(file_name,
             array_label=label,
             complete_set=complete_set,
             preserve_input_values=True,
+            allow_uniform_flags=True,
             log=sys.stdout)
       # Get rid of fake (0,0,0) reflection in some CIFs
       ma = ma.select_indices(indices=flex.miller_index(((0,0,0),)),

@@ -192,6 +192,7 @@ def extend_flags (
     complete_set=None,
     accumulation_callback=None,
     preserve_input_values=False,
+    allow_uniform_flags=False,
     log=None) :
   from scitbx.array_family import flex
   if (log is None) : log = null_out()
@@ -201,6 +202,17 @@ def extend_flags (
   assert isinstance(r_free_as_bool, flex.bool)
   fraction_free = r_free_as_bool.count(True) / r_free_as_bool.size()
   print >>log, "%s: fraction_free=%.3f" %(array_label, fraction_free)
+  if (fraction_free == 0) :
+    if (allow_uniform_flags) :
+      msg = """\
+WARNING: R-free flags in %s do not appear to contain a valid test, so they \
+can't be extended to higher resolution.""" % array_label
+      print >> log, msg
+      return r_free_flags
+    else :
+      raise Sorry(("Can't extend R-free flags in %s to higher resolution "+
+        "because no valid test set with flag value '%s' was found.") %
+        (array_label, test_flag_value))
   if (complete_set is not None) :
     missing_set = complete_set.lone_set(r_free_flags)
   else :
