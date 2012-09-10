@@ -131,7 +131,7 @@ def run(args):
       "set_average_unit_cell=True.")
   # Read Nat's reference model from an MTZ file.  XXX The observation
   # type is given as F, not I--should they be squared?  Check with Nat!
-  log = open("%s.log" % work_params.output.prefix, "w")
+  log = open("%s_%s.log" % (work_params.output.prefix,work_params.scaling.algorithm), "w")
   out = multi_out()
   out.register("log", log, atexit_send_to=None)
   out.register("stdout", sys.stdout)
@@ -194,7 +194,7 @@ def run(args):
   reserve_prefix = work_params.output.prefix
   for data_subset in [1,2,0]:
     work_params.data_subset = data_subset
-    work_params.output.prefix = "%s_s%1d_%s"%(reserve_prefix,data_subset,"mark0")
+    work_params.output.prefix = "%s_s%1d_%s"%(reserve_prefix,data_subset,work_params.scaling.algorithm)
 
     if work_params.data_subset == 0:
       scaler.frames["data_subset"] = flex.bool(scaler.frames["frame_id"].size(),True)
@@ -223,7 +223,9 @@ def run(args):
     from xfel import scaling_results, get_scaling_results, get_isigi_dict
     results = scaling_results(scaler._observations, scaler._frames,
               scaler.millers["merged_asu_hkl"],scaler.frames["data_subset"])
-    results.mark0(scaler.params.min_corr, scaler.params.target_unit_cell)
+    results.__getattribute__(
+      work_params.scaling.algorithm)(
+      scaler.params.min_corr, scaler.params.target_unit_cell)
 
     sum_I, sum_I_SIGI, \
     scaler.completeness, scaler.summed_N, \

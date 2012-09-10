@@ -129,9 +129,9 @@ def correlation(self,other):
 
 def run_cc(params,output):
   data_SR = mtz.object(params.scaling.mtz_file)
-  data_d0 = mtz.object(params.output.prefix+"_s0_mark0.mtz")
-  data_d1 = mtz.object(params.output.prefix+"_s1_mark0.mtz")
-  data_d2 = mtz.object(params.output.prefix+"_s2_mark0.mtz")
+  data_d0 = mtz.object(params.output.prefix+"_s0_"+params.scaling.algorithm+".mtz")
+  data_d1 = mtz.object(params.output.prefix+"_s1_"+params.scaling.algorithm+".mtz")
+  data_d2 = mtz.object(params.output.prefix+"_s2_"+params.scaling.algorithm+".mtz")
 
   uniform = []
   for idx,item in enumerate([data_SR,data_d0,data_d1,data_d2]):
@@ -177,7 +177,7 @@ def run_cc(params,output):
   ref_scale = scale_factor(uniform[1],uniform[0])
   oe_scale = scale_factor(uniform[2],uniform[3])
 
-  cutoff = math.exp(params.scaling.log_cutoff)
+  cutoff = math.exp(params.scaling.log_cutoff or -100.)
   uniformA = (uniform[0].data()>=0.).__and__(uniform[1].data()>=0.).__and__(uniform[0].data() > cutoff).__and__(uniform[1].data() > cutoff)
 
   slope,offset,corr_iso,N = correlation(uniform[1].select(uniformA),uniform[0].select(uniformA))

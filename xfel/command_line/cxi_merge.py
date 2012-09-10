@@ -109,6 +109,11 @@ scaling {
     .help = for CC calculation, log(intensity) cutoff, ignore values less than this
   show_plots = False
     .type = bool
+  algorithm = mark0
+    .type = str
+    .help = mark0: original per-image scaling by reference to isomorphous PDB model
+    .help = mark1: no scaling, just averaging
+    .help = mark2: Fox & Holmes (1966) least squares scaling
 }
 plot_single_index_histograms = False
   .type = bool
@@ -1025,7 +1030,10 @@ def show_overall_observations(
           N += 1
           m += t[0]
         I_sum += m
-        if work_params is not None and work_params.plot_single_index_histograms is False or N<30: continue
+        if work_params is not None and \
+           (work_params.plot_single_index_histograms is False or \
+            N<30 or \
+            work_params.data_subset in [1,2]): continue
         print "Miller %20s n-obs=%4d  sum-I=%10.0f"%(index, N, m)
         plot_n_bins = N//10
         hist,bins = np.histogram([t[0] for t in ISIGI[index]],bins=25)

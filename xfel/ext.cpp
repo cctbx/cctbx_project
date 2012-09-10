@@ -241,7 +241,6 @@ struct scaling_results {
     selected_frames(data_subset){}
   void mark0 (double const& params_min_corr,
               cctbx::uctbx::unit_cell const& params_unit_cell) {
-    frame_id_dwell=-1;
     shared_int hkl_id = observations.get_int("hkl_id");
     shared_int frame_id = observations.get_int("frame_id");
     shared_double intensity = observations.get_double("i");
@@ -250,18 +249,7 @@ struct scaling_results {
     shared_double slope = frames.get_double("slope");
     int Nframes = frame_id.size();
     int Nhkl = merged_asu_hkl.accessor().focus()[0];
-
-    // result values
-    sum_I = shared_double(Nhkl, 0.);
-    sum_I_SIGI = shared_double(Nhkl, 0.);
-    completeness = shared_int(Nhkl, 0.);
-    summed_N = shared_int(Nhkl, 0.);
-    summed_wt_I = shared_double(Nhkl, 0.);
-    summed_weight = shared_double(Nhkl, 0.);
-    n_rejected = shared_double(Nframes, 0.);
-    n_obs = shared_double(Nframes, 0.);
-    d_min_values = shared_double(Nframes, 0.);
-    i_isig_list = shared_vec3();
+    initialize_results(Nframes, Nhkl);
 
     for (int iobs = 0; iobs < hkl_id.size(); ++iobs){
       int this_frame_id = frame_id[iobs];
@@ -306,6 +294,70 @@ struct scaling_results {
       summed_weight[this_hkl_id] += 1. / variance;
 
     }
+  }
+  void mark1 (double const& params_min_corr,
+              cctbx::uctbx::unit_cell const& params_unit_cell) {
+    // this eliminates the filter based on correlation with isomorphous structure
+    // so more reflections are included than in mark0
+    shared_int hkl_id = observations.get_int("hkl_id");
+    shared_int frame_id = observations.get_int("frame_id");
+    shared_double intensity = observations.get_double("i");
+    shared_double sigi = observations.get_double("sigi");
+    int Nframes = frame_id.size();
+    int Nhkl = merged_asu_hkl.accessor().focus()[0];
+    initialize_results(Nframes, Nhkl);
+
+    for (int iobs = 0; iobs < hkl_id.size(); ++iobs){
+      int this_frame_id = frame_id[iobs];
+      if (!selected_frames[this_frame_id]) {continue;}
+      int this_hkl_id = hkl_id[iobs];
+      if (this_frame_id != frame_id_dwell){
+        frame_id_dwell = this_frame_id;
+      }
+      completeness[this_hkl_id] += 1;
+      double this_i = intensity[iobs];
+      double this_sig = sigi[iobs];
+      n_obs[this_frame_id] += 1;
+      if (this_i <=0.){
+        n_rejected[this_frame_id] += 1;
+        continue;
+      }
+      summed_N[this_hkl_id] += 1;
+      double Intensity = this_i;
+      double isigi = this_i/this_sig;
+      sum_I[this_hkl_id] += Intensity;
+      sum_I_SIGI[this_hkl_id] += isigi;
+      cctbx::miller::index<> this_index( merged_asu_hkl[this_hkl_id] );
+      i_isig_list.push_back( vec3(
+        this_hkl_id, Intensity, isigi));
+      double this_d_spacing = params_unit_cell.d(this_index);
+      double this_frame_d_min = d_min_values[this_frame_id];
+      if (this_frame_d_min==0.){
+        d_min_values[this_frame_id] = this_d_spacing;
+      } else if (this_d_spacing < this_frame_d_min) {
+        d_min_values[this_frame_id] = this_d_spacing;
+      }
+
+      double sigma = this_sig;
+      double variance = sigma * sigma;
+      summed_wt_I[this_hkl_id] += Intensity / variance;
+      summed_weight[this_hkl_id] += 1. / variance;
+    }
+  }
+
+  private:
+  void initialize_results(const int& Nframes, const int& Nhkl){
+    frame_id_dwell=-1;
+    sum_I = shared_double(Nhkl, 0.);
+    sum_I_SIGI = shared_double(Nhkl, 0.);
+    completeness = shared_int(Nhkl, 0.);
+    summed_N = shared_int(Nhkl, 0.);
+    summed_wt_I = shared_double(Nhkl, 0.);
+    summed_weight = shared_double(Nhkl, 0.);
+    n_rejected = shared_double(Nframes, 0.);
+    n_obs = shared_double(Nframes, 0.);
+    d_min_values = shared_double(Nframes, 0.);
+    i_isig_list = shared_vec3();
   }
 };
 
@@ -361,6 +413,7 @@ namespace boost_python { namespace {
       .def(init<column_parser&, column_parser&, scaling_results::shared_miller&,
                 scaling_results::shared_bool&>())
       .def("mark0",&scaling_results::mark0)
+      .def("mark1",&scaling_results::mark1)
     ;
     def("get_scaling_results", &get_scaling_results);
     def("get_isigi_dict", &get_isigi_dict);
