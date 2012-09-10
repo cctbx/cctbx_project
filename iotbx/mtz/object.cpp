@@ -1,4 +1,6 @@
-#include <csymlib.h>
+#include <cvecmat.h>
+#include <ccp4_spg.h>
+#include <scitbx/math/utils.h>
 #include <iotbx/mtz/batch.h>
 #include <iotbx/mtz/column.h>
 #include <iotbx/error.h>
@@ -433,6 +435,46 @@ namespace iotbx { namespace mtz {
     }
   }
 
+  CSym::ccp4_symop Qmat4_to_rotandtrn(const float rsm[4][4]) {
+
+    int i,j;
+    CSym::ccp4_symop symop;
+
+    for (i = 0; i < 3; ++i) {
+      for (j = 0; j < 3; ++j)
+        symop.rot[i][j]=rsm[i][j];
+      symop.trn[i]=rsm[i][3];
+    }
+
+    return (symop);
+  }
+
+  void Qrotandtrn_to_mat4(float rsm[4][4], const CSym::ccp4_symop symop) {
+
+    int i,j;
+
+    for (i = 0; i < 3; ++i) {
+      for (j = 0; j < 3; ++j)
+        rsm[i][j]=symop.rot[i][j];
+      rsm[i][3]=symop.trn[i];
+      rsm[3][i]=0.0;
+    }
+    rsm[3][3]=1.0;
+  }
+
+  //copied from csymlib.c to avoid windows compilation error, unresolved symbol ccp4printf
+  CSym::ccp4_symop ccp4_symop_invert( const CSym::ccp4_symop op1 )
+  {
+    float rot1[4][4],rot2[4][4];
+
+    Qrotandtrn_to_mat4(rot1,op1);
+    invert4matrix((const float (*)[4])rot1,rot2);
+    return (Qmat4_to_rotandtrn((const float (*)[4])rot2));
+  }
+
+  int
+  iround(float x) { return scitbx::math::float_int_conversions<float,int>::iround(x); }
+
   af::shared<cctbx::miller::index<> >
   object::extract_original_index_miller_indices(
     const char* column_label_m_isym) const
@@ -458,7 +500,7 @@ namespace iotbx { namespace mtz {
 
     scitbx::af::shared<ccp4_symop> invsymop(p->mtzsymm.nsym);
     for(int i = 0 ; i < p->mtzsymm.nsym; ++i) {
-      invsymop[i] = CSym::ccp4_symop_invert(op1[i]);
+      invsymop[i] = ccp4_symop_invert(op1[i]);
     }
 
     for (int i_refl=0; i_refl<n_refl; ++i_refl){
@@ -472,15 +514,15 @@ namespace iotbx { namespace mtz {
 
       //algorithm borrowed from CSym::ccp4spg_generate_indices(...)
       result.push_back(cctbx::miller::index<>(
-         isign * (int) rint(asu_hkl[0]*invsymop[jsym].rot[0][0] +
-                                 asu_hkl[1]*invsymop[jsym].rot[1][0] +
-                                 asu_hkl[2]*invsymop[jsym].rot[2][0]),
-         isign * (int) rint(asu_hkl[0]*invsymop[jsym].rot[0][1] +
-                                 asu_hkl[1]*invsymop[jsym].rot[1][1] +
-                                 asu_hkl[2]*invsymop[jsym].rot[2][1]),
-         isign * (int) rint(asu_hkl[0]*invsymop[jsym].rot[0][2] +
-                                 asu_hkl[1]*invsymop[jsym].rot[1][2] +
-                                 asu_hkl[2]*invsymop[jsym].rot[2][2])
+         isign *     iround(asu_hkl[0]*invsymop[jsym].rot[0][0] +
+                            asu_hkl[1]*invsymop[jsym].rot[1][0] +
+                            asu_hkl[2]*invsymop[jsym].rot[2][0]),
+         isign *     iround(asu_hkl[0]*invsymop[jsym].rot[0][1] +
+                            asu_hkl[1]*invsymop[jsym].rot[1][1] +
+                            asu_hkl[2]*invsymop[jsym].rot[2][1]),
+         isign *     iround(asu_hkl[0]*invsymop[jsym].rot[0][2] +
+                            asu_hkl[1]*invsymop[jsym].rot[1][2] +
+                            asu_hkl[2]*invsymop[jsym].rot[2][2])
 
       ));
     }
