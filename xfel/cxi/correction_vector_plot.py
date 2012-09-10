@@ -115,17 +115,36 @@ def run_correction_vector_plot(working_phil):
 
   sort_radii = flex.sort_permutation(flex.double(L.radii))
   tile_rmsds = flex.double()
+  radial_sigmas = flex.double(64)
+  tangen_sigmas = flex.double(64)
   for idx in xrange(64):
     x = sort_radii[idx]
     print "Tile %2d: radius %7.2f, %6d observations, delx %5.2f  dely %5.2f, rmsd = %5.2f"%(
       x, L.radii[x], L.tilecounts[x], L.mean_cv[x][0], L.mean_cv[x][1],
       L.tile_rmsd[x]
-      )
+        ),
+    if L.tilecounts[x] < 3:
+      print
+      radial = (0,0)
+      tangential = (0,0)
+      rmean,tmean,rsigma,tsigma=(0,0,1,1)
+    else:
+      wtaveg = L.weighted_average_angle_deg_from_tile(x)
+      print "Tile rotation %6.2f deg"%wtaveg,
+      radial,tangential,rmean,tmean,rsigma,tsigma = get_radial_tangential_vectors(L,x)
+      print "%6.2f %6.2f"%(rsigma,tsigma)
+    radial_sigmas[x]=rsigma
+    tangen_sigmas[x]=tsigma
+  rstats = flex.mean_and_variance(radial_sigmas,L.tilecounts.as_double())
+  tstats = flex.mean_and_variance(tangen_sigmas,L.tilecounts.as_double())
+
   print "\nOverall                 %8d observations, delx %5.2f  dely %5.2f, rmsd = %5.2f"%(
       L.overall_N, L.overall_cv[0], L.overall_cv[1], L.overall_rmsd)
   print "Average tile rmsd %5.2f"%flex.mean(flex.double(L.tile_rmsd))
   print "Average tile displacement %5.2f"%(flex.mean(
     flex.double([matrix.col(cv).length() for cv in L.mean_cv])))
+  print "Weighted average radial sigma %6.2f"%rstats.mean()
+  print "Weighted average tangential sigma %6.2f"%tstats.mean()
 
   if working_phil.show_plots is True:
     plt.plot([(L.tiles[4*x+0]+L.tiles[4*x+2])/2. for x in xrange(64)],[(L.tiles[4*x+1]+L.tiles[4*x+3])/2. for x in xrange(64)],"go")
