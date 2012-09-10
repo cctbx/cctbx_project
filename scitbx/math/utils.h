@@ -2,6 +2,7 @@
 #define SCITBX_MATH_UTILS_H
 
 #include <cmath>
+#include <algorithm>
 
 namespace scitbx { namespace math {
 
