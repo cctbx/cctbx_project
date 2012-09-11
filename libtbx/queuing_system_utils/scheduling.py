@@ -78,9 +78,9 @@ class NullProcessor(object):
 
 
   @staticmethod
-  def error(identifier, exception):
+  def reset():
 
-    return Exception( identifier = identifier, instance = exception )
+    pass
 
 
 class RetrieveTarget(object):
@@ -146,9 +146,9 @@ class RetrieveProcessor(object):
       )
 
 
-  def error(self):
+  def reset(self):
 
-    return Exception( identifier = identifier, instance = exception )
+    pass
 
 
 class ExecutionUnit(object):
@@ -177,6 +177,12 @@ class ExecutionUnit(object):
   def finalize(self, identifier):
 
     return self.processor.finalize( identifier = identifier )
+
+
+  def error(self, exception):
+
+    self.processor.reset()
+    return Exception( identifier = identifier, instance = exception )
 
 
 class ResultIterator(object):
