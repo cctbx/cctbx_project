@@ -651,12 +651,23 @@ class scaling_manager (intensity_data) :
 
     print "Step 3. Correct for polarization."
     indexed_cell = observations.unit_cell()
-    # Now do manipulate the data to conform to unit cell, asu, and space group
+
+    # some recordkeeping useful for simulations
+    observations_original_index = observations.indices()
+    partialities_original_index = observations.customized_copy(
+      crystal_symmetry=self.miller_set.crystal_symmetry(),
+      data = result["model_partialities"][0]["data"],
+      sigmas = flex.double(result["model_partialities"][0]["data"].size()), #dummy value for sigmas
+      indices = result["model_partialities"][0]["indices"],
+      ).resolution_filter(d_min=self.params.d_min)
+
+    # Now manipulate the data to conform to unit cell, asu, and space group
     # of reference
     # Only works if there is NOT an indexing ambiguity!
     observations = observations.customized_copy(
       crystal_symmetry=self.miller_set.crystal_symmetry()
       ).resolution_filter(d_min=self.params.d_min).map_to_asu()
+
     print "Step 4. Filter on global resolution and map to asu"
     print >> out, "Data in reference setting:"
     #observations.show_summary(f=out, prefix="  ")
@@ -717,6 +728,12 @@ class scaling_manager (intensity_data) :
     sum_x = 0
     sum_y = 0
     for pair in matches.pairs():
+
+      # SIM Simulation 0.
+      # observations.data()[pair[1]] = self.i_model.data()[pair[0]]     # SIM
+      # observations.sigmas()[pair[1]] = self.i_model.sigmas()[pair[0]] # SIM
+      # SIM end
+
       data.n_obs += 1
       if (observations.data()[pair[1]] <= 0):
         data.n_rejected += 1
