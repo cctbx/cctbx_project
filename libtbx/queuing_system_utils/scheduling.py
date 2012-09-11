@@ -34,6 +34,32 @@ class Result(object):
     return "Result(id = %s)" % id( self.identifier )
 
 
+  def __call__(self):
+
+    return None
+
+
+class Exception(object):
+  """
+  Error raised by the calculation result
+  """
+
+  def __init__(self, identifier, exception):
+
+    self.identifier = identifier
+    self.instance = instance
+
+
+  def __repr__(self):
+
+    return "Result(id = %s)" % id( self.identifier )
+
+
+  def __call__(self):
+
+    raise self.instance
+
+
 class NullProcessor(object):
   """
   A singleton class to not do anything
@@ -49,6 +75,12 @@ class NullProcessor(object):
   def finalize(identifier):
 
     return Result( identifier = identifier )
+
+
+  @staticmethod
+  def error(identifier, exception):
+
+    return Exception( identifier = identifier, instance = exception )
 
 
 class RetrieveTarget(object):
@@ -84,6 +116,11 @@ class RetrieveResult(object):
     return "RetrieveResult(id = %s)" % id( self.identifier )
 
 
+  def __call__(self):
+
+    return self.result
+
+
 class RetrieveProcessor(object):
   """
   Adds a retrieve step
@@ -107,6 +144,11 @@ class RetrieveProcessor(object):
       identifier = identifier,
       result = self.queue.get( block = self.block, timeout = self.timeout ),
       )
+
+
+  def error(self):
+
+    return Exception( identifier = identifier, instance = exception )
 
 
 class ExecutionUnit(object):
@@ -287,9 +329,17 @@ class Manager(object):
     # Process finished jobs
     for job in self.execinfo_for.keys():
       if not job.is_alive():
-        job.join()
         ( unit, identifier ) = self.execinfo_for[ job ]
-        result = unit.finalize( identifier = identifier )
+
+        try:
+          job.join()
+
+        except RuntimeError, e:
+          result = unit.error( identifier = identifier, exception = e )
+
+        else:
+          result = unit.finalize( identifier = identifier )
+
         del self.execinfo_for[ job ]
         self.available_units.add( unit )
         self.completed_results.append( result )
