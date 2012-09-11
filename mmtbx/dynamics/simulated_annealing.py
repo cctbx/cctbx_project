@@ -23,7 +23,7 @@ time_step = 0.0005
 initial_velocities_zero_fraction = 0
   .type = float
   .expert_level=2
-interleaved_minimization = False
+interleave_minimization = False
   .type = bool
 n_print = 100
   .type = int
@@ -138,7 +138,7 @@ class run(object):
         xray_structure           = self.xray_structure,
         gradients_calculator     = self.gradients_calculator(),
         temperature              = self.curr_temp,
-        interleaved_minimization = self.params.interleaved_minimization,
+        interleaved_minimization = self.params.interleave_minimization,
         vxyz                 = vxyz,
         n_steps              = self.params.number_of_steps,
         time_step            = self.params.time_step,
