@@ -291,7 +291,13 @@ class AsynchronousJobStatus(object):
 
   def is_finished(self):
 
-    return self.poller.is_finished( jobid = jobid )
+    try:
+      result = self.poller.is_finished( jobid = jobid )
+
+    except ValueError:
+      result = True
+
+    return result
 
 
 # These are not very efficient
@@ -320,6 +326,56 @@ class SGEPoller(object):
 
     else:
       return False
+
+
+class SGECentralPoller(object):
+  """
+  Polls job status for SGE in batch
+  """
+
+  def __init__(self, waittime = 5):
+
+    self.waittime = waittime
+    self.polltime = None
+    self.running = set()
+    self.update( polltime = time.time() )
+
+
+  def update(self, polltime):
+
+    process = subprocess.Popen(
+      [ "qstat", "-xml" ],
+      stdout = subprocess.PIPE,
+      stderr = subprocess.PIPE
+      )
+    ( out, err ) = process.communicate()
+
+    if err:
+      raise RuntimeError, "SGE error:\n%s" % err
+
+    import xml.etree.ElementTree as ET
+    root = ET.fromstring( out )
+    self.polltime = polltime
+    self.running = set()
+
+    for n in root.iter( "job_list" ):
+      status_node = n.find( "JB_job_number" )
+      assert status_node
+      self.running.add( status_node.text )
+
+
+  def is_finished(self, jobid):
+
+    now = time.time()
+
+    if self.waittime < ( now - self.polltime ) or now < self.polltime:
+      self.update( polltime = now )
+
+    if jobid in self.running:
+      return False
+
+    else:
+      raise ValueError, "Unknown job id"
 
 
 class LSFPoller(object):
@@ -622,7 +678,7 @@ def SGE(
     ( command, extra ) = lex_command_line( command = command )
 
   if asynchronous:
-    submission = AsynchronousSubmission.SGE( poller = SGEPoller() )
+    submission = AsynchronousSubmission.SGE( poller = SGECentralPoller() )
 
   else:
     submission = SynchronousSubmission.SGE()
