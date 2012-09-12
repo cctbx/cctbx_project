@@ -179,7 +179,7 @@ class ExecutionUnit(object):
     return self.processor.finalize( identifier = identifier )
 
 
-  def error(self, exception):
+  def error(self, identifier, exception):
 
     self.processor.reset()
     return Exception( identifier = identifier, instance = exception )
