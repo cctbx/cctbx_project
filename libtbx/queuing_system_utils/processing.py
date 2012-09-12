@@ -292,7 +292,7 @@ class AsynchronousJobStatus(object):
   def is_finished(self):
 
     try:
-      result = self.poller.is_finished( jobid = jobid )
+      result = self.poller.is_finished( jobid = self.jobid )
 
     except ValueError:
       result = True
@@ -360,7 +360,7 @@ class SGECentralPoller(object):
 
     for n in root.iter( "job_list" ):
       status_node = n.find( "JB_job_number" )
-      assert status_node
+      assert status_node is not None
       self.running.add( status_node.text )
 
 
