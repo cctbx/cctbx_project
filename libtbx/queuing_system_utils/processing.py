@@ -287,6 +287,8 @@ class AsynchronousJobStatus(object):
 
     self.jobid = jobid
     self.poller = poller
+    # Allow poller to update without actual refresh
+    self.poller.new_job_submitted( jobid = self.jobid )
 
 
   def is_finished(self):
@@ -326,6 +328,11 @@ class SGEPoller(object):
 
     else:
       return False
+
+
+  def new_job_submitted(self, jobid):
+
+    pass
 
 
 class SGECentralPoller(object):
@@ -378,6 +385,11 @@ class SGECentralPoller(object):
       raise ValueError, "Unknown job id"
 
 
+  def new_job_submitted(self, jobid):
+
+    self.running.add( jobid )
+
+
 class LSFPoller(object):
   """
   Polls job status for LSF
@@ -397,6 +409,11 @@ class LSFPoller(object):
 
     else:
       return False
+
+
+  def new_job_submitted(self, jobid):
+
+    pass
 
 
 class PBSPoller(object):
@@ -429,6 +446,11 @@ class PBSPoller(object):
       raise RuntimeError, "Unexpected response from queue:\n%s" % out
 
     return state.group(1) == "C"
+
+
+  def new_job_submitted(self, jobid):
+
+    pass
 
 
 class Submission(object):
