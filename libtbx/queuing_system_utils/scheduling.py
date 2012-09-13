@@ -196,6 +196,11 @@ class ExecutionUnit(object):
     return ErrorEnding( identifier = identifier, instance = exception )
 
 
+  def __str__(self):
+
+    return "%s(id = %s)" % ( self.__class__.__name__, id( self ) )
+
+
 class ExecutingJob(object):
   """
   A job that is executing on a Unit
@@ -235,6 +240,16 @@ class ExecutingJob(object):
 
     assert hasattr( self, "method" ) and hasattr( self, "args" )
     return self.method( *self.args )
+
+
+  def __str__(self):
+
+    return "%s(\n  unit = %s,\n  indentifier = %s,\n  job = %s\n)" % (
+      self.__class__.__name__,
+      self.unit,
+      self.identifier,
+      self.job,
+      )
 
 
 class ResultIterator(object):

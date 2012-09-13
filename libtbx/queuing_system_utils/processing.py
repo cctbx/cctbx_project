@@ -271,6 +271,11 @@ EOF
     return "%s.err" % self.name
 
 
+  def __str__(self):
+
+    return "%s(name = '%s')" % ( self.__class__.__name__, self.name )
+
+
 class SynchronousJobStatus(object):
   """
   Determines job status for synchronous jobs
