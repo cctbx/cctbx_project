@@ -164,7 +164,8 @@ def analyze_input_params(params):
       mp_.sharpening_b_factor = None
     i += 1
 
-def run (args, log = sys.stdout, use_output_directory=True):
+def run (args, log = sys.stdout, use_output_directory=True,
+    suppress_fmodel_output=False):
   print >> log, legend
   print >> log, "-"*79
   master_params = mmtbx.maps.maps_including_IO_master_params()
@@ -189,11 +190,16 @@ def run (args, log = sys.stdout, use_output_directory=True):
     master_params=master_params)
   working_phil = processed_args.params
   params = working_phil.extract()
+  fmodel_data_file_format = params.maps.output.fmodel_data_file_format
   if (len(params.maps.map_coefficients) == 0) and (len(params.maps.map) == 0) :
     print >> log, "No map input specified - using default map types"
     working_phil = master_params.fetch(sources=[working_phil,
         iotbx.phil.parse(default_params)])
     params = working_phil.extract()
+    # XXX BUG - the extra fetch will always set fmodel_data_file_format to
+    # mtz; this is probaby a low-level phil problem
+    if (fmodel_data_file_format is None) or (suppress_fmodel_output) :
+      params.maps.output.fmodel_data_file_format = None
   analyze_input_params(params=params)
   have_phil_file_input = len(processed_args.phil_file_names) > 0
   if (len(processed_args.pdb_file_names) > 1) :
@@ -210,6 +216,7 @@ def run (args, log = sys.stdout, use_output_directory=True):
       (len(processed_args.reflection_file_names) == 1)) :
     params.maps.input.reflection_data.file_name = \
       processed_args.reflection_file_names[0]
+  print "FORMAT:", params.maps.output.fmodel_data_file_format
   working_phil = master_params.format(python_object=params)
   print >> log, "-"*79
   print >> log, "\nParameters to compute maps::\n"
@@ -351,7 +358,8 @@ class launcher (runtime_utils.target_with_save_result) :
     os.chdir(self.output_dir)
     return run(args=list(self.args),
       log=sys.stdout,
-      use_output_directory=False)
+      use_output_directory=False,
+      suppress_fmodel_output=True) # XXX bug fix
 
 def validate_params (params, callback=None) :
   if params.maps.input.pdb_file_name is None :
