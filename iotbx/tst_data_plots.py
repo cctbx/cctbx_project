@@ -117,6 +117,19 @@ Resolution shell statistics
        'Axial reflections, axis k, Unspecified ',
        'Axial reflections, axis l, Unspecified ',
        'Run     1, standard deviation v. Intensity, Unspecified '])
+  loggraph3 = """\
+$TABLE: Matthews coefficients:
+$GRAPHS: Protein crystal computed at resolution of 2.450 :A:1,2,3,4
+$$ Nmol/asym Matthews_Coeff sovlent_frac P(2.450) $$
+$$
+    1         3.13            0.61         0.99
+    2         1.56            0.21         0.01
+$$
+"""
+  t3 = data_plots.table_data(None)
+  t3.import_loggraph(loggraph3)
+  g3 = t3.get_graph("Protein crystal computed at resolution of 2.450")
+  p3 = g3.get_plots()
   print "OK"
 
 if __name__ == "__main__" :

@@ -113,9 +113,9 @@ class table_data (object) :
 
   def add_graph (self, name, type, columns) :
     if self.graph_names is None :
-      self.graph_names = [name]
+      self.graph_names = [name.strip()]
     else :
-      self.graph_names.append(name)
+      self.graph_names.append(name.strip())
     if self.graph_types is None :
       self.graph_types = [type]
     else :
@@ -126,7 +126,6 @@ class table_data (object) :
       self.graph_columns.append(columns)
 
   def import_loggraph (self, loggraph_lines) :
-    sections_passed = 0
     initial_spaces = re.compile("^\s*")
     trailing_spaces = re.compile("\s*$")
     trailing_dollars = re.compile("\$\$\.*")
@@ -136,12 +135,19 @@ class table_data (object) :
       lines = loggraph_lines.split("\n")
     else :
       lines = loggraph_lines
+    processed_lines = []
     for raw_line in lines :
+      is_graph_line = False
       line = raw_line.strip()
       #line = initial_spaces.sub("", raw_line)
       if line.startswith("$$") and (not line == "$$") :
-        sections_passed += 1 #line.count("$$")
-        line = re.sub("^\$\$\ *", "", line)
+        sublines = re.sub("\$\$", "$$\n", line).split("\n")
+        processed_lines.extend(sublines)
+        #line = re.sub("^\$\$\ *", "", line)
+      else :
+        processed_lines.append(line)
+    sections_passed = 0
+    for line in processed_lines :
       if line == "" :
         pass
       elif line.startswith("$TABLE") :
@@ -149,12 +155,15 @@ class table_data (object) :
         #re.sub("\ *:\ *$", "", line[8:]))
       elif line.startswith("$GRAPHS") :
         graph_lines = line[8:]
+        is_graph_line = True
         self.plot_type = "GRAPH"
       elif line.startswith("$SCATTER") :
         graph_lines = line[9:]
+        is_graph_line = True
         self.plot_type = "SCATTER"
-      elif graph_lines is not None and sections_passed == 0 :
+      elif (graph_lines is not None) and (sections_passed==0) and (line!="$$"):
         graph_lines += line
+        is_graph_line = True
       elif sections_passed == 1 :
         clean_line = trailing_dollars.sub("",
           trailing_dollars_phaser.sub("", line))
@@ -164,11 +173,13 @@ class table_data (object) :
       elif sections_passed == 3 and line[0:2] != "$$" :
         fields = [ _atof(x) for x in line.split() ]
         self.add_row(fields)
-      if line.endswith("$$") : #trailing_spaces.sub("", line).endswith("$$") :
+      if ("$$" in line) :
         sections_passed += line.count("$$")
-        if sections_passed == 1 :
-          if graph_lines is None : graph_lines = line[:-2]
-          else                   : graph_lines += line[:-2]
+        if (sections_passed == 1) :
+          if graph_lines is None :
+            graph_lines = line[:-2]
+          elif (not is_graph_line) and (line != "$$") :
+            graph_lines += line[:-2]
           graph_string = re.sub(":\s*$", "", re.sub("^\s*:", "", graph_lines))
           fields = graph_string.split(":")
           i = 0
@@ -183,7 +194,7 @@ class table_data (object) :
     for i, column in enumerate(self.data) :
       column_is_ints = []
       for x in column :
-        if (x is None) or (str(x).lower() in ['nan', 'inf']) :
+        if (x is None) or (str(x).lower() in ['nan', 'inf', '-inf']) :
           column_is_ints.append(None)
         elif (int(x) == x) :
           column_is_ints.append(True)
