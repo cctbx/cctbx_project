@@ -242,13 +242,21 @@ EOF
     while self.is_alive():
       time.sleep( 0.1 )
 
+    if os.path.exists( self.out_file() ):
+      output = open( self.out_file() ).read()
+      os.remove( self.out_file() )
+
+      if output:
+        print output
+
     if os.path.exists( self.err_file() ):
       error = open( self.err_file() ).read()
+      os.remove( self.err_file() )
 
       if error:
         raise RuntimeError, error
 
-    for fname in [ self.out_file(), self.err_file() ] + self.data.files():
+    for fname in self.data.files():
       if os.path.exists( fname ):
         os.remove( fname )
 

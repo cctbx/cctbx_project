@@ -39,7 +39,7 @@ class Result(object):
     return None
 
 
-class Exception(object):
+class ErrorEnding(object):
   """
   Error raised by the calculation result
   """
@@ -58,6 +58,12 @@ class Exception(object):
   def __call__(self):
 
     raise self.instance
+
+
+class ProcessingException(Exception):
+  """
+  An exception signalling temporary error with post-processing, e.g. a timeout
+  """
 
 
 class NullProcessor(object):
@@ -140,10 +146,15 @@ class RetrieveProcessor(object):
 
   def finalize(self, identifier):
 
-    return RetrieveResult(
-      identifier = identifier,
-      result = self.queue.get( block = self.block, timeout = self.timeout ),
-      )
+    from Queue import Empty
+
+    try:
+      result = self.queue.get( block = self.block, timeout = self.timeout )
+
+    except Empty:
+      raise ProcessingException, "Timeout on %s" % self.queue
+
+    return RetrieveResult( identifier = identifier, result = result )
 
 
   def reset(self):
@@ -182,7 +193,48 @@ class ExecutionUnit(object):
   def error(self, identifier, exception):
 
     self.processor.reset()
-    return Exception( identifier = identifier, instance = exception )
+    return ErrorEnding( identifier = identifier, instance = exception )
+
+
+class ExecutingJob(object):
+  """
+  A job that is executing on a Unit
+  """
+
+  def __init__(self, unit, identifier):
+
+    self.unit = unit
+    self.identifier = identifier
+    self.job = self.unit.start(
+      target = identifier.target,
+      args = identifier.args,
+      kwargs = identifier.kwargs,
+      )
+
+
+  def is_alive(self):
+
+    return self.job.is_alive()
+
+
+  def postprocess(self):
+
+    try:
+      self.job.join()
+
+    except Exception, e:
+      self.method = self.unit.error
+      self.args = ( self.identifier, e )
+
+    else:
+      self.method = self.unit.finalize
+      self.args = ( self.identifier, )
+
+
+  def get(self):
+
+    assert hasattr( self, "method" ) and hasattr( self, "args" )
+    return self.method( *self.args )
 
 
 class ResultIterator(object):
@@ -238,21 +290,53 @@ class OrderedResultIterator(object):
 class Manager(object):
   """
   Process queue
+
+  Manager properties:
+    waiting_jobs
+    running_jobs
+    completed_jobs
+    known_jobs
+
+  Manager iterators:
+    results
+
+  Manager methods:
+    submit(target, args = (), kwargs = {}):
+    is_empty():
+    is_full():
+    wait():
+    wait_for(identifier):
+    result_for(identifier):
+    join():
+    poll():
   """
 
   def __init__(self, units, polling_interval = 0.01):
 
     self.available_units = set( units )
-    self.execinfo_for = {}
+    self.executing = set()
     self.waiting_jobs = deque()
+    self.postprocessing = deque()
     self.completed_results = deque()
     self.polling_interval = polling_interval
 
 
   @property
+  def executing_jobs(self):
+
+    return [ ej.identifier for ej in self.executing ]
+
+
+  @property
+  def postprocessing_jobs(self):
+
+    return [ ej.identifier for ej in self.postprocessing ]
+
+
+  @property
   def running_jobs(self):
 
-    return [ info[1] for info in self.execinfo_for.values() ]
+    return self.executing_jobs + self.postprocessing_jobs
 
 
   @property
@@ -288,7 +372,7 @@ class Manager(object):
 
   def is_empty(self):
 
-    return not self.execinfo_for
+    return not self.executing and not self.postprocessing
 
 
   def is_full(self):
@@ -333,34 +417,33 @@ class Manager(object):
   def poll(self):
 
     # Process finished jobs
-    for job in self.execinfo_for.keys():
+    for job in list( self.executing ):
       if not job.is_alive():
-        ( unit, identifier ) = self.execinfo_for[ job ]
-
-        try:
-          job.join()
-
-        except RuntimeError, e:
-          result = unit.error( identifier = identifier, exception = e )
-
-        else:
-          result = unit.finalize( identifier = identifier )
-
-        del self.execinfo_for[ job ]
-        self.available_units.add( unit )
-        self.completed_results.append( result )
+        self.executing.remove( job )
+        job.postprocess()
+        self.postprocessing.append( job )
 
     # Submit new jobs
     while not self.is_full() and self.waiting_jobs:
       identifier = self.waiting_jobs.popleft()
       unit = max( self.available_units, key = lambda s: s.priority )
       self.available_units.remove( unit )
-      job = unit.start(
-        target = identifier.target,
-        args = identifier.args,
-        kwargs = identifier.kwargs
-        )
-      self.execinfo_for[ job ] = ( unit, identifier )
+      job = ExecutingJob( unit = unit, identifier = identifier )
+      self.executing.add( job )
+
+    # Postprocess jobs
+    for i in range( len( self.postprocessing ) ):
+      ej = self.postprocessing.popleft()
+
+      try:
+        result = ej.get()
+
+      except ProcessingException, e:
+        self.postprocessing.append( ej )
+        continue
+
+      self.available_units.add( ej.unit )
+      self.completed_results.append( result )
 
 
 class Adapter(object):
