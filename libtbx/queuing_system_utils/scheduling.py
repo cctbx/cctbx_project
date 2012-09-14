@@ -47,17 +47,17 @@ class ErrorEnding(object):
   def __init__(self, identifier, exception):
 
     self.identifier = identifier
-    self.instance = instance
+    self.exception = exception
 
 
   def __repr__(self):
 
-    return "Result(id = %s)" % id( self.identifier )
+    return "ErrorEnding(id = %s)" % id( self.identifier )
 
 
   def __call__(self):
 
-    raise self.instance
+    raise self.exception
 
 
 class ProcessingException(Exception):
@@ -193,7 +193,7 @@ class ExecutionUnit(object):
   def error(self, identifier, exception):
 
     self.processor.reset()
-    return ErrorEnding( identifier = identifier, instance = exception )
+    return ErrorEnding( identifier = identifier, exception = exception )
 
 
   def __str__(self):
