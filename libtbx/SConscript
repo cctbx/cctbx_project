@@ -591,6 +591,19 @@ else:
     env_etc.shlinkflags.extend(lkfl)
     env_etc.shlinkflags_bpl = list(env_etc.shlinkflags)
   elif (env_etc.compiler == "unix_clang"):
+    conf = env_base.Configure()
+    flag, output = conf.TryRun('#include <iostream>'
+                               'int main() {'
+                               '  std::cout << __clang_major__ << ","'
+                               '            << __clang_minor__ << ","'
+                               '            << __clang_patchlevel__ << ",";'
+                               '  return 0;'
+                               '}')
+    assert flag, "I have been asked to use the compiler clang but it is not working!"
+    env_etc.clang_version = ()
+    for x in output.split(','):
+      if not x: x = None
+      env_etc.clang_version += (x,)
     env_etc.static_libraries = 0
     env_etc.static_bpl = 0
     cc = "clang"
