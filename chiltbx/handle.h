@@ -175,7 +175,7 @@ protected:
                 this->reference_ = new counter<T>(t);
         }
         handle ( counter<T> *ref ) {
-                Synch lock();
+                Synch lock;
                 this->reference_ = ref;
                 ++this->reference_->count;
         }
@@ -192,7 +192,7 @@ protected:
                 return &this->reference_->value;
         }
         void clear () {
-                Synch lock();
+                Synch lock;
                 if ( 0 != this->reference_ )
                         --this->reference_->count;
                 if ( 0 == this->reference_->count )
@@ -224,7 +224,7 @@ protected:
                 return new self_type(this->reference_);
         }
         virtual interface_type get () {
-                Synch lock();
+                Synch lock;
                 if ( 1 == this->reference_->count )
                         return &this->reference_->value;
                 counter<T> *local_reference = new counter<T>(this->reference_->value);
