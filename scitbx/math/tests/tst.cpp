@@ -39,31 +39,6 @@ void exercise_copy_sign() {
 void exercise_imaginary() {
   scitbx::math::imaginary_unit_t i;
   {
-    typedef std::complex<int> c_t;
-
-    SCITBX_ASSERT(2*i == i*2);
-    SCITBX_ASSERT(2*(2*i) == 4*i);
-    SCITBX_ASSERT((2*i)*2 == 4*i);
-    SCITBX_ASSERT(2/(2*i) == -1*i);
-    SCITBX_ASSERT((2*i)/2 == 1*i);
-
-    SCITBX_ASSERT(2*i + 3*i == 5*i);
-    SCITBX_ASSERT(2*i - 3*i == -1*i);
-
-    SCITBX_ASSERT(1+2*i == c_t(1, 2));
-
-    SCITBX_ASSERT(2*i + c_t(3, -2) == c_t(3, 0));
-    SCITBX_ASSERT(-2*i - c_t(3, 2) == c_t(-3, -4));
-    SCITBX_ASSERT(c_t(3, -2) + 2*i == c_t(3, 0));
-    SCITBX_ASSERT(c_t(3, 2) - 2*i == c_t(3, 0));
-
-    SCITBX_ASSERT(2*i * c_t(1, 2) == c_t(-4, 2));
-    SCITBX_ASSERT(c_t(1, 2) * 2*i == c_t(-4, 2));
-
-    SCITBX_ASSERT(5*i / c_t(2, 1) == c_t(1, 2));
-    SCITBX_ASSERT(c_t(3, 9) / (3*i) == c_t(3, -1));
-  }
-  {
     typedef std::complex<double> c_t;
 
     SCITBX_ASSERT(2.*i == i*2.);
