@@ -721,7 +721,7 @@ else:
       if macro['llvm']:
         env_etc.gcc_is_llvm_gcc = True
         m = re.search(r"LLVM build ([\d.]+)\)", macro['VERSION'])
-        if m: env_etc.apple_gcc_builds.llvm = int(m.group(1))
+        if m: env_etc.apple_gcc_builds.llvm = int(m.group(1).split(".")[0])
       else:
         env_etc.gcc_is_llvm_gcc = False
 
