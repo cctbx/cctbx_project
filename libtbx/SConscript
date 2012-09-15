@@ -5,6 +5,7 @@ from libtbx.utils import getenv_bool
 from libtbx.str_utils import show_string
 from libtbx.path import norm_join, full_command_path
 import sys, os
+import re
 op = os.path
 
 if (hasattr(Environment, "Clone")):
@@ -101,6 +102,9 @@ else:
 env_etc.norm_join = norm_join
 env_etc.gcc_version = None
 env_etc.icc_version = None
+env_etc.clang_version = None
+env_etc.gcc_is_llvm_gcc = None
+env_etc.apple_gcc_builds = libtbx.group_args(gcc=None, llvm=None)
 
 env_etc.include_registry = libtbx.env_config.include_registry() \
   .scan_boost(flag=libtbx.env.build_options.scan_boost)
@@ -653,36 +657,88 @@ else:
       env_base.Prepend(LINKFLAGS=["-Bstatic"])
       static_exe = None
   elif env_etc.compiler.startswith("darwin"):
-    env_etc.gcc_version = libtbx.env_config.get_gcc_version()
-    env_etc.static_libraries = 1
-    env_etc.static_bpl = 0
-    if env_etc.compiler == "darwin_c++":
-      cc = "cc"
-      cxx = "c++"
-    else:
-      cc  = env_etc.compiler.replace('darwin_','')
-      if cc == 'clang':
-        cxx = 'clang++'
-      else:
-        cxx = cc.replace('gcc', 'g++')
-    link_flags = ["-w"] # suppress "source/lib does not exist" warning
-    if (env_etc.gcc_version >= 40201 and libtbx.env.build_options.force_32bit) :
-      link_flags.extend(["-arch", "i386"])
+    cc  = env_etc.compiler.replace('darwin_','')
+    if cc == "c++": cc = "cc"
+    if cc == "gcc-4.2": cxx = "g++-4.2"
+    elif cc == "cc": cxx = "c++"
+    else: cxx = "%s++" % cc
     env_base.Replace(
       CC=cc,
       SHCC=cc,
       CXX=cxx,
       LINK=cxx,
-      LINKFLAGS=link_flags,
       SHCXX=cxx,
       SHLINK=cxx,
       SHLIBSUFFIX=env_etc.shlibsuffix,
     )
+    conf = env_base.Configure()
+    test_code = [
+      """#include <iostream>    """,
+      """int main() {           """,
+      """  std::cout << "{";    """,
+    ]
+    for macro in ("llvm",
+                  "clang",
+                  "clang_major", "clang_minor", "clang_patchlevel",
+                  "GNUC", "GNUC_MINOR", "GNUC_PATCHLEVEL"
+                  ):
+      test_code.append("""  #ifndef __%s__\n  #define __%s__ ""\n  #endif """ % ((macro,)*2))
+      test_code.append("""  std::cout << "\\"%s\\":" << __%s__ << ", "; """
+                       % ((macro,)*2))
+    for macro in ("clang_version", "VERSION",):
+      test_code.append("""  #ifndef __%s__\n  #define __%s__ ""\n  #endif """ % ((macro,)*2))
+      test_code.append("""  std::cout << "\\"%s\\": \\"" << __%s__ << "\\", "; """
+                       % ((macro,)*2))
+    test_code.extend([
+      """  std::cout << "}"; """,
+      """  return 0;         """,
+      """}                   """])
+    flag, output = conf.TryRun("\n".join(test_code), extension='.cpp')
+    conf.Finish()
+    assert flag
+    output = output.replace(":,", ":None,")
+    macro = eval(output)
+    if macro['clang'] is not None:
+      env_etc.clang_version = (
+        macro['clang_major'], macro['clang_minor'], macro['clang_patchlevel'])
+    else:
+      env_etc.gcc_version = (macro['GNUC'], macro['GNUC_MINOR'], macro['GNUC_PATCHLEVEL'])
+      m = re.search(r"Apple Inc. build (\d+)\)", macro['VERSION'])
+      if m: env_etc.apple_gcc_builds.gcc = int(m.group(1))
+      if macro['llvm']:
+        env_etc.gcc_is_llvm_gcc = True
+        m = re.search(r"LLVM build ([\d.]+)\)", macro['VERSION'])
+        if m: env_etc.apple_gcc_builds.llvm = int(m.group(1))
+      else:
+        env_etc.gcc_is_llvm_gcc = False
+
+    print "On MacOS, using ",
+    if env_etc.clang_version:
+      if env_etc.clang_version[2] is not None:
+        print "clang %i.%i.%i" % env_etc.clang_version
+      else:
+        print "clang %i.%i" % env_etc.clang_version[:2]
+    elif env_etc.gcc_version:
+      print "gcc %i.%i.%i" % env_etc.gcc_version,
+      if env_etc.gcc_is_llvm_gcc:
+        print "which is llvm-gcc",
+        if env_etc.apple_gcc_builds.llvm is not None:
+          print ", LLVM build %i" % env_etc.apple_gcc_builds.llvm,
+    print
+
+    env_etc.static_libraries = 1
+    env_etc.static_bpl = 0
+
+    link_flags = ["-w"] # suppress "source/lib does not exist" warning
+    if libtbx.env.build_options.force_32bit:
+      if (env_etc.gcc_version and env_etc.gcc_version >= 40201) or env_etc.clang_version:
+        link_flags.extend(["-arch", "i386"])
+    env_base.Replace(LINKFLAGS=link_flags)
     env_etc.c_link = "cc"
     env_etc.ccflags_base = [
       "-fPIC",
       "-fno-strict-aliasing"]
-    if cxx == "clang++":
+    if env_etc.clang_version:
       setup_clang_warning(env_etc, libtbx.env.build_options.warning_level)
     else:
       if (libtbx.env.build_options.warning_level == 0):
@@ -693,25 +749,25 @@ else:
       else:
         warn_options = gcc_common_warn_options() + ["-Werror"]
       env_etc.ccflags_base.extend(warn_options)
-    if (cxx == "c++"):
+    if cxx == "c++" and env_etc.clang_version is None:
       env_etc.ccflags_base.extend(["-no-cpp-precomp"])
       if (env_etc.gcc_version < 40201):
         env_etc.ccflags_base.append("-Wno-long-double")
     env_etc.cxxflags_base = []
-    if (env_etc.gcc_version < 40000):
+    if env_etc.clang_version is None and env_etc.gcc_version < 40000:
       env_etc.cxxflags_base.append("-fcoalesce-templates")
     env_etc.cxxflags_base.append("-DBOOST_ALL_NO_LIB")
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O3", "-ffast-math"]
-      if (cxx == "c++"
+      if (cxx == "c++" and env_etc.gcc_version
             and env_etc.gcc_version == 40000):
         opts[1] = "-O2" # Apple's optimizer is broken
-      elif (cxx == "c++"
+      elif (cxx == "c++" and env_etc.gcc_version
               and env_etc.gcc_version == 40201
                 and libtbx.env.build_options.force_32bit):
         opts[1] = "-O1" # Apple's optimizer is even more broken
       elif (libtbx.env.build_options.max_optimized):
-        if cxx != "clang++": opts[1] = "-fast"
+        if env_etc.clang_version is None: opts[1] = "-fast"
         if (env_etc.mac_cpu_is_g4):
           opts.insert(1, "-mcpu=G4")
     else:
@@ -719,7 +775,6 @@ else:
     if (libtbx.env.build_options.debug_symbols):
       opts.insert(0, "-g")
       if env_etc.compiler == "darwin_gcc-4.2":
-        build_nb = libtbx.env_config.get_darwin_gcc_build_number(gcc="g++-4.2")
         # The gcc 4.2 shipped by Apple with all versions of XCode
         # on Leopard is plagued by bug 27574:
         # http://gcc.gnu.org/bugzilla/show_bug.cgi?id=27574
@@ -728,7 +783,7 @@ else:
         # of the new now native dwarf.
         # Beware: valgrind does not support stabs on Darwin: just use
         # gcc 4.0.1 for code to be tested by valgrind
-        if build_nb < 5646:
+        if env_etc.apple_gcc_builds.gcc < 5646:
           # fixed on 10.6 (Snow Leopard) whose Dev Tools start with that build
           opts.insert(0, "-gstabs+")
     env_etc.shlinkflags = []
@@ -736,11 +791,12 @@ else:
       "-w", # suppress "source/lib does not exist" warning
       "-bundle",
       "-undefined", "dynamic_lookup"]
-    if (env_etc.gcc_version >= 40201 and libtbx.env.build_options.force_32bit):
-      env_etc.ccflags_base.extend(["-arch", "i386"])
-      env_etc.cxxflags_base.extend(["-arch", "i386"])
-      env_etc.shlinkflags.extend(["-arch", "i386"])
-      env_etc.shlinkflags_bpl.extend(["-arch", "i386"])
+    if libtbx.env.build_options.force_32bit:
+      if (env_etc.gcc_version and env_etc.gcc_version >= 40201) or env_etc.clang_version:
+        env_etc.ccflags_base.extend(["-arch", "i386"])
+        env_etc.cxxflags_base.extend(["-arch", "i386"])
+        env_etc.shlinkflags.extend(["-arch", "i386"])
+        env_etc.shlinkflags_bpl.extend(["-arch", "i386"])
     env_etc.ccflags_base.extend(opts)
     if (static_exe):
       # no action required

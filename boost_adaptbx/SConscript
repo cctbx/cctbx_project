@@ -111,7 +111,7 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
                 = env_boost_python_ext.PCH(precompiled_cpp)
       env_no_includes_boost_python_ext['PCHSTOP'] = precompiled_h
       env_no_includes_boost_python_ext.Append(CPPFLAGS=[ '/FI' + precompiled_h ])
-    elif env_etc.compiler.endswith('clang'):
+    elif env_etc.clang_version is not None:
       # 1st trick:
       # use Command to execute $SHCXXCOM with an extra option to produce
       # a precompiled header a la clang

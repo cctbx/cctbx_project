@@ -9,7 +9,7 @@ envlm = env.Clone(
 )
 if env_etc.compiler == "unix_icc":
   wd = ["-wd177"]
-elif env_etc.compiler.endswith("clang"):
+elif env_etc.clang_version:
   wd = ["-Wno-unused-function"]
 else:
   wd = []
