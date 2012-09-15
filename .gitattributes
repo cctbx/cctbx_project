@@ -1074,7 +1074,6 @@ libtbx/development/dev_guidelines.txt svneol=native#text/plain
 libtbx/development/except_Exception.py svneol=native#text/x-python
 libtbx/development/move_obsolete_from_bundle.csh -text
 libtbx/development/timers.py -text
-libtbx/development/xcode_build_phase.sh -text
 libtbx/dtrace/profile.d -text
 libtbx/easy_mp.py svneol=native#text/x-python
 libtbx/easy_profile.py -text
