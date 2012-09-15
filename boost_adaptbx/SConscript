@@ -61,10 +61,12 @@ if (not env_etc.no_boost_python):
         'mt /nologo /outputresource:"${TARGET};#2"'
         ' /manifest ${TARGET}.manifest'])
   elif (env_etc.mac_os_use_dsymutil):
-    # Debugging Boost.Python module C++ code works much more reliably
-    # with the DWARF + dSYM format. Hence run dsymutil after building *.so
+    # Debugging with DWARF + dSYM works much more reliably with XCode 3 or 4 using gdb
+    # Using lldb, the following tricks aren't necessary but lldb seems pretty flawed
+    # when it comes to debug C++ code
     env = env_no_includes_boost_python_ext
     env['SHLINKCOM'] = [env['SHLINKCOM'], 'dsymutil $TARGET']
+    env_base['LINKCOM'] = [env_base['LINKCOM'], 'dsymutil $TARGET']
 
   Export("env_no_includes_boost_python_ext")
   env_pure_boost_python_ext = env_no_includes_boost_python_ext.Clone()
