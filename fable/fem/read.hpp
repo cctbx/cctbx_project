@@ -598,14 +598,14 @@ namespace fem {
             if (negative || c == '+') {
               c = inp_get();
               if (utils::is_stream_end(c)) {
-                read_end(
+                throw read_end(
                   "End of input while reading integer value");
               }
             }
             long result = 0;
             while (true) { // loop collecting digits
               if (!utils::is_digit(c)) {
-                io_err(
+                throw io_err(
                   "Invalid character while reading integer value.");
               }
               result *= 10;
