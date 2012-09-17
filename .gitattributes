@@ -1066,6 +1066,7 @@ libtbx/command_line/start_process.py -text
 libtbx/command_line/tcsh.sh -text
 libtbx/command_line/test_usage.py svneol=native#text/x-python
 libtbx/command_line/wait_for_file.py svneol=native#text/x-python
+libtbx/console_utils.py -text
 libtbx/cpp_function_name.py -text
 libtbx/crossmingw.py -text
 libtbx/development/__init__.py -text
