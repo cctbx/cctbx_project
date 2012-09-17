@@ -292,23 +292,6 @@ class process_arrays (object) :
     have_r_free_array = False
     self.final_arrays = []
     self.mtz_dataset = None
-    (d_max, d_min) = get_best_resolution(miller_arrays)
-    if d_max is None and params.mtz_file.d_max is None :
-      raise Sorry("No low-resolution cutoff could be found in the "+
-        "parameters or input file(s); you need to explicitly set this value "+
-        "for the program to run.")
-    if d_min is None :
-      if params.mtz_file.d_min is None :
-        raise Sorry("No high-resolution cutoff could be found in the "+
-          "parameters or input file(s); you need to explicitly set this "+
-          "value for the program to run.")
-    if params.mtz_file.d_max is not None and params.mtz_file.d_max < d_max :
-      d_max = params.mtz_file.d_max
-    if params.mtz_file.d_min is not None and params.mtz_file.d_min > d_min :
-      d_min = params.mtz_file.d_min
-    if params.mtz_file.r_free_flags.random_seed is not None :
-      random.seed(params.mtz_file.r_free_flags.random_seed)
-      flex.set_random_seed(params.mtz_file.r_free_flags.random_seed)
 
     #-------------------------------------------------------------------
     # SYMMETRY SETUP
@@ -344,6 +327,25 @@ class process_arrays (object) :
     if (not output_symm.is_compatible_unit_cell()) :
       raise Sorry(("Output unit cell %s is incompatible with the specified "+
         "space group (%s).") % (str(output_uc), str(output_sg)))
+
+    # Resolution limits
+    (d_max, d_min) = get_best_resolution(miller_arrays, input_symm)
+    if (d_max is None) and (params.mtz_file.d_max is None) :
+      raise Sorry("No low-resolution cutoff could be found in the "+
+        "parameters or input file(s); you need to explicitly set this value "+
+        "for the program to run.")
+    if d_min is None :
+      if params.mtz_file.d_min is None :
+        raise Sorry("No high-resolution cutoff could be found in the "+
+          "parameters or input file(s); you need to explicitly set this "+
+          "value for the program to run.")
+    if params.mtz_file.d_max is not None and params.mtz_file.d_max < d_max :
+      d_max = params.mtz_file.d_max
+    if params.mtz_file.d_min is not None and params.mtz_file.d_min > d_min :
+      d_min = params.mtz_file.d_min
+    if params.mtz_file.r_free_flags.random_seed is not None :
+      random.seed(params.mtz_file.r_free_flags.random_seed)
+      flex.set_random_seed(params.mtz_file.r_free_flags.random_seed)
 
     #-------------------------------------------------------------------
     # MAIN LOOP
@@ -906,10 +908,14 @@ def get_r_free_as_bool (*args, **kwds) :
   from cctbx import r_free_utils
   return r_free_utils.get_r_free_as_bool(*args, **kwds)
 
-def get_best_resolution (miller_arrays) :
+def get_best_resolution (miller_arrays, input_symm=None) :
   best_d_min = None
   best_d_max = None
   for array in miller_arrays :
+    array_symm = array.crystal_symmetry()
+    if ((None in [array_symm.space_group(), array_symm.unit_cell()]) and
+        (input_symm is not None)) :
+      array = array.customized_copy(crystal_symmetry=input_symm)
     try :
       (d_max, d_min) = array.d_max_min()
       if best_d_max is None or d_max > best_d_max :
@@ -955,6 +961,16 @@ def guess_array_output_labels (miller_array) :
       output_labels = ["I", "SIGI"]
   elif (miller_array.is_xray_reconstructed_amplitude_array()) :
     output_labels = ["F", "SIGF", "DANO", "SIGDANO", "ISYM"]
+  elif ((miller_array.is_xray_amplitude_array() or
+         miller_array.is_xray_intensity_array()) and
+        miller_array.anomalous_flag()) :
+    if (len(labels) == 2) and (miller_array.sigmas() is not None) :
+      output_labels = [ "%s(+)" % labels[0],  # data(+)
+                        "%s(+)" % labels[1],  # sigma(+)
+                        "%s(-)" % labels[0],  # data(-)
+                        "%s(-)" % labels[1] ] # sigma(-)
+    elif (len(labels) == 1) and (miller_array.sigmas() is None) :
+      output_labels = [ "%s(+)" % labels[0], "%s(-)" % labels[0] ]
   return output_labels
 
 # XXX the requirement for defined crystal symmetry in phil input files is
