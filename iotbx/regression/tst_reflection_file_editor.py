@@ -544,6 +544,16 @@ def exercise_command_line () :
   new_flags_2 = (miller_arrays[-1].data() == 0) #.select(old_flags_2)
   assert (old_flags_1 == new_flags_1).count(False) == 0
   assert (old_flags_2 == new_flags_2).count(False) == 0
+  cns_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/reflection_files/l.cv",
+    test=os.path.isfile)
+  p = reflection_file_editor.run(
+    args=[cns_file, "space_group=P212121", "output_file=l_new.mtz",
+          "unit_cell=28.17,52.857,68.93,90,90,90"],
+    out=log)
+  mtz_in = file_reader.any_file("l_new.mtz")
+  assert (mtz_in.file_server.miller_arrays[0].info().labels ==
+          ['F_INFL(+)', 'S_INFL(+)', 'F_INFL(-)', 'S_INFL(-)'])
 
 if __name__ == "__main__" :
   exercise_basic()
