@@ -155,6 +155,7 @@ class manager(object):
       self.ncs_manager.update_dihedral_ncs_restraints(
         geometry=self.model.restraints_manager.geometry,
         sites_cart=self.model.xray_structure.sites_cart(),
+        pdb_hierarchy=self.model.pdb_hierarchy(sync_with_xray_structure=True),
         log=self.log)
     #DEN refinement done, turn off
     model.restraints_manager. \
@@ -234,6 +235,7 @@ class manager(object):
         self.ncs_manager.update_dihedral_ncs_restraints(
           geometry=self.model.restraints_manager.geometry,
           sites_cart=self.model.xray_structure.sites_cart(),
+          pdb_hierarchy=self.model.pdb_hierarchy(sync_with_xray_structure=True),
           log=local_log)
       cycle += 1
       self.model.restraints_manager.geometry.\
@@ -312,6 +314,7 @@ class manager(object):
         self.ncs_manager.update_dihedral_ncs_restraints(
           geometry=self.model.restraints_manager.geometry,
           sites_cart=self.model.xray_structure.sites_cart(),
+          pdb_hierarchy=self.model.pdb_hierarchy(sync_with_xray_structure=True),
           log=local_log)
       cycle += 1
       self.model.restraints_manager.geometry.\
