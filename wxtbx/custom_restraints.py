@@ -522,6 +522,8 @@ class PlanarityRestraintsList (RestraintsListBase) :
     item = self.GetFirstSelected()
     if (item >= 0) :
       plane = self._params[item]
+      if (len(plane.atom_selection) == 0) :
+        return [ None ]
       return plane.atom_selection
     return [""]
 
@@ -530,8 +532,8 @@ class PlanarityRestraintsList (RestraintsListBase) :
     item = self.GetFirstSelected()
     if (item >= 0) :
       plane = self._params[item]
-      plane.atom_selection = selections[0]
-      self.SetStringItem(item, 0, fv("%s", plane.atom_selection))
+      plane.atom_selection = selections
+      self.SetStringItem(item, 0, fv("%s", plane.atom_selection[0]))
 
   def OnSetSigma (self, event) :
     item = self.GetFirstSelected()
