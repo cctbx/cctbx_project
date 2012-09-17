@@ -89,6 +89,11 @@ unit_cell_angle_tolerance = 2.
   .type = float
 nproc = None
   .type = int
+raw_data {
+  sdfac_auto = False
+    .type = bool
+    .help = apply sdfac to each-image data assuming negative intensities are normally distributed noise
+}
 output {
   n_bins = 10
     .type = int
@@ -114,6 +119,13 @@ scaling {
     .help = mark0: original per-image scaling by reference to isomorphous PDB model
     .help = mark1: no scaling, just averaging
     .help = mark2: Fox & Holmes (1966) least squares scaling
+  simulation = None
+    .type = str
+    .help = To test scaling, use simulated data from the model instead of the actual observations
+    .help = String value governs how the sim data are calculated
+  simulation_data = None
+    .type = floats
+    .help = Extra parameters for the simulation, exact meaning depends on calculation method
 }
 plot_single_index_histograms = False
   .type = bool
@@ -727,12 +739,28 @@ class scaling_manager (intensity_data) :
     sum_yy = 0
     sum_x = 0
     sum_y = 0
+
+    if self.params.raw_data.sdfac_auto is True:
+      I_over_sig = observations.data()/observations.sigmas()
+      #assert that at least a few I/sigmas are less than zero
+      Nlt0 = I_over_sig.select(I_over_sig<0.).size()
+      if Nlt0 > 2:
+        # get a rough estimate for the SDFAC, assuming that negative measurements
+        # represent false predictions and therefore normally distributed noise.
+        no_signal = I_over_sig.select(I_over_sig<0.)
+        for xns in xrange(len(no_signal)):
+          no_signal.append(-no_signal[xns])
+        Stats = flex.mean_and_variance(no_signal)
+        SDFAC = Stats.unweighted_sample_standard_deviation()
+      else: SDFAC=1.
+      corrected_sigmas = observations.sigmas() * SDFAC
+      observations = observations.customized_copy(sigmas = corrected_sigmas)
+
     for pair in matches.pairs():
 
-      # SIM Simulation 0.
-      # observations.data()[pair[1]] = self.i_model.data()[pair[0]]     # SIM
-      # observations.sigmas()[pair[1]] = self.i_model.sigmas()[pair[0]] # SIM
-      # SIM end
+      if self.params.scaling.simulation is not None:
+          observations.data()[pair[1]] = self.i_model.data()[pair[0]]     # SIM
+          observations.sigmas()[pair[1]] = self.i_model.sigmas()[pair[0]] # SIM
 
       data.n_obs += 1
       if (observations.data()[pair[1]] <= 0):
@@ -893,17 +921,6 @@ def run(args):
     ).build_miller_set(
       anomalous_flag=True,
       d_min=work_params.d_min)
-
-  #miller_set.show_summary()
-  #from iotbx import mtz
-  #i_model = mtz.object(file_name = "data.mtz").as_miller_arrays()[0]
-  #i_model.show_summary()
-  #exit()
-  # reality check
-  #recip_cell_volume = work_params.target_unit_cell.reciprocal().volume()
-  #recip_sphere_volume = (4/3)*math.pi*math.pow(1./work_params.d_min,3)
-  #resolution_cells = recip_sphere_volume/recip_cell_volume
-  #print "Number of asu's in sphere=",resolution_cells/miller_set.size()
 
   frame_files = get_observations(work_params.data, work_params.data_subset)
   scaler = scaling_manager(
