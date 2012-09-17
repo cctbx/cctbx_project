@@ -674,6 +674,7 @@ else:
     if cc == "c++": cc = "cc"
     if cc == "gcc-4.2": cxx = "g++-4.2"
     elif cc == "cc": cxx = "c++"
+    elif cc == "gcc": cxx = "g++"
     else: cxx = "%s++" % cc
     env_base.Replace(
       CC=cc,
