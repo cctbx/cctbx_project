@@ -252,10 +252,22 @@ def run_cc(params,output):
                                                  show_d_range=False, show_counts=True))
     table_row.append("%.1f%%"%(100.*binned_cc_int.data[bin]))
     table_row.append("%.1f%%"%(100.*binned_cc_ref.data[bin]))
-    table_row.append("%.1f%%"%(100.*oe_rint.data[bin]))
-    table_row.append("%.1f%%"%(100.*ref_riso.data[bin]))
-    table_row.append("%.3f"%oe_scale.data[bin])
-    table_row.append("%.3f"%ref_scale.data[bin])
+    if oe_rint.data[bin] is not None:
+      table_row.append("%.1f%%"%(100.*oe_rint.data[bin]))
+    else:
+      table_row.append("--")
+    if ref_riso.data[bin] is not None:
+      table_row.append("%.1f%%"%(100.*ref_riso.data[bin]))
+    else:
+      table_row.append("--")
+    if oe_scale.data[bin] is not None:
+      table_row.append("%.3f"%oe_scale.data[bin])
+    else:
+      table_row.append("--")
+    if ref_scale.data[bin] is not None:
+      table_row.append("%.3f"%ref_scale.data[bin])
+    else:
+      table_row.append("--")
     table_data.append(table_row)
   table_data.append([""]*len(table_header))
   table_data.append(  [
