@@ -179,7 +179,8 @@ def get_phase_scores(miller_arrays):
     result.append(score)
   return result
 
-def get_xray_data_scores(miller_arrays, ignore_all_zeros):
+def get_xray_data_scores(miller_arrays, ignore_all_zeros,
+    prefer_anomalous=None):
   result = []
   for miller_array in miller_arrays:
     if (not miller_array.is_real_array()):
@@ -193,10 +194,18 @@ def get_xray_data_scores(miller_arrays, ignore_all_zeros):
           score = 1
       elif (miller_array.is_xray_intensity_array()):
         score = 10
+        if (prefer_anomalous is not None) and (miller_array.anomalous_flag()) :
+          if (prefer_anomalous) :
+            score += 1
+          else :
+            score -= 1
       elif (miller_array.is_xray_amplitude_array()):
         if (miller_array.is_xray_reconstructed_amplitude_array()):
           if (presumably_from_mtz_FQDQY(miller_array)):
-            score = 6
+            if (prefer_anomalous) :
+              score = 8
+            else :
+              score = 6
           else:
             score = 4
         else:
@@ -209,6 +218,11 @@ def get_xray_data_scores(miller_arrays, ignore_all_zeros):
           and miller_array.sigmas_are_sensible()
           and score != 0):
         score += 1
+      if (prefer_anomalous is not None) and (miller_array.anomalous_flag()) :
+        if (prefer_anomalous) :
+          score += 1
+        else :
+          score -= 1
       result.append(score)
   return result
 
@@ -606,11 +620,13 @@ class reflection_file_server(object):
         parameter_scope,
         parameter_name="labels",
         return_all_valid_arrays=False,
-        minimum_score=1) :
+        minimum_score=1,
+        prefer_anomalous=None) :
     miller_arrays = self.get_miller_arrays(file_name=file_name)
     data_scores = get_xray_data_scores(
       miller_arrays=miller_arrays,
-      ignore_all_zeros=ignore_all_zeros)
+      ignore_all_zeros=ignore_all_zeros,
+      prefer_anomalous=prefer_anomalous)
     if return_all_valid_arrays :
       return sort_arrays_by_score(miller_arrays, data_scores, minimum_score)
     # Recognize phenix.refine file and do the "right thing". May be too ad hoc..
