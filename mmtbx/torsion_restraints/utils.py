@@ -146,10 +146,6 @@ def build_name_hash(pdb_hierarchy):
   for atom in pdb_hierarchy.atoms():
     atom_name = atom.pdb_label_columns()[0:4]
     resname = atom.pdb_label_columns()[5:8]
-    if resname.upper() == "MSE":
-      resname = "MET"
-      if atom_name == " SE ":
-        atom_name = " SD "
     updated_resname = modernize_rna_resname(resname)
     if common_residue_names_get_class(updated_resname) == "common_rna_dna":
       updated_atom = modernize_rna_atom_name(atom=atom_name)
@@ -166,10 +162,6 @@ def build_i_seq_hash(pdb_hierarchy):
   for atom in pdb_hierarchy.atoms():
     atom_name = atom.pdb_label_columns()[0:4]
     resname = atom.pdb_label_columns()[5:8]
-    if resname.upper() == "MSE":
-      resname = "MET"
-      if atom_name == " SE ":
-        atom_name == " SD "
     updated_resname = modernize_rna_resname(resname)
     if common_residue_names_get_class(updated_resname) == "common_rna_dna":
       updated_atom = modernize_rna_atom_name(atom=atom_name)
