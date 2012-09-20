@@ -53,6 +53,10 @@ den_params = iotbx.phil.parse("""
                    cartesian
    .type = choice(multi=False)
    .help = select strategy to apply DEN restraints
+ minimize_c_alpha_only = False
+   .type = bool
+   .short_caption = Restrain only C alpha positions in pre-dynamics \
+    coordinate minimization
  output_kinemage = False
    .type = bool
    .help = output kinemage representation of starting DEN restraints

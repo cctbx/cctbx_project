@@ -41,11 +41,6 @@ class manager(object):
     den_manager = model.restraints_manager. \
       geometry.generic_restraints_manager.den_manager
     print_statistics.make_header("DEN refinement", out=self.log)
-    print_statistics.make_sub_header(
-      "coordinate minimization before annealing", out=self.log)
-    self.minimize()
-    self.save_scatterers_local = fmodels.fmodel_xray().\
-      xray_structure.deep_copy_scatterers().scatterers()
     pdb_hierarchy = self.model.pdb_hierarchy(sync_with_xray_structure=True)
     if len(den_manager.den_proxies) == 0:
       print_statistics.make_sub_header(
@@ -57,8 +52,11 @@ class manager(object):
     if den_manager.params.output_kinemage:
       den_manager.output_kinemage(
         self.model.xray_structure.sites_cart())
-    #pdb_hierarchy.write_pdb_file(
-    #  file_name = 'minimized.pdb')
+    print_statistics.make_sub_header(
+      "coordinate minimization before annealing", out=self.log)
+    self.minimize(ca_only=self.params.den.minimize_c_alpha_only)
+    self.save_scatterers_local = fmodels.fmodel_xray().\
+      xray_structure.deep_copy_scatterers().scatterers()
     #DEN refinement start, turn on
     model.restraints_manager. \
       geometry.generic_restraints_manager.flags.den = True
@@ -417,15 +415,21 @@ class manager(object):
     #                 model   = self.model,
     #                 fmodels = self.fmodels)
 
-  def minimize(self):
+  def minimize(self, ca_only=False):
     pdb_hierarchy = self.model.pdb_hierarchy(sync_with_xray_structure=True)
-    ca_selection = pdb_hierarchy.get_peptide_c_alpha_selection()
-    ca_sites_cart = self.model.xray_structure.sites_cart().\
-      deep_copy().select(ca_selection)
+    if ca_only:
+      ca_selection = pdb_hierarchy.get_peptide_c_alpha_selection()
+      restraint_sites_cart = self.model.xray_structure.sites_cart().\
+        deep_copy().select(ca_selection)
+      restraint_selection = ca_selection
+    else:
+      restraint_sites_cart = self.model.xray_structure.sites_cart().deep_copy()
+      restraint_selection = pdb_hierarchy.atoms().extract_i_seq()
     self.model.restraints_manager.geometry.generic_restraints_manager.\
       reference_manager.add_coordinate_restraints(
-        sites_cart=ca_sites_cart,
-        selection=ca_selection)
+        sites_cart=restraint_sites_cart,
+        selection=restraint_selection)
+
     ##### sanity check #####
     assert(self.model.restraints_manager.geometry.
            generic_restraints_manager.flags.reference==True)
@@ -434,8 +438,9 @@ class manager(object):
            reference_coordinate_proxies is not None)
     assert(len(self.model.restraints_manager.geometry.
            generic_restraints_manager.reference_manager.
-           reference_coordinate_proxies) == len(ca_sites_cart))
+           reference_coordinate_proxies) == len(restraint_sites_cart))
     ########################
+
     selection = self.model.selection_moving
     minimized = self.model.geometry_minimization(
       max_number_of_iterations       = 500,
@@ -448,6 +453,9 @@ class manager(object):
       chirality                      = True,
       planarity                      = True,
       generic_restraints             = True)
+    utils.assert_xray_structures_equal(
+      x1 = self.fmodels.fmodel_xray().xray_structure,
+      x2 = self.model.xray_structure)
     self.model.restraints_manager.geometry.generic_restraints_manager.\
          reference_coordinate_proxies = None
     self.model.restraints_manager.geometry.generic_restraints_manager.\
