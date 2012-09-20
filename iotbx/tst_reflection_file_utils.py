@@ -27,9 +27,9 @@ def exercise_get_amplitudes_and_get_phases_deg():
       .set_observation_type_xray_amplitude()
         for i in [0,1]]
   mtz_dataset = input_arrays[0].as_mtz_dataset(column_root_label="F0")
-  mtz_dataset.mtz_object().write("tmp1.mtz")
+  mtz_dataset.mtz_object().write("tmp_rfu1.mtz")
   reflection_files = [reflection_file_reader.any_reflection_file(
-    file_name="tmp1.mtz")]
+    file_name="tmp_rfu1.mtz")]
   reflection_file_srv = reflection_file_server(
     crystal_symmetry=crystal_symmetry,
     force_symmetry=True,
@@ -40,14 +40,14 @@ def exercise_get_amplitudes_and_get_phases_deg():
     convert_to_amplitudes_if_necessary=True,
     parameter_scope="amplitudes",
     parameter_name="labels")
-  assert str(ampl.info()) == "tmp1.mtz:F0"
+  assert str(ampl.info()) == "tmp_rfu1.mtz:F0"
   ampl = reflection_file_srv.get_miller_array(labels="F0")
-  assert str(ampl.info()) == "tmp1.mtz:F0"
+  assert str(ampl.info()) == "tmp_rfu1.mtz:F0"
   mtz_dataset.add_miller_array(
     miller_array=input_arrays[1], column_root_label="F1")
-  mtz_dataset.mtz_object().write("tmp2.mtz")
+  mtz_dataset.mtz_object().write("tmp_rfu2.mtz")
   reflection_files = [reflection_file_reader.any_reflection_file(
-    file_name="tmp2.mtz")]
+    file_name="tmp_rfu2.mtz")]
   err = StringIO()
   reflection_file_srv = reflection_file_server(
     crystal_symmetry=crystal_symmetry,
@@ -67,8 +67,8 @@ def exercise_get_amplitudes_and_get_phases_deg():
 Multiple equally suitable arrays of amplitudes found.
 
 Possible choices:
-  tmp2.mtz:F0
-  tmp2.mtz:F1
+  tmp_rfu2.mtz:F0
+  tmp_rfu2.mtz:F1
 
 Please use amplitudes.labels
 to specify an unambiguous substring of the target label.
@@ -83,7 +83,7 @@ to specify an unambiguous substring of the target label.
     convert_to_amplitudes_if_necessary=True,
     parameter_scope="amplitudes",
     parameter_name="labels")
-  assert str(ampl.info()) == "tmp2.mtz:F1"
+  assert str(ampl.info()) == "tmp_rfu2.mtz:F1"
   try:
     reflection_file_srv.get_amplitudes(
       file_name=None,
@@ -97,8 +97,8 @@ to specify an unambiguous substring of the target label.
 No matching array: labels=F2
 
 Possible choices:
-  tmp2.mtz:F0
-  tmp2.mtz:F1
+  tmp_rfu2.mtz:F0
+  tmp_rfu2.mtz:F1
 
 Please use labels
 to specify an unambiguous substring of the target label.
@@ -109,21 +109,21 @@ to specify an unambiguous substring of the target label.
     raise Exception_expected
   assert len(reflection_file_srv.file_name_miller_arrays) == 1
   ampl = reflection_file_srv.get_amplitudes(
-    file_name="tmp1.mtz",
+    file_name="tmp_rfu1.mtz",
     labels=None,
     convert_to_amplitudes_if_necessary=True,
     parameter_scope="amplitudes",
     parameter_name="labels")
   assert len(reflection_file_srv.file_name_miller_arrays) == 2
-  assert str(ampl.info()) == "tmp1.mtz:F0"
+  assert str(ampl.info()) == "tmp_rfu1.mtz:F0"
   ampl = reflection_file_srv.get_amplitudes(
-    file_name=os.path.abspath("tmp1.mtz"),
+    file_name=os.path.abspath("tmp_rfu1.mtz"),
     labels=["f0"],
     convert_to_amplitudes_if_necessary=True,
     parameter_scope="amplitudes",
     parameter_name="labels")
   assert len(reflection_file_srv.file_name_miller_arrays) == 2
-  assert str(ampl.info()) == "tmp1.mtz:F0"
+  assert str(ampl.info()) == "tmp_rfu1.mtz:F0"
   try:
     reflection_file_srv.get_amplitudes(
       file_name=None,
@@ -137,8 +137,8 @@ to specify an unambiguous substring of the target label.
 Multiple equally suitable arrays of amplitudes found.
 
 Possible choices:
-  tmp2.mtz:F0
-  tmp2.mtz:F1
+  tmp_rfu2.mtz:F0
+  tmp_rfu2.mtz:F1
 
 Please specify an unambiguous substring of the target label.
 
@@ -163,9 +163,9 @@ Please specify an unambiguous substring of the target label.
     miller_array=miller_set.array(
       data=flex.hendrickson_lattman(miller_set.indices().size(), (0,0,0,0))),
     column_root_label="P")
-  mtz_dataset.mtz_object().write("tmp3.mtz")
+  mtz_dataset.mtz_object().write("tmp_rfu3.mtz")
   reflection_files = [reflection_file_reader.any_reflection_file(
-    file_name="tmp3.mtz")]
+    file_name="tmp_rfu3.mtz")]
   err = StringIO()
   reflection_file_srv = reflection_file_server(
     crystal_symmetry=crystal_symmetry,
@@ -178,7 +178,7 @@ Please specify an unambiguous substring of the target label.
     convert_to_amplitudes_if_necessary=False,
     parameter_scope="amplitudes",
     parameter_name="labels")
-  assert str(ampl.info()) == "tmp3.mtz:F2,PHIF2"
+  assert str(ampl.info()) == "tmp_rfu3.mtz:F2,PHIF2"
   assert ampl.is_complex_array()
   ampl = reflection_file_srv.get_amplitudes(
     file_name=None,
@@ -186,7 +186,7 @@ Please specify an unambiguous substring of the target label.
     convert_to_amplitudes_if_necessary=True,
     parameter_scope="amplitudes",
     parameter_name="labels")
-  assert str(ampl.info()) == "tmp3.mtz:F2"
+  assert str(ampl.info()) == "tmp_rfu3.mtz:F2"
   assert ampl.is_real_array()
   ampl = reflection_file_srv.get_amplitudes(
     file_name=None,
@@ -194,7 +194,7 @@ Please specify an unambiguous substring of the target label.
     convert_to_amplitudes_if_necessary=False,
     parameter_scope="amplitudes",
     parameter_name="labels")
-  assert str(ampl.info()) == "tmp3.mtz:F3,SIGF3"
+  assert str(ampl.info()) == "tmp_rfu3.mtz:F3,SIGF3"
   assert ampl.is_xray_intensity_array()
   ampl = reflection_file_srv.get_amplitudes(
     file_name=None,
@@ -202,7 +202,7 @@ Please specify an unambiguous substring of the target label.
     convert_to_amplitudes_if_necessary=True,
     parameter_scope="amplitudes",
     parameter_name="labels")
-  assert str(ampl.info()) == "tmp3.mtz:F3,as_amplitude_array"
+  assert str(ampl.info()) == "tmp_rfu3.mtz:F3,as_amplitude_array"
   assert ampl.is_real_array()
   #
   phases = reflection_file_srv.get_phases_deg(
@@ -212,7 +212,7 @@ Please specify an unambiguous substring of the target label.
     original_phase_units=None,
     parameter_scope="phases",
     parameter_name="labels")
-  assert str(phases.info()) == "tmp3.mtz:F2,PHIF2"
+  assert str(phases.info()) == "tmp_rfu3.mtz:F2,PHIF2"
   assert phases.is_complex_array()
   phases = reflection_file_srv.get_phases_deg(
     file_name=None,
@@ -221,7 +221,7 @@ Please specify an unambiguous substring of the target label.
     original_phase_units=None,
     parameter_scope=None,
     parameter_name="labels")
-  assert str(phases.info()) == "tmp3.mtz:PHIF2"
+  assert str(phases.info()) == "tmp_rfu3.mtz:PHIF2"
   assert phases.is_real_array()
   assert flex.mean(phases.data()) > 5
   phases = reflection_file_srv.get_phases_deg(
@@ -231,7 +231,7 @@ Please specify an unambiguous substring of the target label.
     original_phase_units=None,
     parameter_scope="phases",
     parameter_name="labels")
-  assert str(phases.info()) == "tmp3.mtz:PA,PB,PC,PD"
+  assert str(phases.info()) == "tmp_rfu3.mtz:PA,PB,PC,PD"
   phases = reflection_file_srv.get_phases_deg(
     file_name=None,
     labels=["PA"],
@@ -240,7 +240,7 @@ Please specify an unambiguous substring of the target label.
     parameter_scope="phases",
     parameter_name="labels")
   assert str(phases.info()) \
-      == "tmp3.mtz:PA,PB,PC,PD,converted_to_centroid_phases"
+      == "tmp_rfu3.mtz:PA,PB,PC,PD,converted_to_centroid_phases"
   assert phases.is_real_array()
   for original_phase_units in [None, "deg", "rad"]:
     phases = reflection_file_srv.get_phases_deg(
@@ -251,9 +251,9 @@ Please specify an unambiguous substring of the target label.
       parameter_scope=None,
       parameter_name="labels")
     if (original_phase_units != "rad"):
-      assert str(phases.info()) == "tmp3.mtz:F0"
+      assert str(phases.info()) == "tmp_rfu3.mtz:F0"
     else:
-      assert str(phases.info()) == "tmp3.mtz:F0,converted_to_deg"
+      assert str(phases.info()) == "tmp_rfu3.mtz:F0,converted_to_deg"
 
 def exercise_get_xtal_data():
   crystal_symmetry = crystal.symmetry(
@@ -269,9 +269,9 @@ def exercise_get_xtal_data():
       .set_observation_type_xray_intensity()
         for i in [0,1]]
   mtz_dataset = input_arrays[0].as_mtz_dataset(column_root_label="F0")
-  mtz_dataset.mtz_object().write("tmp1.mtz")
+  mtz_dataset.mtz_object().write("tmp_rfu1.mtz")
   reflection_files = [reflection_file_reader.any_reflection_file(
-    file_name="tmp1.mtz")]
+    file_name="tmp_rfu1.mtz")]
   reflection_file_srv = reflection_file_server(
     crystal_symmetry=crystal_symmetry,
     force_symmetry=True,
@@ -281,12 +281,12 @@ def exercise_get_xtal_data():
     labels=None,
     ignore_all_zeros=False,
     parameter_scope="xray_data")
-  assert str(f_obs.info()) == "tmp1.mtz:F0,SIGF0"
+  assert str(f_obs.info()) == "tmp_rfu1.mtz:F0,SIGF0"
   mtz_dataset.add_miller_array(
     miller_array=input_arrays[1], column_root_label="F1")
-  mtz_dataset.mtz_object().write("tmp2.mtz")
+  mtz_dataset.mtz_object().write("tmp_rfu2.mtz")
   reflection_files = [reflection_file_reader.any_reflection_file(
-    file_name="tmp2.mtz")]
+    file_name="tmp_rfu2.mtz")]
   err = StringIO()
   reflection_file_srv = reflection_file_server(
     crystal_symmetry=crystal_symmetry,
@@ -305,8 +305,8 @@ def exercise_get_xtal_data():
 Multiple equally suitable arrays of observed xray data found.
 
 Possible choices:
-  tmp2.mtz:F0,SIGF0
-  tmp2.mtz:F1,SIGF1
+  tmp_rfu2.mtz:F0,SIGF0
+  tmp_rfu2.mtz:F1,SIGF1
 
 Please use xray_data.labels
 to specify an unambiguous substring of the target label.
@@ -328,7 +328,7 @@ to specify an unambiguous substring of the target label.
     labels=["F1", "SIGF1"],
     ignore_all_zeros=True,
     parameter_scope="xray_data")
-  assert str(f_obs.info()) == "tmp2.mtz:F1,SIGF1"
+  assert str(f_obs.info()) == "tmp_rfu2.mtz:F1,SIGF1"
   try:
     f_obs = reflection_file_srv.get_xray_data(
       file_name=None,
@@ -341,8 +341,8 @@ to specify an unambiguous substring of the target label.
 No matching array: xray_data.labels=F1 SIGF0
 
 Possible choices:
-  tmp2.mtz:F0,SIGF0
-  tmp2.mtz:F1,SIGF1
+  tmp_rfu2.mtz:F0,SIGF0
+  tmp_rfu2.mtz:F1,SIGF1
 
 Please use xray_data.labels
 to specify an unambiguous substring of the target label.
@@ -353,19 +353,19 @@ to specify an unambiguous substring of the target label.
     raise Exception_expected
   assert len(reflection_file_srv.file_name_miller_arrays) == 1
   f_obs = reflection_file_srv.get_xray_data(
-    file_name="tmp1.mtz",
+    file_name="tmp_rfu1.mtz",
     labels=None,
     ignore_all_zeros=True,
     parameter_scope="xray_data")
   assert len(reflection_file_srv.file_name_miller_arrays) == 2
-  assert str(f_obs.info()) == "tmp1.mtz:F0,SIGF0"
+  assert str(f_obs.info()) == "tmp_rfu1.mtz:F0,SIGF0"
   f_obs = reflection_file_srv.get_xray_data(
-    file_name=os.path.abspath("tmp1.mtz"),
+    file_name=os.path.abspath("tmp_rfu1.mtz"),
     labels=["sigf0"],
     ignore_all_zeros=True,
     parameter_scope="xray_data")
   assert len(reflection_file_srv.file_name_miller_arrays) == 2
-  assert str(f_obs.info()) == "tmp1.mtz:F0,SIGF0"
+  assert str(f_obs.info()) == "tmp_rfu1.mtz:F0,SIGF0"
   try:
     f_obs = reflection_file_srv.get_xray_data(
       file_name=None,
@@ -378,8 +378,8 @@ to specify an unambiguous substring of the target label.
 Multiple equally suitable arrays of observed xray data found.
 
 Possible choices:
-  tmp2.mtz:F0,SIGF0
-  tmp2.mtz:F1,SIGF1
+  tmp_rfu2.mtz:F0,SIGF0
+  tmp_rfu2.mtz:F1,SIGF1
 
 Please use xray_data.labels
 to specify an unambiguous substring of the target label.
@@ -388,6 +388,48 @@ to specify an unambiguous substring of the target label.
     err = reflection_file_srv.err = StringIO()
   else:
     raise Exception_expected
+  # test preference for anomalous (or merged) data
+  miller_set = miller.build_set(
+    crystal_symmetry=crystal_symmetry,
+    anomalous_flag=True,
+    d_min=3)
+  i_obs = miller_set.array(
+    data=flex.random_double(size=miller_set.indices().size()),
+    sigmas=flex.random_double(size=miller_set.indices().size())/10
+      ).set_observation_type_xray_intensity()
+  i_mean = i_obs.average_bijvoet_mates()
+  mtz_data = i_obs.as_mtz_dataset(column_root_label="I")
+  mtz_data.add_miller_array(i_mean, column_root_label="I")
+  mtz_data.mtz_object().write("tmp_rfu3.mtz")
+  reflection_files = [reflection_file_reader.any_reflection_file(
+    file_name="tmp_rfu3.mtz")]
+  reflection_file_srv = reflection_file_server(
+    crystal_symmetry=crystal_symmetry,
+    force_symmetry=True,
+    reflection_files=reflection_files)
+  err = reflection_file_srv.err = StringIO()
+  try :
+    i_obs = reflection_file_srv.get_xray_data(
+      file_name=None,
+      labels=None,
+      ignore_all_zeros=False,
+      parameter_scope="xray_data")
+  except Sorry :
+    pass
+  i_obs = reflection_file_srv.get_xray_data(
+    file_name=None,
+    labels=None,
+    ignore_all_zeros=False,
+    parameter_scope="xray_data",
+    prefer_anomalous=True)
+  assert (i_obs.info().label_string() == "I(+),SIGI(+),I(-),SIGI(-)")
+  i_obs = reflection_file_srv.get_xray_data(
+    file_name=None,
+    labels=None,
+    ignore_all_zeros=False,
+    parameter_scope="xray_data",
+    prefer_anomalous=False)
+  assert (i_obs.info().label_string() == "I,SIGI")
 
 def exercise_get_r_free_flags():
   crystal_symmetry = crystal.symmetry(
