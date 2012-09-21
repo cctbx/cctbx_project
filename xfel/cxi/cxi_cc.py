@@ -80,19 +80,23 @@ def r1_factor(self, other, scale_factor=None, assume_index_matching=False,
 
 def binned_correlation(self,other):
     results = []
+    bin_count = []
     for i_bin in self.binner().range_all():
       sel = self.binner().selection(i_bin)
       if sel.count(True)==0:
         results.append(0.)
+        bin_count.append(0.)
         continue
-      results.append(
-        correlation(self.select(sel),other.select(sel))[2])
+      result_tuple = correlation(self.select(sel),other.select(sel))
+      results.append(result_tuple[2])
+      bin_count.append(result_tuple[3])
       # plots for debugging
       #from matplotlib import pyplot as plt
       #plt.plot(flex.log(self.select(sel).data()),flex.log(other.select(sel).data()),"b.")
       #plt.show()
 
-    return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
+    return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f"),\
+           binned_data(binner=self.binner(), data=bin_count, data_fmt="%7d")
 
 def correlation(self,other):
     N = 0
@@ -180,23 +184,23 @@ def run_cc(params,output):
   cutoff = math.exp(params.scaling.log_cutoff or -100.)
   uniformA = (uniform[0].data()>=0.).__and__(uniform[1].data()>=0.).__and__(uniform[0].data() > cutoff).__and__(uniform[1].data() > cutoff)
 
-  slope,offset,corr_iso,N = correlation(uniform[1].select(uniformA),uniform[0].select(uniformA))
-  print >>output,"C.C. iso is %.1f%% on %d indices"%(100.*corr_iso, N)
+  slope,offset,corr_iso,N_iso = correlation(uniform[1].select(uniformA),uniform[0].select(uniformA))
+  print >>output,"C.C. iso is %.1f%% on %d indices"%(100.*corr_iso, N_iso)
 
   uniformB = (uniform[2].data()>=0.).__and__(uniform[3].data()>=0.).__and__(uniform[2].data()>cutoff).__and__(uniform[3].data() > cutoff)
 
-  slope,offset,corr_int,N = correlation(uniform[2].select(uniformB),uniform[3].select(uniformB))
-  print >>output, "C.C. int is %.1f%% on %d indices"%(100.*corr_int, N)
+  slope,offset,corr_int,N_int = correlation(uniform[2].select(uniformB),uniform[3].select(uniformB))
+  print >>output, "C.C. int is %.1f%% on %d indices"%(100.*corr_int, N_int)
 
   selected_uniform = []
   for x in [0,1]: selected_uniform.append(uniform[x].select(uniformA))
   for x in [2,3]: selected_uniform.append(uniform[x].select(uniformB))
   for x in [0,1,2,3]: selected_uniform[x].setup_binner(d_max=100000, d_min=reserve_highres, n_bins=NBIN)
 
-  binned_cc_ref = binned_correlation(selected_uniform[1],selected_uniform[0])
+  binned_cc_ref,binned_cc_ref_N = binned_correlation(selected_uniform[1],selected_uniform[0])
   #binned_cc_ref.show(f=output)
 
-  binned_cc_int = binned_correlation(selected_uniform[2],selected_uniform[3])
+  binned_cc_int,binned_cc_int_N = binned_correlation(selected_uniform[2],selected_uniform[3])
   #binned_cc_int.show(f=output)
 
   ref_scale = scale_factor(selected_uniform[1],selected_uniform[0],
@@ -235,8 +239,8 @@ def run_cc(params,output):
   print >>output
   print >> output, "Table of Scaling Results:"
   from libtbx import table_utils
-  table_header = ["","","","CC","CC","R","R","Scale","Scale"]
-  table_header2 = ["Bin","Resolution Range","Completeness","int","iso","int","iso","int","iso"]
+  table_header = ["","","","CC","","CC","","R","R","Scale","Scale"]
+  table_header2 = ["Bin","Resolution Range","Completeness","int","N","iso","N","int","iso","int","iso"]
   table_data = []
   table_data.append(table_header)
   table_data.append(table_header2)
@@ -251,7 +255,9 @@ def run_cc(params,output):
     table_row.append("%13s"%binned_cc_ref.binner.bin_legend(i_bin=bin,show_bin_number=False,show_bin_range=False,
                                                  show_d_range=False, show_counts=True))
     table_row.append("%.1f%%"%(100.*binned_cc_int.data[bin]))
+    table_row.append("%7d"%(binned_cc_int_N.data[bin]))
     table_row.append("%.1f%%"%(100.*binned_cc_ref.data[bin]))
+    table_row.append("%7d"%(binned_cc_ref_N.data[bin]))
     if oe_rint.data[bin] is not None:
       table_row.append("%.1f%%"%(100.*oe_rint.data[bin]))
     else:
@@ -275,7 +281,9 @@ def run_cc(params,output):
       format_value("%-13s", "                 "),
       format_value("%13s",  ""),
       format_value("%.1f%%", 100.*corr_int),
+      format_value("%7d", N_int),
       format_value("%.1f%%", 100.*corr_iso),
+      format_value("%7d", N_iso),
       format_value("%.1f%%", 100.*oe_rint_all),
       format_value("%.1f%%", 100.*ref_riso_all),
       format_value("%.3f", oe_scale_all),
