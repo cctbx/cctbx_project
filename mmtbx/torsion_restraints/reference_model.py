@@ -1145,7 +1145,8 @@ def build_torsion_proxies(
       pdb_hierarchy,
       sites_cart,
       selection=None,
-      sigma=2.5):
+      sigma=2.5,
+      chi_angles_only=False):
   if (selection is not None):
     if (isinstance(selection, flex.bool)):
       selection = selection.iselection()
@@ -1161,7 +1162,8 @@ def build_torsion_proxies(
                              selection=selection)
   residue_torsions = collect_residue_torsion_angles(
                    pdb_hierarchy=pdb_hierarchy,
-                   atom_selection=selection)
+                   atom_selection=selection,
+                   chi_angles_only=chi_angles_only)
   for residue_info in residue_torsions:
     for chi in residue_info.chis:
       i_seqs = chi.i_seqs

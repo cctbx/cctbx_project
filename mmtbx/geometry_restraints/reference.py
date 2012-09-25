@@ -25,12 +25,14 @@ class manager(object):
         pdb_hierarchy,
         sites_cart,
         selection=None,
-        sigma=2.5):
+        sigma=2.5,
+        chi_angles_only=False):
     self.add_reference_torsion_proxies(
       pdb_hierarchy=pdb_hierarchy,
       sites_cart=sites_cart,
       selection=selection,
-      sigma=sigma)
+      sigma=sigma,
+      chi_angles_only=chi_angles_only)
 
   def add_reference_coordinate_proxies(
         self,
@@ -65,14 +67,16 @@ class manager(object):
         pdb_hierarchy,
         sites_cart,
         selection=None,
-        sigma=2.5):
+        sigma=2.5,
+        chi_angles_only=False):
     from mmtbx.torsion_restraints.reference_model import build_torsion_proxies
     local_reference_torsion_proxies = \
         build_torsion_proxies(
           pdb_hierarchy=pdb_hierarchy,
           sites_cart=sites_cart,
           selection=selection,
-          sigma=sigma)
+          sigma=sigma,
+          chi_angles_only=chi_angles_only)
     if self.reference_torsion_proxies is None:
       self.reference_torsion_proxies = local_reference_torsion_proxies
     else:

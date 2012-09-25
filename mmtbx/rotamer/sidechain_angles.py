@@ -222,7 +222,9 @@ def collect_sidechain_chi_angles (pdb_hierarchy, atom_selection=None) :
             residue_chis.append(residue_info)
   return residue_chis
 
-def collect_residue_torsion_angles (pdb_hierarchy, atom_selection=None) :
+def collect_residue_torsion_angles (pdb_hierarchy,
+                                    atom_selection=None,
+                                    chi_angles_only=False) :
   residue_torsions = []
 
   ### chi angles ###
@@ -262,64 +264,73 @@ def collect_residue_torsion_angles (pdb_hierarchy, atom_selection=None) :
               curC = atom
           if curN is None or curCA is None or curC is None:
             continue
+          if not chi_angles_only:
+            ### omega ###
+            if previous_residue is not None:
+              prevCA = None
+              prevC = None
+              for atom in previous_residue.atoms():
+                if atom.name == " CA ":
+                  prevCA = atom
+                elif atom.name == " C  ":
+                  prevC = atom
+              if prevCA is not None and prevC is not None:
+                atoms_in_selection = True
+                for atom in [prevCA, prevC, curN, curCA]:
+                  if atom.i_seq not in atom_selection:
+                    atoms_in_selection = False
+                if atoms_in_selection:
+                  omega = \
+                    mmtbx.rotamer.omega_from_atoms(prevCA, prevC, curN, curCA)
+                  if omega is not None:
+                    i_seqs = [prevCA.i_seq,
+                              prevC.i_seq,
+                              curN.i_seq,
+                              curCA.i_seq]
+                    torsions.append(group_args(chi_id="omega", i_seqs=i_seqs))
+            ###########
 
-          ### omega ###
-          if previous_residue is not None:
-            prevCA = None
-            prevC = None
-            for atom in previous_residue.atoms():
-              if atom.name == " CA ":
-                prevCA = atom
-              elif atom.name == " C  ":
-                prevC = atom
-            if prevCA is not None and prevC is not None:
-              atoms_in_selection = True
-              for atom in [prevCA, prevC, curN, curCA]:
-                if atom.i_seq not in atom_selection:
-                  atoms_in_selection = False
-              if atoms_in_selection:
-                omega = \
-                  mmtbx.rotamer.omega_from_atoms(prevCA, prevC, curN, curCA)
-                if omega is not None:
-                  i_seqs = [prevCA.i_seq, prevC.i_seq, curN.i_seq, curCA.i_seq]
-                  torsions.append(group_args(chi_id="omega", i_seqs=i_seqs))
-          ###########
+            ### phi ###
+            if previous_residue is not None:
+              prevC = None
+              for atom in previous_residue.atoms():
+                if atom.name == " C  ":
+                  prevC = atom
+              if prevC is not None:
+                atoms_in_selection = True
+                for atom in [prevC, curN, curCA, curC]:
+                  if atom.i_seq not in atom_selection:
+                    atoms_in_selection = False
+                if atoms_in_selection:
+                  phi = mmtbx.rotamer.phi_from_atoms(prevC, curN, curCA, curC)
+                  if phi is not None:
+                    i_seqs = [prevC.i_seq,
+                              curN.i_seq,
+                              curCA.i_seq,
+                              curC.i_seq]
+                    torsions.append(group_args(chi_id="phi", i_seqs=i_seqs))
+            ###########
 
-          ### phi ###
-          if previous_residue is not None:
-            prevC = None
-            for atom in previous_residue.atoms():
-              if atom.name == " C  ":
-                prevC = atom
-            if prevC is not None:
-              atoms_in_selection = True
-              for atom in [prevC, curN, curCA, curC]:
-                if atom.i_seq not in atom_selection:
-                  atoms_in_selection = False
-              if atoms_in_selection:
-                phi = mmtbx.rotamer.phi_from_atoms(prevC, curN, curCA, curC)
-                if phi is not None:
-                  i_seqs = [prevC.i_seq, curN.i_seq, curCA.i_seq, curC.i_seq]
-                  torsions.append(group_args(chi_id="phi", i_seqs=i_seqs))
-          ###########
-
-          ### psi ###
-          if next_residue is not None:
-            nextN = None
-            for atom in next_residue.atoms():
-              if atom.name == " N  ":
-                nextN = atom
-            if nextN is not None:
-              atoms_in_selection = True
-              for atom in [curN, curCA, curC, nextN]:
-                if atom.i_seq not in atom_selection:
-                  atoms_in_selection = False
-              if atoms_in_selection:
-                psi = mmtbx.rotamer.psi_from_atoms(curN, curCA, curC, nextN)
-                if psi is not None:
-                  i_seqs = [curN.i_seq, curCA.i_seq, curC.i_seq, nextN.i_seq]
-                  torsions.append(group_args(chi_id="psi", i_seqs=i_seqs))
-          ###########
+            ### psi ###
+            if next_residue is not None:
+              nextN = None
+              for atom in next_residue.atoms():
+                if atom.name == " N  ":
+                  nextN = atom
+              if nextN is not None:
+                atoms_in_selection = True
+                for atom in [curN, curCA, curC, nextN]:
+                  if atom.i_seq not in atom_selection:
+                    atoms_in_selection = False
+                if atoms_in_selection:
+                  psi = mmtbx.rotamer.psi_from_atoms(curN, curCA, curC, nextN)
+                  if psi is not None:
+                    i_seqs = [curN.i_seq,
+                              curCA.i_seq,
+                              curC.i_seq,
+                              nextN.i_seq]
+                    torsions.append(group_args(chi_id="psi", i_seqs=i_seqs))
+            ###########
 
           ### c-beta ###
           curCB = None
@@ -344,7 +355,10 @@ def collect_residue_torsion_angles (pdb_hierarchy, atom_selection=None) :
                                                        curN,
                                                        curCA,
                                                        curCB)
-              i_seqs = [curC.i_seq, curN.i_seq, curCA.i_seq, curCB.i_seq]
+              i_seqs = [curC.i_seq,
+                        curN.i_seq,
+                        curCA.i_seq,
+                        curCB.i_seq]
               torsions.append(group_args(chi_id="cnab", i_seqs=i_seqs))
           ##############
 

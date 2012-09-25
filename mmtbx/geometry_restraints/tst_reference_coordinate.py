@@ -344,6 +344,52 @@ def exercise_3():
       flex.max(flex.sqrt((xrs2.sites_cart().select(~selection_bool) -
                           xrs3.sites_cart().select(~selection_bool)).dot())), 0)
 
+  #test torsion manipulation
+  grm.generic_restraints_manager.reference_manager.\
+    reference_coordinate_proxies = None
+  grm.generic_restraints_manager.reference_manager.\
+    reference_torsion_proxies = None
+  sites_cart_reference = []
+  selections_reference = []
+  for model in pdb2.models():
+    for chain in model.chains():
+      for residue in chain.residues():
+        sites_cart_reference.append(residue.atoms().extract_xyz())
+        selections_reference.append(residue.atoms().extract_i_seq())
+
+  #one residue at a time (effectively chi angles only)
+  for sites_cart, selection in zip(sites_cart_reference, selections_reference):
+    grm.generic_restraints_manager.reference_manager.\
+      add_torsion_restraints(
+        pdb_hierarchy = pdb2,
+        sites_cart    = sites_cart,
+        selection     = selection)
+  assert len(grm.generic_restraints_manager.reference_manager.
+              reference_torsion_proxies) == 10
+  grm.generic_restraints_manager.reference_manager.\
+    reference_torsion_proxies = None
+
+  #all sites at once, chi angles only
+  sites_cart = xrs2.sites_cart()
+  grm.generic_restraints_manager.reference_manager.\
+    add_torsion_restraints(
+      pdb_hierarchy   = pdb2,
+      sites_cart      = sites_cart,
+      selection       = None,
+      chi_angles_only = True)
+  assert len(grm.generic_restraints_manager.reference_manager.
+              reference_torsion_proxies) == 10
+
+  #all sites at once, all torsions
+  grm.generic_restraints_manager.reference_manager.\
+    add_torsion_restraints(
+      pdb_hierarchy   = pdb2,
+      sites_cart      = sites_cart,
+      selection       = None,
+      chi_angles_only = False)
+  assert len(grm.generic_restraints_manager.reference_manager.
+              reference_torsion_proxies) == 26
+
 if (__name__ == "__main__") :
   exercise_1()
   exercise_2()
