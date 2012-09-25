@@ -195,6 +195,7 @@ def exercise(d_min=5, random_seed=1111111):
   inp.ph.write_pdb_file(file_name="poor.pdb")
   #
   for use_reference_torsion in [False, True]:
+    es = inp.grm.energies_sites(sites_cart = xrs_good.sites_cart()) # essential to update grm
     inp.ph.adopt_xray_structure(xrs_poor)
     random.seed(random_seed)
     flex.set_random_seed(random_seed)
