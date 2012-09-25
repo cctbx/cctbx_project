@@ -225,6 +225,7 @@ def collect_sidechain_chi_angles (pdb_hierarchy, atom_selection=None) :
 def collect_residue_torsion_angles (pdb_hierarchy,
                                     atom_selection=None,
                                     chi_angles_only=False) :
+  get_class = iotbx.pdb.common_residue_names_get_class
   residue_torsions = []
 
   ### chi angles ###
@@ -247,6 +248,8 @@ def collect_residue_torsion_angles (pdb_hierarchy,
     for chain in model.chains() :
       for conformer in chain.conformers() :
         for i_res, residue in enumerate(conformer.residues()) :
+          if (get_class(residue.resname) != "common_amino_acid"):
+            continue
           if i_res < (len(conformer.residues())-1):
             next_residue = conformer.residues()[i_res+1]
           else:
