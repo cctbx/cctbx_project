@@ -183,6 +183,7 @@ def exercise(d_min=5, random_seed=1111111):
   sites_cart_reference = []
   selections_reference = []
   pdb_hierarchy_reference = inp.ph.deep_copy()
+  pdb_hierarchy_reference.reset_i_seq_if_necessary()
   for model in inp.ph.models():
     for chain in model.chains():
       for residue in chain.residues():
