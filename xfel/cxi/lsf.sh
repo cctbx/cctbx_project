@@ -41,20 +41,24 @@ NODE="psexport.slac.stanford.edu"
 NODE=`host "${NODE}" | grep "has address" | head -n 1 | cut -d ' ' -f 1`
 
 # Create a directory for temporary files and open a master connection
-# to ${NODE}.  Install a trap to clean it all up.
+# to ${NODE}.  Define a function to clean it all up, and call the
+# function on interrupt.  Note that the output directory is not
+# removed.
 tmpdir=`mktemp -d` || exit 1
 ssh -fMN -o "ControlPath ${tmpdir}/control.socket" ${NODE}
 NODE=`ssh -S "${tmpdir}/control.socket" ${NODE} "hostname -f"`
 
-trap "ssh -S \"${tmpdir}/control.socket\" ${NODE} \"rm -fr \\\"${out}\\\"\"; \
-      ssh -O exit -S \"${tmpdir}/control.socket\" ${NODE} > /dev/null 2>&1;  \
-      rm -fr \"${tmpdir}\";                                                  \
-      exit 1" HUP INT QUIT TERM
+cleanup_and_exit() {
+    ssh -O exit -S "${tmpdir}/control.socket" ${NODE} > /dev/null 2>&1
+    rm -fr "${tmpdir}"
+    exit $1
+}
+trap "cleanup_and_exit 1" HUP INT QUIT TERM
 
 args=`getopt c:o:p:q:r:x: $*`
 if test $? -ne 0; then
     echo "Usage: lsf.sh -c config -r runno [-o output] [-p num-cpu] [-q queue] [-x exp]" > /dev/stderr
-    exit 1
+    cleanup_and_exit 1
 fi
 
 set -- ${args}
@@ -64,7 +68,7 @@ while test $# -ge 0; do
             cfg="$2"
             if ! test -r "${cfg}" 2> /dev/null; then
                 echo "config must be a readable file" > /dev/stderr
-                exit 1
+                cleanup_and_exit 1
             fi
             shift
             shift
@@ -76,7 +80,7 @@ while test $# -ge 0; do
             if ssh -S "${tmpdir}/control.socket" ${NODE} \
                 "test -e \"${out}\" -a ! -d \"${out}\" 2> /dev/null"; then
                 echo "output exists but is not a directory" > /dev/stderr
-                exit 1
+                cleanup_and_exit 1
             fi
             ssh -S "${tmpdir}/control.socket" ${NODE} \
                 "test -d \"${out}\" 2> /dev/null" ||      \
@@ -88,7 +92,7 @@ while test $# -ge 0; do
         -p)
             if ! test "$2" -gt 0 2> /dev/null; then
                 echo "num-cpu must be positive integer" > /dev/stderr
-                exit 1
+                cleanup_and_exit 1
             fi
             nproc="$2"
             shift
@@ -106,7 +110,7 @@ while test $# -ge 0; do
             # representation of the integer.  XXX Rename runno?
             if ! test "$2" -gt 0 2> /dev/null; then
                 echo "runno must be positive integer" > /dev/stderr
-                exit 1
+                cleanup_and_exit 1
             fi
             run=`echo "$2" | awk '{ printf("%04d", $1); }'`
             shift
@@ -131,11 +135,11 @@ done
 # optional, they should perhaps be positional arguments instead?
 if test -z "${cfg}" -o -z "${run}"; then
     echo "Must specify -c and -r options" > /dev/stderr
-    exit 1
+    cleanup_and_exit 1
 fi
 if test $# -gt 0; then
     echo "Extraneous arguments" > /dev/stderr
-    exit 1
+    cleanup_and_exit 1
 fi
 
 # Take ${exp} from the environment unless overridden on the command
@@ -145,7 +149,7 @@ exp=`find "/reg/d/psdm" -maxdepth 2 -name "${exp}"`
 if ! ssh -S "${tmpdir}/control.socket" ${NODE} \
     "test -d \"${exp}\" 2> /dev/null"; then
     echo "Could not find experiment subdirectory for ${exp}" > /dev/stderr
-    exit 1
+    cleanup_and_exit 1
 fi
 
 # Construct an absolute path to the directory with the XTC files as
@@ -159,7 +163,7 @@ streams=`ssh -S "${tmpdir}/control.socket" ${NODE} \
     | tr -s "\n" " "`
 if test -z "${streams}"; then
     echo "No streams in ${xtc}" > /dev/stderr
-    exit 1
+    cleanup_and_exit 1
 fi
 
 # If ${nproc} is not given on the the command line, fall back on
@@ -273,8 +277,5 @@ scp -o "ControlPath ${tmpdir}/control.socket" -pq \
 ssh -S "${tmpdir}/control.socket" ${NODE} \
     "cd \"${PWD}\" && \"${out}/submit.sh\""
 
-ssh -O exit -S "${tmpdir}/control.socket" ${NODE} > /dev/null 2>&1
-rm -fr "${tmpdir}"
-
 echo "Output directory: ${out}"
-exit 0
+cleanup_and_exit 0
