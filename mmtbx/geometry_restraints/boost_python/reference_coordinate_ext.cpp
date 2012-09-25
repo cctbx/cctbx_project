@@ -68,7 +68,7 @@ namespace boost_python {
       arg("gradient_array")));
   }
 
-  void init_module ()
+  void wrap_reference ()
   {
     wrap_reference_coordinate_proxies();
   }
@@ -77,5 +77,5 @@ namespace boost_python {
 
 BOOST_PYTHON_MODULE(mmtbx_reference_coordinate_ext)
 {
-  mmtbx::geometry_restraints::boost_python::init_module();
+  mmtbx::geometry_restraints::boost_python::wrap_reference();
 }
