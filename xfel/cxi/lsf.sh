@@ -150,7 +150,7 @@ fi
 
 # Construct an absolute path to the directory with the XTC files as
 # well as a sorted list of unique stream numbers for ${run}.  XXX May
-# need some filtering as suggested by Amedeo.
+# need some filtering as suggested by Amedeo Perazzo.
 xtc="${exp}/xtc"
 streams=`ssh -S "${tmpdir}/control.socket" ${NODE} \
       "ls ${xtc}/e*-r${run}-s* 2> /dev/null"       \
@@ -162,21 +162,20 @@ if test -z "${streams}"; then
     exit 1
 fi
 
-# If num-cpu is given in ${cfg}, use that instead of whatever might be
-# given on the command line.  Otherwise, the number of processes per
-# host should be between 7 and 9 according to Marc Messerschmidt.
-# Using only two processors may decrease performance, because
-# distributing data from the master process to a single worker process
-# introduces overhead.
-t=`awk -F= '/^[[:space:]]*num-cpu[[:space:]]*=/ { \
-                printf("%d\n", $2);               \
-            }' "${cfg}"`
-if test "${t}" -gt 0 2> /dev/null; then
-    test -n "${nproc}" && \
-        echo "-p option overridden by configuration file" > /dev/stderr
-    nproc="${t}"
-elif test -z "${nproc}"; then
-    nproc="8"
+# If ${nproc} is not given on the the command line, fall back on
+# num-cpu from ${cfg}.  Otherwise, the number of processes per host
+# should be between 7 and 9 according to Marc Messerschmidt XXX even
+# though there is evidence that 7 may be better.  Using only two
+# processors may decrease performance, because distributing data from
+# the master process to a single worker process introduces overhead.
+if test -z "${nproc}"; then
+    nproc=`awk -F= '/^[[:space:]]*num-cpu[[:space:]]*=/ { \
+                        printf("%d\n", $2);               \
+                    }' "${cfg}"`
+    test "${nproc}" -gt 0 2> /dev/null || nproc="8"
+fi
+if ! test ${nproc} != 2 2> /dev/null; then
+    echo "Warning: running with two processors makes no sense" > /dev/stderr
 fi
 
 # If no queue is given on the command line then submit to default
