@@ -39,8 +39,9 @@ class manager(object):
         sigma=0.5):
     import boost.python
     self.ext = boost.python.import_ext("mmtbx_reference_coordinate_ext")
-    self.reference_coordinate_proxies = \
-      self.ext.shared_reference_coordinate_proxy()
+    if self.reference_coordinate_proxies is None:
+      self.reference_coordinate_proxies = \
+        self.ext.shared_reference_coordinate_proxy()
     if (selection is not None):
       if (isinstance(selection, flex.bool)):
         selection = selection.iselection()
@@ -66,12 +67,17 @@ class manager(object):
         selection=None,
         sigma=2.5):
     from mmtbx.torsion_restraints.reference_model import build_torsion_proxies
-    self.reference_torsion_proxies = \
-      build_torsion_proxies(
-        pdb_hierarchy=pdb_hierarchy,
-        sites_cart=sites_cart,
-        selection=selection,
-        sigma=sigma)
+    local_reference_torsion_proxies = \
+        build_torsion_proxies(
+          pdb_hierarchy=pdb_hierarchy,
+          sites_cart=sites_cart,
+          selection=selection,
+          sigma=sigma)
+    if self.reference_torsion_proxies is None:
+      self.reference_torsion_proxies = local_reference_torsion_proxies
+    else:
+      for dp in local_reference_torsion_proxies:
+        self.reference_torsion_proxies.append(dp)
 
   def remove_coordinate_restraints(self, selection):
     self.reference_coordinate_proxies = \

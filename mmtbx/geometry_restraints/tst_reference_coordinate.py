@@ -146,6 +146,8 @@ def exercise_1():
   assert approx_equal(residual, 0.0)
 
   #test selection
+  grm.generic_restraints_manager.reference_manager.\
+    reference_coordinate_proxies = None
   ca_selection = pdb_hierarchy.get_peptide_c_alpha_selection()
   ca_sites_cart = sites_cart.select(ca_selection)
   grm.generic_restraints_manager.\
@@ -159,6 +161,8 @@ def exercise_1():
     if atom.name == " CA " or atom.name == " N  ":
       tst_iselection.append(atom.i_seq)
   tst_sites_cart = sites_cart.select(tst_iselection)
+  grm.generic_restraints_manager.reference_manager.\
+    reference_coordinate_proxies = None
   grm.generic_restraints_manager.\
     reference_manager.add_coordinate_restraints(
     sites_cart=tst_sites_cart,
