@@ -618,7 +618,8 @@ class set(crystal.symmetry):
     if (not use_binning):
       complete_set = self.complete_set(d_min_tolerance=d_min_tolerance,
                                        d_max = d_max)
-      return self.indices().size() / max(1,complete_set.indices().size())
+      return min(self.indices().size() / max(1, complete_set.indices().size()),
+                 1.0)
     assert self.binner() is not None
     data = []
     for n_given,n_complete in zip(self.binner().counts_given(),
