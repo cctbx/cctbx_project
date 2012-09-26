@@ -260,7 +260,8 @@ class determine_data_and_flags(object):
                      remark_r_free_flags_md5_hexdigest = None,
                      extract_r_free_flags = True,
                      keep_going = False,
-                     log = None):
+                     log = None,
+                     prefer_anomalous = None):
     adopt_init_args(self, locals())
     if(self.parameters is None):
       self.parameters = data_and_flags_master_params().extract()
@@ -294,7 +295,8 @@ class determine_data_and_flags(object):
       file_name        = self.parameters.file_name,
       labels           = self.parameters.labels,
       ignore_all_zeros = self.parameters.ignore_all_zeros,
-      parameter_scope  = self.data_parameter_scope)
+      parameter_scope  = self.data_parameter_scope,
+      prefer_anomalous = self.prefer_anomalous)
     self.parameters.file_name = data.info().source
     self.parameters.labels = [data.info().label_string()]
     if(data.is_xray_intensity_array()):
@@ -2323,8 +2325,14 @@ input {
        cif_params.as_str(attributes_level=3))
 
 class cmdline_load_pdb_and_data (object) :
-  def __init__ (self, args, master_phil, out=sys.stdout,
-      process_pdb_file=True, create_fmodel=True, scattering_table="wk1995") :
+  def __init__ (self,
+      args,
+      master_phil,
+      out=sys.stdout,
+      process_pdb_file=True,
+      create_fmodel=True,
+      scattering_table="wk1995",
+      prefer_anomalous=None) :
     self.args = args
     self.master_phil = master_phil
     cmdline = process_command_line_args(
@@ -2344,6 +2352,7 @@ class cmdline_load_pdb_and_data (object) :
       parameters=params.input.xray_data,
       data_parameter_scope="input.xray_data",
       flags_parameter_scope="input.xray_data.r_free_flags",
+      prefer_anomalous=prefer_anomalous,
       log=out)
     params.input.pdb.file_name.extend(cmdline.pdb_file_names)
     cif_file_names = params.input.monomer_library.file_name
