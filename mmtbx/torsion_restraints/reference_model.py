@@ -1103,13 +1103,10 @@ def get_matching_chains(pdb_hierarchy,
             padded_sequences=seq_pair_padded,
             structures=struct_pair,
             log=log)
-        if ( min(len(residue_match_map),
-                 chain_i.residue_groups_size(),
-                 chain_j.residue_groups_size()) \
-             / max(len(residue_match_map),
-                   chain_i.residue_groups_size(),
-                   chain_j.residue_groups_size()) \
-             >= params.similarity ):
+        #require length of matches to be similar to shorter chain
+        if ( (len(residue_match_map) / min(chain_i.residue_groups_size(),
+                                           chain_j.residue_groups_size()))
+              >= params.similarity ):
           key = (chain_i_str, chain_j_str)
           pair_key = (chain_i.id, segid_i)
           match_key = (chain_j.id, segid_j)
