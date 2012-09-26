@@ -195,8 +195,8 @@ def exercise(d_min=5, random_seed=1111111):
   inp.ph.adopt_xray_structure(xrs_poor)
   inp.ph.write_pdb_file(file_name="poor.pdb")
   #
-  for use_reference_torsion in [False, True]:
-    es = inp.grm.energies_sites(sites_cart = xrs_good.sites_cart()) # essential to update grm
+  for use_reference_torsion in ["no", "yes_add_once", "yes_add_per_residue"]:
+    es = inp.grm.energies_sites(sites_cart = xrs_good.sites_cart()) # it's essential to update grm
     inp.ph.adopt_xray_structure(xrs_poor)
     random.seed(random_seed)
     flex.set_random_seed(random_seed)
@@ -205,13 +205,20 @@ def exercise(d_min=5, random_seed=1111111):
     print "*"*79
     show(prefix="START",pdb_hierarchy = inp.ph, tm=target_map, xrs=xrs_poor, grm=inp.grm.geometry)
     #
-    if(use_reference_torsion):
+    if(use_reference_torsion == "yes_add_per_residue"):
       for sites_cart, selection in zip(sites_cart_reference, selections_reference):
         inp.grm.geometry.generic_restraints_manager.reference_manager.add_torsion_restraints(
-          pdb_hierarchy = pdb_hierarchy_reference,
-          sites_cart    = sites_cart,
-          selection     = selection,
-          sigma         = 1.0)
+          pdb_hierarchy   = pdb_hierarchy_reference,
+          sites_cart      = sites_cart,
+          selection       = selection,
+          chi_angles_only = True,
+          sigma           = 1)
+    if(use_reference_torsion == "yes_add_once"):
+      inp.grm.geometry.generic_restraints_manager.reference_manager.add_torsion_restraints(
+        pdb_hierarchy   = pdb_hierarchy_reference,
+        sites_cart      = xrs_good.sites_cart(),
+        chi_angles_only = True,
+        sigma           = 1)
     #
     tmp = xrs_poor.deep_copy_scatterers()
     rsr_simple_refiner = real_space.simple(
