@@ -385,7 +385,8 @@ mmtbx.find_peaks_holes - difference map analysis
     master_phil=master_phil,
     out=out,
     process_pdb_file=False,
-    create_fmodel=True)
+    create_fmodel=True,
+    prefer_anomalous=True)
   fmodel = cmdline.fmodel
   out.flush()
   result = find_peaks_holes(
