@@ -387,7 +387,7 @@ class Manager(object):
 
   def is_empty(self):
 
-    return not self.executing and not self.postprocessing
+    return not ( self.executing or self.postprocessing )
 
 
   def is_full(self):
@@ -438,14 +438,6 @@ class Manager(object):
         job.postprocess()
         self.postprocessing.append( job )
 
-    # Submit new jobs
-    while not self.is_full() and self.waiting_jobs:
-      identifier = self.waiting_jobs.popleft()
-      unit = max( self.available_units, key = lambda s: s.priority )
-      self.available_units.remove( unit )
-      job = ExecutingJob( unit = unit, identifier = identifier )
-      self.executing.add( job )
-
     # Postprocess jobs
     for i in range( len( self.postprocessing ) ):
       ej = self.postprocessing.popleft()
@@ -459,6 +451,14 @@ class Manager(object):
 
       self.available_units.add( ej.unit )
       self.completed_results.append( result )
+
+    # Submit new jobs
+    while not self.is_full() and self.waiting_jobs:
+      identifier = self.waiting_jobs.popleft()
+      unit = max( self.available_units, key = lambda s: s.priority )
+      self.available_units.remove( unit )
+      job = ExecutingJob( unit = unit, identifier = identifier )
+      self.executing.add( job )
 
 
 class Adapter(object):
@@ -581,4 +581,56 @@ class Adapter(object):
         self.manager.completed_results.remove( result )
         self.active_jobs.remove( result.identifier )
         self.completed_results.append( result )
+
+
+class MainthreadJob(object):
+  """
+  Adaptor object that behaves like a job factory, but executes the calculation
+  on the main thread. This can be used for debugging, or when only one CPU is
+  available, as it has the lowest startup overhead.
+  It is possible to use more than one, but it does not necessarily makes sense
+  """
+
+  def __init__(self, target, args, kwargs):
+
+    self.target = target
+    self.args = args
+    self.kwargs = kwargs
+
+
+  def start(self):
+
+    self.target( *self.args, **self.kwargs )
+
+
+  def join(self):
+
+    pass
+
+
+  def is_alive(self):
+
+    return False
+
+
+class MainthreadQueue(object):
+  """
+  A queue to be used with MainthreadJob
+  """
+
+  def __init__(self):
+
+    self.deque = deque()
+
+
+  def put(self, obj):
+
+    self.deque.append( obj )
+
+
+  def get(self, block = True, timeout = None):
+
+    # NB: block and timeout are ignored, because it is not safe to use this
+    #     with multiple threads
+    return self.deque.popleft()
 
