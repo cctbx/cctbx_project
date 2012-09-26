@@ -867,6 +867,20 @@ class _(boost.python.injector, ext.atom, __hash_eq_mixin):
     self.charge = "%-2s" % sct_c
     return True
 
+  def charge_as_int(self):
+    charge = self.charge_tidy()
+    if charge is None:
+      return 0
+    if charge.endswith("-"):
+      sign = -1
+    else:
+      sign = 1
+    charge = charge.strip(" -+")
+    if charge != "":
+      return sign * int(charge)
+    else:
+      return 0
+
 class _(boost.python.injector, ext.conformer):
 
   def only_residue(self):
