@@ -2,6 +2,7 @@ from __future__ import division
 
 from wxtbx import phil_controls
 from libtbx.utils import Abort
+from libtbx import Auto
 import wx
 
 class ValidatedTextCtrl (wx.TextCtrl, phil_controls.PhilCtrl) :
@@ -54,6 +55,8 @@ class ValidatedTextCtrl (wx.TextCtrl, phil_controls.PhilCtrl) :
     value = self.GetPhilValue()
     if (value is not None) :
       return self.FormatValue(value)
+    elif (self.UseAuto()) :
+      return Auto
     return None
 
   def Enable (self, enable=True) :

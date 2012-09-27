@@ -1,15 +1,25 @@
 from __future__ import division
 
 from libtbx.utils import Sorry
+from libtbx import Auto
 import wx
 
 class PhilCtrl (object) :
   def __init__ (self) :
     self.phil_name = None
     self.optional = False
+    self._none_is_auto = False
+
+  def SetUseAuto (self, enable=True) :
+    self._none_is_auto = enable
+
+  def UseAuto (self) :
+    return getattr(self, "_none_is_auto", False)
 
   def ReturnNoneIfOptional (self) :
     if (self.IsOptional()) :
+      if (self.UseAuto()) :
+        return Auto
       return None
     else :
       raise Sorry("Value required for '%s'." % self.GetName())

@@ -1,10 +1,11 @@
 from __future__ import division
 
 # XXX this is mostly redundant with wx.IntCtrl, but that control doesn't have
-# a way to deal with None.
+# a way to deal with None or Auto.
 
 from wxtbx.phil_controls.text_base import ValidatedTextCtrl, TextCtrlValidator
 from libtbx.utils import Sorry
+from libtbx import Auto
 import wx
 import sys
 
@@ -53,7 +54,7 @@ class IntCtrl (ValidatedTextCtrl) :
     return IntValidator()
 
   def SetInt (self, value) :
-    if (value is None) :
+    if (value is None) or (value is Auto) :
       ValidatedTextCtrl.SetValue(self, "")
     elif (isinstance(value, int)) :
       ValidatedTextCtrl.SetValue(self, str(value))
@@ -142,11 +143,17 @@ if (__name__ == "__main__") :
   int_ctrl2.AttachSpinner(spinbtn)
   int_ctrl2.SetMin(1)
   btn = wx.Button(panel, -1, "Process input", pos=(400, 360))
+  txt3 = wx.StaticText(panel, -1, "Number of copies", pos=(100,300))
+  int_ctrl3 = IntCtrl(panel, -1, pos=(300,300), size=(80,-1),
+    name="Number of copies")
+  int_ctrl3.SetUseAuto()
   def OnOkay (evt) :
     int1 = int_ctrl.GetPhilValue()
     int2 = int_ctrl2.GetPhilValue()
+    int3 = int_ctrl3.GetPhilValue()
     print type(int1).__name__, str(int1)
     print type(int2).__name__, str(int2)
+    print type(int3).__name__, str(int3)
   frame.Bind(wx.EVT_BUTTON, OnOkay, btn)
   def OnChange (evt) :
     print evt.GetEventObject().GetPhilValue()
