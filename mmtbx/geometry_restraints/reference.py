@@ -69,6 +69,7 @@ class manager(object):
         selection=None,
         sigma=2.5,
         chi_angles_only=False):
+    assert [atom.i_seq for atom in pdb_hierarchy.atoms()].count(0) <= 1
     from mmtbx.torsion_restraints.reference_model import build_torsion_proxies
     local_reference_torsion_proxies = \
         build_torsion_proxies(
