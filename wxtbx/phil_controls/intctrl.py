@@ -28,7 +28,7 @@ class IntCtrl (ValidatedTextCtrl) :
     except Exception, e :
       print e
     else :
-      if (self.GetPhilValue() is not None) :
+      if (not self.GetPhilValue() in [None, Auto]) :
         spinner.SetValue(self.GetPhilValue())
 
   def Enable (self, enable=True) :
@@ -87,10 +87,10 @@ class IntCtrl (ValidatedTextCtrl) :
       value = self.GetPhilValue()
     except Exception:
       value = None
-    if (value is None) and ((self.max is None) or (self.max > 0)) :
+    if (value in [None,Auto]) and ((self.max is None) or (self.max > 0)) :
       self.SetValue(1)
       self.DoSendEvent()
-    elif (value is not None) :
+    elif (not value in [None, Auto]) :
       value += 1
       if (self.max is not None) and (value > self.max) :
         pass
