@@ -2,6 +2,7 @@
 from __future__ import division
 from cctbx.array_family import flex
 from cctbx import geometry_restraints
+import iotbx.pdb
 import boost.python
 ext = boost.python.import_ext("mmtbx_reference_coordinate_ext")
 
@@ -92,6 +93,21 @@ class manager(object):
     self.reference_torsion_proxies = \
       self.reference_torsion_proxies.proxy_remove(selection=selection)
 
+  def remove_chi_angle_restraints(self,
+                                  pdb_hierarchy,
+                                  selection=None):
+    if self.reference_torsion_proxies is not None:
+      awl = tuple(pdb_hierarchy.atoms_with_labels())
+      updated_torsion_restraints = \
+        geometry_restraints.shared_dihedral_proxy()
+      for dp in self.reference_torsion_proxies:
+        if not torsion_is_chi_angle(dp, awl):
+          updated_torsion_restraints.append(dp)
+      if len(updated_torsion_restraints) > 0:
+        self.reference_torsion_proxies = updated_torsion_restraints
+      else:
+        self.reference_torsion_proxies = None
+
   def target_and_gradients(self,
                            sites_cart,
                            gradient_array):
@@ -107,3 +123,25 @@ class manager(object):
                   proxies=self.reference_torsion_proxies,
                   gradient_array=gradient_array)
     return target
+
+def torsion_is_chi_angle(dp, atoms_with_labels):
+  get_class = iotbx.pdb.common_residue_names_get_class
+  resname = None
+  atoms = []
+  for i_seq in dp.i_seqs:
+    if resname is None:
+      resname = atoms_with_labels[i_seq].resname
+    else:
+      if resname != atoms_with_labels[i_seq].resname:
+        return False
+    atoms.append(atoms_with_labels[i_seq])
+  if (get_class(resname) != "common_amino_acid"):
+    return False
+  resseq = None
+  for atom in atoms:
+    if resseq is None:
+      resseq = atom.resseq
+    else:
+      if resseq != atom.resseq:
+        return False
+  return True
