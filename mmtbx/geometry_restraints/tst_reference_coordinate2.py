@@ -199,7 +199,7 @@ def exercise(d_min=5, random_seed=1111111):
         s1 = flex.vec3_double()
         s2 = flex.size_t()
         for atom in residue.atoms():
-          if(not atom.name.strip().upper() in ["C","O"]):
+          if(not atom.name.strip().upper() in ["O"]):
             s1.append(atom.xyz)
             s2.append(atom.i_seq)
         sites_cart_reference_for_chi_only.append(s1)
@@ -222,7 +222,8 @@ def exercise(d_min=5, random_seed=1111111):
     show(prefix="START",pdb_hierarchy = inp.ph, tm=target_map, xrs=xrs_poor, grm=inp.grm.geometry)
     #
     if(use_reference_torsion == "yes_add_per_residue"):
-      inp.grm.geometry.generic_restraints_manager.reference_manager.reference_torsion_proxies = None
+      inp.grm.geometry.generic_restraints_manager.reference_manager.\
+        remove_chi_angle_restraints(pdb_hierarchy=pdb_hierarchy_reference)
       for sites_cart, selection in zip(sites_cart_reference, selections_reference):
         inp.grm.geometry.generic_restraints_manager.reference_manager.add_torsion_restraints(
           pdb_hierarchy   = pdb_hierarchy_reference,
@@ -231,14 +232,16 @@ def exercise(d_min=5, random_seed=1111111):
           chi_angles_only = True,
           sigma           = 1)
     if(use_reference_torsion == "yes_add_once"):
-      inp.grm.geometry.generic_restraints_manager.reference_manager.reference_torsion_proxies = None
+      inp.grm.geometry.generic_restraints_manager.reference_manager.\
+        remove_chi_angle_restraints(pdb_hierarchy=pdb_hierarchy_reference)
       inp.grm.geometry.generic_restraints_manager.reference_manager.add_torsion_restraints(
         pdb_hierarchy   = pdb_hierarchy_reference,
         sites_cart      = xrs_good.sites_cart(),
         chi_angles_only = True,
         sigma           = 1)
     if(use_reference_torsion == "yes_manual"):
-      inp.grm.geometry.generic_restraints_manager.reference_manager.reference_torsion_proxies = None
+      inp.grm.geometry.generic_restraints_manager.reference_manager.\
+        remove_chi_angle_restraints(pdb_hierarchy=pdb_hierarchy_reference)
       for sites_cart, selection in zip(sites_cart_reference_for_chi_only,
                                        selections_reference_for_chi_only):
         inp.grm.geometry.generic_restraints_manager.reference_manager.add_torsion_restraints(
