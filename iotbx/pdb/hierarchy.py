@@ -602,6 +602,11 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       anisou=anisou,
       siguij=siguij)
 
+  def as_cif_block(self, crystal_symmetry=None):
+    from iotbx.pdb.mmcif import pdb_hierarchy_as_cif_block
+    return pdb_hierarchy_as_cif_block(
+      self, crystal_symmetry=crystal_symmetry).cif_block
+
   def atoms_with_labels(self):
     for model in self.models():
       for chain in model.chains():
