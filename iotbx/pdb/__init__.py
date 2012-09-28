@@ -614,6 +614,17 @@ class pdb_input_from_any(object):
           pdb_id=pdb_id,
           raise_sorry_if_format_error=raise_sorry_if_format_error)
       except Exception, e: continue
+      if file_input is pdb_input:
+        # XXX nasty hack:
+        #   pdb_input only raises an error if there are lines starting with
+        #   "ATOM  " or "HETATM" and it subsequently fails to interpret these
+        #   lines as ATOM/HETATM records
+        n_unknown_records = content.unknown_section().size()
+        n_records = sum(content.record_type_counts().values())
+        n_blank_records = content.record_type_counts().get('      ', 0)
+        if (n_unknown_records == n_records or
+            n_unknown_records == (n_records - n_blank_records)):
+          continue
       break
 
     if content is None:

@@ -359,14 +359,13 @@ _atom_site.auth_comp_id
 _atom_site.auth_asym_id
 _atom_site.auth_atom_id
 _atom_site.pdbx_PDB_model_num
-HETATM 2932 CA CA  . CA  J 2 .   ? 221.154 27.397 60.094 1.00 49.40  ? ? ? ? ? 2 1123 CA  C CA  1
-HETATM 2996 O  O1S . MES D 4 .   ? 47.470 -6.157  23.319 1.00 13.84 ? ? ? ? ? -1 1653 MES F O1S 1
-HETATM 2997 O  O2S . MES D 4 .   ? 47.327 -5.296  20.939 1.00 15.26 ? ? ? ? ? ?  1653 MES F O2S 1
+  HETATM 2932 CA CA  . CA  J 2 .   ? 221.154 27.397 60.094 1.00 49.40  ? ? ? ? ? 2 1123 CA  C CA  1
+  HETATM 2996 O  O1S . MES D 4 .   ? 47.470 -6.157  23.319 1.00 13.84 ? ? ? ? ? -1 1653 MES F O1S 1
+  HETATM 2997 O  O2S . MES D 4 .   ? 47.327 -5.296  20.939 1.00 15.26 ? ? ? ? ? ?  1653 MES F O2S 1
 """
-  cif_model = iotbx.cif.reader(input_string=input_charges).model()
-  cif_block = cif_model["charges"]
-  builder = pdb_hierarchy_builder(cif_block)
-  hierarchy = builder.hierarchy
+  hierarchy = iotbx.pdb.input(
+    lines=input_charges.splitlines(),
+    source_info=None).construct_hierarchy()
   atoms = hierarchy.atoms()
   assert atoms[0].charge == "2+"
   assert atoms[1].charge == "1-"
