@@ -596,16 +596,22 @@ class MainthreadJob(object):
     self.target = target
     self.args = args
     self.kwargs = kwargs
+    self.exception = None
 
 
   def start(self):
 
-    self.target( *self.args, **self.kwargs )
+    try:
+      self.target( *self.args, **self.kwargs )
+
+    except Exception, e:
+      self.exception = e
 
 
   def join(self):
 
-    pass
+    if self.exception:
+      raise self.exception
 
 
   def is_alive(self):
@@ -633,4 +639,118 @@ class MainthreadQueue(object):
     # NB: block and timeout are ignored, because it is not safe to use this
     #     with multiple threads
     return self.deque.popleft()
+
+
+class MainthreadManager(object):
+  """
+  Dummy process queue executing on the main thread. Implements the Manager
+  interface
+  """
+
+  def __init__(self, processor):
+
+    self.waiting_jobs = deque()
+    self.completed_results = deque()
+
+    self.unit = ExecutionUnit( factory = MainthreadJob, processor = processor )
+
+
+  @property
+  def executing_jobs(self):
+
+    return []
+
+
+  @property
+  def postprocessing_jobs(self):
+
+    return []
+
+
+  @property
+  def running_jobs(self):
+
+    return self.executing_jobs + self.postprocessing_jobs
+
+
+  @property
+  def completed_jobs(self):
+
+    return [ result.identifier for result in self.completed_results ]
+
+
+  @property
+  def known_jobs(self):
+
+    return list( self.waiting_jobs ) + self.running_jobs + self.completed_jobs
+
+
+  @property
+  def results(self):
+
+    return ResultIterator( manager = self )
+
+
+  def results_in_order_of(self, identifiers):
+
+    return OrderedResultIterator( manager = self, identifiers = identifiers )
+
+
+  def submit(self, target, args = (), kwargs = {}):
+
+    identifier = Identifier( target = target, args = args, kwargs = kwargs )
+    self.waiting_jobs.append( identifier )
+    return identifier
+
+
+  def is_empty(self):
+
+    return not self.is_full()
+
+
+  def is_full(self):
+
+    return bool( self.waiting_jobs )
+
+
+  def wait(self):
+
+    if not self.completed_results:
+      self.poll()
+
+
+  def wait_for(self, identifier):
+
+    if identifier not in self.known_jobs:
+      raise RuntimeError, "Job identifier not known"
+
+    while identifier not in self.completed_jobs and not self.is_empty():
+      self.poll()
+
+
+  def result_for(self, identifier):
+
+    self.wait_for( identifier = identifier )
+    index = self.completed_jobs.index( identifier )
+    result = self.completed_results[ index ]
+    self.completed_results.remove( result )
+
+    return result
+
+
+  def join(self):
+
+    while not self.is_empty():
+      self.poll()
+
+
+  def poll(self):
+
+    if not self.is_empty():
+      identifier = self.waiting_jobs.popleft()
+      job = ExecutingJob( unit = self.unit, identifier = identifier )
+      assert not job.is_alive()
+      job.postprocess()
+      result = job.get()
+      self.completed_results.append( result )
 
