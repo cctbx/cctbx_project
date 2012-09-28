@@ -144,6 +144,9 @@ def show_merging_statistics (
   info = i_obs.info()
   i_obs = i_obs.customized_copy(
     crystal_symmetry=crystal_symmetry).set_info(info)
+  if (i_obs.is_unique_set_under_symmetry()) :
+    raise Sorry(("The data in %s are already merged.  Only unmerged (but "+
+      "scaled) data may be used in this program.")%i_obs.info().label_string())
   i_obs = i_obs.resolution_filter(
     d_min=params.high_resolution,
     d_max=params.low_resolution).set_info(info)
@@ -246,9 +249,6 @@ Full parameters:
     symm = crystal.symmetry(
       space_group=sg,
       unit_cell=uc)
-  if (i_obs.is_unique_set_under_symmetry()) :
-    raise Sorry(("The data in %s are already merged.  Only unmerged (but "+
-      "scaled) data may be used in this program.")%i_obs.info().label_string())
   if (i_obs.sigmas() is None) :
     raise Sorry("Sigma(I) values required for this application.")
   show_merging_statistics(
