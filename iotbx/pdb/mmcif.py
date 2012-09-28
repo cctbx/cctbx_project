@@ -1,5 +1,6 @@
 from __future__ import division
 from cctbx.array_family import flex
+from cctbx import crystal
 from libtbx.containers import OrderedSet
 from libtbx import group_args
 import iotbx.pdb
@@ -464,3 +465,91 @@ def extract_f_model_core_constants(cif_block):
     grid_step_factor = grid_step_factor,
     r_work           = r_work,
     r_free           = r_free)
+
+
+class pdb_hierarchy_as_cif_block(iotbx.cif.crystal_symmetry_as_cif_block):
+
+  def __init__(self, pdb_hierarchy, crystal_symmetry=None):
+    if crystal_symmetry is None:
+      crystal_symmetry = crystal.symmetry()
+    iotbx.cif.crystal_symmetry_as_cif_block.__init__(self, crystal_symmetry)
+
+    from string import ascii_uppercase
+
+    atom_site_loop = iotbx.cif.model.loop(header=(
+      '_atom_site.group_PDB',
+      '_atom_site.id',
+      '_atom_site.type_symbol',
+      '_atom_site.label_atom_id',
+      '_atom_site.label_alt_id',
+      '_atom_site.label_comp_id',
+      '_atom_site.label_asym_id',
+      '_atom_site.label_entity_id',
+      '_atom_site.label_seq_id',
+      '_atom_site.pdbx_PDB_ins_code',
+      '_atom_site.Cartn_x',
+      '_atom_site.Cartn_y',
+      '_atom_site.Cartn_z',
+      '_atom_site.occupancy',
+      '_atom_site.B_iso_or_equiv',
+      '_atom_site.auth_seq_id',
+      '_atom_site.auth_comp_id',
+      '_atom_site.auth_asym_id',
+      '_atom_site.auth_atom_id',
+      '_atom_site.pdbx_PDB_model_num',
+    ))
+
+    model_ids = flex.std_string()
+    unique_chain_ids = set()
+    auth_asym_ids = flex.std_string()
+    label_asym_ids = flex.std_string()
+    label_seq_id = 0
+    for model in pdb_hierarchy.models():
+      model_id = model.id
+      if model_id == '': model_id = '1'
+      for chain in model.chains():
+        auth_asym_id = chain.id
+        label_asym_id = auth_asym_id # must be unique for a chain
+        while True:
+          if label_asym_id not in unique_chain_ids:
+            unique_chain_ids.add(label_asym_id)
+            break
+          i = ascii_uppercase.find(label_asym_id)
+          if i == len(ascii_uppercase):
+            break # XXX what to do?
+          else:
+            label_asym_id = ascii_uppercase[i+1]
+        for residue_group in chain.residue_groups():
+          seq_id = residue_group.resseq.strip()
+          label_seq_id += 1
+          icode = residue_group.icode
+          for atom_group in residue_group.atom_groups():
+            alt_id = atom_group.altloc
+            if alt_id == '': alt_id = '.'
+            comp_id = atom_group.resname
+            entity_id = '?' # XXX how do we determine this?
+            for atom in atom_group.atoms():
+              group_pdb = "ATOM"
+              if atom.hetero: group_PDB = "HETATM"
+              x, y, z = [str(i) for i in atom.xyz]
+              atom_site_loop['_atom_site.group_PDB'].append(group_pdb)
+              atom_site_loop['_atom_site.id'].append(atom.serial)
+              atom_site_loop['_atom_site.type_symbol'].append(atom.element)
+              atom_site_loop['_atom_site.label_atom_id'].append(atom.name.strip())
+              atom_site_loop['_atom_site.label_alt_id'].append(alt_id)
+              atom_site_loop['_atom_site.label_comp_id'].append(comp_id)
+              atom_site_loop['_atom_site.label_asym_id'].append(label_asym_id)
+              atom_site_loop['_atom_site.label_entity_id'].append(entity_id)
+              atom_site_loop['_atom_site.label_seq_id'].append(str(label_seq_id))
+              atom_site_loop['_atom_site.pdbx_PDB_ins_code'].append(icode)
+              atom_site_loop['_atom_site.Cartn_x'].append(x)
+              atom_site_loop['_atom_site.Cartn_y'].append(y)
+              atom_site_loop['_atom_site.Cartn_z'].append(z)
+              atom_site_loop['_atom_site.occupancy'].append(str(atom.occ))
+              atom_site_loop['_atom_site.B_iso_or_equiv'].append(str(atom.b))
+              atom_site_loop['_atom_site.auth_seq_id'].append(seq_id)
+              atom_site_loop['_atom_site.auth_comp_id'].append(comp_id)
+              atom_site_loop['_atom_site.auth_asym_id'].append(auth_asym_id)
+              atom_site_loop['_atom_site.auth_atom_id'].append(atom.name.strip())
+              atom_site_loop['_atom_site.pdbx_PDB_model_num'].append(model_id)
+    self.cif_block.add_loop(atom_site_loop)
