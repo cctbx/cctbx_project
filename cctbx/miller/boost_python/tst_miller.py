@@ -472,6 +472,38 @@ def exercise_match_indices():
   assert tuple(p) == (2,4,1,0,3)
   assert tuple(h1.select(p)) == tuple(h0)
 
+def exercise_match_multi_indices():
+  h0 = flex.miller_index(((1,2,3), (-1,-2,-3), (2,3,4), (-2,-3,-4), (3,4,5)))
+  d0 = flex.double((1,2,3,4,5))
+  h1 = flex.miller_index(((1,2,3), (-2,-3,-4), (1,2,3), (2,3,4)))
+  d1 = flex.double((10,20,30,40))
+  mi = miller.match_multi_indices(h0, h0)
+  assert mi.have_singles() == 0
+  assert list(mi.pairs()) == zip(range(5), range(5))
+  mi = miller.match_multi_indices(h0, h1)
+  assert tuple(mi.singles(0)) == (1,4,)
+  assert tuple(mi.singles(1)) == ()
+  assert len(set(mi.pairs()) - set([(0,0), (0,2), (2,3), (3, 1)])) == 0
+  assert tuple(mi.number_of_matches(0)) == (2, 0, 1, 1, 0)
+  assert tuple(mi.pair_selection(0)) == (1, 0, 1, 1, 0)
+  assert tuple(mi.single_selection(0)) == (0, 1, 0, 0, 1)
+  assert tuple(mi.number_of_matches(1)) == (1, 1, 1, 1)
+  assert tuple(mi.pair_selection(1)) == (1, 1, 1, 1)
+  assert tuple(mi.single_selection(1)) == (0, 0, 0, 0)
+  assert tuple(mi.paired_miller_indices(0)) \
+      == tuple(h0.select(mi.pair_selection(0)))
+  l1 = list(mi.paired_miller_indices(1))
+  l2 = list(h1.select(mi.pair_selection(1)))
+  l1.sort()
+  l2.sort()
+  assert l1 == l2
+  try:
+    miller.match_multi_indices(h1, h0)
+  except RuntimeError, e:
+    pass
+  else:
+    raise Exception_expected
+
 def exercise_merge_equivalents():
   i = flex.miller_index(((1,2,3), (1,2,3), (3,0,3), (3,0,3), (3,0,3), (1,1,2)))
   d = flex.double((1,2,3,4,5,6))
@@ -641,6 +673,7 @@ def run(args):
   exercise_match_bijvoet_mates()
   exercise_merge_equivalents()
   exercise_match_indices()
+  exercise_match_multi_indices()
   exercise_phase_integral()
   exercise_phase_transfer()
   exercise_union_of_indices()

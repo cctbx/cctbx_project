@@ -58,6 +58,7 @@ lib_cctbx_sources = [
   "miller/index_span.cpp",
   "miller/match_bijvoet_mates.cpp",
   "miller/match_indices.cpp",
+  "miller/match_multi_indices.cpp",
   "miller/sym_equiv.cpp",
 
   "sgtbx/bricks.cpp",
