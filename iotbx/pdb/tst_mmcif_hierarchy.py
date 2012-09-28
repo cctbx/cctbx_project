@@ -104,7 +104,13 @@ model id="" #chains=2
         " C2 "
         " O  "
 """)
-
+  cif_block = hierarchy.as_cif_block()
+  builder = pdb_hierarchy_builder(cif_block)
+  hierarchy_recycled = builder.hierarchy
+  s1 = StringIO()
+  hierarchy_recycled.show(out=s1)
+  assert not show_diff(s.getvalue(), s1.getvalue())
+  #
   input_missing_mandatory_items = """\
 data_1AB1
 loop_
@@ -238,6 +244,12 @@ model id="" #chains=2
       altloc="" resname="MN" #atoms=1
         "MN  "
 """)
+  cif_block = hierarchy.as_cif_block()
+  builder = pdb_hierarchy_builder(cif_block)
+  hierarchy_recycled = builder.hierarchy
+  s1 = StringIO()
+  hierarchy_recycled.show(out=s1)
+  assert not show_diff(s.getvalue(), s1.getvalue())
   #
   input_1ezu = """\
 data_1EZU
@@ -311,6 +323,12 @@ model id="" #chains=1
         " CE2"
         " CZ "
 """)
+  cif_block = hierarchy.as_cif_block()
+  builder = pdb_hierarchy_builder(cif_block)
+  hierarchy_recycled = builder.hierarchy
+  s1 = StringIO()
+  hierarchy_recycled.show(out=s1)
+  assert not show_diff(s.getvalue(), s1.getvalue())
 
   input_charges = """\
 data_charges
@@ -367,6 +385,12 @@ model id="" #chains=2
         " O1S"
         " O2S"
 """)
+  cif_block = hierarchy.as_cif_block()
+  builder = pdb_hierarchy_builder(cif_block)
+  hierarchy_recycled = builder.hierarchy
+  s1 = StringIO()
+  hierarchy_recycled.show(out=s1)
+  assert not show_diff(s.getvalue(), s1.getvalue())
 
 def run():
   exercise_pdb_hierachy_builder()
