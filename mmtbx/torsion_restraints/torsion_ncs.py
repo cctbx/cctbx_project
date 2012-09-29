@@ -196,274 +196,281 @@ class torsion_ncs(object):
           log=self.log)
       self.ncs_groups = ncs_groups_manager.ncs_groups
       self.alignments = ncs_groups_manager.alignments
-      new_ncs_groups = "refinement {\n ncs {\n  torsion {\n"
-      for ncs_set in self.ncs_groups:
-        new_ncs_groups += "   restraint_group {\n"
-        for chain in ncs_set:
-          new_ncs_groups += "    selection = %s\n" % chain
-        if self.b_factor_weight is not None:
-          new_ncs_groups += \
-            "    b_factor_weight = %f\n" % self.b_factor_weight
-        if self.coordinate_sigma is not None:
-          new_ncs_groups += \
-            "    coordinate_sigma = %f\n" % self.coordinate_sigma
-        new_ncs_groups += "   }\n"
-      new_ncs_groups += "  }\n }\n}"
+      new_ncs_groups = None
+      if len(self.ncs_groups) > 0:
+        new_ncs_groups = "refinement {\n ncs {\n  torsion {\n"
+        for ncs_set in self.ncs_groups:
+          new_ncs_groups += "   restraint_group {\n"
+          for chain in ncs_set:
+            new_ncs_groups += "    selection = %s\n" % chain
+          if self.b_factor_weight is not None:
+            new_ncs_groups += \
+              "    b_factor_weight = %f\n" % self.b_factor_weight
+          if self.coordinate_sigma is not None:
+            new_ncs_groups += \
+              "    coordinate_sigma = %f\n" % self.coordinate_sigma
+          new_ncs_groups += "   }\n"
+        new_ncs_groups += "  }\n }\n}"
       self.found_ncs = new_ncs_groups
 
-    for dp in geometry.dihedral_proxies:
-      h_atom = False
-      for i_seq in dp.i_seqs:
-        if element_hash[i_seq] == " H":
-          h_atom = True
-      if not h_atom:
-        dp_hash[dp.i_seqs] = dp
-
-    cbetadev_hash = utils.build_cbetadev_hash(
-                      pdb_hierarchy=pdb_hierarchy)
-    self.cbeta_proxies = []
-    for cp in geometry.chirality_proxies:
-      key = ""
-      CAsite = None
-      Csite = None
-      Nsite = None
-      CBsite = None
-      CAkey = None
-      Ckey = None
-      Nkey = None
-      CBkey = None
-      cbeta = True
-      wrong_atoms_for_c_beta = False
-      used_atoms = []
-      for i_seq in cp.i_seqs:
-        if self.name_hash[i_seq][0:4] not in \
-          [' CA ', ' N  ', ' C  ', ' CB ']:
-          cbeta = False
-          wrong_atoms_for_c_beta = True
-        elif cbeta and self.name_hash[i_seq][0:4] == ' CA ':
-          CAkey = self.name_hash[i_seq]
-          CAsite = i_seq
-        elif cbeta and self.name_hash[i_seq][0:4] == ' CB ':
-          CBkey = self.name_hash[i_seq]
-          CBsite = i_seq
-          try:
-            if float(cbetadev_hash[name_hash[i_seq][4:14]]) >= 0.25:
-              cbeta = False
-          except Exception:
-              cbeta = False
-        elif cbeta and self.name_hash[i_seq][0:4] == ' C  ':
-          Ckey = self.name_hash[i_seq]
-          Csite = i_seq
-        elif cbeta and self.name_hash[i_seq][0:4] == ' N  ':
-          Nkey = self.name_hash[i_seq]
-          Nsite = i_seq
-      if not cbeta and not wrong_atoms_for_c_beta:
-        print >> self.log, "skipping C-beta restraint for %s" % \
-          name_hash[CBsite][4:14]
-      if cbeta:
-        i_seqs = [Csite, Nsite, CAsite, CBsite]
-        dp = cctbx.geometry_restraints.dihedral_proxy(
-               i_seqs=i_seqs,
-               angle_ideal=0.0,
-               weight=1.0)
-        dp_hash[dp.i_seqs] = dp
-        self.cbeta_proxies.append(dp)
-        i_seqs = [Nsite, Csite, CAsite, CBsite]
-        dp = cctbx.geometry_restraints.dihedral_proxy(
-               i_seqs=i_seqs,
-               angle_ideal=0.0,
-               weight=1.0)
-        dp_hash[dp.i_seqs] = dp
-        self.cbeta_proxies.append(dp)
-
-    super_hash = {}
-    res_match_master = {}
-    res_to_selection_hash = {}
-    for i, group in enumerate(self.ncs_groups):
-      for chain_i in group:
-        selection = utils.selection(
-                     string=chain_i,
-                     cache=sel_cache)
-        c_atoms = pdb_hierarchy.select(selection).atoms()
-        for atom in c_atoms:
-          for chain_j in group:
-            if chain_i == chain_j:
-              continue
-            res_key = self.name_hash[atom.i_seq][4:]
-            atom_key = self.name_hash[atom.i_seq][0:4]
-            j_match = None
-            key = (chain_i, chain_j)
-            cur_align = self.alignments.get(key)
-            if cur_align is not None:
-              j_match = cur_align.get(res_key)
-            if j_match is not None:
-              j_i_seq = i_seq_hash.get(atom_key+j_match)
-              if j_i_seq is None:
-                continue
-              if super_hash.get(atom.i_seq) is None:
-                super_hash[atom.i_seq] = dict()
-              if super_hash.get(j_i_seq) is None:
-                super_hash[j_i_seq] = dict()
-              super_hash[atom.i_seq][chain_j] = j_i_seq
-              super_hash[j_i_seq][chain_i] = atom.i_seq
-              if res_match_master.get(res_key) is None:
-                res_match_master[res_key] = []
-              if res_match_master.get(j_match) is None:
-                res_match_master[j_match] = []
-              if j_match not in res_match_master[res_key]:
-                res_match_master[res_key].append(j_match)
-              if res_key not in res_match_master[j_match]:
-                res_match_master[j_match].append(res_key)
-              res_to_selection_hash[res_key] = chain_i
-              res_to_selection_hash[j_match] = chain_j
-    self.res_match_master = res_match_master
-
-    for dp in geometry.dihedral_proxies:
-      temp = dict()
-      for i_seq in dp.i_seqs:
-        cur_matches = super_hash.get(i_seq)
-        if cur_matches is None:
-          continue
-        for key in cur_matches.keys():
-          try:
-            temp[key].append(cur_matches[key])
-          except Exception:
-            temp[key] = []
-            temp[key].append(cur_matches[key])
-      dp_match = []
-      dp_match.append(dp)
-      for key in temp.keys():
-        cur_dp_hash = dp_hash.get(tuple(temp[key]))
-        if cur_dp_hash is not None:
-          dp_match.append(cur_dp_hash)
-          dp_hash[tuple(temp[key])] = None
-      dp_hash[dp.i_seqs] = None
-      if len(dp_match) > 1:
-        self.dp_ncs.append(dp_match)
-
-    for cb in self.cbeta_proxies:
-      temp = dict()
-      for i_seq in cb.i_seqs:
-        cur_matches = super_hash.get(i_seq)
-        if cur_matches is None:
-          continue
-        for key in cur_matches.keys():
-          try:
-            temp[key].append(cur_matches[key])
-          except Exception:
-            temp[key] = []
-            temp[key].append(cur_matches[key])
-      dp_match = []
-      dp_match.append(cb)
-      for key in temp.keys():
-        cur_dp_hash = dp_hash.get(tuple(temp[key]))
-        if cur_dp_hash is not None:
-          dp_match.append(cur_dp_hash)
-          dp_hash[tuple(temp[key])] = None
-      dp_hash[cb.i_seqs] = None
-      if len(dp_match) > 1:
-        self.dp_ncs.append(dp_match)
-
-    #initialize tracking hashes
-    for dp_set in self.dp_ncs:
-      for dp in dp_set:
-        angle_atoms = self.get_torsion_atoms(dp)
-        angle_resname = self.get_torsion_resname(dp)
-        angle_id = self.get_torsion_id(dp)
-        #phi
-        if angle_atoms == ' C  '+' N  '+' CA '+' C  ':
-          phi_id = self.get_torsion_id(dp, phi_psi=True)
-          self.phi_list.append(dp.i_seqs)
-        #psi
-        elif angle_atoms == ' N  '+' CA '+' C  '+' N  ':
-          psi_id = self.get_torsion_id(dp, phi_psi=True)
-          self.psi_list.append(dp.i_seqs)
-
-    match_counter = {}
-    inclusive_range = {}
-    for group in self.ncs_groups:
-      cur_len = len(group)
-      for chain in group:
-        match_counter[chain] = cur_len
-        inclusive_range[chain] = []
-
-    matched = []
-    ncs_match_hash = {}
-    for dp_set in self.dp_ncs:
-      key_set = []
-      for dp in dp_set:
-        if len(dp_set) < 2:
-          continue
-        cur_key = ""
+    if self.found_ncs is not None:
+      for dp in geometry.dihedral_proxies:
+        h_atom = False
         for i_seq in dp.i_seqs:
-          cur_key += self.name_hash[i_seq]
-        if cur_key[4:19] == cur_key[23:38] and \
-           cur_key[4:19] == cur_key[42:57]:
-          key_set.append(cur_key[4:19])
-      if len(dp_set) == len(key_set):
-        key_set.sort()
-        master_key = None
-        skip = False
-        for i, key in enumerate(key_set):
-          if i == 0:
-            master_key = key
-            if master_key in matched:
-              skip = True
-            elif ncs_match_hash.get(key) is None:
-              ncs_match_hash[key] = []
-            elif len(key_set) <= len(ncs_match_hash[key]):
-              skip = True
-            else:
-              ncs_match_hash[key] = []
-          elif not skip:
-            ncs_match_hash[master_key].append(key)
-            matched.append(key)
-    self.ncs_match_hash = ncs_match_hash
-    self.reduce_redundancies()
+          if element_hash[i_seq] == " H":
+            h_atom = True
+        if not h_atom:
+          dp_hash[dp.i_seqs] = dp
 
-    for res in self.ncs_match_hash.keys():
-      resnum = res[6:10]
-      hash_key = res_to_selection_hash[res]
-      cur_len = match_counter[hash_key]
-      if len(self.ncs_match_hash[res]) == (cur_len - 1):
-        inclusive_range[hash_key].append(int(resnum))
-        for res2 in self.ncs_match_hash[res]:
-          resnum2 = res2[6:10]
-          hash_key = res_to_selection_hash[res2]
-          inclusive_range[hash_key].append(int(resnum2))
+      cbetadev_hash = utils.build_cbetadev_hash(
+                        pdb_hierarchy=pdb_hierarchy)
+      self.cbeta_proxies = []
+      for cp in geometry.chirality_proxies:
+        key = ""
+        CAsite = None
+        Csite = None
+        Nsite = None
+        CBsite = None
+        CAkey = None
+        Ckey = None
+        Nkey = None
+        CBkey = None
+        cbeta = True
+        wrong_atoms_for_c_beta = False
+        used_atoms = []
+        for i_seq in cp.i_seqs:
+          if self.name_hash[i_seq][0:4] not in \
+            [' CA ', ' N  ', ' C  ', ' CB ']:
+            cbeta = False
+            wrong_atoms_for_c_beta = True
+          elif cbeta and self.name_hash[i_seq][0:4] == ' CA ':
+            CAkey = self.name_hash[i_seq]
+            CAsite = i_seq
+          elif cbeta and self.name_hash[i_seq][0:4] == ' CB ':
+            CBkey = self.name_hash[i_seq]
+            CBsite = i_seq
+            try:
+              if float(cbetadev_hash[name_hash[i_seq][4:14]]) >= 0.25:
+                cbeta = False
+            except Exception:
+                cbeta = False
+          elif cbeta and self.name_hash[i_seq][0:4] == ' C  ':
+            Ckey = self.name_hash[i_seq]
+            Csite = i_seq
+          elif cbeta and self.name_hash[i_seq][0:4] == ' N  ':
+            Nkey = self.name_hash[i_seq]
+            Nsite = i_seq
+        if not cbeta and not wrong_atoms_for_c_beta:
+          print >> self.log, "skipping C-beta restraint for %s" % \
+            name_hash[CBsite][4:14]
+        if cbeta:
+          i_seqs = [Csite, Nsite, CAsite, CBsite]
+          dp = cctbx.geometry_restraints.dihedral_proxy(
+                 i_seqs=i_seqs,
+                 angle_ideal=0.0,
+                 weight=1.0)
+          dp_hash[dp.i_seqs] = dp
+          self.cbeta_proxies.append(dp)
+          i_seqs = [Nsite, Csite, CAsite, CBsite]
+          dp = cctbx.geometry_restraints.dihedral_proxy(
+                 i_seqs=i_seqs,
+                 angle_ideal=0.0,
+                 weight=1.0)
+          dp_hash[dp.i_seqs] = dp
+          self.cbeta_proxies.append(dp)
 
-    #determine ranges
-    self.master_ranges = {}
-    for key in inclusive_range.keys():
-      current = None
-      previous = None
-      start = None
-      stop = None
-      self.master_ranges[key] = []
-      inclusive_range[key].sort()
-      for num in inclusive_range[key]:
-        if previous == None:
-          start = num
-          previous = num
-        elif num > (previous + 1):
+      super_hash = {}
+      res_match_master = {}
+      res_to_selection_hash = {}
+      for i, group in enumerate(self.ncs_groups):
+        for chain_i in group:
+          selection = utils.selection(
+                       string=chain_i,
+                       cache=sel_cache)
+          c_atoms = pdb_hierarchy.select(selection).atoms()
+          for atom in c_atoms:
+            for chain_j in group:
+              if chain_i == chain_j:
+                continue
+              res_key = self.name_hash[atom.i_seq][4:]
+              atom_key = self.name_hash[atom.i_seq][0:4]
+              j_match = None
+              key = (chain_i, chain_j)
+              cur_align = self.alignments.get(key)
+              if cur_align is not None:
+                j_match = cur_align.get(res_key)
+              if j_match is not None:
+                j_i_seq = i_seq_hash.get(atom_key+j_match)
+                if j_i_seq is None:
+                  continue
+                if super_hash.get(atom.i_seq) is None:
+                  super_hash[atom.i_seq] = dict()
+                if super_hash.get(j_i_seq) is None:
+                  super_hash[j_i_seq] = dict()
+                super_hash[atom.i_seq][chain_j] = j_i_seq
+                super_hash[j_i_seq][chain_i] = atom.i_seq
+                if res_match_master.get(res_key) is None:
+                  res_match_master[res_key] = []
+                if res_match_master.get(j_match) is None:
+                  res_match_master[j_match] = []
+                if j_match not in res_match_master[res_key]:
+                  res_match_master[res_key].append(j_match)
+                if res_key not in res_match_master[j_match]:
+                  res_match_master[j_match].append(res_key)
+                res_to_selection_hash[res_key] = chain_i
+                res_to_selection_hash[j_match] = chain_j
+      self.res_match_master = res_match_master
+
+      for dp in geometry.dihedral_proxies:
+        temp = dict()
+        for i_seq in dp.i_seqs:
+          cur_matches = super_hash.get(i_seq)
+          if cur_matches is None:
+            continue
+          for key in cur_matches.keys():
+            try:
+              temp[key].append(cur_matches[key])
+            except Exception:
+              temp[key] = []
+              temp[key].append(cur_matches[key])
+        dp_match = []
+        dp_match.append(dp)
+        for key in temp.keys():
+          cur_dp_hash = dp_hash.get(tuple(temp[key]))
+          if cur_dp_hash is not None:
+            dp_match.append(cur_dp_hash)
+            dp_hash[tuple(temp[key])] = None
+        dp_hash[dp.i_seqs] = None
+        if len(dp_match) > 1:
+          self.dp_ncs.append(dp_match)
+
+      for cb in self.cbeta_proxies:
+        temp = dict()
+        for i_seq in cb.i_seqs:
+          cur_matches = super_hash.get(i_seq)
+          if cur_matches is None:
+            continue
+          for key in cur_matches.keys():
+            try:
+              temp[key].append(cur_matches[key])
+            except Exception:
+              temp[key] = []
+              temp[key].append(cur_matches[key])
+        dp_match = []
+        dp_match.append(cb)
+        for key in temp.keys():
+          cur_dp_hash = dp_hash.get(tuple(temp[key]))
+          if cur_dp_hash is not None:
+            dp_match.append(cur_dp_hash)
+            dp_hash[tuple(temp[key])] = None
+        dp_hash[cb.i_seqs] = None
+        if len(dp_match) > 1:
+          self.dp_ncs.append(dp_match)
+
+      #initialize tracking hashes
+      for dp_set in self.dp_ncs:
+        for dp in dp_set:
+          angle_atoms = self.get_torsion_atoms(dp)
+          angle_resname = self.get_torsion_resname(dp)
+          angle_id = self.get_torsion_id(dp)
+          #phi
+          if angle_atoms == ' C  '+' N  '+' CA '+' C  ':
+            phi_id = self.get_torsion_id(dp, phi_psi=True)
+            self.phi_list.append(dp.i_seqs)
+          #psi
+          elif angle_atoms == ' N  '+' CA '+' C  '+' N  ':
+            psi_id = self.get_torsion_id(dp, phi_psi=True)
+            self.psi_list.append(dp.i_seqs)
+
+      match_counter = {}
+      inclusive_range = {}
+      for group in self.ncs_groups:
+        cur_len = len(group)
+        for chain in group:
+          match_counter[chain] = cur_len
+          inclusive_range[chain] = []
+
+      matched = []
+      ncs_match_hash = {}
+      for dp_set in self.dp_ncs:
+        key_set = []
+        for dp in dp_set:
+          if len(dp_set) < 2:
+            continue
+          cur_key = ""
+          for i_seq in dp.i_seqs:
+            cur_key += self.name_hash[i_seq]
+          if cur_key[4:19] == cur_key[23:38] and \
+             cur_key[4:19] == cur_key[42:57]:
+            key_set.append(cur_key[4:19])
+        if len(dp_set) == len(key_set):
+          key_set.sort()
+          master_key = None
+          skip = False
+          for i, key in enumerate(key_set):
+            if i == 0:
+              master_key = key
+              if master_key in matched:
+                skip = True
+              elif ncs_match_hash.get(key) is None:
+                ncs_match_hash[key] = []
+              elif len(key_set) <= len(ncs_match_hash[key]):
+                skip = True
+              else:
+                ncs_match_hash[key] = []
+            elif not skip:
+              ncs_match_hash[master_key].append(key)
+              matched.append(key)
+      self.ncs_match_hash = ncs_match_hash
+      self.reduce_redundancies()
+
+      for res in self.ncs_match_hash.keys():
+        resnum = res[6:10]
+        hash_key = res_to_selection_hash[res]
+        cur_len = match_counter[hash_key]
+        if len(self.ncs_match_hash[res]) == (cur_len - 1):
+          inclusive_range[hash_key].append(int(resnum))
+          for res2 in self.ncs_match_hash[res]:
+            resnum2 = res2[6:10]
+            hash_key = res_to_selection_hash[res2]
+            inclusive_range[hash_key].append(int(resnum2))
+
+      #determine ranges
+      self.master_ranges = {}
+      for key in inclusive_range.keys():
+        current = None
+        previous = None
+        start = None
+        stop = None
+        self.master_ranges[key] = []
+        inclusive_range[key].sort()
+        for num in inclusive_range[key]:
+          if previous == None:
+            start = num
+            previous = num
+          elif num > (previous + 1):
+            finish = previous
+            self.master_ranges[key].append( (start, finish) )
+            start = num
+            finish = None
+            previous = num
+          else:
+            previous = num
+        if previous != None:
           finish = previous
           self.master_ranges[key].append( (start, finish) )
-          start = num
-          finish = None
-          previous = num
-        else:
-          previous = num
-      if previous != None:
-        finish = previous
-        self.master_ranges[key].append( (start, finish) )
 
-    if self.params.verbose:
-      self.show_ncs_summary(log=log)
-    print >> self.log, "Initializing torsion NCS restraints..."
-    self.rama = ramalyze()
-    self.generate_dihedral_ncs_restraints(sites_cart=sites_cart,
+      if self.params.verbose:
+        self.show_ncs_summary(log=log)
+      print >> self.log, "Initializing torsion NCS restraints..."
+      self.rama = ramalyze()
+      self.generate_dihedral_ncs_restraints(sites_cart=sites_cart,
                                           pdb_hierarchy=pdb_hierarchy,
                                           log=log)
+    elif(not self.params.silence_warnings):
+      print >> log, \
+        "** WARNING: No torsion NCS found!!" + \
+        "  Please check parameters. **"
 
   def show_ncs_summary(self, log=None):
     if(log is None): log = sys.stdout
