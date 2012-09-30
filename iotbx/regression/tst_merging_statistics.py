@@ -17,6 +17,7 @@ def exercise (debug=False) :
     hkl_file,
     "space_group=I4",
     "unit_cell=113.949,113.949,32.474,90,90,90",
+    "loggraph=True",
   ]
   if (debug) :
     args.append("debug=True")
