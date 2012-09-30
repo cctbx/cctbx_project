@@ -215,6 +215,32 @@ class dataset_statistics (object) :
       print >> out, bin_stats.format()
     print >> out, self.overall.format()
 
+def select_data (file_name, data_labels, out) :
+  from iotbx import reflection_file_reader
+  hkl_in = reflection_file_reader.any_reflection_file(file_name)
+  print >> out, "Format:", hkl_in.file_type()
+  miller_arrays = hkl_in.as_miller_arrays(merge_equivalents=False)
+  i_obs = None
+  all_i_obs = []
+  for array in miller_arrays :
+    labels = array.info().label_string()
+    if (labels == data_labels) :
+      i_obs = array
+      break
+    elif (array.is_xray_intensity_array()) :
+      all_i_obs.append(array)
+  if (i_obs is None) :
+    if (len(all_i_obs) == 0) :
+      raise Sorry("No intensities found in %s." % file_name)
+    elif (len(all_i_obs) > 1) :
+      raise Sorry("Multiple intensity arrays - please specify one:\n%s" %
+        "\n".join(["  labels=%s"%a.info().label_string() for a in all_i_obs]))
+    else :
+      i_obs = all_i_obs[0]
+  if (not i_obs.is_xray_intensity_array()) :
+    raise Sorry("%s is not an intensity array." % i_obs.info().label_string())
+  return i_obs
+
 def run (args, out=None) :
   if (out is None) : out = sys.stdout
   import iotbx.phil
@@ -239,29 +265,10 @@ Full parameters:
     reflection_file_def="file_name",
     pdb_file_def="symmetry_file")
   params = cmdline.work.extract()
-  from iotbx import reflection_file_reader
-  hkl_in = reflection_file_reader.any_reflection_file(params.file_name)
-  print >> out, "Format:", hkl_in.file_type()
-  miller_arrays = hkl_in.as_miller_arrays(merge_equivalents=False)
-  i_obs = None
-  all_i_obs = []
-  for array in miller_arrays :
-    labels = array.info().label_string()
-    if (labels == params.labels) :
-      i_obs = array
-      break
-    elif (array.is_xray_intensity_array()) :
-      all_i_obs.append(array)
-  if (i_obs is None) :
-    if (len(all_i_obs) == 0) :
-      raise Sorry("No intensities found in %s." % params.file_name)
-    elif (len(all_i_obs) > 1) :
-      raise Sorry("Multiple intensity arrays - please specify one:\n%s" %
-        "\n".join(["  labels=%s"%a.info().label_string() for a in all_i_obs]))
-    else :
-      i_obs = all_i_obs[0]
-  if (not i_obs.is_xray_intensity_array()) :
-    raise Sorry("%s is not an intensity array." % i_obs.info().label_string())
+  i_obs = select_data(
+    file_name=params.file_name,
+    data_labels=params.labels,
+    out=out)
   symm = None
   if (params.symmetry_file is not None) :
     from iotbx import crystal_symmetry_from_any
