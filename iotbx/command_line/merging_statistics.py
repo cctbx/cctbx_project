@@ -3,7 +3,6 @@
 from __future__ import division
 from libtbx.str_utils import make_sub_header
 from libtbx.utils import Sorry, Usage
-from libtbx import group_args
 from math import sqrt
 import sys
 
@@ -143,73 +142,78 @@ class merging_stats (object) :
     print >> out, "R-meas:  %5.3f" % self.r_meas
     print >> out, "R-pim:   %5.3f" % self.r_pim
 
-def show_merging_statistics (
-    i_obs,
-    crystal_symmetry=None,
-    params=None,
-    debug=False,
-    out=None) :
-  from iotbx import data_plots
-  if (out is None) : out = sys.stdout
-  if (params is None) :
-    params = iotbx.phil.parase(merging_params_str).extract()
-  assert (i_obs.sigmas() is not None)
-  info = i_obs.info()
-  if (crystal_symmetry is None) :
-    assert (i_obs.space_group() is not None)
-    crystal_symmetry = i_obs
-  i_obs = i_obs.customized_copy(
-    crystal_symmetry=crystal_symmetry).set_info(info)
-  if (i_obs.is_unique_set_under_symmetry()) :
-    raise Sorry(("The data in %s are already merged.  Only unmerged (but "+
-      "scaled) data may be used in this program.")%i_obs.info().label_string())
-  i_obs = i_obs.resolution_filter(
-    d_min=params.high_resolution,
-    d_max=params.low_resolution).set_info(info)
-  i_obs.show_summary()
-  anom_extra = ""
-  if (not params.anomalous) :
-    i_obs = i_obs.customized_copy(anomalous_flag=False)
-    anom_extra = " (non-anomalous)"
-  i_obs.setup_binner(n_bins=params.n_bins)
-  merge = i_obs.merge_equivalents()
-  stats = merging_stats(i_obs, anomalous=params.anomalous, debug=debug)
-  make_sub_header("Merging statistics")
-  stats.show_summary(out)
-  print >> out, ""
-  print >> out, "Redundancies%s:" % anom_extra
-  n_obs = sorted(stats.redundancies.keys())
-  for x in n_obs :
-    print "  %d : %d" % (x, stats.redundancies[x])
-  print >> out, ""
-  print >> out, """\
-Statistics by resolution bin:
- d_min   d_max   #obs  #uniq   mult.  %comp       <I>  <I/sI>  r_mrg r_meas  r_pim  cc1/2"""
-  # statistics by bin
-  table = data_plots.table_data(
-    title="Intensity merging statistics",
-    column_labels=["1/d**2","N(obs)","N(unique)","Redundancy","Completeness",
-      "Mean(I)", "Mean(I/sigma)", "R-merge", "R-meas", "R-pim", "CC1/2"],
-    graph_names=["Reflection counts", "Redundancy", "Completeness",
-      "Mean(I)", "Mean(I/sigma)", "R-factors", "CC1/2"],
-    graph_columns=[[0,1,2],[0,3],[0,4],[0,5],[0,6],[0,7,8,9],[0,10]],
-    x_is_inverse_d_min=True,
-    force_exact_x_labels=True)
-  last_bin = None
-  for bin in i_obs.binner().range_used() :
-    sele_unmerged = i_obs.binner().selection(bin)
-    bin_stats = merging_stats(i_obs.select(sele_unmerged),
-      anomalous=params.anomalous,
-      debug=debug)
-    print >> out, bin_stats.format()
-    last_bin = bin_stats
-    table.add_row(bin_stats.table_data())
-  # overall statistics
-  print >> out, stats.format()
-  return group_args(
-    overall=stats,
-    high_res=last_bin,
-    table=table)
+class dataset_statistics (object) :
+  def __init__ (self,
+      i_obs,
+      crystal_symmetry=None,
+      params=None,
+      debug=False) :
+    from iotbx import data_plots
+    if (params is None) :
+      params = iotbx.phil.parase(merging_params_str).extract()
+    assert (i_obs.sigmas() is not None)
+    info = i_obs.info()
+    if (crystal_symmetry is None) :
+      assert (i_obs.space_group() is not None)
+      crystal_symmetry = i_obs
+    i_obs = i_obs.customized_copy(
+      crystal_symmetry=crystal_symmetry).set_info(info)
+    if (i_obs.is_unique_set_under_symmetry()) :
+      raise Sorry(("The data in %s are already merged.  Only unmerged (but "+
+        "scaled) data may be used in this program.")%
+        i_obs.info().label_string())
+    i_obs = i_obs.resolution_filter(
+      d_min=params.high_resolution,
+      d_max=params.low_resolution).set_info(info)
+    i_obs.show_summary()
+    self.anom_extra = ""
+    if (not params.anomalous) :
+      i_obs = i_obs.customized_copy(anomalous_flag=False)
+      self.anom_extra = " (non-anomalous)"
+    i_obs.setup_binner(n_bins=params.n_bins)
+    merge = i_obs.merge_equivalents()
+    self.overall = merging_stats(i_obs, anomalous=params.anomalous, debug=debug)
+    self.bins = []
+    self.table = data_plots.table_data(
+      title="Intensity merging statistics",
+      column_labels=["1/d**2","N(obs)","N(unique)","Redundancy","Completeness",
+        "Mean(I)", "Mean(I/sigma)", "R-merge", "R-meas", "R-pim", "CC1/2"],
+      graph_names=["Reflection counts", "Redundancy", "Completeness",
+        "Mean(I)", "Mean(I/sigma)", "R-factors", "CC1/2"],
+      graph_columns=[[0,1,2],[0,3],[0,4],[0,5],[0,6],[0,7,8,9],[0,10]],
+      x_is_inverse_d_min=True,
+      force_exact_x_labels=True)
+    last_bin = None
+    for bin in i_obs.binner().range_used() :
+      sele_unmerged = i_obs.binner().selection(bin)
+      bin_stats = merging_stats(i_obs.select(sele_unmerged),
+        anomalous=params.anomalous,
+        debug=debug)
+      self.bins.append(bin_stats)
+      self.table.add_row(bin_stats.table_data())
+
+  def show_loggraph (self, out=None) :
+    if (out is None) : out = sys.stdout
+    print >> out, ""
+    print >> out, self.table.format_loggraph()
+    print >> out, ""
+
+  def show (self, out=None) :
+    if (out is None) : out = sys.stdout
+    make_sub_header("Merging statistics", out=out)
+    self.overall.show_summary(out)
+    print >> out, ""
+    print >> out, "Redundancies%s:" % self.anom_extra
+    n_obs = sorted(self.overall.redundancies.keys())
+    for x in n_obs :
+      print "  %d : %d" % (x, self.overall.redundancies[x])
+    print >> out, ""
+    print >> out, """\
+  Statistics by resolution bin:
+   d_min   d_max   #obs  #uniq   mult.  %comp       <I>  <I/sI>  r_mrg r_meas  r_pim  cc1/2"""
+    for bin_stats in self.bins :
+      print >> out, bin_stats.format()
+    print >> out, self.overall.format()
 
 def run (args, out=None) :
   if (out is None) : out = sys.stdout
@@ -284,17 +288,16 @@ Full parameters:
       unit_cell=uc)
   if (i_obs.sigmas() is None) :
     raise Sorry("Sigma(I) values required for this application.")
-  result = show_merging_statistics(
+  result = dataset_statistics(
     i_obs=i_obs,
     crystal_symmetry=symm,
     params=params,
-    debug=params.debug,
-    out=out)
+    debug=params.debug)
+  result.show(out=out)
   if (params.loggraph) :
-    print >> out, ""
-    print >> out, result.table.format_loggraph()
-    print >> out, ""
+    result.show_loggraph()
   print >> out, citations_str
+  return result
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
