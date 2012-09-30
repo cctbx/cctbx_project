@@ -398,8 +398,11 @@ class xtriage_analyses(object):
     self.miller_obs  = miller_obs   # array of observed data, should be intensity or amplitude
     self.miller_calc = miller_calc  # array if calculated data, need to be given
     self.miller_ref  = miller_ref   # array with 'reference' data, need not be given.
+    self.unmerged_obs = None
 
     if self.miller_obs is not None:
+      if (not self.miller_obs.is_unique_set_under_symmetry()) :
+        self.unmerged_obs = self.miller_obs.deep_copy()
       self.miller_obs  = self.miller_obs.merge_equivalents().array().remove_systematic_absences()   # array of observed data, should be intensity or amplitude
     if self.miller_calc is not None:
       self.miller_calc = self.miller_calc.merge_equivalents().array().remove_systematic_absences()  # array if calculated data, need to be given
@@ -418,9 +421,28 @@ class xtriage_analyses(object):
       self.params = master_params.fetch(sources=[])
       self.params = self.params.extract()
 
-
-
-
+    ###
+    # FIXME this won't actually be run at present, because the default
+    # behavior of the iotbx tools is to merge everything, so by the time we
+    # get the array, the unmerged data have long since been lost.  Needs to be
+    # refactored to prevent this, but I'm not sure what the side effects will
+    # be.  -Nat 2012-09-30
+    self.merging_stats = None
+    if ((self.unmerged_obs is not None) and
+        (self.unmerged_obs.is_xray_intensity_array())) :
+      from iotbx.command_line import merging_statistics
+      try :
+        self.merging_stats = merging_statistics.dataset_statistics(
+          i_obs=self.unmerged_obs,
+          out=self.text_out)
+        self.merging_stats.show(out=self.text_out)
+        print >> self.text_out, merging_statistics.citations_str
+        self.merging_stats.show_loggraph(self.plot_out)
+      except Exception, e :
+        print >> self.text_out, \
+          "WARNING: calculation of merging statistics failed"
+        print >> self.text_out, "  error: %s" % str(e)
+    ###
 
     print >> self.text_out
     print >> self.text_out,"##----------------------------------------------------##"
