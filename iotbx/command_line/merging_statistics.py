@@ -3,6 +3,7 @@
 from __future__ import division
 from libtbx.str_utils import make_sub_header
 from libtbx.utils import Sorry, Usage
+from libtbx import group_args
 from math import sqrt
 import sys
 
@@ -39,6 +40,8 @@ symmetry_file = None
 %s
 debug = False
   .type = bool
+loggraph = False
+  .type = bool
 """ % merging_params_str
 
 class merging_stats (object) :
@@ -51,34 +54,37 @@ class merging_stats (object) :
     non_negative_sel = array.sigmas() >= 0
     self.n_neg_sigmas = non_negative_sel.count(False)
     array = array.select(non_negative_sel)
-    self.merge = array.merge_equivalents()
-    self.array_merged = self.merge.array()
-    reject_sel = (self.array_merged.data() < -3*self.array_merged.sigmas())
+    merge = array.merge_equivalents()
+    array_merged = merge.array()
+    reject_sel = (array_merged.data() < -3*array_merged.sigmas())
     self.n_rejected = reject_sel.count(True)
-    self.array_merged = self.array_merged.select(~reject_sel)
+    array_merged = array_merged.select(~reject_sel)
     self.d_max, self.d_min = array.d_max_min()
     self.n_obs = array.indices().size()
-    self.n_uniq = self.array_merged.indices().size()
-    complete_set = self.array_merged.complete_set().resolution_filter(
+    self.n_uniq = array_merged.indices().size()
+    complete_set = array_merged.complete_set().resolution_filter(
       d_min=self.d_min, d_max=self.d_max)
     n_expected = len(complete_set.indices())
     self.completeness = min(self.n_uniq / n_expected, 1.)
-    self.redundancies = self.merge.redundancies().data()
-    self.mean_redundancy = flex.mean(self.redundancies.as_double())
-    self.i_mean = flex.mean(self.array_merged.data())
-    self.sigi_mean = flex.mean(self.array_merged.sigmas())
-    nonzero_array = self.array_merged.select(self.array_merged.sigmas() > 0)
+    redundancies = merge.redundancies().data()
+    self.redundancies = {}
+    for x in sorted(set(redundancies)) :
+      self.redundancies[x] = redundancies.count(x)
+    self.mean_redundancy = flex.mean(redundancies.as_double())
+    self.i_mean = flex.mean(array_merged.data())
+    self.sigi_mean = flex.mean(array_merged.sigmas())
+    nonzero_array = array_merged.select(array_merged.sigmas() > 0)
     i_over_sigma = nonzero_array.data() / nonzero_array.sigmas()
     self.i_over_sigma_mean = flex.mean(i_over_sigma)
-    self.r_merge = self.merge.r_merge()
-    self.r_meas = self.merge.r_meas()
-    self.r_pim = self.merge.r_pim()
+    self.r_merge = merge.r_merge()
+    self.r_meas = merge.r_meas()
+    self.r_pim = merge.r_pim()
     # XXX Pure-Python reference implementation
     if (debug) :
       from libtbx.test_utils import approx_equal
       r_merge_num = r_meas_num = r_pim_num = r_merge_den = 0
-      indices = self.array_merged.indices()
-      data = self.array_merged.data()
+      indices = array_merged.indices()
+      data = array_merged.data()
       for hkl, i_mean in zip(indices, data) :
         sele = (array.indices() == hkl)
         hkl_array = array.select(sele)
@@ -95,6 +101,7 @@ class merging_stats (object) :
       assert (approx_equal(self.r_merge, r_merge_num / r_merge_den))
       assert (approx_equal(self.r_meas, r_meas_num / r_merge_den))
       assert (approx_equal(self.r_pim, r_pim_num / r_merge_den))
+    #---
     self.cc_one_half = cctbx.miller.compute_cc_one_half(
       unmerged=array)
     if (self.cc_one_half == 0) :
@@ -114,6 +121,11 @@ class merging_stats (object) :
       self.i_mean, self.i_over_sigma_mean,
       self.r_merge, self.r_meas, self.r_pim,
       self.cc_one_half)
+
+  def table_data (self) :
+    return [(1/self.d_min**2), self.n_obs, self.n_uniq, self.mean_redundancy,
+            self.completeness*100, self.i_mean, self.i_over_sigma_mean,
+            self.r_merge, self.r_meas, self.r_pim, self.cc_one_half]
 
   def show_summary (self, out=sys.stdout) :
     print >> out, "Resolution: %.2f - %.2f" % (self.d_max, self.d_min)
@@ -137,11 +149,15 @@ def show_merging_statistics (
     params=None,
     debug=False,
     out=None) :
+  from iotbx import data_plots
   if (out is None) : out = sys.stdout
   if (params is None) :
     params = iotbx.phil.parase(merging_params_str).extract()
   assert (i_obs.sigmas() is not None)
   info = i_obs.info()
+  if (crystal_symmetry is None) :
+    assert (i_obs.space_group() is not None)
+    crystal_symmetry = i_obs
   i_obs = i_obs.customized_copy(
     crystal_symmetry=crystal_symmetry).set_info(info)
   if (i_obs.is_unique_set_under_symmetry()) :
@@ -162,21 +178,38 @@ def show_merging_statistics (
   stats.show_summary(out)
   print >> out, ""
   print >> out, "Redundancies%s:" % anom_extra
-  for x in sorted(set(stats.redundancies)) :
-    print "  %d : %d" % (x, stats.redundancies.count(x))
+  n_obs = sorted(stats.redundancies.keys())
+  for x in n_obs :
+    print "  %d : %d" % (x, stats.redundancies[x])
   print >> out, ""
   print >> out, """\
 Statistics by resolution bin:
  d_min   d_max   #obs  #uniq   mult.  %comp       <I>  <I/sI>  r_mrg r_meas  r_pim  cc1/2"""
   # statistics by bin
+  table = data_plots.table_data(
+    title="Intensity merging statistics",
+    column_labels=["1/d**2","N(obs)","N(unique)","Redundancy","Completeness",
+      "Mean(I)", "Mean(I/sigma)", "R-merge", "R-meas", "R-pim", "CC1/2"],
+    graph_names=["Reflection counts", "Redundancy", "Completeness",
+      "Mean(I)", "Mean(I/sigma)", "R-factors", "CC1/2"],
+    graph_columns=[[0,1,2],[0,3],[0,4],[0,5],[0,6],[0,7,8,9],[0,10]],
+    x_is_inverse_d_min=True,
+    force_exact_x_labels=True)
+  last_bin = None
   for bin in i_obs.binner().range_used() :
     sele_unmerged = i_obs.binner().selection(bin)
     bin_stats = merging_stats(i_obs.select(sele_unmerged),
       anomalous=params.anomalous,
       debug=debug)
     print >> out, bin_stats.format()
+    last_bin = bin_stats
+    table.add_row(bin_stats.table_data())
   # overall statistics
   print >> out, stats.format()
+  return group_args(
+    overall=stats,
+    high_res=last_bin,
+    table=table)
 
 def run (args, out=None) :
   if (out is None) : out = sys.stdout
@@ -251,12 +284,16 @@ Full parameters:
       unit_cell=uc)
   if (i_obs.sigmas() is None) :
     raise Sorry("Sigma(I) values required for this application.")
-  show_merging_statistics(
+  result = show_merging_statistics(
     i_obs=i_obs,
     crystal_symmetry=symm,
     params=params,
     debug=params.debug,
     out=out)
+  if (params.loggraph) :
+    print >> out, ""
+    print >> out, result.table.format_loggraph()
+    print >> out, ""
   print >> out, citations_str
 
 if (__name__ == "__main__") :
