@@ -1907,6 +1907,7 @@ spotfinder/servers/thin_client.py -text
 tbxx/error_utils.hpp svneol=native#text/plain
 tbxx/libc_backtrace.hpp svneol=native#text/plain
 tbxx/optional_copy.hpp svneol=native#text/plain
+tbxx/pretty_type_name.hpp -text
 tbxx/time_accu.hpp svneol=native#text/plain
 ucif/antlr3/NOTES -text
 ucif/antlr3/antlr3config.h -text
