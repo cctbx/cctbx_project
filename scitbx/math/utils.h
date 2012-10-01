@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <algorithm>
+#include <limits>
 
 namespace scitbx { namespace math {
 
@@ -118,23 +119,12 @@ namespace scitbx { namespace math {
 
   template <typename UnsignedIntType, typename SizeType>
   bool
-  unsigned_product_leads_to_overflow(
-    UnsignedIntType* a,
-    SizeType n)
-  {
-    // The author (rwgk) is not certain if this implementation works
-    // under all circumstances.
-    if (a[0] == 0) return false;
-    UnsignedIntType p = a[0];
-    for(SizeType i=1;i<n;i++) {
-      if (a[i] == 0) return false;
-      UnsignedIntType pp = p;
-      p *= a[i];
-      if (p < pp) return true;
-      if (p / a[i] != pp) return true;
-      if (p - pp != pp * (a[i]-1)) return true;
+  unsigned_product_leads_to_overflow(UnsignedIntType* a, SizeType n) {
+    double product = 1;
+    for (int i=0; i<n; i++) {
+      product *= a[i];
     }
-    return false;
+    return product > std::numeric_limits<UnsignedIntType>::max();
   }
 
   /// Quotient and remainder of x/y for floating point x and y

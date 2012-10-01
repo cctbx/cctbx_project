@@ -1,6 +1,9 @@
 #include <scitbx/math/copysign.h>
 #include <scitbx/math/imaginary.h>
+#include <scitbx/math/utils.h>
+#include <tbxx/pretty_type_name.hpp>
 #include <iostream>
+#include <iomanip>
 #include <scitbx/error.h>
 
 #define SCITBX_CHECK_COPYSIGN(T, a, b, c, warn_only)                           \
@@ -66,9 +69,50 @@ void exercise_imaginary() {
   }
 }
 
+template <typename UnsignedType>
+struct unsigned_product_leads_to_overflow_test
+{
+  static void run() {
+    using scitbx::math::unsigned_product_leads_to_overflow;
+    {
+      UnsignedType a[3];
+      UnsignedType n = std::floor(std::pow(std::numeric_limits<UnsignedType>::max(), 1./3.));
+      a[0] = n; a[1] = n; a[2] = n;
+      a[0] = n+1; a[1] = n+1; a[2] = n+1;
+      SCITBX_ASSERT(unsigned_product_leads_to_overflow(a, 3))
+                   (tbxx::pretty_type_name<UnsignedType>())
+                   (a[0])(a[1])(a[2]);
+    }
+    {
+      UnsignedType a[3];
+      UnsignedType n = std::numeric_limits<UnsignedType>::max();
+      a[0] = n; a[1] = 1; a[2] = 1;
+      SCITBX_ASSERT(!unsigned_product_leads_to_overflow(a, 3))
+                   (tbxx::pretty_type_name<UnsignedType>())
+                   (a[0])(a[1])(a[2]);
+      a[0] = n; a[1] = 2; a[2] = 1;
+      SCITBX_ASSERT(unsigned_product_leads_to_overflow(a, 3))
+                   (tbxx::pretty_type_name<UnsignedType>())
+                   (a[0])(a[1])(a[2]);
+    }
+  }
+};
+
+void exercise_unsigned_product_leads_to_overflow() {
+  unsigned_product_leads_to_overflow_test<unsigned>::run();
+  unsigned_product_leads_to_overflow_test<unsigned long>::run();
+}
+
 int main() {
-  exercise_copy_sign();
-  exercise_imaginary();
-  std::cout << "OK\n";
-  return 0;
+  try {
+    exercise_copy_sign();
+    exercise_imaginary();
+    exercise_unsigned_product_leads_to_overflow();
+    std::cout << "OK\n";
+    return 0;
+  }
+  catch(scitbx::error e) {
+    std::cerr << e.what() << std::endl;
+    return 1;
+  }
 }
