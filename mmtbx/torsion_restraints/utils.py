@@ -456,3 +456,62 @@ def get_unique_segid(chain):
     elif segid != atom.segid:
       return None
   return segid
+
+def check_for_internal_chain_ter_records(
+      pdb_hierarchy,
+      ter_indices,
+      file_name):
+  chains = pdb_hierarchy.chains()
+  atoms = pdb_hierarchy.atoms()
+  chain_ter_matches = {}
+  chain_ranges = {}
+  for chain in chains:
+    found_conformer = False
+    for conformer in chain.conformers():
+      if not conformer.is_protein() and not conformer.is_na():
+        continue
+      else:
+        found_conformer = True
+    if not found_conformer:
+      continue
+    min = None
+    max = None
+    for atom in chain.atoms():
+      if min is not None:
+        if atom.i_seq < min:
+          min = atom.i_seq
+      else:
+        min = atom.i_seq
+      if max is not None:
+        if atom.i_seq > max:
+          max = atom.i_seq
+      else:
+        max = atom.i_seq
+    if chain_ranges.get(chain.id) is None:
+      chain_ranges[chain.id] = []
+    chain_ranges[chain.id].append( (min, max) )
+
+  #find min/max for all chains with same id
+  reduced_chain_ranges = {}
+  for key in chain_ranges.keys():
+    min_all = None
+    max_all = None
+    ranges = chain_ranges[key]
+    for min, max in ranges:
+      if min_all is not None:
+        if min < min_all:
+          min_all = min
+      else:
+        min_all = min
+      if max_all is not None:
+        if max > max_all:
+          max_all = max
+      else:
+        max_all = max
+    reduced_chain_ranges[key] = (min_all, max_all)
+  for ter_id in ter_indices:
+    for key in reduced_chain_ranges.keys():
+      min, max = reduced_chain_ranges[key]
+      if ter_id > min and ter_id < max:
+        raise Sorry("chain '%s' in %s contains one or more "%(key,file_name)+
+                    "errant TER cards.\nPlease remove and try again.")
