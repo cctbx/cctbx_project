@@ -2644,7 +2644,9 @@ class build_all_chain_proxies(object):
                   + "    bugs@phenix-online.org")
             # automatic link creation
             if not mon_lib_srv.link_link_id_dict.get(apply.data_link, False):
-              self.create_link(apply, m_i, m_j)
+              rc = self.create_link(apply, m_i, m_j)
+              if getattr(apply, "possible_peptide_link", False):
+                pass
               continue
             link = mon_lib_srv.link_link_id_dict[apply.data_link]
             link_resolution = add_bond_proxies(
@@ -3051,18 +3053,22 @@ class build_all_chain_proxies(object):
     if verbose:
       print 'Link created'
       bond.show()
-    link_resolution = add_bond_proxies(
-      counters=counters(label="apply_cif_link_bond"),
-      m_i=m_i,
-      m_j=m_j,
-      bond_list=[bond],
-      bond_simple_proxy_registry=self.geometry_proxy_registries
+    try:
+      link_resolution = add_bond_proxies(
+        counters=counters(label="apply_cif_link_bond"),
+        m_i=m_i,
+        m_j=m_j,
+        bond_list=[bond],
+        bond_simple_proxy_registry=self.geometry_proxy_registries
         .bond_simple,
-      sites_cart=self.sites_cart,
-      distance_cutoff=self.params.link_distance_cutoff,
-      )
+        sites_cart=self.sites_cart,
+        distance_cutoff=self.params.link_distance_cutoff,
+        )
+    except:
+      return False
     # angles
     # remove hydrogens
+    return True
 
   def process_intra_chain_links(self,
                                 model,
@@ -3113,11 +3119,24 @@ class build_all_chain_proxies(object):
             )
           if rc is None: continue
           pdbres_pair, data_link, atoms = rc
+          possible_peptide_link = False
+          if classes1.common_amino_acid or classes2.common_amino_acid:
+            if classes1.common_amino_acid:
+              if(atoms[0].name.strip() in ["C"] and
+                 atoms[1].name.strip() in ["N"]
+                 ):
+                possible_peptide_link=True
+            elif classes2.common_amino_acid:
+              if(atoms[0].name.strip() in ["C"] and
+                 atoms[1].name.strip() in ["N"]
+                 ):
+                possible_peptide_link=True
           ga = group_args(
             pdbres_pair=pdbres_pair,
             data_link=data_link,
             was_used=False,
             automatic=True,
+            possible_peptide_link=possible_peptide_link,
             atom1=atoms[0],
             atom2=atoms[1],
             )
@@ -3134,33 +3153,37 @@ class build_all_chain_proxies(object):
     # log output about detection
     remove=[]
     if self.apply_cif_links:
-      print >> log, "%sAdding automatically detected intra-chain links" % (
-        " "*6,
-        )
+      outl = ""
       for i, apply in enumerate(self.apply_cif_links):
         if(not getattr(apply, "automatic", False)): continue
         if apply.data_link in mon_lib_srv.link_link_id_dict:
-          print >> log, "%sLinking %s to %s using %s" % (
+          outl += "%sLinking %s to %s using %s\n" % (
             " "*8,
             apply.pdbres_pair[0][7:],
             apply.pdbres_pair[1][7:],
             apply.data_link,
             )
         else:
-          print >> log, "%sLinking %s to %s" % (
-            " "*8,
-            apply.pdbres_pair[0][7:],
-            apply.pdbres_pair[1][7:],
-            )
-          if 0:
-            remove.append(i)
-            print >> log, '%sLink "%s" not currently supported' % (
-              " "*10,
-              apply.data_link,
-              )
+          if getattr(apply, "possible_peptide_link", False):
+            pass
+            #print >> log, "%sPossible peptide link %s to %s" % (
+            #  " "*8,
+            #  apply.pdbres_pair[0][7:],
+            #  apply.pdbres_pair[1][7:],
+            #  )
           else:
-            print >> log, '%sCreating link for "%s"' % (" "*10, apply.data_link)
+            outl += "%sLinking %s to %s\n" % (
+              " "*8,
+              apply.pdbres_pair[0][7:],
+              apply.pdbres_pair[1][7:],
+              )
+            outl += '%sCreating link for "%s"\n' % (" "*10, apply.data_link)
             mon_lib_srv.link_link_id_dict[apply.data_link] = None
+      if outl:
+        print >> log, "%sAdding automatically detected intra-chain links" % (
+          " "*6,
+          )
+        print >> log, outl[:-1]
     if remove:
       remove.sort()
       remove.reverse()
