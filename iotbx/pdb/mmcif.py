@@ -579,6 +579,7 @@ class pdb_hierarchy_as_cif_block(iotbx.cif.crystal_symmetry_as_cif_block):
           seq_id = residue_group.resseq.strip()
           label_seq_id += 1
           icode = residue_group.icode
+          if icode == ' ': icode = '?'
           for atom_group in residue_group.atom_groups():
             alt_id = atom_group.altloc
             if alt_id == '': alt_id = '.'
@@ -589,8 +590,8 @@ class pdb_hierarchy_as_cif_block(iotbx.cif.crystal_symmetry_as_cif_block):
               if atom.hetero: group_PDB = "HETATM"
               x, y, z = [str(i) for i in atom.xyz]
               atom_site_loop['_atom_site.group_PDB'].append(group_pdb)
-              atom_site_loop['_atom_site.id'].append(atom.serial)
-              atom_site_loop['_atom_site.type_symbol'].append(atom.element)
+              atom_site_loop['_atom_site.id'].append(atom.serial.strip())
+              atom_site_loop['_atom_site.type_symbol'].append(atom.element.strip())
               atom_site_loop['_atom_site.label_atom_id'].append(atom.name.strip())
               atom_site_loop['_atom_site.label_alt_id'].append(alt_id)
               atom_site_loop['_atom_site.label_comp_id'].append(comp_id)
