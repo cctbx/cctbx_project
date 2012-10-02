@@ -2,8 +2,9 @@
 
 from __future__ import division
 from libtbx.str_utils import make_sub_header, format_value
-from libtbx.utils import Sorry, Usage
+from libtbx.utils import Sorry, Usage, null_out
 from libtbx import runtime_utils
+from libtbx import group_args
 from math import sqrt
 import sys
 
@@ -37,10 +38,11 @@ file_name = None
   .style = file_type:hkl OnChange:extract_unmerged_intensities bold
 labels = None
   .type = str
-  .input_size = 160
+  .input_size = 200
   .style = renderer:draw_unmerged_intensities_widget
 space_group = None
   .type = space_group
+  .input_size = 120
 unit_cell = None
   .type = unit_cell
 symmetry_file = None
@@ -55,12 +57,19 @@ include scope libtbx.phil.interface.tracking_params
 """ % merging_params_str
 
 class merging_stats (object) :
+  """
+  Calculate standard merging statistics for (scaled) unmerged data.  Usually
+  these statistics will consider I(+) and I(-) as observations of the same
+  reflection, but these can be kept separate instead if desired.
+
+  Reflections with negative sigmas will be discarded, and also, per the
+  recommendation of Kay Diederichs, reflections where I < -3 * sigmaI.
+  """
   def __init__ (self, array, anomalous=False, debug=None) :
     import cctbx.miller
     from scitbx.array_family import flex
     assert (array.sigmas() is not None)
     array = array.customized_copy(anomalous_flag=anomalous).map_to_asu()
-    # reject negative sigmas (these flag bad observations)
     non_negative_sel = array.sigmas() >= 0
     self.n_neg_sigmas = non_negative_sel.count(False)
     array = array.select(non_negative_sel)
@@ -169,16 +178,23 @@ class merging_stats (object) :
     print >> out, "R-pim:   %5.3f" % self.r_pim
 
 class dataset_statistics (object) :
+  """
+  Container for overall and by-shell merging statistics, plus a table_data
+  object suitable for displaying graphs (or outputting loggraph format).
+  """
   def __init__ (self,
       i_obs,
       crystal_symmetry=None,
-      params=None,
+      d_min=None,
+      d_max=None,
+      anomalous=False,
+      n_bins=10,
       debug=False,
-      file_name=None) :
+      file_name=None,
+      log=None) :
     self.file_name = file_name
+    if (log is None) : log = null_out()
     from iotbx import data_plots
-    if (params is None) :
-      params = iotbx.phil.parase(merging_params_str).extract()
     assert (i_obs.sigmas() is not None)
     info = i_obs.info()
     if (crystal_symmetry is None) :
@@ -191,16 +207,16 @@ class dataset_statistics (object) :
         "scaled) data may be used in this program.")%
         i_obs.info().label_string())
     i_obs = i_obs.resolution_filter(
-      d_min=params.high_resolution,
-      d_max=params.low_resolution).set_info(info)
-    i_obs.show_summary()
+      d_min=d_min,
+      d_max=d_max).set_info(info)
+    i_obs.show_summary(f=log)
     self.anom_extra = ""
-    if (not params.anomalous) :
+    if (not anomalous) :
       i_obs = i_obs.customized_copy(anomalous_flag=False)
       self.anom_extra = " (non-anomalous)"
-    i_obs.setup_binner(n_bins=params.n_bins)
+    i_obs.setup_binner(n_bins=n_bins)
     merge = i_obs.merge_equivalents()
-    self.overall = merging_stats(i_obs, anomalous=params.anomalous, debug=debug)
+    self.overall = merging_stats(i_obs, anomalous=anomalous, debug=debug)
     self.bins = []
     self.table = data_plots.table_data(
       title="Intensity merging statistics",
@@ -215,7 +231,7 @@ class dataset_statistics (object) :
     for bin in i_obs.binner().range_used() :
       sele_unmerged = i_obs.binner().selection(bin)
       bin_stats = merging_stats(i_obs.select(sele_unmerged),
-        anomalous=params.anomalous,
+        anomalous=anomalous,
         debug=debug)
       self.bins.append(bin_stats)
       self.table.add_row(bin_stats.table_data())
@@ -242,6 +258,22 @@ class dataset_statistics (object) :
     for bin_stats in self.bins :
       print >> out, bin_stats.format()
     print >> out, self.overall.format()
+
+  def extract_outer_shell_stats (self) :
+    """
+    For compatibility with iotbx.logfiles (which should probably now be
+    deprecated) and phenix.table_one
+    """
+    shell = self.bins[-1]
+    return group_args(
+      d_max_min=(shell.d_max, shell.d_min),
+      n_refl=shell.n_uniq,
+      n_refl_all=shell.n_obs,
+      completeness=shell.completeness,
+      multiplicity=shell.mean_redundancy, # XXX bad
+      r_sym=shell.r_merge,
+      r_meas=shell.r_meas,
+      i_over_sigma=shell.i_over_sigma_mean)
 
 def select_data (file_name, data_labels, out) :
   from iotbx import reflection_file_reader
@@ -326,9 +358,13 @@ Full parameters:
   result = dataset_statistics(
     i_obs=i_obs,
     crystal_symmetry=symm,
-    params=params,
+    d_min=params.high_resolution,
+    d_max=params.low_resolution,
+    n_bins=params.n_bins,
+    anomalous=params.anomalous,
     debug=params.debug,
-    file_name=params.file_name)
+    file_name=params.file_name,
+    log=out)
   result.show(out=out)
   if (params.loggraph) :
     result.show_loggraph()

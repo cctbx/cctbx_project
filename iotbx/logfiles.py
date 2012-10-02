@@ -92,6 +92,7 @@ class scaling_info (object) :
                       completeness=float_or_none(comp_overall),
                       multiplicity=float_or_none(mult_overall),
                       r_sym=float_or_none(rmerg_overall),
+                      r_meas=None, # TODO?
                       i_over_sigma=float_or_none(s2n_overall))
 
   def extract_outer_shell_stats (self) :
@@ -108,6 +109,7 @@ class scaling_info (object) :
                       completeness=float_or_none(comp_bin),
                       multiplicity=float_or_none(mult_bin),
                       r_sym=float_or_none(rmerg_bin),
+                      r_meas=None, # TODO?
                       i_over_sigma=float_or_none(s2n_bin))
 
 class all_none (object) :
