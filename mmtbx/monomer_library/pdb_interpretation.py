@@ -3027,16 +3027,26 @@ class build_all_chain_proxies(object):
       for pdbres in pdbres_pair:
         self.empty_apply_cif_links_mm_pdbres_dict[pdbres] = {}
 
-  def create_link(self, apply, m_i, m_j, verbose=False):
-    # bond
+  def create_link(self, apply, m_i, m_j, order=1, verbose=False):
+    import linking_utils
+    from math import sqrt
     from mmtbx.monomer_library.cif_types import chem_link, chem_link_bond
+    from mmtbx.monomer_library.bondlength_defaults import get_default_bondlength
+    # bond
     bond = chem_link_bond()
     bond.atom_1_comp_id = "1"
     bond.atom_id_1 = apply.atom1.name.strip()
     bond.atom_2_comp_id = "2"
     bond.atom_id_2 = apply.atom2.name.strip()
-    bond.type = "single"
-    bond.value_dist = 1.5
+    if order==1:
+      bond.type = "single"
+      bond.value_dist = get_default_bondlength(apply.atom1.element,
+                                               apply.atom2.element,
+                                               )
+      if bond.value_dist is None:
+        bond.value_dist = sqrt(linking_utils.get_distance2(apply.atom1,
+                                                      apply.atom2,
+                                                      ))
     bond.value_dist_esd = 0.02
     if verbose:
       print 'Link created'
@@ -3051,6 +3061,8 @@ class build_all_chain_proxies(object):
       sites_cart=self.sites_cart,
       distance_cutoff=self.params.link_distance_cutoff,
       )
+    # angles
+    # remove hydrogens
 
   def process_intra_chain_links(self,
                                 model,
