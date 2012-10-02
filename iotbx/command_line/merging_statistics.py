@@ -7,13 +7,11 @@ from libtbx import runtime_utils
 from math import sqrt
 import sys
 
-citations_str = """
-References:
+citations_str = """\
   Diederichs K & Karplus PA (1997) Nature Structural Biology 4:269-275
     (with erratum in: Nat Struct Biol 1997 Jul;4(7):592)
   Weiss MS (2001) J Appl Cryst 34:130-135.
-  Karplus PA & Diederichs K (2012) Science 336:1030-3.
-"""
+  Karplus PA & Diederichs K (2012) Science 336:1030-3."""
 
 merging_params_str = """
 high_resolution = None
@@ -136,6 +134,18 @@ class merging_stats (object) :
       self.i_mean, self.i_over_sigma_mean,
       self.r_merge, self.r_meas, self.r_pim,
       self.cc_one_half)
+
+  def format_for_gui (self) :
+    return [ "%.2f - %.2f" % (self.d_max, self.d_min),
+             str(self.n_obs),
+             str(self.n_uniq),
+             "%.1f" % self.mean_redundancy,
+             "%.1f %%" % (self.completeness * 100),
+             "%.1f" % self.i_over_sigma_mean,
+             "%.3f" % self.r_merge,
+             "%.3f" % self.r_meas,
+             "%.3f" % self.r_pim,
+             "%.3f" % self.cc_one_half ]
 
   def table_data (self) :
     return [(1/self.d_min**2), self.n_obs, self.n_uniq, self.mean_redundancy,
@@ -322,6 +332,7 @@ Full parameters:
   result.show(out=out)
   if (params.loggraph) :
     result.show_loggraph()
+  print >> out, "References:"
   print >> out, citations_str
   return result
 
