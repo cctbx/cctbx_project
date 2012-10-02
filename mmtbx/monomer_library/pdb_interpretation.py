@@ -115,6 +115,11 @@ master_params_str = """\
   correct_hydrogens = False
     .type = bool
     .short_caption = Correct the hydrogen positions trapped in chirals
+  automatic_linking
+  {
+    intra_chain = False
+      .type = bool
+  }
   apply_cif_modification
     .optional = True
     .multiple = True
@@ -2528,6 +2533,12 @@ class build_all_chain_proxies(object):
           models[model_type_indices[i_model]].id
       if (is_unique_model and log is not None):
         print >> log, "    Number of chains:", model.chains_size()
+      if self.params.automatic_linking.intra_chain:
+        self.process_intra_chain_links(model=model,
+                                       mon_lib_srv=mon_lib_srv,
+                                       log=log)
+        #apply_cif_links_mm_pdbres_dict.update(dict(
+        #    self.empty_apply_cif_links_mm_pdbres_dict))
       flush_log(log)
       self.geometry_proxy_registries.initialize_tables()
       apply_cif_links_mm_pdbres_dict = dict(
@@ -2588,7 +2599,10 @@ class build_all_chain_proxies(object):
       n_unresolved_apply_cif_link_chiralities = 0
       n_unresolved_apply_cif_link_planarities = 0
       for apply in self.apply_cif_links:
-        if (apply.was_used): continue
+        if (apply.was_used):
+          if(apply.automatic):
+            print >> log, '  Automatic links duplication of user input'
+          continue
         mms = []
         for pdbres in apply.pdbres_pair:
           mms.append(apply_cif_links_mm_pdbres_dict[pdbres])
@@ -2628,6 +2642,10 @@ class build_all_chain_proxies(object):
                       " this link\n"
                   + "  If none of this applies, send email to:\n"
                   + "    bugs@phenix-online.org")
+            # automatic link creation
+            if not mon_lib_srv.link_link_id_dict.get(apply.data_link, False):
+              self.create_link(apply, m_i, m_j)
+              continue
             link = mon_lib_srv.link_link_id_dict[apply.data_link]
             link_resolution = add_bond_proxies(
               counters=counters(label="apply_cif_link_bond"),
@@ -3008,6 +3026,133 @@ class build_all_chain_proxies(object):
         was_used=False))
       for pdbres in pdbres_pair:
         self.empty_apply_cif_links_mm_pdbres_dict[pdbres] = {}
+
+  def create_link(self, apply, m_i, m_j, verbose=False):
+    # bond
+    from mmtbx.monomer_library.cif_types import chem_link, chem_link_bond
+    bond = chem_link_bond()
+    bond.atom_1_comp_id = "1"
+    bond.atom_id_1 = apply.atom1.name.strip()
+    bond.atom_2_comp_id = "2"
+    bond.atom_id_2 = apply.atom2.name.strip()
+    bond.type = "single"
+    bond.value_dist = 1.5
+    bond.value_dist_esd = 0.02
+    if verbose:
+      print 'Link created'
+      bond.show()
+    link_resolution = add_bond_proxies(
+      counters=counters(label="apply_cif_link_bond"),
+      m_i=m_i,
+      m_j=m_j,
+      bond_list=[bond],
+      bond_simple_proxy_registry=self.geometry_proxy_registries
+        .bond_simple,
+      sites_cart=self.sites_cart,
+      distance_cutoff=self.params.link_distance_cutoff,
+      )
+
+  def process_intra_chain_links(self,
+                                model,
+                                mon_lib_srv,
+                                log,
+                                residue_group_cutoff2=100.,
+                                verbose=False,
+                                ):
+    ########################################
+    # must be after process_apply_cif_link #
+    ########################################
+    import linking_utils
+    #
+    def generate_first_atom_of_residue_groups(model, chain_id, verbose=False):
+      for i_chain, chain in enumerate(model.chains()):
+        if chain.id!=chain_id: continue
+        for i_residue_group, residue_group in enumerate(chain.residue_groups()):
+          if verbose: print '  residue_group: resseq="%s" icode="%s"' % (
+            residue_group.resseq, residue_group.icode)
+          yield residue_group.atoms()[0]
+    #
+    chain_ids = []
+    for chain in model.chains():
+      if chain.id not in chain_ids: chain_ids.append(chain.id)
+    for chain_id in chain_ids:
+      for i_atom, atom1 in enumerate(
+        generate_first_atom_of_residue_groups(model, chain_id, verbose=verbose)
+        ):
+        classes1 = linking_utils.get_classes(atom1)
+        for j_atom, atom2 in enumerate(
+          generate_first_atom_of_residue_groups(model, chain_id, verbose=False)
+          ):
+          if i_atom>=j_atom: continue
+          classes2 = linking_utils.get_classes(atom2)
+          # what about gamma linking?
+          if classes1.common_water: continue
+          if classes2.common_water: continue
+          if classes1.common_amino_acid and classes2.common_amino_acid: continue
+          if classes1.common_rna_dna and classes2.common_rna_dna: continue
+          d2 = linking_utils.get_distance2(atom1, atom2)
+          if d2>residue_group_cutoff2: continue
+          rc = linking_utils.process_atom_groups_for_linking(
+            self.pdb_hierarchy, 
+            atom1.parent(),
+            atom2.parent(),
+            classes1,
+            classes2,
+            )
+          if rc is None: continue
+          pdbres_pair, data_link, atoms = rc
+          ga = group_args(
+            pdbres_pair=pdbres_pair,
+            data_link=data_link,
+            was_used=False,
+            automatic=True,
+            atom1=atoms[0],
+            atom2=atoms[1],
+            )
+          count = 0
+          for apply in self.apply_cif_links:
+            if apply.pdbres_pair==pdbres_pair: count+=1
+            if apply.data_link==data_link: count+=1
+          if count==2:
+            ga.was_used=True
+          else:
+            for pdbres in pdbres_pair:
+              self.empty_apply_cif_links_mm_pdbres_dict[pdbres] = {}
+          self.apply_cif_links.append(ga)
+    # log output about detection
+    remove=[]
+    if self.apply_cif_links:
+      print >> log, "%sAdding automatically detected intra-chain links" % (
+        " "*6,
+        )
+      for i, apply in enumerate(self.apply_cif_links):
+        if(not getattr(apply, "automatic", False)): continue
+        if apply.data_link in mon_lib_srv.link_link_id_dict:
+          print >> log, "%sLinking %s to %s using %s" % (
+            " "*8,
+            apply.pdbres_pair[0][7:],
+            apply.pdbres_pair[1][7:],
+            apply.data_link,
+            )
+        else:
+          print >> log, "%sLinking %s to %s" % (
+            " "*8,
+            apply.pdbres_pair[0][7:],
+            apply.pdbres_pair[1][7:],
+            )
+          if 0:
+            remove.append(i)
+            print >> log, '%sLink "%s" not currently supported' % (
+              " "*10,
+              apply.data_link,
+              )
+          else:
+            print >> log, '%sCreating link for "%s"' % (" "*10, apply.data_link)
+            mon_lib_srv.link_link_id_dict[apply.data_link] = None
+    if remove:
+      remove.sort()
+      remove.reverse()
+      for r in remove: del self.apply_cif_links[r]
 
   def create_disulfides(self, disulfide_distance_cutoff, log=None):
     if (self.model_indices is not None):
