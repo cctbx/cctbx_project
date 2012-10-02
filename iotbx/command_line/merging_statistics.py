@@ -1,8 +1,9 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.merging_statistics
 
 from __future__ import division
-from libtbx.str_utils import make_sub_header
+from libtbx.str_utils import make_sub_header, format_value
 from libtbx.utils import Sorry, Usage
+from libtbx import runtime_utils
 from math import sqrt
 import sys
 
@@ -17,30 +18,42 @@ References:
 merging_params_str = """
 high_resolution = None
   .type = float
+  .input_size = 64
 low_resolution = None
   .type = float
+  .input_size = 64
 n_bins = 10
   .type = int
+  .short_caption = Number of resolution bins
+  .input_size = 64
+  .style = spinner
 anomalous = False
   .type = bool
+  .short_caption = Keep anomalous pairs separate in merging statistics
 """
 
 master_phil = """
 file_name = None
   .type = path
+  .short_caption = Unmerged data
+  .style = file_type:hkl OnChange:extract_unmerged_intensities bold
 labels = None
   .type = str
+  .input_size = 160
+  .style = renderer:draw_unmerged_intensities_widget
 space_group = None
   .type = space_group
 unit_cell = None
   .type = unit_cell
 symmetry_file = None
   .type = path
+  .style = file_type:pdb,hkl OnChange:extract_symmetry
 %s
 debug = False
   .type = bool
 loggraph = False
   .type = bool
+include scope libtbx.phil.interface.tracking_params
 """ % merging_params_str
 
 class merging_stats (object) :
@@ -64,6 +77,9 @@ class merging_stats (object) :
     complete_set = array_merged.complete_set().resolution_filter(
       d_min=self.d_min, d_max=self.d_max)
     n_expected = len(complete_set.indices())
+    if (n_expected == 0) :
+      raise RuntimeError(("No reflections within specified resolution range "+
+        "(%g - %g)") % (self.d_max, self.d_min))
     self.completeness = min(self.n_uniq / n_expected, 1.)
     redundancies = merge.redundancies().data()
     self.redundancies = {}
@@ -147,7 +163,9 @@ class dataset_statistics (object) :
       i_obs,
       crystal_symmetry=None,
       params=None,
-      debug=False) :
+      debug=False,
+      file_name=None) :
+    self.file_name = file_name
     from iotbx import data_plots
     if (params is None) :
       params = iotbx.phil.parase(merging_params_str).extract()
@@ -210,7 +228,7 @@ class dataset_statistics (object) :
     print >> out, ""
     print >> out, """\
   Statistics by resolution bin:
-   d_min   d_max   #obs  #uniq   mult.  %comp       <I>  <I/sI>  r_mrg r_meas  r_pim  cc1/2"""
+ d_min   d_max   #obs  #uniq   mult.  %comp       <I>  <I/sI>  r_mrg r_meas  r_pim  cc1/2"""
     for bin_stats in self.bins :
       print >> out, bin_stats.format()
     print >> out, self.overall.format()
@@ -244,7 +262,7 @@ def select_data (file_name, data_labels, out) :
 def run (args, out=None) :
   if (out is None) : out = sys.stdout
   import iotbx.phil
-  master_params = iotbx.phil.parse(master_phil)
+  master_params = iotbx.phil.parse(master_phil, process_includes=True)
   if (len(args) == 0) :
     raise Usage("""\
 phenix.merging_statistics [data_file] [options...]
@@ -299,12 +317,43 @@ Full parameters:
     i_obs=i_obs,
     crystal_symmetry=symm,
     params=params,
-    debug=params.debug)
+    debug=params.debug,
+    file_name=params.file_name)
   result.show(out=out)
   if (params.loggraph) :
     result.show_loggraph()
   print >> out, citations_str
   return result
+
+#-----------------------------------------------------------------------
+# Phenix GUI stuff
+def validate_params (params) :
+  if (params.file_name is None) :
+    raise Sorry("No data file specified!")
+  elif (params.labels is None) :
+    raise Sorry("No data labels selected!")
+  return True
+
+class launcher (runtime_utils.target_with_save_result) :
+  def run (self) :
+    return run(args=list(self.args), out=sys.stdout)
+
+def finish_job (result) :
+  stats = []
+  if (result is not None) :
+    stats = [
+      ("High resolution", format_value("%.3g", result.overall.d_min)),
+      ("Redundancy", format_value("%.1f", result.overall.mean_redundancy)),
+      ("R-meas", format_value("%.3g", result.overall.r_meas)),
+      ("R-meas (high-res)", format_value("%.3g", result.bins[-1].r_meas)),
+      ("<I/sigma>", format_value("%.2g", result.overall.i_over_sigma_mean)),
+      ("<I/sigma> (high-res)", format_value("%.2g",
+        result.bins[-1].i_over_sigma_mean)),
+      ("Completeness", format_value("%.1f%%", result.overall.completeness*100)),
+      ("Completeness (high-res)", format_value("%.1f%%",
+        result.bins[-1].completeness*100)),
+    ]
+  return ([], stats)
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
