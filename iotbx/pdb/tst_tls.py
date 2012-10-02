@@ -1,5 +1,6 @@
 from __future__ import division
 import os
+from cStringIO import StringIO
 
 import libtbx.load_env
 from libtbx.test_utils import approx_equal, show_diff
@@ -29,12 +30,20 @@ def exercise_mmcif_tls():
   cif_tls_params = cif_input.extract_tls_params(cif_hierarchy).tls_params
 
   assert len(pdb_tls_params) == len(cif_tls_params) == 3
-  for pdb_tls, cif_tls in zip(pdb_tls_params, cif_tls_params):
-    assert approx_equal(pdb_tls.t, cif_tls.t)
-    assert approx_equal(pdb_tls.l, cif_tls.l)
-    assert approx_equal(pdb_tls.s, cif_tls.s)
-    assert approx_equal(pdb_tls.origin, cif_tls.origin)
-    assert not show_diff(pdb_tls.selection_string, cif_tls.selection_string)
+  check_tls_params(pdb_tls_params, cif_tls_params)
+
+  selection_strings = [tls.selection_string for tls in cif_tls_params]
+  cif_block = iotbx.pdb.mmcif.tls_as_cif_block(cif_tls_params, selection_strings)
+  cif_block.update(cif_hierarchy.as_cif_block())
+  cif_model = iotbx.cif.model.cif()
+  cif_model["3orl"] = cif_block
+  s = StringIO()
+  print >> s, cif_model
+  s.seek(0)
+  cif_hierarchy_recycled = iotbx.pdb.input(lines=s.readlines()).construct_hierarchy()
+  tls_params_recycled = cif_input.extract_tls_params(cif_hierarchy_recycled).tls_params
+  assert len(tls_params_recycled) == len(cif_tls_params) == 3
+  check_tls_params(tls_params_recycled, cif_tls_params)
 
   # this one has phenix selection strings
   pdb_file = libtbx.env.find_in_repositories(
@@ -54,12 +63,20 @@ def exercise_mmcif_tls():
   cif_tls_params = cif_input.extract_tls_params(cif_hierarchy).tls_params
 
   assert len(pdb_tls_params) == len(cif_tls_params) == 18
-  for pdb_tls, cif_tls in zip(pdb_tls_params, cif_tls_params):
-    assert approx_equal(pdb_tls.t, cif_tls.t)
-    assert approx_equal(pdb_tls.l, cif_tls.l)
-    assert approx_equal(pdb_tls.s, cif_tls.s)
-    assert approx_equal(pdb_tls.origin, cif_tls.origin)
-    assert not show_diff(pdb_tls.selection_string, cif_tls.selection_string)
+  check_tls_params(pdb_tls_params, cif_tls_params)
+
+  selection_strings = [tls.selection_string for tls in cif_tls_params]
+  cif_block = iotbx.pdb.mmcif.tls_as_cif_block(cif_tls_params, selection_strings)
+  cif_block.update(cif_hierarchy.as_cif_block())
+  cif_model = iotbx.cif.model.cif()
+  cif_model["4g9h"] = cif_block
+  s = StringIO()
+  print >> s, cif_model
+  s.seek(0)
+  cif_hierarchy_recycled = iotbx.pdb.input(lines=s.readlines()).construct_hierarchy()
+  tls_params_recycled = cif_input.extract_tls_params(cif_hierarchy_recycled).tls_params
+  assert len(tls_params_recycled) == len(cif_tls_params) == 18
+  check_tls_params(tls_params_recycled, cif_tls_params)
 
   # in this one the tls data items are not looped
   mmcif_file = libtbx.env.find_in_repositories(
@@ -81,6 +98,27 @@ def exercise_mmcif_tls():
     cif_tls.s, [-0.0001, -0.0012, -0.0037, -0.0006, 0.001, 0.0007, -0.0023, -0.0001, -0.0009])
   assert approx_equal(cif_tls.origin, [-1.219, 1.557, 13.138])
   assert approx_equal(cif_tls.selection_string, "(chain A and resseq 1:228)")
+
+  selection_strings = [tls.selection_string for tls in cif_tls_params]
+  cif_block = iotbx.pdb.mmcif.tls_as_cif_block(cif_tls_params, selection_strings)
+  cif_block.update(cif_hierarchy.as_cif_block())
+  cif_model = iotbx.cif.model.cif()
+  cif_model["2xw9"] = cif_block
+  s = StringIO()
+  print >> s, cif_model
+  s.seek(0)
+  cif_hierarchy_recycled = iotbx.pdb.input(lines=s.readlines()).construct_hierarchy()
+  tls_params_recycled = cif_input.extract_tls_params(cif_hierarchy_recycled).tls_params
+  assert len(tls_params_recycled) == len(cif_tls_params) == 1
+  check_tls_params(tls_params_recycled, cif_tls_params)
+
+def check_tls_params(params1, params2):
+  for tls1, tls2 in zip(params1, params2):
+    assert approx_equal(tls1.t, tls2.t)
+    assert approx_equal(tls1.l, tls2.l)
+    assert approx_equal(tls1.s, tls2.s)
+    assert approx_equal(tls1.origin, tls2.origin)
+    assert not show_diff(tls1.selection_string, tls2.selection_string)
 
 
 def run():

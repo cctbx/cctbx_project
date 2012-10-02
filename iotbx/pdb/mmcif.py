@@ -273,6 +273,63 @@ class extract_tls_from_cif_block(object):
     return self.tls_params
 
 
+def tls_as_cif_block(tlsos, selection_strings, cif_block=None):
+  import iotbx.cif.model
+  if cif_block is None:
+    cif_block = iotbx.cif.model.block()
+
+  tls_loop = iotbx.cif.model.loop(header=(
+    #"_pdbx_refine_tls.pdbx_refine_id",
+    "_pdbx_refine_tls.id",
+    "_pdbx_refine_tls.details",
+    "_pdbx_refine_tls.method",
+    "_pdbx_refine_tls.origin_x",
+    "_pdbx_refine_tls.origin_y",
+    "_pdbx_refine_tls.origin_z",
+    "_pdbx_refine_tls.T[1][1]",
+    "_pdbx_refine_tls.T[2][2]",
+    "_pdbx_refine_tls.T[3][3]",
+    "_pdbx_refine_tls.T[1][2]",
+    "_pdbx_refine_tls.T[1][3]",
+    "_pdbx_refine_tls.T[2][3]",
+    "_pdbx_refine_tls.L[1][1]",
+    "_pdbx_refine_tls.L[2][2]",
+    "_pdbx_refine_tls.L[3][3]",
+    "_pdbx_refine_tls.L[1][2]",
+    "_pdbx_refine_tls.L[1][3]",
+    "_pdbx_refine_tls.L[2][3]",
+    "_pdbx_refine_tls.S[1][1]",
+    "_pdbx_refine_tls.S[1][2]",
+    "_pdbx_refine_tls.S[1][3]",
+    "_pdbx_refine_tls.S[2][1]",
+    "_pdbx_refine_tls.S[2][2]",
+    "_pdbx_refine_tls.S[2][3]",
+    "_pdbx_refine_tls.S[3][1]",
+    "_pdbx_refine_tls.S[3][2]",
+    "_pdbx_refine_tls.S[3][3]",
+  ))
+
+  tls_group_loop = iotbx.cif.model.loop(header=(
+    #_pdbx_refine_tls_group.pdbx_refine_id
+    "_pdbx_refine_tls_group.id",
+    "_pdbx_refine_tls_group.refine_tls_id",
+    "_pdbx_refine_tls_group.selection",
+    "_pdbx_refine_tls_group.selection_details",
+  ))
+  for i_tls, (tlso, selection_string) in enumerate(zip(tlsos, selection_strings)):
+    tls_row = [i_tls+1, "?", "refined"]
+    tls_row.extend(list(tlso.origin))
+    tls_row.extend(list(tlso.t))
+    tls_row.extend(list(tlso.l))
+    tls_row.extend(list(tlso.s))
+    tls_loop.add_row(tls_row)
+    tls_group_loop.add_row((i_tls+1, i_tls+1, "?", selection_string))
+
+  cif_block.add_loop(tls_loop)
+  cif_block.add_loop(tls_group_loop)
+  return cif_block
+
+
 class cif_input(iotbx.pdb.pdb_input_mixin):
   def __init__(self,
                file_name=None,
@@ -384,7 +441,6 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
       if i > 0: return software_name[i]
 
   def extract_tls_params(self, hierarchy):
-    from iotbx.pdb.mmcif import extract_tls_from_cif_block
     return extract_tls_from_cif_block(self.cif_block, hierarchy)
 
   def scale_matrix(self):
