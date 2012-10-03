@@ -118,8 +118,6 @@ typedef ANTLR3_UINT8    UTF8;   /* typically 8 bits */
 #define UNI_SUR_HIGH_END    (UTF32)0xDBFF
 #define UNI_SUR_LOW_START   (UTF32)0xDC00
 #define UNI_SUR_LOW_END     (UTF32)0xDFFF
-#define false               ANTLR3_FALSE
-#define true                ANTLR3_TRUE
 #define halfShift           ((UTF32)10)
 #define halfBase            ((UTF32)0x0010000UL)
 #define halfMask            ((UTF32)0x3FFUL)
@@ -139,6 +137,9 @@ typedef enum {
 /* This is for C++ and does no harm in C */
 #ifdef __cplusplus
 extern "C" {
+#else
+#  define false               ANTLR3_FALSE
+#  define true                ANTLR3_TRUE
 #endif
 
 ConversionResult ConvertUTF8toUTF16 (

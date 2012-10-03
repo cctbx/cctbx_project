@@ -59,7 +59,7 @@ void depth_first_search<Matrix>::operator()(const Matrix& M,
     stack.push(boost::make_tuple(k, col_iter, col_end));
     while (!stack.empty()) {
       index_type l;
-      tie(l, col_iter, col_end) = stack.top();
+      boost::tuples::tie(l, col_iter, col_end) = stack.top();
       stack.pop();
       while (col_iter != col_end) {
         index_type k = vis.permute( col_iter.index() );

@@ -307,6 +307,10 @@ if (sys.platform == "win32" or
       env_base = Environment(
         ENV=os.environ, MSVC_VERSION="10.0", TARGET_ARCH=target_arch)
       env_etc.have_manifest_tool = True
+    elif (cl_info.find("Version 17.00") >= 0):
+      env_base = Environment(
+        ENV=os.environ, MSVC_VERSION="11.0", TARGET_ARCH=target_arch)
+      env_etc.have_manifest_tool = True
     else:
       raise RuntimeError("""\
 Unknown or unsupported cl.exe version.
