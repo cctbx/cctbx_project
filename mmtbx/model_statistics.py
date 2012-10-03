@@ -547,7 +547,11 @@ class adp(object):
     return cif_block
 
 class model(object):
-  def __init__(self, model, ignore_hd, use_molprobity=True):
+  def __init__(self,
+               model,
+               ignore_hd,
+               use_molprobity=True,
+               ncs_manager=None):
     self.geometry = model.geometry_statistics(ignore_hd = ignore_hd,
       molprobity_scores=use_molprobity)
     self.content = model_content(model)
@@ -555,6 +559,7 @@ class model(object):
     self.tls_groups = model.tls_groups
     self.anomalous_scatterer_groups = model.anomalous_scatterer_groups
     self.ncs_groups = model.extract_ncs_groups()
+    self.ncs_manager = ncs_manager
 
   def show(self, out=None, prefix="", padded=None, pdb_deposition=False):
     if(out is None): out = sys.stdout
@@ -575,6 +580,9 @@ class model(object):
     if(self.ncs_groups is not None):
       print >> out, prefix
       self.show_ncs_groups(out = out)
+    if(self.ncs_manager is not None):
+      print >> out, prefix
+      self.show_torsion_ncs_groups(out = out)
 
   def show_ncs_groups(self, out = None):
     if(out is None): out = sys.stdout
@@ -611,6 +619,23 @@ class model(object):
       cif_block = iotbx.cif.model.block()
     # XXX
     return cif_block
+
+  def show_torsion_ncs_groups(self, out = None):
+    if(out is None): out = sys.stdout
+    restraint_groups = self.ncs_manager.params.restraint_group
+    pr = "REMARK   3  "
+    print >>out,pr+"TORSION NCS DETAILS."
+    print >>out,pr+" NUMBER OF NCS GROUPS : %-6d"%len(restraint_groups)
+    for i_group, ncs_group in enumerate(restraint_groups):
+      print >>out,pr+" NCS GROUP : %-6d"%(i_group+1)
+      selection_strings = ncs_group.selection
+      for selection in selection_strings:
+        lines = line_breaker(selection, width=34)
+        for i_line, line in enumerate(lines):
+          if (i_line == 0):
+            print >> out, pr+"   SELECTION          : %s"%line
+          else:
+            print >> out, pr+"                      : %s"%line
 
   def show_anomalous_scatterer_groups(self, out = None):
     if(out is None): out = sys.stdout
@@ -656,10 +681,14 @@ class info(object):
                      fmodel_n          = None,
                      refinement_params = None,
                      ignore_hd         = True,
-                     use_molprobity    = True):
+                     use_molprobity    = True,
+                     ncs_manager       = None):
     ref_par = refinement_params
-    self.model = mmtbx.model_statistics.model(model = model,
-      ignore_hd = ignore_hd, use_molprobity=use_molprobity)
+    self.model = mmtbx.model_statistics.model(
+      model = model,
+      ignore_hd = ignore_hd,
+      use_molprobity = use_molprobity,
+      ncs_manager = ncs_manager)
     self.data_x, self.data_n = None, None
     if(fmodel_x is not None):
       self.data_x = fmodel_x.info(
