@@ -854,6 +854,7 @@ iotbx/command_line/blast_pdb.py -text
 iotbx/command_line/build_phil_cache.py -text
 iotbx/command_line/cbf_read.py svneol=native#text/x-python
 iotbx/command_line/cif.as_miller_arrays.py svneol=native#text/x-python
+iotbx/command_line/cif_as_pdb.py -text
 iotbx/command_line/csv_as_mtz.py -text
 iotbx/command_line/file_reader.py -text
 iotbx/command_line/french_wilson.py svneol=native#text/x-python
