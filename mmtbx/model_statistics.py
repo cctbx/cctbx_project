@@ -268,6 +268,26 @@ class geometry(object):
       lc_3 = hc_3
     out.flush()
 
+  def as_cif_block(self, cif_block=None):
+    import iotbx.cif.model
+    if cif_block is None:
+      cif_block = iotbx.cif.model.block()
+    #
+    loop = iotbx.cif.model.loop(header=(
+      "_refine_ls_restr.type",
+      "_refine_ls_restr.number",
+      "_refine_ls_restr.dev_ideal",
+      #"_refine_ls_restr.dev_ideal_target",
+      "_refine_ls_restr.weight",
+      #"_refine_ls_restr.pdbx_refine_id",
+      "_refine_ls_restr.pdbx_restraint_function",
+    ))
+    loop.add_row(("f_bond_d", self.b_number, self.b_mean, "?", "?"))
+    loop.add_row(("f_angle_d", self.a_number, self.a_mean, "?", "?"))
+    loop.add_row(("f_chiral_restr", self.c_number, self.c_mean, "?", "?"))
+    loop.add_row(("f_plane_restr", self.p_number, self.p_mean, "?", "?"))
+    loop.add_row(("f_dihedral_angle_d", self.d_number, self.d_mean, "?", "?"))
+
 class model_content(object):
   def __init__(self, model):
     self.atoms_count = model.xray_structure.scatterers().size()
@@ -512,6 +532,20 @@ class adp(object):
     print >> out, prefix+"  HYDROGENS   :"+self._fmtl2(self.n_iso_h    ,self.n_aniso_h    )
     out.flush()
 
+  def as_cif_block(self, cif_block=None):
+    import iotbx.cif.model
+    if cif_block is None:
+      cif_block = iotbx.cif.model.block()
+    cif_block["_reflns.B_iso_Wilson_estimate"] = self.wilson_b
+    cif_block["_refine.B_iso_mean"] = self.rms_b_iso_or_b_equiv_bonded
+    #_refine.aniso_B[1][1]
+    #_refine.aniso_B[2][2]
+    #_refine.aniso_B[3][3]
+    #_refine.aniso_B[1][2]
+    #_refine.aniso_B[1][3]
+    #_refine.aniso_B[2][3]
+    return cif_block
+
 class model(object):
   def __init__(self, model, ignore_hd, use_molprobity=True):
     self.geometry = model.geometry_statistics(ignore_hd = ignore_hd,
@@ -571,6 +605,12 @@ class model(object):
         print >> out,pr+"   ATOM PAIRS NUMBER  : %-d" % len(pair[0])
         print >> out,pr+"   RMSD               : %-10.3f" % rms
 
+  def ncs_groups_as_cif_block(self, cif_block=None):
+    import iotbx.cif.model
+    if cif_block is None:
+      cif_block = iotbx.cif.model.block()
+    # XXX
+    return cif_block
 
   def show_anomalous_scatterer_groups(self, out = None):
     if(out is None): out = sys.stdout
@@ -591,6 +631,24 @@ class model(object):
       print >>out,pr+"  fp  : %-15.4f"%group.f_prime
       print >>out,pr+"  fdp : %-15.4f"%group.f_double_prime
       out.flush()
+
+  def as_cif_block(self, cif_block=None):
+    import iotbx.pdb.mmcif
+    if(self.geometry is not None):
+      cif_block = self.geometry.as_cif_block(cif_block=cif_block)
+    cif_block = self.adp.as_cif_block(cif_block=cif_block)
+    if(self.tls_groups is not None):
+      cif_block = iotbx.pdb.mmcif.tls_as_cif_block(
+        tlsos=self.tls_groups.tlsos,
+        selection_strings=self.tls_groups.selection_strings,
+        cif_block=cif_block)
+    if(self.anomalous_scatterer_groups is not None):
+      pass
+      #self.show_anomalous_scatterer_groups(out = out)
+    if(self.ncs_groups is not None):
+      pass
+      self.ncs_groups_as_cif_block(out = out)
+    return cif_block
 
 class info(object):
   def __init__(self, model,
@@ -626,3 +684,9 @@ class info(object):
       self.data_n.show_remark_3(out = out)
       print >> out, prefix
     self.model.show(out = out, pdb_deposition = True)
+
+  def as_cif_block(self, cif_block=None):
+    cif_block = self.data_x.as_cif_block(cif_block=cif_block)
+    # XXX Neutron data?
+    cif_block = self.model.as_cif_block(cif_block=cif_block)
+    return cif_block
