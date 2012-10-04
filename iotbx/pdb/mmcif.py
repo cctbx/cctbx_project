@@ -530,8 +530,6 @@ class pdb_hierarchy_as_cif_block(iotbx.cif.crystal_symmetry_as_cif_block):
       crystal_symmetry = crystal.symmetry()
     iotbx.cif.crystal_symmetry_as_cif_block.__init__(self, crystal_symmetry)
 
-    from string import ascii_uppercase
-
     atom_site_loop = iotbx.cif.model.loop(header=(
       '_atom_site.group_PDB',
       '_atom_site.id',
@@ -560,21 +558,13 @@ class pdb_hierarchy_as_cif_block(iotbx.cif.crystal_symmetry_as_cif_block):
     auth_asym_ids = flex.std_string()
     label_asym_ids = flex.std_string()
     label_seq_id = 0
+    label_asym_id = ""
     for model in pdb_hierarchy.models():
       model_id = model.id
       if model_id == '': model_id = '1'
       for chain in model.chains():
         auth_asym_id = chain.id
-        label_asym_id = auth_asym_id # must be unique for a chain
-        while True:
-          if label_asym_id not in unique_chain_ids:
-            unique_chain_ids.add(label_asym_id)
-            break
-          i = ascii_uppercase.find(label_asym_id)
-          if i == len(ascii_uppercase):
-            break # XXX what to do?
-          else:
-            label_asym_id = ascii_uppercase[i+1]
+        label_asym_id = increment_label_asym_id(label_asym_id)
         for residue_group in chain.residue_groups():
           seq_id = residue_group.resseq.strip()
           label_seq_id += 1
@@ -610,3 +600,20 @@ class pdb_hierarchy_as_cif_block(iotbx.cif.crystal_symmetry_as_cif_block):
               atom_site_loop['_atom_site.auth_atom_id'].append(atom.name.strip())
               atom_site_loop['_atom_site.pdbx_PDB_model_num'].append(model_id)
     self.cif_block.add_loop(atom_site_loop)
+
+
+def increment_label_asym_id(asym_id):
+  from string import ascii_uppercase
+  if len(asym_id) == 0:
+    return "A"
+  asym_id = list(asym_id)
+  for i in range(len(asym_id)):
+    if asym_id[i] == "Z":
+      asym_id[i] = "A"
+      if (i+1) == len(asym_id):
+        return "A" * (len(asym_id) + 1)
+    else:
+      while True:
+        j = ascii_uppercase.find(asym_id[i])
+        asym_id[i] = ascii_uppercase[j+1]
+        return "".join(asym_id)
