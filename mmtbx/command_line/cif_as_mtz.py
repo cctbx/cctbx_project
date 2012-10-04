@@ -195,8 +195,14 @@ def process_files (file_name,
               assert isinstance(r_free_flags.data(), flex.int)
         data_label = f_obs.info().labels[0]
         if(r_free_flags is not None):
+          reset_anomalous = False
+          if (f_obs.anomalous_flag()) and (not r_free_flags.anomalous_flag()) :
+            r_free_flags = r_free_flags.generate_bijvoet_mates()
+            reset_anomalous = True
           f_obs = f_obs.common_set(r_free_flags)
           r_free_flags = r_free_flags.common_set(f_obs)
+          if (reset_anomalous) :
+            r_free_flags = r_free_flags.average_bijvoet_mates()
         f_obs = f_obs.merge_equivalents().array()
         if(r_free_flags is not None):
           r_free_flags = r_free_flags.merge_equivalents().array()
