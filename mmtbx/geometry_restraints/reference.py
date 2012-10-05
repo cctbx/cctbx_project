@@ -53,6 +53,7 @@ class manager(object):
         len(sites_cart),
         True).iselection()
     assert len(sites_cart) == len(selection)
+    assert max(selection) < len(sites_cart)
     weight = 1.0 / (sigma**2)
     for k, i_seq in enumerate(selection):
       i_seqs = [i_seq]
