@@ -55,6 +55,7 @@ namespace mmtbx { namespace geometry_restraints {
     for (std::size_t i = 0; i < proxies.size(); i++) {
       reference_coordinate_proxy proxy = proxies[i];
       af::tiny<unsigned, 1> const& i_seqs = proxy.i_seqs;
+      MMTBX_ASSERT(i_seqs[0] < sites_cart.size());
       site = sites_cart[ i_seqs[0] ];
       ref_site = proxy.ref_sites;
       weight = proxy.weight;
