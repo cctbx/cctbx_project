@@ -1284,7 +1284,6 @@ mmtbx/refinement/flip_peptides.py -text
 mmtbx/refinement/inspect_tardy_trajectory.py svneol=native#text/x-python
 mmtbx/refinement/occupancies.py -text
 mmtbx/refinement/orca.py svneol=native#text/x-python
-mmtbx/refinement/real_space.py -text
 mmtbx/refinement/real_space/__init__.py -text
 mmtbx/refinement/real_space/driver.py -text
 mmtbx/refinement/real_space/fit_residue.py -text
