@@ -217,6 +217,64 @@ VSP         H18    H   HCH3  .          6.4134   -2.7373    1.2907
 VSP        H18A    H   HCH3  .          7.3897   -1.9326    2.2516
 VSP        H18B    H   HCH3  .          7.2035   -3.4950    2.4420
 #
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+VSP   C10     C11   single        1.507 0.020
+VSP   C10     C03   aromatic      1.374 0.020
+VSP   C10     N09   aromatic      1.339 0.020
+VSP   C13     C12   aromatic      1.408 0.020
+VSP   C13     C14   aromatic      1.412 0.020
+VSP   C17     S16   single        1.807 0.020
+VSP   C17     C18   single        1.528 0.020
+VSP   C21     C22   aromatic      1.390 0.020
+VSP   C21     C14   aromatic      1.414 0.020
+VSP   C22     C23   aromatic      1.406 0.020
+VSP   O20     S16   double        1.454 0.020
+VSP   N01     C02   single        1.463 0.020
+VSP   C11     C12   single        1.525 0.020
+VSP   C02     C03   aromatic      1.437 0.020
+VSP   C02     N26   aromatic      1.340 0.020
+VSP   C12     C23   aromatic      1.407 0.020
+VSP   C03     C04   aromatic      1.405 0.020
+VSP   N24     C04   aromatic      1.363 0.020
+VSP   N24     C25   aromatic      1.324 0.020
+VSP   C04     N05   aromatic      1.371 0.020
+VSP   C14     N15   single        1.463 0.020
+VSP   N05     C06   single        1.443 0.020
+VSP   N05     N09   aromatic      1.349 0.020
+VSP   N15     S16   single        1.647 0.020
+VSP   C25     N26   aromatic      1.334 0.020
+VSP   C06     C07   single        1.536 0.020
+VSP   C06     C08   single        1.543 0.020
+VSP   S16     O19   double        1.440 0.020
+VSP   C13     H13   single        0.967 0.020
+VSP   C17     H17   single        0.990 0.020
+VSP   C17    H17A   single        0.982 0.020
+VSP   C21     H21   single        0.966 0.020
+VSP   C22     H22   single        0.970 0.020
+VSP   N01    HN01   single        0.918 0.020
+VSP   N01    HN0A   single        0.919 0.020
+VSP   C11     H11   single        0.975 0.020
+VSP   C11    H11A   single        0.981 0.020
+VSP   C23     H23   single        0.959 0.020
+VSP   N15    HN15   single        0.903 0.020
+VSP   C25     H25   single        0.970 0.020
+VSP   C06     H06   single        0.988 0.020
+VSP   C07     H07   single        0.970 0.020
+VSP   C07    H07A   single        0.987 0.020
+VSP   C07    H07B   single        0.975 0.020
+VSP   C08     H08   single        0.981 0.020
+VSP   C08    H08A   single        0.993 0.020
+VSP   C08    H08B   single        0.979 0.020
+VSP   C18     H18   single        0.976 0.020
+VSP   C18    H18A   single        0.970 0.020
+VSP   C18    H18B   single        0.971 0.020
+#
 """,
         "linking_test_LYS-ABA-GLU.pdb" : """
 ATOM     41  N   LYS S   7     -13.818  -0.993  15.491  1.00 17.94           N  
@@ -244,20 +302,324 @@ ATOM     62  CD  GLU S   9     -15.822  -5.942  18.542  1.00 26.26           C
 ATOM     63  OE1 GLU S   9     -16.348  -4.851  18.850  1.00 29.12           O  
 ATOM     64  OE2 GLU S   9     -15.608  -6.850  19.370  1.00 30.05           O  
 """,
+        "linking_test_ASN-NAG-altloc1.pdb" : """
+ATOM   1989  N   ASN A 270      20.738  61.827 110.156  1.00 11.35           N  
+ATOM   1990  CA  ASN A 270      20.866  63.240 110.482  1.00 11.45           C  
+ATOM   1991  C   ASN A 270      20.238  64.075 109.377  1.00 11.25           C  
+ATOM   1992  O   ASN A 270      20.902  64.453 108.408  1.00 10.95           O  
+ATOM   1993  CB  ASN A 270      22.330  63.643 110.648  1.00 12.36           C  
+ATOM   1994  CG  ASN A 270      22.475  64.985 111.329  1.00 13.25           C  
+ATOM   1995  OD1 ASN A 270      21.731  65.920 111.033  1.00 13.36           O  
+ATOM   1996  ND2 ASN A 270      23.440  65.083 112.236  1.00 13.89           N  
+HETATM 3221  C1 ANAG A 435      23.764  66.364 112.833  1.00 15.11           C  
+HETATM 3222  C2 ANAG A 435      23.381  66.347 114.325  1.00 16.09           C  
+HETATM 3223  C3 ANAG A 435      23.832  67.642 115.011  1.00 16.01           C  
+HETATM 3224  C4 ANAG A 435      25.317  67.871 114.758  1.00 15.48           C  
+HETATM 3225  C5 ANAG A 435      25.583  67.877 113.254  1.00 14.91           C  
+HETATM 3226  C6 ANAG A 435      27.059  68.022 112.960  1.00 14.68           C  
+HETATM 3227  C7 ANAG A 435      21.392  64.986 114.378  1.00 18.41           C  
+HETATM 3228  C8 ANAG A 435      19.882  64.903 114.521  1.00 19.12           C  
+HETATM 3229  N2 ANAG A 435      21.944  66.193 114.461  1.00 17.50           N  
+HETATM 3230  O3 ANAG A 435      23.601  67.552 116.408  1.00 16.86           O  
+HETATM 3231  O4 ANAG A 435      25.725  69.107 115.324  1.00 15.49           O  
+HETATM 3232  O5 ANAG A 435      25.166  66.624 112.676  1.00 14.58           O  
+HETATM 3233  O6 ANAG A 435      27.784  66.911 113.470  1.00 14.35           O  
+HETATM 3234  O7 ANAG A 435      22.047  63.959 114.195  1.00 19.58           O  
+HETATM 3221  C1 BNAG A 435      23.764  66.364 112.833  1.00 15.11           C
+HETATM 3222  C2 BNAG A 435      23.381  66.347 114.325  1.00 16.09           C
+HETATM 3223  C3 BNAG A 435      23.832  67.642 115.011  1.00 16.01           C
+HETATM 3224  C4 BNAG A 435      25.317  67.871 114.758  1.00 15.48           C
+HETATM 3225  C5 BNAG A 435      25.583  67.877 113.254  1.00 14.91           C
+HETATM 3226  C6 BNAG A 435      27.059  68.022 112.960  1.00 14.68           C
+HETATM 3227  C7 BNAG A 435      21.392  64.986 114.378  1.00 18.41           C
+HETATM 3228  C8 BNAG A 435      19.882  64.903 114.521  1.00 19.12           C
+HETATM 3229  N2 BNAG A 435      21.944  66.193 114.461  1.00 17.50           N
+HETATM 3230  O3 BNAG A 435      23.601  67.552 116.408  1.00 16.86           O
+HETATM 3231  O4 BNAG A 435      25.725  69.107 115.324  1.00 15.49           O
+HETATM 3232  O5 BNAG A 435      25.166  66.624 112.676  1.00 14.58           O
+HETATM 3233  O6 BNAG A 435      27.784  66.911 113.470  1.00 14.35           O
+HETATM 3234  O7 BNAG A 435      22.047  63.959 114.195  1.00 19.58           O
+""",
+        "linking_test_ASN-NAG-altloc2.pdb" : """
+ATOM   1989  N  AASN A 270      20.738  61.827 110.156  1.00 11.35           N  
+ATOM   1990  CA AASN A 270      20.866  63.240 110.482  1.00 11.45           C  
+ATOM   1991  C  AASN A 270      20.238  64.075 109.377  1.00 11.25           C  
+ATOM   1992  O  AASN A 270      20.902  64.453 108.408  1.00 10.95           O  
+ATOM   1993  CB AASN A 270      22.330  63.643 110.648  1.00 12.36           C  
+ATOM   1994  CG AASN A 270      22.475  64.985 111.329  1.00 13.25           C  
+ATOM   1995  OD1AASN A 270      21.731  65.920 111.033  1.00 13.36           O  
+ATOM   1996  ND2AASN A 270      23.440  65.083 112.236  1.00 13.89           N  
+ATOM   1989  N  BASN A 270      20.738  61.827 110.156  1.00 11.35           N
+ATOM   1990  CA BASN A 270      20.866  63.240 110.482  1.00 11.45           C
+ATOM   1991  C  BASN A 270      20.238  64.075 109.377  1.00 11.25           C
+ATOM   1992  O  BASN A 270      20.902  64.453 108.408  1.00 10.95           O
+ATOM   1993  CB BASN A 270      22.330  63.643 110.648  1.00 12.36           C
+ATOM   1994  CG BASN A 270      22.475  64.985 111.329  1.00 13.25           C
+ATOM   1995  OD1BASN A 270      21.731  65.920 111.033  1.00 13.36           O
+ATOM   1996  ND2BASN A 270      23.440  65.083 112.236  1.00 13.89           N
+HETATM 3221  C1 ANAG A 435      23.764  66.364 112.833  1.00 15.11           C  
+HETATM 3222  C2 ANAG A 435      23.381  66.347 114.325  1.00 16.09           C  
+HETATM 3223  C3 ANAG A 435      23.832  67.642 115.011  1.00 16.01           C  
+HETATM 3224  C4 ANAG A 435      25.317  67.871 114.758  1.00 15.48           C  
+HETATM 3225  C5 ANAG A 435      25.583  67.877 113.254  1.00 14.91           C  
+HETATM 3226  C6 ANAG A 435      27.059  68.022 112.960  1.00 14.68           C  
+HETATM 3227  C7 ANAG A 435      21.392  64.986 114.378  1.00 18.41           C  
+HETATM 3228  C8 ANAG A 435      19.882  64.903 114.521  1.00 19.12           C  
+HETATM 3229  N2 ANAG A 435      21.944  66.193 114.461  1.00 17.50           N  
+HETATM 3230  O3 ANAG A 435      23.601  67.552 116.408  1.00 16.86           O  
+HETATM 3231  O4 ANAG A 435      25.725  69.107 115.324  1.00 15.49           O  
+HETATM 3232  O5 ANAG A 435      25.166  66.624 112.676  1.00 14.58           O  
+HETATM 3233  O6 ANAG A 435      27.784  66.911 113.470  1.00 14.35           O  
+HETATM 3234  O7 ANAG A 435      22.047  63.959 114.195  1.00 19.58           O  
+HETATM 3221  C1 BNAG A 435      23.764  66.364 112.833  1.00 15.11           C
+HETATM 3222  C2 BNAG A 435      23.381  66.347 114.325  1.00 16.09           C
+HETATM 3223  C3 BNAG A 435      23.832  67.642 115.011  1.00 16.01           C
+HETATM 3224  C4 BNAG A 435      25.317  67.871 114.758  1.00 15.48           C
+HETATM 3225  C5 BNAG A 435      25.583  67.877 113.254  1.00 14.91           C
+HETATM 3226  C6 BNAG A 435      27.059  68.022 112.960  1.00 14.68           C
+HETATM 3227  C7 BNAG A 435      21.392  64.986 114.378  1.00 18.41           C
+HETATM 3228  C8 BNAG A 435      19.882  64.903 114.521  1.00 19.12           C
+HETATM 3229  N2 BNAG A 435      21.944  66.193 114.461  1.00 17.50           N
+HETATM 3230  O3 BNAG A 435      23.601  67.552 116.408  1.00 16.86           O
+HETATM 3231  O4 BNAG A 435      25.725  69.107 115.324  1.00 15.49           O
+HETATM 3232  O5 BNAG A 435      25.166  66.624 112.676  1.00 14.58           O
+HETATM 3233  O6 BNAG A 435      27.784  66.911 113.470  1.00 14.35           O
+HETATM 3234  O7 BNAG A 435      22.047  63.959 114.195  1.00 19.58           O
+""",
+        "linking_test_ASN-NAG-altloc3.pdb" : """
+ATOM   1989  N   ASN A 270      20.738  61.827 110.156  1.00 11.35           N  
+ATOM   1990  CA  ASN A 270      20.866  63.240 110.482  1.00 11.45           C  
+ATOM   1991  C   ASN A 270      20.238  64.075 109.377  1.00 11.25           C  
+ATOM   1992  O   ASN A 270      20.902  64.453 108.408  1.00 10.95           O  
+ATOM   1993  CB  ASN A 270      22.330  63.643 110.648  1.00 12.36           C  
+ATOM   1994  CG AASN A 270      22.475  64.985 111.329  1.00 13.25           C  
+ATOM   1995  OD1AASN A 270      21.731  65.920 111.033  1.00 13.36           O  
+ATOM   1996  ND2AASN A 270      23.440  65.083 112.236  1.00 13.89           N  
+ATOM   1994  CG BASN A 270      22.475  64.985 111.329  1.00 13.25           C
+ATOM   1995  OD1BASN A 270      21.731  65.920 111.033  1.00 13.36           O
+ATOM   1996  ND2BASN A 270      23.440  65.083 112.236  1.00 13.89           N
+HETATM 3221  C1 ANAG A 435      23.764  66.364 112.833  1.00 15.11           C  
+HETATM 3222  C2 ANAG A 435      23.381  66.347 114.325  1.00 16.09           C  
+HETATM 3223  C3 ANAG A 435      23.832  67.642 115.011  1.00 16.01           C  
+HETATM 3224  C4 ANAG A 435      25.317  67.871 114.758  1.00 15.48           C  
+HETATM 3225  C5 ANAG A 435      25.583  67.877 113.254  1.00 14.91           C  
+HETATM 3226  C6 ANAG A 435      27.059  68.022 112.960  1.00 14.68           C  
+HETATM 3227  C7 ANAG A 435      21.392  64.986 114.378  1.00 18.41           C  
+HETATM 3228  C8 ANAG A 435      19.882  64.903 114.521  1.00 19.12           C  
+HETATM 3229  N2 ANAG A 435      21.944  66.193 114.461  1.00 17.50           N  
+HETATM 3230  O3 ANAG A 435      23.601  67.552 116.408  1.00 16.86           O  
+HETATM 3231  O4 ANAG A 435      25.725  69.107 115.324  1.00 15.49           O  
+HETATM 3232  O5 ANAG A 435      25.166  66.624 112.676  1.00 14.58           O  
+HETATM 3233  O6 ANAG A 435      27.784  66.911 113.470  1.00 14.35           O  
+HETATM 3234  O7 ANAG A 435      22.047  63.959 114.195  1.00 19.58           O  
+HETATM 3221  C1 BNAG A 435      23.764  66.364 112.833  1.00 15.11           C
+HETATM 3222  C2 BNAG A 435      23.381  66.347 114.325  1.00 16.09           C
+HETATM 3223  C3 BNAG A 435      23.832  67.642 115.011  1.00 16.01           C
+HETATM 3224  C4 BNAG A 435      25.317  67.871 114.758  1.00 15.48           C
+HETATM 3225  C5 BNAG A 435      25.583  67.877 113.254  1.00 14.91           C
+HETATM 3226  C6 BNAG A 435      27.059  68.022 112.960  1.00 14.68           C
+HETATM 3227  C7 BNAG A 435      21.392  64.986 114.378  1.00 18.41           C
+HETATM 3228  C8 BNAG A 435      19.882  64.903 114.521  1.00 19.12           C
+HETATM 3229  N2 BNAG A 435      21.944  66.193 114.461  1.00 17.50           N
+HETATM 3230  O3 BNAG A 435      23.601  67.552 116.408  1.00 16.86           O
+HETATM 3231  O4 BNAG A 435      25.725  69.107 115.324  1.00 15.49           O
+HETATM 3232  O5 BNAG A 435      25.166  66.624 112.676  1.00 14.58           O
+HETATM 3233  O6 BNAG A 435      27.784  66.911 113.470  1.00 14.35           O
+HETATM 3234  O7 BNAG A 435      22.047  63.959 114.195  1.00 19.58           O
+""",
+        "linking_test_DT-4MF-DA.pdb" : """
+ATOM   2093  P    DT C  26       0.288   1.691 -25.901  1.00 51.23           P  
+ATOM   2094  OP1  DT C  26       1.525   1.058 -26.431  1.00 51.10           O  
+ATOM   2095  OP2  DT C  26      -0.538   2.550 -26.800  1.00 50.36           O  
+ATOM   2096  O5'  DT C  26      -0.678   0.604 -25.234  1.00 47.26           O  
+ATOM   2097  C5'  DT C  26      -0.147  -0.278 -24.258  1.00 44.30           C  
+ATOM   2098  C4'  DT C  26      -1.108  -0.531 -23.117  1.00 40.69           C  
+ATOM   2099  O4'  DT C  26      -1.860   0.647 -22.788  1.00 39.38           O  
+ATOM   2100  C3'  DT C  26      -2.247  -1.484 -23.405  1.00 40.36           C  
+ATOM   2101  O3'  DT C  26      -1.754  -2.822 -23.434  1.00 39.62           O  
+ATOM   2102  C2'  DT C  26      -3.214  -1.187 -22.243  1.00 39.03           C  
+ATOM   2103  C1'  DT C  26      -2.726   0.186 -21.778  1.00 36.96           C  
+ATOM   2104  N1   DT C  26      -3.767   1.212 -21.523  1.00 36.37           N  
+ATOM   2105  C2   DT C  26      -4.324   1.300 -20.260  1.00 35.70           C  
+ATOM   2106  O2   DT C  26      -4.018   0.575 -19.325  1.00 35.41           O  
+ATOM   2107  N3   DT C  26      -5.271   2.290 -20.125  1.00 34.72           N  
+ATOM   2108  C4   DT C  26      -5.714   3.176 -21.081  1.00 34.88           C  
+ATOM   2109  O4   DT C  26      -6.571   4.022 -20.842  1.00 35.55           O  
+ATOM   2110  C5   DT C  26      -5.100   3.038 -22.379  1.00 35.49           C  
+ATOM   2111  C7   DT C  26      -5.637   3.830 -23.539  1.00 34.73           C  
+ATOM   2112  C6   DT C  26      -4.166   2.075 -22.536  1.00 36.24           C  
+HETATM 2113  O2P 4MF C  27      -3.441  -4.407 -23.957  1.00 41.52           O  
+HETATM 2114  P   4MF C  27      -2.133  -4.347 -23.209  1.00 40.92           P  
+HETATM 2115  O1P 4MF C  27      -0.830  -4.701 -23.874  1.00 40.35           O  
+HETATM 2116  O5' 4MF C  27      -2.273  -5.251 -21.880  1.00 43.61           O  
+HETATM 2117  C5' 4MF C  27      -2.804  -4.709 -20.672  1.00 45.90           C  
+HETATM 2118  C4' 4MF C  27      -4.324  -4.877 -20.528  1.00 48.09           C  
+HETATM 2119  C3' 4MF C  27      -5.014  -5.783 -21.538  1.00 48.57           C  
+HETATM 2120  O3' 4MF C  27      -5.183  -7.086 -20.990  1.00 49.62           O  
+HETATM 2121  C2' 4MF C  27      -6.376  -5.166 -21.819  1.00 49.28           C  
+HETATM 2122  C1' 4MF C  27      -6.327  -3.804 -21.133  1.00 49.96           C  
+HETATM 2123  O4' 4MF C  27      -4.988  -3.610 -20.660  1.00 50.00           O  
+HETATM 2124  N1  4MF C  27      -6.624  -2.783 -22.129  1.00 50.63           N  
+HETATM 2125  C7A 4MF C  27      -7.134  -1.592 -21.893  1.00 50.94           C  
+HETATM 2126  C7  4MF C  27      -7.511  -0.950 -20.876  1.00 50.46           C  
+HETATM 2127  C6  4MF C  27      -7.823   0.199 -21.023  1.00 50.24           C  
+HETATM 2128  C5  4MF C  27      -8.031   0.699 -22.101  1.00 50.59           C  
+HETATM 2129  C4  4MF C  27      -7.681   0.140 -23.189  1.00 50.69           C  
+HETATM 2130  C4M 4MF C  27      -7.799   0.755 -24.356  1.00 50.25           C  
+HETATM 2131  C3A 4MF C  27      -7.199  -1.092 -23.071  1.00 50.73           C  
+HETATM 2132  C3  4MF C  27      -6.765  -1.912 -23.925  1.00 51.26           C  
+HETATM 2133  C2  4MF C  27      -6.425  -2.920 -23.332  1.00 50.64           C  
+ATOM   2134  P    DA C  28      -5.472  -8.466 -21.727  1.00 49.25           P  
+ATOM   2135  OP1  DA C  28      -4.838  -9.205 -20.608  1.00 49.49           O  
+ATOM   2136  OP2  DA C  28      -4.975  -8.640 -23.106  1.00 48.81           O  
+ATOM   2137  O5'  DA C  28      -7.046  -8.727 -21.708  1.00 49.80           O  
+ATOM   2138  C5'  DA C  28      -7.693  -9.165 -20.528  1.00 51.19           C  
+ATOM   2139  C4'  DA C  28      -9.182  -8.886 -20.616  1.00 52.05           C  
+ATOM   2140  O4'  DA C  28      -9.387  -7.491 -20.963  1.00 51.89           O  
+ATOM   2141  C3'  DA C  28      -9.926  -9.711 -21.664  1.00 52.66           C  
+ATOM   2142  O3'  DA C  28     -11.105 -10.227 -21.073  1.00 54.53           O  
+ATOM   2143  C2'  DA C  28     -10.233  -8.695 -22.768  1.00 51.97           C  
+ATOM   2144  C1'  DA C  28     -10.388  -7.412 -21.957  1.00 50.53           C  
+ATOM   2145  N9   DA C  28     -10.194  -6.169 -22.690  1.00 49.74           N  
+ATOM   2146  C8   DA C  28      -9.269  -5.919 -23.662  1.00 49.76           C  
+ATOM   2147  N7   DA C  28      -9.328  -4.705 -24.145  1.00 49.73           N  
+ATOM   2148  C5   DA C  28     -10.361  -4.112 -23.430  1.00 49.84           C  
+ATOM   2149  C6   DA C  28     -10.936  -2.820 -23.456  1.00 49.81           C  
+ATOM   2150  N6   DA C  28     -10.525  -1.842 -24.264  1.00 49.75           N  
+ATOM   2151  N1   DA C  28     -11.956  -2.559 -22.614  1.00 49.98           N  
+ATOM   2152  C2   DA C  28     -12.373  -3.529 -21.793  1.00 49.56           C  
+ATOM   2153  N3   DA C  28     -11.917  -4.774 -21.688  1.00 49.25           N  
+ATOM   2154  C4   DA C  28     -10.901  -5.004 -22.529  1.00 48.98           C  
+""",
+        "4mf.cif" : """
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+4MF        4MF '1-(2-deoxy-5-O-phosphono-beta-D-erythro-pentofuranosyl)-4-methyl-1H-indole' ligand 38 22 .
+#
+data_comp_4MF
+#
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+4MF         O3P    O   OP    .          0.3880   -6.5014   -0.0977
+4MF         O2P    O   OP    .          2.8128   -6.3045    0.2744
+4MF         P      P   P     .          1.4780   -5.6201    0.4475
+4MF         O1P    O   O     .          1.2312   -5.3632    1.9128
+4MF        O5'     O   O2    .          1.4842   -4.2849   -0.3118
+4MF        C5'     C   CH2   .          0.4523   -3.3972   -0.1241
+4MF        C4'     C   CH1   .          0.4545   -2.3849   -1.2304
+4MF        C3'     C   CH1   .          1.6882   -1.6217   -1.1949
+4MF        O3'     O   OH1   .          2.4943   -1.9836   -2.2794
+4MF        C2'     C   CH2   .          1.3646   -0.1729   -1.2778
+4MF        C1'     C   CH1   .         -0.1502   -0.1860   -1.2349
+4MF        O4'     O   O2    .         -0.6137   -1.5216   -1.0689
+4MF         N1     N   NR5   .         -0.5939    0.6028   -0.1623
+4MF         C7A    C   CR56  .         -0.7732    1.9661   -0.2075
+4MF         C7     C   CR16  .         -0.5799    2.8750   -1.2494
+4MF         C6     C   CR16  .         -0.8345    4.2251   -1.0458
+4MF         C5     C   CR16  .         -1.2864    4.6714    0.2113
+4MF         C4     C   CR6   .         -1.4808    3.7274    1.2736
+4MF         C4M    C   CH3   .         -1.9588    4.1914    2.6065
+4MF         C3A    C   CR56  .         -1.2204    2.3671    1.0551
+4MF         C3     C   CR15  .         -1.3024    1.2223    1.8455
+4MF         C2     C   CR15  .         -0.9093    0.1452    1.0684
+4MF        H5'1    H   HCH2  .         -0.3941   -3.8790   -0.1265
+4MF        H5'2    H   HCH2  .          0.5662   -2.9370    0.7439
+4MF        H4'     H   HCH1  .          0.3777   -2.8403   -2.0880
+4MF        H3'     H   HCH1  .          2.1650   -1.8026   -0.3580
+4MF         H3T    H   HOH1  .          3.2930   -2.2169   -1.9870
+4MF        H2'1    H   HCH2  .          1.7298    0.3100   -0.5098
+4MF        H2'2    H   HCH2  .          1.6862    0.2071   -2.1162
+4MF        H1'     H   HCH1  .         -0.5001    0.1731   -2.0687
+4MF         H7     H   HCR6  .         -0.2675    2.5671   -2.1190
+4MF         H6     H   HCR6  .         -0.6998    4.8655   -1.7753
+4MF         H5     H   HCR6  .         -1.4667    5.6202    0.3592
+4MF        H4M1    H   HCH3  .         -1.2789    3.9974    3.2823
+4MF        H4M2    H   HCH3  .         -2.1218    5.1482    2.5767
+4MF        H4M3    H   HCH3  .         -2.7822    3.7299    2.8339
+4MF         H3     H   HCR5  .         -1.5857    1.1856    2.7788
+4MF         H2     H   HCR5  .         -0.8680   -0.7821    1.3604
+#
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+4MF   O3P     P     deloc         1.504 0.020
+4MF   O2P     P     deloc         1.510 0.020
+4MF   P       O1P   deloc         1.508 0.020
+4MF   P      O5'    single        1.536 0.020
+4MF  O5'     C5'    single        1.374 0.020
+4MF  C5'     C4'    single        1.500 0.020
+4MF  C5'     H5'1   single        0.974 0.020
+4MF  C5'     H5'2   single        0.989 0.020
+4MF  C4'     C3'    single        1.451 0.020
+4MF  C4'     O4'    single        1.383 0.020
+4MF  C4'     H4'    single        0.974 0.020
+4MF  C3'     C2'    single        1.487 0.020
+4MF  C3'     O3'    single        1.399 0.020
+4MF  C3'     H3'    single        0.980 0.020
+4MF  O3'      H3T   single        0.882 0.020
+4MF  C2'     C1'    single        1.516 0.020
+4MF  C2'     H2'1   single        0.978 0.020
+4MF  C2'     H2'2   single        0.975 0.020
+4MF  C1'      N1    single        1.403 0.020
+4MF  C1'     O4'    single        1.423 0.020
+4MF  C1'     H1'    single        0.973 0.020
+4MF   N1      C2    aromatic      1.350 0.020
+4MF   N1      C7A   aromatic      1.376 0.020
+4MF   C7A     C3A   aromatic      1.398 0.020
+4MF   C7A     C7    aromatic      1.396 0.020
+4MF   C7      C6    aromatic      1.389 0.020
+4MF   C7      H7    single        0.974 0.020
+4MF   C6      C5    aromatic      1.408 0.020
+4MF   C6      H6    single        0.980 0.020
+4MF   C5      C4    aromatic      1.434 0.020
+4MF   C5      H5    single        0.977 0.020
+4MF   C4      C4M   single        1.490 0.020
+4MF   C4      C3A   aromatic      1.402 0.020
+4MF   C4M    H4M1   single        0.978 0.020
+4MF   C4M    H4M2   single        0.971 0.020
+4MF   C4M    H4M3   single        0.971 0.020
+4MF   C3A     C3    aromatic      1.394 0.020
+4MF   C3      C2    aromatic      1.385 0.020
+4MF   C3      H3    single        0.976 0.020
+4MF   C2      H2    single        0.973 0.020
+#
+""",
         }
 
 def run():
+  cifs = ""
   for pdb in pdbs:
     f=file(pdb, "wb")
     f.write(pdbs[pdb])
     f.close()
+    if pdb.endswith(".cif"): cifs += " %s" % pdb
   for pdb in pdbs:
     if pdb.endswith(".cif"): continue
     for i in range(2):
+      log_filename = "%s_%d.log" % (pdb, i)
       cmd = "phenix.pdbtools %s" % pdb
-      cmd += " intra=%d vsp.cif > linking.log" % i
+      cmd += " intra=%d %s > %s" % (i, cifs, log_filename)
+      print cmd
       easy_run.call(cmd)
-      f=file("linking.log", "rb")
+      f=file(log_filename, "rb")
       lines = f.read()
       assert lines.find("Output model")>-1
       print "OK"
