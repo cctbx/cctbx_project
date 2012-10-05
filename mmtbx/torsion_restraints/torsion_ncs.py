@@ -197,6 +197,11 @@ class torsion_ncs(object):
       self.ncs_groups = ncs_groups_manager.ncs_groups
       self.alignments = ncs_groups_manager.alignments
       new_ncs_groups = None
+      #sort NCS groups alphabetically
+      def selection_sort(match_list):
+        match_list.sort()
+        return match_list[0]
+      self.ncs_groups.sort(key=selection_sort)
       if len(self.ncs_groups) > 0:
         new_ncs_groups = "refinement {\n ncs {\n  torsion {\n"
         for ncs_set in self.ncs_groups:
@@ -1385,6 +1390,20 @@ class torsion_ncs(object):
     sidechain_angle_hash['THR'][' N   CA  CB  CG2'] = 'chi1'
     sidechain_angle_hash['VAL'][' N   CA  CB  CG2'] = 'chi1'
     return sidechain_angle_hash
+
+  def get_number_of_restraints_per_group(self, pdb_hierarchy):
+    torsion_counts = {}
+    sel_cache = pdb_hierarchy.atom_selection_cache()
+    for group in self.ncs_groups:
+      for selection in group:
+        sel_atoms_i = (utils.phil_atom_selections_as_i_seqs_multiple(
+                         cache=sel_cache,
+                         string_list=[selection]))
+        torsion_counts[selection] = 0
+        for dp in self.ncs_dihedral_proxies:
+          if dp.i_seqs[0] in sel_atoms_i:
+            torsion_counts[selection] += 1
+    return torsion_counts
 
 #split out functions
 class get_ncs_groups(object):

@@ -560,6 +560,7 @@ class model(object):
     self.anomalous_scatterer_groups = model.anomalous_scatterer_groups
     self.ncs_groups = model.extract_ncs_groups()
     self.ncs_manager = ncs_manager
+    self.pdb_hierarchy = model.pdb_hierarchy(sync_with_xray_structure=True)
 
   def show(self, out=None, prefix="", padded=None, pdb_deposition=False):
     if(out is None): out = sys.stdout
@@ -623,10 +624,13 @@ class model(object):
   def show_torsion_ncs_groups(self, out = None):
     if(out is None): out = sys.stdout
     restraint_groups = self.ncs_manager.params.restraint_group
+    torsion_counts=self.ncs_manager.get_number_of_restraints_per_group(
+      pdb_hierarchy=self.pdb_hierarchy)
     pr = "REMARK   3  "
     print >>out,pr+"TORSION NCS DETAILS."
     print >>out,pr+" NUMBER OF NCS GROUPS : %-6d"%len(restraint_groups)
     for i_group, ncs_group in enumerate(restraint_groups):
+      count = 0
       print >>out,pr+" NCS GROUP : %-6d"%(i_group+1)
       selection_strings = ncs_group.selection
       for selection in selection_strings:
@@ -636,6 +640,8 @@ class model(object):
             print >> out, pr+"   SELECTION          : %s"%line
           else:
             print >> out, pr+"                      : %s"%line
+        count += torsion_counts[selection]
+      print >> out,pr+"   RESTRAINED TORSIONS: %-d" % count
 
   def show_anomalous_scatterer_groups(self, out = None):
     if(out is None): out = sys.stdout
