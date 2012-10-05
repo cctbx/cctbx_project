@@ -3032,13 +3032,13 @@ class build_all_chain_proxies(object):
   def create_link(self, apply, m_i, m_j, order=1, verbose=False):
     import linking_utils
     from math import sqrt
-    from mmtbx.monomer_library.cif_types import chem_link, chem_link_bond
+    from mmtbx.monomer_library.cif_types import chem_link_bond, chem_link_angle
     from mmtbx.monomer_library.bondlength_defaults import get_default_bondlength
     # bond
     bond = chem_link_bond()
-    bond.atom_1_comp_id = "1"
+    bond.atom_1_comp_id = 1
     bond.atom_id_1 = apply.atom1.name.strip()
-    bond.atom_2_comp_id = "2"
+    bond.atom_2_comp_id = 2
     bond.atom_id_2 = apply.atom2.name.strip()
     if order==1:
       bond.type = "single"
@@ -3067,7 +3067,70 @@ class build_all_chain_proxies(object):
     except:
       return False
     # angles
-    # remove hydrogens
+    bonds1=[]
+    bonds2=[]
+    for bond in self.geometry_proxy_registries.bond_simple.proxies:
+      if(apply.atom1.i_seq in bond.i_seqs and 
+         apply.atom2.i_seq in bond.i_seqs): continue
+      if apply.atom1.i_seq in bond.i_seqs:
+        bonds1.append(bond)
+      elif apply.atom2.i_seq in bond.i_seqs:
+        bonds2.append(bond)
+    #
+    if order==1:
+    # remove excess hydrogens
+      if len(bonds1)>3:
+        assert 0
+      if len(bonds2)>3:
+        assert 0
+    #
+    angle_list = []
+    def _get_other(b,a):
+      if a.i_seq==b.i_seqs[0]:
+        return b.i_seqs[1]
+      elif a.i_seq==b.i_seqs[1]:
+        return b.i_seqs[0]
+      return -1
+    def get_other(b,a):
+      i_seq = _get_other(b,a)
+      for atom in a.parent().parent().atoms():
+        if atom.i_seq==i_seq: return atom
+      return None
+    for bond in bonds1:
+      other = get_other(bond, apply.atom1)
+      angle = chem_link_angle()
+      angle.atom_1_comp_id = 1
+      angle.atom_id_1 = other.name.strip()
+      angle.atom_2_comp_id = 1
+      angle.atom_id_2 = apply.atom1.name.strip()
+      angle.atom_3_comp_id = 2
+      angle.atom_id_3 = apply.atom2.name.strip()
+      if order==1:
+        angle.value_angle = 109.6
+      angle.value_angle_esd = 2.
+      angle_list.append(angle)
+    for bond in bonds2:
+      other = get_other(bond, apply.atom2)
+      angle = chem_link_angle()
+      angle.atom_1_comp_id = 2
+      angle.atom_id_1 = other.name.strip()
+      angle.atom_2_comp_id = 2
+      angle.atom_id_2 = apply.atom2.name.strip()
+      angle.atom_3_comp_id = 1
+      angle.atom_id_3 = apply.atom1.name.strip()
+      if order==1:
+        angle.value_angle = 109.6
+      angle.value_angle_esd = 2.
+      angle_list.append(angle)
+    # 
+    link_resolution = add_angle_proxies(
+        counters=counters(label="apply_cif_link_angle"),
+        m_i=m_i,
+        m_j=m_j,
+        angle_list=angle_list,
+        angle_proxy_registry=self.geometry_proxy_registries.angle,
+        special_position_indices=self.special_position_indices,
+        )
     return True
 
   def process_intra_chain_links(self,
@@ -3112,31 +3175,37 @@ class build_all_chain_proxies(object):
           if d2>residue_group_cutoff2: continue
           rc = linking_utils.process_atom_groups_for_linking(
             self.pdb_hierarchy, 
-            atom1.parent(),
-            atom2.parent(),
+            atom1,
+            atom2,
             classes1,
             classes2,
             )
           if rc is None: continue
           pdbres_pair, data_link, atoms = rc
+          # peptide links are auto-created
           possible_peptide_link = False
           if classes1.common_amino_acid or classes2.common_amino_acid:
-            if classes1.common_amino_acid:
-              if(atoms[0].name.strip() in ["C"] and
-                 atoms[1].name.strip() in ["N"]
-                 ):
-                possible_peptide_link=True
-            elif classes2.common_amino_acid:
-              if(atoms[0].name.strip() in ["C"] and
-                 atoms[1].name.strip() in ["N"]
-                 ):
-                possible_peptide_link=True
+            if(atoms[0].name.strip() in ["C"] and
+               atoms[1].name.strip() in ["N"]
+               ):
+              possible_peptide_link=True
+          # so are nucleotide links
+          possible_rna_dna_link = False
+          if classes1.common_rna_dna or classes2.common_rna_dna: 
+            print atoms[0].format_atom_record()
+            print atoms[1].format_atom_record()
+            if(atoms[0].name.strip() in ["O3'", "O3*"] and
+               atoms[1].name.strip() in ["P"]
+               ):
+              possible_rna_dna_link = True
+          # add them
           ga = group_args(
             pdbres_pair=pdbres_pair,
             data_link=data_link,
             was_used=False,
             automatic=True,
             possible_peptide_link=possible_peptide_link,
+            possible_rna_dna_link=possible_rna_dna_link,
             atom1=atoms[0],
             atom2=atoms[1],
             )

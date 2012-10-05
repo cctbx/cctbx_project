@@ -173,7 +173,8 @@ def get_classes(atom, verbose=False):
     if i:
       rc = gc
     else:
-      if get_type(atom_group.resname).upper() in sugar_types:
+      if(get_type(atom_group.resname) is not None and
+         get_type(atom_group.resname).upper() in sugar_types):
         rc = attr
     if rc==attr:
       setattr(classes, attr, True)
@@ -181,12 +182,17 @@ def get_classes(atom, verbose=False):
 
 def get_closest_atoms(atom_group1,
                       atom_group2,
+                      ignore_hydrogens=True,
                       ):
   min_d2 = 1e5
   min_atom1 = None
   min_atom2 = None
   for i, atom1 in enumerate(atom_group1.atoms()):
+    if ignore_hydrogens:
+      if atom1.element.strip() in ["H", "D"]: continue
     for j, atom2 in enumerate(atom_group2.atoms()):
+      if ignore_hydrogens:
+        if atom2.element.strip() in ["H", "D"]: continue
       #if i>=j: continue
       d2 = get_distance2(atom1, atom2)
       if d2<min_d2:
@@ -272,15 +278,19 @@ def get_angles_from_included_bonds(hierarchy,
   return tmp
 
 def process_atom_groups_for_linking(pdb_hierarchy,
-                                    atom_group1,
-                                    atom_group2,
+                                    atom1,
+                                    atom2,
                                     classes1,
                                     classes2,
                                     bond_cutoff=2.,
                                     verbose=False,
                                     ):
   bond_cutoff *= bond_cutoff
-  atom1, atom2 = get_closest_atoms(atom_group1, atom_group2)
+  atom_group1 = atom1.parent()
+  atom_group2 = atom2.parent()
+  residue_group1 = atom_group1.parent()
+  residue_group2 = atom_group2.parent()
+  atom1, atom2 = get_closest_atoms(residue_group1, residue_group2)
   if get_distance2(atom1, atom2)>bond_cutoff: return None
   if is_glyco_bond(atom1, atom2):
     # glyco bonds need to be in certain order
