@@ -188,14 +188,13 @@ def exercise_2(d_min = 1.5):
     fft_map.apply_sigma_scaling()
     target_map = fft_map.real_map_unpadded()
     # find optimal weight
-    from mmtbx.refinement import real_space
-    rsr_simple_refiner = real_space.simple(
+    rsr_simple_refiner = mmtbx.refinement.real_space.individual_sites.simple(
       target_map                  = target_map,
       selection                   = flex.bool(pi.xrs.scatterers().size(), True),
       real_space_gradients_delta  = d_min/4,
       max_iterations              = 150,
       geometry_restraints_manager = pi.grm.geometry)
-    refined = real_space.refinery(
+    refined = mmtbx.refinement.real_space.individual_sites.refinery(
       refiner                  = rsr_simple_refiner,
       xray_structure           = xrs_poor.deep_copy_scatterers(),
       start_trial_weight_value = 1,
