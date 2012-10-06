@@ -1,3 +1,4 @@
+from __future__ import division
 import iotbx
 
 from scitbx.array_family import flex
@@ -298,9 +299,9 @@ def process_atom_groups_for_linking(pdb_hierarchy,
       tmp_atom = atom1
       atom1 = atom2
       atom2 = tmp_atom
-    
+
   elif is_glyco_amino_bond(atom1, atom2):
-    # problem in 3sgk 
+    # problem in 3sgk
 #------------------------------------------------------------------
 #ATOM   3803  OD1 ASP C  64      19.148  52.821 -19.425  1.00 70.10
 #HETATM 5030  O6  NAG C1461      19.450  52.248 -18.258  1.00 60.78
@@ -343,7 +344,7 @@ def process_atom_groups_for_linking(pdb_hierarchy,
                                               )
       hand = get_hand(c_atom, o_atom, angles) #"ALPHA"
       assert hand
-        
+
       data_link_key = "%s%s-%s" % (hand,
                                    c_atom.name.strip()[-1],
                                    o_atom.name.strip()[-1],
