@@ -365,6 +365,10 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
   def model_indices(self):
     return flex.size_t([m.atoms_size() for m in self.hierarchy.models()])
 
+  def ter_indices(self):
+    # for compatibility with pdb_input
+    return flex.size_t()
+
   def crystal_symmetry(self,
         crystal_symmetry=None,
         weak_symmetry=False):
