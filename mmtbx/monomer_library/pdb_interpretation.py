@@ -3064,13 +3064,13 @@ class build_all_chain_proxies(object):
         sites_cart=self.sites_cart,
         distance_cutoff=self.params.link_distance_cutoff,
         )
-    except:
+    except Exception :
       return False
     # angles
     bonds1=[]
     bonds2=[]
     for bond in self.geometry_proxy_registries.bond_simple.proxies:
-      if(apply.atom1.i_seq in bond.i_seqs and 
+      if(apply.atom1.i_seq in bond.i_seqs and
          apply.atom2.i_seq in bond.i_seqs): continue
       if apply.atom1.i_seq in bond.i_seqs:
         bonds1.append(bond)
@@ -3122,7 +3122,7 @@ class build_all_chain_proxies(object):
         angle.value_angle = 109.6
       angle.value_angle_esd = 2.
       angle_list.append(angle)
-    # 
+    #
     link_resolution = add_angle_proxies(
         counters=counters(label="apply_cif_link_angle"),
         m_i=m_i,
@@ -3174,7 +3174,7 @@ class build_all_chain_proxies(object):
           d2 = linking_utils.get_distance2(atom1, atom2)
           if d2>residue_group_cutoff2: continue
           rc = linking_utils.process_atom_groups_for_linking(
-            self.pdb_hierarchy, 
+            self.pdb_hierarchy,
             atom1,
             atom2,
             classes1,
@@ -3191,7 +3191,7 @@ class build_all_chain_proxies(object):
               possible_peptide_link=True
           # so are nucleotide links
           possible_rna_dna_link = False
-          if classes1.common_rna_dna or classes2.common_rna_dna: 
+          if classes1.common_rna_dna or classes2.common_rna_dna:
             print atoms[0].format_atom_record()
             print atoms[1].format_atom_record()
             if(atoms[0].name.strip() in ["O3'", "O3*"] and

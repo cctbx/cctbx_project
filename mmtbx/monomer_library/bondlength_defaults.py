@@ -1,5 +1,6 @@
 
-import os, sys
+from __future__ import division
+import sys
 
 defaults = {
     ("H", "H") : 0.579,
