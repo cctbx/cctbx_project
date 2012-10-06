@@ -614,11 +614,95 @@ class model(object):
         print >> out,pr+"   ATOM PAIRS NUMBER  : %-d" % len(pair[0])
         print >> out,pr+"   RMSD               : %-10.3f" % rms
 
-  def ncs_groups_as_cif_block(self, cif_block=None):
+  def ncs_as_cif_block(self, cif_block=None):
     import iotbx.cif.model
     if cif_block is None:
       cif_block = iotbx.cif.model.block()
-    # XXX
+
+    ncs_ens_loop = iotbx.cif.model.loop(header=(
+      "_struct_ncs_ens.id",
+      "_struct_ncs_ens.details"))
+    ncs_dom_loop = iotbx.cif.model.loop(header=(
+      "_struct_ncs_dom.id",
+      "_struct_ncs_dom.pdbx_ens_id",
+      "_struct_ncs_dom.details"))
+    ncs_dom_lim_loop = iotbx.cif.model.loop(header=(
+      "_struct_ncs_dom_lim.pdbx_ens_id",
+      "_struct_ncs_dom_lim.dom_id",
+      #"_struct_ncs_dom_lim.pdbx_component_id",
+      #"_struct_ncs_dom_lim.pdbx_refine_code",
+      "_struct_ncs_dom_lim.beg_auth_asym_id",
+      "_struct_ncs_dom_lim.beg_auth_seq_id",
+      "_struct_ncs_dom_lim.end_auth_asym_id",
+      "_struct_ncs_dom_lim.end_auth_seq_id",
+      "_struct_ncs_dom_lim.selection_details"))
+
+    ncs_oper_loop = iotbx.cif.model.loop(header=(
+      "_struct_ncs_oper.id",
+      "_struct_ncs_oper.code",
+      "_struct_ncs_oper.matrix[1][1]",
+      "_struct_ncs_oper.matrix[1][2]",
+      "_struct_ncs_oper.matrix[1][3]",
+      "_struct_ncs_oper.matrix[2][1]",
+      "_struct_ncs_oper.matrix[2][2]",
+      "_struct_ncs_oper.matrix[2][3]",
+      "_struct_ncs_oper.matrix[3][1]",
+      "_struct_ncs_oper.matrix[3][2]",
+      "_struct_ncs_oper.matrix[3][3]",
+      "_struct_ncs_oper.vector[1]",
+      "_struct_ncs_oper.vector[2]",
+      "_struct_ncs_oper.vector[3]",
+      "_struct_ncs_oper.details"))
+
+    ncs_ens_gen_loop = iotbx.cif.model.loop(header=(
+      "_struct_ncs_ens_gen.dom_id_1",
+      "_struct_ncs_ens_gen.dom_id_2",
+      "_struct_ncs_ens_gen.ens_id",
+      "_struct_ncs_ens_gen.oper_id"))
+
+    oper_id = 0
+
+    if self.ncs_groups is not None:
+      for i_group, ncs_group in enumerate(self.ncs_groups):
+        ncs_ens_loop.add_row((i_group+1, "?"))
+        selection_strings = ncs_group.group.selection_strings
+        matrices = ncs_group.matrices
+        rms = ncs_group.rms
+        pair_count = len(ncs_group.group.selection_pairs[0])
+        for i_domain, domain_selection in enumerate(selection_strings):
+          ncs_dom_loop.add_row((i_domain+1, i_group+1, "?"))
+          # XXX TODO: export individual sequence ranges from selection
+          ncs_dom_lim_loop.add_row(
+            (i_group+1, i_domain+1, "?", "?", "?", "?", domain_selection))
+          if i_domain > 0:
+            rt_mx = ncs_group.matrices[i_domain-1]
+            oper_id += 1
+            row = [oper_id, "given"]
+            row.extend(rt_mx.r)
+            row.extend(rt_mx.t)
+            row.append("?")
+            ncs_oper_loop.add_row(row)
+            ncs_ens_gen_loop.add_row((1, i_domain+1, i_group+1, oper_id))
+    elif self.ncs_manager is not None:
+      restraint_group_params = self.ncs_manager.params.restraint_group
+      for i_group, ncs_group in enumerate(self.ncs_manager.ncs_groups):
+        ncs_ens_loop.add_row((i_group+1, "?"))
+        selection_strings = restraint_group_params[i_group].selection
+        for i_domain, ncs_domain in enumerate(ncs_group):
+          selection = selection_strings[i_domain]
+          ncs_dom_loop.add_row((i_domain+1, i_group+1, "?"))
+          segments = self.ncs_manager.master_ranges[ncs_domain]
+          asym_id = ncs_domain.split("and")[0].split()[1].strip()
+          for i_segment, segment_range in enumerate(segments):
+            ncs_dom_lim_loop.add_row(
+              (i_group+1, i_domain+1, asym_id, segment_range[0],
+               asym_id, segment_range[1], selection))
+    cif_block.add_loop(ncs_ens_loop)
+    cif_block.add_loop(ncs_dom_loop)
+    cif_block.add_loop(ncs_dom_lim_loop)
+    if self.ncs_groups is not None:
+      cif_block.add_loop(ncs_oper_loop)
+      cif_block.add_loop(ncs_ens_gen_loop)
     return cif_block
 
   def show_torsion_ncs_groups(self, out = None):
@@ -665,20 +749,19 @@ class model(object):
 
   def as_cif_block(self, cif_block=None):
     import iotbx.pdb.mmcif
-    if(self.geometry is not None):
+    if self.geometry is not None:
       cif_block = self.geometry.as_cif_block(cif_block=cif_block)
     cif_block = self.adp.as_cif_block(cif_block=cif_block)
-    if(self.tls_groups is not None):
+    if self.tls_groups is not None:
       cif_block = iotbx.pdb.mmcif.tls_as_cif_block(
         tlsos=self.tls_groups.tlsos,
         selection_strings=self.tls_groups.selection_strings,
         cif_block=cif_block)
-    if(self.anomalous_scatterer_groups is not None):
+    if self.anomalous_scatterer_groups is not None:
       pass
       #self.show_anomalous_scatterer_groups(out = out)
-    if(self.ncs_groups is not None):
-      pass
-      self.ncs_groups_as_cif_block(out = out)
+    if self.ncs_groups is not None or self.ncs_manager is not None:
+      self.ncs_as_cif_block(cif_block=cif_block)
     return cif_block
 
 class info(object):
