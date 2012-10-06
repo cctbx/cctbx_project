@@ -151,6 +151,8 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
                   atom.set_b(B_iso_or_equiv[i_atom])
                   atom.set_occ(occu[i_atom])
                   atom.set_serial(atom_site_id[i_atom])
+                  # some code relies on an empty segid being 4 spaces
+                  atom.set_segid("    ")
                   if formal_charge is not None:
                     charge = formal_charge[i_atom]
                     if charge not in ("?", "."):
