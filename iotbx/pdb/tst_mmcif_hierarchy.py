@@ -64,6 +64,8 @@ HETATM 684 O O    B EOH B 2 . 14.811 2.078  12.602 0.40 5.53  66 EOH A O    1
   builder = pdb_hierarchy_builder(cif_model["1AB1"])
   #assert builder.crystal_symmetry is None
   hierarchy = builder.hierarchy
+  atoms = hierarchy.atoms()
+  assert atoms[0].segid == "    " # some code relies on this
   s = StringIO()
   hierarchy.show(out=s)
   assert not show_diff(s.getvalue(), """\
