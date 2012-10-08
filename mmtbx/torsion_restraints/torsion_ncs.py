@@ -1406,6 +1406,10 @@ class torsion_ncs(object):
     return torsion_counts
 
   def get_torsion_rmsd(self, sites_cart):
+    self.histogram_under_limit = None
+    self.histogram_over_limit = None
+    self.torsion_rmsd = None
+    self.all_torsion_rmsd = None
     dp_proxies_under_limit = cctbx.geometry_restraints.shared_dihedral_proxy()
     dp_proxies_over_limit = cctbx.geometry_restraints.shared_dihedral_proxy()
     for dp in self.ncs_dihedral_proxies:
@@ -1425,23 +1429,30 @@ class torsion_ncs(object):
     torsion_deltas_all = cctbx.geometry_restraints.dihedral_deltas(
                        sites_cart = sites_cart,
                        proxies = self.ncs_dihedral_proxies)
-    self.histogram_under_limit = \
-      flex.histogram(data=flex.abs(torsion_deltas_under_limit),
-                     data_min=0.0,
-                     data_max=self.limit,
-                     n_slots=10)
-    self.histogram_over_limit = \
-      flex.histogram(data=flex.abs(torsion_deltas_over_limit),
-                     data_min=self.limit,
-                     data_max=math.ceil(
-                       max(flex.abs(torsion_deltas_over_limit))),
-                     n_slots=10)
-    self.torsion_rmsd = self.calculate_torsion_rmsd(
-                          deltas=torsion_deltas_under_limit)
-    self.all_torsion_rmsd = self.calculate_torsion_rmsd(
-                          deltas=torsion_deltas_all)
+    if len(torsion_deltas_under_limit) > 0:
+      self.histogram_under_limit = \
+        flex.histogram(
+          data=flex.abs(torsion_deltas_under_limit),
+          data_min=0.0,
+          data_max=self.limit,
+          n_slots=10)
+      self.torsion_rmsd = self.calculate_torsion_rmsd(
+                            deltas=torsion_deltas_under_limit)
+    if ( (len(torsion_deltas_over_limit) > 0) and
+         (limit < 180.0) ):
+      self.histogram_over_limit = \
+        flex.histogram(
+          data=flex.abs(torsion_deltas_over_limit),
+          data_min=self.limit,
+          data_max=math.ceil(
+          max(flex.abs(torsion_deltas_over_limit))),
+          n_slots=10)
+    if len(torsion_deltas_all) > 0:
+      self.all_torsion_rmsd = self.calculate_torsion_rmsd(
+                                deltas=torsion_deltas_all)
 
   def calculate_torsion_rmsd(self, deltas):
+    assert len(deltas) > 0
     delta_sq_sum = 0.0
     for delta in deltas:
       delta_sq_sum += ( abs(delta)**2 )
