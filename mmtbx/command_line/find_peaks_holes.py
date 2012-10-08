@@ -402,11 +402,12 @@ mmtbx.find_peaks_holes - difference map analysis
     result.save_pdb_file(file_name="%s.pdb" % prefix, log=out)
   if (cmdline.params.write_maps) :
     import mmtbx.maps.utils
+    import iotbx.map_tools
     f_map, diff_map = mmtbx.maps.utils.get_maps_from_fmodel(fmodel)
     anom_map = None
     if (fmodel.f_obs().anomalous_flag()) and (not fmodel.twin) :
       anom_map = mmtbx.maps.utils.get_anomalous_map(fmodel)
-    mmtbx.maps.utils.write_map_coeffs(
+    iotbx.map_tools.write_map_coeffs(
       fwt_coeffs=f_map,
       delfwt_coeffs=diff_map,
       file_name="%s_maps.mtz" % prefix,

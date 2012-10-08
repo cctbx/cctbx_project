@@ -129,8 +129,9 @@ def transform_map_by_lsq_fit (fft_map,
         file_name=file_name,
         buffer=buffer)
     else :
+      import iotbx.map_tools
       print >> log, "    saving CCP4 map to %s" % file_name
-      mmtbx.maps.utils.write_ccp4_map(
+      iotbx.map_tools.write_ccp4_map(
         sites_cart=xray_structure.sites_cart(),
         unit_cell=fake_symm.unit_cell(),
         map_data=map_data_superposed,

@@ -145,10 +145,11 @@ class fast_maps_from_hkl_file (object) :
     return f_map, df_map, anom_map
 
   def run (self) :
+    import iotbx.map_tools
     (f_map, df_map, anom_map) = self.get_maps_from_fmodel()
     if self.map_out is None :
       self.map_out = os.path.splitext(self.file_name)[0] + "_map_coeffs.mtz"
-    write_map_coeffs(f_map, df_map, self.map_out, anom_map)
+    iotbx.map_tools.write_map_coeffs(f_map, df_map, self.map_out, anom_map)
 
 def get_maps_from_fmodel (fmodel) :
   map_manager = fmodel.electron_density_map()
@@ -167,24 +168,10 @@ def get_anomalous_map (fmodel) :
     anom_coeffs = anom_coeffs.average_bijvoet_mates()
   return anom_coeffs
 
-def write_map_coeffs (fwt_coeffs, delfwt_coeffs, file_name, anom_coeffs=None) :
-  import iotbx.mtz
-  decorator = iotbx.mtz.label_decorator(phases_prefix="PH")
-  mtz_dataset = fwt_coeffs.as_mtz_dataset(
-    column_root_label="2FOFCWT",
-    label_decorator=decorator)
-  mtz_dataset.add_miller_array(
-    miller_array=delfwt_coeffs,
-    column_root_label="FOFCWT",
-    label_decorator=decorator)
-  if (anom_coeffs is not None) :
-    mtz_dataset.add_miller_array(
-      miller_array=anom_coeffs,
-      column_root_label="ANOM",
-      label_decorator=decorator)
-  mtz_object = mtz_dataset.mtz_object()
-  mtz_object.write(file_name=file_name)
-  del mtz_object
+# XXX redundant, needs to be eliminated
+def write_map_coeffs (*args, **kwds) :
+  import iotbx.map_tools
+  return iotbx.map_tools.write_map_coeffs(*args, **kwds)
 
 #-----------------------------------------------------------------------
 # XPLOR MAP OUTPUT
@@ -229,212 +216,7 @@ def write_xplor_map(sites_cart, unit_cell, map_data, n_real, file_name,
     average            = -1,
     standard_deviation = -1)
 
-def xplor_maps_from_refine_mtz (pdb_file, mtz_file, file_base=None,
-    limit_arrays=None, grid_resolution_factor=0.33) :
-  if file_base is None :
-    file_base = os.path.join(os.path.dirname(mtz_file), "refine")
-  if not os.path.isfile(pdb_file) :
-    raise Sorry("The PDB file '%s' does not exist.")
-  from iotbx import file_reader
-  output_arrays = extract_phenix_refine_map_coeffs(mtz_file, limit_arrays)
-  pdb_in = file_reader.any_file(pdb_file)
-  pdb_in.assert_file_type("pdb")
-  xray_structure = pdb_in.file_object.xray_structure_simple()
-  output_files = []
-  for (map_coeffs, map_name) in output_arrays :
-    file_name = "%s_%s.map" % (file_base, map_name)
-    if (not os.path.exists(file_name) or
-        os.path.getmtime(file_name) < os.path.getmtime(mtz_file)) :
-      xplor_map_from_coeffs(miller_array=map_coeffs,
-        output_file=file_name,
-        xray_structure=xray_structure,
-        grid_resolution_factor=grid_resolution_factor)
-      output_files.append(file_name)
-  return output_files
-
-def xplor_map_from_coeffs (miller_array, output_file, pdb_file=None,
-    xray_structure=None, grid_resolution_factor=0.33) :
-  import mmtbx.maps
-  from iotbx import file_reader
-  map_phil = libtbx.phil.parse("""map.file_name = %s """ % output_file)
-  master_phil = mmtbx.maps.map_and_map_coeff_master_params()
-  params = master_phil.fetch(source=map_phil).extract().map[0]
-  params.file_name = output_file
-  params.region = "selection"
-  params.scale = "sigma"
-  params.grid_resolution_factor = grid_resolution_factor
-  if xray_structure is None :
-    if pdb_file is None or not os.path.isfile(pdb_file) :
-      params.region = "cell"
-    else :
-      pdb_in = file_reader.any_file(pdb_file)
-      pdb_in.assert_file_type("pdb")
-      xray_structure = pdb_in.file_object.xray_structure_simple()
-  mmtbx.maps.write_xplor_map_file(params=params,
-    coeffs=miller_array,
-    xray_structure=xray_structure)
-
-# XXX: sorta gross, but for pre-calculated map coefficients like FWT,PHWT,
-# pass the label string as the f_label argument.
-def xplor_map_from_mtz (pdb_file, mtz_file, output_file=None,
-    f_label="FP", phi_label="PHIM", fom_label="FOMM") :
-  if output_file is None :
-    output_file = "resolve.map"
-  map_coeffs = map_coeffs_from_mtz_file(mtz_file, f_label, phi_label, fom_label)
-  if (not os.path.isfile(output_file) or
-      os.path.getmtime(output_file) < os.path.getmtime(mtz_file)) :
-    xplor_map_from_coeffs(map_coeffs, output_file, pdb_file)
-  return output_file
-
-def xplor_map_from_resolve_mtz (pdb_file, mtz_file, force=False) :
-  output_file = mtz_file[:-4] + ".map"
-  if (force or not os.path.isfile(output_file) or
-      os.path.getmtime(output_file) < os.path.getmtime(mtz_file)) :
-    xplor_map_from_mtz(pdb_file=pdb_file,
-      mtz_file=mtz_file,
-      output_file=output_file,
-      f_label="FP,SIGFP",
-      phi_label="PHIM",
-      fom_label="FOMM")
-  return output_file
-
-def xplor_map_from_solve_mtz (pdb_file, mtz_file, force=False) :
-  output_file = mtz_file[:-4] + ".map"
-  if (force or not os.path.isfile(output_file) or
-      os.path.getmtime(output_file) < os.path.getmtime(mtz_file)) :
-    xplor_map_from_mtz(pdb_file=pdb_file,
-      mtz_file=mtz_file,
-      output_file=output_file,
-      f_label="FP,SIGFP",
-      phi_label="PHIB",
-      fom_label="FOM")
-  return output_file
-
-#-----------------------------------------------------------------------
-# CCP4 MAP OUTPUT
-
-def ccp4_maps_from_refine_mtz (mtz_file,
-                               pdb_file=None,
-                               file_base=None,
-                               limit_arrays=None,
-                               resolution_factor=0.33) :
-  if file_base is None :
-    file_base = os.path.join(os.path.dirname(mtz_file), "refine")
-  output_arrays = extract_phenix_refine_map_coeffs(mtz_file)
-  output_files = []
-  for (map_coeffs, map_name) in output_arrays :
-    file_name = "%s_%s.ccp4" % (file_base, map_name)
-    if (not os.path.exists(file_name) or
-        os.path.getmtime(file_name) < os.path.getmtime(mtz_file)) :
-      ccp4_map_from_coeffs(
-        miller_array=map_coeffs,
-        output_file=file_name,
-        pdb_file=pdb_file,
-        grid_resolution_factor=resolution_factor)
-      output_files.append(file_name)
-  return output_files
-
-def ccp4_map_from_mtz (mtz_file,
-                       pdb_file=None,
-                       output_file=None,
-                       f_label="FP",
-                       phi_label="PHIM",
-                       fom_label="FOMM",
-                       resolution_factor=1/3.0,
-                       force=True) :
-  if output_file is None :
-    output_file = os.path.splitext(mtz_file)[0] + ".ccp4"
-  if (force or not os.path.isfile(output_file) or
-      os.path.getmtime(output_file) < os.path.getmtime(mtz_file)) :
-    map_coeffs = map_coeffs_from_mtz_file(mtz_file, f_label, phi_label,
-      fom_label)
-    ccp4_map_from_coeffs(
-      miller_array=map_coeffs,
-      output_file=output_file,
-      pdb_file=pdb_file,
-      grid_resolution_factor=resolution_factor)
-  return output_file
-
-def ccp4_map_from_resolve_mtz (mtz_file, force=False, resolution_factor=1/3.0,
-    pdb_file=None) :
-  return ccp4_map_from_mtz(mtz_file=mtz_file,
-    pdb_file=pdb_file,
-    f_label="FP,SIGFP",
-    phi_label="PHIM",
-    fom_label="FOMM",
-    resolution_factor=resolution_factor,
-    force=force)
-
-def ccp4_map_from_solve_mtz (mtz_file, force=False, resolution_factor=1/3.0,
-    pdb_file=None) :
-  return ccp4_map_from_mtz(mtz_file=mtz_file,
-    pdb_file=pdb_file,
-    f_label="FP,SIGFP",
-    phi_label="PHIB",
-    fom_label="FOM",
-    resolution_factor=resolution_factor,
-    force=force)
-
-def convert_map_coefficients (map_coefficients,
-                              mtz_file,
-                              pdb_file=None,
-                              grid_resolution_factor=0.33) :
-  assert os.path.isfile(mtz_file)
-  map_files = []
-  from iotbx import file_reader
-  mtz_in = file_reader.any_file(mtz_file)
-  mtz_in.assert_file_type("hkl")
-  xray_structure = None
-  if (pdb_file is not None) :
-    pdb_in = file_reader.any_file(pdb_file)
-    pdb_in.assert_file_type("pdb")
-    xray_structure = pdb_in.file_object.xray_structure_simple()
-  for map in map_coefficients :
-    array_label = map.mtz_label_amplitudes + "," + map.mtz_label_phases
-    map_array = None
-    for miller_array in mtz_in.file_server.miller_arrays :
-      if (miller_array.info().label_string() == array_label) :
-        map_array = miller_array
-        break
-    if (map_array is None) :
-      print "Can't find %s" % array_label
-      continue
-    if mtz_file.endswith("_map_coeffs.mtz") :
-      base_file = re.sub("_map_coeffs.mtz", "", mtz_file)
-    else :
-      base_file, ext = os.path.splitext(mtz_file)
-    output_file = base_file + "_%s.ccp4" % map.map_type
-    ccp4_map_from_coeffs(
-      miller_array=map_array,
-      output_file=output_file,
-      xray_structure=xray_structure,
-      grid_resolution_factor=grid_resolution_factor)
-    map_files.append((output_file, map.map_type))
-  return map_files
-
-def ccp4_map_from_coeffs (miller_array, output_file, pdb_file=None,
-    xray_structure=None, grid_resolution_factor=0.33) :
-  assert miller_array.is_complex_array()
-  import mmtbx.maps
-  from iotbx import file_reader
-  map_phil = libtbx.phil.parse("""map.file_name = %s """ % output_file)
-  if (xray_structure is None) :
-    if (pdb_file is not None) and (os.path.isfile(pdb_file)) :
-      pdb_in = file_reader.any_file(pdb_file)
-      assert (pdb_in.file_type == "pdb")
-      xray_structure = pdb_in.file_object.xray_structure_simple()
-  sites_cart = None
-  if (xray_structure is not None) :
-    sites_cart = xray_structure.sites_cart()
-  fft_map = miller_array.fft_map(resolution_factor=grid_resolution_factor)
-  fft_map.apply_sigma_scaling()
-  write_ccp4_map(
-    sites_cart=sites_cart,
-    unit_cell=miller_array.unit_cell(),
-    map_data=fft_map.real_map(),
-    n_real=fft_map.n_real(),
-    file_name=output_file)
-
+# FIXME redundant with iotbx.map_tools
 def write_ccp4_map (sites_cart, unit_cell, map_data, n_real, file_name,
     buffer=10) :
   import iotbx.ccp4_map
