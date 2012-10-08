@@ -728,20 +728,24 @@ class model(object):
             print >> out, pr+"                      : %s"%line
         count += torsion_counts[selection]
       print >> out,pr+"   RESTRAINED TORSIONS: %-d" % count
-      print >> out,pr+"   BELOW LIMIT RMSD   : %-10.3f" % \
-        self.ncs_manager.torsion_rmsd
-      print >> out,pr+"   ALL RESTRAINT RMSD : %-10.3f" % \
-        self.ncs_manager.all_torsion_rmsd
-    print >> out, pr + "  Histogram of differences under limit:"
-    self.ncs_manager.histogram_under_limit.show(
-      f=out,
-      prefix=pr+"  ",
-      format_cutoffs="%8.3f")
-    print >> out, pr + "  Histogram of differences over limit:"
-    self.ncs_manager.histogram_over_limit.show(
-      f=out,
-      prefix=pr+"  ",
-      format_cutoffs="%8.3f")
+      if self.ncs_manager.torsion_rmsd is not None:
+        print >> out,pr+"   BELOW LIMIT RMSD   : %-10.3f" % \
+          self.ncs_manager.torsion_rmsd
+      if self.ncs_manager.all_torsion_rmsd is not None:
+        print >> out,pr+"   ALL RESTRAINT RMSD : %-10.3f" % \
+          self.ncs_manager.all_torsion_rmsd
+    if self.ncs_manager.histogram_under_limit is not None:
+      print >> out, pr + "  Histogram of differences under limit:"
+      self.ncs_manager.histogram_under_limit.show(
+        f=out,
+        prefix=pr+"  ",
+        format_cutoffs="%8.3f")
+    if self.ncs_manager.histogram_over_limit is not None:
+      print >> out, pr + "  Histogram of differences over limit:"
+      self.ncs_manager.histogram_over_limit.show(
+        f=out,
+        prefix=pr+"  ",
+        format_cutoffs="%8.3f")
 
   def show_anomalous_scatterer_groups(self, out = None):
     if(out is None): out = sys.stdout
