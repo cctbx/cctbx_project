@@ -294,7 +294,8 @@ def run (args, log=sys.stdout) :
       file_info.append((map_file_name, "XPLOR map"))
     else :
       if sites_cart is not None :
-        utils.write_ccp4_map(
+        import iotbx.map_tools
+        iotbx.map_tools.write_ccp4_map(
           sites_cart=sites_cart,
           unit_cell=map_coeffs.unit_cell(),
           map_data=map.real_map(),

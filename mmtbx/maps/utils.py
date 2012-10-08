@@ -216,47 +216,6 @@ def write_xplor_map(sites_cart, unit_cell, map_data, n_real, file_name,
     average            = -1,
     standard_deviation = -1)
 
-# FIXME redundant with iotbx.map_tools
-def write_ccp4_map (sites_cart, unit_cell, map_data, n_real, file_name,
-    buffer=10) :
-  import iotbx.ccp4_map
-  from cctbx import sgtbx
-  from scitbx.array_family import flex
-  if sites_cart is not None :
-    frac_min, frac_max = unit_cell.box_frac_around_sites(
-      sites_cart=sites_cart,
-      buffer=buffer)
-  else :
-    frac_min, frac_max = (0.0, 0.0, 0.0), (1.0, 1.0, 1.0)
-  gridding_first = tuple([ifloor(f*n) for f,n in zip(frac_min,n_real)])
-  gridding_last = tuple([iceil(f*n) for f,n in zip(frac_max,n_real)])
-  space_group = sgtbx.space_group_info("P1").group()
-  iotbx.ccp4_map.write_ccp4_map(
-    file_name=file_name,
-    unit_cell=unit_cell,
-    space_group=space_group,
-    gridding_first=gridding_first,
-    gridding_last=gridding_last,
-    map_data=map_data,
-    labels=flex.std_string(["mmtbx.utils.write_ccp4_map_box"]))
-
-class write_ccp4_maps_wrapper (object) :
-  def __init__ (self, pdb_hierarchy, map_coeffs, output_files,
-      resolution_factor) :
-    adopt_init_args(self, locals())
-
-  def run (self) :
-    sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
-    for map_coeffs, file_name in zip(self.map_coeffs, self.output_files) :
-      if (map_coeffs is None) :
-        continue
-      fft_map = map_coeffs.fft_map(resolution_factor=self.resolution_factor)
-      write_ccp4_map(sites_cart,
-        unit_cell=map_coeffs.unit_cell(),
-        map_data=fft_map.real_map(),
-        n_real=fft_map.n_real(),
-        file_name=file_name)
-
 # XXX backwards compatibility
 # TODO remove these ASAP once GUI is thoroughly tested
 def extract_map_coeffs (*args, **kwds) :
