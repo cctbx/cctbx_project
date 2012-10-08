@@ -4,7 +4,7 @@ from __future__ import division
 from libtbx.str_utils import make_sub_header, format_value
 from libtbx.utils import Sorry, Usage, null_out
 from libtbx import runtime_utils
-from libtbx import group_args
+from libtbx import group_args, adopt_init_args
 from math import sqrt
 import sys
 
@@ -56,6 +56,48 @@ loggraph = False
 include scope libtbx.phil.interface.tracking_params
 """ % merging_params_str
 
+class model_based_arrays (object) :
+  """
+  Container for observed and calculated intensities, along with the selections
+  for work and free sets; these should be provided by mmtbx.f_model.  It is
+  assumed (or hoped) that the resolution range of these arrays will be
+  the same as that of the unmerged data, but the current implementation does
+  not force this.
+  """
+  def __init__ (self, i_obs, i_calc, work_sel, free_sel) :
+    assert (i_obs.data().size() == i_calc.data().size() ==
+            work_sel.data().size() == free_sel.data().size())
+    adopt_init_args(self, locals())
+
+  def cc_work_and_free (self, other) :
+    """
+    Given a unique array of arbitrary resolution range, extract the equivalent
+    reflections from the observed and calculated intensities, and calculate
+    CC and R-factor for work and free sets.  Currently, these statistics will
+    be None if there are no matching reflections.
+    """
+    assert (self.i_obs.is_similar_symmetry(other))
+    i_obs_sel = self.i_obs.common_set(other=other)
+    i_calc_sel = self.i_calc.common_set(other=other)
+    work_sel = self.work_sel.common_set(other=other)
+    free_sel = self.free_sel.common_set(other=other)
+    if (len(i_obs_sel.data()) == 0) : # XXX should this raise an error?
+      return [None] * 4
+    obs_work = i_obs_sel.select(work_sel.data())
+    calc_work = i_calc_sel.select(work_sel.data())
+    obs_free = i_obs_sel.select(free_sel.data())
+    calc_free = i_calc_sel.select(free_sel.data())
+    if (len(obs_work.data()) > 0) and (len(obs_free.data()) > 0) :
+      from scitbx.array_family import flex
+      cc_work = flex.linear_correlation(obs_work.data(),
+        calc_work.data()).coefficient()
+      cc_free = flex.linear_correlation(obs_free.data(),
+          calc_free.data()).coefficient()
+      r_work = obs_work.f_sq_as_f().r1_factor(calc_work.f_sq_as_f())
+      r_free = obs_free.f_sq_as_f().r1_factor(calc_free.f_sq_as_f())
+      return cc_work, cc_free, r_work, r_free
+    return [None] * 4
+
 class merging_stats (object) :
   """
   Calculate standard merging statistics for (scaled) unmerged data.  Usually
@@ -65,7 +107,7 @@ class merging_stats (object) :
   Reflections with negative sigmas will be discarded, and also, per the
   recommendation of Kay Diederichs, reflections where I < -3 * sigmaI.
   """
-  def __init__ (self, array, anomalous=False, debug=None) :
+  def __init__ (self, array, model_arrays=None, anomalous=False, debug=None) :
     import cctbx.miller
     from scitbx.array_family import flex
     assert (array.sigmas() is not None)
@@ -134,15 +176,27 @@ class merging_stats (object) :
         mult = -1.
       self.cc_star = mult * sqrt((2*abs(self.cc_one_half)) /
                                  (1 + self.cc_one_half))
+    self.cc_work = self.cc_free = self.r_work = self.r_free = None
+    if (model_arrays is not None) :
+      self.cc_work, self.cc_free, self.r_work, self.r_free = \
+        model_arrays.cc_work_and_free(array_merged)
 
   def format (self) :
-    return "%6.2f  %6.2f %6d %6d   %5.2f %6.2f  %8.1f  %6.1f  %5.3f  %5.3f  %5.3f  %5.3f" % (
+    return "%6.2f %6.2f %6d %6d   %5.2f %6.2f  %8.1f  %6.1f  %5.3f  %5.3f  %5.3f  %5.3f" % (
       self.d_max, self.d_min,
       self.n_obs, self.n_uniq,
       self.mean_redundancy, self.completeness*100,
       self.i_mean, self.i_over_sigma_mean,
       self.r_merge, self.r_meas, self.r_pim,
       self.cc_one_half)
+
+  def format_for_model_cc (self) :
+    return "%6.2f  %6.2f  %6d  %6.2f  %6.2f  %5.3f  %5.3f   %s   %s  %s  %s"%(
+      self.d_max, self.d_min, self.n_uniq,
+      self.completeness*100, self.i_over_sigma_mean,
+      self.cc_one_half, self.cc_star,
+      format_value("%5.3f", self.cc_work), format_value("%5.3f", self.cc_free),
+      format_value("%5.3f", self.r_work), format_value("%5.3f", self.r_free))
 
   def format_for_gui (self) :
     return [ "%.2f - %.2f" % (self.d_max, self.d_min),
@@ -191,6 +245,7 @@ class dataset_statistics (object) :
       n_bins=10,
       debug=False,
       file_name=None,
+      model_arrays=None,
       log=None) :
     self.file_name = file_name
     if (log is None) : log = null_out()
@@ -216,7 +271,8 @@ class dataset_statistics (object) :
       self.anom_extra = " (non-anomalous)"
     i_obs.setup_binner(n_bins=n_bins)
     merge = i_obs.merge_equivalents()
-    self.overall = merging_stats(i_obs, anomalous=anomalous, debug=debug)
+    self.overall = merging_stats(i_obs,
+      model_arrays=model_arrays, anomalous=anomalous, debug=debug)
     self.bins = []
     self.table = data_plots.table_data(
       title="Intensity merging statistics",
@@ -231,6 +287,7 @@ class dataset_statistics (object) :
     for bin in i_obs.binner().range_used() :
       sele_unmerged = i_obs.binner().selection(bin)
       bin_stats = merging_stats(i_obs.select(sele_unmerged),
+        model_arrays=model_arrays,
         anomalous=anomalous,
         debug=debug)
       self.bins.append(bin_stats)
@@ -254,10 +311,18 @@ class dataset_statistics (object) :
     print >> out, ""
     print >> out, """\
   Statistics by resolution bin:
- d_min   d_max   #obs  #uniq   mult.  %comp       <I>  <I/sI>  r_mrg r_meas  r_pim  cc1/2"""
+ d_max  d_min   #obs  #uniq   mult.  %comp       <I>  <I/sI>  r_mrg r_meas  r_pim  cc1/2"""
     for bin_stats in self.bins :
       print >> out, bin_stats.format()
     print >> out, self.overall.format()
+
+  def show_cc_star (self, out=None) :
+    make_sub_header("CC* and related statistics", out=out)
+    print >> out, """\
+ d_max   d_min  n_uniq  compl. <I/sI>  cc_1/2    cc* cc_work cc_free r_work r_free"""
+    for k, bin in enumerate(self.bins) :
+      print >> out, bin.format_for_model_cc()
+    print >> out, self.overall.format_for_model_cc()
 
   def extract_outer_shell_stats (self) :
     """
@@ -368,8 +433,10 @@ Full parameters:
   result.show(out=out)
   if (params.loggraph) :
     result.show_loggraph()
+  print >> out, ""
   print >> out, "References:"
   print >> out, citations_str
+  print >> out, ""
   return result
 
 #-----------------------------------------------------------------------
