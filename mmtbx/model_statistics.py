@@ -710,6 +710,8 @@ class model(object):
     restraint_groups = self.ncs_manager.params.restraint_group
     torsion_counts=self.ncs_manager.get_number_of_restraints_per_group(
       pdb_hierarchy=self.pdb_hierarchy)
+    sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
+    self.ncs_manager.get_torsion_rmsd(sites_cart=sites_cart)
     pr = "REMARK   3  "
     print >>out,pr+"TORSION NCS DETAILS."
     print >>out,pr+" NUMBER OF NCS GROUPS : %-6d"%len(restraint_groups)
@@ -726,6 +728,20 @@ class model(object):
             print >> out, pr+"                      : %s"%line
         count += torsion_counts[selection]
       print >> out,pr+"   RESTRAINED TORSIONS: %-d" % count
+      print >> out,pr+"   BELOW LIMIT RMSD   : %-10.3f" % \
+        self.ncs_manager.torsion_rmsd
+      print >> out,pr+"   ALL RESTRAINT RMSD : %-10.3f" % \
+        self.ncs_manager.all_torsion_rmsd
+    print >> out, pr + "  Histogram of differences under limit:"
+    self.ncs_manager.histogram_under_limit.show(
+      f=out,
+      prefix=pr+"  ",
+      format_cutoffs="%8.3f")
+    print >> out, pr + "  Histogram of differences over limit:"
+    self.ncs_manager.histogram_over_limit.show(
+      f=out,
+      prefix=pr+"  ",
+      format_cutoffs="%8.3f")
 
   def show_anomalous_scatterer_groups(self, out = None):
     if(out is None): out = sys.stdout
