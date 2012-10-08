@@ -73,6 +73,7 @@ Full parameters:
   if ((params.write_maps == True) or
       ((len(outliers) > 0) and (params.write_maps in [Auto, True]))) :
     import mmtbx.maps.utils
+    import iotbx.map_tools
     f_map, diff_map = mmtbx.maps.utils.get_maps_from_fmodel(cmdline.fmodel)
     anom_map = None
     if (cmdline.fmodel.f_obs().anomalous_flag()) :
@@ -80,7 +81,7 @@ Full parameters:
     base_name = os.path.basename(
       os.path.splitext(params.input.xray_data.file_name)[0])
     map_file = base_name + "_maps.mtz"
-    mmtbx.maps.utils.write_map_coeffs(
+    iotbx.map_tools.write_map_coeffs(
       fwt_coeffs=f_map,
       delfwt_coeffs=diff_map,
       file_name=map_file,
