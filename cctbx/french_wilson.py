@@ -300,6 +300,7 @@ def french_wilson_scale(
       miller_array,
       params=None,
       sigma_iobs_rejection_criterion=None,
+      merge=False,
       log=None):
   from cctbx.array_family import flex
   if not miller_array.is_xray_intensity_array():
@@ -309,6 +310,12 @@ def french_wilson_scale(
   if miller_array.crystal_symmetry() is None:
     raise Sorry("No crystal symmetry information found. Please supply "+
                 "crystal symmetry data.")
+  if (not miller_array.is_unique_set_under_symmetry()) :
+    if (merge) :
+      miller_array = miller_array.merge_equivalents().array()
+    else :
+      raise Sorry("Unmerged data not allowed - please merge "+
+        "symmetry-equivalent reflections first.")
   if params == None:
     params = master_phil.extract()
   if (params.max_bins is None) : # XXX reset in case of user error
