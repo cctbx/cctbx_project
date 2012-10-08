@@ -99,6 +99,9 @@ def run (args, out=sys.stdout) :
     raise Sorry("Couldn't find intensities!")
   sigma_iobs_rejection_criterion = work_params.french_wilson.\
     sigma_iobs_rejection_criterion
+  if (not i_obs.is_unique_set_under_symmetry()) :
+    print >> out, "Merging symmetry-equivalent reflections"
+    i_obs = i_obs.merge_equivalents().array()
   f_obs = french_wilson.french_wilson_scale(miller_array=i_obs,
     params=params,
     sigma_iobs_rejection_criterion=sigma_iobs_rejection_criterion,
