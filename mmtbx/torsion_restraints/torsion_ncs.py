@@ -10,7 +10,7 @@ from cctbx.array_family import flex
 import iotbx.phil
 from scitbx.matrix import rotate_point_around_axis
 from libtbx.str_utils import make_sub_header
-import sys
+import sys, math
 from mmtbx.ncs import restraints
 from libtbx.utils import Sorry
 from mmtbx.torsion_restraints import utils
@@ -1404,6 +1404,48 @@ class torsion_ncs(object):
           if dp.i_seqs[0] in sel_atoms_i:
             torsion_counts[selection] += 1
     return torsion_counts
+
+  def get_torsion_rmsd(self, sites_cart):
+    dp_proxies_under_limit = cctbx.geometry_restraints.shared_dihedral_proxy()
+    dp_proxies_over_limit = cctbx.geometry_restraints.shared_dihedral_proxy()
+    for dp in self.ncs_dihedral_proxies:
+      di = cctbx.geometry_restraints.dihedral(
+             sites_cart=sites_cart, proxy=dp)
+      delta = abs(di.delta)
+      if delta <= self.limit:
+        dp_proxies_under_limit.append(dp)
+      else:
+        dp_proxies_over_limit.append(dp)
+    torsion_deltas_under_limit = cctbx.geometry_restraints.dihedral_deltas(
+                       sites_cart = sites_cart,
+                       proxies = dp_proxies_under_limit)
+    torsion_deltas_over_limit = cctbx.geometry_restraints.dihedral_deltas(
+                       sites_cart = sites_cart,
+                       proxies = dp_proxies_over_limit)
+    torsion_deltas_all = cctbx.geometry_restraints.dihedral_deltas(
+                       sites_cart = sites_cart,
+                       proxies = self.ncs_dihedral_proxies)
+    self.histogram_under_limit = \
+      flex.histogram(data=flex.abs(torsion_deltas_under_limit),
+                     data_min=0.0,
+                     data_max=self.limit,
+                     n_slots=10)
+    self.histogram_over_limit = \
+      flex.histogram(data=flex.abs(torsion_deltas_over_limit),
+                     data_min=self.limit,
+                     data_max=math.ceil(
+                       max(flex.abs(torsion_deltas_over_limit))),
+                     n_slots=10)
+    self.torsion_rmsd = self.calculate_torsion_rmsd(
+                          deltas=torsion_deltas_under_limit)
+    self.all_torsion_rmsd = self.calculate_torsion_rmsd(
+                          deltas=torsion_deltas_all)
+
+  def calculate_torsion_rmsd(self, deltas):
+    delta_sq_sum = 0.0
+    for delta in deltas:
+      delta_sq_sum += ( abs(delta)**2 )
+    return math.sqrt(delta_sq_sum / len(deltas))
 
 #split out functions
 class get_ncs_groups(object):
