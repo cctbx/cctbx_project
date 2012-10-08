@@ -493,6 +493,30 @@ class write_ccp4_maps_wrapper (object) :
         n_real=fft_map.n_real(),
         file_name=file_name)
 
+def write_map_coeffs (fwt_coeffs, delfwt_coeffs, file_name, anom_coeffs=None) :
+  """
+  Convenience function for writing out 2mFo-DFc and mFo-DFc (and, optionally,
+  anomalous difference) map coefficients with predefined labels, which will
+  be recognized by the auto-open function in Coot.
+  """
+  import iotbx.mtz
+  decorator = iotbx.mtz.label_decorator(phases_prefix="PH")
+  mtz_dataset = fwt_coeffs.as_mtz_dataset(
+    column_root_label="2FOFCWT",
+    label_decorator=decorator)
+  mtz_dataset.add_miller_array(
+    miller_array=delfwt_coeffs,
+    column_root_label="FOFCWT",
+    label_decorator=decorator)
+  if (anom_coeffs is not None) :
+    mtz_dataset.add_miller_array(
+      miller_array=anom_coeffs,
+      column_root_label="ANOM",
+      label_decorator=decorator)
+  mtz_object = mtz_dataset.mtz_object()
+  mtz_object.write(file_name=file_name)
+  del mtz_object
+
 def get_map_summary (map, resolution_factor=0.25) :
   info = []
   real_map = map.real_map_unpadded()
