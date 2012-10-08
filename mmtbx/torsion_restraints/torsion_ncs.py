@@ -1439,7 +1439,7 @@ class torsion_ncs(object):
       self.torsion_rmsd = self.calculate_torsion_rmsd(
                             deltas=torsion_deltas_under_limit)
     if ( (len(torsion_deltas_over_limit) > 0) and
-         (limit < 180.0) ):
+         (self.limit < 180.0) ):
       self.histogram_over_limit = \
         flex.histogram(
           data=flex.abs(torsion_deltas_over_limit),
