@@ -2325,6 +2325,28 @@ input {
        cif_params.as_str(attributes_level=3))
 
 class cmdline_load_pdb_and_data (object) :
+  """
+  Wrapper for simple command-line programs which require both model and data.
+  The master_phil object should include cmdline_input_phil_str above, plus
+  any application-specific parameters.  Programs which use this can be invoked
+  using simple file arguments or explicit parameters, e.g.
+
+    mmtbx.some_program model.pdb data.mtz
+
+  This class performs the following functions (mostly using other wrappers
+  elsewhere in mmtbx.utils):
+    1. Process all arguments and extract as Python parameters
+    2. Read in data and R-free flags
+    3. Filter data and flags to be consistent if necessary
+    4. Read in PDB file, either using the iotbx.pdb API, or if process_pdb_file
+       is True, mmtbx.monomer_library.pdb_interpretation (using any CIF files
+       included in the inputs)
+    5. Extract the pdb_hierarchy and xray_structure objects.
+    6. Create an mmtbx.f_model.manager object using the data, flags, and
+       xray_structure.
+  If at any point the inputs are ambiguous, hopefully the program will stop
+  and raise an interpretable error.
+  """
   def __init__ (self,
       args,
       master_phil,
