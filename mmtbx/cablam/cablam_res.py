@@ -5,6 +5,8 @@ from __future__ import division
 #2012-09-05:
 #  prunerestype() moved to this module from cablam_training
 #  linked_residue.id_with_resname() changed to return pdb-column-formatted ids
+#2012-10-09:
+#  self.resid is now stored in each linked_residue object
 
 import sys
 from mmtbx.cablam.cablam_math import veclen, vectorize
@@ -69,13 +71,13 @@ class linked_residue():
       [self.pdbid, self.model, self.chain, str(self.resnum), self.icode])
     return resid_string
 
-  def id_with_resname(self, alt='', sep=' '):
-    try:
-      resname = self.alts[alt]['resname']
-    except KeyError:
-      #Some default was necessary
-      resname = 'XXX'
-      alt = ''
+  def id_with_resname(self):#, alt='', sep=' '):
+    #try:
+    #  resname = self.alts[alt]['resname']
+    #except KeyError:
+    #  #Some default was necessary
+    #  resname = 'XXX'
+    #  alt = ''
     resid_string = self.rg.atoms()[0].pdb_label_columns()[5:]
     return resid_string
 
@@ -158,6 +160,7 @@ class linked_residue():
     self.chain = chainid
     self.resnum = int(rg.resseq.strip())
     self.icode = rg.icode
+    self.resid = cablam_key(self.model, self.chain, self.resnum, self.icode)
 
     #alts: 'alt' and 'resname' keyed by ag.altloc in the form of '','A','B' etc.
     #atomxyz: xyz coords, indexed by ag.altloc, and atom.name within each alt

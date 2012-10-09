@@ -2,6 +2,8 @@ from __future__ import division
 # (jEdit options) :folding=explicit:collapseFolds=1:
 import sys
 
+#Gary K wants a search for sequence GGQ to look for RNA interaction motifs
+
 #{{{ fingerprint superclass, hold top-level methods and data
 class ssfingerprint():
 
