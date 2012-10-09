@@ -34,16 +34,17 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
       szr2_pad = wx.LEFT
     kwds['size'] = wx.DefaultSize
     wx.PyPanel.__init__(self, *args, **kwds)
-    self.SetValidator(PathValidator())
     self._formats = ()
     szr = wx.BoxSizer(szr_type)
     self.SetSizer(szr)
     self._path_text = wx.TextCtrl(self, -1, size=path_size,
-      style=wx.TE_PROCESS_ENTER)
+      style=wx.TE_PROCESS_ENTER,
+      name=self.GetName())
     self.Bind(wx.EVT_TEXT_ENTER, self.OnEnter, self._path_text)
     if (self._path_style & WXTBX_PHIL_PATH_UPDATE_ON_KILL_FOCUS) :
       self._path_text.Bind(wx.EVT_KILL_FOCUS, self.OnEnter)
-    self.GetValidator().Bind(wx.EVT_TEXT_ENTER, self.OnEnter)
+    self._path_text.SetValidator(PathValidator())
+    self._path_text.GetValidator().Bind(wx.EVT_TEXT_ENTER, self.OnEnter)
     szr.Add(self._path_text, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT)
     browse_btn = wx.Button(self, -1, "Browse...")
     szr2 = wx.BoxSizer(wx.HORIZONTAL)
@@ -96,7 +97,7 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
     self._path_text.SetBackgroundColour(*args, **kwds)
 
   def GetPhilValue (self) :
-    self._path_text.Validate()
+    self._path_text.GetValidator().Validate(self)
     val_str = self.GetValue()
     assert isinstance(val_str, str)
     if (val_str == "") :
@@ -112,7 +113,7 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
     return value
 
   def Validate (self) :
-    self.GetValidator().Validate(self)
+    self._path_text.GetValidator().Validate(self)
 
   def OnBrowse (self, event) :
     flags = 0
@@ -138,6 +139,8 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
         style=flags,
         wildcard=wildcard)
     if (new_path is not None) :
+      if ('}' in new_path) or ('{' in new_path) :
+        raise Sorry("Curly brackets ({}) are not allowed in pathnames.")
       self.SetValue(new_path)
       self.DoSendEvent()
 
@@ -181,8 +184,10 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
 
 class PathValidator (text_base.TextCtrlValidator) :
   def CheckFormat (self, value) :
-    style = self.GetWindow().GetPathStyle()
-    if (value == "") :
+    style = self.GetWindow().GetParent().GetPathStyle()
+    if ('}' in value) or ('{' in value) :
+      raise ValueError("Curly brackets ({}) are not allowed in pathnames.")
+    elif (value == "") :
       return ""
     elif (os.path.isfile(value)) :
       if (style & WXTBX_PHIL_PATH_DIRECTORY) :
