@@ -1315,6 +1315,7 @@ mmtbx/refinement/wx_tardy_pdb.py svneol=native#text/x-python
 mmtbx/regression/tst_add_h_to_water.py -text
 mmtbx/regression/tst_altloc_chain_break.py -text
 mmtbx/regression/tst_cablam.py -text
+mmtbx/regression/tst_examples.py -text
 mmtbx/regression/tst_find_peaks_holes.py -text
 mmtbx/regression/tst_ml_estimate.py -text
 mmtbx/regression/tst_msa.py -text

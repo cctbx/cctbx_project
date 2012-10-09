@@ -75,6 +75,7 @@ tst_list = (
   "$D/validation/sequence.py",
   "$D/regression/tst_prune_model.py",
   "$D/regression/tst_real_space_correlation.py",
+  "$D/regression/tst_examples.py",
   )
 
 def run():
