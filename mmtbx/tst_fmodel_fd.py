@@ -92,8 +92,6 @@ def exercise(space_group_info,
       xrs = xray_structure.deep_copy_scatterers()
       xrs.shake_sites_in_place(rms_difference=0.3)
       for target in mmtbx.refinement.targets.target_names:
-        if (target == "ml_sad") :
-          continue # FIXME disabled pending Phaser changes 2012-10-08
         if (quick):
           if (target not in ["ls_wunit_k1", "ml", "mlhl", "ml_sad"]):
             continue
