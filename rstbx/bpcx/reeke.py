@@ -487,8 +487,7 @@ class reeke_model:
         """Determine looping limits for indices h, k and l using the
         Reeke algorithm. This is the top level method for this module.
         All other methods are (probably) called by this, and therefore
-        may as well be private. Can clean this up later. Also lots of
-        debugging print statements to remove!"""
+        may as well be private."""
 
         # The outer loop is between limits for the axis most closely parallel,
         # or antiparallel, to the X-ray beam, which is called 'p'.
