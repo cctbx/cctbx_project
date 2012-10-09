@@ -27,6 +27,10 @@ from __future__ import division
 #2012-09-05:
 #  General cleanup. usage() help message and interpretation() guide to output.
 #  analyze_pdb() is now the easiest way to run the script from within phenix.
+#2012-10-09:
+#  The "outliers" object returned by analyze_pdb is now a dict instead of a list
+#  The keys are the same as those used by cablam_res. cablam_measures now
+#  handles all the calculations setup() needs.
 
 import os, sys
 import libtbx.phil.command_line #argument parsing
@@ -103,7 +107,7 @@ Options:
                            (default output)
   give_points=False        prints cablam-space points to screen,
                              in kinemage dotlist format
-  help=False               prints This usage text, plus notes on data
+  help=False               prints this usage text, plus notes on data
                              interpretation to screen
 
 Example:
@@ -134,19 +138,25 @@ Text:
   'loose_alpha' is a 2D percentile contour for this residue's similarity to
     alpha helix.  A high value indicates some amount of helix character, but not
     necessarily the presence of a regular helix.
+    >0.001 is meaningful, >0.01 is likely
 
   'regular_alpha' is a 2D percentile contour for this residue's similarity to
-    regular alpha helix.  The contours for regular helix are very tight, and any
-    value > 0 here, even 0.0001, is a strong indicator for helical behavior.
+    regular alpha helix.  The contours for regular helix are very tight.
+    >0.00001 is meaningful, >0.0001 is likely
 
   'loose_beta' is a 2D percentile contour for this residue's similarity to
     beta strand.  A high value indicates some amount of strand character, but
     not necessarily the presence of a regular strand.
+    >0.01 is meaningful, >0.1 is likely
 
   'regular_beta' is a 2D percentile contour for this residue's similarity to
     regular beta sheet.  Beta structure contours are generally more permissive
     than helix contours, and the contour values should not be judged on the same
     scale.
+    >0.001 is meaningful, >0.01 is likely
+
+    ('meaningful' and 'likely' scores are subject to change as the system is
+    refined)
 
 Kin:
   Kin output is provided in a kinemage format and should be appended to an open
@@ -185,7 +195,6 @@ def setup(hierarchy,pdbid='pdbid'):
   resdata=cablam_res.construct_linked_residues(hierarchy,targetatoms=['CA','C','N','O'],pdbid=pdbid)
   cablam_res.prunerestype(resdata, 'HOH')
   cablam_math.cablam_measures(resdata)
-  cablam_math.COpseudodihedrals(resdata)
   return resdata
 #-------------------------------------------------------------------------------
 #}}}
@@ -237,7 +246,7 @@ def fetch_motifs():
 #
 #These are used by the helix_or_sheet function
 def find_outliers(resdata,expectations,cutoff=0.05):
-  outliers = []
+  outliers = {}
   reskeys = resdata.keys()
   reskeys.sort()
   for resid in reskeys:
@@ -254,14 +263,14 @@ def find_outliers(resdata,expectations,cutoff=0.05):
 
       if percentile < cutoff:
         #sys.stderr.write(str(percentile)+'\n') #debug
-        outliers.append(cablam_validation(residue=residue,outlier_level=percentile))
+        outliers[resid] = cablam_validation(residue=residue,outlier_level=percentile)
   return outliers
 #}}}
 
 #{{{ helix_or_sheet (wrapper) and helix_or_sheet_res
 #targets is a list of reskeys to be looked at, targets=resdata.keys to check all
 def helix_or_sheet(outliers, motifs):
-  for outlier in outliers:
+  for outlier in outliers.values():
     residue = outlier.residue
     contours = helix_or_sheet_res(residue, motifs)
     if contours:
@@ -286,17 +295,20 @@ def helix_or_sheet_res(residue, motifs):
 
 #{{{ output functions
 #-------------------------------------------------------------------------------
-def give_kin(outliers, writeto=sys.stdout):
+def give_kin(outliers, outlier_cutoff, writeto=sys.stdout):
   #The kinemage markup is purple dihedrals following outlier CO angles
   #This angle was chosen because it is indicative of the most likely source of
   #  problems
   #Purple was chosen because it is easily distinguished from (green) Rama
   #  markup, and because the cablam measures share some philosophical
   #  similarity with perp distance in RNA markup
-  writeto.write('\n@kinemage\n')
-  writeto.write('@group {cablam outliers} dominant\n')
+  #writeto.write('\n@kinemage')
+  writeto.write('\n@group {cablam out '+str(outlier_cutoff)+'} dominant\n')
   writeto.write('@vectorlist {cablam outliers} color= purple width= 4 \n')
-  for outlier in outliers:
+  reskeys = outliers.keys()
+  reskeys.sort()
+  for resid in reskeys:
+    outlier = outliers[resid]
     #Shouldn't have to do checking here, since only residues with calculable values should get to this point
     residue = outlier.residue
     prevres = residue.prevres
@@ -326,18 +338,24 @@ def give_points(outliers, writeto=sys.stdout):
   writeto.write('\n@kinemage\n')
   writeto.write('@group {cablam outliers} dominant\n')
   writeto.write('@dotlist {cablam outliers}')
-  for outlier in outliers:
+  reskeys = outliers.keys()
+  reskeys.sort()
+  for resid in reskeys:
+    outlier = outliers[resid]
     residue = outlier.residue
     if 'CA_d_in' in residue.measures and 'CA_d_out' in residue.measures and 'CO_d_in' in residue.measures:
       cablam_point = [residue.measures['CA_d_in'],residue.measures['CA_d_out'],residue.measures['CO_d_in']]
-      writeto.write('{'+residue.id_with_resname(sep=' ')+'} '+'%.3f' %cablam_point[0]+' '+'%.3f' %cablam_point[1]+' '+'%.3f' %cablam_point[2]+'\n')
+      writeto.write('{'+residue.id_with_resname()+'} '+'%.3f' %cablam_point[0]+' '+'%.3f' %cablam_point[1]+' '+'%.3f' %cablam_point[2]+'\n')
   writeto.write('\n')
 
 def give_text(outliers, writeto=sys.stdout):
   #This prints a comma-separated line of data for each outlier residue
   #Intended for easy machine readability
   writeto.write('\nresidue,contour_level,loose_alpha,regular_alpha,loose_beta,regular_beta')
-  for outlier in outliers:
+  reskeys = outliers.keys()
+  reskeys.sort()
+  for resid in reskeys:
+    outlier = outliers[resid]
     outlist = [outlier.residue.id_with_resname(), '%.5f' %outlier.outlier_level, '%.5f' %outlier.loose_alpha, '%.5f' %outlier.regular_alpha, '%.5f' %outlier.loose_beta, '%.5f' %outlier.regular_beta]
     writeto.write('\n'+','.join(outlist))
   writeto.write('\n')
@@ -386,9 +404,9 @@ def run(args):
   work_phil = master_phil.fetch(sources=sources)
   work_params = work_phil.extract()
   params = work_params.cablam_validate
-  if not work_params.cablam_validate.pdb_infile:
-    usage()
-    sys.exit()
+  #if not work_params.cablam_validate.pdb_infile:
+  #  usage()
+  #  sys.exit()
   params = work_params.cablam_validate
   #-----------------------------------------------------------------------------
   #}}} end phil parsing
@@ -406,6 +424,7 @@ def run(args):
   else:
     sys.stdout.write(
       '\nMissing input data, please provide .pdb file\n')
+    usage()
     sys.exit()
 
   outliers = analyze_pdb(
@@ -416,7 +435,7 @@ def run(args):
     params.give_text = True
 
   if params.give_kin:
-    give_kin(outliers)
+    give_kin(outliers,params.outlier_cutoff)
   if params.give_points:
     give_points(outliers)
   if params.give_text:
