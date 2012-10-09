@@ -41,7 +41,7 @@ class linked_residue():
 
   #Prints kinemage point-style output for a list of measures given in kinorder
   def printtokin(self, kinorder, writeto=sys.stdout):
-    outline = ['{'+self.pdbid+' '+self.id_with_resname(sep=' ')+'}']
+    outline = ['{'+self.pdbid+' '+self.id_with_resname()+'}']
     for order in kinorder:
       try:
         outline.append(str(self.measures[order]))
@@ -51,16 +51,16 @@ class linked_residue():
 
   #Prints comma-separated output for a list of measures given in kinorder
   def printtocsv(self, kinorder, doconnections=False, writeto=sys.stdout):
-    outline = [self.id_with_resname(sep=':',alt=self.firstalt('CA'))]
+    outline = [self.id_with_resname()]
     for order in kinorder:
       try:
         outline.append(str(self.measures[order]))
       except KeyError:
         outline.append('NULL')
     if doconnections:
-      if self.prevres: outline.append(self.prevres.id_with_resname(sep=':', alt=self.prevres.firstalt('CA')))
+      if self.prevres: outline.append(self.prevres.id_with_resname())
       else: outline.append('NULL')
-      if self.nextres: outline.append(self.nextres.id_with_resname(sep=':', alt=self.nextres.firstalt('CA')))
+      if self.nextres: outline.append(self.nextres.id_with_resname())
       else: outline.append('NULL')
     writeto.write(','.join(outline)+'\n')  #note the ',' in the join here
 
@@ -71,13 +71,7 @@ class linked_residue():
       [self.pdbid, self.model, self.chain, str(self.resnum), self.icode])
     return resid_string
 
-  def id_with_resname(self):#, alt='', sep=' '):
-    #try:
-    #  resname = self.alts[alt]['resname']
-    #except KeyError:
-    #  #Some default was necessary
-    #  resname = 'XXX'
-    #  alt = ''
+  def id_with_resname(self):
     resid_string = self.rg.atoms()[0].pdb_label_columns()[5:]
     return resid_string
 
