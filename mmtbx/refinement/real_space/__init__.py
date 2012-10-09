@@ -10,6 +10,7 @@ from libtbx.utils import user_plus_sys_time
 import iotbx.pdb
 from cctbx import miller
 from libtbx.str_utils import format_value
+from cctbx import crystal
 
 class residue_monitor(object):
   def __init__(self,
@@ -17,6 +18,8 @@ class residue_monitor(object):
                selection_sidechain,
                selection_backbone,
                selection_all,
+               selection_c,
+               selection_n,
                map_cc_sidechain=None,
                map_cc_backbone=None,
                map_cc_all=None,
@@ -74,12 +77,16 @@ class structure_monitor(object):
             residue_i_seqs_backbone  = flex.size_t()
             residue_i_seqs_sidechain = flex.size_t()
             residue_i_seqs_all       = flex.size_t()
+            residue_i_seqs_c         = flex.size_t()
+            residue_i_seqs_n         = flex.size_t()
             for atom in residue.atoms():
               an = atom.name.strip()
               bb = an in backbone_atoms
               residue_i_seqs_all.append(atom.i_seq)
               if(bb): residue_i_seqs_backbone.append(atom.i_seq)
               else:   residue_i_seqs_sidechain.append(atom.i_seq)
+              if(an == "C"): residue_i_seqs_c.append(atom.i_seq)
+              if(an == "N"): residue_i_seqs_n.append(atom.i_seq)
             sca = sites_cart.select(residue_i_seqs_all)
             scs = sites_cart.select(residue_i_seqs_sidechain)
             scb = sites_cart.select(residue_i_seqs_backbone)
@@ -90,6 +97,8 @@ class structure_monitor(object):
               selection_sidechain = residue_i_seqs_sidechain,
               selection_backbone  = residue_i_seqs_backbone,
               selection_all       = residue_i_seqs_all,
+              selection_c         = residue_i_seqs_c,
+              selection_n         = residue_i_seqs_n,
               map_cc_sidechain = ccs,
               map_cc_backbone  = self.map_cc(sites_cart=scb, other_map = current_map),
               map_cc_all       = self.map_cc(sites_cart=sca, other_map = current_map),
@@ -217,31 +226,43 @@ class structure_monitor(object):
     #self.states_collector.add(sites_cart = sites_cart_)
     #time_update += timer.elapsed()
 
+def selection_around_to_negate(
+      xray_structure,
+      selection_within_radius,
+      iselection,
+      selection_good=None,
+      iselection_backbone=None,
+      iselection_n_external=None,
+      iselection_c_external=None):
+  # XXX time and memory inefficient
+  if([selection_good,iselection_backbone].count(None)==0):
+    selection_backbone = flex.bool(selection_good.size(), iselection_backbone)
+    selection_good = selection_good.set_selected(selection_backbone, True)
+  sel_around = xray_structure.selection_within(
+    radius    = selection_within_radius,
+    selection = flex.bool(xray_structure.scatterers().size(), iselection))
+  if(selection_good is not None):
+    ssb = flex.bool(selection_good.size(), iselection)
+    sel_around_minus_self = sel_around.set_selected(ssb, False)
+  else:
+    sel_around_minus_self = flex.size_t(tuple(
+      set(sel_around.iselection()).difference(set(iselection))))
+  if(selection_good is not None):
+    negate_selection = sel_around_minus_self & selection_good
+  else:
+    negate_selection = sel_around_minus_self
+  if(iselection_n_external is not None):
+    negate_selection[iselection_n_external[0]]=False
+  if(iselection_c_external is not None):
+    negate_selection[iselection_c_external[0]]=False
+  return negate_selection
 
 def negate_map_around_selected_atoms_except_selected_atoms(
       xray_structure,
       map_data,
-      iselection,
-      selection_within_radius,
-      atom_radius,
-      select_good=None):
+      negate_selection,
+      atom_radius):
   # XXX time and memory inefficient
-  #print "1:",list(iselection)
-  sel_around = xray_structure.selection_within(
-    radius    = selection_within_radius,
-    selection = flex.bool(xray_structure.scatterers().size(), iselection)
-    ).iselection()
-  #print "2:",list(sel_around)
-  negate_selection = flex.size_t(tuple(
-    set(sel_around).difference(set(iselection))))
-
-  #print "3:",list(negate_selection)
-  if(select_good is not None):
-    nsb = flex.bool(xray_structure.scatterers().size(), negate_selection)
-    negate_selection = nsb & select_good
-  #print "4:",list(negate_selection.iselection())
-
-  #
   sites_cart_p1 = xray_structure.select(negate_selection).expand_to_p1(
       sites_mod_positive=True).sites_cart()
   around_atoms_selections = maptbx.grid_indices_around_sites(
@@ -252,73 +273,86 @@ def negate_map_around_selected_atoms_except_selected_atoms(
     site_radii = flex.double(sites_cart_p1.size(), atom_radius))
   sel_ = flex.bool(size=map_data.size(), iselection=around_atoms_selections)
   sel_.reshape(map_data.accessor())
-  md = map_data.deep_copy().set_selected(sel_, -2)
+  md = map_data.deep_copy().set_selected(sel_,-1) #XXX better to negate not set!
   md = md.set_selected(~sel_, 1)
   return map_data*md
 
 class score(object):
   def __init__(self,
-               unit_cell,
+               special_position_settings,
+               sites_cart_all,
                target_map,
                rotamer_eval,
                residue,
                vector = None,
                slope_decrease_factor = 3,
-               tmp = None):
+               tmp = None,
+               use_binary = False,
+               use_clash_filter = False,
+               clash_radius = 1):
     adopt_init_args(self, locals())
     self.target = None
     self.sites_cart = None
+    self.unit_cell = special_position_settings.unit_cell()
 
   def compute_target(self, sites_cart, selection=None):
     sites_frac = self.unit_cell.fractionalize(sites_cart)
     result = 0
     if(selection is None):
       for site_frac in sites_frac:
-        result += self.target_map.eight_point_interpolation(site_frac)
+        epi = self.target_map.eight_point_interpolation(site_frac)
+        result += epi
+        if(self.use_binary and epi>1.0): result += 1
     else:
       for sel in selection:
-        result += self.target_map.eight_point_interpolation(sites_frac[sel])
+        epi = self.target_map.eight_point_interpolation(sites_frac[sel])
+        result += epi
+        if(self.use_binary and epi>1.0): result += 1
     return result
+
+  def find_clashes(self, sites_cart):
+    iselection = self.residue.atoms().extract_i_seq()
+    sites_cart_all_ = self.sites_cart_all.deep_copy().set_selected(
+      iselection, sites_cart)
+    selection = flex.bool(size=self.sites_cart_all.size(),iselection=iselection)
+    selection_around = crystal.neighbors_fast_pair_generator(
+      asu_mappings=self.special_position_settings.asu_mappings(
+        buffer_thickness=self.clash_radius,
+        sites_cart=sites_cart_all_),
+      distance_cutoff=self.clash_radius).neighbors_of(
+        primary_selection=selection).iselection()
+    return flex.size_t(tuple(set(selection_around).difference(set(iselection))))
 
   def update(self, sites_cart, selection=None, tmp=None):
     target = self.compute_target(sites_cart = sites_cart, selection=selection)
+    assert self.target is not None
     slope = None
     if(self.vector is not None):
       slope = self.get_slope(sites_cart = sites_cart)
-      #slope, y, p = self.get_slope(sites_cart = sites_cart)
-      #print "   ",target, list(y), slope, p, flex.linear_regression(
-      #  flex.double(tuple(self.vector)),y).slope()
-      #slope=True
-    if(self.target is not None):
-      if(target > self.target and (slope is None or (slope is not None and slope))):
-        self.residue.atoms().set_xyz(sites_cart)
-        rotameric = self.rotamer_eval.evaluate_residue(residue = self.residue)
-        if(rotameric):
-          self.target = target
-          self.sites_cart = sites_cart
-          self.tmp = tmp,slope,target
-    else:
+    if(target > self.target and (slope is None or (slope is not None and slope))):
       self.residue.atoms().set_xyz(sites_cart)
       rotameric = self.rotamer_eval.evaluate_residue(residue = self.residue)
-      if(rotameric):
+      if(rotameric != "OUTLIER"):
+        clash_list=flex.size_t()
+        if(self.use_clash_filter):
+          clash_list = self.find_clashes(sites_cart=sites_cart)
+          if(clash_list.size()!=0): return
         self.target = target
         self.sites_cart = sites_cart
-        self.tmp = tmp, slope, target
+        self.tmp = tmp,slope,target, list(clash_list)
 
   def get_slope(self, sites_cart):
     sites_frac = self.unit_cell.fractionalize(sites_cart)
     y = flex.double()
     for v in self.vector:
-      y.append(self.target_map.eight_point_interpolation(sites_frac[v]))
+      if(type(v) == type(1)):
+        y.append(self.target_map.eight_point_interpolation(sites_frac[v]))
+      else:
+        tmp = flex.double()
+        for v_ in v:
+          tmp.append(self.target_map.eight_point_interpolation(sites_frac[v_]))
+        y.append(flex.mean(tmp))
     result = True
-    #for i, y_ in enumerate(y):
-    #  if(i<y.size()-1):
-    #    d = y[i+1]-y[i]
-    #    p = d/((abs(y[i+1])+abs(y[i]))/2)
-    #    if(p>0 and abs(d)>(abs(y[i+1])+abs(y[i]))/2/self.slope_decrease_factor):
-    #      result = False
-    #      break
-    #return result, y, (d,(abs(y[i+1])+abs(y[i]))/2/self.slope_decrease_factor)
     ynew = flex.double()
     for y_ in y:
       if(y_<1): ynew.append(0)
@@ -330,6 +364,7 @@ class score(object):
     return True#,list(y),list(ynew)
 
   def reset_with(self, sites_cart, selection=None):
+    #assert self.target is None
     self.target = self.compute_target(sites_cart = sites_cart,
       selection = selection)
     self.sites_cart = sites_cart
@@ -338,8 +373,8 @@ def torsion_search(
       clusters,
       scorer,
       sites_cart,
-      start = -50,
-      stop  = 50,
+      start = -20,
+      stop  = 20,
       step  = 1):
   def generate_range(start, stop, step):
     assert abs(start) <= abs(stop)
@@ -376,17 +411,14 @@ def torsion_search_nested(
       start = -6,
       stop  = 6):
   n_angles = len(clusters)
-  #nested_loop = flex.nested_loop(begin=[start]*n_angles, end=[stop]*n_angles,
-  #  open_range=False)
-  #if(n_angles==3):
-  #  r1 = [-5,-5,-5]
-  #  r2 = [5,5,5]
-  #else: return scorer
-  x = 5
-  #print n_angles
-  r1 = range(-x, -n_angles-x, -1)
-  r2 = range(x, n_angles+x)
-  #print list(r1), list(r2)
+  print n_angles
+  if(n_angles == 3):
+    r1 = [-3,-7,-9]
+    r2 = [3,7,9]
+  elif(n_angles == 4):
+    r1 = [-5,-5,-10,-10]
+    r2 = [5,5,10,10]
+  else: return
   nested_loop = flex.nested_loop(begin=r1, end=r2, open_range=False)
   selection = clusters[0].atoms_to_rotate
   scorer.reset_with(sites_cart = sites_cart, selection = selection)
