@@ -90,19 +90,22 @@ def exercise(use_slope, use_torsion_search, use_rotamer_iterator,
         if(get_class(residue.resname) == "common_amino_acid"):
           # negate map
           t0=time.time() # TIMER START
+          negate_selection = mmtbx.refinement.real_space.selection_around_to_negate(
+            xray_structure          = xrs_poor,
+            selection_within_radius = 5,
+            iselection              = residue.atoms().extract_i_seq())
           target_map_ = mmtbx.refinement.real_space.\
             negate_map_around_selected_atoms_except_selected_atoms(
-              xray_structure          = xrs_poor,
-              map_data                = target_map,
-              iselection              = residue.atoms().extract_i_seq(),
-              selection_within_radius = 5,
-              atom_radius             = 4)
+              xray_structure   = xrs_poor,
+              map_data         = target_map,
+              negate_selection = negate_selection,
+              atom_radius      = 4)
           print "  time (negate map): %6.4f" % (time.time()-t0)
           # refine
           mmtbx.refinement.real_space.fit_residue.manager(
             target_map           = target_map_,
             mon_lib_srv          = mon_lib_srv,
-            unit_cell            = xrs_answer.unit_cell(),
+            special_position_settings = xrs_poor.special_position_settings(),
             residue              = residue,
             use_slope            = use_slope,
             use_torsion_search   = use_torsion_search,

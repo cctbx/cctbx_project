@@ -35,9 +35,12 @@ class manager(object):
   def __init__(self,
                target_map,
                residue,
-               unit_cell,
+               special_position_settings,
                mon_lib_srv,
+               sites_cart_all=None,
+               use_clash_filter = False,
                use_slope=True,
+               debug=False,
                use_torsion_search=True,
                use_rotamer_iterator=True):
     adopt_init_args(self, locals())
@@ -49,9 +52,7 @@ class manager(object):
     self.axes_and_atoms_aa_specific = None
     if(use_torsion_search): self.clusters = self.define_clusters()
     if(use_slope): self.get_vector()
-    #self.rigid_body_refine()
-    self.fit()
-    #self.rigid_body_refine()
+    self.fit(debug=debug)
 
   def define_clusters(self):
     # XXX could be a plase to exclude H
@@ -92,26 +93,29 @@ class manager(object):
     return result
 
   def get_vector(self):
-    self.vector_selections = flex.size_t()
+    self.vector_selections = []
     if(self.axes_and_atoms_aa_specific is not None and self.clusters is not None):
       for i_aa, aa in enumerate(self.axes_and_atoms_aa_specific):
         for aa_ in aa[0]:
           if(not aa_ in self.vector_selections):
             self.vector_selections.append(aa_)
-      self.vector_selections.extend(flex.size_t(
-        self.clusters[len(self.clusters)-1].atoms_to_rotate))
+      self.vector_selections.append(
+        self.clusters[len(self.clusters)-1].atoms_to_rotate)
       #if(self.vector_selections.size()>1):
       #  self.vector_selections = self.vector_selections[1:]
       for cl in self.clusters:
         cl.vector = self.vector_selections
 
-  def get_scorer(self, vector=None):
+  def get_scorer(self, vector=None, use_binary=False, use_clash_filter=False):
     return mmtbx.refinement.real_space.score(
-      target_map   = self.target_map,
-      unit_cell    = self.unit_cell,
-      residue      = self.residue,
-      vector       = vector,
-      rotamer_eval = self.rotamer_manager)
+      target_map                = self.target_map,
+      sites_cart_all            = self.sites_cart_all,
+      special_position_settings = self.special_position_settings,
+      residue                   = self.residue,
+      vector                    = vector,
+      use_binary                = use_binary,
+      use_clash_filter          = use_clash_filter,
+      rotamer_eval              = self.rotamer_manager)
 
   def fit(self, debug=False):
     if(self.use_rotamer_iterator):
@@ -119,52 +123,47 @@ class manager(object):
         mon_lib_srv = self.mon_lib_srv,
         residue     = self.residue)
       if(rotamer_iterator is not None):
-        score_rotamers = self.get_scorer(vector = self.vector_selections)
+        score_rotamers = self.get_scorer(
+          vector     = self.vector_selections,
+          use_clash_filter = self.use_clash_filter,
+          use_binary = True)
         cntr=0
         for rotamer, rotamer_sites_cart in rotamer_iterator:
           if(debug): print rotamer.id,"-"*50
           if(cntr==0):
             score_rotamers.reset_with(sites_cart = rotamer_sites_cart.deep_copy())
-            if(debug): print score_rotamers.target, 0
+            if(debug): print score_rotamers.target, 0, rotamer.id
+          else:
+            score_rotamers.update(sites_cart = rotamer_sites_cart.deep_copy())
+            if(debug): print score_rotamers.target, 0, rotamer.id
           cntr+=1
           if(self.use_torsion_search):
             score_rotamer = self.get_scorer()
             score_rotamers.update(sites_cart = rotamer_sites_cart.deep_copy())
             mmtbx.refinement.real_space.torsion_search(
               clusters   = self.clusters,
-              sites_cart = rotamer_sites_cart,
+              sites_cart = rotamer_sites_cart.deep_copy(),
               scorer     = score_rotamer)
             if(debug): print score_rotamers.target, 1
-            score_rotamers.update(sites_cart = score_rotamer.sites_cart, tmp=rotamer.id)
+            score_rotamers.update(sites_cart = score_rotamer.sites_cart.deep_copy(), tmp=rotamer.id)
             if(debug): print score_rotamers.target, 2
           else:
             if(debug): print score_rotamers.target, 3
             score_rotamers.update(sites_cart = rotamer_sites_cart.deep_copy())
             if(debug): print score_rotamers.target, 4
           if(debug): print rotamer.id, score_rotamers.target, score_rotamers.tmp, score_rotamer.target
-          ########
-          if(0):
-            print "pre-rbr:", score_rotamers.target
-            sites_cart_rbr = self.rigid_body_refine()
-            score_rotamers.update(sites_cart = sites_cart_rbr.deep_copy())
-            print "rbr:", score_rotamers.target
-          if 0:
-            mmtbx.refinement.real_space.torsion_search_nested(
-              clusters   = self.clusters,#[1:],
-              sites_cart = score_rotamers.sites_cart,
-              scorer     = score_rotamers)
-            print "all:", score_rotamers.target
-          ########
-
         if(debug): print "final:", score_rotamers.target, score_rotamers.tmp
         if(score_rotamers.sites_cart is not None):
           self.residue.atoms().set_xyz(new_xyz = score_rotamers.sites_cart)
+          if(self.sites_cart_all is not None):
+            self.sites_cart_all = self.sites_cart_all.set_selected(
+              self.residue.atoms().extract_i_seq(), score_rotamers.sites_cart)
           #
           if 0:
             score_rotamer = self.get_scorer()
             score_rotamer.update(sites_cart = score_rotamers.sites_cart.deep_copy())
             mmtbx.refinement.real_space.torsion_search_nested(
-                clusters   = self.clusters,#[1:],
+                clusters   = self.clusters,
                 sites_cart = score_rotamers.sites_cart,
                 scorer     = score_rotamer)
             self.residue.atoms().set_xyz(new_xyz = score_rotamer.sites_cart)
@@ -185,7 +184,6 @@ class manager(object):
     import mmtbx.geometry_restraints
     import cctbx.geometry_restraints.manager
     import mmtbx.refinement.real_space.rigid_body
-
     reference_sites = flex.vec3_double()
     reference_selection = flex.size_t()
     cntr = 0
@@ -194,7 +192,6 @@ class manager(object):
         reference_sites.append(atom.xyz)
         reference_selection.append(cntr)
         cntr += 1
-
     generic_restraints_manager = mmtbx.geometry_restraints.manager()
     restraints_manager = cctbx.geometry_restraints.manager.manager(
       generic_restraints_manager = generic_restraints_manager)
@@ -204,7 +201,6 @@ class manager(object):
         selection  = reference_selection,
         sigma      = 0.5)
     flags = cctbx.geometry_restraints.flags.flags(generic_restraints=True)
-
     lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
       max_iterations = max_iterations)
     minimized = mmtbx.refinement.real_space.rigid_body.refine(
@@ -216,5 +212,4 @@ class manager(object):
       lbfgs_termination_params    = lbfgs_termination_params,
       unit_cell                   = self.unit_cell,
       cctbx_geometry_restraints_flags = flags)
-    #self.residue.atoms().set_xyz(minimized.sites_cart_residue)
     return minimized.sites_cart_residue

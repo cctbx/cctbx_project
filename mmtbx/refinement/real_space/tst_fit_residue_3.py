@@ -106,7 +106,7 @@ def exercise(use_slope, use_torsion_search, use_rotamer_iterator,
           mmtbx.refinement.real_space.fit_residue.manager(
             target_map           = target_map,
             mon_lib_srv          = mon_lib_srv,
-            unit_cell            = xrs_answer.unit_cell(),
+            special_position_settings = xrs_poor.special_position_settings(),
             residue              = residue,
             use_slope            = use_slope,
             use_torsion_search   = use_torsion_search,
