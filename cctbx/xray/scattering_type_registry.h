@@ -178,7 +178,7 @@ namespace cctbx { namespace xray {
       assign_from_table(std::string const& table, bool exact = true)
       {
         CCTBX_ASSERT(table == "IT1992" || table == "WK1995" ||
-         			 table == "PENG1996"); // || table == "NEUTRON1992");
+                                 table == "PENG1996" || table == "NEUTRON1992");
         bool has_assigned = false;
         af::ref<boost::optional<gaussian_t> > ugs = unique_gaussians.ref();
         if (table == "IT1992") {
@@ -205,19 +205,18 @@ namespace cctbx { namespace xray {
             has_assigned = true;
           }
         }
-// FIXME neutron_news_1992_table does not have a 'fetch' method
-//        else if (table == "NEUTRON1992") {
-//          for(type_index_pairs_t::const_iterator
-//                pair=type_index_pairs.begin();
-//                pair!=type_index_pairs.end();
-//                pair++) {
-//            std::size_t ui = pair->second;
-//            if (ugs[ui]) continue;
-//            ugs[ui] = eltbx::neutron::neutron_news_1992_table(
-//              pair->first, exact).fetch();
-//            has_assigned = true;
-//          }
-//        }
+        else if (table == "NEUTRON1992") {
+          for(type_index_pairs_t::const_iterator
+                pair=type_index_pairs.begin();
+                pair!=type_index_pairs.end();
+                pair++) {
+            std::size_t ui = pair->second;
+            if (ugs[ui]) continue;
+            ugs[ui] = eltbx::neutron::neutron_news_1992_table(
+              pair->first, exact).fetch();
+            has_assigned = true;
+          }
+        }
         else {
           for(type_index_pairs_t::const_iterator
                 pair=type_index_pairs.begin();
