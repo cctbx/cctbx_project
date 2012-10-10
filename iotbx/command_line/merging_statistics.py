@@ -356,7 +356,8 @@ class dataset_statistics (object) :
     cif_block["_reflns.pdbx_Rmerge_I_all"] = self.overall.r_merge
     cif_block["_reflns.pdbx_Rrim_I_all"] = self.overall.r_meas
     cif_block["_reflns.pdbx_Rpim_I_all"] = self.overall.r_pim
-    cif_block["_reflns.phenix_cc_1/2"] = self.overall.cc_star
+    cif_block["_reflns.phenix_cc_star"] = self.overall.cc_star
+    cif_block["_reflns.phenix_cc_1/2"] = self.overall.cc_one_half
 
     reflns_shell_loop = iotbx.cif.model.loop(header=(
       "_reflns_shell.d_res_high",
@@ -370,6 +371,7 @@ class dataset_statistics (object) :
       "_reflns_shell.Rmerge_I_all",
       "_reflns_shell.pdbx_Rrim_I_all",
       "_reflns_shell.pdbx_Rpim_I_all",
+      "_reflns_shell.phenix_cc_star",
       "_reflns_shell.phenix_cc_1/2",
     ))
     for bin_stats in self.bins:
@@ -385,6 +387,7 @@ class dataset_statistics (object) :
         bin_stats.r_merge,
         bin_stats.r_meas,
         bin_stats.r_pim,
+        bin_stats.cc_star,
         bin_stats.cc_one_half))
     cif_block.add_loop(reflns_shell_loop)
     return cif_block

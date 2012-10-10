@@ -29,10 +29,14 @@ def exercise (debug=False) :
   assert ("R-meas:  0.079" in out.getvalue())
   cif_block = result.as_cif_block()
   assert "_reflns_shell" in cif_block
-  assert approx_equal(float(cif_block["_reflns.pdbx_Rpim_I_all"]), 0.0295498162694)
+  assert approx_equal(float(cif_block["_reflns.pdbx_Rpim_I_all"]), result.overall.r_pim)
+  assert approx_equal(float(cif_block["_reflns.phenix_cc_star"]), result.overall.cc_star)
+  assert approx_equal(float(cif_block["_reflns.phenix_cc_1/2"]), result.overall.cc_one_half)
   assert approx_equal(
     flex.int(cif_block["_reflns_shell.number_measured_all"]),
     [15737, 15728, 15668, 15371, 14996, 14771, 13899, 13549, 13206, 12528])
+  assert "_reflns_shell.phenix_cc_star" in cif_block
+  assert "_reflns_shell.phenix_cc_1/2" in cif_block
 
 if (__name__ == "__main__") :
   exercise(debug=("--debug" in sys.argv))
