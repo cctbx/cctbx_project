@@ -23,48 +23,8 @@ class manager(object):
     for r in self.structure_monitor.residue_monitors:
       self.iselection_backbone.extend(r.selection_backbone)
     self.loop_over_residues()
-    clash_list = self.find_clashes()
+    clash_list = self.structure_monitor.find_sidechain_clashes()
     self.loop_over_residues(iselection = clash_list, use_clash_filter=True)
-    print "After attempting to resolve clashes:"
-    clash_list = self.find_clashes()
-  #
-  def find_clashes(self):
-    result = []
-    get_class = iotbx.pdb.common_residue_names_get_class
-    for i_res, r in enumerate(self.structure_monitor.residue_monitors):
-      if(get_class(r.residue.resname) == "common_amino_acid"):
-        isel = flex.bool(self.structure_monitor.xray_structure.scatterers().size(),
-          r.selection_sidechain)
-        sel_around = self.structure_monitor.xray_structure.selection_within(
-          radius    = 1.,
-          selection = isel).iselection()
-        clashing_with_atoms = flex.size_t(tuple(
-          set(sel_around).difference(set(r.selection_all))))
-        if(clashing_with_atoms.size() != 0):
-          print "CLASH:", i_res, r.residue.resseq
-          print "  clash:", list(clashing_with_atoms)
-          print "    all:", list(r.selection_all)
-          print "     sc:", list(r.selection_sidechain)
-          print "    cca:", self.structure_monitor.residue_monitors[i_res].map_cc_all
-          print "    ccb:", self.structure_monitor.residue_monitors[i_res].map_cc_backbone
-          print "    ccs:", self.structure_monitor.residue_monitors[i_res].map_cc_sidechain
-          i_clashed = None
-          for i_res_2, r in enumerate(self.structure_monitor.residue_monitors):
-            if(i_res_2 == i_res): continue
-            for ca in clashing_with_atoms:
-              if(ca in r.selection_all):
-                i_clashed = i_res_2
-                break
-            if(i_clashed is not None): break
-          print "  clashes with residue:", i_clashed, r.residue.resseq
-          rm = self.structure_monitor.residue_monitors
-          if(rm[i_res].map_cc_backbone  > rm[i_clashed].map_cc_backbone and
-             rm[i_res].map_cc_sidechain > rm[i_clashed].map_cc_sidechain):
-            if(not i_clashed in result): result.append(i_clashed)
-          else:
-            if(not i_res in result): result.append(i_res)
-    print "Clashes to resolve for:", list(result)
-    return result
 
   def loop_over_residues(self, iselection=None, use_clash_filter=False,
                          debug=False):
