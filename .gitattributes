@@ -78,6 +78,8 @@ cctbx/eltbx/development/e_scattering_plots.py svneol=native#text/x-python
 cctbx/eltbx/development/hydrogen_plots.py svneol=native#text/x-python
 cctbx/eltbx/distance_based_connectivity.py svneol=native#text/x-python
 cctbx/eltbx/e_scattering.py svneol=native#text/x-python
+cctbx/eltbx/electron_scattering.h -text
+cctbx/eltbx/electron_scattering/peng1996.cpp -text
 cctbx/eltbx/xray_scattering/form_factor.h -text
 cctbx/examples/fft_map_electron_density_around_atom.py svneol=native#text/x-python
 cctbx/examples/find_distances.cpp svneol=native#text/plain
