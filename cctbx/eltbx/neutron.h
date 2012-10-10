@@ -101,7 +101,7 @@ namespace cctbx { namespace eltbx { namespace neutron {
       {
           return cctbx::eltbx::xray_scattering::gaussian(record_->bound_coh_scatt_length_real, true);
       }
-      
+
     private:
       const detail::raw_record_neutron_news_1992* record_;
       friend class neutron_news_1992_table_iterator;

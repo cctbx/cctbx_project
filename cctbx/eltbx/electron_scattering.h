@@ -9,20 +9,20 @@
 #include <ctype.h>
 
 namespace cctbx { namespace eltbx { namespace electron_scattering {
-  
+
   //! Coefficients for the Electron Scattering Factor.
   /*
    <p>
-	 2008-06-30, translated by L. Lutterotti from
-   L.-M. PENG, G. REN, S. L. DUDAREV & M. J. WHELAN 
-   Robust Parameterization of Elastic and Absorptive Electron Atomic 
+         2008-06-30, translated by L. Lutterotti from
+   L.-M. PENG, G. REN, S. L. DUDAREV & M. J. WHELAN
+   Robust Parameterization of Elastic and Absorptive Electron Atomic
    Scattering Factors
    J. Appl. Cryst. A52, 257-276
    1996
    and
-   L.-M. PENG 
+   L.-M. PENG
    Electron Scattering Factors of Ions and their Parameterization
-   J. Appl. Cryst. A54, 481-485 
+   J. Appl. Cryst. A54, 481-485
    1998
    Electron scattering factors for atoms up to 6.0 Angstrom^-1
    <p>
@@ -36,10 +36,10 @@ namespace cctbx { namespace eltbx { namespace electron_scattering {
   public:
     //! Facilitates meta-programming.
     typedef xray_scattering::base<5> base_type;
-    
+
     //! Default constructor. Calling certain methods may cause crashes!
     peng1996() {}
-    
+
     //! Looks up coefficients for the given scattering factor label.
     /*! If exact == true, the scattering factor label must exactly
      match the tabulated label. However, the lookup is not
@@ -52,11 +52,11 @@ namespace cctbx { namespace eltbx { namespace electron_scattering {
      class base.
      */
     peng1996(std::string const& label, bool exact=false);
-    
+
   protected:
     friend class peng1996_iterator;
   };
-  
+
   /*! \brief Iterator over table of Coefficients for the Analytical
    Approximation to the Scattering Factor, Waasmaier & Kirfel 1995.
    */
@@ -65,17 +65,17 @@ namespace cctbx { namespace eltbx { namespace electron_scattering {
   public:
     //! Initialization of the iterator.
     peng1996_iterator();
-    
+
     //! Retrieves the next entry from the internal table.
     /*! Use peng1996::is_valid() to detect end-of-iteration.
      */
     peng1996
     next();
-    
+
   private:
     peng1996 current_;
   };
-  
+
 }}} // cctbx::eltbx::electron_scattering
 
 #endif
