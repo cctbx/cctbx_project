@@ -5,9 +5,9 @@ import scitbx.lbfgs
 from mmtbx.utils import rotatable_bonds
 from libtbx import adopt_init_args
 import iotbx.pdb
-from mmtbx.rotamer.rotamer_eval import RotamerEval
 import mmtbx.refinement.real_space
 import cctbx.geometry_restraints.flags
+import time
 
 def get_rotamer_iterator(mon_lib_srv, residue):
   rotamer_iterator = mon_lib_srv.rotamer_iterator(
@@ -37,6 +37,7 @@ class manager(object):
                residue,
                special_position_settings,
                mon_lib_srv,
+               rotamer_manager,
                sites_cart_all=None,
                use_clash_filter = False,
                use_slope=True,
@@ -44,7 +45,6 @@ class manager(object):
                use_torsion_search=True,
                use_rotamer_iterator=True):
     adopt_init_args(self, locals())
-    self.rotamer_manager = RotamerEval()
     get_class = iotbx.pdb.common_residue_names_get_class
     assert get_class(residue.resname) == "common_amino_acid", residue.resname
     self.vector_selections = None

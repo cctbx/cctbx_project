@@ -29,7 +29,7 @@ class residue_monitor(object):
 
   def format_info_string(self):
     if(self.clashes_with_resseqs is None): cw = "none"
-    else: cw = "("+",".join([i.strip() for i in self.clashes_with_resseqs])+")"
+    else: cw = str(self.clashes_with_resseqs)
     return "%s %s %6s %6s %6s %9s %s"%(
       self.residue.resname,
       self.residue.resseq,
@@ -44,7 +44,8 @@ class structure_monitor(object):
                pdb_hierarchy,
                xray_structure,
                target_map_object,
-               geometry_restraints_manager):
+               geometry_restraints_manager,
+               clash_threshold=1.0):
     adopt_init_args(self, locals())
     self.unit_cell = self.xray_structure.unit_cell()
     self.xray_structure = xray_structure.deep_copy_scatterers()
@@ -62,6 +63,7 @@ class structure_monitor(object):
     self.dist_from_start = 0
     self.number_of_rotamer_outliers = 0
     self.residue_monitors = None
+    self.clashing_residue_i_seqs = None
     #
     self.initialize()
 
@@ -124,7 +126,7 @@ class structure_monitor(object):
       if(r.rotamer_status == "OUTLIER"):
         self.number_of_rotamer_outliers += 1
     # get clashes
-    self.find_sidechain_clashes()
+    self.clashing_residue_i_seqs = self.find_sidechain_clashes()
     #
     #time_initialize_structure_monitor += timer.elapsed()
 
@@ -174,7 +176,7 @@ class structure_monitor(object):
     return result
 
   def show(self, prefix=""):
-    fmt="%s: cc(cell,atoms): %6.3f %6.3f rmsd(b,a): %6.4f %5.2f moved: %6.3f rota: %3d"
+    fmt="%s cc(cell,atoms): %6.3f %6.3f rmsd(b,a): %6.4f %5.2f moved: %6.3f rota: %3d"
     print fmt%(
       prefix,
       self.map_cc_whole_unit_cell,
@@ -185,88 +187,81 @@ class structure_monitor(object):
       self.number_of_rotamer_outliers)
 
   def show_residues(self, map_cc_all=0.8):
-    print "resid    CC(sc) CC(bb) CC(sb)   Rotamer ClashesWith"
+    header_printed = True
     for r in self.residue_monitors:
       i1 = r.map_cc_all < map_cc_all
       i2 = r.rotamer_status == "OUTLIER"
       i3 = r.clashes_with_resseqs is not None
       if([i1,i2,i3].count(True)>0):
+        if(header_printed):
+          print "resid    CC(sc) CC(bb) CC(sb)   Rotamer ClashesWith"
+          header_printed = False
         print r.format_info_string()
 
-  def update(self, xray_structure, accept_as_is=False):
+  def update(self, xray_structure, accept_as_is=True):
+    if(not accept_as_is):
+      current_map = self.compute_map(xray_structure = xray_structure)
+      sites_cart  = xray_structure.sites_cart()
+      sites_cart_ = self.xray_structure.sites_cart()
+      for r in self.residue_monitors:
+        sca = sites_cart.select(r.selection_all)
+        scs = sites_cart.select(r.selection_sidechain)
+        scb = sites_cart.select(r.selection_backbone)
+        map_cc_all       = self.map_cc(sites_cart = sca, other_map = current_map)
+        map_cc_sidechain = self.map_cc(sites_cart = scs, other_map = current_map)
+        map_cc_backbone  = self.map_cc(sites_cart = scb, other_map = current_map)
+        #map_value_sidechain = target_simple(target_map=current_map,
+        #  sites_cart=scs, unit_cell=self.unit_cell)
+        #map_value_backbone = target_simple(target_map=current_map,
+        #  sites_cart=scb, unit_cell=self.unit_cell)
+        flag = map_cc_all      >= r.map_cc_all and \
+               map_cc_backbone >= r.map_cc_backbone and \
+               map_cc_backbone >= map_cc_sidechain
+        #if(r.map_value_backbone > r.map_value_sidechain):
+        #  if(map_value_backbone < map_value_sidechain):
+        #    flag = False
+        if(flag):
+          residue_sites_cart_new = sites_cart.select(r.selection_all)
+          sites_cart_ = sites_cart_.set_selected(r.selection_all,
+            residue_sites_cart_new)
+      xray_structure = xray_structure.replace_sites_cart(sites_cart_)
+    # re-initialize monitor
     self.xray_structure = xray_structure
     self.pdb_hierarchy.adopt_xray_structure(xray_structure)
     self.initialize()
-    #global time_update
-    #timer = user_plus_sys_time()
-    #unit_cell = xray_structure.unit_cell()
-    #current_map = self.compute_map(xray_structure = xray_structure)
-    #sites_cart  = xray_structure.sites_cart()
-    #sites_cart_ = self.xray_structure.sites_cart()
-    #for r in self.residues:
-    #  sca = sites_cart.select(r.selection_all)
-    #  scs = sites_cart.select(r.selection_sidechain)
-    #  scb = sites_cart.select(r.selection_backbone)
-    #  map_cc_all       = self.map_cc(sites_cart = sca, map = current_map)
-    #  map_cc_sidechain = self.map_cc(sites_cart = scs, map = current_map)
-    #  map_cc_backbone  = self.map_cc(sites_cart = scb, map = current_map)
-    #  map_value_sidechain = target_simple(target_map=current_map,
-    #    sites_cart=scs, unit_cell=self.unit_cell)
-    #  map_value_backbone = target_simple(target_map=current_map,
-    #    sites_cart=scb, unit_cell=self.unit_cell)
-    #  flag = map_cc_all      > r.map_cc_all and \
-    #         map_cc_backbone > r.map_cc_backbone and \
-    #         map_cc_backbone > map_cc_sidechain
-    #  if(r.map_value_backbone > r.map_value_sidechain):
-    #    if(map_value_backbone < map_value_sidechain):
-    #      flag = False
-    #  if(accept_any): flag=True
-    #  if(flag):
-    #    residue_sites_cart_new = sites_cart.select(r.selection_all)
-    #    sites_cart_.set_selected(r.selection_all, residue_sites_cart_new)
-    #    r.pdb_hierarchy_residue.atoms().set_xyz(residue_sites_cart_new)
-    #    rotamer_status = self.rotamer_manager.evaluate_residue(
-    #      residue=r.pdb_hierarchy_residue)
-    #    r.rotamer_status = rotamer_status
-    #self.xray_structure= self.xray_structure.replace_sites_cart(sites_cart_)
-    #self.set_globals()
-    #self.set_rsr_residue_attributes()
-    #self.states_collector.add(sites_cart = sites_cart_)
-    #time_update += timer.elapsed()
+    self.states_collector.add(sites_cart = xray_structure.sites_cart())
 
-  def find_sidechain_clashes(self, clash_threshold=1.0):
+  def find_sidechain_clashes(self):
     result = []
     get_class = iotbx.pdb.common_residue_names_get_class
-    for i_res, r in enumerate(self.residue_monitors):
-      if(get_class(r.residue.resname) == "common_amino_acid"):
-        isel = flex.bool(self.xray_structure.scatterers().size(),
-          r.selection_sidechain)
-        sel_around = self.xray_structure.selection_within(
-          radius    = clash_threshold,
-          selection = isel).iselection()
-        clashing_with_atoms = flex.size_t(tuple(
-          set(sel_around).difference(set(r.selection_all))))
-        if(clashing_with_atoms.size() != 0):
-          clashes_with_i_seqs = []
-          clashes_with_resseqs = []
-          i_clashed = None
-          for i_res_2, r2 in enumerate(self.residue_monitors):
-            if(i_res_2 == i_res): continue
-            for ca in clashing_with_atoms:
-              if(ca in r2.selection_all):
-                i_clashed = i_res_2
-                break
-            if(i_clashed is not None and not i_clashed in clashes_with_i_seqs):
-              clashes_with_i_seqs.append(i_clashed)
-              clashes_with_resseqs.append(r2.residue.resseq)
-          r.clashes_with_resseqs = clashes_with_resseqs
-          clashes_with_i_seqs.append(i_res)
-          cc = self.residue_monitors[clashes_with_i_seqs[0]].map_cc_all
-          i_result = 0
-          for cwis in clashes_with_i_seqs:
-            cc_ = self.residue_monitors[cwis].map_cc_all
-            if(cc_<cc): i_result = cwis
-          if(not i_result in result): result.append(i_result)
+    # find nonbonded clashing pairs of atoms
+    bond_proxies_simple = self.geometry_restraints_manager.pair_proxies(
+      sites_cart = self.xray_structure.sites_cart()).bond_proxies.simple
+    bonded_i_seqs = []
+    for bp in bond_proxies_simple:
+      bonded_i_seqs.append(bp.i_seqs)
+    pair_asu_table = self.xray_structure.pair_asu_table(
+      distance_cutoff=self.clash_threshold)
+    pair_sym_table = pair_asu_table.extract_pair_sym_table()
+    atom_pairs_i_seqs = pair_sym_table.simple_edge_list()
+    nonbonded_pairs = list(set(atom_pairs_i_seqs).difference(set(bonded_i_seqs)))
+    # match into residue i_seqs
+    residue_i_seqs = []
+    for pair in nonbonded_pairs:
+      residue_pair_i_seqs = []
+      residue_pair_resseqs = []
+      for i_res, r in enumerate(self.residue_monitors):
+        if(get_class(r.residue.resname) == "common_amino_acid"):
+          if(pair[0] in r.selection_all or pair[1] in r.selection_all):
+            residue_pair_i_seqs.append(i_res)
+            residue_pair_resseqs.append(r.residue.resseq)
+      assert len(residue_pair_i_seqs)==2 # ==1 means reasidue clashes with self
+      self.residue_monitors[residue_pair_i_seqs[0]].clashes_with_resseqs=residue_pair_resseqs[1]
+      self.residue_monitors[residue_pair_i_seqs[1]].clashes_with_resseqs=residue_pair_resseqs[0]
+      if(self.residue_monitors[residue_pair_i_seqs[0]].map_cc_all <
+         self.residue_monitors[residue_pair_i_seqs[1]].map_cc_all):
+        result.append(residue_pair_i_seqs[0])
+      else: result.append(residue_pair_i_seqs[1])
     return result
 
 def selection_around_to_negate(
@@ -416,9 +411,9 @@ def torsion_search(
       clusters,
       scorer,
       sites_cart,
-      start = -20,
+      start = -20, # XXX make resolution-dependent, and find limits
       stop  = 20,
-      step  = 1):
+      step  = 5):
   def generate_range(start, stop, step):
     assert abs(start) <= abs(stop)
     inc = start

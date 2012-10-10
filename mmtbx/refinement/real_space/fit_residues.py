@@ -5,6 +5,8 @@ import iotbx.pdb
 import iotbx.ccp4_map
 import mmtbx.refinement.real_space
 import mmtbx.refinement.real_space.fit_residue
+from mmtbx.rotamer.rotamer_eval import RotamerEval
+import time
 
 class manager(object):
   def __init__(self,
@@ -12,6 +14,7 @@ class manager(object):
                mon_lib_srv,
                refine_if_map_cc_all_less_than=1.0):
     adopt_init_args(self, locals())
+    self.rotamer_manager = RotamerEval()
     self.atom_radius_to_negate_map_within = None
     if(self.structure_monitor.target_map_object.miller_array.d_min()>3.5):
       self.atom_radius_to_negate_map_within = 2.0
@@ -33,7 +36,9 @@ class manager(object):
     get_class = iotbx.pdb.common_residue_names_get_class
     for i_res, r in enumerate(sm.residue_monitors):
       if(iselection is not None and not i_res in iselection): continue
-      if(get_class(r.residue.resname) == "common_amino_acid"):
+      if(get_class(r.residue.resname) == "common_amino_acid" and
+         (r.rotamer_status=="OUTLIER" or r.map_cc_all< 0.8)):
+        #print i_res, len(sm.residue_monitors)
         #and str(r.residue.resseq).strip() in ["49"]):
         #print
         #print r.residue.resname, r.residue.resseq, "<"*40
@@ -46,6 +51,8 @@ class manager(object):
           iselection_n_external = sm.residue_monitors[i_res+1].selection_n
         elif(i_res==len(sm.residue_monitors)-1 and len(sm.residue_monitors)>1):
           iselection_c_external = sm.residue_monitors[i_res-1].selection_c
+        #print r.residue.resname
+        t0=time.time()
         negate_selection = mmtbx.refinement.real_space.selection_around_to_negate(
           xray_structure          = sm.xray_structure,
           selection_within_radius = 5, # XXX make residue dependent !!!!
@@ -54,12 +61,14 @@ class manager(object):
           iselection_backbone     = self.iselection_backbone,
           iselection_n_external   = iselection_n_external,
           iselection_c_external   = iselection_c_external)
+        #print "sel: %6.4f"%(time.time()-t0)
         target_map_ = mmtbx.refinement.real_space.\
           negate_map_around_selected_atoms_except_selected_atoms(
             xray_structure          = sm.xray_structure,
             map_data                = sm.target_map_object.data.deep_copy(),
             negate_selection        = negate_selection,
             atom_radius             = self.atom_radius_to_negate_map_within)
+        #print "neg: %6.4f"%(time.time()-t0)
         if(debug): # DEBUG
           iotbx.ccp4_map.write_ccp4_map(
             file_name      = "AMap.map",
@@ -75,6 +84,7 @@ class manager(object):
           special_position_settings = sm.xray_structure.special_position_settings(),
           residue              = r.residue,
           sites_cart_all       = sites_cart,
+          rotamer_manager      = self.rotamer_manager,
           use_clash_filter     = use_clash_filter,
           debug                = debug,# XXX
           use_slope            = True,
@@ -83,5 +93,6 @@ class manager(object):
         sites_cart.set_selected(r.residue.atoms().extract_i_seq(),
           r.residue.atoms().extract_xyz())
         sm.xray_structure = sm.xray_structure.replace_sites_cart(sites_cart)
+        #print "ref: %6.4f"%(time.time()-t0)
     sm.pdb_hierarchy.adopt_xray_structure(sm.xray_structure)
     sm.update(xray_structure = sm.xray_structure)
