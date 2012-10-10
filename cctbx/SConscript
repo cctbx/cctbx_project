@@ -51,6 +51,7 @@ lib_cctbx_sources = [
   "eltbx/sasaki_tables_73_82.cpp",
   "eltbx/tiny_pse.cpp",
   "eltbx/wavelengths.cpp",
+  "eltbx/electron_scattering/peng1996.cpp",
 
   "miller/asu.cpp",
   "miller/bins.cpp",

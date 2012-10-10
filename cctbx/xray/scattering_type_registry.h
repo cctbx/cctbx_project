@@ -3,6 +3,8 @@
 
 #include <cctbx/xray/scatterer.h>
 #include <cctbx/eltbx/xray_scattering.h>
+#include <cctbx/eltbx/electron_scattering.h>
+#include <cctbx/eltbx/neutron.h>
 #include <boost/optional.hpp>
 #include <map>
 
@@ -173,9 +175,10 @@ namespace cctbx { namespace xray {
       }
 
       void
-      assign_from_table(std::string const& table)
+      assign_from_table(std::string const& table, bool exact = true)
       {
-        CCTBX_ASSERT(table == "IT1992" || table == "WK1995");
+        CCTBX_ASSERT(table == "IT1992" || table == "WK1995" ||
+         			 table == "PENG1996" || table == "NEUTRON1992");
         bool has_assigned = false;
         af::ref<boost::optional<gaussian_t> > ugs = unique_gaussians.ref();
         if (table == "IT1992") {
@@ -186,7 +189,31 @@ namespace cctbx { namespace xray {
             std::size_t ui = pair->second;
             if (ugs[ui]) continue;
             ugs[ui] = eltbx::xray_scattering::it1992(
-              pair->first, true).fetch();
+              pair->first, exact).fetch();
+            has_assigned = true;
+          }
+        }
+        else if (table == "PENG1996") {
+          for(type_index_pairs_t::const_iterator
+                pair=type_index_pairs.begin();
+                pair!=type_index_pairs.end();
+                pair++) {
+            std::size_t ui = pair->second;
+            if (ugs[ui]) continue;
+            ugs[ui] = eltbx::electron_scattering::peng1996(
+              pair->first, exact).fetch();
+            has_assigned = true;
+          }
+        }
+        else if (table == "NEUTRON1992") {
+          for(type_index_pairs_t::const_iterator
+                pair=type_index_pairs.begin();
+                pair!=type_index_pairs.end();
+                pair++) {
+            std::size_t ui = pair->second;
+            if (ugs[ui]) continue;
+            ugs[ui] = eltbx::neutron::neutron_news_1992_table(
+              pair->first, exact).fetch();
             has_assigned = true;
           }
         }
@@ -198,7 +225,7 @@ namespace cctbx { namespace xray {
             std::size_t ui = pair->second;
             if (ugs[ui]) continue;
             ugs[ui] = eltbx::xray_scattering::wk1995(
-              pair->first, true).fetch();
+              pair->first, exact).fetch();
             has_assigned = true;
           }
         }
