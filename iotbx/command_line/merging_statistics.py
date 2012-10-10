@@ -307,7 +307,7 @@ class dataset_statistics (object) :
     print >> out, "Redundancies%s:" % self.anom_extra
     n_obs = sorted(self.overall.redundancies.keys())
     for x in n_obs :
-      print "  %d : %d" % (x, self.overall.redundancies[x])
+      print >> out, "  %d : %d" % (x, self.overall.redundancies[x])
     print >> out, ""
     print >> out, """\
   Statistics by resolution bin:
@@ -339,6 +339,55 @@ class dataset_statistics (object) :
       r_sym=shell.r_merge,
       r_meas=shell.r_meas,
       i_over_sigma=shell.i_over_sigma_mean)
+
+  def as_cif_block(self, cif_block=None):
+    import iotbx.cif.model
+    if cif_block is None:
+      cif_block = iotbx.cif.model.block()
+
+    cif_block["_reflns.d_resolution_low"] = self.overall.d_max
+    cif_block["_reflns.d_resolution_high"] = self.overall.d_min
+    cif_block["_reflns.percent_possible_obs"] = self.overall.completeness * 100
+    cif_block["_reflns.pdbx_number_measured_all"] = self.overall.n_obs
+    cif_block["_reflns.number_all"] = self.overall.n_uniq
+    cif_block["_reflns.pdbx_redundancy"] = self.overall.mean_redundancy
+    cif_block["_reflns.phenix_mean_I"] = self.overall.i_mean
+    cif_block["_reflns.pdbx_netI_over_sigmaI"] = self.overall.i_over_sigma_mean
+    cif_block["_reflns.pdbx_Rmerge_I_all"] = self.overall.r_merge
+    cif_block["_reflns.pdbx_Rrim_I_all"] = self.overall.r_meas
+    cif_block["_reflns.pdbx_Rpim_I_all"] = self.overall.r_pim
+    cif_block["_reflns.phenix_cc_1/2"] = self.overall.cc_star
+
+    reflns_shell_loop = iotbx.cif.model.loop(header=(
+      "_reflns_shell.d_res_high",
+      "_reflns_shell.d_res_low",
+      "_reflns_shell.number_measured_all",
+      "_reflns_shell.number_unique_all",
+      "_reflns_shell.pdbx_redundancy",
+      "_reflns_shell.percent_possible_all",
+      "_reflns_shell.phenix_mean_I",
+      "_reflns_shell.pdbx_netI_over_sigmaI_all",
+      "_reflns_shell.Rmerge_I_all",
+      "_reflns_shell.pdbx_Rrim_I_all",
+      "_reflns_shell.pdbx_Rpim_I_all",
+      "_reflns_shell.phenix_cc_1/2",
+    ))
+    for bin_stats in self.bins:
+      reflns_shell_loop.add_row((
+        bin_stats.d_min,
+        bin_stats.d_max,
+        bin_stats.n_obs,
+        bin_stats.n_uniq,
+        bin_stats.mean_redundancy,
+        bin_stats.completeness*100,
+        bin_stats.i_mean,
+        bin_stats.i_over_sigma_mean,
+        bin_stats.r_merge,
+        bin_stats.r_meas,
+        bin_stats.r_pim,
+        bin_stats.cc_one_half))
+    cif_block.add_loop(reflns_shell_loop)
+    return cif_block
 
 def select_data (file_name, data_labels, out) :
   from iotbx import reflection_file_reader
@@ -432,7 +481,7 @@ Full parameters:
     log=out)
   result.show(out=out)
   if (params.loggraph) :
-    result.show_loggraph()
+    result.show_loggraph(out=out)
   print >> out, ""
   print >> out, "References:"
   print >> out, citations_str
