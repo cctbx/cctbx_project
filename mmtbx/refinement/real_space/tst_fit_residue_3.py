@@ -5,6 +5,7 @@ from cctbx.array_family import flex
 import time
 from mmtbx import monomer_library
 import mmtbx.refinement.real_space.fit_residue
+from mmtbx.rotamer.rotamer_eval import RotamerEval
 
 pdb_answer = """\
 CRYST1   14.074   16.834   17.360  90.00  90.00  90.00 P 1
@@ -95,6 +96,7 @@ def exercise(use_slope, use_torsion_search, use_rotamer_iterator,
   sites_cart_poor = xrs_poor.sites_cart()
   pdb_hierarchy_poor.write_pdb_file(file_name = "poor.pdb")
   #
+  rotamer_manager = RotamerEval()
   get_class = iotbx.pdb.common_residue_names_get_class
   residue_poor = None
   for model in pdb_hierarchy_poor.models():
@@ -106,6 +108,7 @@ def exercise(use_slope, use_torsion_search, use_rotamer_iterator,
           mmtbx.refinement.real_space.fit_residue.manager(
             target_map           = target_map,
             mon_lib_srv          = mon_lib_srv,
+            rotamer_manager      = rotamer_manager,
             special_position_settings = xrs_poor.special_position_settings(),
             residue              = residue,
             use_slope            = use_slope,
