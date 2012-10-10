@@ -23,17 +23,21 @@ class residue_monitor(object):
                map_cc_sidechain=None,
                map_cc_backbone=None,
                map_cc_all=None,
-               rotamer_status=None):
+               rotamer_status=None,
+               clashes_with_resseqs=None):
     adopt_init_args(self, locals())
 
   def format_info_string(self):
-    return "%s %s %6s %6s %6s %9s"%(
+    if(self.clashes_with_resseqs is None): cw = "none"
+    else: cw = "("+",".join([i.strip() for i in self.clashes_with_resseqs])+")"
+    return "%s %s %6s %6s %6s %9s %s"%(
       self.residue.resname,
       self.residue.resseq,
       format_value("%6.3f",self.map_cc_all),
       format_value("%6.3f",self.map_cc_backbone),
       format_value("%6.3f",self.map_cc_sidechain),
-      self.rotamer_status)
+      self.rotamer_status,
+      cw)
 
 class structure_monitor(object):
   def __init__(self,
@@ -119,6 +123,8 @@ class structure_monitor(object):
     for r in self.residue_monitors:
       if(r.rotamer_status == "OUTLIER"):
         self.number_of_rotamer_outliers += 1
+    # get clashes
+    self.find_sidechain_clashes()
     #
     #time_initialize_structure_monitor += timer.elapsed()
 
@@ -178,12 +184,14 @@ class structure_monitor(object):
       self.dist_from_start,
       self.number_of_rotamer_outliers)
 
-  def show_residues(self, map_cc_all=None):
-    print "resid    CC(sc) CC(bb) CC(sb)   Rotamer"
+  def show_residues(self, map_cc_all=0.8):
+    print "resid    CC(sc) CC(bb) CC(sb)   Rotamer ClashesWith"
     for r in self.residue_monitors:
-      if(map_cc_all is None or (map_cc_all is not None and map_cc_all>r.map_cc_all)):
+      i1 = r.map_cc_all < map_cc_all
+      i2 = r.rotamer_status == "OUTLIER"
+      i3 = r.clashes_with_resseqs is not None
+      if([i1,i2,i3].count(True)>0):
         print r.format_info_string()
-
 
   def update(self, xray_structure, accept_as_is=False):
     self.xray_structure = xray_structure
@@ -225,6 +233,41 @@ class structure_monitor(object):
     #self.set_rsr_residue_attributes()
     #self.states_collector.add(sites_cart = sites_cart_)
     #time_update += timer.elapsed()
+
+  def find_sidechain_clashes(self, clash_threshold=1.0):
+    result = []
+    get_class = iotbx.pdb.common_residue_names_get_class
+    for i_res, r in enumerate(self.residue_monitors):
+      if(get_class(r.residue.resname) == "common_amino_acid"):
+        isel = flex.bool(self.xray_structure.scatterers().size(),
+          r.selection_sidechain)
+        sel_around = self.xray_structure.selection_within(
+          radius    = clash_threshold,
+          selection = isel).iselection()
+        clashing_with_atoms = flex.size_t(tuple(
+          set(sel_around).difference(set(r.selection_all))))
+        if(clashing_with_atoms.size() != 0):
+          clashes_with_i_seqs = []
+          clashes_with_resseqs = []
+          i_clashed = None
+          for i_res_2, r2 in enumerate(self.residue_monitors):
+            if(i_res_2 == i_res): continue
+            for ca in clashing_with_atoms:
+              if(ca in r2.selection_all):
+                i_clashed = i_res_2
+                break
+            if(i_clashed is not None and not i_clashed in clashes_with_i_seqs):
+              clashes_with_i_seqs.append(i_clashed)
+              clashes_with_resseqs.append(r2.residue.resseq)
+          r.clashes_with_resseqs = clashes_with_resseqs
+          clashes_with_i_seqs.append(i_res)
+          cc = self.residue_monitors[clashes_with_i_seqs[0]].map_cc_all
+          i_result = 0
+          for cwis in clashes_with_i_seqs:
+            cc_ = self.residue_monitors[cwis].map_cc_all
+            if(cc_<cc): i_result = cwis
+          if(not i_result in result): result.append(i_result)
+    return result
 
 def selection_around_to_negate(
       xray_structure,

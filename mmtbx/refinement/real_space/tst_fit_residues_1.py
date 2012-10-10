@@ -1510,10 +1510,11 @@ END
 """
 
 
-def exercise(pdb_str_answer, pdb_str_poor, d_min, resolution_factor = 0.25):
+def exercise(pdb_str_answer, pdb_str_poor, d_min, prefix,
+             resolution_factor = 0.25):
   # answer
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_answer)
-  pdb_inp.write_pdb_file(file_name = "answer.pdb")
+  pdb_inp.write_pdb_file(file_name = "answer_%s.pdb"%prefix)
   xrs_answer = pdb_inp.xray_structure_simple()
   f_calc = xrs_answer.structure_factors(d_min = d_min).f_calc()
   fft_map = f_calc.fft_map(resolution_factor=resolution_factor)
@@ -1521,7 +1522,7 @@ def exercise(pdb_str_answer, pdb_str_poor, d_min, resolution_factor = 0.25):
   target_map = fft_map.real_map_unpadded()
   mtz_dataset = f_calc.as_mtz_dataset(column_root_label = "FCmap")
   mtz_object = mtz_dataset.mtz_object()
-  mtz_object.write(file_name = "answer.mtz")
+  mtz_object.write(file_name = "answer_%s.mtz"%prefix)
   # poor
   mon_lib_srv = monomer_library.server.server()
   processed_pdb_file = monomer_library.pdb_interpretation.process(
@@ -1534,7 +1535,7 @@ def exercise(pdb_str_answer, pdb_str_poor, d_min, resolution_factor = 0.25):
   pdb_hierarchy_poor = processed_pdb_file.all_chain_proxies.pdb_hierarchy
   xrs_poor = processed_pdb_file.xray_structure()
   sites_cart_poor = xrs_poor.sites_cart()
-  pdb_hierarchy_poor.write_pdb_file(file_name = "poor.pdb")
+  pdb_hierarchy_poor.write_pdb_file(file_name = "poor_%s.pdb"%prefix)
   dist = xrs_answer.mean_distance(other = xrs_poor)
   print "start:", dist
   ####
@@ -1550,6 +1551,7 @@ def exercise(pdb_str_answer, pdb_str_poor, d_min, resolution_factor = 0.25):
     target_map_object           = target_map_object,
     geometry_restraints_manager = grm.geometry)
   sm.show(prefix="start")
+  sm.show_residues()
   for i in [1]:
     result = mmtbx.refinement.real_space.fit_residues.manager(
       structure_monitor = sm,
@@ -1557,9 +1559,9 @@ def exercise(pdb_str_answer, pdb_str_poor, d_min, resolution_factor = 0.25):
     print
     sm.show(prefix="MC %s"%str(i))
     print
-    sm.show_residues(map_cc_all=0.9)
+    sm.show_residues()
   #
-  sm.pdb_hierarchy.write_pdb_file(file_name = "refined.pdb")
+  sm.pdb_hierarchy.write_pdb_file(file_name = "refined_%s.pdb"%prefix)
   dist = xrs_answer.mean_distance(other = sm.xray_structure)
   print "final:", dist
   #assert dist < 0.0035, dist
@@ -1569,5 +1571,5 @@ if(__name__ == "__main__"):
   inputs = [(pdb_str_answer_1,pdb_str_poor_1),(pdb_str_answer_2,pdb_str_poor_2)]
   for i_test, inp in enumerate(inputs):
     print "Test ", i_test, "*"*60
-    exercise(pdb_str_answer=inp[0], pdb_str_poor=inp[1], d_min=1)
+    exercise(pdb_str_answer=inp[0],pdb_str_poor=inp[1],d_min=1,prefix=str(i_test))
   print "Time: %6.4f"%(time.time()-t0)
