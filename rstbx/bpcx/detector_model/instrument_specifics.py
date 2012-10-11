@@ -28,14 +28,15 @@ class pilatus(detector):
         #TODO Implementation
         return True
 
-    def __init__(self, origin, dir1, dir2, lim1, lim2, pixel_size_fast,
-                 pixel_size_slow, npx_fast, npx_slow):
-
+    def __init__(self, origin, dir1, dir2, pixel_size_fast, pixel_size_slow,
+                 npx_fast, npx_slow):
         self._px_size_fast = pixel_size_fast
         self._px_size_slow = pixel_size_slow
-        self._npx_fast = npx_fast
-        self._npx_slow = npx_slow
+        self._npx_fast = int(npx_fast)
+        self._npx_slow = int(npx_slow)
 
+        lim1 = (0, self._npx_fast * self._px_size_fast)
+        lim2 = (0, self._npx_slow * self._px_size_slow)
         # set up a single sensor
         s = sensor(origin, dir1, dir2, lim1, lim2)
 
@@ -92,17 +93,15 @@ class detector_factory_from_cfc:
         px_lim = self._cfc.get('detector_size_fast_slow')
         px_size_fast, px_size_slow = self._cfc.get('detector_pixel_size_fast_slow')
 
-        lim1 = (0, px_lim[0] * px_size_fast)
-        lim2 = (0, px_lim[1] * px_size_slow)
-
-        return d(origin, dir1, dir2, lim1, lim2, px_size_fast,
-                 px_size_slow, px_lim[0], px_lim[1])
+        return d(origin, dir1, dir2, px_size_fast, px_size_slow, px_lim[0],
+                 px_lim[1])
 
 
 if __name__ == '__main__':
 
     import sys
 
+    # require XDS configuration file, e.g. xparm-uc1-2.xds
     if len(sys.argv) != 2:
         raise RuntimeError, '%s configuration-file' % sys.argv[0]
 
