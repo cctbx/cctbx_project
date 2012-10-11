@@ -7,7 +7,6 @@ from libtbx import adopt_init_args
 import iotbx.pdb
 import mmtbx.refinement.real_space
 import cctbx.geometry_restraints.flags
-import time
 
 def get_rotamer_iterator(mon_lib_srv, residue):
   rotamer_iterator = mon_lib_srv.rotamer_iterator(
