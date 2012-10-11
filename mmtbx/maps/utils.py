@@ -3,12 +3,10 @@
 # removed as soon as someone has time.
 
 from __future__ import division
-import libtbx.phil
 from libtbx.math_utils import ifloor, iceil
 from libtbx.utils import Sorry, null_out
 from libtbx import adopt_init_args
 import os
-import re
 import sys
 
 #-----------------------------------------------------------------------
