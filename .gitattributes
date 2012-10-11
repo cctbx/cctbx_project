@@ -1192,6 +1192,7 @@ mmtbx/command_line/search_pdb_symmetry.py -text
 mmtbx/command_line/secondary_structure_restraints.py -text
 mmtbx/command_line/show_suspicious_residues.py -text
 mmtbx/command_line/simulate_low_res_data.py -text
+mmtbx/command_line/sort_hetatms.py -text
 mmtbx/command_line/tls.py -text
 mmtbx/command_line/validation_summary.py -text
 mmtbx/command_line/xmanip.py -text
@@ -1324,6 +1325,7 @@ mmtbx/regression/tst_ml_estimate.py -text
 mmtbx/regression/tst_msa.py -text
 mmtbx/regression/tst_prune_model.py -text
 mmtbx/regression/tst_real_space_correlation.py -text
+mmtbx/regression/tst_sort_hetatms.py -text
 mmtbx/regression/tst_validate_utils.py svneol=native#text/x-python
 mmtbx/resolve_resources.py -text
 mmtbx/rotamer/graphics.py -text
