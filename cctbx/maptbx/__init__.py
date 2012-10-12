@@ -12,6 +12,7 @@ from scitbx import matrix
 from scitbx.python_utils import dicts
 from libtbx import adopt_init_args
 import libtbx.load_env
+import math
 import sys, os
 
 debug_peak_cluster_analysis = os.environ.get(
@@ -615,3 +616,48 @@ def ccv(map_1, map_2, centered, cutoff=None, n_bins=100000, modified=False):
   else:
     return flex.linear_correlation(x = map_1.as_1d(), y = map_2.as_1d(),
       subtract_mean = centered).coefficient()
+
+class spherical_variance_around_point (object) :
+  def __init__ (self,
+      real_map,
+      unit_cell,
+      site_cart,
+      radius,
+      n_points=40,
+      spline_interpolation=True,
+      write_sphere_points_to_pdb_file=None) :
+    self.site_cart = site_cart
+    self.radius = radius
+    sphere_points = flex.vec3_double()
+    x, y, z = site_cart
+    # reference: "Distributing many points on a sphere" by E.B. Saff and
+    #     A.B.J. Kuijlaars, Mathematical Intelligencer 19.1 (1997) 5--11.
+    # derived from http://packinon.sourceforge.net/py_progs/pg_saff.html
+    for k in range(1,n_points+1):
+      h = -1 + 2 * (k - 1) / float(n_points - 1)
+      theta = math.acos(h)
+      if (k == 1) or (k == n_points) :
+        phi = 0
+      else:
+        phi = (old_phi + 3.6/math.sqrt(n_points*(1-h*h))) % (2*math.pi)
+      sphere_points.append((
+        x + math.sin(phi)*math.sin(theta),
+        y + math.cos(theta),
+        z + math.cos(phi)*math.sin(theta) ))
+      old_phi = phi
+    map_values = flex.double()
+    for point in sphere_points :
+      site_frac = unit_cell.fractionalize(site_cart=point)
+      value_at_point = real_map.tricubic_interpolation(site_frac)
+      map_values.append(value_at_point)
+    self.min = flex.min(map_values)
+    self.max = flex.max(map_values)
+    self.mean = flex.mean(map_values)
+    self.standard_deviation = map_values.standard_deviation_of_the_sample()
+    if (write_sphere_points_to_pdb_file is not None) :
+      f = open(write_sphere_points_to_pdb_file, "w")
+      for i, point in enumerate(sphere_points) :
+        f.write(
+          "HETATM    1  O   HOH A   1     %7.3f %7.3f %7.3f  1.00 20.00\n"%
+          point)
+      f.close()
