@@ -4535,7 +4535,8 @@ class process(object):
       phil_path = params.__phil_path__()
       raise Sorry("""%s failure:
   Number of nonbonded interaction distances < %.6g: %d
-    Please inspect the histogram of nonbonded interaction distances above.
+    Please inspect the histogram of nonbonded interaction distances above
+    (or in the log window).
     To disable this error, run the same command again with the following
     additional argument:
       %s.nonbonded_distance_threshold=None""" %
@@ -4548,7 +4549,8 @@ class process(object):
     if (n_below_hard_minimum_nonbonded_distance != 0 and
       params.nonbonded_distance_threshold >=0):
       raise Sorry("""Number of nonbonded interaction distances < %.6g: %d
-  Please inspect the output above and correct the input PDB file.""" % (
+  Please inspect the output above (or in the log window) and correct the input
+  PDB file.""" % (
         hard_minimum_nonbonded_distance,
         n_below_hard_minimum_nonbonded_distance))
 
