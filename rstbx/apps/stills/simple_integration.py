@@ -299,6 +299,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
     self.integrated_sigma= self.get_integrated_sigma()
     self.integrated_miller=self.get_integrated_miller()
     self.detector_xy = self.get_detector_xy()
+    self.max_signal = self.get_max_signal()
     return # function has been recoded in C++
 
   def get_obs(self,space_group_symbol):

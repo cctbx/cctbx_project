@@ -268,7 +268,8 @@ class IntegrateCharacters:
             observations = [a.get_obs(local["spacegroup"]) for a in local["results"]],
             mapped_predictions = [a.detector_xy for a in local["results"]],
             model_partialities = [getattr(a,"partialities",None) for a in local["results"]],
-            sa_parameters = [getattr(a,"best_params","None") for a in local["results"]]
+            sa_parameters = [getattr(a,"best_params","None") for a in local["results"]],
+            max_signal = [getattr(a,"max_signal",None) for a in local["results"]],
           )
           G = open(file,"wb")
           pickle.dump(info,G,pickle.HIGHEST_PROTOCOL)
