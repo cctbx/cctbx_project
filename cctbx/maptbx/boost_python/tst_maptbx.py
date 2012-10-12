@@ -343,6 +343,38 @@ def exercise_misc():
     assert approx_equal(tuple(m), (1,2,0,4,0,6))
     maptbx.set_if_less_than(m, 2, 9)
     assert approx_equal(tuple(m), (9,2,9,4,9,6))
+  from cctbx import xray
+  structure = xray.structure(
+    special_position_settings=crystal.special_position_settings(
+      crystal_symmetry=crystal.symmetry(
+        unit_cell=(10.0,10.0,10.0,90,90,90),
+        space_group_symbol="P1")),
+    scatterers=flex.xray_scatterer([
+      xray.scatterer(
+        label="O",
+        site=(0.5,0.5,0.5),
+        u=0.2)]))
+  fc = structure.structure_factors(d_min=2).f_calc()
+  fc_map = fc.fft_map(resolution_factor=1/4.)
+  fc_map.apply_sigma_scaling()
+  fc_map.as_ccp4_map(file_name="O.ccp4")
+  real_map = fc_map.real_map_unpadded()
+  stats = maptbx.spherical_variance_around_point(
+    real_map=real_map,
+    unit_cell=structure.unit_cell(),
+    site_cart=(5.,5.,5.),
+    radius=1.)
+  assert (approx_equal(stats.min, 8.323, eps=0.001))
+  assert (approx_equal(stats.mean, 8.497, eps=0.001))
+  assert (approx_equal(stats.standard_deviation, 0.1106, eps=0.0001))
+  stats = maptbx.spherical_variance_around_point(
+    real_map=real_map,
+    unit_cell=structure.unit_cell(),
+    site_cart=(6.,6.,6.),
+    radius=1.)
+  assert (approx_equal(stats.min, -0.736, eps=0.001))
+  assert (approx_equal(stats.mean, 1.361, eps=0.001))
+  assert (approx_equal(stats.standard_deviation, 3.2644, eps=0.0001))
 
 def exercise_eight_point_interpolation():
   map = flex.double(flex.grid(2,3,5), 10)
