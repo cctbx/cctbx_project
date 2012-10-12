@@ -344,6 +344,32 @@ def sharp_map(sites_frac, map_coeffs, ss = None, b_sharp=None, b_min = -150,
     b_sharp_best = b_sharp
   return map_coeffs_best, b_sharp_best
 
+def get_phaser_sad_llg_map_coefficients (
+    fmodel,
+    pdb_hierarchy,
+    log=None,
+    verbose=False) :
+  if (not libtbx.env.has_module("phaser")) :
+    raise Sorry("Phaser not available - required for SAD LLG maps.")
+  from phaser.phenix_adaptors import sad_target
+  assert (fmodel.f_model().anomalous_flag())
+  f_obs = fmodel.f_obs().select(fmodel.f_obs().data()>0)
+  r_free_flags = fmodel.r_free_flags().common_set(other=f_obs)
+  data = sad_target.data_adaptor(
+    f_obs=f_obs,
+    r_free_flags=r_free_flags,
+    verbose=True)
+  if (verbose) and (log is not None) :
+    data.output.setPackagePhenix(log)
+  else :
+    data.output.setPackagePhenix(null_out())
+  t = data.target(
+    xray_structure=fmodel.xray_structure,
+    pdb_hierarchy=pdb_hierarchy)
+  t.set_f_calc(fmodel.f_model())
+  map_coeffs = t.llg_map_coeffs()
+  return map_coeffs
+
 ncs_averaging_params = """
 resolution_factor = 0.25
   .type = float
