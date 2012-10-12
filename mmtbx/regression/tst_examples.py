@@ -14,9 +14,10 @@ def exercise () :
   mtz_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/reflection_files/1yjp.mtz",
     test=os.path.isfile)
-  if (pdb_file is None) :
+  if (None in [pdb_file, mtz_file]) :
     print "phenix_regression not found, skipping"
     return
+  assert (script_file is not None)
   args = [script_file, pdb_file, mtz_file]
   result = easy_run.fully_buffered(
     "mmtbx.python %s" % " ".join(args)).raise_if_errors()
