@@ -9,6 +9,10 @@ def exercise():
   assert r.format() == "anomalous_difference", r.format()
   r = mmtbx.map_names(map_name_string = " Anomal-diff  ")
   assert r.format() == "anomalous_difference", r.format()
+  r = mmtbx.map_names(map_name_string = "LLG")
+  assert r.format() == "phaser_sad_llg"
+  r = mmtbx.map_names(map_name_string = " SAD")
+  assert r.format() == "phaser_sad_llg"
   #
   r = mmtbx.map_names(map_name_string = "3.mFo-2DFc ")
   assert r.format() == "3mFobs-2DFmodel", r.format()

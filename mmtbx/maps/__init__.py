@@ -370,13 +370,24 @@ def compute_f_calc(fmodel, params):
     coeffs = coeffs_partial_set
   return coeffs
 
-def map_coefficients_from_fmodel (fmodel, params,
-    post_processing_callback=None):
+def map_coefficients_from_fmodel (fmodel,
+    params,
+    post_processing_callback=None,
+    pdb_hierarchy=None):
   from mmtbx import map_tools
   import mmtbx
   from cctbx import miller
   mnm = mmtbx.map_names(map_name_string = params.map_type)
-  if(mnm.k==0 and abs(mnm.n)==1):
+  if (mnm.phaser_sad_llg) :
+    if (not fmodel.f_obs().anomalous_flag()) :
+      raise Sorry("Anomalous data required for Phaser SAD LLG map.")
+    elif (pdb_hierarchy is None) :
+      raise RuntimeError("pdb_hierarchy must not be None when a Phaser SAD "+
+        "LLG map is requested.")
+    return map_tools.get_phaser_sad_llg_map_coefficients(
+      fmodel=fmodel,
+      pdb_hierarchy=pdb_hierarchy)
+  elif(mnm.k==0 and abs(mnm.n)==1):
     return compute_f_calc(fmodel, params)
   #XXXsave_k_part, save_b_part = None, None
   #XXXif(mnm.k is not None and abs(mnm.k) == abs(mnm.n) and fmodel.k_part()!=0):
@@ -473,6 +484,7 @@ class compute_map_coefficients(object):
                params,
                mtz_dataset = None,
                post_processing_callback=None,
+               pdb_hierarchy=None,
                log=sys.stdout):
     assert ((post_processing_callback is None) or
             (hasattr(post_processing_callback, "__call__")))
@@ -491,7 +503,8 @@ class compute_map_coefficients(object):
         # XXX
         coeffs = map_coefficients_from_fmodel(fmodel = fmodel,
           params = mcp,
-          post_processing_callback=post_processing_callback)
+          post_processing_callback = post_processing_callback,
+          pdb_hierarchy = pdb_hierarchy)
         if("mtz" in mcp.format and coeffs is not None):
           lbl_mgr = map_coeffs_mtz_label_manager(map_params = mcp)
           if(self.mtz_dataset is None):

@@ -124,12 +124,6 @@ maps {
 }
 """
 
-def get_atom_selection_manager(pdb_inp):
-  pdb_hierarchy = pdb_inp.construct_hierarchy()
-  pdb_atoms = pdb_hierarchy.atoms()
-  pdb_atoms.reset_i_seq()
-  return pdb_hierarchy.atom_selection_cache()
-
 def analyze_input_params(params):
   # Analyze map_coefficients
   mcp = params.maps.map_coefficients
@@ -280,7 +274,10 @@ def run (args, log = sys.stdout, use_output_directory=True,
     test_flag_value=None
   print >> log, "-"*79
   print >> log, "\nInput PDB file:", params.maps.input.pdb_file_name
-  atom_selection_manager = get_atom_selection_manager(pdb_inp = pdb_inp)
+  pdb_hierarchy = pdb_inp.construct_hierarchy()
+  pdb_atoms = pdb_hierarchy.atoms()
+  pdb_atoms.reset_i_seq()
+  atom_selection_manager = pdb_hierarchy.atom_selection_cache()
   xray_structure = pdb_inp.xray_structure_simple(
     crystal_symmetry = crystal_symmetry)
   # apply omit selection
@@ -332,7 +329,8 @@ def run (args, log = sys.stdout, use_output_directory=True,
     file_name_base         = file_name_base)
   cmo = mmtbx.maps.compute_map_coefficients(
     fmodel = fmodel,
-    params = params.maps.map_coefficients)
+    params = params.maps.map_coefficients,
+    pdb_hierarchy = pdb_hierarchy)
   map_coeff_file_name = file_name_base+"_map_coeffs.mtz"
   write_mtz_file_result = cmo.write_mtz_file(file_name = map_coeff_file_name)
   if(params.maps.output.fmodel_data_file_format is not None):

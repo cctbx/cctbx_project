@@ -252,6 +252,7 @@ class map_names(object):
     self.n = None
     self.ml_map = None
     self.anomalous = False
+    self.phaser_sad_llg = False
     self.kicked = False
     self.f_obs_filled = False
     for sym in ["~","!","@","#","$","%","^","&","*","(",")","=","<",">","?","/",
@@ -267,6 +268,8 @@ class map_names(object):
         self.f_obs_filled = True
     if(s.count('ano')):
       self.anomalous = True
+    elif (s.count("sad") or s.count("llg")) :
+      self.phaser_sad_llg = True
     elif(s in self.FC):
       self.k = 0
       self.n = 1
@@ -367,7 +370,7 @@ Wrong map type requested: %s
     raise Sorry(msg%(s,format))
 
   def format(self):
-    if(not self.anomalous):
+    if (not self.anomalous) and (not self.phaser_sad_llg) :
       if(abs(int(self.k)-self.k)<1.e-6): k = str(int(self.k))
       else: k = str(self.k)
       if(abs(int(self.n)-self.n)<1.e-6):
@@ -390,4 +393,6 @@ Wrong map type requested: %s
     else:
       assert [self.k,self.n,self.ml_map].count(None) == 3
       assert [self.kicked,self.f_obs_filled].count(False)==2
+      if (self.phaser_sad_llg) :
+        return "phaser_sad_llg"
       return "anomalous_difference"
