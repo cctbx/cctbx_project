@@ -1120,7 +1120,7 @@ class set(crystal.symmetry):
     if(use_scale):
       scale = self.unit_cell().volume() \
         / matrix.col(fft.n_real()).product()
-      map = map*scale
+      map *= scale
     if(anomalous_flag is None):
       anomalous_flag = self.anomalous_flag()
     if(use_sg):
