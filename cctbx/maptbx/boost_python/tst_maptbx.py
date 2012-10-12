@@ -357,7 +357,6 @@ def exercise_misc():
   fc = structure.structure_factors(d_min=2).f_calc()
   fc_map = fc.fft_map(resolution_factor=1/4.)
   fc_map.apply_sigma_scaling()
-  fc_map.as_ccp4_map(file_name="O.ccp4")
   real_map = fc_map.real_map_unpadded()
   stats = maptbx.spherical_variance_around_point(
     real_map=real_map,
