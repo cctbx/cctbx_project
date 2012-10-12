@@ -183,6 +183,7 @@ namespace rstbx { namespace integration {
     scitbx::af::shared<double> integrated_sigma;
     scitbx::af::shared<cctbx::miller::index<> > integrated_miller;
     scitbx::af::shared<scitbx::vec2<double> > detector_xy;
+    scitbx::af::shared<double> max_signal;
 
     simple_integration(): BACKGROUND_FACTOR(1),MAXOVER(6),NEAR(10),
       detector_saturation(std::numeric_limits<double>::max()),
@@ -237,6 +238,8 @@ namespace rstbx { namespace integration {
       return integrated_miller;}
     scitbx::af::shared<scitbx::vec2<double> > get_detector_xy(){
       return detector_xy;}
+    scitbx::af::shared<double> get_max_signal(){
+      return max_signal;}
 
     /* algorithms */
     void
@@ -569,6 +572,9 @@ namespace rstbx { namespace integration {
         integrated_sigma.push_back(sigma);
         integrated_miller.push_back(hkllist[i]);
         detector_xy.push_back(detector_xy_draft[i]);
+        double max_ismask = *(std::max_element(signal.begin(), signal.end()));
+        double max_bsmask = *(std::max_element(bkgrnd.begin(), bkgrnd.end()));
+        max_signal.push_back( std::max(max_ismask, max_bsmask) );
       }
     }
   };

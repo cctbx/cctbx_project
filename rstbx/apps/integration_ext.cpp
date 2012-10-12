@@ -74,6 +74,7 @@ namespace rstbx { namespace integration { namespace ext {
         .def("get_integrated_sigma",&simple_integration::get_integrated_sigma)
         .def("get_integrated_miller",&simple_integration::get_integrated_miller)
         .def("get_detector_xy",&simple_integration::get_detector_xy)
+        .def("get_max_signal",&simple_integration::get_max_signal)
       ;
     }
   };
