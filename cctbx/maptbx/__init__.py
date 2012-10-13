@@ -629,7 +629,7 @@ class spherical_variance_around_point (object) :
     self.site_cart = site_cart
     self.radius = radius
     assert n_points>0
-    sphere_points = flex.vec3_double()
+    sphere_points = []
     x, y, z = site_cart
     # reference: "Distributing many points on a sphere" by E.B. Saff and
     #     A.B.J. Kuijlaars, Mathematical Intelligencer 19.1 (1997) 5--11.
