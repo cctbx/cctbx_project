@@ -39,7 +39,11 @@ namespace cctbx { namespace geometry_restraints {
       limit(limit_),
       top_out(top_out_),
       slack(slack_)
-    {}
+    {
+      if (top_out) {
+        CCTBX_ASSERT(limit >= 0.0);
+      }
+    }
 
     //! Constructor.
     dihedral_proxy(
@@ -66,6 +70,9 @@ namespace cctbx { namespace geometry_restraints {
       if ( sym_ops.get() != 0 ) {
         CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
       }
+      if (top_out) {
+        CCTBX_ASSERT(limit >= 0.0);
+      }
     }
 
     //! Support for proxy_select (and similar operations).
@@ -85,6 +92,9 @@ namespace cctbx { namespace geometry_restraints {
     {
       if ( sym_ops.get() != 0 ) {
         CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
+      }
+      if (top_out) {
+        CCTBX_ASSERT(limit >= 0.0);
       }
     }
 
@@ -296,19 +306,19 @@ namespace cctbx { namespace geometry_restraints {
         else {
           delta_local = 0.0;
         }
-        if (limit >= 0 && top_out == false){
+        /*if (limit >= 0 && top_out == false){
           if(delta_local > limit){
             delta_local = limit;
           }
           else if(delta_local < (-1.0*limit)){
             delta_local = (-1.0*limit);
           }
-        }
+        }*/
         if (periodicity > 0) {
           term = 9600. / (periodicity * periodicity)
                * (1 - std::cos(periodicity * delta_local * pi_180));
         }
-        else if (top_out) {
+        else if (top_out && limit >= 0.0) {
           top = weight* limit * limit;
           //top*(1-exp(-weight*x**2/top))
           term = top * (1.0-std::exp(-weight*delta_local*delta_local/top));
@@ -334,12 +344,12 @@ namespace cctbx { namespace geometry_restraints {
       grad_delta(double epsilon=1e-100) const
       {
         af::tiny<scitbx::vec3<double>, 4> result;
-        if(limit >= 0 && top_out==false){
+        /*if(limit >= 0 && top_out==false){
           if (std::fabs(delta) > limit){
             result.fill(scitbx::vec3<double>(0,0,0));
             return result;
           }
-        }
+        }*/
         double d_21_norm = d_21.length_sq();
         if (   !have_angle_model
             || d_21_norm < epsilon
@@ -395,7 +405,7 @@ namespace cctbx { namespace geometry_restraints {
             grad_factor = 9600. * weight / periodicity * pi_180
                         * std::sin(periodicity * delta_local * pi_180);
         }
-        else if (top_out) {
+        else if (top_out && limit >= 0.0) {
             //(2*weight^2*x)*exp(-(weight*x**2)/top)
             top = weight*limit * limit;
             grad_factor = (2.0*weight*delta_local)

@@ -27,13 +27,17 @@ class manager(object):
         sites_cart,
         selection=None,
         sigma=2.5,
-        chi_angles_only=False):
+        limit=15.0,
+        chi_angles_only=False,
+        top_out_potential=False):
     self.add_reference_torsion_proxies(
       pdb_hierarchy=pdb_hierarchy,
       sites_cart=sites_cart,
       selection=selection,
       sigma=sigma,
-      chi_angles_only=chi_angles_only)
+      limit=limit,
+      chi_angles_only=chi_angles_only,
+      top_out_potential=top_out_potential)
 
   def add_reference_coordinate_proxies(
         self,
@@ -69,7 +73,9 @@ class manager(object):
         sites_cart,
         selection=None,
         sigma=2.5,
-        chi_angles_only=False):
+        limit=15.0,
+        chi_angles_only=False,
+        top_out_potential=False):
     assert [atom.i_seq for atom in pdb_hierarchy.atoms()].count(0) <= 1
     from mmtbx.torsion_restraints.reference_model import build_torsion_proxies
     local_reference_torsion_proxies = \
@@ -78,7 +84,9 @@ class manager(object):
           sites_cart=sites_cart,
           selection=selection,
           sigma=sigma,
-          chi_angles_only=chi_angles_only)
+          limit=limit,
+          chi_angles_only=chi_angles_only,
+          top_out_potential=top_out_potential)
     if self.reference_torsion_proxies is None:
       self.reference_torsion_proxies = local_reference_torsion_proxies
     else:

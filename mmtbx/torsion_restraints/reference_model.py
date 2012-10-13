@@ -1143,7 +1143,9 @@ def build_torsion_proxies(
       sites_cart,
       selection=None,
       sigma=2.5,
-      chi_angles_only=False):
+      limit=15.0,
+      chi_angles_only=False,
+      top_out_potential=False):
   if (selection is not None):
     if (isinstance(selection, flex.bool)):
       selection = selection.iselection()
@@ -1173,7 +1175,9 @@ def build_torsion_proxies(
       dp = cctbx.geometry_restraints.dihedral_proxy(
         i_seqs=i_seqs,
         angle_ideal=angle_ideal,
-        weight=weight)
+        weight=weight,
+        limit=limit,
+        top_out=top_out_potential)
       torsion_proxies.append(dp)
   return torsion_proxies
 

@@ -264,7 +264,7 @@ def exercise_2():
 
 def exercise_3():
   #test torsion restraints
-  for use_reference in [True, False, None]:
+  for use_reference in ['True', 'False', 'top_out', 'None']:
     processed_pdb_file = pdb_interpretation.process(
       mon_lib_srv              = server.server(),
       ener_lib                 = server.ener_lib(),
@@ -297,14 +297,23 @@ def exercise_3():
           min_selection.append(a2.i_seq)
     assert selection.size() == len(reference_names)
     selection_bool = flex.bool(xrs2.scatterers().size(), min_selection)
-    if(use_reference):
+    if(use_reference == 'True'):
       grm.generic_restraints_manager.reference_manager.\
         add_torsion_restraints(
           pdb_hierarchy = pdb2,
           sites_cart = sites_cart_reference,
           selection = selection,
           sigma = 2.5)
-    elif(use_reference is None):
+    elif(use_reference == 'top_out'):
+      grm.generic_restraints_manager.reference_manager.\
+        add_torsion_restraints(
+          pdb_hierarchy = pdb2,
+          sites_cart = sites_cart_reference,
+          selection = selection,
+          sigma = 2.5,
+          limit = 180.0,
+          top_out_potential=True)
+    elif(use_reference == 'None'):
       grm.generic_restraints_manager.reference_manager.\
         add_torsion_restraints(
           pdb_hierarchy = pdb2,
@@ -338,7 +347,7 @@ def exercise_3():
     d2 = flex.mean(flex.sqrt((xrs2.sites_cart().select(min_selection) -
                               xrs3.sites_cart().select(min_selection)).dot()))
     print "distance final (use_reference: %s): %6.4f"%(str(use_reference), d2)
-    if(use_reference): assert d2<0.02
+    if(use_reference in ['True', 'top_out']): assert d2<0.02
     else: assert d2>4.0, d2
     assert approx_equal(
       flex.max(flex.sqrt((xrs2.sites_cart().select(~selection_bool) -
