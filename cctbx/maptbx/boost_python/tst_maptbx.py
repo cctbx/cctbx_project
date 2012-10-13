@@ -363,17 +363,18 @@ def exercise_misc():
     unit_cell=structure.unit_cell(),
     site_cart=(5.,5.,5.),
     radius=1.)
-  assert (approx_equal(stats.min, 8.323, eps=0.001))
-  assert (approx_equal(stats.mean, 8.497, eps=0.001))
-  assert (approx_equal(stats.standard_deviation, 0.1106, eps=0.0001))
+  # XXX exact numbers are *not* consistent across platforms!
+  assert (approx_equal(stats.min, 8.3, eps=0.1))
+  assert (approx_equal(stats.mean, 8.5, eps=0.1))
+  assert (stats.standard_deviation < 0.15)
   stats = maptbx.spherical_variance_around_point(
     real_map=real_map,
     unit_cell=structure.unit_cell(),
     site_cart=(6.,6.,6.),
     radius=1.)
-  assert (approx_equal(stats.min, -0.736, eps=0.001))
-  assert (approx_equal(stats.mean, 1.361, eps=0.001))
-  assert (approx_equal(stats.standard_deviation, 3.2644, eps=0.0001))
+  assert (approx_equal(stats.min, -0.75, eps=0.1))
+  assert (approx_equal(stats.mean, 1.35, eps=0.1))
+  assert (approx_equal(stats.standard_deviation, 3.25, eps=0.1))
 
 def exercise_eight_point_interpolation():
   map = flex.double(flex.grid(2,3,5), 10)
