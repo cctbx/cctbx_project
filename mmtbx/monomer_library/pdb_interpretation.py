@@ -205,10 +205,10 @@ master_params_str = """\
     .expert_level = 3
   nonbonded_weight = None
     .type = float
-    .short_caption = Nonbonded weight (without hydrogens)
-    .help = Weighting of nonbonded restraints term when hydrogen atoms are \
-      omitted.  When explicit hydrogens are present, the weight will be set \
-      to 16, which was the default in previous versions.
+    .short_caption = Nonbonded weight
+    .help = Weighting of nonbonded restraints term.  By default, this will be \
+      set to 16 if explicit hydrogens are used (this was the defaault in \
+      earlier versions of Phenix), or 100 if hydrogens are missing.
   const_shrink_donor_acceptor = 0.6
     .type=float
     .optional=False
