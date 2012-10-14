@@ -183,6 +183,7 @@ class any_file_input (object) :
     self.get_processed_file = get_processed_file
 
     (file_base, file_ext) = splitext(file_name)
+    file_ext = file_ext.lower()
     if (force_type not in [None, "None"]) :
       read_method = getattr(self, "try_as_%s" % force_type, None)
       if (read_method is None) :
@@ -255,8 +256,9 @@ class any_file_input (object) :
     self.file_object = hkl_file
 
   def try_as_cif (self) :
-    # XXX hack to avoid choking on CCP4 maps
-    assert (not self.file_name.endswith(".ccp4"))
+    # XXX hack to avoid choking on CCP4 maps and images
+    file_ext = os.path.splitext(self.file_name)[1]
+    assert (not file_ext in [".ccp4", ".img", ".osc", ".mccd"])
     import iotbx.cif
     from iotbx.reflection_file_reader import any_reflection_file
     from iotbx.reflection_file_utils import reflection_file_server
