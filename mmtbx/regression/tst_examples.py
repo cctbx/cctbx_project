@@ -5,9 +5,10 @@ import libtbx.load_env
 import os
 
 def exercise () :
-  script_file = libtbx.env.find_in_repositories(
-    relative_path="cctbx_project/mmtbx/examples/simple_command_line_cc.py",
-    test=os.path.isfile)
+  # XXX can't use libtbx.env.find_in_repositories for this in our current
+  # nightly build system
+  script_file = os.path.join(abs(libtbx.env.module_dist_paths['mmtbx']),
+    "examples", "simple_command_line_cc.py")
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/1yjp_h.pdb",
     test=os.path.isfile)
