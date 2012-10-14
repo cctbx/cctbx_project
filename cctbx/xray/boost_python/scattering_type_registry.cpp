@@ -103,7 +103,8 @@ namespace {
         .def("assign", &w_t::assign, (
           arg("scattering_type"), arg("gaussian")))
         .def("assign_from_table", &w_t::assign_from_table, (
-          arg("table")))
+          arg("table"),
+          arg("exact")=true))
         .def("unique_form_factors_at_d_star_sq",
           &w_t::unique_form_factors_at_d_star_sq, (
             arg("d_star_sq")))
