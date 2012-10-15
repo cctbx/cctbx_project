@@ -698,8 +698,11 @@ class scaling_manager (intensity_data) :
       N_obs_pre_filter = observations.size()
       N_bins_small_set = N_obs_pre_filter // self.params.significance_filter.min_ct
       N_bins_large_set = N_obs_pre_filter // self.params.significance_filter.max_ct
+
+      # Ensure there is at least one bin.
       N_bins = max(
-        [ min([self.params.significance_filter.n_bins,N_bins_small_set]), N_bins_large_set ]
+        [min([self.params.significance_filter.n_bins,N_bins_small_set]),
+         N_bins_large_set, 1]
       )
       print "Total obs %d Choose n bins = %d"%(N_obs_pre_filter,N_bins)
       bin_results = show_observations(observations, out=out, n_bins=N_bins)
