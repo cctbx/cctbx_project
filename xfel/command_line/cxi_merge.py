@@ -729,15 +729,15 @@ class scaling_manager (intensity_data) :
     # Match up the observed intensities against the reference data
     # set, i_model, instead of the pre-generated miller set,
     # miller_set.
-    matches = miller.match_indices(
-      self.i_model.indices(),
-      observations.indices())
+    matches = miller.match_multi_indices(
+      miller_indices_unique=self.i_model.indices(),
+      miller_indices=observations.indices())
     data = frame_data(self.n_refl, file_name)
     data.set_indexed_cell(indexed_cell)
     data.d_min = observations.d_min()
     # Update the count for each matched reflection.  This counts
     # reflections with negative intensities, too.
-    data.completeness +=  (~matches.single_selection(0)).as_int()
+    data.completeness += matches.number_of_matches(0).as_int()
 
     data.wavelength = wavelength
 
