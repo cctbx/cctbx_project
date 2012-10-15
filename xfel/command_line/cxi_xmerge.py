@@ -165,8 +165,9 @@ def run(args):
 # --- End of x scaling
   scaler.uc_values = unit_cell_distribution()
   for icell in xrange(len(scaler.frames["unit_cell"])):
-    scaler.uc_values.add_cell( unit_cell = scaler.frames["unit_cell"][icell],
-                               rejected = (scaler.frames["cc"][icell]<scaler.params.min_corr))
+    scaler.uc_values.add_cell(
+      unit_cell=scaler.frames["unit_cell"][icell],
+      rejected=(scaler.frames["cc"][icell] < scaler.params.min_corr))
 
   scaler.show_unit_cell_histograms()
   if (work_params.rescale_with_average_cell) :
@@ -181,7 +182,17 @@ def run(args):
       work_params.target_unit_cell.parameters()
     print >> out, ""
     scaler.reset()
-    scaler.scale_all(frame_files)
+    scaler = xscaling_manager(
+      miller_set=miller_set,
+      i_model=i_model,
+      params=work_params,
+      log=out)
+    scaler.scale_all()
+    scaler.uc_values = unit_cell_distribution()
+    for icell in xrange(len(scaler.frames["unit_cell"])):
+      scaler.uc_values.add_cell(
+        unit_cell=scaler.frames["unit_cell"][icell],
+        rejected=(scaler.frames["cc"][icell] < scaler.params.min_corr))
     scaler.show_unit_cell_histograms()
   if False : #(work_params.output.show_plots) :
     try :
