@@ -126,6 +126,7 @@ def correlation(self,other):
       sum_y  += I_o
     # Linearly fit I_r to I_o, i.e. find slope and offset such that
     # I_o = slope * I_r + offset, optimal in a least-squares sense.
+    if N < 2:  return 0,0,0,N
     slope = (N * sum_xy - sum_x * sum_y) / (N * sum_xx - sum_x**2)
     offset = (sum_xx * sum_y - sum_x * sum_xy) / (N * sum_xx - sum_x**2)
     corr  = (N * sum_xy - sum_x * sum_y) / (math.sqrt(N * sum_xx - sum_x**2) *
