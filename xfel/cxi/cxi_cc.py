@@ -1,3 +1,4 @@
+from __future__ import division
 import math
 from libtbx.str_utils import format_value
 from iotbx import mtz
