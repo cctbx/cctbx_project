@@ -169,7 +169,13 @@ def load_result (file_name,
   """
   if (file_name.endswith("stats.pickle")) :
     return None
-  obj = easy_pickle.load(file_name=file_name)
+
+  # Ignore corrupted pickle files.
+  try:
+    obj = easy_pickle.load(file_name=file_name)
+  except Exception:
+    print "Skipping corrupted frame in", file_name
+    return None
   if (not obj.has_key("observations")) :
     return None
   result_array = obj["observations"][0]
