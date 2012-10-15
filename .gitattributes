@@ -2058,7 +2058,6 @@ xfel/command_line/cxi_plotcv.py -text
 xfel/command_line/cxi_pyana.py -text
 xfel/command_line/cxi_spots.py -text
 xfel/command_line/cxi_view.py -text
-xfel/command_line/cxi_xmerge.py -text
 xfel/command_line/histogram_finalise.py -text
 xfel/command_line/monitor_detectors.py -text
 xfel/command_line/overlay_spectra.py -text
