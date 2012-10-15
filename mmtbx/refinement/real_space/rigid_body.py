@@ -45,7 +45,9 @@ class refine(object):
         real_space_gradients_delta,
         lbfgs_termination_params,
         unit_cell,
-        cctbx_geometry_restraints_flags=None):
+        cctbx_geometry_restraints_flags=None,
+        states_collector=None):
+    self.states_collector = states_collector
     self.cctbx_geometry_restraints_flags = cctbx_geometry_restraints_flags
     self.residue = residue
     self.density_map = density_map
@@ -96,6 +98,8 @@ class refine(object):
     self.number_of_function_evaluations += 1
     self.residue_tardy_model.unpack_q(q_packed=self.x)
     self.sites_cart_residue = self.residue_tardy_model.sites_moved()
+    if(self.states_collector is not None):
+      self.states_collector.add(sites_cart = self.sites_cart_residue)
     rs_f = maptbx.real_space_target_simple(
       unit_cell=self.unit_cell,
       density_map=self.density_map,
