@@ -132,6 +132,35 @@ scaling {
 }
 plot_single_index_histograms = False
   .type = bool
+mysql {
+  # MySQL database v5.1 data store.
+  # mysql -u root -p # Steps to be taken by the database administrator
+  # CREATE DATABASE database;
+  # GRANT ALL ON database.* to 'user' IDENTIFIED BY 'passwd';
+  # SET GLOBAL max_allowed_packet=512*1024*1024;
+  # installation of MySQLdb, download from http://sourceforge.net/projects/mysql-python
+  # install into the cctbx python with libtbx.python setup.py install
+  # Maintenance and cleanup by user with mysql -u user -p
+  # SHOW TABLES FROM database;
+  # DROP TABLE *;
+  runtag = None
+    .type = str
+    .help = 'None' signifies use flat-file ASCII data storage. Valid identifier signifies use MySQL.
+    .help = Identifier is for this run, dumps old data when applicable and writes new tables.
+  host = localhost
+    .type = str
+    .help = persistent data tables to MySQL database using mysql-server on this host
+    .help = concurrent client connections OK, can use nproc > 1
+  user = None
+    .type = str
+    .help = mysql username provided by the database administrator
+  passwd = None
+    .type = str
+    .help = mysql password provided by the database administrator
+  database = None
+    .type = str
+    .help = mysql user's working database name, provided by the database administrator
+}
 """
 
 def get_observations (data_dirs,data_subset):
@@ -376,7 +405,6 @@ class scaling_manager (intensity_data) :
       self._scale_all_serial(file_names)
     else :
       if (self.params.nproc == 1) :
-        # in the case of only one process; initialize text-based database for data dump
         open(self.params.output.prefix+"_observation.db","w")
         open(self.params.output.prefix+"_frame.db","w")
         self.frame_id=0
@@ -387,6 +415,12 @@ class scaling_manager (intensity_data) :
           hkl_id+=1
         self._scale_all_serial(file_names)
       else :
+        from xfel.cxi.merging_database import manager
+        self.CART = manager(self.params)
+        print "Using mysql:",self.CART.use_mysql()
+        if self.CART.use_mysql():
+          self.CART.initialize_tag()
+          self.CART.fill_indices(self.i_model.indices())
         self._scale_all_parallel(file_names)
     t2 = time.time()
     print >> self.log, ""
@@ -820,12 +854,41 @@ class scaling_manager (intensity_data) :
       G = open(self.params.output.prefix+"_observation.db","a")
       for pair in matches.pairs():
         Intensity = observations.data()[pair[1]]
-        index = self.i_model.indices()[pair[0]]
         Sigma = observations.sigmas()[pair[1]]
         print >>G, "%7d %14.8f %14.8f %8.2f %8.2f %7d"%(pair[0], Intensity, Sigma,
           xypred[pair[1]][0], xypred[pair[1]][1], self.frame_id), False
       self.frame_id += 1
+    elif self.params.mysql.runtag is not None:
+      from xfel.cxi.merging_database import manager
+      CART = manager(self.params)
+      db = CART.connection()
+      cursor = db.cursor()
+      import cStringIO
+      query = cStringIO.StringIO()
+      query.write("INSERT INTO %s_frame SET "%self.params.mysql.runtag)
+      query.write("wavelength=%14.8f,beam_x=%14.8f,beam_y=%14.8f,"%(wavelength,result["xbeam"],result["ybeam"]))
+      query.write("distance=%14.8f,c_c=%10.7f,"%(result["distance"],corr))
+      query.write("slope=%11.8f,offset=%10.2f,"%(slope,offset))
+      res_ori_direct = result["sa_parameters"][0]["reserve_orientation"].direct_matrix()
+      query.write("res_ori_1=%14.8f,res_ori_2=%14.8f,res_ori_3=%14.8f,res_ori_4=%14.8f,res_ori_5=%14.8f,res_ori_6=%14.8f,res_ori_7=%14.8f,res_ori_8=%14.8f,res_ori_9=%14.8f,"%res_ori_direct)
+      query.write("rotation100_rad=%(rotation100_rad)10.7f,rotation010_rad=%(rotation010_rad)10.7f,rotation001_rad=%(rotation001_rad)10.7f,"%result["sa_parameters"][0])
+      query.write("half_mosaicity_deg=%(half_mosaicity_deg)10.7f,wave_HE_ang=%(wave_HE_ang)14.8f,wave_LE_ang=%(wave_LE_ang)14.8f,domain_size_ang=%(domain_size_ang)10.2f,"%result["sa_parameters"][0])
+      query.write("unique_file_name='%s'"%data.file_name)
 
+      cursor.execute( query.getvalue() )
+      cursor.execute("SELECT LAST_INSERT_ID()")
+      frame_id_0_base = cursor.fetchone()[0] - 1 # entry in the observation table is zero-based
+      xypred = result["mapped_predictions"][0]
+
+      query = cStringIO.StringIO()
+      query.write("INSERT INTO %s_observation (hkl_id_0_base,i,sigi,detector_x,detector_y,frame_id_0_base,overload_flag) VALUES "%self.params.mysql.runtag)
+      firstcomma = ""
+      for pair in matches.pairs():
+        query.write(firstcomma); firstcomma=","
+        Intensity = observations.data()[pair[1]]
+        Sigma = observations.sigmas()[pair[1]]
+        query.write("('%7d','%14.8f','%14.8f','%8.2f','%8.2f','%7d','%s')"%(pair[0],Intensity,Sigma,xypred[pair[1]][0],xypred[pair[1]][1],frame_id_0_base,'F'))
+      cursor.execute( query.getvalue() )
 
     if False:
       # ******************************************************

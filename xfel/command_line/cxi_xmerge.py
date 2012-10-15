@@ -20,6 +20,7 @@ from xfel.command_line.cxi_merge import unit_cell_distribution,show_overall_obse
 from xfel.command_line.cxi_merge import scaling_result
 from cctbx.crystal_orientation import crystal_orientation
 from xfel import column_parser
+from xfel.cxi.util import is_odd_numbered
 
 #-----------------------------------------------------------------------
 class xscaling_manager (scaling_manager) :
@@ -29,7 +30,16 @@ class xscaling_manager (scaling_manager) :
   def scale_all (self) :
     t1 = time.time()
 
-    self.read_all()
+    if self.params.mysql.runtag is None:
+      self.read_all()
+    else:
+      self.read_all_mysql()
+      self.millers = self.millers_mysql
+      self.frames = self.frames_mysql
+      self._frames = self._frames_mysql
+      self.observations = self.observations_mysql
+      self._observations = self._observations_mysql
+
     self.n_accepted = (self.frames["cc"]>self.params.min_corr).count(True)
     self.n_low_corr = (self.frames["cc"]>self.params.min_corr).count(False)
 
@@ -43,7 +53,31 @@ class xscaling_manager (scaling_manager) :
     print >> self.log, "  %d rejected due to poor correlation" % \
       self.n_low_corr
 
+  def read_all_mysql(self):
+    print "reading observations from MySQL database"
+    from xfel.cxi.merging_database import manager
+    CART = manager(self.params)
+    self.millers_mysql = CART.read_indices()
+
+    self.observations_mysql = CART.read_observations()
+    parser = column_parser()
+    parser.set_int("hkl_id",self.observations_mysql["hkl_id"])
+    parser.set_double("i",self.observations_mysql["i"])
+    parser.set_double("sigi",self.observations_mysql["sigi"])
+    parser.set_int("frame_id",self.observations_mysql["frame_id"])
+    self._observations_mysql = parser
+
+    self.frames_mysql = CART.read_frames()
+    parser = column_parser()
+    parser.set_int("frame_id",self.frames_mysql["frame_id"])
+    parser.set_double("wavelength",self.frames_mysql["wavelength"])
+    parser.set_double("cc",self.frames_mysql["cc"])
+    parser.set_double("slope",self.frames_mysql["slope"])
+    parser.set_double("offset",self.frames_mysql["offset"])
+    self._frames_mysql = parser
+
   def read_all(self):
+    print "reading observations from flat-file database"
     self.frames = dict( frame_id=flex.int(),
                         wavelength=flex.double(),
                         cc=flex.double(),
@@ -103,12 +137,6 @@ class xscaling_manager (scaling_manager) :
     for line in G.xreadlines():
       parser.parse_from_line(line)
     self._frames = parser
-
-def is_odd_numbered(file_name):
-      if (file_name.endswith("_00000.pickle")):
-        return int(os.path.basename(file_name).split("_00000.pickle")[0][-1])%2==1
-      elif (file_name.endswith(".pickle")):
-        return int(os.path.basename(file_name).split(".pickle")[0][-1])%2==1
 
 #-----------------------------------------------------------------------
 def run(args):
