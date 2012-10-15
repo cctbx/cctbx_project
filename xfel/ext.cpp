@@ -184,9 +184,17 @@ struct column_parser {
     int_token_addresses.push_back(optional_column);
     int_column_lookup[key]=int_columns.size()-1;
   }
+  void set_int(std::string const& key, scitbx::af::shared<int> values){
+    int_columns.push_back(values);
+    int_column_lookup[key]=int_columns.size()-1;
+  }
   void set_double(std::string const& key, int const& optional_column){
     double_columns.push_back(scitbx::af::shared<double>());
     double_token_addresses.push_back(optional_column);
+    double_column_lookup[key]=double_columns.size()-1;
+  }
+  void set_double(std::string const& key, scitbx::af::shared<double> values){
+    double_columns.push_back(values);
     double_column_lookup[key]=double_columns.size()-1;
   }
   scitbx::af::shared<int> get_int(std::string const& key) {
@@ -450,8 +458,10 @@ namespace boost_python { namespace {
     ;
 
     class_<column_parser>("column_parser",init<>())
-      .def("set_int",&column_parser::set_int)
-      .def("set_double",&column_parser::set_double)
+      .def("set_int",(void(column_parser::*)(std::string const&, int const&))&column_parser::set_int)
+      .def("set_int",(void(column_parser::*)(std::string const&, scitbx::af::shared<int>))&column_parser::set_int)
+      .def("set_double",(void(column_parser::*)(std::string const&, int const&))&column_parser::set_double)
+      .def("set_double",(void(column_parser::*)(std::string const&, scitbx::af::shared<double>))&column_parser::set_double)
       .def("get_int",&column_parser::get_int)
       .def("get_double",&column_parser::get_double)
       .def("parse_from_line",&column_parser::parse_from_line)
