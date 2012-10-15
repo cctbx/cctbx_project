@@ -3,7 +3,7 @@ from __future__ import division
 #
 # LIBTBX_SET_DISPATCHER_NAME cxi.xmerge
 #
-# $Id: cxi_merge.py 15771 2012-08-15 03:19:57Z luc_j_bourhis $
+# $Id$
 
 import iotbx.phil
 from cctbx.array_family import flex
@@ -152,7 +152,7 @@ def run(args):
       unit_cell=work_params.target_unit_cell,
       space_group_info=work_params.target_space_group
     ).build_miller_set(
-      anomalous_flag=True,
+      anomalous_flag=not work_params.merge_anomalous,
       d_min=work_params.d_min)
 
 # ---- Augment this code with any special procedures for x scaling

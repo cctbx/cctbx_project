@@ -21,7 +21,9 @@ def run (params) :
     xray_structure = xray_structure,
     f_obs          = None,
     add_sigmas     = True,
-    params         = params2).f_model.generate_bijvoet_mates()
+    params         = params2).f_model
+  if not params.merge_anomalous:
+    f_model = f_model.generate_bijvoet_mates()
   i_model = f_model.as_intensity_array()
 
   return i_model

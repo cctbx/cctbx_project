@@ -57,6 +57,9 @@ b_sol = 46.00
   .type = float
   .help = bulk solvent B-factor - approximate mean value in PDB \
     (according to Pavel)
+merge_anomalous = False
+  .type = bool
+  .help = Merge anomalous contributors
 include_bulk_solvent = True
   .type = bool
 wavelength = None
@@ -683,6 +686,7 @@ class scaling_manager (intensity_data) :
     # of reference
     # Only works if there is NOT an indexing ambiguity!
     observations = observations.customized_copy(
+      anomalous_flag=not self.params.merge_anomalous,
       crystal_symmetry=self.miller_set.crystal_symmetry()
       ).resolution_filter(d_min=self.params.d_min).map_to_asu()
 
@@ -928,7 +932,7 @@ def run(args):
       unit_cell=work_params.target_unit_cell,
       space_group_info=work_params.target_space_group
     ).build_miller_set(
-      anomalous_flag=True,
+      anomalous_flag=not work_params.merge_anomalous,
       d_min=work_params.d_min)
 
   frame_files = get_observations(work_params.data, work_params.data_subset)
