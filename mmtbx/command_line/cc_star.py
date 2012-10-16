@@ -1,6 +1,6 @@
 
 from __future__ import division
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, Usage
 import libtbx.phil
 import sys
 
@@ -44,9 +44,21 @@ unmerged_data = None
   .type = path
 unmerged_labels = None
   .type = str
+n_bins = 20
+  .type = int(value_min=5)
 """, process_includes=True)
 
 def run (args, out=sys.stdout) :
+  if (len(args) == 0) or ("--help" in args) :
+    raise Usage("""\
+mmtbx.cc_star model.pdb data.mtz unmerged_data=data.hkl [n_bins=X] [options]
+
+Implementation of method described in:
+Karplus PA & Diederichs K (2012) Science 336:1030-3.
+
+Full parameters:
+%s
+""" % master_phil.as_str(prefix=" "))
   import mmtbx.utils
   from iotbx.command_line import merging_statistics
   cmdline = mmtbx.utils.cmdline_load_pdb_and_data(
@@ -65,7 +77,8 @@ def run (args, out=sys.stdout) :
     out=out)
   stats = merging_and_model_statistics(
     fmodel=fmodel,
-    unmerged_i_obs=unmerged_i_obs)
+    unmerged_i_obs=unmerged_i_obs,
+    n_bins=params.n_bins)
   stats.show_cc_star(out=out)
   print >> out, ""
   print >> out, "Reference:"
