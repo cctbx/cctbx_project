@@ -1,6 +1,6 @@
 #!/usr/bin/env libtbx.python
 #
-# xds_geometry.py
+# iotbx.xds.geometry.py
 #
 # Code to read experimental geometry from a number of XDS output files
 # (XPARM, reflection files) returning geometry object tree in the existing
