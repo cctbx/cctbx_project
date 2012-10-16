@@ -272,6 +272,8 @@ def import_xds_integrate_hkl(integrate_hkl_file):
         rotation_axis, sample_to_source, wavelength,
         real_space_a, real_space_b, real_space_c, space_group_number)
 
+##### FIXME the following method should now use iotbx.xds.geometry #####
+
 def import_xds_xparm(xparm_file):
     '''Read an XDS XPARM file, transform the parameters contained therein
     into the standard coordinate frame, record this as a dictionary.'''
