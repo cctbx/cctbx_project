@@ -1510,7 +1510,7 @@ END
 """
 
 
-def exercise(pdb_str_answer, pdb_str_poor, d_min, prefix,
+def exercise(pdb_str_answer, pdb_str_poor, d_min, prefix, cntr,
              resolution_factor = 0.25):
   # answer
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_answer)
@@ -1554,8 +1554,9 @@ def exercise(pdb_str_answer, pdb_str_poor, d_min, prefix,
   sm.show_residues()
   for i in [1]:
     result = mmtbx.refinement.real_space.fit_residues.manager(
-      structure_monitor = sm,
-      mon_lib_srv       = mon_lib_srv)
+      structure_monitor    = sm,
+      mon_lib_srv          = mon_lib_srv,
+      map_cc_all_threshold = 1.0)
     print
     sm.show(prefix="MC %s"%str(i))
     print
@@ -1564,12 +1565,17 @@ def exercise(pdb_str_answer, pdb_str_poor, d_min, prefix,
   sm.pdb_hierarchy.write_pdb_file(file_name = "refined_%s.pdb"%prefix)
   dist = xrs_answer.mean_distance(other = sm.xray_structure)
   print "final:", dist
-  #assert dist < 0.0035, dist
+  if(cntr==0): assert dist < 0.08, dist
+  else: assert dist < 0.008, dist
+  assert list(sm.find_sidechain_clashes()) == []
 
 if(__name__ == "__main__"):
   t0 = time.time()
   inputs = [(pdb_str_answer_1,pdb_str_poor_1),(pdb_str_answer_2,pdb_str_poor_2)]
+  cntr = 0
   for i_test, inp in enumerate(inputs):
     print "Test ", i_test, "*"*60
-    exercise(pdb_str_answer=inp[0],pdb_str_poor=inp[1],d_min=1,prefix=str(i_test))
+    exercise(pdb_str_answer=inp[0],pdb_str_poor=inp[1],d_min=1.0,
+      prefix=str(i_test), cntr = cntr)
+    cntr += 1
   print "Time: %6.4f"%(time.time()-t0)

@@ -137,27 +137,16 @@ class refinery(object):
       sites_cart_result = refiner.sites_cart()
     # select results
     if(optimize_weight):
-      sel  = bonds <= rms_bonds_limit
-      sel &= angles <= rms_angles_limit
-      bonds   = bonds  .select(sel)
-      angles  = angles .select(sel)
-      weights = weights.select(sel)
-      if(sel.count(True)>0):
-        bond_max = flex.max(bonds)
-        ind = None
-        for i, b in enumerate(bonds):
-          if(b==bond_max):
-            ind = i
-            break
-        assert ind is not None
-        self.weight_final = weights[ind]
-        self.sites_cart_result = pool[self.weight_final][0][0]
-        self.rms_bonds_final,self.rms_angles_final = \
-          self.rmsds(sites_cart=self.sites_cart_result)
-        assert approx_equal(pool[self.weight_final][0][2], angles[ind])
-        assert approx_equal(pool[self.weight_final][0][1], bonds[ind])
-        assert approx_equal(self.rms_angles_final, angles[ind])
-        assert approx_equal(self.rms_bonds_final, bonds[ind])
+      delta = bonds-rms_bonds_limit
+      ind = (delta == flex.max(delta.select(delta<=0))).iselection()[0]
+      self.weight_final = weights[ind]
+      self.sites_cart_result = pool[self.weight_final][0][0]
+      self.rms_bonds_final,self.rms_angles_final = \
+        self.rmsds(sites_cart=self.sites_cart_result)
+      assert approx_equal(pool[self.weight_final][0][2], angles[ind])
+      assert approx_equal(pool[self.weight_final][0][1], bonds[ind])
+      assert approx_equal(self.rms_angles_final, angles[ind])
+      assert approx_equal(self.rms_bonds_final, bonds[ind])
     else:
       self.weight_final = self.weight_start
       self.sites_cart_result = sites_cart_result

@@ -15,11 +15,12 @@ from cctbx import crystal
 class residue_monitor(object):
   def __init__(self,
                residue,
-               selection_sidechain,
-               selection_backbone,
+               id_str,
                selection_all,
-               selection_c,
-               selection_n,
+               selection_sidechain=None,
+               selection_backbone=None,
+               selection_c=None,
+               selection_n=None,
                map_cc_sidechain=None,
                map_cc_backbone=None,
                map_cc_all=None,
@@ -30,9 +31,8 @@ class residue_monitor(object):
   def format_info_string(self):
     if(self.clashes_with_resseqs is None): cw = "none"
     else: cw = str(self.clashes_with_resseqs)
-    return "%s %s %6s %6s %6s %9s %s"%(
-      self.residue.resname,
-      self.residue.resseq,
+    return "%7s %6s    %6s     %6s %9s %7s"%(
+      self.id_str,
       format_value("%6.3f",self.map_cc_all),
       format_value("%6.3f",self.map_cc_backbone),
       format_value("%6.3f",self.map_cc_sidechain),
@@ -79,6 +79,7 @@ class structure_monitor(object):
     for model in self.pdb_hierarchy.models():
       for chain in model.chains():
         for residue in chain.only_conformer().residues():
+          id_str="%s%s%s"%(chain.id,residue.resname,residue.resseq.strip())
           if(get_class(residue.resname) == "common_amino_acid"):
             residue_i_seqs_backbone  = flex.size_t()
             residue_i_seqs_sidechain = flex.size_t()
@@ -98,17 +99,31 @@ class structure_monitor(object):
             scb = sites_cart.select(residue_i_seqs_backbone)
             if(scs.size()==0): ccs = None
             else: ccs = self.map_cc(sites_cart=scs, other_map = current_map)
+            if(sca.size()==0): cca = None
+            else: cca = self.map_cc(sites_cart=sca, other_map = current_map)
+            if(scb.size()==0): ccb = None
+            else: ccb = self.map_cc(sites_cart=scb, other_map = current_map)
             self.residue_monitors.append(residue_monitor(
               residue             = residue,
+              id_str              = id_str,
               selection_sidechain = residue_i_seqs_sidechain,
               selection_backbone  = residue_i_seqs_backbone,
               selection_all       = residue_i_seqs_all,
               selection_c         = residue_i_seqs_c,
               selection_n         = residue_i_seqs_n,
-              map_cc_sidechain = ccs,
-              map_cc_backbone  = self.map_cc(sites_cart=scb, other_map = current_map),
-              map_cc_all       = self.map_cc(sites_cart=sca, other_map = current_map),
+              map_cc_sidechain    = ccs,
+              map_cc_backbone     = ccb,
+              map_cc_all          = cca,
               rotamer_status   = self.rotamer_manager.evaluate_residue(residue)))
+          else:
+            residue_i_seqs_all = residue.atoms().extract_i_seq()
+            sca = sites_cart.select(residue_i_seqs_all)
+            cca = self.map_cc(sites_cart=sca, other_map = current_map)
+            self.residue_monitors.append(residue_monitor(
+              residue       = residue,
+              id_str        = id_str,
+              selection_all = residue_i_seqs_all,
+              map_cc_all    = cca))
     # globals
     self.map_cc_whole_unit_cell = self.map_cc(other_map = current_map)
     self.map_cc_around_atoms = self.map_cc(other_map = current_map,
@@ -194,7 +209,8 @@ class structure_monitor(object):
       i3 = r.clashes_with_resseqs is not None
       if([i1,i2,i3].count(True)>0):
         if(header_printed):
-          print "resid    CC(sc) CC(bb) CC(sb)   Rotamer ClashesWith"
+          print "Residue     CC        CC         CC   Rotamer Clashes"
+          print "     id    all  backbone  sidechain        id    with"
           header_printed = False
         print r.format_info_string()
 
@@ -232,7 +248,7 @@ class structure_monitor(object):
     self.states_collector.add(sites_cart = xray_structure.sites_cart())
 
   def find_sidechain_clashes(self):
-    result = []
+    result = flex.size_t()
     get_class = iotbx.pdb.common_residue_names_get_class
     # find nonbonded clashing pairs of atoms
     bond_proxies_simple = self.geometry_restraints_manager.pair_proxies(
@@ -251,17 +267,19 @@ class structure_monitor(object):
       residue_pair_i_seqs = []
       residue_pair_resseqs = []
       for i_res, r in enumerate(self.residue_monitors):
-        if(get_class(r.residue.resname) == "common_amino_acid"):
-          if(pair[0] in r.selection_all or pair[1] in r.selection_all):
-            residue_pair_i_seqs.append(i_res)
-            residue_pair_resseqs.append(r.residue.resseq)
-      assert len(residue_pair_i_seqs)==2 # ==1 means reasidue clashes with self
+        if(pair[0] in r.selection_all or pair[1] in r.selection_all):
+          residue_pair_i_seqs.append(i_res)
+          residue_pair_resseqs.append(r.id_str)
+      assert len(residue_pair_i_seqs)==2 # =1 means residue clashes with self
       self.residue_monitors[residue_pair_i_seqs[0]].clashes_with_resseqs=residue_pair_resseqs[1]
       self.residue_monitors[residue_pair_i_seqs[1]].clashes_with_resseqs=residue_pair_resseqs[0]
       if(self.residue_monitors[residue_pair_i_seqs[0]].map_cc_all <
          self.residue_monitors[residue_pair_i_seqs[1]].map_cc_all):
-        result.append(residue_pair_i_seqs[0])
-      else: result.append(residue_pair_i_seqs[1])
+        if(not residue_pair_i_seqs[0] in result):
+          result.append(residue_pair_i_seqs[0])
+      else:
+        if(not residue_pair_i_seqs[1] in result):
+          result.append(residue_pair_i_seqs[1])
     return result
 
 def selection_around_to_negate(
@@ -377,7 +395,7 @@ class score(object):
           if(clash_list.size()!=0): return
         self.target = target
         self.sites_cart = sites_cart
-        self.tmp = tmp,slope,target, list(clash_list)
+        self.tmp = tmp,slope
 
   def get_slope(self, sites_cart):
     sites_frac = self.unit_cell.fractionalize(sites_cart)
@@ -445,9 +463,7 @@ def torsion_search(
 def torsion_search_nested(
       clusters,
       scorer,
-      sites_cart,
-      start = -6,
-      stop  = 6):
+      sites_cart):
   n_angles = len(clusters)
   print n_angles
   if(n_angles == 3):

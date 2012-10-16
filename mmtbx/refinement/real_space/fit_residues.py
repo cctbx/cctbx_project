@@ -12,7 +12,16 @@ class manager(object):
   def __init__(self,
                structure_monitor,
                mon_lib_srv,
-               refine_if_map_cc_all_less_than=1.0):
+               map_cc_all_threshold = 0.8,
+               use_slope            = True,
+               use_torsion_search   = True,
+               use_rotamer_iterator = True,
+               torsion_search_all_start = 0,
+               torsion_search_all_stop  = 360,
+               torsion_search_all_step  = 1,
+               torsion_search_local_start = -50,
+               torsion_search_local_stop  = 50,
+               torsion_search_local_step  = 5):
     adopt_init_args(self, locals())
     self.rotamer_manager = RotamerEval()
     self.atom_radius_to_negate_map_within = None
@@ -24,20 +33,36 @@ class manager(object):
     self.selection_good = self.structure_monitor.map_cc_per_atom > 0.8
     self.iselection_backbone=flex.size_t()
     for r in self.structure_monitor.residue_monitors:
-      self.iselection_backbone.extend(r.selection_backbone)
+      if(r.selection_backbone is not None):
+        self.iselection_backbone.extend(r.selection_backbone)
     self.loop_over_residues()
     clash_list = self.structure_monitor.find_sidechain_clashes()
-    self.loop_over_residues(iselection = clash_list, use_clash_filter=True)
+    if(clash_list.size()>0):
+      self.loop_over_residues(iselection = clash_list, use_clash_filter=True)
+      clash_list = self.structure_monitor.find_sidechain_clashes()
+    if(clash_list.size()>0):
+      self.loop_over_residues(iselection = clash_list, use_clash_filter=True,
+        use_torsion_search=True, use_rotamer_iterator=False)
 
-  def loop_over_residues(self, iselection=None, use_clash_filter=False,
-                         debug=False):
+
+  def loop_over_residues(self,
+                         iselection           = None,
+                         use_clash_filter     = False,
+                         debug                = False,
+                         use_slope            = None,
+                         use_torsion_search   = None,
+                         use_rotamer_iterator = None):
+    if(use_slope is None): use_slope = self.use_slope
+    if(use_torsion_search is None): use_torsion_search = self.use_torsion_search
+    if(use_rotamer_iterator is None): use_rotamer_iterator = self.use_rotamer_iterator
     sm = self.structure_monitor
     sites_cart = sm.xray_structure.sites_cart()
     get_class = iotbx.pdb.common_residue_names_get_class
     for i_res, r in enumerate(sm.residue_monitors):
       if(iselection is not None and not i_res in iselection): continue
       if(get_class(r.residue.resname) == "common_amino_acid" and
-         (r.rotamer_status=="OUTLIER" or r.map_cc_all< 0.8)):
+         (use_clash_filter or (r.rotamer_status=="OUTLIER" or
+          r.map_cc_all < self.map_cc_all_threshold))):
         #print i_res, len(sm.residue_monitors)
         #and str(r.residue.resseq).strip() in ["49"]):
         #print
@@ -52,7 +77,7 @@ class manager(object):
         elif(i_res==len(sm.residue_monitors)-1 and len(sm.residue_monitors)>1):
           iselection_c_external = sm.residue_monitors[i_res-1].selection_c
         #print r.residue.resname
-        t0=time.time()
+        #t0=time.time()
         negate_selection = mmtbx.refinement.real_space.selection_around_to_negate(
           xray_structure          = sm.xray_structure,
           selection_within_radius = 5, # XXX make residue dependent !!!!
@@ -87,9 +112,15 @@ class manager(object):
           rotamer_manager      = self.rotamer_manager,
           use_clash_filter     = use_clash_filter,
           debug                = debug,# XXX
-          use_slope            = True,
-          use_torsion_search   = True,
-          use_rotamer_iterator = True)
+          use_slope            = use_slope,
+          use_torsion_search   = use_torsion_search,
+          use_rotamer_iterator = use_rotamer_iterator,
+          torsion_search_all_start = self.torsion_search_all_start,
+          torsion_search_all_stop  = self.torsion_search_all_stop ,
+          torsion_search_all_step  = self.torsion_search_all_step ,
+          torsion_search_local_start = self.torsion_search_local_start,
+          torsion_search_local_stop  = self.torsion_search_local_stop,
+          torsion_search_local_step  = self.torsion_search_local_step)
         sites_cart.set_selected(r.residue.atoms().extract_i_seq(),
           r.residue.atoms().extract_xyz())
         sm.xray_structure = sm.xray_structure.replace_sites_cart(sites_cart)
