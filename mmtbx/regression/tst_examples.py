@@ -20,8 +20,8 @@ def exercise () :
     return
   assert (script_file is not None)
   args = [script_file, pdb_file, mtz_file]
-  result = easy_run.fully_buffered(
-    "mmtbx.python %s" % " ".join(args)).raise_if_errors()
+  result = easy_run.fully_buffered("mmtbx.python \"%s\" \"%s\" \"%s\"" %
+    (script_file, pdb_file, mtz_file)).raise_if_errors()
   assert ("CC(obs-calc): 0.953" in result.stdout_lines)
   print "OK"
 
