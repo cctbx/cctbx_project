@@ -1009,7 +1009,7 @@ iotbx/tst_bioinformatics.py -text
 iotbx/tst_data_plots.py -text
 iotbx/tst_poscar.py svneol=native#text/x-python
 iotbx/utils.py svneol=native#text/x-python
-iotbx/xds/xds_geometry.py -text
+iotbx/xds/geometry.py -text
 ipctbx/SConscript -text
 ipctbx/__init__.py svneol=native#text/x-python
 ipctbx/command_line/delete_all_segments.py svneol=native#text/x-python
