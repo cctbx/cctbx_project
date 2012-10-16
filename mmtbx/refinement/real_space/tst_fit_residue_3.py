@@ -62,7 +62,7 @@ TER
 END
 """
 
-def exercise(use_slope, use_torsion_search, use_rotamer_iterator,
+def exercise(use_slope, use_torsion_search, use_rotamer_iterator, cntr,
              d_min = 1.0, resolution_factor = 0.1):
   # Fit one residue having weak side chain density. There is a blob nearby that
   # overlaps with a plausible rotamer.
@@ -121,11 +121,14 @@ def exercise(use_slope, use_torsion_search, use_rotamer_iterator,
   pdb_hierarchy_poor.adopt_xray_structure(xrs_poor)
   pdb_hierarchy_poor.write_pdb_file(file_name = "refined.pdb")
   dist = xrs_answer.max_distance(other = xrs_poor)
-  assert dist < 0.24, dist
-  print dist
+  if(cntr == 0):
+    assert dist < 0.003, dist
+  else:
+    assert dist < 0.24, dist
 
 if(__name__ == "__main__"):
   t0 = time.time()
+  cntr = 0
   for use_slope in [True,]: # use_slope=True is what we are exercising here
     for use_torsion_search in [True,]: # False will fail the test due to lack of backrub fit
       for use_rotamer_iterator in [True,False]:
@@ -133,5 +136,7 @@ if(__name__ == "__main__"):
         exercise(
           use_slope            = use_slope,
           use_torsion_search   = use_torsion_search,
-          use_rotamer_iterator = use_rotamer_iterator)
+          use_rotamer_iterator = use_rotamer_iterator,
+          cntr                 = cntr)
+        cntr += 1
   print "Time: %6.4f"%(time.time()-t0)

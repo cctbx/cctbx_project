@@ -42,7 +42,13 @@ class manager(object):
                use_slope=True,
                debug=False,
                use_torsion_search=True,
-               use_rotamer_iterator=True):
+               use_rotamer_iterator=True,
+               torsion_search_all_start = 0,
+               torsion_search_all_stop  = 360,
+               torsion_search_all_step  = 1,
+               torsion_search_local_start = -50,
+               torsion_search_local_stop  = 50,
+               torsion_search_local_step  = 5):
     adopt_init_args(self, locals())
     get_class = iotbx.pdb.common_residue_names_get_class
     assert get_class(residue.resname) == "common_amino_acid", residue.resname
@@ -116,7 +122,7 @@ class manager(object):
       use_clash_filter          = use_clash_filter,
       rotamer_eval              = self.rotamer_manager)
 
-  def fit(self, debug=False):
+  def fit(self, debug=True):
     if(self.use_rotamer_iterator):
       rotamer_iterator = get_rotamer_iterator(
         mon_lib_srv = self.mon_lib_srv,
@@ -142,7 +148,10 @@ class manager(object):
             mmtbx.refinement.real_space.torsion_search(
               clusters   = self.clusters,
               sites_cart = rotamer_sites_cart.deep_copy(),
-              scorer     = score_rotamer)
+              scorer     = score_rotamer,
+              start      = self.torsion_search_local_start,
+              stop       = self.torsion_search_local_stop,
+              step       = self.torsion_search_local_step)
             if(debug): print score_rotamers.target, 1
             score_rotamers.update(sites_cart = score_rotamer.sites_cart.deep_copy(), tmp=rotamer.id)
             if(debug): print score_rotamers.target, 2
@@ -150,7 +159,7 @@ class manager(object):
             if(debug): print score_rotamers.target, 3
             score_rotamers.update(sites_cart = rotamer_sites_cart.deep_copy())
             if(debug): print score_rotamers.target, 4
-          if(debug): print rotamer.id, score_rotamers.target, score_rotamers.tmp, score_rotamer.target
+          if(debug): print rotamer.id, score_rotamers.target, score_rotamers.tmp#, score_rotamer.target
         if(debug): print "final:", score_rotamers.target, score_rotamers.tmp
         if(score_rotamers.sites_cart is not None):
           self.residue.atoms().set_xyz(new_xyz = score_rotamers.sites_cart)
@@ -162,9 +171,9 @@ class manager(object):
             score_rotamer = self.get_scorer()
             score_rotamer.update(sites_cart = score_rotamers.sites_cart.deep_copy())
             mmtbx.refinement.real_space.torsion_search_nested(
-                clusters   = self.clusters,
-                sites_cart = score_rotamers.sites_cart,
-                scorer     = score_rotamer)
+              clusters   = self.clusters,
+              sites_cart = score_rotamers.sites_cart,
+              scorer     = score_rotamer)
             self.residue.atoms().set_xyz(new_xyz = score_rotamer.sites_cart)
             print "final-final:", score_rotamer.target
           #
@@ -173,10 +182,10 @@ class manager(object):
       mmtbx.refinement.real_space.torsion_search(
         clusters   = self.clusters,
         sites_cart = self.residue.atoms().extract_xyz(),
-        scorer = score_residue,
-        start = 0,
-        stop  = 360,
-        step  = 1)
+        scorer     = score_residue,
+        start      = self.torsion_search_all_start,
+        stop       = self.torsion_search_all_stop,
+        step       = self.torsion_search_all_step)
       self.residue.atoms().set_xyz(new_xyz=score_residue.sites_cart)
 
   def rigid_body_refine(self, max_iterations = 250):
