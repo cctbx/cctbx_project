@@ -1093,10 +1093,7 @@ def show_overall_observations(
   obs, redundancy, ISIGI, n_bins=15, out=None, title=None, work_params=None):
   if out is None:
     out = sys.stdout
-  d_max_min = obs.select(
-    (redundancy > 0) &
-    (obs.d_spacings().data() > work_params.d_min)).d_max_min()
-  obs.setup_binner(d_max=d_max_min[0], d_min=d_max_min[1], n_bins=n_bins)
+  obs.setup_binner(d_max=100000, d_min=work_params.d_min, n_bins=n_bins)
   result = []
 
   cumulative_unique = 0
