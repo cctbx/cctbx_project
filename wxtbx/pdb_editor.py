@@ -1190,6 +1190,23 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     dlg.SetOptional(False)
     return simple_dialogs.get_phil_value_from_dialog(dlg)
 
+  def GetNewResname (self, resname) :
+    dlg = simple_dialogs.StringDialog(
+      parent=self,
+      title="Set residue name",
+      label="Residue code",
+      caption="The residue name can be one to three characters, but is "+
+        "nearly always three except for elemental ions.  Only alphanumeric "+
+        "characters are allowed.",
+      value=resname)
+    dlg.SetMinLength(1)
+    dlg.SetMaxLength(3)
+    dlg.SetOptional(False)
+    result = simple_dialogs.get_phil_value_from_dialog(dlg)
+    if (not result.isalnum()) :
+      raise Sorry("Residue code must be alphanumeric (value: '%s')" % result)
+    return result
+
   def GetNewIcode (self, icode) :
     if (icode.isspace()) :
       icode = None
