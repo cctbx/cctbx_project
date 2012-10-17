@@ -4041,7 +4041,7 @@ class build_all_chain_proxies(object):
     #print tuple(nonbonded_params.residue_self_pair_table)
     #STOP()
     if(self.params.nonbonded_weight is None):
-      nonbonded_weight = 16 # c_rep in prolsq repulsion function
+      nonbonded_weight = 100 # c_rep in prolsq repulsion function
       if(assume_hydrogens_all_missing) :
         nonbonded_weight = 100
     else:

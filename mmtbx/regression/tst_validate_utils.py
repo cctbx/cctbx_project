@@ -41,7 +41,7 @@ def exercise_clashscore():
   r = clashscore()
   score, bad_clashes = clashscore.analyze_clashes(r,pdb_io)
   clash_out = 'clashscore = %f' % score['']
-  assert not show_diff(clash_out, "clashscore = 47.468354")
+  assert not show_diff(clash_out, "clashscore = 37.974684")
 #}}}
 
 #{{{ exercise_cbetadev
