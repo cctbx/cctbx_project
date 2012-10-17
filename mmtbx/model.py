@@ -392,7 +392,7 @@ class manager(object):
         h = atom.detached_copy()
         h.name = atom_name
         if(sign):
-          h.xyz = [a+b for a,b in zip(xyz, (1,0,0))]
+          h.xyz = [a+b for a,b in zip(xyz, (1,0.001,0))]
           sign = False
         else:
           h.xyz = [a+b for a,b in zip(xyz, (-1,0,0))]
@@ -408,7 +408,7 @@ class manager(object):
         h.element = "%2s" % element.strip()
         ag.append_atom(atom=h)
         scatterer = xray.scatterer(
-          label           = h.name,
+          label           = h.id_str(),
           scattering_type = h.element.strip(),
           site            = frac(h.xyz),
           u               = adptbx.b_as_u(h.b),
@@ -447,15 +447,15 @@ class manager(object):
           assert [o_atom, h_atom].count(None) == 0
           h_name = h_atom.name.strip()
           if(len(h_name) == 1):
-            atom_name = h_name+"1"
+            atom_name = " %s1 " % h_name
           elif(len(h_name) == 2):
             if(h_name[0].isdigit()):
-              if(int(h_name[0]) == 1): atom_name = h_name[1]+"2"
-              elif(int(h_name[0]) == 2): atom_name = h_name[1]+"1"
+              if(int(h_name[0]) == 1): atom_name = " %s2 " % h_name[1]
+              elif(int(h_name[0]) == 2): atom_name = " %s1 " % h_name[1]
               else: raise RuntimeError
             elif(h_name[1].isdigit()):
-              if(int(h_name[1]) == 1): atom_name = h_name[0]+"2"
-              elif(int(h_name[1]) == 2): atom_name = h_name[0]+"1"
+              if(int(h_name[1]) == 1): atom_name = " %s2 " % h_name[0]
+              elif(int(h_name[1]) == 2): atom_name = " %s1 " % h_name[0]
               else: raise RuntimeError
             else: raise RuntimeError
           else: raise RuntimeError
@@ -468,7 +468,7 @@ class manager(object):
           assert atom.element.strip() == "O"
           insert_atoms(
             atom=atom,
-            atom_names=[element+n for n in ["1","2"]],
+            atom_names=[" "+element+n+" " for n in ["1","2"]],
             element=element)
     if(neutron):
       xs.switch_to_neutron_scattering_dictionary()

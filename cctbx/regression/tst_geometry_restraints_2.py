@@ -442,7 +442,7 @@ planarity: (0, 8, 10, 15)
 ...
 nonbonded asu: (36, 46) -x+1,y+1/2,-z+1/2
   distance_model: 4.89425
-  vdw_distance: 2.95
+  vdw_distance: 2.8
 nonbonded simple: (0, 23)
   distance_model: 4.89852
   vdw_distance: 3.77

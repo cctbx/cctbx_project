@@ -229,17 +229,33 @@ class server(process_cif_mixin):
       for geostd_block_key in geostd_cif:
         geostd_block = geostd_cif[geostd_block_key]
         mon_lib_block = mon_lib_cif.get(geostd_block_key)
-        if mon_lib_block:
+        if verbose:
+          print '+'*80
+          print geostd_block_key
+          print '-'*80
+          print mon_lib_block
+          print '+'*80
+        replace_block=False
+        if geostd_block_key.endswith("_list"):
+          pass
+        else:
+          replace_block=True
+        if not mon_lib_block:
+          replace_block=True
+        if not replace_block:
           # add to loops row-wise
-          geostd_loop_key = geostd_block.keys()
-          if not geostd_loop_key: continue
-          geostd_loop_key = geostd_loop_key[0]
-          if geostd_loop_key.find(".")==-1: continue
-          geostd_loop_key = geostd_loop_key.split(".")[0]
-          geostd_loop = geostd_block.get(geostd_loop_key)
-          mon_lib_loop = mon_lib_block.get(geostd_loop_key)
-          if not mon_lib_loop: continue
-          if verbose: print '''
+          geostd_loop_keys = geostd_block.keys()
+          if not geostd_loop_keys: continue
+          done = []
+          for geostd_loop_key in geostd_loop_keys:
+            if geostd_loop_key.find(".")==-1: continue
+            geostd_loop_key = geostd_loop_key.split(".")[0]
+            if geostd_loop_key in done: continue
+            done.append(geostd_loop_key)
+            geostd_loop = geostd_block.get(geostd_loop_key)
+            mon_lib_loop = mon_lib_block.get(geostd_loop_key)
+            if not mon_lib_loop: continue
+            if verbose: print '''
 %s
   Adding rows to CIF
     block "%s"
@@ -251,21 +267,25 @@ class server(process_cif_mixin):
             geostd_loop_key,
             "-"*80,
             )
-          for row in geostd_loop.iterrows():
-            if verbose:
-              for key in row:
-                print "    %-20s : %s" % (
-                  key.replace("%s." % geostd_loop_key, ""),
-                  row[key],
-                  )
-              print
-            mon_lib_loop.add_row(row.values())
+            for row in geostd_loop.iterrows():
+              if verbose:
+                for key in row:
+                  print "    %-20s : %s" % (
+                    key.replace("%s." % geostd_loop_key, ""),
+                    row[key],
+                    )
+                print
+              mon_lib_loop.add_row(row.values())
         else:
           # add block
           if verbose:
-            print '\n%s\n  Adding CIF block\n%s' % ("-"*80, "-"*80)
+            print '\n%s\n  Adding/replacing CIF block\n%s' % ("-"*80, "-"*80)
             print geostd_block
           mon_lib_cif[geostd_block_key] = geostd_block
+        if verbose:
+          print '+'*80
+          print mon_lib_block
+          print '+'*80
 
     self.root_path = os.path.dirname(os.path.dirname(list_cif.path))
     self.geostd_path = os.path.join(os.path.dirname(self.root_path), "geostd")
