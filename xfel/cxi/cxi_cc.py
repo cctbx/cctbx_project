@@ -1,4 +1,7 @@
 from __future__ import division
+# -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
+#
+# $Id$
 import math
 from libtbx.str_utils import format_value
 from iotbx import mtz
@@ -152,7 +155,7 @@ def run_cc(params,output):
        if this_label.find("imean")>=0:
          print >>output, this_label,array.observation_type()
          uniform.append(array.as_intensity_array())
-  reserve_highres = params.d_min
+  d_max_min = uniform[1].d_max_min()
   for x in [0,1,2,3]:
     print >>output, uniform[x].size()
     uniform[x] = uniform[x].customized_copy(
@@ -198,7 +201,8 @@ def run_cc(params,output):
   selected_uniform = []
   for x in [0,1]: selected_uniform.append(uniform[x].select(uniformA))
   for x in [2,3]: selected_uniform.append(uniform[x].select(uniformB))
-  for x in [0,1,2,3]: selected_uniform[x].setup_binner(d_max=100000, d_min=reserve_highres, n_bins=NBIN)
+  for x in [0,1,2,3]: selected_uniform[x].setup_binner(
+    d_max=d_max_min[0], d_min=d_max_min[1], n_bins=NBIN)
 
   binned_cc_ref,binned_cc_ref_N = binned_correlation(selected_uniform[1],selected_uniform[0])
   #binned_cc_ref.show(f=output)

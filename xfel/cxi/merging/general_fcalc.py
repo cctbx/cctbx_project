@@ -12,7 +12,10 @@ def run (params) :
   xray_structure.show_summary()
   phil2 = mmtbx.command_line.fmodel.fmodel_from_xray_structure_master_params
   params2 = phil2.extract()
-  params2.high_resolution = params.d_min
+  # XXX Kludge: adjust the cutoff of the generated intensities to
+  # allow for statistics to the desired high-resolution limit even
+  # after unit cell changes.
+  params2.high_resolution = params.d_min - 0.4
   params2.output.type = "real"
   if (params.include_bulk_solvent) :
     params2.fmodel.k_sol = params.k_sol

@@ -282,8 +282,11 @@ def run(args):
         scaler.rejected_fractions = scaler.n_rejected[irej]/scaler.n_obs[irej]
   # ---------- End of new code ----------------
 
+    j_model = i_model.customized_copy(
+      unit_cell=work_params.target_unit_cell)
+
     table1 = show_overall_observations(
-      obs=i_model,
+      obs=j_model,
       redundancy=scaler.completeness,
       ISIGI=scaler.ISIGI,
       n_bins=work_params.output.n_bins,
@@ -294,7 +297,7 @@ def run(args):
     n_refl, corr = scaler.get_overall_correlation(sum_I)
     print >> out, "\n"
     table2 = show_overall_observations(
-      obs=i_model,
+      obs=j_model,
       redundancy=scaler.summed_N,
       ISIGI=scaler.ISIGI,
       n_bins=work_params.output.n_bins,
