@@ -294,7 +294,7 @@ def fill_missing_f_obs(coeffs, fmodel) :
   fmdc = mmtbx.f_model.manager(
     f_obs = fo,
     xray_structure = fmodel.xray_structure)
-  fmdc.update_all_scales()
+  fmdc.update_all_scales(remove_outliers=False)
   #
   scale_data_c = 1. / (fmdc.k_isotropic()*fmdc.k_anisotropic())
   scale_c = fmdc.f_obs().customized_copy(data = scale_data_c)
