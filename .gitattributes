@@ -15,6 +15,7 @@ boost_adaptbx/command_line/show_environ_usage.py svneol=native#text/x-python
 boost_adaptbx/floating_point_exceptions.h -text
 boost_adaptbx/hash.h -text
 boost_adaptbx/libtbx_config -text
+boost_adaptbx/libtbx_refresh.py -text
 boost_adaptbx/python_streambuf.h -text
 boost_adaptbx/std_pair_conversion.h -text
 boost_adaptbx/std_pair_ext.cpp -text
