@@ -611,9 +611,11 @@ class scaling_manager (intensity_data) :
         space_group_info=self.miller_set.space_group_info())
     else :
       final_symm = self.miller_set
-    all_obs = self.i_model.customized_copy(data=Iobs_all,
+    all_obs = self.i_model.customized_copy(
+      data=Iobs_all,
       sigmas=SigI_all,
-      crystal_symmetry=final_symm).set_observation_type_xray_intensity()
+      crystal_symmetry=final_symm).resolution_filter(
+      d_min=self.params.d_min).set_observation_type_xray_intensity()
     mtz_file = "%s.mtz" % self.params.output.prefix
     all_obs = all_obs.select(all_obs.data() > 0)
     mtz_out = all_obs.as_mtz_dataset(
@@ -717,12 +719,12 @@ class scaling_manager (intensity_data) :
       ).resolution_filter(d_min=self.params.d_min)
 
     # Now manipulate the data to conform to unit cell, asu, and space group
-    # of reference
+    # of reference.  The resolution will be cut later.
     # Only works if there is NOT an indexing ambiguity!
     observations = observations.customized_copy(
       anomalous_flag=not self.params.merge_anomalous,
       crystal_symmetry=self.miller_set.crystal_symmetry()
-      ).resolution_filter(d_min=self.params.d_min).map_to_asu()
+      ).map_to_asu()
 
     print "Step 4. Filter on global resolution and map to asu"
     print >> out, "Data in reference setting:"
@@ -1038,8 +1040,9 @@ def run(args):
         sum_I[i] += t[0]
         sum_I_SIGI[i] += t[1]
 
+  j_model = i_model.customized_copy(unit_cell=work_params.target_unit_cell)
   table1 = show_overall_observations(
-    obs=i_model,
+    obs=j_model,
     redundancy=scaler.completeness,
     ISIGI=scaler.ISIGI,
     n_bins=work_params.output.n_bins,
@@ -1050,7 +1053,7 @@ def run(args):
   n_refl, corr = scaler.get_overall_correlation(sum_I)
   print >> out, "\n"
   table2 = show_overall_observations(
-    obs=i_model,
+    obs=j_model,
     redundancy=scaler.summed_N,
     ISIGI=scaler.ISIGI,
     n_bins=work_params.output.n_bins,
@@ -1088,9 +1091,12 @@ def run(args):
 
 def show_overall_observations(
   obs, redundancy, ISIGI, n_bins=15, out=None, title=None, work_params=None):
-  if out==None:
+  if out is None:
     out = sys.stdout
-  obs.setup_binner(n_bins=n_bins)
+  d_max_min = obs.select(
+    (redundancy > 0) &
+    (obs.d_spacings().data() > work_params.d_min)).d_max_min()
+  obs.setup_binner(d_max=d_max_min[0], d_min=d_max_min[1], n_bins=n_bins)
   result = []
 
   cumulative_unique = 0
@@ -1101,7 +1107,6 @@ def show_overall_observations(
   for i_bin in obs.binner().range_used():
     sel_w = obs.binner().selection(i_bin)
     sel_fo_all = obs.select(sel_w)
-    d_max_,d_min_ = sel_fo_all.d_max_min()
     d_range = obs.binner().bin_legend(
       i_bin=i_bin, show_bin_number=False, show_counts=False)
     sel_redundancy = redundancy.select(sel_w)
