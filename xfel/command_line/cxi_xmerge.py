@@ -288,6 +288,8 @@ def run(args):
     table1 = show_overall_observations(
       obs=j_model,
       redundancy=scaler.completeness,
+      summed_wt_I=scaler.summed_wt_I,
+      summed_weight=scaler.summed_weight,
       ISIGI=scaler.ISIGI,
       n_bins=work_params.output.n_bins,
       title="Statistics for all reflections",
@@ -299,6 +301,8 @@ def run(args):
     table2 = show_overall_observations(
       obs=j_model,
       redundancy=scaler.summed_N,
+      summed_wt_I=scaler.summed_wt_I,
+      summed_weight=scaler.summed_weight,
       ISIGI=scaler.ISIGI,
       n_bins=work_params.output.n_bins,
       title="Statistics for reflections where I > 0",

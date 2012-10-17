@@ -1044,6 +1044,8 @@ def run(args):
   table1 = show_overall_observations(
     obs=j_model,
     redundancy=scaler.completeness,
+    summed_wt_I=scaler.summed_wt_I,
+    summed_weight=scaler.summed_weight,
     ISIGI=scaler.ISIGI,
     n_bins=work_params.output.n_bins,
     title="Statistics for all reflections",
@@ -1055,6 +1057,8 @@ def run(args):
   table2 = show_overall_observations(
     obs=j_model,
     redundancy=scaler.summed_N,
+    summed_wt_I=scaler.summed_wt_I,
+    summed_weight=scaler.summed_weight,
     ISIGI=scaler.ISIGI,
     n_bins=work_params.output.n_bins,
     title="Statistics for reflections where I > 0",
@@ -1090,7 +1094,7 @@ def run(args):
   return result
 
 def show_overall_observations(
-  obs, redundancy, ISIGI, n_bins=15, out=None, title=None, work_params=None):
+  obs, redundancy, summed_wt_I, summed_weight, ISIGI, n_bins=15, out=None, title=None, work_params=None):
   if out is None:
     out = sys.stdout
   obs.setup_binner(d_max=100000, d_min=work_params.d_min, n_bins=n_bins)
@@ -1099,6 +1103,8 @@ def show_overall_observations(
   cumulative_unique = 0
   cumulative_meas   = 0
   cumulative_theor  = 0
+  cumulative_In     = 0
+  cumulative_I      = 0.0
   cumulative_Isigma = 0.0
 
   for i_bin in obs.binner().range_used():
@@ -1121,14 +1127,21 @@ def show_overall_observations(
     if (n_present > 0):
       val_redundancy_alt = flex.sum(sel_redundancy) / n_present
 
+    # Per-bin sum of I and I/sig(I).  For any reflection, the weight
+    # of the merged intensity must be non-negative for this to make
+    # sense.
+    sel_o = (sel_w & (summed_weight > 0))
+    intensity = summed_wt_I.select(sel_o) / summed_weight.select(sel_o)
+    I_sum = flex.sum(intensity)
+    I_sigI_sum = flex.sum(intensity * flex.sqrt(summed_weight.select(sel_o)))
+    I_n = sel_o.count(True)
+
     # Per-bin sum of I and I/sig(I) for each observation.
     # R-merge statistics have been removed because
     #  >> R-merge is defined on whole structure factor intensities, either
     #     full observations or summed partials from the rotation method.
     #     For XFEL data all reflections are assumed to be partial; no
     #     method exists now to convert partials to fulls.
-    I_sum = 0
-    I_sigI_sum = 0
     if work_params.plot_single_index_histograms: import numpy as np
     for i in obs.binner().array_indices(i_bin) :
       index = obs.indices()[i]
@@ -1138,10 +1151,8 @@ def show_overall_observations(
         N = 0
         m = 0
         for t in ISIGI[index] :
-          I_sigI_sum += t[1]
           N += 1
           m += t[0]
-        I_sum += m
         if work_params is not None and \
            (work_params.plot_single_index_histograms is False or \
             N<30 or \
@@ -1165,13 +1176,15 @@ def show_overall_observations(
         complete_tag = sel_complete_tag,
         completeness = n_present / sel_redundancy.size(),
         measurements = sel_measurements,
-        mean_I       = I_sum / sel_measurements,
-        mean_I_sigI  = I_sigI_sum / sel_measurements,
+        mean_I       = I_sum / I_n,
+        mean_I_sigI  = I_sigI_sum / I_n,
         )
       result.append(bin)
     cumulative_unique += n_present
     cumulative_meas   += sel_measurements
     cumulative_theor  += sel_redundancy.size()
+    cumulative_In     += I_n
+    cumulative_I      += I_sum
     cumulative_Isigma += I_sigI_sum
 
   if (title is not None) :
@@ -1201,8 +1214,8 @@ def show_overall_observations(
       format_value("%6.2f", cumulative_meas/cumulative_theor),
       format_value("%6.2f", cumulative_meas/cumulative_unique),
       format_value("%6d",   cumulative_meas),
-      format_value("%8.0f", 0.),
-      format_value("%8.3f", cumulative_Isigma/cumulative_meas),
+      format_value("%8.0f", cumulative_I/cumulative_In),
+      format_value("%8.3f", cumulative_Isigma/cumulative_In),
   ])
 
   print
