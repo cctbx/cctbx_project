@@ -4,6 +4,7 @@ import mmtbx.utils
 from iotbx import file_reader
 import libtbx.phil.command_line
 import sys
+import math
 
 def run (params) :
   pdb_in = file_reader.any_file(params.model, force_type="pdb")
@@ -12,10 +13,11 @@ def run (params) :
   xray_structure.show_summary()
   phil2 = mmtbx.command_line.fmodel.fmodel_from_xray_structure_master_params
   params2 = phil2.extract()
-  # XXX Kludge: adjust the cutoff of the generated intensities to
-  # allow for statistics to the desired high-resolution limit even
-  # after unit cell changes.
-  params2.high_resolution = params.d_min - 0.4
+  # adjust the cutoff of the generated intensities to assure that
+  # statistics will be reported to the desired high-resolution limit
+  # even if the observed unit cell differs slightly from the reference.
+  ISO_ALLOWANCE = 0.1 # isomorphous recip cell volume changes no more than 10%
+  params2.high_resolution = params.d_min / math.pow( (1.+ISO_ALLOWANCE),(1./3.) )
   params2.output.type = "real"
   if (params.include_bulk_solvent) :
     params2.fmodel.k_sol = params.k_sol
