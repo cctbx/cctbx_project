@@ -201,8 +201,7 @@ def run_cc(params,output):
   selected_uniform = []
   for x in [0,1]: selected_uniform.append(uniform[x].select(uniformA))
   for x in [2,3]: selected_uniform.append(uniform[x].select(uniformB))
-  for x in [0,1,2,3]: selected_uniform[x].setup_binner(
-    d_max=d_max_min[0], d_min=d_max_min[1], n_bins=NBIN)
+  for x in [0,1,2,3]: selected_uniform[x].setup_binner(d_max=100000, d_min=params.d_min, n_bins=NBIN)
 
   binned_cc_ref,binned_cc_ref_N = binned_correlation(selected_uniform[1],selected_uniform[0])
   #binned_cc_ref.show(f=output)
