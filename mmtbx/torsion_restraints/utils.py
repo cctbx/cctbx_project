@@ -265,6 +265,8 @@ def get_angle_average(angles):
     if angle is not None:
       local_angles.append(angle)
   n_angles = len(local_angles)
+  if n_angles < 1:
+    return None
   sum = 0.0
   a1 = local_angles[0]
   if a1 > 180.0:

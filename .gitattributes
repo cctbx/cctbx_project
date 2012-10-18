@@ -1223,6 +1223,7 @@ mmtbx/geometry_restraints/boost_python/hbond_ext.cpp -text
 mmtbx/geometry_restraints/boost_python/ramachandran_ext.cpp -text
 mmtbx/geometry_restraints/boost_python/reference_coordinate_ext.cpp svneol=native#text/plain
 mmtbx/geometry_restraints/boost_python/rotamer_ext.cpp svneol=native#text/plain
+mmtbx/geometry_restraints/c_beta.py svneol=native#text/x-python
 mmtbx/geometry_restraints/external.py -text
 mmtbx/geometry_restraints/flags.py svneol=native#text/x-python
 mmtbx/geometry_restraints/hbond.h -text

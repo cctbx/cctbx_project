@@ -118,7 +118,8 @@ class manager(object):
 
   def target_and_gradients(self,
                            sites_cart,
-                           gradient_array):
+                           gradient_array,
+                           unit_cell=None):
     target = 0.0
     if self.reference_coordinate_proxies is not None:
       target += ext.reference_coordinate_residual_sum(
@@ -126,10 +127,17 @@ class manager(object):
         self.reference_coordinate_proxies,
         gradient_array)
     if self.reference_torsion_proxies is not None:
-      target += geometry_restraints.dihedral_residual_sum(
-                  sites_cart=sites_cart,
-                  proxies=self.reference_torsion_proxies,
-                  gradient_array=gradient_array)
+      if unit_cell is None:
+        target += geometry_restraints.dihedral_residual_sum(
+                    sites_cart=sites_cart,
+                    proxies=self.reference_torsion_proxies,
+                    gradient_array=gradient_array)
+      else:
+        target += geometry_restraints.dihedral_residual_sum(
+                    unit_cell=unit_cell,
+                    sites_cart=sites_cart,
+                    proxies=self.reference_torsion_proxies,
+                    gradient_array=gradient_array)
     return target
 
 def torsion_is_chi_angle(dp, atoms_with_labels):

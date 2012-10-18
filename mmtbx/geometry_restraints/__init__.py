@@ -13,6 +13,7 @@ class manager (object) :
                 hydrogen_bond_params=None,
                 reference_manager=None,
                 den_manager=None,
+                c_beta_dihedral_proxies=None,
                 flags=None) :
     adopt_init_args(self, locals())
     if self.flags is None:
@@ -44,6 +45,8 @@ class manager (object) :
           len(self.reference_manager.reference_torsion_proxies)
     if (self.den_manager is not None) :
       n_proxies += len(self.den_manager.den_proxies)
+    if (self.c_beta_dihedral_proxies is not None) :
+      n_proxies += len(self.c_beta_dihedral_proxies)
     return n_proxies
 
   def get_n_hbonds (self) :
@@ -89,6 +92,14 @@ class manager (object) :
         gradient_array=gradient_array)
       #print "DEN target: %.1f" % den_target
       target += den_target
+    if (self.c_beta_dihedral_proxies is not None and
+        self.flags.c_beta) :
+      from mmtbx.geometry_restraints import c_beta
+      c_beta_target = c_beta.target_and_gradients(
+        sites_cart=sites_cart,
+        c_beta_dihedral_proxies=self.c_beta_dihedral_proxies,
+        gradient_array=gradient_array)
+      target += c_beta_target
     return target
 
   def hbonds_as_simple_bonds (self) :
