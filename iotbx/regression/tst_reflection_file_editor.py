@@ -71,6 +71,15 @@ mtz_file {
     'F-obs(-)', 'SIGF-obs(-)'])
   assert miller_arrays[0].is_xray_amplitude_array()
   data1 = miller_arrays[0].data()
+  assert (flex.min(data1) == 0)
+  # now with French-Wilson treatment
+  params.mtz_file.miller_array[0].output_as = "amplitudes_fw"
+  miller_arrays = run_and_reload(params, "tst1.mtz")
+  assert (miller_arrays[0].info().labels == ['F-obs(+)', 'SIGF-obs(+)',
+    'F-obs(-)', 'SIGF-obs(-)'])
+  assert miller_arrays[0].is_xray_amplitude_array()
+  assert (len(miller_arrays[0].data()) == 341)
+  assert (flex.min(miller_arrays[0].data()) > 0)
   # force data type change
   params.mtz_file.miller_array[0].output_as = "auto"
   params.mtz_file.miller_array[0].force_type = "amplitudes"
