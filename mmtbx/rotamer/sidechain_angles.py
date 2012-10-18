@@ -45,6 +45,7 @@ class SidechainAngles:
   rotamersForAA = {}
   anglesForRot = {}
   atomsMoveWithAngle = {}
+  resAtomsToChi = {}
 
   def __init__(self, show_errs):
     self.show_errors = show_errs
@@ -54,6 +55,7 @@ class SidechainAngles:
     f.process(os.path.join(source_dir, "sidechain_angles.props"))
     for aa in f.properties['aminoacids'].split(","):
       #print aa + f.properties[aa+".chis"]
+      self.resAtomsToChi[aa] = {}
       self.chisPerAA[aa] = f.properties[aa+".chis"] #gives aaName -> # of chis
       #print f.properties[aa+".angles"].split(",")
       anglelist = f.properties[aa+".angles"].split(",")
@@ -66,6 +68,14 @@ class SidechainAngles:
           key = aa+"."+angle
           #print key
           self.atomsForAngle[key] = f.properties[key].split(",") #aaName.angle -> atoms
+          chi_atoms = f.properties[key]
+          if aa == 'val' and angle == 'chi1':
+            chi_atoms = chi_atoms.replace('CG1', 'CG2')
+          elif aa == 'thr' and angle == 'chi1':
+            chi_atoms = chi_atoms.replace('OG1', 'CG2')
+          elif aa == 'ile' and angle == 'chi1':
+            chi_atoms = chi_atoms.replace('CG1', 'CG2')
+          self.resAtomsToChi[aa][chi_atoms] = angle
           if aa == 'leu' or aa == 'val' or aa == 'thr' or aa == 'arg':
             if chi_ctr < int(f.properties[aa+".chis"]):
               key2 = key + "_atoms"
@@ -141,6 +151,8 @@ class SidechainAngles:
                    angleName=angleName,
                    res=res,
                    atom_dict=atom_dict)
+    if angleAtoms is None:
+      return None
     if sites_cart is None:
       sites = [a.xyz for a in angleAtoms]
     else:
@@ -165,11 +177,10 @@ class SidechainAngles:
       while (testAtom == None and j < len(namelist)):
         testAtom = atomNamesMap.get(namelist[j])
         j += 1
-      #print testAtom.name + res.name
       if (testAtom != None) :
         angleAtoms.append(atomNamesMap.get(testAtom.name))
       else:
-        raise AttributeError("Missing sidechain atoms!")
+        return None
     return angleAtoms
 
 def makeAtomDict(res):
@@ -200,9 +211,8 @@ def collect_sidechain_chi_angles (pdb_hierarchy, atom_selection=None) :
           chis = []
           altloc = residue.atoms()[0].fetch_labels().altloc
           for i in range(1, n_chi+1) :
-            try :
-              atoms = angle_lookup.extract_chi_atoms("chi%d" % i, residue)
-            except AttributeError, e :
+            atoms = angle_lookup.extract_chi_atoms("chi%d" % i, residue)
+            if atoms is None:
               pass
             else :
               i_seqs = [ atom.i_seq for atom in atoms ]

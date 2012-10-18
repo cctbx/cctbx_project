@@ -156,6 +156,7 @@ Example:
       hierarchy = pdb_io.construct_hierarchy()
     analysis = ""
     output_list = []
+    self.current_rotamers = {}
     self.numoutliers = 0
     self.numtotal = 0
     self.rot_id = rotamer_eval.RotamerID() # loads in the rotamer names
@@ -168,8 +169,7 @@ Example:
             resname = atom_group.resname
             coords = self.get_center(atom_group)
             atom_dict = all_dict.get(atom_group.altloc)
-            #print atom_dict
-            #STOP()
+            res_key = self.get_residue_key(atom_group=atom_group)
             try:
               chis = self.sa.measureChiAngles(
                        atom_group,
@@ -221,15 +221,51 @@ Example:
                   if outliers_only:
                     analysis += s
                     output_list.append(res_out_list)
+                  self.current_rotamers[res_key] = "OUTLIER"
                 else:
                   s += self.rot_id.identify(resname, wrap_chis) + "\n"
                   res_out_list.append(self.rot_id.identify(resname, wrap_chis))
                   res_out_list.append(coords)
+                  self.current_rotamers[res_key] = \
+                    self.rot_id.identify(resname, wrap_chis)
+                  if self.current_rotamers[res_key] == "":
+                    self.current_rotamers[res_key] = "OUTLIER"
                 if not outliers_only:
                   analysis += s
                   output_list.append(res_out_list)
     return analysis.rstrip(), output_list
   #}}}
+
+  def split_rotamer_names(self, rotamer):
+    split_rotamer = []
+    multi = ""
+    if rotamer in ['OUTLIER', 'Cg_exo', 'Cg_endo']:
+      split_rotamer.append(rotamer)
+      return split_rotamer
+    for i, c in enumerate(rotamer):
+      if c in ['t', 'p', 'm']:
+        split_rotamer.append(c)
+      elif (c in ['-', '?']) or (c >= '0' and c<='9'):
+        multi += c
+    if len(multi) > 0:
+      split_rotamer.append(multi)
+    return split_rotamer
+
+  def get_residue_key(self, atom_group):
+    altloc = atom_group.altloc
+    if altloc == "":
+      altloc = " "
+    key = None
+    for atom in atom_group.atoms():
+      cur_label = atom.pdb_label_columns()+atom.segid
+      cur_altloc = cur_label[4:5]
+      if key is None:
+        if altloc == cur_altloc:
+          key = cur_label[4:]
+      else:
+        if altloc == cur_altloc:
+          assert key == cur_label[4:]
+    return key
 
   #{{{ evaluate_residue
   def evaluate_residue(
