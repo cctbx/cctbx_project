@@ -618,7 +618,6 @@ int main() {
   return 0;
 }
 """
-    flag = conf.TryCompile(test_code, extension='.cpp')
     flag, output = conf.TryRun(test_code, extension='.cpp')
     conf.Finish()
     assert flag, "I have been asked to use the compiler clang but it is not working!"
