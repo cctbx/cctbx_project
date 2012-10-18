@@ -517,3 +517,32 @@ def check_for_internal_chain_ter_records(
       if ter_id > min and ter_id < max:
         raise Sorry("chain '%s' in %s contains one or more "%(key,file_name)+
                     "errant TER cards.\nPlease remove and try again.")
+
+def get_torsion_id(dp, name_hash, phi_psi=False, chi_only=False):
+  id = None
+  chi_atoms = False
+  atom_list = []
+  altloc = None
+  if phi_psi:
+    return name_hash[dp.i_seqs[1]][4:]
+  for i_seq in dp.i_seqs:
+    cur_id = name_hash[i_seq][4:]
+    atom = name_hash[i_seq][:4]
+    atom_list.append(atom)
+    cur_altloc = name_hash[i_seq][4:5]
+    if id == None:
+      id = cur_id
+    if cur_altloc != " " and altloc:
+      altloc = cur_altloc
+    elif cur_id != id:
+      return None
+    resname = cur_id[1:4]
+    if common_residue_names_get_class(resname,
+         consider_ccp4_mon_lib_rna_dna=True) != "common_amino_acid":
+      return None
+    if chi_only:
+      if atom not in [' N  ', ' CA ', ' C  ', ' O  ', ' CB ', ' OXT']:
+        chi_atoms = True
+  if chi_only and not chi_atoms:
+    return None
+  return id

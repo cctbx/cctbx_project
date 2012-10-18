@@ -322,14 +322,20 @@ class torsion_ncs(object):
         for dp in dp_set:
           angle_atoms = self.get_torsion_atoms(dp)
           angle_resname = self.get_torsion_resname(dp)
-          angle_id = self.get_torsion_id(dp)
+          angle_id = utils.get_torsion_id(dp=dp, name_hash=self.name_hash)
           #phi
           if angle_atoms == ' C  '+' N  '+' CA '+' C  ':
-            phi_id = self.get_torsion_id(dp, phi_psi=True)
+            phi_id = utils.get_torsion_id(
+                       dp=dp,
+                       name_hash=self.name_hash,
+                       phi_psi=True)
             self.phi_list.append(dp.i_seqs)
           #psi
           elif angle_atoms == ' N  '+' CA '+' C  '+' N  ':
-            psi_id = self.get_torsion_id(dp, phi_psi=True)
+            psi_id = utils.get_torsion_id(
+                       dp=dp,
+                       name_hash=self.name_hash,
+                       phi_psi=True)
             self.psi_list.append(dp.i_seqs)
 
       match_counter = {}
@@ -482,31 +488,6 @@ class torsion_ncs(object):
         return None
     return resname
 
-  def get_torsion_id(self, dp, phi_psi=False, chi_only=False):
-    id = None
-    chi_atoms = False
-    atom_list = []
-    altloc = None
-    if phi_psi:
-      return self.name_hash[dp.i_seqs[1]][4:]
-    for i_seq in dp.i_seqs:
-      cur_id = self.name_hash[i_seq][4:]
-      atom = self.name_hash[i_seq][:4]
-      atom_list.append(atom)
-      cur_altloc = self.name_hash[i_seq][4:5]
-      if id == None:
-        id = cur_id
-      if cur_altloc != " " and altloc:
-        altloc = cur_altloc
-      elif cur_id != id:
-        return None
-      if chi_only:
-        if atom not in [' N  ', ' CA ', ' C  ', ' O  ', ' CB ', ' OXT']:
-          chi_atoms = True
-    if chi_only and not chi_atoms:
-      return None
-    return id
-
   def get_chi_id(self, dp):
     atoms = []
     for i_seq in dp.i_seqs:
@@ -514,9 +495,11 @@ class torsion_ncs(object):
       atoms.append(atom)
     atoms_key = ",".join(atoms)
     resname = self.get_torsion_resname(dp)
-    chi_id = self.sa.resAtomsToChi[resname.lower()].get(atoms_key)
-    #if chi_id is None:
-    #  print >> self.log, atoms_key
+    resAtomsToChi = self.sa.resAtomsToChi.get(resname.lower())
+    if resAtomsToChi is None:
+      chi_id = None
+    else:
+      chi_id = resAtomsToChi.get(atoms_key)
     return chi_id
 
   def build_chi_tracker(self, pdb_hierarchy):
@@ -598,7 +581,10 @@ class torsion_ncs(object):
         angles.append(angle)
         rama_out = False
         if (dp.i_seqs in self.phi_list) or (dp.i_seqs in self.psi_list):
-          angle_id = self.get_torsion_id(dp, phi_psi=True)
+          angle_id = utils.get_torsion_id(
+                       dp=dp,
+                       name_hash=self.name_hash,
+                       phi_psi=True)
           key = angle_id[4:6].strip()+angle_id[6:10]+' '+angle_id[0:4]
           if key in rama_outlier_list:
             rama_out = True
@@ -614,7 +600,10 @@ class torsion_ncs(object):
         #                            target_map_data=target_map_data)
         #  cc_s.append(di_cc)
 
-        angle_id = self.get_torsion_id(dp, chi_only=True)
+        angle_id = utils.get_torsion_id(
+                     dp=dp,
+                     name_hash=self.name_hash,
+                     chi_only=True)
         if angle_id is not None:
           split_rotamer_list = self.current_chi_restraints.get(angle_id)
           which_chi = self.get_chi_id(dp)
@@ -639,7 +628,7 @@ class torsion_ncs(object):
         target_angle = target_angles[i]
         angle_atoms = self.get_torsion_atoms(dp)
         angle_resname = self.get_torsion_resname(dp)
-        angle_id = self.get_torsion_id(dp)
+        angle_id = utils.get_torsion_id(dp=dp, name_hash=self.name_hash)
         cur_dict = self.sidechain_angle_hash.get(angle_resname)
         angle_name = None
         if cur_dict != None:
@@ -648,7 +637,7 @@ class torsion_ncs(object):
         if target_angle is not None:
           angle_atoms = self.get_torsion_atoms(dp)
           angle_resname = self.get_torsion_resname(dp)
-          angle_id = self.get_torsion_id(dp)
+          angle_id = utils.get_torsion_id(dp=dp, name_hash=self.name_hash)
           cur_dict = self.sidechain_angle_hash.get(angle_resname)
           angle_name = None
           dp_sym = wrap_hash.get(i)
@@ -680,6 +669,7 @@ class torsion_ncs(object):
       print >> log, \
         "Number of torsion NCS restraints: %d" \
           % len(self.ncs_dihedral_proxies)
+    #STOP()
 
   def sync_dihedral_restraints(self,
                                geometry):
