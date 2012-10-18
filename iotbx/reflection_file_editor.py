@@ -119,11 +119,15 @@ mtz_file
     d_max = None
       .type = float
       .short_caption = Low resolution
-    output_as = *auto amplitudes intensities
+    output_as = *auto intensities amplitudes_fw amplitudes
       .type = choice
       .short_caption = Output diffraction data as
+      .caption = Automatic Intensities Amplitudes_(run_French-Wilson) \
+        Amplitudes_(simple_conversion)
       .help = If the Miller array is amplitudes or intensities, this flag \
-        determines the output data type.
+        determines the output data type.  If intensities are being converted \
+        to amplitudes, this can optionally be done using the French and \
+        Wilson treatment to correct weak and negative values.
     output_non_anomalous = False
       .type = bool
       .short_caption = Output non-anomalous data
@@ -622,8 +626,14 @@ class process_arrays (object) :
       #-----------------------------------------------------------------
       # MISCELLANEOUS
       if new_array.is_xray_intensity_array() :
-        if array_params.output_as == "amplitudes" :
-          output_array = new_array.f_sq_as_f()
+        if (array_params.output_as in ["amplitudes", "amplitudes_fw"]) :
+          if (array_params.output_as == "amplitudes") :
+            output_array = new_array.f_sq_as_f()
+          else :
+            from cctbx import french_wilson
+            output_array = french_wilson.french_wilson_scale(
+              miller_array=new_array,
+              log=log)
           output_array.set_observation_type_xray_amplitude()
           if (array_types[i] is not None) :
             array_types[i] = re.sub("J", "F", array_types[i])
