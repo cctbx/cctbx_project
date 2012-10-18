@@ -14,7 +14,7 @@ french_wilson {
     .short_caption = Reflections
     .help = '''input intensity data file (mtz)'''
     .style = bold file_type:hkl process_hkl child:iobs:intensity_labels \
-      child:rfree:r_free_flags.label
+      child:rfree:r_free_flags.label input_file
   intensity_labels = None
     .type = strings
     .style = bold renderer:draw_fobs_label_widget
@@ -28,7 +28,7 @@ french_wilson {
     .type = path
     .optional = True
     .help = '''Enter a .mtz output name'''
-    .style = bold
+    .style = bold file_type:hkl new_file
   include scope libtbx.phil.interface.tracking_params
   keep_r_free_flags = True
     .type = bool
