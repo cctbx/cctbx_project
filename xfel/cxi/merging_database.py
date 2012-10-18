@@ -1,5 +1,38 @@
 from __future__ import division
 from cctbx.array_family import flex
+
+mysql_master_phil = """
+mysql {
+  # MySQL database v5.1 data store.
+  # mysql -u root -p # Steps to be taken by the database administrator
+  # CREATE DATABASE database;
+  # GRANT ALL ON database.* to 'user' IDENTIFIED BY 'passwd';
+  # SET GLOBAL max_allowed_packet=512*1024*1024;
+  # installation of MySQLdb, download from http://sourceforge.net/projects/mysql-python
+  # install into the cctbx python with libtbx.python setup.py install
+  # Maintenance and cleanup by user with mysql -u user -p
+  # SHOW TABLES FROM database;
+  # DROP TABLE *;
+  runtag = None
+    .type = str
+    .help = 'None' signifies use flat-file ASCII data storage. Valid identifier signifies use MySQL.
+    .help = Identifier is for this run, dumps old data when applicable and writes new tables.
+  host = localhost
+    .type = str
+    .help = persistent data tables to MySQL database using mysql-server on this host
+    .help = concurrent client connections OK, can use nproc > 1
+  user = None
+    .type = str
+    .help = mysql username provided by the database administrator
+  passwd = None
+    .type = str
+    .help = mysql password provided by the database administrator
+  database = None
+    .type = str
+    .help = mysql user's working database name, provided by the database administrator
+}
+"""
+
 class manager:
   def __init__(self,params):
     self.params = params
@@ -144,4 +177,19 @@ class manager:
               ) AUTO_INCREMENT = 1
             """
             ),
+              ]
+  def positional_refinement_schema_tables(self,runtag):
+    return [(runtag+"_spotfinder","""
+            (
+              frame_id INT, itile INT,
+              beam1x DOUBLE(10,2) NOT NULL,
+              beam1y DOUBLE(10,2) NOT NULL,
+              beamrx DOUBLE(10,2) NOT NULL,
+              beamry DOUBLE(10,2) NOT NULL,
+              spotfx DOUBLE(10,2) NOT NULL,
+              spotfy DOUBLE(10,2) NOT NULL,
+              spotcx DOUBLE(10,2) NOT NULL,
+              spotcy DOUBLE(10,2) NOT NULL
+            )
+            """),
               ]
