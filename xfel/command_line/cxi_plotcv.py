@@ -11,6 +11,7 @@ from __future__ import division
 import iotbx.phil
 import sys
 
+from xfel.cxi.merging_database import mysql_master_phil
 master_phil="""
 run_numbers = None
   .type = ints
@@ -25,7 +26,7 @@ bravais_setting_id = None
 show_plots = False
   .type = bool
   .help = Show graphical plots using matplotlib
-"""
+""" + mysql_master_phil
 
 #-----------------------------------------------------------------------
 def run(args):
