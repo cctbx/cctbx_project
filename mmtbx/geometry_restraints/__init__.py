@@ -144,3 +144,18 @@ class manager (object) :
       hydrogen_bond_params=self.hydrogen_bond_params,
       den_manager=den_manager,
       flags=self.flags)
+
+  def add_c_beta_torsion_restraints(self,
+                                    pdb_hierarchy,
+                                    selection=None,
+                                    sigma=2.5):
+    from mmtbx.geometry_restraints import c_beta
+    self.c_beta_dihedral_proxies = \
+      c_beta.get_c_beta_torsion_proxies(
+        pdb_hierarchy=pdb_hierarchy,
+        selection=selection,
+        sigma=2.5)
+
+  def remove_c_beta_torsion_restraints(self, selection):
+    self.c_beta_dihedral_proxies = \
+      self.c_beta_dihedral_proxies.proxy_remove(selection=selection)
