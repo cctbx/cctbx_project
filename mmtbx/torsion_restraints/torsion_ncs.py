@@ -293,7 +293,21 @@ class torsion_ncs(object):
                (atoms_key == ' CD , NE , CZ , NH2') ):
             continue
           elif ( (resname.lower() == 'tyr') and
-               (atoms_key == ' CD1, CE1, CZ , OH ') ):
+               (atoms_key == ' CD1, CE1, CZ , OH ' or
+                atoms_key == ' CE1, CZ , OH , HH ') ):
+            continue
+          elif ( (resname.lower() == 'ser') and
+               (atoms_key == ' CA , CB , OG , HG ') ):
+            continue
+          elif ( (resname.lower() == 'thr') and
+               (atoms_key == ' CA , CB , OG1, HG1') ):
+            continue
+          elif ( (resname.lower() == 'cys') and
+               (atoms_key == ' CA , CB , SG , HG ') ):
+            continue
+          elif ( (resname.lower() == 'met') and
+               (atoms_key == ' CG , SD , CE ,1HE ' or
+                atoms_key == ' CG , SD , CE , HE1') ):
             continue
         ################
         for i_seq in dp.i_seqs:
@@ -316,7 +330,6 @@ class torsion_ncs(object):
         dp_hash[dp.i_seqs] = None
         if len(dp_match) > 1:
           self.dp_ncs.append(dp_match)
-
       #initialize tracking hashes
       for dp_set in self.dp_ncs:
         for dp in dp_set:
@@ -757,9 +770,13 @@ class torsion_ncs(object):
     assert (len(rotamer_state) == len(angles)) or \
            (len(rotamer_state) == 0)
     chi_num = None
+    #print chi_ids
     if len(chi_ids) > 0:
       assert len(chi_ids) == chi_ids.count(chi_ids[0])
-      chi_num = chi_ids[0][-1:]
+      if ('oh' not in chi_ids and
+          'sh' not in chi_ids and
+          'me' not in chi_ids):
+        chi_num = chi_ids[0][-1:]
     clusters = {}
     used = []
     target_angles = [None] * len(angles)
