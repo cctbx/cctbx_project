@@ -1,10 +1,18 @@
 from __future__ import division
 import iotbx.pdb
 import cctbx.geometry_restraints
+from cctbx.array_family import flex
 
 def get_c_beta_torsion_proxies(pdb_hierarchy,
-                               selection = None,
-                               sigma = 2.5):
+                               selection=None,
+                               sigma=2.5):
+  if (selection is not None):
+    if (isinstance(selection, flex.bool)):
+      selection = selection.iselection()
+  if selection is None:
+    selection = flex.bool(
+      len(pdb_hierarchy.atoms()),
+      True).iselection()
   c_beta_dihedral_proxies = \
       cctbx.geometry_restraints.shared_dihedral_proxy()
   get_class = iotbx.pdb.common_residue_names_get_class
@@ -30,6 +38,11 @@ def get_c_beta_torsion_proxies(pdb_hierarchy,
                  (CA_atom is not None) and
                  (C_atom is not None) and
                  (CB_atom is not None) ):
+              if ( (N_atom.i_seq not in selection) or
+                   (CA_atom.i_seq not in selection) or
+                   (C_atom.i_seq not in selection) or
+                   (CB_atom.i_seq not in selection) ):
+                continue
               dihedralNCAB, dihedralCNAB = get_cb_target_angle_pair(
                                              resname=residue.resname)
               #NCAB
