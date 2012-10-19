@@ -374,7 +374,7 @@ def exercise_3():
         sites_cart    = sites_cart,
         selection     = selection)
   assert len(grm.generic_restraints_manager.reference_manager.
-              reference_torsion_proxies) == 10
+              reference_torsion_proxies) == 6
   grm.generic_restraints_manager.reference_manager.\
     reference_torsion_proxies = None
 
@@ -387,7 +387,7 @@ def exercise_3():
       selection       = None,
       chi_angles_only = True)
   assert len(grm.generic_restraints_manager.reference_manager.
-              reference_torsion_proxies) == 10
+              reference_torsion_proxies) == 6
 
   #all sites at once, all torsions
   grm.generic_restraints_manager.reference_manager.\
@@ -397,7 +397,7 @@ def exercise_3():
       selection       = None,
       chi_angles_only = False)
   assert len(grm.generic_restraints_manager.reference_manager.
-              reference_torsion_proxies) == 26
+              reference_torsion_proxies) == 18
 
 if (__name__ == "__main__") :
   exercise_1()

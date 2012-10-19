@@ -346,33 +346,33 @@ def collect_residue_torsion_angles (pdb_hierarchy,
             ###########
 
           ### c-beta ###
-          curCB = None
-          for atom in residue.atoms():
-            if atom.name == " CB ":
-              curCB = atom
-          if curCB is not None:
-            atoms_in_selection = True
-            for atom in [curN, curC, curCA, curCB]:
-              if atom.i_seq not in atom_selection:
-                atoms_in_selection = False
-            if atoms_in_selection:
-              ncab = \
-                mmtbx.rotamer.improper_ncab_from_atoms(curN,
-                                                       curC,
-                                                       curCA,
-                                                       curCB)
-              i_seqs = [curN.i_seq, curC.i_seq, curCA.i_seq, curCB.i_seq]
-              torsions.append(group_args(chi_id="ncab", i_seqs=i_seqs))
-              cnab = \
-                mmtbx.rotamer.improper_ncab_from_atoms(curC,
-                                                       curN,
-                                                       curCA,
-                                                       curCB)
-              i_seqs = [curC.i_seq,
-                        curN.i_seq,
-                        curCA.i_seq,
-                        curCB.i_seq]
-              torsions.append(group_args(chi_id="cnab", i_seqs=i_seqs))
+          #curCB = None
+          #for atom in residue.atoms():
+          #  if atom.name == " CB ":
+          #    curCB = atom
+          #if curCB is not None:
+          #  atoms_in_selection = True
+          #  for atom in [curN, curC, curCA, curCB]:
+          #    if atom.i_seq not in atom_selection:
+          #      atoms_in_selection = False
+          #  if atoms_in_selection:
+          #    ncab = \
+          #      mmtbx.rotamer.improper_ncab_from_atoms(curN,
+          #                                             curC,
+          #                                             curCA,
+          #                                             curCB)
+          #    i_seqs = [curN.i_seq, curC.i_seq, curCA.i_seq, curCB.i_seq]
+          #    torsions.append(group_args(chi_id="ncab", i_seqs=i_seqs))
+          #    cnab = \
+          #      mmtbx.rotamer.improper_ncab_from_atoms(curC,
+          #                                             curN,
+          #                                             curCA,
+          #                                             curCB)
+          #    i_seqs = [curC.i_seq,
+          #              curN.i_seq,
+          #              curCA.i_seq,
+          #              curCB.i_seq]
+          #    torsions.append(group_args(chi_id="cnab", i_seqs=i_seqs))
           ##############
 
           altloc = residue.atoms()[0].fetch_labels().altloc
