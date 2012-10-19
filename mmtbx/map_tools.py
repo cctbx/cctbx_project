@@ -65,7 +65,7 @@ class kick_map(object):
             use_scale = True, anomalous_flag = False, use_sg = True)
         ##############################################
         if(sharp):
-          self.map_coeffs, b_ext = mmtbx.maps.sharp_map(
+          self.map_coeffs, b_ext = sharp_map(
             sites_frac = sites_frac,
             map_coeffs = self.map_coeffs,
             ss         = ss,
@@ -78,7 +78,7 @@ class kick_map(object):
         else:
           map_coeff_data = map_coeff_data + self.map_coeffs.data()
     if(sharp):
-      self.map_coeffs, b_ext = mmtbx.maps.sharp_map(
+      self.map_coeffs, b_ext = sharp_map(
         sites_frac = sites_frac,
         map_coeffs = self.map_coeffs,
         ss         = ss)
