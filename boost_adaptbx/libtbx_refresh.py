@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, with_statement
 import re
 
 # Find Boost version at configuration time by parsing boost/version.hpp
