@@ -56,7 +56,7 @@ struct correction_vector_store {
     }
   }
 
-  void
+  int
   register_line(double const&a,double const&b,double const&c,double const&d,
                 double const&e,double const&f,double const&g,double const&h){
     vec2 observed_center(a,b);
@@ -86,6 +86,7 @@ struct correction_vector_store {
                                vec2(tilecenters[itile][0],tilecenters[itile][1]));
     overall_cv += correction_vector;
     sum_sq_cv += correction_vector.length_sq();
+    return itile;
   }
 
   double
@@ -123,6 +124,47 @@ struct correction_vector_store {
     }
     return numerator/denominator;
   }
+
+  double
+  weighted_average_angle_deg_from_tile(int const& itile, vec2 const& post_mean_cv_itile,
+    scitbx::af::shared<double> correction_vector_x,
+    scitbx::af::shared<double> correction_vector_y ) const {
+
+    scitbx::af::shared<vec2> selected_cv;
+    scitbx::af::shared<vec2> selected_tile_obs_spo;
+    scitbx::af::shared<vec2> translated_correction_vectors;
+    scitbx::af::shared<vec2> all_tile_pred_spo;
+
+    for (int x = 0; x < master_tiles.size(); ++x){
+      if (master_tiles[x]==itile){
+        vec2 correction_vector (correction_vector_x[x],correction_vector_y[x]);
+        selected_cv.push_back( correction_vector );
+        selected_tile_obs_spo.push_back( all_tile_obs_spo[x] );
+        translated_correction_vectors.push_back( correction_vector - post_mean_cv_itile );
+        all_tile_pred_spo.push_back( all_tile_obs_spo[x] + correction_vector );
+      }
+    }
+
+    double numerator = 0.;
+    double denominator = 0.;
+
+    for (int x = 0; x < selected_cv.size(); ++x){
+      vec2 co = selected_tile_obs_spo[x];
+      vec2 cp = all_tile_pred_spo[x];
+      double co_cp_norm = co.length()*cp.length();
+      double co_dot_cp = co*cp;
+      double co_cross_cp_coeff = (co[0]*cp[1]-cp[0]*co[1]);
+      double sin_theta = co_cross_cp_coeff / co_cp_norm;
+      double cos_theta = co_dot_cp / co_cp_norm;
+      double angle_deg = std::atan2(sin_theta,cos_theta)/scitbx::constants::pi_180;
+      double weight = std::sqrt(co_cp_norm);
+      numerator += weight*angle_deg;
+      denominator += weight;
+    }
+    return numerator/denominator;
+  }
+
+
 };
 
 static boost::python::tuple
@@ -144,6 +186,44 @@ get_radial_tangential_vectors(correction_vector_store const& L, int const& itile
     for (int x = 0; x < L.master_tiles.size(); ++x){
       if (L.master_tiles[x]==itile){
         scitbx::vec2<double> recentered_cv = L.master_cv[x] - L.mean_cv[itile];
+        radi_projection.push_back( recentered_cv*radial );
+        tang_projection.push_back( recentered_cv*tangential );
+      }
+    }
+    scitbx::math::mean_and_variance<double> radistats(radi_projection.const_ref());
+    scitbx::math::mean_and_variance<double> tangstats(tang_projection.const_ref());
+
+    return make_tuple(radial,tangential,radistats.mean(),tangstats.mean(),
+                      radistats.unweighted_sample_standard_deviation(),
+                      tangstats.unweighted_sample_standard_deviation());
+}
+
+static boost::python::tuple
+get_radial_tangential_vectors(correction_vector_store const& L, int const& itile,
+    scitbx::vec2<double> const& post_mean_cv_itile,
+    scitbx::af::shared<double> correction_vector_x,
+    scitbx::af::shared<double> correction_vector_y,
+    scitbx::af::shared<double> model_calc_minus_center_x,
+    scitbx::af::shared<double> model_calc_minus_center_y
+    ){
+
+    scitbx::vec2<double> radial(0,0);
+    scitbx::vec2<double> tangential;
+    for (int x = 0; x < L.master_tiles.size(); ++x){
+      if (L.master_tiles[x]==itile){
+        radial += scitbx::vec2<double>(model_calc_minus_center_x[x],model_calc_minus_center_y[x]);
+      }
+    }
+    radial = radial.normalize();
+    tangential = scitbx::vec2<double>( -radial[1], radial[0] );
+
+    // Now consider 2D Gaussian distribution of all the observations
+    scitbx::af::shared<double> radi_projection;
+    scitbx::af::shared<double> tang_projection;
+    for (int x = 0; x < L.master_tiles.size(); ++x){
+      if (L.master_tiles[x]==itile){
+        scitbx::vec2<double> correction_vector (correction_vector_x[x],correction_vector_y[x]);
+        scitbx::vec2<double> recentered_cv = correction_vector - post_mean_cv_itile;
         radi_projection.push_back( recentered_cv*radial );
         tang_projection.push_back( recentered_cv*tangential );
       }
@@ -415,7 +495,17 @@ namespace boost_python { namespace {
     typedef default_call_policies dcp;
 
     def("get_correction_vector_xy", &get_correction_vector_xy);
-    def("get_radial_tangential_vectors", &get_radial_tangential_vectors);
+    def("get_radial_tangential_vectors",
+        (boost::python::tuple(*)(correction_vector_store const&, int const&))
+        &get_radial_tangential_vectors);
+    def("get_radial_tangential_vectors",
+        (boost::python::tuple(*)(correction_vector_store const&, int const&,
+         scitbx::vec2<double> const&,
+         scitbx::af::shared<double>,
+         scitbx::af::shared<double>,
+         scitbx::af::shared<double>,
+         scitbx::af::shared<double>))
+        &get_radial_tangential_vectors);
 
     class_<scaling_results>("scaling_results",no_init)
       .def(init<column_parser&, column_parser&, scaling_results::shared_miller&,
@@ -454,6 +544,12 @@ namespace boost_python { namespace {
       .add_property("all_tile_obs_spo",
         make_getter(&correction_vector_store::all_tile_obs_spo, rbv()))
       .def("weighted_average_angle_deg_from_tile",
+           (double(correction_vector_store::*)(int const&)const)
+           &correction_vector_store::weighted_average_angle_deg_from_tile)
+      .def("weighted_average_angle_deg_from_tile",
+           (double(correction_vector_store::*)(int const&,correction_vector_store::vec2 const&,
+           scitbx::af::shared<double>,
+           scitbx::af::shared<double>)const)
            &correction_vector_store::weighted_average_angle_deg_from_tile)
     ;
 
