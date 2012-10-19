@@ -1692,6 +1692,8 @@ scitbx/math/boost_python/rotation.cpp -text
 scitbx/math/boost_python/weighted_covariance.cpp -text
 scitbx/math/boost_python/zernike.cpp -text
 scitbx/math/boost_python/zernike_moments.cpp -text
+scitbx/math/cartesian_product_fixed_size.hpp -text
+scitbx/math/cartesian_product_fixed_size.hxx -text
 scitbx/math/clustering.py -text
 scitbx/math/continued_fraction.h -text
 scitbx/math/copysign.h -text
