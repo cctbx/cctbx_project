@@ -53,7 +53,7 @@ torsion_ncs_params = iotbx.phil.parse("""
  filter_phi_psi_outliers = True
    .type = bool
    .expert_level = 4
- remove_conflicting_torsion_restraints = True
+ remove_conflicting_torsion_restraints = False
    .type = bool
    .expert_level = 4
  restrain_to_master_chain = False
@@ -686,26 +686,27 @@ class torsion_ncs(object):
 
   def sync_dihedral_restraints(self,
                                geometry):
-    if self.dihedral_proxies_backup is None:
-      self.dihedral_proxies_backup = geometry.dihedral_proxies.deep_copy()
-    updated_dihedral_proxies = \
-      cctbx.geometry_restraints.shared_dihedral_proxy()
-    dp_i_seq_list = []
-    geo_dp_i_seq_list = []
-    print >> self.log, "dihedral length before = ", len(geometry.dihedral_proxies)
-    for dp in self.ncs_dihedral_proxies:
-      dp_i_seq_list.append(dp.i_seqs)
-    for dp in geometry.dihedral_proxies:
-      if dp.i_seqs not in dp_i_seq_list:
-        updated_dihedral_proxies.append(dp)
-    for dp in updated_dihedral_proxies:
-      geo_dp_i_seq_list.append(dp.i_seqs)
-    for dp in self.dihedral_proxies_backup:
-      if ( (dp.i_seqs not in dp_i_seq_list) and
-           (dp.i_seqs not in geo_dp_i_seq_list) ):
-        updated_dihedral_proxies.append(dp)
-    geometry.dihedral_proxies = updated_dihedral_proxies
-    print >> self.log, "dihedral length after = ", len(geometry.dihedral_proxies)
+    pass
+    #if self.dihedral_proxies_backup is None:
+    #  self.dihedral_proxies_backup = geometry.dihedral_proxies.deep_copy()
+    #updated_dihedral_proxies = \
+    #  cctbx.geometry_restraints.shared_dihedral_proxy()
+    #dp_i_seq_list = []
+    #geo_dp_i_seq_list = []
+    #print >> self.log, "dihedral length before = ", len(geometry.dihedral_proxies)
+    #for dp in self.ncs_dihedral_proxies:
+    #  dp_i_seq_list.append(dp.i_seqs)
+    #for dp in geometry.dihedral_proxies:
+    #  if dp.i_seqs not in dp_i_seq_list:
+    #    updated_dihedral_proxies.append(dp)
+    #for dp in updated_dihedral_proxies:
+    #  geo_dp_i_seq_list.append(dp.i_seqs)
+    #for dp in self.dihedral_proxies_backup:
+    #  if ( (dp.i_seqs not in dp_i_seq_list) and
+    #       (dp.i_seqs not in geo_dp_i_seq_list) ):
+    #    updated_dihedral_proxies.append(dp)
+    #geometry.dihedral_proxies = updated_dihedral_proxies
+    #print >> self.log, "dihedral length after = ", len(geometry.dihedral_proxies)
 
   def update_dihedral_ncs_restraints(self,
                                      geometry,
