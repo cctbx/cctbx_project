@@ -98,7 +98,8 @@ class lbfgs(object):
         local_standard_deviations_radius=None,
         weight_map_scale_factor=None,
         lbfgs_termination_params=None,
-        lbfgs_exception_handling_params=None):
+        lbfgs_exception_handling_params=None,
+        states_collector=None):
     assert [unit_cell, geometry_restraints_manager].count(None) == 1
     assert real_space_gradients_delta is not None
     if (unit_cell is None):
@@ -107,6 +108,7 @@ class lbfgs(object):
       assert selection_variable_real_space.size() == sites_cart.size()
     else:
       selection_variable_real_space = flex.bool(sites_cart.size(), True)
+    O.states_collector = states_collector
     O.density_map = density_map
     O.weight_map = weight_map
     O.unit_cell = unit_cell
@@ -188,6 +190,8 @@ class lbfgs(object):
         O.sites_cart = O.sites_cart_variable
       else:
         O.sites_cart.set_selected(O.selection_variable, O.sites_cart_variable)
+        if(O.states_collector is not None):
+          O.states_collector.add(sites_cart = O.sites_cart)
       gr_e = O.geometry_restraints_manager.energies_sites(
         sites_cart=O.sites_cart,
         compute_gradients=True)

@@ -251,7 +251,7 @@ public:
     double rho_min = af::min(map);
     histogramm hist = histogramm(map, n_bins);
     double bin_width = hist.bin_width();
-    v_values_ = hist.c_values(); // XXX actually CUM, not vol !
+    v_values_ = hist.c_values();
     for (int i = 0; i < nx; i++) {
       for (int j = 0; j < ny; j++) {
         for (int k = 0; k < nz; k++) {
@@ -272,13 +272,6 @@ public:
         }
       }
     }
-    double d1 = std::abs(af::min(map_new.ref()));
-    double d2 = std::abs(1.-af::max(map_new.ref()));
-    if(d1 > 1.e-3 || d2 > 1.e-3) {
-      std::cout<<"WARNING: "<<d1<<" "<<d2<<std::endl;
-    }
-    //CCTBX_ASSERT(std::abs(af::min(map_new.ref())) < 1.e-3);
-    //CCTBX_ASSERT(std::abs(1.-af::max(map_new.ref())) < 1.e-3);
   }
 
   af::versa<double, af::c_grid<3> > map_data() {return map_new;}
