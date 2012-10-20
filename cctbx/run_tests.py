@@ -115,6 +115,7 @@ tst_list = (
    "$D/masks/tests/tst_flood_fill.py",
    "$D/r_free_utils.py",
    "$D/xray/observations/tst_observations.py",
+   "$D/maptbx/tst_ccp.py",
   )
 
 def run():

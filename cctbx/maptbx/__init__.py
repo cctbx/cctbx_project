@@ -592,8 +592,8 @@ def region_density_correlation(
     return None
   return corr.coefficient()
 
-def ccv(map_1, map_2, centered, cutoff=None, n_bins=100000, modified=False):
-  if(not modified):
+def ccv(map_1, map_2, modified, centered, cutoff=None, n_bins=10000):
+  if(modified):
     map_1 = volume_scale(map=map_1, n_bins=n_bins).map_data()
     map_2 = volume_scale(map=map_2, n_bins=n_bins).map_data()
   if(cutoff is not None):
@@ -604,8 +604,8 @@ def ccv(map_1, map_2, centered, cutoff=None, n_bins=100000, modified=False):
     map_1 = map_1.set_selected(s1, 0)
     map_2 = map_2.set_selected(s2, 0)
     def corr(x, y, centered):
-      s1 = x > 1.e-3
-      s2 = y > 1.e-3
+      s1 = x > 0
+      s2 = y > 0
       s = s1 | s2
       s = s.iselection()
       x_ = x.select(s)
