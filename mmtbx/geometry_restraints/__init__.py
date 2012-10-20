@@ -2,7 +2,7 @@ from __future__ import division
 
 from libtbx import adopt_init_args
 
-# XXX catch-all class for handling any higher-level restraints (such as
+# catch-all class for handling any higher-level restraints (such as
 # Ramachandran, rotamer, H-bonds, etc.)
 
 class manager (object) :

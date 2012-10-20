@@ -77,12 +77,21 @@ tst_list = (
   "$D/regression/tst_real_space_correlation.py",
   "$D/regression/tst_examples.py",
   "$D/regression/tst_sort_hetatms.py",
+  #
+  "$D/refinement/real_space/tst_fit_residue_1.py",
+  "$D/refinement/real_space/tst_fit_residue_2.py",
+  "$D/refinement/real_space/tst_fit_residue_3.py",
+  "$D/refinement/real_space/tst_fit_residue_4.py",
+  "$D/refinement/real_space/tst_fit_residues_1.py",
+  "$D/refinement/real_space/tst_fit_residues_2.py",
+  "$D/refinement/real_space/tst_individual_sites_1.py",
+  "$D/refinement/real_space/tst_monitor.py",
+  "$D/refinement/real_space/tst_rigid_body.py"
   )
 
 def run():
   build_dir = libtbx.env.under_build("mmtbx")
   dist_dir = libtbx.env.dist_path("mmtbx")
-
   test_utils.run_tests(build_dir, dist_dir, tst_list)
 
 if (__name__ == "__main__"):

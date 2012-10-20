@@ -18,6 +18,7 @@ import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
 import mmtbx.restraints
 import mmtbx.refinement.real_space.driver
+import mmtbx.utils
 
 if (1):
   random.seed(0)
@@ -27,17 +28,17 @@ if (1):
 def get_processed_pdb_object(rama_potential, log,
       raw_records=None, pdb_file_name=None):
   assert [raw_records, pdb_file_name].count(None) == 1
-  #master_params = iotbx.phil.parse(
-  #  input_string=mmtbx.monomer_library.pdb_interpretation.master_params_str,
-  #  process_includes=True).extract()
-  #if(rama_potential is not None):
-  #  master_params.peptide_link.ramachandran_restraints=True
-  #  master_params.peptide_link.rama_potential=rama_potential
+  master_params = iotbx.phil.parse(
+    input_string=mmtbx.monomer_library.pdb_interpretation.master_params_str,
+    process_includes=True).extract()
+  if(rama_potential is not None):
+    master_params.peptide_link.ramachandran_restraints=True
+    master_params.peptide_link.rama_potential=rama_potential
   mon_lib_srv = mmtbx.monomer_library.server.server()
   return monomer_library.pdb_interpretation.process(
     mon_lib_srv              = monomer_library.server.server(),
     ener_lib                 = monomer_library.server.ener_lib(),
-    params                   = None,#master_params,
+    params                   = master_params,
     file_name                = pdb_file_name,
     raw_records              = raw_records,
     strict_conflict_handling = True,
@@ -122,6 +123,11 @@ def validate_inputs(inputs):
 
 def extract_target_map_data_and_crystal_gridding(inputs, resolution_factor):
   if(inputs.ccp4_map is not None):
+    miller_array = mmtbx.utils.structure_factors_from_map(
+      map_data          = inputs.ccp4_map.data.as_double(),
+      unit_cell_lengths = inputs.ccp4_map.unit_cell_parameters[:3],
+      n_real            = inputs.ccp4_map.unit_cell_grid,
+      crystal_symmetry  = inputs.xray_structure.crystal_symmetry())
     target_map_data = inputs.ccp4_map.data.as_double()
     # XXX Dirty work-around to keep going, ask Ralf/Sacha for a better solution
     # XXX How to infer resolution from 3D map?
@@ -196,8 +202,8 @@ def run(args, log = None, resolution_factor=1./4):
     pdb_hierarchy               = pdb_hierarchy,
     xray_structure              = inputs.xray_structure,
     geometry_restraints_manager = geometry_restraints_manager,
-    max_iterations = 50,
-    macro_cycles   = 10)
+    max_iterations = 100,
+    macro_cycles   = 3)
   pdb_hierarchy.adopt_xray_structure(xray_structure_refined)
   pdb_hierarchy.write_pdb_file(file_name=inputs.pdb_file_name[:-4]+"_real_space_refined.pdb",
     crystal_symmetry = xray_structure_refined.crystal_symmetry())
