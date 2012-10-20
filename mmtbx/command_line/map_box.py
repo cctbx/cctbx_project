@@ -8,6 +8,7 @@ from scitbx.array_family import flex
 import libtbx.phil
 from libtbx.utils import Sorry
 import os, sys
+from iotbx import file_reader
 from iotbx import reflection_file_reader
 
 master_phil = libtbx.phil.parse("""
@@ -16,6 +17,8 @@ master_phil = libtbx.phil.parse("""
   map_coefficients_file = None
     .type = path
   label = None
+    .type = str
+  ccp4_map_file = None
     .type = str
   selection = all
     .type = str
@@ -27,6 +30,8 @@ master_phil = libtbx.phil.parse("""
     .type = float
   output_format = *xplor *mtz *ccp4
     .type=choice(multi=True)
+  output_file_name_prefix=None
+    .type = str
 """)
 
 def match_labels(target, label):
@@ -35,19 +40,6 @@ def match_labels(target, label):
     s = s.lower()
     if(s.count(label)): return True
   return False
-
-def select_within_no_sym(sites_cart, sites_cart_all, unit_cell, radius):
-  small = 0.1
-  if(radius < small): radius=small
-  sites_frac = unit_cell.fractionalize(sites_cart)
-  sites_frac_all = unit_cell.fractionalize(sites_cart_all)
-  result = flex.bool(sites_frac_all.size(), False)
-  for isfa, sfa in enumerate(sites_frac_all):
-    for sfr in sites_frac:
-      d = unit_cell.distance(sfa,sfr)
-      if(d<radius):
-        result[isfa]=True
-  return result
 
 def run (args, log=None):
   h = "phenix.map_box: extract box with model and map around selected atoms"
@@ -68,12 +60,18 @@ Parameters:"""%h
   cmdline_phil = []
   got_pdb = False
   got_hkl = False
+  got_map = False
   for arg in args :
     if(os.path.isfile(arg)):
+      fro = file_reader.any_file(arg)
       if(iotbx.pdb.is_pdb_file(arg)):
         pdb_phil = libtbx.phil.parse("pdb_file=%s" % os.path.abspath(arg))
         cmdline_phil.append(pdb_phil)
         got_pdb = True
+      elif(fro.file_type == "ccp4_map"):
+        map_phil = libtbx.phil.parse("ccp4_map_file=%s" % os.path.abspath(arg))
+        cmdline_phil.append(map_phil)
+        got_map = True
       else:
         reflection_file = reflection_file_reader.any_reflection_file(
           file_name=arg, ensure_read_access=False)
@@ -83,17 +81,25 @@ Parameters:"""%h
           cmdline_phil.append(reflection_phil)
           got_hkl = True
     else:
-      try: arg_phil = libtbx.phil.parse(arg)
+      try: arg_phil = iotbx.phil.parse(arg)
       except Exception: raise Sorry("Bad parameter: %s"%arg)
       cmdline_phil.append(arg_phil)
   if(not got_pdb): raise Sorry("PDB file is needed.")
-  if(not got_hkl): raise Sorry("File with map coefficients is needed.")
+  if([got_map, got_hkl].count(True) == 2):
+    raise Sorry("Only one, map or map coefficients, file is needed.")
+  if([got_map, got_hkl].count(True) == 0):
+    raise Sorry("Map or map coefficients file is needed.")
   #
   print_statistics.make_sub_header("parameters", out=log)
-  working_phil = master_phil.fetch(sources=cmdline_phil)
+  working_phil, unused = master_phil.fetch(sources=cmdline_phil,
+    track_unused_definitions=True)
+  if(len(unused)>0):
+    for u in unused:
+      print str(u)
+    raise Sorry("Unused parameters: see above.")
   working_phil.show(out = log)
   params = working_phil.extract()
-  if(params.label is None):
+  if(params.label is None and params.ccp4_map_file is None):
     raise Sorry("'label' has to be defined. Example: label=2mFo-DFc")
   if(params.selection is None):
     raise Sorry("'selection' has to be defined. Example: selection='chain A and resseq 1:10' ")
@@ -106,27 +112,42 @@ Parameters:"""%h
   xray_structure = pdb_inp.xray_structure_simple()
   xray_structure.show_summary(f=log)
   #
-  print_statistics.make_sub_header("map coefficients", out=log)
-  miller_arrays = reflection_file.as_miller_arrays()
-  print >> log, "Labels in input map coefficients file:"
-  map_coeff = []
-  label_taken = None
-  for ma in miller_arrays:
-    print >> log, "  ", ma.info().labels
-    if(match_labels(target=ma.info().labels, label=params.label)):
-      map_coeff.append(ma)
-      label_taken = ma.info().labels
-  if(len(map_coeff)==0):
-    raise Sorry(
-      "Could not match 'label=%s' against available labels."%params.label)
-  elif(len(map_coeff)>1):
-    raise Sorry("Multiple matches of 'label=%s' against available labels."%
-      params.label)
-  else:
-    print >> log, "Label taken:", label_taken
-    map_coeff = map_coeff[0]
-    if(not isinstance(map_coeff.data(), flex.complex_double)):
-      raise Sorry("Map coefficients must be a complex array.")
+  map_coeff = None
+  if(got_hkl):
+    print_statistics.make_sub_header("map coefficients", out=log)
+    miller_arrays = reflection_file.as_miller_arrays()
+    print >> log, "Labels in input map coefficients file:"
+    map_coeff = []
+    label_taken = None
+    for ma in miller_arrays:
+      print >> log, "  ", ma.info().labels
+      if(match_labels(target=ma.info().labels, label=params.label)):
+        map_coeff.append(ma)
+        label_taken = ma.info().labels
+    if(len(map_coeff)==0):
+      raise Sorry(
+        "Could not match 'label=%s' against available labels."%params.label)
+    elif(len(map_coeff)>1):
+      raise Sorry("Multiple matches of 'label=%s' against available labels."%
+        params.label)
+    else:
+      print >> log, "Label taken:", label_taken
+      map_coeff = map_coeff[0]
+      if(not isinstance(map_coeff.data(), flex.complex_double)):
+        raise Sorry("Map coefficients must be a complex array.")
+  #
+  if(got_map):
+    print_statistics.make_sub_header("CCP4 map", out=log)
+    af = file_reader.any_file(params.ccp4_map_file)
+    af.try_as_ccp4_map()
+    ccp4_map_object = af.file_object
+    ccp4_map_object.show_summary()
+    map_data = ccp4_map_object.data
+  #
+  if(got_hkl):
+    fft_map = map_coeff.fft_map(resolution_factor=params.resolution_factor)
+    fft_map.apply_sigma_scaling()
+    map_data = fft_map.real_map_unpadded()
   #
   print_statistics.make_sub_header("atom selection", out=log)
   print >> log, "Selection string: selection='%s'"%params.selection
@@ -137,39 +158,50 @@ Parameters:"""%h
   #
   print_statistics.make_sub_header(
     "extracting box around selected atoms and writing output files", out=log)
-  fft_map = map_coeff.fft_map(resolution_factor=params.resolution_factor)
-  fft_map.apply_sigma_scaling()
-  map_data = fft_map.real_map_unpadded()
   #
   sites_cart_all = xray_structure.sites_cart()
   sites_cart = sites_cart_all.select(selection)
-  selection = select_within_no_sym(
-    sites_cart     = sites_cart,
-    sites_cart_all = sites_cart_all,
-    unit_cell      = xray_structure.unit_cell(),
-    radius         = params.selection_radius)
+  selection = xray_structure.selection_within(
+    radius    = params.selection_radius,
+    selection = selection)
   #
   box = mmtbx.utils.extract_box_around_model_and_map(
     xray_structure   = xray_structure,
     pdb_hierarchy    = pdb_hierarchy,
-    map_data         = map_data,
+    map_data         = map_data.as_double(),
     box_cushion      = params.box_cushion,
     selection        = selection)
   output_prefix=os.path.basename(params.pdb_file)[:-4]
-  file_name = "%s_box.pdb"%output_prefix
+  if(params.output_file_name_prefix is None):
+    file_name = "%s_box.pdb"%output_prefix
+  else: file_name = "%s.pdb"%params.output_file_name_prefix
   box.write_pdb_file(file_name=file_name)
   if("ccp4" in params.output_format):
-    file_name = "%s_box.ccp4"%output_prefix
+    if(params.output_file_name_prefix is None):
+      file_name = "%s_box.ccp4"%output_prefix
+    else: file_name = "%s.ccp4"%params.output_file_name_prefix
     print >> log, "writing map to CCP4 formatted file:   %s"%file_name
     box.write_ccp4_map(file_name=file_name)
   if("xplor" in params.output_format):
-    file_name = "%s_box.xplor"%output_prefix
+    if(params.output_file_name_prefix is None):
+      file_name = "%s_box.xplor"%output_prefix
+    else: file_name = "%s.xplor"%params.output_file_name_prefix
     print >> log, "writing map to X-plor formatted file: %s"%file_name
     box.write_xplor_map(file_name=file_name)
   if("mtz" in params.output_format):
-    file_name = "%s_box.mtz"%output_prefix
+    if(params.output_file_name_prefix is None):
+      file_name = "%s_box.mtz"%output_prefix
+    else: file_name = "%s.mtz"%params.output_file_name_prefix
     print >> log, "writing map coefficients to MTZ file: %s"%file_name
-    box.map_coefficients(d_min=map_coeff.d_min(),
+    if(map_coeff is not None): d_min = map_coeff.d_min()
+    else:
+      d_min = mmtbx.utils.structure_factors_from_map(
+        map_data          = map_data.as_double(),
+        unit_cell_lengths = ccp4_map_object.unit_cell_parameters[:3],
+        n_real            = ccp4_map_object.unit_cell_grid,
+        crystal_symmetry  = xray_structure.crystal_symmetry(),
+        resolution_factor = 1/3).d_min()
+    box.map_coefficients(d_min=d_min,
       resolution_factor=params.resolution_factor, file_name=file_name)
   print >> log
 

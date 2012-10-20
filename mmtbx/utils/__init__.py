@@ -2804,7 +2804,7 @@ class extract_box_around_model_and_map(object):
       title_lines        = ['Map in box',],
       unit_cell          = self.xray_structure_box.unit_cell(),
       gridding           = gridding,
-      data               = self.map_box,
+      data               = self.map_box.as_double(),
       average            = -1,
       standard_deviation = -1)
 
@@ -2814,9 +2814,7 @@ class extract_box_around_model_and_map(object):
       file_name      = file_name,
       unit_cell      = self.xray_structure_box.unit_cell(),
       space_group    = self.xray_structure_box.space_group(),
-      gridding_first = (0,0,0),
-      gridding_last  = self.map_box.focus(),
-      map_data       = self.map_box,
+      map_data       = self.map_box.as_double(),
       labels=flex.std_string([" "]))
 
   def box_map_coefficients_as_fft_map(self, d_min, resolution_factor):
@@ -2921,3 +2919,19 @@ class states(object):
 
   def write(self, file_name):
     self.root.write_pdb_file(file_name = file_name)
+
+def structure_factors_from_map(map_data, unit_cell_lengths, n_real,
+                               crystal_symmetry, resolution_factor=1/3.):
+  a,b,c = unit_cell_lengths
+  nx,ny,nz = n_real[0],n_real[1],n_real[2]
+  d1,d2,d3=a/nx/resolution_factor,b/ny/resolution_factor,c/nz/resolution_factor
+  d_min_guess_from_map = min(d1,d2,d3)
+  complete_set = miller.build_set(
+    crystal_symmetry = crystal_symmetry,
+    anomalous_flag   = False,
+    d_min            = d_min_guess_from_map)
+  return complete_set.structure_factors_from_map(
+    map            = map_data,
+    use_scale      = True,
+    anomalous_flag = False,
+    use_sg         = True)
