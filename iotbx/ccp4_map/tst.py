@@ -98,8 +98,18 @@ def exercise_writer () :
     assert approx_equal(m.unit_cell_parameters, (1,1,1,90,90,90))
     assert approx_equal(mmm.min, m.header_min)
     assert approx_equal(mmm.max, m.header_max)
-    #assert approx_equal(mmm.mean, m.header_mean)
-
+    #
+    gridding_first = (0,0,0)
+    gridding_last = tuple(fft_map.n_real())
+    map_box = maptbx.copy(map, gridding_first, gridding_last)
+    map_box.reshape(flex.grid(map_box.all()))
+    iotbx.ccp4_map.write_ccp4_map(
+      file_name="random_box.map",
+      unit_cell=uctbx.unit_cell((1,1,1,90,90,90)),
+      space_group=sgtbx.space_group_info("P1").group(),
+      map_data=map_box,
+      labels=flex.std_string(["iotbx.ccp4_map.tst"]))
+    
 def run(args):
   def have_ext():
     for node in os.listdir(libtbx.env.under_build(path="lib")):
