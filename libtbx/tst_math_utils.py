@@ -137,6 +137,22 @@ def exercise_normalize_angle():
   assert approx_equal(n(1.e+8, deg=True), 280)
   assert approx_equal(n(-1.e+8, deg=True), 80)
 
+def exercise_percentile_based_spread() :
+  from libtbx.math_utils import percentile_based_spread
+  import random
+  import math
+  n_points = 123456
+  deltas = []
+  for i in range(n_points) :
+    x = random.gauss(100, 10)
+    deltas.append(x)
+  for i in range(1000) :
+    x = random.gauss(300, 30)
+    deltas.append(x)
+  pbs = percentile_based_spread(deltas)
+  rmsd = math.sqrt(sum([ x**2 for x in deltas]) / n_points)
+  assert (pbs > 100) and (pbs < rmsd)
+
 def exercise():
   exercise_integer()
   exercise_logical()
@@ -145,6 +161,7 @@ def exercise():
   exercise_random_permutation_in_place()
   exercise_prime_factors_of()
   exercise_normalize_angle()
+  exercise_percentile_based_spread()
   print "OK"
 
 if (__name__ == "__main__"):
