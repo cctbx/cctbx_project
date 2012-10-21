@@ -115,7 +115,7 @@ class merging_stats (object) :
     non_negative_sel = array.sigmas() >= 0
     self.n_neg_sigmas = non_negative_sel.count(False)
     array = array.select(non_negative_sel)
-    merge = array.merge_equivalents()
+    merge = array.merge_equivalents(use_internal_variance=False)
     array_merged = merge.array()
     reject_sel = (array_merged.data() < -3*array_merged.sigmas())
     self.n_rejected = reject_sel.count(True)
@@ -270,7 +270,7 @@ class dataset_statistics (object) :
       i_obs = i_obs.customized_copy(anomalous_flag=False)
       self.anom_extra = " (non-anomalous)"
     i_obs.setup_binner(n_bins=n_bins)
-    merge = i_obs.merge_equivalents()
+    merge = i_obs.merge_equivalents(use_internal_variance=False)
     self.overall = merging_stats(i_obs,
       model_arrays=model_arrays, anomalous=anomalous, debug=debug)
     self.bins = []
