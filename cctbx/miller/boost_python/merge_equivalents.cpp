@@ -112,11 +112,12 @@ namespace {
           af::const_ref<index<> > const&,
           af::const_ref<double> const&,
           af::const_ref<double> const&,
-          double>((
+          double, bool>((
             arg("unmerged_indices"),
             arg("unmerged_data"),
             arg("unmerged_sigmas"),
-            arg("sigma_dynamic_range")=1e-6)))
+            arg("sigma_dynamic_range")=1e-6,
+            arg("use_internal_variance")=true)))
         .add_property("indices", make_getter(&w_t::indices, rbv()))
         .add_property("data", make_getter(&w_t::data, rbv()))
         .add_property("sigmas", make_getter(&w_t::sigmas, rbv()))

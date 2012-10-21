@@ -245,7 +245,8 @@ namespace cctbx { namespace miller {
         af::const_ref<index<> > const& unmerged_indices,
         af::const_ref<FloatType> const& unmerged_data,
         af::const_ref<FloatType> const& unmerged_sigmas,
-        FloatType sigma_dynamic_range_=1e-6)
+        FloatType sigma_dynamic_range_=1e-6,
+        bool use_internal_variance=true)
       :
         sigma_dynamic_range(sigma_dynamic_range_),
         r_int_num(0),
@@ -256,7 +257,8 @@ namespace cctbx { namespace miller {
       {
         CCTBX_ASSERT(unmerged_data.size() == unmerged_indices.size());
         CCTBX_ASSERT(unmerged_sigmas.size() == unmerged_indices.size());
-        init(unmerged_indices, unmerged_data, unmerged_sigmas);
+        init(unmerged_indices, unmerged_data, unmerged_sigmas,
+          use_internal_variance);
       }
 
       af::shared<index<> > indices;
@@ -297,7 +299,8 @@ namespace cctbx { namespace miller {
       init(
         af::const_ref<index<> > const& unmerged_indices,
         af::const_ref<FloatType> const& unmerged_data,
-        af::const_ref<FloatType> const& unmerged_sigmas)
+        af::const_ref<FloatType> const& unmerged_sigmas,
+        bool use_internal_variance=true)
       {
         if (unmerged_indices.size() == 0) return;
         std::vector<FloatType> values;
@@ -316,7 +319,7 @@ namespace cctbx { namespace miller {
         process_group(group_begin, group_end,
                       unmerged_indices[group_begin],
                       unmerged_data, unmerged_sigmas,
-                      values, weights);
+                      values, weights, use_internal_variance);
       }
 
       void
@@ -327,7 +330,8 @@ namespace cctbx { namespace miller {
         af::const_ref<FloatType> const& unmerged_data,
         af::const_ref<FloatType> const& unmerged_sigmas,
         std::vector<FloatType>& values,
-        std::vector<FloatType>& weights)
+        std::vector<FloatType>& weights,
+        bool use_internal_variance=true)
       {
         std::size_t n = group_end - group_begin;
         if (n == 0) return;
@@ -370,11 +374,16 @@ namespace cctbx { namespace miller {
           scitbx::math::mean_and_variance<FloatType> mv(
             data_group, weights_group);
           data.push_back(mv.mean());
-          sigmas.push_back(
-            std::sqrt(
+          FloatType merged_sigma;
+          if (use_internal_variance) {
+            merged_sigma = std::sqrt(
               std::max(
                 mv.gsl_stats_wvariance()/values.size(),
-                1/mv.sum_weights())));
+                1/mv.sum_weights()));
+          } else {
+            merged_sigma = std::sqrt(1/mv.sum_weights());
+          }
+          sigmas.push_back(merged_sigma);
         }
         redundancies.push_back(n);
         merge_equivalents::compute_r_factors(
