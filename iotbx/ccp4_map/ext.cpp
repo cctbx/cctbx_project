@@ -148,7 +148,7 @@ namespace ccp4_map {
       af::versa<float, af::flex_grid<> > data;
 
   };
-  
+
     void
   write_ccp4_map_box(
     std::string const& file_name,

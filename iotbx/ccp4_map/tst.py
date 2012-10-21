@@ -109,7 +109,7 @@ def exercise_writer () :
       space_group=sgtbx.space_group_info("P1").group(),
       map_data=map_box,
       labels=flex.std_string(["iotbx.ccp4_map.tst"]))
-    
+
 def run(args):
   def have_ext():
     for node in os.listdir(libtbx.env.under_build(path="lib")):
