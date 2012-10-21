@@ -71,6 +71,11 @@ def exercise(space_group_info, anomalous_flag,
       assert flex.linear_correlation(
         part(f_calc_com.data()),
         part(f_calc_ave.data())).coefficient() > 1-1.e-6
+  # test use_internal_variance=False
+  m = r.merge_equivalents(algorithm="gaussian", use_internal_variance=False)
+  j = m.array().adopt_set(fs)
+  fssr = fs.sigmas() / flex.sqrt(redundancies.as_double())
+  assert flex.linear_correlation(j.sigmas(), fssr).coefficient() > 1-1.e-6
 
 def exercise_incompatible_flags_replacement():
   i = flex.miller_index(((1,2,3), (1,2,3), (3,0,3), (3,0,3), (3,0,3), (1,1,2)))

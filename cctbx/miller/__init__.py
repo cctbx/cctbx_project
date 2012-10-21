@@ -2830,10 +2830,12 @@ class array(set):
     return self.arg(deg)
 
   def merge_equivalents(self, algorithm="gaussian",
-                        incompatible_flags_replacement=None):
+                        incompatible_flags_replacement=None,
+                        use_internal_variance=True):
     return merge_equivalents(
       self, algorithm,
-      incompatible_flags_replacement=incompatible_flags_replacement)
+      incompatible_flags_replacement=incompatible_flags_replacement,
+      use_internal_variance=use_internal_variance)
 
   def as_non_anomalous_array(self):
     return array(
@@ -3621,7 +3623,8 @@ class normalised_amplitudes(object):
 class merge_equivalents(object):
 
   def __init__(self, miller_array, algorithm="gaussian",
-               incompatible_flags_replacement=None):
+               incompatible_flags_replacement=None,
+               use_internal_variance=True):
     assert algorithm in ["gaussian", "shelx"]
     self._r_linear = None
     self._r_square = None
@@ -3664,7 +3667,8 @@ class merge_equivalents(object):
           merge_ext = ext.merge_equivalents_obs(
             asu_set.indices().select(perm),
             miller_array.data().select(perm),
-            miller_array.sigmas().select(perm))
+            miller_array.sigmas().select(perm),
+            use_internal_variance=use_internal_variance)
         elif algorithm == "shelx":
           merge_ext = ext.merge_equivalents_shelx(
             asu_set.indices().select(perm),
