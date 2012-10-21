@@ -266,6 +266,12 @@ def make_lookup_dict(indices): # XXX push to C++
   return result
 
 class set(crystal.symmetry):
+  """
+  Basic class for handling sets of Miller indices (h,k,l), including sorting
+  and matching functions, symmetry handling, generation of R-free flags, and
+  extraction of associated statistics.  Does not actually contain data, but
+  this can be added using the array(...) method.
+  """
 
   def __init__(self, crystal_symmetry, indices, anomalous_flag=None):
     assert anomalous_flag in (None, False, True)
@@ -316,6 +322,10 @@ class set(crystal.symmetry):
         anomalous_flag=Keep,
         unit_cell=Keep,
         space_group_info=Keep):
+    """
+    Create a copy of the set, optionally changing the symmetry, indices,
+    and/or anomalous flag (default = keep all unmodified).
+    """
     if (crystal_symmetry is Keep): crystal_symmetry = self
     if (indices is Keep): indices = self.indices()
     if (anomalous_flag is Keep): anomalous_flag = self.anomalous_flag()
@@ -328,6 +338,13 @@ class set(crystal.symmetry):
       anomalous_flag=anomalous_flag)
 
   def array(self, data=None, sigmas=None):
+    """
+    Create an array object, given data and/or sigma arrays of identical
+    dimensions to the indices array.
+
+    :param data: a flex array (any format) or None
+    :param sigmas: a flex array (any format, but almost always double) or None
+    """
     if (data is not None):
       assert data.size() == self._indices.size()
     if (sigmas is not None):
@@ -351,6 +368,15 @@ class set(crystal.symmetry):
     return self
 
   def miller_indices_as_pdb_file(self, file_name=None, expand_to_p1=False):
+    """
+    Write out Miller indices as pseudo-waters for visualization.  Note that
+    this treats the indices as literal coordinates (times a scale factor),
+    and the distances between points will not correspond to the distances
+    in reciprocal space.
+
+    See cctbx/miller/display.py and crys3d/hklview for an alternative (but
+    less lightweight) approach.
+    """
     assert file_name is not None
     uc = self.unit_cell()
     if(expand_to_p1): indices = self.expand_to_p1().indices()
@@ -442,6 +468,10 @@ class set(crystal.symmetry):
         anomalous_flag=self.anomalous_flag()))
 
   def sys_absent_flags(self, integral_only=False):
+    """
+    Generate a boolean Miller array flagging those reflections which are
+    systematically absent under the current symmetry.
+    """
     effective_group = self.space_group()
     if (integral_only):
       effective_group = effective_group \
@@ -450,6 +480,9 @@ class set(crystal.symmetry):
     return self.array(data=effective_group.is_sys_absent(self.indices()))
 
   def centric_flags(self):
+    """
+    Generate a boolean Miller array flagging centric reflections.
+    """
     return array(
       self,
       self.space_group().is_centric(self.indices()))
@@ -473,6 +506,10 @@ class set(crystal.symmetry):
       self, flex.pow(self.unit_cell().d_star_sq(self.indices()), 3/2))
 
   def d_spacings(self):
+    """
+    Generate a double Miller array containing the resolution d of each
+    index.
+    """
     return array(
       self, self.unit_cell().d(self.indices()))
 
@@ -481,16 +518,22 @@ class set(crystal.symmetry):
       self, self.unit_cell().stol_sq(self.indices()))
 
   def two_theta(self, wavelength, deg=False):
+    """
+    Generate a double Miller array containing the scattering angle of each
+    index.
+    """
     return array(
       self, self.unit_cell().two_theta(self.indices(), wavelength, deg))
 
   def d_min(self):
+    """High-resolution limit."""
     return uctbx.d_star_sq_as_d(self.unit_cell().max_d_star_sq(self.indices()))
 
   def min_max_d_star_sq(self):
     return self.unit_cell().min_max_d_star_sq(self.indices())
 
   def d_max_min(self):
+    """Low- and high-resolution limits."""
     return tuple([uctbx.d_star_sq_as_d(d_star_sq)
       for d_star_sq in self.min_max_d_star_sq()])
 
@@ -582,6 +625,11 @@ class set(crystal.symmetry):
     return self.map_to_asu().indices().all_eq(self.indices())
 
   def map_to_asu(self):
+    """
+    Convert all indices to lie within the canonical asymmetric unit for the
+    current space group (while preserving anomalous flag).  Required for many
+    downstream steps.
+    """
     i = self.indices().deep_copy()
     anomalous_flag = self.anomalous_flag()
     if (anomalous_flag is None):
@@ -593,6 +641,14 @@ class set(crystal.symmetry):
     return set(self, i, self.anomalous_flag())
 
   def complete_set(self, d_min_tolerance=1.e-6, d_min=None, d_max=None):
+    """
+    Generate the complete set of Miller indices expected for the current
+    symmetry, excepting systematic absences.
+
+    :param d_min_tolerance: tolerance factor for d_min (avoid precision errors)
+    :param d_min: High-resolution limit (default = d_min of current set)
+    :param d_max: Low-resolution limit (default = d_max of current set)
+    """
     assert self.anomalous_flag() in (False, True)
     if (self.indices().size() == 0):
       return set(
@@ -689,6 +745,11 @@ class set(crystal.symmetry):
     return match_indices(self.indices(), other.indices())
 
   def common_set(self, other, assert_is_similar_symmetry=True):
+    """
+    Match the indices in the current set and another set, and return a set
+    (or array) containing only those reflections present in both.  Assumes that
+    both sets are already in the asymmetric unit (ASU).
+    """
     pairs = other.match_indices(
       other=self,
       assert_is_similar_symmetry=assert_is_similar_symmetry).pairs()
@@ -698,6 +759,10 @@ class set(crystal.symmetry):
         other,
         assert_is_similar_symmetry=True,
         assert_no_singles=False):
+    """
+    Like common_set(other), but returns a tuple containing matching copies of
+    both sets (or arrays).
+    """
     matches = other.match_indices(
       other=self,
       assert_is_similar_symmetry=assert_is_similar_symmetry)
@@ -708,11 +773,20 @@ class set(crystal.symmetry):
             other.select(pairs.column(0))]
 
   def lone_set(self, other, assert_is_similar_symmetry=True):
+    """
+    Match the indices in the current set and another set, and return a set
+    (or array) containing reflections which are present only in the current
+    set.  Assumes that both sets are already in the asymmetric unit.
+    """
     return self.select(other.match_indices(
       other=self,
       assert_is_similar_symmetry=assert_is_similar_symmetry).singles(1))
 
   def lone_sets(self, other, assert_is_similar_symmetry=True):
+    """
+    Like lone_set(other), but returns a tuple containing the reflections
+    unique to each set (or array).
+    """
     matches = other.match_indices(
       other=self,
       assert_is_similar_symmetry=assert_is_similar_symmetry)
@@ -745,6 +819,11 @@ class set(crystal.symmetry):
         data=index_span(self.indices()).pack(self.indices()), reverse=reverse)
 
   def sort(self, by_value="resolution", reverse=False):
+    """
+    Reorder reflections by resolution or Miller index.
+
+    :param by_value: 'resolution' or 'packed_indices'
+    """
     return self.select(
       self.sort_permutation(by_value=by_value, reverse=reverse))
 
@@ -786,10 +865,32 @@ class set(crystal.symmetry):
         fraction=0.1,
         max_free=2000,
         lattice_symmetry_max_delta=5.0,
-        use_lattice_symmetry=False,
+        use_lattice_symmetry=False, # XXX should this be True by default?
         use_dataman_shells=False,
         n_shells=20,
         format="cns") :
+    """
+    Create an array of R-free flags for the current set, keeping anomalous
+    pairs together.  Requires that the set already be unique under symmetry,
+    and generally assumes that the set is in the ASU.
+
+    :param fraction: fraction of reflections to flag for the test set
+    :param max_free: limit on size of test set, overrides fraction
+    :param lattice_symmetry_max_delta: limit on lattice symmetry calculation
+    :param use_lattice_symmetry: given the current symmetry, determine the \
+    highest possible lattice symmetry and generate flags for that symmetry, \
+    then expand to the current (lower) symmetry if necessary.  This is almost \
+    always a good idea.
+    :param use_dataman_shells: generate flags in thin resolution shells to \
+    avoid bias due to non-crystallographic symmetry.
+    :param n_shells: number of resolution shells if use_dataman_shells=True
+    :param format: convention of the resulting flags.  'cns' will return a \
+    boolean array (True = free), 'ccp4' will return an integer array from \
+    0 to X (0 = free, X dependent on fraction), 'shelx' will return an \
+    integer array with values 1 (work) or -1 (free).
+
+    :returns: a boolean or integer Miller array, depending on format.
+    """
     assert (format in ["cns", "ccp4", "shelx"])
     if use_lattice_symmetry:
       assert lattice_symmetry_max_delta>=0
@@ -1316,6 +1417,10 @@ class set(crystal.symmetry):
     self._binner = None
 
   def concatenate(self, other, assert_is_similar_symmetry=True):
+    """
+    Combine two Miller sets.  Both must have the same anomalous flag, and
+    similar symmetry is also assumed.
+    """
     if (assert_is_similar_symmetry):
       assert self.is_similar_symmetry(other)
     assert self.anomalous_flag() == other.anomalous_flag()
@@ -1354,6 +1459,10 @@ class set(crystal.symmetry):
     return self.select(sele)
 
 def build_set(crystal_symmetry, anomalous_flag, d_min, d_max=None):
+  """
+  Generate a set of unique Miller indices in the canonical ASU for the
+  specified symmetry, anomalous flag, and high-resolution limit.
+  """
   result = set(
     crystal_symmetry,
     index_generator(
@@ -1373,7 +1482,10 @@ def union_of_sets(miller_sets):
   return miller_sets[0].customized_copy(indices=uoi.as_array())
 
 class array_info(object):
-
+  """
+  Container for metadata associated with a Miller array, including labels
+  read from a data file.
+  """
   def __init__(self,
         source=None,
         source_type=None,
@@ -1430,6 +1542,11 @@ class array_info(object):
     return part_2
 
   def label_string(self):
+    """
+    A combined representation of the data labels extracted from the input file.
+    This is generally how downstream programs will identify and select Miller
+    arrays.
+    """
     part_2 = self.as_string_part_2()
     if (len(part_2) > 0): return ",".join(part_2)
     return None
@@ -1455,7 +1572,9 @@ def raw_array_summary(array):
     return "Unknown"
 
 class array(set):
-
+  """
+  Extension of the set class with addition of data and sigmas flex arrays.
+  """
   def __init__(self, miller_set, data=None, sigmas=None):
     set._copy_constructor(self, miller_set)
     self._data = data
@@ -1510,6 +1629,9 @@ class array(set):
         yield item
 
   def info(self):
+    """
+    Return the associated info object, or None if undefined.
+    """
     return self._info
 
   def observation_type(self):
@@ -1761,6 +1883,9 @@ class array(set):
     return result
 
   def f_as_f_sq(self, algorithm="simple"):
+    """
+    Convert amplitudes (and associated sigmas, if present) to intensities.
+    """
     assert algorithm in ["simple", "shelxl"]
     from cctbx import xray
     assert self.observation_type() is None or self.is_xray_amplitude_array()
@@ -1784,6 +1909,10 @@ class array(set):
     return result
 
   def as_amplitude_array(self, algorithm="xtal_3_7"):
+    """
+    Convert the array to simple amplitudes if not already in that format.
+    Only valid for complex (i.e. F,PHI), intensity, or amplitude arrays.
+    """
     if (self.is_complex_array()):
       return array(
         miller_set=self, data=flex.abs(self.data()), sigmas=self.sigmas()) \
@@ -1794,6 +1923,10 @@ class array(set):
     return self
 
   def as_intensity_array(self, algorithm="simple"):
+    """
+    Convert the array to intensities if not already in that format.  Only valid
+    for complex (F,PHI), amplitude, or intensity arrays.
+    """
     if (self.is_complex_array()):
       return self.as_amplitude_array().f_as_f_sq(algorithm=algorithm)
     assert self.is_real_array()
@@ -2559,6 +2692,10 @@ class array(set):
         raise RuntimeError, e
 
   def sigma_filter(self, cutoff_factor, negate=False):
+    """
+    Return a copy of the array filtered to remove reflections whose value is
+    less than cutoff_factor*sigma (or the reverse, if negate=True).
+    """
     assert self.data() is not None
     assert self.sigmas() is not None
     flags = flex.abs(self.data()) >= self.sigmas() * cutoff_factor
@@ -2805,6 +2942,10 @@ class array(set):
     return self.array(data = coeff/den)
 
   def __abs__(self):
+    """
+    Return a copy of the array with data replaced by absolute values, i.e.
+    complex arrays will be converted to amplitudes.
+    """
     return array(self, flex.abs(self.data()), self.sigmas())
 
   def norm(self):
@@ -2815,6 +2956,9 @@ class array(set):
     return array(self, flex.arg(self.data(), deg))
 
   def amplitudes(self):
+    """
+    For a complex array, return the real component (i.e. abs(self)).
+    """
     assert isinstance(self.data(), flex.complex_double)
     assert self.sigmas() is None
     return abs(self)
@@ -2825,6 +2969,9 @@ class array(set):
     return self.norm()
 
   def phases(self, deg=False):
+    """
+    For a complex array, return the imaginary component (in radians by default).
+    """
     assert isinstance(self.data(), flex.complex_double)
     assert self.sigmas() is None
     return self.arg(deg)
@@ -2832,6 +2979,13 @@ class array(set):
   def merge_equivalents(self, algorithm="gaussian",
                         incompatible_flags_replacement=None,
                         use_internal_variance=True):
+    """
+    Given a non-unique array, merge the symmetry-related reflections (keeping
+    anomalous flag).
+
+    :returns: a merge_equivalents object, from which the merged array may \
+    be extracted by calling the array() method.
+    """
     return merge_equivalents(
       self, algorithm,
       incompatible_flags_replacement=incompatible_flags_replacement,
@@ -2844,6 +2998,10 @@ class array(set):
       sigmas=self.sigmas()).set_observation_type(self)
 
   def average_bijvoet_mates(self):
+    """
+    Given an anomalous array, merge the anomalous pairs and return the
+    non-anomalous average.
+    """
     if (self.is_complex_array() or self.is_hendrickson_lattman_array()):
       # centrics need special attention
       # very inefficient but simple implementation
@@ -2942,6 +3100,9 @@ class array(set):
     return result
 
   def generate_bijvoet_mates(self):
+    """
+    Given a non-anomalous array, expand to generate anomalous pairs.
+    """
     if (self.anomalous_flag()): return self
     sel = ~self.centric_flags().data()
     indices = self.indices().deep_copy()
