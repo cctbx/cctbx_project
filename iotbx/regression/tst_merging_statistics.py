@@ -25,6 +25,8 @@ def exercise (debug=False) :
     print " ".join(args)
   out = StringIO()
   result = merging_statistics.run(args, out=out)
+  if (debug) :
+    print out.getvalue()
   assert ("R-merge: 0.073" in out.getvalue())
   assert ("R-meas:  0.079" in out.getvalue())
   cif_block = result.as_cif_block()
