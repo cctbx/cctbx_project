@@ -112,3 +112,26 @@ def normalize_angle(phi, deg=False, zero_centered=False):
   if (zero_centered and phi > period/2):
     phi -= period
   return phi
+
+def percentile_based_spread (values, pbs_fraction=0.608) :
+  """
+  See Pozharski (2010) Acta. Cryst. D66, 970-978.  The default value of the
+  pbs_fraction parameter is for 3D geometries, and should be adjusted as
+  circumstances dictate.
+  """
+  values = sorted(values)
+  n = len(values)
+  if (n == 0): return 0
+  elif (n == 1) : return values[0]
+  i_high = iceil(n * pbs_fraction)
+  i_low = ifloor(n * pbs_fraction)
+  if (i_high == i_low) :
+    return values[i_high]
+  x_high = values[i_high]
+  x_low = values[i_low]
+  frac_high = i_high / n
+  frac_low = i_low / n
+  assert (frac_high > frac_low)
+  frac_delta = (pbs_fraction - frac_low) / (frac_high - frac_low)
+  x_frac = x_low + (frac_delta * (x_high - x_low))
+  return x_frac
