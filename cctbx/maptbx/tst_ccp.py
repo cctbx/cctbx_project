@@ -1,9 +1,8 @@
+from __future__ import division
 from cctbx import miller
 from libtbx.test_utils import approx_equal
 from cctbx import maptbx
-import iotbx.xplor.map
 from libtbx.math_utils import ifloor, iceil
-import iotbx.pdb
 
 pdb_str = """\
 REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "model.pdb"
@@ -1386,6 +1385,7 @@ END
 """
 
 def write_plor_map(map_data, file_name, n_real, unit_cell):
+  import iotbx.xplor.map
   frac_min, frac_max = (0.0, 0.0, 0.0), (1.0, 1.0, 1.0)
   gridding_first=[ifloor(f*n) for f,n in zip(frac_min,n_real)]
   gridding_last=[iceil(f*n) for f,n in zip(frac_max,n_real)]
@@ -1403,6 +1403,7 @@ def write_plor_map(map_data, file_name, n_real, unit_cell):
     standard_deviation = -1)
 
 def exercise():
+  import iotbx.pdb
   #
   xrs_orig = iotbx.pdb.input(source_info=None, lines=pdb_str).\
     xray_structure_simple()
