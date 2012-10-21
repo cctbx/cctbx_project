@@ -15,7 +15,8 @@ from __future__ import division
 # http://www.ebi.ac.uk/pdbe-srv/view/files/2vz8.ent
 # http://www.ebi.ac.uk/pdbe-srv/view/files/r2vz8sf.ent
 
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, null_out
+from libtbx import smart_open
 import libtbx.load_env
 import urllib2
 import urllib
@@ -35,13 +36,49 @@ def validate_pdb_ids (id_list) :
     except RuntimeError, e :
       raise Sorry(str(e))
 
-def fetch (id, data_type="pdb", format="pdb", mirror="rcsb") :
+def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
+    force_download=False) :
+  """
+  Locate and open a data file for the specified PDB ID and format, either in a
+  local mirror or online.
+
+  :param id: 4-character PDB ID (e.g. '1hbb')
+  :param data_type: type of content to download: pdb, xray, or fasta
+  :param format: format of data: cif, pdb, or xml
+  :param mirror: remote site to use, either rcsb or pdbe
+
+  :returns: a filehandle-like object (with read() method)
+  """
   assert data_type in ["pdb", "xray", "fasta"]
   assert format in ["cif", "pdb", "xml"]
   assert mirror in ["rcsb", "pdbe"]
   validate_pdb_id(id)
+  if (log is None) : log = null_out()
 
   id = id.lower()
+  if (not force_download) :
+    # try local mirror for PDB and X-ray data files first, if it exists
+    if (data_type == "pdb") and ("PDB_MIRROR_PDB" in os.environ) :
+      subdir = os.path.join(os.environ["PDB_MIRROR_PDB"], id.lower()[1:3])
+      if (os.path.isdir(subdir)) :
+        file_name = os.path.join(subdir, "pdb%s.ent.gz" % id.lower())
+        if (os.path.isfile(file_name)) :
+          print >> log, "Reading from local mirror:"
+          print >> log, "  " + file_name
+          f = smart_open.for_reading(file_name)
+          return f
+    if ((data_type == "xray") and
+        ("PDB_MIRROR_STRUCTURE_FACTORS" in os.environ)) :
+      sf_dir = os.environ["PDB_MIRROR_STRUCTURE_FACTORS"]
+      subdir = os.path.join(sf_dir, id.lower()[1:3])
+      if (os.path.isdir(subdir)) :
+        file_name = os.path.join(subdir, "r%ssf.ent.gz" % id.lower())
+        if (os.path.isfile(file_name)) :
+          print >> log, "Reading from local mirror:"
+          print >> log, "  " + file_name
+          f = smart_open.for_reading(file_name)
+          return f
+  # No mirror found (or out of date), default to HTTP download
   if (mirror == "rcsb") :
     url_base = "http://www.rcsb.org/pdb/files/"
     pdb_ext = ".pdb"
@@ -86,8 +123,11 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb") :
   return data
 
 def get_pdb (id, data_type, mirror, log, quiet=False, format="pdb") :
+  """
+  Frontend for fetch(...), writes resulting data to disk.
+  """
   try :
-    data = fetch(id, data_type, mirror=mirror, format=format)
+    data = fetch(id, data_type, mirror=mirror, format=format, log=log)
   except RuntimeError, e :
     raise Sorry(str(e))
   file_name = None
@@ -110,6 +150,17 @@ def get_pdb (id, data_type, mirror, log, quiet=False, format="pdb") :
 
 def get_ncbi_pdb_blast (sequence, file_name=None, blast_type="blastp",
     expect=0.01) :
+  """
+  Run BLAST against the PDB sequence database on the NCBI's web server.
+  Basically just a frontend to a BioPython module.
+
+  :param sequence: plaintext amino-acid or nucleotide sequence
+  :param file_name: optional output file name
+  :param blast_type: program to run ("blastp" or "blastn")
+  :param expect: BLAST e-value cutoff
+
+  :returns: XML string
+  """
   assert (blast_type in ["blastp", "blastn"])
   if (sequence[-1] == '*') :
     sequence = sequence[:-1]
@@ -131,6 +182,21 @@ def get_ncbi_pdb_blast (sequence, file_name=None, blast_type="blastp",
 
 def get_ebi_pdb_wublast (sequence, email, file_name=None, blast_type="blastp",
     sequence_type="protein", exp="1e-3") :
+  """
+  Run WU-BLAST against the PDB sequence database on the EBI's web server.
+  Somewhat more complicated than the NCBI BLAST service, because of two-step
+  process (submission and retrieval).  An email address is required to submit
+  a job.
+
+  :param sequence: plaintext amino-acid or nucleotide sequence
+  :param email: user email address
+  :param file_name: optional output file name
+  :param blast_type: program to run ("blastp" or "blastn")
+  :param sequence_type: currently ignored
+  :param exp: BLAST e-value cutoff
+
+  :returns: XML string
+  """
   assert (email is not None)
   url = "http://www.ebi.ac.uk/Tools/services/rest/wublast/run/"
   params = urllib.urlencode({
