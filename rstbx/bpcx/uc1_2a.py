@@ -106,10 +106,6 @@ def regenerate_predictions_brute(xds_integrate_hkl_file, phi_range):
         resolution_limit = dmin,
         space_group = space_group(space_group_symbols(sg).hall()))
 
-    print "full_sphere_indices"
-    print "is of type", type(indices)
-    print "and has length", len(indices)
-
     u, b = cfc.get_u_b(convention = cfc.ROSSMANN)
     axis = cfc.get('rotation_axis', convention = cfc.ROSSMANN)
     ub = u * b
@@ -122,10 +118,6 @@ def regenerate_predictions_brute(xds_integrate_hkl_file, phi_range):
         phi_start_rad = phi_range[0] * d2r,
         phi_end_rad = phi_range[1] * d2r,
         indices = indices)
-
-    print "obs_indices from full_sphere_indices"
-    print "is of type", type(obs_indices)
-    print "and has length", len(obs_indices)
 
     # in here work in internal (i.e. not Rossmann) coordinate frame
 
@@ -182,6 +174,7 @@ def regenerate_predictions_reeke(xds_integrate_hkl_file, phi_range):
     from cctbx.uctbx import unit_cell
     import math
     from reeke import reeke_model
+    from cctbx.array_family import flex
 
     cfc = coordinate_frame_converter(xds_integrate_hkl_file)
 
@@ -206,31 +199,21 @@ def regenerate_predictions_reeke(xds_integrate_hkl_file, phi_range):
     s0 = (- 1.0 / wavelength) * sample_to_source_vec
     ub = u * b
     rm = reeke_model(ub, axis, s0, dmin, phi_range[0], phi_range[1], 3)
-    indices = rm.generate_indices()
-
-    print "reeke indices"
-    print "is of type", type(indices)
-    print "and has length", len(indices)
-
-    #rm.visualize_with_rgl()
+    reeke_indices = rm.generate_indices()
 
     # the following are in Rossmann coordinate frame to fit in with
     # Labelit code...
-
     ur, br = cfc.get_u_b(convention = cfc.ROSSMANN)
     axisr = cfc.get('rotation_axis', convention = cfc.ROSSMANN)
-    ubr = u * b
+    ubr = ur * br
 
     ra = rotation_angles(dmin, ubr, wavelength, axisr)
 
     obs_indices, obs_angles = ra.observed_indices_and_angles_from_angle_range(
-        phi_start_rad = phi_range[0] * d2r,
-        phi_end_rad = phi_range[1] * d2r,
-        indices = indices)
+            phi_start_rad = phi_range[0] * d2r,
+            phi_end_rad = phi_range[1] * d2r,
+            indices = reeke_indices)
 
-    print "obs_indices from reeke"
-    print "is of type", type(obs_indices)
-    print "and has length", len(obs_indices)
 
     detector_origin = cfc.get_c('detector_origin')
     detector_fast = cfc.get_c('detector_fast')
