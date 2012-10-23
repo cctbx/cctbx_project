@@ -198,6 +198,10 @@ def beam_center_convention_from_image_object(imageobject,phil_params):
       beam_center_convention = other_beamlines(imageobject,
         passthru_convention = beam_center_convention)
 
+    elif imageobject.vendortype == "SMV(Generic)":
+      beam_center_convention = 0
+      set_convention(0,phil_params)
+
     elif imageobject.vendortype == "CBF":
       beam_center_convention = 0
       set_convention(0,phil_params)

@@ -42,7 +42,12 @@ class EDFWrapper(EDFImage, DetectorImageBase):
     self.parameters['BEAM_CENTER_Y']=0.0 #Dummy argument
     self.parameters['DISTANCE']=100.0 #Dummy argument
 
-all_image_types = [EDFWrapper,SaturnImage,DIPImage,ADSCImage,HamamatsuImage,
+class SMVImage(ADSCImage):
+  def __init__(self,filename):
+    DetectorImageBase.__init__(self,filename)
+    self.vendortype = "SMV(Generic)"
+
+all_image_types = [EDFWrapper,SaturnImage,DIPImage,ADSCImage,SMVImage,HamamatsuImage,
                   MARImage,MARIPImage,DTREKImage,RAXISImage,
                   NonSquareRAXISImage,PilatusImage,CBFImage,BrukerImage]
 
