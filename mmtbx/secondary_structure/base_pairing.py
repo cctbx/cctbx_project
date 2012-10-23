@@ -503,6 +503,10 @@ def identify_base_pairs (base_pairs,
       continue
     base_1 = sel_cache.selection(base_pair.base1).iselection()
     base_2 = sel_cache.selection(base_pair.base2).iselection()
+    if (len(base_1) == 0) :
+      raise Sorry("Empty selection for base1: '%s'" % base_pair.base1)
+    elif (len(base_2) == 0) :
+      raise Sorry("Empty selection for base2: '%s'" % base_pair.base2)
     basecode_1 = atoms[base_1[0]].fetch_labels().resname.strip()[0]
     basecode_2 = atoms[base_2[0]].fetch_labels().resname.strip()[0]
     bp = "%s-%s" % (basecode_1, basecode_2)
