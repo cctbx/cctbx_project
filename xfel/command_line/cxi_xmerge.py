@@ -330,35 +330,16 @@ def run(args):
     easy_pickle.dump("%s.pkl" % work_params.output.prefix, result)
   work_params.output.prefix = reserve_prefix
 
-  from cctbx import miller
+  # Output table with number of images contribution reflections per
+  # resolution bin.
   from libtbx import table_utils
 
-  # For each unique reflection, record the set of accepted frames on
-  # which it was observed.
-  reflection_frame = []
-  for i in range(len(scaler.millers['merged_asu_hkl'])):
-    reflection_frame.append(set([]))
-  for i in range(len(scaler.observations['hkl_id'])):
-    frame_id = scaler.observations['frame_id'][i]
-    if scaler.frames['cc'][frame_id] <= work_params.min_corr:
-      continue
-    hkl_id = scaler.observations['hkl_id'][i]
-    reflection_frame[hkl_id].add(frame_id)
-
-  # For each resolution bin, find the union of accepted frames
-  # contributing at least one observation of a reflection.
   j_model.setup_binner(
     d_max=100000, d_min=work_params.d_min, n_bins=work_params.output.n_bins)
   table_data = [["Bin", "Resolution Range", "# images"]]
   for i_bin in j_model.binner().range_used():
-    indices = j_model.select(j_model.binner().selection(i_bin)).indices()
-    matches = miller.match_indices(indices, scaler.millers['merged_asu_hkl'])
-
-    s = set([])
-    for j in matches.pairs().column(1):
-      s.update(reflection_frame[j])
-
-    col_count = '%8d' % len(s)
+    col_count = '%8d' % results.count_frames(
+      work_params.min_corr, j_model.binner().selection(i_bin))
     col_legend = '%-13s' % j_model.binner().bin_legend(
       i_bin=i_bin, show_bin_number=False, show_bin_range=False,
       show_d_range=True, show_counts=False)
