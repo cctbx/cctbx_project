@@ -1,3 +1,7 @@
+/* -*- Mode: C++; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
+ *
+ * $Id$
+ */
 #include <cctbx/boost_python/flex_fwd.h>
 #include <boost/tokenizer.hpp>
 
@@ -16,6 +20,7 @@
 #include <cctbx/uctbx.h>
 #include <vector>
 #include <map>
+#include <set>
 
 using namespace boost::python;
 
@@ -305,6 +310,40 @@ struct column_parser {
 };
 
 struct scaling_results {
+private:
+  /*
+   * For each unique reflection, the set of accepted frame ID:s on
+   * which it was observed.
+   */
+  std::vector<std::set<int> > reflection_frame;
+
+  /*
+   * Lower limit on correlation coefficent.
+   */
+  double reflection_frame_min_corr;
+
+  /*
+   * Populate each element of reflection_frame with the union of
+   * frames with correlation coefficient greater than
+   * reflection_frame_min_corr.  This function is intended for lazy
+   * evaluation.
+   */
+  void
+  update_frame_count()
+  {
+    shared_double cc = frames.get_double("cc");
+    shared_int frame_id = observations.get_int("frame_id");
+    shared_int hkl_id = observations.get_int("hkl_id");
+
+    reflection_frame.resize(merged_asu_hkl.size());
+    for (std::size_t i = 0; i < hkl_id.size(); i++) {
+      const int this_frame_id = frame_id[i];
+      if (cc[this_frame_id] > reflection_frame_min_corr)
+        reflection_frame[hkl_id[i]].insert(this_frame_id);
+    }
+  }
+
+public:
   int frame_id_dwell;
   typedef scitbx::af::shared<int> shared_int;
   typedef scitbx::af::shared<double> shared_double;
@@ -383,6 +422,32 @@ struct scaling_results {
 
     }
   }
+
+  /*
+   * For each resolution bin, find the union of accepted frames
+   * contributing at least one observation of a reflection.
+   */
+  std::size_t
+  count_frames(
+    double params_min_corr, const shared_bool& reflection_selection)
+  {
+    std::set<int> s;
+
+    if (reflection_frame.size() != merged_asu_hkl.size() ||
+        reflection_frame_min_corr != params_min_corr) {
+      reflection_frame_min_corr = params_min_corr;
+      update_frame_count();
+    }
+
+    SCITBX_ASSERT(reflection_frame.size() == reflection_selection.size());
+    for (std::size_t i = 0; i < reflection_frame.size(); i++) {
+      if (reflection_selection[i])
+        s.insert(reflection_frame[i].begin(), reflection_frame[i].end());
+    }
+
+    return s.size();
+  }
+
   void mark1 (double const& params_min_corr,
               cctbx::uctbx::unit_cell const& params_unit_cell) {
     // this eliminates the filter based on correlation with isomorphous structure
@@ -510,6 +575,7 @@ namespace boost_python { namespace {
     class_<scaling_results>("scaling_results",no_init)
       .def(init<column_parser&, column_parser&, scaling_results::shared_miller&,
                 scaling_results::shared_bool&>())
+      .def("count_frames",&scaling_results::count_frames)
       .def("mark0",&scaling_results::mark0)
       .def("mark1",&scaling_results::mark1)
     ;
