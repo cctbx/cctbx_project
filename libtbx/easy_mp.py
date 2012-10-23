@@ -322,4 +322,75 @@ def pool_map(
     show_wall_clock_time(seconds=time.time()-time_start, out=log)
   return result
 
+def parallel_map (
+    func,
+    iterable,
+    processes=1,
+    method="multiprocessing",
+    qsub_command=None,
+    asynchronous=False) :
+  """
+  Generic parallel map() implementation for a variety of platforms, including
+  the multiprocessing module and supported queuing systems, via the module
+  libtbx.queuing_system_utils.scheduling.  This is less flexible than pool_map
+  above, since it does not provide a way to use a non-pickleable target
+  function, but it provides a consistent API for programs where multiple
+  execution methods are desired.
+
+  Note that for most applications, the threading method will be constrained
+  by the Global Interpreter Lock, therefore multiprocessing is prefered for
+  parallelizing across a single multi-core system.
+
+  See Computational Crystallography Newsletter 3:37-42 (2012) for details of
+  the underlying method.
+
+  :param func: target function (must be pickleable)
+  :param iterable: list of arguments for func
+  :param processes: number of processes/threads to start
+  :param method: parallelization method (multiprocessing|threading|sge|lsf|pbs)
+  :param qsub_command: command to submit queue jobs (optional)
+  :param asynchronous: run queue jobs asynchronously
+  :returns: a list of result objects
+  """
+  assert (method in ["multiprocessing", "threading", "sge", "lsf", "pbs"])
+  from libtbx.queuing_system_utils import scheduling
+  units = []
+  for i_proc in range(processes) :
+    factory, queue = None, None
+    if (method == "multiprocessing") :
+      import multiprocessing
+      factory = multiprocessing.Process
+      queue = multiprocessing.Queue()
+    elif (method == "threading") :
+      import threading
+      import Queue
+      factory = threading.Thread
+      queue = Queue.Queue()
+    else :
+      from libtbx.queuing_system_utils import processing
+      import random
+      qhandler_class = getattr(processing, method.upper())
+      qhandler = qhandler_class(
+        command=qsub_command,
+        asynchronous=asynchronous)
+      factory = qhandler.Job
+      qid = "map" + str(int(random.random() * 1000000))
+      queue = processing.Queue(identifier=qid)
+    assert (not None in [factory, queue])
+    unit = scheduling.ExecutionUnit(
+      factory=factory,
+      processor=scheduling.RetrieveProcessor(queue=queue))
+    units.append(unit)
+  manager = scheduling.Manager(units=units)
+  adapter = scheduling.Adapter(manager=manager)
+  for args in iterable :
+    adapter.submit(target=func, args=(args,))
+  results = []
+  for result_wrapper in adapter.results :
+    if isinstance(result_wrapper, scheduling.ErrorEnding) :
+      result_wrapper() # raises exception
+    else :
+      results.append(result_wrapper.result)
+  return results
+
 del _

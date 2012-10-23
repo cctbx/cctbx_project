@@ -753,4 +753,3 @@ class MainthreadManager(object):
       job.postprocess()
       result = job.get()
       self.completed_results.append( result )
-
