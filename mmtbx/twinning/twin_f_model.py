@@ -768,7 +768,8 @@ the percentage of R-free reflections).
                                log=None,
                                verbose=-1,
                                initialise=False,
-                               nproc=None): # XXX ignored
+                               nproc=None, # XXX ignored
+                               fast=None): # XXX ignored
     if(self.twin_law_str is None and self.twin_law is not None):
       self.twin_law_str = sgtbx.change_of_basis_op( self.twin_law ).as_hkl()
     self.fmodel_ts1 = mmtbx.f_model.manager(
