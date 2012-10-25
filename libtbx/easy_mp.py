@@ -357,7 +357,8 @@ def parallel_map (
     method="multiprocessing",
     qsub_command=None,
     asynchronous=False,
-    callback=None) :
+    callback=None,
+    preserve_order=False) : # XXX should this be True by default?
   """
   Generic parallel map() implementation for a variety of platforms, including
   the multiprocessing module and supported queuing systems, via the module
@@ -415,12 +416,21 @@ def parallel_map (
       processor=scheduling.RetrieveProcessor(queue=queue))
     units.append(unit)
   manager = scheduling.Manager(units=units)
+  identifiers = []
   for args in iterable :
-    manager.submit(target=func, args=(args,))
+    task_id = manager.submit(target=func, args=(args,))
+    identifiers.append(task_id)
   results = []
-  for result_wrapper in manager.results :
-    result = result_wrapper()
-    results.append(result) # raises exception in case of error
-    if (callback is not None) :
-      callback(result)
+  if (preserve_order) :
+    for result_wrapper in manager.results_in_order_of(identifiers) :
+      result = result_wrapper()
+      results.append(result) # raises exception in case of error
+      if (callback is not None) :
+        callback(result)
+  else :
+    for result_wrapper in manager.results :
+      result = result_wrapper()
+      results.append(result) # raises exception in case of error
+      if (callback is not None) :
+        callback(result)
   return results
