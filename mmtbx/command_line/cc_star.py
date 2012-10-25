@@ -4,13 +4,11 @@ from libtbx.utils import Sorry, Usage
 import libtbx.phil
 import sys
 
-def merging_and_model_statistics (
-    fmodel, unmerged_i_obs, i_obs=None, n_bins=20) :
-  from iotbx.command_line import merging_statistics
-  if (i_obs is None) :
-    i_obs = fmodel.f_obs().f_as_f_sq()
-  if (not i_obs.is_unique_set_under_symmetry()) :
-    i_obs = i_obs.merge_equivalents().array()
+def merging_and_model_statistics (fmodel, unmerged_i_obs, n_bins=20) :
+  from iotbx import merging_statistics
+  # very important: must use original intensities for i_obs, not squared f_obs
+  # from fmodel, because French-Wilson treatment is one-way
+  i_obs = unmerged_i_obs.merge_equivalents(use_internal_variance=False).array()
   if (i_obs.anomalous_flag()) :
     i_obs = i_obs.average_bijvoet_mates()
   f_model = fmodel.f_model()
@@ -60,7 +58,7 @@ Full parameters:
 %s
 """ % master_phil.as_str(prefix=" "))
   import mmtbx.utils
-  from iotbx.command_line import merging_statistics
+  from iotbx import merging_statistics
   cmdline = mmtbx.utils.cmdline_load_pdb_and_data(
     args=args,
     master_phil=master_phil,
@@ -74,7 +72,7 @@ Full parameters:
   unmerged_i_obs = merging_statistics.select_data(
     file_name=params.unmerged_data,
     data_labels=params.unmerged_labels,
-    out=out)
+    log=out)
   stats = merging_and_model_statistics(
     fmodel=fmodel,
     unmerged_i_obs=unmerged_i_obs,
