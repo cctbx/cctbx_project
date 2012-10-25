@@ -322,13 +322,42 @@ def pool_map(
     show_wall_clock_time(seconds=time.time()-time_start, out=log)
   return result
 
+del _
+
+#-----------------------------------------------------------------------
+# application support for parallelization across multiple cores or a
+# queuing system (also Unix-only)
+parallel_phil_str_base = """
+nproc = 1
+  .type = int
+  .short_caption = Number of processes
+  .style = bold renderer:draw_nproc_widget
+technology = %s
+  .type = choice
+  .short_caption = Parallelization method
+  .caption = %s
+qsub_command = None
+  .type = str
+"""
+
+parallel_methods = ["*multiprocessing", "sge", "lsf", "pbs"]
+parallel_captions = ["Multiprocessing", "Sun_Grid_Engine", "LSF", "PBS"]
+
+parallel_phil_str = parallel_phil_str_base % (
+  " ".join(parallel_methods + ["threading"]),
+  " ".join(parallel_captions + ["Threading"]))
+parallel_phil_str_no_threading = parallel_phil_str_base % (
+  " ".join(parallel_methods), " ".join(parallel_captions))
+
 def parallel_map (
     func,
     iterable,
+    params=None,
     processes=1,
     method="multiprocessing",
     qsub_command=None,
-    asynchronous=False) :
+    asynchronous=False,
+    callback=None) :
   """
   Generic parallel map() implementation for a variety of platforms, including
   the multiprocessing module and supported queuing systems, via the module
@@ -352,10 +381,15 @@ def parallel_map (
   :param asynchronous: run queue jobs asynchronously
   :returns: a list of result objects
   """
+  if (params is not None) :
+    method = params.technology
+    processes = params.nproc
+    qsub_command = params.qsub_command
   from libtbx.queuing_system_utils import scheduling
   from libtbx.queuing_system_utils import processing
   assert ((method in ["multiprocessing", "threading"]) or
           (method in processing.INTERFACE_FOR.keys()))
+  assert (callback is None) or (hasattr(callback, "__call__"))
   units = []
   for i_proc in range(processes) :
     factory, queue = None, None
@@ -385,7 +419,8 @@ def parallel_map (
     manager.submit(target=func, args=(args,))
   results = []
   for result_wrapper in manager.results :
-    results.append(result_wrapper()) # raises exception in case of error
+    result = result_wrapper()
+    results.append(result) # raises exception in case of error
+    if (callback is not None) :
+      callback(result)
   return results
-
-del _
