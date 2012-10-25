@@ -392,24 +392,33 @@ def parallel_map (
           (method in processing.INTERFACE_FOR.keys()))
   assert (callback is None) or (hasattr(callback, "__call__"))
   units = []
+  factory, queue_factory = None, None
+  if (method == "multiprocessing") :
+    import multiprocessing
+    factory = multiprocessing.Process
+    # XXX this is essential - using multiprocessing.Queue will not work for
+    # large result objects.  explanation here:
+    #   http://bugs.python.org/issue8426
+    # for reasons which are opaque to me, using the Manager object to create
+    # the Queue will circumvent the problem.
+    mp_manager = multiprocessing.Manager()
+    queue_factory = mp_manager.Queue
+  elif (method == "threading") :
+    import threading
+    import Queue
+    factory = threading.Thread
+    queue_factory = Queue.Queue
   for i_proc in range(processes) :
-    factory, queue = None, None
-    if (method == "multiprocessing") :
-      import multiprocessing
-      factory = multiprocessing.Process
-      queue = multiprocessing.Queue()
-    elif (method == "threading") :
-      import threading
-      import Queue
-      factory = threading.Thread
-      queue = Queue.Queue()
-    else :
+    queue = None
+    if (factory is None) :
       qhandler_function = processing.INTERFACE_FOR[method]
       qhandler = qhandler_function(
         command=qsub_command,
         asynchronous=asynchronous)
       factory = qhandler.Job
       queue = processing.Queue(identifier="parallel_map")
+    else :
+      queue = queue_factory()
     assert (not None in [factory, queue])
     unit = scheduling.ExecutionUnit(
       factory=factory,
