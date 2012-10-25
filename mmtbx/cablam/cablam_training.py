@@ -727,7 +727,7 @@ def kin_print_by_instance(resdata, motif_list, kinorder, outfiles):
           '} dimension='+str(len(kinorder))+'\n')
         curres = residue
         for label in motif.labellist:
-          outline = ['{'+curres.id_with_resname(sep=' ')+'_'+label+'}']
+          outline = ['{'+curres.id_with_resname()+'_'+label+'}']
           for order in kinorder:
             try:
               outline.append(str(curres.measures[order]))
