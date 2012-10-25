@@ -937,6 +937,7 @@ iotbx/gui_tools/tst.py -text
 iotbx/libtbx_refresh.py svneol=native#text/x-python
 iotbx/logfiles.py -text
 iotbx/map_tools.py -text
+iotbx/merging_statistics.py -text
 iotbx/mtz/tst_dano.py svneol=native#text/x-python
 iotbx/mtz/tst_extract_from_symmetry_lib.py svneol=native#text/x-python
 iotbx/mtz/tst_unmerged.py -text
