@@ -112,7 +112,10 @@ output {
 scaling {
   mtz_file = None
     .type = str
-    .help = for Riso/ CCiso, the reference structure factors
+    .help = for Riso/ CCiso, the reference structure factors, must have data type F
+  mtz_column_F = fobs
+    .type = str
+    .help = for Riso/ CCiso, the column name containing reference structure factors
   log_cutoff = None
     .type = float
     .help = for CC calculation, log(intensity) cutoff, ignore values less than this
