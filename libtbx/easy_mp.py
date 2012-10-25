@@ -352,8 +352,10 @@ def parallel_map (
   :param asynchronous: run queue jobs asynchronously
   :returns: a list of result objects
   """
-  assert (method in ["multiprocessing", "threading", "sge", "lsf", "pbs"])
   from libtbx.queuing_system_utils import scheduling
+  from libtbx.queuing_system_utils import processing
+  assert ((method in ["multiprocessing", "threading"]) or
+          (method in processing.INTERFACE_FOR.keys()))
   units = []
   for i_proc in range(processes) :
     factory, queue = None, None
@@ -367,30 +369,23 @@ def parallel_map (
       factory = threading.Thread
       queue = Queue.Queue()
     else :
-      from libtbx.queuing_system_utils import processing
-      import random
-      qhandler_class = getattr(processing, method.upper())
-      qhandler = qhandler_class(
+      qhandler_function = processing.INTERFACE_FOR[method]
+      qhandler = qhandler_function(
         command=qsub_command,
         asynchronous=asynchronous)
       factory = qhandler.Job
-      qid = "map" + str(int(random.random() * 1000000))
-      queue = processing.Queue(identifier=qid)
+      queue = processing.Queue(identifier="parallel_map")
     assert (not None in [factory, queue])
     unit = scheduling.ExecutionUnit(
       factory=factory,
       processor=scheduling.RetrieveProcessor(queue=queue))
     units.append(unit)
   manager = scheduling.Manager(units=units)
-  adapter = scheduling.Adapter(manager=manager)
   for args in iterable :
-    adapter.submit(target=func, args=(args,))
+    manager.submit(target=func, args=(args,))
   results = []
-  for result_wrapper in adapter.results :
-    if isinstance(result_wrapper, scheduling.ErrorEnding) :
-      result_wrapper() # raises exception
-    else :
-      results.append(result_wrapper.result)
+  for result_wrapper in manager.results :
+    results.append(result_wrapper()) # raises exception in case of error
   return results
 
 del _
