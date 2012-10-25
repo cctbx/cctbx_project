@@ -37,7 +37,7 @@ from mmtbx.cablam.cablam_math import veclen, vectorize
 #  rather than a fix. I do not expect this to be a problem at low resolution
 #  (where alts are rare), but it does present a problem for high-res training.
 #-------------------------------------------------------------------------------
-class linked_residue():
+class linked_residue(object):
 
   #Prints kinemage point-style output for a list of measures given in kinorder
   def printtokin(self, kinorder, writeto=sys.stdout):
