@@ -57,7 +57,7 @@ struct counter
   typedef typename iterator_type::value_type value_type;
   typedef iterated_range< iterator_type > range_type;
   typedef counter< iterator_type > counter_type;
-  
+
   range_type range;
   iterator_type current;
 
@@ -158,7 +158,7 @@ private:
     };
 
     template< class Range >
-    typename result< get_counter_for_range( Range ) >::type 
+    typename result< get_counter_for_range( Range ) >::type
     operator()(const Range& range) const
     {
       return typename result< get_counter_for_range( Range ) >::type( range );
@@ -182,7 +182,7 @@ private:
     };
 
     template< class Counter >
-    typename result< get_counter_current_value( Counter ) >::type 
+    typename result< get_counter_current_value( Counter ) >::type
     operator()(const Counter& counter) const
     {
       return *counter.current;
@@ -234,8 +234,7 @@ public:
   bool operator !=(const iterator_type& rhs) const;
   value_type& operator *();
 
-public:
-  static const iterator_type end;
+  static iterator_type end();
 };
 
 template<
@@ -277,7 +276,7 @@ struct get_range_from_container
   };
 
   template< class Container >
-  typename result< get_range_from_container( Container ) >::type 
+  typename result< get_range_from_container( Container ) >::type
   operator()(const Container& container) const
   {
     typedef typename result< get_range_from_container( Container ) >::type
