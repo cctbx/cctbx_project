@@ -12,6 +12,13 @@ MAP_TYPE_NEUTRON = 16
 MAP_TYPE_F_CALC = 32
 MAP_TYPE_FILLED = 64
 
+standard_map_names = {
+  '2FOFCWT' : '2mFo-DFc',
+  '2FOFCWT_no_fill' : '2mFo-DFc_no_fill',
+  'FOFCWT' : 'mFo-DFc',
+  'ANOM' : 'anomalous',
+}
+
 class MapNotFound (RuntimeError) :
   pass
 
@@ -327,7 +334,8 @@ class server (object) :
                        simple_file_name=False,
                        resolution_factor=0.25,
                        sigma_scaling=True,
-                       force=False) :
+                       force=False,
+                       use_standard_map_names=False) :
     sites_cart = None
     if (pdb_file is not None) :
       pdb_in = self.get_pdb_file(pdb_file)
@@ -335,8 +343,12 @@ class server (object) :
     if (output_file is None) :
       if (simple_file_name) :
         output_file = os.path.splitext(self.file_name)[0] + ".ccp4"
-      else :
+      elif (use_standard_map_names) :
         lab1 = map_coeffs.info().label_string().split(",")[0]
+        map_name = standard_map_names.get(lab1, lab1)
+        output_file = os.path.splitext(self.file_name)[0] + "_%s.ccp4" % \
+          map_name
+      else :
         output_file = os.path.splitext(self.file_name)[0] + "_%s.ccp4" % lab1
     if (not force) and (os.path.exists(output_file) and
         os.path.getmtime(output_file) < os.path.getmtime(self.file_name)) :
@@ -467,7 +479,7 @@ def convert_map_coefficients (map_coefficients,
     try :
       map_file = server_.convert_any_map(array_label, None, None, **kwds)
     except MapNotFound :
-      pass
+      continue
     outputs.append((map_file, map.map_type))
   return outputs
 

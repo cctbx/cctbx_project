@@ -22,6 +22,14 @@ def exercise_maps () :
                     'refine_2mFo-DFc.ccp4', 'refine_2mFo-DFc_no_fill.ccp4'])
   for fn in files :
     assert os.path.isfile(fn)
+    os.remove(fn)
+  file_name = server.convert_any_map(
+    f_label="2FOFCWT,PH2FOFCWT",
+    phi_label=None,
+    fom_label=None,
+    use_standard_map_names=True)
+  assert (file_name == "partial_refine_001_map_coeffs_2mFo-DFc.ccp4")
+  assert os.path.isfile(file_name)
   resolve_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/wizards/resolve_1_offset.mtz",
     test=os.path.isfile)
