@@ -55,7 +55,7 @@ increment_fast_back< CounterVector, Depth >::process(CounterVector& cv)
     >::type counter_type;
   counter_type& mycounter = boost::fusion::at_c< Depth >( cv );
   ++( mycounter.current );
-  
+
   if ( mycounter.current == mycounter.range.end )
   {
     mycounter.current = mycounter.range.begin;
@@ -96,7 +96,7 @@ increment_fast_front< CounterVector, Depth >::process(CounterVector& cv)
     mpl_integral_constant::value - Depth - 1
     >( cv );
   ++( mycounter.current );
-  
+
   if ( mycounter.current == mycounter.range.end )
   {
     mycounter.current = mycounter.range.begin;
@@ -219,7 +219,7 @@ fixed_size_iterator< IteratorTypeList, IterationOrder >::operator *()
       counter_vector_,
       get_counter_current_value()
       );
-    
+
     return current_value_;
 }
 
@@ -227,6 +227,9 @@ template<
   typename IteratorTypeList,
   template< class, unsigned > class IterationOrder
   >
-const fixed_size_iterator< IteratorTypeList, IterationOrder >
-fixed_size_iterator< IteratorTypeList, IterationOrder >::end;
+fixed_size_iterator< IteratorTypeList, IterationOrder >
+fixed_size_iterator< IteratorTypeList, IterationOrder >::end()
+{
+  return iterator_type();
+}
 
