@@ -13,7 +13,10 @@ def merging_and_model_statistics (
   free_sel = r_free_flags
   # very important: must use original intensities for i_obs, not squared f_obs,
   # because French-Wilson treatment is one-way
+  assert (unmerged_i_obs.sigmas() is not None)
+  unmerged_i_obs = unmerged_i_obs.select(unmerged_i_obs.sigmas() >= 0)
   i_obs = unmerged_i_obs.merge_equivalents(use_internal_variance=False).array()
+  i_obs = i_obs.select(i_obs.data() >= -3*i_obs.sigmas())
   if (i_obs.anomalous_flag()) :
     i_obs = i_obs.average_bijvoet_mates()
   if (f_model.anomalous_flag()) :
