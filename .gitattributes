@@ -1107,14 +1107,11 @@ libtbx/queuing_system_utils/lsf.py -text
 libtbx/queuing_system_utils/pbs_utils.py svneol=native#text/x-python
 libtbx/queuing_system_utils/processing.py -text
 libtbx/queuing_system_utils/scheduling.py -text
-libtbx/queuing_system_utils/sge/__init__.py svneol=native#text/x-python
-libtbx/queuing_system_utils/sge/core.py svneol=native#text/x-python
 libtbx/queuing_system_utils/sge_utils.py svneol=native#text/x-python
 libtbx/queuing_system_utils/tst.py svneol=native#text/x-python
 libtbx/runtime_utils.py -text
 libtbx/simplexml.py -text
 libtbx/smart_open.py svneol=native#text/x-python
-libtbx/smp_utils.py -text
 libtbx/subversion.py -text
 libtbx/test_utils/__init__.py -text
 libtbx/test_utils/parallel.py -text
