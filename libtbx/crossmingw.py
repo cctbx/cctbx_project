@@ -21,6 +21,9 @@ prefixes = SCons.Util.Split("""
   i686-w64-mingw32-
 """)
 
+if os.getenv("TARGET"):
+    prefixes.insert(0, os.getenv("TARGET")+"-")
+
 def find(env):
   for prefix in prefixes:
     # First search in the SCons path and then the OS path:
