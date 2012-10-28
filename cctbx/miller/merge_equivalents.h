@@ -312,7 +312,7 @@ namespace cctbx { namespace miller {
             process_group(group_begin, group_end,
                           unmerged_indices[group_begin],
                           unmerged_data, unmerged_sigmas,
-                          values, weights);
+                          values, weights, use_internal_variance);
             group_begin = group_end;
           }
         }
