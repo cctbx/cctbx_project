@@ -78,11 +78,17 @@ class merging_stats (object) :
     from scitbx.array_family import flex
     assert (array.sigmas() is not None)
     array = array.customized_copy(anomalous_flag=anomalous).map_to_asu()
+    array = array.eliminate_sys_absent()
     non_negative_sel = array.sigmas() >= 0
     self.n_neg_sigmas = non_negative_sel.count(False)
     array = array.select(non_negative_sel)
     merge = array.merge_equivalents(use_internal_variance=False)
     array_merged = merge.array()
+    # XXX need to reconcile this with the behavior of other programs - the
+    # filtering below is consistent with what XDS does, but not SCALA/AIMLESS.
+    # Note that cctbx.french_wilson uses an I/sigI cutoff of -4.0 by default.
+    reject_sel_unmerged = (array.data() < -3*array.sigmas())
+    array = array.select(~reject_sel_unmerged)
     reject_sel = (array_merged.data() < -3*array_merged.sigmas())
     self.n_rejected = reject_sel.count(True)
     array_merged = array_merged.select(~reject_sel)
