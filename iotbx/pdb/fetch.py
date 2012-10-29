@@ -172,7 +172,7 @@ def get_ncbi_pdb_blast (sequence, file_name=None, blast_type="blastp",
     from Bio.Blast import NCBIWWW
   except ImportError :
     raise Sorry("You need to have BioPython installed to use this function.")
-  blast = NCBIWWW.qblast(blast_type, "pdb", sequence)
+  blast = NCBIWWW.qblast(blast_type, "pdb", sequence, expect=expect)
   blast_out = blast.read()
   if (file_name is not None) :
     f = open(file_name, "w")
