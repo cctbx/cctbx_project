@@ -138,7 +138,7 @@ class refinery(object):
     # select results
     if(optimize_weight):
       delta = bonds-rms_bonds_limit
-      ind = (delta == flex.max_default(delta.select(delta<=0), 
+      ind = (delta == flex.max_default(delta.select(delta<=0),
         flex.min(delta))).iselection()[0]
       self.weight_final = weights[ind]
       self.sites_cart_result = pool[self.weight_final][0][0]
