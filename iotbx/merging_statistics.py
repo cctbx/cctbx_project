@@ -1,7 +1,7 @@
 from __future__ import division
 from libtbx.str_utils import make_sub_header, format_value
 from libtbx.utils import Sorry, null_out
-from libtbx import group_args, adopt_init_args
+from libtbx import group_args, adopt_init_args, Auto
 from math import sqrt
 import sys
 
@@ -20,6 +20,13 @@ n_bins = 10
 anomalous = False
   .type = bool
   .short_caption = Keep anomalous pairs separate in merging statistics
+sigma_filtering = *auto xds scala scalepack
+  .type = choice
+  .short_caption = Sigma(I) filtering convention
+  .help = Determines how data are filtered by SigmaI and I/SigmaI.  XDS \
+    discards reflections whose intensity after merging is less than -3*sigma, \
+    Scalepack uses the same cutoff before merging, and SCALA does not do any \
+    filtering.  Reflections with negative SigmaI will always be discarded.
 """
 
 class model_based_arrays (object) :
@@ -73,10 +80,16 @@ class merging_stats (object) :
   Reflections with negative sigmas will be discarded, and also, per the
   recommendation of Kay Diederichs, reflections where I < -3 * sigmaI.
   """
-  def __init__ (self, array, model_arrays=None, anomalous=False, debug=None) :
+  def __init__ (self,
+      array,
+      model_arrays=None,
+      anomalous=False,
+      debug=None,
+      sigma_filtering="scala") :
     import cctbx.miller
     from scitbx.array_family import flex
     assert (array.sigmas() is not None)
+    assert (sigma_filtering in ["scala","scalepack","xds"])
     array = array.customized_copy(anomalous_flag=anomalous).map_to_asu()
     array = array.eliminate_sys_absent()
     non_negative_sel = array.sigmas() >= 0
@@ -84,14 +97,34 @@ class merging_stats (object) :
     array = array.select(non_negative_sel)
     merge = array.merge_equivalents(use_internal_variance=False)
     array_merged = merge.array()
-    # XXX need to reconcile this with the behavior of other programs - the
-    # filtering below is consistent with what XDS does, but not SCALA/AIMLESS.
-    # Note that cctbx.french_wilson uses an I/sigI cutoff of -4.0 by default.
-    reject_sel_unmerged = (array.data() < -3*array.sigmas())
-    array = array.select(~reject_sel_unmerged)
-    reject_sel = (array_merged.data() < -3*array_merged.sigmas())
-    self.n_rejected = reject_sel.count(True)
-    array_merged = array_merged.select(~reject_sel)
+    # XXX the filtering convention varies slightly by program:
+    #  - in XDS, reflections where I < -3*sigmaI after merging are deleted from
+    #    both the merged and unmerged arrays
+    #  - in Scalepack, the filtering is done before merging
+    #  - SCALA and AIMLESS do not do any filtering
+    # note that ctruncate and cctbx.french_wilson (any others?) do their own
+    # filtering, e.g. discarding I < -4*sigma in cctbx.french_wilson.
+    reject_sel = None
+    self.n_rejected_before_merge = self.n_rejected_after_merge = 0
+    if (sigma_filtering == "xds") :
+      reject_sel = (array_merged.data() < -3*array_merged.sigmas())
+      self.n_rejected_after_merge = reject_sel.count(True)
+      bad_data = array_merged.select(reject_sel)
+      array = array.delete_indices(other=bad_data)
+      # and merge again...
+      merge = array.merge_equivalents(use_internal_variance=False)
+      array_merged = merge.array()
+    elif (sigma_filtering == "scalepack") :
+      reject_sel = (array.data() < -3* array.sigmas())
+      self.n_rejected_before_merge = reject_sel.count(True)
+      array = array.select(~reject_sel)
+      merge = array.merge_equivalents(use_internal_variance=False)
+      array_merged = merge.array()
+    elif (sigma_filtering == "scala") :
+      pass
+    else :
+      raise ValueError("Unrecognized sigmaI filtering convention '%s'." %
+        sigma_filtering)
     self.d_max, self.d_min = array.d_max_min()
     self.n_obs = array.indices().size()
     self.n_uniq = array_merged.indices().size()
@@ -195,10 +228,17 @@ class merging_stats (object) :
     print >> out, "Completeness: %.2f%%" % (self.completeness*100)
     print >> out, "Mean intensity: %.1f" % self.i_mean
     print >> out, "Mean I/sigma(I): %.1f" % self.i_over_sigma_mean
+    # negative sigmas are rejected before merging
     if (self.n_neg_sigmas > 0) :
-      print >> out, "SigI < 0 (rejected): %d reflections" % self.n_neg_sigmas
-    if (self.n_rejected > 0) :
-      print >> out, "I < -3*SigI (rejected): %d reflections" % self.n_rejected
+      print >> out, "SigI < 0 (rejected): %d observations" % self.n_neg_sigmas
+    # excessively negative intensities can be rejected either before or after
+    # merging, depending on convention used
+    if (self.n_rejected_before_merge > 0) :
+      print >> out, "I < -3*SigI (rejected): %d observations" % \
+        self.n_rejected_before_merge
+    if (self.n_rejected_after_merge > 0) :
+      print >> out, "I < -3*SigI (rejected): %d reflections" % \
+        self.n_rejected_after_merge
     print >> out, "R-merge: %5.3f" % self.r_merge
     print >> out, "R-meas:  %5.3f" % self.r_meas
     print >> out, "R-pim:   %5.3f" % self.r_pim
@@ -218,12 +258,22 @@ class dataset_statistics (object) :
       debug=False,
       file_name=None,
       model_arrays=None,
+      sigma_filtering=Auto,
       log=None) :
     self.file_name = file_name
     if (log is None) : log = null_out()
     from iotbx import data_plots
     assert (i_obs.sigmas() is not None)
     info = i_obs.info()
+    if (sigma_filtering in [Auto, "auto"]) :
+      if (info.source_type == "xds_ascii") :
+        sigma_filtering = "xds"
+      elif (info.source_type == "ccp4_mtz") :
+        sigma_filtering = "scala"
+      elif (info.source_type == "scalepack_no_merge_original_index") :
+        sigma_filtering = "scalepack"
+      else : # XXX default to the most conservative method
+        sigma_filtering = "scala"
     if (crystal_symmetry is None) :
       assert (i_obs.space_group() is not None)
       crystal_symmetry = i_obs
@@ -244,7 +294,10 @@ class dataset_statistics (object) :
     i_obs.setup_binner(n_bins=n_bins)
     merge = i_obs.merge_equivalents(use_internal_variance=False)
     self.overall = merging_stats(i_obs,
-      model_arrays=model_arrays, anomalous=anomalous, debug=debug)
+      model_arrays=model_arrays,
+      anomalous=anomalous,
+      debug=debug,
+      sigma_filtering=sigma_filtering)
     self.bins = []
     self.table = data_plots.table_data(
       title="Intensity merging statistics",
@@ -261,7 +314,8 @@ class dataset_statistics (object) :
       bin_stats = merging_stats(i_obs.select(sele_unmerged),
         model_arrays=model_arrays,
         anomalous=anomalous,
-        debug=debug)
+        debug=debug,
+        sigma_filtering=sigma_filtering)
       self.bins.append(bin_stats)
       self.table.add_row(bin_stats.table_data())
 
