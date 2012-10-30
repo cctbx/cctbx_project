@@ -101,6 +101,7 @@ Full parameters:
     anomalous=params.anomalous,
     debug=params.debug,
     file_name=params.file_name,
+    sigma_filtering=params.sigma_filtering,
     log=out)
   result.show(out=out)
   if (params.loggraph) :
