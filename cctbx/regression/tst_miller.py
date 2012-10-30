@@ -562,8 +562,11 @@ def exercise_array():
   assert ma.sigmas_are_sensible(epsilon=0.15, critical_ratio=0.51)
   assert not ma.sigmas_are_sensible(epsilon=0.15, critical_ratio=0.49)
   assert not ma.sigmas_are_sensible(epsilon=0.25)
+  ma_copy = ma.deep_copy()
   ma_filt = ma.delete_index((0,0,-4))
   assert (ma_filt.indices().size() == ma_filt.data().size() == 1)
+  ma_filt2 = ma.delete_indices(other=ma_filt)
+  assert (ma_filt2.indices().size() == 1)
   aa = miller.array(
     miller_set=miller.set(
       crystal_symmetry=crystal.symmetry(
