@@ -1454,8 +1454,23 @@ class set(crystal.symmetry):
     return self.select(selection)
 
   def delete_index (self, hkl) :
+    """
+    Remove all reflections with the specified Miller index.
+    """
     assert (len(hkl) == 3)
     sele = (self.indices() != hkl)
+    return self.select(sele)
+
+  def delete_indices (self, other) :
+    """
+    Delete multiple reflections, as specified by the Miller indices of
+    another set.
+    """
+    # XXX inefficient - should probably use match_indices but it seems
+    # to not like unmerged data
+    sele = flex.bool(self.indices().size(), True)
+    for hkl in other.indices() :
+      sele &= (self.indices() != hkl)
     return self.select(sele)
 
 def build_set(crystal_symmetry, anomalous_flag, d_min, d_max=None):
