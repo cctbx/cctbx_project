@@ -417,7 +417,7 @@ def map_coefficients_from_fmodel (fmodel,
         map_coeffs = coeffs,
         b_sharp    = params.sharpening_b_factor)
   else:
-    if fmodel.__class__.__name__ == "twin_model_manager" :
+    if (fmodel.is_twin_fmodel_manager()) :
       raise Sorry("Kicked maps are not supported when twinning is present.  "+
         "You can disable the automatic twin law detection by setting the "+
         "parameter maps.skip_twin_detection to True (or check the "+
@@ -494,13 +494,8 @@ class compute_map_coefficients(object):
     for mcp in params:
       if(mcp.map_type is not None):
         # XXX
-        if(fmodel.__class__.__name__ == "twin_model_manager") :
-          if (mcp.map_type == "anomalous") :
-            print >> log, "Anomalous maps not supported when a twin law is used."
-            continue
-          elif (mcp.isotropize) :
-            mcp.isotropize = False
-        # XXX
+        if(fmodel.is_twin_fmodel_manager()) and (mcp.isotropize) :
+          mcp.isotropize = False
         coeffs = map_coefficients_from_fmodel(fmodel = fmodel,
           params = mcp,
           post_processing_callback = post_processing_callback,

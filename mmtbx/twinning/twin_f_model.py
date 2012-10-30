@@ -549,6 +549,9 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
   def twin_test(self):
     return "yes"
 
+  def is_twin_fmodel_manager (self) :
+    return True
+
   def update_f_hydrogens(self, log): # XXX dummy function to conform with non-twin equivalent
     return None # XXX dummy function to conform with non-twin equivalent
 
@@ -1700,6 +1703,8 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
       map_type = "Fc"
     elif (map_type == "DFmodel") :
       map_type = "DFc"
+    if (map_type.lower().startswith("anom")) :
+      map_type = "anom"
     supported_types = ("Fo-Fc", "Fobs-Fmodel",
                         "2mFo-DFc", "2mFobs-DFmodel",
                         "mFo-DFc", "mFobs-DFmodel",
@@ -1707,6 +1712,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                         "m_gradient",
                         "Fc",
                         "DFc",
+                        "anom",
                         )
     if not map_type in supported_types :
       raise Sorry(("Map type '%s' not supported for twinned structures. "+
@@ -1726,6 +1732,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
       if  self.map_types.twofofc == "two_dtfo_fc":
         map_type = "two_dtfo_fc"
 
+
     #detwin
     dt_f_obs, tmp_f_model, tmp_free = self.detwin_data(mode=self.detwin_mode)
     #for aniso correction
@@ -1734,7 +1741,17 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
       data = aniso_scale ).common_set( dt_f_obs )
     aniso_scale = aniso_scale.data()
 
-    if map_type not in ["gradient","m_gradient"]:
+    if (map_type == "anom") :
+      if (not dt_f_obs.anomalous_flag()) :
+        return None
+      anom_diff = dt_f_obs.anomalous_differences()
+      tmp_f_model = tmp_f_model.average_bijvoet_mates()
+      tmp_f_model, anom_diff = tmp_f_model.common_sets(other=anom_diff)
+      anom_diff = anom_diff.phase_transfer(phase_source=tmp_f_model)
+      result = miller.array(miller_set=anom_diff,
+                            data=anom_diff.data()/(2j))
+      return result
+    elif map_type not in ["gradient","m_gradient"]:
       result = None
       if (map_type == "Fc") :
         result = tmp_f_model
@@ -1847,7 +1864,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                            exclude_free_r_reflections=False,
                            post_processing_callback=None,
                            fill_missing=None):
-        if (map_type in ["gradient", "m_gradient"]) :
+        if (map_type in ["gradient", "m_gradient", "anom"]) :
           return self.fmodel.compute_map_coefficients(map_type=map_type)
         else :
           map_name_manager = mmtbx.map_names(map_name_string = map_type)
@@ -1869,7 +1886,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
           resolution_factor = self.resolution_factor
         if(symmetry_flags is None):
           symmetry_flags =  self.symmetry_flags
-        if (map_type in ["gradient", "m_gradient"]) :
+        if (map_type in ["gradient", "m_gradient", "anom"]) :
           map_coefficients = self.fmodel.compute_map_coefficients(
             map_type=map_type)
         else :
