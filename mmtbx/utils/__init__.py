@@ -2320,6 +2320,8 @@ input {
   monomer_library {
     %s
   }
+  skip_twin_detection = False
+    .type = bool
 }
 """ % (xray_data_str, pdb_params.as_str(attributes_level=3),
        cif_params.as_str(attributes_level=3))
@@ -2412,7 +2414,8 @@ class cmdline_load_pdb_and_data (object) :
         xray_structures=[xray_structure],
         scattering_table=scattering_table,
         f_obs=data_and_flags.f_obs,
-        r_free_flags=data_and_flags.r_free_flags)
+        r_free_flags=data_and_flags.r_free_flags,
+        skip_twin_detection=params.input.skip_twin_detection)
       self.fmodel = fmodel
     self.miller_arrays = reflection_file_server.miller_arrays
     self.f_obs = data_and_flags.f_obs
