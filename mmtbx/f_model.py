@@ -462,6 +462,9 @@ class manager(manager_mixin):
     assert len(state) == 1
     self.__dict__.update(state[0])
 
+  def is_twin_fmodel_manager (self) :
+    return False
+
   def _get_structure_factor_gradients_w(self):
     if (self._structure_factor_gradients_w is None):
       self._structure_factor_gradients_w \
