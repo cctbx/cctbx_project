@@ -777,6 +777,8 @@ class process_arrays (object) :
             accumulation_callback=accumulation_callback,
             preserve_input_values=\
               params.mtz_file.r_free_flags.preserve_input_values,
+            d_max=d_max,
+            d_min=d_min,
             log=log)
         output_array = r_free_flags
         if (generate_bijvoet_mates) :
