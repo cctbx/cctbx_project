@@ -1,7 +1,7 @@
 from __future__ import division
 from cctbx.eltbx import henke, sasaki, wavelengths
 from libtbx.option_parser import option_parser
-
+from libtbx.utils import Sorry
 
 parser = option_parser()
 parser.add_option('--elements')
@@ -22,6 +22,8 @@ for element in options.elements.split(','):
         wavelengths.characteristic(options.xray_source).as_angstrom())
     elif (options.wavelength) :
       fp_fdp = inelastic_scattering.at_angstrom(float(options.wavelength))
+    else :
+      raise Sorry("Either --xray_source=... or --wavelength=... required")
     print "  %-14s: f'=%-9.6g, f''=%-9.6f" % (
       table_name, fp_fdp.fp(), fp_fdp.fdp())
     fdp.append(fp_fdp.fdp())
