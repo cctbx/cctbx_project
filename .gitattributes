@@ -1194,6 +1194,7 @@ mmtbx/command_line/secondary_structure_restraints.py -text
 mmtbx/command_line/show_suspicious_residues.py -text
 mmtbx/command_line/simulate_low_res_data.py -text
 mmtbx/command_line/sort_hetatms.py -text
+mmtbx/command_line/ssm_rmsd_for_chains.py -text
 mmtbx/command_line/tls.py -text
 mmtbx/command_line/validation_summary.py -text
 mmtbx/command_line/xmanip.py -text
