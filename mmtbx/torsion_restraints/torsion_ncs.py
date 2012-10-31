@@ -226,7 +226,7 @@ class torsion_ncs(object):
         new_ncs_groups += "  }\n }\n}"
       self.found_ncs = new_ncs_groups
 
-    if self.found_ncs is not None:
+    if len(self.ncs_groups) > 0:
       for dp in geometry.dihedral_proxies:
         h_atom = False
         for i_seq in dp.i_seqs:
