@@ -94,8 +94,43 @@ def exercise_incompatible_flags_replacement():
   me = merging.array()
   assert approx_equal(me.data(), (1,1,2))
 
-
-
+def exercise_split_unmerged () :
+  from cctbx import crystal
+  base_set = miller.build_set(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=(10,10,10,90,90,90), space_group_symbol="P1"),
+    d_min=1.6,
+    anomalous_flag=False)
+  indices = base_set.indices()
+  assert (len(indices) == 510)
+  unmerged_hkl = flex.miller_index()
+  unmerged_data = flex.double()
+  unmerged_sigmas = flex.double()
+  redundancies = flex.size_t()
+  # XXX grossly overengineered, but I wanted to get a realistic CC to make sure
+  # the reflections are being split properly
+  for i, hkl in enumerate(indices) :
+    n_obs = min(8, 1 + i % 12)
+    redundancies.append(n_obs)
+    intensity_merged = (510 - i) + (510 % 27)
+    for j in range(n_obs) :
+      unmerged_hkl.append(hkl)
+      intensity = intensity_merged + 20 * (510 % (7 * (j+1)))
+      sigma = max(0.5, i % 10)
+      unmerged_data.append(intensity)
+      unmerged_sigmas.append(sigma)
+  assert (unmerged_hkl.size() == 2877)
+  unmerged_array = miller.set(
+    crystal_symmetry=base_set,
+    indices=unmerged_hkl,
+    anomalous_flag=False).array(data=unmerged_data, sigmas=unmerged_sigmas)
+  split = miller.split_unmerged(
+    unmerged_indices=unmerged_hkl,
+    unmerged_data=unmerged_data,
+    unmerged_sigmas=unmerged_sigmas)
+  assert (split.data_1.size() == split.data_2.size() == 467)
+  cc = miller.compute_cc_one_half(unmerged_array)
+  assert approx_equal(cc, 0.861, eps=0.001)
 
 def run_call_back(flags, space_group_info):
   for anomalous_flag in (False, True):
@@ -103,6 +138,7 @@ def run_call_back(flags, space_group_info):
 
 def run():
   exercise_incompatible_flags_replacement()
+  exercise_split_unmerged()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
   print "OK"
 
