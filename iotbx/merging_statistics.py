@@ -1,7 +1,7 @@
 from __future__ import division
 from libtbx.str_utils import make_sub_header, format_value
 from libtbx.utils import Sorry, null_out
-from libtbx import group_args, adopt_init_args, Auto
+from libtbx import group_args, Auto
 from math import sqrt
 import sys
 
@@ -44,7 +44,15 @@ class model_based_arrays (object) :
   def __init__ (self, i_obs, i_calc, work_sel, free_sel) :
     assert (i_obs.data().size() == i_calc.data().size() ==
             work_sel.data().size() == free_sel.data().size())
-    adopt_init_args(self, locals())
+    from cctbx.french_wilson import french_wilson_scale
+    self.f_obs = french_wilson_scale(
+      miller_array=i_obs,
+      log=null_out())
+    assert (len(self.f_obs.data()) <= len(i_obs.data()))
+    self.i_obs = i_obs.common_set(other=self.f_obs)
+    self.i_calc = i_calc.common_set(other=self.f_obs)
+    self.work_sel = work_sel.common_set(other=self.f_obs)
+    self.free_sel = free_sel.common_set(other=self.f_obs)
 
   def cc_work_and_free (self, other) :
     """
@@ -55,23 +63,26 @@ class model_based_arrays (object) :
     """
     assert (self.i_obs.is_similar_symmetry(other))
     i_obs_sel = self.i_obs.common_set(other=other)
+    f_obs_sel = self.f_obs.common_set(other=other)
     i_calc_sel = self.i_calc.common_set(other=other)
     work_sel = self.work_sel.common_set(other=other)
     free_sel = self.free_sel.common_set(other=other)
     if (len(i_obs_sel.data()) == 0) : # XXX should this raise an error?
       return [None] * 4
-    obs_work = i_obs_sel.select(work_sel.data())
-    calc_work = i_calc_sel.select(work_sel.data())
-    obs_free = i_obs_sel.select(free_sel.data())
-    calc_free = i_calc_sel.select(free_sel.data())
-    if (len(obs_work.data()) > 0) and (len(obs_free.data()) > 0) :
+    i_obs_work = i_obs_sel.select(work_sel.data())
+    i_calc_work = i_calc_sel.select(work_sel.data())
+    i_obs_free = i_obs_sel.select(free_sel.data())
+    i_calc_free = i_calc_sel.select(free_sel.data())
+    f_obs_work = f_obs_sel.select(work_sel.data())
+    f_obs_free = f_obs_sel.select(free_sel.data())
+    if (len(f_obs_work.data()) > 0) and (len(f_obs_free.data()) > 0) :
       from scitbx.array_family import flex
-      cc_work = flex.linear_correlation(obs_work.data(),
-        calc_work.data()).coefficient()
-      cc_free = flex.linear_correlation(obs_free.data(),
-          calc_free.data()).coefficient()
-      r_work = obs_work.f_sq_as_f().r1_factor(calc_work.f_sq_as_f())
-      r_free = obs_free.f_sq_as_f().r1_factor(calc_free.f_sq_as_f())
+      cc_work = flex.linear_correlation(i_obs_work.data(),
+        i_calc_work.data()).coefficient()
+      cc_free = flex.linear_correlation(i_obs_free.data(),
+        i_calc_free.data()).coefficient()
+      r_work = f_obs_work.r1_factor(i_calc_work.f_sq_as_f())
+      r_free = f_obs_free.r1_factor(i_calc_free.f_sq_as_f())
       return cc_work, cc_free, r_work, r_free
     return [None] * 4
 
