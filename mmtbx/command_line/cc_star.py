@@ -2,21 +2,26 @@
 from __future__ import division
 from libtbx.utils import Sorry, Usage
 import libtbx.phil
+from libtbx import Auto
 import sys
 
 def merging_and_model_statistics (
     f_model,
     r_free_flags,
     unmerged_i_obs,
-    n_bins=20) :
+    n_bins=20,
+    sigma_filtering=Auto) :
   from iotbx import merging_statistics
   free_sel = r_free_flags
   # very important: must use original intensities for i_obs, not squared f_obs,
   # because French-Wilson treatment is one-way
   assert (unmerged_i_obs.sigmas() is not None)
   unmerged_i_obs = unmerged_i_obs.select(unmerged_i_obs.sigmas() >= 0)
-  i_obs = unmerged_i_obs.merge_equivalents(use_internal_variance=False).array()
-  i_obs = i_obs.select(i_obs.data() >= -3*i_obs.sigmas())
+  filter = merging_statistics.filter_intensities_by_sigma(
+    array=unmerged_i_obs,
+    sigma_filtering=sigma_filtering)
+  i_obs = filter.array_merged
+  unmerged_i_obs = filter.array
   if (i_obs.anomalous_flag()) :
     i_obs = i_obs.average_bijvoet_mates()
   if (f_model.anomalous_flag()) :
@@ -40,7 +45,8 @@ def merging_and_model_statistics (
     d_min=d_min,
     d_max=d_max,
     n_bins=n_bins,
-    model_arrays=model_arrays)
+    model_arrays=model_arrays,
+    sigma_filtering=None) # no need, since it was done here
 
 master_phil = libtbx.phil.parse("""
 include scope mmtbx.utils.cmdline_input_phil_str
@@ -50,6 +56,7 @@ unmerged_labels = None
   .type = str
 n_bins = 20
   .type = int(value_min=5)
+include scope iotbx.merging_statistics.sigma_filtering_phil_str
 """, process_includes=True)
 
 def run (args, out=sys.stdout) :
@@ -85,7 +92,8 @@ Full parameters:
     f_model=f_model,
     r_free_flags=r_free_flags,
     unmerged_i_obs=unmerged_i_obs,
-    n_bins=params.n_bins)
+    n_bins=params.n_bins,
+    sigma_filtering=params.sigma_filtering)
   stats.show_cc_star(out=out)
   print >> out, ""
   print >> out, "Reference:"
