@@ -6,6 +6,7 @@
 #include <cctbx/sgtbx/space_group.h>
 #include <scitbx/math/mean_and_variance.h>
 #include <scitbx/math/linear_regression.h>
+#include <scitbx/random.h>
 
 namespace cctbx { namespace miller {
 
@@ -549,13 +550,13 @@ namespace cctbx { namespace miller {
           if (unmerged_indices[group_end] != unmerged_indices[group_begin]) {
             process_group(group_begin, group_end,
                           unmerged_indices[group_begin],
-                          unmerged_data);
+                          unmerged_data, unmerged_sigmas);
             group_begin = group_end;
           }
         }
         process_group(group_begin, group_end,
                       unmerged_indices[group_begin],
-                      unmerged_data);
+                      unmerged_data, unmerged_sigmas);
       }
 
 // XXX why doesn't this work?
@@ -570,32 +571,44 @@ namespace cctbx { namespace miller {
         std::size_t group_begin,
         std::size_t group_end,
         index<> const& current_index,
-        af::const_ref<FloatType> const& unmerged_data)
+        af::const_ref<FloatType> const& unmerged_data,
+        af::const_ref<FloatType> const& unmerged_sigmas)
       {
-        std::size_t n = group_end - group_begin;
+        const std::size_t n = group_end - group_begin;
         if (n < 2) {
           return;
-        } else if (n == 2) {
-          data_1.push_back(unmerged_data[group_begin]);
-          data_2.push_back(unmerged_data[group_begin+1]);
         } else {
-          static const FloatType _i_obs[] = {0., 0.};
-          static const std::size_t _n_obs[] = {0, 0};
-          std::vector<FloatType> i_obs(_i_obs, _i_obs+2);
-          std::vector<std::size_t> n_obs(_n_obs, _n_obs+2);
-          // FIXME using the random number generator will not guarantee
-          // even distribution of observations; need something smarter
+          // temp is a copy of the array of intensites of each observation
+          std::vector<FloatType> temp(n), temp_w(n);
           for(std::size_t i=0;i<n;i++) {
-            std::size_t index = std::rand() % 2;
-            i_obs[index] += unmerged_data[group_begin+i];
-            n_obs[index] += 1;
+            temp[i] = unmerged_data[group_begin+i];
+            temp_w[i] = 1.0/(unmerged_sigmas[group_begin+i] * unmerged_sigmas[group_begin+i]);
           }
-          if ((n_obs[0] > 0) && (n_obs[1] > 0)) {
-            data_1.push_back(i_obs[0] / (FloatType) n_obs[0]);
-            data_2.push_back(i_obs[1] / (FloatType) n_obs[1]);
+          std::size_t nsum = n/2;
+          // actually I (Kay) don't think it matters, and we
+          // don't do it in picknofm, but it's like that in the Science paper:
+          if (2*nsum != n && gen.random_double() < 0.5)
+            nsum += 1;
+          std::vector<FloatType> i_obs(2, 0.), sum_w(2, 0.);
+          for(std::size_t i=0;i<nsum;i++) {
+            // choose a random index ind from 0 to n-i-1
+            const std::size_t ind = std::min(n-i-1, std::size_t(gen.random_double()*(n-i))) + i;
+            i_obs[0] += temp[ind] * temp_w[ind];
+            sum_w[0] += temp_w[ind];
+            temp[ind] = temp[i];
+            temp_w[ind] = temp_w[i];
           }
+          for(std::size_t i=nsum;i<n;i++) {
+            i_obs[1] += temp[i] * temp_w[i];
+            sum_w[1] += temp_w[i];
+          }
+
+          data_1.push_back(i_obs[0] / sum_w[0]);
+          data_2.push_back(i_obs[1] / sum_w[1]);
         }
       }
+
+      scitbx::random::mersenne_twister gen;
   };
 
 }} // namespace cctbx::miller
