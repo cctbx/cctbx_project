@@ -582,7 +582,8 @@ namespace cctbx { namespace miller {
           std::vector<FloatType> temp(n), temp_w(n);
           for(std::size_t i=0;i<n;i++) {
             temp[i] = unmerged_data[group_begin+i];
-            temp_w[i] = 1.0/(unmerged_sigmas[group_begin+i] * unmerged_sigmas[group_begin+i]);
+            temp_w[i] = 1.0/(unmerged_sigmas[group_begin+i] *
+                             unmerged_sigmas[group_begin+i]);
           }
           std::size_t nsum = n/2;
           // actually I (Kay) don't think it matters, and we
@@ -592,7 +593,8 @@ namespace cctbx { namespace miller {
           std::vector<FloatType> i_obs(2, 0.), sum_w(2, 0.);
           for(std::size_t i=0;i<nsum;i++) {
             // choose a random index ind from 0 to n-i-1
-            const std::size_t ind = std::min(n-i-1, std::size_t(gen.random_double()*(n-i))) + i;
+            const std::size_t ind = i + std::min(n-i-1,
+              std::size_t(gen.random_double()*(n-i)));
             i_obs[0] += temp[ind] * temp_w[ind];
             sum_w[0] += temp_w[ind];
             temp[ind] = temp[i];
