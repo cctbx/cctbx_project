@@ -193,6 +193,8 @@ def extend_flags (
     accumulation_callback=None,
     preserve_input_values=False,
     allow_uniform_flags=False,
+    d_max=None,
+    d_min=None,
     log=None) :
   from scitbx.array_family import flex
   if (log is None) : log = null_out()
@@ -216,6 +218,9 @@ can't be extended to higher resolution.""" % array_label
   if (complete_set is not None) :
     missing_set = complete_set.lone_set(r_free_flags)
   else :
+    tmp_d_max, tmp_d_min = r_free_flags.d_max_min()
+    if (d_max is None) : d_max = tmp_d_max
+    if (d_min is None) : d_min = tmp_d_min
     missing_set = r_free_flags.complete_set(d_min=d_min,
       d_max=d_max).lone_set(r_free_flags.map_to_asu())
   n_missing = missing_set.indices().size()
