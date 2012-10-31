@@ -23,6 +23,7 @@ from libtbx.utils import format_float_with_standard_uncertainty \
      as format_float_with_su
 from libtbx.utils import Sorry
 from libtbx.utils import flat_list
+from libtbx.utils import detect_binary_file
 from libtbx import smart_open
 from scitbx import matrix
 
@@ -57,6 +58,12 @@ class reader(object):
       file_path = "memory"
     if file_object is not None:
       input_string = file_object.read()
+    # check input_string for binary, and abort if necessary
+    binary_detector = detect_binary_file()
+    binary_detector.monitor_initial = min(
+      len(input_string), binary_detector.monitor_initial)
+    if binary_detector.is_binary_file(block=input_string):
+      raise CifParserError("Binary file detected, aborting parsing.")
     self.parser = ext.fast_reader(builder, input_string, file_path, strict)
     if raise_if_errors and len(self.parser.lexer_errors()):
       raise CifParserError(self.parser.lexer_errors()[0])

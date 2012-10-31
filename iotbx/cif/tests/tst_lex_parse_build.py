@@ -812,7 +812,16 @@ _symmetry_equiv.id           1
 _symmetry_equiv.pos_as_xyz   X,Y,Z
 """
 
+def exercise_detect_binary():
+  binary_string = '\xff\xf8\x00\x00\x00\x00\x00\x00'
+  from iotbx.cif import reader
+  try: reader(input_string=binary_string)
+  except CifParserError, e: pass
+  else: raise Exception_expected
+
+
 def exercise():
+  exercise_detect_binary()
   exercise_crystal_symmetry()
   exercise_miller_arrays_as_cif_block()
   exercise_lex_parse_build()
