@@ -492,6 +492,10 @@ def get_chain_color(index):
       match = True
   return chain_colors[index]
 
+def get_ions(ion_list):
+  ion_txt = "@spherelist {het M} color= gray  radius= 0.5 nobutton master= {hets}\n"
+  ion_txt += ion_list
+  return ion_txt
 
 def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hydrogen=True):
   mc_atoms = ["N", "CA", "C", "O", "OXT",
@@ -504,6 +508,7 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hy
   ca_trace = ""
   virtual_bb = ""
   water_list = ""
+  ion_list = ""
   kin_out = ""
   color = get_chain_color(index)
   mc_veclist = "@vectorlist {mc} color= %s  master= {mainchain}\n" % color
@@ -638,13 +643,26 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hy
             elif atom.name == " C4'":
               c4_hash_key[residue_group.resseq_as_int()] = key
               c4_hash_xyz[residue_group.resseq_as_int()] = atom.xyz
+          elif(common_residue_names_get_class(residue.resname) == "common_element"):
+            ion_list += "{%s} %.3f %.3f %.3f\n" % (
+              key,
+              atom.xyz[0],
+              atom.xyz[1],
+              atom.xyz[2])
+          elif( (common_residue_names_get_class(residue.resname) == "other") and
+                (len(residue.atoms())==1) ):
+            ion_list += "{%s} %.3f %.3f %.3f\n" % (
+              key,
+              atom.xyz[0],
+              atom.xyz[1],
+              atom.xyz[2])
           elif residue.resname.lower() == 'hoh':
-              if atom.name == ' O  ':
-                water_list += "{%s} P %.3f %.3f %.3f\n" % (
-                  key,
-                  atom.xyz[0],
-                  atom.xyz[1],
-                  atom.xyz[2])
+            if atom.name == ' O  ':
+              water_list += "{%s} P %.3f %.3f %.3f\n" % (
+                key,
+                atom.xyz[0],
+                atom.xyz[1],
+                atom.xyz[2])
           else:
             het_hash[atom.name.strip()] = [key, atom.xyz]
 
@@ -768,6 +786,10 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hy
     prev_O3_key = cur_O3_key
     prev_O3_xyz = cur_O3_xyz
 
+  ion_kin = None
+  if len(ion_list) > 1:
+    ion_kin = get_ions(ion_list)
+
   #clean up empty lists:
   if len(mc_veclist.splitlines()) > 1:
     kin_out += mc_veclist
@@ -785,6 +807,8 @@ def get_kin_lots(chain, bond_hash, i_seq_name_hash, pdbID=None, index=0, show_hy
     kin_out += virtual_bb
   if len(hets.splitlines()) > 1:
     kin_out += hets
+  if ion_kin is not None:
+    kin_out += ion_kin
   if len(het_h.splitlines()) > 1:
     kin_out += het_h
   return kin_out
