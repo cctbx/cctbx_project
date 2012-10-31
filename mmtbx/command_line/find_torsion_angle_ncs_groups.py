@@ -1,12 +1,15 @@
+# LIBTBX_SET_DISPATCHER_NAME mmtbx.find_torsion_angle_ncs_groups
 from __future__ import division
-# LIBTBX_SET_DISPATCHER_NAMEW mmtbx.find_torsion_angle_ncs_groups
-
 import sys
 import time
 from mmtbx.torsion_restraints import torsion_ncs
 from iotbx import pdb
+from libtbx.utils import Sorry
 
 def run(args):
+  if len(args) != 1:
+    raise Sorry("mmtbx.find_torsion_angle_ncs_groups requires "+
+                "one PDB files as input")
   file_name = args[0]
   pdb_io = pdb.input(file_name)
   pdb_hierarchy = pdb_io.construct_hierarchy()
