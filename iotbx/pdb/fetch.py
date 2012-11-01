@@ -122,6 +122,22 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
         raise
   return data
 
+def load_pdb_structure (id, format="pdb", allow_unknowns=False) :
+  """
+  Simple utility method to load the PDB hierarchy and xray structure objects
+  directly (without intermediate files).
+  """
+  data = fetch(id=id, format=format, log=null_out())
+  import iotbx.pdb.hierarchy
+  pdb_in = iotbx.pdb.hierarchy.input(pdb_string=data.read())
+  hierarchy = pdb_in.hierarchy
+  hierarchy.atoms().reset_i_seq()
+  # XXX enable_scattering_type_unknown can be modified here because the PDB
+  # (unfortunately) contains many unknowns which would crash this
+  xray_structure = pdb_in.input.xray_structure_simple(
+    enable_scattering_type_unknown=allow_unknowns)
+  return hierarchy, xray_structure
+
 def get_pdb (id, data_type, mirror, log, quiet=False, format="pdb") :
   """
   Frontend for fetch(...), writes resulting data to disk.
