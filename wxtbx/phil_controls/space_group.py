@@ -24,6 +24,8 @@ class SpaceGroupCtrl (wx.ComboBox, phil_controls.PhilCtrl) :
       "e.g. 'P212121', 'P 21 21 21', 'P2(1)2(1)2(1)', or '19'; these will be "+
       "converted internally to a standard format.  You can trigger this "+
       "conversion by entering a symbol and pressing 'Enter'."))
+    if (wx.Platform == '__WXMAC__') and (wx.PlatformInfo[4] == 'wxOSX-cocoa') :
+      self.SetMinSize(self.GetSize())
 
   def SetSpaceGroup (self, sg) :
     from cctbx import sgtbx
