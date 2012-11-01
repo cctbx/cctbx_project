@@ -639,7 +639,8 @@ class set(crystal.symmetry):
       i)
     return set(self, i, self.anomalous_flag())
 
-  def complete_set(self, d_min_tolerance=1.e-6, d_min=None, d_max=None):
+  def complete_set(self, d_min_tolerance=1.e-6, d_min=None, d_max=None,
+                   max_index=None):
     """
     Generate the complete set of Miller indices expected for the current
     symmetry, excepting systematic absences.
@@ -654,19 +655,25 @@ class set(crystal.symmetry):
         crystal_symmetry=self,
         anomalous_flag=self.anomalous_flag(),
         indices=flex.miller_index())
-    d_min_was_none = (d_min is None)
-    if (d_min_was_none): d_min = self.d_min()
-    d_min_exact = d_min
-    if (d_min_tolerance is not None): d_min *= (1-d_min_tolerance)
-    result = build_set(
-      crystal_symmetry=self,
-      anomalous_flag=self.anomalous_flag(),
-      d_min=d_min,
-      d_max=d_max)
-    if (d_min_was_none):
-      result = result.select(
-        result.d_spacings().data() >= d_min_exact*(1-fp_eps_double))
-    return result
+    if(max_index is not None):
+      return build_set(
+        crystal_symmetry=self,
+        anomalous_flag=self.anomalous_flag(),
+        max_index=max_index)
+    else:
+      d_min_was_none = (d_min is None)
+      if (d_min_was_none): d_min = self.d_min()
+      d_min_exact = d_min
+      if (d_min_tolerance is not None): d_min *= (1-d_min_tolerance)
+      result = build_set(
+        crystal_symmetry=self,
+        anomalous_flag=self.anomalous_flag(),
+        d_min=d_min,
+        d_max=d_max)
+      if (d_min_was_none):
+        result = result.select(
+          result.d_spacings().data() >= d_min_exact*(1-fp_eps_double))
+      return result
 
   def completeness(self, use_binning=False, d_min_tolerance=1.e-6,
                    return_fail=None, d_max = None):
@@ -1472,20 +1479,27 @@ class set(crystal.symmetry):
       sele &= (self.indices() != hkl)
     return self.select(sele)
 
-def build_set(crystal_symmetry, anomalous_flag, d_min, d_max=None):
-  """
-  Generate a set of unique Miller indices in the canonical ASU for the
-  specified symmetry, anomalous flag, and high-resolution limit.
-  """
-  result = set(
-    crystal_symmetry,
-    index_generator(
-      crystal_symmetry.unit_cell(),
-      crystal_symmetry.space_group_info().type(),
-      anomalous_flag,
-      d_min).to_array(),
-    anomalous_flag)
-  if(d_max is not None): result = result.resolution_filter(d_max = d_max)
+def build_set(crystal_symmetry, anomalous_flag, d_min=None, d_max=None,
+              max_index=None):
+  if(max_index is not None):
+    assert [d_min, d_max].count(None) == 2
+    result = set(
+      crystal_symmetry,
+      index_generator(
+        crystal_symmetry.space_group_info().type(),
+        anomalous_flag,
+        max_index).to_array(),
+      anomalous_flag)
+  else:
+    result = set(
+      crystal_symmetry,
+      index_generator(
+        crystal_symmetry.unit_cell(),
+        crystal_symmetry.space_group_info().type(),
+        anomalous_flag,
+        d_min).to_array(),
+      anomalous_flag)
+    if(d_max is not None): result = result.resolution_filter(d_max = d_max)
   return result
 
 def union_of_sets(miller_sets):

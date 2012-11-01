@@ -2056,7 +2056,47 @@ def exercise_merge_equivalents_special_cases():
   assert approx_equal(me.data(), [165.827774048])
   assert approx_equal(me.sigmas(), [144.83241272])
 
+def exercise_structure_factors_from_map():
+  xrs = random_structure.xray_structure(
+    space_group_info=sgtbx.space_group_info(number=19),
+    elements=["C"]*10)
+  fc1 = xrs.structure_factors(d_min=1.5, algorithm="direct").f_calc()
+  for cntr in xrange(10):
+    fft_map = fc1.fft_map(resolution_factor=0.1)
+    fft_map.apply_volume_scaling()
+    map_data = fft_map.real_map_unpadded()
+    fc2 = fc1.structure_factors_from_map(
+      map            = map_data,
+      use_scale      = True,
+      anomalous_flag = False,
+      use_sg         = False)
+    assert approx_equal(fc1.mean_phase_error(phase_source=fc2), 0)
+    diff = abs(fc1).data()-abs(fc2).data()
+    approx_equal([flex.min(diff), flex.max(diff), flex.mean(diff)], [0,0,0])
+    fc1 = fc2.deep_copy()
+
+def exercise_build_set_using_max_index():
+  xrs = random_structure.xray_structure(
+    space_group_info=sgtbx.space_group_info(number=19),
+    elements=["C"]*10)
+  sphere = xrs.structure_factors(d_min=2.0, algorithm="direct").f_calc()
+  crystal_gridding = sphere.crystal_gridding(
+    d_min                   = 2.0,
+    resolution_factor       = 0.2,
+    grid_step               = None,
+    symmetry_flags          = None,
+    mandatory_factors       = None,
+    max_prime               = 5,
+    assert_shannon_sampling = True)
+  n_real = crystal_gridding.n_real()
+  max_index = [int(i/2.) for i in n_real]
+  box = sphere.complete_set(max_index=max_index)
+  bi = box.min_max_indices()[1]
+  for i in [0,1,2]: assert bi[i] == max_index[i]
+
 def run(args):
+  exercise_build_set_using_max_index()
+  exercise_structure_factors_from_map()
   exercise_complete_with_complete_with_bin_average()
   exercise_complete_with1()
   exercise_complete_with2()
