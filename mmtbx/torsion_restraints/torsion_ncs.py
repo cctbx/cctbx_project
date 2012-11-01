@@ -28,9 +28,6 @@ torsion_ncs_params = iotbx.phil.parse("""
  limit = 15.0
    .type = float
    .short_caption = Restraint limit (degrees)
- slack = 0.0
-   .type = float
-   .short_caption = Restraint slack (degrees)
  similarity = .80
    .type = float
    .short_caption = Sequence similarity cutoff
@@ -90,14 +87,16 @@ torsion_ncs_params = iotbx.phil.parse("""
 class torsion_ncs(object):
   def __init__(self,
                pdb_hierarchy,
-               fmodel,
-               geometry,
-               sites_cart,
-               params,
+               fmodel=None,
+               params=None,
                b_factor_weight=None,
                coordinate_sigma=None,
                log=None):
     if(log is None): log = sys.stdout
+    if params is None:
+      params = torsion_ncs_params.extract()
+    #sanity check
+    pdb_hierarchy.reset_i_seq_if_necessary()
     #parameter initialization
     if params.sigma is None or params.sigma < 0:
       raise Sorry("torsion NCS sigma parameter must be >= 0.0")
@@ -105,7 +104,8 @@ class torsion_ncs(object):
     if params.limit is None or params.limit < 0:
       raise Sorry("torsion NCS limit parameter must be >= 0.0")
     self.limit = params.limit
-    self.slack = params.slack
+    #slack is not a user parameter for now
+    self.slack = 0.0
     self.filter_phi_psi_outliers = params.filter_phi_psi_outliers
     self.remove_conflicting_torsion_restraints = \
       params.remove_conflicting_torsion_restraints
@@ -132,6 +132,9 @@ class torsion_ncs(object):
     self.sidechain_angle_hash = self.build_sidechain_angle_hash()
     self.c_alpha_hinges = None
     self.r = rotalyze()
+    complete_dihedral_proxies = utils.get_complete_dihedral_proxies(
+                                  pdb_hierarchy=pdb_hierarchy)
+    sites_cart = pdb_hierarchy.atoms().extract_xyz()
     print >> self.log, "Determining NCS matches..."
     dp_hash = {}
     self.use_segid = False
@@ -243,7 +246,7 @@ class torsion_ncs(object):
       self.found_ncs = new_ncs_groups
 
     if len(self.ncs_groups) > 0:
-      for dp in geometry.dihedral_proxies:
+      for dp in complete_dihedral_proxies:
         h_atom = False
         for i_seq in dp.i_seqs:
           if element_hash[i_seq] == " H":
@@ -295,7 +298,7 @@ class torsion_ncs(object):
       self.res_match_master = res_match_master
       resname = None
       atoms_key = None
-      for dp in geometry.dihedral_proxies:
+      for dp in complete_dihedral_proxies:
         temp = dict()
         #filter out unwanted torsions
         atoms = []

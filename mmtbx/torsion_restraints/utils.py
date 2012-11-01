@@ -55,6 +55,46 @@ class alignment_manager(object):
       self.padded_sequences[chain_i_str] = chain_seq_padded
       self.structures[chain_i_str] = chain_structures
 
+def get_complete_dihedral_proxies(
+      pdb_hierarchy=None,
+      file_name=None,
+      raw_records=None,
+      mon_lib_srv=None,
+      ener_lib=None,
+      crystal_symmetry=None,
+      log=None):
+  from mmtbx.monomer_library import server, pdb_interpretation
+  from cctbx.array_family import flex
+  import cStringIO
+  assert [pdb_hierarchy,
+          file_name,
+          raw_records].count(None) == 2
+  if log is None:
+    log = sys.stdout
+  if mon_lib_srv is None:
+    mon_lib_srv = server.server()
+  if ener_lib is None:
+    ener_lib = server.ener_lib()
+  if pdb_hierarchy is not None:
+    raw_records = pdb_hierarchy.as_pdb_string()
+  if raw_records is not None:
+    if (isinstance(raw_records, str)):
+      raw_records = flex.split_lines(raw_records)
+  processed_pdb_file_local = \
+    pdb_interpretation.process(
+      mon_lib_srv=mon_lib_srv,
+      ener_lib=ener_lib,
+      file_name=file_name,
+      raw_records=raw_records,
+      strict_conflict_handling=False,
+      crystal_symmetry=crystal_symmetry,
+      force_symmetry=True,
+      log=cStringIO.StringIO(),
+      for_dihedral_reference=True,
+      substitute_non_crystallographic_unit_cell_if_necessary=True)
+  grm = processed_pdb_file_local.geometry_restraints_manager()
+  return grm.dihedral_proxies
+
 def selection(string, cache):
   return cache.selection(
     string=string)
