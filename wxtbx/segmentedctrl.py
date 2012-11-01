@@ -243,6 +243,8 @@ class SegmentedControl (wx.PyControl) :
             img_y += extra_v_space / 2
           gc.DrawBitmap(bitmap, img_x, img_y, bitmap.GetMask() != None)
           txt_y += img_h
+          if (wx.Platform == '__WXMSW__') :
+            txt_y -= 2
         if label != "" :
           #print seg_w, label_w
           extra_w = seg_w - label_w - (self._padding*2)
