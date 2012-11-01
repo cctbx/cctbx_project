@@ -7,15 +7,26 @@ from iotbx import pdb
 from libtbx.utils import Sorry
 
 def run(args):
-  if len(args) != 1:
+  master_phil = torsion_ncs.torsion_ncs_params
+  import iotbx.utils
+  input_objects = iotbx.utils.process_command_line_inputs(
+    args=args,
+    master_phil=master_phil,
+    input_types=("pdb", "cif"))
+  work_phil = master_phil.fetch(sources=input_objects["phil"])
+  params = work_phil.extract()
+  if len(input_objects["pdb"]) != 1:
     raise Sorry("mmtbx.find_torsion_angle_ncs_groups requires "+
                 "one PDB files as input")
-  file_name = args[0]
-  pdb_io = pdb.input(file_name)
-  pdb_hierarchy = pdb_io.construct_hierarchy()
-  pdb_hierarchy.atoms().reset_i_seq()
+  else:
+    file_obj = input_objects["pdb"][0]
+    file_name = file_obj.file_name
+    pdb_io = pdb.input(file_name)
+    pdb_hierarchy = pdb_io.construct_hierarchy()
+    pdb_hierarchy.atoms().reset_i_seq()
   ncs_groups = torsion_ncs.determine_ncs_groups(
-                 pdb_hierarchy=pdb_hierarchy)
+                 pdb_hierarchy=pdb_hierarchy,
+                 params=params)
   if len(ncs_groups) == 0:
     print "No NCS groups found"
   for i, group in enumerate(ncs_groups):
