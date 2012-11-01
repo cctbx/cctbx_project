@@ -171,7 +171,7 @@ class torsion_ncs(object):
             print >> log
             print >> log, "*** WARNING ***"
             print >> log, 'selection = %s' % selection_i
-            print >> log, 'produces no protein/RNA torsions'
+            print >> log, 'specifies no protein or nucleic acid torsions'
             print >> log, 'REMOVED RESTRAINT GROUP!!!'
             print >> log, "***************"
             print >> log
