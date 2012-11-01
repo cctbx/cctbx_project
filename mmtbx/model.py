@@ -235,6 +235,11 @@ class manager(object):
       self.xray_structure.set_b_iso(values = bfi, selection = hd_sel)
 
   def reset_occupancies_for_hydrogens(self):
+    occupancy_refinement_selections_1d = flex.size_t()
+    if(self.refinement_flags.s_occupancies is not None):
+      for occsel in self.refinement_flags.s_occupancies:
+        for occsel_ in occsel:
+          occupancy_refinement_selections_1d.extend(occsel_)
     if(self.restraints_manager is None): return
     hd_sel = self.xray_structure.hd_selection()
     scatterers = self.xray_structure.scatterers()
@@ -245,7 +250,8 @@ class manager(object):
       for t_ in ct.values():
         i_x, i_h = t_[0][0],t_[0][1]
         assert scatterers[i_h].element_symbol() in ["H", "D"]
-        if(scatterers[i_x].element_symbol() == "N"):
+        if(scatterers[i_x].element_symbol() == "N" and
+           i_h in occupancy_refinement_selections_1d):
           occ = flex.double()
           for t in t_:
             if(len(t) != 5):
