@@ -308,18 +308,18 @@ def verify_derivatives(n=5, s11=1, s12=1.2, s22=2, twist=0.5, verbose=0):
 class fortran_minimizer:
 
   def __init__(self, scitbx_minimizer):
-    import Numeric
+    import numpy
     self.n = scitbx_minimizer.n()
     self.m = scitbx_minimizer.m()
-    self.x = Numeric.array(Numeric.arange(self.n), Numeric.Float64)
-    self.g = Numeric.array(Numeric.arange(self.n), Numeric.Float64)
-    self.diag = Numeric.array(Numeric.arange(self.n), Numeric.Float64)
+    self.x = numpy.array(numpy.arange(self.n), numpy.float64)
+    self.g = numpy.array(numpy.arange(self.n), numpy.float64)
+    self.diag = numpy.array(numpy.arange(self.n), numpy.float64)
     self.iprint = [1, 0]
     self.eps = 1.e-5 # convergence test
     self.xtol = scitbx_minimizer.xtol()
     size_w = self.n*(2*self.m+1)+2*self.m
-    self.w = Numeric.array(Numeric.arange(size_w), Numeric.Float64)
-    self.iflag = Numeric.array([0], Numeric.Int32)
+    self.w = numpy.array(numpy.arange(size_w), numpy.float64)
+    self.iflag = numpy.array([0], numpy.int32)
 
   def __call__(self, x, f, g, diag=None, diagco=False):
     for i,v in enumerate(x): self.x[i] = v
@@ -474,7 +474,7 @@ def run(scale=2, twist=0.5):
   if ("--verify" in sys.argv[1:]):
     verify_derivatives()
   use_fortran = "--fortran" in sys.argv[1:]
-  for i in xrange(100):
+  for iteration in xrange(100):
     x = [random.random()*scale for i in (0,1)]
     print x, "start"
     for use_curvatures in (False, True):
