@@ -34,6 +34,8 @@ if (not env_etc.no_boost_python):
                  LIBS=["cctbx", "scitbx_boost_python"])
   env_xfel_boost_python_ext.SharedLibrary(
                  target="#lib/xfel_ext", source="ext.cpp")
+  env_xfel_boost_python_ext.SharedLibrary(
+                 target="#lib/xfel_metrology_ext", source="metrology_ext.cpp")
   env_etc.include_registry.append(
     env=env_xfel_boost_python_ext,
     paths=env_etc.xfel_common_includes)
