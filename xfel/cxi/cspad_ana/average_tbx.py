@@ -96,10 +96,13 @@ class average_mixin(common_mode.common_mode_correction):
     self._tot_peers = multiprocessing.Value('L', 0, lock=False)
     self._tot_wavelength = multiprocessing.Value('d', 0, lock=False)
 
-    if (address == "CxiDs1-0|Cspad-0"):
+    if address == 'Camp-0|pnCCD-0' or address == 'Camp-0|pnCCD-1':
+      self._tot_sum = multiprocessing.Array('d', 1024 * 1024, lock=False)
+      self._tot_ssq = multiprocessing.Array('d', 1024 * 1024, lock=False)
+    elif address == 'CxiDs1-0|Cspad-0':
       self._tot_sum = multiprocessing.Array('d', 1765 * 1765, lock=False)
       self._tot_ssq = multiprocessing.Array('d', 1765 * 1765, lock=False)
-    elif (address == "CxiSc1-0|Cspad2x2-0"):
+    elif address == 'CxiSc1-0|Cspad2x2-0':
       self._tot_sum = multiprocessing.Array('d', 370 * 391, lock=False)
       self._tot_ssq = multiprocessing.Array('d', 370 * 391, lock=False)
     else:
@@ -303,10 +306,13 @@ class average_mixin(common_mode.common_mode_correction):
 
     # Resize the images to their proper dimensions.  XXX Hardcoded
     # detector size... again!
-    if (len(self._tot_sum) == 1765 * 1765):
+    if len(self._tot_sum) == 1024 * 1024:
+      self.avg_img.resize(flex.grid(1024, 1024))
+      self.stddev_img.resize(flex.grid(1024, 1024))
+    elif len(self._tot_sum) == 1765 * 1765:
       self.avg_img.resize(flex.grid(1765, 1765))
       self.stddev_img.resize(flex.grid(1765, 1765))
-    elif (len(self._tot_sum) == 370 * 391):
+    elif len(self._tot_sum) == 370 * 391:
       self.avg_img.resize(flex.grid(370, 391))
       self.stddev_img.resize(flex.grid(370, 391))
     else:

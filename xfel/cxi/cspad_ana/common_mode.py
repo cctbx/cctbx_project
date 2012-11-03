@@ -96,14 +96,16 @@ class common_mode_correction(mod_event_info):
     # Get and parse metrology.  There is no metrology information for
     # the Sc1 detector, so make it up.
     self.sections = None
-    if (self.address == "CxiDs1-0|Cspad-0" and calib_dir is not None):
+    if self.address == 'Camp-0|pnCCD-0' or self.address == 'Camp-0|pnCCD-1':
+      self.sections = [] # XXX FICTION
+    elif self.address == 'CxiDs1-0|Cspad-0' and calib_dir is not None:
       self.sections = calib2sections(cspad_tbx.getOptString(calib_dir))
-    elif (self.address == "CxiSc1-0|Cspad2x2-0"):
+    elif self.address == 'CxiSc1-0|Cspad2x2-0':
       # The sections are rotated by 90 degrees with respect to the
       # "standing up" convention.
       self.sections = [[Section(90, (185 / 2 + 0,   (2 * 194 + 3) / 2)),
                         Section(90, (185 / 2 + 185, (2 * 194 + 3) / 2))]]
-    if (self.sections is None):
+    if self.sections is None:
       raise RuntimeError("Failed to load metrology")
 
     # Load the dark image and ensure it is signed and at least 32 bits
@@ -145,7 +147,10 @@ class common_mode_correction(mod_event_info):
 
     # XXX Quick hack to get the config object for the detector at
     # self.address.
-    if self.address == 'CxiDs1-0|Cspad-0':
+    if self.address == 'Camp-0|pnCCD-0' or self.address == 'Camp-0|pnCCD-1':
+      self.config = env.getConfig(
+        xtc.TypeId.Type.Id_pnCCDconfig, self.address)
+    elif self.address == 'CxiDs1-0|Cspad-0':
       self.config = env.getConfig(
         xtc.TypeId.Type.Id_CspadConfig, self.address)
     elif self.address == 'CxiSc1-0|Cspad2x2-0':
@@ -154,8 +159,8 @@ class common_mode_correction(mod_event_info):
 
     if self.config is None:
       self.logger.error("beginjob(): no config")
-
-    (self.beam_center, self.active_areas) = \
+    else:
+      (self.beam_center, self.active_areas) = \
         cspad_tbx.cbcaa(self.config, self.sections)
 
     self.nfail  = 0
@@ -247,6 +252,23 @@ class common_mode_correction(mod_event_info):
     if (evt.get("skip_event")):
       return
 
+    # XXX Duplication w.r.t. beginjob()!
+    if self.config is None:
+      if self.address == 'CxiDs1-0|Cspad-0':
+        self.config = env.getConfig(
+          xtc.TypeId.Type.Id_CspadConfig, self.address)
+      elif self.address == 'CxiSc1-0|Cspad2x2-0':
+        self.config = env.getConfig(
+          xtc.TypeId.Type.Id_Cspad2x2Config, self.address)
+
+      if self.config is None:
+        self.logger.error("event(): no config")
+        evt.put(True, 'skip_event')
+        return
+    if self.active_areas is None or self.beam_center is None:
+      (self.beam_center, self.active_areas) = \
+          cspad_tbx.cbcaa(self.config, self.sections)
+
     if self.filter_laser_1_status is not None:
       if (self.laser_1_status.status != self.filter_laser_1_status or
           (self.laser_1_ms_since_change is not None and
@@ -264,7 +286,7 @@ class common_mode_correction(mod_event_info):
     # event.  Otherwise, get it from the stream as a double-precision
     # floating-point flex array.  XXX It is probably not safe to key
     # the image on self.address, so we should come up with our own
-    # namespace.
+    # namespace.  XXX Misnomer--could be CAMP, too
     self.cspad_img = evt.get(self.address)
     if (self.cspad_img is not None):
       return

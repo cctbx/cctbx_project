@@ -23,19 +23,19 @@ from scitbx.array_family import flex
 from xfel.cxi.cspad_ana.parse_calib import Section
 
 
-# The CSpad counters are 14 bits wide (Philipp et al., 2007).  XXX
-# Capitalise these constants.  XXX Should really clarify this with
-# Sol.
+# The CAMP and CSpad counters are both 14 bits wide (Strueder et al
+# 2010; Philipp et al., 2007).  XXX Capitalise these constants.  XXX
+# This really has nothing to do with dynamic range.
 dynamic_range = 2**14 - 1
 
 # The side length of a square quadrant from the old XtcExplorer code.
 # XXX This should be obsoleted!
 npix_quad = 850
 
-# The pixel size in mm.  The pixel size is fixed and square at 110 um
-# by 110 um (Philipp et al., 2007).  XXX UTF-8 comments?  XXX Should
-# really clarify this with Sol and Chris.  For the CAMP the pixel size
-# is 75 um by 75 um (Struder et al., 2010).
+# The pixel size in mm.  Both CAMP and CSpad pixels are fixed and
+# square, with side lengths of 75 um and 110 um, respectively
+# (Strueder et al., 2010; Philipp et al., 2007).  XXX UTF-8 comments?
+# XXX Should really clarify this with Sol and Chris.
 pixel_size = 110e-3
 
 # origin of section in quad coordinate system.  x-position
@@ -157,7 +157,7 @@ def cbcaa(config, sections):
 
   # XXX Make up a quadrant mask for the emission detector.  Needs to
   # be checked!
-  if len(sections) == 1:
+  if len(sections) <= 1:
     q_mask = 1
   else:
     q_mask = config.quadMask()
@@ -827,7 +827,22 @@ def image(address, config, evt, env, sections=None):
   @return         XXX
   """
 
-  if address == 'CxiDs1-0|Cspad-0':
+  if address == 'Camp-0|pnCCD-0' or address == 'Camp-0|pnCCD-1':
+    value = evt.getPnCcdValue(address, env)
+    if value is not None:
+      # Returns the image data as a numpy 1024-by-1024 uint16 array
+      # XXX Should be split up into tiles (halves) to allow metrology
+      # to be adjusted?  Will require a sections parameter!
+      img = value.data()
+
+      # Deal with overflows.  XXX This might be dependent on the
+      # particular version of pyana.  CASS ignores the two most
+      # significant bits, which is different from what is done below,
+      # but Lutz Foucar says they do contain data which could be used.
+      img[img > 2**14 - 1] = 2**14 - 1
+      return img
+
+  elif address == 'CxiDs1-0|Cspad-0':
     quads = evt.getCsPadQuads(address, env)
     if quads is not None:
       if sections is not None:
