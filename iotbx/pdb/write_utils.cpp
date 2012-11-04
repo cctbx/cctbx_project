@@ -44,4 +44,12 @@ namespace iotbx { namespace pdb { namespace write_utils {
     out.close();
   }
 
+  sstream_open_close::sstream_open_close()
+  {
+  }
+
+  sstream_open_close::~sstream_open_close()
+  {
+  }
+
 }}} // namespace iotbx::pdb::write_utils
