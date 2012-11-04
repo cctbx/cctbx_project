@@ -39,6 +39,30 @@ namespace iotbx { namespace pdb { namespace write_utils {
     ~fstream_open_close();
   };
 
+  struct sstream_write : stream_write
+  {
+    std::stringstream* stream;
+
+    sstream_write(std::stringstream* stream_) : stream(stream_) {}
+
+    virtual void
+    operator()(const char* s, unsigned n)
+    {
+      stream->write(s, n);
+    }
+  };
+
+
+  struct sstream_open_close : boost::noncopyable
+  {
+    std::stringstream out;
+
+    sstream_open_close();
+
+    ~sstream_open_close();
+  };
+
+
 }}} // namespace iotbx::pdb::write_utils
 
 #endif // IOTBX_PDB_WRITE_UTILS_H
