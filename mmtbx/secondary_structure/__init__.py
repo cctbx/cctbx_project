@@ -3,8 +3,9 @@ from __future__ import division
 from mmtbx.secondary_structure import base_pairing, proteins
 import iotbx.pdb
 import iotbx.pdb.secondary_structure
-from scitbx.array_family import flex
 import iotbx.phil
+from scitbx.array_family import flex
+from libtbx.utils import null_out
 from libtbx import easy_run
 from libtbx import adopt_init_args
 import libtbx.load_env
@@ -305,6 +306,7 @@ class manager (object) :
       self.assume_hydrogens_all_missing = not ("H" in sctr_keys or
         "D" in sctr_keys)
     self.selection_cache = pdb_hierarchy.atom_selection_cache()
+    self.pdb_atoms = atoms
 
   def as_phil_str (self, master_phil=sec_str_master_phil) :
     return master_phil.format(python_object=self.params)
@@ -375,13 +377,20 @@ class manager (object) :
           self.params.nucleic_acids.base_pair = \
             bp_params.nucleic_acids.base_pair
 
-  def find_sec_str (self, log=sys.stderr) :
-    pdb_str = self.pdb_hierarchy.as_pdb_string()
-    (records, stderr) = run_ksdssp_direct(pdb_str)
-    sec_str_from_pdb_file = iotbx.pdb.secondary_structure.process_records(
-      records=records,
-      allow_none=True)
-    return sec_str_from_pdb_file
+  def find_sec_str (self, log=sys.stderr, use_ksdssp=True) :
+    if (use_ksdssp) :
+      pdb_str = self.pdb_hierarchy.as_pdb_string()
+      (records, stderr) = run_ksdssp_direct(pdb_str)
+      return iotbx.pdb.secondary_structure.process_records(
+        records=records,
+        allow_none=True)
+    else : # TODO make this the default
+      from mmtbx.secondary_structure import dssp
+      return dssp.dssp(
+        pdb_hierarchy=self.pdb_hierarchy,
+        pdb_atoms=self.pdb_atoms,
+        xray_structure=self.xray_structure,
+        out=null_out()).get_annotation()
 
   def find_sec_str_with_segids (self, log=sys.stderr) :
     annotations = []
