@@ -16,7 +16,10 @@ def merging_and_model_statistics (
   # very important: must use original intensities for i_obs, not squared f_obs,
   # because French-Wilson treatment is one-way
   assert (unmerged_i_obs.sigmas() is not None)
-  unmerged_i_obs = unmerged_i_obs.select(unmerged_i_obs.sigmas() >= 0)
+  info = unmerged_i_obs.info()
+  assert (info is not None)
+  unmerged_i_obs = unmerged_i_obs.select(
+    unmerged_i_obs.sigmas() >= 0).set_info(info)
   filter = merging_statistics.filter_intensities_by_sigma(
     array=unmerged_i_obs,
     sigma_filtering=sigma_filtering)
