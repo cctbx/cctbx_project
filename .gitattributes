@@ -1651,6 +1651,7 @@ scitbx/iso_surface/tst_iso_surface.m -text
 scitbx/iso_surface/tst_iso_surface.py -text
 scitbx/lbfgs/raw.h svneol=native#text/plain
 scitbx/lbfgs/raw_reference.h svneol=native#text/plain
+scitbx/lbfgs/tst_curvatures.py -text
 scitbx/lbfgs/tst_ext.py svneol=native#text/x-python
 scitbx/lbfgs/tst_lbfgs_fem.py svneol=native#text/x-python
 scitbx/lbfgsb/boost_python/tst_fit_cdf.py -text
