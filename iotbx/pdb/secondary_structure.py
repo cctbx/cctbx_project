@@ -59,9 +59,15 @@ class structure_base (object) :
     return "\n".join(cmds)
 
 class annotation (structure_base) :
-  def __init__ (self, records) :
-    self.helices = parse_helix_records(records)
-    self.sheets = parse_sheet_records(records)
+  def __init__ (self, records=None, helices=None, sheets=None) :
+    if (records is not None) :
+      assert (helices is None) and (sheets is None)
+      self.helices = parse_helix_records(records)
+      self.sheets = parse_sheet_records(records)
+    else :
+      assert (not None in [helices, sheets])
+      self.helices = helices
+      self.sheets = sheets
 
   def as_pdb_str (self) :
     records = []
