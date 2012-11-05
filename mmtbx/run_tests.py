@@ -86,7 +86,8 @@ tst_list = (
   "$D/refinement/real_space/tst_fit_residues_2.py",
   "$D/refinement/real_space/tst_individual_sites_1.py",
   "$D/refinement/real_space/tst_monitor.py",
-  "$D/refinement/real_space/tst_rigid_body.py"
+  "$D/refinement/real_space/tst_rigid_body.py",
+  "$D/regression/tst_dssp.py",
   )
 
 def run():

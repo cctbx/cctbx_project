@@ -1157,6 +1157,7 @@ mmtbx/command_line/cif_as_mtz.py -text
 mmtbx/command_line/clashscore.py -text
 mmtbx/command_line/density_modification.py -text
 mmtbx/command_line/distance_difference.py -text
+mmtbx/command_line/dssp.py -text
 mmtbx/command_line/estimate_resolution_cutoff.py -text
 mmtbx/command_line/fake_f_obs.py -text
 mmtbx/command_line/fetch_pdb.py -text
@@ -1325,6 +1326,7 @@ mmtbx/refinement/wx_tardy_pdb.py svneol=native#text/x-python
 mmtbx/regression/tst_add_h_to_water.py -text
 mmtbx/regression/tst_altloc_chain_break.py -text
 mmtbx/regression/tst_cablam.py -text
+mmtbx/regression/tst_dssp.py -text
 mmtbx/regression/tst_examples.py -text
 mmtbx/regression/tst_find_peaks_holes.py -text
 mmtbx/regression/tst_ml_estimate.py -text
@@ -1352,6 +1354,7 @@ mmtbx/secondary_structure/SConscript -text
 mmtbx/secondary_structure/__init__.py -text
 mmtbx/secondary_structure/base_pairing.data -text
 mmtbx/secondary_structure/base_pairing.py -text
+mmtbx/secondary_structure/dssp.py -text
 mmtbx/secondary_structure/ext.cpp -text
 mmtbx/secondary_structure/identify.hpp -text
 mmtbx/secondary_structure/proteins.py -text
