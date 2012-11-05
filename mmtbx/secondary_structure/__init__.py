@@ -80,6 +80,11 @@ input
     .help = This will ignore the automatic chain type detection and run \
       the base pair detection using PROBE even if no nucleic acids are found. \
       Useful for tRNAs which have a large number of modified bases.
+  use_ksdssp = True
+    .type = bool
+    .help = Use KSDSSP program to annotate secondary structure.  If False, a \
+      built-in DSSP method will be used instead.
+    .expert_level = 3
 }
 h_bond_restraints
   .short_caption = Hydrogen bonding restraints
@@ -377,8 +382,8 @@ class manager (object) :
           self.params.nucleic_acids.base_pair = \
             bp_params.nucleic_acids.base_pair
 
-  def find_sec_str (self, log=sys.stderr, use_ksdssp=True) :
-    if (use_ksdssp) :
+  def find_sec_str (self, log=sys.stderr) :
+    if (self.params.input.use_ksdssp) :
       pdb_str = self.pdb_hierarchy.as_pdb_string()
       (records, stderr) = run_ksdssp_direct(pdb_str)
       return iotbx.pdb.secondary_structure.process_records(
@@ -386,6 +391,7 @@ class manager (object) :
         allow_none=True)
     else : # TODO make this the default
       from mmtbx.secondary_structure import dssp
+      print >> log, "  running mmtbx.dssp..."
       return dssp.dssp(
         pdb_hierarchy=self.pdb_hierarchy,
         pdb_atoms=self.pdb_atoms,
