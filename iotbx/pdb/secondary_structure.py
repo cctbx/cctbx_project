@@ -12,7 +12,7 @@ from __future__ import division
 from libtbx.utils import Sorry, Usage
 from libtbx import smart_open
 import libtbx.phil
-from libtbx import group_args
+from libtbx import adopt_init_args, group_args
 import string, sys, os
 
 ss_input_params_str = """
@@ -126,7 +126,24 @@ class annotation (structure_base) :
     return selections
 
 #-----------------------------------------------------------------------
-class pdb_helix (structure_base, group_args) :
+class pdb_helix (structure_base) :
+  def __init__ (self,
+        serial,
+        helix_id,
+        start_resname,
+        start_chain_id,
+        start_resseq,
+        start_icode,
+        end_resname,
+        end_chain_id,
+        end_resseq,
+        end_icode,
+        helix_class,
+        comment,
+        length) :
+    adopt_init_args(self, locals())
+    assert (length > 0) and (helix_class in range(1,11))
+
   def as_pdb_str (self) :
     format = "HELIX  %3d %3s %3s%2s %4d%1s %3s%2s %4d%1s%2d%30s %5d"
     out = format % (self.serial, self.helix_id, self.start_resname,
@@ -229,7 +246,45 @@ def parse_helix_records (records) :
   return helices
 
 #-----------------------------------------------------------------------
-class pdb_sheet (structure_base, group_args) :
+class pdb_strand (object) :
+  def __init__ (self,
+      sheet_id,
+      strand_id,
+      start_resname,
+      start_chain_id,
+      start_resseq,
+      start_icode,
+      end_resname,
+      end_chain_id,
+      end_resseq,
+      end_icode,
+      sense) :
+    adopt_init_args(self, locals())
+    assert (sheet_id > 0) and (strand_id > 0)
+    assert (sense in [-1, 0, 1])
+
+class pdb_strand_register (object) :
+  def __init__ (self,
+      cur_atom,
+      cur_resname,
+      cur_chain_id,
+      cur_resseq,
+      cur_icode,
+      prev_atom,
+      prev_resname,
+      prev_chain_id,
+      prev_resseq,
+      prev_icode) :
+    adopt_init_args(self, locals())
+
+class pdb_sheet (structure_base) :
+  def __init__ (self,
+        sheet_id,
+        n_strands,
+        strands,
+        registrations) :
+    adopt_init_args(self, locals())
+
   def add_strand (self, strand) :
     self.strands.append(strand)
 
@@ -377,7 +432,7 @@ def parse_sheet_records (records) :
         registrations=[])
       current_sheet_id = sheet_id
     sense = string.atoi(line[38:40])
-    current_strand = group_args(
+    current_strand = pdb_strand(
       sheet_id=sheet_id,
       strand_id=string.atoi(line[7:10]),
       start_resname=line[17:20],
@@ -397,7 +452,7 @@ def parse_sheet_records (records) :
         registration = None
       else :
         try :
-          registration = group_args(
+          registration = pdb_strand_register(
             cur_atom=line[41:45],
             cur_resname=line[45:48],
             cur_chain_id=parse_chain_id(line[48:50]),
