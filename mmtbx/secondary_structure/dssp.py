@@ -76,9 +76,9 @@ class hbond (object) :
 
   def as_pymol_cmd (self) :
     sel_fmt = "chain '%s' and resi %s and name %s"
-    sel1 = sel_fmt % (self.residue1.parent().parent().id,
+    sel1 = sel_fmt % (self.residue1.parent().parent().id.strip(),
                       self.residue1.parent().resid(), "O")
-    sel2 = sel_fmt % (self.residue2.parent().parent().id,
+    sel2 = sel_fmt % (self.residue2.parent().parent().id.strip(),
                       self.residue2.parent().resid(), "N")
     return "dist (%s), (%s)" % (sel1, sel2)
 
@@ -173,9 +173,11 @@ class _ladder (object) :
       bridge.show(out, prefix=prefix+"  ", show_direction=False)
 
   def get_initial_strand (self, sheet_id, pdb_labels) :
-    from iotbx.pdb import secondary_structure # XXX FUTURE
-    start = pdb_labels[self.bridges[0].i_res]
-    end = pdb_labels[self.bridges[-1].i_res]
+    from iotbx.pdb import secondary_structure
+    start_i_res = min(self.bridges[0].i_res, self.bridges[-1].i_res)
+    end_i_res = max(self.bridges[0].i_res, self.bridges[-1].i_res)
+    start = pdb_labels[start_i_res]
+    end = pdb_labels[end_i_res]
     first_strand = secondary_structure.pdb_strand(
       sheet_id=sheet_id,
       strand_id=1,
@@ -197,15 +199,19 @@ class _ladder (object) :
     next_ladder_i_start = sys.maxint
     next_ladder_i_end = - sys.maxint
     if (next_ladder is not None) :
-      next_ladder_i_start = next_ladder.bridges[0].i_res
-      next_ladder_i_end = next_ladder.bridges[-1].i_res
-    if (self.direction == 1) :
-      start_i_res = min(self.bridges[0].j_res, next_ladder_i_start)
-      end_i_res = max(self.bridges[-1].j_res, next_ladder_i_end)
-    else :
-      start_i_res = min(self.bridges[-1].j_res, next_ladder_i_start)
-      end_i_res = max(self.bridges[0].j_res, next_ladder_i_end)
-    assert (start_i_res is not None)
+      next_ladder_i_start = min(next_ladder.bridges[0].i_res,
+                                next_ladder.bridges[-1].i_res)
+      next_ladder_i_end = max(next_ladder.bridges[-1].i_res,
+                              next_ladder.bridges[0].i_res)
+    j_res_start = min(self.bridges[0].j_res, self.bridges[-1].j_res)
+    j_res_end = max(self.bridges[-1].j_res, self.bridges[0].j_res)
+    start_i_res = min(j_res_start, next_ladder_i_start)
+    end_i_res = max(j_res_end, next_ladder_i_end)
+    if (start_i_res > end_i_res) :
+      out = cStringIO.StringIO()
+      self.show(out=out)
+      raise RuntimeError("start_i_res(%d) > end_i_res(%d):\n%s" %
+        (start_i_res, end_i_res, out.getvalue()))
     start = pdb_labels[start_i_res]
     end = pdb_labels[end_i_res]
     strand = secondary_structure.pdb_strand(
@@ -222,7 +228,7 @@ class _ladder (object) :
       sense=self.direction)
     return strand
 
-  def get_strand_register (self, hbonds, pdb_labels) :
+  def get_strand_register (self, hbonds, pdb_labels, is_last_strand=False) :
     from iotbx.pdb import secondary_structure
     i_res_start = min(self.bridges[0].i_res, self.bridges[-1].i_res)
     i_res_end = max(self.bridges[0].i_res, self.bridges[-1].i_res)
@@ -231,13 +237,16 @@ class _ladder (object) :
     start_hbond = None
     start_on_n = False
     min_i_res = sys.maxint
+    # XXX this is incorrect - it is not picking the first possible H-bond
     for hbond in hbonds :
       if (hbond.is_in_ladder(i_res_start,i_res_end,j_res_start,j_res_end)) :
-        if (hbond.i_res < min_i_res) : # O atom
+        if ((hbond.i_res < min_i_res) and (hbond.i_res >= i_res_start) and
+            (hbond.i_res <= i_res_end)) : # O atom
           start_hbond = hbond
           min_i_res = hbond.i_res
           start_on_n = False
-        elif (hbond.j_res <= min_i_res) : # N atom (takes precedence)
+        if ((hbond.j_res <= min_i_res) and (hbond.j_res >= i_res_start) and
+            (hbond.j_res <= i_res_end)) : # N atom (takes precedence)
           start_hbond = hbond
           min_i_res = hbond.j_res
           start_on_n = True
@@ -248,11 +257,14 @@ class _ladder (object) :
     if (start_on_n) :
       curr_atom = " N  "
       prev_atom = " O  "
+      curr_res = pdb_labels[start_hbond.i_res]
+      prev_res = pdb_labels[start_hbond.j_res]
     else :
       curr_atom = " O  "
       prev_atom = " N  "
-    curr_res = pdb_labels[start_hbond.i_res]
-    prev_res = pdb_labels[start_hbond.j_res]
+      curr_res = pdb_labels[start_hbond.j_res]
+      prev_res = pdb_labels[start_hbond.i_res]
+    #start_hbond.show()
     return secondary_structure.pdb_strand_register(
       cur_atom=curr_atom,
       cur_resname=curr_res.resname,
@@ -575,14 +587,38 @@ class dssp (object) :
     n_processed = 0
     # FIXME this is not working properly for bifurcated sheets and possibly
     # other corner cases as well
+    # XXX actually, the real problem is that it's just not very smart about
+    # which path to follow - ideally it should try to maximize both the sheet
+    # size (at the expense of smaller sheets), both in number of strands and
+    # total number of residues.  Currently it will pick the longest strand
+    # where multiple are possible, which is not necessarily the best choice.
+    # XXX it also needs to be smarter about where to start!
+    n_left_last = -sys.maxint
+    start_on_next_strand = False
+    #print connections
     while (n_processed < n_connected) :
       u = 0
+      n_left = 0
       while (u < len(connections)) :
         linked = connections[u]
-        if (len(linked) == 1) :
+        if (len(linked) == 1) or (start_on_next_strand) :
           ladder = _ladder()
           strand = strands[u]
-          v = linked.pop()
+          max_connecting_strand_length = 0
+          best_strand_index = v = None
+          if (len(linked) > 1) :
+            # multiple strands linked, so pick the longest one
+            for v_ in sorted(linked) :
+              other_ = strands[v_]
+              if (len(other_) > max_connecting_strand_length) :
+                best_strand_index = v_
+                max_connecting_strand_length = len(other_)
+            assert (best_strand_index is not None)
+            v = best_strand_index
+            linked.remove(v)
+          else :
+            v = linked.pop()
+          assert (v is not None)
           other_strand = strands[v]
           for i_res in strand :
             for b in bridges :
@@ -592,6 +628,7 @@ class dssp (object) :
                 ladder.add_bridge(b)
           sheet_ladders.append(ladder)
           next_linked = connections[v]
+          start_on_next_strand = True
           next_linked.remove(u)
           n_processed += 1
           u = v
@@ -599,9 +636,18 @@ class dssp (object) :
             all_sheet_ladders.append(sheet_ladders)
             sheet_ladders = []
             n_processed += 1
+            start_on_next_strand = False
             break
         else :
           u += 1
+          n_left += 1
+      if (n_left == n_left_last) :
+        # XXX this means that the last loop did not process any connections,
+        # because there are no strands with only a single connection.  this
+        # could mean a beta barrel - any other explanations?
+        start_on_next_strand = True
+        u = 0
+      n_left_last = n_left
     # convert collections of ladders into SHEET objects
     sheets = []
     for k, ladders in enumerate(all_sheet_ladders) :
@@ -630,7 +676,8 @@ class dssp (object) :
           next_ladder=next_ladder)
         register = ladder.get_strand_register(
           hbonds=self.hbonds,
-          pdb_labels=self.pdb_labels)
+          pdb_labels=self.pdb_labels,
+          is_last_strand=(next_ladder is None))
         current_sheet.add_strand(next_strand)
         current_sheet.add_registration(register)
     return sheets
