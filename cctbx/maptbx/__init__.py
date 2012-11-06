@@ -662,3 +662,35 @@ class spherical_variance_around_point (object) :
           "HETATM    1  O   HOH A   1     %7.3f %7.3f %7.3f  1.00 20.00\n"%
           point)
       f.close()
+
+def principal_axes_of_intertia (
+    real_map,
+    site_cart,
+    unit_cell,
+    radius) :
+  assert (radius > 0)
+  import scitbx.math
+  from libtbx.utils import n_dim_index_from_one_dim
+  sel = grid_indices_around_sites(
+    unit_cell=unit_cell,
+    fft_n_real=real_map.focus(),
+    fft_m_real=real_map.all(),
+    sites_cart=flex.vec3_double([site_cart]),
+    site_radii=flex.double([radius]))
+  grid_to_cart = grid2cart(real_map.focus(),
+    unit_cell.orthogonalization_matrix())
+  sites = flex.vec3_double()
+  values = flex.double()
+  site_frac = unit_cell.fractionalize(site_cart=site_cart)
+  weight_scale = real_map.tricubic_interpolation(site_frac)
+  #weight_scale = flex.max(real_map.as_1d())
+  for i_seq in sel :
+    uvw = n_dim_index_from_one_dim(i_seq, real_map.all())
+    xyz = grid_to_cart(uvw)
+    sites.append(xyz)
+    site_frac = unit_cell.fractionalize(site_cart=xyz)
+    # XXX weights of zero risk crashing the underlying routine
+    values.append(max(0.000001, real_map[i_seq]) / weight_scale)
+  return scitbx.math.principal_axes_of_inertia(
+    points=sites,
+    weights=values)
