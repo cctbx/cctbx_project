@@ -95,7 +95,7 @@ class lbfgs_with_curvatures_mix_in(object):
       self.d = None
     if (requests_diag):
       self.d = self.curvatures()
-      assert self.d.all_ne(0) # conceptually curvatures must be positive to be within convergence well
+      assert self.d.all_gt(0) # conceptually curvatures must be positive to be within convergence well
       self.d = 1 / self.d
     return self.x, self.f, self.g, self.d
 
