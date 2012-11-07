@@ -231,9 +231,17 @@ class reflections_handler (iotbx.gui_tools.manager) :
     return (len(self.get_anomalous_data_labels(*args, **kwds)) > 0)
 
   def get_map_coeff_labels (self, *args, **kwds) :
-    hkl_file = self.get_file(*args, **kwds)
+    # FIXME this is just gross...
+    kwds_basic = {}
+    kwds_maps = {}
+    for kwd in dict(kwds) :
+      if (kwd in ["file_name", "file_param_name"]) :
+        kwds_basic[kwd] = kwds[kwd]
+      else :
+        kwds_maps[kwd] = kwds[kwd]
+    hkl_file = self.get_file(*args, **kwds_basic)
     if hkl_file is not None :
-      return get_map_coeff_labels(hkl_file.file_server)
+      return get_map_coeff_labels(hkl_file.file_server, **kwds_maps)
     return []
 
   def get_map_coeff_labels_for_build (self, *args, **kwds) :
@@ -488,7 +496,10 @@ def extract_phenix_refine_map_coeffs (mtz_file, limit_arrays=None) :
       output_arrays.append((miller_array, map_name))
   return output_arrays
 
-def get_map_coeff_labels (server, build_only=False, include_fom=True,
+def get_map_coeff_labels (server,
+    build_only=False,
+    include_fom=True,
+    exclude_anomalous=False,
     keep_array_labels=False) :
   all_labels = []
   phi_labels = []
@@ -504,6 +515,10 @@ def get_map_coeff_labels (server, build_only=False, include_fom=True,
     if miller_array.is_hendrickson_lattman_array() :
       continue
     elif miller_array.is_complex_array() :
+      if (labels.startswith("F-model") or labels.startswith("FMODEL")) :
+        continue
+      elif (labels.upper().startswith("ANOM")) and (exclude_anomalous) :
+        continue
       if build_only :
         if (not labels[0:4] in ["FOFC", "DELF", "ANOM"]) :
           # list these first
