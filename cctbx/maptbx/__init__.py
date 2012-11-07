@@ -663,7 +663,15 @@ class spherical_variance_around_point (object) :
           point)
       f.close()
 
-def principal_axes_of_intertia (
+  def show (self, out=None, prefix="") :
+    if (out is None) : out = sys.stdout
+    print >> out, "%sMap values around point [%g, %g, %g], radius=%g:" % \
+      (prefix, self.site_cart[0], self.site_cart[1], self.site_cart[2],
+       self.radius)
+    print >> out, "%s  min=%.2f  max=%.2f  mean=%.2f  stddev=%.2f" % \
+      (prefix, self.min, self.max, self.mean, self.standard_deviation)
+
+def principal_axes_of_inertia (
     real_map,
     site_cart,
     unit_cell,

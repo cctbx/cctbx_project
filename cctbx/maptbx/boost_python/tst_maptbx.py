@@ -376,17 +376,22 @@ def exercise_misc():
   assert (approx_equal(stats.mean, 1.35, eps=0.1))
   assert (approx_equal(stats.standard_deviation, 3.25, eps=0.1))
   # test principal_axes_of_inertia
-  pai = maptbx.principal_axes_of_intertia(
+  # XXX d_min=2.01 to get consistent behavior across platforms
+  fc = structure.structure_factors(d_min=2.01).f_calc()
+  assert (fc.indices().size() == 242)
+  fc_map = fc.fft_map(resolution_factor=1/4.)
+  fc_map.apply_sigma_scaling()
+  real_map = fc_map.real_map_unpadded()
+  pai = maptbx.principal_axes_of_inertia(
     real_map=real_map,
     unit_cell=structure.unit_cell(),
     site_cart=(5.,5.,5.),
     radius=2.0)
   assert (approx_equal(pai.center_of_mass(), (5.0,5.0,5.0)))
-  # XXX values are NOT reproducible across different platforms/compilers
-  #assert (approx_equal(pai.inertia_tensor(), (28.09, 28.09, 28.09, 0.,0.,0.),
-  #  eps=0.001))
-  #assert (approx_equal(list(pai.eigensystem().values()), (28.09,28.09,28.09),
-  #  eps=0.001))
+  assert (approx_equal(pai.inertia_tensor(), (28.09, 28.09, 28.09, 0.,0.,0.),
+    eps=0.001))
+  assert (approx_equal(list(pai.eigensystem().values()), (28.09,28.09,28.09),
+    eps=0.001))
   # and now with anisotropy
   structure = xray.structure(
     special_position_settings=crystal.special_position_settings(
@@ -398,17 +403,19 @@ def exercise_misc():
         label="O",
         site=(0.5,0.5,0.5),
         u=(0.2,0.2,0.2,0.1,0.0,0.0))]))
-  fc = structure.structure_factors(d_min=2).f_calc()
+  fc = structure.structure_factors(d_min=2.01).f_calc()
+  assert (fc.indices().size() == 242)
   fc_map = fc.fft_map(resolution_factor=1/4.)
   fc_map.apply_sigma_scaling()
   fc_map.as_ccp4_map("aniso.ccp4")
   real_map = fc_map.real_map_unpadded()
-  pai = maptbx.principal_axes_of_intertia(
+  pai = maptbx.principal_axes_of_inertia(
     real_map=real_map,
     unit_cell=structure.unit_cell(),
     site_cart=(5.,5.,5.),
     radius=2.0)
   assert (approx_equal(pai.center_of_mass(), (5.0,5.0,5.0), eps=0.01))
+  # XXX these are still not consistent...
   #assert (approx_equal(pai.inertia_tensor(),
   #  (316.045, 313.423, 305.382, -9.208, 0., 0.), eps=0.001))
   #assert (approx_equal(list(pai.eigensystem().values()),
