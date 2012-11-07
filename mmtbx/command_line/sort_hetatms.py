@@ -59,6 +59,12 @@ preserve_remarks = True
   .type = bool
 verbose = False
   .type = bool
+remove_hetatm_ter_records = True
+  .type = bool
+  .help = The official PDB format only allows TER records at the end of \
+    polymer chains, whereas the CCTBX PDB-handling tools will insert TER \
+    after each chain of any type.  If this parameter is True, the extra \
+    TER records will be removed.
 %s
 """ % sorting_params_str
 
@@ -316,9 +322,27 @@ Full parameters:
       os.path.basename(params.file_name))[0] + "_sorted.pdb"
   f = open(params.output_file, "w")
   if (params.preserve_remarks) :
-    f.write("\n".join(pdb_in.file_object.remark_section()))
-    f.write("\n")
-  f.write(new_hierarchy.as_pdb_string(crystal_symmetry=final_symm))
+    remarks = pdb_in.file_object.remark_section()
+    if (len(remarks) > 0) :
+      f.write("\n".join(remarks))
+      f.write("\n")
+  pdb_str = new_hierarchy.as_pdb_string(crystal_symmetry=final_symm)
+  if (params.remove_hetatm_ter_records) :
+    n_hetatm = n_atom = 0
+    for line in pdb_str.splitlines() :
+      if (line[0:3] == "TER") :
+        if (n_atom != 0) :
+          f.write("%s\n" % line)
+        n_atom = n_hetatm = 0
+        continue
+      elif (line.startswith("HETATM")) :
+        n_hetatm += 1
+      elif (line.startswith("ATOM")) :
+        n_atom += 1
+      f.write("%s\n" % line)
+  else :
+    f.write(pdb_str)
+  f.write("END")
   f.close()
   print >> out, "Wrote %s" % params.output_file
   return os.path.basename(params.output_file)
