@@ -6,6 +6,11 @@ import os
 import sys
 
 sorting_params_str = """
+preserve_chain_id = False
+  .type = bool
+  .help = The default behavior is to group heteroatoms with the nearest \
+    macromolecule chain, whose ID is inherited.  This parameter disables \
+    the change of chain ID, and preserves the original chain ID.
 waters_only = False
   .type = bool
   .help = Rearrange waters, but leave all other ligands alone.
@@ -113,11 +118,15 @@ def sort_hetatms (
   new_chain_i_seqs = []
   new_hierarchy.append_model(new_model)
   new_hetatm_chains = []
+  new_hetatm_chain_ids = []
   new_start_resseq = []
   for chain in mm_chains :
     new_chain_i_seqs.append(flex.size_t(chain.atoms().extract_tmp_as_size_t()))
     new_model.append_chain(chain.detached_copy())
     new_hetatm_chains.append(pdb.hierarchy.chain(id=chain.id))
+    if (params.preserve_chain_id) and (chain.id in new_hetatm_chain_ids) :
+      print >> log, "Warning: chain ID '%s' is duplicated"
+    new_hetatm_chain_ids.append(chain.id)
     if (params.sequential_numbering) :
       last_resseq = chain.residue_groups()[-1].resseq_as_int()
       new_start_resseq.append(last_resseq + 1)
@@ -127,7 +136,19 @@ def sort_hetatms (
   loose_residues = pdb.hierarchy.chain(id=params.loose_chain_id)
   preserve_chains = []
   for chain in hetatm_chains :
+    chain_id = chain.id
     for rg in chain.residue_groups() :
+      if (params.preserve_chain_id) :
+        if (chain_id in new_hetatm_chain_ids) :
+          i_chain = new_hetatm_chain_ids.index(chain_id)
+          new_hetatm_chains[i_chain].append_residue_group(rg.detached_copy())
+        else :
+          print >> log, \
+            "Warning: no corresponding macromolecule chain match for %s %s" % \
+            (chain_id, rg.resid())
+          loose_residues.append_residue_group(rg.detached_copy())
+        chain.remove_residue_group(rg)
+        continue
       keep_residue_group = False
       rg_atoms = rg.atoms()
       i_seqs = rg_atoms.extract_tmp_as_size_t()
@@ -151,60 +172,61 @@ def sort_hetatms (
   for chain in preserve_chains :
     new_model.append_chain(chain)
   unit_cell = xray_structure.unit_cell()
-  for rg in hetatm_residue_groups :
-    rg_atoms = rg.atoms()
-    i_seqs = rg_atoms.extract_tmp_as_size_t()
-    closest_distance = sys.maxint
-    closest_i_seq = None
-    closest_rt_mx = None
-    for i_seq, atom in zip(i_seqs, rg_atoms) :
-      if (params.set_hetatm_record) :
-        atom.hetero = True
-      site_i = sites_frac[i_seq]
-      asu_dict = asu_table[i_seq]
-      rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq, 0).inverse()
-      for j_seq, j_sym_groups in asu_dict.items() :
-        if (not mm_selection[j_seq]) :
-          continue
-        site_j = sites_frac[j_seq]
-        for j_sym_group in j_sym_groups:
-          rt_mx = rt_mx_i_inv.multiply(asu_mappings.get_rt_mx(j_seq,
-            j_sym_group[0]))
-          site_ji = rt_mx * site_j
-          dxyz = unit_cell.distance(site_i, site_ji)
-          if (dxyz < closest_distance) :
-            closest_distance = dxyz
-            closest_rt_mx = rt_mx.inverse() # XXX I hope this is right...
-            closest_i_seq = j_seq
-    if (closest_i_seq is None) :
-      print >> log, "Residue group %s is not near any macromolecule chain" % \
-        rg.id_str()
-      loose_residues.append_residue_group(rg)
-    else :
-      for j_seqs, hetatm_chain in zip(new_chain_i_seqs, new_hetatm_chains) :
-        if (closest_i_seq in j_seqs) :
-          if (verbose) :
-            if (closest_rt_mx.is_unit_mx()) :
-              print >> log, \
-                "Residue group %s added to chain %s (distance = %.3f)" % \
-                (rg.atoms()[0].id_str(), hetatm_chain.id, closest_distance)
-            else :
-              print >> log, \
-                ("Residue group %s added to chain %s "+
-                 "(distance = %.3f, symop = %s)") % \
-                (rg.atoms()[0].id_str(), hetatm_chain.id, closest_distance,
-                 str(closest_rt_mx))
-          if (not closest_rt_mx.is_unit_mx()) :
-            # closest macromolecule is in another ASU, so map the hetatms to
-            # be near the copy in the current ASU
-            for atom in rg.atoms() :
-              site_frac = unit_cell.fractionalize(site_cart=atom.xyz)
-              new_site_frac = closest_rt_mx * site_frac
-              atom.xyz = unit_cell.orthogonalize(site_frac=new_site_frac)
-          hetatm_chain.append_residue_group(rg)
-          break
+  if (not params.preserve_chain_id) :
+    for rg in hetatm_residue_groups :
+      rg_atoms = rg.atoms()
+      i_seqs = rg_atoms.extract_tmp_as_size_t()
+      closest_distance = sys.maxint
+      closest_i_seq = None
+      closest_rt_mx = None
+      for i_seq, atom in zip(i_seqs, rg_atoms) :
+        if (params.set_hetatm_record) :
+          atom.hetero = True
+        site_i = sites_frac[i_seq]
+        asu_dict = asu_table[i_seq]
+        rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq, 0).inverse()
+        for j_seq, j_sym_groups in asu_dict.items() :
+          if (not mm_selection[j_seq]) :
+            continue
+          site_j = sites_frac[j_seq]
+          for j_sym_group in j_sym_groups:
+            rt_mx = rt_mx_i_inv.multiply(asu_mappings.get_rt_mx(j_seq,
+              j_sym_group[0]))
+            site_ji = rt_mx * site_j
+            dxyz = unit_cell.distance(site_i, site_ji)
+            if (dxyz < closest_distance) :
+              closest_distance = dxyz
+              closest_rt_mx = rt_mx.inverse() # XXX I hope this is right...
+              closest_i_seq = j_seq
+      if (closest_i_seq is None) :
+        print >> log, "Residue group %s is not near any macromolecule chain" %\
+          rg.id_str()
+        loose_residues.append_residue_group(rg)
       else :
-        raise RuntimeError("Can't find chain for i_seq=%d" % closest_i_seq)
+        for j_seqs, hetatm_chain in zip(new_chain_i_seqs, new_hetatm_chains) :
+          if (closest_i_seq in j_seqs) :
+            if (verbose) :
+              if (closest_rt_mx.is_unit_mx()) :
+                print >> log, \
+                  "Residue group %s added to chain %s (distance = %.3f)" % \
+                  (rg.atoms()[0].id_str(), hetatm_chain.id, closest_distance)
+              else :
+                print >> log, \
+                  ("Residue group %s added to chain %s "+
+                   "(distance = %.3f, symop = %s)") % \
+                  (rg.atoms()[0].id_str(), hetatm_chain.id, closest_distance,
+                   str(closest_rt_mx))
+            if (not closest_rt_mx.is_unit_mx()) :
+              # closest macromolecule is in another ASU, so map the hetatms to
+              # be near the copy in the current ASU
+              for atom in rg.atoms() :
+                site_frac = unit_cell.fractionalize(site_cart=atom.xyz)
+                new_site_frac = closest_rt_mx * site_frac
+                atom.xyz = unit_cell.orthogonalize(site_frac=new_site_frac)
+            hetatm_chain.append_residue_group(rg)
+            break
+        else :
+          raise RuntimeError("Can't find chain for i_seq=%d" % closest_i_seq)
   # even if waters aren't sorted, we still want them to come last
   for chain in new_hetatm_chains :
     waters_and_b_iso = []

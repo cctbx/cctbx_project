@@ -27,6 +27,14 @@ def exercise () :
   rgsA = chains[-2].residue_groups()
   rgsB = chains[-1].residue_groups()
   assert (len(rgsA) == 3) and (len(rgsB) == 4)
+  sort_hetatms.run(
+    args=[pdb_file, "preserve_chain_id=True", "renumber=False"],
+    out=StringIO())
+  pdb_in = file_reader.any_file("unsorted_sorted.pdb")
+  hierarchy = pdb_in.file_object.construct_hierarchy()
+  chains = hierarchy.models()[0].chains()
+  assert (len(chains) == 3)
+  assert (chains[-1].id == "A")
   print "OK"
 
 if (__name__ == "__main__") :
