@@ -518,7 +518,7 @@ def run(args):
     unpickle = None
       .type = path
 """)
-  argument_interpreter = mater_phil.command_line_argument_interpreter()
+  argument_interpreter = master_phil.command_line_argument_interpreter()
   phil_objects = []
   remaining_args = []
   for arg in args:
