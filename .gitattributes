@@ -2008,6 +2008,7 @@ ucif/examples/main.cpp -text
 ucif/examples/ucif_example.txt -text
 wxtbx/__init__.py -text
 wxtbx/adp_statistics.py -text
+wxtbx/anomalous_scattering.py -text
 wxtbx/app.py -text
 wxtbx/b_plot.py -text
 wxtbx/bitmaps.py svneol=native#text/x-python
@@ -2019,6 +2020,7 @@ wxtbx/command_line/inspect_r_free_flags.py -text
 wxtbx/command_line/loggraph.py -text
 wxtbx/command_line/pdb_editor.py -text
 wxtbx/command_line/pdb_statistics.py -text
+wxtbx/command_line/plot_anomalous_scattering.py -text
 wxtbx/command_line/show_file_info.py -text
 wxtbx/custom_restraints.py -text
 wxtbx/errors.py -text
