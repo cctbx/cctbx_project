@@ -287,6 +287,8 @@ class geometry(object):
     loop.add_row(("f_chiral_restr", self.c_number, self.c_mean, "?", "?"))
     loop.add_row(("f_plane_restr", self.p_number, self.p_mean, "?", "?"))
     loop.add_row(("f_dihedral_angle_d", self.d_number, self.d_mean, "?", "?"))
+    cif_block.add_loop(loop)
+    return cif_block
 
 class model_content(object):
   def __init__(self, model):
