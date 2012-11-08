@@ -6,6 +6,10 @@ from libtbx.utils import Sorry
 import wx
 
 class AnomPlot (wxtbx.plots.plot_container) :
+  def __init__ (self, *args, **kwds) :
+    wxtbx.plots.plot_container.__init__(self, *args, **kwds)
+    self.canvas.mpl_connect('motion_notify_event', self.parent.OnHover)
+
   def show_plot (self,
       elements,
       range_type="wavelength",
@@ -53,9 +57,13 @@ class AnomPlot (wxtbx.plots.plot_container) :
     ax.set_ylabel("e-")
     self.canvas.draw()
 
+  def OnHover (self, mpl_event) :
+    (xdata, ydata) = (mpl_event.xdata, mpl_event.ydata)
+
 class AnomPlotFrame (wxtbx.plots.plot_frame) :
   def draw_top_panel (self) :
     self.top_panel = ControlPanel(parent=self, style=wx.SUNKEN_BORDER)
+    self.statusbar = self.CreateStatusBar()
 
   def create_plot_panel (self) :
     return AnomPlot(parent=self, figure_size=(12,6))
@@ -63,6 +71,18 @@ class AnomPlotFrame (wxtbx.plots.plot_frame) :
   def update_plot (self, *args, **kwds) :
     self.plot_panel.show_plot(*args, **kwds)
     self.Refresh()
+
+  def OnHover (self, mpl_event) :
+    (xdata, ydata) = (mpl_event.xdata, mpl_event.ydata)
+    if (xdata is None) or (ydata is None) :
+      self.statusbar.SetStatusText("")
+    else :
+      if (xdata < 10) :
+        rtype, rlabel = "Wavelength", "Angstrom"
+      else :
+        rtype, rlabel = "Energy", "eV"
+      status_label = "%s=%.3f %s   e-=%.3f" % (rtype, xdata, rlabel, ydata)
+      self.statusbar.SetStatusText(status_label)
 
 class ControlPanel (wx.Panel) :
   def __init__ (self, *args, **kwds) :
