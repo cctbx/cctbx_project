@@ -1,3 +1,4 @@
+# LIBTBX_SET_DISPATCHER_NAME phenix.sort_hetatms
 
 from __future__ import division
 from libtbx.utils import Sorry, Usage, null_out
