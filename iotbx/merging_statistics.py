@@ -5,6 +5,12 @@ from libtbx import group_args, Auto
 from math import sqrt
 import sys
 
+citations_str = """\
+  Diederichs K & Karplus PA (1997) Nature Structural Biology 4:269-275
+    (with erratum in: Nat Struct Biol 1997 Jul;4(7):592)
+  Weiss MS (2001) J Appl Cryst 34:130-135.
+  Karplus PA & Diederichs K (2012) Science 336:1030-3."""
+
 sigma_filtering_phil_str = """
 sigma_filtering = *auto xds scala scalepack
   .type = choice
@@ -41,14 +47,11 @@ class model_based_arrays (object) :
   the same as that of the unmerged data, but the current implementation does
   not force this.
   """
-  def __init__ (self, i_obs, i_calc, work_sel, free_sel) :
+  def __init__ (self, f_obs, i_obs, i_calc, work_sel, free_sel) :
     assert (i_obs.data().size() == i_calc.data().size() ==
             work_sel.data().size() == free_sel.data().size())
-    from cctbx.french_wilson import french_wilson_scale
-    self.f_obs = french_wilson_scale(
-      miller_array=i_obs,
-      log=null_out())
-    assert (len(self.f_obs.data()) <= len(i_obs.data()))
+    assert (len(f_obs.data()) <= len(i_obs.data()))
+    self.f_obs = f_obs
     self.i_obs = i_obs.common_set(other=self.f_obs)
     self.i_calc = i_calc.common_set(other=self.f_obs)
     self.work_sel = work_sel.common_set(other=self.f_obs)
@@ -365,9 +368,10 @@ class dataset_statistics (object) :
     print >> out, self.table.format_loggraph()
     print >> out, ""
 
-  def show (self, out=None) :
+  def show (self, out=None, header=True) :
     if (out is None) : out = sys.stdout
-    make_sub_header("Merging statistics", out=out)
+    if (header) :
+      make_sub_header("Merging statistics", out=out)
     self.overall.show_summary(out)
     print >> out, ""
     print >> out, "Redundancies%s:" % self.anom_extra
