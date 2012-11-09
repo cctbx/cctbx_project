@@ -7,7 +7,7 @@ from mmtbx.rotamer.sidechain_angles import SidechainAngles
 from mmtbx.rotamer import rotamer_eval
 from mmtbx.rotamer.rotamer_eval import RotamerID
 import iotbx.phil
-from libtbx.utils import Usage
+from libtbx.utils import Usage, Sorry
 
 def get_master_phil():
   return iotbx.phil.parse(
@@ -264,6 +264,13 @@ Example:
           key = cur_label[4:]
       else:
         if altloc == cur_altloc:
+          if (key != cur_label[4:]) :
+            raise Sorry("""\
+Incompatible identifiers for one or more atoms in a residue:
+%s
+This is usually caused by atoms with a different segid from the rest of the
+residue.  You can use phenix.pdbtools or phenix.pdb_editor to reset the
+segid.""" % atom.format_atom_record())
           assert key == cur_label[4:]
     return key
 

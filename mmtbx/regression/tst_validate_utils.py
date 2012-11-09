@@ -7,7 +7,8 @@ from mmtbx.validation.clashscore import clashscore
 from mmtbx.validation.rna_validate import rna_validate
 from mmtbx.rotamer.rotamer_eval import find_rotarama_data_dir
 from iotbx import pdb
-from libtbx.test_utils import show_diff
+from libtbx.test_utils import show_diff, Exception_expected
+from libtbx.utils import Sorry
 import libtbx.load_env
 
 import sys, os
@@ -380,6 +381,53 @@ A  43  AASP:0.75:29.6:56.5:340.3:::p-10
 A  43  BASP:0.25:45.3:59.6:349.3:::p-10
 A  44  TYR:1.00:85.6:290.9:85.1:::m-85
 A  46  ASN:1.00:34.0:301.6:117.9:::m120""")
+
+  pdb_str = """\
+ATOM   2527  N   LEU A 261     -31.022 -24.808 107.479  1.00 28.22           N
+ATOM   2528  CA  LEU A 261     -30.054 -23.719 107.237  1.00 21.77           C
+ATOM   2529  C   LEU A 261     -30.582 -22.773 106.168  1.00 27.64           C
+ATOM   2530  O   LEU A 261     -29.841 -21.977 105.561  1.00 26.70           O
+ATOM   2531  CB  LEU A 261     -28.696 -24.276 106.874  1.00 22.58           C
+ATOM   2532  CG  LEU A 261     -28.135 -25.066 108.060  1.00 40.89           C
+ATOM   2533  CD1 LEU A 261     -26.892 -25.858 107.664  1.00 46.72           C
+ATOM   2534  CD2 LEU A 261     -27.806 -24.109 109.202  1.00 38.88           C
+ATOM   2535  H   LEU A 261     -31.201 -25.277 106.781  1.00 33.87           H
+ATOM   2536  HA  LEU A 261     -29.950 -23.204 108.064  1.00 26.12           H
+ATOM   2537  HB2 LEU A 261     -28.781 -24.874 106.115  1.00 27.10           H
+ATOM   2538  HB3 LEU A 261     -28.088 -23.548 106.670  1.00 27.10           H
+ATOM   2539  HG  LEU A 261     -28.806 -25.693 108.373  1.00 49.07           H
+ATOM   2540 HD11 LEU A 261     -26.570 -26.338 108.430  1.00 56.07           H
+ATOM   2541 HD12 LEU A 261     -27.124 -26.473 106.965  1.00 56.07           H
+ATOM   2542 HD13 LEU A 261     -26.219 -25.247 107.353  1.00 56.07           H
+ATOM   2543 HD21 LEU A 261     -28.608 -23.653 109.468  1.00 46.66           H
+ATOM   2544 HD22 LEU A 261     -27.455 -24.612 109.941  1.00 46.66           H
+ATOM   2545 HD23 LEU A 261     -27.153 -23.474 108.899  1.00 46.66           H
+ATOM   2546  N   GLY A 262     -31.887 -22.863 105.948  1.00 23.68           N
+ATOM   2547  CA  GLY A 262     -32.572 -21.935 105.075  1.00 21.87      85   C
+ATOM   2548  C   GLY A 262     -33.718 -22.620 104.386  1.00 27.32           C
+ATOM   2549  O   GLY A 262     -33.943 -23.822 104.556  1.00 23.10           O
+ATOM   2550  H   GLY A 262     -32.399 -23.459 106.298  1.00 28.42           H
+ATOM   2551  HA2 GLY A 262     -32.916 -21.189 105.591  1.00 26.25      85   H
+ATOM   2552  HA3 GLY A 262     -31.958 -21.598 104.405  1.00 26.25      85   H
+ATOM   2553  N   SER A 263     -34.460 -21.830 103.628  1.00 24.62           N
+ATOM   2554  CA  SER A 263     -35.631 -22.290 102.921  1.00 27.15           C
+ATOM   2555  C   SER A 263     -35.594 -21.761 101.492  1.00 22.14           C
+ATOM   2556  O   SER A 263     -34.723 -20.945 101.159  1.00 21.01           O
+ATOM   2557  CB  SER A 263     -36.839 -21.713 103.619  1.00 25.73           C
+ATOM   2558  OG  SER A 263     -36.907 -22.232 104.922  1.00 26.84           O
+ATOM   2559  H   SER A 263     -34.296 -20.995 103.507  1.00 29.54           H
+ATOM   2560  HA  SER A 263     -35.680 -23.269 102.917  1.00 32.58           H
+ATOM   2561  HB2 SER A 263     -36.754 -20.747 103.661  1.00 30.87           H
+ATOM   2562  HB3 SER A 263     -37.641 -21.960 103.132  1.00 30.87           H
+ATOM   2563  HG  SER A 263     -37.560 -21.925 105.312  1.00 32.20           H
+"""
+  pdb_io = pdb.input(source_info=None, lines=pdb_str)
+  try :
+    rotalyze().analyze_pdb(pdb_io)
+  except Sorry, e :
+    assert ("GLY A 262" in str(e))
+  else :
+    raise Exception_expected
 #}}}
 
 def run():

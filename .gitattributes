@@ -1341,6 +1341,7 @@ mmtbx/rotamer/rotamer_names.props -text
 mmtbx/rotamer/sidechain_angles.props -text
 mmtbx/rotamer/sidechain_angles.py -text
 mmtbx/rotamer/tst_geostd_vs_sidechain_angles_props.py svneol=native#text/x-python
+mmtbx/rotamer/tst_rotamer_eval.py -text
 mmtbx/rsr/SConscript -text
 mmtbx/rsr/__init__.py -text
 mmtbx/rsr/rsr.h -text
@@ -1393,7 +1394,6 @@ mmtbx/validation/ramalyze.py svneol=native#text/x-python
 mmtbx/validation/rna_validate.py svneol=native#text/x-python
 mmtbx/validation/rotalyze.py svneol=native#text/x-python
 mmtbx/validation/sequence.py -text
-mmtbx/validation/tst_rotalyze.py -text
 mmtbx/validation/utils.py -text
 mmtbx/wwpdb/__init__.py -text
 mmtbx/wwpdb/standard_geometry_cif.py -text
