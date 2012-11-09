@@ -128,7 +128,7 @@ input {
          .type=path
          .help="Filename of reference PDB file"
          .short_caption = Reference PDB file
-         .style = file_type:pdb noauto input_file
+         .style = file_type:pdb noauto input_file OnChange:extract_symmetry
        }
      }
    }
