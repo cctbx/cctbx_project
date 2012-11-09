@@ -153,7 +153,17 @@ input {
        .help="SHall we include ccp4 style graphs?"
      }
 
-
+     merging
+      .short_caption = Merging options
+      .style = menu_item
+      {
+       n_bins = 10
+        .type = int
+        .short_caption = Number of bins
+       skip_merging = False
+        .type = bool
+        .expert_level = 1
+      }
 
       misc_twin_parameters
      .help="Various settings for twinning or symmetry tests"
@@ -390,15 +400,16 @@ Example usage:
 class xtriage_analyses(object):
   def __init__(self,
                miller_obs,
-               miller_calc = None,
-               miller_ref  = None,
-               parameters  = None,
-               text_out    = None,
-               plot_out    = None):
+               miller_calc  = None,
+               miller_ref   = None,
+               parameters   = None,
+               text_out     = None,
+               plot_out     = None,
+               unmerged_obs = None):
     self.miller_obs  = miller_obs   # array of observed data, should be intensity or amplitude
     self.miller_calc = miller_calc  # array if calculated data, need to be given
     self.miller_ref  = miller_ref   # array with 'reference' data, need not be given.
-    self.unmerged_obs = None
+    self.unmerged_obs = unmerged_obs # unmerged intensities, if available
 
     if self.miller_obs is not None:
       if (not self.miller_obs.is_unique_set_under_symmetry()) :
@@ -430,13 +441,25 @@ class xtriage_analyses(object):
     self.merging_stats = None
     if ((self.unmerged_obs is not None) and
         (self.unmerged_obs.is_xray_intensity_array())) :
-      from iotbx.command_line import merging_statistics
+      from iotbx import merging_statistics
       try :
         self.merging_stats = merging_statistics.dataset_statistics(
           i_obs=self.unmerged_obs,
-          out=self.text_out)
-        self.merging_stats.show(out=self.text_out)
+          crystal_symmetry=self.miller_obs,
+          d_min=self.params.scaling.input.xray_data.high_resolution,
+          d_max=self.params.scaling.input.xray_data.low_resolution,
+          n_bins=self.params.scaling.input.parameters.merging.n_bins,
+          log=self.text_out)
+        print >> self.text_out, """
+##------------------------------------------------------##
+##                    Merging statistics                ##
+##------------------------------------------------------##
+"""
+        self.merging_stats.show(out=self.text_out, header=False)
+        print >> self.text_out, ""
+        print >> self.text_out, "References:"
         print >> self.text_out, merging_statistics.citations_str
+        print >> self.text_out, ""
         self.merging_stats.show_loggraph(self.plot_out)
       except Exception, e :
         print >> self.text_out, \
@@ -723,7 +746,7 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
       force_symmetry = True,
       reflection_files=[])
 
-    miller_array = None
+    miller_array = unmerged_array = None
     miller_array = xray_data_server.get_xray_data(
       file_name = params.scaling.input.xray_data.file_name,
       labels = params.scaling.input.xray_data.obs_labels,
@@ -733,11 +756,28 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
     )
 
     info = miller_array.info()
+    if (info.merged) and (miller_array.is_xray_intensity_array()) :
+      from iotbx.reflection_file_reader import any_reflection_file
+      hkl_in_raw = any_reflection_file(
+        file_name=params.scaling.input.xray_data.file_name)
+      assert (hkl_in_raw.file_type() is not None)
+      raw_arrays = hkl_in_raw.as_miller_arrays(
+        crystal_symmetry=miller_array,
+        merge_equivalents=False)
+      for array in raw_arrays :
+        if (array.info().labels == info.labels) :
+          unmerged_array = array
+          print >> log, ""
+          print >> log, "Also reading unmerged data as %s" % \
+            array.info().label_string()
+          print >> log, ""
+          break
 
     if not miller_array.is_real_array():
       miller_array = abs( miller_array )
       from cctbx.xray import observation_types
-      miller_array = miller_array.set_observation_type( observation_types.amplitude() )
+      miller_array = miller_array.set_observation_type(
+        observation_types.amplitude() )
 
 
 
@@ -756,19 +796,23 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
 
     # first do a low reso cutn if applicable
     if params.scaling.input.xray_data.low_resolution is not None:
-      miller_array = miller_array.resolution_filter(d_max=params.scaling.input.xray_data.low_resolution)
+      miller_array = miller_array.resolution_filter(
+        d_max=params.scaling.input.xray_data.low_resolution)
     if params.scaling.input.xray_data.high_resolution is not None:
-      miller_array = miller_array.resolution_filter(d_min=params.scaling.input.xray_data.high_resolution)
+      miller_array = miller_array.resolution_filter(
+        d_min=params.scaling.input.xray_data.high_resolution)
 
     # make sure sigmas are okai, otherwise, cut them
     if (not miller_array.sigmas_are_sensible()):
       #clearly there is something wrong with the sigmas
       #forget about them I would say
-      miller_array = miller_array.customized_copy( indices=miller_array.indices(),
-                                                   data=miller_array.data(),
-                                                   sigmas=None ).set_observation_type( miller_array )
+      miller_array = miller_array.customized_copy(
+        indices=miller_array.indices(),
+        data=miller_array.data(),
+        sigmas=None ).set_observation_type( miller_array )
 
-    miller_array = miller_array.eliminate_sys_absent(integral_only=True, log=log)
+    miller_array = miller_array.eliminate_sys_absent(
+      integral_only=True, log=log)
 
     ## Check if Fcalc label is available
     f_calc_miller = None
@@ -899,12 +943,14 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
       if params.scaling.input.xray_data.reference.data.file_name is not None:
         reference_pass = True
 
-      xtriage_results = xtriage_analyses(miller_obs  = miller_array,
-                                         miller_calc = f_calc_miller,
-                                         miller_ref  = reference_array,
-                                         parameters  = params,
-                                         text_out    = log,
-                                         plot_out    = string_buffer )
+      xtriage_results = xtriage_analyses(
+        miller_obs   = miller_array,
+        miller_calc  = f_calc_miller,
+        miller_ref   = reference_array,
+        parameters   = params,
+        text_out     = log,
+        plot_out     = string_buffer,
+        unmerged_obs = unmerged_array)
 
     if params.scaling.input.optional.hklout is not None:
 
@@ -952,6 +998,7 @@ class xtriage_summary (object) :
     #         - mean intensity [ only if I available ]
     #         - ice-ring analysis
     #         - anomalous measurability [ only if Friedel pairs available ]
+    self.merging_stats = xtriage_results.merging_stats
     basic_results = xtriage_results.basic_results
     basic_attrs = ["nresidues",
                    "nbases",
@@ -1075,6 +1122,9 @@ class xtriage_summary (object) :
       return (self.rel_wilson_caption, self.rel_wilson_plot)
     else :
       return (None, None)
+
+  def get_merging_statistics (self) :
+    return getattr(self, "merging_stats", None)
 
 class launcher (runtime_utils.target_with_save_result) :
   def run (self) :
