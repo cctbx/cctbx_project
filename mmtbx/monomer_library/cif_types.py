@@ -630,6 +630,7 @@ _chem_comp_bond.atom_id_2
 _chem_comp_bond.type
 _chem_comp_bond.value_dist:float
 _chem_comp_bond.value_dist_esd:float
+_chem_comp_bond.value_dist_neutron:float
   """
 
   def atom_ids(O):
