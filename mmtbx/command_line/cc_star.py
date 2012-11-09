@@ -7,6 +7,7 @@ from libtbx import Auto
 import sys
 
 def merging_and_model_statistics (
+    f_obs,
     f_model,
     r_free_flags,
     unmerged_i_obs,
@@ -34,11 +35,13 @@ def merging_and_model_statistics (
     free_sel = free_sel.average_bijvoet_mates()
   work_sel = free_sel.customized_copy(data=~free_sel.data())
   i_obs, f_model = i_obs.common_sets(other=f_model)
+  i_obs, f_obs = i_obs.common_sets(other=f_obs)
   i_obs, work_sel = i_obs.common_sets(other=work_sel)
   i_obs, free_sel = i_obs.common_sets(other=free_sel)
   i_calc = abs(f_model).f_as_f_sq()
   d_max, d_min = i_calc.d_max_min()
   model_arrays = merging_statistics.model_based_arrays(
+    f_obs=f_obs,
     i_obs=i_obs,
     i_calc=i_calc,
     work_sel=work_sel,
@@ -57,9 +60,11 @@ data = None
   .type = path
   .help = Data file (usually MTZ) containing R-free flags and either the \
     pre-calculated F(model) array or experimental amplitudes or intensities.
-labels = None
+f_obs_labels = None
   .type = str
   .help = Column labels for F(model) or experimental data array
+f_model_labels = None
+  .type = str
 r_free_flags.label = None
   .type = str
   .help = Column label for R-free flags
@@ -112,7 +117,7 @@ Full parameters:
   f_models = []
   data_arrays = []
   f_model_labels = []
-  if (params.labels is None) :
+  if (params.f_model_labels is None) :
     for array in hkl_in.file_server.miller_arrays :
       labels = array.info().label_string()
       if (array.is_complex_array()) :
@@ -132,7 +137,7 @@ Full parameters:
     else :
       data_array = hkl_in.file_server.get_xray_data(
         file_name=params.data,
-        labels=None,
+        labels=params.f_obs_labels,
         ignore_all_zeros=True,
         parameter_scope="")
       if (data_array.is_xray_intensity_array()) :
@@ -150,18 +155,40 @@ Full parameters:
       print >> out, ""
   else :
     for array in hkl_in.file_server.miller_arrays :
-      labels = array.info().label_string()
-      if (labels == params.labels) :
+      array_labels = array.info().label_string()
+      if (array_labels == params.f_model_labels) :
         if (array.is_complex_array()) :
           f_model = array
-        elif (array.is_xray_intensity_array() or
-              array.is_xray_amplitude_array()) :
-          f_obs = array
+          break
         else :
-          raise Sorry(("The data in %s are not of the required type.  Either "+
-            "F(model) or experimental amplitues or intensities must be used.")%
-            labels)
+          raise Sorry("The data in %s are not of the required type." %
+            array_labels)
+  if (f_model is not None) :
+    assert (f_obs is None)
+    for array in hkl_in.file_server.miller_arrays :
+      labels = array.info().label_string()
+      if (labels == params.f_obs_labels) :
+        f_obs = array
         break
+    else :
+      try :
+        f_obs = hkl_in.file_server.get_amplitudes(
+          file_name=params.f_obs_labels,
+          labels=None,
+          convert_to_amplitudes_if_necessary=False,
+          parameter_name="f_obs_labels",
+          parameter_scope="",
+          strict=True)
+      except Sorry :
+        raise Sorry("You must supply a file containing both F-obs and F-model "+
+          "if you want to use a pre-calculated F-model array.")
+  assert (f_obs.is_xray_amplitude_array())
+  if (f_obs.anomalous_flag()) :
+    info = f_obs.info()
+    f_obs = f_obs.average_bijvoet_mates().set_info(info)
+  print >> out, "F(obs):"
+  f_obs.show_summary(f=out, prefix="  ")
+  print >> out, ""
   r_free_flags, test_flag_value = hkl_in.file_server.get_r_free_flags(
     file_name=params.data,
     label=params.r_free_flags.label,
@@ -214,6 +241,7 @@ Full parameters:
     f_model, r_free_flags = f_model.common_sets(other=r_free_flags)
   stats = merging_and_model_statistics(
     f_model=f_model,
+    f_obs=f_obs,
     r_free_flags=r_free_flags,
     unmerged_i_obs=unmerged_i_obs,
     n_bins=params.n_bins,
