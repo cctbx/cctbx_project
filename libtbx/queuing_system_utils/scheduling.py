@@ -369,7 +369,9 @@ class Manager(object):
   @property
   def results(self):
 
-    return ResultIterator( manager = self )
+    while self.known_jobs:
+      self.wait()
+      yield self.completed_results.popleft()
 
 
   def results_in_order_of(self, identifiers):
@@ -753,3 +755,129 @@ class MainthreadManager(object):
       job.postprocess()
       result = job.get()
       self.completed_results.append( result )
+
+
+# Parallel execution iterator
+class ParallelForIterator(object):
+  """
+  Creates an iterator that executes a function with variable input argument on a
+  Manager-like object
+
+  function - the function to execute
+  calculations - an iterable of calculations yielding ( target, args, kwargs ) tuples
+  manager - execution manager
+  """
+
+  def __init__(self, calculations, manager):
+
+    self.calcsiter = iter( calculations )
+    self.manager = manager
+
+    self.process = self._ongoing
+
+
+  def _ongoing(self, orderer):
+
+    while not self.manager.is_full():
+      try:
+        ( target, args, kwargs ) = self.calcsiter.next()
+
+      except StopIteration:
+        self.process = self._terminating
+        break
+
+      identifier = self.manager.submit(
+          target = target,
+          args = args,
+          kwargs = kwargs,
+          )
+      orderer.job_submitted( identifier = identifier )
+
+
+  def _terminating(self, orderer):
+
+    pass
+
+
+  def suspend(self):
+
+    self.process = self._terminating
+
+
+  def restart(self):
+
+    self.process = self._ongoing
+
+
+  def next(self, orderer):
+
+    result = self.manager.results.next() # raise StopIteration
+    self.process( orderer = orderer )
+    return ( result.identifier, result )
+
+
+class FinishingOrder(object):
+  """
+  Results returned as jobs finish
+  """
+
+  def __init__(self, parallel_for):
+
+    self.parallel_for = parallel_for
+    self.parallel_for.process( orderer = self )
+
+
+  def job_submitted(self, identifier):
+
+    pass
+
+
+  def next(self):
+
+    ( identifier, result ) = self.parallel_for.next( orderer = self )
+    return ( ( identifier.target, identifier.args, identifier.kwargs ), result )
+
+
+  def __iter__(self):
+
+    return self
+
+
+class SubmissionOrder(object):
+  """
+  Results returned as they are submitted
+  """
+
+  def __init__(self, parallel_for):
+
+    self.parallel_for = parallel_for
+    self.submitteds = deque()
+    self.result_for = {}
+    self.parallel_for.process( orderer = self )
+
+
+  def job_submitted(self, identifier):
+
+    self.submitteds.append( identifier )
+
+
+  def next(self):
+
+    if not self.submitteds:
+      raise StopIteration
+
+    first = self.submitteds.popleft()
+
+    while first not in self.result_for:
+      ( identifier, result ) = self.parallel_for.next( orderer = self )
+      self.result_for[ identifier ] = result
+
+    result = self.result_for[ first ]
+    del self.result_for[ first ]
+    return ( ( first.target, first.args, first.kwargs ), result )
+
+
+  def __iter__(self):
+
+    return self
+
