@@ -204,6 +204,17 @@ Please specify an unambiguous substring of the target label.
     parameter_name="labels")
   assert str(ampl.info()) == "tmp_rfu3.mtz:F3,as_amplitude_array"
   assert ampl.is_real_array()
+  ampl = reflection_file_srv.get_amplitudes(
+    file_name=None,
+    labels=None,
+    convert_to_amplitudes_if_necessary=False,
+    parameter_scope="amplitudes",
+    parameter_name="labels",
+    return_all_valid_arrays=True,
+    strict=True)
+  assert (len(ampl) == 2)
+  for f in ampl :
+    assert (not f.is_xray_intensity_array()) and (not f.is_complex_array())
   #
   phases = reflection_file_srv.get_phases_deg(
     file_name=None,

@@ -133,11 +133,11 @@ def presumably_from_mtz_FQDQY(miller_array):
   lbls = miller_array.info().labels
   return (lbls is not None and len(lbls) == 5)
 
-def get_amplitude_scores(miller_arrays):
+def get_amplitude_scores(miller_arrays, strict=False):
   result = []
   for miller_array in miller_arrays:
     score = 0
-    if (miller_array.is_complex_array()):
+    if (miller_array.is_complex_array()) and (not strict) :
       score = 1
     elif (miller_array.is_real_array()):
       if (miller_array.is_xray_reconstructed_amplitude_array()):
@@ -147,7 +147,7 @@ def get_amplitude_scores(miller_arrays):
           score = 2
       elif (miller_array.is_xray_amplitude_array()):
         score = 5
-      elif (miller_array.is_xray_intensity_array()):
+      elif (miller_array.is_xray_intensity_array()) and (not strict) :
         score = 4
     result.append(score)
   return result
@@ -180,7 +180,7 @@ def get_phase_scores(miller_arrays):
   return result
 
 def get_xray_data_scores(miller_arrays, ignore_all_zeros,
-    prefer_anomalous=None):
+    prefer_anomalous=None) :
   result = []
   for miller_array in miller_arrays:
     if (not miller_array.is_real_array()):
@@ -514,9 +514,11 @@ class reflection_file_server(object):
         parameter_scope,
         parameter_name,
         return_all_valid_arrays=False,
-        minimum_score=1):
+        minimum_score=1,
+        strict=False):
     miller_arrays = self.get_miller_arrays(file_name=file_name)
-    data_scores = get_amplitude_scores(miller_arrays=miller_arrays)
+    data_scores = get_amplitude_scores(miller_arrays=miller_arrays,
+      strict=strict)
     if (parameter_scope is not None):
       parameter_name = parameter_scope + "." + parameter_name
     if return_all_valid_arrays :
