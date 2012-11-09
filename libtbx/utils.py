@@ -1086,7 +1086,14 @@ def getcwd_safe () :
       raise e
   return cwd
 
-def getcwd_or_default (default="/") :
+def getcwd_or_default (default=None) :
+  if (default is None) :
+    if (os.name == "nt") :
+      home_drive = os.environ.get("HOMEDRIVE", "C:")
+      home_dir = os.environ.get("HOMEPATH", "\\")
+      default = home_drive + home_dir
+    else :
+      default = os.environ.get("HOME", "/")
   try :
     cwd = os.getcwd()
   except OSError, e :
