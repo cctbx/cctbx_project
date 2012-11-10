@@ -173,10 +173,12 @@ class reflections_handler (iotbx.gui_tools.manager) :
       miller_arrays = hkl_server.get_amplitudes(
         file_name               = None,
         labels                  = None,
-        ignore_all_zeros        = False,
+        convert_to_amplitudes_if_necessary = False,
         parameter_scope         = "",
+        parameter_name          = "",
         return_all_valid_arrays = True,
-        minimum_score           = self.minimum_data_score)
+        minimum_score           = 1,
+        strict                  = True)
       return miller_arrays
     return []
 
@@ -229,6 +231,19 @@ class reflections_handler (iotbx.gui_tools.manager) :
 
   def has_anomalous_data (self, *args, **kwds) :
     return (len(self.get_anomalous_data_labels(*args, **kwds)) > 0)
+
+  def get_fmodel_labels (self, *args, **kwds) :
+    hkl_file = self.get_file(*args, **kwds)
+    labels_list = []
+    if (hkl_file is not None) :
+      for miller_array in hkl_file.file_server.miller_arrays :
+        if (miller_array.is_complex_array()) :
+          labels = miller_array.info().label_string()
+          if (labels.startswith("F-model") or
+              labels.upper().startswith("FMODEL") or
+              labels.upper().startswith("FC")) :
+            labels_list.append(labels)
+    return labels_list
 
   def get_map_coeff_labels (self, *args, **kwds) :
     # FIXME this is just gross...

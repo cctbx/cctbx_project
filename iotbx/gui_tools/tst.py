@@ -13,16 +13,47 @@ def find_file (file_name) :
     test=os.path.isfile)
   return full_path
 
+regression_dir = libtbx.env.find_in_repositories(
+  relative_path="phenix_regression",
+  test=os.path.isdir)
+
+phil_names = ["refinement.input.xray_data.file_name",
+              "refinement.input.xray_data.r_free_flags.file_name",
+              "refinement.input.neutron_data.file_name",
+              "refinement.input.neutron_data.r_free_flags.file_name",
+              "refinement.input.experimental_phases.file_name"]
+
 def exercise_reflections () :
-  phil_names = ["refinement.input.xray_data.file_name",
-                "refinement.input.xray_data.r_free_flags.file_name",
-                "refinement.input.neutron_data.file_name",
-                "refinement.input.neutron_data.r_free_flags.file_name",
-                "refinement.input.experimental_phases.file_name"]
   hkl_handler = reflections.reflections_handler(allowed_param_names=phil_names)
-  file_name = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/reflection_files/xn_data_ricardo_leal.mtz",
-    test=os.path.isfile)
+  from cctbx import miller
+  from cctbx import crystal
+  from cctbx.array_family import flex
+  symm = crystal.symmetry(
+    unit_cell=(30,30,40,90,90,120),
+    space_group_symbol="P 61 2 2")
+  miller_set = miller.build_set(
+    crystal_symmetry=symm,
+    anomalous_flag=True,
+    d_min=1.5)
+  n_refl = miller_set.indices().size()
+  data = flex.random_double(n_refl)
+  sigmas = flex.random_double(n_refl)
+  f_obs = miller_set.array(data=data, sigmas=sigmas)
+  f_obs_merged = f_obs.average_bijvoet_mates()
+  flags = f_obs_merged.generate_r_free_flags()
+  data_neutron = flex.random_double(n_refl)
+  sigmas_neutron = flex.random_double(n_refl)
+  f_obs_neutron = miller_set.array(data=data_neutron, sigmas=sigmas_neutron)
+  mtz_dataset = f_obs_merged.as_mtz_dataset(
+    column_root_label="F-obs")
+  mtz_dataset.add_miller_array(f_obs_neutron,
+    column_root_label="F-obs-neutron")
+  mtz_dataset.add_miller_array(flags,
+    column_root_label="R-free-flags")
+  mtz_dataset.add_miller_array(flags.deep_copy(),
+    column_root_label="R-free-flags-neutron")
+  file_name = "tst_iotbs_gui_tools.mtz"
+  mtz_dataset.mtz_object().write(file_name)
   assert (hkl_handler.set_param_file(file_name=file_name,
           file_param_name="refinement.input.xray_data.file_name") == True)
   for i, phil_name in enumerate(phil_names[1:4]) :
@@ -36,6 +67,7 @@ def exercise_reflections () :
   assert (hkl_handler.get_data_labels(
           file_param_name="refinement.input.xray_data.file_name") ==
           hkl_handler.get_data_labels(file_name=file_name) ==
+          hkl_handler.get_amplitude_labels(file_name=file_name) ==
           ["F-obs,SIGF-obs", "F-obs-neutron(+),SIGF-obs-neutron(+)," +
                              "F-obs-neutron(-),SIGF-obs-neutron(-)"])
   assert (hkl_handler.get_anomalous_data_labels(
@@ -49,47 +81,43 @@ def exercise_reflections () :
   assert (hkl_handler.get_rfree_flag_value(array_name='R-free-flags',
     file_param_name="refinement.input.xray_data.r_free_flags.file_name") == 1)
   (d_max, d_min) = hkl_handler.d_max_min()
-  assert approx_equal(d_max, 28.61, eps=0.01)
-  assert approx_equal(d_min, 1.93, eps=0.01)
+  assert approx_equal(d_max, 25.98, eps=0.01)
+  assert approx_equal(d_min, 1.5, eps=0.01)
   assert hkl_handler.space_group_as_str() == "P 61 2 2"
   assert (hkl_handler.unit_cell_as_str() ==
-          "33.0343 33.0343 78.4404 90 90 120")
+          "30 30 40 90 90 120")
   assert (hkl_handler.unit_cell_as_str(separator=",") ==
-          "33.0343,33.0343,78.4404,90,90,120")
-  cns_file = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/reflection_files/enk.hkl",
-    test=os.path.isfile)
-  hkl_handler.save_file(file_name=cns_file)
-  try :
-    hkl_handler.check_symmetry(file_name=cns_file)
-  except Sorry :
-    pass
-  else :
-    raise Exception_expected
-  sca_file = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/reflection_files/merge.sca",
-    test=os.path.isfile)
-  hkl_handler.save_file(file_name=sca_file)
-  assert (hkl_handler.get_intensity_labels(file_name=sca_file) ==
-          ['I(+),SIGI(+),I(-),SIGI(-)'])
+          "30,30,40,90,90,120")
 
-  # test handling of reconstructed (anomalous) amplitudes
-  dano_file = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/reflection_files/dano.mtz",
-    test=os.path.isfile)
-  hkl_handler = reflections.reflections_handler(
-    allowed_param_names=["labin"])
-  hkl_handler.set_param_file(file_name=dano_file,
-    file_param_name="labin")
-  labels = hkl_handler.get_anomalous_data_labels(file_param_name="labin")
-  assert (len(labels) == 3)
-  labels = hkl_handler.get_anomalous_data_labels(file_param_name="labin",
-    allow_reconstructed_amplitudes=False)
-  assert (len(labels) == 0)
-
-  resolve_file = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/wizards/resolve_1_offset.mtz",
-    test=os.path.isfile)
+  n_refl_merged = len(f_obs_merged.indices())
+  phi_array = f_obs_merged.random_phases_compatible_with_phase_restrictions(
+    deg=True)
+  fom_array = phi_array.array(data=flex.random_double(n_refl_merged))
+  hl_data = flex.hendrickson_lattman(n_refl_merged, (0,0,0,0))
+  hl_coeffs = phi_array.array(data=hl_data)
+  assert (hl_coeffs.is_hendrickson_lattman_array())
+  from iotbx.mtz import label_decorator
+  class resolve_label_decorator (label_decorator) :
+    def phases (self, *args, **kwds) :
+      return label_decorator.phases(self, *args, **kwds) + "M"
+    def hendrickson_lattman (self, *args, **kwds) :
+      return label_decorator.hendrickson_lattman(self, *args, **kwds) + "M"
+  mtz_dataset = f_obs_merged.as_mtz_dataset(
+    column_root_label="FP")
+  mtz_dataset.add_miller_array(phi_array,
+    column_root_label="PHIM",
+    label_decorator=resolve_label_decorator(),
+    column_types="P")
+  mtz_dataset.add_miller_array(fom_array,
+    column_root_label="FOMM",
+    column_types="W")
+  mtz_dataset.add_miller_array(hl_coeffs,
+    column_root_label="HL",
+    label_decorator=resolve_label_decorator())
+  mtz_dataset.add_miller_array(flags,
+    column_root_label="FreeR_flag")
+  resolve_file = "tst_iotbx_gui_tools_resolve.mtz"
+  mtz_dataset.mtz_object().write(resolve_file)
   hkl_handler = reflections.reflections_handler(
     allowed_param_names=["map_coeffs"])
   hkl_handler.set_param_file(
@@ -107,7 +135,7 @@ def exercise_reflections () :
   l5 = hkl_handler.get_map_coeff_labels_for_build(file_name=resolve_file)
   assert (l5 == ['FP,PHIM,FOMM'])
   hkl_in = hkl_handler.get_file(file_name=resolve_file)
-  assert (reflections.get_mtz_label_prefix(hkl_in) == "/NoName/NoName")
+  assert (reflections.get_mtz_label_prefix(hkl_in) == "/crystal/dataset")
   map_coeffs = reflections.map_coeffs_from_mtz_file(resolve_file,
     f_label="FP,SIGFP")
   assert map_coeffs.is_complex_array()
@@ -121,44 +149,102 @@ def exercise_reflections () :
     ['FP,SIGFP PHIM FOMM'])
 
   # miscellaneous utilities
-  file_name = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/wizards/map_coeffs.mtz",
-    test=os.path.isfile)
+  file_name = resolve_file
   hkl_in = file_reader.any_file(file_name)
   hkl_server = hkl_in.file_server
-  assert approx_equal(reflections.get_high_resolution(hkl_server), 2.0,
+  assert approx_equal(reflections.get_high_resolution(hkl_server), 1.5,
     eps=0.0001)
   descriptions = []
   for miller_array in hkl_server.miller_arrays :
     (sg, uc) = reflections.get_miller_array_symmetry(miller_array)
-    assert (uc == "60.832 38.293 42.211 90 90 90")
-    assert str(sg) == "C 2 2 21"
+    assert (uc == "30 30 40 90 90 120")
+    assert (str(sg) == "P 61 2 2")
     descriptions.append(reflections.get_array_description(miller_array))
   assert descriptions == [
     'Amplitude', 'Phases', 'Weights', 'HL coeffs', 'R-free flag']
   handler = reflections.reflections_handler()
   handler.save_file(input_file=hkl_in)
   assert (not handler.has_anomalous_data())
-  assert (handler.get_resolution_range(file_name=file_name)=="(19.146 - 2.000)")
+  assert (handler.get_resolution_range(file_name=file_name)=="(25.981 - 1.500)")
   assert (handler.get_resolution_limits(file_name=file_name) ==
-          ('(19.146)', '(2.000)'))
-  file_name = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/wizards/partial_refine_001_map_coeffs.mtz",
-    test=os.path.isfile)
+          ('(25.981)', '(1.500)'))
+  fmodel = phi_array.array(data=flex.complex_double(n_refl_merged,
+    complex(0.5,0.8)))
+  m1 = phi_array.array(data=flex.complex_double(n_refl_merged, complex(1,0)))
+  m2 = phi_array.array(data=flex.complex_double(n_refl_merged, complex(0.5,0)))
+  m3 = phi_array.array(flex.complex_double(n_refl_merged, complex(1,1)))
+  dec = label_decorator(phases_prefix="PH")
+  mtz_dataset = fmodel.as_mtz_dataset(
+    column_root_label="F-model",
+    label_decorator=dec)
+  mtz_dataset.add_miller_array(m1,
+    column_root_label="2FOFCWT",
+    label_decorator=dec)
+  mtz_dataset.add_miller_array(m2,
+    column_root_label="FOFCWT",
+    label_decorator=dec)
+  mtz_dataset.add_miller_array(m3,
+    column_root_label="2FOFCWT_no_fill",
+    label_decorator=dec)
+  file_name = "tst_iotbx_gui_tools_map_coeffs.mtz"
+  mtz_dataset.mtz_object().write(file_name)
+  hkl_handler = reflections.reflections_handler(
+    allowed_param_names=["fmodel", "map_coeffs"])
+  hkl_handler.set_param_file(
+    file_name=file_name,
+    file_param_name="fmodel")
+  assert (hkl_handler.get_fmodel_labels(file_name=file_name) ==
+    ['F-model,PHF-model'])
+  assert (hkl_handler.get_amplitude_labels(file_name=file_name) == [])
   hkl_server = file_reader.any_file(file_name).file_server
   map_labels = reflections.get_map_coeff_labels(hkl_server)
   assert (map_labels == ['2FOFCWT,PH2FOFCWT', 'FOFCWT,PHFOFCWT',
-    '2FOFCWT_no_fill,PH2FOFCWT_no_fill', 'FOFCWT_no_fill,PHFOFCWT_no_fill'])
+    '2FOFCWT_no_fill,PH2FOFCWT_no_fill',])
   map_labels = reflections.get_map_coeffs_for_build(hkl_server)
   assert map_labels == ['2FOFCWT,PH2FOFCWT','2FOFCWT_no_fill,PH2FOFCWT_no_fill']
   map_coeffs = reflections.extract_phenix_refine_map_coeffs(file_name)
-  assert (len(map_coeffs) == 4)
+  assert (len(map_coeffs) == 3)
   hkl_file = file_reader.any_file(file_name)
   assert reflections.get_mtz_label_prefix(hkl_file) == "/crystal/dataset"
+  # other stuff
   (fp, fpp) = reflections.get_fp_fpp_from_sasaki("Se", 0.979)
   assert fp is not None and fpp is not None
 
+def exercise_other_reflection_formats () :
+  hkl_handler = reflections.reflections_handler(allowed_param_names=phil_names)
+  # test other file formats (requires phenix_regression)
+  if (regression_dir is None) :
+    print "phenix_regression not found, skipping exercise_other_reflection_formats()"
+    return
+  cns_file = os.path.join(regression_dir, "reflection_files", "enk.hkl")
+  hkl_handler.save_file(file_name=cns_file)
+  try :
+    hkl_handler.check_symmetry(file_name=cns_file)
+  except Sorry :
+    pass
+  else :
+    raise Exception_expected
+  sca_file = os.path.join(regression_dir, "reflection_files", "merge.sca")
+  hkl_handler.save_file(file_name=sca_file)
+  assert (hkl_handler.get_intensity_labels(file_name=sca_file) ==
+          ['I(+),SIGI(+),I(-),SIGI(-)'])
+  assert (hkl_handler.get_amplitude_labels(file_name=sca_file) == [])
+  # test handling of reconstructed (anomalous) amplitudes
+  dano_file = os.path.join(regression_dir, "reflection_files", "dano.mtz")
+  hkl_handler = reflections.reflections_handler(
+    allowed_param_names=["labin"])
+  hkl_handler.set_param_file(file_name=dano_file,
+    file_param_name="labin")
+  labels = hkl_handler.get_anomalous_data_labels(file_param_name="labin")
+  assert (len(labels) == 3)
+  labels = hkl_handler.get_anomalous_data_labels(file_param_name="labin",
+    allow_reconstructed_amplitudes=False)
+  assert (len(labels) == 0)
+
 def exercise_model () :
+  if (regression_dir is None) :
+    print "phenix_regression not found, skipping exercise_model()"
+    return
   model_handler = models.model_handler(
     allowed_param_names=["refinement.input.pdb.file_name",
       "refinement.reference_model.file"],
@@ -220,12 +306,7 @@ def exercise_model () :
           "59.227 55.922 60.264 90 90 90")
 
 if (__name__ == "__main__") :
-  hkl_dir = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression",
-    test=os.path.isdir)
-  if (hkl_dir is None) :
-    print "phenix_regression/reflection_files not found, skipping tests."
-  else :
-    exercise_model()
-    exercise_reflections()
-    print "OK"
+  exercise_reflections()
+  exercise_other_reflection_formats()
+  exercise_model()
+  print "OK"
