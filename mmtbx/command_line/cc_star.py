@@ -1,9 +1,10 @@
 
 from __future__ import division
-from libtbx.str_utils import make_sub_header
+from libtbx.str_utils import make_sub_header, format_value
 from libtbx.utils import Sorry, Usage
-import libtbx.phil
+from libtbx import runtime_utils
 from libtbx import Auto
+import libtbx.phil
 import sys
 
 def merging_and_model_statistics (
@@ -60,31 +61,53 @@ data = None
   .type = path
   .help = Data file (usually MTZ) containing R-free flags and either the \
     pre-calculated F(model) array or experimental amplitudes or intensities.
+  .style = file_type:hkl input_file bold process_hkl child:ampl:f_obs_labels \
+           child:rfree:r_free_flags.label child:fmodel:f_model_labels \
+           force_data
 f_obs_labels = None
   .type = str
-  .help = Column labels for F(model) or experimental data array
+  .help = Column labels for experimental data array
+  .short_caption = F(obs) labels
+  .input_size = 150
+  .style = bold renderer:draw_fobs_label_widget
 f_model_labels = None
   .type = str
+  .short_caption = F(model) labels
+  .style = renderer:draw_fmodel_label_widget
+  .input_size = 150
 r_free_flags.label = None
   .type = str
   .help = Column label for R-free flags
+  .short_caption = Free R label
+  .style = bold renderer:draw_rfree_label_widget
+  .input_size = 150
 r_free_flags.test_flag_value = None
   .type = int
   .help = Test flag value.  Not normally required.
 model = None
   .type = path
   .help = PDB file, required if F(model) is not pre-calculated.
+  .style = file_type:pdb input_file
 unmerged_data = None
   .type = path
   .help = File containing scaled, unmerged intensities
+  .style = bold file_type:hkl OnChange:extract_unmerged_intensities input_file
 unmerged_labels = None
   .type = str
   .help = Labels for unmerged intensity array
+  .style = bold renderer:draw_unmerged_intensities_widget
+  .input_size = 150
 n_bins = 20
-  .type = int(value_min=5)
+  .type = int(value_min=5, value_max=50)
   .help = Number of resolution bins
+  .input_size = 64
+  .style = spinner
 include scope iotbx.merging_statistics.sigma_filtering_phil_str
+include scope libtbx.phil.interface.tracking_params
+loggraph = False
+  .type = bool
 """, process_includes=True)
+master_params = master_phil # for phenix GUI
 
 def run (args, out=sys.stdout) :
   if (len(args) == 0) or ("--help" in args) :
@@ -247,11 +270,46 @@ Full parameters:
     n_bins=params.n_bins,
     sigma_filtering=params.sigma_filtering)
   stats.show_cc_star(out=out)
+  if (params.loggraph) :
+    stats.show_loggraph(out=out)
   print >> out, ""
   print >> out, "Reference:"
   print >> out, "  Karplus PA & Diederichs K (2012) Science 336:1030-3."
   print >> out, ""
   return stats
+
+def validate_params (params) :
+  if (params.data is None) or (params.f_obs_labels is None) :
+    raise Sorry("No experimental data supplied!")
+  if (params.f_model_labels is None) and (params.model is None) :
+    raise Sorry("You must supply either a pre-calculated F(model) array, "+
+      "or the current refined model.")
+  return True
+
+class launcher (runtime_utils.target_with_save_result) :
+  def run (self) :
+    return run(args=list(self.args), out=sys.stdout)
+
+def finish_job (result) :
+  stats = []
+  if (result is not None) :
+    stats = [
+      ("High resolution", format_value("%.3g", result.overall.d_min)),
+      ("Redundancy", format_value("%.1f", result.overall.mean_redundancy)),
+      ("<I/sigma>", format_value("%.2g", result.overall.i_over_sigma_mean)),
+      ("<I/sigma> (high-res)", format_value("%.2g",
+        result.bins[-1].i_over_sigma_mean)),
+      ("Completeness", format_value("%.1f%%", result.overall.completeness*100)),
+      ("Completeness (high-res)", format_value("%.1f%%",
+        result.bins[-1].completeness*100)),
+      ("CC*", format_value("%.3f", result.overall.cc_star)),
+      ("CC* (high-res)", format_value("%.3f", result.bins[-1].cc_star)),
+      ("CC(work)", format_value("%.3f", result.overall.cc_work)),
+      ("CC(work) (high-res)", format_value("%.3f", result.bins[-1].cc_work)),
+      ("CC(free)", format_value("%.3f", result.overall.cc_free)),
+      ("CC(free) (high-res)", format_value("%.3f", result.bins[-1].cc_free)),
+    ]
+  return ([], stats)
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
