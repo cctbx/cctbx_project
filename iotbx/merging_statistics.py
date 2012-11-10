@@ -266,10 +266,26 @@ class merging_stats (object) :
              "%.3f" % self.r_pim,
              "%.3f" % self.cc_one_half ]
 
+  def format_for_cc_star_gui (self) :
+      return [ "%.2f - %.2f" % (self.d_max, self.d_min),
+             str(self.n_uniq),
+             "%.1f %%" % (self.completeness * 100),
+             "%.1f" % self.i_over_sigma_mean,
+             "%.3f" % self.cc_one_half,
+             "%.3f" % self.cc_star,
+              format_value("%5.3f", self.cc_work),
+              format_value("%5.3f", self.cc_free),
+              format_value("%5.3f", self.r_work),
+              format_value("%5.3f", self.r_free) ]
+
   def table_data (self) :
-    return [(1/self.d_min**2), self.n_obs, self.n_uniq, self.mean_redundancy,
+    table = [(1/self.d_min**2), self.n_obs, self.n_uniq, self.mean_redundancy,
             self.completeness*100, self.i_mean, self.i_over_sigma_mean,
             self.r_merge, self.r_meas, self.r_pim, self.cc_one_half]
+    if (self.cc_work is not None) :
+      table.extend([self.cc_star, self.cc_work, self.cc_free, self.r_work,
+        self.r_free])
+    return table
 
   def show_summary (self, out=sys.stdout) :
     print >> out, "Resolution: %.2f - %.2f" % (self.d_max, self.d_min)
@@ -342,13 +358,24 @@ class dataset_statistics (object) :
       debug=debug,
       sigma_filtering=sigma_filtering)
     self.bins = []
+    title = "Intensity merging statistics"
+    column_labels = ["1/d**2","N(obs)","N(unique)","Redundancy","Completeness",
+        "Mean(I)", "Mean(I/sigma)", "R-merge", "R-meas", "R-pim", "CC1/2"]
+    graph_names = ["Reflection counts", "Redundancy", "Completeness",
+        "Mean(I)", "Mean(I/sigma)", "R-factors", "CC1/2"]
+    graph_columns = [[0,1,2],[0,3],[0,4],[0,5],[0,6],[0,7,8,9],[0,10]]
+    #--- CC* mode
+    if (model_arrays is not None) :
+      title = "Model quality and intensity merging statistics"
+      column_labels.extend(["CC*", "CC(work)", "CC(free)", "R-work", "R-free"])
+      graph_names.extend(["CC*", "Model R-factors"])
+      graph_columns.extend([[0,11,12,13],[0,14,15]])
+    #---
     self.table = data_plots.table_data(
-      title="Intensity merging statistics",
-      column_labels=["1/d**2","N(obs)","N(unique)","Redundancy","Completeness",
-        "Mean(I)", "Mean(I/sigma)", "R-merge", "R-meas", "R-pim", "CC1/2"],
-      graph_names=["Reflection counts", "Redundancy", "Completeness",
-        "Mean(I)", "Mean(I/sigma)", "R-factors", "CC1/2"],
-      graph_columns=[[0,1,2],[0,3],[0,4],[0,5],[0,6],[0,7,8,9],[0,10]],
+      title=title,
+      column_labels=column_labels,
+      graph_names=graph_names,
+      graph_columns=graph_columns,
       x_is_inverse_d_min=True,
       force_exact_x_labels=True)
     last_bin = None
