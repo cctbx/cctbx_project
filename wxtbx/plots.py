@@ -3,6 +3,7 @@ from __future__ import division
 from wxtbx import bitmaps
 import wx
 from libtbx import object_oriented_patterns as oop
+from libtbx.math_utils import ifloor
 from libtbx import adopt_init_args
 import math
 import sys
@@ -291,18 +292,23 @@ class iotbx_data_plot_base (plot_container) :
       self.p.get_axes().set_xlabel("Resolution",
         fontproperties=self.get_font("axis_label"))
       if (getattr(self.tables[0], "force_exact_x_labels", False)) :
-        xticks = self.tables[0].get_x_values()
-        self.p.get_axes().set_xticks(xticks)
+        xticks_ = self.tables[0].get_x_values()
       else :
-        xticks = self.p.get_axes().get_xticks()
+        xticks_ = self.p.get_axes().get_xticks()
+      n_skip = max(1, ifloor(len(xticks_) / 10))
+      xticks = []
       xticklabels = []
-      for x in xticks :
+      k = 0
+      while (k < len(xticks_)) :
+        x = xticks_[k]
+        xticks.append(x)
         if (x != 0) :
           x = math.sqrt(1 / x)
           xticklabels.append("%.2f" % x)
         else : # FIXME?
           xticklabels.append("")
-      #self.p.get_axes().set_xticks(xticks)
+        k += n_skip
+      self.p.get_axes().set_xticks(xticks)
       self.p.get_axes().set_xticklabels(xticklabels)
     else :
       if self.graph.x_axis_label is not None :
