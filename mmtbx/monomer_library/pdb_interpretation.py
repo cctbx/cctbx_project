@@ -4567,7 +4567,7 @@ class process(object):
           self.all_chain_proxies.time_building_chain_proxies,
           self.all_chain_proxies.time_building_chain_proxies * 1000
             / max(1,self.all_chain_proxies.pdb_atoms.size()))
-    
+
     self._geometry_restraints_manager = None
     self._xray_structure = None
 
