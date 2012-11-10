@@ -1242,6 +1242,27 @@ class _(boost.python.injector, pair_sym_table):
             break
     return result
 
+  def symmetry_edge_list(self):
+    result = []
+    for i_seq,pair_sym_dict in enumerate(self):
+      for j_seq,sym_ops in pair_sym_dict.items():
+        for sym_op in sym_ops:
+          if not (sym_op.is_unit_mx()):
+            result.append((i_seq, j_seq, sym_op))
+    return result
+
+  def both_edge_list(self):
+    simple = []
+    sym = []
+    for i_seq,pair_sym_dict in enumerate(self):
+      for j_seq,sym_ops in pair_sym_dict.items():
+        for sym_op in sym_ops:
+          if (sym_op.is_unit_mx()):
+            simple.append((i_seq, j_seq))
+          else:
+            sym.append((i_seq, j_seq, sym_op))
+    return simple, sym
+
   def full_simple_connectivity(self):
     result = shared.stl_set_unsigned(self.size())
     for i_seq,pair_sym_dict in enumerate(self):

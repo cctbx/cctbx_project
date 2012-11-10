@@ -618,6 +618,54 @@ class _(boost.python.injector, nonbonded_sorted_asu_proxies):
         prefix)
     return histogram
 
+  def get_sorted(self,
+                 by_value,
+                 sites_cart,
+                 site_labels=None,
+                 max_items=None,
+                 ):
+    assert by_value in ["delta"]
+    deltas = nonbonded_deltas(sites_cart=sites_cart, sorted_asu_proxies=self)
+    if (deltas.size() == 0): return
+    if (max_items is not None and max_items <= 0): return
+    i_proxies_sorted = flex.sort_permutation(data=deltas)
+    if (max_items is not None):
+      i_proxies_sorted = i_proxies_sorted[:max_items]
+    if (self.asu.size() == 0):
+      asu_mappings = None
+    else:
+      asu_mappings = self.asu_mappings()
+    n_simple = self.simple.size()
+    sorted_table=[]
+    for i_proxy in i_proxies_sorted:
+      if (i_proxy < n_simple):
+        proxy = self.simple[i_proxy]
+        i_seq,j_seq = proxy.i_seqs
+        rt_mx = None
+        sym_op_j = ""
+      else:
+        proxy = self.asu[i_proxy-n_simple]
+        i_seq,j_seq = proxy.i_seq,proxy.j_seq
+        rt_mx = asu_mappings.get_rt_mx_ji(pair=proxy)
+        sym_op_j = " sym.op."
+      labels = []
+      for i in [i_seq, j_seq]:
+        if (site_labels is None): l = str(i)
+        else:                     l = site_labels[i]
+        labels.append(l)
+      m, v = deltas[i_proxy], proxy.vdw_distance
+      sorted_table.append(
+        (labels,
+         i_seq,
+         j_seq,
+         deltas[i_proxy],
+         proxy.vdw_distance,
+         sym_op_j,
+         rt_mx)
+        )
+    n_not_shown = deltas.size() - i_proxies_sorted.size()
+    return sorted_table, n_not_shown
+
   def show_sorted(self,
         by_value,
         sites_cart,
