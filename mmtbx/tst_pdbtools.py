@@ -541,6 +541,28 @@ TER
     line1 = line1.strip()
     line2 = line2.strip()
     assert line1 == line2
+  # now only a selected chain
+  expected_output_pdb_2 = """\
+ATOM      1  O   GLY A   3       1.434   1.460   2.496  1.00  6.04           O
+ATOM      2  O   CYS A   7       2.196   4.467   3.911  1.00  4.51           O
+ATOM      3  O   CYS A   1      -1.433   4.734   5.405  1.00  7.85           O
+TER
+ATOM      4  O   SER B   1       0.297   0.843   7.226  1.00  7.65           O
+ATOM      5  OG ASER B   1      -2.625   1.057   4.064  0.50  5.46           O
+ATOM      6  OG BSER B   1      -0.885   0.189   3.843  0.50 11.74           O
+ATOM      7  O   LEU B   2       3.613   4.307   6.646  1.00  5.39           O
+ATOM      8  O   PRO B   3       4.398   6.723   8.658  1.00  6.65           O
+ATOM      9  O   TYR B   4       7.294   7.360   6.923  1.00  8.75           O
+ATOM     10  O   CYS B   5       5.256   8.262   4.185  1.00  6.08           O
+ATOM     11  O   ALA B   6       3.028  10.447   5.584  1.00  7.39           O
+TER
+ATOM     12  O   LEU C   0       5.613  12.448   6.864  1.00  7.32           O
+TER
+"""
+  easy_run.call('phenix.pdbtools "%s" renumber_residues=true selection=\'chain B\'' % ifn)
+  new_lines = open(ifn+"_modified.pdb").readlines()
+  for line1, line2 in zip(new_lines, expected_output_pdb_2.splitlines()):
+    assert (line1.strip() == line2.strip())
 
 def exercise_set_seg_id () :
   input_pdb = """\

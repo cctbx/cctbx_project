@@ -643,9 +643,22 @@ def remove_alt_confs (hierarchy) :
   new_occ = flex.double(atoms.size(), 1.0)
   atoms.set_occ(new_occ)
 
-def renumber_residues(pdb_hierarchy):
+def renumber_residues(pdb_hierarchy, atom_selection=None, log=None):
+  if (log is None) : log = null_out()
+  selected_i_seqs = None
+  if (atom_selection is not None) :
+    sel_cache = pdb_hierarchy.atom_selection_cache()
+    selected_i_seqs = sel_cache.selection(atom_selection).iselection()
   for model in pdb_hierarchy.models():
     for chain in model.chains():
+      if (selected_i_seqs is not None) :
+        chain_i_seqs = chain.atoms().extract_i_seq()
+        intersection = selected_i_seqs.intersection(chain_i_seqs)
+        if (len(intersection) == 0) :
+          continue
+        elif (len(intersection) != len(chain_i_seqs)) :
+          print >> log, "Warning: chain '%s' is only partially selected (%d out of %d) - will not renumber." % (chain.id, len(intersection), len(chain_i_seqs))
+          continue
       counter = 1
       for rg in chain.residue_groups():
         rg.resseq=counter
@@ -827,7 +840,9 @@ def run(args, command_name="phenix.pdbtools"):
 ### Renumber residues
   if (params.modify.renumber_residues):
     utils.print_header("Re-numbering residues", out = log)
-    renumber_residues(pdb_hierarchy = pdb_hierarchy)
+    renumber_residues(pdb_hierarchy = pdb_hierarchy,
+      atom_selection=params.modify.selection,
+      log=log)
 ### segID manipulations
   if (params.modify.set_seg_id_to_chain_id) :
     if (params.modify.clear_seg_id) :
