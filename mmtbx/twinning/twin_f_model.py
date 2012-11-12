@@ -1823,7 +1823,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
         data = -gradients).common_set( self.f_obs() )
       if map_type == "m_gradient":
         # get the FOMs please
-        m = self.sigmaa_object().fom().common_set(self.f_obs).data()
+        m = self.sigmaa_object().fom().common_set(self.f_obs()).data()
         gradients = gradients.customized_copy(
           data = gradients.data()*m )
 
@@ -2174,7 +2174,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
         print >> out, "{ directory: %s }" % os.path.dirname(file_name)
       self.explain_members(out=out, prefix="{ ", suffix=" }")
       crystal_symmetry_as_cns_comments(
-        crystal_symmetry=self.f_obs, out=out)
+        crystal_symmetry=self.f_obs_, out=out)
       print >> out, "NREFlection=%d" % self.f_obs_.indices().size()
       print >> out, "ANOMalous=%s" % {0: "FALSE"}.get(
         int(self.f_obs_.anomalous_flag()), "TRUE")
