@@ -48,8 +48,9 @@ _chem_comp_bond.atom_id_2
 _chem_comp_bond.type
 _chem_comp_bond.value_dist
 _chem_comp_bond.value_dist_esd
-IA IC single 1.0 2.0
-IB IC double 3.0 4.0
+_chem_comp_bond.value_dist_neutron
+IA IC single 1.0 2.0 .
+IB IC double 3.0 4.0 .
 
 """
   chem_mod = cif_types.chem_mod(
@@ -120,7 +121,7 @@ IB IC double 3.0 4.0
   assert len(c.bond_list) == 3
   s = StringIO.StringIO()
   c.show(s)
-  assert s.getvalue().splitlines()[-2] == "IA IB triple 5.0 6.0"
+  assert s.getvalue().splitlines()[-2] == "IA IB triple 5.0 6.0 ."
   mod_mod_id.bond_list[0] = cif_types.chem_mod_bond(
     function="change",
     atom_id_1="IA",
@@ -131,7 +132,7 @@ IB IC double 3.0 4.0
   c = comp_comp_id.apply_mod(mod_mod_id)
   s = StringIO.StringIO()
   c.show(s)
-  assert s.getvalue().splitlines()[-3] == "IA IC quadruple 7.0 8.0"
+  assert s.getvalue().splitlines()[-3] == "IA IC quadruple 7.0 8.0 ."
   print "OK"
 
 if (__name__ == "__main__"):
