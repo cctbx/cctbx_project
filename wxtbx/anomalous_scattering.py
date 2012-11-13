@@ -50,8 +50,8 @@ class AnomPlot (wxtbx.plots.plot_container) :
         fdp.append(scatt.fdp())
       fdp_line = ax.plot(x_points, fdp)[0]
       ax.plot(x_points, fp, linestyle='--', color=fdp_line.get_color())
-      labels.append("%s f'" % scatt_table.label())
       labels.append("%s f''" % scatt_table.label())
+      labels.append("%s f'" % scatt_table.label())
     self.figure.legend(ax.lines, labels)
     ax.set_xlabel(x_label)
     ax.set_ylabel("e-")
