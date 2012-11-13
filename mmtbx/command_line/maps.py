@@ -291,6 +291,13 @@ def run (args, log = sys.stdout, use_output_directory=True,
     xray_structure   = xray_structure,
     d_min            = f_obs.d_min(),
     log              = log)
+  if (params.maps.wavelength is not None) :
+    if (params.maps.scattering_table == "neutron") :
+      raise Sorry("Wavelength parameter not supported when the neutron "+
+        "scattering table is used.")
+    xray_structure.set_inelastic_form_factors(
+      photon=params.maps.wavelength,
+      table="sasaki")
   xray_structure.show_summary(f = log, prefix="  ")
   print >> log, "-"*79
   print >> log, "Bulk solvent correction and anisotropic scaling:"
@@ -373,6 +380,10 @@ def validate_params (params, callback=None) :
     raise Sorry(("The output directory %s does not exist; please choose a "+
       "valid directory, or leave this parameter blank.") %
       params.maps.output.directory)
+  if (params.maps.wavelength is not None) :
+    if (params.maps.scattering_table == "neutron") :
+      raise Sorry("Wavelength parameter not supported when the neutron "+
+        "scattering table is used.")
   validate_map_params(params.maps)
   # TODO double-check this - can we get None by accident in GUI?
   #for map_coeffs in params.maps.map_coefficients :
