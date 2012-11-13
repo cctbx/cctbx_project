@@ -148,6 +148,7 @@ def run_cc(params,output):
     print >>output, "-------------------------------"
     for array in item.as_miller_arrays():
        this_label = array.info().label_string().lower()
+       print this_label, params.scaling.mtz_column_F
        if this_label.find("fobs")>=0:
          print >>output, this_label,array.observation_type()
          uniform.append(array.as_intensity_array())
@@ -155,6 +156,12 @@ def run_cc(params,output):
        if this_label.find("imean")>=0:
          print >>output, this_label,array.observation_type()
          uniform.append(array.as_intensity_array())
+         continue
+       if this_label.find(params.scaling.mtz_column_F)==0:
+         print >>output, this_label,array.observation_type()
+         uniform.append(array.as_intensity_array())
+         continue
+
   d_max_min = uniform[1].d_max_min()
   for x in [0,1,2,3]:
     print >>output, uniform[x].size()
