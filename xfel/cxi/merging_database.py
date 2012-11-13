@@ -136,7 +136,10 @@ class manager:
               detector_x DOUBLE(8,2) NOT NULL,
               detector_y DOUBLE(8,2) NOT NULL,
               frame_id_0_base INT,
-              overload_flag ENUM('T','F')
+              overload_flag ENUM('T','F'),
+              original_h INT NOT NULL,
+              original_k INT NOT NULL,
+              original_l INT NOT NULL
             )
             """),
             (runtag+"_frame","""
@@ -189,7 +192,10 @@ class manager:
               spotfx DOUBLE(10,2) NOT NULL,
               spotfy DOUBLE(10,2) NOT NULL,
               spotcx DOUBLE(10,2) NOT NULL,
-              spotcy DOUBLE(10,2) NOT NULL
+              spotcy DOUBLE(10,2) NOT NULL,
+              h INT NOT NULL,
+              k INT NOT NULL,
+              l INT NOT NULL
             )
             """),
               ]
