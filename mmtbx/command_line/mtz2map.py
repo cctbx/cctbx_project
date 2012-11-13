@@ -265,6 +265,8 @@ def run (args, log=sys.stdout) :
       suffix = "_mFo-DFc"
     elif map_labels[0].startswith("ANOM") :
       suffix = "_anom"
+    elif (map_labels[0].startswith("LLG")) :
+      suffix = "_llg"
     else :
       suffix = "_%d" % (i+1)
     format = params.output.format
