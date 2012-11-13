@@ -1186,13 +1186,17 @@ Please contact cctbx@cci.lbl.gov for more information.""" % (id, id, h))
       is_terminus=self.is_terminus,
       is_unusual=self.is_unusual())
 
-  def add_bond_proxies(self, bond_simple_proxy_registry):
+  def add_bond_proxies(self,
+                       bond_simple_proxy_registry,
+                       use_neutron_distances=False,
+                       ):
     self.bond_counters = add_bond_proxies(
       counters=counters(label="bond"),
       m_i=self,
       m_j=self,
       bond_list=self.monomer.bond_list,
-      bond_simple_proxy_registry=bond_simple_proxy_registry).counters
+      bond_simple_proxy_registry=bond_simple_proxy_registry,
+      use_neutron_distances=use_neutron_distances).counters
 
   def add_angle_proxies(self, special_position_indices, angle_proxy_registry):
     self.angle_counters = add_angle_proxies(
@@ -1428,12 +1432,18 @@ class add_bond_proxies(object):
         bond_list,
         bond_simple_proxy_registry,
         sites_cart=None,
-        distance_cutoff=None):
+        distance_cutoff=None,
+        use_neutron_distances=False,
+        ):
     if (m_i.i_conformer != 0 and m_j.i_conformer != 0):
       assert m_i.i_conformer == m_j.i_conformer
     self.counters = counters
     self.broken_bond_i_seq_pairs = set()
+    value = "value_dist"
     for bond in bond_list:
+      if use_neutron_distances:
+        assert hasattr(bond, "value_dist_neutron")
+        value = "value_dist_neutron"
       if (   not m_i.monomer_atom_dict.has_key(bond.atom_id_1)
           or not m_j.monomer_atom_dict.has_key(bond.atom_id_2)):
         #
@@ -1454,15 +1464,15 @@ class add_bond_proxies(object):
           counters.unresolved_hydrogen += 1
         else:
           counters.unresolved_non_hydrogen += 1
-      elif (   bond.value_dist is None
-            or bond.value_dist_esd in [None, 0]):
+      elif ( getattr(bond, value) is None
+                  or bond.value_dist_esd in [None, 0]):
         counters.undefined += 1
       else:
         counters.resolved += 1
         i_seqs = [atom.i_seq for atom in atoms]
         proxy = geometry_restraints.bond_simple_proxy(
           i_seqs=i_seqs,
-          distance_ideal=bond.value_dist,
+          distance_ideal=getattr(bond, value),
           weight=1/bond.value_dist_esd**2)
         is_large_distance = False
         if (sites_cart is not None):
@@ -1928,7 +1938,9 @@ class build_chain_proxies(object):
         is_first_conformer_in_chain,
         conformer,
         conformation_dependent_restraints_list,
-        log):
+        log,
+        use_neutron_distances=False,
+               ):
     self.conformation_dependent_restraints_list = \
       conformation_dependent_restraints_list
     unknown_residues = dicts.with_default_value(0)
@@ -2119,7 +2131,8 @@ class build_chain_proxies(object):
         nonbonded_energy_type_registry.assign_from_monomer_mapping(
           conf_altloc=conformer.altloc, mm=mm)
         mm.add_bond_proxies(
-          bond_simple_proxy_registry=geometry_proxy_registries.bond_simple)
+          bond_simple_proxy_registry=geometry_proxy_registries.bond_simple,
+          use_neutron_distances=use_neutron_distances)
         n_bond_proxies_already_assigned_to_first_conformer += \
           mm.bond_counters.already_assigned_to_first_conformer
         if (mm.bond_counters.corrupt_monomer_library_definitions > 0):
@@ -2387,6 +2400,7 @@ class build_all_chain_proxies(object):
         log=None,
         for_dihedral_reference=False,
         carbohydrate_callback=None,
+        use_neutron_distances=False,
                ):
     assert special_position_settings is None or crystal_symmetry is None
     if (params is None): params = master_params.extract()
@@ -2587,7 +2601,9 @@ class build_all_chain_proxies(object):
             conformer=conformer,
             conformation_dependent_restraints_list=
               self.conformation_dependent_restraints_list,
-            log=log)
+            use_neutron_distances=use_neutron_distances,
+            log=log,
+            )
           self.conformation_dependent_restraints_list = \
             chain_proxies.conformation_dependent_restraints_list
           del chain_proxies
@@ -3029,7 +3045,14 @@ class build_all_chain_proxies(object):
       for pdbres in pdbres_pair:
         self.empty_apply_cif_links_mm_pdbres_dict[pdbres] = {}
 
-  def create_link(self, apply, m_i, m_j, order=1, verbose=False):
+  def create_link(self,
+                  apply,
+                  m_i,
+                  m_j,
+                  order=1,
+                  angles=True,
+                  verbose=False,
+                  ):
     import linking_utils
     from math import sqrt
     from mmtbx.monomer_library.cif_types import chem_link_bond, chem_link_angle
@@ -3047,8 +3070,9 @@ class build_all_chain_proxies(object):
                                                )
       if bond.value_dist is None:
         bond.value_dist = sqrt(linking_utils.get_distance2(apply.atom1,
-                                                      apply.atom2,
-                                                      ))
+                                                           apply.atom2,
+                                                           ))
+        if verbose: print "bond will be maintained"
     bond.value_dist_esd = 0.02
     if verbose:
       print 'Link created'
@@ -3064,8 +3088,9 @@ class build_all_chain_proxies(object):
         sites_cart=self.sites_cart,
         distance_cutoff=self.params.link_distance_cutoff,
         )
-    except Exception :
-      return False
+    except Exception, e:
+      if str(e).find("Conflicting bond_simple restraints:")>-1: return False
+      raise e
     # angles
     bonds1=[]
     bonds2=[]
@@ -3076,26 +3101,53 @@ class build_all_chain_proxies(object):
         bonds1.append(bond)
       elif apply.atom2.i_seq in bond.i_seqs:
         bonds2.append(bond)
-    #
-    if order==1:
     # remove excess hydrogens
-      if len(bonds1)>3:
-        assert 0
-      if len(bonds2)>3:
-        assert 0
-    #
-    angle_list = []
     def _get_other(b,a):
       if a.i_seq==b.i_seqs[0]:
         return b.i_seqs[1]
       elif a.i_seq==b.i_seqs[1]:
         return b.i_seqs[0]
       return -1
+    #
     def get_other(b,a):
       i_seq = _get_other(b,a)
       for atom in a.parent().parent().atoms():
         if atom.i_seq==i_seq: return atom
       return None
+    #
+    def remove_atom(m_x, atom_name):
+      from mmtbx.monomer_library.cif_types import mod_mod_id, chem_mod, chem_mod_atom
+      cm = chem_mod()
+      cm.id = "DEL_%s_%s" % (m_x.residue_name, atom_name)
+      cm.show()
+      mmi = mod_mod_id("custom", cm)
+      mod_atom = chem_mod_atom()
+      mod_atom.function = "delete"
+      mod_atom.atom_id = "%s" % atom_name
+      #mod_atom.new_atom_id =
+      #mod_atom.new_type_symbol =
+      #mod_atom.new_type_energy =
+      #mod_atom.new_partial_charge = 0.0
+      mod_atom.show()
+      mmi.atom_list.append(mod_atom)
+      mmi.show()
+      mmi = m_x.apply_mod(mmi)
+      return mmi
+
+    if order==1:
+      if len(bonds1)>3:
+        assert 0
+      if len(bonds2)>3:
+        atom_names = []
+        for bond in bonds2:
+          other = get_other(bond, apply.atom2)
+          if other.element.strip() not in ["H", "D"]: continue
+          atom_names.append(other.name.strip())
+        atom_names.sort()
+        m_j = remove_atom(m_j, atom_names[0])
+    #
+    if not angles: return True
+    angle_list = []
     for bond in bonds1:
       other = get_other(bond, apply.atom1)
       angle = chem_link_angle()
@@ -3111,6 +3163,7 @@ class build_all_chain_proxies(object):
       angle_list.append(angle)
     for bond in bonds2:
       other = get_other(bond, apply.atom2)
+      if other is None: continue
       angle = chem_link_angle()
       angle.atom_1_comp_id = 2
       angle.atom_id_1 = other.name.strip()
@@ -3133,6 +3186,77 @@ class build_all_chain_proxies(object):
         )
     return True
 
+  def process_custom_links(self,
+                           mon_lib_srv,
+                           pdbres_pair,
+                           data_link,
+                           atoms,
+                           indent=10,
+                           verbose=False,
+                           ):
+    import linking_utils
+    outl = ""
+    classes1 = linking_utils.get_classes(atoms[0])
+    classes2 = linking_utils.get_classes(atoms[1])
+    # peptide links are auto-created
+    possible_peptide_link = False
+    if classes1.common_amino_acid or classes2.common_amino_acid:
+      if(atoms[0].name.strip() in ["C"] and
+         atoms[1].name.strip() in ["N"]
+         ):
+        possible_peptide_link=True
+    # so are nucleotide links
+    possible_rna_dna_link = False
+    if classes1.common_rna_dna or classes2.common_rna_dna:
+      print atoms[0].format_atom_record()
+      print atoms[1].format_atom_record()
+      if(atoms[0].name.strip() in ["O3'", "O3*"] and
+         atoms[1].name.strip() in ["P"]
+         ):
+        possible_rna_dna_link = True
+    # add them
+    ga = group_args(
+      pdbres_pair=pdbres_pair,
+      data_link=data_link,
+      was_used=False,
+      automatic=True,
+      possible_peptide_link=possible_peptide_link,
+      possible_rna_dna_link=possible_rna_dna_link,
+      atom1=atoms[0],
+      atom2=atoms[1],
+      )
+    count = 0
+    for apply in self.apply_cif_links:
+      if apply.pdbres_pair==pdbres_pair: count+=1
+      if apply.data_link==data_link: count+=1
+    if count==2:
+      ga.was_used=True
+    else:
+      for pdbres in pdbres_pair:
+        self.empty_apply_cif_links_mm_pdbres_dict[pdbres] = {}
+    self.apply_cif_links.append(ga)
+    # mods
+    link = mon_lib_srv.link_link_id_dict.get(ga.data_link)
+    if link is None: return outl
+    mod_ids = []
+    for mod_attr in ["mod_id_1", "mod_id_2"]:
+      mod_id = getattr(link.chem_link, mod_attr)
+      if (mod_id == ""): mod_id = None
+      mod_ids.append(mod_id)
+      if (mod_id is not None):
+        outl += "%s%s: %s\n" % (" "*indent, mod_attr, mod_id)
+        mod = mon_lib_srv.mod_mod_id_dict.get(mod_id)
+        if (mod is None):
+          print outl
+          raise Sorry(
+            "Missing CIF modification: data_mod_%s\n" % mod_id
+            + "  Please check for spelling errors or specify the file name\n"
+            + "  with the modification as an additional argument.")
+    for pdbres,mod_id in zip(pdbres_pair, mod_ids):
+      if (mod_id is not None):
+        self.apply_cif_modifications.setdefault(pdbres, []).append(mod_id)
+    return outl
+
   def process_intra_chain_links(self,
                                 model,
                                 mon_lib_srv,
@@ -3154,6 +3278,7 @@ class build_all_chain_proxies(object):
           yield residue_group.atoms()[0]
     #
     chain_ids = []
+    outls = {}
     for chain in model.chains():
       if chain.id not in chain_ids: chain_ids.append(chain.id)
     for chain_id in chain_ids:
@@ -3173,6 +3298,7 @@ class build_all_chain_proxies(object):
           if classes1.common_rna_dna and classes2.common_rna_dna: continue
           d2 = linking_utils.get_distance2(atom1, atom2)
           if d2>residue_group_cutoff2: continue
+          #
           rc = linking_utils.process_atom_groups_for_linking(
             self.pdb_hierarchy,
             atom1,
@@ -3181,44 +3307,19 @@ class build_all_chain_proxies(object):
             classes2,
             )
           if rc is None: continue
-          pdbres_pair, data_link, atoms = rc
-          # peptide links are auto-created
-          possible_peptide_link = False
-          if classes1.common_amino_acid or classes2.common_amino_acid:
-            if(atoms[0].name.strip() in ["C"] and
-               atoms[1].name.strip() in ["N"]
-               ):
-              possible_peptide_link=True
-          # so are nucleotide links
-          possible_rna_dna_link = False
-          if classes1.common_rna_dna or classes2.common_rna_dna:
-            print atoms[0].format_atom_record()
-            print atoms[1].format_atom_record()
-            if(atoms[0].name.strip() in ["O3'", "O3*"] and
-               atoms[1].name.strip() in ["P"]
-               ):
-              possible_rna_dna_link = True
-          # add them
-          ga = group_args(
-            pdbres_pair=pdbres_pair,
-            data_link=data_link,
-            was_used=False,
-            automatic=True,
-            possible_peptide_link=possible_peptide_link,
-            possible_rna_dna_link=possible_rna_dna_link,
-            atom1=atoms[0],
-            atom2=atoms[1],
-            )
-          count = 0
-          for apply in self.apply_cif_links:
-            if apply.pdbres_pair==pdbres_pair: count+=1
-            if apply.data_link==data_link: count+=1
-          if count==2:
-            ga.was_used=True
-          else:
-            for pdbres in pdbres_pair:
-              self.empty_apply_cif_links_mm_pdbres_dict[pdbres] = {}
-          self.apply_cif_links.append(ga)
+          pdbres_pairs, data_links, atomss = rc
+          for pdbres_pair, data_link, atoms in zip(pdbres_pairs,
+                                                   data_links,
+                                                   atomss,
+                                                   ):
+            outls.setdefault(data_link, "")
+            tmp = self.process_custom_links(mon_lib_srv,
+                                            pdbres_pair,
+                                            data_link,
+                                            atoms,
+                                            verbose=verbose,
+                                            )
+            outls[data_link] = tmp
     # log output about detection
     remove=[]
     if self.apply_cif_links:
@@ -3248,6 +3349,8 @@ class build_all_chain_proxies(object):
               )
             outl += '%sCreating link for "%s"\n' % (" "*10, apply.data_link)
             mon_lib_srv.link_link_id_dict[apply.data_link] = None
+        if outls.get(apply.data_link, ""):
+          outl += outls[apply.data_link]
       if outl:
         print >> log, "%sAdding automatically detected intra-chain links" % (
           " "*6,
@@ -3879,6 +3982,101 @@ class build_all_chain_proxies(object):
     if (have_header):
       print >> log
 
+  def other_bonds(self,
+                  bond_params_table,
+                  bond_asu_table,
+                  log=None,
+                  verbose=False,
+                  ):
+    # designed for metal coordination
+    bonded_i_seqs = []
+    atoms = self.pdb_hierarchy.atoms()
+    xray_structure_simple=self.pdb_inp.xray_structure_simple()
+    pair_asu_table = xray_structure_simple.pair_asu_table(
+      distance_cutoff=2.9,
+      ) #self.clash_threshold)
+    for bp in self.geometry_proxy_registries.bond_simple.proxies:
+      bonded_i_seqs.append(bp.i_seqs)
+    pair_sym_table = pair_asu_table.extract_pair_sym_table()
+    for ps in pair_sym_table.iterator():
+      print ps.i_seq, ps.j_seq, atoms[ps.i_seq].id_str(), atoms[ps.j_seq].id_str(),ps.rt_mx_ji
+    atom_pairs_i_seqs, sym_atom_pairs_i_seqs = pair_sym_table.both_edge_list()
+    nonbonded_pairs = list(set(atom_pairs_i_seqs).difference(set(bonded_i_seqs))
+)
+    import linking_utils
+    import bondlength_defaults
+    bond_data = []
+    simple_bonds = 0
+    sym_bonds = 0
+    for i_seq, j_seq in nonbonded_pairs:
+      atom1 = atoms[i_seq]
+      atom2 = atoms[j_seq]
+      if atom1.parent().parent()==atom2.parent().parent(): continue
+      if not linking_utils.is_atom_pair_linked(atom1, atom2): continue
+      equil = bondlength_defaults.get_default_bondlength(atom1.element,
+                                                         atom2.element,
+                                                         )
+      if equil is None: equil=2.3
+      for sym_i_seq, sym_j_seq, rt_mx in sym_atom_pairs_i_seqs:
+        if((sym_i_seq==i_seq and sym_j_seq==j_seq) or
+           (sym_i_seq==j_seq and sym_j_seq==i_seq)):
+          bond_params_table.update(
+            i_seq=i_seq,
+            j_seq=j_seq,
+            params=geometry_restraints.bond_params(
+              distance_ideal=equil,
+              weight=1/0.02**2))
+          print atoms[i_seq].id_str()
+          print atoms[j_seq].id_str()
+          print rt_mx
+          bond_asu_table.add_pair(
+            i_seq=i_seq,
+            j_seq=j_seq,
+            rt_mx_ji=rt_mx,
+            )
+          sym_bonds += 1
+          bond_data.append( (atoms[i_seq].id_str(),
+                             atoms[j_seq].id_str(),
+                             rt_mx,
+                             )
+                            )
+          if verbose: print bond_data[-1]
+          break
+      else:
+        bond_params_table.update(
+          i_seq=i_seq,
+          j_seq=j_seq,
+          params=geometry_restraints.bond_params(
+            distance_ideal=equil,
+            weight=1/0.02**2))
+        space_group = self.special_position_settings.space_group()
+        rt_mx_ji = sgtbx.rt_mx(symbol="x,y,z", t_den=space_group.t_den())
+        bond_asu_table.add_pair(
+          i_seq=i_seq,
+          j_seq=j_seq,
+          rt_mx_ji=rt_mx_ji)
+        simple_bonds += 1
+        bond_data.append( (atoms[i_seq].id_str(),
+                           atoms[j_seq].id_str(),
+                           None,
+                           )
+                          )
+        if verbose: print bond_data[-1]
+    if bond_data:
+      print >> log, "  Number of additional bonds: simple=%d, symmetry=%d" % (
+        simple_bonds,
+        sym_bonds,
+        )
+      for label1, label2, sym_op in sorted(bond_data):
+        if sym_op is None:
+          print >> log, "    Simple bond:   %s - %s" % (label1, label2)
+      for label1, label2, sym_op in sorted(bond_data):
+        if sym_op:
+          print >> log, "    Symmetry bond: %s - %s sym. op: %s" % (label1,
+                                                                   label2,
+                                                                   sym_op,
+                                                                   )
+
   def construct_geometry_restraints_manager(self,
         ener_lib,
         disulfide_link,
@@ -3923,6 +4121,7 @@ class build_all_chain_proxies(object):
             print >> log, "      %s" % atoms[i_seq].format_atom_record()
         raise Sorry("Number of bonds with excessive lengths: %d" %
           excessive_bonds.size())
+    # disulphides
     disulfide_sym_table, max_disulfide_bond_distance = \
       self.create_disulfides(
         disulfide_distance_cutoff=self.params.disulfide_distance_cutoff,
@@ -3938,6 +4137,7 @@ class build_all_chain_proxies(object):
         params=params_edits, log=log)
       max_bond_distance = max(max_bond_distance,
         processed_edits.bond_distance_model_max)
+    #
     #if (h_bond_table is None) :
     #  hydrogen_bonds = None
     #else :
@@ -3952,8 +4152,21 @@ class build_all_chain_proxies(object):
       original_sites=self.sites_cart,
       site_symmetry_table=self.site_symmetry_table())
     bond_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+    #_ = asu_mappings.site_symmetry_table()
+    #for bond in self.geometry_proxy_registries.bond_simple.proxies:
+    #  if bond.rt_mx_ji is None: continue
+    #  sepi_obj = _.symmetry_equivalent_pair_interactions(
+    #    i_seq=bond.i_seqs[0], j_seq=bond.i_seqs[1], rt_mx_ji=bond.rt_mx_ji)
+    #  sepi = sepi_obj.get()
+
     geometry_restraints.add_pairs(
       bond_asu_table, self.geometry_proxy_registries.bond_simple.proxies)
+    #
+    if 0:
+      self.other_bonds(bond_params_table,
+                       bond_asu_table,
+                       )
+    #
     self.geometry_proxy_registries.bond_simple.proxies = None # free memory
     #
     disulfide_bond = disulfide_link.bond_list[0]
@@ -4320,6 +4533,7 @@ class process(object):
         log=None,
         for_dihedral_reference=False,
         carbohydrate_callback=None,
+        use_neutron_distances=True,
                ):
     self.mon_lib_srv = mon_lib_srv
     self.ener_lib = ener_lib
@@ -4344,6 +4558,7 @@ class process(object):
       log=log,
       for_dihedral_reference=for_dihedral_reference,
       carbohydrate_callback=carbohydrate_callback,
+      use_neutron_distances=use_neutron_distances,
       )
     if (log is not None
         and self.all_chain_proxies.time_building_chain_proxies is not None):
@@ -4352,6 +4567,7 @@ class process(object):
           self.all_chain_proxies.time_building_chain_proxies,
           self.all_chain_proxies.time_building_chain_proxies * 1000
             / max(1,self.all_chain_proxies.pdb_atoms.size()))
+
     self._geometry_restraints_manager = None
     self._xray_structure = None
 
@@ -4645,6 +4861,25 @@ def run(
       log=log)
     processed_pdb_file.geometry_restraints_manager()
     processed_pdb_file.xray_structure()
+
+    if 0:
+      geometry_restraints_manager = processed_pdb_file.geometry_restraints_manager()
+      sites_cart = processed_pdb_file.all_chain_proxies.sites_cart_exact()
+      site_labels = [atom.id_str()
+                     for atom in processed_pdb_file.all_chain_proxies.pdb_atoms]
+      lines = StringIO()
+      #geometry_restraints_manager.show_interactions(
+      geometry_restraints_manager.show_sorted(
+        sites_cart=sites_cart,
+        site_labels=site_labels,
+        f=lines)
+      filename = "%s.geo" % file_name.split(".")[0]
+      print "\n\n\tWriting restraints to",filename
+      f=file(filename, "wb")
+      f.write(lines.getvalue())
+      f.close()
+      #sys.exit()
+
     if (return_all_processed_pdb_files):
       all_processed_pdb_files.append(processed_pdb_file)
   if (return_all_processed_pdb_files):
