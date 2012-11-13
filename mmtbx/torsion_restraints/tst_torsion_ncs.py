@@ -4,6 +4,7 @@ import iotbx.pdb
 from cctbx.array_family import flex
 from cctbx import adp_restraints # import dependency
 from mmtbx.torsion_restraints import torsion_ncs, utils
+import cStringIO
 
 pdb_str_1 = """
 CRYST1   46.053    9.561   20.871  90.00  97.43  90.00 C 1 2 1       8
@@ -116,6 +117,7 @@ TER     106      ALA B   6
 """
 
 def exercise_1():
+  log = cStringIO.StringIO()
   dihedral_proxies = utils.get_complete_dihedral_proxies(
                        raw_records=pdb_str_1)
   assert len(dihedral_proxies) == 54
@@ -123,7 +125,8 @@ def exercise_1():
     source_info=None,
     lines=flex.split_lines(pdb_str_1)).construct_hierarchy()
   ncs_manager = torsion_ncs.torsion_ncs(
-                  pdb_hierarchy=pdb_hierarchy)
+                  pdb_hierarchy=pdb_hierarchy,
+                  log=log)
   assert len(ncs_manager.ncs_dihedral_proxies) == 46
 
 if (__name__ == "__main__") :
