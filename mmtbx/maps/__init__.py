@@ -207,6 +207,12 @@ maps {
   scattering_table = wk1995  it1992  *n_gaussian  neutron
     .type = choice
     .help = Choices of scattering table for structure factors calculations
+  wavelength = None
+    .type = float(value_min=0.2, value_max=10.)
+    .input_size = 80
+    .help = Optional X-ray wavelength (in Angstroms), which will be used to \
+      set the appropriate anomalous scattering factors for the model.  This \
+      will only affect the LLG map from Phaser.
   bulk_solvent_correction = True
     .type = bool
   anisotropic_scaling = True
