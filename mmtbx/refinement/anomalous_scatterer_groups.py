@@ -3,6 +3,7 @@ from cctbx.array_family import flex
 from scitbx import lbfgs
 from libtbx.test_utils import approx_equal
 from libtbx import adopt_init_args
+import sys
 
 class minimizer(object):
 
@@ -98,3 +99,55 @@ class minimizer(object):
       self.unpack()
       assert approx_equal(g_fin, g)
     return f, g
+
+def find_anomalous_scatterer_groups (
+    pdb_atoms,
+    xray_structure,
+    group_same_element=True, # XXX should this be True by default?
+    out=None) :
+  """
+  Automatic setup of anomalously scattering atoms, defined here as anything
+  with atomic number 15 (P) or greater.  Not yet accessible from phenix.refine.
+  """
+  from cctbx.eltbx import sasaki
+  from cctbx import xray
+  if (out is None) : out = sys.stdout
+  def get_selection_string (i_seq) :
+    labels = pdb_atoms[i_seq].fetch_labels()
+    sele = "chain '%s' and resname %s and name '%s' and altloc '%s' and resid %s" % (labels.chain_id, labels.resname, labels.name, labels.altloc, labels.resid)
+    return sele
+  element_i_seqs = {}
+  groups = []
+  if (out is None) : out = null_out()
+  for i_seq, scatterer in enumerate(xray_structure.scatterers()) :
+    element = scatterer.element_symbol()
+    atomic_number = sasaki.table(element).atomic_number()
+    if (atomic_number >= 15) :
+      if (group_same_element) :
+        if (not element in element_i_seqs) :
+          element_i_seqs[element] = flex.size_t()
+        element_i_seqs[element].append(i_seq)
+      else :
+        print >> out, "  creating anomalous group for %s" % \
+          pdb_atoms[i_seq].id_str()
+        asg = xray.anomalous_scatterer_group(
+          iselection=flex.size_t([i_seq]),
+          f_prime=0,
+          f_double_prime=0,
+          refine=["f_prime","f_double_prime"],
+          selection_string=get_selection_string(i_seq))
+        groups.append(asg)
+  if (group_same_element) :
+    for elem in sorted(element_i_seqs.keys()) :
+      iselection = element_i_seqs[elem]
+      print >> out, \
+        "  creating anomalous group for element %s with %d atoms" % \
+        (elem, len(iselection))
+      asg = xray.anomalous_scatterer_group(
+        iselection=iselection,
+        f_prime=0,
+        f_double_prime=0,
+        refine=["f_prime","f_double_prime"],
+        selection_string="element %s" % elem)
+      groups.append(asg)
+  return groups
