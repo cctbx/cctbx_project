@@ -114,7 +114,8 @@ def find_anomalous_scatterer_groups (
   if (out is None) : out = sys.stdout
   def get_selection_string (i_seq) :
     labels = pdb_atoms[i_seq].fetch_labels()
-    sele = "chain '%s' and resname %s and name '%s' and altloc '%s' and resid %s" % (labels.chain_id, labels.resname, labels.name, labels.altloc, labels.resid)
+    sele = "chain '%s' and resname %s and name '%s' and altloc '%s' and resid %s" % (labels.chain_id, labels.resname, labels.name, labels.altloc,
+     labels.resid())
     return sele
   element_i_seqs = {}
   groups = []
