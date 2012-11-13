@@ -3,7 +3,9 @@ from libtbx.utils import format_exception, Sorry
 from libtbx import Auto
 from iotbx.pdb import common_residue_names_get_class
 from mmtbx.validation.cbetadev import cbetadev
-from iotbx.pdb import amino_acid_codes
+from mmtbx.geometry_restraints import c_beta
+from iotbx.pdb import amino_acid_codes, input
+from cctbx.array_family import flex
 from libtbx import group_args
 import ccp4io_adaptbx
 import math
@@ -55,6 +57,99 @@ class alignment_manager(object):
       self.padded_sequences[chain_i_str] = chain_seq_padded
       self.structures[chain_i_str] = chain_structures
 
+def add_c_beta_restraints(geometry,
+                          pdb_hierarchy,
+                          log=None):
+  if log is None:
+    log = sys.stdout
+  if geometry.generic_restraints_manager.c_beta_dihedral_proxies is None:
+    print >> log, "Adding C-beta torsion restraints..."
+    c_beta_torsion_proxies = \
+      c_beta.get_c_beta_torsion_proxies(pdb_hierarchy=pdb_hierarchy)
+    geometry.generic_restraints_manager.c_beta_dihedral_proxies = \
+      c_beta_torsion_proxies
+    geometry.generic_restraints_manager.flags.c_beta = True
+    print >> log, "num c-beta restraints: ", \
+      len(geometry.generic_restraints_manager.c_beta_dihedral_proxies)
+
+#def process_dihedral_reference(
+#      file_list,
+#      mon_lib_srv=None,
+#      ener_lib=None,
+#      crystal_symmetry=None,
+#      log=None):
+#  from mmtbx.monomer_library import server, pdb_interpretation
+#  import cStringIO
+#  if log is None:
+#    log = sys.stdout
+#  if mon_lib_srv is None:
+#    mon_lib_srv = server.server()
+#  if ener_lib is None:
+#    ener_lib = server.ener_lib()
+#  processed = []
+#  if mon_lib_srv is None:
+#    mon_lib_srv = server.server()
+#  if ener_lib is None:
+#    ener_lib = server.ener_lib()
+#  for file_name in file_list:
+#    processed_dihedral_reference = pdb_interpretation.process(
+#      mon_lib_srv=mon_lib_srv,
+#      ener_lib=ener_lib,
+#      file_name=file_name,
+#      strict_conflict_handling=False,
+#      crystal_symmetry=crystal_symmetry,
+#      force_symmetry=True,
+#      log=cStringIO.StringIO(),
+#      for_dihedral_reference=True,
+#      substitute_non_crystallographic_unit_cell_if_necessary=True)
+#    processed.append( (file, processed_dihedral_reference) )
+#    return processed
+
+def process_reference_files(
+      reference_file_list,
+      log=None):
+  if log is None:
+    log = sys.stdout
+  reference_hierarchy_list = []
+  for file in reference_file_list:
+    pdb_io = input(file)
+    cur_hierarchy = pdb_io.construct_hierarchy()
+    cur_hierarchy.reset_i_seq_if_necessary()
+    ter_indices = pdb_io.ter_indices()
+    if ter_indices is not None:
+      check_for_internal_chain_ter_records(
+        pdb_hierarchy=cur_hierarchy,
+        ter_indices=ter_indices,
+        file_name=file)
+    reference_hierarchy_list.append(cur_hierarchy)
+  return reference_hierarchy_list
+
+def get_reference_dihedral_proxies(
+      reference_hierarchy_list,
+      reference_file_list,
+      mon_lib_srv=None,
+      ener_lib=None,
+      crystal_symmetry=None,
+      log=None):
+  from mmtbx.monomer_library import server
+  if log is None:
+    log = sys.stdout
+  if mon_lib_srv is None:
+    mon_lib_srv = server.server()
+  if ener_lib is None:
+    ener_lib = server.ener_lib()
+  reference_dihedral_proxies = {}
+  for file_name, pdb_hierarchy in zip(reference_file_list,
+                                      reference_hierarchy_list):
+    dihedral_proxies = get_complete_dihedral_proxies(
+                         pdb_hierarchy=pdb_hierarchy,
+                         mon_lib_srv=mon_lib_srv,
+                         ener_lib=ener_lib,
+                         crystal_symmetry=crystal_symmetry,
+                         log=log)
+    reference_dihedral_proxies[file_name]=dihedral_proxies
+  return reference_dihedral_proxies
+
 def get_complete_dihedral_proxies(
       pdb_hierarchy=None,
       file_name=None,
@@ -63,12 +158,11 @@ def get_complete_dihedral_proxies(
       ener_lib=None,
       crystal_symmetry=None,
       log=None):
-  from mmtbx.monomer_library import server, pdb_interpretation
-  from cctbx.array_family import flex
-  import cStringIO
   assert [pdb_hierarchy,
           file_name,
           raw_records].count(None) == 2
+  from mmtbx.monomer_library import server, pdb_interpretation
+  import cStringIO
   if log is None:
     log = sys.stdout
   if mon_lib_srv is None:

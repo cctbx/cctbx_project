@@ -5,7 +5,6 @@ from libtbx import group_args
 import cctbx.geometry_restraints
 from mmtbx.validation.rotalyze import rotalyze
 from mmtbx.utils import rotatable_bonds
-#from mmtbx.rotamer.sidechain_angles import SidechainAngles
 from mmtbx.rotamer.sidechain_angles import *
 import mmtbx.monomer_library
 from cctbx.array_family import flex
@@ -32,8 +31,6 @@ reference_model_params = iotbx.phil.parse("""
  sigma = 1.0
    .type = float
  limit = 15.0
-   .type = float
- slack = 0.0
    .type = float
  hydrogens = False
    .type = bool
@@ -96,61 +93,65 @@ reference_model_params = iotbx.phil.parse("""
 class reference_model(object):
 
   def __init__(self,
-               processed_pdb_file,
-               processed_pdb_file_reference,
+               pdb_hierarchy,
+               reference_hierarchy_list=None,
+               reference_file_list=None,
                has_hd=False,
-               all_params=None,
+               params=None,
                log=None):
+    assert [reference_hierarchy_list,
+            reference_file_list].count(None) == 1
     if(log is None):
       self.log = sys.stdout
     else:
       self.log = log
-    self.params = all_params.reference_model
-    #working model components
-    self.geometry = \
-      processed_pdb_file.geometry_restraints_manager(
-        show_energies      = False,
-        params_edits       = self.params.edits,
-        params_remove      = self.params.remove,
-        assume_hydrogens_all_missing = not has_hd)
-    self.pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+    self.params = params
+    pdb_hierarchy.reset_i_seq_if_necessary()
+    self.pdb_hierarchy = pdb_hierarchy
+    if reference_hierarchy_list is None:
+      reference_hierarchy_list = \
+        utils.process_reference_files(
+          reference_file_list=reference_file_list,
+          log=self.log)
+    if reference_file_list is None:
+      reference_file_list = []
+      ref_counter = 1
+      for hierarchy in reference_hierarchy_list:
+        key = "ref%d" % ref_counter
+        reference_file_list.append(key)
+        ref_counter += 1
+        hierarchy.reset_i_seq_if_necessary()
+    self.dihedral_proxies_ref = \
+      utils.get_reference_dihedral_proxies(
+        reference_hierarchy_list=reference_hierarchy_list,
+        reference_file_list=reference_file_list,
+        log=self.log)
     self.i_seq_name_hash = utils.build_name_hash(
                              pdb_hierarchy=self.pdb_hierarchy)
 
     #reference model components
-    self.geometry_ref = {}
     self.sites_cart_ref = {}
     self.pdb_hierarchy_ref = {}
     self.i_seq_name_hash_ref = {}
     self.reference_dihedral_hash = {}
-    self.dihedral_proxies_ref = {}
-    self.chirality_proxies_ref = {}
-    self.reference_file_list = []
-    for file, processed in processed_pdb_file_reference:
-      self.reference_file_list.append(file)
-      self.geometry_ref[file] = processed.geometry_restraints_manager(
-        show_energies      = False,
-        params_edits       = self.params.edits,
-        params_remove      = self.params.remove,
-        assume_hydrogens_all_missing = not has_hd)
-      self.sites_cart_ref[file] = processed.all_chain_proxies.sites_cart
-      self.pdb_hierarchy_ref[file] = processed.all_chain_proxies.pdb_hierarchy
+    self.reference_file_list = reference_file_list
+
+    #triage reference model files
+    for file, hierarchy in zip(reference_file_list,
+                               reference_hierarchy_list):
+      self.sites_cart_ref[file] = hierarchy.atoms().extract_xyz()
+      self.pdb_hierarchy_ref[file] = hierarchy
       self.i_seq_name_hash_ref[file] = \
         utils.build_name_hash(
-          pdb_hierarchy=self.pdb_hierarchy_ref[file])
+          pdb_hierarchy=hierarchy)
       self.reference_dihedral_hash[file] = \
         self.build_dihedral_hash(
-          geometry=self.geometry_ref[file],
+          dihedral_proxies=self.dihedral_proxies_ref[file],
           sites_cart=self.sites_cart_ref[file],
-          pdb_hierarchy=self.pdb_hierarchy_ref[file],
+          pdb_hierarchy=hierarchy,
           include_hydrogens=self.params.hydrogens,
           include_main_chain=self.params.main_chain,
           include_side_chain=self.params.side_chain)
-      self.dihedral_proxies_ref[file] = \
-        self.geometry_ref[file].dihedral_proxies
-      self.chirality_proxies_ref[file] = \
-        self.geometry_ref[file].chirality_proxies
-    self.reference_dihedral_proxies = None
     self.match_map = None
     self.proxy_map = None
     self.build_reference_dihedral_proxy_hash()
@@ -392,53 +393,8 @@ class reference_model(object):
           key += self.i_seq_name_hash_ref[ref][i_seq]
         self.reference_dihedral_proxy_hash[ref][key] = dp
 
-    for ref in self.chirality_proxies_ref.keys():
-      proxies = self.chirality_proxies_ref[ref]
-      for cp in proxies:
-        key = ""
-        CAsite = None
-        Csite = None
-        Nsite = None
-        CBsite = None
-        CAkey = None
-        Ckey = None
-        Nkey = None
-        CBkey = None
-        cbeta = True
-        for i_seq in cp.i_seqs:
-          if self.i_seq_name_hash_ref[ref][i_seq][0:4] not in \
-            [' CA ', ' N  ', ' C  ', ' CB ']:
-            cbeta = False
-          if self.i_seq_name_hash_ref[ref][i_seq][0:4] == ' CA ':
-            CAkey = self.i_seq_name_hash_ref[ref][i_seq]
-            CAsite = i_seq
-          elif self.i_seq_name_hash_ref[ref][i_seq][0:4] == ' CB ':
-            CBkey = self.i_seq_name_hash_ref[ref][i_seq]
-            CBsite = i_seq
-          elif self.i_seq_name_hash_ref[ref][i_seq][0:4] == ' C  ':
-            Ckey = self.i_seq_name_hash_ref[ref][i_seq]
-            Csite = i_seq
-          elif self.i_seq_name_hash_ref[ref][i_seq][0:4] == ' N  ':
-            Nkey = self.i_seq_name_hash_ref[ref][i_seq]
-            Nsite = i_seq
-        if cbeta:
-          i_seqs = [Csite, Nsite, CAsite, CBsite]
-          key = Ckey+Nkey+CAkey+CBkey
-          dp = cctbx.geometry_restraints.dihedral_proxy(
-                 i_seqs=cp.i_seqs,
-                 angle_ideal=0.0,
-                 weight=1.0)
-          self.reference_dihedral_proxy_hash[ref][key] = dp
-          i_seqs = [Nsite, Csite, CAsite, CBsite]
-          key = Nkey+Ckey+CAkey+CBkey
-          dp = cctbx.geometry_restraints.dihedral_proxy(
-                 i_seqs=cp.i_seqs,
-                 angle_ideal=0.0,
-                 weight=1.0)
-          self.reference_dihedral_proxy_hash[ref][key] = dp
-
   def build_dihedral_hash(self,
-                          geometry=None,
+                          dihedral_proxies=None,
                           sites_cart=None,
                           pdb_hierarchy=None,
                           include_hydrogens=False,
@@ -451,7 +407,7 @@ class reference_model(object):
       utils.build_name_hash(pdb_hierarchy=pdb_hierarchy)
     dihedral_hash = dict()
 
-    for dp in geometry.dihedral_proxies:
+    for dp in dihedral_proxies:
       try:
         #check for H atoms if required
         if not include_hydrogens:
@@ -487,73 +443,14 @@ class reference_model(object):
         dihedral_hash[key] = di.angle_model
       except StopIteration:
         pass
-
-    #add dihedral for CB
-    cbetadev_hash = \
-      utils.build_cbetadev_hash(pdb_hierarchy=pdb_hierarchy)
-    for cp in geometry.chirality_proxies:
-      c_beta = True
-      wrong_atoms_for_c_beta = False
-      key = ""
-      CAxyz = None
-      Cxyz = None
-      Nxyz = None
-      CBxyz = None
-      CAkey = None
-      Ckey = None
-      Nkey = None
-      CBkey = None
-      CBi_seq = None
-      for i_seq in cp.i_seqs:
-        if i_seq_name_hash[i_seq][0:4] \
-          not in [' CA ', ' N  ', ' C  ', ' CB ']:
-          c_beta = False
-          wrong_atoms_for_c_beta = True
-        if i_seq_name_hash[i_seq][0:4] == ' CA ':
-          CAxyz = sites_cart[i_seq]
-          CAkey = i_seq_name_hash[i_seq]
-        elif i_seq_name_hash[i_seq][0:4] == ' C  ':
-          Cxyz = sites_cart[i_seq]
-          Ckey = i_seq_name_hash[i_seq]
-        elif i_seq_name_hash[i_seq][0:4] == ' N  ':
-          Nxyz = sites_cart[i_seq]
-          Nkey = i_seq_name_hash[i_seq]
-        elif i_seq_name_hash[i_seq][0:4] == ' CB ':
-          CBxyz = sites_cart[i_seq]
-          CBkey = i_seq_name_hash[i_seq]
-          CBi_seq = i_seq
-          try:
-            if float(cbetadev_hash[i_seq_name_hash[i_seq][4:14]]) >= 0.25:
-              c_beta = False
-          except Exception:
-              c_beta = False
-      if not c_beta and not wrong_atoms_for_c_beta:
-        print >> self.log, "skipping C-beta restraint for %s" % \
-          i_seq_name_hash[CBi_seq][4:14]
-      if c_beta:
-        assert CAxyz is not None
-        assert Cxyz is not None
-        assert Nxyz is not None
-        assert CBxyz is not None
-        sites = [Cxyz, Nxyz, CAxyz, CBxyz]
-        key = Ckey + Nkey + CAkey + CBkey
-        d = cctbx.geometry_restraints.dihedral(
-          sites=sites,
-          angle_ideal=0,
-          weight=1)
-        dihedral_hash[key] = d.angle_model
-        sites = [Nxyz, Cxyz, CAxyz, CBxyz]
-        key = Nkey + Ckey + CAkey + CBkey
-        d = cctbx.geometry_restraints.dihedral(
-          sites=sites,
-          angle_ideal=0,
-          weight=1)
-        dihedral_hash[key] = d.angle_model
     return dihedral_hash
 
   def get_reference_dihedral_proxies(self):
     ss_selection = None
     residue_match_hash = {}
+    complete_dihedral_proxies = utils.get_complete_dihedral_proxies(
+                                  pdb_hierarchy=self.pdb_hierarchy,
+                                  log=self.log)
     self.reference_dihedral_proxies = \
       cctbx.geometry_restraints.shared_dihedral_proxy()
     sigma = self.params.sigma
@@ -597,7 +494,7 @@ class reference_model(object):
             (utils.phil_atom_selections_as_i_seqs_multiple(
                cache=sel_cache_ref,
                string_list=[overall_selection]))
-    for dp in self.geometry.dihedral_proxies:
+    for dp in complete_dihedral_proxies:
       key_work = ""
       for i_seq in dp.i_seqs:
         key_work = key_work + self.i_seq_name_hash[i_seq]
@@ -670,120 +567,6 @@ class reference_model(object):
           limit=limit,
           top_out=TOP_OUT_FLAG)
         self.reference_dihedral_proxies.append(dp_add)
-
-    for cp in self.geometry.chirality_proxies:
-      file_match = None
-      for file in self.reference_file_list:
-        if file_match is None:
-          CAsite = None
-          Csite = None
-          Nsite = None
-          CBsite = None
-          CAkey = None
-          Ckey = None
-          Nkey = None
-          CBkey = None
-          for i_seq in cp.i_seqs:
-            map_part = match_map[file].get(i_seq)
-            if map_part is not None:
-              key_check = self.i_seq_name_hash_ref[file].get(map_part)
-              if key_check is not None:
-                if key_check[0:4] == ' CA ':
-                  CAsite = i_seq
-                  CAkey = key_check
-                elif key_check[0:4] == ' CB ':
-                  CBsite = i_seq
-                  CBkey = key_check
-                elif key_check[0:4] == ' C  ':
-                  Csite = i_seq
-                  Ckey = key_check
-                elif key_check[0:4] == ' N  ':
-                  Nsite = i_seq
-                  Nkey = key_check
-          if CAsite is None \
-             or Csite is None \
-             or CBsite is None \
-             or Nsite is None:
-            continue
-          else:
-            file_match = file
-      if file_match is None:
-        continue
-      key = Ckey + Nkey + CAkey + CBkey
-      reference_angle = self.reference_dihedral_hash[file_match].get(key)
-      if reference_angle is not None:
-        i_seqs = [Csite, Nsite, CAsite, CBsite]
-        if self.params.secondary_structure_only and \
-          ss_selection[file_match] != None:
-          if match_map[file_match][i_seqs[0]] \
-               in ss_selection[file_match] and \
-             match_map[file_match][i_seqs[1]] \
-               in ss_selection[file_match] and \
-             match_map[file_match][i_seqs[2]] \
-               in ss_selection[file_match] and \
-             match_map[file_match][i_seqs[3]] \
-               in ss_selection[file_match]:
-            dp_add = cctbx.geometry_restraints.dihedral_proxy(
-              i_seqs=i_seqs,
-              angle_ideal=reference_angle,
-              weight=1/(1.0**2),
-              limit=30.0,
-              top_out=TOP_OUT_FLAG)
-            self.reference_dihedral_proxies.append(dp_add)
-          else:
-            dp_add = cctbx.geometry_restraints.dihedral_proxy(
-              i_seqs=i_seqs,
-              angle_ideal=reference_angle,
-              weight=1/(5.0**2),
-              limit=15.0,
-              top_out=TOP_OUT_FLAG)
-            self.reference_dihedral_proxies.append(dp_add)
-        else:
-          dp_add = cctbx.geometry_restraints.dihedral_proxy(
-            i_seqs=i_seqs,
-            angle_ideal=reference_angle,
-            weight=1/sigma**2,
-            limit=limit,
-            top_out=TOP_OUT_FLAG)
-          self.reference_dihedral_proxies.append(dp_add)
-
-      key = Nkey + Ckey + CAkey + CBkey
-      reference_angle = self.reference_dihedral_hash[file_match].get(key)
-      if reference_angle is not None:
-        i_seqs = [Nsite, Csite, CAsite, CBsite]
-        if self.params.secondary_structure_only and \
-           ss_selection[file_match] != None:
-          if match_map[file_match][i_seqs[0]] \
-               in ss_selection[file_match] and \
-             match_map[file_match][i_seqs[1]] \
-               in ss_selection[file_match] and \
-             match_map[file_match][i_seqs[2]] \
-               in ss_selection[file_match] and \
-             match_map[file_match][i_seqs[3]] \
-               in ss_selection[file_match]:
-            dp_add = cctbx.geometry_restraints.dihedral_proxy(
-              i_seqs=i_seqs,
-              angle_ideal=reference_angle,
-              weight=1/(1.0**2),
-              limit=30.0,
-              top_out=TOP_OUT_FLAG)
-            self.reference_dihedral_proxies.append(dp_add)
-          else:
-            dp_add = cctbx.geometry_restraints.dihedral_proxy(
-              i_seqs=i_seqs,
-              angle_ideal=reference_angle,
-              weight=1/(5.0**2),
-              limit=15.0,
-              top_out=TOP_OUT_FLAG)
-            self.reference_dihedral_proxies.append(dp_add)
-        else:
-          dp_add = cctbx.geometry_restraints.dihedral_proxy(
-            i_seqs=i_seqs,
-            angle_ideal=reference_angle,
-            weight=1/sigma**2,
-            limit=limit,
-            top_out=TOP_OUT_FLAG)
-          self.reference_dihedral_proxies.append(dp_add)
     self.residue_match_hash = residue_match_hash
 
   def show_reference_summary(self, log=None):
