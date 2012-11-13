@@ -366,7 +366,7 @@ def get_phaser_sad_llg_map_coefficients (
   t = data.target(
     xray_structure=fmodel.xray_structure,
     pdb_hierarchy=pdb_hierarchy)
-  t.set_f_calc(fmodel.f_model(), for_llg_map=True)
+  t.set_f_calc(fmodel.f_model())
   map_coeffs = t.llg_map_coeffs()
   return map_coeffs
 
