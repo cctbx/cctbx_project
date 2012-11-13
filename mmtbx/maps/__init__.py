@@ -386,7 +386,7 @@ def map_coefficients_from_fmodel (fmodel,
   mnm = mmtbx.map_names(map_name_string = params.map_type)
   if (mnm.phaser_sad_llg) :
     if (not fmodel.f_obs().anomalous_flag()) :
-      raise Sorry("Anomalous data required for Phaser SAD LLG map.")
+      return None # XXX like anomalous map, fail gracefully
     elif (pdb_hierarchy is None) :
       raise RuntimeError("pdb_hierarchy must not be None when a Phaser SAD "+
         "LLG map is requested.")
