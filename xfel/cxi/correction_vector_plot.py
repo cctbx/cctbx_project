@@ -5,25 +5,85 @@ from cctbx.array_family import flex
 from xfel import correction_vector_store,get_correction_vector_xy
 from xfel import get_radial_tangential_vectors
 
+class manage_sql:
+  def __init__(self,params):
+    self.params = params
+    self.have_db = False
+    if self.params.mysql.runtag is not None:
+      self.have_db = True
+      from xfel.cxi.merging_database import manager
+      self.manager = manager
+
+  def get_cursor(self):
+    CART = self.manager(self.params)
+    db = CART.connection()
+    cursor = db.cursor()
+    return cursor
+
+  def initialize_tables_and_insert_command(self):
+    if self.have_db is not True: return
+    CART = self.manager(self.params)
+    db = CART.connection()
+    cursor = db.cursor()
+    new_tables = CART.positional_refinement_schema_tables(self.params.mysql.runtag)
+    for table in new_tables:
+      cursor.execute("DROP TABLE IF EXISTS %s;"%table[0])
+      cursor.execute("CREATE TABLE %s "%table[0]+table[1].replace("\n"," ")+" ;")
+    import cStringIO
+    self.query = cStringIO.StringIO()
+    self.query.write("INSERT INTO %s_spotfinder VALUES "%self.params.mysql.runtag)
+    self.firstcomma = ""
+
+  def get_frame_dictionary(self):
+    if self.have_db is not True: return dict()
+    CART = self.manager(self.params)
+    db = CART.connection()
+    cursor = db.cursor()
+    cursor.execute("SELECT unique_file_name,frame_id_1_base FROM %s_frame"%(self.params.mysql.runtag))
+    del CART
+    frame_dict = {}
+    for ftuple in cursor.fetchall():
+      frame_dict[ftuple[0]] = ftuple[1]
+    return frame_dict
+
+  def insert(self,run,itile,tokens):
+    self.query.write(self.firstcomma); self.firstcomma=","
+    self.query.write("('%d','%d','%10.2f','%10.2f','%10.2f','%10.2f','%10.2f','%10.2f','%10.2f','%10.2f',"%(
+          run,itile,float(tokens[2]),float(tokens[3]),float(tokens[5]),float(tokens[6]),
+          float(tokens[8]),float(tokens[9]),float(tokens[11]),float(tokens[12]) ))
+    self.query.write("'%4d','%4d','%4d')"%(int(tokens[14]),int(tokens[15]),int(tokens[16])))
+
+
+  def send_insert_command(self):
+    if self.have_db is not True: return
+    cursor = self.get_cursor()
+    cursor.execute( self.query.getvalue() )
+
 class lines(correction_vector_store):
   def __init__(self,params):
     correction_vector_store.__init__(self)
     self.params = params
+    self.database = manage_sql(self.params)
 
   def literals(self):
+    frame_dict = self.database.get_frame_dictionary()
+
     if self.params.run_numbers is None:
       path = self.params.outdir_template
       stream = open(path,"r")
       print path
-      reading_setting = False
       for line in stream.readlines():
-        if line.find("Cell in setting %d"%self.params.bravais_setting_id)>=0:
-          reading_setting = True
-        if line.find("-----END")>=0:
-          reading_setting = False
-        if reading_setting and line.find("CV OBSCENTER")==0:
-          yield line.strip(),0
-        if reading_setting and len(self.tiles)==0 and line.find("EFFEC")==0:
+        if line.find("XFEL processing:") == 0:
+           tokens = line.strip().split("/")
+           picklefile = line.strip().split()[2]
+           frame_id = frame_dict.get(picklefile, None)
+           if frame_id is not None:
+             print "FETCHED",frame_id
+        if line.find("CV OBSCENTER")==0:
+          potential_tokens = line.strip().split()
+          if len(potential_tokens)==18 and int(potential_tokens[17])==self.params.bravais_setting_id:
+            yield frame_id,potential_tokens
+        if len(self.tiles)==0 and line.find("EFFEC")==0:
           self.tiles = flex.int([int(a) for a in line.strip().split()[2:]])
           assert len(self.tiles)==256
           print list(self.tiles)
@@ -36,35 +96,35 @@ class lines(correction_vector_store):
           path = os.path.join(templ,item)
           stream = open(path,"r")
           print path
-          reading_setting = False
           for line in stream.readlines():
-            if line.find("Cell in setting %d"%self.params.bravais_setting_id)>=0:
-              reading_setting = True
-            if line.find("-----END")>=0:
-              reading_setting = False
-            if reading_setting and line.find("CV OBSCENTER")==0:
-              yield line.strip(),run
-            if reading_setting and self.tiles is None and line.find("EFFEC")==0:
+            if line.find("CV OBSCENTER")==0:
+              potential_tokens = line.strip().split()
+              if len(potential_tokens)==18 and int(potential_tokens[17])==self.params.bravais_setting_id:
+                yield frame_id,potential_tokens
+            if self.tiles is None and line.find("EFFEC")==0:
               self.tiles = flex.int([int(a) for a in line.strip().split()[2:]])
               assert len(self.tiles)==256
               print list(self.tiles)
               self.initialize_per_tile_sums()
 
   def vectors(self):
+    self.database.initialize_tables_and_insert_command()
+
     self.tile_rmsd = [0.]*64
-    for line,run in self.literals():
+
+    for run,tokens in self.literals():
      try:
-      tokens = line.split()
-      if len(tokens)!=13:
-        continue # guard against subprocess contention or unflushed output
-      self.register_line( float(tokens[2]),float(tokens[3]),
+      itile = self.register_line( float(tokens[2]),float(tokens[3]),
                        float(tokens[5]),float(tokens[6]),
                        float(tokens[8]),float(tokens[9]),
                        float(tokens[11]),float(tokens[12]) )
-
+      if run is not None:
+        self.database.insert(run,itile,tokens)
       yield "OK"
      except ValueError:
        print "Valueerror"
+
+    self.database.send_insert_command()
     for x in xrange(64):
       if self.tilecounts[x]==0: continue
       self.radii[x]/=self.tilecounts[x]

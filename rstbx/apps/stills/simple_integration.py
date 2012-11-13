@@ -193,7 +193,9 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
               spots[indexed_pairs[-1]["spot"]].ctr_mass_x(),
               spots[indexed_pairs[-1]["spot"]].ctr_mass_y(),
               self.predicted[indexed_pairs[-1]["pred"]][0]/pxlsz,
-              self.predicted[indexed_pairs[-1]["pred"]][1]/pxlsz)
+              self.predicted[indexed_pairs[-1]["pred"]][1]/pxlsz),
+            the_hkl = self.hkllist[indexed_pairs[-1]["pred"]]
+            print "HKL %4d %4d %4d"%the_hkl,"%2d"%self.setting_id
       #print "After outlier rejection %d indexed spotfinder spots remain."%len(indexed_pairs)
       if False:
         rayleigh_cdf = [
