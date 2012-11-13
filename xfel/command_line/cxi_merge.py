@@ -830,10 +830,11 @@ class scaling_manager (intensity_data) :
       xypred = result["mapped_predictions"][0]
       G = open(self.params.output.prefix+"_observation.db","a")
       for pair in matches.pairs():
+        idx = observations_original_index[pair[1]]
         Intensity = observations.data()[pair[1]]
         Sigma = observations.sigmas()[pair[1]]
         print >>G, "%7d %14.8f %14.8f %8.2f %8.2f %7d"%(pair[0], Intensity, Sigma,
-          xypred[pair[1]][0], xypred[pair[1]][1], self.frame_id), False
+          xypred[pair[1]][0], xypred[pair[1]][1], self.frame_id), False, "%d %d %d"%idx
       self.frame_id += 1
     elif self.params.mysql.runtag is not None:
       from xfel.cxi.merging_database import manager
@@ -858,13 +859,18 @@ class scaling_manager (intensity_data) :
       xypred = result["mapped_predictions"][0]
 
       query = cStringIO.StringIO()
-      query.write("INSERT INTO %s_observation (hkl_id_0_base,i,sigi,detector_x,detector_y,frame_id_0_base,overload_flag) VALUES "%self.params.mysql.runtag)
+      query.write("""INSERT INTO %s_observation
+        (hkl_id_0_base,i,sigi,detector_x,detector_y,frame_id_0_base,overload_flag,original_h,original_k,original_l)
+        VALUES """%self.params.mysql.runtag)
       firstcomma = ""
       for pair in matches.pairs():
+        idx = observations_original_index[pair[1]]
         query.write(firstcomma); firstcomma=","
         Intensity = observations.data()[pair[1]]
         Sigma = observations.sigmas()[pair[1]]
-        query.write("('%7d','%14.8f','%14.8f','%8.2f','%8.2f','%7d','%s')"%(pair[0],Intensity,Sigma,xypred[pair[1]][0],xypred[pair[1]][1],frame_id_0_base,'F'))
+        query.write("('%7d','%14.8f','%14.8f','%8.2f','%8.2f','%7d','%s','%d','%d','%d')"%(
+          pair[0],Intensity,Sigma,xypred[pair[1]][0],xypred[pair[1]][1],frame_id_0_base,'F',
+          idx[0],idx[1],idx[2]))
       cursor.execute( query.getvalue() )
 
     if False:
