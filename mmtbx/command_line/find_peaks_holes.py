@@ -1,9 +1,9 @@
-from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.find_peaks_holes
 
 # simple frontend to mmtbx.find_peaks, primarily intended for use in quickly
 # analyzing structures in the PDB (and storing results)
 
+from __future__ import division
 from mmtbx import utils
 from scitbx.array_family import flex
 from libtbx.str_utils import make_header, format_value
@@ -28,12 +28,24 @@ map_cutoff = 3.0
 anom_map_cutoff = 3.0
   .type = float
   .short_caption = Anomalous map cutoff (sigma)
+wavelength = None
+  .type = float
+  .help = Optional parameter, if defined this will cause all atoms to be \
+    treated as anomalous scatterers using the standard Sasaki table to \
+    obtain theoretical fp and fpp values.  Only really useful if the Phaser \
+    LLG map is being used for the anomalous map.
 filter_peaks_by_2fofc = None
   .type = float
   .short_caption = Filter peaks by 2mFo-DFc
   .help = If this is set, peaks outside 2mFo-DFc density at the \
     cutoff will be discarded.  (This does not apply to the analysis of \
     solvent atoms.)  Holes will not be changed.
+use_phaser_if_available = True
+  .type = bool
+  .short_caption = Use Phaser LLG map
+  .help = If True, and Phaser is installed and configured, an anomalous LLG \
+    map will be used in place of the simple anomalous difference map.  The \
+    wavelength should be specified for this to be maximally useful.
 write_pdb = True
   .type = bool
   .short_caption = Write peaks to PDB file
@@ -240,6 +252,8 @@ def find_peaks_holes (
     map_cutoff=3.0,
     anom_map_cutoff=3.0,
     filter_peaks_by_2fofc=None,
+    use_phaser_if_available=True,
+    return_llg_map=False,
     out=None) :
   """
   Find peaks and holes in mFo-DFc map, plus flag solvent atoms with
@@ -303,11 +317,22 @@ def find_peaks_holes (
   print >> out, ""
   out.flush()
   anom = None
+  anom_map_coeffs = None
   if (fmodel.f_obs().anomalous_flag()) and (not fmodel.twin) :
     make_header("Anomalous difference map peaks", out=out)
+    anom_map_type = "anomalous"
+    if (use_phaser_if_available) and (libtbx.env.has_module("phaser")) :
+      import mmtbx.map_tools
+      print >> out, "Will use Phaser LLG map"
+      anom_map_type = None
+      anom_map_coeffs = mmtbx.map_tools.get_phaser_sad_llg_map_coefficients(
+        fmodel=fmodel,
+        pdb_hierarchy=pdb_hierarchy,
+        log=out)
     anom_result = find_peaks.manager(
       fmodel=fmodel,
-      map_type="anomalous",
+      map_type=anom_map_type,
+      map_coeffs=anom_map_coeffs,
       map_cutoff=anom_map_cutoff,
       params=params,
       log=out)
@@ -330,14 +355,21 @@ def find_peaks_holes (
   if (len(water_isel) > 0) :
     sites_frac = fmodel.xray_structure.sites_frac()
     map_types = ["mFo-DFc"]
-    if (fmodel.f_obs().anomalous_flag()) and (not fmodel.twin) :
+    if (fmodel.f_obs().anomalous_flag()) :
       map_types.append("anomalous")
     for k, map_type in enumerate(map_types) :
-      fft_map = fmodel.electron_density_map().fft_map(
-        resolution_factor=params.resolution_factor,
-        symmetry_flags=maptbx.use_space_group_symmetry,
-        map_type=map_type,
-        use_all_data=True)
+      fft_map = None
+      # re-use Phaser LLG map if it was previously calculated
+      if (map_type == "anomalous") and (anom_map_coeffs is not None) :
+        fft_map = anom_map_coeffs.fft_map(
+          resolution_factor=params.resolution_factor,
+          symmetry_flags=maptbx.use_space_group_symmetry)
+      else :
+        fft_map = fmodel.electron_density_map().fft_map(
+          resolution_factor=params.resolution_factor,
+          symmetry_flags=maptbx.use_space_group_symmetry,
+          map_type=map_type,
+          use_all_data=True)
       fft_map.apply_sigma_scaling()
       real_map = fft_map.real_map_unpadded()
       suspicious_waters = []
@@ -366,6 +398,8 @@ def find_peaks_holes (
     water_peaks=waters_out[0],
     water_anom_peaks=waters_out[1])
   all_results.show_summary(out=out)
+  if (return_llg_map) :
+    return all_results, anom_map_coeffs
   return all_results
 
 def run (args, out=None) :
@@ -388,14 +422,23 @@ mmtbx.find_peaks_holes - difference map analysis
     create_fmodel=True,
     prefer_anomalous=True)
   fmodel = cmdline.fmodel
+  params = cmdline.params
+  if (params.wavelength is not None) :
+    xrs = fmodel.xray_structure
+    xrs.set_inelastic_form_factors(
+      photon=params.wavelength,
+      table="sasaki")
+    fmodel.update_xray_structure(xrs, update_f_calc=True)
   out.flush()
-  result = find_peaks_holes(
+  result, llg_map = find_peaks_holes(
     fmodel=fmodel,
     pdb_hierarchy=cmdline.pdb_hierarchy,
     params=cmdline.params.find_peaks,
     map_cutoff=cmdline.params.map_cutoff,
     anom_map_cutoff=cmdline.params.anom_map_cutoff,
     filter_peaks_by_2fofc=cmdline.params.filter_peaks_by_2fofc,
+    use_phaser_if_available=True,
+    return_llg_map=True,
     out=out)
   prefix = cmdline.params.output_file_prefix
   if (cmdline.params.write_pdb) :
@@ -404,8 +447,8 @@ mmtbx.find_peaks_holes - difference map analysis
     import mmtbx.maps.utils
     import iotbx.map_tools
     f_map, diff_map = mmtbx.maps.utils.get_maps_from_fmodel(fmodel)
-    anom_map = None
-    if (fmodel.f_obs().anomalous_flag()) and (not fmodel.twin) :
+    anom_map = llg_map # use LLG map for anomalous map if available
+    if (fmodel.f_obs().anomalous_flag()) and (anom_map is None) :
       anom_map = mmtbx.maps.utils.get_anomalous_map(fmodel)
     iotbx.map_tools.write_map_coeffs(
       fwt_coeffs=f_map,
