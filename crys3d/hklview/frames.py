@@ -211,6 +211,9 @@ class settings_window (wxtbx.utils.SettingsPanel) :
       value_str = format_value("%.3g", value, replace_none_with="---")
       self.value_info.SetValue(value_str)
 
+  def clear_reflection_info (self) :
+    self.update_reflection_info(None, None, None)
+
   def update_space_group_choices (self, miller_array) :
     from cctbx.sgtbx.subgroups import subgroups
     from cctbx import sgtbx
