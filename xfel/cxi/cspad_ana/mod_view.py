@@ -161,7 +161,7 @@ class _XrayFrameThread(threading.Thread):
     @p img and @p title by sending it an ExternalUpdateEvent()."""
 
     from rstbx.viewer.frame import ExternalUpdateEvent
-    from wx import ID_FORWARD
+    from wx import ID_FORWARD, PyDeadObjectError
 
     event = ExternalUpdateEvent()
     event.img = img
@@ -220,10 +220,10 @@ def _xray_frame_process(pipe, hold=False, linger=False, wait=None):
 
     try:
       send_data(rstbx.viewer.image(payload[0]), payload[1])
+      if hold:
+        thread._frame.toolbar.EnableTool(ID_FORWARD, True)
     except PyDeadObjectError:
       pass
-    if hold:
-      thread._frame.toolbar.EnableTool(ID_FORWARD, True)
 
 
 class mod_view(common_mode.common_mode_correction):
@@ -274,7 +274,7 @@ class mod_view(common_mode.common_mode_correction):
       self.logger.warn("n_collate capped to %d" % self.nupdate)
 
     hold = cspad_tbx.getOptBool(hold)
-    linger = False
+    linger = True
     wait = cspad_tbx.getOptFloat(wait)
     # Create a unidirectional pipe and hand its read end to the viewer
     # process.  The write end is kept for sending updates.
@@ -282,6 +282,8 @@ class mod_view(common_mode.common_mode_correction):
     self._proc = multiprocessing.Process(
       target=_xray_frame_process, args=(pipe_recv, hold, linger, wait))
     self._proc.start()
+
+    self.n_shots = 0
 
 
   def event(self, evt, env):
@@ -292,13 +294,16 @@ class mod_view(common_mode.common_mode_correction):
     @param evt Event data object, a configure object
     @param env Environment object
     """
+    from pyana.event import Event
+
+    self.n_shots += 1
 
     super(mod_view, self).event(evt, env)
-    if (evt.get("skip_event")):
+    if evt.status() != Event.Normal or evt.get('skip_event'):
       return
 
     if (not self._proc.is_alive()):
-      # XXX Prevents pyana from printing its pyana's status line!
+      # XXX Prevents pyana from printing its status line!
       sys.exit(self._proc.exitcode)
 
     # Early return if the next update to the viewer is more than
@@ -335,10 +340,10 @@ class mod_view(common_mode.common_mode_correction):
       from time import clock, localtime, strftime
 
       time_str = strftime("%H:%M:%S", localtime(evt.getTime().seconds()))
-      title = "r%04d@%s: average of %d last images" \
-          % (evt.run(), time_str, self.nvalid)
+      title = "r%04d@%s: average of %d last images on %s" \
+          % (evt.run(), time_str, self.nvalid, self.address)
 
-      # Wait for "clear to send".
+      # Wait for ready-to-send.
       t = clock() + 2
       while not self._pipe.poll():
         if clock() >= t:
@@ -356,8 +361,8 @@ class mod_view(common_mode.common_mode_correction):
 
 
   def endjob(self, env):
-    """The endjob() terminates the viewer process by sending it a @c
-    None object, and waiting for it to finish.
+    """The endjob() function terminates the viewer process by sending
+    it a @c None object, and waiting for it to finish.
 
     @param env Environment object
     """
