@@ -161,6 +161,9 @@ class manager(object):
     #XXX  save_b_part = self.fmodel.b_part()
     #XXX  self.fmodel.update_core(k_part=0, b_part=0)
     #
+    assert (0 < len(self.params.output_atom_name) <= 4)
+    assert (len(self.params.output_chain_id) <= 2)
+    assert (0 < len(self.params.output_residue_name) <= 3)
     assert self.fmodel.xray_structure is self.model.xray_structure
     if(self.params is None): self.params = master_params().extract()
     if(self.find_peaks_params is None):
