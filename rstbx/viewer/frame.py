@@ -152,7 +152,8 @@ class XrayFrame (wx.Frame) :
     self.image_chooser.SetSelection(i)
 
     self.viewer.set_image(self._img)
-    self.settings_frame.set_image(self._img)
+    if (self.settings_frame is not None) :
+      self.settings_frame.set_image(self._img)
     self.SetTitle(key)
     self.update_statusbar()
     self.Layout()
