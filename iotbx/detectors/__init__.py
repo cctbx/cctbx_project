@@ -47,8 +47,8 @@ class SMVImage(ADSCImage):
     DetectorImageBase.__init__(self,filename)
     self.vendortype = "SMV(Generic)"
 
-all_image_types = [EDFWrapper,SaturnImage,DIPImage,ADSCImage,SMVImage,HamamatsuImage,
-                  MARImage,MARIPImage,DTREKImage,RAXISImage,
+all_image_types = [EDFWrapper,SaturnImage,DIPImage,ADSCImage,HamamatsuImage,
+                  MARImage,MARIPImage,SMVImage,DTREKImage,RAXISImage,
                   NonSquareRAXISImage,PilatusImage,CBFImage,BrukerImage]
 
 all_url_types = [pilatus_slice_from_file_url,pilatus_slice_from_http_url,
