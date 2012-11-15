@@ -313,7 +313,8 @@ class tile_manager_base(object):
     self.reference_image = reference_image
 
   def effective_tiling_as_flex_int(self, reapply_peripheral_margin=False,
-                                   reference_image=None, **kwargs):
+                                   reference_image=None,
+                                   encode_inactive_as_zeroes=False, **kwargs):
     """Some documentation goes here"""
 
     if reference_image is not None:
@@ -331,13 +332,25 @@ class tile_manager_base(object):
         IT[4 * i + 2] -= peripheral_margin
         IT[4 * i + 3] -= peripheral_margin
 
-    if self.working_params.distl.tile_flags is not None:
+    if self.working_params.distl.tile_flags is not None and encode_inactive_as_zeroes is False:
       #sensors whose flags are set to zero are not analyzed by spotfinder
+      #this returns an active list with fewer tiles
       expand_flags=[]
       for flag in self.working_params.distl.tile_flags :
         expand_flags=expand_flags + [flag]*4
       bool_flags = flex.bool( flex.int(expand_flags)==1 )
       return IT.select(bool_flags)
+
+    if self.working_params.distl.tile_flags is not None and encode_inactive_as_zeroes is True:
+      #sensors whose flags are set to zero are identified
+      #this returns a same-length active list with some tiles set to 0,0,0,0
+      expand_flags=[]
+      for flag in self.working_params.distl.tile_flags :
+        expand_flags=expand_flags + [flag]*4
+      Zero_IT = flex.int()
+      for idx in xrange(len(IT)):
+        Zero_IT.append(expand_flags[idx]*IT[idx])
+      return Zero_IT
 
     return IT
 
