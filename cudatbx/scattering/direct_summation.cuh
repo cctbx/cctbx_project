@@ -138,7 +138,7 @@ namespace scattering {
       // calculate form factors (stored in local memory)
       // last form factor is always for boundary solvent layer
       stol_sq = float(0.25) * (h_i*h_i + k_i*k_i + l_i*l_i);
-      for (int type=0; type<d_n_types; type++) {
+      for (int type=0; type<dc_n_types; type++) {
         f[type] = form_factor(type,stol_sq);
       }
     }
@@ -212,7 +212,7 @@ namespace scattering {
                   __sincosf(two_pi*(xx * h_i + yy * k_i + zz * l_i),&s,&c);
                   // bulk solvent correction in f
                   // boundary layer solvent scale in solvent
-                  ff = f[s_type[a]] + solvent[a]*f[d_n_types-1];
+                  ff = f[s_type[a]] + solvent[a]*f[dc_n_types-1];
                   real_sum += ff * c;
                   imag_sum += ff * s;
                 }
