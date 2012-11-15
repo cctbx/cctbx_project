@@ -254,7 +254,13 @@ class process_arrays (object) :
     miller_arrays = []
     file_names = []
     array_types = []
-    for array_params in params.mtz_file.miller_array :
+    for i_array, array_params in enumerate(params.mtz_file.miller_array) :
+      if (array_params.file_name is None) :
+        raise Sorry("Missing file name for array %d (labels=%s)" %
+          (i_array+1, str(array_params.labels)))
+      elif (not os.path.isfile(array_params.file_name)) :
+        raise Sorry("The path '%s' does not exist or is not a file." %
+          array_params.file_name)
       input_file = input_files.get(array_params.file_name)
       if input_file is None :
         input_file = file_reader.any_file(array_params.file_name,
