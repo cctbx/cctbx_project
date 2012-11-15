@@ -42,19 +42,21 @@ namespace scattering {
   private:
     // functions for reorganizing data
     void reorganize_coordinates
-      (const scitbx::af::const_ref<scitbx::vec3<double> >&);
-    void copy_solvent_weights(const scitbx::af::const_ref<double>&);
+      (const scitbx::af::const_ref<scitbx::vec3<double> >&,
+       const scitbx::af::const_ref<double>&);
     void reorganize_h(const scitbx::af::const_ref<scitbx::vec3<double> >&);
     void reorganize_rt(const scitbx::af::const_ref<double>&,
                        const scitbx::af::const_ref<scitbx::vec3<double> >&);
     void convert_scatterers(const scitbx::af::const_ref<std::string>&,
                             const cctbx::xray::scattering_type_registry&);
+    void clear_arrays();
 
     // xyz parameters
     int n_xyz;
     int padded_n_xyz;
     int size_xyz;
     fType * h_xyz, * d_xyz;
+    scitbx::af::const_ref<double> h_solvent;
 
     // solvent weight parameters
     fType * d_solvent;
