@@ -13,6 +13,7 @@ tst_list = (
     #["$D/refinement/tests/tst_least_squares.py", "--fix_random_seeds"],
     ["$D/refinement/tests/tst_weighting_schemes.py",
      "--fix_random_seeds"],
+    "$D/refinement/constraints/tests/tst_lbfgs.py",
     "$B/refinement/constraints/tests/tst_reparametrisation",
     "$B/refinement/constraints/tests/tst_geometrical_hydrogens",
     "$B/refinement/constraints/tests/tst_special_position",
