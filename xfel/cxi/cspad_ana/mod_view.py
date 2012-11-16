@@ -5,34 +5,29 @@
 
 XXX Known issues, wishlist:
 
-  * Is it slow?  Even changing between two cached images takes a lot
-    of time.
+  * Is it slow?  Yes!
 
   * Radial distribution plot, requested by Jan F. Kern
 
-  * Sub-pixel zoom like in xdisp, maybe with coordinate tool-tips on
-    mouse-over.  Can we choose the colour automagically?  Zoom window
-    not updated with hold!
-
-XXX
+  * Coordinate and resolution tool-tips in sub-pixel zoom.  Can we
+    choose the colour automagically?
 """
 from __future__ import division
 
 __version__ = "$Revision$"
 
+import Queue
 import multiprocessing
 import thread
 import threading
-import sys
 import time
 
 from iotbx.detectors.detectorbase import DetectorImageBase
 from rstbx.viewer.frame import XrayFrame
-from xfel.cxi.cspad_ana import common_mode
-from xfel.cxi.cspad_ana import cspad_tbx
+from xfel.cxi.cspad_ana import common_mode, cspad_tbx
 
 
-class _CxiDict(DetectorImageBase):
+class _ImgDict(DetectorImageBase):
   """Minimal detector class for in-memory dictionary representation of
   images.
   """
@@ -42,9 +37,9 @@ class _CxiDict(DetectorImageBase):
     convention.
     """
 
-    super(_CxiDict, self).__init__("")
+    super(_ImgDict, self).__init__('')
     self.parameters = parameters
-    self.vendortype = "npy_raw"
+    self.vendortype = 'npy_raw'
     self.bin_safe_set_data(data)
 
 
@@ -76,7 +71,7 @@ def _image_factory(img_dict):
     SIZE1                = data.focus()[0],
     SIZE2                = data.focus()[1],
     WAVELENGTH           = img_dict["WAVELENGTH"])
-  return (_CxiDict(data, parameters))
+  return (_ImgDict(data, parameters))
 
 from iotbx import detectors
 detectors.ImageFactory = _image_factory
@@ -91,14 +86,13 @@ class _XrayFrameThread(threading.Thread):
   http://wiki.wxpython.org/MainLoopAsThread.
   """
 
-  def __init__(self, hold=False):
+  def __init__(self):
     """The thread is started automatically on initialisation.
     self.run() will initialise self.frame and release self._init_lock.
     """
 
     super(_XrayFrameThread, self).__init__()
     self.setDaemon(1)
-    self._hold = hold
     self._init_lock = threading.Lock()
     self._next_semaphore = threading.Semaphore()
     self._start_orig = self.start
@@ -107,17 +101,6 @@ class _XrayFrameThread(threading.Thread):
 
     self._init_lock.acquire()
     self.start()
-
-
-  def _forward (self, event):
-    """The _forward() function implements an alternate event handler
-    for the viewer's "Next"-button.  It increments the semaphore by
-    one.
-    """
-    from wx import ID_FORWARD
-
-    self._next_semaphore.release()
-    event.GetEventObject().EnableTool(ID_FORWARD, False)
 
 
   def _start_local(self):
@@ -142,10 +125,15 @@ class _XrayFrameThread(threading.Thread):
     """
 
     import wx
+    from wxtbx import bitmaps
     app = wx.App(0)
+    self._bitmap_pause = bitmaps.fetch_icon_bitmap('actions', 'stop')
+    self._bitmap_run = bitmaps.fetch_icon_bitmap('actions', 'runit')
     self._frame = XrayFrame(None, -1, "X-ray image display", size=(800, 720))
-    if (self._hold):
-      self._frame.Bind(wx.EVT_MENU, self._forward, id=wx.ID_FORWARD)
+
+    self._frame.Bind(wx.EVT_IDLE, self.OnIdle)
+
+    self.setup_toolbar(self._frame.toolbar)
     self._frame.Show()
 
     self._init_lock.release()
@@ -158,71 +146,120 @@ class _XrayFrameThread(threading.Thread):
 
   def send_data(self, img, title):
     """The send_data() function updates the wxPython application with
-    @p img and @p title by sending it an ExternalUpdateEvent()."""
+    @p img and @p title by sending it an ExternalUpdateEvent().  The
+    function blocks until the event is processed."""
 
     from rstbx.viewer.frame import ExternalUpdateEvent
-    from wx import ID_FORWARD, PyDeadObjectError
 
     event = ExternalUpdateEvent()
     event.img = img
     event.title = title
-    if (self._hold):
-      # Decrement the counter by one and return immediately if the
-      # counter is larger than zero.
-      self._next_semaphore.acquire()
-    if (self.isAlive()):
-      self._frame.AddPendingEvent(event)
+    if self.isAlive():
+      try:
+        # Saturating the event queue makes the whole caboodle
+        # uselessly unresponsive.  Therefore, block until idle events
+        # are processed.
+        while self.isAlive() and not self._run_pause.IsToggled():
+          pass
+        self._frame.AddPendingEvent(event)
+        self._is_idle = False
+        while self.isAlive() and not self._is_idle:
+          pass
+      except Exception:
+        pass
+
+
+  def setup_toolbar(self, toolbar):
+    import wx
+    from wxtbx import icons
+
+    toolbar.ClearTools()
+
+    btn = toolbar.AddLabelTool(
+      id=wx.ID_ANY,
+      label="Settings",
+      bitmap=icons.advancedsettings.GetBitmap(),
+      shortHelp="Settings",
+      kind=wx.ITEM_NORMAL)
+    self._frame.Bind(wx.EVT_MENU, self._frame.OnShowSettings, btn)
+
+    btn = toolbar.AddLabelTool(
+      id=wx.ID_ANY,
+      label="Zoom",
+      bitmap=icons.search.GetBitmap(),
+      shortHelp="Zoom",
+      kind=wx.ITEM_NORMAL)
+    self._frame.Bind(wx.EVT_MENU, self._frame.OnZoom, btn)
+
+    # Reset the normal bitmap after the tool has been created, so that
+    # it will update on the next event.  See also OnPauseRun()
+    self._run_pause = toolbar.AddCheckLabelTool(
+      id=wx.ID_ANY,
+      label="Run/Pause",
+      bitmap=self._bitmap_run,
+      shortHelp="Run/Pause")
+    self._run_pause.SetNormalBitmap(self._bitmap_pause)
+    self._frame.Bind(wx.EVT_MENU, self.OnPauseRun, self._run_pause)
+
+
+  def OnIdle(self, event):
+    self._is_idle = True
+    event.RequestMore()
+
+
+  def OnPauseRun(self, event):
+    if self._run_pause.IsToggled():
+      self._run_pause.SetNormalBitmap(self._bitmap_run)
+    else:
+      self._run_pause.SetNormalBitmap(self._bitmap_pause)
 
 
   def stop(self):
-    # XXX It may be safer to post an event than to call Close()
-    # directly.  See also mod_daq_status.
-    self._frame.Close()
+    from wx import CloseEvent
+    self._frame.AddPendingEvent(CloseEvent())
 
 
-def _xray_frame_process(pipe, hold=False, linger=False, wait=None):
+def _xray_frame_process(queue, linger=True, wait=None):
   """The _xray_frame_process() function starts the viewer in a
-  separate thread.  It then continuously reads data from @p pipe and
+  separate thread.  It then continuously reads data from @p queue and
   dispatches update events to the viewer.  The function returns when
-  it reads a @c None object from @p pipe or when the viewer thread has
-  exited.
+  it reads a @c None object from @p queue or when the viewer thread
+  has exited.
   """
 
   import rstbx.viewer
-  from wx import ID_BACKWARD, ID_FORWARD, PyDeadObjectError
 
   # Start the viewer's main loop in its own thread, and get the
   # interface for sending updates to the frame.
-  thread = _XrayFrameThread(hold)
+  thread = _XrayFrameThread()
   send_data = thread.send_data
 
-  # XXX Accessing thread._frame breaks privacy.  Rename to process()
-  # and make it a publicly accessible static method instead
-  # [http://docs.python.org/library/functions.html#staticmethod]?
-  thread._frame.toolbar.EnableTool(ID_BACKWARD, False)
-  thread._frame.toolbar.EnableTool(ID_FORWARD, False)
-
-  pipe.send(1)
   while True:
-    payload = pipe.recv()
-    pipe.send(1)
-    if payload is None:
-      if linger:
-        thread.join()
-      else:
-        thread.stop()
-      return
-    if not thread.isAlive():
-      pipe.recv()
-      return
-    if wait is not None:
-      time.sleep(wait)
-
     try:
-      send_data(rstbx.viewer.image(payload[0]), payload[1])
-      if hold:
-        thread._frame.toolbar.EnableTool(ID_FORWARD, True)
-    except PyDeadObjectError:
+      payload = queue.get(timeout=1)
+
+      if payload is None:
+        if linger:
+          thread.join()
+        else:
+          thread.stop()
+        return
+
+      if not thread.isAlive():
+        thread.join()
+        return
+
+      if wait is not None:
+        time.sleep(wait)
+
+      # All kinds of exceptions--not just PyDeadObjectError--may occur
+      # if the viewer process exits during this call.  XXX This may be
+      # dangerous!
+      try:
+        send_data(rstbx.viewer.image(payload[0]), payload[1])
+      except Exception:
+        pass
+    except Queue.Empty:
       pass
 
 
@@ -235,7 +272,6 @@ class mod_view(common_mode.common_mode_correction):
                n_collate   = None,
                n_update    = 120,
                common_mode_correction = "none",
-               hold=False,
                wait=None,
                photon_counting=False,
                sigma_scaling=False,
@@ -248,9 +284,7 @@ class mod_view(common_mode.common_mode_correction):
     @param dark_path       Path to input average dark image
     @param dark_stddev     Path to input standard deviation dark
                            image, required if @p dark_path is given
-    @param hold            Whether to wait for user input after each
-                           displayed image or not
-    @param wait            Length of time (in seconds) to wait on the current
+    @param wait            Minimum time (in seconds) to wait on the current
                            image before moving on to the next
     @param n_collate       Number of shots to average, or <= 0 to
                            average all shots
@@ -273,14 +307,16 @@ class mod_view(common_mode.common_mode_correction):
       self.ncollate = self.nupdate
       self.logger.warn("n_collate capped to %d" % self.nupdate)
 
-    hold = cspad_tbx.getOptBool(hold)
-    linger = True
+    linger = True # XXX Make configurable
     wait = cspad_tbx.getOptFloat(wait)
-    # Create a unidirectional pipe and hand its read end to the viewer
-    # process.  The write end is kept for sending updates.
-    pipe_recv, self._pipe = multiprocessing.Pipe()
+
+    # Create a managed FIFO queue shared between the viewer and the
+    # current process.  The current process will produce images, while
+    # the viewer process will consume them.
+    manager = multiprocessing.Manager()
+    self._queue = manager.Queue()
     self._proc = multiprocessing.Process(
-      target=_xray_frame_process, args=(pipe_recv, hold, linger, wait))
+      target=_xray_frame_process, args=(self._queue, linger, wait))
     self._proc.start()
 
     self.n_shots = 0
@@ -299,12 +335,11 @@ class mod_view(common_mode.common_mode_correction):
     self.n_shots += 1
 
     super(mod_view, self).event(evt, env)
-    if evt.status() != Event.Normal or evt.get('skip_event'):
+    if evt.status() != Event.Normal or evt.get('skip_event'): # XXX transition
       return
 
-    if (not self._proc.is_alive()):
-      # XXX Prevents pyana from printing its status line!
-      sys.exit(self._proc.exitcode)
+    if not self._proc.is_alive():
+      evt.setStatus(Event.Stop)
 
     # Early return if the next update to the viewer is more than
     # self.ncollate shots away.  XXX Since the common_mode.event()
@@ -337,24 +372,32 @@ class mod_view(common_mode.common_mode_correction):
     # Update the viewer to display the current average image, and
     # start a new collation, if appropriate.
     if (next_update == 0):
-      from time import clock, localtime, strftime
+      from time import localtime, strftime
 
       time_str = strftime("%H:%M:%S", localtime(evt.getTime().seconds()))
       title = "r%04d@%s: average of %d last images on %s" \
           % (evt.run(), time_str, self.nvalid, self.address)
 
-      # Wait for ready-to-send.
-      t = clock() + 2
-      while not self._pipe.poll():
-        if clock() >= t:
-          return
-      self._pipe.recv()
+      # Wait for the viewer process to empty the queue before feeding
+      # it a new image, and ensure not to hang if the viewer process
+      # exits.  Because of multithreading/multiprocessing semantics,
+      # self._queue.empty() is unreliable.
+      img_obj = (dict(BEAM_CENTER=self.beam_center,
+                      DATA=self.img_sum / self.nvalid,
+                      DISTANCE=self.distance,
+                      WAVELENGTH=self.wavelength),
+                 title)
 
-      self._pipe.send((dict(
-          BEAM_CENTER = self.beam_center,
-          DATA = self.img_sum / self.nvalid,
-          DISTANCE = self.distance,
-          WAVELENGTH = self.wavelength), title))
+      while not self._queue.empty():
+        if not self._proc.is_alive():
+          evt.setStatus(Event.Stop)
+          return
+      while True:
+        try:
+          self._queue.put(img_obj, timeout=1)
+          break
+        except Exception:
+          pass
 
       if (self.ncollate > 0):
         self.nvalid = 0
@@ -368,5 +411,8 @@ class mod_view(common_mode.common_mode_correction):
     """
 
     super(mod_view, self).endjob(env)
-    self._pipe.send(None)
+    try:
+      self._queue.put(None)
+    except Exception:
+      pass
     self._proc.join()
