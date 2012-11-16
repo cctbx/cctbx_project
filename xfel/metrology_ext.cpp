@@ -9,6 +9,8 @@
 #include <scitbx/array_family/shared.h>
 #include <scitbx/constants.h>
 #include <scitbx/math/mean_and_variance.h>
+#include <scitbx/vec3.h>
+#include <cctbx/miller.h>
 
 #include <vector>
 #include <map>
@@ -105,6 +107,63 @@ struct mark2_iteration {
   farray curvatures(){ return curvatures_; }
 };
 
+struct mark3_collect_data{
+  //adapt all-frame data to individual-frame parameter refinement
+  typedef scitbx::af::shared<double> farray;
+  typedef scitbx::af::shared<int> iarray;
+  typedef scitbx::af::shared<cctbx::miller::index<> > marray;
+  typedef scitbx::af::shared<bool> barray;
+  marray HKL;
+  std::map<int,int> frame_first_index, frame_match_count;
+  farray result_model_cx,result_model_cy;
+  barray result_flags;
+
+  mark3_collect_data(){}
+  mark3_collect_data(iarray frame_id, marray indices):
+    HKL(indices),
+    result_model_cx(frame_id.size(),scitbx::af::init_functor_null<double>()),
+    result_model_cy(frame_id.size(),scitbx::af::init_functor_null<double>()),
+    result_flags(frame_id.size(),scitbx::af::init_functor_null<bool>())
+  {
+    SCITBX_ASSERT(frame_id.size()==indices.size());
+
+    for (int idx=0; idx < frame_id.size(); ++idx){
+      int iframe = frame_id[idx];
+      if (frame_first_index.find(iframe)==frame_first_index.end()){
+        frame_first_index[iframe]=idx;
+        frame_match_count[iframe]=1;
+      } else {
+        SCITBX_ASSERT(
+          frame_first_index[iframe]+frame_match_count[iframe] == idx);// each frame all contiguous
+        frame_match_count[iframe]+=1;
+      }
+    }
+  }
+
+  marray
+  frame_indices(int const& frame_id)const{
+    marray result;
+    int last = frame_first_index.find(frame_id)->second + frame_match_count.find(frame_id)->second;
+    for (int idx=frame_first_index.find(frame_id)->second; idx < last; ++idx){
+      result.push_back(HKL[idx]);
+    }
+    return result;
+  }
+
+  void collect(scitbx::af::shared<scitbx::vec3<double> > hi_E_limit,
+               scitbx::af::shared<scitbx::vec3<double> > lo_E_limit,
+               barray observed_flag,
+               int const& frame_id){
+    int first = frame_first_index.find(frame_id)->second;
+    for (int im = 0; im < hi_E_limit.size(); ++im){
+      result_model_cx[first + im] = (hi_E_limit[im][1] + lo_E_limit[im][1])/2.;
+      result_model_cy[first + im] = (hi_E_limit[im][0] + lo_E_limit[im][0])/2.;
+      result_flags[first + im] = observed_flag[im];
+      SCITBX_ASSERT (observed_flag[im]); // no current support for masked-out spots
+    }
+  }
+};
+
 namespace boost_python { namespace {
 
   void
@@ -129,7 +188,14 @@ namespace boost_python { namespace {
       .add_property("model_calcx", make_getter(&mark2_iteration::model_calcx, rbv()))
       .add_property("model_calcy", make_getter(&mark2_iteration::model_calcy, rbv()))
     ;
-
+    class_<mark3_collect_data>("mark3_collect_data",no_init)
+      .def(init<mark3_collect_data::iarray,mark3_collect_data::marray>())
+      .def("frame_indices",&mark3_collect_data::frame_indices)
+      .def("collect",&mark3_collect_data::collect)
+      .add_property("cx", make_getter(&mark3_collect_data::result_model_cx, rbv()))
+      .add_property("cy", make_getter(&mark3_collect_data::result_model_cy, rbv()))
+      .add_property("flags", make_getter(&mark3_collect_data::result_flags, rbv()))
+    ;
 }
 }}} // namespace xfel::boost_python::<anonymous>
 
