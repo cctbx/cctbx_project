@@ -14,7 +14,6 @@ import numpy
 
 from parse_calib         import Section
 from parse_calib         import calib2sections
-from pypdsdata           import xtc
 
 from libtbx import easy_pickle
 from scitbx.array_family import flex
@@ -95,16 +94,22 @@ class common_mode_correction(mod_event_info):
 
     # Get and parse metrology.  There is no metrology information for
     # the Sc1 detector, so make it up.
+    import re
     self.sections = None
-    if self.address == 'Camp-0|pnCCD-0' or self.address == 'Camp-0|pnCCD-1':
-      self.sections = [] # XXX FICTION
-    elif self.address == 'CxiDs1-0|Cspad-0' and calib_dir is not None:
-      self.sections = calib2sections(cspad_tbx.getOptString(calib_dir))
-    elif self.address == 'CxiSc1-0|Cspad2x2-0':
-      # The sections are rotated by 90 degrees with respect to the
-      # "standing up" convention.
-      self.sections = [[Section(90, (185 / 2 + 0,   (2 * 194 + 3) / 2)),
-                        Section(90, (185 / 2 + 185, (2 * 194 + 3) / 2))]]
+    m = re.match('^\S+\-\d+\|(?P<device>\S+)-\d+$', self.address)
+    if m is not None:
+      device = m.group('device')
+      if device == 'Andor':
+        self.sections = [] # XXX FICTION
+      elif device == 'pnCCD':
+        self.sections = [] # XXX FICTION
+      elif device == 'Cspad':
+        self.sections = calib2sections(cspad_tbx.getOptString(calib_dir))
+      elif device == 'Cspad2x2':
+        # The sections are rotated by 90 degrees with respect to the
+        # "standing up" convention.
+        self.sections = [[Section(90, (185 / 2 + 0,   (2 * 194 + 3) / 2)),
+                          Section(90, (185 / 2 + 185, (2 * 194 + 3) / 2))]]
     if self.sections is None:
       raise RuntimeError("Failed to load metrology")
 
@@ -145,18 +150,7 @@ class common_mode_correction(mod_event_info):
     # XXX Not needed now that the distance is read in the event?
     env.update(evt)
 
-    # XXX Quick hack to get the config object for the detector at
-    # self.address.
-    if self.address == 'Camp-0|pnCCD-0' or self.address == 'Camp-0|pnCCD-1':
-      self.config = env.getConfig(
-        xtc.TypeId.Type.Id_pnCCDconfig, self.address)
-    elif self.address == 'CxiDs1-0|Cspad-0':
-      self.config = env.getConfig(
-        xtc.TypeId.Type.Id_CspadConfig, self.address)
-    elif self.address == 'CxiSc1-0|Cspad2x2-0':
-      self.config = env.getConfig(
-        xtc.TypeId.Type.Id_Cspad2x2Config, self.address)
-
+    self.config = cspad_tbx.getConfig(self.address, env)
     if self.config is None:
       self.logger.error("beginjob(): no config")
     else:
@@ -252,15 +246,8 @@ class common_mode_correction(mod_event_info):
     if (evt.get("skip_event")):
       return
 
-    # XXX Duplication w.r.t. beginjob()!
     if self.config is None:
-      if self.address == 'CxiDs1-0|Cspad-0':
-        self.config = env.getConfig(
-          xtc.TypeId.Type.Id_CspadConfig, self.address)
-      elif self.address == 'CxiSc1-0|Cspad2x2-0':
-        self.config = env.getConfig(
-          xtc.TypeId.Type.Id_Cspad2x2Config, self.address)
-
+      self.config = cspad_tbx.getConfig(self.address, env)
       if self.config is None:
         self.logger.error("event(): no config")
         evt.put(True, 'skip_event')

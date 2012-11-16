@@ -733,6 +733,30 @@ def evt_wavelength(evt):
       return L / (2 * gamma**2) * (1 + K**2 / 2)
   return None
 
+
+def getConfig(address, env):
+  """Address strings are on the form
+  detector-detectorID|device-deviceID, where the detectors must be in
+  dir(xtc.DetInfo.Detector) and device must be in
+  (xtc.DetInfo.Device).  XXX Documentation XXX I have the sneaky
+  suspicison that code like this already exists somewhere in pyana.
+  """
+
+  import re
+  m = re.match('^\S+\-\d+\|(?P<device>\S+)-\d+$', address)
+  if m is not None:
+    device = m.group('device')
+    if device == 'Andor':
+      return env.getConfig(xtc.TypeId.Type.Id_AndorConfig, address)
+    if device == 'pnCCD':
+      return env.getConfig(xtc.TypeId.Type.Id_pnCCDconfig, address)
+    if device == 'Cspad':
+      return env.getConfig(xtc.TypeId.Type.Id_CspadConfig, address)
+    if device == 'Cspad2x2':
+      return env.getConfig(xtc.TypeId.Type.Id_Cspad2x2Config, address)
+  return None
+
+
 def getOptBool(s):
   if s is None: return False
   elif isinstance(s, bool):
@@ -827,40 +851,54 @@ def image(address, config, evt, env, sections=None):
   @return         XXX
   """
 
-  if address == 'Camp-0|pnCCD-0' or address == 'Camp-0|pnCCD-1':
-    value = evt.getPnCcdValue(address, env)
-    if value is not None:
-      # Returns the image data as a numpy 1024-by-1024 uint16 array
-      # XXX Should be split up into tiles (halves) to allow metrology
-      # to be adjusted?  Will require a sections parameter!
-      img = value.data()
+  import re
+  m = re.match('^\S+\-\d+\|(?P<device>\S+)-\d+$', address)
+  if m is not None:
+    device = m.group('device')
 
-      # Deal with overflows.  XXX This might be dependent on the
-      # particular version of pyana.  CASS ignores the two most
-      # significant bits, which is different from what is done below,
-      # but Lutz Foucar says they do contain data which could be used.
-      img[img > 2**14 - 1] = 2**14 - 1
-      return img
+    if device == 'Andor':
+      # XXX There is no proper getter for Andor frames yet.
+      value = evt.get(xtc.TypeId.Type.Id_AndorFrame, address)
+      if value is not None:
+        img = value.data(config)
+        return img
 
-  elif address == 'CxiDs1-0|Cspad-0':
-    quads = evt.getCsPadQuads(address, env)
-    if quads is not None:
-      if sections is not None:
-        return CsPadDetector(quads, config, sections)
-      else:
-        # XXX This is obsolete code, provided for backwards
-        # compatibility with the days before detector metrology was
-        # used.
-        qimages = numpy.empty((4, npix_quad, npix_quad), dtype='uint16')
-        for q in quads:
-          qimages[q.quad()] = CsPadElement(q.data(), q.quad(), config)
-        return numpy.vstack((numpy.hstack((qimages[0], qimages[1])),
-                             numpy.hstack((qimages[3], qimages[2]))))
+    elif device == 'pnCCD':
+      value = evt.getPnCcdValue(address, env)
+      if value is not None:
+        # Returns the image data as a numpy 1024-by-1024 uint16 array
+        # XXX Should be split up into tiles (halves) to allow
+        # metrology to be adjusted?  Will require a sections
+        # parameter!
+        img = value.data()
 
-  elif address == 'CxiSc1-0|Cspad2x2-0':
-    quads = evt.get(xtc.TypeId.Type.Id_Cspad2x2Element, address)
-    if quads is not None:
-      return CsPad2x2Image(quads.data(), config, sections)
+        # Deal with overflows.  XXX This might be dependent on the
+        # particular version of pyana.  CASS ignores the two most
+        # significant bits, which is different from what is done
+        # below, but Lutz Foucar says they do contain data which could
+        # be used.
+        img[img > 2**14 - 1] = 2**14 - 1
+        return img
+
+    elif device == 'Cspad':
+      quads = evt.getCsPadQuads(address, env)
+      if quads is not None:
+        if sections is not None:
+          return CsPadDetector(quads, config, sections)
+        else:
+          # XXX This is obsolete code, provided for backwards
+          # compatibility with the days before detector metrology was
+          # used.
+          qimages = numpy.empty((4, npix_quad, npix_quad), dtype='uint16')
+          for q in quads:
+            qimages[q.quad()] = CsPadElement(q.data(), q.quad(), config)
+          return numpy.vstack((numpy.hstack((qimages[0], qimages[1])),
+                               numpy.hstack((qimages[3], qimages[2]))))
+
+    elif device == 'Cspad2x2':
+      quads = evt.get(xtc.TypeId.Type.Id_Cspad2x2Element, address)
+      if quads is not None:
+        return CsPad2x2Image(quads.data(), config, sections)
 
 
 def image_central(address, config, evt, env):
