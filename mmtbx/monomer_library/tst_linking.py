@@ -612,6 +612,7 @@ def run():
     f.close()
     if pdb.endswith(".cif"): cifs += " %s" % pdb
   for pdb in pdbs:
+    continue
     if pdb.endswith(".cif"): continue
     for i in range(2):
       log_filename = "%s_%d.log" % (pdb, i)
