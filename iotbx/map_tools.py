@@ -344,11 +344,12 @@ class server (object) :
       if (simple_file_name) :
         output_file = os.path.splitext(self.file_name)[0] + ".ccp4"
       elif (use_standard_map_names) :
-        lab1 = map_coeffs.info().label_string().split(",")[0]
+        lab1 = map_coeffs.info().labels[0]
         map_name = standard_map_names.get(lab1, lab1)
         output_file = os.path.splitext(self.file_name)[0] + "_%s.ccp4" % \
           map_name
       else :
+        lab1 = map_coeffs.info().labels[0]
         output_file = os.path.splitext(self.file_name)[0] + "_%s.ccp4" % lab1
     if (not force) and (os.path.exists(output_file) and
         os.path.getmtime(output_file) < os.path.getmtime(self.file_name)) :
