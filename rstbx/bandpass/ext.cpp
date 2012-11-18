@@ -507,7 +507,6 @@ namespace rstbx { namespace bandpass {
             }
           }
           if (!observed_flag[idx]) {
-
             //bogus position in the case where reflection is out of bounds
 
             //s0:  parallel to the direction of incident radiation
@@ -539,16 +538,15 @@ namespace rstbx { namespace bandpass {
             lo_E_limit[idx] = hi_E_limit[idx];
           }
           if (observed_flag[idx]) {
-            //Do some further tests to determine if the spot is within the flagged active area with peripheral margin
-            vec3 central_position = ((lo_E_limit[idx]+hi_E_limit[idx])/2.);//already in pixel units
-            if (!aaf(vec3(central_position[1],central_position[0],0.))){
-              observed_flag[idx]=false;
-            } else if (subpixel_translations_set) {
+            if (subpixel_translations_set) {
               vec3 subpixel_trans(subpixel[2*aaf.tile_id],subpixel[1+2*aaf.tile_id],0.0);
               lo_E_limit[idx] += subpixel_trans;
               hi_E_limit[idx] += subpixel_trans;
             }
           }
+      }
+      for ( int idx = 0; idx < P.indices.size(); ++idx){
+        SCITBX_ASSERT (observed_flag[idx]);
       }
     }
     scitbx::af::shared<vec3 >
@@ -915,6 +913,9 @@ namespace rstbx { namespace bandpass {
       P.wavelengthHE = wave_HI;
       P.wavelengthLE = wave_LO;
       SCITBX_ASSERT (P.wavelengthHE <= P.wavelengthLE); SCITBX_ASSERT (P.wavelengthHE > 0.);   }
+    void set_detector_origin(vec3 const& detector_origin){
+      P.detector_origin = detector_origin;
+    }
     void set_orientation(cctbx::crystal_orientation const& orientation){
       P.orientation = orientation; }
     annlib_adaptbx::AnnAdaptorSelfInclude adapt;
@@ -1140,6 +1141,7 @@ namespace ext {
         .def("set_bandpass", &use_case_bp3::set_bandpass)
         .def("set_orientation", &use_case_bp3::set_orientation)
         .def("set_adaptor", &use_case_bp3::set_adaptor)
+        .def("set_detector_origin", &use_case_bp3::set_detector_origin)
         .def("score_only_detail", &use_case_bp3::score_only_detail,(arg("weight")))
       ;
 
