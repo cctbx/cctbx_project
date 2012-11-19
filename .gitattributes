@@ -1198,6 +1198,7 @@ mmtbx/command_line/sort_hetatms.py -text
 mmtbx/command_line/ssm_rmsd_for_chains.py -text
 mmtbx/command_line/tls.py -text
 mmtbx/command_line/validation_summary.py -text
+mmtbx/command_line/water_screen.py -text
 mmtbx/command_line/xmanip.py -text
 mmtbx/conformation_dependent_library/__init__.py -text
 mmtbx/conformation_dependent_library/altloc_weighting.py -text
@@ -1246,6 +1247,12 @@ mmtbx/grow_density.py -text
 mmtbx/hydrogens/find.py -text
 mmtbx/ias/__init__.py -text
 mmtbx/ias/tst_ias.py -text
+mmtbx/ions/__init__.py -text
+mmtbx/ions/geometry.py -text
+mmtbx/ions/ion_parameters.cif -text
+mmtbx/ions/parameters.py -text
+mmtbx/ions/tst_calcium_simple.py -text
+mmtbx/ions/tst_magnesium_simple.py -text
 mmtbx/kinemage/__init__.py -text
 mmtbx/kinemage/validation.py -text
 mmtbx/lattice.py -text
