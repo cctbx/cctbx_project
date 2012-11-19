@@ -22,81 +22,17 @@ def moving_average(x):
   x_ = x_ = [x[0]] + list(x) + [x[len(x)-1]]
   for cycle in xrange(5):
     result = x_[:]
-    #
     selection = flex.bool(len(result), False)
     for i, s in enumerate(selection):
       if(i!=0 and i!=len(result)-1):
         if((result[i-1]<result[i] and result[i+1]<result[i]) or
            (result[i-1]>result[i] and result[i+1]>result[i])):
           selection[i]=True
-    #
     for i in xrange(len(result)):
       if(i!=0 and i!=len(result)-1 and selection[i]):
         result[i] = (x_[i-1]+x_[i]+x_[i+1])/3.
     x_ = result[:]
-
   return result[1:len(result)-1]
-
-
-def set_bin_selections(d_spacings, min_ref_low):
-  selections = []
-  cntr = 0
-  # this approximately corresponds to regular splitting of s between 0 and 1.
-  l1 = [0,0.5,0.6,0.7,0.8,0.9]
-  l2 = [float("%6.2f"%(i/100.)) for i in range(100, 400,    25)]
-  l3 = [float("%6.2f"%(i/100.)) for i in range(400, 1000,   50)]
-  l4 = [float("%6.2f"%(i/100.)) for i in range(1000,1500,   100)]
-  l5 = [float("%6.2f"%(i/100.)) for i in range(1500,5000,   500)]
-  l6 = [float("%6.2f"%(i/100.)) for i in range(5000,10001, 1000)]
-  l7 = [999]
-  l = l1+l2+l3+l4+l5+l6+l7
-  limits = []
-  for i_l, l_ in enumerate(l):
-    if(i_l != len(l)-1): limits.append( [l_,l[i_l+1]] )
-  limits.reverse()
-  for s in limits:
-    sel  = d_spacings >= s[0]
-    sel &= d_spacings <  s[1]
-    #if(sel.count(True)>0):
-    #  print s, sel.count(True), flex.min(d_spacings.select(sel)),flex.max(d_spacings.select(sel))
-    cntr += sel.count(True)
-    if(sel.count(True)>0): selections.append(sel)
-  assert cntr == d_spacings.size()
-  min_ref_low = min(min_ref_low, d_spacings.size())
-  fh = min(500,d_spacings.size())
-  for t in [1,2,3]:
-    for i in xrange(len(selections)):
-      count_true = selections[i].count(True)
-      if(count_true>0 and count_true<min_ref_low and i+1<len(selections)):
-        s = selections[i] | selections[i+1]
-        selections[i+1]=s
-        selections[i]=None
-      elif(count_true<fh and i==len(selections)-1 and selections[i-1] is not None):
-        #print selections[i] , selections[i-1]
-        s = selections[i] | selections[i-1]
-        selections[i-1]=s
-        selections[i]=None
-    #print
-    sn = []
-    cntr = 0
-    for s in selections:
-      if(s is not None):
-        sn.append(s)
-        cntr += s.count(True)
-        #print s.count(True)
-    assert cntr == d_spacings.size()
-    selections = sn
-  return selections
-
-def binning(unit_cell, miller_indices):
-  d_spacings = unit_cell.d(miller_indices)
-  r = set_bin_selections(d_spacings = d_spacings, min_ref_low = 300)
-  d_sp_0 = d_spacings.select(r[0])
-  if(flex.min(d_sp_0)<6 and d_sp_0.size() > 100):
-    r = set_bin_selections(d_spacings = d_spacings, min_ref_low = 50)
-  elif(flex.min(d_sp_0)<8 and d_sp_0.size() > 100):
-    r = set_bin_selections(d_spacings = d_spacings, min_ref_low = 100)
-  return r
 
 class run(object):
   def __init__(self,
@@ -164,9 +100,7 @@ class run(object):
     if(abs(self.core.f_mask()).data().all_eq(0)): self.bulk_solvent=False
     self.cores_and_selections = []
     if(self.bin_selections is None):
-      self.bin_selections = mmtbx.bulk_solvent.scaler.binning(
-        unit_cell      = self.f_obs.unit_cell(),
-        miller_indices = self.f_obs.indices())
+      self.bin_selections = self.f_obs.log_binning()
     self.low_resolution_selection = self._low_resolution_selection()
     self.high_resolution_selection = self._high_resolution_selection()
     if(verbose):
@@ -344,6 +278,7 @@ class run(object):
         bulk_solvent.set_to_linear_interpolated(self.ss,k,b,selection,result)
       else:
         result.set_selected(selection, y1)
+    #print list(result)
     assert (result < 0).count(True) == 0
     return result
 
@@ -369,7 +304,7 @@ class run(object):
     k_mask_bin_smooth = self.smooth(k_mask_bin)
     k_mask = self.populate_bin_to_individual_k_mask_linear_interpolation(
       k_mask_bin = k_mask_bin_smooth)
-    k_isotropic = self._k_isotropic_as_scale_k1(r_start = r_start, k_mask = k_mask)
+    k_isotropic = self._k_isotropic_as_scale_k1(r_start=r_start, k_mask=k_mask)
     self.core = self.core.update(k_masks = k_mask, k_isotropic = k_isotropic)
     self.bss_result.k_mask_bin_orig   = k_mask_bin
     self.bss_result.k_mask_bin_smooth = k_mask_bin_smooth
@@ -439,7 +374,7 @@ class run(object):
       k_isotropic_   = flex.mean(self.core.k_isotropic.select(sel))
       k_anisotropic_ = flex.mean(self.core.k_anisotropic.select(sel))
       cmpl_          = f_obs_.completeness(d_max=d_max_)*100.
-      r_             = bulk_solvent.r_factor(f_obs_.data(), f_model.select(sel), 1)
+      r_             = bulk_solvent.r_factor(f_obs_.data(),f_model.select(sel),1)
       print >> self.log, fmt%(ss_, d_max_, d_min_, cmpl_, n_ref_,
         k_mask_bin_orig_, k_mask_bin_smooth_,k_mask_bin_averaged_,
         k_isotropic_, k_anisotropic_, f_obs_mean_, r_)
