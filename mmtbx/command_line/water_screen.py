@@ -71,9 +71,10 @@ Full parameters:
     for elem in candidates :
       if (elem.upper() not in lu) :
         raise Sorry("Unrecognized element '%s'" % elem)
-  return manager.analyze_waters(out = out, debug=params.debug,
-     show_only_map_outliers=params.show_only_map_outliers,
-      candidates=candidates)
+  return ions.build.find_and_build_ions(
+    manager, out = out, debug = params.debug,
+    show_only_map_outliers = params.show_only_map_outliers,
+    candidates = candidates)
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
