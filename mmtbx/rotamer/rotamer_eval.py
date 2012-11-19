@@ -190,6 +190,12 @@ class RotamerEval:
         atom_dict[atom.name] = atom
     return atom_dict
 
+  def chi_angles (self, residue) :
+    atom_dict = self.get_atom_dict(residue)
+    return self.sidechain_angles.measureChiAngles(
+      res=residue,
+      atom_dict=atom_dict)
+
   def evaluate_residue(
                        self,
                        residue=None,
