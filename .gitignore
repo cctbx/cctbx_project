@@ -34,6 +34,7 @@ mmtbx/geometry_restraints/*.pyc
 mmtbx/geometry_restraints/boost_python/*.pyc
 mmtbx/hydrogens/*.pyc
 mmtbx/ias/*.pyc
+mmtbx/ions/*.pyc
 mmtbx/kinemage/*.pyc
 mmtbx/maps/*.pyc
 mmtbx/masks/*.pyc

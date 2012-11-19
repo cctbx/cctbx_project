@@ -811,7 +811,7 @@ class Manager (object):
           show_only_map_outliers = show_only_map_outliers)
         if (water_props is not None) :
           water_props.show_summary(out=out, debug=debug)
-          ions += water_props,
+          ions.append([water_props])
     else :
       print >> out, "Parallelizing across %d processes" % nproc
       print >> out, ""
@@ -827,7 +827,7 @@ class Manager (object):
         if (result_str is not None) :
           print >> out, result_str
         if final_choice is not None:
-          ions += final_choice,
+          ions.append([final_choice])
     return ions
 
 class _analyze_water_wrapper (object) :
