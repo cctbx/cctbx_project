@@ -2094,7 +2094,21 @@ def exercise_build_set_using_max_index():
   bi = box.min_max_indices()[1]
   for i in [0,1,2]: assert bi[i] == max_index[i]
 
+def exercise_log_binning():
+  xrs = random_structure.xray_structure(
+    space_group_info=sgtbx.space_group_info(number=1),
+    elements=["C"]*300)
+  fc = xrs.structure_factors(d_min=1.0).f_calc()
+  lb = fc.log_binning()
+  r = flex.double()
+  for i in xrange(len(lb)):
+    if(i!=0 and i+1<len(lb)-1):
+      r.append(lb[i+1].count(True)/lb[i].count(True))
+  assert r.size() == 7
+  assert approx_equal(flex.mean(r), 2.0, 0.01)
+
 def run(args):
+  exercise_log_binning()
   exercise_build_set_using_max_index()
   exercise_structure_factors_from_map()
   exercise_complete_with_complete_with_bin_average()
