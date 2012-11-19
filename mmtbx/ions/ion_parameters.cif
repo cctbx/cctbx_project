@@ -1,0 +1,140 @@
+data_ions
+#
+# Dokmanic, I., Sikic, M., & Tomic, S. (2008).  Metals in proteins: correlation
+# between the metal-ion type, coordination number, and the amino-acid
+# residues involved in the coordination.  Acta Cryst. D64, 257-263.
+#
+# Zheng, H., Chruszcz, M., Lasota, P., Lebioda, L., & Minor, W. (2008).
+# Data mining of metal ion environments present in protein structures.
+# J. Inorg. Biochem. 102, 1765-1776.
+#
+# Muller, P., Kopke, S., & Sheldrick, G. (2002).  Is the bond-valence method
+# able to identify metal atoms in protein structures?  Acta Cryst. D59, 32-37.
+#
+# Harding, M. (2001).  Geometry of metal-ligand interactions in proteins.
+# Acta Cryst. D57, 401-411.
+#
+# Harding, M. (2000).  The geometry of metal-ligand interactions relevant to
+# proteins. II. Angles at the metal atom, additional weak metal-donor
+# interactions.  Acta Cryst. D56, 857-867.
+#
+loop_
+_lib_elems.element
+_lib_elems.charge
+_lib_elems.vec_sum_cutoff
+_lib_elems.coord_num_lower
+_lib_elems.coord_num_upper
+_lib_elems.min_coordinating_non_waters
+_lib_elems.cvbs_lower
+_lib_elems.cvbs_expected
+_lib_elems.cvbs_upper
+_lib_elems.allowed_coordinating_atoms
+_lib_elems.allowed_coordinating_residues
+_lib_elems.allowed_geometries
+NA  1  0.4  4  8  1  0.8  1  1.2    O,N    .                            .
+MG  2  0.4  4  6  1  1.8  2  2.2    O      SER,THR,ASP,ASN,GLU,GLN,HIS  octahedral
+K   1  0.4  4  8  1  0.8  1  1.2    O      .                            .
+CA  2  0.4  6  8  1  1.8  2  2.2    O      SER,THR,ASP,ASN,GLU,GLN,TYR  .
+MN  2  0.4  4  6  1  1.8  2  2.2    O,N    SER,THR,ASP,GLU,ASN,GLN,HIS  .
+FE  2  0.4  5  6  1  1.8  2  2.2    O,N,S  CYS,ASP,GLU,HIS,TYR          .
+CO  2  0.4  5  6  1  1.8  2  2.2    O,N    CYS,ASP,GLU,HIS              .
+CU  2  0.4  3  4  1  1.8  2  2.2    O,N,S  CYS,MET,HIS                  tetrahedral
+NI  2  0.4  4  6  1  1.8  2  2.2    O,N,S  CYS,ASP,GLU,HIS              .
+ZN  2  0.4  4  6  1  1.8  2  2.4    O,N,S  CYS,ASP,GLU,HIS              tetrahedral
+CD  2  0.4  3  6  1  1.8  2  2.2    O,N,S  .                            .
+#
+loop_
+_lib_valence.atom_symbol
+_lib_valence.atom_charge
+_lib_valence.donor_symbol
+_lib_valence.donor_charge
+_lib_valence.value
+#
+# Brown, I. D., & Altermatt, D. (1985). Bond-valence parameters obtained from
+# a systematic analysis of the Inorganic Crystal Structure Database. Acta
+# Crystallographica Section B Structural Science, 41(4), 244-247.
+# doi:10.1107/S0108768185002063
+#
+# Brese, N. E., & O'Keeffe, M. (1991). Bond-valence parameters for solids.
+# Acta Crystallographica Section B Structural Science, 47(2), 192-197.
+# doi:10.1107/S0108768190011041
+#
+CA   2   N    -3   2.14
+CA   2   O    -2   1.967
+CA   2   F    -1   1.842
+CA   2   P    -3   2.55
+CA   2   S    -2   2.45
+CA   2   CL   -1   2.37
+CD   2   O    -2   1.904
+CD   2   F    -1   1.811
+CD   2   CL   -1   2.23
+CD   2   N    -3   1.96
+CD   2   S    -2   2.29
+CO   2   N    -3   1.84
+CO   2   O    -2   1.692
+CO   2   F    -1   1.64
+CO   2   CL   -1   2.01
+CO   2   CL   -1   2.033
+CO   2   O    -2   1.692
+CO   2   S    -2   2.06
+CO   3   C     2   1.634
+CU   1   I    -1   2.108
+CU   1   S    -2   1.898
+CU   2   N    -3   1.61
+CU   2   O    -2   1.679
+CU   2   F    -1   1.594
+CU   2   S    -2   2.054
+CU   2   CL   -1   2.00
+CU   2   SE   -2   2.02
+#   FE   2   -N   -3?
+FE   2   N    -3   1.86
+FE   2   O    -2   1.734
+FE   2   F    -1   1.65
+FE   2   CL   -1   2.06
+FE   3   C     2   1.689
+FE   3   N    -3   1.86
+FE   3   O    -2   1.759
+FE   3   F    -1   1.67
+FE   3   CL   -1   2.09
+FE   3   S    -2   2.149
+K    1   CL   -1   2.519
+K    1   F    -1   1.992
+K    1   O    -2   2.132
+MG   2   N    -3   1.85
+MG   2   O    -2   1.693
+MG   2   F    -1   1.578
+MG   2   P    -3   2.29
+MG   2   S    -2   2.18
+MG   2   CL   -1   2.08
+MN   2   N    -3   1.87
+MN   2   O    -2   1.790
+MN   2   F    -1   1.698
+MN   2   CL   -1   2.13
+MN   3   O    -2   1.760
+MN   4   O    -2   1.753
+NA   1   N    -3   1.93
+NA   1   O    -2   1.80
+NA   1   F    -1   1.677
+NA   1   P    -3   2.36
+NA   1   S    -2   2.28
+NA   1   CL   -1   2.15
+NI   2   N    -3   1.75
+NI   2   O    -2   1.654
+NI   2   F    -1   1.596
+NI   2   CL   -1   2.02
+RB   1   N    -3   2.37
+RB   1   O    -2   2.26
+RB   1   F    -1   2.16
+RB   1   CL   -1   2.65
+SI   4   C    -4   1.883
+SI   4   N    -3   1.724
+SI   4   O    -2   1.624
+SI   4   S    -2   2.126
+SI   4   CL   -1   2.03
+ZN   2   N    -3   1.77
+ZN   2   O    -2   1.704
+ZN   2   F    -1   1.62
+ZN   2   P    -3   2.15
+ZN   2   S    -2   2.09
+ZN   2   CL   -1   2.01
+#
