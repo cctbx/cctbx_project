@@ -1341,25 +1341,71 @@ class set(crystal.symmetry):
       binning=binning(self.unit_cell(), n_bins, self.indices(), d_max, d_min))
     return self.binner()
 
+  def log_binning(self, n_reflections_in_lowest_resolution_bin=100, eps=1.e-4):
+    if(n_reflections_in_lowest_resolution_bin   >= self.indices().size() or
+       n_reflections_in_lowest_resolution_bin*2 >= self.indices().size()):
+      return [flex.bool(self.indices().size(), True)]
+    d_spacings_sorted = self.sort().d_spacings().data()
+    ss = 1./flex.pow2(d_spacings_sorted)
+    lnss = flex.log(ss)
+    s0 = lnss[0]
+    s1 = lnss[n_reflections_in_lowest_resolution_bin]
+    s2 = lnss[n_reflections_in_lowest_resolution_bin*2]
+    d_spacings = self.d_spacings().data()
+    step = s2-s1
+    limits = [math.sqrt(1/math.exp(s0))]
+    lnss_min = s1
+    while lnss_min <= flex.max(lnss):
+      d = math.sqrt(1/math.exp(lnss_min))
+      limits.append(d)
+      lnss_min += step
+    lnss_min = min(flex.max(lnss), lnss_min)
+    d = math.sqrt(1/math.exp(lnss_min))
+    limits.append(d)
+    pairs = []
+    for i, d in enumerate(limits):
+      if(i<len(limits)-2):
+        d1,d2 = d, limits[i+1]
+        pairs.append([d1,d2])
+      elif(i == len(limits)-1):
+        d1,d2=limits[i-1], limits[i]
+        pairs.append([d1,d2])
+    selections = []
+    for i, p in enumerate(pairs):
+      d_max, d_min = p
+      if(i == 0):
+        sel  = d_spacings <= d_max + eps
+        sel &= d_spacings >  d_min
+      elif(i == len(pairs)-1):
+        sel  = d_spacings <= d_max
+        sel &= d_spacings >  d_min - eps
+      else:
+        sel  = d_spacings <= d_max
+        sel &= d_spacings >  d_min
+      selections.append(sel)
+    sl = selections[len(selections)-1]
+    sp = selections[len(selections)-2]
+    if(sl.count(True) < sp.count(True)/4):
+      new_selections = selections[:len(selections)-2]
+      new_selections.append(sp | sl)
+      selections = new_selections
+    return selections
+
   def setup_binner_d_star_sq_step(self,
                                   auto_binning=True,
-                                  d_max=None,# Low reso limit
-                                  d_min=None,# High reso limit
+                                  d_max=None,
+                                  d_min=None,
                                   d_star_sq_step=None):
     assert auto_binning or ( d_min is not None )
     assert auto_binning or ( d_max is not None )
     assert d_star_sq_step > 0 or (d_star_sq_step is None)
-    ## Either automatic binning (with or without the choice of a d_star_sq
-    ## step) or setting everything by hand
-
     if auto_binning:
       d_spacings = self.d_spacings().data()
       d_max=flex.min(d_spacings)
       d_min=flex.max(d_spacings)
       del d_spacings
       if d_star_sq_step is None:
-        d_star_sq_step = 0.004 ## Default of 0.004 seems to be reasonable
-
+        d_star_sq_step = 0.004
     assert (d_star_sq_step>0.0)
     return self.use_binning(binning=binning(self.unit_cell(),
       self.indices(),
