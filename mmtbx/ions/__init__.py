@@ -10,8 +10,9 @@ from libtbx.str_utils import make_sub_header
 from libtbx.utils import null_out, Sorry
 from libtbx import easy_mp
 
-import mmtbx.ions.parameters
+from mmtbx.ions.parameters import get_charge, server, MetalParameters
 from mmtbx.ions.geometry import find_coordination_geometry
+from mmtbx.ions.build import add_ion
 from math import sqrt
 import cStringIO
 import sys
@@ -104,7 +105,7 @@ class Manager (object):
     self.fmodel = fmodel
     self.params = params
     self.wavelength = wavelength
-    self.server = parameters.server()
+    self.server = server()
     self.map_anom = None # optional
     self.nproc = nproc
     self.phaser_substructure = None
@@ -501,7 +502,7 @@ class Manager (object):
         return False
 
       if not element in ["C","N","H","O","S"]:
-        charge = parameters.get_charge(element)
+        charge = get_charge(element)
 
         if charge < 0 and abs(vector) <= params.min_distance_to_anion:
           # Nearby anion that is too close
@@ -753,7 +754,7 @@ class Manager (object):
         if ("CL" in candidates) : # TODO other halides?
           looks_like_halide = self.looks_like_halide_ion(i_seq = i_seq)
           if (looks_like_halide) :
-            final_choice = parameters.MetalParameters(
+            final_choice = MetalParameters(
               element="CL",
               charge=-1)
 
@@ -799,6 +800,7 @@ class Manager (object):
     print >> out, "%d waters to analyze" % len(waters)
     if (len(waters) == 0) : return
     nproc = easy_mp.get_processes(self.nproc)
+    ions = []
     if (nproc == 1) :
       print >> out, ""
       for water_i_seq in waters :
@@ -809,6 +811,7 @@ class Manager (object):
           show_only_map_outliers = show_only_map_outliers)
         if (water_props is not None) :
           water_props.show_summary(out=out, debug=debug)
+          ions += water_props,
     else :
       print >> out, "Parallelizing across %d processes" % nproc
       print >> out, ""
@@ -823,6 +826,9 @@ class Manager (object):
       for final_choice, result_str in results :
         if (result_str is not None) :
           print >> out, result_str
+        if final_choice is not None:
+          ions += final_choice,
+    return ions
 
 class _analyze_water_wrapper (object) :
   """
@@ -840,6 +846,7 @@ class _analyze_water_wrapper (object) :
     if (result is not None) :
       result.show_summary(out=out,
         debug=self.kwds.get("debug", False))
+
     result_str = out.getvalue()
     if (result_str == "") : result_str = None
     return getattr(result, "final_choice", None), result_str
@@ -869,6 +876,7 @@ class water_result (object) :
       if (self.nuc_phosphate_site) :
         print >> out, "  appears to be nucleotide coordination site"
       if (self.final_choice is not None) :
+        # We have one result that we are reasonably certain of
         elem_params, score = results[0]
         self.atom_props.show_ion_results(
           identity=str(self.final_choice),
@@ -877,6 +885,7 @@ class water_result (object) :
           confirmed=True)
         print >> out, ""
       elif (len(results) > 1) :
+        # We have a couple possible identities for the atom
         below_cutoff = [ elem_params for elem_params, score in results
                         if score < self.ambiguous_valence_cutoff]
         if len(below_cutoff) == 1:
@@ -904,16 +913,16 @@ class water_result (object) :
         if (self.looks_like_halide) :
           print >> out, "  Probable element: %s" % str(self.final_choice)
           print >> out, ""
-
-        # atom is definitely not water, but no reasonable candidates found
-        # print out why all the metals we tried failed
-        if (debug) and (not self.looks_like_halide) :
-          print >> out, "  insufficient data to identify atom"
-          for params in self.filtered_candidates:
-            if (self.atom_props.has_compatible_ligands(str(params))) :
-              self.atom_props.show_ion_results(identity = str(params),
-                out = out)
-          print >> out, ""
+        else:
+          # atom is definitely not water, but no reasonable candidates found
+          # print out why all the metals we tried failed
+          if (debug) :
+            print >> out, "  insufficient data to identify atom"
+            for params in self.filtered_candidates:
+              if (self.atom_props.has_compatible_ligands(str(params))) :
+                self.atom_props.show_ion_results(identity = str(params),
+                  out = out)
+            print >> out, ""
 
 class AtomProperties (object):
   """
@@ -1062,7 +1071,7 @@ class AtomProperties (object):
         other_charge = other_atom.charge_as_int()
 
         if other_charge is None:
-          other_charge = parameters.get_charge(other_element)
+          other_charge = get_charge(other_element)
 
         if (ion_params.allowed_coordinating_atoms and
             other_element not in ion_params.allowed_coordinating_atoms):
