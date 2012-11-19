@@ -2415,7 +2415,8 @@ class cmdline_load_pdb_and_data (object) :
         scattering_table=scattering_table,
         f_obs=data_and_flags.f_obs,
         r_free_flags=data_and_flags.r_free_flags,
-        skip_twin_detection=params.input.skip_twin_detection)
+        skip_twin_detection=params.input.skip_twin_detection,
+        log=out)
       self.fmodel = fmodel
     self.miller_arrays = reflection_file_server.miller_arrays
     self.f_obs = data_and_flags.f_obs
