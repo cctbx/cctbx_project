@@ -29,9 +29,12 @@ def run_0(symbol = "C 2"):
   #
   F = xrs.structure_factors(d_min = 1.5).f_calc()
   k_anisotropic = mmtbx.f_model.ext.k_anisotropic(F.indices(), u_star)
-  bin_selections = scaler.binning(
-    unit_cell      = F.unit_cell(),
-    miller_indices = F.indices())
+  #
+  bin_selections = []
+  F.setup_binner(reflections_per_bin=50)
+  for i_bin in F.binner().range_used():
+    sel = F.binner().selection(i_bin)
+    bin_selections.append(sel)
   #
   d_spacings = F.d_spacings().data()
   ss = 1./flex.pow2(d_spacings) / 4.
@@ -69,9 +72,9 @@ def run_0(symbol = "C 2"):
     try_expanal    = True,
     try_expmin     = True,
     verbose        = False)
-  assert approx_equal(aso.r_final, 0.00040, 0.00001)
-  assert approx_equal(aso.r_low,   0.00001, 0.00001)
-  assert approx_equal(aso.r_high,  0.00010, 0.00001)
+  assert approx_equal(aso.r_final, 0.00037, 0.00001)
+  assert approx_equal(aso.r_low,   0.00002, 0.00001)
+  assert approx_equal(aso.r_high,  0.00006, 0.00001)
   assert approx_equal(
     bulk_solvent.r_factor(f_obs.data(), abs(aso.core.f_model).data(), 1),
     bulk_solvent.r_factor(f_obs.data(), abs(aso.core.f_model).data()))

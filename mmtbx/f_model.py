@@ -340,6 +340,7 @@ class manager(manager_mixin):
          twin_law                     = None,
          twin_fraction                = 0,
          max_number_of_bins           = 30,
+         bin_selections = None,
          k_mask=None,
          k_isotropic=None,
          k_anisotropic=None,
@@ -349,6 +350,7 @@ class manager(manager_mixin):
          b_cart =None,
          _target_memory               = None):
     if(twin_law is not None): target_name = "twin_lsq_f"
+    self.bin_selections = bin_selections
     self.arrays = None
     self.twin_law = twin_law
     self.twin_law_str = twin_law
@@ -450,9 +452,8 @@ class manager(manager_mixin):
     self._wilson_b = None
     self.k_h = None
     self.b_h = None
-    self.bin_selections = mmtbx.bulk_solvent.scaler.binning(
-      unit_cell      = self.f_obs().unit_cell(),
-      miller_indices = self.f_obs().indices())
+    if(self.bin_selections is None):
+      self.bin_selections = self.f_obs().log_binning()
 
   def __getstate__(self):
     self._structure_factor_gradients_w = None

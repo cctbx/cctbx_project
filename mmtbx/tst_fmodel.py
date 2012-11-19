@@ -376,6 +376,11 @@ def exercise_5_bulk_sol_and_scaling(symbol = "C 2"):
   r_free_flags = f_obs.generate_r_free_flags()
   sfg_params = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract()
   sfg_params.algorithm = "direct"
+  bin_selections = []
+  f_calc.setup_binner(reflections_per_bin=100)
+  for i_bin in f_calc.binner().range_used():
+    sel = f_calc.binner().selection(i_bin)
+    bin_selections.append(sel)
   # test 1
   for k_isotropic_ in [None, k_isotropic]:
     fmodel = mmtbx.f_model.manager(
@@ -385,6 +390,7 @@ def exercise_5_bulk_sol_and_scaling(symbol = "C 2"):
       k_anisotropic  = k_anisotropic,
       k_isotropic    = k_isotropic,
       r_free_flags   = r_free_flags,
+      bin_selections = bin_selections,
       sf_and_grads_accuracy_params = sfg_params)
     assert approx_equal(fmodel.r_work(), 0)
     assert approx_equal(fmodel.r_free(), 0)
@@ -402,6 +408,7 @@ def exercise_5_bulk_sol_and_scaling(symbol = "C 2"):
     k_anisotropic = k_anisotropic,
     k_isotropic   = k_isotropic,
     r_free_flags  = r_free_flags,
+    bin_selections = bin_selections,
     sf_and_grads_accuracy_params = sfg_params)
   assert approx_equal(fmodel.r_work(), 0)
   assert approx_equal(fmodel.r_free(), 0)
@@ -418,6 +425,7 @@ def exercise_5_bulk_sol_and_scaling(symbol = "C 2"):
     f_mask       = f_mask,
     f_obs        = f_obs,
     r_free_flags = r_free_flags,
+    bin_selections = bin_selections,
     sf_and_grads_accuracy_params = sfg_params)
   assert fmodel.r_work() > 0.3
   fmodel.update_solvent_and_scale(fast=False)
@@ -431,10 +439,11 @@ def exercise_5_bulk_sol_and_scaling(symbol = "C 2"):
     f_mask       = f_mask,
     f_obs        = f_obs,
     r_free_flags = r_free_flags,
+    bin_selections = bin_selections,
     sf_and_grads_accuracy_params = sfg_params)
   assert fmodel.r_work() > 0.3
   fmodel.update_solvent_and_scale(fast=True)
-  assert fmodel.r_work() < 0.026, fmodel.r_work()
+  assert fmodel.r_work() < 0.003, fmodel.r_work()
   # part 2 of test 4
   d=fmodel.k_isotropic()*fmodel.k_anisotropic()*(
     f_calc.data()+fmodel.k_masks()[0]*f_mask.data())
@@ -443,10 +452,11 @@ def exercise_5_bulk_sol_and_scaling(symbol = "C 2"):
     f_mask       = f_mask,
     f_obs        = abs(f_calc.customized_copy(data = d)),
     r_free_flags = r_free_flags,
+    bin_selections = bin_selections,
     sf_and_grads_accuracy_params = sfg_params)
   assert fmodel.r_work() > 0.3
   fmodel.update_solvent_and_scale(fast=True)
-  assert fmodel.r_work() < 0.005
+  assert fmodel.r_work() < 0.0006
 
 def exercise_5_bulk_sol_and_scaling_and_H(symbol = "C 2"):
   random.seed(0)
@@ -479,7 +489,6 @@ def exercise_5_bulk_sol_and_scaling_and_H(symbol = "C 2"):
   sfg_params = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract()
   sfg_params.algorithm = "direct"
   x.set_occupancies(value=0.0, selection = x.hd_selection())
-  # test 1
   fmodel = mmtbx.f_model.manager(
     xray_structure = x,
     f_obs          = f_obs,
@@ -514,17 +523,17 @@ def exercise_5_bulk_sol_and_scaling_and_H(symbol = "C 2"):
   fmodel.update_all_scales(cycles=6, fast=True, show=False)
   assert approx_equal(fmodel.k_h, 0.9)
   assert approx_equal(fmodel.b_h, 0)
-  assert fmodel.r_work() < 0.016
+  assert fmodel.r_work() < 0.025
   map_coeffs = fmodel.map_coefficients(map_type="2mFo-DFc")
 
 def run(args):
   assert len(args) == 0
   exercise_5_bulk_sol_and_scaling()
+  exercise_5_bulk_sol_and_scaling_and_H()
   exercise_1()
   exercise_2()
   exercise_3_f_part1_and_f_part2()
   exercise_4_f_hydrogens()
-  exercise_5_bulk_sol_and_scaling_and_H()
   print format_cpu_times()
 
 if (__name__ == "__main__"):

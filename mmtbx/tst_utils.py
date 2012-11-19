@@ -5,6 +5,8 @@ from libtbx.utils import format_cpu_times
 import libtbx.load_env
 from cStringIO import StringIO
 from mmtbx import utils
+import iotbx.pdb
+from scitbx.array_family import flex
 
 def extract_serials(atoms, occ_groups):
   r = []

@@ -76,17 +76,25 @@ def exercise_01_general(d_mins = [1.6,],
                             b_sol  = kb[1],
                             b_cart = b_cart,
                             xray_structure = xray_structure)
+          #
+          bin_selections = []
+          f_obs.setup_binner(reflections_per_bin=50)
+          for i_bin in f_obs.binner().range_used():
+            sel = f_obs.binner().selection(i_bin)
+            bin_selections.append(sel)
+          #
           fmodel = mmtbx.f_model.manager(
             r_free_flags   = r_free_flags,
             f_obs          = f_obs,
-            xray_structure = xray_structure)
+            xray_structure = xray_structure,
+            bin_selections = bin_selections)
           fmodel.update_solvent_and_scale(nproc=nproc, fast=fast)
           result = bss.bulk_solvent_and_scales(
             fmodel_kbu = fmodel.fmodel_kbu(), nproc = nproc)
           if(not fast):
             assert approx_equal(fmodel.r_work(), result.fmodels.r_factor())
           else:
-            assert fmodel.r_work() < 0.01
+            assert fmodel.r_work() < 0.005
           assert approx_equal(result.fmodels.r_factor(), 0.0, eps = 1.e-6)
           assert approx_equal(result.k_sol(0), kb[0],  eps = 1.e-6)
           assert approx_equal(result.b_sol(),  kb[1],  eps = 1.e-6)
