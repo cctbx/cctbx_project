@@ -226,10 +226,21 @@ Full parameters:
   print >> out, "R-free flags:"
   r_free_flags.show_summary(f=out, prefix="  ")
   print >> out, ""
+  def show_symmetry_error (file1, file2, symm1, symm2) :
+    symm_out1 = cStringIO.StringIO()
+    symm_out2 = cStringIO.StringIO()
+    symm1.show_summary(f=symm_out1, prefix="  ")
+    symm2.show_summary(f=symm_out2, prefix="  ")
+    raise Sorry("Incompatible symmetry definitions:\n%s:\n%s\n%s\n%s" %
+      file1, symm_out1.getvalue(), file2, symm_out2.getvalue())
   unmerged_i_obs = merging_statistics.select_data(
     file_name=params.unmerged_data,
     data_labels=params.unmerged_labels,
     log=out)
+  if ((unmerged_i_obs.space_group() is not None) and
+      (unmerged_i_obs.unit_cell() is not None)) :
+    if (not unmerged_i_obs.is_similar_symmetry(f_obs)) :
+      show_symmetry_error("Data file", "Unmerged data", unmerged_i_obs, f_obs)
   print >> out, "Unmerged intensities:"
   unmerged_i_obs.show_summary(f=out, prefix="  ")
   print >> out, ""
@@ -240,10 +251,18 @@ Full parameters:
     make_sub_header("Calculating F(model)", out=out)
     pdb_in = file_reader.any_file(params.model, force_type="pdb")
     pdb_in.check_file_type("pdb")
-    symm = pdb_in.file_object.crystal_symmetry()
-    if (symm is None) : symm = f_obs
+    pdb_symm = pdb_in.file_object.crystal_symmetry()
+    if (pdb_symm is None) :
+      pdb_symm = f_obs
+    else :
+      if (not pdb_symm.is_similar_symmetry(f_obs)) :
+        show_symmetry_error(
+          file1="PDB file",
+          file2="data file",
+          symm1=pdb_symm,
+          symm2=f_obs)
     xray_structure = pdb_in.file_object.xray_structure_simple(
-      crystal_symmetry=symm)
+      crystal_symmetry=pdb_symm)
     from mmtbx.utils import fmodel_simple
     # XXX this gets done anyway later, but they need to be consistent before
     # creating the fmodel manager
