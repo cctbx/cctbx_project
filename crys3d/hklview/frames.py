@@ -482,9 +482,13 @@ class HKLViewFrame (wx.Frame) :
       self.view_2d.set_miller_array(array)
 
   def update_settings (self, *args, **kwds) :
+    if (self.miller_array is None) :
+      return False
     self.viewer.update_settings(*args, **kwds)
 
   def set_space_group (self, space_group_info) :
+    if (self.miller_array is None) :
+      raise Sorry("No data loaded!")
     from cctbx import crystal
     symm = crystal.symmetry(
       space_group_info=space_group_info,
