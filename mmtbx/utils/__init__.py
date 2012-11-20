@@ -1658,6 +1658,7 @@ class process_command_line_args(object):
     self.log = log
     self.pdb_file_names   = []
     self.cif_objects      = []
+    self.cif_file_names   = []
     self.reflection_files = []
     self.reflection_file_names = []
     self.phil_file_names  = []
@@ -1719,6 +1720,7 @@ class process_command_line_args(object):
           else:
             if(len(cif_object) > 0):
               self.cif_objects.append((arg_file, cif_object))
+              self.cif_file_names.append(os.path.abspath(arg_file))
               arg_is_processed = True
       if(not arg_is_processed):
         reflection_file = reflection_file_reader.any_reflection_file(
@@ -2379,9 +2381,11 @@ class cmdline_load_pdb_and_data (object) :
       prefer_anomalous=prefer_anomalous,
       log=out)
     params.input.pdb.file_name.extend(cmdline.pdb_file_names)
-    cif_file_names = params.input.monomer_library.file_name
+    self.cif_file_names = params.input.monomer_library.file_name
+    self.cif_file_names.extend(cmdline.cif_file_names)
     cif_objects = cmdline.cif_objects
-    if len(cif_file_names) > 0 :
+    self.pdb_file_names = params.input.pdb.file_name
+    if len(self.cif_file_names) > 0 :
       for file_name in cif_file_names :
         cif_obj = mmtbx.monomer_library.server.read_cif(file_name=file_name)
         cif_objects.append((file_name, cif_obj))
