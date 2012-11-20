@@ -90,6 +90,7 @@ namespace {
           arg("unit_cell"),
           arg("u_cart_tolerance")))
         .def("u_iso_or_equiv", &w_t::u_iso_or_equiv, (arg("unit_cell")))
+        .def("b_iso", &w_t::b_iso)
         .def("u_cart_plus_u_iso", &w_t::u_cart_plus_u_iso, (arg("unit_cell")))
         .def("tidy_u",
           (void(w_t::*)(

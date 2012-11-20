@@ -225,6 +225,15 @@ namespace xray {
         return true;
       }
 
+      //! get u_iso as b_iso.
+      FloatType
+      b_iso(void) const
+      {
+        FloatType result = 0;
+        result = adptbx::u_as_b(u_iso);
+        return result;
+      }
+
       //! Extracts sum of u_iso and u_star_as_u_iso (considering flags).
       FloatType
       u_iso_or_equiv(const uctbx::unit_cell* unit_cell) const
