@@ -12,7 +12,6 @@ from libtbx import easy_mp
 
 from mmtbx.ions.parameters import get_charge, server, MetalParameters
 from mmtbx.ions.geometry import find_coordination_geometry
-from mmtbx.ions.build import add_ion
 from math import sqrt
 import cStringIO
 import sys
@@ -811,7 +810,7 @@ class Manager (object):
           show_only_map_outliers = show_only_map_outliers)
         if (water_props is not None) :
           water_props.show_summary(out=out, debug=debug)
-          ions.append([water_props])
+          ions.append((water_i_seq, [water_props.final_choice]))
     else :
       print >> out, "Parallelizing across %d processes" % nproc
       print >> out, ""
@@ -823,11 +822,11 @@ class Manager (object):
         fixed_func=analyze_water,
         args=waters,
         processes=nproc)
-      for final_choice, result_str in results :
+      for water_i_seq, final_choice, result_str in results :
         if (result_str is not None) :
           print >> out, result_str
         if final_choice is not None:
-          ions.append([final_choice])
+          ions.append((water_i_seq, [final_choice]))
     return ions
 
 class _analyze_water_wrapper (object) :
@@ -849,7 +848,7 @@ class _analyze_water_wrapper (object) :
 
     result_str = out.getvalue()
     if (result_str == "") : result_str = None
-    return getattr(result, "final_choice", None), result_str
+    return i_seq, getattr(result, "final_choice", None), result_str
 
 class water_result (object) :
   """
