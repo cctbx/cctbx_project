@@ -77,6 +77,14 @@ class _(boost.python.injector, ext.scatterer):
     if (len(e) == 0): return None
     return e
 
+  def b_iso(self):
+    """get u_iso as b_iso = u_iso * 8 * pi**2
+
+    :returns: isotropic b factor
+    :rtype: float
+    """
+    return adptbx.u_as_b(self.u_iso)
+
   def as_py_code(self, indent="", comment=""):
     """ The returned string does usually eval to self, except if the both of
     self.flags.use_u_iso() and self.flags.use_u_aniso() are True.
