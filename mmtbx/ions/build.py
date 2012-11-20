@@ -6,11 +6,7 @@ from __future__ import division
 import sys
 from libtbx import Auto
 
-def find_and_build_ions(manager, out = sys.stdout, debug = True,
-                        show_only_map_outliers = True, candidates = Auto):
-  ions = manager.analyze_waters(out = out, debug = debug,
-                                show_only_map_outliers = show_only_map_outliers,
-                                candidates = candidates)
+def find_and_build_ions(manager, ions, debug = True, out = sys.stdout):
   # Build in the identified ions
   for i_seq, final_choices in ions:
     if len(final_choices) < 1:
@@ -25,7 +21,6 @@ def find_and_build_ions(manager, out = sys.stdout, debug = True,
       _change_identity(atom = atom,
                        element = final_choice.element,
                        charge = str(final_choice.charge))
-  return ions
 
 def _change_identity(atom, element, charge):
   atom.element = element
