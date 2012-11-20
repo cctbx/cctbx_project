@@ -2744,7 +2744,8 @@ class extract_box_around_model_and_map(object):
                box_cushion,
                selection_radius=None,
                selection_string=None,
-               selection=None):
+               selection=None,
+               map_data_2=None):
     adopt_init_args(self, locals())
     assert [selection_string, selection_radius].count(None) in [0,2]
     if(selection_string is not None):
@@ -2774,6 +2775,10 @@ class extract_box_around_model_and_map(object):
     o = self.map_box.origin()
     fs = (-o[0]/a[0],-o[1]/a[1],-o[2]/a[2])
     self.map_box.reshape(flex.grid(self.map_box.all()))
+    if (map_data_2 is not None) :
+      assert (len(map_data_2) == len(map_data)) and (map_data_2.all() == a)
+      self.map_box_2 = maptbx.copy(map_data_2, gridding_first, gridding_last)
+      self.map_box_2.reshape(flex.grid(self.map_box_2.all()))
     # shrink unit cell to match the box
     p = xray_structure.unit_cell().parameters()
     abc = []

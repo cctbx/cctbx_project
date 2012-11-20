@@ -199,7 +199,7 @@ class RotamerEval:
   def evaluate_residue(
                        self,
                        residue=None,
-                       residue_group=None):
+                       residue_group=None): # FIXME does not work!
     assert [residue, residue_group].count(None) == 1
     if residue is not None:
       atoms = residue.atoms()
