@@ -559,7 +559,7 @@ TER
 ATOM     12  O   LEU C   0       5.613  12.448   6.864  1.00  7.32           O
 TER
 """
-  easy_run.call('phenix.pdbtools "%s" renumber_residues=true selection=\'chain B\'' % ifn)
+  easy_run.call("phenix.pdbtools \"%s\" renumber_residues=true selection=\"chain B\"" % ifn)
   new_lines = open(ifn+"_modified.pdb").readlines()
   for line1, line2 in zip(new_lines, expected_output_pdb_2.splitlines()):
     assert (line1.strip() == line2.strip())
