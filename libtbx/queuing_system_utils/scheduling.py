@@ -132,11 +132,13 @@ class RetrieveProcessor(object):
   Adds a retrieve step
   """
 
-  def __init__(self, queue, block = True, timeout = None):
+  def __init__(self, queue, block = True, timeout = None, grace = None):
 
     self.queue = queue
     self.block = block
     self.timeout = timeout
+    self.grace = max( timeout, grace )
+    self.request_timeout = None
 
 
   def prepare(self, target):
@@ -152,14 +154,25 @@ class RetrieveProcessor(object):
       result = self.queue.get( block = self.block, timeout = self.timeout )
 
     except Empty:
-      raise ProcessingException, "Timeout on %s" % self.queue
+      now = time.time()
+
+      if self.request_timeout is None:
+        self.request_timeout = now
+        raise ProcessingException, "Timeout on %s" % self.queue
+
+      if ( now - self.request_timeout ) <= self.grace:
+        raise ProcessingException, "Timeout on %s" % self.queue
+
+      raise RuntimeError, "Timeout on %s" % self.queue
+
+    self.request_timeout = None
 
     return RetrieveResult( identifier = identifier, result = result )
 
 
   def reset(self):
 
-    pass
+    self.request_timeout = None
 
 
 class ExecutionUnit(object):
@@ -239,7 +252,16 @@ class ExecutingJob(object):
   def get(self):
 
     assert hasattr( self, "method" ) and hasattr( self, "args" )
-    return self.method( *self.args )
+
+    try:
+      result = self.method( *self.args )
+
+    except RuntimeError, e:
+      self.method = self.unit.error
+      self.args = ( self.identifier, e )
+      result = self.method( * self.args )
+
+    return result
 
 
   def __str__(self):
