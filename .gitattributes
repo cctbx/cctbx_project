@@ -109,6 +109,7 @@ cctbx/maptbx/boost_python/grid_indices_around_sites.cpp svneol=native#text/plain
 cctbx/maptbx/boost_python/time_grid_indices_around_sites.py svneol=native#text/x-python
 cctbx/maptbx/fft.h -text
 cctbx/maptbx/grid_indices_around_sites.h svneol=native#text/plain
+cctbx/maptbx/mem.py -text
 cctbx/maptbx/real_space_gradients_simple.h svneol=native#text/plain
 cctbx/maptbx/real_space_refinement_simple.py svneol=native#text/x-python
 cctbx/maptbx/real_space_target_and_gradients.h -text
@@ -153,6 +154,7 @@ cctbx/regression/tst_fourier_transform_real_part_at_x.py -text
 cctbx/regression/tst_grouped_data.py -text
 cctbx/regression/tst_map_weights_for_symmetry_summation.py svneol=native#text/x-python
 cctbx/regression/tst_math_module.py -text
+cctbx/regression/tst_mem.py -text
 cctbx/regression/tst_miller_double_step_filtration.py -text
 cctbx/regression/tst_miller_ellipsoidal_truncation.py -text
 cctbx/regression/tst_refine_xray_curvs.py svneol=native#text/x-python

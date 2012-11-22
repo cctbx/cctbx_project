@@ -149,82 +149,30 @@ namespace cctbx { namespace maptbx {
       extra_statistics_t extra_stats;
   };
 
-  // maxent stuff
-  inline void normalize_and_combine (
-    af::ref<double,  af::c_grid_padded<3> > priorA_map,
-    af::const_ref<double,  af::c_grid_padded<3> > priorB_map,
-    double norm,
-    double current_lambda)
+  //! Maximum Entropy Map modification (MEM): iteration update.
+  inline void compute_mem_iteration (
+    af::ref<double, af::c_grid_padded<3> > rho,
+    af::ref<double, af::c_grid_padded<3> > delta,
+    double lam,
+    int n,
+    double a_gd)
   {
-    for (int i = 0; i < priorA_map.size(); i++) {
-      double val = priorA_map[i] * norm;
-      priorA_map[i] = priorB_map[i] * std::exp(current_lambda * val);
-    }
-  }
-
-  inline double calculate_entropy (
-    af::const_ref<double,  af::c_grid_padded<3> > const& map_data)
-  {
-    af::tiny<int, 3> n_real(af::adapt(map_data.accessor().focus()));
-    double sum = 0.0;
-    double ent = 0.0;
+    CCTBX_ASSERT(n>0);
+    af::tiny<int, 3> n_real(af::adapt(rho.accessor().focus()));
     for (int u = 0; u < n_real[0]; u++) {
       for (int v = 0; v < n_real[1]; v++) {
         for (int w = 0; w < n_real[2]; w++) {
-          double val = map_data(u,v,w);
-          CCTBX_ASSERT(val >= 0);
-          sum += val;
-    }}}
-    CCTBX_ASSERT(sum > 0.0);
-    for (int u = 0; u < n_real[0]; u++) {
-      for (int v = 0; v < n_real[1]; v++) {
-        for (int w = 0; w < n_real[2]; w++) {
-          double val = map_data(u,v,w);
-          ent += (-val / sum) * std::log(val / sum);
-    }}}
-    return ent;
-  }
-
-  class update_prior
-  {
-    public :
-      double sum;
-      double chi2;
-
-      update_prior (
-        af::const_ref<std::complex<double>, af::c_grid_padded<3> > const& fobs,
-        af::const_ref<std::complex<double>, af::c_grid_padded<3> > const& sigf,
-        af::ref<std::complex<double>, af::c_grid_padded<3> > priorA)
-      {
-        sum = 0.0;
-        chi2 = 0.0;
-        for (int i = 0; i < sigf.size(); i++) {
-          double sigma = sigf[i].real();
-          if (sigma != 0.0) {
-            double s = std::pow(sigma, 2);
-            double ac = priorA[i].real();
-            double bc = priorA[i].imag();
-            double ao = fobs[i].real();
-            double bo = fobs[i].imag();
-            double amp1 = sqrt(ac*ac + bc*bc);
-            double amp2 = sqrt(ao*ao + bo*bo);
-            chi2 += ((amp1 - amp2) * (amp1 - amp2)) / s;
-            sum += abs(abs(amp2) - abs(amp1));
-            priorA[i] = std::complex<double>((ao-ac)/s, (bo-bc)/s);
-          } else {
-            priorA[i] = std::complex<double>(0.0,0.0);
+          double exp_arg = lam*delta(u,v,w)/n;
+          double front_mul = 1.+lam/n*rho(u,v,w);
+          if(delta(u,v,w)>=0) {
+            double exp_ = a_gd*std::exp(-exp_arg);
+            rho(u,v,w)=front_mul*exp_/(1.+lam/n*exp_);
+          }
+          else {
+            rho(u,v,w)=front_mul*a_gd/(lam/n*a_gd+std::exp(exp_arg));
           }
         }
-        return;
       }
-  };
-
-  inline void clear_map (
-    af::ref<double, af::c_grid_padded<3> > map_data,
-    double mean_density)
-  {
-    for (int i = 0; i < map_data.size(); i++) {
-      map_data[i] = mean_density;
     }
   }
 
