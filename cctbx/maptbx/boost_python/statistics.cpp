@@ -52,26 +52,12 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      def("clear_map", clear_map, (
-        arg("map_data"),
-        arg("mean_density")));
-      def("normalize_and_combine", normalize_and_combine, (
-        arg("priorA_map"),
-        arg("priorB_map"),
-        arg("norm"),
-        arg("current_lambda")));
-      def("calculate_entropy", calculate_entropy, (
-        arg("map_data")));
-      class_<update_prior>("update_prior", no_init)
-        .def(init<
-            af::const_ref<std::complex<double>, af::c_grid_padded<3> > const&,
-            af::const_ref<std::complex<double>, af::c_grid_padded<3> > const&,
-            af::ref<std::complex<double>, af::c_grid_padded<3> > >((
-          arg("fobs"),
-          arg("sigf"),
-          arg("priorA"))))
-        .def_readonly("chi2", &update_prior::chi2)
-        .def_readonly("sum", &update_prior::sum);
+      def("compute_mem_iteration", compute_mem_iteration, (
+        arg("rho"),
+        arg("delta"),
+        arg("lam"),
+        arg("n"),
+        arg("a_gd")));
     }
   };
 
