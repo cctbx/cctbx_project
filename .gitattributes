@@ -1107,7 +1107,11 @@ libtbx/queuing_system_utils/generic.py -text
 libtbx/queuing_system_utils/looping.py -text
 libtbx/queuing_system_utils/lsf.py -text
 libtbx/queuing_system_utils/pbs_utils.py svneol=native#text/x-python
-libtbx/queuing_system_utils/processing.py -text
+libtbx/queuing_system_utils/processing/__init__.py -text
+libtbx/queuing_system_utils/processing/polling.py -text
+libtbx/queuing_system_utils/processing/status.py -text
+libtbx/queuing_system_utils/processing/submission.py -text
+libtbx/queuing_system_utils/processing/transfer.py -text
 libtbx/queuing_system_utils/scheduling.py -text
 libtbx/queuing_system_utils/sge_utils.py svneol=native#text/x-python
 libtbx/queuing_system_utils/tst.py svneol=native#text/x-python
