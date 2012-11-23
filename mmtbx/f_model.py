@@ -1575,14 +1575,14 @@ class manager(manager_mixin):
       print >> log, "Fobe   Fmodel   resolution (A)"
       print >> log, "%12.3f %12.3f %6.3f"%(fo, fm, d)
 
-  #TA alpha beta parameters
-  set_sigmaa         = None
-  eobs_norm_factor   = None
-  ecalc_norm_factor  = None
-  def eobs_and_ecalc_miller_array_normalizers(self, fix_norm_factors = True, res_scale = None):
+  #Ensemble refinement alpha beta parameters
+  set_sigmaa = None
+  n_obs      = None
+  n_calc     = None
+  def n_obs_n_calc(self, update_nobs_ncalc = True):
     p = self.alpha_beta_params.sigmaa_estimator
     fmodel = self.f_model()
-    eobs_norm_factor, ecalc_norm_factor = mmtbx.scaling.ta_alpha_beta_calc.ta_alpha_beta_calc(
+    n_obs, n_calc = mmtbx.scaling.ta_alpha_beta_calc.ta_alpha_beta_calc(
              miller_obs = self.f_obs(),
              miller_calc = fmodel,
              r_free_flags = self.r_free_flags(),
@@ -1592,18 +1592,16 @@ class manager(manager_mixin):
              n_sampling_points=p.number_of_sampling_points,
              n_chebyshev_terms=p.number_of_chebyshev_terms,
              use_sampling_sum_weights=p.use_sampling_sum_weights).eobs_and_ecalc_miller_array_normalizers()
-    if fix_norm_factors:
-      self.eobs_norm_factor  = eobs_norm_factor
-      self.ecalc_norm_factor = ecalc_norm_factor
-    return eobs_norm_factor, ecalc_norm_factor
+    if update_nobs_ncalc:
+      self.n_obs  = n_obs
+      self.n_calc = n_calc
+    return n_obs, n_calc
 
-  def alpha_beta_from_fixed_norm_factors(self):
-    assert self.eobs_norm_factor is not None
-    assert self.ecalc_norm_factor is not None
-    alpha = self.set_sigmaa * flex.sqrt(
-        self.eobs_norm_factor /
-        self.ecalc_norm_factor )
-    beta  = (1.0 - self.set_sigmaa*self.set_sigmaa) * self.eobs_norm_factor
+  def alpha_beta_with_restrained_n_calc(self):
+    assert self.n_obs is not None
+    assert self.n_calc is not None
+    alpha = self.set_sigmaa * flex.sqrt(self.n_obs / self.n_calc)
+    beta  = (1.0 - self.set_sigmaa*self.set_sigmaa) * self.n_obs
     alpha = self.f_obs().array(data=alpha)
     beta  = self.f_obs().array(data=beta)
     return alpha, beta
@@ -1615,9 +1613,9 @@ class manager(manager_mixin):
     if(f_model is None): f_model = self.f_model()
     alpha, beta = None, None
     ab_params = self.alpha_beta_params
-    #Eobs and Ecalc normalization factors are fixed for TA
+    #Nobs and Ncalc restrained for ensemble refinement
     if self.set_sigmaa != None:
-      return self.alpha_beta_from_fixed_norm_factors()
+      return self.alpha_beta_with_restrained_n_calc()
     if(self.alpha_beta_params is not None):
        assert self.alpha_beta_params.method in ("est", "calc")
        assert self.alpha_beta_params.estimation_algorithm in [
