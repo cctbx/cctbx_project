@@ -2328,6 +2328,9 @@ input {
 """ % (xray_data_str, pdb_params.as_str(attributes_level=3),
        cif_params.as_str(attributes_level=3))
 
+def cmdline_input_phil () :
+  return iotbx.phil.parse(cmdline_input_phil_str)
+
 class cmdline_load_pdb_and_data (object) :
   """
   Wrapper for simple command-line programs which require both model and data.
