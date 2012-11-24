@@ -2359,31 +2359,36 @@ class cmdline_load_pdb_and_data (object) :
       create_fmodel=True,
       scattering_table="wk1995",
       prefer_anomalous=None) :
+    from iotbx import file_reader
     self.args = args
     self.master_phil = master_phil
     cmdline = process_command_line_args(
       args=args,
       master_params=master_phil)
-    params = cmdline.params.extract()
+    cmdline = iotbx.phil.process_command_line_with_files(
+      args=args,
+      master_phil=master_phil,
+      pdb_file_def="input.pdb.file_name",
+      reflection_file_def="input.xray_data.file_name",
+      cif_file_def="input.monomer_library.file_name",
+      seq_file_def=None)
+    params = cmdline.work.extract()
     if len(params.input.pdb.file_name) == 0 :
-      if (len(cmdline.pdb_file_names) != 1) :
-        raise Sorry("At least one PDB file is required as input.")
+      raise Sorry("At least one PDB file is required as input.")
     if (params.input.xray_data.file_name is None) :
-      if (len(cmdline.reflection_file_names) == 0) :
-        raise Sorry("At least one reflections file is required as input.")
-    reflection_file_server = cmdline.get_reflection_file_server()
+      raise Sorry("At least one reflections file is required as input.")
     str_utils.make_header("Processing X-ray data", out=out)
+    hkl_in = file_reader.any_file(params.input.xray_data.file_name)
+    hkl_in.check_file_type("hkl")
     data_and_flags = determine_data_and_flags(
-      reflection_file_server=reflection_file_server,
+      reflection_file_server=hkl_in.file_server,
       parameters=params.input.xray_data,
       data_parameter_scope="input.xray_data",
       flags_parameter_scope="input.xray_data.r_free_flags",
       prefer_anomalous=prefer_anomalous,
       log=out)
-    params.input.pdb.file_name.extend(cmdline.pdb_file_names)
     self.cif_file_names = params.input.monomer_library.file_name
-    self.cif_file_names.extend(cmdline.cif_file_names)
-    cif_objects = cmdline.cif_objects
+    cif_objects = []
     self.pdb_file_names = params.input.pdb.file_name
     if len(self.cif_file_names) > 0 :
       for file_name in cif_file_names :
@@ -2399,34 +2404,32 @@ class cmdline_load_pdb_and_data (object) :
       processed_pdb_file = pdb_file_object.processed_pdb_file
       geometry = processed_pdb_file.geometry_restraints_manager(
         show_energies=False)
-      xray_structure = processed_pdb_file.xray_structure()
+      self.xray_structure = processed_pdb_file.xray_structure()
       chain_proxies = processed_pdb_file.all_chain_proxies
-      pdb_hierarchy = chain_proxies.pdb_hierarchy
+      self.pdb_hierarchy = chain_proxies.pdb_hierarchy
       self.processed_pdb_file = processed_pdb_file
       self.geometry = geometry
     else :
       pdb_in = pdb_file_object.pdb_inp
-      pdb_hierarchy = pdb_in.construct_hierarchy()
-      pdb_hierarchy.atoms().reset_i_seq()
-      xray_structure = pdb_hierarchy.extract_xray_structure(
+      self.pdb_hierarchy = pdb_in.construct_hierarchy()
+      self.pdb_hierarchy.atoms().reset_i_seq()
+      self.xray_structure = self.pdb_hierarchy.extract_xray_structure(
         crystal_symmetry=pdb_in.crystal_symmetry())
       self.processed_pdb_file = None
       self.geometry = None
     self.fmodel = None
     if create_fmodel :
       fmodel = fmodel_simple(
-        xray_structures=[xray_structure],
+        xray_structures=[self.xray_structure],
         scattering_table=scattering_table,
         f_obs=data_and_flags.f_obs,
         r_free_flags=data_and_flags.r_free_flags,
         skip_twin_detection=params.input.skip_twin_detection,
         log=out)
       self.fmodel = fmodel
-    self.miller_arrays = reflection_file_server.miller_arrays
+    self.miller_arrays = hkl_in.file_server.miller_arrays
     self.f_obs = data_and_flags.f_obs
     self.r_free_flags = data_and_flags.r_free_flags
-    self.xray_structure = xray_structure
-    self.pdb_hierarchy = pdb_hierarchy
     self.params = params
 
 def max_distant_rotomer(xray_structure, pdb_hierarchy, selection,
