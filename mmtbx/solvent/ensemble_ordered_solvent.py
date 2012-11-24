@@ -1,5 +1,4 @@
 from __future__ import division
-import math
 from libtbx import adopt_init_args
 from cctbx.array_family import flex
 import iotbx.phil
@@ -205,7 +204,7 @@ class manager(object):
       if self.verbose > 0:
         print >> self.log, "Map solvent next to model (atoms moved) : ", cntr
       self.existing_solvent_xrs.set_sites_frac(closest_distances.sites_frac)
-      
+
     #Calculate if existing atoms has a significant peak within 1.0A of either map
     #N.B. consider perfectly modelled water... no diff map peak, significant 2Fo-Fc peak
     #Solvent Pick from 1st Map
@@ -273,15 +272,15 @@ class manager(object):
       new_solvent_xray_structure = xray.structure(
         special_position_settings = self.model.xray_structure,
         scatterers                = new_scatterers)
-      
+
       peaks_2fo_fc = self.find_peaks(
           map_type     = self.params.secondary_map_type,
           map_cutoff   = self.params.secondary_map_cutoff_find,
           use_kick_map = False).peaks_mapped()
-      
+
       atom_nearest_to_peak = new_solvent_xray_structure.closest_distances(
-                                sites_frac      = peaks_2fo_fc.sites, 
-                                distance_cutoff = self.params.tolerance, 
+                                sites_frac      = peaks_2fo_fc.sites,
+                                distance_cutoff = self.params.tolerance,
                                 use_selection   = None)
       new_solvent_atoms_near_pick_selection = flex.bool(new_solvent_xray_structure.scatterers().size(),False)
       for x in atom_nearest_to_peak.i_seqs:
@@ -315,7 +314,7 @@ class manager(object):
     sigma = (kt / mass_oxygen)**0.5
     random_random()
     return [random_gauss(0, sigma) for i in (1,2,3)]
-  
+
   def randomize_new_velocities(self):
     if self.params.seed is not None:
       random.seed(self.params.seed)
@@ -336,7 +335,7 @@ class manager(object):
     for x in atom_nearest_to_peak.i_seqs:
       if x > 0:
         self.solvent_atoms_near_pick_selection[x] = True
-        
+
   def move_solvent_to_the_end_of_atom_list(self):
     solsel = flex.bool(self.model.solvent_selection().count(False), False)
     solsel.extend(flex.bool(self.model.solvent_selection().count(True), True))

@@ -4,7 +4,6 @@ Deals with modifying a structure to include unbuilt and misidentified ions.
 
 from __future__ import division
 import sys
-from libtbx import Auto
 
 def find_and_build_ions(manager, ions, debug = True, out = sys.stdout):
   # Build in the identified ions
