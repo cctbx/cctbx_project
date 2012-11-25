@@ -2319,7 +2319,7 @@ input {
   pdb {
     %s
   }
-  monomer_library {
+  monomers {
     %s
   }
   skip_twin_detection = False
@@ -2373,7 +2373,7 @@ class cmdline_load_pdb_and_data (object) :
       master_phil=master_phil,
       pdb_file_def="input.pdb.file_name",
       reflection_file_def="input.xray_data.file_name",
-      cif_file_def="input.monomer_library.file_name",
+      cif_file_def="input.monomers.file_name",
       seq_file_def=None)
     params = cmdline.work.extract()
     if len(params.input.pdb.file_name) == 0 :
@@ -2390,7 +2390,7 @@ class cmdline_load_pdb_and_data (object) :
       flags_parameter_scope="input.xray_data.r_free_flags",
       prefer_anomalous=prefer_anomalous,
       log=out)
-    self.cif_file_names = params.input.monomer_library.file_name
+    self.cif_file_names = params.input.monomers.file_name
     cif_objects = []
     self.pdb_file_names = params.input.pdb.file_name
     if len(self.cif_file_names) > 0 :
