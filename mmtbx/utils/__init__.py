@@ -2391,15 +2391,15 @@ class cmdline_load_pdb_and_data (object) :
       prefer_anomalous=prefer_anomalous,
       log=out)
     self.cif_file_names = params.input.monomers.file_name
-    cif_objects = []
+    self.cif_objects = []
     self.pdb_file_names = params.input.pdb.file_name
     if len(self.cif_file_names) > 0 :
       for file_name in cif_file_names :
         cif_obj = mmtbx.monomer_library.server.read_cif(file_name=file_name)
-        cif_objects.append((file_name, cif_obj))
+        self.cif_objects.append((file_name, cif_obj))
     pdb_file_object = pdb_file(
       pdb_file_names=params.input.pdb.file_name,
-      cif_objects=cif_objects,
+      cif_objects=self.cif_objects,
       log=out)
     if process_pdb_file :
       str_utils.make_header("Processing PDB file(s)", out=out)
