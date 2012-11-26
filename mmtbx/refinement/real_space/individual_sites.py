@@ -225,7 +225,7 @@ class box_refinement_manager(object):
     new_unit_cell = box.xray_structure_box.unit_cell()
     geo_box = \
       self.geometry_restraints_manager.select(box.selection_within)
-    geo_box.discard_symmetry(new_unit_cell=new_unit_cell)
+    geo_box = geo_box.discard_symmetry(new_unit_cell=new_unit_cell)
     map_box = box.map_box
     sites_cart_box = box.xray_structure_box.sites_cart()
     selection = flex.bool(sites_cart_box.size(), True)
