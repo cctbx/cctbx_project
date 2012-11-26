@@ -186,24 +186,30 @@ fi
 # queue.
 test -z "${queue}" && queue="psfehq"
 
-# Write output to the results subdirectory within the experiment's
-# scratch space, unless specified on the command line.  Create the
-# directory for the run on the cluster.  Determine the zero-padded,
-# three-digit sequence number of the current analysis, by increasing
-# the highest existing sequence number by one.
+# Unless specified on the command line, set up the output directory as
+# a subdirectory named "results" within the experiment's scratch
+# space.  All actual output will be written to the next available
+# three-digit trial directory for the run.
 if test -z "${out}"; then
     out="${exp}/scratch/results"
 fi
 out="${out}/r${run}"
-seq=`ssh -S "${tmpdir}/control.socket" ${NODE} \
-    "mkdir -p \"${out}\" ; ls \"${out}\"" | sort -n | tail -n 1`
-if test -z "${seq}" || ! test "${seq}" -ge 0 2> /dev/null; then
-    seq="000"
+trial=`ssh -S "${tmpdir}/control.socket" ${NODE} \
+    "mkdir -p \"${out}\" ;                       \
+     find \"${out}\" -maxdepth 1                 \
+                     -name \"[0-9][0-9][0-9]\"   \
+                     -printf \"%f\n\" |          \
+     sort -n | tail -n 1"`
+if test -z "${trial}"; then
+    trial="000"
 else
-    seq=`expr "${seq}" \+ 1`
-    seq=`echo "${seq}" | awk '{ printf("%03d", $1); }'`
+    if test "${trial}" -eq "999"; then
+        echo "Error: Trial numbers exhausted" > /dev/stderr
+        cleanup_and_exit 1
+    fi
+    trial=`expr "${trial}" \+ 1 | awk '{ printf("%03d", $1); }'`
 fi
-out="${out}/${seq}"
+out="${out}/${trial}"
 
 # Write a configuration file for the analysis of each stream by
 # substituting the directory names with appropriate directories in
