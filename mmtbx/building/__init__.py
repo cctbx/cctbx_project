@@ -16,6 +16,7 @@ def run_real_space_annealing (
     wc=1,
     target_map_rsr=None,
     rsr_after_anneal=False,
+    reference_sigma=0.5, # XXX if this is too tight, nothing moves
     out=None,
     debug=False) :
   """
@@ -50,8 +51,6 @@ def run_real_space_annealing (
   selection_within = xrs.selection_within(
       radius    = 5,#selection_buffer_radius,
       selection = selection)
-  selection_in_box = selection.select(selection_within)
-  assert (len(iselection) == selection_in_box.count(True))
   box = mmtbx.utils.extract_box_around_model_and_map(
     xray_structure   = xrs,
     pdb_hierarchy    = pdb_hierarchy,
@@ -59,6 +58,8 @@ def run_real_space_annealing (
     map_data_2       = target_map_rsr,
     selection        = selection_within,
     box_cushion      = 2)
+  selection_in_box = selection.select(box.selection_within)
+  assert (len(iselection) == selection_in_box.count(True))
   new_unit_cell = box.xray_structure_box.unit_cell()
   geo_box = grm.geometry.select(box.selection_within).discard_symmetry(
     new_unit_cell=new_unit_cell)
@@ -71,16 +72,18 @@ def run_real_space_annealing (
   # implications for the fragment being refined, as it will remain tightly
   # tethered to the atoms on either side (if any).
   # XXX may need a more flexible approach
-  reference_selection = (~selection_in_box).iselection()
-  reference_sites = sites_cart_box.select(reference_selection)
-  geo_box.generic_restraints_manager.reference_manager.\
-    add_coordinate_restraints(
-      sites_cart = reference_sites,
-      selection  = reference_selection,
-      sigma      = 0.05)
+  if (reference_sigma is not None) :
+    assert (reference_sigma > 0)
+    reference_selection = (~selection_in_box).iselection()
+    reference_sites = sites_cart_box.select(reference_selection)
+    geo_box.generic_restraints_manager.reference_manager.\
+      add_coordinate_restraints(
+        sites_cart = reference_sites,
+        selection  = reference_selection,
+        sigma      = reference_sigma)
   rsr_simple_refiner = mmtbx.refinement.real_space.individual_sites.simple(
-    target_map                  = target_map_box,
-    selection                   = selection_in_box,
+    target_map                  = target_map_rsr_box,
+    selection                   = selection_all_box,
     real_space_gradients_delta  = d_min*resolution_factor,
     max_iterations              = 150,
     geometry_restraints_manager = geo_box)
@@ -89,13 +92,15 @@ def run_real_space_annealing (
     xray_structure           = box.xray_structure_box,
     start_trial_weight_value = 1.0,
     rms_bonds_limit          = 0.01,
-    rms_angles_limit         = 1.5)
+    rms_angles_limit         = 1.0)
   print >> out, ""
   print >> out, \
     "  after real-space refinement: rms_bonds=%.3f  rms_angles=%.3f" % \
       (refined.rms_bonds_final, refined.rms_angles_final)
   sites_cart_box_refined = refined.sites_cart_result
   box.xray_structure_box.set_sites_cart(sites_cart_box_refined)
+  if (debug) :
+    box.write_pdb_file("box_start.pdb")
   box_restraints_manager = mmtbx.restraints.manager(
     geometry      = geo_box,
     normalization = True)
@@ -115,7 +120,7 @@ def run_real_space_annealing (
   if (rsr_after_anneal) :
     rsr_simple_refiner = mmtbx.refinement.real_space.individual_sites.simple(
       target_map                  = target_map_rsr_box, # XXX which map?
-      selection                   = selection_all_box,
+      selection                   = selection_in_box,
       real_space_gradients_delta  = d_min*resolution_factor,
       max_iterations              = 150,
       geometry_restraints_manager = geo_box)
