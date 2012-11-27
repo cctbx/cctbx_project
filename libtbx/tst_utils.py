@@ -233,6 +233,19 @@ def exercise_file_utils () :
   sorted_files_2 = utils.sort_files_by_mtime(file_names)
   assert (sorted_files_2 == sorted_files)
 
+def exercise_dir_utils () :
+  dirs = ["tst_utils_1", "tst_utils_2", "tst_utils_45"]
+  for dir_name in dirs :
+    if (os.path.isdir(dir_name)) : os.rmdir(dir_name)
+  dir_name = utils.create_run_directory("tst_utils")
+  assert (os.path.basename(dir_name) == "tst_utils_1")
+  dir_name = utils.create_run_directory("tst_utils")
+  assert (os.path.basename(dir_name) == "tst_utils_2")
+  dir_name = utils.create_run_directory("tst_utils", 45)
+  assert (os.path.basename(dir_name) == "tst_utils_45")
+  for dir_name in dirs :
+    os.rmdir(dir_name)
+
 def run(args):
   assert len(args) == 0
   exercise_forward_compatibility()
@@ -259,6 +272,7 @@ def run(args):
   exercise_indented_display()
   exercise_approx_equal()
   exercise_file_utils()
+  exercise_dir_utils()
   print utils.format_cpu_times()
 
 if (__name__ == "__main__"):

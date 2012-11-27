@@ -1102,3 +1102,29 @@ def getcwd_or_default (default=None) :
     else :
       raise e
   return cwd
+
+def create_run_directory (prefix, default_directory_number=None) :
+  """
+  Create a program output directory using sequential numbering, picking the
+  highest run ID.  In other words, if the prefix is 'Refine' and the current
+  directory contains subdirectories named Refine_2 and Refine_9, the new
+  directory will be Refine_10.
+  """
+  dir_number = default_directory_number
+  if (dir_number is None) :
+    dir_ids = []
+    for file_name in os.listdir(os.getcwd()) :
+      if (os.path.isdir(file_name)) and (file_name.startswith(prefix)) :
+        dir_id = file_name.split("_")[-1]
+        if (dir_id.isdigit()) :
+          dir_ids.append(int(dir_id))
+    if (len(dir_ids) > 0) :
+      dir_number = max(max(dir_ids) + 1, 1)
+    else :
+      dir_number = 1
+  dir_name = prefix + "_" + str(dir_number)
+  if (os.path.isdir(dir_name)) :
+    raise OSError("The directory %s already exists."%os.path.abspath(dir_name))
+  else :
+    os.makedirs(dir_name)
+  return os.path.abspath(dir_name)
