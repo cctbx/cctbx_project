@@ -1114,6 +1114,58 @@ class manager(object):
                                    sites_frac = self.xray_structure.sites_frac())
     assert self.pdb_atoms.size() == self.xray_structure.scatterers().size()
 
+  def convert_atom (self,
+      i_seq,
+      scattering_type,
+      atom_name,
+      element,
+      charge,
+      residue_name,
+      initial_occupancy=None,
+      chain_id=None,
+      refine_occupancies=True,
+      refine_adp = None) :
+    """
+    Convert a single atom (usually water) to a different type, including
+    adjustment of the xray structure and geometry restraints.
+    """
+    atom = self.pdb_atoms[i_seq]
+    atom.name = atom_name
+    atom.element = element
+    if (charge != 0) :
+      symbol = "+"
+      if (charge < 0) : symbol = "-"
+      atom.charge = str(charge) + symbol
+    else :
+      atom.charge = ""
+    atom.parent().resname = residue_name
+    scatterer = self.xray_structure.scatterers()[i_seq]
+    scatterer.scattering_type = scattering_type
+    scatterer.label = atom.id_str()
+    if (initial_occupancy is not None) :
+      scatterer.occupancy = initial_occupancy
+      atom.occ = initial_occupancy
+    atom_selection = flex.size_t([i_seq])
+    if(refine_adp == "isotropic"):
+      scatterer.convert_to_isotropic()
+      if ((self.refinement_flags is not None) and
+          (self.refinement_flags.adp_individual_iso is not None)) :
+        self.refinement_flags.adp_individual_iso.set_selected(atom_selection,
+          True)
+    elif(refine_adp == "anisotropic"):
+      scatterer.convert_to_anisotropic()
+      if ((self.refinement_flags is not None) and
+          (self.refinement_flags.adp_individual_aniso is not None)) :
+        self.refinement_flags.adp_individual_aniso.set_selected(atom_selection,
+          True)
+    if ((self.refinement_flags is not None) and
+        (self.refinement_flags.sites_individual is not None)) :
+      self.refinement_flags.sites_individual.set_selected(atom_selection, True)
+    self.restraints_manager.geometry.update_atom_nonbonded_type(
+      i_seq=i_seq,
+      nonbonded_type=element,
+      charge=charge)
+
   def scale_adp(self, scale_max, scale_min):
     b_isos = self.xray_structure.extract_u_iso_or_u_equiv() * math.pi**2*8
     b_isos_mean = flex.mean(b_isos)
