@@ -1,0 +1,50 @@
+ensemble_refinement {
+  electron_density_maps {
+    map_coefficients {
+      map_type = 2mFo-DFc
+      mtz_label_amplitudes = 2FOFCWT
+      mtz_label_phases = PH2FOFCWT
+      fill_missing_f_obs = True
+    }
+    map_coefficients {
+      map_type = 2mFo-DFc
+      mtz_label_amplitudes = 2FOFCWT_no_fill
+      mtz_label_phases = PH2FOFCWT_no_fill
+      fill_missing_f_obs = False
+    }
+    map_coefficients {
+      map_type = mFo-DFc
+      mtz_label_amplitudes = FOFCWT
+      mtz_label_phases = PHFOFCWT
+      fill_missing_f_obs = False
+    }
+    map_coefficients {
+      map_type = anomalous
+      mtz_label_amplitudes = ANOM
+      mtz_label_phases = PANOM
+      fill_missing_f_obs = False
+    }
+    map_coefficients {
+      map_type = Fc
+      mtz_label_amplitudes = FC
+      mtz_label_phases = PHFC
+      fill_missing_f_obs = True
+    }
+    map {
+      map_type = 2mFo-DFc
+      fill_missing_f_obs = True
+    }
+    map {
+      map_type = 2mFo-DFc
+      fill_missing_f_obs = False
+    }
+    map {
+      map_type = mFo-DFc
+      fill_missing_f_obs = False
+    }
+    map {
+      map_type = Fc
+      fill_missing_f_obs = True
+    }
+  }
+}
