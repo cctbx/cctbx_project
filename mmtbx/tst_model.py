@@ -9,7 +9,7 @@ import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
 from cStringIO import StringIO
 from mmtbx import utils
-from libtbx.utils import format_cpu_times
+from libtbx.utils import format_cpu_times, null_out
 
 def exercise():
   mon_lib_srv = monomer_library.server.server()
@@ -221,11 +221,70 @@ def exercise_4():
   solvent_sel = mol.solvent_selection()
   assert solvent_sel.count(True)+1 == result.count(True)
 
+def exercise_convert_atom() :
+  from iotbx.pdb import hierarchy
+  from cctbx import crystal
+  coords = [ (2.12, 0., 0.), (0., 2.12, 0.), (0, 0, 2.12), (0,0,0),
+             (-2.12, 0, 0), (0, -2.12, 0), (0, 0, -2.12) ]
+  root = hierarchy.root()
+  model = hierarchy.model()
+  chain = hierarchy.chain(id="S")
+  root.append_model(model)
+  model.append_chain(chain)
+  for k, xyz in enumerate(coords) :
+    rg = hierarchy.residue_group(resseq=str(k+1))
+    ag = hierarchy.atom_group(resname="HOH")
+    atom = hierarchy.atom()
+    atom.serial = str(k+1)
+    atom.name = " O  "
+    atom.occ = 1.0
+    atom.b = 20.0
+    atom.xyz=  xyz
+    atom.element = " O"
+    ag.append_atom(atom)
+    rg.append_atom_group(ag)
+    chain.append_residue_group(rg)
+  symm = crystal.symmetry(
+    space_group_symbol="P1",
+    unit_cell=(10,10,10,90,90,90))
+  open("tmp_tst_model_5.pdb", "w").write(root.as_pdb_string(symm))
+  processed_pdb_files_srv = utils.process_pdb_file_srv(log=null_out())
+  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
+    pdb_file_names = ["tmp_tst_model_5.pdb"])
+  geometry = processed_pdb_file.geometry_restraints_manager(
+                                                    show_energies      = False,
+                                                    plain_pairs_radius = 5.0)
+  restraints_manager = mmtbx.restraints.manager(geometry      = geometry,
+                                                normalization = False)
+  xray_structure = processed_pdb_file.xray_structure()
+  pdb_atoms = processed_pdb_file.all_chain_proxies.pdb_hierarchy.atoms()
+  mol = mmtbx.model.manager(
+    restraints_manager = restraints_manager,
+    xray_structure = xray_structure,
+    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy,
+    log = null_out())
+  mol.convert_atom(
+    i_seq=4,
+    scattering_type="Mg2+",
+    atom_name="MG",
+    element="MG",
+    charge=2,
+    residue_name="MG",
+    initial_occupancy=0.99,
+    chain_id='X')
+  mol.geometry_minimization(nonbonded=True)
+  # if the nonbonded type is set correctly, the nonbonded restraints should
+  # not push the
+  for atom in mol.pdb_hierarchy(sync_with_xray_structure=True).atoms() :
+    xyz_max = max([ abs(n) for n in atom.xyz])
+    assert (xyz_max < 2.5)
+
 def run():
   exercise()
   exercise_2()
   exercise_3()
   exercise_4()
+  exercise_convert_atom()
   print format_cpu_times()
 
 if (__name__ == "__main__"):
