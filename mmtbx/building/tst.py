@@ -1,9 +1,20 @@
 
 from __future__ import division
+from mmtbx import building
 from libtbx.utils import null_out
 
+def exercise_model_utils () :
+  pdb_in = get_1yjp_pdb()
+  residue = pdb_in.hierarchy.only_model().chains()[0].residue_groups()[0].only_atom_group()
+  id = building.residue_id_str(residue)
+  sele = pdb_in.hierarchy.atom_selection_cache().selection("resname TYR")
+  water_sel = building.get_nearby_water_selection(
+    pdb_hierarchy=pdb_in.hierarchy,
+    xray_structure=pdb_in.input.xray_structure_simple(),
+    selection=sele)
+  assert (list(water_sel.iselection()) == [59, 60, 61, 62, 63])
+
 def exercise_real_space_annealing () :
-  from mmtbx import building
   pdb_in = get_1yjp_pdb()
   xrs = pdb_in.input.xray_structure_simple()
   fc = xrs.structure_factors(d_min=1.5).f_calc()
@@ -30,6 +41,50 @@ def exercise_real_space_annealing () :
   assert (sites_orig.select(sel).rms_difference(sites_new.select(sel)) > 0)
   assert (sites_new.select(sel).rms_difference(sites_shaken.select(sel)) > 0)
   assert (sites_orig.select(~sel).rms_difference(sites_new.select(~sel)) == 0)
+
+def exercise_map_utils () :
+  hierarchy, fmodel = get_1yjp_pdb_and_fmodel()
+  sel_cache = hierarchy.atom_selection_cache()
+  sele = sel_cache.selection("resseq 5 and (name CD or name OE1 or name NE2)")
+  sele_all = sel_cache.selection("resseq 5")
+  fmodel.xray_structure.scale_adp(factor=0.5, selection=sele)
+  fmodel.update_xray_structure(update_f_calc=True)
+  two_fofc_map, fofc_map = building.get_difference_maps(fmodel)
+  map_stats = building.local_density_quality(
+    fofc_map=fofc_map,
+    two_fofc_map=two_fofc_map,
+    atom_selection=sele_all,
+    xray_structure=fmodel.xray_structure)
+  fc_map = fmodel.map_coefficients(map_type="Fc").fft_map(
+    resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
+  assert (map_stats.number_of_atoms_in_difference_holes() == 3)
+  assert (map_stats.fraction_of_nearby_grid_points_above_cutoff() > 0.0)
+  stats = building.get_model_map_stats(
+    selection=sele_all,
+    target_map=two_fofc_map,
+    model_map=fc_map,
+    unit_cell=fmodel.xray_structure.unit_cell(),
+    sites_cart=fmodel.xray_structure.sites_cart(),
+    pdb_atoms=hierarchy.atoms())
+  #print stats.cc, stats.min, stats.mean
+  # XXX numbers are not exact because of R-free flags are generated randomly
+  assert (stats.cc > 0.7) and (stats.min > 1.5) and (stats.mean > 2.5)
+
+def get_1yjp_pdb_and_fmodel () :
+  import mmtbx.utils
+  pdb_in = get_1yjp_pdb()
+  xrs = pdb_in.input.xray_structure_simple()
+  f_calc = abs(xrs.structure_factors(d_min=1.5).f_calc())
+  f_calc.set_observation_type_xray_amplitude()
+  flags = f_calc.generate_r_free_flags()
+  fmodel = mmtbx.utils.fmodel_simple(
+    xray_structures=[xrs],
+    f_obs=f_calc,
+    r_free_flags=flags,
+    scattering_table="n_gaussian",
+    bulk_solvent_and_scaling=False,
+    skip_twin_detection=True)
+  return pdb_in.hierarchy, fmodel
 
 def get_1yjp_pdb() :
   import iotbx.pdb.hierarchy
@@ -106,5 +161,7 @@ END
 """)
 
 if (__name__ == "__main__") :
+  exercise_model_utils()
+  exercise_map_utils()
   exercise_real_space_annealing()
   print "OK"
