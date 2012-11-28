@@ -87,6 +87,8 @@ phaser {
 """ % (chloride_params_str))
 
 WATER_RES_NAMES = ["HOH", "WAT"]
+DEFAULT_IONS = ["MG", "CA", "ZN", "CL"]
+HALIDES = ["F", "CL", "BR", "I"]
 
 # Signals a built water might be a ion:
 # - Abnormal b-factors from nearby chain
@@ -462,7 +464,7 @@ class Manager (object):
     the electron count (map, occ, b) is absolutely essential.
     """
     atom = self.pdb_atoms[i_seq]
-    assert (element.upper() in ["F","CL","BR","I"])
+    assert element.upper() in HALIDES
     # discard atoms with B-factors greater than mean-1sigma for waters
     if ((self.b_mean_hoh is not None) and
         (atom.b > self.b_mean_hoh - self.b_stddev_hoh)) :
@@ -694,8 +696,9 @@ class Manager (object):
     """
     atom = self.pdb_atoms[i_seq]
     if (candidates is Auto) :
-      candidates = [ "MG", "CA", "ZN", "CL"]
-    assert (isinstance(candidates, list) or isinstance(candidates, tuple))
+      candidates = DEFAULT_IONS
+
+    candidates = [i.strip().upper() for i in candidates]
 
     resname = atom.fetch_labels().resname.strip().upper()
     assert resname in WATER_RES_NAMES
@@ -714,11 +717,11 @@ class Manager (object):
     for symbol in candidates :
       elem = self.server.get_metal_parameters(symbol)
       if (elem is None) :
-        if (symbol.upper() in ["CL","BR","I"]) : # halides are special!
+        if (symbol in HALIDES) : # halides are special!
           continue
         else :
           raise Sorry("Element '%s' not supported!" % symbol)
-      if (nuc_phosphate_site) and (not symbol in ["MG","CA"]) :
+      if (nuc_phosphate_site) and (not symbol in ["MG", "CA"]) :
         continue
       atom_number = sasaki.table(symbol.upper()).atomic_number()
       if (((looks_like_water) and (atom_number < 12)) or
@@ -758,27 +761,34 @@ class Manager (object):
         final_choice = elem_params
     else:
       if (not looks_like_water) or (nuc_phosphate_site) :
-        # try anions now
-        if ("CL" in candidates) : # TODO other halides?
-          looks_like_halide = self.looks_like_halide_ion(i_seq = i_seq)
-          if (looks_like_halide) :
-            final_choice = MetalParameters(
-              element="CL",
-              charge=-1)
+        # try halides now
+        candid_halides = set(candidates).intersection(HALIDES)
+        filtered_halides = \
+          [i for i in candid_halides
+           if self.looks_like_halid_ion(i_seq = i_seq, element = i)]
+
+        looks_like_halide = len(filtered_halides) > 0
+
+        for halide in filtered_halides:
+          ion = MetalParameters(element = halide, charge = -1)
+          reasonable.append(ion, 0)
+
+          if len(candid_halides) == 1:
+            final_choice = ion
 
     return water_result(
-      atom_props=atom_props,
-      filtered_candidates=filtered_candidates,
-      matching_candidates=reasonable,
-      nuc_phosphate_site=nuc_phosphate_site,
-      looks_like_water=looks_like_water,
-      looks_like_halide=looks_like_halide,
-      ambiguous_valence_cutoff=self.params.ambiguous_valence_cutoff,
-      valence_used=valence_used,
-      final_choice=final_choice)
+      atom_props = atom_props,
+      filtered_candidates = filtered_candidates,
+      matching_candidates = reasonable,
+      nuc_phosphate_site = nuc_phosphate_site,
+      looks_like_water = looks_like_water,
+      looks_like_halide = looks_like_halide,
+      ambiguous_valence_cutoff = self.params.ambiguous_valence_cutoff,
+      valence_used = valence_used,
+      final_choice = final_choice)
 
   def analyze_waters (self, out = sys.stdout, debug = True,
-      show_only_map_outliers=True, candidates=Auto):
+      show_only_map_outliers = True, candidates = Auto):
     """
     Iterates through all of the waters in a model, examining the maps and local
     environment to check their identity and suggest likely ions where
