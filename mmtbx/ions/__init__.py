@@ -763,10 +763,8 @@ class Manager (object):
          if self.looks_like_halid_ion(i_seq = i_seq, element = i)]
 
       looks_like_halide = len(filtered_halides) > 0
-
-      for halide in filtered_halides:
-        ion = MetalParameters(element = halide, charge = -1)
-        reasonable.append(ion, 0)
+      reasonable += [(MetalParameters(element = halide, charge = -1), 0)
+                     for halide in filtered_halides]
 
     if len(reasonable) == 1:
       elem_params = reasonable[0][0]
