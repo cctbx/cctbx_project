@@ -76,7 +76,7 @@ namespace rstbx { namespace bandpass {
     vec3 detector_slow;                               // detector slow direction, length 1
     vec3 pixel_size;                                  // in (fast,slow,dummy) directions, mm
     vec3 pixel_offset;                                // for rendering in (fast,slow,dummy) directions, pixels
-    double const distance;                              // detector distance, mm
+    double distance;                              // detector distance, mm
     vec3 detector_origin;                              // coordinates of the origin pixel (fast,slow,dummy), mm
 
     parameters_bp3 (scitbx::af::shared<cctbx::miller::index<> > indices, cctbx::crystal_orientation const& orientation,
@@ -123,6 +123,7 @@ namespace rstbx { namespace bandpass {
     scitbx::af::shared<bool > observed_flag;
     scitbx::af::shared<vec3 > spot_rectangle_vertices;
     scitbx::af::shared<vec3 > spot_rectregion_vertices;
+    scitbx::af::shared<vec3 > part_distance;
     use_case_bp3 (parameters_bp3 const& P):P(P),subpixel_translations_set(false){set_ellipse_model();}
     active_area_filter aaf;
     void set_active_areas(scitbx::af::shared<int> IT){
@@ -143,7 +144,6 @@ namespace rstbx { namespace bandpass {
       //s0:  parallel to the direction of incident radiation
       scitbx::vec3<double> s0 = (1./wavelength) * P.incident_beam;
       double s0_length = s0.length();
-      scitbx::vec3<double> s0_unit = s0.normalize();
 
       for (int idx = 0; idx < P.indices.size(); ++idx){
           // the Miller index
@@ -182,7 +182,6 @@ namespace rstbx { namespace bandpass {
     selected_partialities()const{
       scitbx::af::shared<double > data;
       scitbx::mat3<double> A = P.orientation.reciprocal_matrix();
-      cctbx::uctbx::unit_cell uc = P.orientation.unit_cell();
 
       //s0:  parallel to the direction of incident radiation
       scitbx::vec3<double> s0 = (1./P.wavelengthHE) * P.incident_beam.normalize();
@@ -190,7 +189,6 @@ namespace rstbx { namespace bandpass {
       scitbx::vec3<double> s0_unit = s0.normalize();
       scitbx::vec3<double> s1 = (1./P.wavelengthLE) * P.incident_beam.normalize();
       double s1_length = s1.length();
-      scitbx::vec3<double> s1_unit = s1.normalize();
       SCITBX_ASSERT (s0_length > 0.);
       SCITBX_ASSERT (s1_length > 0.);
 
@@ -249,7 +247,6 @@ namespace rstbx { namespace bandpass {
       scitbx::vec3<double> s0_unit = s0.normalize();
       scitbx::vec3<double> s1 = (1./P.wavelengthLE) * P.incident_beam;
       double s1_length = s1.length();
-      scitbx::vec3<double> s1_unit = s1.normalize();
       SCITBX_ASSERT (s0_length > 0.);
       SCITBX_ASSERT (s1_length > 0.);
 
@@ -379,8 +376,9 @@ namespace rstbx { namespace bandpass {
     void
     picture_fast_slow_force(){
       //The effect of this function is to set the following three state vectors:
-      hi_E_limit = scitbx::af::shared<scitbx::vec3<double> >(P.indices.size());
-      lo_E_limit = scitbx::af::shared<scitbx::vec3<double> >(P.indices.size());
+      hi_E_limit = scitbx::af::shared<scitbx::vec3<double> >(P.indices.size(),scitbx::af::init_functor_null<scitbx::vec3<double> >());
+      lo_E_limit = scitbx::af::shared<scitbx::vec3<double> >(P.indices.size(),scitbx::af::init_functor_null<scitbx::vec3<double> >());
+      part_distance = scitbx::af::shared<scitbx::vec3<double> >(P.indices.size(),scitbx::af::init_functor_null<scitbx::vec3<double> >());
       observed_flag = scitbx::af::shared<bool >(P.indices.size());
 
       scitbx::af::shared<char > limit_types(P.indices.size());
@@ -392,9 +390,10 @@ namespace rstbx { namespace bandpass {
       scitbx::vec3<double> s0_unit = s0.normalize();
       scitbx::vec3<double> s1 = (1./P.wavelengthLE) * P.incident_beam;
       double s1_length = s1.length();
-      scitbx::vec3<double> s1_unit = s1.normalize();
       SCITBX_ASSERT (s0_length > 0.);
       SCITBX_ASSERT (s1_length > 0.);
+      scitbx::vec3<double> hi_E_part_r_part_distance = s0;//initialize only; values not used
+      scitbx::vec3<double> lo_E_part_r_part_distance = s1;
 
       //  Cn, the circular section through the Ewald sphere.
       for (int idx = 0; idx < P.indices.size(); ++idx){
@@ -436,6 +435,9 @@ namespace rstbx { namespace bandpass {
           limit_types[idx] += 1; // indicate that the high-energy boundary is found
           observed_flag[idx] = true;
           hi_E_limit[idx] = scitbx::vec3<double> ( (x/P.pixel_size[0])+P.pixel_offset[0],(y/P.pixel_size[1])+P.pixel_offset[1],0. );
+          scitbx::vec3<double> part_r_part_d( q_unit / q_dot_n );
+          hi_E_part_r_part_distance = scitbx::vec3<double>( (part_r_part_d * P.detector_fast) / P.pixel_size[0],
+                                                            (part_r_part_d * P.detector_slow) / P.pixel_size[1],0.);
           }
          //  ###########  Look at the low-energy wavelength boundary
 
@@ -461,6 +463,9 @@ namespace rstbx { namespace bandpass {
           limit_types[idx] += 2; // indicate that the low-energy boundary is found
           observed_flag[idx] = true;
           lo_E_limit[idx] = sensor.sensor_coords_in_pixels(signal_penetration, P, q_unit, q_dot_n);
+          scitbx::vec3<double> part_r_part_d( q_unit / q_dot_n );
+          lo_E_part_r_part_distance = scitbx::vec3<double>( (part_r_part_d * P.detector_fast) / P.pixel_size[0],
+                                                            (part_r_part_d * P.detector_slow) / P.pixel_size[1],0.);
           }
 
          //  ###########  Look at rocking the crystal along rotax toward hiE reflection condition
@@ -484,6 +489,9 @@ namespace rstbx { namespace bandpass {
               limit_types[idx] += 1; // indicate that the hi-energy boundary is found
               observed_flag[idx] = true;
               hi_E_limit[idx] = scitbx::vec3<double> ( (x/P.pixel_size[0])+P.pixel_offset[0],(y/P.pixel_size[1])+P.pixel_offset[1],0. );
+              scitbx::vec3<double> part_r_part_d( q_unit / q_dot_n );
+              hi_E_part_r_part_distance = scitbx::vec3<double>( (part_r_part_d * P.detector_fast) / P.pixel_size[0],
+                                                                (part_r_part_d * P.detector_slow) / P.pixel_size[1],0.);
             }
           }
          //  ###########  Look at rocking the crystal along rotax toward loE reflection condition
@@ -504,6 +512,9 @@ namespace rstbx { namespace bandpass {
               limit_types[idx] += 2; // indicate that the hi-energy boundary is found
               observed_flag[idx] = true;
               lo_E_limit[idx] = sensor.sensor_coords_in_pixels(signal_penetration, P, q_unit, q_dot_n);
+              scitbx::vec3<double> part_r_part_d( q_unit / q_dot_n );
+              lo_E_part_r_part_distance = scitbx::vec3<double>( (part_r_part_d * P.detector_fast) / P.pixel_size[0],
+                                                                (part_r_part_d * P.detector_slow) / P.pixel_size[1],0.);
             }
           }
           if (!observed_flag[idx]) {
@@ -536,6 +547,10 @@ namespace rstbx { namespace bandpass {
             observed_flag[idx] = true;
             hi_E_limit[idx] = scitbx::vec3<double> ( (x/P.pixel_size[0])+P.pixel_offset[0],(y/P.pixel_size[1])+P.pixel_offset[1],0. );
             lo_E_limit[idx] = hi_E_limit[idx];
+            scitbx::vec3<double> part_r_part_d( q_unit / q_dot_n );
+            lo_E_part_r_part_distance = scitbx::vec3<double>( (part_r_part_d * P.detector_fast) / P.pixel_size[0],
+                                                              (part_r_part_d * P.detector_slow) / P.pixel_size[1],0.);
+            hi_E_part_r_part_distance = lo_E_part_r_part_distance;
           }
           if (observed_flag[idx]) {
             if (subpixel_translations_set) {
@@ -543,6 +558,7 @@ namespace rstbx { namespace bandpass {
               lo_E_limit[idx] += subpixel_trans;
               hi_E_limit[idx] += subpixel_trans;
             }
+            part_distance[idx] = (lo_E_part_r_part_distance + hi_E_part_r_part_distance)/2.;
           }
       }
       for ( int idx = 0; idx < P.indices.size(); ++idx){
@@ -916,6 +932,9 @@ namespace rstbx { namespace bandpass {
     void set_detector_origin(vec3 const& detector_origin){
       P.detector_origin = detector_origin;
     }
+    void set_distance(double const& dist){
+      P.distance = dist;
+    }
     void set_orientation(cctbx::crystal_orientation const& orientation){
       P.orientation = orientation; }
     annlib_adaptbx::AnnAdaptorSelfInclude adapt;
@@ -1116,6 +1135,7 @@ namespace ext {
         .def("picture_fast_slow_force", &use_case_bp3::picture_fast_slow_force)
         .add_property("hi_E_limit",make_getter(&use_case_bp3::hi_E_limit, rbv()))
         .add_property("lo_E_limit",make_getter(&use_case_bp3::lo_E_limit, rbv()))
+        .add_property("part_distance",make_getter(&use_case_bp3::part_distance, rbv()))
         .add_property("observed_flag",make_getter(&use_case_bp3::observed_flag, rbv()))
         .def("spot_rectangles", &use_case_bp3::spot_rectangles)
         .def("spot_rectregions", &use_case_bp3::spot_rectregions)
@@ -1142,6 +1162,7 @@ namespace ext {
         .def("set_orientation", &use_case_bp3::set_orientation)
         .def("set_adaptor", &use_case_bp3::set_adaptor)
         .def("set_detector_origin", &use_case_bp3::set_detector_origin)
+        .def("set_distance", &use_case_bp3::set_distance)
         .def("score_only_detail", &use_case_bp3::score_only_detail,(arg("weight")))
       ;
 
