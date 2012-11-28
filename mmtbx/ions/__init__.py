@@ -689,13 +689,22 @@ class Manager (object):
       i_seq,
       show_only_map_outliers = True,
       debug = True,
-      candidates = Auto) :
+      candidates = Auto,
+      no_final = False):
     """
     Examines the environment around a single atom to determine if it is actually
     a misidentified metal ion.
+
+    no_final is used internally, when candidates is not Auto, to try all of the
+    Auto without selecting any as a final choice when none of the elements in
+    candidates appear to probable ion identities.
     """
+
     atom = self.pdb_atoms[i_seq]
-    if (candidates is Auto) :
+    # Keep track of this in case we find nothing from the user-specific candidates
+    auto_candidates = candidates is Auto
+
+    if auto_candidates:
       candidates = DEFAULT_IONS
 
     candidates = [i.strip().upper() for i in candidates]
@@ -705,6 +714,7 @@ class Manager (object):
 
     atom_props = AtomProperties(atom=atom, i_seq=i_seq, manager=self)
     final_choice = None
+
     # Gather some quick statistics on the atom and see if it looks like water
     looks_like_water = self.check_water_properties(atom_props)
     if (looks_like_water is None) : # not trustworthy, skip
@@ -760,26 +770,34 @@ class Manager (object):
       candid_halides = set(candidates).intersection(HALIDES)
       filtered_halides = \
         [i for i in candid_halides
-         if self.looks_like_halid_ion(i_seq = i_seq, element = i)]
+         if self.looks_like_halide_ion(i_seq = i_seq, element = i)]
 
       looks_like_halide = len(filtered_halides) > 0
       reasonable += [(MetalParameters(element = halide, charge = -1), 0)
                      for halide in filtered_halides]
 
-    if len(reasonable) == 1:
+    if len(reasonable) == 1 and not no_final:
       elem_params = reasonable[0][0]
       final_choice = elem_params
 
-    return water_result(
-      atom_props = atom_props,
-      filtered_candidates = filtered_candidates,
-      matching_candidates = reasonable,
-      nuc_phosphate_site = nuc_phosphate_site,
-      looks_like_water = looks_like_water,
-      looks_like_halide = looks_like_halide,
-      ambiguous_valence_cutoff = self.params.ambiguous_valence_cutoff,
-      valence_used = valence_used,
-      final_choice = final_choice)
+    if not reasonable and not auto_candidates:
+      # Couldn't find anything from what the user suggested, try the other
+      # default candidates and just let the user know about them
+      return self.analyze_water(i_seq = i_seq,
+                                show_only_map_outliers = show_only_map_outliers,
+                                debug = debug,
+                                no_final = True)
+    else:
+      return water_result(
+        atom_props = atom_props,
+        filtered_candidates = filtered_candidates,
+        matching_candidates = reasonable,
+        nuc_phosphate_site = nuc_phosphate_site,
+        looks_like_water = looks_like_water,
+        looks_like_halide = looks_like_halide,
+        ambiguous_valence_cutoff = self.params.ambiguous_valence_cutoff,
+        valence_used = valence_used,
+        final_choice = final_choice)
 
   def analyze_waters (self, out = sys.stdout, debug = True,
       show_only_map_outliers = True, candidates = Auto):
@@ -863,7 +881,7 @@ class _analyze_water_wrapper (object) :
     if (result_str == "") : result_str = None
     return i_seq, getattr(result, "final_choice", None), result_str
 
-class water_result (object) :
+class water_result:
   """
   Container for storing the results of manager.analyze_water for later display
   and retrieval.
