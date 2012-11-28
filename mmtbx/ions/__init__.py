@@ -755,26 +755,22 @@ class Manager (object):
         valence_used = False
 
     looks_like_halide = False
-    if (len(reasonable) > 0) :
-      if (len(reasonable) == 1) :
-        elem_params = reasonable[0][0]
-        final_choice = elem_params
-    else:
-      if (not looks_like_water) or (nuc_phosphate_site) :
-        # try halides now
-        candid_halides = set(candidates).intersection(HALIDES)
-        filtered_halides = \
-          [i for i in candid_halides
-           if self.looks_like_halid_ion(i_seq = i_seq, element = i)]
+    if not reasonable and ((not looks_like_water) or (nuc_phosphate_site)):
+      # try halides now
+      candid_halides = set(candidates).intersection(HALIDES)
+      filtered_halides = \
+        [i for i in candid_halides
+         if self.looks_like_halid_ion(i_seq = i_seq, element = i)]
 
-        looks_like_halide = len(filtered_halides) > 0
+      looks_like_halide = len(filtered_halides) > 0
 
-        for halide in filtered_halides:
-          ion = MetalParameters(element = halide, charge = -1)
-          reasonable.append(ion, 0)
+      for halide in filtered_halides:
+        ion = MetalParameters(element = halide, charge = -1)
+        reasonable.append(ion, 0)
 
-          if len(candid_halides) == 1:
-            final_choice = ion
+    if len(reasonable) == 1:
+      elem_params = reasonable[0][0]
+      final_choice = elem_params
 
     return water_result(
       atom_props = atom_props,
