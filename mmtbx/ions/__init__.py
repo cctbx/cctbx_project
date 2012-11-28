@@ -1,3 +1,12 @@
+"""
+Examines a structure for metal ions. Can iterate over all atoms, examining their density
+and chemical environment to determine if they are correctly identified, or if there are
+better candidate ions that they can be replaced with.
+
+See build.build_ions to actually modify the structure, code in this module only prints out
+messages to the log.
+"""
+
 from __future__ import division
 from cctbx import crystal, adptbx
 from cctbx.eltbx import sasaki, henke
