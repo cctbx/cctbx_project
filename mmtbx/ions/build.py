@@ -5,17 +5,18 @@ Deals with modifying a structure to include unbuilt and misidentified ions.
 from __future__ import division
 import sys
 
-def find_and_build_ions(manager, ions, debug = True, out = sys.stdout):
+def build_ions(manager, ions, debug = True, out = sys.stdout):
   # Build in the identified ions
   for i_seq, final_choices in ions:
     if len(final_choices) < 1:
       continue
     atom = manager.pdb_atoms[i_seq]
     if len(final_choices) > 1:
-      # Ambiguous results
+      # Ambiguous results, unsure how we want to handle this right now
       pass
-    else:
-      final_choice = final_choices[0]
+    elif final_choices:
+      final_choice, = final_choices
+
       if debug:
         print >> out, "Modifying %s to become %s%+d" % \
           (atom.id_str(), final_choice.element, final_choice.charge)
