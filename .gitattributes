@@ -1308,6 +1308,7 @@ mmtbx/polygon/tst_gui.py -text
 mmtbx/real_space_correlation.py -text
 mmtbx/refinement/ensemble_refinement/__init__.py svneol=native#text/x-python
 mmtbx/refinement/ensemble_refinement/ensemble_utils.py svneol=native#text/x-python
+mmtbx/refinement/ensemble_refinement/maps.params -text
 mmtbx/refinement/fit_rotamers.py -text
 mmtbx/refinement/flip_peptides.py -text
 mmtbx/refinement/inspect_tardy_trajectory.py svneol=native#text/x-python
@@ -1380,8 +1381,6 @@ mmtbx/secondary_structure/proteins.py -text
 mmtbx/secondary_structure/tst.py -text
 mmtbx/secondary_structure/utils.py -text
 mmtbx/solvent/ensemble_ordered_solvent.py svneol=native#text/x-python
-mmtbx/solvent/ta_ordered_solvent.py svneol=native#text/x-python
-mmtbx/ta_utils.py svneol=native#text/x-python
 mmtbx/tls/command_line.py -text
 mmtbx/tls/ladp.py -text
 mmtbx/tls/perm10.py -text

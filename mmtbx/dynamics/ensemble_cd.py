@@ -106,7 +106,7 @@ class cartesian_dynamics(object):
                reset_velocities                   = True,
                stop_cm_motion                     = False,
                update_f_calc                      = True,
-               time_averaging_data                = None,
+               er_data                = None,
                log                                = None,
                stop_at_diff                       = None,
                verbose                            = -1):
@@ -129,21 +129,21 @@ class cartesian_dynamics(object):
       self.vxyz = flex.vec3_double(self.weights.size(),(0,0,0))
     else:
       self.vxyz = vxyz
-    if(self.time_averaging_data is not None and
-       self.time_averaging_data.velocities is not None):
-      self.vxyz = self.time_averaging_data.velocities
+    if(self.er_data is not None and
+       self.er_data.velocities is not None):
+      self.vxyz = self.er_data.velocities
 
-    if self.time_averaging_data is not None:
-      self.time_averaging_data.geo_grad_rms = 0
-      self.time_averaging_data.xray_grad_rms = 0
+    if self.er_data is not None:
+      self.er_data.geo_grad_rms = 0
+      self.er_data.xray_grad_rms = 0
 
     if(self.fmodel is not None):
-      if self.time_averaging_data is None:
+      if self.er_data is None:
         self.fmodel_copy = self.fmodel.deep_copy()
       else:
         self.fmodel_copy = self.fmodel
-        if self.time_averaging_data.fix_scale_factor is not None:
-          self.fmodel_copy.set_scale_switch = self.time_averaging_data.fix_scale_factor
+        if self.er_data.fix_scale_factor is not None:
+          self.fmodel_copy.set_scale_switch = self.er_data.fix_scale_factor
     #
       self.target_functor = self.fmodel_copy.target_functor()
       assert self.chem_target_weight is not None
@@ -190,7 +190,7 @@ class cartesian_dynamics(object):
       self.stop_global_motion()
     self.center_of_mass_info()
 
-    if(self.time_averaging_data is None):
+    if(self.er_data is None):
       kt = dynamics.kinetic_energy_and_temperature(self.vxyz,self.weights)
       self.current_temperature = kt.temperature
       self.ekin = kt.kinetic_energy
@@ -220,8 +220,8 @@ class cartesian_dynamics(object):
 
   def set_velocities(self):
     self.vxyz.clear()
-    if self.time_averaging_data is not None:
-      seed = self.time_averaging_data.seed
+    if self.er_data is not None:
+      seed = self.er_data.seed
     else: seed = None
     self.vxyz.extend(random_velocities(
       masses=self.weights,
@@ -234,14 +234,14 @@ class cartesian_dynamics(object):
       sites_cart=self.structure.sites_cart(),
       compute_gradients=True)
 
-    #Ta Harmonic restraints options
-    if self.time_averaging_data is not None:
-      if self.time_averaging_data.ta_harmonic_restraints_info is not None:
+    # Harmonic restraints
+    if self.er_data is not None:
+      if self.er_data.er_harmonic_restraints_info is not None:
         harmonic_grads = self.restraints_manager.geometry.ta_harmonic_restraints(
                                 sites_cart = self.structure.sites_cart(),
-                                ta_harmonic_restraint_info = self.time_averaging_data.ta_harmonic_restraints_info,
-                                weight = self.time_averaging_data.ta_harmonic_restraints_weight,
-                                slack = self.time_averaging_data.ta_harmonic_restraints_slack)
+                                ta_harmonic_restraint_info = self.er_data.er_harmonic_restraints_info,
+                                weight = self.er_data.er_harmonic_restraints_weight,
+                                slack = self.er_data.er_harmonic_restraints_slack)
         assert stereochemistry_residuals.gradients.size() == harmonic_grads.size()
         stereochemistry_residuals.gradients += harmonic_grads
     result = stereochemistry_residuals.gradients
@@ -269,14 +269,14 @@ class cartesian_dynamics(object):
 
     if (factor != 1.0):
       result *= 1.0 / factor
-    if self.time_averaging_data is not None:
+    if self.er_data is not None:
       gg = stereochemistry_residuals.gradients*(self.chem_target_weight/factor)
       xg = self.xray_gradient*(self.xray_target_weight/factor)
       #Select for protein component only
-      gg_pro = gg.select( ~self.time_averaging_data.solvent_sel )
-      xg_pro = xg.select( ~self.time_averaging_data.solvent_sel )
-      self.time_averaging_data.geo_grad_rms  += (flex.mean_sq(gg_pro.as_double())**0.5) / self.n_steps
-      self.time_averaging_data.xray_grad_rms += (flex.mean_sq(xg_pro.as_double())**0.5) / self.n_steps
+      gg_pro = gg.select( ~self.er_data.solvent_sel )
+      xg_pro = xg.select( ~self.er_data.solvent_sel )
+      self.er_data.geo_grad_rms  += (flex.mean_sq(gg_pro.as_double())**0.5) / self.n_steps
+      self.er_data.xray_grad_rms += (flex.mean_sq(xg_pro.as_double())**0.5) / self.n_steps
 
     if (self.show_gradient_rms and self.xray_gradient is not None):
       gg = stereochemistry_residuals.gradients*(self.chem_target_weight/factor)
@@ -288,13 +288,13 @@ class cartesian_dynamics(object):
     return result
 
   def xray_grads(self):
-    if(self.time_averaging_data is None):
+    if(self.er_data is None):
       self.fmodel_copy.update_xray_structure(
         xray_structure           = self.structure,
         update_f_calc            = True,
         update_f_mask            = False)
 
-    elif(self.time_averaging_data is not None):
+    elif(self.er_data is not None):
       self.fmodel_copy.update_xray_structure(
         xray_structure           = self.structure,
         update_f_calc            = False,
@@ -329,11 +329,11 @@ class cartesian_dynamics(object):
       self.weights)
 
   def velocity_rescaling(self):
-    if self.protein_thermostat and self.time_averaging_data is not None:
+    if self.protein_thermostat and self.er_data is not None:
       if (self.current_temperature <= 1.e-10):
         factor_non_solvent = 1.0
       else:
-        solvent_sel         = self.time_averaging_data.solvent_sel
+        solvent_sel         = self.er_data.solvent_sel
         non_solvent_vxyz    = self.vxyz.select(~solvent_sel)
         non_solvent_weights = self.weights.select(~solvent_sel)
         non_solvent_kt      = dynamics.kinetic_energy_and_temperature(non_solvent_vxyz, non_solvent_weights)
@@ -391,8 +391,8 @@ class cartesian_dynamics(object):
       self.ekin = kt.kinetic_energy
 
       #Store sys, solvent, nonsolvet temperatures
-      if self.time_averaging_data is not None:
-        solvent_sel         = self.time_averaging_data.solvent_sel
+      if self.er_data is not None:
+        solvent_sel         = self.er_data.solvent_sel
         solvent_vxyz        = self.vxyz.select(solvent_sel)
         solvent_weights     = self.weights.select(solvent_sel)
         solvent_kt          = dynamics.kinetic_energy_and_temperature(solvent_vxyz, solvent_weights)
@@ -400,12 +400,12 @@ class cartesian_dynamics(object):
         non_solvent_weights = self.weights.select(~solvent_sel)
         non_solvent_kt      = dynamics.kinetic_energy_and_temperature(non_solvent_vxyz, non_solvent_weights)
         if cycle == 1:
-          self.time_averaging_data.non_solvent_temp = 0
-          self.time_averaging_data.solvent_temp = 0
-          self.time_averaging_data.system_temp  = 0
-        self.time_averaging_data.non_solvent_temp += (non_solvent_kt.temperature / self.n_steps)
-        self.time_averaging_data.solvent_temp += (solvent_kt.temperature /self.n_steps)
-        self.time_averaging_data.system_temp  += (kt.temperature /self.n_steps)
+          self.er_data.non_solvent_temp = 0
+          self.er_data.solvent_temp = 0
+          self.er_data.system_temp  = 0
+        self.er_data.non_solvent_temp += (non_solvent_kt.temperature / self.n_steps)
+        self.er_data.solvent_temp += (solvent_kt.temperature /self.n_steps)
+        self.er_data.system_temp  += (kt.temperature /self.n_steps)
 
       self.velocity_rescaling()
       if(print_flag == 1 and 0):
@@ -423,10 +423,10 @@ class cartesian_dynamics(object):
       if(print_flag == 1 and 0):
         self.center_of_mass_info()
         self.print_dynamics_stat(text)
-      if(self.time_averaging_data is None):
+      if(self.er_data is None):
         self.accelerations()
       else:
-        self.time_averaging_data.velocities = self.vxyz
+        self.er_data.velocities = self.vxyz
 
   def print_dynamics_stat(self, text):
     timfac = akma_time_as_pico_seconds
