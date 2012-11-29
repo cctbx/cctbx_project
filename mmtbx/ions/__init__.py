@@ -48,7 +48,7 @@ refine_occupancies = True
   .type = bool
 starting_occupancy = 0.9
   .type = float
-use_phaser = True
+use_phaser = Auto
   .type = bool
 require_valence = False
   .type = bool
@@ -126,9 +126,15 @@ class Manager (object):
       xray_structure = xray_structure,
       connectivity = connectivity)
     self.update_maps()
-    if ((params.use_phaser) and
-        (libtbx.env.has_module("phaser")) and
-        (fmodel.f_obs().anomalous_flag())) :
+    use_phaser = self.params.use_phaser
+    if (use_phaser is Auto) :
+      use_phaser = fmodel.f_obs().anomalous_flag() and (wavelength is not None)
+    elif (use_phaser) :
+      if (wavelength is None) :
+        raise Sorry("Wavelength required when use_phaser=True.")
+      elif (not fmodel.f_obs().anomalous_flag()) :
+        raise Sorry("Anomalous data required when use_phaser=True.")
+    if ((use_phaser) and (libtbx.env.has_module("phaser"))) :
       self.phaser_substructure = find_anomalous_scatterers(
         fmodel=fmodel,
         pdb_hierarchy=pdb_hierarchy,
