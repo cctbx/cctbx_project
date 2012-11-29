@@ -832,18 +832,20 @@ class manager(object):
       gradients=gradients,
       disable_asu_cache=disable_asu_cache)
 
-  def solvent_selection(self):
+  def solvent_selection(self, include_ions=False):
     result = flex.bool()
     get_class = iotbx.pdb.common_residue_names_get_class
     for a in self.pdb_atoms:
       resname = (a.parent().resname).strip()
       if(get_class(name = resname) == "common_water"):
         result.append(True)
+      elif (a.segid.strip() == "ION") and (include_ions) :
+        result.append(True)
       else: result.append(False)
     return result
 
   def xray_structure_macromolecule(self):
-    sel = self.solvent_selection()
+    sel = self.solvent_selection(include_ions=True)
     if(self.use_ias): sel = sel | self.ias_selection
     result = self.xray_structure.select(~sel)
     return result
@@ -1123,6 +1125,7 @@ class manager(object):
       residue_name,
       initial_occupancy=None,
       chain_id=None,
+      segid=None,
       refine_occupancies=True,
       refine_adp = None) :
     """
@@ -1139,6 +1142,12 @@ class manager(object):
     else :
       atom.charge = ""
     atom.parent().resname = residue_name
+    if (chain_id is not None) :
+      assert (len(chain_id) <= 2)
+      atom.parent().parent().parent().id = chain_id
+    if (segid is not None) :
+      assert (len(segid) <= 4)
+      atom.segid = segid
     scatterer = self.xray_structure.scatterers()[i_seq]
     scatterer.scattering_type = scattering_type
     scatterer.label = atom.id_str()
@@ -1147,13 +1156,14 @@ class manager(object):
       atom.occ = initial_occupancy
     atom_selection = flex.size_t([i_seq])
     if(refine_adp == "isotropic"):
-      scatterer.convert_to_isotropic()
+      scatterer.convert_to_isotropic(unit_cell=self.xray_structure.unit_cell())
       if ((self.refinement_flags is not None) and
           (self.refinement_flags.adp_individual_iso is not None)) :
         self.refinement_flags.adp_individual_iso.set_selected(atom_selection,
           True)
     elif(refine_adp == "anisotropic"):
-      scatterer.convert_to_anisotropic()
+      scatterer.convert_to_anisotropic(
+        unit_cell=self.xray_structure.unit_cell())
       if ((self.refinement_flags is not None) and
           (self.refinement_flags.adp_individual_aniso is not None)) :
         self.refinement_flags.adp_individual_aniso.set_selected(atom_selection,
@@ -1165,6 +1175,9 @@ class manager(object):
       i_seq=i_seq,
       nonbonded_type=element,
       charge=charge)
+    self.xray_structure.discard_scattering_type_registry()
+    assert self.pdb_atoms.size() == self.xray_structure.scatterers().size()
+    return self.pdb_hierarchy(sync_with_xray_structure=True)
 
   def scale_adp(self, scale_max, scale_min):
     b_isos = self.xray_structure.extract_u_iso_or_u_equiv() * math.pi**2*8

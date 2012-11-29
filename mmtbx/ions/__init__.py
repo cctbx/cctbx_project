@@ -1,10 +1,11 @@
 """
-Examines a structure for metal ions. Can iterate over all atoms, examining their density
-and chemical environment to determine if they are correctly identified, or if there are
-better candidate ions that they can be replaced with.
+Examines a structure for metal ions. Can iterate over all atoms, examining
+their density and chemical environment to determine if they are correctly
+identified, or if there are better candidate ions that they can be replaced
+with.
 
-See build.build_ions to actually modify the structure, code in this module only prints out
-messages to the log.
+See mmtbx.ions.build to actually modify the structure, code in this module
+only prints out messages to the log.
 """
 
 from __future__ import division
@@ -129,7 +130,10 @@ class Manager (object):
         (libtbx.env.has_module("phaser")) and
         (fmodel.f_obs().anomalous_flag())) :
       self.phaser_substructure = find_anomalous_scatterers(
-        fmodel, pdb_hierarchy, wavelength = wavelength).atoms()
+        fmodel=fmodel,
+        pdb_hierarchy=pdb_hierarchy,
+        wavelength=wavelength,
+        verbose=verbose).atoms()
       self.analyze_substructure(log = log, verbose = verbose)
 
   def update_structure (self, pdb_hierarchy, xray_structure,

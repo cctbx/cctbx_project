@@ -24,10 +24,18 @@ def cif_param_as_float (param) :
 
 class MetalParameters (group_args) :
   def __str__ (self) :
-    return "%s(%+d)" % (self.element.upper(), self.charge)
+    return "%s%+d" % (self.element.upper(), self.charge)
 
   def charge_as_int (self) :
     return self.charge
+
+  def scattering_type (self) :
+    charge_symbol = ""
+    if (self.charge > 0) :
+      charge_symbol = "+"
+    elif (self.charge < 0) :
+      charge_symbol = "-"
+    return "%s%d%s" % (self.element, self.charge, charge_symbol)
 
 class server (object) :
   def __init__ (self) :
@@ -170,6 +178,17 @@ class AtomGuess(object):
 
   def charge_as_int (self) :
     return self.charge
+
+  def __str__ (self) :
+    return "%s%+d" % (self.element, self.charge)
+
+  def scattering_type (self) :
+    charge_symbol = ""
+    if (self.charge > 0) :
+      charge_symbol = "+"
+    elif (self.charge < 0) :
+      charge_symbol = "-"
+    return "%s%d%s" % (self.element, self.charge, charge_symbol)
 
 def get_charge(element):
   # Guess the charge state, may need to play around and try multiple when guessing
