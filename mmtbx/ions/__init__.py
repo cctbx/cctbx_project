@@ -1365,7 +1365,7 @@ def _identity(atom):
   if not isinstance(charge, int):
     charge = atom.charge_as_int()
 
-  return "%s(%+d)" % (_get_element(atom), charge)
+  return "%s%+d" % (_get_element(atom), charge)
 
 def find_anomalous_scatterers (
     fmodel,

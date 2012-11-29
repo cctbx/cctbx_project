@@ -83,6 +83,7 @@ def find_and_build_ions (
         residue_name=final_choice.element,
         initial_occupancy=params.initial_occupancy,
         chain_id=params.ion_chain_id,
+        segid="ION",
         refine_adp=params.refine_ion_adp,
         refine_occupancies=params.refine_ion_occupancies)
       structure_was_modified = True
