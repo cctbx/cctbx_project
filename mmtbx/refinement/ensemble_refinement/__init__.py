@@ -1,5 +1,5 @@
 from __future__ import division
-import sys, os, time, math, random, cPickle, pickle, gzip
+import sys, os, time, math, random, cPickle, gzip
 from cctbx.array_family import flex
 from cctbx import adptbx
 from iotbx.option_parser import iotbx_option_parser
@@ -17,13 +17,10 @@ import iotbx.phil
 from libtbx import adopt_init_args
 import mmtbx.solvent.ensemble_ordered_solvent as ensemble_ordered_solvent
 from cctbx import miller
-from cctbx import maptbx
-from mmtbx import max_lik
 from mmtbx.refinement.ensemble_refinement import ensemble_utils
 import scitbx.math
 from cctbx import xray
 from cctbx import geometry_restraints
-import mmtbx.tls.tools as tls_tools
 import mmtbx.maps
 master_params = iotbx.phil.parse("""\
 ensemble_refinement {
@@ -617,7 +614,7 @@ class run_ensemble_refinement(object):
       raise Sorry("Simulation aborted, running Rfree > 75%")
     self.fit_tls(input_model = self.model)
     self.assign_solvent_tls_groups()
-    
+
     #Set occupancies to 1.0
     if self.params.set_occupancies:
       utils.print_header("Set occupancies to 1.0", out = self.log)
@@ -661,7 +658,7 @@ class run_ensemble_refinement(object):
 
       xrs_previous = self.model.xray_structure.deep_copy_scatterers()
       assert self.fmodel_running.xray_structure is self.model.xray_structure
-      
+
       cd_manager = ensemble_cd.cartesian_dynamics(
         structure                   = self.model.xray_structure,
         restraints_manager          = self.model.restraints_manager,
@@ -791,7 +788,7 @@ class run_ensemble_refinement(object):
         elif self.macro_cycle < self.equilibrium_macro_cycles:
           if self.params.tx == 0:
             a_prime_wx = 0
-          else: 
+          else:
             wx_tx = min(self.time, self.params.tx)
             a_prime_wx = math.exp(-(self.cdp.time_step * self.cdp.number_of_steps)/wx_tx)
           wxray_t = self.wxray * max(0.01, self.cdp.temperature / self.er_data.non_solvent_temp)
@@ -987,7 +984,7 @@ class run_ensemble_refinement(object):
         verbose       = self.params.verbose,
         out           = self.log,
         optimize_mask = True)
-    
+
     #Fixes scale factor for rolling average #ESSENTIAL for LSQ
     if self.fix_scale == True:
       self.er_data.fix_scale_factor = self.fmodel_running.scale_k1()
@@ -1162,7 +1159,7 @@ class run_ensemble_refinement(object):
       delta_ref_fit_no_h_basic_stats = scitbx.math.basic_statistics(delta_ref_fit_no_h )
       start_biso_no_hd = start_biso.select(~hd_selection)
       fitted_biso_no_hd = fitted_biso.select(~hd_selection)
-      
+
       if verbose:
         print >> self.log, 'pTLS                                    : ', self.params.ptls
 
