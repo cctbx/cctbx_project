@@ -29,6 +29,11 @@ namespace {
         .def(# function_name, \
           (af::shared<double>(w_t::*)(af::const_ref<double> const&, \
                                       af::const_ref<double> const&) const) \
+          &w_t::function_name) \
+        .def(# function_name, \
+          (af::shared<std::complex<double> >(w_t::*)( \
+            af::const_ref<std::complex<double> > const&, \
+            af::const_ref<std::complex<double> > const&) const) \
           &w_t::function_name)
         CCTBX_DEF(plus)
         CCTBX_DEF(minus)
