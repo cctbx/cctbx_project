@@ -254,6 +254,11 @@ def run_real_space_annealing (
   box_restraints_manager = mmtbx.restraints.manager(
     geometry      = geo_box,
     normalization = True)
+  states_collector = None
+  if (debug) :
+    states_collector = mmtbx.utils.states(
+      xray_structure=box.xray_structure_box,
+      pdb_hierarchy=box.pdb_hierarchy_box)
   simulated_annealing.run(
     params             = params,
     fmodel             = None,
@@ -264,7 +269,10 @@ def run_real_space_annealing (
     wx                 = refined.weight_final,# * 0.1,
     wc                 = wc,
     log                = out,
-    verbose            = True)
+    verbose            = True,
+    states_collector   = states_collector)
+  if (states_collector is not None) :
+    states_collector.write("box_traj.pdb")
   sites_cart_box_refined = box.xray_structure_box.sites_cart()
   # XXX this seems to work poorly
   if (rsr_after_anneal) :
