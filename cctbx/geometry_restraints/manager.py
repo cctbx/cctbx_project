@@ -826,6 +826,15 @@ class manager(object):
                                  ref_site       = x[1])
     return gradients
 
+  def update_atom_nonbonded_type (self,
+      i_seq,
+      nonbonded_type,
+      charge=0) :
+    if (self.nonbonded_types is not None) :
+      self.nonbonded_types[i_seq] = nonbonded_type
+    if (self.nonbonded_charges is not None) :
+      self.nonbonded_charges[i_seq] = charge
+
   def show_interactions(self,
         flags=None,
         sites_cart=None,
