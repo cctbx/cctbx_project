@@ -12,6 +12,7 @@ from libtbx.utils import Sorry, date_and_time, plural_s
 from cStringIO import StringIO
 import random
 import os
+import sys
 
 def run(
       args,
@@ -268,44 +269,10 @@ def run(
     r_free_flags = r_free_flags.customized_copy(
       crystal_symmetry=processed_array)
   if (co.change_of_basis is not None):
-    print "Change of basis:"
-    if   (co.change_of_basis == "to_reference_setting"):
-      cb_op = processed_array.change_of_basis_op_to_reference_setting()
-    elif (co.change_of_basis == "to_primitive_setting"):
-      cb_op = processed_array.change_of_basis_op_to_primitive_setting()
-    elif (co.change_of_basis == "to_niggli_cell"):
-      cb_op = processed_array.change_of_basis_op_to_niggli_cell()
-    elif (co.change_of_basis == "to_inverse_hand"):
-      cb_op = processed_array.change_of_basis_op_to_inverse_hand()
-    else:
-      cb_op = sgtbx.change_of_basis_op(co.change_of_basis)
-    if (cb_op.c_inv().t().is_zero()):
-      print "  Change of basis operator in both h,k,l and x,y,z notation:"
-      print "   ", cb_op.as_hkl()
-    else:
-      print "  Change of basis operator in x,y,z notation:"
-    print "    %s [Inverse: %s]" % (cb_op.as_xyz(), cb_op.inverse().as_xyz())
-    d = cb_op.c().r().determinant()
-    print "  Determinant:", d
-    if (d < 0 and co.change_of_basis != "to_inverse_hand"):
-      print "  **************************************************************"
-      print "  W A R N I N G: This change of basis operator changes the hand!"
-      print "  **************************************************************"
-    if(co.eliminate_invalid_indices):
-      sel = cb_op.apply_results_in_non_integral_indices(
-        miller_indices=processed_array.indices())
-      toss = flex.bool(processed_array.indices().size(),sel)
-      keep = ~toss
-      keep_array = processed_array.select(keep)
-      toss_array = processed_array.select(toss)
-      print "  Mean value for kept reflections:", flex.mean(keep_array.data())
-      print "  Mean value for invalid reflections:", \
-        flex.mean(toss_array.data())
-      processed_array=keep_array
-    processed_array = processed_array.change_basis(cb_op=cb_op)
-    print "  Crystal symmetry after change of basis:"
-    crystal.symmetry.show_summary(processed_array, prefix="    ")
-    print
+    processed_array, cb_op = apply_change_of_basis(
+      miller_array=processed_array,
+      change_of_basis=co.change_of_basis,
+      eliminate_invalid_indices=co.eliminate_invalid_indices)
     if (r_free_flags is not None):
       r_free_flags = r_free_flags.change_basis(cb_op=cb_op)
   if (not processed_array.is_unique_set_under_symmetry()):
@@ -602,3 +569,58 @@ def run(
     print
     return None
   return processed_array
+
+def apply_change_of_basis (
+      miller_array,
+      change_of_basis,
+      eliminate_invalid_indices=True,
+      out=None) :
+  if (out is None) :
+    out = sys.stdout
+  print >> out, "Change of basis:"
+  if   (change_of_basis == "to_reference_setting"):
+    cb_op = miller_array.change_of_basis_op_to_reference_setting()
+  elif (change_of_basis == "to_primitive_setting"):
+    cb_op = miller_array.change_of_basis_op_to_primitive_setting()
+  elif (change_of_basis == "to_niggli_cell"):
+    cb_op = miller_array.change_of_basis_op_to_niggli_cell()
+  elif (change_of_basis == "to_inverse_hand"):
+    cb_op = miller_array.change_of_basis_op_to_inverse_hand()
+  else:
+    try :
+      cb_op = sgtbx.change_of_basis_op(change_of_basis)
+    except ValueError, e :
+      raise Sorry(("The change-of-basis operator '%s' is invalid "+
+        "(original error: %s)") % (change_of_basis, str(e)))
+  if (cb_op.c_inv().t().is_zero()):
+    print >> out, "  Change of basis operator in both h,k,l and x,y,z notation:"
+    print >> out, "   ", cb_op.as_hkl()
+  else:
+    print >> out, "  Change of basis operator in x,y,z notation:"
+  print >> out, "    %s [Inverse: %s]" % (cb_op.as_xyz(),
+    cb_op.inverse().as_xyz())
+  d = cb_op.c().r().determinant()
+  print >> out, "  Determinant:", d
+  if (d < 0 and change_of_basis != "to_inverse_hand"):
+    print >> out, \
+      "  **************************************************************"
+    print >> out, \
+      "  W A R N I N G: This change of basis operator changes the hand!"
+    print >> out, \
+      "  **************************************************************"
+  if(eliminate_invalid_indices):
+    sel = cb_op.apply_results_in_non_integral_indices(
+      miller_indices=miller_array.indices())
+    toss = flex.bool(miller_array.indices().size(),sel)
+    keep = ~toss
+    keep_array = miller_array.select(keep)
+    toss_array = miller_array.select(toss)
+    print >> out, "  Mean value for kept reflections:", \
+      flex.mean(keep_array.data())
+    print >> out, "  Mean value for invalid reflections:", \
+      flex.mean(toss_array.data())
+    miller_array=keep_array
+  processed_array = miller_array.change_basis(cb_op=cb_op)
+  print >> out, "  Crystal symmetry after change of basis:"
+  crystal.symmetry.show_summary(processed_array, prefix="    ", f=out)
+  return processed_array, cb_op
