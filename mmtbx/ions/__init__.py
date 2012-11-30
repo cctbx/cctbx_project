@@ -793,8 +793,7 @@ class Manager (object):
 
     if not no_final:
       if len(reasonable) == 1:
-        elem_params = reasonable[0][0]
-        final_choice = elem_params
+        final_choice = reasonable[0][0]
     else:
       if reasonable:
         # XXX: Should we be printing here? How should we let the user know why
