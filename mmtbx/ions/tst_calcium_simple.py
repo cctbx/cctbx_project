@@ -48,7 +48,7 @@ def exercise () :
   args = ["ca_frag_hoh.pdb", "ca_frag.mtz", "wavelength=1.12", "nproc=1"]
   result = easy_run.fully_buffered("mmtbx.water_screen %s" % " ".join(args)
     ).raise_if_errors()
-  assert ("  Probable element: CA(+2)" in result.stdout_lines)
+  assert ("  Probable element: CA+2" in result.stdout_lines)
   print "OK"
 
 def write_pdb_input () :
