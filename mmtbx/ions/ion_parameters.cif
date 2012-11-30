@@ -59,6 +59,33 @@ _lib_valence.value
 # Acta Crystallographica Section B Structural Science, 47(2), 192-197.
 # doi:10.1107/S0108768190011041
 #
+AC   3   O    -2   2.24
+AC   3   F    -1   2.13
+AC   3   CL   -1   2.63
+AG   1   O    -2   1.805
+AG   1   F    -1   1.80
+AG   1   CL   -1   2.09
+AL   3   O    -2   1.651
+AL   3   F    -1   1.545
+AL   3   CL   -1   2.03
+AM   3   O    -2   2.11
+AM   3   F    -1   2.00
+AM   3   CL   -1   2.48
+AS   3   O    -2   1.789
+AS   3   F    -1   1.70
+AS   3   CL   -1   2.16
+AS   5   O    -2   1.767
+AS   5   F    -1   1.62
+AS   5   CL   -1   2.14
+AU   3   O    -2   1.833
+AU   3   F    -1   1.81
+AU   3   CL   -1   2.17
+B    3   O    -2   1.371
+B    3   F    -1   1.31
+B    3   CL   -1   1.74
+BA   2   O    -2   2.29
+BA   2   F    -1   2.19
+BA   2   CL   -1   2.69
 CA   2   N    -3   2.14
 CA   2   O    -2   1.967
 CA   2   F    -1   1.842
