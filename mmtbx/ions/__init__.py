@@ -791,6 +791,23 @@ class Manager (object):
       reasonable += [(MetalParameters(element = halide, charge = -1), 0)
                      for halide in filtered_halides]
 
+    # If we can't find anything reasonable, relax our constraints...
+    # Look for something that is a compatible ligand, an apparent fpp,
+    # and compatible geometries
+    if not reasonable:
+      compatible = [params for params in filtered_candidates
+                    if atom_props.has_compatible_ligands(str(params))]
+
+      if len(compatible) == 1:
+        inaccuracies = atom_props.inaccuracies[str(compatible[0])]
+        if (compatible[0] in atom_props.fpp_ratios and
+            atom_props.BAD_FPP not in inaccuracies and
+            not inaccuracies.intersection([atom_props.BAD_GEOMETRY,
+                                           atom_props.NO_GEOMETRY])):
+          print atom.id_str()
+          print filtered_candidates
+          print compatible
+
     if not no_final:
       if len(reasonable) == 1:
         final_choice = reasonable[0][0]
@@ -799,7 +816,7 @@ class Manager (object):
         # XXX: Should we be printing here? How should we let the user know why
         # they're seeing info about ions they didn't specify?
         print >> out, ""
-        print >> out, "Found potential ion%s in default candidate set:" % \
+        print >> out, "Found potential ion%s outside of specified set:" % \
           ("s" if len(reasonable) > 1 else "")
 
     if not reasonable and not auto_candidates:
