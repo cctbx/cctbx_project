@@ -17,7 +17,7 @@ def _bond_angles(vectors):
 
 # Tetrahedrons have 4 vertices, with angles between all pairs of vertices
 # uniformly about 104.5 degrees.
-def _is_tetrahedral(vectors, dev_cutoff = 20):
+def _is_tetrahedral(vectors, dev_cutoff = 16):
   if len(vectors) != 4:
     return
 
