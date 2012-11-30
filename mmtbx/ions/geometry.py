@@ -11,22 +11,18 @@ def _bond_angles(vectors):
   in vectors.
   """
 
-  angles = []
-
-  for index, v1 in enumerate(vectors):
-    for v2 in vectors[index + 1:]:
-      angles += v1.angle(v2, deg = True),
-
-  return angles
+  return [(v1, v2, v1.angle(v2, deg = True))
+          for index, v1 in enumerate(vectors)
+          for v2 in vectors[index + 1:]]
 
 # Tetrahedrons have 4 vertices, with angles between all pairs of vertices
 # uniformly about 104.5 degrees.
-def _is_tetrahedral(vectors, dev_cutoff = 15):
+def _is_tetrahedral(vectors, dev_cutoff = 20):
   if len(vectors) != 4:
     return
 
   angles = _bond_angles(vectors)
-  deviation = sqrt(sum(abs(i - 104.5) ** 2 for i in angles) / len(vectors))
+  deviation = sqrt(sum(abs(i[2] - 104.5) ** 2 for i in angles) / len(vectors))
 
   if deviation <= dev_cutoff:
     return deviation
@@ -34,12 +30,12 @@ def _is_tetrahedral(vectors, dev_cutoff = 15):
 # Square planar geometry has 4 vertices, all on the same equatorial plane.
 # The expected angles are 90 degrees between neighboring vertices and 180
 # degrees between vertices across from one another.
-def _is_square_planar(vectors, dev_cutoff = 15):
+def _is_square_planar(vectors, dev_cutoff = 20):
   if len(vectors) != 4:
     return
 
   angles = _bond_angles(vectors)
-  deviation = sqrt(sum(abs(i - 90) ** 2 for i in angles) / len(vectors))
+  deviation = sqrt(sum(abs(i[2] - 90) ** 2 for i in angles) / len(vectors))
 
   if deviation <= dev_cutoff:
     return deviation
@@ -51,9 +47,7 @@ def _is_octahedral(vectors, dev_cutoff = 15):
   if len(vectors) != 6:
     return
 
-  angles = [(v1, v2, v1.angle(v2, deg = True))
-            for index, v1 in enumerate(vectors)
-            for v2 in vectors[index + 1:]]
+  angles = _bond_angles(vectors)
 
   # Grab the two axial vectors
   deviants = []
@@ -84,9 +78,7 @@ def _is_trigonal_bipyramid(vectors, dev_cutoff = 15):
   if len(vectors) != 5:
     return
 
-  angles = [(v1, v2, v1.angle(v2, deg = True))
-            for index, v1 in enumerate(vectors)
-            for v2 in vectors[index + 1:]]
+  angles = _bond_angles(vectors)
 
   # Grab the two axial vectors
   ax1, ax2, axial_angle = max(angles, key = lambda x: abs(x[-1]))
