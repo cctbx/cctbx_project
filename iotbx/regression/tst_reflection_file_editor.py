@@ -224,7 +224,14 @@ mtz_file {
     pass
   else :
     raise Exception_expected
+  # r-free flags in same ASU
+  params.mtz_file.crystal_symmetry.change_of_basis = "l,k,-h"
+  params.mtz_file.output_file = "tst_c_o_b.mtz"
+  miller_arrays = run_and_reload(params, "tst_c_o_b.mtz")
+  assert (miller_arrays[0].completeness(use_binning=False) ==
+          miller_arrays[1].completeness(use_binning=False) == 1.0)
   # expand symmetry (expand_to_p1=True)
+  params.mtz_file.output_file = "tst1.mtz"
   params = master_phil.fetch(source=new_phil).extract()
   params.mtz_file.crystal_symmetry.expand_to_p1 = True
   miller_arrays = run_and_reload(params, "tst1.mtz")

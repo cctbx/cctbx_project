@@ -246,7 +246,6 @@ class process_arrays (object) :
     import cctbx.miller
     from cctbx import r_free_utils
     from cctbx import crystal
-    from cctbx import sgtbx
     from scitbx.array_family import flex
 
     #-------------------------------------------------------------------
@@ -469,54 +468,12 @@ class process_arrays (object) :
 
       #-----------------------------------------------------------------
       # CHANGE OF BASIS
-      # XXX: copied from reflection_file_converter nearly verbatim
+      # this will actually be done at the last minute - we just check for
+      # incompatible options here
       if params.mtz_file.crystal_symmetry.change_of_basis is not None :
         if change_symmetry :
           raise Sorry("You may not change symmetry when change_of_basis is "+
             "defined.")
-        c_o_b = params.mtz_file.crystal_symmetry.change_of_basis
-        if c_o_b == "to_reference_setting" :
-          cb_op = new_array.change_of_basis_op_to_reference_setting()
-        elif c_o_b == "to_primitive_setting" :
-          cb_op = new_array.change_of_basis_op_to_primitive_setting()
-        elif c_o_b == "to_niggli_cell":
-          cb_op = new_array.change_of_basis_op_to_niggli_cell()
-        elif c_o_b == "to_inverse_hand" :
-          cb_op = new_array.change_of_basis_op_to_inverse_hand()
-        else:
-          try :
-            cb_op = sgtbx.change_of_basis_op(c_o_b)
-          except ValueError, e :
-            raise Sorry(("The change-of-basis operator '%s' is invalid "+
-              "(original error: %s)") % (c_o_b, str(e)))
-        if (cb_op.c_inv().t().is_zero()):
-          print >> log, ("  Change of basis operator in both h,k,l and "+
-                         "x,y,z notation:")
-          print >> log, "   ", cb_op.as_hkl()
-        else:
-          print >> log, "  Change of basis operator in x,y,z notation:"
-        print >> log, "    %s [Inverse: %s]" % (cb_op.as_xyz(),
-          cb_op.inverse().as_xyz())
-        d = cb_op.c().r().determinant()
-        print >> log, "  Determinant:", d
-        if (d < 0) and (c_o_b != "to_inverse_hand") :
-          print >> log, ("WARNING: This change of basis operator changes the "+
-                        "hand!")
-        if params.mtz_file.crystal_symmetry.eliminate_invalid_indices :
-          sel = cb_op.apply_results_in_non_integral_indices(
-            miller_indices=new_array.indices())
-          toss = flex.bool(new_array.indices().size(),sel)
-          keep = ~toss
-          keep_array = new_array.select(keep)
-          toss_array = new_array.select(toss)
-          print >> log, "  Mean value for kept reflections:", \
-            flex.mean(keep_array.data())
-          print >> log, "  Mean value for invalid reflections:", \
-            flex.mean(toss_array.data())
-          new_array = new_array
-        new_array = new_array.change_basis(cb_op=cb_op)
-        print >> log, "  Crystal symmetry after change of basis:"
-        crystal.symmetry.show_summary(new_array, f=log, prefix="    ")
 
       #-----------------------------------------------------------------
       # OTHER FILTERING
@@ -705,7 +662,8 @@ class process_arrays (object) :
         self.add_array_to_mtz_dataset(
           output_array=output_array,
           fake_label=fake_label,
-          column_types=column_types)
+          column_types=column_types,
+          out=log)
         for label in output_labels :
           labels.append(label)
           label_files.append(file_name)
@@ -719,7 +677,8 @@ class process_arrays (object) :
         make_joined_set
       have_r_free_array = True
       if len(self.final_arrays) > 0 :
-        complete_set = make_joined_set(self.final_arrays).complete_set()
+        complete_set = make_joined_set(self.final_arrays
+          ).complete_set()
       else :
         complete_set = None
       i = 0
@@ -801,7 +760,8 @@ class process_arrays (object) :
         self.add_array_to_mtz_dataset(
           output_array=output_array,
           fake_label=fake_label,
-          column_types="I")
+          column_types="I",
+          out=log)
         for label in output_labels :
           labels.append(label)
           label_files.append(file_name)
@@ -813,7 +773,8 @@ class process_arrays (object) :
     if ((params.mtz_file.r_free_flags.generate and not have_r_free_array) or
         params.mtz_file.r_free_flags.force_generate) :
       from iotbx.reflection_file_utils import make_joined_set
-      complete_set = make_joined_set(self.final_arrays).complete_set()
+      complete_set = make_joined_set(self.final_arrays
+        ).complete_set()
       r_free_params = params.mtz_file.r_free_flags
       new_r_free_array = complete_set.generate_r_free_flags(
         fraction=r_free_params.fraction,
@@ -834,9 +795,11 @@ class process_arrays (object) :
       if (len(params.mtz_file.exclude_reflection) > 0) :
         for hkl in params.mtz_file.exclude_reflection :
           output_array = output_array.delete_index(hkl)
-      self.mtz_dataset.add_miller_array(
-        miller_array=output_array,
-        column_root_label="ZZ") #r_free_params.new_label)
+      self.add_array_to_mtz_dataset(
+        output_array=output_array,
+        fake_label="ZZ",
+        column_types="I",
+        out=log)
       labels.append(r_free_params.new_label)
       label_files.append("(new array)")
       self.created_r_free = True
@@ -888,7 +851,17 @@ class process_arrays (object) :
           used[original_label] += 1
       i += 1
 
-  def add_array_to_mtz_dataset (self, output_array, fake_label, column_types) :
+  def add_array_to_mtz_dataset (self, output_array, fake_label, column_types,
+      out=sys.stdout) :
+    # apply change of basis here
+    if (self.params.mtz_file.crystal_symmetry.change_of_basis is not None) :
+      from iotbx.reflection_file_converter import apply_change_of_basis
+      output_array, cb_op = apply_change_of_basis(
+        miller_array=output_array,
+        change_of_basis=self.params.mtz_file.crystal_symmetry.change_of_basis,
+        eliminate_invalid_indices=\
+          self.params.mtz_file.crystal_symmetry.eliminate_invalid_indices,
+        out=out)
     if self.mtz_dataset is None :
       self.mtz_dataset = output_array.as_mtz_dataset(
         column_root_label=fake_label,
