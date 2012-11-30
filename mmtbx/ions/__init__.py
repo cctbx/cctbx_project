@@ -782,12 +782,20 @@ class Manager (object):
     looks_like_halide = False
     if not reasonable and ((not looks_like_water) or (nuc_phosphate_site)):
       # try halides now
-      candid_halides = set(candidates).intersection(HALIDES)
-      filtered_halides = \
-        [i for i in candid_halides
-         if self.looks_like_halide_ion(i_seq = i_seq, element = i)]
+      candidate_halides = set(candidates).intersection(HALIDES)
+      filtered_halides = []
+      for element in candidate_halides :
+        fpp_ratio = atom_props.check_fpp_ratio(
+          element=element,
+          identity="%s-1" % element,
+          wavelength=self.wavelength)
+        if (fpp_ratio is not None) :
+          if (fpp_ratio < 0.4) and (fpp_ratio > 1.05) :
+            continue
+        if (self.looks_like_halide_ion(i_seq=i_seq, element=element)) :
+          filtered_halides.append(element)
 
-      looks_like_halide = len(filtered_halides) > 0
+      looks_like_halide = (len(filtered_halides) > 0)
       reasonable += [(MetalParameters(element = halide, charge = -1), 0)
                      for halide in filtered_halides]
 
@@ -899,7 +907,10 @@ class Manager (object):
         fixed_func = analyze_water,
         args = waters,
         processes = nproc)
-      for water_i_seq, final_choice, result_str in results :
+      for result in results :
+        if (result is None) :
+          continue
+        water_i_seq, final_choice, result_str = result
         if (result_str is not None) :
           print >> out, result_str
         if final_choice is not None:
@@ -1216,24 +1227,33 @@ class AtomProperties (object):
 
     self.score[identity] = abs(self.valence_sum[identity] -
                                ion_params.cvbs_expected)
+    self.check_fpp_ratio(
+      identity=identity,
+      element=ion_params.element,
+      wavelength=wavelength)
 
+  def check_fpp_ratio (self, identity, element, wavelength) :
     # Check the f'' values if available
     # XXX in theory the fpp_ratio should be no more than 1.0 unless we are
     # right on the peak wavelength.  in practice Phaser can overshoot a little
     # bit, so we need to be more tolerant.  picking the maximum f'' from the
     # Sasaki and Henke tables will also limit the ratio.
+    inaccuracies = self.inaccuracies.get(identity, None)
+    if (inaccuracies is None) :
+      inaccuracies = self.inaccuracies[identity] = set()
     fpp_ratio_max = 1.05
     fpp_ratio_min = 0.4
     if self.fpp is not None and wavelength is not None:
-      fpp_expected_sasaki = sasaki.table(ion_params.element).at_angstrom(
+      fpp_expected_sasaki = sasaki.table(element).at_angstrom(
         wavelength).fdp()
-      fpp_expected_henke = henke.table(ion_params.element).at_angstrom(
+      fpp_expected_henke = henke.table(element).at_angstrom(
         wavelength).fdp()
       self.fpp_expected[identity] = max(fpp_expected_sasaki,fpp_expected_henke)
       self.fpp_ratios[identity] = self.fpp / self.fpp_expected[identity]
       if ((self.fpp_ratios[identity] > fpp_ratio_max) or
           ((self.fpp >= 0.2) and (self.fpp_ratios[identity] < fpp_ratio_min))) :
         inaccuracies.add(self.BAD_FPP)
+    return self.fpp_ratios.get(identity)
 
   def show_properties (self, identity, out = sys.stdout) :
     """
@@ -1296,8 +1316,8 @@ class AtomProperties (object):
     if not identity:
       identity = _identity(self.atom)
 
-    inaccuracies = self.inaccuracies[identity]
-    ignored = self.ignored[identity]
+    inaccuracies = self.inaccuracies.get(identity, set([]))
+    ignored = self.ignored.get(identity, set([]))
 
     if identity != _identity(self.atom):
       if (confirmed) :

@@ -1346,6 +1346,8 @@ mmtbx/refinement/tst_tardy_eval.py svneol=native#text/x-python
 mmtbx/refinement/tst_tardy_pdb.py svneol=native#text/x-python
 mmtbx/refinement/weights_params.py -text
 mmtbx/refinement/wx_tardy_pdb.py svneol=native#text/x-python
+mmtbx/regression/__init__.py -text
+mmtbx/regression/make_fake_anomalous_data.py -text
 mmtbx/regression/tst_add_h_to_water.py -text
 mmtbx/regression/tst_altloc_chain_break.py -text
 mmtbx/regression/tst_cablam.py -text
