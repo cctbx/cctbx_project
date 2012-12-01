@@ -2781,6 +2781,7 @@ class extract_box_around_model_and_map(object):
     o = self.map_box.origin()
     fs = (-o[0]/a[0],-o[1]/a[1],-o[2]/a[2])
     self.map_box.reshape(flex.grid(self.map_box.all()))
+    self.map_box_2 = None
     if (map_data_2 is not None) :
       assert (len(map_data_2) == len(map_data)) and (map_data_2.all() == a)
       self.map_box_2 = maptbx.copy(map_data_2, gridding_first, gridding_last)
