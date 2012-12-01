@@ -93,9 +93,12 @@ class manager(object):
       for dp in local_reference_torsion_proxies:
         self.reference_torsion_proxies.append(dp)
 
-  def remove_coordinate_restraints(self, selection):
-    self.reference_coordinate_proxies = \
-      self.reference_coordinate_proxies.proxy_remove(selection=selection)
+  def remove_coordinate_restraints(self, selection=None):
+    if (selection is not None) :
+      self.reference_coordinate_proxies = \
+        self.reference_coordinate_proxies.proxy_remove(selection=selection)
+    else :
+      self.reference_coordinate_proxies = None
 
   def remove_torsion_restraints(self, selection):
     self.reference_torsion_proxies = \
