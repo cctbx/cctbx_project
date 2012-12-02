@@ -249,6 +249,33 @@ class box_build_refine_base (object) :
     assert (n_heavy > 0)
     return sum_density / n_heavy
 
+  def cc_model_map (O, selection=None, radius=1.5) :
+    """
+    Calculate the correlation coefficient for the current model (in terms of
+    F(calc) from the xray structure) and the target map, calculated at atomic
+    positions rather than grid points.  This will be much
+    less accurate than the CC calculated in the original crystal environment,
+    with full F(model) including bulk solvent correction.
+    """
+    from scitbx.array_family import flex
+    if (selection is None) :
+      selection = O.selection_in_box
+    fcalc = O.box.xray_structure_box.structure_factors(d_min=O.d_min).f_calc()
+    fc_fft_map = fcalc.fft_map(resolution_factor=O.resolution_factor)
+    fc_map = fc_fft_map.apply_sigma_scaling().real_map_unpadded()
+    sites_selected = O.get_selected_sites(selection, hydrogens=False)
+    assert (len(sites_selected) > 0)
+    fc_values = flex.double()
+    map_values = flex.double()
+    unit_cell = O.box.xray_structure_box.unit_cell()
+    for site in sites_selected :
+      site_frac = unit_cell.fractionalize(site)
+      fc_values.append(fc_map.tricubic_interpolation(site_frac))
+      map_values.append(O.target_map_box.tricubic_interpolation(site_frac))
+    return flex.linear_correlation(
+      x=map_values,
+      y=fc_values).coefficient()
+
   def restrain_atoms (O, selection, reference_sigma) :
     """
     Apply harmonic reference restraints to the selected atoms, wiping out
@@ -364,16 +391,13 @@ class box_build_refine_base (object) :
         site_labels=site_labels)
       O.update_coordinates(sites_cart)
 
-class anneal_box  (box_build_refine_base) :
-  """
-  Class for running simulated annealing against the real-space target, with
-  optional minimization.
-  """
-  def __init__ (O, params, *args, **kwds) :
-    O.params = params
-    box_build_refine_base.__init__(O, *args, **kwds)
-
-  def run (O, rsr_after_anneal=False) :
+  def anneal (O, simulated_annealing_params=None) :
+    """
+    Run real-space simulated annealing using the target map (not the RSR map,
+    if this is different).  In practice, the non-selection atoms in the box
+    should almost always be restrained to their current positions, but the
+    setup is left to the calling code.
+    """
     from mmtbx.dynamics import simulated_annealing
     import mmtbx.utils
     wx = O.real_space_refine(selection=O.selection_all_box)
@@ -385,7 +409,7 @@ class anneal_box  (box_build_refine_base) :
         xray_structure=O.box.xray_structure_box,
         pdb_hierarchy=O.box.pdb_hierarchy_box)
     simulated_annealing.run(
-      params             = O.params,
+      params             = simulated_annealing_params,
       fmodel             = None,
       xray_structure     = O.box.xray_structure_box,
       real_space         = True,
@@ -398,9 +422,6 @@ class anneal_box  (box_build_refine_base) :
       states_collector   = states_collector)
     if (states_collector is not None) :
       states_collector.write("box_traj.pdb")
-    if (rsr_after_anneal) :
-      O.real_space_refine(selection=O.selection_in_box)
-    return O.update_original_coordinates()
 
 def run_real_space_annealing (
     xray_structure,
@@ -426,8 +447,7 @@ def run_real_space_annealing (
   import iotbx.phil
   if (params is None) :
     params = iotbx.phil.parse(simulated_annealing.master_params_str).extract()
-  O = anneal_box(
-    params=params,
+  O = box_build_refine_base(
     xray_structure=xray_structure,
     pdb_hierarchy=pdb_hierarchy,
     selection=selection,
@@ -443,4 +463,7 @@ def run_real_space_annealing (
     O.restrain_atoms(
       selection=O.others_in_box,
       reference_sigma=reference_sigma)
-  return O.run(rsr_after_anneal=rsr_after_anneal)
+  O.anneal(simulated_annealing_params=params)
+  if (rsr_after_anneal) :
+    O.real_space_refine(selection=O.selection_in_box)
+  return O.update_original_coordinates()
