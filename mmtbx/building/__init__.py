@@ -311,7 +311,6 @@ class box_build_refine_base (object) :
       rms_bonds_limit          = 0.01,
       rms_angles_limit         = 1.0)
     self.update_coordinates(refined.sites_cart_result)
-    print >> self.out, ""
     print >> self.out, \
       "  after real-space refinement: rms_bonds=%.3f  rms_angles=%.3f" % \
         (refined.rms_bonds_final, refined.rms_angles_final)
@@ -391,7 +390,11 @@ class box_build_refine_base (object) :
         site_labels=site_labels)
       self.update_coordinates(sites_cart)
 
-  def anneal (self, simulated_annealing_params=None) :
+  def anneal (self,
+              simulated_annealing_params=None,
+              start_temperature=None,
+              cool_rate=None,
+              number_of_steps=50) :
     """
     Run real-space simulated annealing using the target map (not the RSR map,
     if this is different).  In practice, the non-selection atoms in the box
@@ -408,6 +411,14 @@ class box_build_refine_base (object) :
       states_collector = mmtbx.utils.states(
         xray_structure=self.box.xray_structure_box,
         pdb_hierarchy=self.box.pdb_hierarchy_box)
+    if (simulated_annealing_params is None) :
+      simulated_annealing_params = simulated_annealing.master_params().extract()
+    if (start_temperature is not None) :
+      simulated_annealing_params.start_temperature = start_temperature
+    if (cool_rate is not None) :
+      simulated_annealing_params.cool_rate = cool_rate
+    if (number_of_steps is not None) :
+      simulated_annealing_params.number_of_steps = number_of_steps
     simulated_annealing.run(
       params             = simulated_annealing_params,
       fmodel             = None,
@@ -422,6 +433,7 @@ class box_build_refine_base (object) :
       states_collector   = states_collector)
     if (states_collector is not None) :
       states_collector.write("box_traj.pdb")
+    self.update_coordinates(self.box.xray_structure_box.sites_cart())
 
 def run_real_space_annealing (
     xray_structure,
