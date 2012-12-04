@@ -20,6 +20,9 @@ from __future__ import division
 #  cablam_measures() function has been written to return CA_d_in, CA_d_out, and
 #  CO_d_in, in correspondence with the current version of cablam_validate
 #  contours
+#2012-12-04: The previous calcualtion of omega was "exiting" At least for
+#  cis-peptide purposes, the "entering" omega is the relevant one. Correct
+#  entering omega is now calculated.
 
 #Note that geometry measures currently default to 'first_alt' in all cases for
 #  all atoms retrieved by getatomxyz()
@@ -312,16 +315,16 @@ def omegacalc(protein):
   for resid2 in protein:
     res2 = protein[resid2]
     gotall = False
-    if res2.nextres:
-      res3 = res2.nextres #n+1
+    if res2.prevres:
+      res1 = res2.prevres #n+1
       gotall = True
     if not gotall:
       continue
 
-    CA  = res2.getatomxyz('CA')
-    C   = res2.getatomxyz('C')
-    N_2 = res3.getatomxyz('N')
-    CA_2= res3.getatomxyz('CA')
+    CA  = res1.getatomxyz('CA')
+    C   = res1.getatomxyz('C')
+    N_2 = res2.getatomxyz('N')
+    CA_2= res2.getatomxyz('CA')
     if None in [CA, C, N_2, CA_2]:
       #print res2.resnum, CA, C, N_2, CA_2
       continue
@@ -331,3 +334,35 @@ def omegacalc(protein):
 
     res2.measures['omega'] = omega.angle_model
 #-------------------------------------------------------------------------------
+
+#{{{ old omega angle calculator
+#Old version that calculates the "exiting" version of omega (not suitable for
+#  IDing cis-peptides) May be removed entirely in the future.
+#Adds 'omega' dihedral (peptide plane dihedral) to residue.measures={} for each
+#  residue in protein where protein is a dictionary of cablam_res classes
+#-------------------------------------------------------------------------------
+#def old_omegacalc(protein):
+#  for resid2 in protein:
+#    res2 = protein[resid2]
+#    gotall = False
+#    if res2.nextres:
+#      res3 = res2.nextres #n+1
+#      gotall = True
+#    if not gotall:
+#      continue
+#
+#    CA  = res2.getatomxyz('CA')
+#    C   = res2.getatomxyz('C')
+#    N_2 = res3.getatomxyz('N')
+#    CA_2= res3.getatomxyz('CA')
+#    if None in [CA, C, N_2, CA_2]:
+#      #print res2.resnum, CA, C, N_2, CA_2
+#      continue
+#
+#    omega = geometry_restraints.dihedral(sites=[CA,C,N_2,CA_2],
+#      angle_ideal=-40, weight=1)
+#
+#    res2.measures['omega'] = omega.angle_model
+#-------------------------------------------------------------------------------
+#}}}
+#}}}
