@@ -738,6 +738,22 @@ pdb_params = iotbx.phil.parse("""\
       file_type_default
 """)
 
+def find_overlapping_selections (selections, selection_strings) :
+  assert (len(selections) == len(selection_strings))
+  for i_sel in range(len(selections) - 1) :
+    selection1 = selections[i_sel]
+    for j_sel in range(i_sel + 1, len(selections)) :
+      selection2 = selections[j_sel]
+      if (isinstance(selection1, flex.bool)) :
+        joint_sel = selection1 & selection2
+        if (joint_sel.count(True) > 0) :
+          return (selection_strings[i_sel], selection_strings[j_sel])
+      else :
+        intersection = selection1.intersection(selection2)
+        if (len(intersection) > 0) :
+          return (selection_strings[i_sel], selection_strings[j_sel])
+  return None
+
 def get_atom_selections(all_chain_proxies,
                         xray_structure,
                         selection_strings     = None,
@@ -816,11 +832,12 @@ def get_atom_selections(all_chain_proxies,
       else:
         tmp = tmp + tmp_s.as_int()
     if(flex.max(tmp)>1):
+      sel1, sel2 = find_overlapping_selections(selections, selection_strings)
       if (parameter_name is not None) :
-        raise Sorry("One or more overlapping selections for %s." %
-          parameter_name)
+        raise Sorry("One or more overlapping selections for %s:\n%s\n%s" %
+          (parameter_name, sel1, sel2))
       else :
-        raise Sorry("One or more overlapping selections.")
+        raise Sorry("One or more overlapping selections:\n%s\n%s" %(sel1,sel2))
   #
   if(iselection):
     for i_seq, selection in enumerate(selections):

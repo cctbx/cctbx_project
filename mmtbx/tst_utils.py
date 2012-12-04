@@ -1,7 +1,7 @@
 from __future__ import division
 import sys, os
-from libtbx.test_utils import approx_equal
-from libtbx.utils import format_cpu_times
+from libtbx.test_utils import approx_equal, Exception_expected
+from libtbx.utils import format_cpu_times, null_out, Sorry
 import libtbx.load_env
 from cStringIO import StringIO
 from mmtbx import utils
@@ -729,6 +729,38 @@ END
       print gfd, list(gc[i])
       assert approx_equal(gc[i], gfd, 1.e-5)
 
+def exercise_get_atom_selections (verbose=False) :
+  pdb_in = """\
+CRYST1   15.000   15.000   15.000  90.00  90.00  90.00 P 212121
+HETATM  115  O   HOH A  18       3.000   5.000   5.000  1.00 10.00           O
+HETATM  115  O   HOH A  19       5.000   5.000   8.000  1.00 10.00           O
+HETATM  115  O   HOH A  20       5.000   5.000   8.000  1.00 10.00           O
+END"""
+  log = null_out()
+  if (verbose) :
+    log = sys.stdout
+  processed_pdb_files_srv = utils.process_pdb_file_srv(log=log)
+  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
+    raw_records=pdb_in.splitlines())
+  selections1 = utils.get_atom_selections(
+    all_chain_proxies=processed_pdb_file.all_chain_proxies,
+    xray_structure=processed_pdb_file.xray_structure(),
+    selection_strings=["resseq 18", "resseq 19", "resseq 20"],
+    parameter_name="refine.occupancy")
+  try :
+    selections2 = utils.get_atom_selections(
+      all_chain_proxies=processed_pdb_file.all_chain_proxies,
+      xray_structure=processed_pdb_file.xray_structure(),
+      selection_strings=["resseq 18:19", "resseq 19:20"],
+      parameter_name="refine.occupancy")
+  except Sorry, s :
+    assert (str(s) == """\
+One or more overlapping selections for refine.occupancy:
+resseq 18:19
+resseq 19:20""")
+  else :
+    raise Exception_expected
+
 def run():
   verbose = "--verbose" in sys.argv[1:]
   exercise_00(verbose=verbose)
@@ -755,6 +787,7 @@ def run():
   exercise_22(verbose=verbose)
   exercise_23(verbose=verbose)
   exercise_d_data_target_d_atomic_params()
+  exercise_get_atom_selections(verbose=verbose)
   print format_cpu_times()
 
 if (__name__ == "__main__"):
