@@ -15,6 +15,13 @@ from __future__ import division
 #  provided. Argument parsing has been updated to libtbx.phil for phenix
 #  compatibility. cablam=True now yields CA_d_in, CA_d_out, and (instead of
 #  CA_a) CO_d_in.  usage() help message added.
+#2012-12-04: Added cis_or_trans argument for selecting cis or non-cis peptides
+#  during printing. Default returns all residues.
+#To do: Collect cis-peptides for analysis. Are they identifiable in cablamspace?
+#  Get contours for CA_d_in,CA_d_out,CA_a. Outliers in that space are dire and
+#  probably not addressible by cablam proper. Add clash filtering. 0.4 is
+#  sufficient clash to cull, mc-mc are the important contacts, at least for base
+#  cablam
 
 import os, sys
 from iotbx import pdb  #contains the very useful hierarchy
@@ -105,6 +112,14 @@ cablam_training {
     .type = strings
     .help = '''List of restypes to be printed, all others will be skipped'''
 
+  cis_or_trans = *both cis trans
+    .type = choice
+    .help = '''selects whether cis-peptides, trans-peptides, or both will be returned'''
+
+  fear = False
+    .type = bool
+    .help = '''turns on fear-to-tread analysis (this is temporary)'''
+
   help = False
     .type = bool
     .help = '''print help text to screen'''
@@ -162,6 +177,13 @@ include_types=restype3,restype4
   include_types=PRO,GLY would print *only* glycines and prolines
   skip_types=_PRO include_types=GLY would skip pre-prolines unless they were
   also glycines
+
+cis_or_trans='cis' 'trans' 'both'
+  Selects printing for cis-peptides or trans-peptides exclusively. The default
+  is 'both' which will print all residues.  cis is defined as -60 to +60 degrees
+  trans is defined as 120 to 180 and -120 to -180 degrees for the omega dihedral
+  Note that selecting 'cis' or 'trans' will also stop printing for any residue
+  for which omega cannot be calculated.
 --------------------------------------------------------------------------------
 
 -----Probe and Motif Search Options---------------------------------------------
@@ -400,6 +422,30 @@ def skipcheck(residue, skiplist, inclist):
 #-------------------------------------------------------------------------------
 #}}}
 
+#{{{ fails cis check function
+#Allows cis or trans peptides to be skipped during printing. Passing
+#  cis_or_trans='both' will print all residues. Residues without an omega value
+#  will be skipped unless cis_or_trans=='both'.
+#As with pruning, important in training, less so in annotation.
+#-------------------------------------------------------------------------------
+def fails_cis_check(residue,cis_or_trans):
+  doskip = True
+  if cis_or_trans == 'both':
+    doskip = False
+  else:
+    if 'omega' not in residue.measures:
+      doskip = True
+    else:
+      omega = residue.measures['omega']
+      if cis_or_trans == 'cis' and omega >= -60 and omega <= 60:
+        doskip = False
+      if cis_or_trans == 'trans' and omega >= 120 and omega <= -120:
+        doskip = False
+
+  return doskip
+#-------------------------------------------------------------------------------
+#}}}
+
 #{{{ make probe data function
 #If a precomputed probe file has not been provided, this function calls probe to
 #  generate appropriate data for use in add_probe_data()
@@ -529,6 +575,28 @@ def add_probe_data(resdata, open_probe_file):
 #-------------------------------------------------------------------------------
 #}}}
 
+#{{{ contour stuff
+#(Code in progress)
+#-------------------------------------------------------------------------------
+#def contour_fetch(path,targetlist):
+#  unpickled = {}
+#  for target in targetlist:
+#    if not target.endswith('.pickle'):
+#      target += '.pickle'
+#    picklefile = libtbx.env.find_in_repositories(
+#      relative_path=(os.path.join(path,target)))
+#    if (picklefile is None):
+#      sys.stderr.write("\nCould not find a needed pickle file for category "+target+" in chem_data.\nExiting.\n")
+#      sys.exit()
+#    ndt = easy_pickle.load(file_name=picklefile)
+#    unpickled[target] = ndt
+#  return unpickled
+#
+#def contour_read():
+#
+#-------------------------------------------------------------------------------
+#}}}
+
 #{{{ Output function collection
 #A collection of headers, formatting, and printint functions used in output
 #Default output is to stdout, but anything with a .write can be passed to the
@@ -581,11 +649,13 @@ def csv_header(kinorder, doconnections=False, writeto=sys.stdout):
 #  is used to generate percentile and probability contours for cablam_annote
 #  using the programs Silk and kin2Dcont/kin3Dcont from the Richardson Lab.
 def csv_print(protein, kinorder, skiplist=[], inclist=[],
-  doconnections=False, writeto=sys.stdout):
+  doconnections=False, cis_or_trans='both', writeto=sys.stdout):
   reslist = protein.keys()
   reslist.sort()
   for resid in reslist:
     if skipcheck(protein[resid], skiplist, inclist):
+      pass
+    elif fails_cis_check(protein[resid],cis_or_trans):
       pass
     else:
       protein[resid].printtocsv(kinorder, doconnections, writeto)
@@ -615,7 +685,7 @@ def kin_header(kinorder,kinranges, writeto=sys.stdout):
 
 #prints residues in .kin format
 #Uses skipcheck() to select residues to print (default includes all)
-def kin_print(protein, kinorder, skiplist=[], inclist=[], writeto=sys.stdout):
+def kin_print(protein, kinorder, skiplist=[], inclist=[], cis_or_trans='both', writeto=sys.stdout):
   if len(kinorder) == 0:
     sys.stderr.write('\nNo geometric measures (e.g. rama=True) specified')
     sys.stderr.write('\nExiting . . .\n')
@@ -624,8 +694,12 @@ def kin_print(protein, kinorder, skiplist=[], inclist=[], writeto=sys.stdout):
   reslist.sort()
   for resid in reslist:
     if skipcheck(protein[resid], skiplist, inclist):
+      #sys.stderr.write('\nfound a skip ' + protein[resid].alts['']['resname'])
+      pass
+    elif fails_cis_check(protein[resid],cis_or_trans):
       pass
     else:
+      sys.stderr.write('\npass '+ protein[resid].alts['']['resname'])
       protein[resid].printtokin(kinorder, writeto)
 #-------------------------------------------------------------------------------
 #}}}
@@ -969,7 +1043,7 @@ def run(args):
     else:
       pass
 
-    if params.omega:
+    if params.omega or params.cis_or_trans != 'both':
       cablam_math.omegacalc(resdata)
     else:
       pass
@@ -1033,18 +1107,18 @@ def run(args):
         if params.separate_files:
           outfile = open(pdbid+'_cablam.kin','w')
           kin_header(kinorder,kinranges,writeto=outfile)
-          kin_print(resdata, kinorder, skiplist, inclist, writeto=outfile)
+          kin_print(resdata, kinorder, skiplist, inclist, params.cis_or_trans, writeto=outfile)
           outfile.close()
         else:
-          kin_print(resdata,kinorder,skiplist,inclist)
+          kin_print(resdata,kinorder,skiplist,inclist,params.cis_or_trans)
       else:
         if params.separate_files:
           outfile = open(pdbid+'_cablam.csv','w')
           csv_header(kinorder,params.give_connections,writeto=outfile)
-          csv_print(resdata, kinorder, skiplist, inclist, params.give_connections, writeto=outfile)
+          csv_print(resdata, kinorder, skiplist, inclist, params.give_connections,params.cis_or_trans, writeto=outfile)
           outfile.close()
         else:
-          csv_print(resdata,kinorder,skiplist,inclist,params.give_connections)
+          csv_print(resdata,kinorder,skiplist,inclist,params.give_connections,params.cis_or_trans,)
 
   if outfiles:
     for filename in outfiles:
