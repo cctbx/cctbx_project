@@ -23,10 +23,13 @@ namespace boost_python {
     typedef reference_coordinate_proxy w_t;
     class_<w_t>("reference_coordinate_proxy", no_init)
       .def(init<
-        af::tiny<unsigned, 1> const&, scitbx::vec3<double>, double >((
+        af::tiny<unsigned, 1> const&, scitbx::vec3<double>, double,
+        double, bool>((
           arg("i_seqs"),
           arg("ref_sites"),
-          arg("weight"))))
+          arg("weight"),
+          arg("limit")=-1.0,
+          arg("top_out")=false)))
       .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
       .add_property("ref_sites", make_getter(&w_t::ref_sites, rbv()))
       .def_readwrite("weight", &w_t::weight)

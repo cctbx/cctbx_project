@@ -15,11 +15,15 @@ class manager(object):
         self,
         sites_cart,
         selection=None,
-        sigma=0.5):
+        sigma=0.5,
+        limit=1.0,
+        top_out_potential=False):
     self.add_reference_coordinate_proxies(
       sites_cart=sites_cart,
       selection=selection,
-      sigma=sigma)
+      sigma=sigma,
+      limit=limit,
+      top_out_potential=top_out_potential)
 
   def add_torsion_restraints(
         self,
@@ -43,7 +47,9 @@ class manager(object):
         self,
         sites_cart,
         selection=None,
-        sigma=0.5):
+        sigma=0.5,
+        limit=1.0,
+        top_out_potential=False):
     import boost.python
     self.ext = boost.python.import_ext("mmtbx_reference_coordinate_ext")
     if self.reference_coordinate_proxies is None:
@@ -64,7 +70,9 @@ class manager(object):
       proxy = self.ext.reference_coordinate_proxy(
                 i_seqs=i_seqs,
                 ref_sites=ref_sites,
-                weight=weight)
+                weight=weight,
+                limit=limit,
+                top_out=top_out_potential)
       self.reference_coordinate_proxies.append(proxy)
 
   def add_reference_torsion_proxies(
