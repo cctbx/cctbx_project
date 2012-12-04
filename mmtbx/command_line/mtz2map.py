@@ -58,6 +58,7 @@ output {
     .type = path
     .short_caption = Output directory
     .help = Output directory (defaults to current)
+    .style = directory
   prefix = None
     .type = str
     .input_size = 400
@@ -198,6 +199,7 @@ def run (args, log=sys.stdout) :
   else :
     print >> log, "No PDB file - will output map(s) in unit cell."
   file_info = []
+  suffixes = []
   for i, map_labels in enumerate(params.labels) :
     map_coeffs = None
     if (len(map_labels) == 1) :
@@ -269,6 +271,17 @@ def run (args, log=sys.stdout) :
       suffix = "_llg"
     else :
       suffix = "_%d" % (i+1)
+    if ("_no_fill" in map_labels[0]) :
+      suffix += "_no_fill"
+    elif ("_fill" in map_labels[0]) :
+      suffix += "_filled"
+    # check for duplicate suffixes, append a number if necessary
+    if (suffix in suffixes) :
+      suffixes.append(suffix)
+      n = suffixes.count(suffix)
+      suffix += "_%d" % n
+    else :
+      suffixes.append(suffix)
     format = params.output.format
     if params.output.extension == "Auto" :
       if format == "ccp4" :
