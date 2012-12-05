@@ -20,6 +20,7 @@ data_dir = find_data_dir()
 
 def get_cif_filename(code):
   if (data_dir is None): return ""
+  if (not code): return ""
   code=code.strip()
   return os.path.join(
     data_dir, "%s" % code[0].lower(), "data_%s.cif" % code.upper())
