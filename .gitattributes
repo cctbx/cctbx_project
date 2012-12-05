@@ -1187,6 +1187,7 @@ mmtbx/command_line/map_box.py -text
 mmtbx/command_line/map_to_model_histogram.py -text
 mmtbx/command_line/map_value_at_point.py -text
 mmtbx/command_line/maps.py -text
+mmtbx/command_line/maximum_entropy_map.py -text
 mmtbx/command_line/model_vs_data.py -text
 mmtbx/command_line/model_vs_sequence.py -text
 mmtbx/command_line/mon_lib_cif_triage.py svneol=native#text/x-python
