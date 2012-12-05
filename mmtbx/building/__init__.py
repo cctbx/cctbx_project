@@ -276,7 +276,11 @@ class box_build_refine_base (object) :
       x=map_values,
       y=fc_values).coefficient()
 
-  def restrain_atoms (self, selection, reference_sigma) :
+  def restrain_atoms (self,
+        selection,
+        reference_sigma,
+        limit=1.0,
+        top_out_potential=False) :
     """
     Apply harmonic reference restraints to the selected atoms, wiping out
     any previously existing harmonic restraints.
@@ -288,7 +292,9 @@ class box_build_refine_base (object) :
     self.reference_manager_box.add_coordinate_restraints(
         sites_cart = reference_sites,
         selection  = selection,
-        sigma      = reference_sigma)
+        sigma      = reference_sigma,
+        limit      = limit,
+        top_out_potential=top_out_potential)
 
   def real_space_refine (self, selection=None) :
     """
