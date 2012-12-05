@@ -2,6 +2,7 @@
 
 from __future__ import division
 import iotbx.merging_statistics
+import iotbx.phil
 from libtbx.str_utils import format_value
 from libtbx.utils import Sorry, Usage
 from libtbx import runtime_utils
@@ -34,7 +35,21 @@ loggraph = False
 include scope libtbx.phil.interface.tracking_params
 """ % iotbx.merging_statistics.merging_params_str
 
-def run (args, out=None) :
+# Hack for handling SHELX files
+class cmdline_processor (iotbx.phil.process_command_line_with_files) :
+  def process_other (self, arg) :
+    if ("=" in arg) :
+      fields = arg.split("=")
+      if (len(fields) == 2) and (fields[1] in ["amplitudes", "intensities",
+          "hklf3", "hklf4"]) :
+        from iotbx import reflection_file_reader
+        hkl_in = reflection_file_reader.any_reflection_file(arg)
+        if (hkl_in.file_type() is not None) :
+          return iotbx.phil.parse("%s=%s" % (self.reflection_file_def,
+            arg))
+    return False
+
+def run (args, out=None, assume_shelx_observation_type_is=None) :
   if (out is None) : out = sys.stdout
   import iotbx.phil
   master_params = iotbx.phil.parse(master_phil, process_includes=True)
@@ -51,8 +66,7 @@ already be on a common scale, but with individual observations unmerged.
 Full parameters:
 %s
 """ % (citations_str, master_params.as_str(prefix="  ")))
-  import iotbx.phil
-  cmdline = iotbx.phil.process_command_line_with_files(
+  cmdline = cmdline_processor(
     args=args,
     master_phil=master_params,
     reflection_file_def="file_name",
@@ -61,7 +75,8 @@ Full parameters:
   i_obs = iotbx.merging_statistics.select_data(
     file_name=params.file_name,
     data_labels=params.labels,
-    log=out)
+    log=out,
+    assume_shelx_observation_type_is=assume_shelx_observation_type_is)
   symm = None
   if (params.symmetry_file is not None) :
     from iotbx import crystal_symmetry_from_any
@@ -119,7 +134,9 @@ def validate_params (params) :
 
 class launcher (runtime_utils.target_with_save_result) :
   def run (self) :
-    return run(args=list(self.args), out=sys.stdout)
+    return run(args=list(self.args),
+               out=sys.stdout,
+               assume_shelx_observation_type_is="intensities")
 
 def finish_job (result) :
   stats = []

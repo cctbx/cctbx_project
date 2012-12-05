@@ -145,7 +145,10 @@ class any_reflection_file(object):
         crystal_symmetry=None,
         force_symmetry=False,
         merge_equivalents=True,
-        base_array_info=None):
+        base_array_info=None,
+        assume_shelx_observation_type_is=None):
+    assert (assume_shelx_observation_type_is in
+            [None, "amplitudes", "intensities"])
     if (self._file_type is None):
       return []
     info_source = self._file_name
@@ -209,11 +212,13 @@ class any_reflection_file(object):
       merge_equivalents=merge_equivalents,
       base_array_info=base_array_info)
     if (self.file_type() == "shelx_hklf"):
-      if (self._observation_type == "intensities"):
+      if ((self._observation_type == "intensities") or
+          (assume_shelx_observation_type_is == "intensities")) :
         result[0].set_info(result[0].info().customized_copy(
           labels=["Iobs", "SigIobs"]))
         result[0].set_observation_type_xray_intensity()
-      elif (self._observation_type == "amplitudes"):
+      elif ((self._observation_type == "amplitudes") or
+            (assume_shelx_observation_type_is == "amplitudes")) :
         result[0].set_info(result[0].info().customized_copy(
           labels=["Fobs", "SigFobs"]))
         result[0].set_observation_type_xray_amplitude()

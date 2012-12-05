@@ -489,12 +489,14 @@ class dataset_statistics (object) :
     cif_block.add_loop(reflns_shell_loop)
     return cif_block
 
-def select_data (file_name, data_labels, log=None) :
+def select_data (file_name, data_labels, log=None,
+    assume_shelx_observation_type_is=None) :
   if (log is None) : log = null_out()
   from iotbx import reflection_file_reader
   hkl_in = reflection_file_reader.any_reflection_file(file_name)
   print >> log, "Format:", hkl_in.file_type()
-  miller_arrays = hkl_in.as_miller_arrays(merge_equivalents=False)
+  miller_arrays = hkl_in.as_miller_arrays(merge_equivalents=False,
+    assume_shelx_observation_type_is=assume_shelx_observation_type_is)
   i_obs = None
   all_i_obs = []
   for array in miller_arrays :
