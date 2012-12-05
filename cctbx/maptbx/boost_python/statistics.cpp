@@ -51,13 +51,23 @@ namespace {
     static void
     wrap()
     {
+      typedef mem_iteration<> w_t;
       using namespace boost::python;
-      def("compute_mem_iteration", compute_mem_iteration, (
-        arg("rho"),
-        arg("delta"),
-        arg("lam"),
-        arg("n"),
-        arg("a_gd")));
+      class_<w_t>("mem_iteration", no_init)
+        .def(init<af::ref<double, af::c_grid<3> > const&,
+                  af::ref<double, af::c_grid<3> > const&,
+                  af::ref<double, af::c_grid<3> >,
+                  double,
+                  af::tiny<int, 3> const&,
+                  double,
+                  double,
+                  bool >())
+        .def("tp", &w_t::tp)
+        .def("scale", &w_t::scale)
+        .def("z", &w_t::z)
+        .def("hw", &w_t::hw)
+        .def("hn", &w_t::hn)
+      ;
     }
   };
 
