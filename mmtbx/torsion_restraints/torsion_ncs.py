@@ -1335,6 +1335,10 @@ class torsion_ncs(object):
       atoms = aa[1]
       new_xyz = flex.vec3_double()
       angle_deg = r_chis[counter] - m_chis[counter]
+      #skip angle rotations that are close to zero
+      if math.fabs(angle_deg) < 0.01:
+        counter += 1
+        continue
       if angle_deg < 0:
         angle_deg += 360.0
       for atom in atoms:
