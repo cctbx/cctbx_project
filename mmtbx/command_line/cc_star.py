@@ -1,3 +1,4 @@
+# LIBTBX_SET_DISPATCHER_NAME phenix.cc_star
 
 from __future__ import division
 from libtbx.str_utils import make_sub_header, format_value
@@ -112,10 +113,10 @@ master_params = master_phil # for phenix GUI
 def run (args, out=sys.stdout) :
   if (len(args) == 0) or ("--help" in args) :
     raise Usage("""
-  mmtbx.cc_star model.pdb data.mtz unmerged_data=data.hkl [n_bins=X] [options]
-  mmtbx.cc_star model_refine_001.mtz unmerged_data=data.hkl [...]
+  phenix.cc_star model.pdb data.mtz unmerged_data=data.hkl [n_bins=X] [options]
+  phenix.cc_star model_refine_001.mtz unmerged_data=data.hkl [...]
 
-Implementation of method described in:
+Implementation of the method for assessing data and model quality described in:
 Karplus PA & Diederichs K (2012) Science 336:1030-3.
 
 Full parameters:
