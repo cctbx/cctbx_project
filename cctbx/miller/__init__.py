@@ -1568,7 +1568,8 @@ class array_info(object):
         merged=False,
         systematic_absences_eliminated=False,
         crystal_symmetry_from_file=None,
-        type_hints_from_file=None):
+        type_hints_from_file=None,
+        wavelength=None):
     adopt_init_args(self, locals())
 
   def __setstate__(self, state):
@@ -1583,7 +1584,8 @@ class array_info(object):
         merged=Keep,
         systematic_absences_eliminated=Keep,
         crystal_symmetry_from_file=Keep,
-        type_hints_from_file=Keep):
+        type_hints_from_file=Keep,
+        wavelength=Keep):
     if (source is Keep): source = self.source
     if (source_type is Keep): source_type = self.source_type
     if (history is Keep): history = self.history
@@ -1595,6 +1597,8 @@ class array_info(object):
       crystal_symmetry_from_file = self.crystal_symmetry_from_file
     if (type_hints_from_file is Keep):
       type_hints_from_file = self.type_hints_from_file
+    if (wavelength is Keep) :
+      wavelength = self.wavelength
     return array_info(
       source=source,
       source_type=source_type,
@@ -1603,7 +1607,8 @@ class array_info(object):
       merged=merged,
       systematic_absences_eliminated=systematic_absences_eliminated,
       crystal_symmetry_from_file=crystal_symmetry_from_file,
-      type_hints_from_file=type_hints_from_file)
+      type_hints_from_file=type_hints_from_file,
+      wavelength=wavelength)
 
   def as_string_part_2(self):
     part_2 = []
@@ -3454,8 +3459,14 @@ class array(set):
         crystal_name="crystal",
         project_name="project",
         dataset_name="dataset",
-        wavelength=1.0):
+        wavelength=None):
     import iotbx.mtz
+    if (wavelength is None) :
+      info = self.info()
+      if (info is not None) :
+        wavelength = info.wavelength
+    if (wavelength is None) :
+      wavelength = 1.0
     return iotbx.mtz.miller_array_as_mtz_dataset(self,
       column_root_label=column_root_label,
       column_types=column_types,
