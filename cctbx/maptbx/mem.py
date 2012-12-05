@@ -59,15 +59,26 @@ class run(object) :
                 mean_density      = 0.375,
                 max_iterations    = 2000,
                 beta              = 0.9,
-                verbose           = False):
-    self.start_map      = start_map
+                use_modification  = True,
+                xray_structure    = None,
+                verbose           = False,
+                lambda_increment_factor = None,
+                convergence_at_r_factor = 0,
+                detect_convergence = True):
+    self.start_map        = start_map
     assert start_map in ["flat", "lde", "min_shifted"]
-    self.lam            = lam
-    self.max_iterations = max_iterations
-    self.f_000          = f_000
-    self.verbose        = verbose
-    self.beta           = beta
-    self.f              = f
+    self.lam              = lam
+    self.max_iterations   = max_iterations
+    self.f_000            = f_000
+    self.verbose          = verbose
+    self.beta             = beta
+    self.f                = f
+    self.use_modification = use_modification
+    self.meio_obj         = None
+    self.xray_structure   = xray_structure
+    self.lambda_increment_factor = lambda_increment_factor
+    self.convergence_at_r_factor = convergence_at_r_factor
+    self.detect_convergence = detect_convergence
     # current monitor and optimized functional values
     self.cntr         = None
     self.r            = None
@@ -79,9 +90,11 @@ class run(object) :
     self.q_x          = None
     self.q_tot        = None
     self.tp           = None
-    self.rho_tilda    = None
     self.f_mem        = None
     self.header_shown = False
+    self.cc           = None
+    self.r_factors    = flex.double()
+    self.cc_to_answer = flex.double()
     #
     self.crystal_gridding = self.f.crystal_gridding(
       d_min                   = self.f.d_min(),
@@ -95,6 +108,10 @@ class run(object) :
     max_index = [int((i-1)/2.) for i in self.n_real]
     self.N = self.n_real[0]*self.n_real[1]*self.n_real[2]
     self.full_set = self.f.complete_set(max_index=max_index)
+    self.f_calc = None
+    if(self.xray_structure is not None):
+      self.f_calc = self.full_set.structure_factors_from_scatterers(
+        xray_structure = self.xray_structure).f_calc()
     if(verbose):
       print "Resolution factor: %-6.4f"%resolution_factor
       print "  N, n1,n2,n3:",self.N,self.n_real[0],self.n_real[1],self.n_real[2]
@@ -108,7 +125,6 @@ class run(object) :
     Ca = 0.37
     self.Agd = Ca/self.N
     if(verbose):
-      print "unit cell:", self.f.unit_cell().parameters()
       print "Cobs, Ca, Agd, f_000:", Cobs, Ca, self.Agd, "%6.3f"%self.f_000
       print "Cobs/(N*f_000): ",Cobs/(self.N*self.f_000)
       print "memory factor (beta):", self.beta
@@ -144,33 +160,58 @@ class run(object) :
       map            = self.rho,
       use_scale      = True,
       anomalous_flag = False,
-      use_sg         = False)#.resolution_filter(d_min=1.0)
+      use_sg         = False)
     mtz_dataset = f_mem.as_mtz_dataset(column_root_label=column_root_label)
     mtz_object = mtz_dataset.mtz_object()
     mtz_object.write(file_name = file_name)
 
   def update_metrics(self):
     self.r        = r_factor(self.f, self.f_mem, use_scale=False)
-    self.h_n      = Hn(self.rho.deep_copy())
-    self.h_w      = Hw(self.rho.deep_copy())
+    self.h_n      = self.meio_obj.hn()
+    self.h_w      = self.meio_obj.hw()
     self.scale_kc = scale(self.f, self.f_mem)
     self.q_x      = Q_X(self.f_mem, self.f)
-    self.q_tot    = Hw(self.rho)-self.lam/2*self.q_x*self.N
-    self.tp       = flex.sum(self.rho)
+    self.q_tot    = self.h_w-self.lam/2*self.q_x*self.N
+    self.tp       = self.meio_obj.tp()
 
   def show(self, verbose=True):
-    if(not self.header_shown):
+    if(self.verbose and not self.header_shown):
       print "lam:", self.lam
-      print "  nit    TP       Hw        Q_X              Qtot         Agd    scFc       Hn     R   *   tpgd      hngd     romingd   romaxgd"
+      print "  nit    TP       Hw        Q_X              Qtot         Agd    scFc       Hn     R    * tpgd       lam        cc"
       self.header_shown = True
     self.update_metrics()
     fs = " ".join(["%5d"%self.cntr, "%8.6f"%self.tp, "%9.6f"%self.h_w,\
          "%12.8e"%self.q_x, "%11.6f"%self.q_tot, "%10.6f"%self.Agd,\
-         "%6.4f"%self.scale_kc, "%9.6f"%self.h_n, "%6.4f"%self.r,\
-         "*", "%8.6f"%self.Z, "%9.6f"%Hn(self.rho_tilda),\
-         "%9.6f %9.6f"%(flex.min(self.rho_tilda), flex.max(self.rho_tilda))])
-    if(verbose): print fs
+         "%7.4f"%self.scale_kc, "%9.6f"%self.h_n, "%6.4f"%self.r,\
+         "*", "%8.6f"%self.Z, "%12.6f"%self.lam])
+    if(self.cc is not None): cc = "%7.5f"%self.cc
+    else: cc = self.cc
+    print fs, cc
     return fs
+
+  def is_converged(self, rho_trial):
+    result = False
+    r = r_factor(self.f, self.f_mem, use_scale=False)
+    if(r < 0.2):
+      if(self.xray_structure is None):
+        self.r_factors.append(r)
+        size = self.r_factors.size()
+        if(size>=3):
+          tmp = flex.mean(self.r_factors[size-3:])
+          if(tmp <= r or r <= self.convergence_at_r_factor): result = True
+      else:
+        f_mem = self.full_set.structure_factors_from_map(
+          map            = rho_trial,
+          use_scale      = False,
+          anomalous_flag = False,
+          use_sg         = False)
+        self.cc = f_mem.map_correlation(other = self.f_calc)
+        self.cc_to_answer.append(self.cc)
+        size = self.cc_to_answer.size()
+        if(size>=3):
+          tmp = flex.mean(self.cc_to_answer[size-3:])
+          if(tmp >= self.cc-1.e-6): result = True
+    return result
 
   def iterations(self):
     self.cntr = 0
@@ -185,18 +226,23 @@ class run(object) :
         crystal_gridding     = self.crystal_gridding,
         fourier_coefficients = self.f_mem)
       rho_mod = fft_map.real_map_unpadded()
-      delta = rho_mod - self.rho_obs #/scale(rho_mod, self.rho_obs)
-      self.rho_tilda = self.rho.deep_copy()
-      maptbx.compute_mem_iteration(
-        rho   = self.rho_tilda,
-        delta = delta,
-        lam   = self.lam,
-        n     = 1,#self.N, # coupled with lam: see iteration formula
-        a_gd   = self.Agd)
-      self.Z = flex.sum(self.rho_tilda)
-      self.rho = (1-self.beta)*self.rho + self.beta*self.rho_tilda
-      if(self.verbose and self.cntr==0 or self.cntr%10==0):
-        self.show()
+      rho_trial = self.rho.deep_copy()
+      self.meio_obj = maptbx.mem_iteration(
+        rho_mod,
+        self.rho_obs,
+        rho_trial,
+        self.lam*self.N,
+        self.n_real,
+        self.Agd,
+        self.beta,
+        True)
+      if(self.detect_convergence and self.is_converged(rho_trial=rho_trial)):
+        break
+      else: self.rho = rho_trial
+      self.Z = self.meio_obj.z()
+      if(self.verbose): self.show()
       if(self.cntr%25==0): self.Agd = self.Agd/self.Z
       self.cntr += 1
+      if(self.lambda_increment_factor is not None):
+        self.lam *= self.lambda_increment_factor
     self.update_metrics()

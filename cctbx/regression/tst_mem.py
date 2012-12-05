@@ -1,10 +1,9 @@
 from scitbx.array_family import flex
-from cctbx import maptbx
 import iotbx.pdb
 import cctbx.maptbx.mem as mem
 from cctbx import miller
 
-def map_1d(xrs, map_data, n_steps=300, step_size=0.01, tc=False):
+def map_1d(xrs, map_data, n_steps=300, step_size=0.01):
   atom_center = xrs.scatterers()[0].site
   a_cell = xrs.unit_cell().parameters()[0]
   dist = flex.double()
@@ -13,8 +12,6 @@ def map_1d(xrs, map_data, n_steps=300, step_size=0.01, tc=False):
   while x<=10:
     x += step_size
     point = x/a_cell, 0, 0
-    #density_value_at_point_e = map_data.tricubic_interpolation(point)
-    #density_value_at_point_e = map_data.value_at_closest_grid_point(point)
     density_value_at_point_e = map_data.eight_point_interpolation(point)
     dist.append(x)
     rho.append(density_value_at_point_e)
@@ -33,7 +30,7 @@ def r_factor(x, r1, r2, eps=1.e-6):
   r1_ = r1.select(sel)
   r2_ = r2.select(sel)
   return flex.abs( r1_-r2_ )[0]
-
+  
 def run():
   pdb_str="""
 CRYST1    5.000    5.000    5.000  90.00  90.00  90.00 P 1
@@ -61,24 +58,45 @@ END
   #
   R = r_factor(x=r_s, r1=rho_r, r2=rho_s)
   cc = flex.linear_correlation(x = rho_r, y = rho_s).coefficient()
-  sk = maptbx.more_statistics(map_data_0).skewness()
-  ku = maptbx.more_statistics(map_data_0).kurtosis()
-  print "Initial dist: %6.3f"%R
-  #
+  print "Initial dist: %6.3f"%R, cc
+  ### Exercise fixed lam
+  lam = 0.74
   for start_map in ["flat", "lde", "min_shifted"]:
-    m = mem.run(f=F_0, f_000=xrs.f_000(), lam=34500, resolution_factor=0.1,
-      verbose=True, start_map=start_map, max_iterations=1300)
-    r_m, rho_m = map_1d(xrs=xrs, map_data=m.rho, tc=False)
+    m = mem.run(f=F_0, f_000=xrs.f_000(), lam=lam, resolution_factor=0.1,
+      verbose=False, start_map=start_map, max_iterations=1300, 
+      detect_convergence=False)            
+    r_m, rho_m = map_1d(xrs=xrs, map_data=m.rho)
     sc = scale(rho_r, rho_m)
     rho_m = rho_m*sc
-    #
     R = r_factor(x=r_s, r1=rho_r, r2=rho_m)
     cc = flex.linear_correlation(x = rho_r, y = rho_m).coefficient()
-    sk = maptbx.more_statistics(m.rho).skewness()
-    ku = maptbx.more_statistics(m.rho).kurtosis()
-    print m.show(verbose=False), "*", "dist: %6.3f"%R, "skewness: %7.4f"%sk, cc
-    assert R < 1.e-4, R
+    print m.show(verbose=False), "*", "dist: %6.3f"%R, cc
+    assert R < 0.0004, R
     assert cc > 0.999, R
+  ### Exercise auto-incremented lam, 1
+  m = mem.run(f=F_0, f_000=xrs.f_000(), lam=0.01, resolution_factor=0.1,
+    lambda_increment_factor = 1.01, beta=0.5, verbose=True, 
+    start_map="min_shifted", max_iterations=800, detect_convergence=True)
+  r_m, rho_m = map_1d(xrs=xrs, map_data=m.rho)
+  sc = scale(rho_r, rho_m)
+  rho_m = rho_m*sc
+  R = r_factor(x=r_s, r1=rho_r, r2=rho_m)
+  cc = flex.linear_correlation(x = rho_r, y = rho_m).coefficient()
+  print m.show(verbose=False), "*", "dist: %6.3f"%R, cc
+  assert R < 0.004, R
+  assert cc > 0.999, R
+  ### Exercise auto-incremented lam, 2
+  m = mem.run(f=F_0, f_000=xrs.f_000(), lam=0.01, resolution_factor=0.1,
+    lambda_increment_factor = 1.01, beta=0.5, xray_structure=xrs, verbose=True, 
+    start_map="min_shifted", max_iterations=800, detect_convergence=True)
+  r_m, rho_m = map_1d(xrs=xrs, map_data=m.rho)
+  sc = scale(rho_r, rho_m)
+  rho_m = rho_m*sc
+  R = r_factor(x=r_s, r1=rho_r, r2=rho_m)
+  cc = flex.linear_correlation(x = rho_r, y = rho_m).coefficient()
+  print m.show(verbose=False), "*", "dist: %6.3f"%R, cc
+  assert R < 0.05, R
+  assert cc > 0.998, R
   #
   of = open("gp","w")
   assert rho_r.size() == rho_s.size() == rho_m.size()

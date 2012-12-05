@@ -3,6 +3,7 @@
 
 #include <scitbx/array_family/accessors/flex_grid.h>
 #include <scitbx/array_family/accessors/c_grid_padded.h>
+#include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/loops.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/math/utils.h>
@@ -149,32 +150,81 @@ namespace cctbx { namespace maptbx {
       extra_statistics_t extra_stats;
   };
 
-  //! Maximum Entropy Map modification (MEM): iteration update.
-  inline void compute_mem_iteration (
-    af::ref<double, af::c_grid_padded<3> > rho,
-    af::ref<double, af::c_grid_padded<3> > delta,
-    double lam,
-    int n,
-    double a_gd)
+  //! Compute MEM iteration, total charge of rho_tilda (Z), total power (TP),
+  //! working (Hw) and normalized (Hn) entropy.
+  template <typename FloatType = double>
+  class mem_iteration
   {
-    CCTBX_ASSERT(n>0);
-    af::tiny<int, 3> n_real(af::adapt(rho.accessor().focus()));
-    for (int u = 0; u < n_real[0]; u++) {
-      for (int v = 0; v < n_real[1]; v++) {
-        for (int w = 0; w < n_real[2]; w++) {
-          double exp_arg = lam*delta(u,v,w)/n;
-          double front_mul = 1.+lam/n*rho(u,v,w);
-          if(delta(u,v,w)>=0) {
-            double exp_ = a_gd*std::exp(-exp_arg);
-            rho(u,v,w)=front_mul*exp_/(1.+lam/n*exp_);
-          }
-          else {
-            rho(u,v,w)=front_mul*a_gd/(lam/n*a_gd+std::exp(exp_arg));
-          }
+    FloatType scale_, tp_, z_, hw_, hn_;
+
+    public:
+      mem_iteration(
+        af::ref<FloatType, af::c_grid<3> > const& rho_mod,
+        af::ref<FloatType, af::c_grid<3> > const& rho_obs,
+        af::ref<FloatType, af::c_grid<3> > rho,
+        FloatType lam,
+        af::tiny<int, 3> const& n_real,
+        FloatType a_gd,
+        FloatType beta,
+        bool use_scale)
+      :
+      scale_(1), tp_(0), z_(0), hw_(0), hn_(0)
+      {
+        CCTBX_ASSERT(rho_mod.size() == rho_obs.size());
+        CCTBX_ASSERT(rho_mod.size() == rho.size());
+        if(use_scale) {
+          FloatType num=0, den=0;
+          for (int u = 0; u < n_real[0]; u++) {
+            for (int v = 0; v < n_real[1]; v++) {
+              for (int w = 0; w < n_real[2]; w++) {
+                FloatType rm = std::abs(rho_mod(u,v,w));
+                FloatType ro = std::abs(rho_obs(u,v,w));
+                num += (rm*ro);
+                den += (ro*ro);
+          }}}
+          if(den!=0 && num!=0) scale_ = 1./(num/den);
         }
+        int cntr_rho_positive = 0;
+        FloatType rho_positive_sum = 0;
+        for (int u = 0; u < n_real[0]; u++) {
+          for (int v = 0; v < n_real[1]; v++) {
+            for (int w = 0; w < n_real[2]; w++) {
+              FloatType delta = rho_mod(u,v,w) - rho_obs(u,v,w)*scale_;
+              FloatType rho_tilda;
+              FloatType exp_arg = lam*delta;
+              FloatType front_mul = 1.+lam*rho(u,v,w);
+              if(delta>=0) {
+                FloatType exp_ = a_gd*std::exp(-exp_arg);
+                rho_tilda=front_mul*exp_/(1.+lam*exp_);
+              }
+              else rho_tilda=front_mul*a_gd/(lam*a_gd+std::exp(exp_arg));
+              z_ += rho_tilda;
+              FloatType rho_new = (1-beta)*rho(u,v,w) + beta*rho_tilda;
+              rho(u,v,w) = rho_new;
+              tp_ += rho_new;
+              if(rho_new > 0) {
+                hw_ += rho_new * std::log(rho_new);
+                cntr_rho_positive += 1;
+                rho_positive_sum += rho_new;
+        }}}}
+        hw_ = -hw_;
+        for (int u = 0; u < n_real[0]; u++) {
+          for (int v = 0; v < n_real[1]; v++) {
+            for (int w = 0; w < n_real[2]; w++) {
+              FloatType rho_uvw = rho(u,v,w);
+              if(rho_uvw > 0) {
+                FloatType rho_over_sum_rho = rho_uvw/rho_positive_sum;
+                hn_ += rho_over_sum_rho * std::log(rho_over_sum_rho);
+        }}}}
+        hn_ = -hn_/std::log(cntr_rho_positive);
       }
-    }
-  }
+
+      FloatType z()     { return z_; }
+      FloatType scale() { return scale_; }
+      FloatType tp()    { return tp_; }
+      FloatType hw()    { return hw_; }
+      FloatType hn()    { return hn_; }
+  };
 
 }} // namespace cctbx::maptbx
 
