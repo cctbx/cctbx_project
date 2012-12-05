@@ -496,10 +496,12 @@ class _(boost.python.injector, ext.object):
         other_symmetry=other_symmetry,
         force=force_symmetry)
       for dataset in crystal.datasets():
+        base_dataset_info = base_array_info.customized_copy(
+          wavelength=dataset.wavelength())
         column_groups = self.group_columns(
           crystal_symmetry_from_file=crystal_symmetry_from_file,
           crystal_symmetry=crystal_symmetry,
-          base_array_info=base_array_info,
+          base_array_info=base_dataset_info,
           dataset=dataset)
         for column_group in column_groups:
           if (merge_equivalents

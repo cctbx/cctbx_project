@@ -439,10 +439,26 @@ def exercise_hl_ab_only(anomalous_flag):
         ' column labels: "HA(-)", "HB(-)" column types: "A", "F"'
   else: raise Exception_expected
 
+def exercise_wavelength () :
+  miller_set = crystal.symmetry(
+    unit_cell=(10,10,10,90,90,90),
+    space_group_symbol="P1").miller_set(
+      indices=flex.miller_index([(1,2,3),(4,5,6)]),
+      anomalous_flag=False)
+  data = flex.double([1,2])
+  info = miller.array_info(wavelength=0.9792)
+  miller_array = miller_set.array(data=data).set_info(info)
+  mtz_dataset = miller_array.as_mtz_dataset(column_root_label="F")
+  mtz_dataset.mtz_object().write("tst_iotbx_mtz_wavelength.mtz")
+  mtz_object = mtz.object(file_name="tst_iotbx_mtz_wavelength.mtz")
+  miller_array = mtz_object.as_miller_arrays()[0]
+  assert (approx_equal(miller_array.info().wavelength, 0.9792))
+
 def exercise():
   if (mtz is None):
     print "Skipping iotbx/mtz/tst.py: ccp4io not available"
     return
+  exercise_wavelength()
   exercise_extract_delta_anomalous()
   exercise_repair_ccp4i_import_merged_data()
   exercise_miller_array_data_types()
