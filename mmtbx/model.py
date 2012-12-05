@@ -1161,6 +1161,9 @@ class manager(object):
           (self.refinement_flags.adp_individual_iso is not None)) :
         self.refinement_flags.adp_individual_iso.set_selected(atom_selection,
           True)
+        if (self.refinement_flags.adp_individual_aniso is not None) :
+          self.refinement_flags.adp_individual_aniso.set_selected(
+            atom_selection, False)
     elif(refine_adp == "anisotropic"):
       scatterer.convert_to_anisotropic(
         unit_cell=self.xray_structure.unit_cell())
@@ -1168,9 +1171,22 @@ class manager(object):
           (self.refinement_flags.adp_individual_aniso is not None)) :
         self.refinement_flags.adp_individual_aniso.set_selected(atom_selection,
           True)
+        if (self.refinement_flags.adp_individual_iso is not None) :
+          self.refinement_flags.adp_individual_iso.set_selected(atom_selection,
+            False)
     if ((self.refinement_flags is not None) and
         (self.refinement_flags.sites_individual is not None)) :
       self.refinement_flags.sites_individual.set_selected(atom_selection, True)
+    if ((self.refinement_flags is not None) and
+        (self.refinement_flags.s_occupancies is not None)) :
+      flagged = False
+      for occgroup in self.refinement_flags.s_occupancies:
+        for occsel in occgroup :
+          if (i_seq in occsel) :
+            flagged = True
+            break
+      if (not flagged) :
+        self.refinement_flags.s_occupancies.append([atom_selection])
     self.restraints_manager.geometry.update_atom_nonbonded_type(
       i_seq=i_seq,
       nonbonded_type=element,
