@@ -2972,3 +2972,23 @@ def structure_factors_from_map(map_data, unit_cell_lengths, n_real,
     use_scale      = True,
     anomalous_flag = False,
     use_sg         = True)
+
+class f_000(object):
+  def __init__(self, xray_structure=None, unit_cell_volume=None,
+               solvent_fraction=None, mean_solvent_density=0.35):
+    if(solvent_fraction is not None):
+      assert solvent_fraction>=0 and solvent_fraction<=1
+    f_000 = 0
+    if(xray_structure is not None):
+      unit_cell_volume = xray_structure.unit_cell().volume()
+      f_000 += xray_structure.f_000()
+      if(solvent_fraction is None):
+        import mmtbx.masks
+        solvent_fraction = mmtbx.masks.asu_mask(xray_structure=xray_structure,
+          d_min=1).asu_mask.contact_surface_fraction
+    if(solvent_fraction is not None):
+      f_000 += solvent_fraction*unit_cell_volume*mean_solvent_density
+    if(f_000 == 0):
+      f_000 = unit_cell_volume*mean_solvent_density
+    self.f_000 = f_000
+    self.solvent_fraction = solvent_fraction

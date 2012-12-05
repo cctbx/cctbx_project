@@ -761,6 +761,29 @@ resseq 19:20""")
   else :
     raise Exception_expected
 
+def exercise_f_000():
+  pdb_str="""
+CRYST1    5.000    5.000    5.000  90.00  90.00  90.00 P 1
+HETATM    1  C    C      1       0.000   0.000   0.000  1.00  5.00           C
+END
+"""
+  xrs = iotbx.pdb.input(source_info=None, lines=pdb_str).xray_structure_simple()
+  #
+  f = utils.f_000(xray_structure=xrs, mean_solvent_density=0)
+  assert approx_equal(f.f_000, 6, 1.e-3)
+  #
+  f = utils.f_000(mean_solvent_density=1, unit_cell_volume=125)
+  assert approx_equal(f.f_000, 125)
+  #
+  f = utils.f_000(mean_solvent_density=0.25, unit_cell_volume=125,
+                  solvent_fraction=0.3, xray_structure = xrs)
+  assert approx_equal(f.f_000, 0.25*125*0.3+6, 1.e-3)
+  assert approx_equal(f.solvent_fraction, 0.3)
+  #
+  f = utils.f_000(mean_solvent_density=0.25, unit_cell_volume=125,
+                  xray_structure = xrs)
+  assert approx_equal(f.f_000, 0.25*125*0.687355324074+6, 1.e-3)
+
 def run():
   verbose = "--verbose" in sys.argv[1:]
   exercise_00(verbose=verbose)
@@ -788,6 +811,7 @@ def run():
   exercise_23(verbose=verbose)
   exercise_d_data_target_d_atomic_params()
   exercise_get_atom_selections(verbose=verbose)
+  exercise_f_000()
   print format_cpu_times()
 
 if (__name__ == "__main__"):
