@@ -809,3 +809,33 @@ def make_joined_set (miller_arrays) :
     indices=master_indices,
     anomalous_flag=False)
   return master_set.unique_under_symmetry().map_to_asu()
+
+def extract_miller_array_from_file(file_name, label=None, type=None, log=None):
+  if(log is None): log = sys.stdout
+  assert type in ["complex", "real", None]
+  result = None
+  miller_arrays = reflection_file_reader.any_reflection_file(file_name =
+    file_name).as_miller_arrays()
+  def get_flag(ma):
+    return (type == "complex" and ma.is_complex_array()) or \
+           (type == "real"    and ma.is_real_array()) or \
+           type is None
+  print >> log, "  Available suitable arrays:"
+  suitable_arrays = []
+  suitable_labels = []
+  for ma in miller_arrays:
+    if(get_flag(ma=ma)):
+      print >> log, "    ", ma.info().labels
+      suitable_arrays.append(ma)
+      suitable_labels.append(str(ma.info().labels))
+  if(  len(suitable_arrays) == 0): raise Sorry("No suitable arrays.")
+  elif(len(suitable_arrays) == 1): result = ma
+  elif(len(suitable_arrays) >  1):
+    m="Multiple choices available."
+    if(label is None): raise Sorry(m)
+    else:
+      for ma in miller_arrays:
+        if(get_flag(ma=ma) and str(ma.info().labels) == label):
+          print >> log, "  Selected:", ma.info().labels
+          result = ma
+  return result

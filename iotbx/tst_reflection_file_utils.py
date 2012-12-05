@@ -667,6 +667,101 @@ No array of experimental phases found.
 """
   else: raise Exception_expected
 
+def exercise_extract_miller_array_from_file():
+  from iotbx import reflection_file_utils as rfu
+  from libtbx.test_utils import approx_equal
+  sorry_counts = 0
+  crystal_symmetry = crystal.symmetry(
+    unit_cell=(30,31,32,85,95,100),
+    space_group_symbol="P 1")
+  miller_set = miller.build_set(
+    crystal_symmetry=crystal_symmetry,
+    anomalous_flag=False,
+    d_min=3)
+  size = miller_set.indices().size()
+  a1 = miller_set.array(
+    data=flex.hendrickson_lattman(size, (1,1,1,1)))
+  a2 = miller_set.array(data=flex.double(size, 2))
+  a3 = miller_set.array(data=flex.double(size, 3))
+  a4 = miller_set.array(data=flex.complex_double(size, 4+4j))
+  a5 = miller_set.array(data=flex.complex_double(size, 5+5j))
+  #
+  mtz_dataset = a1.as_mtz_dataset(column_root_label="A1")
+  mtz_dataset.mtz_object().write("tmp.mtz")
+  ma = rfu.extract_miller_array_from_file(file_name="tmp.mtz")
+  assert type(ma.data()) == flex.hendrickson_lattman
+  #
+  mtz_dataset = a5.as_mtz_dataset(column_root_label="A5")
+  mtz_dataset.mtz_object().write("tmp.mtz")
+  ma = rfu.extract_miller_array_from_file(file_name="tmp.mtz")
+  assert type(ma.data()) == flex.complex_double
+  #
+  for tp in [None, "complex"]:
+    mtz_dataset = a4.as_mtz_dataset(column_root_label="A4")
+    mtz_dataset.add_miller_array(
+      miller_array=a5, column_root_label="A5")
+    mtz_dataset.mtz_object().write("tmp.mtz")
+    try: rfu.extract_miller_array_from_file(file_name="tmp.mtz",type=tp)
+    except Sorry, e:
+      assert str(e)=="Multiple choices available."
+      sorry_counts += 1
+  #
+  for tp in [None, "real"]:
+    mtz_dataset = a2.as_mtz_dataset(column_root_label="A2")
+    mtz_dataset.add_miller_array(
+      miller_array=a3, column_root_label="A3")
+    mtz_dataset.mtz_object().write("tmp.mtz")
+    try: rfu.extract_miller_array_from_file(file_name="tmp.mtz",type=tp)
+    except Sorry, e:
+      assert str(e)=="Multiple choices available."
+      sorry_counts += 1
+  #
+  mtz_dataset = a3.as_mtz_dataset(column_root_label="A3")
+  mtz_dataset.add_miller_array(
+    miller_array=a4, column_root_label="A4")
+  mtz_dataset.mtz_object().write("tmp.mtz")
+  try: rfu.extract_miller_array_from_file(file_name="tmp.mtz")
+  except Sorry, e:
+    assert str(e)=="Multiple choices available."
+    sorry_counts += 1
+  #
+  mtz_dataset = a4.as_mtz_dataset(column_root_label="A4")
+  mtz_dataset.add_miller_array(
+    miller_array=a5, column_root_label="A5")
+  mtz_dataset.mtz_object().write("tmp.mtz")
+  try: rfu.extract_miller_array_from_file(file_name="tmp.mtz",type="real")
+  except Sorry, e:
+    assert str(e)=="No suitable arrays."
+    sorry_counts += 1
+  #
+  mtz_dataset = a2.as_mtz_dataset(column_root_label="A2")
+  mtz_dataset.add_miller_array(
+    miller_array=a3, column_root_label="A3")
+  mtz_dataset.mtz_object().write("tmp.mtz")
+  try: rfu.extract_miller_array_from_file(file_name="tmp.mtz",type="complex")
+  except Sorry, e:
+    assert str(e)=="No suitable arrays."
+    sorry_counts += 1
+  #
+  mtz_dataset = a4.as_mtz_dataset(column_root_label="A4")
+  mtz_dataset.add_miller_array(
+    miller_array=a5, column_root_label="A5")
+  mtz_dataset.mtz_object().write("tmp.mtz")
+  ma = rfu.extract_miller_array_from_file(file_name="tmp.mtz",label="['A5', 'PHIA5']")
+  assert approx_equal(ma.data()[0], 5+5j)
+  #
+  mtz_dataset = a4.as_mtz_dataset(column_root_label="A4")
+  mtz_dataset.add_miller_array(
+    miller_array=a5, column_root_label="A5")
+  mtz_dataset.mtz_object().write("tmp.mtz")
+  try: rfu.extract_miller_array_from_file(file_name="tmp.mtz",
+    label="['A5', 'PHIA5']", type="real")
+  except Sorry, e:
+    assert str(e)=="No suitable arrays."
+    sorry_counts += 1
+  #
+  assert sorry_counts == 8
+
 def exercise():
   if (mtz is None):
     print "Skipping iotbx/tst_reflection_file_utils.py: ccp4io not available"
@@ -675,6 +770,7 @@ def exercise():
   exercise_get_xtal_data()
   exercise_get_r_free_flags()
   exercise_get_experimental_phases()
+  exercise_extract_miller_array_from_file()
 
 def run():
   exercise()
