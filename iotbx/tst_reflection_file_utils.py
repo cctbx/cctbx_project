@@ -10,7 +10,7 @@ from cctbx import miller
 from cctbx import crystal
 from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, show_diff
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, null_out
 from cStringIO import StringIO
 import os
 
@@ -670,6 +670,7 @@ No array of experimental phases found.
 def exercise_extract_miller_array_from_file():
   from iotbx import reflection_file_utils as rfu
   from libtbx.test_utils import approx_equal
+  log = null_out()
   sorry_counts = 0
   crystal_symmetry = crystal.symmetry(
     unit_cell=(30,31,32,85,95,100),
@@ -688,12 +689,12 @@ def exercise_extract_miller_array_from_file():
   #
   mtz_dataset = a1.as_mtz_dataset(column_root_label="A1")
   mtz_dataset.mtz_object().write("tmp.mtz")
-  ma = rfu.extract_miller_array_from_file(file_name="tmp.mtz")
+  ma = rfu.extract_miller_array_from_file(file_name="tmp.mtz", log=log)
   assert type(ma.data()) == flex.hendrickson_lattman
   #
   mtz_dataset = a5.as_mtz_dataset(column_root_label="A5")
   mtz_dataset.mtz_object().write("tmp.mtz")
-  ma = rfu.extract_miller_array_from_file(file_name="tmp.mtz")
+  ma = rfu.extract_miller_array_from_file(file_name="tmp.mtz", log=log)
   assert type(ma.data()) == flex.complex_double
   #
   for tp in [None, "complex"]:
@@ -701,7 +702,8 @@ def exercise_extract_miller_array_from_file():
     mtz_dataset.add_miller_array(
       miller_array=a5, column_root_label="A5")
     mtz_dataset.mtz_object().write("tmp.mtz")
-    try: rfu.extract_miller_array_from_file(file_name="tmp.mtz",type=tp)
+    try:
+      rfu.extract_miller_array_from_file(file_name="tmp.mtz",type=tp, log=log)
     except Sorry, e:
       assert str(e)=="Multiple choices available."
       sorry_counts += 1
@@ -711,7 +713,7 @@ def exercise_extract_miller_array_from_file():
     mtz_dataset.add_miller_array(
       miller_array=a3, column_root_label="A3")
     mtz_dataset.mtz_object().write("tmp.mtz")
-    try: rfu.extract_miller_array_from_file(file_name="tmp.mtz",type=tp)
+    try: rfu.extract_miller_array_from_file(file_name="tmp.mtz",type=tp,log=log)
     except Sorry, e:
       assert str(e)=="Multiple choices available."
       sorry_counts += 1
@@ -720,7 +722,7 @@ def exercise_extract_miller_array_from_file():
   mtz_dataset.add_miller_array(
     miller_array=a4, column_root_label="A4")
   mtz_dataset.mtz_object().write("tmp.mtz")
-  try: rfu.extract_miller_array_from_file(file_name="tmp.mtz")
+  try: rfu.extract_miller_array_from_file(file_name="tmp.mtz",log=log)
   except Sorry, e:
     assert str(e)=="Multiple choices available."
     sorry_counts += 1
@@ -729,7 +731,9 @@ def exercise_extract_miller_array_from_file():
   mtz_dataset.add_miller_array(
     miller_array=a5, column_root_label="A5")
   mtz_dataset.mtz_object().write("tmp.mtz")
-  try: rfu.extract_miller_array_from_file(file_name="tmp.mtz",type="real")
+  try:
+    rfu.extract_miller_array_from_file(file_name="tmp.mtz",type="real",
+      log=log)
   except Sorry, e:
     assert str(e)=="No suitable arrays."
     sorry_counts += 1
@@ -738,7 +742,9 @@ def exercise_extract_miller_array_from_file():
   mtz_dataset.add_miller_array(
     miller_array=a3, column_root_label="A3")
   mtz_dataset.mtz_object().write("tmp.mtz")
-  try: rfu.extract_miller_array_from_file(file_name="tmp.mtz",type="complex")
+  try:
+    rfu.extract_miller_array_from_file(file_name="tmp.mtz",type="complex",
+      log=log)
   except Sorry, e:
     assert str(e)=="No suitable arrays."
     sorry_counts += 1
@@ -747,15 +753,17 @@ def exercise_extract_miller_array_from_file():
   mtz_dataset.add_miller_array(
     miller_array=a5, column_root_label="A5")
   mtz_dataset.mtz_object().write("tmp.mtz")
-  ma = rfu.extract_miller_array_from_file(file_name="tmp.mtz",label="['A5', 'PHIA5']")
+  ma = rfu.extract_miller_array_from_file(file_name="tmp.mtz",label="A5,PHIA5",
+    log=log)
   assert approx_equal(ma.data()[0], 5+5j)
   #
   mtz_dataset = a4.as_mtz_dataset(column_root_label="A4")
   mtz_dataset.add_miller_array(
     miller_array=a5, column_root_label="A5")
   mtz_dataset.mtz_object().write("tmp.mtz")
-  try: rfu.extract_miller_array_from_file(file_name="tmp.mtz",
-    label="['A5', 'PHIA5']", type="real")
+  try:
+    rfu.extract_miller_array_from_file(file_name="tmp.mtz",
+      label="A5,PHIA5", type="real", log=log)
   except Sorry, e:
     assert str(e)=="No suitable arrays."
     sorry_counts += 1
