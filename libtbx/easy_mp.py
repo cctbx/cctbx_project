@@ -410,18 +410,19 @@ def parallel_map (
     queue_factory = Queue.Queue
   for i_proc in range(processes) :
     queue = None
-    if (factory is None) :
+    factory_tmp = factory
+    if (factory_tmp is None) :
       qhandler_function = processing.INTERFACE_FOR[method]
       qhandler = qhandler_function(
         command=qsub_command,
         asynchronous=asynchronous)
-      factory = qhandler.Job
+      factory_tmp = qhandler.Job
       queue = processing.Queue(identifier="parallel_map")
     else :
       queue = queue_factory()
-    assert (not None in [factory, queue])
+    assert (not None in [factory_tmp, queue])
     unit = scheduling.ExecutionUnit(
-      factory=factory,
+      factory=factory_tmp,
       processor=scheduling.RetrieveProcessor(queue=queue))
     units.append(unit)
   manager = scheduling.Manager(units=units)
