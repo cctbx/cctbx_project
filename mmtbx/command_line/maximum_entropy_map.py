@@ -28,6 +28,10 @@ lambda_increment_factor = 1.02
   .type = float
 output_file_name = None
   .type = str
+column_root_label = MEM
+  .type = str
+output_high_resolution = None
+  .type = float
 mean_solvent_density = 0.35
   .type = float
 max_iterations = 1000
@@ -53,7 +57,7 @@ phenix.max_entropy_map: map modification using Maximum Entropy Method (MEM)
 Usage examples:
   phenix.max_entropy_map map_coeffs.mtz
   phenix.max_entropy_map model.pdb map_coeffs.mtz
-  phenix.max_entropy_map model.pdb map.mtz label=['2FOFCWT', 'PH2FOFCWT']
+  phenix.max_entropy_map model.pdb map.mtz label="2FOFCWT,PH2FOFCWT"
 
 Feedback:
   PAfonine@lbl.gov or phenixbb@phenix-online.org"""
@@ -128,13 +132,18 @@ def run(args, log):
     use_modification        = True,
     beta                    = params.beta,
     convergence_at_r_factor = params.convergence_at_r_factor,
-    xray_structure          = xray_structure)
+    xray_structure          = xray_structure,
+    log                     = log)
   ###
   broadcast(m="Output MEM map coefficients", log = log)
   ind = max(0,reff[0].rfind("."))
-  ofn = reff[0]+"_mem.mtz" if ind==0 else reff[0][:ind]+"_mem.mtz"
+  ofn = params.output_file_name
+  if (ofn is None) :
+    ofn = reff[0]+"_mem.mtz" if ind==0 else reff[0][:ind]+"_mem.mtz"
   print >> log, "  Output file name:", ofn
-  result.write_mtz_file(file_name = ofn)
+  result.write_mtz_file(file_name = ofn,
+    column_root_label=params.column_root_label,
+    d_min=params.output_high_resolution)
   broadcast(m="All done", log=log)
 
 if(__name__ == "__main__"):
