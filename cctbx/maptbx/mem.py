@@ -3,6 +3,7 @@ from scitbx.array_family import flex
 from cctbx import miller
 from cctbx import maptbx
 from libtbx.utils import Sorry
+import sys
 
 def Hn(m):
   m_ = m
@@ -45,8 +46,9 @@ def r_factor(x,y, use_scale):
   if(use_scale): sc = scale(x,y)
   return flex.sum(flex.abs(x-sc*y))/flex.sum(x)
 
-def show_map_stat(m, prefix):
-  print "%s (min/max/mean/sum, Hw, Hn): %9.6f %9.6f %9.6f %9.6f %9.6f %9.6f"%(
+def show_map_stat(m, prefix, out=sys.stdout):
+  print >> out, \
+    "%s (min/max/mean/sum, Hw, Hn): %9.6f %9.6f %9.6f %9.6f %9.6f %9.6f"%(
     prefix, flex.min(m), flex.max(m), flex.mean(m), flex.sum(m), Hw(m), Hn(m))
 
 class run(object) :
@@ -64,7 +66,10 @@ class run(object) :
                 verbose           = False,
                 lambda_increment_factor = None,
                 convergence_at_r_factor = 0,
-                detect_convergence = True):
+                detect_convergence = True,
+                log               = None):
+    if (log is None) : log = sys.stdout
+    self.log              = log
     self.start_map        = start_map
     assert start_map in ["flat", "lde", "min_shifted"]
     self.lam              = lam
@@ -113,32 +118,36 @@ class run(object) :
       self.f_calc = self.full_set.structure_factors_from_scatterers(
         xray_structure = self.xray_structure).f_calc()
     if(verbose):
-      print "Resolution factor: %-6.4f"%resolution_factor
-      print "  N, n1,n2,n3:",self.N,self.n_real[0],self.n_real[1],self.n_real[2]
-      print "Box: "
-      print "  resolution: %6.4f"%self.full_set.d_min()
-      print "  max. index |h|,|k|,|l|<nreal/2:", max_index
-      print "  n.refl.:", self.full_set.indices().size()
+      print >> self.log, "Resolution factor: %-6.4f"%resolution_factor
+      print >> self.log, \
+        "  N, n1,n2,n3:",self.N,self.n_real[0],self.n_real[1],self.n_real[2]
+      print >> self.log, "Box: "
+      print >> self.log, "  resolution: %6.4f"%self.full_set.d_min()
+      print >> self.log, "  max. index |h|,|k|,|l|<nreal/2:", max_index
+      print >> self.log, "  n.refl.:", self.full_set.indices().size()
     # STEP 1
     if(self.f_000 is None): self.f_000=mean_density*self.f.unit_cell().volume()
     Cobs = 1
     Ca = 0.37
     self.Agd = Ca/self.N
     if(verbose):
-      print "Cobs, Ca, Agd, f_000:", Cobs, Ca, self.Agd, "%6.3f"%self.f_000
-      print "Cobs/(N*f_000): ",Cobs/(self.N*self.f_000)
-      print "memory factor (beta):", self.beta
+      print >> self.log, \
+        "Cobs, Ca, Agd, f_000:", Cobs, Ca, self.Agd, "%6.3f"%self.f_000
+      print >> self.log, "Cobs/(N*f_000): ",Cobs/(self.N*self.f_000)
+      print >> self.log, "memory factor (beta):", self.beta
     self.f = self.f.customized_copy(data=self.f.data()*Cobs/(self.N*self.f_000))
     fft_map = miller.fft_map(
       crystal_gridding     = self.crystal_gridding,
       fourier_coefficients = self.f)
     self.rho_obs = fft_map.real_map_unpadded()
     if(verbose):
-      show_map_stat(m = self.rho_obs, prefix = "rho_obs (formula #13)")
+      show_map_stat(m = self.rho_obs, prefix = "rho_obs (formula #13)",
+        out=self.log)
     # STEP 2
     self.rho = self.normalize_start_map()
     if(verbose):
-      show_map_stat(m = self.rho, prefix = "rho_0 (initial approximation)")
+      show_map_stat(m = self.rho, prefix = "rho_0 (initial approximation)",
+        out=self.log)
     # STEP 3
     self.iterations()
 
@@ -155,12 +164,15 @@ class run(object) :
     else: raise Sorry("Invalid initial map modification choice.")
     return rho / flex.sum(rho)
 
-  def write_mtz_file(self, file_name = "me.mtz", column_root_label = "MEM"):
+  def write_mtz_file(self, file_name = "me.mtz", column_root_label = "MEM",
+      d_min=None):
     f_mem = self.full_set.structure_factors_from_map(
       map            = self.rho,
       use_scale      = True,
       anomalous_flag = False,
       use_sg         = False)
+    if (d_min is not None) :
+      f_mem = f_mem.resolution_filter(d_min=d_min)
     mtz_dataset = f_mem.as_mtz_dataset(column_root_label=column_root_label)
     mtz_object = mtz_dataset.mtz_object()
     mtz_object.write(file_name = file_name)
@@ -176,8 +188,8 @@ class run(object) :
 
   def show(self, verbose=True):
     if(self.verbose and not self.header_shown):
-      print "lam:", self.lam
-      print "  nit    TP       Hw        Q_X              Qtot         Agd    scFc       Hn     R    * tpgd       lam        cc"
+      print >> self.log, "lam:", self.lam
+      print >> self.log, "  nit    TP       Hw        Q_X              Qtot         Agd    scFc       Hn     R    * tpgd       lam        cc"
       self.header_shown = True
     self.update_metrics()
     fs = " ".join(["%5d"%self.cntr, "%8.6f"%self.tp, "%9.6f"%self.h_w,\
@@ -186,7 +198,7 @@ class run(object) :
          "*", "%8.6f"%self.Z, "%12.6f"%self.lam])
     if(self.cc is not None): cc = "%7.5f"%self.cc
     else: cc = self.cc
-    print fs, cc
+    print >> self.log, fs, cc
     return fs
 
   def is_converged(self, rho_trial):
