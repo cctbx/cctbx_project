@@ -101,6 +101,9 @@ ensemble_refinement {
   er_harmonic_restraints_slack = 1.0
     .type = float
     .help = slack distance for ta specific harmonic function
+  output_running_kinetic_energy_in_occupancy_column = False
+    .type = bool
+    .help = Output PDB file contains running kinetic energy in place of occupancy
   electron_density_maps {
     apply_default_maps = True
       .type = bool
@@ -607,11 +610,8 @@ class run_ensemble_refinement(object):
       print >> self.log, "|"+"-"*77+"|\n"
 
     #Set ADP model
-    if(len(self.params.tls_group_selections) > 0):
-      self.tls_manager = er_tls_manager()
-      self.setup_tls_selections(tls_group_selection_strings = self.params.tls_group_selections)
-    else:
-      raise Sorry("Simulation aborted, running Rfree > 75%")
+    self.tls_manager = er_tls_manager()
+    self.setup_tls_selections(tls_group_selection_strings = self.params.tls_group_selections)
     self.fit_tls(input_model = self.model)
     self.assign_solvent_tls_groups()
 
@@ -876,8 +876,8 @@ class run_ensemble_refinement(object):
     #Minimize number of ensemble models
     self.ensemble_utils.ensemble_reduction()
 
-    #PDB output (zipped)
-    self.write_ta_ensemble_pdb(out = gzip.open(self.params.output_file_prefix+".pdb.gz", 'wb'))
+    #PDB output
+    self.write_ensemble_pdb(out = gzip.open(self.params.output_file_prefix+".pdb.gz", 'wb'))
 
     #Optimise fmodel_total k, b_aniso, k_sol, b_sol
     self.fmodel_total.set_scale_switch = 0
@@ -902,7 +902,7 @@ class run_ensemble_refinement(object):
     # Map output
     self.write_mtz_file()
 
-############################## END TA ##########################################
+############################## END ER ##########################################
 
   def show_overall(self, message = "", fmodel_running = True):
     if fmodel_running:
@@ -912,7 +912,6 @@ class run_ensemble_refinement(object):
       message = "Total: " + message
       self.fmodel_total.info().show_rfactors_targets_scales_overall(header = message, out = self.log)
 
-  #From phenix.refine driver.py combine_data_and_map_coeffs
   def write_mtz_file(self):
     class labels_decorator:
       def __init__(self, amplitudes_label, phases_label):
@@ -1051,10 +1050,45 @@ class run_ensemble_refinement(object):
     model_no_solvent = self.model.deep_copy()
     model_no_solvent = model_no_solvent.remove_solvent()
     all_chain_proxies = self.generate_all_chain_proxies(model = model_no_solvent)
+    
+    if len(tls_group_selection_strings) < 1:
+      print >> self.log, '\nNo TLS groups supplied - automatic setup'
+      # Get chain information
+      chains_info = []
+      for chain in model_no_solvent.pdb_hierarchy().chains():
+        count_h = 0
+        for atom in chain.atoms():
+          if atom.element_is_hydrogen(): count_h+=1
+        chain_id_non_h = (chain.id, chain.atoms_size() - count_h)
+        chains_info.append(chain_id_non_h)
+      # Check all chains > 63 heavy atoms for TLS fitting
+      chains_size = flex.int(zip(*chains_info)[1])
+      chains_size_ok = flex.bool(chains_size > 63)
+      if sum(chains_size) < 63:
+        print >> self.log, '\nStructure contains less than 63 atoms (non H/D, non solvent)'
+        raise Sorry('Unable to perform TLS fitting')
+      elif chains_size_ok.count(False) == 0:
+        print >> self.log, '\nTLS selections:'
+        print >> self.log, 'Chain, number atoms (non H/D)'
+        for chain in chains_info:
+          tls_group_selection_strings.append('chain ' + chain[0])
+          print >> self.log, chain[0], chain[1]
+      else:
+        print >> self.log, '\nFollowing chains contain less than 63 atoms (non H/D):'
+        tls_group_selection_strings.append('chain ')
+        for chain in chains_info:
+          tls_group_selection_strings[0] += (chain[0] + ' or chain ')
+          if chain[1] < 63:
+            print >> self.log, chain[0], chain[1]
+        print >> self.log, 'Combining all chains to single TLS group'
+        print >> self.log, 'WARNING: this may not be the optimum tls groupings to use'
+        print >> self.log, 'TLS selections:'
+        tls_group_selection_strings[0] = tls_group_selection_strings[0][0:-10]
+        print >> self.log, tls_group_selection_strings[0]
     #
     tls_no_sol_selections =  utils.get_atom_selections(
         all_chain_proxies = all_chain_proxies,
-        selection_strings = self.params.tls_group_selections,
+        selection_strings = tls_group_selection_strings,
         xray_structure    = model_no_solvent.xray_structure)
     #
     tls_no_hd_selection_strings = []
@@ -1461,7 +1495,7 @@ class run_ensemble_refinement(object):
       print >> self.log, "Fmodel total bcart     : {0:14.2f} {1:5.2f} {2:5.2f} {3:5.2f} {4:5.2f} {5:5.2f}".format(*self.fmodel_total.fmodel_kbu().b_cart())
     print >> self.log, "|"+"-"*77+"|\n"
 
-  def write_ta_ensemble_pdb(self, out):
+  def write_ensemble_pdb(self, out):
     crystal_symmetry = self.er_data.xray_structures[0].crystal_symmetry()
     print >> out,  "REMARK   3  TIME-AVERAGED ENSEMBLE REFINEMENT"
     fmodel_info = self.fmodel_total.info()
@@ -1503,8 +1537,11 @@ class run_ensemble_refinement(object):
       for j_seq, atom in enumerate(pdb_atoms):
         if j_seq < len(sites_cart):
           atom.xyz = sites_cart[j_seq]
-          #XXX * 0.1 to fit in occ col
-          atom.occ = 0.1 * i_model_ke[j_seq]
+          if self.params.output_running_kinetic_energy_in_occupancy_column:
+            #XXX * 0.1 to fit in occ col
+            atom.occ = 0.1 * i_model_ke[j_seq]
+          else:
+            atom.occ = 1.0 / len(self.er_data.xray_structures)
           atom.b = adptbx.u_as_b(u_isos[j_seq])
           e = scat_types[j_seq]
           if (len(e) > 1 and "+-0123456789".find(e[1]) >= 0):
@@ -1720,6 +1757,37 @@ def run(args, command_name = "phenix.ensemble_refinement"):
     log                       = log)
   processed_pdb_file, pdb_inp = \
     processed_pdb_files_srv.process_pdb_files(pdb_file_names = [pdb_file])
+  
+  # Remove alternative conformations if present
+  hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  atoms_size_pre = hierarchy.atoms().size()
+  for model in hierarchy.models() :
+    for chain in model.chains() :
+      for residue_group in chain.residue_groups() :
+        atom_groups = residue_group.atom_groups()
+        assert (len(atom_groups) > 0)
+        for atom_group in atom_groups :
+          if (not atom_group.altloc in ["", "A"]) :
+            residue_group.remove_atom_group(atom_group=atom_group)
+          else :
+            atom_group.altloc = ""
+        if (len(residue_group.atom_groups()) == 0) :
+          chain.remove_residue_group(residue_group=residue_group)
+      if (len(chain.residue_groups()) == 0) :
+        model.remove_chain(chain=chain)
+  atoms = hierarchy.atoms()
+  new_occ = flex.double(atoms.size(), 1.0)
+  atoms.set_occ(new_occ)
+  atoms_size_post = hierarchy.atoms().size()
+  if atoms_size_pre != atoms_size_post:
+    pdb_file_removed_alt_confs = pdb_file[0:-4]+'_removed_alt_confs.pdb'
+    print >> log, "\nRemoving alternative conformations"
+    print >> log, "All occupancies reset to 1.0"
+    print >> log, "New PDB : ", pdb_file_removed_alt_confs, "\n"
+    hierarchy.write_pdb_file(file_name        = pdb_file_removed_alt_confs,
+                             crystal_symmetry = pdb_inp.crystal_symmetry())
+    processed_pdb_file, pdb_inp = \
+    processed_pdb_files_srv.process_pdb_files(pdb_file_names = [pdb_file_removed_alt_confs])
 
   if er_params.high_resolution is not None:
     d_min = er_params.high_resolution
@@ -1770,7 +1838,7 @@ def run(args, command_name = "phenix.ensemble_refinement"):
     refinement_flags = refinement_flags,
     restraints_manager = restraints_manager,
     xray_structure = xray_structure,
-    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy,
+    pdb_hierarchy = hierarchy,
     tls_groups = None,
     anomalous_scatterer_groups = None,
     log = log)
