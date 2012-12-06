@@ -216,7 +216,7 @@ namespace cctbx { namespace maptbx {
                 FloatType rho_over_sum_rho = rho_uvw/rho_positive_sum;
                 hn_ += rho_over_sum_rho * std::log(rho_over_sum_rho);
         }}}}
-        hn_ = -hn_/std::log(cntr_rho_positive);
+        hn_ = -hn_/std::log((FloatType) cntr_rho_positive);
       }
 
       FloatType z()     { return z_; }
