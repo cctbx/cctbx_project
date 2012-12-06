@@ -509,38 +509,35 @@ class Manager (object):
         else :
           return False
 
+    max_cation_distance = float(sys.maxint)
     for atom, vector in nearby_atoms:
       # to analyze local geometry, we use the target site mapped to be in the
       # same ASU as the interacting site
       resname = atom.fetch_labels().resname.strip().upper()
       atom_name = atom.name.strip()
       element = _get_element(atom)
+      distance = abs(vector)
 
       # XXX need to figure out exactly what this should be - CL has a
       # fairly large radius though (1.67A according to ener_lib.cif)
-      if abs(vector) < params.min_distance_to_other_sites:
+      if (distance < params.min_distance_to_other_sites) :
         return False
 
       if not element in ["C","N","H","O","S"]:
         charge = get_charge(element)
 
-        if charge < 0 and abs(vector) <= params.min_distance_to_anion:
+        if charge < 0 and distance <= params.min_distance_to_anion:
           # Nearby anion that is too close
           return False
 
-        if charge > 0 and abs(vector) <= params.max_distance_to_cation:
+        if charge > 0 and distance <= params.max_distance_to_cation:
           # Nearby cation
           near_cation = True
-      elif ((abs(vector) < 3.2) and
-            (atom_name in ["OD1","OD2","OE1","OE2"]) and
-            (resname in ["GLU","ASP"])) :
-        # Negatively charged sidechains
-        # XXX this really needs to be more exhaustive (e.g. phosphate oxygens)
-        return False
-
+          if (distance < max_cation_distance) :
+            max_cation_distance = distance
       elif (atom_name in ["NZ", "NE"] and
             resname in ["ARG","LYS"] and
-            abs(vector) <= params.max_distance_to_cation):
+            distance <= params.max_distance_to_cation):
         # Positively charged sidechains.
         # XXX actually, shouldn't it also be roughly coplanar with the
         # guanidinium group in Arg?
@@ -633,6 +630,20 @@ class Manager (object):
         if (abs(angle_xnc - 120) <= params.delta_amide_h_angle and
             abs(angle_nco % 180) <= params.delta_planar_angle):
           binds_sidechain_amide = True
+
+    # now check again for negatively charged sidechain (etc.) atoms (e.g.
+    # carboxyl groups), but with some leeway if a cation is also nearby
+    for atom, vector in nearby_atoms:
+      resname = atom.fetch_labels().resname.strip().upper()
+      atom_name = atom.name.strip()
+      distance = abs(vector)
+      if ((distance < 3.2) and
+          (distance < max_cation_distance + 0.2) and
+          (atom_name in ["OD1","OD2","OE1","OE2"]) and
+          (resname in ["GLU","ASP"])) :
+        # Negatively charged sidechains
+        # XXX this really needs to be more exhaustive (e.g. phosphate oxygens)
+        return False
 
     # TODO something smart...
     # the idea here is to determine whether the blob of density around the
