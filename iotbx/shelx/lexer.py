@@ -8,16 +8,22 @@ from iotbx.shelx.errors import error as shelx_error
 class command_stream(object):
   """ An ins/res file parsed as a stream of commands """
 
-  shelx_commands = dict([ (cmd, 1) for cmd in [
-    'ACTA', 'AFIX', 'ANIS', 'BASF', 'BIND', 'BLOC', 'BOND', 'BUMP', 'CELL',
-    'CGLS', 'CHIV', 'CONF', 'CONN', 'DAMP', 'DANG', 'DEFS', 'DELU', 'DFIX',
-    'DISP', 'EADP', 'END' , 'EQIV', 'EXTI', 'EXYZ', 'FEND', 'FLAT', 'FMAP',
-    'FRAG', 'FREE', 'FVAR', 'GRID', 'HFIX', 'HKLF', 'HOPE', 'HTAB', 'ISOR',
-    'L.S.', 'LATT', 'LAUE', 'LIST', 'MERG', 'MOLE', 'MORE', 'MOVE', 'MPLA',
-    'MUST', 'NCSY', 'OMIT', 'PART', 'PLAN', 'REM' , 'RESI', 'RTAB', 'SADI',
-    'SAME', 'SFAC', 'SHEL', 'SIMU', 'SIZE', 'SPEC', 'STIR', 'SUMP', 'SWAT',
-    'SYMM', 'TEMP', 'TIME', 'TITL', 'TWIN', 'UNIT', 'WGHT', 'WPDB', 'ZERR'
+  commands_allowing_atom_names = dict([ (cmd, 1) for cmd in [
+    'ANIS', 'BIND', 'BLOC', 'BOND', 'CHIV', 'CONF', 'CONN', 'DANG', 'DELU',
+    'DFIX', 'EADP', 'EXYZ', 'FLAT', 'FREE', 'HFIX', 'HTAB', 'ISOR', 'MPLA',
+    'NCSY', 'OMIT', 'RTAB', 'SADI', 'SAME', 'SIMU'
   ]])
+
+  shelx_commands = dict([ (cmd, 1) for cmd in [
+    'ACTA', 'AFIX', 'BASF', 'BUMP', 'CELL', 'CGLS', 'DAMP', 'DEFS', 'DISP',
+    'END' , 'EQIV', 'EXTI', 'FEND', 'FMAP', 'FRAG', 'FVAR', 'GRID', 'HKLF',
+    'HOPE', 'L.S.', 'LATT', 'LAUE', 'LIST', 'MERG', 'MOLE', 'MORE', 'MOVE',
+    'MUST', 'PART', 'PLAN', 'REM' , 'RESI', 'SFAC', 'SHEL', 'SIZE', 'SPEC',
+    'STIR', 'SUMP', 'SWAT', 'SYMM', 'TEMP', 'TIME', 'TITL', 'TWIN', 'UNIT',
+    'WGHT', 'WPDB', 'ZERR'
+  ]])
+  shelx_commands.update(commands_allowing_atom_names)
+
 
   def __init__(self, file=None, filename=None):
     assert [file, filename].count(None) == 1
@@ -33,9 +39,7 @@ class command_stream(object):
       |
       (?:
         (?:
-          ( HFIX | EXYZ | EADP | OMIT | CONN |
-            SAME | CHIV | DELU | SIMU | ISOR |
-            BLOC | BOND | CONF | MPLA | RTAB )
+          ( %s )
           _
           (?:
             ([a-z] \S{0,3})
@@ -51,7 +55,8 @@ class command_stream(object):
       ([^!=]*)
       (=?)
     )
-    """, re.X | re.I)
+    """ %(" | ".join(commands_allowing_atom_names.keys())),
+        re.X | re.I)
 
   _continuation_pat = re.compile("""
     ^
