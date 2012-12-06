@@ -482,20 +482,29 @@ class server(process_cif_mixin):
 
 class ener_lib(process_cif_mixin):
 
-  def __init__(self, ener_lib_cif=None, source_info=None):
+  def __init__(self,
+               ener_lib_cif=None,
+               source_info=None,
+               use_neutron_distances=False,
+               ):
     if (ener_lib_cif is None):
       ener_lib_cif = mon_lib_ener_lib_cif()
     self.lib_synonym = {}
     self.lib_atom = {}
     self.lib_vdw = []
-    self.convert_all(source_info=source_info, cif_object=ener_lib_cif.cif)
+    self.convert_all(source_info=source_info,
+                     cif_object=ener_lib_cif.cif,
+                     use_neutron_distances=use_neutron_distances,
+                     )
     self.source_infos = []
 
-  def convert_all(self, source_info, cif_object):
+  def convert_all(self, source_info, cif_object, use_neutron_distances):
     if (source_info is not None):
       self.source_infos.append(source_info)
     self.convert_lib_synonym(cif_object=cif_object)
-    self.convert_lib_atom(cif_object=cif_object)
+    self.convert_lib_atom(cif_object=cif_object,
+                          use_neutron_distances=use_neutron_distances,
+                          )
     self.convert_lib_vdw(cif_object=cif_object)
 
   def convert_lib_synonym(self, cif_object):
@@ -503,9 +512,12 @@ class ener_lib(process_cif_mixin):
       syn = cif_types.energy_lib_synonym(**row)
       self.lib_synonym[syn.atom_alternative_type] = syn.atom_type
 
-  def convert_lib_atom(self, cif_object):
+  def convert_lib_atom(self, cif_object, use_neutron_distances=False):
     for row in get_rows(cif_object, "energy", "_lib_atom"):
       entry = cif_types.energy_lib_atom(**row)
+      if use_neutron_distances:
+        if entry.vdw_radius_neuton is not None:
+          entry.vdw_radius = entry.vdw_radius_neuton
       self.lib_atom[entry.type] = entry
 
   def convert_lib_vdw(self, cif_object):
