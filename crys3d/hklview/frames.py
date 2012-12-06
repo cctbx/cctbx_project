@@ -523,7 +523,7 @@ class HKLViewFrame (wx.Frame) :
       valid_arrays = []
       array_info = []
       for array in arrays :
-        if array.is_complex_array() or array.is_hendrickson_lattman_array() :
+        if array.is_hendrickson_lattman_array() :
           continue
         elif (data_only) :
           if (not array.is_real_array()) and (not array.is_complex_array()) :
