@@ -1189,7 +1189,8 @@ class torsion_ncs(object):
           cur_value = 0.0001
         percentage = (max - cur_value) / cur_value
         if percentage > 0.2:
-          cc_candidate_list.append(cur_key)
+          if not sigma_cutoff_hash[cur_key]:
+            cc_candidate_list.append(cur_key)
 
     for model in pdb_hierarchy.models():
       for chain in model.chains():
