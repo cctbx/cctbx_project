@@ -166,14 +166,29 @@ class run(object) :
 
   def write_mtz_file(self, file_name = "me.mtz", column_root_label = "MEM",
       d_min=None):
-    f_mem = self.full_set.structure_factors_from_map(
-      map            = self.rho,
+    o=maptbx.non_linear_map_modification_to_match_average_cumulative_histogram(
+      map_1 = self.rho, map_2 = self.rho_obs)
+    # XXX p1 must be equal to p2 very accurately; sometimes not the case currently
+    for x in [0.5,1,1.5]:
+      p1 = (o.map_1()>x).count(True)*1./o.map_1().size()
+      p2 = (o.map_2()>x).count(True)*1./o.map_2().size()
+      print >> self.log, "Cumulative histograms match for two maps: %9.6f %9.6f"%(
+        p1,p2)
+    f1 = self.full_set.structure_factors_from_map(
+      map            = o.map_1(),
       use_scale      = True,
       anomalous_flag = False,
       use_sg         = False)
-    if (d_min is not None) :
-      f_mem = f_mem.resolution_filter(d_min=d_min)
-    mtz_dataset = f_mem.as_mtz_dataset(column_root_label=column_root_label)
+    f2 = self.f.structure_factors_from_map(
+      map            = o.map_2(),
+      use_scale      = True,
+      anomalous_flag = False,
+      use_sg         = False)
+    if(d_min is not None):
+      f1 = f1.resolution_filter(d_min=d_min)
+      f2 = f2.resolution_filter(d_min=d_min)
+    mtz_dataset = f1.as_mtz_dataset(column_root_label=column_root_label)
+    mtz_dataset.add_miller_array(miller_array=f2, column_root_label="ORIG")
     mtz_object = mtz_dataset.mtz_object()
     mtz_object.write(file_name = file_name)
 
@@ -222,7 +237,8 @@ class run(object) :
         size = self.cc_to_answer.size()
         if(size>=3):
           tmp = flex.mean(self.cc_to_answer[size-3:])
-          if(tmp >= self.cc-1.e-6): result = True
+          if(tmp >= self.cc-1.e-6):# or self.cc-tmp<0.0001):
+            result = True
     return result
 
   def iterations(self):
