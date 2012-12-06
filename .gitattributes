@@ -1161,6 +1161,7 @@ mmtbx/cablam/fingerprints.py -text
 mmtbx/chemical_components/__init__.py -text
 mmtbx/chemical_components/cif_parser.py -text
 mmtbx/chemical_components/tst.py -text
+mmtbx/command_line/analyze_peptides.py -text
 mmtbx/command_line/cablam_training.py -text
 mmtbx/command_line/cablam_validate.py -text
 mmtbx/command_line/cbetadev.py -text
@@ -1413,6 +1414,7 @@ mmtbx/utils/rotatable_bonds.py -text
 mmtbx/utils/utils.h -text
 mmtbx/utils/utils_ext.cpp -text
 mmtbx/validation/__init__.py svneol=native#text/x-python
+mmtbx/validation/analyze_peptides.py -text
 mmtbx/validation/cbetadev.py svneol=native#text/x-python
 mmtbx/validation/clashscore.py svneol=native#text/x-python
 mmtbx/validation/ramalyze.py svneol=native#text/x-python
