@@ -60,6 +60,10 @@ def exercise_lexing():
                              (stream.atom_tok, 'H', None),
                              (stream.atom_tok, 'O2', 1) ) )
     cmd, line = i.next()
+    assert cmd == ('DFIX', (stream.residue_number_tok, 1),
+                   (1.5, (stream.atom_tok, 'C2', None),
+                    (stream.atom_tok, 'C3', None)))
+    cmd, line = i.next()
     assert cmd == ('__ATOM__',
                    ('O2', 3, 0.362893, 0.160589, -0.035913, 11,
                           0.03926, 0.02517, 0.02140,
@@ -791,6 +795,7 @@ ins_mundane_tiny = (
 "HFIX_N 43\n"
 "EQIV $1 1-X, -Y, -Z\n"
 "CONF C4 N H O2_$1\n"
+"DFIX_1 1.5 C2 C3\n"
 "O2    3    0.362893    0.160589   -0.035913    11.00000    0.03926    0.02517 =\n"
 "         0.02140   -0.00415   -0.00810    0.01009\n"
 "O3    3    0.696722    0.119176    0.260657    = some garbage\n"
