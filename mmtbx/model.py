@@ -1138,7 +1138,7 @@ class manager(object):
     if (charge != 0) :
       symbol = "+"
       if (charge < 0) : symbol = "-"
-      atom.charge = str(charge) + symbol
+      atom.charge = str(abs(charge)) + symbol
     else :
       atom.charge = ""
     atom.parent().resname = residue_name
