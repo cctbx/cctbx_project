@@ -35,7 +35,7 @@ class MetalParameters (group_args) :
       charge_symbol = "+"
     elif (self.charge < 0) :
       charge_symbol = "-"
-    return "%s%d%s" % (self.element, self.charge, charge_symbol)
+    return "%s%d%s" % (self.element, abs(self.charge), charge_symbol)
 
 class server (object) :
   def __init__ (self) :
