@@ -82,6 +82,8 @@ class command_stream(object):
     \$ (\d+) \s+ (.*) $
     """, re.X | re.I)
 
+  _include_filename_pat = re.compile("""(\+)(.*)""")
+
   (atom_tok, element_tok,
    forward_range_tok, backward_range_tok,
    residue_class_tok, residue_number_tok, all_residues_tok) = xrange(7)
@@ -118,6 +120,12 @@ class command_stream(object):
         m = self._cmd_pat.search(li)
         if m is None:
           if li[0].isspace(): continue
+          else:
+            m = self._include_filename_pat.search(li)
+            if m is not None:
+              cmd, filename = m.group(1, 2)
+              yield (cmd, filename), i
+              continue
           raise shelx_error("illegal command or atom name error", i)
         cmd = m.group(1) or m.group(6)
         if cmd:

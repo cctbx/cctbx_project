@@ -47,6 +47,8 @@ def exercise_lexing():
     cmd, line = i.next()
     assert cmd == ('REM', ())
     cmd, line = i.next()
+    assert cmd == ('+', '/path/to/filename.ins')
+    cmd, line = i.next()
     assert cmd == ('REM', ('Protracted example of residues on command',))
     cmd, line = i.next()
     assert cmd == ('HFIX', (stream.residue_number_tok, 1), (23,))
@@ -790,6 +792,7 @@ ins_mundane_tiny = (
 "EXTI    0.034016\n"
 "FVAR       0.89220\n"
 "REM\n"
+"+/path/to/filename.ins\n"
 "REM  Protracted example of residues on command\n"
 "HFIX_1 23\n"
 "HFIX_N 43\n"
