@@ -1009,6 +1009,7 @@ iotbx/shelx/fcf.py -text
 iotbx/shelx/fvar_encoding.py svneol=native#text/x-python
 iotbx/shelx/lexer.py -text
 iotbx/shelx/parsers.py -text
+iotbx/shelx/tokens.py -text
 iotbx/shelx/tst_fvar_encoding.py svneol=native#text/x-python
 iotbx/shelx/tst_lex_parse_build.py -text
 iotbx/symmetry.py -text

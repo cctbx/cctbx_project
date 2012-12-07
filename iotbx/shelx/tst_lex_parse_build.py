@@ -6,6 +6,7 @@ from cctbx import adptbx
 from cctbx import xray
 from iotbx import shelx
 from iotbx.shelx import crystal_symmetry_from_ins
+from iotbx.shelx import tokens
 import iotbx.builders
 from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.math_utils import are_equivalent
@@ -38,7 +39,7 @@ def exercise_lexing():
     cmd, line = i.next()
     assert cmd == ('L.S.', (4,))
     cmd, line = i.next()
-    assert cmd == ('BOND', ((stream.element_tok, 'H'),))
+    assert cmd == ('BOND', ((tokens.element_tok, 'H'),))
     cmd, line = i.next() # FMAP
     cmd, line = i.next() # PLAN
     cmd, line = i.next() # WGHT
@@ -51,20 +52,20 @@ def exercise_lexing():
     cmd, line = i.next()
     assert cmd == ('REM', ('Protracted example of residues on command',))
     cmd, line = i.next()
-    assert cmd == ('HFIX', (stream.residue_number_tok, 1), (23,))
+    assert cmd == ('HFIX', (tokens.residue_number_tok, 1), (23,))
     cmd, line =  i.next()
-    assert cmd == ('HFIX', (stream.residue_class_tok, 'N'), (43,))
+    assert cmd == ('HFIX', (tokens.residue_class_tok, 'N'), (43,))
     cmd, line = i.next()
     assert cmd == ('EQIV', (1, '1-X, -Y, -Z'))
     cmd, line = i.next()
-    assert cmd == ('CONF', ( (stream.atom_tok, 'C4', None),
-                             (stream.atom_tok, 'N', None),
-                             (stream.atom_tok, 'H', None),
-                             (stream.atom_tok, 'O2', 1) ) )
+    assert cmd == ('CONF', ( (tokens.atom_tok, 'C4', None),
+                             (tokens.atom_tok, 'N', None),
+                             (tokens.atom_tok, 'H', None),
+                             (tokens.atom_tok, 'O2', 1) ) )
     cmd, line = i.next()
-    assert cmd == ('DFIX', (stream.residue_number_tok, 1),
-                   (1.5, (stream.atom_tok, 'C2', None),
-                    (stream.atom_tok, 'C3', None)))
+    assert cmd == ('DFIX', (tokens.residue_number_tok, 1),
+                   (1.5, (tokens.atom_tok, 'C2', None),
+                    (tokens.atom_tok, 'C3', None)))
     cmd, line = i.next()
     assert cmd == ('__ATOM__',
                    ('O2', 3, 0.362893, 0.160589, -0.035913, 11,

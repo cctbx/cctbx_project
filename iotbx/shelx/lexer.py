@@ -4,6 +4,7 @@ from __future__ import division
 import re
 
 from iotbx.shelx.errors import error as shelx_error
+from iotbx.shelx import tokens
 
 class command_stream(object):
   """ An ins/res file parsed as a stream of commands """
@@ -84,10 +85,6 @@ class command_stream(object):
 
   _include_filename_pat = re.compile("""(\+)(.*)""")
 
-  (atom_tok, element_tok,
-   forward_range_tok, backward_range_tok,
-   residue_class_tok, residue_number_tok, all_residues_tok) = xrange(7)
-
   def __iter__(self):
     """
     Yields the commands in self.file as tuples:
@@ -135,11 +132,11 @@ class command_stream(object):
           (cmd, cmd_residue_class, cmd_residue_number) = m.group(3,4,5)
           cmd = cmd.upper()
           if cmd_residue_class:
-            cmd_residue = (self.residue_class_tok, cmd_residue_class.upper())
+            cmd_residue = (tokens.residue_class_tok, cmd_residue_class.upper())
           elif cmd_residue_number:
-            cmd_residue = (self.residue_number_tok, int(cmd_residue_number))
+            cmd_residue = (tokens.residue_number_tok, int(cmd_residue_number))
           else:
-            cmd_residue = (self.all_residues_tok,)
+            cmd_residue = (tokens.all_residues_tok,)
         args = m.group(2) or m.group(7) or ""
         continued = m.group(8)
         arguments = args.split()
@@ -180,13 +177,13 @@ class command_stream(object):
     return None
 
   def _parse_general_case(self, cmd, cmd_residue, arguments, i, li):
-    tokens = []
+    toks = []
     for j,arg in enumerate(arguments):
       try:
-        tokens.append(float(arg))
+        toks.append(float(arg))
       except ValueError:
         if cmd == 'RESI':
-          tokens.append(arg)
+          toks.append(arg)
         else:
           m = self._atom_name_pat.match(arg)
           if m is None:
@@ -194,26 +191,26 @@ class command_stream(object):
           name, symmetry = m.group(1,2)
           if name is not None:
             if symmetry is not None: symmetry = int(symmetry)
-            tokens.append((self.atom_tok, name, symmetry))
+            toks.append((tokens.atom_tok, name, symmetry))
             continue
           element = m.group(3)
           if element is not None:
-            tokens.append((self.element_tok, element))
+            toks.append((tokens.element_tok, element))
             continue
           if arg == '>':
-            tokens.append((self.forward_range_tok,))
+            toks.append((tokens.forward_range_tok,))
           else:
-            tokens.append((self.backward_range_tok,))
+            toks.append((tokens.backward_range_tok,))
     if cmd_residue:
-      return (cmd, cmd_residue, tuple(tokens))
+      return (cmd, cmd_residue, tuple(toks))
     else:
       if cmd not in self.shelx_commands:
         if cmd[0] == 'Q':
-          tokens = (int(cmd[1:]),) + tuple(tokens)
+          toks = (int(cmd[1:]),) + tuple(toks)
           cmd = '__Q_PEAK__'
         else:
-          tokens = (cmd,) + tuple(tokens)
+          toks = (cmd,) + tuple(toks)
           cmd = '__ATOM__'
       else:
-        tokens = tuple(tokens)
-      return (cmd, tokens)
+        toks = tuple(toks)
+      return (cmd, toks)
