@@ -237,6 +237,9 @@ gui
   result_file = None
     .type = path
     .help = Pickled result file for Phenix GUI
+  output_dir = None
+    .type = path
+    .style = default_cwd
   include scope libtbx.phil.interface.tracking_params
 }
 }
@@ -542,7 +545,7 @@ class xtriage_analyses(object):
 
 
 def run(args, command_name="phenix.xtriage", return_result=False,
-    out=None):
+    out=None, data_file_name=None):
   if (out is None) :
     out = sys.stdout
   command_line = (option_parser(
@@ -967,13 +970,17 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
       output_file = open( params.scaling.input.parameters.reporting.log  ,'w')
       output_file.write(string_buffer.getvalue())
 
+    if (data_file_name is not None) :
+      from libtbx import easy_pickle
+      easy_pickle.dump(data_file_name, raw_data)
     if return_result :
       summary_out = StringIO()
       miller_array.show_comprehensive_summary(f=summary_out)
       return xtriage_summary(
         params=params,
         xtriage_results=xtriage_results,
-        data_summary=summary_out.getvalue())
+        data_summary=summary_out.getvalue(),
+        data_file=data_file_name)
     else :
       return xtriage_results
 
@@ -981,13 +988,15 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
 # TODO: regression tests
 # This is *exactly* as gross as it looks.
 class xtriage_summary (object) :
-  def __init__ (self, params, xtriage_results, data_summary) :
+  def __init__ (self, params, xtriage_results, data_summary,
+      data_file=None) :
     self.file_name = params.scaling.input.xray_data.file_name
     self.log_file = params.scaling.input.parameters.reporting.log
     self.file_labels = params.scaling.input.xray_data.obs_labels
     self.nresidues = params.scaling.input.asu_contents.n_residues
     self.nbases = params.scaling.input.asu_contents.n_bases
     self.data_summary = data_summary
+    self.data_file = os.path.abspath(data_file)
 
     #-------------------------------------------------------------------
     # Part 1: basic analyses:
@@ -1126,9 +1135,51 @@ class xtriage_summary (object) :
   def get_merging_statistics (self) :
     return getattr(self, "merging_stats", None)
 
+  def get_data_file (self) :
+    return getattr(self, "data_file", None)
+
+def change_symmetry (miller_array, space_group_symbol, file_name=None,
+    log=None) :
+  """
+  Encapsulates all operations required to convert the original data to a
+  different symmetry as suggested by Xtriage.
+  """
+  from iotbx.reflection_file_converter import apply_change_of_basis
+  if (log is None) :
+    log = null_out()
+  miller_array = miller_array.niggli_cell()
+  symm = miller_array.crystal_symmetry()
+  symm_new = crystal.symmetry(
+    unit_cell=symm.unit_cell(),
+    space_group_symbol=space_group_symbol)
+  miller_array = miller_array.customized_copy(crystal_symmetry=symm_new)
+  miller_array, cb_op = apply_change_of_basis(
+    miller_array=miller_array,
+    change_of_basis="to_reference_setting",
+    eliminate_invalid_indices=True,
+    out=log)
+  if (not miller_array.is_unique_set_under_symmetry()) :
+    miller_array = miller_array.merge_equivalents().array()
+  miller_array.show_summary(f=log)
+  if (file_name is not None) :
+    column_root_label = None
+    if (miller_array.is_xray_amplitude_array()) :
+      column_root_label = "F"
+    elif (miller_array.is_xray_intensity_array()) :
+      column_root_label = "I"
+    if (column_root_label is None) :
+      raise RuntimeError("Only amplitudes and intensites supported.")
+    miller_array.as_mtz_dataset(
+      column_root_label=column_root_label).mtz_object().write(file_name)
+  return miller_array
+
 class launcher (runtime_utils.target_with_save_result) :
   def run (self) :
-    return run(args=list(self.args), return_result=True)
+    os.mkdir(self.output_dir)
+    os.chdir(self.output_dir)
+    return run(args=list(self.args),
+      return_result=True,
+      data_file_name="xtriage_data.pkl")
 
 def finish_job (result) :
   output_files = []
