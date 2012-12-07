@@ -1,6 +1,7 @@
 from __future__ import division
 
 from wxtbx.phil_controls.numbers import NumbersCtrlBase, NumbersValidator
+from libtbx import Auto
 import wx
 
 class IntsCtrl (NumbersCtrlBase) :
@@ -13,6 +14,8 @@ class IntsCtrl (NumbersCtrlBase) :
   def SetInts (self, value) :
     if (value is None) :
       NumbersCtrlBase.SetValue(self, "")
+    elif (value is Auto) :
+      NumbersCtrlBase.SetValue(self, "Auto")
     elif (isinstance(value, int) or isinstance(value, float)) :
       NumbersCtrlBase.SetValue(self, str(int(value)))
     elif (isinstance(value, list) or isinstance(value, tuple)) :
@@ -28,6 +31,8 @@ class IntsCtrl (NumbersCtrlBase) :
     val_str = str(NumbersCtrlBase.GetValue(self))
     if (val_str == "") :
       return self.ReturnNoneIfOptional()
+    elif (val_str == "Auto") :
+      return Auto
     return [ int(field) for field in val_str.split() ]
 
   def FormatValue (self, value) :

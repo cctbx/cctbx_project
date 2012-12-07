@@ -53,9 +53,9 @@ class ValidatedTextCtrl (wx.TextCtrl, phil_controls.PhilCtrl) :
 
   def GetStringValue (self) :
     value = self.GetPhilValue()
-    if (value is not None) :
+    if (value is not None) and (value is not Auto) :
       return self.FormatValue(value)
-    elif (self.UseAuto()) :
+    elif (self.UseAuto()) or (value is Auto) :
       return Auto
     return None
 
