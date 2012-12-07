@@ -996,7 +996,9 @@ class xtriage_summary (object) :
     self.nresidues = params.scaling.input.asu_contents.n_residues
     self.nbases = params.scaling.input.asu_contents.n_bases
     self.data_summary = data_summary
-    self.data_file = os.path.abspath(data_file)
+    self.data_file = None
+    if (data_file is not None) :
+      self.data_file = os.path.abspath(data_file)
 
     #-------------------------------------------------------------------
     # Part 1: basic analyses:
