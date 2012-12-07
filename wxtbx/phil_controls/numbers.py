@@ -58,6 +58,10 @@ class NumbersValidator (TextCtrlValidator) :
     raise NotImplementedError()
 
   def CheckFormat (self, value) :
+    if (value in ["None", "none"]) :
+      return None
+    elif (value in ["Auto", "auto"]) :
+      return Auto
     if ("," in value) or (";" in value) :
       value = re.sub(",", " ", re.sub(";", " ", value))
     numbers_list = []
