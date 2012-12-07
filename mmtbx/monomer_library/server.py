@@ -498,7 +498,7 @@ class ener_lib(process_cif_mixin):
                      )
     self.source_infos = []
 
-  def convert_all(self, source_info, cif_object, use_neutron_distances):
+  def convert_all(self, source_info, cif_object, use_neutron_distances=False):
     if (source_info is not None):
       self.source_infos.append(source_info)
     self.convert_lib_synonym(cif_object=cif_object)
