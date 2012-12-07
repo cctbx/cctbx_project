@@ -617,8 +617,9 @@ def apply_change_of_basis (
     toss_array = miller_array.select(toss)
     print >> out, "  Mean value for kept reflections:", \
       flex.mean(keep_array.data())
-    print >> out, "  Mean value for invalid reflections:", \
-      flex.mean(toss_array.data())
+    if (len(toss_array.data()) > 0) :
+      print >> out, "  Mean value for invalid reflections:", \
+        flex.mean(toss_array.data())
     miller_array=keep_array
   processed_array = miller_array.change_basis(cb_op=cb_op)
   print >> out, "  Crystal symmetry after change of basis:"
