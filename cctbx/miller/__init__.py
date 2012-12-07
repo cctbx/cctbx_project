@@ -1575,6 +1575,8 @@ class array_info(object):
   def __setstate__(self, state):
     self.type_hints_from_file = None # backward compatibility
     self.__dict__.update(state)
+    if (not hasattr(self, "wavelength")) : # backward compatibility
+      self.wavelength = None
 
   def customized_copy(self,
         source=Keep,
