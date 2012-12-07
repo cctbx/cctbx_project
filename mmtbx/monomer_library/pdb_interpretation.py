@@ -3181,44 +3181,46 @@ class build_all_chain_proxies(object):
             classes2,
             )
           if rc is None: continue
-          pdbres_pair, data_link, atoms = rc
+          pdbres_pairs, data_links, atomss = rc
           # peptide links are auto-created
           possible_peptide_link = False
-          if classes1.common_amino_acid or classes2.common_amino_acid:
-            if(atoms[0].name.strip() in ["C"] and
-               atoms[1].name.strip() in ["N"]
-               ):
-              possible_peptide_link=True
-          # so are nucleotide links
-          possible_rna_dna_link = False
-          if classes1.common_rna_dna or classes2.common_rna_dna:
-            print atoms[0].format_atom_record()
-            print atoms[1].format_atom_record()
-            if(atoms[0].name.strip() in ["O3'", "O3*"] and
-               atoms[1].name.strip() in ["P"]
-               ):
-              possible_rna_dna_link = True
-          # add them
-          ga = group_args(
-            pdbres_pair=pdbres_pair,
-            data_link=data_link,
-            was_used=False,
-            automatic=True,
-            possible_peptide_link=possible_peptide_link,
-            possible_rna_dna_link=possible_rna_dna_link,
-            atom1=atoms[0],
-            atom2=atoms[1],
-            )
-          count = 0
-          for apply in self.apply_cif_links:
-            if apply.pdbres_pair==pdbres_pair: count+=1
-            if apply.data_link==data_link: count+=1
-          if count==2:
-            ga.was_used=True
-          else:
-            for pdbres in pdbres_pair:
-              self.empty_apply_cif_links_mm_pdbres_dict[pdbres] = {}
-          self.apply_cif_links.append(ga)
+          for pdbres_pair, data_link, atoms in zip(pdbres_pairs,
+                                                   data_links,
+                                                   atomss,
+                                                   ):
+            if classes1.common_amino_acid or classes2.common_amino_acid:
+              if(atoms[0].name.strip() in ["C"] and
+                 atoms[1].name.strip() in ["N"]
+                 ):
+                possible_peptide_link=True
+            # so are nucleotide links
+            possible_rna_dna_link = False
+            if classes1.common_rna_dna or classes2.common_rna_dna:
+              if(atoms[0].name.strip() in ["O3'", "O3*"] and
+                 atoms[1].name.strip() in ["P"]
+                 ):
+                possible_rna_dna_link = True
+            # add them
+            ga = group_args(
+              pdbres_pair=pdbres_pair,
+              data_link=data_link,
+              was_used=False,
+              automatic=True,
+              possible_peptide_link=possible_peptide_link,
+              possible_rna_dna_link=possible_rna_dna_link,
+              atom1=atoms[0],
+              atom2=atoms[1],
+              )
+            count = 0
+            for apply in self.apply_cif_links:
+              if apply.pdbres_pair==pdbres_pair: count+=1
+              if apply.data_link==data_link: count+=1
+            if count==2:
+              ga.was_used=True
+            else:
+              for pdbres in pdbres_pair:
+                self.empty_apply_cif_links_mm_pdbres_dict[pdbres] = {}
+            self.apply_cif_links.append(ga)
     # log output about detection
     remove=[]
     if self.apply_cif_links:
@@ -3240,6 +3242,8 @@ class build_all_chain_proxies(object):
             #  apply.pdbres_pair[0][7:],
             #  apply.pdbres_pair[1][7:],
             #  )
+          elif getattr(apply, "possible_rna_dna_link", False):
+            pass
           else:
             outl += "%sLinking %s to %s\n" % (
               " "*8,
