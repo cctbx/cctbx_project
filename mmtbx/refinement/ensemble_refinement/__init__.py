@@ -1050,7 +1050,7 @@ class run_ensemble_refinement(object):
     model_no_solvent = self.model.deep_copy()
     model_no_solvent = model_no_solvent.remove_solvent()
     all_chain_proxies = self.generate_all_chain_proxies(model = model_no_solvent)
-    
+
     if len(tls_group_selection_strings) < 1:
       print >> self.log, '\nNo TLS groups supplied - automatic setup'
       # Get chain information
@@ -1757,7 +1757,7 @@ def run(args, command_name = "phenix.ensemble_refinement"):
     log                       = log)
   processed_pdb_file, pdb_inp = \
     processed_pdb_files_srv.process_pdb_files(pdb_file_names = [pdb_file])
-  
+
   # Remove alternative conformations if present
   hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
   atoms_size_pre = hierarchy.atoms().size()
