@@ -1489,6 +1489,39 @@ class structure(crystal.special_position_settings):
                               u_base=None,
                               b_base=None,
                               wing_cutoff=None):
+    """
+    Calculate structure factors for the current scatterers using either direct
+    summation or FFT method; by default the appropriate method will be guessed
+    automatically.
+
+    :param anomalous_flag: toggles whether the returned structure factors are
+      anomalous or not
+    :type anomalous_flag: bool
+    :param d_min: resolution cutoff (required)
+    :type d_min: float
+    :param algorithm: specifies 'direct' or 'fft', or if None (default), the
+      algorithm will be chosen automatically
+    :type algorithm: str or None
+    :param cos_sin_table: if True, uses interpolation of values from a
+      pre-calculated lookup table for trigonometric function calls in the
+      structure factor calculations in preference to calling the system
+      libraries
+    :type cos_sin_table: bool
+    :param quality_factor: determines accuracy of sampled density in fft method
+    :type quality_factor: float
+    :param u_base: additional smearing B-factor for scatterers which have too
+      small Bs so they fall between the grid nodes
+    :type u_base: float
+    :param b_base: same as u_base (but 8*pi^2 larger)
+    :type b_base: float
+    :param wing_cutoff: is how far away from atomic center you sample density
+      around atom
+    :type wing_cutoff: float
+
+    :returns: a custom Python object (exact type depends on method used), from
+      which f_calc() may be called
+    :rtype: derived from cctbx.xray.structure_factors.manager.managed_calculation_base
+    """
     if (anomalous_flag is None):
       if (self.scatterers().count_anomalous() != 0):
         anomalous_flag = True
@@ -1578,6 +1611,10 @@ class structure(crystal.special_position_settings):
 
   def tidy_us(self, u_min = 1.e-6, u_max = adptbx.b_as_u(550.0),
                     anisotropy_min=0.25):
+    """
+    Clean up atomic displacements so they fall within a sensible range (this
+    is especially important when writing out PDB format).
+    """
     assert u_min < u_max
     ext.tidy_us(
       scatterers=self._scatterers,
