@@ -60,8 +60,9 @@ Important Facts:
   - A map is defined by specifying a map type using 'map_type' keyword available
     within each scope of parameters: 'map_coefficients' or 'map'. The general
     supported format for 'map_type' is: [p][m]Fo+[q][D]Fc[_kick][_filled]. For
-    example: 2Fo-Fc, 2mFobs-DFcalc, 3Fobs-2Fmodel, Fo-Fc, mfobs-Dfcalc, anom.
-    The 'map_type' parser will automatically recognize which map is requested.
+    example: 2Fo-Fc, 2mFobs-DFcalc, 3Fobs-2Fmodel, Fo-Fc, mfobs-Dfcalc, anom,
+    llg.  The 'map_type' parser will automatically recognize which map is
+    requested.
 
   - The program creates as many files with CCP4 or X-plor formatted maps as
     is requested, and it creates only one MTZ formatted file with
@@ -85,6 +86,10 @@ Important Facts:
   - For some map types certain 'map_coefficients' or 'map' scope parameters may
     not be applicable. For example, for "map_type=anomalous" the keywords
     "kicked", "fill_missing_f_obs" and some other are not applicable.
+
+  - For LLG map calculation, if you specify the wavelength any existing heavy
+    atoms (P or heavier) will be modeled as anomalous scatterers using the
+    theoretical values of f' and f''.
 """
 
 default_params = """\
