@@ -1,3 +1,4 @@
+from __future__ import division
 import math
 from scitbx.array_family import flex
 from cctbx import miller
@@ -41,7 +42,7 @@ def r_factor(x,y, use_scale):
   try:
     x = flex.abs(x.data())
     y = flex.abs(y.data())
-  except: pass
+  except Exception: pass
   sc=1
   if(use_scale): sc = scale(x,y)
   return flex.sum(flex.abs(x-sc*y))/flex.sum(x)

@@ -1,7 +1,6 @@
 from __future__ import division
 from __future__ import print_function
 from cctbx.eltbx import wavelengths
-from cctbx.iotbx.fullprof.write_pcr import write_pcr
 
 """ The purpose of this module is to interface cctbx with the FullProf progamm
 suite.

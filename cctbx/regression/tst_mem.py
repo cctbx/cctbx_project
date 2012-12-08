@@ -1,3 +1,4 @@
+from __future__ import division
 from scitbx.array_family import flex
 import iotbx.pdb
 import cctbx.maptbx.mem as mem
@@ -30,7 +31,7 @@ def r_factor(x, r1, r2, eps=1.e-6):
   r1_ = r1.select(sel)
   r2_ = r2.select(sel)
   return flex.abs( r1_-r2_ )[0]
-  
+
 def run():
   pdb_str="""
 CRYST1    5.000    5.000    5.000  90.00  90.00  90.00 P 1
@@ -63,8 +64,8 @@ END
   lam = 0.74
   for start_map in ["flat", "lde", "min_shifted"]:
     m = mem.run(f=F_0, f_000=xrs.f_000(), lam=lam, resolution_factor=0.1,
-      verbose=False, start_map=start_map, max_iterations=1300, 
-      detect_convergence=False)            
+      verbose=False, start_map=start_map, max_iterations=1300,
+      detect_convergence=False)
     r_m, rho_m = map_1d(xrs=xrs, map_data=m.rho)
     sc = scale(rho_r, rho_m)
     rho_m = rho_m*sc
@@ -75,7 +76,7 @@ END
     assert cc > 0.999, R
   ### Exercise auto-incremented lam, 1
   m = mem.run(f=F_0, f_000=xrs.f_000(), lam=0.01, resolution_factor=0.1,
-    lambda_increment_factor = 1.01, beta=0.5, verbose=True, 
+    lambda_increment_factor = 1.01, beta=0.5, verbose=True,
     start_map="min_shifted", max_iterations=800, detect_convergence=True)
   r_m, rho_m = map_1d(xrs=xrs, map_data=m.rho)
   sc = scale(rho_r, rho_m)
@@ -87,7 +88,7 @@ END
   assert cc > 0.999, R
   ### Exercise auto-incremented lam, 2
   m = mem.run(f=F_0, f_000=xrs.f_000(), lam=0.01, resolution_factor=0.1,
-    lambda_increment_factor = 1.01, beta=0.5, xray_structure=xrs, verbose=True, 
+    lambda_increment_factor = 1.01, beta=0.5, xray_structure=xrs, verbose=True,
     start_map="min_shifted", max_iterations=800, detect_convergence=True)
   r_m, rho_m = map_1d(xrs=xrs, map_data=m.rho)
   sc = scale(rho_r, rho_m)
