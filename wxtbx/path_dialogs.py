@@ -33,7 +33,10 @@ class manager (object) :
                    style=wx.OPEN,
                    wildcard="All files (*.*)|*.*",
                    current_file=None,
-                   multiple=False) :
+                   multiple=False,
+                   save=None) :
+    if (save) :
+      style = wx.SAVE
     default_dir = self.last_dir
     default_file = ""
     if (current_file is not None) and (current_file != "") :
