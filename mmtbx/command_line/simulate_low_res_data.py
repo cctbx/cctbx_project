@@ -212,6 +212,7 @@ class prepare_data (object) :
     adopt_init_args(self, locals())
     self.params = params
     self.out = out
+    self.pdb_hierarchy = None
     if (params.pdb_file is None) and (params.hkl_file is None) :
       raise Sorry("No PDB file specified.")
     if (params.generate_noise.add_noise) and (params.hkl_file is None) :
