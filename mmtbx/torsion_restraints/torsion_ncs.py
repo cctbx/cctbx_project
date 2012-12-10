@@ -833,12 +833,16 @@ class torsion_ncs(object):
             elif rotamer_state[j] is None:
               continue
           nonstandard_chi = False
+          is_proline = False
           chi_matching = True
           if len(rotamer_state) > 0:
             if rotamer_state[i][0] in ['OUTLIER', 'Cg_exo', 'Cg_endo']:
               nonstandard_chi = True
             elif rotamer_state[j][0] in ['OUTLIER', 'Cg_exo', 'Cg_endo']:
               nonstandard_chi = True
+            if rotamer_state[i][0] in ['Cg_exo', 'Cg_endo'] or \
+               rotamer_state[j][0] in ['Cg_exo', 'Cg_endo']:
+              is_proline = True
           if (chi_num is not None) and not nonstandard_chi:
             chi_counter = int(chi_num)
             while chi_counter > 0:
@@ -847,6 +851,9 @@ class torsion_ncs(object):
                 chi_matching = False
               chi_counter -= 1
           if not chi_matching:
+            continue
+          if is_proline and \
+             rotamer_state[i][0] != rotamer_state[j][0]:
             continue
           if i not in used:
             clusters[i] = []
@@ -1110,10 +1117,12 @@ class torsion_ncs(object):
             key = atom_group.atoms()[0].pdb_label_columns()[4:]+\
                   atom_group.atoms()[0].segid
             residue_iselection = atom_group.atoms().extract_i_seq()
+            residue_elements = atom_group.atoms().extract_element()
             sidechain_only_iselection = flex.size_t()
-            for i_seq in residue_iselection:
+            for i, i_seq in enumerate(residue_iselection):
               atom_name = self.name_hash[i_seq][0:4]
-              if atom_name not in [' N  ', ' CA ', ' C  ', ' O  ']:
+              if atom_name not in [' N  ', ' CA ', ' C  ', ' O  '] and \
+                 residue_elements[i].strip() not in ['H','D']:
                 sidechain_only_iselection.append(i_seq)
             sites_cart_residue = \
               sites_cart_moving.select(sidechain_only_iselection)
@@ -1331,6 +1340,28 @@ class torsion_ncs(object):
       two_mfo_dfc_map  = target_map_data,
       mfo_dfc_map      = residual_map_data)
 
+    sidechain_only_iselection = flex.size_t()
+    for i_seq in residue_iselection:
+      atom_name = self.name_hash[i_seq][0:4]
+      if atom_name not in [' N  ', ' CA ', ' C  ', ' O  ']:
+        sidechain_only_iselection.append(i_seq)
+    sites_cart_sidechain = \
+      sites_cart_moving.select(sidechain_only_iselection)
+    sites_frac_residue = self.unit_cell.fractionalize(sites_cart_sidechain)
+    sigma_cutoff = 1.0
+    sigma_residue = []
+    for rsf in sites_frac_residue:
+      if target_map_data.eight_point_interpolation(rsf) < sigma_cutoff:
+        sigma_residue.append(False)
+      else:
+        sigma_residue.append(True)
+    sigma_count_start = 0
+    for sigma_state in sigma_residue:
+      if sigma_state:
+        sigma_count_start += 1
+      else:
+        break
+
     for aa in axis_and_atoms_to_rotate:
       axis = aa[0]
       atoms = aa[1]
@@ -1433,6 +1464,33 @@ class torsion_ncs(object):
             #print >> self.log, "atom clash: ", self.name_hash[i]
             created_clash = True
       if created_clash:
+        sites_cart_moving.set_selected(
+          residue_iselection, sites_cart_residue_start)
+        xray_structure.set_sites_cart(sites_cart_moving)
+        return False
+
+      sidechain_only_iselection = flex.size_t()
+      for i_seq in residue_iselection:
+        atom_name = self.name_hash[i_seq][0:4]
+        if atom_name not in [' N  ', ' CA ', ' C  ', ' O  ']:
+          sidechain_only_iselection.append(i_seq)
+      sites_cart_sidechain = \
+        sites_cart_moving.select(sidechain_only_iselection)
+      sites_frac_residue = self.unit_cell.fractionalize(sites_cart_sidechain)
+      sigma_cutoff = 1.0
+      sigma_residue = []
+      for rsf in sites_frac_residue:
+        if target_map_data.eight_point_interpolation(rsf) < sigma_cutoff:
+          sigma_residue.append(False)
+        else:
+          sigma_residue.append(True)
+      sigma_count = 0
+      for sigma_state in sigma_residue:
+        if sigma_state:
+          sigma_count += 1
+        else:
+          break
+      if sigma_count < sigma_count_start:
         sites_cart_moving.set_selected(
           residue_iselection, sites_cart_residue_start)
         xray_structure.set_sites_cart(sites_cart_moving)
