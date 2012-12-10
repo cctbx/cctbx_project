@@ -1,5 +1,5 @@
 from __future__ import division
-import sys, os, time, math, random, cPickle, gzip
+import sys, os, time, math, random, cPickle, pickle, gzip
 from cctbx.array_family import flex
 from cctbx import adptbx
 from iotbx.option_parser import iotbx_option_parser
@@ -17,10 +17,13 @@ import iotbx.phil
 from libtbx import adopt_init_args
 import mmtbx.solvent.ensemble_ordered_solvent as ensemble_ordered_solvent
 from cctbx import miller
+from cctbx import maptbx
+from mmtbx import max_lik
 from mmtbx.refinement.ensemble_refinement import ensemble_utils
 import scitbx.math
 from cctbx import xray
 from cctbx import geometry_restraints
+import mmtbx.tls.tools as tls_tools
 import mmtbx.maps
 master_params = iotbx.phil.parse("""\
 ensemble_refinement {
@@ -614,7 +617,7 @@ class run_ensemble_refinement(object):
     self.setup_tls_selections(tls_group_selection_strings = self.params.tls_group_selections)
     self.fit_tls(input_model = self.model)
     self.assign_solvent_tls_groups()
-
+    
     #Set occupancies to 1.0
     if self.params.set_occupancies:
       utils.print_header("Set occupancies to 1.0", out = self.log)
@@ -658,7 +661,7 @@ class run_ensemble_refinement(object):
 
       xrs_previous = self.model.xray_structure.deep_copy_scatterers()
       assert self.fmodel_running.xray_structure is self.model.xray_structure
-
+      
       cd_manager = ensemble_cd.cartesian_dynamics(
         structure                   = self.model.xray_structure,
         restraints_manager          = self.model.restraints_manager,
@@ -788,7 +791,7 @@ class run_ensemble_refinement(object):
         elif self.macro_cycle < self.equilibrium_macro_cycles:
           if self.params.tx == 0:
             a_prime_wx = 0
-          else:
+          else: 
             wx_tx = min(self.time, self.params.tx)
             a_prime_wx = math.exp(-(self.cdp.time_step * self.cdp.number_of_steps)/wx_tx)
           wxray_t = self.wxray * max(0.01, self.cdp.temperature / self.er_data.non_solvent_temp)
@@ -983,7 +986,7 @@ class run_ensemble_refinement(object):
         verbose       = self.params.verbose,
         out           = self.log,
         optimize_mask = True)
-
+    
     #Fixes scale factor for rolling average #ESSENTIAL for LSQ
     if self.fix_scale == True:
       self.er_data.fix_scale_factor = self.fmodel_running.scale_k1()
@@ -1066,7 +1069,7 @@ class run_ensemble_refinement(object):
       chains_size_ok = flex.bool(chains_size > 63)
       if sum(chains_size) < 63:
         print >> self.log, '\nStructure contains less than 63 atoms (non H/D, non solvent)'
-        raise Sorry('Unable to perform TLS fitting')
+        print >> self.log, '\nUnable to perform TLS fitting, will use isotropic B-factor model'
       elif chains_size_ok.count(False) == 0:
         print >> self.log, '\nTLS selections:'
         print >> self.log, 'Chain, number atoms (non H/D)'
@@ -1145,93 +1148,129 @@ class run_ensemble_refinement(object):
     tls_selection_no_sol_hd_exclusions = self.tls_manager.tls_selections_no_sol_no_hd
     pre_fitted_mean = 999999.99
     #
-    for fit_cycle in xrange(self.params.max_ptls_cycles):
-      fit_tlsos = mmtbx.tls.tools.generate_tlsos(
-        selections     = tls_selection_no_sol_hd_exclusions,
-        xray_structure = model_copy.xray_structure,
-        value          = 0.0)
-      print >> self.log, '\nFitting cycle : ', fit_cycle+1
-      for rt,rl,rs in [[1,0,1],[1,1,1],[0,1,1],
-                       [1,0,0],[0,1,0],[0,0,1],[1,1,1],
-                       [0,0,1]]*10:
-        fit_tlsos = mmtbx.tls.tools.tls_from_uanisos(
-          xray_structure               = model_copy.xray_structure,
-          selections                   = tls_selection_no_sol_hd_exclusions,
-          tlsos_initial                = fit_tlsos,
-          number_of_macro_cycles       = 10,
-          max_iterations               = 100,
-          refine_T                     = rt,
-          refine_L                     = rl,
-          refine_S                     = rs,
-          enforce_positive_definite_TL = True,
-          verbose                      = -1,
-          out                          = self.log)
-      fitted_tls_xrs = model_copy.xray_structure.deep_copy_scatterers()
-      us_tls = mmtbx.tls.tools.u_cart_from_tls(
-             sites_cart = fitted_tls_xrs.sites_cart(),
-             selections = self.tls_manager.tls_selections_no_sol,
-             tlsos      = fit_tlsos)
-      fitted_tls_xrs.set_u_cart(us_tls)
-      fitted_tls_xrs.convert_to_isotropic()
-      fitted_biso = fitted_tls_xrs.scatterers().extract_u_iso()/adptbx.b_as_u(1)
-      mmtbx.tls.tools.show_tls(tlsos = fit_tlsos, out = self.log)
-      #For testing
-      if verbose:
-        pdb_hierarchy = model_copy.pdb_hierarchy
-        pdb_atoms = pdb_hierarchy().atoms()
-        not_h_selection = pdb_hierarchy().atom_selection_cache().selection('not element H')
-        ca_selection = pdb_hierarchy().atom_selection_cache().selection('name ca')
-        print >> self.log, '\nCA atoms (Name/res number/res name/chain/atom number/ref biso/fit biso::'
-        for i_seq, ca in enumerate(ca_selection):
-          if ca:
-            atom_info = pdb_atoms[i_seq].fetch_labels()
-            print >> self.log, atom_info.name, atom_info.resseq, atom_info.resname, atom_info.chain_id, " | ", i_seq, start_biso[i_seq], fitted_biso[i_seq]
+    
+    use_isotropic = False
+    for group in tls_selection_no_sol_hd_exclusions:
+      if group.size() < 63: 
+        use_isotropic = True
+      elif self.params.ptls * group.size() < 63:
+        self.params.ptls = 64.0 / group.size()
+        print >> self.log, '\nAutomatically increasing pTLS to : {0:5.3f}'.format(self.params.ptls)
+    if use_isotropic:
+      print >> self.log, '\nModel contains less than 63 non-solvent, non-H/D atoms'
+      print >> self.log, 'Insufficient to fit TLS model, using isotropic model'
+      iso_b  = self.fmodel_running.wilson_b() * self.params.ptls
+      episq = 8.0*(math.pi**2)
+      print >> self.log, 'Isotropic translation (B) : {0:5.3f}'.format(iso_b)
+      iso_u = iso_b / episq
+      print >> self.log, 'Isotropic translation (U) : {0:5.3f}'.format(iso_u)
+      fit_tlsos = []
+      for tls_group in self.tls_manager.tls_operators:
+        tls_t_new = (iso_u,
+                     iso_u,
+                     iso_u,
+                     0.0,
+                     0.0,
+                     0.0)
+        tls_l_new = (0.0,0.0,0.0,0.0,0.0,0.0)
+        tls_s_new = (0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0)
+        fit_tlsos.append(tls_tools.tlso(t      = tls_t_new,
+                                      l      = tls_l_new,
+                                      s      = tls_s_new,
+                                      origin = tls_group.origin))
+      self.tls_manager.tls_operators = fit_tlsos
+      for tls_group in self.tls_manager.tls_operators:
+        mmtbx.tls.tools.show_tls_one_group(tlso = tls_group,
+                                           out  = self.log)
 
-      delta_ref_fit = flex.abs(start_biso - fitted_biso)
-      hd_selection = model_copy.xray_structure.hd_selection()
-      delta_ref_fit_no_h = delta_ref_fit.select(~hd_selection)
-      delta_ref_fit_no_h_basic_stats = scitbx.math.basic_statistics(delta_ref_fit_no_h )
-      start_biso_no_hd = start_biso.select(~hd_selection)
-      fitted_biso_no_hd = fitted_biso.select(~hd_selection)
+    else:
+      for fit_cycle in xrange(self.params.max_ptls_cycles):
+        fit_tlsos = mmtbx.tls.tools.generate_tlsos(
+          selections     = tls_selection_no_sol_hd_exclusions,
+          xray_structure = model_copy.xray_structure,
+          value          = 0.0)
+        print >> self.log, '\nFitting cycle : ', fit_cycle+1
+        for rt,rl,rs in [[1,0,1],[1,1,1],[0,1,1],
+                         [1,0,0],[0,1,0],[0,0,1],[1,1,1],
+                         [0,0,1]]*10:
+          fit_tlsos = mmtbx.tls.tools.tls_from_uanisos(
+            xray_structure               = model_copy.xray_structure,
+            selections                   = tls_selection_no_sol_hd_exclusions,
+            tlsos_initial                = fit_tlsos,
+            number_of_macro_cycles       = 10,
+            max_iterations               = 100,
+            refine_T                     = rt,
+            refine_L                     = rl,
+            refine_S                     = rs,
+            enforce_positive_definite_TL = True,
+            verbose                      = -1,
+            out                          = self.log)
+        fitted_tls_xrs = model_copy.xray_structure.deep_copy_scatterers()
+        us_tls = mmtbx.tls.tools.u_cart_from_tls(
+               sites_cart = fitted_tls_xrs.sites_cart(),
+               selections = self.tls_manager.tls_selections_no_sol,
+               tlsos      = fit_tlsos)
+        fitted_tls_xrs.set_u_cart(us_tls)
+        fitted_tls_xrs.convert_to_isotropic()
+        fitted_biso = fitted_tls_xrs.scatterers().extract_u_iso()/adptbx.b_as_u(1)
+        mmtbx.tls.tools.show_tls(tlsos = fit_tlsos, out = self.log)
+        #For testing
+        if verbose:
+          pdb_hierarchy = model_copy.pdb_hierarchy
+          pdb_atoms = pdb_hierarchy().atoms()
+          not_h_selection = pdb_hierarchy().atom_selection_cache().selection('not element H')
+          ca_selection = pdb_hierarchy().atom_selection_cache().selection('name ca')
+          print >> self.log, '\nCA atoms (Name/res number/res name/chain/atom number/ref biso/fit biso::'
+          for i_seq, ca in enumerate(ca_selection):
+            if ca:
+              atom_info = pdb_atoms[i_seq].fetch_labels()
+              print >> self.log, atom_info.name, atom_info.resseq, atom_info.resname, atom_info.chain_id, " | ", i_seq, start_biso[i_seq], fitted_biso[i_seq]
 
-      if verbose:
-        print >> self.log, 'pTLS                                    : ', self.params.ptls
+        delta_ref_fit = flex.abs(start_biso - fitted_biso)
+        hd_selection = model_copy.xray_structure.hd_selection()
+        delta_ref_fit_no_h = delta_ref_fit.select(~hd_selection)
+        delta_ref_fit_no_h_basic_stats = scitbx.math.basic_statistics(delta_ref_fit_no_h )
+        start_biso_no_hd = start_biso.select(~hd_selection)
+        fitted_biso_no_hd = fitted_biso.select(~hd_selection)
+        
+        if verbose:
+          print >> self.log, 'pTLS                                    : ', self.params.ptls
 
-      sorted_delta_ref_fit_no_h = sorted(delta_ref_fit_no_h)
-      percentile_cutoff = sorted_delta_ref_fit_no_h[int(len(sorted_delta_ref_fit_no_h) * self.params.ptls)-1]
-      print >> self.log, 'Cutoff (<)                              : ', percentile_cutoff
-      print >> self.log, 'Number of atoms (non HD)                : ', delta_ref_fit_no_h.size()
-      delta_ref_fit_no_h_include = flex.bool(delta_ref_fit_no_h < percentile_cutoff)
-      print >> self.log, 'Number of atoms (non HD) used in fit    : ', delta_ref_fit_no_h_include.count(True)
-      print >> self.log, 'Percentage (non HD) used in fit         : ', delta_ref_fit_no_h_include.count(True) / delta_ref_fit_no_h.size()
+        sorted_delta_ref_fit_no_h = sorted(delta_ref_fit_no_h)
+        percentile_cutoff = sorted_delta_ref_fit_no_h[int(len(sorted_delta_ref_fit_no_h) * self.params.ptls)-1]
+        print >> self.log, 'Cutoff (<)                              : ', percentile_cutoff
+        print >> self.log, 'Number of atoms (non HD)                : ', delta_ref_fit_no_h.size()
+        delta_ref_fit_no_h_include = flex.bool(delta_ref_fit_no_h < percentile_cutoff)
+        print >> self.log, 'Number of atoms (non HD) used in fit    : ', delta_ref_fit_no_h_include.count(True)
+        print >> self.log, 'Percentage (non HD) used in fit         : ', delta_ref_fit_no_h_include.count(True) / delta_ref_fit_no_h.size()
 
-      # Convergence test
-      if fitted_biso_no_hd.min_max_mean().mean == pre_fitted_mean:
-        break
-      else:
-        pre_fitted_mean = fitted_biso_no_hd.min_max_mean().mean
+        # Convergence test
+        if fitted_biso_no_hd.min_max_mean().mean == pre_fitted_mean:
+          break
+        else:
+          pre_fitted_mean = fitted_biso_no_hd.min_max_mean().mean
 
-      # N.B. map on to full array including hydrogens for i_seqs
-      include_array = flex.bool(delta_ref_fit  < percentile_cutoff)
-      #
-      include_i_seq = []
-      assert delta_ref_fit.size() == model_copy.xray_structure.sites_cart().size()
-      assert include_array.size() == model_copy.xray_structure.sites_cart().size()
-      for i_seq, include_flag in enumerate(include_array):
-        if include_flag and not hd_selection[i_seq]:
-          include_i_seq.append(i_seq)
-      tls_selection_no_sol_hd_exclusions = []
-      for group in xrange(len(tls_selection_no_sol_hd)):
-        new_group = flex.size_t()
-        for x in tls_selection_no_sol_hd[group]:
-          if x in include_i_seq:
-            new_group.append(x)
-        if len(new_group) < 63:
-          raise Sorry("Number atoms in TLS too small; increase size of group or reduce cut-off")
-        print >> self.log, 'TLS group ', group+1, ' number atoms ', len(new_group)
-        tls_selection_no_sol_hd_exclusions.append(new_group)
+        # N.B. map on to full array including hydrogens for i_seqs
+        include_array = flex.bool(delta_ref_fit  < percentile_cutoff)
+        #
+        include_i_seq = []
+        assert delta_ref_fit.size() == model_copy.xray_structure.sites_cart().size()
+        assert include_array.size() == model_copy.xray_structure.sites_cart().size()
+        for i_seq, include_flag in enumerate(include_array):
+          if include_flag and not hd_selection[i_seq]:
+            include_i_seq.append(i_seq)
+        tls_selection_no_sol_hd_exclusions = []
+        for group in xrange(len(tls_selection_no_sol_hd)):
+          new_group = flex.size_t()
+          for x in tls_selection_no_sol_hd[group]:
+            if x in include_i_seq:
+              new_group.append(x)
+          if len(new_group) < 63:
+            raise Sorry("Number atoms in TLS too small; increase size of group or reduce cut-off")
+          print >> self.log, 'TLS group ', group+1, ' number atoms ', len(new_group)
+          tls_selection_no_sol_hd_exclusions.append(new_group)
 
-    #
+    ###
     print >> self.log, '\nFinal non-solvent b-factor model'
     model_copy.xray_structure.convert_to_anisotropic()
     us_tls = mmtbx.tls.tools.u_cart_from_tls(
@@ -1241,7 +1280,7 @@ class run_ensemble_refinement(object):
     model_copy.xray_structure.set_u_cart(us_tls)
     model_copy.show_adp_statistics(padded = True, out = self.log)
     del model_copy
-
+    
     #Update TLS params
     self.model.tls_groups.tlsos = fit_tlsos
     self.tls_manager.tls_operators = fit_tlsos
