@@ -19,8 +19,8 @@ namespace boost_python {
   void wrap_cablam_align_utils_proxies ()
   {
     using namespace boost::python;
-    def("get_similar_regions", get_similar_regions); 
-    
+    def("get_similar_regions", get_similar_regions);
+
     typedef index_mean i_m;
     typedef return_value_policy<return_by_value> rbv;
     class_<i_m>("index_mean", no_init)
@@ -35,15 +35,14 @@ namespace boost_python {
       .add_property("window_length", make_getter(&i_m::window_length, rbv()))
     ;
   }
-  
+
   void wrap_cablam_align_utils ()
   {
     wrap_cablam_align_utils_proxies();
   }
 
-}}} 
+}}}
 BOOST_PYTHON_MODULE(mmtbx_cablam_align_utils_ext)
 {
   mmtbx::cablam::boost_python::wrap_cablam_align_utils();
 }
-

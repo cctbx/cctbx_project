@@ -9,7 +9,7 @@
 
 
 namespace mmtbx { namespace cablam {
-  
+
   struct index_mean
   {
     // This is just a little object to hold inecies for simialr regions
@@ -19,7 +19,7 @@ namespace mmtbx { namespace cablam {
       int i_2,
       double mean,
       int window_length)
-    : 
+    :
       i_1(i_1),
       i_2(i_2),
       mean(mean),
@@ -30,24 +30,24 @@ namespace mmtbx { namespace cablam {
     double mean;
     int window_length;
   };
-  
+
   boost::python::list get_similar_regions(
     boost::python::list list_1,
     boost::python::list list_2,
     double threshold,
     int window_len)
   {
-    // This function returns a a list of index_mean objects, 
-    // if im = index_mean object then im has three attributes, im.i_1 is the 
-    // index of list 1, im.i_2 is the index of list 2, and im.mean is the mean 
+    // This function returns a a list of index_mean objects,
+    // if im = index_mean object then im has three attributes, im.i_1 is the
+    // index of list 1, im.i_2 is the index of list 2, and im.mean is the mean
     // of the diff_list as explained below.
-    // Only diff_lists with their mean <= threshold will be returned in the 
-    // return list. IF threshold !> 0 then returns the fragments with the 
+    // Only diff_lists with their mean <= threshold will be returned in the
+    // return list. IF threshold !> 0 then returns the fragments with the
     // lowest diff_list mean
     boost::python::ssize_t i_1, i_2, i_w;
     boost::python::list return_list;
     double smallest_mean = 9999;
-    // 
+    //
     for(i_1=0;i_1<boost::python::len(list_1) - window_len + 1;i_1++) {
       // get window
       boost::python::list window;// ,w;
@@ -82,11 +82,11 @@ namespace mmtbx { namespace cablam {
         assert(boost::python::len(window) == boost::python::len(diff_list));
         // get the average of the diff_list
         double sum = 0;
-        for(int i_d=0;i_d<boost::python::len(diff_list);i_d++) 
+        for(int i_d=0;i_d<boost::python::len(diff_list);i_d++)
           sum = sum + boost::python::extract<double>(diff_list[i_d]);
         double average;
         average = sum/boost::python::len(diff_list);
-        if(threshold > 0 and average <= threshold) 
+        if(threshold > 0 and average <= threshold)
           return_list.append(index_mean(i_1, i_2, average, window_len));
         else if(!threshold > 0) {
           // return_list.append(index_mean(i_1, i_2, average));
@@ -101,7 +101,6 @@ namespace mmtbx { namespace cablam {
     }
     return return_list;
   }
-  
-  
-}}
 
+
+}}
