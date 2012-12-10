@@ -384,16 +384,7 @@ def map_coefficients_from_fmodel (fmodel,
   import mmtbx
   from cctbx import miller
   mnm = mmtbx.map_names(map_name_string = params.map_type)
-  if (mnm.phaser_sad_llg) :
-    if (not fmodel.f_obs().anomalous_flag()) :
-      return None # XXX like anomalous map, fail gracefully
-    elif (pdb_hierarchy is None) :
-      raise RuntimeError("pdb_hierarchy must not be None when a Phaser SAD "+
-        "LLG map is requested.")
-    return map_tools.get_phaser_sad_llg_map_coefficients(
-      fmodel=fmodel,
-      pdb_hierarchy=pdb_hierarchy)
-  elif(mnm.k==0 and abs(mnm.n)==1):
+  if(mnm.k==0 and abs(mnm.n)==1):
     return compute_f_calc(fmodel, params)
   #XXXsave_k_part, save_b_part = None, None
   #XXXif(mnm.k is not None and abs(mnm.k) == abs(mnm.n) and fmodel.k_part()!=0):
@@ -411,7 +402,8 @@ def map_coefficients_from_fmodel (fmodel,
       isotropize         = params.isotropize,
       exclude_free_r_reflections=params.exclude_free_r_reflections,
       ncs_average=getattr(params, "ncs_average", False),
-      post_processing_callback=post_processing_callback)
+      post_processing_callback=post_processing_callback,
+      pdb_hierarchy=pdb_hierarchy)
     if (coeffs is None) : return None
     if(coeffs.anomalous_flag() and not
        mmtbx.map_names(params.map_type).anomalous):

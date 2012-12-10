@@ -119,7 +119,8 @@ class electron_density_map(object):
                        ncs_average=False,
                        isotropize=True,
                        sharp=False,
-                       post_processing_callback=None):
+                       post_processing_callback=None,
+                       pdb_hierarchy=None): # XXX required for map_type=llg
     map_name_manager = mmtbx.map_names(map_name_string = map_type)
     # Special case #1: anomalous map
     if(map_name_manager.anomalous):
@@ -129,7 +130,18 @@ class electron_density_map(object):
         return miller.array(miller_set = self.anom_diff,
                             data       = self.anom_diff.data()/(2j))
       else: return None
-    # Special case #2: Fcalc map
+    # Special case #2: Phaser SAD LLG map
+    elif (map_name_manager.phaser_sad_llg) :
+      if (pdb_hierarchy is None) :
+        raise RuntimeError("pdb_hierarchy must not be None when a Phaser SAD "+
+          "LLG map is requested.")
+      if (self.anom_diff is not None) :
+        return get_phaser_sad_llg_map_coefficients(
+          fmodel=self.fmodel,
+          pdb_hierarchy=pdb_hierarchy)
+      else :
+        return None
+    # Special case #3: Fcalc map
     mnm = mmtbx.map_names(map_name_string = map_type)
     if(mnm.k==0 and abs(mnm.n)==1):
       if(fill_missing):
