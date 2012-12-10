@@ -55,7 +55,8 @@ require_valence = False
 ambiguous_valence_cutoff = 0.5
   .type = float
   .help = "Cutoff to uniquely select one of many metals by comparing its observed and expected valence"
-
+d_min_strict_valence = 1.5
+  .type = float
 water {
   min_2fofc_level = 1.8
     .type = float
@@ -79,6 +80,8 @@ phaser {
   distance_cutoff_same_site = 0.5
     .type = float
   fpp_ratio_min = 0.4
+    .type = float
+  fpp_ratio_max = 1.08
     .type = float
   use_llg_anom_map = False
     .type = bool
@@ -211,6 +214,10 @@ class Manager (object):
       else :
         anom_map_coeffs = self.fmodel.map_coefficients(map_type = "anom")
       self.map_anom = fft_map(anom_map_coeffs)
+
+  def get_strict_valence_flag (self) :
+    d_min = self.fmodel.f_obs().d_min()
+    return (d_min < self.params.d_min_strict_valence)
 
   def find_nearby_atoms (self, i_seq, distance_cutoff = 3.0,
       filter_by_bonding = True):
@@ -504,7 +511,8 @@ class Manager (object):
         self.wavelength).fdp()
       if (fpp_expected != 0) :
         fpp_ratio = fpp / fpp_expected
-        if (fpp_ratio > 0.4) and (fpp_ratio < 1.05) :
+        if ((fpp_ratio > self.params.phaser.fpp_ratio_min) and
+            (fpp_ratio < self.params.phaser.fpp_ratio_max)) :
           good_fpp = True
         else :
           return False
@@ -653,7 +661,7 @@ class Manager (object):
     #print list(pai.eigensystem().values())
     map_variance = self.get_map_sphere_variance(atom.xyz,
       radius = self.params.chloride.radius)
-    map_variance.show(prefix = "  ")
+    #map_variance.show(prefix = "  ")
     good_map_falloff = False
     if ((map_variance.mean < 1.0) and
         (map_variance.standard_deviation < 0.4)) : # XXX very arbitrary
@@ -756,7 +764,7 @@ class Manager (object):
           continue
         else :
           raise Sorry("Element '%s' not supported!" % symbol)
-      if (nuc_phosphate_site) and (not symbol in ["MG", "CA"]) :
+      if (nuc_phosphate_site) and (not symbol in ["MG", "CA", "MN"]) :
         continue
       atom_number = sasaki.table(symbol.upper()).atomic_number()
       if (((looks_like_water) and (atom_number < 12)) or
@@ -827,36 +835,31 @@ class Manager (object):
           print filtered_candidates
           print compatible
 
-    if not no_final:
-      if len(reasonable) == 1:
-        final_choice = reasonable[0][0]
-    else:
-      if reasonable:
-        # XXX: Should we be printing here? How should we let the user know why
-        # they're seeing info about ions they didn't specify?
-        print >> out, ""
-        print >> out, "Found potential ion%s outside of specified set:" % \
-          ("s" if len(reasonable) > 1 else "")
+    if (len(reasonable) == 1) :
+      final_choice = reasonable[0][0]
 
-    if not reasonable and not auto_candidates:
+    if (not reasonable) and (not auto_candidates):
       # Couldn't find anything from what the user suggested, try the other
       # default candidates and just let the user know about them
-      return self.analyze_water(i_seq = i_seq,
-                                show_only_map_outliers = show_only_map_outliers,
-                                debug = debug,
-                                no_final = True,
-                                out = out)
-    else:
-      return water_result(
-        atom_props = atom_props,
-        filtered_candidates = filtered_candidates,
-        matching_candidates = reasonable,
-        nuc_phosphate_site = nuc_phosphate_site,
-        looks_like_water = looks_like_water,
-        looks_like_halide = looks_like_halide,
-        ambiguous_valence_cutoff = self.params.ambiguous_valence_cutoff,
-        valence_used = valence_used,
-        final_choice = final_choice)
+      result = self.analyze_water(
+        i_seq = i_seq,
+        show_only_map_outliers = show_only_map_outliers,
+        debug = debug,
+        no_final = True,
+        out = out)
+      if (result.final_choice is not None) :
+        return result
+    return water_result(
+      atom_props = atom_props,
+      filtered_candidates = filtered_candidates,
+      matching_candidates = reasonable,
+      nuc_phosphate_site = nuc_phosphate_site,
+      looks_like_water = looks_like_water,
+      looks_like_halide = looks_like_halide,
+      ambiguous_valence_cutoff = self.params.ambiguous_valence_cutoff,
+      valence_used = valence_used,
+      final_choice = final_choice,
+      no_final = no_final)
 
   def analyze_waters (self, out = sys.stdout, debug = True,
       show_only_map_outliers = True, candidates = Auto):
@@ -963,7 +966,8 @@ class water_result:
       looks_like_halide,
       ambiguous_valence_cutoff,
       valence_used,
-      final_choice) :
+      final_choice,
+      no_final=False) :
     adopt_init_args(self, locals())
 
   def show_summary (self, out = None, debug = False) :
@@ -971,6 +975,9 @@ class water_result:
     results = self.matching_candidates
     if (len(results) > 0) :
       self.atom_props.show_properties(identity = "HOH", out = out)
+      if (self.no_final) :
+        print >> out, "Found potential ion%s outside of specified set:" % \
+          ("s" if len(results) > 1 else "")
       if (self.nuc_phosphate_site) :
         print >> out, "  appears to be nucleotide coordination site"
       if (self.final_choice is not None) :
@@ -1038,6 +1045,8 @@ class AtomProperties (object):
     self.atom = atom
     self.i_seq = i_seq
     self.resname = atom.parent().resname
+    self.d_min = manager.fmodel.f_obs().d_min()
+    self.strict_valence = manager.get_strict_valence_flag()
 
     # Grab all the atoms within 3.5 Angstroms
     nearby_atoms = manager.find_nearby_atoms(
@@ -1134,7 +1143,8 @@ class AtomProperties (object):
     # if the atom is clearly not a water, optionally relax some rules.  this
     # will be more sensitive for transition metals, without finding a lot of
     # spurious Mg/Na sites.
-    strict_rules = require_valence or self.is_correctly_identified("HOH")
+    strict_rules = require_valence or self.is_correctly_identified("HOH") or \
+      self.strict_valence
 
     # Check for all non-overlapping atoms within 3 A of the metal
     coord_atoms = [pair for index, pair in enumerate(self.nearby_atoms)
@@ -1225,7 +1235,7 @@ class AtomProperties (object):
       else :
         ignored.add(self.BAD_VECTORS)
 
-    if (self.valence_sum[identity] < ion_params.cvbs_expected * 0.75 or
+    if (self.valence_sum[identity] < ion_params.cvbs_expected * 0.6 or
         self.valence_sum[identity] > ion_params.cvbs_expected * 1.25):
       inaccuracies.add(self.VERY_BAD_VALENCES)
     else:
