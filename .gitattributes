@@ -1153,7 +1153,11 @@ mmtbx/bulk_solvent/scaler.py -text
 mmtbx/bulk_solvent/tst_aniso_scaler.py -text
 mmtbx/bulk_solvent/tst_bulk_solvent_and_scaling.py -text
 mmtbx/bulk_solvent/tst_scaler.py -text
+mmtbx/cablam/SConscript -text
 mmtbx/cablam/__init__.py -text
+mmtbx/cablam/boost_python/cablam_align_utils_ext.cpp -text
+mmtbx/cablam/cablam_align.py -text
+mmtbx/cablam/cablam_align_utils.h -text
 mmtbx/cablam/cablam_math.py -text
 mmtbx/cablam/cablam_res.py -text
 mmtbx/cablam/cablam_training.py -text
