@@ -45,6 +45,16 @@ class _(boost.python.injector, scattering_type_registry):
       prefix = ""
     print >> out
 
+  def warning_if_any(self,std_lbl):
+    if( self.last_table()=="neutron" ):
+      from cctbx.eltbx.neutron import neutron_news_1992_table
+      scattering_info = neutron_news_1992_table(std_lbl, True)
+      b = scattering_info.bound_coh_scatt_length()
+      if(b.imag != 0.0):
+        return " WARNING! anomalous neutron scattering ("+str(b.imag) \
+            +") is ignored!"
+    return ""
+
   def show(self,
         header="Number of scattering types:",
         show_sf0=True,
@@ -84,7 +94,7 @@ class _(boost.python.injector, scattering_type_registry):
           else:
             line += " %7s" % str(gaussian.n_terms())
             if (gaussian.c() != 0): line += "+c"
-        print >> out, line.rstrip()
+        print >> out, line.rstrip(), self.warning_if_any(t)
       if (show_sf0):
         print >> out, prefix \
           + "  sf(0) = scattering factor at diffraction angle 0."

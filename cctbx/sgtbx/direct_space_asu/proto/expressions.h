@@ -24,8 +24,16 @@ namespace cctbx { namespace sgtbx { namespace asu {
     void print(std::ostream &os ) const
     {
       lhs.print(os);
-      os << "[";
+      os << " [";
       rhs.print(os);
+      os << "]";
+    }
+
+    void print_as_xyz(std::ostream &os ) const
+    {
+      lhs.print_as_xyz(os);
+      os << " [";
+      rhs.print_as_xyz(os);
       os << "]";
     }
 
@@ -120,6 +128,15 @@ namespace cctbx { namespace sgtbx { namespace asu {
         lhs.print(os);
         os << " & ";
         rhs.print(os);
+        os << ")";
+    }
+
+    void print_as_xyz(std::ostream &os) const
+    {
+        os << "(";
+        lhs.print_as_xyz(os);
+        os << " & ";
+        rhs.print_as_xyz(os);
         os << ")";
     }
 
@@ -321,6 +338,27 @@ namespace cctbx { namespace sgtbx { namespace asu {
     }
   };
 
+  template< typename T, bool Break = false >
+    struct print_lines_as_xyz
+  {
+    static void execute(const T &expr, std::ostream &os)
+    {
+      expr.print_as_xyz(os);
+    }
+  };
+
+
+  template< typename TL, typename TR >
+    struct print_lines_as_xyz< and_expression<TL,TR>, true >
+  {
+    static void execute(const and_expression<TL,TR> &expr, std::ostream &os)
+    {
+      print_lines_as_xyz<TL,true>::execute(expr.lhs,os);
+      os << "\n & ";
+      print_lines_as_xyz<TR>::execute(expr.rhs,os);
+    }
+  };
+
 
   template<typename TL, typename TR>
     class or_expression
@@ -341,6 +379,15 @@ namespace cctbx { namespace sgtbx { namespace asu {
       lhs.print(os);
       os << " | ";
       rhs.print(os);
+      os << ")";
+    }
+
+    void print_as_xyz(std::ostream &os) const
+    {
+      os << "(";
+      lhs.print_as_xyz(os);
+      os << " | ";
+      rhs.print_as_xyz(os);
       os << ")";
     }
 

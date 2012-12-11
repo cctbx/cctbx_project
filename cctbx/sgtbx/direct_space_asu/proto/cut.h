@@ -79,6 +79,9 @@ namespace cctbx { namespace sgtbx { namespace asu {
     bool inclusive;
 
     void print(std::ostream &os ) const;
+
+    void print_as_xyz(std::ostream &ostr ) const;
+
     std::string as_string() const
     {
       std::stringstream buf;

@@ -32,6 +32,11 @@ namespace cctbx { namespace sgtbx { namespace asu {
       print_lines<T,true>::execute(obj,os);
     }
 
+    void print_as_xyz(std::ostream &os) const
+    {
+      print_lines_as_xyz<T,true>::execute(obj,os);
+    }
+
     bool is_inside(const rvector3_t &p) const
     {
       return obj.is_inside(p);
