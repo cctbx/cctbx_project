@@ -1,0 +1,411 @@
+
+\documentclass{article}
+%[11pt,letterpaper,oneside]{article}
+\usepackage{cite}
+\usepackage{geometry}
+\usepackage{fancyvrb}
+\usepackage{authblk}
+
+\title{An introduction to crystallographic programming using CCTBX. I: Fundamental concepts and core functionality.}
+\author[1]{Nathaniel Echols} % \thanks{A.A@university.edu}}
+\affil[1]{Lawrence Berkeley National Laboratory}
+\date{December 2012}
+\renewcommand\Authands{ and }
+\geometry{top=1in, bottom=1in, left=1in, right=1in}
+\RecustomVerbatimEnvironment{Verbatim}{Verbatim}{xleftmargin=5mm}
+
+\begin{document}
+\maketitle
+
+
+\section{scitbx - general-purpose scientific programming infrastructure}
+
+
+The {\tt scitbx} module contains many of the core library routines required for
+any computational science project: extensible, reference-counted C++ arrays
+({\tt scitbx.array\_family}), gradient minimization ({\tt scitbx.lbfgs}), Fast
+Fourier Transforms ({\tt scitbx.fftpack}), matrix manipulation
+({\tt scitbx.matrix}, among others), and a variety of general-purpose
+mathematical functions (primarily in {\tt scitbx.math}).
+
+
+\subsection{scitbx.matrix - pure-Python matrix manipulations}
+
+This module is somewhat unique in that the core component is written to be more
+or less a standalone implementation with no external dependencies (although as
+will be shown later, it also integrates well with the C++ array family).  At
+the core is the rec class, a generic two-dimensional matrix.  In practice the
+matrix values are supplied as a linear list, with the dimensions passed as a
+separate parameter.  Most of the basic arithmetic operators have been
+overloaded, e.g.:
+
+\begin{Verbatim}
+>>> from scitbx.matrix import rec
+>>> A = rec(elems=(-1,0,0,0,-1,0,0,0,-1), n=(3,3))
+>>> B = rec(elems=(3,4,5), n=(3,1))
+>>> C = A * B
+>>> print C
+matrix.rec(elems=(-3, -4, -5), n=(3,1))
+>>> abs(C)
+7.0710678118654755
+\end{Verbatim}
+
+
+Here we have applied a rotation matrix to invert a vector (or coordinate) in
+three-dimensional space, and calculated the vector length.  Standard linear
+algebra methods are also available, e.g.:
+
+\begin{Verbatim}
+>>> from scitbx.matrix import rec
+>>> A = rec((1,1,1), (3,1))
+>>> B = rec((2,1,1), (3,1))
+>>> A.cross(B)
+matrix.rec(elems=(0, 1, -1), n=(3,1))
+>>> A.dot(B)
+4
+\end{Verbatim}
+
+Because the truly linear matrices are so common, two subclasses of {\tt rec},
+{\tt col} and {\tt row}, are also provided:
+
+\begin{Verbatim}
+>>> from scitbx.matrix import col, row
+>>> v1 = col((4,5,6))
+>>> print v1
+matrix.rec(elems=(4, 5, 6), n=(3,1))
+>>> v2 = row((4,5,6))
+>>> print v2
+matrix.rec(elems=(4, 5, 6), n=(1,3))
+\end{Verbatim}
+
+
+In practice, when dealing with three-dimensional coordinates the {\tt col}
+class is the prefered type.
+
+
+One other class, {\tt scitbx.matrix.rt}, deserves special mention, for it
+combines rotation and translation matrices:
+
+\begin{Verbatim}
+>>> from scitbx.array_family import rt, col
+>>> xyz = col((3,4,5))
+>>> m = rt(((-1,0,0,0,-1,0,0,0,-1), (7,8,9)))
+>>> m * xyz
+matrix.rec(elems=(4, 4, 4), n=(3,1))
+\end{Verbatim}
+
+
+The multiplication operator here applies the rotation and translation
+sequentially, and is equivalent to this alternate form:
+
+\begin{Verbatim}
+>>> m.r * xyz + m.t
+matrix.rec(elems=(4, 4, 4), n=(3,1))
+\end{Verbatim}
+
+
+We shall not dwell on the many uses of this module, but two utility functions
+deserve special mention.  First, the calculation of dihedral angles:
+
+\begin{Verbatim}
+>>> dihedral_angle([(-1,-1,1),(0,0,0),(1,0,0),(1,1,1)], deg=True)
+-90.0
+\end{Verbatim}
+
+
+Secondly, rotation of coordinates about an arbitrary axis (which, unlike most
+of the functions described here, operators on simple tuple objects):
+
+TODO
+
+
+
+\subsection{{\tt scitbx.array\_family} - reference-counted C++ arrays}
+
+The array family lies at the core of all numerical routines in CCTBX, and is
+designed to make the transition between Python and C++ code as seamless as
+possible.  The Python API mimics that of the built-in list type, with many
+extensions specific to the types involved.  At the core of the array family is
+the {\tt flex} submodule, which includes most of the array types:
+
+
+\begin{Verbatim}
+>>> from scitbx.array_family import flex
+>>> I = flex.int([1,2,3,4])
+>>> I.append(5)
+>>> I.extend(flex.int([6]))
+>>> len(I)
+6
+>>> del I[0]
+>>> print list(I)
+[2, 3, 4, 5, 6]
+>>> print list(I[2:4])
+[4, 5]
+>>> I.all_ne(1)
+True
+>>> print list(I.as_double())
+[2.0, 3.0, 4.0, 5.0, 6.0]
+>>> J = flex.int(5, 4)
+>>> list(J)
+[4, 4, 4, 4, 4]
+\end{Verbatim}
+
+
+For some common operations, the {\tt flex} module also provides fast C++
+implementations:
+
+
+\begin{Verbatim}
+>>> flex.max(I)
+6
+>>> D = I.as_double()
+>>> flex.mean(D)
+4.0
+>>> flex.sum(I)
+20
+>>> list(flex.exp(D))
+[7.38905609893065, 20.085536923187668, 54.598150033144236, 148.4131591025766,
+ 403.4287934927351]
+\end{Verbatim}
+
+In addition to the int type, the built-in arrays also include (among others)
+bool, float, double (seen above as the return value of {\tt I.as\_double()}),
+{\tt size\_t}, (unsigned integer), {\tt std\_string}, {\tt complex\_double}
+(used to store combined amplitudes and phases), and {\tt vec3\_double} (for
+3D coordinates).  Except for the
+single-precision {\tt flex.float}, all of these types are used extensively
+throughout CCTBX.
+
+
+A particularly powerful feature is the ability to select a subset of array
+values, using either {\tt flex.bool} or {\tt flex.size\_t} to indicate the
+elements desired:
+
+
+\begin{Verbatim}
+>>> from scitbx.array_family import flex
+>>> I = flex.int(range(10,30))
+>>> sel = flex.bool()
+>>> for x in range(20) :
+...   if (x \% 4 == 0) :
+...     sel.append(True)
+...   else :
+...     sel.append(False)
+... 
+>>> J = I.select(sel)
+>>> type(J)
+<class 'scitbx_array_family_flex_ext.int'>
+>>> list(J)
+[10, 14, 18, 22, 26]
+>>> inverse_sel = ~sel
+>>> inverse_isel = inverse_sel.iselection()
+>>> type(inverse_isel)
+<class 'scitbx_array_family_flex_ext.size_t'>
+>>> list(inverse_isel)
+[1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15, 17, 18, 19]
+>>> K = I.select(inverse_isel)
+[11, 12, 13, 15, 16, 17, 19, 20, 21, 23, 24, 25, 27, 28, 29]
+\end{Verbatim}
+
+
+Here we have generated a boolean selection of the same size as the target
+array, used this to pull out a subset of array values (still as a
+{\tt flex.int}
+object), obtained the inverse boolean selection, converted this to selected
+array indices instead of boolean flags, and performed another selection using
+the indices.  In most situations the boolean flags and the enumerated indices
+can be used interchangeably depending on which is most convenient.  For
+instance, setting selected elements to desired values:
+
+\begin{Verbatim}
+>>> I.set_selected(sel, 999)
+<scitbx_array_family_flex_ext.int object at 0x1029eafc8>
+>>> list(I)  
+[999, 11, 12, 13, 999, 15, 16, 17, 999, 19, 20, 21, 999, 23, 24, 25, 999, 27, 28, 29]
+>>> print (I.set_selected(inv_isel, -1))
+[999, -1, -1, -1, 999, -1, -1, -1, 999, -1, -1, -1, 999, -1, -1, -1, 999, -1, -1, -1]
+>>> J = flex.int(range(10,20))
+>>> K = flex.int(range(35, 40))
+>>> isel = flex.size_t([5,6,7,8,9])
+>>> J.set_selected(isel, K)
+[10, 11, 12, 13, 14, 35, 36, 37, 38, 39]
+\end{Verbatim}
+
+(Note that in this example, {\tt array.set\_selected()} returns an array -
+however, this is the same array modified in place.)
+
+
+Obviously the selections (and other similar operations) will only work if the
+values are compatible; failing to ensure appropriate selections results in
+errors:
+
+\begin{Verbatim}
+>>> from scitbx.array_family import flex
+>>> I = flex.int(range(10))
+>>> sel = flex.bool([ True for x in range(9) ])
+>>> I.select(sel)
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+RuntimeError: scitbx Internal Error:
+  /Users/nat/phenix/src/cctbx_project/scitbx/array_family/selections.h(44):
+  SCITBX_ASSERT(flags.size() == self.size()) failure.
+>>> isel = flex.size_t([1,5,13])
+>>> I.select(isel)
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+RuntimeError: scitbx Internal Error:
+  /Users/nat/phenix/src/cctbx_project/scitbx/array_family/selections.h(21):
+  SCITBX_ASSERT(indices[i] < self.size()) failure.
+\end{Verbatim}
+
+In the first case we have attempted to use an improperly sized flex.bool array
+to denote the selection; in the second, a {\tt flex.size\_t} array containing
+elements with a value that overflows the bounds of the target array.
+
+
+TODO: something about {\tt vec3\_double}
+TODO: flex.grid and multi-dimensional arrays
+
+
+\subsection{scitbx.math}
+
+
+TODO: anything else from scitbx?
+
+
+\section{{\tt cctbx} - crystallography primitives}
+
+
+\subsection{Crystal symmetry: cctbx.sgtbx, cctbx.uctbx, and cctbx.crystal}
+
+
+\subsection{{\tt cctbx.miller} - storage and manipulation of reciprocal-space
+data}
+
+The “Miller array” (ref) is a container for any reciprocal-space data - this
+can include amplitudes or intensities, complex structure factors or map
+coefficients, phase angles or probability coefficients, R-free flags, anomalous
+differences, weights (such as the figure-of-merit), or any metadata associated
+with the reflections (such as redundancies from merging).  The implementation
+draws heavily upon {\tt scitbx.array\_family}; in addition,
+{\tt cctbx.array\_family.flex} introduces two new array types:
+
+\begin{itemize}
+  \item {\tt miller\_index}, whose individual elements h, k, and l (“Miller
+    indices”) are integers, and appear in Python as 3-element tuples.
+  \item {\tt hendrickson\_lattman}, used to store phase probability
+    distributions (HLA, HLB, HLC, and HLD).  The calculation and use of
+    Hendrickson-Lattman coefficients is beyond the scope of this introduction,
+    but is important for macromolecular crystallography.
+\end{itemize}
+
+Note that {\tt cctbx.array\_family} extends {\tt scitbx.array\_family} and
+imports the entire namespace, so only one module needs to be imported:
+
+\begin{Verbatim}
+>>> from cctbx.array_family import flex
+>>> data = flex.double()
+\end{Verbatim}
+
+
+The Miller array implementation is essentially split into three layers:
+\begin{itemize}
+  \item the {\tt cctbx.crystal.symmetry} class, of which the Miller array is a subclass
+  \item the “Miller set” ({\tt cctbx.miller.set}), which encompasses all functions related to the indices, without regards to associated data
+  \item the array itself ({\tt cctbx.miller.array}), which adds a data array
+    (of any type available in {\tt cctbx.array\_family}), and optional sigmas
+    (experimental errors)
+\end{itemize}
+
+You can generate a Miller set for a specified crystal form easily using the
+{\tt build\_set} utility function:
+
+\begin{Verbatim}
+>>> from cctbx import miller
+>>> from cctbx import crystal
+>>> symm = crystal.symmetry(space_group_symbol=”P21”,
+...   unit_cell=(10,20,30,90,105,90))
+>>> basic_set = miller.build_set(
+...   crystal_symmetry=symm,
+...   anomalous_flag=True,
+...   d_min=1.5)
+>>> print len(basic_set.indices())
+3580
+>>> print basic_set.indices()[0]
+(-6, 0, 1)
+>>> basic_set.d_max_min()
+(28.977774788672043, 1.5013402468593862)
+>>> basic_set.is_unique_set_under_symmetry()
+True
+>>> basic_set.is_in_asu()
+True
+>>> backup_set = basic_set.deep_copy()
+>>> from cctbx import sgtbx
+>>> p1 = sgtbx.space_group_info(“P1”)
+>>> p1_set = basic_set.customized_copy(space_group_info=p1)
+>>> p1_set.completeness()
+0.4998603741971516
+>>> p1_missing = p1.complete_set().lone_set(other=basic_set)
+\end{Verbatim}
+
+
+Here we have generated a complete (anomalous) set in P21, switched to the P1 space group, and generated another set containing Miller indices missing from the expanded P1 set.  An example of how the set operations are used in practice requires introducing the simplest type of Miller array, the R-free flags, which are essentially a boolean array specifying reflections to ignore in calculation of the optimization target and gradients.  Starting from our P21 set, we can generate R-free flags directly:
+
+\begin{Verbatim}
+>>> flags = basic_set.generate_r_free_flags(fraction=0.1,
+...   use_lattice_symmetry=True)
+>>> type(flags.data())
+<class 'scitbx_array_family_flex_ext.bool'>
+>>> flags.data().count(True)
+370
+\end{Verbatim}
+
+
+The data() method of the Miller array returns the underlying array family
+object.  In this example, the actual number of True values will vary slightly
+due to stochastic effects, but the count should by default be approximately
+10\% of total reflections.  A more complex situation arises in the scenario
+where we have an existing set of flags, and want to re-use them for
+higher-resolution data while keeping the fraction approximately the same:
+
+\begin{Verbatim}
+>>> hires_set = miller.build_set(
+...   crystal_symmetry=basic_set.crystal_symmetry(),
+...   anomalous_flag=True,
+...   d_min=1.0)
+>>> print hires_set.indices().size()
+12094
+>>> new_set = hires_set.lone_set(other=basic_set)
+>>> new_set.indices().size()
+8514
+>>> new_set.d_max_min()
+(1.4992743670439634, 1.0000430794014756)
+>>> new_flags = new_set.generate_r_free_flags(fraction=0.1,
+...   use_lattice_symmetry=True)
+>>> hires_flags = flags.concatenate(other=new_flags)
+>>> hires_flags.indices().size()
+12094
+>>> hires_flags.data().count(True)
+1222
+>>> flags1, flags2 = hires_flags.common_sets(other=flags)
+>>> assert flags1.data().all_eq(flags2.data())
+\end{Verbatim}
+
+Here we have extended the resolution from 1.5 to 1.0Å, resulting in the
+addition of more than 8000 Miller indices for which no R-free flags are
+defined.  We then generate new flags for these indices alone, selected by the
+{\tt lone\_set} method, and combine them with the existing flags using
+{\tt array.concatenate()}.
+
+
+
+
+\subsection{cctbx.xray}
+
+
+\section{libtbx - programming utilities in pure Python}
+
+
+\subsection{Building a command-line user interface with libtbx.phil}
+
+\end{document}
