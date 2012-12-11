@@ -67,12 +67,14 @@ class command_stream(object):
     """, re.X | re.I)
 
   _atom_name_pat = re.compile("""
-    ([a-z] [^_]{0,3})
-    (?: _ \$ (\d+) )?
+    (?P<name>[a-z] [^_]{0,3})
+    (?: _ \$ (?P<symmetry>\d+) )?
+    (?: _ (?P<resnum>\d+))?
+    (?: _ (?P<plusminus>[\+\-]))?
     |
-    \$ ([a-z]{1,2})
+    \$ (?P<element>[a-z]{1,2})
     |
-    (> | <)
+    (?P<range> > | <)
     """, re.X | re.I)
 
   symm_space = re.compile("""
@@ -188,18 +190,25 @@ class command_stream(object):
           m = self._atom_name_pat.match(arg)
           if m is None:
             raise shelx_error("illegal argument '%s'", i, arg)
-          name, symmetry = m.group(1,2)
+          name, symmetry, resnum, plus_minus = m.group(
+            'name', 'symmetry', 'resnum', 'plusminus')
           if name is not None:
+            if resnum is not None: resnum = int(resnum)
             if symmetry is not None: symmetry = int(symmetry)
-            toks.append((tokens.atom_tok, name, symmetry))
+            toks.append(tokens.atomname_token(name=name,
+                                              symmetry=symmetry,
+                                              residue_number=resnum,
+                                              plus_minus=plus_minus))
             continue
-          element = m.group(3)
+          element, resnum = m.group('element', 'resnum')
           if element is not None:
-            toks.append((tokens.element_tok, element))
+            toks.append(tokens.element_token(element=element,
+                                             residue_number=resnum))
             continue
-          if arg == '>':
+
+          if m.group('range') == '>':
             toks.append((tokens.forward_range_tok,))
-          else:
+          elif m.group('range') == '<':
             toks.append((tokens.backward_range_tok,))
     if cmd_residue:
       return (cmd, cmd_residue, tuple(toks))

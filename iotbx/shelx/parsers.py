@@ -14,6 +14,7 @@ from cctbx import adptbx
 import scitbx.math
 
 from iotbx.shelx.errors import error as shelx_error
+from iotbx.shelx import tokens
 import iotbx.constrained_parameters
 
 class parser(object):
@@ -282,11 +283,16 @@ class atom_parser(parser, variable_decoder):
 
   overall_scale=None
   scatterer_label_to_index = {}
+  residue_number_to_class_mapping = {}
+  residue_class_to_number_mappings = {}
 
   def __init__(self, command_stream, builder=None, strictly_shelxl=True):
     parser.__init__(self, command_stream, builder)
     self.free_variable = None
     self.strictly_shelxl = strictly_shelxl
+    self.scatterer_label_to_index.clear()
+    self.residue_class_to_number_mappings.clear()
+    self.residue_number_to_class_mapping.clear()
 
   def filtered_commands(self):
     self.label_for_sfac = None
@@ -294,6 +300,7 @@ class atom_parser(parser, variable_decoder):
     conformer_index = 0
     sym_excl_index = 0
     part_sof = None
+    current_residue = None
     for command, line in self.command_stream:
       self.line = line
       cmd, args = command[0], command[-1]
@@ -322,11 +329,23 @@ class atom_parser(parser, variable_decoder):
           part_sof = self.decode_one_variable(args[1])
         if part_number > 0: conformer_index = part_number
         elif part_number < 0: sym_excl_index = abs(part_number)
+      elif cmd == "RESI":
+        current_residue = args
+        self.residue_number_to_class_mapping.setdefault(args[0], args[1])
+        self.residue_class_to_number_mappings.setdefault(args[1], [])
+        self.residue_class_to_number_mappings[args[1]].append(args[0])
       elif cmd == '__ATOM__':
         if self.label_for_sfac is None:
           raise shelx_error("missing sfac", self.line)
         scatterer, behaviour_of_variable = self.lex_scatterer(
           args, scatterer_index)
+        name = args[0]
+        if current_residue is None:
+          self.scatterer_label_to_index.setdefault(
+          (None, name.lower()), scatterer_index)
+        else:
+          self.scatterer_label_to_index.setdefault(
+            (current_residue[0], name.lower()), scatterer_index)
         if (conformer_index or sym_excl_index) and part_sof:
           scatterer.occupancy, behaviour_of_variable[3] = part_sof
         self.builder.add_scatterer(scatterer, behaviour_of_variable,
@@ -345,7 +364,6 @@ class atom_parser(parser, variable_decoder):
   def lex_scatterer(self, args, scatterer_index):
     cpar = iotbx.constrained_parameters
     name = args[0]
-    self.scatterer_label_to_index.setdefault(name.lower(), scatterer_index)
     n = int(args[1])
     n_vars = len(args) - 2
     if n_vars == 5 or (not self.strictly_shelxl and n_vars == 6):
@@ -470,131 +488,166 @@ class restraint_parser(atom_parser):
     self.symmetry_operations = {}
     for command, line in self.command_stream:
       cmd, args = command[0], command[-1]
+      if len(command) == 3:
+        cmd_residue = command[1]
+      else:
+        cmd_residue = None
       if cmd in self.restraint_types:
-        self.cache_restraint(cmd, line, args)
+        self.cache_restraint(cmd, cmd_residue, line, args)
       elif cmd == 'EQIV':
         self.symmetry_operations.setdefault(args[0], args[1])
       else:
         yield command, line
     self.parse_restraints()
 
-  def cache_restraint(self, cmd, line, args):
+  def cache_restraint(self, cmd, cmd_residue, line, args):
+    from libtbx.containers import OrderedDict
     if cmd not in self.cached_restraints.keys():
-      self.cached_restraints.setdefault(cmd, {})
-    self.cached_restraints[cmd].setdefault(line, args)
+      self.cached_restraints.setdefault(cmd, OrderedDict())
+    self.cached_restraints[cmd].setdefault(line, (cmd_residue, args))
 
   def parse_restraints(self):
-    for cmd, restraints in self.cached_restraints.items():
+    def i_seqs_from_atoms(atoms, residue_number):
+      i_seqs = []
+      for atom in atoms:
+        if atom.name == 'LAST':
+          # XXX need better way to handle > and < ranges
+          i_seqs.extend(range(
+            i_seqs[-1]+1, sorted(self.scatterer_label_to_index.values())[-1]+1))
+          continue
+        atom_resnum = atom.residue_number
+        if atom.plus_minus is not None:
+          assert atom.residue_number is None
+          if atom.plus_minus == '+':
+            atom_resnum = residue_number + 1
+          else:
+            atom_resnum = residue_number - 1
+        if atom_resnum is None:
+          atom_resnum = residue_number
+        i_seq = self.scatterer_label_to_index.get(
+          (atom_resnum, atom.name.lower()))
+        if i_seq is None:
+          return None
+        assert i_seq is not None
+        i_seqs.append(i_seq)
+      return i_seqs
+    for cmd, restraints in sorted(self.cached_restraints.items()):
       for line, args in restraints.iteritems():
-        try:
-          restraint_type = self.restraint_types.get(cmd)
-          if cmd in ('DFIX','DANG'):
-            div, mod = divmod(len(args), 2)
-            distance_ideal = float(args[0])
-            if mod == 0:
-              sigma = float(args[1])
-              atoms = args[2:]
-            else:
-              if cmd == 'DFIX': sigma = 0.02
-              else: sigma = 0.04
-              atoms = args[1:]
-            assert len(atoms) > 1
-            weight = 1/(sigma**2)
-            for i in range(div-(1-mod)):
-              atom_pair = atoms[i*2:(i+1)*2]
-              i_seqs = [self.scatterer_label_to_index[
-                atom[1].lower()] for atom in atom_pair]
-              sym_ops = [
-                self.symmetry_operations.get(atom[2]) for atom in atom_pair]
+        cmd_residue = args[0]
+        if cmd_residue is None:
+          residues = [None]
+        else:
+          tok = cmd_residue[0]
+          if tok == tokens.residue_number_tok:
+            residues = [cmd_residue[1]]
+          elif tok == tokens.residue_class_tok:
+            residues = self.residue_class_to_number_mappings[cmd_residue[1]]
+          elif tok == tokens.all_residues_tok:
+            residues = self.residue_number_to_class_mapping.keys()
+        args = args[1]
+        floats = []
+        atoms = []
+        elements = []
+        # it seems that shelxl will accept the restraints and target value/sigma
+        # in any order - we will interpret any floating point values as
+        # target value (if applicable), sigma, in that order. Any other
+        # arguments given are atoms
+        for arg in args:
+          try:
+            floats.append(float(arg))
+          except TypeError, e:
+            if isinstance(arg, tokens.atomname_token):
+              atoms.append(arg)
+            elif isinstance(arg, tokens.element_token):
+              elements.append(arg)
+        for residue_number in residues:
+          try:
+            i_seqs = i_seqs_from_atoms(atoms, residue_number)
+            if i_seqs is None: continue
+            restraint_type = self.restraint_types.get(cmd)
+            if cmd in ('DFIX','DANG'):
+              assert len(floats) in (1, 2)
+              distance_ideal = floats[0]
+              if len(floats) == 2:
+                sigma = floats[1]
+              else:
+                if cmd == 'DFIX': sigma = 0.02
+                else: sigma = 0.04
+              assert len(atoms) > 1
+              weight = 1/(sigma**2)
+              assert len(atoms) % 2 == 0
+              for i in range(len(atoms)//2):
+                atom_pair = atoms[i*2:(i+1)*2]
+                i_seq_pair = i_seqs[i*2:(i+1)*2]
+                sym_ops = [
+                  self.symmetry_operations.get(atom.symmetry) for atom in atom_pair]
+                self.builder.process_restraint(restraint_type,
+                                               distance_ideal=distance_ideal,
+                                               weight=weight,
+                                               i_seqs=i_seq_pair,
+                                               sym_ops=sym_ops)
+            if cmd == 'SADI':
+              assert len(floats) <= 1
+              if len(floats):
+                sigma = floats[0]
+              else:
+                sigma = 0.02
+              i_seq_pairs = []
+              sym_ops = []
+              for i in range(len(atoms)//2):
+                atom_pair = atoms[i*2:(i+1)*2]
+                i_seq_pairs.append(i_seqs[i*2:(i+1)*2])
+                sym_ops.append(
+                  [self.symmetry_operations.get(atom.symmetry) for atom in atom_pair])
+              weights = [1/(sigma**2)]*len(i_seq_pairs)
               self.builder.process_restraint(restraint_type,
-                                             distance_ideal=distance_ideal,
-                                             weight=weight,
+                                             weights=weights,
+                                             i_seqs=i_seq_pairs,
+                                             sym_ops=sym_ops)
+            elif cmd == 'FLAT':
+              assert len(floats) <= 1
+              if len(floats) == 1:
+                sigma = floats[0]
+              else:
+                sigma = 0.1
+              assert len(atoms) > 3
+              sym_ops = [
+                self.symmetry_operations.get(atom.symmetry) for atom in atoms]
+              weights = [1/(sigma**2)]*len(i_seqs)
+              self.builder.process_restraint(restraint_type,
+                                             weights=weights,
                                              i_seqs=i_seqs,
                                              sym_ops=sym_ops)
-          if cmd == 'SADI':
-            assert len(args) > 3
-            div, mod = divmod(len(args), 2)
-            value = args[0]
-            if mod == 1:
-              sigma = args[0]
-              atom_pairs = args[1:]
+            elif cmd == 'CHIV':
+              pass
+            elif cmd in ('DELU', 'ISOR', 'SIMU'):
+              assert len(floats) <= 3
+              s1 = s2 = dmax = None
+              if len(floats) > 0:
+                s1 = floats[0]
+              if len(floats) > 1:
+                s2 = floats[1]
+              if len(floats) > 2:
+                dmax = floats[2]
+              if len(i_seqs) == 0:
+                i_seqs = None
+              if s1 is None:
+                if cmd == 'SIMU': s1 = 0.04
+                elif cmd == 'DELU': s1 = 0.01
+                else: s1 = 0.1
+              if cmd == 'DELU':
+                self.builder.process_restraint(restraint_type,
+                                               sigma_12=s1,
+                                               sigma_13=s2,
+                                               i_seqs=i_seqs)
+              else:
+                self.builder.process_restraint(restraint_type,
+                                               sigma=s1,
+                                               sigma_terminal=s2,
+                                               i_seqs=i_seqs)
             else:
-              sigma = 0.02
-              atom_pairs = args
-            i_seqs = []
-            sym_ops = []
-            for i in range(div):
-              atom_pair = atom_pairs[i*2:(i+1)*2]
-              i_seqs.append([self.scatterer_label_to_index[
-                atom[1].lower()] for atom in atom_pair])
-              sym_ops.append(
-                [self.symmetry_operations.get(atom[2]) for atom in atom_pair])
-            weights = [1/(sigma**2)]*len(i_seqs)
-            self.builder.process_restraint(restraint_type,
-                                           weights=weights,
-                                           i_seqs=i_seqs,
-                                           sym_ops=sym_ops)
-          elif cmd == 'FLAT':
-            try:
-              sigma = float(args[0])
-              atoms = args[1:]
-            except TypeError:
-              sigma = 0.1
-              atoms = args
-            assert len(atoms) > 3
-            i_seqs = [self.scatterer_label_to_index[i[1].lower()] for i in atoms]
-            sym_ops = [self.symmetry_operations.get(i) for i in atoms]
-            weights = [1/(sigma**2)]*len(i_seqs)
-            self.builder.process_restraint(restraint_type,
-                                           weights=weights,
-                                           i_seqs=i_seqs,
-                                           sym_ops=sym_ops)
-          elif cmd == 'CHIV':
-            pass
-          elif cmd in ('DELU', 'ISOR', 'SIMU'):
-            atoms = None
-            s1 = s2 = dmax = None
-            if len(args) > 0:
-              try:
-                s1 = float(args[0])
-              except TypeError:
-                atoms = args
-              if not atoms and len(args) > 1:
-                try:
-                  s2 = float(args[1])
-                except TypeError:
-                  atoms = args[1:]
-                if not atoms and len(args) > 2:
-                  if cmd != 'SIMU':
-                    atoms = args[2:]
-                  else:
-                    try:
-                      dmax = float(args[2])
-                    except TypeError:
-                      if not atoms:
-                        atoms = args[2:]
-                    if not atoms and len(args) > 3:
-                      atoms = args[3:]
-            if atoms:
-              i_seqs = [
-                self.scatterer_label_to_index[atom[1].lower()] for atom in atoms]
-            else:
-              i_seqs = None
-            if s1 is None:
-              if cmd == 'SIMU': s1 = 0.04
-              elif cmd == 'DELU': s1 = 0.01
-              else: s1 = 0.1
-            if cmd == 'DELU':
-              self.builder.process_restraint(restraint_type,
-                                             sigma_12=s1,
-                                             sigma_13=s2,
-                                             i_seqs=i_seqs)
-            else:
-              self.builder.process_restraint(restraint_type,
-                                             sigma=s1,
-                                             sigma_terminal=s2,
-                                             i_seqs=i_seqs)
-          else:
-            pass
-        except (TypeError, AssertionError):
-          raise shelx_error("Invalid %s instruction" %cmd, line)
+              pass
+          except (TypeError, AssertionError):
+            raise shelx_error("Invalid %s instruction" %cmd, line)
+
+
