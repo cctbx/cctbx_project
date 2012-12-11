@@ -237,10 +237,16 @@ class torsion_ncs(object):
             new_ncs_groups += "    selection = %s\n" % chain
           if self.b_factor_weight is not None:
             new_ncs_groups += \
-              "    b_factor_weight = %f\n" % self.b_factor_weight
+              "    b_factor_weight = %.1f\n" % self.b_factor_weight
+          else:
+            new_ncs_groups += \
+              "    b_factor_weight = None\n"
           if self.coordinate_sigma is not None:
             new_ncs_groups += \
-              "    coordinate_sigma = %f\n" % self.coordinate_sigma
+              "    coordinate_sigma = %.1f\n" % self.coordinate_sigma
+          else:
+            new_ncs_groups += \
+              "    coordinate_sigma = None\n"
           new_ncs_groups += "   }\n"
         new_ncs_groups += "  }\n }\n}"
       self.found_ncs = new_ncs_groups
