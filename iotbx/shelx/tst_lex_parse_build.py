@@ -39,7 +39,7 @@ def exercise_lexing():
     cmd, line = i.next()
     assert cmd == ('L.S.', (4,))
     cmd, line = i.next()
-    assert cmd == ('BOND', ((tokens.element_tok, 'H'),))
+    assert cmd == ('BOND', (tokens.element_token(element='H'),))
     cmd, line = i.next() # FMAP
     cmd, line = i.next() # PLAN
     cmd, line = i.next() # WGHT
@@ -58,14 +58,14 @@ def exercise_lexing():
     cmd, line = i.next()
     assert cmd == ('EQIV', (1, '1-X, -Y, -Z'))
     cmd, line = i.next()
-    assert cmd == ('CONF', ( (tokens.atom_tok, 'C4', None),
-                             (tokens.atom_tok, 'N', None),
-                             (tokens.atom_tok, 'H', None),
-                             (tokens.atom_tok, 'O2', 1) ) )
+    assert cmd == ('CONF', (tokens.atomname_token(name='C4'),
+                            tokens.atomname_token(name='N'),
+                            tokens.atomname_token(name='H'),
+                            tokens.atomname_token(name='O2', symmetry=1) ) )
     cmd, line = i.next()
     assert cmd == ('DFIX', (tokens.residue_number_tok, 1),
-                   (1.5, (tokens.atom_tok, 'C2', None),
-                    (tokens.atom_tok, 'C3', None)))
+                   (1.5, tokens.atomname_token(name='C2'),
+                    tokens.atomname_token(name='C3')))
     cmd, line = i.next()
     assert cmd == ('__ATOM__',
                    ('O2', 3, 0.362893, 0.160589, -0.035913, 11,
@@ -752,6 +752,76 @@ def exercise_restraint_parsing():
     assert approx_equal(shared_isotropic_adp_proxy[i].weight,
                         expected_weights[i])
 
+def exercise_residues():
+  proxies = parse_restraints(ins_residues)
+  planarity_proxies = proxies['planarity']
+  assert planarity_proxies.size() == 2
+  p = planarity_proxies[1]
+  assert approx_equal(p.i_seqs, [3, 1, 4, 2, 5])
+  assert approx_equal(p.weights, [4]*len(p.weights))
+  p = planarity_proxies[0]
+  assert approx_equal(p.i_seqs, [15, 16, 17, 18, 12, 13, 14, 11, 10, 9, 8])
+  assert approx_equal(p.weights, [100]*len(p.weights))
+  assert p.sym_ops is None
+  bond_proxies = proxies['bond']
+  assert len(bond_proxies) == 10
+  p = bond_proxies[0]
+  assert p.distance_ideal == 2.24
+  assert p.i_seqs == (9, 11)
+  assert approx_equal(p.weight, 100)
+  p = bond_proxies[2]
+  assert p.distance_ideal == 2.425
+  assert p.i_seqs == (1, 4)
+  assert approx_equal(p.weight, 1479.2899408284025)
+  p = bond_proxies[3]
+  assert p.distance_ideal == 2.250
+  assert p.i_seqs == (3, 4)
+  assert approx_equal(p.weight, 3460.207612456747)
+  p = bond_proxies[6]
+  assert p.i_seqs == (2, 5)
+  assert approx_equal(p.distance_ideal, 2.435)
+  assert approx_equal(p.weight, 625.0)
+  p = bond_proxies[9]
+  assert p.i_seqs == (2, 4)
+  assert approx_equal(p.distance_ideal, 1.329)
+  assert approx_equal(p.weight, 2500.0)
+  adp_sim_proxies = proxies['adp_similarity']
+  assert len(adp_sim_proxies) == 19
+  p = adp_sim_proxies[0]
+  assert p.i_seqs == (0, 1)
+  assert approx_equal(p.weight, 25)
+  rigid_bond = proxies['rigid_bond']
+  assert rigid_bond.size() == 43
+  p = rigid_bond[1]
+  assert p.i_seqs == (0, 2)
+  assert approx_equal(p.weight, 10000)
+  isot = proxies['isotropic_adp']
+  assert isot.size() == 4
+  p = isot[0]
+  assert p.i_seqs == (19,)
+  assert approx_equal(p.weight, 25)
+  p = isot[-1]
+  assert p.i_seqs == (22,)
+  assert approx_equal(p.weight, 25)
+
+
+
+
+def parse_restraints(ins_name):
+  import smtbx.refinement.restraints
+  builder = iotbx.builders.restrained_crystal_structure_builder()
+  stream = shelx.command_stream(file=cStringIO.StringIO(ins_name))
+  l_cs = shelx.crystal_symmetry_parser(stream, builder)
+  l_afix = shelx.afix_parser(l_cs.filtered_commands(), builder)
+  l_xs = shelx.atom_parser(l_afix.filtered_commands(), builder)
+  l_restraints = shelx.restraint_parser(
+    l_xs.filtered_commands(), builder)
+  l_restraints.parse()
+  builder = l_restraints.builder
+  assert isinstance(builder.restraints_manager,
+                    smtbx.refinement.restraints.manager)
+  return builder.proxies()
+
 def shelx_u_cif(unit_cell, u_star):
   u_cif = adptbx.u_star_as_u_cif(unit_cell, u_star)
   u_cif = u_cif[0:3] + (u_cif[-1], u_cif[-2], u_cif[-3])
@@ -770,6 +840,7 @@ def run():
     exercise_afix_parsing()
   exercise_xray_structure_parsing()
   exercise_crystal_symmetry_parsing()
+  exercise_residues()
   print 'OK'
 
 ins_mundane_tiny = (
@@ -1247,6 +1318,103 @@ Q3     1   0.620800  1.025100  0.211700 11.000000  0.050000      0.46
 HKLF 4
 END
 """
+
+ins_residues = """\
+TITL 3odl
+CELL  1.00000   59.140   59.140  186.740  90.00  90.00 120.00  ! lambda & Cell
+ZERR        6    0.059    0.059    0.187   0.00   0.00   0.00  !Z & cell esds
+
+LATT -1     !P, non centrosymmetric
+SYMM -Y, X-Y, 2/3+Z
+SYMM -X+Y, -X, 1/3+Z
+SYMM Y, X, -Z
+SYMM X-Y, -Y, 1/3-Z
+SYMM -X, -X+Y, 2/3-Z
+SFAC  C    H     N    O    S  P   NA   !scattering factor types and
+UNIT  9264.63 13529.27 2472 6437.14 76.02 12   6   !unit cell contents
+
+DELU $C_* $N_* $O_* $S_* $P_*     ! Rigid bond restraints -ignored for iso
+SIMU 0.1 $C_* $N_* $O_* $S_* $P_* ! Similar U restraints - iso or anis.
+ISOR 0.1 O_1001 > LAST            ! Approximate iso restraints for waters;
+
+FLAT_FAD    AN1 AC2 AN3 AC4 AC5 AC6 AN6 AN7 AC8 AN9 AC1*
+DFIX_FAD   1.362   AN1  AC6
+DFIX_FAD   1.368   AN1  AC2
+DANG_FAD 2.240 0.10 AN9  AN7
+DANG_FAD 2.196 0.10 AN9  AC5
+DANG_8 2.425 0.026 CA N_+
+DANG_9 2.250 0.017 O_- N
+DFIX_* 1.329 C_- N
+DANG_* 2.425 CA_- N
+DANG_* 2.250 O_- N
+DANG_* 2.435 C_- CA
+FLAT_8 0.5 O CA N_+ C CA_+
+
+RESI    8   SER
+N     3   -0.575274    0.141191    0.113592    11.00000    0.33808    0.75677 =
+         1.11905   -0.27101    0.19945   -0.04973
+CA    1   -0.551908    0.139429    0.115198    11.00000    0.48936    0.25522 =
+         0.84266   -0.05734    0.13568   -0.12284
+C     1   -0.525230    0.163359    0.114621    11.00000    0.36302    0.24661 =
+         0.62351    0.04491    0.09919   -0.02604
+O     4   -0.505790    0.161790    0.116768    11.00000    0.52134    0.27541 =
+         0.56288    0.00938    0.07008    0.11741
+
+RESI    9   LYS
+N     3   -0.520798    0.186053    0.111792    11.00000    0.25817    0.26426 =
+         0.24642   -0.03698    0.01196   -0.03745
+CA    1   -0.494101    0.207878    0.111725    11.00000    0.16273    0.21215 =
+         0.21593   -0.04270    0.01910    0.02736
+C     1   -0.487071    0.220051    0.119169    11.00000    0.13133    0.19993 =
+         0.20434   -0.03059    0.03663    0.03709
+O     4   -0.503787    0.219454    0.123261    11.00000    0.14634    0.36185 =
+         0.24067   -0.07422    0.04195    0.06255
+
+RESI  415   FAD
+
+AC1*  1    0.301769    0.460821    0.091581    11.00000    0.17934    0.39185 =
+         0.16499   -0.02542   -0.00370    0.18623
+AN9   3    0.329069    0.474690    0.094290    11.00000    0.16649    0.37106 =
+         0.19437    0.02459    0.01637    0.16403
+AC8   1    0.338965    0.493725    0.099532    11.00000    0.19389    0.42740 =
+         0.20073   -0.01332   -0.03583    0.17001
+AN7   3    0.363614    0.500512    0.100736    11.00000    0.18827    0.48315 =
+         0.29375    0.00036   -0.03961    0.17524
+AC5   1    0.369875    0.488232    0.095578    11.00000    0.20021    0.53248 =
+         0.30473    0.04033   -0.01535    0.22652
+AC6   1    0.394249    0.488600    0.094022    11.00000    0.20036    0.55609 =
+         0.36639    0.15609    0.05588    0.23824
+AN6   3    0.416744    0.505330    0.096997    11.00000    0.20718    0.56035 =
+         0.55246    0.16445    0.00471    0.22417
+AN1   3    0.392969    0.470604    0.089321    11.00000    0.25898    0.60811 =
+         0.36195    0.17095    0.09827    0.30193
+AC2   1    0.370280    0.453766    0.086063    11.00000    0.28075    0.52743 =
+         0.37940    0.12160    0.10576    0.31394
+AN3   3    0.347491    0.452243    0.087106    11.00000    0.24288    0.43252 =
+         0.31698    0.06838    0.08486    0.24807
+AC4   1    0.348480    0.469070    0.091969    11.00000    0.20789    0.48822 =
+         0.24296    0.02751    0.01321    0.23800
+
+
+RESI 1001   HOH
+O     4   -0.446670    0.031582    0.038635    11.00000    0.16482    0.14614 =
+         0.17802   -0.00150   -0.02394    0.01386
+
+RESI 1002   HOH
+O     4   -0.368462    0.037104    0.034398    11.00000    0.17923    0.12876 =
+         0.18971   -0.03786   -0.01430    0.04562
+
+RESI 1003   HOH
+O     4   -0.422007    0.007732    0.032882    11.00000    0.19693    0.17138 =
+         0.21503   -0.04115    0.01271    0.01223
+
+RESI 1004   HOH
+O     4   -0.350514    0.045091    0.020274    11.00000    0.17129    0.15651 =
+         0.19856   -0.03983    0.01063    0.03671
+
+
+"""
+
 
 if __name__ == '__main__':
   run()
