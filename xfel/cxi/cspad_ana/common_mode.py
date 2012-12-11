@@ -321,7 +321,8 @@ class common_mode_correction(mod_event_info):
 
           # XXX Make up section mask for the emission detector.  Needs
           # to be checked!
-          if len(self.sections) == 1:
+          import _pdsdata
+          if len(self.sections) == 1 and type(self.config) == _pdsdata.cspad2x2.ConfigV1:
             s_mask = self.config.roiMask()
           else:
             s_mask = self.config.roiMask(q)
