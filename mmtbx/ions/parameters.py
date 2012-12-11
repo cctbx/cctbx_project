@@ -92,7 +92,9 @@ class server (object) :
           allowed_coordinating_residues=cif_param_as_list(
             p['_lib_elems.allowed_coordinating_residues'][i_elem]),
           allowed_geometries=cif_param_as_list(
-            p['_lib_elems.allowed_geometries'][i_elem]))
+            p['_lib_elems.allowed_geometries'][i_elem]),
+          allowed_backbone_atoms=cif_param_as_list(
+            p['_lib_elems.allowed_backbone_atoms'][i_elem]))
         self._metal_params[symbol] = params
         return params
     return None
@@ -131,7 +133,8 @@ class server (object) :
       if valence == 0:
         if ((donor.element not in ["H", "C", "AX"]) and
             (not self.is_supported_donor(donor.element))) :
-          print "Unknown interaction: %s %s" % (ion.element, donor.element)
+          pass
+          #print "Unknown interaction: %s %s" % (ion.element, donor.element)
       else:
         vectors += vector / abs(vector) * valence,
 

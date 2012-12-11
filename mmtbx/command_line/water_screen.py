@@ -62,6 +62,7 @@ Full parameters:
     verbose = params.debug,
     nproc = params.nproc,
     log=out)
+  manager.show_current_scattering_statistics(out=out)
   candidates = Auto
   if (params.elements is not Auto) and (params.elements is not None) :
     from cctbx.eltbx import chemical_elements
