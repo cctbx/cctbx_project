@@ -172,7 +172,8 @@ def cbcaa(config, sections):
 
     # XXX Make up section mask for the emission detector.  Needs to be
     # checked!
-    if len(sections) == 1:
+    import _pdsdata
+    if len(sections) == 1 and type(config) == _pdsdata.cspad2x2.ConfigV1:
       s_mask = config.roiMask()
     else:
       s_mask = config.roiMask(q)
@@ -753,7 +754,10 @@ def getConfig(address, env):
     if device == 'Cspad':
       return env.getConfig(xtc.TypeId.Type.Id_CspadConfig, address)
     if device == 'Cspad2x2':
-      return env.getConfig(xtc.TypeId.Type.Id_Cspad2x2Config, address)
+      config = env.getConfig(xtc.TypeId.Type.Id_Cspad2x2Config, address)
+      if config is None:
+        config = env.getConfig(xtc.TypeId.Type.Id_CspadConfig, address)
+      return config
   return None
 
 
