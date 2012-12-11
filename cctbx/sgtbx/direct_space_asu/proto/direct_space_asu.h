@@ -62,6 +62,11 @@ namespace cctbx { namespace sgtbx { namespace asu {
       faces->print(os);
     }
 
+    void print_faces_as_xyz(std::ostream &os) const
+    {
+      this->faces->print_as_xyz(os);
+    }
+
     //! Removes subexpressions from every face
     void shape_only()
     {

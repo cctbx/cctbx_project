@@ -34,6 +34,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
     virtual void get_nth_plane(size_type i, cut &plane) const = 0;
     virtual double get_tolerance(const scitbx::af::double3 &tol3d) const = 0;
     virtual void print(std::ostream &os) const = 0;
+    virtual void print_as_xyz(std::ostream &os) const = 0;
 
     // DO NOT USE!!!
     virtual pointer add_face(const cut &face) const = 0;

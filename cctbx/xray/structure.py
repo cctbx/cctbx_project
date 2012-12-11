@@ -1293,9 +1293,10 @@ class structure(crystal.special_position_settings):
             elif (table == "neutron"):
               scattering_info = neutron_news_1992_table(std_lbl, True)
               b = scattering_info.bound_coh_scatt_length()
-              if(b.imag != 0.0):
-                raise RuntimeError("Non-zero imaginary component in neutron"
-                  " scattering length is not supported.")
+              # TODO:
+              # b.imag is ignored here. It depends on wavelength, so values
+              # from neutron_news_1992 table are not very useful.
+              # Warning is printed by scattering_registry::show.
               val = eltbx.xray_scattering.gaussian(b.real)
             else:
               # TODO mrt: this may lead to a mix of xray/neutron dictionary
