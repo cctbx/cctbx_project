@@ -62,6 +62,7 @@ def find_and_build_ions (
       log=out)
     manager.update_maps()
   make_sub_header("Analyzing water molecules", out=out)
+  manager.show_current_scattering_statistics(out=out)
   elements = params.elements
   # XXX somehow comma-separation of phil strings fields doesn't work
   if (isinstance(elements, list)) and (len(elements) == 1) :

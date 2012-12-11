@@ -31,17 +31,19 @@ _lib_elems.cvbs_upper
 _lib_elems.allowed_coordinating_atoms
 _lib_elems.allowed_coordinating_residues
 _lib_elems.allowed_geometries
-NA  1  0.4  4  8  1  0.8  1  1.2    O,N    .                            .
-MG  2  0.4  4  6  1  1.8  2  2.2    O      SER,THR,ASP,ASN,GLU,GLN,HIS  octahedral
-K   1  0.4  4  8  1  0.8  1  1.2    O      .                            .
-CA  2  0.4  5  8  1  1.8  2  2.2    O      SER,THR,ASP,ASN,GLU,GLN,TYR  .
-MN  2  0.4  4  6  1  1.8  2  2.2    O,N    SER,THR,ASP,GLU,ASN,GLN,HIS  .
+_lib_elems.allowed_backbone_atoms
+NA  1  0.4  4  8  1  0.8  1  1.2    O,N    .                            .           O
+MG  2  0.4  4  6  1  1.8  2  2.2    O      SER,THR,ASP,ASN,GLU,GLN,HIS  octahedral  O
+K   1  0.4  4  8  1  0.8  1  1.2    O      .                            .           O
+CA  2  0.4  5  8  1  1.8  2  2.2    O      SER,THR,ASP,ASN,GLU,GLN,TYR  .           O
+MN  2  0.4  4  6  1  1.8  2  2.2    O,N    SER,THR,ASP,GLU,ASN,GLN,HIS  .           .
 FE  2  0.4  5  6  1  1.8  2  2.2    O,N,S  CYS,ASP,GLU,HIS,TYR          .
-CO  2  0.4  5  6  1  1.8  2  2.2    O,N    CYS,ASP,GLU,HIS              .
-CU  2  0.4  3  4  1  1.8  2  2.2    O,N,S  CYS,MET,HIS                  tetrahedral
-NI  2  0.4  4  6  1  1.8  2  2.2    O,N,S  CYS,ASP,GLU,HIS              tetrahedral
-ZN  2  0.4  4  6  1  1.8  2  2.4    O,N,S  CYS,ASP,GLU,HIS              tetrahedral
-CD  2  0.4  3  6  1  1.8  2  2.2    O,N,S  .                            .
+    .
+CO  2  0.4  5  6  1  1.8  2  2.2    O,N    CYS,ASP,GLU,HIS              .           .
+CU  2  0.4  3  4  1  1.8  2  2.2    O,N,S  CYS,MET,HIS                  tetrahedral .
+NI  2  0.4  4  6  1  1.8  2  2.2    O,N,S  CYS,ASP,GLU,HIS              tetrahedral .
+ZN  2  0.4  4  6  1  1.8  2  2.4    O,N,S  CYS,ASP,GLU,HIS              tetrahedral .
+CD  2  0.4  3  6  1  1.8  2  2.2    O,N,S  .                            .           .
 #
 loop_
 _lib_valence.atom_symbol
