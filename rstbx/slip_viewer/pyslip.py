@@ -1375,7 +1375,11 @@ class PySlip(_BufferedCanvas):
 
         # draw polygons on map/view
         if map_rel:
-            dc = wx.GCDC(dc)            # allow transparent colours
+            # Draw points on map/view, using transparency if implemented.
+            try:
+                dc = wx.GCDC(dc)
+            except NotImplementedError:
+                pass
             for (p, place, width, colour, closed,
                  filled, fillcolour, x_off, y_off, pdata) in data:
                 # gather all polygon points as view coords
