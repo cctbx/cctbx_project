@@ -94,7 +94,7 @@ class _(boost.python.injector, scattering_type_registry):
           else:
             line += " %7s" % str(gaussian.n_terms())
             if (gaussian.c() != 0): line += "+c"
-        print >> out, line.rstrip(), self.warning_if_any(t)
+        print >> out, "%s%s" % (line.rstrip(), self.warning_if_any(t))
       if (show_sf0):
         print >> out, prefix \
           + "  sf(0) = scattering factor at diffraction angle 0."
