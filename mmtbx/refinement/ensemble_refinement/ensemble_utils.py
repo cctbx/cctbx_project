@@ -2,6 +2,8 @@ from __future__ import division
 import sys, math
 from cctbx.array_family import flex
 from libtbx import adopt_init_args
+from scitbx.math import chebyshev_polynome
+from scitbx.math import chebyshev_lsq_fit
 from mmtbx import utils
 import scitbx.math
 from cctbx import adptbx
@@ -247,19 +249,19 @@ class manager(object):
                              fmodel_running = False)
     final_rfree = self.ensemble_obj.fmodel_total.r_free()
     final_rwork = self.ensemble_obj.fmodel_total.r_work()
-
+    
     # XXX no b_iso - how to apply this???
 #    print >> self.ensemble_obj.log, "\nApply B_iso to all model in ensemble"
 #    shift_b_iso  = self.ensemble_obj.fmodel_total.b_iso()
 #    print >> self.ensemble_obj.log, 'Shift B_iso : {0:8.3f}'.format(shift_b_iso)
 #    for x in self.ensemble_obj.er_data.xray_structures:
 #      x.shift_us(b_shift = shift_b_iso)
-
+    
     total_number_xrs = len(self.ensemble_obj.er_data.xray_structures)
     print >> self.ensemble_obj.log, "\nReduce ensemble with equal distribution though trajectory :"
     print >> self.ensemble_obj.log, "Rfree tolerance (%) : ", rfree_tolerance * 100
-    print >> self.ensemble_obj.log, '\n {0:>12} {1:>8} {2:>8} {3:>8} {4:>8} {5:>8} {6:>8}'\
-        .format('Num','Rwork','Rfree','k1','biso','ksol','bsol')
+    print >> self.ensemble_obj.log, '\n {0:>12} {1:>8} {2:>8} {3:>8}'\
+        .format('Num','Rwork','Rfree','k1')
     target_rfree = final_rfree
     final_div    = None
     for div_int in [1,2,3,4,5,6,7,8,9,10,12,14,16,18,20,25,30,35,40,45,50,60,70,80,90,100,200,300,400,500,600,700,800,900,1000,2000,3000,4000,5000]:
@@ -268,11 +270,11 @@ class manager(object):
         cntr = 0.0
         fcalc_total = None
         fmask_total = None
-
+        
   #      self.fmodel_ens.update(k_sols  = self.ensemble_obj.fmodel_total.k_sols(),
   #                             b_sol   = self.ensemble_obj.fmodel_total.b_sol(),
   #                             b_cart  = self.ensemble_obj.fmodel_total.b_cart() )
-
+        
         for x in xrange(total_number_xrs):
           if x%int(div_int) == 0:
             #Apply back trace of Biso here...
@@ -298,14 +300,12 @@ class manager(object):
                                      out           = self.ensemble_obj.log,
                                      params        = self.ensemble_obj.bsp,
                                      optimize_mask = False)
-            print >> self.ensemble_obj.log, "Ens: {0:8d} {1:8.3f} {2:8.3f} {3:8.3f} {4:8.3f} {5:8.3f} {6:8.3f}"\
+            print >> self.ensemble_obj.log, "Ens: {0:8d} {1:8.3f} {2:8.3f} {3:8.3f}"\
               .format(cntr,
-                      100*self.fmodel_ens.r_work(),
-                      100*self.fmodel_ens.r_free(),
-                      self.fmodel_ens.scale_k1(),
-                      0.0,
-                      self.fmodel_ens.fmodel_kbu().k_sols()[0],
-                      self.fmodel_ens.fmodel_kbu().b_sol() )
+                      self.fmodel_ens.r_work(),
+                      self.fmodel_ens.r_free(),
+                      self.fmodel_ens.scale_k1()
+                      )
 
             if self.fmodel_ens.r_free() < (target_rfree + rfree_tolerance):
               final_div    = div_int
@@ -355,16 +355,22 @@ class manager(object):
       utils.print_header("Ensemble mean geometry statistics", out = out)
     ensemble_size = len(ensemble_xray_structures)
     print >> out, "Ensemble size : ", ensemble_size
+
     # Dictionaries to store deltas
     ensemble_bond_deltas = {}
     ensemble_angle_deltas = {}
+    ensemble_chirality_deltas = {}
+    ensemble_planarity_deltas = {}
     ensemble_dihedral_deltas = {}
+
     # List to store rmsd of each model
     structures_bond_rmsd = flex.double()
     structures_angle_rmsd = flex.double()
+    structures_chirality_rmsd = flex.double()
+    structures_planarity_rmsd = flex.double()
     structures_dihedral_rmsd = flex.double()
 
-    # remove waters and hd from global restraints manager
+    # Remove water and hd atoms from global restraints manager
     selection = flex.bool()
     for sc in xray_structure.scatterers():
       if sc.label.find('HOH') > -1:
@@ -379,11 +385,12 @@ class manager(object):
           selection[n] = True
     restraints_manager = restraints_manager.select(selection = ~selection)
 
-    # get all deltas
+    # Get all deltas
     for n, structure in enumerate(ensemble_xray_structures):
-      print >> out, "\nModel : ", n+1
+      if verbose:
+        print >> out, "\nModel : ", n+1
       sites_cart = structure.sites_cart()
-      # remove waters and hd from individual structures sites cart
+      # Remove water and hd atoms from individual structures sites cart
       selection = flex.bool()
       for sc in structure.scatterers():
         if sc.label.find('HOH') > -1:
@@ -397,26 +404,34 @@ class manager(object):
           if hd_selection[n] or selection[n]:
             selection[n] = True
       sites_cart = sites_cart.select(~selection)
-      #
       assert sites_cart is not None
       site_labels = None
       energies_sites = restraints_manager.energies_sites(
           sites_cart        = sites_cart,
           compute_gradients = False)
-      # rmsd of individual model
+
+      # Rmsd of individual model
       bond_rmsd = energies_sites.geometry.bond_deviations()[2]
       angle_rmsd = energies_sites.geometry.angle_deviations()[2]
+      chirality_rmsd = energies_sites.geometry.chirality_deviations()[2]
+      planarity_rmsd = energies_sites.geometry.planarity_deviations()[2]
       dihedral_rmsd = energies_sites.geometry.dihedral_deviations()[2]
+      
       structures_bond_rmsd.append(bond_rmsd)
       structures_angle_rmsd.append(angle_rmsd)
+      structures_chirality_rmsd.append(chirality_rmsd)
+      structures_planarity_rmsd.append(planarity_rmsd)
       structures_dihedral_rmsd.append(dihedral_rmsd)
-      if verbose:
-        print >> out, "  Model RMSD : "
-        print >> out, "    bond     : %.6g" % bond_rmsd
-        print >> out, "    angle    : %.6g" % angle_rmsd
-        print >> out, "    dihedral : %.6g" % dihedral_rmsd
 
-      # Bonds
+      if verbose:
+        print >> out, "  Model RMSD"
+        print >> out, "    bond      : %.6g" % bond_rmsd
+        print >> out, "    angle     : %.6g" % angle_rmsd
+        print >> out, "    chirality : %.6g" % chirality_rmsd
+        print >> out, "    planarity : %.6g" % planarity_rmsd
+        print >> out, "    dihedral  : %.6g" % dihedral_rmsd
+
+      # Bond
       pair_proxies = restraints_manager.geometry.pair_proxies(flags=None, sites_cart=sites_cart)
       assert pair_proxies is not None
       if verbose:
@@ -453,11 +468,11 @@ class manager(object):
           ensemble_bond_deltas[proxy.i_seqs] = [bond_asu_proxy.delta, 1]
         if verbose:
           print >> out, "bond asu :", (proxy.i_seq, proxy.j_seq), rt_mx
-          print >> out, "  distance_ideal: %.6g" % proxy.distance_ideal
+          print >> out, "  distance_ideal : %.6g" % proxy.distance_ideal
           print >> out, "  distance_model : %.6g" % bond_asu_proxy.distance_model
           print >> out, "  delta          : %.6g" % bond_asu_proxy.delta
 
-      # Angles
+      # Angle
       if verbose:
         restraints_manager.geometry.angle_proxies.show_histogram_of_deltas(
             sites_cart  = sites_cart,
@@ -478,7 +493,46 @@ class manager(object):
           print >> out, "  angle_model   : %.6g" % angle_proxy.angle_model
           print >> out, "  delta         : %.6g" % angle_proxy.delta
 
-      # Dihedrals
+      # Chirality
+      if verbose:
+        restraints_manager.geometry.chirality_proxies.show_histogram_of_deltas(
+            sites_cart  = sites_cart,
+            n_slots     = 10,
+            f           = out)
+      for proxy in restraints_manager.geometry.chirality_proxies:
+        chirality_proxy = geometry_restraints.chirality(
+            sites_cart = sites_cart,
+            proxy      = proxy)
+        if proxy.i_seqs in ensemble_chirality_deltas:
+          ensemble_chirality_deltas[proxy.i_seqs][0]+=chirality_proxy.delta
+          ensemble_chirality_deltas[proxy.i_seqs][1]+=1
+        else:
+          ensemble_chirality_deltas[proxy.i_seqs] = [chirality_proxy.delta, 1]
+        if verbose:
+          print >> out, "chirality : ", proxy.i_seqs
+          print >> out, "  chirality_ideal : %.6g" % proxy.volume_ideal
+          print >> out, "  chirality_model : %.6g" % chirality_proxy.volume_model
+          print >> out, "  chirality       : %.6g" % chirality_proxy.delta
+
+      # Planarity
+      for proxy in restraints_manager.geometry.planarity_proxies:
+        planarity_proxy = geometry_restraints.planarity(
+            sites_cart = sites_cart,
+            proxy      = proxy)
+        proxy_i_seqs = []
+        for i_seq in proxy.i_seqs:
+          proxy_i_seqs.append(i_seq)
+        proxy_i_seqs = tuple(proxy_i_seqs)
+        if proxy_i_seqs in ensemble_planarity_deltas:
+          ensemble_planarity_deltas[proxy_i_seqs][0]+=planarity_proxy.rms_deltas()
+          ensemble_planarity_deltas[proxy_i_seqs][1]+=1
+        else:
+          ensemble_planarity_deltas[proxy_i_seqs] = [planarity_proxy.rms_deltas(), 1]
+        if verbose:
+          print >> out, "planarity : ", proxy_i_seqs
+          print >> out, "  planarity rms_deltas : %.6g" % planarity_proxy.rms_deltas()
+
+      # Dihedral
       if verbose:
         restraints_manager.geometry.dihedral_proxies.show_histogram_of_deltas(
             sites_cart  = sites_cart,
@@ -500,8 +554,8 @@ class manager(object):
           print >> out, "  dihedral_model  : %.6g" % dihedral_proxy.angle_model
           print >> out, "  delta           : %.6g" % dihedral_proxy.delta
 
-    # calculate RMSDs for ensemble
-    # bond
+    # Calculate RMSDs for ensemble model
+    # Bond
     mean_bond_delta = flex.double()
     for proxy, info in ensemble_bond_deltas.iteritems():
       assert info[1] == ensemble_size
@@ -509,7 +563,8 @@ class manager(object):
       mean_bond_delta.append(mean_delta)
     bond_delta_sq = mean_bond_delta * mean_bond_delta
     ensemble_bond_rmsd = math.sqrt(flex.mean_default(bond_delta_sq, 0))
-    # angle
+
+    # Angle
     mean_angle_delta = flex.double()
     for proxy, info in ensemble_angle_deltas.iteritems():
       assert info[1] == ensemble_size
@@ -517,7 +572,26 @@ class manager(object):
       mean_angle_delta.append(mean_delta)
     angle_delta_sq = mean_angle_delta * mean_angle_delta
     ensemble_angle_rmsd = math.sqrt(flex.mean_default(angle_delta_sq, 0))
-    # dihedral
+
+    # Chirality
+    mean_chirality_delta = flex.double()
+    for proxy, info in ensemble_chirality_deltas.iteritems():
+      assert info[1] == ensemble_size
+      mean_delta = info[0] / info[1]
+      mean_chirality_delta.append(mean_delta)
+    chirality_delta_sq = mean_chirality_delta * mean_chirality_delta
+    ensemble_chirality_rmsd = math.sqrt(flex.mean_default(chirality_delta_sq, 0))
+
+    # Planarity
+    mean_planarity_delta = flex.double()
+    for proxy, info in ensemble_planarity_deltas.iteritems():
+      assert info[1] == ensemble_size
+      mean_delta = info[0] / info[1]
+      mean_planarity_delta.append(mean_delta)
+    planarity_delta_sq = mean_planarity_delta * mean_planarity_delta
+    ensemble_planarity_rmsd = math.sqrt(flex.mean_default(planarity_delta_sq, 0))
+    
+    # Dihedral
     mean_dihedral_delta = flex.double()
     for proxy, info in ensemble_dihedral_deltas.iteritems():
       assert info[1] == ensemble_size
@@ -526,23 +600,32 @@ class manager(object):
     dihedral_delta_sq = mean_dihedral_delta * mean_dihedral_delta
     ensemble_dihedral_rmsd = math.sqrt(flex.mean_default(dihedral_delta_sq, 0))
 
-    # calculate <structure rmsd>
+    # Calculate <structure rmsd>
     assert ensemble_size == structures_bond_rmsd
     assert ensemble_size == structures_angle_rmsd
+    assert ensemble_size == structures_chirality_rmsd
+    assert ensemble_size == structures_planarity_rmsd
     assert ensemble_size == structures_dihedral_rmsd
     structure_bond_rmsd_mean = structures_bond_rmsd.min_max_mean().mean
     structure_angle_rmsd_mean = structures_angle_rmsd.min_max_mean().mean
+    structure_chirality_rmsd_mean = structures_chirality_rmsd.min_max_mean().mean
+    structure_planarity_rmsd_mean = structures_planarity_rmsd.min_max_mean().mean
     structure_dihedral_rmsd_mean = structures_dihedral_rmsd.min_max_mean().mean
-    # show summary
+
+    # Show summary
     utils.print_header("Ensemble RMSD summary", out = out)
     print >> out, "  RMSD (mean delta per restraint)"
-    print >> out, "    bond     : %.6g" % ensemble_bond_rmsd
-    print >> out, "    angle    : %.6g" % ensemble_angle_rmsd
-    print >> out, "    dihedral : %.6g" % ensemble_dihedral_rmsd
+    print >> out, "    bond      : %.6g" % ensemble_bond_rmsd
+    print >> out, "    angle     : %.6g" % ensemble_angle_rmsd
+    print >> out, "    chirality : %.6g" % ensemble_chirality_rmsd
+    print >> out, "    planarity : %.6g" % ensemble_planarity_rmsd
+    print >> out, "    dihedral  : %.6g" % ensemble_dihedral_rmsd
     print >> out, "  RMSD (mean RMSD per structure)"
-    print >> out, "    bond     : %.6g" % structure_bond_rmsd_mean
-    print >> out, "    angle    : %.6g" % structure_angle_rmsd_mean
-    print >> out, "    dihedral : %.6g" % structure_dihedral_rmsd_mean
+    print >> out, "    bond      : %.6g" % structure_bond_rmsd_mean
+    print >> out, "    angle     : %.6g" % structure_angle_rmsd_mean
+    print >> out, "    chirality : %.6g" % structure_chirality_rmsd_mean
+    print >> out, "    planarity : %.6g" % structure_planarity_rmsd_mean
+    print >> out, "    dihedral  : %.6g" % structure_dihedral_rmsd_mean
     if ignore_hd:
       print >> out, "\n  Calculated excluding H/D"
     else:
@@ -556,12 +639,16 @@ class manager(object):
       else:
         ens_geo_pdb_string += "\nREMARK   3  RMS DEVIATIONS FROM IDEAL VALUES (INCLUDING H/D)"
       ens_geo_pdb_string += "\nREMARK   3  RMSD (MEAN DELTA PER RESTRAINT)"
-      ens_geo_pdb_string += "\nREMARK   3    BOND     : {0:5.3f}".format(ensemble_bond_rmsd)
-      ens_geo_pdb_string += "\nREMARK   3    ANGLE    : {0:5.3f}".format(ensemble_angle_rmsd)
-      ens_geo_pdb_string += "\nREMARK   3    DIHEDRAL : {0:5.2f}".format(ensemble_dihedral_rmsd)
+      ens_geo_pdb_string += "\nREMARK   3    BOND      : {0:5.3f}".format(ensemble_bond_rmsd)
+      ens_geo_pdb_string += "\nREMARK   3    ANGLE     : {0:5.3f}".format(ensemble_angle_rmsd)
+      ens_geo_pdb_string += "\nREMARK   3    CHIRALITY : {0:5.3f}".format(ensemble_chirality_rmsd)
+      ens_geo_pdb_string += "\nREMARK   3    PLANARITY : {0:5.3f}".format(ensemble_planarity_rmsd)
+      ens_geo_pdb_string += "\nREMARK   3    DIHEDRAL  : {0:5.2f}".format(ensemble_dihedral_rmsd)
       ens_geo_pdb_string += "\nREMARK   3  RMSD (MEAN RMSD PER STRUCTURE)"
-      ens_geo_pdb_string += "\nREMARK   3    BOND     : {0:5.3f}".format(structure_bond_rmsd_mean)
-      ens_geo_pdb_string += "\nREMARK   3    ANGLE    : {0:5.3f}".format(structure_angle_rmsd_mean)
-      ens_geo_pdb_string += "\nREMARK   3    DIHEDRAL : {0:5.2f}".format(structure_dihedral_rmsd_mean)
+      ens_geo_pdb_string += "\nREMARK   3    BOND      : {0:5.3f}".format(structure_bond_rmsd_mean)
+      ens_geo_pdb_string += "\nREMARK   3    ANGLE     : {0:5.3f}".format(structure_angle_rmsd_mean)
+      ens_geo_pdb_string += "\nREMARK   3    CHIRALITY : {0:5.3f}".format(structure_chirality_rmsd_mean)
+      ens_geo_pdb_string += "\nREMARK   3    PLANARITY : {0:5.3f}".format(structure_planarity_rmsd_mean)
+      ens_geo_pdb_string += "\nREMARK   3    DIHEDRAL  : {0:5.2f}".format(structure_dihedral_rmsd_mean)
       ens_geo_pdb_string += "\nREMARK   3"
       return ens_geo_pdb_string
