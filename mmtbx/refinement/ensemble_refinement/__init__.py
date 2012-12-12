@@ -25,6 +25,7 @@ from cctbx import xray
 from cctbx import geometry_restraints
 import mmtbx.tls.tools as tls_tools
 import mmtbx.maps
+from phenix import phenix_info
 master_params = iotbx.phil.parse("""\
 ensemble_refinement {
   cartesian_dynamics {
@@ -47,7 +48,7 @@ ensemble_refinement {
   }
   verbose = -1
     .type = int
-  output_file_prefix = ensemble_refinement
+  output_file_prefix = None
     .type = str
   random_seed = 2679941
     .type = int
@@ -70,7 +71,7 @@ ensemble_refinement {
     .help = multiplier for xray weighting
   wxray_coupled_tbath = True
     .type = bool
-  wxray_coupled_tbath_offset = 2.5
+  wxray_coupled_tbath_offset = 5.0
     .type = float
   tls_group_selections = None
     .type = str
@@ -81,6 +82,12 @@ ensemble_refinement {
     .help = fraction of atoms to include in TLS fitting
   max_ptls_cycles = 10
     .type = int
+  isotropic_b_factor_model = False
+    .type = bool
+    .help = use isotropic b-factor model instead of TLS
+  pwilson = 0.9
+    .type = float
+    .help = scale factor for isotropic b-factor model
   set_occupancies = True
     .type = bool
   target_name = *ml ls_wunit_k1_fixed ls_wunit_k1
@@ -474,17 +481,9 @@ class run_ensemble_refinement(object):
                      mtz_dataset_original,
                      params):
     adopt_init_args(self, locals())
-    self.params = params.extract().ensemble_refinement
-    if self.params.electron_density_maps.apply_default_maps != False\
-      or len(self.params.electron_density_maps.map_coefficients) == 0:
-      maps_par = libtbx.env.find_in_repositories(
-        relative_path="cctbx_project/mmtbx/refinement/ensemble_refinement/maps.params",
-        test=os.path.isfile)
-      maps_par_phil = iotbx.phil.parse(file_name=maps_par)
-      working_params = mmtbx.refinement.ensemble_refinement.master_params.fetch(
-                          sources = [params]+[maps_par_phil])
-      self.params = working_params.extract().ensemble_refinement
-      print >> self.log, """Will apply parameters for default map types."""
+#    self.params = params.extract().ensemble_refinement
+    
+
     if self.params.target_name == 'ml':
       self.fix_scale = False
     else:
@@ -1053,7 +1052,7 @@ class run_ensemble_refinement(object):
     model_no_solvent = self.model.deep_copy()
     model_no_solvent = model_no_solvent.remove_solvent()
     all_chain_proxies = self.generate_all_chain_proxies(model = model_no_solvent)
-
+    
     if len(tls_group_selection_strings) < 1:
       print >> self.log, '\nNo TLS groups supplied - automatic setup'
       # Get chain information
@@ -1096,12 +1095,14 @@ class run_ensemble_refinement(object):
     #
     tls_no_hd_selection_strings = []
     for selection_string in tls_group_selection_strings:
-      no_hd_string = selection_string + ' and not (element H or element D)'
+      no_hd_string = '(' + selection_string + ') and not (element H or element D)'
       tls_no_hd_selection_strings.append(no_hd_string)
+    
     tls_no_sol_no_hd_selections = utils.get_atom_selections(
         all_chain_proxies = all_chain_proxies,
         selection_strings = tls_no_hd_selection_strings,
         xray_structure    = model_no_solvent.xray_structure)
+    
     #
     assert self.tls_manager is not None
     self.tls_manager.tls_selection_strings_no_sol       = tls_group_selection_strings
@@ -1150,18 +1151,19 @@ class run_ensemble_refinement(object):
     #
     
     use_isotropic = False
-    for group in tls_selection_no_sol_hd_exclusions:
+    for group in self.tls_manager.tls_selections_no_sol_no_hd:
       if group.size() < 63: 
-        use_isotropic = True
+        self.params.isotropic_b_factor_model = True
       elif self.params.ptls * group.size() < 63:
         self.params.ptls = 64.0 / group.size()
         print >> self.log, '\nAutomatically increasing pTLS to : {0:5.3f}'.format(self.params.ptls)
-    if use_isotropic:
+    if self.params.isotropic_b_factor_model:
       print >> self.log, '\nModel contains less than 63 non-solvent, non-H/D atoms'
       print >> self.log, 'Insufficient to fit TLS model, using isotropic model'
-      iso_b  = self.fmodel_running.wilson_b() * self.params.ptls
+      iso_b  = self.fmodel_running.wilson_b() * self.params.pwilson
       episq = 8.0*(math.pi**2)
       print >> self.log, 'Isotropic translation (B) : {0:5.3f}'.format(iso_b)
+      print >> self.log, '  = Wilson b-factor * pwilson'
       iso_u = iso_b / episq
       print >> self.log, 'Isotropic translation (U) : {0:5.3f}'.format(iso_u)
       fit_tlsos = []
@@ -1220,7 +1222,7 @@ class run_ensemble_refinement(object):
           pdb_atoms = pdb_hierarchy().atoms()
           not_h_selection = pdb_hierarchy().atom_selection_cache().selection('not element H')
           ca_selection = pdb_hierarchy().atom_selection_cache().selection('name ca')
-          print >> self.log, '\nCA atoms (Name/res number/res name/chain/atom number/ref biso/fit biso::'
+          print >> self.log, '\nCA atoms (Name/res number/res name/chain/atom number/ref biso/fit biso:'
           for i_seq, ca in enumerate(ca_selection):
             if ca:
               atom_info = pdb_atoms[i_seq].fetch_labels()
@@ -1238,11 +1240,12 @@ class run_ensemble_refinement(object):
 
         sorted_delta_ref_fit_no_h = sorted(delta_ref_fit_no_h)
         percentile_cutoff = sorted_delta_ref_fit_no_h[int(len(sorted_delta_ref_fit_no_h) * self.params.ptls)-1]
-        print >> self.log, 'Cutoff (<)                              : ', percentile_cutoff
+        if verbose:
+          print >> self.log, 'Cutoff (<)                              : ', percentile_cutoff
         print >> self.log, 'Number of atoms (non HD)                : ', delta_ref_fit_no_h.size()
         delta_ref_fit_no_h_include = flex.bool(delta_ref_fit_no_h < percentile_cutoff)
         print >> self.log, 'Number of atoms (non HD) used in fit    : ', delta_ref_fit_no_h_include.count(True)
-        print >> self.log, 'Percentage (non HD) used in fit         : ', delta_ref_fit_no_h_include.count(True) / delta_ref_fit_no_h.size()
+        print >> self.log, 'Percentage (non HD) used in fit         : {0:5.3f}'.format(delta_ref_fit_no_h_include.count(True) / delta_ref_fit_no_h.size())
 
         # Convergence test
         if fitted_biso_no_hd.min_max_mean().mean == pre_fitted_mean:
@@ -1267,7 +1270,8 @@ class run_ensemble_refinement(object):
               new_group.append(x)
           if len(new_group) < 63:
             raise Sorry("Number atoms in TLS too small; increase size of group or reduce cut-off")
-          print >> self.log, 'TLS group ', group+1, ' number atoms ', len(new_group)
+          if verbose:
+            print >> self.log, 'TLS group ', group+1, ' number atoms ', len(new_group)
           tls_selection_no_sol_hd_exclusions.append(new_group)
 
     ###
@@ -1421,7 +1425,7 @@ class run_ensemble_refinement(object):
 
   def optimise_multiple_fmodel(self):
     utils.print_header("Block selection by Rwork", out = self.log)
-    best_r_work = 1.0
+    best_r_work = None
 
     # Load all temp files
     self.fmodel_total_block_list = []
@@ -1431,8 +1435,8 @@ class run_ensemble_refinement(object):
       os.remove(filename)
 
     self.fmodel_total.set_scale_switch = 0
-    print >> self.log, '  {0:>17} {1:>8} {2:>8} {3:>8} {4:>8}'\
-      .format('Block range','Rwork','Rfree','k1','ksol','bsol')
+    print >> self.log, '  {0:>17} {1:>8} {2:>8}'\
+      .format('Block range','Rwork','Rfree','k1')
     for x in xrange(len(self.fmodel_total_block_list)):
       x2 = x+1
       y = len(self.fmodel_total_block_list)
@@ -1453,15 +1457,19 @@ class run_ensemble_refinement(object):
           params = self.bsp,
           out = self.log,
           optimize_mask = False)
-        print >> self.log, "  {0:8d} {1:8d} {2:8.3f} {3:8.3f} {4:8.3f} {5:8.3f}"\
+        print >> self.log, "  {0:8d} {1:8d} {2:8.3f} {3:8.3f}"\
           .format(x+1,
                   y,
-                  100*self.fmodel_total.r_work(),
-                  100*self.fmodel_total.r_free(),
-                  self.fmodel_total.scale_k1(),
-                  self.fmodel_total.fmodel_kbu().k_sols()[0],
-                  self.fmodel_total.fmodel_kbu().b_sol() )
-        if self.fmodel_total.r_free() < best_r_work:
+                  self.fmodel_total.r_work(),
+                  self.fmodel_total.r_free(),
+                  self.fmodel_total.scale_k1()
+                  )
+        if best_r_work == None:
+          best_r_work = self.fmodel_total.r_work()
+          best_r_work_block = [x,y]
+          best_r_work_fcalc = (fcalc_tot / cntr)
+          best_r_work_fmask = (fmask_tot / cntr)
+        elif self.fmodel_total.r_work() < (best_r_work - 0.01):
           best_r_work = self.fmodel_total.r_work()
           best_r_work_block = [x,y]
           best_r_work_fcalc = (fcalc_tot / cntr)
@@ -1537,6 +1545,33 @@ class run_ensemble_refinement(object):
   def write_ensemble_pdb(self, out):
     crystal_symmetry = self.er_data.xray_structures[0].crystal_symmetry()
     print >> out,  "REMARK   3  TIME-AVERAGED ENSEMBLE REFINEMENT"
+    ver, tag = phenix_info.version_and_release_tag(f = out)
+    if(ver is None):
+      prog = "   PROGRAM     : PHENIX (phenix.ensemble_refinement)"
+    else:
+      if(tag is not None):
+        ver = ver+"_"+tag
+      prog = "   PROGRAM     : PHENIX (phenix.ensemble_refinement: %s)"%ver
+    pr = "REMARK   3"
+    print >> out,pr
+    print >> out,pr+" REFINEMENT."
+    print >> out,pr+prog
+    authors = phenix_info.phenix_developers_last
+    l = pr+"   AUTHORS     :"
+    j = 0
+    i = j
+    n = len(l) + 1
+    while (j != len(authors)):
+      a = len(authors[j]) + 1
+      if (n+a > 79):
+        print >> out,l, ",".join(authors[i:j]) + ","
+        l = pr+"               :"
+        i = j
+        n = len(l) + 1
+      n += a
+      j += 1
+    if (i != j):
+      print >> out,l, ",".join(authors[i:j])
     fmodel_info = self.fmodel_total.info()
     fmodel_info.show_remark_3(out = out)
     model_stats = mmtbx.model_statistics.model(model     = self.model,
@@ -1698,10 +1733,24 @@ def run(args, command_name = "phenix.ensemble_refinement"):
     return
   processed_args = utils.process_command_line_args(args = args,
     log = sys.stdout, master_params = master_params)
+  pdb_file_names = processed_args.pdb_file_names
   cmd_params = processed_args.params
-  if(cmd_params is not None):
-    er_params = cmd_params.extract().ensemble_refinement
-  else: cmd_params = master_params
+  if cmd_params is None: 
+    cmd_params = master_params
+  er_params = cmd_params.extract().ensemble_refinement
+
+  if er_params.electron_density_maps.apply_default_maps != False\
+    or len(params.electron_density_maps.map_coefficients) == 0:
+    maps_par = libtbx.env.find_in_repositories(
+      relative_path="cctbx_project/mmtbx/refinement/ensemble_refinement/maps.params",
+      test=os.path.isfile)
+    maps_par_phil = iotbx.phil.parse(file_name=maps_par)
+    working_params = mmtbx.refinement.ensemble_refinement.master_params.fetch(
+                        sources = [cmd_params]+[maps_par_phil])
+    er_params = working_params.extract().ensemble_refinement
+
+  if er_params.output_file_prefix == None:
+    er_params.output_file_prefix = os.path.splitext(os.path.split(pdb_file_names[0])[-1])[0] + "_ensemble"
   log = multi_out()
   log.register(label="stdout", file_object=sys.stdout)
   log.register(
@@ -1726,7 +1775,6 @@ def run(args, command_name = "phenix.ensemble_refinement"):
     raise Sorry("No crystal symmetry found.")
   if(len(processed_args.pdb_file_names) == 0):
     raise Sorry("No PDB file found.")
-  pdb_file_names = processed_args.pdb_file_names
   utils.print_header("Model and data statistics", out = log)
   print >> log, "Data file                               : %s"%(format_value("%5s",os.path.basename(pdb_file_names[0])))
   print >> log, "Model file                              : %s \n"%(format_value("%5s",os.path.basename(processed_args.reflection_file_names[0])))
@@ -1771,18 +1819,12 @@ def run(args, command_name = "phenix.ensemble_refinement"):
     miller_array = determine_data_and_flags_result.raw_flags,
     column_root_label=flag_label)
 
-  cif_file = None
-  params = processed_args.params
   if(len(processed_args.pdb_file_names) == 0):
     raise Sorry("No PDB file found.")
   print >> log, "\nPDB file name : ", processed_args.pdb_file_names[0]
-  cif_objects = processed_args.cif_objects
-  if(cif_file is not None):
-    cif_objects = []
-    cif_objects.append((cif_file,
-        mmtbx.monomer_library.server.read_cif(file_name = cif_file)))
 
   # Process PDB file
+  cif_objects = processed_args.cif_objects
   pdb_file = processed_args.pdb_file_names[0]
   pdb_ip = mmtbx.monomer_library.pdb_interpretation.master_params.extract()
   pdb_ip.clash_guard.nonbonded_distance_threshold = -1.0
@@ -1796,7 +1838,7 @@ def run(args, command_name = "phenix.ensemble_refinement"):
     log                       = log)
   processed_pdb_file, pdb_inp = \
     processed_pdb_files_srv.process_pdb_files(pdb_file_names = [pdb_file])
-
+  
   # Remove alternative conformations if present
   hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
   atoms_size_pre = hierarchy.atoms().size()
@@ -1834,7 +1876,7 @@ def run(args, command_name = "phenix.ensemble_refinement"):
     d_min = f_obs.d_min()
   xsfppf = mmtbx.utils.xray_structures_from_processed_pdb_file(
     processed_pdb_file = processed_pdb_file,
-    scattering_table   = "wk1995",
+    scattering_table   = "n_gaussian",
     d_min               = d_min,
     log                = log)
   if(len(xsfppf.xray_structures) > 1):
@@ -1907,7 +1949,7 @@ def run(args, command_name = "phenix.ensemble_refinement"):
   fmodel = mmtbx.utils.fmodel_simple(
                f_obs                      = f_obs,
                xray_structures            = [model.xray_structure],
-               scattering_table           = "wk1995",
+               scattering_table           = "n_gaussian",
                r_free_flags               = r_free_flags,
                target_name                = er_params.target_name,
                bulk_solvent_and_scaling   = False,
@@ -1952,7 +1994,7 @@ def run(args, command_name = "phenix.ensemble_refinement"):
   ensemble_refinement = run_ensemble_refinement(
       fmodel               = fmodel,
       model                = model,
-      params               = cmd_params,
+      params               = er_params,
       mtz_dataset_original = mtz_dataset_original,
       log                  = log)
 
