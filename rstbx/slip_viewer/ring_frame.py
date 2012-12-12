@@ -1,7 +1,7 @@
 from __future__ import division
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
-# $Id: ring_frame.py 291 2012-03-08 05:35:12Z hattne $
+# $Id$
 
 import wx
 
@@ -159,8 +159,11 @@ class RingSettingsPanel(wx.Panel):
 
     scale = 2**self._pyslip.tiles.zoom_level
 
-    # draw points on map/view
-    dc = wx.GCDC(dc) # allow transparent colours XXX doesn't work on Linux?
+    # Draw points on map/view, using transparency if implemented.
+    try:
+      dc = wx.GCDC(dc)
+    except NotImplementedError:
+      pass
     dc.SetPen(wx.Pen(colour))
     dc.SetBrush(wx.Brush(colour, wx.TRANSPARENT))
     for (lon, lat, place, radius, colour, x_off, y_off, pdata) in data:
