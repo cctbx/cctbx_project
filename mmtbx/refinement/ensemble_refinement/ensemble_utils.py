@@ -2,8 +2,6 @@ from __future__ import division
 import sys, math
 from cctbx.array_family import flex
 from libtbx import adopt_init_args
-from scitbx.math import chebyshev_polynome
-from scitbx.math import chebyshev_lsq_fit
 from mmtbx import utils
 import scitbx.math
 from cctbx import adptbx
@@ -249,14 +247,14 @@ class manager(object):
                              fmodel_running = False)
     final_rfree = self.ensemble_obj.fmodel_total.r_free()
     final_rwork = self.ensemble_obj.fmodel_total.r_work()
-    
+
     # XXX no b_iso - how to apply this???
 #    print >> self.ensemble_obj.log, "\nApply B_iso to all model in ensemble"
 #    shift_b_iso  = self.ensemble_obj.fmodel_total.b_iso()
 #    print >> self.ensemble_obj.log, 'Shift B_iso : {0:8.3f}'.format(shift_b_iso)
 #    for x in self.ensemble_obj.er_data.xray_structures:
 #      x.shift_us(b_shift = shift_b_iso)
-    
+
     total_number_xrs = len(self.ensemble_obj.er_data.xray_structures)
     print >> self.ensemble_obj.log, "\nReduce ensemble with equal distribution though trajectory :"
     print >> self.ensemble_obj.log, "Rfree tolerance (%) : ", rfree_tolerance * 100
@@ -270,11 +268,11 @@ class manager(object):
         cntr = 0.0
         fcalc_total = None
         fmask_total = None
-        
+
   #      self.fmodel_ens.update(k_sols  = self.ensemble_obj.fmodel_total.k_sols(),
   #                             b_sol   = self.ensemble_obj.fmodel_total.b_sol(),
   #                             b_cart  = self.ensemble_obj.fmodel_total.b_cart() )
-        
+
         for x in xrange(total_number_xrs):
           if x%int(div_int) == 0:
             #Apply back trace of Biso here...
@@ -416,7 +414,7 @@ class manager(object):
       chirality_rmsd = energies_sites.geometry.chirality_deviations()[2]
       planarity_rmsd = energies_sites.geometry.planarity_deviations()[2]
       dihedral_rmsd = energies_sites.geometry.dihedral_deviations()[2]
-      
+
       structures_bond_rmsd.append(bond_rmsd)
       structures_angle_rmsd.append(angle_rmsd)
       structures_chirality_rmsd.append(chirality_rmsd)
@@ -590,7 +588,7 @@ class manager(object):
       mean_planarity_delta.append(mean_delta)
     planarity_delta_sq = mean_planarity_delta * mean_planarity_delta
     ensemble_planarity_rmsd = math.sqrt(flex.mean_default(planarity_delta_sq, 0))
-    
+
     # Dihedral
     mean_dihedral_delta = flex.double()
     for proxy, info in ensemble_dihedral_deltas.iteritems():
