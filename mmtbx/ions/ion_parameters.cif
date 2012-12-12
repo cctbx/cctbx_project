@@ -43,7 +43,7 @@ CO  2  0.4  5  6  1  1.8  2  2.2    O,N    CYS,ASP,GLU,HIS              .       
 CU  2  0.4  3  4  1  1.8  2  2.2    O,N,S  CYS,MET,HIS                  tetrahedral .
 NI  2  0.4  4  6  1  1.8  2  2.2    O,N,S  CYS,ASP,GLU,HIS              tetrahedral .
 ZN  2  0.4  4  6  1  1.8  2  2.4    O,N,S  CYS,ASP,GLU,HIS              tetrahedral .
-CD  2  0.4  3  6  1  1.8  2  2.2    O,N,S  .                            .           .
+CD  2  0.4  3  6  1  1.5  2  2.3    O,N,S  .                            octahedral,any .
 #
 loop_
 _lib_valence.atom_symbol

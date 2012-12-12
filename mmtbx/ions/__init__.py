@@ -46,10 +46,6 @@ radius = 2.0
 """
 
 ion_master_phil = libtbx.phil.parse("""
-refine_occupancies = True
-  .type = bool
-starting_occupancy = 0.9
-  .type = float
 use_phaser = Auto
   .type = bool
   .help = Toggles the use of Phaser for calculation of f-prime values.
@@ -580,7 +576,8 @@ class Manager (object):
         # XXX can we make this more general for any amide H?
         xyz_h = col(atom.xyz)
         bonded_atoms = self.connectivity[i_seq]
-        assert (len(bonded_atoms) == 1)
+        if (len(bonded_atoms) != 1) :
+          continue
         xyz_n = col(self.pdb_atoms[bonded_atoms[0]].xyz)
         vec_hn = xyz_h - xyz_n
         vec_hx = xyz_h - xyz
@@ -770,6 +767,7 @@ class Manager (object):
     # Gather some quick statistics on the atom and see if it looks like water
     looks_like_water = self.check_water_properties(atom_props)
     if (looks_like_water is None) : # not trustworthy, skip
+      #PRINT_DEBUG("SKIPPING %s" % atom.id_str())
       return None
 
     # Filter out metals based on whether they are more or less eletron-dense
@@ -857,17 +855,24 @@ class Manager (object):
         # special handling for transition metals, but only if the user has
         # explicitly requested one (and there is no ambiguity)
         if ((ion_params.element in TRANSITION_METALS) and
+            (not looks_like_water)) :
+          PRINT_DEBUG(atom.id_str())
+          PRINT_DEBUG(atom_props.is_compatible_site(ion_params))
+        if ((ion_params.element in TRANSITION_METALS) and
             (not looks_like_water) and
             (atom_props.peak_2fofc > self.calpha_mean_2fofc) and
             (not auto_candidates) and
             (atom_props.is_compatible_site(ion_params))) :
           n_good_res = atom_props.number_of_favored_ligand_residues(ion_params,
             distance=2.7)
-          n_total_coord_atoms = atom_props.number_of_atoms_within_distance(2.8)
+          n_total_coord_atoms = atom_props.number_of_atoms_within_radius(2.8)
           # if we see three or four favorable residues coordinating the atom
           # and no more than four atoms total, accept the current guess
-          if ((n_good_res >= 3) and (n_total_coord_atoms <= 4)) :
+          if ((n_good_res >= 3) and (n_total_coord_atoms <= 5)) :
             reasonable.append((ion_params, 0))
+          else :
+            print "n_good_res = %d, n_total_coord_atoms = %d" % (n_good_res,
+              n_total_coord_atoms)
       if (len(compatible) == 1) and (not self.get_strict_valence_flag()) :
         inaccuracies = atom_props.inaccuracies[str(ion_params)]
         if (compatible[0] in atom_props.fpp_ratios and
@@ -986,19 +991,22 @@ class _analyze_water_wrapper (object) :
     self.kwds = dict(kwds)
 
   def __call__ (self, i_seq) :
-    result = self.manager.analyze_water(i_seq, **(self.kwds))
-    out = cStringIO.StringIO()
-    if (result is not None) :
-      result.show_summary(out = out,
-        debug = self.kwds.get("debug", False))
-    result_str = out.getvalue()
-    if (result_str == "") : result_str = None
-    final_choice = None
-    # only accept final choice if it's in the original list of elements
-    if (not getattr(result, "no_final", False)) :
-      final_choice = getattr(result, "final_choice", None)
-      PRINT_DEBUG("final_choice = %s" % final_choice)
-    return i_seq, final_choice, result_str
+    try :
+      result = self.manager.analyze_water(i_seq, **(self.kwds))
+      out = cStringIO.StringIO()
+      if (result is not None) :
+        result.show_summary(out = out,
+          debug = self.kwds.get("debug", False))
+      result_str = out.getvalue()
+      if (result_str == "") : result_str = None
+      final_choice = None
+      # only accept final choice if it's in the original list of elements
+      if (not getattr(result, "no_final", False)) :
+        final_choice = getattr(result, "final_choice", None)
+        #PRINT_DEBUG("final_choice = %s" % final_choice)
+      return i_seq, final_choice, result_str
+    except KeyboardInterrupt :
+      return (None, None, None)
 
 class water_result:
   """
@@ -1169,7 +1177,7 @@ class AtomProperties (object):
         other_resname = labels.resname.strip().upper()
         other_resid = labels.chain_id + labels.resid()
         if ((ion_params.allowed_coordinating_residues is not None) and
-            (other_resname not in ion_params.allowed_coordinating_residues) and
+            (other_resname in ion_params.allowed_coordinating_residues) and
             (not other_resid in resids)) :
           n_res += 1
           resids.append(other_resid)
@@ -1189,10 +1197,12 @@ class AtomProperties (object):
     return n_atoms
 
   def is_compatible_anomalous_scattering (self, ion_params) :
-    if (self.fpp is None) : return None
+    # XXX somewhat dangerous - we really need f'' for this to work reliably
+    if (self.fpp is None) :
+      return (self.peak_anom is not None) and (self.peak_anom > 3.0)
     identity = _identity(ion_params)
     if (identity in self.fpp_ratios) :
-      return (self.BAD_FPP in self.inaccuracies[identity])
+      return (not self.BAD_FPP in self.inaccuracies[identity])
     return False
 
   # XXX obsolete, delete?
@@ -1326,11 +1336,12 @@ class AtomProperties (object):
     if (ion_params.allowed_geometries) and (strict_rules) :
       allowed = [i[0] in ion_params.allowed_geometries
                  for i in self.geometries]
-
-      if not self.geometries:
+      if ("any" in ion_params.allowed_geometries) :
+        pass
+      elif (not self.geometries):
         if strict_rules:
           inaccuracies.add(self.NO_GEOMETRY)
-      elif not any(allowed):
+      elif (not any(allowed)) :
         inaccuracies.add(self.BAD_GEOMETRY)
 
     # Check for reasonable vector/valence values
@@ -1573,6 +1584,7 @@ def find_anomalous_scatterers (
   phaser_input.setMUTE(not verbose)
   phaser_input.setHKLO(False)
   phaser_input.setXYZO(False)
+  phaser_input.setLLGC_NCYC(2)
   out = phaser.Output()
   if (not verbose) :
     out.setPackagePhenix(null_out())
