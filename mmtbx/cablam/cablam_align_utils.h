@@ -86,9 +86,9 @@ namespace mmtbx { namespace cablam {
           sum = sum + boost::python::extract<double>(diff_list[i_d]);
         double average;
         average = sum/boost::python::len(diff_list);
-        if(threshold > 0 and average <= threshold)
+        if((threshold > 0) && (average <= threshold))
           return_list.append(index_mean(i_1, i_2, average, window_len));
-        else if(!threshold > 0) {
+        else if(threshold <= 0) {
           // return_list.append(index_mean(i_1, i_2, average));
           // return_list.append(average);
           if(average < smallest_mean) {
