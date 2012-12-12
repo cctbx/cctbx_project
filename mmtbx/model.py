@@ -1124,6 +1124,7 @@ class manager(object):
       charge,
       residue_name,
       initial_occupancy=None,
+      initial_b_iso=None,
       chain_id=None,
       segid=None,
       refine_occupancies=True,
@@ -1154,6 +1155,9 @@ class manager(object):
     if (initial_occupancy is not None) :
       scatterer.occupancy = initial_occupancy
       atom.occ = initial_occupancy
+    if (initial_b_iso is not None) :
+      atom.b = initial_b_iso
+      scatterer.u_iso = adptbx.b_as_u(initial_b_iso)
     atom_selection = flex.size_t([i_seq])
     if(refine_adp == "isotropic"):
       scatterer.convert_to_isotropic(unit_cell=self.xray_structure.unit_cell())

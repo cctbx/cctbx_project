@@ -18,6 +18,8 @@ initial_occupancy = 1.0
   .type = float
   .help = Occupancy for newly placed ions - if less than 1.0, the occupancy \
     may be refined automatically in future runs of phenix.refine.
+initial_b_iso = 20.0
+  .type = float
 refine_ion_occupancies = True
   .type = bool
   .help = Toggles refinement of occupancies for newly placed ions.  This \
@@ -98,6 +100,7 @@ def find_and_build_ions (
         charge=final_choice.charge,
         residue_name=final_choice.element,
         initial_occupancy=params.initial_occupancy,
+        initial_b_iso=params.initial_b_iso,
         chain_id=params.ion_chain_id,
         segid="ION",
         refine_adp=refine_adp,
