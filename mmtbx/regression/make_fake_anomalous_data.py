@@ -3,19 +3,20 @@ from __future__ import division
 from libtbx import easy_run
 import os
 
-def run () :
-  if (os.path.isfile("ca_frag.mtz")) :
-    os.remove("ca_frag.mtz")
-  write_pdb_input()
+def run (file_base="ca_frag") :
+  mtz_file = file_base + ".mtz"
+  if (os.path.isfile(mtz_file)) :
+    os.remove(mtz_file)
+  write_pdb_input(file_base=file_base)
   params = """
     high_resolution = 1.5
     r_free_flags_fraction = 0.1
     add_sigmas = True
-    pdb_file = ca_frag.pdb
+    pdb_file = %s.pdb
     output {
       label = F
       type = *real complex
-      file_name = ca_frag.mtz
+      file_name = %s.mtz
     }
     anomalous_scatterers {
       group {
@@ -23,13 +24,13 @@ def run () :
         f_prime = 0.25
         f_double_prime = 0.5
       }
-    }"""
-  open("ca_frag_fmodel.eff", "w").write(params)
-  assert (easy_run.fully_buffered("phenix.fmodel ca_frag_fmodel.eff"
+    }""" % (file_base, file_base)
+  open("%s_fmodel.eff" % file_base, "w").write(params)
+  assert (easy_run.fully_buffered("phenix.fmodel %s_fmodel.eff" % file_base,
     ).raise_if_errors().return_code == 0)
-  return os.path.abspath("ca_frag.mtz"), os.path.abspath("ca_frag.pdb")
+  return os.path.abspath(mtz_file), os.path.abspath("%s.pdb" % file_base)
 
-def write_pdb_input () :
+def write_pdb_input (file_base="ca_frag") :
   import iotbx.pdb.hierarchy
   pdb_in = iotbx.pdb.hierarchy.input(source_info=None, pdb_string="""\
 ATOM      1  N   ASP A  37      10.710  14.456   9.568  1.00 15.78           N
@@ -158,8 +159,9 @@ HETATM  123  O   HOH S   2       5.396  15.243  10.734  1.00 22.95           O
 HETATM  124  O   HOH S   3       3.629   8.994  14.414  1.00 25.28           O
 END""")
   xrs = pdb_in.input.xray_structure_simple(cryst1_substitution_buffer_layer=5)
-  if (os.path.exists("ca_frag.pdb")) :
-    os.remove("ca_frag.pdb")
-  f = open("ca_frag.pdb", "w")
+  pdb_file = file_base + ".pdb"
+  if (os.path.exists(pdb_file)) :
+    os.remove(pdb_file)
+  f = open(pdb_file, "w")
   f.write(pdb_in.hierarchy.as_pdb_string(crystal_symmetry=xrs))
   f.close()
