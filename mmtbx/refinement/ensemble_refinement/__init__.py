@@ -82,7 +82,7 @@ ensemble_refinement {
   isotropic_b_factor_model = False
     .type = bool
     .help = use isotropic b-factor model instead of TLS
-  pwilson = 0.9
+  pwilson = 0.8
     .type = float
     .help = scale factor for isotropic b-factor model
   set_occupancies = True

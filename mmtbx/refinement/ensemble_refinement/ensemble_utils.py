@@ -240,7 +240,7 @@ class manager(object):
       return return_bin_array
 
   def ensemble_reduction(self,
-                         rfree_tolerance = 0.001):
+                         rfree_tolerance = 0.0025):
     #Reduces number of models to minimum required to reproduce Rfree
     utils.print_header("Ensemble reducer", out = self.ensemble_obj.log)
     self.ensemble_obj.show_overall(message        = "Full simulation fmodel final",
@@ -298,13 +298,14 @@ class manager(object):
                                      out           = self.ensemble_obj.log,
                                      params        = self.ensemble_obj.bsp,
                                      optimize_mask = False)
+            if cntr < 4:
+              break
             print >> self.ensemble_obj.log, "Ens: {0:8d} {1:8.3f} {2:8.3f} {3:8.3f}"\
               .format(cntr,
                       self.fmodel_ens.r_work(),
                       self.fmodel_ens.r_free(),
                       self.fmodel_ens.scale_k1()
                       )
-
             if self.fmodel_ens.r_free() < (target_rfree + rfree_tolerance):
               final_div    = div_int
               final_f_calc = self.ensemble_obj.copy_ma.array(data = (fcalc_total / cntr))
