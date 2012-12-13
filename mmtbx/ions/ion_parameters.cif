@@ -28,22 +28,35 @@ _lib_elems.min_coordinating_non_waters
 _lib_elems.cvbs_lower
 _lib_elems.cvbs_expected
 _lib_elems.cvbs_upper
-_lib_elems.allowed_coordinating_atoms
-_lib_elems.allowed_coordinating_residues
-_lib_elems.allowed_geometries
-_lib_elems.allowed_backbone_atoms
-NA  1  0.4  4  8  1  0.8  1  1.2    O,N    .                            .           O
-MG  2  0.4  4  6  1  1.8  2  2.2    O      SER,THR,ASP,ASN,GLU,GLN,HIS  octahedral  O
-K   1  0.4  4  8  1  0.8  1  1.2    O      .                            .           O
-CA  2  0.4  5  8  1  1.8  2  2.2    O      SER,THR,ASP,ASN,GLU,GLN,TYR  .           O
-MN  2  0.4  4  6  1  1.8  2  2.2    O,N    SER,THR,ASP,GLU,ASN,GLN,HIS  .           .
-FE  2  0.4  5  6  1  1.8  2  2.2    O,N,S  CYS,ASP,GLU,HIS,TYR          .
-    .
-CO  2  0.4  5  6  1  1.8  2  2.2    O,N    CYS,ASP,GLU,HIS              .           .
-CU  2  0.4  3  4  1  1.8  2  2.2    O,N,S  CYS,MET,HIS                  tetrahedral .
-NI  2  0.4  4  6  1  1.8  2  2.2    O,N,S  CYS,ASP,GLU,HIS              tetrahedral .
-ZN  2  0.4  4  6  1  1.8  2  2.4    O,N,S  CYS,ASP,GLU,HIS              tetrahedral .
-CD  2  0.4  3  6  1  1.5  2  2.3    O,N,S  .                            octahedral,any .
+NA  1  0.4  4  8  1  0.8  1  1.2
+MG  2  0.4  4  6  1  1.8  2  2.2
+K   1  0.4  4  8  1  0.8  1  1.2
+CA  2  0.4  5  8  1  1.8  2  2.2
+MN  2  0.4  4  6  1  1.8  2  2.2
+FE  2  0.4  5  6  1  1.8  2  2.2
+CO  2  0.4  5  6  1  1.8  2  2.2
+CU  2  0.4  3  4  1  1.8  2  2.2
+NI  2  0.4  4  6  1  1.8  2  2.2
+ZN  2  0.4  4  6  1  1.8  2  2.4
+CD  2  0.6  3  6  1  1.5  2  2.3
+#
+loop_
+_lib_ligands.element
+_lib_ligands.allowed_coordinating_atoms
+_lib_ligands.allowed_coordinating_residues
+_lib_ligands.allowed_geometries
+_lib_ligands.allowed_backbone_atoms
+NA  O,N       .                            .              O
+MG  O         SER,THR,ASP,ASN,GLU,GLN,HIS  octahedral     O
+K   O         .                            .              O
+CA  O         SER,THR,ASP,ASN,GLU,GLN,TYR  .              O
+MN  O,N       SER,THR,ASP,GLU,ASN,GLN,HIS  .              .
+FE  O,N,S     CYS,ASP,GLU,HIS,TYR          .              .
+CO  O,N       CYS,ASP,GLU,HIS              .              .
+CU  O,N,S     CYS,MET,HIS                  tetrahedral    .
+NI  O,N,S     CYS,ASP,GLU,HIS              tetrahedral    .
+ZN  O,N,S     CYS,ASP,GLU,HIS              tetrahedral    .
+CD  O,N,S,CL  .                            octahedral,any .
 #
 loop_
 _lib_valence.atom_symbol
@@ -118,6 +131,8 @@ CU   2   SE   -2   2.02
 FE   2   N    -3   1.86
 FE   2   O    -2   1.734
 FE   2   F    -1   1.65
+# XXX this one is dubious
+FE   2   S    -2   2.16
 FE   2   CL   -1   2.06
 FE   3   C     2   1.689
 FE   3   N    -3   1.86
@@ -149,6 +164,7 @@ NA   1   CL   -1   2.15
 NI   2   N    -3   1.75
 NI   2   O    -2   1.654
 NI   2   F    -1   1.596
+NI   2   S    -2   2.04
 NI   2   CL   -1   2.02
 RB   1   N    -3   2.37
 RB   1   O    -2   2.26
