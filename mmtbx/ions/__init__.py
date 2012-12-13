@@ -704,13 +704,9 @@ class Manager (object):
     params = self.params.water
     inaccuracies = atom_props.inaccuracies["HOH"] = set()
 
-    # Skip over water if the 2FoFc peak is low
-    if atom_props.peak_2fofc < params.min_2fofc_level:
-      return None
-
-    # waters that have B-factors above the mean are presumed correct
-    # XXX this may be problematic for some of our testing!
-    if (atom_props.atom.b > self.b_mean_hoh) :
+    # Skip over water if the 2mFo-DFc or mFo-DFc value is too low
+    if ((atom_props.peak_2fofc < params.min_2fofc_level) or
+        (atom_props.peak_fofc < -2.0)) :
       return None
 
     if atom_props.peak_fofc > params.max_fofc_level:
