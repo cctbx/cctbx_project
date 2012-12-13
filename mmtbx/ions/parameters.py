@@ -72,6 +72,7 @@ class server (object) :
       if (symbol == element.upper()) :
         if (symbol in self._metal_params) :
           return self._metal_params[symbol]
+        assert (p['_lib_ligands.element'][i_elem] == symbol)
         params = MetalParameters(
           element=symbol,
           charge=cif_param_as_int(p['_lib_elems.charge'][i_elem]),
@@ -88,13 +89,13 @@ class server (object) :
           cvbs_expected=cif_param_as_float(
             p['_lib_elems.cvbs_expected'][i_elem]),
           allowed_coordinating_atoms=cif_param_as_list(
-            p['_lib_elems.allowed_coordinating_atoms'][i_elem]),
+            p['_lib_ligands.allowed_coordinating_atoms'][i_elem]),
           allowed_coordinating_residues=cif_param_as_list(
-            p['_lib_elems.allowed_coordinating_residues'][i_elem]),
+            p['_lib_ligands.allowed_coordinating_residues'][i_elem]),
           allowed_geometries=cif_param_as_list(
-            p['_lib_elems.allowed_geometries'][i_elem]),
+            p['_lib_ligands.allowed_geometries'][i_elem]),
           allowed_backbone_atoms=cif_param_as_list(
-            p['_lib_elems.allowed_backbone_atoms'][i_elem]))
+            p['_lib_ligands.allowed_backbone_atoms'][i_elem]))
         self._metal_params[symbol] = params
         return params
     return None
@@ -140,6 +141,7 @@ class server (object) :
 
     return vectors
 
+# TODO move to ion_parameters.cif
 CHARGES = {
   "H": -1,
   "LI": 1,

@@ -1275,6 +1275,7 @@ mmtbx/ions/ion_parameters.cif -text
 mmtbx/ions/parameters.py -text
 mmtbx/ions/tst_calcium_simple.py -text
 mmtbx/ions/tst_magnesium_simple.py -text
+mmtbx/ions/tst_parameters.py svneol=native#text/x-python
 mmtbx/ions/tst_zinc_approximate.py -text
 mmtbx/kinemage/__init__.py -text
 mmtbx/kinemage/validation.py -text
