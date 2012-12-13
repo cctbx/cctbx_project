@@ -38,16 +38,20 @@ anomalous = False
 
 def find_and_build_ions (
       manager,
-      fmodel,
+      fmodels,
       model,
       wavelength,
       params,
       nproc=1,
       out=None,
       run_ordered_solvent=False) :
+  import mmtbx.refinement.minimization
   import mmtbx.ions
   from cctbx.eltbx import sasaki
+  from scitbx.array_family import flex
+  import scitbx.lbfgs
   assert (1.0 >= params.initial_occupancy >= 0)
+  fmodel = fmodels.fmodel_xray()
   if (out is None) : out = sys.stdout
   if (manager is None) :
     manager = mmtbx.ions.create_manager(
@@ -77,7 +81,7 @@ def find_and_build_ions (
   water_ion_candidates = manager.analyze_waters(
     out=out,
     candidates=elements)
-  structure_was_modified = False
+  modified_iselection = flex.size_t()
   # Build in the identified ions
   for i_seq, final_choices in water_ion_candidates :
     atom = manager.pdb_atoms[i_seq]
@@ -97,6 +101,8 @@ def find_and_build_ions (
           if (atomic_number >= 19) :
             refine_adp = "anisotropic"
       # Modify the atom object
+      # FIXME this is really insufficient - I need to also group them into
+      # a chain
       model.convert_atom(
         i_seq=i_seq,
         scattering_type=final_choice.scattering_type(),
@@ -109,9 +115,8 @@ def find_and_build_ions (
         chain_id=params.ion_chain_id,
         segid="ION",
         refine_adp=refine_adp,
-        refine_occupancies=params.refine_ion_occupancies)
+        refine_occupancies=False) #params.refine_ion_occupancies)
       if (params.anomalous) and (wavelength is not None) :
-        from cctbx.eltbx import sasaki
         scatterer = fmodel.xray_structure.scatterers()[i_seq]
         fp_fdp_info = sasaki.table(final_choice.element).at_angstrom(
           wavelength)
@@ -119,7 +124,60 @@ def find_and_build_ions (
         scatterer.fdp = fp_fdp_info.fdp()
         print >> out, "    setting f'=%g, f''=%g" % (scatterer.fp,
           scatterer.fdp)
-      structure_was_modified = True
-  if (structure_was_modified) :
-    fmodel.update_xray_structure(update_f_calc=True)
+      modified_iselection.append(i_seq)
+  if (len(modified_iselection) > 0) :
+    fmodel.update_xray_structure(
+      update_f_calc=True,
+      update_f_mask=True)
+    if (params.refine_ion_occupancies) :
+      # XXX not ideal - need to determine whether the occupancy refinement
+      # strategy will be used, and only refine here if it won't happen
+      # otherwise.
+      print >> out,\
+        ("occupancy refinement (new ions only), start r_work=%6.4f " +
+         "r_free=%6.4f") % (fmodel.r_work(), fmodel.r_free())
+      fmodel.xray_structure.scatterers().flags_set_grads(state = False)
+      fmodel.xray_structure.scatterers().flags_set_grad_occupancy(
+        iselection = modified_iselection)
+      lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
+        max_iterations = 25)
+      minimized = mmtbx.refinement.minimization.lbfgs(
+        restraints_manager       = None,
+        fmodels                  = fmodels,
+        model                    = model,
+        is_neutron_scat_table    = False,
+        lbfgs_termination_params = lbfgs_termination_params)
+      fmodel.xray_structure.adjust_occupancy(
+        occ_max   = 1.0,
+        occ_min   = 0,
+        selection = modified_iselection)
+      print >> out,\
+        ("occupancy refinement (new ions only), final r_work=%6.4f " +
+         "r_free=%6.4f") % (fmodel.r_work(), fmodel.r_free())
   return manager
+
+# XXX is there any circumstance in which this could reorder atoms?
+def clean_up_ions (model, params) :
+  atoms = model.pdb_hierarchy().atoms()
+  resseq = 1
+  ion_selection = model.pdb_hierarchy().atom_selection_cache().selection(
+    "segid ION").iselection()
+  if (len(ion_selection) == 0) :
+    return
+  for chain in model.pdb_hierarchy().only_model().chains() :
+    if (chain.id == params.ion_chain_id) :
+      for residue in chain.residue_groups() :
+        residue.resseq = "%4d" % resseq
+        resseq += 1
+      for i_seq in ion_selection :
+        atom = atoms[i_seq]
+        if (atom.segid == "ION") :
+          residue_group = atom.parent().parent()
+          assert (len(residue_group.atoms()) == 1)
+          rg_chain = residue_group.parent()
+          if (rg_chain != chain) :
+            rg_chain.remove_residue_group(residue_group)
+            residue_group.resseq = "%4d" % resseq
+            resseq += 1
+            chain.append_residue_group(residue_group)
+      break
