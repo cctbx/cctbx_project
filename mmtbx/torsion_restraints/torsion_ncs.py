@@ -2,6 +2,7 @@ from __future__ import division
 import cctbx.geometry_restraints
 from mmtbx.validation.rotalyze import rotalyze
 from mmtbx.validation.ramalyze import ramalyze
+from mmtbx.validation import analyze_peptides
 from mmtbx.utils import rotatable_bonds
 from mmtbx.rotamer.sidechain_angles import SidechainAngles
 from mmtbx.refinement import fit_rotamers
@@ -118,6 +119,7 @@ class torsion_ncs(object):
     self.cb_dp_ncs = []
     self.phi_list = []
     self.psi_list = []
+    self.omega_list = []
     self.ncs_dihedral_proxies = None
     self.dihedral_proxies_backup = None
     self.name_hash = utils.build_name_hash(pdb_hierarchy)
@@ -363,18 +365,13 @@ class torsion_ncs(object):
           angle_id = utils.get_torsion_id(dp=dp, name_hash=self.name_hash)
           #phi
           if angle_atoms == ' C  '+' N  '+' CA '+' C  ':
-            phi_id = utils.get_torsion_id(
-                       dp=dp,
-                       name_hash=self.name_hash,
-                       phi_psi=True)
             self.phi_list.append(dp.i_seqs)
           #psi
           elif angle_atoms == ' N  '+' CA '+' C  '+' N  ':
-            psi_id = utils.get_torsion_id(
-                       dp=dp,
-                       name_hash=self.name_hash,
-                       phi_psi=True)
             self.psi_list.append(dp.i_seqs)
+          #omega
+          elif angle_atoms == ' CA '+' C  '+' N  '+' CA ':
+            self.omega_list.append(dp.i_seqs)
 
       match_counter = {}
       inclusive_range = {}
@@ -571,14 +568,17 @@ class torsion_ncs(object):
     #                                         fmodel=self.fmodel)
     model_hash, model_score, all_rotamers, model_chis = \
       self.get_rotamer_data(pdb_hierarchy=pdb_hierarchy)
-    self.rama_outliers = None
+    rama_outliers = None
     rama_outlier_list = []
+    omega_outlier_list = []
     if self.filter_phi_psi_outliers:
-      self.rama_outliers = \
+      rama_outliers = \
         self.get_ramachandran_outliers(pdb_hierarchy)
-      for outlier in self.rama_outliers.splitlines():
+      for outlier in rama_outliers.splitlines():
         temp = outlier.split(':')
         rama_outlier_list.append(temp[0])
+      omega_outlier_list = \
+        self.get_omega_outliers(pdb_hierarchy)
     torsion_counter = 0
     for dp_set in self.dp_ncs:
       if len(dp_set) < 2:
@@ -586,6 +586,7 @@ class torsion_ncs(object):
       angles = []
       #cc_s = []
       is_rama_outlier = []
+      is_omega_outlier = []
       rotamer_state = []
       chi_ids = []
       wrap_hash = {}
@@ -628,6 +629,19 @@ class torsion_ncs(object):
             rama_out = True
         is_rama_outlier.append(rama_out)
 
+        omega_out = False
+        if (dp.i_seqs in self.omega_list):
+          angle_id = utils.get_torsion_id(
+                       dp=dp,
+                       name_hash=self.name_hash,
+                       omega=True)
+          key1 = \
+            angle_id[0][4:6].strip()+angle_id[0][6:10]+' '+angle_id[0][0:4]
+          key2 = \
+            angle_id[1][4:6].strip()+angle_id[1][6:10]+' '+angle_id[1][0:4]
+          if (key1, key2) in omega_outlier_list:
+            omega_out = True
+        is_omega_outlier.append(omega_out)
         #if target_map_data is not None:
         #  tor_iselection = flex.size_t()
         #  for i_seq in dp.i_seqs:
@@ -652,11 +666,12 @@ class torsion_ncs(object):
       #  print >> self.log, angle_id
       #  print rotamer_state
       #else:
-      #  print >> self.log, is_rama_outlier
+      #  print >> self.log, is_rama_outlier, is_omega_outlier
       target_angles = self.get_target_angles(
                         angles=angles,
                         #cc_s=cc_s,
                         is_rama_outlier=is_rama_outlier,
+                        is_omega_outlier=is_omega_outlier,
                         rotamer_state=rotamer_state,
                         chi_ids=chi_ids)
       #if angle_id is not None: # and which_chi is None:
@@ -791,6 +806,7 @@ class torsion_ncs(object):
                         angles,
                         #cc_s,
                         is_rama_outlier,
+                        is_omega_outlier,
                         rotamer_state,
                         chi_ids):
     assert (len(rotamer_state) == len(angles)) or \
@@ -806,12 +822,17 @@ class torsion_ncs(object):
     clusters = {}
     used = []
     target_angles = [None] * len(angles)
-    if ( (is_rama_outlier.count(False) == 0) or
+
+    #check for all outliers for current target
+    if ( (is_rama_outlier.count(False)  == 0) or
+         (is_omega_outlier.count(False) == 0) or
          ( ( (len(rotamer_state)-rotamer_state.count(None)) < 2 and
               len(rotamer_state) > 0)) ):
       for i, target in enumerate(target_angles):
         target_angles[i] = None
       return target_angles
+    ###########
+
     max_i = None
     #for i, cc in enumerate(cc_s):
     #  if is_rama_outlier[i]:
@@ -882,7 +903,9 @@ class torsion_ncs(object):
         for i in cluster:
           if is_rama_outlier[i]:
             cluster_angles.append(None)
-          if len(rotamer_state) > 0:
+          elif is_omega_outlier[i]:
+            cluster_angles.append(None)
+          elif len(rotamer_state) > 0:
             if rotamer_state[i][0] == 'OUTLIER':
               cluster_angles.append(None)
               cluster_outliers += 1
@@ -958,6 +981,11 @@ class torsion_ncs(object):
       self.rama.analyze_pdb(hierarchy=pdb_hierarchy,
                             outliers_only=True)
     return rama_outliers
+
+  def get_omega_outliers(self, pdb_hierarchy):
+    cis_peptides, trans_peptides, omega_outliers = \
+      analyze_peptides.analyze(pdb_hierarchy=pdb_hierarchy)
+    return omega_outliers
 
   def get_rotamer_data(self, pdb_hierarchy):
     rot_list_model, coot_model = \
