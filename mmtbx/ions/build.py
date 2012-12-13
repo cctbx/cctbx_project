@@ -29,6 +29,11 @@ refine_ion_adp = *Auto isotropic anisotropic none
   .help = B-factor refinement type for newly placed ions.  At medium-to-high \
     resolution, anisotropic refinement may be preferrable for the heavier \
     elements.
+anomalous = False
+  .type = bool
+  .help = If True and the wavelength is specified, any newly placed ions will \
+    have anomalous scattering factors set using theoretical values.  This is \
+    unlikely to affect R-factors but should flatten the anomalous LLG map.
 """
 
 def find_and_build_ions (
@@ -105,6 +110,15 @@ def find_and_build_ions (
         segid="ION",
         refine_adp=refine_adp,
         refine_occupancies=params.refine_ion_occupancies)
+      if (params.anomalous) and (wavelength is not None) :
+        from cctbx.eltbx import sasaki
+        scatterer = fmodel.xray_structure.scatterers()[i_seq]
+        fp_fdp_info = sasaki.table(final_choice.element).at_angstrom(
+          wavelength)
+        scatterer.fp = fp_fdp_info.fp()
+        scatterer.fdp = fp_fdp_info.fdp()
+        print >> out, "    setting f'=%g, f''=%g" % (scatterer.fp,
+          scatterer.fdp)
       structure_was_modified = True
   if (structure_was_modified) :
     fmodel.update_xray_structure(update_f_calc=True)
