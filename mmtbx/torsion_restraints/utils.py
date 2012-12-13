@@ -652,13 +652,21 @@ def check_for_internal_chain_ter_records(
         raise Sorry("chain '%s' in %s contains one or more "%(key,file_name)+
                     "errant TER cards.\nPlease remove and try again.")
 
-def get_torsion_id(dp, name_hash, phi_psi=False, chi_only=False):
+def get_torsion_id(dp,
+                   name_hash,
+                   phi_psi=False,
+                   chi_only=False,
+                   omega=False):
   id = None
   chi_atoms = False
   atom_list = []
   altloc = None
   if phi_psi:
     return name_hash[dp.i_seqs[1]][4:]
+  elif omega:
+    #LIMITATION: doesn't work with segIDs currently
+    return name_hash[dp.i_seqs[0]][4:], \
+           name_hash[dp.i_seqs[3]][4:]
   for i_seq in dp.i_seqs:
     cur_id = name_hash[i_seq][4:]
     atom = name_hash[i_seq][:4]
