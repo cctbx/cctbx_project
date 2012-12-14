@@ -29,74 +29,114 @@ import sys
 chloride_params_str = """
 max_distance_to_amide_n = 3.5
   .type = float
+  .input_size = 80
   .help = Max distance to amide N atom
 max_distance_to_cation = 3.5
   .type = float
+  .input_size = 80
 min_distance_to_anion = 3.5
   .type = float
+  .input_size = 80
 min_distance_to_other_sites = 2.1
   .type = float
+  .input_size = 80
 delta_amide_h_angle = 20
   .type = float
+  .input_size = 80
   .help = Allowed deviation (in degrees) from ideal N-H-X angle
 delta_planar_angle = 10
   .type = float
+  .input_size = 80
 radius = 2.0
   .type = float
+  .input_size = 80
+  .short_caption = Sampling radius
 """
 
 ion_master_phil = libtbx.phil.parse("""
 use_phaser = Auto
   .type = bool
   .help = Toggles the use of Phaser for calculation of f-prime values.
+  .short_caption = Use Phaser to calculate f-double-prime
 require_valence = False
   .type = bool
   .help = Toggles the use of valence calculations
+  .short_caption = Require good bond valence
 ambiguous_valence_cutoff = 0.5
   .type = float
   .help = "Cutoff to uniquely select one of many metals by comparing its observed and expected valence"
 d_min_strict_valence = 1.5
   .type = float
+  .short_caption = Resolution limit for strict valence rules
 water
   .short_caption = Water filtering
-  .style = box
+  .style = box auto_align
 {
   min_2fofc_level = 1.8
     .type = float
+    .input_size = 80
     .help = Minimum water 2mFo-DFc map value.  Waters below this cutoff will \
       not be analyzed further.
+    .short_caption = Min. allowed 2mFo-DFc map value
   max_fofc_level = 3.0
     .type = float
+    .input_size = 80
     .help = Maximum water mFo-DFc map value
+    .short_caption = Max. expected mFo-DFc map value
   max_anom_level = 4.0
     .type = float
+    .input_size = 80
     .help = Maximum water anomalous map value
+    .short_caption = Max. expected anomalous map value
   max_occ = 1.0
     .type = float
+    .input_size = 80
     .help = Maximum water occupancy
+    .short_caption = Max. expected occupancy
   max_stddev_b_iso = 3
     .type = float
+    .input_size = 80
+    .short_caption = Max. standard deviations below mean B-iso
   min_frac_b_iso = 0.25
     .type = float
+    .input_size = 80
+    .short_caption = Min. fraction of mean B-iso
 }
-chloride {
+chloride
+  .short_caption = Halide ions
+  .style = box auto_align
+{
   %s
 }
-phaser {
+phaser
+  .short_caption = Phaser options
+  .caption = These parameters control the identification of anomalous \
+    scatterers using Phaser substructure completion.
+  .style = box auto_align
+{
   distance_cutoff = 1.5
     .type = float
+    .input_size = 80
+    .short_caption = Min. required separation from other atoms
   distance_cutoff_same_site = 0.5
     .type = float
+    .input_size = 80
+    .short_caption = Max. separation from mapped atom
   fpp_ratio_min = 0.4
     .type = float
+    .input_size = 80
     .help = Minimum ratio of refined/theoretical f-double-prime.
+    .short_caption = Min. f-double-prime ratio
   fpp_ratio_max = 1.08
     .type = float
+    .input_size = 80
     .help = Maximum ratio of refined/theoretical f-double-prime.
+    .short_caption = Max. f-double-prime ratio
   use_llg_anom_map = False
     .type = bool
     .help = If True, the anomalous LLG map from Phaser will be used instead \
       of a conventional anomalous difference map.
+    .short_caption = Use LLG anomalous map
 }
 """ % (chloride_params_str))
 
