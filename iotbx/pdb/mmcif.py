@@ -534,7 +534,8 @@ class pdb_hierarchy_as_cif_block(iotbx.cif.crystal_symmetry_as_cif_block):
   def __init__(self, pdb_hierarchy, crystal_symmetry=None):
     if crystal_symmetry is None:
       crystal_symmetry = crystal.symmetry()
-    iotbx.cif.crystal_symmetry_as_cif_block.__init__(self, crystal_symmetry)
+    iotbx.cif.crystal_symmetry_as_cif_block.__init__(
+      self, crystal_symmetry, format="mmcif")
 
     atom_site_loop = iotbx.cif.model.loop(header=(
       '_atom_site.group_PDB',
