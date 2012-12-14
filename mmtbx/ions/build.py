@@ -4,6 +4,7 @@ Deals with modifying a structure to include unbuilt and misidentified ions.
 
 from __future__ import division
 from libtbx.str_utils import make_sub_header
+from libtbx.utils import null_out
 from libtbx import Auto
 import sys
 
@@ -201,28 +202,41 @@ def find_and_build_ions (
           show_r_factors()
   return manager
 
-# XXX is there any circumstance in which this could reorder atoms?
-def clean_up_ions (model, params) :
-  atoms = model.pdb_hierarchy().atoms()
-  resseq = 1
+def clean_up_ions (fmodel, model, params, log=None, verbose=True) :
+  if (log is None) :
+    log = null_out()
   ion_selection = model.pdb_hierarchy().atom_selection_cache().selection(
-    "segid ION").iselection()
-  if (len(ion_selection) == 0) :
-    return
-  for chain in model.pdb_hierarchy().only_model().chains() :
-    if (chain.id == params.ion_chain_id) :
-      for residue in chain.residue_groups() :
-        residue.resseq = "%4d" % resseq
-        resseq += 1
-      for i_seq in ion_selection :
-        atom = atoms[i_seq]
-        if (atom.segid == "ION") :
-          residue_group = atom.parent().parent()
-          assert (len(residue_group.atoms()) == 1)
-          rg_chain = residue_group.parent()
-          if (rg_chain != chain) :
-            rg_chain.remove_residue_group(residue_group)
-            residue_group.resseq = "%4d" % resseq
-            resseq += 1
-            chain.append_residue_group(residue_group)
-      break
+    "segid ION")
+  ion_iselection = ion_selection.iselection()
+  if (len(ion_iselection) == 0) :
+    print >> log, "  No ions (segid=ION) found."
+    return model
+  n_sites_start = model.xray_structure.scatterers().size()
+  new_model = model.select(~ion_selection)
+  ion_model = model.select(ion_selection)
+  ion_pdb_hierarchy = ion_model.pdb_hierarchy(sync_with_xray_structure=True)
+  ion_atoms = ion_pdb_hierarchy.atoms()
+  nonbonded_types = ion_model.restraints_manager.geometry.nonbonded_types
+  nonbonded_charges = ion_model.restraints_manager.geometry.nonbonded_charges
+  new_model.append_single_atoms(
+    new_xray_structure=ion_model.xray_structure,
+    atom_names=[ atom.name for atom in ion_atoms ],
+    residue_names=[ atom.fetch_labels().resname for atom in ion_atoms ],
+    nonbonded_types=nonbonded_types,
+    nonbonded_charges=nonbonded_charges,
+    chain_id=params.ion_chain_id,
+    segids=[ "ION" for atom in ion_atoms ],
+    refine_occupancies=params.refine_ion_occupancies,
+    reset_labels=True)
+  n_sites_end = new_model.xray_structure.scatterers().size()
+  new_hierarchy = new_model.pdb_hierarchy()
+  n_sites_pdb = new_hierarchy.atoms().size()
+  assert (n_sites_start == n_sites_end == n_sites_pdb)
+  new_selection = new_hierarchy.atom_selection_cache().selection("segid ION")
+  ion_atoms = new_hierarchy.atoms().select(new_selection)
+  if (verbose) :
+    print >> log, "  Final list of ions:"
+    for atom in ion_atoms :
+      print >> log, "    %s" % atom.id_str()
+    print >> log, ""
+  return new_model
