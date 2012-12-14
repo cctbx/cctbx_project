@@ -36,7 +36,7 @@ def exercise_miller_arrays_as_cif_block():
     ma1.array(data=flex.complex_double([1-1j]*ma1.size())), array_type='calc')
   for key in ('_refln.F_squared_meas', '_refln.F_squared_sigma',
               '_refln.F_calc', '_refln.phase_calc',
-              '_space_group.symop_operation_xyz',
+              '_space_group_symop.operation_xyz',
               '_cell.length_a', '_refln.index_h'):
     assert key in mas_as_cif_block.cif_block.keys()
   #
