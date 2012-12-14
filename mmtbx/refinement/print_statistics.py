@@ -657,6 +657,8 @@ class relative_errors(object):
     else:
        xray_structure   = model.xray_structure
        xray_structure_0 = model_ini.xray_structure
+    assert (xray_structure.scatterers().size() ==
+            xray_structure_0.scatterers().size())
     array_of_distances_between_each_atom_ini_curr = \
                               flex.sqrt(xray_structure.difference_vectors_cart(
                                                        xray_structure_0).dot())

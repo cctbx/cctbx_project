@@ -673,7 +673,7 @@ class manager(object):
       self.ias_selection.extend(tail)
       self.xray_structure.concatenate_inplace(other = self.ias_xray_structure)
       print >> self.log, "Scattering dictionary for combined xray_structure:"
-      self.xray_structure.scattering_type_registry().show()
+      self.xray_structure.scattering_type_registry().show(out=self.log)
       self.xray_structure_initial.concatenate_inplace(
                                            other = self.ias_xray_structure)
       if(self.refinement_flags is not None):
@@ -710,37 +710,20 @@ class manager(object):
            self.refinement_flags.adp_individual_aniso.set_selected(sel, True)
          if(self.refinement_flags.adp_individual_iso is not None):
            self.refinement_flags.adp_individual_iso.set_selected(sel, False)
-    # add to pdb_hierarchy:
-    # XXX XXX CONSOLIDATE WITH add_solvent
-    pdb_model = self._pdb_hierarchy.only_model()
-    new_chain = pdb.hierarchy.chain(id=" ")
-    orth = self.ias_xray_structure.unit_cell().orthogonalize
-    n_seq = self.pdb_atoms.size()
-    i_seq = 0
+    n_sites = self.ias_xray_structure.scatterers().size()
+    atom_names = []
     for sc in self.ias_xray_structure.scatterers():
-      i_seq += 1
       new_atom_name = sc.label.strip()
       if(len(new_atom_name) < 4): new_atom_name = " " + new_atom_name
       while(len(new_atom_name) < 4): new_atom_name = new_atom_name+" "
-      new_atom = (pdb.hierarchy.atom()
-        .set_serial(new_serial=pdb.hy36encode(width=5, value=n_seq+i_seq))
-        .set_name(new_name=new_atom_name)
-        .set_xyz(new_xyz=orth(sc.site))
-        .set_occ(new_occ=sc.occupancy)
-        .set_b(new_b=adptbx.u_as_b(sc.u_iso))
-        .set_element(sc.scattering_type[:1])
-        .set_charge(sc.scattering_type[1:3])
-        .set_hetero(new_hetero=True))
-      new_atom_group = pdb.hierarchy.atom_group(altloc="", resname="IAS")
-      new_atom_group.append_atom(atom=new_atom)
-      new_residue_group = pdb.hierarchy.residue_group(
-        resseq=pdb.resseq_encode(value=i_seq), icode=" ")
-      new_residue_group.append_atom_group(atom_group=new_atom_group)
-      new_chain.append_residue_group(residue_group=new_residue_group)
-    if (new_chain.residue_groups_size() != 0):
-      pdb_model.append_chain(chain=new_chain)
-    self.pdb_atoms = self._pdb_hierarchy.atoms()
-    self.pdb_atoms.reset_i_seq()
+      atom_names.append(new_atom_name)
+    residue_names = [ "IAS" ] * n_sites
+    self._append_pdb_atoms(
+      new_xray_structure=self.ias_xray_structure,
+      atom_names=atom_names,
+      residue_names=residue_names,
+      chain_id=" ",
+      i_seq_start=0)
 
   def remove_ias(self):
     print >> self.log, ">>> Removing IAS..............."
@@ -753,7 +736,7 @@ class manager(object):
     if(self.ias_selection is not None):
        self.xray_structure.select_inplace(
          selection = ~self.ias_selection)
-       self.xray_structure.scattering_type_registry().show()
+       self.xray_structure.scattering_type_registry().show(out=self.log)
        self._pdb_hierarchy = self._pdb_hierarchy.select(
          atom_selection = ~self.ias_selection)
        self.pdb_atoms = self._pdb_hierarchy.atoms()
@@ -992,29 +975,62 @@ class manager(object):
     elif(refine_adp == "anisotropic"):
       solvent_xray_structure.convert_to_anisotropic(selection =
         ~solvent_xray_structure.hd_selection())
-    else: raise RuntimeError
+    else :
+      raise RuntimeError("refine_adp must be 'isotropic' or 'anisotropic'")
+    n_atoms = solvent_xray_structure.scatterers().size()
+    new_atom_name = atom_name.strip()
+    if(len(new_atom_name) < 4): new_atom_name = " " + new_atom_name
+    while(len(new_atom_name) < 4): new_atom_name = new_atom_name+" "
+    atom_names = [ new_atom_name ] * n_atoms
+    residue_names = [ residue_name ] * n_atoms
+    nonbonded_types = flex.std_string([ "OH2" ] * n_atoms)
+    i_seq = find_common_water_resseq_max(pdb_hierarchy=self._pdb_hierarchy)
+    if (i_seq is None or i_seq < 0): i_seq = 0
+    refine_iso_selection = flex.bool(n_atoms, refine_adp=="isotropic")
+    refine_aniso_seelction = flex.bool(n_atoms, refine_adp=="anisotropic")
+    return self.append_single_atoms(
+      new_xray_structure=solvent_xray_structure,
+      atom_names=atom_names,
+      residue_names=residue_names,
+      nonbonded_types=nonbonded_types,
+      i_seq_start=i_seq,
+      chain_id=chain_id,
+      refine_occupancies=refine_occupancies)
+
+  def append_single_atoms(self,
+      new_xray_structure,
+      atom_names,
+      residue_names,
+      nonbonded_types,
+      refine_occupancies=None,
+      nonbonded_charges=None,
+      segids=None,
+      i_seq_start = 0,
+      chain_id     = " ",
+      reset_labels=False) :
     ms = self.xray_structure.scatterers().size() #
+    number_of_new_atoms = new_xray_structure.scatterers().size()
     self.xray_structure = \
-      self.xray_structure.concatenate(solvent_xray_structure)
+      self.xray_structure.concatenate(new_xray_structure)
     occupancy_flags = None
     if(refine_occupancies):
       occupancy_flags = []
-      for i in range(1, solvent_xray_structure.scatterers().size()+1):
+      for i in range(1, new_xray_structure.scatterers().size()+1):
         occupancy_flags.append([flex.size_t([ms+i-1])])
     if(self.refinement_flags.individual_sites):
-      ssites = flex.bool(solvent_xray_structure.scatterers().size(), True)
+      ssites = flex.bool(new_xray_structure.scatterers().size(), True)
     else: ssites = None
 
     #XXX Tom
     try:
       if(self.refinement_flags.torsion_angles):
-        ssites_tors = flex.bool(solvent_xray_structure.scatterers().size(), True)
+        ssites_tors = flex.bool(new_xray_structure.scatterers().size(), True)
       else: ssites_tors = None
       if(self.refinement_flags.adp_individual_iso):
-        sadp_iso = solvent_xray_structure.use_u_iso()
+        sadp_iso = new_xray_structure.use_u_iso()
       else: sadp_iso = None
       if(self.refinement_flags.adp_individual_aniso):
-        sadp_aniso = solvent_xray_structure.use_u_aniso()
+        sadp_aniso = new_xray_structure.use_u_aniso()
       else: sadp_aniso = None
       self.refinement_flags.inflate(
         sites_individual       = ssites,
@@ -1026,13 +1042,13 @@ class manager(object):
       pass
 
 #    if(self.refinement_flags.torsion_angles):
-#      ssites_tors = flex.bool(solvent_xray_structure.scatterers().size(), True)
+#      ssites_tors = flex.bool(new_xray_structure.scatterers().size(), True)
 #    else: ssites_tors = None
 #    if(self.refinement_flags.adp_individual_iso):
-#      sadp_iso = solvent_xray_structure.use_u_iso()
+#      sadp_iso = new_xray_structure.use_u_iso()
 #    else: sadp_iso = None
 #    if(self.refinement_flags.adp_individual_aniso):
-#      sadp_aniso = solvent_xray_structure.use_u_aniso()
+#      sadp_aniso = new_xray_structure.use_u_aniso()
 #    else: sadp_aniso = None
 #    self.refinement_flags.inflate(
 #      sites_individual       = ssites,
@@ -1041,34 +1057,88 @@ class manager(object):
 #      adp_individual_aniso   = sadp_aniso,
 #      s_occupancies          = occupancy_flags)#torsion_angles
 
-    new_atom_name = atom_name.strip()
-    if(len(new_atom_name) < 4): new_atom_name = " " + new_atom_name
-    while(len(new_atom_name) < 4): new_atom_name = new_atom_name+" "
     #
-    i_seq = find_common_water_resseq_max(pdb_hierarchy=self._pdb_hierarchy)
-    if (i_seq is None or i_seq < 0): i_seq = 0
-    #
-    # XXX XXX CONSOLIDATE WITH add_ias
+    self._append_pdb_atoms(
+      new_xray_structure=new_xray_structure,
+      atom_names=atom_names,
+      residue_names=residue_names,
+      chain_id=chain_id,
+      segids=segids,
+      i_seq_start=i_seq_start,
+      reset_labels=reset_labels)
+   #
+    if(self.restraints_manager is not None):
+      geometry = self.restraints_manager.geometry
+      if (geometry.model_indices is None):
+        model_indices = None
+      else:
+        model_indices = flex.size_t(number_of_new_atoms, 0)
+      if (geometry.conformer_indices is None):
+        conformer_indices = None
+      else:
+        conformer_indices = flex.size_t(number_of_new_atoms, 0)
+      if (geometry.sym_excl_indices is None):
+        sym_excl_indices = None
+      else:
+        sym_excl_indices = flex.size_t(number_of_new_atoms, 0)
+      if (geometry.donor_acceptor_excl_groups is None):
+        donor_acceptor_excl_groups = None
+      else:
+        donor_acceptor_excl_groups = flex.size_t(number_of_new_atoms, 0)
+      if (nonbonded_charges is None) :
+        nonbonded_charges = flex.int(number_of_new_atoms, 0)
+      geometry = geometry.new_including_isolated_sites(
+        n_additional_sites =number_of_new_atoms,
+        model_indices=model_indices,
+        conformer_indices=conformer_indices,
+        sym_excl_indices=sym_excl_indices,
+        donor_acceptor_excl_groups=donor_acceptor_excl_groups,
+        site_symmetry_table=new_xray_structure.site_symmetry_table(),
+        nonbonded_types=nonbonded_types,
+        nonbonded_charges=nonbonded_charges)
+      self.restraints_manager = mmtbx.restraints.manager(
+        geometry      = geometry,
+        ncs_groups    = self.restraints_manager.ncs_groups,
+        normalization = self.restraints_manager.normalization)
+      if (self.restraints_manager.ncs_groups is not None):
+        self.restraints_manager.ncs_groups.register_additional_isolated_sites(
+          number=number_of_new_atoms)
+      self.restraints_manager.geometry.update_plain_pair_sym_table(
+        sites_frac = self.xray_structure.sites_frac())
+    assert self.pdb_atoms.size() == self.xray_structure.scatterers().size()
+
+  def _append_pdb_atoms (self,
+      new_xray_structure,
+      atom_names,
+      residue_names,
+      chain_id,
+      segids=None,
+      i_seq_start=0,
+      reset_labels=False) :
+    assert (len(atom_names) == len(residue_names) ==
+            len(new_xray_structure.scatterers()))
+    assert (segids is None) or (len(segids) == len(atom_names))
     pdb_model = self._pdb_hierarchy.only_model()
     new_chain = pdb.hierarchy.chain(id=chain_id)
-    orth = solvent_xray_structure.unit_cell().orthogonalize
-    serial_offs = self.pdb_atoms.size() - i_seq
-    for sc in solvent_xray_structure.scatterers():
+    orth = new_xray_structure.unit_cell().orthogonalize
+    n_seq = self.pdb_atoms.size()
+    i_seq = i_seq_start
+    for j_seq, sc in enumerate(new_xray_structure.scatterers()) :
       i_seq += 1
       new_atom = (pdb.hierarchy.atom()
-        .set_serial(new_serial=pdb.hy36encode(width=5, value=serial_offs+i_seq))
-        .set_name(new_name=new_atom_name)
+        .set_serial(new_serial=pdb.hy36encode(width=5, value=n_seq+i_seq))
+        .set_name(new_name=atom_names[j_seq])
         .set_xyz(new_xyz=orth(sc.site))
         .set_occ(new_occ=sc.occupancy)
         .set_b(new_b=adptbx.u_as_b(sc.u_iso))
         .set_element(sc.scattering_type[:1])
         .set_charge(sc.scattering_type[1:3])
         .set_hetero(new_hetero=True))
-      new_atom_group = pdb.hierarchy.atom_group(
-        altloc="", resname=residue_name)
-      assert new_atom.parent() is None
+      if (segids is not None) :
+        new_atom.segid = segids[j_seq]
+      new_atom_group = pdb.hierarchy.atom_group(altloc="",
+        resname=residue_names[j_seq])
       new_atom_group.append_atom(atom=new_atom)
-      assert new_atom.parent().memory_id() == new_atom_group.memory_id()
       new_residue_group = pdb.hierarchy.residue_group(
         resseq=pdb.resseq_encode(value=i_seq), icode=" ")
       new_residue_group.append_atom_group(atom_group=new_atom_group)
@@ -1077,44 +1147,9 @@ class manager(object):
       pdb_model.append_chain(chain=new_chain)
     self.pdb_atoms = self._pdb_hierarchy.atoms()
     self.pdb_atoms.reset_i_seq()
-    #
-    if(self.restraints_manager is not None):
-      geometry = self.restraints_manager.geometry
-      number_of_new_solvent = solvent_xray_structure.scatterers().size()
-      if (geometry.model_indices is None):
-        model_indices = None
-      else:
-        model_indices = flex.size_t(number_of_new_solvent, 0)
-      if (geometry.conformer_indices is None):
-        conformer_indices = None
-      else:
-        conformer_indices = flex.size_t(number_of_new_solvent, 0)
-      if (geometry.sym_excl_indices is None):
-        sym_excl_indices = None
-      else:
-        sym_excl_indices = flex.size_t(number_of_new_solvent, 0)
-      if (geometry.donor_acceptor_excl_groups is None):
-        donor_acceptor_excl_groups = None
-      else:
-        donor_acceptor_excl_groups = flex.size_t(number_of_new_solvent, 0)
-      geometry = geometry.new_including_isolated_sites(
-        n_additional_sites =number_of_new_solvent,
-        model_indices=model_indices,
-        conformer_indices=conformer_indices,
-        sym_excl_indices=sym_excl_indices,
-        donor_acceptor_excl_groups=donor_acceptor_excl_groups,
-        site_symmetry_table=solvent_xray_structure.site_symmetry_table(),
-        nonbonded_types=flex.std_string(number_of_new_solvent, "OH2"))
-      self.restraints_manager = mmtbx.restraints.manager(
-                           geometry      = geometry,
-                           ncs_groups    = self.restraints_manager.ncs_groups,
-                           normalization = self.restraints_manager.normalization)
-      if (self.restraints_manager.ncs_groups is not None):
-        self.restraints_manager.ncs_groups.register_additional_isolated_sites(
-          number=number_of_new_solvent)
-      self.restraints_manager.geometry.update_plain_pair_sym_table(
-                                   sites_frac = self.xray_structure.sites_frac())
-    assert self.pdb_atoms.size() == self.xray_structure.scatterers().size()
+    if (reset_labels) :
+      for sc, atom in zip(self.xray_structure.scatterers(), self.pdb_atoms) :
+        sc.label = atom.id_str()
 
   def convert_atom (self,
       i_seq,
