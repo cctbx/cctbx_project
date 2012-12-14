@@ -10,32 +10,45 @@ import sys
 ion_building_params_str = """
 debug = False
   .type = bool
+  .short_caption = Debugging mode (verbose)
 elements = Auto
   .type = strings
+  .help = If Auto, the program will search for MG, CL, CA, and ZN ions, but \
+    with stricter rules for accepting a candidate element.  You may \
+    alternately specify a list of element symbols to search for.  (Not all \
+    elements are supported.)
 ion_chain_id = X
   .type = str
+  .input_size = 80
+  .short_caption = Ion chain ID
 initial_occupancy = 1.0
   .type = float
+  .input_size = 80
   .help = Occupancy for newly placed ions - if less than 1.0, the occupancy \
     may be refined automatically in future runs of phenix.refine.
 initial_b_iso = 20.0
   .type = float
+  .input_size = 80
+  .short_caption = Initial B-iso
 refine_ion_occupancies = True
   .type = bool
   .help = Toggles refinement of occupancies for newly placed ions.  This \
     will only happen if the occupancy refinement strategy is selected.
 refine_ion_adp = *Auto isotropic anisotropic none
   .type = choice
+  .short_caption = Refine ion B-factor
   .help = B-factor refinement type for newly placed ions.  At medium-to-high \
     resolution, anisotropic refinement may be preferrable for the heavier \
     elements.
 anomalous = True
   .type = bool
+  .short_caption = Model anomalous scattering
   .help = If True and the wavelength is specified, any newly placed ions will \
     have anomalous scattering factors set using theoretical values.  This is \
     unlikely to affect R-factors but should flatten the anomalous LLG map.
 refine_anomalous = False
   .type = bool
+  .short_caption = Refine anomalous scattering
 """
 
 def find_and_build_ions (
