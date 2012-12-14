@@ -733,15 +733,19 @@ def index_phil_objects (phil_object,
     path_index[full_path] = phil_object
   if phil_object.is_definition and phil_object.type is None :
     raise RuntimeError("Type required for parameter '%s'." % full_path)
-  label = get_standard_phil_label(phil_object)
-  text_fields = (label, str(phil_object.caption), str(phil_object.help),
-    phil_object.is_definition)
-  text_index[full_path] = text_fields
+  text_index_for_child_objects = None
+  if ((text_index is not None) and
+      ((phil_object.expert_level is None) or (phil_object.expert_level <=2 ))):
+    label = get_standard_phil_label(phil_object)
+    text_fields = (label, str(phil_object.caption), str(phil_object.help),
+      phil_object.is_definition)
+    text_index[full_path] = text_fields
+    text_index_for_child_objects = text_index
   if phil_object.is_scope :
     for object in phil_object.objects :
       index_phil_objects(phil_object=object,
                          path_index=path_index,
-                         text_index=text_index,
+                         text_index=text_index_for_child_objects,
                          template_index=template_index,
                          multiple_scopes=multiple_scopes,
                          multiple_defs=multiple_defs,
