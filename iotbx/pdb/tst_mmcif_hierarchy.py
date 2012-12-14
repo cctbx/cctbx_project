@@ -246,7 +246,9 @@ model id="" #chains=2
       altloc="" resname="MN" #atoms=1
         "MN  "
 """)
-  cif_block = hierarchy.as_cif_block()
+  cif_block = hierarchy.as_cif_block(crystal_symmetry=builder.crystal_symmetry)
+  assert "_space_group.symop_operation_xyz" in cif_block
+  assert "_cell.length_a" in cif_block
   builder = pdb_hierarchy_builder(cif_block)
   hierarchy_recycled = builder.hierarchy
   s1 = StringIO()
