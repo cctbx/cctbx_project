@@ -83,7 +83,10 @@ def smart_load_dictionary(name=None, file_path=None, url=None,
       module_name='iotbx', path='cif/dictionaries')
   if name is not None and [file_path, url].count(None) == 2:
     if file_path is None:
-      file_path = os.path.join(store_dir, name)
+      if os.path.isfile(name):
+        file_path = name
+      else:
+        file_path = os.path.join(store_dir, name)
       if not os.path.isfile(file_path):
         gzip_path = file_path + '.gz'
         if os.path.isfile(gzip_path):
