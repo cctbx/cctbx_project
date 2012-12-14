@@ -189,14 +189,7 @@ class crystal_symmetry_as_cif_block(object):
 
 
 class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
-  sources = {
-    "it1992": "International Tables Volume C Table 6.1.1.4 (pp. 500-502)",
-    "wk1995": "Waasmaier & Kirfel (1995), Acta Cryst. A51, 416-431",
-  }
-  inelastic_references = {
-    "henke" : "Henke, Gullikson and Davis, At. Data and Nucl. Data Tables, 1993, 54, 2",
-    "sasaki" : "Sasaki, KEK Report, 1989, 88-14, 1",
-  }
+
 
   def __init__(self, xray_structure, covariance_matrix=None,
                cell_covariance_matrix=None):
@@ -220,7 +213,6 @@ class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
       '_atom_site_fract_x', '_atom_site_fract_y', '_atom_site_fract_z',
       '_atom_site_U_iso_or_equiv', '_atom_site_adp_type',
       '_atom_site_occupancy'))
-    fp_fdp_table = {}
     for i_seq, sc in enumerate(scatterers):
       # site
       if covariance_matrix is not None and sc.flags.grad_site():
@@ -258,7 +250,6 @@ class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
       atom_site_loop.add_row((
         sc.label, sc.scattering_type, site[0], site[1], site[2], u_iso_or_equiv,
         adp_type, fmt%sc.occupancy))
-      fp_fdp_table.setdefault(sc.scattering_type, (sc.fp, sc.fdp))
     self.cif_block.add_loop(atom_site_loop)
 
     # _atom_site_aniso_* loop
@@ -291,36 +282,78 @@ class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
           row = [sc.label] + [fmt%u_cif[i] for i in range(6)]
         aniso_loop.add_row(row)
       self.cif_block.add_loop(aniso_loop)
+      self.cif_block.add_loop(atom_type_cif_loop(xray_structure))
 
-    # _atom_type_* loop
-    atom_type_loop = model.loop(header=('_atom_type_symbol',
-                                        '_atom_type_scat_dispersion_real',
-                                        '_atom_type_scat_dispersion_imag',
-                                        '_atom_type_scat_source',
-                                        '_atom_type_scat_dispersion_source'))
-    scattering_type_registry = xray_structure.scattering_type_registry()
-    params = xray_structure.scattering_type_registry_params
-    scat_source = self.sources.get(params.table)
-    disp_source = self.inelastic_references.get(
-      xray_structure.inelastic_form_factors_source)
-    # custom?
-    if disp_source is None:
-      disp_source = xray_structure.inelastic_form_factors_source
-    if disp_source is None:
-      disp_source = "undefined"
-    scattering_type_registry = xray_structure.scattering_type_registry()
-    for atom_type, gaussian in scattering_type_registry.as_type_gaussian_dict().iteritems():
-      if params.custom_dict and atom_type in params.custom_dict:
-        scat_source = "Custom %i-Gaussian" %gaussian.n_terms()
-      elif scat_source is None:
-        scat_source = """\
+
+def atom_type_cif_loop(xray_structure, format="coreCIF"):
+  format = format.lower()
+  assert format in ("corecif", "mmcif")
+  if format == "mmcif": separator = '.'
+  else: separator = '_'
+
+  sources = {
+    "it1992": "International Tables Volume C Table 6.1.1.4 (pp. 500-502)",
+    "wk1995": "Waasmaier & Kirfel (1995), Acta Cryst. A51, 416-431",
+  }
+  inelastic_references = {
+    "henke" : "Henke, Gullikson and Davis, At. Data and Nucl. Data Tables, 1993, 54, 2",
+    "sasaki" : "Sasaki, KEK Report, 1989, 88-14, 1",
+  }
+
+  scattering_type_registry = xray_structure.scattering_type_registry()
+  unique_gaussians = scattering_type_registry.unique_gaussians_as_list()
+  max_n_gaussians = max([gaussian.n_terms() for gaussian in unique_gaussians])
+  # _atom_type_* loop
+  header = ['_atom_type%ssymbol' %separator,
+            '_atom_type%sscat_dispersion_real' %separator,
+            '_atom_type%sscat_dispersion_imag' %separator]
+  header.extend(['_atom_type%sscat_Cromer_Mann_a%i' %(separator, i+1)
+                 for i in range(max_n_gaussians)])
+  header.extend(['_atom_type%sscat_Cromer_Mann_b%i' %(separator, i+1)
+                 for i in range(max_n_gaussians)])
+  header.extend(['_atom_type%sscat_Cromer_Mann_c' %separator,
+                 '_atom_type%sscat_source' %separator,
+                 '_atom_type%sscat_dispersion_source' %separator])
+  atom_type_loop = model.loop(header=header)
+  gaussian_dict = scattering_type_registry.as_type_gaussian_dict()
+  scattering_type_registry = xray_structure.scattering_type_registry()
+  params = xray_structure.scattering_type_registry_params
+  fp_fdp_table = {}
+  for sc in xray_structure.scatterers():
+    fp_fdp_table.setdefault(sc.scattering_type, (sc.fp, sc.fdp))
+  disp_source = inelastic_references.get(
+    xray_structure.inelastic_form_factors_source)
+  # custom?
+  if disp_source is None:
+    disp_source = xray_structure.inelastic_form_factors_source
+  if disp_source is None:
+    disp_source = "."
+  for atom_type, gaussian in scattering_type_registry.as_type_gaussian_dict().iteritems():
+    scat_source = sources.get(params.table)
+    if params.custom_dict and atom_type in params.custom_dict:
+      scat_source = "Custom %i-Gaussian" %gaussian.n_terms()
+    elif scat_source is None:
+      scat_source = """\
 %i-Gaussian fit: Grosse-Kunstleve RW, Sauter NK, Adams PD:
 Newsletter of the IUCr Commission on Crystallographic Computing 2004, 3, 22-31."""
-        scat_source = scat_source %gaussian.n_terms()
+      scat_source = scat_source %gaussian.n_terms()
+    if disp_source == ".":
+      fp, fdp = ".", "."
+    else:
       fp, fdp = fp_fdp_table[atom_type]
-      atom_type_loop.add_row(
-        (atom_type, "%.5f" %fp, "%.5f" %fdp, scat_source, disp_source))
-    self.cif_block.add_loop(atom_type_loop)
+      fp = "%.5f" %fp
+      fdp = "%.5f" %fdp
+    row = [atom_type, fp, fdp]
+    #gaussian = gaussian_dict[sc.scattering_type]
+    gaussian_a = ["%.5f" %a for a in gaussian.array_of_a()]
+    gaussian_b = ["%.5f" %a for a in gaussian.array_of_b()]
+    gaussian_a.extend(["."]*(max_n_gaussians-gaussian.n_terms()))
+    gaussian_b.extend(["."]*(max_n_gaussians-gaussian.n_terms()))
+    row.extend(gaussian_a + gaussian_b)
+    row.extend([gaussian.c(), scat_source, disp_source])
+    atom_type_loop.add_row(row)
+
+  return atom_type_loop
 
 
 def miller_indices_as_cif_loop(indices, prefix='_refln_'):
