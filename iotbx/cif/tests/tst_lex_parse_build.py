@@ -493,6 +493,49 @@ _c 3
 _d 4
 """
 
+def exercise_atom_type_loop():
+  from cctbx import xray
+  cif_model = cif.reader(input_string=cif_xray_structure).model()
+  xs = cif.builders.crystal_structure_builder(cif_model['global']).structure
+  xs.set_inelastic_form_factors(photon=0.71073, table="henke")
+  loop = cif.atom_type_cif_loop(xray_structure=xs, format="mmcif")
+  s = StringIO()
+  print >> s, loop
+  assert not show_diff(
+    "\n".join([li.rstrip() for li in s.getvalue().splitlines()]), """\
+loop_
+  _atom_type.symbol
+  _atom_type.scat_dispersion_real
+  _atom_type.scat_dispersion_imag
+  _atom_type.scat_Cromer_Mann_a1
+  _atom_type.scat_Cromer_Mann_a2
+  _atom_type.scat_Cromer_Mann_a3
+  _atom_type.scat_Cromer_Mann_a4
+  _atom_type.scat_Cromer_Mann_a5
+  _atom_type.scat_Cromer_Mann_a6
+  _atom_type.scat_Cromer_Mann_b1
+  _atom_type.scat_Cromer_Mann_b2
+  _atom_type.scat_Cromer_Mann_b3
+  _atom_type.scat_Cromer_Mann_b4
+  _atom_type.scat_Cromer_Mann_b5
+  _atom_type.scat_Cromer_Mann_b6
+  _atom_type.scat_Cromer_Mann_c
+  _atom_type.scat_source
+  _atom_type.scat_dispersion_source
+   C 0.00347 0.00161 2.18189 1.77612 1.08772 0.64146 0.20789 0.10522 13.45337 32.57901 0.74729 0.25125 80.97993 0.05873 0.0
+;
+6-Gaussian fit: Grosse-Kunstleve RW, Sauter NK, Adams PD:
+Newsletter of the IUCr Commission on Crystallographic Computing 2004, 3, 22-31.
+;
+ 'Henke, Gullikson and Davis, At. Data and Nucl. Data Tables, 1993, 54, 2'
+   O 0.01158 0.00611 2.91262 2.58808 0.98057 0.69663 0.68508 0.13677 14.48462 6.03818 0.42255 0.15446 35.53892 0.03841 0.0
+;
+6-Gaussian fit: Grosse-Kunstleve RW, Sauter NK, Adams PD:
+Newsletter of the IUCr Commission on Crystallographic Computing 2004, 3, 22-31.
+;
+ 'Henke, Gullikson and Davis, At. Data and Nucl. Data Tables, 1993, 54, 2'
+""")
+
 def exercise_partial_crystal_symmetry():
   def get_inp(u, s):
     result = ["data_test"]
@@ -827,6 +870,7 @@ def exercise():
   exercise_lex_parse_build()
   exercise_partial_crystal_symmetry()
   exercise_mmcif_structure_factors()
+  exercise_atom_type_loop()
 
 if __name__ == '__main__':
   exercise()
