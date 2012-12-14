@@ -832,15 +832,15 @@ def run():
   exercise_lexing_bis()
   exercise_instruction_parsing()
   import libtbx.load_env
-  if (not libtbx.env.has_module(name="smtbx")):
+  if (not libtbx.env.has_module(name="smtbx")) :
     print "Skipping some tests: smtbx module is not available."
   else:
     exercise_restraint_parsing()
     exercise_u_iso_proportional_to_u_eq_parsing()
     exercise_afix_parsing()
+    exercise_residues()
   exercise_xray_structure_parsing()
   exercise_crystal_symmetry_parsing()
-  exercise_residues()
   print 'OK'
 
 ins_mundane_tiny = (
