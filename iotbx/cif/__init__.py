@@ -148,15 +148,15 @@ class crystal_symmetry_as_cif_block(object):
     if self.format == "mmcif": self.separator = '.'
     else: self.separator = '_'
     self.cif_block = model.block()
-    sg_prefix = '_space_group%s' %self.separator
     cell_prefix = '_cell%s' %self.separator
     if crystal_symmetry.space_group() is not None:
       sym_loop = model.loop(data=OrderedDict((
-        (sg_prefix+'symop_id',
+        ('_space_group_symop'+self.separator+'id',
          range(1, len(crystal_symmetry.space_group())+1)),
-        (sg_prefix+'symop_operation_xyz',
+        ('_space_group_symop'+self.separator+'operation_xyz',
          [s.as_xyz() for s in crystal_symmetry.space_group()]))))
       self.cif_block.add_loop(sym_loop)
+      sg_prefix = '_space_group%s' %self.separator
       sg_type = crystal_symmetry.space_group_info().type()
       sg = sg_type.group()
       self.cif_block[sg_prefix+'crystal_system'] = sg.crystal_system().lower()
