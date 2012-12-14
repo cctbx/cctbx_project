@@ -1197,7 +1197,8 @@ class manager(object):
       charge=charge)
     self.xray_structure.discard_scattering_type_registry()
     assert self.pdb_atoms.size() == self.xray_structure.scatterers().size()
-    return self.pdb_hierarchy(sync_with_xray_structure=True)
+    self.pdb_hierarchy(sync_with_xray_structure=True)
+    return atom
 
   def scale_adp(self, scale_max, scale_min):
     b_isos = self.xray_structure.extract_u_iso_or_u_equiv() * math.pi**2*8
