@@ -100,6 +100,15 @@ class minimizer(object):
       assert approx_equal(g_fin, g)
     return f, g
 
+def get_single_atom_selection_string (atom) :
+  labels = atom.fetch_labels()
+  altloc = labels.altloc
+  if (altloc == '') : altloc = ' ' # XXX this is gross
+  sele = \
+    "chain '%s' and resname %s and name '%s' and altloc '%s' and resid %s" % \
+      (labels.chain_id, labels.resname, labels.name, altloc, labels.resid())
+  return sele
+
 def find_anomalous_scatterer_groups (
     pdb_atoms,
     xray_structure,
@@ -112,12 +121,6 @@ def find_anomalous_scatterer_groups (
   from cctbx.eltbx import sasaki
   from cctbx import xray
   if (out is None) : out = sys.stdout
-  def get_selection_string (i_seq) :
-    labels = pdb_atoms[i_seq].fetch_labels()
-    altloc = labels.altloc
-    if (altloc == '') : altloc = ' ' # XXX this is gross
-    sele = "chain '%s' and resname %s and name '%s' and altloc '%s' and resid %s" % (labels.chain_id, labels.resname, labels.name, altloc, labels.resid())
-    return sele
   element_i_seqs = {}
   groups = []
   if (out is None) : out = null_out()
@@ -137,7 +140,7 @@ def find_anomalous_scatterer_groups (
           f_prime=0,
           f_double_prime=0,
           refine=["f_prime","f_double_prime"],
-          selection_string=get_selection_string(i_seq))
+          selection_string=get_single_atom_selection_string(pdb_atoms[i_seq]))
         groups.append(asg)
   if (group_same_element) :
     for elem in sorted(element_i_seqs.keys()) :

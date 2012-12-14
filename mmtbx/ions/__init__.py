@@ -9,21 +9,21 @@ only prints out messages to the log.
 """
 
 from __future__ import division
+from mmtbx.ions.parameters import get_charge, server, MetalParameters
+from mmtbx.ions.geometry import find_coordination_geometry
 from cctbx import crystal, adptbx
 from cctbx.eltbx import sasaki, henke
 from scitbx.matrix import col
 from scitbx.array_family import flex
-import libtbx.phil
-import libtbx.load_env
 from libtbx import group_args, adopt_init_args, Auto
 from libtbx.str_utils import make_sub_header, format_value
 from libtbx.utils import null_out, Sorry
 from libtbx import easy_mp
-
-from mmtbx.ions.parameters import get_charge, server, MetalParameters
-from mmtbx.ions.geometry import find_coordination_geometry
+import libtbx.phil
+import libtbx.load_env
 from math import sqrt
 import cStringIO
+import time
 import sys
 
 chloride_params_str = """
@@ -127,14 +127,15 @@ class Manager (object):
                 nproc = 1,
                 verbose = False,
                 log = None) :
+    if (log is None) : log = null_out()
     self.fmodel = fmodel
     self.params = params
     self.wavelength = wavelength
     self.server = server()
-    self.map_anom = None # optional
     self.nproc = nproc
     self.phaser_substructure = None
     self.fpp_from_phaser_ax_sites = None
+    self._map_values = {}
     self.update_structure(
       pdb_hierarchy = pdb_hierarchy,
       xray_structure = xray_structure,
@@ -149,11 +150,15 @@ class Manager (object):
       elif (not fmodel.f_obs().anomalous_flag()) :
         raise Sorry("Anomalous data required when use_phaser=True.")
     if ((use_phaser) and (libtbx.env.has_module("phaser"))) :
+      t1 = time.time()
+      print >> log, "  Running Phaser to identify anomalous scatterers"
       self.phaser_substructure = find_anomalous_scatterers(
         fmodel=fmodel,
         pdb_hierarchy=pdb_hierarchy,
         wavelength=wavelength,
         verbose=verbose).atoms()
+      t2 = time.time()
+      print >> log, "    time: %.1fs" % (t2-t1)
       self.analyze_substructure(log = log, verbose = verbose)
 
   def update_structure (self, pdb_hierarchy, xray_structure,
@@ -173,14 +178,14 @@ class Manager (object):
 
     # Extract some information about the structure, including B-factor
     # statistics for non-HD atoms and waters
-    sctr_keys = xray_structure.scattering_type_registry().type_count_dict().keys()
+    sctr_keys = xray_structure.scattering_type_registry().type_count_dict()\
+      .keys()
     self.hd_present = ("H" in sctr_keys) or ("D" in sctr_keys)
     sel_cache = pdb_hierarchy.atom_selection_cache()
-    self.calpha_sel = sel_cache.selection("name CA and element C").iselection()
-    if (len(self.calpha_sel) == 0) :
-      pass # TODO ???
+    self.carbon_sel = sel_cache.selection("element C").iselection()
+    assert (len(self.carbon_sel) > 0)
     water_sel = sel_cache.selection("(%s) and name O" %
-                                    (" or ".join("resname " + i for i in WATER_RES_NAMES)))
+      (" or ".join("resname " + i for i in WATER_RES_NAMES)))
     not_hd_sel = sel_cache.selection("not (element H or element D)")
 
     self.n_waters = len(water_sel)
@@ -212,37 +217,72 @@ class Manager (object):
     def fft_map (map_coeffs, resolution_factor = 0.25):
       return map_coeffs.fft_map(resolution_factor = resolution_factor,
         ).apply_sigma_scaling().real_map_unpadded()
-    f_map_coeffs = self.fmodel.map_coefficients(map_type = "2mFo-DFc")
-    df_map_coeffs = self.fmodel.map_coefficients(map_type = "mFo-DFc")
-    self.map_2fofc = fft_map(f_map_coeffs)
-    if (len(self.calpha_sel) > 0) :
-      sum_calpha = 0
-      sites_frac = self.xray_structure.sites_frac()
-      for i_seq in self.calpha_sel :
-        site_frac = sites_frac[i_seq]
-        sum_calpha += self.map_2fofc.eight_point_interpolation(site_frac)
-      self.calpha_mean_2fofc = sum_calpha / len(self.calpha_sel)
-    else :
-      self.calpha_mean_2fofc = None
-    self.map_fofc = fft_map(df_map_coeffs)
-    self.anom_map = None
+    map_types = ["2mFo-DFc", "mFo-DFc"]
     if (self.fmodel.f_obs().anomalous_flag()) :
       if ((self.params.phaser.use_llg_anom_map) and
           (libtbx.env.has_module("phaser"))) :
-        import mmtbx.map_tools
-        anom_map_coeffs = mmtbx.map_tools.get_phaser_sad_llg_map_coefficients(
-          fmodel = self.fmodel,
-          pdb_hierarchy = self.pdb_hierarchy,
-          log = None)
+        map_types.append("llg")
       else :
-        anom_map_coeffs = self.fmodel.map_coefficients(map_type = "anom")
-      self.map_anom = fft_map(anom_map_coeffs)
+        map_types.append("anom")
+    # XXX to save memory, we sample atomic positions immediately and throw out
+    # the actual maps (instead of keeping up to 3 in memory)
+    sites_frac = self.xray_structure.sites_frac()
+    sites_cart = self.xray_structure.sites_cart()
+    self._principal_axes_of_inertia = [ None ] * len(sites_frac)
+    self._map_variances = [ None ] * len(sites_frac)
+    for map_type in map_types :
+      map_coeffs = self.fmodel.map_coefficients(
+        map_type=map_type,
+        exclude_free_r_reflections=True,
+        fill_missing=True,
+        pdb_hierarchy=self.pdb_hierarchy)
+      if (map_coeffs is not None) :
+        self._map_values[map_type] = flex.double(sites_frac.size(), 0)
+        real_map = fft_map(map_coeffs)
+        for i_seq, site_frac in enumerate(sites_frac) :
+          resname = self.pdb_atoms[i_seq].fetch_labels().resname
+          if (resname in WATER_RES_NAMES) :
+            value = real_map.tricubic_interpolation(site_frac)
+          else :
+            value = real_map.eight_point_interpolation(site_frac)
+          self._map_values[map_type][i_seq] = value
+        if (map_type == "2mFo-DFc") :
+          from cctbx import maptbx
+          for i_seq, site_cart in enumerate(sites_cart) :
+            if (resname in WATER_RES_NAMES) :
+              # XXX not totally confident about how I'm weighting this...
+              p_a_i = maptbx.principal_axes_of_inertia(
+                real_map = real_map,
+                site_cart = site_cart,
+                unit_cell = self.xray_structure.unit_cell(),
+                radius = self.params.chloride.radius)
+              self._principal_axes_of_inertia[i_seq] = p_a_i
+              variance = maptbx.spherical_variance_around_point(
+                real_map = real_map,
+                unit_cell = self.xray_structure.unit_cell(),
+                site_cart = site_cart,
+                radius = self.params.chloride.radius)
+              self._map_variances[i_seq] = variance
+        del real_map
+    self.carbon_fo_values = None
+    if (len(self.carbon_sel) > 0) :
+      self._map_values["mFo"] = flex.double(sites_frac.size(), 0)
+      fo_map = fft_map(self.fmodel.map_coefficients(
+        map_type="mFo",
+        exclude_free_r_reflections=True,
+        fill_missing=True))
+      self.carbon_fo_values = flex.double(len(self.carbon_sel), 0)
+      for i_seq, site_frac in enumerate(sites_frac) :
+        map_value = fo_map.eight_point_interpolation(site_frac)
+        self._map_values["mFo"][i_seq] = map_value
+        self.carbon_fo_values.append(map_value)
+      del fo_map
 
   def show_current_scattering_statistics (self, out=sys.stdout) :
     print >> out, ""
     print >> out, "Model and map statistics:"
-    print >> out, "  mean 2mFo-DFc @ C-alpha: %s" % format_value("%.2f",
-      self.calpha_mean_2fofc)
+    print >> out, "  mean mFo map height @ C-alpha: %s" % format_value("%.2f",
+      flex.max(self.carbon_fo_values))
     print >> out, "  mean B-factor: %s" % format_value("%.2f", self.b_mean_all)
     print >> out, "  mean water B-factor: %s" % format_value("%.2f",
       self.b_mean_hoh)
@@ -321,65 +361,45 @@ class Manager (object):
 
     return contacts
 
-  def principal_axes_of_inertia (self, site_cart, radius) :
+  def principal_axes_of_inertia (self, i_seq) :
     """
     Extracts the map grid points around a site, and calculates the axes of
     inertia (using the density values as weights).
     """
-    # XXX not totally confident about how I'm weighting this...
-    from cctbx import maptbx
-    return maptbx.principal_axes_of_inertia(
-      real_map = self.map_2fofc,
-      site_cart = site_cart,
-      unit_cell = self.xray_structure.unit_cell(),
-      radius = radius)
+    return self._principal_axes_of_inertia[i_seq]
 
-  def get_map_sphere_variance (self, site_cart, radius,
-      use_difference_map = False) :
+  def get_map_sphere_variance (self, i_seq) :
     """
     Calculate the density levels for points on a sphere around a given point.
     This will give us some indication whether the density falls off in the
     expected manner around a single atom.
     """
-    from cctbx import maptbx
-    real_map = self.map_2fofc
-    if (use_difference_map) :
-      real_map = self.map_fofc
-    return maptbx.spherical_variance_around_point(
-      real_map = real_map,
-      unit_cell = self.xray_structure.unit_cell(),
-      site_cart = site_cart,
-      radius = radius)
+    return self._map_variances[i_seq]
 
   def map_stats (self, i_seq) :
     """
     Given a site in the structure, find the signal of the 2FoFc, FoFc, and
     anomalous map (When available).
     """
-
-    site = self.sites_frac[i_seq]
-    return self.map_stats_at_point(site)
-
-  def map_stats_at_point (self, site_frac) :
-    """
-    Given a fractional coordinate, find the signal of the 2FoFc, FoFc, and
-    anomalous map (When available).
-    """
-
-    assert (self.map_2fofc is not None)
-    assert (self.map_fofc is not None)
-
-    value_2fofc = self.map_2fofc.tricubic_interpolation(site_frac)
-    value_fofc = self.map_fofc.tricubic_interpolation(site_frac)
+    value_2fofc = self._map_values["2mFo-DFc"][i_seq]
+    value_fofc = self._map_values["mFo-DFc"][i_seq]
     value_anom = None
-
-    if (self.map_anom is not None) :
-      value_anom = self.map_anom.tricubic_interpolation(site_frac)
-
+    if ("anom" in self._map_values) :
+      value_anom = self._map_values["anom"][i_seq]
+    elif ("llg" in self._map_values) :
+      value_anom = self._map_values["llg"][i_seq]
     return group_args(
       two_fofc = value_2fofc,
       fofc = value_fofc,
       anom = value_anom)
+
+  def guess_molecular_weight (self, i_seq) :
+    map_values = self._map_values.get("mFo", None)
+    if (map_values is None) : return None
+    height = map_values[i_seq]
+    mean_carbon = flex.mean(self.carbon_fo_values)
+    assert (mean_carbon > 0)
+    return 6 * height / mean_carbon
 
   def find_atoms_near_site (self,
       site_cart,
@@ -677,11 +697,9 @@ class Manager (object):
     # TODO something smart...
     # the idea here is to determine whether the blob of density around the
     # site is approximately spherical and limited in extent.
-    pai = self.principal_axes_of_inertia(atom.xyz,
-      radius = self.params.chloride.radius)
+    pai = self.principal_axes_of_inertia(i_seq)
     #print list(pai.eigensystem().values())
-    map_variance = self.get_map_sphere_variance(atom.xyz,
-      radius = self.params.chloride.radius)
+    map_variance = self.get_map_sphere_variance(i_seq)
     #map_variance.show(prefix = "  ")
     good_map_falloff = False
     if ((map_variance.mean < 1.0) and
@@ -771,6 +789,9 @@ class Manager (object):
     filtered_candidates = []
     halide_candidates = False
     nuc_phosphate_site = atom_props.looks_like_nucleotide_phosphate_site()
+    max_carbon_fo_map_value = sys.maxint
+    if (self.carbon_fo_values is not None) :
+      max_carbon_fo_map_value = flex.max(self.carbon_fo_values)
 
     for symbol in candidates :
       elem = self.server.get_metal_parameters(symbol)
@@ -848,15 +869,15 @@ class Manager (object):
       compatible = [params for params in filtered_candidates
                     if atom_props.has_compatible_ligands(str(params))]
       for ion_params in compatible :
+        atomic_number = sasaki.table(ion_params.element).atomic_number()
+        weight_ratio = 0
+        if (atom_props.estimated_weight is not None) :
+          weight_ratio = atom_props.estimated_weight / atomic_number
         # special handling for transition metals, but only if the user has
         # explicitly requested one (and there is no ambiguity)
         if ((ion_params.element in TRANSITION_METALS) and
-            (not looks_like_water)) :
-          PRINT_DEBUG(atom.id_str())
-          PRINT_DEBUG(atom_props.is_compatible_site(ion_params))
-        if ((ion_params.element in TRANSITION_METALS) and
             (not looks_like_water) and
-            (atom_props.peak_2fofc > self.calpha_mean_2fofc) and
+            (atom_props.peak_2fofc > max_carbon_fo_map_value) and
             (not auto_candidates) and
             (atom_props.is_compatible_site(ion_params))) :
           n_good_res = atom_props.number_of_favored_ligand_residues(ion_params,
@@ -869,6 +890,15 @@ class Manager (object):
           else :
             print "n_good_res = %d, n_total_coord_atoms = %d" % (n_good_res,
               n_total_coord_atoms)
+        # another special case: very heavy ions, which are probably not binding
+        # physiologically
+        elif ((atomic_number > 30) and (not looks_like_water) and
+              (weight_ratio > 0.75) and (weight_ratio < 1.05) and
+              (not auto_candidates) and
+              (atom_props.is_compatible_site(ion_params))) :
+          n_total_coord_atoms = atom_props.number_of_atoms_within_radius(2.8)
+          if (n_total_coord_atoms >= 3) :
+            reasonable.append((ion_params, 0))
       if (len(compatible) == 1) and (not self.get_strict_valence_flag()) :
         inaccuracies = atom_props.inaccuracies[str(ion_params)]
         if (compatible[0] in atom_props.fpp_ratios and
@@ -1059,7 +1089,8 @@ class water_result:
           print >> out, "  ambiguous results, could be %s" % \
             (", ".join(ions))
           for elem_params, score in results :
-            self.atom_props.show_ion_results(identity = str(elem_params), out = out)
+            self.atom_props.show_ion_results(identity = str(elem_params),
+              out = out)
           print >> out, ""
     else:
       if (not self.looks_like_water) or (self.nuc_phosphate_site) :
@@ -1116,6 +1147,7 @@ class AtomProperties (object):
     self.peak_2fofc = map_stats.two_fofc
     self.peak_fofc = map_stats.fofc
     self.peak_anom = map_stats.anom
+    self.estimated_weight = manager.guess_molecular_weight(i_seq)
 
     self.inaccuracies = {}
     self.ignored = {}
@@ -1427,6 +1459,8 @@ class AtomProperties (object):
       elif (self.NO_ANOM_PEAK in self.inaccuracies[identity]) :
         anom_flag = " !!!"
       print >> out, "  Anomalous map: %6.2f%s" % (self.peak_anom, anom_flag)
+    if (self.estimated_weight is not None) :
+      print >> out, "  Approx. mass:  %6d" % self.estimated_weight
     if self.fpp is not None:
       fpp_flag = ""
       if (self.fpp >= 0.2) :
