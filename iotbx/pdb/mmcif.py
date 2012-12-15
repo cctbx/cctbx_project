@@ -280,6 +280,12 @@ def tls_as_cif_block(tlsos, selection_strings, cif_block=None):
   if cif_block is None:
     cif_block = iotbx.cif.model.block()
 
+  if (len(selection_strings) == 0):
+    assert len(tlsos) == 1
+    selection_strings = ["all"]
+  else:
+    assert len(tlsos) == len(selection_strings)
+
   tls_loop = iotbx.cif.model.loop(header=(
     #"_pdbx_refine_tls.pdbx_refine_id",
     "_pdbx_refine_tls.id",
