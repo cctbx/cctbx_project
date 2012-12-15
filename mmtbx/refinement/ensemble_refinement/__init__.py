@@ -1,5 +1,5 @@
 from __future__ import division
-import sys, os, time, math, random, cPickle, gzip
+import sys, os, time, math, random, cPickle, pickle, gzip
 from cctbx.array_family import flex
 from cctbx import adptbx
 from iotbx.option_parser import iotbx_option_parser
@@ -17,12 +17,15 @@ import iotbx.phil
 from libtbx import adopt_init_args
 import mmtbx.solvent.ensemble_ordered_solvent as ensemble_ordered_solvent
 from cctbx import miller
+from cctbx import maptbx
+from mmtbx import max_lik
 from mmtbx.refinement.ensemble_refinement import ensemble_utils
 import scitbx.math
 from cctbx import xray
 from cctbx import geometry_restraints
 import mmtbx.tls.tools as tls_tools
 import mmtbx.maps
+from phenix import phenix_info
 master_params = iotbx.phil.parse("""\
 ensemble_refinement {
   cartesian_dynamics {
@@ -47,70 +50,77 @@ ensemble_refinement {
     .type = int
   output_file_prefix = None
     .type = str
+    .help = 'Prefix for all output files'
   random_seed = 2679941
     .type = int
-    .help = set random seed
-  pdb_stored_per_block = 100
-    .type = int
-    .help = Number of structures stored during simulation
-  equilibrium_n_tx = 10
-    .type = int
-  acquisition_block_n_tx = 2
-    .type = int
-  number_of_acquisition_periods = 10
-    .type = int
-    .help = Number of acquisition periods
+    .help = 'Ransom seed'
   tx = None
     .type = float
-    .help = relaxation time (ps)
-  wxray = 1.0
-    .type = float
-    .help = multiplier for xray weighting
+    .help = 'Relaxation time (ps)'
+  equilibrium_n_tx = 10
+    .type = int
+    .help = 'Length of equilibration period, n times tx'
+  acquisition_block_n_tx = 2
+    .type = int
+    .help = 'Length of acquisition block, n times tx'
+  number_of_acquisition_periods = 10
+    .type = int
+    .help = 'Number of acquisition periods'
+  pdb_stored_per_block = 50
+    .type = int
+    .help = 'Number of model coordinates stored per acquisition block'
   wxray_coupled_tbath = True
     .type = bool
+    .help = 'Use temperature control wxray'
   wxray_coupled_tbath_offset = 5.0
     .type = float
+    .help = 'Temperature offset, increasing offset increases wxray'
+  wxray = 1.0
+    .type = float
+    .help = 'Multiplier for xray weighting; used if wxray_coupled_tbath = Flase'
   tls_group_selections = None
     .type = str
     .multiple = True
-    .help = Uses TLS groups as defined here (TLS details in PDB header not used)
+    .help = 'TLS groups to use for TLS fitting (TLS details in PDB header not used)'
   ptls = 0.80
     .type = float
-    .help = fraction of atoms to include in TLS fitting
-  max_ptls_cycles = 10
+    .help = 'The fraction of atoms to include in TLS fitting'
+  max_ptls_cycles = 25
     .type = int
+    .help = 'Maximum cycles to use in TLS fitting; TLS will stop prior to this if convergence is reached'
   isotropic_b_factor_model = False
     .type = bool
-    .help = use isotropic b-factor model instead of TLS
+    .help = 'Use isotropic B-factor model instead of TLS'
   pwilson = 0.8
     .type = float
-    .help = scale factor for isotropic b-factor model
-  set_occupancies = True
+    .help = 'Scale factor for isotropic b-factor model: all atoms = Bwilson * pwilson'
+  set_occupancies = False
     .type = bool
+    .help = 'Set all atoms aoccupancy to 1.0'
   target_name = *ml ls_wunit_k1_fixed ls_wunit_k1
     .type = choice
-    .help = target function
-  update_rescale_normalisation_factors_scale_kn = True
-    .type = bool
-    .help = scale <Ncalc> to starting Ncalc
+    .help = 'Choices for refinement target'
   high_resolution = None
     .type = float
-    .help = high res limit
+    .help = 'High resolution limit'
   low_resolution = None
     .type = float
-    .help = low res limit
+    .help = 'Low resolution limit'
   er_harmonic_restraints_selections = None
     .type = str
-    .help = atom numbers for ta specific harmonic restraints e.g. (1231 1232 1233)
+    .help = 'Atoms selections to apply harmonic restraints'
   er_harmonic_restraints_weight = 0.001
     .type = float
-    .help = weight for ta specific harmonic function
+    .help = 'Harmonic restraints weight'
   er_harmonic_restraints_slack = 1.0
     .type = float
-    .help = slack distance for ta specific harmonic function
+    .help = 'Harmonic restraints slack distance'
   output_running_kinetic_energy_in_occupancy_column = False
     .type = bool
-    .help = Output PDB file contains running kinetic energy in place of occupancy
+    .help = 'Output PDB file contains running kinetic energy in place of occupancy'
+  update_rescale_normalisation_factors_scale_kn = False
+    .type = bool
+    .help = 'Scale <Ncalc> to starting Ncalc'
   electron_density_maps {
     apply_default_maps = True
       .type = bool
@@ -187,14 +197,12 @@ ensemble_refinement {
       .type = float
       .help = Radial shell width TODO: default 2.5?
     }
-  at_start_apply_back_trace_of_b_cart = False
-    .type = bool
   ordered_solvent_update = True
     .type = bool
-    .help = Ordered water molecules automatically updated every nth macro cycle
+    .help = 'Ordered water molecules automatically updated every nth macro cycle'
   ordered_solvent_update_cycle = 25
     .type = int
-    .help = Number of macro-cycles / ordered solvent update
+    .help = 'Number of macro-cycles per ordered solvent update'
   ensemble_ordered_solvent {
     tolerance = 1.0
       .type = float
@@ -479,7 +487,7 @@ class run_ensemble_refinement(object):
                      params):
     adopt_init_args(self, locals())
 #    self.params = params.extract().ensemble_refinement
-
+    
 
     if self.params.target_name == 'ml':
       self.fix_scale = False
@@ -613,7 +621,7 @@ class run_ensemble_refinement(object):
     self.setup_tls_selections(tls_group_selection_strings = self.params.tls_group_selections)
     self.fit_tls(input_model = self.model)
     self.assign_solvent_tls_groups()
-
+    
     #Set occupancies to 1.0
     if self.params.set_occupancies:
       utils.print_header("Set occupancies to 1.0", out = self.log)
@@ -657,7 +665,7 @@ class run_ensemble_refinement(object):
 
       xrs_previous = self.model.xray_structure.deep_copy_scatterers()
       assert self.fmodel_running.xray_structure is self.model.xray_structure
-
+      
       cd_manager = ensemble_cd.cartesian_dynamics(
         structure                   = self.model.xray_structure,
         restraints_manager          = self.model.restraints_manager,
@@ -787,7 +795,7 @@ class run_ensemble_refinement(object):
         elif self.macro_cycle < self.equilibrium_macro_cycles:
           if self.params.tx == 0:
             a_prime_wx = 0
-          else:
+          else: 
             wx_tx = min(self.time, self.params.tx)
             a_prime_wx = math.exp(-(self.cdp.time_step * self.cdp.number_of_steps)/wx_tx)
           wxray_t = self.wxray * max(0.01, self.cdp.temperature / self.er_data.non_solvent_temp)
@@ -982,7 +990,7 @@ class run_ensemble_refinement(object):
         verbose       = self.params.verbose,
         out           = self.log,
         optimize_mask = True)
-
+    
     #Fixes scale factor for rolling average #ESSENTIAL for LSQ
     if self.fix_scale == True:
       self.er_data.fix_scale_factor = self.fmodel_running.scale_k1()
@@ -1049,7 +1057,7 @@ class run_ensemble_refinement(object):
     model_no_solvent = self.model.deep_copy()
     model_no_solvent = model_no_solvent.remove_solvent()
     all_chain_proxies = self.generate_all_chain_proxies(model = model_no_solvent)
-
+    
     if len(tls_group_selection_strings) < 1:
       print >> self.log, '\nNo TLS groups supplied - automatic setup'
       # Get chain information
@@ -1094,12 +1102,12 @@ class run_ensemble_refinement(object):
     for selection_string in tls_group_selection_strings:
       no_hd_string = '(' + selection_string + ') and not (element H or element D)'
       tls_no_hd_selection_strings.append(no_hd_string)
-
+    
     tls_no_sol_no_hd_selections = utils.get_atom_selections(
         all_chain_proxies = all_chain_proxies,
         selection_strings = tls_no_hd_selection_strings,
         xray_structure    = model_no_solvent.xray_structure)
-
+    
     #
     assert self.tls_manager is not None
     self.tls_manager.tls_selection_strings_no_sol       = tls_group_selection_strings
@@ -1146,10 +1154,10 @@ class run_ensemble_refinement(object):
     tls_selection_no_sol_hd_exclusions = self.tls_manager.tls_selections_no_sol_no_hd
     pre_fitted_mean = 999999.99
     #
-
+    
     use_isotropic = False
     for group in self.tls_manager.tls_selections_no_sol_no_hd:
-      if group.size() < 63:
+      if group.size() < 63: 
         self.params.isotropic_b_factor_model = True
       elif self.params.ptls * group.size() < 63:
         self.params.ptls = 64.0 / group.size()
@@ -1231,7 +1239,7 @@ class run_ensemble_refinement(object):
         delta_ref_fit_no_h_basic_stats = scitbx.math.basic_statistics(delta_ref_fit_no_h )
         start_biso_no_hd = start_biso.select(~hd_selection)
         fitted_biso_no_hd = fitted_biso.select(~hd_selection)
-
+        
         if verbose:
           print >> self.log, 'pTLS                                    : ', self.params.ptls
 
@@ -1281,7 +1289,7 @@ class run_ensemble_refinement(object):
     model_copy.xray_structure.set_u_cart(us_tls)
     model_copy.show_adp_statistics(padded = True, out = self.log)
     del model_copy
-
+    
     #Update TLS params
     self.model.tls_groups.tlsos = fit_tlsos
     self.tls_manager.tls_operators = fit_tlsos
@@ -1540,7 +1548,6 @@ class run_ensemble_refinement(object):
     print >> self.log, "|"+"-"*77+"|\n"
 
   def write_ensemble_pdb(self, out):
-    from phenix import phenix_info
     crystal_symmetry = self.er_data.xray_structures[0].crystal_symmetry()
     print >> out,  "REMARK   3  TIME-AVERAGED ENSEMBLE REFINEMENT"
     ver, tag = phenix_info.version_and_release_tag(f = out)
@@ -1733,7 +1740,7 @@ def run(args, command_name = "phenix.ensemble_refinement"):
     log = sys.stdout, master_params = master_params)
   pdb_file_names = processed_args.pdb_file_names
   cmd_params = processed_args.params
-  if cmd_params is None:
+  if cmd_params is None: 
     cmd_params = master_params
   er_params = cmd_params.extract().ensemble_refinement
 
@@ -1836,7 +1843,7 @@ def run(args, command_name = "phenix.ensemble_refinement"):
     log                       = log)
   processed_pdb_file, pdb_inp = \
     processed_pdb_files_srv.process_pdb_files(pdb_file_names = [pdb_file])
-
+  
   # Remove alternative conformations if present
   hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
   atoms_size_pre = hierarchy.atoms().size()
