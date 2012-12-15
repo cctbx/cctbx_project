@@ -850,7 +850,7 @@ iotbx/cif/crystal_symmetry_from_cif.py -text
 iotbx/cif/dictionaries/NOTES -text
 iotbx/cif/dictionaries/cif_core.dic.gz -text
 iotbx/cif/dictionaries/cif_mm.dic.gz -text
-iotbx/cif/dictionaries/mmcif_pdbx_v40.dic.gz -text svneol=unset#unset
+iotbx/cif/dictionaries/mmcif_pdbx.dic.gz -text svneol=unset#unset
 iotbx/cif/restraints.py -text
 iotbx/cif/tests/analyse_cod_stats.py -text
 iotbx/cif/tests/tst_cod.py -text
