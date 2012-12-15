@@ -616,9 +616,7 @@ def total_score(pdb_hierarchy, sites_cart, u_iso, selection_strings):
 def external_tls(pdb_inp, pdb_hierarchy, sites_cart, u_iso, out=None) :
   if (out is None) :
     out = sys.stdout
-  pdb_inp_tls = mmtbx.tls.tools.tls_from_pdb_inp(
-  remark_3_records = pdb_inp.extract_remark_iii_records(3),
-  pdb_hierarchy    = pdb_hierarchy)
+  pdb_inp_tls = pdb_inp.extract_tls_params(pdb_hierarchy)
   print_statistics.make_header("TLS groups from PDB file header",
     out = out)
   selection_strings = []
