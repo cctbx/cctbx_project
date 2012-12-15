@@ -691,7 +691,8 @@ def principal_axes_of_inertia (
   values = flex.double()
   site_frac = unit_cell.fractionalize(site_cart=site_cart)
   weight_scale = real_map.tricubic_interpolation(site_frac)
-  #weight_scale = flex.max(real_map.as_1d())
+  if (weight_scale <= 0) :
+    weight_scale = flex.max(real_map.as_1d())
   for i_seq in sel :
     uvw = n_dim_index_from_one_dim(i_seq, real_map.all())
     xyz = grid_to_cart(uvw)
@@ -699,6 +700,7 @@ def principal_axes_of_inertia (
     site_frac = unit_cell.fractionalize(site_cart=xyz)
     # XXX weights of zero risk crashing the underlying routine
     values.append(max(0.000001, real_map[i_seq]) / weight_scale)
+  assert (flex.max(values) >= 0)
   return scitbx.math.principal_axes_of_inertia(
     points=sites,
     weights=values)
