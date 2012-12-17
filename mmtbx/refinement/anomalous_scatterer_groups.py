@@ -124,9 +124,17 @@ def find_anomalous_scatterer_groups (
   element_i_seqs = {}
   groups = []
   if (out is None) : out = null_out()
+  hd_selection = xray_structure.hd_selection()
   for i_seq, scatterer in enumerate(xray_structure.scatterers()) :
-    element = scatterer.element_symbol()
-    atomic_number = sasaki.table(element).atomic_number()
+    if (hd_selection[i_seq]) :
+      continue
+    element = scatterer.element_symbol().strip()
+    try :
+      atomic_number = sasaki.table(element).atomic_number()
+    except RuntimeError, e :
+      print >> out, "Error for %s" % pdb_atoms[i_seq].id_str()
+      print >> out, "  " + str(e)
+      continue
     if (atomic_number >= 15) :
       if (group_same_element) :
         if (not element in element_i_seqs) :

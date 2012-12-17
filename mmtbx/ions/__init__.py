@@ -211,10 +211,12 @@ class Manager (object):
     self.xray_structure = xray_structure
     self.fmodel.update_xray_structure(xray_structure, update_f_calc = True)
     self.sites_frac = self.xray_structure.sites_frac()
+    self.sites_cart = self.xray_structure.sites_cart()
     self.connectivity = connectivity
     self.pdb_atoms = pdb_hierarchy.atoms()
     self.unit_cell = xray_structure.unit_cell()
     self.ax_chain = None
+    self._pair_asu_cache = {}
 
     # Extract some information about the structure, including B-factor
     # statistics for non-HD atoms and waters
@@ -282,24 +284,25 @@ class Manager (object):
         for i_seq, site_frac in enumerate(sites_frac) :
           resname = self.pdb_atoms[i_seq].fetch_labels().resname
           if (resname in WATER_RES_NAMES) :
-            value = real_map.tricubic_interpolation(site_frac)
-          else :
             value = real_map.eight_point_interpolation(site_frac)
-          self._map_values[map_type][i_seq] = value
+          #else :
+          #  value = real_map.eight_point_interpolation(site_frac)
+            self._map_values[map_type][i_seq] = value
         if (map_type == "2mFo-DFc") :
           from cctbx import maptbx
           for i_seq, site_cart in enumerate(sites_cart) :
+            resname = self.pdb_atoms[i_seq].fetch_labels().resname
             if (resname in WATER_RES_NAMES) :
               # XXX not totally confident about how I'm weighting this...
               p_a_i = maptbx.principal_axes_of_inertia(
                 real_map = real_map,
                 site_cart = site_cart,
-                unit_cell = self.xray_structure.unit_cell(),
+                unit_cell = self.unit_cell,
                 radius = self.params.chloride.radius)
               self._principal_axes_of_inertia[i_seq] = p_a_i
               variance = maptbx.spherical_variance_around_point(
                 real_map = real_map,
-                unit_cell = self.xray_structure.unit_cell(),
+                unit_cell = self.unit_cell,
                 site_cart = site_cart,
                 radius = self.params.chloride.radius)
               self._map_variances[i_seq] = variance
@@ -311,17 +314,18 @@ class Manager (object):
         map_type="mFo",
         exclude_free_r_reflections=True,
         fill_missing=True))
-      self.carbon_fo_values = flex.double(len(self.carbon_sel), 0)
+      self.carbon_fo_values = flex.double()
       for i_seq, site_frac in enumerate(sites_frac) :
         map_value = fo_map.eight_point_interpolation(site_frac)
         self._map_values["mFo"][i_seq] = map_value
-        self.carbon_fo_values.append(map_value)
+        if (self.pdb_atoms[i_seq].element.strip() == "C") :
+          self.carbon_fo_values.append(map_value)
       del fo_map
 
   def show_current_scattering_statistics (self, out=sys.stdout) :
     print >> out, ""
     print >> out, "Model and map statistics:"
-    print >> out, "  mean mFo map height @ C-alpha: %s" % format_value("%.2f",
+    print >> out, "  mean mFo map height @ carbon: %s" % format_value("%.2f",
       flex.max(self.carbon_fo_values))
     print >> out, "  mean B-factor: %s" % format_value("%.2f", self.b_mean_all)
     print >> out, "  mean water B-factor: %s" % format_value("%.2f",
@@ -345,14 +349,19 @@ class Manager (object):
     # Use pair_asu_table to find atoms within distance_cutoff of one another,
     # taking into account potential cell symmetry.
     # XXX should probably move this up, but it seems relatively fast
-    unit_cell = self.xray_structure.unit_cell()
-    pair_asu_table = self.xray_structure.pair_asu_table(
-      distance_cutoff = distance_cutoff)
-    asu_mappings = pair_asu_table.asu_mappings()
-    asu_table = pair_asu_table.table()
+    pair_asu_table, asu_mappings, asu_table = self._pair_asu_cache.get(
+      distance_cutoff, (None,None,None))
+    if (pair_asu_table is None) :
+      pair_asu_table = self.xray_structure.pair_asu_table(
+        distance_cutoff = distance_cutoff)
+      asu_mappings = pair_asu_table.asu_mappings()
+      asu_table = pair_asu_table.table()
+      self._pair_asu_cache[distance_cutoff] = (pair_asu_table, asu_mappings,
+        asu_table)
     asu_dict = asu_table[i_seq]
     contacts = []
     site_i = self.sites_frac[i_seq]
+    site_i_cart = self.sites_cart[i_seq]
     rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq, 0).inverse()
 
     for j_seq, j_sym_groups in asu_dict.items():
@@ -363,8 +372,8 @@ class Manager (object):
           j_sym_group[0]))
         site_ji = rt_mx * site_j
 
-        vec_i, vec_ji = col(unit_cell.orthogonalize(site_i)), \
-                        col(unit_cell.orthogonalize(site_ji))
+        vec_i = col(site_i_cart)
+        vec_ji = col(self.unit_cell.orthogonalize(site_ji))
         assert abs(vec_i - vec_ji) < distance_cutoff + 0.5
         contacts.append((self.pdb_atoms[j_seq], vec_i - vec_ji))
 
@@ -455,8 +464,7 @@ class Manager (object):
     distance_cutoff of site_cart.
     """
 
-    site_frac = self.xray_structure.unit_cell().fractionalize(
-      site_cart = site_cart)
+    site_frac = self.unit_cell.fractionalize(site_cart = site_cart)
     sites_frac = flex.vec3_double([site_frac])
     asu_mappings = self.xray_structure.asu_mappings(buffer_thickness =
       distance_cutoff + 0.1)
@@ -597,7 +605,7 @@ class Manager (object):
     near_arg_lys = False
     xyz = col(atom.xyz)
 
-    max_cation_distance = float(sys.maxint)
+    min_distance_to_cation = max(self.unit_cell.parameters()[0:3])
     for atom, vector in nearby_atoms:
       # to analyze local geometry, we use the target site mapped to be in the
       # same ASU as the interacting site
@@ -621,8 +629,8 @@ class Manager (object):
         if charge > 0 and distance <= params.max_distance_to_cation:
           # Nearby cation
           near_cation = True
-          if (distance < max_cation_distance) :
-            max_cation_distance = distance
+          if (distance < min_distance_to_cation) :
+            min_distance_to_cation = distance
       elif (atom_name in ["NZ", "NE"] and
             resname in ["ARG","LYS"] and
             distance <= params.max_distance_to_cation):
@@ -630,6 +638,8 @@ class Manager (object):
         # XXX actually, shouldn't it also be roughly coplanar with the
         # guanidinium group in Arg?
         near_arg_lys = True
+        if (distance < min_distance_to_cation) :
+          min_distance_to_cation = distance
 
       elif atom_name in ["H"]:
         # Backbone amide, explicit H
@@ -727,7 +737,7 @@ class Manager (object):
       atom_name = atom.name.strip()
       distance = abs(vector)
       if ((distance < 3.2) and
-          (distance < max_cation_distance + 0.2) and
+          (distance < min_distance_to_cation + 0.2) and
           (atom_name in ["OD1","OD2","OE1","OE2"]) and
           (resname in ["GLU","ASP"])) :
         # Negatively charged sidechains
@@ -925,7 +935,7 @@ class Manager (object):
           n_total_coord_atoms = atom_props.number_of_atoms_within_radius(2.8)
           # if we see three or four favorable residues coordinating the atom
           # and no more than four atoms total, accept the current guess
-          if ((n_good_res >= 3) and (n_total_coord_atoms <= 5)) :
+          if ((n_good_res >= 1) and (3 <= n_total_coord_atoms <= 6)) :
             reasonable.append((ion_params, 0))
           else :
             print "n_good_res = %d, n_total_coord_atoms = %d" % (n_good_res,
@@ -933,7 +943,7 @@ class Manager (object):
         # another special case: very heavy ions, which are probably not binding
         # physiologically
         elif ((atomic_number > 30) and (not looks_like_water) and
-              (weight_ratio > 0.75) and (weight_ratio < 1.05) and
+              (weight_ratio > 0.5) and (weight_ratio < 1.05) and
               (not auto_candidates) and
               (atom_props.is_compatible_site(ion_params))) :
           n_total_coord_atoms = atom_props.number_of_atoms_within_radius(2.8)
@@ -1013,6 +1023,7 @@ class Manager (object):
     if (nproc == 1) :
       print >> out, ""
       for water_i_seq in waters :
+        t1 = time.time()
         water_props = self.analyze_water(
           i_seq = water_i_seq,
           debug = debug,
@@ -1024,6 +1035,8 @@ class Manager (object):
           if ((water_props.final_choice is not None) and
               (not water_props.no_final)) :
             ions.append((water_i_seq, [water_props.final_choice]))
+        t2 = time.time()
+        #print "%s: %.3fs" % (self.pdb_atoms[water_i_seq].id_str(), t2-t1)
     else :
       print >> out, "  Parallelizing across %d processes" % nproc
       print >> out, ""

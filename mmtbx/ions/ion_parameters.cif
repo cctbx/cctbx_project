@@ -54,7 +54,7 @@ MN  O,N       SER,THR,ASP,GLU,ASN,GLN,HIS  .              .
 FE  O,N,S     CYS,ASP,GLU,HIS,TYR          .              .
 CO  O,N       CYS,ASP,GLU,HIS              .              .
 CU  O,N,S     CYS,MET,HIS                  tetrahedral    .
-NI  O,N,S     CYS,ASP,GLU,HIS              tetrahedral    .
+NI  O,N,S     CYS,ASP,GLU,HIS              tetrahedral    N
 ZN  O,N,S     CYS,ASP,GLU,HIS              tetrahedral    .
 CD  O,N,S,CL  .                            octahedral,any .
 #
