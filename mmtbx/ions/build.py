@@ -162,7 +162,9 @@ def find_and_build_ions (
     fmodel.update_xray_structure(
       update_f_calc=True,
       update_f_mask=True)
-    if (params.refine_ion_occupancies) :
+    refine_anomalous = ((params.refine_anomalous) and
+                        (len(anomalous_groups) > 0))
+    if (params.refine_ion_occupancies) or (refine_anomalous) :
       # XXX not ideal - need to determine whether the occupancy refinement
       # strategy will be used, and only refine here if it won't happen
       # otherwise.
@@ -188,7 +190,7 @@ def find_and_build_ions (
         update_f_mask=True)
       print >> out, "occupancy refinement (new ions only): final %s" % \
         show_r_factors()
-    if (params.refine_anomalous) and (len(anomalous_groups) > 0) :
+    if (refine_anomalous) :
       if ((model.anomalous_scatterer_groups is not None) and
           (group_anomalous_strategy_enabled)) :
         model.anomalous_scatterer_groups.extend(anomalous_groups)
