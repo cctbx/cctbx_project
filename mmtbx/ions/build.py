@@ -61,6 +61,7 @@ def find_and_build_ions (
       nproc=1,
       out=None,
       run_ordered_solvent=False,
+      occupancy_strategy_enabled=False,
       group_anomalous_strategy_enabled=False) :
   import mmtbx.refinement.minimization
   from mmtbx.refinement.anomalous_scatterer_groups import \
@@ -162,12 +163,17 @@ def find_and_build_ions (
     fmodel.update_xray_structure(
       update_f_calc=True,
       update_f_mask=True)
-    refine_anomalous = ((params.refine_anomalous) and
-                        (len(anomalous_groups) > 0))
-    if (params.refine_ion_occupancies) or (refine_anomalous) :
-      # XXX not ideal - need to determine whether the occupancy refinement
-      # strategy will be used, and only refine here if it won't happen
-      # otherwise.
+    refine_anomalous = (params.refine_anomalous) and (len(anomalous_groups)>0)
+    refine_occupancies = ((params.refine_ion_occupancies or refine_anomalous)
+      and ((not occupancy_strategy_enabled) or
+           (model.refinement_flags.s_occupancies is None) or
+           (len(model.refinement_flags.s_occupancies) == 0)))
+    if (refine_anomalous) :
+      if ((model.anomalous_scatterer_groups is not None) and
+          (group_anomalous_strategy_enabled)) :
+        model.anomalous_scatterer_groups.extend(anomalous_groups)
+        refine_anomalous = False
+    if (refine_occupancies) or (refine_anomalous) :
       print >> out, "occupancy refinement (new ions only): start %s" % \
         show_r_factors()
       fmodel.xray_structure.scatterers().flags_set_grads(state = False)
@@ -191,17 +197,13 @@ def find_and_build_ions (
       print >> out, "occupancy refinement (new ions only): final %s" % \
         show_r_factors()
     if (refine_anomalous) :
-      if ((model.anomalous_scatterer_groups is not None) and
-          (group_anomalous_strategy_enabled)) :
-        model.anomalous_scatterer_groups.extend(anomalous_groups)
-      else :
-        print >> out, "anomalous refinement (new ions only): start %s" % \
-          show_r_factors()
-        anomalous_scatterer_groups.minimizer(
-          fmodel=fmodel,
-          groups=anomalous_groups)
-        print >> out, "anomalous refinement (new ions only): final %s" % \
-          show_r_factors()
+      print >> out, "anomalous refinement (new ions only): start %s" % \
+        show_r_factors()
+      anomalous_scatterer_groups.minimizer(
+        fmodel=fmodel,
+        groups=anomalous_groups)
+      print >> out, "anomalous refinement (new ions only): final %s" % \
+        show_r_factors()
   return manager
 
 def clean_up_ions (fmodel, model, params, log=None, verbose=True) :
