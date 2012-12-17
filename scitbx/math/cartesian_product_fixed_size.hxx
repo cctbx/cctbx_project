@@ -16,6 +16,20 @@ iterated_range< Iterator >::~iterated_range()
 {}
 
 template< class Iterator >
+size_t
+iterated_range< Iterator >::length() const
+{
+  size_t length = 0;
+
+  for ( Iterator it = begin; it != end; ++it )
+  {
+    ++length;
+  }
+
+  return length;
+}
+
+template< class Iterator >
 bool
 operator ==(
   const iterated_range< Iterator >& left,

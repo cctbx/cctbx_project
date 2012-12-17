@@ -42,6 +42,8 @@ struct iterated_range
   iterated_range();
   iterated_range(const iterator_type& begin, const iterator_type& end);
   ~iterated_range();
+
+  size_t length() const;
 };
 
 template< class Iterator >
