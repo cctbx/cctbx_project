@@ -159,6 +159,9 @@ class Job(object):
 
     return "%s_%d" % ( self.qinterface.root, id( self ) )
 
+  @property
+  def jobid (self) :
+    return getattr(self.status, "jobid", None)
 
   def start(self):
 
@@ -463,8 +466,7 @@ def Condor(
 
 
 def lex_command_line(command):
-
-  assert command
+  assert isinstance(command, str)
   import shlex
   lexed = shlex.split( command )
   assert lexed
