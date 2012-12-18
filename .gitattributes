@@ -207,6 +207,8 @@ cctbx/uctbx/crystal_orientation.cpp -text
 cctbx/uctbx/rank-2[!!-~]tensor[!!-~]algebra.nb -text
 cctbx/web/change_basis.html svneol=native#text/html
 cctbx/web/change_basis.py svneol=native#text/x-python
+cctbx/web/iotbx_cif_validate.html -text
+cctbx/web/iotbx_cif_validate.py -text
 cctbx/xray/boost_python/curvatures_simple.cpp svneol=native#text/plain
 cctbx/xray/boost_python/grouped_data.cpp -text
 cctbx/xray/boost_python/tst_targets_fd.py svneol=native#text/x-python

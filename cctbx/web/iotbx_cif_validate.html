@@ -1,0 +1,75 @@
+<html>
+<head>
+<title>cctbx - Emma: Euclidean Model Matching</title>
+</head>
+<body bgcolor=#ffffff>
+
+[<a href="index.html">Index of services</a>]
+<hr>
+<h1>iotbx.cif.validate</h1>
+
+Perform dictionary-based validation and optional extraction of cctbx
+crystallographic objects from CIF files.
+
+<p>
+
+Keywords:
+  CIF,
+  validation,
+  mmCIF,
+
+<hr>
+
+<FORM ENCTYPE="multipart/form-data" METHOD=POST ACTION="cctbx_web.cgi">
+<input type="HIDDEN" name="target_module" value="iotbx_cif_validate">
+
+Validate against CIF dictionary:
+<select name="cif_dic">
+  <option value="" selected
+    ></option>
+  <option value="cif_core.dic"
+    >coreCIF</option>
+  <option value="cif_mm.dic"
+    >mmCIF</option>
+  <option value="mmcif_pdbx.dic"
+    >mmCIF/PDBx</option>
+</select>
+
+<p>
+Extract data structures:
+<br>
+<input type=checkbox name="extract_miller_arrays" value="True">Miller arrays
+<input type=checkbox name="extract_crystal_structures" value="True">Crystal structures
+<input type=checkbox name="extract_pdb_hierarchy" value="True">PDB hierarchy
+
+
+<p>
+<strong>Input file:</strong>
+<p>
+Specify file: <INPUT NAME="cif_file" TYPE="file">,
+or paste in file contents:
+<br>
+<textarea name="cif_text" rows=16 cols=60></textarea>
+
+<hr>
+
+<p>
+<input type="submit" value="Validate">
+<p>
+<input type="reset"  value="Reset">
+</FORM>
+
+<hr>
+<p>
+If you use iotbx.cif in your work please cite:
+<blockquote>
+R. J. Gildea, L. J. Bourhis, O. V. Dolomanov, R. W. Grosse-Kunstleve,
+H. Puschmann, P. D. Adams and J. A. K. Howard:
+<em>iotbx.cif: a comprehensive CIF toolbox</em>.
+<a class="reference" href="http://dx.doi.org/10.1107/S0021889811041161">J. Appl. Cryst. (2011). 44, 1259-1263</a>.</blockquote>
+
+<hr>
+[<a href="index.html">Index of services</a>]
+<hr>
+</body>
+</html>
