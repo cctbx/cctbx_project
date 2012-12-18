@@ -15,6 +15,10 @@ class XrayView (wx.Panel) :
     super(XrayView, self).__init__(*args, **kwds)
     self.settings = self.GetParent().settings
     self.Bind(wx.EVT_PAINT, self.OnPaint)
+    if (wx.Platform == '__WXMSW__') :
+      # XXX fixes flickering problem on Windows - this does not appear to be
+      # an issue on Linux/Mac, so I've left the default behavior in place
+      self.Bind(wx.EVT_ERASE_BACKGROUND, lambda evt: True)
     self.SetupEventHandlers()
     self.xmouse = None
     self.ymouse = None
