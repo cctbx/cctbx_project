@@ -269,14 +269,14 @@ class XrayFrame (wx.Frame) :
         x_start = display_rect[2] - 400
       y_start = frame_rect[1]
       self.settings_frame = SettingsFrame(self, -1, "Settings",
-        style=wx.CAPTION|wx.MINIMIZE_BOX|wx.CLOSE_BOX,
+        style=wx.CAPTION|wx.MINIMIZE_BOX|wx.CLOSE_BOX|wx.SYSTEM_MENU,
         pos=(x_start, y_start))
     self.settings_frame.Show()
 
   def OnShowZoom (self, event) :
     if (self.zoom_frame is None) :
       self.zoom_frame = ZoomFrame(self, -1, "Zoom",
-        style=wx.CAPTION|wx.CLOSE_BOX|wx.RESIZE_BORDER)
+        style=wx.CAPTION|wx.CLOSE_BOX|wx.RESIZE_BORDER|wx.SYSTEM_MENU)
       self.zoom_frame.set_image(self._img)
       self.zoom_frame.Show()
     self.zoom_frame.Raise()
@@ -284,7 +284,7 @@ class XrayFrame (wx.Frame) :
   def OnShowPlot (self, event) :
     if (self.plot_frame is None) :
       self.plot_frame = PlotFrame(self, -1, "Intensity profile",
-        style=wx.CAPTION|wx.CLOSE_BOX)
+        style=wx.CAPTION|wx.CLOSE_BOX|wx.SYSTEM_MENU)
       self.plot_frame.Show()
 
   def OnZoom (self, event) :
