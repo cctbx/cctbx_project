@@ -26,7 +26,10 @@ struct iterated_range_wrappers
     typedef iterated_range< Iterator > range_type;
 
     class_< range_type >( name, no_init )
-      .def( "__iter__", range( &range_type::begin, &range_type::end ) )
+      .def(
+        "__iter__",
+        boost::python::range( &range_type::begin, &range_type::end )
+        )
       .def( "__len__", &range_type::length )
       ;
   }
