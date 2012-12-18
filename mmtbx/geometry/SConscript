@@ -1,0 +1,21 @@
+Import( "env_etc" )
+
+if not env_etc.no_boost_python:
+  Import( "env_scitbx_boost_python_ext" )
+  env_scitbx_boost_python_ext.SharedLibrary(
+    target="#lib/mmtbx_geometry_sphere_surface_sampling_ext",
+    source=[ "boost_python/sphere_surface_sampling_ext.cpp" ],
+    )
+  env_scitbx_boost_python_ext.SharedLibrary(
+    target="#lib/mmtbx_geometry_primitive_ext",
+    source=[ "boost_python/primitive_ext.cpp" ],
+    )
+  env_scitbx_boost_python_ext.SharedLibrary(
+    target="#lib/mmtbx_geometry_volume_ext",
+    source=[ "boost_python/volume_ext.cpp" ],
+    )
+  env_scitbx_boost_python_ext.SharedLibrary(
+    target="#lib/mmtbx_geometry_asa_ext",
+    source=[ "boost_python/asa_ext.cpp" ],
+    )
+
