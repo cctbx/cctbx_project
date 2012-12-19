@@ -31,8 +31,6 @@ alpha_beta_params = iotbx.phil.parse("""\
     .type = int
   interpolation = True
     .type = bool
-  fix_scale_for_calc_option = None
-    .type = float
   number_of_waters_absent = 613
     .type = float
 """)

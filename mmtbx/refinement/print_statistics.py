@@ -334,11 +334,6 @@ class refinement_monitor(object):
     if (fmodel.target_name=="twin_lsq_f"):
       scale_ml = 1
     else:
-      if(fmodel.alpha_beta_params.method == "calc"):
-         if(fmodel.alpha_beta_params.fix_scale_for_calc_option == None):
-            scale_ml = fmodel.scale_ml()
-         else:
-            scale_ml =fmodel.alpha_beta_params.fix_scale_for_calc_option
       if(fmodel.alpha_beta_params.method == "est"):
          scale_ml = 1.0
 
