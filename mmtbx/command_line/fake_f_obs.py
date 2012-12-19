@@ -268,8 +268,8 @@ def simulate_f_obs(root, crystal_symmetry, params):
     f_calc = fcalc_average,
     f_mask = f_masks_data_average)
   fmodel.update_solvent_and_scale(verbose = -1)
-  assert approx_equal(fmodel.r_work(),0)
-  assert approx_equal(fmodel.r_free(),0)
+  #assert approx_equal(fmodel.r_work(),0)
+  #assert approx_equal(fmodel.r_free(),0)
 
 def regularize_geometry(xray_structure, restraints_manager, params):
   from mmtbx.command_line import geometry_minimization as gm
@@ -370,7 +370,6 @@ def defaults(log):
 
 def run(args, log = sys.stdout):
   if(len(args)==0):
-    print >> log, msg
     parsed = defaults(log=log)
     parsed.show(prefix="  ", out=log)
     return
