@@ -156,11 +156,14 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
                   if formal_charge is not None:
                     charge = formal_charge[i_atom]
                     if charge not in ("?", "."):
+                      if charge.endswith("-") or charge.startswith("-"):
+                        sign = "-"
+                      else:
+                        sign = "+"
+                      charge = charge.strip(" -+")
                       charge = int(charge)
-                      sign = ""
-                      if charge > 0: sign = "+"
-                      elif charge < 0: sign = "-"
-                      atom.set_charge("%i%s" %(abs(charge), sign))
+                      if charge == 0: sign = ""
+                      atom.set_charge("%i%s" %(charge, sign))
                   if anisotrop_id is not None and adps is not None:
                     u_ij_index = flex.first_index(anisotrop_id, atom.serial)
                     if u_ij_index is not None:
@@ -546,23 +549,24 @@ class pdb_hierarchy_as_cif_block(iotbx.cif.crystal_symmetry_as_cif_block):
     atom_site_loop = iotbx.cif.model.loop(header=(
       '_atom_site.group_PDB',
       '_atom_site.id',
-      '_atom_site.type_symbol',
       '_atom_site.label_atom_id',
       '_atom_site.label_alt_id',
       '_atom_site.label_comp_id',
-      '_atom_site.label_asym_id',
-      '_atom_site.label_entity_id',
-      '_atom_site.label_seq_id',
+      '_atom_site.auth_asym_id',
+      '_atom_site.auth_seq_id',
       '_atom_site.pdbx_PDB_ins_code',
       '_atom_site.Cartn_x',
       '_atom_site.Cartn_y',
       '_atom_site.Cartn_z',
       '_atom_site.occupancy',
       '_atom_site.B_iso_or_equiv',
-      '_atom_site.auth_seq_id',
-      '_atom_site.auth_comp_id',
-      '_atom_site.auth_asym_id',
-      '_atom_site.auth_atom_id',
+      '_atom_site.type_symbol',
+      '_atom_site.pdbx_formal_charge',
+      '_atom_site.label_asym_id',
+      '_atom_site.label_entity_id',
+      '_atom_site.label_seq_id',
+      #'_atom_site.auth_comp_id',
+      #'_atom_site.auth_atom_id',
       '_atom_site.pdbx_PDB_model_num',
     ))
 
@@ -592,25 +596,28 @@ class pdb_hierarchy_as_cif_block(iotbx.cif.crystal_symmetry_as_cif_block):
               group_pdb = "ATOM"
               if atom.hetero: group_PDB = "HETATM"
               x, y, z = [str(i) for i in atom.xyz]
+              atom_charge = atom.charge_tidy().strip()
+              if atom_charge == "": atom_charge = "?"
               atom_site_loop['_atom_site.group_PDB'].append(group_pdb)
               atom_site_loop['_atom_site.id'].append(atom.serial.strip())
-              atom_site_loop['_atom_site.type_symbol'].append(atom.element.strip())
               atom_site_loop['_atom_site.label_atom_id'].append(atom.name.strip())
               atom_site_loop['_atom_site.label_alt_id'].append(alt_id)
               atom_site_loop['_atom_site.label_comp_id'].append(comp_id)
-              atom_site_loop['_atom_site.label_asym_id'].append(label_asym_id)
-              atom_site_loop['_atom_site.label_entity_id'].append(entity_id)
-              atom_site_loop['_atom_site.label_seq_id'].append(str(label_seq_id))
+              atom_site_loop['_atom_site.auth_asym_id'].append(auth_asym_id)
+              atom_site_loop['_atom_site.auth_seq_id'].append(seq_id)
               atom_site_loop['_atom_site.pdbx_PDB_ins_code'].append(icode)
               atom_site_loop['_atom_site.Cartn_x'].append(x)
               atom_site_loop['_atom_site.Cartn_y'].append(y)
               atom_site_loop['_atom_site.Cartn_z'].append(z)
               atom_site_loop['_atom_site.occupancy'].append(str(atom.occ))
               atom_site_loop['_atom_site.B_iso_or_equiv'].append(str(atom.b))
-              atom_site_loop['_atom_site.auth_seq_id'].append(seq_id)
-              atom_site_loop['_atom_site.auth_comp_id'].append(comp_id)
-              atom_site_loop['_atom_site.auth_asym_id'].append(auth_asym_id)
-              atom_site_loop['_atom_site.auth_atom_id'].append(atom.name.strip())
+              atom_site_loop['_atom_site.type_symbol'].append(atom.element.strip())
+              atom_site_loop['_atom_site.pdbx_formal_charge'].append(atom_charge)
+              atom_site_loop['_atom_site.label_asym_id'].append(label_asym_id)
+              atom_site_loop['_atom_site.label_entity_id'].append(entity_id)
+              atom_site_loop['_atom_site.label_seq_id'].append(str(label_seq_id))
+              #atom_site_loop['_atom_site.auth_comp_id'].append(comp_id)
+              #atom_site_loop['_atom_site.auth_atom_id'].append(atom.name.strip())
               atom_site_loop['_atom_site.pdbx_PDB_model_num'].append(model_id)
     self.cif_block.add_loop(atom_site_loop)
 
