@@ -220,6 +220,7 @@ class run(object) :
   def is_converged(self, rho_trial):
     result = False
     r = r_factor(self.f, self.f_mem, use_scale=False)
+    #if r<0.000001: return True
     if(r < 0.2):
       if(self.xray_structure is None):
         self.r_factors.append(r)
@@ -235,10 +236,18 @@ class run(object) :
           use_sg         = False)
         self.cc = f_mem.map_correlation(other = self.f_calc)
         self.cc_to_answer.append(self.cc)
+        def max_change_so_far(x):
+          result = flex.double()
+          if(self.cc_to_answer.size()):
+            for i in xrange(self.cc_to_answer.size()):
+              if(i>0):
+                result.append(self.cc_to_answer[i]-self.cc_to_answer[i-1])
+          return flex.max(result)
         size = self.cc_to_answer.size()
         if(size>=3):
+          mcsf = max_change_so_far(x = self.cc_to_answer)
           tmp = flex.mean(self.cc_to_answer[size-3:])
-          if(tmp >= self.cc-1.e-6):# or self.cc-tmp<0.0001):
+          if(tmp >= self.cc-1.e-6 or mcsf/5 >= self.cc-tmp):
             result = True
     return result
 
