@@ -365,7 +365,7 @@ _atom_site.auth_atom_id
 _atom_site.pdbx_PDB_model_num
   HETATM 2932 CA CA  . CA  J 2 .   ? 221.154 27.397 60.094 1.00 49.40  ? ? ? ? ? 2 1123 CA  C CA  1
   HETATM 2996 O  O1S . MES D 4 .   ? 47.470 -6.157  23.319 1.00 13.84 ? ? ? ? ? -1 1653 MES F O1S 1
-  HETATM 2997 O  O2S . MES D 4 .   ? 47.327 -5.296  20.939 1.00 15.26 ? ? ? ? ? ?  1653 MES F O2S 1
+  HETATM 2997 O  O2S . MES D 4 .   ? 47.327 -5.296  20.939 1.00 15.26 ? ? ? ? ? 1-  1653 MES F O2S 1
 """
   hierarchy = iotbx.pdb.input(
     lines=input_charges.splitlines(),
@@ -373,7 +373,7 @@ _atom_site.pdbx_PDB_model_num
   atoms = hierarchy.atoms()
   assert atoms[0].charge == "2+"
   assert atoms[1].charge == "1-"
-  assert atoms[2].charge == ""
+  assert atoms[2].charge == "1-"
   s = StringIO()
   hierarchy.show(out=s)
   assert not show_diff(s.getvalue(), """\
@@ -394,6 +394,10 @@ model id="" #chains=2
   s1 = StringIO()
   hierarchy_recycled.show(out=s1)
   assert not show_diff(s.getvalue(), s1.getvalue())
+  atoms = hierarchy.atoms()
+  assert atoms[0].charge == "2+"
+  assert atoms[1].charge == "1-"
+  assert atoms[2].charge == "1-"
 
 def run():
   exercise_pdb_hierachy_builder()
