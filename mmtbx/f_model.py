@@ -1916,9 +1916,6 @@ class manager(manager_mixin):
   def scale_ml_wrapper(self):
     if (self.alpha_beta_params is None): return 1.0
     if (self.alpha_beta_params.method != "calc"): return 1.0
-    if (self.alpha_beta_params.fix_scale_for_calc_option is None):
-      return self.scale_ml()
-    return self.alpha_beta_params.fix_scale_for_calc_option
 
   def figures_of_merit(self):
     alpha, beta = self.alpha_beta()
