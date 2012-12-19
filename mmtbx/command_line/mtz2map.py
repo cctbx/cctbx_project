@@ -155,6 +155,8 @@ def run (args, log=sys.stdout) :
     mtz_file = file_reader.any_file(params.mtz_file, force_type="hkl")
   if params.show_maps or len(params.labels) == 0 :
     all_labels = utils.get_map_coeff_labels(mtz_file.file_server,
+      exclude_anomalous=False,
+      exclude_fmodel=False,
       keep_array_labels=True)
     if len(all_labels) > 0 :
       print >> log, "Available map coefficients in this MTZ file:"
@@ -206,7 +208,9 @@ def run (args, log=sys.stdout) :
       map_coeffs = find_array(miller_arrays, map_labels[0])
       if (map_coeffs is None) :
         all_labels = utils.get_map_coeff_labels(mtz_file.file_server,
-          keep_array_labels=True)
+          keep_array_labels=True,
+          exclude_anomalous=False,
+          exclude_fmodel=False)
         labels_out = []
         if len(all_labels) > 0 :
           for labels in all_labels :
@@ -269,6 +273,11 @@ def run (args, log=sys.stdout) :
       suffix = "_anom"
     elif (map_labels[0].startswith("LLG")) :
       suffix = "_llg"
+    elif (map_labels[0].startswith("FMODEL") or
+          map_labels[0].startswith("F-model")) :
+      suffix = "_fmodel"
+    elif (map_labels[0].startswith("FC")) :
+      suffix = "_fcalc"
     else :
       suffix = "_%d" % (i+1)
     if ("_no_fill" in map_labels[0]) :

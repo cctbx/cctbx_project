@@ -515,6 +515,7 @@ def get_map_coeff_labels (server,
     build_only=False,
     include_fom=True,
     exclude_anomalous=False,
+    exclude_fmodel=True,
     keep_array_labels=False) :
   all_labels = []
   phi_labels = []
@@ -530,7 +531,10 @@ def get_map_coeff_labels (server,
     if miller_array.is_hendrickson_lattman_array() :
       continue
     elif miller_array.is_complex_array() :
-      if (labels.upper().startswith("ANOM")) and (exclude_anomalous) :
+      if ((labels.startswith("F-model") or labels.startswith("FMODEL")) and
+          (exclude_fmodel)) :
+        continue
+      elif (labels.upper().startswith("ANOM")) and (exclude_anomalous) :
         continue
       if build_only :
         if (not labels[0:4] in ["FOFC", "DELF", "ANOM"]) :
