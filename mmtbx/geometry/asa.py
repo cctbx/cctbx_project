@@ -1,7 +1,5 @@
 from __future__ import division
 
-import mmtbx.geometry.primitive
-
 import boost.python
 ext = boost.python.import_ext( "mmtbx_geometry_asa_ext" )
 from mmtbx_geometry_asa_ext import *

@@ -1,5 +1,5 @@
 from __future__ import division
-import sys, os, time, math, random, cPickle, pickle, gzip
+import sys, os, time, math, random, cPickle, gzip
 from cctbx.array_family import flex
 from cctbx import adptbx
 from iotbx.option_parser import iotbx_option_parser
@@ -17,8 +17,6 @@ import iotbx.phil
 from libtbx import adopt_init_args
 import mmtbx.solvent.ensemble_ordered_solvent as ensemble_ordered_solvent
 from cctbx import miller
-from cctbx import maptbx
-from mmtbx import max_lik
 from mmtbx.refinement.ensemble_refinement import ensemble_utils
 import scitbx.math
 from cctbx import xray
@@ -487,7 +485,7 @@ class run_ensemble_refinement(object):
                      params):
     adopt_init_args(self, locals())
 #    self.params = params.extract().ensemble_refinement
-    
+
 
     if self.params.target_name == 'ml':
       self.fix_scale = False
@@ -621,7 +619,7 @@ class run_ensemble_refinement(object):
     self.setup_tls_selections(tls_group_selection_strings = self.params.tls_group_selections)
     self.fit_tls(input_model = self.model)
     self.assign_solvent_tls_groups()
-    
+
     #Set occupancies to 1.0
     if self.params.set_occupancies:
       utils.print_header("Set occupancies to 1.0", out = self.log)
@@ -665,7 +663,7 @@ class run_ensemble_refinement(object):
 
       xrs_previous = self.model.xray_structure.deep_copy_scatterers()
       assert self.fmodel_running.xray_structure is self.model.xray_structure
-      
+
       cd_manager = ensemble_cd.cartesian_dynamics(
         structure                   = self.model.xray_structure,
         restraints_manager          = self.model.restraints_manager,
@@ -795,7 +793,7 @@ class run_ensemble_refinement(object):
         elif self.macro_cycle < self.equilibrium_macro_cycles:
           if self.params.tx == 0:
             a_prime_wx = 0
-          else: 
+          else:
             wx_tx = min(self.time, self.params.tx)
             a_prime_wx = math.exp(-(self.cdp.time_step * self.cdp.number_of_steps)/wx_tx)
           wxray_t = self.wxray * max(0.01, self.cdp.temperature / self.er_data.non_solvent_temp)
@@ -990,7 +988,7 @@ class run_ensemble_refinement(object):
         verbose       = self.params.verbose,
         out           = self.log,
         optimize_mask = True)
-    
+
     #Fixes scale factor for rolling average #ESSENTIAL for LSQ
     if self.fix_scale == True:
       self.er_data.fix_scale_factor = self.fmodel_running.scale_k1()
@@ -1057,7 +1055,7 @@ class run_ensemble_refinement(object):
     model_no_solvent = self.model.deep_copy()
     model_no_solvent = model_no_solvent.remove_solvent()
     all_chain_proxies = self.generate_all_chain_proxies(model = model_no_solvent)
-    
+
     if len(tls_group_selection_strings) < 1:
       print >> self.log, '\nNo TLS groups supplied - automatic setup'
       # Get chain information
@@ -1102,12 +1100,12 @@ class run_ensemble_refinement(object):
     for selection_string in tls_group_selection_strings:
       no_hd_string = '(' + selection_string + ') and not (element H or element D)'
       tls_no_hd_selection_strings.append(no_hd_string)
-    
+
     tls_no_sol_no_hd_selections = utils.get_atom_selections(
         all_chain_proxies = all_chain_proxies,
         selection_strings = tls_no_hd_selection_strings,
         xray_structure    = model_no_solvent.xray_structure)
-    
+
     #
     assert self.tls_manager is not None
     self.tls_manager.tls_selection_strings_no_sol       = tls_group_selection_strings
@@ -1154,10 +1152,10 @@ class run_ensemble_refinement(object):
     tls_selection_no_sol_hd_exclusions = self.tls_manager.tls_selections_no_sol_no_hd
     pre_fitted_mean = 999999.99
     #
-    
+
     use_isotropic = False
     for group in self.tls_manager.tls_selections_no_sol_no_hd:
-      if group.size() < 63: 
+      if group.size() < 63:
         self.params.isotropic_b_factor_model = True
       elif self.params.ptls * group.size() < 63:
         self.params.ptls = 64.0 / group.size()
@@ -1239,7 +1237,7 @@ class run_ensemble_refinement(object):
         delta_ref_fit_no_h_basic_stats = scitbx.math.basic_statistics(delta_ref_fit_no_h )
         start_biso_no_hd = start_biso.select(~hd_selection)
         fitted_biso_no_hd = fitted_biso.select(~hd_selection)
-        
+
         if verbose:
           print >> self.log, 'pTLS                                    : ', self.params.ptls
 
@@ -1289,7 +1287,7 @@ class run_ensemble_refinement(object):
     model_copy.xray_structure.set_u_cart(us_tls)
     model_copy.show_adp_statistics(padded = True, out = self.log)
     del model_copy
-    
+
     #Update TLS params
     self.model.tls_groups.tlsos = fit_tlsos
     self.tls_manager.tls_operators = fit_tlsos
@@ -1740,7 +1738,7 @@ def run(args, command_name = "phenix.ensemble_refinement"):
     log = sys.stdout, master_params = master_params)
   pdb_file_names = processed_args.pdb_file_names
   cmd_params = processed_args.params
-  if cmd_params is None: 
+  if cmd_params is None:
     cmd_params = master_params
   er_params = cmd_params.extract().ensemble_refinement
 
@@ -1843,7 +1841,7 @@ def run(args, command_name = "phenix.ensemble_refinement"):
     log                       = log)
   processed_pdb_file, pdb_inp = \
     processed_pdb_files_srv.process_pdb_files(pdb_file_names = [pdb_file])
-  
+
   # Remove alternative conformations if present
   hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
   atoms_size_pre = hierarchy.atoms().size()
