@@ -114,6 +114,7 @@ cctbx/maptbx/real_space_gradients_simple.h svneol=native#text/plain
 cctbx/maptbx/real_space_refinement_simple.py svneol=native#text/x-python
 cctbx/maptbx/real_space_target_and_gradients.h -text
 cctbx/maptbx/real_space_target_and_gradients.py -text
+cctbx/maptbx/sphericity.h -text
 cctbx/maptbx/standard_deviations_around_sites.hpp svneol=native#text/plain
 cctbx/maptbx/tst_ccp.py -text
 cctbx/maptbx/tst_real_space_refinement_simple.py svneol=native#text/x-python
@@ -160,6 +161,7 @@ cctbx/regression/tst_miller_ellipsoidal_truncation.py -text
 cctbx/regression/tst_refine_xray_curvs.py svneol=native#text/x-python
 cctbx/regression/tst_sgtbx_special_op_simplifier.py svneol=native#text/x-python
 cctbx/regression/tst_show_cosets.py -text
+cctbx/regression/tst_sphericity.py -text
 cctbx/regression/tst_web_change_basis.py svneol=native#text/x-python
 cctbx/regression/tst_weighting_schemes.py -text
 cctbx/regression/tst_xray_minimization_failure.py -text
