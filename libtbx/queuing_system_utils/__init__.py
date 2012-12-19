@@ -63,3 +63,28 @@ class chunk_manager(object):
         print >> out, "log_name:", log_name
       print >> out
     return O
+
+# XXX tested on SGE only so far (2012-12-19)
+def qdel (job_id, platform) :
+  """
+  Stop a queue job.  Supports the same platforms as 'processing' sub-module,
+  but primarily used by the Phenix GUI.
+  """
+  from libtbx import easy_run
+  assert (platform in ["sge","lsf","pbs","condor"])
+  cmd = None
+  if (platform in ["sge", "pbs"]) :
+    cmd = "qdel %s" % job_id
+  elif (platform == "lsf") :
+    cmd = "bdel %s" % job_id
+  elif (platform == "condor") :
+    cmd = "condor_rm %s" % job_id
+  assert (cmd is not None)
+  qdel_out = easy_run.fully_buffered(
+    command=cmd).raise_if_errors().stdout_lines
+  print "\n".join(qdel_out)
+  # XXX this is specific to SGE - need error handling for other systems too
+  for line in qdel_out :
+    if "denied" in line :
+      raise RuntimeError("\n".join(qdel_out))
+  return True
