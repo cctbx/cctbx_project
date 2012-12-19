@@ -2,6 +2,7 @@
 #define CCTBX_MAPTBX_UTILS_H
 
 #include <cstddef>
+#include <scitbx/array_family/accessors/c_grid.h>
 
 namespace cctbx { namespace maptbx {
 
@@ -80,6 +81,36 @@ namespace cctbx { namespace maptbx {
     }
     return ih;
   }
+
+inline void hoppe_gassman_modification(af::ref<double, af::c_grid<3> > map_data)
+{
+  int nx = map_data.accessor()[0];
+  int ny = map_data.accessor()[1];
+  int nz = map_data.accessor()[2];
+  double rho_max = af::max(map_data);
+  for(int i = 0; i < nx; i++) {
+    for(int j = 0; j < ny; j++) {
+      for(int k = 0; k < nz; k++) {
+         double rho = map_data(i,j,k)/rho_max;
+         if(rho>=0) map_data(i,j,k) = 3*rho*rho - 2*rho*rho*rho;
+         else       map_data(i,j,k) = 0;
+  }}}
+}
+
+inline void convert_to_non_negative(
+       af::ref<double, af::c_grid<3> > map_data)
+{
+  int nx = map_data.accessor()[0];
+  int ny = map_data.accessor()[1];
+  int nz = map_data.accessor()[2];
+  double rho_max = af::max(map_data);
+  for(int i = 0; i < nx; i++) {
+    for(int j = 0; j < ny; j++) {
+      for(int k = 0; k < nz; k++) {
+         double rho = map_data(i,j,k);
+         if(rho<0) map_data(i,j,k) = 0;
+  }}}
+}
 
 }} // namespace cctbx::maptbx
 
