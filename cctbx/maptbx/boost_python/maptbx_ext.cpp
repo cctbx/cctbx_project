@@ -10,6 +10,9 @@
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
+#include <cctbx/maptbx/histogram.h>
+#include <cctbx/maptbx/sphericity.h>
+#include <cctbx/maptbx/utils.h>
 
 namespace cctbx { namespace maptbx { namespace boost_python {
 
@@ -92,28 +95,17 @@ namespace {
                      arg("map_2"))))
         .def("map_1", &w_t::map_1)
         .def("map_2", &w_t::map_2)
+        .def("histogram_1", &w_t::histogram_1)
+        .def("histogram_2", &w_t::histogram_2)
+        .def("histogram_12", &w_t::histogram_12)
+        .def("histogram_values", &w_t::histogram_values)
       ;
     }
     //
     {
-      typedef cumulative_histogramm w_t;
+      typedef histogram w_t;
 
-      class_<w_t>("cumulative_histogramm", no_init)
-        .def(init<af::const_ref<double, af::c_grid<3> > const&,
-                  af::const_ref<double, af::c_grid<3> > const& >(
-                    (arg("map_1"),
-                     arg("map_2"))))
-        .def("histogram_1", &w_t::histogram_1)
-        .def("histogram_2", &w_t::histogram_2)
-        .def("histogram_average", &w_t::histogram_average)
-        .def("values", &w_t::values)
-      ;
-    }
-
-    {
-      typedef histogramm w_t;
-
-      class_<w_t>("histogramm", no_init)
+      class_<w_t>("histogram", no_init)
         .def(init<af::const_ref<double, af::c_grid<3> > const&,
                   int const& >(
                     (arg("map"),
@@ -122,6 +114,7 @@ namespace {
         .def("c_values",  &w_t::c_values)
         .def("v_values",  &w_t::v_values)
         .def("bin_width", &w_t::bin_width)
+        .def("arguments", &w_t::arguments)
       ;
     }
 
@@ -138,22 +131,6 @@ namespace {
       ;
     }
 
-    {
-      typedef ccv w_t;
-
-      class_<w_t>("ccv", no_init)
-        .def(init<af::const_ref<double, af::c_grid<3> > const&,
-                  af::const_ref<double, af::c_grid<3> > const&,
-                  double const& >(
-                    (arg("map_1"),
-                     arg("map_2"),
-                     arg("v"))))
-        .def("values_1", &w_t::values_1)
-        .def("values_2", &w_t::values_2)
-      ;
-    }
-
-    //
     {
       typedef one_gaussian_peak_approximation w_t;
 
@@ -235,6 +212,20 @@ namespace {
             arg("site_frac")));
 
     def("box_map_averaging",box_map_averaging);
+    def("hoppe_gassman_modification",hoppe_gassman_modification);
+    def("convert_to_non_negative",convert_to_non_negative);
+
+    def("sphericity",
+      (af::shared<double>(*)
+        (af::const_ref<double, af::c_grid<3> > const&,
+          uctbx::unit_cell const&,
+         double const&,
+         af::const_ref<scitbx::vec3<double> > const&)) sphericity, (
+      arg("map_data"),
+      arg("unit_cell"),
+      arg("radius"),
+      arg("sites_frac")));
+
     def("average_densities",
       (af::shared<double>(*)
         (uctbx::unit_cell const&,
