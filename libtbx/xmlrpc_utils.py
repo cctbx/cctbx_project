@@ -145,7 +145,7 @@ class ServerProxy (object) :
       except Exception, e :
         msg = str(e)
         if (hasattr(e, "errno")) :
-          if (e.errno in [32,54,61,104,111,10061]) :
+          if (e.errno in [32,54,61,104,111,10054,10061]) :
             self._pending.insert(0, (methodname, params))
             t = time.strftime("%H:%M:%S", time.localtime())
             self._errors.append("%s -- %s" % (t, msg))
