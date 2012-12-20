@@ -156,17 +156,17 @@ _another_tag                      3.142
 loop_
   _loop_a
   _loop_b
-   6 5
-   4 3
-   2 1
+  6  5
+  4  3
+  2  1
 
 _tag2                             1.2
 loop_
   _loop2_a
   _loop2_b
-   1 2
-   3 4
-   5 6
+  1  2
+  3  4
+  5  6
 
 """)
   s = StringIO()
@@ -179,17 +179,17 @@ _another_tag 3.142
 loop_
     _loop_a
     _loop_b
-     6 5
-     4 3
-     2 1
+    6  5
+    4  3
+    2  1
 
 _tag2 1.2
 loop_
     _loop2_a
     _loop2_b
-     1 2
-     3 4
-     5 6
+    1  2
+    3  4
+    5  6
 
 """)
   cif_model.sort(recursive=True)
@@ -204,16 +204,16 @@ _tag2                             1.2
 loop_
   _loop_a
   _loop_b
-   6 5
-   4 3
-   2 1
+  6  5
+  4  3
+  2  1
 
 loop_
   _loop2_a
   _loop2_b
-   1 2
-   3 4
-   5 6
+  1  2
+  3  4
+  5  6
 
 """)
   save = model.save()
@@ -232,10 +232,10 @@ save_bob
     _loop_a
     _loop_c
     _loop_b
-     1 4 7
-     2 5 8
-     3 6 9
-     4 7 0
+    1  4  7
+    2  5  8
+    3  6  9
+    4  7  0
 
   _tag1                             3
   save_
@@ -265,7 +265,7 @@ save_bob
   assert b5['_loop'] == l2
   l = model.loop(data=OrderedDict((('_loop_a',(1,21,-13)),
                                    ('_loop_b',(-221.3,3.01,4.246)),
-                                   ('_loop_c',("a","b","c")))))
+                                   ('_loop_c',("a","b","cc")))))
   b = model.block()
   b.add_loop(l)
   cm = model.cif({'fred':b})
@@ -279,10 +279,37 @@ loop_
   _loop_c
    1 -221.30 a
   21    3.01 b
- -13    4.25 c
+ -13    4.25 cc
 
 """)
+  s = StringIO()
+  cm.show(out=s)
+  assert not show_diff(s.getvalue(),"""\
+data_fred
+loop_
+  _loop_a
+  _loop_b
+  _loop_c
+    1  -221.3  a
+   21    3.01  b
+  -13   4.246  cc
 
+""")
+  l.add_row((".", "?", "."))
+  s = StringIO()
+  cm.show(out=s)
+  assert not show_diff(s.getvalue(),"""\
+data_fred
+loop_
+  _loop_a
+  _loop_b
+  _loop_c
+    1  -221.3  a
+   21    3.01  b
+  -13   4.246  cc
+    .       ?  .
+
+""")
 
 if __name__ == '__main__':
   exercise_cif_model()
