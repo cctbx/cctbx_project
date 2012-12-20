@@ -477,6 +477,19 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
   def extract_f_model_core_constants(self):
     return extract_f_model_core_constants(self.cif_block)
 
+  def extract_wavelength (self, first_only=True) :
+    wavelengths = self.cif_block.get('_diffrn_source.pdbx_wavelength_list')
+    wavelength = _float_or_None(self.cif_block.get(
+        '_diffrn_source.pdbx_wavelength'))
+    if (first_only) :
+      if (wavelength is not None) :
+        return wavelength
+      elif (wavelengths is not None) :
+        wavelengths = [ float(f.strip()) for f in wavelengths.split(",") ]
+        return wavelengths[0]
+    elif (wavelengths is not None) :
+        return [ float(f) for f in wavelengths.split(",") ]
+    return None
 
 def _float_or_None(value):
   if value is not None:
