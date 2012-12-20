@@ -1,11 +1,11 @@
 from __future__ import division
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
-# LIBTBX_SET_DISPATCHER_NAME rstbx.image_viewer
+# LIBTBX_SET_DISPATCHER_NAME cctbx.image_viewer
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 #
-# $Id: slip_viewer.py 319 2012-05-11 21:06:01Z rjgildea $
+# $Id$
 
 import os
 import sys
