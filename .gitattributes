@@ -1536,7 +1536,6 @@ rstbx/command_line/simage.create.py -text
 rstbx/command_line/simage.explore_completeness.py svneol=native#text/x-python
 rstbx/command_line/simage.solver.py svneol=native#text/x-python
 rstbx/command_line/simage.wx_display.py svneol=native#text/x-python
-rstbx/command_line/slip_viewer.py -text
 rstbx/command_line/viewer.py -text
 rstbx/detectors/__init__.py -text
 rstbx/detectors/silicon.py -text
