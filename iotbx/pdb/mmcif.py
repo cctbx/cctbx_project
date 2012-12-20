@@ -204,11 +204,11 @@ class extract_tls_from_cif_block(object):
     tls_ids = cif_block.get('_pdbx_refine_tls.id')
 
     T_ijs = [cif_block.get('_pdbx_refine_tls.T[%s][%s]' %(i, j))
-            for i, j in ('11', '22', '33', '12', '13', '23')]
+             for i, j in ('11', '22', '33', '12', '13', '23')]
     L_ijs = [cif_block.get('_pdbx_refine_tls.L[%s][%s]' %(i, j))
-            for i, j in ('11', '22', '33', '12', '13', '23')]
+             for i, j in ('11', '22', '33', '12', '13', '23')]
     S_ijs = [cif_block.get('_pdbx_refine_tls.S[%s][%s]' %(i, j))
-            for i, j in ('11', '12', '13', '21', '22', '23', '31', '32', '33')]
+             for i, j in ('11', '12', '13', '21', '22', '23', '31', '32', '33')]
     origin_xyzs = [cif_block.get('_pdbx_refine_tls.origin_%s' %x) for x in 'xyz']
 
     if isinstance(tls_ids, basestring):
@@ -381,8 +381,8 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
     return flex.size_t()
 
   def crystal_symmetry(self,
-        crystal_symmetry=None,
-        weak_symmetry=False):
+                       crystal_symmetry=None,
+                       weak_symmetry=False):
     self_symmetry = self.builder.crystal_symmetry
     if (crystal_symmetry is None):
       return self_symmetry
@@ -538,13 +538,23 @@ def extract_f_model_core_constants(cif_block):
     r_free           = r_free)
 
 
+
 class pdb_hierarchy_as_cif_block(iotbx.cif.crystal_symmetry_as_cif_block):
 
-  def __init__(self, pdb_hierarchy, crystal_symmetry=None):
+  def __init__(self, pdb_hierarchy, crystal_symmetry=None,
+               coordinate_precision=5,
+               occupancy_precision=3,
+               b_iso_precision=5,
+               u_aniso_precision=5):
     if crystal_symmetry is None:
       crystal_symmetry = crystal.symmetry()
     iotbx.cif.crystal_symmetry_as_cif_block.__init__(
       self, crystal_symmetry, format="mmcif")
+
+    coord_fmt_str = "%%.%if" %coordinate_precision
+    occ_fmt_str = "%%.%if" %occupancy_precision
+    b_iso_fmt_str = "%%.%if" %b_iso_precision
+    u_aniso_fmt_str = "%%.%if" %u_aniso_precision
 
     atom_site_loop = iotbx.cif.model.loop(header=(
       '_atom_site.group_PDB',
@@ -568,6 +578,22 @@ class pdb_hierarchy_as_cif_block(iotbx.cif.crystal_symmetry_as_cif_block):
       #'_atom_site.auth_comp_id',
       #'_atom_site.auth_atom_id',
       '_atom_site.pdbx_PDB_model_num',
+    ))
+
+    aniso_loop = iotbx.cif.model.loop(header=(
+      '_atom_site_anisotrop.id',
+      '_atom_site_anisotrop.pdbx_auth_atom_id',
+      '_atom_site_anisotrop.pdbx_label_alt_id',
+      '_atom_site_anisotrop.pdbx_auth_comp_id',
+      '_atom_site_anisotrop.pdbx_auth_asym_id',
+      '_atom_site_anisotrop.pdbx_auth_seq_id',
+      '_atom_site_anisotrop.pdbx_PDB_ins_code',
+      '_atom_site_anisotrop.U[1][1]',
+      '_atom_site_anisotrop.U[2][2]',
+      '_atom_site_anisotrop.U[3][3]',
+      '_atom_site_anisotrop.U[1][2]',
+      '_atom_site_anisotrop.U[1][3]',
+      '_atom_site_anisotrop.U[2][3]'
     ))
 
     model_ids = flex.std_string()
@@ -595,7 +621,7 @@ class pdb_hierarchy_as_cif_block(iotbx.cif.crystal_symmetry_as_cif_block):
             for atom in atom_group.atoms():
               group_pdb = "ATOM"
               if atom.hetero: group_PDB = "HETATM"
-              x, y, z = [str(i) for i in atom.xyz]
+              x, y, z = [coord_fmt_str %i for i in atom.xyz]
               atom_charge = atom.charge_tidy().strip()
               if atom_charge == "": atom_charge = "?"
               atom_site_loop['_atom_site.group_PDB'].append(group_pdb)
@@ -609,8 +635,8 @@ class pdb_hierarchy_as_cif_block(iotbx.cif.crystal_symmetry_as_cif_block):
               atom_site_loop['_atom_site.Cartn_x'].append(x)
               atom_site_loop['_atom_site.Cartn_y'].append(y)
               atom_site_loop['_atom_site.Cartn_z'].append(z)
-              atom_site_loop['_atom_site.occupancy'].append(str(atom.occ))
-              atom_site_loop['_atom_site.B_iso_or_equiv'].append(str(atom.b))
+              atom_site_loop['_atom_site.occupancy'].append(occ_fmt_str % atom.occ)
+              atom_site_loop['_atom_site.B_iso_or_equiv'].append(b_iso_fmt_str % atom.b)
               atom_site_loop['_atom_site.type_symbol'].append(atom.element.strip())
               atom_site_loop['_atom_site.pdbx_formal_charge'].append(atom_charge)
               atom_site_loop['_atom_site.label_asym_id'].append(label_asym_id)
@@ -619,7 +645,26 @@ class pdb_hierarchy_as_cif_block(iotbx.cif.crystal_symmetry_as_cif_block):
               #atom_site_loop['_atom_site.auth_comp_id'].append(comp_id)
               #atom_site_loop['_atom_site.auth_atom_id'].append(atom.name.strip())
               atom_site_loop['_atom_site.pdbx_PDB_model_num'].append(model_id)
+
+              if atom.uij_is_defined():
+                uij = [u_aniso_fmt_str %i for i in atom.uij]
+                aniso_loop['_atom_site_anisotrop.id'].append(atom.serial.strip())
+                aniso_loop['_atom_site_anisotrop.pdbx_auth_atom_id'].append(atom.name.strip())
+                aniso_loop['_atom_site_anisotrop.pdbx_label_alt_id'].append(alt_id)
+                aniso_loop['_atom_site_anisotrop.pdbx_auth_comp_id'].append(comp_id)
+                aniso_loop['_atom_site_anisotrop.pdbx_auth_asym_id'].append(auth_asym_id)
+                aniso_loop['_atom_site_anisotrop.pdbx_auth_seq_id'].append(seq_id)
+                aniso_loop['_atom_site_anisotrop.pdbx_PDB_ins_code'].append(icode)
+                aniso_loop['_atom_site_anisotrop.U[1][1]'].append(uij[0])
+                aniso_loop['_atom_site_anisotrop.U[2][2]'].append(uij[1])
+                aniso_loop['_atom_site_anisotrop.U[3][3]'].append(uij[2])
+                aniso_loop['_atom_site_anisotrop.U[1][2]'].append(uij[3])
+                aniso_loop['_atom_site_anisotrop.U[1][3]'].append(uij[4])
+                aniso_loop['_atom_site_anisotrop.U[2][3]'].append(uij[5])
+
     self.cif_block.add_loop(atom_site_loop)
+    if aniso_loop.size() > 0:
+      self.cif_block.add_loop(aniso_loop)
 
 
 def increment_label_asym_id(asym_id):

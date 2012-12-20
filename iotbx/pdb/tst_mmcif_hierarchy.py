@@ -207,27 +207,6 @@ _atom_site_anisotrop.U[2][3]
   assert builder.crystal_symmetry.space_group_info().symbol_and_number() == \
          'P 61 (No. 169)'
   hierarchy = builder.hierarchy
-  residue_group = hierarchy.residue_groups().next()
-  assert residue_group.resseq == ' 108'
-  assert residue_group.resseq_as_int() == 108
-  atoms = hierarchy.atoms()
-  assert atoms[0].serial == '1'
-  assert atoms[0].name == ' N  '
-  assert atoms[0].b == 23.68
-  assert atoms[0].uij_is_defined()
-  assert approx_equal(
-    atoms[0].uij, (0.4097, 0.2916, 0.1984, 0.113, 0.0328, 0.0375))
-  assert atoms[1].serial == '2'
-  assert atoms[1].name == ' CA '
-  assert atoms[1].b == 22.98
-  assert atoms[1].uij_is_defined()
-  assert approx_equal(
-    atoms[1].uij, (0.4035, 0.2848, 0.1847, 0.1242, 0.0297, 0.0347))
-  assert not atoms[6].uij_is_defined()
-  assert atoms[6].serial == '2650'
-  assert atoms[6].name == 'MN  '
-  assert atoms[6].b == 44.18
-  assert approx_equal(atoms[6].uij, (-1, -1, -1, -1, -1, -1))
   s = StringIO()
   hierarchy.show(out=s)
   assert not show_diff(s.getvalue(), """\
@@ -254,6 +233,28 @@ model id="" #chains=2
   s1 = StringIO()
   hierarchy_recycled.show(out=s1)
   assert not show_diff(s.getvalue(), s1.getvalue())
+  for hierarchy in (hierarchy, hierarchy_recycled):
+    residue_group = hierarchy.residue_groups().next()
+    assert residue_group.resseq == ' 108'
+    assert residue_group.resseq_as_int() == 108
+    atoms = hierarchy.atoms()
+    assert atoms[0].serial == '1'
+    assert atoms[0].name == ' N  '
+    assert atoms[0].b == 23.68
+    assert atoms[0].uij_is_defined()
+    assert approx_equal(
+      atoms[0].uij, (0.4097, 0.2916, 0.1984, 0.113, 0.0328, 0.0375))
+    assert atoms[1].serial == '2'
+    assert atoms[1].name == ' CA '
+    assert atoms[1].b == 22.98
+    assert atoms[1].uij_is_defined()
+    assert approx_equal(
+      atoms[1].uij, (0.4035, 0.2848, 0.1847, 0.1242, 0.0297, 0.0347))
+    assert not atoms[6].uij_is_defined()
+    assert atoms[6].serial == '2650'
+    assert atoms[6].name == 'MN  '
+    assert atoms[6].b == 44.18
+    assert approx_equal(atoms[6].uij, (-1, -1, -1, -1, -1, -1))
   #
   input_1ezu = """\
 data_1EZU
