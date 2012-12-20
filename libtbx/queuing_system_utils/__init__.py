@@ -76,7 +76,7 @@ def qdel (job_id, platform) :
   if (platform in ["sge", "pbs"]) :
     cmd = "qdel %s" % job_id
   elif (platform == "lsf") :
-    cmd = "bdel %s" % job_id
+    cmd = "bkill %s" % job_id
   elif (platform == "condor") :
     cmd = "condor_rm %s" % job_id
   assert (cmd is not None)
