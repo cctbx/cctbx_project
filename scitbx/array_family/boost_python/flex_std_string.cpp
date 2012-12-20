@@ -26,6 +26,17 @@ namespace {
       count_lines_first);
   }
 
+  std::size_t
+  max_element_length(
+    af::const_ref<std::string> const& self)
+  {
+    std::size_t max_length = 0;
+    for (std::size_t i = 0; i < self.size(); i++) {
+      max_length = std::max(max_length, self[i].length());
+    }
+    return max_length;
+  }
+
   af::shared<std::string>
   strip(
     af::const_ref<std::string> const& self)
@@ -116,6 +127,7 @@ namespace {
       .def("upper", upper)
       .def("lower", lower)
       .def("i_seqs_by_value", i_seqs_by_value)
+      .def("max_element_length", max_element_length)
     ;
     def("split_lines", split_lines_wrapper, (
       arg("multi_line_string"),

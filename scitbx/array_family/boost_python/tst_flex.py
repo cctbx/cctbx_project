@@ -367,6 +367,8 @@ def exercise_numbers_from_string():
 def exercise_std_string():
   fss = flex.std_string
   a = fss([" Abc", "dEF", "ghi ", "   JKL ", "1 23 "])
+  assert a.max_element_length() == 7
+  assert a.strip().max_element_length() == 4
   assert list(a.strip()) == ['Abc', 'dEF', 'ghi', 'JKL', '1 23']
   assert list(a.strip().upper()) == ["ABC","DEF","GHI","JKL", "1 23"]
   assert list(a.strip().lower()) == ["abc","def","ghi","jkl", "1 23"]
