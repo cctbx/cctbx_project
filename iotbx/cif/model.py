@@ -477,7 +477,7 @@ class loop(DictMixin):
   def deepcopy(self):
     return copy.deepcopy(self)
 
-  def show(self, out=None, indent="  ", fmt_str=None):
+  def show(self, out=None, indent="  ", fmt_str=None, align_columns=True):
     if out is None:
       out = sys.stdout
     print >> out, "loop_"
@@ -490,6 +490,7 @@ class loop(DictMixin):
       #   Values are not quoted - it is the user's responsibility to place
       #   appropriate quotes in the format string if a particular value may
       #   contain spaces.
+      values = copy.deepcopy(values)
       for i, v in enumerate(values):
         for flex_numeric_type in (flex.int, flex.double):
           if not isinstance(v, flex_numeric_type):
@@ -503,6 +504,23 @@ class loop(DictMixin):
         fmt_str = indent + ' '.join(["%s"]*len(values))
       for i in range(self.size()):
         print >> out, fmt_str % tuple([values[j][i] for j in range(len(values))])
+    elif align_columns:
+      fmt_str = []
+      for i, (k, v) in enumerate(self.iteritems()):
+        width = v.max_element_length()
+        # See if column contains only number, '.' or '?'
+        # right-align numerical columns, left-align everything else
+        v = v.select(~( (v == ".") | (v == "?") ))
+        try:
+          flex.double(v)
+        except ValueError:
+          width *= -1
+        fmt_str.append("%%%is" %width)
+      fmt_str = indent + "  ".join(fmt_str)
+      for i in range(self.size()):
+        print >> out, (fmt_str %
+                       tuple([format_value(values[j][i])
+                              for j in range(len(values))])).rstrip()
     else:
       for i in range(self.size()):
         values_to_print = [format_value(values[j][i]) for j in range(len(values))]
