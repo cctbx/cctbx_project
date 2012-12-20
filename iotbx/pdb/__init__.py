@@ -894,16 +894,6 @@ class pdb_input_mixin(object):
       raise Sorry(str(e))
     return result
 
-  def extract_wavelength (self, first_only=True) :
-    for line in self.remark_section() :
-      if (line.startswith("REMARK 200  WAVELENGTH OR RANGE")) :
-        fields = line.split(":")
-        assert (len(fields) == 2)
-        wavelengths = [ float(w) for w in fields[1].strip().split(",") ]
-        if (first_only) : return wavelengths[0]
-        return wavelengths
-    return None
-
 class _(boost.python.injector, ext.input, pdb_input_mixin):
 
   def __getinitargs__(self):
@@ -1115,6 +1105,15 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
     remark_3_records = self.extract_remark_iii_records(3)
     return remark_3_interpretation.extract_f_model_core_constants(remark_3_records)
 
+  def extract_wavelength (self, first_only=True) :
+    for line in self.remark_section() :
+      if (line.startswith("REMARK 200  WAVELENGTH OR RANGE")) :
+        fields = line.split(":")
+        assert (len(fields) == 2)
+        wavelengths = [ float(w) for w in fields[1].strip().split(",") ]
+        if (first_only) : return wavelengths[0]
+        return wavelengths
+    return None
 
 class rewrite_normalized(object):
 
