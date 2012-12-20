@@ -122,7 +122,7 @@ phaser
     .type = float
     .input_size = 80
     .short_caption = Max. separation from mapped atom
-  fpp_ratio_min = 0.4
+  fpp_ratio_min = 0.3
     .type = float
     .input_size = 80
     .help = Minimum ratio of refined/theoretical f-double-prime.
@@ -933,9 +933,9 @@ class Manager (object):
           n_good_res = atom_props.number_of_favored_ligand_residues(ion_params,
             distance=2.7)
           n_total_coord_atoms = atom_props.number_of_atoms_within_radius(2.8)
-          # if we see three or four favorable residues coordinating the atom
-          # and no more than four atoms total, accept the current guess
-          if ((n_good_res >= 1) and (3 <= n_total_coord_atoms <= 6)) :
+          # if we see at least one favorable residue coordinating the atom
+          # and no more than six atoms total, accept the current guess
+          if ((n_good_res >= 1) and (2 <= n_total_coord_atoms <= 6)) :
             reasonable.append((ion_params, 0))
           else :
             print "n_good_res = %d, n_total_coord_atoms = %d" % (n_good_res,
@@ -1438,7 +1438,10 @@ class AtomProperties (object):
       else :
         ignored.add(self.BAD_VECTORS)
 
-    if (self.valence_sum[identity] < ion_params.cvbs_expected * 0.4 or
+    # XXX I am not sure how low a valence sum we want to allow, but many
+    # structures with non-physiological cation binding have partial and/or
+    # irregular coordination shells
+    if (self.valence_sum[identity] < ion_params.cvbs_expected * 0.25 or
         self.valence_sum[identity] > ion_params.cvbs_expected * 1.25):
       inaccuracies.add(self.VERY_BAD_VALENCES)
     else:
@@ -1455,7 +1458,7 @@ class AtomProperties (object):
   def check_fpp_ratio (self,
       ion_params,
       wavelength,
-      fpp_ratio_min=0.4,
+      fpp_ratio_min=0.3,
       fpp_ratio_max=1.05) :
     """Compare the refined and theoretical f'' values if available"""
     # XXX in theory the fpp_ratio should be no more than 1.0 unless we are

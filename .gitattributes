@@ -1310,6 +1310,7 @@ mmtbx/ions/tst_calcium_simple.py -text
 mmtbx/ions/tst_magnesium_simple.py -text
 mmtbx/ions/tst_parameters.py svneol=native#text/x-python
 mmtbx/ions/tst_zinc_approximate.py -text
+mmtbx/ions/utils.py svneol=native#text/x-python
 mmtbx/kinemage/__init__.py -text
 mmtbx/kinemage/validation.py -text
 mmtbx/lattice.py -text
