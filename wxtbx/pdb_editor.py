@@ -1584,7 +1584,7 @@ class PDBTreeFrame (wx.Frame) :
     szr3 = wx.BoxSizer(wx.HORIZONTAL)
     self._header_box = wx.CheckBox(self.panel, -1,
       "Preserve header records when saving file")
-    self._header_box.SetValue(True)
+    self._header_box.SetValue(False)
     szr3.Add(self._header_box, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self._serial_box = wx.CheckBox(self.panel, -1,
       "Reset atom serial numbers")
@@ -1686,9 +1686,15 @@ class PDBTreeFrame (wx.Frame) :
       current_file=output_file)
     save_header = self._header_box.GetValue()
     f = open(file_name, "w")
+    for method in ["title_section",] :
+      section_lines = getattr(self._pdb_in.file_object, method)()
+      for line in section_lines :
+        f.write(line + "\n")
     if (save_header) :
+      wx.MessageBox("Warning: any atom selections present in the PDB header "+
+        "may be invalidated by model modifications!  Please use caution "+
+        "when using the modified PDB file in any downstream applications.")
       for method in [
-          "title_section",
           "remark_section",
           "heterogen_section",
           "secondary_structure_section",] :
