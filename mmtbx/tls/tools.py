@@ -736,7 +736,8 @@ class tls_refinement(object):
                run_finite_differences_test = False,
                eps = 1.e-6,
                out = None,
-               macro_cycle = None):
+               macro_cycle = None,
+               verbose = True):
     global time_tls_total
     timer = user_plus_sys_time()
     if(out is None): out = sys.stdout
@@ -760,7 +761,8 @@ class tls_refinement(object):
                               tls_selections = selections,
                               number_of_macro_cycles = 100,
                               max_iterations         = 100)
-    show_tls(tlsos = tlsos, text = prefix+" start parameters",out = out)
+    if (verbose) :
+      show_tls(tlsos = tlsos, text = prefix+" start parameters",out = out)
     for macro_cycle in range(1, number_of_macro_cycles+1):
       print >> out
       prefix = "TLS refinement: after macrocycle "+str(macro_cycle)
@@ -776,7 +778,7 @@ class tls_refinement(object):
         run_finite_differences_test = run_finite_differences_test)
       xrs = minimized.fmodel_copy.xray_structure
       xrs.show_u_statistics(text = prefix, out  = out)
-      if(1):
+      if(verbose):
         show_tls(tlsos = minimized.tlsos_result, text = prefix, out = out)
       fmodel.update_xray_structure(xray_structure = xrs,
                                    update_f_calc  = True)
@@ -803,8 +805,9 @@ class tls_refinement(object):
           out                              = out,
           number_of_macro_cycles_for_tls_from_uanisos = 10)
       else: tlsos = minimized.tlsos_result
-    show_tls(tlsos = tlsos,
-             text = "TLS refinement: final values", out = out)
+    if (verbose) :
+      show_tls(tlsos = tlsos,
+               text = "TLS refinement: final values", out = out)
     self.tlsos = tlsos
     model.tls_groups.tlsos = tlsos
     self.fmodel = fmodel

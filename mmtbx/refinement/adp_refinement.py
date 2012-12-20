@@ -56,6 +56,8 @@ tls_master_params = iotbx.phil.parse("""\
   min_tls_group_size = 5
     .type = int
     .help = min number of atoms allowed per TLS group
+  verbose = True
+    .type = bool
 """)
 
 individual_adp_master_params = iotbx.phil.parse("""\
@@ -193,7 +195,8 @@ class manager(object):
           run_finite_differences_test = tls_params.run_finite_differences_test,
           eps                         = tls_params.eps,
           out                         = log,
-          macro_cycle = macro_cycle)
+          macro_cycle = macro_cycle,
+          verbose = tls_params.verbose)
        fmodels.fmodel_xray().update(target_name = current_target_name)
        fmodels.update_xray_structure(
             xray_structure = self.tls_refinement_manager.fmodel.xray_structure,
