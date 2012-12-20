@@ -894,6 +894,15 @@ class pdb_input_mixin(object):
       raise Sorry(str(e))
     return result
 
+  def extract_wavelength (self, first_only=True) :
+    for line in self.remark_section() :
+      if (line.startswith("REMARK 200  WAVELENGTH OR RANGE")) :
+        fields = line.split(":")
+        assert (len(fields) == 2)
+        wavelengths = [ float(w) for w in fields[1].strip().split(",") ]
+        if (first_only) : return wavelengths[0]
+        return wavelengths
+    return None
 
 class _(boost.python.injector, ext.input, pdb_input_mixin):
 
