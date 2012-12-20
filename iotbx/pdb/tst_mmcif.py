@@ -2,7 +2,8 @@ from __future__ import division
 import iotbx.cif
 from iotbx.pdb import mmcif
 from libtbx.test_utils import approx_equal
-
+import libtbx.load_env
+import os
 
 def exercise_extract_f_model_core_constants():
   cif_input = """\
@@ -31,10 +32,19 @@ _refine.ls_R_factor_R_free                     0.2238
   assert approx_equal(constants.r_work, 0.1690)
   assert approx_equal(constants.r_free, 0.2238)
 
+def exercise_extract_wavelength () :
+  cif_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/3orl.cif",
+    test=os.path.isfile)
+  if (cif_file is None) :
+    return
+  cif_in = mmcif.cif_input(file_name=cif_file)
+  wavelength = cif_in.extract_wavelength()
+  assert (approx_equal(wavelength, 1.8927))
 
 def run():
   exercise_extract_f_model_core_constants()
-
+  exercise_extract_wavelength()
 
 if __name__ == '__main__':
   run()
