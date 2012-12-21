@@ -6,6 +6,7 @@ def run(args):
   flag_x = False
   flag_ni = False
   flag_dos_format = True
+  verbose = False
   paths = []
   for arg in args:
     if (arg == "-x"):
@@ -14,6 +15,8 @@ def run(args):
       flag_ni = True
     elif (arg == "-ndos"):
       flag_dos_format = False
+    elif (arg == "--verbose") :
+      verbose = True
     else:
       paths.append(arg)
   if (len(paths) == 0): paths = ["."]
@@ -37,7 +40,8 @@ def run(args):
     info.show(
       flag_x=flag_x,
       flag_dos_format=flag_dos_format,
-      append=message_lines.append)
+      append=message_lines.append,
+      verbose=verbose)
   please_use = []
   if (n_is_cluttered != 0):
     please_use.append("libtbx.clean_clutter")
