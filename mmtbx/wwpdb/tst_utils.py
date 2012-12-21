@@ -11,7 +11,7 @@ def exercise () :
   wwpdb_utils.fetch_pdb_data("3gqq")
   program, program_full = wwpdb_utils.get_program("3gqq.pdb")
   assert (program == "PHENIX.REFINE")
-  data = wwpdb_utils.find_data_array("3gqq.mtz", log=null_out())
+  data = wwpdb_utils.find_data_arrays("3gqq.mtz", log=null_out())
   filter = wwpdb_utils.filter_pdb_file("3gqq.pdb", log=null_out())
   assert (filter.n_semet == 24) and (filter.n_unknown == 30)
   print "OK"
