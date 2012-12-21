@@ -770,6 +770,47 @@ def exercise_extract_miller_array_from_file():
   #
   assert sorry_counts == 8
 
+def exercise_automation_wrappers () :
+  from iotbx.reflection_file_utils import process_raw_data, \
+    change_space_group, load_f_obs_and_r_free
+  from cctbx import sgtbx
+  from libtbx.test_utils import approx_equal
+  mtz_file = "tmp_iotbx_reflection_file_utils.mtz"
+  crystal_symmetry = crystal.symmetry(
+    unit_cell=(10,11,12,90,95,90),
+    space_group_symbol="P 2")
+  miller_set = miller.build_set(
+    crystal_symmetry=crystal_symmetry,
+    anomalous_flag=True,
+    d_min=3)
+  n_obs = miller_set.indices().size()
+  i_obs = miller_set.array(
+    data=flex.random_double(size=n_obs)).set_observation_type_xray_intensity()
+  i_obs = i_obs.customized_copy(sigmas=flex.sqrt(i_obs.data()))
+  r_free_flags = miller_set.generate_r_free_flags()
+  r_free_flags_partial = r_free_flags.select(flex.random_bool(n_obs, 0.9))
+  out = StringIO()
+  processed = process_raw_data(
+    obs=i_obs,
+    r_free_flags=None,
+    test_flag_value=None,
+    log=out)
+  assert ("""WARNING: R-free flags not supplied.""" in out.getvalue())
+  out2 = StringIO()
+  processed2 = process_raw_data(
+    obs=i_obs,
+    r_free_flags=r_free_flags_partial,
+    test_flag_value=True,
+    log=out2)
+  assert ("""WARNING: R-free flags are incomplete""" in out2.getvalue())
+  assert (processed.n_obs() == processed2.n_obs())
+  processed.write_mtz_file(mtz_file, title="tst_iotbx", wavelength=0.9792)
+  f_obs, r_free = load_f_obs_and_r_free(mtz_file)
+  change_space_group(mtz_file, sgtbx.space_group_info("P21"))
+  f_obs_new, r_free_new = load_f_obs_and_r_free(mtz_file)
+  assert (str(f_obs_new.space_group_info()) == "P 1 21 1")
+  assert (approx_equal(f_obs_new.info().wavelength, 0.9792))
+
 def exercise():
   if (mtz is None):
     print "Skipping iotbx/tst_reflection_file_utils.py: ccp4io not available"
@@ -779,6 +820,7 @@ def exercise():
   exercise_get_r_free_flags()
   exercise_get_experimental_phases()
   exercise_extract_miller_array_from_file()
+  exercise_automation_wrappers()
 
 def run():
   exercise()
