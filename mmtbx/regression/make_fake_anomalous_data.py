@@ -1,15 +1,51 @@
 
 from __future__ import division
+from libtbx.utils import null_out
+from libtbx import group_args
 from libtbx import easy_run
 import os
 
-def run (file_base="ca_frag") :
+def generate_calcium_inputs (file_base="ca_frag") :
+  """
+  Generate both a PDB file and an MTZ file for the calcium-bound structure,
+  with the calcium replaced by solvent after F(model) was calculated. (This
+  method is also a suitable template for generating any other model/data files
+  for specific structures.)
+  """
+  import mmtbx.ions.utils
+  from iotbx.file_reader import any_file
+  pdb_file = write_pdb_input_calcium_binding(file_base=file_base)
+  mtz_file = generate_mtz_file(
+    file_base=file_base,
+    d_min=1.5,
+    anomalous_scatterers=[group_args(selection="element CA",fp=0.25,fdp=0.5)])
+  assert (os.path.isfile(pdb_file)) and (os.path.isfile(mtz_file))
+  pdb_in = any_file(pdb_file)
+  hierarchy = pdb_in.file_object.construct_hierarchy()
+  hierarchy, n = mmtbx.ions.utils.anonymize_ions(hierarchy, log=null_out())
+  hierarchy.write_pdb_file(
+    file_name="%s_hoh.pdb" % file_base,
+    crystal_symmetry=pdb_in.file_object.crystal_symmetry())
+  return os.path.abspath(mtz_file), os.path.abspath("%s_hoh.pdb" % file_base)
+
+def generate_mtz_file (file_base, anomalous_scatterers, d_min) :
+  """
+  Create an MTZ file containing amplitudes (and R-free-flags) calculated from
+  the PDB file, at the specified resolution and with enumerated anomalous
+  scatterer groups.
+  """
   mtz_file = file_base + ".mtz"
   if (os.path.isfile(mtz_file)) :
     os.remove(mtz_file)
-  write_pdb_input(file_base=file_base)
+  anom_params = []
+  for group in anomalous_scatterers :
+    anom_params.append("""group {
+        selection = %s
+        f_prime = %g
+        f_double_prime = %g
+      }""" % (group.selection, group.fp, group.fdp))
   params = """
-    high_resolution = 1.5
+    high_resolution = %g
     r_free_flags_fraction = 0.1
     add_sigmas = True
     pdb_file = %s.pdb
@@ -19,18 +55,18 @@ def run (file_base="ca_frag") :
       file_name = %s.mtz
     }
     anomalous_scatterers {
-      group {
-        selection = element CA
-        f_prime = 0.25
-        f_double_prime = 0.5
-      }
-    }""" % (file_base, file_base)
+      %s
+    }""" % (d_min, file_base, file_base, "\n".join(anom_params))
   open("%s_fmodel.eff" % file_base, "w").write(params)
   assert (easy_run.fully_buffered("phenix.fmodel %s_fmodel.eff" % file_base,
     ).raise_if_errors().return_code == 0)
-  return os.path.abspath(mtz_file), os.path.abspath("%s.pdb" % file_base)
+  return mtz_file
 
-def write_pdb_input (file_base="ca_frag") :
+def write_pdb_input_calcium_binding (file_base="ca_frag") :
+  """
+  Outputs a selection of atoms from a structure of a calcium-binding fold.
+  Original data: d_min=1.4, wavelength=1.116
+  """
   import iotbx.pdb.hierarchy
   pdb_in = iotbx.pdb.hierarchy.input(source_info=None, pdb_string="""\
 ATOM      1  N   ASP A  37      10.710  14.456   9.568  1.00 15.78           N
@@ -165,3 +201,105 @@ END""")
   f = open(pdb_file, "w")
   f.write(pdb_in.hierarchy.as_pdb_string(crystal_symmetry=xrs))
   f.close()
+  return pdb_file
+
+def write_pdb_input_cd_cl (file_base="cd_cl_frag") :
+  """
+  Outputs a selection of atoms from a structure crystallized in cadmium cloride.
+  Original data: d_min=1.37, wavelength=1.116
+  """
+  import iotbx.pdb.hierarchy
+  pdb_in = iotbx.pdb.hierarchy.input(source_info=None, pdb_string="""\
+ATOM      1  N   GLU A  18     -13.959  12.159  -6.598  1.00 10.08           N
+ATOM      2  CA  GLU A  18     -13.297  13.465  -6.628  1.00  9.83           C
+ATOM      3  C   GLU A  18     -11.946  13.282  -7.309  1.00  9.18           C
+ATOM      4  CB  GLU A  18     -13.128  14.035  -5.210  1.00 11.96           C
+ATOM      5  CG  GLU A  18     -14.455  14.401  -4.522  1.00 13.56           C
+ATOM      6  CD  GLU A  18     -14.291  15.239  -3.242  1.00 14.89           C
+ATOM      7  OE1 GLU A  18     -14.172  14.646  -2.143  1.00 14.24           O
+ATOM      8  OE2 GLU A  18     -14.309  16.498  -3.306  1.00 14.37           O1-
+ATOM      9  N   PRO A  19     -11.418  14.350  -7.928  1.00  9.57           N
+ATOM     10  CD  PRO A  19     -12.043  15.673  -8.082  1.00 11.94           C
+ATOM     11  CB  SER A  20      -7.426  14.613  -4.832  1.00 12.48           C
+ATOM     12  CG  ASP A  21     -12.019   9.806  -4.306  1.00 11.79           C
+ATOM     13  OD1 ASP A  21     -11.866   9.680  -3.077  1.00 12.53           O
+ATOM     14  OD2 ASP A  21     -13.123  10.103  -4.806  1.00 14.00           O1-
+TER      15      ASP A  21
+ATOM     16  C   GLU C  16     -17.717  21.556   1.133  1.00  9.93           C
+ATOM     17  O   GLU C  16     -17.663  20.929   0.078  1.00 13.55           O
+ATOM     18  N   VAL C  17     -16.747  21.509   2.043  1.00  9.02           N
+ATOM     19  CA  VAL C  17     -15.504  20.772   1.813  1.00 10.30           C
+ATOM     20  C   VAL C  17     -15.061  20.062   3.080  1.00 10.37           C
+ATOM     21  O   VAL C  17     -15.568  20.347   4.166  1.00 12.61           O
+ATOM     22  CB  VAL C  17     -14.357  21.714   1.368  1.00 11.35           C
+ATOM     23  CG1 VAL C  17     -14.653  22.284  -0.019  1.00 14.25           C
+ATOM     24  CG2 VAL C  17     -14.155  22.832   2.385  1.00 11.46           C
+ATOM     25  N   GLU C  18     -14.120  19.134   2.943  1.00 10.25           N
+ATOM     26  CA  GLU C  18     -13.458  18.521   4.087  1.00  9.78           C
+ATOM     27  C   GLU C  18     -12.108  19.210   4.277  1.00  9.04           C
+ATOM     28  O   GLU C  18     -11.528  19.727   3.312  1.00 10.29           O
+ATOM     29  CB  GLU C  18     -13.263  17.016   3.870  1.00 11.44           C
+ATOM     30  CG  GLU C  18     -14.568  16.219   3.805  1.00 14.22           C
+ATOM     31  CD  GLU C  18     -14.339  14.700   3.837  1.00 18.19           C
+ATOM     32  OE1 GLU C  18     -14.090  14.093   2.769  1.00 17.19           O
+ATOM     33  OE2 GLU C  18     -14.408  14.090   4.930  1.00 18.29           O1-
+ATOM     34  N   PRO C  19     -11.589  19.217   5.512  1.00  8.64           N
+ATOM     35  N   SER C  20      -9.117  18.227   4.541  1.00  8.92           N
+ATOM     36  CA  SER C  20      -8.002  17.726   3.740  1.00  9.11           C
+ATOM     37  C   SER C  20      -8.323  17.664   2.251  1.00 10.30           C
+ATOM     38  O   SER C  20      -7.579  17.059   1.490  1.00 12.39           O
+ATOM     39  N   ASP C  21      -9.424  18.283   1.826  1.00  9.10           N
+ATOM     40  CA  ASP C  21      -9.687  18.394   0.390  1.00  8.68           C
+ATOM     41  C   ASP C  21      -8.518  19.104  -0.299  1.00  8.06           C
+ATOM     42  O   ASP C  21      -7.956  20.072   0.240  1.00  9.29           O
+ATOM     43  CB  ASP C  21     -10.987  19.165   0.130  1.00  9.00           C
+ATOM     44  CG  ASP C  21     -12.175  18.250  -0.151  1.00 12.21           C
+ATOM     45  OD1 ASP C  21     -11.996  17.207  -0.825  1.00 13.40           O
+ATOM     46  OD2 ASP C  21     -13.298  18.562   0.293  1.00 14.53           O1-
+ATOM     47  N   THR C  22      -8.134  18.619  -1.473  1.00  7.93           N
+ATOM     48  CA  THR C  22      -7.123  19.287  -2.268  1.00  8.33           C
+ATOM     49  C   THR C  22      -7.719  20.485  -2.992  1.00  8.59           C
+ATOM     50  O   THR C  22      -8.935  20.600  -3.185  1.00  7.86           O
+ATOM     51  OG1 THR C  22      -7.612  17.883  -4.158  1.00  8.83           O
+TER      52      THR C  22
+ATOM     53  N   ASN C  25      -9.688  19.311  -5.824  1.00  7.73           N
+ATOM     54  CA  ASN C  25     -11.065  18.970  -5.481  1.00  8.22           C
+ATOM     55  C   ASN C  25     -11.961  20.210  -5.409  1.00  7.89           C
+ATOM     56  O   ASN C  25     -13.107  20.192  -5.859  1.00  8.41           O
+ATOM     57  CB  ASN C  25     -11.124  18.234  -4.145  1.00  8.10           C
+ATOM     58  CG  ASN C  25     -10.667  16.786  -4.233  1.00  8.60           C
+ATOM     59  ND2 ASN C  25     -10.637  16.128  -3.077  1.00 11.20           N
+ATOM     60  OD1 ASN C  25     -10.352  16.264  -5.306  1.00  9.78           O
+ATOM     61  N   VAL C  26     -11.433  21.291  -4.843  1.00  7.87           N
+ATOM     62  CA  VAL C  26     -12.169  22.548  -4.780  1.00  8.48           C
+ATOM     63  CG2 VAL C  26     -11.277  23.116  -2.518  1.00 13.29           C
+TER      64      VAL C  26
+ATOM     65  CB  LYS C  29     -16.653  22.060  -5.667  1.00  9.82           C
+ATOM     66  CG  LYS C  29     -16.565  20.717  -4.972  1.00 12.48           C
+ATOM     67  CD  LYS C  29     -16.305  20.909  -3.485  1.00 16.22           C
+ATOM     68  CE  LYS C  29     -16.187  19.579  -2.753  1.00 22.76           C
+ATOM     69  NZ  LYS C  29     -17.525  18.994  -2.465  1.00 26.67           N1+
+TER      70      LYS C  29
+ATOM     71  CD1 LEU C  56     -10.613  22.962   1.772  1.00 12.91           C
+TER      72      LEU C  56
+HETATM   73  O   HOH S   4     -10.355  10.447   0.977  1.00 18.33           O
+HETATM   74  O   HOH S  12     -14.439  17.636  -5.803  1.00 14.31           O
+HETATM   75  O   HOH S  19     -13.395  12.091  -1.881  1.00 18.37           O
+HETATM   76  O   HOH S  28     -13.593  15.089   0.608  1.00 19.93           O
+HETATM   77  O   HOH S  41     -10.275  12.953  -2.172  1.00 18.72           O
+HETATM   78  O   HOH S 121     -18.485  11.552  -2.969  1.00 23.16           O
+HETATM   79  O   HOH S 124     -16.053  16.459  -7.803  1.00 32.54           O
+HETATM   80  O   HOH S 134     -10.338  14.782   1.447  1.00 18.96           O
+HETATM   81  O   HOH S 162     -17.702  13.108  -4.810  1.00 41.20           O
+HETATM   82  O   HOH S 204     -17.671  15.077  -3.159  1.00 42.64           O
+HETATM   84 CD   CD  X   2     -14.095  16.409  -0.841  1.00  5.00      ION CD2+
+HETATM   86 CL   CL  Y   3     -16.374  16.899  -0.285  1.00 10.22      ION CL1-
+END""")
+  xrs = pdb_in.input.xray_structure_simple(cryst1_substitution_buffer_layer=5)
+  pdb_file = file_base + ".pdb"
+  if (os.path.exists(pdb_file)) :
+    os.remove(pdb_file)
+  f = open(pdb_file, "w")
+  f.write(pdb_in.hierarchy.as_pdb_string(crystal_symmetry=xrs))
+  f.close()
+  return pdb_file
