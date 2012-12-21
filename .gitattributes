@@ -1468,6 +1468,8 @@ mmtbx/validation/utils.py -text
 mmtbx/wwpdb/__init__.py -text
 mmtbx/wwpdb/standard_geometry_cif.py -text
 mmtbx/wwpdb/tst_standard_geometry_cif.py -text
+mmtbx/wwpdb/tst_utils.py -text
+mmtbx/wwpdb/utils.py -text
 mmtbx/xmanip.py -text
 mmtbx/xmanip_tasks.py -text
 omptbx/SConscript -text
