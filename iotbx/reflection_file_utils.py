@@ -4,7 +4,8 @@ from cctbx import miller
 from cctbx.array_family import flex
 import libtbx.path
 from libtbx.str_utils import show_string
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, null_out
+import libtbx.phil
 from itertools import count
 import math
 import sys, os
@@ -839,3 +840,225 @@ def extract_miller_array_from_file(file_name, label=None, type=None, log=None):
           print >> log, "  Selected:", ma.info().labels
           result = ma
   return result
+
+class process_raw_data (object) :
+  """
+  Automation wrapper - prepares single-wavelength experimental data (and
+  optional R-free flags and experimental phases) for any future step in the
+  structure determination process.  Used in Phenix for ligand pipeline and
+  automated re-refinement of PDB entries.
+  """
+  __slots__ = [
+    "f_obs",
+    "r_free_flags",
+    "test_flag_value",
+    "phases",
+  ]
+  def __init__ (self,
+      obs,
+      r_free_flags,
+      test_flag_value,
+      phases=None,
+      d_min=None,
+      d_max=None,
+      r_free_flags_params=None,
+      merge_reconstructed_amplitudes=True,
+      log=sys.stdout,
+      verbose=True) :
+    assert (log is not None) and (obs is not None)
+    if (r_free_flags_params is None) :
+      from cctbx.r_free_utils import generate_r_free_params_str
+      r_free_flags_params = libtbx.phil.parse(
+        generate_r_free_params_str).extract()
+    obs_info = obs.info()
+    r_free_flags_info = phases_info = None
+    sg = obs.space_group_info()
+    obs = obs.map_to_asu().merge_equivalents().array()
+    obs = obs.eliminate_sys_absent(log=log)
+    obs = obs.resolution_filter(d_min=d_min, d_max=d_max)
+    if (obs.is_xray_intensity_array()) :
+      from cctbx import french_wilson
+      if (verbose) :
+        fw_out = log
+      else :
+        fw_out = null_out()
+      obs = french_wilson.french_wilson_scale(
+        miller_array=obs,
+        params=None,
+        log=fw_out)
+    assert (obs is not None)
+    merged_obs = obs.average_bijvoet_mates()
+    if (merged_obs.completeness() < 0.9) :
+      print >> log, """
+    WARNING: data are incomplete (%.1f%% of possible reflections measured to
+       %.2fA).  This may cause problems if you plan to use the maps for building
+         and/or ligand fitting!
+    """ % (100*merged_obs.completeness(), merged_obs.d_min())
+    # XXX this is kind of a hack (the reconstructed arrays break some of my
+    # assumptions about labels)
+    if ((obs.is_xray_reconstructed_amplitude_array()) and
+        (merge_reconstructed_amplitudes)) :
+      obs = obs.average_bijvoet_mates()
+    if (r_free_flags is not None) :
+      r_free_flags_info = r_free_flags.info()
+      format = "cns"
+      if (test_flag_value == 0) :
+        format = "ccp4"
+      elif (test_flag_value == -1) :
+        format = "shelx"
+      if (r_free_flags.anomalous_flag()) :
+        r_free_flags = r_free_flags.average_bijvoet_mates()
+      is_compatible_symmetry = False
+      obs_pg = obs.space_group().build_derived_point_group()
+      flags_pg = r_free_flags.space_group().build_derived_point_group()
+      if (obs_pg.type().number() == flags_pg.type().number()) :
+        is_compatible_symmetry = True
+      else :
+        pass # TODO unit cell comparison?
+      if (is_compatible_symmetry) :
+        r_free_flags = r_free_flags.map_to_asu().merge_equivalents().array()
+        r_free_flags = r_free_flags.eliminate_sys_absent(log=log)
+        if (format == "cns") :
+          r_free_flags = r_free_flags.customized_copy(
+            crystal_symmetry=obs.crystal_symmetry(),
+            data=(r_free_flags.data() == test_flag_value))
+          test_flag_value = True
+        obs_tmp = obs.deep_copy()
+        if (obs.anomalous_flag()) :
+          obs_tmp = obs.average_bijvoet_mates()
+        r_free_flags = r_free_flags.common_set(other=obs_tmp)
+        n_r_free = r_free_flags.indices().size()
+        n_obs = obs_tmp.indices().size()
+        if (n_r_free != n_obs) :
+          missing_set = obs_tmp.lone_set(other=r_free_flags)
+          n_missing = missing_set.indices().size()
+          if (n_missing > 0) :
+            print >> log, """
+    WARNING: R-free flags are incomplete relative to experimental
+       data (%d vs. %d reflections).  The flags will be extended
+       to complete the set, but we recommend supplying flags that
+       are already generated to the maximum expected resolution.
+""" % (n_r_free, n_obs)
+            if (n_missing < 20) : # FIXME
+              if (format == "cns") :
+                missing_flags = missing_set.array(data=flex.bool(n_missing,
+                  False))
+              else :
+                missing_flags = missing_set.array(data=flex.int(n_missing, 1))
+            else :
+              missing_flags = missing_set.generate_r_free_flags(
+                fraction=(r_free_flags.data().count(test_flag_value)/n_r_free),
+                max_free=None,
+                use_lattice_symmetry=True,
+                format=format)
+            r_free_flags = r_free_flags.concatenate(other=missing_flags)
+        assert (r_free_flags.indices().size() == obs_tmp.indices().size())
+      else :
+        print >> log, """
+    NOTE: incompatible symmetry between the data and the R-free flags:
+         Data  : %s  %s
+         Flags : %s  %s
+       A new test set will be generated.
+""" % (str(obs.space_group_info()),
+          " ".join([ "%g" % x for x in obs.unit_cell().parameters() ]),
+          str(r_free_flags.space_group_info()),
+          " ".join(["%g" % x for x in r_free_flags.unit_cell().parameters()]))
+    else :
+      print >> log, """
+ WARNING: R-free flags not supplied.  This may bias the refinement if the
+     structures are very nearly isomorphous!
+"""
+      r_free_flags = obs.generate_r_free_flags(
+        fraction=r_free_flags_params.fraction,
+        max_free=r_free_flags_params.max_free,
+        use_lattice_symmetry=r_free_flags_params.use_lattice_symmetry,
+        use_dataman_shells=r_free_flags_params.use_dataman_shells,
+        n_shells=r_free_flags_params.n_shells,
+        format="ccp4")
+      test_flag_value = 0
+    if (r_free_flags.anomalous_flag()) :
+      r_free_flags = r_free_flags.average_bijvoet_mates()
+    if (phases is not None) :
+      phases_info = phases.info()
+      phases = phases.map_to_asu().resolution_filter(d_min=d_min, d_max=d_max)
+    assert (obs.is_xray_amplitude_array())
+    self.f_obs = obs
+    self.r_free_flags = r_free_flags.set_info(r_free_flags_info)
+    self.test_flag_value = test_flag_value
+    self.phases = None
+    if (phases is not None) :
+      self.phases = phases.set_info(phases_info)
+
+  def n_obs (self) :
+    return self.f_obs.data().size()
+
+  def fraction_free (self) :
+    return (self.r_free_flags.data().count(self.test_flag_value) /
+            self.r_free_flags.data().size())
+
+  def write_mtz_file (self, file_name,
+      title=None,
+      wavelength=None,
+      single_dataset=True) :
+    mtz_data = self.f_obs.as_mtz_dataset(
+      column_root_label="F",
+      wavelength=wavelength)
+    if (self.f_obs.anomalous_flag()) and (single_dataset) :
+      mtz_data.add_miller_array(
+        miller_array=self.f_obs.average_bijvoet_mates(),
+        column_root_label="F")
+    if (self.phases is not None) :
+      mtz_data.add_miller_array(self.phases,
+        column_root_label="HL")
+    mtz_data.add_miller_array(self.r_free_flags,
+      column_root_label="FreeR_flag")
+    mtz_data.mtz_object().write(file_name)
+
+def change_space_group (file_name, space_group_info) :
+  """
+  Update the space group in an MTZ file, writing it in place.
+  """
+  mtz_in = reflection_file_reader.any_reflection_file(file_name)
+  assert (mtz_in.file_type() == "ccp4_mtz")
+  mtz_object = mtz_in.file_content()
+  mtz_new = mtz_object.set_space_group_info(space_group_info)
+  mtz_new.write(file_name)
+
+def load_f_obs_and_r_free (file_name, anomalous_flag=False, phases=False) :
+  """
+  Automation wrapper for reading in MTZ files generated by the process_raw_data
+  class.
+  """
+  mtz_in = reflection_file_reader.any_reflection_file(file_name)
+  assert (mtz_in.file_type() == "ccp4_mtz")
+  file_server = reflection_file_server(
+    crystal_symmetry=None,
+    force_symmetry=True,
+    reflection_files=[mtz_in],
+    err=sys.stderr)
+  f_obs = f_obs_anom = r_free = None
+  r_free, test_flag_value = file_server.get_r_free_flags(
+     file_name=file_name,
+     label="FreeR_flag",
+     test_flag_value=None,
+     disable_suitability_test=False,
+     parameter_scope="")
+  r_free_info = r_free.info()
+  assert (test_flag_value is not None)
+  r_free = r_free.customized_copy(data=r_free.data()==test_flag_value)
+  for array in file_server.miller_arrays :
+    label = array.info().label_string()
+    if (label == "F(+),SIGF(+),F(-),SIGF(-)") :
+      f_obs_anom = array
+    elif (label == "F,SIGF") :
+      f_obs = array
+  f_obs_info = f_obs.info()
+  if (f_obs is None) and (f_obs_anom is not None) :
+    f_obs = f_obs_anom.average_bijvoet_mates()
+  # XXX that this is even necessary is probably a bug...
+  f_obs = f_obs.common_set(other=r_free)
+  r_free = r_free.common_set(other=f_obs)
+  assert (not None in [f_obs, r_free])
+  if (f_obs_anom is not None) and (anomalous_flag) :
+    return f_obs_anom, r_free.generate_bijvoet_mates()
+  return f_obs.set_info(f_obs_info), r_free.set_info(r_free_info)
