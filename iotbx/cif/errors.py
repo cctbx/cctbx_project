@@ -35,7 +35,7 @@ english = {
 
   # Loop errors
   2501: "Invalid loop: data item '%(key)s' cannot be declared in a looped list",
-  2502: "Invalid loop: data names from multiple categories present",
+  2502: "Invalid loop: data names from multiple categories present (for loop containing '%(key)s')",
   2503: "Invalid loop: value '%(value)s' present in child '%(child)s' but not found in parent '%(parent)s'",
   2504: "Invalid loop: missing parent for loop containing '%(child)s': '%(parent)s' required but not present in data block",
   2505: "Invalid loop: missing reference for loop containing '%(key)s': '%(reference)s' required but not present",
