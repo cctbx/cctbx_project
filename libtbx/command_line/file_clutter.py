@@ -90,7 +90,7 @@ class file_clutter(object):
       sapp("more than one appearance of 'from __future__ import division'")
     return ", ".join(status)
 
-  def show(self, flag_x, flag_dos_format=True, append=None):
+  def show(self, flag_x, flag_dos_format=True, append=None, verbose=False):
     status = self.status(flag_x, flag_dos_format)
     if (len(status) != 0):
       msg = "%s: %s" % (self.path, status)
@@ -98,6 +98,12 @@ class file_clutter(object):
         append(msg)
       else:
         print msg
+      if (verbose) :
+        msg2 = "  unused imports: %s" % ", ".join(self.unused_imports)
+        if (append is not None):
+          append(msg2)
+        else :
+          print msg2
 
 def is_text_file(file_name):
   name = file_name.lower()
