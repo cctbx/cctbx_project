@@ -98,7 +98,7 @@ class file_clutter(object):
         append(msg)
       else:
         print msg
-      if (verbose) :
+      if (verbose) and (len(self.unused_imports) > 0) :
         msg2 = "  unused imports: %s" % ", ".join(self.unused_imports)
         if (append is not None):
           append(msg2)
