@@ -796,6 +796,7 @@ def exercise_automation_wrappers () :
     test_flag_value=None,
     log=out)
   assert ("""WARNING: R-free flags not supplied.""" in out.getvalue())
+  assert (processed.flags_are_new())
   out2 = StringIO()
   processed2 = process_raw_data(
     obs=i_obs,
@@ -803,6 +804,7 @@ def exercise_automation_wrappers () :
     test_flag_value=True,
     log=out2)
   assert ("""WARNING: R-free flags are incomplete""" in out2.getvalue())
+  assert (not processed2.flags_are_new())
   assert (processed.n_obs() == processed2.n_obs())
   processed.write_mtz_file(mtz_file, title="tst_iotbx", wavelength=0.9792)
   f_obs, r_free = load_f_obs_and_r_free(mtz_file)

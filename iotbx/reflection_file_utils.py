@@ -853,6 +853,7 @@ class process_raw_data (object) :
     "r_free_flags",
     "test_flag_value",
     "phases",
+    "_generate_new",
   ]
   def __init__ (self,
       obs,
@@ -929,7 +930,14 @@ class process_raw_data (object) :
         r_free_flags = r_free_flags.common_set(other=obs_tmp)
         n_r_free = r_free_flags.indices().size()
         n_obs = obs_tmp.indices().size()
-        if (n_r_free != n_obs) :
+        if ((test_flag_value is None) or
+            (r_free_flags.data().all_eq(r_free_flags.data()[0]))) :
+          print >> log, """
+    WARNING: uniform R-free flags detected; a new test set will be generated,
+      but this will bias the refinement statistics.
+"""
+          r_free_flags = None
+        elif (n_r_free != n_obs) :
           missing_set = obs_tmp.lone_set(other=r_free_flags)
           n_missing = missing_set.indices().size()
           if (n_missing > 0) :
@@ -952,7 +960,8 @@ class process_raw_data (object) :
                 use_lattice_symmetry=True,
                 format=format)
             r_free_flags = r_free_flags.concatenate(other=missing_flags)
-        assert (r_free_flags.indices().size() == obs_tmp.indices().size())
+        if (r_free_flags is not None) :
+          assert (r_free_flags.indices().size() == obs_tmp.indices().size())
       else :
         print >> log, """
     NOTE: incompatible symmetry between the data and the R-free flags:
@@ -968,6 +977,8 @@ class process_raw_data (object) :
  WARNING: R-free flags not supplied.  This may bias the refinement if the
      structures are very nearly isomorphous!
 """
+    self._generate_new = False
+    if (r_free_flags is None) :
       r_free_flags = obs.generate_r_free_flags(
         fraction=r_free_flags_params.fraction,
         max_free=r_free_flags_params.max_free,
@@ -976,6 +987,7 @@ class process_raw_data (object) :
         n_shells=r_free_flags_params.n_shells,
         format="ccp4")
       test_flag_value = 0
+      self._generate_new = True
     if (r_free_flags.anomalous_flag()) :
       r_free_flags = r_free_flags.average_bijvoet_mates()
     if (phases is not None) :
@@ -995,6 +1007,9 @@ class process_raw_data (object) :
   def fraction_free (self) :
     return (self.r_free_flags.data().count(self.test_flag_value) /
             self.r_free_flags.data().size())
+
+  def flags_are_new (self) :
+    return self._generate_new
 
   def write_mtz_file (self, file_name,
       title=None,
