@@ -22,7 +22,7 @@ def exercise () :
     args=[pdb_file, mtz_file],
     out=out)
   assert contains_substring(out.getvalue(), "  mFo-DFc >  3      :      0")
-  assert contains_substring(out.getvalue(), "  mFo-DFc min       :  -3.83")
+  assert contains_substring(out.getvalue(), "  mFo-DFc min       :  -3.82")
 
   peaks_holes.save_pdb_file(file_name="%s.pdb" % os.getpid(), log=null_out())
   from iotbx.file_reader import any_file

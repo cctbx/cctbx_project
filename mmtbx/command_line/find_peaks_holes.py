@@ -318,10 +318,11 @@ def find_peaks_holes (
   out.flush()
   anom = None
   anom_map_coeffs = None
-  if (fmodel.f_obs().anomalous_flag()) and (not fmodel.twin) :
+  if (fmodel.f_obs().anomalous_flag()) :
     make_header("Anomalous difference map peaks", out=out)
     anom_map_type = "anomalous"
-    if (use_phaser_if_available) and (libtbx.env.has_module("phaser")) :
+    if ((use_phaser_if_available) and (libtbx.env.has_module("phaser")) and
+        (not fmodel.twin)) :
       import mmtbx.map_tools
       print >> out, "Will use Phaser LLG map"
       anom_map_type = None
