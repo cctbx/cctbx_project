@@ -211,6 +211,9 @@ class mvd(object):
           str(len(self.pdb_header.tls.tls_selections))]))
       else:
         print >> log, "    TLS             : None"
+      if (self.pdb_header.exptl_method is not None) :
+        print >> log, "    exptl_method    : %-s"%format_value("%s",
+          self.pdb_header.exptl_method)
     #
     print >> log, "  After applying resolution and sigma cutoffs:"
     print >> log, "    n_refl_cutoff : %-s"%format_value("%d",self.misc.n_refl_cutoff).strip()
@@ -698,9 +701,13 @@ def run(args,
     backbone      = acp.selection(string = "backbone"),
     sidechain     = acp.selection(string = "sidechain"))
   #
+  scattering_table = params.scattering_table
+  exptl_method = pdb_inp.get_experiment_type()
+  if (exptl_method is not None) and ("NEUTRON" in exptl_method) :
+    scattering_table = "neutron"
   xsfppf = mmtbx.utils.xray_structures_from_processed_pdb_file(
     processed_pdb_file = processed_pdb_file,
-    scattering_table   = params.scattering_table,
+    scattering_table   = scattering_table,
     d_min              = f_obs.d_min())
   xray_structures = xsfppf.xray_structures
   if(0): #XXX normalize occupancies if all models have occ=1 so the total=1
@@ -745,7 +752,7 @@ def run(args,
   geometry_statistics = show_geometry(
     xray_structures          = xray_structures,
     processed_pdb_file       = processed_pdb_file,
-    scattering_table         = params.scattering_table,
+    scattering_table         = scattering_table,
     hierarchy                = hierarchy,
     model_selections         = model_selections,
     show_geometry_statistics = show_geometry_statistics,
@@ -755,7 +762,7 @@ def run(args,
   mp = mmtbx.masks.mask_master_params.extract()
   fmodel = utils.fmodel_simple(
     xray_structures  = xray_structures,
-    scattering_table = params.scattering_table,
+    scattering_table = scattering_table,
     mask_params      = mp,
     f_obs            = f_obs,
     r_free_flags     = r_free_flags)
@@ -792,7 +799,8 @@ def run(args,
     sigma_cutoff    = pub_sigma,
     matthews_coeff  = pub_matthews,
     solvent_cont    = pub_solv_cont,
-    tls             = pdb_tls))
+    tls             = pdb_tls,
+    exptl_method    = exptl_method))
   #
   # Recompute R-factors using published cutoffs
   fmodel_cut = fmodel
@@ -806,7 +814,7 @@ def run(args,
   if(tmp_sel.count(True) != tmp_sel.size() and tmp_sel.count(True) > 0):
     fmodel_cut = utils.fmodel_simple(
       xray_structures  = xray_structures,
-      scattering_table = params.scattering_table,
+      scattering_table = scattering_table,
       f_obs            = fmodel.f_obs().select(tmp_sel),
       r_free_flags     = fmodel.r_free_flags().select(tmp_sel))
   mvd_obj.collect(misc = group_args(
@@ -848,7 +856,7 @@ def run(args,
   if(params.comprehensive and not fmodel_cut.twin and
      fmodel_cut.xray_structure is not None):
     rsc_params = real_space_correlation.master_params().extract()
-    rsc_params.scattering_table = params.scattering_table
+    rsc_params.scattering_table = scattering_table
     real_space_correlation.simple(
        fmodel        = fmodel_cut,
        pdb_hierarchy = hierarchy,
