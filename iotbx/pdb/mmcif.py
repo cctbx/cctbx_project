@@ -491,6 +491,10 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
         return [ float(f) for f in wavelengths.split(",") ]
     return None
 
+  def get_experiment_type (self) :
+    exptl_method = self.cif_block.get('_exptl.method')
+    return exptl_method
+
 def _float_or_None(value):
   if value is not None:
     if value == '?' or value == '.':

@@ -521,10 +521,12 @@ def exercise_mtrix(regression_pdb):
   assert mtrix_info[0].coordinates_present
   assert mtrix_info[1].serial_number == "  2"
 
-def exercise_wavelength (regression_pdb) :
+def exercise_header_misc (regression_pdb) :
   pdb_inp = pdb.input(file_name=op.join(regression_pdb, "pdb1a1q.ent"))
   wavelength = pdb_inp.extract_wavelength()
   assert approx_equal(wavelength, 0.995)
+  expt_type = pdb_inp.get_experiment_type()
+  assert (expt_type == 'X-RAY DIFFRACTION')
 
 def dump_pdb(file_name, sites_cart, crystal_symmetry=None):
   f = open(file_name, "w")
@@ -572,7 +574,7 @@ def run():
     exercise_format_fasta(regression_pdb=regression_pdb)
     exercise_merge_files_and_check_for_overlap(regression_pdb=regression_pdb)
     exercise_mtrix(regression_pdb=regression_pdb)
-    exercise_wavelength(regression_pdb=regression_pdb)
+    exercise_header_misc(regression_pdb=regression_pdb)
   for use_u_aniso in (False, True):
     exercise_xray_structure(use_u_aniso, verbose=verbose)
   write_icosahedron()

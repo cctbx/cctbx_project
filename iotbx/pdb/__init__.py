@@ -1115,6 +1115,12 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
         return wavelengths
     return None
 
+  def get_experiment_type (self) :
+    for line in self.title_section() :
+      if (line.startswith("EXPDTA")) :
+        return records.expdta(line).technique
+    return None
+
 class rewrite_normalized(object):
 
   def __init__(self,
