@@ -994,12 +994,31 @@ class process_raw_data (object) :
       phases_info = phases.info()
       phases = phases.map_to_asu().resolution_filter(d_min=d_min, d_max=d_max)
     assert (obs.is_xray_amplitude_array())
-    self.f_obs = obs
+    self.f_obs = obs.set_info(obs_info)
     self.r_free_flags = r_free_flags.set_info(r_free_flags_info)
     self.test_flag_value = test_flag_value
     self.phases = None
     if (phases is not None) :
       self.phases = phases.set_info(phases_info)
+
+  def data_labels (self) :
+    if (self.f_obs.anomalous_flag()) :
+      if (self.f_obs.sigmas() is not None) :
+        return "F(+),SIGF(+),F(-),SIGF(-)"
+      else :
+        return "F(+),F(-)"
+    elif (self.f_obs.sigmas() is not None) :
+      return "F,SIGF"
+    else :
+      return "F"
+
+  def r_free_flags_label (self) :
+    return "FreeR_flag"
+
+  def phase_labels (self) :
+    if (self.phases is not None) :
+      return "HLA,HLB,HLC,HLD"
+    return None
 
   def n_obs (self) :
     return self.f_obs.data().size()

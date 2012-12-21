@@ -796,6 +796,8 @@ def exercise_automation_wrappers () :
     test_flag_value=None,
     log=out)
   assert ("""WARNING: R-free flags not supplied.""" in out.getvalue())
+  assert (processed.data_labels() == "F(+),SIGF(+),F(-),SIGF(-)")
+  assert (processed.phase_labels() is None)
   assert (processed.flags_are_new())
   out2 = StringIO()
   processed2 = process_raw_data(
