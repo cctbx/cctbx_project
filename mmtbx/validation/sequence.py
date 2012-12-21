@@ -332,6 +332,89 @@ class validation (object) :
     for chain in self.chains :
       chain.show_summary(out)
 
+  def as_cif_block(self, cif_block=None):
+    import iotbx.cif.model
+    if cif_block is None:
+      cif_block = iotbx.cif.model.block()
+    struct_ref_loop = iotbx.cif.model.loop(header=(
+      "_struct_ref.id",
+      "_struct_ref.db_name",
+      "_struct_ref.db_code",
+      "_struct_ref.pdbx_db_accession",
+      "_struct_ref.entity_id",
+      "_struct_ref.pdbx_seq_one_letter_code",
+      "_struct_ref.pdbx_align_begin",
+      "_struct_ref.biol_id",
+      #"_struct_ref.seq_align",
+      #"_struct_ref.seq_dif",
+      #"_struct_ref.details"
+    ))
+    # maybe we can find this information out somehow and pass it along?
+    db_name = ""
+    db_code = ""
+    db_accession = ""
+    for i_chain, chain in enumerate(self.chains):
+      struct_ref_loop.add_row((
+        i_chain+1, db_name, db_code, db_accession, "?",
+        chain.alignment.b, chain.n_missing_start+1, "" ))
+    cif_block.add_loop(struct_ref_loop)
+
+    struct_ref_seq_loop = iotbx.cif.model.loop(header=(
+      "_struct_ref_seq.align_id",
+      "_struct_ref_seq.ref_id",
+      "_struct_ref_seq.pdbx_PDB_id_code",
+      "_struct_ref_seq.pdbx_strand_id",
+      "_struct_ref_seq.seq_align_beg",
+      "_struct_ref_seq.pdbx_seq_align_beg_ins_code",
+      "_struct_ref_seq.seq_align_end",
+      "_struct_ref_seq.pdbx_seq_align_end_ins_code",
+      "_struct_ref_seq.pdbx_db_accession",
+      "_struct_ref_seq.db_align_beg",
+      "_struct_ref_seq.db_align_end",
+      "_struct_ref_seq.pdbx_auth_seq_align_beg",
+      "_struct_ref_seq.pdbx_auth_seq_align_end"
+    ))
+
+    import re
+    prog = re.compile("\d+")
+
+    def decode_resid(resid):
+      resid = resid.strip()
+      s = prog.search(resid)
+      assert s is not None
+      resseq = resid[s.start():s.end()]
+      ins_code = resid[s.end():]
+      if len(ins_code) == 0: ins_code = "?"
+      return resseq, ins_code
+
+    align_id = 1
+    for i_chain, chain in enumerate(self.chains):
+      matches = chain.alignment.matches()
+      #i_range_begin = 0
+      i_range_end = -1
+      while True:
+        i_range_begin = matches.find("|", i_range_end+1)
+        if i_range_begin == -1: break
+        i_range_end = matches.find(" ", i_range_begin)
+        if i_range_end == -1:
+          i_range_end = len(matches)
+        i_range_end -= 1
+        i_a_range_begin = chain.alignment.i_seqs_a[i_range_begin]
+        i_a_range_end = chain.alignment.i_seqs_a[i_range_end]
+        i_b_range_begin = chain.alignment.i_seqs_b[i_range_begin]
+        i_b_range_end = chain.alignment.i_seqs_b[i_range_end]
+        resseq_begin, ins_code_begin = decode_resid(chain.resids[i_a_range_begin])
+        resseq_end, ins_code_end = decode_resid(chain.resids[i_a_range_end])
+        struct_ref_seq_loop.add_row((
+          align_id, i_chain+1, "?", chain.chain_id, i_b_range_begin+1, ins_code_begin,
+          i_b_range_end+1, ins_code_end, "?", i_a_range_begin+1, i_a_range_end+1,
+          resseq_begin, resseq_end
+        ))
+        align_id +=1
+    cif_block.add_loop(struct_ref_seq_loop)
+
+    return cif_block
+
 ########################################################################
 # REGRESSION TESTING
 def exercise () :
@@ -383,6 +466,18 @@ END""")
   2 gap(s) in chain
   4 mismatches to sequence
     residue IDs:  12 13 15 24""")
+  cif_block = v.as_cif_block()
+  assert list(cif_block['_struct_ref.pdbx_seq_one_letter_code']) == [
+    'MTTPSHLSDRYELGEILGFGGMSEVHLARD']
+  assert approx_equal(cif_block['_struct_ref_seq.pdbx_auth_seq_align_beg'],
+                      ['10', '14', '16', '19', '24'])
+  assert approx_equal(cif_block['_struct_ref_seq.pdbx_auth_seq_align_end'],
+                      ['11', '14', '17', '21', '28'])
+  assert approx_equal(cif_block['_struct_ref_seq.db_align_beg'],
+                      ['10', '14', '16', '19', '25'])
+  assert approx_equal(cif_block['_struct_ref_seq.db_align_end'],
+                      ['11', '14', '17', '21', '29'])
+  assert cif_block['_struct_ref_seq.pdbx_seq_align_beg_ins_code'][4] == 'A'
   seq2 = iotbx.bioinformatics.sequence("MTTPSHLSDRYELGEILGFGGMSEVHLA")
   v = validation(
     pdb_hierarchy=pdb_in.construct_hierarchy(),
@@ -404,6 +499,14 @@ END""")
     pass
   else :
     raise Exception_expected
+  cif_block = v.as_cif_block()
+  assert list(cif_block['_struct_ref.pdbx_seq_one_letter_code']) == [
+    'MTTPSHLSDRYELGEILGFGGMSEVHLA-']
+  assert approx_equal(cif_block['_struct_ref_seq.pdbx_auth_seq_align_end'],
+                      ['11', '14', '17', '21', '27'])
+  assert approx_equal(cif_block['_struct_ref_seq.db_align_end'],
+                      ['11', '14', '17', '21', '28'])
+  #
   pdb_in2 = iotbx.pdb.input(source_info=None, lines="""\
 ATOM      2  CA  ARG A  10      -6.299  36.344   7.806  1.00 55.20           C
 ATOM     25  CA  TYR A  11      -3.391  33.962   7.211  1.00 40.56           C
@@ -433,6 +536,13 @@ END
     extract_coordinates=True)
   out = StringIO()
   v.show(out=out)
+  cif_block = v.as_cif_block()
+  assert approx_equal(cif_block['_struct_ref.pdbx_seq_one_letter_code'],
+                      ['MTTPSHLSDRYELGEILGFGGMSEVHLA', 'AGCUUUGGAG'])
+  assert approx_equal(cif_block['_struct_ref_seq.pdbx_auth_seq_align_beg'],
+                      ['10', '14', '16', '2', '6', '8'])
+  assert approx_equal(cif_block['_struct_ref_seq.pdbx_auth_seq_align_end'],
+                      ['11', '14', '17', '4', '6', '10'])
   assert (len(v.chains[0].get_outliers_table()) == 3)
   assert (len(v.get_table_data()) == 4)
   assert approx_equal(
@@ -485,6 +595,14 @@ END
     v.show(out=out)
     aln1, aln2, ss = v.chains[0].get_alignment(include_sec_str=True)
     assert ("HHH" in ss) and ("LLL" in ss) and ("---" in ss)
+    cif_block = v.as_cif_block()
+    assert cif_block['_struct_ref.pdbx_seq_one_letter_code'] == seq.sequence
+    assert list(
+      cif_block['_struct_ref_seq.pdbx_auth_seq_align_beg']) == ['4', '117']
+    assert list(
+      cif_block['_struct_ref_seq.pdbx_auth_seq_align_end']) == ['85', '275']
+    assert list(cif_block['_struct_ref_seq.seq_align_beg']) == ['24', '137']
+    assert list(cif_block['_struct_ref_seq.seq_align_end']) == ['105', '295']
 
 if (__name__ == "__main__") :
   exercise()
