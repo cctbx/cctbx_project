@@ -1,4 +1,5 @@
 from __future__ import division
+from cctbx.array_family import flex
 from iotbx.cif import builders, model, errors
 import libtbx.load_env
 from libtbx import smart_open
@@ -346,12 +347,19 @@ class dictionary(model.cif):
       _list = definition.get("_list")
       if self.DDL_version == 1 and _list in ('no', None):
         self.report_error(2501, key=key) # not allowed in list
+      definition_category = definition.category
+      if (definition_category is not None and
+          not isinstance(definition_category, basestring)):
+        definition_name = definition.name
+        i = flex.first_index(definition_name, key)
+        definition_category = definition_category[i]
       if list_category is None:
-        list_category = definition.category
+        list_category = definition_category
       elif (isinstance(list_category, basestring)
-            and definition.category is not None
-            and list_category != definition.category):
-        self.report_error(2502) # multiple categories in loop
+            and definition_category is not None
+            and list_category != definition_category):
+        print list_category, list(definition_category)
+        self.report_error(2502, key=key) # multiple categories in loop
       mandatory = definition.mandatory == 'yes'
       references = definition.get('_list_reference')
       if references is not None:
