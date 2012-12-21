@@ -1118,7 +1118,7 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
   def get_experiment_type (self) :
     for line in self.title_section() :
       if (line.startswith("EXPDTA")) :
-        return records.expdta(line).technique
+        return records.expdta(line).technique.strip()
     return None
 
 class rewrite_normalized(object):
