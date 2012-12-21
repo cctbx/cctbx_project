@@ -649,5 +649,3 @@ class restraint_parser(atom_parser):
               pass
           except (TypeError, AssertionError):
             raise shelx_error("Invalid %s instruction" %cmd, line)
-
-
