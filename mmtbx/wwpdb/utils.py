@@ -7,7 +7,6 @@ directly from the PDB.
 from __future__ import division
 from libtbx import easy_run
 from libtbx.utils import null_out, Sorry
-from libtbx import group_args
 import os
 import sys
 
@@ -58,14 +57,15 @@ def fetch_pdb_data (
       (mtz_file, "\n".join(import_out.stderr_lines)))
   return os.path.abspath(pdb_file), os.path.abspath(mtz_file)
 
-def find_data_array (mtz_file, log=None) :
+def find_data_arrays (mtz_file, log=None) :
   """
   Guess an appropriate data array to use for refinement, plus optional
-  Hendrickson-Lattman coefficients if present.
+  Hendrickson-Lattman coefficients and R-free flags if present.
   """
-  if (log is None) : log = sys.stdout
+  from iotbx import reflection_file_utils
   from iotbx.file_reader import any_file
-  hl = data = None
+  if (log is None) : log = sys.stdout
+  phases = data = flags = flag_value = None
   hkl_in = any_file(mtz_file, force_type="hkl")
   hkl_server = hkl_in.file_server
   data_arrays = hkl_server.get_xray_data(
@@ -75,7 +75,8 @@ def find_data_array (mtz_file, log=None) :
     parameter_scope         = "",
     return_all_valid_arrays = True,
     minimum_score           = 4)
-  # XXX always use anomalous data if available!
+  # always use anomalous data if available!  also, prefer amplitudes over
+  # intensities if possible, as they may already be on an absolute scale
   if (len(data_arrays) > 0) :
     data_labels = [ array.info().label_string() for array in data_arrays ]
     for array_label in ["FOBS(+),SIGFOBS(+),FOBS(-),SIGFOBS(-)",
@@ -84,10 +85,10 @@ def find_data_array (mtz_file, log=None) :
                         "FOBS,SIGFOBS",
                         "IOBS,SIGIOBS"] :
       if (array_label in data_labels) :
-        data = array_label
+        data =  data_arrays[data_labels.index(array_label)]
         break
     else :
-      data = data_labels[0]
+      data = data_arrays[0]
   hl_arrays = hkl_server.get_experimental_phases(
     file_name               = None,
     labels                  = None,
@@ -96,72 +97,24 @@ def find_data_array (mtz_file, log=None) :
     return_all_valid_arrays = True,
     minimum_score           = 1)
   if (len(hl_arrays) > 0) :
-    hl_labels = [ array.info().label_string() for array in data_arrays ]
-    if ("HLA,HLB,HLC,HLD" in hl_labels) :
-      hl = "HLA,HLB,HLC,HLD"
-  # very important - filter experimental data to include only those
-  # reflections with R-free flags (otherwise phenix.refine will crash)
-  filtered_data = filter_raw_data(
-    file_name=mtz_file,
-    data_label=data,
-    hl_label=hl,
-    log=log)
-  os.remove(mtz_file)
-  os.rename(filtered_data.mtz_file, mtz_file)
-  if (filtered_data.new_flags) :
-    new_flags = os.path.join(os.path.dirname(mtz_file), "NEW_FLAGS")
-    open(new_flags, "w").write(mtz_file)
-  return filtered_data
-
-def filter_raw_data (
-    file_name,
-    data_label,
-    hl_label=None,
-    log=None) :
-  """
-  Delete any data which do not have R-free flags (unless no flags are present,
-  in which case they will be created).
-  """
-  from iotbx import reflection_file_utils
-  from iotbx import file_reader
-  if (log is None) : log = sys.stdout
-  hkl_in = file_reader.any_file(file_name, force_type="hkl")
-  miller_arrays = hkl_in.file_server.miller_arrays
-  data = r_free = hl_coeffs = None
-  for array in miller_arrays :
-    labels = array.info().label_string()
-    if (labels == data_label) :
-      data = array
-    elif (labels == "R-free-flags") :
-      r_free = array
-    elif (labels == hl_label) :
-      hl_coeffs = array
-  assert (data is not None)
-  processed = reflection_file_utils.process_raw_data(
+    phases = hl_arrays[0]
+  flags_and_values = hkl_server.get_r_free_flags(
+    file_name=None,
+    label=None,
+    test_flag_value=None,
+    disable_suitability_test=False,
+    parameter_scope="",
+    return_all_valid_arrays=True,
+    minimum_score=1)
+  if (len(flags_and_values) > 0) :
+    flags, flag_value = flags_and_values[0]
+  return reflection_file_utils.process_raw_data(
     obs=data,
-    r_free_flags=r_free,
-    test_flag_value=0, # XXX this is what cif_as_mtz does
-    phases=hl_coeffs,
+    r_free_flags=flags,
+    test_flag_value=flag_value,
+    phases=phases,
     log=log,
     merge_reconstructed_amplitudes=False)
-  new_mtz_file = os.path.splitext(file_name)[0] + "_new.mtz"
-  processed.write_mtz_file(new_mtz_file, single_dataset=True)
-  hkl_new = file_reader.any_file(new_mtz_file, force_type="hkl")
-  new_arrays = hkl_new.file_server.miller_arrays
-  assert (len(new_arrays) >= 2)
-  data_label = new_arrays[0].info().label_string()
-  r_free_label = new_arrays[1].info().label_string()
-  if (len(new_arrays) == 3) :
-    hl_label = new_arrays[2].info().label_string()
-  else :
-    hl_label = None
-  return group_args(
-    mtz_file=new_mtz_file,
-    data_label=data_label,
-    r_free_label=r_free_label,
-    hl_label=hl_label,
-    new_flags=processed.flags_are_new(),
-    anomalous_flag=data.anomalous_flag())
 
 def combine_split_structure (
     pdb_file,
@@ -232,6 +185,7 @@ class filter_pdb_file (object) :
       raise Sorry("Multi-MODEL PDB files are not supported.")
     n_unknown = 0
     cache = hierarchy.atom_selection_cache()
+    # resname UNK is now okay (with some restrictions)
     known_sel = cache.selection("not (element X or resname UNX or resname UNL)")
     semet_sel = cache.selection("element SE and resname MSE")
     self.n_unknown = known_sel.count(False)
