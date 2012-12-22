@@ -92,6 +92,7 @@ class torsion_ncs(object):
                params=None,
                b_factor_weight=None,
                coordinate_sigma=None,
+               selection=None,
                log=None):
     if(log is None): log = sys.stdout
     if params is None:
@@ -105,6 +106,7 @@ class torsion_ncs(object):
     if params.limit is None or params.limit < 0:
       raise Sorry("torsion NCS limit parameter must be >= 0.0")
     self.limit = params.limit
+    self.selection = selection
     #slack is not a user parameter for now
     self.slack = 0.0
     self.filter_phi_psi_outliers = params.filter_phi_psi_outliers
@@ -134,9 +136,12 @@ class torsion_ncs(object):
     self.sidechain_angle_hash = self.build_sidechain_angle_hash()
     self.c_alpha_hinges = None
     self.r = rotalyze()
+    sites_cart = pdb_hierarchy.atoms().extract_xyz()
+    if self.selection is None:
+      self.selection = flex.bool(len(sites_cart), True)
     complete_dihedral_proxies = utils.get_complete_dihedral_proxies(
                                   pdb_hierarchy=pdb_hierarchy)
-    sites_cart = pdb_hierarchy.atoms().extract_xyz()
+
     print >> self.log, "Determining NCS matches..."
     dp_hash = {}
     self.use_segid = False
@@ -260,7 +265,12 @@ class torsion_ncs(object):
           if element_hash[i_seq] == " H":
             h_atom = True
         if not h_atom:
-          dp_hash[dp.i_seqs] = dp
+          complete = True
+          for i_seq in dp.i_seqs:
+            if not self.selection[i_seq]:
+              complete = False
+          if complete:
+            dp_hash[dp.i_seqs] = dp
 
       super_hash = {}
       res_match_master = {}
@@ -959,8 +969,10 @@ class torsion_ncs(object):
     self.torsion_params.range_stop = 10.0
     self.torsion_params.step = 1.0
     self.torsion_params.min_angle_between_solutions = 0.5
-    self.c_alpha_hinges = get_c_alpha_hinges(xray_structure=xray_structure,
-                                        pdb_hierarchy=pdb_hierarchy)
+    self.c_alpha_hinges = get_c_alpha_hinges(
+                            xray_structure=xray_structure,
+                            pdb_hierarchy=pdb_hierarchy,
+                            selection=self.selection)
 
   def prepare_map(self, fmodel):
     map_obj = fmodel.electron_density_map()
@@ -1797,9 +1809,13 @@ def check_residues_are_connected (ca_1, ca_2, max_sep=4.0, min_sep=0.) :
   return True
 
 def get_c_alpha_hinges(xray_structure,
-                       pdb_hierarchy):
+                       pdb_hierarchy,
+                       selection=None):
   c_alphas = []
   c_alpha_hinges = {}
+  sites_cart = pdb_hierarchy.atoms().extract_xyz()
+  if selection is None:
+    selection = flex.bool(len(sites_cart), True)
   sites_cart = xray_structure.sites_cart()
   for model in pdb_hierarchy.models():
     for chain in model.chains():
@@ -1823,6 +1839,11 @@ def get_c_alpha_hinges(xray_structure,
               cur_h = atom
           if cur_ca is not None and cur_c is not None and \
              cur_n is not None and cur_o is not None:
+            if( (not selection[cur_ca.i_seq]) or
+                (not selection[cur_c.i_seq])  or
+                (not selection[cur_n.i_seq])  or
+                (not selection[cur_o.i_seq]) ):
+              continue
             moving_tpl = (cur_n, cur_c, cur_o)
             if cur_h is not None:
               moving_tpl += tuple([cur_h])
