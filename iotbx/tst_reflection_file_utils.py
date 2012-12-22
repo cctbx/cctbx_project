@@ -782,7 +782,7 @@ def exercise_automation_wrappers () :
   miller_set = miller.build_set(
     crystal_symmetry=crystal_symmetry,
     anomalous_flag=True,
-    d_min=3)
+    d_min=1.5)
   n_obs = miller_set.indices().size()
   i_obs = miller_set.array(
     data=flex.random_double(size=n_obs)).set_observation_type_xray_intensity()
@@ -811,7 +811,8 @@ def exercise_automation_wrappers () :
   processed.write_mtz_file(mtz_file, title="tst_iotbx", wavelength=0.9792)
   f_obs, r_free = load_f_obs_and_r_free(mtz_file)
   change_space_group(mtz_file, sgtbx.space_group_info("P21"))
-  f_obs_new, r_free_new = load_f_obs_and_r_free(mtz_file)
+  f_obs_new, r_free_new = load_f_obs_and_r_free(mtz_file,
+    anomalous_flag=True)
   assert (str(f_obs_new.space_group_info()) == "P 1 21 1")
   assert (approx_equal(f_obs_new.info().wavelength, 0.9792))
 
