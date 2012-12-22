@@ -68,27 +68,20 @@ def find_data_arrays (mtz_file, log=None) :
   phases = data = flags = flag_value = None
   hkl_in = any_file(mtz_file, force_type="hkl")
   hkl_server = hkl_in.file_server
+  # always use anomalous data if available!  also, prefer amplitudes over
+  # intensities if possible, as they may already be on an absolute scale
   data_arrays = hkl_server.get_xray_data(
     file_name               = None,
     labels                  = None,
     ignore_all_zeros        = False,
     parameter_scope         = "",
     return_all_valid_arrays = True,
-    minimum_score           = 4)
-  # always use anomalous data if available!  also, prefer amplitudes over
-  # intensities if possible, as they may already be on an absolute scale
-  if (len(data_arrays) > 0) :
-    data_labels = [ array.info().label_string() for array in data_arrays ]
-    for array_label in ["FOBS(+),SIGFOBS(+),FOBS(-),SIGFOBS(-)",
-                        "F(+),SIGF(+),F(-),SIGF(-)",
-                        "I(+),SIGI(+),I(-),SIGI(-)",
-                        "FOBS,SIGFOBS",
-                        "IOBS,SIGIOBS"] :
-      if (array_label in data_labels) :
-        data =  data_arrays[data_labels.index(array_label)]
-        break
-    else :
-      data = data_arrays[0]
+    minimum_score           = 4,
+    prefer_amplitudes       = True,
+    prefer_anomalous        = True)
+  if (len(data_arrays) == 0) :
+    raise Sorry("No data arrays found in %s." % mtz_file)
+  data = data_arrays[0]
   hl_arrays = hkl_server.get_experimental_phases(
     file_name               = None,
     labels                  = None,
@@ -114,7 +107,7 @@ def find_data_arrays (mtz_file, log=None) :
     test_flag_value=flag_value,
     phases=phases,
     log=log,
-    merge_reconstructed_amplitudes=False)
+    merge_anomalous=False)
 
 def combine_split_structure (
     pdb_file,
