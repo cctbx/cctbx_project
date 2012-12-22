@@ -181,7 +181,13 @@ def get_phase_scores(miller_arrays):
   return result
 
 def get_xray_data_scores(miller_arrays, ignore_all_zeros,
-    prefer_anomalous=None) :
+    prefer_anomalous=None, prefer_amplitudes=None) :
+  anomalous_bonus = 4
+  intensity_bonus = 2
+  amplitude_bonus = 0
+  if (prefer_amplitudes) :
+    intensity_bonus = 0
+    amplitude_bonus = 2
   result = []
   for miller_array in miller_arrays:
     if (not miller_array.is_real_array()):
@@ -194,23 +200,31 @@ def get_xray_data_scores(miller_arrays, ignore_all_zeros,
         else:
           score = 1
       elif (miller_array.is_xray_intensity_array()):
-        score = 10
-        if (prefer_anomalous is not None) and (miller_array.anomalous_flag()) :
-          if (prefer_anomalous) :
-            score += 1
+        score = 8 + intensity_bonus
+        if (prefer_anomalous is not None) :
+          if (((prefer_anomalous) and (miller_array.anomalous_flag())) or
+              ((not prefer_anomalous) and (not miller_array.anomalous_flag()))):
+            score += anomalous_bonus
           else :
-            score -= 1
+            score -= anomalous_bonus
       elif (miller_array.is_xray_amplitude_array()):
         if (miller_array.is_xray_reconstructed_amplitude_array()):
           if (presumably_from_mtz_FQDQY(miller_array)):
             if (prefer_anomalous) :
-              score = 8
+              score = 8 + amplitude_bonus
             else :
-              score = 6
+              score = 6 + amplitude_bonus
           else:
             score = 4
         else:
-          score = 8
+          score = 6 + amplitude_bonus
+          if (prefer_anomalous is not None) :
+            if (((prefer_anomalous) and (miller_array.anomalous_flag())) or
+                ((not prefer_anomalous) and
+                 (not miller_array.anomalous_flag()))):
+              score += anomalous_bonus
+            else :
+              score -= anomalous_bonus
       else:
         score = 2
       assert score is not None
@@ -624,12 +638,14 @@ class reflection_file_server(object):
         parameter_name="labels",
         return_all_valid_arrays=False,
         minimum_score=1,
-        prefer_anomalous=None) :
+        prefer_anomalous=None,
+        prefer_amplitudes=None) :
     miller_arrays = self.get_miller_arrays(file_name=file_name)
     data_scores = get_xray_data_scores(
       miller_arrays=miller_arrays,
       ignore_all_zeros=ignore_all_zeros,
-      prefer_anomalous=prefer_anomalous)
+      prefer_anomalous=prefer_anomalous,
+      prefer_amplitudes=prefer_amplitudes)
     if return_all_valid_arrays :
       return sort_arrays_by_score(miller_arrays, data_scores, minimum_score)
     # Recognize phenix.refine file and do the "right thing". May be too ad hoc..
@@ -863,7 +879,7 @@ class process_raw_data (object) :
       d_min=None,
       d_max=None,
       r_free_flags_params=None,
-      merge_reconstructed_amplitudes=True,
+      merge_anomalous=False,
       log=sys.stdout,
       verbose=True) :
     assert (log is not None) and (obs is not None)
@@ -897,8 +913,7 @@ class process_raw_data (object) :
     """ % (100*merged_obs.completeness(), merged_obs.d_min())
     # XXX this is kind of a hack (the reconstructed arrays break some of my
     # assumptions about labels)
-    if ((obs.is_xray_reconstructed_amplitude_array()) and
-        (merge_reconstructed_amplitudes)) :
+    if (merge_anomalous) :
       obs = obs.average_bijvoet_mates()
     if (r_free_flags is not None) :
       r_free_flags_info = r_free_flags.info()
@@ -1002,7 +1017,9 @@ class process_raw_data (object) :
       self.phases = phases.set_info(phases_info)
 
   def data_labels (self) :
-    if (self.f_obs.anomalous_flag()) :
+    if (self.f_obs.is_xray_reconstructed_amplitude_array()) :
+      return "F,SIGF,DANO,SIGDANO,ISYM"
+    elif (self.f_obs.anomalous_flag()) :
       if (self.f_obs.sigmas() is not None) :
         return "F(+),SIGF(+),F(-),SIGF(-)"
       else :
@@ -1037,7 +1054,7 @@ class process_raw_data (object) :
     mtz_data = self.f_obs.as_mtz_dataset(
       column_root_label="F",
       wavelength=wavelength)
-    if (self.f_obs.anomalous_flag()) and (single_dataset) :
+    if (self.f_obs.anomalous_flag()) and (not single_dataset) :
       mtz_data.add_miller_array(
         miller_array=self.f_obs.average_bijvoet_mates(),
         column_root_label="F")
@@ -1080,13 +1097,15 @@ def load_f_obs_and_r_free (file_name, anomalous_flag=False, phases=False) :
   r_free_info = r_free.info()
   assert (test_flag_value is not None)
   r_free = r_free.customized_copy(data=r_free.data()==test_flag_value)
+  f_obs_info = f_obs_anom_info = None
   for array in file_server.miller_arrays :
     label = array.info().label_string()
-    if (label == "F(+),SIGF(+),F(-),SIGF(-)") :
+    if (array.is_xray_amplitude_array()) and (array.anomalous_flag()) :
       f_obs_anom = array
+      f_obs_anom_info = f_obs_anom.info()
     elif (label == "F,SIGF") :
       f_obs = array
-  f_obs_info = f_obs.info()
+      f_obs_info = array.info()
   if (f_obs is None) and (f_obs_anom is not None) :
     f_obs = f_obs_anom.average_bijvoet_mates()
   # XXX that this is even necessary is probably a bug...
@@ -1094,5 +1113,5 @@ def load_f_obs_and_r_free (file_name, anomalous_flag=False, phases=False) :
   r_free = r_free.common_set(other=f_obs)
   assert (not None in [f_obs, r_free])
   if (f_obs_anom is not None) and (anomalous_flag) :
-    return f_obs_anom, r_free.generate_bijvoet_mates()
+    return f_obs_anom.set_info(f_obs_anom_info), r_free.generate_bijvoet_mates()
   return f_obs.set_info(f_obs_info), r_free.set_info(r_free_info)
