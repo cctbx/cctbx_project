@@ -91,8 +91,8 @@ loop_
   _restr_distance_target
   _restr_distance_target_weight_param
   _restr_distance_diff
-   Si O 2_554 1.6000 0.5590 -0.0160
-   Si O 1 1.7000 0.7454 -2.3838
+  Si  O  2_554  1.6000  0.5590  -0.0160
+  Si  O  1      1.7000  0.7454  -2.3838
 
 loop_
   _restr_angle_atom_site_label_1
@@ -104,9 +104,9 @@ loop_
   _restr_angle_target
   _restr_angle_target_weight_param
   _restr_angle_diff
-   O Si O 2_554 1 4_554 103.0000 0.7071 1.6926
-   O Si O 3_664 1 4_554 110.0000 0.4472 -1.3127
-   Si O Si 3 1 5 150.0000 0.4472 3.0700
+  O   Si  O   2_554  1  4_554  103.0000  0.7071   1.6926
+  O   Si  O   3_664  1  4_554  110.0000  0.4472  -1.3127
+  Si  O   Si  3      1  5      150.0000  0.4472   3.0700
 
 loop_
   _restr_torsion_atom_site_label_1
@@ -120,8 +120,8 @@ loop_
   _restr_torsion_angle_target
   _restr_torsion_weight_param
   _restr_torsion_diff
-   O Si O Si 3_664 1 2_554 7_655 -30.0000 0.7071 6.9078
-   O Si O Si 3_664 1 4_554 2 90.0000 0.5774 11.7036
+  O  Si  O  Si  3_664  1  2_554  7_655  -30.0000  0.7071   6.9078
+  O  Si  O  Si  3_664  1  4_554  2       90.0000  0.5774  11.7036
 
 loop_
   _restr_equal_distance_class_class_id
@@ -129,16 +129,16 @@ loop_
   _restr_equal_distance_class_average
   _restr_equal_distance_class_esd
   _restr_equal_distance_class_diff_max
-   1 1.0000 1.6160 0.0000 0.0000
+  1  1.0000  1.6160  0.0000  0.0000
 
 loop_
   _restr_equal_distance_atom_site_label_1
   _restr_equal_distance_atom_site_label_2
   _restr_equal_distance_site_symmetry_2
   _restr_equal_distance_class_id
-   Si O 2_554 1
-   Si O 4_554 1
-   Si O 3_664 1
+  Si  O  2_554  1
+  Si  O  4_554  1
+  Si  O  3_664  1
 
 """)
 
@@ -171,24 +171,24 @@ loop_
   _restr_U_rigid_target_weight_param
   _restr_U_rigid_U_parallel
   _restr_U_rigid_diff
-   O1 C1 0.0100 0.0176 0.0006
-   O1 C2 0.0100 0.0194 -0.0053
-   O1 C3 0.0100 0.0177 0.0013
+  O1  C1  0.0100  0.0176   0.0006
+  O1  C2  0.0100  0.0194  -0.0053
+  O1  C3  0.0100  0.0177   0.0013
 
 loop_
   _restr_U_similar_atom_site_label_1
   _restr_U_similar_atom_site_label_2
   _restr_U_similar_weight_param
-   O1 C1 0.0400
-   O1 C6 0.0400
-   O2 C2 0.0800
+  O1  C1  0.0400
+  O1  C6  0.0400
+  O2  C2  0.0800
 
 loop_
   _restr_U_iso_atom_site_label
   _restr_U_iso_weight_param
-   O1 0.1000
-   O2 0.2000
-   O3 0.2000
+  O1  0.1000
+  O2  0.2000
+  O3  0.2000
 
 """)
 

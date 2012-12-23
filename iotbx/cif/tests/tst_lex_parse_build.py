@@ -119,18 +119,18 @@ loop_
   _refln.pdbx_I_plus_sigma
   _refln.pdbx_I_minus
   _refln.pdbx_I_minus_sigma
-   -87 5 46 1 1 3 40.2 40.4 6.7 63.9
-   -87 5 45 1 1 3 47.8 29.7 35.1 30.5
-   -87 5 44 1 1 3 18.1 33.2 0.5 34.6
-   -87 5 43 1 1 3 6.1 45.4 12.9 51.6
-   -87 5 42 1 1 3 -6.6 45.6 -15.5 55.8
-   -87 7 37 1 1 3 6.3 43.4 ? ?
-   -87 7 36 1 1 3 -67.2 55.4 ? ?
-   -88 2 44 1 1 3 0 -1 35 38.5
-   -88 2 43 1 1 3 0 -1 57.4 41.5
-   -88 4 45 1 1 3 -1 46.1 -9.1 45.6
-   -88 4 44 1 1 3 -19.8 49.2 0.3 34.7
-   -88 6 44 1 1 3 -1.8 34.8 ? ?
+  -87  5  46  1  1  3   40.2  40.4    6.7  63.9
+  -87  5  45  1  1  3   47.8  29.7   35.1  30.5
+  -87  5  44  1  1  3   18.1  33.2    0.5  34.6
+  -87  5  43  1  1  3    6.1  45.4   12.9  51.6
+  -87  5  42  1  1  3   -6.6  45.6  -15.5  55.8
+  -87  7  37  1  1  3    6.3  43.4      ?     ?
+  -87  7  36  1  1  3  -67.2  55.4      ?     ?
+  -88  2  44  1  1  3      0    -1     35  38.5
+  -88  2  43  1  1  3      0    -1   57.4  41.5
+  -88  4  45  1  1  3     -1  46.1   -9.1  45.6
+  -88  4  44  1  1  3  -19.8  49.2    0.3  34.7
+  -88  6  44  1  1  3   -1.8  34.8      ?     ?
 
 """)
 
@@ -522,18 +522,18 @@ loop_
   _atom_type.scat_Cromer_Mann_c
   _atom_type.scat_source
   _atom_type.scat_dispersion_source
-   C 0.00347 0.00161 2.18189 1.77612 1.08772 0.64146 0.20789 0.10522 13.45337 32.57901 0.74729 0.25125 80.97993 0.05873 0.0
+  C  0.00347  0.00161  2.18189  1.77612  1.08772  0.64146  0.20789  0.10522  13.45337  32.57901  0.74729  0.25125  80.97993  0.05873  0.0
 ;
 6-Gaussian fit: Grosse-Kunstleve RW, Sauter NK, Adams PD:
 Newsletter of the IUCr Commission on Crystallographic Computing 2004, 3, 22-31.
 ;
- 'Henke, Gullikson and Davis, At. Data and Nucl. Data Tables, 1993, 54, 2'
-   O 0.01158 0.00611 2.91262 2.58808 0.98057 0.69663 0.68508 0.13677 14.48462 6.03818 0.42255 0.15446 35.53892 0.03841 0.0
+  'Henke, Gullikson and Davis, At. Data and Nucl. Data Tables, 1993, 54, 2'
+  O  0.01158  0.00611  2.91262  2.58808  0.98057  0.69663  0.68508  0.13677  14.48462   6.03818  0.42255  0.15446  35.53892  0.03841  0.0
 ;
 6-Gaussian fit: Grosse-Kunstleve RW, Sauter NK, Adams PD:
 Newsletter of the IUCr Commission on Crystallographic Computing 2004, 3, 22-31.
 ;
- 'Henke, Gullikson and Davis, At. Data and Nucl. Data Tables, 1993, 54, 2'
+  'Henke, Gullikson and Davis, At. Data and Nucl. Data Tables, 1993, 54, 2'
 """)
 
 def exercise_partial_crystal_symmetry():
