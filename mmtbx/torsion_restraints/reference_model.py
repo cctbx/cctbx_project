@@ -98,6 +98,7 @@ class reference_model(object):
                reference_file_list=None,
                has_hd=False,
                params=None,
+               selection=None,
                log=None):
     assert [reference_hierarchy_list,
             reference_file_list].count(None) == 1
@@ -106,7 +107,11 @@ class reference_model(object):
     else:
       self.log = log
     self.params = params
+    self.selection = selection
     pdb_hierarchy.reset_i_seq_if_necessary()
+    sites_cart = pdb_hierarchy.atoms().extract_xyz()
+    if self.selection is None:
+      self.selection = flex.bool(len(sites_cart), True)
     self.pdb_hierarchy = pdb_hierarchy
     if reference_hierarchy_list is None:
       reference_hierarchy_list = \
@@ -433,6 +438,12 @@ class reference_model(object):
               break
           if sc_atoms:
             raise StopIteration()
+        complete = True
+        for i_seq in dp.i_seqs:
+          if not self.selection[i_seq]:
+            complete = False
+        if not complete:
+          raise StopIteration()
         key = ""
         for i_seq in dp.i_seqs:
           key = key+i_seq_name_hash[i_seq]
@@ -496,6 +507,12 @@ class reference_model(object):
                string_list=[overall_selection]))
     for dp in complete_dihedral_proxies:
       key_work = ""
+      complete = True
+      for i_seq in dp.i_seqs:
+        if not self.selection[i_seq]:
+          complete = False
+      if not complete:
+        continue
       for i_seq in dp.i_seqs:
         key_work = key_work + self.i_seq_name_hash[i_seq]
       #find matching key
