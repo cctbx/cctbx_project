@@ -62,7 +62,7 @@ def generate_mtz_file (file_base, anomalous_scatterers, d_min) :
     ).raise_if_errors().return_code == 0)
   return mtz_file
 
-def write_pdb_input_calcium_binding (file_base="ca_frag") :
+def write_pdb_input_calcium_binding (file_base="ca_frag", write_files=True) :
   """
   Outputs a selection of atoms from a structure of a calcium-binding fold.
   Original data: d_min=1.4, wavelength=1.116
@@ -195,13 +195,16 @@ HETATM  123  O   HOH S   2       5.396  15.243  10.734  1.00 22.95           O
 HETATM  124  O   HOH S   3       3.629   8.994  14.414  1.00 25.28           O
 END""")
   xrs = pdb_in.input.xray_structure_simple(cryst1_substitution_buffer_layer=5)
-  pdb_file = file_base + ".pdb"
-  if (os.path.exists(pdb_file)) :
-    os.remove(pdb_file)
-  f = open(pdb_file, "w")
-  f.write(pdb_in.hierarchy.as_pdb_string(crystal_symmetry=xrs))
-  f.close()
-  return pdb_file
+  if (write_files) :
+    pdb_file = file_base + ".pdb"
+    if (os.path.exists(pdb_file)) :
+      os.remove(pdb_file)
+    f = open(pdb_file, "w")
+    f.write(pdb_in.hierarchy.as_pdb_string(crystal_symmetry=xrs))
+    f.close()
+    return pdb_file
+  else :
+    return pdb_in, xrs
 
 def write_pdb_input_cd_cl (file_base="cd_cl_frag") :
   """
