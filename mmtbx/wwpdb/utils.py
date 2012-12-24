@@ -159,14 +159,18 @@ def combine_split_structure (
 
 class filter_pdb_file (object) :
   """
-  Get rid of those pesky unknown atoms, and make other modifications that we
-  deem prudent, such as reducing the occupancy of Se atoms from 1.
+  Processing of PDB files to remove common pathologies and enable automatic
+  refinement behavior.  In particular, delete unknown atoms and ligands,
+  reduce the occupancy of Se atoms from 1 to trigger occupancy refinement,
+  and optionally remove zero-occupancy atoms.
   """
   def __init__ (self,
                 pdb_file,
                 output_file=None,
                 log=None,
-                set_se_occ=True) :
+                quiet=False,
+                set_se_occ=True,
+                remove_atoms_with_zero_occupancy=False) :
     from iotbx.file_reader import any_file
     import iotbx.pdb
     if (log is None) :
@@ -177,21 +181,46 @@ class filter_pdb_file (object) :
     if (len(hierarchy.models()) > 1) :
       raise Sorry("Multi-MODEL PDB files are not supported.")
     n_unknown = 0
+    all_atoms = hierarchy.atoms()
     cache = hierarchy.atom_selection_cache()
     # resname UNK is now okay (with some restrictions)
     known_sel = cache.selection("not (element X or resname UNX or resname UNL)")
     semet_sel = cache.selection("element SE and resname MSE")
+    zero_occ_sel = all_atoms.extract_occ() == 0
     self.n_unknown = known_sel.count(False)
     self.n_semet = semet_sel.count(True)
-    if (self.n_unknown > 0) or (self.n_semet > 0) :
-      hierarchy_filtered = hierarchy.select(known_sel)
+    self.n_zero_occ = zero_occ_sel.count(True)
+    keep_sel = known_sel
+    modified = False
+    if ((self.n_unknown > 0) or
+        ((self.n_semet > 0) and (set_se_occ)) or
+        (self.n_zero_occ > 0) and (remove_atoms_with_zero_occupancy)) :
+      modified = True
       if (output_file is None) :
         output_file = pdb_file
-      if (self.n_semet > 0) and (set_se_occ) :
-        for atom in hierarchy_filtered.atoms() :
-          if (atom.element == "SE") and (atom.fetch_labels().resname == "MSE") :
-            if (atom.occ == 1.0) :
-              atom.occ = 0.99 # just enough to trigger occupancy refinement
+    if (self.n_unknown > 0) and (not quiet) :
+      print >> log, "Warning: %d unknown atoms or ligands removed:" % \
+        self.n_unknown
+      for i_seq in (~known_sel).iselection() :
+        print >> log, "  %s" % all_atoms[i_seq].id_str()
+    if (self.n_zero_occ > 0) :
+      msg = "Warning: %d atoms with zero occupancy present in structure:"
+      if (remove_atoms_with_zero_occupancy) :
+        msg = "Warning: %d atoms with zero occupancy removed:"
+        keep_sel &= ~zero_occ_sel
+      if (not quiet) :
+        print >> log, msg % self.n_zero_occ
+        for i_seq in zero_occ_sel.iselection() :
+          print >> log, "  %s" % all_atoms[i_seq].id_str()
+    hierarchy_filtered = hierarchy.select(keep_sel)
+    if (self.n_semet > 0) and (set_se_occ) :
+      for atom in hierarchy_filtered.atoms() :
+        if (atom.element == "SE") and (atom.fetch_labels().resname == "MSE") :
+          if (atom.occ == 1.0) :
+            if (not quiet) :
+              print >> log, "Set occupancy of %s to 0.99" % atom.id_str()
+            atom.occ = 0.99 # just enough to trigger occupancy refinement
+    if (modified) :
       f = open(output_file, "w")
       # if the input file is actually from the PDB, we need to preserve the
       # header information for downstream code.
@@ -201,6 +230,3 @@ class filter_pdb_file (object) :
         crystal_symmetry=pdb_in.file_object.crystal_symmetry())
       print >> f, hierarchy_filtered.as_pdb_string()
       f.close()
-      pdb_base = os.path.basename(pdb_file)
-      print >> log, "WARNING: removed %d unknown atoms from %s" % (n_unknown,
-        pdb_base)
