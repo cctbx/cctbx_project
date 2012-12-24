@@ -386,6 +386,8 @@ def map_coefficients_from_fmodel (fmodel,
   mnm = mmtbx.map_names(map_name_string = params.map_type)
   if(mnm.k==0 and abs(mnm.n)==1):
     return compute_f_calc(fmodel, params)
+  if (fmodel.is_twin_fmodel_manager()) and (mnm.phaser_sad_llg) :
+    return None
   #XXXsave_k_part, save_b_part = None, None
   #XXXif(mnm.k is not None and abs(mnm.k) == abs(mnm.n) and fmodel.k_part()!=0):
   #XXX  save_k_part = fmodel.k_part()
@@ -510,6 +512,9 @@ class compute_map_coefficients(object):
               column_root_label = lbl_mgr.amplitudes(),
               label_decorator   = lbl_mgr)
           self.map_coeffs.append(coeffs)
+        elif (coeffs is None) :
+          print >> log, "WARNING: map coefficients not available for '%s'" % \
+            mcp.map_type
 
   def write_mtz_file(self, file_name, mtz_history_buffer = None):
     from cctbx.array_family import flex
