@@ -166,6 +166,71 @@ def get_anomalous_map (fmodel) :
     anom_coeffs = anom_coeffs.average_bijvoet_mates()
   return anom_coeffs
 
+class generate_water_omit_map (object) :
+  """
+  Calculate standard map coefficients (with R-free flags omitted, and missing
+  reflections filled) with water occupancies set to zero.  Used for ligand
+  fitting after refinement.
+  """
+  def __init__ (self,
+      fmodel,
+      pdb_hierarchy,
+      skip_if_no_waters=False,
+      exclude_free_r_reflections=False,
+      fill_missing_f_obs=False,
+      log=None) :
+    if (log is None) :
+      log = null_out()
+    sel_cache = pdb_hierarchy.atom_selection_cache()
+    water_sel = sel_cache.selection("resname HOH")
+    xrs = fmodel.xray_structure
+    self.crystal_symmetry = xrs.crystal_symmetry()
+    assert (water_sel.size() == xrs.scatterers().size())
+    self.n_waters = water_sel.count(True)
+    self.two_fofc_map = self.fofc_map = self.anom_map = None
+    if (self.n_waters == 0) and (skip_if_no_waters) :
+      print >> log, "No waters in model, skipping omit map calculation"
+      self.pdb_hierarchy_omit = pdb_hierarchy
+    else :
+      print >> log, ""
+      print >> log, "Calculating new 2mFo-DFc and mFo-DFc maps..."
+      print >> log, "  %d waters temporarily set to zero occupancy" % \
+        self.n_waters
+      print >> log, ""
+      self.pdb_hierarchy_omit = pdb_hierarchy.select(~water_sel)
+      occ = xrs.scatterers().extract_occupancies()
+      if (self.n_waters > 0) :
+        xrs.set_occupancies(value=0, selection=water_sel)
+      fmodel.update_xray_structure(xrs,
+        update_f_calc=True,
+        update_f_mask=False)
+      self.two_fofc_map = fmodel.map_coefficients(
+        map_type="2mFo-DFc",
+        exclude_free_r_reflections=exclude_free_r_reflections,
+        fill_missing=fill_missing_f_obs)
+      self.fofc_map = fmodel.map_coefficients(
+        map_type="mFo-DFc",
+        exclude_free_r_reflections=exclude_free_r_reflections,
+        fill_missing=fill_missing_f_obs)
+      if (fmodel.f_obs().anomalous_flag()) :
+        self.anom_map = fmodel.map_coefficients(
+          map_type="anom",
+          exclude_free_r_reflections=exclude_free_r_reflections,
+          fill_missing=fill_missing_f_obs)
+
+  def write_map_coeffs (self, file_name) :
+    assert (self.two_fofc_map is not None)
+    write_map_coeffs(
+      fwt_coeffs=self.two_fofc_map,
+      delfwt_coeffs=self.fofc_map,
+      anom_coeffs=self.anom_map,
+      file_name=file_name)
+
+  def write_pdb_file (self, file_name) :
+    self.pdb_hierarchy_omit.write_pdb_file(
+      file_name=file_name,
+      crystal_symmetry=self.crystal_symmetry)
+
 # XXX redundant, needs to be eliminated
 def write_map_coeffs (*args, **kwds) :
   import iotbx.map_tools
