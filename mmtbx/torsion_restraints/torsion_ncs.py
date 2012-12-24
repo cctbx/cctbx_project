@@ -929,13 +929,16 @@ class torsion_ncs(object):
           target_angle = utils.get_angle_average(cluster_angles)
         if self.params.target_damping:
           for c in cluster:
-            c_dist = utils.angle_distance(angles[c], target_angle)
-            if c_dist > self.params.damping_limit:
-              d_target = \
-                utils.get_angle_average([angles[c], target_angle])
-              target_angles[c] = d_target
+            if target_angle is None:
+              target_angles[c] = None
             else:
-              target_angles[c] = target_angle
+              c_dist = utils.angle_distance(angles[c], target_angle)
+              if c_dist > self.params.damping_limit:
+                d_target = \
+                  utils.get_angle_average([angles[c], target_angle])
+                target_angles[c] = d_target
+              else:
+                target_angles[c] = target_angle
         else:
           if (len(cluster) - cluster_outliers) == 1:
             for c in cluster:
