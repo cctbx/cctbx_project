@@ -31,11 +31,10 @@ af::shared<FloatType>
     af::ref<FloatType> result_ref = result.ref();
     scitbx::sym_mat3<FloatType> sphericity_tensor;
     sphericity_tensor.fill(0);
+    af::tiny<FloatType, 6> ucp = unit_cell.parameters();
+    FloatType ucs = unit_cell.volume() / (ucp[0]*ucp[1]*ucp[2]);
     for(int j = 0; j < sites_frac.size(); j++) {
       cctbx::fractional<> site_frac = sites_frac[j];
-      af::tiny<FloatType, 6> ucp = unit_cell.parameters();
-      FloatType abc = ucp[0]*ucp[1]*ucp[2];
-      FloatType ucs = unit_cell.volume() / abc;
       af::tiny<int, 3> box_min, box_max, n_center;
       for(int i = 0; i <= 2; i++) {
         FloatType rf=radius/ucp[i]/(ucs/std::sin(scitbx::deg_as_rad(ucp[i+3])));
