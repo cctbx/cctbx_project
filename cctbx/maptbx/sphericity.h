@@ -37,6 +37,7 @@ af::shared<FloatType>
       FloatType abc = ucp[0]*ucp[1]*ucp[2];
       FloatType ucs = unit_cell.volume() / abc;
       af::tiny<int, 3> box_min, box_max, n_center;
+      // FIXME inner loop redefines 'i'
       for(int i = 0; i <= 2; i++) {
         FloatType rf=radius/ucp[i]/(ucs/std::sin(scitbx::deg_as_rad(ucp[i+3])));
         box_min[i] = sm::nearest_integer(n_real[i]*(site_frac[i]-rf));
