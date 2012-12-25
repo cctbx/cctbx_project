@@ -31,13 +31,12 @@ af::shared<FloatType>
     af::ref<FloatType> result_ref = result.ref();
     scitbx::sym_mat3<FloatType> sphericity_tensor;
     sphericity_tensor.fill(0);
-    for(int i = 0; i < sites_frac.size(); i++) {
-      cctbx::fractional<> site_frac = sites_frac[i];
+    for(int j = 0; j < sites_frac.size(); j++) {
+      cctbx::fractional<> site_frac = sites_frac[j];
       af::tiny<FloatType, 6> ucp = unit_cell.parameters();
       FloatType abc = ucp[0]*ucp[1]*ucp[2];
       FloatType ucs = unit_cell.volume() / abc;
       af::tiny<int, 3> box_min, box_max, n_center;
-      // FIXME inner loop redefines 'i'
       for(int i = 0; i <= 2; i++) {
         FloatType rf=radius/ucp[i]/(ucs/std::sin(scitbx::deg_as_rad(ucp[i+3])));
         box_min[i] = sm::nearest_integer(n_real[i]*(site_frac[i]-rf));
@@ -70,7 +69,7 @@ af::shared<FloatType>
       af::shared<FloatType> ev =
         es::real_symmetric<FloatType>(sphericity_tensor).values();
       FloatType den = af::max(ev.ref());
-      if(den != 0) result[i] = af::min(ev.ref())/den;
+      if(den != 0) result[j] = af::min(ev.ref())/den;
     }
     return result;
 }
