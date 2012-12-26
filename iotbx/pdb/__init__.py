@@ -1121,6 +1121,35 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
         return records.expdta(line).technique.strip()
     return None
 
+  def extract_connectivity (self) :
+    """
+    Parse CONECT records and extract the indices of bonded atoms.  Returns
+    a scitbx.array_family.shared.stl_set_unsigned object corresponding to the
+    atoms array, with each element being the list of indices of bonded atoms
+    (if any).  If no CONECT records are found, returns None.
+
+    Note that the ordering of atoms may be altered by construct_hierarchy(), so
+    this method should probably be called after the hierarchy is made.
+    """
+    lines = self.connectivity_section()
+    if (len(lines) == 0) :
+      return None
+    from scitbx.array_family import shared
+    bonds = shared.stl_set_unsigned(len(self.atoms()), [])
+    serial_ref_hash = {}
+    for i_seq, atom in enumerate(self.atoms()) :
+      serial = atom.serial.strip()
+      serial_ref_hash[serial] = i_seq
+    for line in lines :
+      assert (line.startswith("CONECT"))
+      record = iotbx.pdb.records.conect(line)
+      i_seq = serial_ref_hash[record.serial.strip()]
+      assert (record.serial_numbers_bonded_atoms.count('') != 4)
+      for j_seq_str in record.serial_numbers_bonded_atoms :
+        if (j_seq_str != '') :
+          bonds[i_seq].append(serial_ref_hash[j_seq_str.strip()])
+    return bonds
+
 class rewrite_normalized(object):
 
   def __init__(self,
