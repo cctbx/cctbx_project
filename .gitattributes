@@ -883,6 +883,7 @@ iotbx/command_line/pdb_expand_ncs.py -text
 iotbx/command_line/pdb_labels_comparison.py svneol=native#text/x-python
 iotbx/command_line/pdb_labels_diff.py svneol=native#text/x-python
 iotbx/command_line/pdb_remediator.py svneol=native#text/x-python
+iotbx/command_line/pdb_show_connectivity.py -text
 iotbx/command_line/pdb_split_models.py -text
 iotbx/command_line/poscar_as_xray_structure.py svneol=native#text/x-python
 iotbx/command_line/r_free_flags_completion_simple.py svneol=native#text/x-python

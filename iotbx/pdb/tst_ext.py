@@ -739,6 +739,19 @@ REMARK   2 RESOLUTION. 1.7  ANGSTROMS.
   assert pdb_inp.extract_header_year() == 1992
   assert pdb_inp.extract_remark_iii_records(iii=2) \
       == ['REMARK   2 RESOLUTION. 1.7  ANGSTROMS.']
+  # extract_connectivity
+  pdb_inp = pdb.pdb_input(source_info=None, lines=flex.split_lines("""\
+HETATM    1  C   ACT  1428      -0.014   0.010   0.027  1.00 20.00
+HETATM    2  O   ACT  1428      -0.480  -1.088  -0.009  1.00 20.00
+HETATM    3  OXT ACT  1428      -0.744   0.936  -0.009  1.00 20.00
+HETATM    4  CH3 ACT  1428       1.238   0.142  -0.009  1.00 20.00
+CONECT    1    2    3    4
+CONECT    4    1
+"""))
+  bonds = pdb_inp.extract_connectivity()
+  assert (len(bonds) == 4)
+  assert (list(bonds[0]) == [1,2,3]) and (list(bonds[3]) == [0])
+  assert (list(bonds[1]) == list(bonds[2]) == [])
 
 def exercise_input_pickling():
   pdb_inp = pdb.pdb_input(source_info="file/name", lines=pdb_string_all_sections)
