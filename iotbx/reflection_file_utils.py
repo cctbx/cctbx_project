@@ -907,9 +907,9 @@ class process_raw_data (object) :
     merged_obs = obs.average_bijvoet_mates()
     if (merged_obs.completeness() < 0.9) :
       print >> log, """
-    WARNING: data are incomplete (%.1f%% of possible reflections measured to
-       %.2fA).  This may cause problems if you plan to use the maps for building
-         and/or ligand fitting!
+  WARNING: data are incomplete (%.1f%% of possible reflections measured to
+  %.2fA).  This may cause problems if you plan to use the maps for building
+  and/or ligand fitting!
     """ % (100*merged_obs.completeness(), merged_obs.d_min())
     # XXX this is kind of a hack (the reconstructed arrays break some of my
     # assumptions about labels)
@@ -948,8 +948,8 @@ class process_raw_data (object) :
         if ((test_flag_value is None) or
             (r_free_flags.data().all_eq(r_free_flags.data()[0]))) :
           print >> log, """
-    WARNING: uniform R-free flags detected; a new test set will be generated,
-      but this will bias the refinement statistics.
+  WARNING: uniform R-free flags detected; a new test set will be generated,
+  but this will bias the refinement statistics.
 """
           r_free_flags = None
         elif (n_r_free != n_obs) :
@@ -957,10 +957,10 @@ class process_raw_data (object) :
           n_missing = missing_set.indices().size()
           if (n_missing > 0) :
             print >> log, """
-    WARNING: R-free flags are incomplete relative to experimental
-       data (%d vs. %d reflections).  The flags will be extended
-       to complete the set, but we recommend supplying flags that
-       are already generated to the maximum expected resolution.
+  WARNING: R-free flags are incomplete relative to experimental
+  data (%d vs. %d reflections).  The flags will be extended to
+  complete the set, but we recommend supplying flags that are already
+  generated to the maximum expected resolution.
 """ % (n_r_free, n_obs)
             if (n_missing < 20) : # FIXME
               if (format == "cns") :
