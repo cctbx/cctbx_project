@@ -119,6 +119,15 @@ master_params_str = """\
   {
     intra_chain = False
       .type = bool
+    amino_acid_bond_cutoff = 1.9
+      .type = float
+      .short_caption = Distance cutoff for automatic linking of aminoacids
+    rna_dna_bond_cutoff = 3.5
+      .type = float
+      .short_caption = Distance cutoff for automatic linking of RNA/DNA
+    intra_residue_bond_cutoff = 1.99
+      .type = float
+      .short_caption = Distance cutoff for automatic linking of other residues
   }
   apply_cif_modification
     .optional = True
@@ -2533,10 +2542,16 @@ class build_all_chain_proxies(object):
           models[model_type_indices[i_model]].id
       if (is_unique_model and log is not None):
         print >> log, "    Number of chains:", model.chains_size()
-      if self.params.automatic_linking.intra_chain:
-        self.process_intra_chain_links(model=model,
-                                       mon_lib_srv=mon_lib_srv,
-                                       log=log)
+      al_params = self.params.automatic_linking
+      if al_params.intra_chain:
+        self.process_intra_chain_links(
+          model=model,
+          mon_lib_srv=mon_lib_srv,
+          log=log,
+          amino_acid_bond_cutoff    = al_params.amino_acid_bond_cutoff,
+          rna_dna_bond_cutoff       = al_params.rna_dna_bond_cutoff,
+          intra_residue_bond_cutoff = al_params.intra_residue_bond_cutoff,
+          )
         #apply_cif_links_mm_pdbres_dict.update(dict(
         #    self.empty_apply_cif_links_mm_pdbres_dict))
       flush_log(log)
@@ -3137,7 +3152,11 @@ class build_all_chain_proxies(object):
                                 model,
                                 mon_lib_srv,
                                 log,
-                                residue_group_cutoff2=100.,
+                                residue_group_cutoff2=400.,
+                                #bond_cutoff=2.75,
+                                amino_acid_bond_cutoff=1.9,
+                                rna_dna_bond_cutoff=3.5,
+                                intra_residue_bond_cutoff=1.99,
                                 verbose=False,
                                 ):
     ########################################
@@ -3172,6 +3191,8 @@ class build_all_chain_proxies(object):
           if classes1.common_amino_acid and classes2.common_amino_acid: continue
           if classes1.common_rna_dna and classes2.common_rna_dna: continue
           d2 = linking_utils.get_distance2(atom1, atom2)
+          if verbose:
+            print atom1.quote(), atom2.quote(), d2,residue_group_cutoff2
           if d2>residue_group_cutoff2: continue
           rc = linking_utils.process_atom_groups_for_linking(
             self.pdb_hierarchy,
@@ -3179,6 +3200,11 @@ class build_all_chain_proxies(object):
             atom2,
             classes1,
             classes2,
+            #bond_cutoff=bond_cutoff,
+            amino_acid_bond_cutoff=amino_acid_bond_cutoff,
+            rna_dna_bond_cutoff=rna_dna_bond_cutoff,
+            intra_residue_bond_cutoff=intra_residue_bond_cutoff,
+            verbose=verbose,
             )
           if rc is None: continue
           pdbres_pairs, data_links, atomss = rc
@@ -3252,6 +3278,13 @@ class build_all_chain_proxies(object):
               )
             outl += '%sCreating link for "%s"\n' % (" "*10, apply.data_link)
             mon_lib_srv.link_link_id_dict[apply.data_link] = None
+            if verbose:
+              print outl
+              print apply
+              for attr in apply.__dict__:
+                print attr
+                print getattr(apply, attr),
+                print getattr(getattr(apply, attr), "name", "")
       if outl:
         print >> log, "%sAdding automatically detected intra-chain links" % (
           " "*6,
