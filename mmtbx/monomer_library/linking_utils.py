@@ -433,19 +433,21 @@ def process_atom_groups_for_linking(pdb_hierarchy,
                                     atom2,
                                     classes1,
                                     classes2,
-                                    bond_cutoff=2.75,
+                                    #bond_cutoff=2.75,
                                     amino_acid_bond_cutoff=1.9,
                                     rna_dna_bond_cutoff=3.5,
                                     intra_residue_bond_cutoff=1.99,
                                     verbose=False,
                                     ):
-  bond_cutoff *= bond_cutoff
+  #bond_cutoff *= bond_cutoff
+  intra_residue_bond_cutoff *= intra_residue_bond_cutoff
   atom_group1 = atom1.parent()
   atom_group2 = atom2.parent()
   residue_group1 = atom_group1.parent()
   residue_group2 = atom_group2.parent()
   if(atom1.element.upper().strip() in ad_hoc_single_metal_residue_element_types or
      atom2.element.upper().strip() in ad_hoc_single_metal_residue_element_types):
+    if verbose: print "Returning None because of metal"
     return None # if metal
     link_atoms = get_link_atoms(residue_group1, residue_group2)
     if link_atoms:
@@ -456,7 +458,15 @@ def process_atom_groups_for_linking(pdb_hierarchy,
     else: return None
   else:
     atom1, atom2 = get_closest_atoms(residue_group1, residue_group2)
-    if get_distance2(atom1, atom2)>bond_cutoff: return None
+    #if get_distance2(atom1, atom2)>bond_cutoff:
+    if get_distance2(atom1, atom2)>intra_residue_bond_cutoff:
+      if verbose: print "atoms too far apart %s %s %0.1f %0.1f" % (
+        atom1.quote(),
+        atom2.quote(),
+        get_distance2(atom1, atom2),
+        bond_cutoff,
+        )
+      return None
     return process_atom_groups_for_linking_single_link(pdb_hierarchy,
                                                        atom1,
                                                        atom2,
@@ -483,15 +493,20 @@ def process_atom_groups_for_linking_single_link(pdb_hierarchy,
 #distance 1.33469921705
 #------------------------------------------------------------------
     if atom1.element.strip()=="O" and atom2.element.strip()=="O": return None
-    if atom2.name.find("C")>-1: # needs to be better uding get_class???
+    if atom2.name.find("C")>-1: # needs to be better using get_class???
       tmp_atom = atom1
       atom1 = atom2
       atom2 = tmp_atom
 
-  tmp_key = "%s-%s" % (atom1.parent().resname.strip(),
-                       atom2.parent().resname.strip(),
-                       )
-
+  tmp_key = "%s:%s-%s:%s" % (atom1.parent().resname.strip(),
+                             atom1.name.strip(),
+                             atom2.parent().resname.strip(),
+                             atom2.name.strip(),
+                             )
+  if verbose:
+    print "tmp_key %s" % tmp_key
+    print atom1.quote()
+    print atom2.quote()
   if is_n_glyco_bond(atom1, atom2):
     if tmp_key in standard_n_links:
       data_links = ""
@@ -513,9 +528,10 @@ def process_atom_groups_for_linking_single_link(pdb_hierarchy,
     elif atom2.name.find("O")>-1:
       o_atom = atom2
     if c_atom and o_atom:
-      angles = get_angles_from_included_bonds(pdb_hierarchy,
-                                              [[atom1, atom2]],
-                                              bond_cutoff=2., #control.intra_residue_bond_cutoff,
+      angles = get_angles_from_included_bonds(
+        pdb_hierarchy,
+        [[atom1, atom2]],
+        bond_cutoff=intra_residue_bond_cutoff,
                                               )
       hand = get_hand(c_atom, o_atom, angles) #"ALPHA"
       assert hand
