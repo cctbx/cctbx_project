@@ -25,6 +25,9 @@ class kick_map(object):
     fmodel_tmp = fmodel.deep_copy()
     scale = fmodel.k_isotropic()*fmodel.k_anisotropic()
     scale = 1./scale
+    f_obs = fmodel.f_obs()
+    if (f_obs.anomalous_flag()) :
+      scale = f_obs.customized_copy(data=scale).average_bijvoet_mates().data()
     map_helper_obj = fmodel.map_calculation_helper()
     map_coeff_data = None
     counter = 0
@@ -207,6 +210,7 @@ class electron_density_map(object):
           miller_set = self.fmodel.f_calc(),
           data       = fo_all_scales + fc_all_scales)
     assert (coeffs is not None)
+    r_free_flags = None
     if (exclude_free_r_reflections) :
       if (coeffs.anomalous_flag()) :
         coeffs = coeffs.average_bijvoet_mates()
