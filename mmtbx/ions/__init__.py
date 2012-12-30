@@ -1637,47 +1637,16 @@ def _identity(atom):
 
   return "%s%+d" % (_get_element(atom), charge)
 
-def find_anomalous_scatterers (
-    fmodel,
-    pdb_hierarchy,
-    wavelength,
-    prefix = "phaser_AX",
-    verbose = True,
-    log = None) :
+def find_anomalous_scatterers (*args, **kwds) :
   """
-  Runs phaser to collect a list of anomalous scatterers around the unit cell.
+  Wrapper for corresponding method in phaser.substructure, if phaser is
+  available and configured.
   """
-  if (log is None) : log = sys.stdout
-  if (wavelength is None) :
-    raise Sorry("Please specify the X-ray wavelength.")
   if (not libtbx.env.has_module("phaser")) :
     print "Phaser not available"
     return None
-  from phaser.phenix_adaptors import sad_target
-  import phaser
-  assert (fmodel.f_obs().anomalous_flag())
-  adaptor = sad_target.data_adaptor(
-    f_obs = fmodel.f_obs(),
-    r_free_flags = fmodel.r_free_flags(),
-    verbose = True)
-  phaser_input = adaptor.set_ep_auto_data(
-    xray_structure = fmodel.xray_structure,
-    pdb_hierarchy = pdb_hierarchy)
-  phaser_input.setLLGC_COMP(True)
-  phaser_input.addLLGC_SCAT("AX")
-  phaser_input.setWAVE(wavelength)
-  phaser_input.setROOT(prefix)
-  phaser_input.setMUTE(not verbose)
-  phaser_input.setHKLO(False)
-  phaser_input.setXYZO(False)
-  phaser_input.setLLGC_NCYC(2)
-  out = phaser.Output()
-  if (not verbose) :
-    out.setPackagePhenix(null_out())
-  else :
-    out.setPackagePhenix(log)
-  result = phaser.runEP_AUTO(phaser_input, out)
-  return result.getIotbx() # pdb hierarchy object
+  from phaser import substructure
+  return substructure.find_anomalous_scatterers(*args, **kwds)
 
 def create_manager (
     pdb_hierarchy,
