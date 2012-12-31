@@ -13,12 +13,17 @@ WXTBX_PHIL_PATH_DIRECTORY = 2
 WXTBX_PHIL_PATH_VIEW_BUTTON = 4
 WXTBX_PHIL_PATH_NARROW = 8
 WXTBX_PHIL_PATH_UPDATE_ON_KILL_FOCUS = 16
+WXTBX_PHIL_PATH_DEFAULT_CWD = 32
 
 class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
   def __init__ (self, *args, **kwds) :
+    phil_controls.PhilCtrl.__init__(self)
+    self.SetOptional(True) # this will be overridden elsewhere if necessary
     wx.SystemOptions.SetOptionInt("osx.openfiledialog.always-show-types", 1)
     kwds = dict(kwds)
     self._path_style = kwds.get("style", WXTBX_PHIL_PATH_VIEW_BUTTON)
+    assert ((self._path_style & WXTBX_PHIL_PATH_DIRECTORY) or
+            (not self._path_style & WXTBX_PHIL_PATH_DEFAULT_CWD))
     value = kwds.pop("value", None)
     kwds['style'] = wx.NO_BORDER
     self._formats = ()
@@ -98,7 +103,7 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
 
   def GetPhilValue (self) :
     self._path_text.GetValidator().Validate(self)
-    val_str = self.GetValue()
+    val_str = self.GetValue().strip()
     assert isinstance(val_str, str)
     if (val_str == "") :
       return self.ReturnNoneIfOptional()
@@ -179,6 +184,11 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
       print "NotImplemented"
 
   def OnEnter (self, event) :
+    if (self._path_style & WXTBX_PHIL_PATH_DEFAULT_CWD) :
+      value = self.GetValue().strip()
+      if (value == "") :
+        from libtbx.utils import getcwd_safe
+        self.SetValue(getcwd_safe())
     self.Validate()
     self.DoSendEvent()
 
@@ -237,10 +247,11 @@ if (__name__ == "__main__") :
   path3 = PathCtrl(panel, -1, pos=(200,220), name="Output directory",
     size=(300,-1),
     style=WXTBX_PHIL_PATH_DIRECTORY|WXTBX_PHIL_PATH_VIEW_BUTTON|
-      WXTBX_PHIL_PATH_UPDATE_ON_KILL_FOCUS)
+      WXTBX_PHIL_PATH_UPDATE_ON_KILL_FOCUS|WXTBX_PHIL_PATH_DEFAULT_CWD)
+  path3.SetOptional(False)
   path4 = PathCtrl(panel, -1, pos=(20,300), name="Default parameters",
     style=WXTBX_PHIL_PATH_NARROW|WXTBX_PHIL_PATH_VIEW_BUTTON)
-  path3.SetFormats("phil")
+  path4.SetFormats("phil")
   pdb_out = os.path.join(os.getcwd(), "model.pdb")
   path2.SetValue(pdb_out)
   button = wx.Button(panel, -1, "Process inputs", pos=(600,400))
