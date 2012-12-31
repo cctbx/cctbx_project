@@ -3,11 +3,34 @@ from cctbx.array_family import flex
 import sys
 from libtbx import adopt_init_args
 from cctbx import maptbx
-import iotbx.phil
+import libtbx.phil
 from libtbx.str_utils import format_value
 from mmtbx.refinement import print_statistics
 
-master_params = iotbx.phil.parse("""\
+peak_search_params_str = """
+peak_search_level = 1
+  .type=int
+max_peaks = 0
+  .type=int
+  .short_caption=Maximum peaks
+interpolate = True
+  .type=bool
+min_distance_sym_equiv = None
+  .type=float
+  .short_caption=Minimum distance between symmetry-equivalent atoms
+general_positions_only = False
+  .type=bool
+min_cross_distance = 1.8
+  .type=float
+  .short_caption=Minimum cross distance
+min_cubicle_edge = 5
+  .type=float
+  .short_caption=Minimum edge length of cubicles used for \
+    fast neighbor search
+  .expert_level=2
+"""
+
+master_params = libtbx.phil.parse("""\
   use_sigma_scaled_maps = True
     .type=bool
     .help = Default is sigma scaled map, map in absolute scale is used \
@@ -39,28 +62,9 @@ master_params = iotbx.phil.parse("""\
     .short_caption = Search settings
     .style = box auto_align
   {
-    peak_search_level = 1
-      .type=int
-    max_peaks = 0
-      .type=int
-      .short_caption=Maximum peaks
-    interpolate = True
-      .type=bool
-    min_distance_sym_equiv = None
-      .type=float
-      .short_caption=Minimum distance between symmetry-equivalent atoms
-    general_positions_only = False
-      .type=bool
-    min_cross_distance = 1.8
-      .type=float
-      .short_caption=Minimum cross distance
-    min_cubicle_edge = 5
-      .type=float
-      .short_caption=Minimum edge length of cubicles used for \
-        fast neighbor search
-      .expert_level=2
+    %s
   }
-""")
+""" % peak_search_params_str)
 
 class peaks_holder(object):
   def __init__(self, heights, sites, iseqs_of_closest_atoms = None):

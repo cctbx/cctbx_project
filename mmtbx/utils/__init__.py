@@ -943,20 +943,7 @@ def set_log(args):
   return log
 
 def print_header(line, out=None):
-  if (out is None): out = sys.stdout
-  header_len = 80
-  line_len = len(line)
-  fill_len = header_len - line_len
-  fill_rl = fill_len//2
-  fill_r = fill_rl
-  fill_l = fill_rl
-  if (fill_rl*2 != fill_len):
-    fill_r +=1
-  out_string = "\n"+"="*(fill_l-1)+" "+line+" "+"="*(fill_r-1)+"\n"
-  if(len(out_string) > 80):
-    out_string = "\n"+"="*(fill_l-1)+" "+line+" "+"="*(fill_r-2)+"\n"
-  print >> out, out_string
-  out.flush()
+  str_utils.make_header(line, out=out)
 
 def get_atom_selection(pdb_file_name, selection_string, iselection = False):
   processed_pdb_file = monomer_library.pdb_interpretation.process(
@@ -2377,7 +2364,7 @@ class cmdline_load_pdb_and_data (object) :
       out=sys.stdout,
       process_pdb_file=True,
       create_fmodel=True,
-      scattering_table="wk1995",
+      scattering_table="n_gaussian",
       prefer_anomalous=None) :
     from iotbx import file_reader
     self.args = args
@@ -2392,7 +2379,8 @@ class cmdline_load_pdb_and_data (object) :
       reflection_file_def="input.xray_data.file_name",
       cif_file_def="input.monomers.file_name",
       seq_file_def=None)
-    params = cmdline.work.extract()
+    self.working_phil = cmdline.work
+    params = self.working_phil.extract()
     if len(params.input.pdb.file_name) == 0 :
       raise Sorry("At least one PDB file is required as input.")
     if (params.input.xray_data.file_name is None) :
@@ -2407,6 +2395,10 @@ class cmdline_load_pdb_and_data (object) :
       flags_parameter_scope="input.xray_data.r_free_flags",
       prefer_anomalous=prefer_anomalous,
       log=out)
+    self.intensity_flag = data_and_flags.intensity_flag
+    self.raw_data = data_and_flags.raw_data
+    self.raw_flags = data_and_flags.raw_flags
+    self.test_flag_value = data_and_flags.test_flag_value
     self.cif_file_names = params.input.monomers.file_name
     self.cif_objects = []
     self.pdb_file_names = params.input.pdb.file_name
