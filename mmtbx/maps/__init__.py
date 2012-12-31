@@ -1,13 +1,14 @@
 from __future__ import division
 import mmtbx.utils
-from libtbx.utils import Sorry, date_and_time
 import iotbx.phil
+from scitbx.array_family import flex
+from libtbx.utils import Sorry, date_and_time
 from libtbx import adopt_init_args
 from libtbx.str_utils import show_string
 from libtbx.math_utils import ifloor, iceil
+import libtbx.callbacks # import dependency
 import os
 import sys
-from scitbx.array_family import flex
 
 map_coeff_params_base_str = """\
   map_coefficients
@@ -513,6 +514,16 @@ class compute_map_coefficients(object):
               label_decorator   = lbl_mgr)
           self.map_coeffs.append(coeffs)
         elif (coeffs is None) :
+          if ((mcp.map_type == "anomalous") and
+              (not fmodel.f_obs().anomalous_flag())) :
+            # since anomalous map is included in the defaults, even if the
+            # data are merged, no warning is issued here
+            pass
+          else :
+            libtbx.warn(("Map coefficients not available for map type '%s'; "+
+              "usually means you have requested an anomalous map but supplied "+
+              "merged data, or indicates a twinning-related incompatibility.")%
+              mcp.map_type)
           print >> log, "WARNING: map coefficients not available for '%s'" % \
             mcp.map_type
 

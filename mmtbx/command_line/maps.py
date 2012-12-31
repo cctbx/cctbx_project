@@ -342,7 +342,8 @@ def run (args, log = sys.stdout, use_output_directory=True,
   cmo = mmtbx.maps.compute_map_coefficients(
     fmodel = fmodel,
     params = params.maps.map_coefficients,
-    pdb_hierarchy = pdb_hierarchy)
+    pdb_hierarchy = pdb_hierarchy,
+    log = log)
   map_coeff_file_name = file_name_base+"_map_coeffs.mtz"
   write_mtz_file_result = cmo.write_mtz_file(file_name = map_coeff_file_name)
   if(params.maps.output.fmodel_data_file_format is not None):
