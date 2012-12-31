@@ -31,6 +31,7 @@ class index (object) :
     self._input_files = []
     self._hidden = [] # XXX: not implemented here (for phenix GUI)
     self._phil_has_changed = False
+    self._output_dir_path = None
     self._log = str_utils.StringIO()
     self._prefix = None
     if parse is None :
@@ -376,7 +377,11 @@ class index (object) :
             files.append((file_name, label, def_name))
     return files
 
+  # XXX DEPRECATED
   def get_run_title (self) :
+    return self.get_job_title()
+
+  def get_job_title (self) :
     for def_name in self._full_path_index.keys() :
       if ((def_name in ["title", "job_title"]) or
           (def_name.endswith(".title") or def_name.endswith(".job_title"))) :
@@ -384,6 +389,9 @@ class index (object) :
         assert phil_def.is_definition
         return phil_def.extract()
     return None
+
+  def get_output_dir (self) :
+    return self.get_scope_by_name(self._output_dir_path).extract()
 
   def is_list_type (self, phil_scope_name) :
     phil_object = self.get_scope_by_name(phil_scope_name)
@@ -545,6 +553,8 @@ class index (object) :
         self.style[full_object_path] = style
         if style.hidden :
           self._hidden.append(full_object_path)
+        if (style.output_dir) :
+          self._output_dir_path = full_object_path
         if style.OnUpdate is not None :
           print "OnUpdate is deprecated (%s)" % full_object_path
           self._update_handlers[full_object_path] = style.OnUpdate
