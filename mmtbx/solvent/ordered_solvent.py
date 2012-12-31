@@ -15,21 +15,7 @@ from cctbx import miller
 from cctbx import maptbx
 from libtbx.test_utils import approx_equal
 
-master_params_str = """\
-  low_resolution = 2.8
-    .type = float
-    .help = Low resolution limit for water picking (at lower resolution water \
-            will not be picked even if requessted)
-    .short_caption = Minimum resolution
-  mode = *auto filter_only every_macro_cycle
-    .type=choice
-    .help = Choices for water picking strategy: auto - start water picking \
-            after ferst few macro-cycles, filter_only - remove water only, \
-            every_macro_cycle - do water update every macro-cycle
-    .short_caption = Mode
-  n_cycles = 1
-    .type = int
-    .short_caption = Number of cycles
+output_params_str = """
   output_residue_name = HOH
     .type=str
     .input_size = 50
@@ -44,21 +30,9 @@ master_params_str = """\
     .help = Defines scattering factors for newly added waters
     .expert_level=2
     .input_size = 50
-  primary_map_type = mFobs-DFmodel
-    .type=str
-  primary_map_cutoff = 3.0
-    .type=float
-  secondary_map_and_map_cc_filter
-  {
-    cc_map_1_type = "Fc"
-      .type = str
-    cc_map_2_type = 2mFo-DFmodel
-      .type = str
-    poor_cc_threshold = 0.7
-      .type = float
-    poor_map_value_threshold = 1.0
-      .type = float
-  }
+"""
+
+h_bond_params_str = """
   h_bond_min_mac = 1.8
     .type = float
     .short_caption = H-bond minimum for solvent-model
@@ -71,16 +45,14 @@ master_params_str = """\
     .type = float
     .short_caption = Maximum H-bond length
     .expert_level = 1
+"""
+
+adp_occ_params_str = """
   new_solvent = *isotropic anisotropic
     .type = choice
     .help = Based on the choice, added solvent will have isotropic or \
             anisotropic b-factors
     .short_caption = New solvent ADP type
-    .expert_level = 1
-  refine_adp = True
-    .type = bool
-    .help = Refine ADP for newly placed solvent.
-    .short_caption = Refine new solvent ADPs
     .expert_level = 1
   b_iso_min = 1.0
     .type=float
@@ -102,10 +74,6 @@ master_params_str = """\
     .help = Initial B-factor value for newly added water
     .short_caption = Initial B-factor value
     .expert_level = 1
-  refine_occupancies = False
-    .type = bool
-    .help = Refine solvent occupancies.
-    .expert_level = 1
   occupancy_min = 0.1
     .type=float
     .help = Minimum occupancy value, waters with smaller value will be rejected
@@ -118,6 +86,50 @@ master_params_str = """\
     .type=float
     .help = Initial occupancy value for newly added water
     .short_caption = Initial occupancy value
+"""
+
+master_params_str = """\
+  low_resolution = 2.8
+    .type = float
+    .help = Low resolution limit for water picking (at lower resolution water \
+            will not be picked even if requessted)
+    .short_caption = Minimum resolution
+  mode = *auto filter_only every_macro_cycle
+    .type=choice
+    .help = Choices for water picking strategy: auto - start water picking \
+            after ferst few macro-cycles, filter_only - remove water only, \
+            every_macro_cycle - do water update every macro-cycle
+    .short_caption = Mode
+  n_cycles = 1
+    .type = int
+    .short_caption = Number of cycles
+  %s
+  primary_map_type = mFobs-DFmodel
+    .type=str
+  primary_map_cutoff = 3.0
+    .type=float
+  secondary_map_and_map_cc_filter
+  {
+    cc_map_1_type = "Fc"
+      .type = str
+    cc_map_2_type = 2mFo-DFmodel
+      .type = str
+    poor_cc_threshold = 0.7
+      .type = float
+    poor_map_value_threshold = 1.0
+      .type = float
+  }
+  %s
+  refine_adp = True
+    .type = bool
+    .help = Refine ADP for newly placed solvent.
+    .short_caption = Refine new solvent ADPs
+    .expert_level = 1
+  refine_occupancies = False
+    .type = bool
+    .help = Refine solvent occupancies.
+    .expert_level = 1
+  %s
   filter_at_start = True
     .type = bool
     .expert_level = 1
@@ -140,7 +152,7 @@ master_params_str = """\
      number_of_kicks = 100
        .type = int
   }
-"""
+""" % (output_params_str, h_bond_params_str, adp_occ_params_str)
 
 def master_params():
   return iotbx.phil.parse(master_params_str)
