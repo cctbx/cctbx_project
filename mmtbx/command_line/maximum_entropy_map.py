@@ -1,35 +1,49 @@
-from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.maximum_entropy_map
 
-import sys
+from __future__ import division
 import mmtbx.utils
-from libtbx.utils import user_plus_sys_time
 import iotbx.phil
 from iotbx import reflection_file_utils
-from libtbx.utils import Sorry
 import cctbx.maptbx.mem as mem
+from libtbx.utils import user_plus_sys_time, Sorry
+from libtbx import runtime_utils
+import os.path
+import sys
 
 master_params_str="""\
 hkl_file_name = None
-  .type = str
+  .type = path
+  .short_caption = Map coefficients
+  .style = bold file_type:mtz process_hkl child:map_arrays:label input_file
 label = None
   .type = str
+  .input_size = 160
+  .short_caption = Column labels
+  .style = bold renderer:draw_map_arrays_widget noauto
 pdb_file_name = None
-  .type = str
+  .type = path
+  .short_caption = PDB file
+  .style = file_type:pdb
 scattering_table = wk1995  it1992  *n_gaussian  neutron
   .type = choice
 solvent_fraction = None
   .type = float
 f_000 = None
   .type = float
+  .short_caption = F(0,0,0)
 lam = 0.05
   .type = float
+  .short_caption = Lambda
 lambda_increment_factor = 1.02
   .type = float
 output_file_name = None
-  .type = str
+  .type = path
+  .short_caption = Output file
+  .style = bold output_file file_type:mtz
 column_root_label = MEM
   .type = str
+  .input_size = 100
+  .short_caption = Output label base
 output_high_resolution = None
   .type = float
 mean_solvent_density = 0.35
@@ -42,7 +56,15 @@ beta = 0.7
   .type = float
 convergence_at_r_factor = 0.05
   .type = float
+gui_output_dir = None
+  .type = path
+  .short_caption = Output directory
+  .style = output_dir
+include scope libtbx.phil.interface.tracking_params
 """
+
+def master_params () :
+  return iotbx.phil.parse(master_params_str, process_includes=True)
 
 def broadcast(m, log):
   print >> log, "-"*79
@@ -68,7 +90,7 @@ def run(args, log):
   timer = user_plus_sys_time()
   format_usage_message(log = log)
   if(len(args)==0): return
-  parsed = iotbx.phil.parse(master_params_str)
+  parsed = master_params()
   inputs = mmtbx.utils.process_command_line_args(
     args=args, master_params=parsed, log=log)
   params = inputs.params.extract()
@@ -145,6 +167,26 @@ def run(args, log):
     column_root_label=params.column_root_label,
     d_min=params.output_high_resolution)
   broadcast(m="All done", log=log)
+  return os.path.abspath(ofn)
+
+class launcher (runtime_utils.target_with_save_result) :
+  def run (self) :
+    os.mkdir(self.output_dir)
+    os.chdir(self.output_dir)
+    return run(args=list(self.args), log=sys.stdout)
+
+def validate_params (params) :
+  if (params.hkl_file_name is None) :
+    raise Sorry("Please specify an MTZ file containing map coefficients.")
+  elif (params.label is None) :
+    raise Sorry("No column labels specified.")
+  return True
+
+def finish_job (result) :
+  output_files, stats = [], []
+  if (result is not None) and (os.path.isfile(result)) :
+    output_files.append((result, "Maximum entropy map"))
+  return output_files, stats
 
 if(__name__ == "__main__"):
   timer = user_plus_sys_time()
