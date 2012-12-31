@@ -220,6 +220,11 @@ struct mark3_collect_data{
     }
   }
 
+  int
+  get_first_index(int const& frame_id) const {
+    return frame_first_index.find(frame_id)->second;
+  }
+
   marray
   frame_indices(int const& frame_id)const{
     marray result;
@@ -248,6 +253,17 @@ struct mark3_collect_data{
     for (int im = 0; im < hi_E_limit.size(); ++im){
       result_model_cx[first + im] = (hi_E_limit[im][1] + lo_E_limit[im][1])/2.;
       result_model_cy[first + im] = (hi_E_limit[im][0] + lo_E_limit[im][0])/2.;
+      result_flags[first + im] = observed_flag[im];
+      SCITBX_ASSERT (observed_flag[im]); // no current support for masked-out spots
+    }
+  }
+  void collect_mean_position(scitbx::af::shared<scitbx::vec3<double> > mean_position,
+               barray observed_flag,
+               int const& frame_id){
+    int first = frame_first_index.find(frame_id)->second;
+    for (int im = 0; im < mean_position.size(); ++im){
+      result_model_cx[first + im] = mean_position[im][1];
+      result_model_cy[first + im] = mean_position[im][0];
       result_flags[first + im] = observed_flag[im];
       SCITBX_ASSERT (observed_flag[im]); // no current support for masked-out spots
     }
@@ -383,9 +399,11 @@ namespace boost_python { namespace {
     ;
     class_<mark3_collect_data>("mark3_collect_data",no_init)
       .def(init<mark3_collect_data::iarray,mark3_collect_data::marray>())
+      .def("get_first_index",&mark3_collect_data::get_first_index)
       .def("frame_indices",&mark3_collect_data::frame_indices)
       .def("selection",&mark3_collect_data::selection)
       .def("collect",&mark3_collect_data::collect)
+      .def("collect_mean_position",&mark3_collect_data::collect_mean_position)
       .add_property("cx", make_getter(&mark3_collect_data::result_model_cx, rbv()))
       .add_property("cy", make_getter(&mark3_collect_data::result_model_cy, rbv()))
       .add_property("flags", make_getter(&mark3_collect_data::result_flags, rbv()))
