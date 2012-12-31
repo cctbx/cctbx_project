@@ -2444,6 +2444,19 @@ class cmdline_load_pdb_and_data (object) :
     self.r_free_flags = data_and_flags.r_free_flags
     self.params = params
 
+def validate_input_params (params) :
+  if params.input.pdb.file_name is None :
+    raise Sorry("No PDB file defined.")
+  elif params.input.xray_data.file_name is None :
+    raise Sorry("No reflection file defined.")
+  elif params.input.xray_data.labels is None :
+    raise Sorry("No labels chosen for reflection data.")
+  elif (params.input.xray_data.r_free_flags.label is None) :
+    raise Sorry("R-free flags not defined.  If you are trying to run this "+
+      "program with a reflections file that is missing R-free flags, use "+
+      "the reflection file editor to generate a new tests set.")
+  return True
+
 def max_distant_rotomer(xray_structure, pdb_hierarchy, selection,
       min_dist_flag=False):
   from mmtbx.command_line import lockit
