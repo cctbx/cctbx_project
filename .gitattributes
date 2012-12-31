@@ -1143,6 +1143,7 @@ libtbx/tst_lzw.py -text
 libtbx/tst_math_utils.py svneol=native#text/x-python
 libtbx/tst_object_oriented_patterns.py -text
 libtbx/tst_path.py svneol=native#text/x-python
+libtbx/tst_representation.py -text
 libtbx/tst_runtime_utils.py -text
 libtbx/tst_topological_sort.py svneol=native#text/x-python
 libtbx/tst_xmlrpc_utils.py -text
