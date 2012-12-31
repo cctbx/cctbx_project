@@ -239,7 +239,8 @@ gui
     .help = Pickled result file for Phenix GUI
   output_dir = None
     .type = path
-    .style = default_cwd
+    .style = output_dir
+    .short_caption = Output directory
   include scope libtbx.phil.interface.tracking_params
 }
 }
@@ -1233,6 +1234,8 @@ def validate_params (params, callback=None) :
         (params.scaling.input.asu_contents.n_bases is not None)) :
       raise Sorry("Please leave the number of residues and bases blank when "+
         "providing a sequence file.")
+  if (params.scaling.gui.output_dir is None) :
+    raise Sorry("Please specify an output directory.")
   return True
 
 if (__name__ == "__main__") :

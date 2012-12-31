@@ -188,7 +188,7 @@ maps {
       .type = path
       .short_caption = Output directory
       .help = For GUI only.
-      .style = bold directory noauto
+      .style = bold output_dir noauto
     prefix = None
       .type = str
       .input_size = 100
