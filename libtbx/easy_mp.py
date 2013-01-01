@@ -358,7 +358,7 @@ def parallel_map (
     qsub_command=None,
     asynchronous=False,
     callback=None,
-    preserve_order=False) : # XXX should this be True by default?
+    preserve_order=True) :
   """
   Generic parallel map() implementation for a variety of platforms, including
   the multiprocessing module and supported queuing systems, via the module
