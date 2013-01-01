@@ -1,4 +1,8 @@
 
+"""
+Convenience tool for collecting validation statistics with minimal overhead.
+"""
+
 from __future__ import division
 from libtbx import slots_getstate_setstate, Auto
 from libtbx.utils import Sorry, Usage
@@ -130,9 +134,17 @@ class ensemble (slots_getstate_setstate) :
     "rama_out",
     "rama_fav",
     "rota_out",
+    "cbeta_out",
     "clashscore",
     "mpscore",
-    "cbeta_out",
+  ]
+  __slot_labels__ = [
+    "Ramachandran outliers",
+    "Ramachandran favored",
+    "Rotamer outliers",
+    "C-beta outliers",
+    "Clashscore",
+    "MolProbity score",
   ]
   def __init__ (self, pdb_hierarchy, xray_structures, nproc=Auto) :
     assert (len(pdb_hierarchy.models()) == 1)
@@ -210,6 +222,7 @@ run phenix.model_vs_data or the validation GUI.)
   print >> out, "Validation summary for %s%s:" % (pdb_file, extra)
   s.show(out=out, prefix="  ")
   print >> out, ""
+  return s
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
