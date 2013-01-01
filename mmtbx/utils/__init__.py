@@ -966,7 +966,7 @@ cif_params = iotbx.phil.parse("""\
     .type=path
     .help=Monomer file(s) name (CIF)
     .multiple=True
-    .short_caption=CIF File
+    .short_caption=Restraints
     .input_size = 400
     .style = bold input_file file_type:cif
 """)
