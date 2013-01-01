@@ -1,12 +1,20 @@
-from __future__ import division
 
+from __future__ import division
+from libtbx import slots_getstate_setstate, Auto
 from libtbx.utils import Sorry, Usage
 from libtbx import str_utils
+from libtbx import easy_mp
 import cStringIO
 import os
 import sys
 
 class summary (object) :
+  """
+  Very basic MolProbity statistics for a refinement result, plus R-factors and
+  RMS(bonds)/RMS(angles) if they can be extracted from REMARK records in the
+  PDB header.  Suitable for benchmarking or collecting statistics, but not a
+  substitute for full validation.
+  """
   def __init__ (self, pdb_hierarchy=None, pdb_file=None, sites_cart=None,
       keep_hydrogens=False) :
     if (pdb_hierarchy is None) :
@@ -101,6 +109,72 @@ class summary (object) :
     if (self.d_min is not None) :
       print >> out, "%sHigh resolution       = %6.2f" % (prefix, self.d_min)
 
+class parallel_driver (object) :
+  """
+  Simple wrapper for passing to easy_mp.pool_map.
+  """
+  def __init__ (self, pdb_hierarchy, xray_structures) :
+    self.pdb_hierarchy = pdb_hierarchy
+    self.xray_structures = xray_structures
+
+  def __call__ (self, i_model) :
+    sites_cart = self.xray_structures[i_model].sites_cart()
+    pdb_hierarchy = self.pdb_hierarchy.deep_copy()
+    return summary(pdb_hierarchy=pdb_hierarchy, sites_cart=sites_cart)
+
+class ensemble (slots_getstate_setstate) :
+  """
+  MolProbity validation results for an ensemble of models.
+  """
+  __slots__ = [
+    "rama_out",
+    "rama_fav",
+    "rota_out",
+    "clashscore",
+    "mpscore",
+    "cbeta_out",
+  ]
+  def __init__ (self, pdb_hierarchy, xray_structures, nproc=Auto) :
+    assert (len(pdb_hierarchy.models()) == 1)
+    validate = parallel_driver(pdb_hierarchy, xray_structures)
+    summaries = easy_mp.pool_map(
+      processes=nproc,
+      fixed_func=validate,
+      args=range(len(xray_structures)))
+    for name in self.__slots__ :
+      array = []
+      for s in summaries :
+        array.append(getattr(s, name))
+      setattr(self, name, array)
+
+  def show (self, out=None, prefix="") :
+    if (out is None) :
+      out = sys.stdout
+    def min_max_mean (array) :
+      if (len(array) == 0) or (array.count(None) == len(array)) :
+        return (None, None, None)
+      else :
+        return min(array), max(array), sum(array) / len(array)
+    def fs (format, value) :
+      return str_utils.format_value(format, value, replace_none_with=("(none)"))
+    def format_all (format, array) :
+      min, max, mean = min_max_mean(array)
+      return "%s %s %s" % (fs(format, min), fs(format, max), fs(format, mean))
+    print >> out, "%s                           min    max   mean" % prefix
+    print >> out, "%sRamachandran outliers = %s %%" % (prefix,
+      format_all("%6.2f", self.rama_out))
+    print >> out, "%s             favored  = %s %%" % (prefix,
+      format_all("%6.2f", self.rama_fav))
+    print >> out, "%sRotamer outliers      = %s %%" % (prefix,
+      format_all("%6.2f", self.rota_out))
+    print >> out, "%sC-beta deviations     = %s" % (prefix,
+      format_all("%6d", self.cbeta_out))
+    print >> out, "%sClashscore            = %s" % (prefix,
+      format_all("%6.2f", self.clashscore))
+    if (self.mpscore is not None) :
+      print >> out, "%sMolprobity score      = %s" % (prefix,
+        format_all("%6.2f", self.mpscore))
+
 def run (args, out=sys.stdout) :
   if (len(args) == 0) :
     raise Usage("""
@@ -115,10 +189,26 @@ run phenix.model_vs_data or the validation GUI.)
   pdb_file = args[0]
   if (not os.path.isfile(pdb_file)) :
     raise Sorry("Not a file: %s" % pdb_file)
-  s = summary(pdb_file=pdb_file)
+  from iotbx.file_reader import any_file
+  pdb_in = any_file(pdb_file, force_type="pdb").check_file_type("pdb")
+  hierarchy = pdb_in.file_object.construct_hierarchy()
+  xrs = pdb_in.file_object.xray_structures_simple()
+  s = None
+  extra = ""
+  if (len(xrs) == 1) :
+    s = summary(pdb_hierarchy=hierarchy)
+  else :
+    import iotbx.pdb.hierarchy
+    new_hierarchy = iotbx.pdb.hierarchy.root()
+    single_model = hierarchy.models()[0].detached_copy()
+    single_model.id = ""
+    new_hierarchy.append_model(single_model)
+    s = ensemble(pdb_hierarchy=new_hierarchy,
+      xray_structures=xrs)
+    extra = " (%d models)" % len(xrs)
   print >> out, ""
-  print >> out, "Validation summary for %s:" % pdb_file
-  s.show(out=out)
+  print >> out, "Validation summary for %s%s:" % (pdb_file, extra)
+  s.show(out=out, prefix="  ")
   print >> out, ""
 
 if (__name__ == "__main__") :
