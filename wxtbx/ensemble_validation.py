@@ -48,7 +48,7 @@ class ensemble_validation_panel (wx.Panel) :
     txt1 = wx.StaticText(self, label="Show statistic:")
     box1.Add(txt1, 0, wx.LEFT|wx.TOP|wx.BOTTOM|wx.ALIGN_CENTER_VERTICAL, 5)
     self.stats_menu = wx.Choice(self,
-      choices=validation_summary.ensemble.__slot_labels__)
+      choices=validation_summary.molprobity_stat_labels)
     self.Bind(wx.EVT_CHOICE, self.OnSelectPlot, self.stats_menu)
     box1.Add(self.stats_menu, 0,
       wx.LEFT|wx.TOP|wx.BOTTOM|wx.ALIGN_CENTER_VERTICAL, 5)
@@ -84,8 +84,8 @@ class ensemble_validation_panel (wx.Panel) :
   def OnSelectPlot (self, event) :
     as_histogram = self.hist_box.GetValue()
     label = self.stats_menu.GetStringSelection()
-    i_label = validation_summary.ensemble.__slot_labels__.index(label)
-    stat = validation_summary.ensemble.__slots__[i_label]
+    i_label = validation_summary.molprobity_stat_labels.index(label)
+    stat = validation_summary.molprobity_stats[i_label]
     values = getattr(self.ensemble, stat)
     if (len(values) == 0) or (values.count(None) == len(values)) :
       self.plot.figure.clear()
