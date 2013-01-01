@@ -12,13 +12,47 @@ import cStringIO
 import os
 import sys
 
-class summary (object) :
+molprobity_stats = [
+  "rama_out",
+  "rama_fav",
+  "rota_out",
+  "cbeta_out",
+  "clashscore",
+  "mpscore",
+]
+molprobity_stat_labels = [
+  "Ramachandran outliers",
+  "Ramachandran favored",
+  "Rotamer outliers",
+  "C-beta outliers",
+  "Clashscore",
+  "MolProbity score",
+]
+header_stats = [
+  "r_work",
+  "r_free",
+  "d_min",
+  "rms_bonds",
+  "rms_angles",
+]
+header_stat_labels = [
+  "R-work",
+  "R-free",
+  "High resolution",
+  "RMS(bonds)",
+  "RMS(angles)",
+]
+
+class summary (slots_getstate_setstate) :
   """
   Very basic MolProbity statistics for a refinement result, plus R-factors and
   RMS(bonds)/RMS(angles) if they can be extracted from REMARK records in the
   PDB header.  Suitable for benchmarking or collecting statistics, but not a
   substitute for full validation.
   """
+
+  __slots__ = molprobity_stats + header_stats
+
   def __init__ (self, pdb_hierarchy=None, pdb_file=None, sites_cart=None,
       keep_hydrogens=False) :
     if (pdb_hierarchy is None) :
@@ -130,22 +164,9 @@ class ensemble (slots_getstate_setstate) :
   """
   MolProbity validation results for an ensemble of models.
   """
-  __slots__ = [
-    "rama_out",
-    "rama_fav",
-    "rota_out",
-    "cbeta_out",
-    "clashscore",
-    "mpscore",
-  ]
-  __slot_labels__ = [
-    "Ramachandran outliers",
-    "Ramachandran favored",
-    "Rotamer outliers",
-    "C-beta outliers",
-    "Clashscore",
-    "MolProbity score",
-  ]
+
+  __slots__ = molprobity_stats
+
   def __init__ (self, pdb_hierarchy, xray_structures, nproc=Auto) :
     assert (len(pdb_hierarchy.models()) == 1)
     validate = parallel_driver(pdb_hierarchy, xray_structures)
