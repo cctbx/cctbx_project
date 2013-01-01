@@ -1,0 +1,42 @@
+
+from __future__ import division
+from libtbx.test_utils import approx_equal
+from libtbx import easy_pickle
+import libtbx.load_env
+from cStringIO import StringIO
+import os
+
+def exercise () :
+  for module in ["reduce", "probe", "phenix_regression"] :
+    if (not libtbx.env.has_module(module)) :
+      print "%s not available, skipping" % module
+      return
+  from mmtbx.command_line import validation_summary
+  from iotbx import file_reader
+  import iotbx.pdb.hierarchy
+  regression_pdb = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/pdb1jxt.ent",
+    test=os.path.isfile)
+  out = StringIO()
+  summary = validation_summary.run(args=[regression_pdb], out=out)
+  assert approx_equal(summary.clashscore, 2.71, eps=0.0001)
+  ss = easy_pickle.dumps(summary)
+  sss = easy_pickle.loads(ss)
+  pdb_in = file_reader.any_file(regression_pdb)
+  hierarchy = pdb_in.file_object.construct_hierarchy()
+  new_hierarchy = iotbx.pdb.hierarchy.root()
+  for i in range(5) :
+    model = hierarchy.only_model().detached_copy()
+    model.id = str(i+1)
+    new_hierarchy.append_model(model)
+  open("tst_validation_summary.pdb", "w").write(new_hierarchy.as_pdb_string())
+  out2 = StringIO()
+  summary = validation_summary.run(args=["tst_validation_summary.pdb"],
+    out=out2)
+  assert (type(summary).__name__ == 'ensemble')
+  ss = easy_pickle.dumps(summary)
+  sss = easy_pickle.loads(ss)
+  print "OK"
+
+if (__name__ == "__main__") :
+  exercise()
