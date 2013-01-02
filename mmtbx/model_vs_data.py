@@ -219,14 +219,6 @@ class mvd(object):
     print >> log, "    n_refl_cutoff : %-s"%format_value("%d",self.misc.n_refl_cutoff).strip()
     print >> log, "    r_work_cutoff : %-s"%format_value("%6.4f",self.misc.r_work_cutoff).strip()
     print >> log, "    r_free_cutoff : %-s"%format_value("%6.4f",self.misc.r_free_cutoff).strip()
-    #
-    if(self.model_vs_data.sigmaa_plot is not None):
-      print >> log, "  Statistics in resolution bins:"
-      print >> log, "    SIGMAA vs Resolution:"
-      print >> log, "     resolution(A)  sigmaa"
-      for resolution, sigmaa in zip(self.model_vs_data.sigmaa_plot.resolution,
-                                     self.model_vs_data.sigmaa_plot.sigmaa):
-        print >> log, "        %10.3f%8.3f"%(float(resolution), float(sigmaa))
 
 def molprobity_stats(model_statistics_geometry, resname_classes):
   result = None
@@ -495,9 +487,6 @@ def show_model_vs_data(fmodel):
   mm = getattr(fmodel, "mask_manager", None)
   if (mm is not None):
     sc = mm.solvent_content_via_mask
-  sigmaa_plot = None
-  if(not fmodel.twin):
-    sigmaa_plot = fmodel.sigmaa().show_short(silent=True)
   r_work_outer_shell = r_free_outer_shell = None
   if (type(fmodel).__name__ != "twin_model_manager") :
     f_obs_work_copy = fmodel.f_obs_work().customized_copy()
@@ -513,8 +502,7 @@ def show_model_vs_data(fmodel):
     r_free                   = r_free,
     r_work_outer_shell       = r_work_outer_shell,
     r_free_outer_shell       = r_free_outer_shell,
-    solvent_content_via_mask = sc,
-    sigmaa_plot              = sigmaa_plot)
+    solvent_content_via_mask = sc)
 
 def maps(fmodel, mvd_obj, map_cutoff = 3.0, map_type = "mFo-DFc"):
   result = group_args(
@@ -850,8 +838,9 @@ def run(args,
       maps_obj.write_mtz_file(file_name = file_name)
   # statistics in bins
   if(not fmodel.twin):
-    mmtbx.f_model_info.r_work_and_completeness_in_resolution_bins(fmodel = fmodel,
-      out = log)
+    print >> log, "Statistics in resolution bins:"
+    mmtbx.f_model_info.r_work_and_completeness_in_resolution_bins(
+      fmodel = fmodel, out = log, prefix="  ")
   # report map cc
   if(params.comprehensive and not fmodel_cut.twin and
      fmodel_cut.xray_structure is not None):
