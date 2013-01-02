@@ -1547,7 +1547,9 @@ class run_ensemble_refinement(object):
 
   def write_ensemble_pdb(self, out):
     crystal_symmetry = self.er_data.xray_structures[0].crystal_symmetry()
-    print >> out,  "REMARK   3  TIME-AVERAGED ENSEMBLE REFINEMENT"
+    pr = "REMARK   3"
+    print >> out, pr
+    print >> out,  "REMARK   3 TIME-AVERAGED ENSEMBLE REFINEMENT."
     ver, tag = phenix_info.version_and_release_tag(f = out)
     if(ver is None):
       prog = "   PROGRAM     : PHENIX (phenix.ensemble_refinement)"
@@ -1555,9 +1557,6 @@ class run_ensemble_refinement(object):
       if(tag is not None):
         ver = ver+"_"+tag
       prog = "   PROGRAM     : PHENIX (phenix.ensemble_refinement: %s)"%ver
-    pr = "REMARK   3"
-    print >> out,pr
-    print >> out,pr+" REFINEMENT."
     print >> out,pr+prog
     authors = phenix_info.phenix_developers_last
     l = pr+"   AUTHORS     :"
