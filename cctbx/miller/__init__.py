@@ -833,12 +833,24 @@ class set(crystal.symmetry):
     return self.select(
       self.sort_permutation(by_value=by_value, reverse=reverse))
 
-  def complete_with(self, other, d_min=None, d_max=None):
-    s = self.resolution_filter(d_min=d_min, d_max=d_max)
-    o = other.resolution_filter(d_min=d_min, d_max=d_max)
+  def scale(self, other):
+    s, o = self.common_sets(other)
+    s, o = abs(s).data(), abs(o).data()
+    scale_factor = flex.sum(s*o)/flex.sum(o*o)
+    return other.customized_copy(data = other.data()*scale_factor)
+
+  def complete_with(self, other, scale=False, replace_phases=False):
+    s, o = self, other
+    if(scale): o = s.scale(other = o)
+    if(replace_phases):
+      assert isinstance(o.data(), flex.complex_double)
+      s_c, c_o = s.common_sets(o)
+      s_c = s_c.phase_transfer(phase_source = c_o)
+      s_l, c_l = s.lone_sets(o)
+      s = s_c.concatenate(s_l)
     ol = o.lone_set(s)
-    d_new = self.data().concatenate(ol.data())
-    i_new = self.indices().concatenate(ol.indices())
+    d_new = s.data().concatenate(ol.data())
+    i_new = s.indices().concatenate(ol.indices())
     return self.customized_copy(data = d_new, indices = i_new)
 
   def complete_with_bin_average(self, reflections_per_bin=100):

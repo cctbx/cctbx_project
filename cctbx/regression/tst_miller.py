@@ -2011,19 +2011,19 @@ def exercise_complete_with3():
   assert mi2a.indices().all_eq(ma1.indices())
   assert list(mi2a.data()) == [1,1,2,2,2,1,1,2,2,2,2,2,1,1]
   # Low resolution only
-  mi2a = ma2.complete_with(ma1,d_min=6)
+  mi2a = ma2.complete_with(ma1.resolution_filter(d_min=6))
   mi2a = mi2a.sort()
   assert approx_equal(list(mi2a.indices()), ((0,0,1), (0,0,2), (0,0,3), (0,0,4),
     (0,0,5), (0,0,8), (0,0,9), (0,0,10),(0,0,11),(0,0,12)))
   assert list(mi2a.data()) == [1.0, 1.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]
   # High resolution only
-  mi2a = ma2.complete_with(ma1,d_max=2)
+  mi2a = ma2.complete_with(ma1.resolution_filter(d_max=2))
   mi2a = mi2a.sort()
   assert approx_equal(list(mi2a.indices()), ((0,0,3), (0,0,4), (0,0,5),
    (0,0,8), (0,0,9), (0,0,10),(0,0,11),(0,0,12),(0,0,13),(0,0,14)))
   assert list(mi2a.data()) == [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 1.0, 1.0]
   # Medium resolution only
-  mi2a = ma2.complete_with(ma1,d_max=4, d_min=2.5)
+  mi2a = ma2.complete_with(ma1.resolution_filter(d_max=4, d_min=2.5))
   mi2a = mi2a.sort()
   assert approx_equal(list(mi2a.indices()), ((0,0,3), (0,0,4), (0,0,5), (0,0,6),
    (0,0,7), (0,0,8), (0,0,9), (0,0,10),(0,0,11),(0,0,12)))
@@ -2107,7 +2107,47 @@ def exercise_log_binning():
   assert r.size() == 7
   assert approx_equal(flex.mean(r), 2.0, 0.01)
 
+def exercise_scale():
+  cs = crystal.symmetry((10,10,10), "P1")
+  mi = flex.miller_index([(1,2,1), (1,2,2), (1,2,3), (1,2,4), (1,2,5)])
+  ms = miller.set(cs, mi, anomalous_flag=False)
+  d = flex.double([1,2,3,4,5])
+  ma1 = miller.array(ms, data=d)
+  #
+  mi = flex.miller_index([(1,2,1), (1,2,3), (1,2,4), (1,2,5), (1,2,6)])
+  ms = miller.set(cs, mi, anomalous_flag=False)
+  d = flex.double([2, 6,8,10, 1])
+  ma2 = miller.array(ms, data=d)
+  assert approx_equal(list(ma1.scale(other=ma2).data()), [1., 3., 4., 5., 0.5])
+  assert approx_equal(list(ma2.scale(other=ma1).data()), [2., 4., 6., 8., 10.])
+
+def exercise_complete_with4():
+  cs = crystal.symmetry((10,10,10), "P1")
+  mi = flex.miller_index([(0,0,1), (0,0,2), (0,0,3), (0,0,4), (0,0,5)])
+  ms = miller.set(cs, mi, anomalous_flag=False)
+  d = flex.double([1,2,3,4,5])
+  p = flex.double([1,2,3,4,5])
+  ma1 = miller.array(ms, data=d)
+  ma1 = ma1.phase_transfer(phase_source=p, deg=True)
+  #
+  mi = flex.miller_index([(0,0,1), (0,0,3), (0,0,4), (0,0,5), (0,0,6)])
+  ms = miller.set(cs, mi, anomalous_flag=False)
+  d = flex.double([1,  3, 4, 5, 6])
+  p = flex.double([10,30,40,50,60])
+  ma2 = miller.array(ms, data=d)
+  ma2 = ma2.phase_transfer(phase_source=p, deg=True)
+  #
+  r = ma1.complete_with(other=ma2, replace_phases=True)
+  r = r.sort()
+  assert approx_equal(list(r.phases(deg=True).data()), [10,2,30,40,50,60])
+  #
+  r = ma2.complete_with(other=ma1, replace_phases=True)
+  r = r.sort()
+  assert approx_equal(list(r.phases(deg=True).data()), [1,2,3,4,5,60])
+
 def run(args):
+  exercise_complete_with4()
+  exercise_scale()
   exercise_log_binning()
   exercise_build_set_using_max_index()
   exercise_structure_factors_from_map()
