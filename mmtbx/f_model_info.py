@@ -40,8 +40,7 @@ class resolution_bin(object):
                fom_work      = None,
                scale_k1_work = None,
                pher_work     = None,
-               pher_free     = None,
-               sigmaa        = None):
+               pher_free     = None):
     adopt_init_args(self, locals())
 
 def r_work_and_completeness_in_resolution_bins(fmodel, reflections_per_bin=500,
@@ -125,16 +124,6 @@ class info(object):
     self.mask_grid_step_factor = mp.grid_step_factor
     self.ml_phase_error = flex.mean(fmodel.phase_errors())
     self.ml_coordinate_error = fmodel.model_error_ml()
-    if hasattr(fmodel, "sigmaa") :
-      try :
-        sa = fmodel.sigmaa()
-        self.sigmaa = None
-        if(sa is not None):
-          self.sigmaa = sa.sigmaa() # miller array
-      except RuntimeError, e :
-        self.sigmaa = None
-    else :
-      self.sigmaa = None
     self.d_max, self.d_min = fmodel.f_obs().resolution_range()
     self.completeness_in_range = fmodel.f_obs().completeness(d_max = self.d_max)
     self.completeness_d_min_inf = fmodel.f_obs().completeness()
@@ -192,18 +181,6 @@ class info(object):
     alpha_t.use_binning_of(fo_t)
     beta_w.use_binning_of(fo_t)
     beta_t.use_binning_of(fo_t)
-    if hasattr(fmodel, "sigmaa") :
-      try :
-        sa = fmodel.sigmaa()
-        sigmaa = None
-        if(sa is not None):
-          sigmaa = sa.sigmaa()
-      except RuntimeError, e :
-        sigmaa = None
-      if(sigmaa is not None):
-        sigmaa.use_binning_of(fo_t)
-    else :
-      sigmaa = None
     for i_bin in fo_t.binner().range_used():
       sel_t = fo_t.binner().selection(i_bin)
       sel_w = fo_w.binner().selection(i_bin)
@@ -235,9 +212,6 @@ class info(object):
       s_fc_w_d = sel_fc_w.data()
       assert s_fo_w_d.size() == s_fc_w_d.size()
       s_fc_w_d_a = flex.abs(s_fc_w_d)
-      sigmaa_bin = None
-      if (sigmaa is not None) :
-        sigmaa_bin = flex.mean_default(sigmaa.select(sel_all).data(), None)
       if(s_fo_w_d.size() > 0):
         bin = resolution_bin(
           i_bin        = i_bin,
@@ -255,8 +229,7 @@ class info(object):
           mean_f_obs   = flex.mean_default(sel_fo_all.data(),None),
           fom_work     = flex.mean_default(fom.select(sel_w),None),
           pher_work    = flex.mean_default(pher_w.select(sel_w),None),
-          pher_free    = flex.mean_default(pher_t.select(sel_t),None),
-          sigmaa       = sigmaa_bin)
+          pher_free    = flex.mean_default(pher_t.select(sel_t),None))
         result.append(bin)
     return result
 
@@ -554,11 +527,6 @@ def export_bins_table_data (bins, title="Statistics by resolution bin") :
                  "Phase error vs. resolution",
                  "Scale factor vs. resolution"]
   graph_columns = [[0,1,2], [0,3], [0,4], [0,5], [0,6]]
-  if hasattr(bins[0], "sigmaa") and (bins[0].sigmaa is not None) :
-    table_stats.append("sigmaa")
-    labels.append("SigmaA")
-    graph_names.append("SigmaA vs. resolution")
-    graph_columns.append([0,7])
   data_rows = []
   for bin in bins :
     bin_stats = []
