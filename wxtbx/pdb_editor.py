@@ -1224,6 +1224,24 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     dlg.SetOptional(True)
     return simple_dialogs.get_phil_value_from_dialog(dlg)
 
+  def GetNewAltloc (self, altloc_id) :
+    if (altloc_id.isspace()) :
+      altloc_id = None
+    dlg = simple_dialogs.StringDialog(
+      parent=self,
+      title="Set altloc ID",
+      label="New altloc",
+      caption="Please specify an altloc (i.e. conformation) identifier.  By "+
+        "default this is left blank, unless the selected residue group "+
+        "either has multiple conformations, or is present at partial "+
+        "occupancy and interacts with one conformation of an adjacent "+
+        "group.  Non-blank altloc IDs must be a single character, usually "+
+        "uppercase letters.",
+      value=altloc_id)
+    #dlg.SetMinLength(1)
+    dlg.SetMaxLength(1)
+    return simple_dialogs.get_phil_value_from_dialog(dlg)
+
   def GetNewChainID (self, chain_id) :
     if (chain_id.isspace()) :
       chain_id = None
