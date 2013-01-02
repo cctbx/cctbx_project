@@ -704,3 +704,49 @@ def principal_axes_of_inertia (
   return scitbx.math.principal_axes_of_inertia(
     points=sites,
     weights=values)
+
+class positivity_constrained_density_modification(object):
+  def __init__(self, f, f_000, n_cycles=100, resolution_factor=0.25, d_min=None,
+               crystal_gridding=None, complete_set=None):
+    self.f = f
+    self.d_min = d_min
+    self.map = None
+    self.crystal_gridding = crystal_gridding
+    from cctbx import miller
+    if(self.d_min is None): self.d_min = self.f.d_min()
+    if(complete_set is None):
+      complete_set = self.f.complete_set(d_min = self.d_min)
+    if(self.crystal_gridding is None):
+      self.crystal_gridding = self.f.crystal_gridding(
+        d_min                   = d_min,
+        resolution_factor       = resolution_factor,
+        grid_step               = None,
+        symmetry_flags          = None,
+        mandatory_factors       = None,
+        max_prime               = 5,
+        assert_shannon_sampling = True)
+    self.f_mod = self.f.deep_copy()
+    for i in xrange(n_cycles):
+      fft_map = miller.fft_map(
+        crystal_gridding     = self.crystal_gridding,
+        fourier_coefficients = self.f_mod,
+        f_000                = f_000)
+      fft_map.apply_volume_scaling()
+      self.map = fft_map.real_map_unpadded()
+      convert_to_non_negative(self.map, 0)
+      self.f_mod = complete_set.structure_factors_from_map(
+        map            = self.map,
+        use_scale      = True,
+        anomalous_flag = False,
+        use_sg         = False)
+      self.f_mod = self.f.complete_with(other = self.f_mod, scale=True,
+        replace_phases=True)
+      #self.assert_equal()
+
+  def assert_equal(self):
+    from libtbx.test_utils import approx_equal
+    x, y = self.f, self.f_mod
+    x,y = x.common_sets(y)
+    x = abs(x).data()
+    y = abs(y).data()
+    assert approx_equal(x, y)

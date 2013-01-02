@@ -249,6 +249,7 @@ class run(object) :
           tmp = flex.mean(self.cc_to_answer[size-3:])
           if(tmp >= self.cc-1.e-6 or mcsf/5 >= self.cc-tmp):
             result = True
+    else: self.cc=None
     return result
 
   def iterations(self):

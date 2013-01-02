@@ -98,7 +98,8 @@ inline void hoppe_gassman_modification(af::ref<double, af::c_grid<3> > map_data)
 }
 
 inline void convert_to_non_negative(
-       af::ref<double, af::c_grid<3> > map_data)
+       af::ref<double, af::c_grid<3> > map_data,
+       double substitute_value=0)
 {
   int nx = map_data.accessor()[0];
   int ny = map_data.accessor()[1];
@@ -108,7 +109,7 @@ inline void convert_to_non_negative(
     for(int j = 0; j < ny; j++) {
       for(int k = 0; k < nz; k++) {
          double rho = map_data(i,j,k);
-         if(rho<0) map_data(i,j,k) = 0;
+         if(rho<0) map_data(i,j,k) = substitute_value;
   }}}
 }
 
