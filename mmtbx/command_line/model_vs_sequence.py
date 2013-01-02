@@ -26,7 +26,7 @@ def run (args=(), params=None, out=None) :
     out = sys.stdout
   if (len(args) == 0) and (params is None) :
     raise Usage("""\
-mmtbx.check_sequence model.pdb sequence.fa
+phenix.model_vs_sequence model.pdb sequence.fa
 
 Verify the sequence of each chain in a PDB file to detect residue mismatches
 and other inconsistencies (similar to validation upon PDB deposition).""")
@@ -41,7 +41,7 @@ and other inconsistencies (similar to validation upon PDB deposition).""")
     validate_params(params)
   except Sorry, e :
     print e
-    raise Usage("mmtbx.check_sequence model.pdb sequence.fa")
+    raise Usage("phenix.model_vs_sequence model.pdb sequence.fa")
   import mmtbx.validation.sequence
   from iotbx.file_reader import any_file
   pdb_in = any_file(params.input.pdb_file, force_type="pdb")
@@ -59,6 +59,8 @@ and other inconsistencies (similar to validation upon PDB deposition).""")
     params=params,
     log=out)
   v.show(out=out)
+  print
+  print v.as_cif_block()
 
 def validate_params (params) :
   if (params.input.pdb_file is None) :
