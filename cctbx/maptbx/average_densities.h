@@ -215,6 +215,52 @@ public:
 
 };
 
+class hgl_scale {
+public:
+  af::versa<double, af::c_grid<3> > map_new;
+  af::shared<double> v_values_;
+
+  hgl_scale(
+    af::const_ref<double, af::c_grid<3> > const& map,
+    int const& n_bins)
+  {
+    int nx = map.accessor()[0];
+    int ny = map.accessor()[1];
+    int nz = map.accessor()[2];
+    map_new.resize(af::c_grid<3>(nx,ny,nz), 0);
+    double rho_min = af::min(map);
+    histogram hist = histogram(map, n_bins);
+    double bin_width = hist.bin_width();
+    v_values_ = hist.c_values();
+    for (int i = 0; i < nx; i++) {
+      for (int j = 0; j < ny; j++) {
+        for (int k = 0; k < nz; k++) {
+          double rho = map(i,j,k);
+          int index = scitbx::math::nearest_integer((rho-rho_min)/bin_width);
+          if(index<0) index=0;
+          if(index>=n_bins) index=n_bins-1;
+          double rho_new = 0;
+          if(index+1<n_bins) {
+            double rho_n = rho_min + index*bin_width;
+            double v = v_values_[index] +
+              (v_values_[index+1]-v_values_[index]) * (rho-rho_n)/bin_width;
+            rho_new = 3*v*v - 2*v*v*v;
+          }
+          else {
+            double v = v_values_[index];
+            rho_new = 3*v*v - 2*v*v*v;
+          }
+          map_new(i,j,k) = rho_new;
+        }
+      }
+    }
+  }
+
+  af::versa<double, af::c_grid<3> > map_data() {return map_new;}
+  af::shared<double> v_values() {return v_values_;}
+
+};
+
 class non_linear_map_modification_to_match_average_cumulative_histogram {
 public:
   af::versa<double, af::c_grid<3> > map_1_new;
