@@ -59,8 +59,6 @@ and other inconsistencies (similar to validation upon PDB deposition).""")
     params=params,
     log=out)
   v.show(out=out)
-  print
-  print v.as_cif_block()
 
 def validate_params (params) :
   if (params.input.pdb_file is None) :
