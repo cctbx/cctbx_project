@@ -1,48 +1,60 @@
+
 from __future__ import division
-import sys, os, time, math, random, cPickle, gzip
-from cctbx.array_family import flex
-from cctbx import adptbx
-from iotbx.option_parser import iotbx_option_parser
-from libtbx.utils import Sorry, user_plus_sys_time, multi_out, show_total_time
-from iotbx import reflection_file_utils
-from libtbx.str_utils import format_value
-import libtbx.load_env
-import iotbx
-from mmtbx import utils
-from iotbx import pdb
-from cStringIO import StringIO
-import mmtbx.model
-from mmtbx.dynamics import ensemble_cd
-import iotbx.phil
-from libtbx import adopt_init_args
 import mmtbx.solvent.ensemble_ordered_solvent as ensemble_ordered_solvent
-from cctbx import miller
 from mmtbx.refinement.ensemble_refinement import ensemble_utils
-import scitbx.math
-from cctbx import xray
-from cctbx import geometry_restraints
+from mmtbx.dynamics import ensemble_cd
 import mmtbx.tls.tools as tls_tools
+import mmtbx.utils
+import mmtbx.model
 import mmtbx.maps
-from phenix import phenix_info
+from iotbx.option_parser import iotbx_option_parser
+from iotbx import pdb
+import iotbx.phil
+import iotbx
+from cctbx import geometry_restraints
+from cctbx.array_family import flex
+from cctbx import miller
+from cctbx import adptbx
+from cctbx import xray
+import scitbx.math
+from libtbx.utils import Sorry, user_plus_sys_time, multi_out, show_total_time
+from libtbx.str_utils import format_value, make_header
+from libtbx import adopt_init_args
+from libtbx import runtime_utils
+import libtbx.load_env
+from cStringIO import StringIO
+import cPickle
+import random
+import gzip
+import math
+import time
+import os
+import sys
+
+# these supersede the defaults in included scopes
+customization_params = iotbx.phil.parse("""
+ensemble_refinement.mask.ignore_hydrogens = False
+ensemble_refinement.mask.n_radial_shells = 1
+ensemble_refinement.mask.radial_shell_width = 1.5
+ensemble_refinement.cartesian_dynamics.number_of_steps = 10
+ensemble_refinement.ensemble_ordered_solvent.b_iso_min = 0.0
+ensemble_refinement.ensemble_ordered_solvent.b_iso_max = 100.0
+ensemble_refinement.ensemble_ordered_solvent.find_peaks.map_next_to_model.max_model_peak_dist = 3.0
+ensemble_refinement.ensemble_ordered_solvent.find_peaks.map_next_to_model.use_hydrogens = True
+""")
+
+# the extra fetch() at the end with the customized parameters gives us the
+# actual master phil object
 master_params = iotbx.phil.parse("""\
+include scope mmtbx.utils.cmdline_input_phil_str
 ensemble_refinement {
-  cartesian_dynamics {
-    temperature = 300
-      .type = float
+  cartesian_dynamics
+    .style = menu_item auto_align box
+  {
+    include scope mmtbx.dynamics.cartesian_dynamics.master_params
     protein_thermostat = True
       .type = bool
-      .help = Use protein atoms sthermostat
-    number_of_steps = 10
-      .type = int
-    time_step = 0.0005
-      .type = float
-      .help = Time in ps
-    initial_velocities_zero_fraction = 0
-      .type = float
-    n_print = 100
-      .type = int
-    verbose = -1
-      .type = int
+      .help = Use protein atoms thermostat
   }
   verbose = -1
     .type = int
@@ -77,12 +89,14 @@ ensemble_refinement {
     .type = float
     .help = 'Multiplier for xray weighting; used if wxray_coupled_tbath = Flase'
   tls_group_selections = None
-    .type = str
+    .type = atom_selection
     .multiple = True
     .help = 'TLS groups to use for TLS fitting (TLS details in PDB header not used)'
+    .style = use_list
   ptls = 0.80
     .type = float
     .help = 'The fraction of atoms to include in TLS fitting'
+    .short_caption = Fraction of atoms to include in TLS fitting
   max_ptls_cycles = 25
     .type = int
     .help = 'Maximum cycles to use in TLS fitting; TLS will stop prior to this if convergence is reached'
@@ -95,113 +109,52 @@ ensemble_refinement {
   set_occupancies = False
     .type = bool
     .help = 'Set all atoms aoccupancy to 1.0'
+    .short_caption = Reset occupancies to 1.0
   target_name = *ml ls_wunit_k1_fixed ls_wunit_k1
     .type = choice
+    .short_caption = Refinement target
     .help = 'Choices for refinement target'
-  high_resolution = None
-    .type = float
-    .help = 'High resolution limit'
-  low_resolution = None
-    .type = float
-    .help = 'Low resolution limit'
-  er_harmonic_restraints_selections = None
-    .type = str
-    .help = 'Atoms selections to apply harmonic restraints'
-  er_harmonic_restraints_weight = 0.001
-    .type = float
-    .help = 'Harmonic restraints weight'
-  er_harmonic_restraints_slack = 1.0
-    .type = float
-    .help = 'Harmonic restraints slack distance'
   output_running_kinetic_energy_in_occupancy_column = False
     .type = bool
     .help = 'Output PDB file contains running kinetic energy in place of occupancy'
   update_rescale_normalisation_factors_scale_kn = False
     .type = bool
     .help = 'Scale <Ncalc> to starting Ncalc'
-  electron_density_maps {
-    apply_default_maps = True
-      .type = bool
-        map_coefficients
-      .multiple = True
-    {
-      map_type = None
-        .type = str
-      format = *mtz phs
-        .type = choice(multi=True)
-      mtz_label_amplitudes = None
-        .type = str
-      mtz_label_phases = None
-        .type = str
-      kicked = False
-        .type = bool
-      fill_missing_f_obs = False
-        .type = bool
-      acentrics_scale = 2.0
-        .type = float
-      centrics_pre_scale = 1.0
-        .type = float
-      sharpening = False
-        .type = bool
-        .help = Apply B-factor sharpening
-      sharpening_b_factor = None
-        .type = float
-      exclude_free_r_reflections = False
-        .type = bool
-      isotropize = True
-        .type = bool
-      resharp_after_isotropize = False
-        .type = bool
-      dev
-        .expert_level=3
-      {
-        complete_set_up_to_d_min = False
-          .type = bool
-        aply_same_incompleteness_to_complete_set_at = randomly low high
-          .type = choice(multi=False)
-        }
-      }
-    }
-  mask {
-    use_asu_masks = True
-    .type = bool
-    solvent_radius = 1.11
-      .type = float
-    shrink_truncation_radius = 0.9
-      .type = float
-    grid_step_factor = 4.0
-      .type = float
-      .help = The grid step for the mask calculation is determined as \
-              highest_resolution divided by grid_step_factor. This is considered \
-              as suggested value and may be adjusted internally based on the \
-              resolution.
-    verbose = 1
-      .type = int
-      .expert_level=3
-    mean_shift_for_mask_update = 0.1
-      .type = float
-      .help = Value of overall model shift in refinement to updates the mask.
-      .expert_level=2
-    ignore_zero_occupancy_atoms = True
-      .type = bool
-      .help = Include atoms with zero occupancy into mask calculation
-    ignore_hydrogens = False
-      .type = bool
-      .help = Ignore H or D atoms in mask calculation
-    n_radial_shells = 1
-    .type = int
-    .help = Number of shells in a radial shell bulk solvent model
-    radial_shell_width = 1.5
-      .type = float
-      .help = Radial shell width TODO: default 2.5?
-    }
   ordered_solvent_update = True
     .type = bool
     .help = 'Ordered water molecules automatically updated every nth macro cycle'
   ordered_solvent_update_cycle = 25
     .type = int
     .help = 'Number of macro-cycles per ordered solvent update'
-  ensemble_ordered_solvent {
+  harmonic_restraints
+    .style = menu_item auto_align box
+  {
+    selections = None
+      .type = atom_selection
+      .help = 'Atoms selections to apply harmonic restraints'
+    weight = 0.001
+      .type = float
+      .help = 'Harmonic restraints weight'
+    slack = 1.0
+      .type = float
+      .help = 'Harmonic restraints slack distance'
+  }
+  electron_density_maps
+    .style = menu_item
+  {
+    apply_default_maps = True
+      .type = bool
+    include scope mmtbx.maps.map_coeff_params_str
+  }
+  mask
+    .short_caption = Bulk solvent mask
+    .style = menu_item auto_align box
+  {
+    include scope mmtbx.masks.mask_master_params
+  }
+  ensemble_ordered_solvent
+    .style = menu_item auto_align box
+  {
     tolerance = 1.0
       .type = float
     ordered_solvent_map_to_model = True
@@ -209,20 +162,7 @@ ensemble_refinement {
     reset_all = False
       .type = bool
       .help = Removes all water atoms prior to re-picking using mFobs-DFmodel and 2mFobs-DFmodel
-    output_residue_name = HOH
-      .type=str
-      .input_size = 50
-    output_chain_id = S
-      .type=str
-      .input_size = 50
-    output_atom_name = O
-      .type=str
-      .input_size = 50
-    scattering_type = O
-      .type=str
-      .help = Defines scattering factors for newly added waters
-      .expert_level=2
-      .input_size = 50
+    include scope mmtbx.solvent.ordered_solvent.output_params_str
     primary_map_type = mFo-DFmodel
       .type=str
     primary_map_cutoff = 1.0
@@ -233,60 +173,12 @@ ensemble_refinement {
       .type=float
     secondary_map_cutoff_find = 3.0
       .type=float
-    h_bond_min_mac = 1.8
-      .type = float
-      .short_caption = H-bond minimum for solvent-model
-      .expert_level = 1
-    h_bond_min_sol = 1.8
-      .type = float
-      .short_caption = H-bond minimum for solvent-solvent
-      .expert_level = 1
-    h_bond_max = 3.2
-      .type = float
-      .short_caption = Maximum H-bond length
-      .expert_level = 1
-    new_solvent = *isotropic anisotropic
-      .type = choice
-      .help = Based on the choice, added solvent will have isotropic or \
-              anisotropic b-factors
-      .short_caption = New solvent ADP type
-      .expert_level = 1
-    b_iso_min = 0.0
-      .type=float
-      .help = Minimum B-factor value, waters with smaller value will be rejected
-      .short_caption = Minimum B-factor
-      .expert_level = 1
-    b_iso_max = 100.0
-      .type=float
-      .help = Maximum B-factor value, waters with bigger value will be rejected
-      .short_caption = Maximum B-factor
-      .expert_level = 1
-    anisotropy_min = 0.1
-      .type = float
-      .help = For solvent refined as anisotropic: remove is less than this value
-      .short_caption = Minimum anisotropic B-factor
-      .expert_level = 1
-    b_iso = None
-      .type=float
-      .help = Initial B-factor value for newly added water
-      .short_caption = Initial B-factor value
-      .expert_level = 1
+    include scope mmtbx.solvent.ordered_solvent.h_bond_params_str
+    include scope mmtbx.solvent.ordered_solvent.adp_occ_params_str
     refine_occupancies = False
       .type = bool
       .help = Refine solvent occupancies.
       .expert_level = 1
-    occupancy_min = 0.1
-      .type=float
-      .help = Minimum occupancy value, waters with smaller value will be rejected
-      .short_caption = Minimum occupancy
-    occupancy_max = 1.0
-      .type=float
-      .help = Maximum occupancy value, waters with bigger value will be rejected
-      .short_caption = Maximum occupancy
-    occupancy = 1.0
-      .type=float
-      .help = Initial occupancy value for newly added water
-      .short_caption = Initial occupancy value
     add_hydrogens = False
       .type = bool
       .help = Adds hydrogens to water molecules (except those on special positions)
@@ -301,137 +193,25 @@ ensemble_refinement {
     preserved_solvent_minimum_distance = 7.0
       .type = float
     find_peaks {
-      use_sigma_scaled_maps = True
-        .type=bool
-        .help = Default is sigma scaled map, map in absolute scale is used \
-                otherwise.
-      resolution_factor = 1./4.
-        .type=float
-      map_next_to_model
-        .expert_level=2
-      {
-        min_model_peak_dist = 1.8
-          .type=float
-        max_model_peak_dist = 3.0
-          .type=float
-        min_peak_peak_dist = 1.8
-          .type=float
-        use_hydrogens = True
-          .type = bool
-      }
-      max_number_of_peaks = None
-        .type=int
-        .expert_level=1
-      peak_search
-        .expert_level=1
-      {
-        peak_search_level = 1
-          .type=int
-        max_peaks = 0
-          .type=int
-          .short_caption=Maximum peaks
-        interpolate = True
-          .type=bool
-        min_distance_sym_equiv = None
-          .type=float
-          .short_caption=Minimum distance between symmetry-equivalent atoms
-        general_positions_only = False
-          .type=bool
-        min_cross_distance = 1.8
-          .type=float
-          .short_caption=Minimum cross distance
-        min_cubicle_edge = 5
-          .type=float
-          .short_caption=Minimum edge length of cubicles used for \
-            fast neighbor search
-          .expert_level=2
-      }
+      include scope mmtbx.find_peaks.master_params
     }
   }
-  refinement.geometry_restraints.edits
-    {
-    excessive_bond_distance_limit = 10
-      .type = float
-    bond
-      .optional = True
-      .multiple = True
-      .short_caption = Bond
-      .style = auto_align
-    {
-      action = *add delete change
-        .type = choice
-      atom_selection_1 = None
-        .type = atom_selection
-        .input_size = 400
-      atom_selection_2 = None
-        .type = atom_selection
-        .input_size = 400
-      symmetry_operation = None
-        .help = "The bond is between atom_1 and symmetry_operation * atom_2,"
-                " with atom_1 and atom_2 given in fractional coordinates."
-                " Example: symmetry_operation = -x-1,-y,z"
-        .type = str
-      distance_ideal = None
-        .type = float
-      sigma = None
-        .type = float
-      slack = None
-        .type = float
-    }
-    angle
-      .optional = True
-      .multiple = True
-      .short_caption = Angle
-      .style = auto_align
-    {
-      action = *add delete change
-        .type = choice
-      atom_selection_1 = None
-        .type = atom_selection
-        .input_size = 400
-      atom_selection_2 = None
-        .type = atom_selection
-        .input_size = 400
-      atom_selection_3 = None
-        .type = atom_selection
-        .input_size = 400
-      angle_ideal = None
-        .type = float
-      sigma = None
-        .type = float
-    }
-    planarity
-      .optional = True
-      .multiple = True
-      .short_caption = Planarity
-      .style = auto_align
-    {
-      action = *add delete change
-        .type = choice
-      atom_selection = None
-        .type = atom_selection
-        .multiple = True
-        .input_size = 400
-      sigma = None
-        .type = float
-    }
-    scale_restraints
-      .multiple = True
-      .optional = True
-      .help = Apply a scale factor to restraints for specific atom selections, \
-        to tighten geometry without changing the overall scale of the geometry \
-        target.
-    {
-      atom_selection = None
-        .type = atom_selection
-      scale = 1.0
-        .type = float
-      apply_to = *bond *angle *dihedral *chirality
-        .type = choice(multi=True)
-      }
-    }
-  }
-""", process_includes=True)
+}
+refinement.geometry_restraints.edits
+  .short_caption = Edit geometry restraints
+  .style = menu_item box auto_align
+{
+  include scope mmtbx.monomer_library.pdb_interpretation.geometry_restraints_edits_str
+}
+gui
+  .help = Phenix GUI parameters, not used in command-line program
+{
+  include scope libtbx.phil.interface.tracking_params
+  output_dir = None
+    .type = path
+    .style = output_dir
+}
+""", process_includes=True).fetch(source=customization_params)
 
 class er_pickle(object):
   def __init__(self,
@@ -515,7 +295,7 @@ class run_ensemble_refinement(object):
     self.n_mc_per_tx = self.params.tx / (self.cdp.time_step * self.cdp.number_of_steps)
 
     # Set simulation length
-    utils.print_header("Simulation length:", out = self.log)
+    make_header("Simulation length:", out = self.log)
     print >> log, "Number of time steps per macro cycle    : ", self.cdp.number_of_steps
     print >> log, "Tx                                      : ", self.params.tx
     print >> log, "Number macro cycles per Tx period       : ", self.n_mc_per_tx
@@ -581,7 +361,7 @@ class run_ensemble_refinement(object):
     self.atom_selections()
 
     #Harmonic restraints
-    if self.params.er_harmonic_restraints_selections is not None:
+    if self.params.harmonic_restraints.selections is not None:
       self.add_harmonic_restraints()
 
     self.model.show_geometry_statistics(message   = "Starting model",
@@ -597,7 +377,7 @@ class run_ensemble_refinement(object):
     if self.params.target_name == 'ml':
       #Must be called before reseting ADPs
       if self.params.update_rescale_normalisation_factors_scale_kn:
-        utils.print_header("Calculate Ncalc and restrain to scale kn", out = self.log)
+        make_header("Calculate Ncalc and restrain to scale kn", out = self.log)
         self.fmodel_running.n_obs_n_calc(update_nobs_ncalc = True)
         n_obs  = self.fmodel_running.n_obs
         n_calc = self.fmodel_running.n_calc
@@ -608,7 +388,7 @@ class run_ensemble_refinement(object):
         self.scale_n1_current   = self.scale_n1_reference
         self.update_normalisation_factors()
       else:
-        utils.print_header("Calculate and fix scale of Ncalc", out = self.log)
+        make_header("Calculate and fix scale of Ncalc", out = self.log)
         self.fmodel_running.n_obs_n_calc(update_nobs_ncalc = True)
         print >> self.log, "Fix Ncalc scale          : True"
         print >> self.log, "Sum current Ncalc        : {0:5.3f}".format(sum(self.fmodel_running.n_calc))
@@ -622,7 +402,7 @@ class run_ensemble_refinement(object):
 
     #Set occupancies to 1.0
     if self.params.set_occupancies:
-      utils.print_header("Set occupancies to 1.0", out = self.log)
+      make_header("Set occupancies to 1.0", out = self.log)
       self.model.xray_structure.set_occupancies(
         value      = 1.0)
       self.model.show_occupancy_statistics(out = self.log)
@@ -640,7 +420,7 @@ class run_ensemble_refinement(object):
       self.fmodel_running.set_sigmaa = self.sigmaa_array
 
 ############################## START Simulation ################################
-    utils.print_header("Start simulation", out = self.log)
+    make_header("Start simulation", out = self.log)
     while self.macro_cycle <= self.total_macro_cycles:
       self.time = self.cdp.time_step * self.cdp.number_of_steps * self.macro_cycle
       #XXX Debug
@@ -955,11 +735,11 @@ class run_ensemble_refinement(object):
     yet_another_dataset.mtz_object().write(file_name = self.params.output_file_prefix+".mtz")
 
   def add_harmonic_restraints(self):
-    utils.print_header("Add specific harmonic restraints", out = self.log)
+    make_header("Add specific harmonic restraints", out = self.log)
     all_chain_proxies = self.generate_all_chain_proxies(model = self.model)
-    hr_selections = utils.get_atom_selections(
+    hr_selections = mmtbx.utils.get_atom_selections(
         all_chain_proxies = all_chain_proxies,
-        selection_strings = self.params.er_harmonic_restraints_selections,
+        selection_strings = self.params.harmonic_restraints.selections,
         xray_structure    = self.model.xray_structure)
     pdb_atoms = self.pdb_hierarchy().atoms()
     print >> self.log, "\nAdd atomic harmonic restraints:"
@@ -975,12 +755,12 @@ class run_ensemble_refinement(object):
                                    )
       restraint_info.append((i_seq, pdb_atoms[i_seq].xyz))
     self.er_data.er_harmonic_restraints_info = restraint_info
-    self.er_data.er_harmonic_restraints_weight = self.params.er_harmonic_restraints_weight
-    self.er_data.er_harmonic_restraints_slack  = self.params.er_harmonic_restraints_slack
+    self.er_data.er_harmonic_restraints_weight = self.params.harmonic_restraints.weight
+    self.er_data.er_harmonic_restraints_slack  = self.params.harmonic_restraints.slack
     print >> self.log, "\n|"+"-"*77+"|\n"
 
   def setup_bulk_solvent_and_scale(self):
-    utils.print_header("Setup bulk solvent and scale", out = self.log)
+    make_header("Setup bulk solvent and scale", out = self.log)
     self.show_overall(message = "pre solvent and scale")
     #
     self.fmodel_running.update_solvent_and_scale(
@@ -1001,7 +781,7 @@ class run_ensemble_refinement(object):
   def update_normalisation_factors(self):
     if self.params.update_rescale_normalisation_factors_scale_kn:
       # Restrain w.r.t. scale kn
-      utils.print_header("Update Ncalc and restrain to scale kn", out = self.log)
+      make_header("Update Ncalc and restrain to scale kn", out = self.log)
       # Target kn
       self.scale_n1_target = self.scale_helper(target    = self.fmodel_running.n_calc,
                                                reference = self.fmodel_running.n_obs
@@ -1025,7 +805,7 @@ class run_ensemble_refinement(object):
       print >> self.log, "Kn target updated            : {0:5.3f}".format(self.scale_n1_target)
     else:
       # Normalise to reference Sum(Ncalc)
-      utils.print_header("Update and renormalise Ncalc array", out = self.log)
+      make_header("Update and renormalise Ncalc array", out = self.log)
       eobs_norm_factor, ecalc_norm_factor =\
         self.fmodel_running.n_obs_n_calc(update_nobs_ncalc = False)
       ecalc_k = sum(self.fmodel_running.n_calc) / sum(ecalc_norm_factor)
@@ -1037,7 +817,7 @@ class run_ensemble_refinement(object):
     print >> self.log, "|"+"-"*77+"|\n"
 
   def update_sigmaa(self):
-    utils.print_header("Update sigmaa", out = self.log)
+    make_header("Update sigmaa", out = self.log)
     if self.params.verbose > 0:
       print >> self.log, "Previous best Rfree      : ", self.best_r_free
       print >> self.log, "Current       Rfree      : ", self.fmodel_running.r_free()
@@ -1051,7 +831,7 @@ class run_ensemble_refinement(object):
     print >> self.log, "|"+"-"*77+"|\n"
 
   def setup_tls_selections(self, tls_group_selection_strings):
-    utils.print_header("Generating TLS selections from input parameters (not including solvent)", out = self.log)
+    make_header("Generating TLS selections from input parameters (not including solvent)", out = self.log)
     model_no_solvent = self.model.deep_copy()
     model_no_solvent = model_no_solvent.remove_solvent()
     all_chain_proxies = self.generate_all_chain_proxies(model = model_no_solvent)
@@ -1091,7 +871,7 @@ class run_ensemble_refinement(object):
         tls_group_selection_strings[0] = tls_group_selection_strings[0][0:-10]
         print >> self.log, tls_group_selection_strings[0]
     #
-    tls_no_sol_selections =  utils.get_atom_selections(
+    tls_no_sol_selections =  mmtbx.utils.get_atom_selections(
         all_chain_proxies = all_chain_proxies,
         selection_strings = tls_group_selection_strings,
         xray_structure    = model_no_solvent.xray_structure)
@@ -1101,7 +881,7 @@ class run_ensemble_refinement(object):
       no_hd_string = '(' + selection_string + ') and not (element H or element D)'
       tls_no_hd_selection_strings.append(no_hd_string)
 
-    tls_no_sol_no_hd_selections = utils.get_atom_selections(
+    tls_no_sol_no_hd_selections = mmtbx.utils.get_atom_selections(
         all_chain_proxies = all_chain_proxies,
         selection_strings = tls_no_hd_selection_strings,
         xray_structure    = model_no_solvent.xray_structure)
@@ -1139,7 +919,7 @@ class run_ensemble_refinement(object):
     return processed_pdb_file.all_chain_proxies
 
   def fit_tls(self, input_model, verbose = False):
-    utils.print_header("Fit TLS from reference model", out = self.log)
+    make_header("Fit TLS from reference model", out = self.log)
     model_copy = input_model.deep_copy()
     model_copy = model_copy.remove_solvent()
     print >> self.log, 'Reference model :'
@@ -1380,7 +1160,7 @@ class run_ensemble_refinement(object):
       self.assign_solvent_tls_groups()
 
   def reset_totals(self):
-    utils.print_header("Reseting structure ensemble and total Fmodel", out = self.log)
+    make_header("Reseting structure ensemble and total Fmodel", out = self.log)
     self.er_data.xray_structures = []
     self.er_data.pdb_hierarchys = []
     self.er_data.ke_pdb = []
@@ -1395,7 +1175,7 @@ class run_ensemble_refinement(object):
     self.er_data.solvent_sel = self.model.solvent_selection()
 
   def save_multiple_fmodel(self):
-    utils.print_header("Saving fmodel block", out = self.log)
+    make_header("Saving fmodel block", out = self.log)
     #Stores fcalc, fmask, xray structure, pdb hierarchys
     print >> self.log, '{0:<23}: {1:>8} {2:>8} {3:>8} {4:>8}'.format('','MC','Block','Rwork','Rfree')
     print >> self.log, "{0:<23}: {1:8d} {2:8d} {3:8.3f} {4:8.3f}".format(
@@ -1427,7 +1207,7 @@ class run_ensemble_refinement(object):
       self.reset_totals()
 
   def optimise_multiple_fmodel(self):
-    utils.print_header("Block selection by Rwork", out = self.log)
+    make_header("Block selection by Rwork", out = self.log)
     best_r_work = None
 
     # Load all temp files
@@ -1513,8 +1293,10 @@ class run_ensemble_refinement(object):
     print >> self.log, "|"+"-"*77+"|\n"
 
   def print_fmodels_scale_and_solvent_stats(self):
-    utils.print_header("Fmodel statistics | macrocycle: "+str(self.macro_cycle), out = self.log)
-    print >> self.log, '{0:<23}: {1:>8} {2:>8} {3:>8} {4:>8}'.format('','MC','k1','Bsol','ksol')
+    make_header("Fmodel statistics | macrocycle: "+str(self.macro_cycle),
+      out = self.log)
+    print >> self.log, '{0:<23}: {1:>8} {2:>8} {3:>8} {4:>8}'.format('','MC',
+      'k1','Bsol','ksol')
     if self.fmodel_current is not None:
       print >> self.log, "{0:<23}: {1:8d} {2:8.3f} {3:8.3f} {4:8.3f}"\
         .format('Fmodel current',
@@ -1550,6 +1332,7 @@ class run_ensemble_refinement(object):
     pr = "REMARK   3"
     print >> out, pr
     print >> out,  "REMARK   3 TIME-AVERAGED ENSEMBLE REFINEMENT."
+    from phenix import phenix_info # FIXME ???
     ver, tag = phenix_info.version_and_release_tag(f = out)
     if(ver is None):
       prog = "   PROGRAM     : PHENIX (phenix.ensemble_refinement)"
@@ -1657,7 +1440,7 @@ class run_ensemble_refinement(object):
     if self.fmodel_running.n_calc is not None:
       self.run_time_stats_dict.update({'Ecalc(fixed)':self.fmodel_running.n_calc})
 
-    utils.print_header("ML statistics", out = self.log)
+    make_header("ML statistics", out = self.log)
     print >> self.log, '  {0:<23}: {1:>12} {2:>12} {3:>12}'.format('','min','max','mean')
     for key in sorted(self.run_time_stats_dict.keys()):
       info = self.run_time_stats_dict[key].min_max_mean()
@@ -1678,18 +1461,26 @@ def show_data(fmodel, n_outl, test_flag_value, f_obs_labels, log):
   try: f_obs_labels = f_obs_labels[:f_obs_labels.index(",")]
   except ValueError: pass
   result = " \n    ".join([
-    "data_label                          : %s"%f_obs_labels,
+    "data_label                          : %s" % f_obs_labels,
     "high_resolution                     : "+format_value("%-5.2f",info.d_min),
     "low_resolution                      : "+format_value("%-6.2f",info.d_max),
-    "completeness_in_range               : "+format_value("%-6.2f",info.completeness_in_range),
-    "completeness(d_min-inf)             : "+format_value("%-6.2f",info.completeness_d_min_inf),
-    "completeness(6A-inf)                : "+format_value("%-6.2f",info.completeness_6_inf),
-    "wilson_b                            : "+format_value("%-6.1f",fmodel.wilson_b()),
-    "number_of_reflections               : "+format_value("%-8d",  info.number_of_reflections),
-    "test_set_size                       : "+format_value("%-8.4f",flags_pc),
-    "test_flag_value                     : "+format_value("%-d",   test_flag_value),
-    "number_of_Fobs_outliers             : "+format_value("%-8d",  n_outl),
-    "anomalous_flag                      : "+format_value("%-6s",  fmodel.f_obs().anomalous_flag())])
+    "completeness_in_range               : " + \
+      format_value("%-6.2f",info.completeness_in_range),
+    "completeness(d_min-inf)             : " + \
+      format_value("%-6.2f",info.completeness_d_min_inf),
+    "completeness(6A-inf)                : " + \
+      format_value("%-6.2f",info.completeness_6_inf),
+    "wilson_b                            : " + \
+      format_value("%-6.1f",fmodel.wilson_b()),
+    "number_of_reflections               : " + \
+      format_value("%-8d",  info.number_of_reflections),
+    "test_set_size                       : " + \
+      format_value("%-8.4f",flags_pc),
+    "test_flag_value                     : " + \
+      format_value("%-d",   test_flag_value),
+    "number_of_Fobs_outliers             : " + format_value("%-8d",  n_outl),
+    "anomalous_flag                      : " + \
+      format_value("%-6s",  fmodel.f_obs().anomalous_flag())])
   print >> log, "   ", result
 
 def show_model_vs_data(fmodel, log):
@@ -1703,56 +1494,53 @@ def show_model_vs_data(fmodel, log):
   b_cart = " ".join([("%8.2f"%v).strip() for v in fmodel.fmodel_kbu().b_cart()])
   print >> log, "Model vs data statistics"
   result = " \n    ".join([
-    "r_work(re-computed)                 : "+format_value("%-6.4f",fmodel.r_work()),
-    "r_free(re-computed)                 : "+format_value("%-6.4f",r_free),
-    "scale_k1                            : "+format_value("%-6.4f",fmodel.scale_k1()),
-    "bulk_solvent_(k_sol,b_sol)          : %s%s"%(k_sol,b_sol),
-    "overall_anisotropic_scale_(b_cart)  : "+format_value("%-s",b_cart)])
+    "r_work(re-computed)                 : " + \
+      format_value("%-6.4f",fmodel.r_work()),
+    "r_free(re-computed)                 : " + format_value("%-6.4f",r_free),
+    "scale_k1                            : " + \
+      format_value("%-6.4f",fmodel.scale_k1()),
+    "bulk_solvent_(k_sol,b_sol)          : %s%s" % (k_sol, b_sol),
+    "overall_anisotropic_scale_(b_cart)  : " + format_value("%-s",b_cart)])
   print >> log, "   ", result
 
-def run(args, command_name = "phenix.ensemble_refinement"):
+def run(args, command_name = "phenix.ensemble_refinement", log=None):
   if(len(args) == 0): args = ["--help"]
   command_line = (iotbx_option_parser(
     usage="%s reflection_file pdb_file [options]" % command_name,
-    description='Example: %s data.mtz model.pdb'%command_name)
-    .option(None, "--f_obs_label",
-      action="store",
-      default=None,
-      type="string",
-      help="Label for F-obs (or I-obs).")
-    .option(None, "--r_free_flags_label",
-      action="store",
-      default=None,
-      type="string",
-      help="Label for free R flags.")
-    .option(None, "--show_defaults",
-      action="store_true",
-      help="Show list of parameters.")
-    ).process(args=args)
-  log = sys.stdout
-  if(command_line.options.show_defaults):
-    master_params.show(out = log)
+    description='Example: %s data.mtz model.pdb' % command_name
+  ).enable_show_defaults()).process(args=args)
+  if (log is None) :
+    log = sys.stdout
+  if(command_line.expert_level is not None) :
+    master_params.show(
+      expert_level=command_line.expert_level,
+      attributes_level=command_line.attributes_level,
+      out=log)
     return
-  processed_args = utils.process_command_line_args(args = args,
-    log = sys.stdout, master_params = master_params)
-  pdb_file_names = processed_args.pdb_file_names
-  cmd_params = processed_args.params
-  if cmd_params is None:
-    cmd_params = master_params
-  er_params = cmd_params.extract().ensemble_refinement
+  inputs = mmtbx.utils.cmdline_load_pdb_and_data(
+    args=args,
+    master_phil=master_params,
+    out=log,
+    create_fmodel=False,
+    process_pdb_file=False)
+  working_phil = inputs.working_phil
+  params = working_phil.extract()
+  er_params = params.ensemble_refinement
 
   if er_params.electron_density_maps.apply_default_maps != False\
-    or len(params.electron_density_maps.map_coefficients) == 0:
+    or len(er_params.electron_density_maps.map_coefficients) == 0:
     maps_par = libtbx.env.find_in_repositories(
-      relative_path="cctbx_project/mmtbx/refinement/ensemble_refinement/maps.params",
+      relative_path=\
+        "cctbx_project/mmtbx/refinement/ensemble_refinement/maps.params",
       test=os.path.isfile)
     maps_par_phil = iotbx.phil.parse(file_name=maps_par)
     working_params = mmtbx.refinement.ensemble_refinement.master_params.fetch(
-                        sources = [cmd_params]+[maps_par_phil])
+                        sources = [working_phil]+[maps_par_phil])
     er_params = working_params.extract().ensemble_refinement
 
   if er_params.output_file_prefix == None:
-    er_params.output_file_prefix = os.path.splitext(os.path.split(pdb_file_names[0])[-1])[0] + "_ensemble"
+    er_params.output_file_prefix = os.path.splitext(
+      os.path.basename(inputs.pdb_file_names[0]))[0] + "_ensemble"
   log = multi_out()
   log.register(label="stdout", file_object=sys.stdout)
   log.register(
@@ -1766,77 +1554,47 @@ def run(args, command_name = "phenix.ensemble_refinement"):
       new_label="log",
       new_file_object=log_file)
   timer = user_plus_sys_time()
-  utils.print_programs_start_header(log=log, text=command_name)
-  utils.print_header("Ensemble refinement parameters", out = log)
-  cmd_params.show(out = log)
-  reflection_files = processed_args.reflection_files
-  if(len(reflection_files) == 0):
-    raise Sorry("No reflection file found.")
-  crystal_symmetry = processed_args.crystal_symmetry
-  if(crystal_symmetry is None):
-    raise Sorry("No crystal symmetry found.")
-  if(len(processed_args.pdb_file_names) == 0):
-    raise Sorry("No PDB file found.")
-  utils.print_header("Model and data statistics", out = log)
-  print >> log, "Data file                               : %s"%(format_value("%5s",os.path.basename(pdb_file_names[0])))
-  print >> log, "Model file                              : %s \n"%(format_value("%5s",os.path.basename(processed_args.reflection_file_names[0])))
+  mmtbx.utils.print_programs_start_header(log=log, text=command_name)
+  make_header("Ensemble refinement parameters", out = log)
+  working_phil.show(out = log)
+  make_header("Model and data statistics", out = log)
+  print >> log, "Data file                               : %s" % \
+    format_value("%5s", os.path.basename(params.input.xray_data.file_name))
+  print >> log, "Model file                              : %s \n" % \
+    (format_value("%5s",os.path.basename(inputs.pdb_file_names[0])))
   print >> log, "\nTLS MUST BE IN ATOM RECORDS OF INPUT PDB\n"
-  rfs = reflection_file_utils.reflection_file_server(
-    crystal_symmetry = crystal_symmetry,
-    force_symmetry   = True,
-    reflection_files = reflection_files,
-    err              = StringIO())
-  parameters = utils.data_and_flags_master_params().extract()
-  if(command_line.options.f_obs_label is not None):
-    parameters.labels = command_line.options.f_obs_label
-  if(command_line.options.r_free_flags_label is not None):
-    parameters.r_free_flags.label = command_line.options.r_free_flags_label
-  determine_data_and_flags_result = utils.determine_data_and_flags(
-    reflection_file_server  = rfs,
-    parameters              = parameters,
-    data_parameter_scope    = "refinement.input.xray_data",
-    flags_parameter_scope   = "refinement.input.xray_data.r_free_flags",
-    data_description        = "X-ray data",
-    keep_going              = True,
-    log                     = log)
-  f_obs = determine_data_and_flags_result.f_obs
+  f_obs = inputs.f_obs
   number_of_reflections = f_obs.indices().size()
 
-  r_free_flags = determine_data_and_flags_result.r_free_flags
-  test_flag_value = determine_data_and_flags_result.test_flag_value
-  if(r_free_flags is None):
-    r_free_flags=f_obs.array(data=flex.bool(f_obs.data().size(), False))
-    test_flag_value=None
-
+  r_free_flags = inputs.r_free_flags
   f_obs_label = "F-obs"
   i_obs_label = "I-obs"
   flag_label = "R-free-flags"
-  if (determine_data_and_flags_result.intensity_flag):
+  if (inputs.intensity_flag):
     column_root_label = i_obs_label
   else:
     column_root_label = f_obs_label
-  mtz_dataset_original = determine_data_and_flags_result.raw_data.as_mtz_dataset(
+  mtz_dataset_original = inputs.raw_data.as_mtz_dataset(
     column_root_label=column_root_label)
   mtz_dataset_original.add_miller_array(
-    miller_array = determine_data_and_flags_result.raw_flags,
+    miller_array = inputs.raw_flags,
     column_root_label=flag_label)
 
-  if(len(processed_args.pdb_file_names) == 0):
-    raise Sorry("No PDB file found.")
-  print >> log, "\nPDB file name : ", processed_args.pdb_file_names[0]
+  print >> log, "\nPDB file name : ", inputs.pdb_file_names[0]
 
   # Process PDB file
-  cif_objects = processed_args.cif_objects
-  pdb_file = processed_args.pdb_file_names[0]
+  cif_objects = inputs.cif_objects
+  # XXX shouldn't this accept multiple PDBs as input?
+  pdb_file = inputs.pdb_file_names[0]
   pdb_ip = mmtbx.monomer_library.pdb_interpretation.master_params.extract()
   pdb_ip.clash_guard.nonbonded_distance_threshold = -1.0
   pdb_ip.clash_guard.max_number_of_distances_below_threshold = 100000000
   pdb_ip.clash_guard.max_fraction_of_distances_below_threshold = 1.0
   pdb_ip.proceed_with_excessive_length_bonds=True
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
+  processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
     cif_objects               = cif_objects,
     pdb_interpretation_params = pdb_ip,
-    crystal_symmetry          = crystal_symmetry,
+    crystal_symmetry          = inputs.xray_structure,
     log                       = log)
   processed_pdb_file, pdb_inp = \
     processed_pdb_files_srv.process_pdb_files(pdb_file_names = [pdb_file])
@@ -1870,12 +1628,10 @@ def run(args, command_name = "phenix.ensemble_refinement"):
     hierarchy.write_pdb_file(file_name        = pdb_file_removed_alt_confs,
                              crystal_symmetry = pdb_inp.crystal_symmetry())
     processed_pdb_file, pdb_inp = \
-    processed_pdb_files_srv.process_pdb_files(pdb_file_names = [pdb_file_removed_alt_confs])
+    processed_pdb_files_srv.process_pdb_files(
+      pdb_file_names = [pdb_file_removed_alt_confs])
 
-  if er_params.high_resolution is not None:
-    d_min = er_params.high_resolution
-  else:
-    d_min = f_obs.d_min()
+  d_min = f_obs.d_min()
   xsfppf = mmtbx.utils.xray_structures_from_processed_pdb_file(
     processed_pdb_file = processed_pdb_file,
     scattering_table   = "n_gaussian",
@@ -1893,7 +1649,8 @@ def run(args, command_name = "phenix.ensemble_refinement"):
   geometry = processed_pdb_file.geometry_restraints_manager(
       show_energies                = False,
       plain_pairs_radius           = 5,
-      params_edits                 = er_params.refinement.geometry_restraints.edits,
+      params_edits                 = \
+        params.refinement.geometry_restraints.edits,
       params_remove                = None,
       hydrogen_bond_proxies        = None,
       hydrogen_bond_params         = None,
@@ -1936,42 +1693,37 @@ def run(args, command_name = "phenix.ensemble_refinement"):
     f=open(er_params.output_file_prefix+'.geo','w') )
 
   print >> log, "Unit cell                               :", f_obs.unit_cell()
-  print >> log, "Space group                             :", f_obs.crystal_symmetry().space_group_info().symbol_and_number()
-  print >> log, "Number of symmetry operators            :", f_obs.crystal_symmetry().space_group_info().type().group().order_z()
-  print >> log, "Unit cell volume                        : %-15.4f" % f_obs.unit_cell().volume()
+  print >> log, "Space group                             :", \
+    f_obs.crystal_symmetry().space_group_info().symbol_and_number()
+  print >> log, "Number of symmetry operators            :", \
+    f_obs.crystal_symmetry().space_group_info().type().group().order_z()
+  print >> log, "Unit cell volume                        : %-15.4f" % \
+    f_obs.unit_cell().volume()
   f_obs_labels = f_obs.info().label_string()
-  if(cmd_params is not None):
-    f_obs = f_obs.resolution_filter(
-      d_min = er_params.high_resolution,
-      d_max = er_params.low_resolution)
-    r_free_flags = r_free_flags.resolution_filter(
-      d_min = er_params.high_resolution,
-      d_max = er_params.low_resolution)
 
   fmodel = mmtbx.utils.fmodel_simple(
-               f_obs                      = f_obs,
-               xray_structures            = [model.xray_structure],
-               scattering_table           = "n_gaussian",
-               r_free_flags               = r_free_flags,
-               target_name                = er_params.target_name,
-               bulk_solvent_and_scaling   = False,
-               bss_params                 = None,
-               mask_params                = None,
-               twin_laws                  = None,
-               skip_twin_detection        = True,
-               twin_switch_tolerance      = 2.0,
-               outliers_rejection         = True,
-               bulk_solvent_correction    = True,
-               anisotropic_scaling        = True,
-               log                        = log)
-  if(cmd_params is not None):
-    mask_params = cmd_params.extract().ensemble_refinement.mask
+    f_obs                      = f_obs,
+    xray_structures            = [model.xray_structure],
+    scattering_table           = "n_gaussian",
+    r_free_flags               = r_free_flags,
+    target_name                = er_params.target_name,
+    bulk_solvent_and_scaling   = False,
+    bss_params                 = None,
+    mask_params                = None,
+    twin_laws                  = None,
+    skip_twin_detection        = True,
+    twin_switch_tolerance      = 2.0,
+    outliers_rejection         = True,
+    bulk_solvent_correction    = True,
+    anisotropic_scaling        = True,
+    log                        = log)
+  # XXX is this intentional?
   fmodel = mmtbx.f_model.manager(
-               mask_params                  = mask_params,
-               xray_structure               = model.xray_structure,
-               f_obs                        = fmodel.f_obs(),
-               r_free_flags                 = fmodel.r_free_flags(),
-               target_name                  = er_params.target_name)
+    mask_params                  = er_params.mask,
+    xray_structure               = model.xray_structure,
+    f_obs                        = fmodel.f_obs(),
+    r_free_flags                 = fmodel.r_free_flags(),
+    target_name                  = er_params.target_name)
   hd_sel = model.xray_structure.hd_selection()
   model.xray_structure.set_occupancies(
         value     = 1.0,
@@ -1987,7 +1739,7 @@ def run(args, command_name = "phenix.ensemble_refinement"):
   n_outl = f_obs.data().size() - fmodel.f_obs().data().size()
   show_data(fmodel          = fmodel,
             n_outl          = n_outl,
-            test_flag_value = test_flag_value,
+            test_flag_value = inputs.test_flag_value,
             f_obs_labels    = f_obs_labels,
             log             = log)
   show_model_vs_data(fmodel = fmodel,
@@ -2001,3 +1753,13 @@ def run(args, command_name = "phenix.ensemble_refinement"):
       log                  = log)
 
   show_total_time(out = ensemble_refinement.log)
+
+class launcher (runtime_utils.target_with_save_result) :
+  def run (self) :
+    os.mkdir(self.output_dir)
+    os.chdir(self.output_dir)
+    return run(args=list(self.args),
+      log=sys.stdout)
+
+def validate_params (params) :
+  return mmtbx.utils.validate_input_params(params)
