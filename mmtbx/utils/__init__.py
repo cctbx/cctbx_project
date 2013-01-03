@@ -2403,7 +2403,7 @@ class cmdline_load_pdb_and_data (object) :
     self.cif_objects = []
     self.pdb_file_names = params.input.pdb.file_name
     if len(self.cif_file_names) > 0 :
-      for file_name in cif_file_names :
+      for file_name in self.cif_file_names :
         cif_obj = mmtbx.monomer_library.server.read_cif(file_name=file_name)
         self.cif_objects.append((file_name, cif_obj))
     pdb_file_object = pdb_file(
