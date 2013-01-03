@@ -18,8 +18,8 @@ from cctbx import adptbx
 from cctbx import xray
 import scitbx.math
 from libtbx.utils import Sorry, user_plus_sys_time, multi_out, show_total_time
+from libtbx import adopt_init_args, slots_getstate_setstate
 from libtbx.str_utils import format_value, make_header
-from libtbx import adopt_init_args
 from libtbx import runtime_utils
 import libtbx.load_env
 from cStringIO import StringIO
@@ -61,6 +61,9 @@ ensemble_refinement {
   output_file_prefix = None
     .type = str
     .help = 'Prefix for all output files'
+  gzip_final_model = True
+    .type = bool
+    .style = hidden
   random_seed = 2679941
     .type = int
     .help = 'Ransom seed'
@@ -209,6 +212,7 @@ gui
   include scope libtbx.phil.interface.tracking_params
   output_dir = None
     .type = path
+    .short_caption = Output directory
     .style = output_dir
 }
 """, process_includes=True).fetch(source=customization_params)
@@ -662,7 +666,11 @@ class run_ensemble_refinement(object):
     self.ensemble_utils.ensemble_reduction()
 
     #PDB output
-    self.write_ensemble_pdb(out = gzip.open(self.params.output_file_prefix+".pdb.gz", 'wb'))
+    if (params.gzip_final_model) :
+      self.write_ensemble_pdb(out = gzip.open(self.params.output_file_prefix+".pdb.gz", 'wb'))
+    else :
+      self.write_ensemble_pdb(out = open(
+        self.params.output_file_prefix+".pdb", 'wb'))
 
     #Optimise fmodel_total k, b_aniso, k_sol, b_sol
     self.fmodel_total.set_scale_switch = 0
@@ -1503,7 +1511,8 @@ def show_model_vs_data(fmodel, log):
     "overall_anisotropic_scale_(b_cart)  : " + format_value("%-s",b_cart)])
   print >> log, "   ", result
 
-def run(args, command_name = "phenix.ensemble_refinement", log=None):
+def run(args, command_name = "phenix.ensemble_refinement", log=None,
+    validate=False):
   if(len(args) == 0): args = ["--help"]
   command_line = (iotbx_option_parser(
     usage="%s reflection_file pdb_file [options]" % command_name,
@@ -1753,6 +1762,62 @@ def run(args, command_name = "phenix.ensemble_refinement", log=None):
       log                  = log)
 
   show_total_time(out = ensemble_refinement.log)
+  return result(
+    fmodel=ensemble_refinement.fmodel_total,
+    xray_structures=ensemble_refinement.er_data.xray_structures,
+    prefix=er_params.output_file_prefix,
+    validate=validate,
+    log=log)
+
+########################################################################
+# Phenix GUI hooks
+class result (slots_getstate_setstate) :
+  __slots__ = [
+    "directory", "r_work", "r_free", "fofc_min", "fofc_max",
+    "number_of_models", "pdb_file", "mtz_file","validation",
+  ]
+  def __init__ (self,
+      fmodel,
+      xray_structures,
+      prefix,
+      log,
+      validate=False) :
+    self.directory = os.getcwd()
+    self.r_work = fmodel.r_work()
+    self.r_free = fmodel.r_free()
+    fofc_map = fmodel.map_coefficients(
+      map_type="mFo-DFc").fft_map(
+        resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
+    self.fofc_min = flex.min(fofc_map.as_1d())
+    self.fofc_max = flex.mmax(fofc_map.as_1d())
+    self.number_of_models = len(xray_structures)
+    self.pdb_file = prefix + ".pdb"
+    self.mtz_file = prefix + ".mtz"
+    self.validation = None
+    if (validate) :
+      from mmtbx.command_line import validation_summary
+      self.validation = validation_summary.run(
+        args=[self.pdb_file],
+        out=log)
+      assert (type(self.validation).__name__ == 'ensemble')
+
+  def get_result_files (self, output_dir=None) :
+    if (output_dir is None) :
+      output_dir = self.directory
+    return (os.path.join(self.directory, self.pdb_file),
+            os.path.join(self.directory, self.mtz_file))
+
+  def finish_job (self) :
+    pdb_file, mtz_file = self.get_result_files()
+    return (
+      [(pdb_file, "Final ensemble"),
+       (mtz_file, "Map coefficients")],
+      [("R-work", "%.4f" % self.r_work),
+       ("R-free", "%.4f" % self.r_free),
+       ("Models", str(self.number_of_models)),
+       ("Max mFo-DFc", "%.2f" % self.fofc_max),
+       ("Min mFo-DFc", "%.2f" % self.fofc_min)]
+    )
 
 class launcher (runtime_utils.target_with_save_result) :
   def run (self) :
