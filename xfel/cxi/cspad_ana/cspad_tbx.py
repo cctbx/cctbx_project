@@ -1,4 +1,4 @@
-# -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
+﻿# -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # $Id$
 
@@ -619,6 +619,27 @@ def env_sifoil(env):
         and                abs(pv.values[0]) <  7):
       si_tot += si_len
   return (si_tot)
+
+
+def evt_pulse_energy(evt):
+  """The evt_pulse_energy() function returns the energy, or the
+  intensity, of the pulse in arbitrary units.  The returned value
+  should be proportional to the number of photons in the pulse, and
+  may be negative due to noise.
+
+  @param evt Event data object, a configure object
+  @return    Pulse intensity, in arbitrary units
+  """
+
+  if evt is not None:
+    gmd = evt.get(key=xtc.TypeId.Type.Id_GMD)
+    if hasattr(gmd, 'fRelativeEnergyPerPulse'):
+      # Note that fRelativeEnergyPerPulse actually gives the negated
+      # value sought.  Details are given in Moeller, S. (2012) "GMD
+      # Look up Sheet for variable names in the DAQ (BLD) versus the
+      # C++ code".
+      return -gmd.fRelativeEnergyPerPulse
+  return None
 
 
 def evt_pulse_length(evt):
