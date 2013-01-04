@@ -793,7 +793,9 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
     miller_array = miller_array.select(
       miller_array.indices() != (0,0,0))
 
+    original_is_intensity_array = False
     if (miller_array.is_xray_intensity_array()):
+      original_is_intensity_array = True
       miller_array = miller_array.enforce_positive_amplitudes()
     elif (miller_array.is_complex_array()):
       miller_array = abs(miller_array)
@@ -981,7 +983,8 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
         params=params,
         xtriage_results=xtriage_results,
         data_summary=summary_out.getvalue(),
-        data_file=data_file_name)
+        data_file=data_file_name,
+        original_is_intensity_array=original_is_intensity_array)
     else :
       return xtriage_results
 
@@ -990,13 +993,15 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
 # This is *exactly* as gross as it looks.
 class xtriage_summary (object) :
   def __init__ (self, params, xtriage_results, data_summary,
-      data_file=None) :
+      data_file=None,
+      original_is_intensity_array=None) :
     self.file_name = params.scaling.input.xray_data.file_name
     self.log_file = params.scaling.input.parameters.reporting.log
     self.file_labels = params.scaling.input.xray_data.obs_labels
     self.nresidues = params.scaling.input.asu_contents.n_residues
     self.nbases = params.scaling.input.asu_contents.n_bases
     self.data_summary = data_summary
+    self.original_is_intensity_array = original_is_intensity_array
     self.data_file = None
     if (data_file is not None) :
       self.data_file = os.path.abspath(data_file)
@@ -1140,6 +1145,9 @@ class xtriage_summary (object) :
 
   def get_data_file (self) :
     return getattr(self, "data_file", None)
+
+  def original_intensities_flag (self) :
+    return getattr(self, "original_is_intensity_array", None)
 
 def change_symmetry (miller_array, space_group_symbol, file_name=None,
     log=None) :
