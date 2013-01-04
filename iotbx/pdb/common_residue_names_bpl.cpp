@@ -25,7 +25,6 @@ namespace {
     IOTBX_PDB_COMMON_RESIDUE_NAMES_LIST(water)
     IOTBX_PDB_COMMON_RESIDUE_NAMES_LIST(small_molecule)
     IOTBX_PDB_COMMON_RESIDUE_NAMES_LIST(element)
-    IOTBX_PDB_COMMON_RESIDUE_NAMES_LIST(saccharide)
 
     typedef return_value_policy<copy_const_reference> ccr;
     def("common_residue_names_get_class",
