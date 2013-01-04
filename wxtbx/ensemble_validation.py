@@ -78,7 +78,7 @@ class ensemble_validation_panel (wx.Panel) :
     self.ensemble = None
 
   def set_ensemble (self, ensemble) :
-    assert (type(result).__name__ == 'ensemble')
+    assert (type(ensemble).__name__ == 'ensemble')
     self.ensemble = ensemble
 
   def OnSelectPlot (self, event) :
