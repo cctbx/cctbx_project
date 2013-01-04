@@ -3,7 +3,7 @@ import sys, os, random, re
 from cctbx.array_family import flex
 from iotbx import pdb
 from cctbx import adptbx, sgtbx
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, null_out
 from iotbx import reflection_file_utils
 from mmtbx import real_space_correlation
 from iotbx import reflection_file_utils
@@ -589,6 +589,12 @@ dump_result_object_as_pickle = False
   .type = bool
 ignore_giant_models_and_datasets = True
   .type = bool
+unmerged_data = None
+  .type = path
+unmerged_labels = None
+  .type = str
+n_bins = 20
+  .type = int
 """
 
 def defaults(log, silent):
@@ -818,8 +824,25 @@ def run(args,
   # map statistics
   if(len(xray_structures)==1): # XXX no multi-model support yet
     mvd_obj.collect(maps = maps(fmodel = fmodel, mvd_obj = mvd_obj))
-  #
+  # CC* and friends
+  cc_star_stats = None
+  if (params.unmerged_data is not None) :
+    from mmtbx.command_line import cc_star
+    f_obs = fmodel.f_obs().average_bijvoet_mates()
+    unmerged_i_obs = cc_star.load_and_validate_unmerged_data(
+      f_obs=f_obs,
+      file_name=params.unmerged_data,
+      data_labels=params.unmerged_labels,
+      log=null_out())
+    cc_star_stats = cc_star.merging_and_model_statistics(
+      f_model=fmodel.f_model().average_bijvoet_mates(),
+      f_obs=f_obs,
+      r_free_flags=fmodel.r_free_flags().average_bijvoet_mates(),
+      unmerged_i_obs=unmerged_i_obs,
+      n_bins=params.n_bins)
   mvd_obj.show(log=out)
+  if (cc_star_stats is not None) :
+    cc_star_stats.show_model_vs_data(out=out, prefix="  ")
   if return_fmodel_and_pdb :
     mvd_obj.pdb_file = processed_pdb_file
     mvd_obj.fmodel = fmodel
