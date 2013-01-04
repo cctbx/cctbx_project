@@ -12,6 +12,7 @@ except ImportError:
   import md5
   hashlib_md5 = md5.new
 from stdlib import math
+import shutil
 import glob
 import time
 import atexit
@@ -1128,3 +1129,38 @@ def create_run_directory (prefix, default_directory_number=None) :
   else :
     os.makedirs(dir_name)
   return os.path.abspath(dir_name)
+
+class tmp_dir_wrapper (object) :
+  """
+  Convenience methods for running in a (presumably empty) temporary directory
+  and copying all files to another directory.  Can be used whether or not the
+  temporary directory is actually defined; if None, no action will be taken.
+  Otherwise, both tmp_dir and dest_dir (default is current directory) must be
+  existing paths.
+  """
+  def __init__ (self, tmp_dir, dest_dir=None, out=sys.stdout) :
+    if (dest_dir is None) :
+      dest_dir = os.getcwd()
+    self.tmp_dir = tmp_dir
+    self.dest_dir = dest_dir
+    if (tmp_dir is None) :
+      pass
+    elif (not os.path.isdir(tmp_dir)) :
+      raise Sorry("The temporary directory %s does not exist." % tmp_dir)
+    else :
+      if (not os.path.isdir(dest_dir)) :
+        raise Sorry("The destination directory %s does not exist." % dest_dir)
+      print >> out, "Changing working directory to %s" % tmp_dir
+      print >> out, "Ultimate destination is %s" % dest_dir
+      os.chdir(tmp_dir)
+
+  def transfer_files (self, out=sys.stdout) :
+    if (self.tmp_dir is None) : return False
+    assert os.path.isdir(self.dest_dir)
+    files = os.listdir(self.tmp_dir)
+    print >> out, "Copying all output files to %s" % self.dest_dir
+    for file_name in files :
+      print >> out, "  ... %s" % file_name
+      shutil.copy(os.path.join(self.tmp_dir, file_name), self.dest_dir)
+    print >> out, ""
+    return True
