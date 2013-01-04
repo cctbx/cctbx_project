@@ -35,6 +35,9 @@ def merging_and_model_statistics (
     f_model = f_model.average_bijvoet_mates()
   if (free_sel.anomalous_flag()) :
     free_sel = free_sel.average_bijvoet_mates()
+  if (free_sel.data().count(True) == 0) :
+    raise Sorry("R-free array does not select any reflections.  To calculate "+
+      "CC* and related statistics, a valid set of R-free flags must be used.")
   work_sel = free_sel.customized_copy(data=~free_sel.data())
   i_obs, f_model = i_obs.common_sets(other=f_model)
   i_obs, f_obs = i_obs.common_sets(other=f_obs)
@@ -109,6 +112,27 @@ loggraph = False
   .type = bool
 """, process_includes=True)
 master_params = master_phil # for phenix GUI
+
+def show_symmetry_error (file1, file2, symm1, symm2) :
+  symm_out1 = cStringIO.StringIO()
+  symm_out2 = cStringIO.StringIO()
+  symm1.show_summary(f=symm_out1, prefix="  ")
+  symm2.show_summary(f=symm_out2, prefix="  ")
+  raise Sorry("Incompatible symmetry definitions:\n%s:\n%s\n%s\n%s" %
+    file1, symm_out1.getvalue(), file2, symm_out2.getvalue())
+
+def load_and_validate_unmerged_data (f_obs, file_name, data_labels,
+    log=sys.stdout) :
+  from iotbx import merging_statistics
+  unmerged_i_obs = merging_statistics.select_data(
+    file_name=file_name,
+    data_labels=data_labels,
+    log=log)
+  if ((unmerged_i_obs.space_group() is not None) and
+      (unmerged_i_obs.unit_cell() is not None)) :
+    if (not unmerged_i_obs.is_similar_symmetry(f_obs)) :
+      show_symmetry_error("Data file", "Unmerged data", unmerged_i_obs, f_obs)
+  return unmerged_i_obs
 
 def run (args, out=sys.stdout) :
   if (len(args) == 0) or ("--help" in args) :
@@ -227,21 +251,11 @@ Full parameters:
   print >> out, "R-free flags:"
   r_free_flags.show_summary(f=out, prefix="  ")
   print >> out, ""
-  def show_symmetry_error (file1, file2, symm1, symm2) :
-    symm_out1 = cStringIO.StringIO()
-    symm_out2 = cStringIO.StringIO()
-    symm1.show_summary(f=symm_out1, prefix="  ")
-    symm2.show_summary(f=symm_out2, prefix="  ")
-    raise Sorry("Incompatible symmetry definitions:\n%s:\n%s\n%s\n%s" %
-      file1, symm_out1.getvalue(), file2, symm_out2.getvalue())
-  unmerged_i_obs = merging_statistics.select_data(
+  unmerged_i_obs = load_and_validate_unmerged_data(
+    f_obs=f_obs,
     file_name=params.unmerged_data,
     data_labels=params.unmerged_labels,
     log=out)
-  if ((unmerged_i_obs.space_group() is not None) and
-      (unmerged_i_obs.unit_cell() is not None)) :
-    if (not unmerged_i_obs.is_similar_symmetry(f_obs)) :
-      show_symmetry_error("Data file", "Unmerged data", unmerged_i_obs, f_obs)
   print >> out, "Unmerged intensities:"
   unmerged_i_obs.show_summary(f=out, prefix="  ")
   print >> out, ""
