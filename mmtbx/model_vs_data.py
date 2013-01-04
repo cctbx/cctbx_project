@@ -589,6 +589,9 @@ dump_result_object_as_pickle = False
   .type = bool
 ignore_giant_models_and_datasets = True
   .type = bool
+skip_twin_detection = False
+  .type = bool
+  .expert_level = 3
 unmerged_data = None
   .type = path
 unmerged_labels = None
@@ -759,7 +762,8 @@ def run(args,
     scattering_table = scattering_table,
     mask_params      = mp,
     f_obs            = f_obs,
-    r_free_flags     = r_free_flags)
+    r_free_flags     = r_free_flags,
+    skip_twin_detection = params.skip_twin_detection)
   #
   n_outl = f_obs.data().size() - fmodel.f_obs().data().size()
   mvd_obj.collect(model_vs_data = show_model_vs_data(fmodel))
@@ -810,7 +814,8 @@ def run(args,
       xray_structures  = xray_structures,
       scattering_table = scattering_table,
       f_obs            = fmodel.f_obs().select(tmp_sel),
-      r_free_flags     = fmodel.r_free_flags().select(tmp_sel))
+      r_free_flags     = fmodel.r_free_flags().select(tmp_sel),
+      skip_twin_detection = params.skip_twin_detection)
   mvd_obj.collect(misc = group_args(
     r_work_cutoff = fmodel_cut.r_work(),
     r_free_cutoff = fmodel_cut.r_free(),
