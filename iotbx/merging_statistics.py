@@ -489,6 +489,36 @@ class dataset_statistics (object) :
     cif_block.add_loop(reflns_shell_loop)
     return cif_block
 
+  def show_model_vs_data (self, out=None, prefix="") :
+    assert (self.overall.cc_work is not None)
+    if (out is None) : out = sys.stdout
+    outer_shell = self.bins[-1]
+    print >> out, prefix + "Merging statistics and CC*:"
+    print >> out, prefix + "  Resolution      : %.3f - %.3f (%.3f - %.3f)" % (
+      self.overall.d_max, self.overall.d_min, outer_shell.d_max,
+      outer_shell.d_min)
+    print >> out, prefix + "  Mean(I/sigmaI)  : %6.3f (%.3f)" % (
+      self.overall.i_over_sigma_mean, outer_shell.i_over_sigma_mean)
+    print >> out, prefix + "  Redundancy      :  %4.2f  (%.2f)" % (
+      self.overall.mean_redundancy, outer_shell.mean_redundancy)
+    print >> out, prefix + "  R-merge         :  %5.3f (%.3f)" % (
+      self.overall.r_merge, outer_shell.r_merge)
+    print >> out, prefix + "  R-meas          :  %5.3f (%.3f)" % (
+      self.overall.r_meas, outer_shell.r_meas)
+    print >> out, prefix + "  R-pim           :  %5.3f (%.3f)" % (
+      self.overall.r_pim, outer_shell.r_pim)
+    print >> out, prefix + "  CC1/2           :  %5.3f (%.3f)" % (
+      self.overall.cc_one_half, outer_shell.cc_one_half)
+    print >> out, prefix + "  CC*             :  %5.3f (%.3f)" % (
+      self.overall.cc_star, outer_shell.cc_star)
+    print >> out, prefix + "  CC(work)        :  %6.4f (%.4f)" % (
+      self.overall.cc_work, outer_shell.cc_work)
+    if (self.overall.cc_free is not None) :
+      print >> out, prefix + "  CC(free)        :  %6.4f (%.4f)" % (
+        self.overall.cc_free, outer_shell.cc_free)
+    else :
+      print >> out, prefix + "  CC(free)        :  not available"
+
 def select_data (file_name, data_labels, log=None,
     assume_shelx_observation_type_is=None) :
   if (log is None) : log = null_out()
