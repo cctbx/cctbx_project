@@ -621,6 +621,52 @@ def env_sifoil(env):
   return (si_tot)
 
 
+def env_wavelength_sxr(evt, env):
+  """The env_wavelength_sxr() function returns the wavelength in
+  Aangstroem of the environment pointed to by @p env at the time of
+  the event @p evt.  The function returns a positive value or @c None
+  if no wavelength is available for the event.  See Heimann et
+  al. (2011) Rev. Sci. Instrum. 82, 093104.
+
+  @note The wavelength in eV is 12398.4187 divided by the value
+        returned from env_wavelength_sxr().
+
+  @param evt Event data object, a configure object
+  @param env Environment object
+  @return    Wavelength, in Aangstroem
+  """
+
+  if evt is not None and env is not None:
+    from time import mktime, strptime
+
+    t = evt.getTime()
+    if t is None:
+      return None
+
+    # Note that the coefficients for the monochromator could change
+    # from day to day.  XXX The cutoff-times could be precomputed and
+    # the corresponding coefficients stored in a lookup table.
+    f = '%Y-%m-%d, %H:%M'
+    s = t.seconds()
+    if s is None or s < mktime(strptime('2012-11-12, 09:00', f)):
+      # No spectrometer positions for this time.
+      return None
+    elif s < mktime(strptime('2012-11-17, 09:00', f)):
+      (a, b, c) = (+3.65920, -0.76851, +0.02105)
+    else:
+      # Assume the last known values are valid for all future.
+      (a, b, c) = (+4.18190, -0.77650, +0.01020)
+
+    # Get the grating motor position from EPICS.
+    pv = env.epicsStore().value('SXR:MON:MMS:06.RBV')
+    if pv is not None and len(pv.values) == 1:
+      x = pv.values[0]
+      e = 10 * (a + b * x + c * x**2)
+      if e > 0:
+        return e
+  return None
+
+
 def evt_pulse_energy(evt):
   """The evt_pulse_energy() function returns the energy, or the
   intensity, of the pulse in arbitrary units.  The returned value
