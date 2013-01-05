@@ -266,10 +266,23 @@ namespace rstbx { namespace bandpass {
               vec3 subpixel_trans(subpixel[2*aaf.tile_id],subpixel[1+2*aaf.tile_id],0.0);
               lo_E_limit[idx] += subpixel_trans;
               hi_E_limit[idx] += subpixel_trans;
+              lo_E_limit[idx] = rotated_spot(aaf.centers[aaf.tile_id], lo_E_limit[idx], rotations_rad[aaf.tile_id]);
+              hi_E_limit[idx] = rotated_spot(aaf.centers[aaf.tile_id], hi_E_limit[idx], rotations_rad[aaf.tile_id]);
             }
           }
       }
     }
+    scitbx::vec3<double>
+    rotated_spot(scitbx::vec2<double>const& center, scitbx::vec3<double>const& spot, double const& rad)const{
+      //rotate the spot around tile center.  But these tile centers have xy coords swapped
+      double corrected_spot_x = spot[0]-center[1];
+      double corrected_spot_y = spot[1]-center[0];
+      double cosine = std::cos(-rad), sine = std::sin(-rad);
+      double rotated_spot_x = cosine * corrected_spot_x - sine * corrected_spot_y;
+      double rotated_spot_y = sine * corrected_spot_x + cosine * corrected_spot_y;
+      return scitbx::vec3<double>( rotated_spot_x + center[1], rotated_spot_y + center[0], spot[2] );
+    }
+
     void
     picture_fast_slow_force(){
       //The effect of this function is to set the following three state vectors:
@@ -451,6 +464,7 @@ namespace rstbx { namespace bandpass {
           }
           if (observed_flag[idx]) {
             if (subpixel_translations_set) {
+              SCITBX_EXAMINE("NOT EXPECTED TO WORK BECAUSE aaf.tile_id NOT SET FOR THIS REFLECTION");
               vec3 subpixel_trans(subpixel[2*aaf.tile_id],subpixel[1+2*aaf.tile_id],0.0);
               lo_E_limit[idx] += subpixel_trans;
               hi_E_limit[idx] += subpixel_trans;
@@ -814,9 +828,16 @@ namespace rstbx { namespace bandpass {
     }
     bool subpixel_translations_set;
     scitbx::af::shared<double> subpixel;
-    void set_subpixel(scitbx::af::shared<double> s){
+    scitbx::af::shared<double> rotations_rad;
+    void set_subpixel(scitbx::af::shared<double> s, scitbx::af::shared<double> rotations_deg){
       subpixel_translations_set=true;
-      subpixel=s;}
+      subpixel=s;
+      rotations_rad=scitbx::af::shared<double>();
+      for (int ixx=0; ixx< rotations_deg.size(); ++ixx){
+        rotations_rad.push_back(scitbx::constants::pi_180*rotations_deg[ixx]);
+      }
+      SCITBX_ASSERT( s.size() == 2 * rotations_rad.size());
+    }
     void set_mosaicity(double const& half_mosaicity_rad){
       P.half_mosaicity_rad=half_mosaicity_rad;}
     double p_domain_size_ang;
@@ -1052,7 +1073,8 @@ namespace ext {
               &use_case_bp3::selected_predictions_labelit_format)
         .def("selected_hkls", &use_case_bp3::selected_hkls)
         .def("restricted_to_active_areas", &use_case_bp3::restricted_to_active_areas)
-        .def("set_subpixel", &use_case_bp3::set_subpixel)
+        .def("set_subpixel", &use_case_bp3::set_subpixel,(
+           arg("translations"), arg("rotations_deg")))
         .def("set_mosaicity", &use_case_bp3::set_mosaicity)
         .def("set_domain_size", &use_case_bp3::set_domain_size)
         .def("set_bandpass", &use_case_bp3::set_bandpass)
