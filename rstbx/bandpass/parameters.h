@@ -85,6 +85,7 @@ namespace rstbx { namespace bandpass {
     scitbx::af::shared<int> tiles;
     annlib_adaptbx::AnnAdaptor adapt;
     int tile_id;
+    scitbx::af::shared<vec2> centers;
     inline
     active_area_filter(){}
     inline
@@ -97,6 +98,7 @@ namespace rstbx { namespace bandpass {
         vec2 center = (UL+LR)/2.;
         reference.push_back(center[0]);
         reference.push_back(center[1]);
+        centers.push_back(center);
       }
       adapt = annlib_adaptbx::AnnAdaptor(reference,2,NEAR);
     }

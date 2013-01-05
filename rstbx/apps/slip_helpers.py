@@ -111,7 +111,9 @@ class wrapper_of_use_case_bp3(object):
     self.ucbp3.set_active_areas( the_tiles )
     self.ucbp3.set_sensor_model( thickness_mm = 0.5, mu_rho = 8.36644, # CS_PAD detector at 1.3 Angstrom
       signal_penetration = phil_params.integration.signal_penetration)
-    if sub != None:  self.ucbp3.set_subpixel( flex.double(sub) )
+    if sub != None:
+      null_rotations_deg = flex.double(len(sub)//2)
+      self.ucbp3.set_subpixel(flex.double(sub),rotations_deg=null_rotations_deg)
     # Reduce Miller indices to a manageable set.  NOT VALID if the crystal rotates significantly
     self.ucbp3.prescreen_indices(inputai.wavelength)
     # done with Miller set reduction
