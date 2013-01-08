@@ -229,7 +229,7 @@ run phenix.model_vs_data or the validation GUI.)
   s = None
   extra = ""
   if (len(xrs) == 1) :
-    s = summary(pdb_hierarchy=hierarchy)
+    s = summary(pdb_file=pdb_file)
   else :
     import iotbx.pdb.hierarchy
     new_hierarchy = iotbx.pdb.hierarchy.root()
