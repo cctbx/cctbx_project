@@ -37,7 +37,8 @@ class chain (object) :
   fed to the sequence/alignment viewer (wxtbx.sequence_view), which controls
   the graphics window(s).
   """
-  def __init__ (self, chain_id, sequence, resids, chain_type, sec_str=None) :
+  def __init__ (self, chain_id, sequence, resids, chain_type, sec_str=None,
+                resnames=None) :
     adopt_init_args(self, locals())
     assert (chain_type in [PROTEIN, NUCLEIC_ACID])
     assert (len(sequence) == len(resids))
@@ -88,6 +89,11 @@ class chain (object) :
             self.n_missing_start += 1
           elif (prev_char != 'X') :
             self.n_gaps += 1
+      elif (a == '-') :
+        if (not b in ['X', '-']) :
+          if (not chain_started):
+            self.n_missing += 1
+            self.n_missing_start += 1
       if (not a in ["X","-"]) :
         chain_started = True
         if (b == "-") :
@@ -145,6 +151,23 @@ class chain (object) :
       self._xyz.append(None)
       k += 1
     assert (len(self.resids) == len(self._xyz))
+
+  def iter_residue_groups(self, pdb_chain):
+    assert (self.chain_id == pdb_chain.id)
+    k = 0
+    for residue_group in pdb_chain.residue_groups():
+      resid = residue_group.resid()
+      while (self.resids[k] != resid):
+        k += 1
+        yield None
+      yield residue_group
+      k += 1
+    while k < len(self.resids):
+      k += 1
+      yield None
+
+  def extract_residue_groups(self, pdb_chain):
+    self.residue_groups = list(self.iter_residue_groups(pdb_chain))
 
   def get_outliers_table (self) :
     """Used in PHENIX validation GUI"""
@@ -225,7 +248,7 @@ class chain (object) :
 class validation (object) :
   def __init__ (self, pdb_hierarchy, sequences, params=None, log=None,
       nproc=Auto, include_secondary_structure=False,
-      extract_coordinates=False) :
+      extract_coordinates=False, extract_residue_groups=False) :
     assert (len(sequences) > 0)
     for seq_object in sequences :
       assert (seq_object.sequence != "")
@@ -259,25 +282,33 @@ class validation (object) :
       if (main_conf.is_na()) :
         self.n_rna_dna += 1
         unk = UNK_NA
+        chain_type = NUCLEIC_ACID
       elif (main_conf.is_protein()) :
         self.n_protein += 1
+        chain_type = PROTEIN
       else :
         self.n_other += 1
         print >> log, "Skipping non-polymer chain '%s'" % chain_id
         continue
-      seq = main_conf.as_padded_sequence(substitute_unknown=unk)
-      resids = main_conf.get_residue_ids()
-      assert (len(seq) == len(resids))
+      pad = True
+      pad_at_start = False
+      seq = main_conf.as_padded_sequence(
+        substitute_unknown=unk, pad=pad, pad_at_start=pad_at_start)
+      resids = main_conf.get_residue_ids(pad=pad, pad_at_start=pad_at_start)
+      resnames = main_conf.get_residue_names_padded(
+        pad=pad, pad_at_start=pad_at_start)
+      assert (len(seq) == len(resids) == len(resnames))
       sec_str = None
       if (helix_selection is not None) and (main_conf.is_protein()) :
         sec_str = main_conf.as_sec_str_sequence(helix_selection,
-          sheet_selection)
+          sheet_selection, pad=pad, pad_at_start=pad_at_start)
         assert (len(sec_str) == len(seq))
       c = chain(chain_id=chain_id,
         sequence=seq,
         resids=resids,
-        chain_type=PROTEIN,
-        sec_str=sec_str)
+        chain_type=chain_type,
+        sec_str=sec_str,
+        resnames=resnames)
       self.chains.append(c)
       pdb_chains.append(pdb_chain)
     alignments_and_names = easy_mp.pool_map(
@@ -297,6 +328,8 @@ class validation (object) :
       else :
         if (extract_coordinates) :
           c.extract_coordinates(pdb_chain)
+        if extract_residue_groups:
+          c.extract_residue_groups(pdb_chain)
     self.sequences = None
 
   def align_chain (self, i) :
@@ -336,6 +369,7 @@ class validation (object) :
     import iotbx.cif.model
     if cif_block is None:
       cif_block = iotbx.cif.model.block()
+
     struct_ref_loop = iotbx.cif.model.loop(header=(
       "_struct_ref.id",
       "_struct_ref.db_name",
@@ -349,6 +383,7 @@ class validation (object) :
       #"_struct_ref.seq_dif",
       #"_struct_ref.details"
     ))
+
     # maybe we can find this information out somehow and pass it along?
     db_name = ""
     db_code = ""
@@ -357,7 +392,6 @@ class validation (object) :
       struct_ref_loop.add_row((
         i_chain+1, db_name, db_code, db_accession, "?",
         chain.alignment.b, chain.n_missing_start+1, "" ))
-    cif_block.add_loop(struct_ref_loop)
 
     struct_ref_seq_loop = iotbx.cif.model.loop(header=(
       "_struct_ref_seq.align_id",
@@ -406,11 +440,13 @@ class validation (object) :
         resseq_begin, ins_code_begin = decode_resid(chain.resids[i_a_range_begin])
         resseq_end, ins_code_end = decode_resid(chain.resids[i_a_range_end])
         struct_ref_seq_loop.add_row((
-          align_id, i_chain+1, "?", chain.chain_id, i_b_range_begin+1, ins_code_begin,
-          i_b_range_end+1, ins_code_end, "?", i_a_range_begin+1, i_a_range_end+1,
+          align_id, i_chain+1, "?", chain.chain_id, i_a_range_begin+1, ins_code_begin,
+          i_a_range_end+1, ins_code_end, "?", i_b_range_begin+1, i_b_range_end+1,
           resseq_begin, resseq_end
         ))
         align_id +=1
+
+    cif_block.add_loop(struct_ref_loop)
     cif_block.add_loop(struct_ref_seq_loop)
 
     return cif_block
@@ -601,8 +637,8 @@ END
       cif_block['_struct_ref_seq.pdbx_auth_seq_align_beg']) == ['4', '117']
     assert list(
       cif_block['_struct_ref_seq.pdbx_auth_seq_align_end']) == ['85', '275']
-    assert list(cif_block['_struct_ref_seq.seq_align_beg']) == ['24', '137']
-    assert list(cif_block['_struct_ref_seq.seq_align_end']) == ['105', '295']
+    assert list(cif_block['_struct_ref_seq.seq_align_beg']) == ['1', '114']
+    assert list(cif_block['_struct_ref_seq.seq_align_end']) == ['82', '272']
 
 if (__name__ == "__main__") :
   exercise()
