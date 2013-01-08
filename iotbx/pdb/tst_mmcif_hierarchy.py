@@ -400,7 +400,196 @@ model id="" #chains=2
   assert atoms[1].charge == "1-"
   assert atoms[2].charge == "1-"
 
+def exercise_pdb_hierarchy_sequence_as_cif_block():
+  pdb_atom_site_loop_header = """\
+data_mmcif
+  loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_entity_id
+_atom_site.label_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.Cartn_x_esd
+_atom_site.Cartn_y_esd
+_atom_site.Cartn_z_esd
+_atom_site.occupancy_esd
+_atom_site.B_iso_or_equiv_esd
+_atom_site.pdbx_formal_charge
+_atom_site.auth_seq_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_atom_id
+_atom_site.pdbx_PDB_model_num
+"""
+
+  # simple example with multiple copies of chain
+  input_4ehz = """\
+ATOM   2    C CA  . GLU A 1 6   ? -35.647 65.380  -11.775 1.00 65.78  ? ? ? ? ? ? 858  GLU A CA  1
+ATOM   11   C CA  . LYS A 1 7   ? -34.996 68.963  -10.712 1.00 89.52  ? ? ? ? ? ? 859  LYS A CA  1
+ATOM   20   C CA  . LYS A 1 8   ? -31.415 68.325  -9.529  1.00 98.54  ? ? ? ? ? ? 860  LYS A CA  1
+ATOM   29   C CA  . PRO A 1 9   ? -29.858 70.569  -6.813  1.00 103.45 ? ? ? ? ? ? 861  PRO A CA  1
+ATOM   36   C CA  . ALA A 1 10  ? -26.545 72.463  -7.079  1.00 98.87  ? ? ? ? ? ? 862  ALA A CA  1
+ATOM   41   C CA  . THR A 1 11  ? -23.410 70.412  -7.767  1.00 90.75  ? ? ? ? ? ? 863  THR A CA  1
+ATOM   48   C CA  . GLU A 1 12  ? -21.306 71.534  -4.804  1.00 75.15  ? ? ? ? ? ? 864  GLU A CA  1
+ATOM   57   C CA  . VAL A 1 13  ? -17.543 70.954  -4.809  1.00 49.52  ? ? ? ? ? ? 865  VAL A CA  1
+ATOM   64   C CA  . ASP A 1 14  ? -16.048 68.671  -2.185  1.00 26.98  ? ? ? ? ? ? 866  ASP A CA  1
+ATOM   72   C CA  . PRO A 1 15  ? -12.276 69.450  -2.061  1.00 27.34  ? ? ? ? ? ? 867  PRO A CA  1
+ATOM   79   C CA  . THR A 1 16  ? -11.669 65.942  -0.699  1.00 23.73  ? ? ? ? ? ? 868  THR A CA  1
+ATOM   86   C CA  . HIS A 1 17  ? -13.266 64.157  -3.671  1.00 23.80  ? ? ? ? ? ? 869  HIS A CA  1
+ATOM   96   C CA  . PHE A 1 18  ? -10.664 63.252  -6.277  1.00 14.88  ? ? ? ? ? ? 870  PHE A CA  1
+ATOM   107  C CA  . GLU A 1 19  ? -12.022 62.182  -9.666  1.00 23.47  ? ? ? ? ? ? 871  GLU A CA  1
+ATOM   116  C CA  . LYS A 1 20  ? -10.351 59.111  -11.117 1.00 17.57  ? ? ? ? ? ? 872  LYS A CA  1
+ATOM   125  C CA  . ARG A 1 21  ? -10.204 60.546  -14.661 1.00 19.09  ? ? ? ? ? ? 873  ARG A CA  1
+ATOM   136  C CA  . PHE A 1 22  ? -7.912  63.384  -13.545 1.00 22.03  ? ? ? ? ? ? 874  PHE A CA  1
+ATOM   147  C CA  . LEU A 1 23  ? -5.613  61.332  -11.271 1.00 18.20  ? ? ? ? ? ? 875  LEU A CA  1
+ATOM   155  C CA  . LYS A 1 24  ? -2.583  60.745  -13.513 1.00 26.05  ? ? ? ? ? ? 876  LYS A CA  1
+ATOM   2365 C CA  . VAL B 1 13  ? 38.084  -8.470  -5.157  1.00 57.98  ? ? ? ? ? ? 865  VAL B CA  1
+ATOM   2372 C CA  . ASP B 1 14  ? 36.468  -6.229  -2.536  1.00 51.96  ? ? ? ? ? ? 866  ASP B CA  1
+ATOM   2380 C CA  . PRO B 1 15  ? 32.749  -7.130  -2.340  1.00 48.96  ? ? ? ? ? ? 867  PRO B CA  1
+ATOM   2387 C CA  . THR B 1 16  ? 31.935  -3.705  -0.847  1.00 26.72  ? ? ? ? ? ? 868  THR B CA  1
+ATOM   2394 C CA  . HIS B 1 17  ? 33.519  -1.814  -3.754  1.00 33.15  ? ? ? ? ? ? 869  HIS B CA  1
+ATOM   2404 C CA  . PHE B 1 18  ? 31.094  -0.811  -6.488  1.00 26.55  ? ? ? ? ? ? 870  PHE B CA  1
+ATOM   2415 C CA  . GLU B 1 19  ? 32.359  0.467   -9.861  1.00 38.45  ? ? ? ? ? ? 871  GLU B CA  1
+ATOM   2424 C CA  . LYS B 1 20  ? 30.409  3.510   -11.036 1.00 33.69  ? ? ? ? ? ? 872  LYS B CA  1
+ATOM   2433 C CA  . ARG B 1 21  ? 30.400  2.430   -14.663 1.00 36.58  ? ? ? ? ? ? 873  ARG B CA  1
+ATOM   2444 C CA  . PHE B 1 22  ? 28.294  -0.647  -13.791 1.00 38.39  ? ? ? ? ? ? 874  PHE B CA  1
+ATOM   2455 C CA  . LEU B 1 23  ? 25.763  1.275   -11.703 1.00 32.87  ? ? ? ? ? ? 875  LEU B CA  1
+ATOM   2463 C CA  . LYS B 1 24  ? 22.588  1.723   -13.713 1.00 30.22  ? ? ? ? ? ? 876  LYS B CA  1
+"""
+  import iotbx.bioinformatics
+  from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter
+  from cctbx.array_family import flex
+  sequence_4ehz = iotbx.bioinformatics.sequence("GDIVSEKKPATEVDPTHFEKRFLK")#RIRDLGEGHF"
+  pdb_in = iotbx.pdb.input(
+    lines=(pdb_atom_site_loop_header+input_4ehz).splitlines(),
+    source_info=None)
+  pdb_hierarchy = pdb_in.construct_hierarchy()
+  cif_block = iotbx.pdb.mmcif.pdb_hierarchy_as_cif_block_with_sequence(
+    pdb_hierarchy, sequences=[sequence_4ehz],
+    crystal_symmetry=pdb_in.crystal_symmetry()).cif_block
+  assert cif_block['_entity.id'][0] == '1'
+  assert cif_block['_entity.type'][0] == 'polymer'
+  assert cif_block['_entity.pdbx_number_of_molecules'][0] == '2'
+  assert cif_block['_entity_poly.pdbx_seq_one_letter_code'][0] == sequence_4ehz.sequence
+  assert cif_block['_entity_poly.pdbx_seq_one_letter_code_can'][0] == sequence_4ehz.sequence
+  assert cif_block['_entity_poly.pdbx_strand_id'] == 'A,B'
+  assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']), range(1, 25))
+  assert cif_block['_entity_poly_seq.entity_id'].all_eq('1')
+  assert list(cif_block['_entity_poly_seq.mon_id']) == [
+    three_letter_given_one_letter.get(i) for i in sequence_4ehz.sequence]
+  #
+  # example with modified amino acid - PTR
+  input_3zdi = """\
+ATOM   1422 C  CA  . ASN A 1 179 ? -11.025 -26.833 -3.747  1.00 86.68  ? ? ? ? ? ? 213  ASN A CA  1
+ATOM   1430 C  CA  . VAL A 1 180 ? -7.831  -26.493 -1.696  1.00 82.40  ? ? ? ? ? ? 214  VAL A CA  1
+ATOM   1437 C  CA  . SER A 1 181 ? -8.142  -28.602 1.444   1.00 89.69  ? ? ? ? ? ? 215  SER A CA  1
+ATOM   1443 C  CA  . PTR A 1 182 ? -5.406  -26.622 3.177   1.00 88.05  ? ? ? ? ? ? 216  PTR A CA  1
+ATOM   1459 C  CA  . ILE A 1 183 ? -7.514  -23.621 4.117   1.00 83.90  ? ? ? ? ? ? 217  ILE A CA  1
+ATOM   1467 C  CA  . CYS A 1 184 ? -8.907  -21.533 7.009   1.00 86.39  ? ? ? ? ? ? 218  CYS A CA  1
+ATOM   1473 C  CA  . SER A 1 185 ? -6.795  -21.356 10.148  1.00 91.03  ? ? ? ? ? ? 219  SER A CA  1
+"""
+  sequence_3zdi = iotbx.bioinformatics.sequence("NVSYICSR")
+  pdb_in = iotbx.pdb.input(
+    lines=(pdb_atom_site_loop_header+input_3zdi).splitlines(),
+    source_info=None)
+  pdb_hierarchy = pdb_in.construct_hierarchy()
+  cif_block = iotbx.pdb.mmcif.pdb_hierarchy_as_cif_block_with_sequence(
+    pdb_hierarchy, sequences=[sequence_3zdi],
+    crystal_symmetry=pdb_in.crystal_symmetry()).cif_block
+  assert cif_block['_entity_poly.pdbx_seq_one_letter_code'][0] == 'NVS(PTR)ICSR'
+  assert cif_block['_entity_poly.pdbx_seq_one_letter_code_can'][0] == sequence_3zdi.sequence
+  assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']), range(1, 9))
+  assert list(cif_block['_entity_poly_seq.mon_id']) == [
+    'ASN', 'VAL', 'SER', 'PTR', 'ILE', 'CYS', 'SER', 'ARG']
+  #
+  input_4gln = """\
+ATOM   2    C CA  . DTH A 1 1   ? -2.916  5.861  2.629   1.00 16.39 ? ? ? ? ? ? 1   DTH D CA  1
+ATOM   9    C CA  . DTY A 1 2   ? 0.533   4.844  3.866   1.00 10.74 ? ? ? ? ? ? 2   DTY D CA  1
+ATOM   21   C CA  . DLY A 1 3   ? 3.161   3.111  1.736   1.00 8.24  ? ? ? ? ? ? 3   DLY D CA  1
+ATOM   30   C CA  . DLE A 1 4   ? 6.958   3.293  1.625   1.00 7.95  ? ? ? ? ? ? 4   DLE D CA  1
+ATOM   38   C CA  . DIL A 1 5   ? 9.053   0.443  0.257   1.00 8.44  ? ? ? ? ? ? 5   DIL D CA  1
+ATOM   46   C CA  . DLE A 1 6   ? 12.622  1.402  -0.674  1.00 8.62  ? ? ? ? ? ? 6   DLE D CA  1
+ATOM   54   C CA  A DSG A 1 7   ? 14.930  -1.609 -0.756  0.60 11.27 ? ? ? ? ? ? 7   DSG D CA  1
+ATOM   55   C CA  B DSG A 1 7   ? 14.934  -1.617 -0.732  0.40 11.77 ? ? ? ? ? ? 7   DSG D CA  1
+ATOM   67   C CA  . GLY A 1 8   ? 18.113  -0.249 -2.284  1.00 13.02 ? ? ? ? ? ? 8   GLY D CA  1
+ATOM   71   C CA  . DLY A 1 9   ? 21.326  -1.954 -3.288  1.00 17.83 ? ? ? ? ? ? 9   DLY D CA  1
+ATOM   80   C CA  . DTH A 1 10  ? 20.765  -0.934 -6.926  1.00 16.38 ? ? ? ? ? ? 10  DTH D CA  1
+#
+ATOM   472  C CA  . GLU B 2 6   ? 15.798  -6.874 23.843  1.00 31.74 ? ? ? ? ? ? 6   GLU E CA  1
+ATOM   477  C CA  . VAL B 2 7   ? 16.644  -3.926 21.599  1.00 15.99 ? ? ? ? ? ? 7   VAL E CA  1
+ATOM   484  C CA  . VAL B 2 8   ? 13.767  -1.465 21.234  1.00 10.37 ? ? ? ? ? ? 8   VAL E CA  1
+ATOM   491  C CA  . LYS B 2 9   ? 12.953  -1.088 17.521  1.00 8.44  ? ? ? ? ? ? 9   LYS E CA  1
+#
+HETATM 2537 O O   . HOH E 3 .   ? 8.196   -3.708 8.277   1.00 15.02 ? ? ? ? ? ? 101 HOH D O   1
+HETATM 2538 O O   . HOH E 3 .   ? 4.901   -4.298 5.515   1.00 13.08 ? ? ? ? ? ? 102 HOH D O   1
+HETATM 2663 O O   . HOH F 3 .   ? 10.535  -2.721 20.049  1.00 15.44 ? ? ? ? ? ? 201 HOH E O   1
+HETATM 2664 O O   . HOH F 3 .   ? 0.790   8.695  30.909  1.00 17.06 ? ? ? ? ? ? 202 HOH E O   1
+HETATM 2795 O O   . HOH G 3 .   ? 11.265  2.914  43.878  1.00 13.92 ? ? ? ? ? ? 201 HOH F O   1
+HETATM 2796 O O   . HOH G 3 .   ? 11.197  11.667 36.108  1.00 17.00 ? ? ? ? ? ? 202 HOH F O   1
+"""
+  sequence_4gln = [iotbx.bioinformatics.sequence("TYKLILNGKT"),
+                   iotbx.bioinformatics.sequence("GQNHHEVVK")]
+  pdb_in = iotbx.pdb.input(
+    lines=(pdb_atom_site_loop_header+input_4gln).splitlines(),
+    source_info=None)
+  pdb_hierarchy = pdb_in.construct_hierarchy()
+  cif_block = iotbx.pdb.mmcif.pdb_hierarchy_as_cif_block_with_sequence(
+    pdb_hierarchy, sequences=sequence_4gln,
+    crystal_symmetry=pdb_in.crystal_symmetry()).cif_block
+  assert list(cif_block['_entity.id']) == ['1', '2', '3']
+  assert list(cif_block['_entity.type']) == ['polymer', 'polymer', 'water']
+  assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']),
+                      range(1, 11)+range(1, 10))
+  assert list(cif_block['_entity_poly_seq.mon_id']) == [
+    'DTH', 'DTY', 'DLY', 'DLE', 'DIL', 'DLE', 'DSG', 'GLY', 'DLY', 'DTH',
+    'GLY', 'GLN', 'ASN', 'HIS', 'HIS', 'GLU', 'VAL', 'VAL', 'LYS']
+  assert list(cif_block['_entity_poly.pdbx_seq_one_letter_code']) == [
+    '(DTH)(DTY)(DLY)(DLE)(DIL)(DLE)(DSG)G(DLY)(DTH)', sequence_4gln[1].sequence]
+  assert list(cif_block['_entity_poly.pdbx_seq_one_letter_code_can']) == [
+    sequence_4gln[0].sequence, sequence_4gln[1].sequence]
+  assert approx_equal(flex.int(cif_block['_atom_site.label_entity_id']),
+                      [1]*11 + [2]*4 + [3]*6)
+  assert list(cif_block['_atom_site.label_seq_id']) == [
+    '1', '2', '3', '4', '5', '6', '7', '7', '8', '9', '10', '6', '7', '8', '9',
+     '.', '.', '.', '.', '.', '.']
+  #
+  input_1ezu = """\
+ATOM   3971 C  CA  . VAL D 2 16  ? 24.971  -4.493  -3.652  1.00 33.12  ? ? ? ? ? ? 731 VAL D CA  1
+ATOM   3978 C  CA  . SER D 2 17  ? 27.194  -3.056  -0.946  1.00 35.47  ? ? ? ? ? ? 732 SER D CA  1
+ATOM   3984 C  CA  . LEU D 2 18  ? 26.541  0.123   0.961   1.00 45.29  ? ? ? ? ? ? 733 LEU D CA  1
+ATOM   3992 C  CA  . ASN D 2 19  ? 29.777  2.032   1.598   1.00 53.09  ? ? ? ? ? ? 734 ASN D CA  1
+ATOM   4000 C  CA  . SER D 2 20  ? 30.737  4.963   3.775   1.00 61.92  ? ? ? ? ? ? 737 SER D CA  1
+ATOM   4006 C  CA  . GLY D 2 21  ? 34.478  4.622   4.207   1.00 62.21  ? ? ? ? ? ? 738 GLY D CA  1
+ATOM   4010 C  CA  . TYR D 2 22  ? 33.903  0.885   4.483   1.00 54.81  ? ? ? ? ? ? 739 TYR D CA  1
+"""
+  sequence_1ezu = iotbx.bioinformatics.sequence('VSLNSGY')
+  pdb_in = iotbx.pdb.input(
+    lines=(pdb_atom_site_loop_header+input_1ezu).splitlines(),
+    source_info=None)
+  pdb_hierarchy = pdb_in.construct_hierarchy()
+  cif_block = iotbx.pdb.mmcif.pdb_hierarchy_as_cif_block_with_sequence(
+    pdb_hierarchy, sequences=[sequence_1ezu]).cif_block
+  assert list(cif_block['_entity_poly_seq.mon_id']) == [
+    'VAL', 'SER', 'LEU', 'ASN', 'SER', 'GLY', 'TYR']
+  assert cif_block['_entity_poly.pdbx_seq_one_letter_code'][0] == sequence_1ezu.sequence
+  assert cif_block['_entity_poly.pdbx_seq_one_letter_code_can'][0] == sequence_1ezu.sequence
+  assert list(cif_block['_atom_site.auth_seq_id']) == [
+    '731', '732', '733', '734', '737', '738', '739']
+  assert list(cif_block['_atom_site.label_seq_id']) == [
+    '1', '2', '3', '4', '5', '6', '7']
+
 def run():
+  exercise_pdb_hierarchy_sequence_as_cif_block()
   exercise_pdb_hierachy_builder()
 
 
