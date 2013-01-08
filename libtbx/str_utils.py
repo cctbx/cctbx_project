@@ -1,4 +1,5 @@
 from __future__ import division
+from math import ceil, floor
 import cStringIO
 import sys
 
@@ -302,3 +303,148 @@ def expandtabs_track_columns(s, tabsize=8):
       else:
         j += 1
   return "".join(result_e), result_j
+
+class framed_output (object) :
+  """
+  Pseudo-output file wrapper for drawing a box around arbitrary content, for
+  example:
+
+    |----------Refinement stats--------|
+    | r_free = 0.1234  r_work = 0.1567 |
+    |----------------------------------|
+
+  The actual content will be buffered until the close() method is called or
+  the object is deleted, at which point the formatted text will be printed to
+  the actual filehandle.
+
+  :param out: actual output filehandle
+  """
+  def __init__ (self,
+      out,
+      title=None,
+      width=None,
+      frame='-',
+      center=False,
+      center_title=None,
+      #center_frame=None,
+      max_width=80,
+      prefix=None) :
+    self.out = out
+    if (title is not None) :
+      title = title.strip()
+    self.title = title
+    if (center_title is None) :
+      center_title = center
+    self.center_title = center_title
+    self.width = width
+    self.frame = frame
+    self.center = center
+    #self.center_frame = center_frame
+    self.max_width = max_width
+    self.prefix = prefix
+    self.content = []
+    self._current_line = None
+    self._closed = False
+
+  def write (self, text) :
+    current_text = ""
+    if (self._current_line is not None) :
+      current_text += self._current_line
+      self._current_line = None
+    for char in text :
+      if (char == "\n") :
+        self.content.append(current_text)
+        current_text = ""
+      else :
+        current_text += char
+    if (current_text != "") :
+      self._current_line = current_text
+
+  def flush (self) :
+    pass
+
+  def add_separator (self) :
+    if (self._current_line is not None) :
+      self.content.append(self._current_line)
+      self._current_line = None
+    self.content.append(None)
+
+  def close (self) :
+    assert (not self._closed)
+    self._closed = True
+    if (not self._current_line in [None, ""]) :
+      self.content.append(self._current_line)
+    out = self.out
+    lines = self.content
+    # misc setup
+    text_lines = [ s for s in lines if (s is not None) ]
+    side_frame = self.frame
+    if (side_frame in ['-', '_']) :
+      side_frame = "|"
+    width = self.width
+    if (width is None) :
+      width = min(self.max_width, 4 + max([ len(s) for s in text_lines ]))
+    def get_padding (text, margin=2, center=self.center) :
+      fill = max(0, width - len(text) - (margin * 2))
+      if (center) :
+        rfill = int(floor(fill / 2))
+        lfill = int(ceil(fill / 2))
+      else :
+        rfill = 0
+        lfill = fill
+      return (rfill, lfill)
+    def write_corner () :
+      if (self.frame != '_') :
+        out.write(side_frame)
+      else :
+        out.write("_")
+    def write_sep () :
+      if (self.prefix is not None) :
+        out.write(self.prefix)
+      out.write(side_frame)
+      out.write(self.frame * (width - 2))
+      out.write(side_frame + "\n")
+    # header
+    out.write("\n")
+    if (self.prefix is not None) :
+      out.write(self.prefix)
+    write_corner()
+    if (self.title is not None) :
+      rf, lf = get_padding(self.title, margin=1, center=self.center_title)
+      rf += 1
+      lf -= 1
+      out.write(self.frame * rf)
+      out.write(self.title)
+      if (lf > 0) :
+        out.write(self.frame * lf)
+    else :
+      out.write(self.frame * (width - 2))
+    write_corner()
+    out.write("\n")
+    # main output
+    for line in lines :
+      if (line is None) :
+        write_sep()
+      else :
+        if (self.prefix is not None) :
+          out.write(self.prefix)
+        out.write(side_frame + " ")
+        rf, lf = get_padding(line)
+        if (rf > 0) :
+          out.write(" " * rf)
+        out.write(line)
+        if (lf > 0) :
+          out.write(" " * lf)
+        out.write(" " + side_frame)
+        out.write("\n")
+    # footer
+    if (self.prefix is not None) :
+      out.write(self.prefix)
+    write_corner()
+    self.out.write(self.frame * (width - 2))
+    write_corner()
+    out.write("\n")
+
+  def __del__ (self) :
+    if (not self._closed) :
+      self.close()

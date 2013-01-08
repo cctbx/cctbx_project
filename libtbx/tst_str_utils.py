@@ -173,6 +173,51 @@ to be reset.
       ss = s + chr(j)
       assert string_representation(
         string=ss, preferred_quote="'", alternative_quote='"') == repr(ss)
+  from libtbx.str_utils import framed_output
+  out = StringIO()
+  box = framed_output(out, frame='#')
+  print >> box, "Hello, world!"
+  box.close()
+  assert (out.getvalue() == """
+#################
+# Hello, world! #
+#################
+""")
+  out = StringIO()
+  box = framed_output(out, frame='-', width=80, center=True,
+    title="Refinement stats")
+  box.write("r_free = 0.1234")
+  box.write("  ")
+  box.write("r_work = 0.1567")
+  box.close()
+  assert (out.getvalue() == """
+|--------------------------------Refinement stats------------------------------|
+|                       r_free = 0.1234  r_work = 0.1567                       |
+|------------------------------------------------------------------------------|
+""")
+  out = StringIO()
+  box = framed_output(out, frame='-', width=72, prefix="    ",
+    title="Validation summary")
+  print >> box, "Overall MolProbity score: 2.56"
+  box.add_separator()
+  print >> box, """\
+Ramachandran favored:  97.5 %
+             outliers:  2.5 %
+Rotamer outliers:       5.9 %
+Clashscore:            10.9"""
+  assert (out.getvalue() == "")
+  del box
+  assert (out.getvalue() == """
+    |-Validation summary---------------------------------------------------|
+    | Overall MolProbity score: 2.56                                       |
+    |----------------------------------------------------------------------|
+    | Ramachandran favored:  97.5 %                                        |
+    |              outliers:  2.5 %                                        |
+    | Rotamer outliers:       5.9 %                                        |
+    | Clashscore:            10.9                                          |
+    |----------------------------------------------------------------------|
+""")
+
 
 def run(args):
   assert len(args) == 0
