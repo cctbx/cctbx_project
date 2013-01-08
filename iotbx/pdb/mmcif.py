@@ -637,7 +637,7 @@ class pdb_hierarchy_as_cif_block(iotbx.cif.crystal_symmetry_as_cif_block):
             entity_id = '?' # XXX how do we determine this?
             for atom in atom_group.atoms():
               group_pdb = "ATOM"
-              if atom.hetero: group_PDB = "HETATM"
+              if atom.hetero: group_pdb = "HETATM"
               x, y, z = [coord_fmt_str %i for i in atom.xyz]
               atom_charge = atom.charge_tidy().strip()
               if atom_charge == "": atom_charge = "?"
