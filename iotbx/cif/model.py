@@ -108,7 +108,7 @@ class block_base(DictMixin):
       self.loops[key] = value
       for k in value.keys():
         self.keys_lower[k.lower()] = k
-    else:
+    elif isinstance(value, basestring):
       v = str(value)
       if not (re.match(any_print_char_re, v) or
               re.match(quoted_string_re, v) or
@@ -116,7 +116,20 @@ class block_base(DictMixin):
         raise Sorry("Invalid data item for %s" %key)
       self._items[key] = v
       self.keys_lower[key.lower()] = key
-    self._set.add(key)
+    else:
+      try:
+        float(value)
+        self[key] = str(value)
+      except TypeError:
+        if key in self._items:
+          del self._items[key]
+        for loop_ in self.loops.values():
+          if key in loop_:
+            loop_[key] = value
+        if key not in self:
+          self.add_loop(loop(header=(key,), data=(value,)))
+    if key in self._items or isinstance(value, loop):
+      self._set.add(key)
 
   def __getitem__(self, key):
     key = self.keys_lower.get(key.lower(), key)

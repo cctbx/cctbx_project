@@ -56,6 +56,9 @@ def exercise_cif_model():
     ('_loop_a', flex.std_string(['1', '2', '3', '4'])),
     ('_loop_c', flex.std_string(['4', '5', '6', '7'])),
     ('_loop_b', flex.std_string(['7', '8', '9', '0']))]
+  block['_loop_c'] = [11, 12, 13, 14]
+  assert '_loop_c' in block.loops['_loop'].keys()
+  assert list(block['_loop_c']) == ['11', '12', '13', '14']
   #
   block1 = model.block()
   block1["_tag"] = 2
@@ -232,10 +235,10 @@ save_bob
     _loop_a
     _loop_c
     _loop_b
-    1  4  7
-    2  5  8
-    3  6  9
-    4  7  0
+    1  11  7
+    2  12  8
+    3  13  9
+    4  14  0
 
   _tag1                             3
   save_
