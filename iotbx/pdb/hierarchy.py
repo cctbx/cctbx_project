@@ -974,7 +974,7 @@ class _(boost.python.injector, ext.conformer):
     return result
 
   def as_padded_sequence (self, missing_char='X', skip_insertions=False,
-      pad=True, substitute_unknown='X') :
+      pad=True, substitute_unknown='X', pad_at_start=True) :
     seq = self.as_sequence()
     padded_seq = []
     last_resseq = 0
@@ -986,18 +986,21 @@ class _(boost.python.injector, ext.conformer):
       resseq = residue.resseq_as_int()
       if (pad) and (resseq > (last_resseq + 1)) :
         for x in range(resseq - last_resseq - 1) :
+          if last_resseq == 0 and not pad_at_start: break
           padded_seq.append(missing_char)
       last_resseq = resseq
       padded_seq.append(seq[i])
     return "".join(padded_seq)
 
-  def as_sec_str_sequence (self, helix_sele, sheet_sele, missing_char='X') :
+  def as_sec_str_sequence (self, helix_sele, sheet_sele, missing_char='X',
+                           pad=True, pad_at_start=True) :
     ss_seq = []
     last_resseq = 0
     for i, residue in enumerate(self.residues()) :
       resseq = residue.resseq_as_int()
-      if resseq > (last_resseq + 1) :
+      if pad and resseq > (last_resseq + 1) :
         for x in range(resseq - last_resseq - 1) :
+          if last_resseq == 0 and not pad_at_start: break
           ss_seq.append(missing_char)
       found = False
       for atom in residue.atoms() :
@@ -1014,23 +1017,40 @@ class _(boost.python.injector, ext.conformer):
       last_resseq = resseq
     return "".join(ss_seq)
 
-  def get_residue_ids (self, skip_insertions=False, pad=True) :
-    seq = self.as_sequence()
+  def get_residue_ids (self, skip_insertions=False, pad=True, pad_at_start=True) :
     resids = []
-    padded_seq = []
     last_resseq = 0
     last_icode = " "
-    i = 0
     for i, residue in enumerate(self.residues()) :
       if (skip_insertions) and (residue.icode != " ") :
         continue
       resseq = residue.resseq_as_int()
       if (pad) and (resseq > (last_resseq + 1)) :
         for x in range(resseq - last_resseq - 1) :
+          if last_resseq == 0 and not pad_at_start: break
           resids.append(None)
       last_resseq = resseq
       resids.append(residue.resid())
     return resids
+
+  def get_residue_names_padded(
+      self, skip_insertions=False, pad=True, pad_at_start=True):
+    resnames = []
+    last_resseq = 0
+    last_icode = " "
+    for i, residue in enumerate(self.residues()) :
+      if (skip_insertions) and (residue.icode != " ") :
+        continue
+      resseq = residue.resseq_as_int()
+      if (pad) and (resseq > (last_resseq + 1)) :
+        for x in range(resseq - last_resseq - 1) :
+          if last_resseq == 0 and not pad_at_start: break
+          resnames.append(None)
+      last_resseq = resseq
+      resnames.append(residue.resname)
+    return resnames
+
+
 
 class _(boost.python.injector, ext.residue):
 

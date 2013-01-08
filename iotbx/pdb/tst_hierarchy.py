@@ -5747,6 +5747,11 @@ ATOM     48  CA  TYR A   9       9.159   2.144   7.299  1.00 15.18           C
   assert (len(resids) == 11)
   assert (resids[0] == resids[1] == None)
   assert (resids[-4].strip() == "6B")
+  resnames = main_conf.get_residue_names_padded()
+  assert len(resnames) == 11
+  assert resnames == [
+    None, None, 'GLY', 'ASN', 'ASN', 'GLN', 'ALA', 'GLY', 'GLN', 'ASN', 'TYR']
+  assert len(main_conf.get_residue_names_padded(pad_at_start=False)) == 9
   # sites_diff
   hierarchy_1 = pdb.input(source_info=None, lines="""\
 ATOM      0  O   WAT B   1      17.523   2.521  10.381  1.10 16.78           O
