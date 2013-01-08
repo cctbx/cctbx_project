@@ -12,6 +12,9 @@ _have_maxtasksperchild = (sys.version_info[:2] >= (2,7))
 _problem_cache = Auto
 
 def detect_problem():
+  """
+  Identify situations where multiprocessing will not work as required.
+  """
   global _problem_cache
   if (_problem_cache is Auto):
     import os
@@ -23,6 +26,10 @@ def detect_problem():
   return _problem_cache
 
 def enable_multiprocessing_if_possible (nproc=Auto, log=None) :
+  """
+  Switch for using multiple CPUs, usually called at the beginning of an app.
+  If nproc is Auto or None and we are running Windows, it will be reset to 1.
+  """
   if (nproc == 1) or (nproc == 0) :
     return 1
   if (log is None) :
@@ -48,7 +55,12 @@ def enable_multiprocessing_if_possible (nproc=Auto, log=None) :
 """ % str(nproc)
     return nproc
 
+# FIXME should be more flexible on Windows
 def get_processes (processes) :
+  """
+  Determine number of processes dynamically: number of CPUs minus the current
+  load average (with a minimum of 1).
+  """
   if (processes is None) or (processes is Auto) :
     if (os.name == "nt") : return 1
     from libtbx import introspection
@@ -64,7 +76,7 @@ from weakref import WeakValueDictionary as _
 fixed_func_registry = _()
 
 class fixed_func_proxy(object):
-
+  """Implementation detail"""
   def __init__(self, key, func):
     self.key = key
     fixed_func_registry[key] = func
@@ -84,7 +96,7 @@ except Exception:
   multiprocessing_Pool = object
 
 class Pool(multiprocessing_Pool):
-
+  """Subclass of multiprocessing.Pool, used internally by pool_map."""
   def __init__(self,
         processes=None,
         initializer=None,
@@ -141,6 +153,7 @@ def show_caught_exception(index, arg):
   traceback.print_exc(file=sys.stdout)
 
 class func_wrapper_simple_impl(object):
+  """Implementation detail"""
 
   def __init__(O, options, func):
     O.options = options
@@ -161,6 +174,7 @@ class func_wrapper_simple_impl(object):
     return result
 
 class func_wrapper_simple(object):
+  """Implementation detail"""
 
   def __init__(O, buffer_stdout_stderr=False):
     O.buffer_stdout_stderr = buffer_stdout_stderr
@@ -169,6 +183,7 @@ class func_wrapper_simple(object):
     return func_wrapper_simple_impl(options=O, func=func)
 
 class func_wrapper_sub_directories_impl(object):
+  """Implementation detail"""
 
   def __init__(O, options, func):
     O.options = options
@@ -224,6 +239,7 @@ class func_wrapper_sub_directories_impl(object):
     return (None, result)
 
 class func_wrapper_sub_directories(object):
+  """Implementation detail"""
 
   def __init__(O, sub_name_format="mp%03d", makedirs_mode=0777):
     assert isinstance(sub_name_format, str)
@@ -259,9 +275,32 @@ def pool_map(
       chunksize=Auto,
       func_wrapper="simple",
       index_args=True,
-      log=None):
+      log=None,
+      call_back_for_serial_run=None):
+  """
+  Parallelized map() using subclassed multiprocessing.Pool.  If func is not
+  None, this function essentially calls the Pool's own map method; this means
+  that both func and iterable/args must be pickle-able.  If fixed_func is not
+  None, it will not be pickled but instead saved as an attribute of the Pool,
+  which will be preserved after the fork() call.  Additional features include
+  optional redirection of output and automatic process number determination.
+
+  Note that because of the reliance on fork(), this function will run in serial
+  on Windows, regardless of how many processors are available.
+
+  :param processes: number of processes to spawn; if None or Auto, the
+    get_processes() function will be used.
+  :param func: target function (will be pickled)
+  :param fixed_func: "fixed" target function, which will be be propagated to
+    the child process when forked (instead of pickling)
+  :param iterable: argument list
+  :param args: same as iterable (alternate keyword)
+  :param chunksize: number of arguments to process at once
+  """
   assert [func, fixed_func].count(None) == 1
   assert [iterable, args].count(None) == 1
+  assert ((call_back_for_serial_run is None) or
+          hasattr(call_back_for_serial_run, "__call__"))
   if (isinstance(func_wrapper, str)):
     if (func_wrapper == "simple"):
       func_wrapper = func_wrapper_simple()
@@ -288,6 +327,10 @@ def pool_map(
     else:
       fixed_func = wrap(fixed_func)
   processes = get_processes(processes)
+  # XXX since we want to be able to call this function on Windows too, reset
+  # processes to 1
+  if (os.name == "nt") :
+    processes = 1
   if (args is not None):
     iterable = args
     if (processes is not None):
@@ -303,8 +346,7 @@ def pool_map(
     time_start = time.time()
   result = None
   # XXX this allows the function to be used even when parallelization is
-  # not enabled or supported, which should keep calling code simpler.  it
-  # would be nice to have a callback facility though.
+  # not enabled or supported, which should keep calling code simpler.
   if (processes == 1) or (os.name == "nt") :
     result = []
     for args in iterable :
@@ -312,6 +354,8 @@ def pool_map(
         result.append(func(args))
       else :
         result.append(fixed_func(args))
+      if (call_back_for_serial_run is not None) :
+        call_back_for_serial_run(result[-1])
   else :
     pool = Pool(
       processes=processes,
@@ -350,10 +394,11 @@ technology = %s
   .caption = %s
 qsub_command = None
   .type = str
+  .short_caption = qsub command
 """
 
-parallel_methods = ["*multiprocessing", "sge", "lsf", "pbs"]
-parallel_captions = ["Multiprocessing", "Sun_Grid_Engine", "LSF", "PBS"]
+parallel_methods = ["*multiprocessing", "sge", "lsf", "pbs", "condor"]
+parallel_captions = ["Multiprocessing", "Sun_Grid_Engine", "LSF", "PBS", "Condor"]
 
 parallel_phil_str = parallel_phil_str_base % (
   " ".join(parallel_methods + ["threading"]),
@@ -377,7 +422,8 @@ def parallel_map (
   libtbx.queuing_system_utils.scheduling.  This is less flexible than pool_map
   above, since it does not provide a way to use a non-pickleable target
   function, but it provides a consistent API for programs where multiple
-  execution methods are desired.
+  execution methods are desired.  It will also work on Windows (if the method
+  is multiprocessing or threading).
 
   Note that for most applications, the threading method will be constrained
   by the Global Interpreter Lock, therefore multiprocessing is prefered for
