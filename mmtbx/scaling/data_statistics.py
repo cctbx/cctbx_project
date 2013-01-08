@@ -32,6 +32,8 @@ class i_sigi_completeness_stats(object):
     self.miller.setup_binner(n_bins=n_bins)
 
     self.resolution_bins = list(self.miller.binner().limits())
+    self.overall = self.miller.completeness(use_binning=False)
+    self.overall_binned = self.miller.completeness(use_binning=True).data[1:-1]
     self.completeness_bins = []
 
     self.table = None
