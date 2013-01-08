@@ -301,22 +301,34 @@ def pool_map(
       flush()
     import time
     time_start = time.time()
-  pool = Pool(
-    processes=processes,
-    initializer=initializer,
-    initargs=initargs,
-    maxtasksperchild=maxtasksperchild,
-    fixed_func=fixed_func)
-  if (chunksize is Auto):
-    chunksize = None
-  try:
-    if (func is not None):
-      result = pool.map(func=func, iterable=iterable, chunksize=chunksize)
-    else:
-      result = pool.map_fixed_func(iterable=iterable, chunksize=chunksize)
-  finally:
-    pool.close()
-    pool.join()
+  result = None
+  # XXX this allows the function to be used even when parallelization is
+  # not enabled or supported, which should keep calling code simpler.  it
+  # would be nice to have a callback facility though.
+  if (processes == 1) or (os.name == "nt") :
+    result = []
+    for args in iterable :
+      if (func is not None) :
+        result.append(func(args))
+      else :
+        result.append(fixed_func(args))
+  else :
+    pool = Pool(
+      processes=processes,
+      initializer=initializer,
+      initargs=initargs,
+      maxtasksperchild=maxtasksperchild,
+      fixed_func=fixed_func)
+    if (chunksize is Auto):
+      chunksize = None
+    try:
+      if (func is not None):
+        result = pool.map(func=func, iterable=iterable, chunksize=chunksize)
+      else:
+        result = pool.map_fixed_func(iterable=iterable, chunksize=chunksize)
+    finally:
+      pool.close()
+      pool.join()
   if (log is not None):
     from libtbx.utils import show_wall_clock_time
     show_wall_clock_time(seconds=time.time()-time_start, out=log)
@@ -391,6 +403,16 @@ def parallel_map (
   assert ((method in ["multiprocessing", "threading"]) or
           (method in processing.INTERFACE_FOR.keys()))
   assert (callback is None) or (hasattr(callback, "__call__"))
+  results = []
+  # if we aren't actually going to run multiple processes or use a queuing
+  # system, just loop over all arguments and skip the rest of the setup.
+  if (processes == 1) and (method in ["threading", "multiprocessing"]) :
+    for args in iterable :
+      result = func(args)
+      if (callback is not None) :
+        callback(result)
+      results.append(result)
+    return results
   units = []
   factory, queue_factory = None, None
   if (method == "multiprocessing") :
@@ -430,7 +452,6 @@ def parallel_map (
   for args in iterable :
     task_id = manager.submit(target=func, args=(args,))
     identifiers.append(task_id)
-  results = []
   if (preserve_order) :
     for result_wrapper in manager.results_in_order_of(identifiers) :
       result = result_wrapper()
