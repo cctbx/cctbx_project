@@ -1,8 +1,11 @@
 from __future__ import division
 from cctbx.array_family import flex
 from cctbx import crystal
-from libtbx.containers import OrderedSet
+from libtbx.containers import OrderedDict, OrderedSet
+from libtbx import dict_with_default_0
 from libtbx import group_args
+from libtbx.table_utils import wrap_always
+from libtbx.utils import null_out
 import iotbx.pdb
 from iotbx.pdb import hierarchy
 from iotbx.pdb import hy36encode
@@ -682,6 +685,249 @@ class pdb_hierarchy_as_cif_block(iotbx.cif.crystal_symmetry_as_cif_block):
     self.cif_block.add_loop(atom_site_loop)
     if aniso_loop.size() > 0:
       self.cif_block.add_loop(aniso_loop)
+
+
+class pdb_hierarchy_as_cif_block_with_sequence(pdb_hierarchy_as_cif_block):
+  def __init__(self, pdb_hierarchy,
+               sequences,
+               alignment_params=None,
+               crystal_symmetry=None,
+               coordinate_precision=5,
+               occupancy_precision=3,
+               b_iso_precision=5,
+               u_aniso_precision=5):
+
+    pdb_hierarchy_as_cif_block.__init__(
+      self, pdb_hierarchy, crystal_symmetry=crystal_symmetry,
+    coordinate_precision=coordinate_precision,
+    occupancy_precision=occupancy_precision,
+    b_iso_precision=b_iso_precision,
+    u_aniso_precision=u_aniso_precision)
+
+    import mmtbx.validation.sequence
+    validation = mmtbx.validation.sequence.validation(
+      pdb_hierarchy=pdb_hierarchy,
+      sequences=sequences,
+      params=alignment_params,
+      extract_residue_groups=True,
+      log=null_out(), # silence output
+    )
+
+    entity_loop = iotbx.cif.model.loop(header=(
+      '_entity.id',
+      '_entity.type',
+      #'_entity.src_method',
+      #'_entity.pdbx_description',
+      '_entity.formula_weight',
+      '_entity.pdbx_number_of_molecules',
+      #'_entity.details',
+      #'_entity.pdbx_mutation',
+      #'_entity.pdbx_fragment',
+      #'_entity.pdbx_ec'
+    ))
+
+    entity_poly_loop = iotbx.cif.model.loop(header=(
+      '_entity_poly.entity_id',
+      '_entity_poly.type',
+      '_entity_poly.nstd_chirality',
+      '_entity_poly.nstd_linkage',
+      '_entity_poly.nstd_monomer',
+      '_entity_poly.pdbx_seq_one_letter_code',
+      '_entity_poly.pdbx_seq_one_letter_code_can',
+      '_entity_poly.pdbx_strand_id',
+      '_entity_poly.type_details'
+    ))
+
+    entity_poly_seq_loop = iotbx.cif.model.loop(header=(
+      '_entity_poly_seq.entity_id',
+      '_entity_poly_seq.num',
+      '_entity_poly_seq.mon_id',
+      '_entity_poly_seq.hetero',
+    ))
+
+    sequence_counts = OrderedDict()
+    sequence_to_chain_ids = {}
+    entity_id = 0
+    sequence_to_entity_id = {}
+    chain_id_to_entity_id = {}
+    sequence_to_chains = {}
+    residue_group_to_seq_num_mapping = {}
+    aligned_pdb_chains = OrderedSet()
+    non_polymer_counts = dict_with_default_0()
+    non_polymer_resname_to_entity_id = OrderedDict()
+
+    for chain in validation.chains:
+      sequence = chain.alignment.b
+      if sequence not in sequence_to_entity_id:
+        entity_id += 1
+        sequence_to_entity_id[sequence] = entity_id
+      sequence_counts.setdefault(sequence, 0)
+      sequence_counts[sequence] += 1
+      sequence_to_chain_ids.setdefault(sequence, [])
+      sequence_to_chain_ids[sequence].append(chain.chain_id)
+      sequence_to_chains.setdefault(sequence, [])
+      sequence_to_chains[sequence].append(chain)
+      chain_id_to_entity_id[chain.chain_id] = sequence_to_entity_id[sequence]
+      aligned_pdb_chains.add(chain.residue_groups[0].parent())
+      unaligned_pdb_chains = OrderedSet(pdb_hierarchy.chains()) - aligned_pdb_chains
+
+      assert len(chain.residue_groups) + chain.n_missing_start + chain.n_missing_end == len(sequence)
+      residue_groups = [None] * chain.n_missing_start + chain.residue_groups + [None] * chain.n_missing_end
+      i = chain.n_missing_start
+      seq_num = 0
+      for i, residue_group in enumerate(residue_groups):
+        if residue_group is None and chain.alignment.b[i] == '-':
+          # a deletion
+          continue
+        seq_num += 1
+        if residue_group is not None:
+          residue_group_to_seq_num_mapping[
+            residue_group] = seq_num
+
+    for pdb_chain in unaligned_pdb_chains:
+      main_conf = pdb_chain.conformers()[0]
+      for residue in main_conf.residues():
+        if residue.resname not in non_polymer_resname_to_entity_id:
+          entity_id += 1
+          non_polymer_resname_to_entity_id[residue.resname] = entity_id
+        non_polymer_counts[residue.resname] += 1
+
+    for sequence, count in sequence_counts.iteritems():
+      entity_poly_seq_num = 0
+      entity_id = sequence_to_entity_id[sequence]
+
+      entity_loop.add_row((
+        entity_id,
+        'polymer', #polymer/non-polymer/macrolide/water
+        #'?', #src_method
+        #'?', # pdbx_description
+        '?', # formula_weight
+        len(sequence_to_chains[sequence]), # pdbx_number_of_molecules
+        #'?', # details
+        #'?', # pdbx_mutation
+        #'?', # pdbx_fragment
+        #'?' # pdbx_ec
+      ))
+
+      # The definition of the cif item _entity_poly.pdbx_seq_one_letter_code
+      # says that modifications and non-standard amino acids should be encoded
+      # as 'X', however in practice the PDB seem to encode them as the three-letter
+      # code in parentheses.
+      pdbx_seq_one_letter_code = []
+      pdbx_seq_one_letter_code_can = []
+
+      chains = sequence_to_chains[sequence]
+
+      from iotbx.pdb import amino_acid_codes
+
+      chain = chains[0]
+      matches = chain.alignment.matches()
+
+      for i, one_letter_code in enumerate(sequence):
+
+        #Data items in the ENTITY_POLY_SEQ category specify the sequence
+        #of monomers in a polymer. Allowance is made for the possibility
+        #of microheterogeneity in a sample by allowing a given sequence
+        #number to be correlated with more than one monomer ID. The
+        #corresponding ATOM_SITE entries should reflect this
+        #heterogeneity.
+
+        monomer_id = None
+        if i >= chain.n_missing_start and i < (len(sequence) - chain.n_missing_end):
+          monomer_id = chain.resnames[i-chain.n_missing_start]
+
+        if monomer_id is None and one_letter_code == '-': continue
+
+        pdbx_seq_one_letter_code_can.append(one_letter_code)
+
+        if monomer_id is None:
+          if sequence_to_chains[sequence][0].chain_type == mmtbx.validation.sequence.PROTEIN:
+            monomer_id = amino_acid_codes.three_letter_given_one_letter.get(
+              one_letter_code, "UNK") # XXX
+          else:
+            monomer_id = one_letter_code
+        else:
+          one_letter_code = amino_acid_codes.one_letter_given_three_letter.get(
+            monomer_id, "(%s)" %monomer_id)
+
+        pdbx_seq_one_letter_code.append(one_letter_code)
+
+        entity_poly_seq_num += 1
+
+        entity_poly_seq_loop.add_row((
+          entity_id,
+          entity_poly_seq_num,
+          monomer_id,
+          'no', #XXX
+        ))
+
+      entity_poly_loop.add_row((
+        entity_id,
+        '?',
+        'no',
+        'no',
+        'no',
+        wrap_always("".join(pdbx_seq_one_letter_code), width=80).strip(),
+        wrap_always("".join(pdbx_seq_one_letter_code_can), width=80).strip(),
+        ','.join(sequence_to_chain_ids[sequence]),
+        '?'
+      ))
+
+    for resname, entity_id in non_polymer_resname_to_entity_id.iteritems():
+      entity_type = "non-polymer"
+      if resname == "HOH":
+        entity_type = "water" # XXX
+      entity_loop.add_row((
+        entity_id,
+        entity_type, #polymer/non-polymer/macrolide/water
+        #'?', #src_method
+        #'?', # pdbx_description
+        '?', # formula_weight
+        non_polymer_counts[resname], # pdbx_number_of_molecules
+        #'?', # details
+        #'?', # pdbx_mutation
+        #'?', # pdbx_fragment
+        #'?' # pdbx_ec
+      ))
+
+    self.cif_block.add_loop(entity_loop)
+    self.cif_block.add_loop(entity_poly_loop)
+    self.cif_block.add_loop(entity_poly_seq_loop)
+    self.cif_block.update(pdb_hierarchy.as_cif_block())
+
+    label_entity_id = self.cif_block['_atom_site.label_entity_id']
+    auth_seq_id = self.cif_block['_atom_site.auth_seq_id']
+    ins_code = self.cif_block['_atom_site.pdbx_PDB_ins_code']
+    auth_asym_id = self.cif_block['_atom_site.auth_asym_id']
+    label_seq_id = flex.std_string(auth_seq_id.size(), '.')
+    ins_code = ins_code.deep_copy()
+    ins_code.set_selected(ins_code == '?', '')
+    for residue_group, seq_num in residue_group_to_seq_num_mapping.iteritems():
+      sel = ((auth_asym_id == residue_group.parent().id) &
+             (ins_code == residue_group.icode.strip()) &
+             (auth_seq_id == residue_group.resseq.strip()))
+      label_seq_id.set_selected(sel, str(seq_num))
+      label_entity_id.set_selected(
+        sel, str(chain_id_to_entity_id[residue_group.parent().id]))
+
+    for pdb_chain in unaligned_pdb_chains:
+      for residue_group in pdb_chain.residue_groups():
+        sel = ((auth_asym_id == residue_group.parent().id) &
+               (ins_code == residue_group.icode.strip()) &
+               (auth_seq_id == residue_group.resseq.strip()))
+        label_entity_id.set_selected(
+          sel, str(non_polymer_resname_to_entity_id[residue_group.unique_resnames()[0]]))
+
+    self.cif_block['_atom_site.label_seq_id'] = label_seq_id
+
+    # reorder the loops
+    atom_site_loop = self.cif_block['_atom_site']
+    atom_site_aniso_loop = self.cif_block.get('_atom_site_anisotrop')
+    del self.cif_block['_atom_site']
+    self.cif_block.add_loop(atom_site_loop)
+    if atom_site_aniso_loop is not None:
+      del self.cif_block['_atom_site_anisotrop']
+      self.cif_block.add_loop(atom_site_aniso_loop)
 
 
 def increment_label_asym_id(asym_id):
