@@ -1032,6 +1032,8 @@ class xtriage_summary (object) :
     data_strength = getattr(basic_results, "data_strength")
     self.completeness_table = getattr(data_strength, "table_for_gui", None)
     self.completeness_info = getattr(data_strength, "completeness_info", None)
+    self.completeness_overall = getattr(data_strength, "overall", None)
+    self.completeness_binned = getattr(data_strength, "overall_binned", None)
     self.resolution_cut = getattr(data_strength, "resolution_cut", None)
     # WORRISOME SHELLS, MEAN INTENSITY, Z-SCORES/COMPLETENESS,
     # ANOMALOUS SIGNAL, <I/SIGI> BY SHELL
@@ -1148,6 +1150,11 @@ class xtriage_summary (object) :
 
   def original_intensities_flag (self) :
     return getattr(self, "original_is_intensity_array", None)
+
+  def get_completeness (self) :
+    overall = getattr(self, "completeness_overall", None)
+    binned = getattr(self, "completeness_binned", None)
+    return (overall, binned)
 
 def change_symmetry (miller_array, space_group_symbol, file_name=None,
     log=None) :
