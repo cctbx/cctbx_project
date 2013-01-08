@@ -1,5 +1,5 @@
-from __future__ import division
-from math import ceil, floor
+
+from __future__ import division, absolute_import
 import cStringIO
 import sys
 
@@ -385,10 +385,11 @@ class framed_output (object) :
     if (width is None) :
       width = min(self.max_width, 4 + max([ len(s) for s in text_lines ]))
     def get_padding (text, margin=2, center=self.center) :
+      from libtbx.math_utils import ifloor, iceil
       fill = max(0, width - len(text) - (margin * 2))
       if (center) :
-        rfill = int(floor(fill / 2))
-        lfill = int(ceil(fill / 2))
+        rfill = ifloor(fill / 2)
+        lfill = iceil(fill / 2)
       else :
         rfill = 0
         lfill = fill
