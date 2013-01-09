@@ -4562,7 +4562,7 @@ class process(object):
         log=None,
         for_dihedral_reference=False,
         carbohydrate_callback=None,
-        use_neutron_distances=True,
+        use_neutron_distances=False,
                ):
     self.mon_lib_srv = mon_lib_srv
     self.ener_lib = ener_lib
