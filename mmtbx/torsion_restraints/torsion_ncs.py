@@ -972,9 +972,9 @@ class torsion_ncs(object):
     self.torsion_params.range_stop = 10.0
     self.torsion_params.step = 1.0
     self.torsion_params.min_angle_between_solutions = 0.5
-    self.c_alpha_hinges = get_c_alpha_hinges(
-                            xray_structure=xray_structure,
+    self.c_alpha_hinges = utils.get_c_alpha_hinges(
                             pdb_hierarchy=pdb_hierarchy,
+                            xray_structure=xray_structure,
                             selection=self.selection)
 
   def prepare_map(self, fmodel):
@@ -1810,62 +1810,6 @@ def check_residues_are_connected (ca_1, ca_2, max_sep=4.0, min_sep=0.) :
   if (dist > max_sep) or (dist < min_sep) :
     return False
   return True
-
-def get_c_alpha_hinges(xray_structure,
-                       pdb_hierarchy,
-                       selection=None):
-  c_alphas = []
-  c_alpha_hinges = {}
-  sites_cart = pdb_hierarchy.atoms().extract_xyz()
-  if selection is None:
-    selection = flex.bool(len(sites_cart), True)
-  sites_cart = xray_structure.sites_cart()
-  for model in pdb_hierarchy.models():
-    for chain in model.chains():
-      for residue_group in chain.residue_groups():
-        for atom_group in residue_group.atom_groups():
-          cur_ca = None
-          cur_c = None
-          cur_o = None
-          cur_n = None
-          cur_h = None
-          for atom in atom_group.atoms():
-            if atom.name == " CA ":
-              cur_ca = atom
-            elif atom.name == " C  ":
-              cur_c = atom
-            elif atom.name == " N  ":
-              cur_n = atom
-            elif atom.name == " O  ":
-              cur_o = atom
-            elif atom.name == " H  ":
-              cur_h = atom
-          if cur_ca is not None and cur_c is not None and \
-             cur_n is not None and cur_o is not None:
-            if( (not selection[cur_ca.i_seq]) or
-                (not selection[cur_c.i_seq])  or
-                (not selection[cur_n.i_seq])  or
-                (not selection[cur_o.i_seq]) ):
-              continue
-            moving_tpl = (cur_n, cur_c, cur_o)
-            if cur_h is not None:
-              moving_tpl += tuple([cur_h])
-            c_alphas.append( (cur_ca, moving_tpl) )
-  for i, ca in enumerate(c_alphas):
-    if i < 1 or i == (len(c_alphas)-1):
-      continue
-    current = ca
-    previous = c_alphas[i-1]
-    next = c_alphas[i+1]
-    prev_connected = check_residues_are_connected(previous[0], current[0])
-    next_connected = check_residues_are_connected(current[0], next[0])
-    if prev_connected and next_connected:
-      nodes = (previous[0].i_seq, next[0].i_seq)
-      moving = (previous[1][1].i_seq, previous[1][2].i_seq, next[1][0].i_seq)
-      if len(next[1]) > 3:
-        moving += tuple([next[1][3].i_seq])
-      c_alpha_hinges[current[0].i_seq] = [nodes, moving]
-  return c_alpha_hinges
 
 # XXX wrapper for running in Phenix GUI
 class _run_determine_ncs_groups (object) :
