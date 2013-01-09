@@ -21,6 +21,7 @@ from libtbx.utils import Sorry, user_plus_sys_time, multi_out, show_total_time
 from libtbx import adopt_init_args, slots_getstate_setstate
 from libtbx.str_utils import format_value, make_header
 from libtbx import runtime_utils
+from libtbx import easy_mp
 import libtbx.load_env
 from cStringIO import StringIO
 import cPickle
@@ -67,6 +68,8 @@ ensemble_refinement {
   random_seed = 2679941
     .type = int
     .help = 'Ransom seed'
+  nproc = 1
+    .type = int
   tx = None
     .type = float
     .help = 'Relaxation time (ps)'
@@ -97,7 +100,7 @@ ensemble_refinement {
     .help = 'TLS groups to use for TLS fitting (TLS details in PDB header not used)'
     .style = use_list
   ptls = 0.80
-    .type = float
+    .type = floats
     .help = 'The fraction of atoms to include in TLS fitting'
     .short_caption = Fraction of atoms to include in TLS fitting
   max_ptls_cycles = 25
@@ -266,7 +269,9 @@ class run_ensemble_refinement(object):
                      model,
                      log,
                      mtz_dataset_original,
-                     params):
+                     params,
+                     ptls,
+                     run_number=None) :
     adopt_init_args(self, locals())
 #    self.params = params.extract().ensemble_refinement
 
@@ -665,13 +670,6 @@ class run_ensemble_refinement(object):
     #Minimize number of ensemble models
     self.ensemble_utils.ensemble_reduction()
 
-    #PDB output
-    if (params.gzip_final_model) :
-      self.write_ensemble_pdb(out = gzip.open(self.params.output_file_prefix+".pdb.gz", 'wb'))
-    else :
-      self.write_ensemble_pdb(out = open(
-        self.params.output_file_prefix+".pdb", 'wb'))
-
     #Optimise fmodel_total k, b_aniso, k_sol, b_sol
     self.fmodel_total.set_scale_switch = 0
     self.print_fmodels_scale_and_solvent_stats()
@@ -691,9 +689,27 @@ class run_ensemble_refinement(object):
                                   max_number_of_bins       = 999
                                   )
     info.show_remark_3(out = self.log)
+    self.write_output_files(run_number=run_number)
+
+  def write_output_files (self, run_number=None) :
+    #PDB output
+    prefix = self.params.output_file_prefix
+    if (run_number is not None) :
+      prefix += "_%g" % run_number
+    pdb_out = prefix + ".pdb"
+    if (self.params.gzip_final_model) :
+      pdb_out += ".gz"
+      self.write_ensemble_pdb(out = gzip.open(pdb_out, 'wb'))
+    else :
+      self.write_ensemble_pdb(out = open(pdb_out, 'wb'))
+    self.pdb_file = pdb_out
 
     # Map output
-    self.write_mtz_file()
+    self.mtz_file = write_mtz_file(
+      fmodel_total=self.fmodel_total,
+      mtz_dataset_original=self.mtz_dataset_original,
+      prefix=prefix,
+      params=self.params)
 
 ############################## END ER ##########################################
 
@@ -704,43 +720,6 @@ class run_ensemble_refinement(object):
     else:
       message = "Total: " + message
       self.fmodel_total.info().show_rfactors_targets_scales_overall(header = message, out = self.log)
-
-  def write_mtz_file(self):
-    class labels_decorator:
-      def __init__(self, amplitudes_label, phases_label):
-        self._amplitudes = amplitudes_label
-        self._phases = phases_label
-      def amplitudes(self):
-        return self._amplitudes
-      def phases(self, root_label, anomalous_sign=None):
-        assert anomalous_sign is None or not anomalous_sign
-        return self._phases
-    xray_suffix = "_xray"
-    self.mtz_dataset_original.set_name("Original-experimental-data")
-    new_dataset = self.mtz_dataset_original.mtz_crystal().add_dataset(
-      name = "Experimental-data-used-in-refinement", wavelength=1)
-    new_dataset.add_miller_array(
-      miller_array = self.fmodel_total.f_obs(),
-      column_root_label="F-obs-filtered"+xray_suffix)
-    another_dataset = new_dataset.mtz_crystal().add_dataset(
-      name = "Model-structure-factors-(bulk-solvent-and-all-scales-included)",
-      wavelength=1)
-    another_dataset.add_miller_array(
-      miller_array = self.fmodel_total.f_model_scaled_with_k1_composite_work_free(),
-      column_root_label="F-model"+xray_suffix)
-    yet_another_dataset = another_dataset.mtz_crystal().add_dataset(
-      name = "Fourier-map-coefficients", wavelength=1)
-    cmo = mmtbx.maps.compute_map_coefficients(
-        fmodel = self.fmodel_total,
-        params = self.params.electron_density_maps.map_coefficients)
-    for ma in cmo.mtz_dataset.mtz_object().as_miller_arrays():
-      labels=ma.info().labels
-      ld = labels_decorator(amplitudes_label=labels[0], phases_label=labels[1])
-      yet_another_dataset.add_miller_array(
-        miller_array      = ma,
-        column_root_label = labels[0],
-        label_decorator   = ld)
-    yet_another_dataset.mtz_object().write(file_name = self.params.output_file_prefix+".mtz")
 
   def add_harmonic_restraints(self):
     make_header("Add specific harmonic restraints", out = self.log)
@@ -945,9 +924,9 @@ class run_ensemble_refinement(object):
     for group in self.tls_manager.tls_selections_no_sol_no_hd:
       if group.size() < 63:
         self.params.isotropic_b_factor_model = True
-      elif self.params.ptls * group.size() < 63:
-        self.params.ptls = 64.0 / group.size()
-        print >> self.log, '\nAutomatically increasing pTLS to : {0:5.3f}'.format(self.params.ptls)
+      elif self.ptls * group.size() < 63:
+        self.ptls = 64.0 / group.size()
+        print >> self.log, '\nAutomatically increasing pTLS to : {0:5.3f}'.format(self.ptls)
     if self.params.isotropic_b_factor_model:
       print >> self.log, '\nModel contains less than 63 non-solvent, non-H/D atoms'
       print >> self.log, 'Insufficient to fit TLS model, using isotropic model'
@@ -1027,10 +1006,10 @@ class run_ensemble_refinement(object):
         fitted_biso_no_hd = fitted_biso.select(~hd_selection)
 
         if verbose:
-          print >> self.log, 'pTLS                                    : ', self.params.ptls
+          print >> self.log, 'pTLS                                    : ', self.ptls
 
         sorted_delta_ref_fit_no_h = sorted(delta_ref_fit_no_h)
-        percentile_cutoff = sorted_delta_ref_fit_no_h[int(len(sorted_delta_ref_fit_no_h) * self.params.ptls)-1]
+        percentile_cutoff = sorted_delta_ref_fit_no_h[int(len(sorted_delta_ref_fit_no_h) * self.ptls)-1]
         if verbose:
           print >> self.log, 'Cutoff (<)                              : ', percentile_cutoff
         print >> self.log, 'Number of atoms (non HD)                : ', delta_ref_fit_no_h.size()
@@ -1207,7 +1186,10 @@ class run_ensemble_refinement(object):
     self.block_store_cycle_cntr+1
     if self.block_store_cycle_cntr+1 == 1:
       self.block_temp_file_list = []
-    filename = str(self.block_store_cycle_cntr+1)+'_block_'+self.params.output_file_prefix+'_TEMP.pZ'
+    prefix = self.params.output_file_prefix
+    if (self.run_number is not None) :
+      prefix += "_%g" % self.run_number
+    filename = str(self.block_store_cycle_cntr+1)+'_block_'+prefix+'_TEMP.pZ'
     self.block_temp_file_list.append(filename)
     er_pickle(pickle_object = block_info, pickle_filename = filename)
     self.block_store_cycle_cntr += 1
@@ -1511,6 +1493,46 @@ def show_model_vs_data(fmodel, log):
     "overall_anisotropic_scale_(b_cart)  : " + format_value("%-s",b_cart)])
   print >> log, "   ", result
 
+def write_mtz_file (fmodel_total, mtz_dataset_original, prefix, params) :
+  class labels_decorator:
+    def __init__(self, amplitudes_label, phases_label):
+      self._amplitudes = amplitudes_label
+      self._phases = phases_label
+    def amplitudes(self):
+      return self._amplitudes
+    def phases(self, root_label, anomalous_sign=None):
+      assert anomalous_sign is None or not anomalous_sign
+      return self._phases
+  xray_suffix = "_xray"
+  mtz_dataset_original.set_name("Original-experimental-data")
+  new_dataset = mtz_dataset_original.mtz_crystal().add_dataset(
+    name = "Experimental-data-used-in-refinement", wavelength=1)
+  new_dataset.add_miller_array(
+    miller_array = fmodel_total.f_obs(),
+    column_root_label="F-obs-filtered"+xray_suffix)
+  another_dataset = new_dataset.mtz_crystal().add_dataset(
+    name = "Model-structure-factors-(bulk-solvent-and-all-scales-included)",
+    wavelength=1)
+  another_dataset.add_miller_array(
+    miller_array = fmodel_total.f_model_scaled_with_k1_composite_work_free(),
+    column_root_label="F-model"+xray_suffix)
+  yet_another_dataset = another_dataset.mtz_crystal().add_dataset(
+    name = "Fourier-map-coefficients", wavelength=1)
+  cmo = mmtbx.maps.compute_map_coefficients(
+      fmodel = fmodel_total,
+      params = params.electron_density_maps.map_coefficients)
+  for ma in cmo.mtz_dataset.mtz_object().as_miller_arrays():
+    labels=ma.info().labels
+    ld = labels_decorator(amplitudes_label=labels[0], phases_label=labels[1])
+    yet_another_dataset.add_miller_array(
+      miller_array      = ma,
+      column_root_label = labels[0],
+      label_decorator   = ld)
+  yet_another_dataset.mtz_object().write(
+    file_name=prefix+".mtz")
+  return prefix + ".mtz"
+
+#-----------------------------------------------------------------------
 def run(args, command_name = "phenix.ensemble_refinement", log=None,
     validate=False):
   if(len(args) == 0): args = ["--help"]
@@ -1753,21 +1775,97 @@ def run(args, command_name = "phenix.ensemble_refinement", log=None,
             log             = log)
   show_model_vs_data(fmodel = fmodel,
                      log    = log)
-
-  ensemble_refinement = run_ensemble_refinement(
+  
+  best_trial = None
+  if (len(er_params.ptls) == 1) :
+    best_trial = run_wrapper(
       fmodel               = fmodel,
       model                = model,
-      params               = er_params,
+      er_params            = er_params,
+      mtz_dataset_original = mtz_dataset_original,
+      log                  = log).__call__(
+        ptls=er_params.ptls[0],
+        buffer_output=False,
+        append_ptls=False,
+        write_log=False)
+  else :
+    driver = run_wrapper(
+      fmodel               = fmodel,
+      model                = model,
+      er_params            = er_params,
       mtz_dataset_original = mtz_dataset_original,
       log                  = log)
+    trials = []
+    
+    if (er_params.nproc in [1, None]) or (sys.platform == "win32") :
+      for ptls in er_params.ptls :
+        make_header("Running with pTLS = %g" % ptls, out=log)
+        trials.append(driver(ptls, buffer_output=False, write_log=False))
+    else :
+      trials = easy_mp.pool_map(
+        fixed_func=driver,
+        args=er_params.ptls,
+        processes=er_params.nproc)
+    best_trial = min(trials, key=lambda t: t.r_free)
+    best_trial.save_final(er_params.output_file_prefix)
 
-  show_total_time(out = ensemble_refinement.log)
+  show_total_time(out = log)
   return result(
-    fmodel=ensemble_refinement.fmodel_total,
-    xray_structures=ensemble_refinement.er_data.xray_structures,
+    best_trial=best_trial,
     prefix=er_params.output_file_prefix,
     validate=validate,
     log=log)
+
+class run_wrapper (object) :
+  def __init__ (self, model, fmodel, mtz_dataset_original, er_params, log) :
+    adopt_init_args(self, locals())
+
+  def __call__ (self, ptls, buffer_output=True, write_log=True, append_ptls=True) :
+    out = self.log
+    log_out = None
+    if (buffer_output) :
+      out = StringIO()
+    run_number = None
+    if (append_ptls) :
+      run_number = ptls
+    ensemble_refinement = run_ensemble_refinement(
+      fmodel               = self.fmodel.deep_copy(),
+      model                = self.model.deep_copy(),
+      params               = self.er_params,
+      mtz_dataset_original = self.mtz_dataset_original,
+      run_number           = run_number,
+      ptls                 = ptls,
+      log                  = out)
+    if (buffer_output) :
+      log_out = out.getvalue()
+      if (write_log):
+        log_file_name = self.er_params.output_file_prefix + '_ptls-' + str(ptls) + '.log'
+        log_file = open(log_file_name, 'w')
+        log_file.write(log_out)
+    return trial(
+      ptls=ptls,
+      r_work=ensemble_refinement.fmodel_total.r_work(),
+      r_free=ensemble_refinement.fmodel_total.r_free(),
+      pdb_file=ensemble_refinement.pdb_file,
+      mtz_file=ensemble_refinement.mtz_file,
+      log_out=log_out,
+      number_of_models=len(ensemble_refinement.er_data.xray_structures))
+
+class trial (slots_getstate_setstate) :
+  __slots__ = ["r_work", "r_free", "pdb_file", "mtz_file", "number_of_models",
+               "log_out", "ptls"]
+  def __init__ (self, **kwds) :
+    kwds = dict(kwds)
+    for name in self.__slots__ :
+      setattr(self, name, kwds[name])
+
+  def save_final (self, prefix) :
+    pdb_out = prefix + ".pdb"
+    if (self.pdb_file.endswith(".gz")) :
+      pdb_out += ".gz"
+    os.rename(self.pdb_file, pdb_out)
+    os.rename(self.mtz_file, prefix + ".mtz")
+
 
 ########################################################################
 # Phenix GUI hooks
@@ -1777,22 +1875,13 @@ class result (slots_getstate_setstate) :
     "number_of_models", "pdb_file", "mtz_file","validation",
   ]
   def __init__ (self,
-      fmodel,
-      xray_structures,
+      best_trial,
       prefix,
       log,
       validate=False) :
+    for attr in ["r_work", "r_free", "number_of_models"] :
+      setattr(self, attr, getattr(best_trial, attr))
     self.directory = os.getcwd()
-    self.r_work = fmodel.r_work()
-    self.r_free = fmodel.r_free()
-    fofc_map = fmodel.map_coefficients(
-      map_type="mFo-DFc").fft_map(
-        resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
-    self.fofc_min = flex.min(fofc_map.as_1d())
-    self.fofc_max = flex.mmax(fofc_map.as_1d())
-    self.number_of_models = len(xray_structures)
-    self.pdb_file = prefix + ".pdb"
-    self.mtz_file = prefix + ".mtz"
     self.validation = None
     if (validate) :
       from mmtbx.command_line import validation_summary
@@ -1814,9 +1903,9 @@ class result (slots_getstate_setstate) :
        (mtz_file, "Map coefficients")],
       [("R-work", "%.4f" % self.r_work),
        ("R-free", "%.4f" % self.r_free),
-       ("Models", str(self.number_of_models)),
-       ("Max mFo-DFc", "%.2f" % self.fofc_max),
-       ("Min mFo-DFc", "%.2f" % self.fofc_min)]
+       ("Models", str(self.number_of_models)),]
+#       ("Max mFo-DFc", "%.2f" % self.fofc_max),
+#       ("Min mFo-DFc", "%.2f" % self.fofc_min)]
     )
 
 class launcher (runtime_utils.target_with_save_result) :
