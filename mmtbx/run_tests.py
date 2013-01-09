@@ -52,6 +52,7 @@ tst_list = (
   "$D/monomer_library/tst_protein_interpretation.py",
   "$D/monomer_library/tst_geo_reduce_for_tardy.py",
   "$D/monomer_library/tst_linking.py",
+  "$D/monomer_library/tst_neutron_distance.py",
   "$D/regression/tst_altloc_chain_break.py",
   "$D/hydrogens/build_hydrogens.py",
   "$D/max_lik/tst_maxlik.py",

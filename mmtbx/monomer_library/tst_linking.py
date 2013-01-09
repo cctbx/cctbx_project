@@ -616,7 +616,7 @@ def run():
     for i in range(2):
       log_filename = "%s_%d.log" % (pdb, i)
       cmd = "phenix.pdbtools %s" % pdb
-      cmd += " intra=%d %s > %s" % (i, cifs, log_filename)
+      cmd += " intra_chain=%d %s > %s" % (i, cifs, log_filename)
       print cmd
       easy_run.call(cmd)
       f=file(log_filename, "rb")

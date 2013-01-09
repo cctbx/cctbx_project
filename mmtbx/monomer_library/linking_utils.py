@@ -467,17 +467,21 @@ def process_atom_groups_for_linking(pdb_hierarchy,
         bond_cutoff,
         )
       return None
-    return process_atom_groups_for_linking_single_link(pdb_hierarchy,
-                                                       atom1,
-                                                       atom2,
-                                                       verbose=verbose,
-                                                       )
+    return process_atom_groups_for_linking_single_link(
+      pdb_hierarchy,
+      atom1,
+      atom2,
+      intra_residue_bond_cutoff=intra_residue_bond_cutoff,
+      verbose=verbose,
+      )
 
 def process_atom_groups_for_linking_single_link(pdb_hierarchy,
                                                 atom1,
                                                 atom2,
+                                                intra_residue_bond_cutoff=1.99,
                                                 verbose=False,
                                                 ):
+  verbose=1
   if is_glyco_bond(atom1, atom2):
     # glyco bonds need to be in certain order
     if atom1.name.find("C")>-1:
@@ -531,8 +535,11 @@ def process_atom_groups_for_linking_single_link(pdb_hierarchy,
       angles = get_angles_from_included_bonds(
         pdb_hierarchy,
         [[atom1, atom2]],
-        bond_cutoff=intra_residue_bond_cutoff,
-                                              )
+        bond_cutoff=1.75, #intra_residue_bond_cutoff,
+        )
+      if verbose:
+        print 'get_hand'
+        print c_atom, o_atom, angles
       hand = get_hand(c_atom, o_atom, angles) #"ALPHA"
       assert hand
 
