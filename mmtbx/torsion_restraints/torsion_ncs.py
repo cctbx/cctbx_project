@@ -1802,15 +1802,6 @@ def determine_ncs_groups(pdb_hierarchy,
                          log=log)
   return ncs_groups_manager.ncs_groups
 
-def check_residues_are_connected (ca_1, ca_2, max_sep=4.0, min_sep=0.) :
-  from scitbx import matrix
-  ca_1_mat = matrix.col(ca_1.xyz)
-  ca_2_mat = matrix.col(ca_2.xyz)
-  dist = (ca_1_mat - ca_2_mat).length()
-  if (dist > max_sep) or (dist < min_sep) :
-    return False
-  return True
-
 # XXX wrapper for running in Phenix GUI
 class _run_determine_ncs_groups (object) :
   def __init__ (self, params, pdb_hierarchy) :
