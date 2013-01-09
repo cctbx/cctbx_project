@@ -160,6 +160,12 @@ random_seed=None
   .type = int
   .help = Random seed
   .expert_level=2
+twin_law = None
+  .type = str
+  .help = Optional twin law if we want to generate a twinned dataset
+twin_fraction = 0.5
+  .type = float
+  .help = Twin fraction, ignored if twin_law is not specified
 output
   .short_caption = Reflection output
   .expert_level=0
@@ -345,7 +351,10 @@ def run(args, log = sys.stdout):
     xray_structure = xray_structure,
     f_obs          = miller_array,
     add_sigmas     = params.add_sigmas,
-    params         = params).write_to_file(file_name = ofn)
+    params         = params,
+    twin_law       = params.twin_law,
+    twin_fraction  = params.twin_fraction,
+    out            = log).write_to_file(file_name = ofn)
   print >> log, "Output file name:", ofn
   print >> log, "All done."
   print >> log, "-"*79

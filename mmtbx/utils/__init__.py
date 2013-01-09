@@ -2141,7 +2141,11 @@ class fmodel_from_xray_structure(object):
                      params = None,
                      r_free_flags_fraction = None,
                      target = "ml",
-                     add_sigmas = False):
+                     add_sigmas = False,
+                     twin_law = None,
+                     twin_fraction = 0.5,
+                     out = None):
+    if (out is None) : out = sys.stdout
     self.add_sigmas = add_sigmas
     if(params is None):
       params = mmtbx.command_line.fmodel.fmodel_from_xray_structure_master_params.extract()
@@ -2229,6 +2233,15 @@ class fmodel_from_xray_structure(object):
             f_model = f_model.array(data=data)
     except AttributeError: pass
     except Exception: raise RuntimeError
+    if (twin_law is not None) :
+      assert (twin_fraction is not None)
+      from mmtbx.scaling import massage_twin_detwin_data
+      i_model = f_model.f_as_f_sq()
+      i_model_twinned = massage_twin_detwin_data.twin_data(
+        miller_array=i_model,
+        twin_law=twin_law,
+        out=out).twin_it(alpha=twin_fraction)
+      f_model = i_model_twinned.f_sq_as_f()
     self.f_model = f_model
     self.params = params
     self.fmodel = fmodel
