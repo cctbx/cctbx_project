@@ -58,26 +58,34 @@ Convert version 3.2 file to version 2.3 naming:
 #{{{ pre_screen_file
 def pre_screen_file(filename, atom_exch, alt_atom_exch):
   count = 0
+  res_count = 0
   pdb_file = open(filename)
   for line in pdb_file:
     line=line.rstrip()
     line=line.ljust(80)
     type_test = line[0:6]
     if type_test in ("ATOM  ", "HETATM", "TER   ", "ANISOU", "SIGATM", "SIGUIJ", "LINK  "):
+      adjust_res = False
       #--make any left-justified residue names right-justified------------------
       if re.match(r'.{17}([a-zA-Z0-9])  ',line):
         line = re.sub(r'\A(.{17})(.)\s\s',r'\g<1>  \g<2>',line)
+        adjust_res = True
       elif re.match(r'.{17}([a-zA-Z0-9][a-zA-Z0-9]) ',line):
         line = re.sub(r'\A(.{17})(..)\s',r'\g<1> \g<2>',line)
+        adjust_res = True
       #-------------------------------------------------------------------------
 
       #--pre-screen for CNS Xplor RNA base names and Coot RNA base names--------
       if re.match(r'.{17}(GUA|ADE|CYT|THY|URI)',line):
         line = re.sub(r'\A(.{17})(.)..',r'\g<1>  \g<2>',line)
+        adjust_res = True
       elif re.match(r'.{17}(OIP| Ar| Gr| Cr| Ur)',line):
         line = re.sub(r'\A(.{17}).(.).',r'\g<1>  \g<2>',line)
+        adjust_res = True
       #-------------------------------------------------------------------------
 
+      if adjust_res:
+        res_count += 1
       entry = line[12:20]
       clean_entry = entry[0:4] + " " + entry[5:8]
       if atom_exch.has_key(clean_entry):
@@ -85,7 +93,7 @@ def pre_screen_file(filename, atom_exch, alt_atom_exch):
           pass
         else:
           count += 1
-  return count
+  return count, res_count
 #}}}
 
 #{{{ build_hash
@@ -265,8 +273,9 @@ def remediator(params, log=None):
   alt_atom_exch, remark4_dump = build_hash(remediated_alt,
                                            custom_dict,
                                            user_dict)
-  count = pre_screen_file(file_name, atom_exch, alt_atom_exch)
-  if count > 0:
+  count, res_count = \
+    pre_screen_file(file_name, atom_exch, alt_atom_exch)
+  if count > 0 or res_count > 0:
     remediate(params.file_name, atom_exch, remediated_out, remark4, f)
     if params.output_file != None:
       f.close()
