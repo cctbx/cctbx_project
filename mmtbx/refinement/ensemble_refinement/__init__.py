@@ -70,30 +70,39 @@ ensemble_refinement {
     .help = 'Ransom seed'
   nproc = 1
     .type = int
+    .short_caption = Number of processors
+    .style = renderer:draw_nproc_widget
   tx = None
     .type = float
     .help = 'Relaxation time (ps)'
+    .short_caption = Relaxation time (ps)
   equilibrium_n_tx = 10
     .type = int
     .help = 'Length of equilibration period, n times tx'
+    .short_caption = Length of equilibration period
   acquisition_block_n_tx = 2
     .type = int
     .help = 'Length of acquisition block, n times tx'
+    .short_caption = Length of acquisition block
   number_of_acquisition_periods = 10
     .type = int
     .help = 'Number of acquisition periods'
   pdb_stored_per_block = 50
     .type = int
     .help = 'Number of model coordinates stored per acquisition block'
+    .short_caption = Models stored per acquisition block
   wxray_coupled_tbath = True
     .type = bool
     .help = 'Use temperature control wxray'
+    .short_caption = Use temperature control X-ray weight
   wxray_coupled_tbath_offset = 5.0
     .type = float
     .help = 'Temperature offset, increasing offset increases wxray'
+    .short_caption = Temperature ofset
   wxray = 1.0
     .type = float
     .help = 'Multiplier for xray weighting; used if wxray_coupled_tbath = Flase'
+    .short_caption = X-ray weight
   tls_group_selections = None
     .type = atom_selection
     .multiple = True
@@ -101,17 +110,22 @@ ensemble_refinement {
     .style = use_list
   ptls = 0.80
     .type = floats
+    .optional = False
     .help = 'The fraction of atoms to include in TLS fitting'
     .short_caption = Fraction of atoms to include in TLS fitting
+    .style = bold
   max_ptls_cycles = 25
     .type = int
     .help = 'Maximum cycles to use in TLS fitting; TLS will stop prior to this if convergence is reached'
+    .short_caption = Max. number of cycles of TLS fitting
   isotropic_b_factor_model = False
     .type = bool
     .help = 'Use isotropic B-factor model instead of TLS'
+    .short_caption = Use isotropic B-factor model
   pwilson = 0.8
     .type = float
     .help = 'Scale factor for isotropic b-factor model: all atoms = Bwilson * pwilson'
+    .short_caption = Scale factor for isotropic b-factor model
   set_occupancies = False
     .type = bool
     .help = 'Set all atoms aoccupancy to 1.0'
@@ -126,12 +140,14 @@ ensemble_refinement {
   update_rescale_normalisation_factors_scale_kn = False
     .type = bool
     .help = 'Scale <Ncalc> to starting Ncalc'
+    .short_caption = Scale <Ncalc> to starting Ncalc
   ordered_solvent_update = True
     .type = bool
     .help = 'Ordered water molecules automatically updated every nth macro cycle'
   ordered_solvent_update_cycle = 25
     .type = int
     .help = 'Number of macro-cycles per ordered solvent update'
+    .short_caption = Solvent update cycles
   harmonic_restraints
     .style = menu_item auto_align box
   {
@@ -1775,7 +1791,7 @@ def run(args, command_name = "phenix.ensemble_refinement", log=None,
             log             = log)
   show_model_vs_data(fmodel = fmodel,
                      log    = log)
-  
+
   best_trial = None
   if (len(er_params.ptls) == 1) :
     best_trial = run_wrapper(
@@ -1796,7 +1812,6 @@ def run(args, command_name = "phenix.ensemble_refinement", log=None,
       mtz_dataset_original = mtz_dataset_original,
       log                  = log)
     trials = []
-    
     if (er_params.nproc in [1, None]) or (sys.platform == "win32") :
       for ptls in er_params.ptls :
         make_header("Running with pTLS = %g" % ptls, out=log)
@@ -1820,7 +1835,8 @@ class run_wrapper (object) :
   def __init__ (self, model, fmodel, mtz_dataset_original, er_params, log) :
     adopt_init_args(self, locals())
 
-  def __call__ (self, ptls, buffer_output=True, write_log=True, append_ptls=True) :
+  def __call__ (self, ptls, buffer_output=True, write_log=True,
+      append_ptls=True) :
     out = self.log
     log_out = None
     if (buffer_output) :
@@ -1839,7 +1855,8 @@ class run_wrapper (object) :
     if (buffer_output) :
       log_out = out.getvalue()
       if (write_log):
-        log_file_name = self.er_params.output_file_prefix + '_ptls-' + str(ptls) + '.log'
+        log_file_name = self.er_params.output_file_prefix + '_ptls-' + \
+          str(ptls) + '.log'
         log_file = open(log_file_name, 'w')
         log_file.write(log_out)
     return trial(
@@ -1865,13 +1882,14 @@ class trial (slots_getstate_setstate) :
       pdb_out += ".gz"
     os.rename(self.pdb_file, pdb_out)
     os.rename(self.mtz_file, prefix + ".mtz")
-
+    self.pdb_file = pdb_out
+    self.mtz_file = prefix + ".mtz"
 
 ########################################################################
 # Phenix GUI hooks
 class result (slots_getstate_setstate) :
   __slots__ = [
-    "directory", "r_work", "r_free", "fofc_min", "fofc_max",
+    "directory", "r_work", "r_free",
     "number_of_models", "pdb_file", "mtz_file","validation",
   ]
   def __init__ (self,
@@ -1879,7 +1897,8 @@ class result (slots_getstate_setstate) :
       prefix,
       log,
       validate=False) :
-    for attr in ["r_work", "r_free", "number_of_models"] :
+    for attr in ["r_work", "r_free", "number_of_models", "pdb_file",
+                 "mtz_file"] :
       setattr(self, attr, getattr(best_trial, attr))
     self.directory = os.getcwd()
     self.validation = None
@@ -1904,8 +1923,6 @@ class result (slots_getstate_setstate) :
       [("R-work", "%.4f" % self.r_work),
        ("R-free", "%.4f" % self.r_free),
        ("Models", str(self.number_of_models)),]
-#       ("Max mFo-DFc", "%.2f" % self.fofc_max),
-#       ("Min mFo-DFc", "%.2f" % self.fofc_min)]
     )
 
 class launcher (runtime_utils.target_with_save_result) :
@@ -1913,7 +1930,10 @@ class launcher (runtime_utils.target_with_save_result) :
     os.mkdir(self.output_dir)
     os.chdir(self.output_dir)
     return run(args=list(self.args),
-      log=sys.stdout)
+      log=sys.stdout,
+      validate=True)
 
 def validate_params (params) :
+  if (params.ensemble_refinement.ptls is None) :
+    raise Sorry("You must specify a fraction of atoms to use for TLS fitting.")
   return mmtbx.utils.validate_input_params(params)
