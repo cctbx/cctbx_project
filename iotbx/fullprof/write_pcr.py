@@ -6,6 +6,8 @@ def _make_phase_block(phase, number=1, name=""):
   """Create a pcr phase block skelleton with placeholder strings for different
   refinement options.
 
+  (for internal use)
+
   :param phase: a crystal structucture
   :type phase: cctbx.xray_structure
   :param number: the number of the phase
@@ -94,6 +96,8 @@ def _pcr_skelleton(phases,
   """Create a pcr skelleton with placeholder strings for different refinement
   options.
 
+  (for internal use)
+
   :param phases: a list/tuple/set of structures
   :type phases: list(cctbx.xray_structure)
   :param title: a title to be used in the pcr file
@@ -120,7 +124,7 @@ def _pcr_skelleton(phases,
   ret += """\
 !
 !Ipr Ppl Ioc Mat Pcr Ls1 Ls2 Ls3 Syo Prf Ins Rpa Sym Hkl Fou Sho Ana
-  2   0   1   1   1   0   0   0   1   1  10   0   1   0   2   0   0
+  2   0   1   1   1   0   0   0   1   1  10   0   1   4   2   0   0
 !
 ! lambda1 Lambda2    Ratio    Bkpos    Wdt    Cthm     muR   AsyLim   Rpolarz ->Patt# 1
  {xlambda} {xlambda}  1.0000   60.000  5.0000  0.0000  0.0000   50.00    0.0000
@@ -149,6 +153,8 @@ def _set_ref_flags(inputstring, freeparams=[]):
   """Parse a pcr skelleton to enable or disable the different refinement
   parameters. The placeholder string for a parameter starts with '##_' and ends
   with '_##'.
+
+  (for internal use)
 
   Allowed values in the freeparams list are:
     'scale'   --> free all scale factors
