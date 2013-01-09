@@ -1404,6 +1404,7 @@ mmtbx/regression/tst_examples.py -text
 mmtbx/regression/tst_find_peaks_holes.py -text
 mmtbx/regression/tst_fmodel_twin_law.py -text
 mmtbx/regression/tst_ml_estimate.py -text
+mmtbx/regression/tst_model_vs_data_twinned.py -text
 mmtbx/regression/tst_msa.py -text
 mmtbx/regression/tst_prune_model.py -text
 mmtbx/regression/tst_real_space_correlation.py -text
