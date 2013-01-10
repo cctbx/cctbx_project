@@ -88,6 +88,9 @@ class server (object) :
     return (("FWT,PHWT" in self.array_labels) or
             ("FWT,PHIFWT" in self.array_labels))
 
+  def is_ccp4_style_difference_map (self) :
+    return ("DELFWT,PHDELWT" in self.array_labels)
+
   def is_solve_map (self) :
     return ((("FP" in self.array_labels) or ("FP,SIGFP" in self.array_labels))
           and ("PHIB" in self.array_labels) and ("FOM" in self.array_labels))
@@ -284,6 +287,10 @@ class server (object) :
       fom_label)
     return self._write_ccp4_map(map_coeffs, **kwds)
 
+  def convert_complex_map (self, map_label, **kwds) :
+    map_coeffs = self._convert_amplitudes_and_phases(f_label=map_label)
+    return self._write_ccp4_map(map_coeffs, **kwds)
+
   def convert_resolve_map (self, **kwds) :
     map_coeffs = self.get_resolve_map()
     kwds['map_coeffs'] = map_coeffs
@@ -306,6 +313,13 @@ class server (object) :
       output_file = self._write_ccp4_map(**kwds)
       files.append(os.path.abspath(output_file))
     return files
+
+  def convert_anomalous_map (self, **kwds) :
+    map_coeffs = self.get_anomalous_map()
+    if (map_coeffs is not None) :
+      kwds['map_coeffs'] = map_coeffs
+      return self._write_ccp4_map(**kwds)
+    return None
 
   def convert_phenix_maps (self, file_base, **kwds) :
     all_maps = self.get_phenix_maps()
@@ -551,3 +565,42 @@ def get_map_summary (map, resolution_factor=0.25) :
   more_stats = maptbx.more_statistics(map.real_map(False))
   info.append(("Skewness", "%.2f" % more_stats.skewness()))
   return info
+
+class auto_convert_map_coefficients (object) :
+  def __init__ (self, mtz_file, pdb_file=None, resolution_factor=0.25) :
+    self.f_map = None
+    self.diff_map = None
+    self.anom_map = None
+    self.f_map_type = None
+    map_server = server(file_name=mtz_file)
+    if (map_server.is_phenix_refine_maps()) :
+      self.f_map = map_server.convert_complex_map(
+        map_label="2FOFCWT,PH2FOFCWT",
+        pdb_file=pdb_file,
+        use_standard_map_names=True,
+        resolution_factor=resolution_factor)
+      self.f_map_type = "2mFo-DFc"
+      self.diff_map = map_server.convert_complex_map(
+        map_label="FOFCWT,PHFOFCWT",
+        pdb_file=pdb_file,
+        use_standard_map_names=True,
+        resolution_factor=resolution_factor)
+    elif (map_server.is_ccp4_style_map()) :
+      self.f_map = map_server.convert_complex_map(
+        map_label="FWT,PHWT",
+        pdb_file=pdb_file,
+        use_standard_map_names=True,
+        resolution_factor=resolution_factor)
+      self.f_map_type = "fwt" # could be 2mFo-DFc, or resolve Fobs map
+      if (map_server.is_ccp4_style_difference_map()) :
+        self.f_map_type = "2mFo-DFc" # now we know it's definitely 2mFo-DFc
+        self.diff_map = map_server.convert_complex_map(
+          map_label="DELFWT,PHDELWT",
+          pdb_file=pdb_file,
+          use_standard_map_names=True,
+          resolution_factor=resolution_factor)
+    if (map_server.is_anomalous_map()) :
+      self.anom_map = map_server.convert_anomalous_map(
+        pdb_file=pdb_file,
+        use_standard_map_names=True,
+        resolution_factor=resolution_factor)
