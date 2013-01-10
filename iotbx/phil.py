@@ -131,6 +131,7 @@ class process_command_line_with_files (object) :
     self.integer_def = integer_def
     self.float_def = float_def
     self._type_counts = {}
+    self._cache = {}
     cai=libtbx.phil.command_line.argument_interpreter(master_phil=self.master)
     self.work = cai.process_and_fetch(
        args=args,
@@ -147,6 +148,7 @@ class process_command_line_with_files (object) :
         if (not f.file_type in self._type_counts) :
           self._type_counts[f.file_type] = 0
         self._type_counts[f.file_type] += 1
+        self._cache[f.file_name] = f
       file_def_name = None
       if (f.file_type == "pdb") and (self.pdb_file_def is not None) :
         file_def_name = self.pdb_file_def
@@ -187,6 +189,9 @@ class process_command_line_with_files (object) :
 
   def process_other (self, arg) :
     return False
+
+  def get_cached_file (self, file_name) :
+    return self._cache.get(file_name, None)
 
 # Utilities for Phenix GUI
 class setup_app_generic (object) :
