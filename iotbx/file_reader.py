@@ -237,7 +237,7 @@ class any_file_input (object) :
     except ValueError, e :
       raise Sorry(str(e))
     if (len(structure.atoms()) == 0) :
-      raise ValueError("No ATOM or HETATM records found.")
+      raise ValueError("No ATOM or HETATM records found in %s."%self.file_name)
     self.file_type = "pdb"
     self.file_object = structure
 

@@ -321,7 +321,8 @@ class server (object) :
     pdb_in, mtime = self._pdb_cache.get(file_name, (None, 0))
     if (pdb_in is None) or (os.path.getmtime(file_name) > mtime) :
       from iotbx import file_reader
-      f = file_reader.any_file(file_name, force_type="pdb")
+      f = file_reader.any_file(file_name, force_type="pdb",
+        raise_sorry_if_errors=True)
       f.assert_file_type("pdb")
       pdb_in = f.file_object
       self._pdb_cache[file_name] = (pdb_in, os.path.getmtime(file_name))
