@@ -2140,15 +2140,16 @@ class fmodel_from_xray_structure(object):
                      f_obs = None,
                      params = None,
                      r_free_flags_fraction = None,
-                     target = "ml",
                      add_sigmas = False,
                      twin_law = None,
-                     twin_fraction = 0.5,
+                     twin_fraction = None,
+                     target = "ml",
                      out = None):
-    if (out is None) : out = sys.stdout
+    if(out is None): out = sys.stdout
     self.add_sigmas = add_sigmas
     if(params is None):
-      params = mmtbx.command_line.fmodel.fmodel_from_xray_structure_master_params.extract()
+      params = mmtbx.command_line.fmodel.\
+        fmodel_from_xray_structure_master_params.extract()
     if(r_free_flags_fraction is None):
       if(params.r_free_flags_fraction is not None):
         r_free_flags_fraction = params.r_free_flags_fraction
@@ -2196,25 +2197,19 @@ class fmodel_from_xray_structure(object):
         xray_structure.scattering_type_registry(
           table = params.scattering_table, d_min = f_obs.d_min())
     r_free_flags = f_obs.generate_r_free_flags(fraction = r_free_flags_fraction)
-    fmodel_ = mmtbx.f_model.manager(
+    fmodel = mmtbx.f_model.manager(
       xray_structure               = xray_structure,
       sf_and_grads_accuracy_params = params.structure_factors_accuracy,
       r_free_flags                 = r_free_flags,
       mask_params                  = params.mask,
-      f_obs                        = abs(f_obs))
-    u_star = adptbx.u_cart_as_u_star(
-      f_obs.unit_cell(), adptbx.b_as_u(params.fmodel.b_cart))
-    fmodel = mmtbx.f_model.manager_kbu(
-      f_obs   = fmodel_.f_obs(),
-      f_calc  = fmodel_.f_calc(),
-      f_masks = fmodel_.f_masks(),
-      f_part1 = fmodel_.f_part1(),
-      f_part2 = fmodel_.f_part2(),
-      u_star  = u_star,
-      k_sols  = params.fmodel.k_sol,
-      b_sol   = params.fmodel.b_sol,
-      ss      = fmodel_.ss)
-    f_model = fmodel.f_model
+      target_name                  = target,
+      twin_law                     = twin_law,
+      twin_fraction                = twin_fraction,
+      f_obs                        = abs(f_obs),
+      b_cart                       = params.fmodel.b_cart,
+      k_sol                        = params.fmodel.k_sol,
+      b_sol                        = params.fmodel.b_sol)
+    f_model = fmodel.f_model()
     f_model = f_model.array(data = f_model.data()*params.fmodel.scale)
     try:
       if(params.output.type == "real"):
@@ -2233,15 +2228,6 @@ class fmodel_from_xray_structure(object):
             f_model = f_model.array(data=data)
     except AttributeError: pass
     except Exception: raise RuntimeError
-    if (twin_law is not None) :
-      assert (twin_fraction is not None)
-      from mmtbx.scaling import massage_twin_detwin_data
-      i_model = f_model.f_as_f_sq()
-      i_model_twinned = massage_twin_detwin_data.twin_data(
-        miller_array=i_model,
-        twin_law=twin_law,
-        out=out).twin_it(alpha=twin_fraction)
-      f_model = i_model_twinned.f_sq_as_f()
     self.f_model = f_model
     self.params = params
     self.fmodel = fmodel
@@ -2250,7 +2236,7 @@ class fmodel_from_xray_structure(object):
       sigmas = flex.double(self.f_model.data().size(),1)
       self.f_model._sigmas = sigmas
     if(params.r_free_flags_fraction is not None):
-      self.r_free_flags = fmodel_.r_free_flags()
+      self.r_free_flags = fmodel.r_free_flags()
 
   def Sorry_high_resolution_is_not_defined(self):
     raise Sorry("High resolution limit is not defined. "\
@@ -2533,40 +2519,6 @@ def max_distant_rotomer(xray_structure, pdb_hierarchy, selection,
   xray_structure.set_sites_cart(sites_cart_result)
   return xray_structure
 
-def identify_rotatable_hydrogens(pdb_hierarchy, xray_structure, log = None):
-  import mmtbx.monomer_library
-  mon_lib_srv = mmtbx.monomer_library.server.server()
-  from mmtbx.utils import rotatable_bonds
-  hd_selection = xray_structure.hd_selection()
-  sel = flex.bool(hd_selection.size(), False)
-  for model in pdb_hierarchy.models():
-    for chain in model.chains():
-      for residue_group in chain.residue_groups():
-        conformers = residue_group.conformers()
-        if(len(conformers)>1): continue
-        for conformer in residue_group.conformers():
-          residue = conformer.only_residue()
-          fr = rotatable_bonds.axes_and_atoms_aa_specific(
-            residue=residue, mon_lib_srv=mon_lib_srv,
-            remove_clusters_with_all_h=False, log=log)
-          atoms = residue.atoms()
-          if(fr is not None):
-            for fr_ in fr:
-              fr1 = fr_[1]
-              if(len(fr1)==1 and atoms[fr1[0]].element.strip().upper() == "H"):
-                #print "    ", atoms[fr_[1][0]].i_seq, \
-                #  hd_selection[atoms[fr_[1][0]].i_seq], atoms[fr_[1][0]].element
-                sel[atoms[fr1[0]].i_seq]=True
-              if(len(fr1)==3 and atoms[fr1[0]].element.strip().upper() == "H" and
-                 atoms[fr1[1]].element.strip().upper() == "H" and
-                 atoms[fr1[2]].element.strip().upper() == "H"):
-                #print "    ", atoms[fr_[1][0]].i_seq, \
-                #  hd_selection[atoms[fr_[1][0]].i_seq], atoms[fr_[1][0]].element
-                sel[atoms[fr1[0]].i_seq]=True
-                sel[atoms[fr1[1]].i_seq]=True
-                sel[atoms[fr1[2]].i_seq]=True
-  return sel
-
 def seg_id_to_chain_id(pdb_hierarchy):
   import string
   two_character_chain_ids = []
@@ -2724,7 +2676,8 @@ def optimize_h(fmodel, pdb_hierarchy=None, model=None, log=None, verbose=True):
       x2 = model.xray_structure)
     model.reset_occupancies_for_hydrogens()
   if(model is not None): pdb_hierarchy = model.pdb_hierarchy()
-  rmh_sel = mmtbx.utils.identify_rotatable_hydrogens(
+  import mmtbx.hydrogens
+  rmh_sel = mmtbx.hydrogens.rotatable(
     pdb_hierarchy  = pdb_hierarchy,
     xray_structure = fmodel.xray_structure,
     log            = log)

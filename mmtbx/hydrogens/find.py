@@ -1,5 +1,4 @@
 from __future__ import division
-import math
 from cctbx.array_family import flex
 from mmtbx import find_peaks
 from mmtbx import utils
@@ -12,6 +11,7 @@ from cctbx import maptbx
 from libtbx.test_utils import approx_equal
 from cctbx import sgtbx
 import cctbx
+from scitbx.matrix import rotate_point_around_axis
 
 master_params_part1 = iotbx.phil.parse("""\
 map_type = mFobs-DFmodel
@@ -593,22 +593,6 @@ def water_map_correlations(model, fmodels):
               neutron_cc = ncc
   return True
 
-def rotate_point_about_axis(a1, a2, s, angle_deg):
-  angle_rad = angle_deg*math.pi/180.
-  a, b, c = a1[0], a1[1], a1[2]
-  u, v, w = a1[0]-a2[0], a1[1]-a2[1], a1[2]-a2[2]
-  x, y, z = s[0], s[1], s[2]
-  t0 = u**2+v**2+w**2
-  t1 = math.sqrt(t0)
-  vw = v**2+w**2
-  uw = u**2+w**2
-  uv = u**2+v**2
-  ct = math.cos(angle_rad)
-  st = math.sin(angle_rad)
-  x_new = (a*vw+u*(-b*v-c*w+u*x+v*y+w*z)+(-a*vw+u*(b*v+c*w-v*y-w*z)+vw*x)*ct+t1*(-c*v+b*w-w*y+v*z)*st)/t0
-  y_new = (b*uw+v*(-a*u-c*w+u*x+v*y+w*z)+(-b*uw+v*(a*u+c*w-u*x-w*z)+uw*y)*ct+t1*( c*u-a*w+w*x-u*z)*st)/t0
-  z_new = (c*uv+w*(-a*u-b*v+u*x+v*y+w*z)+(-c*uv+w*(a*u+b*v-u*x-v*y)+uv*z)*ct+t1*(-b*u+a*v-v*x+u*y)*st)/t0
-  return (x_new, y_new, z_new)
 
 def run_lrss_tyr_hh(fmodel, ref_model, angular_step, log):
   class tyr_cz_oh_hh(object):
@@ -647,15 +631,6 @@ def run_lrss_tyr_hh(fmodel, ref_model, angular_step, log):
           result.append(tyr_cz_oh_hh(cz = cz, oh = oh, hh = hh))
   if(len(result) > 0):
     print >> log, "%d tyrosin residues processed." % (len(result))
-    # create omit map: only ok if there are a few atoms, like in this context
-    #fmodel_dc = fmodel.deep_copy()
-    #sc = fmodel_dc.xray_structure.scatterers()
-    #for res in result:
-    #  for ihh in res.hh:
-    #    sc[ihh].occupancy = 0
-    #fmodel_dc.update_xray_structure(update_f_calc = True, update_f_mask = True)
-    #
-    # or
     fmodel_dc = fmodel
     #
     fft_map = fmodel_dc.electron_density_map().fft_map(
@@ -678,10 +653,12 @@ def run_lrss_tyr_hh(fmodel, ref_model, angular_step, log):
         ed_val = -1
         angle = 0.
         while angle <= 360:
-          hh_new = rotate_point_about_axis(a1        = cz_site,
-                                           a2        = oh_site,
-                                           s         = hh_site,
-                                           angle_deg = angle)
+          hh_new = rotate_point_around_axis(
+            axis_point_1 = cz_site,
+            axis_point_2 = oh_site,
+            point        = hh_site,
+            angle        = angle,
+            deg          = True)
           hh_new_frac = unit_cell.fractionalize(hh_new)
           ed_val_ = abs(maptbx.eight_point_interpolation(fft_map_data,
             hh_new_frac))
@@ -693,9 +670,6 @@ def run_lrss_tyr_hh(fmodel, ref_model, angular_step, log):
           scatterers[ihh].site = hh_best
     fmodel.update_xray_structure(xray_structure = ref_model.xray_structure,
       update_f_calc = True, update_f_mask = True)
-
-
-
 
 def run_flip_hd(fmodel, model, log, params = None):
   if(params is None):

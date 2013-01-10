@@ -71,6 +71,10 @@ Usage examples:
 
      similar to "7)", where the specific data array is selected.
 
+  9) phenix.fmodel model.pdb reflection_data.mtz twin_law="l,-k,h" twin_fraction=0.3
+
+     generates twin data set (real type) with given twin law and fraction.
+
 See below for complete list of available parameters.
 """
 
@@ -163,7 +167,7 @@ random_seed=None
 twin_law = None
   .type = str
   .help = Optional twin law if we want to generate a twinned dataset
-twin_fraction = 0.5
+twin_fraction = None
   .type = float
   .help = Twin fraction, ignored if twin_law is not specified
 output
