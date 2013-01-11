@@ -61,8 +61,9 @@ def get_processes (processes) :
   Determine number of processes dynamically: number of CPUs minus the current
   load average (with a minimum of 1).
   """
-  if (processes is None) or (processes is Auto) :
-    if (os.name == "nt") : return 1
+  if (processes in [None, Auto]) :
+    if (os.name == "nt") or (sys.version_info < (2,6)) :
+      return 1
     from libtbx import introspection
     auto_adjust = (processes is Auto)
     processes = introspection.number_of_processors()
@@ -329,7 +330,7 @@ def pool_map(
   processes = get_processes(processes)
   # XXX since we want to be able to call this function on Windows too, reset
   # processes to 1
-  if (os.name == "nt") :
+  if (os.name == "nt") or (sys.version_info < (2,6)) :
     processes = 1
   if (args is not None):
     iterable = args
