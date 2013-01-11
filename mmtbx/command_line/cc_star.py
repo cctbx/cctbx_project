@@ -248,7 +248,7 @@ Full parameters:
   r_free_flags = r_free_flags.customized_copy(
     data=r_free_flags.data()==test_flag_value).set_info(info)
   if (r_free_flags.anomalous_flag()) :
-    r_free_flags.average_bijvoet_mates().set_info(info)
+    r_free_flags = r_free_flags.average_bijvoet_mates().set_info(info)
   print >> out, "R-free flags:"
   r_free_flags.show_summary(f=out, prefix="  ")
   print >> out, ""
