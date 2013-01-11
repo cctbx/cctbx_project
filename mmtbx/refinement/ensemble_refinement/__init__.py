@@ -24,6 +24,7 @@ from libtbx import runtime_utils
 from libtbx import easy_mp
 import libtbx.load_env
 from cStringIO import StringIO
+from copy import deepcopy
 import cPickle
 import random
 import gzip
@@ -284,7 +285,8 @@ class run_ensemble_refinement(object):
   def __init__(self, fmodel,
                      model,
                      log,
-                     mtz_dataset_original,
+                     raw_data,
+                     raw_flags,
                      params,
                      ptls,
                      run_number=None) :
@@ -723,7 +725,8 @@ class run_ensemble_refinement(object):
     # Map output
     self.mtz_file = write_mtz_file(
       fmodel_total=self.fmodel_total,
-      mtz_dataset_original=self.mtz_dataset_original,
+      raw_data=self.raw_data,
+      raw_flags=self.raw_flags,
       prefix=prefix,
       params=self.params)
 
@@ -1509,7 +1512,7 @@ def show_model_vs_data(fmodel, log):
     "overall_anisotropic_scale_(b_cart)  : " + format_value("%-s",b_cart)])
   print >> log, "   ", result
 
-def write_mtz_file (fmodel_total, mtz_dataset_original, prefix, params) :
+def write_mtz_file (fmodel_total, raw_data, raw_flags, prefix, params) :
   class labels_decorator:
     def __init__(self, amplitudes_label, phases_label):
       self._amplitudes = amplitudes_label
@@ -1520,6 +1523,18 @@ def write_mtz_file (fmodel_total, mtz_dataset_original, prefix, params) :
       assert anomalous_sign is None or not anomalous_sign
       return self._phases
   xray_suffix = "_xray"
+  f_obs_label = "F-obs"
+  i_obs_label = "I-obs"
+  flag_label = "R-free-flags"
+  if (raw_data.is_xray_intensity_array()) :
+    column_root_label = i_obs_label
+  else:
+    column_root_label = f_obs_label
+  mtz_dataset_original = raw_data.as_mtz_dataset(
+    column_root_label=column_root_label)
+  mtz_dataset_original.add_miller_array(
+    miller_array = raw_flags,
+    column_root_label=flag_label)
   mtz_dataset_original.set_name("Original-experimental-data")
   new_dataset = mtz_dataset_original.mtz_crystal().add_dataset(
     name = "Experimental-data-used-in-refinement", wavelength=1)
@@ -1614,18 +1629,8 @@ def run(args, command_name = "phenix.ensemble_refinement", log=None,
   number_of_reflections = f_obs.indices().size()
 
   r_free_flags = inputs.r_free_flags
-  f_obs_label = "F-obs"
-  i_obs_label = "I-obs"
-  flag_label = "R-free-flags"
-  if (inputs.intensity_flag):
-    column_root_label = i_obs_label
-  else:
-    column_root_label = f_obs_label
-  mtz_dataset_original = inputs.raw_data.as_mtz_dataset(
-    column_root_label=column_root_label)
-  mtz_dataset_original.add_miller_array(
-    miller_array = inputs.raw_flags,
-    column_root_label=flag_label)
+  raw_flags = inputs.raw_flags
+  raw_data = inputs.raw_data
 
   print >> log, "\nPDB file name : ", inputs.pdb_file_names[0]
 
@@ -1798,18 +1803,19 @@ def run(args, command_name = "phenix.ensemble_refinement", log=None,
       fmodel               = fmodel,
       model                = model,
       er_params            = er_params,
-      mtz_dataset_original = mtz_dataset_original,
+      raw_data             = raw_data,
+      raw_flags            = raw_flags,
       log                  = log).__call__(
         ptls=er_params.ptls[0],
         buffer_output=False,
-        append_ptls=False,
-        write_log=False)
+        append_ptls=False)
   else :
     driver = run_wrapper(
       fmodel               = fmodel,
       model                = model,
       er_params            = er_params,
-      mtz_dataset_original = mtz_dataset_original,
+      raw_data             = raw_data,
+      raw_flags            = raw_flags,
       log                  = log)
     trials = []
     if (er_params.nproc in [1, None]) or (sys.platform == "win32") :
@@ -1832,7 +1838,7 @@ def run(args, command_name = "phenix.ensemble_refinement", log=None,
     log=log)
 
 class run_wrapper (object) :
-  def __init__ (self, model, fmodel, mtz_dataset_original, er_params, log) :
+  def __init__ (self, model, fmodel, raw_data, raw_flags, er_params, log) :
     adopt_init_args(self, locals())
 
   def __call__ (self, ptls, buffer_output=True, write_log=True,
@@ -1848,7 +1854,8 @@ class run_wrapper (object) :
       fmodel               = self.fmodel.deep_copy(),
       model                = self.model.deep_copy(),
       params               = self.er_params,
-      mtz_dataset_original = self.mtz_dataset_original,
+      raw_data             = self.raw_data,
+      raw_flags            = self.raw_flags,
       run_number           = run_number,
       ptls                 = ptls,
       log                  = out)
