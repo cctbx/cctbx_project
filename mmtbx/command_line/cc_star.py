@@ -22,6 +22,7 @@ def merging_and_model_statistics (
   assert (unmerged_i_obs.sigmas() is not None)
   info = unmerged_i_obs.info()
   assert (info is not None)
+  unmerged_i_obs = unmerged_i_obs.customized_copy(crystal_symmetry=f_obs)
   unmerged_i_obs = unmerged_i_obs.select(
     unmerged_i_obs.sigmas() >= 0).set_info(info)
   filter = merging_statistics.filter_intensities_by_sigma(
