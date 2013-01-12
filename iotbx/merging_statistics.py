@@ -122,7 +122,9 @@ class filter_intensities_by_sigma (object) :
     merge = array.merge_equivalents(use_internal_variance=False)
     array_merged = merge.array()
     reject_sel = None
+    self.observed_criterion_sigma_I = None
     if (sigma_filtering == "xds") :
+      self.observed_criterion_sigma_I = -3
       reject_sel = (array_merged.data() < -3*array_merged.sigmas())
       self.n_rejected_after_merge = reject_sel.count(True)
       bad_data = array_merged.select(reject_sel)
@@ -131,6 +133,7 @@ class filter_intensities_by_sigma (object) :
       merge = array.merge_equivalents(use_internal_variance=False)
       array_merged = merge.array()
     elif (sigma_filtering == "scalepack") :
+      self.observed_criterion_sigma_I = -3
       reject_sel = (array.data() < -3* array.sigmas())
       self.n_rejected_before_merge = reject_sel.count(True)
       array = array.select(~reject_sel)
@@ -171,6 +174,7 @@ class merging_stats (object) :
     filter = filter_intensities_by_sigma(
       array=array,
       sigma_filtering=sigma_filtering)
+    self.filter = filter
     array = filter.array
     merge = filter.merge
     array_merged = filter.array_merged
@@ -196,6 +200,7 @@ class merging_stats (object) :
     nonzero_array = array_merged.select(array_merged.sigmas() > 0)
     i_over_sigma = nonzero_array.data() / nonzero_array.sigmas()
     self.i_over_sigma_mean = flex.mean(i_over_sigma)
+    self.i_mean_over_sigi_mean = self.i_mean/self.sigi_mean
     self.r_merge = merge.r_merge()
     self.r_meas = merge.r_meas()
     self.r_pim = merge.r_pim()
@@ -442,32 +447,39 @@ class dataset_statistics (object) :
     if cif_block is None:
       cif_block = iotbx.cif.model.block()
 
+    observed_criterion_sigma_I = self.overall.filter.observed_criterion_sigma_I
+    if observed_criterion_sigma_I is None:
+      observed_criterion_sigma_I = "?"
+
     cif_block["_reflns.d_resolution_low"] = self.overall.d_max
     cif_block["_reflns.d_resolution_high"] = self.overall.d_min
     cif_block["_reflns.percent_possible_obs"] = self.overall.completeness * 100
     cif_block["_reflns.pdbx_number_measured_all"] = self.overall.n_obs
-    cif_block["_reflns.number_all"] = self.overall.n_uniq
+    cif_block["_reflns.number_obs"] = self.overall.n_uniq
     cif_block["_reflns.pdbx_redundancy"] = self.overall.mean_redundancy
     cif_block["_reflns.phenix_mean_I"] = self.overall.i_mean
     cif_block["_reflns.pdbx_netI_over_sigmaI"] = self.overall.i_over_sigma_mean
-    cif_block["_reflns.pdbx_Rmerge_I_all"] = self.overall.r_merge
-    cif_block["_reflns.pdbx_Rrim_I_all"] = self.overall.r_meas
-    cif_block["_reflns.pdbx_Rpim_I_all"] = self.overall.r_pim
+    cif_block["_reflns.pdbx_Rmerge_I_obs"] = self.overall.r_merge
+    cif_block["_reflns.pdbx_Rrim_I_obs"] = self.overall.r_meas
+    cif_block["_reflns.pdbx_Rpim_I_obs"] = self.overall.r_pim
     cif_block["_reflns.phenix_cc_star"] = self.overall.cc_star
     cif_block["_reflns.phenix_cc_1/2"] = self.overall.cc_one_half
+    cif_block["_reflns.observed_criterion_sigma_I"] = observed_criterion_sigma_I
+    cif_block["_reflns.observed_criterion_sigma_F"] = "?"
 
     reflns_shell_loop = iotbx.cif.model.loop(header=(
       "_reflns_shell.d_res_high",
       "_reflns_shell.d_res_low",
-      "_reflns_shell.number_measured_all",
-      "_reflns_shell.number_unique_all",
+      "_reflns_shell.number_measured_obs",
+      "_reflns_shell.number_unique_obs",
       "_reflns_shell.pdbx_redundancy",
-      "_reflns_shell.percent_possible_all",
+      "_reflns_shell.percent_possible_obs",
       "_reflns_shell.phenix_mean_I",
-      "_reflns_shell.pdbx_netI_over_sigmaI_all",
-      "_reflns_shell.Rmerge_I_all",
-      "_reflns_shell.pdbx_Rrim_I_all",
-      "_reflns_shell.pdbx_Rpim_I_all",
+      "_reflns_shell.pdbx_netI_over_sigmaI_obs",
+      "_reflns_shell.meanI_over_sigI_obs",
+      "_reflns_shell.Rmerge_I_obs",
+      "_reflns_shell.pdbx_Rrim_I_obs",
+      "_reflns_shell.pdbx_Rpim_I_obs",
       "_reflns_shell.phenix_cc_star",
       "_reflns_shell.phenix_cc_1/2",
     ))
@@ -481,6 +493,7 @@ class dataset_statistics (object) :
         bin_stats.completeness*100,
         bin_stats.i_mean,
         bin_stats.i_over_sigma_mean,
+        bin_stats.i_mean_over_sigi_mean,
         bin_stats.r_merge,
         bin_stats.r_meas,
         bin_stats.r_pim,
