@@ -135,27 +135,29 @@ def load_and_validate_unmerged_data (f_obs, file_name, data_labels,
       show_symmetry_error("Data file", "Unmerged data", unmerged_i_obs, f_obs)
   return unmerged_i_obs
 
-def run (args, out=sys.stdout) :
-  if (len(args) == 0) or ("--help" in args) :
-    raise Usage("""
-  phenix.cc_star model.pdb data.mtz unmerged_data=data.hkl [n_bins=X] [options]
-  phenix.cc_star model_refine_001.mtz unmerged_data=data.hkl [...]
+def run (args=None, params=None, out=sys.stdout) :
+  assert [args, params].count(None) == 1
+  if args is not None:
+    if (len(args) == 0) or ("--help" in args) :
+      raise Usage("""
+    phenix.cc_star model.pdb data.mtz unmerged_data=data.hkl [n_bins=X] [options]
+    phenix.cc_star model_refine_001.mtz unmerged_data=data.hkl [...]
 
-Implementation of the method for assessing data and model quality described in:
-Karplus PA & Diederichs K (2012) Science 336:1030-3.
+  Implementation of the method for assessing data and model quality described in:
+  Karplus PA & Diederichs K (2012) Science 336:1030-3.
 
-Full parameters:
-%s
-""" % master_phil.as_str(prefix=" ", attributes_level=1))
+  Full parameters:
+  %s
+  """ % master_phil.as_str(prefix=" ", attributes_level=1))
+    import iotbx.phil
+    cmdline = iotbx.phil.process_command_line_with_files(
+      args=args,
+      master_phil=master_phil,
+      pdb_file_def="model",
+      reflection_file_def="data")
+    params = cmdline.work.extract()
   from iotbx import merging_statistics
   from iotbx import file_reader
-  import iotbx.phil
-  cmdline = iotbx.phil.process_command_line_with_files(
-    args=args,
-    master_phil=master_phil,
-    pdb_file_def="model",
-    reflection_file_def="data")
-  params = cmdline.work.extract()
   if (params.data is None) :
     raise Sorry("Please specify a data file (usually MTZ format).")
   if (params.unmerged_data is None) :
