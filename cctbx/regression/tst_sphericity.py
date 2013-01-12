@@ -4,8 +4,9 @@ import iotbx.pdb
 from cctbx import maptbx
 from cctbx import adptbx, sgtbx
 import scitbx
-import time
 from libtbx.test_utils import approx_equal
+from libtbx.str_utils import format_value
+import time
 
 def ru(crystal_symmetry, u_scale=1, u_min=0.1):
   from cctbx import sgtbx
@@ -136,9 +137,12 @@ END
     n = flex.min(v)/flex.max(v)
     t2=time.time()
     #
-    time_gain = (t2-t1)/(t1-t0)
-    print "#%d: answer: %5.3f sphericity: %5.3f other: %5.3f time_gain: %6.2f"%(
-      i+1, a, s, n, time_gain), alt
+    t01 = t1 - t0
+    time_gain = None
+    if (t01 != 0) :
+      time_gain = (t2-t1)/(t01)
+    print "#%d: answer: %5.3f sphericity: %5.3f other: %5.3f time_gain: %s" % (
+      i+1, a, s, n, format_value("%6.2f", time_gain)), alt
   #
   assert approx_equal(expected_a, result_a, 1.e-3)
   assert approx_equal(expected_s, result_s, 1.e-3)
