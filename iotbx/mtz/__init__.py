@@ -335,16 +335,8 @@ class _(boost.python.injector, ext.object):
           max_field_lengths = [len(field) for field in fields_list[0]]
           max_field_lengths[-2] = 0
           for i_column,column in enumerate(dataset.columns()):
-            valid_values = column.extract_valid_values()
-            fields = [
-              column.label(),
-              "%d" % valid_values.size(),
-              "%.2f%%" %(100.*valid_values.size()/max(1,self.n_reflections())),
-              format_min_max(flex.min, valid_values),
-              format_min_max(flex.max, valid_values),
-              column.type()+":",
-              column_type_legend.get(
-                column.type(), "*** UNDEFINED column type ***")]
+            fields = column.format_fields_for_mtz_dump(
+              n_refl=self.n_reflections())
             fields_list.append(fields)
             for i,field in enumerate(fields):
               max_field_lengths[i] = max(max_field_lengths[i], len(field))
@@ -998,6 +990,19 @@ class _(boost.python.injector, ext.column):
       values=self.extract_values(
         not_a_number_substitute=not_a_number_substitute),
       selection_valid=self.selection_valid())
+
+  def format_fields_for_mtz_dump (self, n_refl) :
+    valid_values = self.extract_valid_values()
+    fields = [
+      self.label(),
+      "%d" % valid_values.size(),
+      "%.2f%%" %(100.*valid_values.size()/max(1, n_refl)),
+      format_min_max(flex.min, valid_values),
+      format_min_max(flex.max, valid_values),
+      self.type()+":",
+      column_type_legend.get(
+        self.type(), "*** UNDEFINED column type ***")]
+    return fields
 
 def miller_array_as_mtz_dataset(self,
       column_root_label,
