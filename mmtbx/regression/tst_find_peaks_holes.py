@@ -1,42 +1,38 @@
-from __future__ import division
 
-import libtbx.load_env
-from libtbx.test_utils import contains_substring
+from __future__ import division
 from libtbx.utils import null_out
+from libtbx import easy_pickle
 from cStringIO import StringIO
 import os
 
 def exercise () :
-  pdb_file = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/pdb/1yjp_h.pdb",
-    test=os.path.isfile)
-  mtz_file = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/reflection_files/1yjp.mtz",
-    test=os.path.isfile)
-  if (pdb_file is None) :
-    print "phenix_regression not available, skipping test."
-    return
+  from mmtbx.regression import make_fake_anomalous_data
   from mmtbx.command_line import find_peaks_holes
+  mtz_file, pdb_file = make_fake_anomalous_data.generate_calcium_inputs(
+    file_base="tst_find_peaks_holes")
   out = StringIO()
   peaks_holes = find_peaks_holes.run(
     args=[pdb_file, mtz_file],
     out=out)
-  assert contains_substring(out.getvalue(), "  mFo-DFc >  3      :      0")
-  assert contains_substring(out.getvalue(), "  mFo-DFc min       :  -3.82")
-
-  peaks_holes.save_pdb_file(file_name="%s.pdb" % os.getpid(), log=null_out())
-  from iotbx.file_reader import any_file
-  pdbh = any_file("%s.pdb" % os.getpid()).file_object.construct_hierarchy()
-  #assert (len(pdbh.atoms()) == 4)
-  #assert (pdbh.atoms()[0].b == 3.45)
-  # filter by 2fo-fc
-  out = StringIO()
+  peaks_holes.save_pdb_file(file_name="tst_fph_peaks.pdb", log=null_out())
+  p = easy_pickle.dumps(peaks_holes)
+  s = peaks_holes.get_summary()
+  sp = easy_pickle.dumps(s)
+  out2 = StringIO()
+  s.show(out=out2)
+  lines = out2.getvalue().splitlines()
+  assert ("""  anomalous H2O (anomalous > 3):      1""" in lines)
+  assert ("""  anomalous non-water atoms:          0""" in lines)
+  assert ("""  mFo-DFc >  9:                       0""" in lines)
   peaks_holes = find_peaks_holes.run(
     args=[pdb_file, mtz_file, "filter_peaks_by_2fofc=1.0"],
-    out=out)
-  assert contains_substring(out.getvalue(), "  mFo-DFc max       :   None")
-  s = peaks_holes.get_summary()
-  s.show(out=null_out())
+    out=null_out())
+  out3 = StringIO()
+  peaks_holes.get_summary().show(out=out3)
+  lines = out3.getvalue().splitlines()
+  assert ("""  anomalous > 3:                      0""" in lines)
+  os.remove(mtz_file)
+  os.remove(pdb_file)
 
 if (__name__ == "__main__") :
   exercise()
