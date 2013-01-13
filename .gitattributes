@@ -2113,6 +2113,7 @@ wxtbx/layout.py -text
 wxtbx/listeditor.py -text
 wxtbx/metallicbutton.py -text
 wxtbx/monitor.py -text
+wxtbx/mtz_dump.py -text
 wxtbx/path_dialogs.py -text
 wxtbx/pdb_editor.py -text
 wxtbx/phil_controls/__init__.py -text
