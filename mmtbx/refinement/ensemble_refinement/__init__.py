@@ -24,7 +24,6 @@ from libtbx import runtime_utils
 from libtbx import easy_mp
 import libtbx.load_env
 from cStringIO import StringIO
-from copy import deepcopy
 import cPickle
 import random
 import gzip

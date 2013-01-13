@@ -4,7 +4,7 @@ import mmtbx.model
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
-from libtbx.utils import format_cpu_times 
+from libtbx.utils import format_cpu_times
 
 pdb_str = """
 CRYST1   16.242   15.015   14.726  90.00  90.00  90.00 P 1
@@ -29,9 +29,9 @@ ATOM      0  HE1 TYR A  28       8.156   5.588   5.000  1.00 10.00           H
 ATOM      0  HE2 TYR A  28      10.898   6.853   7.654  1.00 10.00           H
 ATOM      0  HH  TYR A  28      11.242   5.032   6.292  1.00 10.00           H
 TER
-HETATM    1  O   HOH A   1      -0.354   0.000  -0.573  1.00 20.00      A    O  
-HETATM    2  H1  HOH A   1       1.392  -0.000  -0.481  1.00 20.00      A    H  
-HETATM    3  H2  HOH A   1      -1.038  -0.000   1.054  1.00 20.00      A    H  
+HETATM    1  O   HOH A   1      -0.354   0.000  -0.573  1.00 20.00      A    O
+HETATM    2  H1  HOH A   1       1.392  -0.000  -0.481  1.00 20.00      A    H
+HETATM    3  H2  HOH A   1      -1.038  -0.000   1.054  1.00 20.00      A    H
 END
 """
 
