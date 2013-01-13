@@ -547,7 +547,15 @@ def get_map_coeff_labels (server,
         all_labels.append(labels)
     elif miller_array.info().labels[0].startswith("PHI") :
       phi_labels.append(labels)
-  amp_arrays = server.get_amplitudes(None, None, False, None, None, True, 4)
+  amp_arrays = server.get_amplitudes(
+    file_name               = None,
+    labels                  = None,
+    convert_to_amplitudes_if_necessary = False,
+    parameter_scope         = "",
+    parameter_name          = "",
+    return_all_valid_arrays = True,
+    minimum_score           = 2,
+    strict                  = True)
   if keep_array_labels :
     for miller_array in amp_arrays :
       data_label = miller_array.info().label_string()
