@@ -351,10 +351,12 @@ class iotbx_data_plot_base (plot_container) :
     self.parent.Refresh()
 
   def OnRightClick (self, event) :
-    menu = wx.Menu()
-    menu_item = menu.Append(-1, "Save image")
-    self.parent.Bind(wx.EVT_MENU, self.OnSave, menu_item)
-    self.parent.PopupMenu(menu)
+    if (wx.Platform != '__WXMAC__') : # FIXME
+      menu = wx.Menu()
+      menu_item = menu.Append(-1, "Save image")
+      self.parent.Bind(wx.EVT_MENU, self.OnSave, menu_item)
+      self.parent.PopupMenu(menu)
+      menu.Destroy()
 
   def OnSave (self, event=None) :
     self.save_image()
