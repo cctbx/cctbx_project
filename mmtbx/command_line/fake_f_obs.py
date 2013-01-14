@@ -272,7 +272,7 @@ def simulate_f_obs(root, crystal_symmetry, params):
   #assert approx_equal(fmodel.r_free(),0)
 
 def regularize_geometry(xray_structure, restraints_manager, params):
-  from mmtbx.command_line import geometry_minimization as gm
+  from mmtbx.refinement import geometry_minimization as gm
   import scitbx.lbfgs
   sites_cart = xray_structure.sites_cart()
   minimized = gm.lbfgs(

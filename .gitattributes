@@ -1367,6 +1367,7 @@ mmtbx/refinement/ensemble_refinement/ensemble_utils.py svneol=native#text/x-pyth
 mmtbx/refinement/ensemble_refinement/maps.params -text
 mmtbx/refinement/fit_rotamers.py -text
 mmtbx/refinement/flip_peptides.py -text
+mmtbx/refinement/geometry_minimization.py -text
 mmtbx/refinement/inspect_tardy_trajectory.py svneol=native#text/x-python
 mmtbx/refinement/occupancies.py -text
 mmtbx/refinement/orca.py svneol=native#text/x-python

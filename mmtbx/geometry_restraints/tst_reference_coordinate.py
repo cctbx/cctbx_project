@@ -241,11 +241,11 @@ def exercise_2():
       flex.max(flex.sqrt((xrs2.sites_cart().select(~selection_bool) -
                           xrs3.sites_cart().select(~selection_bool)).dot())), 0)
     from cctbx import geometry_restraints
-    import mmtbx.command_line.geometry_minimization
+    import mmtbx.refinement.geometry_minimization
     import scitbx.lbfgs
     grf = geometry_restraints.flags.flags(default=True)
     sites_cart = xrs2.sites_cart()
-    minimized = mmtbx.command_line.geometry_minimization.lbfgs(
+    minimized = mmtbx.refinement.geometry_minimization.lbfgs(
       sites_cart                  = sites_cart,
       geometry_restraints_manager = grm,
       sites_cart_selection        = flex.bool(sites_cart.size(), selection),
@@ -331,12 +331,12 @@ def exercise_3():
       flex.max(flex.sqrt((xrs2.sites_cart().select(~selection_bool) -
                           xrs3.sites_cart().select(~selection_bool)).dot())), 0)
     from cctbx import geometry_restraints
-    import mmtbx.command_line.geometry_minimization
+    import mmtbx.refinement.geometry_minimization
     import scitbx.lbfgs
     grf = geometry_restraints.flags.flags(default=True)
     grf.nonbonded = False
     sites_cart = xrs2.sites_cart()
-    minimized = mmtbx.command_line.geometry_minimization.lbfgs(
+    minimized = mmtbx.refinement.geometry_minimization.lbfgs(
       sites_cart                  = sites_cart,
       geometry_restraints_manager = grm,
       sites_cart_selection        = flex.bool(sites_cart.size(), min_selection),

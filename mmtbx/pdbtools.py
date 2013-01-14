@@ -205,6 +205,9 @@ random_seed = None
 modify_params = iotbx.phil.parse(modify_params_str, process_includes=True)
 
 master_params = iotbx.phil.parse("""\
+use_neutron_distances = False
+  .type = bool
+  .help = Use neutron X-H distances (which are longer than X-ray ones)
 modify
   .short_caption = Modify starting model
   .style = menu_item scrolled auto_align
@@ -258,23 +261,11 @@ pdb_interpretation
 stop_for_unknowns = True
   .type = bool
   .short_caption = Stop for residues missing geometry restraints
-regularize_geometry = False
-  .type = bool
-  .short_caption = Perform geometry minimization
-  .style = bold
 simple_dynamics = False
   .type = bool
   .short_caption = Perform crude dynamics
   .help = Shake atoms while maintaining proper geometry.  Not intended to be \
     physically realistic, but useful for testing purposes.
-geometry_minimization
-  .short_caption = Geometry minimization
-  .caption = Note: these options will only be processed if you select \
-    "Regularize model geometry" as the action.
-  .style = auto_align menu_item
-{
-  include scope mmtbx.command_line.geometry_minimization.master_params
-}
 cartesian_dynamics
   .short_caption = Cartesian dynamics
 {
@@ -757,42 +748,6 @@ def run(args, command_name="phenix.pdbtools"):
 ### show parameters
   utils.print_header("Complete set of parameters", out = log)
   master_params.format(params).show(out = log)
-### run geometry regularization
-  if((command_line_interpreter.command_line.options.geometry_regularization) or
-     (params.regularize_geometry) or (params.simple_dynamics)) :
-    utils.print_header("Geometry regularization", out = log)
-    # Conformation Dependent Library
-    if params.pdb_interpretation.cdl:
-      import time
-      from mmtbx import conformation_dependent_library as cdl
-      ppf = command_line_interpreter.processed_pdb_file
-      geometry = ppf.geometry_restraints_manager(
-          show_energies      = False,
-          plain_pairs_radius = 5.0)
-      restraints_manager = mmtbx.restraints.manager(geometry      = geometry,
-                                                    normalization = False)
-
-      t0=time.time()
-      cdl_proxies = cdl.setup_restraints(restraints_manager=restraints_manager)
-      cdl.update_restraints(ppf.all_chain_proxies.pdb_hierarchy,
-                            restraints_manager=restraints_manager,
-                            cdl_proxies=cdl_proxies,
-                            )
-      cdl_time = time.time()-t0
-      for greek in ["","milli", "micro", "nano"]:
-        if cdl_time>1:
-          print >> log, """
-  Conformation dependent library restraints added in %0.1f %sseconds
-""" % (cdl_time, greek)
-          break
-        cdl_time*=1000
-
-    from mmtbx.command_line import geometry_minimization
-    sites_cart = geometry_minimization.run(
-      params = params.geometry_minimization,
-      processed_pdb_file = command_line_interpreter.processed_pdb_file,
-      log = log)
-    xray_structure = xray_structure.replace_sites_cart(new_sites = sites_cart)
 ### simple cartesian dynamics
   if (params.simple_dynamics) :
     utils.print_header("Simple cartesian dynamics", out=log)
@@ -959,6 +914,7 @@ class interpreter:
       stop_for_unknowns         = self.params.stop_for_unknowns,
       log                       = self.log,
       mon_lib_srv               = self.mon_lib_srv,
+      use_neutron_distances     = self.params.use_neutron_distances,
       ener_lib                  = self.ener_lib,
       cif_objects               = self.cif_objects)
     self.processed_pdb_file, self.pdb_inp = \
@@ -990,9 +946,6 @@ class interpreter:
       .option("--add_h",
           action="store_true",
           help="Add H atoms to a model using Reduce program.")
-      .option("--geometry_regularization",
-          action="store_true",
-          help="Perform geometry regularization.")
       .option("--ignore_hydrogens",
           action="store_true",
           help="Do not account for H and D atoms in geometry statistics.")
@@ -1105,9 +1058,6 @@ def validate_params (params, callback=None) :
   elif ((params.modify.output.file_name is not None) and
         (os.path.isdir(params.modify.output.file_name))) :
     raise Sorry("The specified output file is a currently existing directory.")
-  if (not params.stop_for_unknowns) and (params.regularize_geometry) :
-    raise Sorry("You can not run geometry minimization when \"Stop for "+
-      "residues missing geometry restraints\" is unchecked.")
   return True
 
 def finish_job (result) :

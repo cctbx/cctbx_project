@@ -588,9 +588,10 @@ class manager(object):
                             generic_restraints             = False,
                             rmsd_bonds_termination_cutoff  = 0,
                             rmsd_angles_termination_cutoff = 0):
+    # XXX consolidate with mmtbx.refinement.geometry_minimization.run2
     assert max_number_of_iterations+number_of_macro_cycles > 0
     assert [bond,nonbonded,angle,dihedral,chirality,planarity].count(False) < 6
-    from mmtbx.command_line import geometry_minimization
+    from mmtbx.refinement import geometry_minimization
     import scitbx.lbfgs
     lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
       max_iterations = max_number_of_iterations)

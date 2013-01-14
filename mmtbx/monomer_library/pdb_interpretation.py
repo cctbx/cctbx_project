@@ -4135,21 +4135,24 @@ class build_all_chain_proxies(object):
       excessive_bonds = (
         bond_distances_model > self.special_position_settings.unit_cell()
           .shortest_vector_sq()**.5).iselection()
-      if (excessive_bonds.size() > 0 and not
-          self.params.proceed_with_excessive_length_bonds):
-        atoms = self.pdb_atoms
-        proxies = self.geometry_proxy_registries.bond_simple.proxies
-        print >> log, "  Bonds with excessive lengths:"
-        for i_proxy in excessive_bonds:
-          proxy = proxies[i_proxy]
-          bond = geometry_restraints.bond(
-            sites_cart=self.sites_cart, proxy=proxy)
-          print >> log, "    Distance model: %.6g (ideal: %.6g)" % (
-            bond.distance_model, bond.distance_ideal)
-          for i_seq in proxy.i_seqs:
-            print >> log, "      %s" % atoms[i_seq].format_atom_record()
-        raise Sorry("Number of bonds with excessive lengths: %d" %
-          excessive_bonds.size())
+      if(excessive_bonds.size() > 0):
+        if(not self.params.proceed_with_excessive_length_bonds):
+          atoms = self.pdb_atoms
+          proxies = self.geometry_proxy_registries.bond_simple.proxies
+          print >> log, "  Bonds with excessive lengths:"
+          for i_proxy in excessive_bonds:
+            proxy = proxies[i_proxy]
+            bond = geometry_restraints.bond(
+              sites_cart=self.sites_cart, proxy=proxy)
+            print >> log, "    Distance model: %.6g (ideal: %.6g)" % (
+              bond.distance_model, bond.distance_ideal)
+            for i_seq in proxy.i_seqs:
+              print >> log, "      %s" % atoms[i_seq].format_atom_record()
+          raise Sorry("Number of bonds with excessive lengths: %d" %
+            excessive_bonds.size())
+        else:
+          self.params.max_reasonable_bond_distance = \
+            flex.max(bond_distances_model)*2
     # disulphides
     disulfide_sym_table, max_disulfide_bond_distance = \
       self.create_disulfides(

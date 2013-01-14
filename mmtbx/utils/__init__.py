@@ -981,6 +981,7 @@ class process_pdb_file_srv(object):
                      cif_parameters            = None,
                      mon_lib_srv               = None,
                      ener_lib                  = None,
+                     use_neutron_distances     = False,
                      for_dihedral_reference    = False):
     self.raw_records               = None
     self.crystal_symmetry          = crystal_symmetry
@@ -990,6 +991,7 @@ class process_pdb_file_srv(object):
     self.cif_objects               = cif_objects
     self.cif_parameters            = cif_parameters
     self.log                       = log
+    self.use_neutron_distances     = use_neutron_distances
     if(mon_lib_srv is None): self.mon_lib_srv = monomer_library.server.server()
     else: self.mon_lib_srv = mon_lib_srv
     if(ener_lib is None): self.ener_lib = monomer_library.server.ener_lib()
@@ -1045,6 +1047,7 @@ class process_pdb_file_srv(object):
       crystal_symmetry         = self.crystal_symmetry,
       force_symmetry           = True,
       log                      = self.log,
+      use_neutron_distances    = self.use_neutron_distances,
       for_dihedral_reference   = for_dihedral_reference)
     processed_pdb_file.xray_structure(show_summary=True)
     msg = processed_pdb_file.all_chain_proxies.fatal_problems_message(
@@ -1797,7 +1800,8 @@ class pdb_file(object):
                      crystal_symmetry=None,
                      cif_objects=[],
                      log=None,
-                     use_elbow = False):
+                     use_elbow = False,
+                     use_neutron_distances = False):
     if(log is None): log = sys.stdout
     self.processed_pdb_files_srv = None
     self.processed_pdb_file = None
@@ -1805,6 +1809,7 @@ class pdb_file(object):
     self.crystal_symmetry = crystal_symmetry
     self.use_elbow = use_elbow
     self.pdb_file_names = pdb_file_names
+    self.use_neutron_distances = use_neutron_distances
     pdb_combined = combine_unique_pdb_files(file_names = pdb_file_names)
     pdb_combined.report_non_unique(out = log)
     if(len(pdb_combined.unique_file_names) == 0):
@@ -1858,6 +1863,7 @@ class pdb_file(object):
       cif_objects               = self.cif_objects,
       pdb_interpretation_params = pdb_ip,
       crystal_symmetry          = self.crystal_symmetry,
+      use_neutron_distances     = self.use_neutron_distances,
       log                       = log)
     self.processed_pdb_file, self.pdb_inp = \
       self.processed_pdb_files_srv.process_pdb_files(raw_records =
