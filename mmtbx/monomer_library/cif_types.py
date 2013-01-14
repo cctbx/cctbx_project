@@ -1111,6 +1111,7 @@ _chem_mod_bond.atom_id_2
 _chem_mod_bond.new_type
 _chem_mod_bond.new_value_dist:float
 _chem_mod_bond.new_value_dist_esd:float
+_chem_mod_bond.new_value_dist_neutron:float
   """
 
   def as_chem_comp(self):
@@ -1119,7 +1120,8 @@ _chem_mod_bond.new_value_dist_esd:float
       atom_id_2=self.atom_id_2,
       type=self.new_type,
       value_dist=self.new_value_dist,
-      value_dist_esd=self.new_value_dist_esd)
+      value_dist_esd=self.new_value_dist_esd,
+      value_dist_neutron=self.new_value_dist_neutron)
 
   def is_matching_mod_for(self, bond):
     return (    self.atom_id_1 == bond.atom_id_1
@@ -1134,6 +1136,8 @@ _chem_mod_bond.new_value_dist_esd:float
       bond.value_dist, self.new_value_dist)
     bond.value_dist_esd = new_if_defined(
       bond.value_dist_esd, self.new_value_dist_esd)
+    bond.value_dist_neutron = new_if_defined(
+      bond.value_dist_neutron, self.new_value_dist_neutron)
 
 class chem_mod_tree(looped_data):
   """
