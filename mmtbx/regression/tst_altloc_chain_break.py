@@ -53,21 +53,20 @@ def exercise(args):
   assert len(args) == 0
   open("tmp_altloc_chain_break.pdb", "w").write(pdb1exr_fragment)
   command = " ".join([
-    "phenix.pdbtools",
+    "phenix.geometry_minimization",
     "tmp_altloc_chain_break.pdb",
-    "--geometry_regularization",
     "pdb_interpretation.nonbonded_weight=16",
-    "geometry_minimization.macro_cycles=2"])
-  gm_out = easy_run.fully_buffered(command=command) \
-    .raise_if_errors() \
-    .stdout_lines
+    "macro_cycles=2",
+    ">tmp_altloc_chain_break.zlog"])
+  easy_run.call(command=command)
   target_values = []
-  for line in gm_out:
+  for line in open("tmp_altloc_chain_break.zlog","r").readlines():
+    line = line.strip()
     if (line.startswith("target: ")):
       target_values.append(float(line.split()[-1]))
-  assert len(target_values) == 4
+  assert len(target_values) == 3
   assert target_values[0] > 100
-  assert target_values[3] < 1
+  assert target_values[2] < 1
   print "OK"
 
 if (__name__ == "__main__"):

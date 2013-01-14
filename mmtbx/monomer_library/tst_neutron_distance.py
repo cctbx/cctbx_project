@@ -5,65 +5,120 @@ from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
 from libtbx.utils import format_cpu_times
+import iotbx.pdb
+from libtbx.test_utils import approx_equal
+import math
 
 pdb_str = """
-CRYST1   16.242   15.015   14.726  90.00  90.00  90.00 P 1
-ATOM    396  N   TYR A  28       6.525   8.629   9.726  1.00 10.00           N
-ATOM    397  CA  TYR A  28       5.932   8.949   8.446  1.00 10.00           C
-ATOM    398  CB  TYR A  28       7.030   9.299   7.419  1.00 10.00           C
-ATOM    399  CG  TYR A  28       7.962   8.140   7.011  1.00 10.00           C
-ATOM    400  CD1 TYR A  28       7.605   7.249   6.028  1.00 10.00           C
-ATOM    401  CE1 TYR A  28       8.436   6.191   5.650  1.00 10.00           C
-ATOM    402  CZ  TYR A  28       9.678   6.043   6.246  1.00 10.00           C
-ATOM    403  OH  TYR A  28      10.519   5.000   5.846  1.00 10.00           O
-ATOM    404  CE2 TYR A  28      10.067   6.942   7.247  1.00 10.00           C
-ATOM    405  CD2 TYR A  28       9.212   7.966   7.631  1.00 10.00           C
-ATOM    406  C   TYR A  28       5.000   7.875   7.893  1.00 10.00           C
-ATOM    407  O   TYR A  28       5.007   6.705   8.336  1.00 10.00           O
-ATOM      0  HA  TYR A  28       5.367   9.722   8.604  1.00 10.00           H
-ATOM      0  HB2 TYR A  28       6.603   9.645   6.620  1.00 10.00           H
-ATOM      0  HB3 TYR A  28       7.573  10.015   7.783  1.00 10.00           H
-ATOM      0  HD1 TYR A  28       6.785   7.353   5.601  1.00 10.00           H
-ATOM      0  HD2 TYR A  28       9.470   8.547   8.310  1.00 10.00           H
-ATOM      0  HE1 TYR A  28       8.156   5.588   5.000  1.00 10.00           H
-ATOM      0  HE2 TYR A  28      10.898   6.853   7.654  1.00 10.00           H
-ATOM      0  HH  TYR A  28      11.242   5.032   6.292  1.00 10.00           H
+CRYST1   15.360   12.804   11.094  90.00  90.00  90.00 P 1
+ATOM      1  N   TYR A  28       4.991   8.496   8.094  1.00 10.00           N
+ATOM      2  CA  TYR A  28       4.269   8.897   6.892  1.00 10.00           C
+ATOM      3  CB  TYR A  28       5.247   9.154   5.742  1.00 10.00           C
+ATOM      4  CG  TYR A  28       6.111   7.964   5.384  1.00 10.00           C
+ATOM      5  CD1 TYR A  28       5.722   7.071   4.393  1.00 10.00           C
+ATOM      6  CE1 TYR A  28       6.509   5.983   4.062  1.00 10.00           C
+ATOM      7  CZ  TYR A  28       7.702   5.779   4.723  1.00 10.00           C
+ATOM      8  OH  TYR A  28       8.488   4.698   4.396  1.00 10.00           O
+ATOM      9  CE2 TYR A  28       8.111   6.652   5.709  1.00 10.00           C
+ATOM     10  CD2 TYR A  28       7.318   7.736   6.033  1.00 10.00           C
+ATOM     11  C   TYR A  28       3.254   7.833   6.490  1.00 10.00           C
+ATOM     12  O   TYR A  28       3.415   6.655   6.811  1.00 10.00           O
+ATOM     13  HA  TYR A  28       3.000   9.699   6.300  1.00 10.00           H
+ATOM     14  HB2 TYR A  28       5.686   9.708   5.036  1.00 10.00           H
+ATOM     15  HB3 TYR A  28       6.560   9.804   5.984  1.00 10.00           H
+ATOM     16  HD1 TYR A  28       4.141   7.504   4.239  1.00 10.00           H
+ATOM     17  HD2 TYR A  28       8.391   8.181   6.844  1.00 10.00           H
+ATOM     18  HE1 TYR A  28       6.770   5.906   3.690  1.00 10.00           H
+ATOM     19  HE2 TYR A  28       9.769   7.010   5.242  1.00 10.00           H
+ATOM     20  HH ATYR A  28       8.000   3.505   4.139  0.50 10.00           H
+ATOM     21  DH BTYR A  28       7.469   4.025   3.773  0.50 10.00           D
 TER
-HETATM    1  O   HOH A   1      -0.354   0.000  -0.573  1.00 20.00      A    O
-HETATM    2  H1  HOH A   1       1.392  -0.000  -0.481  1.00 20.00      A    H
-HETATM    3  H2  HOH A   1      -1.038  -0.000   1.054  1.00 20.00      A    H
+HETATM   25  O   HOH C   1      11.274   5.928   4.656  1.00 10.00           O
+HETATM   26  D1  HOH C   1      12.360   4.699   5.619  1.00 10.00           D
+HETATM   27  D2  HOH C   1      10.422   5.411   6.216  1.00 10.00           D
+TER
 END
 """
 
-def exercise():
-  mon_lib_srv = monomer_library.server.server()
-  ener_lib = monomer_library.server.ener_lib()
-  processed_pdb_file = monomer_library.pdb_interpretation.process(
-    mon_lib_srv    = mon_lib_srv,
-    ener_lib       = ener_lib,
-    raw_records    = flex.std_string(pdb_str.splitlines()),
-    use_neutron_distances=True,
-    force_symmetry = True)
-  geometry = processed_pdb_file.geometry_restraints_manager(
-    show_energies = False, plain_pairs_radius = 5.0)
-  restraints_manager = mmtbx.restraints.manager(geometry = geometry,
-    normalization = True)
-  xray_structure = processed_pdb_file.xray_structure()
-  ph = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-  ph.write_pdb_file(file_name="input.pdb")
-  mmodel = mmtbx.model.manager(
-    restraints_manager = restraints_manager,
-    xray_structure     = xray_structure,
-    pdb_hierarchy      = ph)
-  mmodel.geometry_minimization(
-    bond      = True,
-    nonbonded = True,
-    angle     = True,
-    dihedral  = True,
-    chirality = True,
-    planarity = True)
-  ph.adopt_xray_structure(mmodel.xray_structure)
-  ph.write_pdb_file(file_name="output.pdb")
+def dist(a,b):
+  return math.sqrt((a[0]-b[0])**2 + (a[1]-b[1])**2 + (a[2]-b[2])**2)
+
+def exercise(tolerance=0.001):
+  for use_neutron_distances in [True, False]:
+    mon_lib_srv = monomer_library.server.server()
+    ener_lib = monomer_library.server.ener_lib()
+    processed_pdb_file = monomer_library.pdb_interpretation.process(
+      mon_lib_srv           = mon_lib_srv,
+      ener_lib              = ener_lib,
+      raw_records           = flex.std_string(pdb_str.splitlines()),
+      use_neutron_distances = use_neutron_distances,
+      force_symmetry        = True)
+    geometry = processed_pdb_file.geometry_restraints_manager(
+      show_energies = False, plain_pairs_radius = 5.0)
+    restraints_manager = mmtbx.restraints.manager(geometry = geometry,
+      normalization = True)
+    xray_structure = processed_pdb_file.xray_structure()
+    ph = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+    ph.write_pdb_file(file_name="input.pdb")
+    mmodel = mmtbx.model.manager(
+      restraints_manager = restraints_manager,
+      xray_structure     = xray_structure,
+      pdb_hierarchy      = ph)
+    mmodel.geometry_minimization(
+      bond      = True,
+      nonbonded = True,
+      angle     = True,
+      dihedral  = True,
+      chirality = True,
+      planarity = True)
+    ph.adopt_xray_structure(mmodel.xray_structure)
+    suffix = "X"
+    if(use_neutron_distances): suffix = "N"
+    ph.write_pdb_file(file_name="output_%s.pdb"%suffix)
+  # check X-H distances: x-ray
+  cntr = 0
+  awl = iotbx.pdb.input(file_name="output_X.pdb").atoms_with_labels()
+  for a1 in awl:
+    n1 = a1.name.strip()
+    for a2 in awl:
+      n2 = a2.name.strip()
+      if([n1,n2]==["CD1","HD1"] or [n1,n2]==["CD2","HD2"] or
+         [n1,n2]==["CE1","HE1"] or [n1,n2]==["CE2","HE2"]):
+        assert approx_equal(dist(a1.xyz, a2.xyz), 0.93, tolerance)
+        cntr += 1
+      if(n1=="OH" and n2 in ["HH","DH"]):
+        assert approx_equal(dist(a1.xyz, a2.xyz), 0.85, tolerance)
+        cntr += 1
+      if([n1,n2]==["CB","HB2"] or [n1,n2]==["CB","HB3"] or
+         [n1,n2]==["CA","HA"]):
+        assert approx_equal(dist(a1.xyz, a2.xyz), 0.97, tolerance)
+        cntr += 1
+      if(n1=="O" and n2 in ["D1","D2"] and a1.resname=="HOH"):
+        assert approx_equal(dist(a1.xyz, a2.xyz), 0.85, tolerance)
+        cntr += 1
+  assert cntr == 11, cntr
+  # check X-H distances: neutron
+  cntr = 0
+  awl = iotbx.pdb.input(file_name="output_N.pdb").atoms_with_labels()
+  for a1 in awl:
+    n1 = a1.name.strip()
+    for a2 in awl:
+      n2 = a2.name.strip()
+      if([n1,n2]==["CD1","HD1"] or [n1,n2]==["CD2","HD2"] or
+         [n1,n2]==["CE1","HE1"] or [n1,n2]==["CE2","HE2"]):
+        assert approx_equal(dist(a1.xyz, a2.xyz), 1.08, tolerance)
+        cntr += 1
+      if(n1=="OH" and n2 in ["HH","DH"]):
+        assert approx_equal(dist(a1.xyz, a2.xyz), 0.98, tolerance)
+        cntr += 1
+      if([n1,n2]==["CB","HB2"] or [n1,n2]==["CB","HB3"] or
+         [n1,n2]==["CA","HA"]):
+        assert approx_equal(dist(a1.xyz, a2.xyz), 1.09, tolerance)
+        cntr += 1
+      if(n1=="O" and n2 in ["D1","D2"] and a1.resname=="HOH"):
+        assert approx_equal(dist(a1.xyz, a2.xyz), 0.95, tolerance)
+        cntr += 1
+  assert cntr == 11, cntr
 
 def run():
   exercise()

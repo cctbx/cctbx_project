@@ -361,7 +361,7 @@ class box_build_refine_base (object) :
     """
     Perform geometry minimization on a selection of boxed atoms.
     """
-    from mmtbx.command_line import geometry_minimization
+    from mmtbx.refinement import geometry_minimization
     from cctbx import geometry_restraints
     from scitbx.array_family import flex
     import scitbx.lbfgs

@@ -2,149 +2,241 @@ from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.geometry_minimization
 
 import iotbx.phil
-from cctbx import geometry_restraints
-import cctbx.geometry_restraints.lbfgs
-import scitbx.lbfgs
-import sys
+import sys, os
+import mmtbx.utils
+import mmtbx.refinement.geometry_minimization
+from libtbx.utils import user_plus_sys_time
+from mmtbx import monomer_library
+from iotbx.pdb import combine_unique_pdb_files
+from cctbx.array_family import flex
 
-master_params = iotbx.phil.parse("""\
-  alternate_nonbonded_off_on=False
+master_params_str = """\
+pdb_interpretation
+  .help = PDB file interpretation parameters
+  .expert_level=1
+{
+  stop_for_unknowns = True
     .type = bool
-  restrain_c_alpha_positions=False
-    .type = bool
-  max_iterations=500
+  include scope mmtbx.monomer_library.pdb_interpretation.master_params
+}
+selection = all
+  .type = str
+  .help = Atom selection string: selected atoms are subject to move
+use_neutron_distances = False
+  .type = bool
+  .help = Use neutron X-H distances (which are longer than X-ray ones)
+output_file_name_prefix = None
+  .type = str
+minimization
+  .help = Geometry minimization parameters
+  .expert_level=1
+{
+  max_iterations = 500
     .type = int
-  macro_cycles=1
+    .help = Maximun number of minimization iterations
+  macro_cycles = 5
     .type = int
-  show_geometry_restraints=False
+    .help = Number of minimization macro-cycles
+  rmsd_bonds_termination_cutoff = 0
+    .type = float
+    .help = stop after reaching specified cutoff value
+  rmsd_angles_termination_cutoff = 0
+    .type = float
+    .help = stop after reaching specified cutoff value
+  move
+    .help = Define what to include into refinement target
+  {
+  bond = True
     .type = bool
-""")
+  nonbonded = True
+    .type = bool
+  angle = True
+    .type = bool
+  dihedral = True
+    .type = bool
+  chirality = True
+    .type = bool
+  planarity = True
+    .type = bool
+  }
+}
+"""
 
-class lbfgs(geometry_restraints.lbfgs.lbfgs):
+def master_params():
+  return iotbx.phil.parse(master_params_str, process_includes=True)
 
-  def __init__(self,
-        sites_cart,
-        geometry_restraints_manager,
-        geometry_restraints_flags,
-        lbfgs_termination_params,
-        sites_cart_selection=None,
-        lbfgs_exception_handling_params=None,
-        rmsd_bonds_termination_cutoff=0,
-        rmsd_angles_termination_cutoff=0,
-        site_labels=None):
-    self.rmsd_bonds_termination_cutoff = rmsd_bonds_termination_cutoff
-    self.rmsd_angles_termination_cutoff = rmsd_angles_termination_cutoff
-    geometry_restraints.lbfgs.lbfgs.__init__(self,
-      sites_cart=sites_cart,
-      geometry_restraints_manager=geometry_restraints_manager,
-      geometry_restraints_flags=geometry_restraints_flags,
-      lbfgs_termination_params=lbfgs_termination_params,
-      sites_cart_selection=sites_cart_selection,
-      lbfgs_exception_handling_params=lbfgs_exception_handling_params,
-      site_labels=site_labels)
+def broadcast(m, log):
+  print >> log, "-"*79
+  print >> log, m
+  print >> log, "*"*len(m)
 
-  def callback_after_step(self, minimizer):
-    self.apply_shifts()
-    if([self.rmsd_angles, self.rmsd_bonds].count(None) == 0):
-      if(self.rmsd_angles < self.rmsd_angles_termination_cutoff and
-         self.rmsd_bonds < self.rmsd_bonds_termination_cutoff):
-        return True
+def format_usage_message(log):
+  print >> log, "-"*79
+  msg = """\
+phenix.geometry_minimization: regularize model geometry
 
-def run(processed_pdb_file, params=master_params.extract(), log=sys.stdout):
-  co = params
-  geometry_restraints_flags = geometry_restraints.flags.flags(default=True)
-  all_chain_proxies = processed_pdb_file.all_chain_proxies
-  reference_manager = None
-  if (co.restrain_c_alpha_positions):
-    from mmtbx.geometry_restraints import reference
-    ca_selection=all_chain_proxies.pdb_hierarchy.get_peptide_c_alpha_selection()
-    ca_sites_cart = \
-      all_chain_proxies.sites_cart.deep_copy().select(ca_selection)
-    reference_manager = reference.manager()
-    reference_manager.add_coordinate_restraints(
-      sites_cart=ca_sites_cart,
-      selection=ca_selection)
-  geometry_restraints_manager = processed_pdb_file.\
-    geometry_restraints_manager(show_energies = False,
-                                reference_manager=\
-                                  reference_manager)
-  special_position_settings = all_chain_proxies.special_position_settings
-  sites_cart = all_chain_proxies.sites_cart_exact().deep_copy()
-  atom_labels = [atom.id_str() for atom in all_chain_proxies.pdb_atoms]
-  geometry_restraints_manager.site_symmetry_table \
-    .show_special_position_shifts(
-      special_position_settings=special_position_settings,
-      site_labels=atom_labels,
-      sites_cart_original=all_chain_proxies.sites_cart,
-      sites_cart_exact=sites_cart,
-      out=log,
-      prefix="  ")
-  if (co.show_geometry_restraints):
-    geometry_restraints_manager.show_sorted(
-      flags=geometry_restraints_flags,
-      sites_cart=sites_cart,
-      site_labels=atom_labels)
-  pair_proxies =  geometry_restraints_manager.pair_proxies(
-    sites_cart=all_chain_proxies.sites_cart,
-    flags=geometry_restraints_flags)
-  pair_proxies.bond_proxies.show_sorted(
-    by_value="residual",
-    sites_cart=sites_cart,
-    site_labels=atom_labels,
-    f=log,
-    max_items=10)
-  if (pair_proxies.nonbonded_proxies is not None):
-    pair_proxies.nonbonded_proxies.show_sorted(
-      by_value="delta",
-      sites_cart=sites_cart,
-      site_labels=atom_labels,
-      f=log,
-      max_items=10)
-  del pair_proxies
-  print >> log
-  log.flush()
-  if (co.alternate_nonbonded_off_on and co.macro_cycles % 2 != 0):
-    co.macro_cycles += 1
-    print >> log, "INFO: Number of macro cycles increased by one to ensure use of"
-    print >> log, "      nonbonded interactions in last macro cycle."
-    print >> log
-  for i_macro_cycle in xrange(co.macro_cycles):
-    if (co.alternate_nonbonded_off_on):
-      geometry_restraints_flags.nonbonded = bool(i_macro_cycle % 2)
-      print >> log, "Use nonbonded interactions this macro cycle:", \
-        geometry_restraints_flags.nonbonded
-    minimized = lbfgs(
-      sites_cart=sites_cart,
-      geometry_restraints_manager=geometry_restraints_manager,
-      geometry_restraints_flags=geometry_restraints_flags,
-      lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
-        max_iterations=co.max_iterations),
-      lbfgs_exception_handling_params=
-        scitbx.lbfgs.exception_handling_parameters(
-          ignore_line_search_failed_step_at_lower_bound=True))
-    print >> log, "Energies at start of minimization:"
-    minimized.first_target_result.show(f=log)
-    print >> log
-    print >> log, "Number of minimization iterations:", minimized.minimizer.iter()
-    print >> log, "Root-mean-square coordinate difference: %.3f" % (
-      all_chain_proxies.sites_cart.rms_difference(sites_cart))
-    print >> log
-    print >> log, "Energies at end of minimization:"
-    minimized.final_target_result.show(f=log)
-    print >> log
-    geometry_restraints_manager.pair_proxies(
-      sites_cart=sites_cart,
-      flags=geometry_restraints_flags) \
-        .bond_proxies.show_sorted(
-          by_value="residual",
-          sites_cart=sites_cart,
-          site_labels=atom_labels,
-          f=log,
-          max_items=10)
-    print >> log
-  assert geometry_restraints_flags.nonbonded
-  return sites_cart
+Usage examples:
+  phenix.geometry_minimization model.pdb
+  phenix.geometry_minimization model.pdb ligands.cif
+"""
+  print >> log, msg
+  print >> log, "-"*79
 
-if (__name__ == "__main__"):
-  # XXX temporary message
-  print "\n***Command chage: use phenix.pdbtools for geometry_minimization.***\n"
+def process_input_files(inputs, params, log):
+  cs = inputs.crystal_symmetry
+  if(cs is None):
+    pdb_combined = combine_unique_pdb_files(file_names = inputs.pdb_file_names)
+    cs = iotbx.pdb.input(source_info = None, lines = flex.std_string(
+      pdb_combined.raw_records)).xray_structure_simple().\
+        cubic_unit_cell_around_centered_scatterers(
+        buffer_size = 10).crystal_symmetry()
+  processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
+    crystal_symmetry          = cs,
+    pdb_interpretation_params = params.pdb_interpretation,
+    stop_for_unknowns         = params.pdb_interpretation.stop_for_unknowns,
+    log                       = log,
+    cif_objects               = inputs.cif_objects,
+    use_neutron_distances     = params.use_neutron_distances,
+    mon_lib_srv               = monomer_library.server.server(),
+    ener_lib                  = monomer_library.server.ener_lib())
+  processed_pdb_file, junk = processed_pdb_files_srv.\
+    process_pdb_files(pdb_file_names = inputs.pdb_file_names) # XXX remove junk
+  return processed_pdb_file
+
+def get_geometry_restraints_manager(processed_pdb_file, xray_structure):
+  has_hd = None
+  if(xray_structure is not None):
+    sctr_keys = xray_structure.scattering_type_registry().type_count_dict().keys()
+    has_hd = "H" in sctr_keys or "D" in sctr_keys
+  geometry = processed_pdb_file.geometry_restraints_manager(
+    show_energies                = False,
+    plain_pairs_radius           = 5,
+    assume_hydrogens_all_missing = not has_hd)
+  restraints_manager = mmtbx.restraints.manager(
+    geometry      = geometry,
+    normalization = True)
+  if(xray_structure is not None):
+    restraints_manager.crystal_symmetry = xray_structure.crystal_symmetry()
+  return restraints_manager
+
+def run_minimization(sites_cart, selection, restraints_manager, params):
+  o = mmtbx.refinement.geometry_minimization.run2(
+    sites_cart                     = sites_cart,
+    restraints_manager             = restraints_manager,
+    max_number_of_iterations       = params.max_iterations,
+    number_of_macro_cycles         = params.macro_cycles,
+    selection                      = selection,
+    bond                           = params.move.bond,
+    nonbonded                      = params.move.nonbonded,
+    angle                          = params.move.angle,
+    dihedral                       = params.move.dihedral,
+    chirality                      = params.move.chirality,
+    planarity                      = params.move.planarity,
+    generic_restraints             = False,
+    rmsd_bonds_termination_cutoff  = params.rmsd_bonds_termination_cutoff,
+    rmsd_angles_termination_cutoff = params.rmsd_angles_termination_cutoff)
+
+class run(object):
+  def __init__(self, args, log):
+    self.log                = log
+    self.params             = None
+    self.inputs             = None
+    self.args               = args
+    self.processed_pdb_file = None
+    self.xray_structure     = None
+    self.pdb_hierarchy      = None
+    self.selection          = None
+    self.grm                = None
+    self.sites_cart         = None
+    self.time_strings       = []
+    self.total_time         = 0
+    #
+    self.caller(func = self.initialize,     prefix="Initialization, inputs")
+    self.caller(func = self.process_inputs, prefix="Processing inputs")
+    self.caller(func = self.atom_selection, prefix="Atom selection")
+    self.caller(func = self.get_restraints, prefix="Geometry Restraints")
+    self.caller(func = self.minimization,   prefix="Minimization")
+    self.caller(func = self.write_pdb_file, prefix="Write PDB file")
+    #
+    self.show_times()
+
+  def caller(self, func, prefix):
+    timer = user_plus_sys_time()
+    func(prefix = prefix)
+    t = timer.elapsed()
+    self.total_time += t
+    fmt = "  %s: %s"%(prefix, str("%8.3f"%t).strip())
+    self.time_strings.append(fmt)
+
+  def show_times(self):
+    broadcast(m="Detailed timing", log = self.log)
+    max_len = 0
+    for ts in self.time_strings:
+      lts = len(ts)
+      if(lts > max_len): max_len = lts
+    fmt = "  %-"+str(lts)+"s"
+    for ts in self.time_strings:
+      sts = ts.split()
+      l = " ".join(sts[:len(sts)-1])
+      print >> self.log, fmt%l, sts[len(sts)-1]
+    print >> self.log, "  Sum of individual times: %s"%\
+      str("%8.3f"%self.total_time).strip()
+
+  def initialize(self, prefix):
+    if(len(self.args)==0):
+      format_usage_message(log = self.log)
+    broadcast(m=prefix, log = self.log)
+    parsed = master_params()
+    self.inputs = mmtbx.utils.process_command_line_args(args = self.args,
+      master_params = parsed, log = self.log)
+    self.params = self.inputs.params.extract()
+    self.inputs.params.show(prefix="  ")
+    if(len(self.args)==0): sys.exit(0)
+
+  def process_inputs(self, prefix):
+    broadcast(m=prefix, log = self.log)
+    self.processed_pdb_file = process_input_files(inputs=self.inputs,
+      params=self.params, log=self.log)
+    self.xray_structure = self.processed_pdb_file.xray_structure()
+    self.pdb_hierarchy = self.processed_pdb_file.all_chain_proxies.pdb_hierarchy
+
+  def atom_selection(self, prefix):
+    broadcast(m=prefix, log = self.log)
+    self.selection = mmtbx.utils.atom_selection(
+      all_chain_proxies = self.processed_pdb_file.all_chain_proxies,
+      string = self.params.selection)
+    print >> self.log, "  selected %s atoms out of total %s"%(
+      str(self.selection.count(True)),str(self.selection.size()))
+
+  def get_restraints(self, prefix):
+    broadcast(m=prefix, log = self.log)
+    self.grm = get_geometry_restraints_manager(
+      processed_pdb_file = self.processed_pdb_file,
+      xray_structure = self.xray_structure)
+
+  def minimization(self, prefix): # XXX USE alternate_nonbonded_off_on etc
+    broadcast(m=prefix, log = self.log)
+    self.sites_cart = self.xray_structure.sites_cart()
+    run_minimization(sites_cart = self.sites_cart, selection = self.selection,
+      restraints_manager = self.grm, params = self.params.minimization)
+
+  def write_pdb_file(self, prefix):
+    broadcast(m=prefix, log = self.log)
+    self.xray_structure.set_sites_cart(sites_cart = self.sites_cart)
+    self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
+    ofn = self.params.output_file_name_prefix
+    if(ofn is None):
+      pfn = os.path.basename(self.inputs.pdb_file_names[0])
+      ind = max(0,pfn.rfind("."))
+      ofn = pfn+"_minimized.pdb" if ind==0 else pfn[:ind]+"_minimized.pdb"
+    else: ofn = self.params.output_file_name_prefix+".pdb"
+    print >> log, "  output file name:", ofn
+    self.pdb_hierarchy.write_pdb_file(file_name = ofn)
+
+if(__name__ == "__main__"):
+  timer = user_plus_sys_time()
+  log = sys.stdout
+  o = run(sys.argv[1:], log=log)
+  tt = timer.elapsed()
+  print >> log, "Overall runtime: %-8.3f" % tt
+  assert abs(tt-o.total_time) < 0.1 # guard against unaccounted times

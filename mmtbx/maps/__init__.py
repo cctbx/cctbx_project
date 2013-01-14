@@ -524,8 +524,6 @@ class compute_map_coefficients(object):
               "usually means you have requested an anomalous map but supplied "+
               "merged data, or indicates a twinning-related incompatibility.")%
               mcp.map_type)
-          print >> log, "WARNING: map coefficients not available for '%s'" % \
-            mcp.map_type
 
   def write_mtz_file(self, file_name, mtz_history_buffer = None):
     from cctbx.array_family import flex

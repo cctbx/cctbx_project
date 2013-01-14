@@ -676,11 +676,12 @@ def run(args,
     test_flag_value=None
   #
   mmtbx_pdb_file = mmtbx.utils.pdb_file(
-    pdb_file_names   = pdb_file_names,
-    cif_objects      = processed_args.cif_objects,
-    crystal_symmetry = crystal_symmetry,
-    use_elbow        = show_geometry_statistics,
-    log              = log)
+    pdb_file_names        = pdb_file_names,
+    cif_objects           = processed_args.cif_objects,
+    crystal_symmetry      = crystal_symmetry,
+    use_elbow             = show_geometry_statistics,
+    use_neutron_distances = (params.scattering_table=="neutron"),
+    log                   = log)
   mmtbx_pdb_file.set_ppf(stop_if_duplicate_labels = False)
   processed_pdb_file = mmtbx_pdb_file.processed_pdb_file
   pdb_raw_records = mmtbx_pdb_file.pdb_raw_records

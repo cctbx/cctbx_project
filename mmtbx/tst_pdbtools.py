@@ -450,28 +450,6 @@ def exercise_show_number_of_removed(pdb_dir, verbose):
       n_found += 1
   assert n_found == 1
 
-def exercise_02(pdb_dir, verbose):
-  from iotbx import file_reader
-  file_name = os.path.join(pdb_dir, "polypro_Simon_noCRYST1.pdb")
-  log = "exercise_02.log"
-  assert file_name.find('"') < 0
-  cmd = 'phenix.pdbtools "%s" --geometry-regularization > %s' % (file_name, log)
-  remove_files(log)
-  run_command(command=cmd, verbose=verbose)
-  pdb_1 = file_reader.any_file("polypro_Simon_noCRYST1.pdb_modified.pdb")
-  assert os.path.isfile(log)
-  log = "exercise_02b.log"
-  assert file_name.find('"') < 0
-  cmd = 'phenix.pdbtools "%s" regularize_geometry=True > %s' % (file_name, log)
-  remove_files(log)
-  remove_files("polypro_Simon_noCRYST1.pdb_modified.pdb")
-  run_command(command=cmd, verbose=verbose)
-  pdb_2 = file_reader.any_file("polypro_Simon_noCRYST1.pdb_modified.pdb")
-  sites_1 = pdb_1.file_object.atoms().extract_xyz()
-  sites_2 = pdb_2.file_object.atoms().extract_xyz()
-  assert (sites_1.size() == sites_2.size())
-  assert (sites_1.rms_difference(sites_2) < 0.00001)
-
 def exercise_truncate_to_polyala(pdb_dir, verbose):
   file_name = os.path.join(pdb_dir, "enk_gbr.pdb")
   assert file_name.find('"') < 0
@@ -653,7 +631,6 @@ def exercise(args):
   exercise_show_adp_statistics(**eargs)
   exercise_show_geometry_statistics(**eargs)
   exercise_show_number_of_removed(**eargs)
-  exercise_02(**eargs)
   exercise_truncate_to_polyala(**eargs)
   exercise_renumber_residues()
   exercise_remove_first_n_atoms_fraction(**eargs)
