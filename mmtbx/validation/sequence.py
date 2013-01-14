@@ -334,13 +334,16 @@ class validation (object) :
 
   def align_chain (self, i) :
     import mmtbx.alignment
+    rna_dna_one_letter_codes = set(['A', 'C', 'G', 'T', 'U', 'X'])
     chain = self.chains[i]
-    seq1 = chain.sequence
     best_alignment = None
     best_sequence = None
     best_identity = 0.
     for seq_object in self.sequences :
-      seq2 = seq_object.sequence
+      if (chain.chain_type == NUCLEIC_ACID and
+          len(set(seq_object.sequence).difference(rna_dna_one_letter_codes))):
+        # don't attempt to align a nucleic acid chain against a protein sequence
+        continue
       alignment = mmtbx.alignment.align(
         seq_a=chain.sequence,
         seq_b=seq_object.sequence).extract_alignment()
@@ -610,6 +613,51 @@ END
     pass
   else :
     raise Exception_expected
+  # check that nucleic acid chain doesn't get aligned against protein sequence
+  pdb_in = iotbx.pdb.input(source_info=None, lines="""\
+ATOM  18932  P  B DG D   1     -12.183  60.531  25.090  0.50364.79           P
+ATOM  18963  P  B DG D   2      -9.738  55.258  20.689  0.50278.77           P
+ATOM  18994  P  B DA D   3     -10.119  47.855  19.481  0.50355.17           P
+ATOM  19025  P  B DT D   4     -13.664  42.707  21.119  0.50237.06           P
+ATOM  19056  P  B DG D   5     -19.510  39.821  21.770  0.50255.45           P
+ATOM  19088  P  B DA D   6     -26.096  40.001  21.038  0.50437.49           P
+ATOM  19120  P  B DC D   7     -31.790  41.189  18.413  0.50210.00           P
+ATOM  19149  P  B DG D   8     -34.639  41.306  12.582  0.50313.99           P
+ATOM  19179  P  B DA D   9     -34.987  38.244   6.813  0.50158.92           P
+ATOM  19210  P  B DT D  10     -32.560  35.160   1.082  0.50181.38           P
+HETATM19241  P  BTSP D  11     -27.614  30.137   0.455  0.50508.17           P
+""")
+  sequences, _ = iotbx.bioinformatics.fasta_sequence_parse.parse(
+    """>4GFH:A|PDBID|CHAIN|SEQUENCE
+MSTEPVSASDKYQKISQLEHILKRPDTYIGSVETQEQLQWIYDEETDCMIEKNVTIVPGLFKIFDEILVNAADNKVRDPS
+MKRIDVNIHAEEHTIEVKNDGKGIPIEIHNKENIYIPEMIFGHLLTSSNYDDDEKKVTGGRNGYGAKLCNIFSTEFILET
+ADLNVGQKYVQKWENNMSICHPPKITSYKKGPSYTKVTFKPDLTRFGMKELDNDILGVMRRRVYDINGSVRDINVYLNGK
+SLKIRNFKNYVELYLKSLEKKRQLDNGEDGAAKSDIPTILYERINNRWEVAFAVSDISFQQISFVNSIATTMGGTHVNYI
+TDQIVKKISEILKKKKKKSVKSFQIKNNMFIFINCLIENPAFTSQTKEQLTTRVKDFGSRCEIPLEYINKIMKTDLATRM
+FEIADANEENALKKSDGTRKSRITNYPKLEDANKAGTKEGYKCTLVLTEGDSALSLAVAGLAVVGRDYYGCYPLRGKMLN
+VREASADQILKNAEIQAIKKIMGLQHRKKYEDTKSLRYGHLMIMTDQDHDGSHIKGLIINFLESSFPGLLDIQGFLLEFI
+TPIIKVSITKPTKNTIAFYNMPDYEKWREEESHKFTWKQKYYKGLGTSLAQEVREYFSNLDRHLKIFHSLQGNDKDYIDL
+AFSKKKADDRKEWLRQYEPGTVLDPTLKEIPISDFINKELILFSLADNIRSIPNVLDGFKPGQRKVLYGCFKKNLKSELK
+VAQLAPYVSECTAYHHGEQSLAQTIIGLAQNFVGSNNIYLLLPNGAFGTRATGGKDAAAARYIYTELNKLTRKIFHPADD
+PLYKYIQEDEKTVEPEWYLPILPMILVNGAEGIGTGWSTYIPPFNPLEIIKNIRHLMNDEELEQMHPWFRGWTGTIEEIE
+PLRYRMYGRIEQIGDNVLEITELPARTWTSTIKEYLLLGLSGNDKIKPWIKDMEEQHDDNIKFIITLSPEEMAKTRKIGF
+YERFKLISPISLMNMVAFDPHGKIKKYNSVNEILSEFYYVRLEYYQKRKDHMSERLQWEVEKYSFQVKFIKMIIEKELTV
+TNKPRNAIIQELENLGFPRFNKEGKPYYGSPNDEIAEQINDVKGATSDEEDEESSHEDTENVINGPEELYGTYEYLLGMR
+IWSLTKERYQKLLKQKQEKETELENLLKLSAKDIWNTDLKAFEVGYQEFLQRDAEAR
+>4GFH:D|PDBID|CHAIN|SEQUENCE
+GGATGACGATX
+""")
+  v = validation(
+    pdb_hierarchy=pdb_in.construct_hierarchy(),
+    sequences=sequences,
+    log=null_out(),
+    nproc=1,)
+  out = StringIO()
+  v.show(out=out)
+  assert v.chains[0].n_missing == 0
+  assert v.chains[0].n_missing_end == 0
+  assert v.chains[0].n_missing_start == 0
+  assert len(v.chains[0].alignment.matches()) == 11
   # all tests below here have additional dependencies
   if (not libtbx.env.has_module("ksdssp")) :
     print "Skipping advanced tests (require ksdssp module)"
