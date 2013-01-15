@@ -268,7 +268,6 @@ class validation (object) :
       import mmtbx.secondary_structure
       ssm = mmtbx.secondary_structure.manager(
         pdb_hierarchy=pdb_hierarchy,
-        xray_structure=pdb_hierarchy.extract_xray_structure(),
         sec_str_from_pdb_file=None,
         assume_hydrogens_all_missing=None)
       ssm.find_automatically(log=null_out())

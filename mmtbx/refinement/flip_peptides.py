@@ -358,8 +358,7 @@ def run(fmodel,
   if (secondary_structure is None) :
     import mmtbx.secondary_structure
     secondary_structure = mmtbx.secondary_structure.manager(
-      pdb_hierarchy=pdb_hierarchy,
-      xray_structure=fmodel.xray_structure)
+      pdb_hierarchy=pdb_hierarchy)
   print_statistics.make_sub_header(text="Peptide bond flips", out=log)
   validator = ramachandran_validator()
   restraints_manager = mmtbx.restraints.manager(

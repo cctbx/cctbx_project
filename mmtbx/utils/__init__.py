@@ -2430,8 +2430,7 @@ class cmdline_load_pdb_and_data (object) :
       pdb_in = pdb_file_object.pdb_inp
       self.pdb_hierarchy = pdb_in.construct_hierarchy()
       self.pdb_hierarchy.atoms().reset_i_seq()
-      self.xray_structure = self.pdb_hierarchy.extract_xray_structure(
-        crystal_symmetry=pdb_in.crystal_symmetry())
+      self.xray_structure = pdb_in.xray_structure_simple()
       self.processed_pdb_file = None
       self.geometry = None
     self.fmodel = None

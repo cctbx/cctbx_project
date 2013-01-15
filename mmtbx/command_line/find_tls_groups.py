@@ -733,7 +733,6 @@ def find_tls (params,
   #
   ssm = mmtbx.secondary_structure.manager(
     pdb_hierarchy                = pdb_hierarchy,
-    xray_structure               = xray_structure,
     sec_str_from_pdb_file        = None,
     params                       = None,
     assume_hydrogens_all_missing = None,
