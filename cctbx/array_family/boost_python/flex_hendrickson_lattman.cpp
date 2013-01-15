@@ -140,6 +140,19 @@ namespace {
     return result;
   }
 
+  af::shared<cctbx::hendrickson_lattman<> >
+  multiply_by_constant(
+    af::shared<cctbx::hendrickson_lattman<> > const& self,
+    double const& rhs)
+  {
+    af::shared<cctbx::hendrickson_lattman<> >
+      result((af::reserve(self.size())));
+    for(std::size_t i=0;i<self.size();i++) {
+      result.push_back(self[i] * rhs);
+    }
+    return result;
+  }
+
 } // namespace <anonymous>
 
   template <>
@@ -179,6 +192,7 @@ namespace {
       .def("count", f_w::count)
       .def("__add__", f_w::add_a_a)
       .def("__iadd__", f_w::iadd_a_a)
+      .def("__mul__", multiply_by_constant)
       .def("all_eq", f_w::all_eq_a_s)
       .def("__eq__", f_w::eq_a_a)
       .def("__ne__", f_w::ne_a_a)

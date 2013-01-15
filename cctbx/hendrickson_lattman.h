@@ -162,6 +162,17 @@ namespace cctbx {
         return result;
       }
 
+      // multiplication (by request of Tom)
+      hendrickson_lattman
+      operator*(FloatType const& rhs) const
+      {
+        hendrickson_lattman result;
+        for(unsigned i=0;i<4;i++) {
+          result[i] = this->elems[i] * rhs;
+        }
+        return result;
+      }
+
       //! Test for exact equality.
       bool
       operator==(hendrickson_lattman const& rhs) const
