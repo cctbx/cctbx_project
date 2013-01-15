@@ -422,6 +422,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         ])
       labels_and_actions.extend([
           ("Toggle ATOM/HETATM...", self.OnSetAtomType),
+          ("Reset element field...", self.OnResetElement),
       ])
       self.ShowMenu(labels_and_actions, source_window)
     else :
@@ -463,6 +464,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       ("Delete atom", self.OnDeleteObject),
       ("Apply rotation/translation...", self.OnMoveSites),
       ("Toggle ATOM/HETATM...", self.OnSetAtomType),
+      ("Reset element field...", self.OnResetElement),
     ]
     self.ShowMenu(labels_and_actions, source_window)
 
@@ -477,6 +479,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       ("Clone atom group", self.OnCloneAtoms),
       ("Apply rotation/translation...", self.OnMoveSites),
       ("Toggle ATOM/HETATM...", self.OnSetAtomType),
+      ("Reset element field...", self.OnResetElement),
     ]
     if (atom_group.resname == "MET") :
       labels_and_actions.append(("Convert to SeMet", self.OnConvertMet))
@@ -496,6 +499,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       ("Insert residues after...", self.OnInsertAfter),
       ("Renumber residue...", self.OnRenumberResidues),
       ("Toggle ATOM/HETATM...", self.OnSetAtomType),
+      ("Reset element field...", self.OnResetElement),
     ]
     self.ShowMenu(labels_and_actions, source_window)
 
@@ -508,6 +512,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       ("Delete chain", self.OnDeleteObject),
       ("Apply rotation/translation...", self.OnMoveSites),
       ("Toggle ATOM/HETATM...", self.OnSetAtomType),
+      ("Reset element field...", self.OnResetElement),
       ("Add residues...", self.OnAddResidues),
       ("Renumber residues...", self.OnRenumberChain),
     ]
@@ -528,6 +533,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       ("Add chain(s)...", self.OnAddChain),
       ("Split model...", self.OnSplitModel),
       ("Toggle ATOM/HETATM...", self.OnSetAtomType),
+      ("Reset element field...", self.OnResetElement),
     ]
     self.ShowMenu(labels_and_actions, source_window)
 
@@ -821,6 +827,37 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         atoms.set_xyz(sites)
         self.PropagateAtomChanges(item)
       self.PushState("moved sites")
+
+  # all
+  def OnResetElement (self, event) :
+    items = self.GetSelections()
+    n_changed = n_unassigned = 0
+    for item in items :
+      pdb_object = self.GetItemPyData(item)
+      pdb_type = type(pdb_object).__name__
+      if (pdb_type == 'atom') :
+        pdb_object.element = ''
+        pdb_object.set_chemical_element_simple_if_necessary()
+        if (pdb_object.element == '') :
+          n_unassigned += 1
+        else :
+          n_changed += 1
+      else :
+        for atom in pdb_object.atoms() :
+          atom.element = ''
+          atom.set_chemical_element_simple_if_necessary()
+          if (atom.element == '') :
+            n_unassigned += 1
+          else :
+            n_changed += 1
+      self.PropagateAtomChanges(item)
+    self.PushState("reset chemical element field")
+    if (n_unassigned > 0) :
+      wx.MessageBox(("WARNING: %d atoms now have blank element fields because "+
+        "the element could not be automatically determined from the atom "+
+        "name.  You may need to set these manually!") % n_unassigned)
+    elif (n_changed > 0) :
+      wx.MessageBox("Chemical element reset for %d atoms." % n_changed)
 
   # all
   def OnSetAtomType (self, event) :
