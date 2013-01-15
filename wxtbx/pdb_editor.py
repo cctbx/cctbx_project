@@ -563,11 +563,11 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     new_elem = self.GetNewElement(atom.element)
     assert (new_elem is None) or (len(new_elem) <= 2)
     if (new_elem != atom.element) :
-      if (new_elem is None) :
+      if (new_elem is None) or (new_elem.isspace()) :
         atom.element = '  '
-      elif (new_elem.strip() == '') :
+      else :
         new_elem = new_elem.strip()
-        atom.element = '%2d' % new_elem
+        atom.element = '%2s' % new_elem
       # TODO validate element symbol
       self.SetItemText(item, format_atom(atom))
       self.PushState("changed atom element to '%s'" % atom.element)
