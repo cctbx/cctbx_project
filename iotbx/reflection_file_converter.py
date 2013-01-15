@@ -78,6 +78,12 @@ def run(
       default="cns",
       help="Convention for generating R-free flags",
       metavar="cns|ccp4")
+    .option(None, "--output_r_free_label",
+      action="store",
+      type="string",
+      help="Label for newly generated R-free flags (defaults to R-free-flags)",
+      default="R-free-flags",
+      metavar="STRING")
     .option(None, "--random_seed",
       action="store",
       type="int",
@@ -523,7 +529,7 @@ def run(
     if (r_free_flags is not None):
       mtz_dataset.add_miller_array(
         miller_array=r_free_flags,
-        column_root_label="R-free-flags")
+        column_root_label=co.output_r_free_label)
       for line in r_free_info:
         mtz_history_buffer.append("> " + line)
     mtz_history_buffer.append("> output file name: %s" %
