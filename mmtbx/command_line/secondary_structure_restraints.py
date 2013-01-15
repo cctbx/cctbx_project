@@ -47,11 +47,9 @@ refinement {
     lines=flex.std_string(pdb_combined.raw_records))
   pdb_hierarchy = pdb_structure.construct_hierarchy()
   pdb_hierarchy.atoms().reset_i_seq()
-  xray_structure = pdb_structure.xray_structure_simple()
   if len(pdb_hierarchy.models()) != 1 :
     raise Sorry("Multiple models not supported.")
   m = manager(pdb_hierarchy=pdb_hierarchy,
-    xray_structure=xray_structure,
     sec_str_from_pdb_file=pdb_structure.extract_secondary_structure(),
     params=ss_params)
   m.find_automatically(log=log)

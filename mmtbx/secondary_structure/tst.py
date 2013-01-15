@@ -31,10 +31,8 @@ def exercise_protein () :
     pdb_in = file_reader.any_file(file_name, force_type="pdb").file_object
     pdb_hierarchy = pdb_in.construct_hierarchy()
     pdb_hierarchy.atoms().reset_i_seq()
-    xray_structure = pdb_in.xray_structure_simple()
     sec_str_from_pdb_file = pdb_in.extract_secondary_structure()
     m = manager(pdb_hierarchy=pdb_hierarchy,
-      xray_structure=xray_structure,
       sec_str_from_pdb_file=sec_str_from_pdb_file)
     m.find_automatically(log=log)
     m.params.h_bond_restraints.remove_outliers = False
@@ -61,7 +59,6 @@ def exercise_protein () :
     assert (proxies[0].distance_ideal == 2.9)
     if (run_ksdssp) :
       m = manager(pdb_hierarchy=pdb_hierarchy,
-        xray_structure=xray_structure,
         sec_str_from_pdb_file=None)
       m.find_automatically(log=log)
       m.params.h_bond_restraints.remove_outliers = False
@@ -85,10 +82,8 @@ def exercise_nucleic_acids () :
     pdb_in = file_reader.any_file(pdb_file_rna, force_type="pdb").file_object
     pdb_hierarchy = pdb_in.construct_hierarchy()
     pdb_hierarchy.atoms().reset_i_seq()
-    xray_structure = pdb_in.xray_structure_simple()
     sec_str_from_pdb_file = pdb_in.extract_secondary_structure()
     m = manager(pdb_hierarchy=pdb_hierarchy,
-      xray_structure=xray_structure,
       sec_str_from_pdb_file=sec_str_from_pdb_file)
     log = null_out()
     m.find_automatically(log=log)
@@ -109,10 +104,8 @@ def exercise_nucleic_acids () :
     pdb_in = file_reader.any_file(pdb_file_dna, force_type="pdb").file_object
     pdb_hierarchy = pdb_in.construct_hierarchy()
     pdb_hierarchy.atoms().reset_i_seq()
-    xray_structure = pdb_in.xray_structure_simple()
     sec_str_from_pdb_file = pdb_in.extract_secondary_structure()
     m = manager(pdb_hierarchy=pdb_hierarchy,
-      xray_structure=xray_structure,
       sec_str_from_pdb_file=sec_str_from_pdb_file)
     log = null_out()
     m.find_automatically(log=log)

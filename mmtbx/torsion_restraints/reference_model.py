@@ -468,8 +468,6 @@ class reference_model(object):
       for file in self.reference_file_list:
         ref_ss_m[file] = secondary_structure.manager(
           pdb_hierarchy=self.pdb_hierarchy_ref[file],
-          xray_structure=\
-            self.pdb_hierarchy_ref[file].extract_xray_structure(),
           sec_str_from_pdb_file=None)
         ref_ss_m[file].find_automatically()
         pdb_str = self.pdb_hierarchy_ref[file].as_pdb_string()

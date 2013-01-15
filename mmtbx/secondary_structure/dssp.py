@@ -310,7 +310,7 @@ def get_hydrogen_position (n_atom, bond_length=1.01) :
 class dssp (object) :
   def __init__ (self,
           pdb_hierarchy,
-          xray_structure,
+          xray_structure=None,
           pdb_atoms=None,
           params=None,
           out=None,
@@ -319,6 +319,8 @@ class dssp (object) :
     if (log is None) : log = null_out()
     if (params is None) : params = master_phil.extract()
     if (pdb_atoms is None) : pdb_atoms = pdb_hierarchy.atoms()
+    if (xray_structure is None) :
+      xray_structure = pdb_hierarchy.extract_xray_structure()
     self.hbonds = []
     self.pdb_hierarchy = pdb_hierarchy
     self.pdb_atoms = pdb_atoms

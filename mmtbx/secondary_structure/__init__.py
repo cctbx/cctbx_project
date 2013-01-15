@@ -285,7 +285,6 @@ def get_pdb_hierarchy (file_names) :
 class manager (object) :
   def __init__ (self,
                 pdb_hierarchy,
-                xray_structure,
                 sec_str_from_pdb_file=None,
                 params=None,
                 assume_hydrogens_all_missing=None,
@@ -303,13 +302,10 @@ class manager (object) :
       self.params = sec_str_master_phil.fetch().extract()
     if self.tmp_dir is None :
       self.tmp_dir = os.getcwd()
-    if self.xray_structure is None :
-      self.xray_structure = pdb_hierarchy.extract_xray_structure()
     if self.assume_hydrogens_all_missing is None :
-      xrs = self.xray_structure
-      sctr_keys = xrs.scattering_type_registry().type_count_dict().keys()
-      self.assume_hydrogens_all_missing = not ("H" in sctr_keys or
-        "D" in sctr_keys)
+      elements = atoms.extract_element().strip()
+      self.assume_hydrogens_all_missing = not ("H" in elements or
+        "D" in elements)
     self.selection_cache = pdb_hierarchy.atom_selection_cache()
     self.pdb_atoms = atoms
 
@@ -395,7 +391,6 @@ class manager (object) :
       return dssp.dssp(
         pdb_hierarchy=self.pdb_hierarchy,
         pdb_atoms=self.pdb_atoms,
-        xray_structure=self.xray_structure,
         out=null_out()).get_annotation()
 
   def find_sec_str_with_segids (self, log=sys.stderr) :
@@ -590,7 +585,7 @@ class manager (object) :
     return all_selections
 
   def beta_selection (self, **kwds) :
-    whole_selection = flex.bool(self.xray_structure.sites_cart().size())
+    whole_selection = flex.bool(self.n_atoms)
     for sheet in self.beta_selections(**kwds) :
       whole_selection |= sheet
     return whole_selection
@@ -610,16 +605,15 @@ class manager (object) :
     return all_selections
 
   def base_pair_selection (self, **kwds) :
-    whole_selection = flex.bool(self.xray_structure.sites_cart().size())
+    whole_selection = flex.bool(self.n_atoms)
     for sheet in self.base_pair_selections(**kwds) :
       whole_selection |= sheet
     return whole_selection
 
   def selections_as_ints (self) :
-    n_sites = self.xray_structure.sites_cart().size()
-    sec_str = flex.int(n_sites, 0)
-    all_alpha = flex.int(n_sites, 1)
-    all_beta = flex.int(n_sites, 2)
+    sec_str = flex.int(self.n_atoms, 0)
+    all_alpha = flex.int(self.n_atoms, 1)
+    all_beta = flex.int(self.n_atoms, 2)
     helices = self.alpha_selection()
     sheets = self.beta_selection()
     sec_str.set_selected(helices, all_alpha.select(helices))
@@ -634,10 +628,8 @@ def process_structure (params, processed_pdb_file, tmp_dir, log,
   except Exception :
     sec_str_from_pdb_file = None
   pdb_hierarchy = acp.pdb_hierarchy
-  xray_structure = acp.extract_xray_structure()
   structure_manager = manager(
     pdb_hierarchy=pdb_hierarchy,
-    xray_structure=xray_structure,
     sec_str_from_pdb_file=sec_str_from_pdb_file,
     params=params,
     assume_hydrogens_all_missing=assume_hydrogens_all_missing,
@@ -683,9 +675,7 @@ def manager_from_pdb_file (pdb_file) :
   pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
   pdb_hierarchy = pdb_in.file_object.construct_hierarchy()
   pdb_hierarchy.atoms().reset_i_seq()
-  xray_structure = pdb_in.file_object.xray_structure_simple()
-  ss_manager  = manager(pdb_hierarchy=pdb_hierarchy,
-    xray_structure=xray_structure)
+  ss_manager  = manager(pdb_hierarchy=pdb_hierarchy)
   return ss_manager
 
 def calculate_structure_content (pdb_file) :
