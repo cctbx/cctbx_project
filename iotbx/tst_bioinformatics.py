@@ -1770,6 +1770,19 @@ class test_hhalign_parser(unittest.TestCase):
     for ( o, e ) in zip( i1, i2 ):
       self.assertAlmostEqual( o, e, digits )
 
+def exercise_merge_sequences () :
+  open("tmp_iotbx_bioinfo.fa", "w").write("""\
+> 9zzz
+ARGLYS
+> 8xxx
+PHETYR""")
+  output_file = "tmp_iotbx_bioinfo_merged.fa"
+  bioinformatics.merge_sequence_files(
+    file_names=["tmp_iotbx_bioinfo.fa"],
+    output_file=output_file,
+    sequences=["SERTHR"])
+  seq_in, nc = bioinformatics.any_sequence_format(output_file)
+  assert (len(seq_in) == 3) and (len(nc) == 0)
 
 suite_sequence = unittest.TestLoader().loadTestsFromTestCase(
   test_sequence
@@ -1826,4 +1839,5 @@ alltests = unittest.TestSuite(
   )
 
 if __name__ == "__main__":
+  exercise_merge_sequences()
   unittest.TextTestRunner( stream=sys.stdout, verbosity = 2 ).run( alltests )

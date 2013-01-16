@@ -833,7 +833,7 @@ def parse_sequence(data):
 
   return min( results, key = lambda p: len( p[1] ) )
 
-
+# XXX test needed
 def any_sequence_format (file_name, assign_name_if_not_defined=False) :
   format_parser = sequence_parser_for(file_name)
   data = open(file_name, "r").read()
@@ -879,9 +879,12 @@ def any_sequence_format (file_name, assign_name_if_not_defined=False) :
     return [seq], []
   return None, None
 
-def merge_sequence_files (file_names, output_file,
-    include_non_compliant=False, call_back_on_error=None) :
-  assert (len(file_names) > 0)
+def merge_sequence_files (file_names, output_file, sequences=(),
+    include_non_compliant=False, call_back_on_error=None,
+    force_new_file=False) :
+  assert (len(file_names) > 0) or (len(sequences) > 0)
+  if (len(file_names)==1) and (len(sequences)==0) and (not force_new_file) :
+    return file_names[0]
   seq_out = cStringIO.StringIO()
   for seq_file in file_names :
     objects, non_compliant = any_sequence_format(seq_file)
@@ -904,9 +907,14 @@ def merge_sequence_files (file_names, output_file,
         name = "none"
       seq_out.write("> %s\n" % name)
       seq_out.write("%s\n" % seq_record.sequence)
+  if (len(sequences) > 0) :
+    for k, seq in enumerate(sequences) :
+      seq_out.write("> seq%d\n" % (k+1))
+      seq_out.write("%s\n" % seq)
   f = open(output_file, "w")
   f.write(seq_out.getvalue())
   f.close()
+  return output_file
 
 # Alignment file parsers
 class generic_alignment_parser(object):
