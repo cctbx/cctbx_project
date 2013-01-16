@@ -10,6 +10,8 @@ import cStringIO
 import os
 import sys
 
+ALN_FLAGS = wx.ALL|wx.ALIGN_CENTER_VERTICAL
+
 class InfoPanelBase (wx.MiniFrame) :
   def __init__ (self, *args, **kwds) :
     kwds = dict(kwds)
@@ -40,21 +42,21 @@ class ReflectionFileInfo (InfoPanelBase) :
     box = wx.BoxSizer(wx.HORIZONTAL)
     self.panel_sizer.Add(box, 0)
     bmp = wx.StaticBitmap(self.panel, -1, wxtbx.icons.hkl_file.GetBitmap())
-    box.Add(bmp, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    box.Add(bmp, 0, ALN_FLAGS, 5)
     grid = wx.FlexGridSizer(cols=2)
-    box.Add(grid, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    box.Add(grid, 0, ALN_FLAGS, 5)
     txt1 = wx.StaticText(self.panel, -1, "File name:")
     font = txt1.GetFont()
     font.SetWeight(wx.FONTWEIGHT_BOLD)
     txt1.SetFont(font)
-    grid.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    grid.Add(txt1, 0, ALN_FLAGS, 5)
     self.file_txt = wx.StaticText(self.panel, -1, "(None)")
-    grid.Add(self.file_txt, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    grid.Add(self.file_txt, 0, ALN_FLAGS, 5)
     txt3 = wx.StaticText(self.panel, -1, "Data array:")
     txt3.SetFont(font)
-    grid.Add(txt3, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    grid.Add(txt3, 0, ALN_FLAGS, 5)
     self.array_choice = wx.Choice(self.panel, -1, size=(200,-1))
-    grid.Add(self.array_choice, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    grid.Add(self.array_choice, 0, ALN_FLAGS, 5)
     self.Bind(wx.EVT_CHOICE, self.OnChangeArray, self.array_choice)
     self.Centre(wx.BOTH)
 
@@ -107,12 +109,12 @@ class ReflectionFileInfo (InfoPanelBase) :
       font = txt1.GetFont()
       font.SetWeight(wx.FONTWEIGHT_BOLD)
       txt1.SetFont(font)
-      grid.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+      grid.Add(txt1, 0, ALN_FLAGS, 5)
       txt2 = wx.StaticText(self.info_panel, -1, value)
       font2 = txt2.GetFont()
       font2.SetFamily(wx.FONTFAMILY_MODERN)
       txt2.SetFont(font2)
-      grid.Add(txt2, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+      grid.Add(txt2, 0, ALN_FLAGS, 5)
     if (array.is_complex_array()) :
       btn = wx.Button(self.info_panel, -1, "Show map statistics")
       szr.Add(btn, 0, wx.ALL, 5)
@@ -137,16 +139,16 @@ class PDBFileInfo (InfoPanelBase) :
     box = wx.BoxSizer(wx.HORIZONTAL)
     self.panel_sizer.Add(box, 0)
     bmp = wx.StaticBitmap(self.panel, -1, wxtbx.icons.pdb_file.GetBitmap())
-    box.Add(bmp, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    box.Add(bmp, 0, ALN_FLAGS, 5)
     grid = wx.FlexGridSizer(cols=2)
-    box.Add(grid, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    box.Add(grid, 0, ALN_FLAGS, 5)
     txt1 = wx.StaticText(self.panel, -1, "File name:")
     font = txt1.GetFont()
     font.SetWeight(wx.FONTWEIGHT_BOLD)
     txt1.SetFont(font)
-    grid.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    grid.Add(txt1, 0, ALN_FLAGS, 5)
     self.file_txt = wx.StaticText(self.panel, -1, "(None)")
-    grid.Add(self.file_txt, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    grid.Add(self.file_txt, 0, ALN_FLAGS, 5)
     self.Centre(wx.BOTH)
 
   def set_file (self, file_name) :
@@ -178,7 +180,7 @@ class PDBFileInfo (InfoPanelBase) :
       font = txt1.GetFont()
       font.SetWeight(wx.FONTWEIGHT_BOLD)
       txt1.SetFont(font)
-      grid.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+      grid.Add(txt1, 0, ALN_FLAGS, 5)
       str_value = str(value)
       alert = False
       if (str_value.endswith("***")) :
@@ -192,7 +194,7 @@ class PDBFileInfo (InfoPanelBase) :
         txt2.SetForegroundColour((200,0,0))
         txt1.SetForegroundColour((200,0,0))
       txt2.SetFont(font2)
-      grid.Add(txt2, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+      grid.Add(txt2, 0, ALN_FLAGS, 5)
     if (len(self._hierarchy.models()) == 1) :
       if (len(self._hierarchy.models()[0].chains()) > 1) :
         btn = wx.Button(self.info_panel, -1, "B-factors by chain...")
@@ -218,16 +220,16 @@ class PDBChainBisoPanel (InfoPanelBase) :
     box = wx.BoxSizer(wx.HORIZONTAL)
     self.panel_sizer.Add(box, 0)
     bmp = wx.StaticBitmap(self.panel, -1, wxtbx.icons.pdb_file.GetBitmap())
-    box.Add(bmp, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    box.Add(bmp, 0, ALN_FLAGS, 5)
     grid = wx.FlexGridSizer(cols=2)
-    box.Add(grid, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    box.Add(grid, 0, ALN_FLAGS, 5)
     txt1 = wx.StaticText(self.panel, -1, "File name:")
     font = txt1.GetFont()
     font.SetWeight(wx.FONTWEIGHT_BOLD)
     txt1.SetFont(font)
-    grid.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    grid.Add(txt1, 0, ALN_FLAGS, 5)
     self.file_txt = wx.StaticText(self.panel, -1, "(None)")
-    grid.Add(self.file_txt, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    grid.Add(self.file_txt, 0, ALN_FLAGS, 5)
     self.Centre(wx.BOTH)
 
   def set_file (self, file_name, hierarchy=None) :
@@ -280,16 +282,16 @@ class ImageFileInfo (InfoPanelBase) :
     box = wx.BoxSizer(wx.HORIZONTAL)
     self.panel_sizer.Add(box, 0)
     bmp = wx.StaticBitmap(self.panel, -1, wxtbx.icons.img_file.GetBitmap())
-    box.Add(bmp, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    box.Add(bmp, 0, ALN_FLAGS, 5)
     grid = wx.FlexGridSizer(cols=2)
-    box.Add(grid, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    box.Add(grid, 0, ALN_FLAGS, 5)
     txt1 = wx.StaticText(self.panel, -1, "File name:")
     font = txt1.GetFont()
     font.SetWeight(wx.FONTWEIGHT_BOLD)
     txt1.SetFont(font)
-    grid.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    grid.Add(txt1, 0, ALN_FLAGS, 5)
     self.file_txt = wx.StaticText(self.panel, -1, "(None)")
-    grid.Add(self.file_txt, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    grid.Add(self.file_txt, 0, ALN_FLAGS, 5)
     self.Centre(wx.BOTH)
 
   def set_file (self, file_name) :
@@ -324,12 +326,12 @@ class ImageFileInfo (InfoPanelBase) :
       font = txt1.GetFont()
       font.SetWeight(wx.FONTWEIGHT_BOLD)
       txt1.SetFont(font)
-      grid.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+      grid.Add(txt1, 0, ALN_FLAGS, 5)
       txt2 = wx.StaticText(self.info_panel, -1, value)
       font2 = txt2.GetFont()
       font2.SetFamily(wx.FONTFAMILY_MODERN)
       txt2.SetFont(font2)
-      grid.Add(txt2, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+      grid.Add(txt2, 0, ALN_FLAGS, 5)
     szr.Fit(self.info_panel)
     self.panel.Layout()
     self.panel_sizer.Fit(self.panel)
@@ -343,21 +345,21 @@ class MapCoeffsInfo (InfoPanelBase) :
     box = wx.BoxSizer(wx.HORIZONTAL)
     self.panel_sizer.Add(box, 0)
     bmp = wx.StaticBitmap(self.panel, -1, wxtbx.icons.hkl_file.GetBitmap())
-    box.Add(bmp, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    box.Add(bmp, 0, ALN_FLAGS, 5)
     grid = wx.FlexGridSizer(cols=2)
-    box.Add(grid, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    box.Add(grid, 0, ALN_FLAGS, 5)
     txt1 = wx.StaticText(self.panel, -1, "File name:")
     font = txt1.GetFont()
     font.SetWeight(wx.FONTWEIGHT_BOLD)
     txt1.SetFont(font)
-    grid.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    grid.Add(txt1, 0, ALN_FLAGS, 5)
     self.file_txt = wx.StaticText(self.panel, -1, "(None)")
-    grid.Add(self.file_txt, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    grid.Add(self.file_txt, 0, ALN_FLAGS, 5)
     txt3 = wx.StaticText(self.panel, -1, "Map coefficients:")
     txt3.SetFont(font)
-    grid.Add(txt3, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    grid.Add(txt3, 0, ALN_FLAGS, 5)
     self.map_txt = wx.StaticText(self.panel, -1, "(None)")
-    grid.Add(self.map_txt, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    grid.Add(self.map_txt, 0, ALN_FLAGS, 5)
 
   def set_file (self, file_name) :
     self.file_txt.SetLabel(file_name)
@@ -384,7 +386,7 @@ class MapCoeffsInfo (InfoPanelBase) :
       font = txt1.GetFont()
       font.SetWeight(wx.FONTWEIGHT_BOLD)
       txt1.SetFont(font)
-      grid.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+      grid.Add(txt1, 0, ALN_FLAGS, 5)
       str_value = str(value)
       alert = False
       if (str_value.endswith("***")) :
@@ -398,23 +400,44 @@ class MapCoeffsInfo (InfoPanelBase) :
         txt2.SetForegroundColour((200,0,0))
         txt1.SetForegroundColour((200,0,0))
       txt2.SetFont(font2)
-      grid.Add(txt2, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-    histogram = wxtbx.plots.histogram(self.info_panel, figure_size=(6,4))
-    histogram.show_histogram(
-      data=map.real_map(False).as_1d().as_numpy_array(),
-      n_bins=20,#n_bins,
-      reference_value=0.0,
-      x_label="Sigma level",
-      y_label="Number of points",
-      title="Distribution of grid values (spacing=d_min/4)")
-    box_szr.Add(histogram, 1, wx.EXPAND, 5)
-    btn = wx.Button(self.info_panel, -1, "Save plot to file...")
-    self.Bind(wx.EVT_BUTTON, lambda evt: histogram.save_image(), btn)
-    box_szr.Add(btn, 0, wx.TOP, 5)
+      grid.Add(txt2, 0, ALN_FLAGS, 5)
+    self.histogram = wxtbx.plots.histogram(self.info_panel, figure_size=(6,4))
+    self.draw_plot(n_bins=20, log_scale=False)
+    box_szr.Add(self.histogram, 1, wx.EXPAND, 5)
+    hbox = wx.BoxSizer(wx.HORIZONTAL)
+    box_szr.Add(hbox, 0, wx.TOP, 5)
+    ip = self.info_panel
+    btn = wx.Button(ip, -1, "Save plot to file...")
+    self.Bind(wx.EVT_BUTTON, lambda evt: self.histogram.save_image(), btn)
+    hbox.Add(btn, 0, ALN_FLAGS, 5)
+    hbox.Add(wx.StaticText(ip, label="Number of bins:"), 0, ALN_FLAGS, 5)
+    self.n_bins_ctrl = wx.SpinCtrl(ip, value="20", min=10, max=50, initial=20)
+    self.Bind(wx.EVT_SPINCTRL, self.OnRedraw, self.n_bins_ctrl)
+    hbox.Add(self.n_bins_ctrl, 0, ALN_FLAGS, 5)
+    self.log_scale_box = wx.CheckBox(ip, label="Use log scale for Y-axis")
+    hbox.Add(self.log_scale_box, 0, ALN_FLAGS, 5)
+    self.Bind(wx.EVT_CHECKBOX, self.OnRedraw, self.log_scale_box)
     szr.Fit(self.info_panel)
     self.panel.Layout()
     self.panel_sizer.Fit(self.panel)
     self.Fit()
+
+  def OnRedraw (self, event) :
+    self.draw_plot(
+      n_bins = self.n_bins_ctrl.GetValue(),
+      log_scale = self.log_scale_box.GetValue())
+
+  def draw_plot (self, n_bins, log_scale) :
+    self.histogram.figure.clear()
+    self.histogram.show_histogram(
+      data=self._current_map.real_map(False).as_1d().as_numpy_array(),
+      n_bins=n_bins,#n_bins,
+      reference_value=0.0,
+      x_label="Sigma level",
+      y_label="Number of points",
+      title="Distribution of grid values (spacing=d_min/4)",
+      log_scale=log_scale)
+    self.Refresh()
 
 if (__name__ == "__main__") :
   import libtbx.load_env
