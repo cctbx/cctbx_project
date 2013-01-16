@@ -880,12 +880,11 @@ class sequence_window (object) :
     pdb_in = file_reader.any_file(file_name, force_type="pdb").file_object
     pdb_hierarchy = pdb_in.construct_hierarchy()
     pdb_hierarchy.atoms().reset_i_seq()
-    xray_structure = pdb_in.xray_structure_simple()
-    self.set_pdb_data(pdb_hierarchy, xray_structure, ignore_unk=ignore_unk)
+    self.set_pdb_data(pdb_hierarchy, ignore_unk=ignore_unk)
 
-  def set_pdb_data (self, pdb_hierarchy, xray_structure, ignore_unk=False) :
+  def set_pdb_data (self, pdb_hierarchy, ignore_unk=False) :
     from mmtbx import secondary_structure
-    sec_str = secondary_structure.manager(pdb_hierarchy, xray_structure)
+    sec_str = secondary_structure.manager(pdb_hierarchy)
     out = cStringIO.StringIO()
     sec_str.find_automatically(log=out)
     sec_str.show_summary()
