@@ -38,7 +38,7 @@ def simulate_powder_pattern(crystalstructure,
   :type wavelength: float
   :param filename: a filepath to save the in- and output of FullProf to
   :type filename: string
-  :param keep_results: keep the (temporary) files from FullProf for a later
+  :param keep_results: keep the (temporary) files from FullProf for a later \
   manual inspection
   :type keep_results: boolean
 
@@ -49,7 +49,6 @@ def simulate_powder_pattern(crystalstructure,
   """
   from write_pcr import write_pcr
   from iotbx.reflection_file_reader import any_reflection_file
-  from StringIO import StringIO
   import tempfile
   import os
   # write pcr file and execute FullProf

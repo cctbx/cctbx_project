@@ -157,13 +157,13 @@ def _set_ref_flags(inputstring, freeparams=[]):
   (for internal use)
 
   Allowed values in the freeparams list are:
-    'scale'   --> free all scale factors
-    'lattice' --> free all lattice parameters
-    'profile' --> free all profile parameters
+    * 'scale'   --> free all scale factors
+    * 'lattice' --> free all lattice parameters
+    * 'profile' --> free all profile parameters
   The parameters are freed according to their order inside the list.
   If an empty list is passed all parameters will be fixed.
 
-  :param inputstring: a string containing placeholders for different refinement
+  :param inputstring: a string containing placeholders for different refinement \
   variables
   :type inputstring: string
   :param freeparams: a list of parameter sets to free
