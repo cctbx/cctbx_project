@@ -415,6 +415,12 @@ def validate_map_params (params) :
           "of coefficients with the same map type, but the column labels must "+
           "be unique.") % (f, phi))
       labels.extend([f,phi])
+  if (hasattr(params, "map")) :
+    for map in params.map :
+      if (map.grid_resolution_factor > 0.5) :
+        # XXX can't we enforce this in phil?
+        raise Sorry("The grid resolution factor for CCP4 and X-PLOR maps "+
+          "must be 0.5 or less.")
   return True
 
 def finish_job (results) :
