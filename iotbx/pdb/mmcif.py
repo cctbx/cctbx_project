@@ -345,8 +345,10 @@ def tls_as_cif_block(tlsos, selection_strings, cif_block=None):
 
 
 class cif_input(iotbx.pdb.pdb_input_mixin):
+
   def __init__(self,
                file_name=None,
+               cif_object=None,
                source_info=iotbx.pdb.Please_pass_string_or_None,
                lines=None,
                pdb_id=None,
@@ -356,11 +358,14 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
       file_name = iotbx.pdb.ent_path_local_mirror(pdb_id=pdb_id)
     if file_name is not None:
       reader = iotbx.cif.reader(file_path=file_name)
+      self.cif_model = reader.model()
     elif lines is not None:
       reader = iotbx.cif.reader(input_string="\n".join(lines))
-    self.cif_model = reader.model()
+      self.cif_model = reader.model()
+    elif cif_object is not None:
+      self.cif_model = cif_object
     self.cif_block = self.cif_model.values()[0]
-    self.builder = pdb_hierarchy_builder(reader.model().blocks.values()[0])
+    self.builder = pdb_hierarchy_builder(self.cif_block)
     self.hierarchy = self.builder.hierarchy
     self._source_info = "file %s" %file_name
 
