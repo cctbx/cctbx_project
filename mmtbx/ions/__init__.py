@@ -316,9 +316,9 @@ class Manager (object):
         fill_missing=True))
       self.carbon_fo_values = flex.double()
       for i_seq, site_frac in enumerate(sites_frac) :
-        map_value = fo_map.eight_point_interpolation(site_frac)
-        self._map_values["mFo"][i_seq] = map_value
         if (self.pdb_atoms[i_seq].element.strip() == "C") :
+          map_value = fo_map.eight_point_interpolation(site_frac)
+          self._map_values["mFo"][i_seq] = map_value
           self.carbon_fo_values.append(map_value)
       del fo_map
 
@@ -1118,11 +1118,14 @@ class water_result:
       if (self.final_choice is not None) :
         # We have one result that we are reasonably certain of
         elem_params, score = results[0]
-        self.atom_props.show_ion_results(
-          identity = str(self.final_choice),
-          out = out,
-          valence_used = self.valence_used,
-          confirmed = True)
+        if elem_params.element not in HALIDES:
+          self.atom_props.show_ion_results(
+            identity = str(self.final_choice),
+            out = out,
+            valence_used = self.valence_used,
+            confirmed = True)
+        else:
+          print >> out, "halide:", str(elem_params)
         print >> out, ""
       elif (len(results) > 1) :
         # We have a couple possible identities for the atom
