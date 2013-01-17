@@ -538,8 +538,18 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       lines=flex.split_lines(pdb_str))
     return pdb_inp
 
+  def as_cif_input(self, crystal_symmetry=None):
+    import iotbx.cif.model
+    from iotbx.pdb import mmcif
+    cif_block = self.as_cif_block(crystal_symmetry=crystal_symmetry)
+    cif_model = iotbx.cif.model.cif()
+    cif_model['pdb_hierarchy'] = cif_block
+    cif_input = mmcif.cif_input(cif_object=cif_model)
+    return cif_input
+
   def extract_xray_structure(self, crystal_symmetry=None) :
     return self.as_pdb_input(crystal_symmetry).xray_structure_simple()
+    #return self.as_cif_input(crystal_symmetry=crystal_symmetry).xray_structure_simple()
 
   def adopt_xray_structure(self, xray_structure):
     from iotbx.pdb import common_residue_names_get_class as gc
@@ -557,6 +567,8 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
         a.set_b(new_b=adptbx.u_as_b(sc.u_iso))
       if(sc.u_star != (-1.0, -1.0, -1.0, -1.0, -1.0, -1.0)):
         a.set_uij(new_uij = adptbx.u_star_as_u_cart(uc,sc.u_star))
+      a.set_fp(new_fp=sc.fp)
+      a.set_fdp(new_fdp=sc.fdp)
     for sc, a in zip(scatterers, awl):
       id_str = a.id_str()
       resname_from_sc = id_str[10:13]
