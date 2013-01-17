@@ -46,6 +46,7 @@ namespace iotbx { namespace pdb {
             occ sigocc
             b sigb
             uij siguij
+            fp fdp
             hetero
 </pre>
 Convenience objects:
@@ -242,6 +243,8 @@ namespace hierarchy {
 #ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
       sym_mat3 siguij;
 #endif
+      double fp;
+      double fdp;
       unsigned i_seq;
       int tmp;
       bool have_sentinel;
@@ -264,6 +267,7 @@ namespace hierarchy {
                         siguij_
 #endif
                                ,
+        double fp_, double fdp_,
         bool hetero_, str5 serial_, str4 name_,
         str4 segid_, str2 element_, str2 charge_)
       :
@@ -275,6 +279,7 @@ namespace hierarchy {
 #ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
         siguij(siguij_),
 #endif
+        fp(fp_), fdp(fdp_),
         i_seq(0), tmp(0), have_sentinel(false),
         hetero(hetero_), serial(serial_), name(name_),
         segid(segid_), element(element_), charge(charge_)
@@ -290,6 +295,7 @@ namespace hierarchy {
                         siguij_
 #endif
                                ,
+        double fp_, double fdp_,
         bool hetero_, str5 serial_, str4 name_,
         str4 segid_, str2 element_, str2 charge_)
       :
@@ -300,6 +306,7 @@ namespace hierarchy {
 #ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
         siguij(siguij_),
 #endif
+        fp(fp_), fdp(fdp_),
         i_seq(0), tmp(0), have_sentinel(false),
         hetero(hetero_), serial(serial_), name(name_),
         segid(segid_), element(element_), charge(charge_)
@@ -441,6 +448,7 @@ namespace hierarchy {
         double b=0, double sigb=0,
         sym_mat3 const& uij=sym_mat3(-1,-1,-1,-1,-1,-1),
         sym_mat3 const& siguij=sym_mat3(-1,-1,-1,-1,-1,-1),
+        double fp=0, double fdp=0,
         bool hetero=false, const char* serial="", const char* name="",
         const char* segid="", const char* element="", const char* charge="");
 
@@ -451,6 +459,7 @@ namespace hierarchy {
         double b=0, double sigb=0,
         sym_mat3 const& uij=sym_mat3(-1,-1,-1,-1,-1,-1),
         sym_mat3 const& siguij=sym_mat3(-1,-1,-1,-1,-1,-1),
+        double fp=0, double fdp=0,
         bool hetero=false, const char* serial="", const char* name="",
         const char* segid="", const char* element="", const char* charge="")
       :
@@ -460,6 +469,7 @@ namespace hierarchy {
           b, sigb,
           uij,
           siguij,
+          fp, fdp,
           hetero, serial, name,
           segid, element, charge))
       {}
@@ -471,6 +481,7 @@ namespace hierarchy {
         double b, double sigb,
         sym_mat3 const& uij,
         sym_mat3 const& siguij,
+        double fp, double fdp,
         bool hetero, str5 serial, str4 name,
         str4 segid, str2 element, str2 charge)
       :
@@ -480,6 +491,7 @@ namespace hierarchy {
           b, sigb,
           uij,
           siguij,
+          fp, fdp,
           hetero, serial, name,
           segid, element, charge))
       {}
@@ -551,6 +563,20 @@ namespace hierarchy {
 #ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
         data->siguij = new_siguij;
 #endif
+        return *this;
+      }
+
+      atom&
+      set_fp(double new_fp)
+      {
+        data->fp = new_fp;
+        return *this;
+      }
+
+      atom&
+      set_fdp(double new_fdp)
+      {
+        data->fdp = new_fdp;
         return *this;
       }
 
@@ -1828,6 +1854,7 @@ namespace hierarchy {
     double b, double sigb,
     sym_mat3 const& uij,
     sym_mat3 const& siguij,
+    double fp, double fdp,
     bool hetero, const char* serial, const char* name,
     const char* segid, const char* element, const char* charge)
   :
@@ -1838,6 +1865,7 @@ namespace hierarchy {
       b, sigb,
       uij,
       siguij,
+      fp, fdp,
       hetero, serial, name,
       segid, element, charge))
   {}
