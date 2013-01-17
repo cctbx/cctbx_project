@@ -124,8 +124,9 @@ Command-line options:
   else :
     files = []
     for id in ids :
-      for data_type_ in ["pdb", "fasta", "xray"] :
-        files.append(get_pdb(id, data_type_, mirror, log))
+      for data_type_, data_format in [("pdb", "pdb"), ("fasta", "pdb"),
+                                      ("xray", "pdb"), ("pdb", "cif")] :
+        files.append(get_pdb(id, data_type_, mirror, log, format=data_format))
       if (convert_to_mtz) :
         misc_args = ["--merge", "--map_to_asu", "--extend_flags"]
         easy_run.call("phenix.cif_as_mtz %s-sf.cif --symmetry=%s.pdb %s" %
