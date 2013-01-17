@@ -4370,7 +4370,9 @@ class build_all_chain_proxies(object):
           site=site_frac,
           u=u,
           occupancy=atom.occ,
-          scattering_type=scattering_type),
+          scattering_type=scattering_type,
+          fp=atom.fp,
+          fdp=atom.fdp),
         site_symmetry_ops=site_symmetry_ops)
     return result
 

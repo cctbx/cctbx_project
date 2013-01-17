@@ -105,6 +105,8 @@ namespace iotbx { namespace pdb {
               }
               scatterer.set_use_u_aniso_only();
             }
+            scatterer.fp = atom->data->fp;
+            scatterer.fdp = atom->data->fdp;
             scatterer.occupancy = atom->data->occ;
             if (   atom_names_scattering_type_const_.find(
                      atom->data->name.elems)
