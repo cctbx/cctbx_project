@@ -45,6 +45,9 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     assert [atom_labels, alt_id, auth_asym_id, comp_id, entity_id, seq_id].count(None) == 0
     assert type_symbol is not None
 
+    atom_site_fp = cif_block.get('_atom_site.phenix_scat_dispersion_real')
+    atom_site_fdp = cif_block.get('_atom_site.phenix_scat_dispersion_imag')
+
     pdb_ins_code = cif_block.get("_atom_site.pdbx_PDB_ins_code") # insertion code
     model_ids = cif_block.get("_atom_site.pdbx_PDB_model_num")
     atom_site_id = cif_block.get("_atom_site.id")
@@ -167,6 +170,14 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
                       charge = int(charge)
                       if charge == 0: sign = ""
                       atom.set_charge("%i%s" %(charge, sign))
+                  if atom_site_fp is not None:
+                    fp = atom_site_fp[i_atom]
+                    if fp not in ("?", "."):
+                      atom.set_fp(new_fp=float(fp))
+                  if atom_site_fdp is not None:
+                    fdp = atom_site_fdp[i_atom]
+                    if fdp not in ("?", "."):
+                      atom.set_fdp(new_fdp=float(fdp))
                   if anisotrop_id is not None and adps is not None:
                     u_ij_index = flex.first_index(anisotrop_id, atom.serial)
                     if u_ij_index is not None:
@@ -597,6 +608,8 @@ class pdb_hierarchy_as_cif_block(iotbx.cif.crystal_symmetry_as_cif_block):
       '_atom_site.B_iso_or_equiv',
       '_atom_site.type_symbol',
       '_atom_site.pdbx_formal_charge',
+      '_atom_site.phenix_scat_dispersion_real',
+      '_atom_site.phenix_scat_dispersion_imag',
       '_atom_site.label_asym_id',
       '_atom_site.label_entity_id',
       '_atom_site.label_seq_id',
@@ -649,6 +662,13 @@ class pdb_hierarchy_as_cif_block(iotbx.cif.crystal_symmetry_as_cif_block):
               x, y, z = [coord_fmt_str %i for i in atom.xyz]
               atom_charge = atom.charge_tidy().strip()
               if atom_charge == "": atom_charge = "?"
+              fp, fdp = atom.fp, atom.fdp
+              if fp == 0 and fdp == 0:
+                fp = '.'
+                fdp = '.'
+              else:
+                fp = "%.4f" %fp
+                fdp = "%.4f" %fdp
               atom_site_loop['_atom_site.group_PDB'].append(group_pdb)
               atom_site_loop['_atom_site.id'].append(atom.serial.strip())
               atom_site_loop['_atom_site.label_atom_id'].append(atom.name.strip())
@@ -664,6 +684,8 @@ class pdb_hierarchy_as_cif_block(iotbx.cif.crystal_symmetry_as_cif_block):
               atom_site_loop['_atom_site.B_iso_or_equiv'].append(b_iso_fmt_str % atom.b)
               atom_site_loop['_atom_site.type_symbol'].append(atom.element.strip())
               atom_site_loop['_atom_site.pdbx_formal_charge'].append(atom_charge)
+              atom_site_loop['_atom_site.phenix_scat_dispersion_real'].append(fp)
+              atom_site_loop['_atom_site.phenix_scat_dispersion_imag'].append(fdp)
               atom_site_loop['_atom_site.label_asym_id'].append(label_asym_id)
               atom_site_loop['_atom_site.label_entity_id'].append(entity_id)
               atom_site_loop['_atom_site.label_seq_id'].append(str(label_seq_id))
@@ -687,6 +709,10 @@ class pdb_hierarchy_as_cif_block(iotbx.cif.crystal_symmetry_as_cif_block):
                 aniso_loop['_atom_site_anisotrop.U[1][3]'].append(uij[4])
                 aniso_loop['_atom_site_anisotrop.U[2][3]'].append(uij[5])
 
+    for key in ('_atom_site.phenix_scat_dispersion_real',
+                '_atom_site.phenix_scat_dispersion_imag'):
+      if atom_site_loop[key].all_eq('.'):
+        del atom_site_loop[key]
     self.cif_block.add_loop(atom_site_loop)
     if aniso_loop.size() > 0:
       self.cif_block.add_loop(aniso_loop)
