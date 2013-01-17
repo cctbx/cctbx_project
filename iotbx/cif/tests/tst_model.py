@@ -313,6 +313,17 @@ loop_
     .       ?  .
 
 """)
+  loop = model.loop(data={"_a_1": ('string with spaces','nospaces'),
+                          "_a_2": ('a', 'b')})
+  s = StringIO()
+  loop.show(out=s, align_columns=True)
+  assert not show_diff(s.getvalue(), """\
+loop_
+  _a_1
+  _a_2
+  'string with spaces'  a
+  nospaces              b
+""")
 
 if __name__ == '__main__':
   exercise_cif_model()
