@@ -159,6 +159,8 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
                   atom.set_serial(atom_site_id[i_atom])
                   # some code relies on an empty segid being 4 spaces
                   atom.set_segid("    ")
+                  if group_PDB is not None and group_PDB[i_atom] == "HETATM":
+                    atom.hetero = True
                   if formal_charge is not None:
                     charge = formal_charge[i_atom]
                     if charge not in ("?", "."):
@@ -654,7 +656,7 @@ class pdb_hierarchy_as_cif_block(iotbx.cif.crystal_symmetry_as_cif_block):
           for atom_group in residue_group.atom_groups():
             alt_id = atom_group.altloc
             if alt_id == '': alt_id = '.'
-            comp_id = atom_group.resname
+            comp_id = atom_group.resname.strip()
             entity_id = '?' # XXX how do we determine this?
             for atom in atom_group.atoms():
               group_pdb = "ATOM"
