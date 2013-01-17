@@ -36,6 +36,8 @@ namespace {
 #ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
       IOTBX_LOC(siguij)
 #endif
+      IOTBX_LOC(fp)
+      IOTBX_LOC(fdp)
       IOTBX_LOC(i_seq)
       IOTBX_LOC(tmp)
       IOTBX_LOC(have_sentinel)
@@ -123,6 +125,24 @@ namespace {
       self.data->siguij = new_siguij;
     }
 #endif
+
+    static double
+    get_fp(w_t const& self) { return self.data->fp; }
+
+    static void
+    set_fp(w_t const& self, double new_fp)
+    {
+      self.data->fp = new_fp;
+    }
+
+    static double
+    get_fdp(w_t const& self) { return self.data->fdp; }
+
+    static void
+    set_fdp(w_t const& self, double new_fdp)
+    {
+      self.data->fdp = new_fdp;
+    }
 
     static unsigned
     get_i_seq(w_t const& self) { return self.data->i_seq; }
@@ -238,6 +258,8 @@ namespace {
 #ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
         .def("set_siguij", set_siguij, (arg("new_siguij")), return_self<>())
 #endif
+        .def("set_fp", set_fp, (arg("new_fp")), return_self<>())
+        .def("set_fdp", set_fdp, (arg("new_fdp")), return_self<>())
         .def("set_hetero", set_hetero, (arg("new_hetero")), return_self<>())
         .def("set_serial", set_serial, (arg("new_serial")), return_self<>())
         .def("set_name", set_name, (arg("new_name")), return_self<>())
@@ -262,6 +284,10 @@ namespace {
         .add_property("siguij",
           make_function(get_siguij), make_function(set_siguij))
 #endif
+        .add_property("fp",
+          make_function(get_fp), make_function(set_fp))
+        .add_property("fdp",
+          make_function(get_fdp), make_function(set_fdp))
         .add_property("i_seq", make_function(get_i_seq))
         .add_property("tmp",
           make_function(get_tmp), make_function(set_tmp))

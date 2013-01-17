@@ -69,6 +69,12 @@ def exercise_atom():
     assert a.siguij_is_defined()
   a.siguij_erase()
   assert not a.siguij_is_defined()
+  assert a.fp == 0
+  a.fp = 0.1
+  assert a.fp == 0.1
+  assert a.fdp == 0
+  a.fdp = 0.2
+  assert a.fdp == 0.2
   assert not a.hetero
   a.hetero = True
   assert a.hetero
@@ -93,6 +99,8 @@ def exercise_atom():
     .set_b(new_b=4.8)
     .set_sigb(new_sigb=0.7)
     .set_uij(new_uij=(1.3,2.1,3.2,4.3,2.7,9.3))
+    .set_fp(new_fp=0.3)
+    .set_fdp(new_fdp=0.4)
     .set_hetero(new_hetero=True))
   if (pdb.hierarchy.atom.has_siguij()):
     assert a.set_siguij(new_siguij=(.1,.2,.3,.6,.1,.9)) is a
@@ -111,6 +119,8 @@ def exercise_atom():
   if (pdb.hierarchy.atom.has_siguij()):
     assert approx_equal(a.siguij, (.1,.2,.3,.6,.1,.9))
   assert a.hetero
+  assert approx_equal(a.fp, 0.3)
+  assert approx_equal(a.fdp, 0.4)
   assert a.tmp == 0
   try: a.set_name(new_name="12345")
   except (ValueError, RuntimeError), e:
@@ -136,6 +146,8 @@ def exercise_atom():
   if (pdb.hierarchy.atom.has_siguij()):
     assert approx_equal(ac.siguij, (.1,.2,.3,.6,.1,.9))
   assert ac.hetero
+  assert approx_equal(a.fp, 0.3)
+  assert approx_equal(a.fdp, 0.4)
   #
   for e in ["H", "H ", " H", "D", "D ", " D"]:
     a.element = e
@@ -276,6 +288,8 @@ def exercise_atom():
   if (pdb.hierarchy.atom.has_siguij()):
     assert ac.siguij == a.siguij
   assert ac.hetero == a.hetero
+  assert ac.fp == a.fp
+  assert ac.fdp == a.fdp
   assert ac.tmp == 0
   #
   assert a.pdb_label_columns() == "               "
@@ -4476,6 +4490,8 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
   if (pdb.hierarchy.atom.has_siguij()):
     siguij = atoms.extract_siguij()
     assert approx_equal(siguij, expected_siguij)
+  assert atoms.extract_fp().all_eq(0)
+  assert atoms.extract_fdp().all_eq(0)
   assert list(atoms.extract_hetero()) == [5,6]
   assert list(atoms.extract_element()) == [" N"," C"," C","  ","X ","CA","  "]
   assert atoms.extract_element(strip=False).all_eq(atoms.extract_element())
@@ -4537,6 +4553,12 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
       (-1,-1,-1,-1,-1,-1),
       (-1,-1,-1,-1,-1,-1),
       (-1,-1,-1,-1,-1,-1)])
+  new_fp = flex.double([0, 0.1, 0.2, 0, 0, 0, 0])
+  new_fdp = flex.double([0, 0.2, 0.3, 0.1, 0, 0, 0])
+  assert atoms.set_fp(new_fp=new_fp) is atoms
+  assert atoms.set_fdp(new_fdp=new_fdp) is atoms
+  assert approx_equal(atoms.extract_fp(), new_fp)
+  assert approx_equal(atoms.extract_fdp(), new_fdp)
   #
   h = pdb_inp.construct_hierarchy()
   for i in xrange(2):
@@ -5440,6 +5462,7 @@ ATOM     10  O
       "B": [4, 9]}
 
 def exercise_root_pickling():
+  # XXX fp, fdp?
   pdb_inp = pdb.input(source_info=None, lines="""\
 MODEL        1
 ATOM      1  N   MET A   1       6.215  22.789  24.067  1.00  0.00           N
@@ -5471,6 +5494,7 @@ ENDMDL
     assert not show_diff(l.as_pdb_string(), hierarchy.as_pdb_string())
 
 def exercise_residue_pickling():
+  # XXX fp, fdp?
   pdb_inp = pdb.input(source_info=None, lines="""\
 ATOM      1  N   GLY A   1      -9.009   4.612   6.102  1.00 16.77           N
 ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C

@@ -104,6 +104,8 @@ namespace {
 #ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
       .def("extract_siguij", extract_siguij)
 #endif
+      .def("extract_fp", extract_fp)
+      .def("extract_fdp", extract_fdp)
       .def("extract_hetero", extract_hetero)
       .def("extract_element", extract_element, (arg("strip")=false))
       .def("extract_i_seq", extract_i_seq)
@@ -118,6 +120,8 @@ namespace {
 #ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
       .def("set_siguij", set_siguij, (arg("new_siguij")), return_self<>())
 #endif
+      .def("set_fp", set_fp, (arg("new_fp")), return_self<>())
+      .def("set_fdp", set_fdp, (arg("new_fdp")), return_self<>())
       .def("reset_serial", reset_serial, (arg("first_value")=1))
       .def("set_chemical_element_simple_if_necessary",
         set_chemical_element_simple_if_necessary, (
