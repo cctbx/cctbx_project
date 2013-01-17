@@ -164,6 +164,11 @@ class crystal_symmetry_as_cif_block(object):
       self.cif_block[sg_prefix+'name_H-M_alt'] = sg_type.lookup_symbol()
       self.cif_block[sg_prefix+'name_Hall'] = sg_type.hall_symbol()
 
+      sg_prefix = '_symmetry%s' %self.separator
+      self.cif_block[sg_prefix+'space_group_name_H-M'] = sg_type.lookup_symbol()
+      self.cif_block[sg_prefix+'space_group_name_Hall'] = sg_type.hall_symbol()
+      self.cif_block[sg_prefix+'Int_Tables_number'] = sg_type.number()
+
     if crystal_symmetry.unit_cell() is not None:
       uc = crystal_symmetry.unit_cell()
       params = list(uc.parameters())
