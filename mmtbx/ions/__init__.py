@@ -413,7 +413,8 @@ class Manager (object):
   def principal_axes_of_inertia (self, i_seq) :
     """
     Extracts the map grid points around a site, and calculates the axes of
-    inertia (using the density values as weights).
+    inertia (using the density values as weights). This is used to calculate
+    the sphericity of the blob of density around an atom.
     """
     return self._principal_axes_of_inertia[i_seq]
 
