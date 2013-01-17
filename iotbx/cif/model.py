@@ -520,6 +520,8 @@ class loop(DictMixin):
     elif align_columns:
       fmt_str = []
       for i, (k, v) in enumerate(self.iteritems()):
+        for i_v in range(v.size()):
+          v[i_v] = format_value(v[i_v])
         width = v.max_element_length()
         # See if column contains only number, '.' or '?'
         # right-align numerical columns, left-align everything else
@@ -532,7 +534,7 @@ class loop(DictMixin):
       fmt_str = indent + "  ".join(fmt_str)
       for i in range(self.size()):
         print >> out, (fmt_str %
-                       tuple([format_value(values[j][i])
+                       tuple([values[j][i]
                               for j in range(len(values))])).rstrip()
     else:
       for i in range(self.size()):
