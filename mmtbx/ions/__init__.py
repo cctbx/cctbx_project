@@ -144,6 +144,7 @@ WATER_RES_NAMES = ["HOH", "WAT"]
 DEFAULT_IONS = ["MG", "CA", "ZN", "CL"]
 HALIDES = ["F", "CL", "BR", "I"]
 TRANSITION_METALS = ["MN","FE","CO","CU","NI","ZN"]
+NUC_PHOSPHATE_BINDING = ["MG", "CA", "MN"]
 
 # Signals a built water might be a ion:
 # - Abnormal b-factors from nearby chain
@@ -856,12 +857,16 @@ class Manager (object):
           continue
         else :
           raise Sorry("Element '%s' not supported!" % symbol)
-      if (nuc_phosphate_site) and (not symbol in ["MG", "CA", "MN"]) :
+
+      if (nuc_phosphate_site) and (not symbol in NUC_PHOSPHATE_BINDING) :
         continue
+
       atom_number = sasaki.table(symbol.upper()).atomic_number()
-      if (((looks_like_water) and (atom_number < 12)) or
-          ((not looks_like_water) and (atom_number >= 12))) :
-        filtered_candidates.append(elem)
+      if (atom_number > self.estimated_weight + 10 or
+          atom_number < self.estimated_weight - 10):
+        continue
+
+      filtered_candidates.append(elem)
 
     # if len(filtered_candidates) == 0 and not halide_candidates:
     #   return None
