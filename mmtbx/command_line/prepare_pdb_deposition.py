@@ -88,6 +88,8 @@ def run(args, out=None):
 
   cif_model[block_name].update(cif_block)
   cif_model[block_name].sort() # XXX we need to sort the data items more intelligently
+  print >> out, "Writing updated CIF file:"
+  print >> out, "  " + params.output.cif_file
   with open(params.output.cif_file, "wb") as f:
     print >> f, cif_model
   return
