@@ -1102,11 +1102,13 @@ class torsion_ncs(object):
     sites_cart_backup = sites_cart_moving.deep_copy()
     for model in pdb_hierarchy.models():
       for chain in model.chains():
+        if not chain.is_protein():
+          continue
         for residue_group in chain.residue_groups():
           all_dict = \
             self.r.construct_complete_sidechain(residue_group)
           for atom_group in residue_group.atom_groups():
-            if atom_group.resname in ["PRO", "GLY", "HOH"]:
+            if atom_group.resname in ["PRO", "GLY"]:
               continue
             key = '%s%5s %s' % (
                       chain.id, residue_group.resid(),
@@ -1158,10 +1160,12 @@ class torsion_ncs(object):
     sites_cart_moving = xray_structure.sites_cart()
     for model in pdb_hierarchy.models():
       for chain in model.chains():
+        if not chain.is_protein(): #only works with protein sidechains
+          continue
         for residue_group in chain.residue_groups():
           all_dict = self.r.construct_complete_sidechain(residue_group)
           for atom_group in residue_group.atom_groups():
-            if atom_group.resname in ["PRO", "GLY", "HOH"]:
+            if atom_group.resname in ["PRO", "GLY"]:
               continue
             key = atom_group.atoms()[0].pdb_label_columns()[4:]+\
                   atom_group.atoms()[0].segid
@@ -1252,10 +1256,12 @@ class torsion_ncs(object):
 
     for model in pdb_hierarchy.models():
       for chain in model.chains():
+        if not chain.is_protein():
+          continue
         for residue_group in chain.residue_groups():
           all_dict = self.r.construct_complete_sidechain(residue_group)
           for atom_group in residue_group.atom_groups():
-            if atom_group.resname in ["PRO", "GLY", "HOH"]:
+            if atom_group.resname in ["PRO", "GLY"]:
               continue
             key = '%s%5s %s' % (
                       chain.id, residue_group.resid(),
