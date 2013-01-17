@@ -414,7 +414,7 @@ class Manager (object):
     """
     Extracts the map grid points around a site, and calculates the axes of
     inertia (using the density values as weights). This is used to calculate
-    the sphericity of the blob of density around an atom.
+    the sphericity of the blob of density around a site.
     """
     return self._principal_axes_of_inertia[i_seq]
 
@@ -444,6 +444,10 @@ class Manager (object):
       anom = value_anom)
 
   def guess_molecular_weight (self, i_seq) :
+    """
+    Guesses the molecular weight of a site by scaling the signal from
+    the mFo map by the average signal from carbon atoms.
+    """
     map_values = self._map_values.get("mFo", None)
     if (map_values is None) : return None
     height = map_values[i_seq]
