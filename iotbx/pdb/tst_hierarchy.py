@@ -5963,6 +5963,23 @@ ANISOU    6  O   HOH     1      788    626    677   -344    621   -232       O
   try: hierarchy.adopt_xray_structure(xray_structure = xrs_new3)
   except RuntimeError, e: pass
   assert str(e) == "Incompatible size of hierarchy and scatterers array."
+  xrs_new4 = xrs.deep_copy_scatterers()
+  xrs_new4.set_inelastic_form_factors(photon=1.4, table="sasaki")
+  for atom in hierarchy.atoms():
+    assert atom.fp == 0
+    assert atom.fdp == 0
+  hierarchy.adopt_xray_structure(xray_structure=xrs_new4)
+  expected_fp = [0.0389, 0.0241, 0.0139, 0.0139, 0.0389, 0.0389, 0.0389]
+  expected_fdp = [0.0264, 0.0147, 0.0073, 0.0073, 0.0264, 0.0264, 0.0264]
+  assert approx_equal([atom.fp for atom in hierarchy.atoms()], expected_fp)
+  assert approx_equal([atom.fdp for atom in hierarchy.atoms()], expected_fdp)
+  #xrs_new5 = hierarchy.extract_xray_structure(
+    #crystal_symmetry=xrs.crystal_symmetry())
+  #assert xrs_new5 is not xrs_new4
+  #assert xrs_new5.scatterers() is not xrs_new4.scatterers()
+  #assert approx_equal([sc.fp for sc in xrs_new5.scatterers()], expected_fp)
+  #assert approx_equal([sc.fdp for sc in xrs_new5.scatterers()], expected_fdp)
+
 
 def exercise_substitute_atom_group () :
   hierarchy1 = pdb.input(source_info=None, lines="""\
