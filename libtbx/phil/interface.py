@@ -507,10 +507,11 @@ class index (object) :
   #---------------------------------------------------------------------
   # DEBUG/TEST METHODS
   def check_scopes (self, phil_names) :
+    missing_scopes = []
     for phil_name in phil_names :
       if self.get_scope_by_name(phil_name) is None :
-        raise AttributeError("Scope %s does not exist!" % phil_name)
-    return True
+        missing_scopes.append(phil_name)
+    return missing_scopes
 
   def log (self, message) :
     self._log.write(message + "\n")
