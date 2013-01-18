@@ -1,42 +1,71 @@
-from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.geometry_minimization
 
-import iotbx.phil
-import sys, os
-import mmtbx.utils
+from __future__ import division
 import mmtbx.refinement.geometry_minimization
-from libtbx.utils import user_plus_sys_time
 from mmtbx import monomer_library
+import mmtbx.utils
 from iotbx.pdb import combine_unique_pdb_files
+import iotbx.phil
 from cctbx.array_family import flex
+from libtbx.utils import user_plus_sys_time
+from libtbx import runtime_utils
+import os
+import sys
 
 master_params_str = """\
+file_name = None
+  .type = path
+  .short_caption = PDB file
+  .style = file_type:pdb bold input_file
+restraints = None
+  .type = path
+  .multiple = True
+  .short_caption = Restraints
+  .style = file_type:cif bold input_file
 pdb_interpretation
   .help = PDB file interpretation parameters
+  .short_caption = PDB interpretation
   .expert_level=1
 {
   stop_for_unknowns = True
     .type = bool
+    .short_caption = Stop for unknown residues
+    .style = noauto
   include scope mmtbx.monomer_library.pdb_interpretation.master_params
 }
 selection = all
   .type = str
   .help = Atom selection string: selected atoms are subject to move
+  .short_caption = Atom selection
+  .input_size = 400
 use_neutron_distances = False
   .type = bool
   .help = Use neutron X-H distances (which are longer than X-ray ones)
+  .short_caption = Use neutron X-H distances
 output_file_name_prefix = None
   .type = str
+  .input_size = 400
+  .style = bold
+directory = None
+  .type = path
+  .short_caption = Output directory
+  .style = output_dir
+include scope libtbx.phil.interface.tracking_params
 minimization
   .help = Geometry minimization parameters
+  .short_caption = Minimization parameters
   .expert_level=1
 {
   max_iterations = 500
     .type = int
     .help = Maximun number of minimization iterations
+    .short_caption = Max. iterations
+    .style = noauto
   macro_cycles = 5
     .type = int
     .help = Number of minimization macro-cycles
+    .short_caption = Macro cycles
+    .style = noauto
   rmsd_bonds_termination_cutoff = 0
     .type = float
     .help = stop after reaching specified cutoff value
@@ -45,19 +74,27 @@ minimization
     .help = stop after reaching specified cutoff value
   move
     .help = Define what to include into refinement target
+    .short_caption = Geometry terms
+    .style = box auto_align columns:3 noauto
   {
   bond = True
     .type = bool
+    .short_caption = Bond lengths
   nonbonded = True
     .type = bool
+    .short_caption = Nonbonded distances
   angle = True
     .type = bool
+    .short_caption = Bond angle
   dihedral = True
     .type = bool
+    .short_caption = Dihedral angle
   chirality = True
     .type = bool
+    .short_caption = Chirality
   planarity = True
     .type = bool
+    .short_caption = Planarity
   }
 }
 """
@@ -83,24 +120,35 @@ Usage examples:
   print >> log, "-"*79
 
 def process_input_files(inputs, params, log):
+  pdb_file_names = []
+  pdb_file_names = list(inputs.pdb_file_names)
+  if (params.file_name is not None) :
+    pdb_file_names.append(params.file_name)
   cs = inputs.crystal_symmetry
   if(cs is None):
-    pdb_combined = combine_unique_pdb_files(file_names = inputs.pdb_file_names)
+    import iotbx.pdb
+    pdb_combined = combine_unique_pdb_files(file_names = pdb_file_names)
     cs = iotbx.pdb.input(source_info = None, lines = flex.std_string(
       pdb_combined.raw_records)).xray_structure_simple().\
         cubic_unit_cell_around_centered_scatterers(
         buffer_size = 10).crystal_symmetry()
+  cif_objects = list(inputs.cif_objects)
+  if (len(params.restraints) > 0) :
+    import iotbx.cif
+    for file_name in params.restraints :
+      cif_object = iotbx.cif.reader(file_path=file_name, strict=False).model()
+      cif_objects.append(cif_object)
   processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
     crystal_symmetry          = cs,
     pdb_interpretation_params = params.pdb_interpretation,
     stop_for_unknowns         = params.pdb_interpretation.stop_for_unknowns,
     log                       = log,
-    cif_objects               = inputs.cif_objects,
+    cif_objects               = cif_objects,
     use_neutron_distances     = params.use_neutron_distances,
     mon_lib_srv               = monomer_library.server.server(),
     ener_lib                  = monomer_library.server.ener_lib())
   processed_pdb_file, junk = processed_pdb_files_srv.\
-    process_pdb_files(pdb_file_names = inputs.pdb_file_names) # XXX remove junk
+    process_pdb_files(pdb_file_names = pdb_file_names) # XXX remove junk
   return processed_pdb_file
 
 def get_geometry_restraints_manager(processed_pdb_file, xray_structure):
@@ -150,6 +198,8 @@ class run(object):
     self.sites_cart         = None
     self.time_strings       = []
     self.total_time         = 0
+    self.output_file_name   = None
+    self.pdb_file_names     = []
     #
     self.caller(func = self.initialize,     prefix="Initialization, inputs")
     self.caller(func = self.process_inputs, prefix="Processing inputs")
@@ -195,6 +245,9 @@ class run(object):
 
   def process_inputs(self, prefix):
     broadcast(m=prefix, log = self.log)
+    self.pdb_file_names = list(self.inputs.pdb_file_names)
+    if (self.params.file_name is not None) :
+      self.pdb_file_names.append(self.params.file_name)
     self.processed_pdb_file = process_input_files(inputs=self.inputs,
       params=self.params, log=self.log)
     self.xray_structure = self.processed_pdb_file.xray_structure()
@@ -226,12 +279,28 @@ class run(object):
     self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
     ofn = self.params.output_file_name_prefix
     if(ofn is None):
-      pfn = os.path.basename(self.inputs.pdb_file_names[0])
+      pfn = os.path.basename(self.pdb_file_names[0])
       ind = max(0,pfn.rfind("."))
       ofn = pfn+"_minimized.pdb" if ind==0 else pfn[:ind]+"_minimized.pdb"
     else: ofn = self.params.output_file_name_prefix+".pdb"
-    print >> log, "  output file name:", ofn
+    print >> self.log, "  output file name:", ofn
     self.pdb_hierarchy.write_pdb_file(file_name = ofn)
+    self.output_file_name = os.path.abspath(ofn)
+
+class launcher (runtime_utils.target_with_save_result) :
+  def run (self) :
+    os.mkdir(self.output_dir)
+    os.chdir(self.output_dir)
+    return run(args=self.args, log=sys.stdout).output_file_name
+
+def validate_params (params) :
+  return True
+
+def finish_job (result) :
+  output_files = []
+  if (result is not None) :
+    output_files.append((result, "Minimized model"))
+  return output_files, []
 
 if(__name__ == "__main__"):
   timer = user_plus_sys_time()
