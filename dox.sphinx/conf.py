@@ -12,34 +12,24 @@ from __future__ import division
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-from __future__ import absolute_import
-import sys, os, re, time, fnmatch
+#from __future__ import absolute_import
+import sys, os, re
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #sys.path.insert(0, os.path.abspath('.'))
-
-matches = set()
-for root, dirnames, filenames in os.walk('./../../sources'):
-  for filename in fnmatch.filter(filenames, '__init__.py'):
-    module = os.path.join(root, filename)
-    if "FROM_BUNDLE" in module: continue
-    matches.add(os.path.split(os.path.dirname(module))[0])
-
-#sys.path.insert(0, os.path.abspath('./../../sources'))
-#sys.path.insert(0, os.path.abspath('./../../sources/cctbx_project'))
-#sys.path.insert(0, os.path.abspath('./../../sources/cctbx_project/boost_adaptbx'))
-for module in matches:
-  sys.path.insert(0, os.path.abspath(module))
-
-sys.path.insert(0, os.path.abspath('./..'))
 sys.path.insert(0, os.path.abspath('./../bin'))
-print("*"*40+"\n\n\n____________path: "+str(sys.path)+"\n\n\n"+"*"*40)
-time.sleep(10)
+sys.path.insert(0, os.path.abspath('./../lib'))
+sys.path.insert(0, os.path.abspath('./../../sources/cctbx_project/libtbx/pythonpath'))
+sys.path.insert(0, os.path.abspath('./../../sources/cctbx_project/boost_adaptbx'))
+sys.path.insert(0, os.path.abspath('./../../sources/cctbx_project/clipper_adaptbx'))
+sys.path.insert(0, os.path.abspath('./../../sources'))
+sys.path.insert(0, os.path.abspath('./../../sources/cctbx_project'))
+
 
 ## Functions to prettify boost.Python autodoc output
-## Taken from minieigen (https://launchpad.net/minieigen/) // LGPLv3
+## based on code from minieigen (https://launchpad.net/minieigen/) // LGPLv3
 ## http://bazaar.launchpad.net/~eudoxos/minieigen/trunk/view/head:/doc/source/conf.py
 ##
 def isBoostFunc(what,obj):
@@ -51,8 +41,8 @@ def isBoostStaticMethod(what,obj):
         return what=='method' and obj.__repr__().startswith('<Boost.Python.function object at 0x')
 
 def fixDocstring(app,what,name,obj,options,lines):
-        #print("fixDocstring: {} {} {}".format(what,name,obj))
-        if isBoostFunc(what,obj) or isBoostMethod(what,obj) or isBoostStaticMethod(what,obj):
+        #if isBoostFunc(what,obj) or isBoostMethod(what,obj) or isBoostStaticMethod(what,obj):
+        if isBoostFunc(what,obj) or isBoostStaticMethod(what,obj):
                 l2=boostFuncSignature(name,obj)[1]
                 # we must replace lines one by one (in-place) :-|
                 # knowing that l2 is always shorter than lines (l2 is docstring with the signature stripped off)
@@ -60,7 +50,6 @@ def fixDocstring(app,what,name,obj,options,lines):
                         lines[i]=l2[i] if i<len(l2) else ''
 
 def fixSignature(app, what, name, obj, options, signature, return_annotation):
-        #print("fixSig: {} {} {}".format(what,name,obj))
         if what in ('attribute','class'): return signature,None
         elif isBoostFunc(what,obj):
                 sig=boostFuncSignature(name,obj)[0] or ' (wrapped c++ function)'
@@ -69,8 +58,12 @@ def fixSignature(app, what, name, obj, options, signature, return_annotation):
                 sig=boostFuncSignature(name,obj,removeSelf=True)[0]
                 return sig,None
         elif isBoostStaticMethod(what,obj):
-                sig=boostFuncSignature(name,obj,removeSelf=True)[0]+' [STATIC]'
+                sig=boostFuncSignature(name,obj,removeSelf=True)[0]
+                if sig is not None:
+                  sig +=' [STATIC]'
                 return sig,None
+        else:
+          return signature,None
 
 def boostFuncSignature(name,obj,removeSelf=False):
         """Scan docstring of obj, returning tuple of properly formatted boost python signature
@@ -80,9 +73,8 @@ def boostFuncSignature(name,obj,removeSelf=False):
 
         removeSelf will attempt to remove the first argument from the signature.
         """
-        #print("boostSig: {} {}".format(name,obj))
         doc=obj.__doc__
-        if doc==None: # not a boost method
+        if doc is None: # not a boost method
                 return None,None
         nname=name.split('.')[-1]
         docc=doc.split('\n')
@@ -102,7 +94,7 @@ def boostFuncSignature(name,obj,removeSelf=False):
         if allLinesHave4LeadingSpaces: strippedDoc=[l[4:] for l in strippedDoc]
         for i in range(len(strippedDoc)):
                 # fix signatures inside docstring (one function with multiple signatures)
-                strippedDoc[i],n=re.subn(r'([a-zA-Z_][a-zA-Z0-9_]*\() \(object\)arg1(, |)',r'\1',strippedDoc[i].replace('->','→'))
+                strippedDoc[i],n=re.subn(r'([a-zA-Z_][a-zA-Z0-9_]*\() \(object\)arg1(, |)',r'\1',strippedDoc[i].replace('->','=>'))
         # inspect dosctring after mangling
         sig=doc1.split('(',1)[1]
         if removeSelf:
@@ -120,10 +112,18 @@ def boostFuncSignature(name,obj,removeSelf=False):
                                 sig=')'
         return '('+sig,strippedDoc
 
+def skipUnwanted(app, what, name, obj, skip, options):
+        """Skip __dict__ and __abstractmethods__ entries"""
+        if what =="class" and name in ["__dict__", "__abstractmethods__"]:
+            return True
+        else:
+            return False
+
 def setup(app):
+        app.connect('autodoc-skip-member',skipUnwanted)
         app.connect('autodoc-process-docstring',fixDocstring)
         app.connect('autodoc-process-signature',fixSignature)
-## --- End of code copied from minieigen ---
+## --- End of code based on minieigen ---
 
 # -- General configuration -----------------------------------------------------
 
