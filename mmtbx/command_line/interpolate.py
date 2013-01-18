@@ -1,6 +1,6 @@
 from __future__ import division
 
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, null_out
 from cStringIO import StringIO
 import os
 import sys
@@ -111,6 +111,7 @@ def morph_models (params, out=None, debug=False) :
     while (j < len(static_coords)) :
       if (j != i_ref) :
         sites_moving = static_coords[j]
+        assert (len(sites_moving) == len(sites_fixed) > 0)
         if (params.morph.fitting.sieve_fit) :
           from scitbx.math import superpose
           lsq_fit = superpose.sieve_fit(
@@ -126,7 +127,7 @@ def morph_models (params, out=None, debug=False) :
         assert (sites_moving_new.size() == sites_moving.size())
         static_coords[j] = sites_moving_new
       j += 1
-  print "Ready to morph"
+  print >> out, "Ready to morph"
   morphs = []
   restraints_manager = processed_pdb_file.geometry_restraints_manager()
   for i in range(len(params.morph.pdb_file) - 1) :
@@ -136,7 +137,8 @@ def morph_models (params, out=None, debug=False) :
       start_coords = static_coords[i],
       end_coords = static_coords[i+1],
       params = params.morph.minimization,
-      nsteps = params.morph.frames[i])
+      nsteps = params.morph.frames[i],
+      out=out)
     morphs.append(morph)
   serial = 1
   if (params.morph.output_directory is not None) :
@@ -150,7 +152,8 @@ def morph_models (params, out=None, debug=False) :
       serial=serial,
       serial_format=params.morph.serial_format,
       pause=params.morph.pause,
-      pause_at_end=(i == (len(morphs) - 1)))
+      pause_at_end=(i == (len(morphs) - 1)),
+      log=out)
   f = open("%s.pml" % output_base, "w")
   for i in range(1, serial) :
     format_base = "%s_%s" % (output_base, params.morph.serial_format)
@@ -161,12 +164,14 @@ def morph_models (params, out=None, debug=False) :
 def homogenize_structures (pdb_hierarchies,
                            delete_heteroatoms=False,
                            delete_waters=True,
-                           debug=False) :
+                           debug=False,
+                           log=None) :
   """
   Eliminate atoms not present in all models.  This ignores residue names, so
   corresponding mainchain atoms should be preserved in most cases.
   """
   import iotbx.pdb
+  if (log is None) : log = null_out()
   chain_ids = []
   residues_by_chain = {}
   for hierarchy in pdb_hierarchies :
@@ -186,7 +191,7 @@ def homogenize_structures (pdb_hierarchies,
   n_atoms = len(common_set)
   if (n_atoms == 0) :
     raise RuntimeError("No atoms left in structure.")
-  print "%d atoms in common." % len(common_set)
+  print >> log, "%d atoms in common." % len(common_set)
   atom_lists = []
   for k, hierarchy in enumerate(pdb_hierarchies) :
     atom_set = set([])
@@ -198,7 +203,7 @@ def homogenize_structures (pdb_hierarchies,
       atom_info = (labels.chain_id, labels.resid(), atom.name, labels.altloc)
       if (not atom_info in common_set) :
         if (debug) :
-          print "deleting %s in model %d" % (atom.id_str(), k+1)
+          print >> log, "deleting %s in model %d" % (atom.id_str(), k+1)
         del atoms[i]
       else :
         i += 1
@@ -238,6 +243,7 @@ def fit_sites (sites_fixed, sites_moving, selection) : # TODO
   from scitbx.math import superpose
   sites_fixed_aln = sites_fixed.select(selection)
   sites_moving_aln = sites_moving.select(selection)
+  assert (len(sites_fixed_aln) == len(sites_moving_aln) > 0)
   lsq_fit_obj = superpose.least_squares_fit(
     reference_sites=sites_fixed_aln,
     other_sites=sites_moving_aln)
@@ -259,10 +265,10 @@ class morph (object) :
     f = open(file_name, "w")
     f.write(self.pdb_hierarchy.as_pdb_string())
     f.close()
-    print "  wrote %s" % os.path.basename(file_name)
 
   def write_pdb_files (self, output_base, serial, serial_format="%04d",
-      pause=0, pause_at_end=False) :
+      pause=0, pause_at_end=False, log=None) :
+    if (log is None) : log = null_out()
     file_format = "%s_%s.pdb" % (output_base, serial_format)
     k = serial
     if (pause != 0) :
@@ -270,17 +276,20 @@ class morph (object) :
         self.pdb_hierarchy.atoms().set_xyz(self._frames[0])
         file_name = file_format % k
         self._write_pdb(file_name)
+        print >> log, "  wrote %s" % os.path.basename(file_name)
         k += 1
     for sites in self._frames :
       self.pdb_hierarchy.atoms().set_xyz(sites)
       file_name = file_format % k
       self._write_pdb(file_name)
+      print >> log, "  wrote %s" % os.path.basename(file_name)
       k += 1
     if (pause_at_end) and (pause != 0) :
       for j in range(pause) :
         self.pdb_hierarchy.atoms().set_xyz(self._frames[-1])
         file_name = file_format % k
         self._write_pdb(file_name)
+        print >> log, "  wrote %s" % os.path.basename(file_name)
         k += 1
     return k
 
@@ -298,7 +307,7 @@ def adiabatic_mapping (pdb_hierarchy,
   starting coordinates.  Interpolating the dihedral restraint target angles
   may help remediate this problem.
   """
-  from mmtbx.command_line import geometry_minimization
+  from mmtbx.refinement import geometry_minimization
   from cctbx import geometry_restraints
   import scitbx.lbfgs
   if (start_coords.size() != end_coords.size()) :

@@ -1407,6 +1407,7 @@ mmtbx/regression/tst_cablam.py -text
 mmtbx/regression/tst_dssp.py -text
 mmtbx/regression/tst_examples.py -text
 mmtbx/regression/tst_find_peaks_holes.py -text
+mmtbx/regression/tst_interpolation.py -text
 mmtbx/regression/tst_ml_estimate.py -text
 mmtbx/regression/tst_msa.py -text
 mmtbx/regression/tst_prune_model.py -text
