@@ -113,16 +113,16 @@ def boostFuncSignature(name,obj,removeSelf=False):
         return '('+sig,strippedDoc
 
 def skipUnwanted(app, what, name, obj, skip, options):
-        """Skip __dict__ and __abstractmethods__ entries"""
-        if what =="class" and name in ["__dict__", "__abstractmethods__"]:
-            return True
-        else:
-            return False
+    """Skip __dict__, __doc__ and __abstractmethods__ entries"""
+    if what =="class" and name in ["__dict__", "__doc__", "__abstractmethods__"]:
+        return True
+    else:
+        return False
 
 def setup(app):
-        app.connect('autodoc-skip-member',skipUnwanted)
-        app.connect('autodoc-process-docstring',fixDocstring)
-        app.connect('autodoc-process-signature',fixSignature)
+    app.connect('autodoc-skip-member',skipUnwanted)
+    app.connect('autodoc-process-docstring',fixDocstring)
+    app.connect('autodoc-process-signature',fixSignature)
 ## --- End of code based on minieigen ---
 
 # -- General configuration -----------------------------------------------------
