@@ -88,7 +88,7 @@ def sieve_fit (sites_fixed,
   """
   Reference: Chothia & Lesk???
   """
-  assert (sites_fixed.size() == sites_moving.size())
+  assert (sites_fixed.size() == sites_moving.size() > 0)
   if (selection is None) :
     selection = flex.bool(sites_fixed.size(), True)
   # step 1: superpose using originally selected atoms
@@ -103,6 +103,8 @@ def sieve_fit (sites_fixed,
   deltas_sorted = flex.sorted(deltas)
   cutoff = deltas_sorted[int((1-frac_discard)*deltas.size())]
   selection = (deltas > cutoff)
+  if (selection.count(True) == 0) :
+    return lsq_fit_obj
   sites_fixed_aln = sites_fixed_aln.select(selection)
   sites_moving_aln = sites_moving_aln.select(selection)
   lsq_fit_obj = least_squares_fit(
