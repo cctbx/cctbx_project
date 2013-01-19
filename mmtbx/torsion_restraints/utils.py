@@ -755,3 +755,9 @@ def check_residues_are_connected (ca_1, ca_2, max_sep=4.0, min_sep=0.) :
   if (dist > max_sep) or (dist < min_sep) :
     return False
   return True
+
+def is_protein_chain(chain):
+  for conformer in chain.conformers():
+    if not conformer.is_protein():
+      return False
+  return True
