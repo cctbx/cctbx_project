@@ -110,10 +110,17 @@ def run_fullprof(pcrfile, verbose=0):
   sys.stderr.flush()
   if pcrfile.lower().endswith(".pcr"):
     pcrfile = os.path.splitext(pcrfile)[0]
-  try: os.unlink(pcrfile + ".out")
+  if not os.path.exists(pcrfile + ".pcr"):
+    raise(IOError(pcrfile + ".pcr not found!"))
+  pcrfile = os.path.abspath(pcrfile)
+  old_cwd = os.getcwd()
+  workdir = os.path.split(pcrfile)[0]
+  try:
+    os.chdir(workdir)
+    os.unlink(pcrfile + ".out")
   except KeyboardInterrupt: raise
   except Exception: pass
-  fullprof_out = easy_run.fully_buffered(command="fp2k " + pcrfile) \
+  fullprof_out = easy_run.fully_buffered(command="fp2k "+os.path.split(pcrfile)[1]) \
     .raise_if_errors() \
     .stdout_lines
   if (0 or verbose):
@@ -125,6 +132,7 @@ def run_fullprof(pcrfile, verbose=0):
   if (0 or verbose):
     for l in fullprof_out: print(l[:-1])
   sys.stdout.flush()
+  os.chdir(old_cwd)
 
 if __name__ == '__main__':
   # just a little test for debugging
