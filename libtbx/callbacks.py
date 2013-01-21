@@ -43,7 +43,7 @@ modules handle the instantiation of processes (by whatever method) and the
 interception of all output and status information, and its transmission to the
 parent process.  (Note that standard output and exceptions are propagated
 automatically, and do not require any additional callbacks.)  The GUI will
-define its own methods to handle the various types of information ceptions),
+define its own methods to handle the various types of information,
 which are called as necessary during runtime.  Ultimately the callbacks are
 sent to the GUI as a specific type of event, which can be handled by custom
 methods or ignored.  The module wxtbx.process_control provides an example of
