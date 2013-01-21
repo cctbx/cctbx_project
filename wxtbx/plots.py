@@ -1,6 +1,7 @@
 
 from __future__ import division
 from wxtbx import bitmaps
+import wxtbx
 import wx
 from libtbx import object_oriented_patterns as oop
 from libtbx.math_utils import ifloor
@@ -11,7 +12,7 @@ if (sys.version_info[2] >= 6) :
   import warnings
   warnings.simplefilter('ignore', DeprecationWarning)
 
-class plot_container (wx.BoxSizer) :
+class plot_container (wx.BoxSizer, wxtbx.MouseWheelTransparencyMixin) :
   def __init__ (self,
                 parent,
                 figure_size=(8,6),
@@ -76,6 +77,11 @@ class plot_container (wx.BoxSizer) :
         self.canvas.mpl_connect("button_release_event", self.OnClick)
       else :
         self.canvas.Bind(wx.EVT_CONTEXT_MENU, self.OnRightClick, self.canvas)
+      if (wx.Platform == '__WXMAC__') : # FIXME MSW okay, check GTK
+        self.canvas.Bind(wx.EVT_MOUSEWHEEL, self.OnMouseWheel, self.canvas)
+
+  def GetParent (self) :
+    return self.parent
 
   def setup_fonts (self) :
     import matplotlib.font_manager
