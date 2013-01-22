@@ -93,7 +93,7 @@ water
     .input_size = 80
     .help = Maximum water occupancy
     .short_caption = Max. expected occupancy
-  max_stddev_b_iso = 3
+  max_stddev_b_iso = 4
     .type = float
     .input_size = 80
     .short_caption = Max. standard deviations below mean B-iso
@@ -317,10 +317,13 @@ class Manager (object):
         fill_missing=True))
       self.carbon_fo_values = flex.double()
       for i_seq, site_frac in enumerate(sites_frac) :
-        if (self.pdb_atoms[i_seq].element.strip() == "C") :
+        resname = self.pdb_atoms[i_seq].fetch_labels().resname
+        element = self.pdb_atoms[i_seq].element.strip()
+        if (element == "C") or ((element == "O") and (resname == "HOH")) :
           map_value = fo_map.eight_point_interpolation(site_frac)
           self._map_values["mFo"][i_seq] = map_value
-          self.carbon_fo_values.append(map_value)
+          if (element == "C") :
+            self.carbon_fo_values.append(map_value)
       del fo_map
 
   def show_current_scattering_statistics (self, out=sys.stdout) :
@@ -758,15 +761,16 @@ class Manager (object):
     map_variance = self.get_map_sphere_variance(i_seq)
     #map_variance.show(prefix = "  ")
     good_map_falloff = False
-    if ((map_variance.mean < 1.0) and
+    print map_variance.mean, map_variance.standard_deviation
+    if ((map_variance.mean < 1.5) and
         (map_variance.standard_deviation < 0.4)) : # XXX very arbitrary
       good_map_falloff = True
 
     # XXX probably need something more sophisticated here too.  a CL which
     # coordinates a metal (e.g. in 4aqi) may not have a clear blob, but
     # will still be detectable by other criteria.
-    return (binds_backbone_amide or near_cation or near_arg_lys or
-            good_map_falloff)
+    return (binds_backbone_amide or near_cation or near_arg_lys)
+           # good_map_falloff)
 
   def check_water_properties (self, atom_props):
     """
@@ -862,8 +866,9 @@ class Manager (object):
         continue
 
       atom_number = sasaki.table(symbol.upper()).atomic_number()
-      if (atom_number > self.estimated_weight + 10 or
-          atom_number < self.estimated_weight - 10):
+      mass_ratio = atom_props.estimated_weight / atom_number
+      if ((mass_ratio < 0.5) or
+          (atom_number < atom_props.estimated_weight - 10)) :
         continue
 
       filtered_candidates.append(elem)
@@ -950,6 +955,16 @@ class Manager (object):
           else :
             print "n_good_res = %d, n_total_coord_atoms = %d" % (n_good_res,
               n_total_coord_atoms)
+        elif ((ion_params.element in ["K","CA"]) and
+              (not looks_like_water) and
+              (not auto_candidates) and
+              (atom_props.is_compatible_site(ion_params))) :
+          n_good_res = atom_props.number_of_favored_ligand_residues(ion_params,
+            distance=2.9, exclude_atoms=["O"])
+          n_bb_oxygen = atom_props.number_of_backbone_oxygens(distance=2.9)
+          n_total_coord_atoms = atom_props.number_of_atoms_within_radius(2.9)
+          if ((n_good_res + n_bb_oxygen) >= 2) and (n_total_coord_atoms >= 4) :
+            reasonable.append((ion_params, 0))
         # another special case: very heavy ions, which are probably not binding
         # physiologically
         elif ((atomic_number > 30) and (not looks_like_water) and
@@ -1258,7 +1273,8 @@ class AtomProperties (object):
             (not self.VERY_BAD_VALENCES in inaccuracies) and
             (anom_allowed))
 
-  def number_of_favored_ligand_residues (self, ion_params, distance=3.0) :
+  def number_of_favored_ligand_residues (self, ion_params, distance=3.0,
+      exclude_atoms=()) :
     """
     Counts the number of preferred residues coordinating the atom.  Used for
     approximate detection of transition-metal binding sites.
@@ -1266,6 +1282,8 @@ class AtomProperties (object):
     n_res = 0
     resids = []
     for other_atom, vector in self.nearby_atoms:
+      if (other_atom.name.strip() in exclude_atoms) :
+        continue
       if (abs(vector) < distance) :
         labels = other_atom.fetch_labels()
         other_resname = labels.resname.strip().upper()
@@ -1289,6 +1307,16 @@ class AtomProperties (object):
           n_atoms += 1
         atom_ids.append(other_id) # check for alt confs.
     return n_atoms
+
+  def number_of_backbone_oxygens (self, distance=3.0) :
+    n_bb_ox = 0
+    for other_atom, vector in self.nearby_atoms :
+      if (other_atom.name.strip() == "O") :
+        if (abs(vector) <= distance) :
+          parent = atom.parent()
+          if (not parent.resname in WATER_RES_NAMES) :
+            n_bb_ox += 1
+    return n_bb_ox
 
   def is_compatible_anomalous_scattering (self, ion_params) :
     # XXX somewhat dangerous - we really need f'' for this to work reliably
