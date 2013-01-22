@@ -894,10 +894,59 @@ class pdb_hierarchy_as_cif_block_with_sequence(pdb_hierarchy_as_cif_block):
           'no', #XXX
         ))
 
+      entity_poly_type = '?'
+      entity_nstd_chirality = 'n'
+      # we should probably determine the chirality more correctly by examining
+      # the chirality of the backbone chain rather than relying on the residue
+      # names to be correct
+      if chain.chain_type == mmtbx.validation.sequence.PROTEIN:
+        n_d_peptides = 0
+        n_l_peptides = 0
+        n_achiral_peptides = 0
+        n_unknown = 0
+        for resname in chain.resnames:
+          if resname == "GLY":
+            n_achiral_peptides += 1
+          elif resname in iotbx.pdb.common_residue_names_amino_acid:
+            n_l_peptides += 1
+          elif resname in amino_acid_codes.three_letter_l_given_three_letter_d:
+            n_d_peptides += 1
+          else:
+            n_unknown += 1
+        n_total = sum([n_d_peptides, n_l_peptides, n_achiral_peptides, n_unknown])
+        if (n_l_peptides + n_achiral_peptides)/n_total > 0.5:
+          entity_poly_type = 'polypeptide(L)'
+          if n_d_peptides > 0:
+            entity_nstd_chirality = 'y'
+        elif (n_d_peptides + n_achiral_peptides)/n_total > 0.5:
+          entity_poly_type = 'polypeptide(D)'
+          if n_l_peptides > 0:
+            entity_nstd_chirality = 'y'
+      elif chain.chain_type == mmtbx.validation.sequence.NUCLEIC_ACID:
+        n_dna = 0
+        n_rna = 0
+        n_unknown = 0
+        for resname in chain.resnames:
+          if resname.strip().upper() in ('AD', 'CD', 'GD', 'TD',
+                                         'DA', 'DC', 'DG', 'DT'):
+            n_dna += 1
+          elif resname.strip().upper() in ('A', 'C', 'G', 'T',
+                                           '+A', '+C', '+G', '+T'):
+            n_rna += 1
+          else:
+            n_unknown += 1
+        n_total = sum([n_dna + n_rna + n_unknown])
+        if n_dna/n_total > 0.5 and n_rna == 0:
+          entity_poly_type = 'polydeoxyribonucleotide'
+        elif n_rna/n_total > 0.5 and n_dna == 0:
+          entity_poly_type = 'polyribonucleotide'
+        elif (n_rna + n_dna)/n_total > 0.5:
+          entity_poly_type = 'polydeoxyribonucleotide/polyribonucleotide hybrid'
+
       entity_poly_loop.add_row((
         entity_id,
-        '?',
-        'no',
+        entity_poly_type,
+        entity_nstd_chirality,
         'no',
         'no',
         wrap_always("".join(pdbx_seq_one_letter_code), width=80).strip(),
