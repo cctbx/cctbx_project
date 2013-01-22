@@ -1107,11 +1107,23 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
 
   def extract_wavelength (self, first_only=True) :
     for line in self.remark_section() :
+      # XXX this will miss multi-line records!
       if (line.startswith("REMARK 200  WAVELENGTH OR RANGE")) :
         fields = line.split(":")
         assert (len(fields) == 2)
-        wavelengths = [ float(w) for w in fields[1].strip().split(",") ]
-        if (first_only) : return wavelengths[0]
+        subfields = fields[1].replace(";", ",").strip().split(",")
+        wavelengths = []
+        for field in subfields :
+          if (field.strip() == "") :
+            continue
+          elif (field.strip() == "NULL") :
+            wavelengths.append(None)
+          else :
+            wavelengths.append(float(field.strip()))
+        if (first_only) :
+          if (len(wavelengths) > 0) :
+            return wavelengths[0]
+          return None
         return wavelengths
     return None
 
