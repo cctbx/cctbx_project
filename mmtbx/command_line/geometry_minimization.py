@@ -7,7 +7,7 @@ import mmtbx.utils
 from iotbx.pdb import combine_unique_pdb_files
 import iotbx.phil
 from cctbx.array_family import flex
-from libtbx.utils import user_plus_sys_time
+from libtbx.utils import user_plus_sys_time, Sorry
 from libtbx import runtime_utils
 import os
 import sys
@@ -22,6 +22,9 @@ restraints = None
   .multiple = True
   .short_caption = Restraints
   .style = file_type:cif bold input_file
+restraints_directory = None
+  .type = path
+  .style = directory
 pdb_interpretation
   .help = PDB file interpretation parameters
   .short_caption = PDB interpretation
@@ -137,7 +140,17 @@ def process_input_files(inputs, params, log):
     import iotbx.cif
     for file_name in params.restraints :
       cif_object = iotbx.cif.reader(file_path=file_name, strict=False).model()
-      cif_objects.append(cif_object)
+      cif_objects.append((file_name, cif_object))
+  if (params.restraints_directory is not None) :
+    restraint_files = os.listdir(params.restraints_directory)
+    for file_name in restraint_files :
+      if (file_name.endswith(".cif")) :
+        full_path = os.path.join(params.restraints_directory, file_name)
+        print full_path
+        cif_object = iotbx.cif.reader(file_path=full_path,
+          strict=False).model()
+        cif_objects.append((full_path, cif_object))
+  #print cif_objects
   processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
     crystal_symmetry          = cs,
     pdb_interpretation_params = params.pdb_interpretation,
@@ -294,6 +307,12 @@ class launcher (runtime_utils.target_with_save_result) :
     return run(args=self.args, log=sys.stdout).output_file_name
 
 def validate_params (params) :
+  if (params.file_name is None) :
+    raise Sorry("Please specify a model file to minimize.")
+  if (params.restraints_directory is not None) :
+    if (not os.path.isdir(params.restraints_directory)) :
+      raise Sorry("The path '%s' does not exist or is not a directory." %
+        params.restraints_directory)
   return True
 
 def finish_job (result) :
