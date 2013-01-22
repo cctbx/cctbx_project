@@ -2,7 +2,7 @@ from __future__ import division
 from cctbx.array_family import flex
 
 hydrogens_master_params_str = """
-    refine = individual *riding
+    refine = individual riding *Auto
       .type = choice
       .help = Choice for refinement: riding model or full (H is refined as \
               other atoms, useful at very high resolutions only)
