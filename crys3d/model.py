@@ -229,6 +229,8 @@ class model_data (object) :
     if color_mode == self.color_mode and not self.is_changed :
       pass
     else :
+      if (self.visibility.atoms_visible.count(True) == 0) :
+        return
       self.color_mode = color_mode
       if color_mode == "mono" :
         self.color_mono()
