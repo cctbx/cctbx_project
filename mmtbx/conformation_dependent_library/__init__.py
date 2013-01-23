@@ -5,6 +5,8 @@ from string import letters, digits
 
 import iotbx.pdb
 
+from scitbx.math import dihedral_angle
+
 from mmtbx.conformation_dependent_library.cdl_database import cdl_database
 from mmtbx.conformation_dependent_library.bond_angle_registry import \
   bond_angle_registry
@@ -109,6 +111,27 @@ class ThreeProteinResidues(list):
         outl += "\n%s" % atom.format_atom_record()
     return outl
 
+  def cis_group(self, limit=45., verbose=False):
+    cis_peptide_bond = False
+    for i, residue in enumerate(self):
+      if i==0: continue
+      ccn1, outl1 = get_c_ca_n(residue)
+      ccn2, outl2 = get_c_ca_n(self[i-1])
+      ca1 = ccn1[1]
+      n = ccn1[2]
+      c = ccn2[0]
+      ca2 = ccn2[1]
+      omega_atoms = [ca1, n, c, ca2]
+      omega = dihedral_angle(sites=[atom.xyz for atom in omega_atoms], deg=True)
+      if (180.-abs(omega))>limit:
+        cis_peptide_bond = True
+        break
+    if verbose:
+      if cis_peptide_bond:
+        print 'cis peptide bond', cis_peptide_bond, omega
+        print self
+    return cis_peptide_bond
+
   def are_linked(self):
     for i, residue in enumerate(self):
       if i==0: continue
@@ -185,7 +208,6 @@ class ThreeProteinResidues(list):
       backbone_i[1],
       backbone_i[0],
       ]
-    from scitbx.math import dihedral_angle
     phi = dihedral_angle(sites=[atom.xyz for atom in phi_atoms], deg=True)
     psi_atoms = [
       backbone_i[2],
@@ -390,6 +412,11 @@ def update_restraints(hierarchy,
                                         restraints_manager,
                                         #verbose=verbose,
                                         ):
+    if threes.cis_group(): 
+      if verbose:
+        print 'cis '*20
+        print threes
+      continue
     res_type_group = get_res_type_group(
       threes[1].resname,
       threes[2].resname,
