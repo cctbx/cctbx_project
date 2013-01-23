@@ -753,6 +753,8 @@ information, rather then as enforcing that absence in the space group choices.
 
     all_done = False
     count = -1
+    if (len(self.tuple_score) == 0) :
+      return []
     tmp_scores = []
     for tt in self.tuple_score:
       tmp_scores.append( tt[0] )
