@@ -109,8 +109,10 @@ class chain (object) :
       prev_char = a
       i += 1
     i = len(alignment.a) - 1
+    matches = alignment.matches()
     while (alignment.a[i] in ["X", "-"]) :
-      self.n_missing_end += 1
+      if matches[i] == " ":
+        self.n_missing_end += 1
       i -= 1
     assert (len(self.sec_str) == len(alignment.a))
 
@@ -657,6 +659,38 @@ GGATGACGATX
   assert v.chains[0].n_missing_end == 0
   assert v.chains[0].n_missing_start == 0
   assert len(v.chains[0].alignment.matches()) == 11
+  #
+  pdb_in = iotbx.pdb.input(source_info=None, lines="""\
+ATOM      2  CA  GLY A   1       1.367   0.551   0.300  1.00  7.71           C
+ATOM      6  CA  CYS A   2       2.782   3.785   1.683  1.00  5.18           C
+ATOM     12  CA  CYS A   3      -0.375   5.128   3.282  1.00  5.21           C
+ATOM     18  CA  SER A   4      -0.870   2.048   5.492  1.00  7.19           C
+ATOM     25  CA  LEU A   5       2.786   2.056   6.642  1.00  6.78           C
+ATOM     33  CA  PRO A   6       3.212   4.746   9.312  1.00  7.03           C
+ATOM     40  CA  PRO A   7       6.870   5.690   8.552  1.00  7.97           C
+ATOM     47  CA  CYS A   8       6.021   6.070   4.855  1.00  6.48           C
+ATOM     53  CA  ALA A   9       2.812   8.041   5.452  1.00  7.15           C
+ATOM     58  CA  LEU A  10       4.739  10.382   7.748  1.00  8.36           C
+ATOM     66  CA  SER A  11       7.292  11.200   5.016  1.00  7.00           C
+ATOM     73  CA  ASN A  12       4.649  11.435   2.264  1.00  5.40           C
+ATOM     81  CA  PRO A  13       1.879  13.433   3.968  1.00  5.97           C
+ATOM     88  CA  ASP A  14       0.485  15.371   0.986  1.00  7.70           C
+ATOM     96  CA  TYR A  15       0.565  12.245  -1.180  1.00  6.55           C
+ATOM    108  CA  CYS A  16      -1.466  10.260   1.363  1.00  7.32           C
+ATOM    113  N   NH2 A  17      -2.612  12.308   2.058  1.00  8.11           N
+""")
+  seq = iotbx.bioinformatics.sequence("GCCSLPPCALSNPDYCX")
+  v = validation(
+    pdb_hierarchy=pdb_in.construct_hierarchy(),
+    sequences=[seq],
+    log=null_out(),
+    nproc=1,)
+  out = StringIO()
+  v.show(out=out)
+  assert v.chains[0].n_missing == 0
+  assert v.chains[0].n_missing_end == 0
+  assert v.chains[0].n_missing_start == 0
+  assert len(v.chains[0].alignment.matches()) == 17
   # all tests below here have additional dependencies
   if (not libtbx.env.has_module("ksdssp")) :
     print "Skipping advanced tests (require ksdssp module)"
