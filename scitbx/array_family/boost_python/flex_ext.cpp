@@ -63,6 +63,8 @@ namespace {
     tuple_mapping_fixed_size<tiny<bool, 3> >();
     tuple_mapping_fixed_size<tiny<int, 2> >();
     tuple_mapping_fixed_size<int3>();
+    tuple_mapping_fixed_size<int4>();
+    tuple_mapping_fixed_size<int6>();
     tuple_mapping_fixed_size<int9>();
     tuple_mapping_fixed_size<long3>();
     tuple_mapping_fixed_size<double2>();
