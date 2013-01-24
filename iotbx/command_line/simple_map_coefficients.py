@@ -27,10 +27,14 @@ output_file = None
 """
 
 def run (args, out=sys.stdout) :
-  if (len(args) == 0) :
-    raise Usage("""iotbx.simple_map data_phases.mtz""")
   from iotbx import file_reader
   import iotbx.phil
+  if (len(args) == 0) :
+    raise Usage("""\
+iotbx.simple_map_coefficients data_phases.mtz [options]
+
+Full parameters:
+%s""" % iotbx.phil.parse(master_phil).as_str(attributes_level=1, prefix=" "))
   cmdline = iotbx.phil.process_command_line_with_files(
     args=args,
     master_phil_string=master_phil,
