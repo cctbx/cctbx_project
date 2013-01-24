@@ -62,7 +62,8 @@ Full parameters:
     convert_to_phases_if_necessary=True,
     original_phase_units=None,
     parameter_scope="",
-    parameter_name="phase_labels")
+    parameter_name="phase_labels",
+    minimum_score=2)
   assert (not phases.anomalous_flag())
   deg = True # FIXME
   weights = None
@@ -88,7 +89,7 @@ Full parameters:
   if (params.use_weights is Auto) and (weights is not None) :
     if (params.map_type != "anom") :
       params.use_weights = True
-  elif (params.use_weights) and (weights is None) :
+  elif (params.use_weights == True) and (weights is None) :
     raise Sorry("No weights (FOM, etc.) found in input file.")
   if (params.use_weights == True) :
     assert (not weights.anomalous_flag())
