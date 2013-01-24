@@ -55,8 +55,7 @@ namespace scattering {
     int n_xyz;
     int padded_n_xyz;
     int size_xyz;
-    fType * h_xyz, * d_xyz;
-    scitbx::af::const_ref<double> h_solvent;
+    fType * h_xyz, * d_xyz, * h_solvent;
 
     // solvent weight parameters
     fType * d_solvent;

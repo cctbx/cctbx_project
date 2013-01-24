@@ -8,6 +8,7 @@ namespace scattering {
   cudatbx::scattering::direct_summation::direct_summation() {
     // set host and device pointers to NULL
     h_xyz = NULL;
+    h_solvent = NULL;
     h_h = NULL;
     h_rt = NULL;
     h_scattering_type = NULL;
@@ -44,18 +45,21 @@ namespace scattering {
     padded_n_xyz = int(std::floor(n_xyz/padding + 1.0)) * padding;
     size_xyz = 3 * padded_n_xyz;
     delete[] h_xyz;
+    delete[] h_solvent;
     h_xyz = new fType[size_xyz];
+    h_solvent = new fType[padded_n_xyz];
     for (int i=0; i<n_xyz; i++) {
       for (int j=0; j<3; j++) {
         h_xyz[j*padded_n_xyz + i] = fType(xyz[i][j]);
       }
+      h_solvent[i] = solvent_weights[i];
     }
 
     cudaSafeCall( cudaMalloc((void**)&d_xyz,size_xyz*sizeof(fType)) );
     cudaSafeCall( cudaMemcpy(d_xyz, h_xyz, size_xyz*sizeof(fType),
                              cudaMemcpyHostToDevice) );
     cudaSafeCall( cudaMalloc((void**)&d_solvent,padded_n_xyz*sizeof(fType)) );
-    cudaSafeCall( cudaMemcpy(d_solvent,&solvent_weights[0],
+    cudaSafeCall( cudaMemcpy(d_solvent, h_solvent,
                              padded_n_xyz*sizeof(fType),
                              cudaMemcpyHostToDevice) );
   }
@@ -127,8 +131,8 @@ namespace scattering {
     h_b = new fType[f_size];
     h_c = new fType[n_types];
     for (int i=0; i<f_size; i++) {
-      h_a[i] = 0.0;
-      h_b[i] = 0.0;
+      h_a[i] = fType(0.0);
+      h_b[i] = fType(0.0);
     }
     for (int i=0; i<n_types-1; i++) {
       for (int j=0; j<n_terms; j++) {
@@ -139,7 +143,7 @@ namespace scattering {
         h_c[i] = unique_gaussians[i].get().c();
       }
       else {
-        h_c[i] = float(0.0);
+        h_c[i] = fType(0.0);
       }
     }
 
@@ -171,6 +175,7 @@ namespace scattering {
   void cudatbx::scattering::direct_summation::clear_arrays() {
     // all pointers are NULL or point to allocated arrays
     delete[] h_xyz;
+    delete[] h_solvent;
     delete[] h_h;
     delete[] h_rt;
     delete[] h_scattering_type;
@@ -189,6 +194,7 @@ namespace scattering {
 
     // reset all pointers to NULL
     h_xyz = NULL;
+    h_solvent = NULL;
     h_h = NULL;
     h_rt = NULL;
     h_scattering_type = NULL;
