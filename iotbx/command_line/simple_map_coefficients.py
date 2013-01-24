@@ -101,6 +101,8 @@ Full parameters:
   amplitudes, phases = amplitudes.common_sets(phases)
   coeffs = amplitudes.phase_transfer(phases,
     deg=deg).set_observation_type(None) # FIXME
+  if (params.map_type == "anom") : # apply 90-degree phase shift
+    coeffs = coeffs.customized_copy(data=coeffs.data()/(2j))
   assert (coeffs.is_complex_array())
   column_root_label = "F"
   decorator = None
