@@ -761,3 +761,19 @@ def is_protein_chain(chain):
     if not conformer.is_protein():
       return False
   return True
+
+def prepare_map(
+      fmodel,
+      exclude_free_r_reflections=False):
+  map_obj = fmodel.electron_density_map()
+  fft_map = map_obj.fft_map(resolution_factor = 1./4,
+    map_type = "2mFo-DFc", use_all_data=(
+      not exclude_free_r_reflections))
+  fft_map.apply_sigma_scaling()
+  target_map_data = fft_map.real_map_unpadded()
+  fft_map = map_obj.fft_map(resolution_factor = 1./4,
+    map_type = "mFo-DFc", use_all_data=(
+      not exclude_free_r_reflections))
+  fft_map.apply_sigma_scaling()
+  residual_map_data = fft_map.real_map_unpadded()
+  return target_map_data, residual_map_data
