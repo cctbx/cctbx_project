@@ -304,8 +304,6 @@ def is_atom_pair_linked(atom1,
 
 
   if class1=="common_element" or class2=="common_element":
-    #item.distance=1
-    #print "metal coord",atom1.quote(),"to",atom2.quote()
     return True
   if d2>amino_acid_bond_cutoff: return False
   if class1=="common_amino_acid" and class2=="common_amino_acid":
@@ -464,7 +462,7 @@ def process_atom_groups_for_linking(pdb_hierarchy,
         atom1.quote(),
         atom2.quote(),
         get_distance2(atom1, atom2),
-        bond_cutoff,
+        intra_residue_bond_cutoff,
         )
       return None
     return process_atom_groups_for_linking_single_link(
@@ -481,7 +479,6 @@ def process_atom_groups_for_linking_single_link(pdb_hierarchy,
                                                 intra_residue_bond_cutoff=1.99,
                                                 verbose=False,
                                                 ):
-  verbose=1
   if is_glyco_bond(atom1, atom2):
     # glyco bonds need to be in certain order
     if atom1.name.find("C")>-1:
@@ -502,15 +499,22 @@ def process_atom_groups_for_linking_single_link(pdb_hierarchy,
       atom1 = atom2
       atom2 = tmp_atom
 
-  tmp_key = "%s:%s-%s:%s" % (atom1.parent().resname.strip(),
+  long_tmp_key = "%s:%s-%s:%s" % (atom1.parent().resname.strip(),
                              atom1.name.strip(),
                              atom2.parent().resname.strip(),
                              atom2.name.strip(),
                              )
+  tmp_key = "%s-%s" % (atom1.parent().resname.strip(),
+                             atom2.parent().resname.strip(),
+                             )
   if verbose:
     print "tmp_key %s" % tmp_key
+    print "long_tmp_key %s" % long_tmp_key
     print atom1.quote()
     print atom2.quote()
+    print is_n_glyco_bond(atom1, atom2)
+    print is_o_glyco_bond(atom1, atom2)
+    print is_glyco_bond(atom1, atom2)
   if is_n_glyco_bond(atom1, atom2):
     if tmp_key in standard_n_links:
       data_links = ""
@@ -564,11 +568,16 @@ def process_atom_groups_for_linking_single_link(pdb_hierarchy,
       if o_atom is None: print _write_warning_line("  No oxygen atom found")
       print " %s" % ("!"*84)
   else:
-    key = tmp_key
+    key = long_tmp_key
 
   pdbres_pair = []
   for atom in [atom1, atom2]:
     pdbres_pair.append(atom.id_str(pdbres=True))
+  if verbose:
+    print "key %s" % key
+    print pdbres_pair
+    print atom1.quote()
+    print atom2.quote()
   return [pdbres_pair], [key], [(atom1, atom2)]
 
 def process_atom_groups_for_linking_multiple_links(pdb_hierarchy,
@@ -604,3 +613,34 @@ def process_atom_groups_for_linking_multiple_links(pdb_hierarchy,
     keys.append(key)
     atoms.append((atom1, atom2))
   return pdbres_pairs, keys, atoms
+
+def print_apply(apply):
+  from libtbx.introspection import show_stack
+  outl = ''
+  #print apply
+  #print dir(apply)
+  outl += "%s" % apply.data_link
+  try: 
+    outl += " %s" % apply.pdbres_pair
+    outl += " %s" % apply.atom1.quote()
+    outl += " %s" % apply.atom2.quote()
+    outl += " %s" % apply.automatic
+    outl += " %s" % apply.was_used
+  except: pass
+  #show_stack()
+  return outl
+
+class apply_cif_list(list):
+  def __repr__(self):
+    outl = "CIFs"
+    for ga in self:
+      outl += "\n%s" % print_apply(ga)
+    outl += "\n"
+    outl += '_'*80
+    return outl
+
+  def __append__(self, item):
+    print 'APPEND'*10
+    print item
+    list.__append__(self, item)
+

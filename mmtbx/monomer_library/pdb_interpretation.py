@@ -3241,11 +3241,15 @@ class build_all_chain_proxies(object):
       atom1=atoms[0],
       atom2=atoms[1],
       )
+    # check if the link as already been applied
     count = 0
-    for apply in self.apply_cif_links:
+    matches = 2
+    for i, apply in enumerate(self.apply_cif_links):
+      count = 0
       if apply.pdbres_pair==pdbres_pair: count+=1
       if apply.data_link==data_link: count+=1
-    if count==2:
+      if count==matches: break
+    if count==matches:
       ga.was_used=True
     else:
       for pdbres in pdbres_pair:
@@ -3317,9 +3321,9 @@ class build_all_chain_proxies(object):
           if classes1.common_amino_acid and classes2.common_amino_acid: continue
           if classes1.common_rna_dna and classes2.common_rna_dna: continue
           d2 = linking_utils.get_distance2(atom1, atom2)
+          if d2>residue_group_cutoff2: continue
           if verbose:
             print atom1.quote(), atom2.quote(), d2,residue_group_cutoff2
-          if d2>residue_group_cutoff2: continue
           #
           rc = linking_utils.process_atom_groups_for_linking(
             self.pdb_hierarchy,
