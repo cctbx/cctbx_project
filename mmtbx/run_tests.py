@@ -92,6 +92,7 @@ tst_list = (
   "$D/building/tst.py",
   "$D/building/disorder/tst.py",
   "$D/regression/tst_validation_summary.py",
+  "$D/regression/tst_maps_misc.py",
   )
 
 def run():

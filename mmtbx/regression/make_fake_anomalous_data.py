@@ -28,6 +28,20 @@ def generate_calcium_inputs (file_base="ca_frag") :
     crystal_symmetry=pdb_in.file_object.crystal_symmetry())
   return os.path.abspath(mtz_file), os.path.abspath("%s_hoh.pdb" % file_base)
 
+def generate_cd_cl_inputs (file_base="cd_cl_frag") :
+  import mmtbx.ions.utils
+  from iotbx.file_reader import any_file
+  pdb_file = write_pdb_input_cd_cl(file_base=file_base)
+  mtz_file = generate_mtz_file(
+    file_base=file_base,
+    d_min=1.3,
+    anomalous_scatterers=[
+      group_args(selection="element CD", fp=-0.29, fdp=2.676),
+      group_args(selection="element CL", fp=0.256, fdp=0.5),
+    ])
+  assert (os.path.isfile(pdb_file)) and (os.path.isfile(mtz_file))
+  return mtz_file, pdb_file
+
 def generate_mtz_file (file_base, anomalous_scatterers, d_min) :
   """
   Create an MTZ file containing amplitudes (and R-free-flags) calculated from
