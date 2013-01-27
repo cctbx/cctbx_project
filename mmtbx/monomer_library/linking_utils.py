@@ -620,13 +620,13 @@ def print_apply(apply):
   #print apply
   #print dir(apply)
   outl += "%s" % apply.data_link
-  try: 
+  try:
     outl += " %s" % apply.pdbres_pair
     outl += " %s" % apply.atom1.quote()
     outl += " %s" % apply.atom2.quote()
     outl += " %s" % apply.automatic
     outl += " %s" % apply.was_used
-  except: pass
+  except Exception: pass
   #show_stack()
   return outl
 
@@ -643,4 +643,3 @@ class apply_cif_list(list):
     print 'APPEND'*10
     print item
     list.__append__(self, item)
-

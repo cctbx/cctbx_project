@@ -412,7 +412,7 @@ def update_restraints(hierarchy,
                                         restraints_manager,
                                         #verbose=verbose,
                                         ):
-    if threes.cis_group(): 
+    if threes.cis_group():
       if verbose:
         print 'cis '*20
         print threes
