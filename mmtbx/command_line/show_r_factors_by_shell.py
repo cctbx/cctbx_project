@@ -1,6 +1,7 @@
 
 from __future__ import division
 from libtbx.utils import Sorry, Usage
+from libtbx import slots_getstate_setstate
 import re
 import sys
 
@@ -16,6 +17,62 @@ r_free_label = R-free-flags
 n_bins = 10
   .type = int
 """
+
+class r_factor_shell (object) :
+  __slots__ = ["d_min", "d_max", "r_work", "r_free"]
+
+  def __init__ (self, d_min, d_max, r_work, r_free) :
+    self.d_min = d_min
+    self.d_max = d_max
+    self.r_work = r_work
+    self.r_free = r_free
+
+  def show (self, out, prefix="  ") :
+    print >> out, "%s%6.3f - %6.3f  %6.4f  %6.4f" % (prefix, self.d_max,
+      self.d_min, self.r_work, self.r_free)
+
+class r_factor_shells (slots_getstate_setstate) :
+  __slots__ = ["shells", "overall"]
+
+  def __init__ (self, f_obs, f_calc, r_free_flags, n_bins=10) :
+    assert (not None in [f_obs, f_calc, r_free_flags])
+    assert (f_obs.data().size() == f_calc.data().size())
+    r_free_flags = r_free_flags.common_set(other=f_obs)
+    f_obs.setup_binner(n_bins=n_bins)
+    self.shells = []
+    self.overall = None
+    for bin in f_obs.binner().range_used() :
+      sele_bin = f_obs.binner().selection(bin)
+      f_obs_bin = f_obs.select(sele_bin)
+      f_calc_bin = f_calc.select(sele_bin)
+      r_free_flags_bin = r_free_flags.select(sele_bin)
+      f_obs_work = f_obs_bin.select(~(r_free_flags_bin.data()))
+      f_calc_work = f_calc_bin.select(~(r_free_flags_bin.data()))
+      f_obs_free = f_obs_bin.select(r_free_flags_bin.data())
+      f_calc_free = f_calc_bin.select(r_free_flags_bin.data())
+      shell = r_factor_shell(
+        d_min=f_obs_work.d_min(),
+        d_max=f_obs_work.d_max_min()[0],
+        r_work=f_obs_work.r1_factor(f_calc_work),
+        r_free=f_obs_free.r1_factor(f_calc_free))
+      self.shells.append(shell)
+    f_obs_work = f_obs.select(~(r_free_flags.data()))
+    f_calc_work = f_calc.select(~(r_free_flags.data()))
+    f_obs_free = f_obs.select(r_free_flags.data())
+    f_calc_free = f_calc.select(r_free_flags.data())
+    self.overall = r_factor_shell(
+      d_min=f_obs.d_min(),
+      d_max=f_obs.d_max_min()[0],
+      r_work = f_obs_work.r1_factor(f_calc_work),
+      r_free = f_obs_free.r1_factor(f_calc_free))
+
+  def show (self, out=sys.stdout, prefix="  ") :
+    print >> out, ""
+    for shell in self.shells :
+      shell.show(out=out, prefix=prefix)
+    print >> out, ""
+    self.overall.show(out=out, prefix=prefix)
+    print >> out, ""
 
 def run (args, out=sys.stdout) :
   if (len(args) == 0) or ("--help" in args) :
@@ -56,34 +113,13 @@ Full parameters:
     elif ((labels[0] == params.r_free_label) or
           (first_label_non_anom == params.r_free_label)) :
       r_free_flags = array.customized_copy(data=array.data()==1)
-  assert (not None in [f_obs, f_calc, r_free_flags])
-  assert (f_obs.data().size() == f_calc.data().size())
-  r_free_flags = r_free_flags.common_set(other=f_obs)
-  f_obs.setup_binner(n_bins=params.n_bins)
-  print >> out, ""
-  for bin in f_obs.binner().range_used() :
-    sele_bin = f_obs.binner().selection(bin)
-    f_obs_bin = f_obs.select(sele_bin)
-    f_calc_bin = f_calc.select(sele_bin)
-    r_free_flags_bin = r_free_flags.select(sele_bin)
-    f_obs_work = f_obs_bin.select(~(r_free_flags_bin.data()))
-    f_calc_work = f_calc_bin.select(~(r_free_flags_bin.data()))
-    f_obs_free = f_obs_bin.select(r_free_flags_bin.data())
-    f_calc_free = f_calc_bin.select(r_free_flags_bin.data())
-    r_work_bin = f_obs_work.r1_factor(f_calc_work)
-    r_free_bin = f_obs_free.r1_factor(f_calc_free)
-    print >> out, "  %6.3f - %6.3f  %6.4f  %6.4f" % (f_obs_work.d_max_min()[0],
-      f_obs_work.d_min(), r_work_bin, r_free_bin)
-  f_obs_work = f_obs.select(~(r_free_flags.data()))
-  f_calc_work = f_calc.select(~(r_free_flags.data()))
-  f_obs_free = f_obs.select(r_free_flags.data())
-  f_calc_free = f_calc.select(r_free_flags.data())
-  r_work = f_obs_work.r1_factor(f_calc_work)
-  r_free = f_obs_free.r1_factor(f_calc_free)
-  print >> out, ""
-  print >> out, "  %6.3f - %6.3f  %6.4f  %6.4f" % (f_obs.d_max_min()[0],
-      f_obs.d_min(), r_work, r_free)
-  print >> out, ""
+  shells = r_factor_shells(
+    f_obs=f_obs,
+    f_calc=f_calc,
+    r_free_flags=r_free_flags,
+    n_bins=params.n_bins)
+  shells.show(out=out)
+  return shells
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
