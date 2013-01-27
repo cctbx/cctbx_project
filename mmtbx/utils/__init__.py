@@ -2333,6 +2333,8 @@ input {
   }
   skip_twin_detection = False
     .type = bool
+  sequence = None
+    .type = path
 }
 """ % (xray_data_str, pdb_params.as_str(attributes_level=3),
        cif_params.as_str(attributes_level=3))
@@ -2383,7 +2385,7 @@ class cmdline_load_pdb_and_data (object) :
       pdb_file_def="input.pdb.file_name",
       reflection_file_def="input.xray_data.file_name",
       cif_file_def="input.monomers.file_name",
-      seq_file_def=None)
+      seq_file_def="input.sequence")
     self.working_phil = cmdline.work
     params = self.working_phil.extract()
     if len(params.input.pdb.file_name) == 0 :
@@ -2446,6 +2448,12 @@ class cmdline_load_pdb_and_data (object) :
     self.miller_arrays = hkl_in.file_server.miller_arrays
     self.f_obs = data_and_flags.f_obs
     self.r_free_flags = data_and_flags.r_free_flags
+    self.sequence = None
+    if (params.input.sequence is not None) :
+      seq_file = file_reader.any_file(params.input.sequence,
+        force_type="seq",
+        raise_sorry_if_errors=True)
+      self.sequence = seq_file.file_object
     self.params = params
 
 def validate_input_params (params) :

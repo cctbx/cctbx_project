@@ -784,6 +784,44 @@ END
                   xray_structure = xrs)
   assert approx_equal(f.f_000, 0.25*125*0.687355324074+6, 1.e-3)
 
+def exercise_cmdline_load_pdb_and_data() :
+  pdb_str="""
+ATOM     47  N   TYR A   7       8.292   1.817   6.147  1.00 14.70           N
+ATOM     48  CA  TYR A   7       9.159   2.144   7.299  1.00 15.18           C
+ATOM     49  C   TYR A   7      10.603   2.331   6.885  1.00 15.91           C
+ATOM     50  O   TYR A   7      11.041   1.811   5.855  1.00 15.76           O
+ATOM     51  CB  TYR A   7       9.061   1.065   8.369  1.00 15.35           C
+ATOM     52  CG  TYR A   7       7.665   0.929   8.902  1.00 14.45           C
+ATOM     53  CD1 TYR A   7       6.771   0.021   8.327  1.00 15.68           C
+ATOM     54  CD2 TYR A   7       7.210   1.756   9.920  1.00 14.80           C
+ATOM     55  CE1 TYR A   7       5.480  -0.094   8.796  1.00 13.46           C
+ATOM     56  CE2 TYR A   7       5.904   1.649  10.416  1.00 14.33           C
+ATOM     57  CZ  TYR A   7       5.047   0.729   9.831  1.00 15.09           C
+ATOM     58  OH  TYR A   7       3.766   0.589  10.291  1.00 14.39           O
+ATOM     59  OXT TYR A   7      11.358   2.999   7.612  1.00 17.49           O
+END
+"""
+  pdb_in = iotbx.pdb.input(source_info=None,lines=pdb_str)
+  hierarchy = pdb_in.construct_hierarchy()
+  xrs = pdb_in.xray_structure_simple()
+  file_base = "tmp_mmtbx_utils"
+  open(file_base+".pdb", "w").write(
+    hierarchy.as_pdb_string(crystal_symmetry=xrs))
+  fc = abs(xrs.structure_factors(d_min=1.5).f_calc())
+  flags = fc.generate_r_free_flags()
+  mtz = fc.as_mtz_dataset(column_root_label="F")
+  mtz.add_miller_array(flags, column_root_label="FreeR_flag")
+  mtz.mtz_object().write(file_base+".mtz")
+  open(file_base+".fa", "w").write(">Tyr\nY\n")
+  cmdline = utils.cmdline_load_pdb_and_data(
+    args=[ file_base + ext for ext in [".pdb",".mtz",".fa"] ],
+    master_phil=utils.cmdline_input_phil(),
+    out=null_out())
+  assert (cmdline.params.input.xray_data.file_name is not None)
+  assert (cmdline.sequence is not None)
+  r_factor = cmdline.fmodel.r_work()
+  assert (r_factor < 0.001)
+
 def run():
   verbose = "--verbose" in sys.argv[1:]
   exercise_00(verbose=verbose)
@@ -812,6 +850,7 @@ def run():
   exercise_d_data_target_d_atomic_params()
   exercise_get_atom_selections(verbose=verbose)
   exercise_f_000()
+  exercise_cmdline_load_pdb_and_data()
   print format_cpu_times()
 
 if (__name__ == "__main__"):
