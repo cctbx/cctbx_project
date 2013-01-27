@@ -365,6 +365,11 @@ def get_phaser_sad_llg_map_coefficients (
     pdb_hierarchy,
     log=None,
     verbose=False) :
+  """
+  Calculates an anomalous log-likelihood gradient (LLG) map using the SAD
+  target in Phaser.  This is essentially similar to an anomalous difference-
+  difference map, but more sensitive.
+  """
   if (not libtbx.env.has_module("phaser")) :
     raise Sorry("Phaser not available - required for SAD LLG maps.")
   from phaser.phenix_adaptors import sad_target
@@ -386,6 +391,46 @@ def get_phaser_sad_llg_map_coefficients (
   t.set_f_calc(fmodel.f_model())
   map_coeffs = t.llg_map_coeffs()
   return map_coeffs
+
+def anomalous_difference_difference_map_coefficients (fmodel, weighted=False) :
+  """
+  EXPERIMENTAL
+
+  Calculates map coefficients showing the difference in anomalous scattering
+  between F-obs and F-model.  Similar to the Phaser SAD LLG map, but appears
+  to be less sensitive.
+  """
+  assert (fmodel.f_obs().anomalous_flag())
+  f_obs_anom = fmodel.f_obs().anomalous_differences()
+  f_model_anom = abs(fmodel.f_model()).anomalous_differences()
+  if (weighted) :
+    mch = fmodel.map_calculation_helper()
+    fom = fmodel.f_obs().customized_copy(
+      data=mch.fom, sigmas=None).average_bijvoet_mates()
+    alpha = mch.alpha.average_bijvoet_mates()
+    fom = fom.common_set(other=f_obs_anom)
+    alpha = alpha.common_set(other=f_obs_anom)
+    f_obs_anom = f_obs_anom.customized_copy(data=f_obs_anom.data()*fom.data())
+    f_model_anom = f_model_anom.customized_copy(
+      data=f_model_anom.data()*alpha.data())
+  anom_diff_diff = f_obs_anom.customized_copy(
+    data=f_obs_anom.data() - f_model_anom.data())
+  f_model = fmodel.f_model().as_non_anomalous_array().\
+    merge_equivalents().array()
+  fmodel_match_anom_diff, anom_diff_diff_common = \
+    f_model.common_sets(other =  anom_diff_diff)
+  assert (anom_diff_diff_common.indices().size() ==
+          anom_diff_diff.indices().size())
+  phases_tmp = miller.array(
+    miller_set=anom_diff_diff_common,
+    data=flex.double(anom_diff_diff_common.indices().size(), 1)
+    ).phase_transfer(phase_source=fmodel_match_anom_diff)
+  map_coeffs = miller.array(
+    miller_set=anom_diff_diff_common,
+    data = anom_diff_diff_common.data() * phases_tmp.data())
+  return miller.array(
+    miller_set=map_coeffs,
+    data=map_coeffs.data()/(2j))
 
 ncs_averaging_params = """
 resolution_factor = 0.25
