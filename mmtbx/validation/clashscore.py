@@ -33,9 +33,13 @@ def get_master_phil():
         .type = bool
         .help = '''Verbose'''
 
-        keep_hydrogens = False
+        keep_hydrogens = True
         .type = bool
         .help = '''Keep hydrogens in input file'''
+
+        nuclear = False
+        .type = bool
+        .help = '''Use nuclear hydrogen positions'''
   }
 
     """)
@@ -49,7 +53,8 @@ phenix.clashscore file.pdb [params.eff] [options ...]
 Options:
 
   pdb=input_file        input PDB file
-  keep_hydrogens=False  keep input hydrogen files (otherwise regenerate)
+  keep_hydrogens=True   keep input hydrogen files (otherwise regenerate)
+  nuclear=False         use nuclear x-H distances and vdW radii
   verbose=True          verbose text output
 
 Example:
@@ -59,8 +64,11 @@ Example:
 """
   def changes(self):
     print "\nversion 0.10 - Development Version\n"
+    print "\nversion 0.11 - Input hydrogens now kept by default\n"
+    print "\nversion 0.12 - Option to use nuclear x-H distances and\n"
+    print "                 vdW radii\n"
   def version(self):
-    print "\nversion 0.10 - Copyright 2009, Jeffrey J. Headd and Mike Word\n"
+    print "\nversion 0.12 - Copyright 2013, Jeffrey J. Headd and Mike Word\n"
   def get_summary_and_header(self,command_name):
     header="\n"
     header+="\n#                       "+str(command_name)
@@ -122,8 +130,11 @@ Example:
       print >> log, "Please enter a file name"
       return
     keep_hydrogens = self.params.clashscore.keep_hydrogens
+    nuclear = self.params.clashscore.nuclear
     clashscore, bad_clashes = self.analyze_clashes(pdb_io=pdb_io,
-        keep_hydrogens=keep_hydrogens)
+        keep_hydrogens=keep_hydrogens,
+        nuclear=nuclear,
+        verbose=self.params.clashscore.verbose)
     if not quiet :
       self.print_clashlist(out)
       self.print_clashscore(out)
@@ -135,8 +146,10 @@ Example:
         self,
         pdb_io=None,
         hierarchy=None,
-        keep_hydrogens=False,
-        force_unique_chain_ids=False) :
+        keep_hydrogens=True,
+        nuclear=False,
+        force_unique_chain_ids=False,
+        verbose=False) :
     if (not libtbx.env.has_module(name="probe")):
       print "Probe could not be detected on your system.  Please make sure Probe is in your path."
       print "Probe is available at http://kinemage.biochem.duke.edu/"
@@ -149,6 +162,14 @@ Example:
     self.bad_clashes_list = []
     self.clash_dict = {}
     self.list_dict = {}
+
+    h_count = 0
+
+    if verbose:
+      if not nuclear:
+        print "\nUsing electron cloud x-H distances and vdW radii"
+      else:
+        print "\nUsing nuclear cloud x-H distances and vdW radii"
 
     for i,m in enumerate(hierarchy.models()):
       r = iotbx.pdb.hierarchy.root()
@@ -168,9 +189,24 @@ Example:
         utils.check_for_duplicate_chain_ids(pdb_hierarchy=tmp_r)
       if duplicate_chain_ids:
         utils.force_unique_chain_ids(pdb_hierarchy=tmp_r)
+      if keep_hydrogens:
+        elements = tmp_r.atoms().extract_element()
+        h_count = elements.count(' H') + elements.count(' D')
+        if h_count > 0:
+          has_hd = True
+        else:
+          has_hd = False
+        # if no hydrogens present, force addition for clashscore
+        # calculation
+        if not has_hd:
+          if verbose:
+            print "\nNo H/D atoms detected - forcing hydrogen addition!\n"
+          keep_hydrogens = False
       input_str = tmp_r.as_pdb_string()
       pcm = probe_clashscore_manager(pdb_string=input_str,
-                                     keep_hydrogens=keep_hydrogens)
+                                     keep_hydrogens=keep_hydrogens,
+                                     nuclear=nuclear,
+                                     verbose=verbose)
       self.pdb_hierarchy = pdb.hierarchy.\
         input(pdb_string=pcm.h_pdb_string).hierarchy
       self.clashscore.append(pcm.clashscore)
@@ -211,18 +247,31 @@ Example:
 class probe_clashscore_manager(object):
   def __init__(self,
                pdb_string,
-               keep_hydrogens=False):
+               keep_hydrogens=True,
+               nuclear=False,
+               verbose=False):
     assert (libtbx.env.has_module(name="reduce") and
             libtbx.env.has_module(name="probe"))
+
     self.trim = "phenix.reduce -quiet -trim -"
-    self.build = "phenix.reduce -oh -his -flip -pen9999 -keep -allalt -"
-    self.probe_txt = \
-      'phenix.probe -u -q -mc -het -once "ogt33 not water" "ogt33" -'
-    self.probe_atom_txt = \
-      'phenix.probe -q -mc -het -dumpatominfo "ogt33 not water" -'
+    if not nuclear:
+      self.build = "phenix.reduce -oh -his -flip -pen9999 -keep -allalt -"
+      self.probe_txt = \
+        'phenix.probe -u -q -mc -het -once "ogt33 not water" "ogt33" -'
+      self.probe_atom_txt = \
+        'phenix.probe -q -mc -het -dumpatominfo "ogt33 not water" -'
+    else: #use nuclear distances
+      self.build = "phenix.reduce -oh -his -flip -pen9999 -keep -allalt -nuc -"
+      self.probe_txt = \
+        'phenix.probe -u -q -mc -het -nuc -once "ogt33 not water" "ogt33" -'
+      self.probe_atom_txt = \
+        'phenix.probe -q -mc -het -nuc -dumpatominfo "ogt33 not water" -'
+
     if not keep_hydrogens:
       h_pdb_string = self.run_reduce(pdb_string)
     else:
+      if verbose:
+        print "\nUsing input model H/D atoms...\n"
       h_pdb_string = pdb_string
     self.h_pdb_string = h_pdb_string
     self.run_probe_clashscore(self.h_pdb_string)
