@@ -69,6 +69,20 @@ if (MutableSet is None):
             self.discard(value)
         return self
 
+    @classmethod
+    def _from_iterable(cls, it):
+      '''Construct an instance of the class from any iterable input.
+
+      Must override this method if the class constructor signature
+      does not accept an iterable for an input.
+      '''
+      return cls(it)
+
+    def __sub__(self, other):
+      return self._from_iterable(value for value in self
+                                 if value not in other)
+
+
 class OrderedSet(MutableSet):
   """
   http://code.activestate.com/recipes/528878-ordered-set/
