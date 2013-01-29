@@ -22,6 +22,9 @@ def exercise_oset():
   assert o != oset([5, 4, 2, 1])
   assert o == set([5, 2, 4, 1])
   assert o == set([5, 4, 2, 1])
+  o1 = oset([6, 5, 4, 3, 2, 1])
+  o2 = o1 - o
+  assert o2 == oset([6, 3])
 
 def exercise_odict():
   from libtbx.containers import OrderedDict as odict
