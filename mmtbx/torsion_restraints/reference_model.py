@@ -422,12 +422,6 @@ class reference_model(object):
               break
           if sc_atoms:
             raise StopIteration()
-        complete = True
-        for i_seq in dp.i_seqs:
-          if not self.selection[i_seq]:
-            complete = False
-        if not complete:
-          raise StopIteration()
         key = ""
         for i_seq in dp.i_seqs:
           key = key+i_seq_name_hash[i_seq]
