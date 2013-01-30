@@ -743,7 +743,7 @@ class manager(object):
        self.pdb_atoms = self._pdb_hierarchy.atoms()
        self.ias_selection = None
 
-  def show_rigid_bond_test(self, out=None):
+  def show_rigid_bond_test(self, out=None, use_id_str=False, prefix=""):
     if (out is None): out = sys.stdout
     scatterers = self.xray_structure.scatterers()
     unit_cell = self.xray_structure.unit_cell()
@@ -763,12 +763,16 @@ class manager(object):
             sc_i.site, sc_j.site, sc_i.u_star, sc_j.u_star, unit_cell)
           rbt_value = p.delta_z()*10000.
           rbt_array.append(rbt_value)
-          print >> out, "%s %s %10.3f"%(atom_i.name, atom_j.name, rbt_value)
+          name_i, name_j = atom_i.name, atom_j.name
+          if (use_id_str) :
+            name_i = atom_i.id_str()
+            name_j = atom_j.id_str()
+          print >> out, "%s%s %s %10.3f"%(prefix, name_i, name_j, rbt_value)
     if (rbt_array.size() != 0):
-      print >> out, "RBT values (*10000):"
-      print >> out, "  mean = %.3f"%flex.mean(rbt_array)
-      print >> out, "  max  = %.3f"%flex.max(rbt_array)
-      print >> out, "  min  = %.3f"%flex.min(rbt_array)
+      print >> out, "%sRBT values (*10000):" % prefix
+      print >> out, "%s  mean = %.3f" % (prefix, flex.mean(rbt_array))
+      print >> out, "%s  max  = %.3f" % (prefix, flex.max(rbt_array))
+      print >> out, "%s  min  = %.3f" % (prefix, flex.min(rbt_array))
 
   def reference_model_restraints_manager(self, sites_cart, gradient_array,
         sigma = 0.5):
