@@ -24,9 +24,9 @@ def create_map_from_pdb_and_mtz (
   """
   Convenience function, used by phenix.fetch_pdb.
 
-  :param remove_unknown_scatterering_type: if True, all atoms with element 'X'
-    will be removed before extracting the X-ray structure (which would crash
-    otherwise).
+  :param remove_unknown_scatterering_type: if True, atoms with unknown
+    scattering type will be removed before extracting the X-ray structure
+    (which would crash otherwise).
   """
   if (out is None) : out = sys.stdout
   from iotbx import file_reader
