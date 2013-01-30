@@ -76,7 +76,8 @@ Command-line options:
   -f      Get sequence (FASTA file)
   --all   Download all available data
   --mtz   Download structure factors and PDB file, and generate MTZ
-  --maps  As for --mtz, plus create 2mFo-DFc and mFo-DFc map coefficients
+  --maps  As for --mtz, plus create 2mFo-DFc and mFo-DFc map coefficients (and
+          anomalous map, if possible)
   --fill  Fill missing F(obs) with F(calc) in map coefficients
   -q      suppress printed output
 """)
@@ -147,7 +148,9 @@ Command-line options:
           mtz_file="%s.mtz" % id,
           output_file="%s_maps.mtz" % id,
           fill=fill_maps,
-          out=log)
+          out=log,
+          remove_unknown_scatterering_type=True,
+          assume_pdb_data=True)
         assert os.path.isfile("%s_maps.mtz" % id)
         print >> log, "Map coefficients saved to %s_maps.mtz" % id
         files.append("%s_maps.mtz" % id)

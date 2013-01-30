@@ -17,15 +17,38 @@ def create_map_from_pdb_and_mtz (
     mtz_file,
     output_file,
     fill=False,
-    out=None) :
+    out=None,
+    llg_map=False,
+    remove_unknown_scatterering_type=False,
+    assume_pdb_data=False) :
   """
-  Convenience function, used by phenix.fetch_pdb
+  Convenience function, used by phenix.fetch_pdb.
+
+  :param remove_unknown_scatterering_type: if True, all atoms with element 'X'
+    will be removed before extracting the X-ray structure (which would crash
+    otherwise).
   """
   if (out is None) : out = sys.stdout
   from iotbx import file_reader
-  pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
-  pdb_in.assert_file_type("pdb")
-  xrs = pdb_in.file_object.xray_structure_simple()
+  from scitbx.array_family import flex
+  pdb_in = file_reader.any_file(pdb_file,
+    force_type="pdb",
+    raise_sorry_if_errors=True).file_object
+  if (remove_unknown_scatterering_type) :
+    pdb_hierarchy = pdb_in.construct_hierarchy()
+    pdb_atoms = pdb_hierarchy.atoms()
+    remove = flex.size_t()
+    for i_seq, atom in enumerate(pdb_atoms) :
+      if (atom.element.strip() == "X") :
+        remove.append(i_seq)
+    if (len(remove) > 0) :
+      print >> out, "WARNING: removing %d atoms with unknown scattering type."\
+        % len(remove)
+      selection = flex.bool(pdb_atoms.size(), True).set_selected(remove, False)
+      pdb_hierarchy = pdb_hierarchy.select(selection)
+      pdb_in = pdb_hierarchy.as_pdb_input(
+        crystal_symmetry=pdb_in.crystal_symmetry())
+  xrs = pdb_in.xray_structure_simple()
   fast_maps_from_hkl_file(
     file_name=mtz_file,
     xray_structure=xrs,
@@ -34,9 +57,20 @@ def create_map_from_pdb_and_mtz (
     auto_run=True,
     quiet=True,
     anomalous_map=True,
-    fill_maps=fill)
+    llg_map=llg_map,
+    fill_maps=fill,
+    assume_pdb_data=assume_pdb_data)
 
 class fast_maps_from_hkl_file (object) :
+  """
+  Automation wrapper for calculating standard 2mFo-DFc, mFo-DFc, and optional
+  anomalous difference map coefficients, starting from an X-ray structure and
+  an MTZ file name.  This will attempt to guess the correct data array
+  automatically (giving preference to anomalous amplitudes).
+
+  The organization of this class is somewhat messy, as it is designed to be
+  run in parallel for multiple structures.
+  """
   def __init__ (self,
                 file_name,
                 xray_structure,
@@ -50,6 +84,8 @@ class fast_maps_from_hkl_file (object) :
                 anomalous_map=False,
                 fill_maps=True,
                 save_fmodel=False,
+                llg_map=False,
+                assume_pdb_data=False, # FIXME should be default, needs testing
                 ) :
     adopt_init_args(self, locals())
     from iotbx import file_reader
@@ -57,61 +93,70 @@ class fast_maps_from_hkl_file (object) :
     if f_label is None and not quiet:
       print >> log, "      no label for %s, will try default labels" % \
         os.path.basename(file_name)
-    f_obs = None
-    fallback_f_obs = []
-    default_labels = ["F(+),SIGF(+),F(-),SIGF(-)", "I(+),SIGI(+),I(-),SIGI(-)",
-      "F,SIGF","FOBS,SIGFOBS", "FOBS_X", "IOBS,SIGIOBS"]
-    default_rfree_labels = ["FreeR_flag", "FREE", "R-free-flags"]
-    all_labels = []
-    best_label = sys.maxint
-    data_file = file_reader.any_file(file_name, force_type="hkl")
-    for miller_array in data_file.file_server.miller_arrays :
-      labels = miller_array.info().label_string()
-      all_labels.append(labels)
-      if (labels == f_label) :
-        f_obs = miller_array
-        break
-      elif (f_label is None) and (labels in default_labels) :
-        label_score = default_labels.index(labels)
-        if (label_score < best_label) :
+    f_obs = r_free_flags = None
+    # FIXME this whole block needs to disappear
+    if (not assume_pdb_data) :
+      fallback_f_obs = []
+      default_labels = ["F(+),SIGF(+),F(-),SIGF(-)",
+        "I(+),SIGI(+),I(-),SIGI(-)",
+        "F,SIGF","FOBS,SIGFOBS", "FOBS_X", "IOBS,SIGIOBS"]
+      default_rfree_labels = ["FreeR_flag", "FREE", "R-free-flags"]
+      all_labels = []
+      best_label = sys.maxint
+      data_file = file_reader.any_file(file_name, force_type="hkl")
+      for miller_array in data_file.file_server.miller_arrays :
+        labels = miller_array.info().label_string()
+        all_labels.append(labels)
+        if (labels == f_label) :
           f_obs = miller_array
-          best_label = label_score
-      elif miller_array.is_xray_amplitude_array() :
-        fallback_f_obs.append(miller_array)
-    if f_obs is None :
-      if (len(fallback_f_obs) == 1) and (f_label is None) :
-        for array in fallback_f_obs :
-          if (array.anomalous_flag()) and (self.anomalous_map) :
-            f_obs = array
-            break
+          break
+        elif (f_label is None) and (labels in default_labels) :
+          label_score = default_labels.index(labels)
+          if (label_score < best_label) :
+            f_obs = miller_array
+            best_label = label_score
+        elif miller_array.is_xray_amplitude_array() :
+          fallback_f_obs.append(miller_array)
+      if f_obs is None :
+        if (len(fallback_f_obs) == 1) and (f_label is None) :
+          for array in fallback_f_obs :
+            if (array.anomalous_flag()) and (self.anomalous_map) :
+              f_obs = array
+              break
+          else :
+            f_obs = fallback_f_obs[0]
         else :
-          f_obs = fallback_f_obs[0]
+          raise Sorry(("Couldn't find %s in %s.  Please specify valid "+
+            "column labels (possible choices: %s)") % (f_label, file_name,
+              " ".join(all_labels)))
+      if (f_obs.is_xray_intensity_array()) :
+        f_obs = f_obs.f_sq_as_f()
+      sys_abs_flags = f_obs.sys_absent_flags().data()
+      f_obs = f_obs.map_to_asu().select(selection=~sys_abs_flags)
+      r_free = data_file.file_server.get_r_free_flags(
+        file_name=None,
+        label=r_free_label,
+        test_flag_value=None,
+        parameter_scope=None,
+        disable_suitability_test=False,
+        return_all_valid_arrays=True)
+      if (len(r_free) == 0) :
+        self.f_obs = f_obs
+        self.r_free_flags = f_obs.array(
+          data=flex.bool(f_obs.data().size(),False))
       else :
-        raise Sorry(("Couldn't find %s in %s.  Please specify valid "+
-          "column labels (possible choices: %s)") % (f_label, file_name,
-            " ".join(all_labels)))
-    if (f_obs.is_xray_intensity_array()) :
-      f_obs = f_obs.f_sq_as_f()
-    sys_abs_flags = f_obs.sys_absent_flags().data()
-    f_obs = f_obs.map_to_asu().select(selection=~sys_abs_flags)
-    r_free = data_file.file_server.get_r_free_flags(
-      file_name=None,
-      label=r_free_label,
-      test_flag_value=None,
-      parameter_scope=None,
-      disable_suitability_test=False,
-      return_all_valid_arrays=True)
-    if (len(r_free) == 0) :
-      self.f_obs = f_obs
-      self.r_free_flags = f_obs.array(data=flex.bool(f_obs.data().size(),False))
+        array, test_flag_value = r_free[0]
+        new_flags = array.customized_copy(
+          data=array.data() == test_flag_value).map_to_asu()
+        if (f_obs.anomalous_flag()) and (not new_flags.anomalous_flag()) :
+          new_flags = new_flags.generate_bijvoet_mates()
+        self.r_free_flags = new_flags.common_set(f_obs)
+        self.f_obs = f_obs.common_set(self.r_free_flags)
     else :
-      array, test_flag_value = r_free[0]
-      new_flags = array.customized_copy(
-        data=array.data() == test_flag_value).map_to_asu()
-      if (f_obs.anomalous_flag()) and (not new_flags.anomalous_flag()) :
-        new_flags = new_flags.generate_bijvoet_mates()
-      self.r_free_flags = new_flags.common_set(f_obs)
-      self.f_obs = f_obs.common_set(self.r_free_flags)
+      import mmtbx.wwpdb.utils
+      data_info = mmtbx.wwpdb.utils.find_data_arrays(
+        mtz_file=file_name, log=null_out())
+      self.f_obs, self.r_free_flags = data_info.data_and_flags()
     self.log = None
     self.fmodel = None
     if auto_run :
