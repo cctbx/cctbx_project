@@ -1223,6 +1223,7 @@ mmtbx/command_line/ramalyze.py -text
 mmtbx/command_line/real_space_correlation.py -text
 mmtbx/command_line/real_space_refine.py -text
 mmtbx/command_line/reciprocal_space_arrays.py -text
+mmtbx/command_line/rigid_bond_test.py -text
 mmtbx/command_line/rna_validate.py svneol=native#text/x-python
 mmtbx/command_line/rotalyze.py -text
 mmtbx/command_line/search_pdb_symmetry.py -text
@@ -1418,6 +1419,7 @@ mmtbx/regression/tst_ml_estimate.py -text
 mmtbx/regression/tst_msa.py -text
 mmtbx/regression/tst_prune_model.py -text
 mmtbx/regression/tst_real_space_correlation.py -text
+mmtbx/regression/tst_rigid_bond_test.py -text
 mmtbx/regression/tst_sort_hetatms.py -text
 mmtbx/regression/tst_validate_utils.py svneol=native#text/x-python
 mmtbx/regression/tst_validation_summary.py -text
