@@ -237,16 +237,17 @@ class ExecutingJob(object):
 
   def postprocess(self):
 
-    try:
-      self.job.join()
+    self.job.join()
 
-    except Exception, e:
-      self.method = self.unit.error
-      self.args = ( self.identifier, e )
+    exit_code = getattr( self.job, "exitcode", 0 ) # Thread has no "exitcode" attribute
 
-    else:
+    if exit_code == 0:
       self.method = self.unit.finalize
       self.args = ( self.identifier, )
+
+    else:
+      self.method = self.unit.error
+      self.args = ( self.identifier, RuntimeError( "exit code = %s" % exit_code ) )
 
 
   def get(self):
@@ -780,40 +781,201 @@ class MainthreadManager(object):
 
 
 # Parallel execution iterator
+class RechargeableIterator(object):
+  """
+  Allows new elements to be filled in
+  """
+
+  def __init__(self):
+
+    self.intermittent = deque()
+
+
+  def next(self):
+
+    try:
+      return self.intermittent.popleft()
+
+    except IndexError:
+      raise StopIteration
+
+
+  def has_next(self):
+
+    return bool( self.intermittent )
+
+
+  def append(self, value):
+
+    self.intermittent.append( value )
+
+
+  def extend(self, iterable):
+
+    self.intermittent.extend( iterable )
+
+
+class NoPooler(object):
+  """
+  Does not group jobs
+  """
+
+  @classmethod
+  def pack(cls, calcsiter, manager, orderer):
+
+    ( target, args, kwargs ) = calcsiter.next() # raise StopIteration
+    identifier = manager.submit(
+      target = target,
+      args = args,
+      kwargs = kwargs,
+      )
+    orderer.job_submitted( identifier = identifier )
+
+
+  @classmethod
+  def unpack(self, result, resiter):
+
+    resiter.append( result )
+
+
+class PooledRun(object):
+  """
+  Runs multiple jobs
+  """
+
+  def __init__(self, identifiers):
+
+    self.identifiers = identifiers
+
+
+  def __call__(self):
+
+    results = []
+
+    for iden in self.identifiers:
+      try:
+        res = iden.target( *iden.args, **iden.kwargs )
+
+      except Exception, e:
+        results.append( ( True, e ) )
+
+      else:
+        results.append( ( False, res ) )
+
+    return results
+
+
+  def results(self, raw):
+
+    results = []
+
+    try:
+      result = raw()
+
+    except Exception, e:
+      results.extend(
+        [ ErrorEnding( identifier = i, exception = e ) for i in self.identifiers ]
+        )
+
+    else:
+      assert len( result ) == len( self.identifiers )
+
+      for ( identifier, ( failure, data ) ) in zip( self.identifiers, result ):
+        if failure:
+          results.append(
+            ErrorEnding( identifier = identifier, exception = data )
+            )
+
+        else:
+          results.append(
+            RetrieveResult( identifier = identifier, result = data )
+            )
+
+    return results
+
+
+class Pooler(object):
+  """
+  Pools up a number of jobs and runs this way
+
+  pool - number of jobs to pool
+  """
+
+  def __init__(self, size):
+
+    assert 0 < size
+    self.size = size
+
+
+  def pack(self, calcsiter, manager, orderer):
+
+    identifiers = [
+      Identifier( target = target, args = args, kwargs = kwargs )
+      for ( index, ( target, args, kwargs ) )
+      in zip( range( self.size ), calcsiter )
+      ]
+
+    if not identifiers:
+      raise StopIteration
+
+    manager.submit(
+      target = PooledRun( identifiers = identifiers ),
+      args = (),
+      kwargs = {},
+      )
+
+    for identifier in identifiers:
+      orderer.job_submitted( identifier = identifier )
+
+
+  def unpack(self, result, resiter):
+
+    resiter.extend( result.identifier.target.results( raw = result ) )
+
+
+def get_pooler(size):
+
+  if size == 1:
+    return NoPooler
+
+  elif 1 < size:
+    return Pooler( size = size )
+
+  else:
+    raise ValueError, "Invalid pool size: %s" % size
+
+
+
 class ParallelForIterator(object):
   """
-  Creates an iterator that executes a function with variable input argument on a
-  Manager-like object
+  Creates an iterator that executes calls on a Manager-like object
 
-  function - the function to execute
   calculations - an iterable of calculations yielding ( target, args, kwargs ) tuples
   manager - execution manager
   """
 
-  def __init__(self, calculations, manager):
+  def __init__(self, calculations, manager, pool = 1):
 
-    self.calcsiter = iter( calculations )
     self.manager = manager
-
-    self.process = self._ongoing
+    self.pooler = get_pooler( size = pool )
+    self.resiter = RechargeableIterator()
+    self.calcsiter = iter( calculations )
+    self.resume()
 
 
   def _ongoing(self, orderer):
 
     while not self.manager.is_full():
       try:
-        ( target, args, kwargs ) = self.calcsiter.next()
+        self.pooler.pack(
+          calcsiter = self.calcsiter,
+          manager = self.manager,
+          orderer = orderer,
+          )
 
       except StopIteration:
-        self.process = self._terminating
+        self.suspend()
         break
-
-      identifier = self.manager.submit(
-          target = target,
-          args = args,
-          kwargs = kwargs,
-          )
-      orderer.job_submitted( identifier = identifier )
 
 
   def _terminating(self, orderer):
@@ -821,31 +983,62 @@ class ParallelForIterator(object):
     pass
 
 
+  def next(self, orderer):
+
+    if not self.resiter.has_next():
+      result = self.manager.results.next() # raise StopIteration
+      self.pooler.unpack( result = result, resiter = self.resiter )
+
+    self.process( orderer = orderer )
+    assert self.resiter.has_next()
+    r = self.resiter.next()
+    return ( r.identifier, r )
+
+
   def suspend(self):
 
     self.process = self._terminating
 
 
-  def restart(self):
+  def resume(self):
 
     self.process = self._ongoing
 
 
-  def next(self, orderer):
+class Ordering(object):
+  """
+  Base class for ordering classes
+  """
 
-    result = self.manager.results.next() # raise StopIteration
-    self.process( orderer = orderer )
-    return ( result.identifier, result )
+  def __init__(self, parallel_for):
+
+    self.parallel_for = parallel_for
 
 
-class FinishingOrder(object):
+  def __del__(self):
+
+    self.parallel_for.suspend()
+
+    # Fetch all processing values
+    for elem in self:
+      pass
+
+    self.parallel_for.resume()
+
+
+  def __iter__(self):
+
+    return self
+
+
+class FinishingOrder(Ordering):
   """
   Results returned as jobs finish
   """
 
   def __init__(self, parallel_for):
 
-    self.parallel_for = parallel_for
+    super( FinishingOrder, self ).__init__( parallel_for = parallel_for )
     self.parallel_for.process( orderer = self )
 
 
@@ -860,19 +1053,14 @@ class FinishingOrder(object):
     return ( ( identifier.target, identifier.args, identifier.kwargs ), result )
 
 
-  def __iter__(self):
-
-    return self
-
-
-class SubmissionOrder(object):
+class SubmissionOrder(Ordering):
   """
   Results returned as they are submitted
   """
 
   def __init__(self, parallel_for):
 
-    self.parallel_for = parallel_for
+    super( SubmissionOrder, self ).__init__( parallel_for = parallel_for )
     self.submitteds = deque()
     self.result_for = {}
     self.parallel_for.process( orderer = self )
@@ -897,9 +1085,4 @@ class SubmissionOrder(object):
     result = self.result_for[ first ]
     del self.result_for[ first ]
     return ( ( first.target, first.args, first.kwargs ), result )
-
-
-  def __iter__(self):
-
-    return self
 

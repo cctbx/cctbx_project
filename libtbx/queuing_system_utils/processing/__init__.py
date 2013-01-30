@@ -197,7 +197,7 @@ class Job(object):
     while self.is_alive():
       time.sleep( 0.1 )
 
-    ( stdout, stderr, exit_code ) = self.status.results()
+    ( stdout, stderr, self.exitcode ) = self.status.results()
 
     if stdout:
       print stdout
@@ -206,9 +206,6 @@ class Job(object):
       print stderr
 
     self.status.cleanup()
-
-    if exit_code != 0:
-      raise RuntimeError, "%s: exit code = %s" % ( self, exit_code )
 
 
   def __str__(self):
