@@ -991,7 +991,7 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
       if (len(done_list) == 0):
         self._scale_matrix = None
       elif (sorted(done_list[:3]) != [1,2,3]):
-        raise RuntimeError(
+        raise ValueError(
           "Improper set of PDB SCALE records%s" % source_info)
     return self._scale_matrix
 
