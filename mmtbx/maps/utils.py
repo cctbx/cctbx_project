@@ -34,21 +34,11 @@ def create_map_from_pdb_and_mtz (
   pdb_in = file_reader.any_file(pdb_file,
     force_type="pdb",
     raise_sorry_if_errors=True).file_object
-  if (remove_unknown_scatterering_type) :
-    pdb_hierarchy = pdb_in.construct_hierarchy()
-    pdb_atoms = pdb_hierarchy.atoms()
-    remove = flex.size_t()
-    for i_seq, atom in enumerate(pdb_atoms) :
-      if (atom.element.strip() == "X") :
-        remove.append(i_seq)
-    if (len(remove) > 0) :
-      print >> out, "WARNING: removing %d atoms with unknown scattering type."\
-        % len(remove)
-      selection = flex.bool(pdb_atoms.size(), True).set_selected(remove, False)
-      pdb_hierarchy = pdb_hierarchy.select(selection)
-      pdb_in = pdb_hierarchy.as_pdb_input(
-        crystal_symmetry=pdb_in.crystal_symmetry())
-  xrs = pdb_in.xray_structure_simple()
+  xrs = pdb_in.xray_structure_simple(enable_scattering_type_unknown=True)
+  selection = xrs.scatterers().extract_scattering_types()!="unknown"
+  if(selection.size()!=selection.count(True)):
+    print >> out, "WARNING: removing atoms with unknown scattering type."
+  xrs = xrs.select(selection)
   fast_maps_from_hkl_file(
     file_name=mtz_file,
     xray_structure=xrs,
