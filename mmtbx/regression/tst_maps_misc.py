@@ -1,7 +1,7 @@
 
 from __future__ import division
 
-def exercise_anomalous_difference_difference_map () :
+def exercise_anomalous_residual_map () :
   from mmtbx.regression import make_fake_anomalous_data
   from mmtbx import map_tools
   import mmtbx.utils
@@ -26,7 +26,7 @@ def exercise_anomalous_difference_difference_map () :
     xray_structures=[xrs],
     scattering_table="n_gaussian",
     skip_twin_detection=True)
-  map_coeffs = map_tools.anomalous_difference_difference_map_coefficients(
+  map_coeffs = map_tools.anomalous_residual_map_coefficients(
     fmodel=fmodel)
   map = map_coeffs.fft_map(
     resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
@@ -37,5 +37,5 @@ def exercise_anomalous_difference_difference_map () :
       assert (map.eight_point_interpolation(s.site) > 10)
 
 if (__name__ == "__main__") :
-  exercise_anomalous_difference_difference_map()
+  exercise_anomalous_residual_map()
   print "OK"
