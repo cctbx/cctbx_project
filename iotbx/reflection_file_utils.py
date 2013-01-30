@@ -1032,6 +1032,16 @@ class process_raw_data (object) :
   def r_free_flags_label (self) :
     return "FreeR_flag"
 
+  def r_free_flags_as_boolean_array (self) :
+    flags = self.r_free_flags.customized_copy(
+      data=self.r_free_flags.data()==self.test_flag_value)
+    if (self.f_obs.anomalous_flag()) and (not flags.anomalous_flag()) :
+      flags = flags.generate_bijvoet_mates()
+    return flags
+
+  def data_and_flags (self) :
+    return self.f_obs.common_sets(other=self.r_free_flags_as_boolean_array())
+
   def phase_labels (self) :
     if (self.phases is not None) :
       return "HLA,HLB,HLC,HLD"
