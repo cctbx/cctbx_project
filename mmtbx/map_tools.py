@@ -392,7 +392,7 @@ def get_phaser_sad_llg_map_coefficients (
   map_coeffs = t.llg_map_coeffs()
   return map_coeffs
 
-def anomalous_difference_difference_map_coefficients (fmodel, weighted=False) :
+def anomalous_residual_map_coefficients (fmodel, weighted=False) :
   """
   EXPERIMENTAL
 
