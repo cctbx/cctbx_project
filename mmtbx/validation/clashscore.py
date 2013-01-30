@@ -263,9 +263,9 @@ class probe_clashscore_manager(object):
     else: #use nuclear distances
       self.build = "phenix.reduce -oh -his -flip -pen9999 -keep -allalt -nuc -"
       self.probe_txt = \
-        'phenix.probe -u -q -mc -het -nuc -once "ogt33 not water" "ogt33" -'
+        'phenix.probe -u -q -mc -het -once -nuclear "ogt33 not water" "ogt33" -'
       self.probe_atom_txt = \
-        'phenix.probe -q -mc -het -nuc -dumpatominfo "ogt33 not water" -'
+        'phenix.probe -q -mc -het -dumpatominfo -nuclear "ogt33 not water" -'
 
     if not keep_hydrogens:
       h_pdb_string = self.run_reduce(pdb_string)
@@ -331,8 +331,12 @@ class probe_clashscore_manager(object):
     def get_clash(k):
       return clash_hash[k]
     temp_sorted = sorted(temp, key=get_clash)
+    used = []
     for k in temp_sorted:
-      bad_clashes += k+':'+str(clash_hash[k])+'\n'
+      test_key = k[0:11]+k[16:27]
+      if test_key not in used:
+        bad_clashes += k+':'+str(clash_hash[k])+'\n'
+        used.append(test_key)
     probe_info = easy_run.fully_buffered(self.probe_atom_txt,
       stdin_lines=pdb_string).raise_if_errors().stdout_lines
     if (len(probe_info) == 0) :
