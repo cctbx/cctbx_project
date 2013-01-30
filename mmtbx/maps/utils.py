@@ -37,7 +37,8 @@ def create_map_from_pdb_and_mtz (
   xrs = pdb_in.xray_structure_simple(enable_scattering_type_unknown=True)
   selection = xrs.scatterers().extract_scattering_types()!="unknown"
   if(selection.size()!=selection.count(True)):
-    print >> out, "WARNING: removing atoms with unknown scattering type."
+    print >> out, "WARNING: removing %d atoms with unknown scattering type." %\
+      selection.count(False)
   xrs = xrs.select(selection)
   fast_maps_from_hkl_file(
     file_name=mtz_file,
