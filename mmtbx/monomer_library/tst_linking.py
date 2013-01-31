@@ -57,7 +57,7 @@ ATOM   2547  O   SER A 336      48.284  26.389  18.124  1.00 11.56           O
 ATOM   2548  CB  SER A 336      45.335  27.061  17.256  1.00 12.96           C
 ATOM   2549  OG  SER A 336      44.189  26.866  16.408  1.00 15.06           O
 """,
-        "linking_test_ASN-NAG.pdb" : """
+    "linking_test_ASN-NAG.pdb" : """
 ATOM   1989  N   ASN A 270      20.738  61.827 110.156  1.00 11.35           N
 ATOM   1990  CA  ASN A 270      20.866  63.240 110.482  1.00 11.45           C
 ATOM   1991  C   ASN A 270      20.238  64.075 109.377  1.00 11.25           C
@@ -491,7 +491,7 @@ ATOM   2152  C2   DA C  28     -12.373  -3.529 -21.793  1.00 49.56           C
 ATOM   2153  N3   DA C  28     -11.917  -4.774 -21.688  1.00 49.25           N
 ATOM   2154  C4   DA C  28     -10.901  -5.004 -22.529  1.00 48.98           C
 """,
-        "4mf.cif" : """
+    "4mf.cif" : """
 data_comp_list
 loop_
 _chem_comp.id
@@ -602,6 +602,182 @@ _chem_comp_bond.value_dist_esd
 4MF   C2      H2    single        0.973 0.020
 #
 """,
+    "linking_test_NAG-FU4.pdb" : """
+HETATM 9423  C1  NAG D1584       6.798 -15.752  22.420  1.00 22.72           C  
+HETATM 9424  C2  NAG D1584       5.572 -16.434  23.033  1.00 24.18           C  
+HETATM 9425  C3  NAG D1584       4.596 -15.354  23.498  1.00 23.13           C  
+HETATM 9426  C4  NAG D1584       5.251 -14.345  24.447  1.00 23.39           C  
+HETATM 9427  C5  NAG D1584       6.580 -13.815  23.895  1.00 24.93           C  
+HETATM 9428  C6  NAG D1584       7.379 -13.088  24.991  1.00 27.57           C  
+HETATM 9429  C7  NAG D1584       5.155 -18.617  22.021  1.00 29.09           C  
+HETATM 9430  C8  NAG D1584       4.408 -19.417  20.984  1.00 29.54           C  
+HETATM 9431  N2  NAG D1584       4.916 -17.305  22.067  1.00 25.34           N  
+HETATM 9432  O3  NAG D1584       3.454 -15.926  24.089  1.00 23.03           O  
+HETATM 9433  O4  NAG D1584       4.387 -13.247  24.573  1.00 22.66           O  
+HETATM 9434  O5  NAG D1584       7.367 -14.889  23.394  1.00 23.22           O  
+HETATM 9435  O7  NAG D1584       5.951 -19.182  22.779  1.00 31.04           O  
+HETATM 9436  O6  NAG D1584       7.429 -13.988  26.081  1.00 31.80           O  
+HETATM 9462  C1  FU4 D1588       8.042 -13.514  27.304  1.00 37.58           C  
+HETATM 9463  C2  FU4 D1588       7.470 -14.288  28.512  1.00 38.91           C  
+HETATM 9464  C3  FU4 D1588       7.920 -15.750  28.448  1.00 41.29           C  
+HETATM 9465  C4  FU4 D1588       9.448 -15.793  28.444  1.00 41.76           C  
+HETATM 9466  C5  FU4 D1588       9.980 -14.949  27.275  1.00 40.83           C  
+HETATM 9467  C6  FU4 D1588      11.507 -14.975  27.258  1.00 40.52           C  
+HETATM 9468  O2  FU4 D1588       6.059 -14.235  28.600  1.00 39.96           O  
+HETATM 9469  O3  FU4 D1588       7.398 -16.498  29.524  1.00 40.18           O  
+HETATM 9470  O4  FU4 D1588       9.951 -15.298  29.675  1.00 43.17           O  
+HETATM 9471  O5  FU4 D1588       9.470 -13.611  27.319  1.00 39.54           O  
+""",
+    "fu4.cif" : """
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+FU4        FU4 '2,6-anhydro-1-deoxy-D-galactitol' ligand 22 10 .
+#
+data_comp_FU4
+#
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+FU4         C1     C   CH2   .         -0.9215    0.7090   -1.3477
+FU4         C2     C   CH1   .          0.5905    0.7090   -1.3477
+FU4         C3     C   CH1   .          1.0944    0.7090    0.0773
+FU4         C4     C   CH1   .          0.4272   -0.4074    0.8476
+FU4         C5     C   CH1   .         -1.0718   -0.3124    0.6757
+FU4         C6     C   CH3   .         -1.7403   -1.4199    1.4597
+FU4         O2     O   OH1   .          1.0598    1.8584   -2.0114
+FU4         O3     O   OH1   .          2.4889    0.5143    0.0821
+FU4         O4     O   OH1   .          0.8778   -1.6488    0.3597
+FU4         O5     O   O2    .         -1.3966   -0.4405   -0.6867
+FU4        H1C1    H   HCH2  .         -1.2461    0.7114   -2.2683
+FU4        H1C2    H   HCH2  .         -1.2462    1.5059   -0.8870
+FU4         H2     H   HCH1  .          0.9159   -0.0880   -1.8079
+FU4         H3     H   HCH1  .          0.8839    1.5648    0.4968
+FU4         H4     H   HCH1  .          0.6518   -0.3289    1.7943
+FU4         H5     H   HCH1  .         -1.3829    0.5524    1.0045
+FU4        H6C1    H   HCH3  .         -2.7057   -1.2758    1.4678
+FU4        H6C2    H   HCH3  .         -1.5431   -2.2795    1.0413
+FU4        H6C3    H   HCH3  .         -1.4036   -1.4191    2.3759
+FU4         HA     H   HOH1  .          1.3561    1.6345   -2.8176
+FU4         HB     H   HOH1  .          2.8770    1.1651    0.5444
+FU4         HC     H   HOH1  .          1.4344   -2.0133    0.9472
+#
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+FU4   C1      C2    single        1.512 0.020
+FU4   C1      O5    single        1.408 0.020
+FU4   C1     H1C1   single        0.976 0.020
+FU4   C1     H1C2   single        0.976 0.020
+FU4   C2      C3    single        1.511 0.020
+FU4   C2      O2    single        1.408 0.020
+FU4   C2      H2    single        0.976 0.020
+FU4   C3      C4    single        1.511 0.020
+FU4   C3      O3    single        1.408 0.020
+FU4   C3      H3    single        0.976 0.020
+FU4   C4      C5    single        1.512 0.020
+FU4   C4      O4    single        1.408 0.020
+FU4   C4      H4    single        0.976 0.020
+FU4   C5      C6    single        1.513 0.020
+FU4   C5      O5    single        1.406 0.020
+FU4   C5      H5    single        0.976 0.020
+FU4   C6     H6C1   single        0.976 0.020
+FU4   C6     H6C2   single        0.976 0.020
+FU4   C6     H6C3   single        0.976 0.020
+FU4   O2      HA    single        0.888 0.020
+FU4   O3      HB    single        0.888 0.020
+FU4   O4      HC    single        0.888 0.020
+""",
+    "linking_test_BGC-BGC.pdb" : """
+HETATM 2374  C2  BGC B 401       5.858  17.444  53.947  1.00 10.73           C  
+HETATM 2375  C3  BGC B 401       6.199  18.564  52.974  1.00 10.02           C  
+HETATM 2376  C4  BGC B 401       4.883  19.259  52.650  1.00  9.66           C  
+HETATM 2377  C5  BGC B 401       4.352  19.862  53.947  1.00  9.19           C  
+HETATM 2378  C6  BGC B 401       3.073  20.685  53.802  1.00  9.97           C  
+HETATM 2379  C1  BGC B 401       5.210  18.029  55.193  1.00 12.05           C  
+HETATM 2380  O1  BGC B 401       4.688  16.987  55.955  1.00 13.71           O  
+HETATM 2381  O2  BGC B 401       7.016  16.779  54.404  1.00 12.15           O  
+HETATM 2382  O3  BGC B 401       6.709  18.077  51.750  1.00 10.15           O  
+HETATM 2383  O4  BGC B 401       5.090  20.298  51.721  1.00  9.48           O  
+HETATM 2384  O5  BGC B 401       4.087  18.799  54.833  1.00  8.55           O  
+HETATM 2385  O6  BGC B 401       2.004  19.920  53.229  1.00  8.55           O  
+HETATM 2386  C2  BGC B 402       8.524  17.329  50.431  1.00 12.41           C  
+HETATM 2387  C3  BGC B 402      10.050  17.335  50.257  1.00 12.69           C  
+HETATM 2388  C4  BGC B 402      10.659  18.712  50.487  1.00 12.30           C  
+HETATM 2389  C5  BGC B 402      10.171  19.272  51.825  1.00 10.88           C  
+HETATM 2390  C6  BGC B 402      10.610  20.705  52.119  1.00 10.57           C  
+HETATM 2391  C1  BGC B 402       8.143  18.001  51.734  1.00 11.41           C  
+HETATM 2392  O2  BGC B 402       7.987  16.015  50.403  1.00 13.00           O  
+HETATM 2393  O3  BGC B 402      10.347  17.051  48.908  1.00 15.37           O  
+HETATM 2394  O4  BGC B 402      12.073  18.535  50.546  1.00 13.31           O  
+HETATM 2395  O5  BGC B 402       8.743  19.283  51.808  1.00  9.88           O  
+HETATM 2396  O6  BGC B 402      10.164  21.605  51.121  1.00 11.09           O  
+""",
+    "bgc.cif" : """
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+BGC        BGC 'beta-D-glucopyranose     ' ligand 24 12 .
+#
+data_comp_BGC
+#
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+BGC         C2     C   CH1   .          1.0181    0.7466   -1.2014
+BGC         C3     C   CH1   .         -0.4936    0.7466   -1.2014
+BGC         C4     C   CH1   .         -0.9974   -0.4285   -0.3952
+BGC         C5     C   CH1   .         -0.4042   -0.3777    0.9944
+BGC         C6     C   CH2   .         -0.8493   -1.5929    1.7774
+BGC         C1     C   CH1   .          1.5218    0.7466    0.2233
+BGC         O1     O   OH1   .          2.9275    0.6794    0.2239
+BGC         O2     O   OH1   .          1.4875    1.8963   -1.8652
+BGC         O3     O   OH1   .         -0.9629    0.6435   -2.5248
+BGC         O4     O   OH1   .         -2.4015   -0.3707   -0.3086
+BGC         O5     O   O2    .          0.9993   -0.3659    0.9049
+BGC         O6     O   OH1   .         -0.2097   -1.6024    3.0344
+BGC         H2     H   HCH1  .          1.3435   -0.0504   -1.6615
+BGC         H3     H   HCH1  .         -0.8190    1.5769   -0.8045
+BGC         H4     H   HCH1  .         -0.7324   -1.2603   -0.8319
+BGC         H5     H   HCH1  .         -0.7081    0.4312    1.4486
+BGC        H6C1    H   HCH2  .         -1.8166   -1.5616    1.9048
+BGC        H6C2    H   HCH2  .         -0.6121   -2.4019    1.2854
+BGC         H1     H   HCH1  .          1.2351    1.5659    0.6699
+BGC         HA     H   HOH1  .          3.2455    1.1381    0.9141
+BGC         HB     H   HOH1  .          2.0042    1.6551   -2.5454
+BGC         HC     H   HOH1  .         -1.4335    1.3679   -2.7292
+BGC         HD     H   HOH1  .         -2.7570   -0.9641   -0.8647
+BGC         H6     H   HOH1  .         -0.5848   -2.2177    3.5527
+#
+""",
         }
 
 def run():
@@ -613,6 +789,7 @@ def run():
     if pdb.endswith(".cif"): cifs += " %s" % pdb
   for pdb in pdbs:
     if pdb.endswith(".cif"): continue
+    #if pdb.find("linking_test_BGC-BGC")==-1: continue
     for i in range(2):
       log_filename = "%s_%d.log" % (pdb, i)
       cmd = "phenix.pdbtools %s" % pdb

@@ -32,6 +32,13 @@ standard_o_links = [
   "XYS-SER",
   "XYS-THR",
   ]
+#################################################
+# saccahrides that have non-standard atom names #
+#  in the names in the standard links           #
+#################################################
+not_correct_sugars = [
+  "FU4",
+  ]
 
 # see iotbx/pdb/common_residue_names.h; additionally here only: U I
 ad_hoc_single_metal_residue_element_types = """\
@@ -74,11 +81,22 @@ def get_chiral_volume(centre, atom1, atom2, atom3):
   volume = abc[0].dot(flex.double(a.cross(b)[0]))
   return volume
 
-def is_glyco_bond(atom1, atom2):
+def is_glyco_bond(atom1, atom2, verbose=False):
+  if verbose:
+    print '----- is_glyco_bond -----'
+    print atom1.quote()
+    print atom2.quote()
+    print get_type(atom1.parent().resname)
+    print get_type(atom2.parent().resname)
+    print sugar_types
+    print get_type(atom1.parent().resname).upper()
+    print get_type(atom2.parent().resname).upper()
   if get_type(atom1.parent().resname) is None: return False
   if get_type(atom2.parent().resname) is None: return False
   if not get_type(atom1.parent().resname).upper() in sugar_types: return False
   if not get_type(atom2.parent().resname).upper() in sugar_types: return False
+  #
+  if atom2.parent().resname in not_correct_sugars: return False
   return True
 
 def is_glyco_amino_bond(atom1, atom2):
@@ -132,7 +150,7 @@ def is_o_glyco_bond(atom1, atom2):
     return True
   return False
 
-def get_hand(c_atom, o_atom, angles):
+def get_hand(c_atom, o_atom, angles, verbose=False):
   def _sort_by_name(a1, a2):
     if a1.name<a2.name: return -1
     else: return 1
@@ -148,9 +166,11 @@ def get_hand(c_atom, o_atom, angles):
   others.insert(0, o_atom)
   others.insert(0, c_atom)
   if len(others)!=4:
-    print '-'*80
-    for atom in others:
-      print atom.format_atom_record()
+    if verbose:
+      print '-'*80
+      for atom in others:
+        print atom.format_atom_record()
+      print '-'*80
     return None
   v = get_chiral_volume(*others)
   if v<0:
@@ -500,13 +520,13 @@ def process_atom_groups_for_linking_single_link(pdb_hierarchy,
       atom2 = tmp_atom
 
   long_tmp_key = "%s:%s-%s:%s" % (atom1.parent().resname.strip(),
-                             atom1.name.strip(),
-                             atom2.parent().resname.strip(),
-                             atom2.name.strip(),
-                             )
+                                  atom1.name.strip(),
+                                  atom2.parent().resname.strip(),
+                                  atom2.name.strip(),
+    )
   tmp_key = "%s-%s" % (atom1.parent().resname.strip(),
-                             atom2.parent().resname.strip(),
-                             )
+                       atom2.parent().resname.strip(),
+    )
   if verbose:
     print "tmp_key %s" % tmp_key
     print "long_tmp_key %s" % long_tmp_key
@@ -544,18 +564,19 @@ def process_atom_groups_for_linking_single_link(pdb_hierarchy,
       if verbose:
         print 'get_hand'
         print c_atom, o_atom, angles
-      hand = get_hand(c_atom, o_atom, angles) #"ALPHA"
-      assert hand
-
-      data_link_key = "%s%s-%s" % (hand,
-                                   c_atom.name.strip()[-1],
-                                   o_atom.name.strip()[-1],
-                                   )
-      if data_link_key in [
-        "BETAB-B",
-        ]: assert 0
-      #cif_links = cif_links.replace(tmp_key, data_link_key)
-      key = data_link_key
+      hand = get_hand(c_atom, o_atom, angles, verbose=verbose) #"ALPHA"
+      if hand is None:
+        key = long_tmp_key
+      else:
+        data_link_key = "%s%s-%s" % (hand,
+                                     c_atom.name.strip()[-1],
+                                     o_atom.name.strip()[-1],
+                                     )
+        if data_link_key in [
+          "BETAB-B",
+          ]: assert 0
+        #cif_links = cif_links.replace(tmp_key, data_link_key)
+        key = data_link_key
     else:
       print " %s" % ("!"*84)
       print _write_warning_line("  Possible link ignored")

@@ -22,6 +22,7 @@ from libtbx import Auto, group_args, slots_getstate_setstate
 from cStringIO import StringIO
 import string
 import sys, os
+import time
 
 # see iotbx/pdb/common_residue_names.h; additionally here only: U I
 ad_hoc_single_atom_residue_element_types = """\
@@ -1512,6 +1513,24 @@ class add_angle_proxies(object):
         angle_proxy_registry,
         special_position_indices,
         broken_bond_i_seq_pairs=None):
+    if 0:
+      print '='*80
+      print counters
+      print m_i
+      print m_j
+      print dir(m_i)
+      print m_i.residue_name
+      print m_i.atom_names_given
+      print m_i.chainid
+      print m_i.conf_altloc
+      if m_j:
+        print m_j.residue_name
+        print m_j.atom_names_given
+        print m_j.chainid
+        print m_j.conf_altloc
+      for angle in angle_list:
+        print '-'*80
+        angle.show()
     self.counters = counters
     if (m_j is None):
       m_1,m_2,m_3 = m_i,m_i,m_i
@@ -1560,6 +1579,7 @@ class add_angle_proxies(object):
               i_seqs=i_seqs,
               angle_ideal=angle.value_angle,
               weight=1/angle.value_angle_esd**2))
+          #print i_seqs
           evaluate_registry_process_result(
             proxy_label="angle", m_i=m_i, m_j=m_j, i_seqs=i_seqs,
             registry_process_result=registry_process_result)
@@ -2674,11 +2694,26 @@ class build_all_chain_proxies(object):
                       " this link\n"
                   + "  If none of this applies, send email to:\n"
                   + "    bugs@phenix-online.org")
-            # automatic link creation
+            # automatic link creation              
+            #print '='*80
+            #print apply.data_link
+            #print mon_lib_srv.link_link_id_dict.keys()
+            #print m_i.conf_altloc
+            #print m_j.conf_altloc
             if not mon_lib_srv.link_link_id_dict.get(apply.data_link, False):
-              rc = self.create_link(apply, m_i, m_j)
-              if getattr(apply, "possible_peptide_link", False):
-                pass
+              if getattr(apply, "possible_peptide_link", False):   pass
+              elif getattr(apply, "possible_rna_dna_link", False): pass
+              else:
+                rc = self.create_link(apply, m_i, m_j)
+                if False:
+                  print dir(rc)
+                  print rc.source_info
+                  print 'bond'
+                  for bond in rc.bond_list:
+                    bond.show()
+                  for angle in rc.angle_list:
+                    angle.show()
+                mon_lib_srv.link_link_id_dict[apply.data_link] = rc
               continue
             link = mon_lib_srv.link_link_id_dict[apply.data_link]
             link_resolution = add_bond_proxies(
@@ -3071,8 +3106,12 @@ class build_all_chain_proxies(object):
                   ):
     import linking_utils
     from math import sqrt
+    from mmtbx.monomer_library.cif_types import link_link_id, chem_comp
     from mmtbx.monomer_library.cif_types import chem_link_bond, chem_link_angle
     from mmtbx.monomer_library.bondlength_defaults import get_default_bondlength
+    link = link_link_id("custom",
+                        chem_comp(),
+                        )
     # bond
     bond = chem_link_bond()
     bond.atom_1_comp_id = 1
@@ -3107,6 +3146,7 @@ class build_all_chain_proxies(object):
     except Exception, e:
       if str(e).find("Conflicting bond_simple restraints:")>-1: return False
       raise e
+    link.bond_list.append(bond)
     # angles
     bonds1=[]
     bonds2=[]
@@ -3200,7 +3240,8 @@ class build_all_chain_proxies(object):
         angle_proxy_registry=self.geometry_proxy_registries.angle,
         special_position_indices=self.special_position_indices,
         )
-    return True
+    link.angle_list = angle_list
+    return link
 
   def process_custom_links(self,
                            mon_lib_srv,
@@ -3258,8 +3299,19 @@ class build_all_chain_proxies(object):
     # mods
     link = mon_lib_srv.link_link_id_dict.get(ga.data_link)
     if link is None: return outl
+    #################################################
+    # saccahrides that have non-standard atom names #
+    #  in the names in the mods                     #
+    #################################################
+    ignore_mods = [False, False]
+    if ga.atom1.parent().resname in ["BGC"]:
+      ignore_mods[0]=True
+    if ga.atom1.parent().resname in ["BGC"]:
+      ignore_mods[1]=True
+    #####################
     mod_ids = []
-    for mod_attr in ["mod_id_1", "mod_id_2"]:
+    for mod_i, mod_attr in enumerate(["mod_id_1", "mod_id_2"]):
+      if ignore_mods[mod_i]: continue
       mod_id = getattr(link.chem_link, mod_attr)
       if (mod_id == ""): mod_id = None
       mod_ids.append(mod_id)
@@ -3288,6 +3340,7 @@ class build_all_chain_proxies(object):
                                 intra_residue_bond_cutoff=1.99,
                                 verbose=False,
                                 ):
+    t0 = time.time()
     ########################################
     # must be after process_apply_cif_link #
     ########################################
@@ -3366,12 +3419,14 @@ class build_all_chain_proxies(object):
             )
         else:
           if getattr(apply, "possible_peptide_link", False):
-            pass
-            #print >> log, "%sPossible peptide link %s to %s" % (
-            #  " "*8,
-            #  apply.pdbres_pair[0][7:],
-            #  apply.pdbres_pair[1][7:],
-            #  )
+            if 1:
+              pass
+            else:
+              print >> log, "%sPossible peptide link %s to %s" % (
+                " "*8,
+                apply.pdbres_pair[0][7:],
+                apply.pdbres_pair[1][7:],
+                )
           elif getattr(apply, "possible_rna_dna_link", False):
             pass
           else:
@@ -3393,6 +3448,9 @@ class build_all_chain_proxies(object):
       remove.sort()
       remove.reverse()
       for r in remove: del self.apply_cif_links[r]
+    print >> log, "%sTime to detect intra-chain links : %0.1fs" % (
+      " "*6,
+      time.time()-t0)                                                             
 
   def create_disulfides(self, disulfide_distance_cutoff, log=None):
     if (self.model_indices is not None):
