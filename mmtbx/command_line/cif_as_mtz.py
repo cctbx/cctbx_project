@@ -332,6 +332,9 @@ def extract(file_name,
           data_int = ma.data().iround()
           assert data_int.as_double().all_eq(ma.data())
           ma = ma.customized_copy(data=data_int).set_info(ma.info())
+      elif ((ma.is_xray_amplitude_array() or ma.is_xray_intensity_array())
+            and isinstance(ma.data(), flex.int)):
+        ma = ma.customized_copy(data=ma.data().as_double()).set_info(ma.info())
       crys_id = 0
       for l in labels:
         if 'crystal_id' in l:
