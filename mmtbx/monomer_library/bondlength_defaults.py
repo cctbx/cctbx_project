@@ -3131,4 +3131,3 @@ if __name__=="__main__":
                   ("At", "H"),
         ]:
       print atoms, get_default_bondlength(*atoms)
-

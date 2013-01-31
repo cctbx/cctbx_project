@@ -2694,7 +2694,7 @@ class build_all_chain_proxies(object):
                       " this link\n"
                   + "  If none of this applies, send email to:\n"
                   + "    bugs@phenix-online.org")
-            # automatic link creation              
+            # automatic link creation
             #print '='*80
             #print apply.data_link
             #print mon_lib_srv.link_link_id_dict.keys()
@@ -3450,7 +3450,7 @@ class build_all_chain_proxies(object):
       for r in remove: del self.apply_cif_links[r]
     print >> log, "%sTime to detect intra-chain links : %0.1fs" % (
       " "*6,
-      time.time()-t0)                                                             
+      time.time()-t0)
 
   def create_disulfides(self, disulfide_distance_cutoff, log=None):
     if (self.model_indices is not None):
