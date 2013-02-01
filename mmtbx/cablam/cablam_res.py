@@ -7,6 +7,10 @@ from __future__ import division
 #  linked_residue.id_with_resname() changed to return pdb-column-formatted ids
 #2012-10-09:
 #  self.resid is now stored in each linked_residue object
+#2013_02_01: Added a step in linked_residue.__init__() that flags HETATOMs and a
+#  step in construct_linked_residues() that skips adding them to the
+#  resdata/protein object. Will this be a problem for synthetic or other
+#  non-standard residues?
 
 import sys
 from mmtbx.cablam.cablam_math import veclen, vectorize
@@ -155,6 +159,7 @@ class linked_residue(object):
     self.resnum = int(rg.resseq.strip())
     self.icode = rg.icode
     self.resid = cablam_key(self.model, self.chain, self.resnum, self.icode)
+    self.hetero = False #marks whether this is a HETATOM
 
     #alts: 'alt' and 'resname' keyed by ag.altloc in the form of '','A','B' etc.
     #atomxyz: xyz coords, indexed by ag.altloc, and atom.name within each alt
@@ -171,6 +176,8 @@ class linked_residue(object):
       self.atomxyz[ag.altloc] = {}
       self.atomb[ag.altloc]   = {}
       for atom in ag.atoms():
+        if atom.hetero:
+           self.hetero=True
         for targetatom in targetatoms:
           if atom.name.strip() == targetatom:
             self.atomxyz[ag.altloc][targetatom] = atom.xyz
@@ -260,8 +267,9 @@ def construct_linked_residues(
           rg, prevres=prevres, pdbid=pdbid, modelid=model.id, chainid=chain.id,
           targetatoms=targetatoms)
         resid_string = cablam_key(model.id, chain.id, residue.resnum, rg.icode)
-        protein[resid_string] = residue
-        prevres = residue   #important update for determining connectivity
+        if not residue.hetero: #automatically skip het atoms
+          protein[resid_string] = residue
+          prevres = residue   #important update for determining connectivity
   return protein
 #-------------------------------------------------------------------------------
 #}}}
