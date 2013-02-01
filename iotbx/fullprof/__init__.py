@@ -20,14 +20,42 @@ def cctbx_xray_structure_from(cls, file=None, filename=None):
   #stream.parse()
   return None #builder.structure
 
-def rietfeld_refine_structure(crystalstructure, Iobs):
-  # XXX: todo implement
-  pass
+def rietveld_refine_structure(crystalstructure,
+                      wavelength=wavelengths.characteristic("CU").as_angstrom(),
+                      Iobs=None, Profile=None, ProfileFile=None):
+  # XXX: Document!
+  # Check preconditions
+  if count(None in [Iobs, Profile, ProfileFile]) != 2:
+    raise(ValueError("You may only pass one of Iobs, Profile and ProfileFile"))
+  if ProfileFile is None:
+    # write out profile file for FullProf
+    # XXX: todo implement
+    pass
+  # start work
+  from write_pcr import write_pcr
+  import tempfile
+  import shutil
+  import os
+  # write pcr file and execute FullProf
+  try:
+    f = tempfile.NamedTemporaryFile(suffix=".pcr", delete=False)
+  except IOError: raise
+  pcrfile = f.name
+  basepath = os.path.splitext(pcrfile)[0]
+  write_pcr(f, crystalstructure, jobtype=0,
+            wavelength=wavelength)
+  f.close()
+  try:
+    shutil.copyfile(ProfileFile, os.joinext(basepath, ".dat"))
+  except IOError: raise
+  run_fullprof(pcrfile, verbose=0)
+
 
 def simulate_powder_pattern(crystalstructure,
                      wavelength=wavelengths.characteristic("CU").as_angstrom(),
                      filename="",
-                     keep_results=False):
+                     keep_results=False,
+                     scale_down=1.0):
   """
   Get integrated intensities and a a simulated XRD profile calculated with
   FullProf (has to be installed and callable via "fp2k").
@@ -41,6 +69,8 @@ def simulate_powder_pattern(crystalstructure,
   :param keep_results: keep the (temporary) files from FullProf for a later \
   manual inspection
   :type keep_results: boolean
+  :param scale_down: factor to divide intensities by (to avoid overflows)
+  :type scale_down: float
 
   :returns: calculated integral intensities, calculated profile
   :rtype: cctbx.miller, list(tuple(float,int))
@@ -60,8 +90,10 @@ def simulate_powder_pattern(crystalstructure,
   except IOError: raise
   pcrfile = f.name
   basepath = os.path.splitext(pcrfile)[0]
-  write_pcr(f, crystalstructure, jobtype=2, wavelength=wavelength)
+  write_pcr(f, crystalstructure, jobtype=2,
+            wavelength=wavelength, scale_down=scale_down)
   f.close()
+  if scale_down > 10000: raise
   run_fullprof(pcrfile, verbose=0)
 
   # fix hkl file for hkl reader
@@ -84,7 +116,11 @@ def simulate_powder_pattern(crystalstructure,
                           crystal_symmetry=crystalstructure.crystal_symmetry(),
                           assume_shelx_observation_type_is="intensities")[0]
   except KeyboardInterrupt: raise
-  except Exception: raise
+  except Exception:
+    # an overflow occured
+    return simulate_powder_pattern(crystalstructure, wavelength=wavelength,
+                                   filename=filename, keep_results=keep_results,
+                                   scale_down=scale_down*10.0)
   profile = None
 
   # clean up

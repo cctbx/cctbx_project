@@ -943,6 +943,7 @@ iotbx/examples/pdb_truncate_to_ala/v4_with_bells_and_whistles.py svneol=native#t
 iotbx/examples/tst_mtz_free_flipper.py svneol=native#text/x-python
 iotbx/file_reader.py svneol=native#text/x-python
 iotbx/fullprof/__init__.py -text
+iotbx/fullprof/read_pcr.py -text
 iotbx/fullprof/write_pcr.py -text
 iotbx/gui_tools/__init__.py -text
 iotbx/gui_tools/import_data_and_flags.py -text
