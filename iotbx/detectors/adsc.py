@@ -9,10 +9,30 @@ class ADSCImage(DetectorImageBase):
 
   def readHeader(self,maxlength=12288, external_keys=None): # usually 1024 is OK; require 12288 for ID19
     if not self.parameters:
-      rawdata = open(self.filename,"rb").read(maxlength)
-      headeropen = rawdata.index("{")
-      headerclose= rawdata.index("}")
-      self.header = rawdata[headeropen+1:headerclose-headeropen]
+      MAGIC_NUMBER = '{\nHEADER_BYTES='
+      stream = open(self.filename, 'rb')
+
+      # Check the magic number and get the size of the header before
+      # the start of the image data
+      # (http://strucbio.biologie.uni-konstanz.de/ccp4wiki/index.php/SMV_file_format).
+      # This obsoletes the maxlength parameter.
+      assert stream.read(len(MAGIC_NUMBER)) == MAGIC_NUMBER
+      while True:
+        c = stream.read(1)
+        if not c.isspace():
+          break
+      header_bytes = c
+      while True:
+        c = stream.read(1)
+        if not c.isdigit():
+          break
+        header_bytes += c
+
+      # Reread the entire header.  Only storing the remaining parts of
+      # the header in self.header may break the API.
+      stream.seek(0)
+      self.header = stream.read(int(header_bytes))
+      stream.close()
 
       self.parameters={'CCD_IMAGE_SATURATION':65535}
 
