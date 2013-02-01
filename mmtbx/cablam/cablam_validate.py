@@ -530,7 +530,7 @@ def find_whole_sec_struc(resdata):
 #  once I get ahold of the ribbon code
 def cablam_multicrit_kin(hierarchy, peptide_cutoff=0.05, peptide_bad_cutoff=0.01, ca_cutoff=0.005, pdbid='pdbid', writeto=sys.stdout):
   outfile_kin = open(pdbid+'_cablam_multi.kin','w')
-  outfile_pdb = open(pdbid+'_cablam_mulit.pdb','w')
+  outfile_pdb = open(pdbid+'_cablam_multi.pdb','w')
   resdata=setup(hierarchy,pdbid)
   peptide_expectations = fetch_peptide_expectations()
   ca_expectations = fetch_ca_expectations()
@@ -555,7 +555,7 @@ def cablam_multicrit_kin(hierarchy, peptide_cutoff=0.05, peptide_bad_cutoff=0.01
   outfile_pdb.write(hierarchy.as_pdb_string())
   outfile_kin.close()
   outfile_pdb.close()
-  king_command = 'phenix.king -m ' + pdbid+'_cablam_multi.kin ' + pdbid+'_cablam_mulit.pdb'
+  king_command = 'phenix.king -m ' + pdbid+'_cablam_multi.pdb ' + pdbid+'_cablam_multi.kin'
   #'king -m' merges the files that follow
   easy_run.fully_buffered(king_command)
 #-------------------------------------------------------------------------------
