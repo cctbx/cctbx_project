@@ -2,7 +2,7 @@ from __future__ import division
 from __future__ import print_function
 from cctbx.eltbx import wavelengths
 
-def _make_phase_block(phase, number=1, name=""):
+def _make_phase_block(phase, number=1, name="", scale_down=1.0):
   """Create a pcr phase block skelleton with placeholder strings for different
   refinement options.
 
@@ -14,6 +14,8 @@ def _make_phase_block(phase, number=1, name=""):
   :type number: integer
   :param name: a title to be used for the phase in the pcr file
   :type name: string
+  :param scale_down: factor to divide intensities by (to avoid overflows)
+  :type scale_down: float
 
   :returns: the pcr phase block skelleton as a string
   :rtype: string
@@ -53,13 +55,14 @@ def _make_phase_block(phase, number=1, name=""):
   tmp += """\
 !-------> Profile Parameters for Pattern #  1
 !  Scale        Shape1      Bov      Str1      Str2      Str3   Strain-Model
-  0.01       0.10033   0.03837   0.00000   0.00000   0.00000      0
+  {scale:f}       0.10033   0.03837   0.00000   0.00000   0.00000      0
 ##_scf_##    ##_shp1.{n}_## ##_shp2.{n}_##   0.000    0.000     0.000
 !       U         V          W           X          Y        GauSiz   LorSiz Size-Model
    1.706310  -1.179299   0.405540   0.000000   0.000000   0.000000   0.000000    0
  ##_prfu.{n}_## ##_prfv.{n}_##  ##_prfw.{n}_##      0.000      0.000      0.000      0.000
 !     a          b         c        alpha      beta       gamma      #Cell Info
    {a:f}  {b:f}  {c:f}  {alpha:f}  {beta:f}   {gamma:f}\n""".format(
+                                    scale=0.01/scale_down,
                                     a=a, b=b, c=c,
                                     alpha=alpha, beta=beta, gamma=gamma, n=number)
   # make contraints from symmetry
@@ -92,7 +95,7 @@ def _pcr_skelleton(phases,
                   nprof=0,
                   nbckgd=0,
                   wavelength=wavelengths.characteristic("CU").as_angstrom(),
-                  ):
+                  scale_down=1.0):
   """Create a pcr skelleton with placeholder strings for different refinement
   options.
 
@@ -110,6 +113,8 @@ def _pcr_skelleton(phases,
   :type nbckgd: integer
   :param wavelength: the wavelength to be used in Angstroms
   :type wavelength: float
+  :param scale_down: factor to divide intensities by (to avoid overflows)
+  :type scale_down: float
 
   :returns: the pcr skelleton as a string
   :rtype: string
@@ -144,7 +149,7 @@ def _pcr_skelleton(phases,
         0.00        0.00        0.00        0.00        0.00        0.00
 """
   for i in range(nphase):
-    ret += _make_phase_block(phases[i], number=i+1, name="")
+    ret += _make_phase_block(phases[i], number=i+1, name="", scale_down=scale_down)
   return ret
 
 
@@ -216,7 +221,7 @@ def write_pcr(s,
               nprof=0,
               nbckgd=0,
               wavelength=wavelengths.characteristic("CU").as_angstrom(),
-              ):
+              scale_down=1.0):
   """Write a pcr file to a file or IO buffer.
 
   :param s: a buffer/file to write to
@@ -233,6 +238,8 @@ def write_pcr(s,
   :type nbckgd: integer
   :param wavelength: the wavelength to be used in Angstroms
   :type wavelength: float
+  :param scale_down: factor to divide intensities by (to avoid overflows)
+  :type scale_down: float
   """
   # handle case of beeing called with only one phase
   if not isinstance(phases, (tuple, list, set)):
@@ -242,7 +249,8 @@ def write_pcr(s,
                   title=title,
                   jobtype=jobtype,
                   nprof=nprof,
-                  nbckgd=nbckgd)
+                  nbckgd=nbckgd,
+                  scale_down=scale_down)
   if jobtype == 2:
     pcrfile = _set_ref_flags(pcrfile)
   else:
