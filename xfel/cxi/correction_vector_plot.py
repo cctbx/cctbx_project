@@ -51,7 +51,8 @@ class manage_sql:
     self.query.write("('%d','%d','%10.2f','%10.2f','%10.2f','%10.2f','%10.2f','%10.2f','%10.2f','%10.2f',"%(
           run,itile,float(tokens[2]),float(tokens[3]),float(tokens[5]),float(tokens[6]),
           float(tokens[8]),float(tokens[9]),float(tokens[11]),float(tokens[12]) ))
-    self.query.write("'%4d','%4d','%4d')"%(int(tokens[14]),int(tokens[15]),int(tokens[16])))
+    self.query.write("'%4d','%4d','%4d','%6.3f','%6.3f')"%(
+      int(tokens[14]),int(tokens[15]),int(tokens[16]),float(tokens[19]),float(tokens[21])))
 
 
   def send_insert_command(self):
@@ -81,7 +82,7 @@ class lines(correction_vector_store):
              print "FETCHED",frame_id
         if line.find("CV OBSCENTER")==0:
           potential_tokens = line.strip().split()
-          if len(potential_tokens)==18 and int(potential_tokens[17])==self.params.bravais_setting_id:
+          if len(potential_tokens)==22 and int(potential_tokens[17])==self.params.bravais_setting_id:
             yield frame_id,potential_tokens
         if len(self.tiles)==0 and line.find("EFFEC")==0:
           self.tiles = flex.int([int(a) for a in line.strip().split()[2:]])
@@ -99,7 +100,7 @@ class lines(correction_vector_store):
           for line in stream.readlines():
             if line.find("CV OBSCENTER")==0:
               potential_tokens = line.strip().split()
-              if len(potential_tokens)==18 and int(potential_tokens[17])==self.params.bravais_setting_id:
+              if len(potential_tokens)==22 and int(potential_tokens[17])==self.params.bravais_setting_id:
                 yield frame_id,potential_tokens
             if self.tiles is None and line.find("EFFEC")==0:
               self.tiles = flex.int([int(a) for a in line.strip().split()[2:]])

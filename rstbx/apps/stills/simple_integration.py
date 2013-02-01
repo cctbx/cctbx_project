@@ -195,8 +195,11 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
               self.predicted[indexed_pairs[-1]["pred"]][0]/pxlsz,
               self.predicted[indexed_pairs[-1]["pred"]][1]/pxlsz),
             the_hkl = self.hkllist[indexed_pairs[-1]["pred"]]
-            print "HKL %4d %4d %4d"%the_hkl,"%2d"%self.setting_id
-      #print "After outlier rejection %d indexed spotfinder spots remain."%len(indexed_pairs)
+            print "HKL %4d %4d %4d"%the_hkl,"%2d"%self.setting_id,
+            radial, azimuthal = spots[indexed_pairs[-1]["spot"]].get_radial_and_azimuthal_size(
+              self.inputai.xbeam()/pxlsz, self.inputai.ybeam()/pxlsz)
+            print "RADIALpx %5.3f AZIMUTpx %5.3f"%(radial,azimuthal)
+      print "After outlier rejection %d indexed spotfinder spots remain."%len(indexed_pairs)
       if False:
         rayleigh_cdf = [
           fitted_rayleigh.distribution.cdf(x=sorted_cl[c]) for c in xrange(len(sorted_cl))]
