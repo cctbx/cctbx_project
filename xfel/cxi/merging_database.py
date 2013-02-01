@@ -195,7 +195,9 @@ class manager:
               spotcy DOUBLE(10,2) NOT NULL,
               h INT NOT NULL,
               k INT NOT NULL,
-              l INT NOT NULL
+              l INT NOT NULL,
+              radialpx DOUBLE(6,3) NOT NULL DEFAULT 0.0,
+              azimutpx DOUBLE(6,3) NOT NULL DEFAULT 0.0
             )
             """),
               ]
