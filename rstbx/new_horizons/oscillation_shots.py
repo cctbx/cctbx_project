@@ -102,7 +102,13 @@ class IntegrateCharacters:
       integrate_worker = integrate_one_frame()
       integrate_worker.inputai = ai
 
-      integrate_worker.inputpd = local
+      integrate_worker.inputpd = dict(masks=local["masks"],
+                                      size1=local["size1"],
+                                      size2=local["size2"],)
+        # carefully select only the data items needed for integrate_worker
+        # avoid giving the whole process dictionary; reference to "local"
+        # is a circular reference creating memory leak, while copying the
+        # whole thing is a big performance hit.
       integrate_worker.frame_numbers = frames
       integrate_worker.imagefiles = self.files
       integrate_worker.spotfinder = self.spotfinder_results
