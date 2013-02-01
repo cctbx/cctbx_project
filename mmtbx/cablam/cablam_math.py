@@ -23,6 +23,8 @@ from __future__ import division
 #2012-12-04: The previous calcualtion of omega was "exiting" At least for
 #  cis-peptide purposes, the "entering" omega is the relevant one. Correct
 #  entering omega is now calculated.
+#2013-02-01: cablam_measures() now also calculates CA_a, the CA virtual angle.
+#  This is used for the ca contours added to cablam_validate.
 
 #Note that geometry measures currently default to 'first_alt' in all cases for
 #  all atoms retrieved by getatomxyz()
@@ -163,9 +165,10 @@ def COpseudodihedrals(protein):
 #-------------------------------------------------------------------------------
 #}}}
 
-#{{{ cablam measures calculator (CA_d_in, CA_d_out, CO_d_in)
-#Adds 'CA_d_in', 'CA_d_out', and 'CA_a' only to residue.measures={} for each
-#  residue in portein where protein is a dictionary of cablem_res classes.
+#{{{ cablam measures calculator (CA_d_in, CA_d_out, CO_d_in, CA_a)
+#Adds 'CA_d_in', 'CA_d_out', 'CA_d_in', and 'CA_a' only to residue.measures={}
+#  for each residue in portein where protein is a dictionary of cablem_res
+#  classes.
 #This function is a condensed version of CApseudos() and COpsedudodihedrals()
 #  above, returning only the measures currently in use by cablam annotation.
 #-------------------------------------------------------------------------------
@@ -202,10 +205,13 @@ def cablam_measures(protein):
     pseudoC_2 = perptersect(CA_2,CA_3,O_2)
     co_in = geometry_restraints.dihedral(sites=[O_1, pseudoC_1, pseudoC_2, O_2],
       angle_ideal=-40, weight=1)
+    ca_a = geometry_restraints.angle(sites=[CA_1,CA_2,CA_3],
+      angle_ideal=120, weight=1)
 
     res2.measures['CA_d_in']  = d_in.angle_model
     res2.measures['CA_d_out'] = d_out.angle_model
     res2.measures['CO_d_in']  = co_in.angle_model
+    res2.measures['CA_a']     = ca_a.angle_model
 #-------------------------------------------------------------------------------
 #}}}
 
