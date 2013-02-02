@@ -587,6 +587,29 @@ ATOM   4010 C  CA  . TYR D 2 22  ? 33.903  0.885   4.483   1.00 54.81  ? ? ? ? ?
     '731', '732', '733', '734', '737', '738', '739']
   assert list(cif_block['_atom_site.label_seq_id']) == [
     '1', '2', '3', '4', '5', '6', '7']
+  input_2hok = """\
+ATOM   301  P  P     . C   A 1 15 ? 15.802 44.045 80.094 1.00 59.36 ? ? ? ? ? ? 23  C   A P     1
+ATOM   321  P  P     . C   A 1 16 ? 12.286 47.301 82.617 1.00 68.27 ? ? ? ? ? ? 24  C   A P     1
+ATOM   341  P  P     . U   A 1 17 ? 6.815  51.648 82.739 1.00 78.03 ? ? ? ? ? ? 25  U   A P     1
+ATOM   361  P  P     . G   A 1 21 ? 7.042  52.289 91.645 1.00 96.25 ? ? ? ? ? ? 29  G   A P     1
+ATOM   384  P  P     . C   A 1 22 ? 7.024  46.751 90.841 1.00 84.69 ? ? ? ? ? ? 30  C   A P     1
+ATOM   404  P  P     . G   A 1 23 ? 7.477  40.933 88.377 1.00 81.65 ? ? ? ? ? ? 31  G   A P     1
+"""
+  sequence_2hok = iotbx.bioinformatics.sequence("CCUUCUGCG")
+  pdb_in = iotbx.pdb.input(
+    lines=(pdb_atom_site_loop_header+input_2hok).splitlines(),
+    source_info=None)
+  pdb_hierarchy = pdb_in.construct_hierarchy()
+  cif_block = iotbx.pdb.mmcif.pdb_hierarchy_as_cif_block_with_sequence(
+    pdb_hierarchy, sequences=[sequence_2hok]).cif_block
+  assert list(cif_block['_entity_poly_seq.mon_id']) == [
+    'C', 'C', 'U', 'U', 'C', 'U', 'G', 'C', 'G']
+  assert cif_block['_entity_poly.pdbx_seq_one_letter_code'][0] == sequence_2hok.sequence
+  assert cif_block['_entity_poly.pdbx_seq_one_letter_code_can'][0] == sequence_2hok.sequence
+  assert list(cif_block['_atom_site.auth_seq_id']) == [
+    '23', '24', '25', '29', '30', '31']
+  assert list(cif_block['_atom_site.label_seq_id']) == [
+    '1', '2', '3', '7', '8', '9']
 
 
 def exercise_fp_fdp():

@@ -880,8 +880,9 @@ class pdb_hierarchy_as_cif_block_with_sequence(pdb_hierarchy_as_cif_block):
           else:
             monomer_id = one_letter_code
         else:
-          one_letter_code = amino_acid_codes.one_letter_given_three_letter.get(
-            monomer_id, "(%s)" %monomer_id)
+          if sequence_to_chains[sequence][0].chain_type == mmtbx.validation.sequence.PROTEIN:
+            one_letter_code = amino_acid_codes.one_letter_given_three_letter.get(
+              monomer_id, "(%s)" %monomer_id)
 
         pdbx_seq_one_letter_code.append(one_letter_code)
 
@@ -927,11 +928,11 @@ class pdb_hierarchy_as_cif_block_with_sequence(pdb_hierarchy_as_cif_block):
         n_rna = 0
         n_unknown = 0
         for resname in chain.resnames:
-          if resname.strip().upper() in ('AD', 'CD', 'GD', 'TD',
-                                         'DA', 'DC', 'DG', 'DT'):
+          if resname is not None and resname.strip().upper() in (
+            'AD', 'CD', 'GD', 'TD', 'DA', 'DC', 'DG', 'DT'):
             n_dna += 1
-          elif resname.strip().upper() in ('A', 'C', 'G', 'T',
-                                           '+A', '+C', '+G', '+T'):
+          elif resname is not None and resname.strip().upper() in (
+            'A', 'C', 'G', 'T', '+A', '+C', '+G', '+T'):
             n_rna += 1
           else:
             n_unknown += 1
