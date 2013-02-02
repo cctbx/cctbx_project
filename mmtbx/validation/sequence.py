@@ -312,10 +312,16 @@ class validation (object) :
         resnames=resnames)
       self.chains.append(c)
       pdb_chains.append(pdb_chain)
-    alignments_and_names = easy_mp.pool_map(
-      fixed_func=self.align_chain,
-      args=range(len(self.chains)),
-      processes=nproc)
+    debug = False
+    if debug:
+      alignments_and_names = []
+      for i in range(len(self.chains)):
+        alignments_and_names.append(self.align_chain(i))
+    else:
+      alignments_and_names = easy_mp.pool_map(
+        fixed_func=self.align_chain,
+        args=range(len(self.chains)),
+        processes=nproc)
     assert (len(alignments_and_names) == len(self.chains) == len(pdb_chains))
     for i, c in enumerate(self.chains) :
       alignment, seq_name = alignments_and_names[i]
