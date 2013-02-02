@@ -99,9 +99,9 @@ class align(object):
 
     # initialize the matrices
     if style=="global":
-      for i in range(1,m+1): M[i][0] = -self.gap_cost(i)
-      for i in range(1,n+1): M[0][i] = -self.gap_cost(i)
-      M[0][0] = 0
+      for i in range(0,m+1): M[i][0] = -self.gap_cost(i)
+      for i in range(0,n+1): M[0][i] = -self.gap_cost(i)
+      #M[0][0] = 0
     # else (LOCAL, NO_END_GAPS) whole matrix initialized to 0 by default
 
     # fill in the matrices using dynamic programming
@@ -598,6 +598,15 @@ def exercise():
     top_name = "1rra",
     bottom_name = "1bli",
     comment = """pretty_print is pretty pretty""")
+
+  # example from PDB ID 2dex
+  A = "GTLIRVTPEQPTHAVCVLGTLTQLDICSSAPXXXTSFSINASPGVVVDI"
+  B = "GPLGSPEFMAQGTLIRVTPEQPTHAVCVLGTLTQLDICSSAPEDCTSFSINASPGVVVDI"
+  obj = align(A, B, similarity_function=identity)
+  alignment = obj.extract_alignment()
+  assert alignment.match_codes == 'iiiiiiiiiiimmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm'
+  assert alignment.a == '-----------GTLIRVTPEQPTHAVCVLGTLTQLDICSSAPXXXTSFSINASPGVVVDI'
+  assert alignment.b == 'GPLGSPEFMAQGTLIRVTPEQPTHAVCVLGTLTQLDICSSAPEDCTSFSINASPGVVVDI'
 
   print "OK" # necessary for auto_build checking
 
