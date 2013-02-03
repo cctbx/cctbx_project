@@ -133,7 +133,14 @@ class electron_density_map(object):
         return miller.array(miller_set = self.anom_diff,
                             data       = self.anom_diff.data()/(2j))
       else: return None
-    # Special case #2: Phaser SAD LLG map
+    # Special case #2: anomalous residual map
+    elif (map_name_manager.anomalous_residual) :
+      if (self.anom_diff is not None) :
+        return anomalous_residual_map_coefficients(
+          fmodel=self.fmodel,
+          exclude_free_r_reflections=exclude_free_r_reflections)
+      else : return None
+    # Special case #3: Phaser SAD LLG map
     elif (map_name_manager.phaser_sad_llg) :
       if (pdb_hierarchy is None) :
         raise RuntimeError("pdb_hierarchy must not be None when a Phaser SAD "+
@@ -144,7 +151,7 @@ class electron_density_map(object):
           pdb_hierarchy=pdb_hierarchy)
       else :
         return None
-    # Special case #3: Fcalc map
+    # Special case #4: Fcalc map
     mnm = mmtbx.map_names(map_name_string = map_type)
     if(mnm.k==0 and abs(mnm.n)==1):
       if(fill_missing):
