@@ -45,6 +45,14 @@ Full parameters:
   fmodel = cmdline.fmodel
   xray_structure = cmdline.xray_structure
   params = cmdline.params
+  if (params.wavelength is None) :
+    from iotbx.file_reader import any_file
+    pdb_in = any_file(params.input.pdb.file_name[0],
+      force_type="pdb")
+    wavelength = pdb_in.file_object.extract_wavelength()
+    if (wavelength is not None) :
+      print >> out, "Using wavelength = %g from PDB header" % wavelength
+      params.wavelength = wavelength
   if (params.wavelength is not None) :
     xray_structure.set_inelastic_form_factors(
       photon=params.wavelength,

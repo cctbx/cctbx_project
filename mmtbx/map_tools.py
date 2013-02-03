@@ -392,7 +392,8 @@ def get_phaser_sad_llg_map_coefficients (
   map_coeffs = t.llg_map_coeffs()
   return map_coeffs
 
-def anomalous_residual_map_coefficients (fmodel, weighted=False) :
+def anomalous_residual_map_coefficients (fmodel, weighted=False,
+    exclude_free_r_reflections=True) :
   """
   EXPERIMENTAL
 
@@ -428,6 +429,10 @@ def anomalous_residual_map_coefficients (fmodel, weighted=False) :
   map_coeffs = miller.array(
     miller_set=anom_diff_diff_common,
     data = anom_diff_diff_common.data() * phases_tmp.data())
+  if (exclude_free_r_reflections) :
+    r_free_flags = fmodel.r_free_flags().average_bijvoet_mates()
+    r_free_flags, map_coeffs = r_free_flags.common_sets(map_coeffs)
+    map_coeffs = map_coeffs.select(~(r_free_flags.data()))
   return miller.array(
     miller_set=map_coeffs,
     data=map_coeffs.data()/(2j))

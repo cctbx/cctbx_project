@@ -27,7 +27,7 @@ def exercise_anomalous_residual_map () :
     scattering_table="n_gaussian",
     skip_twin_detection=True)
   map_coeffs = map_tools.anomalous_residual_map_coefficients(
-    fmodel=fmodel)
+    fmodel=fmodel, exclude_free_r_reflections=True)
   map = map_coeffs.fft_map(
     resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
   for s in xrs.scatterers() :
