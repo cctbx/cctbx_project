@@ -276,6 +276,8 @@ class IntegrateCharacters:
             model_partialities = [getattr(a,"partialities",None) for a in local["results"]],
             sa_parameters = [getattr(a,"best_params","None") for a in local["results"]],
             max_signal = [getattr(a,"max_signal",None) for a in local["results"]],
+            current_orientation = [getattr(a,"current_orientation",None) for a in local["results"]],
+            current_cb_op_to_primitive = [getattr(a,"current_cb_op_to_primitive",None) for a in local["results"]],
           )
           G = open(file,"wb")
           pickle.dump(info,G,pickle.HIGHEST_PROTOCOL)
