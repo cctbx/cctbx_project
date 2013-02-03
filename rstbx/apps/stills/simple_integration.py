@@ -31,7 +31,8 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
       self.mask_focus.append( average_profile.focus() )
 
   def get_predictions_accounting_for_centering(self,cb_op_to_primitive=None):
-
+    # interface requires this function to set current_orientation
+    # in the actual setting used for Miller index calculation
     if (self.horizons_phil.known_setting is None or self.horizons_phil.known_setting == self.setting_id ) and \
         self.horizons_phil.integration.model in ["use_case_3_simulated_annealing",
                                                 "use_case_3_simulated_annealing_7",
@@ -55,6 +56,8 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
          "domain_size_ang","ab_factor","c_factor"),
          self.use_case_3_simulated_annealing_9(self.horizons_phil.integration.use_subpixel_translations))
         )
+      self.current_orientation = self.best_params["reserve_orientation"]
+      self.current_cb_op_to_primitive = cb_op_to_primitive
 
       BPpredicted = self.bp3_wrapper.ucbp3.selected_predictions_labelit_format()
       BPhkllist = self.bp3_wrapper.ucbp3.selected_hkls()
@@ -81,10 +84,15 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
                   self.image_centers[self.image_number],self.limiting_resolution)
       self.predicted = predicted.vec3() #only good for integrating one frame...
       self.hkllist = predicted.hkl()
+      self.current_orientation = self.inputai.getOrientation()
+      from cctbx import sgtbx
+      self.cb_op_to_primitive = sgtbx.change_of_basis_op()
 
     else:
       rot_mat = matrix.sqr(cb_op_to_primitive.c().r().as_double()).transpose()
       centered_orientation = self.inputai.getOrientation()
+      self.current_orientation = centered_orientation
+      self.current_cb_op_to_primitive = cb_op_to_primitive
       primitive_orientation = centered_orientation.change_basis(rot_mat)
       self.inputai.setOrientation(primitive_orientation)
       predicted = self.inputai.predict_all(
