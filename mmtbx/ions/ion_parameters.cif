@@ -29,9 +29,9 @@ _lib_elems.cvbs_lower
 _lib_elems.cvbs_expected
 _lib_elems.cvbs_upper
 NA  1  0.4  4  8  1  0.8   1  1.2
-MG  2  0.4  4  6  1  1.8   2  2.2
+MG  2  0.4  4  6  0  1.8   2  2.2
 K   1  0.4  4  8  1  0.8   1  1.2
-CA  2  0.4  5  8  1  1.75  2  2.2
+CA  2  0.4  5  8  0  1.75  2  2.2
 MN  2  0.4  4  6  1  1.75  2  2.2
 FE  2  0.4  5  6  1  1.75  2  2.2
 CO  2  0.4  5  6  1  1.75  2  2.2
@@ -54,8 +54,8 @@ MN  O,N       SER,THR,ASP,GLU,ASN,GLN,HIS  .              .
 FE  O,N,S     CYS,ASP,GLU,HIS,TYR          .              .
 CO  O,N       CYS,ASP,GLU,HIS              .              .
 CU  O,N,S     CYS,MET,HIS                  tetrahedral    .
-NI  O,N,S     CYS,ASP,GLU,HIS              tetrahedral    N
-ZN  O,N,S     CYS,ASP,GLU,HIS              tetrahedral    .
+NI  O,N,S     CYS,ASP,GLU,HIS              tetrahedral    .
+ZN  O,N,S     CYS,ASP,GLU,HIS              tetrahedral,octahedral    .
 CD  O,N,S,CL  .                            octahedral,any .
 #
 loop_

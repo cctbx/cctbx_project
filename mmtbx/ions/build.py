@@ -47,7 +47,7 @@ anomalous = True
   .help = If True and the wavelength is specified, any newly placed ions will \
     have anomalous scattering factors set using theoretical values.  This is \
     unlikely to affect R-factors but should flatten the anomalous LLG map.
-refine_anomalous = False
+refine_anomalous = True
   .type = bool
   .short_caption = Refine anomalous scattering
 """
@@ -69,6 +69,7 @@ def find_and_build_ions (
   from mmtbx.refinement import anomalous_scatterer_groups
   import mmtbx.ions
   from cctbx.eltbx import sasaki
+  from cctbx import crystal
   from cctbx import xray
   from scitbx.array_family import flex
   import scitbx.lbfgs
@@ -112,6 +113,7 @@ def find_and_build_ions (
       # Ambiguous results
       pass
     elif (len(final_choices) == 1) :
+      make_sub_header("Adding %d ions to model" % len(final_choices), out)
       final_choice = final_choices[0]
       print >> out, "  %s becomes %s%+d" % \
           (atom.id_str(), final_choice.element, final_choice.charge)
@@ -157,10 +159,22 @@ def find_and_build_ions (
             selection_string=get_single_atom_selection_string(modified_atom))
           anomalous_groups.append(group)
       modified_iselection.append(i_seq)
+  # FIXME correct special positions here
   if (len(modified_iselection) > 0) :
+    scatterers = model.xray_structure.scatterers()
+    site_symmetry_table = model.xray_structure.site_symmetry_table()
+    for i_seq in site_symmetry_table.special_position_indices() :
+      scatterers[i_seq].site = crystal.correct_special_position(
+        crystal_symmetry=model.xray_structure,
+        special_op=site_symmetry_table.get(i_seq).special_op(),
+        site_frac=scatterers[i_seq].site,
+        site_label=scatterers[i_seq].label,
+        tolerance=1.0)
+    model.xray_structure.replace_scatterers(scatterers=scatterers)
     def show_r_factors () :
        return "r_work=%6.4f r_free=%6.4f" % (fmodel.r_work(), fmodel.r_free())
     fmodel.update_xray_structure(
+      model.xray_structure,
       update_f_calc=True,
       update_f_mask=True)
     refine_anomalous = (params.refine_anomalous) and (len(anomalous_groups)>0)
