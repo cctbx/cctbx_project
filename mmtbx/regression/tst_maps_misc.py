@@ -3,7 +3,6 @@ from __future__ import division
 
 def exercise_anomalous_residual_map () :
   from mmtbx.regression import make_fake_anomalous_data
-  from mmtbx import map_tools
   import mmtbx.utils
   from iotbx import file_reader
   mtz_file, pdb_file = make_fake_anomalous_data.generate_cd_cl_inputs(
@@ -26,8 +25,9 @@ def exercise_anomalous_residual_map () :
     xray_structures=[xrs],
     scattering_table="n_gaussian",
     skip_twin_detection=True)
-  map_coeffs = map_tools.anomalous_residual_map_coefficients(
-    fmodel=fmodel, exclude_free_r_reflections=True)
+  map_coeffs = fmodel.map_coefficients(
+    map_type="anom_residual",
+    exclude_free_r_reflections=True)
   map = map_coeffs.fft_map(
     resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
   for s in xrs.scatterers() :

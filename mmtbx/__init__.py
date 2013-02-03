@@ -252,6 +252,7 @@ class map_names(object):
     self.n = None
     self.ml_map = None
     self.anomalous = False
+    self.anomalous_residual = False
     self.phaser_sad_llg = False
     self.kicked = False
     self.f_obs_filled = False
@@ -267,7 +268,10 @@ class map_names(object):
         s = s.replace(tmp,"")
         self.f_obs_filled = True
     if(s.count('ano')):
-      self.anomalous = True
+      if (s.count('resid')) :
+        self.anomalous_residual = True
+      else :
+        self.anomalous = True
     elif (s.count("sad") or s.count("llg")) :
       self.phaser_sad_llg = True
     elif(s in self.FC):

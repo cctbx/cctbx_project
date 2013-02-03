@@ -256,16 +256,11 @@ class Manager (object):
       self.analyze_substructure(log = log)
 
   def get_map (self, map_type) :
-    map_coeffs = None
-    if (map_type == "anom_residual") :
-      from mmtbx import map_tools
-      map_coeffs = map_tools.anomalous_residual_map_coefficients(self.fmodel)
-    else :
-      map_coeffs = self.fmodel.map_coefficients(
-        map_type=map_type,
-        exclude_free_r_reflections=True,
-        fill_missing=True,
-        pdb_hierarchy=self.pdb_hierarchy)
+    map_coeffs = self.fmodel.map_coefficients(
+      map_type=map_type,
+      exclude_free_r_reflections=True,
+      fill_missing=True,
+      pdb_hierarchy=self.pdb_hierarchy)
     if (map_coeffs is None) :
       return None
     return map_coeffs.fft_map(resolution_factor=0.25,
