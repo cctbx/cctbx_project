@@ -433,14 +433,16 @@ def run(fmodel,
     print >> log, "1:", fmt%(macro_cycle, fmodel.r_work(), fmodel.r_free())
     del target_map_data, model_map_data, residual_map_data, fft_map_1, fft_map_2, fft_map_3
     if(params.real_space_refine_overall):
-      fit_rotamers.rsr_overall(
-        model=model,
-        fmodel=fmodel,
-        params=params,
-        optimize_hd=optimize_hd,
-        macro_cycle=macro_cycle,
-        log=log)
-      print >> log, "1:", fmt%(macro_cycle, fmodel.r_work(), fmodel.r_free())
+      pass
+      # FIXME this method has completely disappeared...
+      #fit_rotamers.rsr_overall(
+      #  model=model,
+      #  fmodel=fmodel,
+      #  params=params,
+      #  optimize_hd=optimize_hd,
+      #  macro_cycle=macro_cycle,
+      #  log=log)
+      #print >> log, "1:", fmt%(macro_cycle, fmodel.r_work(), fmodel.r_free())
     if params.validate_change :
       fit_rotamers.validate_changes(
         fmodel=fmodel,
