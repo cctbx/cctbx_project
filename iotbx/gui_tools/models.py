@@ -4,6 +4,7 @@ from __future__ import division
 
 import iotbx.gui_tools
 from iotbx import file_reader
+from libtbx.utils import Sorry
 import cStringIO
 import os
 
@@ -130,7 +131,7 @@ class model_handler (iotbx.gui_tools.manager) :
     else :
       file_names = self._cached_input_files.keys()
     if (len(file_names) == 0) :
-      raise RuntimeError("No PDB files loaded.")
+      raise Sorry("No PDB files loaded.")
     pdb_str = self.combine_pdb_files(file_names)
     import iotbx.pdb
     pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str)

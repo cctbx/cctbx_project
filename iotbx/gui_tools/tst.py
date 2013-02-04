@@ -242,6 +242,7 @@ def exercise_other_reflection_formats () :
   assert (len(labels) == 0)
 
 def exercise_model () :
+  # FIXME should be possible to run this independently of phenix_regression
   if (regression_dir is None) :
     print "phenix_regression not found, skipping exercise_model()"
     return
@@ -259,6 +260,13 @@ def exercise_model () :
   cif_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/cif_files/elbow.ur0013_ent.all.001.cif",
     test=os.path.isfile)
+  try :
+    pdb_all = model_handler.get_combined_pdb_input(
+      file_param_name="refinement.input.pdb.file_name")
+  except Sorry :
+    pass
+  else :
+    raise Exception_expected
   model_handler.set_param_file(
     file_name=pdb_file,
     file_param_name="refinement.input.pdb.file_name")
@@ -267,6 +275,9 @@ def exercise_model () :
     file_param_name="refinement.input.monomers.file_name")
   assert (len(model_handler.get_cif_objects()) == 1)
   assert (model_handler.get_current_cif_file_names() == [cif_file])
+  hierarchy, xrs = model_handler.get_combined_pdb_input(
+      file_param_name="refinement.input.pdb.file_name")
+  assert (not None in [hierarchy, xrs])
   pdb_file2 = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/1ywf.pdb",
     test=os.path.isfile)
