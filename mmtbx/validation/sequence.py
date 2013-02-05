@@ -341,24 +341,25 @@ class validation (object) :
 
   def align_chain (self, i) :
     import mmtbx.alignment
-    rna_dna_one_letter_codes = set(['A', 'C', 'G', 'T', 'U', 'X'])
     chain = self.chains[i]
     best_alignment = None
     best_sequence = None
     best_identity = 0.
+    best_width = sys.maxint
     for seq_object in self.sequences :
-      if (chain.chain_type == NUCLEIC_ACID and
-          len(set(seq_object.sequence).difference(rna_dna_one_letter_codes))):
-        # don't attempt to align a nucleic acid chain against a protein sequence
-        continue
       alignment = mmtbx.alignment.align(
         seq_a=chain.sequence,
         seq_b=seq_object.sequence).extract_alignment()
       identity = alignment.calculate_sequence_identity(skip_chars=['X'])
-      if (identity > best_identity) :
+      # if the identities of two alignments are equal, then we prefer the
+      # alignment that has the narrowest range for the match
+      width = alignment.match_codes.rfind('m') - alignment.match_codes.find('m')
+      if ((identity > best_identity) or
+          (identity == best_identity and width < best_width)):
         best_identity = identity
         best_alignment = alignment
         best_sequence = seq_object.name
+        best_width = width
     return best_alignment, best_sequence
 
   def get_table_data (self) :
@@ -697,6 +698,38 @@ ATOM    113  N   NH2 A  17      -2.612  12.308   2.058  1.00  8.11           N
   assert v.chains[0].n_missing_end == 0
   assert v.chains[0].n_missing_start == 0
   assert len(v.chains[0].alignment.matches()) == 17
+  #
+  pdb_in = iotbx.pdb.input(source_info=None, lines="""\
+ATOM   2518  CA  PRO C   3      23.450  -5.848  45.723  1.00 85.24           C
+ATOM   2525  CA  GLY C   4      20.066  -4.416  44.815  1.00 79.25           C
+ATOM   2529  CA  PHE C   5      19.408  -0.913  46.032  1.00 77.13           C
+ATOM   2540  CA  GLY C   6      17.384  -1.466  49.208  1.00 83.44           C
+ATOM   2544  CA  GLN C   7      17.316  -5.259  49.606  1.00 89.25           C
+ATOM   2553  CA  GLY C   8      19.061  -6.829  52.657  1.00 90.67           C
+""")
+  sequences, _ = iotbx.bioinformatics.fasta_sequence_parse.parse(
+    """>1JN5:A|PDBID|CHAIN|SEQUENCE
+MASVDFKTYVDQACRAAEEFVNVYYTTMDKRRRLLSRLYMGTATLVWNGNAVSGQESLSEFFEMLPSSEFQISVVDCQPV
+HDEATPSQTTVLVVICGSVKFEGNKQRDFNQNFILTAQASPSNTVWKIASDCFRFQDWAS
+>1JN5:B|PDBID|CHAIN|SEQUENCE
+APPCKGSYFGTENLKSLVLHFLQQYYAIYDSGDRQGLLDAYHDGACCSLSIPFIPQNPARSSLAEYFKDSRNVKKLKDPT
+LRFRLLKHTRLNVVAFLNELPKTQHDVNSFVVDISAQTSTLLCFSVNGVFKEVDGKSRDSLRAFTRTFIAVPASNSGLCI
+VNDELFVRNASSEEIQRAFAMPAPTPSSSPVPTLSPEQQEMLQAFSTQSGMNLEWSQKCLQDNNWDYTRSAQAFTHLKAK
+GEIPEVAFMK
+>1JN5:C|PDBID|CHAIN|SEQUENCE
+GQSPGFGQGGSV
+""")
+  v = validation(
+    pdb_hierarchy=pdb_in.construct_hierarchy(),
+    sequences=sequences,
+    log=null_out(),
+    nproc=1,)
+  out = StringIO()
+  v.show(out=out)
+  assert v.chains[0].n_missing_start == 3
+  assert v.chains[0].n_missing_end == 3
+  assert v.chains[0].identity == 1.0
+  assert v.chains[0].alignment.match_codes == 'iiimmmmmmiii'
   # all tests below here have additional dependencies
   if (not libtbx.env.has_module("ksdssp")) :
     print "Skipping advanced tests (require ksdssp module)"
