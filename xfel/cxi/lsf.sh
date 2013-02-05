@@ -51,21 +51,21 @@ NODE=`ssh -S "${tmpdir}/control.socket" ${NODE} "hostname -f"`
 cleanup_and_exit() {
     ssh -O exit -S "${tmpdir}/control.socket" ${NODE} > /dev/null 2>&1
     rm -fr "${tmpdir}"
-    exit $1
+    exit ${1}
 }
 trap "cleanup_and_exit 1" HUP INT QUIT TERM
 
 args=`getopt c:o:p:q:r:x: $*`
 if test $? -ne 0; then
-    echo "Usage: lsf.sh -c config -r runno [-o output] [-p num-cpu] [-q queue] [-x exp]" > /dev/stderr
+    echo "Usage: lsf.sh -c config -r run-num [-o output] [-p num-cpu] [-q queue] [-x exp]" > /dev/stderr
     cleanup_and_exit 1
 fi
 
 set -- ${args}
-while test $# -ge 0; do
-    case "$1" in
+while test ${#} -ge 0; do
+    case "${1}" in
         -c)
-            cfg="$2"
+            cfg="${2}"
             if ! test -r "${cfg}" 2> /dev/null; then
                 echo "config must be a readable file" > /dev/stderr
                 cleanup_and_exit 1
@@ -76,7 +76,7 @@ while test $# -ge 0; do
 
         -o)
             out=`ssh -S "${tmpdir}/control.socket" ${NODE} \
-                "cd \"${PWD}\" ; readlink -fn \"$2\""`
+                "cd \"${PWD}\" ; readlink -fn \"${2}\""`
             if ssh -S "${tmpdir}/control.socket" ${NODE} \
                 "test -e \"${out}\" -a ! -d \"${out}\" 2> /dev/null"; then
                 echo "output exists but is not a directory" > /dev/stderr
@@ -90,11 +90,11 @@ while test $# -ge 0; do
             ;;
 
         -p)
-            if ! test "$2" -gt 0 2> /dev/null; then
+            if ! test "${2}" -gt 0 2> /dev/null; then
                 echo "num-cpu must be positive integer" > /dev/stderr
                 cleanup_and_exit 1
             fi
-            nproc="$2"
+            nproc="${2}"
             shift
             shift
             ;;
@@ -107,18 +107,18 @@ while test $# -ge 0; do
 
         -r)
             # Set ${run} to a zero-padded, four-digit string
-            # representation of the integer.  XXX Rename runno?
-            if ! test "$2" -gt 0 2> /dev/null; then
-                echo "runno must be positive integer" > /dev/stderr
+            # representation of the integer.
+            if ! test "${2}" -gt 0 2> /dev/null; then
+                echo "run-num must be positive integer" > /dev/stderr
                 cleanup_and_exit 1
             fi
-            run=`echo "$2" | awk '{ printf("%04d", $1); }'`
+            run=`echo "${2}" | awk '{ printf("%04d", $1); }'`
             shift
             shift
             ;;
 
         -x)
-            exp="$2"
+            exp="${2}"
             shift
             shift
             ;;
@@ -137,13 +137,13 @@ if test -z "${cfg}" -o -z "${run}"; then
     echo "Must specify -c and -r options" > /dev/stderr
     cleanup_and_exit 1
 fi
-if test $# -gt 0; then
+if test "${#}" -gt 0; then
     echo "Extraneous arguments" > /dev/stderr
     cleanup_and_exit 1
 fi
 
 # Take ${exp} from the environment unless overridden on the command
-# line, and find its absolute path under /reg/d/psdm.
+# line, and find its absolute path.
 test -n "${EXP}" -a -z "${exp}" && exp="${EXP}"
 exp=`find "/reg/d/psdm" -maxdepth 2 -name "${exp}"`
 if ! ssh -S "${tmpdir}/control.socket" ${NODE} \
@@ -157,10 +157,10 @@ fi
 # need some filtering as suggested by Amedeo Perazzo.
 xtc="${exp}/xtc"
 streams=`ssh -S "${tmpdir}/control.socket" ${NODE} \
-      "ls ${xtc}/e*-r${run}-s* 2> /dev/null"       \
+      "ls \"${xtc}\"/e*-r${run}-s* 2> /dev/null"       \
     | sed -e "s:.*-s\([[:digit:]]\+\)-c.*:\1:"     \
     | sort -u                                      \
-    | tr -s "\n" " "`
+    | tr -s '\n' ' '`
 if test -z "${streams}"; then
     echo "No streams in ${xtc}" > /dev/stderr
     cleanup_and_exit 1
@@ -168,15 +168,15 @@ fi
 
 # If ${nproc} is not given on the the command line, fall back on
 # num-cpu from ${cfg}.  Otherwise, the number of processes per host
-# should be between 7 and 9 according to Marc Messerschmidt XXX even
-# though there is evidence that 7 may be better.  Using only two
-# processors may decrease performance, because distributing data from
-# the master process to a single worker process introduces overhead.
+# should be between 7 and 9 according to Marc Messerschmidt.  Using
+# only two processors may decrease performance, because distributing
+# data from the master process to a single worker process introduces
+# overhead.
 if test -z "${nproc}"; then
     nproc=`awk -F= '/^[[:space:]]*num-cpu[[:space:]]*=/ { \
                         printf("%d\n", $2);               \
                     }' "${cfg}"`
-    test "${nproc}" -gt 0 2> /dev/null || nproc="8"
+    test "${nproc}" -gt 0 2> /dev/null || nproc="7"
 fi
 if ! test ${nproc} != 2 2> /dev/null; then
     echo "Warning: running with two processors makes no sense" > /dev/stderr
@@ -267,7 +267,7 @@ directories=`awk -F=                                    \
          gsub(/^ /, "", $2);                            \
          gsub(/ $/, "", $2);                            \
          printf("\"%s\"\n", $2);                        \
-     }' "${tmpdir}"/pyana_s[0-9][0-9].cfg | sort -u | tr -s "\n" " "`
+     }' "${tmpdir}"/pyana_s[0-9][0-9].cfg | sort -u | tr -s '\n' ' '`
 ssh -S "${tmpdir}/control.socket" ${NODE} \
     "mkdir -p \"${out}/stdout\" ${directories}"
 
