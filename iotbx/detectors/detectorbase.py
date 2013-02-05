@@ -255,7 +255,7 @@ CCD_IMAGE_SATURATION=65535;
     x_point,y_point = self.detector_coords_as_image_coords_float(x,y)
     return (int(x_point), int(y_point))
 
-  def image_coords_as_detector_coords (self, x, y) :
+  def image_coords_as_detector_coords (self, x, y, readout=None) :
     """
     Convert image pixel coordinates to absolute position on the detector
     (in mm).

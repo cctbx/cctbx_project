@@ -5,6 +5,8 @@ from __future__ import division
 
 import math
 import wx
+import rstbx.utils
+
 ######
 # Base class for a tile object - handles access to tiles.
 ######
@@ -318,3 +320,48 @@ class _Tiles(object):
               (tile[1]+tile[3])//2, (tile[0]+tile[2])//2)
           text_data.append((txt_x, txt_y, "%i" %i))
       return box_data, text_data
+
+    def get_resolution (self, x, y, readout=None) :
+        """
+        Determine the resolution of a pixel.
+        Arguments are in image pixel coordinates (starting from 1,1).
+        """
+        x_point, y_point = self.raw_image.image_coords_as_detector_coords(x, y,readout)
+        x0, y0 = self.raw_image.detector_coords_as_image_coords(x_point, y_point)
+        center_x, center_y = self.raw_image.get_beam_center_mm()
+        dist = self.get_detector_distance()
+        two_theta = self.get_detector_2theta()
+        wavelength = self.raw_image.wavelength
+
+        if (dist > 0) :
+            scattering_angle = rstbx.utils.get_scattering_angle(
+                x=x_point,
+                y=y_point,
+                center_x=center_x,
+                center_y=center_y,
+                distance=dist,
+                detector_two_theta=two_theta,
+                distance_is_corrected=True)
+            if (scattering_angle == 0.0) :
+                d_min = None
+            else :
+                d_min = wavelength / (2 * math.sin(scattering_angle / 2))
+        else:
+            d_min = None
+
+        return d_min
+
+    def get_detector_distance (self) :
+        dist = self.raw_image.distance
+        twotheta = self.get_detector_2theta()
+        if (twotheta == 0.0) :
+            return dist
+        else :
+            return dist / math.cos(twotheta)
+
+    def get_detector_2theta (self) :
+        try:
+            two_theta = self.raw_image.twotheta
+            return two_theta * (math.pi / 180)
+        except AttributeError:
+            return 0
