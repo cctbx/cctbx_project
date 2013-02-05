@@ -8,6 +8,7 @@ from scitbx.python_utils.misc import store
 from libtbx import introspection
 from libtbx import adopt_init_args
 from libtbx import dict_with_default_0
+from libtbx.utils import Sorry
 import sys, math
 
 class manager(object):
@@ -662,7 +663,7 @@ class manager(object):
         if (self.nonbonded_distance_cutoff < max_vdw_dist):
           if (self.nonbonded_distance_cutoff_was_determined_automatically):
             raise AssertionError("Internal error.")
-          raise AssertionError(
+          raise Sorry(
             "nonbonded_distance_cutoff=%.6g is too small:"
             " max_vdw_distance=%.6g" % (
               self.nonbonded_distance_cutoff,
