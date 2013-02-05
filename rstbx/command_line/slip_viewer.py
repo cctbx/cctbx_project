@@ -45,7 +45,7 @@ def modify_the_iotbx_detector_list():
   try:
     from cxi_xdr_xes.cftbx.detector.cspad_detector import CSPadDetector
     from cxi_xdr_xes.cftbx.detector.generic_detector import GenericDetector
-    detectors.all_image_types.insert(0, CSPadDetector)
+    detectors.all_image_types.append(CSPadDetector)
     detectors.all_image_types.append(GenericDetector)
   except ImportError: pass
 
