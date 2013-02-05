@@ -1548,6 +1548,16 @@ class AppFrame(wx.Frame):
                       yaya = int(math.ceil(math.log10(abs(possible_intensity))))
                       format_str = " I=%%6.%df"%(5-yaya)
                     posn_str += format_str%possible_intensity
+
+                if (len(coords) > 2 and coords[2] >=0): # indicates it's a tiled image
+                    reso = self.pyslip.tiles.get_resolution(coords[0], coords[1], coords[2])
+                else:
+                    #note, the coords are backwards here:
+                    reso = self.pyslip.tiles.get_resolution(coords[1], coords[0])
+
+                if reso is not None:
+                    posn_str += " Resolution: %.3f"%(reso)
+
             self.statusbar.SetStatusText(posn_str)
         else:
             self.statusbar.SetStatusText("Click and drag to pan; "+
