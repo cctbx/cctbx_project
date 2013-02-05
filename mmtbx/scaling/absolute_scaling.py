@@ -8,7 +8,7 @@ from cctbx.eltbx import xray_scattering
 from scitbx.math import chebyshev_polynome
 from scitbx.math import chebyshev_lsq_fit
 from scitbx.linalg import eigensystem
-from libtbx.utils import show_exception_info_if_full_testing
+from libtbx.utils import show_exception_info_if_full_testing, Sorry
 import scitbx.lbfgs
 import math
 import sys
@@ -857,6 +857,10 @@ Z-scores are computed on the basis of a Bernoulli model assuming independence of
       print >> out
       print >> out, "----------------    Anisotropy analyses     ----------------"
       print >> out
+      if (self.eigen_values[0] == 0) :
+        raise Sorry("Fatal error: eigenvector 1 of B_cart is zero.  This "+
+          "may indicate severe problems with the input data, for instance "+
+          "if only a single plane through reciprocal space is present.")
       anirat = abs(self.eigen_values[0]-self.eigen_values[2])/self.eigen_values[0]
       self.anirat = anirat
       ani_rat_p = self.aniso_ratio_p_value(anirat)
@@ -988,7 +992,11 @@ class kernel_normalisation(object):
     # it would be good to catch such cases in advance by inspecting the binned
     # values, and raise a different error message.
     assert sel_pos.size() > 0
-    assert sel_pos.size() >= self.mean_I_array.size() / 2
+    if (sel_pos.size() < self.mean_I_array.size() / 2) :
+      raise Sorry("Analysis could not be continued because more than half "+
+        "of the data have values below 1e-16.  This usually indicates either "+
+        "an inappropriately high resolution cutoff, or an error in the data "+
+        "file which artificially creates a higher resolution limit.")
     self.mean_I_array = self.mean_I_array.select(sel_pos)
     self.d_star_sq_array = self.d_star_sq_array.select(sel_pos)
     self.var_I_array = flex.log( self.var_I_array.select( sel_pos ) )
