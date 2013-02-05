@@ -18,6 +18,7 @@ import libtbx.phil
 from libtbx.str_utils import StringIO
 from libtbx.utils import null_out
 from libtbx import runtime_utils
+import libtbx.callbacks # import dependency
 import sys, os
 
 
@@ -496,14 +497,7 @@ class xtriage_analyses(object):
       print >> self.text_out, str(e)
       show_exception_info_if_full_testing()
 
-    print >> self.text_out
-    print >> self.text_out,"##----------------------------------------------------##"
-    print >> self.text_out,"##                   Twinning Analyses                ##"
-    print >> self.text_out,"##----------------------------------------------------##"
-    print >> self.text_out
-    print >> self.text_out
-    print >> self.text_out
-
+    print >> self.text_out, ""
     #Do the twinning analyses
     ## resolution check
     if (flex.min(self.miller_obs.d_spacings().data())
@@ -526,6 +520,12 @@ class xtriage_analyses(object):
     d_star_sq_low_limit = 1.0/((d_star_sq_low_limit+1e-6)**2.0)
     self.twin_results = None
     if(self.miller_obs.select_acentric().as_intensity_array().indices().size()>0):
+      print >> self.text_out, """
+##----------------------------------------------------##
+##                   Twinning Analyses                ##
+##----------------------------------------------------##
+
+"""
       self.twin_results = twin_analyses.twin_analyses(
         miller_array=self.miller_obs,
         d_star_sq_low_limit=d_star_sq_low_limit,
@@ -536,6 +536,14 @@ class xtriage_analyses(object):
         miller_calc=self.miller_calc,
         additional_parameters=self.params.scaling.input.parameters.misc_twin_parameters)
       self.text_out.flush()
+    elif (not self.miller_obs.space_group().is_centric()) :
+      raise Sorry(("No acentric reflections present in the data.  Since the "+
+        "space group %s is not centric, this is probably an error in "+
+        "the input file.") % (str(self.miller_obs.space_group_info())))
+    else :
+      print >> self.text_out, ""
+      print >> self.text_out, "Centric space group - skipping twin analyses."
+      print >> self.text_out, ""
 
     if miller_ref is not None:
       self.reference_analyses = pair_analyses.reindexing(
@@ -740,7 +748,9 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
 
     ## Please check if we have a acentric space group
     if crystal_symmetry.space_group().is_centric() :
-      raise Sorry("Centric space groups are not supported.")
+      libtbx.warn(("The specificed space group (%s) is centric; Xtriage will "+
+        "still run, but many analyses will be skipped.") %
+        str(crystal_symmetry.space_group_info()))
 
     ## Now it time to read in reflection files somehow
     ## We do this via a reflection_file_server
@@ -984,7 +994,8 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
         xtriage_results=xtriage_results,
         data_summary=summary_out.getvalue(),
         data_file=data_file_name,
-        original_is_intensity_array=original_is_intensity_array)
+        original_is_intensity_array=original_is_intensity_array,
+        centric_flag=crystal_symmetry.space_group().is_centric())
     else :
       return xtriage_results
 
@@ -994,7 +1005,8 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
 class xtriage_summary (object) :
   def __init__ (self, params, xtriage_results, data_summary,
       data_file=None,
-      original_is_intensity_array=None) :
+      original_is_intensity_array=None,
+      centric_flag=None) :
     self.file_name = params.scaling.input.xray_data.file_name
     self.log_file = params.scaling.input.parameters.reporting.log
     self.file_labels = params.scaling.input.xray_data.obs_labels
@@ -1002,6 +1014,7 @@ class xtriage_summary (object) :
     self.nbases = params.scaling.input.asu_contents.n_bases
     self.data_summary = data_summary
     self.original_is_intensity_array = original_is_intensity_array
+    self.centric_flag = centric_flag
     self.data_file = None
     if (data_file is not None) :
       self.data_file = os.path.abspath(data_file)
@@ -1093,48 +1106,58 @@ class xtriage_summary (object) :
     #         - possible twin laws
     #         - britton plot, h test, murray-rust plot for each twin law
     twin_results = xtriage_results.twin_results
-    # SYSTEMATIC ABSENCES AND SPACE GROUP
-    abs_sg_anal = getattr(twin_results, "abs_sg_anal", None)
-    self.sg_info = getattr(abs_sg_anal, "absence_info", None)
-    self.sg_table = getattr(abs_sg_anal, "table_data", None)
-    abs_table = getattr(abs_sg_anal, "absences_table", None)
-    self.absence_info = getattr(abs_table, "table_text", None)
-    self.absence_table = getattr(abs_table, "table_data", None)
-    # TWINNING
-    twin_attrs = ["nz_test_table", "l_test_table", "twin_law_names",
-                  "twin_law_info"]
-    for attr in twin_attrs :
-      setattr(self, attr, getattr(twin_results, attr, None))
-    if self.nz_test_table is not None :
-      for attr in ["max_diff_ac", "max_diff_c", "sign_ac", "sign_c",
-                   "mean_diff_ac", "mean_diff_c"] :
-        setattr(self, "nz_test_"+attr, getattr(twin_results.nz_test,attr,None))
-    if self.l_test_table is not None :
-      for attr in ["parity_h", "parity_k", "parity_l", "mean_l", "mean_l2",
-                   "ml_alpha"] :
-        setattr(self, "l_test_"+attr, getattr(twin_results.l_test, attr, None))
-    other_attrs = []
-    for attr in other_attrs :
-      setattr(self, attr, getattr(twin_results, attr, None))
-    self.possible_twin_laws = getattr(twin_results, "possible_twin_laws", None)
-    twin_summary = twin_results.twin_summary
-    self.patterson_verdict = twin_summary.patterson_verdict.getvalue()
-    self.twinning_verdict = twin_summary.twinning_verdict.getvalue()
-    self.twin_law_table= getattr(twin_summary.twin_results, "table_data", None)
-    self.z_score_info = getattr(twin_summary.twin_results, "z_score_info",None)
-    self.intensity_stats = getattr(twin_summary.twin_results,
-                                   "independent_stats", None)
-    self.is_twinned = False
-    if (self.possible_twin_laws is not None) :
-      if (len(self.possible_twin_laws.operators) > 0) :
-        if (twin_summary.twin_results.maha_l > 4.0):
-          if twin_results.twin_summary.twin_results.l_mean <= 0.48:
-            self.is_twinned = True
-    self.translation_pseudo_symmetry = getattr(twin_results,
-      "translation_pseudo_symmetry", None)
-    self.check_sg = getattr(twin_results, "check_sg", None)
-    self.suggested_space_group = getattr(twin_results, "suggested_space_group",
+    if (twin_results is not None) :
+      # SYSTEMATIC ABSENCES AND SPACE GROUP
+      abs_sg_anal = getattr(twin_results, "abs_sg_anal", None)
+      self.sg_info = getattr(abs_sg_anal, "absence_info", None)
+      self.sg_table = getattr(abs_sg_anal, "table_data", None)
+      abs_table = getattr(abs_sg_anal, "absences_table", None)
+      self.absence_info = getattr(abs_table, "table_text", None)
+      self.absence_table = getattr(abs_table, "table_data", None)
+      # TWINNING
+      twin_attrs = ["nz_test_table", "l_test_table", "twin_law_names",
+                    "twin_law_info"]
+      for attr in twin_attrs :
+        setattr(self, attr, getattr(twin_results, attr, None))
+      if self.nz_test_table is not None :
+        for attr in ["max_diff_ac", "max_diff_c", "sign_ac", "sign_c",
+                     "mean_diff_ac", "mean_diff_c"] :
+          setattr(self, "nz_test_"+attr, getattr(twin_results.nz_test,attr,None))
+      if self.l_test_table is not None :
+        for attr in ["parity_h", "parity_k", "parity_l", "mean_l", "mean_l2",
+                     "ml_alpha"] :
+          setattr(self, "l_test_"+attr, getattr(twin_results.l_test, attr, None))
+      other_attrs = []
+      for attr in other_attrs :
+        setattr(self, attr, getattr(twin_results, attr, None))
+      self.possible_twin_laws = getattr(twin_results, "possible_twin_laws", None)
+      twin_summary = twin_results.twin_summary
+      self.patterson_verdict = twin_summary.patterson_verdict.getvalue()
+      self.twinning_verdict = twin_summary.twinning_verdict.getvalue()
+      self.twin_law_table= getattr(twin_summary.twin_results, "table_data", None)
+      self.z_score_info = getattr(twin_summary.twin_results, "z_score_info",None)
+      self.intensity_stats = getattr(twin_summary.twin_results,
+                                     "independent_stats", None)
+      self.is_twinned = False
+      if (self.possible_twin_laws is not None) :
+        if (len(self.possible_twin_laws.operators) > 0) :
+          if (twin_summary.twin_results.maha_l > 4.0):
+            if twin_results.twin_summary.twin_results.l_mean <= 0.48:
+              self.is_twinned = True
+      self.translation_pseudo_symmetry = getattr(twin_results,
+        "translation_pseudo_symmetry", None)
+      self.check_sg = getattr(twin_results, "check_sg", None)
+      self.suggested_space_group = getattr(twin_results, "suggested_space_group",
                                          None)
+    else :
+      twin_attrs = ["nz_test_table", "l_test_table", "twin_law_names",
+                    "twin_law_info", "sg_table", "absence_info", "absence_table",
+                    "possible_twin_laws", "patterson_verdict",
+                    "twinning_verdict", "twin_law_table", "intensity_stats",
+                    "is_twinned", "translation_pseudo_symmetry", "check_sg",
+                    "suggested_space_group"]
+      for attr in twin_attrs :
+        setattr(self, attr, None)
 
   def get_relative_wilson (self) :
     if hasattr(self, "rel_wilson_caption") :
@@ -1155,6 +1178,9 @@ class xtriage_summary (object) :
     overall = getattr(self, "completeness_overall", None)
     binned = getattr(self, "completeness_binned", None)
     return (overall, binned)
+
+  def is_centric (self) :
+    return getattr(self, "centric_flag", None)
 
 def change_symmetry (miller_array, space_group_symbol, file_name=None,
     log=None) :
