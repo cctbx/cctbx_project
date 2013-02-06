@@ -321,6 +321,8 @@ class validation (object) :
         resnames=resnames)
       self.chains.append(c)
       pdb_chains.append(pdb_chain)
+    if len(self.chains) == 0:
+      raise Sorry("Could not find any polymer chains to align.")
     debug = False
     if debug:
       alignments_and_names = []
