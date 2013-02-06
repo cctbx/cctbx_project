@@ -818,12 +818,12 @@ class pdb_hierarchy_as_cif_block_with_sequence(pdb_hierarchy_as_cif_block):
             residue_group] = seq_num
 
     for pdb_chain in unaligned_pdb_chains:
-      main_conf = pdb_chain.conformers()[0]
-      for residue in main_conf.residues():
-        if residue.resname not in non_polymer_resname_to_entity_id:
-          entity_id += 1
-          non_polymer_resname_to_entity_id[residue.resname] = entity_id
-        non_polymer_counts[residue.resname] += 1
+      for residue_group in pdb_chain.residue_groups():
+        for resname in residue_group.unique_resnames():
+          if resname not in non_polymer_resname_to_entity_id:
+            entity_id += 1
+            non_polymer_resname_to_entity_id[resname] = entity_id
+          non_polymer_counts[resname] += 1
 
     for sequence, count in sequence_counts.iteritems():
       entity_poly_seq_num = 0

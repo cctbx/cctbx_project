@@ -610,6 +610,35 @@ ATOM   404  P  P     . G   A 1 23 ? 7.477  40.933 88.377 1.00 81.65 ? ? ? ? ? ? 
     '23', '24', '25', '29', '30', '31']
   assert list(cif_block['_atom_site.label_seq_id']) == [
     '1', '2', '3', '7', '8', '9']
+  input_3tpy = """\
+ATOM      2  CA  GLN A  24       2.586  40.220  34.036  1.00 41.54           C
+ATOM      8  CA  LYS A  25       1.265  43.698  34.904  1.00 25.47           C
+ATOM     17  CA  GLN A  26       3.834  45.984  36.538  1.00 22.91           C
+ATOM     26  CA  PRO A  27       2.835  48.614  39.135  1.00 19.20           C
+ATOM     33  CA  ILE A  28       3.972  52.206  39.293  1.00 18.70           C
+ATOM     41  CA  SER A  29       6.403  51.332  42.097  1.00 22.63           C
+TER
+HETATM  852 MG    MG A 999     -12.415  61.451  32.421  0.70 28.10          MG
+HETATM  853  C   TRS A 153      -0.078  70.151  24.773  0.33 24.86           C
+HETATM  877  PA BDUP A 777      -9.339  60.563  31.137  0.70 19.64           P
+HETATM  881  PB BDUP A 777     -11.768  59.969  29.491  0.70 27.76           P
+HETATM  885  PG BDUP A 777     -13.098  58.529  31.620  0.70 33.91           P
+HETATM  905  P  AUMP A 154      -9.010  60.358  31.334  0.30 11.42           P
+HETATM  909  O   HOH A 155      -0.197  60.723  27.343  1.00 17.17           O
+HETATM  910  O   HOH A 156     -10.293  62.567  35.648  1.00 19.43           O
+"""
+  sequence_3tpy = iotbx.bioinformatics.sequence("QKQPIS")
+  pdb_in = iotbx.pdb.input(lines=(input_3tpy).splitlines(), source_info=None)
+  pdb_hierarchy = pdb_in.construct_hierarchy()
+  cif_block = iotbx.pdb.mmcif.pdb_hierarchy_as_cif_block_with_sequence(
+    pdb_hierarchy, sequences=[sequence_3tpy]).cif_block
+  assert list(cif_block["_entity.type"]) == [
+    'polymer', 'non-polymer', 'non-polymer', 'non-polymer', 'non-polymer', 'water']
+  assert list(cif_block["_atom_site.label_entity_id"]) == [
+    '1', '1', '1', '1', '1', '1', '2', '3', '4', '4', '4', '5', '6', '6']
+  assert list(cif_block["_atom_site.label_seq_id"]) == [
+    '1', '2', '3', '4', '5', '6', '.', '.', '.', '.', '.', '.', '.', '.']
+
 
 
 def exercise_fp_fdp():
