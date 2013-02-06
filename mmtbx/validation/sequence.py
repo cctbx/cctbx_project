@@ -85,11 +85,17 @@ class chain (object) :
       if (a == 'X') :
         if (not b in ["X","-"]) :
           self.n_missing += 1
-          if (not chain_started) :
+          if (not chain_started and
+              (self.resnames is None or self.resnames[i] is None)):
             self.n_missing_start += 1
           elif (prev_char != 'X') :
             self.n_gaps += 1
       elif (a == '-') :
+        if chain_started:
+          if i < len(self.resids):
+            self.resids.insert(i, None)
+          if self.resnames is not None and i < len(self.resnames):
+            self.resnames.insert(i, None)
         if (not b in ['X', '-']) :
           if (not chain_started):
             self.n_missing += 1
@@ -111,7 +117,10 @@ class chain (object) :
     i = len(alignment.a) - 1
     matches = alignment.matches()
     while (alignment.a[i] in ["X", "-"]) :
-      if matches[i] == " ":
+      if (matches[i] == " " and
+          (self.resnames is None or
+           i >= len(self.resnames) or
+           self.resnames[i] is None)):
         self.n_missing_end += 1
       i -= 1
     assert (len(self.sec_str) == len(alignment.a))
