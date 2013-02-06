@@ -78,6 +78,10 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
                                       self.predicted,self.hkllist,self.pixel_size)
       return
 
+    if self.horizons_phil.integration.model == "user_supplied":
+      from cxi_user import pre_get_predictions
+      pre_get_predictions(self.inputai)
+
     if cb_op_to_primitive==None:
 
       predicted = self.inputai.predict_all(
@@ -220,6 +224,16 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
       indexed_pairs = indexed_pairs_provisional
       correction_vectors = correction_vectors_provisional
     ########### finished with outlier rejection
+
+    if self.horizons_phil.integration.model == "user_supplied":
+      if kwargs.get("user-reentrant",None)==None:
+        from cxi_user import post_outlier_rejection
+        self.indexed_pairs = indexed_pairs
+        self.spots = spots
+        post_outlier_rejection(self,image_number,cb_op_to_primitive,kwargs)
+        return
+
+    ########### finished with user-supplied code
 
     if self.horizons_phil.integration.spot_shape_verbose:
         from rstbx.new_horizons.spot_shape import spot_shape_verbose

@@ -66,7 +66,7 @@ integration {
   background_factor = 1
     .type = int (value_min=1)
     .help = require minimum number of pixels for background fit = background_factor x # spot pixels
-  model = *rossmann1979jac12-225 use_case_3_simulated_annealing use_case_3_simulated_annealing_7 use_case_3_simulated_annealing_9
+  model = *rossmann1979jac12-225 use_case_3_simulated_annealing use_case_3_simulated_annealing_7 use_case_3_simulated_annealing_9 user_supplied
     .type = choice
     .help = algorithm for prediction of spots
     .help = Michael Rossman (1979) J. Appl. Cryst. 12, 225-238.
