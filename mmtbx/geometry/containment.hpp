@@ -136,6 +136,7 @@ public:
 
   template< typename InputIterator >
   void add(InputIterator begin, InputIterator end);
+  const storage_type& neighbours() const;
 
   inline bool operator ()(const vector_type& point) const;
 

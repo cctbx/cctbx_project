@@ -1,4 +1,8 @@
 template< typename Vector >
+size_t
+Sphere< Vector >::current = 0;
+
+template< typename Vector >
 Sphere< Vector >::Sphere(
   const vector_type& centre,
   const value_type& radius,
@@ -19,18 +23,23 @@ Sphere< Vector >::index() const
 }
 
 template< typename Vector >
-IndexFilter< Vector >::IndexFilter(const size_t& index)
-  : index_( index )
-{}
-
-template< typename Vector >
-IndexFilter< Vector >::~IndexFilter()
-{}
+Sphere< Vector >
+Sphere< Vector >::create(const vector_type& centre, const value_type& radius)
+{
+  return Sphere< Vector >( centre, radius, current++ );
+}
 
 template< typename Vector >
 bool
-IndexFilter< Vector >::operator ()(const Sphere< Vector >& object) const
+operator ==(const Sphere< Vector >& left, const Sphere< Vector >& right)
 {
-  return object.index() != index_;
+  return left.index() == right.index();
+}
+
+template< typename Vector >
+bool
+operator !=(const Sphere< Vector >& left, const Sphere< Vector >& right)
+{
+  return left.index() != right.index();
 }
 
