@@ -348,7 +348,8 @@ class manager(manager_mixin):
          k_sol = None,
          b_sol = None,
          b_cart =None,
-         _target_memory               = None):
+         _target_memory               = None,
+         n_resolution_bins_output     = None):
     if(twin_law is not None): target_name = "twin_lsq_f"
     self.bin_selections = bin_selections
     self.arrays = None
@@ -400,6 +401,7 @@ class manager(manager_mixin):
     self.xray_structure    = xray_structure
     self.use_f_model_scaled= use_f_model_scaled
     self.max_number_of_bins = max_number_of_bins
+    self.n_resolution_bins_output = n_resolution_bins_output
     if(mask_params is not None):
        self.mask_params = mask_params
     else:
@@ -669,7 +671,8 @@ class manager(manager_mixin):
       k_isotropic                  = k_isotropic,
       k_anisotropic                = k_anisotropic,
       k_anisotropic_twin           = k_anisotropic_twin,
-      _target_memory               = self._target_memory)
+      _target_memory               = self._target_memory,
+      n_resolution_bins_output     = self.n_resolution_bins_output)
     result.twin = self.twin
     result.twin_law_str = self.twin_law_str
     result.k_h = self.k_h
@@ -2074,15 +2077,19 @@ class manager(manager_mixin):
     emap = self.electron_density_map()
     return emap.map_coefficients(**kwds)
 
-  def info(self, free_reflections_per_bin = None, max_number_of_bins = None):
+  def info(self, free_reflections_per_bin = None, max_number_of_bins = None,
+      n_bins=None):
     if(free_reflections_per_bin is None):
       free_reflections_per_bin= self.alpha_beta_params.free_reflections_per_bin
     if(max_number_of_bins is None):
       max_number_of_bins = self.max_number_of_bins
+    if (n_bins is None) :
+      n_bins = self.n_resolution_bins_output
     return mmtbx.f_model_info.info(
       fmodel                   = self,
       free_reflections_per_bin = free_reflections_per_bin,
-      max_number_of_bins       = max_number_of_bins)
+      max_number_of_bins       = max_number_of_bins,
+      n_bins                   = n_bins)
 
   def fft_vs_direct(self, reflections_per_bin = 250,
                           n_bins              = 0,

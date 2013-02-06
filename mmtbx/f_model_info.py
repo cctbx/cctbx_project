@@ -95,7 +95,8 @@ class info(object):
   def __init__(self,
                fmodel,
                free_reflections_per_bin = 140,
-               max_number_of_bins = 30):
+               max_number_of_bins = 30,
+               n_bins=None):
     from cctbx.array_family import flex
     mp = fmodel.mask_params
     self.target_name = fmodel.target_name
@@ -146,10 +147,11 @@ class info(object):
     self.bins = self.statistics_in_resolution_bins(
       fmodel = fmodel,
       free_reflections_per_bin = free_reflections_per_bin,
-      max_number_of_bins = max_number_of_bins)
+      max_number_of_bins = max_number_of_bins,
+      n_bins=n_bins)
 
   def statistics_in_resolution_bins(self, fmodel, free_reflections_per_bin,
-                                    max_number_of_bins):
+                                    max_number_of_bins, n_bins=None):
     from mmtbx import bulk_solvent
     from cctbx.array_family import flex
     if(self.target_name == "twin_lsq_f"):
@@ -170,9 +172,11 @@ class info(object):
     pher_w = fmodel.phase_errors_work()
     pher_t = fmodel.phase_errors_test()
     fom = fmodel.figures_of_merit_work()
-    fmodel.f_obs().setup_binner(n_bins=fmodel.determine_n_bins(
-      free_reflections_per_bin=free_reflections_per_bin,
-      max_n_bins=max_number_of_bins))
+    if (n_bins is None) or (n_bins < 1) :
+      n_bins = fmodel.determine_n_bins(
+        free_reflections_per_bin=free_reflections_per_bin,
+        max_n_bins=max_number_of_bins)
+    fmodel.f_obs().setup_binner(n_bins=n_bins)
     fo_t.use_binning_of(fmodel.f_obs())
     fc_t.use_binning_of(fo_t)
     fo_w.use_binning_of(fo_t)

@@ -1488,7 +1488,8 @@ def fmodel_manager(
       alpha_beta_params             = None,
       sf_and_grads_accuracy_params  = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract(),
       mask_params                   = None,
-      max_number_of_resolution_bins = None):
+      max_number_of_resolution_bins = None,
+      n_resolution_bins_output      = None):
   if(r_free_flags is None or ignore_r_free_flags):
     r_free_flags = f_obs.array(data = flex.bool(f_obs.data().size(), False))
   if(twin_law is None):
@@ -1504,7 +1505,8 @@ def fmodel_manager(
       f_mask                       = f_mask,
       f_calc                       = f_calc,
       abcd                         = hl_coeff,
-      max_number_of_bins           = max_number_of_resolution_bins)
+      max_number_of_bins           = max_number_of_resolution_bins,
+      n_resolution_bins_output     = n_resolution_bins_output)
   else:
     from cctbx import sgtbx
     twin_law_xyz = sgtbx.rt_mx(symbol=twin_law, r_den=12, t_den=144)
