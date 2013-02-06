@@ -48,7 +48,9 @@ def exercise () :
           "elements=CA,ZN"]
   result = easy_run.fully_buffered("mmtbx.water_screen %s" % " ".join(args)
     ).raise_if_errors()
-  assert ("  Probable element: ZN+2" in result.stdout_lines)
+  if (not "  Probable cation: ZN+2" in result.stdout_lines) :
+    print "\n".join(result.stdout_lines)
+    raise RuntimeError("Missing ZN")
   print "OK"
 
 def write_pdb_input () :
