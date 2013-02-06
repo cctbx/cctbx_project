@@ -522,7 +522,9 @@ class loop(DictMixin):
       for i, (k, v) in enumerate(self.iteritems()):
         for i_v in range(v.size()):
           v[i_v] = format_value(v[i_v])
-        width = v.max_element_length()
+        # exclude and semicolon text fields from column width calculation
+        v_ = flex.std_string(item for item in v if "\n" not in item)
+        width = v_.max_element_length()
         # See if column contains only number, '.' or '?'
         # right-align numerical columns, left-align everything else
         v = v.select(~( (v == ".") | (v == "?") ))

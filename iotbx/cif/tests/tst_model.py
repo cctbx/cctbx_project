@@ -324,6 +324,48 @@ loop_
   'string with spaces'  a
   nospaces              b
 """)
+  loop = model.loop(data=OrderedDict((
+    ("_entity_poly.entity_id", ('1', '2', '3')),
+    ("_entity_poly.pdbx_seq_one_letter_code", (
+      "TFGSGEADCGLRPLFEKKSLEDKTERELLESYIDGR",
+      """\
+IVEGSDAEIGMSPWQVMLFRKSPQELLCGASLISDRWVLTAAHCLLYPPWDKNFTENDLLVRIGKHSRTRYERNIEKISM
+THVFRLKKWIQKVIDQFGE""",
+      "NGDFEEIPEE(TYS)LQ",
+    )),
+    ("_entity_poly.pdbx_seq_one_letter_code_can", (
+      "TFGSGEADCGLRPLFEKKSLEDKTERELLESYIDGR",
+      """\
+IVEGSDAEIGMSPWQVMLFRKSPQELLCGASLISDRWVLTAAHCLLYPPWDKNFTENDLLVRIGKHSRTRYERNIEKISM
+THVFRLKKWIQKVIDQFGE""",
+      "NGDFEEIPEEYLQ",
+    )),
+    ("_entity_poly.pdbx_strand_id", ('L', 'H', 'I'))
+  )))
+  s = StringIO()
+  loop.show(out=s, align_columns=True)
+  s.seek(0)
+  assert not show_diff("\n".join(l.rstrip() for l in s.readlines()),"""\
+loop_
+  _entity_poly.entity_id
+  _entity_poly.pdbx_seq_one_letter_code
+  _entity_poly.pdbx_seq_one_letter_code_can
+  _entity_poly.pdbx_strand_id
+  1  TFGSGEADCGLRPLFEKKSLEDKTERELLESYIDGR  TFGSGEADCGLRPLFEKKSLEDKTERELLESYIDGR  L
+  2
+;
+IVEGSDAEIGMSPWQVMLFRKSPQELLCGASLISDRWVLTAAHCLLYPPWDKNFTENDLLVRIGKHSRTRYERNIEKISM
+THVFRLKKWIQKVIDQFGE
+;
+
+;
+IVEGSDAEIGMSPWQVMLFRKSPQELLCGASLISDRWVLTAAHCLLYPPWDKNFTENDLLVRIGKHSRTRYERNIEKISM
+THVFRLKKWIQKVIDQFGE
+;
+  H
+  3  NGDFEEIPEE(TYS)LQ                     NGDFEEIPEEYLQ                         I\
+""")
+
 
 if __name__ == '__main__':
   exercise_cif_model()
