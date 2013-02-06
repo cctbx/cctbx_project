@@ -316,6 +316,12 @@ def french_wilson_scale(
     else :
       raise Sorry("Unmerged data not allowed - please merge "+
         "symmetry-equivalent reflections first.")
+  if (miller_array.data().all_eq(miller_array.data()[0])) :
+    # XXX some Scalepack files (and possibly others) crash the routine if this
+    # check is not performed.  presumably an HKL2000 bug?
+    raise Sorry(("The input intensities have uniform values (%g); this is probably "+
+      "a bug in one of the data processing and/or conversion programs.") %
+      miller_array.data()[0])
   if params == None:
     params = master_phil.extract()
   if (params.max_bins is None) : # XXX reset in case of user error
