@@ -96,10 +96,9 @@ class chain (object) :
             self.resids.insert(i, None)
           if self.resnames is not None and i < len(self.resnames):
             self.resnames.insert(i, None)
-        if (not b in ['X', '-']) :
-          if (not chain_started):
-            self.n_missing += 1
-            self.n_missing_start += 1
+        elif (not b in ['-']) :
+          self.n_missing += 1
+          self.n_missing_start += 1
       if (not a in ["X","-"]) :
         chain_started = True
         if (b == "-") :
@@ -741,6 +740,27 @@ GQSPGFGQGGSV
   assert v.chains[0].n_missing_end == 3
   assert v.chains[0].identity == 1.0
   assert v.chains[0].alignment.match_codes == 'iiimmmmmmiii'
+  #
+  pdb_in = iotbx.pdb.input(source_info=None, lines="""\
+ATOM      2  CA  ALA A   2      -8.453  57.214 -12.754  1.00 52.95           C
+ATOM      7  CA  LEU A   3      -8.574  59.274  -9.471  1.00 24.33           C
+ATOM     15  CA  ARG A   4     -12.178  60.092  -8.575  1.00 28.40           C
+ATOM     26  CA  GLY A   5     -14.170  61.485  -5.667  1.00 26.54           C
+ATOM     30  CA  THR A   6     -17.784  60.743  -4.783  1.00 31.78           C
+ATOM     37  CA  VAL A   7     -19.080  64.405  -4.464  1.00 21.31           C
+""")
+  seq = iotbx.bioinformatics.sequence("XALRGTV")
+  v = validation(
+    pdb_hierarchy=pdb_in.construct_hierarchy(),
+    sequences=[seq],
+    log=null_out(),
+    nproc=1,)
+  out = StringIO()
+  v.show(out=out)
+  assert v.chains[0].n_missing_start == 1
+  assert v.chains[0].n_missing_end == 0
+  assert v.chains[0].identity == 1.0
+  assert v.chains[0].alignment.match_codes == 'immmmmm'
   # all tests below here have additional dependencies
   if (not libtbx.env.has_module("ksdssp")) :
     print "Skipping advanced tests (require ksdssp module)"
