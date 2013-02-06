@@ -610,6 +610,7 @@ ATOM   404  P  P     . G   A 1 23 ? 7.477  40.933 88.377 1.00 81.65 ? ? ? ? ? ? 
     '23', '24', '25', '29', '30', '31']
   assert list(cif_block['_atom_site.label_seq_id']) == [
     '1', '2', '3', '7', '8', '9']
+  #
   input_3tpy = """\
 ATOM      2  CA  GLN A  24       2.586  40.220  34.036  1.00 41.54           C
 ATOM      8  CA  LYS A  25       1.265  43.698  34.904  1.00 25.47           C
@@ -638,7 +639,26 @@ HETATM  910  O   HOH A 156     -10.293  62.567  35.648  1.00 19.43           O
     '1', '1', '1', '1', '1', '1', '2', '3', '4', '4', '4', '5', '6', '6']
   assert list(cif_block["_atom_site.label_seq_id"]) == [
     '1', '2', '3', '4', '5', '6', '.', '.', '.', '.', '.', '.', '.', '.']
-
+  #
+  input_3tgr = """\
+ATOM   2449  CA  GLY A 459     -17.536  10.137  41.979  1.00181.52           C
+ATOM   2453  CA  GLN A 460     -15.862  12.780  44.128  1.00192.51           C
+ATOM   2462  CA  ASN A 463     -19.198   8.054  50.455  1.00180.96           C
+ATOM   2470  CA  ASP A 464     -19.235   4.661  52.197  1.00143.07           C
+ATOM   2478  CA  THR A 465     -20.893   2.988  49.198  1.00 91.96           C
+"""
+  sequence_3tgr = iotbx.bioinformatics.sequence("DGGQSNETNDTET")
+  pdb_in = iotbx.pdb.input(lines=(input_3tgr).splitlines(), source_info=None)
+  pdb_hierarchy = pdb_in.construct_hierarchy()
+  cif_block = iotbx.pdb.mmcif.pdb_hierarchy_as_cif_block_with_sequence(
+    pdb_hierarchy, sequences=[sequence_3tgr]).cif_block
+  assert list(cif_block["_entity_poly_seq.mon_id"]) == [
+    'ASP', 'GLY', 'GLY', 'GLN', 'SER', 'ASN', 'ASN', 'ASP', 'ASN', 'ASP', 'THR',
+    'GLU', 'THR']
+  assert list(cif_block["_atom_site.label_comp_id"]) == [
+    'GLY', 'GLN', 'ASN', 'ASP', 'THR']
+  assert list(cif_block["_atom_site.label_seq_id"]) == ['3', '4', '7', '8', '11']
+  assert cif_block["_entity_poly.pdbx_seq_one_letter_code"][0] == 'DGGQSNNDNDTET'
 
 
 def exercise_fp_fdp():
