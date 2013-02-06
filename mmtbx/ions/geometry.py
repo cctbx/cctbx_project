@@ -116,7 +116,10 @@ def find_coordination_geometry(nearby_atoms, cutoff = 2.5):
   """
 
   geometries = []
-  vectors = [i[1] for i in nearby_atoms if abs(i[1]) <= cutoff]
+  vectors = []
+  for contact in nearby_atoms :
+    if (contact.distance() <= cutoff) :
+      vectors.append(contact.vector)
 
   for name, func in SUPPORTED_GEOMETRIES.items():
     val = func(vectors)

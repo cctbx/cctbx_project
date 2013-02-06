@@ -17,6 +17,7 @@ from scitbx.matrix import col
 from scitbx.array_family import flex
 from libtbx import group_args, adopt_init_args, Auto
 from libtbx.str_utils import make_sub_header, format_value
+from libtbx import slots_getstate_setstate
 from libtbx.utils import null_out, Sorry
 from libtbx import easy_mp
 import libtbx.phil
@@ -147,6 +148,65 @@ DEFAULT_IONS = ["MG", "CA", "ZN", "CL"]
 HALIDES = ["F", "CL", "BR", "I"]
 TRANSITION_METALS = ["MN","FE","CO","CU","NI","ZN"]
 NUC_PHOSPHATE_BINDING = ["MG", "CA", "MN"]
+
+class atom_contact (slots_getstate_setstate) :
+  """
+  Container for information about an interacting atom.  Most of the methods
+  are simply wrappers for frequently called operations on the atom object, but
+  symmetry-aware.
+  """
+  __slots__ = ["atom", "vector", "rt_mx"]
+  def __init__ (self, atom, vector, rt_mx) :
+    self.atom = atom
+    self.vector = vector
+    self.rt_mx = rt_mx
+
+  def distance (self) :
+    """Actual distance from target atom"""
+    return abs(self.vector)
+
+  def distance_from (self, other) :
+    """Distance from another contact"""
+    return abs(self.vector - other.vector)
+
+  def id_str (self) :
+    if (not self.rt_mx.is_unit_mx()) :
+      return self.atom.id_str() + " " + str(self.rt_mx)
+    else :
+      return self.atom.id_str()
+
+  def atom_name (self) :
+    return self.atom.name.strip()
+
+  def resname (self) :
+    return self.atom.fetch_labels().resname.strip().upper()
+
+  def element (self) :
+    return _get_element(self.atom)
+
+  def charge_str (self) :
+    return self.atom.charge.strip()
+
+  def atom_i_seq (self) :
+    return self.atom.i_seq
+
+  def atom_id_no_altloc (self) :
+    """Unique identifier for an atom, ignoring the altloc but taking the
+    symmetry operator (if any) into account."""
+    labels = self.atom.fetch_labels()
+    base_id = labels.chain_id + labels.resid() + self.atom.name
+    if (self.rt_mx.is_unit_mx()) :
+      return base_id
+    else :
+      return base_id + " " + str(self.rt_mx)
+
+  def __eq__ (self, other) :
+    """Equality operator, taking symmetry into account but ignoring the
+    altloc identifier."""
+    return (other.atom_id_no_altloc() == self.atom_id_no_altloc())
+
+  def __abs__ (self) :
+    return self.distance()
 
 # Signals a built water might be a ion:
 # - Abnormal b-factors from nearby chain
@@ -395,7 +455,10 @@ class Manager (object):
         vec_i = col(site_i_cart)
         vec_ji = col(self.unit_cell.orthogonalize(site_ji))
         assert abs(vec_i - vec_ji) < distance_cutoff + 0.5
-        contacts.append((self.pdb_atoms[j_seq], vec_i - vec_ji))
+        contacts.append(atom_contact(
+          atom=self.pdb_atoms[j_seq],
+          vector=vec_i - vec_ji,
+          rt_mx=rt_mx))
 
     # Filter out carbons that are judged to be "contacts", but are actually
     # just bonded to genuine coordinating atoms.  This is basically just a
@@ -403,32 +466,31 @@ class Manager (object):
     # may be relatively close to the metal site.
     if filter_by_bonding and self.connectivity:
       filtered = []
-      all_i_seqs = [atom.i_seq for atom, vector in contacts]
+      all_i_seqs = [contact.atom_i_seq() for contact in contacts]
 
-      for atom, vector in contacts:
-        if _get_element(atom) not in ["C"]:
-          filtered.append( (atom, vector) )
+      for contact in contacts:
+        if contact.element() not in ["C"]:
+          filtered.append(contact)
           continue
 
         bonded_j_seqs = []
-        for j_seq in self.connectivity[atom.i_seq] :
+        for j_seq in self.connectivity[contact.atom_i_seq()] :
           if (j_seq in all_i_seqs) :
             bonded_j_seqs.append(j_seq)
         keep = True
 
         for j_seq in bonded_j_seqs:
-          other_atom, other_vector = contacts[all_i_seqs.index(j_seq)]
+          other_contact = contacts[all_i_seqs.index(j_seq)]
 
-          if _get_element(other_atom) in ["N", "O", "S"]:
-            if abs(other_vector) < abs(vector):
+          if (other_contact.element() in ["N", "O", "S"]) :
+            if abs(other_contact) < abs(contact):
               keep = False
               break
 
         if keep:
-          filtered += (atom, vector),
+          filtered.append(contact)
 
       contacts = filtered
-
     return contacts
 
   def principal_axes_of_inertia (self, i_seq) :
@@ -633,13 +695,14 @@ class Manager (object):
     xyz = col(atom.xyz)
 
     min_distance_to_cation = max(self.unit_cell.parameters()[0:3])
-    for atom, vector in nearby_atoms:
+    for contact in nearby_atoms:
       # to analyze local geometry, we use the target site mapped to be in the
       # same ASU as the interacting site
-      resname = atom.fetch_labels().resname.strip().upper()
-      atom_name = atom.name.strip()
-      element = _get_element(atom)
-      distance = abs(vector)
+      atom = contact.atom
+      resname = contact.resname()
+      atom_name = contact.atom_name()
+      element = contact.element()
+      distance = abs(contact)
       j_seq = atom.i_seq
 
       # XXX need to figure out exactly what this should be - CL has a
@@ -761,10 +824,11 @@ class Manager (object):
 
     # now check again for negatively charged sidechain (etc.) atoms (e.g.
     # carboxyl groups), but with some leeway if a cation is also nearby
-    for atom, vector in nearby_atoms:
-      resname = atom.fetch_labels().resname.strip().upper()
-      atom_name = atom.name.strip()
-      distance = abs(vector)
+    for contact in nearby_atoms:
+      atom = contact.atom
+      resname = contact.resname()
+      atom_name = contact.atom_name()
+      distance = abs(contact)
       if ((distance < 3.2) and
           (distance < min_distance_to_cation + 0.2) and
           (atom_name in ["OD1","OD2","OE1","OE2"]) and
@@ -985,8 +1049,10 @@ class Manager (object):
               (atom_props.is_compatible_site(ion_params))) :
           n_good_res = atom_props.number_of_favored_ligand_residues(ion_params,
             distance=2.9, exclude_atoms=["O"])
-          n_bb_oxygen = atom_props.number_of_backbone_oxygens(distance=2.9)
-          n_total_coord_atoms = atom_props.number_of_atoms_within_radius(2.9)
+          n_bb_oxygen = atom_props.number_of_backbone_oxygens(
+            distance_cutoff=2.9)
+          n_total_coord_atoms = atom_props.number_of_atoms_within_radius(
+            distance_cutoff=2.9)
           if ((n_good_res + n_bb_oxygen) >= 2) and (n_total_coord_atoms >= 4) :
             reasonable.append((ion_params, 0))
         # another special case: very heavy ions, which are probably not binding
@@ -1249,16 +1315,16 @@ class AtomProperties (object):
     self.strict_valence = manager.get_strict_valence_flag()
 
     # Grab all the atoms within 3.5 Angstroms
-    nearby_atoms = manager.find_nearby_atoms(
+    nearby_atoms_unfiltered = manager.find_nearby_atoms(
       i_seq = i_seq,
       distance_cutoff = 3.5)
-
-    self.nearby_atoms = [i for i in nearby_atoms
-                         if not _same_atom_different_altloc(i[0], atom) and
-                         _get_element(i[0]) not in ["H", "D"]]
+    self.nearby_atoms = []
+    for contact in nearby_atoms_unfiltered :
+      if (contact.element() not in ["H", "D"]) :
+        self.nearby_atoms.append(contact)
 
     self.residue_counts = count_coordinating_residues(self.nearby_atoms)
-    self.geometries = find_coordination_geometry(nearby_atoms)
+    self.geometries = find_coordination_geometry(nearby_atoms_unfiltered)
 
     map_stats = manager.map_stats(i_seq)
     self.peak_2fofc = map_stats.two_fofc
@@ -1317,12 +1383,12 @@ class AtomProperties (object):
     """
     n_res = 0
     resids = []
-    for other_atom, vector in self.nearby_atoms:
-      if (other_atom.name.strip() in exclude_atoms) :
+    for contact in self.nearby_atoms:
+      if (contact.atom_name() in exclude_atoms) :
         continue
-      if (abs(vector) < distance) :
-        labels = other_atom.fetch_labels()
-        other_resname = labels.resname.strip().upper()
+      if (contact.distance() < distance) :
+        labels = contact.atom.fetch_labels()
+        other_resname = contact.resname()
         other_resid = labels.chain_id + labels.resid()
         if ((ion_params.allowed_coordinating_residues is not None) and
             (other_resname in ion_params.allowed_coordinating_residues) and
@@ -1331,25 +1397,23 @@ class AtomProperties (object):
           resids.append(other_resid)
     return n_res
 
-  def number_of_atoms_within_radius (self, distance) :
+  def number_of_atoms_within_radius (self, distance_cutoff) :
     n_atoms = 0
     atom_ids = []
-    for other_atom, vector in self.nearby_atoms:
-      labels = other_atom.fetch_labels()
-      other_resname = labels.resname.strip().upper()
-      other_id = labels.chain_id + labels.resid() + other_atom.name
+    for contact in self.nearby_atoms:
+      other_id = contact.atom_id_no_altloc()
       if (not other_id in atom_ids) :
-        if (abs(vector) < distance) :
+        if (contact.distance() < distance_cutoff) :
           n_atoms += 1
         atom_ids.append(other_id) # check for alt confs.
     return n_atoms
 
-  def number_of_backbone_oxygens (self, distance=3.0) :
+  def number_of_backbone_oxygens (self, distance_cutoff=3.0) :
     n_bb_ox = 0
-    for other_atom, vector in self.nearby_atoms :
-      if (other_atom.name.strip() == "O") :
-        if (abs(vector) <= distance) :
-          if (not other_atom.fetch_labels().resname in WATER_RES_NAMES) :
+    for contact in self.nearby_atoms :
+      if (contact.atom_name() == "O") :
+        if (contact.distance() <= distance_cutoff) :
+          if (not contact.resname() in WATER_RES_NAMES) :
             n_bb_ox += 1
     return n_bb_ox
 
@@ -1417,14 +1481,14 @@ class AtomProperties (object):
 
     # Check for all non-overlapping atoms within 3 A of the metal
     coord_atoms = []
-    for i_pair, (atom1, vector1) in enumerate(self.nearby_atoms) :
-      if (abs(vector1) < 3.0) :
-        for atom2, vector2 in self.nearby_atoms[(i_pair+1):] :
-          if (_same_atom_different_altloc(atom1, atom2) or
-              (abs(vector2 - vector1) <= 0.3)) :
+    for i_pair, contact1 in enumerate(self.nearby_atoms) :
+      if (contact1.distance() < 3.0) :
+        for contact2 in self.nearby_atoms[(i_pair+1):] :
+          if ((contact1 == contact2) or
+              (contact1.distance_from(contact2) <= 0.3)) :
             break
         else :
-          coord_atoms.append((atom1, vector1))
+          coord_atoms.append(contact1)
 
     if len(coord_atoms) < ion_params.coord_num_lower:
       inaccuracies.add(self.TOO_FEW_COORD)
@@ -1436,10 +1500,10 @@ class AtomProperties (object):
     n_non_water = 0
     self.bad_coords[identity] = []
 
-    for other_atom, vector in self.nearby_atoms:
-      other_name = other_atom.name.strip().upper()
-      other_resname = other_atom.fetch_labels().resname.strip().upper()
-      other_element = _get_element(other_atom)
+    for contact in self.nearby_atoms:
+      other_name = contact.atom_name()
+      other_resname = contact.resname()
+      other_element = contact.element()
 
       if (not other_resname in WATER_RES_NAMES) :
         n_non_water += 1
@@ -1447,10 +1511,10 @@ class AtomProperties (object):
         # Everything can potentially be coordinated by water
         continue
 
-      if abs(vector) < 3.0:
+      if (contact.distance() < 3.0) :
         # Anion coordinated with anion, or cation coordinating with cation
         # (Make sure atom charges are on the opposite sides of 0)
-        other_charge = other_atom.charge_as_int()
+        other_charge = contact.atom.charge_as_int()
 
         if other_charge is None:
           other_charge = get_charge(other_element)
@@ -1458,7 +1522,7 @@ class AtomProperties (object):
         if ((ion_params.allowed_coordinating_atoms is not None) and
             (other_element not in ion_params.allowed_coordinating_atoms)) :
           # Check if atom is of an allowed element, if restricted
-          self.bad_coords[identity].append((other_atom, vector))
+          self.bad_coords[identity].append(contact)
           inaccuracies.add(self.BAD_COORD_ATOM)
         if (get_class(other_resname) == "common_amino_acid") :
           # limit elements allowed to bind to backbone atoms (mainly carbonyl
@@ -1466,10 +1530,10 @@ class AtomProperties (object):
           if ((other_name in ["C","N","O","CA","H","HA"]) and
               ((ion_params.allowed_backbone_atoms is None) or
                (not other_name in ion_params.allowed_backbone_atoms))) :
-            if (other_name == "O") and (is_carboxy_terminus(other_atom)) :
+            if (other_name == "O") and (is_carboxy_terminus(contact.atom)) :
               pass # C-terminal carboxyl group is allowed
             else :
-              self.bad_coords[identity].append((other_atom, vector))
+              self.bad_coords[identity].append(contact)
               inaccuracies.add(self.BAD_COORD_ATOM)
           # Check if atom is of an allowed residue type, if part of a sidechain
           if (ion_params.allowed_coordinating_residues is not None) :
@@ -1477,11 +1541,12 @@ class AtomProperties (object):
             if ((not other_resname in allowed) and
                 (other_name not in ["C", "O", "N", "CA", "OXT"])) :
                 # XXX probably just O
-              self.bad_coords[identity].append((other_atom, vector))
+              self.bad_coords[identity].append(contact)
               inaccuracies.add(self.BAD_COORD_RESIDUE)
-        elif (cmp(0, other_atom.charge_as_int()) == cmp(0, ion_params.charge)) :
+        elif (cmp(0, contact.atom.charge_as_int()) ==
+              cmp(0, ion_params.charge)) :
           # Check if coordinating atom is of opposite charge
-          self.bad_coords[identity].append((other_atom, vector))
+          self.bad_coords[identity].append(contact)
           inaccuracies.add(self.LIKE_COORD)
         elif (ion_params.charge > 0 and
             other_element in ["N"] and
@@ -1490,7 +1555,7 @@ class AtomProperties (object):
           #
           # Ignore nitrogens without a charge label that are on positively
           # charged amino acids.
-          self.bad_coords[identity].append((other_atom, vector))
+          self.bad_coords[identity].append(contact)
           inaccuracies.add(self.LIKE_COORD)
 
     # Check the number of coordinating waters
@@ -1553,13 +1618,13 @@ class AtomProperties (object):
     inaccuracies = self.inaccuracies.get(identity, None)
     if (inaccuracies is None) :
       inaccuracies = self.inaccuracies[identity] = set()
-    fpp_expected_sasaki = sasaki.table(ion_params.element).at_angstrom(
-      wavelength).fdp()
-    fpp_expected_henke = henke.table(ion_params.element).at_angstrom(
-      wavelength).fdp()
-    self.fpp_expected[identity] = max(fpp_expected_sasaki,
-          fpp_expected_henke)
     if (wavelength is not None) :
+      fpp_expected_sasaki = sasaki.table(ion_params.element).at_angstrom(
+        wavelength).fdp()
+      fpp_expected_henke = henke.table(ion_params.element).at_angstrom(
+        wavelength).fdp()
+      self.fpp_expected[identity] = max(fpp_expected_sasaki,
+        fpp_expected_henke)
       if (self.fpp is not None) :
         self.fpp_ratios[identity] = self.fpp / self.fpp_expected[identity]
         if ((self.fpp_ratios[identity] > fpp_ratio_max) or
@@ -1614,9 +1679,9 @@ class AtomProperties (object):
     if self.nearby_atoms is not None:
       print >> out, "  Nearby atoms:"
       angstrom = u"\u00C5".encode("utf-8", "strict").strip()
-      for atom, vector in self.nearby_atoms :
-        print >> out, "    %s (%5.3f %s)" % (atom.id_str(), abs(vector),
-          angstrom)
+      for contact in self.nearby_atoms :
+        print >> out, "    %s (%5.3f %s)" % (contact.id_str(),
+          contact.distance(), angstrom)
       if self.geometries:
         print >> out, "  Coordinating geometry:"
         degree = u"\N{DEGREE SIGN}".encode("utf-8", "strict")
@@ -1699,12 +1764,13 @@ class AtomProperties (object):
     nucleotide, based on common atom names.
     """
     n_phosphate_oxygens = 0
-    for atom, vector in self.nearby_atoms :
-      if (len(atom.name) < 3) or (_get_element(atom) not in ["O"]) :
+    for contact in self.nearby_atoms :
+      atom_name = contact.atom_name()
+      if (len(atom_name) < 3) or (contact.element() not in ["O"]) :
         continue
-      if ((atom.name[1:3] in ["O1","O2","O3"]) and
-          (atom.name[3] in ["A","B","G"])) :
-        if (abs(vector) <= distance_cutoff) :
+      if ((atom_name[1:3] in ["O1","O2","O3"]) and
+          (atom_name[3] in ["A","B","G"])) :
+        if (contact.distance() <= distance_cutoff) :
           n_phosphate_oxygens += 1
     return (n_phosphate_oxygens == min_phosphate_oxygen_atoms)
 
@@ -1781,9 +1847,9 @@ def count_coordinating_residues (nearby_atoms, distance_cutoff = 3.0) :
   """
   unique_residues = []
   residue_counts = {}
-  for atom, vector in nearby_atoms :
-    if (abs(vector) <= distance_cutoff) :
-      parent = atom.parent()
+  for contact in nearby_atoms :
+    if (contact.distance() <= distance_cutoff) :
+      parent = contact.atom.parent()
       for residue in unique_residues :
         if (residue == parent) :
           break

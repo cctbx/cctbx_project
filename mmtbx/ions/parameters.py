@@ -126,10 +126,10 @@ class server (object) :
 
     vectors = []
 
-    for other, vector in nearby_atoms:
-      donor = AtomGuess(other.element.strip(), other.charge.strip())
+    for contact in nearby_atoms:
+      donor = AtomGuess(contact.element(), contact.charge_str())
 
-      valence = self.calculate_valence(ion, donor, abs(vector)) * other.occ
+      valence = self.calculate_valence(ion, donor, abs(contact)) * contact.atom.occ
 
       if valence == 0:
         if ((donor.element not in ["H", "C", "AX"]) and
@@ -137,7 +137,7 @@ class server (object) :
           pass
           #print "Unknown interaction: %s %s" % (ion.element, donor.element)
       else:
-        vectors += vector / abs(vector) * valence,
+        vectors.append( contact.vector / contact.distance() * valence )
 
     return vectors
 
