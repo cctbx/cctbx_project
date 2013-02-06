@@ -5741,7 +5741,16 @@ ATOM     40  CA  ASN A   8       6.831   2.310   4.318  1.00 12.30           C
 ATOM     48  CA  TYR A   9       9.159   2.144   7.299  1.00 15.18           C
 """).construct_hierarchy()
   main_conf = pdb_hierarchy.models()[0].chains()[0].conformers()[0]
+  assert main_conf.get_residue_names_and_classes() == (
+    ['GLY', 'ASN', 'ASN', 'GLN', 'GLN', 'ASN', 'TYR'], {'common_amino_acid': 7})
+  assert main_conf.as_sequence() == ['G', 'N', 'N', 'Q', 'Q', 'N', 'Y']
   assert (main_conf.as_padded_sequence() == "XXGNNQQNY")
+  # duplicate of tests above but for chain methods
+  chain = pdb_hierarchy.models()[0].chains()[0]
+  assert chain.get_residue_names_and_classes() == (
+    ['GLY', 'ASN', 'ASN', 'GLN', 'GLN', 'ASN', 'TYR'], {'common_amino_acid': 7})
+  assert chain.as_sequence() == ['G', 'N', 'N', 'Q', 'Q', 'N', 'Y']
+  assert chain.as_padded_sequence() == "XXGNNQQNY"
   pdb_hierarchy = pdb.input(source_info=None, lines="""\
 ATOM      2  CA  GLY A  -2      -9.052   4.207   4.651  1.00 16.57           C
 ATOM      6  CA  ASN A  -1      -6.522   2.038   2.831  1.00 14.10           C
@@ -5752,7 +5761,12 @@ ATOM     40  CA  ASN A   5       6.831   2.310   4.318  1.00 12.30           C
 ATOM     48  CA  TYR A   6       9.159   2.144   7.299  1.00 15.18           C
 """).construct_hierarchy()
   main_conf = pdb_hierarchy.models()[0].chains()[0].conformers()[0]
-  assert (main_conf.as_padded_sequence() == "GNNQXXQNY")
+  assert main_conf.as_sequence() == ['G', 'N', 'N', 'Q', 'Q', 'N', 'Y']
+  assert main_conf.as_padded_sequence() == "GNNQXXQNY"
+  # duplicate of tests above but for chain methods
+  chain = pdb_hierarchy.models()[0].chains()[0]
+  assert chain.as_sequence() == ['G', 'N', 'N', 'Q', 'Q', 'N', 'Y']
+  assert chain.as_padded_sequence() == "GNNQXXQNY"
   pdb_hierarchy = pdb.input(source_info=None, lines="""\
 ATOM      2  CA  GLY A   3      -9.052   4.207   4.651  1.00 16.57           C
 ATOM      6  CA  ASN A   4      -6.522   2.038   2.831  1.00 14.10           C
@@ -5765,6 +5779,10 @@ ATOM     40  CA  ASN A   8       6.831   2.310   4.318  1.00 12.30           C
 ATOM     48  CA  TYR A   9       9.159   2.144   7.299  1.00 15.18           C
 """).construct_hierarchy()
   main_conf = pdb_hierarchy.models()[0].chains()[0].conformers()[0]
+  assert main_conf.get_residue_names_and_classes() == (
+    ['GLY', 'ASN', 'ASN', 'GLN', 'ALA', 'GLY', 'GLN', 'ASN', 'TYR'],
+    {'common_amino_acid': 9})
+  assert main_conf.as_sequence() == ['G', 'N', 'N', 'Q', 'A', 'G', 'Q', 'N', 'Y']
   assert (main_conf.as_padded_sequence() == "XXGNNQAGQNY")
   assert (main_conf.as_padded_sequence(skip_insertions=True) == "XXGNNQQNY")
   resids = main_conf.get_residue_ids()
@@ -5776,6 +5794,64 @@ ATOM     48  CA  TYR A   9       9.159   2.144   7.299  1.00 15.18           C
   assert resnames == [
     None, None, 'GLY', 'ASN', 'ASN', 'GLN', 'ALA', 'GLY', 'GLN', 'ASN', 'TYR']
   assert len(main_conf.get_residue_names_padded(pad_at_start=False)) == 9
+  # duplicate of tests above but for chain methods
+  chain = pdb_hierarchy.models()[0].chains()[0]
+  assert chain.get_residue_names_and_classes() == (
+    ['GLY', 'ASN', 'ASN', 'GLN', 'ALA', 'GLY', 'GLN', 'ASN', 'TYR'],
+    {'common_amino_acid': 9})
+  assert chain.as_sequence() == ['G', 'N', 'N', 'Q', 'A', 'G', 'Q', 'N', 'Y']
+  assert (chain.as_padded_sequence() == "XXGNNQAGQNY")
+  assert (chain.as_padded_sequence(skip_insertions=True) == "XXGNNQQNY")
+  resids = chain.get_residue_ids()
+  assert (len(resids) == 11)
+  assert (resids[0] == resids[1] == None)
+  assert (resids[-4].strip() == "6B")
+  resnames = chain.get_residue_names_padded()
+  assert len(resnames) == 11
+  assert resnames == [
+    None, None, 'GLY', 'ASN', 'ASN', 'GLN', 'ALA', 'GLY', 'GLN', 'ASN', 'TYR']
+  assert len(chain.get_residue_names_padded(pad_at_start=False)) == 9
+  # this next example comes from PDB ID 3ty2, demonstrating why it is better to
+  # determine the sequence using residue_groups rather than looking at the first
+  # conformer. If we get the sequence from main_conf, then the second MSE is
+  # is 'lost' from the sequence because it is only present as B and C altlocs
+  pdb_hierarchy = pdb.input(source_info=None, lines="""\
+ATOM    450  CA  ASN A   1      37.242  41.665  44.160  1.00 35.89           C
+ATOM    458  CA  GLY A   2      37.796  38.269  42.523  1.00 30.13           C
+HETATM  463  CA AMSE A   3      35.878  39.005  39.326  0.54 22.83           C
+HETATM  464  CA BMSE A   3      35.892  39.018  39.323  0.46 22.96           C
+ATOM    478  CA  ILE A   4      37.580  38.048  36.061  1.00 22.00           C
+ATOM    486  CA  SER A   5      37.593  40.843  33.476  1.00 18.73           C
+ATOM    819  CA  ALA A   8      25.982  34.781  27.220  1.00 18.43           C
+ATOM    824  CA  ALA A   9      23.292  32.475  28.614  1.00 19.60           C
+HETATM  830  CA BMSE A  10      22.793  30.814  25.223  0.41 22.60           C
+HETATM  831  CA CMSE A  10      22.801  30.850  25.208  0.59 22.54           C
+ATOM    845  CA  GLU A  11      26.504  30.054  24.966  1.00 25.19           C
+ATOM    854  CA  GLY A  12      25.907  28.394  28.320  1.00 38.88           C
+""").construct_hierarchy()
+  main_conf = pdb_hierarchy.models()[0].chains()[0].conformers()[0]
+  assert main_conf.get_residue_names_and_classes() == (
+    ['ASN', 'GLY', 'MSE', 'ILE', 'SER', 'ALA', 'ALA', 'GLU', 'GLY'],
+    {'common_amino_acid': 9})
+  assert main_conf.as_sequence() == ['N', 'G', 'M', 'I', 'S', 'A', 'A', 'E', 'G']
+  assert main_conf.as_padded_sequence() == 'NGMISXXAAXEG'
+  assert main_conf.get_residue_ids() == [
+    '   1 ', '   2 ', '   3 ', '   4 ', '   5 ', None, None,
+    '   8 ', '   9 ', None, '  11 ', '  12 ']
+  assert main_conf.get_residue_names_padded() == [
+    'ASN', 'GLY', 'MSE', 'ILE', 'SER', None, None, 'ALA', 'ALA', None, 'GLU', 'GLY']
+  # now the chain methods should give different (more correct) answers
+  chain = pdb_hierarchy.models()[0].chains()[0]
+  assert chain.get_residue_names_and_classes() == (
+    ['ASN', 'GLY', 'MSE', 'ILE', 'SER', 'ALA', 'ALA', 'MSE', 'GLU', 'GLY'],
+    {'common_amino_acid': 10})
+  assert chain.as_sequence() == ['N', 'G', 'M', 'I', 'S', 'A', 'A', 'M', 'E', 'G']
+  assert chain.as_padded_sequence() == 'NGMISXXAAMEG'
+  assert chain.get_residue_ids() == [
+    '   1 ', '   2 ', '   3 ', '   4 ', '   5 ', None, None,
+    '   8 ', '   9 ', '  10 ', '  11 ', '  12 ']
+  assert chain.get_residue_names_padded() == [
+    'ASN', 'GLY', 'MSE', 'ILE', 'SER', None, None, 'ALA', 'ALA', 'MSE', 'GLU', 'GLY']
   # sites_diff
   hierarchy_1 = pdb.input(source_info=None, lines="""\
 ATOM      0  O   WAT B   1      17.523   2.521  10.381  1.10 16.78           O

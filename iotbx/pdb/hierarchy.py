@@ -835,6 +835,105 @@ class _(boost.python.injector, ext.chain, __hash_eq_mixin):
     result.sort(groups_cmp)
     return result
 
+  def get_residue_names_and_classes (self) :
+    from iotbx.pdb import common_residue_names_get_class
+    from iotbx.pdb import residue_name_plus_atom_names_interpreter
+    rn_seq = []
+    residue_classes = dict_with_default_0()
+    for residue_group in self.residue_groups():
+      # XXX should we iterate over all atom_groups or just take the first one?
+      #for atom_group in residue_group.atom_groups():
+      atom_group = residue_group.atom_groups()[0]
+      rnpani = residue_name_plus_atom_names_interpreter(
+      residue_name=atom_group.resname,
+      atom_names=[atom.name for atom in atom_group.atoms()])
+      rn = rnpani.work_residue_name
+      rn_seq.append(rn)
+      if (rn is None):
+        c = None
+      else:
+        c = common_residue_names_get_class(name=rn)
+      residue_classes[c] += 1
+    return (rn_seq, residue_classes)
+
+  def as_sequence (self, substitute_unknown='X') :
+    assert ((isinstance(substitute_unknown, str)) and
+            (len(substitute_unknown) == 1))
+    rn_seq, residue_classes = self.get_residue_names_and_classes()
+    n_aa = residue_classes["common_amino_acid"]
+    n_na = residue_classes["common_rna_dna"]
+    seq = []
+    if (n_aa > n_na):
+      from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
+      aa_3_as_1 = one_letter_given_three_letter.get
+      for rn in rn_seq:
+        seq.append(aa_3_as_1(rn, substitute_unknown))
+    elif (n_na != 0):
+      for rn in rn_seq:
+        seq.append({
+          "A": "A",
+          "C": "C",
+          "G": "G",
+          "U": "U",
+          "DA": "A",
+          "DC": "C",
+          "DG": "G",
+          "DT": "T"}.get(rn, "N"))
+    return seq
+
+  def as_padded_sequence(self, missing_char='X', skip_insertions=False,
+                         pad=True, substitute_unknown='X', pad_at_start=True):
+    seq = self.as_sequence()
+    padded_seq = []
+    last_resseq = 0
+    last_icode = " "
+    i = 0
+    for i, residue_group in enumerate(self.residue_groups()) :
+      if (skip_insertions) and (residue_group.icode != " ") :
+        continue
+      resseq = residue_group.resseq_as_int()
+      if (pad) and (resseq > (last_resseq + 1)) :
+        for x in range(resseq - last_resseq - 1) :
+          if last_resseq == 0 and not pad_at_start: break
+          padded_seq.append(missing_char)
+      last_resseq = resseq
+      padded_seq.append(seq[i])
+    return "".join(padded_seq)
+
+  def get_residue_ids (self, skip_insertions=False, pad=True, pad_at_start=True) :
+    resids = []
+    last_resseq = 0
+    last_icode = " "
+    for i, residue_group in enumerate(self.residue_groups()) :
+      if (skip_insertions) and (residue.icode != " ") :
+        continue
+      resseq = residue_group.resseq_as_int()
+      if (pad) and (resseq > (last_resseq + 1)) :
+        for x in range(resseq - last_resseq - 1) :
+          if last_resseq == 0 and not pad_at_start: break
+          resids.append(None)
+      last_resseq = resseq
+      resids.append(residue_group.resid())
+    return resids
+
+  def get_residue_names_padded(
+      self, skip_insertions=False, pad=True, pad_at_start=True):
+    resnames = []
+    last_resseq = 0
+    last_icode = " "
+    for i, residue_group in enumerate(self.residue_groups()) :
+      if (skip_insertions) and (residue.icode != " ") :
+        continue
+      resseq = residue_group.resseq_as_int()
+      if (pad) and (resseq > (last_resseq + 1)) :
+        for x in range(resseq - last_resseq - 1) :
+          if last_resseq == 0 and not pad_at_start: break
+          resnames.append(None)
+      last_resseq = resseq
+      resnames.append(residue_group.unique_resnames()[0])
+    return resnames
+
+
 class _(boost.python.injector, ext.residue_group, __hash_eq_mixin):
 
   def only_atom_group(self):
@@ -912,6 +1011,9 @@ class _(boost.python.injector, ext.conformer):
     return self.only_residue().only_atom()
 
   def get_residue_names_and_classes (self) :
+    # XXX This function should probably be deprecated, since it has been
+    # duplicated in chain.get_residue_names_and_classes which should probably
+    # be preferred to this function
     from iotbx.pdb import common_residue_names_get_class
     rn_seq = []
     residue_classes = dict_with_default_0()
@@ -943,6 +1045,9 @@ class _(boost.python.injector, ext.conformer):
     return False
 
   def as_sequence (self, substitute_unknown='X') :
+    # XXX This function should probably be deprecated, since it has been
+    # duplicated in chain.as_sequence which should probably be preferred to
+    # this function
     assert ((isinstance(substitute_unknown, str)) and
             (len(substitute_unknown) == 1))
     rn_seq, residue_classes = self.get_residue_names_and_classes()
@@ -987,6 +1092,9 @@ class _(boost.python.injector, ext.conformer):
 
   def as_padded_sequence (self, missing_char='X', skip_insertions=False,
       pad=True, substitute_unknown='X', pad_at_start=True) :
+    # XXX This function should probably be deprecated, since it has been
+    # duplicated in chain.as_padded_sequence which should probably be preferred
+    # to this function
     seq = self.as_sequence()
     padded_seq = []
     last_resseq = 0
@@ -1030,6 +1138,9 @@ class _(boost.python.injector, ext.conformer):
     return "".join(ss_seq)
 
   def get_residue_ids (self, skip_insertions=False, pad=True, pad_at_start=True) :
+    # XXX This function should probably be deprecated, since it has been
+    # duplicated in chain.get_residue_ids which should probably be preferred
+    # to this function
     resids = []
     last_resseq = 0
     last_icode = " "
@@ -1047,6 +1158,9 @@ class _(boost.python.injector, ext.conformer):
 
   def get_residue_names_padded(
       self, skip_insertions=False, pad=True, pad_at_start=True):
+    # XXX This function should probably be deprecated, since it has been
+    # duplicated in chain.get_residue_names_padded which should probably be
+    # preferred to this function
     resnames = []
     last_resseq = 0
     last_icode = " "
