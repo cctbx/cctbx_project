@@ -118,8 +118,8 @@ class chain (object) :
     while (alignment.a[i] in ["X", "-"]) :
       if (matches[i] == " " and
           (self.resnames is None or
-           i >= len(self.resnames) or
-           self.resnames[i] is None)):
+           (i-self.n_missing_start) >= len(self.resnames) or
+           self.resnames[(i-self.n_missing_start)] is None)):
         self.n_missing_end += 1
       i -= 1
     assert (len(self.sec_str) == len(alignment.a))
@@ -761,6 +761,29 @@ ATOM     37  CA  VAL A   7     -19.080  64.405  -4.464  1.00 21.31           C
   assert v.chains[0].n_missing_end == 0
   assert v.chains[0].identity == 1.0
   assert v.chains[0].alignment.match_codes == 'immmmmm'
+  #
+  pdb_in = iotbx.pdb.input(source_info=None, lines="""\
+ATOM   2171  CA  ASP I 355       5.591 -11.903   1.133  1.00 41.60           C
+ATOM   2175  CA  PHE I 356       7.082  -8.454   0.828  1.00 39.82           C
+ATOM   2186  CA  GLU I 357       5.814  -6.112  -1.877  1.00 41.12           C
+ATOM   2195  CA  GLU I 358       8.623  -5.111  -4.219  1.00 42.70           C
+ATOM   2199  CA  ILE I 359      10.346  -1.867  -3.363  1.00 43.32           C
+ATOM   2207  CA  PRO I 360      11.658   0.659  -5.880  1.00 44.86           C
+ATOM   2214  CA  GLU I 361      14.921  -0.125  -7.592  1.00 44.32           C
+ATOM   2219  CA  GLU I 362      15.848   3.489  -6.866  1.00 44.27           C
+HETATM 2224  CA  TYS I 363      16.482   2.005  -3.448  1.00 44.52           C
+""")
+  seq = iotbx.bioinformatics.sequence("NGDFEEIPEEYL")
+  v = validation(
+    pdb_hierarchy=pdb_in.construct_hierarchy(),
+    sequences=[seq],
+    log=null_out(),
+    nproc=1,)
+  out = StringIO()
+  v.show(out=out)
+  assert v.chains[0].n_missing_start == 2
+  assert v.chains[0].n_missing_end == 1
+  assert v.chains[0].identity == 1.0
   # all tests below here have additional dependencies
   if (not libtbx.env.has_module("ksdssp")) :
     print "Skipping advanced tests (require ksdssp module)"
