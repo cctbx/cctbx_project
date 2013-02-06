@@ -3,6 +3,7 @@
 #include <boost/python/scope.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/stl_iterator.hpp>
+#include <boost/python/operators.hpp>
 
 #include <scitbx/vec3.h>
 #include <scitbx/math/boost_python/cartesian_product_fixed_size.hpp>
@@ -50,11 +51,14 @@ struct asa_wrappers
           return_value_policy< copy_const_reference >()
           )
         )
-      ;
-
-    class_< IndexFilter< Vector > >( "index_filter", no_init )
-      .def( init< const size_t& >( arg( "index" ) ) )
-      .def( "__call__", &IndexFilter< Vector >::operator (), arg( "object" ) )
+      .def( self == self )
+      .def( self != self )
+      .def(
+        "create",
+        Sphere< Vector >::create,
+        ( arg( "centre" ), arg( "radius" ) )
+        )
+      .staticmethod( "create" )
       ;
   }
 };
@@ -92,17 +96,6 @@ struct indexing_wrappers
       typename linear_spheres_type::const_iterator
       >::wrap( "linear_spheres_overlapping_objects_range" );
 
-    typedef PrefilterHelper<
-      typename linear_spheres_type::storage_type::const_iterator,
-      asa::IndexFilter< Vector >,
-      typename linear_spheres_type::overlap_filter_type
-      >
-      prefilter_helper;
-
-    scitbx::math::cartesian_product::python::iterated_range_wrappers<
-      typename prefilter_helper::filter_range_type::iterator_type
-      >::wrap( "linear_spheres_overlapping_index_prefiltered_objects_range" );
-
     class_< linear_spheres_type >( "linear_spheres", no_init )
       .def( init<>() )
       .def( "add", &linear_spheres_type::add, arg( "object" ) )
@@ -111,14 +104,16 @@ struct indexing_wrappers
         &linear_spheres_type::overlapping_with,
         arg( "object" )
         )
-      .def(
-        "prefiltered_overlapping_with",
-        &linear_spheres_type::template prefiltered_overlapping_with<
-          asa::IndexFilter< Vector >
-          >,
-        ( arg( "object" ), arg( "prefilter" ) )
-        )
       .def( "__len__", &linear_spheres_type::size )
+      ;
+    
+    typedef Voxelizer< Vector, scitbx::vec3< int > > voxelizer_type;
+
+    class_< voxelizer_type >( "voxelizer", no_init )
+      .def(
+        init< const Vector&, const Vector& >( ( arg( "base" ), arg( "step" ) ) )
+        )
+      .def( "__call__", &voxelizer_type::operator (), arg( "vector" ) )
       ;
   }
 };
@@ -155,17 +150,31 @@ add_neighbours_from_range(Checker& checker, const Range& neighbours)
   checker.add( neighbours.begin, neighbours.end );
 }
 
+template< typename Checker >
+typename Checker::storage_type::const_iterator
+checker_neighbours_begin(const Checker& checker)
+{
+  return checker.neighbours().begin();
+}
+
+template< typename Checker >
+typename Checker::storage_type::const_iterator
+checker_neighbours_end(const Checker& checker)
+{
+  return checker.neighbours().end();
+}
+
 template < typename Vector >
-struct containment_wrappers
+struct accessibility_wrappers
 {
   static void wrap()
   {
     using namespace boost::python;
-    object containment_module(
-      handle<>( borrowed( PyImport_AddModule( "asa.containment" ) ) )
+    object accessibility_module(
+      handle<>( borrowed( PyImport_AddModule( "asa.accessibility" ) ) )
       );
-    scope().attr( "containment" ) = containment_module;
-    scope containment_scope = containment_module;
+    scope().attr( "accessibility" ) = accessibility_module;
+    scope accessibility_scope = accessibility_module;
 
     typedef asa::Sphere< Vector > sphere_type;
 
@@ -194,16 +203,12 @@ struct containment_wrappers
 
     typedef indexing::FilterHelper<
       typename std::vector< Sphere >::const_iterator,
-      typename indexing::OverlapFilter< Sphere, overlap::BetweenSpheres >
+      typename indexing::OverlapEqualityFilter<
+        Sphere,
+        overlap::BetweenSpheres
+        >
       >
       filter_helper;
-
-    typedef indexing::PrefilterHelper<
-      typename std::vector< Sphere >::const_iterator,
-      asa::IndexFilter< vector_type >,
-      typename indexing::OverlapFilter< Sphere, overlap::BetweenSpheres >
-      >
-      prefilter_helper;
 
     using namespace boost::python;
 
@@ -222,11 +227,11 @@ struct containment_wrappers
         arg( "neighbours" )
         )
       .def(
-        "add_from_range",
-        add_neighbours_from_range<
-          checker_type,
-          typename prefilter_helper::filter_range_type >,
-        arg( "neighbours" )
+        "neighbours", 
+        range(
+          checker_neighbours_begin< checker_type >,
+          checker_neighbours_end< checker_type >
+          )
         )
       .def(
         "filter",
@@ -245,7 +250,7 @@ struct containment_wrappers
 
 void init_module()
 {
-  containment_wrappers< scitbx::vec3< double > >::wrap();
+  accessibility_wrappers< scitbx::vec3< double > >::wrap();
 }
 
 } // namespace <anonymous>

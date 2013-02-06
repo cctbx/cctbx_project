@@ -35,22 +35,22 @@ BetweenBoxes::operator ()(const Box& left, const Box& right) const
 
   return (
     one_dimensional_overlap< value_type >(
-      l_low.elems[0],
-      l_high.elems[0],
-      r_low.elems[0],
-      r_high.elems[0]
+      l_low[0],
+      l_high[0],
+      r_low[0],
+      r_high[0]
       )
     && one_dimensional_overlap< value_type >(
-      l_low.elems[1],
-      l_high.elems[1],
-      r_low.elems[1],
-      r_high.elems[1]
+      l_low[1],
+      l_high[1],
+      r_low[1],
+      r_high[1]
       )
     && one_dimensional_overlap< value_type >(
-      l_low.elems[2],
-      l_high.elems[2],
-      r_low.elems[2],
-      r_high.elems[2]
+      l_low[2],
+      l_high[2],
+      r_low[2],
+      r_high[2]
       )
     );
 }

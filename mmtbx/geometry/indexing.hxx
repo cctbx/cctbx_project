@@ -1,17 +1,22 @@
 template< typename Object, typename Algorithm >
-OverlapFilter< Object, Algorithm >::OverlapFilter(const object_type& object)
+OverlapEqualityFilter< Object, Algorithm >::OverlapEqualityFilter(
+  const object_type& object
+  )
   : object_( object )
 {}
 
 template< typename Object, typename Algorithm >
-OverlapFilter< Object, Algorithm >::~OverlapFilter()
+OverlapEqualityFilter< Object, Algorithm >::~OverlapEqualityFilter()
 {}
 
 template< typename Object, typename Algorithm >
 bool
-OverlapFilter< Object, Algorithm >::operator ()(const object_type& other) const
+OverlapEqualityFilter< Object, Algorithm >::operator ()(
+  const object_type& other
+  )
+  const
 {
-  return Algorithm::operator ()( object_, other );
+  return ( other != object_ ) && Algorithm::operator ()( object_, other );
 }
 
 template< typename Object, typename Algorithm >
@@ -34,48 +39,10 @@ template< typename Object, typename Algorithm >
 typename Linear< Object, Algorithm >::range_type
 Linear< Object, Algorithm >::overlapping_with(const object_type& object) const
 {
-  overlap_filter_type filter = overlap_filter_type( object );
+  filter_type filter = filter_type( object );
   return range_type(
     const_iterator( filter, objects_.begin(), objects_.end() ),
     const_iterator( filter, objects_.end(), objects_.end() )
-    );
-}
-
-template< typename Object, typename Algorithm >
-template< typename PreFilter >
-typename PrefilterHelper<
-  typename Linear< Object, Algorithm >::storage_type::const_iterator,
-  PreFilter,
-  typename Linear< Object, Algorithm >::overlap_filter_type
-  >::filter_range_type
-Linear< Object, Algorithm >::prefiltered_overlapping_with(
-  const object_type& object,
-  const PreFilter& prefilter
-  ) const
-{
-  typedef PrefilterHelper<
-    typename storage_type::const_iterator,
-    PreFilter,
-    overlap_filter_type
-    > prefilter_helper;
-  typedef typename prefilter_helper::prefilter_iterator prefilter_iterator;
-  typedef typename prefilter_helper::filter_iterator filter_iterator;
-
-  prefilter_iterator begin = prefilter_iterator(
-    prefilter,
-    objects_.begin(),
-    objects_.end()
-    );
-  prefilter_iterator end = prefilter_iterator(
-    prefilter,
-    objects_.end(),
-    objects_.end()
-    );
-  overlap_filter_type filter = overlap_filter_type( object );
-
-  return typename prefilter_helper::filter_range_type(
-    filter_iterator( filter, begin, end ),
-    filter_iterator( filter, end, end )
     );
 }
 
@@ -84,5 +51,54 @@ size_t
 Linear< Object, Algorithm >::size() const
 {
   return objects_.size();
+}
+
+template< typename Continuous, typename Discrete >
+Discretizer< Continuous, Discrete >::Discretizer(
+  const continuous_type& base,
+  const continuous_type& unit
+  )
+  : base_( base ), unit_( unit )
+{
+  assert ( 0 < unit_ );
+}
+
+template< typename Continuous, typename Discrete >
+Discretizer< Continuous, Discrete >::~Discretizer()
+{}
+
+template< typename Continuous, typename Discrete >
+typename Discretizer< Continuous, Discrete >::discrete_type
+Discretizer< Continuous, Discrete >::operator ()(const continuous_type& value)
+  const
+{
+  return converter_type::convert( ( value - base_ ) / unit_ );
+}
+
+template< typename Vector, typename Voxel >
+Voxelizer< Vector, Voxel >::Voxelizer(
+  const vector_type& base,
+  const vector_type& step
+  )
+  : discretizers_(
+    discretizer_type( base[0], step[0] ),
+    discretizer_type( base[1], step[1] ),
+    discretizer_type( base[2], step[2] )
+    )
+{}
+
+template< typename Vector, typename Voxel >
+Voxelizer< Vector, Voxel >::~Voxelizer()
+{}
+
+template< typename Vector, typename Voxel >
+typename Voxelizer< Vector, Voxel >::voxel_type
+Voxelizer< Vector, Voxel >::operator ()(const vector_type& vector) const
+{
+  return voxel_type(
+    boost::fusion::at_c<0>( discretizers_ )( vector[0] ),
+    boost::fusion::at_c<1>( discretizers_ )( vector[1] ),
+    boost::fusion::at_c<2>( discretizers_ )( vector[2] )
+    );
 }
 

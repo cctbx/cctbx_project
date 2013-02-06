@@ -17,6 +17,9 @@ namespace asa
 template< typename Vector >
 class Sphere : public primitive::Sphere< Vector >
 {
+private:
+  static size_t current;
+
 public:
   typedef typename primitive::Traits< Vector >::vector_type vector_type;
   typedef typename primitive::Traits< Vector >::value_type value_type;
@@ -29,20 +32,20 @@ public:
   ~Sphere();
 
   const size_t& index() const;
+  
+  static Sphere< Vector > create(
+    const vector_type& centre,
+    const value_type& radius
+    );
 };
 
 template< typename Vector >
-class IndexFilter
-{
-private:
-  size_t index_;
+bool
+operator ==(const Sphere< Vector >& left, const Sphere< Vector >& right);
 
-public:
-  IndexFilter(const size_t& index);
-  ~IndexFilter();
-
-  inline bool operator ()(const Sphere< Vector >& object) const;
-};
+template< typename Vector >
+bool
+operator !=(const Sphere< Vector >& left, const Sphere< Vector >& right);
 
 
 #include "asa.hxx"

@@ -18,9 +18,9 @@ PointInOriginDiamond::operator ()(
   )
   const
 {
-  typename Vector::value_type sum = fabs( point.elems[0] )
-    + fabs( point.elems[1] )
-    + fabs( point.elems[2] );
+  typename Vector::value_type sum = fabs( point[0] )
+    + fabs( point[1] )
+    + fabs( point[2] );
   return sum < radius;
 }
 
@@ -32,9 +32,9 @@ PointInOriginCube::operator ()(
   )
   const
 {
-  return ( fabs( point.elems[0] ) < radius )
-    && ( fabs( point.elems[1] ) < radius )
-    && ( fabs( point.elems[2] ) < radius );
+  return ( fabs( point[0] ) < radius )
+    && ( fabs( point[1] ) < radius )
+    && ( fabs( point[2] ) < radius );
 }
 
 template< typename FloatType >
@@ -60,9 +60,9 @@ PointInCube::operator ()(
 {
   typedef typename Vector::value_type value_type;
 
-  return one_dimensional( point.elems[0], low.elems[0], high.elems[0] )
-    && one_dimensional( point.elems[1], low.elems[1], high.elems[1] )
-    && one_dimensional( point.elems[2], low.elems[2], high.elems[2] );
+  return one_dimensional( point[0], low[0], high[0] )
+    && one_dimensional( point[1], low[1], high[1] )
+    && one_dimensional( point[2], low[2], high[2] );
 }
 
 // Containment in multiple shapes
@@ -170,6 +170,13 @@ void
 Checker< Neighbour, Algorithm >::add(InputIterator begin, InputIterator end)
 {
   neighbours_.insert( neighbours_.end(), begin, end );
+}
+
+template< typename Neighbour, typename Algorithm >
+const typename Checker< Neighbour, Algorithm >::storage_type&
+Checker< Neighbour, Algorithm >::neighbours() const
+{
+  return neighbours_;
 }
 
 template< typename Neighbour, typename Algorithm >

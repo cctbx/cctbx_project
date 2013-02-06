@@ -18,8 +18,41 @@ PDB = os.path.join(
 ROOT = iotbx.pdb.input( PDB ).construct_hierarchy()
 ATOMS = ROOT.atoms()
 
+print ", ".join( [ a.name for a in ATOMS[:20 ] ] )
+
 PARAMS = asa.CalcParams()
-SPHERES = asa.convert_to_spheres( atoms = ATOMS, params = PARAMS )
+TABLE = PARAMS.van_der_waals_radii
+RADII = [
+  TABLE[ atom.determine_chemical_element_simple().strip().capitalize() ]
+  for atom in ATOMS
+  ]
+SPHERES = [
+  asa.sphere.create( centre = atom.xyz, radius = radius + PARAMS.probe )
+  for ( atom, radius ) in zip( ATOMS, RADII )
+  ]
+
+class TestSphere(unittest.TestCase):
+
+  def test_creation(self):
+    
+    s1 = asa.sphere.create( centre = ( 0, 0, 0 ), radius = 3 )
+    s2 = asa.sphere.create( centre = ( 0, 0, 0 ), radius = 3 )
+    
+    self.assertTrue( s1.index != s2.index )
+    
+    s3 = asa.sphere( centre = ( 0, 0, 0 ), radius = 3, index = 0 )
+    self.assertEqual( s3.index, 0 )
+    
+  def test_equality(self):
+    
+    s1 = asa.sphere.create( centre = ( 0, 0, 0 ), radius = 3 )
+    s2 = asa.sphere.create( centre = ( 0, 0, 0 ), radius = 3 )
+    self.assertTrue( s1 != s2 )
+    
+    s3 = asa.sphere( centre = ( 1, 1, 1 ), radius = 2, index = s1.index )
+    self.assertTrue( s1 == s3 )
+    self.assertTrue( s2 != s3 )
+    
 
 class TestLinearSpheresIndexer(unittest.TestCase):
 
@@ -33,60 +66,47 @@ class TestLinearSpheresIndexer(unittest.TestCase):
     for sphere in SPHERES:
       self.indexer.add( object = sphere )
 
-    self.assertEqual( len( self.indexer ), len( ATOMS ) )
+    self.assertEqual( len( self.indexer ), len( SPHERES ) )
 
     for sphere in SPHERES:
       neighbours = list(
         self.indexer.overlapping_with( object = sphere )
         )
       indices = set( n.index for n in neighbours )
-      self.assertTrue( sphere.index in indices )
-
-      prefilter = asa.index_filter( index = sphere.index )
-      prefiltered_neighbours = list(
-        self.indexer.prefiltered_overlapping_with(
-          object = sphere,
-          prefilter = prefilter,
-          )
-        )
-      self.assertEqual( len( prefiltered_neighbours ), len( neighbours ) - 1 )
-      prefiltered_indices = set( n.index for n in prefiltered_neighbours )
-      self.assertTrue( sphere.index not in prefiltered_indices )
+      self.assertTrue( sphere.index not in indices )
 
 
 class TestPythagoreanChecker(unittest.TestCase):
 
   def setUp(self):
 
-    self.checker = asa.containment.pythagorean_checker()
+    self.checker = asa.accessibility.pythagorean_checker()
 
 
   def test_add_from_list(self):
 
     self.assertTrue( self.checker.is_selected( point = ( 1, 1, 1 ) ) )
-    s = asa.sphere( centre = ( 1, 1, 1 ), radius = 0.1, index = 0 )
+    s = asa.sphere.create( centre = ( 1, 1, 1 ), radius = 0.1 )
     self.checker.add_from_list( neighbours = [ s ] )
     self.assertFalse( self.checker.is_selected( point = ( 1, 1, 1 ) ) )
+    self.assertTrue( self.checker.is_selected( point = ( 1.2, 1, 1 ) ) )
 
 
   def test_add_from_range_1(self):
 
     self.assertTrue( self.checker.is_selected( point = ( 1, 1, 1 ) ) )
-    s = asa.sphere( centre = ( 1, 1, 1 ), radius = 0.1, index = 0 )
+    
+    s = asa.sphere.create( centre = ( 1, 1, 1 ), radius = 0.1 )
     indexer = asa.indexing.linear_spheres()
     indexer.add( object = s )
 
-    neighbours = indexer.prefiltered_overlapping_with(
-      object = s,
-      prefilter = asa.index_filter( index = 0 ),
-      )
+    neighbours = indexer.overlapping_with( object = s )
     self.assertEqual( len( neighbours ), 0 )
     self.checker.add_from_range( neighbours = neighbours )
     self.assertTrue( self.checker.is_selected( point = ( 1, 1, 1 ) ) )
 
-    neighbours = indexer.prefiltered_overlapping_with(
-      object = s,
-      prefilter = asa.index_filter( index = 1 ),
+    neighbours = indexer.overlapping_with(
+      object = asa.sphere.create( centre = ( 1, 1, 1 ), radius = 0.1 ),
       )
     self.assertEqual( len( neighbours ), 1 )
     self.checker.add_from_range( neighbours = neighbours )
@@ -96,19 +116,20 @@ class TestPythagoreanChecker(unittest.TestCase):
   def test_add_from_range_2(self):
 
     self.assertTrue( self.checker.is_selected( point = ( 1, 1, 1 ) ) )
-    s = asa.sphere( centre = ( 1, 1, 1 ), radius = 0.1, index = 0 )
+    
+    s = asa.sphere.create( centre = ( 1, 1, 1 ), radius = 0.1 )
     indexer = asa.indexing.linear_spheres()
     indexer.add( object = s )
 
     neighbours = indexer.overlapping_with(
-      object = asa.sphere( centre = ( 2, 2, 2 ), radius = 0.1, index = 1 ),
+      object = asa.sphere.create( centre = ( 2, 2, 2 ), radius = 0.1 ),
       )
     self.assertEqual( len( neighbours ), 0 )
     self.checker.add_from_range( neighbours = neighbours )
     self.assertTrue( self.checker.is_selected( point = ( 1, 1, 1 ) ) )
 
     neighbours = indexer.overlapping_with(
-      object = asa.sphere( centre = ( 2, 2, 2 ), radius = 1.64, index = 1 ),
+      object = asa.sphere.create( centre = ( 2, 2, 2 ), radius = 1.64 ),
       )
     self.assertEqual( len( neighbours ), 1 )
     self.checker.add_from_range( neighbours = neighbours )
@@ -118,8 +139,8 @@ class TestPythagoreanChecker(unittest.TestCase):
 class TestAccessibleSurfaceArea(unittest.TestCase):
 
   ACCESSIBLES = [
-    431, 322,  43, 228,   0,   4,   1, 213,  41,  70,  10, 302, 140,   0,
-    43,   0,   0, 271,   1,   0,   0,   0, 141,  67, 144, 337, 125,   0,
+    431, 322,  43, 228,   0,   4,   1, 213,  41,  70,  10, 302, 140, 140, 0, 43,
+    0,  0, 271,   1,  0,   0,   0, 141,  67, 144, 337, 125,   0,
     0,   1,   0,  54,   0,   0,  25,   0,   0,  16,  33, 191,  76, 279,
     409, 119,   7,  21,   0,   0, 119,  61, 164, 108,  49,   0,   0,   9,
     16,  43,   3,   0,   0,  11,   2,   0,  23, 288, 169,   0,   4,  22,
@@ -182,37 +203,114 @@ class TestAccessibleSurfaceArea(unittest.TestCase):
     self.check_indexer( indexer = indexer, type = asa.indexing.linear_spheres )
 
 
-  def test_single(self):
+  def test_asa_calculation_simple_linear(self):
 
-    indexer = asa.indexing.linear_spheres()
+    result = asa.calculate(
+      atoms = ATOMS,
+      params = PARAMS,
+      indexer_selector = asa.get_linear_indexer_for,
+      calculator = asa.SimpleSurfaceCalculator,
+      )
+    self.asa_result_check( result = result )
+    
+    
+  def test_asa_calculation_aa_linear(self):
 
-    for sphere in SPHERES:
-      indexer.add( object = sphere )
+    result = asa.calculate(
+      atoms = ATOMS,
+      params = PARAMS,
+      indexer_selector = asa.get_linear_indexer_for,
+      calculator = asa.AltlocAveragedCalculator,
+      )
+    self.asa_result_check( result = result )
+    
+    
+  def asa_result_check(self, result):
 
-    results = [
-      asa.single( indexer = indexer, sphere = sphere, sampling = PARAMS.sampling )
-      for sphere in SPHERES
-      ]
-
-    self.assertEqual( results, self.ACCESSIBLES )
-
-
-  def test_asa_calculation(self):
-
-    results = asa.calculate( atoms = ATOMS, params = PARAMS )
-
-    self.assertEqual( len( results ), len( self.ACCESSIBLES ) )
-    self.assertEqual( len( results ), len( SPHERES ) )
-
-    import math
-    unit = 4 * math.pi / PARAMS.sampling.count
-
-    for ( index, ( accessible, sphere, res ) ) in enumerate( zip(
-    self.ACCESSIBLES, SPHERES, results ) ):
-      self.assertAlmostEqual( res, unit * accessible * sphere.radius_sq, 7, "%s does not match" % index )
+    self.assertEqual( len( result.values ), len( self.ACCESSIBLES ) )
+    self.assertEqual( len( result.values ), len( SPHERES ) )
+    
+    self.assertEqual( len( result.points ), len( self.ACCESSIBLES ) )
+    self.assertEqual( result.points, self.ACCESSIBLES )
+    
+    self.assertEqual( len( result.areas ), len( self.ACCESSIBLES ) )
+    
+    for ( count, sphere, area ) in zip( self.ACCESSIBLES, SPHERES, result.areas ):
+      self.assertAlmostEqual(
+        area,
+        PARAMS.sampling.unit_area * count * sphere.radius_sq,
+        7,
+        )
 
 
+class TestVoxelizer(unittest.TestCase):
 
+  def setUp(self):
+
+    self.voxelizer = asa.indexing.voxelizer(
+      base = ( 100, 200, 300 ),
+      step = ( 2.0, 3.0, 4.0 ),
+      )
+
+
+  def test_1(self):
+
+    self.assertEqual(
+      self.voxelizer( vector = ( 100, 200, 300 ) ),
+      ( 0, 0, 0 ),
+      )
+    self.assertEqual(
+      self.voxelizer( vector = ( 101, 201, 301 ) ),
+      ( 0, 0, 0 ),
+      )
+    self.assertEqual(
+      self.voxelizer( vector = ( 101.99, 202, 302 ) ),
+      ( 0, 0, 0 ),
+      )
+    self.assertEqual(
+      self.voxelizer( vector = ( 102, 202.99, 303 ) ),
+      ( 1, 0, 0 ),
+      )
+    self.assertEqual(
+      self.voxelizer( vector = ( 103, 203, 303.99 ) ),
+      ( 1, 1, 0 ),
+      )
+    self.assertEqual(
+      self.voxelizer( vector = ( 104, 204, 304 ) ),
+      ( 2, 1, 1 ),
+      )
+
+  def test_2(self):
+
+    self.assertEqual(
+      self.voxelizer( vector = ( 99.99, 199.99, 299.99 ) ),
+      ( -1, -1, -1 ),
+      )
+    self.assertEqual(
+      self.voxelizer( vector = ( 98.00, 197.00, 296.00 ) ),
+      ( -1, -1, -1 ),
+      )
+    self.assertEqual(
+      self.voxelizer( vector = ( 97.99, 197.00, 296.00 ) ),
+      ( -2, -1, -1 ),
+      )
+    self.assertEqual(
+      self.voxelizer( vector = ( 96.00, 196.99, 296.00 ) ),
+      ( -2, -2, -1 ),
+      )
+    self.assertEqual(
+      self.voxelizer( vector = ( 96.00, 194.00, 295.99 ) ),
+      ( -2, -2, -2 ),
+      )
+    self.assertEqual(
+      self.voxelizer( vector = ( 96.00, 194.00, 292.00 ) ),
+      ( -2, -2, -2 ),
+      )
+
+
+suite_sphere = unittest.TestLoader().loadTestsFromTestCase(
+  TestSphere
+  )
 suite_linear_spheres_indexer = unittest.TestLoader().loadTestsFromTestCase(
   TestLinearSpheresIndexer
   )
@@ -222,13 +320,18 @@ suite_pythagorean_checker = unittest.TestLoader().loadTestsFromTestCase(
 suite_accessible_surface_area = unittest.TestLoader().loadTestsFromTestCase(
   TestAccessibleSurfaceArea
   )
+suite_voxelizer = unittest.TestLoader().loadTestsFromTestCase(
+  TestVoxelizer
+  )
 
 
 alltests = unittest.TestSuite(
   [
+    suite_sphere,
     suite_linear_spheres_indexer,
     suite_pythagorean_checker,
     suite_accessible_surface_area,
+    suite_voxelizer,
     ]
   )
 
