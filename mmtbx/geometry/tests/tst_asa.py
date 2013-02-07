@@ -34,25 +34,25 @@ SPHERES = [
 class TestSphere(unittest.TestCase):
 
   def test_creation(self):
-    
+
     s1 = asa.sphere.create( centre = ( 0, 0, 0 ), radius = 3 )
     s2 = asa.sphere.create( centre = ( 0, 0, 0 ), radius = 3 )
-    
+
     self.assertTrue( s1.index != s2.index )
-    
+
     s3 = asa.sphere( centre = ( 0, 0, 0 ), radius = 3, index = 0 )
     self.assertEqual( s3.index, 0 )
-    
+
   def test_equality(self):
-    
+
     s1 = asa.sphere.create( centre = ( 0, 0, 0 ), radius = 3 )
     s2 = asa.sphere.create( centre = ( 0, 0, 0 ), radius = 3 )
     self.assertTrue( s1 != s2 )
-    
+
     s3 = asa.sphere( centre = ( 1, 1, 1 ), radius = 2, index = s1.index )
     self.assertTrue( s1 == s3 )
     self.assertTrue( s2 != s3 )
-    
+
 
 class TestLinearSpheresIndexer(unittest.TestCase):
 
@@ -95,7 +95,7 @@ class TestPythagoreanChecker(unittest.TestCase):
   def test_add_from_range_1(self):
 
     self.assertTrue( self.checker.is_selected( point = ( 1, 1, 1 ) ) )
-    
+
     s = asa.sphere.create( centre = ( 1, 1, 1 ), radius = 0.1 )
     indexer = asa.indexing.linear_spheres()
     indexer.add( object = s )
@@ -116,7 +116,7 @@ class TestPythagoreanChecker(unittest.TestCase):
   def test_add_from_range_2(self):
 
     self.assertTrue( self.checker.is_selected( point = ( 1, 1, 1 ) ) )
-    
+
     s = asa.sphere.create( centre = ( 1, 1, 1 ), radius = 0.1 )
     indexer = asa.indexing.linear_spheres()
     indexer.add( object = s )
@@ -212,8 +212,8 @@ class TestAccessibleSurfaceArea(unittest.TestCase):
       calculator = asa.SimpleSurfaceCalculator,
       )
     self.asa_result_check( result = result )
-    
-    
+
+
   def test_asa_calculation_aa_linear(self):
 
     result = asa.calculate(
@@ -223,18 +223,18 @@ class TestAccessibleSurfaceArea(unittest.TestCase):
       calculator = asa.AltlocAveragedCalculator,
       )
     self.asa_result_check( result = result )
-    
-    
+
+
   def asa_result_check(self, result):
 
     self.assertEqual( len( result.values ), len( self.ACCESSIBLES ) )
     self.assertEqual( len( result.values ), len( SPHERES ) )
-    
+
     self.assertEqual( len( result.points ), len( self.ACCESSIBLES ) )
     self.assertEqual( result.points, self.ACCESSIBLES )
-    
+
     self.assertEqual( len( result.areas ), len( self.ACCESSIBLES ) )
-    
+
     for ( count, sphere, area ) in zip( self.ACCESSIBLES, SPHERES, result.areas ):
       self.assertAlmostEqual(
         area,
@@ -343,4 +343,3 @@ def load_tests(loader, tests, pattern):
 
 if __name__ == "__main__":
     unittest.TextTestRunner( verbosity = 2 ).run( alltests )
-

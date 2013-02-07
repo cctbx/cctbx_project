@@ -106,7 +106,7 @@ struct indexing_wrappers
         )
       .def( "__len__", &linear_spheres_type::size )
       ;
-    
+
     typedef Voxelizer< Vector, scitbx::vec3< int > > voxelizer_type;
 
     class_< voxelizer_type >( "voxelizer", no_init )
@@ -227,7 +227,7 @@ struct accessibility_wrappers
         arg( "neighbours" )
         )
       .def(
-        "neighbours", 
+        "neighbours",
         range(
           checker_neighbours_begin< checker_type >,
           checker_neighbours_end< checker_type >
@@ -264,4 +264,3 @@ BOOST_PYTHON_MODULE(mmtbx_geometry_asa_ext)
   mmtbx::geometry::indexing::init_module();
   mmtbx::geometry::containment::init_module();
 }
-
