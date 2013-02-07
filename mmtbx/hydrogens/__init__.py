@@ -1,5 +1,9 @@
 from __future__ import division
 from mmtbx.utils import rotatable_bonds
+from scitbx.matrix import rotate_point_around_axis
+from cctbx.array_family import flex
+from cctbx import maptbx
+
 
 hydrogens_master_params_str = """
     refine = individual riding *Auto
@@ -73,3 +77,36 @@ def rotatable(pdb_hierarchy, mon_lib_srv):
             r = analyze_group(g=fr, atoms=atoms)
             if(r is not None): result.append(r)
   return result
+
+def fit_rotatable(pdb_hierarchy, mon_lib_srv, xray_structure, map_data):
+  unit_cell = xray_structure.unit_cell()
+  sel = rotatable(pdb_hierarchy=pdb_hierarchy, mon_lib_srv=mon_lib_srv)
+  sites_cart = xray_structure.sites_cart()
+  scatterers = xray_structure.scatterers()
+  for sel_ in sel:
+    ed_val = -1
+    angle = 0.
+    angular_step = 1
+    axis = sel_[0]
+    points_i_seqs = sel_[1]
+    sites_frac_best = flex.vec3_double(len(points_i_seqs))
+    while angle <= 360:
+      sites_frac_tmp  = flex.vec3_double(len(points_i_seqs))
+      ed_val_ = 0
+      for i_seq, point_i_seq in enumerate(points_i_seqs):
+        site_cart_new = rotate_point_around_axis(
+          axis_point_1 = sites_cart[axis[0]],
+          axis_point_2 = sites_cart[axis[1]],
+          point        = sites_cart[point_i_seq],
+          angle        = angle,
+          deg          = True)
+        site_frac_new = unit_cell.fractionalize(site_cart_new)
+        ed_val_ += abs(maptbx.eight_point_interpolation(map_data,site_frac_new))
+        sites_frac_tmp[i_seq] = site_frac_new
+      if(ed_val_ > ed_val):
+        ed_val = ed_val_
+        sites_frac_best = sites_frac_tmp.deep_copy()
+      angle += angular_step
+    for i_seq, point_i_seq in enumerate(points_i_seqs):
+      scatterers[point_i_seq].site = sites_frac_best[i_seq]
+  pdb_hierarchy.adopt_xray_structure(xray_structure)
