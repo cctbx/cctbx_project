@@ -136,7 +136,8 @@ class server (object) :
             (not self.is_supported_donor(donor.element))) :
           pass
           #print "Unknown interaction: %s %s" % (ion.element, donor.element)
-      else:
+      elif (contact.distance() != 0) :
+        #print contact.vector, contact.distance(), valence
         vectors.append( contact.vector / contact.distance() * valence )
 
     return vectors
