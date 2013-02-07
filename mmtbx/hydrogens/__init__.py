@@ -1,5 +1,5 @@
 from __future__ import division
-from cctbx.array_family import flex
+from mmtbx.utils import rotatable_bonds
 
 hydrogens_master_params_str = """
     refine = individual riding *Auto
@@ -31,36 +31,45 @@ hydrogens_master_params_str = """
       .expert_level=2
 """
 
-def rotatable(pdb_hierarchy, xray_structure, log = None):
-  import mmtbx.monomer_library
-  mon_lib_srv = mmtbx.monomer_library.server.server()
-  from mmtbx.utils import rotatable_bonds
-  hd_selection = xray_structure.hd_selection()
-  sel = flex.bool(hd_selection.size(), False)
+def rotatable(pdb_hierarchy, mon_lib_srv):
+  """
+  General tool to identify rotatable H, such as C-O-H, C-H3, in any molecule.
+  """
+  result = []
+  def analyze_group(g, atoms):
+    for gi in g:
+      assert len(gi[0])==2 # because this is axis
+      assert len(gi[1])>0  # because these are atoms rotating about this axis
+      # condition 1: axis does not contain H or D
+      a1, a2 = atoms[gi[0][0]], atoms[gi[0][1]]
+      e1 = a1.element.strip().upper()
+      e2 = a2.element.strip().upper()
+      condition_1 = [e1,e2].count("H")==0 and [e1,e2].count("D")==0
+      # condition 2: all atoms to rotate are H or D
+      condition_2 = True
+      rot_atoms = []
+      for gi1i in gi[1]:
+        if(not atoms[gi1i].element.strip().upper() in ["H","D"]):
+          condition_2 = False
+          break
+      rot_atoms = []
+      axis = None
+      if(condition_1 and condition_2):
+        axis = [a1.i_seq, a2.i_seq]
+        for gi1i in gi[1]:
+          rot_atoms.append(atoms[gi1i].i_seq)
+    if(axis is not None): return axis, rot_atoms
+    else: return None
   for model in pdb_hierarchy.models():
     for chain in model.chains():
       for residue_group in chain.residue_groups():
         conformers = residue_group.conformers()
-        if(len(conformers)>1): continue
         for conformer in residue_group.conformers():
-          residue = conformer.only_residue()
-          fr = rotatable_bonds.axes_and_atoms_aa_specific(
-            residue=residue, mon_lib_srv=mon_lib_srv,
-            remove_clusters_with_all_h=False, log=log)
-          atoms = residue.atoms()
-          if(fr is not None):
-            for fr_ in fr:
-              fr1 = fr_[1]
-              if(len(fr1)==1 and atoms[fr1[0]].element.strip().upper() == "H"):
-                #print "    ", atoms[fr_[1][0]].i_seq, \
-                #  hd_selection[atoms[fr_[1][0]].i_seq], atoms[fr_[1][0]].element
-                sel[atoms[fr1[0]].i_seq]=True
-              if(len(fr1)==3 and atoms[fr1[0]].element.strip().upper() == "H" and
-                 atoms[fr1[1]].element.strip().upper() == "H" and
-                 atoms[fr1[2]].element.strip().upper() == "H"):
-                #print "    ", atoms[fr_[1][0]].i_seq, \
-                #  hd_selection[atoms[fr_[1][0]].i_seq], atoms[fr_[1][0]].element
-                sel[atoms[fr1[0]].i_seq]=True
-                sel[atoms[fr1[1]].i_seq]=True
-                sel[atoms[fr1[2]].i_seq]=True
-  return sel
+          for residue in conformer.residues():
+            atoms = residue.atoms()
+            fr = rotatable_bonds.axes_and_atoms_aa_specific(
+              residue=residue, mon_lib_srv=mon_lib_srv,
+              remove_clusters_with_all_h=False, log=None)
+            r = analyze_group(g=fr, atoms=atoms)
+            if(r is not None): result.append(r)
+  return result
