@@ -55,6 +55,7 @@ tst_list = (
   "$D/monomer_library/tst_neutron_distance.py",
   "$D/regression/tst_altloc_chain_break.py",
   "$D/hydrogens/build_hydrogens.py",
+  "$D/hydrogens/tst.py",
   "$D/max_lik/tst_maxlik.py",
   "$D/masks/tst_masks.py",
   "$D/masks/tst_asu_mask.py",
