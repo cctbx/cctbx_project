@@ -2,6 +2,8 @@ from __future__ import division
 import iotbx.pdb
 from mmtbx import hydrogens
 from mmtbx import monomer_library
+from cctbx.array_family import flex
+import time
 
 m1_str = """\
 CRYST1    9.756    9.585    9.568  90.00  90.00  90.00 P 1
@@ -84,13 +86,37 @@ ATOM     19 DG22 THR H   8       2.937   5.904   7.048  1.00 10.00           D
 ATOM     20 DG23 THR H   8       3.670   7.255   7.403  1.00 10.00           D
 """
 
+m5_str_HD_rotated = """
+CRYST1   19.756   19.585   19.568  90.00  90.00  90.00 P 1
+ATOM      1  N   SER H   7       7.561   4.409   2.370  1.00 10.00           N
+ATOM      2  CA  SER H   7       6.281   4.192   3.051  1.00 10.00           C
+ATOM      3  C   SER H   7       6.112   3.781   4.520  1.00 10.00           C
+ATOM      4  O   SER H   7       6.620   2.744   4.947  1.00 10.00           O
+ATOM      5  CB  SER H   7       5.067   3.972   2.131  1.00 10.00           C
+ATOM      6  HA  SER H   7       6.473   3.250   2.923  1.00 10.00           H
+ATOM      7  OG ASER H   7       3.884   3.774   2.885  0.50 10.00           O
+ATOM      8  HG ASER H   7       3.210   4.055   2.449  0.50 10.00           H
+ATOM      9  OG BSER H   7       5.247   2.836   1.302  0.50 10.00           O
+ATOM     10  HG BSER H   7       5.379   3.079   0.498  0.50 10.00           H
+ATOM     11  N   THR H   8       5.397   4.602   5.281  1.00 10.00           N
+ATOM     12  CA  THR H   8       5.161   4.328   6.694  1.00 10.00           C
+ATOM     13  C   THR H   8       3.963   3.404   6.887  1.00 10.00           C
+ATOM     14  O   THR H   8       4.113   2.257   7.310  1.00 10.00           O
+ATOM     15  CB  THR H   8       4.938   5.627   7.495  1.00 10.00           C
+ATOM     16  OG1 THR H   8       4.686   5.308   8.869  1.00 10.00           O
+ATOM     17  CG2 THR H   8       3.757   6.410   6.935  1.00 10.00           C
+ATOM     18 DG21 THR H   8       3.078   5.801   6.606  1.00 10.00           D
+ATOM     19 DG22 THR H   8       3.370   6.971   7.626  1.00 10.00           D
+ATOM     20 DG23 THR H   8       4.053   6.974   6.204  1.00 10.00           D
+"""
+
 loop = [(m1_str, [([4,5], [9])]),
         (m2_str, [([4,5], [9]), ([4,5], [10])]),
         (m3_str, [([4,6], [7]), ([4,8], [9])]),
         (m4_str, [([4,6], [7,8,9])]),
         (m5_str, [([4,6], [7]), ([4,8], [9]), ([14,16], [17,18,19])])]
 
-def run():
+def exercise_00():
   mon_lib_srv = monomer_library.server.server()
   for l in loop:
     pdb_inp = iotbx.pdb.input(source_info=None, lines=l[0])
@@ -101,6 +127,43 @@ def run():
     sel = hydrogens.rotatable(pdb_hierarchy=ph, mon_lib_srv=mon_lib_srv)
     assert sel == l[1]
 
+def exercise_01():
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=m5_str)
+  ph = pdb_inp.construct_hierarchy()
+  xrs_answer = pdb_inp.xray_structure_simple()
+  xrs_answer.switch_to_neutron_scattering_dictionary()
+  ph.write_pdb_file(file_name = "answer.pdb")
+  f_calc = xrs_answer.structure_factors(d_min=1).f_calc()
+  fft_map = f_calc.fft_map(resolution_factor=0.1)
+  fft_map.apply_sigma_scaling()
+  map_data = fft_map.real_map_unpadded()
+  #
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=m5_str_HD_rotated)
+  ph = pdb_inp.construct_hierarchy()
+  ph.atoms().reset_i_seq()
+  ph.write_pdb_file(file_name = "poor.pdb")
+  xrs = pdb_inp.xray_structure_simple()
+  xrs.switch_to_neutron_scattering_dictionary()
+  f_calc_poor = f_calc.structure_factors_from_scatterers(
+    xray_structure = xrs).f_calc()
+  #
+  mon_lib_srv = monomer_library.server.server()
+  hydrogens.fit_rotatable(pdb_hierarchy=ph, mon_lib_srv=mon_lib_srv,
+    xray_structure=xrs, map_data=map_data)
+  ph.write_pdb_file(file_name = "result.pdb")
+  #
+  f_calc_fixed = f_calc.structure_factors_from_scatterers(
+    xray_structure = xrs).f_calc()
+  def r_factor(x,y):
+    n = flex.sum( flex.abs( abs(x).data() - abs(y).data() ) )
+    d = flex.sum( flex.abs( abs(x).data() + abs(y).data() ) )/2
+    return n/d
+  assert r_factor(f_calc, f_calc_poor) > 0.2
+  assert r_factor(f_calc, f_calc_fixed) < 0.015
+
 if (__name__ == "__main__"):
-  run()
+  t0 = time.time()
+  exercise_00()
+  exercise_01()
+  print "Total time: %-8.4f"%(time.time()-t0)
   print "OK"
