@@ -26,6 +26,9 @@ angular_step = 3.0
 dod_and_od = False
   .type = bool
   .help = Build DOD/OD/O types of waters for neutron models
+filter_dod = False
+  .type = bool
+  .help = Filter DOD/OD/O by correlation
 """)
 
 master_params_part2 = find_peaks.master_params.fetch(iotbx.phil.parse("""\
@@ -266,24 +269,25 @@ def build_dod_and_od(model, fmodels, log=None, params=None):
   build_water_hydrogens_from_map(model, fmodel, params=params, log=log)
   model.reprocess_pdb_hierarchy_inefficient()
   #
-  # TODO previous step might add false Hydrogens:
-  # water_map_correlations(model, fmodels)
-  # model = remove_zero_occupancy(model)
-  # model.reprocess_pdb_hierarchy_inefficient()
+  if params is None:
+    params = all_master_params().extract()
+  if params.filter_dod:
+    water_map_correlations(model, fmodels, log)
+    model = remove_zero_occupancy(model)
+    model.reprocess_pdb_hierarchy_inefficient()
   fmodels.update_xray_structure(xray_structure = model.xray_structure,
     update_f_calc  = True,
     update_f_mask  = True)
-  # fmodels.update_all_scales(params=bss_params)
   fmodels.show_short()
+  return model
 
 def remove_zero_occupancy(model, min_occupancy=0.01):
   atoms = model.xray_structure.scatterers()
-  sel = flex.bool()
-  for s in atoms:
-    if s.occupancy < min_occupancy:
-      sel.append( False )
-    else:
-      sel.append( True )
+  occ = atoms.extract_occupancies()
+  sol_sel = model.solvent_selection()
+  hd_sel = model.xray_structure.hd_selection()
+  sel = sol_sel & hd_sel & (occ < min_occupancy)
+  sel = ~sel
   return model.select( selection = sel)
 
 # TODO code duplicate in model.add_hydrogens.insert_atoms
@@ -387,8 +391,7 @@ def build_water_hydrogens_from_map(model, fmodel, params=None, log=None):
     log = model.log
   if params is None:
     params = all_master_params().extract()
-  # TODO: default value 1.05, need 1.15
-  # params.map_next_to_model.max_model_peak_dist = 1.15
+  # TODO: default value max_model_peak_dist 1.05, need 1.15 ?
   peaks = find_hydrogen_peaks(
     fmodel = fmodel,
     pdb_atoms = model.pdb_atoms,
@@ -499,13 +502,8 @@ def one_water_correlation(model, fmodels, water):
   from mmtbx import real_space_correlation
   params = ordered_solvent.master_params().extract()
   par = params.secondary_map_and_map_cc_filter
-  rcparams = real_space_correaltion.master_params().extract()
+  rcparams = real_space_correlation.master_params().extract()
   rcparams.detail = "residue"
-  rcparams.selection = water
-  print "DEBUG"
-  dir(par)
-  exit(1)
-  #
   if fmodels.fmodel_n is not None:
     fmodel = fmodels.fmodel_neutron()
   else:
@@ -515,29 +513,13 @@ def one_water_correlation(model, fmodels, water):
     title="neutron"
   scatterers = model.xray_structure.scatterers()
   assert scatterers is fmodel.xray_structure.scatterers()
-  nrscc_and_map_result = real_space_correlation.simple(
-    fmodel                = fmodel,
-    pdb_hierarchy         = model.pdb_hierarchy(),
-    # map_1_name            = par.cc_map_1_type,
-    # map_2_name            = par.cc_map_2_type,
-    # diff_map_name         = None,
-    # number_of_grid_points = par.number_of_grid_points,
-    # atom_radius           = par.atom_radius,
-    details_level         = "residue",
-    selection             = water,
-    show_results          = False,
-    #set_cc_to_zero_if_n_grid_points_less_than = \
-    #  par.set_cc_to_zero_if_n_grid_points_less_than,
-    #poor_cc_threshold                         = par.poor_cc_threshold,
-    #poor_map_1_value_threshold                = par.poor_map_value_threshold,
-    #poor_map_2_value_threshold                = par.poor_map_value_threshold
+  results = real_space_correlation.map_statistics_for_atom_selection(
+    atom_selection = water,
+    fmodel = fmodel,
+    map1_type="Fo",
+    map2_type="Fmodel"
   )
-  assert len(nrscc_and_map_result)==1
-  rcc_res = nrscc_and_map_result[0]
-  print title+"! cc: " , ("%4.2f"%rcc_res.cc), " res: ", rcc_res.residue.name, \
-    " id: ", rcc_res.residue.resid, ", chain: ", rcc_res.residue.chain_id, " occupancy: ", rcc_res.occupancy
-  assert rcc_res.n_atoms >0 and rcc_res.n_atoms <=3
-  return rcc_res.cc
+  return results.cc
 
 def scatterers_info(scatterers, selection):
   r = str()
@@ -551,12 +533,12 @@ def scatterers_info(scatterers, selection):
       r += ";   "
   return r
 
-def water_map_correlations(model, fmodels):
-  print_statistics.make_header("Water real space correlations")
-  scatterers = model.xray_structure.scatterers()
-  #fmodels.update_xray_structure(update_f_calc=True, update_f_mask=True)
-  #fmodels.update_solvent_and_scale()
+def water_map_correlations(model, fmodels, log=None):
+  print_statistics.make_header("Water real space correlations", out=log)
+  fmodels.update_xray_structure(xray_structure = model.xray_structure,
+    update_f_calc=True, update_f_mask=True)
   fmodels.show_short()
+  scatterers = model.xray_structure.scatterers()
   waters = model.solvent_selection()
   water_rgs = model.extract_water_residue_groups()
   n_atoms = len(scatterers)
@@ -566,29 +548,25 @@ def water_map_correlations(model, fmodels):
     water = select_one_water(rg, n_atoms)
     if water.count(True) < 2:
       continue
-    # print "<<<<<<<<<<<<<< Correlations for group: ", rg.only_atom_group()
-    print "<<<<<<<<  ", scatterers_info(scatterers, water), " >>>>>>>>>>>>>"
-    neutron_cc = one_water_correlation(model, fmodels, water)
     for s,u in zip(scatterers,water):
       if u:
         e = s.element_symbol().strip()
         if e=='D':
           if s.occupancy <= 0.02 or s.occupancy >=0.98:
             keep_occ = s.occupancy
+            neutron_cc = one_water_correlation(model, fmodels, water)
             if s.occupancy <= 0.02:
               s.occupancy = 1.0
               s.u_iso = o_scat.u_iso
             else:
               s.occupancy = 0.0
-            fmodels.update_xray_structure(update_f_calc=True, update_f_mask=True)
-            fmodels.fmodel_xray().update_solvent_and_scale()
-            fmodels.fmodel_neutron().update_solvent_and_scale()
-            fmodels.show_short()
-            print " >> ", scatterers_info(scatterers, water)
+            fmodels.update_xray_structure(xray_structure = model.xray_structure,
+              update_f_calc=True, update_f_mask=True)
             ncc = one_water_correlation(model, fmodels, water)
             if ncc < neutron_cc:
               s.occupancy = keep_occ
-              fmodels.update_xray_structure(update_f_calc=True, update_f_mask=True)
+              fmodels.update_xray_structure(xray_structure = model.xray_structure,
+                update_f_calc=True, update_f_mask=True)
             else:
               neutron_cc = ncc
   return True
