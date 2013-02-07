@@ -32,7 +32,7 @@ public:
   ~Sphere();
 
   const size_t& index() const;
-  
+
   static Sphere< Vector > create(
     const vector_type& centre,
     const value_type& radius

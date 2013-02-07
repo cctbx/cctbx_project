@@ -1,6 +1,7 @@
 from __future__ import division
 
-import mmtbx.geometry.primitive
+# XXX is this actually necessary?
+import mmtbx.geometry.primitive # import dependency
 
 import boost.python
 ext = boost.python.import_ext( "mmtbx_geometry_asa_ext" )
@@ -48,7 +49,7 @@ class Description(object):
 
   @classmethod
   def from_parameters(cls, centre, radius, altloc):
-        
+
     return cls(
       sphere = sphere.create( centre = centre, radius = radius ),
       strategy = Regular if not altloc else Altloc( identifier = altloc ),
@@ -72,7 +73,7 @@ class Indexer(object):
   def add(self, altloc):
 
     self.altlocs[ altloc ] = self.factory()
-    
+
 
 def get_linear_indexer_for(atoms):
 
@@ -106,18 +107,18 @@ class Inserter(object):
       self.indexer.add( altloc = identifier )
 
     self.indexer.altlocs[ identifier ].add( object = sphere )
-    
-    
+
+
 class CompositeCheckerBuilder(object):
   """
   Finds neighbours for a sphere
   """
-  
+
   def __init__(self, indexer):
-    
+
     self.indexer = indexer
     self.checker = accessibility.pythagorean_checker()
-    
+
 
   def process_regular(self, sphere):
 
@@ -125,8 +126,8 @@ class CompositeCheckerBuilder(object):
 
     for indexer in self.indexer.altlocs.values():
       self.append_neighbours( indexer = indexer, sphere = sphere )
-      
-      
+
+
   def process_altloc(self, sphere, identifier):
 
     self.append_neighbours( indexer = self.indexer.regular, sphere = sphere )
@@ -134,26 +135,26 @@ class CompositeCheckerBuilder(object):
       indexer = self.indexer.altlocs[ identifier ],
       sphere = sphere,
       )
-      
-      
+
+
   def append_neighbours(self, indexer, sphere):
-    
+
     self.checker.add_from_range(
       neighbours = indexer.overlapping_with( object = sphere ),
       )
-    
-    
+
+
 class SeparateCheckerBuilder(object):
   """
   Finds neighbours for a sphere
   """
-  
+
   def __init__(self, indexer):
-    
+
     self.indexer = indexer
     self.regular = accessibility.pythagorean_checker()
     self.altlocs = {}
-    
+
 
   def process_regular(self, sphere):
 
@@ -170,11 +171,11 @@ class SeparateCheckerBuilder(object):
         sphere = sphere,
         checker = checker,
         )
-      
+
       if list( checker.neighbours() ):
-        self.altlocs[ identifier ] = checker 
-      
-      
+        self.altlocs[ identifier ] = checker
+
+
   def process_altloc(self, sphere, identifier):
 
     self.append_neighbours(
@@ -188,11 +189,11 @@ class SeparateCheckerBuilder(object):
       sphere = sphere,
       checker = self.altlocs[ identifier ],
       )
-      
-      
+
+
   @staticmethod
   def append_neighbours(indexer, sphere, checker):
-    
+
     checker.add_from_range(
       neighbours = indexer.overlapping_with( object = sphere ),
       )
@@ -224,39 +225,39 @@ class AccessibleSurfaceResult(object):
   """
   Result of the calculation
   """
-  
+
   def __init__(self, count, radius_sq):
-    
+
     self.count = count
     self.radius_sq = radius_sq
-    
-    
+
+
   @property
   def surface(self):
-    
+
     return self.count * self.radius_sq
-    
-    
+
+
 class AccessibleSurfaceAreas(object):
   """
   Result of a series of calculations
   """
-  
+
   def __init__(self, values, unit):
-    
+
     self.values = values
     self.unit = unit
-    
-    
+
+
   @property
   def points(self):
-    
+
     return [ v.count for v in self.values ]
 
 
   @property
   def areas(self):
-      
+
     return [ self.unit * v.surface for v in self.values ]
 
 
@@ -290,44 +291,44 @@ class SimpleSurfaceCalculator(object):
         radius_sq = description.sphere.radius_sq,
         )
       )
-    
-    
+
+
 class AltlocAveragedCalculator(object):
   """
   For atoms with altloc identifier, use empty altloc + atom with same altloc.
   For atoms with empty altloc, run a calculation for each know altloc and
   average the results.
   """
-  
+
   def __init__(self, indexer, params):
-    
+
     self.indexer = indexer
     self.sampling = params.sampling
     self.values = []
-    
-    
+
+
   def process(self, description):
-    
+
     builder = SeparateCheckerBuilder( indexer = self.indexer )
     description.accept( processor = builder )
-    
+
     overlapped = builder.regular.filter(
       range = self.sampling.transformed(
         centre = description.sphere.centre,
         radius = description.sphere.radius,
         )
       )
-    
+
     accessible_for = {}
-    
+
     for ( identifier, checker ) in builder.altlocs.items():
       accessible_for[ identifier ] = [
         p for p in overlapped if checker.is_selected( point = p )
         ]
-    
+
     if not accessible_for:
       count = len( overlapped )
-    
+
     else:
       count = sum( [ len( l ) for l in accessible_for.values() ] ) / len( accessible_for )
 
@@ -346,16 +347,16 @@ def calculate(
   indexer_selector = get_optimal_indexer_for,
   params = CalcParams(),
   ):
-  
+
   centres = [ a.xyz for a in atoms ]
-  
+
   radius_for = params.van_der_waals_radii
   radii = [
     radius_for[ a.determine_chemical_element_simple().strip().capitalize() ] + params.probe
     for a in atoms
     ]
   altlocs = [ a.parent().altloc if a.parent() else None for a in atoms ]
-  
+
   descriptions = [
     Description.from_parameters( centre = c, radius = r, altloc = a )
     for ( c, r, a ) in zip( centres, radii, altlocs )
