@@ -28,22 +28,23 @@ or for more classic multidimensional scaling type problems.
 
 """
 
-class spe_engine(object):
-  def __init__(self, dmat, l=0.5, dl=1.0):
+class classic_spe_engine(object):
+  def __init__(self, dmat,l=.850,max_cycle=10000):
     self.dmat = dmat
     self.l = l
-    self.dl = dl
+    self.max_cycle = max_cycle
+    self.dl = self.l/max_cycle
     self.eps=1e-12
 
-  def embed(self,n_dimensions,n_points,max_cycle=1000):
+  def embed(self,n_dimensions,n_points):
     x = []
     for ii in range(n_points):
       x.append( flex.random_double(n_dimensions)*100 )
 
     l = float(self.l)
-    for mm in range(max_cycle):
+    for mm in range(self.max_cycle):
       atom_order = flex.sort_permutation( flex.random_double(len(x))  )
-      strain = 0
+      strain = 0.0
       for ii in atom_order:
         n_contacts = len(self.dmat[ii])
         jj_index = flex.sort_permutation( flex.random_double( n_contacts ) )[0]
@@ -58,16 +59,16 @@ class spe_engine(object):
         strain += abs(cd-td)
         x[ii] = new_xi
         x[jj] = new_xj
-      l = l*self.dl
+      l = l-self.dl
     return x,strain/len(x)
 
 
 def tst():
-  M=100
+  M=10
   xy = []
   for ii in range(M):
     r=10.0
-    phi = ii*360/(3.1452*2.0)
+    phi = ii*(smath.pi*2/M)
     x = r*smath.cos(phi)
     y = r*smath.sin(phi)
     xy.append( flex.double([x,y]) )
@@ -84,10 +85,10 @@ def tst():
       y2=xy[jj][1]
 
       dd = smath.sqrt( (x1-x2)**2.0 +(y1-y2)**2.0  )
-      if 1: #jj != ii:
-        tmp.append( (jj,dd) )
+      if jj != ii:
+          tmp.append( (jj,dd) )
     dmat.append( tmp )
-  spee=spe_engine( dmat )
+  spee=classic_spe_engine( dmat, l=1.0,max_cycle=5000 )
   x,s = spee.embed(2,M)
   assert s<1e-4
   print "OK"
