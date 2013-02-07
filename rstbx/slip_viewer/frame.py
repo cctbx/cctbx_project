@@ -12,6 +12,7 @@ import wx
 from rstbx.viewer.frame import EVT_EXTERNAL_UPDATE
 from rstbx.viewer.frame import XrayFrame as XFBaseClass
 from rstbx.viewer import settings as rv_settings, image as rv_image
+from wxtbx import bitmaps
 
 from rstbx.slip_viewer.slip_display import AppFrame
 class XrayFrame (AppFrame,XFBaseClass) :
@@ -56,6 +57,15 @@ class XrayFrame (AppFrame,XFBaseClass) :
     self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUI, id=self._id_calibration)
     self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUI, id=self._id_ring)
 
+  def setup_toolbar(self) :
+    XFBaseClass.setup_toolbar(self)
+
+    btn = self.toolbar.AddLabelTool(id=wx.ID_SAVEAS,
+    label="Save As...",
+    bitmap=bitmaps.fetch_icon_bitmap("actions","save_all", 32),
+    shortHelp="Save As...",
+    kind=wx.ITEM_NORMAL)
+    self.Bind(wx.EVT_MENU, self.OnSaveAs, btn)
 
   def init_pyslip_presizer(self):
     self.viewer  = wx.Panel(self, wx.ID_ANY, size=(1024,640))
@@ -314,6 +324,80 @@ class XrayFrame (AppFrame,XFBaseClass) :
         event.Enable(False)
       return
 
+  def OnSaveAs (self, event) :
+      ### XXX TODO: Save overlays
+      ### XXX TODO: Fix bug where multi-asic images are slightly cropped due to tranformation error'
+
+      wildcard_str = ".png"
+      file_name = wx.SaveFileSelector("PNG",wildcard_str,"",self)
+
+      if file_name == "":
+        return
+
+      import Image
+      from cStringIO import StringIO
+      self.update_statusbar("Writing " + file_name + "...")
+
+      flex_img = self.pyslip.tiles.raw_image.get_flex_image(brightness=1)
+      if flex_img.supports_rotated_tiles_antialiasing_recommended:
+          currentZoom = self.pyslip.level
+          self.pyslip.tiles.UseLevel(0) #1:1 zoom level
+
+          x, y, width, height = self._img._raw.bounding_box_mm()
+          x1, y1 = self._img._raw.detector_coords_as_image_coords(x,y)
+          x2, y2 = self._img._raw.detector_coords_as_image_coords(x+width,y+height)
+
+          # Map > View - determine layout in X direction
+          x_offset = x1
+          import math
+          start_x_tile = int(math.floor(x_offset / self.pyslip.tile_size_x))
+          stop_x_tile = ((x2 + self.pyslip.tile_size_x - 1)/ self.pyslip.tile_size_x)
+          stop_x_tile = int(stop_x_tile)
+          col_list = range(start_x_tile, stop_x_tile)
+          x_pix = start_x_tile * self.pyslip.tile_size_y - x_offset
+
+          y_offset = y1
+          start_y_tile = int(math.floor(y_offset / self.pyslip.tile_size_y))
+          stop_y_tile = ((y2 + self.pyslip.tile_size_y - 1) / self.pyslip.tile_size_y)
+          stop_y_tile = int(stop_y_tile)
+          row_list = range(start_y_tile, stop_y_tile)
+          y_pix_start = start_y_tile * self.pyslip.tile_size_y - y_offset
+
+          bitmap = wx.EmptyBitmap(x2-x1, y2-y1)
+          dc = wx.MemoryDC()
+          dc.SelectObject(bitmap)
+
+          # start pasting tiles
+          for x in col_list:
+              y_pix = y_pix_start
+              for y in row_list:
+                  dc.DrawBitmap(self.pyslip.tiles.GetTile(x, y), x_pix, y_pix, False)
+                  y_pix += self.pyslip.tile_size_y
+              x_pix += self.pyslip.tile_size_x
+
+          dc.SelectObject(wx.NullBitmap)
+
+          wximg = wx.ImageFromBitmap(bitmap)
+          imageout = Image.new('RGB', (wximg.GetWidth(), wximg.GetHeight()))
+          imageout.fromstring(wximg.GetData())
+
+          self.pyslip.tiles.UseLevel(currentZoom)
+
+      else: # write the image out at full resolution
+          flex_img.setWindow(0.0, 0.0, 1)
+          flex_img.spot_convention(0)
+          flex_img.adjust(color_scheme=0)
+          flex_img.prep_string()
+          data_string = flex_img.export_string
+          imageout = Image.fromstring("RGB",
+                                   (flex_img.ex_size2(), flex_img.ex_size1()),
+                                   data_string)
+
+      out = StringIO()
+      imageout.save(out, "PNG")
+      open(file_name, "wb").write(out.getvalue())
+
+      self.update_statusbar("Writing " + file_name + "..." + " Done.")
 
 from rstbx.viewer.frame import SettingsFrame
 
