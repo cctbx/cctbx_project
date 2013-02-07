@@ -208,6 +208,9 @@ class atom_contact (slots_getstate_setstate) :
   def __abs__ (self) :
     return self.distance()
 
+  def __str__ (self) :
+    return self.id_str()
+
 # Signals a built water might be a ion:
 # - Abnormal b-factors from nearby chain
 # - Coordinated by other waters
@@ -674,7 +677,6 @@ class Manager (object):
     # discard atoms with B-factors greater than mean-1sigma for waters
     if ((self.b_mean_hoh is not None) and
         (atom.b > self.b_mean_hoh - self.b_stddev_hoh)) :
-      print "%s is not a halide" %  self.pdb_atoms[i_seq].id_str()
       return False
 
     params = self.params.chloride
@@ -884,12 +886,13 @@ class Manager (object):
     # Check the b-factor is within a specified number of standard
     # deviations from the mean and above a specified fraction of
     # the mean.
-    z_value = (atom_props.atom.b - self.b_mean_hoh) / self.b_stddev_hoh
+    if (self.b_stddev_hoh is not None) and (self.b_stddev_hoh > 0) :
+      z_value = (atom_props.atom.b - self.b_mean_hoh) / self.b_stddev_hoh
 
-    if z_value < -params.max_stddev_b_iso:
-      inaccuracies.add(atom_props.LOW_B)
-    elif atom_props.atom.b < self.b_mean_hoh * params.min_frac_b_iso:
-      inaccuracies.add(atom_props.LOW_B)
+      if z_value < -params.max_stddev_b_iso:
+        inaccuracies.add(atom_props.LOW_B)
+      elif atom_props.atom.b < self.b_mean_hoh * params.min_frac_b_iso:
+        inaccuracies.add(atom_props.LOW_B)
 
     return atom_props.is_correctly_identified()
 
@@ -950,7 +953,7 @@ class Manager (object):
         continue
 
       n_elec = sasaki.table(symbol.upper()).atomic_number() - elem.charge
-      mass_ratio = atom_props.estimated_weight / n_elec
+      mass_ratio = atom_props.estimated_weight / max(n_elec, 1)
       if ((mass_ratio < 0.5) or
           (n_elec < atom_props.estimated_weight - 10)) :
         continue
@@ -1006,7 +1009,6 @@ class Manager (object):
         if (fpp_ratio is not None) :
           if ((fpp_ratio < self.params.phaser.fpp_ratio_min) or
               (fpp_ratio > self.params.phaser.fpp_ratio_max)) :
-            print 1111111
             continue
         if (self.looks_like_halide_ion(i_seq=i_seq, element=element)) :
           filtered_halides.append(element)
@@ -1319,12 +1321,18 @@ class AtomProperties (object):
       i_seq = i_seq,
       distance_cutoff = 3.5)
     self.nearby_atoms = []
+    nearby_atoms_no_alts = []
     for contact in nearby_atoms_unfiltered :
       if (contact.element() not in ["H", "D"]) :
         self.nearby_atoms.append(contact)
+        for other in nearby_atoms_no_alts :
+          if (other == contact) :
+            break
+        else :
+          nearby_atoms_no_alts.append(contact)
 
     self.residue_counts = count_coordinating_residues(self.nearby_atoms)
-    self.geometries = find_coordination_geometry(nearby_atoms_unfiltered)
+    self.geometries = find_coordination_geometry(nearby_atoms_no_alts)
 
     map_stats = manager.map_stats(i_seq)
     self.peak_2fofc = map_stats.two_fofc
@@ -1477,7 +1485,7 @@ class AtomProperties (object):
     # will be more sensitive for transition metals, without finding a lot of
     # spurious Mg/Na sites.
     strict_rules = require_valence or self.is_correctly_identified("HOH") or \
-      self.strict_valence
+      self.strict_valence or (ion_params.element in ["NA","MG"])
 
     # Check for all non-overlapping atoms within 3 A of the metal
     coord_atoms = []
@@ -1625,7 +1633,7 @@ class AtomProperties (object):
         wavelength).fdp()
       self.fpp_expected[identity] = max(fpp_expected_sasaki,
         fpp_expected_henke)
-      if (self.fpp is not None) :
+      if (self.fpp is not None) and (self.fpp_expected[identity] > 0) :
         self.fpp_ratios[identity] = self.fpp / self.fpp_expected[identity]
         if ((self.fpp_ratios[identity] > fpp_ratio_max) or
             ((self.fpp >= 0.2) and
