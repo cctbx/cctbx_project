@@ -1676,16 +1676,18 @@ class AtomProperties (object) :
       inaccuracies.add(self.TOO_FEW_NON_WATERS)
 
     # Check the geometry of the coordinating atoms
-    if (ion_params.allowed_geometries) and (strict_rules) :
+    if ion_params.allowed_geometries and strict_rules:
       allowed = [i[0] in ion_params.allowed_geometries
                  for i in self.geometries]
-      if ("any" in ion_params.allowed_geometries) :
+      if "any" in ion_params.allowed_geometries:
         pass
-      elif (not self.geometries):
+      elif not self.geometries:
         if strict_rules:
           inaccuracies.add(self.NO_GEOMETRY)
-      elif (not any(allowed)) :
+      elif not any(allowed):
         inaccuracies.add(self.BAD_GEOMETRY)
+      else:
+        strict_rules = False
 
     # Check for reasonable vector/valence values
     vectors = server.calculate_valences(ion_params, self.nearby_atoms)
@@ -1709,7 +1711,7 @@ class AtomProperties (object) :
     else:
       if (self.valence_sum[identity] < ion_params.cvbs_lower or
           self.valence_sum[identity] > ion_params.cvbs_upper):
-        if (strict_rules) :
+        if strict_rules:
           inaccuracies.add(self.BAD_VALENCES)
         else :
           ignored.add(self.BAD_VALENCES)
