@@ -1256,10 +1256,10 @@ class Manager (object) :
 
     # XXX: Show a table!
     if bad_ions:
-      line = "%-10s " * 7
-      print line % ("i_seq", "atom", "occ", "b-factor", "2FoFc", "FoFc", "anomalous")
+      line = "%-10s " * 6
+      print line % ("atom", "occ", "b-factor", "2FoFc", "FoFc", "anomalous")
       for props in bad_ions:
-        print line % (props.i_seq, _identity(props.atom), props.atom.occ, props.atom.b,
+        print line % (props.atom.id_str(), props.atom.occ, props.atom.b,
                       props.peak_2fofc, props.peak_fofc,
                       props.peak_anom if props.peak_anom is not None else "")
 
