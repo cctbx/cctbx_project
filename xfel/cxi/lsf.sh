@@ -157,7 +157,7 @@ fi
 # need some filtering as suggested by Amedeo Perazzo.
 xtc="${exp}/xtc"
 streams=`ssh -S "${tmpdir}/control.socket" ${NODE} \
-      "ls \"${xtc}\"/e*-r${run}-s* 2> /dev/null"       \
+      "ls \"${xtc}\"/e*-r${run}-s* 2> /dev/null"   \
     | sed -e "s:.*-s\([[:digit:]]\+\)-c.*:\1:"     \
     | sort -u                                      \
     | tr -s '\n' ' '`
@@ -250,7 +250,7 @@ EOF
 NPROC=\`printenv LSB_MCPU_HOSTS \
     | awk '{ printf("%d\n", \$2 > 2 ? \$2 : 1); }'\`
 
-test "\${NPROC}" -gt 0 2> /dev/null || NPROC="1"
+test "\${NPROC}" -gt 2 2> /dev/null || NPROC="1"
 "${PYANA}" \\
     -c "${out}/pyana_s${s}.cfg" \\
     -p "\${NPROC}" \\
