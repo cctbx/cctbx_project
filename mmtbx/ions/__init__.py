@@ -344,6 +344,7 @@ class Manager (object) :
       return map_coeffs.fft_map(resolution_factor = resolution_factor,
         ).apply_sigma_scaling().real_map_unpadded()
     map_types = ["2mFo-DFc", "mFo-DFc"]
+    map_keys = ["2mFo-DFc", "mFo-DFc"]
     if (self.fmodel.f_obs().anomalous_flag()) :
       if (self.params.anom_map_type == "phaser") :
         map_types.append("llg")
@@ -351,24 +352,23 @@ class Manager (object) :
         map_types.append("anom_residual")
       else :
         map_types.append("anom")
+      map_keys.append("anom")
     # XXX to save memory, we sample atomic positions immediately and throw out
     # the actual maps (instead of keeping up to 3 in memory)
     sites_frac = self.xray_structure.sites_frac()
     sites_cart = self.xray_structure.sites_cart()
     self._principal_axes_of_inertia = [ None ] * len(sites_frac)
     self._map_variances = [ None ] * len(sites_frac)
-    for map_type in map_types :
+    for map_type, map_key in zip(map_types, map_keys) :
       real_map = self.get_map(map_type)
       if (real_map is not None) :
-        self._map_values[map_type] = flex.double(sites_frac.size(), 0)
+        self._map_values[map_key] = flex.double(sites_frac.size(), 0)
         for i_seq, site_frac in enumerate(sites_frac) :
           atom = self.pdb_atoms[i_seq]
           resname = atom.fetch_labels().resname
           if (resname in WATER_RES_NAMES) or (atom.segid.strip() == "ION") :
             value = real_map.eight_point_interpolation(site_frac)
-          #else :
-          #  value = real_map.eight_point_interpolation(site_frac)
-            self._map_values[map_type][i_seq] = value
+            self._map_values[map_key][i_seq] = value
         if (map_type == "2mFo-DFc") :
           from cctbx import maptbx
           for i_seq, site_cart in enumerate(sites_cart) :
@@ -523,8 +523,6 @@ class Manager (object) :
     value_anom = None
     if ("anom" in self._map_values) :
       value_anom = self._map_values["anom"][i_seq]
-    elif ("llg" in self._map_values) :
-      value_anom = self._map_values["llg"][i_seq]
     return group_args(
       two_fofc = value_2fofc,
       fofc = value_fofc,
@@ -1191,14 +1189,16 @@ class Manager (object) :
     if elem_params is not None:
       self.check_water_properties(atom_props)
 
-      atom_props.check_ion_environment(ion_params = elem_params,
-                                       server = self.server,
-                                       wavelength = self.wavelength,
-                                       require_valence = self.params.require_valence)
-      atom_props.check_fpp_ratio(ion_params = elem_params,
-                                 wavelength = self.wavelength,
-                                 fpp_ratio_min = self.params.phaser.fpp_ratio_min,
-                                 fpp_ratio_max = self.params.phaser.fpp_ratio_max)
+      atom_props.check_ion_environment(
+        ion_params = elem_params,
+        server = self.server,
+        wavelength = self.wavelength,
+        require_valence = self.params.require_valence)
+      atom_props.check_fpp_ratio(
+        ion_params = elem_params,
+        wavelength = self.wavelength,
+        fpp_ratio_min = self.params.phaser.fpp_ratio_min,
+        fpp_ratio_max = self.params.phaser.fpp_ratio_max)
     elif element in HALIDES:
       identity = _identity(atom)
       atom_props.inaccuracies[identity] = set()
@@ -1420,6 +1420,7 @@ class AtomProperties (object) :
     self.atom = manager.pdb_atoms[i_seq]
     self.resname = self.atom.parent().resname
     self.d_min = manager.fmodel.f_obs().d_min()
+    self.anomalous_flag = manager.fmodel.f_obs().anomalous_flag()
     self.strict_valence = manager.get_strict_valence_flag()
 
     # Grab all the atoms within 3.5 Angstroms
@@ -1734,7 +1735,7 @@ class AtomProperties (object) :
     if (inaccuracies is None) :
       inaccuracies = self.inaccuracies[identity] = set()
 
-    if (wavelength is not None) :
+    if (wavelength is not None) and (self.anomalous_flag) :
       fpp_expected_sasaki = sasaki.table(ion_params.element).at_angstrom(
         wavelength).fdp()
       fpp_expected_henke = henke.table(ion_params.element).at_angstrom(
