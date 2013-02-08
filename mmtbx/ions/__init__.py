@@ -88,7 +88,7 @@ water
     .input_size = 80
     .help = Maximum water mFo-DFc map value
     .short_caption = Max. expected mFo-DFc map value
-  max_anom_level = 4.0
+  max_anom_level = 3.0
     .type = float
     .input_size = 80
     .help = Maximum water anomalous map value
@@ -217,7 +217,7 @@ class atom_contact (slots_getstate_setstate) :
 # - Nearby carbon (< 3.0 A)
 # - FoFc peak/hole
 # - Phaser Anomalous signal
-class Manager:
+class Manager (object) :
   """
   Wrapper object for extracting local environment and adding or modifying
   scatterers.
@@ -362,8 +362,9 @@ class Manager:
       if (real_map is not None) :
         self._map_values[map_type] = flex.double(sites_frac.size(), 0)
         for i_seq, site_frac in enumerate(sites_frac) :
-          resname = self.pdb_atoms[i_seq].fetch_labels().resname
-          if (resname in WATER_RES_NAMES) :
+          atom = self.pdb_atoms[i_seq]
+          resname = atom.fetch_labels().resname
+          if (resname in WATER_RES_NAMES) or (atom.segid.strip() == "ION") :
             value = real_map.eight_point_interpolation(site_frac)
           #else :
           #  value = real_map.eight_point_interpolation(site_frac)
@@ -873,6 +874,9 @@ class Manager:
         (atom_props.peak_fofc < -2.0)) :
       return None
 
+    if (atom_props.fpp is not None) and (atom_props.fpp > 0) :
+      return False
+
     if atom_props.peak_fofc > params.max_fofc_level:
       inaccuracies.add(atom_props.FOFC_PEAK)
 
@@ -953,8 +957,8 @@ class Manager:
 
       n_elec = sasaki.table(symbol.upper()).atomic_number() - elem.charge
       mass_ratio = atom_props.estimated_weight / max(n_elec, 1)
-      if ((mass_ratio < 0.5) or
-          (n_elec < atom_props.estimated_weight - 10)) :
+      if (mass_ratio < 0.5) :
+          #(n_elec < atom_props.estimated_weight - 10)) :
         continue
 
       filtered_candidates.append(elem)
@@ -1261,7 +1265,7 @@ class Manager:
 
     return [i.i_seq for i in bad_ions]
 
-class _analyze_water_wrapper:
+class _analyze_water_wrapper (object) :
   """
   Simple wrapper for calling manager.analyze_water with keyword arguments
   in a parallelized loop.  Because the water_result object is not pickle-able,
@@ -1289,7 +1293,7 @@ class _analyze_water_wrapper:
     except KeyboardInterrupt :
       return (None, None, None)
 
-class _validate_ion_wrapper:
+class _validate_ion_wrapper (object) :
   """
   Simple wrapper for calling manager.validate_ion with keyword arguments
   in a parallelized loop.  Because the water_result object is not pickle-able,
@@ -1306,7 +1310,7 @@ class _validate_ion_wrapper:
     except KeyboardInterrupt :
       return (None, None)
 
-class water_result:
+class water_result (object):
   """
   Container for storing the results of manager.analyze_water for later display
   and retrieval.
@@ -1398,7 +1402,7 @@ class water_result:
             #    print >> out, "  incompatible ligands for %s" % str(params)
           print >> out, ""
 
-class AtomProperties:
+class AtomProperties (object) :
   """
   Collect physical attributes of an atom, including B, occupancy, and map
   statistics, and track those which are at odds with its chemical identity.

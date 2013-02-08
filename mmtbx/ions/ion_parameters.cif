@@ -46,17 +46,17 @@ _lib_ligands.allowed_coordinating_atoms
 _lib_ligands.allowed_coordinating_residues
 _lib_ligands.allowed_geometries
 _lib_ligands.allowed_backbone_atoms
-NA  O,N       .                            .              O
-MG  O         SER,THR,ASP,ASN,GLU,GLN,HIS  octahedral     O
-K   O         .                            .              O
-CA  O         SER,THR,ASP,ASN,GLU,GLN,TYR  .              O
-MN  O,N       SER,THR,ASP,GLU,ASN,GLN,HIS  .              .
-FE  O,N,S     CYS,ASP,GLU,HIS,TYR          .              .
-CO  O,N       CYS,ASP,GLU,HIS              .              .
-CU  O,N,S     CYS,MET,HIS                  tetrahedral    .
-NI  O,N,S     CYS,ASP,GLU,HIS              tetrahedral    .
-ZN  O,N,S     CYS,ASP,GLU,HIS              tetrahedral,octahedral    .
-CD  O,N,S,CL  .                            octahedral,any .
+NA  O,N       .                            .                             O
+MG  O         SER,THR,ASP,ASN,GLU,GLN,HIS  octahedral                    O
+K   O         .                            .                             O
+CA  O         SER,THR,ASP,ASN,GLU,GLN,TYR  .                             O
+MN  O,N       SER,THR,ASP,GLU,ASN,GLN,HIS  .                             .
+FE  O,N,S     CYS,ASP,GLU,HIS,TYR          .                             .
+CO  O,N       CYS,ASP,GLU,HIS              .                             .
+CU  O,N,S     CYS,MET,HIS                  tetrahedral,any               .
+NI  O,N,S     CYS,ASP,GLU,HIS              tetrahedral,any               .
+ZN  O,N,S     CYS,ASP,GLU,HIS              tetrahedral,octahedral,any    .
+CD  O,N,S,CL  .                            octahedral,any                .
 #
 loop_
 _lib_valence.atom_symbol
