@@ -68,6 +68,8 @@ class run(object) :
                 lambda_increment_factor = None,
                 convergence_at_r_factor = 0,
                 detect_convergence = True,
+                crystal_gridding  = None,
+                use_scale         = True,
                 log               = None):
     if (log is None) : log = sys.stdout
     self.log              = log
@@ -85,6 +87,8 @@ class run(object) :
     self.lambda_increment_factor = lambda_increment_factor
     self.convergence_at_r_factor = convergence_at_r_factor
     self.detect_convergence = detect_convergence
+    self.crystal_gridding = crystal_gridding
+    self.use_scale       = use_scale
     # current monitor and optimized functional values
     self.cntr         = None
     self.r            = None
@@ -102,14 +106,15 @@ class run(object) :
     self.r_factors    = flex.double()
     self.cc_to_answer = flex.double()
     #
-    self.crystal_gridding = self.f.crystal_gridding(
-      d_min                   = self.f.d_min(),
-      resolution_factor       = resolution_factor,
-      grid_step               = None,
-      symmetry_flags          = None,
-      mandatory_factors       = None,
-      max_prime               = 5,
-      assert_shannon_sampling = True)
+    if(self.crystal_gridding is None):
+      self.crystal_gridding = self.f.crystal_gridding(
+        d_min                   = self.f.d_min(),
+        resolution_factor       = resolution_factor,
+        grid_step               = None,
+        symmetry_flags          = None,
+        mandatory_factors       = None,
+        max_prime               = 5,
+        assert_shannon_sampling = True)
     self.n_real = self.crystal_gridding.n_real()
     max_index = [int((i-1)/2.) for i in self.n_real]
     self.N = self.n_real[0]*self.n_real[1]*self.n_real[2]
@@ -220,8 +225,7 @@ class run(object) :
   def is_converged(self, rho_trial):
     result = False
     r = r_factor(self.f, self.f_mem, use_scale=False)
-    #if r<0.000001: return True
-    if(r < 0.2):
+    if(r < 0.20):
       if(self.xray_structure is None):
         self.r_factors.append(r)
         size = self.r_factors.size()
@@ -274,7 +278,7 @@ class run(object) :
         self.n_real,
         self.Agd,
         self.beta,
-        True)
+        self.use_scale)
       if(self.detect_convergence and self.is_converged(rho_trial=rho_trial)):
         break
       else: self.rho = rho_trial
