@@ -109,15 +109,12 @@ def find_and_build_ions (
   # Build in the identified ions
   for_building = []
   for i_seq, final_choices in water_ion_candidates :
-    atom = manager.pdb_atoms[i_seq]
-    if len(final_choices) > 1:
-      # Ambiguous results
-      pass
-    elif (len(final_choices) == 1) :
-      for_building.append((atom, final_choices[0]))
+    if (len(final_choices) == 1) :
+      for_building.append((i_seq, final_choices[0]))
   if (len(for_building) > 0) :
     make_sub_header("Adding %d ions to model" % len(for_building), out)
-    for atom, final_choice in for_building :
+    for i_seq, final_choice in for_building :
+      atom = manager.pdb_atoms[i_seq]
       print >> out, "  %s becomes %s%+d" % \
           (atom.id_str(), final_choice.element, final_choice.charge)
       refine_adp = params.refine_ion_adp
@@ -145,7 +142,7 @@ def find_and_build_ions (
         refine_adp=refine_adp,
         refine_occupancies=False) #params.refine_ion_occupancies)
       if (params.anomalous) :
-        scatterer = fmodel.xray_structure.scatterers()[i_seq]
+        scatterer = model.xray_structure.scatterers()[i_seq]
         if (wavelength is not None) :
           fp_fdp_info = sasaki.table(final_choice.element).at_angstrom(
             wavelength)
@@ -177,7 +174,7 @@ def find_and_build_ions (
     def show_r_factors () :
        return "r_work=%6.4f r_free=%6.4f" % (fmodel.r_work(), fmodel.r_free())
     fmodel.update_xray_structure(
-      model.xray_structure,
+      xray_structure=model.xray_structure,
       update_f_calc=True,
       update_f_mask=True)
     refine_anomalous = (params.refine_anomalous) and (len(anomalous_groups)>0)
@@ -191,7 +188,8 @@ def find_and_build_ions (
         model.anomalous_scatterer_groups.extend(anomalous_groups)
         refine_anomalous = False
     if (refine_occupancies) or (refine_anomalous) :
-      print >> out, "occupancy refinement (new ions only): start %s" % \
+      print >> out, ""
+      print >> out, "  occupancy refinement (new ions only): start %s" % \
         show_r_factors()
       fmodel.xray_structure.scatterers().flags_set_grads(state = False)
       fmodel.xray_structure.scatterers().flags_set_grad_occupancy(
@@ -211,16 +209,18 @@ def find_and_build_ions (
       fmodel.update_xray_structure(
         update_f_calc=True,
         update_f_mask=True)
-      print >> out, "occupancy refinement (new ions only): final %s" % \
+      print >> out, "                                        final %s" % \
         show_r_factors()
+      print >> out, ""
     if (refine_anomalous) :
-      print >> out, "anomalous refinement (new ions only): start %s" % \
+      print >> out, "  anomalous refinement (new ions only): start %s" % \
         show_r_factors()
       anomalous_scatterer_groups.minimizer(
         fmodel=fmodel,
         groups=anomalous_groups)
-      print >> out, "anomalous refinement (new ions only): final %s" % \
+      print >> out, "                                        final %s" % \
         show_r_factors()
+      print >> out, ""
   return manager
 
 def clean_up_ions (fmodel, model, params, log=None, verbose=True) :
