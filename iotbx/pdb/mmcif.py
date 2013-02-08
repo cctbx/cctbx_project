@@ -662,7 +662,11 @@ class pdb_hierarchy_as_cif_block(iotbx.cif.crystal_symmetry_as_cif_block):
               group_pdb = "ATOM"
               if atom.hetero: group_pdb = "HETATM"
               x, y, z = [coord_fmt_str %i for i in atom.xyz]
-              atom_charge = atom.charge_tidy().strip()
+              atom_charge = atom.charge_tidy()
+              if atom_charge is None:
+                atom_charge = "?"
+              else:
+                atom_charge = atom_charge.strip()
               if atom_charge == "": atom_charge = "?"
               fp, fdp = atom.fp, atom.fdp
               if fp == 0 and fdp == 0:
