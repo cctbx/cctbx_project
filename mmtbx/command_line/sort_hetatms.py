@@ -1,5 +1,7 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.sort_hetatms
 
+# FIXME special treatment required for carbohydrates?
+
 from __future__ import division
 from libtbx.utils import Sorry, Usage, null_out
 from libtbx import adopt_init_args
@@ -82,6 +84,9 @@ remove_hetatm_ter_records = True
 include scope libtbx.phil.interface.tracking_params
 """ % sorting_params_str
 
+def master_phil () :
+  return libtbx.phil.parse(master_params)
+
 def sort_hetatms (
     pdb_hierarchy,
     xray_structure,
@@ -124,8 +129,7 @@ def sort_hetatms (
     ignore_selection = sel_cache.selection(params.ignore_selection)
   assert (len(pdb_hierarchy.models()) == 1)
   for chain in pdb_hierarchy.only_model().chains() :
-    main_conf = chain.conformers()[0]
-    if (main_conf.is_protein()) or (main_conf.is_na()) :
+    if (chain.is_protein()) or (chain.is_na()) :
       mm_chains.append(chain)
       i_seqs = chain.atoms().extract_tmp_as_size_t()
       mm_selection.set_selected(i_seqs, True)
@@ -292,7 +296,7 @@ def sort_hetatms (
       n_mm_chains=len(mm_chains),
       n_het_residues=n_het_residues)
 
-def run (args, out=sys.stdout) :
+def run (args, out=sys.stdout, sorting_params=None) :
   import iotbx.phil
   if (len(args) == 0) or ("--help" in args) :
     raise Usage("""\
@@ -338,10 +342,12 @@ Full parameters:
   xray_structure = pdb_in.file_object.xray_structure_simple(
     crystal_symmetry=final_symm,
     unit_cube_pseudo_crystal=params.ignore_symmetry)
+  if (sorting_params is None) :
+    sorting_params = params
   result = sort_hetatms(
     pdb_hierarchy=pdb_hierarchy,
     xray_structure=xray_structure,
-    params=params,
+    params=sorting_params,
     verbose=params.verbose,
     return_pdb_hierarchy=False,
     log=out)
