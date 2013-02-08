@@ -124,6 +124,7 @@ def run (args, out=sys.stdout) :
       column_root_label = "R-free-flags")
   mtz_object = mtz_dataset.mtz_object()
   mtz_object.write(file_name = output_file)
+  print >> out, "Wrote %s" % output_file
   return output_file
 
 class launcher (runtime_utils.target_with_save_result) :
