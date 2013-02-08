@@ -1,7 +1,6 @@
 from __future__ import division
 from cctbx.xray import ext
 import cctbx.eltbx.xray_scattering
-import cctbx.eltbx.tiny_pse
 from cctbx import eltbx
 from cctbx import adptbx
 from cctbx.array_family import flex
@@ -84,12 +83,20 @@ class _(boost.python.injector, ext.scatterer):
     :returns: number of electrons (= Z - charge)
     :rtype: int
     """
+    import cctbx.eltbx.tiny_pse
     symbol, charge = self.element_and_charge_symbols(exact=True)
     electrons = eltbx.tiny_pse.table(symbol).atomic_number()
-    if charge == "1+":
+    # check the most common charges first for slightly better performance
+    if charge == "":
+      pass
+    elif charge == "1+":
       electrons -= 1
     elif charge == "2+":
       electrons -= 2
+    elif charge == "2-":
+      electrons += 2
+    elif charge == "1-":
+      electrons += 1
     elif charge == "3+":
       electrons -= 3
     elif charge == "4+":
@@ -104,10 +111,6 @@ class _(boost.python.injector, ext.scatterer):
       electrons -= 8
     elif charge == "9+":
       electrons -= 9
-    elif charge == "1-":
-      electrons += 1
-    elif charge == "2-":
-      electrons += 2
     elif charge == "3-":
       electrons += 3
     elif charge == "4-":
