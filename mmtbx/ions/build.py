@@ -107,14 +107,17 @@ def find_and_build_ions (
     candidates=elements)
   modified_iselection = flex.size_t()
   # Build in the identified ions
+  for_building = []
   for i_seq, final_choices in water_ion_candidates :
     atom = manager.pdb_atoms[i_seq]
     if len(final_choices) > 1:
       # Ambiguous results
       pass
     elif (len(final_choices) == 1) :
-      make_sub_header("Adding %d ions to model" % len(final_choices), out)
-      final_choice = final_choices[0]
+      for_building.append((atom, final_choices[0]))
+  if (len(for_building) > 0) :
+    make_sub_header("Adding %d ions to model" % len(for_building), out)
+    for atom, final_choice in for_building :
       print >> out, "  %s becomes %s%+d" % \
           (atom.id_str(), final_choice.element, final_choice.charge)
       refine_adp = params.refine_ion_adp
