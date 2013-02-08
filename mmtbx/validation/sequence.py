@@ -82,20 +82,21 @@ class chain (object) :
         j += 1
       else :
         self.sec_str += "-"
+      i_resid = i - self.n_missing_start
       if (a == 'X') :
         if (not b in ["X","-"]) :
           self.n_missing += 1
           if (not chain_started and
-              (self.resnames is None or self.resnames[i] is None)):
+              (self.resnames is None or self.resnames[i_resid] is None)):
             self.n_missing_start += 1
           elif (prev_char != 'X') :
             self.n_gaps += 1
       elif (a == '-') :
         if chain_started:
-          if i < len(self.resids):
-            self.resids.insert(i, None)
-          if self.resnames is not None and i < len(self.resnames):
-            self.resnames.insert(i, None)
+          if (i_resid) < len(self.resids):
+            self.resids.insert(i_resid, None)
+            if self.resnames is not None:
+              self.resnames.insert(i_resid, None)
         elif (not b in ['-']) :
           self.n_missing += 1
           self.n_missing_start += 1
@@ -116,10 +117,11 @@ class chain (object) :
     i = len(alignment.a) - 1
     matches = alignment.matches()
     while (alignment.a[i] in ["X", "-"]) :
+      i_resid = i - self.n_missing_start
       if (matches[i] == " " and
           (self.resnames is None or
-           (i-self.n_missing_start) >= len(self.resnames) or
-           self.resnames[(i-self.n_missing_start)] is None)):
+           (i_resid) >= len(self.resnames) or
+           self.resnames[(i_resid)] is None)):
         self.n_missing_end += 1
       i -= 1
     assert (len(self.sec_str) == len(alignment.a))
