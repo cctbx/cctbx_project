@@ -731,7 +731,7 @@ class positivity_constrained_density_modification(object):
         crystal_gridding     = self.crystal_gridding,
         fourier_coefficients = self.f_mod,
         f_000                = f_000)
-      fft_map.apply_volume_scaling()
+      if(f_000 is not None): fft_map.apply_volume_scaling()
       self.map = fft_map.real_map_unpadded()
       convert_to_non_negative(self.map, 0)
       self.f_mod = complete_set.structure_factors_from_map(
