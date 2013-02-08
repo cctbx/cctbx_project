@@ -91,60 +91,62 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     unique_model_ids = OrderedSet(model_ids) # XXX more efficient way to do this?
     self.hierarchy.pre_allocate_models(len(unique_model_ids))
     for i_model in unique_model_ids:
-      model_sel = (model_ids == i_model)
+      model_isel = (model_ids == i_model).iselection()
       if len(unique_model_ids) == 1: i_model = ""
       model = hierarchy.model(id=i_model)
       self.hierarchy.append_model(model)
-      unique_chain_ids = OrderedSet(label_asym_id.select(model_sel))
+      unique_chain_ids = OrderedSet(label_asym_id.select(model_isel))
       model.pre_allocate_chains(len(unique_chain_ids))
       for i_chain in unique_chain_ids:
         # we use label_asym_id to identify the separate chains because this
         # separates chains properly in the absence of TER records in the mmcif,
         # however we need to use auth_asym_id for the chain id so that they match
         # e.g. the TLS selections
-        chain_sel = (label_asym_id == i_chain) & model_sel
-        chain_id = set(auth_asym_id.select(chain_sel))
+        chain_isel = model_isel.select(
+          label_asym_id.select(model_isel) == i_chain)
+        chain_id = set(auth_asym_id.select(chain_isel))
         assert len(chain_id) == 1
         chain_id = list(chain_id)[0]
         chain = hierarchy.chain(id=chain_id)
         model.append_chain(chain)
-        unique_residue_ids = OrderedSet(seq_id.select(chain_sel))
+        unique_residue_ids = OrderedSet(seq_id.select(chain_isel))
         chain.pre_allocate_residue_groups(len(unique_residue_ids))
         # XXX do we need to sort the residue ids, or leave them in the order we found them?
         for i_residue in unique_residue_ids:
-          residue_sel = (seq_id == i_residue) & chain_sel
+          residue_isel = chain_isel.select(
+            seq_id.select(chain_isel) == i_residue)
           if pdb_ins_code is not None:
-            ins_codes = pdb_ins_code.select(residue_sel)
+            ins_codes = pdb_ins_code.select(residue_isel)
             unique_pdb_ins_codes = OrderedSet(ins_codes)
           else:
             unique_pdb_ins_codes = [None]
           for ins_code in unique_pdb_ins_codes:
             if ins_code is not None:
-              ins_code_sel = (ins_code == pdb_ins_code) & residue_sel
+              ins_code_isel = residue_isel.select(
+                pdb_ins_code.select(residue_isel) == ins_code)
             else:
-              ins_code_sel = residue_sel
+              ins_code_isel = residue_isel
             if ins_code in ("?", ".", None): ins_code = " "
             residue_group = hierarchy.residue_group(
               resseq=hy36encode(width=4, value=int(i_residue)), icode=ins_code)
             chain.append_residue_group(residue_group)
-            unique_altloc_ids = OrderedSet(alt_id.select(ins_code_sel))
+            unique_altloc_ids = OrderedSet(alt_id.select(ins_code_isel))
             if len(unique_altloc_ids) > 1 and "." in unique_altloc_ids:
               # main chain atoms should appear before altlocs in the hierarchy
               unique_altloc_ids.discard(".")
               unique_altloc_ids = ["."] + list(unique_altloc_ids)
             residue_group.pre_allocate_atom_groups(len(unique_altloc_ids))
             for i_altloc in unique_altloc_ids:
-              atom_group_sel = (alt_id == i_altloc) & ins_code_sel
-              resnames = comp_id.select(atom_group_sel)
+              atom_group_isel = ins_code_isel.select(
+                alt_id.select(ins_code_isel) == i_altloc)
+              resnames = comp_id.select(atom_group_isel)
               unique_resnames = OrderedSet(resnames)
               # by this point there should be only one resname left
               assert len(unique_resnames) == 1 # should all in the atom group have the same resname?
               for resname in unique_resnames:
-                resname_sel = (comp_id == resname) & atom_group_sel
                 if i_altloc == ".": i_altloc = "" # Main chain atoms
                 atom_group = hierarchy.atom_group(altloc=i_altloc, resname=resname)
                 residue_group.append_atom_group(atom_group)
-                atom_group_isel = atom_group_sel.iselection()
                 atom_group.pre_allocate_atoms(len(atom_group_isel))
                 for i_atom in atom_group_isel:
                   atom = hierarchy.atom()
