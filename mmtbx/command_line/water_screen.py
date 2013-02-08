@@ -12,8 +12,6 @@ include scope mmtbx.utils.cmdline_input_phil_str
 include scope mmtbx.ions.ion_master_phil
 debug = True
   .type = bool
-show_only_map_outliers = True
-  .type = bool
 elements = Auto
   .type = str
 wavelength = None
@@ -82,7 +80,6 @@ Full parameters:
         raise Sorry("Unrecognized element '%s'" % elem)
   return manager.analyze_waters(
     out = out, debug = params.debug,
-    show_only_map_outliers = params.show_only_map_outliers,
     candidates = candidates)
 
 if (__name__ == "__main__") :
