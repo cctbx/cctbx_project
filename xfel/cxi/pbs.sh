@@ -119,11 +119,14 @@ xtc="${exp}"
 streams=`ls "${xtc}"/e*-r${run}-s* 2> /dev/null \
     | sed -e "s:.*-s\([[:digit:]]\+\)-c.*:\1:"  \
     | sort -u                                   \
-    | awk '{ sep = NR > 1 ? "," : ""; printf("%s%d", sep, $1); }'`
+    | tr -s '\n' ' '`
 if test -z "${streams}"; then
     echo "No streams in ${xtc}" > /dev/stderr
     cleanup_and_exit 1
 fi
+
+# We will need as many hosts as there are streams.
+nhost=`echo "${streams}" | wc -w`
 
 # If ${nproc} is not given on the the command line, fall back on
 # num-cpu from ${cfg}.  Otherwise, the number of processes per host
@@ -175,12 +178,37 @@ out="${out}/${trial}"
 # the environment in here, too?  XXX What about an option to submit
 # all streams to a single host, so as to do averaging?
 mkdir -p "${out}"
-for s in `echo "${streams}" \
-    | tr -s ',' '\n'        \
-    | awk -F, '{ printf("%02d ", $1); }'`; do
+for s in ${streams}; do
     sed -e "s:\([[:alnum:]]\+\)\(_dirname[[:space:]]*=\).*:\1\2 ${out}/\1:"    \
         -e "s:\([[:alnum:]]\+_basename[[:space:]]*=.*\)[[:space:]]*:\1s${s}-:" \
         "${cfg}" > "${out}/pyana_s${s}.cfg"
+
+    # Create the run-script for stream ${s}.  Fall back on using a
+    # single processor if the number of available processors cannot be
+    # obtained from the environment or is less than or equal to two.
+    # Cannot use an indented here-document (<<-), because that would
+    # require leading tabs which are not permitted by
+    # libtbx.find_clutter.
+    cat > "${out}/pyana_s${s}.sh" << EOF
+#! /bin/sh
+
+export SIT_ARCH="x86_64-gentoo-gcc463-opt"
+export SIT_DATA="/global/project/projectdirs/lcls/psdm/data"
+export SIT_RELEASE="ana-current"
+export SIT_ROOT="/global/project/projectdirs/lcls/psdm-hattne"
+
+export LD_LIBRARY_PATH="\${SIT_ROOT}/arch/x86_64-gentoo-gcc463-opt/lib:\${LD_LIBRARY_PATH}"
+export PYTHONPATH="\${SIT_ROOT}/arch/x86_64-gentoo-gcc463-opt/python:\${PYTHONPATH}"
+
+NPROC="\${PBS_NUM_PPN}"
+
+test "\${NPROC}" -gt 2 2> /dev/null || NPROC="1"
+"${PYANA}" \\
+  -c "${out}/pyana_s${s}.cfg" \\
+  -p "\${NPROC}" \\
+  "${xtc}"/e*-r${run}-s${s}-c*
+EOF
+    chmod 755 "${out}/pyana_s${s}.sh"
 done
 
 # Create all directories for the output from the analysis.  This
@@ -193,46 +221,44 @@ awk -F=                                    \
          printf("\"%s\"\n", $2);                        \
      }' "${out}"/pyana_s[0-9][0-9].cfg | sort -u | xargs mkdir -p
 
-# Because the streams are submitted for processing as a job array with
-# one stream per host and ${nproc} processors per node, there are no
-# individual submit files, like in lsf.sh.  The PBS script is not to
-# be executed directly, but has to be passed to qsub.  XXX PBS seems
-# to create output files stdout-[0-9]+; can that be changed to
-# s00.out, s01.out, etc, for conformance with lsf.sh?  XXX The maximum
-# wallclock limit is hardcoded to suit the carver regular queue.
+# The PBS script is not to be executed directly, but has to be passed
+# to qsub.  XXX The maximum wallclock limit is hardcoded to suit the
+# carver regular small queue, while still allowing runs to finish.
 #
 # XXX From lsf.sh: allocate no more than ${nproc} processors.  Allow
 # the job to start if at least one processor is available on the host.
+# More on "Running Multiple Parallel Jobs Simultaneously":
+# http://www.nersc.gov/users/computational-systems/carver/running-jobs/batch-jobs/#toc-anchor-11.
+# For some reason must "export current environment into the batch job
+# environment" using the -V directive, otherwise mpirun will not be in
+# $PATH.
 cat > "${out}/submit.pbs" << EOF
+#! /bin/sh
+
 #PBS -N r${run}
 #PBS -j oe
-#PBS -l gres=project:1,nodes=1:ppn=${nproc},walltime=04:00:00
+#PBS -l gres=project:1,nodes=${nhost}:ppn=${nproc},walltime=08:00:00
 #PBS -m a
-#PBS -o ${out}/stdout/stdout
 #PBS -q ${queue}
+#PBS -V
 
 cd "\${PBS_O_WORKDIR}"
 
-export SIT_ARCH="x86_64-gentoo-gcc463-opt"
-export SIT_DATA="/global/project/projectdirs/lcls/psdm/data"
-export SIT_RELEASE="ana-current"
-export SIT_ROOT="/global/project/projectdirs/lcls/psdm-hattne"
+for i in \`seq "${nhost}"\`; do
+    host=\`sort -u "\${PBS_NODEFILE}" \\
+        | awk -v i="\${i}" '{ if (NR == i) print \$0; }'\`
+    stream=\`echo "${streams}" \\
+        | awk -v i="\${i}" '{ printf("%02d\n", \$i); }'\`
 
-export LD_LIBRARY_PATH=\${SIT_ROOT}/arch/x86_64-gentoo-gcc463-opt/lib:\${LD_LIBRARY_PATH}
-export PYTHONPATH=\${SIT_ROOT}/arch/x86_64-gentoo-gcc463-opt/python:\${PYTHONPATH}
-
-stream=\`echo "\${PBS_ARRAYID}" | awk '{ printf("%02d", \$1); }'\`
-
-"${PYANA}" \
-  -c "${out}/pyana_s\${stream}.cfg" \
-  -p "\${PBS_NUM_PPN}" \
-  "${xtc}"/e*-r${run}-s\${stream}-c*
+    mpirun --host "\${host}" --n "1" "${out}/pyana_s\${stream}.sh" \\
+        > "${out}/stdout/s\${stream}.out" 2>&1 &
+done
+wait
 EOF
 
 # Copy the configuration files and the submission script to ${out}.
-# Submit the analysis of all streams to the queueing system from
-# ${NODE}.
-qsub -t "${streams}" "${out}/submit.pbs"
+# Submit the analysis of all streams to the queueing system.
+qsub "${out}/submit.pbs"
 
 echo "Output directory: ${out}"
 cleanup_and_exit 0
