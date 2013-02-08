@@ -217,7 +217,7 @@ class atom_contact (slots_getstate_setstate) :
 # - Nearby carbon (< 3.0 A)
 # - FoFc peak/hole
 # - Phaser Anomalous signal
-class Manager (object):
+class Manager:
   """
   Wrapper object for extracting local environment and adding or modifying
   scatterers.
@@ -894,11 +894,10 @@ class Manager (object):
       elif atom_props.atom.b < self.b_mean_hoh * params.min_frac_b_iso:
         inaccuracies.add(atom_props.LOW_B)
 
-    return atom_props.is_correctly_identified()
+    return atom_props.is_correctly_identified(identity = "HOH")
 
   def analyze_water(self,
       i_seq,
-      show_only_map_outliers = True,
       debug = True,
       candidates = Auto,
       no_final = False,
@@ -922,7 +921,7 @@ class Manager (object):
     resname = atom.fetch_labels().resname.strip().upper()
     assert resname in WATER_RES_NAMES
 
-    atom_props = AtomProperties(atom = atom, i_seq = i_seq, manager = self)
+    atom_props = AtomProperties(i_seq = i_seq, manager = self)
     final_choice = None
 
     # Gather some quick statistics on the atom and see if it looks like water
@@ -980,7 +979,7 @@ class Manager (object):
           fpp_ratio_min=self.params.phaser.fpp_ratio_min,
           fpp_ratio_max=self.params.phaser.fpp_ratio_max)
         identity = str(elem_params)
-        if atom_props.is_correctly_identified(identity) :
+        if atom_props.is_correctly_identified(identity = identity):
           reasonable.append((elem_params, atom_props.score[identity]))
         else :
           unreasonable.append((elem_params, atom_props.score[identity]))
@@ -1084,7 +1083,6 @@ class Manager (object):
       # default candidates and just let the user know about them
       result = self.analyze_water(
         i_seq = i_seq,
-        show_only_map_outliers = show_only_map_outliers,
         debug = debug,
         no_final = True,
         out = out)
@@ -1103,8 +1101,7 @@ class Manager (object):
       final_choice = final_choice,
       no_final = no_final)
 
-  def analyze_waters (self, out = sys.stdout, debug = True,
-      show_only_map_outliers = True, candidates = Auto):
+  def analyze_waters (self, out = sys.stdout, debug = True, candidates = Auto):
     """
     Iterates through all of the waters in a model, examining the maps and local
     environment to check their identity and suggest likely ions where
@@ -1146,7 +1143,6 @@ class Manager (object):
           i_seq = water_i_seq,
           debug = debug,
           candidates = candidates,
-          show_only_map_outliers = show_only_map_outliers,
           out = out)
         if (water_props is not None) :
           water_props.show_summary(out = out, debug = debug)
@@ -1161,7 +1157,6 @@ class Manager (object):
       analyze_water = _analyze_water_wrapper(manager = self,
         debug = debug,
         candidates = candidates,
-        show_only_map_outliers = show_only_map_outliers,
         out = out)
       results = easy_mp.pool_map(
         fixed_func = analyze_water,
@@ -1175,9 +1170,98 @@ class Manager (object):
           print >> out, result_str
         if final_choice is not None :
           ions.append((water_i_seq, [final_choice]))
+
     return ions
 
-class _analyze_water_wrapper (object) :
+  def validate_ion (self, i_seq, out = sys.stdout, debug = True):
+    """
+    Examines one site in the model and determines if it was correctly modelled,
+    returning a boolean indicating correctness.
+    """
+
+    atom = self.pdb_atoms[i_seq]
+    atom_props = AtomProperties(i_seq = i_seq, manager = self)
+    element = atom.element.strip().upper()
+    elem_params = self.server.get_metal_parameters(element)
+
+    if elem_params is not None:
+      self.check_water_properties(atom_props)
+
+      atom_props.check_ion_environment(ion_params = elem_params,
+                                       server = self.server,
+                                       wavelength = self.wavelength,
+                                       require_valence = self.params.require_valence)
+      atom_props.check_fpp_ratio(ion_params = elem_params,
+                                 wavelength = self.wavelength,
+                                 fpp_ratio_min = self.params.phaser.fpp_ratio_min,
+                                 fpp_ratio_max = self.params.phaser.fpp_ratio_max)
+    elif element in HALIDES:
+      identity = _identity(atom)
+      atom_props.inaccuracies[identity] = set()
+
+      if not self.looks_like_halide_ion(i_seq = i_seq, element = element):
+        atom_props.inaccuracies[identity].add(atom_props.BAD_HALIDE)
+    else:
+      raise Sorry("Element '%s' not supported!" % element)
+
+    return atom_props
+
+  def validate_ions (self, out = sys.stdout, debug = True):
+    """
+    Iterate over all the ions built into the model by this module and double
+    check their correctness. Looks for tell-tale signs such as negative peaks
+    in the mFo-DFc and anomalous difference maps, abnormal b-factor, and
+    disallowed chemical environments.
+
+    Prints out a table of bad ions and their information and returns a list of
+    their site i_seqs.
+    """
+
+    sel_cache = self.pdb_hierarchy.atom_selection_cache()
+    ions = sel_cache.selection("segid ION").iselection() # Gives a list of atom indices
+    if len(ions) == 0:
+      return
+    print >> out, ""
+    print >> out, "  %d ions to validate" % len(ions)
+    bad_ions = []
+
+    nproc = easy_mp.get_processes(self.nproc)
+    if nproc == 1 or True:
+      print >> out, ""
+      for i_seq in ions:
+        atom_props = self.validate_ion(
+          i_seq = i_seq,
+          debug = debug)
+        if not atom_props.is_correctly_identified():
+          bad_ions.append(atom_props)
+    # else :
+    #   print >> out, "  Parallelizing across %d processes" % nproc
+    #   print >> out, ""
+
+    #   validate_ion = _validate_ion_wrapper(manager = self,
+    #     debug = debug)
+    #   results = easy_mp.pool_map(
+    #     fixed_func = validate_ion,
+    #     args = ions,
+    #     processes = nproc)
+    #   bad_seqs = (i_seq for i_seq, correct in results
+    #               if correct is not None and not correct)
+
+    #   for i_seq in bad_seqs:
+    #     bad_ions.append(i_seq)
+
+    # XXX: Show a table!
+    if bad_ions:
+      line = "%-10s " * 7
+      print line % ("i_seq", "atom", "occ", "b-factor", "2FoFc", "FoFc", "anomalous")
+      for props in bad_ions:
+        print line % (props.i_seq, _identity(props.atom), props.atom.occ, props.atom.b,
+                      props.peak_2fofc, props.peak_fofc,
+                      props.peak_anom if props.peak_anom is not None else "")
+
+    return [i.i_seq for i in bad_ions]
+
+class _analyze_water_wrapper:
   """
   Simple wrapper for calling manager.analyze_water with keyword arguments
   in a parallelized loop.  Because the water_result object is not pickle-able,
@@ -1188,7 +1272,7 @@ class _analyze_water_wrapper (object) :
     self.kwds = dict(kwds)
 
   def __call__ (self, i_seq) :
-    try :
+    try:
       result = self.manager.analyze_water(i_seq, **(self.kwds))
       out = cStringIO.StringIO()
       if (result is not None) :
@@ -1204,6 +1288,23 @@ class _analyze_water_wrapper (object) :
       return i_seq, final_choice, result_str
     except KeyboardInterrupt :
       return (None, None, None)
+
+class _validate_ion_wrapper:
+  """
+  Simple wrapper for calling manager.validate_ion with keyword arguments
+  in a parallelized loop.  Because the water_result object is not pickle-able,
+  we only return the final ion choice and summary string.
+  """
+  def __init__ (self, manager, **kwds) :
+    self.manager = manager
+    self.kwds = dict(kwds)
+
+  def __call__ (self, i_seq) :
+    try:
+      correct = self.manager.validate_ion(i_seq, **(self.kwds))
+      return i_seq, correct
+    except KeyboardInterrupt :
+      return (None, None)
 
 class water_result:
   """
@@ -1297,7 +1398,7 @@ class water_result:
             #    print >> out, "  incompatible ligands for %s" % str(params)
           print >> out, ""
 
-class AtomProperties (object):
+class AtomProperties:
   """
   Collect physical attributes of an atom, including B, occupancy, and map
   statistics, and track those which are at odds with its chemical identity.
@@ -1306,13 +1407,14 @@ class AtomProperties (object):
   LOW_B, HIGH_B, LOW_OCC, HIGH_OCC, NO_2FOFC_PEAK, FOFC_PEAK, FOFC_HOLE, \
     ANOM_PEAK, NO_ANOM_PEAK, BAD_GEOMETRY, NO_GEOMETRY, BAD_VECTORS, \
     BAD_VALENCES, TOO_FEW_NON_WATERS, TOO_FEW_COORD, TOO_MANY_COORD, \
-    LIKE_COORD, BAD_COORD_ATOM, BAD_FPP, BAD_COORD_RESIDUE, VERY_BAD_VALENCES \
-    = range(21)
+    LIKE_COORD, BAD_COORD_ATOM, BAD_FPP, BAD_COORD_RESIDUE, VERY_BAD_VALENCES, \
+    BAD_HALIDE \
+    = range(22)
 
-  def __init__(self, atom, i_seq, manager):
-    self.atom = atom
+  def __init__(self, i_seq, manager):
     self.i_seq = i_seq
-    self.resname = atom.parent().resname
+    self.atom = manager.pdb_atoms[i_seq]
+    self.resname = self.atom.parent().resname
     self.d_min = manager.fmodel.f_obs().d_min()
     self.strict_valence = manager.get_strict_valence_flag()
 
@@ -1354,7 +1456,7 @@ class AtomProperties (object):
     self.fpp = manager.get_fpp(i_seq)
     self.fpp_ratios = {}
 
-  def is_correctly_identified(self, identity = "HOH"):
+  def is_correctly_identified(self, identity = None):
     """
     Returns whether factors indicate that the atom was correctly identified.
     """
@@ -1435,22 +1537,22 @@ class AtomProperties (object):
     return False
 
   # XXX obsolete, delete?
-  def atom_weight (self):
+  def atom_weight (self, manager):
     """
     Evaluates whether factors indicate that the atom is lighter, heavier, or
     isoelectric to what it is currently identified as.
 
     Returns -1 if lighter, 0 if isoelectronic, and 1 if heavier.
     """
-    identity = _identity(self.atom)
-    if (self.resname == "HOH") :
-      # waters that don't have B-factors at least 1 stddev below the mean are
-      # presumed to be correct
-      if (self.atom.b > manager.b_mean_hoh - manager.b_stddev_hoh) :
-        return 0
-      identity = "HOH"
+    identity = "HOH" if self.resname in WATER_RES_NAMES else _identity(self.atom)
 
-    if self.is_correctly_identified(identity):
+    # Waters that don't have B-factors at least 1 stddev below the mean are
+    # presumed to be correct
+    if (identity == "HOH" and
+        (self.atom.b > manager.b_mean_hoh - manager.b_stddev_hoh)):
+      return 0
+
+    if self.is_correctly_identified(identity = identity):
       return 0
 
     # B-factors/occupancies?
@@ -1473,8 +1575,7 @@ class AtomProperties (object):
     The criteria used here are quite strict, but many of the analyses are
     saved for later if we want to use looser critera.
     """
-    import iotbx.pdb
-    get_class = iotbx.pdb.common_residue_names_get_class
+    from iotbx.pdb import common_residue_names_get_class as get_class
 
     identity = _identity(ion_params)
     inaccuracies = self.inaccuracies[identity] = set()
@@ -1484,7 +1585,7 @@ class AtomProperties (object):
     # if the atom is clearly not a water, optionally relax some rules.  this
     # will be more sensitive for transition metals, without finding a lot of
     # spurious Mg/Na sites.
-    strict_rules = require_valence or self.is_correctly_identified("HOH") or \
+    strict_rules = require_valence or self.is_correctly_identified(identity = "HOH") or \
       self.strict_valence or (ion_params.element in ["NA","MG"])
 
     # Check for all non-overlapping atoms within 3 A of the metal
@@ -1626,6 +1727,7 @@ class AtomProperties (object):
     inaccuracies = self.inaccuracies.get(identity, None)
     if (inaccuracies is None) :
       inaccuracies = self.inaccuracies[identity] = set()
+
     if (wavelength is not None) :
       fpp_expected_sasaki = sasaki.table(ion_params.element).at_angstrom(
         wavelength).fdp()
@@ -1641,6 +1743,7 @@ class AtomProperties (object):
           inaccuracies.add(self.BAD_FPP)
       elif (self.fpp_expected[identity] > 0.75) and (self.peak_anom < 2) :
         inaccuracies.add(self.BAD_FPP)
+
     return self.fpp_ratios.get(identity)
 
   def show_properties (self, identity, out = sys.stdout) :
