@@ -74,8 +74,9 @@ def rotatable(pdb_hierarchy, mon_lib_srv):
             fr = rotatable_bonds.axes_and_atoms_aa_specific(
               residue=residue, mon_lib_srv=mon_lib_srv,
               remove_clusters_with_all_h=False, log=None)
-            r = analyze_group(g=fr, atoms=atoms)
-            if(r is not None): result.append(r)
+            if(fr is not None):
+              r = analyze_group(g=fr, atoms=atoms)
+              if(r is not None): result.append(r)
   return result
 
 def fit_rotatable(pdb_hierarchy, mon_lib_srv, xray_structure, map_data):
@@ -110,3 +111,21 @@ def fit_rotatable(pdb_hierarchy, mon_lib_srv, xray_structure, map_data):
     for i_seq, point_i_seq in enumerate(points_i_seqs):
       scatterers[point_i_seq].site = sites_frac_best[i_seq]
   pdb_hierarchy.adopt_xray_structure(xray_structure)
+
+def run_fit_rotatable(fmodel, ref_model, angular_step, log):
+  fft_map = fmodel.electron_density_map().fft_map(
+    resolution_factor = 1./4.,
+    map_type          = "2mFo-DFc",
+    symmetry_flags    = maptbx.use_space_group_symmetry)
+  fft_map.apply_sigma_scaling()
+  map_data = fft_map.real_map_unpadded()
+  xrs = fmodel.xray_structure
+  from mmtbx import monomer_library
+  mon_lib_srv = monomer_library.server.server() # XXX see if it's available around
+  fit_rotatable(
+    pdb_hierarchy  = ref_model.pdb_hierarchy(sync_with_xray_structure=True),
+    mon_lib_srv    = mon_lib_srv,
+    xray_structure = xrs,
+    map_data       = map_data)
+  fmodel.update_xray_structure(xray_structure = xrs, update_f_calc=True)
+  ref_model.xray_structure = xrs
