@@ -555,11 +555,13 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
   def update_f_hydrogens(self, log): # XXX dummy function to conform with non-twin equivalent
     return None # XXX dummy function to conform with non-twin equivalent
 
-  def info(self, free_reflections_per_bin = 140, max_number_of_bins = 20):
+  def info(self, free_reflections_per_bin = 140, max_number_of_bins = 20,
+      n_bins=None):
     return mmtbx.f_model_info.info(
       fmodel                   = self,
       free_reflections_per_bin = free_reflections_per_bin,
-      max_number_of_bins       = max_number_of_bins)
+      max_number_of_bins       = max_number_of_bins,
+      n_bins                   = n_bins)
 
   def outlier_selection(self, show = False, log = None):
     # XXX
