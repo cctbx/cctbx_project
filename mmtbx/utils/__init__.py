@@ -1550,7 +1550,7 @@ def xtriage(f_obs):
 def fmodel_simple(f_obs,
                   xray_structures,
                   scattering_table,
-                  r_free_flags,
+                  r_free_flags             = None,
                   target_name              = "ml",
                   bulk_solvent_and_scaling = True,
                   bss_params               = None,
@@ -1562,6 +1562,9 @@ def fmodel_simple(f_obs,
                   bulk_solvent_correction  = True,
                   anisotropic_scaling      = True,
                   log                      = None):
+  if(r_free_flags is None):
+    r_free_flags = f_obs.customized_copy(
+      data = flex.bool(f_obs.data().size(), False))
   assert f_obs.is_in_asu()
   assert r_free_flags.is_in_asu()
   assert f_obs.indices().all_eq(r_free_flags.indices())
@@ -2676,7 +2679,8 @@ def equivalent_sigma_from_cumulative_histogram_match(
   #
   return tmp2
 
-def optimize_h(fmodel, pdb_hierarchy=None, model=None, log=None, verbose=True):
+def optimize_h(fmodel, mon_lib_srv, pdb_hierarchy=None, model=None, log=None,
+      verbose=True):
   assert [pdb_hierarchy, model].count(None)==1
   if(log is None): log = sys.stdout
   if(fmodel.xray_structure.hd_selection().count(True)==0): return
@@ -2692,11 +2696,14 @@ def optimize_h(fmodel, pdb_hierarchy=None, model=None, log=None, verbose=True):
     model.reset_occupancies_for_hydrogens()
   if(model is not None): pdb_hierarchy = model.pdb_hierarchy()
   import mmtbx.hydrogens
-  rmh_sel = mmtbx.hydrogens.rotatable(
-    pdb_hierarchy  = pdb_hierarchy,
-    xray_structure = fmodel.xray_structure,
-    log            = log)
-  fmodel.xray_structure.set_occupancies(value = 0, selection = rmh_sel)
+  rmh_sel = mmtbx.hydrogens.rotatable(pdb_hierarchy = pdb_hierarchy,
+    mon_lib_srv=mon_lib_srv)
+  # XXX inefficient
+  rmh_sel_i_seqs = flex.size_t()
+  for i in rmh_sel:
+    for ii in i[1]:
+      rmh_sel_i_seqs.append(ii)
+  fmodel.xray_structure.set_occupancies(value = 0, selection = rmh_sel_i_seqs)
   fmodel.update_f_hydrogens(log=log)
   if(model is not None):
     model.xray_structure = fmodel.xray_structure
