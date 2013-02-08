@@ -8,10 +8,8 @@ from libtbx import adopt_init_args
 from mmtbx.refinement import print_statistics
 import mmtbx.utils
 from cctbx import maptbx
-from libtbx.test_utils import approx_equal
 from cctbx import sgtbx
 import cctbx
-from scitbx.matrix import rotate_point_around_axis
 
 master_params_part1 = iotbx.phil.parse("""\
 map_type = mFobs-DFmodel
@@ -570,84 +568,6 @@ def water_map_correlations(model, fmodels, log=None):
             else:
               neutron_cc = ncc
   return True
-
-
-def run_lrss_tyr_hh(fmodel, ref_model, angular_step, log):
-  class tyr_cz_oh_hh(object):
-    def __init__(self, cz, oh, hh):
-      self.cz = cz
-      self.oh = oh
-      self.hh = hh
-  result = []
-  for model in ref_model.pdb_hierarchy().models():
-    for chain in model.chains():
-      for residue_group in chain.residue_groups():
-        cz, oh = [None,]*2
-        hh = []
-        cz_counter = 0
-        for atom in residue_group.atoms():
-          atom_name = atom.name.upper().strip()
-          if(atom.parent().resname.upper().strip() == "TYR"):
-            if(atom_name == "CZ"):
-              cz = atom.i_seq
-              cz_counter += 1
-            if(atom_name == "OH"): oh = atom.i_seq
-            if(atom_name in ["HH", "DH"]): hh.append(atom.i_seq)
-          if(atom.parent().resname.upper().strip() == "SER"):
-            if(atom_name == "CB"):
-              cz = atom.i_seq
-              cz_counter += 1
-            if(atom_name == "OG"): oh = atom.i_seq
-            if(atom_name in ["HG", "DG"]): hh.append(atom.i_seq)
-          if(atom.parent().resname.upper().strip() == "THR"):
-            if(atom_name == "CB"):
-              cz = atom.i_seq
-              cz_counter += 1
-            if(atom_name == "OG1"): oh = atom.i_seq
-            if(atom_name in ["HG1", "DG1"]): hh.append(atom.i_seq)
-        if([cz, oh].count(None) == 0 and len(hh) in [1,2] and cz_counter == 1):
-          result.append(tyr_cz_oh_hh(cz = cz, oh = oh, hh = hh))
-  if(len(result) > 0):
-    print >> log, "%d tyrosin residues processed." % (len(result))
-    fmodel_dc = fmodel
-    #
-    fft_map = fmodel_dc.electron_density_map().fft_map(
-      resolution_factor = 1./4.,
-      map_type          = "2mFo-DFc",
-      symmetry_flags    = maptbx.use_space_group_symmetry)
-    fft_map.apply_sigma_scaling()
-    fft_map_data = fft_map.real_map_unpadded()
-    sites_cart = ref_model.xray_structure.sites_cart()
-    scatterers = ref_model.xray_structure.scatterers()
-    unit_cell = ref_model.xray_structure.unit_cell()
-    for res in result:
-      cz_site = sites_cart[res.cz]
-      oh_site = sites_cart[res.oh]
-      if(len(res.hh) > 1):
-        assert approx_equal(sites_cart[res.hh[0]], sites_cart[res.hh[1]])
-      for ihh in res.hh:
-        hh_site = sites_cart[ihh]
-        hh_best = None
-        ed_val = -1
-        angle = 0.
-        while angle <= 360:
-          hh_new = rotate_point_around_axis(
-            axis_point_1 = cz_site,
-            axis_point_2 = oh_site,
-            point        = hh_site,
-            angle        = angle,
-            deg          = True)
-          hh_new_frac = unit_cell.fractionalize(hh_new)
-          ed_val_ = abs(maptbx.eight_point_interpolation(fft_map_data,
-            hh_new_frac))
-          if(ed_val_ > ed_val):
-            ed_val = ed_val_
-            hh_best = hh_new_frac
-          angle += angular_step
-        if(hh_best is not None):
-          scatterers[ihh].site = hh_best
-    fmodel.update_xray_structure(xray_structure = ref_model.xray_structure,
-      update_f_calc = True, update_f_mask = True)
 
 def run_flip_hd(fmodel, model, log, params = None):
   if(params is None):
