@@ -67,6 +67,8 @@ minimization
   macro_cycles = 5
     .type = int
     .help = Number of minimization macro-cycles
+  alternate_nonbonded_off_on = False
+    .type = bool
     .short_caption = Macro cycles
     .style = noauto
   rmsd_bonds_termination_cutoff = 0
@@ -195,7 +197,8 @@ def run_minimization(sites_cart, selection, restraints_manager, params):
     planarity                      = params.move.planarity,
     generic_restraints             = False,
     rmsd_bonds_termination_cutoff  = params.rmsd_bonds_termination_cutoff,
-    rmsd_angles_termination_cutoff = params.rmsd_angles_termination_cutoff)
+    rmsd_angles_termination_cutoff = params.rmsd_angles_termination_cutoff,
+    alternate_nonbonded_off_on     = params.alternate_nonbonded_off_on)
 
 class run(object):
   def __init__(self, args, log):

@@ -162,15 +162,20 @@ class run2(object):
                planarity                      = False,
                generic_restraints             = False,
                rmsd_bonds_termination_cutoff  = 0,
-               rmsd_angles_termination_cutoff = 0):
+               rmsd_angles_termination_cutoff = 0,
+               alternate_nonbonded_off_on     = False):
     self.minimized = None
     self.sites_cart = sites_cart
     self.restraints_manager = restraints_manager
     assert max_number_of_iterations+number_of_macro_cycles > 0
     assert [bond,nonbonded,angle,dihedral,chirality,planarity].count(False) < 6
+    if(alternate_nonbonded_off_on and number_of_macro_cycles % 2 != 0):
+      number_of_macro_cycles += 1
     import scitbx.lbfgs
     lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
       max_iterations = max_number_of_iterations)
+    exception_handling_params = scitbx.lbfgs.exception_handling_parameters(
+      ignore_line_search_failed_step_at_lower_bound = True)
     geometry_restraints_flags = geometry_restraints.flags.flags(
       bond               = bond,
       nonbonded          = nonbonded,
@@ -182,9 +187,10 @@ class run2(object):
       bond_similarity    = True,
       generic_restraints = True)
     self.show()
-    for i in xrange(number_of_macro_cycles):
-      exception_handling_params = scitbx.lbfgs.exception_handling_parameters(
-        ignore_line_search_failed_step_at_lower_bound = True)
+    for i_macro_cycle in xrange(number_of_macro_cycles):
+      print "  macro-cycle:", i_macro_cycle
+      if(alternate_nonbonded_off_on and i_macro_cycle<=number_of_macro_cycles/2):
+        geometry_restraints_flags.nonbonded = bool(i_macro_cycle % 2)
       self.minimized = lbfgs(
         sites_cart                      = self.sites_cart,
         geometry_restraints_manager     = restraints_manager.geometry,
@@ -196,8 +202,11 @@ class run2(object):
         rmsd_angles_termination_cutoff  = rmsd_angles_termination_cutoff,
         site_labels                     = None)
       self.show()
+      geometry_restraints_flags.nonbonded = nonbonded
+      lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
+          max_iterations = max_number_of_iterations)
 
   def show(self):
     es = self.restraints_manager.geometry.energies_sites(
       sites_cart = self.sites_cart, compute_gradients = False)
-    es.show()
+    es.show(prefix="    ")
