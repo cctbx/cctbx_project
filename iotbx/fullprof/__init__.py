@@ -8,29 +8,28 @@ suite.
 FullProf can be obtained from http://www.ill.eu/sites/fullprof/
 """
 
-def cctbx_xray_structure_from(cls, file=None, filename=None):
-  # XXX: a pcr reader has still to be implemented
-  from iotbx import builders
-  #builder = builders.crystal_structure_builder(
-  #  set_grad_flags=set_grad_flags,
-  #  min_distance_sym_equiv=min_distance_sym_equiv)
-  #stream = command_stream(file=file, filename=filename)
-  #stream = crystal_symmetry_parser(stream, builder)
-  #stream = atom_parser(stream.filtered_commands(), builder, strictly_shelxl)
-  #stream.parse()
-  return None #builder.structure
-
 def rietveld_refine_structure(crystalstructure,
                       wavelength=wavelengths.characteristic("CU").as_angstrom(),
-                      Iobs=None, Profile=None, ProfileFile=None):
-  # XXX: Document!
+                      I_obs=None, Profile=None, ProfileFile=None):
+  """This function tries to rietveld refine a structure using FullProf.
+
+  If I_obs is given neither a Profile or a ProfileFile may be specified.
+  'Profile' and 'ProfileFile' are also exclusive.
+
+  :param crystalstructure: the starting model for the refinement
+  :type crystalstructure: cctbx.xray.structure
+  :param wavelength: the x-ray wavelength for the given intensity data
+  :type wavelength: float
+  :param I_obs: observed Intensities
+  :type I_obs: cctbx.miller
+  :param Profile: a XRD profile given as a list/tuple of (2-theta, intensity)-tuples
+  :type Profile: list/tuple(tuple(2theta,I))
+  :param ProfileFile: path to a XRD profile as FullProf .prf file
+  :type ProfileFile: string
+  """
   # Check preconditions
   if count(None in [Iobs, Profile, ProfileFile]) != 2:
     raise(ValueError("You may only pass one of Iobs, Profile and ProfileFile"))
-  if ProfileFile is None:
-    # write out profile file for FullProf
-    # XXX: todo implement
-    pass
   # start work
   from write_pcr import write_pcr
   import tempfile
@@ -43,12 +42,21 @@ def rietveld_refine_structure(crystalstructure,
   pcrfile = f.name
   basepath = os.path.splitext(pcrfile)[0]
   write_pcr(f, crystalstructure, jobtype=0,
-            wavelength=wavelength)
+            wavelength=wavelength, I_obs=I_obs)
   f.close()
   try:
-    shutil.copyfile(ProfileFile, os.joinext(basepath, ".dat"))
+    if ProfileFile is not None:
+      shutil.copyfile(ProfileFile, os.joinext(basepath, ".dat"))
+    elif Profile is not None:
+      # write out profile file for FullProf
+      # XXX: todo implement
+      pass
   except IOError: raise
   run_fullprof(pcrfile, verbose=0)
+  # XXX Todo: extract refined structure from resulting .pcr/.new
+  # XXX Todo: extract Rwp of refined structure from resulting .pcr/.new
+  return None, None
+
 
 
 def simulate_powder_pattern(crystalstructure,

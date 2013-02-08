@@ -221,6 +221,7 @@ def write_pcr(s,
               nprof=0,
               nbckgd=0,
               wavelength=wavelengths.characteristic("CU").as_angstrom(),
+              I_obs=None
               scale_down=1.0):
   """Write a pcr file to a file or IO buffer.
 
@@ -238,13 +239,16 @@ def write_pcr(s,
   :type nbckgd: integer
   :param wavelength: the wavelength to be used in Angstroms
   :type wavelength: float
+  :param I_obs: observed intensities
+  :type I_obs: cctbx.miller
   :param scale_down: factor to divide intensities by (to avoid overflows)
   :type scale_down: float
   """
-  # handle case of beeing called with only one phase
+  # handle case of being called with only one phase
   if not isinstance(phases, (tuple, list, set)):
     phases = (phases, )
 
+  # XXX Todo: handle case of given I_obs (= refine without a full profile)
   pcrfile = _pcr_skelleton(phases=phases,
                   title=title,
                   jobtype=jobtype,
