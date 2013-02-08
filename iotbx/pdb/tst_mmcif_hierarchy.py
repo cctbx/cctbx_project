@@ -653,12 +653,31 @@ ATOM   2478  CA  THR A 465     -20.893   2.988  49.198  1.00 91.96           C
   cif_block = iotbx.pdb.mmcif.pdb_hierarchy_as_cif_block_with_sequence(
     pdb_hierarchy, sequences=[sequence_3tgr]).cif_block
   assert list(cif_block["_entity_poly_seq.mon_id"]) == [
-    'ASP', 'GLY', 'GLY', 'GLN', 'SER', 'ASN', 'ASN', 'ASP', 'ASN', 'ASP', 'THR',
+    'ASP', 'GLY', 'GLY', 'GLN', 'SER', 'ASN', 'GLU', 'THR', 'ASN', 'ASP', 'THR',
     'GLU', 'THR']
   assert list(cif_block["_atom_site.label_comp_id"]) == [
     'GLY', 'GLN', 'ASN', 'ASP', 'THR']
-  assert list(cif_block["_atom_site.label_seq_id"]) == ['3', '4', '7', '8', '11']
-  assert cif_block["_entity_poly.pdbx_seq_one_letter_code"][0] == 'DGGQSNNDNDTET'
+  assert list(cif_block["_atom_site.label_seq_id"]) == ['3', '4', '9', '10', '11']
+  assert cif_block["_entity_poly.pdbx_seq_one_letter_code"][0] == 'DGGQSNETNDTET'
+  input_2im9 = """\
+ATOM   2423  CA  PRO A 345       2.114  16.158   0.161  1.00 29.14           C
+ATOM   2430  CA  VAL A 346      -1.223  17.837   0.938  1.00 31.05           C
+ATOM   2437  CA  CYS A 349      -4.081  15.852   7.014  0.50 28.57           C
+ATOM   2443  CA  GLN A 350      -6.176  14.041   9.639  0.50 30.62           C
+ATOM   2452  CA  LEU A 351      -6.631  10.729   7.797  0.50 31.53           C
+ATOM   2460  CA  PHE A 352      -5.220   9.172   4.620  0.50 31.95           C
+"""
+  sequence_2im9 = iotbx.bioinformatics.sequence("SSPTIKGINIQVVLPEKPVSNGCQLFDIR")
+  pdb_in = iotbx.pdb.input(lines=(input_2im9).splitlines(), source_info=None)
+  pdb_hierarchy = pdb_in.construct_hierarchy()
+  cif_block = iotbx.pdb.mmcif.pdb_hierarchy_as_cif_block_with_sequence(
+    pdb_hierarchy, sequences=[sequence_2im9]).cif_block
+  assert list(cif_block["_entity_poly_seq.mon_id"]) == [
+    'SER', 'SER', 'PRO', 'THR', 'ILE', 'LYS', 'GLY', 'ILE', 'ASN', 'ILE', 'GLN',
+    'VAL', 'VAL', 'LEU', 'PRO', 'GLU', 'LYS', 'PRO', 'VAL', 'SER', 'ASN', 'GLY',
+    'CYS', 'GLN', 'LEU', 'PHE', 'ASP', 'ILE', 'ARG']
+  assert list(cif_block["_atom_site.label_seq_id"]) == [
+    '18', '19', '23', '24', '25', '26']
 
 
 def exercise_fp_fdp():
