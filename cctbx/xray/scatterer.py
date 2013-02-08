@@ -80,7 +80,7 @@ class _(boost.python.injector, ext.scatterer):
 
   def electron_count(self):
     """This method returns the number of electrons a scatterer effectively has.
-    
+
     :returns: number of electrons (= Z - charge)
     :rtype: int
     """
