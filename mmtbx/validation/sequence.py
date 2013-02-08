@@ -303,10 +303,10 @@ class validation (object) :
         continue
       pad = True
       pad_at_start = False
-      seq = main_conf.as_padded_sequence(
+      seq = pdb_chain.as_padded_sequence(
         substitute_unknown=unk, pad=pad, pad_at_start=pad_at_start)
-      resids = main_conf.get_residue_ids(pad=pad, pad_at_start=pad_at_start)
-      resnames = main_conf.get_residue_names_padded(
+      resids = pdb_chain.get_residue_ids(pad=pad, pad_at_start=pad_at_start)
+      resnames = pdb_chain.get_residue_names_padded(
         pad=pad, pad_at_start=pad_at_start)
       assert (len(seq) == len(resids) == len(resnames))
       sec_str = None
@@ -786,6 +786,30 @@ HETATM 2224  CA  TYS I 363      16.482   2.005  -3.448  1.00 44.52           C
   assert v.chains[0].n_missing_start == 2
   assert v.chains[0].n_missing_end == 1
   assert v.chains[0].identity == 1.0
+  pdb_in = iotbx.pdb.input(source_info=None, lines="""\
+ATOM    450  CA  ASN A   1      37.242  41.665  44.160  1.00 35.89           C
+ATOM    458  CA  GLY A   2      37.796  38.269  42.523  1.00 30.13           C
+HETATM  463  CA AMSE A   3      35.878  39.005  39.326  0.54 22.83           C
+HETATM  464  CA BMSE A   3      35.892  39.018  39.323  0.46 22.96           C
+ATOM    478  CA  ILE A   4      37.580  38.048  36.061  1.00 22.00           C
+ATOM    486  CA  SER A   5      37.593  40.843  33.476  1.00 18.73           C
+ATOM    819  CA  ALA A   8      25.982  34.781  27.220  1.00 18.43           C
+ATOM    824  CA  ALA A   9      23.292  32.475  28.614  1.00 19.60           C
+HETATM  830  CA BMSE A  10      22.793  30.814  25.223  0.41 22.60           C
+HETATM  831  CA CMSE A  10      22.801  30.850  25.208  0.59 22.54           C
+ATOM    845  CA  GLU A  11      26.504  30.054  24.966  1.00 25.19           C
+ATOM    854  CA  GLY A  12      25.907  28.394  28.320  1.00 38.88           C
+""")
+  seq = iotbx.bioinformatics.sequence("NGMISAAAAMEG")
+  v = validation(
+    pdb_hierarchy=pdb_in.construct_hierarchy(),
+    sequences=[seq],
+    log=null_out(),
+    nproc=1,)
+  out = StringIO()
+  v.show(out=out)
+  assert v.chains[0].alignment.a == 'NGMISXXAAMEG'
+  assert v.chains[0].alignment.b == 'NGMISAAAAMEG'
   # all tests below here have additional dependencies
   if (not libtbx.env.has_module("ksdssp")) :
     print "Skipping advanced tests (require ksdssp module)"
