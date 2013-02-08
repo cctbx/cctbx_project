@@ -933,6 +933,21 @@ class _(boost.python.injector, ext.chain, __hash_eq_mixin):
       resnames.append(residue_group.unique_resnames()[0])
     return resnames
 
+  def is_protein (self, min_content=0.8) :
+    rn_seq, residue_classes = self.get_residue_names_and_classes()
+    n_aa = residue_classes["common_amino_acid"]
+    n_na = residue_classes["common_rna_dna"]
+    if ((n_aa > n_na) and ((n_aa / len(rn_seq)) >= min_content)) :
+      return True
+    return False
+
+  def is_na (self, min_content=0.8) :
+    rn_seq, residue_classes = self.get_residue_names_and_classes()
+    n_aa = residue_classes["common_amino_acid"]
+    n_na = residue_classes["common_rna_dna"]
+    if ((n_na > n_aa) and ((n_na / len(rn_seq)) >= min_content)) :
+      return True
+    return False
 
 class _(boost.python.injector, ext.residue_group, __hash_eq_mixin):
 
@@ -1029,6 +1044,7 @@ class _(boost.python.injector, ext.conformer):
     return (rn_seq, residue_classes)
 
   def is_protein (self, min_content=0.8) :
+    # XXX DEPRECATED
     rn_seq, residue_classes = self.get_residue_names_and_classes()
     n_aa = residue_classes["common_amino_acid"]
     n_na = residue_classes["common_rna_dna"]
@@ -1037,6 +1053,7 @@ class _(boost.python.injector, ext.conformer):
     return False
 
   def is_na (self, min_content=0.8) :
+    # XXX DEPRECATED
     rn_seq, residue_classes = self.get_residue_names_and_classes()
     n_aa = residue_classes["common_amino_acid"]
     n_na = residue_classes["common_rna_dna"]

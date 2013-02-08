@@ -5751,6 +5751,7 @@ ATOM     48  CA  TYR A   9       9.159   2.144   7.299  1.00 15.18           C
     ['GLY', 'ASN', 'ASN', 'GLN', 'GLN', 'ASN', 'TYR'], {'common_amino_acid': 7})
   assert chain.as_sequence() == ['G', 'N', 'N', 'Q', 'Q', 'N', 'Y']
   assert chain.as_padded_sequence() == "XXGNNQQNY"
+  assert (chain.is_protein()) and (not chain.is_na())
   pdb_hierarchy = pdb.input(source_info=None, lines="""\
 ATOM      2  CA  GLY A  -2      -9.052   4.207   4.651  1.00 16.57           C
 ATOM      6  CA  ASN A  -1      -6.522   2.038   2.831  1.00 14.10           C
