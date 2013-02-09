@@ -2,6 +2,7 @@ from __future__ import division
 from libtbx.containers import OrderedDict, OrderedSet
 from libtbx.utils import Sorry
 import sys
+import string
 import copy
 from cStringIO import StringIO
 from UserDict import DictMixin
@@ -620,21 +621,26 @@ quoted_string_re = re.compile(r"('|\")[%s]*('|\")" %_any_print_char_set)
 semicolon_string_re = re.compile(r"(\s*)(;).*?(;)(\s*)", re.DOTALL)
 
 def format_value(value_string):
-  m = re.match(quoted_string_re, value_string)
-  string_is_quoted = m is not None
+  string_is_quoted = False
+  # s[0] == "a" is appears to be faster than s.startswith("a")
+  if value_string[0] in ("'",'"'):
+    m = re.match(quoted_string_re, value_string)
+    string_is_quoted = m is not None
   if not string_is_quoted:
     if len(value_string) == 0:
       return "''"
-    elif re.match(semicolon_string_re, value_string) is not None:
+    elif (value_string.lstrip()[0] == ';'
+          and  re.match(semicolon_string_re, value_string) is not None):
       # a semicolon text field
       return "\n%s\n" %value_string.strip()
-    elif value_string.startswith('\n') and value_string.endswith('\n'):
+    elif value_string[0] == '\n' and value_string[0] == '\n':
       return "\n;%s;\n" %value_string
     elif '\n' in value_string:
       return "\n;\n%s\n;\n" %value_string
-    elif (value_string[0] in ('#','$','[',']','_')
-          #invalid to start unquoted string
-          or re.search(r"\s", value_string) is not None):
-      # string needs quoting
+    elif (value_string[0] in ('#','$','[',']','_')):
       return "'%s'" %value_string
+    else:
+      for ws in string.whitespace:
+        if ws in value_string:
+          return "'%s'" %value_string
   return value_string
