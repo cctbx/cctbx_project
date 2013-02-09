@@ -324,6 +324,18 @@ loop_
   'string with spaces'  a
   nospaces              b
 """)
+  #
+  cb = model.block()
+  cm = model.cif()
+  cm["a"] = cb
+  cb["_b"] = ""
+  s = StringIO()
+  cm.show(out=s)
+  assert not show_diff(s.getvalue(), """\
+data_a
+_b                                ''
+""")
+  #
   loop = model.loop(data=OrderedDict((
     ("_entity_poly.entity_id", ('1', '2', '3')),
     ("_entity_poly.pdbx_seq_one_letter_code", (

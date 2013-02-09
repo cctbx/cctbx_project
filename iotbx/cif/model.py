@@ -622,6 +622,8 @@ semicolon_string_re = re.compile(r"(\s*)(;).*?(;)(\s*)", re.DOTALL)
 
 def format_value(value_string):
   string_is_quoted = False
+  if not value_string:
+    return "''"
   # s[0] == "a" is appears to be faster than s.startswith("a")
   if value_string[0] in ("'",'"'):
     m = re.match(quoted_string_re, value_string)
