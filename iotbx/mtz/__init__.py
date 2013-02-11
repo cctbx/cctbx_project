@@ -515,7 +515,8 @@ class _(boost.python.injector, ext.object):
         crystal_symmetry,
         base_array_info,
         dataset,
-        strict=True):
+        strict=True,
+        skip_incompatible_values=True):
     known_mtz_column_types = "".join(column_type_legend.keys())
     assert len(known_mtz_column_types) == 17 # safety guard
     all_columns = dataset.columns()
@@ -602,7 +603,8 @@ class _(boost.python.injector, ext.object):
           return None
         labels.append(next_isym_column_label())
         i_column += 3
-        group = self.extract_delta_anomalous(*labels)
+        cpp_args = list(labels) + [ skip_incompatible_values ]
+        group = self.extract_delta_anomalous(*cpp_args)
         if (labels[-1] is None): labels.pop()
         observation_type = xray.observation_types.reconstructed_amplitude()
       elif (t0 in "JFED"):
