@@ -202,7 +202,8 @@ namespace {
           arg("column_label_f_sigmas"),
           arg("column_label_d_data"),
           arg("column_label_d_sigmas"),
-          arg("column_label_isym")))
+          arg("column_label_isym"),
+          arg("skip_incompatible_values")=false))
         .def("extract_complex", &w_t::extract_complex, (
           arg("column_label_ampl"),
           arg("column_label_phi")))

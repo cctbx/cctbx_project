@@ -493,7 +493,8 @@ namespace mtz {
         const char* column_label_f_sigmas,
         const char* column_label_d_data,
         const char* column_label_d_sigmas,
-        const char* column_label_isym) const;
+        const char* column_label_isym,
+        bool skip_incompatible_values) const;
 
       //! Read-only access.
       complex_group

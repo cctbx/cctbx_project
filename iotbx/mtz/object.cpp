@@ -1030,7 +1030,8 @@ namespace iotbx { namespace mtz {
     const char* column_label_f_sigmas,
     const char* column_label_d_data,
     const char* column_label_d_sigmas,
-    const char* column_label_isym) const
+    const char* column_label_isym,
+    bool skip_incompatible_values=false) const
   {
     int n_refl = n_reflections();
     observations_group result(true, 2*n_refl);
@@ -1048,33 +1049,45 @@ namespace iotbx { namespace mtz {
       observation_pair_evaluator
         pair_evaluation_f(f_data, f_sigmas, i_refl);
       if (!pair_evaluation_f.is_consistent) {
-        throw cctbx::error(std::string(
-          "Inconsistent observation/sigma pair in columns: ")
-          + column_label_f_data + ", " + column_label_f_sigmas + ", "
-          + "hkl=" + h.as_string()
-          + phenix_mtz_dump_tip);
+        if (skip_incompatible_values) {
+          continue;
+        } else {
+          throw cctbx::error(std::string(
+            "Inconsistent observation/sigma pair in columns: ")
+            + column_label_f_data + ", " + column_label_f_sigmas + ", "
+            + "hkl=" + h.as_string()
+            + phenix_mtz_dump_tip);
+        }
       }
       observation_pair_evaluator
         pair_evaluation_d(d_data, d_sigmas, i_refl);
       if (!pair_evaluation_d.is_consistent) {
-        throw cctbx::error(std::string(
-          "Inconsistent observation/sigma pair in columns: ")
-          + column_label_d_data + ", " + column_label_d_sigmas + ", "
-          + "hkl=" + h.as_string()
-          + phenix_mtz_dump_tip);
+        if (skip_incompatible_values) {
+          continue;
+        } else {
+          throw cctbx::error(std::string(
+            "Inconsistent observation/sigma pair in columns: ")
+            + column_label_d_data + ", " + column_label_d_sigmas + ", "
+            + "hkl=" + h.as_string()
+            + phenix_mtz_dump_tip);
+        }
       }
       if (    pair_evaluation_d.is_usable
           &&  pair_evaluation_d.datum != 0
           && !pair_evaluation_f.is_usable) {
-        throw cctbx::error(std::string(
-          "Invalid combination of values while extracting anomalous array"
-          " from columns: ")
-          + column_label_f_data   + ", "
-          + column_label_f_sigmas + ", "
-          + column_label_d_data   + ", "
-          + column_label_d_sigmas + ", "
-          + "hkl=" + h.as_string()
-          + phenix_mtz_dump_tip);
+        if (skip_incompatible_values) {
+          continue;
+        } else {
+          throw cctbx::error(std::string(
+            "Invalid combination of values while extracting anomalous array"
+            " from columns: ")
+            + column_label_f_data   + ", "
+            + column_label_f_sigmas + ", "
+            + column_label_d_data   + ", "
+            + column_label_d_sigmas + ", "
+            + "hkl=" + h.as_string()
+            + phenix_mtz_dump_tip);
+        }
       }
       if (pair_evaluation_f.is_usable) {
         result.mtz_reflection_indices.push_back(i_refl);
