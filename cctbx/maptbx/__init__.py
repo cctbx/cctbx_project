@@ -205,6 +205,64 @@ class crystal_gridding_tags(crystal_gridding):
       max_clusters=parameters.max_clusters(),
       min_cubicle_edge=parameters.min_cubicle_edge())
 
+class boxes(object):
+  """
+  Split unit cell into boxes where each box is a cube with edge size box_size.
+  """
+  def __init__(self,
+               crystal_symmetry,
+               resolution_factor=1/4.,
+               d_min=1.5,
+               box_size=10,
+               show=True,
+               log=None,
+               prefix=""):
+    if(log is not None): log = sys.stdout
+    self.crystal_gridding = crystal_gridding(
+      unit_cell               = crystal_symmetry.unit_cell(),
+      d_min                   = d_min,
+      resolution_factor       = resolution_factor,
+      step                    = None,
+      symmetry_flags          = None,
+      space_group_info        = crystal_symmetry.space_group_info(),
+      mandatory_factors       = None,
+      max_prime               = 5,
+      assert_shannon_sampling = True)
+    a,b,c = crystal_symmetry.unit_cell().parameters()[:3]
+    self.n_real = self.crystal_gridding.n_real()
+    ga,gb,gc = a/self.n_real[0], b/self.n_real[1], c/self.n_real[2]
+    ba,bb,bc = int(box_size/ga), int(box_size/gb), int(box_size/gc)
+    nba,nbb,nbc = self.n_real[0]//ba, self.n_real[1]//bb, self.n_real[2]//bc
+    nla,nlb,nlc = self.n_real[0]%ba,  self.n_real[1]%bb,  self.n_real[2]%bc
+    if(show):
+      print >> log, prefix, "unit cell edges    :", a, b, c
+      print >> log, prefix, "n1,n2,n3           :", self.n_real
+      print >> log, prefix, "step along edges   :", ga,gb,gc
+      print >> log, prefix, "points per box edge:", ba,bb,bc
+      print >> log, prefix, "number of boxes    :", (nba+1)*(nbb+1)*(nbc+1)
+    be = []
+    for i, b in enumerate([ba,bb,bc]):
+      be_ = self._box_edges(n_real_1d = self.n_real[i], step=b)
+      be.append(be_)
+      if(show): print >> log, prefix, "box edges %d:"%i, be_
+    self.starts = []
+    self.ends = []
+    for i in be[0]:
+      for j in be[1]:
+        for k in be[2]:
+          self.starts.append([i[0],j[0],k[0]])
+          self.ends.append([i[1],j[1],k[1]])
+
+  def _box_edges(self, n_real_1d, step):
+    limits = []
+    for i in range(0, n_real_1d, step): limits.append(i)
+    limits.append(n_real_1d)
+    box_1d = []
+    for i in xrange(len(limits)):
+      if(i==0):               box_1d.append([limits[0],  limits[1]])
+      elif(i!=len(limits)-1): box_1d.append([limits[i],limits[i+1]])
+    return box_1d
+
 class peak_search_parameters(object):
 
   def __init__(self, peak_search_level=1,
