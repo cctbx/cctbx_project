@@ -1072,6 +1072,7 @@ libtbx/command_line/gdb.sh svneol=native#text/x-sh
 libtbx/command_line/import_all_ext.py svneol=native#text/x-python
 libtbx/command_line/latex.sh -text
 libtbx/command_line/list_files.py -text
+libtbx/command_line/list_modules.py -text
 libtbx/command_line/list_source_files_sorted_by_size.py svneol=native#text/x-python
 libtbx/command_line/nequal.py -text
 libtbx/command_line/parallel_simple.py svneol=native#text/x-python
