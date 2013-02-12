@@ -993,6 +993,12 @@ def exercise_region_density_correlation():
   cc = get(region_sel=flex.size_t([4]))
   assert approx_equal(cc, 0.6756590336, eps=1.e-3)
 
+def exercise_boxing():
+  cs=crystal.symmetry(
+    unit_cell=(21,37,58,80,111,117),
+    space_group_symbol="P1")
+  maptbx.boxes(crystal_symmetry = cs, show=True)
+
 def run(args):
   assert args in [[], ["--timing"]]
   timing = len(args) != 0
@@ -1017,6 +1023,7 @@ def run(args):
   exercise_grid_indices_around_sites()
   exercise_standard_devations_around_sites()
   exercise_region_density_correlation()
+  exercise_boxing()
   print "OK"
 
 if (__name__ == "__main__"):
