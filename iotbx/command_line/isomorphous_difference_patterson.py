@@ -2,6 +2,7 @@
 
 from __future__ import division
 from libtbx.utils import Sorry, Usage
+import libtbx.callbacks # import dependency
 import libtbx.phil
 from cStringIO import StringIO
 import os
@@ -71,17 +72,17 @@ Full parameters:
   symm_manager = iotbx.symmetry.manager()
   sg_err_1, uc_err_1 = symm_manager.process_reflections_file(data_file_1)
   sg_err_2, uc_err_2 = symm_manager.process_reflections_file(data_file_2)
-  out = StringIO()
-  symm_manager.show(out=out)
+  out_tmp = StringIO()
+  symm_manager.show(out=out_tmp)
   if (sg_err_1) or (sg_err_2) :
     raise Sorry(("Incompatible space groups in input files:\n%s\nAll files "+
       "must have the same point group (and ideally the same space group). ") %
-      out.getvalue())
+      out_tmp.getvalue())
   elif (uc_err_1) or (uc_err_2) :
     libtbx.call_back(message="warn",
       data=("Crystal symmetry mismatch:\n%s\nCalculations will continue "+
         "using the symmetry in the PDB file first reflection file, but the "+
-        "maps should be treated with some suspicion.") % out.getvalue())
+        "maps should be treated with some suspicion.") % out_tmp.getvalue())
   obs_1 = patterson_map.extract_data(
     file_name=None,
     hkl_in=data_file_1,
@@ -93,13 +94,23 @@ Full parameters:
     expected_labels=params.labels_2,
     out=out)
   assert (not None in [obs_1, obs_2])
+  print >> out, ""
+  print >> out, "Data array #1 (will use symmetry from here):"
+  obs_1.show_summary(f=out, prefix="  ")
+  print >> out, ""
+  print >> out, "Data array #2:"
+  obs_2.show_summary(f=out, prefix="  ")
+  print >> out, ""
+  obs_2 = obs_2.customized_copy(crystal_symmetry=obs_1)
   f_obs_1 = patterson_map.prepare_f_obs(obs_1, params).average_bijvoet_mates()
   f_obs_2 = patterson_map.prepare_f_obs(obs_2, params).average_bijvoet_mates()
   f_obs_1, f_obs_2 = f_obs_1.common_sets(other=f_obs_2)
   # XXX will this work as expected?
+  print >> out, "Scaling second dataset..."
   f_obs_2 = f_obs_1.multiscale(other=f_obs_2)
   from scitbx.array_family import flex
-  print flex.max(f_obs_1.data()), flex.max(f_obs_2.data())
+  print >> out, "  max(F1) = %.2f  max(F2) = %.2f" % (flex.max(f_obs_1.data()),
+    flex.max(f_obs_2.data()))
   delta_f = f_obs_1.customized_copy(data=f_obs_1.data()-f_obs_2.data())
   if (params.relative_diff_limit is not None) :
     f_obs_1_non_zero = f_obs_1.select(f_obs_1.data() > 0)
@@ -112,7 +123,7 @@ Full parameters:
     if (n_discarded > 0) :
       print >> out, "Discarded %d reflections with excessive differences." % \
         n_discarded
-  print flex.max(delta_f.data())
+  print >> out, "  max(delta_F) = %.2f" % flex.max(delta_f.data())
   map = patterson_map.calculate_patterson_map(data=delta_f, params=params,
     normalize=False)
   if (params.map_file_name is None) :
