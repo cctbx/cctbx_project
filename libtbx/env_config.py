@@ -726,8 +726,12 @@ Wait for the command to finish, then try again.""" % vars())
       module_names.append(module_name)
     if (pre_processed_args.warm_start):
       if (not command_line.options.only):
+        excludes = []
+        if (command_line.options.exclude) :
+          excludes = command_line.options.exclude.split(",")
         for module in self.module_list:
-          module_names.append(module.name)
+          if (not module.name in excludes) :
+            module_names.append(module.name)
     else:
       self.build_options = build_options(
         compiler=command_line.options.compiler,
@@ -1933,6 +1937,11 @@ class pre_process_args:
         action="store_true",
         default=False,
         help="disable previously configured modules")
+      parser.option(None, "--exclude",
+        action="store",
+        type="string",
+        default=None,
+        help="Modules to leave out from configuration")
     else:
       parser.option("-r", "--repository",
         action="callback",
