@@ -221,7 +221,7 @@ def write_pcr(s,
               nprof=0,
               nbckgd=0,
               wavelength=wavelengths.characteristic("CU").as_angstrom(),
-              I_obs=None
+              I_obs=None,
               scale_down=1.0):
   """Write a pcr file to a file or IO buffer.
 
