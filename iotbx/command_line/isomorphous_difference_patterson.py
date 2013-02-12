@@ -1,7 +1,7 @@
 # LIBTBX_SET_DISPATCHER_NAME cctbx.isomorphous_difference_patterson
 
 from __future__ import division
-from libtbx.utils import Sorry, Usage
+from libtbx.utils import Sorry, Usage, show_development_warning
 import libtbx.callbacks # import dependency
 import libtbx.phil
 from cStringIO import StringIO
@@ -25,6 +25,7 @@ map_file_name = iso_diff.ccp4
 """, process_includes=True)
 
 def run (args, out=sys.stdout) :
+  show_development_warning(out=out)
   if (len(args) == 0) or ("--help" in args) :
     raise Usage("""\
 cctbx.isomorphous_difference_patterson xtal1.mtz xtal2.mtz [options]

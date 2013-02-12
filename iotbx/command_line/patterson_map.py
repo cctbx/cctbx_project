@@ -1,7 +1,7 @@
 # LIBTBX_SET_DISPATCHER_NAME cctbx.patterson_map
 
 from __future__ import division
-from libtbx.utils import Sorry, Usage
+from libtbx.utils import Sorry, Usage, show_development_warning
 import libtbx.phil
 import math
 import os
@@ -110,7 +110,8 @@ def extract_data (file_name, hkl_in=None, expected_labels=None, out=sys.stdout) 
         break
   return obs
 
-def run (args, out=None) :
+def run (args, out=sys.stdout) :
+  show_development_warning(out=out)
   if (len(args) == 0) or ("--help" in args) :
     raise Usage("""\
 cctbx.patterson_map data.mtz [options]
@@ -126,7 +127,6 @@ Full options:
   from cctbx.array_family import flex
   from cctbx import miller
   from cctbx import xray
-  if (out is None) : out = sys.stdout
   hkl_in = None
   sources = []
   cmdline = iotbx.phil.process_command_line_with_files(
