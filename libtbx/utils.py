@@ -1164,3 +1164,14 @@ class tmp_dir_wrapper (object) :
       shutil.copy(os.path.join(self.tmp_dir, file_name), self.dest_dir)
     print >> out, ""
     return True
+
+def show_development_warning (out=sys.stdout) :
+  print >> out, """
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !!                  WARNING - EXPERIMENTAL PROGRAM                        !!
+  !!                                                                        !!
+  !! This program is still in development - some functionality may be       !!
+  !! missing and/or untested.  Use at your own risk!  For bug reports, etc. !!
+  !! email bugs@phenix-online.org.                                          !!
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+"""
