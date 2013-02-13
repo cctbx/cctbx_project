@@ -209,6 +209,26 @@ class g_gradients:
               dAij_dg0, dAij_dg1, dAij_dg2, dAij_dg3, dAij_dg4, dAij_dg5]
     return all_da
 
+  def dB_dp(self):
+    #returns the partial derivatives of the B matrix with respect to each
+    # independent parameter, as a list.
+
+    # First get the partial derivatives with respect to the six metrical
+    # matrix parameters:
+    dB_dg = self.get_all_da()[3:9]
+    values=[]
+    Nindep = self.symred_constraints.n_independent_params()
+    for n in xrange(Nindep):
+      values.append(flex.double(9))
+    # Now convert to partial derivatives with respect to the independent
+    for x in xrange(9):  # loop over the 9 elements of B
+      all_gradients = [t[x] for t in dB_dg]
+      g_indep = self.symred_constraints.independent_gradients(
+              all_gradients=tuple(all_gradients))
+      for a in xrange(Nindep):
+        values[a][x] = g_indep[a]
+    return values
+
   def df_dgi(self,df_dAij):
     self.all_da = self.get_all_da()
     #df_dgi, Use chain rule to calculate total derivative of functional
@@ -381,4 +401,3 @@ def finite_difference_test(orient):
          pp(list(dAij_dg5))+"\n"+\
          pp(diff_mat)
   if not( approx_equal(dAij_dg5,diff_mat,1.E-6)): raise Exception(rule)
-
