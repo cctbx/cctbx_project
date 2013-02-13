@@ -1493,6 +1493,7 @@ mmtbx/validation/utils.py -text
 mmtbx/wwpdb/__init__.py -text
 mmtbx/wwpdb/rcsb_web_services.py -text
 mmtbx/wwpdb/standard_geometry_cif.py -text
+mmtbx/wwpdb/tst_rcsb_web_services.py -text
 mmtbx/wwpdb/tst_standard_geometry_cif.py -text
 mmtbx/wwpdb/tst_utils.py -text
 mmtbx/wwpdb/utils.py -text
