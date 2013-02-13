@@ -282,6 +282,8 @@ master_params_str = """\
       .type=int
     residues_with_excluded_nonbonded_symmetry_interactions = 12
       .type=int
+    fatal_problem_max_lines = 10
+      .type=int
   }
   %(clash_guard_params_str)s
 """ % vars()
@@ -1970,6 +1972,7 @@ class build_chain_proxies(object):
         conformation_dependent_restraints_list,
         log,
         use_neutron_distances=False,
+        fatal_problem_max_lines=10,
                ):
     self.conformation_dependent_restraints_list = \
       conformation_dependent_restraints_list
@@ -2638,6 +2641,8 @@ class build_all_chain_proxies(object):
             conformation_dependent_restraints_list=
               self.conformation_dependent_restraints_list,
             use_neutron_distances=use_neutron_distances,
+            fatal_problem_max_lines
+              =self.params.show_max_items.fatal_problem_max_lines,
             log=log,
             )
           self.conformation_dependent_restraints_list = \
@@ -2826,17 +2831,21 @@ class build_all_chain_proxies(object):
           max_items=self.params.show_max_items
             .residues_with_excluded_nonbonded_symmetry_interactions)
       self.geometry_proxy_registries.report(log=log, prefix="  ")
-      self.fatal_problems_report(prefix="  ", log=log)
+      self.fatal_problems_report(
+        prefix="  ",
+        log=log,
+        max_lines=self.params.show_max_items.fatal_problem_max_lines,
+        )
     self.process_custom_nonbonded_symmetry_exclusions(
       log=log,
       curr_sym_excl_index=len(sym_excl_residue_groups))
     self.time_building_chain_proxies = timer.elapsed()
 
-  def fatal_problems_report(self, prefix="", log=None):
+  def fatal_problems_report(self, prefix="", log=None, max_lines=10):
     self.scattering_type_registry.report(
-      pdb_atoms=self.pdb_atoms, log=log, prefix=prefix)
+      pdb_atoms=self.pdb_atoms, log=log, prefix=prefix, max_lines=max_lines)
     self.nonbonded_energy_type_registry.report(
-      pdb_atoms=self.pdb_atoms, log=log, prefix=prefix)
+      pdb_atoms=self.pdb_atoms, log=log, prefix=prefix, max_lines=max_lines)
 
   def fatal_problems_message(self,
         ignore_unknown_scattering_types=False,
