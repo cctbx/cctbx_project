@@ -826,7 +826,8 @@ def get_atom_selections(all_chain_proxies,
       tmp = flex.bool(xray_structure.scatterers().size(), selections[0]).as_int()
     else:
       tmp = selections[0].deep_copy().as_int()
-    for k, tmp_s in enumerate(selections[1:], start=1):
+    for k_, tmp_s in enumerate(selections[1:]):
+      k = k_ + 1 # XXX Python 2.5 workaround
       if(not isinstance(tmp_s, flex.bool)):
         tmp = tmp + flex.bool(xray_structure.scatterers().size(),tmp_s).as_int()
       else:
