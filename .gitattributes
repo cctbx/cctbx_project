@@ -1651,6 +1651,12 @@ rstbx/slip_viewer/frame.py -text
 rstbx/slip_viewer/slip_display.py -text
 rstbx/slip_viewer/tile_generation.py -text
 rstbx/symmetry/__init__.py -text
+rstbx/symmetry/constraints/SConscript -text
+rstbx/symmetry/constraints/__init__.py -text
+rstbx/symmetry/constraints/a_g_conversion.h -text
+rstbx/symmetry/constraints/ext.cpp -text
+rstbx/symmetry/constraints/g_gradients.py -text
+rstbx/symmetry/constraints/parameter_reduction.py -text
 rstbx/symmetry/sgtbx_adaptor.py -text
 rstbx/symmetry/subgroup.py -text
 rstbx/utils.py -text

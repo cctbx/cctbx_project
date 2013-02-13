@@ -59,3 +59,4 @@ if (not env_etc.no_boost_python):
   SConscript("apps/SConscript")
   SConscript("bpcx/SConscript")
   SConscript("bandpass/SConscript")
+  SConscript("symmetry/constraints/SConscript")
