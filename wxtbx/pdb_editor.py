@@ -773,7 +773,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         new_b = self.GetNewBiso(b_iso)
         assert (0 < new_b < 1000)
       def apply_b (atom) : atom.b = new_b
-      self._ApplyToAtoms(item, pdb_objct, apply_b)
+      self._ApplyToAtoms(item, pdb_object, apply_b)
 
   # all
   def OnSetIsotropic (self, event) :
