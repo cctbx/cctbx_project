@@ -71,7 +71,7 @@ class symmetrize_reduce_enlarge(object):
     #Specifically for refinement of the B-matrix parameters.
     from rstbx.symmetry.constraints.g_gradients import g_gradients
     gradient_engine = g_gradients(agadaptor = self.Bconverter, symred = self)
-    #ALL = gradient_engine.get_all_da()
+    return gradient_engine.dB_dp()
 
   def backward_orientation(self,independent):
     # given new values of the independent parameters, back-calculate and
