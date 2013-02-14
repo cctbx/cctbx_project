@@ -1130,14 +1130,15 @@ class manager(object):
     i_seq = i_seq_start
     for j_seq, sc in enumerate(new_xray_structure.scatterers()) :
       i_seq += 1
+      element, charge = sc.element_and_charge_symbols()
       new_atom = (pdb.hierarchy.atom()
         .set_serial(new_serial=pdb.hy36encode(width=5, value=n_seq+i_seq))
         .set_name(new_name=atom_names[j_seq])
         .set_xyz(new_xyz=orth(sc.site))
         .set_occ(new_occ=sc.occupancy)
         .set_b(new_b=adptbx.u_as_b(sc.u_iso))
-        .set_element(sc.scattering_type[:1])
-        .set_charge(sc.scattering_type[1:3])
+        .set_element(element)
+        .set_charge(charge)
         .set_hetero(new_hetero=True))
       if (segids is not None) :
         new_atom.segid = segids[j_seq]
@@ -1175,7 +1176,8 @@ class manager(object):
     """
     atom = self.pdb_atoms[i_seq]
     atom.name = atom_name
-    atom.element = element
+    atom.element = "%2s" % element.strip()
+    assert (atom.element.strip() == element)
     if (charge != 0) :
       symbol = "+"
       if (charge < 0) : symbol = "-"

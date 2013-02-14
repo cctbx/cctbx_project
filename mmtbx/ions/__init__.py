@@ -847,7 +847,8 @@ class Manager (object) :
     #map_variance.show(prefix = "  ")
     good_map_falloff = False
     #print map_variance.mean, map_variance.standard_deviation
-    if ((map_variance.mean < 1.5) and
+    if ((map_variance is not None) and
+        (map_variance.mean < 1.5) and
         (map_variance.standard_deviation < 0.4)) : # XXX very arbitrary
       good_map_falloff = True
 
@@ -1206,7 +1207,8 @@ class Manager (object) :
       if not self.looks_like_halide_ion(i_seq = i_seq, element = element):
         atom_props.inaccuracies[identity].add(atom_props.BAD_HALIDE)
     else:
-      raise Sorry("Element '%s' not supported!" % element)
+      raise Sorry("Element '%s' not supported:\n%s" % (element,
+        atom.format_atom_record()))
 
     return atom_props
 
@@ -1222,22 +1224,20 @@ class Manager (object) :
     """
 
     sel_cache = self.pdb_hierarchy.atom_selection_cache()
-    ions = sel_cache.selection("segid ION").iselection() # Gives a list of atom indices
+    ions = sel_cache.selection("segid ION").iselection()
     if len(ions) == 0:
       return
     print >> out, ""
     print >> out, "  %d ions to validate" % len(ions)
-    bad_ions = []
+    ion_status = []
 
     nproc = easy_mp.get_processes(self.nproc)
     if nproc == 1 or True:
-      print >> out, ""
       for i_seq in ions:
         atom_props = self.validate_ion(
           i_seq = i_seq,
           debug = debug)
-        if not atom_props.is_correctly_identified():
-          bad_ions.append(atom_props)
+        ion_status.append((atom_props, atom_props.is_correctly_identified()))
     # else :
     #   print >> out, "  Parallelizing across %d processes" % nproc
     #   print >> out, ""
@@ -1255,15 +1255,16 @@ class Manager (object) :
     #     bad_ions.append(i_seq)
 
     # XXX: Show a table!
-    if bad_ions:
-      line = "%-10s " * 6
-      print line % ("atom", "occ", "b-factor", "2FoFc", "FoFc", "anomalous")
-      for props in bad_ions:
-        print line % (props.atom.id_str(), props.atom.occ, props.atom.b,
-                      props.peak_2fofc, props.peak_fofc,
-                      props.peak_anom if props.peak_anom is not None else "")
-
-    return [i.i_seq for i in bad_ions]
+    line = "%-10s " * 6
+    print >> out, line % ("atom", "occ", "b_iso", "2FoFc", "FoFc", "anom")
+    for props, okay_flag in ion_status :
+      mark = ""
+      if (not okay_flag) :
+        mark = " !!!"
+      def ff (val) : return format_value("%8.2f", val, replace_none_with="---")
+      print >> out, (line % (props.atom.id_str(), ff(props.atom.occ),
+                             ff(props.atom.b), ff(props.peak_2fofc),
+                             ff(props.peak_fofc), ff(props.peak_anom))) + mark
 
 class _analyze_water_wrapper (object) :
   """
