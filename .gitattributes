@@ -1201,6 +1201,7 @@ mmtbx/command_line/estimate_resolution_cutoff.py -text
 mmtbx/command_line/fake_f_obs.py -text
 mmtbx/command_line/fetch_pdb.py -text
 mmtbx/command_line/find_peaks_holes.py -text
+mmtbx/command_line/find_residue_in_pdb.py -text
 mmtbx/command_line/find_tls_groups.py -text
 mmtbx/command_line/find_torsion_angle_ncs_groups.py svneol=native#text/x-python
 mmtbx/command_line/flip_peptides.py -text

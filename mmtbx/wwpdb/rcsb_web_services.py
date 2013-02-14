@@ -17,15 +17,17 @@ url_base = "http://www.rcsb.org/pdb/rest"
 url_search = url_base + "/search"
 
 def post_query (query_xml, xray_only=True, d_max=None, d_min=None,
-    protein_only=False) :
+    protein_only=False, data_only=False) :
   """Generate the full XML for a multi-part query with generic search options,
   starting from the basic query passed by another function, post it to the
   RCSB's web service, and return a list of matching PDB IDs."""
   other_queries = []
   if (xray_only) :
-    other_queries.append(
-      "<queryType>org.pdb.query.simple.ExpTypeQuery</queryType>\n" +
-      "<mvStructure.expMethod.value>X-RAY</mvStructure.expMethod.value>")
+    xray_query = "<queryType>org.pdb.query.simple.ExpTypeQuery</queryType>\n"+\
+      "<mvStructure.expMethod.value>X-RAY</mvStructure.expMethod.value>"
+    if (data_only) :
+      xray_query += "\n<mvStructure.hasExperimentalData.value>Y</mvStructure.hasExperimentalData.value>"
+    other_queries.append(xray_query)
   if (d_max is not None) or (d_min is not None) :
     base_clause = "<queryType>org.pdb.query.simple.ResolutionQuery</queryType>"
     base_clause += "\n<refine.ls_d_res_high.comparator>between" + \
