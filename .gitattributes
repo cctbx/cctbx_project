@@ -2,6 +2,7 @@
 boost_adaptbx/__init__.py svneol=native#text/x-python
 boost_adaptbx/boost/std_pair.py -text
 boost_adaptbx/boost/tuple.py -text
+boost_adaptbx/boost_range_python.hpp -text
 boost_adaptbx/command_line/__init__.py -text
 boost_adaptbx/command_line/divide_by_zero.py svneol=native#text/x-python
 boost_adaptbx/command_line/double_overflow.py svneol=native#text/x-python
