@@ -492,6 +492,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       ("Set residue number...", self.OnSetResseq),
       ("Set insertion code...", self.OnSetIcode),
       ("Set segment ID...", self.OnSetSegID),
+      ("Set B-factor...", self.OnSetBfactor),
       ("Convert to isotropic", self.OnSetIsotropic),
       ("Delete residue", self.OnDeleteObject),
       ("Split residue", self.OnSplitResidue),
@@ -501,6 +502,8 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       ("Toggle ATOM/HETATM...", self.OnSetAtomType),
       ("Reset element field...", self.OnResetElement),
     ]
+    if (len(residue_group.atom_groups()) == 1) :
+      labels_and_actions.append(("Set occupancy...", self.OnSetOccupancy))
     self.ShowMenu(labels_and_actions, source_window)
 
   def ShowChainMenu (self, chain, source_window) :
@@ -519,6 +522,8 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     if (len(chain.conformers()) > 1) :
       labels_and_actions.append(
         ("Delete alternate conformers", self.OnDeleteAltConfs))
+    else :
+      labels_and_actions.append(("Set occupancy...", self.OnSetOccupancy))
     model = chain.parent()
     if (len(model.chains()) > 1) :
       labels_and_actions.append(
