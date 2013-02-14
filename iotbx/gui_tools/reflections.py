@@ -66,6 +66,7 @@ class reflections_handler (iotbx.gui_tools.manager) :
     return labels
 
   def get_rfree_labels (self, *args, **kwds) :
+    prefer_neutron = kwds.pop("neutron", None)
     hkl_file = self.get_file(*args, **kwds)
     labels = []
     if hkl_file is not None :
@@ -78,12 +79,34 @@ class reflections_handler (iotbx.gui_tools.manager) :
         parameter_scope          = "",
         return_all_valid_arrays  = True,
         minimum_score            = 1)
+      if (prefer_neutron is not None) :
+        xray_arrays = []
+        neutron_arrays = []
+        other_arrays = []
+        for array_and_flag_value in arrays_and_flags :
+          array = array_and_flag_value[0]
+          label = array.info().label_string().lower()
+          if ("neutron" in label) :
+            neutron_arrays.append(array_and_flag_value)
+          elif ("xray" in label) :
+            xray_arrays.append(array_and_flag_value)
+          else :
+            other_arrays.append(array_and_flag_value)
+        if (prefer_neutron) and (len(neutron_arrays) > 0) :
+          arrays_and_flags = neutron_arrays + other_arrays
+        elif (not prefer_neutron) and (len(xray_arrays) > 0) :
+          arrays_and_flags = xray_arrays + other_arrays
       if len(arrays_and_flags) > 0 :
         labels = [ a.info().label_string() for a, fl in arrays_and_flags ]
     return labels
 
   def has_rfree (self, *args, **kwds) :
     return len(self.get_rfree_labels(*args, **kwds)) > 0
+
+  def has_neutron_rfree (self, *args, **kwds) :
+    kwds['neutron'] = True
+    labels = self.get_rfree_labels(*args, **kwds)
+    return ([ "neutron" in l.lower() for l in labels ].count(True) > 0)
 
   def get_rfree_flag_value (self, array_name, *args, **kwds) :
     hkl_file = self.get_file(*args, **kwds)
@@ -141,6 +164,7 @@ class reflections_handler (iotbx.gui_tools.manager) :
     return labels
 
   def get_data_arrays (self, *args, **kwds) :
+    prefer_neutron = kwds.pop("neutron", None)
     hkl_file = self.get_file(*args, **kwds)
     if hkl_file is not None :
       hkl_server = hkl_file.file_server
@@ -160,6 +184,22 @@ class reflections_handler (iotbx.gui_tools.manager) :
           else :
             other_arrays.append(array)
         miller_arrays = f_arrays + other_arrays
+      elif (prefer_neutron is not None) :
+        xray_arrays = []
+        neutron_arrays = []
+        other_arrays = []
+        for array in miller_arrays :
+          label = array.info().label_string().lower()
+          if ("neutron" in label) :
+            neutron_arrays.append(array)
+          elif ("xray" in label) :
+            xray_arrays.append(array)
+          else :
+            other_arrays.append(array)
+        if (prefer_neutron) and (len(neutron_arrays) > 0) :
+          miller_arrays = neutron_arrays + other_arrays
+        elif (not prefer_neutron) and (len(xray_arrays) > 0) :
+          miller_arrays = xray_arrays + other_arrays
       return miller_arrays
     return []
 
@@ -204,6 +244,11 @@ class reflections_handler (iotbx.gui_tools.manager) :
 
   def has_data (self, *args, **kwds) :
     return len(self.get_data_labels(*args, **kwds)) > 0
+
+  def has_neutron_data (self, *args, **kwds) :
+    kwds['neutron'] = True
+    labels = self.get_data_labels(*args, **kwds)
+    return ([ "neutron" in l.lower() for l in labels ].count(True) > 0)
 
   def get_anomalous_data_labels (self, *args, **kwds) :
     kwds = dict(kwds) # XXX gross...
