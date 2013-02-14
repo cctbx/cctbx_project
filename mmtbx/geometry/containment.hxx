@@ -186,21 +186,3 @@ Checker< Neighbour, Algorithm >::operator ()(const vector_type& point) const
   return Algorithm::operator ()( point, neighbours_ );
 }
 
-template< typename Neighbour, typename Algorithm >
-template< typename Range >
-typename FilterResult<
-  Range,
-  typename Checker< Neighbour, Algorithm >::functor_type
-  >::result_range_type
-Checker< Neighbour, Algorithm >::filter(
-  const typename
-  FilterResult< Range, functor_type >::input_range_type& points
-  ) const
-{
-  typedef FilterResult< Range, functor_type > result_traits;
-  return typename result_traits::result_range_type(
-    typename result_traits::filter_iterator( *this, points.begin, points.end ),
-    typename result_traits::filter_iterator( *this, points.end, points.end )
-    );
-}
-

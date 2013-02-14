@@ -1,54 +1,28 @@
-template< typename Object, typename Algorithm >
-OverlapEqualityFilter< Object, Algorithm >::OverlapEqualityFilter(
-  const object_type& object
-  )
-  : object_( object )
+template< typename Object >
+Linear< Object >::Linear()
 {}
 
-template< typename Object, typename Algorithm >
-OverlapEqualityFilter< Object, Algorithm >::~OverlapEqualityFilter()
+template< typename Object >
+Linear< Object >::~Linear()
 {}
 
-template< typename Object, typename Algorithm >
-bool
-OverlapEqualityFilter< Object, Algorithm >::operator ()(
-  const object_type& other
-  )
-  const
-{
-  return ( other != object_ ) && Algorithm::operator ()( object_, other );
-}
-
-template< typename Object, typename Algorithm >
-Linear< Object, Algorithm >::Linear()
-{}
-
-
-template< typename Object, typename Algorithm >
-Linear< Object, Algorithm >::~Linear()
-{}
-
-template< typename Object, typename Algorithm >
+template< typename Object >
 void
-Linear< Object, Algorithm >::add(const object_type& object)
+Linear< Object >::add(const object_type& object)
 {
   objects_.push_back( object );
 }
 
-template< typename Object, typename Algorithm >
-typename Linear< Object, Algorithm >::range_type
-Linear< Object, Algorithm >::overlapping_with(const object_type& object) const
+template< typename Object >
+const typename Linear< Object >::range_type&
+Linear< Object >::close_to(const object_type& object) const
 {
-  filter_type filter = filter_type( object );
-  return range_type(
-    const_iterator( filter, objects_.begin(), objects_.end() ),
-    const_iterator( filter, objects_.end(), objects_.end() )
-    );
+  return objects_;
 }
 
-template< typename Object, typename Algorithm >
+template< typename Object >
 size_t
-Linear< Object, Algorithm >::size() const
+Linear< Object >::size() const
 {
   return objects_.size();
 }
@@ -100,5 +74,126 @@ Voxelizer< Vector, Voxel >::operator ()(const vector_type& vector) const
     boost::fusion::at_c<1>( discretizers_ )( vector[1] ),
     boost::fusion::at_c<2>( discretizers_ )( vector[2] )
     );
+}
+
+template< typename Object, typename Voxelizer >
+Hash< Object, Voxelizer >::Hash(const voxelizer_type& voxelizer)
+  : voxelizer_( voxelizer )
+{}
+
+template< typename Object, typename Voxelizer >
+Hash< Object, Voxelizer >::~Hash()
+{}
+
+template< typename Object, typename Voxelizer >
+void
+Hash< Object, Voxelizer >::add(const object_type& object)
+{
+  voxel_type low = voxelizer_( object.low() );
+  voxel_type high = voxelizer_( object.high() );
+  assert( low[0] <= high[0] );
+  assert( low[1] <= high[1] );
+  assert( low[2] <= high[2] );
+
+  for( discrete_type h = low[0]; h < high[0] + 1; ++h )
+  {
+    for( discrete_type k = low[1]; k < high[1] + 1; ++k )
+    {
+      for( discrete_type l = low[2]; l < high[2] + 1; ++l )
+      {
+        voxel_type key = voxel_type( h, k, l );
+        typename storage_type::iterator it = objects_.find( key );
+
+        if ( it == objects_.end() )
+        {
+          std::pair< typename storage_type::iterator, bool > result =
+            objects_.insert(
+              typename storage_type::value_type( key, bucket_type() )
+              );
+          assert ( result.second );
+          it = result.first;
+        }
+
+        it->second.push_back( object );
+      }
+    }
+  }
+}
+
+template< typename Object, typename Voxelizer >
+typename Hash< Object, Voxelizer >::range_type
+Hash< Object, Voxelizer >::close_to(const object_type& object) const
+{
+  range_type result;
+
+  voxel_type low = voxelizer_( object.low() );
+  voxel_type high = voxelizer_( object.high() );
+  assert( low[0] <= high[0] );
+  assert( low[1] <= high[1] );
+  assert( low[2] <= high[2] );
+
+  for( discrete_type h = low[0]; h < high[0] + 1; ++h )
+  {
+    for( discrete_type k = low[1]; k < high[1] + 1; ++k )
+    {
+      for( discrete_type l = low[2]; l < high[2] + 1; ++l )
+      {
+        voxel_type key = voxel_type( h, k, l );
+        typename storage_type::const_iterator it = objects_.find( key );
+
+        if ( it == objects_.end() )
+        {
+          continue;
+        }
+
+        result.insert( it->second.begin(), it->second.end() );
+      }
+    }
+  }
+
+  return result;
+}
+
+template< typename Object, typename Voxelizer >
+size_t
+Hash< Object, Voxelizer >::size() const
+{
+  range_type result;
+
+  for (
+    typename storage_type::const_iterator it = objects_.begin();
+    it != objects_.end();
+    ++it
+    )
+  {
+    result.insert( it->second.begin(), it->second.end() );
+  }
+
+  return result.size();
+}
+
+template< typename Object, typename Voxelizer >
+size_t
+Hash< Object, Voxelizer >::cubes() const
+{
+  return objects_.size();
+}
+
+template< typename Object, typename Voxelizer >
+size_t
+Hash< Object, Voxelizer >::count() const
+{
+  size_t count = 0;
+
+  for (
+    typename storage_type::const_iterator it = objects_.begin();
+    it != objects_.end();
+    ++it
+    )
+  {
+    count += it->second.size();
+  }
+
+  return count;
 }
 

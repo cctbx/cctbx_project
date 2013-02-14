@@ -1,6 +1,5 @@
 from __future__ import division
 
-# XXX is this actually necessary?
 import mmtbx.geometry.primitive # import dependency
 
 import boost.python
@@ -51,7 +50,7 @@ class Description(object):
   def from_parameters(cls, centre, radius, altloc):
 
     return cls(
-      sphere = sphere.create( centre = centre, radius = radius ),
+      sphere = sphere( centre = centre, radius = radius ),
       strategy = Regular if not altloc else Altloc( identifier = altloc ),
       )
 
@@ -75,14 +74,31 @@ class Indexer(object):
     self.altlocs[ altloc ] = self.factory()
 
 
-def get_linear_indexer_for(atoms):
+def get_linear_indexer_for(descriptions):
 
   return Indexer( factory = indexing.linear_spheres )
 
 
-def get_optimal_indexer_for(atoms):
+def get_hash_indexer_for(descriptions):
+
+  voxelizer = get_voxelizer_for( descriptions = descriptions )
+  return Indexer(
+    factory = lambda: indexing.hash_spheres( voxelizer = voxelizer )
+    )
+
+
+def get_optimal_indexer_for(descriptions):
 
   return Indexer( factory = indexing.linear_spheres )
+
+
+def get_voxelizer_for(descriptions, step = 7):
+
+  lows = [ d.sphere.low for d in descriptions ]
+  ( low_xs, low_ys, low_zs ) = zip( *lows )
+  low = ( min( low_xs ), min( low_ys ), min( low_zs ) )
+
+  return indexing.voxelizer( base = low, step = ( step, step, step ) )
 
 
 # Visitors
@@ -139,8 +155,11 @@ class CompositeCheckerBuilder(object):
 
   def append_neighbours(self, indexer, sphere):
 
-    self.checker.add_from_range(
-      neighbours = indexer.overlapping_with( object = sphere ),
+    self.checker.add(
+      neighbours = indexing.filter(
+        range = indexer.close_to( object = sphere ),
+        predicate = indexing.overlap_equality_predicate( object = sphere )
+        )
       )
 
 
@@ -194,8 +213,11 @@ class SeparateCheckerBuilder(object):
   @staticmethod
   def append_neighbours(indexer, sphere, checker):
 
-    checker.add_from_range(
-      neighbours = indexer.overlapping_with( object = sphere ),
+    checker.add(
+      neighbours = indexing.filter(
+        range = indexer.close_to( object = sphere ),
+        predicate = indexing.overlap_equality_predicate( object = sphere )
+        )
       )
 
 
@@ -278,11 +300,15 @@ class SimpleSurfaceCalculator(object):
 
     builder = CompositeCheckerBuilder( indexer = self.indexer )
     description.accept( processor = builder )
-    overlapped = builder.checker.filter(
-      range = self.sampling.transformed(
-        centre = description.sphere.centre,
-        radius = description.sphere.radius,
-        )
+    overlapped = accessibility.filter(
+      range = accessibility.transform(
+        range = self.sampling.points,
+        transformation = accessibility.transformation(
+          centre = description.sphere.centre,
+          radius = description.sphere.radius,
+          ),
+        ),
+      predicate = builder.checker,
       )
 
     self.values.append(
@@ -312,18 +338,22 @@ class AltlocAveragedCalculator(object):
     builder = SeparateCheckerBuilder( indexer = self.indexer )
     description.accept( processor = builder )
 
-    overlapped = builder.regular.filter(
-      range = self.sampling.transformed(
-        centre = description.sphere.centre,
-        radius = description.sphere.radius,
-        )
+    overlapped = accessibility.filter(
+      range = accessibility.transform(
+        range = self.sampling.points,
+        transformation = accessibility.transformation(
+          centre = description.sphere.centre,
+          radius = description.sphere.radius,
+          ),
+        ),
+      predicate = builder.regular,
       )
 
     accessible_for = {}
 
     for ( identifier, checker ) in builder.altlocs.items():
       accessible_for[ identifier ] = [
-        p for p in overlapped if checker.is_selected( point = p )
+        p for p in overlapped if checker( point = p )
         ]
 
     if not accessible_for:
@@ -362,7 +392,7 @@ def calculate(
     for ( c, r, a ) in zip( centres, radii, altlocs )
     ]
 
-  indexer = indexer_selector( atoms = atoms )
+  indexer = indexer_selector( descriptions = descriptions )
   inserter = Inserter( indexer = indexer )
 
   for d in descriptions:
@@ -377,3 +407,4 @@ def calculate(
     values = calculator.values,
     unit = params.sampling.unit_area,
     )
+

@@ -1,12 +1,13 @@
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
-#include <boost/python/iterator.hpp>
 #include <boost/python/copy_const_reference.hpp>
+#include <boost/python/return_internal_reference.hpp>
 
 #include <scitbx/vec3.h>
 
 #include <mmtbx/geometry/sphere_surface_sampling.hpp>
-#include <scitbx/math/boost_python/cartesian_product_fixed_size.hpp>
+#include <boost_adaptbx/boost_range_python.hpp>
+
 
 namespace mmtbx
 {
@@ -17,29 +18,15 @@ namespace sphere_surface_sampling
 namespace
 {
 
-template< typename Vector >
-typename GoldenSpiral< Vector >::const_storage_iterator
-sampling_points_begin(const GoldenSpiral< Vector >& sampling)
-{
-  return sampling.points().begin();
-}
-
-template< typename Vector >
-typename GoldenSpiral< Vector >::const_storage_iterator
-sampling_points_end(const GoldenSpiral< Vector >& sampling)
-{
-  return sampling.points().end();
-}
-
 template < typename Vector >
 struct sphere_surface_wrappers
 {
   static void wrap()
   {
     using namespace boost::python;
-    scitbx::math::cartesian_product::python::iterated_range_wrappers<
-      typename GoldenSpiral< Vector >::const_iterator
-      >::wrap( "point_range" );
+    boost_adaptbx::python::generic_range_wrapper<
+      typename GoldenSpiral< Vector >::storage_type
+      >::wrap( "points_range" );
 
     class_< GoldenSpiral< Vector > >( "golden_spiral", no_init )
       .def(
@@ -61,16 +48,10 @@ struct sphere_surface_wrappers
         )
       .add_property(
         "points",
-        range(
-          sampling_points_begin< Vector >,
-          sampling_points_end< Vector >
+        make_function(
+          &GoldenSpiral< Vector >::points,
+          return_internal_reference<>()
           )
-        )
-      .def(
-        "transformed",
-        &GoldenSpiral< Vector >::transformed,
-        with_custodian_and_ward_postcall< 0, 1 >(),
-        ( arg( "centre" ), arg( "radius" ) )
         )
       ;
   }
