@@ -41,15 +41,35 @@ def exercise_reflections () :
   f_obs = miller_set.array(data=data, sigmas=sigmas)
   f_obs_merged = f_obs.average_bijvoet_mates()
   flags = f_obs_merged.generate_r_free_flags()
+  # single dataset
+  mtz_dataset = f_obs_merged.as_mtz_dataset(
+    column_root_label="F-obs")
+  mtz_dataset.add_miller_array(flags,
+    column_root_label="R-free-flags")
+  file_name = "tst_iotbs_gui_tools.mtz"
+  mtz_dataset.mtz_object().write(file_name)
+  assert (hkl_handler.set_param_file(file_name=file_name,
+          file_param_name="refinement.input.xray_data.file_name") == True)
+  assert (hkl_handler.set_param_file(file_name=file_name,
+          file_param_name="refinement.input.xray_data.r_free_flags.file_name")
+          == False)
+  assert (hkl_handler.get_rfree_labels(
+    file_param_name="refinement.input.xray_data.r_free_flags.file_name") ==
+    hkl_handler.get_rfree_labels(file_name=file_name) == ['R-free-flags'])
+  assert (hkl_handler.get_rfree_labels(file_name=file_name, neutron=False) ==
+          hkl_handler.get_rfree_labels(file_name=file_name, neutron=True) ==
+          ['R-free-flags'])
+  # join X/N datasets
+  hkl_handler = reflections.reflections_handler(allowed_param_names=phil_names)
   data_neutron = flex.random_double(n_refl)
   sigmas_neutron = flex.random_double(n_refl)
   f_obs_neutron = miller_set.array(data=data_neutron, sigmas=sigmas_neutron)
   mtz_dataset = f_obs_merged.as_mtz_dataset(
-    column_root_label="F-obs")
+    column_root_label="F-obs-xray")
   mtz_dataset.add_miller_array(f_obs_neutron,
     column_root_label="F-obs-neutron")
   mtz_dataset.add_miller_array(flags,
-    column_root_label="R-free-flags")
+    column_root_label="R-free-flags-xray")
   mtz_dataset.add_miller_array(flags.deep_copy(),
     column_root_label="R-free-flags-neutron")
   file_name = "tst_iotbs_gui_tools.mtz"
@@ -62,13 +82,17 @@ def exercise_reflections () :
   assert (hkl_handler.get_rfree_labels(
     file_param_name="refinement.input.xray_data.r_free_flags.file_name") ==
     hkl_handler.get_rfree_labels(file_name=file_name) ==
-    ['R-free-flags', 'R-free-flags-neutron'])
+    ['R-free-flags-xray', 'R-free-flags-neutron'])
+  assert (hkl_handler.get_rfree_labels(file_name=file_name, neutron=False) ==
+          ['R-free-flags-xray'])
+  assert (hkl_handler.get_rfree_labels(file_name=file_name, neutron=True) ==
+          ['R-free-flags-neutron'])
   hkl_handler.check_symmetry(file_name=file_name)
   assert (hkl_handler.get_data_labels(
           file_param_name="refinement.input.xray_data.file_name") ==
           hkl_handler.get_data_labels(file_name=file_name) ==
           hkl_handler.get_amplitude_labels(file_name=file_name) ==
-          ["F-obs,SIGF-obs", "F-obs-neutron(+),SIGF-obs-neutron(+)," +
+          ["F-obs-xray,SIGF-obs-xray", "F-obs-neutron(+),SIGF-obs-neutron(+),"+
                              "F-obs-neutron(-),SIGF-obs-neutron(-)"])
   assert (hkl_handler.get_anomalous_data_labels(
           file_param_name="refinement.input.xray_data.file_name") ==
@@ -76,9 +100,10 @@ def exercise_reflections () :
            "F-obs-neutron(-),SIGF-obs-neutron(-)"])
   assert (hkl_handler.has_anomalous_data(
           file_param_name="refinement.input.xray_data.file_name"))
-  assert (hkl_handler.get_rfree_flag_value(array_name="F-obs,SIGF-obs",
+  assert (hkl_handler.get_rfree_flag_value(
+    array_name="F-obs-xray,SIGF-obs-xray",
     file_param_name="refinement.input.xray_data.file_name") is None)
-  assert (hkl_handler.get_rfree_flag_value(array_name='R-free-flags',
+  assert (hkl_handler.get_rfree_flag_value(array_name='R-free-flags-xray',
     file_param_name="refinement.input.xray_data.r_free_flags.file_name") == 1)
   (d_max, d_min) = hkl_handler.d_max_min()
   assert approx_equal(d_max, 25.98, eps=0.01)
