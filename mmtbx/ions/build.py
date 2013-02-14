@@ -128,6 +128,8 @@ def find_and_build_ions (
       # Modify the atom object
       # FIXME this is really insufficient - I need to also group them into
       # a chain
+      print >> out, "element = '%s', scatt = '%s'" % (final_choice.element,
+        final_choice.scattering_type())
       modified_atom = model.convert_atom(
         i_seq=i_seq,
         scattering_type=final_choice.scattering_type(),
@@ -141,6 +143,7 @@ def find_and_build_ions (
         segid="ION",
         refine_adp=refine_adp,
         refine_occupancies=False) #params.refine_ion_occupancies)
+      print >> out, modified_atom.format_atom_record()
       if (params.anomalous) :
         scatterer = model.xray_structure.scatterers()[i_seq]
         if (wavelength is not None) :
