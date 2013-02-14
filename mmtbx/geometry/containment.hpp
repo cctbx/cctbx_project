@@ -1,8 +1,8 @@
 #ifndef MMTBX_GEOMETRY_CONTAINMENT_H
 #define MMTBX_GEOMETRY_CONTAINMENT_H
 
-#include <scitbx/math/cartesian_product_fixed_size.hpp>
 #include <boost/iterator/filter_iterator.hpp>
+#include <boost/range/iterator_range.hpp>
 
 #include <cmath>
 #include <vector>
@@ -101,18 +101,6 @@ struct CubePrefilter
 };
 
 // Containment within specified object
-template< typename Range, typename Functor >
-struct FilterResult
-{
-public:
-  typedef Range input_range_type;
-  typedef typename input_range_type::iterator_type iterator_type;
-  typedef Functor functor_type;
-  typedef boost::filter_iterator< functor_type, iterator_type > filter_iterator;
-  typedef scitbx::math::cartesian_product::iterated_range< filter_iterator >
-    result_range_type;
-};
-
 template< typename Neighbour, typename Algorithm >
 class Checker : private Algorithm
 {
@@ -123,9 +111,6 @@ public:
   typedef std::vector< neighbour_type > storage_type;
 
   typedef bool result_type;
-  typedef const vector_type& argument_type;
-
-  typedef Checker< Neighbour, Algorithm > functor_type;
 
 private:
   storage_type neighbours_;
@@ -136,16 +121,10 @@ public:
 
   template< typename InputIterator >
   void add(InputIterator begin, InputIterator end);
+
   const storage_type& neighbours() const;
 
   inline bool operator ()(const vector_type& point) const;
-
-  template< typename Range >
-  inline typename FilterResult< Range, functor_type >::result_range_type
-    filter(
-      const typename
-      FilterResult< Range, functor_type >::input_range_type& points
-      ) const;
 };
 
 

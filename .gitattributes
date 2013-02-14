@@ -1281,6 +1281,8 @@ mmtbx/geometry/overlap.hxx -text
 mmtbx/geometry/primitive.hpp -text
 mmtbx/geometry/primitive.hxx -text
 mmtbx/geometry/primitive.py -text
+mmtbx/geometry/range_adaptors.hpp -text
+mmtbx/geometry/range_adaptors.hxx -text
 mmtbx/geometry/sphere_surface_sampling.hpp -text
 mmtbx/geometry/sphere_surface_sampling.hxx -text
 mmtbx/geometry/sphere_surface_sampling.py -text

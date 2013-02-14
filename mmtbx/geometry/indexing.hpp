@@ -1,9 +1,16 @@
 #ifndef MMTBX_GEOMETRY_INDEXING_H
 #define MMTBX_GEOMETRY_INDEXING_H
 
-#include <scitbx/math/cartesian_product_fixed_size.hpp>
-#include <boost/iterator/filter_iterator.hpp>
 #include <boost/numeric/conversion/converter.hpp>
+#include <boost/unordered_map.hpp>
+#include <boost/unordered_set.hpp>
+
+#include <boost/fusion/container/vector.hpp>
+#include <boost/fusion/include/vector.hpp>
+#include <boost/fusion/container/vector/vector_fwd.hpp>
+#include <boost/fusion/include/vector_fwd.hpp>
+#include <boost/fusion/sequence/intrinsic/at_c.hpp>
+#include <boost/fusion/include/at_c.hpp>
 
 #include <vector>
 
@@ -16,55 +23,13 @@ namespace geometry
 namespace indexing
 {
 
-template< typename Object, typename Algorithm >
-class OverlapEqualityFilter : private Algorithm
-{
-public:
-  typedef Object object_type;
-  typedef Algorithm algorithm_type;
-
-private:
-  object_type object_;
-
-public:
-  OverlapEqualityFilter(const Object& object);
-  ~OverlapEqualityFilter();
-
-  inline bool operator ()(const object_type& other) const;
-};
-
-template< typename Iterator, typename Filter >
-struct FilterHelper
-{
-public:
-  typedef boost::filter_iterator< Filter, Iterator > filter_iterator;
-  typedef scitbx::math::cartesian_product::iterated_range< filter_iterator >
-    filter_range_type;
-};
-
-template< typename Iterator, typename PreFilter, typename PostFilter >
-struct PrefilterHelper
-{
-public:
-  typedef boost::filter_iterator< PreFilter, Iterator > prefilter_iterator;
-  typedef boost::filter_iterator< PostFilter, prefilter_iterator >
-    filter_iterator;
-  typedef scitbx::math::cartesian_product::iterated_range< filter_iterator >
-    filter_range_type;
-};
-
-template< typename Object, typename Algorithm >
+template< typename Object >
 class Linear
 {
 public:
   typedef Object object_type;
-  typedef Algorithm algorithm_type;
   typedef std::vector< object_type > storage_type;
-  typedef OverlapEqualityFilter< object_type, algorithm_type > filter_type;
-  typedef FilterHelper< typename storage_type::const_iterator, filter_type >
-    filter_helper_type;
-  typedef typename filter_helper_type::filter_iterator const_iterator;
-  typedef typename filter_helper_type::filter_range_type range_type;
+  typedef storage_type range_type;
 
 private:
   storage_type objects_;
@@ -74,7 +39,7 @@ public:
   ~Linear();
 
   inline void add(const object_type& object);
-  inline range_type overlapping_with(const object_type& object) const;
+  inline const range_type& close_to(const object_type& object) const;
   inline size_t size() const;
 };
 
@@ -124,6 +89,34 @@ public:
   ~Voxelizer();
 
   voxel_type operator ()(const vector_type& vector) const;
+};
+
+template< typename Object, typename Voxelizer >
+class Hash
+{
+public:
+  typedef Object object_type;
+  typedef Voxelizer voxelizer_type;
+  typedef typename object_type::vector_type vector_type;
+  typedef typename voxelizer_type::voxel_type voxel_type;
+  typedef typename voxelizer_type::discrete_type discrete_type;
+  typedef std::vector< object_type > bucket_type;
+  typedef boost::unordered_map< voxel_type, bucket_type > storage_type;
+  typedef boost::unordered_set< object_type > range_type;
+
+private:
+  voxelizer_type voxelizer_;
+  storage_type objects_;
+
+public:
+  Hash(const voxelizer_type& voxelizer);
+  ~Hash();
+
+  inline void add(const object_type& object);
+  inline range_type close_to(const object_type& object) const;
+  inline size_t size() const;
+  inline size_t cubes() const;
+  inline size_t count() const;
 };
 
 #include "indexing.hxx"

@@ -1,23 +1,4 @@
 template< typename Vector >
-Transform< Vector >::Transform(
-  const vector_type& centre,
-  const value_type& radius
-  )
-  : centre_( centre ), radius_( radius )
-{}
-
-template< typename Vector >
-Transform< Vector >::~Transform()
-{}
-
-template< typename Vector >
-typename Transform< Vector >::vector_type
-Transform< Vector>::operator ()(const vector_type& point) const
-{
-  return radius_ * point + centre_;
-}
-
-template< typename Vector >
 GoldenSpiral< Vector >::GoldenSpiral(size_t count)
   : count_( count ),
     unit_area_(
@@ -47,20 +28,6 @@ GoldenSpiral< Vector >::GoldenSpiral(size_t count)
 template< typename Vector >
 GoldenSpiral< Vector >::~GoldenSpiral()
 {}
-
-template< typename Vector >
-typename GoldenSpiral< Vector >::range_type
-GoldenSpiral< Vector >::transformed(
-  const vector_type& centre,
-  const value_type& radius
-  ) const
-{
-  transformer_type t = transformer_type( centre, radius );
-  return range_type(
-    const_iterator( points_.begin(), t ),
-    const_iterator( points_.end(), t )
-    );
-}
 
 template< typename Vector >
 const typename GoldenSpiral< Vector >::value_type&
