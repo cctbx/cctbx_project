@@ -87,14 +87,14 @@ def exercise(tolerance=0.001):
         assert approx_equal(dist(a1.xyz, a2.xyz), 0.93, tolerance)
         cntr += 1
       if(n1=="OH" and n2 in ["HH","DH"]):
-        assert approx_equal(dist(a1.xyz, a2.xyz), 0.85, tolerance)
+        assert approx_equal(dist(a1.xyz, a2.xyz), 0.84, tolerance)
         cntr += 1
       if([n1,n2]==["CB","HB2"] or [n1,n2]==["CB","HB3"] or
          [n1,n2]==["CA","HA"]):
         assert approx_equal(dist(a1.xyz, a2.xyz), 0.97, tolerance)
         cntr += 1
       if(n1=="O" and n2 in ["D1","D2"] and a1.resname=="HOH"):
-        assert approx_equal(dist(a1.xyz, a2.xyz), 0.85, tolerance)
+        assert approx_equal(dist(a1.xyz, a2.xyz), 0.84, tolerance)
         cntr += 1
   assert cntr == 11, cntr
   # check X-H distances: neutron
