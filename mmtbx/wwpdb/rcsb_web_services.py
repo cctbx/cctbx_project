@@ -104,7 +104,8 @@ def chemical_id_search (resname, **kwds) :
     %s""" % (resname, resname, polymer_limit)
   return post_query(query_str, **kwds)
 
-def get_custom_report_table (pdb_ids, columns, log=sys.stdout) :
+def get_custom_report_table (pdb_ids, columns, log=sys.stdout,
+    prefix="dimStructure", check_for_missing=True) :
   """Given a list of PDB IDs and a list of attribute identifiers, returns a
   Python list of lists for the IDs and attributes."""
   assert (len(columns) > 0)
@@ -124,26 +125,40 @@ def get_custom_report_table (pdb_ids, columns, log=sys.stdout) :
   #     <dimStructure.highResolutionLimit>2.6</dimStructure.highResolutionLimit>
   #   </record>
   # </dataset>
+  #
+  # XXX note that 'dimStructure' is substituted for by 'dimEntity' in the
+  # ligand report (and probably others), and that this table will not
+  # necessarily have one row per PDB ID.
   xmlrec = parseString(result)
   table = []
   report_ids = set([])
   records = xmlrec.getElementsByTagName("record")
   for record in records :
-    pdb_id_nodes = record.getElementsByTagName("dimStructure.structureId")
-    assert (len(pdb_id_nodes) == 1)
+    pdb_id_nodes = record.getElementsByTagName("%s.structureId" % prefix)
+    assert (len(pdb_id_nodes) == 1), record.toxml()
     pdb_id = pdb_id_nodes[0].childNodes[0].data
     report_ids.add(pdb_id)
     row = [ pdb_id ] # pdb_id
     for col_name in columns :
-      row_col = record.getElementsByTagName("dimStructure.%s" % col_name)
+      row_col = record.getElementsByTagName("%s.%s" % (prefix, col_name))
       assert (len(row_col) == 1)
       row.append(row_col[0].childNodes[0].data)
     table.append(row)
-  missing_ids = set(pdb_ids) - report_ids
-  if (len(missing_ids) > 0) :
-    print >> log, "WARNING: missing report info for %d IDs:" % len(missing_ids)
-    print >> log, "  %s" % " ".join(sorted(list(missing_ids)))
+  if (check_for_missing) :
+    missing_ids = set(pdb_ids) - report_ids
+    if (len(missing_ids) > 0) :
+      print >> log, "WARNING: missing report info for %d IDs:"%len(missing_ids)
+      print >> log, "  %s" % " ".join(sorted(list(missing_ids)))
   return table
 
 def get_high_resolution_for_structures (pdb_ids) :
   return get_custom_report_table(pdb_ids, columns=["highResolutionLimit"])
+
+def get_ligand_info_for_structures (pdb_ids) :
+  """Return a list of ligands in the specified structure(s), including the
+  SMILES strings."""
+  return get_custom_report_table(pdb_ids,
+    columns=["chainId","ligandId","ligandMolecularWeight","ligandFormula",
+      "ligandName","ligandSmiles"],
+    prefix="dimEntity",
+    check_for_missing=False)

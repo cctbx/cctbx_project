@@ -12,6 +12,9 @@ def exercise () :
   assert (len(atp_binding) > 650)
   report = rcsb_web_services.get_high_resolution_for_structures(atp_binding)
   assert (len(report) == len(atp_binding)) and (len(report[0]) == 2)
+  ligand_info = rcsb_web_services.get_ligand_info_for_structures(['1mru'])
+  assert (len(ligand_info) == 4)
+  assert (ligand_info[1][-1] == u'[Mg+2]')
   print "OK"
 
 if (__name__ == "__main__") :
