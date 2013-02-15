@@ -3365,7 +3365,7 @@ class array(set):
         sel_f2 = abs(f2_).select(sel).data()
         n = flex.sum(sel_f1*sel_f2)
         d = flex.sum(sel_f2*sel_f2)
-        if(d == 0): return None
+        if(d == 0 or n == 0): return None
         scale.append(n/d)
         ss_bin.append(flex.mean(ss.select(sel)))
       if(scale.size()>1):
