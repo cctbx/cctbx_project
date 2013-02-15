@@ -21,7 +21,7 @@ operator ==(const counter< Iterator >& left, const counter< Iterator >& right)
 
 template< typename CounterVector, unsigned Depth >
 bool
-increment_fast_back< CounterVector, Depth >::process(CounterVector& cv)
+increment_fast_back< CounterVector, Depth >::process(CounterVector& cv) const
 {
   typedef typename boost::remove_reference<
     typename boost::fusion::result_of::at_c< CounterVector, Depth >::type
@@ -32,7 +32,7 @@ increment_fast_back< CounterVector, Depth >::process(CounterVector& cv)
   if ( mycounter.current == mycounter.range.end() )
   {
     mycounter.current = mycounter.range.begin();
-    return increment_fast_back< CounterVector, Depth - 1 >::process( cv );
+    return increment_fast_back< CounterVector, Depth - 1 >().process( cv );
   }
   else
   {
@@ -42,7 +42,7 @@ increment_fast_back< CounterVector, Depth >::process(CounterVector& cv)
 
 template< typename CounterVector >
 bool
-increment_fast_back< CounterVector, 0 >::process(CounterVector& cv)
+increment_fast_back< CounterVector, 0 >::process(CounterVector& cv) const
 {
   typedef typename boost::remove_reference<
     typename boost::fusion::result_of::at_c< CounterVector, 0 >::type
@@ -55,7 +55,7 @@ increment_fast_back< CounterVector, 0 >::process(CounterVector& cv)
 
 template< typename CounterVector, unsigned Depth >
 bool
-increment_fast_front< CounterVector, Depth >::process(CounterVector& cv)
+increment_fast_front< CounterVector, Depth >::process(CounterVector& cv) const
 {
   typedef typename boost::fusion::result_of::size< CounterVector >::type
     mpl_integral_constant;
@@ -73,7 +73,7 @@ increment_fast_front< CounterVector, Depth >::process(CounterVector& cv)
   if ( mycounter.current == mycounter.range.end() )
   {
     mycounter.current = mycounter.range.begin();
-    return increment_fast_front< CounterVector, Depth - 1 >::process( cv );
+    return increment_fast_front< CounterVector, Depth - 1 >().process( cv );
   }
   else
   {
@@ -83,7 +83,7 @@ increment_fast_front< CounterVector, Depth >::process(CounterVector& cv)
 
 template< typename CounterVector >
 bool
-increment_fast_front< CounterVector, 0 >::process(CounterVector& cv)
+increment_fast_front< CounterVector, 0 >::process(CounterVector& cv) const
 {
   typedef typename boost::fusion::result_of::size< CounterVector >::type
     mpl_integral_constant;

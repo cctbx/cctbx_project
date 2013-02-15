@@ -58,32 +58,29 @@ bool operator ==(
 template< typename CounterVector, unsigned Depth >
 struct increment_fast_back
 {
-  static bool process(CounterVector& cv);
+  bool process(CounterVector& cv) const;
 };
 
 template< typename CounterVector >
 struct increment_fast_back< CounterVector, 0 >
 {
-  static bool process(CounterVector& cv);
+  bool process(CounterVector& cv) const;
 };
 
 template< typename CounterVector, unsigned Depth >
 struct increment_fast_front
 {
-  static bool process(CounterVector& cv);
+  bool process(CounterVector& cv) const;
 };
 
 template< typename CounterVector >
 struct increment_fast_front< CounterVector, 0 >
 {
-  static bool process(CounterVector& cv);
+  bool process(CounterVector& cv) const;
 };
 
-template<
-  typename IteratorTypeList,
-  template<class, unsigned> class IterationOrder = increment_fast_back
-  >
-class fixed_size_iterator
+template< typename IteratorTypeList >
+class fixed_size_iterator_helper
 {
 private:
   struct get_value_type
@@ -113,6 +110,42 @@ private:
     };
   };
 
+public:
+  typedef typename boost::mpl::transform<
+    IteratorTypeList,
+    get_value_type
+    >::type mpl_value_types_vector;
+  typedef typename boost::mpl::transform<
+    IteratorTypeList,
+    get_counter_type
+    >::type mpl_counter_types_vector;
+  typedef typename boost::mpl::transform<
+    mpl_counter_types_vector,
+    get_range_type
+    >::type mpl_range_types_vector;
+
+public:
+  typedef typename boost::fusion::result_of::as_vector<
+    mpl_value_types_vector
+    >::type value_type;
+  typedef typename boost::fusion::result_of::as_vector<
+    mpl_counter_types_vector
+    >::type counter_vector_type;
+  typedef typename boost::fusion::result_of::as_vector<
+    mpl_range_types_vector
+    >::type range_vector_type;
+};
+
+template<
+  typename IteratorTypeList,
+  template<class, unsigned> class IterationOrder = increment_fast_back
+  >
+class fixed_size_iterator : IterationOrder<
+  typename fixed_size_iterator_helper< IteratorTypeList >::counter_vector_type,
+  boost::mpl::size< IteratorTypeList >::value - 1
+  >
+{
+private:
   struct is_counter_empty
   {
     template<typename Counter>
@@ -174,28 +207,15 @@ private:
 
 public:
   typedef fixed_size_iterator< IteratorTypeList, IterationOrder > iterator_type;
-  typedef typename boost::mpl::transform<
-    IteratorTypeList,
-    get_value_type
-    >::type mpl_value_vector_type;
-  typedef typename boost::mpl::transform<
-    IteratorTypeList,
-    get_counter_type
-    >::type mpl_counter_vector_type;
-  typedef typename boost::mpl::transform<
-    mpl_counter_vector_type,
-    get_range_type
-    >::type mpl_range_vector_type;
+  typedef fixed_size_iterator_helper< IteratorTypeList > types_helper;
+  typedef typename types_helper::mpl_value_types_vector value_types_vector;
+  typedef typename types_helper::mpl_counter_types_vector counter_types_vector;
+  typedef typename types_helper::mpl_range_types_vector range_types_vector;
 
-  typedef typename boost::fusion::result_of::as_vector<
-    mpl_value_vector_type
-    >::type value_type;
-  typedef typename boost::fusion::result_of::as_vector<
-    mpl_counter_vector_type
-    >::type counter_vector_type;
-  typedef typename boost::fusion::result_of::as_vector<
-    mpl_range_vector_type
-    >::type range_vector_type;
+  typedef typename types_helper::value_type value_type;
+  typedef typename types_helper::counter_vector_type counter_vector_type;
+  typedef typename types_helper::range_vector_type range_vector_type;
+
   typedef IterationOrder<
     counter_vector_type,
     boost::mpl::size< IteratorTypeList >::value - 1
@@ -240,8 +260,8 @@ public:
   typedef typename boost::mpl::transform<
     ContainerTypeList,
     get_iterator_type
-    >::type mpl_iterator_vector_type;
-  typedef fixed_size_iterator< mpl_iterator_vector_type, IterationOrder >
+    >::type mpl_iterator_types_vector;
+  typedef fixed_size_iterator< mpl_iterator_types_vector, IterationOrder >
     cartesian_iterator_type;
   typedef typename cartesian_iterator_type::range_vector_type
     initializer_type;
