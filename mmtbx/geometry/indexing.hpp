@@ -1,6 +1,10 @@
 #ifndef MMTBX_GEOMETRY_INDEXING_H
 #define MMTBX_GEOMETRY_INDEXING_H
 
+#include <scitbx/math/cartesian_product_fixed_size.hpp>
+
+#include <boost/iterator/counting_iterator.hpp>
+
 #include <boost/numeric/conversion/converter.hpp>
 #include <boost/unordered_map.hpp>
 #include <boost/unordered_set.hpp>
@@ -105,6 +109,12 @@ public:
   typedef boost::unordered_set< object_type > range_type;
 
 private:
+  typedef boost::counting_iterator< discrete_type > itercount;
+  typedef boost::mpl::vector< itercount, itercount, itercount > itercount_list;
+  typedef scitbx::math::cartesian_product::fixed_size_iterator< itercount_list >
+    cartesian_type;
+
+private:
   voxelizer_type voxelizer_;
   storage_type objects_;
 
@@ -117,6 +127,19 @@ public:
   inline size_t size() const;
   inline size_t cubes() const;
   inline size_t count() const;
+
+private:
+  cartesian_type make_cartesian_iterator(
+    const voxel_type& low,
+    const voxel_type& high
+    ) const;
+};
+
+template< typename OutputVector >
+struct vector_reformat
+{
+  template< typename InputVector >
+  OutputVector operator ()(const InputVector& input);
 };
 
 #include "indexing.hxx"
