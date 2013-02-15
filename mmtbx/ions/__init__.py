@@ -956,9 +956,12 @@ class Manager (object) :
 
       n_elec = sasaki.table(symbol.upper()).atomic_number() - elem.charge
       mass_ratio = atom_props.estimated_weight / max(n_elec, 1)
-      if (mass_ratio < 0.5) :
-          #(n_elec < atom_props.estimated_weight - 10)) :
+      if (mass_ratio < 0.5):# or
+        #abs(n_elec - atom_props.estimated_weight) > 10) :
+        print "bad bad, blah blah", symbol
         continue
+      else:
+        print "good good, grah grah", symbol
 
       filtered_candidates.append(elem)
 
@@ -1635,6 +1638,16 @@ class AtomProperties (object) :
         if other_charge is None:
           other_charge = get_charge(other_element)
 
+        # XXX: So, we have a a fair number of rules restricting nitrogens and
+        # nitrogen-containing residues from coordinating a number of cations.
+        #
+        # However, this rule is dependent on the protonation of the nitrogen,
+        # if the pKa is low at the site, it is possible for a metal to
+        # coordinate the residue fine.
+        #
+        # We want a complex rule that takes into account coordinating geometry,
+        # density signal, and the presence of other coordinating atoms that
+        # might drop the site's pKa enough to lose the hydrogen.
         if ((ion_params.allowed_coordinating_atoms is not None) and
             (other_element not in ion_params.allowed_coordinating_atoms)) :
           # Check if atom is of an allowed element, if restricted
