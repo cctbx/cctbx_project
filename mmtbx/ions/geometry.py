@@ -115,6 +115,12 @@ def find_coordination_geometry(nearby_atoms, cutoff = 2.5):
   nearby_atoms, along with the average deviation from those geometries.
   """
 
+  # Filter out overlapping atoms, we just want an idea of the coordinating
+  # geometry, even if it is two different atoms are occupying the same spot.
+  nearby_atoms = [atom for index, atom in enumerate(nearby_atoms)
+                  if not [other for other in nearby_atoms[index + 1:]
+                          if atom.distance_from(other) < 0.5]]
+
   geometries = []
   vectors = []
   for contact in nearby_atoms :
