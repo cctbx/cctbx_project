@@ -45,7 +45,7 @@ def exercise () :
   f.write(hierarchy.as_pdb_string(pdb_in.file_object.crystal_symmetry()))
   f.close()
   args = ["zn_frag_hoh.pdb", "zn_frag.mtz", "wavelength=1.54", "nproc=1",
-          "elements=CA,ZN"]
+          "elements=CA,ZN", "use_phaser=False"]
   result = easy_run.fully_buffered("mmtbx.water_screen %s" % " ".join(args)
     ).raise_if_errors()
   if (not "  Probable cation: ZN+2" in result.stdout_lines) :
