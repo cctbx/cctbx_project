@@ -1220,7 +1220,7 @@ class Manager (object) :
     disallowed chemical environments.
 
     Prints out a table of bad ions and their information and returns a list of
-    their site i_seqs.
+    their sites' i_seqs.
     """
 
     sel_cache = self.pdb_hierarchy.atom_selection_cache()
@@ -1254,9 +1254,10 @@ class Manager (object) :
     #   for i_seq in bad_seqs:
     #     bad_ions.append(i_seq)
 
-    # XXX: Show a table!
-    line = "%-10s " * 6
-    print >> out, line % ("atom", "occ", "b_iso", "2FoFc", "FoFc", "anom")
+    # Show a table!
+    headers = ("atom", "occ", "b-iso", "2FoFc", "FoFc", "anom")
+    line = "%-10s " * len(headers)
+    print >> out, line % headers
     for props, okay_flag in ion_status :
       mark = ""
       if (not okay_flag) :
@@ -1796,14 +1797,18 @@ class AtomProperties (object) :
         fpp_flag = " <<<"
       print >> out, "  f'':           %6.2f%s" % (self.fpp, fpp_flag)
     if self.nearby_atoms is not None:
-      print >> out, "  Nearby atoms:"
-      angstrom = u"\u00C5".encode("utf-8", "strict").strip()
+      angstrom = u"\N{ANGSTROM SIGN}".encode("utf-8", "strict")
+      degree = u"\N{DEGREE SIGN}".encode("utf-8", "strict")
+
+      print >> out, "  Nearby atoms: (%d within 3.0 %s)" % \
+        (len([i for i in self.nearby_atoms if i.distance() < 3]), angstrom)
+
       for contact in self.nearby_atoms :
-        print >> out, "    %s (%5.3f %s)" % (contact.id_str(),
-          contact.distance(), angstrom)
+        print >> out, "    %s (%5.3f %s)" % \
+          (contact.id_str(), contact.distance(), angstrom)
+
       if self.geometries:
         print >> out, "  Coordinating geometry:"
-        degree = u"\N{DEGREE SIGN}".encode("utf-8", "strict")
         for geometry, deviation in self.geometries:
           print >> out, "    %-15s (average deviation: %.3f%s)" % \
             (geometry, deviation, degree)
