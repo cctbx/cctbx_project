@@ -1,52 +1,11 @@
 template< class Iterator >
-iterated_range< Iterator >::iterated_range()
-  : end( begin )
-{}
-
-template< class Iterator >
-iterated_range< Iterator >::iterated_range(
-  const Iterator& begin_,
-  const Iterator& end_
-  )
-  : begin( begin_ ), end( end_ )
-{}
-
-template< class Iterator >
-iterated_range< Iterator >::~iterated_range()
-{}
-
-template< class Iterator >
-size_t
-iterated_range< Iterator >::length() const
-{
-  size_t length = 0;
-
-  for ( Iterator it = begin; it != end; ++it )
-  {
-    ++length;
-  }
-
-  return length;
-}
-
-template< class Iterator >
-bool
-operator ==(
-  const iterated_range< Iterator >& left,
-  const iterated_range< Iterator >& right
-  )
-{
-  return ( left.begin == right.begin ) && ( left.end == right.end );
-}
-
-template< class Iterator >
 counter< Iterator >::counter()
-  : current( range.begin )
+  : current( range.begin() )
 {}
 
 template< class Iterator >
 counter< Iterator >::counter(const range_type& range_)
-  : range( range_ ), current( range.begin )
+  : range( range_ ), current( range.begin() )
 {}
 
 template< class Iterator >
@@ -70,9 +29,9 @@ increment_fast_back< CounterVector, Depth >::process(CounterVector& cv)
   counter_type& mycounter = boost::fusion::at_c< Depth >( cv );
   ++( mycounter.current );
 
-  if ( mycounter.current == mycounter.range.end )
+  if ( mycounter.current == mycounter.range.end() )
   {
-    mycounter.current = mycounter.range.begin;
+    mycounter.current = mycounter.range.begin();
     return increment_fast_back< CounterVector, Depth - 1 >::process( cv );
   }
   else
@@ -91,7 +50,7 @@ increment_fast_back< CounterVector, 0 >::process(CounterVector& cv)
   counter_type& mycounter = boost::fusion::at_c< 0 >( cv );
   ++( mycounter.current );
 
-  return mycounter.current == mycounter.range.end;
+  return mycounter.current == mycounter.range.end();
 }
 
 template< typename CounterVector, unsigned Depth >
@@ -111,9 +70,9 @@ increment_fast_front< CounterVector, Depth >::process(CounterVector& cv)
     >( cv );
   ++( mycounter.current );
 
-  if ( mycounter.current == mycounter.range.end )
+  if ( mycounter.current == mycounter.range.end() )
   {
-    mycounter.current = mycounter.range.begin;
+    mycounter.current = mycounter.range.begin();
     return increment_fast_front< CounterVector, Depth - 1 >::process( cv );
   }
   else
@@ -139,7 +98,7 @@ increment_fast_front< CounterVector, 0 >::process(CounterVector& cv)
     >( cv );
   ++( mycounter.current );
 
-  return mycounter.current == mycounter.range.end;
+  return mycounter.current == mycounter.range.end();
 }
 
 template<

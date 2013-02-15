@@ -22,6 +22,7 @@
 #include <boost/mpl/size.hpp>
 
 #include <boost/type_traits/remove_reference.hpp>
+#include <boost/range/iterator_range.hpp>
 
 namespace scitbx
 {
@@ -33,31 +34,11 @@ namespace cartesian_product
 {
 
 template< class Iterator >
-struct iterated_range
-{
-  typedef Iterator iterator_type;
-  iterator_type begin;
-  iterator_type end;
-
-  iterated_range();
-  iterated_range(const iterator_type& begin, const iterator_type& end);
-  ~iterated_range();
-
-  size_t length() const;
-};
-
-template< class Iterator >
-bool operator ==(
-  const iterated_range< Iterator >& left,
-  const iterated_range< Iterator >& right
-  );
-
-template< class Iterator >
 struct counter
 {
   typedef Iterator iterator_type;
   typedef typename iterator_type::value_type value_type;
-  typedef iterated_range< iterator_type > range_type;
+  typedef boost::iterator_range< iterator_type > range_type;
   typedef counter< iterator_type > counter_type;
 
   range_type range;
@@ -137,7 +118,7 @@ private:
     template<typename Counter>
     bool operator()(const Counter& counter) const
     {
-      return counter.range.begin == counter.range.end;
+      return counter.range.begin() == counter.range.end();
     }
   };
 
@@ -148,14 +129,14 @@ private:
     template< typename Transformation, class Range >
     struct result< Transformation( Range ) >
     {
-      typedef typename Range::iterator_type iterator_type;
+      typedef typename Range::iterator iterator_type;
       typedef typename counter< iterator_type >::counter_type type;
     };
 
     template< typename Transformation, class Range >
     struct result< Transformation( Range& ) >
     {
-      typedef typename Range::iterator_type iterator_type;
+      typedef typename Range::iterator iterator_type;
       typedef typename counter< iterator_type >::counter_type type;
     };
 
