@@ -958,10 +958,7 @@ class Manager (object) :
       mass_ratio = atom_props.estimated_weight / max(n_elec, 1)
       if (mass_ratio < 0.5):# or
         #abs(n_elec - atom_props.estimated_weight) > 10) :
-        print "bad bad, blah blah", symbol
         continue
-      else:
-        print "good good, grah grah", symbol
 
       filtered_candidates.append(elem)
 
