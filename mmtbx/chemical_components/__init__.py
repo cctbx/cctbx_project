@@ -70,11 +70,14 @@ def get_smiles(code):
   try: return item.descriptor
   except Exception: return ""
 
-def get_type(code):
+def get_field_simple(code, loop, field):
   cif = get_cif_dictionary(code)
   if not cif: return cif
-  desc = cif.get("_chem_comp", {})[0]
-  return getattr(desc, "type", "")
+  desc = cif.get(loop, {})[0]
+  return getattr(desc, field, "")
+  
+def get_type(code):
+  return get_field_simple(code, "_chem_comp", "type")
 
 def get_name(code):
   cif = get_cif_dictionary(code)
@@ -179,6 +182,10 @@ def get_header(code):
 if __name__=="__main__":
   print '\nSMILES'
   print get_smiles(sys.argv[1])
+  print '\nType'
+  print get_type(sys.argv[1])
+  print '\nWeight'
+  print get_field_simple(sys.argv[1], "_chem_comp", "formula_weight")
   print '\nName'
   print get_name(sys.argv[1])
   print '\nAtom names'
