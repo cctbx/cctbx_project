@@ -1145,8 +1145,9 @@ class ml_murray_rust_with_ncs(object):
 
     assert miller_array.is_xray_intensity_array()
     assert miller_array.sigmas() is not None
-
-    tmp_miller_array = miller_array.deep_copy().set_observation_type( miller_array )
+    non_zero_sigma_sel = miller_array.sigmas() > 0
+    tmp_miller_array = miller_array.deep_copy().select(
+      non_zero_sigma_sel).set_observation_type(miller_array)
     # make a binner
     self.binner = tmp_miller_array.setup_binner( n_bins=n_bins )
     self.out = out
@@ -1294,13 +1295,16 @@ class ml_murray_rust(object):
 
     assert miller_array.is_xray_intensity_array()
     assert miller_array.sigmas() is not None
-
-    ml_murray_rust_object = scaling.ml_murray_rust( miller_array.data(),
-                                                    miller_array.sigmas(),
-                                                    miller_array.indices(),
-                                                    miller_array.space_group(),
-                                                    miller_array.anomalous_flag(),
-                                                    twin_law,n_points)
+    non_zero_sigma_sel = miller_array.sigmas() > 0
+    tmp_array = miller_array.select(non_zero_sigma_sel)
+    ml_murray_rust_object = scaling.ml_murray_rust(
+      z=tmp_array.data(),
+      sig_z=tmp_array.sigmas(),
+      indices=tmp_array.indices(),
+      space_group=tmp_array.space_group(),
+      anomalous_flag=tmp_array.anomalous_flag(),
+      twin_law=twin_law,
+      n_hermite=n_points)
     self.twin_fraction = []
     self.nll = []
     print >> out
@@ -2035,7 +2039,10 @@ class symmetry_issues(object):
          self.sigma_warning = """  ----> WARNING: NO SIGMAS FOUND  <----
           Sigmas now modeled as 0.05*|F|*exp( -Berror/d^2 )
           with Berror=%6.3f"""%(Berror)
-
+      else :
+        non_zero_sigmas_sel = sigmas != 0
+        tmp = tmp.select(non_zero_sigmas_sel)
+        sigmas = tmp.sigmas()
 
       merger = cctbx.xray.merger( tmp.indices(),
                                   tmp.data(),
@@ -2803,6 +2810,7 @@ def twin_analyses_brief(miller_array,
   twinned=None
 
   if not miller_array.space_group().is_centric():
+    # FIXME this is a terrible workaround - we will miss all sorts of bugs
     try:
       twin_results = twin_analyses(miller_array,
                                    d_star_sq_low_limit=1.0/100.0,
