@@ -202,13 +202,13 @@ def run (args, log = sys.stdout, use_output_directory=True,
   analyze_input_params(params=params)
   have_phil_file_input = len(processed_args.phil_file_names) > 0
   if (len(processed_args.pdb_file_names) > 1) :
-    raise Sorry("Only one PDB file is allowed as input.")
+    raise Sorry("Only one model file is allowed as input.")
   if ((params.maps.input.pdb_file_name is None) and
       (len(processed_args.pdb_file_names) == 1)) :
     params.maps.input.pdb_file_name = processed_args.pdb_file_names[0]
   if(not os.path.isfile(str(params.maps.input.pdb_file_name))):
     raise Sorry(
-      "PDB file is not given: maps.input.pdb_file_name=%s is not a file"%\
+      "model file is not given: maps.input.pdb_file_name=%s is not a file"%\
       str(params.maps.input.pdb_file_name))
   if ((params.maps.input.reflection_data.file_name is None) and
       (params.maps.input.reflection_data.r_free_flags.file_name is None) and
@@ -278,7 +278,7 @@ def run (args, log = sys.stdout, use_output_directory=True,
     r_free_flags=f_obs.array(data=flex.bool(f_obs.data().size(), False))
     test_flag_value=None
   print >> log, "-"*79
-  print >> log, "\nInput PDB file:", params.maps.input.pdb_file_name
+  print >> log, "\nInput model file:", params.maps.input.pdb_file_name
   pdb_hierarchy = pdb_inp.construct_hierarchy()
   pdb_atoms = pdb_hierarchy.atoms()
   pdb_atoms.reset_i_seq()
@@ -374,7 +374,7 @@ class launcher (runtime_utils.target_with_save_result) :
 
 def validate_params (params, callback=None) :
   if params.maps.input.pdb_file_name is None :
-    raise Sorry("No PDB file defined.")
+    raise Sorry("No model file defined.")
   elif params.maps.input.reflection_data.file_name is None :
     raise Sorry("No reflection file defined.")
   elif params.maps.input.reflection_data.labels is None :

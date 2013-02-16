@@ -577,7 +577,7 @@ Usage:
   params = working_phil.extract()
   pdb_file_name = params.pdb_file
   if (pdb_file_name is None) or (not iotbx.pdb.is_pdb_file(pdb_file_name)) :
-    print "A PDB file is required."
+    print "A model file is required."
     return
   if (params.nproc is None) :
     params.nproc = 1

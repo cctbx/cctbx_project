@@ -23,7 +23,7 @@ Inputs:
   - label(s) selecting which reflection data arrays should be used (in case
     there are multiple choices in input file, there is no need to provide labels
     otherwise);
-  - PDB file with input model.
+  - Model file (PDB or mmCIF) with input model.
 
 Usage examples:
   1. phenix.reciprocal_space_arrays model.pdb data.hkl f_obs_label="IOBS"
@@ -73,7 +73,7 @@ hkl_file = None
     child:hl_coeffs:hendrickson_lattman_coefficients_label
 pdb_file = None
   .type = path
-  .short_caption = PDB file
+  .short_caption = Model file
   .style = bold file_type:pdb input_file
 f_obs_label = None
   .type = str
@@ -153,7 +153,7 @@ def run(args, log = sys.stdout):
       raise Sorry("No crystal symmetry found.")
   if(len(processed_args.pdb_file_names) == 0):
     if (params.pdb_file is None) :
-      raise Sorry("No PDB file found.")
+      raise Sorry("No model file found.")
     else :
       pdb_file_names = [ params.pdb_file ]
   else :
@@ -208,7 +208,7 @@ def run(args, log = sys.stdout):
     crystal_symmetry=crystal_symmetry,
     weak_symmetry=True)
   if (not xray_structure.unit_cell().is_similar_to(f_obs.unit_cell())) :
-    raise Sorry("The unit cells in the PDB and reflections files are not "+
+    raise Sorry("The unit cells in the model and reflections files are not "+
       "isomorphous.")
   print "Input model:"
   print "  number of atoms:", xray_structure.scatterers().size()
@@ -248,7 +248,7 @@ def validate_params (params) :
   if (params.hkl_file is None) :
     raise Sorry("No reflections file provided.")
   elif (params.pdb_file is None) :
-    raise Sorry("No PDB file provided.")
+    raise Sorry("No model file provided.")
   elif (params.output_file_name is None) :
     raise Sorry("No output file name provided.")
   elif (params.f_obs_label is None) :

@@ -447,7 +447,7 @@ input
   .caption = This program will convert CIF-formatted structure factors (used \
     by the PDB) to an MTZ file.  Other CIF types (restraints, etc.) will be \
     ignored.  Because the data in the PDB often contains mistakes or lacks \
-    symmetry, an optional PDB file is strongly recommended.  If you want the \
+    symmetry, an optional model file is strongly recommended.  If you want the \
     program to generate an MTZ file for a specific PDB ID, you may specify \
     that instead of input files, and the CIF and PDB will be fetched from \
     www.rcsb.org.
@@ -464,7 +464,7 @@ input
     .style = bold noauto OnChange:extract_symm_for_cif
   pdb_file = None
     .type = path
-    .short_caption = PDB file
+    .short_caption = Model file
     .style = bold noauto file_type:pdb OnChange:extract_symm_for_cif
   wavelength_id = None
     .type = str
