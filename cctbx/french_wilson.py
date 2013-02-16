@@ -253,8 +253,12 @@ def calculate_mean_intensities(miller_array, log=None):
             mean_i = interpolate(pt_1=m_1,
                                  pt_2=m_2,
                                  delta=delta)
-            assert (d_1 > d and d > d_2)
-            assert ((m_1 > mean_i and mean_i > m_2) or (m_2 > mean_i and mean_i > m_1))
+            assert (d_1 > d > d_2)
+            if (not ((m_1 > mean_i > m_2) or (m_2 > mean_i > m_1)) and
+                (not (m_1 == mean_i == m_2 == 0.0))) :
+              raise RuntimeError(
+                "Internal error: i_bin=%d d=%f m_1=%f mean_i=%f m_2=%f" %
+                  (i_bin, d, m_1, mean_i, m_2))
           d_mean_intensities[index] = mean_i
         # d is between bin_center[i] and bin_center[i+1]
         elif d < bin_center:
@@ -286,8 +290,12 @@ def calculate_mean_intensities(miller_array, log=None):
             mean_i = interpolate(pt_1=m_1,
                                  pt_2=m_2,
                                  delta=delta)
-            assert (d_1 > d and d > d_2)
-            assert ((m_1 > mean_i and mean_i > m_2) or (m_2 > mean_i and mean_i > m_1))
+            assert (d_1 > d > d_2)
+            if ((not ((m_1 > mean_i > m_2) or (m_2 > mean_i > m_1))) and
+                (not (m_1 == mean_i == m_2 == 0.0))) :
+              raise RuntimeError(
+                "Internal error: i_bin=%d d=%f m_1=%f mean_i=%f m_2=%f" %
+                  (i_bin, d, m_1, mean_i, m_2))
             #print d_1, d, d_2, m_1, mean_i, m_2
           d_mean_intensities[index] = mean_i
         # d = the current bin center
