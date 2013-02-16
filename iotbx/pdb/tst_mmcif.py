@@ -39,6 +39,7 @@ def exercise_extract_header_misc () :
   if (cif_file is None) :
     return
   cif_in = mmcif.cif_input(file_name=cif_file)
+  assert (cif_in.file_type() == "mmcif")
   wavelength = cif_in.extract_wavelength()
   assert (approx_equal(wavelength, 1.8927))
   exptl_method = cif_in.get_experiment_type()
