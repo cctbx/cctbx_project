@@ -279,8 +279,14 @@ class probe_clashscore_manager(object):
   def run_reduce(self, pdb_string):
     clean_out = easy_run.fully_buffered(self.trim,
                   stdin_lines=pdb_string)
+    if (clean_out.return_code != 0) :
+      raise RuntimeError("Reduce crashed with command '%s' - dumping stderr:\n%s"
+        % (self.trim, "\n".join(clean_out.stderr_lines)))
     build_out = easy_run.fully_buffered(self.build,
                   stdin_lines=clean_out.stdout_lines)
+    if (build_out.return_code != 0) :
+      raise RuntimeError("Reduce crashed with command '%s' - dumping stderr:\n%s"
+        % (self.build, "\n".join(build_out.stderr_lines)))
     reduce_str = string.join(build_out.stdout_lines, '\n')
     return reduce_str
 
@@ -291,8 +297,12 @@ class probe_clashscore_manager(object):
     clash_hash={}
     hbond_hash={}
     clashscore = None
-    probe_unformatted = easy_run.fully_buffered(self.probe_txt,
-                         stdin_lines=pdb_string).stdout_lines
+    probe_out = easy_run.fully_buffered(self.probe_txt,
+      stdin_lines=pdb_string)
+    if (probe_out.return_code != 0) :
+      raise RuntimeError("Probe crashed - dumping stderr:\n%s" %
+        "\n".join(probe_out.stderr_lines))
+    probe_unformatted = probe_out.stdout_lines
     self.probe_unformatted = probe_unformatted
     for line in probe_unformatted:
       name, pat, type, srcAtom, targAtom, min_gap, gap, \
