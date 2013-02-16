@@ -2850,7 +2850,7 @@ class build_all_chain_proxies(object):
   def fatal_problems_message(self,
         ignore_unknown_scattering_types=False,
         ignore_unknown_nonbonded_energy_types=False):
-    result = ["Fatal problems interpreting PDB file:"]
+    result = ["Fatal problems interpreting model file:"]
     for reg,ignore in [
           (self.scattering_type_registry,
             ignore_unknown_scattering_types),
@@ -2862,7 +2862,7 @@ class build_all_chain_proxies(object):
           result.append("%s: %d" % (reg.report_unknown_message(), n_unknown))
     if (len(result) == 1): return None
     result.extend([
-      "  Please edit the PDB file to resolve the problems and/or supply a",
+      "  Please edit the model file to resolve the problems and/or supply a",
       "  CIF file with matching restraint definitions, along with",
       "  apply_cif_modification and apply_cif_link parameter definitions",
       "  if necessary."])
@@ -4589,7 +4589,7 @@ def correct_hydrogen_geometries(hierarchy,
   bad_hydrogen_count=0
   corrected_hydrogen_count=0
   if len(hierarchy.models())>1:
-    print "  \nPDB files with more than one model are ignored\n"
+    print "  \nModel files with more than one model are ignored\n"
     return bad_hydrogen_count, corrected_hydrogen_count
   if restraints_manager and xray_structure:
     bad_hydrogen_count, corrected_hydrogen_count = \
@@ -4744,7 +4744,7 @@ class process(object):
             and hard_minimum_bond_distance_model is not None
             and smallest_distance_model < hard_minimum_bond_distance_model):
           raise Sorry("""Bond restraint model distance < %.6g:
-  Please inspect the output above and correct the input PDB file.""" % (
+  Please inspect the output above and correct the input model file.""" % (
             hard_minimum_bond_distance_model))
         print >> self.log
         self._geometry_restraints_manager.angle_proxies \
@@ -4871,7 +4871,7 @@ class process(object):
       params.nonbonded_distance_threshold >=0):
       raise Sorry("""Number of nonbonded interaction distances < %.6g: %d
   Please inspect the output above (or in the log window) and correct the input
-  PDB file.""" % (
+  model file.""" % (
         hard_minimum_nonbonded_distance,
         n_below_hard_minimum_nonbonded_distance))
 

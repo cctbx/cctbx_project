@@ -175,7 +175,7 @@ maps {
     pdb_file_name = None
       .type = path
       .optional = False
-      .short_caption = PDB file
+      .short_caption = Model file
       .style = bold file_type:pdb input_file
     reflection_data {
       %s

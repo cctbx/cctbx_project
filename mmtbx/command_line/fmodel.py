@@ -147,7 +147,7 @@ pdb_file = None
   .type = path
   .multiple = True
   .optional = True
-  .short_caption = PDB file
+  .short_caption = Model file
   .style = bold noauto file_type:pdb input_file
 reference_file = None
   .type = path
@@ -280,9 +280,9 @@ def run(args, log = sys.stdout):
   pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=pdb_file_names)
   pdb_combined.report_non_unique(out = log)
   if(len(pdb_combined.unique_file_names) == 0):
-    raise Sorry("PDB file is not provided.")
+    raise Sorry("Model file is not provided.")
   print >> log, "-"*79
-  print >> log, "\nInput PDB file(s):", " ".join(processed_args.pdb_file_names)
+  print >> log, "\nInput model file(s):", " ".join(processed_args.pdb_file_names)
   pdb_inp = iotbx.pdb.input(source_info = None,
     lines = flex.std_string(pdb_combined.raw_records))
   # select miller array to use as a set of miller indices for f_model
@@ -370,7 +370,7 @@ class launcher (runtime_utils.target_with_save_result) :
 
 def validate_params (params, callback=None) :
   if len(params.pdb_file) == 0 :
-    raise Sorry("You must provide at least one PDB file to use for "+
+    raise Sorry("You must provide at least one model file to use for "+
       "F(model) calculations.")
   if (params.high_resolution is None) :
     if (params.reference_file is None) :

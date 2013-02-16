@@ -57,7 +57,7 @@ loose_chain_id = X
 master_params = """
 file_name = None
   .type = path
-  .short_caption = PDB file
+  .short_caption = Model file
   .help = Input file
   .style = bold file_type:pdb input_file OnChange:extract_symmetry
 output_file = None
@@ -398,7 +398,7 @@ class sort_hetatms_result (object) :
 
 def validate_params (params) :
   if (params.file_name is None) :
-    raise Sorry("PDB file (file_name) not specified.")
+    raise Sorry("Model file (file_name) not specified.")
   return True
 
 class launcher (runtime_utils.target_with_save_result) :

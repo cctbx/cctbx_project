@@ -15,7 +15,7 @@ import sys
 master_params_str = """\
 file_name = None
   .type = path
-  .short_caption = PDB file
+  .short_caption = Model file
   .style = file_type:pdb bold input_file
 restraints = None
   .type = path
@@ -26,8 +26,8 @@ restraints_directory = None
   .type = path
   .style = directory
 pdb_interpretation
-  .help = PDB file interpretation parameters
-  .short_caption = PDB interpretation
+  .help = Model file interpretation parameters
+  .short_caption = Model interpretation
   .expert_level=1
 {
   stop_for_unknowns = True

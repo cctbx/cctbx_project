@@ -19,8 +19,8 @@ mtz_file = None
   .help = MTZ file containing map coefficients
 pdb_file = None
   .type = path
-  .short_caption = PDB file
-  .help = PDB file around which to draw the map.  If not supplied, the map \
+  .short_caption = Model file
+  .help = Model file around which to draw the map.  If not supplied, the map \
     will fill the unit cell.
 labels = None
   .type = strings
@@ -38,7 +38,7 @@ selection = None
   .input_size = 400
   .short_caption = Atom selection
   .help = Atom selection around which to draw map (plus buffer).  If left \
-    blank, the entire PDB file will be used.
+    blank, the entire model file will be used.
 d_min = None
   .type = float
   .help = High-resolution cutoff
@@ -109,7 +109,7 @@ def run (args, log=sys.stdout) :
       input_file = file_reader.any_file(arg)
       if input_file.file_type == "pdb" :
         if pdb_file is not None :
-          raise Sorry("A PDB file has already been defined.")
+          raise Sorry("A model file has already been defined.")
         input_phil.append(iotbx.phil.parse("pdb_file=%s" %
           os.path.abspath(arg)))
         pdb_file = input_file
@@ -199,7 +199,7 @@ def run (args, log=sys.stdout) :
       selection = selection_cache.selection(params.selection)
       sites_cart = sites_cart.select(selection)
   else :
-    print >> log, "No PDB file - will output map(s) in unit cell."
+    print >> log, "No model input - will output map(s) in unit cell."
   file_info = []
   suffixes = []
   for i, map_labels in enumerate(params.labels) :
