@@ -8,6 +8,8 @@ from libtbx.utils import Sorry
 import cStringIO
 import os
 
+model_file_types = {"pdb" : "PDB", "mmcif" : "mmCIF", }
+
 class cif_handler (iotbx.gui_tools.manager) :
   file_type = "cif"
   file_type_label = "CIF"
@@ -35,6 +37,11 @@ class model_handler (iotbx.gui_tools.manager) :
     self.add_callback = lambda file_name : True
     self.remove_callback = lambda file_name : True
     self._viewable_file_params = []
+
+  def get_file_type_label (self, file_name=None, input_file=None) :
+    if (input_file is not None) :
+      file_type = input_file.file_object.file_type()
+      return model_file_types[file_type]
 
   def clear_format_specific_cache (self) :
     if hasattr(self, "cif_handler") :
