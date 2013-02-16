@@ -913,6 +913,9 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
       lines.extend(getattr(self, section)())
     return ("pickle", lines)
 
+  def file_type (self) :
+    return "pdb"
+
   def extract_header_year(self):
     for line in self.title_section():
       if (line.startswith("HEADER ")):

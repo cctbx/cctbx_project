@@ -329,6 +329,7 @@ def exercise_pdb_input():
     pdb_inp = pdb.pdb_input(
       source_info=None,
       lines=flex.split_lines(""))
+    assert (pdb_inp.file_type() == "pdb")
     assert pdb_inp.source_info() == ""
     assert len(pdb_inp.record_type_counts()) == 0
     assert pdb_inp.unknown_section().size() == 0
