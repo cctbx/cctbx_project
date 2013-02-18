@@ -149,7 +149,7 @@ class AsynchronousCmdLine(Submission):
       extra = extra,
       extract = cls.lsf_jobid_extract,
       poller = poller,
-      handler = status.FileStrategy,
+      handler = status.StdStreamStrategy,
       )
 
 
@@ -166,7 +166,7 @@ class AsynchronousCmdLine(Submission):
       extra = extra + [ "-d", "." ],
       extract = cls.generic_jobid_extract,
       poller = poller,
-      handler = status.FileStrategy,
+      handler = status.StdStreamStrategy,
       )
 
 
@@ -319,3 +319,4 @@ def get_condor_jobid_extract_regex():
       )
 
   return CONDOR_JOBID_EXTRACT_REGEX
+
