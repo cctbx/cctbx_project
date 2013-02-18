@@ -34,6 +34,7 @@ from mmtbx.cablam import fingerprints #contains motif definitions
 from libtbx import easy_run
 import libtbx.phil.command_line
 from iotbx import file_reader
+from libtbx import group_args
 
 #{{{ phil
 #-------------------------------------------------------------------------------
@@ -453,7 +454,8 @@ def fails_cis_check(residue,cis_or_trans):
 def make_probe_data(hierarchy):
   trim_command = "phenix.reduce -quiet -trim -"
   build_command = "phenix.reduce -oh -his -flip -pen9999 -keep -allalt -"
-  probe_command = "phenix.probe -u -condense -self -mc -NOVDWOUT -NOCLASHOUT MC -"
+  #probe_command = "phenix.probe -u -condense -self -mc -NOVDWOUT -NOCLASHOUT MC -"
+  probe_command = "phenix.probe -u -condense -self -mc -NOVDWOUT -NOCLASHOUT PROTEIN -"
 
   for i,m in enumerate(hierarchy.models()):
     #multi-model compatibility coming soon?
@@ -552,6 +554,19 @@ def add_probe_data(resdata, open_probe_file):
     trgAlt =      trgAtom[15:16].strip()
 
     dotcount = bnana[5]
+
+    #new model for probe storage------------------------------------------------
+    srcResidue = resdata[' '.join(['', srcChain, '%04i' % srcNum, srcIns])]
+    trgResidue = resdata[' '.join(['', trgChain, '%04i' % trgNum, trgIns])]
+    recordkey = trgResidue.id_with_resname() + trgAtomname
+    record = group_args(residue=trgResidue, atom=trgAtomname, dotcount=dotcount)
+    #record = [trgResidue.id_with_resname(),trgAtomname,dotcount]
+    if srcAtomname not in srcResidue.probe.keys():
+      srcResidue.probe[srcAtomname] = {}
+    #probe keys first by the current residue's atom, then by the target
+    #  residue's id and atom, id+atom is unique enough to handle bifurcations
+    srcResidue.probe[srcAtomname][recordkey] = record
+    #end new model for probe storage--------------------------------------------
 
     #reference: resid_string = ' '.join([modelid, chainid, '%04i' % resnum, icode])
     if (srcAtomname == 'O' and trgAtomname == 'H') or (srcAtomname == 'H' and trgAtomname == 'O'):
