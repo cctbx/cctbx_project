@@ -38,7 +38,8 @@ def exercise () :
   f = open("mg_frag_hoh.pdb", "w")
   f.write(hierarchy.as_pdb_string(pdb_in.file_object.crystal_symmetry()))
   f.close()
-  args = ["mg_frag_hoh.pdb", "mg_frag.mtz", "nproc=1", "use_phaser=False"]
+  args = ["mg_frag_hoh.pdb", "mg_frag.mtz", "nproc=1", "use_phaser=False",
+          "elements=MG"]
   result = easy_run.fully_buffered("mmtbx.water_screen %s" % " ".join(args)
     ).raise_if_errors()
   n_mg = 0
