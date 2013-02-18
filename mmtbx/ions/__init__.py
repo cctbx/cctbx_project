@@ -836,6 +836,7 @@ class Manager (object) :
           (resname in ["GLU","ASP"])) :
         # Negatively charged sidechains
         # XXX this really needs to be more exhaustive (e.g. phosphate oxygens)
+        print "Too close: %f versus %f" % (distance, min_distance_to_cation)
         return False
 
     # TODO something smart...
@@ -958,7 +959,7 @@ class Manager (object) :
       mass_ratio = atom_props.estimated_weight / max(n_elec, 1)
       if (mass_ratio < 0.5):# or
         #abs(n_elec - atom_props.estimated_weight) > 10) :
-        continue
+        pass #continue
 
       filtered_candidates.append(elem)
 
@@ -1034,7 +1035,7 @@ class Manager (object) :
         # explicitly requested one (and there is no ambiguity)
         if ((ion_params.element in TRANSITION_METALS) and
             (not looks_like_water) and
-            (atom_props.peak_2fofc > max_carbon_fo_map_value) and
+            #(atom_props.peak_2fofc > max_carbon_fo_map_value) and
             (not auto_candidates) and
             (atom_props.is_compatible_site(ion_params))) :
           n_good_res = atom_props.number_of_favored_ligand_residues(ion_params,
@@ -1475,9 +1476,11 @@ class AtomProperties (object) :
   def has_compatible_ligands (self, identity) :
     """
     Indicates whether the coordinating atoms are of the allowed type (e.g.
-    no N or S atoms coordinating CA, etc.)
+    no N or S atoms coordinating CA, etc.) and residue (e.g. Ser is not an
+    appropriate ligand for ZN).
     """
-    return len(self.bad_coords[identity]) == 0
+    return ((len(self.bad_coords[identity]) == 0) and
+            (not self.BAD_COORD_RESIDUE in self.inaccuracies[identity]))
 
   def is_compatible_site (self, ion_params, require_anom=True) :
     """
@@ -1490,6 +1493,7 @@ class AtomProperties (object) :
     return (self.has_compatible_ligands(str(ion_params)) and
             (not self.TOO_MANY_COORD in inaccuracies) and
             (not self.VERY_BAD_VALENCES in inaccuracies) and
+            (not self.BAD_COORD_RESIDUE in inaccuracies) and
             (anom_allowed))
 
   def number_of_favored_ligand_residues (self, ion_params, distance=3.0,
@@ -1534,13 +1538,19 @@ class AtomProperties (object) :
             n_bb_ox += 1
     return n_bb_ox
 
+  # FIXME needs to be refactored and combined with check_fpp_ratio
   def is_compatible_anomalous_scattering (self, ion_params) :
-    # XXX somewhat dangerous - we really need f'' for this to work reliably
-    if (self.fpp is None) :
-      return (self.peak_anom is not None) and (self.peak_anom > 3.0)
-    identity = _identity(ion_params)
-    if (identity in self.fpp_ratios) :
-      return (not self.BAD_FPP in self.inaccuracies[identity])
+    # lighter elements should have effectively no anomalous scattering
+    if (ion_params.element.upper() in ["MG", "NA"]) :
+      return ((self.fpp is None) and (self.peak_anom is not None) and
+              (self.peak_anom < 1.0))
+    else :
+      # XXX somewhat dangerous - we really need f'' for this to work reliably
+      if (self.fpp is None) :
+        return (self.peak_anom is not None) and (self.peak_anom > 3.0)
+      identity = _identity(ion_params)
+      if (identity in self.fpp_ratios) :
+        return (not self.BAD_FPP in self.inaccuracies[identity])
     return False
 
   # XXX obsolete, delete?
@@ -1732,37 +1742,41 @@ class AtomProperties (object) :
     self.score[identity] = abs(self.valence_sum[identity] -
                                ion_params.cvbs_expected)
 
+  # FIXME this really needs to be refactored and combined with the method
+  # is_compatible_anomalous_scattering
   def check_fpp_ratio (self,
       ion_params,
       wavelength,
       fpp_ratio_min=0.3,
       fpp_ratio_max=1.05) :
     """Compare the refined and theoretical f'' values if available"""
-    # XXX in theory the fpp_ratio should be no more than 1.0 unless we are
-    # right on the peak wavelength.  in practice Phaser can overshoot a little
-    # bit, so we need to be more tolerant.  picking the maximum f'' from the
-    # Sasaki and Henke tables will also limit the ratio.
     identity = str(ion_params)
     inaccuracies = self.inaccuracies.get(identity, None)
     if (inaccuracies is None) :
       inaccuracies = self.inaccuracies[identity] = set()
-
-    if (wavelength is not None) and (self.anomalous_flag) :
-      fpp_expected_sasaki = sasaki.table(ion_params.element).at_angstrom(
-        wavelength).fdp()
-      fpp_expected_henke = henke.table(ion_params.element).at_angstrom(
-        wavelength).fdp()
-      self.fpp_expected[identity] = max(fpp_expected_sasaki,
-        fpp_expected_henke)
-      if (self.fpp is not None) and (self.fpp_expected[identity] > 0) :
-        self.fpp_ratios[identity] = self.fpp / self.fpp_expected[identity]
-        if ((self.fpp_ratios[identity] > fpp_ratio_max) or
-            ((self.fpp >= 0.2) and
-             (self.fpp_ratios[identity] < fpp_ratio_min))) :
-          inaccuracies.add(self.BAD_FPP)
-      elif (self.fpp_expected[identity] > 0.75) and (self.peak_anom < 2) :
+    if (ion_params.element.upper() in ["MG", "NA"]) :
+      if (self.fpp is not None) or (self.peak_anom > 1) :
         inaccuracies.add(self.BAD_FPP)
-
+    else :
+      # XXX in theory the fpp_ratio should be no more than 1.0 unless we are
+      # right on the peak wavelength.  in practice Phaser can overshoot a little
+      # bit, so we need to be more tolerant.  picking the maximum f'' from the
+      # Sasaki and Henke tables will also limit the ratio.
+      if (wavelength is not None) and (self.anomalous_flag) :
+        fpp_expected_sasaki = sasaki.table(ion_params.element).at_angstrom(
+          wavelength).fdp()
+        fpp_expected_henke = henke.table(ion_params.element).at_angstrom(
+          wavelength).fdp()
+        self.fpp_expected[identity] = max(fpp_expected_sasaki,
+          fpp_expected_henke)
+        if (self.fpp is not None) and (self.fpp_expected[identity] > 0) :
+          self.fpp_ratios[identity] = self.fpp / self.fpp_expected[identity]
+          if ((self.fpp_ratios[identity] > fpp_ratio_max) or
+              ((self.fpp >= 0.2) and
+               (self.fpp_ratios[identity] < fpp_ratio_min))) :
+            inaccuracies.add(self.BAD_FPP)
+        elif (self.fpp_expected[identity] > 0.75) and (self.peak_anom < 2) :
+          inaccuracies.add(self.BAD_FPP)
     return self.fpp_ratios.get(identity)
 
   def show_properties (self, identity, out = sys.stdout) :
