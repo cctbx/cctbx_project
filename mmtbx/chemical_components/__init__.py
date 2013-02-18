@@ -75,7 +75,7 @@ def get_field_simple(code, loop, field):
   if not cif: return cif
   desc = cif.get(loop, {})[0]
   return getattr(desc, field, "")
-  
+
 def get_type(code):
   return get_field_simple(code, "_chem_comp", "type")
 
