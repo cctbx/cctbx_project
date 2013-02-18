@@ -330,17 +330,12 @@ def LSF(
   from libtbx.queuing_system_utils.processing import submission
 
   if asynchronous:
-    if handler is None:
-      from libtbx.queuing_system_utils.processing import status
-      handler = status.StdStreamStrategy
-
     if poller is None:
       from libtbx.queuing_system_utils.processing import polling
       poller = polling.LSFPoller()
 
     submitter = submission.AsynchronousCmdLine.LSF(
       poller = poller,
-      handler = handler,
       command = command,
       extra = switches,
       )
@@ -382,17 +377,12 @@ def PBS(
   from libtbx.queuing_system_utils.processing import submission
 
   if asynchronous:
-    if handler is None:
-      from libtbx.queuing_system_utils.processing import status
-      handler = status.StdStreamStrategy
-
     if poller is None:
       from libtbx.queuing_system_utils.processing import polling
       poller = polling.PBSPoller()
 
     submitter = submission.AsynchronousCmdLine.PBS(
       poller = poller,
-      handler = handler,
       command = command,
       extra = switches,
       )
