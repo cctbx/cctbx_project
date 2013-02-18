@@ -112,15 +112,6 @@ class linked_residue(object):
     except KeyError:
       return None
 
-  #Simplified access for probe data storage, returns a dotcount for bonds that
-  #  exist, int 0 for bonds that do not
-  #In future, mingap distance might be returned
-  def getprobe(self, atomtype=None, seqdist=None):
-    if not self.probe[atomtype] or not self.probe[atomtype][seqdist]:
-      return 0
-    else:
-      return self.probe[atomtype][seqdist]
-
   #There needs to be a CA-only consecutive check. Adding one is a high priority.
   def consecutive(self, res1, res2):
     if res1 and res2: #check against empties
@@ -194,7 +185,7 @@ class linked_residue(object):
       self.prevres = None #Adjacency is handled in an outside function
     self.nextres = None
 
-    self.probe = {'O':{},'H':{}}   #holder for hydrogen bonding, indexed by i+/-X relation
+    self.probe = {'O':{},'H':{}}   #holder for hydrogen bonding, indexed by 'target' residue+atom, see cablam_training.add_probe_data()
     self.probeH = []
     self.probeO = []
 
