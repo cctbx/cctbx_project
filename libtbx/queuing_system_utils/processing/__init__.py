@@ -379,7 +379,7 @@ def PBS(
   if asynchronous:
     if poller is None:
       from libtbx.queuing_system_utils.processing import polling
-      poller = polling.PBSPoller()
+      poller = polling.PBSCentralPoller()
 
     submitter = submission.AsynchronousCmdLine.PBS(
       poller = poller,
