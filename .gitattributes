@@ -913,6 +913,7 @@ iotbx/detectors/context/spot_xy_convention.py -text
 iotbx/detectors/display.h -text
 iotbx/detectors/dtrek.py -text
 iotbx/detectors/edf.py -text
+iotbx/detectors/eiger.py -text
 iotbx/detectors/generic_detector.py -text
 iotbx/detectors/hamamatsu.py -text
 iotbx/detectors/image_divider.cpp -text
