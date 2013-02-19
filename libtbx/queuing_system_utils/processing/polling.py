@@ -205,3 +205,71 @@ class CondorCentralPoller(CentralPoller):
       assert number_node is not None
       self.running.add( number_node.text )
 
+
+class PBSCentralPoller(object):
+  """
+  Polls job status for PBS in batch
+  """
+
+  def __init__(self, waittime = 5):
+
+    self.waittime = waittime
+    self.running = set()
+    self.completed = set()
+    self.update()
+    self.polltime = time.time()
+
+
+  def is_finished(self, jobid):
+
+    now = time.time()
+
+    if self.waittime < ( now - self.polltime ) or now < self.polltime:
+      self.update()
+      self.polltime = now
+
+    if jobid in self.running:
+      return False
+
+    elif jobid in self.completed:
+      return True
+
+    else:
+      raise ValueError, "Unknown job id"
+
+
+  def new_job_submitted(self, jobid):
+
+    self.running.add( jobid )
+
+
+  def update(self):
+
+    process = subprocess.Popen(
+      [ "qstat", "-x" ],
+      stdout = subprocess.PIPE,
+      stderr = subprocess.PIPE
+      )
+    ( out, err ) = process.communicate()
+
+    if err:
+      raise RuntimeError, "PBS error:\n%s" % err
+
+    self.running = set()
+    self.completed = set()
+
+    if not out:
+      return
+
+    import xml.etree.ElementTree as ET
+    root = ET.fromstring( out )
+    for n in root.iter( "Job" ):
+      status_node = n.find( "job_state" )
+      assert status_node is not None
+
+      if status_node.text == "C":
+        self.completed.add( n.text )
+
+      else:
+        self.running.add( n.text )
+
