@@ -127,7 +127,7 @@ class argument_interpreter(object):
       return self.process_arg(arg=arg)
     return self.process_args(args=args, custom_processor=custom_processor)
 
-  def process_and_fetch(self, args, custom_processor=None):
+  def process_and_fetch(self, args, custom_processor=None, extra_sources=()):
     if (isinstance(custom_processor, str)):
       assert custom_processor == "collect_remaining"
       remaining_args = []
@@ -136,15 +136,16 @@ class argument_interpreter(object):
         return True
     else:
       remaining_args = None
-    result = self.master_phil.fetch(
-      sources=self.process(args=args, custom_processor=custom_processor))
+    sources = self.process(args=args, custom_processor=custom_processor)
+    sources.extend(list(extra_sources))
+    result = self.master_phil.fetch(sources=sources)
     if (remaining_args is None):
       return result
     return result, remaining_args
 
 class process(object):
 
-  def __init__(self, args, master_string, parse=None):
+  def __init__(self, args, master_string, parse=None, extra_sources=()):
     if (parse is None): parse = libtbx.phil.parse
     self.parse = parse
     self.master = self.parse(input_string=master_string, process_includes=True)
@@ -152,7 +153,8 @@ class process(object):
       master_phil=self.master) \
         .process_and_fetch(
           args=args,
-          custom_processor="collect_remaining")
+          custom_processor="collect_remaining",
+          extra_sources=extra_sources)
 
   def show(self, out=None):
     self.work.show(out=out)
