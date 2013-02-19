@@ -28,7 +28,7 @@ def call (args, log, join_stdout_stderr=True) :
     raise RuntimeError("Call to '%s' failed with exit code %d" % (args, rc))
 
 def untar (pkg_name, log=sys.stdout, verbose=False) :
-  assert os.path.isfile(pkg_name)
+  assert os.path.isfile(pkg_name), pkg_name
   verbose_flag = ""
   if (verbose) :
     verbose_flag = "v"
@@ -43,5 +43,12 @@ def untar (pkg_name, log=sys.stdout, verbose=False) :
                re.sub(".tar.gz", "",
                  re.sub(".tar.bz2", "",
                    os.path.basename(pkg_name))))
-  assert os.path.isdir(dir_name)
+  if (not os.path.isdir(dir_name)) :
+    raise RuntimeError("Expected directory '%s' not found!" % dir_name)
   return os.path.abspath(dir_name)
+
+def detect_osx_version () :
+  uname = os.uname()
+  version = uname[2]
+  major, minor, rev = version.split(".")
+  return int(major)
