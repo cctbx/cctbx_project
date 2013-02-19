@@ -1,6 +1,5 @@
 from __future__ import division
 from iotbx.detectors.detectorbase import DetectorImageBase
-import h5py
 
 class EIGERImage(DetectorImageBase):
   def __init__(self,filename):
@@ -12,7 +11,12 @@ class EIGERImage(DetectorImageBase):
   def readHeader(self,maxlength=12288): # XXX change maxlength!!!
     if not self.parameters:
 
-      import h5py
+      try:
+        import h5py
+      except ImportError as e:
+        print "ImportError: h5py libraries not available"
+        raise e
+
       masterFilename = self.filename
       self.hdf5File = h5py.File(masterFilename, 'r')
       params = self.hdf5File['entry']['instrument']['detector']
