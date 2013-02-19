@@ -28,6 +28,7 @@ from iotbx.detectors.detectorbase import DetectorImageBase
 from iotbx.detectors.pilatus_slice import pilatus_slice_from_file_url
 from iotbx.detectors.pilatus_slice import pilatus_slice_from_http_url
 from iotbx.detectors.adsc_module import ADSC_module_from_file_url
+from iotbx.detectors.eiger import EIGERImage
 
 class EDFWrapper(EDFImage, DetectorImageBase):
   def __init__(self,filename):
@@ -47,7 +48,7 @@ class SMVImage(ADSCImage):
     DetectorImageBase.__init__(self,filename)
     self.vendortype = "SMV(Generic)"
 
-all_image_types = [EDFWrapper,SaturnImage,DIPImage,ADSCImage,HamamatsuImage,
+all_image_types = [EIGERImage,EDFWrapper,SaturnImage,DIPImage,ADSCImage,HamamatsuImage,
                   MARImage,MARIPImage,DTREKImage,RAXISImage,
                   NonSquareRAXISImage,SMVImage,PilatusImage,CBFImage,BrukerImage]
 
@@ -55,7 +56,8 @@ all_url_types = [pilatus_slice_from_file_url,pilatus_slice_from_http_url,
                  ADSC_module_from_file_url
 ]
 
-names_and_types = { "ADSC"          : ADSCImage,
+names_and_types = { "EIGER"         : EIGERImage,
+                    "ADSC"          : ADSCImage,
                     "Saturn"        : SaturnImage,
                     "DIP"           : DIPImage,
                     "MAR"           : MARImage,

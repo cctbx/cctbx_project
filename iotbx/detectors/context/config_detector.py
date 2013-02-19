@@ -261,6 +261,11 @@ def beam_center_convention_from_image_object(imageobject,phil_params):
       beam_center_convention = 2
       set_convention(0,phil_params)
 
+    # CBF format images are in EIGER test sets currently
+    elif imageobject.vendortype=="EIGER":
+      beam_center_convention = 0
+      set_convention(0,phil_params)
+
     else: beam_center_convention = None
 
     if imageobject.vendortype == "CBF" and \
