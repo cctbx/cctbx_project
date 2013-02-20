@@ -10,12 +10,7 @@ class EIGERImage(DetectorImageBase):
 
   def readHeader(self,maxlength=12288): # XXX change maxlength!!!
     if not self.parameters:
-
-      try:
-        import h5py
-      except ImportError as e:
-        print "ImportError: h5py libraries not available"
-        raise e
+      import h5py
 
       masterFilename = self.filename
       self.hdf5File = h5py.File(masterFilename, 'r')

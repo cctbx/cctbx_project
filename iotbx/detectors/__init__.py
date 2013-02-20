@@ -48,9 +48,15 @@ class SMVImage(ADSCImage):
     DetectorImageBase.__init__(self,filename)
     self.vendortype = "SMV(Generic)"
 
-all_image_types = [EIGERImage,EDFWrapper,SaturnImage,DIPImage,ADSCImage,HamamatsuImage,
+all_image_types = [EDFWrapper,SaturnImage,DIPImage,ADSCImage,HamamatsuImage,
                   MARImage,MARIPImage,DTREKImage,RAXISImage,
                   NonSquareRAXISImage,SMVImage,PilatusImage,CBFImage,BrukerImage]
+try :
+  import h5py
+except ImportError :
+  pass
+else :
+  all_image_types.insert(0, EIGERImage)
 
 all_url_types = [pilatus_slice_from_file_url,pilatus_slice_from_http_url,
                  ADSC_module_from_file_url
