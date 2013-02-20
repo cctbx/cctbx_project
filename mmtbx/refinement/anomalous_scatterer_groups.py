@@ -1,8 +1,10 @@
 from __future__ import division
 from cctbx.array_family import flex
 from scitbx import lbfgs
+from libtbx.str_utils import make_sub_header
 from libtbx.test_utils import approx_equal
 from libtbx import adopt_init_args
+import time
 import sys
 
 class minimizer(object):
@@ -164,3 +166,109 @@ def find_anomalous_scatterer_groups (
         selection_string="element %s" % elem)
       groups.append(asg)
   return groups
+
+def refine_anomalous_substructure (
+    fmodel,
+    pdb_hierarchy,
+    wavelength=None,
+    map_type="anom_residual",
+    exclude_waters=False,
+    exclude_non_water_light_elements=True,
+    n_cycles_max=None,
+    map_sigma_min=3.0,
+    refine=("f_prime","f_double_prime"),
+    reset_water_u_iso=False,
+    out=sys.stdout) :
+  """
+  Crude mimic of Phaser's substructure completion, with two essential
+  differences: only the existing real scatterers in the input model will be
+  used (with the assumption that the model is already more or less complete),
+  and the anomalous refinement will be performed in Phenix, yielding both
+  f-prime and f-double-prime.  The refined f-prime provides us with an
+  orthogonal estimate of the number of electrons missing from an incorrectly
+  labeled scatterer.
+  """
+  from cctbx import xray
+  assert (fmodel.f_obs().anomalous_flag())
+  assert (map_type in ["llg", "anom_residual"])
+  make_sub_header("Iterative anomalous substructure refinement", out=out)
+  pdb_atoms = pdb_hierarchy.atoms()
+  non_water_non_hd_selection = pdb_hierarchy.atom_selection_cache().selection(
+    "(not element H and not element D and not resname HOH)")
+  sites_frac = fmodel.xray_structure.sites_frac()
+  scatterers = fmodel.xray_structure.scatterers()
+  u_iso_mean = flex.mean(
+    fmodel.xray_structure.extract_u_iso_or_u_equiv().select(
+      non_water_non_hd_selection))
+  anomalous_iselection = flex.size_t()
+  anomalous_groups = []
+  t_start = time.time()
+  n_cycle = 0
+  while ((n_cycles_max is None) or (n_cycle < n_cycles_max)) :
+    n_cycle += 1
+    n_new_groups = 0
+    t_start_cycle = time.time()
+    print >> out, "Cycle %d" % n_cycle
+    anom_map = fmodel.map_coefficients(map_type=map_type).fft_map(
+      resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
+    map_min = abs(flex.min(anom_map.as_1d()))
+    map_max = flex.max(anom_map.as_1d())
+    print >> out, "  map range: -%.2f sigma to %.2f sigma" % (map_min, map_max)
+    reset_u_iso_selection = flex.size_t()
+    for i_seq, atom in enumerate(pdb_atoms) :
+      resname = atom.parent().resname
+      elem = atom.element.strip()
+      if  ((i_seq in anomalous_iselection) or
+           ((exclude_waters) and (resname == "HOH")) or
+           ((elem in ["H","D","N","C","O"]) and (resname != "HOH") and
+            exclude_non_water_light_elements)) :
+        continue
+      scatterer = scatterers[i_seq]
+      site_frac = sites_frac[i_seq]
+      anom_map_value = anom_map.tricubic_interpolation(site_frac)
+      if (anom_map_value >= map_sigma_min) or (scatterer.fdp != 0) :
+        if (n_new_groups == 0) :
+          print >> out, ""
+          print >> out, "  new anomalous scatterers:"
+        print >> out, "    %-34s  map height: %6.2f sigma" % (atom.id_str(),
+          anom_map_value)
+        anomalous_iselection.append(i_seq)
+        selection_string = get_single_atom_selection_string(atom)
+        group = xray.anomalous_scatterer_group(
+          iselection=flex.size_t([i_seq]),
+          f_prime=0,
+          f_double_prime=0,
+          refine=list(refine),
+          selection_string=selection_string)
+        anomalous_groups.append(group)
+        n_new_groups += 1
+        if (resname == "HOH") and (reset_water_u_iso) :
+          water_u_iso = scatterer.u_iso
+          if (water_u_iso < u_iso_mean) :
+            reset_u_iso_selection.append(i_seq)
+    if (n_new_groups == 0) :
+      print >> out, ""
+      print >> out, "No new groups - anomalous scatterer search terminated."
+      break
+    print >> out, ""
+    print >> out, "Anomalous refinement:"
+    fmodel.info().show_targets(text="before minimization", out=out)
+    print >> out, ""
+    u_iso = fmodel.xray_structure.extract_u_iso_or_u_equiv()
+    u_iso.set_selected(reset_u_iso_selection, u_iso_mean)
+    fmodel.xray_structure.set_u_iso(values=u_iso)
+    fmodel.update_xray_structure(update_f_calc=True)
+    minimizer(fmodel=fmodel, groups=anomalous_groups)
+    fmodel.info().show_targets(text="after minimization", out=out)
+    print >> out, ""
+    print >> out, "  Refined sites:"
+    for i_seq, group in zip(anomalous_iselection, anomalous_groups) :
+      print >> out, "    %-34s  f' = %6.3f  f'' = %6.3f" % (
+        pdb_atoms[i_seq].id_str(), group.f_prime, group.f_double_prime)
+    t_end_cycle = time.time()
+    print >> out, ""
+    print >> out, "  time for this cycle: %.1fs" % (t_end_cycle-t_start_cycle)
+  print >> out, "%d anomalous scatterer groups refined" % len(anomalous_groups)
+  t_end = time.time()
+  print >> out, "overall time: %.1fs" % (t_end - t_start)
+  return anomalous_groups

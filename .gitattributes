@@ -1235,6 +1235,7 @@ mmtbx/command_line/ramalyze.py -text
 mmtbx/command_line/real_space_correlation.py -text
 mmtbx/command_line/real_space_refine.py -text
 mmtbx/command_line/reciprocal_space_arrays.py -text
+mmtbx/command_line/refine_anomalous_substructure.py -text
 mmtbx/command_line/rigid_bond_test.py -text
 mmtbx/command_line/rna_validate.py svneol=native#text/x-python
 mmtbx/command_line/rotalyze.py -text
@@ -1424,6 +1425,7 @@ mmtbx/regression/__init__.py -text
 mmtbx/regression/make_fake_anomalous_data.py -text
 mmtbx/regression/tst_add_h_to_water.py -text
 mmtbx/regression/tst_altloc_chain_break.py -text
+mmtbx/regression/tst_anomalous_substructure.py -text
 mmtbx/regression/tst_cablam.py -text
 mmtbx/regression/tst_dssp.py -text
 mmtbx/regression/tst_examples.py -text
