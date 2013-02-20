@@ -19,12 +19,12 @@ struct my_array_wrapper : array_wrapper_base
     array.push_back(value);
   }
 
-  virtual std::string operator[](unsigned const& i)
+  virtual std::string operator[](unsigned const& i) const
   {
     return array[i];
   }
 
-  virtual unsigned size()
+  virtual unsigned size() const
   {
     return array.size();
   }
@@ -36,7 +36,7 @@ struct my_builder : builder_base
   virtual void end_save_frame() {}
   virtual void add_data_item(std::string const& tag, std::string const& value) {}
   virtual void add_loop(array_wrapper_base const& loop_headers,
-                        array_wrapper_base const& values) {}
+                        std::vector<ucif::array_wrapper_base*> const& values) {}
   virtual void add_data_block(std::string const& data_block_heading) {}
   virtual array_wrapper_base* new_array()
   {

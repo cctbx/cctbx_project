@@ -36,7 +36,10 @@ class cif_model_builder(object):
     loop = model.loop()
     n_columns = len(header)
     assert len(data) % n_columns == 0, "Wrong number of data items for loop"
-    if n_columns == 1:
+
+    if isinstance(data, list):
+      columns = data
+    elif n_columns == 1:
       columns = [data]
     else:
       columns = iotbx.cif.ext.looped_data_as_columns(data, n_columns)

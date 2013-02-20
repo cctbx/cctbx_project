@@ -28,12 +28,12 @@ namespace iotbx { namespace cif {
       array.push_back(value);
     }
 
-    virtual std::string operator[](unsigned const& i)
+    virtual std::string operator[](unsigned const& i) const
     {
       return array[i];
     }
 
-    virtual unsigned size()
+    virtual unsigned size() const
     {
       return array.size();
     }
@@ -64,11 +64,16 @@ namespace iotbx { namespace cif {
     }
 
     virtual void add_loop(ucif::array_wrapper_base const& loop_headers,
-                          ucif::array_wrapper_base const& values)
+                          std::vector<ucif::array_wrapper_base*> const& values)
     {
+      boost::python::list result;
+      for (std::size_t i=0; i<loop_headers.size(); i++) {
+        result.append(
+          dynamic_cast<shared_array_wrapper* const>(values[i])->array);
+      }
       builder.attr("add_loop")(
         dynamic_cast<shared_array_wrapper const&>(loop_headers).array,
-        dynamic_cast<shared_array_wrapper const&>(values).array
+        result
       );
     }
 
