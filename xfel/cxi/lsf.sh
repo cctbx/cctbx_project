@@ -9,6 +9,8 @@
 # "aklog".  This avoids the "job being submitted without an AFS token"
 # warning.
 #
+# XXX Check return status (error) on ssh/scp operations!
+#
 # $Id$
 
 # This script must be run from the SIT directory, which contains the
@@ -198,6 +200,7 @@ trial=`ssh -S "${tmpdir}/control.socket" ${NODE} \
     "mkdir -p \"${out}\" ;                       \
      find \"${out}\" -maxdepth 1                 \
                      -name \"[0-9][0-9][0-9]\"   \
+                     -noleaf                     \
                      -printf \"%f\n\" |          \
      sort -n | tail -n 1"`
 if test -z "${trial}"; then
