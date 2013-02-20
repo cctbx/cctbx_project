@@ -125,11 +125,8 @@ def find_and_build_ions (
           atomic_number = sasaki.table(final_choice.element).atomic_number()
           if (atomic_number >= 19) :
             refine_adp = "anisotropic"
-      # Modify the atom object
-      # FIXME this is really insufficient - I need to also group them into
-      # a chain
-      print >> out, "element = '%s', scatt = '%s'" % (final_choice.element,
-        final_choice.scattering_type())
+      # Modify the atom object - this is clumsy but they will be grouped into
+      # a single chain at the end of refinement
       modified_atom = model.convert_atom(
         i_seq=i_seq,
         scattering_type=final_choice.scattering_type(),
@@ -143,7 +140,6 @@ def find_and_build_ions (
         segid="ION",
         refine_adp=refine_adp,
         refine_occupancies=False) #params.refine_ion_occupancies)
-      print >> out, modified_atom.format_atom_record()
       if (params.anomalous) :
         scatterer = model.xray_structure.scatterers()[i_seq]
         if (wavelength is not None) :

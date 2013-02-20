@@ -94,7 +94,7 @@ master_params_str = """\
     .help = Low resolution limit for water picking (at lower resolution water \
             will not be picked even if requessted)
     .short_caption = Minimum resolution
-  mode = *auto filter_only every_macro_cycle
+  mode = *auto filter_only every_macro_cycle every_macro_cycle_after_first
     .type=choice
     .help = Choices for water picking strategy: auto - start water picking \
             after ferst few macro-cycles, filter_only - remove water only, \
