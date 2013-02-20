@@ -1195,6 +1195,9 @@ class manager(object):
     scatterer.scattering_type = scattering_type
     scatterer.label = atom.id_str()
     if (initial_occupancy is not None) :
+      # XXX preserve partial occupancies on special positions
+      if (scatterer.occupancy != 1.0) :
+        initial_occupancy = scatterer.occupancy
       scatterer.occupancy = initial_occupancy
       atom.occ = initial_occupancy
     if (initial_b_iso is not None) :

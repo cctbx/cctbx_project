@@ -106,6 +106,9 @@ water
     .type = float
     .input_size = 80
     .short_caption = Min. fraction of mean B-iso
+  min_2fofc_coordinating = 1.0
+    .type = float
+    .help = Minimum 2mFo-DFc for waters involved in coordination shells.
 }
 chloride
   .short_caption = Halide ions
@@ -421,7 +424,7 @@ class Manager (object) :
     return (d_min < self.params.d_min_strict_valence)
 
   def find_nearby_atoms (self, i_seq, distance_cutoff = 3.0,
-      filter_by_bonding = True):
+      filter_by_bonding = True, filter_by_two_fofc = True):
     """
     Given site in the structure, return a list of nearby atoms with the
     supplied cutoff, and the vectors between them and the atom's site. Takes
@@ -493,8 +496,19 @@ class Manager (object) :
 
         if keep:
           filtered.append(contact)
-
       contacts = filtered
+
+    # discard waters in poor density
+    if (filter_by_two_fofc) :
+      filtered = []
+      for contact in contacts :
+        if (contact.resname() in WATER_RES_NAMES) :
+          two_fofc = self._map_values["2mFo-DFc"][contact.atom_i_seq()]
+          if (two_fofc < self.params.water.min_2fofc_coordinating) :
+            continue
+        filtered.append(contact)
+      contacts = filtered
+
     return contacts
 
   def principal_axes_of_inertia (self, i_seq) :
@@ -672,10 +686,12 @@ class Manager (object) :
     the electron count (map, occ, b) is absolutely essential.
     """
     atom = self.pdb_atoms[i_seq]
+    #print "checking for halide:", atom.id_str()
     assert element.upper() in HALIDES
     # discard atoms with B-factors greater than mean-1sigma for waters
     if ((self.b_mean_hoh is not None) and
         (atom.b > self.b_mean_hoh - self.b_stddev_hoh)) :
+      #print "bad B-factors"
       return False
 
     params = self.params.chloride
@@ -693,9 +709,11 @@ class Manager (object) :
     binds_backbone_amide = False
     near_cation = False
     near_arg_lys = False
+    near_hydroxyl = False
     xyz = col(atom.xyz)
-
     min_distance_to_cation = max(self.unit_cell.parameters()[0:3])
+    min_distance_to_hydroxyl = min_distance_to_cation
+
     for contact in nearby_atoms:
       # to analyze local geometry, we use the target site mapped to be in the
       # same ASU as the interacting site
@@ -732,6 +750,13 @@ class Manager (object) :
         near_arg_lys = True
         if (distance < min_distance_to_cation) :
           min_distance_to_cation = distance
+
+      elif ((atom_name in ["OG1", "OG2", "OH1"]) and
+            (resname in ["SER", "THR", "TYR"]) and
+            (distance <= params.max_distance_to_hydroxyl)) :
+        near_hydroxyl = True
+        if (distance < min_distance_to_hydroxyl) :
+          min_distance_to_hydroxyl = distance
 
       elif atom_name in ["H"]:
         # Backbone amide, explicit H
@@ -824,19 +849,16 @@ class Manager (object) :
           binds_sidechain_amide = True
 
     # now check again for negatively charged sidechain (etc.) atoms (e.g.
-    # carboxyl groups), but with some leeway if a cation is also nearby
+    # carboxyl groups), but with some leeway if a cation is also nearby.
+    # backbone carbonyl atoms are also excluded.
     for contact in nearby_atoms:
       atom = contact.atom
       resname = contact.resname()
       atom_name = contact.atom_name()
       distance = abs(contact)
       if ((distance < 3.2) and
-          (distance < min_distance_to_cation + 0.2) and
-          (atom_name in ["OD1","OD2","OE1","OE2"]) and
-          (resname in ["GLU","ASP"])) :
-        # Negatively charged sidechains
-        # XXX this really needs to be more exhaustive (e.g. phosphate oxygens)
-        print "Too close: %f versus %f" % (distance, min_distance_to_cation)
+          (distance < (min_distance_to_cation + 0.2)) and
+          is_negatively_charged_oxygen(atom_name, resname)) :
         return False
 
     # TODO something smart...
@@ -877,15 +899,14 @@ class Manager (object) :
     if (atom_props.fpp is not None) and (atom_props.fpp > 0) :
       return False
 
+    if (atom_props.peak_anom > params.max_anom_level) :
+      inaccuracies.add(atom_props.ANOM_PEAK)
+
     if atom_props.peak_fofc > params.max_fofc_level:
       inaccuracies.add(atom_props.FOFC_PEAK)
 
     if atom_props.atom.occ > params.max_occ:
       inaccuracies.add(atom_props.HIGH_OCC)
-
-    if (atom_props.peak_anom is not None and
-        atom_props.peak_anom > params.max_anom_level):
-      inaccuracies.add(atom_props.ANOM_PEAK)
 
     # Check the b-factor is within a specified number of standard
     # deviations from the mean and above a specified fraction of
@@ -957,9 +978,9 @@ class Manager (object) :
 
       n_elec = sasaki.table(symbol.upper()).atomic_number() - elem.charge
       mass_ratio = atom_props.estimated_weight / max(n_elec, 1)
-      if (mass_ratio < 0.5):# or
-        #abs(n_elec - atom_props.estimated_weight) > 10) :
-        pass #continue
+      # note that anomalous peaks are more important than the 2mFo-DFc level
+      if (mass_ratio < 0.4) and (looks_like_water) :
+        continue
 
       filtered_candidates.append(elem)
 
@@ -999,7 +1020,7 @@ class Manager (object) :
         valence_used = False
 
     looks_like_halide = False
-    if not reasonable and ((not looks_like_water) or (nuc_phosphate_site)):
+    if (not (reasonable or looks_like_water or nuc_phosphate_site)) :
       # try halides now
       candidate_halides = set(candidates).intersection(HALIDES)
       filtered_halides = []
@@ -1030,7 +1051,8 @@ class Manager (object) :
         atomic_number = sasaki.table(ion_params.element).atomic_number()
         weight_ratio = 0
         if (atom_props.estimated_weight is not None) :
-          weight_ratio = atom_props.estimated_weight / atomic_number
+          weight_ratio = atom_props.estimated_weight / (atomic_number - \
+            ion_params.charge)
         # special handling for transition metals, but only if the user has
         # explicitly requested one (and there is no ambiguity)
         if ((ion_params.element in TRANSITION_METALS) and
@@ -1045,9 +1067,9 @@ class Manager (object) :
           # and no more than six atoms total, accept the current guess
           if ((n_good_res >= 1) and (2 <= n_total_coord_atoms <= 6)) :
             reasonable.append((ion_params, 0))
-          else :
-            print "n_good_res = %d, n_total_coord_atoms = %d" % (n_good_res,
-              n_total_coord_atoms)
+          else : pass
+            #print "n_good_res = %d, n_total_coord_atoms = %d" % (n_good_res,
+            #  n_total_coord_atoms)
         elif ((ion_params.element in ["K","CA"]) and
               (not looks_like_water) and
               (not auto_candidates) and
@@ -1069,6 +1091,9 @@ class Manager (object) :
           n_total_coord_atoms = atom_props.number_of_atoms_within_radius(2.8)
           if (n_total_coord_atoms >= 3) :
             reasonable.append((ion_params, 0))
+        else : pass
+          #print atom.id_str(), atomic_number, looks_like_water, weight_ratio,\
+          #  atom_props.is_compatible_site(ion_params)
       if (len(compatible) == 1) and (not self.get_strict_valence_flag()) :
         inaccuracies = atom_props.inaccuracies[str(ion_params)]
         if (compatible[0] in atom_props.fpp_ratios and
@@ -2022,4 +2047,15 @@ def is_carboxy_terminus (pdb_object) :
   for atom in atoms :
     if (atom.name.strip() == "OXT") :
       return True
+  return False
+
+def is_negatively_charged_oxygen (atom_name, resname) :
+  if ((atom_name in ["OD1","OD2","OE1","OE2"]) and
+      (resname in ["GLU","ASP"])) :
+    return True
+  elif ((atom_name == "O") and (not resname in WATER_RES_NAMES)) :
+    return True # sort of - the lone pair acts this way
+  elif ((atom_name[1:3] in ["O1","O2","O3"]) and
+        (atom_name[3] in ["A","B","G"])) :
+    return True
   return False
