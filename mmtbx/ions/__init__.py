@@ -41,6 +41,8 @@ min_distance_to_anion = 3.5
 min_distance_to_other_sites = 2.1
   .type = float
   .input_size = 80
+max_distance_to_hydroxyl = 3.5
+  .type = float
 delta_amide_h_angle = 20
   .type = float
   .input_size = 80
@@ -1941,8 +1943,8 @@ class AtomProperties (object) :
       atom_name = contact.atom_name()
       if (len(atom_name) < 3) or (contact.element() not in ["O"]) :
         continue
-      if ((atom_name[1:3] in ["O1","O2","O3"]) and
-          (atom_name[3] in ["A","B","G"])) :
+      if ((atom_name[0:2] in ["O1","O2","O3"]) and
+          (atom_name[2] in ["A","B","G"])) :
         if (contact.distance() <= distance_cutoff) :
           n_phosphate_oxygens += 1
     return (n_phosphate_oxygens == min_phosphate_oxygen_atoms)
@@ -2055,7 +2057,7 @@ def is_negatively_charged_oxygen (atom_name, resname) :
     return True
   elif ((atom_name == "O") and (not resname in WATER_RES_NAMES)) :
     return True # sort of - the lone pair acts this way
-  elif ((atom_name[1:3] in ["O1","O2","O3"]) and
-        (atom_name[3] in ["A","B","G"])) :
+  elif ((len(atom_name) == 3) and (atom_name[0:2] in ["O1","O2","O3"]) and
+        (atom_name[2] in ["A","B","G"])) :
     return True
   return False
