@@ -1464,6 +1464,8 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
     if mode == "algebraic":
       if  abs(self.twin_fraction_object.twin_fraction-0.5)<1e-3:
         print >> self.out, "Automatic adjustment: detwinning mode set to proportional"
+        # FIXME this seems appropriate but was not implemented - bug?
+        #mode = "proportional"
 
     assert mode in self.possible_detwin_modes
     assert mode != "auto"
