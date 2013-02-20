@@ -52,6 +52,7 @@ max_iterations = 1000
   .type = float
 resolution_factor = 0.3
   .type = float
+  .short_caption = Grid resolution factor
 beta = 0.7
   .type = float
 convergence_at_r_factor = 0.05
@@ -180,6 +181,8 @@ def validate_params (params) :
     raise Sorry("Please specify an MTZ file containing map coefficients.")
   elif (params.label is None) :
     raise Sorry("No column labels specified.")
+  if (params.resolution_factor > 0.5) :
+    raise Sorry("The grid resolution factor must be a decimal number <= 0.5.")
   return True
 
 def finish_job (result) :
