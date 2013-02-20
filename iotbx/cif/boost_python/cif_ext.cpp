@@ -117,23 +117,6 @@ namespace iotbx { namespace cif {
       &builder, input_string, filename, strict);
   }
 
-  // Convenience function for sorting a single array of
-  // looped data into a given number of columns
-  boost::python::list looped_data_as_columns(
-      scitbx::af::shared<std::string> data, unsigned n_columns) {
-    unsigned n_rows = data.size()/n_columns;
-    IOTBX_ASSERT(n_rows * n_columns == data.size());
-    boost::python::list result;
-    for (std::size_t i=0; i<n_columns; i++) {
-      result.append(scitbx::af::shared<std::string>(n_rows));
-    }
-    for (std::size_t i=0; i<n_columns; i++) {
-      for (std::size_t j=0; j<n_rows; j++) {
-        result[i][j] = data[i + j*n_columns];
-      }
-    }
-    return result;
-  }
 
 namespace boost_python {
 
@@ -159,7 +142,6 @@ namespace boost_python {
     using namespace boost::python;
 
     cif_wrapper::wrap("fast_reader");
-    def("looped_data_as_columns", looped_data_as_columns);
   }
 
 }}} //iotbx::cif::boost_python

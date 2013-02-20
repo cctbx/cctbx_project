@@ -28,21 +28,14 @@ class cif_model_builder(object):
       block_name = data_block_heading[data_block_heading.find('_')+1:]
     self._model[block_name] = self._current_block
 
-  def add_loop(self, header, data):
+  def add_loop(self, header, columns):
     if self._current_save is not None:
       block = self._current_save
     else:
       block = self._current_block
     loop = model.loop()
-    n_columns = len(header)
-    assert len(data) % n_columns == 0, "Wrong number of data items for loop"
-
-    if isinstance(data, list):
-      columns = data
-    elif n_columns == 1:
-      columns = [data]
-    else:
-      columns = iotbx.cif.ext.looped_data_as_columns(data, n_columns)
+    assert len(header) == len(columns)
+    n_columns = len(columns)
     for i in range(n_columns):
       loop[header[i]] = columns[i]
     block.add_loop(loop)
