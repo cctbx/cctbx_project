@@ -2,6 +2,7 @@
 #define UCIF_BUILDER_H
 
 #include <string>
+#include <vector>
 
 namespace ucif {
 
@@ -16,8 +17,8 @@ struct array_wrapper_base
 {
   virtual ~array_wrapper_base() {}
   virtual void push_back(std::string const&) = 0;
-  virtual std::string operator[](unsigned const&) = 0;
-  virtual unsigned size() = 0;
+  virtual std::string operator[](unsigned const&) const = 0;
+  virtual unsigned size() const = 0;
 };
 
 
@@ -33,7 +34,7 @@ struct builder_base
   virtual void end_save_frame() = 0;
   virtual void add_data_item(std::string const& tag, std::string const& value) = 0;
   virtual void add_loop(array_wrapper_base const& loop_headers,
-                        array_wrapper_base const& values) = 0;
+                        std::vector<array_wrapper_base*> const& values) = 0;
   virtual void add_data_block(std::string const& data_block_heading) = 0;
   virtual array_wrapper_base* new_array() = 0;
 
