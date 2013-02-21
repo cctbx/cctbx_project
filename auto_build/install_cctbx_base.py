@@ -85,7 +85,7 @@ class installer (object) :
     self.pkg_dirs = options.pkg_dirs
     self.base_dir = os.path.join(self.build_dir, "base")
     print >> log, "Setting up directories..."
-    for dir_name in [self.tmp_dir,self.src_dir,self.build_dir,self.base_dir] :
+    for dir_name in [self.tmp_dir,self.build_dir,self.base_dir] : #self.src_dir
       if (not os.path.isdir(dir_name)) :
         print >> log, "  creating %s" % dir_name
         os.makedirs(dir_name)
@@ -191,7 +191,7 @@ class installer (object) :
       pkg_url = BASE_CCI_PKG_URL
     os.chdir(self.tmp_dir)
     print >> self.log, "  getting package %s..." % pkg_name
-    if (len(self.pkg_dirs) > 0) :
+    if (self.pkg_dirs is not None) and (len(self.pkg_dirs) > 0) :
       for pkg_dir in self.pkg_dirs :
         static_file = os.path.join(pkg_dir, pkg_name)
         if (os.path.exists(static_file)) :
@@ -423,8 +423,9 @@ class installer (object) :
     self.configure_and_build(config_args=[prefix_arg], log=expat_log)
     header_files = ["./lib/expat_external.h", "./lib/expat.h"]
     for header in header_files :
-      self.call("./conftools/install-sh -c -m 644 .%s \"%s\"" % (header,
+      self.call("./conftools/install-sh -c -m 644 %s \"%s\"" % (header,
         os.path.join(self.base_dir, "include")), log=expat_log)
+    self.print_sep()
     # fontconfig
     fc_log = self.start_building_package("fontconfig")
     self.fetch_untar_and_chdir(pkg_name=FONTCONFIG_PKG, log=fc_log)
@@ -433,7 +434,7 @@ class installer (object) :
     if (not os.path.isdir(os.path.join(self.base_dir,"etc","fonts"))) :
       os.makedirs(os.path.join(self.base_dir,"etc","fonts"))
     fc_config_args = [ prefix_arg,
-      "--disable-docs"
+      "--disable-docs",
       "--with-expat-includes=\"%s\"" % os.path.join(self.base_dir, "include"),
       "--with-expat-lib=\"%s\"" % os.path.join(self.base_dir, "lib"),
       "--with-add-fonts=\"%s\"" % os.path.join(self.base_dir,"share","fonts"),
@@ -587,3 +588,7 @@ class installer (object) :
       pkg_name_label="Matplotlib",
       confirm_import_module="matplotlib")
     self.restore_cppflags_ldflags()
+
+  # TODO
+  def write_dispatcher_include (self) :
+    raise NotImplementedError()
