@@ -491,8 +491,8 @@ class installer (object) :
     fonts_dir = os.path.join(self.base_dir, "share", "fonts")
     if (not os.path.isdir(fonts_dir)) :
       os.makedirs(fonts_dir)
-    os.chdir(fonts_dir)
     pkg = self.fetch_package(pkg_name=FONT_PKG)
+    os.chdir(fonts_dir)
     untar(pkg, log=fonts_log, verbose=True)
     self.print_sep()
     os.chdir(self.tmp_dir)
