@@ -29,7 +29,7 @@ class EIGERImage(DetectorImageBase):
           ### open the link ###
           try:
               data = entry[datalink]
-          except KeyError as exception: ### cannot open link, probably file does not exist
+          except KeyError, exception: ### cannot open link, probably file does not exist
               continue
 
 
@@ -99,7 +99,7 @@ class EIGERImage(DetectorImageBase):
       datalink = ''
       try:
           (datalink,imageNrOffset) = self.LUT[self.img_number]
-      except KeyError as e:
+      except KeyError, e:
           raise ImageReadException('imgNr out of range')
       data = self.hdf5File['entry'][datalink]
       # use slicing access to get images with image number self.img_number
