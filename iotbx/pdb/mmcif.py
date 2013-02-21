@@ -158,7 +158,10 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
                     new_xyz=(cart_x[i_atom], cart_y[i_atom], cart_z[i_atom]))
                   atom.set_b(B_iso_or_equiv[i_atom])
                   atom.set_occ(occu[i_atom])
-                  atom.set_serial(atom_site_id[i_atom])
+                  # hy36encode should go once the pdb.hierarchy has been
+                  # modified to no longer store fixed-width strings
+                  atom.set_serial(
+                    hy36encode(width=5, value=int(atom_site_id[i_atom])))
                   # some code relies on an empty segid being 4 spaces
                   atom.set_segid("    ")
                   if group_PDB is not None and group_PDB[i_atom] == "HETATM":
@@ -183,7 +186,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
                     if fdp not in ("?", "."):
                       atom.set_fdp(new_fdp=float(fdp))
                   if anisotrop_id is not None and adps is not None:
-                    u_ij_index = flex.first_index(anisotrop_id, atom.serial)
+                    u_ij_index = flex.first_index(anisotrop_id, atom.serial.strip())
                     if u_ij_index is not None:
                       u_ij = adps[u_ij_index]
                       atom.set_uij(u_ij)
