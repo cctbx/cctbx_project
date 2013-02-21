@@ -18,7 +18,7 @@ def run (args) :
     help="Additional dispatcher include to append")
   parser.add_option("--gtk_version", dest="gtk_version", action="store",
     help="Version number (major.minor.rev) for GTK+", default="2.10.0")
-  options, args = parser.parse_args()
+  options, args = parser.parse_args(args)
   build_path = options.build_dir
   if (not os.path.isdir(build_path)) :
     raise OSError("The specified build directory (%s) does not exist." %
