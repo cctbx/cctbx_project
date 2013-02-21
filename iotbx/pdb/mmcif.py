@@ -95,6 +95,8 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
       if len(unique_model_ids) == 1: i_model = ""
       model = hierarchy.model(id=i_model)
       self.hierarchy.append_model(model)
+      label_asym_id_selected = label_asym_id.select(model_isel)
+      unique_chain_ids = OrderedSet(label_asym_id_selected)
       unique_chain_ids = OrderedSet(label_asym_id.select(model_isel))
       model.pre_allocate_chains(len(unique_chain_ids))
       for i_chain in unique_chain_ids:
@@ -102,19 +104,18 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
         # separates chains properly in the absence of TER records in the mmcif,
         # however we need to use auth_asym_id for the chain id so that they match
         # e.g. the TLS selections
-        chain_isel = model_isel.select(
-          label_asym_id.select(model_isel) == i_chain)
+        chain_isel = model_isel.select(label_asym_id_selected == i_chain)
         chain_id = set(auth_asym_id.select(chain_isel))
         assert len(chain_id) == 1
         chain_id = list(chain_id)[0]
         chain = hierarchy.chain(id=chain_id)
         model.append_chain(chain)
-        unique_residue_ids = OrderedSet(seq_id.select(chain_isel))
+        seq_id_selected = seq_id.select(chain_isel)
+        unique_residue_ids = OrderedSet(seq_id_selected)
         chain.pre_allocate_residue_groups(len(unique_residue_ids))
         # XXX do we need to sort the residue ids, or leave them in the order we found them?
         for i_residue in unique_residue_ids:
-          residue_isel = chain_isel.select(
-            seq_id.select(chain_isel) == i_residue)
+          residue_isel = chain_isel.select(seq_id_selected == i_residue)
           if pdb_ins_code is not None:
             ins_codes = pdb_ins_code.select(residue_isel)
             unique_pdb_ins_codes = OrderedSet(ins_codes)
@@ -122,23 +123,22 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
             unique_pdb_ins_codes = [None]
           for ins_code in unique_pdb_ins_codes:
             if ins_code is not None:
-              ins_code_isel = residue_isel.select(
-                pdb_ins_code.select(residue_isel) == ins_code)
+              ins_code_isel = residue_isel.select(ins_codes == ins_code)
             else:
               ins_code_isel = residue_isel
             if ins_code in ("?", ".", None): ins_code = " "
             residue_group = hierarchy.residue_group(
               resseq=hy36encode(width=4, value=int(i_residue)), icode=ins_code)
             chain.append_residue_group(residue_group)
-            unique_altloc_ids = OrderedSet(alt_id.select(ins_code_isel))
+            alt_id_selected = alt_id.select(ins_code_isel)
+            unique_altloc_ids = OrderedSet(alt_id_selected)
             if len(unique_altloc_ids) > 1 and "." in unique_altloc_ids:
               # main chain atoms should appear before altlocs in the hierarchy
               unique_altloc_ids.discard(".")
               unique_altloc_ids = ["."] + list(unique_altloc_ids)
             residue_group.pre_allocate_atom_groups(len(unique_altloc_ids))
             for i_altloc in unique_altloc_ids:
-              atom_group_isel = ins_code_isel.select(
-                alt_id.select(ins_code_isel) == i_altloc)
+              atom_group_isel = ins_code_isel.select(alt_id_selected == i_altloc)
               resnames = comp_id.select(atom_group_isel)
               unique_resnames = OrderedSet(resnames)
               # by this point there should be only one resname left
