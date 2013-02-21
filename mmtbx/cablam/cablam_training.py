@@ -559,8 +559,8 @@ def add_probe_data(resdata, open_probe_file):
     srcResidue = resdata[' '.join(['', srcChain, '%04i' % srcNum, srcIns])]
     trgResidue = resdata[' '.join(['', trgChain, '%04i' % trgNum, trgIns])]
     recordkey = trgResidue.id_with_resname() + trgAtomname
-    record = group_args(residue=trgResidue, atom=trgAtomname, dotcount=dotcount)
-    #record = [trgResidue.id_with_resname(),trgAtomname,dotcount]
+    record = group_args(residue=trgResidue, atom=trgAtomname, dotcount=dotcount, seqdist=srcResidue.seq_dist(trgResidue))
+    #print [trgResidue.id_with_resname(),trgAtomname,dotcount,srcResidue.seq_dist(trgResidue)]
     if srcAtomname not in srcResidue.probe.keys():
       srcResidue.probe[srcAtomname] = {}
     #probe keys first by the current residue's atom, then by the target

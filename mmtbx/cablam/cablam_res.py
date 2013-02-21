@@ -136,6 +136,36 @@ class linked_residue(object):
     else:
       return False
 
+  def seq_dist(self, otherres):
+    ############################################
+    # Returns distance in sequence with insertion codes accounted for.
+    # The return value is negative if res is N-terminal to this.
+    # The return value is positive if res is C-terminal to this.
+    # The return value is None if res couldn't be found due to chain break etc.
+    ############################################
+    if self is otherres:
+      return 0
+    if self.chain != otherres.chain:
+      return None
+    #guess which direction to look
+    #  the "<=" and ">=" should let this look back or forward from within an
+    #  insertion
+    if self.resnum <= otherres.resnum:
+      delta = 0
+      cur = self
+      while cur != None:
+        delta += 1
+        if cur.nextres is otherres: return delta
+        cur = cur.nextres
+    if self.resnum >= otherres.resnum:
+      delta = 0
+      cur = self
+      while cur != None:
+        delta -= 1
+        if cur.prevres is otherres: return delta
+        cur = cur.prevres
+    return None
+
   def __init__(self,
     rg, prevres=None, pdbid='pdbid', modelid='', chainid='',
     targetatoms=["CA","O","C","N"]
