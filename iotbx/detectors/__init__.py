@@ -52,7 +52,7 @@ all_image_types = [EDFWrapper,SaturnImage,DIPImage,ADSCImage,HamamatsuImage,
                   MARImage,MARIPImage,DTREKImage,RAXISImage,
                   NonSquareRAXISImage,SMVImage,PilatusImage,CBFImage,BrukerImage]
 try :
-  import h5py
+  import h5py # special import
 except ImportError :
   pass
 else :
