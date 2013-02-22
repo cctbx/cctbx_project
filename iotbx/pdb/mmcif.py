@@ -8,7 +8,7 @@ from libtbx.table_utils import wrap_always
 from libtbx.utils import null_out
 import iotbx.pdb
 from iotbx.pdb import hierarchy
-from iotbx.pdb import hy36encode
+from iotbx.pdb import hy36encode, hy36decode
 from iotbx.pdb.remark_3_interpretation import \
      refmac_range_to_phenix_string_selection, tls
 import iotbx.cif
@@ -684,7 +684,7 @@ class pdb_hierarchy_as_cif_block(iotbx.cif.crystal_symmetry_as_cif_block):
                 fp = "%.4f" %fp
                 fdp = "%.4f" %fdp
               atom_site_loop['_atom_site.group_PDB'].append(group_pdb)
-              atom_site_loop['_atom_site.id'].append(atom.serial.strip())
+              atom_site_loop['_atom_site.id'].append(str(hy36decode(width=5, s=atom.serial)))
               atom_site_loop['_atom_site.label_atom_id'].append(atom.name.strip())
               atom_site_loop['_atom_site.label_alt_id'].append(alt_id)
               atom_site_loop['_atom_site.label_comp_id'].append(comp_id)
