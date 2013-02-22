@@ -8,9 +8,9 @@
 # everything is kept at the point where one started developing.  Do
 # not use the shell's built-in which(1), which may give a relative
 # path.
-PYANA=`/usr/bin/which cxi.pyana`
+PYANA=`/usr/bin/which cxi.pyana 2> /dev/null`
 if ! test -x "${PYANA}"; then
-    echo "Cannot execute ${PYANA}" > /dev/stderr
+    echo "Cannot execute cxi.pyana" > /dev/stderr
     exit 1
 fi
 
