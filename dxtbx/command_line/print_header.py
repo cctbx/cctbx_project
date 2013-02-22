@@ -1,3 +1,4 @@
+from __future__ import division
 def print_header():
     import sys
     from dxtbx.format.Registry import Registry

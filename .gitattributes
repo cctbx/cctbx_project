@@ -405,6 +405,7 @@ dxtbx/model/goniometer_helpers.py -text
 dxtbx/model/scan.py -text
 dxtbx/model/scan_helpers.py -text
 dxtbx/readme.txt -text
+dxtbx/tests/__init__.py -text
 dxtbx/tests/example-xparm.xds -text
 dxtbx/tests/image_001.dat -text
 dxtbx/tests/image_002.dat -text
