@@ -51,6 +51,38 @@ scitbx::af::flex_int uncompress(const boost::python::str& packed,const int& slow
     return z;
 }
 
+long int
+uncompress_sum_positive(const boost::python::str & packed,
+                        const int & slow,
+                        const int & fast,
+                        const int & start,
+                        const int & size)
+{
+
+    std::string all = boost::python::extract<std::string>(packed);
+    std::string strpacked = all.substr(start, size);
+    std::size_t sz_buffer = strpacked.size();
+
+    //C++ weirdness
+    scitbx::af::flex_int z(scitbx::af::flex_grid<>(slow,fast),
+                           scitbx::af::init_functor_null<int>());
+    int* begin = z.begin();
+    std::size_t sz = z.size();
+
+    iotbx::detectors::buffer_uncompress(strpacked.c_str(), sz_buffer, begin);
+
+    long int total = 0;
+    for (int i = 0; i < slow; i++) {
+      for (int j = 0; j < fast; j++) {
+        if (z[i * fast + j] > 0) {
+          total += z[i * fast + j];
+        }
+      }
+    }
+
+    return total;
+}
+
 boost::python::str compress(const scitbx::af::flex_int z){
 
     const int* begin = z.begin();
@@ -121,6 +153,14 @@ cbflib_ext_wrap_all()
      arg_("packed"),
      arg_("slow"),
      arg_("fast")
+     )
+   );
+   def("uncompress_sum_positive",&uncompress_sum_positive,(
+     arg_("packed"),
+     arg_("slow"),
+     arg_("fast"),
+     arg_("offset"),
+     arg_("size")
      )
    );
    def("compress",&compress);
