@@ -1252,52 +1252,30 @@ pdb_codes_fragment_files = """\
 3f1e 3f1f 3f1g 3f1h
 """
 
-def join_fragment_files(file_names):
-  info = flex.std_string()
-  info.append("REMARK JOINED FRAGMENT FILES (iotbx.pdb)")
-  info.append("REMARK " + date_and_time())
-  roots = []
-  cryst1 = Auto
-  sum_z = None
-  z_warning = 'REMARK ' \
-    'Warning: CRYST1 Z field (columns 67-70) is not an integer: "%-4.4s"'
-  for file_name in file_names:
-    info.append("REMARK %s" % show_string(file_name))
-    pdb_inp = iotbx.pdb.input(file_name=file_name)
-    roots.append(pdb_inp.construct_hierarchy())
-    c1s = []
-    for line in pdb_inp.crystallographic_section():
-      if (line.startswith("CRYST1")):
-        info.append("REMARK %s" % line.rstrip())
-        c1s.append(line)
-        if (cryst1 is Auto):
-          cryst1 = line[:66]
-          try: sum_z = int(line[66:70])
-          except ValueError:
-            info.append(z_warning % line[66:70])
-            sum_z = None
-        elif (cryst1 is not None and line[:66] != cryst1):
-          info.append("REMARK Warning: CRYST1 mismatch.")
-          cryst1 = None
-          sum_z = None
-        elif (sum_z is not None):
-          try: sum_z += int(line[66:70])
-          except ValueError:
-            info.append(z_warning % line[66:70])
-            sum_z = None
-    if (len(c1s) == 0):
-      info.append("REMARK Warning: CRYST1 record not available.")
-      sum_z = None
-    elif (len(c1s) > 1):
-      info.append("REMARK Warning: Multiple CRYST1 records.")
-      sum_z = None
-  if (cryst1 is not Auto and cryst1 is not None):
-    if (sum_z is not None):
-      cryst1 = "%-66s%4d" % (cryst1, sum_z)
-    info.append(cryst1.rstrip())
-  result = iotbx.pdb.hierarchy.join_roots(roots=roots)
-  result.info.extend(info)
-  return result
+class join_fragment_files(object):
+  def __init__(self, file_names):
+    info = flex.std_string()
+    info.append("REMARK JOINED FRAGMENT FILES (iotbx.pdb)")
+    info.append("REMARK " + date_and_time())
+    roots = []
+    from cctbx import crystal
+    self.crystal_symmetry = crystal.symmetry()
+    z_warning = 'REMARK ' \
+      'Warning: CRYST1 Z field (columns 67-70) is not an integer: "%-4.4s"'
+    for file_name in file_names:
+      pdb_inp = iotbx.pdb.input(file_name=file_name)
+      info.append("REMARK %s" % show_string(file_name))
+      info.append("REMARK %s" % iotbx.pdb.format_cryst1_record(
+        crystal_symmetry=pdb_inp.crystal_symmetry()))
+      self.crystal_symmetry = self.crystal_symmetry.join_symmetry(
+        pdb_inp.crystal_symmetry(), force=True)
+      roots.append(pdb_inp.construct_hierarchy())
+    info.append(iotbx.pdb.format_cryst1_record(
+      crystal_symmetry=self.crystal_symmetry))
+    result = iotbx.pdb.hierarchy.join_roots(roots=roots)
+    result.info.extend(info)
+    result.reset_i_seq_if_necessary()
+    self.joined = result
 
 def merge_files_and_check_for_overlap (file_names, output_file,
     site_clash_cutoff=0.5, log=sys.stdout) :
@@ -1305,7 +1283,7 @@ def merge_files_and_check_for_overlap (file_names, output_file,
   merged_records = combine_unique_pdb_files(file_names)
   warnings = StringIO()
   merged_records.report_non_unique(out=warnings)
-  merged_hierarchy = join_fragment_files(file_names)
+  merged_hierarchy = join_fragment_files(file_names).joined
   f = open(output_file, "w")
   f.write(merged_hierarchy.as_pdb_string())
   f.close()
