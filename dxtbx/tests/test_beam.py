@@ -1,3 +1,4 @@
+from __future__ import division
 #!/usr/bin/env python
 # test_beam.py
 #   Copyright (C) 2011 Diamond Light Source, Graeme Winter
@@ -7,18 +8,21 @@
 #
 # Tests for the beam class.
 
-import os
-import sys
-
 from dxtbx.model.beam import beam
 from dxtbx.model.beam import beam_factory
 
 def test_beam():
     '''A test class for the beam class.'''
 
-    cbf = beam_factory.imgCIF('phi_scan_001.cbf')
+    import libtbx.load_env
+    import os
 
-    print cbf
+    dxtbx_dir = libtbx.env.dist_path('dxtbx')
+
+    image = os.path.join(dxtbx_dir, 'tests', 'phi_scan_001.cbf')
+    cbf = beam_factory.imgCIF(image)
+
+    print 'OK'
 
 if __name__ == '__main__':
 

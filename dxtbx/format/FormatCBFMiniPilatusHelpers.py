@@ -1,3 +1,4 @@
+from __future__ import division
 #!/usr/bin/env python
 # FormatCBFMiniPilatus.py
 #   Copyright (C) 2011 Diamond Light Source, Graeme Winter
