@@ -38,8 +38,8 @@ to join all fragment files in the PDB.""" % command_name)
         codes = line.split()
         joined = iotbx.pdb.join_fragment_files(
           file_names = [
-            os.path.join(pdb_mirror_pdb, code[1:3], "pdb%s.ent.gz" % code).joined
-              for code in codes])
+            os.path.join(pdb_mirror_pdb, code[1:3], "pdb%s.ent.gz" % code)
+              for code in codes]).joined
         file_name_out = "%s_%s.pdb" % (codes[0], codes[-1])
         print "  writing:", file_name_out
         out = open(file_name_out, "w")
