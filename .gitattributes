@@ -1274,6 +1274,7 @@ mmtbx/command_line/cbetadev.py -text
 mmtbx/command_line/cc_star.py -text
 mmtbx/command_line/cif_as_mtz.py -text
 mmtbx/command_line/clashscore.py -text
+mmtbx/command_line/compute_map_coefficients.py -text
 mmtbx/command_line/density_modification.py -text
 mmtbx/command_line/distance_difference.py -text
 mmtbx/command_line/dssp.py -text
@@ -1506,6 +1507,7 @@ mmtbx/regression/tst_dssp.py -text
 mmtbx/regression/tst_examples.py -text
 mmtbx/regression/tst_find_peaks_holes.py -text
 mmtbx/regression/tst_interpolation.py -text
+mmtbx/regression/tst_map_coeffs_simple.py -text
 mmtbx/regression/tst_maps_misc.py -text
 mmtbx/regression/tst_ml_estimate.py -text
 mmtbx/regression/tst_msa.py -text
