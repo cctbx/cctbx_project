@@ -1258,20 +1258,30 @@ class join_fragment_files(object):
     info.append("REMARK JOINED FRAGMENT FILES (iotbx.pdb)")
     info.append("REMARK " + date_and_time())
     roots = []
+    z = None
     from cctbx import crystal
     self.crystal_symmetry = crystal.symmetry()
     z_warning = 'REMARK ' \
       'Warning: CRYST1 Z field (columns 67-70) is not an integer: "%-4.4s"'
     for file_name in file_names:
       pdb_inp = iotbx.pdb.input(file_name=file_name)
+      z_ = pdb_inp.extract_cryst1_z_columns().strip()
+      if z_: z_ = int(z_)
+      else: z_ = None
+      if z is None:
+        z = z_
+      else:
+        z = max(z, z_)
+      cs = pdb_inp.crystal_symmetry()
       info.append("REMARK %s" % show_string(file_name))
-      info.append("REMARK %s" % iotbx.pdb.format_cryst1_record(
-        crystal_symmetry=pdb_inp.crystal_symmetry()))
-      self.crystal_symmetry = self.crystal_symmetry.join_symmetry(
-        pdb_inp.crystal_symmetry(), force=True)
+      if cs is not None and cs.unit_cell() is not None:
+        info.append("REMARK %s" % iotbx.pdb.format_cryst1_record(cs, z=z_))
+        self.crystal_symmetry = self.crystal_symmetry.join_symmetry(
+          cs, force=True)
       roots.append(pdb_inp.construct_hierarchy())
-    info.append(iotbx.pdb.format_cryst1_record(
-      crystal_symmetry=self.crystal_symmetry))
+    if self.crystal_symmetry.unit_cell() is not None:
+      info.append(iotbx.pdb.format_cryst1_record(
+        crystal_symmetry=self.crystal_symmetry, z=z))
     result = iotbx.pdb.hierarchy.join_roots(roots=roots)
     result.info.extend(info)
     result.reset_i_seq_if_necessary()
