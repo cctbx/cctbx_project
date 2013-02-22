@@ -488,11 +488,11 @@ class installer (object) :
       pkg_name_label="gtk-engine")
     # fonts
     fonts_log = self.start_building_package("fonts")
-    fonts_dir = os.path.join(self.base_dir, "share", "fonts")
-    if (not os.path.isdir(fonts_dir)) :
-      os.makedirs(fonts_dir)
+    share_dir = os.path.join(self.base_dir, "share")
+    if (not os.path.isdir(share_dir)) :
+      os.makedirs(share_dir)
     pkg = self.fetch_package(pkg_name=FONT_PKG)
-    os.chdir(fonts_dir)
+    os.chdir(share_dir)
     untar(pkg, log=fonts_log, verbose=True)
     self.print_sep()
     os.chdir(self.tmp_dir)
