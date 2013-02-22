@@ -192,14 +192,6 @@ for s in ${streams}; do
     cat > "${out}/pyana_s${s}.sh" << EOF
 #! /bin/sh
 
-export SIT_ARCH="x86_64-gentoo-gcc463-opt"
-export SIT_DATA="/global/project/projectdirs/lcls/psdm/data"
-export SIT_RELEASE="ana-current"
-export SIT_ROOT="/global/project/projectdirs/lcls/psdm-hattne"
-
-export LD_LIBRARY_PATH="\${SIT_ROOT}/arch/x86_64-gentoo-gcc463-opt/lib:\${LD_LIBRARY_PATH}"
-export PYTHONPATH="\${SIT_ROOT}/arch/x86_64-gentoo-gcc463-opt/python:\${PYTHONPATH}"
-
 NPROC="\${PBS_NUM_PPN}"
 
 test "\${NPROC}" -gt 2 2> /dev/null || NPROC="1"
@@ -231,7 +223,8 @@ awk -F=                                    \
 # http://www.nersc.gov/users/computational-systems/carver/running-jobs/batch-jobs/#toc-anchor-11.
 # For some reason must "export current environment into the batch job
 # environment" using the -V directive, otherwise mpirun will not be in
-# $PATH.
+# $PATH.  XXX Output from pbs will still be written to a file in
+# directory where the job was submitted from.
 cat > "${out}/submit.pbs" << EOF
 #! /bin/sh
 
@@ -257,8 +250,9 @@ wait
 EOF
 
 # Copy the configuration files and the submission script to ${out}.
-# Submit the analysis of all streams to the queueing system.
-qsub "${out}/submit.pbs"
+# Submit the analysis of all streams to the queueing system.  XXX
+# Delete the created output directories?
+qsub "${out}/submit.pbs" || cleanup_and_exit 1
 
 echo "Output directory: ${out}"
 cleanup_and_exit 0
