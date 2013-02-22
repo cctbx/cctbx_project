@@ -8,7 +8,7 @@ import sys, os
 
 master_phil = iotbx.phil.parse("""
 join_fragment_files {
-  reset_atom_serial = False
+  reset_atom_serial = True
     .type = bool
   model_file = None
     .type = path
