@@ -644,6 +644,52 @@ class pdb_hierarchy_as_cif_block(iotbx.cif.crystal_symmetry_as_cif_block):
       '_atom_site_anisotrop.U[2][3]'
     ))
 
+    # cache dictionary lookups to save time in inner loop
+    atom_site_group_PDB = atom_site_loop['_atom_site.group_PDB']
+    atom_site_id = atom_site_loop['_atom_site.id']
+    atom_site_label_atom_id = atom_site_loop['_atom_site.label_atom_id']
+    atom_site_label_alt_id = atom_site_loop['_atom_site.label_alt_id']
+    atom_site_label_comp_id = atom_site_loop['_atom_site.label_comp_id']
+    atom_site_auth_asym_id = atom_site_loop['_atom_site.auth_asym_id']
+    atom_site_auth_seq_id = atom_site_loop['_atom_site.auth_seq_id']
+    atom_site_pdbx_PDB_ins_code = atom_site_loop['_atom_site.pdbx_PDB_ins_code']
+    atom_site_Cartn_x = atom_site_loop['_atom_site.Cartn_x']
+    atom_site_Cartn_y = atom_site_loop['_atom_site.Cartn_y']
+    atom_site_Cartn_z = atom_site_loop['_atom_site.Cartn_z']
+    atom_site_occupancy = atom_site_loop['_atom_site.occupancy']
+    atom_site_B_iso_or_equiv = atom_site_loop['_atom_site.B_iso_or_equiv']
+    atom_site_type_symbol = atom_site_loop['_atom_site.type_symbol']
+    atom_site_pdbx_formal_charge = atom_site_loop['_atom_site.pdbx_formal_charge']
+    atom_site_phenix_scat_dispersion_real = \
+      atom_site_loop['_atom_site.phenix_scat_dispersion_real']
+    atom_site_phenix_scat_dispersion_imag = \
+      atom_site_loop['_atom_site.phenix_scat_dispersion_imag']
+    atom_site_label_asym_id = atom_site_loop['_atom_site.label_asym_id']
+    atom_site_label_entity_id = atom_site_loop['_atom_site.label_entity_id']
+    atom_site_label_seq_id = atom_site_loop['_atom_site.label_seq_id']
+    #atom_site_loop['_atom_site.auth_comp_id'].append(comp_id)
+    #atom_site_loop['_atom_site.auth_atom_id'].append(atom.name.strip())
+    atom_site_pdbx_PDB_model_num = atom_site_loop['_atom_site.pdbx_PDB_model_num']
+    atom_site_anisotrop_id = aniso_loop['_atom_site_anisotrop.id']
+    atom_site_anisotrop_pdbx_auth_atom_id = \
+      aniso_loop['_atom_site_anisotrop.pdbx_auth_atom_id']
+    atom_site_anisotrop_pdbx_label_alt_id = \
+      aniso_loop['_atom_site_anisotrop.pdbx_label_alt_id']
+    atom_site_anisotrop_pdbx_auth_comp_id = \
+      aniso_loop['_atom_site_anisotrop.pdbx_auth_comp_id']
+    atom_site_anisotrop_pdbx_auth_asym_id = \
+      aniso_loop['_atom_site_anisotrop.pdbx_auth_asym_id']
+    atom_site_anisotrop_pdbx_auth_seq_id = \
+      aniso_loop['_atom_site_anisotrop.pdbx_auth_seq_id']
+    atom_site_anisotrop_pdbx_PDB_ins_code = \
+      aniso_loop['_atom_site_anisotrop.pdbx_PDB_ins_code']
+    atom_site_anisotrop_U11 = aniso_loop['_atom_site_anisotrop.U[1][1]']
+    atom_site_anisotrop_U22 = aniso_loop['_atom_site_anisotrop.U[2][2]']
+    atom_site_anisotrop_U33 = aniso_loop['_atom_site_anisotrop.U[3][3]']
+    atom_site_anisotrop_U12 = aniso_loop['_atom_site_anisotrop.U[1][2]']
+    atom_site_anisotrop_U13 = aniso_loop['_atom_site_anisotrop.U[1][3]']
+    atom_site_anisotrop_U23 = aniso_loop['_atom_site_anisotrop.U[2][3]']
+
     model_ids = flex.std_string()
     unique_chain_ids = set()
     auth_asym_ids = flex.std_string()
@@ -683,45 +729,46 @@ class pdb_hierarchy_as_cif_block(iotbx.cif.crystal_symmetry_as_cif_block):
               else:
                 fp = "%.4f" %fp
                 fdp = "%.4f" %fdp
-              atom_site_loop['_atom_site.group_PDB'].append(group_pdb)
-              atom_site_loop['_atom_site.id'].append(str(hy36decode(width=5, s=atom.serial)))
-              atom_site_loop['_atom_site.label_atom_id'].append(atom.name.strip())
-              atom_site_loop['_atom_site.label_alt_id'].append(alt_id)
-              atom_site_loop['_atom_site.label_comp_id'].append(comp_id)
-              atom_site_loop['_atom_site.auth_asym_id'].append(auth_asym_id)
-              atom_site_loop['_atom_site.auth_seq_id'].append(seq_id)
-              atom_site_loop['_atom_site.pdbx_PDB_ins_code'].append(icode)
-              atom_site_loop['_atom_site.Cartn_x'].append(x)
-              atom_site_loop['_atom_site.Cartn_y'].append(y)
-              atom_site_loop['_atom_site.Cartn_z'].append(z)
-              atom_site_loop['_atom_site.occupancy'].append(occ_fmt_str % atom.occ)
-              atom_site_loop['_atom_site.B_iso_or_equiv'].append(b_iso_fmt_str % atom.b)
-              atom_site_loop['_atom_site.type_symbol'].append(atom.element.strip())
-              atom_site_loop['_atom_site.pdbx_formal_charge'].append(atom_charge)
-              atom_site_loop['_atom_site.phenix_scat_dispersion_real'].append(fp)
-              atom_site_loop['_atom_site.phenix_scat_dispersion_imag'].append(fdp)
-              atom_site_loop['_atom_site.label_asym_id'].append(label_asym_id)
-              atom_site_loop['_atom_site.label_entity_id'].append(entity_id)
-              atom_site_loop['_atom_site.label_seq_id'].append(str(label_seq_id))
+              atom_site_group_PDB.append(group_pdb)
+              atom_site_id.append(str(hy36decode(width=5, s=atom.serial)))
+              atom_site_label_atom_id.append(atom.name.strip())
+              atom_site_label_alt_id.append(alt_id)
+              atom_site_label_comp_id.append(comp_id)
+              atom_site_auth_asym_id.append(auth_asym_id)
+              atom_site_auth_seq_id.append(seq_id)
+              atom_site_pdbx_PDB_ins_code.append(icode)
+              atom_site_Cartn_x.append(x)
+              atom_site_Cartn_y.append(y)
+              atom_site_Cartn_z.append(z)
+              atom_site_occupancy.append(occ_fmt_str % atom.occ)
+              atom_site_B_iso_or_equiv.append(b_iso_fmt_str % atom.b)
+              atom_site_type_symbol.append(atom.element.strip())
+              atom_site_pdbx_formal_charge.append(atom_charge)
+              atom_site_phenix_scat_dispersion_real.append(fp)
+              atom_site_phenix_scat_dispersion_imag.append(fdp)
+              atom_site_label_asym_id.append(label_asym_id)
+              atom_site_label_entity_id.append(entity_id)
+              atom_site_label_seq_id.append(str(label_seq_id))
               #atom_site_loop['_atom_site.auth_comp_id'].append(comp_id)
               #atom_site_loop['_atom_site.auth_atom_id'].append(atom.name.strip())
-              atom_site_loop['_atom_site.pdbx_PDB_model_num'].append(model_id)
+              atom_site_pdbx_PDB_model_num.append(model_id.strip())
 
               if atom.uij_is_defined():
-                uij = [u_aniso_fmt_str %i for i in atom.uij]
-                aniso_loop['_atom_site_anisotrop.id'].append(atom.serial.strip())
-                aniso_loop['_atom_site_anisotrop.pdbx_auth_atom_id'].append(atom.name.strip())
-                aniso_loop['_atom_site_anisotrop.pdbx_label_alt_id'].append(alt_id)
-                aniso_loop['_atom_site_anisotrop.pdbx_auth_comp_id'].append(comp_id)
-                aniso_loop['_atom_site_anisotrop.pdbx_auth_asym_id'].append(auth_asym_id)
-                aniso_loop['_atom_site_anisotrop.pdbx_auth_seq_id'].append(seq_id)
-                aniso_loop['_atom_site_anisotrop.pdbx_PDB_ins_code'].append(icode)
-                aniso_loop['_atom_site_anisotrop.U[1][1]'].append(uij[0])
-                aniso_loop['_atom_site_anisotrop.U[2][2]'].append(uij[1])
-                aniso_loop['_atom_site_anisotrop.U[3][3]'].append(uij[2])
-                aniso_loop['_atom_site_anisotrop.U[1][2]'].append(uij[3])
-                aniso_loop['_atom_site_anisotrop.U[1][3]'].append(uij[4])
-                aniso_loop['_atom_site_anisotrop.U[2][3]'].append(uij[5])
+                u11, u22, u33, u12, u13, u23 = [
+                  u_aniso_fmt_str %i for i in atom.uij]
+                atom_site_anisotrop_id.append(atom.serial.strip())
+                atom_site_anisotrop_pdbx_auth_atom_id.append(atom.name.strip())
+                atom_site_anisotrop_pdbx_label_alt_id.append(alt_id)
+                atom_site_anisotrop_pdbx_auth_comp_id.append(comp_id)
+                atom_site_anisotrop_pdbx_auth_asym_id.append(auth_asym_id)
+                atom_site_anisotrop_pdbx_auth_seq_id.append(seq_id)
+                atom_site_anisotrop_pdbx_PDB_ins_code.append(icode)
+                atom_site_anisotrop_U11.append(u11)
+                atom_site_anisotrop_U22.append(u22)
+                atom_site_anisotrop_U33.append(u33)
+                atom_site_anisotrop_U12.append(u12)
+                atom_site_anisotrop_U13.append(u13)
+                atom_site_anisotrop_U23.append(u23)
 
     for key in ('_atom_site.phenix_scat_dispersion_real',
                 '_atom_site.phenix_scat_dispersion_imag'):
