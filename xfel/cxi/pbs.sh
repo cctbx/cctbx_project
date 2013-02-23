@@ -19,9 +19,9 @@ cleanup_and_exit() {
 }
 trap "cleanup_and_exit 1" HUP INT QUIT TERM
 
-args=`getopt c:o:p:q:r:x: $*`
+args=`getopt c:o:p:q:r:t:x: $*`
 if test $? -ne 0; then
-    echo "Usage: pbs.sh -c config -r run-num [-o output] [-p num-cpu] [-q queue] [-x exp]" > /dev/stderr
+    echo "Usage: pbs.sh -c config -r run-num [-o output] [-p num-cpu] [-q queue] [-t trial] [-x exp]" > /dev/stderr
     cleanup_and_exit 1
 fi
 
@@ -69,11 +69,25 @@ while test ${#} -ge 0; do
         -r)
             # Set ${run} to a zero-padded, four-digit string
             # representation of the integer.
-            if ! test "${2}" -gt 0 2> /dev/null; then
-                echo "run-num must be positive integer" > /dev/stderr
+            if ! test "${2}" -ge 1 -a "${2}" -le 9999 2> /dev/null; then
+                echo "run-num must an integer in the range [1, 9999]" \
+                    > /dev/stderr
                 cleanup_and_exit 1
             fi
             run=`echo "${2}" | awk '{ printf("%04d", $1); }'`
+            shift
+            shift
+            ;;
+
+        -t)
+            # Set ${trial} to a zero-padded, three-digit string
+            # representation of the integer.
+            if ! test "${2}" -ge 0 -a "${2}" -le 999 2> /dev/null; then
+                echo "trial must an integer in the range [0, 999]" \
+                    > /dev/stderr
+                cleanup_and_exit 1
+            fi
+            trial=`echo "${2}" | awk '{ printf("%03d", $1); }'`
             shift
             shift
             ;;
@@ -151,26 +165,36 @@ test -z "${queue}" && queue="regular"
 
 # Unless specified on the command line, set up the output directory as
 # a subdirectory named "results" within the experiment's scratch
-# space.  All actual output will be written to the next available
-# three-digit trial directory for the run.
+# space.
 if test -z "${out}"; then
     out="${exp}/scratch/results"
 fi
 out="${out}/r${run}"
-trial=`mkdir -p "${out}" ;                 \
-     find "${out}" -maxdepth 1             \
-                   -noleaf                 \
-                   -name "[0-9][0-9][0-9]" \
-                   -printf "%f\n" |        \
-     sort -n | tail -n 1`
+
+# All actual output will be written to a subdirectory for the run,
+# named by its three-digit trial number.  Check that any requested
+# trial number is available.  If ${trial} is not given on the command
+# line, generate the next available one.
+if test -n "${trial}" -a -d "${out}/${trial}"; then
+    echo "Error: Requested trial number ${trial} already in use" > /dev/stderr
+    cleanup_and_exit 1
+fi
 if test -z "${trial}"; then
-    trial="000"
-else
-    if test "${trial}" -eq "999"; then
-        echo "Error: Trial numbers exhausted" > /dev/stderr
-        cleanup_and_exit 1
+    trial=`mkdir -p "${out}" ;                 \
+         find "${out}" -maxdepth 1             \
+                       -noleaf                 \
+                       -name "[0-9][0-9][0-9]" \
+                       -printf "%f\n" |        \
+         sort -n | tail -n 1`
+    if test -z "${trial}"; then
+        trial="000"
+    else
+        if test "${trial}" -eq "999"; then
+            echo "Error: Trial numbers exhausted" > /dev/stderr
+            cleanup_and_exit 1
+        fi
+        trial=`expr "${trial}" \+ 1 | awk '{ printf("%03d", $1); }'`
     fi
-    trial=`expr "${trial}" \+ 1 | awk '{ printf("%03d", $1); }'`
 fi
 out="${out}/${trial}"
 
