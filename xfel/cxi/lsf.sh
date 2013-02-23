@@ -147,7 +147,7 @@ fi
 # Take ${exp} from the environment unless overridden on the command
 # line, and find its absolute path.
 test -n "${EXP}" -a -z "${exp}" && exp="${EXP}"
-exp=`find "/reg/d/psdm" -maxdepth 2 -name "${exp}"`
+exp=`find "/reg/d/psdm" -maxdepth 2 -noleaf -name "${exp}"`
 if ! ssh -S "${tmpdir}/control.socket" ${NODE} \
     "test -d \"${exp}\" 2> /dev/null"; then
     echo "Could not find experiment subdirectory for ${exp}" > /dev/stderr
@@ -199,8 +199,8 @@ out="${out}/r${run}"
 trial=`ssh -S "${tmpdir}/control.socket" ${NODE} \
     "mkdir -p \"${out}\" ;                       \
      find \"${out}\" -maxdepth 1                 \
-                     -name \"[0-9][0-9][0-9]\"   \
                      -noleaf                     \
+                     -name \"[0-9][0-9][0-9]\"   \
                      -printf \"%f\n\" |          \
      sort -n | tail -n 1"`
 if test -z "${trial}"; then
