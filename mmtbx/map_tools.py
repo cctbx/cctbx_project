@@ -2,13 +2,10 @@ from __future__ import division
 from cctbx.array_family import flex
 from cctbx import miller
 from cctbx import maptbx
-import boost.python
 import libtbx.phil
 from libtbx.utils import null_out
 from libtbx import adopt_init_args
 import mmtbx
-
-#ext = boost.python.import_ext("mmtbx_f_model_ext")
 
 class kick_map(object):
 
@@ -143,6 +140,7 @@ class combine(object):
     self.fc_scale = fc_scale
     self.fo_scale = fo_scale
     self.f_obs = None
+    self.f_model = None
     if(not self.mnm.ml_map):
       self.f_obs = self.fmodel.f_obs().data()*fo_scale
     else:
@@ -157,19 +155,24 @@ class combine(object):
     def compute(fo,fc,miller_set):
       if(type(fo) == flex.double):
         fo = miller.array(miller_set=miller_set, data=fo).phase_transfer(
-          phase_source = self.mch.f_model).data()
+          phase_source = self.f_model).data()
       return miller.array(miller_set=miller_set, data=fo+fc)
     if(f_model is None):
       if(not self.mnm.ml_map):
-        f_model = self.fmodel.f_model_scaled_with_k1().data()*self.fc_scale
+        self.f_model = self.fmodel.f_model_scaled_with_k1()
+        f_model_data = self.f_model.data()*self.fc_scale
       else:
-        f_model = self.mch.f_model.data()*self.fc_scale*self.mch.alpha.data()
+        self.f_model = self.mch.f_model
+        f_model_data = self.f_model.data()*self.fc_scale*self.mch.alpha.data()
     else:
+      self.f_model = f_model
       if(not self.mnm.ml_map):
-        f_model = f_model.data()*self.fc_scale
+        f_model_data = self.f_model.data()*self.fc_scale
       else:
-        f_model = f_model.data()*self.fc_scale*self.mch.alpha.data()
-    return compute(fo=self.f_obs, fc=f_model, miller_set=self.fmodel.f_obs())
+        f_model_data = self.f_model.data()*self.fc_scale*self.mch.alpha.data()
+    # f_model_data may be multiplied by scales like "-1", so it cannot be
+    # phase source !
+    return compute(fo=self.f_obs, fc=f_model_data, miller_set=self.fmodel.f_obs())
 
 class electron_density_map(object):
 
