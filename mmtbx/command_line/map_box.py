@@ -4,12 +4,12 @@ from __future__ import division
 import mmtbx.utils
 from mmtbx.refinement import print_statistics
 import iotbx.pdb
-from scitbx.array_family import flex
 import libtbx.phil
 from libtbx.utils import Sorry
 import os, sys
 from iotbx import file_reader
 from iotbx import reflection_file_reader
+from iotbx import reflection_file_utils
 
 master_phil = libtbx.phil.parse("""
   pdb_file = None
@@ -113,28 +113,13 @@ Parameters:"""%h
   xray_structure.show_summary(f=log)
   #
   map_coeff = None
-  if(got_hkl):
-    print_statistics.make_sub_header("map coefficients", out=log)
-    miller_arrays = reflection_file.as_miller_arrays()
-    print >> log, "Labels in input map coefficients file:"
-    map_coeff = []
-    label_taken = None
-    for ma in miller_arrays:
-      print >> log, "  ", ma.info().labels
-      if(match_labels(target=ma.info().labels, label=params.label)):
-        map_coeff.append(ma)
-        label_taken = ma.info().labels
-    if(len(map_coeff)==0):
-      raise Sorry(
-        "Could not match 'label=%s' against available labels."%params.label)
-    elif(len(map_coeff)>1):
-      raise Sorry("Multiple matches of 'label=%s' against available labels."%
-        params.label)
-    else:
-      print >> log, "Label taken:", label_taken
-      map_coeff = map_coeff[0]
-      if(not isinstance(map_coeff.data(), flex.complex_double)):
-        raise Sorry("Map coefficients must be a complex array.")
+  if(params.map_coefficients_file is not None):
+    map_coeff = reflection_file_utils.extract_miller_array_from_file(
+      file_name = params.map_coefficients_file,
+      label     = params.label,
+      type      = "complex",
+      log       = log)
+    assert map_coeff is not None
   #
   if(got_map):
     print_statistics.make_sub_header("CCP4 map", out=log)
