@@ -9,6 +9,10 @@ from libtbx.math_utils import ifloor, iceil
 import libtbx.callbacks # import dependency
 import os
 import sys
+import random
+from mmtbx import map_tools
+from cctbx import miller
+from cctbx import maptbx
 
 map_coeff_params_base_str = """\
   map_coefficients
@@ -537,3 +541,67 @@ class compute_map_coefficients(object):
       mtz_object.write(file_name = file_name)
       return True
     return False
+
+def averaged_phase_kicked_map(
+      fmodel,
+      map_type            = "2mFo-DFc",
+      phase_kick_fraction = 0.3,
+      number_of_kicks     = 100):
+  assert number_of_kicks > 0
+  map_coeff_data = None
+  map_coeffs = fmodel.electron_density_map().map_coefficients(
+    map_type = map_type, isotropize=True, fill_missing=False)
+  complete_set = fmodel.electron_density_map().map_coefficients(
+    map_type = map_type, isotropize=True, fill_missing=True)
+  phases = map_coeffs.phases(deg=True).data()
+  centric_flags = fmodel.f_obs().centric_flags().data()
+  for kick in xrange(number_of_kicks):
+    phases_ = flex.double()
+    for p, cf in zip(phases, centric_flags): # XXX loop over hkl: SLOW
+      if(cf): phases_.append(p) # XXX should we care? may be shake all?
+      else: phases_.append(p+p*random.choice([-1,1])*phase_kick_fraction)
+    map_coeffs_ = map_coeffs.phase_transfer(phase_source=phases_, deg=True)
+    map_coeffs_ = map_coeffs_.complete_with(other=complete_set)
+    if(map_coeff_data is None): map_coeff_data = map_coeffs_.data()
+    else: map_coeff_data = map_coeff_data + map_coeffs_.data()
+  return miller.set(
+    crystal_symmetry = complete_set.crystal_symmetry(),
+    indices          = complete_set.indices(),
+    anomalous_flag   = False).array(data = map_coeff_data/number_of_kicks)
+
+class filter_by_averaged_phase_kicked_map(object):
+  def __init__(self,
+               fmodel,
+               crystal_gridding,
+               map_type        = "2mFo-DFc",
+               sigma_threshold = 0.5,
+               fill_missing    = False):
+    self.mc_original = map_tools.electron_density_map(
+      fmodel = fmodel).map_coefficients(
+        map_type = map_type,
+        fill_missing = fill_missing)
+    self.mc_kicked = mmtbx.maps.averaged_phase_kicked_map(fmodel=fmodel)
+    maps = []
+    for mc in [self.mc_original, self.mc_kicked]:
+      fft_map = miller.fft_map(
+        crystal_gridding     = crystal_gridding,
+        fourier_coefficients = mc)
+      fft_map.apply_sigma_scaling()
+      maps.append(fft_map.real_map_unpadded())
+    self.map_data_original, self.map_data_kicked = \
+      maps[0].deep_copy(), maps[1].deep_copy()
+    maptbx.intersection(
+      map_data_1 = maps[0],
+      map_data_2 = maps[1],
+      threshold  = 0.5)
+    self.map_data_original_filtered = maps[0]
+    self.mc_original_filtered = fmodel.f_obs().structure_factors_from_map(
+      map            = maps[0],
+      use_scale      = True,
+      anomalous_flag = False,
+      use_sg         = False)
+    self.mc_kicked_filtered = fmodel.f_obs().structure_factors_from_map(
+      map            = maps[1],
+      use_scale      = True,
+      anomalous_flag = False,
+      use_sg         = False)
