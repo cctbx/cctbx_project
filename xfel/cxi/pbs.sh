@@ -106,7 +106,8 @@ fi
 # Take ${exp} from the environment unless overridden on the command
 # line, and find its absolute path.
 test -n "${EXP}" -a -z "${exp}" && exp="${EXP}"
-exp=`find "/global/project/projectdirs/lcls/CXI" -maxdepth 2 -name "${exp}"`
+exp=`find "/global/project/projectdirs/lcls/CXI" -maxdepth 2 -noleaf \
+    -name "${exp}"`
 if ! test -d "${exp}" 2> /dev/null; then
     echo "Could not find experiment subdirectory for ${exp}" > /dev/stderr
     cleanup_and_exit 1
@@ -158,6 +159,7 @@ fi
 out="${out}/r${run}"
 trial=`mkdir -p "${out}" ;                 \
      find "${out}" -maxdepth 1             \
+                   -noleaf                 \
                    -name "[0-9][0-9][0-9]" \
                    -printf "%f\n" |        \
      sort -n | tail -n 1`
