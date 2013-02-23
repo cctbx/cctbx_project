@@ -93,13 +93,13 @@ weight_selection_criteria
     .type=float
   angles_rmsd = 2.0
     .type=float
-  r_free_minus_r_work = 7
+  r_free_minus_r_work = 5
     .type=float
   r_free_range_width = 1.5
     .type=float
   mean_diff_b_iso_bonded_fraction = 0.2
     .type=float
-  min_diff_b_iso_bonded = 20
+  min_diff_b_iso_bonded = 10
     .type=float
 }
 """
