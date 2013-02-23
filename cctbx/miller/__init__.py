@@ -1353,7 +1353,10 @@ class set(crystal.symmetry):
       binning=binning(self.unit_cell(), n_bins, self.indices(), d_max, d_min))
     return self.binner()
 
-  def log_binning(self, n_reflections_in_lowest_resolution_bin=100, eps=1.e-4):
+  def log_binning(self, n_reflections_in_lowest_resolution_bin=100, eps=1.e-4,
+                  max_number_of_bins = 30, min_reflections_in_bin=50):
+    #XXX Move entire implementation into C++: can be ~100 times faster.
+    assert max_number_of_bins > 1
     if(n_reflections_in_lowest_resolution_bin   >= self.indices().size() or
        n_reflections_in_lowest_resolution_bin*2 >= self.indices().size()):
       return [flex.bool(self.indices().size(), True)]
@@ -1365,15 +1368,22 @@ class set(crystal.symmetry):
     s2 = lnss[n_reflections_in_lowest_resolution_bin*2]
     d_spacings = self.d_spacings().data()
     step = s2-s1
-    limits = [math.sqrt(1/math.exp(s0))]
-    lnss_min = s1
-    while lnss_min <= flex.max(lnss):
+    def get_limits():
+      limits = [math.sqrt(1/math.exp(s0))]
+      lnss_min = s1
+      while lnss_min <= flex.max(lnss):
+        d = math.sqrt(1/math.exp(lnss_min))
+        limits.append(d)
+        lnss_min += step
+      lnss_min = min(flex.max(lnss), lnss_min)
       d = math.sqrt(1/math.exp(lnss_min))
       limits.append(d)
-      lnss_min += step
-    lnss_min = min(flex.max(lnss), lnss_min)
-    d = math.sqrt(1/math.exp(lnss_min))
-    limits.append(d)
+      return limits
+    limits = get_limits()
+    if(len(limits) > max_number_of_bins):
+      # (max_number_of_bins-1) is because adding both ends; see get_limits().
+      step = (lnss[len(lnss)-1]-s1)/(max_number_of_bins-1)
+      limits = get_limits()
     pairs = []
     for i, d in enumerate(limits):
       if(i<len(limits)-2):
@@ -1401,6 +1411,13 @@ class set(crystal.symmetry):
       new_selections = selections[:len(selections)-2]
       new_selections.append(sp | sl)
       selections = new_selections
+    new_sel = []
+    for i,si in enumerate(selections):
+      if(si.count(True)<min_reflections_in_bin and len(new_sel)-1>=0):
+        new_sel[len(new_sel)-1] = new_sel[len(new_sel)-1] | si
+      else:
+        new_sel.append(si)
+    selections = new_sel
     return selections
 
   def setup_binner_d_star_sq_step(self,
@@ -3050,7 +3067,7 @@ class array(set):
 
   def amplitudes(self):
     """
-    For a complex array, return the real component (i.e. abs(self)).
+    For a complex array, return array of absolute values.
     """
     assert isinstance(self.data(), flex.complex_double)
     assert self.sigmas() is None
@@ -3063,7 +3080,7 @@ class array(set):
 
   def phases(self, deg=False):
     """
-    For a complex array, return the imaginary component (in radians by default).
+    For a complex array, return the array of its phases (in radians by default).
     """
     assert isinstance(self.data(), flex.complex_double)
     assert self.sigmas() is None

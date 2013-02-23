@@ -2106,6 +2106,15 @@ def exercise_log_binning():
       r.append(lb[i+1].count(True)/lb[i].count(True))
   assert r.size() == 7
   assert approx_equal(flex.mean(r), 2.0, 0.01)
+  #
+  for i in xrange(2,10):
+    lb = fc.log_binning(max_number_of_bins=i)
+    assert i == len(lb)
+  #
+  for t in range(100,3000, 500):
+    lb = fc.log_binning(min_reflections_in_bin=t)
+    for i, s in enumerate(lb):
+      if(i!=0): assert s.count(True)>=t
 
 def exercise_scale():
   cs = crystal.symmetry((10,10,10), "P1")
