@@ -8,7 +8,7 @@ system and the Phenix installer.
 """
 
 from __future__ import division
-from cctbx_installer_utils import *
+from installer_utils import *
 from package_defs import *
 from optparse import OptionParser
 import warnings
