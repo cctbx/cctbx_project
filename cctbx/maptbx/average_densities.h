@@ -135,40 +135,84 @@ af::versa<double, af::c_grid<3> > box_map_averaging(
                              af::const_ref<double, af::c_grid<3> > const& data,
                              double const& rad)
 {
-    int lx,ly,lz,kx,ky,kz,mx,my,mz,x1box,x2box,y1box,y2box,z1box,z2box;
-    int NX = data.accessor()[0];
-    int NY = data.accessor()[1];
-    int NZ = data.accessor()[2];
-    double xrad = rad*unit_cell.reciprocal_parameters()[0]*NX;
-    double yrad = rad*unit_cell.reciprocal_parameters()[1]*NY;
-    double zrad = rad*unit_cell.reciprocal_parameters()[2]*NZ;
-    af::versa<double, af::c_grid<3> > new_data;
-    new_data.resize(af::c_grid<3>(NX,NY,NZ), 0.0);
-    af::ref<double, af::c_grid<3> > new_data_ref = new_data.ref();
+  int lx,ly,lz,kx,ky,kz,mx,my,mz,x1box,x2box,y1box,y2box,z1box,z2box;
+  int NX = data.accessor()[0];
+  int NY = data.accessor()[1];
+  int NZ = data.accessor()[2];
+  double xrad = rad*unit_cell.reciprocal_parameters()[0]*NX;
+  double yrad = rad*unit_cell.reciprocal_parameters()[1]*NY;
+  double zrad = rad*unit_cell.reciprocal_parameters()[2]*NZ;
+  af::versa<double, af::c_grid<3> > new_data;
+  new_data.resize(af::c_grid<3>(NX,NY,NZ), 0.0);
+  af::ref<double, af::c_grid<3> > new_data_ref = new_data.ref();
 
-    for (lx = 0; lx < NX; lx++) {
-      for (ly = 0; ly < NY; ly++) {
-        for (lz = 0; lz < NZ; lz++) {
-            double r_ave_xyz = 0.0;
-            int counter = 0;
-            x1box=scitbx::math::nearest_integer(static_cast<double>(lx)-xrad) - 1;
-            x2box=scitbx::math::nearest_integer(static_cast<double>(lx)+xrad) + 1;
-            y1box=scitbx::math::nearest_integer(static_cast<double>(ly)-yrad) - 1;
-            y2box=scitbx::math::nearest_integer(static_cast<double>(ly)+yrad) + 1;
-            z1box=scitbx::math::nearest_integer(static_cast<double>(lz)-zrad) - 1;
-            z2box=scitbx::math::nearest_integer(static_cast<double>(lz)+zrad) + 1;
-            for (kx = x1box; kx <= x2box; kx++) {
-              for (ky = y1box; ky <= y2box; ky++) {
-                for (kz = z1box; kz <= z2box; kz++) {
-                    mx = scitbx::math::mod_positive(kx, NX);
-                    my = scitbx::math::mod_positive(ky, NY);
-                    mz = scitbx::math::mod_positive(kz, NZ);
-                    r_ave_xyz += data(mx,my,mz);
-                    counter += 1;
-            }}}
-            new_data_ref(lx,ly,lz) = r_ave_xyz / counter;
-    }}}
-    return new_data;
+  for (lx = 0; lx < NX; lx++) {
+    for (ly = 0; ly < NY; ly++) {
+      for (lz = 0; lz < NZ; lz++) {
+        double r_ave_xyz = 0.0;
+        int counter = 0;
+        x1box=scitbx::math::nearest_integer(static_cast<double>(lx)-xrad) - 1;
+        x2box=scitbx::math::nearest_integer(static_cast<double>(lx)+xrad) + 1;
+        y1box=scitbx::math::nearest_integer(static_cast<double>(ly)-yrad) - 1;
+        y2box=scitbx::math::nearest_integer(static_cast<double>(ly)+yrad) + 1;
+        z1box=scitbx::math::nearest_integer(static_cast<double>(lz)-zrad) - 1;
+        z2box=scitbx::math::nearest_integer(static_cast<double>(lz)+zrad) + 1;
+        for (kx = x1box; kx <= x2box; kx++) {
+          for (ky = y1box; ky <= y2box; ky++) {
+            for (kz = z1box; kz <= z2box; kz++) {
+                mx = scitbx::math::mod_positive(kx, NX);
+                my = scitbx::math::mod_positive(ky, NY);
+                mz = scitbx::math::mod_positive(kz, NZ);
+                r_ave_xyz += data(mx,my,mz);
+                counter += 1;
+        }}}
+        new_data_ref(lx,ly,lz) = r_ave_xyz / counter;
+  }}}
+  return new_data;
+}
+
+af::versa<double, af::c_grid<3> >
+node_interplation_averaging(
+  cctbx::uctbx::unit_cell const& unit_cell,
+  af::const_ref<double, af::c_grid<3> > const& data,
+  double const& rad)
+{
+  int NX = data.accessor()[0];
+  int NY = data.accessor()[1];
+  int NZ = data.accessor()[2];
+  af::versa<double, af::c_grid<3> > new_data;
+  new_data.resize(af::c_grid<3>(NX,NY,NZ), 0.0);
+  af::ref<double, af::c_grid<3> > new_data_ref = new_data.ref();
+  for (int lx = 0; lx < NX; lx++) {
+    for (int ly = 0; ly < NY; ly++) {
+      for (int lz = 0; lz < NZ; lz++) {
+        cctbx::fractional<> site_frac_1 = cctbx::fractional<>(
+          lx/static_cast<double>(NX),
+          ly/static_cast<double>(NY),
+          lz/static_cast<double>(NZ));
+        double rho = 0.0;
+        double w = 0.0;
+        int inc = 1;
+        for (int i = lx-inc; i <= lx+inc; i++) {
+          for (int j = ly-inc; j <= ly+inc; j++) {
+            for (int k = lz-inc; k <= lz+inc; k++) {
+              int mx = scitbx::math::mod_positive(i, NX);
+              int my = scitbx::math::mod_positive(j, NY);
+              int mz = scitbx::math::mod_positive(k, NZ);
+              cctbx::fractional<> site_frac_2 = cctbx::fractional<>(
+                i/static_cast<double>(NX),
+                j/static_cast<double>(NY),
+                k/static_cast<double>(NZ));
+              double dist = unit_cell.distance(site_frac_1, site_frac_2);
+              if(dist != 0) dist = 1./dist;
+              else dist = 0.01;
+              dist=1;
+              rho += dist*data(mx,my,mz);
+              w += dist;
+        }}}
+        new_data_ref(lx,ly,lz) = rho / w;
+  }}}
+  return new_data;
 }
 
 class volume_scale {
@@ -203,52 +247,6 @@ public:
           }
           else {
             rho_new = v_values_[index];
-          }
-          map_new(i,j,k) = rho_new;
-        }
-      }
-    }
-  }
-
-  af::versa<double, af::c_grid<3> > map_data() {return map_new;}
-  af::shared<double> v_values() {return v_values_;}
-
-};
-
-class hgl_scale {
-public:
-  af::versa<double, af::c_grid<3> > map_new;
-  af::shared<double> v_values_;
-
-  hgl_scale(
-    af::const_ref<double, af::c_grid<3> > const& map,
-    int const& n_bins)
-  {
-    int nx = map.accessor()[0];
-    int ny = map.accessor()[1];
-    int nz = map.accessor()[2];
-    map_new.resize(af::c_grid<3>(nx,ny,nz), 0);
-    double rho_min = af::min(map);
-    histogram hist = histogram(map, n_bins);
-    double bin_width = hist.bin_width();
-    v_values_ = hist.c_values();
-    for (int i = 0; i < nx; i++) {
-      for (int j = 0; j < ny; j++) {
-        for (int k = 0; k < nz; k++) {
-          double rho = map(i,j,k);
-          int index = scitbx::math::nearest_integer((rho-rho_min)/bin_width);
-          if(index<0) index=0;
-          if(index>=n_bins) index=n_bins-1;
-          double rho_new = 0;
-          if(index+1<n_bins) {
-            double rho_n = rho_min + index*bin_width;
-            double v = v_values_[index] +
-              (v_values_[index+1]-v_values_[index]) * (rho-rho_n)/bin_width;
-            rho_new = 3*v*v - 2*v*v*v;
-          }
-          else {
-            double v = v_values_[index];
-            rho_new = 3*v*v - 2*v*v*v;
           }
           map_new(i,j,k) = rho_new;
         }

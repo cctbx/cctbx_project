@@ -132,19 +132,6 @@ namespace {
     }
 
     {
-      typedef hgl_scale w_t;
-
-      class_<w_t>("hgl_scale", no_init)
-        .def(init<af::const_ref<double, af::c_grid<3> > const&,
-                  int const& >(
-                    (arg("map"),
-                     arg("n_bins"))))
-        .def("map_data", &w_t::map_data)
-        .def("v_values", &w_t::v_values)
-      ;
-    }
-
-    {
       typedef one_gaussian_peak_approximation w_t;
 
       class_<w_t>("one_gaussian_peak_approximation", no_init)
@@ -225,8 +212,17 @@ namespace {
             arg("site_frac")));
 
     def("box_map_averaging",box_map_averaging);
-    def("hoppe_gassman_modification",hoppe_gassman_modification);
-    def("convert_to_non_negative",convert_to_non_negative);
+
+    def("node_interplation_averaging",node_interplation_averaging);
+
+    def("hoppe_gassman_modification",
+      (void(*)
+        (af::ref<double, af::c_grid<3> >,
+         double,
+         int)) hoppe_gassman_modification, (
+      arg("data"),
+      arg("mean_scale"),
+      arg("n_iterations")));
 
     def("sphericity",
       (af::shared<double>(*)
@@ -249,6 +245,22 @@ namespace {
       arg("data"),
       arg("sites_frac"),
       arg("radius")));
+
+    def("convert_to_non_negative",
+      (void(*)
+        (af::ref<double, af::c_grid<3> >,
+         double)) convert_to_non_negative, (
+      arg("data"),
+      arg("substitute_value")));
+
+    def("intersection",
+      (void(*)
+        (af::ref<double, af::c_grid<3> >,
+         af::ref<double, af::c_grid<3> >,
+         double)) intersection, (
+      arg("map_data_1"),
+      arg("map_data_2"),
+      arg("threshold")));
 
     def("rotate_translate_map",
       (af::versa<double, af::c_grid<3> >(*)
@@ -294,6 +306,17 @@ namespace {
       arg("n_real"),
       arg("cutoffp"),
       arg("cutoffm")));
+
+    def("set_box",
+      (void(*)
+        (af::const_ref<double, af::c_grid<3> > const&,
+         af::ref<double, af::c_grid<3> >,
+         af::tiny<int, 3> const&,
+         af::tiny<int, 3> const&)) set_box, (
+      arg("map_data_from"),
+      arg("map_data_to"),
+      arg("start"),
+      arg("end")));
 
     def("eight_point_interpolation",
       (double(*)

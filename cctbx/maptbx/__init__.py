@@ -207,31 +207,28 @@ class crystal_gridding_tags(crystal_gridding):
 
 class boxes(object):
   """
-  Split unit cell into boxes where each box is a cube with edge size box_size.
+  Split unit cell into boxes where each box is a cube with edge size box_size_as_unit_cell_fraction.
   """
   def __init__(self,
-               crystal_symmetry,
-               resolution_factor=1/4.,
-               d_min=1.5,
-               box_size=10,
+               n_real,
+               unit_cell,
+               box_size_as_unit_cell_fraction=0.05,
                show=True,
                log=None,
                prefix=""):
     if(log is not None): log = sys.stdout
-    self.crystal_gridding = crystal_gridding(
-      unit_cell               = crystal_symmetry.unit_cell(),
-      d_min                   = d_min,
-      resolution_factor       = resolution_factor,
-      step                    = None,
-      symmetry_flags          = None,
-      space_group_info        = crystal_symmetry.space_group_info(),
-      mandatory_factors       = None,
-      max_prime               = 5,
-      assert_shannon_sampling = True)
-    a,b,c = crystal_symmetry.unit_cell().parameters()[:3]
-    self.n_real = self.crystal_gridding.n_real()
+    a,b,c = unit_cell.parameters()[:3]
+    self.n_real = n_real
     ga,gb,gc = a/self.n_real[0], b/self.n_real[1], c/self.n_real[2]
-    ba,bb,bc = int(box_size/ga), int(box_size/gb), int(box_size/gc)
+    #
+    f = box_size_as_unit_cell_fraction**(1./3)
+    box_size_a, box_size_b, box_size_c = 10,10,10 #a*f, b*f, c*f
+    #box_size_a, box_size_b, box_size_c = a*f, b*f, c*f
+    print box_size_a, box_size_b, box_size_c
+    print unit_cell.volume(), box_size_a*box_size_b*box_size_c, \
+      box_size_a*box_size_b*box_size_c/unit_cell.volume()*100
+    #
+    ba,bb,bc = int(box_size_a/ga), int(box_size_b/gb), int(box_size_c/gc)
     nba,nbb,nbc = self.n_real[0]//ba, self.n_real[1]//bb, self.n_real[2]//bc
     nla,nlb,nlc = self.n_real[0]%ba,  self.n_real[1]%bb,  self.n_real[2]%bc
     if(show):
@@ -240,6 +237,15 @@ class boxes(object):
       print >> log, prefix, "step along edges   :", ga,gb,gc
       print >> log, prefix, "points per box edge:", ba,bb,bc
       print >> log, prefix, "number of boxes    :", (nba+1)*(nbb+1)*(nbc+1)
+      #
+      #v = crystal_symmetry.unit_cell().volume()
+      #f = 0.05
+      #print v
+      #print (f*v)**(1./3)
+      #ab,bb,cb = a*f**(1./3), b*f**(1./3), c*f**(1./3)
+      #print ab,bb,cb, ab*bb*cb, (ab*bb*cb)/v*100
+      #STOP()
+      #
     be = []
     for i, b in enumerate([ba,bb,bc]):
       be_ = self._box_edges(n_real_1d = self.n_real[i], step=b)
@@ -762,6 +768,56 @@ def principal_axes_of_inertia (
   return scitbx.math.principal_axes_of_inertia(
     points=sites,
     weights=values)
+
+class local_scale(object):
+  def __init__(
+        self,
+        map_data,
+        crystal_gridding,
+        crystal_symmetry,
+        miller_array=None,
+        d_min = None,
+        mean_positive_scale = 2): #XXX =1: more features and noise
+    self.map_result = None
+    self.map_coefficients = None
+    b = boxes(
+      crystal_symmetry  = crystal_symmetry,
+      crystal_gridding  = crystal_gridding,
+      resolution_factor = 0.25,
+      d_min             = 1.2,
+      box_size_as_unit_cell_fraction = 0.025)
+    # Truncate high density
+    mean_positive = flex.mean(map_data.as_1d().select(map_data.as_1d()>0))
+    map_data = map_data.set_selected(map_data>mean_positive*mean_positive_scale,
+      mean_positive*mean_positive_scale)
+    # Apply Hoppe-Gassmann modification
+    hoppe_gassman_modification(data=map_data, mean_scale=2, n_iterations=1)
+    # Loop over boxes, fill map_result with one box at a time
+    self.map_result = flex.double(flex.grid(b.n_real))
+    for s,e in zip(b.starts, b.ends):
+      box = copy(map_data, s, e)
+      box.reshape(flex.grid(box.all()))
+      #XXX more features and noise
+      #ave = flex.mean(box.as_1d().select(box.as_1d()>0))
+      #box.set_selected(box>ave*3, ave*3)
+      hoppe_gassman_modification(data=box, mean_scale=4, n_iterations=1)
+      sd = box.sample_standard_deviation()
+      if(sd!=0): box = box/sd
+      set_box(
+        map_data_from = box,
+        map_data_to   = self.map_result,
+        start         = s,
+        end           = e)
+    hoppe_gassman_modification(data=self.map_result, mean_scale=2, n_iterations=1)
+    if(miller_array is not None):
+      complete_set = miller_array
+      if(d_min is not None):
+        complete_set = miller_array.complete_set(d_min=d_min)
+      self.map_coefficients = complete_set.structure_factors_from_map(
+        map            = self.map_result,
+        use_scale      = True,
+        anomalous_flag = False,
+        use_sg         = False)
 
 class positivity_constrained_density_modification(object):
   def __init__(self, f, f_000, n_cycles=100, resolution_factor=0.25, d_min=None,
