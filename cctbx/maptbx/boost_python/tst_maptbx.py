@@ -994,14 +994,64 @@ def exercise_region_density_correlation():
   assert approx_equal(cc, 0.6756590336, eps=1.e-3)
 
 def exercise_boxing():
+  n_real = (60, 100, 160)
   cs=crystal.symmetry(
     unit_cell=(21,37,58,80,111,117),
     space_group_symbol="P1")
-  maptbx.boxes(crystal_symmetry = cs, show=True)
+  maptbx.boxes(n_real = n_real, unit_cell = cs.unit_cell(), show=True)
+
+def exercise_hoppe_gassman_modification__and__convert_to_non_negative():
+  values = [-2,-1,-0.3,-0.2,-0.1,0,0.1,0.2,0.3,0.4,3,4]
+  random.choice([0,1,2,3,4,5,6,7,8,9,10,11])
+  av = [values[random.choice([0,1,2,3,4,5,6,7])] for i in xrange(10*20*30)]
+  a = flex.double(av)
+  a.resize(flex.grid((10,20,30)))
+  # inefficient, but transparent way
+  a1 = a.deep_copy()
+  maptbx.convert_to_non_negative(data=a1, substitute_value=0)
+  assert flex.min(a1)>=0
+  ave = flex.mean(a1.as_1d().select(a1.as_1d()>0))
+  a1.set_selected(a1>ave*2, ave*2)
+  a1 = a1/flex.max(a1)
+  a1 = 3*a1*a1-2*a1*a1*a1
+  assert flex.min(a1)>=0
+  assert flex.max(a1)<=1
+  # unobvious but efficient way
+  a2 = a.deep_copy()
+  maptbx.hoppe_gassman_modification(data=a2, mean_scale=2, n_iterations=1)
+  assert flex.min(a2)>=0
+  assert flex.max(a2)<=1
+  #
+  assert approx_equal(flex.mean(a1), flex.mean(a2))
+
+def exercise_set_box():
+  n_real = (60, 100, 160)
+  n = n_real[0]*n_real[1]*n_real[2]
+  cs=crystal.symmetry(
+    unit_cell=(21,37,58,80,111,117),
+    space_group_symbol="P1")
+  be = maptbx.boxes(n_real = n_real, unit_cell = cs.unit_cell(), show=True)
+  #
+  m1 = flex.double([-1 for i in xrange(n)])
+  m1.resize(flex.grid(n_real))
+  m2 = flex.double([1 for i in xrange(n)])
+  m2.resize(flex.grid(n_real))
+  #
+  for s,e in zip(be.starts, be.ends):
+    box = maptbx.copy(m2, s, e)
+    box.reshape(flex.grid(box.all()))
+    maptbx.set_box(
+      map_data_from = box,
+      map_data_to   = m1,
+      start         = s,
+      end           = e)
+  assert m2.as_1d().min_max_mean().as_tuple() == (1.,1.,1.)
 
 def run(args):
   assert args in [[], ["--timing"]]
   timing = len(args) != 0
+  exercise_set_box()
+  exercise_boxing()
   exercise_copy()
   exercise_statistics()
   exercise_grid_tags()
@@ -1023,7 +1073,7 @@ def run(args):
   exercise_grid_indices_around_sites()
   exercise_standard_devations_around_sites()
   exercise_region_density_correlation()
-  exercise_boxing()
+  exercise_hoppe_gassman_modification__and__convert_to_non_negative()
   print "OK"
 
 if (__name__ == "__main__"):

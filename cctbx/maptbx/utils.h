@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <scitbx/array_family/accessors/c_grid.h>
+#include <scitbx/array_family/accessors/flex_grid.h>
 
 namespace cctbx { namespace maptbx {
 
@@ -82,24 +83,97 @@ namespace cctbx { namespace maptbx {
     return ih;
   }
 
-inline void hoppe_gassman_modification(af::ref<double, af::c_grid<3> > map_data)
+template <typename DataType>
+void hoppe_gassman_modification(af::ref<DataType, af::c_grid<3> > map_data,
+       DataType mean_scale, int n_iterations)
+/* A modified version of rho->3*rho^2-2*rho^3 modification.
+   Acta Cryst. (1968). B24, 97-107
+   Acta Cryst. (1975). A31, 388-389
+   Acta Cryst. (1979). B35, 1776-1785
+*/
 {
   int nx = map_data.accessor()[0];
   int ny = map_data.accessor()[1];
   int nz = map_data.accessor()[2];
-  double rho_max = af::max(map_data);
-  for(int i = 0; i < nx; i++) {
-    for(int j = 0; j < ny; j++) {
-      for(int k = 0; k < nz; k++) {
-         double rho = map_data(i,j,k)/rho_max;
-         if(rho>=0) map_data(i,j,k) = 3*rho*rho - 2*rho*rho*rho;
-         else       map_data(i,j,k) = 0;
-  }}}
+  for(int iter = 0; iter < n_iterations; iter++) {
+    DataType rho_mean = 0;
+    DataType rho_max = 0;
+    int cntr = 0;
+    for(int i = 0; i < nx; i++) {
+      for(int j = 0; j < ny; j++) {
+        for(int k = 0; k < nz; k++) {
+          DataType rho = map_data(i,j,k);
+          if(rho>0) {
+            rho_mean += rho;
+            cntr += 1;
+            if(rho>rho_max) rho_max = rho;
+    }}}}
+    if(cntr != 0) rho_mean /= cntr;
+    DataType rho_ms = rho_mean*mean_scale;
+    if(rho_max!=0) {
+      for(int i = 0; i < nx; i++) {
+        for(int j = 0; j < ny; j++) {
+          for(int k = 0; k < nz; k++) {
+             DataType rho = map_data(i,j,k);
+             if(rho > rho_ms) rho = rho_ms;
+             CCTBX_ASSERT(rho<=rho_max);
+             rho /= rho_max;
+             if(rho<0) map_data(i,j,k) = 0;
+             else {
+               DataType rho_sq = rho*rho;
+               map_data(i,j,k) = 3*rho_sq - 2*rho*rho_sq;
+    }}}}}
+  }
 }
 
-inline void convert_to_non_negative(
-       af::ref<double, af::c_grid<3> > map_data,
-       double substitute_value=0)
+template <typename DataType>
+void set_box(
+  af::const_ref<DataType, af::c_grid<3> > const& map_data_from,
+  af::ref<DataType, af::c_grid<3> > map_data_to,
+  af::tiny<int, 3> const& start,
+  af::tiny<int, 3> const& end)
+{
+  int ii=0;
+  for (int i = start[0]; i < end[0]; i++) {
+    int jj=0;
+    for (int j = start[1]; j < end[1]; j++) {
+      int kk=0;
+      for (int k = start[2]; k < end[2]; k++) {
+        map_data_to(i,j,k) = map_data_from(ii,jj,kk);
+        kk+=1;
+      }
+      jj+=1;
+    }
+    ii+=1;
+  }
+}
+
+template <typename DataType>
+void intersection(
+       af::ref<DataType, af::c_grid<3> > map_data_1,
+       af::ref<DataType, af::c_grid<3> > map_data_2,
+       DataType threshold)
+{
+  af::tiny<int, 3> a1 = map_data_1.accessor();
+  af::tiny<int, 3> a2 = map_data_2.accessor();
+  for(int i = 0; i < 3; i++) CCTBX_ASSERT(a1[i]==a2[i]);
+  for(int i = 0; i < a1[0]; i++) {
+    for(int j = 0; j < a1[1]; j++) {
+      for(int k = 0; k < a1[2]; k++) {
+         double rho1 = map_data_1(i,j,k);
+         double rho2 = map_data_2(i,j,k);
+         bool c1 = rho1>threshold && rho2<threshold;
+         bool c2 = rho2>threshold && rho1<threshold;
+         if(c1 || c2) {
+           map_data_1(i,j,k)=0;
+           map_data_2(i,j,k)=0;
+  }}}}
+}
+
+template <typename DataType>
+void convert_to_non_negative(
+       af::ref<DataType, af::c_grid<3> > map_data,
+       DataType substitute_value)
 {
   int nx = map_data.accessor()[0];
   int ny = map_data.accessor()[1];
