@@ -2,7 +2,7 @@
 
 from __future__ import division
 from optparse import OptionParser
-from cctbx_installer_utils import *
+from installer_utils import *
 import os
 import sys
 

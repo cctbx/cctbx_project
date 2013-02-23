@@ -1,8 +1,8 @@
 * text=auto !eol
 auto_build/__init__.py svneol=native#text/x-python
-auto_build/cctbx_installer_utils.py -text
 auto_build/install -text
 auto_build/install_cctbx_base.py -text
+auto_build/installer_utils.py -text
 auto_build/package_defs.py -text
 auto_build/regenerate_module_files -text
 auto_build/write_gui_dispatcher_include -text
