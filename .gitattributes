@@ -1,4 +1,5 @@
 * text=auto !eol
+auto_build/__init__.py svneol=native#text/x-python
 auto_build/cctbx_installer_utils.py -text
 auto_build/install -text
 auto_build/install_cctbx_base.py -text
