@@ -135,6 +135,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
 
   def get_observations_with_outlier_removal(self):
     spots = self.spotfinder.images[self.frame_numbers[self.image_number]]["inlier_spots"]
+    #spots = self.spotfinder.images[self.frame_numbers[self.image_number]]["spots_non-ice"]#best thermolysin
     if debug:
       #spots = self.spotfinder.images[self.frame_numbers[self.image_number]]["goodspots"]#simulated data
       from spotfinder.array_family import flex
