@@ -49,6 +49,7 @@ Full parameters:
       force_type="pdb")
     wavelength = pdb_in.file_object.extract_wavelength()
     if (wavelength is not None) :
+      print >> out, ""
       print >> out, "Using wavelength = %g from PDB header" % wavelength
       params.wavelength = wavelength
   if (params.wavelength is not None) :
