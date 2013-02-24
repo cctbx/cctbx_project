@@ -104,7 +104,8 @@ class IntegrateCharacters:
 
       integrate_worker.inputpd = dict(masks=local["masks"],
                                       size1=local["size1"],
-                                      size2=local["size2"],)
+                                      size2=local["size2"],
+                                      symmetry=setting["best_subsym"])
         # carefully select only the data items needed for integrate_worker
         # avoid giving the whole process dictionary; reference to "local"
         # is a circular reference creating memory leak, while copying the

@@ -10,6 +10,7 @@ from labelit.dptbx.profile_support import show_profile
 from rstbx.apps.slip_helpers import slip_callbacks
 from rstbx.dials_core.integration_core import integration_core
 
+debug=False
 class IntegrationMetaProcedure(integration_core,slip_callbacks):
 
   def set_up_mask_focus(self,verbose=False):
@@ -30,7 +31,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
         show_profile( box )
       self.mask_focus.append( average_profile.focus() )
 
-  def get_predictions_accounting_for_centering(self,cb_op_to_primitive=None):
+  def get_predictions_accounting_for_centering(self,cb_op_to_primitive=None,**kwargs):
     # interface requires this function to set current_orientation
     # in the actual setting used for Miller index calculation
     if (self.horizons_phil.known_setting is None or self.horizons_phil.known_setting == self.setting_id ) and \
@@ -80,7 +81,23 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
 
     if self.horizons_phil.integration.model == "user_supplied":
       from cxi_user import pre_get_predictions
-      pre_get_predictions(self.inputai)
+      self.bp3_wrapper = pre_get_predictions(self.inputai, self.horizons_phil,
+        raw_image = self.imagefiles.images[self.image_number],
+        imageindex = self.frame_numbers[self.image_number],
+        spotfinder = self.spotfinder,
+        limiting_resolution = self.limiting_resolution,
+        domain_size_ang = kwargs.get("domain_size_ang",0))
+      self.current_orientation = self.inputai.getOrientation()
+      self.current_cb_op_to_primitive = cb_op_to_primitive
+
+      BPpredicted = self.bp3_wrapper.ucbp3.selected_predictions_labelit_format()
+      BPhkllist = self.bp3_wrapper.ucbp3.selected_hkls()
+
+      self.predicted,self.hkllist = BPpredicted, BPhkllist
+      if self.inputai.active_areas != None:
+        self.predicted,self.hkllist = self.inputai.active_areas(
+                                      self.predicted,self.hkllist,self.pixel_size)
+      return
 
     if cb_op_to_primitive==None:
 
@@ -118,13 +135,17 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
 
   def get_observations_with_outlier_removal(self):
     spots = self.spotfinder.images[self.frame_numbers[self.image_number]]["inlier_spots"]
+    if debug:
+      #spots = self.spotfinder.images[self.frame_numbers[self.image_number]]["goodspots"]#simulated data
+      from spotfinder.array_family import flex
+      self.spotfinder.images[self.frame_numbers[self.image_number]]["refinement_spots"]=flex.distl_spot()
     return spots
 
   def integration_concept(self,image_number=0,cb_op_to_primitive=None,verbose=False,**kwargs):
     self.image_number = image_number
     NEAR = 10
     pxlsz = self.pixel_size
-    self.get_predictions_accounting_for_centering(cb_op_to_primitive)
+    self.get_predictions_accounting_for_centering(cb_op_to_primitive,**kwargs)
     from annlib_ext import AnnAdaptor
     self.cell = self.inputai.getOrientation().unit_cell()
     query = flex.double()
@@ -196,7 +217,8 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
           break
         indexed_pairs.append(indexed_pairs_provisional[clorder[icand]])
         correction_vectors.append(correction_vectors_provisional[clorder[icand]])
-
+        if debug: self.spotfinder.images[self.frame_numbers[self.image_number]]["refinement_spots"].append(
+          spots[indexed_pairs[-1]["spot"]])
         if kwargs.get("verbose_cv")==True:
             print "CV OBSCENTER %7.2f %7.2f REFINEDCENTER %7.2f %7.2f"%(
               float(self.inputpd["size1"])/2.,float(self.inputpd["size2"])/2.,
@@ -224,6 +246,8 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
       indexed_pairs = indexed_pairs_provisional
       correction_vectors = correction_vectors_provisional
     ########### finished with outlier rejection
+
+    self.inputpd["symmetry"].show_summary(prefix="SETTING ")
 
     if self.horizons_phil.integration.model == "user_supplied":
       if kwargs.get("user-reentrant",None)==None:
