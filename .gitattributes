@@ -4,8 +4,8 @@ auto_build/install -text
 auto_build/install_cctbx_base.py -text
 auto_build/installer_utils.py -text
 auto_build/package_defs.py -text
-auto_build/regenerate_module_files -text
-auto_build/write_gui_dispatcher_include -text
+auto_build/regenerate_module_files.py -text
+auto_build/write_gui_dispatcher_include.py -text
 boost_adaptbx/__init__.py svneol=native#text/x-python
 boost_adaptbx/boost/std_pair.py -text
 boost_adaptbx/boost/tuple.py -text

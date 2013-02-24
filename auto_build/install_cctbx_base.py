@@ -11,21 +11,9 @@ from __future__ import division
 from installer_utils import *
 from package_defs import *
 from optparse import OptionParser
-import warnings
 import urllib2
-import time
 import os
 import sys
-
-# XXX CCTBX itself requires at least Python 2.5, but this script is intended
-# to bootstrap an installation on older systems as well
-if (not sys.version_info >= (2,3)) :
-  raise Exception("Python version 2.3 or greater required to run this script.")
-elif (sys.version_info < (2,4)) : # subprocess module not available
-  warnings.warn("You are running an obsolete version of Python; this script "+
-    "should still run, but not all functionality is available.",
-    DeprecationWarning)
-  time.sleep(2)
 
 class installer (object) :
   # XXX various defaults go here, to be overridden in subclasses
@@ -34,6 +22,7 @@ class installer (object) :
   build_labelit_dependencies = False
 
   def __init__ (self, args, log=sys.stdout) :
+    check_python_version()
     self.log = log
     print >> log, """
   ****************************************************************************
@@ -45,10 +34,7 @@ class installer (object) :
     dist_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
     parser = OptionParser()
     parser.add_option("--build_dir", dest="build_dir", action="store",
-      help="Build directory", default=os.path.join(os.getcwd(), "cctbx_build"))
-    parser.add_option("--src_dir", dest="src_dir", action="store",
-      help="Source directory",
-      default=dist_dir)
+      help="Build directory", default=os.getcwd())
     parser.add_option("--tmp_dir", dest="tmp_dir", action="store",
       help="Temporary directory",
       default=os.path.join(os.getcwd(), "build_tmp"))
