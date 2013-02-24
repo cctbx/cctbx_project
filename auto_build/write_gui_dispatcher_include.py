@@ -5,11 +5,13 @@ from optparse import OptionParser
 import os.path
 import sys
 
-def run (args) :
+def run (args, prologue=None, epilogue=None) :
   parser = OptionParser(
     description="Generate the dispatcher include file for using "+
       "locally installed GUI (and related) libraries.  (Used in Phenix "+
       "installer and binary cctbx_plus builds.)")
+  parser.add_option("--suffix", dest="suffix", action="store",
+    help="Suffix for dispatcher_include file", default="gui")
   parser.add_option("--build_dir", dest="build_dir", action="store",
     help="Build directory (and dispatcher destination)", default=os.getcwd())
   parser.add_option("--prologue", dest="prologue", action="store",
@@ -38,11 +40,22 @@ def run (args) :
   if (not os.path.isdir(gtk_path)) :
     raise OSError("The path for the specified version of GTK+ does not "+
       "exist (%s)." % gtk_path)
-  dispatcher = os.path.join(build_path, "dispatcher_include_gui.sh")
+  dispatcher = os.path.join(build_path, "dispatcher_include_%s.sh" %
+    options.suffix)
   f = open(dispatcher, "w")
+  if (prologue is not None) :
+    f.write(prologue + "\n")
   if (options.prologue is not None) :
     f.write(open(options.prologue).read() + "\n")
   print >> f, """\
+# include at start
+if [ "$LIBTBX_DISPATCHER_NAME" != "libtbx.scons" ] && \
+   [ -z "$PHENIX_TRUST_OTHER_ENV" ]; then
+  # work around broken library environments
+  LD_LIBRARY_PATH=""
+  DYLD_LIBRARY_PATH=""
+  PYTHONPATH=""
+fi
 # include before command
 #
 # GUI dependencies
@@ -100,6 +113,8 @@ fi
 """ % (base_path, ":".join(dyld_library_paths), ":".join(dyld_library_paths),
        ":".join(ld_library_paths), ":".join(ld_library_paths),
        options.gtk_version)
+  if (epilogue is not None) :
+    f.write(epilogue + "\n")
   if (options.epilogue is not None) :
     f.write(open(options.epilogue).read() + "\n")
   f.close()

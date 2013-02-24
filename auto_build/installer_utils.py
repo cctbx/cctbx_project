@@ -1,8 +1,23 @@
 
 from __future__ import division
+import warnings
+import time
 import re
 import os
 import sys
+
+# XXX CCTBX itself requires at least Python 2.5 (and some packages such as
+# Phenix require 2.7+), but this script is intended to bootstrap an
+# installation on older systems as well
+def check_python_version () :
+  if (not sys.version_info >= (2,3)) :
+    raise Exception("Python version 2.3 or greater required to run this "+
+      "script.")
+  elif (sys.version_info < (2,4)) : # subprocess module not available
+    warnings.warn("You are running an obsolete version of Python; this script "+
+      "should still run, but not all functionality is available.",
+      DeprecationWarning)
+    time.sleep(2)
 
 def call (args, log, join_stdout_stderr=True) :
   rc = None
