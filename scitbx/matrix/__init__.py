@@ -913,7 +913,9 @@ def distance_from_plane (xyz, points, absolute=True) :
     point_2=col(points[1]),
     point_3=col(points[2]))
   x,y,z = xyz
-  D = (a*x+b*y+c*z+d) / math.sqrt(a**2+b**2+c**2)
+  den = math.sqrt(a**2+b**2+c**2)
+  if(den==0): return None
+  D = (a*x+b*y+c*z+d) / den
   if (absolute) : D = abs(D)
   return D
 
@@ -1698,6 +1700,10 @@ def exercise():
   xyz = (0,1,1)
   assert approx_equal(2.828427,
           distance_from_plane(xyz=(1,1,5), points=[(0,0,0), (1,1,1), (-1,1,1)]))
+  d = distance_from_plane(xyz=(0,0,1), points=[(0,0,0), (0,0,0), (0,1,0)])
+  assert d is None
+  d = distance_from_plane(xyz=(0,0,1), points=[(0,0,0), (1,0,0), (0,1,0)])
+  assert approx_equal(d, 1)
   #
   numpy = numpy_proxy()
   if (numpy is None):
