@@ -80,6 +80,10 @@ integration {
     .type = float
     .help = For computing parallax effect due to finite sensor thickness, fraction of signal to attenuate before
     .help = ignoring the remaining trailing parallax.  Small value (0.0) means do not account for parallax.
+  spotfinder_subset = *inlier_spots goodspots spots_non-ice
+    .type = choice
+    .help = which subset to use for parameter refinement and constructing integration profiles.
+    .help = subsets are nested goodspots > spots_non-ice > inlier_spots
 }
 
 viewer {
