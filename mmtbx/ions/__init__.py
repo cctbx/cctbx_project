@@ -13,7 +13,7 @@ from mmtbx.ions.parameters import get_charge, server, MetalParameters
 from mmtbx.ions.geometry import find_coordination_geometry
 from cctbx import crystal, adptbx
 from cctbx.eltbx import sasaki, henke
-from scitbx.matrix import col
+from scitbx.matrix import col, distance_from_plane
 from scitbx.array_family import flex
 from libtbx import group_args, adopt_init_args, Auto
 from libtbx.str_utils import make_sub_header, format_value
@@ -50,6 +50,8 @@ delta_amide_h_angle = 20
 delta_planar_angle = 10
   .type = float
   .input_size = 80
+max_deviation_from_plane = 0.75
+  .type = float
 radius = 2.0
   .type = float
   .input_size = 80
@@ -708,9 +710,9 @@ class Manager (object) :
       assume_hydrogens_all_missing = "H" not in sctr_keys and \
                                      "D" not in sctr_keys
 
-    binds_backbone_amide = False
+    binds_amide_hydrogen = False
     near_cation = False
-    near_arg_lys = False
+    near_lys = False
     near_hydroxyl = False
     xyz = col(atom.xyz)
     min_distance_to_cation = max(self.unit_cell.parameters()[0:3])
@@ -719,12 +721,12 @@ class Manager (object) :
     for contact in nearby_atoms:
       # to analyze local geometry, we use the target site mapped to be in the
       # same ASU as the interacting site
-      atom = contact.atom
+      other = contact.atom
       resname = contact.resname()
       atom_name = contact.atom_name()
       element = contact.element()
       distance = abs(contact)
-      j_seq = atom.i_seq
+      j_seq = other.i_seq
 
       # XXX need to figure out exactly what this should be - CL has a
       # fairly large radius though (1.67A according to ener_lib.cif)
@@ -743,16 +745,27 @@ class Manager (object) :
           near_cation = True
           if (distance < min_distance_to_cation) :
             min_distance_to_cation = distance
-      elif (atom_name in ["NZ", "NE"] and
-            resname in ["ARG","LYS"] and
+      # Lysine sidechains (can't determine planarity)
+      elif (atom_name in ["NZ"] and #, "NE", "NH1", "NH2"] and
+            resname in ["LYS"] and
             distance <= params.max_distance_to_cation):
-        # Positively charged sidechains.
-        # XXX actually, shouldn't it also be roughly coplanar with the
-        # guanidinium group in Arg?
-        near_arg_lys = True
+        near_lys = True
         if (distance < min_distance_to_cation) :
           min_distance_to_cation = distance
-
+      # sidechain amide groups, no hydrogens (except Arg)
+      # XXX this would be more reliable if we also calculate the expected
+      # hydrogen positions and use the vector method below
+      elif (atom_name in ["NZ","NH1","NH2","ND2","NE2"] and
+            resname in ["ARG","ASN","GLN"] and
+            (assume_hydrogens_all_missing or resname == "ARG") and
+            distance <= params.max_distance_to_cation) :
+        if (is_coplanar_with_sidechain(atom, other.parent(),
+              distance_cutoff=params.max_deviation_from_plane)) :
+          binds_amide_hydrogen = True
+          if (resname == "ARG") and (distance < min_distance_to_cation) :
+            min_distance_to_cation = distance
+      # hydroxyl groups - note that the orientation of the hydrogen is usually
+      # arbitrary and we can't determine precise bonding
       elif ((atom_name in ["OG1", "OG2", "OH1"]) and
             (resname in ["SER", "THR", "TYR"]) and
             (distance <= params.max_distance_to_hydroxyl)) :
@@ -760,10 +773,10 @@ class Manager (object) :
         if (distance < min_distance_to_hydroxyl) :
           min_distance_to_hydroxyl = distance
 
+      # Backbone amide, explicit H
       elif atom_name in ["H"]:
-        # Backbone amide, explicit H
-        # XXX can we make this more general for any amide H?
-        xyz_h = col(atom.xyz)
+        # TODO make this more general for any amide H?
+        xyz_h = col(other.xyz)
         bonded_atoms = self.connectivity[j_seq]
         if (len(bonded_atoms) != 1) :
           continue
@@ -774,21 +787,21 @@ class Manager (object) :
 
         # If Cl, H, and N line up, Cl binds the amide group
         if abs(angle - 180) <= params.delta_amide_h_angle:
-          binds_backbone_amide = True
+          binds_amide_hydrogen = True
         else :
           pass #print "N-H-X angle: %s" % angle
+      # Backbone amide, implicit H
       elif atom_name in ["N"] and assume_hydrogens_all_missing:
-        # Backbone amide, implicit H
-        xyz_n = col(atom.xyz)
+        xyz_n = col(other.xyz)
         bonded_atoms = self.connectivity[j_seq]
         ca_same = c_prev = None
 
         for j_seq in bonded_atoms :
-          other = self.pdb_atoms[j_seq]
-          if other.name.strip().upper() in ["CA"]:
-            ca_same = col(other.xyz)
-          elif other.name.strip().upper() in ["C"]:
-            c_prev = col(other.xyz)
+          other2 = self.pdb_atoms[j_seq]
+          if other2.name.strip().upper() in ["CA"]:
+            ca_same = col(other2.xyz)
+          elif other2.name.strip().upper() in ["C"]:
+            c_prev = col(other2.xyz)
 
         if ca_same is not None and c_prev is not None:
           xyz_cca = (ca_same + c_prev) / 2
@@ -800,61 +813,29 @@ class Manager (object) :
           angle = abs(vec_nh.angle(vec_nx, deg = True))
 
           if abs(angle - 180) <= params.delta_amide_h_angle:
-            binds_backbone_amide = True
+            binds_amide_hydrogen = True
 
+      # sidechain NH2 groups, explicit H
       elif ((atom_name in ["HD1","HD2"] and resname in ["ASN"]) or
-            (atom_name in ["HE1","HE2"] and resname in ["GLN"])):
-        # ASN/GLN sidechain amide, explicit H
+            (atom_name in ["HE1","HE2"] and resname in ["GLN"])) :
+            # XXX not doing this for Arg because it can't handle the bidentate
+            # coordination
+            #(atom_name in ["HH11","HH12","HH21","HH22"] and resname == "ARG")):
         bonded_atoms = self.connectivity[j_seq]
         assert (len(bonded_atoms) == 1)
         xyz_n = col(self.pdb_atoms[bonded_atoms[0]].xyz)
-        xyz_h = col(atom.xyz)
+        xyz_h = col(other.xyz)
         vec_nh = xyz_n - xyz_h
         vec_xh = xyz - xyz_h
         angle = abs(vec_nh.angle(vec_xh, deg = True))
 
         if abs(angle - 180) <= params.delta_amide_h_angle:
-          binds_sidechain_amide = True
-
-      elif (assume_hydrogens_all_missing and
-            ((atom.name in ["ND2"] and resname in ["ASN"]) or
-             (atom.name in ["NE2"] and resname in ["GLN"]))):
-        # ASN/GLN sidechain amide, implicit H
-        bonded_atoms = self.connectivity[j_seq]
-        assert (len(bonded_atoms) == 1)
-        c_i_seq = bonded_atoms[0]
-        c_bonded_atoms = self.connectivity[c_i_seq]
-        xyz_o = None
-
-        # Grab the amide group's oxygen coordinate
-        for j_seq in c_bonded_atoms:
-          other = self.pdb_atoms[j_seq]
-          if other.name in ["OD1", "OE1"]:
-            xyz_o = col(other.xyz)
-            break
-        else:
-          continue
-
-        # Find the angle for X-N-C and N-C-O
-        xyz_c = col(self.pdb_atoms[c_i_seq].xyz)
-        xyz_n = col(atom.xyz)
-        vec_nc = xyz_n - xyz_c
-        vec_xn = xyz - xyz_n
-        vec_oc = xyz_o - xyz_c
-        angle_xnc = abs(vec_nc.angle(vec_xn, deg = True))
-        angle_nco = abs(vec_nc.angle(vec_oc, deg = True))
-
-        # 120 degrees is the angle between CG-ND2-HD* in ASN;
-        # the ion should also be approximately co-planar
-        if (abs(angle_xnc - 120) <= params.delta_amide_h_angle and
-            abs(angle_nco % 180) <= params.delta_planar_angle):
-          binds_sidechain_amide = True
+          binds_amide_hydrogen = True
 
     # now check again for negatively charged sidechain (etc.) atoms (e.g.
     # carboxyl groups), but with some leeway if a cation is also nearby.
     # backbone carbonyl atoms are also excluded.
     for contact in nearby_atoms:
-      atom = contact.atom
       resname = contact.resname()
       atom_name = contact.atom_name()
       distance = abs(contact)
@@ -880,7 +861,7 @@ class Manager (object) :
     # XXX probably need something more sophisticated here too.  a CL which
     # coordinates a metal (e.g. in 4aqi) may not have a clear blob, but
     # will still be detectable by other criteria.
-    return (binds_backbone_amide or near_cation or near_arg_lys)
+    return (binds_amide_hydrogen or near_cation or near_lys)
            # good_map_falloff)
 
   def check_water_properties (self, atom_props):
@@ -2061,3 +2042,26 @@ def is_negatively_charged_oxygen (atom_name, resname) :
         (atom_name[2] in ["A","B","G"])) :
     return True
   return False
+
+def is_coplanar_with_sidechain (atom, residue, distance_cutoff=0.5) :
+  """
+  Given an isolated atom and an interacting residue with one or more amine
+  groups, determine whether the atom is approximately coplanar with the terminus
+  of the sidechain (and thus interacting with the amine hydrogen(s) along
+  approximately the same axis as the N-H bond).
+  """
+  sidechain_sites = []
+  resname = residue.resname
+  for other in residue.atoms() :
+    name = other.name.strip()
+    if (resname == "ARG") and (name in ["NH1","NH2","NE"]) :
+      sidechain_sites.append(other.xyz)
+    elif (resname == "GLN") and (name in ["OE1","NE2","CD"]) :
+      sidechain_sites.append(other.xyz)
+    elif (resname == "ASN") and (name in ["OD1","ND2","CG"]) :
+      sidechain_sites.append(other.xyz)
+  if (len(sidechain_sites) != 3) : # XXX probably shouldn't happen
+    return False
+  D = distance_from_plane(atom.xyz, sidechain_sites)
+  print atom.id_str(), D
+  return (D <= distance_cutoff)
