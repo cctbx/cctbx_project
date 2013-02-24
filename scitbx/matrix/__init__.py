@@ -901,6 +901,22 @@ def plane_equation(point_1, point_2, point_3):
   d = -n.dot(point_1)
   return a,b,c,d
 
+def distance_from_plane (xyz, points, absolute=True) :
+  """
+  http://mathworld.wolfram.com/Point-PlaneDistance.html
+  Given three points describing a plane and a fourth point outside the plane,
+  return the distance from the fourth point to the plane.
+  """
+  assert (len(points) == 3)
+  a,b,c,d = plane_equation(
+    point_1=col(points[0]),
+    point_2=col(points[1]),
+    point_3=col(points[2]))
+  x,y,z = xyz
+  D = (a*x+b*y+c*z+d) / math.sqrt(a**2+b**2+c**2)
+  if (absolute) : D = abs(D)
+  return D
+
 def rotate_point_around_axis(
       axis_point_1,
       axis_point_2,
@@ -1679,6 +1695,9 @@ def exercise():
   point_in_plane = (point_3 - (point_2-point_1)/2)/2
   assert approx_equal(
     a*point_in_plane[0]+b*point_in_plane[1]+c*point_in_plane[2]+d,0)
+  xyz = (0,1,1)
+  assert approx_equal(2.828427,
+          distance_from_plane(xyz=(1,1,5), points=[(0,0,0), (1,1,1), (-1,1,1)]))
   #
   numpy = numpy_proxy()
   if (numpy is None):
