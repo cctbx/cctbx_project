@@ -17,4 +17,6 @@ if (not env_etc.no_boost_python and hasattr(env_etc, "boost_adaptbx_include")):
       env_etc.dxtbx_include])
   env.SharedLibrary(
     target="#lib/dxtbx_ext",
-    source=["ext.cpp"])
+    source=["boost_python/ext.cpp"])
+    
+  env.SConscript('model/SConscript', exports={ 'env' : env })

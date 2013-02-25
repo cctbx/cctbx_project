@@ -10,7 +10,7 @@ from __future__ import division
 
 from scitbx import matrix
 
-from dxtbx.model.detector import detector
+from dxtbx.model.detector import FlatPanelDetector
 from dxtbx.model.detector import detector_factory
 from dxtbx.model.detector_helpers import compute_frame_rotation
 

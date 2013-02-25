@@ -13,80 +13,81 @@ from __future__ import division
 import math
 import pycbf
 from scitbx import matrix
+from dxtbx_model_ext import Goniometer, KappaGoniometer
 
 from goniometer_helpers import cbf_gonio_to_effective_axis_fixed
 
-class goniometer:
-    '''A class to represent the rotation axis for a standard rotation
-    geometry diffraction data set.'''
+#class goniometer:
+#    '''A class to represent the rotation axis for a standard rotation
+#    geometry diffraction data set.'''
 
-    def __init__(self, axis, fixed):
-        '''Initialize the goniometer, with the real rotation axis (in the CBF
-        coordinate frame) and a fixed additional rotation as a matrix which
-        represents the additional fixed rotation of the sample attached to the
-        rotating axis - for example the effects of kappa and phi for an omega
-        scan on a kappa goniometer. This should be a list of 9 floating point
-        values:
+#    def __init__(self, axis, fixed):
+#        '''Initialize the goniometer, with the real rotation axis (in the CBF
+#        coordinate frame) and a fixed additional rotation as a matrix which
+#        represents the additional fixed rotation of the sample attached to the
+#        rotating axis - for example the effects of kappa and phi for an omega
+#        scan on a kappa goniometer. This should be a list of 9 floating point
+#        values:
 
-        fixed = (f11, f12, f13, f21, f22, f23, f31, f31, f33) =
+#        fixed = (f11, f12, f13, f21, f22, f23, f31, f31, f33) =
 
-        f11 f12 f13
-        f21 f22 f23
-        f31 f32 f33
+#        f11 f12 f13
+#        f21 f22 f23
+#        f31 f32 f33
 
-        where this is a rotation matrix which should be applied as
+#        where this is a rotation matrix which should be applied as
 
-        A = [R][F][U][B]
+#        A = [R][F][U][B]
 
-        in a standard orientation matrix.'''
+#        in a standard orientation matrix.'''
 
-        assert(len(axis) == 3)
-        assert(len(fixed) == 9)
+#        assert(len(axis) == 3)
+#        assert(len(fixed) == 9)
 
-        self._axis = matrix.col(axis)
-        self._fixed = matrix.sqr(fixed)
+#        self._axis = matrix.col(axis)
+#        self._fixed = matrix.sqr(fixed)
 
-        return
+#        return
 
-    def __repr__(self):
-        '''Generate a useful-to-print representation.'''
+#    def __repr__(self):
+#        '''Generate a useful-to-print representation.'''
 
-        f_axis = '%6.3f %6.3f %6.3f\n'
-        f_fixed = 3 * f_axis
+#        f_axis = '%6.3f %6.3f %6.3f\n'
+#        f_fixed = 3 * f_axis
 
-        return f_axis % self._axis.elems + f_fixed % self._fixed.elems
+#        return f_axis % self._axis.elems + f_fixed % self._fixed.elems
 
-    def __cmp__(self, other):
-        '''Compare this rotation axis with another.'''
+#    def __cmp__(self, other):
+#        '''Compare this rotation axis with another.'''
 
-        angle = self._axis.angle(other.get_axis_c())
+#        angle = self._axis.angle(other.get_axis_c())
 
-        if angle < -1.0e-6:
-            return -1
-        elif angle > 1.0e-6:
-            return 1
+#        if angle < -1.0e-6:
+#            return -1
+#        elif angle > 1.0e-6:
+#            return 1
 
-        return 0
+#        return 0
 
-    def get_axis(self):
-        '''Get the values for the rotation axis.'''
+#    def get_axis(self):
+#        '''Get the values for the rotation axis.'''
 
-        return self._axis.elems
+#        return self._axis.elems
 
-    def get_axis_c(self):
-        '''Return a cctbx vector for the rotation axis.'''
+#    def get_axis_c(self):
+#        '''Return a cctbx vector for the rotation axis.'''
 
-        return self._axis
+#        return self._axis
 
-    def get_fixed(self):
-        '''Return the elements for the fixed rotation matrix.'''
+#    def get_fixed(self):
+#        '''Return the elements for the fixed rotation matrix.'''
 
-        return self._fixed.elems
+#        return self._fixed.elems
 
-    def get_fixed_c(self):
-        '''Return the cctbx matrix for the fixed rotation.'''
+#    def get_fixed_c(self):
+#        '''Return the cctbx matrix for the fixed rotation.'''
 
-        return self._fixed
+#        return self._fixed
 
 class goniometer_factory:
     '''A factory class for goniometer objects, which will encapsulate
@@ -106,7 +107,8 @@ class goniometer_factory:
         axis = (1, 0, 0)
         fixed = (1, 0, 0, 0, 1, 0, 0, 0, 1)
 
-        return goniometer(axis, fixed)
+        return Goniometer(axis, fixed)
+        #return goniometer(axis, fixed)
 
     @staticmethod
     def known_axis(axis):
@@ -117,7 +119,8 @@ class goniometer_factory:
 
         fixed = (1, 0, 0, 0, 1, 0, 0, 0, 1)
 
-        return goniometer(axis, fixed)
+        return Goniometer(axis, fixed)
+        #return goniometer(axis, fixed)
 
     @staticmethod
     def kappa(alpha, omega, kappa, phi, direction, scan_axis):
@@ -131,41 +134,42 @@ class goniometer_factory:
         rotation axes and then composing them to the scan axis and fixed
         component of the rotation.'''
 
-        assert(direction in ['-z', '+y', '+z', '-y'])
-        assert(scan_axis in ['phi', 'omega'])
+        return KappaGoniometer(alpha, omega, kappa, phi, direction, scan_axis)
+#        assert(direction in ['-z', '+y', '+z', '-y'])
+#        assert(scan_axis in ['phi', 'omega'])
 
-        _omega = matrix.col((1, 0, 0))
+#        _omega = matrix.col((1, 0, 0))
 
-        c = math.cos(alpha * math.pi / 180.0)
-        s = math.sin(alpha * math.pi / 180.0)
+#        c = math.cos(alpha * math.pi / 180.0)
+#        s = math.sin(alpha * math.pi / 180.0)
 
-        if direction == '-z':
-            _kappa = matrix.col((c, 0.0, -s))
-        elif direction == '+z':
-            _kappa = matrix.col((c, 0.0, s))
-        elif direction == '-y':
-            _kappa = matrix.col((c, -s, 0.0))
-        elif direction == '+y':
-            _kappa = matrix.col((c, s, 0.0))
+#        if direction == '-z':
+#            _kappa = matrix.col((c, 0.0, -s))
+#        elif direction == '+z':
+#            _kappa = matrix.col((c, 0.0, s))
+#        elif direction == '-y':
+#            _kappa = matrix.col((c, -s, 0.0))
+#        elif direction == '+y':
+#            _kappa = matrix.col((c, s, 0.0))
 
-        _phi = matrix.col((1, 0, 0))
+#        _phi = matrix.col((1, 0, 0))
 
-        if scan_axis == 'omega':
+#        if scan_axis == 'omega':
 
-            K = _kappa.axis_and_angle_as_r3_rotation_matrix(kappa, deg = True)
-            P = _phi.axis_and_angle_as_r3_rotation_matrix(phi, deg = True)
+#            K = _kappa.axis_and_angle_as_r3_rotation_matrix(kappa, deg = True)
+#            P = _phi.axis_and_angle_as_r3_rotation_matrix(phi, deg = True)
 
-            return goniometer(_omega.elems, (K * P).elems)
+#            return goniometer(_omega.elems, (K * P).elems)
 
-        elif scan_axis == 'phi':
+#        elif scan_axis == 'phi':
 
-            O = _omega.axis_and_angle_as_r3_rotation_matrix(omega, deg = True)
-            K = _kappa.axis_and_angle_as_r3_rotation_matrix(kappa, deg = True)
-            I = (1, 0, 0, 0, 1, 0, 0, 0, 1)
+#            O = _omega.axis_and_angle_as_r3_rotation_matrix(omega, deg = True)
+#            K = _kappa.axis_and_angle_as_r3_rotation_matrix(kappa, deg = True)
+#            I = (1, 0, 0, 0, 1, 0, 0, 0, 1)
 
-            return goniometer(O * K * _phi.elems, I)
+#            return goniometer(O * K * _phi.elems, I)
 
-        return
+#        return
 
     @staticmethod
     def imgCIF(cif_file):
@@ -181,7 +185,8 @@ class goniometer_factory:
         cbf_gonio.__swig_destroy__(cbf_gonio)
         del(cbf_gonio)
 
-        return goniometer(axis.elems, fixed.elems)
+        return Goniometer(axis, fixed)
+        #return goniometer(axis.elems, fixed.elems)
 
     @staticmethod
     def imgCIF_H(cbf_handle):
@@ -195,4 +200,5 @@ class goniometer_factory:
         cbf_gonio.__swig_destroy__(cbf_gonio)
         del(cbf_gonio)
 
-        return goniometer(axis.elems, fixed.elems)
+        return Goniometer(axis, fixed)
+        #return goniometer(axis.elems, fixed.elems)
