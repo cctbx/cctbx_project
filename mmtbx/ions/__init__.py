@@ -2043,7 +2043,8 @@ def is_negatively_charged_oxygen (atom_name, resname) :
     return True
   return False
 
-def is_coplanar_with_sidechain (atom, residue, distance_cutoff=0.5) :
+# XXX distance cutoff may be too generous, but 0.5 is too strict
+def is_coplanar_with_sidechain (atom, residue, distance_cutoff=0.75) :
   """
   Given an isolated atom and an interacting residue with one or more amine
   groups, determine whether the atom is approximately coplanar with the terminus
@@ -2063,5 +2064,5 @@ def is_coplanar_with_sidechain (atom, residue, distance_cutoff=0.5) :
   if (len(sidechain_sites) != 3) : # XXX probably shouldn't happen
     return False
   D = distance_from_plane(atom.xyz, sidechain_sites)
-  print atom.id_str(), D
+  #print atom.id_str(), D
   return (D <= distance_cutoff)
