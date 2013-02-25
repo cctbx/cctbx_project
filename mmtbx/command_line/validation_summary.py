@@ -151,29 +151,32 @@ class parallel_driver (object) :
   """
   Simple wrapper for passing to easy_mp.pool_map.
   """
-  def __init__ (self, pdb_hierarchy, xray_structures) :
+  def __init__ (self, pdb_hierarchy) :
     self.pdb_hierarchy = pdb_hierarchy
-    self.xray_structures = xray_structures
 
   def __call__ (self, i_model) :
-    sites_cart = self.xray_structures[i_model].sites_cart()
-    pdb_hierarchy = self.pdb_hierarchy.deep_copy()
-    return summary(pdb_hierarchy=pdb_hierarchy, sites_cart=sites_cart)
+    import iotbx.pdb.hierarchy
+    model_hierarchy = iotbx.pdb.hierarchy.root()
+    model = self.pdb_hierarchy.models()[i_model].detached_copy()
+    model.id = ""
+    model_hierarchy.append_model(model)
+    return summary(pdb_hierarchy=model_hierarchy)
 
 class ensemble (slots_getstate_setstate) :
   """
-  MolProbity validation results for an ensemble of models.
+  MolProbity validation results for an ensemble of models.  Note that the
+  number of atoms in each model is not necessarily consistent.
   """
 
   __slots__ = molprobity_stats
 
-  def __init__ (self, pdb_hierarchy, xray_structures, nproc=Auto) :
-    assert (len(pdb_hierarchy.models()) == 1)
-    validate = parallel_driver(pdb_hierarchy, xray_structures)
+  def __init__ (self, pdb_hierarchy, n_models, nproc=Auto) :
+    assert (len(pdb_hierarchy.models()) == n_models)
+    validate = parallel_driver(pdb_hierarchy)
     summaries = easy_mp.pool_map(
       processes=nproc,
       fixed_func=validate,
-      args=range(len(xray_structures)))
+      args=range(n_models))
     for name in self.__slots__ :
       array = []
       for s in summaries :
@@ -231,13 +234,8 @@ run phenix.model_vs_data or the validation GUI.)
   if (len(xrs) == 1) :
     s = summary(pdb_file=pdb_file)
   else :
-    import iotbx.pdb.hierarchy
-    new_hierarchy = iotbx.pdb.hierarchy.root()
-    single_model = hierarchy.models()[0].detached_copy()
-    single_model.id = ""
-    new_hierarchy.append_model(single_model)
-    s = ensemble(pdb_hierarchy=new_hierarchy,
-      xray_structures=xrs)
+    s = ensemble(pdb_hierarchy=hierarchy,
+      n_models=len(xrs))
     extra = " (%d models)" % len(xrs)
   print >> out, ""
   print >> out, "Validation summary for %s%s:" % (pdb_file, extra)
