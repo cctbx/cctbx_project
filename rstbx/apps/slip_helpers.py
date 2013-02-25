@@ -1111,3 +1111,9 @@ class slip_callbacks:
       best_params[1],best_params[2],100.*(best_params[2]-best_params[1])/best_params[1],best_params[0],last_score)
     print "rotation angles",best_params[4],best_params[5],best_params[6],"Domain",best_params[7]
     return best_params
+
+try:
+  from cxi_user import user_slip_callback
+  slip_callbacks.slip_callback = user_slip_callback
+except Exception:
+  pass # no user-defined behavior
