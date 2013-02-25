@@ -1,0 +1,11 @@
+
+Import('env')
+
+sources = [
+    'boost_python/beam.cc',
+    'boost_python/goniometer.cc',
+    'boost_python/detector.cc',
+    'boost_python/model_ext.cc']
+
+env.SharedLibrary(target='#/lib/dxtbx_model_ext', source=sources)
+

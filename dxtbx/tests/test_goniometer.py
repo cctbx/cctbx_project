@@ -10,7 +10,7 @@ from __future__ import division
 
 import math
 
-from dxtbx.model.goniometer import goniometer
+from dxtbx.model.goniometer import Goniometer
 from dxtbx.model.goniometer import goniometer_factory
 
 def compare_tuples(a, b, tol = 1.0e-6):
@@ -29,53 +29,54 @@ def test_goniometer():
     axis = (1, 0, 0)
     fixed = (1, 0, 0, 0, 1, 0, 0, 0, 1)
 
-    xg = goniometer(axis, fixed)
+    xg = Goniometer(axis, fixed)
 
-    assert(len(xg.get_axis()) == 3)
-    assert(len(xg.get_fixed()) == 9)
+    assert(len(xg.rotation_axis) == 3)
+    assert(len(xg.fixed_rotation) == 9)
 
-    assert(compare_tuples(xg.get_axis(), axis))
-    assert(compare_tuples(xg.get_fixed(), fixed))
+    assert(compare_tuples(xg.rotation_axis, axis))
+    assert(compare_tuples(xg.fixed_rotation, fixed))
 
     single = goniometer_factory.single_axis()
 
-    assert(len(single.get_axis()) == 3)
-    assert(len(single.get_fixed()) == 9)
+    assert(len(single.rotation_axis) == 3)
+    assert(len(single.fixed_rotation) == 9)
 
-    assert(compare_tuples(single.get_axis(), axis))
-    assert(compare_tuples(single.get_fixed(), fixed))
-
-    kappa = goniometer_factory.kappa(50.0, 0.0, 0.0, 0.0, '-y', 'omega')
-
-    assert(len(single.get_axis()) == 3)
-    assert(len(single.get_fixed()) == 9)
-
-    assert(compare_tuples(kappa.get_axis(), axis))
-    assert(compare_tuples(kappa.get_fixed(), fixed))
+    assert(compare_tuples(single.rotation_axis, axis))
+    assert(compare_tuples(single.fixed_rotation, fixed))
 
     kappa = goniometer_factory.kappa(50.0, 0.0, 0.0, 0.0, '-y', 'omega')
 
-    assert(len(single.get_axis()) == 3)
-    assert(len(single.get_fixed()) == 9)
+    assert(len(kappa.rotation_axis) == 3)
+    assert(len(kappa.fixed_rotation) == 9)
+    print kappa.rotation_axis
+    print axis
+    assert(compare_tuples(kappa.rotation_axis, axis))
+    assert(compare_tuples(kappa.fixed_rotation, fixed))
 
-    assert(compare_tuples(kappa.get_axis(), axis))
-    assert(compare_tuples(kappa.get_fixed(), fixed))
+    kappa = goniometer_factory.kappa(50.0, 0.0, 0.0, 0.0, '-y', 'omega')
+
+    assert(len(kappa.rotation_axis) == 3)
+    assert(len(kappa.fixed_rotation) == 9)
+
+    assert(compare_tuples(kappa.rotation_axis, axis))
+    assert(compare_tuples(kappa.fixed_rotation, fixed))
 
     kappa = goniometer_factory.kappa(50.0, 0.0, 0.0, 0.0, '-y', 'phi')
 
-    assert(len(single.get_axis()) == 3)
-    assert(len(single.get_fixed()) == 9)
+    assert(len(kappa.rotation_axis) == 3)
+    assert(len(kappa.fixed_rotation) == 9)
 
-    assert(compare_tuples(kappa.get_axis(), axis))
-    assert(compare_tuples(kappa.get_fixed(), fixed))
+    assert(compare_tuples(kappa.rotation_axis, axis))
+    assert(compare_tuples(kappa.fixed_rotation, fixed))
 
     kappa = goniometer_factory.kappa(50.0, 0.0, 30.0, 0.0, '-y', 'omega')
 
-    assert(len(single.get_axis()) == 3)
-    assert(len(single.get_fixed()) == 9)
+    assert(len(kappa.rotation_axis) == 3)
+    assert(len(kappa.fixed_rotation) == 9)
 
-    assert(compare_tuples(kappa.get_axis(), axis))
-    assert(not compare_tuples(kappa.get_fixed(), fixed))
+    assert(compare_tuples(kappa.rotation_axis, axis))
+    assert(not compare_tuples(kappa.fixed_rotation, fixed))
 
     import libtbx.load_env
     import os
