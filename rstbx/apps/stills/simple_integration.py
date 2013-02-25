@@ -10,7 +10,6 @@ from labelit.dptbx.profile_support import show_profile
 from rstbx.apps.slip_helpers import slip_callbacks
 from rstbx.dials_core.integration_core import integration_core
 
-debug=False
 class IntegrationMetaProcedure(integration_core,slip_callbacks):
 
   def set_up_mask_focus(self,verbose=False):
@@ -134,8 +133,9 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
       plt.show()
 
   def get_observations_with_outlier_removal(self):
+    print "Using spotfinder subset",self.horizons_phil.integration.spotfinder_subset
     spots = self.spotfinder.images[self.frame_numbers[self.image_number]][self.horizons_phil.integration.spotfinder_subset]
-    if debug:
+    if getattr(slip_callbacks.slip_callback,"requires_refinement_spots",False):
       from spotfinder.array_family import flex
       self.spotfinder.images[self.frame_numbers[self.image_number]]["refinement_spots"]=flex.distl_spot()
     return spots
@@ -185,6 +185,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
     # problems for finding legitimate correction vectors (print out the list)
     # also remove outliers for the purpose of reporting RMS
     outlier_rejection = True
+    cache_refinement_spots = getattr(slip_callbacks.slip_callback,"requires_refinement_spots",False)
     if outlier_rejection:
       correction_lengths = flex.double([v.length() for v in correction_vectors_provisional])
       clorder = flex.sort_permutation(correction_lengths)
@@ -216,7 +217,8 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
           break
         indexed_pairs.append(indexed_pairs_provisional[clorder[icand]])
         correction_vectors.append(correction_vectors_provisional[clorder[icand]])
-        if debug: self.spotfinder.images[self.frame_numbers[self.image_number]]["refinement_spots"].append(
+        if cache_refinement_spots:
+          self.spotfinder.images[self.frame_numbers[self.image_number]]["refinement_spots"].append(
           spots[indexed_pairs[-1]["spot"]])
         if kwargs.get("verbose_cv")==True:
             print "CV OBSCENTER %7.2f %7.2f REFINEDCENTER %7.2f %7.2f"%(
