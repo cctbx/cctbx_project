@@ -10,47 +10,41 @@
  */
 #include <boost/python.hpp>
 #include <boost/python/def.hpp>
-#include <boost/format.hpp>
 #include <string>
+#include <iostream>
+#include <sstream>
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
+#include <scitbx/array_family/simple_io.h>
+#include <scitbx/array_family/simple_tiny_io.h>
 #include <dxtbx/model/detector.h>
 
 namespace dxtbx { namespace model { namespace boost_python {
 
   using namespace boost::python;
+  
+  template <typename T>
+  std::ostream& operator<<(std::ostream &os, vec2 <T> a) {
+    return os << a.const_ref();
+  }
+
+  template <typename T>
+  std::ostream& operator<<(std::ostream &os, vec3 <T> a) {
+    return os << a.const_ref();
+  }
 
   std::string flat_panel_detector_to_string(const FlatPanelDetector &detector)
   {
-    boost::format fmt(
-      "Detector:\n"
-      "    type:          %1%\n"
-      "    fast axis:     (%2%, %3%, %4%)\n"
-      "    slow axis:     (%5%, %6%, %7%)\n"      
-      "    normal:        (%8%, %9%, %10%)\n"
-      "    origin:        (%11%, %12%)\n"
-      "    pixel_size:    (%13%, %14%)\n"
-      "    image_size:    (%15%, %16%)\n"
-      "    trusted_range: (%17, %18%)");
-              
-    fmt % detector.get_type();
-    fmt % detector.get_fast_axis()[0];
-    fmt % detector.get_fast_axis()[1];
-    fmt % detector.get_fast_axis()[2];
-    fmt % detector.get_slow_axis()[0];
-    fmt % detector.get_slow_axis()[1];
-    fmt % detector.get_slow_axis()[2];
-    fmt % detector.get_normal()[0];
-    fmt % detector.get_normal()[1];
-    fmt % detector.get_normal()[2];
-    fmt % detector.get_origin()[0];
-    fmt % detector.get_origin()[1];
-    fmt % detector.get_pixel_size()[0];
-    fmt % detector.get_pixel_size()[1];
-    fmt % detector.get_image_size()[0];
-    fmt % detector.get_image_size()[1];
-    fmt % detector.get_trusted_range()[0];
-    fmt % detector.get_trusted_range()[1];
-    return fmt.str();
+    std::stringstream os;
+    os << "Detector:\n";
+    os << "    type:          " << detector.get_type() << "\n";
+    os << "    fast axis:     " << detector.get_fast_axis() << "\n";
+    os << "    slow axis:     " << detector.get_slow_axis() << "\n";
+    os << "    normal:        " << detector.get_normal() << "\n";
+    os << "    origin:        " << detector.get_origin() << "\n";
+    os << "    pixel size:    " << detector.get_pixel_size() << "\n";
+    os << "    image size:    " << detector.get_image_size() << "\n";
+    os << "    trusted range: " << detector.get_trusted_range() << "\n";
+    return os.str();
   }
 
   std::string multi_flat_panel_detector_to_string(
@@ -134,6 +128,11 @@ namespace dxtbx { namespace model { namespace boost_python {
       .add_property("inverse_d_matrix",
         &FlatPanelDetector::get_inverse_d_matrix,
         &FlatPanelDetector::set_inverse_d_matrix)
+      .add_property("mask",
+        &FlatPanelDetector::get_mask,
+        &FlatPanelDetector::set_mask)
+      .def("add_mask",
+        &FlatPanelDetector::add_mask)
       .def("__eq__", &FlatPanelDetector::operator==)
       .def("__ne__", &FlatPanelDetector::operator!=)
       .def("__str__", &flat_panel_detector_to_string);

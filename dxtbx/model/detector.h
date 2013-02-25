@@ -27,6 +27,10 @@ namespace dxtbx { namespace model {
   using scitbx::mat3;
   using scitbx::af::int4;
 
+  // int4 array type
+  typedef scitbx::af::flex<int4>::type flex_int4;
+  typedef scitbx::af::shared<int4> shared_int4;
+
   /** A base class for detectors */
   class DetectorBase {};
 
@@ -174,6 +178,11 @@ namespace dxtbx { namespace model {
       return get_d_matrix().inverse();
     }
 
+    /** Get the mask array */
+    shared_int4 get_mask() const {
+      return mask_;
+    }
+
     /** Set the detector panel type */
     void set_type(std::string type) {
       type_ = type;
@@ -226,6 +235,15 @@ namespace dxtbx { namespace model {
       set_d_matrix(d.inverse());
     }
 
+    /** Set the mask */
+    void set_mask(const shared_int4 &mask) {
+      mask_ = mask;
+    }
+
+    void add_mask(int f0, int s0, int f1, int s1) {
+      mask_.push_back(int4(f0, f1, s0, s1));
+    }
+
     /** Check the detector axis basis vectors are (almost) the same */
     bool operator==(const FlatPanelDetector &detector) {
       double eps = 1.0e-6;
@@ -255,6 +273,7 @@ namespace dxtbx { namespace model {
     vec2 <double> pixel_size_;
     vec2 <std::size_t> image_size_;
     vec2 <int> trusted_range_;
+    shared_int4 mask_;
   };
 
   /**

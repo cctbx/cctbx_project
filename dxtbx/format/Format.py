@@ -31,10 +31,10 @@ import traceback
 
 # first - import access to all of the factories that we will be needing
 
-from dxtbx.model.goniometer import goniometer, goniometer_factory
-from dxtbx.model.detector import detector, detector_factory
-from dxtbx.model.beam import beam, beam_factory
-from dxtbx.model.scan import scan, scan_factory
+from dxtbx.model.goniometer import Goniometer, goniometer_factory
+from dxtbx.model.detector import FlatPanelDetector, detector_factory
+from dxtbx.model.beam import Beam, beam_factory
+from dxtbx.model.scan import Scan, scan_factory
 
 class _MetaFormat(type):
     '''A metaclass for the Format base class (and hence all format classes)
@@ -124,19 +124,19 @@ class Format(object):
             self._start()
 
             goniometer_instance = self._goniometer()
-            assert(isinstance(goniometer_instance, goniometer))
+            assert(isinstance(goniometer_instance, Goniometer))
             self._goniometer_instance = goniometer_instance
 
             detector_instance = self._detector()
-            assert(isinstance(detector_instance, detector))
+            assert(isinstance(detector_instance, FlatPanelDetector))
             self._detector_instance = detector_instance
 
             beam_instance = self._beam()
-            assert(isinstance(beam_instance, beam))
+            assert(isinstance(beam_instance, Beam))
             self._beam_instance = beam_instance
 
             scan_instance = self._scan()
-            assert(isinstance(scan_instance, scan))
+            assert(isinstance(scan_instance, Scan))
             self._scan_instance = scan_instance
 
         except exceptions.Exception, e:

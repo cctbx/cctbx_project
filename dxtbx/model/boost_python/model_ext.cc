@@ -18,14 +18,14 @@ namespace dxtbx { namespace model { namespace boost_python {
   void export_beam();
   void export_goniometer();
   void export_detector();
-//  void export_scan();
+  void export_scan();
 
   BOOST_PYTHON_MODULE(dxtbx_model_ext)
   {
     export_beam();
     export_goniometer();
     export_detector();
-//    export_scan();
+    export_scan();
   }
 
 }}} // namespace dxtbx::model::boost_python
