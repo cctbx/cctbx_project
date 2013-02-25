@@ -14,10 +14,12 @@ from scitbx.array_family import flex
 from xfel.cxi.cspad_ana.hitfinder_tbx import distl_hitfinder
 from xfel.cxi.cspad_ana import common_mode
 from xfel.cxi.cspad_ana import cspad_tbx
+import MySQLdb
+import getpass
+from cxi_xdr_xes.cftbx.cspad_ana import db
 
 # import matplotlib
 # matplotlib.use("PDF")
-
 
 class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
   """Class for hitfinding within the pyana framework
@@ -93,6 +95,84 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     super(mod_hitfind, self).beginjob(evt, env)
     self.set_up_hitfinder()
 
+    self.logger.info("Connecting to db...")
+    self.db = db.dbconnect()
+    assert self.dbopen()
+    self.logger.info("Connected.")
+
+    try:
+      self.trial = 2 # temporary!
+
+      cmd = "CREATE TABLE IF NOT EXISTS %s           \
+        (id INT NOT NULL PRIMARY KEY AUTO_INCREMENT, \
+	trial INT NOT NULL,                          \
+        experiment VARCHAR(20),                      \
+        user VARCHAR(20),                            \
+        datatable VARCHAR(20)                        \
+        );"%(db.root_table_name)
+      cursor = self.db.cursor()
+      cursor.execute(cmd)
+
+      cmd = "CREATE TABLE IF NOT EXISTS %s           \
+        (id INT NOT NULL PRIMARY KEY AUTO_INCREMENT, \
+	trial INT NOT NULL,                          \
+        eventstamp VARCHAR(45),                      \
+        user VARCHAR(20),                            \
+	timestamp TIMESTAMP DEFAULT NOW(),           \
+	data INT                                     \
+        );"%("cxi_braggs_front") # hard coded! these need to be put in a config file
+      cursor = self.db.cursor()
+      cursor.execute(cmd)
+
+      cmd = "CREATE TABLE IF NOT EXISTS %s           \
+        (id INT NOT NULL PRIMARY KEY AUTO_INCREMENT, \
+	trial INT NOT NULL,                          \
+        eventstamp VARCHAR(45),                      \
+        user VARCHAR(20),                            \
+	timestamp TIMESTAMP DEFAULT NOW(),           \
+	data INT                                     \
+        );"%("cxi_braggs_back") # hard coded! these need to be put in a config file
+      cursor = self.db.cursor()
+      cursor.execute(cmd)
+
+      cmd = "CREATE TABLE IF NOT EXISTS %s           \
+        (id INT NOT NULL PRIMARY KEY AUTO_INCREMENT, \
+	trial INT NOT NULL,                          \
+        eventstamp VARCHAR(45),                      \
+        user VARCHAR(20),                            \
+	timestamp TIMESTAMP DEFAULT NOW(),           \
+	data INT                                     \
+        );"%("cxi_xes") # hard coded! these need to be put in a config file
+      cursor = self.db.cursor()
+      cursor.execute(cmd)
+
+    except Exception,e:
+      self.logger.info("Couldn't create root tables: %s"%(e))
+
+    """ This doesn't work.  The many threads add the values over and over to the master db :(
+    try:
+      trial = 1244
+      cmd = "SELECT * FROM %s WHERE trial = %%s"%(db.root_table_name)
+      count = cursor.execute(cmd, trial)
+      self.logger.info("Count is %s"%(count))
+      
+      if count < 3:
+        cmd = "INSERT INTO %s (trial,experiment,user,datatable) VALUES (%%s,%%s,%%s,'cxi_braggs_front');"%(db.root_table_name)
+        #self.logger.info("here!!")
+        #self.logger.info(cmd%(123,env.experiment(),getpass.getuser()))
+        cursor.execute(cmd, (trial,env.experiment(),getpass.getuser()))
+
+        cmd = "INSERT INTO %s (trial,experiment,user,datatable) VALUES (%%s,%%s,%%s,'cxi_braggs_back');"%(db.root_table_name)
+        cursor.execute(cmd, (trial,env.experiment(),getpass.getuser()))
+      
+        cmd = "INSERT INTO %s (trial,experiment,user,datatable) VALUES (%%s,%%s,%%s,'cxi_xes');"%(db.root_table_name)
+        cursor.execute(cmd, (trial,env.experiment(),getpass.getuser()))
+
+        self.db.commit()
+    except Exception,e:
+      self.logger.info("Couldn't create root entries: %s"%(e))
+    """
+      
   def event(self, evt, env):
     """The event() function is called for every L1Accept transition.
     XXX more?
@@ -161,16 +241,24 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
         evt_time = sec + ms/1000
         self.stats_logger.info("BRAGG %.3f %d" %(evt_time, number_of_accepted_peaks))
 
+	if(self.dbopen()):
+	  cursor = self.db.cursor()
+	  cmd = "INSERT INTO cxi_braggs_front (trial,eventstamp,data) VALUES (%s,%s,%s);"
+	  cursor.execute(cmd, (self.trial, "%.3f"%evt_time, number_of_accepted_peaks))
+	  self.db.commit()
+
 
         if number_of_accepted_peaks < self.m_distl_min_peaks:
           self.logger.info("Subprocess %02d: Spotfinder NO  HIT image #%05d @ %s; %d spots > %d" %(
               env.subprocess(), self.nshots, self.timestamp, number_of_accepted_peaks, self.m_threshold))
+
           if not self.m_negate_hits:
             evt.put(True, "skip_event")
             return
         else:
           self.logger.info("Subprocess %02d: Spotfinder YES HIT image #%05d @ %s; %d spots > %d" %(
               env.subprocess(), self.nshots, self.timestamp, number_of_accepted_peaks, self.m_threshold))
+
           if self.m_negate_hits:
             evt.put(True, "skip_event")
             return
@@ -268,3 +356,10 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
                        (env.subprocess(), self.nshots))
     else:
       self.logger.info("Processed %d shots" % self.nshots)
+
+    if self.dbopen():
+      self.db.close()
+
+  def dbopen(self):
+    return hasattr(self,"db") and self.db is not None and self.db.open
+
