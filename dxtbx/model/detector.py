@@ -22,173 +22,6 @@ from detector_helpers import read_xds_xparm
 from detector_helpers import find_undefined_value
 from detector_helpers import compute_frame_rotation
 
-#class detector:
-#    '''A class to represent the area detector for a standard rotation geometry
-#    diffraction experiment. We assume (i) that the detector is flat (ii) that
-#    the detector is rectangular and (iii) that it is fixed in position for the
-#    duration of the experiment.'''
-
-#    def __init__(self, sensor, origin, fast, slow, pixel_size, image_size,
-#                 trusted_range, mask):
-#        '''Initialize the detector, with the sensor type (i.e. the detector
-#        technology) as well as the origin (i.e. the outer corner of
-#        the zeroth pixel in the image) provided in mm, the fast and slow
-#        directions provided as unit vectors, the pixel size given as a tuple
-#        of fast, slow in mm, the image size given as fast, slow in pixels,
-#        the trusted_range given in counts (i.e. minimum to maximum counts
-#        considered reliable) and the mask given as a list of
-
-#        fi, si, fj, sj
-
-#        pixel positions marking the extreme limits of the region to be
-#        excluded in the fast and slow directions.'''
-
-#        assert(detector_helper_sensors.check_sensor(sensor))
-#        assert(len(origin) == 3)
-#        assert(len(fast) == 3)
-#        assert(len(slow) == 3)
-#        assert(len(pixel_size) == 2)
-#        assert(len(image_size) == 2)
-
-#        assert(type(mask) == type([]))
-
-#        for m in mask:
-#            assert(len(m) == 4)
-
-#        self._sensor = sensor
-#        self._origin = matrix.col(origin)
-#        self._fast = matrix.col(fast)
-#        self._slow = matrix.col(slow)
-#        self._pixel_size = pixel_size
-#        self._image_size = image_size
-#        self._trusted_range = trusted_range
-#        self._mask = mask
-
-#        return
-
-#    def __repr__(self):
-#        '''Generate a useful-to-print representation.'''
-
-#        f_3 = '%6.3f %6.3f %6.3f\n'
-
-#        m = '%4d %4d %4d %4d\n'
-
-#        start = '%s %d < I < %d\n' % (self._sensor,
-#                                      self._trusted_range[0],
-#                                      self._trusted_range[1])
-
-#        return start + f_3 % self._origin.elems + f_3 % self._fast.elems + \
-#               f_3 % self._slow.elems + \
-#               ''.join([m % _m for _m in self._mask])
-
-#    def __cmp__(self, other):
-#        '''Compare two detector instances.'''
-
-#        angle = self._origin.angle(other.get_origin_c())
-
-#        if angle < -1.0e-6:
-#            return -1
-#        elif angle > 1.0e-6:
-#            return 1
-
-#        dlength = self._origin.dot() - other.get_origin_c().dot()
-
-#        if dlength < -1.0e-6:
-#            return -1
-#        elif dlength > 1.0e-6:
-#            return 1
-
-#        angle = self._fast.angle(other.get_fast_c())
-
-#        if angle < -1.0e-6:
-#            return -1
-#        elif angle > 1.0e-6:
-#            return 1
-
-#        angle = self._slow.angle(other.get_slow_c())
-
-#        if angle < -1.0e-6:
-#            return -1
-#        elif angle > 1.0e-6:
-#            return 1
-
-#        if self._image_size[0] < other.get_image_size()[0]:
-#            return -1
-#        elif self._image_size[0] > other.get_image_size()[0]:
-#            return 1
-
-#        if self._image_size[1] < other.get_image_size()[1]:
-#            return -1
-#        elif self._image_size[1] > other.get_image_size()[1]:
-#            return 1
-
-#        return 0
-
-#    def get_sensor(self):
-#        '''Get the sensor type, a static string defined in detector_helpers.'''
-
-#        return self._sensor
-
-#    def get_origin(self):
-#        '''Get the detector origin.'''
-
-#        return self._origin.elems
-
-#    def get_origin_c(self):
-#        '''Get the detector origin as a cctbx vector.'''
-
-#        return self._origin
-
-#    def get_fast(self):
-#        '''Get the detector fast direction.'''
-
-#        return self._fast.elems
-
-#    def get_fast_c(self):
-#        '''Get the detector fast direction as a cctbx vector.'''
-
-#        return self._fast
-
-#    def get_slow(self):
-#        '''Get the detector slow direction.'''
-
-#        return self._slow.elems
-
-#    def get_slow_c(self):
-#        '''Get the detector slow direction as a cctbx vector.'''
-
-#        return self._slow
-
-#    def get_pixel_size(self):
-#        '''Get the pixel size in mm, fast direction then slow.'''
-
-#        return self._pixel_size
-
-#    def get_image_size(self):
-#        '''Get the image size in pixels, fast direction then slow.'''
-
-#        return self._image_size
-
-#    def get_trusted_range(self):
-#        '''Get the number of counts identified as the trusted_range.'''
-
-#        return self._trusted_range
-
-#    def get_mask(self):
-#        '''Return a list of rectangular regions on the image in pixels which
-#        should be excluded from measurements.'''
-
-#        return self._mask
-
-#    def add_mask(self, f0, f1, s0, s1):
-#        '''Add to the mask the region encompassed within the rectangle
-#        (f0, s0) to (f1, s1) where the ordinates are in the fast and slow
-#        directions respectively.'''
-
-#        self._mask.append((f0, f1, s0, s1))
-
-#        return
-
 class detector_factory:
     '''A factory class for detector objects, which will encapsulate standard
     detector designs to make it a little easier to get started with these. In
@@ -232,9 +65,6 @@ class detector_factory:
                       fast, slow, origin, pixel_size, image_size, trusted_range)
         detector.mask = mask
         return detector
-#        return detector(detector_factory.sensor(sensor),
-#                        origin.elems, fast.elems, slow.elems, pixel_size,
-#                        image_size, trusted_range, mask)
 
     @staticmethod
     def two_theta(sensor, distance, beam_centre, fast_direction,
@@ -279,10 +109,6 @@ class detector_factory:
                       image_size, trusted_range)
         detector.mask = mask
         return detector
-#        return detector(detector_factory.sensor(sensor),
-#                        (R * origin).elems, (R * fast).elems,
-#                        (R * slow).elems, pixel_size, image_size,
-#                        trusted_range, mask)
 
     @staticmethod
     def complex(sensor, origin, fast, slow, pixel, size, trusted_range):
@@ -300,9 +126,6 @@ class detector_factory:
 
         return FlatPanelDetector(detector_factory.sensor(sensor),
                 fast, slow, origin, pixel, size, trusted_range)
-#        return detector(detector_factory.sensor(sensor),
-#                        origin, fast, slow, pixel,
-#                        size, trusted_range, [])
 
     @staticmethod
     def XDS(xds_xparm_file):
@@ -367,9 +190,6 @@ class detector_factory:
 
         return FlatPanelDetector(detector_factory.sensor('unknown'),
                   c_fast, c_slow, c_origin, pixel_size, image_size, (0, 0))
-#        return detector(detector_factory.sensor('unknown'),
-#                        c_origin, c_fast, c_slow, pixel_size,
-#                        image_size, (0, 0), [])
 
     @staticmethod
     def imgCIF(cif_file, sensor):
@@ -411,9 +231,6 @@ class detector_factory:
         print fast, slow, origin, pixel, size, (underload, overload)
         return FlatPanelDetector(detector_factory.sensor(sensor),
                   fast, slow, origin, pixel, size, trusted_range)
-#        return detector(detector_factory.sensor(sensor),
-#                        origin, fast, slow, pixel,
-#                        size, (underload, overload), [])
 
     @staticmethod
     def imgCIF_H(cbf_handle, sensor):
@@ -452,9 +269,6 @@ class detector_factory:
 
         return FlatPanelDetector(detector_factory.sensor(sensor),
                       fast, slow, origin, pixel, size, trusted_range)
-#        return detector(detector_factory.sensor(sensor),
-#                        origin, fast, slow, pixel,
-#                        size, (underload, overload), [])
 
     @staticmethod
     def sensor(name):

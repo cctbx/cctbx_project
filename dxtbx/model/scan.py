@@ -55,7 +55,6 @@ class Scan(ScanData):
         self._directory = directory
         self._format = format
 
-
         return
 
     def __repr__(self):
