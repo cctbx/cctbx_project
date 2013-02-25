@@ -1908,7 +1908,8 @@ class result (slots_getstate_setstate) :
       setattr(self, attr, getattr(best_trial, attr))
     self.directory = os.getcwd()
     self.validation = None
-    if (validate) :
+    # FIXME crashes on some models
+    if (False) : #(validate) :
       from mmtbx.command_line import validation_summary
       self.validation = validation_summary.run(
         args=[self.pdb_file],
