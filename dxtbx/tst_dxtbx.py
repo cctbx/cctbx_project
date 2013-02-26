@@ -21,6 +21,9 @@ def tst_dxtbx():
         format = Registry.find(file_path)
         i = format(file_path)
         size = i.get_detector().get_image_size()
+        b = i.get_beam()
+        g = i.get_goniometer()
+        s = i.get_scan()
 
     print 'OK'
 
