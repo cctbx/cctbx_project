@@ -133,10 +133,12 @@ cctbx/math/time_trigonometry.cpp -text
 cctbx/miller/amplitude_normalisation.h -text
 cctbx/miller/boost_python/amplitude_normalisation.cpp -text
 cctbx/miller/boost_python/f_calc_map.cpp -text
+cctbx/miller/boost_python/randomize_amplitude_and_phase.cpp -text
 cctbx/miller/boost_python/slices.cpp -text
 cctbx/miller/display.py -text
 cctbx/miller/equivalent_reflection_merging.tex -text
 cctbx/miller/f_calc_map.h -text
+cctbx/miller/randomize_amplitude_and_phase.h -text
 cctbx/miller/reindexing.py svneol=native#text/x-python
 cctbx/miller/slices.h -text
 cctbx/miller/transform_and_change_of_basis.tex -text

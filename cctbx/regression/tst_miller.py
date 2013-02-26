@@ -2162,7 +2162,26 @@ def exercise_hoppe_gassmann_modification():
   fc.hoppe_gassmann_modification(mean_scale=2, n_iterations=2)
   fc.hoppe_gassmann_modification(mean_scale=2, n_iterations=2, d_min=1)
 
+def exercise_randomize_amplitude_and_phase():
+  xrs = random_structure.xray_structure(
+    space_group_info=sgtbx.space_group_info(number=1),
+    elements=["C"]*300)
+  fc = xrs.structure_factors(d_min=1).f_calc()
+  def run(a,p):
+    fc_ = fc.randomize_amplitude_and_phase(amplitude_error=a,
+      phase_error_deg=p, random_seed=1312425)
+    d1, d2 = flex.abs(fc.data()), flex.abs(fc_.data())
+    r = flex.sum(flex.abs(d1-d2))/flex.sum(flex.abs(d1+d2))*2
+    return (r, fc.mean_phase_error(phase_source=fc_))
+  #
+  assert approx_equal(run(0,0), (0,0))
+  for v in list(xrange(0,91, 10)):
+    r = run(v/100.,v)
+    assert approx_equal(r[0], v/100., 0.01)
+    assert approx_equal(r[1], v, 1)
+
 def run(args):
+  exercise_randomize_amplitude_and_phase()
   exercise_hoppe_gassmann_modification()
   exercise_complete_with4()
   exercise_scale()

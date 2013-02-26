@@ -959,6 +959,18 @@ class set(crystal.symmetry):
       anomalous_flag=self.anomalous_flag())
     return ms.array(data = result_data)
 
+  def randomize_amplitude_and_phase(self, amplitude_error, phase_error_deg,
+        random_seed=None):
+    assert self.is_complex_array()
+    import random
+    if(random_seed is None): random_seed = random.randint(0, 1000000)
+    new_data = ext.randomize_amplitude_and_phase(
+      data=self.data(),
+      amplitude_error=amplitude_error,
+      phase_error_deg=phase_error_deg,
+      random_seed=random_seed)
+    return self.customized_copy(data = new_data)
+
   def generate_r_free_flags_on_lattice_symmetry(self,
         fraction=0.10,
         max_free=2000,
