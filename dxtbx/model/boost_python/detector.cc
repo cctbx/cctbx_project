@@ -109,8 +109,7 @@ namespace dxtbx { namespace model { namespace boost_python {
         &FlatPanelDetector::get_slow_axis,
         &FlatPanelDetector::set_slow_axis)
       .add_property("normal",
-        &FlatPanelDetector::get_normal,
-        &FlatPanelDetector::set_normal)
+        &FlatPanelDetector::get_normal)
       .add_property("origin",
         &FlatPanelDetector::get_origin,
         &FlatPanelDetector::set_origin)
@@ -134,14 +133,20 @@ namespace dxtbx { namespace model { namespace boost_python {
         &FlatPanelDetector::set_mask)
       .def("add_mask",
         &FlatPanelDetector::add_mask)
+      .def("get_pixel_lab_coord",
+        &FlatPanelDetector::get_pixel_lab_coord<vec2<double> >)
+      .def("get_image_rectangle",
+        &FlatPanelDetector::get_image_rectangle)
+      .def("get_image_size_mm",
+        &FlatPanelDetector::get_image_size_mm)
       .def("is_value_in_trusted_range",
         &FlatPanelDetector::is_value_in_trusted_range)
       .def("is_coord_valid",
         &FlatPanelDetector::is_coord_valid)
       .def("millimeter_to_pixel",
-        &FlatPanelDetector::millimeter_to_pixel)
+        &FlatPanelDetector::millimeter_to_pixel<vec2<double> >)
       .def("pixel_to_millimeter",
-        &FlatPanelDetector::pixel_to_millimeter)
+        &FlatPanelDetector::pixel_to_millimeter<vec2<double> >)
       .def("__eq__", &FlatPanelDetector::operator==)
       .def("__ne__", &FlatPanelDetector::operator!=)
       .def("__str__", &flat_panel_detector_to_string);
@@ -166,7 +171,9 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("millimeter_to_pixel",
         &MultiFlatPanelDetector::millimeter_to_pixel)
       .def("pixel_to_millimeter",
-        &MultiFlatPanelDetector::pixel_to_millimeter)        
+        &MultiFlatPanelDetector::pixel_to_millimeter)   
+      .def("do_panels_intersect",
+        &MultiFlatPanelDetector::do_panels_intersect)
       .def("__len__", 
         &MultiFlatPanelDetector::num_panels)
       .def("__setitem__", 

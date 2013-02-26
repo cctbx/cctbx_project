@@ -12,6 +12,9 @@
 #define DXTBX_MODEL_DETECTOR_H
 
 #include <string>
+#include <boost/geometry.hpp>
+#include <boost/geometry/geometries/point.hpp>
+#include <boost/geometry/geometries/polygon.hpp>
 #include <scitbx/vec2.h>
 #include <scitbx/vec3.h>
 #include <scitbx/mat3.h>
@@ -25,6 +28,7 @@ namespace dxtbx { namespace model {
   using scitbx::vec2;
   using scitbx::vec3;
   using scitbx::mat3;
+  using scitbx::af::double6;
   using scitbx::af::int4;
 
   // int4 array type
@@ -88,7 +92,6 @@ namespace dxtbx { namespace model {
       normal_(0.0, 0.0, 1.0),
       origin_(0.0, 0.0, 0.0),
       pixel_size_(0.0, 0.0),
-      pixel_size_i_(0.0, 0.0),
       image_size_(0, 0),
       trusted_range_(0, 0) {}
 
@@ -112,12 +115,11 @@ namespace dxtbx { namespace model {
         vec2 <std::size_t> image_size,
         vec2 <double> trusted_range)
       : type_(type),
-      fast_axis_(fast_axis),
-      slow_axis_(slow_axis),
+      fast_axis_(fast_axis.normalize()),
+      slow_axis_(slow_axis.normalize()),
       normal_((fast_axis_.cross(slow_axis_)).normalize()),
       origin_(origin),
       pixel_size_(pixel_size),
-      pixel_size_i_(1.0 / pixel_size),
       image_size_(image_size),
       trusted_range_(trusted_range) {}
 
@@ -190,16 +192,13 @@ namespace dxtbx { namespace model {
     /** Set the fast axis */
     void set_fast_axis(vec3 <double> fast_axis) {
       fast_axis_ = fast_axis;
+      normal_ = fast_axis_.cross(slow_axis_);
     }
 
     /** Set the slow axis */
     void set_slow_axis(vec3 <double> slow_axis) {
       slow_axis_ = slow_axis;
-    }
-
-    /** Set the normal */
-    void set_normal(vec3 <double> normal) {
-      normal_ = normal;
+      normal_ = fast_axis_.cross(slow_axis_);
     }
 
     /** Set the origin */
@@ -210,7 +209,6 @@ namespace dxtbx { namespace model {
     /** Set the pixel size */
     void set_pixel_size(vec2 <double> pixel_size) {
       pixel_size_ = pixel_size;
-      pixel_size_i_ = 1.0 / pixel_size_;
     }
 
     /** Set the image size */
@@ -245,7 +243,7 @@ namespace dxtbx { namespace model {
     }
 
     /** Check the detector axis basis vectors are (almost) the same */
-    bool operator==(const FlatPanelDetector &detector) {
+    bool operator==(const FlatPanelDetector &detector) const {
       double eps = 1.0e-6;
       double d_fast = fast_axis_.angle(detector.fast_axis_);
       double d_slow = slow_axis_.angle(detector.slow_axis_);
@@ -259,29 +257,53 @@ namespace dxtbx { namespace model {
     }
 
     /** Check the detector axis basis vectors are not (almost) the same */
-    bool operator!=(const FlatPanelDetector &detector) {
+    bool operator!=(const FlatPanelDetector &detector) const {
       return !(*this == detector);
+    }
+
+    /** Get the pixel in lab coordinates */
+    template <typename CoordType>
+    vec3<double> get_pixel_lab_coord(CoordType xy) const {
+      vec2<double> xy_mm = pixel_to_millimeter(xy);
+      return origin_ + fast_axis_ * xy_mm[0] + slow_axis_ * xy_mm[1];
+    }
+
+    /** Get the image rectangle in the lab frame */
+    double6 get_image_rectangle() const {
+      vec3 <double> point1 = get_origin();
+      vec3 <double> point2 = get_pixel_lab_coord(get_image_size());
+      return double6(
+        point1[0], point1[1], point1[2],
+        point2[0], point2[1], point2[2]);
+    }
+
+    /** Get the image size in millimeters */
+    vec2<double> get_image_size_mm() const {
+      vec2<double> xy = pixel_to_millimeter(image_size_);
+      return vec2<double>(std::abs(xy[0]), std::abs(xy[1]));
     }
 
     /** Check the value is valid */
     bool is_value_in_trusted_range(double value) const {
-      return (trusted_range_[0] <= value < trusted_range_[1]);
+      return (trusted_range_[0] <= value && value < trusted_range_[1]);
     }
 
     /** Check the coordinate is valid */
     bool is_coord_valid(vec2<double> xy) const {
-      return (xy[0] >= 0 && xy[0] < image_size_[0])
-          && (xy[1] >= 0 && xy[1] < image_size_[1]);
+      return (0 <= xy[0] && xy[0] < image_size_[0])
+          && (0 <= xy[1] && xy[1] < image_size_[1]);
     }
 
     /** Map coordinates in mm to pixels */
-    vec2<double> millimeter_to_pixel(vec2<double> xy) const {
-      return xy * pixel_size_i_;
+    template <typename CoordType>
+    vec2<double> millimeter_to_pixel(CoordType xy) const {
+      return vec2<double> (xy[0] / pixel_size_[0], xy[1] / pixel_size_[1]);
     }
 
     /** Map the coordinates in pixels to millimeters */
-    vec2<double> pixel_to_millimeter(vec2<double> xy) const {
-      return xy * pixel_size_;
+    template <typename CoordType>
+    vec2<double> pixel_to_millimeter(CoordType xy) const {
+      return vec2<double> (xy[0] * pixel_size_[0], xy[1] * pixel_size_[1]);
     }
 
   protected:
@@ -292,7 +314,6 @@ namespace dxtbx { namespace model {
     vec3 <double> normal_;
     vec3 <double> origin_;
     vec2 <double> pixel_size_;
-    vec2 <double> pixel_size_i_;
     vec2 <std::size_t> image_size_;
     vec2 <double> trusted_range_;
     shared_int4 mask_;
@@ -402,7 +423,57 @@ namespace dxtbx { namespace model {
       return panel_list_[pxy.first].pixel_to_millimeter(pxy.second);
     }
 
+    /** Check if any panels intersect */
+    bool do_panels_intersect() const {
+      for (std::size_t j = 0; j < panel_list_.size()-1; ++j) {
+        for (std::size_t i = j+1; i < panel_list_.size(); ++i) {
+          if (panels_intersect(panel_list_[j], panel_list_[i])) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
   protected:
+
+    /**
+     * Check if the detector planes intersect.
+     * @param a The first detector
+     * @param b The second detector
+     * @returns True/False do the detector planes intersect?
+     */
+    static bool
+    panels_intersect(const FlatPanelDetector &a, const FlatPanelDetector &b) {
+
+      using namespace boost::geometry;
+
+      typedef boost::geometry::model::point <double, 3, cs::cartesian> point;
+      typedef boost::geometry::model::polygon <point> polygon;
+
+      // Get the rectange of detector points
+      double6 rect_a = a.get_image_rectangle();
+      double6 rect_b = b.get_image_rectangle();
+
+      // Create a polygon for the panel a plane
+      polygon poly_a;
+      append(poly_a, point(rect_a[0], rect_a[1], rect_a[2]));
+      append(poly_a, point(rect_a[3], rect_a[1], rect_a[5]));
+      append(poly_a, point(rect_a[3], rect_a[4], rect_a[5]));
+      append(poly_a, point(rect_a[0], rect_a[4], rect_a[2]));
+      append(poly_a, point(rect_a[0], rect_a[1], rect_a[2]));
+
+      // Create a polygon for the panel b plane
+      polygon poly_b;
+      append(poly_b, point(rect_b[0], rect_b[1], rect_b[2]));
+      append(poly_b, point(rect_b[3], rect_b[1], rect_b[5]));
+      append(poly_b, point(rect_b[3], rect_b[4], rect_b[5]));
+      append(poly_b, point(rect_b[0], rect_b[4], rect_b[2]));
+      append(poly_b, point(rect_b[0], rect_b[1], rect_b[2]));
+
+      // Check if the polygons intersect
+      return intersects(poly_a, poly_b);
+    }
 
     std::string type_;
     panel_list_type panel_list_;
