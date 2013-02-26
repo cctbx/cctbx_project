@@ -95,6 +95,21 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("get_image_epoch",
         &ScanData::get_image_epoch, (
           arg("index")))
+      .def("is_angle_valid",
+        &ScanData::is_angle_valid, (
+          arg("angle")))
+      .def("is_frame_valid",
+        &ScanData::is_frame_valid, (
+          arg("frame")))
+      .def("get_angle_from_frame",
+        &ScanData::get_angle_from_frame, (
+          arg("frame")))
+      .def("get_frame_from_angle",
+        &ScanData::get_frame_from_angle, (
+          arg("angle")))
+      .def("get_frames_with_angle",
+        &ScanData::get_frames_with_angle, (
+          arg("angle")))
       .def("__eq__", &ScanData::operator==)
       .def("__nq__", &ScanData::operator!=)
       .def("__len__", &ScanData::get_num_images)
