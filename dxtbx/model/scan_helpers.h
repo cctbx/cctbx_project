@@ -13,6 +13,7 @@
 
 #include <cmath>
 #include <scitbx/constants.h>
+#include <scitbx/vec2.h>
 #include <scitbx/array_family/flex_types.h>
 #include <dxtbx/error.h>
 
