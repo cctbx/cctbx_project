@@ -22,6 +22,7 @@ from detector_helpers import read_xds_xparm
 from detector_helpers import find_undefined_value
 from detector_helpers import compute_frame_rotation
 
+
 class detector_factory:
     '''A factory class for detector objects, which will encapsulate standard
     detector designs to make it a little easier to get started with these. In
@@ -31,6 +32,19 @@ class detector_factory:
 
     def __init__(self):
         pass
+
+    @staticmethod
+    def make_flat_panel_detector(stype, fast_axis, slow_axis, origin,
+                                 pixel_size, image_size, trusted_range):
+        """Ensure all types are correct before creating c++ detector class."""
+        return FlatPanelDetector(
+            str(stype),
+            tuple(map(float, fast_axis)),
+            tuple(map(float, slow_axis)),
+            tuple(map(float, origin)),
+            tuple(map(float, pixel_size)),
+            tuple(map(int,   image_size)),
+            tuple(map(float, trusted_range)))
 
     @staticmethod
     def simple(sensor, distance, beam_centre, fast_direction, slow_direction,
@@ -61,7 +75,8 @@ class detector_factory:
         origin = matrix.col((0, 0, -1)) * distance - \
                  fast * beam_centre[0] - slow * beam_centre[1]
 
-        detector = FlatPanelDetector(detector_factory.sensor(sensor),
+        detector = detector_factory.make_flat_panel_detector(
+                      detector_factory.sensor(sensor),
                       fast, slow, origin, pixel_size, image_size, trusted_range)
         detector.mask = mask
         return detector
@@ -104,7 +119,8 @@ class detector_factory:
         R = two_theta.axis_and_angle_as_r3_rotation_matrix(two_theta_angle,
                                                            deg = True)
 
-        detector = FlatPanelDetector(detector_factory.sensor(sensor),
+        detector = detector_factory.make_flat_panel_detector(
+                      detector_factory.sensor(sensor),
                       (R * fast), (R * slow), (R * origin), pixel_size,
                       image_size, trusted_range)
         detector.mask = mask
@@ -124,7 +140,8 @@ class detector_factory:
         assert(len(pixel) == 2)
         assert(len(size) == 2)
 
-        return FlatPanelDetector(detector_factory.sensor(sensor),
+        return detector_factory.make_flat_panel_detector(
+                detector_factory.sensor(sensor),
                 fast, slow, origin, pixel, size, trusted_range)
 
     @staticmethod
@@ -188,7 +205,8 @@ class detector_factory:
         c_fast = _m * detector_fast
         c_slow = _m * detector_slow
 
-        return FlatPanelDetector(detector_factory.sensor('unknown'),
+        return detector_factory.make_flat_panel_detector(
+                  detector_factory.sensor('unknown'),
                   c_fast, c_slow, c_origin, pixel_size, image_size, (0, 0))
 
     @staticmethod
@@ -223,13 +241,13 @@ class detector_factory:
         size = tuple(reversed(cbf_handle.get_image_size(0)))
         underload = find_undefined_value(cbf_handle)
         overload = cbf_handle.get_overload(0)
-        trusted_range = (int(underload), int(overload))
+        trusted_range = (underload, overload)
 
         cbf_detector.__swig_destroy__(cbf_detector)
         del(cbf_detector)
 
-        print fast, slow, origin, pixel, size, (underload, overload)
-        return FlatPanelDetector(detector_factory.sensor(sensor),
+        return detector_factory.make_flat_panel_detector(
+                  detector_factory.sensor(sensor),
                   fast, slow, origin, pixel, size, trusted_range)
 
     @staticmethod
@@ -262,12 +280,13 @@ class detector_factory:
         size = tuple(reversed(cbf_handle.get_image_size(0)))
         underload = find_undefined_value(cbf_handle)
         overload = cbf_handle.get_overload(0)
-        trusted_range = (int(underload), int(overload))
+        trusted_range = (underload, overload)
 
         cbf_detector.__swig_destroy__(cbf_detector)
         del(cbf_detector)
 
-        return FlatPanelDetector(detector_factory.sensor(sensor),
+        return detector_factory.make_flat_panel_detector(
+                      detector_factory.sensor(sensor),
                       fast, slow, origin, pixel, size, trusted_range)
 
     @staticmethod
