@@ -109,7 +109,8 @@ Parameters:"""%h
   pdb_hierarchy = pdb_inp.construct_hierarchy()
   pdb_atoms = pdb_hierarchy.atoms()
   pdb_atoms.reset_i_seq()
-  xray_structure = pdb_inp.xray_structure_simple()
+  xray_structure = pdb_hierarchy.extract_xray_structure(
+    crystal_symmetry=pdb_inp.crystal_symmetry())
   xray_structure.show_summary(f=log)
   #
   map_coeff = None
@@ -119,7 +120,6 @@ Parameters:"""%h
       label     = params.label,
       type      = "complex",
       log       = log)
-    assert map_coeff is not None
   #
   if(got_map):
     print_statistics.make_sub_header("CCP4 map", out=log)
@@ -185,7 +185,7 @@ Parameters:"""%h
         unit_cell_lengths = ccp4_map_object.unit_cell_parameters[:3],
         n_real            = ccp4_map_object.unit_cell_grid,
         crystal_symmetry  = xray_structure.crystal_symmetry(),
-        resolution_factor = 1/3).d_min()
+        resolution_factor = params.resolution_factor).d_min()
     box.map_coefficients(d_min=d_min,
       resolution_factor=params.resolution_factor, file_name=file_name)
   print >> log
