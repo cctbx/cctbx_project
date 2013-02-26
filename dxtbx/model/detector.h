@@ -80,9 +80,6 @@ namespace dxtbx { namespace model {
   class FlatPanelDetector : public DetectorBase {
   public:
 
-    // The detector coordinate type
-    typedef vec2 <double> coordinate_type;
-
     /** The default constructor */
     FlatPanelDetector()
       : type_("Unknown"),
@@ -91,6 +88,7 @@ namespace dxtbx { namespace model {
       normal_(0.0, 0.0, 1.0),
       origin_(0.0, 0.0, 0.0),
       pixel_size_(0.0, 0.0),
+      pixel_size_i_(0.0, 0.0),
       image_size_(0, 0),
       trusted_range_(0, 0) {}
 
@@ -119,6 +117,7 @@ namespace dxtbx { namespace model {
       normal_((fast_axis_.cross(slow_axis_)).normalize()),
       origin_(origin),
       pixel_size_(pixel_size),
+      pixel_size_i_(1.0 / pixel_size),
       image_size_(image_size),
       trusted_range_(trusted_range) {}
 
@@ -174,7 +173,7 @@ namespace dxtbx { namespace model {
     }
 
     /** Get the inverse d matrix */
-    mat3 <double> get_inverse_d_matrix() const {
+    mat3 <double> get_D_matrix() const {
       return get_d_matrix().inverse();
     }
 
@@ -211,6 +210,7 @@ namespace dxtbx { namespace model {
     /** Set the pixel size */
     void set_pixel_size(vec2 <double> pixel_size) {
       pixel_size_ = pixel_size;
+      pixel_size_i_ = 1.0 / pixel_size_;
     }
 
     /** Set the image size */
@@ -231,8 +231,8 @@ namespace dxtbx { namespace model {
     }
 
     /** Set the inverse d matrix */
-    void set_inverse_d_matrix(mat3 <double> d) {
-      set_d_matrix(d.inverse());
+    void set_D_matrix(mat3 <double> D) {
+      set_d_matrix(D.inverse());
     }
 
     /** Set the mask */
@@ -263,6 +263,27 @@ namespace dxtbx { namespace model {
       return !(*this == detector);
     }
 
+    /** Check the value is valid */
+    bool is_value_in_trusted_range(double value) const {
+      return (trusted_range_[0] <= value < trusted_range_[1]);
+    }
+
+    /** Check the coordinate is valid */
+    bool is_coord_valid(vec2<double> xy) const {
+      return (xy[0] >= 0 && xy[0] < image_size_[0])
+          && (xy[1] >= 0 && xy[1] < image_size_[1]);
+    }
+
+    /** Map coordinates in mm to pixels */
+    vec2<double> millimeter_to_pixel(vec2<double> xy) const {
+      return xy * pixel_size_i_;
+    }
+
+    /** Map the coordinates in pixels to millimeters */
+    vec2<double> pixel_to_millimeter(vec2<double> xy) const {
+      return xy * pixel_size_;
+    }
+
   protected:
 
     std::string type_;
@@ -271,6 +292,7 @@ namespace dxtbx { namespace model {
     vec3 <double> normal_;
     vec3 <double> origin_;
     vec2 <double> pixel_size_;
+    vec2 <double> pixel_size_i_;
     vec2 <std::size_t> image_size_;
     vec2 <double> trusted_range_;
     shared_int4 mask_;
@@ -284,8 +306,7 @@ namespace dxtbx { namespace model {
   class MultiFlatPanelDetector : public DetectorBase {
   public:
 
-    // The detector coordinate type
-    typedef vec3 <double> coordinate_type;
+    typedef std::pair<int, vec2<double> > coordinate_type;
 
     // Panel list typedefs
     typedef FlatPanelDetector panel_type;
@@ -357,6 +378,28 @@ namespace dxtbx { namespace model {
     /** Check the detector panels are not the same */
     bool operator!=(const MultiFlatPanelDetector &detector) {
       return !(*this == detector);
+    }
+
+    /** Check the value is valid */
+    bool is_value_in_trusted_range(int panel, double value) const {
+      return 0 <= panel && panel < panel_list_.size()
+          && panel_list_[panel].is_value_in_trusted_range(value);
+    }
+
+    /** Check the coordinate is valid */
+    bool is_coord_valid(coordinate_type pxy) const {
+      return 0 <= pxy.first && pxy.first < panel_list_.size()
+          && panel_list_[pxy.first].is_coord_valid(pxy.second);
+    }
+
+    /** Map coordinates in mm to pixels */
+    vec2<double> millimeter_to_pixel(coordinate_type pxy) const {
+      return panel_list_[pxy.first].millimeter_to_pixel(pxy.second);
+    }
+
+    /** Map the coordinates in pixels to millimeters */
+    vec2<double> pixel_to_millimeter(coordinate_type pxy) const {
+      return panel_list_[pxy.first].pixel_to_millimeter(pxy.second);
     }
 
   protected:

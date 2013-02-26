@@ -13,6 +13,7 @@
 #include <string>
 #include <iostream>
 #include <sstream>
+#include <boost_adaptbx/std_pair_conversion.h>
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/simple_io.h>
 #include <scitbx/array_family/simple_tiny_io.h>
@@ -126,16 +127,27 @@ namespace dxtbx { namespace model { namespace boost_python {
         &FlatPanelDetector::get_d_matrix,
         &FlatPanelDetector::set_d_matrix)
       .add_property("inverse_d_matrix",
-        &FlatPanelDetector::get_inverse_d_matrix,
-        &FlatPanelDetector::set_inverse_d_matrix)
+        &FlatPanelDetector::get_D_matrix,
+        &FlatPanelDetector::set_D_matrix)
       .add_property("mask",
         &FlatPanelDetector::get_mask,
         &FlatPanelDetector::set_mask)
       .def("add_mask",
         &FlatPanelDetector::add_mask)
+      .def("is_value_in_trusted_range",
+        &FlatPanelDetector::is_value_in_trusted_range)
+      .def("is_coord_valid",
+        &FlatPanelDetector::is_coord_valid)
+      .def("millimeter_to_pixel",
+        &FlatPanelDetector::millimeter_to_pixel)
+      .def("pixel_to_millimeter",
+        &FlatPanelDetector::pixel_to_millimeter)
       .def("__eq__", &FlatPanelDetector::operator==)
       .def("__ne__", &FlatPanelDetector::operator!=)
       .def("__str__", &flat_panel_detector_to_string);
+
+    // Register std::pair conversion for MultiFlatPanelDetector coordinate type 
+    boost_adaptbx::std_pair_conversions::to_and_from_tuple<int, vec2<double> >();
 
     // Export a MultiFlatPanelDetector class
     class_ <MultiFlatPanelDetector, 
@@ -147,6 +159,14 @@ namespace dxtbx { namespace model { namespace boost_python {
           arg("panel")))
       .def("num_panels",
         &MultiFlatPanelDetector::num_panels)
+      .def("is_value_in_trusted_range",
+        &MultiFlatPanelDetector::is_value_in_trusted_range)
+      .def("is_coord_valid",
+        &MultiFlatPanelDetector::is_coord_valid)
+      .def("millimeter_to_pixel",
+        &MultiFlatPanelDetector::millimeter_to_pixel)
+      .def("pixel_to_millimeter",
+        &MultiFlatPanelDetector::pixel_to_millimeter)        
       .def("__len__", 
         &MultiFlatPanelDetector::num_panels)
       .def("__setitem__", 
