@@ -546,33 +546,64 @@ def averaged_phase_kicked_map(
       fmodel,
       map_type            = "2mFo-DFc",
       phase_kick_fraction = 0.3,
-      number_of_kicks     = 100):
+      number_of_kicks     = 10,
+      number_of_trials    = 10):
   assert number_of_kicks > 0
-  map_coeff_data = None
   map_coeffs = fmodel.electron_density_map().map_coefficients(
     map_type = map_type, isotropize=True, fill_missing=False)
   complete_set = fmodel.electron_density_map().map_coefficients(
     map_type = map_type, isotropize=True, fill_missing=True)
+  map_coeffs = map_coeffs.common_set(complete_set)
   phases = map_coeffs.phases(deg=True).data()
+  amplitudes = abs(map_coeffs.deep_copy()).data()
   centric_flags = fmodel.f_obs().centric_flags().data()
-  for kick in xrange(number_of_kicks):
-    phases_ = flex.double()
-    for p, cf in zip(phases, centric_flags): # XXX loop over hkl: SLOW
-      if(cf): phases_.append(p) # XXX should we care? may be shake all?
-      else: phases_.append(p+p*random.choice([-1,1])*phase_kick_fraction)
-    map_coeffs_ = map_coeffs.phase_transfer(phase_source=phases_, deg=True)
-    map_coeffs_ = map_coeffs_.complete_with(other=complete_set)
-    if(map_coeff_data is None): map_coeff_data = map_coeffs_.data()
-    else: map_coeff_data = map_coeff_data + map_coeffs_.data()
-  return miller.set(
-    crystal_symmetry = complete_set.crystal_symmetry(),
-    indices          = complete_set.indices(),
-    anomalous_flag   = False).array(data = map_coeff_data/number_of_kicks)
+  map_data = None
+  for it in xrange(number_of_trials):
+    print it
+    map_coeff_data = None
+    sel = flex.random_bool(map_coeffs.size(), random.choice([1,0.9]))
+    map_coeffs_ = map_coeffs.select(sel)
+    phases_ = phases.select(sel)
+    amplitudes_ = amplitudes.select(sel)
+    centric_flags_ = centric_flags.select(sel)
+    for kick in xrange(number_of_kicks):
+      print "  ", kick
+      phases__ = flex.double()
+      amplitudes__ = flex.double()
+      for p, cf, a in zip(phases_, centric_flags_, amplitudes_):
+        if(random.choice([0,1])):
+          if(cf): phases__.append(p)
+          else: phases__.append(p+p*random.choice([-1,1])*phase_kick_fraction)
+        else:
+          phases__.append(p+p*random.choice([-1,0,1])*phase_kick_fraction)
+        amplitudes__.append(a+a*random.choice([-1,0,1])*0.1)
+      if(random.choice([0,1])):
+        map_coeffs__ = map_coeffs_.customized_copy(data=amplitudes__)
+      map_coeffs__ = map_coeffs_.phase_transfer(phase_source=phases__, deg=True)
+      map_coeffs__ = map_coeffs__.complete_with(other=complete_set)
+      map_coeffs__ = map_coeffs__.common_set(complete_set)
+      if(map_coeff_data is None): map_coeff_data = map_coeffs__.data()
+      else: map_coeff_data = map_coeff_data + map_coeffs__.data()
+    map_coeffs_ave_i = miller.set(
+      crystal_symmetry = complete_set.crystal_symmetry(),
+      indices          = complete_set.indices(),
+      anomalous_flag   = False).array(data = map_coeff_data/number_of_kicks)
+    fft_map = map_coeffs_ave_i.fft_map(resolution_factor=0.25)
+    fft_map.apply_sigma_scaling()
+    if(map_data is None): map_data = fft_map.real_map_unpadded()
+    else:                 map_data = map_data + fft_map.real_map_unpadded()
+  map_data /= number_of_trials
+  return complete_set.structure_factors_from_map(
+    map            = map_data,
+    use_scale      = True,
+    anomalous_flag = False,
+    use_sg         = False)
 
 class filter_by_averaged_phase_kicked_map(object):
   def __init__(self,
                fmodel,
                crystal_gridding,
+               mean_positive_scale,
                map_type        = "2mFo-DFc",
                sigma_threshold = 0.5,
                fill_missing    = False):
@@ -605,3 +636,26 @@ class filter_by_averaged_phase_kicked_map(object):
       use_scale      = True,
       anomalous_flag = False,
       use_sg         = False)
+    # compute best map
+    obj = maptbx.local_scale(
+      map_data            = self.map_data_original_filtered.deep_copy(),
+      crystal_gridding    = crystal_gridding,
+      crystal_symmetry    = fmodel.f_obs().crystal_symmetry(),
+      miller_array        = fmodel.f_obs(),
+      mean_positive_scale = mean_positive_scale)
+    self.mc_original_filtered_local_scaled = obj.map_coefficients
+    fft_map = miller.fft_map(
+        crystal_gridding     = crystal_gridding,
+        fourier_coefficients = self.mc_original_filtered_local_scaled)
+    fft_map.apply_sigma_scaling()
+    map_data_original_filtered_local_scaled = fft_map.real_map_unpadded()
+    maptbx.intersection(
+      map_data_1 = map_data_original_filtered_local_scaled,
+      map_data_2 = self.map_data_kicked,
+      threshold  = 0.5)
+    self.mc5 = fmodel.f_obs().complete_set(d_min=
+      fmodel.f_obs().d_min()-0.25).structure_factors_from_map(
+         map            = map_data_original_filtered_local_scaled,
+         use_scale      = True,
+         anomalous_flag = False,
+         use_sg         = False)
