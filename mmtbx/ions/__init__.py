@@ -16,7 +16,7 @@ from cctbx.eltbx import sasaki, henke
 from scitbx.matrix import col, distance_from_plane
 from scitbx.array_family import flex
 from libtbx import group_args, adopt_init_args, Auto
-from libtbx.str_utils import make_sub_header, format_value
+from libtbx.str_utils import make_sub_header, format_value, framed_output
 from libtbx import slots_getstate_setstate
 from libtbx.utils import null_out, Sorry
 from libtbx import easy_mp
@@ -102,11 +102,11 @@ water
     .input_size = 80
     .help = Maximum water occupancy
     .short_caption = Max. expected occupancy
-  max_stddev_b_iso = 4
+  max_stddev_b_iso = 6
     .type = float
     .input_size = 80
     .short_caption = Max. standard deviations below mean B-iso
-  min_frac_b_iso = 0.25
+  min_frac_b_iso = 0.1
     .type = float
     .input_size = 80
     .short_caption = Min. fraction of mean B-iso
@@ -176,8 +176,8 @@ class atom_contact (slots_getstate_setstate) :
     """Distance from another contact"""
     return abs(self.vector - other.vector)
 
-  def id_str (self) :
-    if (not self.rt_mx.is_unit_mx()) :
+  def id_str (self, suppress_rt_mx=False) :
+    if (not self.rt_mx.is_unit_mx()) and (not suppress_rt_mx) :
       return self.atom.id_str() + " " + str(self.rt_mx)
     else :
       return self.atom.id_str()
@@ -197,12 +197,15 @@ class atom_contact (slots_getstate_setstate) :
   def atom_i_seq (self) :
     return self.atom.i_seq
 
-  def atom_id_no_altloc (self) :
+  def altloc (self) :
+    return self.atom.fetch_labels().altloc.strip()
+
+  def atom_id_no_altloc (self, suppress_rt_mx=False) :
     """Unique identifier for an atom, ignoring the altloc but taking the
     symmetry operator (if any) into account."""
     labels = self.atom.fetch_labels()
     base_id = labels.chain_id + labels.resid() + self.atom.name
-    if (self.rt_mx.is_unit_mx()) :
+    if (self.rt_mx.is_unit_mx()) or (suppress_rt_mx) :
       return base_id
     else :
       return base_id + " " + str(self.rt_mx)
@@ -218,11 +221,6 @@ class atom_contact (slots_getstate_setstate) :
   def __str__ (self) :
     return self.id_str()
 
-# Signals a built water might be a ion:
-# - Abnormal b-factors from nearby chain
-# - Coordinated by other waters
-# - Nearby carbon (< 3.0 A)
-# - FoFc peak/hole
 # - Phaser Anomalous signal
 class Manager (object) :
   """
@@ -466,10 +464,15 @@ class Manager (object) :
         vec_i = col(site_i_cart)
         vec_ji = col(self.unit_cell.orthogonalize(site_ji))
         assert abs(vec_i - vec_ji) < distance_cutoff + 0.5
-        contacts.append(atom_contact(
+        contact = atom_contact(
           atom=self.pdb_atoms[j_seq],
           vector=vec_i - vec_ji,
-          rt_mx=rt_mx))
+          rt_mx=rt_mx)
+        # XXX I have no idea why the built-in handling of special positions
+        # doesn't catch this for us
+        if (j_seq == i_seq) and (not rt_mx.is_unit_mx()) :
+          continue
+        contacts.append(contact)
 
     # Filter out carbons that are judged to be "contacts", but are actually
     # just bonded to genuine coordinating atoms.  This is basically just a
@@ -836,6 +839,8 @@ class Manager (object) :
     # carboxyl groups), but with some leeway if a cation is also nearby.
     # backbone carbonyl atoms are also excluded.
     for contact in nearby_atoms:
+      if (contact.altloc() not in ["", "A"]) :
+        continue
       resname = contact.resname()
       atom_name = contact.atom_name()
       distance = abs(contact)
@@ -1236,8 +1241,6 @@ class Manager (object) :
     ions = sel_cache.selection("segid ION").iselection()
     if len(ions) == 0:
       return
-    print >> out, ""
-    print >> out, "  %d ions to validate" % len(ions)
     ion_status = []
 
     nproc = easy_mp.get_processes(self.nproc)
@@ -1264,17 +1267,28 @@ class Manager (object) :
     #     bad_ions.append(i_seq)
 
     # Show a table!
-    headers = ("atom", "occ", "b-iso", "2FoFc", "FoFc", "anom")
-    line = "%-10s " * len(headers)
-    print >> out, line % headers
+    scatterers = self.xray_structure.scatterers()
+    headers = ("atom", "occ", "b_iso", "2mFo-DFc", "mFo-DFc", "fp", "fdp")
+    fmt = " %-15s %5s %8s %10s %10s %6s %6s"
+    box = framed_output(out, title="Validating new ions", width=72)
+    print >> box, fmt % headers
+    print >> box, " " + ("-" * 66)
     for props, okay_flag in ion_status :
       mark = ""
       if (not okay_flag) :
-        mark = " !!!"
-      def ff (val) : return format_value("%8.2f", val, replace_none_with="---")
-      print >> out, (line % (props.atom.id_str(), ff(props.atom.occ),
-                             ff(props.atom.b), ff(props.peak_2fofc),
-                             ff(props.peak_fofc), ff(props.peak_anom))) + mark
+        pass #mark = " !!!"
+      i_seq = props.atom.i_seq
+      sc = scatterers[i_seq]
+      fp = fdp = None
+      if (sc.flags.use_fp_fdp) :
+        fp = sc.fp
+        fdp = sc.fdp
+      def ff (fs, val) : return format_value(fs, val, replace_none_with="---")
+      print >> box, (fmt % (props.atom.id_str(suppress_segid=True)[5:-1],
+        ff("%5.2f", props.atom.occ), ff("%8.2f", props.atom.b),
+        ff("%8.2f", props.peak_2fofc), ff("%8.2f", props.peak_fofc),
+        ff("%6.2f", fp), ff("%6.2f", fdp))) + mark
+    box.close()
 
 class _analyze_water_wrapper (object) :
   """
@@ -2033,13 +2047,20 @@ def is_carboxy_terminus (pdb_object) :
   return False
 
 def is_negatively_charged_oxygen (atom_name, resname) :
+  """
+  Determine whether the oxygen atom of interest is either negatively charged
+  (usually a carboxyl group or sulfate/phosphate), or has a lone pair (and
+  no hydrogen atom) that would similarly repel anions.
+  """
   if ((atom_name in ["OD1","OD2","OE1","OE2"]) and
-      (resname in ["GLU","ASP"])) :
+      (resname in ["GLU","ASP","GLN","ASN"])) :
     return True
   elif ((atom_name == "O") and (not resname in WATER_RES_NAMES)) :
     return True # sort of - the lone pair acts this way
   elif ((len(atom_name) == 3) and (atom_name[0:2] in ["O1","O2","O3"]) and
         (atom_name[2] in ["A","B","G"])) :
+    return True
+  elif (resname in ["SO4","PO4"]) :
     return True
   return False
 
