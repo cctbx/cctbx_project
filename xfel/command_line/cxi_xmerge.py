@@ -245,6 +245,7 @@ def run(args):
   # --------- New code ------------------
     #sanity check
     for mod,obs in zip(i_model.indices(),scaler.millers["merged_asu_hkl"]):
+      if mod!=obs: raise Exception("miller index lists inconsistent--check d_min are equal for merge and xmerge scripts")
       assert mod==obs
 
     """Sum the observations of I and I/sig(I) for each reflection.
