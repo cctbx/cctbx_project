@@ -549,7 +549,6 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
 
   def extract_xray_structure(self, crystal_symmetry=None) :
     return self.as_pdb_input(crystal_symmetry).xray_structure_simple()
-    #return self.as_cif_input(crystal_symmetry=crystal_symmetry).xray_structure_simple()
 
   def adopt_xray_structure(self, xray_structure):
     from iotbx.pdb import common_residue_names_get_class as gc
