@@ -24,7 +24,6 @@ def tst_dxtbx():
         b = i.get_beam()
         g = i.get_goniometer()
         s = i.get_scan()
-        print 'OK'
 
     print 'OK'
 

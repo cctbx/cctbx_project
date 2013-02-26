@@ -39,13 +39,30 @@ namespace dxtbx { namespace model {
      */
     ScanData(vec2 <int> image_range,
              vec2 <double> oscillation,
+             double exposure_time)
+      : image_range_(image_range),
+        oscillation_(oscillation),
+        exposure_time_(exposure_time),
+        num_images_(1 + image_range_[1] - image_range_[0]) {
+      DXTBX_ASSERT(num_images_ >= 0);
+      DXTBX_ASSERT(exposure_time_ >= 0.0);
+    }
+
+    /**
+     * Initialise the class
+     * @param image_range The range of images covered by the scan
+     * @param starting_angle The starting rotation angle
+     * @param oscillation_range The oscillation range of each frame
+     */
+    ScanData(vec2 <int> image_range,
+             vec2 <double> oscillation,
              double exposure_time,
              const flex_double &epochs)
       : image_range_(image_range),
         oscillation_(oscillation),
-        num_images_(1 + image_range_[1] - image_range_[0]),
         exposure_time_(exposure_time),
-        epochs_(epochs) {
+        epochs_(epochs),
+        num_images_(1 + image_range_[1] - image_range_[0]) {
       DXTBX_ASSERT(num_images_ >= 0);
       DXTBX_ASSERT(exposure_time_ >= 0.0);
       DXTBX_ASSERT(epochs_.size() == num_images_);
@@ -145,7 +162,7 @@ namespace dxtbx { namespace model {
 
     /** Check if the frame is valid */
     bool is_frame_valid(double frame) const {
-      return (image_range_[0] <= frame < image_range_[1]);
+      return (image_range_[0] <= frame && frame < image_range_[1]);
     }
 
     /**
@@ -189,9 +206,9 @@ namespace dxtbx { namespace model {
 
     vec2 <int> image_range_;
     vec2 <double> oscillation_;
-    int num_images_;
     double exposure_time_;
     flex_double epochs_;
+    int num_images_;
   };
 
 }} // namespace dxtbx::model

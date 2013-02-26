@@ -15,7 +15,7 @@ from __future__ import division
 import math
 import pycbf
 from scitbx import matrix
-from dxtbx_model_ext import FlatPanelDetector, MultiFlatPanelDetector
+from dxtbx_model_ext import FlatPanelDetector
 
 from detector_helpers import detector_helper_sensors
 from detector_helpers import read_xds_xparm

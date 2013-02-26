@@ -10,9 +10,7 @@ from __future__ import division
 # documented in internal ticket #1555. This is not designed to be used outside
 # of the XSweep classes.
 
-import math
 import pycbf
-from scitbx import matrix
 from dxtbx_model_ext import Goniometer, KappaGoniometer
 
 from goniometer_helpers import cbf_gonio_to_effective_axis_fixed
