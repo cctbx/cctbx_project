@@ -415,6 +415,7 @@ dxtbx/model/goniometer.py -text
 dxtbx/model/goniometer_helpers.py -text
 dxtbx/model/scan.h -text
 dxtbx/model/scan.py -text
+dxtbx/model/scan_helpers.h -text
 dxtbx/model/scan_helpers.py -text
 dxtbx/readme.txt -text
 dxtbx/tests/__init__.py -text

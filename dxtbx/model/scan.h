@@ -14,6 +14,7 @@
 #include <scitbx/vec2.h>
 #include <scitbx/array_family/flex_types.h>
 #include <dxtbx/error.h>
+#include "scan_helpers.h"
 
 namespace dxtbx { namespace model {
 
@@ -73,13 +74,6 @@ namespace dxtbx { namespace model {
       return exposure_time_;
     }
 
-    /** Get the total oscillation range of the scan */
-    vec2 <double> get_oscillation_range() const {
-      return vec2 <double> (
-        oscillation_[0],
-        oscillation_[0] + num_images_ * oscillation_[1]);
-    }
-
     /** Get the image epochs */
     flex_double get_epochs() {
       return epochs_;
@@ -107,6 +101,13 @@ namespace dxtbx { namespace model {
       epochs_ = epochs;
     }
 
+    /** Get the total oscillation range of the scan */
+    vec2 <double> get_oscillation_range() const {
+      return vec2 <double> (
+        oscillation_[0],
+        oscillation_[0] + num_images_ * oscillation_[1]);
+    }
+
     /** Get the image angle and oscillation width as a tuple */
     vec2 <double> get_image_oscillation(int index) const {
       return vec2 <double> (
@@ -121,7 +122,7 @@ namespace dxtbx { namespace model {
     }
 
     /** Check the scans are the same */
-    bool operator==(const ScanData &scan) {
+    bool operator==(const ScanData &scan) const {
       double eps = 1.0e-6;
       double d_angle = std::abs(oscillation_[0] - scan.oscillation_[0]);
       double d_range = std::abs(oscillation_[1] - scan.oscillation_[1]);
@@ -131,8 +132,57 @@ namespace dxtbx { namespace model {
     }
 
     /** Check the scans are not the same */
-    bool operator!=(const ScanData &scan) {
+    bool operator!=(const ScanData &scan) const {
       return !(*this == scan);
+    }
+
+    /**
+     * Check if the angle is the range of angles coverd by the scan.
+     */
+    bool is_angle_valid(double angle) const {
+      return is_angle_in_range(get_oscillation_range(), angle);
+    }
+
+    /** Check if the frame is valid */
+    bool is_frame_valid(double frame) const {
+      return (image_range_[0] <= frame < image_range_[1]);
+    }
+
+    /**
+     * Calculate the angle corresponding to the given frame
+     * @param frame The frame number
+     * @returns The angle at the given frame
+     */
+    double get_angle_from_frame(double frame) const {
+      return oscillation_[0] + (frame - image_range_[0]) * oscillation_[1];
+    }
+
+    /**
+     * Calculate the frame corresponding to the given angle
+     * @param angle The angle
+     * @returns The frame at the given angle
+     */
+    double get_frame_from_angle(double angle) const {
+      return image_range_[0] + (angle - oscillation_[0]) / oscillation_[1];
+    }
+
+    /**
+     * A function to calculate all the frames in the scan at which an observation
+     * with a given angle will be observed. I.e. for a given angle, find all the
+     * equivalent angles (i.e. mod 2pi) within the scan range and calculate the
+     * frame number for each angle.
+     * Calculate and return an array of frame numbers at which a reflection
+     * with a given rotation angle will be observed.
+     * @param angle The rotation angle of the reflection
+     * @returns The array of frame numbers
+     */
+    flex_double get_frames_with_angle(double angle) const {
+      flex_double result = get_mod2pi_angles_in_range(
+        get_oscillation_range(), angle);
+      for (std::size_t i = 0; i < result.size(); ++i) {
+        result[i] = get_frame_from_angle(result[i]);
+      }
+      return result;
     }
 
   private:
