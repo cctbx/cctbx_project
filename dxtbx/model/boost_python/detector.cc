@@ -90,7 +90,7 @@ namespace dxtbx { namespace model { namespace boost_python {
                  vec3 <double>,
                  vec2 <double>,
                  vec2 <std::size_t>,
-                vec2 <int> > ((                 
+                vec2 <double> > ((                 
           arg("type"),
           arg("fast_axis"),
           arg("slow_axis"),

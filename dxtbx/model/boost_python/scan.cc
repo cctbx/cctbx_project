@@ -86,8 +86,8 @@ namespace dxtbx { namespace model { namespace boost_python {
           arg("oscillation"),
           arg("exposure_time"),
           arg("epochs"))))
-      .def("__init__", 
-        make_constructor(
+      .def("__init__",
+          make_constructor(
           &make_scan, 
           default_call_policies(), (
           arg("image_range"),

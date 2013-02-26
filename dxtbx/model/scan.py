@@ -172,6 +172,18 @@ class scan_factory:
     in a set of common circumstances.'''
 
     @staticmethod
+    def make_scan(template, directory, format, image_range, exposure_time,
+                  oscillation, epochs):
+        return Scan(
+            template,
+            directory,
+            format,
+            tuple(map(int, image_range)),
+            float(exposure_time),
+            tuple(map(float, oscillation)),
+            list(map(int, epochs)))
+
+    @staticmethod
     def single(filename, format, exposure_time, osc_start, osc_width, epoch):
         '''Construct an scan instance for a single image.'''
 
@@ -179,8 +191,9 @@ class scan_factory:
                   scan_helper_image_files.image_to_template_directory(filename)
         index = scan_helper_image_files.image_to_index(filename)
 
-        return Scan(template, directory, format, (index, index),
-                    exposure_time, (osc_start, osc_width), {index:epoch})
+        return scan_factory.make_scan(template, directory, format,
+                    (index, index), exposure_time, (osc_start, osc_width),
+                    {index:epoch})
 
     @staticmethod
     def imgCIF(cif_file):
@@ -209,8 +222,8 @@ class scan_factory:
 
         gonio.__swig_destroy__(gonio)
 
-        return Scan(template, directory, format, (index, index),
-                    exposure, angles, {index:timestamp})
+        return scan_factory.make_scan(template, directory, format,
+                    (index, index), exposure, angles, {index:timestamp})
 
     @staticmethod
     def add(scans):

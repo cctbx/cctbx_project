@@ -112,7 +112,7 @@ namespace dxtbx { namespace model {
         vec3 <double> origin,
         vec2 <double> pixel_size,
         vec2 <std::size_t> image_size,
-        vec2 <int> trusted_range)
+        vec2 <double> trusted_range)
       : type_(type),
       fast_axis_(fast_axis),
       slow_axis_(slow_axis),
@@ -161,7 +161,7 @@ namespace dxtbx { namespace model {
     }
 
     /** Get the trusted range */
-    vec2 <int> get_trusted_range() const {
+    vec2 <double> get_trusted_range() const {
       return trusted_range_;
     }
 
@@ -219,7 +219,7 @@ namespace dxtbx { namespace model {
     }
 
     /** Set the trusted range */
-    void set_trusted_range(vec2 <int> trusted_range) {
+    void set_trusted_range(vec2 <double> trusted_range) {
       trusted_range_ = trusted_range;
     }
 
@@ -272,7 +272,7 @@ namespace dxtbx { namespace model {
     vec3 <double> origin_;
     vec2 <double> pixel_size_;
     vec2 <std::size_t> image_size_;
-    vec2 <int> trusted_range_;
+    vec2 <double> trusted_range_;
     shared_int4 mask_;
   };
 
