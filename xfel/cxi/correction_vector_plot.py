@@ -80,7 +80,7 @@ class lines(correction_vector_store):
            frame_id = frame_dict.get(picklefile, None)
            if frame_id is not None:
              print "FETCHED",frame_id
-        if line.find("CV OBSCENTER")==0:
+        if line.find("CV OBSCENTER")==0 and line.find("Traceback")==-1:
           potential_tokens = line.strip().split()
           if len(potential_tokens)==22 and int(potential_tokens[17])==self.params.bravais_setting_id:
             yield frame_id,potential_tokens
