@@ -403,7 +403,9 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
   # action menus
   def ActionsForSelection (self, source_window) :
     all_sel = self.GetSelections()
-    if (len(all_sel) > 1) :
+    if (len(all_sel) == 0) :
+      raise Sorry("You must select an object in the PDB hierarchy to edit.")
+    elif (len(all_sel) > 1) :
       object_types, n_atoms = self.GetSelectionInfo()
       labels_and_actions = [
         ("Set occupancy...", self.OnSetOccupancy),
