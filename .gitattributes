@@ -405,6 +405,7 @@ dxtbx/model/boost_python/beam.cc -text
 dxtbx/model/boost_python/detector.cc -text
 dxtbx/model/boost_python/goniometer.cc -text
 dxtbx/model/boost_python/model_ext.cc -text
+dxtbx/model/boost_python/scan.cc -text
 dxtbx/model/detector.h -text
 dxtbx/model/detector.py -text
 dxtbx/model/detector_helpers.py -text
@@ -412,6 +413,7 @@ dxtbx/model/detector_helpers_types.py -text
 dxtbx/model/goniometer.h -text
 dxtbx/model/goniometer.py -text
 dxtbx/model/goniometer_helpers.py -text
+dxtbx/model/scan.h -text
 dxtbx/model/scan.py -text
 dxtbx/model/scan_helpers.py -text
 dxtbx/readme.txt -text
