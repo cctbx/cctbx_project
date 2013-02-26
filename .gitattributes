@@ -441,6 +441,7 @@ dxtbx/tests/image_017.dat -text
 dxtbx/tests/image_018.dat -text
 dxtbx/tests/image_019.dat -text
 dxtbx/tests/image_020.dat -text
+dxtbx/tests/model/detector.py -text
 dxtbx/tests/model/tst_scan_data.py -text
 dxtbx/tests/model/tst_scan_helpers.py -text
 dxtbx/tests/omega_scan.cbf -text svneol=unset#unset
