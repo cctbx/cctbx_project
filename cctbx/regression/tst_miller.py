@@ -2154,7 +2154,16 @@ def exercise_complete_with4():
   r = r.sort()
   assert approx_equal(list(r.phases(deg=True).data()), [1,2,3,4,5,60])
 
+def exercise_hoppe_gassmann_modification():
+  xrs = random_structure.xray_structure(
+    space_group_info=sgtbx.space_group_info(number=1),
+    elements=["C"]*300)
+  fc = xrs.structure_factors(d_min=2.0).f_calc()
+  fc.hoppe_gassmann_modification(mean_scale=2, n_iterations=2)
+  fc.hoppe_gassmann_modification(mean_scale=2, n_iterations=2, d_min=1)
+
 def run(args):
+  exercise_hoppe_gassmann_modification()
   exercise_complete_with4()
   exercise_scale()
   exercise_log_binning()

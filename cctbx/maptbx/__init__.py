@@ -772,19 +772,28 @@ def principal_axes_of_inertia (
 class local_scale(object):
   def __init__(
         self,
-        map_data,
         crystal_gridding,
         crystal_symmetry,
+        f_map=None,
+        map_data=None,
         miller_array=None,
         d_min = None,
-        mean_positive_scale = 2): #XXX =1: more features and noise
+        mean_positive_scale = 1): #XXX =1: more features and noise
+    # process inputs
+    assert [f_map, map_data].count(None) == 1
+    if(f_map is not None):
+      import cctbx.miller
+      fft_map = cctbx.miller.fft_map(
+        crystal_gridding     = crystal_gridding,
+        fourier_coefficients = f_map)
+      fft_map.apply_sigma_scaling()
+      map_data = fft_map.real_map_unpadded()
+    #
     self.map_result = None
     self.map_coefficients = None
     b = boxes(
-      crystal_symmetry  = crystal_symmetry,
-      crystal_gridding  = crystal_gridding,
-      resolution_factor = 0.25,
-      d_min             = 1.2,
+      n_real     = crystal_gridding.n_real(),
+      unit_cell  = crystal_symmetry.unit_cell(),
       box_size_as_unit_cell_fraction = 0.025)
     # Truncate high density
     mean_positive = flex.mean(map_data.as_1d().select(map_data.as_1d()>0))
@@ -812,6 +821,7 @@ class local_scale(object):
     if(miller_array is not None):
       complete_set = miller_array
       if(d_min is not None):
+        d_min = miller_array.d_min()-0.25
         complete_set = miller_array.complete_set(d_min=d_min)
       self.map_coefficients = complete_set.structure_factors_from_map(
         map            = self.map_result,
