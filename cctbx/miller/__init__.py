@@ -3336,6 +3336,22 @@ class array(set):
     else :
       return sum / self.unit_cell().volume()
 
+  def hoppe_gassmann_modification(self, mean_scale, n_iterations,
+        resolution_factor=0.25, d_min=None):
+    assert self.is_complex_array()
+    fft_map = self.fft_map(resolution_factor=resolution_factor)
+    fft_map.apply_volume_scaling()
+    map_data = fft_map.real_map_unpadded()
+    maptbx.hoppe_gassman_modification(data=map_data, mean_scale=mean_scale,
+      n_iterations=n_iterations)
+    miller_array=self
+    if(d_min is not None): miller_array = self.complete_set(d_min=d_min)
+    return miller_array.structure_factors_from_map(
+      map            = map_data,
+      use_scale      = True,
+      anomalous_flag = False,
+      use_sg         = False)
+
   def double_step_filtration(
         self,
         complete_set=None,
