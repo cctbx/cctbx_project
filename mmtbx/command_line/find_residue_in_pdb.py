@@ -1,8 +1,7 @@
 
 from __future__ import division
 from libtbx.utils import Sorry, Usage
-import libtbx.phil
-import os
+import libtbx.phil.command_line
 import sys
 
 master_phil = libtbx.phil.parse("""
@@ -15,6 +14,8 @@ polymeric_type = *Any Free Polymeric
 xray_only = True
   .type = bool
 data_only = False
+  .type = bool
+quiet = False
   .type = bool
 """)
 
@@ -29,20 +30,13 @@ Full parameters:
 %s
 """ % master_phil.as_str(prefix="  "))
   sources = []
-  for arg in args :
+  def process_unknown (arg) :
     if (1 <= len(arg) <= 3) and (arg.isalnum()) :
-      sources.append(libtbx.phil.parse("resname=%s" % arg))
-    elif os.path.isfile(arg) :
-      try :
-        sources.append(libtbx.phil.parse(file_name=arg))
-      except RuntimeError, e :
-        raise Sorry("Can't parse %s as a parameter file:\n%s" % (arg, str(e)))
-    else :
-      try :
-        sources.append(libtbx.phil.parse(arg))
-      except RuntimeError, e :
-        raise Sorry("Unrecognized argument '%s'." % arg)
-  params = master_phil.fetch(sources=sources).extract()
+      return libtbx.phil.parse("resname=%s" % arg)
+  cai = libtbx.phil.command_line.argument_interpreter(master_phil=master_phil)
+  working_phil = cai.process_and_fetch(args=args,
+    custom_processor=process_unknown)
+  params = working_phil.extract()
   if (params.resname is None) :
     raise Sorry("No residue ID specified.")
   from mmtbx.wwpdb import rcsb_web_services
@@ -56,11 +50,14 @@ Full parameters:
   if (len(pdb_ids) == 0) :
     raise Sorry("No structures found matching the specified criteria.")
   else :
-    print >> out, "%d PDB IDs retrieved:" % len(pdb_ids)
-    i = 0
-    while (i < len(pdb_ids)) :
-      print >> out, "  %s" % " ".join(pdb_ids[i:i+16])
-      i += 16
+    if (not params.quiet) :
+      print >> out, "%d PDB IDs retrieved:" % len(pdb_ids)
+      i = 0
+      while (i < len(pdb_ids)) :
+        print >> out, "  %s" % " ".join(pdb_ids[i:i+16])
+        i += 16
+    else :
+      print >> out, "%d PDB IDs matching" % len(pdb_ids)
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
