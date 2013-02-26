@@ -8,7 +8,6 @@ from __future__ import division
 #
 # Tests for the beam class.
 
-from dxtbx.model.beam import Beam
 from dxtbx.model.beam import beam_factory
 
 def test_beam():

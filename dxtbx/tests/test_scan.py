@@ -10,7 +10,6 @@ from __future__ import division
 
 import os
 
-from dxtbx.model.scan import Scan
 from dxtbx.model.scan import scan_factory
 from dxtbx.model.scan_helpers import scan_helper_image_files
 from dxtbx.model.scan_helpers import scan_helper_image_formats

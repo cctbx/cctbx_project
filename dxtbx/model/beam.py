@@ -12,7 +12,6 @@ from __future__ import division
 
 import math
 import pycbf
-from scitbx import matrix
 from dxtbx_model_ext import Beam, PolarizedBeam
 
 class beam_factory:

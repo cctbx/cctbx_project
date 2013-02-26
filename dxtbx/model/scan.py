@@ -61,7 +61,7 @@ class Scan(ScanData):
 
         return '%s\n' % os.path.join(self._directory, self._template) + \
                '%d -> %d\n' % (self.image_range) + \
-               '%.3f -> %.3f\n' % (self.total_oscillation_range) + \
+               '%.3f -> %.3f\n' % (self.get_oscillation_range()) + \
                '%s' % self.get_image_time(self.image_range[0])
 
     def __cmp__(self, other):
@@ -88,8 +88,8 @@ class Scan(ScanData):
         assert(self.exposure_time == other.exposure_time)
         assert(self.image_range[1] + 1 == other.image_range[0])
 
-        assert(math.fabs(self.oscillation_range[1] -
-                         other.oscillation_range[0]) < 0.01)
+        assert(math.fabs(self.get_oscillation_range()[1] -
+                         other.get_oscillation_range()[0]) < 0.01)
         assert(math.fabs(self.oscillation[1] - other.oscillation[1]) < 0.01)
 
         new_image_range = (self.image_range[0], other.image_range[1])
