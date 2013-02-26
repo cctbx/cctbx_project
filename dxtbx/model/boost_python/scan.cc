@@ -52,6 +52,28 @@ namespace dxtbx { namespace model { namespace boost_python {
     return scan;
   }
   
+  static 
+  bool is_angle_valid(const ScanData &scan, double angle, bool deg) {
+    return scan.is_angle_valid(deg ? deg_as_rad(angle) : angle);
+  }
+
+  static 
+  double get_angle_from_frame(const ScanData &scan, double frame, bool deg) {
+    double angle = scan.get_angle_from_frame(frame);
+    return deg ? rad_as_deg(angle) : angle;
+  }
+
+  static 
+  double get_frame_from_angle(const ScanData &scan, double angle, bool deg) {
+    return scan.get_frame_from_angle(deg ? deg_as_rad(angle) : angle);
+  }
+
+  static 
+  flex_double get_frames_with_angle(const ScanData &scan, double angle, 
+      bool deg) {
+    return scan.get_frames_with_angle(deg ? deg_as_rad(angle) : angle);
+  }
+  
   void export_scan()
   {
     // Export ScanBase
@@ -96,20 +118,24 @@ namespace dxtbx { namespace model { namespace boost_python {
         &ScanData::get_image_epoch, (
           arg("index")))
       .def("is_angle_valid",
-        &ScanData::is_angle_valid, (
-          arg("angle")))
+        &is_angle_valid, (
+          arg("angle"),
+          arg("deg") = false))
       .def("is_frame_valid",
         &ScanData::is_frame_valid, (
           arg("frame")))
       .def("get_angle_from_frame",
-        &ScanData::get_angle_from_frame, (
-          arg("frame")))
+        &get_angle_from_frame, (
+          arg("frame"),
+          arg("deg") = false))
       .def("get_frame_from_angle",
-        &ScanData::get_frame_from_angle, (
-          arg("angle")))
+        &get_frame_from_angle, (
+          arg("angle"),
+          arg("deg") = false))
       .def("get_frames_with_angle",
-        &ScanData::get_frames_with_angle, (
-          arg("angle")))
+        &get_frames_with_angle, (
+          arg("angle"),
+          arg("deg") = false))
       .def("__eq__", &ScanData::operator==)
       .def("__nq__", &ScanData::operator!=)
       .def("__len__", &ScanData::get_num_images)
