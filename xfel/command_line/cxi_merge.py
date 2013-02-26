@@ -22,6 +22,7 @@ import os
 import math
 import time
 import sys
+from scitbx import matrix
 op = os.path
 
 from xfel.cxi.merging_database import mysql_master_phil
@@ -684,14 +685,15 @@ class scaling_manager (intensity_data) :
     print "Step 3. Correct for polarization."
     indexed_cell = observations.unit_cell()
 
-    # some recordkeeping useful for simulations
     observations_original_index = observations.indices()
-    partialities_original_index = observations.customized_copy(
-      crystal_symmetry=self.miller_set.crystal_symmetry(),
-      data = result["model_partialities"][0]["data"],
-      sigmas = flex.double(result["model_partialities"][0]["data"].size()), #dummy value for sigmas
-      indices = result["model_partialities"][0]["indices"],
-      ).resolution_filter(d_min=self.params.d_min)
+    if result.get("model_partialities",None) is not None and result["model_partialities"][0] is not None:
+      # some recordkeeping useful for simulations
+      partialities_original_index = observations.customized_copy(
+        crystal_symmetry=self.miller_set.crystal_symmetry(),
+        data = result["model_partialities"][0]["data"],
+        sigmas = flex.double(result["model_partialities"][0]["data"].size()), #dummy value for sigmas
+        indices = result["model_partialities"][0]["indices"],
+        ).resolution_filter(d_min=self.params.d_min)
 
     # Now manipulate the data to conform to unit cell, asu, and space group
     # of reference.  The resolution will be cut later.
@@ -811,6 +813,8 @@ class scaling_manager (intensity_data) :
     corr  = (N * sum_xy - sum_x * sum_y) / (math.sqrt(N * sum_xx - sum_x**2) *
              math.sqrt(N * sum_yy - sum_y**2))
 
+    have_sa_params = (result.get("sa_parameters")[0].find('None')!=0)
+
     if (self.params.nproc == 1) :
       F = open(self.params.output.prefix+"_frame.db","a")
       print >>F, "%7d %14.8f %14.8f %14.8f"%(self.frame_id,wavelength,result["xbeam"],result["ybeam"]),
@@ -821,9 +825,13 @@ class scaling_manager (intensity_data) :
 
       print >>F, "%14.8f %10.7f"%(result["distance"],corr),
       print >>F,  "%11.8f %10.2f"%(slope,offset),
-      res_ori_direct = result["sa_parameters"][0]["reserve_orientation"].direct_matrix()
-      print >>F, "%14.8f %14.8f %14.8f %14.8f %14.8f %14.8f %14.8f %14.8f %14.8f"%res_ori_direct,
-      print >>F, "%(rotation100_rad)10.7f %(rotation010_rad)10.7f %(rotation001_rad)10.7f %(half_mosaicity_deg)10.7f %(wave_HE_ang)14.8f %(wave_LE_ang)14.8f %(domain_size_ang)10.2f"%result["sa_parameters"][0],
+      if have_sa_params:
+        res_ori_direct = result["sa_parameters"][0]["reserve_orientation"].direct_matrix()
+        print >>F, "%14.8f %14.8f %14.8f %14.8f %14.8f %14.8f %14.8f %14.8f %14.8f"%res_ori_direct,
+        print >>F, "%(rotation100_rad)10.7f %(rotation010_rad)10.7f %(rotation001_rad)10.7f %(half_mosaicity_deg)10.7f %(wave_HE_ang)14.8f %(wave_LE_ang)14.8f %(domain_size_ang)10.2f"%result["sa_parameters"][0],
+      else:
+        res_ori_direct = matrix.sqr(data.indexed_cell.orthogonalization_matrix()).transpose().elems
+        print >>F, "%14.8f %14.8f %14.8f %14.8f %14.8f %14.8f %14.8f %14.8f %14.8f"%res_ori_direct,
 
       print >>F, data.file_name
 
@@ -847,10 +855,15 @@ class scaling_manager (intensity_data) :
       query.write("wavelength=%14.8f,beam_x=%14.8f,beam_y=%14.8f,"%(wavelength,result["xbeam"],result["ybeam"]))
       query.write("distance=%14.8f,c_c=%10.7f,"%(result["distance"],corr))
       query.write("slope=%11.8f,offset=%10.2f,"%(slope,offset))
-      res_ori_direct = result["sa_parameters"][0]["reserve_orientation"].direct_matrix()
-      query.write("res_ori_1=%14.8f,res_ori_2=%14.8f,res_ori_3=%14.8f,res_ori_4=%14.8f,res_ori_5=%14.8f,res_ori_6=%14.8f,res_ori_7=%14.8f,res_ori_8=%14.8f,res_ori_9=%14.8f,"%res_ori_direct)
-      query.write("rotation100_rad=%(rotation100_rad)10.7f,rotation010_rad=%(rotation010_rad)10.7f,rotation001_rad=%(rotation001_rad)10.7f,"%result["sa_parameters"][0])
-      query.write("half_mosaicity_deg=%(half_mosaicity_deg)10.7f,wave_HE_ang=%(wave_HE_ang)14.8f,wave_LE_ang=%(wave_LE_ang)14.8f,domain_size_ang=%(domain_size_ang)10.2f,"%result["sa_parameters"][0])
+      if have_sa_params:
+        res_ori_direct = result["sa_parameters"][0]["reserve_orientation"].direct_matrix()
+        query.write("res_ori_1=%14.8f,res_ori_2=%14.8f,res_ori_3=%14.8f,res_ori_4=%14.8f,res_ori_5=%14.8f,res_ori_6=%14.8f,res_ori_7=%14.8f,res_ori_8=%14.8f,res_ori_9=%14.8f,"%res_ori_direct)
+        query.write("rotation100_rad=%(rotation100_rad)10.7f,rotation010_rad=%(rotation010_rad)10.7f,rotation001_rad=%(rotation001_rad)10.7f,"%result["sa_parameters"][0])
+        query.write("half_mosaicity_deg=%(half_mosaicity_deg)10.7f,wave_HE_ang=%(wave_HE_ang)14.8f,wave_LE_ang=%(wave_LE_ang)14.8f,domain_size_ang=%(domain_size_ang)10.2f,"%result["sa_parameters"][0])
+      else:
+        res_ori_direct = matrix.sqr(data.indexed_cell.orthogonalization_matrix()).transpose().elems
+        query.write("res_ori_1=%14.8f,res_ori_2=%14.8f,res_ori_3=%14.8f,res_ori_4=%14.8f,res_ori_5=%14.8f,res_ori_6=%14.8f,res_ori_7=%14.8f,res_ori_8=%14.8f,res_ori_9=%14.8f,"%res_ori_direct)
+
       query.write("unique_file_name='%s'"%data.file_name)
 
       cursor.execute( query.getvalue() )
