@@ -38,6 +38,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
                threshold              = None,
                xtal_target            = None,
                negate_hits            = False,
+	       trial_id		      = None,
                **kwds):
     """The mod_hitfind class constructor stores the parameters passed
     from the pyana configuration file in instance variables.  All
@@ -65,6 +66,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     self.m_threshold            = cspad_tbx.getOptInteger(threshold)
     self.m_xtal_target          = cspad_tbx.getOptString(xtal_target)
     self.m_negate_hits          = cspad_tbx.getOptBool(negate_hits)
+    self.m_trial_id             = cspad_tbx.getOptInteger(trial_id)
 
     # A ROI should not contain any ASIC boundaries, as these are
     # noisy.  Hence circular ROI:s around the beam centre are probably
@@ -101,7 +103,8 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     self.logger.info("Connected.")
 
     try:
-      self.trial = 2 # temporary!
+      self.trial = self.m_trial_id # TODO: beat the race condition and use db.get_next_trial_id if 
+				   # this is not set or is zero or less
 
       cmd = "CREATE TABLE IF NOT EXISTS %s           \
         (id INT NOT NULL PRIMARY KEY AUTO_INCREMENT, \
@@ -116,6 +119,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       cmd = "CREATE TABLE IF NOT EXISTS %s           \
         (id INT NOT NULL PRIMARY KEY AUTO_INCREMENT, \
 	trial INT NOT NULL,                          \
+	run INT NOT NULL,                            \
         eventstamp VARCHAR(45),                      \
         user VARCHAR(20),                            \
 	timestamp TIMESTAMP DEFAULT NOW(),           \
@@ -127,6 +131,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       cmd = "CREATE TABLE IF NOT EXISTS %s           \
         (id INT NOT NULL PRIMARY KEY AUTO_INCREMENT, \
 	trial INT NOT NULL,                          \
+	run INT NOT NULL,                            \
         eventstamp VARCHAR(45),                      \
         user VARCHAR(20),                            \
 	timestamp TIMESTAMP DEFAULT NOW(),           \
@@ -138,6 +143,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       cmd = "CREATE TABLE IF NOT EXISTS %s           \
         (id INT NOT NULL PRIMARY KEY AUTO_INCREMENT, \
 	trial INT NOT NULL,                          \
+	run INT NOT NULL,                            \
         eventstamp VARCHAR(45),                      \
         user VARCHAR(20),                            \
 	timestamp TIMESTAMP DEFAULT NOW(),           \
@@ -243,8 +249,8 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
 
 	if(self.dbopen()):
 	  cursor = self.db.cursor()
-	  cmd = "INSERT INTO cxi_braggs_front (trial,eventstamp,data) VALUES (%s,%s,%s);"
-	  cursor.execute(cmd, (self.trial, "%.3f"%evt_time, number_of_accepted_peaks))
+	  cmd = "INSERT INTO cxi_braggs_front (trial,run,eventstamp,data) VALUES (%s,%s,%s,%s);"
+	  cursor.execute(cmd, (self.trial, evt.run(), "%.3f"%evt_time, number_of_accepted_peaks))
 	  self.db.commit()
 
 
