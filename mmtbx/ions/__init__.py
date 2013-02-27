@@ -15,9 +15,8 @@ from cctbx import crystal, adptbx
 from cctbx.eltbx import sasaki, henke
 from scitbx.matrix import col, distance_from_plane
 from scitbx.array_family import flex
-from libtbx import group_args, adopt_init_args, Auto
+from libtbx import group_args, adopt_init_args, Auto, slots_getstate_setstate
 from libtbx.str_utils import make_sub_header, format_value, framed_output
-from libtbx import slots_getstate_setstate
 from libtbx.utils import null_out, Sorry
 from libtbx import easy_mp
 import libtbx.phil
@@ -50,7 +49,7 @@ delta_amide_h_angle = 20
 delta_planar_angle = 10
   .type = float
   .input_size = 80
-max_deviation_from_plane = 0.75
+max_deviation_from_plane = 0.8
   .type = float
 radius = 2.0
   .type = float
@@ -162,10 +161,11 @@ class atom_contact (slots_getstate_setstate) :
   are simply wrappers for frequently called operations on the atom object, but
   symmetry-aware.
   """
-  __slots__ = ["atom", "vector", "rt_mx"]
-  def __init__ (self, atom, vector, rt_mx) :
+  __slots__ = ["atom", "vector", "site_cart", "rt_mx"]
+  def __init__ (self, atom, vector, site_cart, rt_mx) :
     self.atom = atom
     self.vector = vector
+    self.site_cart = site_cart
     self.rt_mx = rt_mx
 
   def distance (self) :
@@ -466,13 +466,14 @@ class Manager (object) :
         rt_mx = rt_mx_i_inv.multiply(asu_mappings.get_rt_mx(j_seq,
           j_sym_group[0]))
         site_ji = rt_mx * site_j
-
+        site_ji_cart = self.unit_cell.orthogonalize(site_ji)
         vec_i = col(site_i_cart)
-        vec_ji = col(self.unit_cell.orthogonalize(site_ji))
+        vec_ji = col(site_ji_cart)
         assert abs(vec_i - vec_ji) < distance_cutoff + 0.5
         contact = atom_contact(
           atom=self.pdb_atoms[j_seq],
           vector=vec_i - vec_ji,
+          site_cart=site_ji_cart,
           rt_mx=rt_mx)
         # XXX I have no idea why the built-in handling of special positions
         # doesn't catch this for us
@@ -689,7 +690,7 @@ class Manager (object) :
   def looks_like_halide_ion (self,
       i_seq,
       element = "CL",
-      assume_hydrogens_all_missing = True):
+      assume_hydrogens_all_missing = Auto):
     """
     Given a site, analyze the nearby atoms (taking geometry into account) to
     guess whether it might be a halide ion.  Among other things, halides will
@@ -699,12 +700,12 @@ class Manager (object) :
     the electron count (map, occ, b) is absolutely essential.
     """
     atom = self.pdb_atoms[i_seq]
+    sites_frac = self.xray_structure.sites_frac()
     #print "checking for halide:", atom.id_str()
     assert element.upper() in HALIDES
     # discard atoms with B-factors greater than mean-1sigma for waters
     if ((self.b_mean_hoh is not None) and
         (atom.b > self.b_mean_hoh - self.b_stddev_hoh)) :
-      #print "bad B-factors"
       return False
 
     params = self.params.chloride
@@ -713,7 +714,7 @@ class Manager (object) :
       distance_cutoff = 4.0,
       filter_by_bonding = False)
 
-    if assume_hydrogens_all_missing:
+    if (assume_hydrogens_all_missing in [Auto,None]) :
       xrs = self.xray_structure
       sctr_keys = xrs.scattering_type_registry().type_count_dict().keys()
       assume_hydrogens_all_missing = "H" not in sctr_keys and \
@@ -730,6 +731,9 @@ class Manager (object) :
     for contact in nearby_atoms:
       # to analyze local geometry, we use the target site mapped to be in the
       # same ASU as the interacting site
+      def get_site (k_seq) :
+        return self.unit_cell.orthogonalize(
+          site_frac=(contact.rt_mx * sites_frac[k_seq]))
       other = contact.atom
       resname = contact.resname()
       atom_name = contact.atom_name()
@@ -785,11 +789,11 @@ class Manager (object) :
       # Backbone amide, explicit H
       elif atom_name in ["H"]:
         # TODO make this more general for any amide H?
-        xyz_h = col(other.xyz)
+        xyz_h = col(contact.site_cart)
         bonded_atoms = self.connectivity[j_seq]
         if (len(bonded_atoms) != 1) :
           continue
-        xyz_n = col(self.pdb_atoms[bonded_atoms[0]].xyz)
+        xyz_n = col(get_site(bonded_atoms[0]))
         vec_hn = xyz_h - xyz_n
         vec_hx = xyz_h - xyz
         angle = abs(vec_hn.angle(vec_hx, deg = True))
@@ -798,19 +802,19 @@ class Manager (object) :
         if abs(angle - 180) <= params.delta_amide_h_angle:
           binds_amide_hydrogen = True
         else :
-          pass #print "N-H-X angle: %s" % angle
+          pass #print "%s N-H-X angle: %s" % (atom.id_str(), angle)
       # Backbone amide, implicit H
       elif atom_name in ["N"] and assume_hydrogens_all_missing:
-        xyz_n = col(other.xyz)
+        xyz_n = col(contact.site_cart)
         bonded_atoms = self.connectivity[j_seq]
         ca_same = c_prev = None
 
-        for j_seq in bonded_atoms :
-          other2 = self.pdb_atoms[j_seq]
+        for k_seq in bonded_atoms :
+          other2 = self.pdb_atoms[k_seq]
           if other2.name.strip().upper() in ["CA"]:
-            ca_same = col(other2.xyz)
+            ca_same = col(get_site(k_seq))
           elif other2.name.strip().upper() in ["C"]:
-            c_prev = col(other2.xyz)
+            c_prev = col(get_site(k_seq))
 
         if ca_same is not None and c_prev is not None:
           xyz_cca = (ca_same + c_prev) / 2
@@ -832,14 +836,16 @@ class Manager (object) :
             #(atom_name in ["HH11","HH12","HH21","HH22"] and resname == "ARG")):
         bonded_atoms = self.connectivity[j_seq]
         assert (len(bonded_atoms) == 1)
-        xyz_n = col(self.pdb_atoms[bonded_atoms[0]].xyz)
-        xyz_h = col(other.xyz)
+        xyz_n = col(get_site(bonded_atoms[0]))
+        xyz_h = col(contact.site_cart)
         vec_nh = xyz_n - xyz_h
         vec_xh = xyz - xyz_h
         angle = abs(vec_nh.angle(vec_xh, deg = True))
 
         if abs(angle - 180) <= params.delta_amide_h_angle:
           binds_amide_hydrogen = True
+        else :
+          pass #print "%s amide angle: %s" % (atom.id_str(), angle)
 
     # now check again for negatively charged sidechain (etc.) atoms (e.g.
     # carboxyl groups), but with some leeway if a cation is also nearby.
@@ -853,6 +859,7 @@ class Manager (object) :
       if ((distance < 3.2) and
           (distance < (min_distance_to_cation + 0.2)) and
           is_negatively_charged_oxygen(atom_name, resname)) :
+        #print contact.id_str(), distance
         return False
 
     # TODO something smart...
@@ -1030,6 +1037,7 @@ class Manager (object) :
         if (fpp_ratio is not None) :
           if ((fpp_ratio < self.params.phaser.fpp_ratio_min) or
               (fpp_ratio > self.params.phaser.fpp_ratio_max)) :
+            #print "fpp_ratio:", fpp_ratio
             continue
         if (self.looks_like_halide_ion(i_seq=i_seq, element=element)) :
           filtered_halides.append(element)
@@ -2094,5 +2102,5 @@ def is_coplanar_with_sidechain (atom, residue, distance_cutoff=0.75) :
   if (len(sidechain_sites) != 3) : # XXX probably shouldn't happen
     return False
   D = distance_from_plane(atom.xyz, sidechain_sites)
-  #print atom.id_str(), D
+  print atom.id_str(), D
   return (D <= distance_cutoff)
