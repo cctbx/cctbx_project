@@ -123,15 +123,17 @@ namespace dxtbx { namespace model { namespace boost_python {
       .add_property("trusted_range",
         &Detector::get_trusted_range,
         &Detector::set_trusted_range)
-      .add_property("d_matrix",
-        &Detector::get_d_matrix,
-        &Detector::set_d_matrix)
-      .add_property("inverse_d_matrix",
-        &Detector::get_D_matrix,
-        &Detector::set_D_matrix)
       .add_property("mask",
         &Detector::get_mask,
         &Detector::set_mask)
+      .def("get_d_matrix",
+        &Detector::get_d_matrix)
+      .def("get_D_matrix",
+        &Detector::get_D_matrix)
+      .def("set_d_matrix",
+        &Detector::set_d_matrix)
+      .def("set_D_matrix",
+        &Detector::set_D_matrix)
       .def("add_mask",
         &Detector::add_mask)
       .def("get_pixel_lab_coord",
