@@ -35,6 +35,7 @@ namespace dxtbx { namespace model {
   // int4 array type
   typedef scitbx::af::flex<int4>::type flex_int4;
   typedef scitbx::af::shared<int4> shared_int4;
+  typedef scitbx::af::flex<mat3<double> >::type flex_mat3_double;
 
   /**
   * A class representing a detector made up of multiple flat panel detectors.
@@ -116,6 +117,24 @@ namespace dxtbx { namespace model {
     /** Check the detector panels are not the same */
     bool operator!=(const MultiPanelDetector &detector) {
       return !(*this == detector);
+    }
+
+    /** Get an array of d matrices from the panel list */
+    flex_mat3_double get_d_matrices() const {
+      flex_mat3_double d(panel_list_.size());
+      for (std::size_t i = 0; i < panel_list_.size(); ++i) {
+        d[i] = panel_list_[i].get_d_matrix();
+      }
+      return d;
+    }
+
+    /** Get an array of D matrices from the panel list */
+    flex_mat3_double get_D_matrices() const {
+      flex_mat3_double D(panel_list_.size());
+      for (std::size_t i = 0; i < panel_list_.size(); ++i) {
+        D[i] = panel_list_[i].get_D_matrix();
+      }
+      return D;
     }
 
     /** Check the value is valid */
