@@ -133,6 +133,7 @@ class process_command_line_with_files (object) :
     self._type_counts = {}
     self._cache = {}
     cai=libtbx.phil.command_line.argument_interpreter(master_phil=self.master)
+    self.unused_args = []
     self.work = cai.process_and_fetch(
        args=args,
        custom_processor=self)
@@ -188,7 +189,8 @@ class process_command_line_with_files (object) :
     return self.process_other(arg)
 
   def process_other (self, arg) :
-    return False
+    self.unused_args.append(arg)
+    return True
 
   def get_cached_file (self, file_name) :
     return self._cache.get(file_name, None)
