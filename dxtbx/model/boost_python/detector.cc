@@ -144,6 +144,8 @@ namespace dxtbx { namespace model { namespace boost_python {
         &Detector::is_value_in_trusted_range)
       .def("is_coord_valid",
         &Detector::is_coord_valid)
+      .def("is_coord_valid_mm",
+        &Detector::is_coord_valid_mm)
       .def("millimeter_to_pixel",
         &Detector::millimeter_to_pixel<vec2<double> >)
       .def("pixel_to_millimeter",
