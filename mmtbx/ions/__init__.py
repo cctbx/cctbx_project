@@ -323,6 +323,12 @@ class Manager (object) :
     if (self.phaser_substructure is not None) :
       self.analyze_substructure(log = log)
 
+  def get_initial_b_iso (self) :
+    if (getattr(self, "b_mean_hoh", None) is not None) :
+      return self.b_mean_hoh
+    else :
+      return self.b_mean_all
+
   def get_map (self, map_type) :
     map_coeffs = self.fmodel.map_coefficients(
       map_type=map_type,
@@ -965,6 +971,9 @@ class Manager (object) :
         continue
 
       n_elec = sasaki.table(symbol.upper()).atomic_number() - elem.charge
+      # lighter elements are not expected to have any anomalous signal
+      if (n_elec <= 12) and (atom_props.fpp > 0.1) :
+        continue
       mass_ratio = atom_props.estimated_weight / max(n_elec, 1)
       # note that anomalous peaks are more important than the 2mFo-DFc level
       if (mass_ratio < 0.4) and (looks_like_water) :

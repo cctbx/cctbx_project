@@ -27,7 +27,7 @@ initial_occupancy = 1.0
   .input_size = 80
   .help = Occupancy for newly placed ions - if less than 1.0, the occupancy \
     may be refined automatically in future runs of phenix.refine.
-initial_b_iso = 20.0
+initial_b_iso = Auto
   .type = float
   .input_size = 80
   .short_caption = Initial B-iso
@@ -106,6 +106,9 @@ def find_and_build_ions (
     out=out,
     candidates=elements)
   modified_iselection = flex.size_t()
+  initial_b_iso = params.initial_b_iso
+  if (initial_b_iso is Auto) :
+    initial_b_iso = manager.get_initial_b_iso()
   # Build in the identified ions
   for_building = []
   for i_seq, final_choices in water_ion_candidates :
@@ -135,7 +138,7 @@ def find_and_build_ions (
         charge=final_choice.charge,
         residue_name=final_choice.element,
         initial_occupancy=params.initial_occupancy,
-        initial_b_iso=params.initial_b_iso,
+        initial_b_iso=initial_b_iso,
         chain_id=params.ion_chain_id,
         segid="ION",
         refine_adp=refine_adp,
@@ -205,11 +208,21 @@ def find_and_build_ions (
         occ_max   = 1.0,
         occ_min   = 0,
         selection = modified_iselection)
+      zero_occ = []
+      for i_seq in modified_iselection :
+        occ = fmodel.xray_structure.scatterers()[i_seq].occupancy
+        if (occ == 0) :
+          zero_occ.append(i_seq)
       fmodel.update_xray_structure(
         update_f_calc=True,
         update_f_mask=True)
       print >> out, "                                        final %s" % \
         show_r_factors()
+      if (len(zero_occ) > 0) :
+        print >> out, "  WARNING: occupancy dropped to zero for %d atoms:"
+        atoms = model.pdb_hierarchy().atoms()
+        for i_seq in zero_occ :
+          print >> out, "    %s" % atoms[i_seq].id_str(suppress_segid=True)
       print >> out, ""
     if (refine_anomalous) :
       print >> out, "  anomalous refinement (new ions only): start %s" % \
