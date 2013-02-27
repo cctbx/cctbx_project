@@ -36,7 +36,8 @@ namespace scattering {
              const scitbx::af::const_ref<scitbx::vec3<double> >&,
              const scitbx::af::const_ref<double>&,
              const scitbx::af::const_ref<scitbx::vec3<double> >&,
-             const cctbx::xray::scattering_type_registry&);
+             const cctbx::xray::scattering_type_registry&,
+             const bool&);
     scitbx::af::shared<std::complex<double> > get_sum();
 
   private:
@@ -48,7 +49,8 @@ namespace scattering {
     void reorganize_rt(const scitbx::af::const_ref<double>&,
                        const scitbx::af::const_ref<scitbx::vec3<double> >&);
     void convert_scatterers(const scitbx::af::const_ref<std::string>&,
-                            const cctbx::xray::scattering_type_registry&);
+                            const cctbx::xray::scattering_type_registry&,
+                            const bool&);
     void clear_arrays();
 
     // xyz parameters
