@@ -137,7 +137,7 @@ namespace scattering {
 
       // calculate form factors (stored in local memory)
       // last form factor is always for boundary solvent layer
-      stol_sq = float(0.25) * (h_i*h_i + k_i*k_i + l_i*l_i);
+      stol_sq = floatType(0.25) * (h_i*h_i + k_i*k_i + l_i*l_i);
       for (int type=0; type<dc_n_types; type++) {
         f[type] = form_factor(type,stol_sq);
       }
@@ -155,7 +155,7 @@ namespace scattering {
     __shared__ floatType rot_trans[threads_per_block];
     floatType real_sum = 0.0;
     floatType imag_sum = 0.0;
-    floatType s,c,ff,xx,yy,zz,x_a,y_a,z_a;
+    floatType s,c,f1,f2,xx,yy,zz,x_a,y_a,z_a;
     int current_atom, current_rt, rt_offset;
 
     for (int atom=0; atom<n_xyz; atom += blockDim.x) {
@@ -204,17 +204,28 @@ namespace scattering {
                   yy = (x_a*rot_trans[rt_offset + 3] +
                         y_a*rot_trans[rt_offset + 4] +
                         z_a*rot_trans[rt_offset + 5] +
-                        rot_trans[r*padded_size + 10]);;
+                        rot_trans[r*padded_size + 10]);
                   zz = (x_a*rot_trans[rt_offset + 6] +
                         y_a*rot_trans[rt_offset + 7] +
                         z_a*rot_trans[rt_offset + 8] +
-                        rot_trans[rt_offset + 11]);;
+                        rot_trans[rt_offset + 11]);
                   __sincosf(two_pi*(xx * h_i + yy * k_i + zz * l_i),&s,&c);
                   // bulk solvent correction in f
                   // boundary layer solvent scale in solvent
-                  ff = f[s_type[a]] + solvent[a]*f[dc_n_types-1];
-                  real_sum += ff * c;
-                  imag_sum += ff * s;
+                  // structure factor = sum{(form factor)[exp(2pi h*x)]}
+                  if (dc_complex_form_factor) {
+                    // form factor = f1 + i f2
+                    f1 = dc_a[s_type[a]*dc_n_terms] +
+                      solvent[a]*dc_a[(dc_n_types-1)*dc_n_terms];
+                    f2 = dc_b[s_type[a]*dc_n_terms] +
+                      solvent[a]*dc_b[(dc_n_types-1)*dc_n_terms];
+                    real_sum += f1*c - f2*s;
+                    imag_sum += f1*s + f2*c;
+                  } else {
+                    f1 = f[s_type[a]] + solvent[a]*f[dc_n_types-1];
+                    real_sum += f1 * c;
+                    imag_sum += f1 * s;
+                  }
                 }
               }
             }

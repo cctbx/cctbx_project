@@ -110,7 +110,8 @@ namespace scattering {
   // --------------------------------------------------------------------------
   void cudatbx::scattering::direct_summation::convert_scatterers
   (const scitbx::af::const_ref<std::string>& scatterers,
-   const cctbx::xray::scattering_type_registry& registry) {
+   const cctbx::xray::scattering_type_registry& registry,
+   const bool& complex_form_factor) {
     // convert scattering types and form factors
     // add ordinary oxygen form factor at end for boundary layer solvent
     delete[] h_scattering_type;
@@ -147,9 +148,9 @@ namespace scattering {
       }
     }
 
-    // add form factor for boundary layer solvent (# of terms may be different)
+    // add form factor for boundary layer solvent
     cctbx::eltbx::xray_scattering::gaussian hoh =
-      cctbx::eltbx::xray_scattering::wk1995("O",true).fetch();
+      unique_gaussians[registry.unique_index("O")].get();
     for (int i=0; i<hoh.array_of_a().size(); i++){
       h_a[(n_types-1)*n_terms + i] = hoh.array_of_a()[i];
       h_b[(n_types-1)*n_terms + i] = hoh.array_of_b()[i];
@@ -158,7 +159,7 @@ namespace scattering {
       h_c[n_types-1] = hoh.c();
     }
     else {
-      h_c[n_types-1] = float(0.0);
+      h_c[n_types-1] = fType(0.0);
     }
 
     cudaSafeCall( cudaMalloc((void**)&d_scattering_type,padded_n_xyz*sizeof(int)) );
@@ -169,6 +170,8 @@ namespace scattering {
     cudaSafeCall( cudaMemcpyToSymbol(dc_c, h_c, n_types*sizeof(fType)) );
     cudaSafeCall( cudaMemcpyToSymbol(dc_n_types, &n_types, sizeof(int)) );
     cudaSafeCall( cudaMemcpyToSymbol(dc_n_terms, &n_terms, sizeof(int)) );
+    cudaSafeCall( cudaMemcpyToSymbol(dc_complex_form_factor,
+                                     &complex_form_factor, sizeof(bool)) );
   }
 
   // --------------------------------------------------------------------------
@@ -223,13 +226,14 @@ namespace scattering {
    const scitbx::af::const_ref<scitbx::vec3<double> >& h,
    const scitbx::af::const_ref<double>& rotations,
    const scitbx::af::const_ref<scitbx::vec3<double> >& translations,
-   const cctbx::xray::scattering_type_registry& registry) {
+   const cctbx::xray::scattering_type_registry& registry,
+   const bool& complex_form_factor) {
 
     // reorganize input data, allocates arrays, transfer to GPU, order matters
     reorganize_coordinates(xyz,solvent_weights);
     reorganize_h(h);
     reorganize_rt(rotations,translations);
-    convert_scatterers(scatterers,registry);
+    convert_scatterers(scatterers,registry,complex_form_factor);
 
     // allocate arrays for results if necessary
     if (sf_size == 0) {

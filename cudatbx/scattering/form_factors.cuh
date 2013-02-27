@@ -14,6 +14,7 @@ namespace scattering {
   __device__ __constant__ fType dc_c[max_types];
   __device__ __constant__ int dc_n_types;
   __device__ __constant__ int dc_n_terms;
+  __device__ __constant__ bool dc_complex_form_factor;
 
   template <typename floatType>
   __device__ floatType form_factor(const floatType* a, const floatType* b,

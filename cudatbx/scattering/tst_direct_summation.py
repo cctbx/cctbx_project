@@ -53,7 +53,7 @@ def test_direct_summation():
 
   bls = flex.double(len(xyz),0.0)
   amplitudes = direct_summation()
-  amplitudes.add(st,xyz,bls,h,r,t,sr)
+  amplitudes.add(st,xyz,bls,h,r,t,sr,False)
   amplitudes = amplitudes.get_sum()
 
   cpu_i = flex.norm(fcd)
