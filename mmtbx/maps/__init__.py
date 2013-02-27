@@ -412,8 +412,7 @@ def map_coefficients_from_fmodel (fmodel,
       post_processing_callback=post_processing_callback,
       pdb_hierarchy=pdb_hierarchy)
     if (coeffs is None) : return None
-    if(coeffs.anomalous_flag() and not
-       mmtbx.map_names(params.map_type).anomalous):
+    if(coeffs.anomalous_flag()) :
       coeffs = coeffs.average_bijvoet_mates()
     if(params.sharpening):
       from mmtbx import map_tools
@@ -440,8 +439,7 @@ def map_coefficients_from_fmodel (fmodel,
         (params.map_type, params.kicked, params.sharpening, params.isotropize,
          fmodel.f_obs().anomalous_flag()))
   # XXX is this redundant?
-  if(coeffs.anomalous_flag() and not
-     mmtbx.map_names(params.map_type).anomalous):
+  if(coeffs.anomalous_flag()) :
     coeffs = coeffs.average_bijvoet_mates()
   #XXXif(mnm.k is not None and abs(mnm.k) == abs(mnm.n) and save_k_part is not None):
   #XXX  fmodel.update_core(k_part=save_k_part, b_part=save_b_part)
