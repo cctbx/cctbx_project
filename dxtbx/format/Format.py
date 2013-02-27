@@ -32,7 +32,7 @@ import traceback
 # first - import access to all of the factories that we will be needing
 
 from dxtbx.model.goniometer import Goniometer, goniometer_factory
-from dxtbx.model.detector import FlatPanelDetector, detector_factory
+from dxtbx.model.detector import Detector, detector_factory
 from dxtbx.model.beam import Beam, beam_factory
 from dxtbx.model.scan import Scan, scan_factory
 
@@ -128,7 +128,7 @@ class Format(object):
             self._goniometer_instance = goniometer_instance
 
             detector_instance = self._detector()
-            assert(isinstance(detector_instance, FlatPanelDetector))
+            assert(isinstance(detector_instance, Detector))
             self._detector_instance = detector_instance
 
             beam_instance = self._beam()
