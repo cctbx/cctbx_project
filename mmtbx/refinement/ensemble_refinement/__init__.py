@@ -1548,6 +1548,7 @@ def write_mtz_file (fmodel_total, raw_data, raw_flags, prefix, params) :
     column_root_label="F-model"+xray_suffix)
   yet_another_dataset = another_dataset.mtz_crystal().add_dataset(
     name = "Fourier-map-coefficients", wavelength=1)
+  # FIXME this will fail if the data are anomalous!
   cmo = mmtbx.maps.compute_map_coefficients(
       fmodel = fmodel_total,
       params = params.electron_density_maps.map_coefficients)
@@ -1943,4 +1944,9 @@ class launcher (runtime_utils.target_with_save_result) :
 def validate_params (params) :
   if (params.ensemble_refinement.ptls is None) :
     raise Sorry("You must specify a fraction of atoms to use for TLS fitting.")
+  if (params.input.xray_data.labels is None) :
+    raise Sorry("No data selected for refinement.")
+  # FIXME
+  elif (len(params.input.xray_data.labels[0].split(",")) > 2) :
+    raise Sorry("Anomalous data are not allowed in this program.")
   return mmtbx.utils.validate_input_params(params)
