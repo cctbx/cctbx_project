@@ -285,6 +285,13 @@ namespace dxtbx { namespace model {
           && (0 <= xy[1] && xy[1] < image_size_[1]);
     }
 
+    /** Check the coordinate is valid */
+    bool is_coord_valid_mm(vec2<double> xy) const {
+      vec2<double> size = get_image_size_mm();
+      return (0 <= xy[0] && xy[0] < size[0])
+          && (0 <= xy[1] && xy[1] < size[1]);
+    }
+
     /** Map coordinates in mm to pixels */
     template <typename CoordType>
     vec2<double> millimeter_to_pixel(CoordType xy) const {
