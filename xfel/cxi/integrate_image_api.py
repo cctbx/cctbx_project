@@ -24,7 +24,6 @@ def integrate_one_image(data, **kwargs):
                         +      ("_%05d.pickle" % data['SEQUENCE_NUMBER']))
 
   args = ["indexing.data=dummy",
-          "distl.detector_format_version=CXI 5.1",
           "beam_search_scope=0.5",
           "lepage_max_delta = 3.0",
           "spots_pickle = None",

@@ -181,7 +181,6 @@ def run_one_index(path, *arguments, **kwargs):
   from cxi_user.xfel_targets import targets
 
   args = ["indexing.data=%s"%path,
-          "distl.detector_format_version=CXI 5.1",
           "beam_search_scope=0.5",
           "lepage_max_delta = 3.0",
           "spots_pickle = None",
