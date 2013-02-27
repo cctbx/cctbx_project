@@ -20,7 +20,6 @@ class distl_hitfinder(object):
 
     from cxi_user.xfel_targets import targets
     args = ["indexing.data=dummy",
-            "distl.detector_format_version=CXI 5.1",
             "distl.bins.verbose=False",
             self.asic_filter,
             ] + targets[self.m_xtal_target]
