@@ -49,8 +49,6 @@ def test_goniometer():
 
     assert(len(kappa.rotation_axis) == 3)
     assert(len(kappa.fixed_rotation) == 9)
-    print kappa.rotation_axis
-    print axis
     assert(compare_tuples(kappa.rotation_axis, axis))
     assert(compare_tuples(kappa.fixed_rotation, fixed))
 
