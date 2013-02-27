@@ -346,16 +346,17 @@ class scattering_information(object):
 def anisotropic_correction(cache_0,
                            p_scale,
                            u_star,
-                           b_add=None):
+                           b_add=None,
+                           must_be_greater_than=0.):
   ## Make sure that u_star is not rwgk scaled, i.e. like you get it from
   ## the ml_absolute_scale_aniso routine (!which is !!NOT!! scaled!)
   work_array = None
   try:
-    work_array = cache_0.input.select( cache_0.input.data() > 0 )
+    work_array = cache_0.input.select( cache_0.input.data() > must_be_greater_than)
   except KeyboardInterrupt: raise
   except Exception: pass
   if work_array is None:
-    work_array = cache_0.select( cache_0.data() > 0 )
+    work_array = cache_0.select( cache_0.data() > must_be_greater_than)
 
   change_back_to_intensity=False
   if work_array.is_xray_intensity_array():
