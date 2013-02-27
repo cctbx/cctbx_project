@@ -93,9 +93,10 @@ mtz_file {
   data2 = miller_arrays[0].data()
   assert miller_arrays[0].is_xray_amplitude_array()
   assert (data0.all_eq(data2)) and (data0.all_ne(data1))
+  # convert to and from anomalous data
   params.mtz_file.output_file = "tst1.mtz"
   params.mtz_file.miller_array[0].force_type = "auto"
-  params.mtz_file.miller_array[0].output_non_anomalous = True
+  params.mtz_file.miller_array[0].anomalous_data = "merged"
   try :
     run_and_reload(params, "tst1.mtz")
   except Sorry, e :
@@ -105,6 +106,17 @@ mtz_file {
   params.mtz_file.miller_array[0].output_labels = ["F-obs", "SIGF-obs"]
   miller_arrays = run_and_reload(params, "tst1.mtz")
   assert (not miller_arrays[0].anomalous_flag())
+  params.mtz_file.miller_array[1].anomalous_data = "anomalous"
+  try :
+    run_and_reload(params, "tst1.mtz")
+  except Sorry, e :
+    assert ("not enough output labels" in str(e))
+  else :
+    raise Exception_expected
+  params.mtz_file.miller_array[1].output_labels = ['R-free-flags(+)',
+    'R-free-flags(-)']
+  miller_arrays = run_and_reload(params, "tst1.mtz")
+  assert miller_arrays[1].anomalous_flag()
   # filter by signal-to-noise ratio
   params = master_phil.fetch(source=new_phil).extract()
   params.mtz_file.miller_array[0].filter_by_signal_to_noise = 2.0
@@ -436,13 +448,13 @@ mtz_file {
   assert (labels == ["F","SIGF","DANO","SIGDANO","ISYM"])
   # now merged
   params.mtz_file.miller_array[1].output_labels = ["F","SIGF"]
-  params.mtz_file.miller_array[1].output_non_anomalous = True
+  params.mtz_file.miller_array[1].anomalous_data = "merged"
   miller_arrays = run_and_reload(params, "tst6.mtz")
   assert (miller_arrays[1].is_xray_amplitude_array())
   assert (miller_arrays[1].info().label_string() == "F,SIGF")
   # handle duplicate array labels
   params.mtz_file.output_file = "tst7.mtz"
-  params.mtz_file.miller_array[1].output_non_anomalous = False
+  params.mtz_file.miller_array[1].anomalous_data = "Auto"
   params.mtz_file.miller_array[1].file_name = "tst_data.mtz"
   params.mtz_file.miller_array[1].labels = \
     "I-obs(+),SIGI-obs(+),I-obs(-),SIGI-obs(-)"

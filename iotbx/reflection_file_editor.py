@@ -128,11 +128,12 @@ mtz_file
         determines the output data type.  If intensities are being converted \
         to amplitudes, this can optionally be done using the French and \
         Wilson treatment to correct weak and negative values.
-    output_non_anomalous = False
-      .type = bool
-      .short_caption = Output non-anomalous data
-      .help = If enabled, anomalous arrays will be merged first.  Note that \
-        this will cut the number of output labels in half.
+    anomalous_data = *Auto merged anomalous
+      .type = choice
+      .caption = automatic_(keep) merge_if_present force_anomalous_output
+      .short_caption = Anomalous data
+      .help = Optional averaging or generation of Bijvoet mates.  Note that the \
+        number of labels expected may change.
     force_type = *auto amplitudes intensities
       .type = choice
       .short_caption = Force observation type
@@ -393,10 +394,10 @@ class process_arrays (object) :
 
       #-----------------------------------------------------------------
       # OUTPUT LABELS SANITY CHECK
+      labels_base = re.sub(",merged$", "", array_params.labels)
+      input_labels = labels_base.split(",")
       if miller_array.anomalous_flag() :
-        labels_base = re.sub(",merged$", "", array_params.labels)
-        input_labels = labels_base.split(",")
-        if array_params.output_non_anomalous :
+        if (array_params.anomalous_data == "merged") :
           if (labels_base in special_labels) :
             if (len(output_labels) != 2) :
               raise Sorry(("There are too many output labels for the array "+
@@ -417,11 +418,19 @@ class process_arrays (object) :
             "I(+),SIGI(+),I(-),SIGI(-), or F(+),SIGF(+),F(-),SIGF(-) "+
             "if you are converting the array to amplitudes).") %
             array_name)
+      elif (array_params.anomalous_data == "anomalous") :
+        if (len(output_labels) != (len(input_labels) * 2)) :
+          raise Sorry(("There are not enough output labels for the array "
+            "%s, which is being converted to anomalous data. "+
+            "The total number of columns will be doubled in the output "+
+            "array, and the labels should be repeated with '(+)' and '(-)'.") %
+            array_name)
+
       if (miller_array.is_xray_reconstructed_amplitude_array()) :
         # FIXME this needs to be handled better - but it should at least catch
         # files from CCP4 data processing
         if ((len(output_labels) != 5) and
-            (not array_params.output_non_anomalous)) :
+            (not array_params.anomalous_data == "merged")) :
           raise Sorry(("The array in %s with labels %s will be output as "+
             "amplitudes and anomalous differences with sigmas, plus ISYM. "+
             "Five columns will be written, but %d labels were specified.") %
@@ -495,7 +504,7 @@ class process_arrays (object) :
         print >> log, "  Truncated size: %d" % new_array.data().size()
         if new_array.sigmas() is not None :
           print >> log, "          sigmas: %d" % new_array.sigmas().size()
-      if new_array.anomalous_flag() and array_params.output_non_anomalous :
+      if new_array.anomalous_flag() and array_params.anomalous_data == "merged" :
         print >> log, ("Converting array %s from anomalous to non-anomalous." %
                        array_name)
         if (not new_array.is_xray_intensity_array()) :
@@ -505,6 +514,9 @@ class process_arrays (object) :
           new_array = new_array.average_bijvoet_mates()
           new_array = new_array.f_as_f_sq()
           new_array.set_observation_type_xray_intensity()
+      elif ((not new_array.anomalous_flag()) and
+            (array_params.anomalous_data == "anomalous")) :
+        new_array = new_array.generate_bijvoet_mates()
       if (array_params.scale_max is not None) :
         print >> log, ("Scaling %s such that the maximum value is: %.6g" %
                        (array_name, array_params.scale_max))
