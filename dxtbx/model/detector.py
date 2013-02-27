@@ -15,7 +15,7 @@ from __future__ import division
 import math
 import pycbf
 from scitbx import matrix
-from dxtbx_model_ext import FlatPanelDetector
+from dxtbx_model_ext import Detector
 
 from detector_helpers import detector_helper_sensors
 from detector_helpers import read_xds_xparm
@@ -34,10 +34,10 @@ class detector_factory:
         pass
 
     @staticmethod
-    def make_flat_panel_detector(stype, fast_axis, slow_axis, origin,
-                                 pixel_size, image_size, trusted_range):
+    def make_detector(stype, fast_axis, slow_axis, origin,
+                      pixel_size, image_size, trusted_range):
         """Ensure all types are correct before creating c++ detector class."""
-        return FlatPanelDetector(
+        return Detector(
             str(stype),
             tuple(map(float, fast_axis)),
             tuple(map(float, slow_axis)),
@@ -75,7 +75,7 @@ class detector_factory:
         origin = matrix.col((0, 0, -1)) * distance - \
                  fast * beam_centre[0] - slow * beam_centre[1]
 
-        detector = detector_factory.make_flat_panel_detector(
+        detector = detector_factory.make_detector(
                       detector_factory.sensor(sensor),
                       fast, slow, origin, pixel_size, image_size, trusted_range)
         detector.mask = mask
@@ -119,7 +119,7 @@ class detector_factory:
         R = two_theta.axis_and_angle_as_r3_rotation_matrix(two_theta_angle,
                                                            deg = True)
 
-        detector = detector_factory.make_flat_panel_detector(
+        detector = detector_factory.make_detector(
                       detector_factory.sensor(sensor),
                       (R * fast), (R * slow), (R * origin), pixel_size,
                       image_size, trusted_range)
@@ -140,7 +140,7 @@ class detector_factory:
         assert(len(pixel) == 2)
         assert(len(size) == 2)
 
-        return detector_factory.make_flat_panel_detector(
+        return detector_factory.make_detector(
                 detector_factory.sensor(sensor),
                 fast, slow, origin, pixel, size, trusted_range)
 
@@ -205,7 +205,7 @@ class detector_factory:
         c_fast = _m * detector_fast
         c_slow = _m * detector_slow
 
-        return detector_factory.make_flat_panel_detector(
+        return detector_factory.make_detector(
                   detector_factory.sensor('unknown'),
                   c_fast, c_slow, c_origin, pixel_size, image_size, (0, 0))
 
@@ -246,7 +246,7 @@ class detector_factory:
         cbf_detector.__swig_destroy__(cbf_detector)
         del(cbf_detector)
 
-        return detector_factory.make_flat_panel_detector(
+        return detector_factory.make_detector(
                   detector_factory.sensor(sensor),
                   fast, slow, origin, pixel, size, trusted_range)
 
@@ -285,7 +285,7 @@ class detector_factory:
         cbf_detector.__swig_destroy__(cbf_detector)
         del(cbf_detector)
 
-        return detector_factory.make_flat_panel_detector(
+        return detector_factory.make_detector(
                       detector_factory.sensor(sensor),
                       fast, slow, origin, pixel, size, trusted_range)
 

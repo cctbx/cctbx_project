@@ -12,9 +12,9 @@
 #define DXTBX_MODEL_DETECTOR_H
 
 #include <string>
-#include <boost/geometry.hpp>
-#include <boost/geometry/geometries/point.hpp>
-#include <boost/geometry/geometries/polygon.hpp>
+//#include <boost/geometry.hpp>
+//#include <boost/geometry/geometries/point.hpp>
+//#include <boost/geometry/geometries/polygon.hpp>
 #include <scitbx/vec2.h>
 #include <scitbx/vec3.h>
 #include <scitbx/mat3.h>
@@ -81,11 +81,11 @@ namespace dxtbx { namespace model {
   *    trusted_range -> *unspecified*
   *    distance -> *unspecified*
   */
-  class FlatPanelDetector : public DetectorBase {
+  class Detector : public DetectorBase {
   public:
 
     /** The default constructor */
-    FlatPanelDetector()
+    Detector()
       : type_("Unknown"),
       fast_axis_(1.0, 0.0, 0.0),
       slow_axis_(0.0, 1.0, 0.0),
@@ -107,7 +107,7 @@ namespace dxtbx { namespace model {
     * @param trusted_range The trusted range of the detector pixel values.
     * @param distance The distance from the detector to the crystal origin
     */
-    FlatPanelDetector(std::string type,
+    Detector(std::string type,
         vec3 <double> fast_axis,
         vec3 <double> slow_axis,
         vec3 <double> origin,
@@ -124,7 +124,7 @@ namespace dxtbx { namespace model {
       trusted_range_(trusted_range) {}
 
     /** Virtual destructor */
-    virtual ~FlatPanelDetector() {}
+    virtual ~Detector() {}
 
     /** Get the sensor type */
     std::string get_type() const {
@@ -243,7 +243,7 @@ namespace dxtbx { namespace model {
     }
 
     /** Check the detector axis basis vectors are (almost) the same */
-    bool operator==(const FlatPanelDetector &detector) const {
+    bool operator==(const Detector &detector) const {
       double eps = 1.0e-6;
       double d_fast = fast_axis_.angle(detector.fast_axis_);
       double d_slow = slow_axis_.angle(detector.slow_axis_);
@@ -257,7 +257,7 @@ namespace dxtbx { namespace model {
     }
 
     /** Check the detector axis basis vectors are not (almost) the same */
-    bool operator!=(const FlatPanelDetector &detector) const {
+    bool operator!=(const Detector &detector) const {
       return !(*this == detector);
     }
 
@@ -266,15 +266,6 @@ namespace dxtbx { namespace model {
     vec3<double> get_pixel_lab_coord(CoordType xy) const {
       vec2<double> xy_mm = pixel_to_millimeter(xy);
       return origin_ + fast_axis_ * xy_mm[0] + slow_axis_ * xy_mm[1];
-    }
-
-    /** Get the image rectangle in the lab frame */
-    double6 get_image_rectangle() const {
-      vec3 <double> point1 = get_origin();
-      vec3 <double> point2 = get_pixel_lab_coord(get_image_size());
-      return double6(
-        point1[0], point1[1], point1[2],
-        point2[0], point2[1], point2[2]);
     }
 
     /** Get the image size in millimeters */
@@ -324,26 +315,26 @@ namespace dxtbx { namespace model {
   * The detector elements can be accessed in the same way as an array:
   *  detector[0] -> 1st detector panel.
   */
-  class MultiFlatPanelDetector : public DetectorBase {
+  class MultiPanelDetector : public DetectorBase {
   public:
 
     typedef std::pair<int, vec2<double> > coordinate_type;
 
     // Panel list typedefs
-    typedef FlatPanelDetector panel_type;
+    typedef Detector panel_type;
     typedef scitbx::af::shared <panel_type> panel_list_type;
     typedef panel_list_type::iterator iterator;
 
     /** Default constructor */
-    MultiFlatPanelDetector()
+    MultiPanelDetector()
       : type_("Unknown") {}
 
     /** Initialise the detector */
-    MultiFlatPanelDetector(std::string type)
+    MultiPanelDetector(std::string type)
       :type_(type) {}
 
     /** Virtual destructor */
-    virtual ~MultiFlatPanelDetector() {}
+    virtual ~MultiPanelDetector() {}
 
     /** Get the begin iterator */
     iterator begin() {
@@ -386,7 +377,7 @@ namespace dxtbx { namespace model {
     }
 
     /** Check the detector panels are the same */
-    bool operator==(const MultiFlatPanelDetector &detector) {
+    bool operator==(const MultiPanelDetector &detector) {
       bool same = panel_list_.size() == detector.panel_list_.size();
       if (same) {
         for (std::size_t i = 0; i < panel_list_.size(); ++i) {
@@ -397,7 +388,7 @@ namespace dxtbx { namespace model {
     }
 
     /** Check the detector panels are not the same */
-    bool operator!=(const MultiFlatPanelDetector &detector) {
+    bool operator!=(const MultiPanelDetector &detector) {
       return !(*this == detector);
     }
 
@@ -424,16 +415,16 @@ namespace dxtbx { namespace model {
     }
 
     /** Check if any panels intersect */
-    bool do_panels_intersect() const {
-      for (std::size_t j = 0; j < panel_list_.size()-1; ++j) {
-        for (std::size_t i = j+1; i < panel_list_.size(); ++i) {
-          if (panels_intersect(panel_list_[j], panel_list_[i])) {
-            return true;
-          }
-        }
-      }
-      return false;
-    }
+//    bool do_panels_intersect() const {
+//      for (std::size_t j = 0; j < panel_list_.size()-1; ++j) {
+//        for (std::size_t i = j+1; i < panel_list_.size(); ++i) {
+//          if (panels_intersect(panel_list_[j], panel_list_[i])) {
+//            return true;
+//          }
+//        }
+//      }
+//      return false;
+//    }
 
   protected:
 
@@ -443,37 +434,37 @@ namespace dxtbx { namespace model {
      * @param b The second detector
      * @returns True/False do the detector planes intersect?
      */
-    static bool
-    panels_intersect(const FlatPanelDetector &a, const FlatPanelDetector &b) {
+//    static bool
+//    panels_intersect(const Detector &a, const Detector &b) {
 
-      using namespace boost::geometry;
+//      using namespace boost::geometry;
 
-      typedef boost::geometry::model::point <double, 3, cs::cartesian> point;
-      typedef boost::geometry::model::polygon <point> polygon;
+//      typedef boost::geometry::model::point <double, 3, cs::cartesian> point;
+//      typedef boost::geometry::model::polygon <point> polygon;
 
-      // Get the rectange of detector points
-      double6 rect_a = a.get_image_rectangle();
-      double6 rect_b = b.get_image_rectangle();
+//      // Get the rectange of detector points
+//      double6 rect_a = a.get_image_rectangle();
+//      double6 rect_b = b.get_image_rectangle();
 
-      // Create a polygon for the panel a plane
-      polygon poly_a;
-      append(poly_a, point(rect_a[0], rect_a[1], rect_a[2]));
-      append(poly_a, point(rect_a[3], rect_a[1], rect_a[5]));
-      append(poly_a, point(rect_a[3], rect_a[4], rect_a[5]));
-      append(poly_a, point(rect_a[0], rect_a[4], rect_a[2]));
-      append(poly_a, point(rect_a[0], rect_a[1], rect_a[2]));
+//      // Create a polygon for the panel a plane
+//      polygon poly_a;
+//      append(poly_a, point(rect_a[0], rect_a[1], rect_a[2]));
+//      append(poly_a, point(rect_a[3], rect_a[1], rect_a[5]));
+//      append(poly_a, point(rect_a[3], rect_a[4], rect_a[5]));
+//      append(poly_a, point(rect_a[0], rect_a[4], rect_a[2]));
+//      append(poly_a, point(rect_a[0], rect_a[1], rect_a[2]));
 
-      // Create a polygon for the panel b plane
-      polygon poly_b;
-      append(poly_b, point(rect_b[0], rect_b[1], rect_b[2]));
-      append(poly_b, point(rect_b[3], rect_b[1], rect_b[5]));
-      append(poly_b, point(rect_b[3], rect_b[4], rect_b[5]));
-      append(poly_b, point(rect_b[0], rect_b[4], rect_b[2]));
-      append(poly_b, point(rect_b[0], rect_b[1], rect_b[2]));
+//      // Create a polygon for the panel b plane
+//      polygon poly_b;
+//      append(poly_b, point(rect_b[0], rect_b[1], rect_b[2]));
+//      append(poly_b, point(rect_b[3], rect_b[1], rect_b[5]));
+//      append(poly_b, point(rect_b[3], rect_b[4], rect_b[5]));
+//      append(poly_b, point(rect_b[0], rect_b[4], rect_b[2]));
+//      append(poly_b, point(rect_b[0], rect_b[1], rect_b[2]));
 
-      // Check if the polygons intersect
-      return intersects(poly_a, poly_b);
-    }
+//      // Check if the polygons intersect
+//      return intersects(poly_a, poly_b);
+//    }
 
     std::string type_;
     panel_list_type panel_list_;
