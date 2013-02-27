@@ -13,6 +13,7 @@
 #include <boost/format.hpp>
 #include <string>
 #include <dxtbx/model/beam.h>
+#include <dxtbx/model/polarized_beam.h>
 
 namespace dxtbx { namespace model { namespace boost_python {
 
