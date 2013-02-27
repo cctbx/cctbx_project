@@ -1260,30 +1260,11 @@ class Manager (object) :
       return
     ion_status = []
 
-    nproc = easy_mp.get_processes(self.nproc)
-    if nproc == 1 or True:
-      for i_seq in ions:
-        atom_props = self.validate_ion(
-          i_seq = i_seq,
-          debug = debug)
-        ion_status.append((atom_props, atom_props.is_correctly_identified()))
-    # else :
-    #   print >> out, "  Parallelizing across %d processes" % nproc
-    #   print >> out, ""
-
-    #   validate_ion = _validate_ion_wrapper(manager = self,
-    #     debug = debug)
-    #   results = easy_mp.pool_map(
-    #     fixed_func = validate_ion,
-    #     args = ions,
-    #     processes = nproc)
-    #   bad_seqs = (i_seq for i_seq, correct in results
-    #               if correct is not None and not correct)
-
-    #   for i_seq in bad_seqs:
-    #     bad_ions.append(i_seq)
-
-    # Show a table!
+    for i_seq in ions:
+      atom_props = self.validate_ion(
+        i_seq = i_seq,
+        debug = debug)
+      ion_status.append((atom_props, atom_props.is_correctly_identified()))
     scatterers = self.xray_structure.scatterers()
     headers = ("atom", "occ", "b_iso", "2mFo-DFc", "mFo-DFc", "fp", "fdp")
     fmt = " %-15s %5s %8s %10s %10s %6s %6s"
@@ -1300,9 +1281,11 @@ class Manager (object) :
       if (sc.flags.use_fp_fdp) :
         fp = sc.fp
         fdp = sc.fdp
+      # XXX props.atom.b does not work here!
+      b_iso = adptbx.u_as_b(sc.u_iso_or_equiv(unit_cell=self.unit_cell))
       def ff (fs, val) : return format_value(fs, val, replace_none_with="---")
       print >> box, (fmt % (props.atom.id_str(suppress_segid=True)[5:-1],
-        ff("%5.2f", props.atom.occ), ff("%8.2f", props.atom.b),
+        ff("%5.2f", props.atom.occ), ff("%8.2f", b_iso),
         ff("%8.2f", props.peak_2fofc), ff("%8.2f", props.peak_fofc),
         ff("%6.2f", fp), ff("%6.2f", fdp))) + mark
     box.close()
