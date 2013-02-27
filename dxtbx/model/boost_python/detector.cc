@@ -167,6 +167,10 @@ namespace dxtbx { namespace model { namespace boost_python {
           arg("panel")))
       .def("num_panels",
         &MultiPanelDetector::num_panels)
+      .def("get_d_matrices",
+        &MultiPanelDetector::get_d_matrices)
+      .def("get_D_matrices",
+        &MultiPanelDetector::get_D_matrices)
       .def("is_value_in_trusted_range",
         &MultiPanelDetector::is_value_in_trusted_range)
       .def("is_coord_valid",

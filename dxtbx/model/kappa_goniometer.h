@@ -169,7 +169,6 @@ namespace dxtbx { namespace model {
       } else if (scan_axis_ == Phi) {
         mat3 <double> O = axis_and_angle_as_matrix(omega_axis_, omega_, true);
         mat3 <double> K = axis_and_angle_as_matrix(kappa_axis_, kappa_, true);
-        vec3 <double> okp =  O * K * phi_axis_;
         return O * K * phi_axis_;
       } else {
         DXTBX_ERROR("Invalid scan axis");
