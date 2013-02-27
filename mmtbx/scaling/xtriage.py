@@ -597,50 +597,24 @@ def run(args, command_name="phenix.xtriage", return_result=False,
     print >> log
     print >> log
 
-    phil_objects = []
-    argument_interpreter = master_params.command_line_argument_interpreter()
-
-    reflection_file = None
-
-    for arg in command_line.args:
-      command_line_params = None
-      arg_is_processed = False
-      if (os.path.isfile(arg)): ## is this a file name?
-        ## Check if this is a phil file
-        try:
-          command_line_params = iotbx.phil.parse(file_name=arg)
-        except KeyboardInterrupt: raise
-        except Exception : pass
-        if command_line_params is not None:
-            phil_objects.append(command_line_params)
-            arg_is_processed = True
-
-        if (not arg_is_processed):
-          ## Check if this file is a reflection file
-          if command_line_params is None:
-            reflection_file = reflection_file_reader.any_reflection_file(
-              file_name=arg, ensure_read_access=False)
-          if (reflection_file is not None):
-            reflection_file = arg
-            arg_is_processed = True
-
-      ## If it is not a file, it must be a phil command
-      else:
-        command_line_params = argument_interpreter.process(arg=arg)
-        phil_objects.append(command_line_params)
-        arg_is_processed = True
-
-      if not arg_is_processed:
-        print >> log, "##--------------------------------------------------------------------##"
+    cmdline = iotbx.phil.process_command_line_with_files(
+      args=command_line.args,
+      master_phil=master_params,
+      pdb_file_def="scaling.input.xray_data.reference.structure.file_name",
+      seq_file_def="scaling.input.asu_contents.sequence_file",
+      reflection_file_def="scaling.input.xray_data.file_name")
+    effective_params = cmdline.work
+    if (len(cmdline.unused_args) > 0) :
+      print >> log, "##--------------------------------------------------------------------##"
+      for arg in cmdline.unused_args :
         print >> log, "## Unknown phil-file or phil-command:", arg
-        print >> log, "##--------------------------------------------------------------------##"
-        print >> log
-        raise Sorry("Unknown file format or phil command: %s" % arg)
+      print >> log, "##--------------------------------------------------------------------##"
+      print >> log
+      raise Sorry("Unknown file format or phil commands.")
 
-    effective_params = master_params.fetch(sources=phil_objects)
     params = effective_params.extract()
-    if reflection_file is not None:
-      params.scaling.input.xray_data.file_name=reflection_file
+    if (params.scaling.input.xray_data.file_name is None) :
+      raise Sorry("No reflection file in input.")
     verbose = params.scaling.input.parameters.reporting.verbose
 
     scope =  params.scaling.input.xray_data
@@ -733,7 +707,6 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
                 params.scaling.input.xray_data.space_group
         print >> log,"##-------------------------------------------##"
 
-    effective_params = master_params.fetch(sources=phil_objects)
     new_params = master_params.format(python_object=params)
     if (params.scaling.input.parameters.reporting.verbose>0):
       print >> log
@@ -771,8 +744,7 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
 
     info = miller_array.info()
     if (info.merged) and (miller_array.is_xray_intensity_array()) :
-      from iotbx.reflection_file_reader import any_reflection_file
-      hkl_in_raw = any_reflection_file(
+      hkl_in_raw = reflection_file_reader.any_reflection_file(
         file_name=params.scaling.input.xray_data.file_name)
       assert (hkl_in_raw.file_type() is not None)
       raw_arrays = hkl_in_raw.as_miller_arrays(
