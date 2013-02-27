@@ -1,8 +1,9 @@
+import os
 import libtbx.load_env
 Import("env_etc")
 
-env_etc.dxtbx_include = libtbx.env.dist_path("dxtbx")
-
+env_etc.dxtbx_dist = libtbx.env.dist_path("dxtbx")
+env_etc.dxtbx_include = os.path.dirname(env_etc.dxtbx_dist)
 if (not env_etc.no_boost_python and hasattr(env_etc, "boost_adaptbx_include")):
   Import("env_no_includes_boost_python_ext")
   env = env_no_includes_boost_python_ext.Clone()
