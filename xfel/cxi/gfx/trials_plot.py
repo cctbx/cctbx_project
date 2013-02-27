@@ -55,13 +55,13 @@ class Run (object):
       value = self.braggs[i*window]
       time = self.bragg_times[i*window]
       for j in range(window):
-	idx = (i*window)+j
-	if self.braggs[idx] > value:
-	  value = self.braggs[idx]
-	  time = self.bragg_times[idx]
+        idx = (i*window)+j
+        if self.braggs[idx] > value:
+          value = self.braggs[idx]
+          time = self.bragg_times[idx]
       self.culled_braggs.append(value)
       self.culled_bragg_times.append(time)
-	  
+
 class TrialsPlotFrame (wxtbx.plots.plot_frame) :
   show_controls_default = False
   def __init__ (self, *args, **kwds) :
@@ -83,8 +83,14 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
     self.toolbar.AddControl(self.panSlider)
     self.Bind(wx.EVT_SCROLL, self.OnPan, self.panSlider)
 
+    self.timerCheck = wx.CheckBox(self.toolbar, -1, "Auto load new data")
+    self.timerCheck.SetValue(True)
+    self.toolbar.AddControl(self.timerCheck)
+
     self.zoom = 100
     self.pan = 50
+
+    self.full_data_load = True
 
   def create_plot_panel (self) :
     return TrialsPlot(
@@ -97,17 +103,18 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
   def set_params(self, params):
     self.params = params
     self.trial_id = params.trial_id
-    
+
     self._timer = wx.Timer(owner=self)
     self.Bind(wx.EVT_TIMER, self.OnTimer)
     self._timer.Start(params.t_wait)
 
   def OnTimer(self, event):
-    t1 = time.time()
-    self.load_data()
-    self.show_plot()
-    t2 = time.time()
-    print "Updated in %.2fs" % (t2 - t1)
+    if(self.timerCheck.GetValue()):
+      #t1 = time.time()
+      if self.load_data(): pass
+      self.show_plot()
+      #t2 = time.time()
+      #print "Updated in %.2fs" % (t2 - t1)
 
   def OnZoom(self, event):
     self.zoom = 100-event.GetPosition()
@@ -121,28 +128,49 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
     self.pan = event.GetPosition()
     self.plot_panel.show_plot()
 
+  # Returns true if new data was loaded, otherwise false
   def load_data (self):
     assert (self.trial_id is not None)
 
     import cxi_xdr_xes.cftbx.cspad_ana.db as cxidb
     db=cxidb.dbconnect()
     assert(db is not None and db.open)
-    
+
     # retrieve the run IDs in this trial
     cursor = db.cursor()
     cursor.execute("SELECT DISTINCT(run) FROM cxi_braggs_front WHERE trial = %s ORDER BY run"%self.trial_id)
-    self.runs = [] 
-   
+    if(self.full_data_load):
+      self.runs = []
+
+    new_data = False
+
     for runId in cursor.fetchall():
-      run = Run(int(runId[0]))
-      self.runs.append(run)
-      
-      cursor.execute("SELECT eventstamp, data FROM cxi_braggs_front WHERE trial = %s AND run = %s"%(self.trial_id,run.runId))
+      if self.full_data_load:
+        run = Run(int(runId[0]))
+        self.runs.append(run)
+      else:
+        for runtest in self.runs:
+          foundit = False
+          if runtest.runId == int(runId[0]):
+            foundit = True
+            run = runtest
+            break
+        if not foundit:
+          run = Run(int(runId[0]))
+
+      if self.full_data_load:
+        cursor.execute("SELECT id, eventstamp, data FROM cxi_braggs_front WHERE trial = %s AND run = %s ORDER BY eventstamp"%(self.trial_id,run.runId))
+      else:
+        cursor.execute("SELECT id, eventstamp, data FROM cxi_braggs_front WHERE trial = %s AND run = %s AND id > %s ORDER BY eventstamp"%(self.trial_id,run.runId,run.latest_entry_id ))
+
       hit_counter = self.params.average_window
 
-      for eventstamp, data in cursor.fetchall():
+      ids = flex.int()
+
+      for id, eventstamp, data in cursor.fetchall():
         run.bragg_times.append(float(eventstamp))
         run.braggs.append(int(data))
+        ids.append(id)
 
         if (len(run.bragg_times) >= self.params.average_window) and hit_counter >= self.params.average_window:
           start = len(run.bragg_times) - self.params.average_window
@@ -151,11 +179,15 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
           ratio = float(len(isel)) / float(self.params.average_window)
           run.hit_rates_times.append(run.bragg_times[-1])
           run.hit_rates.append(ratio*100)
-	  hit_counter = 0
-	else :
-	  hit_counter += 1
+          hit_counter = 0
+        else :
+          hit_counter += 1
 
-  
+      if len(ids) > 0:
+        run.latest_entry_id = max(ids)
+        new_data = True
+
+
 #    self.xmin, self.xmax = min(t1), max(t1) #when add more axis, use the logic below
 #    if (len(t1) > 0) :
 #      xmin, xmax = min(t1), max(t1)
@@ -172,10 +204,13 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
       run.hit_rates = run.hit_rates.select(perm)
 
       self.total_width += run.width()
-    
+
     npoints = 1000
     for run in self.runs:
       run.cull_braggs(int(npoints*run.width()/self.total_width))
+
+    self.full_data_load = False
+    return new_data
 
 class TrialsPlot (wxtbx.plots.plot_container) :
   def show_plot(self):
@@ -185,18 +220,17 @@ class TrialsPlot (wxtbx.plots.plot_container) :
     The final graph will have a number of time units displayed equal to a percentage
     of the total number of time units in all the runs, not including gaps.  Each run
     may or may not be displayed depending on the zoom and pan.
-    
+
     total_width: how many time units total in these runs, not including gaps
     xmin: smallest time value in the earliest run
     xmax: largest time value in the lastest run
     newwidth: number of time units to display on xaxis total over all runs
     newmid: a point on the total time units scale within the zoom and pan limits. Usually
      the center, but since it could cause x to fall out of bounds it is adjusted
-    newxmin: how many time units on the left of the graph are not displayed, OR, the first 
+    newxmin: how many time units on the left of the graph are not displayed, OR, the first
      time unit to be displayed
     newxmax: the first time unit not to be displayed
     """
-    ttop = time.time()
     total_width = self.GetParent().total_width
 
     newwidth = total_width * (self.GetParent().zoom / 100)
@@ -224,18 +258,18 @@ class TrialsPlot (wxtbx.plots.plot_container) :
 
       if right < newxmin or left > newxmax:
         left += run.width()
-	#print "Not showing run %s"%run.runId
-	continue
+        #print "Not showing run %s"%run.runId
+        continue
 
       if left < newxmin:
-	xmin = run.min() + (newxmin - left)
+        xmin = run.min() + (newxmin - left)
       else:
-	xmin = run.min()
-      
+        xmin = run.min()
+
       if right > newxmax:
-	xmax = run.min() + (newxmax - left)
+        xmax = run.min() + (newxmax - left)
       else:
-	xmax = run.max()
+        xmax = run.max()
 
       #print "Run: %s, run.width(): %s, left: %s, right: %s, run.min(): %s, run.max(): %s, xmin: %s, xmax: %s, width_so_far: %s, xmax-xmin: %s" \
         #%(run.runId,run.width(),left,right,run.min(),run.max(),xmin,xmax,width_so_far,xmax-xmin)
@@ -272,7 +306,7 @@ class TrialsPlot (wxtbx.plots.plot_container) :
     self.figure.autofmt_xdate()
     self.canvas.draw()
     self.parent.Refresh()
-     
+
 def run (args) :
   user_phil = []
   # TODO: replace this stuff with iotbx.phil.process_command_line_with_files
@@ -301,7 +335,7 @@ def run (args) :
   assert (params.average_window is not None) and (params.average_window > 0)
   app = wx.App(0)
   frame = TrialsPlotFrame(None, -1, "Detector status for trial %d" %
-    params.trial_id)
+      params.trial_id)
   frame.set_params(params)
   frame.load_data()
   frame.show_plot()
