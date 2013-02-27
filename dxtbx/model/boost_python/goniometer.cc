@@ -15,6 +15,7 @@
 #include <boost/shared_ptr.hpp>
 #include <string>
 #include <dxtbx/model/goniometer.h>
+#include <dxtbx/model/kappa_goniometer.h>
 
 namespace dxtbx { namespace model { namespace boost_python {
 

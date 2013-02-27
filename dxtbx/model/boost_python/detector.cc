@@ -18,6 +18,7 @@
 #include <scitbx/array_family/simple_io.h>
 #include <scitbx/array_family/simple_tiny_io.h>
 #include <dxtbx/model/detector.h>
+#include <dxtbx/model/multi_panel_detector.h>
 
 namespace dxtbx { namespace model { namespace boost_python {
 

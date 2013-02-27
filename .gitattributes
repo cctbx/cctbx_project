@@ -416,6 +416,9 @@ dxtbx/model/detector_helpers_types.py -text
 dxtbx/model/goniometer.h -text
 dxtbx/model/goniometer.py -text
 dxtbx/model/goniometer_helpers.py -text
+dxtbx/model/kappa_goniometer.h -text
+dxtbx/model/multi_panel_detector.h -text
+dxtbx/model/polarized_beam.h -text
 dxtbx/model/scan.h -text
 dxtbx/model/scan.py -text
 dxtbx/model/scan_helpers.h -text
