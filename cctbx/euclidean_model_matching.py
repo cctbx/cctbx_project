@@ -7,6 +7,7 @@ from scitbx.python_utils import dicts
 from libtbx.utils import user_plus_sys_time
 from libtbx import adopt_init_args
 import sys, math
+from libtbx.utils import null_out
 
 import boost.python
 ext = boost.python.import_ext("cctbx_emma_ext")
@@ -116,6 +117,97 @@ class model(crystal.special_position_settings):
         label=position.label,
         site=position.site))
     return result
+
+  def combine_with_other(self, other_model, tolerance = 1.5,
+    models_are_diffraction_index_equivalent = True,
+    break_if_match_with_no_singles=True, f=sys.stdout,
+    improved_only=True,new_model_number=0):
+    # 2013-01-25 tt superpose other on this one and return composite
+    match_list=self.best_superpositions_on_other(other_model,
+      tolerance=tolerance,models_are_diffraction_index_equivalent=
+           models_are_diffraction_index_equivalent,
+           break_if_match_with_no_singles=break_if_match_with_no_singles,
+           f=f,specifically_test_inverse=True)
+
+    new_model_list=[]
+    self.test_new_model_list=[]
+    for x in other_model.component_model_numbers:
+      if x in self.component_model_numbers:
+        return new_model_list # cannot combine with something already used
+    for match in match_list:
+      if match is None: continue
+      if improved_only and (len(match.singles2) ==0):
+         continue
+
+      test_new_model= model(special_position_settings=self)
+      new_model= model(special_position_settings=self)
+      new_model.model_number=new_model_number
+      new_model.component_model_numbers=[new_model_number]+ \
+         self.component_model_numbers+other_model.component_model_numbers
+      new_model_number+=1
+      for pos in self.positions():
+        new_model.add_position(position(label=pos.label, site=(pos.site)))
+      i=new_model.size()-1
+      for s in match.singles2:
+        site=match.ref_model2[s].site
+        new_model.add_position(position(
+           label="ATOM_%03d"%i,
+           site=(match.rt*site).elems))
+        test_new_model.add_position(position(
+           label="ATOM_%03d"%i,
+           site=(match.rt*site).elems)) 
+      new_model_list.append(new_model) 
+      self.test_new_model_list.append(test_new_model)# ZZZ
+    return new_model_list
+
+
+  def best_superpositions_on_other(self, other_model, tolerance = 1.5,
+    models_are_diffraction_index_equivalent = True,
+    break_if_match_with_no_singles=True, f=sys.stdout,
+    specifically_test_inverse=True):
+    # 2013-01-25 tt.Find best match to other_model and return it
+    # 2013-01-19 return list of best ones (can be alternatives)
+
+    # if you want the superposed model use: 
+    #  superposed_model2=match.get_transformed_model2()
+
+    if not hasattr(self,'match_dict'): 
+      self.match_dict={}
+      match_list=None
+    else:
+      match_list=self.match_dict.get(other_model,None)
+
+    if match_list is None:   # need to get it
+      from cctbx import euclidean_model_matching as emma
+      test_list=[other_model]
+      match_list=[]
+      if specifically_test_inverse:
+        from copy import deepcopy
+        inv_other_model=other_model.change_hand()
+        inv_other_model._cb_op=deepcopy(other_model._cb_op)
+        test_list.append(inv_other_model)
+      for test_model in test_list:
+        matches = emma.model_matches(
+          model1 = self,
+          model2 = test_model,
+          tolerance = tolerance,
+          models_are_diffraction_index_equivalent = \
+              models_are_diffraction_index_equivalent,
+          break_if_match_with_no_singles=break_if_match_with_no_singles,
+          )
+
+        if (matches.n_matches() > 0):
+          best_number_of_matches=len(matches.refined_matches[0].pairs)
+          for match in matches.refined_matches:
+            n=len(match.pairs)
+            if n > 0 and n >= best_number_of_matches:
+              match_list.append(match)
+
+      self.match_dict[other_model]=match_list # save it
+
+    if not match_list: match_list=[None]
+    return match_list
+
 
 def filter_shift(continuous_shift_flags, shift, selector=1):
   filtered_shift = [0,0,0]
@@ -315,6 +407,29 @@ class match_refine(object):
         i += 1
       print >> f
     print >> f
+
+  def get_transformed_model2(self,output_pdb=None,
+    scattering_type="SE",f=sys.stdout,
+    return_superposed_model2=True): 
+      # tt 2013-01-25
+      from cctbx import xray
+      xray_scatterer = xray.scatterer( scattering_type = scattering_type)
+      model2=self.ref_model2.as_xray_structure(xray_scatterer)
+      from cctbx.array_family import flex
+      new_coords=flex.vec3_double()
+      for x in model2.sites_frac():
+        new_coords.append(self.rt * x)
+      model2.set_sites_frac(new_coords)
+
+      if output_pdb is not None:
+        pdb_string=model2.as_pdb_file()
+        ff=open(output_pdb,'w')
+        print >>ff, pdb_string
+        ff.close()
+        print >>f,"\nWrote model 2 mapped to model 1 to file %s " %(output_pdb)
+      
+      if return_superposed_model2:
+        return model2.as_emma_model()
 
 def match_sort_function(match_a, match_b):
   i = -cmp(len(match_a.pairs), len(match_b.pairs))

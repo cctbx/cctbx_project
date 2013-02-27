@@ -23,8 +23,9 @@ def get_emma_model_from_pdb(file_name=None,
   crystal_symmetry = pdb_inp.crystal_symmetry(
     crystal_symmetry=crystal_symmetry,
     weak_symmetry=True)
-  if (crystal_symmetry.unit_cell() is None):
-    raise RuntimeError("Unit cell parameters unknown.")
+  if (not crystal_symmetry or crystal_symmetry.unit_cell() is None):
+    raise RuntimeError("Unit cell parameters unknown for model %s." %(
+        file_name))
   if (crystal_symmetry.space_group_info() is None):
     raise RuntimeError("Space group unknown.")
   positions = []
@@ -137,6 +138,12 @@ def run(args, command_name="phenix.emma"):
          +" reference_coordinates other_coordinates",
     description="Example: %s model1.pdb model2.sdb" % command_name)
     .enable_symmetry_comprehensive()
+    .option(None, "--output_pdb",
+      action="store",
+      type="str",
+      default="",
+      help="Output pdb: second model transformed to best match first model",
+      metavar="STR")
     .option(None, "--tolerance",
       action="store",
       type="float",
@@ -155,6 +162,9 @@ def run(args, command_name="phenix.emma"):
         other_symmetry=crystal_symmetry_from_any.extract_from(
           file_name=file_name),
         force=False)
+  output_pdb = command_line.options.output_pdb
+  if output_pdb:
+    print "Output pdb:",output_pdb
   tolerance = command_line.options.tolerance
   print "Tolerance:", tolerance
   if (tolerance <= 0.):
@@ -187,11 +197,16 @@ def run(args, command_name="phenix.emma"):
     print
   else:
     max_n_pairs = None
+    first=True
     for match in model_matches.refined_matches:
       if (max_n_pairs is None or len(match.pairs) > max_n_pairs*0.2):
         print "." * 79
         print
         match.show()
+        if first and output_pdb: # 2013-01-25 tt
+          match.get_transformed_model2(output_pdb=output_pdb,
+            scattering_type="SE",f=sys.stdout)
+        first=False
       if (max_n_pairs is None):
         max_n_pairs = len(match.pairs)
 
