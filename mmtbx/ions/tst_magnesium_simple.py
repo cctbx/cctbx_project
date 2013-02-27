@@ -44,7 +44,7 @@ def exercise () :
     ).raise_if_errors()
   n_mg = 0
   for line in result.stdout_lines :
-    print line
+    #print line
     if ("Probable cation: MG+2" in line) :
       n_mg += 1
   assert n_mg == 2

@@ -97,6 +97,10 @@ tst_list = (
   "$D/regression/tst_cablam.py",
   "$D/regression/tst_anomalous_substructure.py",
   "$D/regression/tst_map_coeffs_simple.py",
+  "$D/ions/tst_parameters.py",
+  "$D/ions/tst_magnesium_simple.py",
+  "$D/ions/tst_calcium_simple.py",
+  "$D/ions/tst_zinc_approximate.py",
   )
 
 def run():

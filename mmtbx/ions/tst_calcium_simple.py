@@ -10,7 +10,7 @@ def exercise () :
     ).raise_if_errors()
   n_ca = 0
   for line in result.stdout_lines:
-    print line
+    #print line
     if "Probable cation: CA+2" in line:
       n_ca += 1
 
