@@ -216,7 +216,7 @@ out="${out}/r${run}"
 # line, generate the next available one.
 if test -z "${trial}"; then
     trial=`ssh -S "${tmpdir}/control.socket" ${NODE} \
-	 "cxi.get_next_trial_id | awk '{ printf(\"%03d\", \\\$1); }'"`
+         "cxi.get_next_trial_id | awk '{ printf(\"%03d\", \\\$1); }'"`
     if test -z "${trial}"; then
         echo "Error: requesting next trial number failed" > /dev/stderr
        cleanup_and_exit 1
@@ -250,7 +250,7 @@ EOF
 for s in ${streams}; do
     sed -e "s:\([[:alnum:]]\+\)\(_dirname[[:space:]]*=\).*:\1\2 ${out}/\1:"    \
         -e "s:\([[:alnum:]]\+_basename[[:space:]]*=.*\)[[:space:]]*:\1s${s}-:" \
-	-e "s:\(trial_id[[:space:]]*=\).*:\1${trial}:"              \
+        -e "s:\(trial_id[[:space:]]*=\).*:\1${trial}:"              \
         "${cfg}" > "${tmpdir}/pyana_s${s}.cfg"
 
     # Process each stream on a single host as a base-1 indexed job,
