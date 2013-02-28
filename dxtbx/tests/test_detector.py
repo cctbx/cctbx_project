@@ -31,7 +31,7 @@ def test_detector():
     xparm = os.path.join(dxtbx_dir, 'tests', 'example-xparm.xds')
 
     c = detector_factory.imgCIF(image, 'CCD')
-    x = detector_factory.XDS(xparm)
+    #x = detector_factory.XDS(xparm)
 
     print 'OK'
 
