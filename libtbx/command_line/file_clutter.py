@@ -8,7 +8,8 @@ class file_clutter(object):
   from_future_import_division_pat = re.compile(
     '^ from [ ]+ __future__ [ ]+ import [ \w,]+ division', re.VERBOSE)
 
-  def __init__(self, path, find_unused_imports=False):
+  def __init__(self, path, find_unused_imports=False,
+      find_bad_indentation=True):
     self.path = path
     self.is_executable = os.access(path, os.X_OK)
     self.dos_format = False
@@ -18,6 +19,7 @@ class file_clutter(object):
     self.n_bare_excepts = 0
     self.unused_imports = None
     self.n_from_future_import_division = None
+    self.bad_indentation = None
     bytes = open(path, "rb").read()
     if (len(bytes) > 0):
       if (bytes[-1] != "\n"):
@@ -47,18 +49,21 @@ class file_clutter(object):
         if (find_unused_imports and path.endswith(".py")):
           self.unused_imports = find_unused_imports_crude.inspect(
             py_lines=py_lines)
+        if (find_bad_indentation) :
+          self.bad_indentation = detect_indentation_problems(path)
 
   def is_cluttered(self, flag_x):
     return ((self.is_executable and flag_x)
             or self.dos_format
             or len(self.n_tabs_or_trailing_whitespace) > 0
             or self.n_trailing_empty_lines > 1
-            or self.missing_eol)
+            or self.missing_eol
+            or self.bad_indentation)
 
   def has_unused_imports(self):
     return (self.unused_imports is not None and len(self.unused_imports) != 0)
 
-  def status(self, flag_x, flag_dos_format=True):
+  def status(self, flag_x, flag_dos_format=True, flag_indentation=False):
     status = []
     def sapp(s): status.append(s)
     if (self.is_executable and flag_x
@@ -88,10 +93,14 @@ class file_clutter(object):
       sapp("missing 'from __future__ import division'")
     elif self.n_from_future_import_division > 1:
       sapp("more than one appearance of 'from __future__ import division'")
+    if (self.bad_indentation is not None) and (flag_indentation) :
+      n_tab, n_space = self.bad_indentation
+      sapp("non-standard indentation: %d space, %d tab" % (n_space, n_tab))
     return ", ".join(status)
 
-  def show(self, flag_x, flag_dos_format=True, append=None, verbose=False):
-    status = self.status(flag_x, flag_dos_format)
+  def show(self, flag_x, flag_dos_format=True, append=None, verbose=False,
+      flag_indentation=False):
+    status = self.status(flag_x, flag_dos_format, flag_indentation)
     if (len(status) != 0):
       msg = "%s: %s" % (self.path, status)
       if (append is not None):
@@ -112,10 +121,11 @@ def is_text_file(file_name):
     if (name.endswith(extension)): return True
   return False
 
-def gather(paths, find_unused_imports=False):
+def gather(paths, find_unused_imports=False, find_bad_indentation=False):
   clutter = []
   def capp():
-    clutter.append(file_clutter(path, find_unused_imports))
+    clutter.append(file_clutter(path, find_unused_imports,
+      find_bad_indentation=find_bad_indentation))
   for path in paths:
     if (not os.path.exists(path)):
       print >> sys.stderr, "No such file or directory:", path
@@ -128,3 +138,28 @@ def gather(paths, find_unused_imports=False):
             path = os.path.normpath(os.path.join(root, f))
             capp()
   return clutter
+
+def detect_indentation_problems (file_name) :
+  try :
+    import indent_finder
+  except ImportError :
+    return None
+  fi = indent_finder.IndentFinder()
+  fi.clear()
+  fi.parse_file(file_name)
+  result = fi.results()
+  if (result is fi.default_result) :
+    return None
+  itype, ival = result
+  n_tab = n_space = 0
+  if (itype != "mixed") :
+    if (itype == "space") :
+      n_space = ival
+    else :
+      n_tab = ival
+    if (n_tab == 0) and (n_space == 2) : # this is our "standard"
+      return None
+    return (n_tab, n_space)
+  else :
+    return ival
+  return None
