@@ -288,7 +288,7 @@ def build_submission_for(commands):
       )
 
   except OSError, e:
-    raise RuntimeError, "Error: '%s': %s" % " ".join( commands, e )
+    raise RuntimeError, "Error: '%s': %s" % ( " ".join( commands ), e )
 
   return process
 
