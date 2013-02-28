@@ -39,6 +39,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
                negate_hits            = False,
                trial_id               = None,
                db_logging             = False,
+               sql_buffer_size        = 1,
                **kwds):
     """The mod_hitfind class constructor stores the parameters passed
     from the pyana configuration file in instance variables.  All
@@ -68,7 +69,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     self.m_negate_hits          = cspad_tbx.getOptBool(negate_hits)
     self.m_trial_id             = cspad_tbx.getOptInteger(trial_id)
     self.m_db_logging           = cspad_tbx.getOptBool(db_logging)
-
+    self.m_sql_buffer_size      = cspad_tbx.getOptInteger(sql_buffer_size)
     # A ROI should not contain any ASIC boundaries, as these are
     # noisy.  Hence circular ROI:s around the beam centre are probably
     # not such a grand idea.
@@ -84,6 +85,9 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       if (self.m_roi is not None):
         raise RuntimeError("""Sorry, either specify region of interest
           (roi) or distl_min_peaks, but not both.""")
+
+    self.buffered_sql_entries = []
+
 
 
   def beginjob(self, evt, env):
@@ -204,12 +208,8 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
         evt_time = sec + ms/1000
         self.stats_logger.info("BRAGG %.3f %d" %(evt_time, number_of_accepted_peaks))
 
-        if(self.m_db_logging and self.dbopen()):
-          cursor = self.db.cursor()
-          cmd = "INSERT INTO cxi_braggs_front (trial,run,eventstamp,data) VALUES (%s,%s,%s,%s);"
-          cursor.execute(cmd, (self.trial, evt.run(), "%.3f"%evt_time, number_of_accepted_peaks))
-          self.db.commit()
-
+        if self.m_db_logging and self.dbopen():
+          self.queue_entry((self.trial, evt.run(), "%.3f"%evt_time, number_of_accepted_peaks))
 
         if number_of_accepted_peaks < self.m_distl_min_peaks:
           self.logger.info("Subprocess %02d: Spotfinder NO  HIT image #%05d @ %s; %d spots > %d" %(
@@ -320,8 +320,33 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     else:
       self.logger.info("Processed %d shots" % self.nshots)
 
+    self.commit_entries()
     if self.dbopen():
       self.db.close()
 
   def dbopen(self):
     return hasattr(self,"db") and self.db is not None and self.db.open
+
+  def queue_entry(self, entry):
+    if self.dbopen():
+      if self.m_sql_buffer_size > 1:
+        self.buffered_sql_entries.append(entry)
+        if len(self.buffered_sql_entries) >= self.m_sql_buffer_size:
+          self.commit_entries()
+      else:
+        cursor = self.db.cursor()
+        cmd = "INSERT INTO cxi_braggs_front (trial,run,eventstamp,data) VALUES (%s,%s,%s,%s);"
+        cursor.execute(cmd, entry)
+        self.db.commit()
+
+  def commit_entries(self):
+    if self.m_sql_buffer_size > 1 and self.dbopen() and len(self.buffered_sql_entries) > 0:
+      cursor = self.db.cursor()
+      cmd = "INSERT INTO cxi_braggs_front (trial,run,eventstamp,data) VALUES "
+      comma = ""
+      for entry in self.buffered_sql_entries:
+        cmd += comma + "(%s,%s,%s,%s)"%entry
+        comma = ", "
+      cursor.execute(cmd)
+      self.db.commit()
+      self.buffered_sql_entries = []
