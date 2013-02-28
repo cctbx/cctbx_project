@@ -120,7 +120,7 @@ fi
 # Take ${exp} from the environment unless overridden on the command
 # line, and find its absolute path.
 test -n "${EXP}" -a -z "${exp}" && exp="${EXP}"
-exp=`find "/global/project/projectdirs/lcls/CXI" -maxdepth 2 -noleaf \
+exp=`find "/global/project/projectdirs/lcls/CXI" -maxdepth 1 -noleaf \
     -name "${exp}"`
 if ! test -d "${exp}" 2> /dev/null; then
     echo "Could not find experiment subdirectory for ${exp}" > /dev/stderr
