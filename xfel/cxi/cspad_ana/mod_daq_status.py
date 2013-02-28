@@ -90,7 +90,7 @@ class mod_daq_status (object) :
       s = t.seconds() + (t.nanoseconds() / 1000000000)
     else :
       self.nfail += 1
-      self.logger.warn("event(): no timestamp, shot skipped")
+      self.logger.warning("event(): no timestamp, shot skipped")
       evt.put(True, "skip_event")
       return
     if (not isinstance(s, float)) :
@@ -99,21 +99,21 @@ class mod_daq_status (object) :
     det_z = cspad_tbx.env_detz(env)
     if (det_z is None):
       self.nfail += 1
-      self.logger.warn("event(): no distance, shot skipped")
+      self.logger.warning("event(): no distance, shot skipped")
       evt.put(True, "skip_event")
       return
 
     laser01 = cspad_tbx.env_laser_status(env, 1)
     if laser01 is None:
       self.nfail += 1
-      self.logger.warn("event(): no status for laser 1, shot skipped")
+      self.logger.warning("event(): no status for laser 1, shot skipped")
       evt.put(True, 'skip_event')
       return
 
     laser04 = cspad_tbx.env_laser_status(env, 4)
     if laser04 is None:
       self.nfail += 1
-      self.logger.warn("event(): no status for laser 4, shot skipped")
+      self.logger.warning("event(): no status for laser 4, shot skipped")
       evt.put(True, 'skip_event')
       return
 
@@ -126,14 +126,14 @@ class mod_daq_status (object) :
         laser04_power = pv.values[0]
     if laser04_power is None:
       self.nfail += 1
-      self.logger.warn("event(): no power for laser 4, shot skipped")
+      self.logger.warning("event(): no power for laser 4, shot skipped")
       evt.put(True, 'skip_event')
       return
 
     si_foil = cspad_tbx.env_sifoil(env)
     if (si_foil is None):
       self.nfail += 1
-      self.logger.warn("event(): no Si-foil thickness, shot skipped")
+      self.logger.warning("event(): no Si-foil thickness, shot skipped")
       evt.put(True, "skip_event")
       return
     if (not (isinstance(si_foil, float) or isinstance(si_foil, int))) :
@@ -142,7 +142,7 @@ class mod_daq_status (object) :
     wavelength = cspad_tbx.evt_wavelength(evt)
     if (wavelength is None):
       self.nfail += 1
-      self.logger.warn("event(): no wavelength, shot skipped")
+      self.logger.warning("event(): no wavelength, shot skipped")
       evt.put(True, "skip_event")
       return
 

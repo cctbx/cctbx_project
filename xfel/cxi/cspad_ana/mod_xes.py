@@ -124,5 +124,5 @@ class mod_xes(average_tbx.average_mixin):
       self.logger.info(
         "%d images processed" % self.nmemb)
     else:
-      self.logger.warn(
+      self.logger.warning(
         "%d images processed, %d failed" % (self.nmemb, self.nfail))

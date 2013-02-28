@@ -161,7 +161,7 @@ class average_mixin(common_mode.common_mode_correction):
       skew_threshold = 0.35
       if stats.skew < skew_threshold:
         self.nfail += 1
-        self.logger.warn("event(): skew < %f, shot skipped" %skew_threshold)
+        self.logger.warning("event(): skew < %f, shot skipped" % skew_threshold)
         evt.put(True, "skip_event")
         return
       #self.cspad_img *= stats.skew

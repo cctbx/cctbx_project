@@ -79,7 +79,7 @@ class mod_illumination_filter(object):
     # Get time as a (seconds, milliseconds) tuple.
     t = cspad_tbx.evt_time(evt)
     if (t is None):
-      self.logger.warn("event(): no timestamp, shot skipped")
+      self.logger.warning("event(): no timestamp, shot skipped")
       evt.put(True, "skip_event")
       return
 

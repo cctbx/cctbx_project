@@ -85,11 +85,11 @@ class mod_event_info(object):
     distance = cspad_tbx.env_distance(env, self._detz_offset)
     if (distance is None):
       self.nfail += 1
-      self.logger.warn("event(): no distance, shot skipped")
+      self.logger.warning("event(): no distance, shot skipped")
       evt.put(True, "skip_event")
       return
     if (self.distance is not None and self.distance != distance):
-      self.logger.warn("event(): distance changed mid-run: % 8.4f -> % 8.4f" %
+      self.logger.warning("event(): distance changed mid-run: % 8.4f -> % 8.4f" %
         (self.distance, distance))
     self.distance = distance
     if self.verbose: self.logger.info("Distance: %.4f" %distance)
@@ -97,11 +97,11 @@ class mod_event_info(object):
     sifoil = cspad_tbx.env_sifoil(env)
     if (sifoil is None):
       self.nfail += 1
-      self.logger.warn("event(): no Si-foil thickness, shot skipped")
+      self.logger.warning("event(): no Si-foil thickness, shot skipped")
       evt.put(True, "skip_event")
       return
     if (self.sifoil is not None and self.sifoil != sifoil):
-      self.logger.warn("event(): Si-foil changed mid-run: % 8i -> % 8d" %
+      self.logger.warning("event(): Si-foil changed mid-run: % 8i -> % 8d" %
         (self.sifoil, sifoil))
     self.sifoil = sifoil
     if self.verbose: self.logger.info("Si-foil thickness: %i" %sifoil)
@@ -110,7 +110,7 @@ class mod_event_info(object):
     self.evt_time = cspad_tbx.evt_time(evt) # tuple of seconds, milliseconds
     if (self.timestamp is None):
       self.nfail += 1
-      self.logger.warn("event(): no timestamp, shot skipped")
+      self.logger.warning("event(): no timestamp, shot skipped")
       evt.put(True, "skip_event")
       return
     if self.verbose: self.logger.info(self.timestamp)
@@ -118,7 +118,7 @@ class mod_event_info(object):
     self.wavelength = cspad_tbx.evt_wavelength(evt)
     if (self.wavelength is None):
       self.nfail += 1
-      self.logger.warn("event(): no wavelength, shot skipped")
+      self.logger.warning("event(): no wavelength, shot skipped")
       evt.put(True, "skip_event")
       return
     if self.verbose: self.logger.info("Wavelength: %.4f" %self.wavelength)
@@ -126,7 +126,7 @@ class mod_event_info(object):
     self.pulse_length = cspad_tbx.evt_pulse_length(evt)
     if (self.pulse_length is None):
       self.nfail += 1
-      self.logger.warn("event(): no pulse length, shot skipped")
+      self.logger.warning("event(): no pulse length, shot skipped")
       evt.put(True, "skip_event")
       return
     if self.verbose: self.logger.info("Pulse length: %s" %self.pulse_length)
@@ -134,7 +134,7 @@ class mod_event_info(object):
     self.beam_charge = cspad_tbx.evt_beam_charge(evt)
     if (self.beam_charge is None):
       self.nfail += 1
-      self.logger.warn("event(): no beam charge, shot skipped")
+      self.logger.warning("event(): no beam charge, shot skipped")
       evt.put(True, "skip_event")
       return
     if self.verbose: self.logger.info("Beam charge: %s" %self.beam_charge)
