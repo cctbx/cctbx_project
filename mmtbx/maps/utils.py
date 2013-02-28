@@ -214,6 +214,7 @@ class generate_water_omit_map (object) :
       skip_if_no_waters=False,
       exclude_free_r_reflections=False,
       fill_missing_f_obs=False,
+      write_f_model=False,
       log=None) :
     if (log is None) :
       log = null_out()
@@ -223,7 +224,7 @@ class generate_water_omit_map (object) :
     self.crystal_symmetry = xrs.crystal_symmetry()
     assert (water_sel.size() == xrs.scatterers().size())
     self.n_waters = water_sel.count(True)
-    self.two_fofc_map = self.fofc_map = self.anom_map = None
+    self.two_fofc_map = self.fofc_map = self.anom_map = self.fmodel_map = None
     if (self.n_waters == 0) and (skip_if_no_waters) :
       print >> log, "No waters in model, skipping omit map calculation"
       self.pdb_hierarchy_omit = pdb_hierarchy
@@ -253,6 +254,8 @@ class generate_water_omit_map (object) :
           map_type="anom",
           exclude_free_r_reflections=exclude_free_r_reflections,
           fill_missing=fill_missing_f_obs)
+      if (write_f_model) :
+        self.fmodel_map = fmodel.f_model().average_bijvoet_mates()
 
   def write_map_coeffs (self, file_name) :
     assert (self.two_fofc_map is not None)
@@ -260,6 +263,7 @@ class generate_water_omit_map (object) :
       fwt_coeffs=self.two_fofc_map,
       delfwt_coeffs=self.fofc_map,
       anom_coeffs=self.anom_map,
+      fmodel_coeffs=self.fmodel_map,
       file_name=file_name)
 
   def write_pdb_file (self, file_name) :
