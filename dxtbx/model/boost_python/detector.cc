@@ -146,6 +146,20 @@ namespace dxtbx { namespace model { namespace boost_python {
         &Detector::is_coord_valid)
       .def("is_coord_valid_mm",
         &Detector::is_coord_valid_mm)
+      .def("get_ray_intersection",
+        &Detector::get_ray_intersection)
+      .def("get_distance",
+        &Detector::get_distance)
+      .def("get_beam_centre",
+        &Detector::get_beam_centre)
+      .def("get_beam_centre_lab",
+        &Detector::get_beam_centre_lab)
+      .def("get_resolution_at_pixel",
+        &Detector::get_resolution_at_pixel)
+      .def("get_max_resolution_at_corners",
+        &Detector::get_max_resolution_at_corners)
+      .def("get_max_resolution_elipse",
+        &Detector::get_max_resolution_elipse)
       .def("millimeter_to_pixel",
         &Detector::millimeter_to_pixel<vec2<double> >)
       .def("pixel_to_millimeter",
