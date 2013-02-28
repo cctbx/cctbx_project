@@ -15,7 +15,6 @@ from xfel.cxi.cspad_ana.hitfinder_tbx import distl_hitfinder
 from xfel.cxi.cspad_ana import common_mode
 from xfel.cxi.cspad_ana import cspad_tbx
 import getpass
-from cxi_xdr_xes.cftbx.cspad_ana import db
 
 # import matplotlib
 # matplotlib.use("PDF")
@@ -103,6 +102,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     self.set_up_hitfinder()
 
     if self.m_db_logging:
+      from cxi_xdr_xes.cftbx.cspad_ana import db
       self.logger.info("Connecting to db...")
       self.db = db.dbconnect()
       assert self.dbopen()
