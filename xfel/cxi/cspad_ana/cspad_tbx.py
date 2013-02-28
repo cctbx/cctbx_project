@@ -173,7 +173,8 @@ def cbcaa(config, sections):
     # XXX Make up section mask for the emission detector.  Needs to be
     # checked!
     import _pdsdata
-    if len(sections) == 1 and type(config) == _pdsdata.cspad2x2.ConfigV1:
+    if len(sections) == 1 and type(config) in (
+      _pdsdata.cspad2x2.ConfigV1, _pdsdata.cspad2x2.ConfigV2):
       s_mask = config.roiMask()
     else:
       s_mask = config.roiMask(q)
