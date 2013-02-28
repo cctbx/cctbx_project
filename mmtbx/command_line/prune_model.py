@@ -330,13 +330,13 @@ def run_post_refinement (
   mtz_in.assert_file_type("hkl")
   f_map_coeffs = diff_map_coeffs = model_map_coeffs = None
   for array in mtz_in.file_server.miller_arrays :
-    labels = array.info().labels[0]
+    labels = array.info().labels
     if (labels[0] == f_map_label) :
       f_map_coeffs = array
     elif (labels[0] == diff_map_label) :
       diff_map_coeffs = array
-    elif (labels[0] == model_map_label) :
-      model_map_coeffs = array
+    elif (labels[0] in [model_map_label, model_map_label + "(+)"]) :
+      model_map_coeffs = array.average_bijvoet_mates()
   if (f_map_coeffs is None) :
     raise RuntimeError("2mFo-DFc map not found (expected labels %s)." %
       f_map_label)
