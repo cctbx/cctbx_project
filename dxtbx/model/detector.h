@@ -21,6 +21,8 @@
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/tiny_types.h>
 #include <scitbx/array_family/shared.h>
+#include <scitbx/array_family/ref_reductions.h>
+#include <dxtbx/model/beam.h>
 #include <dxtbx/error.h>
 
 namespace dxtbx { namespace model {
@@ -28,8 +30,9 @@ namespace dxtbx { namespace model {
   using scitbx::vec2;
   using scitbx::vec3;
   using scitbx::mat3;
-  using scitbx::af::double6;
   using scitbx::af::int4;
+  using scitbx::af::double4;
+  using scitbx::af::double6;
 
   // int4 array type
   typedef scitbx::af::flex<int4>::type flex_int4;
@@ -268,6 +271,13 @@ namespace dxtbx { namespace model {
       return origin_ + fast_axis_ * xy_mm[0] + slow_axis_ * xy_mm[1];
     }
 
+    /** Get the coordinate of a ray intersecting with the detector */
+    vec2<double> get_ray_intersection(vec3<double> s1) const {
+      vec3 <double> v = get_D_matrix() * s1;
+      DXTBX_ASSERT(v[2] > 0);
+      return vec2<double>(v[0] / v[2], v[1] / v[2]);
+    }
+
     /** Get the image size in millimeters */
     vec2<double> get_image_size_mm() const {
       vec2<double> xy = pixel_to_millimeter(image_size_);
@@ -290,6 +300,105 @@ namespace dxtbx { namespace model {
       vec2<double> size = get_image_size_mm();
       return (0 <= xy[0] && xy[0] < size[0])
           && (0 <= xy[1] && xy[1] < size[1]);
+    }
+
+    /** Get the distance from the sample to the detector plane */
+    double get_distance() const {
+      return origin_ * normal_;
+    }
+
+    /** Get the beam centre in mm in the detector basis */
+    vec2<double> get_beam_centre(const Beam &beam) const {
+      return get_ray_intersection(beam.get_direction());
+    }
+
+    /** Get the beam centre in lab coordinates */
+    vec3<double> get_beam_centre_lab(const Beam &beam) const {
+      vec3<double> s0 = beam.get_direction();
+      double s0dotd3 = (s0 * normal_);
+      DXTBX_ASSERT(s0dotd3 > 0);
+      return s0 * get_distance() / s0dotd3;
+    }
+
+    /**
+     * Get the resolution at a given pixel.
+     * @param beam The beam parameters
+     * @param xy The pixel coordinate
+     * @returns The resolution at that point.
+     */
+    double get_resolution_at_pixel(const Beam &beam, vec2<double> xy) {
+
+      // Get lab coordinates of detector corners
+      vec3<double> xyz = get_pixel_lab_coord(xy);
+
+      // Calculate the point at which the beam intersects with the detector
+      vec3<double> beam_centre = get_beam_centre_lab(beam);
+
+      // Calculate the angle to the point
+      double sintheta = sin(0.5 * beam_centre.angle(xyz));
+      DXTBX_ASSERT(sintheta != 0);
+
+      // Return d = lambda / (2sin(theta))
+      return beam.get_wavelength() / (2.0 * sintheta);
+    }
+
+    /**
+     * Get the maximum resolution of the detector (i.e. look at each corner
+     * and find the maximum resolution.)
+     * @param beam The beam parameters
+     * @returns The maximum resolution at the detector corners.
+     */
+    double get_max_resolution_at_corners(const Beam &beam) {
+
+      // Get lab coordinates of detector corners
+      int fast = image_size_[0], slow = image_size_[1];
+      vec3<double> xyz00 = origin_;
+      vec3<double> xyz01 = get_pixel_lab_coord(vec2<int>(0, slow));
+      vec3<double> xyz10 = get_pixel_lab_coord(vec2<int>(fast, 0));
+      vec3<double> xyz11 = get_pixel_lab_coord(vec2<int>(fast, slow));
+
+      // Calculate the point at which the beam intersects with the detector
+      vec3<double> beam_centre = get_beam_centre_lab(beam);
+
+      // Calculate half the maximum angle to the corners
+      double sintheta = sin(0.5 * scitbx::af::max(double4(
+        beam_centre.angle(xyz00), beam_centre.angle(xyz01),
+        beam_centre.angle(xyz10), beam_centre.angle(xyz11))));
+      DXTBX_ASSERT(sintheta != 0);
+
+      // Return d = lambda / (2sin(theta))
+      return beam.get_wavelength() / (2.0 * sintheta);
+    }
+
+    /**
+     * Get the maximum resolution of a full circle on the detector. Get the
+     * beam centre in pixels. Then find the coordinates on the edges making
+     * a cross-hair with the beam centre. Calculate the resolution at these
+     * corners and choose the minimum angle.
+     * @param beam The beam parameters
+     * @returns The maximum resolution at the detector corners.
+     */
+    double get_max_resolution_elipse(const Beam &beam) {
+
+      // Get beam centre in pixels and get the coordinates with the centre
+      // as a crosshair
+      int fast = image_size_[0], slow = image_size_[1];
+      vec2<double> c = millimeter_to_pixel(get_beam_centre(beam));
+      vec3<double> xyz0c = get_pixel_lab_coord(vec2<int>(0, c[1]));
+      vec3<double> xyz1c = get_pixel_lab_coord(vec2<int>(fast, c[1]));
+      vec3<double> xyzc0 = get_pixel_lab_coord(vec2<int>(c[0], 0));
+      vec3<double> xyzc1 = get_pixel_lab_coord(vec2<int>(c[0], slow));
+
+      // Calculate the point at which the beam intersects with the detector
+      vec3<double> beam_centre = get_beam_centre_lab(beam);
+
+      // Calculate half the minimum angle to the sides around the beam centre
+      double sintheta = sin(0.5 * scitbx::af::min(double4(
+        beam_centre.angle(xyz0c), beam_centre.angle(xyzc0),
+        beam_centre.angle(xyz1c), beam_centre.angle(xyzc1))));
+
+      // Return d = lambda / (2sin(theta))
+      return beam.get_wavelength() / (2.0 * sintheta);
     }
 
     /** Map coordinates in mm to pixels */
