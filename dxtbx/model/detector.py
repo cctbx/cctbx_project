@@ -19,7 +19,6 @@ from dxtbx_model_ext import Detector
 
 from detector_helpers import detector_helper_sensors
 from detector_helpers import find_undefined_value
-from detector_helpers import compute_frame_rotation
 
 
 class detector_factory:
