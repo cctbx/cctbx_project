@@ -311,9 +311,9 @@ def run_post_refinement (
     map_coeffs_file,
     output_file=None,
     params=None,
-    f_map_label="2FOFCWT,PH2FOFCWT",
-    diff_map_label="FOFCWT,PHFOFCWT",
-    model_map_label="F-model,PHIF-model",
+    f_map_label="2FOFCWT",
+    diff_map_label="FOFCWT",
+    model_map_label="F-model",
     write_model=True,
     out=None) :
   if (out is None) : out = sys.stdout
@@ -330,12 +330,12 @@ def run_post_refinement (
   mtz_in.assert_file_type("hkl")
   f_map_coeffs = diff_map_coeffs = model_map_coeffs = None
   for array in mtz_in.file_server.miller_arrays :
-    labels = array.info().label_string()
-    if (labels == f_map_label) :
+    labels = array.info().labels[0]
+    if (labels[0] == f_map_label) :
       f_map_coeffs = array
-    elif (labels == diff_map_label) :
+    elif (labels[0] == diff_map_label) :
       diff_map_coeffs = array
-    elif (labels == model_map_label) :
+    elif (labels[0] == model_map_label) :
       model_map_coeffs = array
   if (f_map_coeffs is None) :
     raise RuntimeError("2mFo-DFc map not found (expected labels %s)." %
