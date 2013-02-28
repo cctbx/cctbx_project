@@ -117,5 +117,5 @@ class pixel_histograms(common_mode.common_mode_correction):
       self.logger.info(
         "%d images processed" % self.nmemb)
     else:
-      self.logger.warn(
+      self.logger.warning(
         "%d images processed, %d failed" % (self.nmemb, self.nfail))

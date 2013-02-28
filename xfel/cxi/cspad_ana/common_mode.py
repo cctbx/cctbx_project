@@ -281,7 +281,7 @@ class common_mode_correction(mod_event_info):
       self.address, self.config, evt, env, self.sections)
     if (self.cspad_img is None):
       self.nfail += 1
-      self.logger.warn("event(): no image, shot skipped")
+      self.logger.warning("event(): no image, shot skipped")
       evt.put(True, "skip_event")
       return
     self.cspad_img = flex.double(self.cspad_img.astype(numpy.float64))

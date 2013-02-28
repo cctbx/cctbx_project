@@ -168,7 +168,7 @@ class mod_filter(object):
     if (self.timestamps_list is not None):
       t = cspad_tbx.evt_timestamp(evt)
       if (t is None):
-        self.logger.warn("event(): no timestamp, shot skipped")
+        self.logger.warning("event(): no timestamp, shot skipped")
         evt.put(True, "skip_event")
         return
       elif (self.negate and t in self.timestamps_list):
@@ -181,7 +181,7 @@ class mod_filter(object):
     else:
       t = cspad_tbx.evt_time(evt)
       if (t is None):
-        self.logger.warn("event(): no timestamp, shot skipped")
+        self.logger.warning("event(): no timestamp, shot skipped")
         evt.put(True, "skip_event")
         return
       if (self.negate and self._tir(t, self.timestamps_interval)):

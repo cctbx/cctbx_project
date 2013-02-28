@@ -305,7 +305,7 @@ class mod_view(common_mode.common_mode_correction):
       self.ncollate = self.nupdate
     if (self.ncollate > self.nupdate):
       self.ncollate = self.nupdate
-      self.logger.warn("n_collate capped to %d" % self.nupdate)
+      self.logger.warning("n_collate capped to %d" % self.nupdate)
 
     linger = True # XXX Make configurable
     wait = cspad_tbx.getOptFloat(wait)
