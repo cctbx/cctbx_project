@@ -18,7 +18,6 @@ from scitbx import matrix
 from dxtbx_model_ext import Detector
 
 from detector_helpers import detector_helper_sensors
-from detector_helpers import read_xds_xparm
 from detector_helpers import find_undefined_value
 from detector_helpers import compute_frame_rotation
 
@@ -143,71 +142,6 @@ class detector_factory:
         return detector_factory.make_detector(
                 detector_factory.sensor(sensor),
                 fast, slow, origin, pixel, size, trusted_range)
-
-    @staticmethod
-    def XDS(xds_xparm_file):
-        '''Initialize a detector model from an XDS XPARM file, containing
-        a refined description from either indexing or postrefinement of a
-        single crystal diffraction data set. This method is largely for
-        testing and feedback.'''
-
-        xparm_data = read_xds_xparm(xds_xparm_file)
-
-        # fetch out the interesting things that we need
-
-        distance = xparm_data['distance']
-        axis = matrix.col(xparm_data['axis'])
-        beam = matrix.col(xparm_data['beam'])
-        detector_normal = matrix.col(xparm_data['normal'])
-        image_size = (xparm_data['nx'], xparm_data['ny'])
-        pixel_size = (xparm_data['px'], xparm_data['py'])
-        detector_centre = (xparm_data['px'] * xparm_data['ox'],
-                           xparm_data['py'] * xparm_data['oy'])
-        detector_fast = matrix.col(xparm_data['x'])
-        detector_slow = matrix.col(xparm_data['y'])
-
-        # compute the detector origin
-
-        origin_xds = - distance * detector_normal
-        origin = origin_xds - (detector_centre[0] * detector_fast +
-                               detector_centre[1] * detector_slow)
-
-        # then convert directions to unit vectors
-
-        axis = axis / math.sqrt(axis.dot())
-        beam = beam / math.sqrt(beam.dot())
-
-        # want to now calculate a rotation which will align the axis with
-        # the (1, 0, 0) vector, and the component of the beam vector
-        # perpendicular to this with (0, 0, 1) - for convenience then start
-        # by defining our current reference frame
-
-        x = axis
-        z = beam - (beam.dot(axis) * axis)
-        z = z / math.sqrt(z.dot())
-        y = z.cross(x)
-
-        # and the target reference frame
-
-        _x = matrix.col([1, 0, 0])
-        _y = matrix.col([0, 1, 0])
-        _z = matrix.col([0, 0, 1])
-
-        # now compute the rotations which need to be applied to move from
-
-        _m = compute_frame_rotation((x, y, z), (_x, _y, _z))
-
-        # rotate all of the parameters from the XDS to CBF coordinate frame
-
-        c_origin = _m * origin
-        c_axis = _m * axis
-        c_beam = _m * beam
-        c_fast = _m * detector_fast
-        c_slow = _m * detector_slow
-
-        return detector_factory.make_detector(
-                  detector_factory.sensor('unknown'),
-                  c_fast, c_slow, c_origin, pixel_size, image_size, (0, 0))
 
     @staticmethod
     def imgCIF(cif_file, sensor):
