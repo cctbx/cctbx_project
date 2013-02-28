@@ -521,7 +521,8 @@ class write_ccp4_maps_wrapper (object) :
         n_real=fft_map.n_real(),
         file_name=file_name)
 
-def write_map_coeffs (fwt_coeffs, delfwt_coeffs, file_name, anom_coeffs=None) :
+def write_map_coeffs (fwt_coeffs, delfwt_coeffs, file_name, anom_coeffs=None,
+    fmodel_coeffs=None) :
   """
   Convenience function for writing out 2mFo-DFc and mFo-DFc (and, optionally,
   anomalous difference) map coefficients with predefined labels, which will
@@ -540,6 +541,11 @@ def write_map_coeffs (fwt_coeffs, delfwt_coeffs, file_name, anom_coeffs=None) :
     mtz_dataset.add_miller_array(
       miller_array=anom_coeffs,
       column_root_label="ANOM",
+      label_decorator=decorator)
+  if (fmodel_coeffs is not None) :
+    mtz_dataset.add_miller_array(
+      miller_array=fmodel_coeffs,
+      column_root_label="F-model",
       label_decorator=decorator)
   mtz_object = mtz_dataset.mtz_object()
   mtz_object.write(file_name=file_name)
