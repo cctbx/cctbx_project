@@ -67,6 +67,7 @@ tst_list = (
   "$D/tls/tst_tls_refinement_fft.py",
   "$D/examples/f_model_manager.py",
   "$D/bulk_solvent/tst_bulk_solvent_and_scaling.py",
+  "$D/bulk_solvent/tst_fit_kexpb_to_ktotal.py",
   "$D/bulk_solvent/tst_scaler.py",
   "$D/alignment.py",
   "$D/invariant_domain.py",
