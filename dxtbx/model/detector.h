@@ -224,18 +224,6 @@ namespace dxtbx { namespace model {
       trusted_range_ = trusted_range;
     }
 
-    /** Set the matrix of the detector coordinate system */
-    void set_d_matrix(mat3 <double> d) {
-      fast_axis_ = d.get_column(0);
-      slow_axis_ = d.get_column(1);
-      origin_ = d.get_column(2);
-    }
-
-    /** Set the inverse d matrix */
-    void set_D_matrix(mat3 <double> D) {
-      set_d_matrix(D.inverse());
-    }
-
     /** Set the mask */
     void set_mask(const shared_int4 &mask) {
       mask_ = mask;

@@ -100,40 +100,44 @@ namespace dxtbx { namespace model { namespace boost_python {
           arg("pixel_size"),
           arg("image_size"),
            arg("trusted_range"))))
-      .add_property("type",
-        &Detector::get_type,
+      .def("get_type",
+        &Detector::get_type)
+      .def("set_type",
         &Detector::set_type)    
-      .add_property("fast_axis",
-        &Detector::get_fast_axis,
+      .def("get_fast_axis",
+        &Detector::get_fast_axis)
+      .def("get_slow_axis",
         &Detector::set_fast_axis)
-      .add_property("slow_axis",
-        &Detector::get_slow_axis,
+      .def("get_slow_axis",
+        &Detector::get_slow_axis)
+      .def("set_slow_axis",
         &Detector::set_slow_axis)
-      .add_property("normal",
+      .def("get_normal",
         &Detector::get_normal)
-      .add_property("origin",
-        &Detector::get_origin,
+      .def("get_origin",
+        &Detector::get_origin)
+      .def("set_origin",
         &Detector::set_origin)
-      .add_property("pixel_size",
-        &Detector::get_pixel_size,
+      .def("get_pixel_size",
+        &Detector::get_pixel_size)
+      .def("set_pixel_size",
         &Detector::set_pixel_size)
-      .add_property("image_size",
-        &Detector::get_image_size,
+      .def("get_image_size",
+        &Detector::get_image_size)
+      .def("set_image_size",
         &Detector::set_image_size)
-      .add_property("trusted_range",
-        &Detector::get_trusted_range,
+      .def("get_trusted_range",
+        &Detector::get_trusted_range)
+      .def("set_trusted_range",
         &Detector::set_trusted_range)
-      .add_property("mask",
-        &Detector::get_mask,
+      .def("get_mask",
+        &Detector::get_mask)
+      .def("set_mask",
         &Detector::set_mask)
       .def("get_d_matrix",
         &Detector::get_d_matrix)
       .def("get_D_matrix",
         &Detector::get_D_matrix)
-      .def("set_d_matrix",
-        &Detector::set_d_matrix)
-      .def("set_D_matrix",
-        &Detector::set_D_matrix)
       .def("add_mask",
         &Detector::add_mask)
       .def("get_pixel_lab_coord",
