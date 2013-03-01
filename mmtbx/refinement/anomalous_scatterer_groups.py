@@ -177,7 +177,9 @@ def refine_anomalous_substructure (
     n_cycles_max=None,
     map_sigma_min=3.0,
     refine=("f_prime","f_double_prime"),
-    reset_water_u_iso=False,
+    reset_water_u_iso=True,
+    use_all_anomalous=True,
+    verbose=True,
     out=sys.stdout) :
   """
   Crude mimic of Phaser's substructure completion, with two essential
@@ -187,6 +189,17 @@ def refine_anomalous_substructure (
   f-prime and f-double-prime.  The refined f-prime provides us with an
   orthogonal estimate of the number of electrons missing from an incorrectly
   labeled scatterer.
+
+  :param wavelength: X-ray wavelenth in Angstroms
+  :param exclude_waters: Don't refine anomalous scattering for water oxygens
+  :param exclude_non_water_light_elements: Don't refine anomalous scattering
+    for light atoms other than water (CHNO).
+  :param n_cycles_max: Maximum number of refinement cycles
+  :param map_sigma_min: Sigma cutoff for identify anomalous scatterers
+  :param reset_water_u_iso: Reset B-factors for water atoms prior to f'
+    refinement
+  :param use_all_anomalous: include any scatterers which are already modeled
+    as anomalous in the refinement
   """
   from cctbx import xray
   assert (fmodel.f_obs().anomalous_flag())
@@ -226,12 +239,14 @@ def refine_anomalous_substructure (
       scatterer = scatterers[i_seq]
       site_frac = sites_frac[i_seq]
       anom_map_value = anom_map.tricubic_interpolation(site_frac)
-      if (anom_map_value >= map_sigma_min) or (scatterer.fdp != 0) :
-        if (n_new_groups == 0) :
-          print >> out, ""
-          print >> out, "  new anomalous scatterers:"
-        print >> out, "    %-34s  map height: %6.2f sigma" % (atom.id_str(),
-          anom_map_value)
+      if ((anom_map_value >= map_sigma_min) or
+          ((scatterer.fdp != 0) and use_all_anomalous)) :
+        if (verbose) :
+          if (n_new_groups == 0) :
+            print >> out, ""
+            print >> out, "  new anomalous scatterers:"
+          print >> out, "    %-34s  map height: %6.2f sigma" % (atom.id_str(),
+            anom_map_value)
         anomalous_iselection.append(i_seq)
         selection_string = get_single_atom_selection_string(atom)
         group = xray.anomalous_scatterer_group(
@@ -250,24 +265,33 @@ def refine_anomalous_substructure (
       print >> out, ""
       print >> out, "No new groups - anomalous scatterer search terminated."
       break
-    print >> out, ""
-    print >> out, "Anomalous refinement:"
-    fmodel.info().show_targets(text="before minimization", out=out)
-    print >> out, ""
+    elif (not verbose) :
+      print >> out, "  %d new groups" % n_new_groups
+    for i_seq in anomalous_iselection :
+      sc = scatterers[i_seq]
+      sc.fp = 0
+      sc.fdp = 0
+    if (verbose) :
+      print >> out, ""
+      print >> out, "Anomalous refinement:"
+      fmodel.info().show_targets(text="before minimization", out=out)
+      print >> out, ""
     u_iso = fmodel.xray_structure.extract_u_iso_or_u_equiv()
     u_iso.set_selected(reset_u_iso_selection, u_iso_mean)
     fmodel.xray_structure.set_u_iso(values=u_iso)
     fmodel.update_xray_structure(update_f_calc=True)
     minimizer(fmodel=fmodel, groups=anomalous_groups)
-    fmodel.info().show_targets(text="after minimization", out=out)
-    print >> out, ""
-    print >> out, "  Refined sites:"
-    for i_seq, group in zip(anomalous_iselection, anomalous_groups) :
-      print >> out, "    %-34s  f' = %6.3f  f'' = %6.3f" % (
-        pdb_atoms[i_seq].id_str(), group.f_prime, group.f_double_prime)
+    if (verbose) :
+      fmodel.info().show_targets(text="after minimization", out=out)
+      print >> out, ""
+      print >> out, "  Refined sites:"
+      for i_seq, group in zip(anomalous_iselection, anomalous_groups) :
+        print >> out, "    %-34s  f' = %6.3f  f'' = %6.3f" % (
+          pdb_atoms[i_seq].id_str(), group.f_prime, group.f_double_prime)
     t_end_cycle = time.time()
     print >> out, ""
-    print >> out, "  time for this cycle: %.1fs" % (t_end_cycle-t_start_cycle)
+    if (verbose) :
+      print >> out, "  time for this cycle: %.1fs" % (t_end_cycle-t_start_cycle)
   print >> out, "%d anomalous scatterer groups refined" % len(anomalous_groups)
   t_end = time.time()
   print >> out, "overall time: %.1fs" % (t_end - t_start)
