@@ -137,11 +137,13 @@ namespace dxtbx { namespace model { namespace boost_python {
                  mat3 <double> > ((
           arg("rotation_axis"), 
           arg("fixed_rotation_matrix"))))
-      .add_property("rotation_axis",  
-        &Goniometer::get_rotation_axis,
+      .def("get_rotation_axis",  
+        &Goniometer::get_rotation_axis)
+      .def("set_rotation_axis",
         &Goniometer::set_rotation_axis)
-      .add_property("fixed_rotation",  
-        &Goniometer::get_fixed_rotation,
+      .def("get_fixed_rotation",  
+        &Goniometer::get_fixed_rotation)
+      .def("set_fixed_rotation",
         &Goniometer::set_fixed_rotation)
       .def("__eq__", &Goniometer::operator==)
       .def("__ne__", &Goniometer::operator!=)
@@ -171,23 +173,23 @@ namespace dxtbx { namespace model { namespace boost_python {
           arg("direction"),
           arg("scan_axis"))))
       .def("__init__", make_constructor(&make_kappa_goniometer))
-      .add_property("alpha_angle",
+      .def("get_alpha_angle",
         &KappaGoniometer::get_alpha_angle)
-      .add_property("omega_angle",
+      .def("get_omega_angle",
         &KappaGoniometer::get_omega_angle)
-      .add_property("kappa_angle",
+      .def("get_kappa_angle",
         &KappaGoniometer::get_kappa_angle)
-      .add_property("phi_angle",
+      .def("get_phi_angle",
         &KappaGoniometer::get_phi_angle)
-      .add_property("direction",
+      .def("get_direction",
         &KappaGoniometer::get_direction)
-      .add_property("scan_axis",
+      .def("get_scan_axis",
         &KappaGoniometer::get_scan_axis)
-      .add_property("omega_axis",
+      .def("get_omega_axis",
         &KappaGoniometer::get_omega_axis)
-      .add_property("kappa_axis",
+      .def("get_kappa_axis",
         &KappaGoniometer::get_kappa_axis)
-      .add_property("phi_axis",
+      .def("get_phi_axis",
         &KappaGoniometer::get_phi_axis)
       .def("__str__", &kappa_goniometer_to_string);
   }
