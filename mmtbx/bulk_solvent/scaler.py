@@ -182,7 +182,6 @@ class run(object):
     if(r<r_start):
       if(verbose):
         print >> self.log, "    r(set_k_isotropic_exp): %6.4f"%r
-      self.k_exp_overall, self.b_exp_overall = rf.a, rf.b
       self.core = self.core.update(k_isotropic_exp = k)
       r_start = self.r_factor()
     else:
@@ -653,14 +652,15 @@ class run(object):
     r = scitbx.math.gaussian_fit_1d_analytical(x=flex.sqrt(self.ss), y=k_total)
     return r.a, r.b
 
-  def apply_back_trace_of_overall_exp_scale_matrix(self, xray_structure):
+  def apply_back_trace_of_overall_exp_scale_matrix(self, xray_structure=None):
     result = None
-    def accept(b1,b2,eps=0.5): return abs(b1-b2)<abs((abs(b1)+abs(b2))/2)*eps
-    if([self.k_exp_overall, xray_structure].count(None)==0):
-      assert self.b_exp_overall is not None
-      r = accept(b1=self.b_exp_overall,
-                 b2=self.overall_isotropic_kb_estimate()[1])
-      if(r):
+    k,b=self.overall_isotropic_kb_estimate()
+    k_total = self.core.k_isotropic * self.core.k_anisotropic * \
+      self.core.k_isotropic_exp
+    k,b,r = mmtbx.bulk_solvent.fit_k_exp_b_to_k_total(k_total, self.ss, k, b)
+    if(r<0.5): self.k_exp_overall,self.b_exp_overall = k,b
+    if(xray_structure is not None):
+      if([self.k_exp_overall,self.b_exp_overall].count(None)==0 and k != 0):
         bs1 = xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
         def split(b_trace, xray_structure):
           b_min = xray_structure.min_u_cart_eigenvalue()*adptbx.u_as_b(1.)
@@ -669,10 +669,10 @@ class run(object):
           xray_structure.shift_us(b_shift = b_adj)
           return b_adj, b_res
         b_adj,b_res=split(b_trace=self.b_exp_overall,xray_structure=xray_structure)
-        k_new = self.k_exp_overall*flex.exp(-self.ss*b_res)
+        k_new = self.k_exp_overall*flex.exp(-self.ss*b_adj)
         result = group_args(
           xray_structure= xray_structure,
-          k_isotropic = self.core.k_isotropic*k_new,
+          k_isotropic = self.core.k_isotropic/k_new*self.core.k_isotropic_exp,
           k_mask      = [m*flex.exp(-self.ss*b_adj) for m in self.core.k_masks],
           k_anisotropic = self.core.k_anisotropic)
         bs2 = xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)

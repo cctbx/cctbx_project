@@ -834,6 +834,75 @@ public:
   }
 };
 
+// Grid search based fit of k*exp(-B*ss) to k_total
+template <typename FloatType>
+ af::tiny<FloatType, 3>
+ fit_k_exp_b_to_k_total(
+   af::const_ref<FloatType> const& data,
+   af::const_ref<FloatType> const& ss,
+   FloatType k_start,
+   FloatType b_start)
+ {
+   MMTBX_ASSERT(data.size() == ss.size());
+   FloatType k_best = 0.0;
+   FloatType b_best = 0.0;
+   FloatType r_best = DBL_MAX;
+   FloatType k_min  = k_start-std::abs(k_start);
+   FloatType k_max  = k_start+std::abs(k_start);
+   FloatType b_min  = b_start-std::abs(b_start);
+   FloatType b_max  = b_start+std::abs(b_start);
+   if(k_min==k_max) {
+     k_min=-1;
+     k_max= 1;
+   }
+   if(b_min==b_max) {
+     b_min=-1;
+     b_max= 1;
+   }
+   int n_iterations = 5;
+   FloatType iteration_increment = 1;
+   for(std::size_t iter=1; iter <= n_iterations; iter++) {
+     int n_steps = 10+1;
+     if(iter > 1) n_steps = 5;
+     FloatType k_step = (k_max-k_min)/n_steps;
+     FloatType b_step = (b_max-b_min)/n_steps;
+     FloatType k = k_min;
+     for(std::size_t ik=1; ik <= n_steps; ik++) {
+       FloatType b = b_min;
+       for(std::size_t ib=1; ib <= n_steps; ib++) {
+         FloatType n = 0., d=0.;
+         for(std::size_t i=0; i < data.size(); i++) {
+           FloatType arg = -b*ss[i];
+           FloatType d_ = 0;
+           if(arg<700) d_ = k*std::exp(arg); // to avoid overflow problem
+           n += std::abs(data[i]-d_);
+           d += std::abs(data[i]);
+         }
+         FloatType r_ = 0.;
+         if(d!=0) r_ = n/d;
+         else return af::tiny<FloatType, 3> (0, 0, 0);
+         if(r_<r_best) {
+           r_best = r_;
+           k_best = k;
+           b_best = b;
+         }
+         b += b_step;
+       }
+       k += k_step;
+     }
+
+     k_start = k_best;
+     b_start = b_best;
+
+     iteration_increment -= 1./n_iterations;
+     k_min  = k_start-std::abs(k_start)*iteration_increment;
+     k_max  = k_start+std::abs(k_start)*iteration_increment;
+     b_min  = b_start-std::abs(b_start)*iteration_increment;
+     b_max  = b_start+std::abs(b_start)*iteration_increment;
+   }
+   return af::tiny<FloatType, 3> (k_best, b_best, r_best);
+ };
+
 template <typename FloatType, typename ComplexType>
  af::tiny<FloatType, 2>
  k_mask_and_k_overall_grid_search(

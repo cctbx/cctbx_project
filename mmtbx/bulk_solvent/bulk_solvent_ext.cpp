@@ -150,6 +150,15 @@ namespace {
          )) k_mask_and_k_overall_grid_search);
    ;
 
+   def("fit_k_exp_b_to_k_total",
+      (af::tiny<double, 3>(*)
+        (af::const_ref<double> const& data,
+         af::const_ref<double> const& ss,
+         double                       k_start,
+         double                       b_start
+         )) fit_k_exp_b_to_k_total);
+   ;
+
    def("ksol_bsol_grid_search",
       (af::shared<double>(*)
         (af::const_ref<double>   const&,
