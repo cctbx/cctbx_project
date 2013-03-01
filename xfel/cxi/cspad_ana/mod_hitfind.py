@@ -209,7 +209,8 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
         self.stats_logger.info("BRAGG %.3f %d" %(evt_time, number_of_accepted_peaks))
 
         if self.m_db_logging and self.dbopen():
-          self.queue_entry((self.trial, evt.run(), "%.3f"%evt_time, number_of_accepted_peaks))
+          self.queue_entry((self.trial, evt.run(), "%.3f"%evt_time, number_of_accepted_peaks, self.distance,
+                            self.sifoil, self.wavelength))
 
         if number_of_accepted_peaks < self.m_distl_min_peaks:
           self.logger.info("Subprocess %02d: Spotfinder NO  HIT image #%05d @ %s; %d spots > %d" %(
@@ -335,17 +336,17 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
           self.commit_entries()
       else:
         cursor = self.db.cursor()
-        cmd = "INSERT INTO cxi_braggs_front (trial,run,eventstamp,data) VALUES (%s,%s,%s,%s);"
+        cmd = "INSERT INTO cxi_braggs_front (trial,run,eventstamp,hitcount,distance,sifoil,wavelength) VALUES (%s,%s,%s,%s,%s,%s,%s);"
         cursor.execute(cmd, entry)
         self.db.commit()
 
   def commit_entries(self):
     if self.m_sql_buffer_size > 1 and self.dbopen() and len(self.buffered_sql_entries) > 0:
       cursor = self.db.cursor()
-      cmd = "INSERT INTO cxi_braggs_front (trial,run,eventstamp,data) VALUES "
+      cmd = "INSERT INTO cxi_braggs_front (trial,run,eventstamp,hitcount,distance,sifoil,wavelength) VALUES "
       comma = ""
       for entry in self.buffered_sql_entries:
-        cmd += comma + "(%s,%s,%s,%s)"%entry
+        cmd += comma + "(%s,%s,%s,%s,%s,%s,%s)"%entry
         comma = ", "
       cursor.execute(cmd)
       self.db.commit()
