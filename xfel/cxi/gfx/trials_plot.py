@@ -24,6 +24,8 @@ master_phil = libtbx.phil.parse("""
     .type = int
   average_window = 1000
     .type = int
+  n_points = 1000
+    .type = int
 """)
 
 class Run (object):
@@ -46,7 +48,11 @@ class Run (object):
     return max(self.bragg_times)
 
   def cull_braggs(self, count):
-    if count <= 0: return
+    if count <= 0:
+      self.culled_braggs = self.braggs
+      self.culled_bragg_times = self.bragg_times
+      return
+
     self.culled_braggs = flex.double()
     self.culled_bragg_times = flex.double()
 
@@ -122,6 +128,9 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
       self.panSlider.Enable()
     else:
       self.panSlider.Disable()
+
+    self.cull_braggs()
+
     self.plot_panel.show_plot()
 
   def OnPan(self, event):
@@ -205,12 +214,15 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
 
       self.total_width += run.width()
 
-    npoints = 1000
-    for run in self.runs:
-      run.cull_braggs(int(npoints*run.width()/self.total_width))
+    self.cull_braggs()
 
     self.full_data_load = False
     return new_data
+
+  def cull_braggs(self):
+    for run in self.runs:
+      run.cull_braggs(int(self.params.n_points*run.width()/self.total_width))
+
 
 class TrialsPlot (wxtbx.plots.plot_container) :
   def show_plot(self):
@@ -333,6 +345,7 @@ def run (args) :
   assert (params.t_wait is not None) and (params.t_wait > 0)
   assert (params.hit_cutoff is not None) and (params.hit_cutoff > 0)
   assert (params.average_window is not None) and (params.average_window > 0)
+  assert (params.n_points is not None) # zero or less means display all the points
   app = wx.App(0)
   frame = TrialsPlotFrame(None, -1, "Detector status for trial %d" %
       params.trial_id)
