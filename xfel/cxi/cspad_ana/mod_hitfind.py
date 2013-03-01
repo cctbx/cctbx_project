@@ -104,17 +104,18 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     if self.m_db_logging:
       from cxi_xdr_xes.cftbx.cspad_ana import db
       self.logger.info("Connecting to db...")
-      self.db = db.dbconnect()
-      assert self.dbopen()
+      dbobj = db.dbconnect()
+      assert dbobj.open
       self.logger.info("Connected.")
 
       try:
         self.trial = self.m_trial_id # TODO: beat the race condition and use db.get_next_trial_id if
                                       # this is not set or is zero or less
-        db.create_tables(self.db)
+        db.create_tables(dbobj)
 
       except Exception,e:
         self.logger.info("Couldn't create root tables: %s"%(e))
+      dbobj.close()
 
     """ This doesn't work.  The many threads add the values over and over to the master db :(
     try:
@@ -208,7 +209,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
         evt_time = sec + ms/1000
         self.stats_logger.info("BRAGG %.3f %d" %(evt_time, number_of_accepted_peaks))
 
-        if self.m_db_logging and self.dbopen():
+        if self.m_db_logging:
           self.queue_entry((self.trial, evt.run(), "%.3f"%evt_time, number_of_accepted_peaks, self.distance,
                             self.sifoil, self.wavelength))
 
@@ -322,32 +323,32 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       self.logger.info("Processed %d shots" % self.nshots)
 
     self.commit_entries()
-    if self.dbopen():
-      self.db.close()
-
-  def dbopen(self):
-    return hasattr(self,"db") and self.db is not None and self.db.open
 
   def queue_entry(self, entry):
-    if self.dbopen():
-      if self.m_sql_buffer_size > 1:
-        self.buffered_sql_entries.append(entry)
-        if len(self.buffered_sql_entries) >= self.m_sql_buffer_size:
-          self.commit_entries()
-      else:
-        cursor = self.db.cursor()
-        cmd = "INSERT INTO cxi_braggs_front (trial,run,eventstamp,hitcount,distance,sifoil,wavelength) VALUES (%s,%s,%s,%s,%s,%s,%s);"
-        cursor.execute(cmd, entry)
-        self.db.commit()
+    if self.m_sql_buffer_size > 1:
+      self.buffered_sql_entries.append(entry)
+      if len(self.buffered_sql_entries) >= self.m_sql_buffer_size:
+        self.commit_entries()
+    else:
+      from cxi_xdr_xes.cftbx.cspad_ana import db
+      dbobj = db.dbconnect()
+      cursor = dbobj.cursor()
+      cmd = "INSERT INTO cxi_braggs_front (trial,run,eventstamp,hitcount,distance,sifoil,wavelength) VALUES (%s,%s,%s,%s,%s,%s,%s);"
+      cursor.execute(cmd, entry)
+      dbobj.commit()
+      dbobj.close()
 
   def commit_entries(self):
-    if self.m_sql_buffer_size > 1 and self.dbopen() and len(self.buffered_sql_entries) > 0:
-      cursor = self.db.cursor()
+    if self.m_sql_buffer_size > 1 and len(self.buffered_sql_entries) > 0:
+      from cxi_xdr_xes.cftbx.cspad_ana import db
+      dbobj = db.dbconnect()
+      cursor = dbobj.cursor()
       cmd = "INSERT INTO cxi_braggs_front (trial,run,eventstamp,hitcount,distance,sifoil,wavelength) VALUES "
       comma = ""
       for entry in self.buffered_sql_entries:
         cmd += comma + "(%s,%s,%s,%s,%s,%s,%s)"%entry
         comma = ", "
       cursor.execute(cmd)
-      self.db.commit()
+      dbobj.commit()
+      dbobj.close()
       self.buffered_sql_entries = []
