@@ -122,7 +122,6 @@ class wrapper_of_callback(object):
 
 def view_raw_image(path, *command_line, **kwargs):
   args = [path,
-          "distl.detector_format_version=CXI 5.1",
           "viewer.powder_arcs.show=False",
           "viewer.powder_arcs.code=3n9c",
          ]

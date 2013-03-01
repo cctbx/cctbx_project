@@ -1,6 +1,7 @@
 from __future__ import division
 import math
-from mmtbx import f_model
+import mmtbx.command_line.fmodel
+import mmtbx.utils
 import iotbx.pdb.fetch
 from iotbx import pdb
 from cctbx.array_family import flex
@@ -22,33 +23,34 @@ def get_mmtbx_icalc(code,d_min, anomalous_flag = False):
 
     xray_structure = pdb_input.xray_structure_simple()
 
-    # get dummy fobs and dummy r-free flags
-    fobs_dummy = abs(xray_structure.structure_factors(d_min = d_min, anomalous_flag = anomalous_flag).f_calc())
+    phil2 = mmtbx.command_line.fmodel.fmodel_from_xray_structure_master_params
+    params2 = phil2.extract()
+    # adjust the cutoff of the generated intensities to assure that
+    # statistics will be reported to the desired high-resolution limit
+    # even if the observed unit cell differs slightly from the reference.
+    ISO_ALLOWANCE = 0.1 # isomorphous recip cell volume changes no more than 10%
+    params2.high_resolution = d_min / math.pow( (1.+ISO_ALLOWANCE),(1./3.) )
+    params2.output.type = "real"
+    if True :
+      params2.fmodel.k_sol = 0.35
+      params2.fmodel.b_sol = 46
+    f_model = mmtbx.utils.fmodel_from_xray_structure(
+      xray_structure = xray_structure,
+      f_obs          = None,
+      add_sigmas     = True,
+      params         = params2).f_model
+    i_model = f_model.as_intensity_array()
 
-    # set up dummy fmodel object
-    fmodel = f_model.manager(xray_structure = xray_structure,
-                             target_name    = "ls_wunit_k1",
-                             f_obs          = fobs_dummy)
-    # zillions of ways of getting statistics - just for illustration
-    fmodel.info().show_rfactors_targets_scales_overall();print
-    print "fmodel.r_work(), fmodel.r_free():", fmodel.r_work(), fmodel.r_free()
-    # now lets's update fmodel with bulk solvent and other scale parameters in
-    # order to get your simulated Fobs
 
-    fmodel.update(k_sols = 0.35, b_sol = 45.0, b_cart = [1,2,3,0,0,0])
-    print "fmodel.r_work(), fmodel.r_free():", fmodel.r_work(), fmodel.r_free();print
-    # here is your simulated fobs with all contributions
-    # fobs = exp(-h*U_overall*ht) * (Fcalc + k_sol * exp(-B_sol*s2) * Fmask)
-    fobs = fmodel.f_model()
-
-    return  fobs.amplitudes().f_as_f_sq().map_to_asu()
+    return  i_model.map_to_asu()
 
 def apply_gaussian_noise(image,params):
     from scitbx.random import variate,normal_distribution
     import numpy
     G = variate(normal_distribution(mean=2.0,sigma=0.5))
     gaussian_noise = flex.double(G(image.linearintdata.size()))
-    image.linearintdata += flex.int(gaussian_noise.as_numpy_array().astype(numpy.int32))
+    #image.linearintdata += flex.int(gaussian_noise.as_numpy_array().astype(numpy.int32))
+    image.linearintdata += gaussian_noise
 
 def superimpose_powder_arcs(image,params):
 
