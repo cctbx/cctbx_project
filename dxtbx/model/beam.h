@@ -26,16 +26,16 @@ namespace dxtbx { namespace model {
   public:
     /** Default constructor: initialise all to zero */
     Beam()
-      : direction_(0.0, 0.0, 0.0),
-        wavelength_(0.0) {}
+      : wavelength_(0.0),
+        direction_(0.0, 0.0, 0.0) {}
 
     /**
      * Initialise all the beam parameters.
      * @param direction The beam direction vector.
      */
-    Beam(vec3 <double> direction)
-      : direction_(direction),
-        wavelength_(1.0 / direction.length()) {}
+    Beam(vec3 <double> s0)
+      : wavelength_(1.0 / s0.length()),
+        direction_(s0.normalize()) {}
 
     /**
      * Initialise all the beam parameters. Normalize the direction vector
@@ -44,8 +44,8 @@ namespace dxtbx { namespace model {
      * @param direction The beam direction vector.
      */
     Beam(vec3 <double> direction, double wavelength)
-      : direction_(direction.normalize() / wavelength),
-        wavelength_(wavelength) {}
+      : wavelength_(wavelength),
+        direction_(direction.normalize()) {}
 
     /** Virtual destructor */
     virtual ~Beam() {}
@@ -62,8 +62,17 @@ namespace dxtbx { namespace model {
 
     /** Set the direction. */
     void set_direction(vec3 <double> direction) {
-      direction_ = direction;
-      wavelength_ = 1.0 / direction.length();
+      direction_ = direction.normalize();
+    }
+
+    /** Set the wavelength */
+    void set_wavelength(double wavelength) {
+      wavelength_ = wavelength;
+    }
+
+    /** Get the wave vector in units of inverse angstroms */
+    vec3 <double> get_s0() const {
+      return direction_ * 1.0 / wavelength_;
     }
 
     /** Check wavlength and direction are (almost) same */
@@ -80,8 +89,8 @@ namespace dxtbx { namespace model {
     }
 
   private:
-    vec3 <double> direction_;
     double wavelength_;
+    vec3 <double> direction_;
   };
 
 }} // namespace dxtbx::model
