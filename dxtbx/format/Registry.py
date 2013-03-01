@@ -78,7 +78,7 @@ class _Registry:
             if format.understand(image_file):
                 return recurse(format, image_file)
 
-        return None
+        raise IOError, 'no format support found for %s' % image_file
 
 class Registry:
     '''A class to turn the registry above into a singleton, so that we
