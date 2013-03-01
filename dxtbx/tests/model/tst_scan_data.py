@@ -16,7 +16,7 @@ def tst_is_angle_valid(scan):
 
 def tst_is_frame_valid(scan):
     """Check that the is_frame_valid function behaves properly."""
-    image_range = scan.image_range
+    image_range = scan.get_image_range()
     for i  in range(image_range[0] - 100, image_range[0]):
         assert(scan.is_frame_valid(i) == False)
     for i in range(image_range[0], image_range[1]):

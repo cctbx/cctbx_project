@@ -137,19 +137,23 @@ namespace dxtbx { namespace model { namespace boost_python {
           arg("exposure_time"),
           arg("epochs"),          
           arg("deg"))))
-      .add_property("image_range",  
-        &ScanData::get_image_range,
+      .def("get_image_range",  
+        &ScanData::get_image_range)
+      .def("set_image_range",
         &ScanData::set_image_range)
-      .add_property("oscillation",  
-        &ScanData::get_oscillation,
+      .def("get_oscillation",  
+        &ScanData::get_oscillation)
+      .def("set_oscillation",
         &ScanData::set_oscillation)
-      .add_property("exposure_time",
-        &ScanData::get_exposure_time,
+      .def("get_exposure_time",
+        &ScanData::get_exposure_time)
+      .def("set_exposure_time",
         &ScanData::set_exposure_time)
-      .add_property("epochs",
-        &ScanData::get_epochs,
+      .def("get_epochs",
+        &ScanData::get_epochs)
+      .def("set_epochs",
         &ScanData::set_epochs)
-      .add_property("num_images",
+      .def("get_num_images",
         &ScanData::get_num_images)
       .def("get_image_oscillation",
         &ScanData::get_image_oscillation, (
