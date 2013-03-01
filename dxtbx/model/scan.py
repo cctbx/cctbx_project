@@ -61,9 +61,9 @@ class Scan(ScanData):
     def __repr__(self):
 
         return '%s\n' % os.path.join(self._directory, self._template) + \
-               '%d -> %d\n' % (self.image_range) + \
+               '%d -> %d\n' % (self.get_image_range()) + \
                '%.3f -> %.3f\n' % (self.get_oscillation_range()) + \
-               '%s' % self.get_image_time(self.image_range[0])
+               '%s' % self.get_image_time(self.get_image_range()[0])
 
     def __cmp__(self, other):
         '''Comparison of this scan with another - which should be generally
@@ -72,9 +72,9 @@ class Scan(ScanData):
         assert(self._template == other.get_template())
         assert(self._directory == other.get_directory())
         assert(self._format == other.get_format())
-        assert(self.exposure_time == other.exposure_time)
+        assert(self.get_exposure_time() == other.get_exposure_time())
 
-        return self.image_range[0] - other.image_range[0]
+        return self.get_image_range()[0] - other.get_image_range()[0]
 
     def __add__(self, other):
         '''Return a new sweep which cosists of the contents of this sweep and
@@ -86,20 +86,22 @@ class Scan(ScanData):
         assert(self._template == other.get_template())
         assert(self._directory == other.get_directory())
         assert(self._format == other.get_format())
-        assert(self.exposure_time == other.exposure_time)
-        assert(self.image_range[1] + 1 == other.image_range[0])
+        assert(self.get_exposure_time() == other.get_exposure_time())
+        assert(self.get_image_range()[1] + 1 == other.get_image_range()[0])
 
         assert(math.fabs(self.get_oscillation_range()[1] -
                          other.get_oscillation_range()[0]) < 0.01)
-        assert(math.fabs(self.oscillation[1] - other.oscillation[1]) < 0.01)
+        assert(math.fabs(self.get_oscillation()[1] -
+                         other.get_oscillation()[1]) < 0.01)
 
-        new_image_range = (self.image_range[0], other.image_range[1])
-        new_epochs = copy.deepcopy(self.epochs)
-        new_epochs.extend(other.epochs)
+        new_image_range = (self.get_image_range()[0],
+                           other.get_image_range()[1])
+        new_epochs = copy.deepcopy(self.get_epochs())
+        new_epochs.extend(other.get_epochs())
 
         return Scan(self._template, self._directory, self._format,
-                     new_image_range, self.exposure_time,
-                     self.oscillation, new_epochs)
+                     new_image_range, self.get_exposure_time(),
+                     self.get_oscillation(), new_epochs)
 
     def __getitem__(self, index):
         '''Implement ability to get an scan object corresponding to a single
@@ -110,13 +112,13 @@ class Scan(ScanData):
 
         if type(index) == type(1):
 
-            assert(not index < self.image_range[0])
-            assert(not index > self.image_range[1])
+            assert(not index < self.get_image_range()[0])
+            assert(not index > self.get_image_range()[1])
 
             return Scan(self._template, self._directory, self._format,
-                         (index, index), self.exposure_time,
+                         (index, index), self.get_exposure_time(),
                          self.get_image_oscillation(index),
-                         {index:self.epochs[index]})
+                         {index:self.get_epochs()[index]})
 
         if hasattr(index, 'start'):
             assert(index.step is None)
@@ -127,20 +129,20 @@ class Scan(ScanData):
             # work around unspecified image ranges i.e. [:10]
 
             if start == 0 or start == None:
-                start = self.image_range[0]
+                start = self.get_image_range()[0]
 
             if stop == sys.maxint or stop == None:
-                stop = self.image_range[1]
-            assert(not start < self.image_range[0])
-            assert(not stop > self.image_range[1])
+                stop = self.get_image_range()[1]
+            assert(not start < self.get_image_range()[0])
+            assert(not stop > self.get_image_range()[1])
 
             new_epochs = { }
 
             for i in range(start, stop + 1):
-                new_epochs[i] = self.epochs[i]
+                new_epochs[i] = self.get_epochs()[i]
 
             return Scan(self._template, self._directory, self._format,
-                         (start, stop), self.exposure_time,
+                         (start, stop), self.get_exposure_time(),
                          self.get_image_oscillation(start), new_epochs)
 
         raise TypeError, 'useless index: %s' % type(index)
@@ -166,7 +168,7 @@ class Scan(ScanData):
         '''Get the time for this which is the epoch translated into a human
         readable form.'''
 
-        return time.asctime(time.gmtime(self.epochs[index]))
+        return time.asctime(time.gmtime(self.get_epochs()[index]))
 
 class scan_factory:
     '''A factory for scan instances, to help with constructing the classes
