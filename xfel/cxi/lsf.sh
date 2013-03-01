@@ -214,24 +214,30 @@ out="${out}/r${run}"
 # named by its three-digit trial number.  Check that any requested
 # trial number is available.  If ${trial} is not given on the command
 # line, generate the next available one.
-if test -z "${trial}"; then
-    trial=`ssh -S "${tmpdir}/control.socket" ${NODE} \
-         "cxi.get_next_trial_id | awk '{ printf(\"%03d\", \\\$1); }'"`
-    if test -z "${trial}"; then
-        echo "Error: requesting next trial number failed" > /dev/stderr
-       cleanup_and_exit 1
-    fi
-fi
 if ssh -S "${tmpdir}/control.socket" ${NODE} \
     "test -n \"${trial}\" -a -d \"${out}/${trial}\""; then
     echo "Error: Requested trial number ${trial} already in use" > /dev/stderr
     cleanup_and_exit 1
 fi
-if test "${trial}" -eq "999"; then
-    echo "Error: Trial numbers exhausted" > /dev/stderr
-    cleanup_and_exit 1
-fi
 
+if test -z "${trial}"; then
+    trial=`ssh -S "${tmpdir}/control.socket" ${NODE} \
+        "mkdir -p \"${out}\" ;                       \
+         find \"${out}\" -maxdepth 1                 \
+                         -noleaf                     \
+                         -name \"[0-9][0-9][0-9]\"   \
+                         -printf \"%f\n\" |          \
+         sort -n | tail -n 1"`
+    if test -z "${trial}"; then
+        trial="000"
+    else
+        if test "${trial}" -eq "999"; then
+            echo "Error: Trial numbers exhausted" > /dev/stderr
+            cleanup_and_exit 1
+        fi
+        trial=`expr "${trial}" \+ 1 | awk '{ printf("%03d", $1); }'`
+    fi
+fi
 out="${out}/${trial}"
 
 # Write a configuration file for the analysis of each stream by
