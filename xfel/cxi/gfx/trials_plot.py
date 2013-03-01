@@ -167,7 +167,7 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
         if not foundit:
           run = Run(int(runId[0]))
 
-      if self.full_data_load:
+      if self.full_data_load or not hasattr(run, "latest_entry_id"):
         cursor.execute("SELECT id, eventstamp, hitcount FROM cxi_braggs_front WHERE trial = %s AND run = %s ORDER BY eventstamp"%(self.trial_id,run.runId))
       else:
         cursor.execute("SELECT id, eventstamp, hitcount FROM cxi_braggs_front WHERE trial = %s AND run = %s AND id > %s ORDER BY eventstamp"%(self.trial_id,run.runId,run.latest_entry_id ))
