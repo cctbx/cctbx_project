@@ -10,3 +10,16 @@ else:
 if not ext is None:
   from dxtbx_ext import *
 
+def load(filename):
+  """Use DXTBX to get the files from the input filename.
+
+  Params:
+      filename The input filename
+
+  Returns:
+      The dxtbx format instance
+
+  """
+  from dxtbx.format.Registry import Registry
+  format_instance = Registry.find(filename)
+  return format_instance(filename)
