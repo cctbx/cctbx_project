@@ -1352,7 +1352,7 @@ class Manager (object) :
     fmt = "%-15s %-5s  %-5s  %-8s  %-7s  %-5s  %-5s  %-5s  %-6s"
     box = framed_output(out, title="Validating new ions", width=80)
     print >> box, fmt % headers
-    print >> box, " " + ("-" * 78)
+    print >> box, " " + ("-" * 75)
     for props, okay_flag in ion_status :
       mark = ""
       if (not okay_flag) :
