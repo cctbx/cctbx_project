@@ -385,7 +385,6 @@ dxtbx/format/FormatPilatusHelpers.py -text
 dxtbx/format/FormatRAXIS.py -text
 dxtbx/format/FormatSMV.py -text
 dxtbx/format/FormatSMVADSC.py -text
-dxtbx/format/FormatSMVADSCHelpers.py -text
 dxtbx/format/FormatSMVADSCSN457.py -text
 dxtbx/format/FormatSMVNOIR.py -text
 dxtbx/format/FormatSMVRigakuSaturn.py -text
