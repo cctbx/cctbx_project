@@ -168,9 +168,9 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
           run = Run(int(runId[0]))
 
       if self.full_data_load:
-        cursor.execute("SELECT id, eventstamp, data FROM cxi_braggs_front WHERE trial = %s AND run = %s ORDER BY eventstamp"%(self.trial_id,run.runId))
+        cursor.execute("SELECT id, eventstamp, hitcount FROM cxi_braggs_front WHERE trial = %s AND run = %s ORDER BY eventstamp"%(self.trial_id,run.runId))
       else:
-        cursor.execute("SELECT id, eventstamp, data FROM cxi_braggs_front WHERE trial = %s AND run = %s AND id > %s ORDER BY eventstamp"%(self.trial_id,run.runId,run.latest_entry_id ))
+        cursor.execute("SELECT id, eventstamp, hitcount FROM cxi_braggs_front WHERE trial = %s AND run = %s AND id > %s ORDER BY eventstamp"%(self.trial_id,run.runId,run.latest_entry_id ))
 
       hit_counter = self.params.average_window
 
@@ -286,8 +286,8 @@ class TrialsPlot (wxtbx.plots.plot_container) :
       #print "Run: %s, run.width(): %s, left: %s, right: %s, run.min(): %s, run.max(): %s, xmin: %s, xmax: %s, width_so_far: %s, xmax-xmin: %s" \
         #%(run.runId,run.width(),left,right,run.min(),run.max(),xmin,xmax,width_so_far,xmax-xmin)
 
-      ax1 = self.figure.add_axes([width_so_far/newwidth, 0.05, (xmax-xmin)/newwidth, 0.4])
-      ax2 = self.figure.add_axes([width_so_far/newwidth, 0.45, (xmax-xmin)/newwidth, 0.15], sharex=ax1)
+      ax1 = self.figure.add_axes([0.05+(0.9*width_so_far/newwidth), 0.05, (xmax-xmin)/newwidth, 0.4])
+      ax2 = self.figure.add_axes([0.05+(0.9*width_so_far/newwidth), 0.45, (xmax-xmin)/newwidth, 0.15], sharex=ax1)
       left += run.width()
       width_so_far += (xmax-xmin)
 
