@@ -29,7 +29,8 @@ class FormatSMVADSC(FormatSMV):
 
         wanted_header_items = ['BEAM_CENTER_X', 'BEAM_CENTER_Y',
                                'DISTANCE', 'WAVELENGTH', 'PIXEL_SIZE',
-                               'OSC_START', 'OSC_RANGE', 'SIZE1', 'SIZE2']
+                               'OSC_START', 'OSC_RANGE', 'SIZE1', 'SIZE2',
+                               'BYTE_ORDER']
 
         for header_item in wanted_header_items:
             if not header_item in header:
@@ -120,12 +121,22 @@ class FormatSMVADSC(FormatSMV):
             return self._raw_data
 
         from boost.python import streambuf
-        from dxtbx import read_uint16
+        from dxtbx import read_uint16, read_uint16_bs, is_big_endian
 
         size = self.get_detector().image_size
         f = FormatSMVADSC.open_file(self._image_file, 'rb')
         f.read(self._header_size)
-        self._raw_data = read_uint16(streambuf(f), int(size[0] * size[1]))
+
+        if self._header_dictionary['BYTE_ORDER'] == 'big_endian':
+            big_endian = True
+        else:
+            big_endian = False
+
+        if big_endian == is_big_endian():
+            self._raw_data = read_uint16(streambuf(f), int(size[0] * size[1]))
+        else:
+            self._raw_data = read_uint16_bs(streambuf(f),
+                                            int(size[0] * size[1]))
 
         return self._raw_data
 

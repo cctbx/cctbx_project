@@ -1,5 +1,5 @@
 from __future__ import division
-def print_header():
+def print_total():
     import sys
     from dxtbx.format.Registry import Registry
 
@@ -11,12 +11,12 @@ def print_header():
         format_instance = Registry.find(arg)
         print 'Using header reader: %s' % format_instance.__name__
         i = format_instance(arg)
-        print i.get_beam()
-        print i.get_goniometer()
-        print i.get_detector()
-        print i.get_scan()
+        image_size = i.get_detector().image_size
         print 'Total Counts:'
-        print sum(i.get_raw_data())
+        total = sum(i.get_raw_data())
+        print total
+        print 'Average Counts:'
+        print '%.2f' % (total / (image_size[0] * image_size[1]))
 
 if __name__ == '__main__':
-    print_header()
+    print_total()
