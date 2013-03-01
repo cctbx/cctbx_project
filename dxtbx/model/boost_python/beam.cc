@@ -22,13 +22,17 @@ namespace dxtbx { namespace model { namespace boost_python {
   std::string beam_to_string(const Beam &beam) {
     boost::format fmt(
       "Beam:\n"
-      "    direction :            (%1%, %2%, %3%)\n"
-      "    wavelength:            %4%");
+      "    wavelength:            %1%\n"
+      "    direction :            (%2%, %3%, %4%)\n"
+      "    s0:                    (%5%, %6%, %7%)");
         
     fmt % beam.get_direction()[0];
     fmt % beam.get_direction()[1];
     fmt % beam.get_direction()[2];
     fmt % beam.get_wavelength();
+    fmt % beam.get_s0()[0];
+    fmt % beam.get_s0()[1];
+    fmt % beam.get_s0()[2];
     return fmt.str();
   }
 
@@ -58,13 +62,17 @@ namespace dxtbx { namespace model { namespace boost_python {
           arg("direction"), 
           arg("wavelength"))))
       .def(init <vec3 <double> > ((
-          arg("direction"),
-          arg("wavelength"))))
-      .add_property("direction",  
-        &Beam::get_direction,
+          arg("s0"))))
+      .def("get_direction", 
+        &Beam::get_direction)
+      .def("set_direction",
         &Beam::set_direction)
-      .add_property("wavelength", 
+      .def("get_wavelength", 
         &Beam::get_wavelength)
+      .def("set_wavelength",
+        &Beam::set_wavelength)
+      .def("get_s0",
+        &Beam::get_s0)
       .def("__eq__", &Beam::operator==)
       .def("__ne__", &Beam::operator!=)
       .def("__str__", &beam_to_string);
@@ -82,7 +90,7 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def(init <vec3 <double>, 
                  vec3 <double>, 
                  double> ((
-          arg("direction"), 
+          arg("s0"), 
           arg("polarization"),
           arg("polarization_fraction"))))
       .add_property("polarization",

@@ -49,10 +49,10 @@ namespace dxtbx { namespace model {
      * @param polarization The polarization plane of the beam
      * @param polarization_fraction The polarization fraction.
      */
-    PolarizedBeam(vec3 <double> direction,
+    PolarizedBeam(vec3 <double> s0,
                   vec3 <double> polarization,
                   double polarization_fraction)
-      : Beam(direction),
+      : Beam(s0),
         polarization_(polarization),
         polarization_fraction_(polarization_fraction) {}
 
