@@ -67,7 +67,7 @@ def NpyImageFactory(filename):
   from iotbx.detectors.npy import NpyImage
   from spotfinder.applications.xfel import cxi_phil
   args = [filename,
-          "distl.detector_format_version=CXI 5.1",
+          "distl.detector_format_version=CXI 7.1",
           "viewer.powder_arcs.show=False",
           "viewer.powder_arcs.code=3n9c",
          ]
