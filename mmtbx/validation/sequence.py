@@ -44,6 +44,7 @@ class chain (object) :
     assert (len(sequence) == len(resids))
     self.alignment = None
     self.sequence_name = None
+    self.sequence_id = None
     self.identity = 0.
     self.n_missing = 0
     self.n_missing_start = 0
@@ -56,10 +57,11 @@ class chain (object) :
     self._table = None
     self._flag_indices = []
 
-  def set_alignment (self, alignment, sequence_name) :
+  def set_alignment (self, alignment, sequence_name, sequence_id) :
     assert (len(alignment.a) == len(alignment.b)) and (len(alignment.a) > 0)
     self.alignment = alignment
     self.sequence_name = sequence_name
+    self.sequence_id = sequence_id
     if (self.sec_str is not None) :
       raw_sec_str = self.sec_str
     else :
@@ -273,6 +275,17 @@ class validation (object) :
     self.n_other = 0
     self.chains = []
     self.sequences = sequences
+    self.sequence_mappings = [ None ] * len(sequences)
+    for i_seq in range(1, len(sequences)) :
+      seq_obj1 = sequences[i_seq]
+      for j_seq in range(0, len(sequences)) :
+        if (j_seq == i_seq) :
+          break
+        else :
+          seq_obj2 = sequences[j_seq]
+          if (seq_obj1.sequence == seq_obj2.sequence) :
+            self.sequence_mappings[i_seq ] = j_seq
+            break
     if (len(pdb_hierarchy.models()) > 1) :
       raise Sorry("Multi-model PDB files not supported.")
     helix_selection = sheet_selection = None
@@ -336,11 +349,11 @@ class validation (object) :
         processes=nproc)
     assert (len(alignments_and_names) == len(self.chains) == len(pdb_chains))
     for i, c in enumerate(self.chains) :
-      alignment, seq_name = alignments_and_names[i]
+      alignment, seq_name, seq_id = alignments_and_names[i]
       if (alignment is None) : continue
       pdb_chain = pdb_chains[i]
       try :
-        c.set_alignment(alignment, seq_name)
+        c.set_alignment(alignment, seq_name, seq_id)
       except Exception, e :
         print "Error processing chain %s" % c.chain_id
         print e
@@ -356,9 +369,10 @@ class validation (object) :
     chain = self.chains[i]
     best_alignment = None
     best_sequence = None
+    best_seq_id = None
     best_identity = 0.
     best_width = sys.maxint
-    for seq_object in self.sequences :
+    for i_seq, seq_object in enumerate(self.sequences) :
       alignment = mmtbx.alignment.align(
         seq_a=chain.sequence,
         seq_b=seq_object.sequence).extract_alignment()
@@ -371,8 +385,9 @@ class validation (object) :
         best_identity = identity
         best_alignment = alignment
         best_sequence = seq_object.name
+        best_seq_id = i_seq
         best_width = width
-    return best_alignment, best_sequence
+    return best_alignment, best_sequence, best_seq_id
 
   def get_table_data (self) :
     table = []
@@ -387,6 +402,34 @@ class validation (object) :
       out = sys.stdout
     for chain in self.chains :
       chain.show_summary(out)
+
+  def get_relative_sequence_copy_number (self) :
+    """
+    Count the number of copies of each sequence within the model, used for
+    adjusting the input settings for Phaser-MR in Phenix.  This should
+    automatically account for redundancy: only the first matching sequence is
+    considered, and sequences which are non-unique will have a copy number of
+    -1.  Thus if we have 4 copies of a sequence, and the PDB hierarchy has
+    2 matching chains, the copy numbers will be [0.5, -1, -1, -1].
+    """
+    n_seq  = len(self.sequence_mappings)
+    counts = [ 0 ] * n_seq
+    for c in self.chains :
+      if (c.sequence_id is not None) :
+        counts[c.sequence_id] += 1
+    redundancies = [ 1 ] * n_seq
+    for i_seq in range(n_seq) :
+      j_seq = self.sequence_mappings[i_seq]
+      if (j_seq is not None) :
+        redundancies[j_seq] += 1
+        redundancies[i_seq] = 0
+    counts_relative = [ 0 ] * n_seq
+    for i_seq in range(n_seq) :
+      if (redundancies[i_seq] == 0) :
+        counts_relative[i_seq] = -1
+      else :
+        counts_relative[i_seq] = counts[i_seq] / redundancies[i_seq]
+    return counts_relative
 
   def as_cif_block(self, cif_block=None):
     import iotbx.cif.model
@@ -820,8 +863,9 @@ ATOM    854  CA  GLY A  12      25.907  28.394  28.320  1.00 38.88           C
   if (pdb_file is not None) :
     seq = iotbx.bioinformatics.sequence("MGSSHHHHHHSSGLVPRGSHMAVRELPGAWNFRDVADTATALRPGRLFRSSELSRLDDAGRATLRRLGITDVADLRSSREVARRGPGRVPDGIDVHLLPFPDLADDDADDSAPHETAFKRLLTNDGSNGESGESSQSINDAATRYMTDEYRQFPTRNGAQRALHRVVTLLAAGRPVLTHCFAGKDRTGFVVALVLEAVGLDRDVIVADYLRSNDSVPQLRARISEMIQQRFDTELAPEVVTFTKARLSDGVLGVRAEYLAAARQTIDETYGSLGGYLRDAGISQATVNRMRGVLLG")
     pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
+    hierarchy = pdb_in.file_object.construct_hierarchy()
     v = validation(
-      pdb_hierarchy=pdb_in.file_object.construct_hierarchy(),
+      pdb_hierarchy=hierarchy,
       sequences=[seq],
       log=null_out(),
       nproc=1,
@@ -839,6 +883,34 @@ ATOM    854  CA  GLY A  12      25.907  28.394  28.320  1.00 38.88           C
       cif_block['_struct_ref_seq.pdbx_auth_seq_align_end']) == ['85', '275']
     assert list(cif_block['_struct_ref_seq.seq_align_beg']) == ['1', '114']
     assert list(cif_block['_struct_ref_seq.seq_align_end']) == ['82', '272']
+    # determine relative counts of sequences and chains
+    v = validation(
+      pdb_hierarchy=hierarchy,
+      sequences=[seq] * 4,
+      log=null_out(),
+      nproc=1,
+      include_secondary_structure=True,
+      extract_coordinates=True)
+    assert (v.get_relative_sequence_copy_number() == [0.25, -1, -1, -1])
+    hierarchy = hierarchy.deep_copy()
+    chain2 = hierarchy.only_model().chains()[0].detached_copy()
+    hierarchy.only_model().append_chain(chain2)
+    v = validation(
+      pdb_hierarchy=hierarchy,
+      sequences=[seq] * 2,
+      log=null_out(),
+      nproc=1,
+      include_secondary_structure=True,
+      extract_coordinates=True)
+    assert (v.get_relative_sequence_copy_number() == [1.0, -1])
+    v = validation(
+      pdb_hierarchy=hierarchy,
+      sequences=[seq] * 4,
+      log=null_out(),
+      nproc=1,
+      include_secondary_structure=True,
+      extract_coordinates=True)
+    assert (v.get_relative_sequence_copy_number() == [0.5, -1, -1, -1])
 
 if (__name__ == "__main__") :
   exercise()
