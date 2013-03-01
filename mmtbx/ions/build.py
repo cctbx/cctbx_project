@@ -41,15 +41,12 @@ refine_ion_adp = *Auto isotropic anisotropic none
   .help = B-factor refinement type for newly placed ions.  At medium-to-high \
     resolution, anisotropic refinement may be preferrable for the heavier \
     elements.
-anomalous = True
+refine_anomalous = True
   .type = bool
   .short_caption = Model anomalous scattering
   .help = If True and the wavelength is specified, any newly placed ions will \
-    have anomalous scattering factors set using theoretical values.  This is \
+    have anomalous scattering factors refined.  This is \
     unlikely to affect R-factors but should flatten the anomalous LLG map.
-refine_anomalous = True
-  .type = bool
-  .short_caption = Refine anomalous scattering
 """
 
 def find_and_build_ions (
@@ -76,9 +73,10 @@ def find_and_build_ions (
   assert (1.0 >= params.initial_occupancy >= 0)
   fmodel = fmodels.fmodel_xray()
   if (out is None) : out = sys.stdout
+  pdb_hierarchy = model.pdb_hierarchy(sync_with_xray_structure=True)
   if (manager is None) :
     manager = mmtbx.ions.create_manager(
-      pdb_hierarchy=model.pdb_hierarchy(sync_with_xray_structure=True),
+      pdb_hierarchy=pdb_hierarchy,
       geometry_restraints_manager=model.restraints_manager.geometry,
       fmodel=fmodel,
       wavelength=wavelength,
@@ -90,7 +88,7 @@ def find_and_build_ions (
     grm = model.restraints_manager.geometry
     connectivity = grm.shell_sym_tables[0].full_simple_connectivity()
     manager.update_structure(
-      pdb_hierarchy=model.pdb_hierarchy(sync_with_xray_structure=True),
+      pdb_hierarchy=pdb_hierarchy,
       xray_structure=fmodel.xray_structure,
       connectivity=connectivity,
       log=out)
@@ -143,7 +141,7 @@ def find_and_build_ions (
         segid="ION",
         refine_adp=refine_adp,
         refine_occupancies=False) #params.refine_ion_occupancies)
-      if (params.anomalous) :
+      if (params.refine_anomalous) :
         scatterer = model.xray_structure.scatterers()[i_seq]
         if (wavelength is not None) :
           fp_fdp_info = sasaki.table(final_choice.element).at_angstrom(
@@ -152,18 +150,17 @@ def find_and_build_ions (
           scatterer.fdp = fp_fdp_info.fdp()
           print >> out, "    setting f'=%g, f''=%g" % (scatterer.fp,
             scatterer.fdp)
-        if (params.refine_anomalous) :
-          group = xray.anomalous_scatterer_group(
-            iselection=flex.size_t([i_seq]),
-            f_prime=scatterer.fp,
-            f_double_prime=scatterer.fdp,
-            refine=["f_prime","f_double_prime"],
-            selection_string=get_single_atom_selection_string(modified_atom))
-          anomalous_groups.append(group)
+        group = xray.anomalous_scatterer_group(
+          iselection=flex.size_t([i_seq]),
+          f_prime=scatterer.fp,
+          f_double_prime=scatterer.fdp,
+          refine=["f_prime","f_double_prime"],
+          selection_string=get_single_atom_selection_string(modified_atom))
+        anomalous_groups.append(group)
       modified_iselection.append(i_seq)
-  # FIXME correct special positions here
   if (len(modified_iselection) > 0) :
     scatterers = model.xray_structure.scatterers()
+    # FIXME not sure this is actually working as desired...
     site_symmetry_table = model.xray_structure.site_symmetry_table()
     for i_seq in site_symmetry_table.special_position_indices() :
       scatterers[i_seq].site = crystal.correct_special_position(

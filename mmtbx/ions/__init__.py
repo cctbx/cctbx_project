@@ -58,10 +58,6 @@ radius = 2.0
 """
 
 ion_master_phil = libtbx.phil.parse("""
-use_phaser = Auto
-  .type = bool
-  .help = Toggles the use of Phaser for calculation of f-prime values.
-  .short_caption = Use Phaser to calculate f-double-prime
 require_valence = False
   .type = bool
   .help = Toggles the use of valence calculations
@@ -76,6 +72,12 @@ anom_map_type = *residual simple llg
   .type = choice
   .help = Type of anomalous difference map to use.  Default is a residual \
     map, showing only unmodeled scattering.
+find_anomalous_substructure = Auto
+  .type = bool
+use_phaser = True
+  .type = bool
+  .help = Toggles the use of Phaser for calculation of f-prime values.
+  .short_caption = Use Phaser to calculate f-double-prime
 water
   .short_caption = Water filtering
   .style = box auto_align
@@ -245,24 +247,34 @@ class Manager (object) :
     self.server = server()
     self.nproc = nproc
     self.phaser_substructure = None
+    self.flag_refine_substructure = False
     self.fpp_from_phaser_ax_sites = None
+    self.site_fp = None
+    self.site_fdp = None
     self._map_values = {}
     self.update_structure(
       pdb_hierarchy = pdb_hierarchy,
       xray_structure = xray_structure,
-      connectivity = connectivity)
+      connectivity = connectivity,
+      log = log)
     self.update_maps()
-    use_phaser = self.params.use_phaser
-    if (use_phaser is Auto) :
-      use_phaser = fmodel.f_obs().anomalous_flag() and (wavelength is not None)
-    elif (use_phaser) :
+    # The default behavior is to refine the anomalous structure when possible;
+    # this can use either the CCTBX anomalous group refinement or Phaser's
+    # substructure completion (but not both).  Some additional machinery is
+    # required to handle this distinction.
+    refine_substructure = params.find_anomalous_substructure
+    if (refine_substructure is Auto) :
+      refine_substructure = fmodel.f_obs().anomalous_flag() and \
+                            (wavelength is not None)
+    if (refine_substructure) :
       if (wavelength is None) :
-        raise Sorry("Wavelength required when use_phaser=True.")
+        raise Sorry("Wavelength required when "+
+                    "find_anomalous_substructure=True.")
       elif (not fmodel.f_obs().anomalous_flag()) :
-        raise Sorry("Anomalous data required when use_phaser=True.")
-    if ((use_phaser) and (libtbx.env.has_module("phaser"))) :
+        raise Sorry("Anomalous data required when "+
+                    "find_anomalous_substructure=True.")
+    if ((params.use_phaser) and (libtbx.env.has_module("phaser"))) :
       t1 = time.time()
-      print >> log, "  Running Phaser to identify anomalous scatterers"
       self.phaser_substructure = find_anomalous_scatterers(
         fmodel=fmodel,
         pdb_hierarchy=pdb_hierarchy,
@@ -277,9 +289,40 @@ class Manager (object) :
         print >> log, "  %d anomalous scatterers found" % \
           len(self.phaser_substructure)
         self.analyze_substructure(log = log, verbose = True)
+    else :
+      self.flag_refine_substructure = True
+      self.refine_anomalous_substructure(log=log)
+
+  def refine_anomalous_substructure (self, log) :
+    """
+    Run simple "substructure completion" implemented using CCTBX tools (the
+    command-line equivalent is mmtbx.refine_anomalous_substructure).  A faster
+    alternative to Phaser, but not clear how effective this is at the moment.
+    """
+    from mmtbx.refinement import anomalous_scatterer_groups
+    fmodel_tmp = self.fmodel.deep_copy()
+    # XXX should we only be refining f''?
+    anom_groups = anomalous_scatterer_groups.refine_anomalous_substructure(
+      fmodel=fmodel_tmp,
+      pdb_hierarchy=self.pdb_hierarchy,
+      wavelength=self.wavelength,
+      reset_water_u_iso=True,
+      verbose=True,
+      use_all_anomalous=False,
+      out=log)
+    scatterers = fmodel_tmp.xray_structure.scatterers()
+    self.use_fdp = flex.bool(scatterers.size(), False)
+    self.site_fp = flex.double(scatterers.size(), 0)
+    self.site_fdp = flex.double(scatterers.size(), 0)
+    for group in anom_groups :
+      for i_seq in group.iselection :
+        sc = scatterers[i_seq]
+        self.use_fdp[i_seq] = True
+        self.site_fp[i_seq] = sc.fp
+        self.site_fdp[i_seq] = sc.fdp
 
   def update_structure (self, pdb_hierarchy, xray_structure,
-      connectivity = None, log = None) :
+      connectivity = None, log = None, refine_if_necessary=True) :
     """
     Set the current atomic data: PDB hierarchy, Xray structure, and simple
     connectivity list.
@@ -292,6 +335,7 @@ class Manager (object) :
     self.connectivity = connectivity
     self.pdb_atoms = pdb_hierarchy.atoms()
     self.unit_cell = xray_structure.unit_cell()
+    self.use_fdp = flex.bool(xray_structure.scatterers().size(), False)
     self.ax_chain = None
     self._pair_asu_cache = {}
 
@@ -321,7 +365,9 @@ class Manager (object) :
       self.b_stddev_hoh = adptbx.u_as_b(
         u_iso_hoh.standard_deviation_of_the_sample())
     if (self.phaser_substructure is not None) :
-      self.analyze_substructure(log = log)
+      self.analyze_substructure(log=log)
+    elif (self.flag_refine_substructure) and (refine_if_necessary) :
+      self.refine_anomalous_substructure(log=log)
 
   def get_initial_b_iso (self) :
     if (getattr(self, "b_mean_hoh", None) is not None) :
@@ -339,7 +385,6 @@ class Manager (object) :
       return None
     return map_coeffs.fft_map(resolution_factor=0.25,
       ).apply_sigma_scaling().real_map_unpadded()
-
 
   def update_maps (self) :
     """
@@ -670,6 +715,7 @@ class Manager (object) :
       elif (len(same_atoms) == 1) :
         print >> log, "  %s maps to %s" % (ax_atom_id(atom),
           self.pdb_atoms[same_atoms[0].i_seq].id_str())
+        self.use_fdp[same_atoms[0].i_seq] = True
         self.fpp_from_phaser_ax_sites[same_atoms[0].i_seq] = atom.occ
       else :
         print >> log, "  ambiguous results for %s:" % ax_atom_id(atom)
@@ -679,12 +725,25 @@ class Manager (object) :
 
   def get_fpp (self, i_seq) :
     """
-    Retrieve the refined f'' for a site.
+    Retrieve the refined f'' for a site.  Because this can come from either the
+    built-in anomalous refinement or Phaser, it is handled differently than
+    the f' retrieval.
     """
-    if (self.fpp_from_phaser_ax_sites is None) : return None
+    if (not self.use_fdp[i_seq]) :
+      return None
+    if (self.fpp_from_phaser_ax_sites is None) :
+      return self.site_fdp[i_seq]
     fpp = self.fpp_from_phaser_ax_sites[i_seq]
     if (fpp < 0) : fpp = None
     return fpp
+
+  def get_fp (self, i_seq) :
+    """
+    Retrieve the refined f' for a site.
+    """
+    if (self.site_fp is None) or (not self.use_fdp[i_seq]) :
+      return None
+    return self.site_fp[i_seq]
 
   # XXX approximate guess, needs more rational parameters
   def looks_like_halide_ion (self,
@@ -706,6 +765,7 @@ class Manager (object) :
     # discard atoms with B-factors greater than mean-1sigma for waters
     if ((self.b_mean_hoh is not None) and
         (atom.b > self.b_mean_hoh - self.b_stddev_hoh)) :
+      #print "Bad b-factor"
       return False
 
     params = self.params.chloride
@@ -900,6 +960,9 @@ class Manager (object) :
     if (atom_props.fpp is not None) and (atom_props.fpp > 0) :
       return False
 
+    if (atom_props.fp is not None) and (atom_props.fp > 0.5) :
+      return False
+
     if (atom_props.peak_anom > params.max_anom_level) :
       inaccuracies.add(atom_props.ANOM_PEAK)
 
@@ -1034,7 +1097,9 @@ class Manager (object) :
           wavelength=self.wavelength,
           fpp_ratio_min=self.params.phaser.fpp_ratio_min,
           fpp_ratio_max=self.params.phaser.fpp_ratio_max)
-        if (fpp_ratio is not None) :
+        # XXX chlorides are tricky, because they tend to be partial occupancy
+        # anyway and the f'' is already small, so prone to error here
+        if (fpp_ratio is not None) and (element != "CL") :
           if ((fpp_ratio < self.params.phaser.fpp_ratio_min) or
               (fpp_ratio > self.params.phaser.fpp_ratio_max)) :
             #print "fpp_ratio:", fpp_ratio
@@ -1090,7 +1155,8 @@ class Manager (object) :
         # another special case: very heavy ions, which are probably not binding
         # physiologically
         elif ((atomic_number > 30) and (not looks_like_water) and
-              (weight_ratio > 0.5) and (weight_ratio < 1.05) and
+              (((weight_ratio > 0.5) and (weight_ratio < 1.05)) or
+               (atom_props.fp > 10)) and
               (not auto_candidates) and
               (atom_props.is_compatible_site(ion_params))) :
           n_total_coord_atoms = atom_props.number_of_atoms_within_radius(2.8)
@@ -1482,9 +1548,10 @@ class AtomProperties (object) :
     self.expected_params = {}
     self.bad_coords = {}
 
-    # Determine the f'' value if possible using phaser
+    # Determine the f'' value if possible using phaser or anomalous refinement
     self.fpp = manager.get_fpp(i_seq)
     self.fpp_ratios = {}
+    self.fp = manager.get_fp(i_seq)
 
   def is_correctly_identified(self, identity = None):
     """
@@ -1791,7 +1858,7 @@ class AtomProperties (object) :
           wavelength).fdp()
         self.fpp_expected[identity] = max(fpp_expected_sasaki,
           fpp_expected_henke)
-        if (self.fpp is not None) and (self.fpp_expected[identity] > 0) :
+        if (self.fpp is not None) and (self.fpp_expected[identity] != 0) :
           self.fpp_ratios[identity] = self.fpp / self.fpp_expected[identity]
           if ((self.fpp_ratios[identity] > fpp_ratio_max) or
               ((self.fpp >= 0.2) and
@@ -1918,7 +1985,7 @@ class AtomProperties (object) :
     if self.TOO_MANY_COORD in inaccuracies:
       print >> out, "    Too many coordinating atoms !!!"
 
-    if (self.fpp is not None) :
+    if (self.fpp is not None) and (identity in self.fpp_ratios) :
       print >> out, "    f'' ratio:   %6.3f" % (self.fpp_ratios[identity]),
       if self.BAD_FPP in inaccuracies:
         print >> out, " !!!"
@@ -2085,5 +2152,5 @@ def is_coplanar_with_sidechain (atom, residue, distance_cutoff=0.75) :
   if (len(sidechain_sites) != 3) : # XXX probably shouldn't happen
     return False
   D = distance_from_plane(atom.xyz, sidechain_sites)
-  print atom.id_str(), D
+  #print atom.id_str(), D
   return (D <= distance_cutoff)

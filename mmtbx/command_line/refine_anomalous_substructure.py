@@ -23,7 +23,7 @@ wavelength = None
   .type = float
 refine = *f_prime *f_double_prime
   .type = choice(multi=True)
-reset_water_u_iso = False
+reset_water_u_iso = True
   .type = bool
 """, process_includes=True)
   if (len(args) == 0) or ("--help" in args) :
