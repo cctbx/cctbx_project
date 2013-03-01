@@ -105,6 +105,9 @@ class average_mixin(common_mode.common_mode_correction):
     elif address == 'CxiSc1-0|Cspad2x2-0':
       self._tot_sum = multiprocessing.Array('d', 370 * 391, lock=False)
       self._tot_ssq = multiprocessing.Array('d', 370 * 391, lock=False)
+    elif address == 'CxiDsd-0|Cspad-0':
+      self._tot_sum = multiprocessing.Array('d', 1765 * 1765, lock=False)
+      self._tot_ssq = multiprocessing.Array('d', 1765 * 1765, lock=False)
     else:
       raise RuntimeError("Unsupported detector address")
 
