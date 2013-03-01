@@ -1309,7 +1309,7 @@ class Manager (object) :
 
     return atom_props
 
-  def validate_ions (self, out = sys.stdout, debug = True):
+  def validate_ions (self, out = sys.stdout, debug = True, segid = None):
     """
     Iterate over all the ions built into the model by this module and double
     check their correctness. Looks for tell-tale signs such as negative peaks
@@ -1320,8 +1320,23 @@ class Manager (object) :
     their sites' i_seqs.
     """
 
-    sel_cache = self.pdb_hierarchy.atom_selection_cache()
-    ions = sel_cache.selection("segid ION").iselection()
+    if segid is None:
+      from cctbx.eltbx import chemical_elements
+      elements = chemical_elements.proper_upper_list()
+      ions = []
+      for model in self.pdb_hierarchy.models():
+        for chain in model.chains():
+          for residue_group in chain.residue_groups():
+            for atom_group in residue_group.atom_groups():
+              if atom_group.resname.strip() in elements:
+                atoms = atom_group.atoms()
+                assert (len(atoms) == 1)
+                for atom in atoms:
+                  ions += atom.i_seq,
+    else:
+      sel_cache = self.pdb_hierarchy.atom_selection_cache()
+      ions = sel_cache.selection("segid {0}".format(segid)).iselection()
+
     if len(ions) == 0:
       return
     ion_status = []
@@ -1332,11 +1347,12 @@ class Manager (object) :
         debug = debug)
       ion_status.append((atom_props, atom_props.is_correctly_identified()))
     scatterers = self.xray_structure.scatterers()
-    headers = ("atom", "occ", "b_iso", "2mFo-DFc", "mFo-DFc", "fp", "fdp")
-    fmt = " %-15s %5s %8s %10s %10s %6s %6s"
-    box = framed_output(out, title="Validating new ions", width=72)
+    headers = ("atom", "occ", "b_iso", "2mFo-DFc", "mFo-DFc", "fp", "fdp",
+               "BVS", "VECSUM")
+    fmt = "%-15s %-5s  %-5s  %-8s  %-7s  %-5s  %-5s  %-5s  %-6s"
+    box = framed_output(out, title="Validating new ions", width=80)
     print >> box, fmt % headers
-    print >> box, " " + ("-" * 66)
+    print >> box, " " + ("-" * 78)
     for props, okay_flag in ion_status :
       mark = ""
       if (not okay_flag) :
@@ -1349,11 +1365,17 @@ class Manager (object) :
         fdp = sc.fdp
       # XXX props.atom.b does not work here!
       b_iso = adptbx.u_as_b(sc.u_iso_or_equiv(unit_cell=self.unit_cell))
+      identity = _identity(props.atom)
       def ff (fs, val) : return format_value(fs, val, replace_none_with="---")
       print >> box, (fmt % (props.atom.id_str(suppress_segid=True)[5:-1],
-        ff("%5.2f", props.atom.occ), ff("%8.2f", b_iso),
-        ff("%8.2f", props.peak_2fofc), ff("%8.2f", props.peak_fofc),
-        ff("%6.2f", fp), ff("%6.2f", fdp))) + mark
+        ff("%.2f", props.atom.occ), ff("%.2f", b_iso),
+        ff("%.2f", props.peak_2fofc), ff("%.2f", props.peak_fofc),
+        ff("%.2f", fp), ff("%.2f", fdp),
+        ff("%.2f", props.valence_sum[identity]),
+        ff("%.2f", props.vector_sum[identity]))) + mark
+      print >> box, "\n".join(props.error_strs[i]
+                              for i in props.inaccuracies[identity])
+      print >> box
     box.close()
 
 class _analyze_water_wrapper (object) :
@@ -1505,6 +1527,30 @@ class AtomProperties (object) :
     LIKE_COORD, BAD_COORD_ATOM, BAD_FPP, BAD_COORD_RESIDUE, VERY_BAD_VALENCES, \
     BAD_HALIDE \
     = range(22)
+
+  error_strs = {LOW_B: "Abnormally low b-factor",
+                HIGH_B: "Abnormally high b-factor",
+                LOW_OCC: "Abnormally low occupancy",
+                HIGH_OCC: "Abnormally high occupancy",
+                NO_2FOFC_PEAK: "No 2mFo-DFc map peak",
+                FOFC_PEAK: "Peak in mFo-DFc map",
+                FOFC_HOLE: "Negative peak in dFo-mFc map",
+                ANOM_PEAK: "Peak in the anomalous map",
+                NO_ANOM_PEAK: "No peak in the anomalous map",
+                BAD_GEOMETRY: "Unexpected geometry for coordinating atoms",
+                NO_GEOMETRY: "No distinct geometry for coordinating atoms",
+                BAD_VECTORS: "VECSUM above cutoff",
+                BAD_VALENCES: "BVS above or below cutoff",
+                TOO_FEW_NON_WATERS: "Too few non-water coordinating atoms",
+                TOO_FEW_COORD: "Too few coordinating atoms",
+                TOO_MANY_COORD: "Too many coordinating atoms",
+                LIKE_COORD: "Like charge coordinating like",
+                BAD_COORD_ATOM: "Disallowed coordinating atom",
+                BAD_FPP: "Bad refined f'' value",
+                BAD_COORD_RESIDUE: "Disallowed coordinating residue",
+                VERY_BAD_VALENCES: "BVS far above or below cutoff",
+                BAD_HALIDE: "Bad halide site",
+                }
 
   def __init__(self, i_seq, manager):
     self.i_seq = i_seq
@@ -2022,12 +2068,19 @@ def _identity(atom):
   """
   Covers an atom into a string representing its element and charge.
   """
+  element = _get_element(atom)
   charge = atom.charge
 
   if not isinstance(charge, int):
     charge = atom.charge_as_int()
 
-  return "%s%+d" % (_get_element(atom), charge)
+  if charge == 0:
+    try:
+      charge = get_charge(element)
+    except Sorry:
+      pass
+
+  return "%s%+d" % (element, charge)
 
 def find_anomalous_scatterers (*args, **kwds) :
   """
