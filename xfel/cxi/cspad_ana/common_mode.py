@@ -147,9 +147,6 @@ class common_mode_correction(mod_event_info):
     @param env Environment object
     """
 
-    # XXX Not needed now that the distance is read in the event?
-    env.update(evt)
-
     self.config = cspad_tbx.getConfig(self.address, env)
     if self.config is None:
       self.logger.error("beginjob(): no config")
