@@ -93,11 +93,13 @@ namespace dxtbx { namespace model { namespace boost_python {
           arg("s0"), 
           arg("polarization"),
           arg("polarization_fraction"))))
-      .add_property("polarization",
-        &PolarizedBeam::get_polarization,
+      .def("get_polarization",
+        &PolarizedBeam::get_polarization)
+      .def("set_polarization",
         &PolarizedBeam::set_polarization)
-      .add_property("polarization_fraction",
-        &PolarizedBeam::get_polarization_fraction,
+      .def("get_polarization_fraction",
+        &PolarizedBeam::get_polarization_fraction)
+      .def("set_polarization_fraction",
         &PolarizedBeam::set_polarization_fraction)
       .def("__str__", &polarized_beam_to_string);
   }
