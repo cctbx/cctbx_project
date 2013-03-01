@@ -9,6 +9,15 @@
 namespace dxtbx {
   namespace ext {
 
+    bool
+    is_big_endian()
+    {
+      uint32_t val = 1;
+      char * buff = (char *) & val;
+
+      return (buff[0] == 0);
+    }
+
     scitbx::af::shared<int>
     read_uint16(boost_adaptbx::python::streambuf & input,
                 size_t count)
@@ -88,6 +97,7 @@ namespace dxtbx {
       def("read_uint32", read_uint32, (arg("file"), arg("count")));
       def("read_int16", read_int16, (arg("file"), arg("count")));
       def("read_int32", read_int32, (arg("file"), arg("count")));
+      def("is_big_endian", is_big_endian);
     }
   }
 } //namespace dxtbx::ext
