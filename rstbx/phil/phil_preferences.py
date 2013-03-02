@@ -98,6 +98,16 @@ viewer {
   calibrate_silver = False
       .type=bool
       .help = "Open special GUI for distance/metrology from silver behenate."
+  calibrate_pdb{
+    code = None
+      .type=str
+      .help = "Open pdb code (over Internet) to get unit cell & symmetry for powder rings."
+      .help = "Most useful for calibrating low-Q rings on far detector."
+      .help = "Option is mutually exclusive with calibrate silver and powder arcs options."
+    d_min = 20.
+      .type=float
+      .help = "Limiting resolution to calculate powder rings"
+  }
 }
 """
 
