@@ -111,7 +111,7 @@ class SBSettingsPanel (SettingsPanel) :
     self.distance_ctrl = FloatCtrl(self, -1, pos=(300,180), size=(80,-1),
     value=80.00,
     name="Detector Distance")
-    self.distance_ctrl.SetMax(1000)
+    self.distance_ctrl.SetMax(5000)
     self.distance_ctrl.SetMin(5)
     self.distance_ctrl.SetOptional(False)
     box.Add(self.distance_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)

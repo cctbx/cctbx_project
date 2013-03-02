@@ -132,7 +132,11 @@ def view_raw_image(path, *command_line, **kwargs):
   global parameters
   parameters.horizons_phil = horizons_phil
 
-  if horizons_phil.viewer.calibrate_silver==True:
+  if horizons_phil.viewer.calibrate_pdb.code is not None:
+    from rstbx.viewer.calibration import pdb_code_wrapper
+    pdb_code_wrapper(horizons_phil).display(path)
+    return
+  elif horizons_phil.viewer.calibrate_silver==True:
     from rstbx.viewer.calibration import sb_wrapper
     sb_wrapper(horizons_phil).display(path)
     return

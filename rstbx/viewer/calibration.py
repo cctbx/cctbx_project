@@ -52,3 +52,42 @@ class sb_wrapper:
     L_pixels = L_mm / panel._img._raw.pixel_size
 
     [ dc.DrawCircle(xc, yc, panel._img.get_scale() * pxl) for pxl in L_pixels ]
+
+class pdb_code_wrapper(sb_wrapper):
+
+  def __init__(self,working_phil):
+      self.working_phil = working_phil
+      # should corresponds to low angle scattering of crystal structure---up to 20 Angstroms
+      from xfel.cxi.display_powder_arcs import get_mmtbx_icalc
+      intensities = get_mmtbx_icalc(
+        code = working_phil.viewer.calibrate_pdb.code,
+        d_min = working_phil.viewer.calibrate_pdb.d_min,
+        anomalous_flag=False)
+      self.hkl_list = intensities.indices()
+      self.uc = intensities.unit_cell()
+      spacings = self.uc.d(self.hkl_list)
+      rev_order = flex.sort_permutation(spacings,reverse = True)
+      for x in xrange(len(rev_order)):
+        print self.hkl_list[rev_order[x]], spacings[rev_order[x]]
+      self.experimental_d =  spacings.select(rev_order)
+
+  def user_callback(self,dc,panel,wx):
+    center_x, center_y = panel._img.get_beam_center()
+    xc, yc = panel._img.image_coords_as_screen_coords(center_x, center_y)
+    dc.SetPen(wx.Pen('red'))
+    dc.SetBrush(wx.TRANSPARENT_BRUSH)
+
+    wavelength = panel._img._raw.wavelength #should be this
+    wavelength_from_avg_file = False
+    if wavelength_from_avg_file:
+      # go through hoops to get the proper wavelength corresponding to this run
+      avepath = self.path.replace("stddev","avg")
+      import pickle
+      info = pickle.load(open(avepath,"rb"))
+      wavelength = info["WAVELENGTH"]
+
+    twotheta = self.uc.two_theta(miller_indices = self.hkl_list, wavelength = wavelength)
+    L_mm = panel.settings.distance * flex.atan(twotheta)
+    L_pixels = L_mm / panel._img._raw.pixel_size
+
+    [ dc.DrawCircle(xc, yc, panel._img.get_scale() * pxl) for pxl in L_pixels ]
