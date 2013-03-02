@@ -14,6 +14,7 @@ import wx
 import matplotlib.ticker as ticker
 import time
 import os
+import operator
 
 master_phil = libtbx.phil.parse("""
   trial_id = None
@@ -38,6 +39,15 @@ class Run (object):
     self.hit_rates_times = flex.double()
     self.hit_rates = flex.double()
 
+    self.distances = flex.double()
+    self.culled_distances = flex.double()
+
+    self.sifoils = flex.double()
+    self.culled_sifoils = flex.double()
+
+    self.wavelengths = flex.double()
+    self.culled_wavelengths = flex.double()
+
   def width(self):
     return max(self.bragg_times)-min(self.bragg_times)
 
@@ -51,22 +61,37 @@ class Run (object):
     if count <= 0:
       self.culled_braggs = self.braggs
       self.culled_bragg_times = self.bragg_times
+      self.culled_distances = self.distances
+      self.culled_sifoils = self.sifoils
+      self.culled_wavelengths = self.wavelengths
       return
 
     self.culled_braggs = flex.double()
     self.culled_bragg_times = flex.double()
+    self.culled_distances = flex.double()
+    self.culled_sifoils = flex.double()
+    self.culled_wavelengths = flex.double()
 
     window = int(len(self.bragg_times)/count)
     for i in range(count):
       value = self.braggs[i*window]
       time = self.bragg_times[i*window]
+      dist = self.distances[i*window]
+      sifo = self.sifoils[i*window]
+      wave = self.wavelengths[i*window]
       for j in range(window):
         idx = (i*window)+j
         if self.braggs[idx] > value:
           value = self.braggs[idx]
           time = self.bragg_times[idx]
+          dist = self.distances[idx]
+          sifo = self.sifoils[idx]
+          wave = self.wavelengths[idx]
       self.culled_braggs.append(value)
       self.culled_bragg_times.append(time)
+      self.culled_distances.append(dist)
+      self.culled_sifoils.append(sifo)
+      self.culled_wavelengths.append(wave)
 
 class TrialsPlotFrame (wxtbx.plots.plot_frame) :
   show_controls_default = False
@@ -116,11 +141,10 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
 
   def OnTimer(self, event):
     if(self.timerCheck.GetValue()):
-      #t1 = time.time()
-      if self.load_data(): pass
-      self.show_plot()
-      #t2 = time.time()
-      #print "Updated in %.2fs" % (t2 - t1)
+      if self.load_data():
+        self.show_plot()
+      else:
+        print "No new data"
 
   def OnZoom(self, event):
     self.zoom = 100-event.GetPosition()
@@ -139,6 +163,8 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
 
   # Returns true if new data was loaded, otherwise false
   def load_data (self):
+    t1 = time.time()
+    print "Loading data..."
     assert (self.trial_id is not None)
 
     import cxi_xdr_xes.cftbx.cspad_ana.db as cxidb
@@ -147,7 +173,8 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
 
     # retrieve the run IDs in this trial
     cursor = db.cursor()
-    cursor.execute("SELECT DISTINCT(run) FROM cxi_braggs_front WHERE trial = %s ORDER BY run"%self.trial_id)
+    cursor.execute("SELECT DISTINCT(run) FROM cxi_braggs_front WHERE trial = %s"%self.trial_id)
+    #cursor.execute("SELECT DISTINCT(run) FROM cxi_braggs_front WHERE trial = %s ORDER BY run DESC LIMIT 1"%self.trial_id)
     if(self.full_data_load):
       self.runs = []
 
@@ -158,28 +185,38 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
         run = Run(int(runId[0]))
         self.runs.append(run)
       else:
+        foundit=False
         for runtest in self.runs:
-          foundit = False
           if runtest.runId == int(runId[0]):
             foundit = True
             run = runtest
             break
         if not foundit:
+          print "New run: %s"%runId
           run = Run(int(runId[0]))
+          self.runs.append(run)
 
       if self.full_data_load or not hasattr(run, "latest_entry_id"):
-        cursor.execute("SELECT id, eventstamp, hitcount FROM cxi_braggs_front WHERE trial = %s AND run = %s ORDER BY eventstamp"%(self.trial_id,run.runId))
+        print "Full load"
+        cursor.execute("SELECT id, eventstamp, hitcount, distance, sifoil, wavelength FROM cxi_braggs_front \
+          WHERE trial = %s AND run = %s ORDER BY eventstamp"%(self.trial_id,run.runId))
       else:
-        cursor.execute("SELECT id, eventstamp, hitcount FROM cxi_braggs_front WHERE trial = %s AND run = %s AND id > %s ORDER BY eventstamp"%(self.trial_id,run.runId,run.latest_entry_id ))
+        print "Partial load"
+        cursor.execute("SELECT id, eventstamp, hitcount, distance, sifoil, wavelength FROM cxi_braggs_front \
+          WHERE trial = %s AND run = %s AND id > %s ORDER BY eventstamp"%(self.trial_id,run.runId,run.latest_entry_id ))
 
       hit_counter = self.params.average_window
 
       ids = flex.int()
 
-      for id, eventstamp, data in cursor.fetchall():
+      for id, eventstamp, hitcount, distance, sifoil, wavelength in cursor.fetchall():
         run.bragg_times.append(float(eventstamp))
-        run.braggs.append(int(data))
+        run.braggs.append(int(hitcount))
         ids.append(id)
+
+        run.distances.append(float(distance))
+        run.sifoils.append(float(sifoil))
+        run.wavelengths.append(float(wavelength))
 
         if (len(run.bragg_times) >= self.params.average_window) and hit_counter >= self.params.average_window:
           start = len(run.bragg_times) - self.params.average_window
@@ -217,6 +254,9 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
     self.cull_braggs()
 
     self.full_data_load = False
+    self.runs.sort(key=operator.attrgetter('runId'))
+    t2 = time.time()
+    print "Data loaded in %.2fs" % (t2 - t1)
     return new_data
 
   def cull_braggs(self):
@@ -243,6 +283,10 @@ class TrialsPlot (wxtbx.plots.plot_container) :
      time unit to be displayed
     newxmax: the first time unit not to be displayed
     """
+    runs = self.GetParent().runs
+    if len(runs) <= 0: return
+
+    t1 = time.time()
     total_width = self.GetParent().total_width
 
     newwidth = total_width * (self.GetParent().zoom / 100)
@@ -265,7 +309,27 @@ class TrialsPlot (wxtbx.plots.plot_container) :
     left = 0
     width_so_far = 0
     self.figure.clear()
-    for run in self.GetParent().runs:
+    braggsmax = max(flex.max(r.culled_braggs) for r in runs)
+    braggsmin = min(flex.min(r.culled_braggs) for r in runs)
+    distsmax = max(flex.max(r.culled_distances) for r in runs)
+    distsmin = min(flex.min(r.culled_distances) for r in runs)
+    sifomax = max(flex.max(r.culled_sifoils) for r in runs)
+    sifomin = min(flex.min(r.culled_sifoils) for r in runs)
+    wavemax = max(flex.max(r.culled_wavelengths) for r in runs)
+    wavemin = min(flex.min(r.culled_wavelengths) for r in runs)
+
+    #above tricks don't work for hit rates as they can be empty if the run is new
+    goodruns = []
+    for run in runs:
+      if len(run.hit_rates) > 0: goodruns.append(run)
+    if len(goodruns) > 0:
+      hitsmax = max(flex.max(r.hit_rates) for r in goodruns)
+      hitsmin = min(flex.min(r.hit_rates) for r in goodruns)
+    else:
+      hitsmax = hitsmin = 0
+
+    first_run = True
+    for run in runs:
       right = left + run.width()
 
       if right < newxmin or left > newxmax:
@@ -286,38 +350,54 @@ class TrialsPlot (wxtbx.plots.plot_container) :
       #print "Run: %s, run.width(): %s, left: %s, right: %s, run.min(): %s, run.max(): %s, xmin: %s, xmax: %s, width_so_far: %s, xmax-xmin: %s" \
         #%(run.runId,run.width(),left,right,run.min(),run.max(),xmin,xmax,width_so_far,xmax-xmin)
 
-      ax1 = self.figure.add_axes([0.05+(0.9*width_so_far/newwidth), 0.05, (xmax-xmin)/newwidth, 0.4])
-      ax2 = self.figure.add_axes([0.05+(0.9*width_so_far/newwidth), 0.45, (xmax-xmin)/newwidth, 0.15], sharex=ax1)
+      ax1 = self.figure.add_axes([0.05+(0.9*width_so_far/newwidth), 0.05, 0.9*(xmax-xmin)/newwidth, 0.4])
+      ax2 = self.figure.add_axes([0.05+(0.9*width_so_far/newwidth), 0.45, 0.9*(xmax-xmin)/newwidth, 0.2], sharex=ax1)
+      ax3 = self.figure.add_axes([0.05+(0.9*width_so_far/newwidth), 0.65, 0.9*(xmax-xmin)/newwidth, 0.1], sharex=ax1)
+      ax4 = self.figure.add_axes([0.05+(0.9*width_so_far/newwidth), 0.75, 0.9*(xmax-xmin)/newwidth, 0.1], sharex=ax1)
+      ax5 = self.figure.add_axes([0.05+(0.9*width_so_far/newwidth), 0.85, 0.9*(xmax-xmin)/newwidth, 0.1], sharex=ax1)
       left += run.width()
       width_so_far += (xmax-xmin)
 
-#    ax3 = self.figure.add_axes([0.1, 0.6, 0.8, 0.25], sharex=ax1)
       ax1.grid(True, color="0.75")
       ax2.grid(True, color="0.75")
-#    ax3.grid(True, color="0.75")
+      ax3.grid(True, color="0.75")
+      ax4.grid(True, color="0.75")
+      ax5.grid(True, color="0.75")
       ax1.plot(run.culled_bragg_times, run.culled_braggs, 'd', color=[0.0,0.5,1.0])
       ax2.plot(run.hit_rates_times, run.hit_rates, 'o-', color=[0.0,1.0,0.0])
-#    ax3.plot(t4, photon_counts, '^', color=[0.8,0.0,0.2])
+      ax3.plot(run.culled_bragg_times, run.culled_wavelengths, '^', color=[0.8,0.0,0.2])
+      ax4.plot(run.culled_bragg_times, run.culled_sifoils, '<', color=[0.8,0.0,0.2])
+      ax5.plot(run.culled_bragg_times, run.culled_distances, '>', color=[0.8,0.0,0.2])
       ax1.set_ylabel("# of Bragg spots")
       ax2.set_ylabel("Hit rate (%)")
-#    ax3.set_ylabel("XES photon count")
-#    if (len(photon_counts) > 0) :
-#      ax3.set_ylim(-1, max(photon_counts))
+      ax3.set_ylabel("Wavelength")
+      ax4.set_ylabel("Si Foils (mm)")
+      ax5.set_ylabel("Distance (mm)")
       ax1.set_xlim(xmin, xmax)
+      ax1.set_ylim(braggsmin, braggsmax)
+      ax2.set_ylim(hitsmin, hitsmax)
+      ax3.set_ylim(wavemin, wavemax)
+      ax4.set_ylim(sifomin, sifomax)
+      ax5.set_ylim(distsmin, distsmax)
       ax1.set_xlabel("Time")
-#    for ax in ax1, ax2, ax3:
-      for ax in ax1, ax2:
+      for ax in ax1, ax2, ax3, ax4, ax5:
         if (ax is not ax1) :
           for label in ax.get_xticklabels():
             label.set_visible(False)
         ax.get_yticklabels()[0].set_visible(False)
+        if not first_run:
+          ax.get_yaxis().set_visible(False)
 
-      ax2.xaxis.set_major_formatter(ticker.FuncFormatter(status_plot.format_time))
-      ax2.set_title("Run number: %d" % run.runId) #was axis 3
+      ax5.xaxis.set_major_formatter(ticker.FuncFormatter(status_plot.format_time))
+      ax5.set_title("Run number: %d" % run.runId)
+      first_run = False
 
     self.figure.autofmt_xdate()
     self.canvas.draw()
     self.parent.Refresh()
+
+    t2 = time.time()
+    print "Plotted in %.2fs" % (t2 - t1)
 
 def run (args) :
   user_phil = []

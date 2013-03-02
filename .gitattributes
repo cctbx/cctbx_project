@@ -2292,6 +2292,7 @@ wxtbx/utils.py -text
 xfel/SConscript -text
 xfel/__init__.py -text
 xfel/command_line/__init__.py -text
+xfel/command_line/auto_submit.py -text
 xfel/command_line/convert_gain_map.py -text
 xfel/command_line/cxi_diff.py -text
 xfel/command_line/cxi_index.py -text
@@ -2301,6 +2302,7 @@ xfel/command_line/cxi_spots.py -text
 xfel/command_line/cxi_view.py -text
 xfel/command_line/get_next_trial_id.py -text
 xfel/command_line/histogram_finalise.py -text
+xfel/command_line/list_db_metadata.py -text
 xfel/command_line/monitor_detectors.py -text
 xfel/command_line/monitor_trials.py -text
 xfel/command_line/overlay_spectra.py -text
