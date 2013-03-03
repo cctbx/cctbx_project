@@ -1,3 +1,4 @@
+from __future__ import division
 import mmtbx.bulk_solvent
 from scitbx.array_family import flex
 import math, time

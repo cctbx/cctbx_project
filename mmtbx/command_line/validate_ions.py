@@ -1,8 +1,7 @@
-# LIBTBX_SET_DISPATCHER_NAME mmtbx.validate_ions
 
 from __future__ import division
 from libtbx.str_utils import make_header
-from libtbx.utils import Usage, Sorry
+from libtbx.utils import Usage
 from libtbx import Auto
 import libtbx.phil
 import sys
