@@ -187,7 +187,7 @@ def cxi_versioned_extract(*args):
     working_extract.distl.tile_translations = TT
 
     # Order: UL x, UL y, UR x, UR y, LL x, LL y, LR x, LR y
-    working_extract.distl.quad_translations = [2,-6,3,-6,-7,0,-1,-4]
+    working_extract.distl.quad_translations = [-6,-2,9,2,-14,-8,7,-12]
     return working_extract
 
   else:
