@@ -2104,7 +2104,6 @@ spotfinder/applications/stats_distl.py -text
 spotfinder/applications/wrappers.py -text
 spotfinder/applications/xfel/__init__.py -text
 spotfinder/applications/xfel/correction_vector_plot.py -text
-spotfinder/applications/xfel/cxi_phil.py -text
 spotfinder/applications/xfel/cxi_run3.py -text
 spotfinder/array_family/SConscript -text
 spotfinder/array_family/__init__.py -text
