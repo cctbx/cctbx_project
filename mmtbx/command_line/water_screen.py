@@ -1,4 +1,3 @@
-# LIBTBX_SET_DISPATCHER_NAME mmtbx.water_screen
 
 from __future__ import division
 from libtbx.str_utils import make_header
