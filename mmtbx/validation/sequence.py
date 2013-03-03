@@ -6,6 +6,7 @@ import libtbx.phil
 from libtbx.utils import Sorry, null_out
 from libtbx import adopt_init_args, Auto
 import sys
+import os
 
 master_phil = libtbx.phil.parse("""
   similarity_matrix =  blosum50  dayhoff *identity
@@ -262,7 +263,8 @@ class chain (object) :
 class validation (object) :
   def __init__ (self, pdb_hierarchy, sequences, params=None, log=None,
       nproc=Auto, include_secondary_structure=False,
-      extract_coordinates=False, extract_residue_groups=False) :
+      extract_coordinates=False, extract_residue_groups=False,
+      minimum_identity=0) :
     assert (len(sequences) > 0)
     for seq_object in sequences :
       assert (seq_object.sequence != "")
@@ -274,6 +276,7 @@ class validation (object) :
     self.n_rna_dna = 0
     self.n_other = 0
     self.chains = []
+    self.minimum_identity = minimum_identity
     self.sequences = sequences
     self.sequence_mappings = [ None ] * len(sequences)
     for i_seq in range(1, len(sequences)) :
@@ -370,7 +373,7 @@ class validation (object) :
     best_alignment = None
     best_sequence = None
     best_seq_id = None
-    best_identity = 0.
+    best_identity = self.minimum_identity
     best_width = sys.maxint
     for i_seq, seq_object in enumerate(self.sequences) :
       alignment = mmtbx.alignment.align(
@@ -396,6 +399,13 @@ class validation (object) :
       if (outliers is not None) :
         table.extend(outliers)
     return table
+
+  def get_missing_chains (self) :
+    missing = []
+    for c in self.chains :
+      if (c.alignment is None) :
+        missing.append((c.chain_id, c.sequence))
+    return missing
 
   def show (self, out=None) :
     if (out is None) :
@@ -517,6 +527,148 @@ class validation (object) :
 
     return cif_block
 
+# XXX I am not particularly proud of this code
+def get_sequence_n_copies (
+    sequences,
+    pdb_hierarchy,
+    force_accept=False,
+    copies_from_xtriage=None,
+    copies_from_user=Auto,
+    minimum_identity=0.3, # okay for MR, may not be suitable in all cases
+    out=sys.stdout,
+    nproc=1) :
+  """
+  Utility function for reconciling the contents of the sequence file, the
+  chains in the model, and the ASU.  Returns the number of copies of the
+  sequence file to tell Phaser are present, or raises an error if this is
+  either ambiguous or in conflict with the search model multiplicity.
+  This is intended to allow the user to specify any combination of inputs -
+  for instance, given a tetrameric search model, 2 copies in the ASU, and a
+  monomer sequence file, the ASU contains 8 copies of the sequence(s).
+  """
+  print >> out, "Guessing the number of copies of the sequence file in the ASU"
+  v = validation(
+    pdb_hierarchy=pdb_hierarchy,
+    sequences=sequences,
+    log=out,
+    nproc=1,
+    include_secondary_structure=True,
+    extract_coordinates=False,
+    minimum_identity=0.3)
+  missing = v.get_missing_chains()
+  def raise_sorry (msg) :
+    raise Sorry(msg + " (Add the parameter force_accept=True to disable this "+
+      "error message and continue assuming 1 copy of sequence file.)")
+  if (len(missing) > 0) :
+    error = [
+      "%d chain(s) not found in sequence file.  If the sequence does " % \
+        len(missing),
+      "not accurately represent the contents of the crystal after adjusting ",
+      "for copy number, molecular replacement and building may fail.", ]
+    if (force_accept) :
+      print >> out, "WARNING: %s" % error
+    else :
+      raise_sorry(error)
+  counts = v.get_relative_sequence_copy_number()
+  unique_counts = set(counts)
+  if (-1 in unique_counts) : unique_counts.remove(-1)
+  if (0 in unique_counts) :
+    unique_counts.remove(0)
+    print >> out, "WARNING: %d sequence(s) not found in model.  This is not" %\
+      counts.count(0)
+    print >> out, "usually a problem, but it may indicate an incomplete model."
+  error = freq = None
+  model_copies = copies_from_user
+  if (model_copies is Auto) :
+    model_copies = copies_from_xtriage
+  if (model_copies is None) :
+    model_copies = 1
+    print >> out, "WARNING: assuming 1 copy of model"
+  if (model_copies < 1) :
+    raise Sorry("Must have at least one copy of model.")
+  if (len(unique_counts) == 0) :
+    error = "The sequence file provided does not appear to match the " +\
+            "search model."
+  elif (len(unique_counts) > 1) :
+    error = "The sequence file provided does not map evenly to the "+\
+      "search model; this usually means an error in the sequence file (or "+\
+      "model) such as accidental duplication or deletion of a chain. "+\
+      "[counts: %s]" % list(unique_counts)
+  else :
+    # XXX float is_integer introduced in Python 2.6
+    def is_integer (x) : return (int(x) == x)
+    seq_freq = list(unique_counts)[0]
+    assert seq_freq > 0
+    # 1-1 mapping between PDB hierarchy and sequence
+    if (seq_freq == 1.0) :
+      print >> out, "Assuming %d copies of sequence file (as well as model)" %\
+        model_copies
+      return model_copies
+    elif (seq_freq > 1) :
+      # hierarchy contains N copies of sequence
+      if is_integer(seq_freq) :
+        freq = int(seq_freq) * model_copies
+        print >> out, "Assuming %d copies of sequence file present" % freq
+        return freq
+      # hierarchy contains X.Y copies of sequence
+      else :
+        error = "The search model does not appear to contain a round "+\
+          "number of copies of the sequence; this usually means "+\
+          "that your sequence file has too many or too few sequences.  " +\
+          "[freq=%g]" % seq_freq
+    # more copies of sequence than in model
+    else :
+      inverse_freq = 1 / seq_freq
+      if is_integer(inverse_freq) :
+        # too much sequence
+        if (inverse_freq > model_copies) :
+          error = "The number of copies of the model expected is less than "+\
+            "the number indicated by the sequence file (%d versus %d).  " % \
+            (model_copies, int(inverse_freq)) + \
+            "This may mean that either the sequence file or the predicted "+\
+            "number of copies is wrong."
+        # too much model
+        # XXX is this actually possible the way I've written the function?
+        elif (inverse_freq < model_copies) :
+          error = "The number of copies of the model expected exceeds the "+\
+            "number indicated by the sequence file (%d versus %d)." % \
+            (model_copies, int(inverse_freq)) + \
+            "This may mean that either the sequence file or the predicted "+\
+            "number of copies is wrong."
+        # model_copies times model contents matches sequence
+        else :
+          print >> out, "Assuming only one copy of sequence file contents."
+          return 1
+      else :
+        error = "The sequence file does not appear to contain a round "+\
+          "number of copies of the model (%g)." % inverse_freq
+  if (error is not None) :
+    if (force_accept) :
+      print >> out, "WARNING: " + error
+      print >> out, ""
+      print >> out, "Ambiguous input, defaulting to 1 copy of sequence file"
+      return 1
+    else :
+      raise_sorry(error)
+  else :
+    raise RuntimeError("No error but frequency not determined")
+
+def get_sequence_n_copies_from_files (seq_file, pdb_file, **kwds) :
+  from iotbx import file_reader
+  seq_in = file_reader.any_file(seq_file,
+    raise_sorry_if_errors=True,
+    raise_sorry_if_not_expected_format=True)
+  if (seq_in.file_type != "seq") :
+    raise Sorry("Can't parse %s as a sequence file.")
+  pdb_in = file_reader.any_file(pdb_file,
+    raise_sorry_if_errors=True,
+    raise_sorry_if_not_expected_format=True)
+  if (pdb_in.file_type != "pdb") :
+    raise Sorry("Can't parse %s as a PDB or mmCIF file.")
+  kwds['pdb_hierarchy'] = pdb_in.file_object.construct_hierarchy()
+  kwds['sequences'] = seq_in.file_object
+  return get_sequence_n_copies(**kwds)
+
 ########################################################################
 # REGRESSION TESTING
 def exercise () :
@@ -524,7 +676,6 @@ def exercise () :
   if (libtbx.utils.detect_multiprocessing_problem() is not None) :
     print "multiprocessing not available, skipping this test"
     return
-  import os
   if (os.name == "nt"):
     print "easy_mp fixed_func not supported under Windows, skipping this test"
     return
@@ -884,33 +1035,94 @@ ATOM    854  CA  GLY A  12      25.907  28.394  28.320  1.00 38.88           C
     assert list(cif_block['_struct_ref_seq.seq_align_beg']) == ['1', '114']
     assert list(cif_block['_struct_ref_seq.seq_align_end']) == ['82', '272']
     # determine relative counts of sequences and chains
-    v = validation(
+    n_seq = get_sequence_n_copies(
       pdb_hierarchy=hierarchy,
       sequences=[seq] * 4,
-      log=null_out(),
-      nproc=1,
-      include_secondary_structure=True,
-      extract_coordinates=True)
-    assert (v.get_relative_sequence_copy_number() == [0.25, -1, -1, -1])
+      copies_from_xtriage=4,
+      out=null_out())
+    assert (n_seq == 1)
     hierarchy = hierarchy.deep_copy()
     chain2 = hierarchy.only_model().chains()[0].detached_copy()
     hierarchy.only_model().append_chain(chain2)
-    v = validation(
-      pdb_hierarchy=hierarchy,
-      sequences=[seq] * 2,
-      log=null_out(),
-      nproc=1,
-      include_secondary_structure=True,
-      extract_coordinates=True)
-    assert (v.get_relative_sequence_copy_number() == [1.0, -1])
-    v = validation(
+    n_seq = get_sequence_n_copies(
       pdb_hierarchy=hierarchy,
       sequences=[seq] * 4,
-      log=null_out(),
-      nproc=1,
-      include_secondary_structure=True,
-      extract_coordinates=True)
-    assert (v.get_relative_sequence_copy_number() == [0.5, -1, -1, -1])
+      copies_from_xtriage=2,
+      out=null_out())
+    assert (n_seq == 1)
+    n_seq = get_sequence_n_copies(
+      pdb_hierarchy=hierarchy,
+      sequences=[seq],
+      copies_from_xtriage=2,
+      out=null_out())
+    assert (n_seq == 4)
+    try :
+      n_seq = get_sequence_n_copies(
+        pdb_hierarchy=hierarchy,
+        sequences=[seq] * 3,
+        copies_from_xtriage=2,
+        out=null_out())
+    except Sorry, s :
+      assert ("round number" in str(s))
+    else :
+      raise Exception_expected
+    n_seq = get_sequence_n_copies(
+      pdb_hierarchy=hierarchy,
+      sequences=[seq] * 3,
+      copies_from_xtriage=2,
+      force_accept=True,
+      out=null_out())
+    assert (n_seq == 1)
+    try :
+      n_seq = get_sequence_n_copies(
+        pdb_hierarchy=hierarchy,
+        sequences=[seq] * 4,
+        copies_from_xtriage=1,
+        out=null_out())
+    except Sorry, s :
+      assert ("less than" in str(s))
+    else :
+      raise Exception_expected
+    hierarchy = hierarchy.deep_copy()
+    chain2 = hierarchy.only_model().chains()[0].detached_copy()
+    hierarchy.only_model().append_chain(chain2)
+    try :
+      n_seq = get_sequence_n_copies(
+        pdb_hierarchy=hierarchy,
+        sequences=[seq] * 2,
+        copies_from_xtriage=2,
+        out=null_out())
+    except Sorry, s :
+      assert ("round number" in str(s))
+    else :
+      raise Exception_expected
+    n_seq = get_sequence_n_copies(
+      pdb_hierarchy=hierarchy,
+      sequences=[seq],
+      copies_from_xtriage=1,
+      out=null_out())
+    assert (n_seq == 3)
+    hierarchy = hierarchy.deep_copy()
+    chain2 = hierarchy.only_model().chains()[0].detached_copy()
+    hierarchy.only_model().append_chain(chain2)
+    n_seq = get_sequence_n_copies(
+      pdb_hierarchy=hierarchy,
+      sequences=[seq] * 2,
+      copies_from_xtriage=2,
+      out=null_out())
+    assert (n_seq == 4)
+    # now with files as input
+    seq_file = "tmp_mmtbx_validation_sequence.fa"
+    open(seq_file, "w").write(">1ywf\n%s" % seq.sequence)
+    n_seq = get_sequence_n_copies_from_files(
+      pdb_file=pdb_file,
+      seq_file=seq_file,
+      copies_from_xtriage=4,
+      out=null_out())
+    try :
+      assert (n_seq == 4)
+    finally :
+      os.remove(seq_file)
 
 if (__name__ == "__main__") :
   exercise()
