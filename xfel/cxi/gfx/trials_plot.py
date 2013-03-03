@@ -27,6 +27,8 @@ master_phil = libtbx.phil.parse("""
     .type = int
   n_points = 1000
     .type = int
+  display_time = 1800
+    .type = int
 """)
 
 class Run (object):
@@ -118,6 +120,12 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
     self.timerCheck.SetValue(True)
     self.toolbar.AddControl(self.timerCheck)
 
+    self.timelockCheck = wx.CheckBox(self.toolbar, -1, "Display only last %s minutes: ")
+    self.timelockCheck.SetValue(False)
+    self.timelockCheck.newly_checked = False
+    self.toolbar.AddControl(self.timelockCheck)
+    self.timelockCheck.Bind(wx.EVT_CHECKBOX, self.OnTimeLockCheck, self.timelockCheck)
+
     self.zoom = 100
     self.pan = 50
 
@@ -139,9 +147,27 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
     self.Bind(wx.EVT_TIMER, self.OnTimer)
     self._timer.Start(params.t_wait)
 
+    self.timelockCheck.SetLabel("Display only last %s minutes: "%(self.params.display_time/60))
+
+  def OnTimeLockCheck(self, event):
+    self.timelockCheck.newly_checked = True
+
   def OnTimer(self, event):
     if(self.timerCheck.GetValue()):
-      if self.load_data():
+      if self.load_data() or self.timelockCheck.newly_checked:
+        if self.timelockCheck.GetValue():
+          self.panSlider.Disable()
+          self.zoomSlider.Disable()
+          if self.total_width > 0:
+            self.zoom = 100 * self.params.display_time / self.total_width
+            self.pan = 100
+
+            if self.zoom > 100: self.zoom = 100
+
+        else:
+          self.zoomSlider.Enable()
+
+        self.timelockCheck.newly_checked = False
         self.show_plot()
       else:
         print "No new data"
@@ -426,6 +452,8 @@ def run (args) :
   assert (params.hit_cutoff is not None) and (params.hit_cutoff > 0)
   assert (params.average_window is not None) and (params.average_window > 0)
   assert (params.n_points is not None) # zero or less means display all the points
+  assert (params.display_time is not None) and (params.display_time > 0)
+
   app = wx.App(0)
   frame = TrialsPlotFrame(None, -1, "Detector status for trial %d" %
       params.trial_id)
