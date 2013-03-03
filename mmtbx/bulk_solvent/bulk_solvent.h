@@ -1,6 +1,7 @@
 #ifndef MMTBX_BULK_SOLVENT_BULK_SOLVENT_H
 #define MMTBX_BULK_SOLVENT_BULK_SOLVENT_H
 
+#include <cfloat>
 #include <mmtbx/error.h>
 #include <mmtbx/import_scitbx_af.h>
 #include <cctbx/sgtbx/space_group.h>
