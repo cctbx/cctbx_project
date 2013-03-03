@@ -156,6 +156,21 @@ DEFAULT_IONS = ["MG", "CA", "ZN", "CL"]
 HALIDES = ["F", "CL", "BR", "I"]
 TRANSITION_METALS = ["MN","FE","CO","CU","NI","ZN"]
 NUC_PHOSPHATE_BINDING = ["MG", "CA", "MN"]
+SUPPORTED = TRANSITION_METALS + HALIDES + ["NA","MG","K","CA","CD"]
+
+def check_supported (elements) :
+  if (elements is None) :
+    raise Sorry("No elements specified for ion picking - must be either "+
+      "'Auto' or a comma-separated list of element symbols.")
+  elif (elements is not Auto) :
+    # XXX somehow comma-separation of phil strings fields doesn't work
+    if (isinstance(elements, list)) and (len(elements) == 1) :
+      elements = elements[0].split(",")
+    for elem in elements :
+      if (not elem.strip().upper() in SUPPORTED) :
+        raise Sorry("Element '%s' not supported!  Choices are: %s" %
+          (elem, " ".join(SUPPORTED)))
+  return True
 
 class atom_contact (slots_getstate_setstate) :
   """
