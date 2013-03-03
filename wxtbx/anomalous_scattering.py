@@ -77,11 +77,17 @@ class AnomPlotFrame (wxtbx.plots.plot_frame) :
     if (xdata is None) or (ydata is None) :
       self.statusbar.SetStatusText("")
     else :
+      wavelength = energy = 0
       if (xdata < 10) :
-        rtype, rlabel = "Wavelength", "Angstrom"
+        wavelength = xdata
+        if (xdata != 0) :
+          energy = 12398 / xdata
       else :
-        rtype, rlabel = "Energy", "eV"
-      status_label = "%s=%.3f %s   e-=%.3f" % (rtype, xdata, rlabel, ydata)
+        energy = xdata
+        if (xdata != 0) :
+          wavelength = 12398 / energy
+      status_label = "Wavelength=%.3f A   Energy=%.3f eV  e-=%.3f" % (
+        wavelength, energy, ydata)
       self.statusbar.SetStatusText(status_label)
 
 class ControlPanel (wx.Panel) :
