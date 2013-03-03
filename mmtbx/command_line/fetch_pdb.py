@@ -140,6 +140,12 @@ Command-line options:
         if (not os.path.isfile("%s.mtz" % id)) :
           raise Sorry("MTZ conversion failed - try running phenix.cif_as_mtz "+
             "manually (and check %s-sf.cif for format errors)." % id)
+        from iotbx.file_reader import any_file
+        mtz_in = any_file("%s.mtz" % id)
+        mtz_in.assert_file_type("hkl")
+        for array in mtz_in.file_server.miller_arrays :
+          if (array.anomalous_flag()) :
+            print >> log, "  %s is anomalous" % array.info().label_string()
       if (maps) :
         assert os.path.isfile("%s.mtz" % id)
         from mmtbx.maps.utils import create_map_from_pdb_and_mtz
