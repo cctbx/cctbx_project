@@ -78,6 +78,12 @@ namespace dxtbx { namespace model {
       return direction_ * 1.0 / wavelength_;
     }
 
+    /** Set the direction and wavelength from s0 */
+    void set_s0(vec3<double> s0) {
+      direction_ = s0.normalize();
+      wavelength_ = 1.0 / s0.length();
+    }
+
     /** Check wavlength and direction are (almost) same */
     bool operator==(const Beam &beam) {
       double eps = 1.0e-6;

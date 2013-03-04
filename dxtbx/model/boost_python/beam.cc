@@ -48,6 +48,8 @@ namespace dxtbx { namespace model { namespace boost_python {
         &Beam::set_wavelength)
       .def("get_s0",
         &Beam::get_s0)
+      .def("set_s0",
+        &Beam::set_s0)
       .def("__eq__", &Beam::operator==)
       .def("__ne__", &Beam::operator!=)
       .def("__str__", &beam_to_string);
