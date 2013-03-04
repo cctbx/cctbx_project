@@ -20,7 +20,7 @@ def tst_dxtbx():
                                  directory, image)
         format = Registry.find(file_path)
         i = format(file_path)
-        size = i.get_detector().image_size
+        size = i.get_detector()[0].get_image_size()
         b = i.get_beam()
         g = i.get_goniometer()
         s = i.get_scan()
