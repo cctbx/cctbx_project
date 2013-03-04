@@ -5,7 +5,6 @@ from __future__ import division
 #-----------------------------------------------------------------------
 
 import libtbx.phil
-#from libtbx.utils import Usage, Sorry
 from cxi_xdr_xes.cftbx.cspad_ana import db as db
 import os
 import sys
@@ -49,22 +48,17 @@ def match_runs(dir):
   runs = []
   files = os.listdir(dir)
   for file in files:
-    #print file.split('.')[-1] != 'xtc'
-    if file.split('.')[-1] != 'xtc':
-      continue
     r = s = c = None
-    #print file.split("-")
     for str in file.split("-"):
-      if 'inprogress' in str:
-        break
-      if 'c' in str:
-        #print "yarp: %s"%str.split(".")[0].strip('c')
-        c = int(str.split(".")[0].strip('c'))
-      if 'r' in str:
-        r = int(str.strip('r'))
-      elif 's' in str:
-        s = int(str.strip('s'))
-    #print r, s, c
+      try:
+        if 'c' in str:
+          c = int(str.split(".")[0].strip('c'))
+        if 'r' in str:
+          r = int(str.strip('r'))
+        elif 's' in str:
+          s = int(str.strip('s'))
+      except ValueError:
+        pass
     if r is not None and s is not None and c is not None and c == 0:
       foundIt = False
       for rn in runs:
@@ -133,8 +127,6 @@ def run (args) :
 
   print "Note, it is not recommended that you run this program while you have new jobs pending."
   print "Starting indefinite loop to scan directory '%s'"%params.xtc_dir
-  #rs = match_runs(params.xtc_dir)
-  #return
 
   try:
     while(True):
@@ -153,7 +145,7 @@ def run (args) :
       submitted_a_run = False
       if len(add_runs) > 0:
         for r in add_runs:
-	  if params.submit_as_group:
+          if params.submit_as_group:
             if len(r.files) != params.stream_count:
               print "Waiting to queue run %s.  %s/%s streams ready."% \
                 (r.id,len(r.files),params.stream_count)
@@ -169,26 +161,32 @@ def run (args) :
 
             submitted_a_run = True
             submitted_runs.append(r)
-	  else:
-	    for f in r.files:
-	      if not f in submitted_files:
-	        s = None
+          else:
+            for f in r.files:
+              if not f in submitted_files:
+                s = None
                 for str in f.split('-'):
-		  if 's' in str:
-                    s = int(str.strip('s'))
-		if s is None:
-		  print "Couldn't get the stream number from file %s"%os.path.basename(f)
+                  try:
+                    if 's' in str:
+                      s = int(str.strip('s'))
+                  except ValueError:
+                    pass
+                if s is None:
+                  print "Couldn't get the stream number from file %s"%os.path.basename(f)
+                  continue
 
-		print "Preparing to queue stream %s into trial %s"%(os.path.basename(f),params.trial_id)
+                print "Preparing to queue stream %s into trial %s"%(os.path.basename(f),params.trial_id)
                 cmd = "./single_lsf.sh -c %s -p %s -x %s -o %s -t %s -r %s -q %s -s %s"%(params.config_file,params.num_procs,params.experiment,
                   params.output_dir,params.trial_id,r.id,params.queue,s)
 
                 print "Command to execute: %s"%cmd
                 os.system(cmd)
-                print "Stream %s queued."%r.id
+                print "Run %s stream %s queued."%(r.id,s)
 
-		submitted_a_run = True
-		submitted_files.append(f)
+                submitted_a_run = True
+                submitted_files.append(f)
+                if '.inprogress' in f:
+                  submitted_files.append(f.rstrip(".inprogress"))
 
       if not submitted_a_run:
         print "No new data... sleepy..."
