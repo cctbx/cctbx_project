@@ -64,14 +64,13 @@ namespace dxtbx { namespace model { namespace boost_python {
         &Detector::get_d_matrices)
       .def("get_D_matrices",
         &Detector::get_D_matrices)
-      .def("is_value_in_trusted_range",
-        &Detector::is_value_in_trusted_range)
-      .def("is_coord_valid",
-        &Detector::is_coord_valid)
-      .def("millimeter_to_pixel",
-        &Detector::millimeter_to_pixel)
-      .def("pixel_to_millimeter",
-        &Detector::pixel_to_millimeter)   
+      .def("get_max_resolution",
+        &Detector::get_max_resolution, (
+          arg("s0"),
+          arg("wavelength")))
+      .def("get_ray_intersection",
+        &Detector::get_ray_intersection, (
+          arg("s1")))
 //      .def("do_panels_intersect",
 //        &Detector::do_panels_intersect)
       .def("__len__", 
