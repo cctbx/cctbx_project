@@ -450,6 +450,7 @@ dxtbx/tests/image_017.dat -text
 dxtbx/tests/image_018.dat -text
 dxtbx/tests/image_019.dat -text
 dxtbx/tests/image_020.dat -text
+dxtbx/tests/model/tst_beam.py -text
 dxtbx/tests/model/tst_detector.py -text
 dxtbx/tests/model/tst_scan_data.py -text
 dxtbx/tests/model/tst_scan_helpers.py -text
