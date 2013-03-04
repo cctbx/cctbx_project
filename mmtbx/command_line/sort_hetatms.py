@@ -137,7 +137,13 @@ def sort_hetatms (
       hetatm_chains.append(chain)
   if (len(hetatm_chains) == 0) :
     print >> log, "No heteroatoms - hierarchy will not be modified."
-    return pdb_hierarchy
+    if (return_pdb_hierarchy) :
+      return pdb_hierarchy
+    else :
+      return sort_hetatms_result(
+        pdb_hierarchy=pdb_hierarchy,
+        n_mm_chains=len(mm_chains),
+        n_het_residues=0)
   n_het_residues = 0
   new_hierarchy = pdb.hierarchy.root()
   new_model = pdb.hierarchy.model()
