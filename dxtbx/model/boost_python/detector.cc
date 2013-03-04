@@ -23,16 +23,10 @@ namespace dxtbx { namespace model { namespace boost_python {
 
   using namespace boost::python;
   
-  std::string detector_to_string(
-      const Detector &detector)
-  {
-    std::string str;
-//    str += "Detector:\n";
-//    for (std::size_t i = 0; i < detector.num_panels(); ++i) {
-//      str += "\n";
-//      str += panel_to_string(detector[i]);
-//    }
-    return str;
+  std::string detector_to_string(const Detector &detector) {
+    std::stringstream os;
+    os << detector;
+    return os.str();
   }
 
   void detector_set_item(Detector &d, 

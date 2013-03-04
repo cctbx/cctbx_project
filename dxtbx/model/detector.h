@@ -64,8 +64,6 @@ namespace dxtbx { namespace model {
     Detector(const panel_list_type &panel_list)
       : panel_list_(panel_list) {}
 
-
-
     /** Virtual destructor */
     virtual ~Detector() {}
 
@@ -177,6 +175,8 @@ namespace dxtbx { namespace model {
 //      return false;
 //    }
 
+    friend std::ostream& operator<< (std::ostream& , const Detector&);
+
   protected:
 
     /**
@@ -219,6 +219,23 @@ namespace dxtbx { namespace model {
 
     panel_list_type panel_list_;
   };
+
+  /** Print the detector information to the ostream */
+  inline
+  std::ostream& operator<< (std::ostream &os, const Detector &d) {
+    os << "Detector:\n";
+    for (std::size_t i = 0; i < d.num_panels(); ++i) {
+      std::stringstream ss;
+      ss << d[i];
+      std::string panel;
+      std::string line;
+      while (std::getline(ss, line)) {
+        panel += "    " + line + "\n";
+      }
+      os << panel;
+    }
+    return os;
+  }
 
 }} // namespace dxtbx::model
 
