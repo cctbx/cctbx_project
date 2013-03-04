@@ -45,7 +45,7 @@ namespace dxtbx { namespace model {
   class Detector {
   public:
 
-    typedef std::pair<int, vec2<double> > coordinate_type;
+    typedef std::pair<int, vec2<double> > coord_type;
 
     // Panel list typedefs
     typedef Panel panel_type;
@@ -141,26 +141,41 @@ namespace dxtbx { namespace model {
       return D;
     }
 
-    /** Check the value is valid */
-    bool is_value_in_trusted_range(int panel, double value) const {
-      return 0 <= panel && panel < panel_list_.size()
-          && panel_list_[panel].is_value_in_trusted_range(value);
+    /** Get the maximum resolution of the detector */
+    double get_max_resolution(vec3<double> s0, double wavelength) {
+      double d_min = 0;
+      for (std::size_t i = 0; i < panel_list_.size(); ++i) {
+        double d = panel_list_[i].get_max_resolution_at_corners(s0, wavelength);
+        if (d < d_min || i == 0) d_min = d;
+      }
+      return d_min;
     }
 
-    /** Check the coordinate is valid */
-    bool is_coord_valid(coordinate_type pxy) const {
-      return 0 <= pxy.first && pxy.first < panel_list_.size()
-          && panel_list_[pxy.first].is_coord_valid(pxy.second);
-    }
+    /** Get ray intersection with detector */
+    coord_type get_ray_intersection(vec3<double> s1) {
+      coord_type pxy(-1, vec2<double>(0, 0));
+      double w_max = 0;
 
-    /** Map coordinates in mm to pixels */
-    vec2<double> millimeter_to_pixel(coordinate_type pxy) const {
-      return panel_list_[pxy.first].millimeter_to_pixel(pxy.second);
-    }
+      // Loop through all detectors. If the w component of the (u, v, w)
+      // vector points in the correct direction, then calculate the coordinate.
+      // If the coordinate is valid and the w component is greater than that of
+      // the current closest valid coordinate, then set this coordinate as the
+      // current best bet.
+      for (std::size_t i = 0; i < panel_list_.size(); ++i) {
+        vec3 <double> v = panel_list_[i].get_D_matrix() * s1;
+        if (v[2] > 0) {
+          vec2<double> xy_temp(v[0] / v[2], v[1] / v[2]);
+          if (panel_list_[i].is_coord_valid(xy_temp) && v[2] > w_max) {
+            pxy = coord_type(i, xy_temp);
+            w_max = v[2];
+          }
+        }
+      }
 
-    /** Map the coordinates in pixels to millimeters */
-    vec2<double> pixel_to_millimeter(coordinate_type pxy) const {
-      return panel_list_[pxy.first].pixel_to_millimeter(pxy.second);
+      // If no coordinate was found then raise an exception
+      // otherwise return the coordinate.
+      DXTBX_ASSERT(w_max > 0);
+      return pxy;
     }
 
     /** Check if any panels intersect */
