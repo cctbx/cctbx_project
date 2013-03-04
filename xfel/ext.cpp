@@ -118,6 +118,7 @@ struct correction_vector_store {
       vec2 co = selected_tile_obs_spo[x];
       vec2 cp = all_tile_pred_spo[x];
       double co_cp_norm = co.length()*cp.length();
+      if (co_cp_norm==0) {continue;}
       double co_dot_cp = co*cp;
       double co_cross_cp_coeff = (co[0]*cp[1]-cp[0]*co[1]);
       double sin_theta = co_cross_cp_coeff / co_cp_norm;
