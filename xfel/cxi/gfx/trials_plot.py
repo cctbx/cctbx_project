@@ -34,6 +34,7 @@ master_phil = libtbx.phil.parse("""
 class Run (object):
   def __init__(self, runId):
     self.runId = runId
+    self.hits_count = 0
     self.bragg_times = flex.double()
     self.braggs = flex.double()
     self.culled_braggs = flex.double()
@@ -120,7 +121,7 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
     self.timerCheck.SetValue(True)
     self.toolbar.AddControl(self.timerCheck)
 
-    self.timelockCheck = wx.CheckBox(self.toolbar, -1, "Display only last %s minutes: ")
+    self.timelockCheck = wx.CheckBox(self.toolbar, -1, "Display last %s minutes: ")
     self.timelockCheck.SetValue(False)
     self.timelockCheck.newly_checked = False
     self.toolbar.AddControl(self.timelockCheck)
@@ -147,7 +148,7 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
     self.Bind(wx.EVT_TIMER, self.OnTimer)
     self._timer.Start(params.t_wait)
 
-    self.timelockCheck.SetLabel("Display only last %s minutes: "%(self.params.display_time/60))
+    self.timelockCheck.SetLabel("Display last %s minutes: "%(self.params.display_time/60))
 
   def OnTimeLockCheck(self, event):
     self.timelockCheck.newly_checked = True
@@ -189,7 +190,7 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
 
   # Returns true if new data was loaded, otherwise false
   def load_data (self):
-    t1 = time.time()
+    ttop = time.time()
     print "Loading data..."
     assert (self.trial_id is not None)
 
@@ -198,11 +199,17 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
     assert(db is not None and db.open)
 
     # retrieve the run IDs in this trial
+    #t1 = time.time()
     cursor = db.cursor()
-    cursor.execute("SELECT DISTINCT(run) FROM cxi_braggs_front WHERE trial = %s"%self.trial_id)
-    #cursor.execute("SELECT DISTINCT(run) FROM cxi_braggs_front WHERE trial = %s ORDER BY run DESC LIMIT 1"%self.trial_id)
+    #cursor.execute("SELECT DISTINCT(run) FROM cxi_braggs_front WHERE trial = %s"%self.trial_id)
+    cursor.execute("SELECT DISTINCT(run) FROM cxi_braggs_front WHERE trial = %s ORDER BY run DESC LIMIT 5"%self.trial_id)
+    #t2 = time.time()
+    #print "Runs queried in %.2fs" % (t2 - t1)
+
     if(self.full_data_load):
       self.runs = []
+    if(len(self.runs) > 5):
+      self.runs = self.runs[-5:]
 
     new_data = False
 
@@ -222,6 +229,8 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
           run = Run(int(runId[0]))
           self.runs.append(run)
 
+      #t1 = time.time()
+      #print "Loading data from run %s" % (run.runId)
       if self.full_data_load or not hasattr(run, "latest_entry_id"):
         print "Full load"
         cursor.execute("SELECT id, eventstamp, hitcount, distance, sifoil, wavelength FROM cxi_braggs_front \
@@ -231,6 +240,8 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
         cursor.execute("SELECT id, eventstamp, hitcount, distance, sifoil, wavelength FROM cxi_braggs_front \
           WHERE trial = %s AND run = %s AND id > %s ORDER BY eventstamp"%(self.trial_id,run.runId,run.latest_entry_id ))
 
+      #t2 = time.time()
+      #print "Query ran in %.2fs" % (t2 - t1)
       hit_counter = self.params.average_window
 
       ids = flex.int()
@@ -251,6 +262,7 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
           ratio = float(len(isel)) / float(self.params.average_window)
           run.hit_rates_times.append(run.bragg_times[-1])
           run.hit_rates.append(ratio*100)
+          run.hits_count += len(isel)
           hit_counter = 0
         else :
           hit_counter += 1
@@ -281,8 +293,8 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
 
     self.full_data_load = False
     self.runs.sort(key=operator.attrgetter('runId'))
-    t2 = time.time()
-    print "Data loaded in %.2fs" % (t2 - t1)
+    tbot = time.time()
+    print "Data loaded in %.2fs" % (tbot - ttop)
     return new_data
 
   def cull_braggs(self):
@@ -415,7 +427,7 @@ class TrialsPlot (wxtbx.plots.plot_container) :
           ax.get_yaxis().set_visible(False)
 
       ax5.xaxis.set_major_formatter(ticker.FuncFormatter(status_plot.format_time))
-      ax5.set_title("Run number: %d" % run.runId)
+      ax5.set_title("%d:%d/%d:%.1f%%"%(run.runId, run.hits_count, len(run.braggs), 100*run.hits_count/len(run.braggs)))
       first_run = False
 
     self.figure.autofmt_xdate()

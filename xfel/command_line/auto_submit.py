@@ -31,6 +31,8 @@ master_phil = libtbx.phil.parse("""
     .type = str
   experiment = 'cxi78513'
     .type = str
+  submit_as_group = True
+    .type = bool
 """)
 
 submitted_runs = []
@@ -124,8 +126,10 @@ def run (args) :
   assert (params.num_procs is not None) and (params.stream_count > 0)
   assert (params.queue is not None)
   assert (params.experiment is not None)
+  assert (params.submit_as_group is not None)
 
   submitted_runs = []
+  submitted_files = [] # used in single stream submit mode
 
   print "Note, it is not recommended that you run this program while you have new jobs pending."
   print "Starting indefinite loop to scan directory '%s'"%params.xtc_dir
@@ -137,8 +141,8 @@ def run (args) :
       rs = match_runs(params.xtc_dir)
       add_runs = []
       for r in rs:
-        if not db.run_in_trial(r.id, params.trial_id):
-          if not (params.start_run is not None and r.id < params.start_run):
+        if not (params.start_run is not None and r.id < params.start_run):
+          if not db.run_in_trial(r.id, params.trial_id):
             doit = True
             for test in submitted_runs:
               if test.id == r.id:
@@ -146,25 +150,47 @@ def run (args) :
                 break
             if doit: add_runs.append(r)
 
+      submitted_a_run = False
       if len(add_runs) > 0:
         for r in add_runs:
-          if(len(r.files) != params.stream_count):
-            print "Waiting to queue run %s.  %s/%s streams ready."% \
-              (r.id,len(r.files),params.stream_count)
-            continue
+	  if params.submit_as_group:
+            if len(r.files) != params.stream_count:
+              print "Waiting to queue run %s.  %s/%s streams ready."% \
+                (r.id,len(r.files),params.stream_count)
+              continue
 
-          print "Preparing to queue run %s into trial %s"%(r.id,params.trial_id)
-          cmd = "./lsf.sh -c %s -p %s -x %s -o %s -t %s -r %s -q %s"%(params.config_file,params.num_procs,params.experiment,
-            params.output_dir,params.trial_id,r.id,params.queue)
+            print "Preparing to queue run %s into trial %s"%(r.id,params.trial_id)
+            cmd = "./lsf.sh -c %s -p %s -x %s -o %s -t %s -r %s -q %s"%(params.config_file,params.num_procs,params.experiment,
+              params.output_dir,params.trial_id,r.id,params.queue)
 
-          print "Command to execute: %s"%cmd
-          if os.system(cmd):
-            print "Queued ok."
-          else:
-            print "There was an error queueing this run."
+            print "Command to execute: %s"%cmd
+            os.system(cmd)
+            print "Run %s queued."%r.id
 
-          submitted_runs.append(r)
-      else:
+            submitted_a_run = True
+            submitted_runs.append(r)
+	  else:
+	    for f in r.files:
+	      if not f in submitted_files:
+	        s = None
+                for str in f.split('-'):
+		  if 's' in str:
+                    s = int(str.strip('s'))
+		if s is None:
+		  print "Couldn't get the stream number from file %s"%os.path.basename(f)
+
+		print "Preparing to queue stream %s into trial %s"%(os.path.basename(f),params.trial_id)
+                cmd = "./single_lsf.sh -c %s -p %s -x %s -o %s -t %s -r %s -q %s -s %s"%(params.config_file,params.num_procs,params.experiment,
+                  params.output_dir,params.trial_id,r.id,params.queue,s)
+
+                print "Command to execute: %s"%cmd
+                os.system(cmd)
+                print "Stream %s queued."%r.id
+
+		submitted_a_run = True
+		submitted_files.append(f)
+
+      if not submitted_a_run:
         print "No new data... sleepy..."
 
       time.sleep(10)
