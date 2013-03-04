@@ -11,6 +11,7 @@
 #ifndef DXTBX_MODEL_KAPPA_GONIOMETER_H
 #define DXTBX_MODEL_KAPPA_GONIOMETER_H
 
+#include <iostream>
 #include <scitbx/vec3.h>
 #include <scitbx/mat3.h>
 #include <scitbx/math/r3_rotation.h>
@@ -142,6 +143,8 @@ namespace dxtbx { namespace model {
       return kappa_axis_;
     }
 
+    friend std::ostream& operator<<(std::ostream& os, const KappaGoniometer &g);
+
   protected:
 
     /** Calculate the kappa axis */
@@ -203,6 +206,55 @@ namespace dxtbx { namespace model {
     vec3 <double> phi_axis_;
     vec3 <double> kappa_axis_;
   };
+
+  /** Print direction enum */
+  inline
+  std::ostream& operator<<(std::ostream &os, KappaGoniometer::Direction d) {
+    if (d == KappaGoniometer::PlusY) {
+      os << "+y";
+    } else if (d == KappaGoniometer::PlusZ) {
+      os << "+z";
+    } else if (d == KappaGoniometer::MinusY) {
+      os << "-y";
+    } else if (d == KappaGoniometer::MinusZ) {
+      os << "-z";
+    } else {
+      os << "none";
+    }
+    return os;
+  }
+
+  /** Print scan axis enum */
+  inline
+  std::ostream& operator<<(std::ostream &os, KappaGoniometer::ScanAxis a) {
+    if (a == KappaGoniometer::Omega) {
+      os << "omega";
+    } else if (a == KappaGoniometer::Phi) {
+      os << "phi";
+    } else {
+      os << "none";
+    }
+    return os;
+  }
+
+  /** Print kappa goniometer info */
+  inline
+  std::ostream& operator<<(std::ostream& os, const KappaGoniometer &g) {
+    os << "Goniometer:\n";
+    os << "    Rotation axis:  " << g.get_rotation_axis().const_ref() << "\n";
+    os << "    Fixed rotation: " << g.get_fixed_rotation().const_ref() << "\n";
+    os << "    alpha angle:    " << g.get_alpha_angle() << "\n";
+    os << "    omega angle:    " << g.get_omega_angle() << "\n";
+    os << "    kappa angle:    " << g.get_kappa_angle() << "\n";
+    os << "    phi angle:      " << g.get_phi_angle() << "\n";
+    os << "    direction:      " << g.get_direction() << "\n";
+    os << "    scan axis:      " << g.get_scan_axis() << "\n";
+    os << "    omega axis:     " << g.get_omega_axis().const_ref() << "\n";
+    os << "    kappa axis:     " << g.get_kappa_axis().const_ref() << "\n";
+    os << "    phi axis:       " << g.get_phi_axis().const_ref() << "\n";
+    return os;
+  }
+
 
 }} // namespace dxtbx::model
 

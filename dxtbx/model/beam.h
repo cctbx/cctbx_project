@@ -11,8 +11,11 @@
 #ifndef DXTBX_MODEL_BEAM_H
 #define DXTBX_MODEL_BEAM_H
 
+#include <iostream>
 #include <cmath>
 #include <scitbx/vec3.h>
+#include <scitbx/array_family/simple_io.h>
+#include <scitbx/array_family/simple_tiny_io.h>
 
 namespace dxtbx { namespace model {
 
@@ -88,10 +91,22 @@ namespace dxtbx { namespace model {
       return !(*this == beam);
     }
 
+    friend std::ostream& operator<<(std::ostream &os, const Beam &b);
+
   private:
     double wavelength_;
     vec3 <double> direction_;
   };
+
+  /** Print beam information */
+  inline
+  std::ostream& operator<<(std::ostream &os, const Beam &b) {
+    os << "Beam:\n";
+    os << "    wavelength: " << b.get_wavelength() << "\n";
+    os << "    direction : " << b.get_direction() << "\n";
+    os << "    s0:         " << b.get_s0() << "\n";
+    return os;
+  }
 
 }} // namespace dxtbx::model
 

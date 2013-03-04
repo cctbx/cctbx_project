@@ -12,6 +12,7 @@
 #define DXTBX_MODEL_POLARIZED_BEAM_H
 
 #include <cmath>
+#include <iostream>
 #include <scitbx/vec3.h>
 #include "beam.h"
 
@@ -79,10 +80,24 @@ namespace dxtbx { namespace model {
       polarization_fraction_ = polarization_fraction;
     }
 
+    friend std::ostream& operator<<(std::ostream &os, const PolarizedBeam &b);
+
   private:
     vec3 <double> polarization_;
     double polarization_fraction_;
   };
+
+  /** Print the beam info */
+  inline
+  std::ostream& operator<<(std::ostream &os, const PolarizedBeam &b) {
+    os << "Beam:\n";
+    os << "    wavelength:   " << b.get_wavelength() << "\n";
+    os << "    direction :   " << b.get_direction().const_ref() << "\n";
+    os << "    s0:           " << b.get_s0().const_ref() << "\n";
+    os << "    Polarization: " << b.get_polarization().const_ref() << "\n";
+    os << "    Pn fraction:  " << b.get_polarization_fraction() << "\n";
+    return os;
+  }
 
 }} // namespace dxtbx::model
 

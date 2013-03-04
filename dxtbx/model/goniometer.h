@@ -11,10 +11,13 @@
 #ifndef DXTBX_MODEL_GONIOMETER_H
 #define DXTBX_MODEL_GONIOMETER_H
 
+#include <iostream>
 #include <scitbx/vec3.h>
 #include <scitbx/mat3.h>
 #include <scitbx/math/r3_rotation.h>
 #include <scitbx/constants.h>
+#include <scitbx/array_family/simple_io.h>
+#include <scitbx/array_family/simple_tiny_io.h>
 #include <dxtbx/error.h>
 
 namespace dxtbx { namespace model {
@@ -121,11 +124,22 @@ namespace dxtbx { namespace model {
       return !(*this == goniometer);
     }
 
+    friend std::ostream& operator<<(std::ostream& os, const Goniometer &gonio);
+
   protected:
 
     vec3 <double> rotation_axis_;
     mat3 <double> fixed_rotation_;
   };
+
+  /** Print goniometer data */
+  inline
+  std::ostream& operator<<(std::ostream& os, const Goniometer &g) {
+    os << "Goniometer:\n";
+    os << "    Rotation axis:  " << g.get_rotation_axis().const_ref() << "\n";
+    os << "    Fixed rotation: " << g.get_fixed_rotation().const_ref() << "\n";
+    return os;
+  }
 
 }} // namespace dxtbx::model
 

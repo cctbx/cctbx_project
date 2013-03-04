@@ -333,9 +333,9 @@ namespace dxtbx { namespace model {
     /** Check the detector axis basis vectors are (almost) the same */
     bool operator==(const Panel &detector) const {
       double eps = 1.0e-6;
-      return get_fast_axis().angle(detector.get_fast_axis()) <= eps
-          && get_slow_axis().angle(detector.get_slow_axis()) <= eps
-          && get_origin().angle(detector.get_origin()) <= eps
+      return std::abs(get_fast_axis().angle(detector.get_fast_axis())) <= eps
+          && std::abs(get_slow_axis().angle(detector.get_slow_axis())) <= eps
+          && std::abs(get_origin().angle(detector.get_origin())) <= eps
           && image_size_ == detector.image_size_;
     }
 

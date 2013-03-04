@@ -11,8 +11,8 @@
 #include <boost/python.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/make_constructor.hpp>
-#include <boost/format.hpp>
 #include <string>
+#include <sstream>
 #include <scitbx/constants.h>
 #include <dxtbx/model/scan.h>
 
@@ -23,18 +23,9 @@ namespace dxtbx { namespace model { namespace boost_python {
   using scitbx::rad_as_deg;
 
   std::string scan_to_string(const ScanData &scan) {
-    boost::format fmt(
-      "Scan:\n"
-      "    image range:       (%1%, %2%)\n"
-      "    oscillation:       (%3%, %4%)\n"
-      "    exposure time:     %5%");
-        
-    fmt % scan.get_image_range()[0];
-    fmt % scan.get_image_range()[1];
-    fmt % scan.get_oscillation()[0];
-    fmt % scan.get_oscillation()[1];
-    fmt % scan.get_exposure_time();
-    return fmt.str();
+    std::stringstream ss;
+    ss << scan;
+    return ss.str();
   }
 
   static ScanData* make_scan(vec2 <int> image_range, vec2 <double> oscillation,
