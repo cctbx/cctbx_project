@@ -50,7 +50,7 @@ def pilatus_300K_mask():
 def determine_pilatus_mask(xdetector):
     '''Return an appropriate pixel mask for a Pilatus detector.'''
 
-    size = xdetector.image_size
+    size = xdetector[0].get_image_size()
 
     if size == (2463, 2527):
         return pilatus_6M_mask()

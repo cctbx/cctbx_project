@@ -408,6 +408,7 @@ dxtbx/model/boost_python/beam.cc -text
 dxtbx/model/boost_python/detector.cc -text
 dxtbx/model/boost_python/goniometer.cc -text
 dxtbx/model/boost_python/model_ext.cc -text
+dxtbx/model/boost_python/panel.cc -text
 dxtbx/model/boost_python/scan.cc -text
 dxtbx/model/boost_python/scan_helpers.cc -text
 dxtbx/model/detector.h -text
@@ -418,7 +419,7 @@ dxtbx/model/goniometer.h -text
 dxtbx/model/goniometer.py -text
 dxtbx/model/goniometer_helpers.py -text
 dxtbx/model/kappa_goniometer.h -text
-dxtbx/model/multi_panel_detector.h -text
+dxtbx/model/panel.h -text
 dxtbx/model/polarized_beam.h -text
 dxtbx/model/scan.h -text
 dxtbx/model/scan.py -text

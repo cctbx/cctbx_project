@@ -4,6 +4,7 @@ Import('env')
 sources = [
     'boost_python/beam.cc',
     'boost_python/goniometer.cc',
+    'boost_python/panel.cc',
     'boost_python/detector.cc',
     'boost_python/scan.cc',
     'boost_python/scan_helpers.cc',
