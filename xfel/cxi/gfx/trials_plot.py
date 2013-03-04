@@ -15,6 +15,7 @@ import matplotlib.ticker as ticker
 import time
 import os
 import operator
+import math
 
 master_phil = libtbx.phil.parse("""
   trial_id = None
@@ -28,6 +29,12 @@ master_phil = libtbx.phil.parse("""
   n_points = 1000
     .type = int
   display_time = 1800
+    .type = int
+  run_num = None
+    .type = int
+  run_min = None
+    .type = int
+  run_max = None
     .type = int
 """)
 
@@ -95,6 +102,21 @@ class Run (object):
       self.culled_distances.append(dist)
       self.culled_sifoils.append(sifo)
       self.culled_wavelengths.append(wave)
+
+  def recalc_hits(self, windowLen, hit_cutoff):
+
+    self.hit_rates_times = flex.double()
+    self.hit_rates = flex.double()
+    self.hits_count = 0
+    if len(self.braggs) <= 0 or windowLen <= 0: return
+
+    for i in range(int(math.floor(len(self.braggs)/windowLen))):
+      window = self.braggs[i*windowLen:(i+1)*windowLen-1]
+      isel = (window > hit_cutoff).iselection()
+      ratio = float(len(isel)) / float(windowLen)
+      self.hit_rates.append(ratio*100)
+      self.hit_rates_times.append(self.bragg_times[(i*windowLen)+int(math.floor((windowLen/2)))])
+      self.hits_count += len(isel)
 
 class TrialsPlotFrame (wxtbx.plots.plot_frame) :
   show_controls_default = False
@@ -202,7 +224,14 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
     #t1 = time.time()
     cursor = db.cursor()
     #cursor.execute("SELECT DISTINCT(run) FROM cxi_braggs_front WHERE trial = %s"%self.trial_id)
-    cursor.execute("SELECT DISTINCT(run) FROM cxi_braggs_front WHERE trial = %s ORDER BY run DESC LIMIT 5"%self.trial_id)
+    cmd = "SELECT DISTINCT(run) FROM cxi_braggs_front WHERE trial = %s"
+    if self.params.run_num is not None:
+      extra = " AND run = %s"%self.params.run_num
+    elif self.params.run_min is not None and self.params.run_max is not None:
+      extra = " AND run >= %s AND run <= %s"%(self.params.run_min, self.params.run_max)
+    else:
+      extra = " ORDER BY run DESC LIMIT 5"
+    cursor.execute(cmd%self.trial_id + extra)
     #t2 = time.time()
     #print "Runs queried in %.2fs" % (t2 - t1)
 
@@ -242,7 +271,6 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
 
       #t2 = time.time()
       #print "Query ran in %.2fs" % (t2 - t1)
-      hit_counter = self.params.average_window
 
       ids = flex.int()
 
@@ -255,31 +283,11 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
         run.sifoils.append(float(sifoil))
         run.wavelengths.append(float(wavelength))
 
-        if (len(run.bragg_times) >= self.params.average_window) and hit_counter >= self.params.average_window:
-          start = len(run.bragg_times) - self.params.average_window
-          window = run.braggs[start:]
-          isel = (window > self.params.hit_cutoff).iselection()
-          ratio = float(len(isel)) / float(self.params.average_window)
-          run.hit_rates_times.append(run.bragg_times[-1])
-          run.hit_rates.append(ratio*100)
-          run.hits_count += len(isel)
-          hit_counter = 0
-        else :
-          hit_counter += 1
-
       if len(ids) > 0:
         run.latest_entry_id = max(ids)
         new_data = True
+        run.recalc_hits(self.params.average_window, self.params.hit_cutoff)
 
-
-#    self.xmin, self.xmax = min(t1), max(t1) #when add more axis, use the logic below
-#    if (len(t1) > 0) :
-#      xmin, xmax = min(t1), max(t1)
-#    if (len(t2) > 0) :
-#      if (xmin is not None) :
-#        xmin, xmax = min(min(t2), xmin), max(max(t2), xmax)
-#      else :
-#        xmin, xmax = min(t2), max(t2)
 
     self.total_width = 0
     for run in self.runs:
@@ -408,15 +416,15 @@ class TrialsPlot (wxtbx.plots.plot_container) :
       ax5.plot(run.culled_bragg_times, run.culled_distances, '>', color=[0.8,0.0,0.2])
       ax1.set_ylabel("# of Bragg spots")
       ax2.set_ylabel("Hit rate (%)")
-      ax3.set_ylabel("Wavelength")
-      ax4.set_ylabel("Si Foils (mm)")
-      ax5.set_ylabel("Distance (mm)")
+      ax3.set_ylabel("WaveL")
+      ax4.set_ylabel("SiFoils(mm)")
+      ax5.set_ylabel("Dist (mm)")
       ax1.set_xlim(xmin, xmax)
       ax1.set_ylim(braggsmin, braggsmax)
       ax2.set_ylim(hitsmin, hitsmax)
       ax3.set_ylim(wavemin, wavemax)
-      ax4.set_ylim(sifomin, sifomax)
-      ax5.set_ylim(distsmin, distsmax)
+      ax4.set_ylim(sifomin-10, sifomax+10)
+      ax5.set_ylim(distsmin-3, distsmax+3)
       ax1.set_xlabel("Time")
       for ax in ax1, ax2, ax3, ax4, ax5:
         if (ax is not ax1) :
@@ -426,8 +434,15 @@ class TrialsPlot (wxtbx.plots.plot_container) :
         if not first_run:
           ax.get_yaxis().set_visible(False)
 
-      ax5.xaxis.set_major_formatter(ticker.FuncFormatter(status_plot.format_time))
+      ax1.xaxis.set_major_formatter(ticker.FuncFormatter(status_plot.format_time))
+      ax3.yaxis.set_major_formatter(ticker.FormatStrFormatter("%.3f"))
+      ax5.yaxis.set_major_formatter(ticker.FormatStrFormatter("%.0f"))
       ax5.set_title("%d:%d/%d:%.1f%%"%(run.runId, run.hits_count, len(run.braggs), 100*run.hits_count/len(run.braggs)))
+
+      labels = ax1.get_xticklabels()
+      for label in labels:
+        label.set_rotation(30)
+
       first_run = False
 
     self.figure.autofmt_xdate()
