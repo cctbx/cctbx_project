@@ -108,7 +108,7 @@ namespace dxtbx { namespace model {
     }
 
     /** Check the detector panels are the same */
-    bool operator==(const DetectorBase &detector) {
+    bool operator==(const DetectorBase &detector) const {
       bool same = panel_list_.size() == detector.panel_list_.size();
       if (same) {
         for (std::size_t i = 0; i < panel_list_.size(); ++i) {
@@ -119,7 +119,7 @@ namespace dxtbx { namespace model {
     }
 
     /** Check the detector panels are not the same */
-    bool operator!=(const DetectorBase &detector) {
+    bool operator!=(const DetectorBase &detector) const {
       return !(*this == detector);
     }
 
@@ -142,7 +142,7 @@ namespace dxtbx { namespace model {
     }
 
     /** Get the maximum resolution of the detector */
-    double get_max_resolution(vec3<double> s0, double wavelength) {
+    double get_max_resolution(vec3<double> s0, double wavelength) const {
       double d_min = 0;
       for (std::size_t i = 0; i < panel_list_.size(); ++i) {
         double d = panel_list_[i].get_max_resolution_at_corners(s0, wavelength);
@@ -152,7 +152,7 @@ namespace dxtbx { namespace model {
     }
 
     /** Get ray intersection with detector */
-    coord_type get_ray_intersection(vec3<double> s1) {
+    coord_type get_ray_intersection(vec3<double> s1) const {
       coord_type pxy(-1, vec2<double>(0, 0));
       double w_max = 0;
 
@@ -423,21 +423,22 @@ namespace dxtbx { namespace model {
 
     /** Get the resolution at a given first panel pixel. */
     double get_resolution_at_pixel(vec3<double> s0, double wavelength,
-        vec2<double> xy) {
+        vec2<double> xy) const {
       DXTBX_ASSERT(DetectorBase::panel_list_.size() == 1);
       return DetectorBase::panel_list_[0].get_resolution_at_pixel(s0,
         wavelength, xy);
     }
 
     /** Get the maximum resolution of the first panel. */
-    double get_max_resolution_at_corners(vec3<double> s0, double wavelength) {
+    double
+    get_max_resolution_at_corners(vec3<double> s0, double wavelength) const {
       DXTBX_ASSERT(DetectorBase::panel_list_.size() == 1);
       return DetectorBase::panel_list_[0].get_max_resolution_at_corners(s0,
         wavelength);
     }
 
     /** Get the maximum resolution of a full circle on the first panel. */
-    double get_max_resolution_elipse(vec3<double> s0, double wavelength) {
+    double get_max_resolution_elipse(vec3<double> s0, double wavelength) const {
       DXTBX_ASSERT(DetectorBase::panel_list_.size() == 1);
       return DetectorBase::panel_list_[0].get_max_resolution_elipse(s0,
         wavelength);

@@ -227,7 +227,7 @@ namespace dxtbx { namespace model {
      * @returns The resolution at that point.
      */
     double get_resolution_at_pixel(vec3<double> s0, double wavelength,
-        vec2<double> xy) {
+        vec2<double> xy) const {
 
       // Get lab coordinates of detector corners
       vec3<double> xyz = get_pixel_lab_coord(xy);
@@ -249,7 +249,8 @@ namespace dxtbx { namespace model {
      * @param beam The beam parameters
      * @returns The maximum resolution at the detector corners.
      */
-    double get_max_resolution_at_corners(vec3<double> s0, double wavelength) {
+    double
+    get_max_resolution_at_corners(vec3<double> s0, double wavelength) const {
 
       // Get lab coordinates of detector corners
       int fast = image_size_[0], slow = image_size_[1];
@@ -279,7 +280,8 @@ namespace dxtbx { namespace model {
      * @param beam The beam parameters
      * @returns The maximum resolution at the detector corners.
      */
-    double get_max_resolution_elipse(vec3<double> s0, double wavelength) {
+    double
+    get_max_resolution_elipse(vec3<double> s0, double wavelength) const {
 
       // Get beam centre in pixels and get the coordinates with the centre
       // as a crosshair
