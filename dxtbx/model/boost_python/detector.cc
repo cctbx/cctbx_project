@@ -49,8 +49,8 @@ namespace dxtbx { namespace model { namespace boost_python {
     // Register std::pair conversion for Detector coordinate type 
     boost_adaptbx::std_pair_conversions::to_and_from_tuple<int, vec2<double> >();
 
-    // Export a Detector class
-    class_ <Detector> ("Detector")
+    // Export a Detector base class
+    class_ <DetectorBase> ("DetectorBase")
       .def(init<const Panel&>((
         arg("panel"))))
       .def(init<const Detector::panel_list_type&>((
@@ -89,6 +89,89 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("__eq__", &Detector::operator==)
       .def("__ne__", &Detector::operator!=)
       .def("__str__", &detector_to_string);
+
+    // Export the detector class
+    class_ <Detector, bases<DetectorBase> >("Detector")
+      .def(init<const Panel&>((
+        arg("panel"))))
+      .def(init<const Detector::panel_list_type&>((
+        arg("panel_list"))))
+      .def("get_type",
+        &Detector::get_type)
+      .def("set_type",
+        &Detector::set_type)    
+      .def("get_fast_axis",
+        &Detector::get_fast_axis)
+      .def("get_slow_axis",
+        &Detector::get_slow_axis)
+      .def("get_origin",
+        &Detector::get_origin)
+      .def("set_frame",
+        &Detector::set_frame, (
+          arg("fast_axis"), 
+          arg("slow_axis"),
+          arg("origin")))
+      .def("get_normal",
+        &Detector::get_normal)
+      .def("get_pixel_size",
+        &Detector::get_pixel_size)
+      .def("set_pixel_size",
+        &Detector::set_pixel_size)
+      .def("get_image_size",
+        &Detector::get_image_size)
+      .def("set_image_size",
+        &Detector::set_image_size)
+      .def("get_trusted_range",
+        &Detector::get_trusted_range)
+      .def("set_trusted_range",
+        &Detector::set_trusted_range)
+      .def("get_mask",
+        &Detector::get_mask)
+      .def("set_mask",
+        &Detector::set_mask)
+      .def("get_d_matrix",
+        &Detector::get_d_matrix)
+      .def("get_D_matrix",
+        &Detector::get_D_matrix)
+      .def("add_mask",
+        &Detector::add_mask)
+      .def("get_lab_coord",
+        &Detector::get_lab_coord)
+      .def("get_pixel_lab_coord",
+        &Detector::get_pixel_lab_coord)
+      .def("get_image_size_mm",
+        &Detector::get_image_size_mm)
+      .def("is_value_in_trusted_range",
+        &Detector::is_value_in_trusted_range)
+      .def("is_coord_valid",
+        &Detector::is_coord_valid)
+      .def("is_coord_valid_mm",
+        &Detector::is_coord_valid_mm)
+      .def("get_distance",
+        &Detector::get_distance)
+      .def("get_beam_centre",
+        &Detector::get_beam_centre, (
+          arg("s0")))
+      .def("get_beam_centre_lab",
+        &Detector::get_beam_centre_lab, (
+          arg("s0")))
+      .def("get_resolution_at_pixel",
+        &Detector::get_resolution_at_pixel, (
+          arg("s0"),
+          arg("wavelength"),
+          arg("xy")))
+      .def("get_max_resolution_at_corners",
+        &Detector::get_max_resolution_at_corners, (
+          arg("s0"),
+          arg("wavelength")))
+      .def("get_max_resolution_elipse",
+        &Detector::get_max_resolution_elipse, (
+          arg("s0"),
+          arg("wavelength")))
+      .def("millimeter_to_pixel",
+        &Detector::millimeter_to_pixel)
+      .def("pixel_to_millimeter",
+        &Detector::pixel_to_millimeter);
   }
 
 }}} // namespace dials::model::boost_python
