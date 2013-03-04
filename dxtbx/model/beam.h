@@ -109,8 +109,8 @@ namespace dxtbx { namespace model {
   std::ostream& operator<<(std::ostream &os, const Beam &b) {
     os << "Beam:\n";
     os << "    wavelength: " << b.get_wavelength() << "\n";
-    os << "    direction : " << b.get_direction() << "\n";
-    os << "    s0:         " << b.get_s0() << "\n";
+    os << "    direction : " << b.get_direction().const_ref() << "\n";
+    os << "    s0:         " << b.get_s0().const_ref() << "\n";
     return os;
   }
 
