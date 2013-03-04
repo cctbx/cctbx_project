@@ -10,8 +10,8 @@
  */
 #include <boost/python.hpp>
 #include <boost/python/def.hpp>
-#include <boost/format.hpp>
 #include <string>
+#include <sstream>
 #include <dxtbx/model/beam.h>
 #include <dxtbx/model/polarized_beam.h>
 
@@ -20,34 +20,9 @@ namespace dxtbx { namespace model { namespace boost_python {
   using namespace boost::python;
 
   std::string beam_to_string(const Beam &beam) {
-    boost::format fmt(
-      "Beam:\n"
-      "    wavelength:            %1%\n"
-      "    direction :            (%2%, %3%, %4%)\n"
-      "    s0:                    (%5%, %6%, %7%)");
-        
-    fmt % beam.get_direction()[0];
-    fmt % beam.get_direction()[1];
-    fmt % beam.get_direction()[2];
-    fmt % beam.get_wavelength();
-    fmt % beam.get_s0()[0];
-    fmt % beam.get_s0()[1];
-    fmt % beam.get_s0()[2];
-    return fmt.str();
-  }
-
-  std::string polarized_beam_to_string(const PolarizedBeam &beam) {
-    boost::format fmt(
-      "%1%\n"
-      "    polarization:          (%2%, %3%, %4%)\n"
-      "    polarization fraction: %5%");
-        
-    fmt % beam_to_string(beam);
-    fmt % beam.get_polarization()[0];
-    fmt % beam.get_polarization()[1];
-    fmt % beam.get_polarization()[2];
-    fmt % beam.get_polarization_fraction();
-    return fmt.str();
+    std::stringstream ss;
+    ss << beam;
+    return ss.str();
   }
 
   void export_beam()
@@ -76,32 +51,6 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("__eq__", &Beam::operator==)
       .def("__ne__", &Beam::operator!=)
       .def("__str__", &beam_to_string);
-
-    // Export PolarizedBeam : Beam
-    class_ <PolarizedBeam, bases <Beam> > ("PolarizedBeam")
-      .def(init <vec3 <double>, 
-                 double,
-                 vec3 <double>, 
-                 double> ((
-          arg("direction"),
-          arg("wavelength"), 
-          arg("polarization"),
-          arg("polarization_fraction"))))
-      .def(init <vec3 <double>, 
-                 vec3 <double>, 
-                 double> ((
-          arg("s0"), 
-          arg("polarization"),
-          arg("polarization_fraction"))))
-      .def("get_polarization",
-        &PolarizedBeam::get_polarization)
-      .def("set_polarization",
-        &PolarizedBeam::set_polarization)
-      .def("get_polarization_fraction",
-        &PolarizedBeam::get_polarization_fraction)
-      .def("set_polarization_fraction",
-        &PolarizedBeam::set_polarization_fraction)
-      .def("__str__", &polarized_beam_to_string);
   }
 
 }}} // namespace = dxtbx::model::boost_python

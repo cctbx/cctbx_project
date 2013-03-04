@@ -11,8 +11,11 @@
 #ifndef DXTBX_MODEL_SCAN_H
 #define DXTBX_MODEL_SCAN_H
 
+#include <iostream>
 #include <scitbx/vec2.h>
 #include <scitbx/array_family/flex_types.h>
+#include <scitbx/array_family/simple_io.h>
+#include <scitbx/array_family/simple_tiny_io.h>
 #include <dxtbx/error.h>
 #include "scan_helpers.h"
 
@@ -202,6 +205,8 @@ namespace dxtbx { namespace model {
       return result;
     }
 
+    friend std::ostream& operator<<(std::ostream &os, const ScanData &s);
+
   private:
 
     vec2 <int> image_range_;
@@ -210,6 +215,16 @@ namespace dxtbx { namespace model {
     flex_double epochs_;
     int num_images_;
   };
+
+  /** Print ScanData information */
+  inline
+  std::ostream& operator<<(std::ostream &os, const ScanData &s) {
+    os << "Scan:\n";
+    os << "    image range:   " << s.get_image_range().const_ref() << "\n";
+    os << "    oscillation:   " << s.get_oscillation().const_ref() << "\n";
+    os << "    exposure time: " << s.get_exposure_time() << "\n";
+    return os;
+  }
 
 }} // namespace dxtbx::model
 

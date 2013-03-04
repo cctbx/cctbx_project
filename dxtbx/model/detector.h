@@ -178,7 +178,7 @@ namespace dxtbx { namespace model {
       return pxy;
     }
 
-    /** Check if any panels intersect */
+//    /** Check if any panels intersect */
 //    bool do_panels_intersect() const {
 //      for (std::size_t j = 0; j < panel_list_.size()-1; ++j) {
 //        for (std::size_t i = j+1; i < panel_list_.size(); ++i) {
@@ -194,14 +194,14 @@ namespace dxtbx { namespace model {
 
   protected:
 
-    /**
-     * Check if the detector planes intersect.
-     * @param a The first detector
-     * @param b The second detector
-     * @returns True/False do the detector planes intersect?
-     */
+//    /**
+//     * Check if the detector planes intersect.
+//     * @param a The first detector
+//     * @param b The second detector
+//     * @returns True/False do the detector planes intersect?
+//     */
 //    static bool
-//    panels_intersect(const Detector &a, const Detector &b) {
+//    panels_intersect(const Panel &a, const Panel &b) {
 
 //      using namespace boost::geometry;
 
