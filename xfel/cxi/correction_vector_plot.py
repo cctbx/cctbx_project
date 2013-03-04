@@ -82,7 +82,9 @@ class lines(correction_vector_store):
              print "FETCHED",frame_id
         if line.find("CV OBSCENTER")==0 and line.find("Traceback")==-1:
           potential_tokens = line.strip().split()
-          if len(potential_tokens)==22 and int(potential_tokens[17])==self.params.bravais_setting_id:
+          if len(potential_tokens)==22 and \
+	         potential_tokens[17].isdigit() and \
+		 int(potential_tokens[17])==self.params.bravais_setting_id:
             yield frame_id,potential_tokens
         if len(self.tiles)==0 and line.find("EFFEC")==0:
           self.tiles = flex.int([int(a) for a in line.strip().split()[2:]])
@@ -100,9 +102,11 @@ class lines(correction_vector_store):
           for line in stream.readlines():
             if line.find("CV OBSCENTER")==0:
               potential_tokens = line.strip().split()
-              if len(potential_tokens)==22 and int(potential_tokens[17])==self.params.bravais_setting_id:
-                yield frame_id,potential_tokens
-            if self.tiles is None and line.find("EFFEC")==0:
+              if len(potential_tokens)==22 and \
+	         potential_tokens[17].isdigit() and \
+		 int(potential_tokens[17])==self.params.bravais_setting_id:
+                yield None,potential_tokens
+            if len(self.tiles)==0 and line.find("EFFEC")==0:
               self.tiles = flex.int([int(a) for a in line.strip().split()[2:]])
               assert len(self.tiles)==256
               print list(self.tiles)
