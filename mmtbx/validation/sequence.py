@@ -531,10 +531,11 @@ class validation (object) :
 def get_sequence_n_copies (
     sequences,
     pdb_hierarchy,
-    force_accept=False,
+    force_accept_composition=False,
     copies_from_xtriage=None,
     copies_from_user=Auto,
     minimum_identity=0.3, # okay for MR, may not be suitable in all cases
+    assume_xtriage_copies_from_sequence_file=None,
     out=sys.stdout,
     nproc=1) :
   """
@@ -557,15 +558,16 @@ def get_sequence_n_copies (
     minimum_identity=0.3)
   missing = v.get_missing_chains()
   def raise_sorry (msg) :
-    raise Sorry(msg + " (Add the parameter force_accept=True to disable this "+
-      "error message and continue assuming 1 copy of sequence file.)")
+    raise Sorry(msg + " (Add the parameter force_accept_composition=True to "+
+      "disable this error message and continue assuming 1 copy of sequence "+
+      "file.)")
   if (len(missing) > 0) :
     error = [
       "%d chain(s) not found in sequence file.  If the sequence does " % \
         len(missing),
       "not accurately represent the contents of the crystal after adjusting ",
       "for copy number, molecular replacement and building may fail.", ]
-    if (force_accept) :
+    if (force_accept_composition) :
       print >> out, "WARNING: %s" % error
     else :
       raise_sorry(error)
@@ -627,6 +629,16 @@ def get_sequence_n_copies (
             (model_copies, int(inverse_freq)) + \
             "This may mean that either the sequence file or the predicted "+\
             "number of copies is wrong."
+          if ((copies_from_user is Auto) and
+              (copies_from_xtriage is not None) and
+              (assume_xtriage_copies_from_sequence_file)) :
+            print >> out, error
+            print >> out, ""
+            print >> out, "Since the number of copies was guessed by Xtriage"
+            print >> out, "based on the sequence file, it will be scaled"
+            print >> out, "by %g to be appropriate for the search model." % \
+              seq_freq
+            return seq_freq
         # too much model
         # XXX is this actually possible the way I've written the function?
         elif (inverse_freq < model_copies) :
@@ -643,7 +655,7 @@ def get_sequence_n_copies (
         error = "The sequence file does not appear to contain a round "+\
           "number of copies of the model (%g)." % inverse_freq
   if (error is not None) :
-    if (force_accept) :
+    if (force_accept_composition) :
       print >> out, "WARNING: " + error
       print >> out, ""
       print >> out, "Ambiguous input, defaulting to 1 copy of sequence file"
@@ -1070,7 +1082,7 @@ ATOM    854  CA  GLY A  12      25.907  28.394  28.320  1.00 38.88           C
       pdb_hierarchy=hierarchy,
       sequences=[seq] * 3,
       copies_from_xtriage=2,
-      force_accept=True,
+      force_accept_composition=True,
       out=null_out())
     assert (n_seq == 1)
     try :
@@ -1083,6 +1095,13 @@ ATOM    854  CA  GLY A  12      25.907  28.394  28.320  1.00 38.88           C
       assert ("less than" in str(s))
     else :
       raise Exception_expected
+    n_seq = get_sequence_n_copies(
+      pdb_hierarchy=hierarchy,
+      sequences=[seq] * 4,
+      copies_from_xtriage=1,
+      assume_xtriage_copies_from_sequence_file=True,
+      out=null_out())
+    assert (n_seq == 0.5)
     hierarchy = hierarchy.deep_copy()
     chain2 = hierarchy.only_model().chains()[0].detached_copy()
     hierarchy.only_model().append_chain(chain2)
