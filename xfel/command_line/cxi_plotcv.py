@@ -26,6 +26,9 @@ bravais_setting_id = None
 show_plots = False
   .type = bool
   .help = Show graphical plots using matplotlib
+colormap = False
+  .type = bool
+  .help = Show colormap correction vector plots
 """ + mysql_master_phil
 
 #-----------------------------------------------------------------------

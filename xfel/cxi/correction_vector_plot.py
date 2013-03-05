@@ -83,8 +83,8 @@ class lines(correction_vector_store):
         if line.find("CV OBSCENTER")==0 and line.find("Traceback")==-1:
           potential_tokens = line.strip().split()
           if len(potential_tokens)==22 and \
-	         potential_tokens[17].isdigit() and \
-		 int(potential_tokens[17])==self.params.bravais_setting_id:
+                 potential_tokens[17].isdigit() and \
+                 int(potential_tokens[17])==self.params.bravais_setting_id:
             yield frame_id,potential_tokens
         if len(self.tiles)==0 and line.find("EFFEC")==0:
           self.tiles = flex.int([int(a) for a in line.strip().split()[2:]])
@@ -103,8 +103,8 @@ class lines(correction_vector_store):
             if line.find("CV OBSCENTER")==0:
               potential_tokens = line.strip().split()
               if len(potential_tokens)==22 and \
-	         potential_tokens[17].isdigit() and \
-		 int(potential_tokens[17])==self.params.bravais_setting_id:
+                 potential_tokens[17].isdigit() and \
+                 int(potential_tokens[17])==self.params.bravais_setting_id:
                 yield None,potential_tokens
             if len(self.tiles)==0 and line.find("EFFEC")==0:
               self.tiles = flex.int([int(a) for a in line.strip().split()[2:]])
@@ -234,17 +234,43 @@ def run_correction_vector_plot(working_phil):
         radial,tangential,rmean,tmean,rsigma,tsigma = get_radial_tangential_vectors(L,x)
         print "%6.2f %6.2f"%(rsigma,tsigma)
 
-      from matplotlib import pyplot as plt
-      xcv,ycv = get_correction_vector_xy(L,x)
-      plt.plot(xcv,ycv,"r.")
-      plt.plot([L.mean_cv[x][0]],[L.mean_cv[x][1]],"go")
-      plt.plot([L.mean_cv[x][0]+radial[0]],[L.mean_cv[x][1]+radial[1]],"yo")
-      plt.plot([L.mean_cv[x][0]+tangential[0]],[L.mean_cv[x][1]+tangential[1]],"bo")
-      from matplotlib.patches import Ellipse
-      ell = Ellipse(xy=(L.mean_cv[x][0],L.mean_cv[x][1]),
-                    width=2.*rsigma, height=2.*tsigma,
-                    angle=math.atan2(-(radial[1]),-(radial[0]))*180./math.pi,
-                    edgecolor="y", linewidth=2, fill=False, zorder=100)
-      plt.axes().add_artist(ell)
-      plt.axes().set_aspect("equal")
-      plt.show()
+      if working_phil.colormap:
+        from pylab import *
+        import numpy
+
+        xcv,ycv = get_correction_vector_xy(L,x)
+        _min = min(min(xcv),min(ycv))
+        _max = max(max(xcv),max(ycv))
+
+        hist,xedges,yedges = numpy.histogram2d(xcv,ycv,bins=40,range=[[_min,_max],[_min,_max]])
+        extent = [xedges[0], xedges[-1], yedges[0], yedges[-1] ]
+
+        imshow(hist.T,extent=extent,interpolation='nearest',origin='lower')
+        from matplotlib.patches import Ellipse
+        ell = Ellipse(xy=(L.mean_cv[x][0],L.mean_cv[x][1]),
+                      width=2.*rsigma, height=2.*tsigma,
+                      angle=math.atan2(-(radial[1]),-(radial[0]))*180./math.pi,
+                      edgecolor="y", linewidth=2, fill=False, zorder=100)
+        axes().add_artist(ell)
+        colorbar()
+        show()
+
+      else:
+        from matplotlib import pyplot as plt
+        xcv,ycv = get_correction_vector_xy(L,x)
+        plt.plot(xcv,ycv,"r.")
+        plt.plot([L.mean_cv[x][0]],[L.mean_cv[x][1]],"go")
+        plt.plot([L.mean_cv[x][0]+radial[0]],[L.mean_cv[x][1]+radial[1]],"yo")
+        plt.plot([L.mean_cv[x][0]+tangential[0]],[L.mean_cv[x][1]+tangential[1]],"bo")
+        from matplotlib.patches import Ellipse
+        ell = Ellipse(xy=(L.mean_cv[x][0],L.mean_cv[x][1]),
+                      width=2.*rsigma, height=2.*tsigma,
+                      angle=math.atan2(-(radial[1]),-(radial[0]))*180./math.pi,
+                      edgecolor="y", linewidth=2, fill=False, zorder=100)
+        plt.axes().add_artist(ell)
+        plt.axes().set_aspect("equal")
+        _min = min(min(xcv),min(ycv))
+        _max = max(max(xcv),max(ycv))
+        plt.axes().set_xlim(_min,_max)
+        plt.axes().set_ylim(_min,_max)
+        plt.show()
