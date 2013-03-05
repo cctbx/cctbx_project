@@ -288,25 +288,25 @@ class Manager (object) :
       elif (not fmodel.f_obs().anomalous_flag()) :
         raise Sorry("Anomalous data required when "+
                     "find_anomalous_substructure=True.")
-    if ((params.use_phaser) and (libtbx.env.has_module("phaser"))) :
-      t1 = time.time()
-      self.phaser_substructure = find_anomalous_scatterers(
-        fmodel=fmodel,
-        pdb_hierarchy=pdb_hierarchy,
-        wavelength=wavelength,
-        verbose=verbose,
-        n_cycles=params.phaser.llgc_ncycles).atoms()
-      t2 = time.time()
-      print >> log, "    time: %.1fs" % (t2-t1)
-      if (len(self.phaser_substructure) == 0) :
-        print >> log, "  No anomalous scatterers found!"
+      if ((params.use_phaser) and (libtbx.env.has_module("phaser"))) :
+        t1 = time.time()
+        self.phaser_substructure = find_anomalous_scatterers(
+          fmodel=fmodel,
+          pdb_hierarchy=pdb_hierarchy,
+          wavelength=wavelength,
+          verbose=verbose,
+          n_cycles=params.phaser.llgc_ncycles).atoms()
+        t2 = time.time()
+        print >> log, "    time: %.1fs" % (t2-t1)
+        if (len(self.phaser_substructure) == 0) :
+          print >> log, "  No anomalous scatterers found!"
+        else :
+          print >> log, "  %d anomalous scatterers found" % \
+            len(self.phaser_substructure)
+          self.analyze_substructure(log = log, verbose = True)
       else :
-        print >> log, "  %d anomalous scatterers found" % \
-          len(self.phaser_substructure)
-        self.analyze_substructure(log = log, verbose = True)
-    else :
-      self.flag_refine_substructure = True
-      self.refine_anomalous_substructure(log=log)
+        self.flag_refine_substructure = True
+        self.refine_anomalous_substructure(log=log)
 
   def refine_anomalous_substructure (self, log) :
     """
@@ -1386,8 +1386,8 @@ class Manager (object) :
         ff("%.2f", props.atom.occ), ff("%.2f", b_iso),
         ff("%.2f", props.peak_2fofc), ff("%.2f", props.peak_fofc),
         ff("%.2f", fp), ff("%.2f", fdp),
-        ff("%.2f", props.valence_sum[identity]),
-        ff("%.2f", props.vector_sum[identity]))) + mark
+        ff("%.2f", props.valence_sum.get(identity)),
+        ff("%.2f", props.vector_sum.get(identity)))) + mark
       print >> box, "\n".join(props.error_strs[i]
                               for i in props.inaccuracies[identity])
       print >> box
