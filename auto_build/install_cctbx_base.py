@@ -461,7 +461,12 @@ class installer (object) :
     touch_bin_files()
     gtk_log = self.start_building_package("gtk+")
     self.fetch_untar_and_chdir(pkg_name=GTK_PKG, log=gtk_log)
-    self.call("./configure %s --without-libjpeg" % prefix_arg, log=gtk_log)
+    gtk_config_args = [
+      prefix_arg,
+      "--disable-cups",
+      "--without-libjpeg",
+    ]
+    self.call("./configure %s" % " ".join(gtk_config_args), log=gtk_log)
     self.call("make -j %d SRC_SUBDIRS='gdk-pixbuf gdk gtk modules'" %
       self.nproc, log=gtk_log)
     self.call("make install SRC_SUBDIRS='gdk-pixbuf gdk gtk modules'",
