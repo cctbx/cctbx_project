@@ -637,7 +637,7 @@ def get_sequence_n_copies (
             print >> out, "Since the number of copies was guessed by Xtriage"
             print >> out, "based on the sequence file, it will be scaled"
             print >> out, "by %g to be appropriate for the search model." % \
-              seq_freq
+              inverse_freq
             return seq_freq
         # too much model
         # XXX is this actually possible the way I've written the function?
