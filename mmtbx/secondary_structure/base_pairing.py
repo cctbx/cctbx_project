@@ -24,7 +24,7 @@ base_pair
     .help = reference
   leontis_westhof_class = *Auto wwt
     .type = choice
-    .caption = Watson-Crick
+    .caption = Automatic Watson-Crick
     .help = reference
 # TODO
 #  planar = False
