@@ -322,6 +322,11 @@ namespace dxtbx { namespace model {
       return vec2<double>(v[0] / v[2], v[1] / v[2]);
     }
 
+    /** Get the ray intersection in pixel coordinates */
+    vec2<double> get_ray_intersection_px(vec3<double> s1) const {
+      return millimeter_to_pixel(get_ray_intersection(s1));
+    }
+
     /** Map coordinates in mm to pixels */
     vec2<double> millimeter_to_pixel(vec2<double> xy) const {
       return vec2<double> (xy[0] / pixel_size_[0], xy[1] / pixel_size_[1]);
