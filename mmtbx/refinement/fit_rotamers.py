@@ -64,6 +64,8 @@ fit_side_chains
   .short_caption = Sidechain rotamer fitting
   .style = menu_item auto_align
 {
+  mode = *every_macro_cycle every_cycle_after_first
+    .type = choice
   %s
   use_dihedral_restraints = False
     .type = bool
