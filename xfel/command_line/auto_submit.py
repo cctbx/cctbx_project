@@ -128,72 +128,86 @@ def run (args) :
   print "Note, it is not recommended that you run this program while you have new jobs pending."
   print "Starting indefinite loop to scan directory '%s'"%params.xtc_dir
 
-  try:
-    while(True):
-      rs = match_runs(params.xtc_dir)
-      add_runs = []
-      for r in rs:
-        if not (params.start_run is not None and r.id < params.start_run):
-          if not db.run_in_trial(r.id, params.trial_id):
-            doit = True
-            for test in submitted_runs:
-              if test.id == r.id:
-                doit = False
-                break
-            if doit: add_runs.append(r)
+  if params.submit_as_group:
+    try:
+      while(True):
+        rs = match_runs(params.xtc_dir)
+        add_runs = []
+        for r in rs:
+          if not (params.start_run is not None and r.id < params.start_run):
+            if not db.run_in_trial(r.id, params.trial_id):
+              doit = True
+              for test in submitted_runs:
+                if test.id == r.id:
+                  doit = False
+                  break
+              if doit: add_runs.append(r)
 
-      submitted_a_run = False
-      if len(add_runs) > 0:
-        for r in add_runs:
-          if params.submit_as_group:
-            if len(r.files) != params.stream_count:
-              print "Waiting to queue run %s.  %s/%s streams ready."% \
-                (r.id,len(r.files),params.stream_count)
-              continue
+        submitted_a_run = False
+        if len(add_runs) > 0:
+          for r in add_runs:
+              if len(r.files) != params.stream_count:
+                print "Waiting to queue run %s.  %s/%s streams ready."% \
+                  (r.id,len(r.files),params.stream_count)
+                continue
 
-            print "Preparing to queue run %s into trial %s"%(r.id,params.trial_id)
-            cmd = "./lsf.sh -c %s -p %s -x %s -o %s -t %s -r %s -q %s"%(params.config_file,params.num_procs,params.experiment,
-              params.output_dir,params.trial_id,r.id,params.queue)
+              print "Preparing to queue run %s into trial %s"%(r.id,params.trial_id)
+              cmd = "./lsf.sh -c %s -p %s -x %s -o %s -t %s -r %s -q %s"%(params.config_file,params.num_procs,params.experiment,
+                params.output_dir,params.trial_id,r.id,params.queue)
 
-            print "Command to execute: %s"%cmd
-            os.system(cmd)
-            print "Run %s queued."%r.id
+              print "Command to execute: %s"%cmd
+              os.system(cmd)
+              print "Run %s queued."%r.id
 
-            submitted_a_run = True
-            submitted_runs.append(r)
-          else:
-            for f in r.files:
+              submitted_a_run = True
+              submitted_runs.append(r)
+        if not submitted_a_run:
+          print "No new data... sleepy..."
+
+        time.sleep(10)
+    except KeyboardInterrupt:
+      pass
+
+  else: # submit streams singly
+    try:
+      while (True):
+        submitted_a_run = False
+        files = os.listdir(params.xtc_dir)
+        for f in files:
+          r = s = c = None
+          for str in f.split("-"):
+            try:
+              if 'c' in str:
+                c = int(str.split(".")[0].strip('c'))
+              if 'r' in str:
+                r = int(str.strip('r'))
+              elif 's' in str:
+                s = int(str.strip('s'))
+            except ValueError:
+              pass
+          if r is not None and s is not None and c is not None and c == 0:
+            if not (params.start_run is not None and r < params.start_run):
+            #  if not db.run_in_trial(r.id, params.trial_id):  can't check for this when queueing streams.  can lead to duplicate data.
               if not f in submitted_files:
-                s = None
-                for str in f.split('-'):
-                  try:
-                    if 's' in str:
-                      s = int(str.strip('s'))
-                  except ValueError:
-                    pass
-                if s is None:
-                  print "Couldn't get the stream number from file %s"%os.path.basename(f)
-                  continue
 
                 print "Preparing to queue stream %s into trial %s"%(os.path.basename(f),params.trial_id)
                 cmd = "./single_lsf.sh -c %s -p %s -x %s -o %s -t %s -r %s -q %s -s %s"%(params.config_file,params.num_procs,params.experiment,
-                  params.output_dir,params.trial_id,r.id,params.queue,s)
+                  params.output_dir,params.trial_id,r,params.queue,s)
 
                 print "Command to execute: %s"%cmd
                 os.system(cmd)
-                print "Run %s stream %s queued."%(r.id,s)
+                print "Run %s stream %s queued."%(r,s)
 
                 submitted_a_run = True
                 submitted_files.append(f)
                 if '.inprogress' in f:
                   submitted_files.append(f.rstrip(".inprogress"))
+        if not submitted_a_run:
+          print "No new data... sleepy..."
 
-      if not submitted_a_run:
-        print "No new data... sleepy..."
-
-      time.sleep(10)
-  except KeyboardInterrupt:
-    pass
+        time.sleep(10)
+    except KeyboardInterrupt:
+      pass
 
 
 
