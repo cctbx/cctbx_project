@@ -101,6 +101,8 @@ namespace dxtbx { namespace model { namespace boost_python {
         &Panel::is_coord_valid_mm)
       .def("get_ray_intersection",
         &Panel::get_ray_intersection)
+      .def("get_ray_intersection_px",
+        &Panel::get_ray_intersection_px)
       .def("get_distance",
         &Panel::get_distance)
       .def("get_beam_centre",

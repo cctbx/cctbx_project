@@ -168,6 +168,11 @@ namespace dxtbx { namespace model {
       return (image_range_[0] <= frame && frame < image_range_[1]);
     }
 
+    /** Check if a zero based frame is valid */
+    bool is_zero_based_frame_valid(double frame) const {
+      return is_frame_valid(frame + image_range_[0]);
+    }
+
     /**
      * Calculate the angle corresponding to the given frame
      * @param frame The frame number
@@ -178,12 +183,30 @@ namespace dxtbx { namespace model {
     }
 
     /**
+     * Calculate the angle corresponding to the given zero based frame
+     * @param frame The frame number
+     * @returns The angle at the given frame
+     */
+    double get_angle_from_zero_based_frame(double frame) const {
+      return get_angle_from_frame(frame + image_range_[0]);
+    }
+
+    /**
      * Calculate the frame corresponding to the given angle
      * @param angle The angle
      * @returns The frame at the given angle
      */
     double get_frame_from_angle(double angle) const {
       return image_range_[0] + (angle - oscillation_[0]) / oscillation_[1];
+    }
+
+    /**
+     * Calculate the zero based frame corresponding to the given angle
+     * @param angle The angle
+     * @returns The frame at the given angle
+     */
+    double get_zero_based_frame_from_angle(double angle) const {
+      return get_frame_from_angle(angle) - image_range_[0];
     }
 
     /**
@@ -201,6 +224,21 @@ namespace dxtbx { namespace model {
         get_oscillation_range(), angle);
       for (std::size_t i = 0; i < result.size(); ++i) {
         result[i] = get_frame_from_angle(result[i]);
+      }
+      return result;
+    }
+
+    /**
+     * Calculate and return an array of zero based frame numbers at which a
+     * reflection with a given rotation angle will be observed.
+     * @param angle The rotation angle of the reflection
+     * @returns The array of frame numbers
+     */
+    flex_double get_zero_based_frames_with_angle(double angle) const {
+      flex_double result = get_mod2pi_angles_in_range(
+        get_oscillation_range(), angle);
+      for (std::size_t i = 0; i < result.size(); ++i) {
+        result[i] = get_zero_based_frame_from_angle(result[i]);
       }
       return result;
     }
