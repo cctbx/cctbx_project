@@ -165,7 +165,7 @@ namespace dxtbx { namespace model {
         vec3 <double> v = panel_list_[i].get_D_matrix() * s1;
         if (v[2] > 0) {
           vec2<double> xy_temp(v[0] / v[2], v[1] / v[2]);
-          if (panel_list_[i].is_coord_valid(xy_temp) && v[2] > w_max) {
+          if (panel_list_[i].is_coord_valid_mm(xy_temp) && v[2] > w_max) {
             pxy = coord_type(i, xy_temp);
             w_max = v[2];
           }
