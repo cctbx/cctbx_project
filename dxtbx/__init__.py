@@ -23,3 +23,18 @@ def load(filename):
   from dxtbx.format.Registry import Registry
   format_instance = Registry.find(filename)
   return format_instance(filename)
+
+def sweep(filenames):
+  '''Use the dxtbx to load a sweep of data.
+
+  Params:
+    filenames The filenames for the sweep
+
+  Returns:
+    The sweep object corresponding to the data set as a whole
+
+    '''
+
+  from sweep import sweep_factory
+
+  return sweep_factory.sweep(filenames)

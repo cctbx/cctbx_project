@@ -82,8 +82,9 @@ class sweep_of_images:
 
         self._format_class = format_class
 
-        # FIXME generate template, directory information in here... validate this
-        # against the image names... pull out image indices also and cache these.
+        # FIXME generate template, directory information in here... validate
+        # this against the image names... pull out image indices also and
+        # cache these.
 
         import os
         from sweep_filenames import template_regex
