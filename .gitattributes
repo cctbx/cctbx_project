@@ -428,6 +428,7 @@ dxtbx/model/scan.py -text
 dxtbx/model/scan_helpers.h -text
 dxtbx/model/scan_helpers.py -text
 dxtbx/readme.txt -text
+dxtbx/sweep.py -text
 dxtbx/tests/__init__.py -text
 dxtbx/tests/example-xparm.xds -text
 dxtbx/tests/image_001.dat -text
