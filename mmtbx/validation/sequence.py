@@ -681,6 +681,38 @@ def get_sequence_n_copies_from_files (seq_file, pdb_file, **kwds) :
   kwds['sequences'] = seq_in.file_object
   return get_sequence_n_copies(**kwds)
 
+# XXX test needed
+def group_chains_and_sequences (seq_file, pdb_file, **kwds) :
+  from iotbx import file_reader
+  seq_in = file_reader.any_file(seq_file,
+    raise_sorry_if_errors=True,
+    raise_sorry_if_not_expected_format=True)
+  if (seq_in.file_type != "seq") :
+    raise Sorry("Can't parse %s as a sequence file.")
+  pdb_in = file_reader.any_file(pdb_file,
+    raise_sorry_if_errors=True,
+    raise_sorry_if_not_expected_format=True)
+  if (pdb_in.file_type != "pdb") :
+    raise Sorry("Can't parse %s as a PDB or mmCIF file.")
+  kwds['pdb_hierarchy'] = pdb_in.file_object.construct_hierarchy()
+  kwds['sequences'] = seq_in.file_object
+  v = validation(**kwds)
+  chain_to_sequence_mappings = {}
+  sequence_to_chain_mappings = {}
+  for chain in v.chains :
+    seq_id = chain.sequence_id
+    sequence = seq_in.file_object[seq_id].sequence
+    chain_id = chain.chain_id
+    if (chain_id in chain_to_sequence_mappings) :
+      if (chain_to_sequence_mappings[chain_id] != sequence) :
+        raise Sorry("Multiple unique chains named '%s'" % chain_id)
+    else :
+      chain_to_sequence_mappings[chain_id] = sequence
+    if (not chain.sequence in sequence_to_chain_mappings) :
+      sequence_to_chain_mappings[sequence] = []
+    sequence_to_chain_mappings[sequence].append(chain_id)
+  return sequence_to_chain_mappings
+
 ########################################################################
 # REGRESSION TESTING
 def exercise () :
