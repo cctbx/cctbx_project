@@ -169,13 +169,15 @@ if ! ssh -S "${tmpdir}/control.socket" ${NODE} \
 fi
 
 # Construct an absolute path to the directory with the XTC files as
-# well as a sorted list of unique stream numbers for ${run}.  XXX May
-# need some filtering as suggested by Amedeo Perazzo.
+# well as a sorted list of unique stream numbers for ${run}.
+# Explicitly consider streams being transferred from the DAQ
+# (*.xtc.inprogress), but not failed transfers (*.xtc.inprogress.*).
 xtc="${exp}/xtc"
-streams=`ssh -S "${tmpdir}/control.socket" ${NODE} \
-      "ls \"${xtc}\"/e*-r${run}-s* 2> /dev/null"   \
-    | sed -e "s:.*-s\([[:digit:]]\+\)-c.*:\1:"     \
-    | sort -u                                      \
+streams=`ssh -S "${tmpdir}/control.socket" ${NODE}                 \
+      "ls \"${xtc}\"/e*-r${run}-s*-c*.xtc                          \
+          \"${xtc}\"/e*-r${run}-s*-c*.xtc.inprogress 2> /dev/null" \
+    | sed -e "s:.*-s\([[:digit:]]\+\)-c.*:\1:"                     \
+    | sort -u                                                      \
     | tr -s '\n' ' '`
 if test -z "${streams}"; then
     echo "No streams in ${xtc}" > /dev/stderr
@@ -279,12 +281,14 @@ EOF
 
 NPROC=\`printenv LSB_MCPU_HOSTS \
     | awk '{ printf("%d\n", \$2 > 2 ? \$2 : 1); }'\`
+STREAMS=\`ls "${xtc}"/e*-r${run}-s${s}-c*.xtc \
+             "${xtc}"/e*-r${run}-s${s}-c*.xtc.inprogress 2> /dev/null\`
 
 test "\${NPROC}" -gt 2 2> /dev/null || NPROC="1"
 "${PYANA}" \\
     -c "${out}/pyana_s${s}.cfg" \\
     -p "\${NPROC}" \\
-    "${xtc}"/e*-r${run}-s${s}-c*
+    "\${STREAMS}"
 EOF
     chmod 755 "${tmpdir}/pyana_s${s}.sh"
 done
