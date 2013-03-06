@@ -129,11 +129,13 @@ fi
 
 # Construct an absolute path to the directory with the XTC files as
 # well as a sorted list of unique, comma-separated stream numbers for
-# ${run}.  XXX May need some filtering as suggested by Amedeo Perazzo.
+# ${run}.  Explicitly consider streams being transferred from the DAQ
+# (*.xtc.inprogress), but not failed transfers (*.xtc.inprogress.*).
 xtc="${exp}"
-streams=`ls "${xtc}"/e*-r${run}-s* 2> /dev/null \
-    | sed -e "s:.*-s\([[:digit:]]\+\)-c.*:\1:"  \
-    | sort -u                                   \
+streams=`ls "${xtc}"/e*-r${run}-s*-c*.xtc                         \
+            "${xtc}"/e*-r${run}-s*-c*.xtc.inprogress 2> /dev/null \
+    | sed -e "s:.*-s\([[:digit:]]\+\)-c.*:\1:"                    \
+    | sort -u                                                     \
     | tr -s '\n' ' '`
 if test -z "${streams}"; then
     echo "No streams in ${xtc}" > /dev/stderr
@@ -219,12 +221,14 @@ for s in ${streams}; do
 #! /bin/sh
 
 NPROC="\${PBS_NUM_PPN}"
+STREAMS=\`ls "${xtc}"/e*-r${run}-s${s}-c*.xtc \
+             "${xtc}"/e*-r${run}-s${s}-c*.xtc.inprogress 2> /dev/null\`
 
 test "\${NPROC}" -gt 2 2> /dev/null || NPROC="1"
 "${PYANA}" \\
-  -c "${out}/pyana_s${s}.cfg" \\
-  -p "\${NPROC}" \\
-  "${xtc}"/e*-r${run}-s${s}-c*
+    -c "${out}/pyana_s${s}.cfg" \\
+    -p "\${NPROC}" \\
+    "\${STREAMS}"
 EOF
     chmod 755 "${out}/pyana_s${s}.sh"
 done
