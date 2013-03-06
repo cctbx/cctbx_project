@@ -118,8 +118,9 @@ class sweep_of_images:
 
         j = i + 1
 
-        assert(j >= self._image_number_range[0])
-        assert(j <= self._image_number_range[1])
+        if (j < self._image_number_range[0] or
+            j > self._image_number_range[1]):
+            raise IndexError, 'array index out of range'
 
         import os
 
@@ -131,6 +132,12 @@ class sweep_of_images:
         # or something...
 
         return format_instance.get_raw_data()
+
+    def array_range(self):
+        '''Get the useful array range for the [low, high) limits for what
+        can be called as sweep[j].'''
+
+        return self._image_number_range[0] - 1, self._image_number_range[1]
 
     def get_beam(self):
         return self._beam_model
