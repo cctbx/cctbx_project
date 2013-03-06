@@ -1,4 +1,4 @@
-import string
+from __future__ import division
 import re
 
 # filename template code stolen from xia2...
@@ -35,9 +35,8 @@ def template_regex(filename):
             exten = ''
             digits = groups[0][::-1]
             prefix = groups[1][::-1] + joiners[j]
-            
+
         template = prefix + ''.join(['#' for d in digits]) + exten
         break
-        
-    return template, int(digits)
 
+    return template, int(digits)

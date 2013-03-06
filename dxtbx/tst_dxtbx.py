@@ -46,7 +46,7 @@ def tst_dxtbx_models():
 def tst_sweep():
 
     from dxtbx.sweep_filenames import template_regex
-    
+
     questions_answers = {
         'foo_bar_001.img':'foo_bar_###.img',
         'foo_bar001.img':'foo_bar###.img',
