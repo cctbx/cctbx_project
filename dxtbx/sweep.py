@@ -12,8 +12,8 @@ from __future__ import division
 # be defined which can look up information from the file system etc.
 #
 # The classes in here should not be instantiated directly as they will depend
-# on the form of the data (a single file, a sequence of images) instead accessed
-# *only* from the factories.
+# on the form of the data (a single file, a sequence of images) instead
+# accessed *only* from the factories.
 
 class sweep_of_images:
     '''Definition for a sweep of images, defined to be a set of diffraction
@@ -112,8 +112,11 @@ class sweep_of_images:
 
         return
 
-    def __getitem__(self, j):
-        '''Get the image data for image j.'''
+    def __getitem__(self, i):
+        '''Get the image data for image i + 1 i.e. accessing the voxels from
+        a three-dimensional dataset all indices starting from 0.'''
+
+        j = i + 1
 
         assert(j >= self._image_number_range[0])
         assert(j <= self._image_number_range[1])
