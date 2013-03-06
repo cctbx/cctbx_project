@@ -32,7 +32,11 @@ namespace dxtbx { namespace model {
   public:
 
     /** The default constructor */
-    ScanData() {}
+    ScanData() :
+      image_range_(0, 0),
+      oscillation_(0.0, 0.0),
+      exposure_time_(0.0),
+      num_images_(0.0) {}
 
     /**
      * Initialise the class
@@ -46,7 +50,8 @@ namespace dxtbx { namespace model {
       : image_range_(image_range),
         oscillation_(oscillation),
         exposure_time_(exposure_time),
-        num_images_(1 + image_range_[1] - image_range_[0]) {
+        num_images_(1 + image_range_[1] - image_range_[0]),
+        epochs_(num_images_) {
       DXTBX_ASSERT(num_images_ >= 0);
       DXTBX_ASSERT(exposure_time_ >= 0.0);
     }
@@ -64,8 +69,8 @@ namespace dxtbx { namespace model {
       : image_range_(image_range),
         oscillation_(oscillation),
         exposure_time_(exposure_time),
-        epochs_(epochs),
-        num_images_(1 + image_range_[1] - image_range_[0]) {
+        num_images_(1 + image_range_[1] - image_range_[0]),
+        epochs_(epochs) {
       DXTBX_ASSERT(num_images_ >= 0);
       DXTBX_ASSERT(exposure_time_ >= 0.0);
       DXTBX_ASSERT(epochs_.size() == num_images_);
@@ -108,6 +113,7 @@ namespace dxtbx { namespace model {
     void set_image_range(vec2 <int> image_range) {
       image_range_ = image_range;
       num_images_ = 1 + image_range_[1] - image_range_[0];
+      epochs_.resize(num_images_);
       DXTBX_ASSERT(num_images_ > 0);
     }
 
@@ -123,6 +129,7 @@ namespace dxtbx { namespace model {
 
     /** Set the image epochs */
     void set_epochs(const flex_double &epochs) {
+      DXTBX_ASSERT(epochs.size() == num_images_);
       epochs_ = epochs;
     }
 
@@ -215,10 +222,10 @@ namespace dxtbx { namespace model {
     }
 
     /**
-     * A function to calculate all the frames in the scan at which an observation
-     * with a given angle will be observed. I.e. for a given angle, find all the
-     * equivalent angles (i.e. mod 2pi) within the scan range and calculate the
-     * frame number for each angle.
+     * A function to calculate all the frames in the scan at which an
+     * observation with a given angle will be observed. I.e. for a given angle,
+     * find all the equivalent angles (i.e. mod 2pi) within the scan range and#
+     * calculate the frame number for each angle.
      * Calculate and return an array of frame numbers at which a reflection
      * with a given rotation angle will be observed.
      * @param angle The rotation angle of the reflection
@@ -255,8 +262,8 @@ namespace dxtbx { namespace model {
     vec2 <int> image_range_;
     vec2 <double> oscillation_;
     double exposure_time_;
-    flex_double epochs_;
     int num_images_;
+    flex_double epochs_;
   };
 
   /** Print ScanData information */
