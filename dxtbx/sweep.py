@@ -106,7 +106,8 @@ class sweep_of_images:
         self._image_number_range = (min(self._image_numbers),
                                     max(self._image_numbers))
 
-        self._template_format = '%s%d%s' % (pfx, self._template.count('#'), sfx)
+        self._template_format = '%s%%0%dd%s' % (pfx, self._template.count('#'),
+                                                sfx)
 
         return
 
@@ -138,3 +139,11 @@ class sweep_of_images:
 
     def get_scan(self):
         return self._scan_model
+
+class sweep_factory:
+
+    @staticmethod
+    def sweep(argument):
+        if type(argument) == type([]):
+            return sweep_of_images(argument)
+        raise RuntimeError, 'unknown argument passed to sweep factory'
