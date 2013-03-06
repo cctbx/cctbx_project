@@ -123,7 +123,7 @@ class FormatSMVADSC(FormatSMV):
         from boost.python import streambuf
         from dxtbx import read_uint16, read_uint16_bs, is_big_endian
 
-        size = self.get_detector().image_size
+        size = self.get_detector().get_image_size()
         f = FormatSMVADSC.open_file(self._image_file, 'rb')
         f.read(self._header_size)
 
