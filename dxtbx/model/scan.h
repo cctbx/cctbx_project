@@ -79,6 +79,11 @@ namespace dxtbx { namespace model {
       return image_range_;
     }
 
+    /** Get the array range (zero based) */
+    vec2<int> get_array_range() const {
+      return vec2<int>(0, image_range_[1]);
+    }
+
     /** Get the oscillation */
     vec2 <double> get_oscillation() const {
       return oscillation_;
@@ -102,8 +107,8 @@ namespace dxtbx { namespace model {
     /** Set the image range */
     void set_image_range(vec2 <int> image_range) {
       image_range_ = image_range;
-      num_images_ = image_range_[1] - image_range_[0];
-      DXTBX_ASSERT(num_images_ >= 0);
+      num_images_ = 1 + image_range_[1] - image_range_[0];
+      DXTBX_ASSERT(num_images_ > 0);
     }
 
     /** Set the oscillation */
@@ -137,8 +142,8 @@ namespace dxtbx { namespace model {
 
     /** Get the image epoch */
     double get_image_epoch(int index) const {
-      DXTBX_ASSERT(0 <= index && index < epochs_.size());
-      return epochs_[index];
+      DXTBX_ASSERT(image_range_[0] <= index && index <= image_range_[1]);
+      return epochs_[index - image_range_[0]];
     }
 
     /** Check the scans are the same */
@@ -163,32 +168,32 @@ namespace dxtbx { namespace model {
       return is_angle_in_range(get_oscillation_range(), angle);
     }
 
-    /** Check if the frame is valid */
-    bool is_frame_valid(double frame) const {
-      return (image_range_[0] <= frame && frame < image_range_[1]);
+    /** Check if the index is valid */
+    bool is_image_index_valid(double index) const {
+      return (image_range_[0] <= index && index <= image_range_[1]);
     }
 
-    /** Check if a zero based frame is valid */
-    bool is_zero_based_frame_valid(double frame) const {
-      return is_frame_valid(frame + image_range_[0]);
+    /** Check if the array index is valid */
+    bool is_array_index_valid(double index) const {
+      return is_image_index_valid(index + 1);
     }
 
     /**
      * Calculate the angle corresponding to the given frame
-     * @param frame The frame number
+     * @param index The frame number
      * @returns The angle at the given frame
      */
-    double get_angle_from_frame(double frame) const {
-      return oscillation_[0] + (frame - image_range_[0]) * oscillation_[1];
+    double get_angle_from_image_index(double index) const {
+      return oscillation_[0] + (index - image_range_[0]) * oscillation_[1];
     }
 
     /**
      * Calculate the angle corresponding to the given zero based frame
-     * @param frame The frame number
+     * @param index The frame number
      * @returns The angle at the given frame
      */
-    double get_angle_from_zero_based_frame(double frame) const {
-      return get_angle_from_frame(frame + image_range_[0]);
+    double get_angle_from_array_index(double index) const {
+      return get_angle_from_image_index(index + 1);
     }
 
     /**
@@ -196,7 +201,7 @@ namespace dxtbx { namespace model {
      * @param angle The angle
      * @returns The frame at the given angle
      */
-    double get_frame_from_angle(double angle) const {
+    double get_image_index_from_angle(double angle) const {
       return image_range_[0] + (angle - oscillation_[0]) / oscillation_[1];
     }
 
@@ -205,8 +210,8 @@ namespace dxtbx { namespace model {
      * @param angle The angle
      * @returns The frame at the given angle
      */
-    double get_zero_based_frame_from_angle(double angle) const {
-      return get_frame_from_angle(angle) - image_range_[0];
+    double get_array_index_from_angle(double angle) const {
+      return get_image_index_from_angle(angle) - 1;
     }
 
     /**
@@ -219,11 +224,11 @@ namespace dxtbx { namespace model {
      * @param angle The rotation angle of the reflection
      * @returns The array of frame numbers
      */
-    flex_double get_frames_with_angle(double angle) const {
+    flex_double get_image_indices_with_angle(double angle) const {
       flex_double result = get_mod2pi_angles_in_range(
         get_oscillation_range(), angle);
       for (std::size_t i = 0; i < result.size(); ++i) {
-        result[i] = get_frame_from_angle(result[i]);
+        result[i] = get_image_index_from_angle(result[i]);
       }
       return result;
     }
@@ -234,11 +239,11 @@ namespace dxtbx { namespace model {
      * @param angle The rotation angle of the reflection
      * @returns The array of frame numbers
      */
-    flex_double get_zero_based_frames_with_angle(double angle) const {
+    flex_double get_array_indices_with_angle(double angle) const {
       flex_double result = get_mod2pi_angles_in_range(
         get_oscillation_range(), angle);
       for (std::size_t i = 0; i < result.size(); ++i) {
-        result[i] = get_zero_based_frame_from_angle(result[i]);
+        result[i] = get_array_index_from_angle(result[i]);
       }
       return result;
     }

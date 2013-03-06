@@ -79,40 +79,42 @@ namespace dxtbx { namespace model { namespace boost_python {
   }
 
   static 
-  double get_angle_from_frame(const ScanData &scan, double frame, bool deg) {
-    double angle = scan.get_angle_from_frame(frame);
+  double get_angle_from_image_index(const ScanData &scan, double index, 
+      bool deg) {
+    double angle = scan.get_angle_from_image_index(index);
     return deg ? rad_as_deg(angle) : angle;
   }
 
   static 
-  double get_angle_from_zero_based_frame(const ScanData &scan, double frame, 
+  double get_angle_from_array_index(const ScanData &scan, double index, 
       bool deg) {
-    double angle = scan.get_angle_from_zero_based_frame(frame);
+    double angle = scan.get_angle_from_array_index(index);
     return deg ? rad_as_deg(angle) : angle;
   }
 
   static 
-  double get_frame_from_angle(const ScanData &scan, double angle, bool deg) {
-    return scan.get_frame_from_angle(deg ? deg_as_rad(angle) : angle);
+  double get_image_index_from_angle(const ScanData &scan, double angle, 
+      bool deg) {
+    return scan.get_image_index_from_angle(deg ? deg_as_rad(angle) : angle);
   }
 
   static 
-  double get_zero_based_frame_from_angle(const ScanData &scan, double angle,
+  double get_array_index_from_angle(const ScanData &scan, double angle,
       bool deg) {
-    return scan.get_zero_based_frame_from_angle(
+    return scan.get_array_index_from_angle(
       deg ? deg_as_rad(angle) : angle);
   }
 
   static 
-  flex_double get_frames_with_angle(const ScanData &scan, double angle, 
+  flex_double get_image_indices_with_angle(const ScanData &scan, double angle, 
       bool deg) {
-    return scan.get_frames_with_angle(deg ? deg_as_rad(angle) : angle);
+    return scan.get_image_indices_with_angle(deg ? deg_as_rad(angle) : angle);
   }
   
   static 
-  flex_double get_zero_based_frames_with_angle(const ScanData &scan, 
+  flex_double get_array_indices_with_angle(const ScanData &scan, 
       double angle, bool deg) {
-    return scan.get_zero_based_frames_with_angle(
+    return scan.get_array_indices_with_angle(
       deg ? deg_as_rad(angle) : angle);
   }  
   
@@ -153,6 +155,8 @@ namespace dxtbx { namespace model { namespace boost_python {
         &ScanData::get_image_range)
       .def("set_image_range",
         &ScanData::set_image_range)
+      .def("get_array_range",  
+        &ScanData::get_array_range)
       .def("get_oscillation",  
         &ScanData::get_oscillation)
       .def("set_oscillation",
@@ -180,34 +184,34 @@ namespace dxtbx { namespace model { namespace boost_python {
         &is_angle_valid, (
           arg("angle"),
           arg("deg") = false))
-      .def("is_frame_valid",
-        &ScanData::is_frame_valid, (
-          arg("frame")))
-      .def("is_zero_based_frame_valid",
-        &ScanData::is_zero_based_frame_valid, (
-          arg("frame")))
-      .def("get_angle_from_frame",
-        &get_angle_from_frame, (
-          arg("frame"),
+      .def("is_image_index_valid",
+        &ScanData::is_image_index_valid, (
+          arg("index")))
+      .def("is_array_index_valid",
+        &ScanData::is_array_index_valid, (
+          arg("index")))
+      .def("get_angle_from_image_index",
+        &get_angle_from_image_index, (
+          arg("index"),
           arg("deg") = false))
-      .def("get_angle_from_zero_based_frame",
-        &get_angle_from_zero_based_frame, (
-          arg("frame"),
+      .def("get_angle_from_array_index",
+        &get_angle_from_array_index, (
+          arg("index"),
           arg("deg") = false))          
-      .def("get_frame_from_angle",
-        &get_frame_from_angle, (
+      .def("get_image_index_from_angle",
+        &get_image_index_from_angle, (
           arg("angle"),
           arg("deg") = false))
-      .def("get_zero_based_frame_from_angle",
-        &get_zero_based_frame_from_angle, (
+      .def("get_array_index_from_angle",
+        &get_array_index_from_angle, (
           arg("angle"),
           arg("deg") = false))
-      .def("get_frames_with_angle",
-        &get_frames_with_angle, (
+      .def("get_image_indices_with_angle",
+        &get_image_indices_with_angle, (
           arg("angle"),
           arg("deg") = false))
-      .def("get_zero_based_frames_with_angle",
-        &get_zero_based_frames_with_angle, (
+      .def("get_array_indices_with_angle",
+        &get_array_indices_with_angle, (
           arg("angle"),
           arg("deg") = false))
       .def("__eq__", &ScanData::operator==)

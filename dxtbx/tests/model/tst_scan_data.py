@@ -18,11 +18,11 @@ def tst_is_frame_valid(scan):
     """Check that the is_frame_valid function behaves properly."""
     image_range = scan.get_image_range()
     for i  in range(image_range[0] - 100, image_range[0]):
-        assert(scan.is_frame_valid(i) == False)
-    for i in range(image_range[0], image_range[1]):
-        assert(scan.is_frame_valid(i) == True)
-    for i in range(image_range[1], image_range[1] + 100):
-        assert(scan.is_frame_valid(i) == False)
+        assert(scan.is_image_index_valid(i) == False)
+    for i in range(image_range[0], image_range[1]+1):
+        assert(scan.is_image_index_valid(i) == True)
+    for i in range(image_range[1]+1, image_range[1] + 100):
+        assert(scan.is_image_index_valid(i) == False)
     print "OK"
 
 def tst_get_angle_from_frame(scan):
