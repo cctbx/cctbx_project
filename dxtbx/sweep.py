@@ -15,7 +15,7 @@ from __future__ import division
 # on the form of the data (a single file, a sequence of images) instead
 # accessed *only* from the factories.
 
-class sweep_of_images:
+class sweep_of_images(object):
     '''Definition for a sweep of images, defined to be a set of diffraction
     images in files with matching templates, or a volume formatted file.'''
 
