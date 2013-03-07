@@ -1,6 +1,7 @@
 
 from __future__ import division
 from libtbx import group_args
+from libtbx.utils import Sorry
 from math import exp
 import os
 
@@ -202,7 +203,7 @@ def get_charge(element):
   try:
     return CHARGES[element]
   except KeyError:
-    raise Exception("Unknown charge state for element: %s" % (element))
+    raise Sorry("Unknown charge state for element: %s" % (element))
 
 def compare_atom_weight(atom1, atom2):
   """
