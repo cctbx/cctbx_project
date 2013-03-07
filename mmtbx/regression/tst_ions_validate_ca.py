@@ -10,7 +10,6 @@ def exercise () :
     ).raise_if_errors()
   n_ca, n_bad = 0, 0
   for line in result.stdout_lines:
-    print line
     if "| CA" in line:
       n_ca += 1
     if "!!!" in line:
