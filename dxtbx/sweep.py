@@ -154,7 +154,7 @@ class sweep_of_images(object):
 class sweep_factory:
 
     @staticmethod
-    def sweep(argument):
+    def sweep(argument, check_headers = False):
         if type(argument) == type([]):
-            return sweep_of_images(argument)
+            return sweep_of_images(argument, check_headers)
         raise RuntimeError, 'unknown argument passed to sweep factory'
