@@ -213,6 +213,8 @@ namespace {
 
     def("box_map_averaging",box_map_averaging);
 
+    def("cc_weighted_maps",cc_weighted_maps);
+
     def("node_interplation_averaging",node_interplation_averaging);
 
     def("hoppe_gassman_modification",

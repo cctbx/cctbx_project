@@ -130,6 +130,37 @@ af::versa<double, af::c_grid<3> > rotate_translate_map(
     return new_data;
 }
 
+void
+  cc_weighted_maps(
+    af::ref<double, af::c_grid<3> > data_1,
+    af::ref<double, af::c_grid<3> > data_2)
+{
+  int NX = data_1.accessor()[0];
+  int NY = data_1.accessor()[1];
+  int NZ = data_1.accessor()[2];
+  // perhaps need pre-filter maps first to avoid computing CC(0,0)
+  for (int lx = 0; lx < NX; lx++) {
+    for (int ly = 0; ly < NY; ly++) {
+      for (int lz = 0; lz < NZ; lz++) {
+        af::shared<double> m1;
+        af::shared<double> m2;
+        int inc = 1;
+        for (int i = lx-inc; i <= lx+inc; i++) {
+          for (int j = ly-inc; j <= ly+inc; j++) {
+            for (int k = lz-inc; k <= lz+inc; k++) {
+              int mx = scitbx::math::mod_positive(i, NX);
+              int my = scitbx::math::mod_positive(j, NY);
+              int mz = scitbx::math::mod_positive(k, NZ);
+              m1.push_back(data_1(mx,my,mz));
+              m2.push_back(data_2(mx,my,mz));
+        }}}
+        double cc =
+          scitbx::math::linear_correlation<>(m1.ref(), m2.ref()).coefficient();
+        data_1(lx,ly,lz) = data_1(lx,ly,lz)*cc;
+        data_2(lx,ly,lz) = data_2(lx,ly,lz)*cc;
+  }}}
+}
+
 af::versa<double, af::c_grid<3> > box_map_averaging(
                              cctbx::uctbx::unit_cell const& unit_cell,
                              af::const_ref<double, af::c_grid<3> > const& data,
@@ -175,7 +206,7 @@ af::versa<double, af::c_grid<3> >
 node_interplation_averaging(
   cctbx::uctbx::unit_cell const& unit_cell,
   af::const_ref<double, af::c_grid<3> > const& data,
-  double const& rad)
+  double const& cutoff)
 {
   int NX = data.accessor()[0];
   int NY = data.accessor()[1];
@@ -186,31 +217,34 @@ node_interplation_averaging(
   for (int lx = 0; lx < NX; lx++) {
     for (int ly = 0; ly < NY; ly++) {
       for (int lz = 0; lz < NZ; lz++) {
-        cctbx::fractional<> site_frac_1 = cctbx::fractional<>(
-          lx/static_cast<double>(NX),
-          ly/static_cast<double>(NY),
-          lz/static_cast<double>(NZ));
-        double rho = 0.0;
-        double w = 0.0;
-        int inc = 1;
-        for (int i = lx-inc; i <= lx+inc; i++) {
-          for (int j = ly-inc; j <= ly+inc; j++) {
-            for (int k = lz-inc; k <= lz+inc; k++) {
-              int mx = scitbx::math::mod_positive(i, NX);
-              int my = scitbx::math::mod_positive(j, NY);
-              int mz = scitbx::math::mod_positive(k, NZ);
-              cctbx::fractional<> site_frac_2 = cctbx::fractional<>(
-                i/static_cast<double>(NX),
-                j/static_cast<double>(NY),
-                k/static_cast<double>(NZ));
-              double dist = unit_cell.distance(site_frac_1, site_frac_2);
-              if(dist != 0) dist = 1./dist;
-              else dist = 0.01;
-              dist=1;
-              rho += dist*data(mx,my,mz);
-              w += dist;
-        }}}
-        new_data_ref(lx,ly,lz) = rho / w;
+        if(data(lx,ly,lz)<cutoff) {
+          cctbx::fractional<> site_frac_1 = cctbx::fractional<>(
+            lx/static_cast<double>(NX),
+            ly/static_cast<double>(NY),
+            lz/static_cast<double>(NZ));
+          double rho = 0.0;
+          double w = 0.0;
+          int inc = 1;
+          for (int i = lx-inc; i <= lx+inc; i++) {
+            for (int j = ly-inc; j <= ly+inc; j++) {
+              for (int k = lz-inc; k <= lz+inc; k++) {
+                int mx = scitbx::math::mod_positive(i, NX);
+                int my = scitbx::math::mod_positive(j, NY);
+                int mz = scitbx::math::mod_positive(k, NZ);
+                cctbx::fractional<> site_frac_2 = cctbx::fractional<>(
+                  i/static_cast<double>(NX),
+                  j/static_cast<double>(NY),
+                  k/static_cast<double>(NZ));
+                double dist = unit_cell.distance(site_frac_1, site_frac_2);
+                if(dist != 0) dist = 1./dist;
+                else dist = 0.01;
+                dist=1;
+                rho += dist*data(mx,my,mz);
+                w += dist;
+          }}}
+          new_data_ref(lx,ly,lz) = rho / w;
+        }
+        else new_data_ref(lx,ly,lz) = data(lx,ly,lz);
   }}}
   return new_data;
 }
