@@ -1369,9 +1369,6 @@ class Manager (object) :
     print >> box, fmt % headers
     print >> box, " " + ("-" * 75)
     for props, okay_flag in ion_status :
-      mark = ""
-      if (not okay_flag) :
-        pass #mark = " !!!"
       i_seq = props.atom.i_seq
       sc = scatterers[i_seq]
       fp = fdp = None
@@ -1387,9 +1384,10 @@ class Manager (object) :
         ff("%.2f", props.peak_2fofc), ff("%.2f", props.peak_fofc),
         ff("%.2f", fp), ff("%.2f", fdp),
         ff("%.2f", props.valence_sum.get(identity)),
-        ff("%.2f", props.vector_sum.get(identity)))) + mark
-      print >> box, "\n".join(props.error_strs[i]
-                              for i in props.inaccuracies[identity])
+        ff("%.2f", props.vector_sum.get(identity))))
+      if not okay_flag:
+        print >> box, "\n".join("!!! " + props.error_strs[i]
+                                for i in props.inaccuracies[identity])
       print >> box
     box.close()
 
