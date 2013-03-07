@@ -1446,12 +1446,7 @@ mmtbx/ions/build.py -text
 mmtbx/ions/geometry.py -text
 mmtbx/ions/ion_parameters.cif -text
 mmtbx/ions/parameters.py -text
-mmtbx/ions/tst_calcium_simple.py -text
-mmtbx/ions/tst_calcium_validate.py -text
-mmtbx/ions/tst_magnesium_simple.py -text
-mmtbx/ions/tst_magnesium_validate.py -text
 mmtbx/ions/tst_parameters.py svneol=native#text/x-python
-mmtbx/ions/tst_zinc_approximate.py -text
 mmtbx/ions/utils.py svneol=native#text/x-python
 mmtbx/kinemage/__init__.py -text
 mmtbx/kinemage/validation.py -text
@@ -1546,6 +1541,13 @@ mmtbx/regression/tst_dssp.py -text
 mmtbx/regression/tst_examples.py -text
 mmtbx/regression/tst_find_peaks_holes.py -text
 mmtbx/regression/tst_interpolation.py -text
+mmtbx/regression/tst_ions_parameters.py svneol=native#text/x-python
+mmtbx/regression/tst_ions_pick_approx_zn.py -text
+mmtbx/regression/tst_ions_pick_ca.py -text
+mmtbx/regression/tst_ions_pick_mg.py -text
+mmtbx/regression/tst_ions_validate_ca.py -text
+mmtbx/regression/tst_ions_validate_mg.py -text
+mmtbx/regression/tst_ions_validate_zn.py -text
 mmtbx/regression/tst_map_coeffs_simple.py -text
 mmtbx/regression/tst_maps_misc.py -text
 mmtbx/regression/tst_ml_estimate.py -text
