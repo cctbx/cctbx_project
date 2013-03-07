@@ -14,11 +14,13 @@ namespace cctbx { namespace miller { namespace boost_python {
       def("randomize_amplitude_and_phase",
         (af::shared<ComplexType>(*)
           (af::const_ref<ComplexType> const&,
+           af::const_ref<bool> const&,
            FloatType const&,
            FloatType const&,
            int))
              randomize_amplitude_and_phase, (
                arg("data"),
+               arg("selection"),
                arg("amplitude_error"),
                arg("phase_error_deg"),
                arg("random_seed")))

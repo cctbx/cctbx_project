@@ -959,13 +959,15 @@ class set(crystal.symmetry):
       anomalous_flag=self.anomalous_flag())
     return ms.array(data = result_data)
 
-  def randomize_amplitude_and_phase(self, amplitude_error, phase_error_deg,
-        random_seed=None):
+  def randomize_amplitude_and_phase(self, amplitude_error,
+        phase_error_deg, selection=None, random_seed=None):
     assert self.is_complex_array()
+    if(selection is None): selection = flex.bool(self.indices().size(), True)
     import random
     if(random_seed is None): random_seed = random.randint(0, 1000000)
     new_data = ext.randomize_amplitude_and_phase(
       data=self.data(),
+      selection=selection,
       amplitude_error=amplitude_error,
       phase_error_deg=phase_error_deg,
       random_seed=random_seed)
