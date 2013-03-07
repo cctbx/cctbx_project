@@ -369,6 +369,7 @@ dxtbx/__init__.py -text
 dxtbx/boost_python/ext.cpp -text
 dxtbx/command_line/print_header.py -text
 dxtbx/command_line/print_sweep.py -text
+dxtbx/command_line/print_sweep_check.py -text
 dxtbx/command_line/print_total.py -text
 dxtbx/command_line/to_xds.py -text
 dxtbx/data/detectors.lib -text
