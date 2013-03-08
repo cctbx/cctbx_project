@@ -138,7 +138,7 @@ class server (object) :
     vectors = []
 
     for contact in nearby_atoms:
-      donor = AtomGuess(contact.element(), contact.charge_str())
+      donor = AtomGuess(contact.element(), contact.charge())
       valence = self.calculate_valence(ion, donor, abs(contact)) * contact.atom.occ
 
       if valence == 0:
