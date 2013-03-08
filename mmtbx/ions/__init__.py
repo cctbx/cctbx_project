@@ -1514,9 +1514,12 @@ class water_result (object):
           # print out why all the metals we tried failed
           if (debug) and (len(self.filtered_candidates) > 0) :
             print >> out, "  insufficient data to identify atom"
-            print >> out, "  possible candidates:"
+            possible = True
             for params in self.filtered_candidates:
               if (self.atom_props.has_compatible_ligands(str(params))) :
+                if possible:
+                  print >> out, "  possible candidates:"
+                  possible = False
                 self.atom_props.show_ion_results(identity = str(params),
                   out = out)
               else :
