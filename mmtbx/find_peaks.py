@@ -120,11 +120,11 @@ class manager(object):
         map_units = "e/A**3"
       fft_map_data = fft_map.real_map_unpadded()
     elif(use_kick_map):
-      from mmtbx import map_tools
-      km = map_tools.kick_map(
+      import mmtbx.maps
+      km = mmtbx.maps.kick(
         fmodel            = self.fmodel,
         map_type          = map_type)
-      fft_map = km.map_coeffs.fft_map(
+      fft_map = km.map_coefficients.fft_map(
         resolution_factor=self.params.resolution_factor,
         symmetry_flags=maptbx.use_space_group_symmetry)
       fft_map.apply_sigma_scaling()
