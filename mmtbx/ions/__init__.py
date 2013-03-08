@@ -1590,7 +1590,6 @@ class AtomProperties (object) :
         else :
           nearby_atoms_no_alts.append(contact)
 
-    print "coord", "\n".join(["{0}, {1}".format(i.atom.id_str(), abs(i.vector))  for i in self.nearby_atoms])
     self.residue_counts = count_coordinating_residues(self.nearby_atoms)
     self.geometries = find_coordination_geometry(nearby_atoms_no_alts)
 
