@@ -1543,6 +1543,7 @@ mmtbx/regression/tst_interpolation.py -text
 mmtbx/regression/tst_ions_parameters.py svneol=native#text/x-python
 mmtbx/regression/tst_ions_pick_approx_zn.py -text
 mmtbx/regression/tst_ions_pick_ca.py -text
+mmtbx/regression/tst_ions_pick_k.py -text
 mmtbx/regression/tst_ions_pick_mg.py -text
 mmtbx/regression/tst_ions_validate_ca.py -text
 mmtbx/regression/tst_ions_validate_mg.py -text
