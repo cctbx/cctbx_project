@@ -1053,6 +1053,11 @@ class Manager (object) :
         else :
           raise Sorry("Element '%s' not supported!" % symbol)
 
+      # If we definitely look like water, only look at the metals isoelectronic
+      # with water.
+      if looks_like_water and symbol not in ["NA", "MG", "F", "NE"]:
+        continue
+
       if (nuc_phosphate_site) and (not symbol in NUC_PHOSPHATE_BINDING) :
         continue
 
