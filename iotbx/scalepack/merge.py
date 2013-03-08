@@ -160,7 +160,9 @@ def write(file_name=None, file_object=None, miller_array=None,
           line_1="    1",
           line_2=" -987"):
   assert [file_name, file_object].count(None) == 1
-  assert miller_array.is_xray_intensity_array() or miller_array.is_xray_amplitude_array()
+  assert miller_array.is_xray_intensity_array() or \
+    miller_array.is_xray_amplitude_array(), \
+    "Input data must be amplitudes or intensities."
   assert miller_array.sigmas() is not None
   if (file_object is None):
     file_object = open(file_name, "w")
