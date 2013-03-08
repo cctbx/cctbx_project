@@ -18,33 +18,33 @@ def _bond_angles(vectors):
 # Tetrahedrons have 4 vertices, with angles between all pairs of vertices
 # uniformly about 104.5 degrees.
 def _is_tetrahedral(vectors, dev_cutoff = 16):
-  if len(vectors) != 4:
+  if len(vectors) > 4 or len(vectors) < 3:
     return
 
   angles = _bond_angles(vectors)
   deviation = sqrt(sum(abs(i[2] - 104.5) ** 2 for i in angles) / len(vectors))
 
   if deviation <= dev_cutoff:
-    return deviation
+    return deviation, 4 - len(vectors)
 
 # Square planar geometry has 4 vertices, all on the same equatorial plane.
 # The expected angles are 90 degrees between neighboring vertices and 180
 # degrees between vertices across from one another.
 def _is_square_planar(vectors, dev_cutoff = 20):
-  if len(vectors) != 4:
+  if len(vectors) > 4 or len(vectors) < 3:
     return
 
   angles = _bond_angles(vectors)
   deviation = sqrt(sum(abs(i[2] - 90) ** 2 for i in angles) / len(vectors))
 
   if deviation <= dev_cutoff:
-    return deviation
+    return deviation, 4 - len(vectors)
 
 # Octahedrons have 6 vertices (Their name comes from their 8 faces).
 # The expected angles are all either 90 degrees (Next to each other),
 # or 180 degrees (Across from each other).
 def _is_octahedral(vectors, dev_cutoff = 15):
-  if len(vectors) != 6:
+  if len(vectors) > 6 or len(vectors) < 5:
     return
 
   angles = _bond_angles(vectors)
@@ -65,23 +65,27 @@ def _is_octahedral(vectors, dev_cutoff = 15):
 
   deviation = sqrt(sum(abs(i) ** 2 for i in deviants) / len(deviants))
 
-  if opposites != 3:
+  if opposites > 3 or opposites < 2:
     return
 
   if deviation <= dev_cutoff:
-    return deviation
+    return deviation, 6 - len(vectors)
 
 # Trigonal bipyramids have 5 vertices. Three vertices form a plane in the middle
 # and the angles between all 3 are 120 degrees. The two other vertices reside
 # axial to the plane, at 90 degrees from all the equatorial vertices.
 def _is_trigonal_bipyramid(vectors, dev_cutoff = 15):
-  if len(vectors) != 5:
+  if len(vectors) > 5 or len(vectors) < 4:
     return
 
   angles = _bond_angles(vectors)
 
   # Grab the two axial vectors
   ax1, ax2, axial_angle = max(angles, key = lambda x: abs(x[-1]))
+
+  if axial_angle < 150:
+    # Missing one of the two axial vectors, just quit
+    return
 
   base_to_axials = []
   equatorial_angles = []
@@ -100,7 +104,7 @@ def _is_trigonal_bipyramid(vectors, dev_cutoff = 15):
   deviation = sqrt(sum(abs(i) ** 2 for i in deviants) / len(deviants))
 
   if deviation <= dev_cutoff:
-    return deviation
+    return deviation, 5 - len(vectors)
 
 SUPPORTED_GEOMETRIES = {
   "tetrahedral": _is_tetrahedral,
@@ -131,6 +135,7 @@ def find_coordination_geometry(nearby_atoms, cutoff = 2.5):
     val = func(vectors)
 
     if val is not None:
-      geometries += (name, val),
+      deviation, missing = val
+      geometries += (name, deviation, missing),
 
   return geometries
