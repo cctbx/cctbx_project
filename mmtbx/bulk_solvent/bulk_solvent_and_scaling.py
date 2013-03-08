@@ -326,8 +326,10 @@ class bulk_solvent_and_scales(object):
       if(not self.params.anisotropic_scaling):
         self.params.minimization_b_cart = False
       params_target = self.params.target
-      if(self.params.bulk_solvent):
-        assert not self.fmodels.fmodel.check_f_mask_all_zero()
+      if(self.fmodels.fmodel.check_f_mask_all_zero()):
+        self.params.bulk_solvent = False
+        self.params.k_sol_b_sol_grid_search = False
+        self.params.minimization_k_sol_b_sol = False
       macro_cycles = range(1, self.params.number_of_macro_cycles+1)
       mask_ok = not self.fmodels.fmodel.check_f_mask_all_zero()
       if(self.params.fix_k_sol is not None and mask_ok):
