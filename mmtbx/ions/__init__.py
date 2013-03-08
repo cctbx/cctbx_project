@@ -1222,8 +1222,8 @@ class Manager (object) :
     environment to check their identity and suggest likely ions where
     appropriate.
 
-    Returns a list of (i_seq, MetalParameter), which indicate that waters of i_seq
-    would be better changed to the new metal identity.
+    Returns a list of (i_seq, MetalParameter), which indicate that waters of
+    i_seq would be better changed to the new metal identity.
     """
     model = self.pdb_hierarchy.only_model()
 
@@ -1385,6 +1385,7 @@ class Manager (object) :
         ff("%.2f", fp), ff("%.2f", fdp),
         ff("%.2f", props.valence_sum.get(identity)),
         ff("%.2f", props.vector_sum.get(identity))))
+      # print >> box, props.geometries
       if not okay_flag:
         print >> box, "\n".join("!!! " + props.error_strs[i]
                                 for i in props.inaccuracies[identity])
@@ -1588,6 +1589,7 @@ class AtomProperties (object) :
         else :
           nearby_atoms_no_alts.append(contact)
 
+    print "coord", "\n".join(["{0}, {1}".format(i.atom.id_str(), abs(i.vector))  for i in self.nearby_atoms])
     self.residue_counts = count_coordinating_residues(self.nearby_atoms)
     self.geometries = find_coordination_geometry(nearby_atoms_no_alts)
 
@@ -1981,7 +1983,7 @@ class AtomProperties (object) :
 
       if self.geometries:
         print >> out, "  Coordinating geometry:"
-        for geometry, deviation in self.geometries:
+        for geometry, deviation, missing in self.geometries:
           print >> out, "    %-15s (average deviation: %.3f%s)" % \
             (geometry, deviation, degree)
 
