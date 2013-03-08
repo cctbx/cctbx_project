@@ -848,13 +848,13 @@ template <typename FloatType>
    FloatType k_best = 0.0;
    FloatType b_best = 0.0;
    FloatType r_best = DBL_MAX;
-   FloatType k_min  = k_start-std::abs(k_start);
+   FloatType k_min  = std::max(0., k_start-std::abs(k_start));
    FloatType k_max  = k_start+std::abs(k_start);
    FloatType b_min  = b_start-std::abs(b_start);
    FloatType b_max  = b_start+std::abs(b_start);
    if(k_min==k_max) {
-     k_min=-1;
-     k_max= 1;
+     k_min=0;
+     k_max=1;
    }
    if(b_min==b_max) {
      b_min=-1;
@@ -896,11 +896,12 @@ template <typename FloatType>
      b_start = b_best;
 
      iteration_increment -= 1./n_iterations;
-     k_min  = k_start-std::abs(k_start)*iteration_increment;
+     k_min  = std::max(0., k_start-std::abs(k_start)*iteration_increment);
      k_max  = k_start+std::abs(k_start)*iteration_increment;
      b_min  = b_start-std::abs(b_start)*iteration_increment;
      b_max  = b_start+std::abs(b_start)*iteration_increment;
    }
+   MMTBX_ASSERT(k_best>=0);
    return af::tiny<FloatType, 3> (k_best, b_best, r_best);
  };
 
