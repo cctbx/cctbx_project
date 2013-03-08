@@ -547,7 +547,7 @@ class kick(object):
       map_type         = "2mFo-DFc",
       number_of_kicks  = 100,
       number_of_trials = 30):
-    if(crystal_gridding is not None):
+    if(crystal_gridding is None):
       crystal_gridding = fmodel.f_obs().crystal_gridding(
         d_min                   = fmodel.f_obs().d_min(),
         resolution_factor       = 0.25,
@@ -557,6 +557,16 @@ class kick(object):
         max_prime               = 5,
         assert_shannon_sampling = True)
     fmodel_dc = fmodel.deep_copy()
+    #
+    if(fmodel_dc.f_obs().anomalous_flag()):
+      f_obs        = fmodel_dc.f_obs().average_bijvoet_mates()
+      r_free_flags = fmodel_dc.r_free_flags().average_bijvoet_mates()
+      fmodel_dc = mmtbx.f_model.manager(
+        f_obs = f_obs,
+        r_free_flags = r_free_flags,
+        xray_structure = fmodel_dc.xray_structure)
+      fmodel_dc.update_all_scales()
+    #
     self.number_of_kicks = number_of_kicks
     assert self.number_of_kicks > 0
     map_coeffs = fmodel_dc.f_calc()
@@ -570,14 +580,17 @@ class kick(object):
         anomalous_flag   = False).array(data = map_coeff_data)
     map_data = None
     for it in xrange(number_of_trials):
-      print it
+      if 0: print it
       if(it<number_of_trials/2): small=False
       else: small=True
       if(it%2==0):
         map_coeffs_kick = call_run_kick_loop(map_coeffs=map_coeffs, small=small)
+        r_free_flags = flex.random_bool(map_coeffs_kick.indices().size(), 0.1)
+        r_free_flags = map_coeffs_kick.customized_copy(data=r_free_flags,
+          anomalous_flag=False)
         fmodel_dc.update(
           f_calc       = map_coeffs_kick,
-          r_free_flags = map_coeffs_kick.generate_r_free_flags())
+          r_free_flags = r_free_flags)
         mc = fmodel_dc.electron_density_map().map_coefficients(
           map_type = map_type, isotropize = True, fill_missing = False)
         mc = mc.complete_with(complete_set)
@@ -612,7 +625,7 @@ class kick(object):
   def run_kick_loop(self, map_coeffs, small):
     map_coeff_data = None
     for kick in xrange(self.number_of_kicks):
-      print "  ", kick, small
+      if 0: print "  ", kick, small
       if(small):
         sel = flex.random_bool(map_coeffs.size(), random.choice([1,0.1,0.2,0.3]))
         ar = random.choice([0,0.01,0.02])
@@ -627,65 +640,6 @@ class kick(object):
       if(map_coeff_data is None): map_coeff_data = mc.data()
       else:                       map_coeff_data = map_coeff_data + mc.data()
     return map_coeff_data/self.number_of_kicks
-
-#def averaged_phase_kicked_map(
-#      fmodel,
-#      map_type            = "2mFo-DFc",
-#      phase_kick_fraction = 0.3,
-#      number_of_kicks     = 100,
-#      number_of_trials    = 10):
-#  assert number_of_kicks > 0
-#  complete_set = fmodel.electron_density_map().map_coefficients(
-#    map_type = map_type, isotropize=True, fill_missing=True)
-#  #
-##  fft_map = complete_set.fft_map(resolution_factor=0.25)
-##  fft_map.apply_sigma_scaling()
-##  map_data_orig = fft_map.real_map_unpadded()
-##  sites_frac = fmodel.xray_structure.sites_frac()
-##  sites_cart = fmodel.xray_structure.sites_cart()
-##  mv = 0
-##  for sf in sites_frac:
-##    mv += map_data_orig.eight_point_interpolation(sf)
-##  mv /= sites_frac.size()
-##  print mv
-##
-##
-##  sel = maptbx.grid_indices_around_sites(
-##                  unit_cell  = fmodel.xray_structure.unit_cell(),
-##                  fft_n_real = map_data_orig.focus(),
-##                  fft_m_real = map_data_orig.all(),
-##                  sites_cart = sites_cart,
-##                  site_radii = flex.double([1.0]*sites_cart.size()))
-##  cutoff = flex.mean(map_data_orig.select(sel))
-##  print cutoff
-#  #
-#  map_data = None
-#  for it in xrange(number_of_trials):
-#    print it
-#    map_coeff_data = run_kick_loop(map_coeffs = complete_set,
-#      number_of_kicks = number_of_kicks)
-#    map_coeffs_ave_i = miller.set(
-#      crystal_symmetry = complete_set.crystal_symmetry(),
-#      indices          = complete_set.indices(),
-#      anomalous_flag   = False).array(data = map_coeff_data)
-#    fft_map = map_coeffs_ave_i.fft_map(resolution_factor=0.25)
-#    fft_map.apply_sigma_scaling()
-#    m = fft_map.real_map_unpadded()
-#    if(map_data is None): map_data = m
-#    else:
-#      for i in [0,0.1,0.2,0.3,0.4,0.5]:
-#        maptbx.intersection(
-#          map_data_1 = m,
-#          map_data_2 = map_data,
-#          threshold  = i)#cutoff/3)#0.5)
-#      map_data= (m+map_data)/2
-#  #maptbx.kill_because_of_poor_neighbours(map_data, 0.5, 1)
-#  #maptbx.convert_to_non_negative(map_data, 0)
-#  return complete_set.structure_factors_from_map(
-#    map            = map_data,
-#    use_scale      = True,
-#    anomalous_flag = False,
-#    use_sg         = False)
 
 class filter_by_averaged_phase_kicked_map(object):
   def __init__(self,
