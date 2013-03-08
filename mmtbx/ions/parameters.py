@@ -112,7 +112,16 @@ class server (object) :
       return 0
 
     r_0, b = self.get_valence_params(ion, donor)
-    if (r_0 is None) : return 0
+
+    if (r_0 is None) :
+      # Try again, this time using the default charge for the donor
+      tmp = donor.charge
+      donor.charge = default_charge(donor.element)
+      r_0, b = self.get_valence_params(ion, donor)
+      donor.charge = tmp
+
+      if r_0 is None:
+        return 0
 
     return exp((r_0 - distance) / b)
 
@@ -130,7 +139,6 @@ class server (object) :
 
     for contact in nearby_atoms:
       donor = AtomGuess(contact.element(), contact.charge_str())
-
       valence = self.calculate_valence(ion, donor, abs(contact)) * contact.atom.occ
 
       if valence == 0:
@@ -182,7 +190,7 @@ CHARGES = {
 class AtomGuess(object):
   def __init__(self, element, charge = None):
     self.element = element.upper()
-    self.charge = charge if charge else get_charge(element)
+    self.charge = charge if charge else default_charge(element)
 
   def charge_as_int (self) :
     return self.charge
@@ -198,8 +206,30 @@ class AtomGuess(object):
       charge_symbol = "-"
     return "%s%d%s" % (self.element, self.charge, charge_symbol)
 
-def get_charge(element):
-  # Guess the charge state, may need to play around and try multiple when guessing
+def get_element(atom):
+  """
+  Grabs an atom's element, stripping off whitespace and making sure the
+  letters are capitalized.
+  """
+  return atom.element.strip().upper()
+
+def get_charge(atom):
+  charge = atom.charge
+
+  if not isinstance(charge, int):
+    charge = atom.charge_as_int()
+
+  if charge == 0:
+    try:
+      charge = default_charge(get_element(atom))
+    except Sorry:
+      return 0
+
+  return charge
+
+def default_charge(element):
+  # Guess the charge state, may need to play around and try multiple when
+  # guessing
   try:
     return CHARGES[element]
   except KeyError:
@@ -218,7 +248,7 @@ def compare_atom_weight(atom1, atom2):
   charge1 = atom1.charge_as_int()
 
   if not charge1:
-    charge1 = get_charge(element1)
+    charge1 = default_charge(element1)
 
   # Technically atom2 is a MetalParameter object, but it walks and talks
   # mostly like an atom
@@ -227,6 +257,6 @@ def compare_atom_weight(atom1, atom2):
   charge2 = int(atom2.charge)
 
   if not charge2:
-    charge2 = get_charge(element2)
+    charge2 = default_charge(element2)
 
   return cmp(atom_num1 - charge1, atom_num2 - charge2)

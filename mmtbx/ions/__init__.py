@@ -9,7 +9,8 @@ only prints out messages to the log.
 """
 
 from __future__ import division
-from mmtbx.ions.parameters import get_charge, server, MetalParameters
+from mmtbx.ions.parameters import default_charge, get_charge, get_element, \
+     server, MetalParameters
 from mmtbx.ions.geometry import find_coordination_geometry
 from cctbx import crystal, adptbx
 from cctbx.eltbx import sasaki, henke
@@ -206,10 +207,10 @@ class atom_contact (slots_getstate_setstate) :
     return self.atom.fetch_labels().resname.strip().upper()
 
   def element (self) :
-    return _get_element(self.atom)
+    return get_element(self.atom)
 
-  def charge_str (self) :
-    return self.atom.charge.strip()
+  def charge (self) :
+    return get_charge(self.atom)
 
   def atom_i_seq (self) :
     return self.atom.i_seq
@@ -822,7 +823,7 @@ class Manager (object) :
         return False
 
       if not element in ["C","N","H","O","S"]:
-        charge = get_charge(element)
+        charge = default_charge(element)
 
         if charge < 0 and distance <= params.min_distance_to_anion:
           # Nearby anion that is too close
@@ -1788,13 +1789,6 @@ class AtomProperties (object) :
         continue
 
       if (contact.distance() < 3.0) :
-        # Anion coordinated with anion, or cation coordinating with cation
-        # (Make sure atom charges are on the opposite sides of 0)
-        other_charge = contact.atom.charge_as_int()
-
-        if other_charge is None:
-          other_charge = get_charge(other_element)
-
         # XXX: So, we have a a fair number of rules restricting nitrogens and
         # nitrogen-containing residues from coordinating a number of cations.
         #
@@ -1829,7 +1823,7 @@ class AtomProperties (object) :
                 # XXX probably just O
               self.bad_coords[identity].append(contact)
               inaccuracies.add(self.BAD_COORD_RESIDUE)
-        elif (cmp(0, contact.atom.charge_as_int()) ==
+        elif (cmp(0, get_charge(contact.atom)) ==
               cmp(0, ion_params.charge)) :
           # Check if coordinating atom is of opposite charge
           self.bad_coords[identity].append(contact)
@@ -2072,28 +2066,12 @@ class AtomProperties (object) :
           n_phosphate_oxygens += 1
     return (n_phosphate_oxygens == min_phosphate_oxygen_atoms)
 
-def _get_element(atom):
-  """
-  Grabs an atom's element, stripping off whitespace and making sure the
-  letters are capitalized.
-  """
-  return atom.element.strip().upper()
-
 def _identity(atom):
   """
   Covers an atom into a string representing its element and charge.
   """
-  element = _get_element(atom)
-  charge = atom.charge
-
-  if not isinstance(charge, int):
-    charge = atom.charge_as_int()
-
-  if charge == 0:
-    try:
-      charge = get_charge(element)
-    except Sorry:
-      pass
+  element = get_element(atom)
+  charge = get_charge(atom)
 
   return "%s%+d" % (element, charge)
 
