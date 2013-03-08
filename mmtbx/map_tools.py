@@ -177,7 +177,7 @@ class electron_density_map(object):
     r_free_flags = self.fmodel.r_free_flags()
     if(r_free_flags.anomalous_flag()):
       coeffs = coeffs.average_bijvoet_mates()
-      r_free_flags = r_free_flags.as_non_anomalous_array()
+      r_free_flags = r_free_flags.average_bijvoet_mates()
     if(exclude_free_r_reflections):
       coeffs = coeffs.select(~r_free_flags.data())
     if(fill_missing):
