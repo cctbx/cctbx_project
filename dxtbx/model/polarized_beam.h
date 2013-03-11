@@ -93,7 +93,6 @@ namespace dxtbx { namespace model {
     os << "Beam:\n";
     os << "    wavelength:   " << b.get_wavelength() << "\n";
     os << "    direction :   " << b.get_direction().const_ref() << "\n";
-    os << "    s0:           " << b.get_s0().const_ref() << "\n";
     os << "    Polarization: " << b.get_polarization().const_ref() << "\n";
     os << "    Pn fraction:  " << b.get_polarization_fraction() << "\n";
     return os;
