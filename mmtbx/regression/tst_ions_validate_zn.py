@@ -4,7 +4,6 @@ from libtbx import easy_run
 import os
 
 def exercise () :
-  from iotbx.file_reader import any_file
   if (os.path.isfile("zn_frag.mtz")) :
     os.remove("zn_frag.mtz")
   write_pdb_input()
@@ -43,8 +42,7 @@ def exercise () :
 
 def write_pdb_input () :
   import iotbx.pdb.hierarchy
-  # XXX extracted from 2whz (thermolysin, wavelength = 1.54A), but with an
-  # incomplete coordination shell
+  # Extracted from 2whz (thermolysin, wavelength = 1.54A)
   pdb_in = iotbx.pdb.hierarchy.input(source_info=None, pdb_string="""\
 ATOM      1  OD1 ASN A 112      34.902  38.381  -2.709  1.00 12.10           O
 ATOM      2  C   ALA A 113      31.533  40.581  -3.237  1.00 12.06           C
@@ -160,11 +158,10 @@ HETATM  120  O   HOH A2190      32.628  42.780  -7.708  1.00 17.31           O
 HETATM  121  O   HOH A2206      36.319  49.625 -10.585  1.00 16.17           O
 HETATM  122  O   HOH A2210      33.342  47.349 -12.959  1.00 24.18           O
 HETATM  123  O   HOH A2284      42.614  44.224  -6.731  1.00 15.85           O
+HETATM  124  O   HOH A2351      36.007  42.038  -6.782  1.00 10.54           O
 HETATM  125 ZN   ZN  A1317      36.762  44.115  -7.277  1.00 15.32          ZN+2
 END
 """)
-# XXX this is the missing water
-#HETATM  124  O   HOH A2351      36.007  42.038  -6.782  1.00 10.54           O
   xrs = pdb_in.input.xray_structure_simple(cryst1_substitution_buffer_layer=5)
   if (os.path.exists("zn_frag.pdb")) :
     os.remove("zn_frag.pdb")
