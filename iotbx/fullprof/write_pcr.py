@@ -20,6 +20,7 @@ def _make_phase_block(phase, number=1, name="", scale_down=1.0):
   :returns: the pcr phase block skelleton as a string
   :rtype: string
   """
+  phase.make_scatterer_labels_shelx_compatible_in_place()
   if name =="":
     name = "Phase_{0}".format(number)
   scatt = phase.scatterers()
@@ -129,7 +130,7 @@ def _pcr_skelleton(phases,
   ret += """\
 !
 !Ipr Ppl Ioc Mat Pcr Ls1 Ls2 Ls3 Syo Prf Ins Rpa Sym Hkl Fou Sho Ana
-  2   0   1   1   1   0   0   0   1   1  10   0   1   4   2   0   0
+  2   0   1   1   1   0   0   0   1   1  {filetype}   0   1   4   2   0   0
 !
 ! lambda1 Lambda2    Ratio    Bkpos    Wdt    Cthm     muR   AsyLim   Rpolarz ->Patt# 1
  {xlambda} {xlambda}  1.0000   60.000  5.0000  0.0000  0.0000   50.00    0.0000
@@ -139,7 +140,7 @@ def _pcr_skelleton(phases,
 !
 !
   #__npar__#    !Number of refined parameters
-""".format(xlambda=wavelength)
+""".format(filetype="0", xlambda=wavelength)
   ret += """\
 !
 !  Zero    Code    SyCos    Code   SySin    Code  Lambda     Code MORE ->Patt# 1

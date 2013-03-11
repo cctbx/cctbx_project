@@ -28,8 +28,8 @@ def rietveld_refine_structure(crystalstructure,
   :type ProfileFile: string
   """
   # Check preconditions
-  if count(None in [Iobs, Profile, ProfileFile]) != 2:
-    raise(ValueError("You may only pass one of Iobs, Profile and ProfileFile"))
+  if [I_obs, Profile, ProfileFile].count(None) != 2:
+    raise(ValueError("You may only pass one of I_obs, Profile and ProfileFile"))
   # start work
   from write_pcr import write_pcr
   import tempfile
@@ -46,7 +46,7 @@ def rietveld_refine_structure(crystalstructure,
   f.close()
   try:
     if ProfileFile is not None:
-      shutil.copyfile(ProfileFile, os.joinext(basepath, ".dat"))
+      shutil.copyfile(ProfileFile, basepath+".dat")
     elif Profile is not None:
       # write out profile file for FullProf
       # XXX: todo implement
