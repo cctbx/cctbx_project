@@ -48,6 +48,9 @@ mmtbx/polygon/*.pyc
 mmtbx/real_space/*.pyc
 mmtbx/refinement/*.pyc
 mmtbx/refinement/real_space/*.pyc
+mmtbx/regression/*.eff
+mmtbx/regression/*.mtz
+mmtbx/regression/*.pdb
 mmtbx/regression/*.pyc
 mmtbx/rotamer/*.pyc
 mmtbx/rsr/*.pyc
