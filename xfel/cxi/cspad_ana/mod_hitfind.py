@@ -39,6 +39,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
                trial_id               = None,
                db_logging             = False,
                sql_buffer_size        = 1,
+               write_smv              = False,
                **kwds):
     """The mod_hitfind class constructor stores the parameters passed
     from the pyana configuration file in instance variables.  All
@@ -69,6 +70,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     self.m_trial_id             = cspad_tbx.getOptInteger(trial_id)
     self.m_db_logging           = cspad_tbx.getOptBool(db_logging)
     self.m_sql_buffer_size      = cspad_tbx.getOptInteger(sql_buffer_size)
+    self.m_write_smv            = cspad_tbx.getOptBool(write_smv)
     # A ROI should not contain any ASIC boundaries, as these are
     # noisy.  Hence circular ROI:s around the beam centre are probably
     # not such a grand idea.
@@ -298,7 +300,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     elif (self.m_dispatch == "write_dict"):
       if (self.m_out_dirname  is not None or
           self.m_out_basename is not None):
-        cspad_tbx.dwritef(d, self.m_out_dirname, self.m_out_basename)
+        cspad_tbx.dwritef(d, self.m_out_dirname, self.m_out_basename, self.m_write_smv)
 
     # Diagnostic message emitted only when all the processing is done.
     if (env.subprocess() >= 0):
