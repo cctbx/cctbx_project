@@ -333,7 +333,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       from cxi_xdr_xes.cftbx.cspad_ana import db
       dbobj = db.dbconnect()
       cursor = dbobj.cursor()
-      cmd = "INSERT INTO cxi_braggs_front (trial,run,eventstamp,hitcount,distance,sifoil,wavelength) VALUES (%s,%s,%s,%s,%s,%s,%s);"
+      cmd = "INSERT INTO %s (trial,run,eventstamp,hitcount,distance,sifoil,wavelength) "%s(db.table_name) + "VALUES (%s,%s,%s,%s,%s,%s,%s);"
       cursor.execute(cmd, entry)
       dbobj.commit()
       dbobj.close()
@@ -343,7 +343,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       from cxi_xdr_xes.cftbx.cspad_ana import db
       dbobj = db.dbconnect()
       cursor = dbobj.cursor()
-      cmd = "INSERT INTO cxi_braggs_front (trial,run,eventstamp,hitcount,distance,sifoil,wavelength) VALUES "
+      cmd = "INSERT INTO %s (trial,run,eventstamp,hitcount,distance,sifoil,wavelength) VALUES "%(db.table_name)
       comma = ""
       for entry in self.buffered_sql_entries:
         cmd += comma + "(%s,%s,%s,%s,%s,%s,%s)"%entry
