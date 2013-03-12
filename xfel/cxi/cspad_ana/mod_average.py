@@ -27,6 +27,7 @@ class mod_average(average_tbx.average_mixin):
 
   def __init__(self,
                address,
+               write_smv              = False,
                **kwds):
     """The mod_average class constructor stores the parameters passed
     from the pyana configuration file in instance variables.  All
@@ -40,6 +41,7 @@ class mod_average(average_tbx.average_mixin):
       address=address,
       **kwds
     )
+    self.m_write_smv            = cspad_tbx.getOptBool(write_smv)
 
 
   def event(self, evt, env):
@@ -77,10 +79,9 @@ class mod_average(average_tbx.average_mixin):
           data            = self.avg_img,
           distance        = self.avg_distance,
           wavelength      = self.avg_wavelength)
-        p = cspad_tbx.dwritef(d, self.avg_dirname, self.avg_basename)
+        p = cspad_tbx.dwritef(d, self.avg_dirname, self.avg_basename, self.m_write_smv)
         self.logger.info(
           "Average written to %s" % p)
-
       if (self.stddev_dirname  is not None or
           self.stddev_basename is not None):
         d = cspad_tbx.dpack(
@@ -90,7 +91,7 @@ class mod_average(average_tbx.average_mixin):
           data            = self.stddev_img,
           distance        = self.avg_distance,
           wavelength      = self.avg_wavelength)
-        p = cspad_tbx.dwritef(d, self.stddev_dirname, self.stddev_basename)
+        p = cspad_tbx.dwritef(d, self.stddev_dirname, self.stddev_basename, self.m_write_smv)
         self.logger.info(
           "Standard deviation written to %s" % p)
 
