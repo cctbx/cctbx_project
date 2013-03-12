@@ -178,7 +178,7 @@ streams=`ssh -S "${tmpdir}/control.socket" ${NODE}                 \
           \"${xtc}\"/e*-r${run}-s*-c*.xtc.inprogress 2> /dev/null" \
     | sed -e "s:.*-s\([[:digit:]]\+\)-c.*:\1:"                     \
     | sort -u                                                      \
-    | tr -s '\n' ' '`
+    | tr -s '[:space:]' ' '`
 if test -z "${streams}"; then
     echo "No streams in ${xtc}" > /dev/stderr
     cleanup_and_exit 1
@@ -281,8 +281,9 @@ EOF
 
 NPROC=\`printenv LSB_MCPU_HOSTS \
     | awk '{ printf("%d\n", \$2 > 2 ? \$2 : 1); }'\`
-STREAMS=\`ls "${xtc}"/e*-r${run}-s${s}-c*.xtc \
-             "${xtc}"/e*-r${run}-s${s}-c*.xtc.inprogress 2> /dev/null\`
+STREAMS=\`ls "${xtc}"/e*-r${run}-s${s}-c*.xtc                         \
+             "${xtc}"/e*-r${run}-s${s}-c*.xtc.inprogress 2> /dev/null \
+    | tr -s '[:space:]' ' '\`
 
 test "\${NPROC}" -gt 2 2> /dev/null || NPROC="1"
 "${PYANA}" \\
@@ -302,7 +303,7 @@ directories=`awk -F=                                    \
          gsub(/^ /, "", $2);                            \
          gsub(/ $/, "", $2);                            \
          printf("\"%s\"\n", $2);                        \
-     }' "${tmpdir}"/pyana_s[0-9][0-9].cfg | sort -u | tr -s '\n' ' '`
+     }' "${tmpdir}"/pyana_s[0-9][0-9].cfg | sort -u | tr -s '[:space:]' ' '`
 ssh -S "${tmpdir}/control.socket" ${NODE} \
     "mkdir -p \"${out}/stdout\" ${directories}"
 

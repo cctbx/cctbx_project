@@ -136,7 +136,7 @@ streams=`ls "${xtc}"/e*-r${run}-s*-c*.xtc                         \
             "${xtc}"/e*-r${run}-s*-c*.xtc.inprogress 2> /dev/null \
     | sed -e "s:.*-s\([[:digit:]]\+\)-c.*:\1:"                    \
     | sort -u                                                     \
-    | tr -s '\n' ' '`
+    | tr -s '[:space:]' ' '`
 if test -z "${streams}"; then
     echo "No streams in ${xtc}" > /dev/stderr
     cleanup_and_exit 1
@@ -221,8 +221,9 @@ for s in ${streams}; do
 #! /bin/sh
 
 NPROC="\${PBS_NUM_PPN}"
-STREAMS=\`ls "${xtc}"/e*-r${run}-s${s}-c*.xtc \
-             "${xtc}"/e*-r${run}-s${s}-c*.xtc.inprogress 2> /dev/null\`
+STREAMS=\`ls "${xtc}"/e*-r${run}-s${s}-c*.xtc                         \
+             "${xtc}"/e*-r${run}-s${s}-c*.xtc.inprogress 2> /dev/null \
+    | tr -s '[:space:]' ' '\`
 
 test "\${NPROC}" -gt 2 2> /dev/null || NPROC="1"
 "${PYANA}" \\
