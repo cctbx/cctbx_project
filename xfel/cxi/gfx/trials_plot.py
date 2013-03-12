@@ -223,15 +223,15 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
     # retrieve the run IDs in this trial
     #t1 = time.time()
     cursor = db.cursor()
-    #cursor.execute("SELECT DISTINCT(run) FROM cxi_braggs_front WHERE trial = %s"%self.trial_id)
-    cmd = "SELECT DISTINCT(run) FROM cxi_braggs_front WHERE trial = %s"
+    #cursor.execute("SELECT DISTINCT(run) FROM %s WHERE trial = %s"%(cxidb.table_name,self.trial_id))
+    cmd = "SELECT DISTINCT(run) FROM %s WHERE trial = %s"
     if self.params.run_num is not None:
       extra = " AND run = %s"%self.params.run_num
     elif self.params.run_min is not None and self.params.run_max is not None:
       extra = " AND run >= %s AND run <= %s"%(self.params.run_min, self.params.run_max)
     else:
       extra = " ORDER BY run DESC LIMIT 5"
-    cursor.execute(cmd%self.trial_id + extra)
+    cursor.execute(cmd%(cxidb.table_name,self.trial_id) + extra)
     #t2 = time.time()
     #print "Runs queried in %.2fs" % (t2 - t1)
 
@@ -262,12 +262,12 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
       #print "Loading data from run %s" % (run.runId)
       if self.full_data_load or not hasattr(run, "latest_entry_id"):
         print "Full load"
-        cursor.execute("SELECT id, eventstamp, hitcount, distance, sifoil, wavelength FROM cxi_braggs_front \
-          WHERE trial = %s AND run = %s ORDER BY eventstamp"%(self.trial_id,run.runId))
+        cursor.execute("SELECT id, eventstamp, hitcount, distance, sifoil, wavelength FROM %s \
+          WHERE trial = %s AND run = %s ORDER BY eventstamp"%(cxidb.table_name,self.trial_id,run.runId))
       else:
         print "Partial load"
-        cursor.execute("SELECT id, eventstamp, hitcount, distance, sifoil, wavelength FROM cxi_braggs_front \
-          WHERE trial = %s AND run = %s AND id > %s ORDER BY eventstamp"%(self.trial_id,run.runId,run.latest_entry_id ))
+        cursor.execute("SELECT id, eventstamp, hitcount, distance, sifoil, wavelength FROM %s \
+          WHERE trial = %s AND run = %s AND id > %s ORDER BY eventstamp"%(cxidb.table_name,self.trial_id,run.runId,run.latest_entry_id ))
 
       #t2 = time.time()
       #print "Query ran in %.2fs" % (t2 - t1)

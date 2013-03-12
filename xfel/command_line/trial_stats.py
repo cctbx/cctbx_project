@@ -44,14 +44,14 @@ def run (args) :
 
 
   cursor = dbobj.cursor()
-  cmd = "SELECT DISTINCT(run) FROM cxi_braggs_front WHERE trial = %s ORDER BY run"
-  cursor.execute(cmd, params.trial_id)
+  cmd = "SELECT DISTINCT(run) FROM %s WHERE trial = %s ORDER BY run"
+  cursor.execute(cmd, (db.table_name,params.trial_id)
 
 
   for runId in cursor.fetchall():
     run = int(runId[0])
-    cursor.execute("SELECT id, eventstamp, hitcount, distance, sifoil, wavelength FROM cxi_braggs_front \
-        WHERE trial = %s AND run = %s"%(params.trial_id,run))
+    cursor.execute("SELECT id, eventstamp, hitcount, distance, sifoil, wavelength FROM %s \
+        WHERE trial = %s AND run = %s"%(db.table_name,params.trial_id,run))
 
     numframes = numhits = 0
     for id, eventstamp, hitcount, distance, sifoil, wavelength in cursor.fetchall():

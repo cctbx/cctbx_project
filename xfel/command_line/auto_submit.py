@@ -175,6 +175,8 @@ def run (args) :
         files = os.listdir(params.xtc_dir)
         for f in files:
           r = s = c = None
+          if ".inprogress" in f:
+            continue
           for str in f.split("-"):
             try:
               if 'c' in str:
@@ -200,8 +202,8 @@ def run (args) :
 
                 submitted_a_run = True
                 submitted_files.append(f)
-                if '.inprogress' in f:
-                  submitted_files.append(f.rstrip(".inprogress"))
+                #if '.inprogress' in f:
+                #  submitted_files.append(f.rstrip(".inprogress"))
         if not submitted_a_run:
           print "No new data... sleepy..."
 
