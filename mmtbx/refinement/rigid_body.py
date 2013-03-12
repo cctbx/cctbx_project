@@ -8,7 +8,7 @@ from scitbx import lbfgs
 from mmtbx.refinement import print_statistics
 import iotbx.phil
 import copy
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, null_out
 from libtbx.utils import user_plus_sys_time
 from libtbx.math_utils import iround
 
@@ -829,8 +829,14 @@ class target_and_grads(object):
   def gradients_wrt_t(self):
     return self.grads_wrt_t
 
-def rigid_groups_from_pdb_chains(pdb_hierarchy, min_chain_size=2):
+def rigid_groups_from_pdb_chains(
+    pdb_hierarchy,
+    min_chain_size=2,
+    xray_structure=None,
+    check_for_atoms_on_special_positions=None,
+    log=None):
   assert (not pdb_hierarchy.atoms().extract_i_seq().all_eq(0))
+  if (log is None) : log = null_out()
   sel_string = "not (not pepnames and single_atom_residue)"
   selection = pdb_hierarchy.atom_selection_cache().selection(string=sel_string)
   pdb_hierarchy = pdb_hierarchy.select(selection)
@@ -847,4 +853,19 @@ def rigid_groups_from_pdb_chains(pdb_hierarchy, min_chain_size=2):
       chain_sele += " and resid %s through %s"%(resid_first, resid_last)
       chain_sele += ")"
       selections.append(chain_sele)
+  if (check_for_atoms_on_special_positions) :
+    assert (xray_structure is not None)
+    sel_cache = pdb_hierarchy.atom_selection_cache()
+    site_symmetry_table = xray_structure.site_symmetry_table()
+    disallowed_i_seqs = site_symmetry_table.special_position_indices()
+    for sele_str in selections :
+      isel = sel_cache.selection(sele_str).iselection()
+      isel_special = isel.intersection(disallowed_i_seqs)
+      if (len(isel_special) != 0) :
+        print >> log, "  WARNING: selection includes atoms on special positions"
+        print >> log, "    selection: %s" % sele_str
+        print >> log, "    bad atoms:"
+        for i_seq in isel_special :
+          print >> log, "    %s" % atom_labels[i_seq].id_str()
+        return None
   return selections
