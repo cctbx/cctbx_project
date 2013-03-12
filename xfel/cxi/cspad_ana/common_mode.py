@@ -246,7 +246,7 @@ class common_mode_correction(mod_event_info):
     if self.config is None:
       self.config = cspad_tbx.getConfig(self.address, env)
       if self.config is None:
-        self.logger.error("event(): no config")
+        self.logger.error("event(): no config for %s" % self.address)
         evt.put(True, 'skip_event')
         return
     if self.active_areas is None or self.beam_center is None:
