@@ -136,6 +136,7 @@ typename fixed_size_iterator< IteratorTypeList, IterationOrder >::iterator_type&
 fixed_size_iterator< IteratorTypeList, IterationOrder >::operator ++()
 {
   finished_ = order_type::process( counter_vector_ );
+  return *this;
 }
 
 template<
