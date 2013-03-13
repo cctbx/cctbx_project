@@ -183,8 +183,11 @@ class NpyImage(DetectorImageBase):
                              size2=self.size2)
 
   def debug_write(self,fileout,mod_data=None):
-    if mod_data == None:
-      mod_data = self.get_raw_data().iround()
+    try:
+      if mod_data == None:
+        mod_data = self.get_raw_data().iround()
+    except AttributeError:
+      pass
 
     DetectorImageBase.debug_write(self,fileout,mod_data)
 
