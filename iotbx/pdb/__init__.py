@@ -1265,8 +1265,8 @@ class join_fragment_files(object):
       'Warning: CRYST1 Z field (columns 67-70) is not an integer: "%-4.4s"'
     for file_name in file_names:
       pdb_inp = iotbx.pdb.input(file_name=file_name)
-      z_ = pdb_inp.extract_cryst1_z_columns().strip()
-      if z_: z_ = int(z_)
+      z_ = pdb_inp.extract_cryst1_z_columns()
+      if z_: z_ = int(z_.strip())
       else: z_ = None
       if z is None:
         z = z_
