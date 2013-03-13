@@ -182,6 +182,15 @@ class NpyImage(DetectorImageBase):
                              size1=self.size1,
                              size2=self.size2)
 
+  def debug_write(self,fileout,mod_data=None):
+    if mod_data == None:
+      mod_data = self.get_raw_data().iround()
+
+    DetectorImageBase.debug_write(self,fileout,mod_data)
+
+  def getEndian(self):
+    return 1   # big!  arbitrary
+
 
 class tile_manager(tile_manager_base):
 
