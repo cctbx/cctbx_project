@@ -473,12 +473,9 @@ def hdf5pack(hdf5_file,
   grp_event.create_dataset('PULSE_LENGTH', data=[pulse_length])
 
 
-def dwritef(d, dirname=None, basename=None, as_SMV=False):
-  """The dwritef() function writes the image as one of two formats:
-  If @p as_SMV is True, then it writes the image in SMV format, using
-  the header information in @p d.
-  Otherwise dwritef pickles the dictionary pointed to by @p d.
-  The file is in the directory and filename portions pointed to by
+def dwritef(d, dirname=None, basename=None):
+  """The dwritef() function pickles the dictionary pointed to by @p d
+  to the file whose directory and filename portions are pointed to by
   @p dirname and @p basename, respectively.  The directory at @p
   dirname, as well as any intermediate directories, are recursively
   created if they do not already exist.  The name of the written file
@@ -503,52 +500,10 @@ def dwritef(d, dirname=None, basename=None, as_SMV=False):
   t = d['TIMESTAMP']
   s = t[0:4] + t[5:7] + t[8:10] + t[11:13] + t[14:16] + t[17:19] + t[20:23]
 
-  if as_SMV:
-    if not d.has_key("TWOTHETA"):
-      d["TWOTHETA"]=0.0
-    if not d.has_key("OSC_START"):
-      d["OSC_START"]=0.0
-    if not d.has_key("OSC_RANGE"):
-      d["OSC_RANGE"]=0.0
-
-    endian = 1 #big!
-    if endian==1:
-      d["BYTE_ORDER"]="big_endian"
-    else:
-      d["BYTE_ORDER"]="little_endian"
-    # XXX HEY, why is size 2 set to size1?
-    info = """{
-HEADER_BYTES= 1024;
-DIM=2;
-BYTE_ORDER=%(BYTE_ORDER)s;
-TYPE=unsigned_short;
-SIZE1=%(SIZE1)4d;
-SIZE2=%(SIZE1)4d;
-PIXEL_SIZE=%(PIXEL_SIZE)8.6f;
-TIME=0.000000;
-DISTANCE=%(DISTANCE).2f;
-TWOTHETA=%(TWOTHETA).2f;
-PHI=%(OSC_START).3f;
-OSC_START=%(OSC_START).3f;
-OSC_RANGE=%(OSC_RANGE).3f;
-WAVELENGTH=%(WAVELENGTH).6f;
-BEAM_CENTER_X=%(BEAM_CENTER_X).2f;
-BEAM_CENTER_Y=%(BEAM_CENTER_Y).2f;
-CCD_IMAGE_SATURATION=65535;
-}\f"""%d
-    path = os.path.join(dirname, basename + s + '.img')
-    F = open(path,"wb")
-    F.write(info)
-    len_null=1024-len(info)
-    F.write('\0'*len_null)
-    F.close()
-    from iotbx.detectors import WriteADSC
-    WriteADSC(path,flex.int(d["DATA"].iround().as_1d()),d["SIZE1"],d["SIZE1"],endian)
-  else:
   # XXX Several non-pyana tools rely on the .pickle extension.  Fix
   # those before migrating to .pkl.
-    path = os.path.join(dirname, basename + s + '.pickle')
-    easy_pickle.dump(path, d)
+  path = os.path.join(dirname, basename + s + '.pickle')
+  easy_pickle.dump(path, d)
   return path
 
 
