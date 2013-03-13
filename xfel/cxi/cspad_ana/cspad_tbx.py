@@ -547,7 +547,7 @@ CCD_IMAGE_SATURATION=65535;
   else:
   # XXX Several non-pyana tools rely on the .pickle extension.  Fix
   # those before migrating to .pkl.
-    path = os.path.join(dirname, basename + s + '.img')
+    path = os.path.join(dirname, basename + s + '.pickle')
     easy_pickle.dump(path, d)
   return path
 
