@@ -1,4 +1,6 @@
-import os, sys
+
+from __future__ import division
+import sys
 import csv
 
 def run(filename, list_type="csv"):
