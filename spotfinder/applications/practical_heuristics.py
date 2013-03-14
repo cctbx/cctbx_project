@@ -387,7 +387,7 @@ class heuristics_base(object):
     targetBinNumber = max(self.BinMin, len(sorted_order)//20)
 
     # cutoff threshhold: expected number spots in highest resolution bin
-    cutoff_ratio = self.phil_params.tnear_resolution_divisor
+    cutoff_ratio = 100./self.phil_params.distl.method2_cutoff_percentage
     fstats['resolution_divisor']=cutoff_ratio
     lowerCutoffBinNumber = targetBinNumber / cutoff_ratio
 

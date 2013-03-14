@@ -63,14 +63,6 @@ spotfinder_verbose = False
   .type=bool
   .expert_level=2
 
-tnear_resolution_divisor = 5
-  .type=float
-  .help="A lower value (1.1) makes more stringent cutoff, so the outer resolution cutoff
-         is at a higher d-spacing (low resolution). A higher value (10) is more permissive and
-         allows higher resolution Bragg spots, but can cause indexing failure in the
-         combo search (19198) or lbfgs minimization (19201)"
-  .expert_level=2
-
 force_method2_resolution_limit = None
   .type=float
   .help="override resolution analysis based on spot count falloff; force spots at least this far out."
