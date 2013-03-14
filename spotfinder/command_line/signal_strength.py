@@ -21,6 +21,11 @@ distl {
   peak_intensity_maximum_factor = None
     .type = float
     .help = "Expert use only; max peak intensity filter for use by libdistl. Default=10.0"
+  method2_cutoff_percentage = 20
+    .type = float
+    .help = As described in Zhang(2006) spotfinder paper, the resolution cutoff is made at a shell that has this percentage of
+    .help = spots as compared to the two inner shells.  Needs to be set to a lower percentage for still (XFEL) data!
+    .help = Low percentage (5%% as recommended for XFEL) is more permissive and accepts higher resolution Bragg spots.
   compactness_filter = False
     .type = bool
     .help = "For CXI data (and Pilatus data?), set this to True to eliminate small non-compact spots"
