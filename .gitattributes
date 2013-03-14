@@ -281,6 +281,7 @@ compcomm/smtbx_news_09/news.tex -text
 cootbx/__init__.py -text
 cootbx/hydrogens_button.py -text
 cootbx/interactive_edit.py -text
+cootbx/ligand_checklist.py -text
 cootbx/simple_zoom_list.py -text
 cootbx/xmlrpc_server.py -text
 crys3d/__init__.py -text
