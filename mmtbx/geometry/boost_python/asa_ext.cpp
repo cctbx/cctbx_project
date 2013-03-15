@@ -116,13 +116,6 @@ struct filtered_range_type
   typedef boost::filtered_range< Predicate, InputRange > type;
 };
 
-template< typename Predicate, typename InputRange >
-typename filtered_range_type< Predicate, InputRange >::type
-filter(InputRange& rng, Predicate& pred)
-{
-  return boost::adaptors::filter( rng, pred );
-}
-
 template < typename Sphere, typename Voxel >
 struct indexing_wrappers
 {
@@ -174,9 +167,13 @@ public:
 
     using namespace boost::python;
 
+    boost::filtered_range< predicate_type, range_type >
+      (*filterfunc)( range_type&, predicate_type ) =
+        &boost::adaptors::filter< range_type, predicate_type >;
+
     def(
       "filter",
-      filter< predicate_type, range_type >,
+      filterfunc,
       with_custodian_and_ward_postcall< 0, 1 >(),
       ( arg( "range" ), arg( "predicate" ) )
       );
@@ -263,13 +260,6 @@ add_neighbours_from_range(Checker& checker, const InputRange& neighbours)
   checker.add( neighbours.begin(), neighbours.end() );
 }
 
-template< typename UnaryFunction, typename InputRange >
-boost::transformed_range<UnaryFunction, InputRange>
-transform(InputRange& rng, UnaryFunction& fn)
-{
-  return boost::adaptors::transform( rng, fn );
-}
-
 template< typename Checker >
 class add_method_definer
 {
@@ -341,9 +331,13 @@ struct accessibility_wrappers
       .def( "__call__", &transformation_type::operator (), arg( "point" ) )
       ;
 
+    boost::transformed_range< transformation_type, points_range >
+      (*transformfunc)( points_range&, transformation_type ) =
+        &boost::adaptors::transform< transformation_type, points_range >;
+
     def(
       "transform",
-      transform< transformation_type, points_range >,
+      transformfunc,
       with_custodian_and_ward_postcall< 0, 1 >(),
       ( arg( "range" ), arg( "transformation" ) )
       );
@@ -396,9 +390,13 @@ struct accessibility_wrappers
       >
       ::wrap( "filtered_transformed_points_range" );
 
+    boost::filtered_range< Checker, transformed_points_range >
+      (*filterfunc)( transformed_points_range&, Checker ) =
+        &boost::adaptors::filter< transformed_points_range, Checker >;
+
     def(
       "filter",
-      indexing::filter< Checker, transformed_points_range >,
+      filterfunc,
       with_custodian_and_ward_postcall< 0, 1 >(),
       ( arg( "range" ), arg( "predicate" ) )
       );
