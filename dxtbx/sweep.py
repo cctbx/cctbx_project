@@ -157,4 +157,8 @@ class sweep_factory:
     def sweep(argument, check_headers = False):
         if type(argument) == type([]):
             return sweep_of_images(argument, check_headers)
+        elif type(argument) == type('str'):
+            from sweep_filenames import find_matching_images
+            return sweep_of_images(find_matching_images(argument),
+                                   check_headers)
         raise RuntimeError, 'unknown argument passed to sweep factory'
