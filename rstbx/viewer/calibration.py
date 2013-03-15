@@ -91,3 +91,44 @@ class pdb_code_wrapper(sb_wrapper):
     L_pixels = L_mm / panel._img._raw.pixel_size
 
     [ dc.DrawCircle(xc, yc, panel._img.get_scale() * pxl) for pxl in L_pixels ]
+
+class unit_cell_wrapper(sb_wrapper):
+
+  def __init__(self,working_phil):
+    self.working_phil = working_phil
+
+    from cctbx.crystal import symmetry
+    import cctbx.miller
+    self.uc = symmetry(unit_cell=self.working_phil.viewer.calibrate_unitcell.unitcell,
+                       space_group_symbol=self.working_phil.viewer.calibrate_unitcell.spacegroup)
+    self.hkl_list = cctbx.miller.build_set(self.uc, False, d_min=working_phil.viewer.calibrate_unitcell.d_min)
+
+    spacings = self.hkl_list.d_spacings()
+    print "Printing spacings, len: %s"%spacings.size()
+    for d in spacings:
+      print d
+
+  def user_callback(self,dc,panel,wx):
+    if not hasattr(panel.settings, "distance"): return # fixes a crash on exit
+
+    center_x, center_y = panel._img.get_beam_center()
+    xc, yc = panel._img.image_coords_as_screen_coords(center_x, center_y)
+    dc.SetPen(wx.Pen('red'))
+    dc.SetBrush(wx.TRANSPARENT_BRUSH)
+
+    wavelength = panel._img._raw.wavelength #should be this
+    wavelength_from_avg_file = False
+    if wavelength_from_avg_file:
+      # go through hoops to get the proper wavelength corresponding to this run
+      avepath = self.path.replace("stddev","avg")
+      import pickle
+      info = pickle.load(open(avepath,"rb"))
+      wavelength = info["WAVELENGTH"]
+
+    twotheta = self.hkl_list.two_theta(wavelength = wavelength)
+    L_mm = []
+    L_pixels = []
+    for tt in twotheta: L_mm.append(panel.settings.distance * math.atan(tt[1]))
+    for lmm in L_mm: L_pixels.append(lmm/panel._img._raw.pixel_size)
+
+    [ dc.DrawCircle(xc, yc, panel._img.get_scale() * pxl) for pxl in L_pixels ]
