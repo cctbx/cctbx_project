@@ -21,6 +21,9 @@ mysql {
     .type = str
     .help = persistent data tables to MySQL database using mysql-server on this host
     .help = concurrent client connections OK, can use nproc > 1
+  port = 3306
+    .type = int
+    .help = port number for connecting on this host
   user = None
     .type = str
     .help = mysql username provided by the database administrator
@@ -46,6 +49,7 @@ class manager:
       db = MySQLdb.connect(passwd=self.params.mysql.passwd,
                            user = self.params.mysql.user,
                            host = self.params.mysql.host,
+                           port = self.params.mysql.port,
                            db = self.params.mysql.database,compress=False)
       cursor = db.cursor()
       cursor.execute("use %s;"%self.params.mysql.database)

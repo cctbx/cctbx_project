@@ -73,7 +73,7 @@ class lines(correction_vector_store):
       path = self.params.outdir_template
       stream = open(path,"r")
       print path
-      for line in stream.readlines():
+      for line in stream.xreadlines():
         if line.find("XFEL processing:") == 0:
            tokens = line.strip().split("/")
            picklefile = line.strip().split()[2]
@@ -99,7 +99,7 @@ class lines(correction_vector_store):
           path = os.path.join(templ,item)
           stream = open(path,"r")
           print path
-          for line in stream.readlines():
+          for line in stream.xreadlines():
             if line.find("CV OBSCENTER")==0:
               potential_tokens = line.strip().split()
               if len(potential_tokens)==22 and \
@@ -258,6 +258,7 @@ def run_correction_vector_plot(working_phil):
       else:
         from matplotlib import pyplot as plt
         xcv,ycv = get_correction_vector_xy(L,x)
+        if len(xcv)==0 or len(ycv)==0: continue
         plt.plot(xcv,ycv,"r.")
         plt.plot([L.mean_cv[x][0]],[L.mean_cv[x][1]],"go")
         plt.plot([L.mean_cv[x][0]+radial[0]],[L.mean_cv[x][1]+radial[1]],"yo")
