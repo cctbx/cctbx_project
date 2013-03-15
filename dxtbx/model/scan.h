@@ -23,6 +23,7 @@ namespace dxtbx { namespace model {
 
   using scitbx::vec2;
   using scitbx::af::flex_double;
+  using scitbx::rad_as_deg;
 
   /** A scan base class */
   class ScanBase {};
@@ -269,9 +270,13 @@ namespace dxtbx { namespace model {
   /** Print ScanData information */
   inline
   std::ostream& operator<<(std::ostream &os, const ScanData &s) {
+    // Print oscillation as degrees!
+    vec2<double> oscillation = s.get_oscillation();
+    oscillation[0] = rad_as_deg(oscillation[0]);
+    oscillation[1] = rad_as_deg(oscillation[1]);
     os << "Scan:\n";
     os << "    image range:   " << s.get_image_range().const_ref() << "\n";
-    os << "    oscillation:   " << s.get_oscillation().const_ref() << "\n";
+    os << "    oscillation:   " << oscillation.const_ref() << "\n";
     os << "    exposure time: " << s.get_exposure_time() << "\n";
     return os;
   }

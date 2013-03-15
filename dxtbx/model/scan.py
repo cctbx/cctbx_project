@@ -28,7 +28,7 @@ class Scan(ScanData):
     and how the frames are formatted.'''
 
     def __init__(self, template, directory, format, image_range,
-                 exposure_time, oscillation, epochs, deg=False):
+                 exposure_time, oscillation, epochs, deg=True):
         '''Construct a new scan class, which represents the information given
         to the camera to perform the diffraction experiment. N.B. though some
         of this information could be derived from image headers within the
@@ -176,7 +176,7 @@ class scan_factory:
 
     @staticmethod
     def make_scan(template, directory, format, image_range, exposure_time,
-                  oscillation, epochs, deg=False):
+                  oscillation, epochs, deg=True):
         return Scan(
             template,
             directory,
