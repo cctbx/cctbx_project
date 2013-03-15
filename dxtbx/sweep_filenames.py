@@ -40,3 +40,26 @@ def template_regex(filename):
         break
 
     return template, int(digits)
+
+def find_matching_images(image_name):
+    '''Search in the directory in which this image is for images which share
+    the same template: return this list.'''
+
+    import os
+
+    directory, filename = os.path.split(image_name)
+    template, digits = template_regex(filename)
+    len_digits = template.count('#')
+    pfx = template.split('#')[0]
+    sfx = template.split('#')[-1]
+    template_str = pfx + '%%0%dd' % len_digits + sfx
+
+    files_in_directory = os.listdir(directory)
+
+    matching_images = []
+
+    for j in range(0, 10 ** len_digits):
+        if template_str % j in files_in_directory:
+            matching_images.append(os.path.join(directory, template_str % j))
+
+    return matching_images

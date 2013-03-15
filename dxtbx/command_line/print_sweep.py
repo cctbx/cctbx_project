@@ -12,4 +12,8 @@ def print_sweep(list_of_images):
 
 if __name__ == '__main__':
     import sys
-    print_sweep(sys.argv[1:])
+
+    if len(sys.argv) == 2:
+        print_sweep(sys.argv[1])
+    else:
+        print_sweep(sys.argv[1:])
