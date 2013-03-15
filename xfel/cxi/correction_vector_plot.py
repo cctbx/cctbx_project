@@ -235,7 +235,7 @@ def run_correction_vector_plot(working_phil):
         print "%6.2f %6.2f"%(rsigma,tsigma)
 
       if working_phil.colormap:
-        from pylab import *
+        from pylab import imshow, axes, colorbar, show
         import numpy
 
         xcv,ycv = get_correction_vector_xy(L,x)
