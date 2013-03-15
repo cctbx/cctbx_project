@@ -26,6 +26,8 @@ master_phil = libtbx.phil.parse("""
     .type = str
   start_run = None
     .type = int
+  end_run = None
+    .type = int
   config_file = 'onlyhitfind.cfg'
     .type = str
   experiment = 'cxi78513'
@@ -59,7 +61,7 @@ def match_runs(dir):
           s = int(str.strip('s'))
       except ValueError:
         pass
-    if r is not None and s is not None and c is not None and c == 0:
+    if r is not None and s is not None and c is not None: # and c == 0:
       foundIt = False
       for rn in runs:
         if rn.id == r:
@@ -112,9 +114,9 @@ def run (args) :
 
   if (params.config_file is None) :
      master_phil.show()
-     raise Usage("output_dir must be defined!")
+     raise Usage("config_file must be defined!")
   elif (not os.path.isfile(params.config_file)) :
-     raise Sorry("%s does not exist or is not a file!" % params.output_dir)
+     raise Sorry("%s does not exist or is not a file!" % params.config_file)
 
   assert (params.stream_count is not None) and (params.stream_count > 0)
   assert (params.num_procs is not None) and (params.stream_count > 0)
@@ -134,7 +136,7 @@ def run (args) :
         rs = match_runs(params.xtc_dir)
         add_runs = []
         for r in rs:
-          if not (params.start_run is not None and r.id < params.start_run):
+          if not ((params.start_run is not None and r.id < params.start_run) or (params.end_run is not None and  r > params.end_run)):
             if not db.run_in_trial(r.id, params.trial_id):
               doit = True
               for test in submitted_runs:
@@ -146,7 +148,7 @@ def run (args) :
         submitted_a_run = False
         if len(add_runs) > 0:
           for r in add_runs:
-              if len(r.files) != params.stream_count:
+              if len(r.files) < params.stream_count:
                 print "Waiting to queue run %s.  %s/%s streams ready."% \
                   (r.id,len(r.files),params.stream_count)
                 continue
@@ -188,7 +190,7 @@ def run (args) :
             except ValueError:
               pass
           if r is not None and s is not None and c is not None and c == 0:
-            if not (params.start_run is not None and r < params.start_run):
+            if not ((params.start_run is not None and r < params.start_run) or (params.end_run is not None and  r > params.end_run)):
             #  if not db.run_in_trial(r.id, params.trial_id):  can't check for this when queueing streams.  can lead to duplicate data.
               if not f in submitted_files:
 
