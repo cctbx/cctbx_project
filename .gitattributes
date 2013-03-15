@@ -2323,6 +2323,7 @@ xfel/command_line/monitor_detectors.py -text
 xfel/command_line/monitor_trials.py -text
 xfel/command_line/overlay_spectra.py -text
 xfel/command_line/plot_to_subpixel.py -text
+xfel/command_line/radial_average.py -text
 xfel/command_line/smooth_spectrum.py -text
 xfel/command_line/subtract_background.py -text
 xfel/command_line/trial_stats.py -text
