@@ -44,8 +44,8 @@ def run (args) :
 
 
   cursor = dbobj.cursor()
-  cmd = "SELECT DISTINCT(run) FROM %s WHERE trial = %s ORDER BY run"
-  cursor.execute(cmd, (db.table_name,params.trial_id)
+  cmd = "SELECT DISTINCT(run) FROM %s WHERE trial = %%s ORDER BY run"%db.table_name
+  cursor.execute(cmd, params.trial_id)
 
 
   for runId in cursor.fetchall():
