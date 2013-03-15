@@ -71,7 +71,29 @@ namespace dxtbx { namespace model { namespace boost_python {
     vec2<double> range = scan.get_oscillation_range();
     return deg ? rad_as_deg(range) : range;
   }
-  
+
+  static  
+  vec2<double> get_oscillation(const ScanData &scan, bool deg) {
+    vec2<double> oscillation = scan.get_oscillation();
+    return deg ? rad_as_deg(oscillation) : oscillation;
+  }
+
+  static
+  void set_oscillation(ScanData &scan, vec2<double> oscillation,
+      bool deg) {
+    if (deg) {
+      oscillation = rad_as_deg(oscillation);
+    }
+    scan.set_oscillation(oscillation);
+  }
+
+   static  
+  vec2<double> get_image_oscillation(const ScanData &scan, int image, 
+      bool deg) {
+    vec2<double> oscillation = scan.get_image_oscillation(image);
+    return deg ? rad_as_deg(oscillation) : oscillation;
+  }
+
   
   static 
   bool is_angle_valid(const ScanData &scan, double angle, bool deg) {
@@ -125,15 +147,6 @@ namespace dxtbx { namespace model { namespace boost_python {
 
     // Export Scan : ScanBase
     class_ <ScanData, bases <ScanBase> > ("ScanData")
-      .def(init <vec2 <int>, vec2 <double>, double> ((
-          arg("image_range"), 
-          arg("oscillation"),
-          arg("exposure_time"))))
-      .def(init <vec2 <int>, vec2 <double>, double, const flex_double &> ((
-          arg("image_range"), 
-          arg("oscillation"),
-          arg("exposure_time"),
-          arg("epochs"))))
       .def("__init__",
           make_constructor(
           &make_scan, 
@@ -141,7 +154,7 @@ namespace dxtbx { namespace model { namespace boost_python {
           arg("image_range"),
           arg("oscillation"),
           arg("exposure_time"),
-          arg("deg"))))
+          arg("deg") = true)))
       .def("__init__",
           make_constructor(
           &make_scan_w_epoch, 
@@ -150,7 +163,7 @@ namespace dxtbx { namespace model { namespace boost_python {
           arg("oscillation"),
           arg("exposure_time"),
           arg("epochs"),          
-          arg("deg"))))
+          arg("deg") = true)))
       .def("get_image_range",  
         &ScanData::get_image_range)
       .def("set_image_range",
@@ -158,9 +171,11 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("get_array_range",  
         &ScanData::get_array_range)
       .def("get_oscillation",  
-        &ScanData::get_oscillation)
+        &get_oscillation, (
+          arg("deg") = true))
       .def("set_oscillation",
-        &ScanData::set_oscillation)
+        &set_oscillation, (
+          arg("deg") = true))
       .def("get_exposure_time",
         &ScanData::get_exposure_time)
       .def("set_exposure_time",
@@ -172,18 +187,19 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("get_num_images",
         &ScanData::get_num_images)
       .def("get_image_oscillation",
-        &ScanData::get_image_oscillation, (
-          arg("index")))
+        &get_image_oscillation, (
+          arg("index"),
+          arg("deg") = true))
       .def("get_image_epoch",
         &ScanData::get_image_epoch, (
           arg("index")))
       .def("get_oscillation_range",
         &get_oscillation_range, (
-          arg("deg") = false))          
+          arg("deg") = true))          
       .def("is_angle_valid",
         &is_angle_valid, (
           arg("angle"),
-          arg("deg") = false))
+          arg("deg") = true))
       .def("is_image_index_valid",
         &ScanData::is_image_index_valid, (
           arg("index")))
@@ -193,27 +209,27 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("get_angle_from_image_index",
         &get_angle_from_image_index, (
           arg("index"),
-          arg("deg") = false))
+          arg("deg") = true))
       .def("get_angle_from_array_index",
         &get_angle_from_array_index, (
           arg("index"),
-          arg("deg") = false))          
+          arg("deg") = true))          
       .def("get_image_index_from_angle",
         &get_image_index_from_angle, (
           arg("angle"),
-          arg("deg") = false))
+          arg("deg") = true))
       .def("get_array_index_from_angle",
         &get_array_index_from_angle, (
           arg("angle"),
-          arg("deg") = false))
+          arg("deg") = true))
       .def("get_image_indices_with_angle",
         &get_image_indices_with_angle, (
           arg("angle"),
-          arg("deg") = false))
+          arg("deg") = true))
       .def("get_array_indices_with_angle",
         &get_array_indices_with_angle, (
           arg("angle"),
-          arg("deg") = false))
+          arg("deg") = true))
       .def("__eq__", &ScanData::operator==)
       .def("__nq__", &ScanData::operator!=)
       .def("__len__", &ScanData::get_num_images)
