@@ -150,12 +150,15 @@ class compute_fo_minus_fo_map (object) :
         d_max, d_min = fobs_1.d_max_min()
         compl = fobs_1.completeness(d_max = d_max)
         n_ref = sel.count(True)
-        r = flex.sum(flex.abs(f1.data()-f2.data())) / \
-          flex.sum(flex.abs(f1.data()+f2.data())/2)
+        num = flex.sum(flex.abs(f1.data()-f2.data()))
+        den = flex.sum(flex.abs(f1.data()+f2.data())/2)
+        r = None
+        if(den!=0):
+          r = num/den
         d_range = fobs_1.binner().bin_legend(
                        i_bin = i_bin, show_bin_number = False, show_counts = False)
-        fmt = "%3d: %-17s   %4.2f %6d         %6.4f"
-        print >> log, fmt % (i_bin, d_range, compl, n_ref, r)
+        fmt = "%3d: %-17s   %4.2f %6d         %6s"
+        print >> log, fmt % (i_bin, d_range, compl, n_ref, str(r))
     # map coefficients
     diff = miller.array(
       miller_set = f_model,
