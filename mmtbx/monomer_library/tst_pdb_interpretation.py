@@ -1360,8 +1360,82 @@ apply_cif_link {
   pat = "data_link: ALPHA2-6"
   assert log.getvalue().find(pat) >= 0
 
+def exercise_flattened_cif_loop():
+  # Previously our code would not interpret properly files where CIF loops with
+  # only one row were "flattened" - i.e. listed as tag-value pairs rather than
+  # in a loop construct
+  pdb_string = """\
+CRYST1   15.000   15.000   15.000  80.00  70.00 100.00 P 1
+HETATM   13  O   HOH     1      13.866  16.009  12.098  1.00  3.00           O
+HETATM   14  H1  HOH     1      13.327  16.140  12.905  1.00  3.00           H
+HETATM   15  H2  HOH     1      14.117  16.901  11.777  1.00  3.00           H
+"""
+  restraints_cif_string = """\
+#
+data_comp_list
+_chem_comp.id                  HOH
+_chem_comp.three_letter_code   .
+_chem_comp.name                'water     '
+_chem_comp.group               solvent
+_chem_comp.number_atoms_all    3
+_chem_comp.number_atoms_nh     1
+_chem_comp.desc_level          .
+#
+data_comp_HOH
+#
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.partial_charge
+ HOH           O      O    OH2      -0.408
+ HOH           H1     H    HOH2      0.204
+ HOH           H2     H    HOH2      0.204
+loop_
+_chem_comp_tree.comp_id
+_chem_comp_tree.atom_id
+_chem_comp_tree.atom_back
+_chem_comp_tree.atom_forward
+_chem_comp_tree.connect_type
+ HOH      O      n/a    .      END
+ HOH      H1     O      .      .
+ HOH      H2     O      .      .
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+_chem_comp_bond.value_dist_neutron
+ HOH      O      H1        coval       0.840    0.020    0.950
+ HOH      O      H2        coval       0.840    0.020    0.950
+_chem_comp_angle.comp_id           HOH
+_chem_comp_angle.atom_id_1         H1
+_chem_comp_angle.atom_id_2         O
+_chem_comp_angle.atom_id_3         H2
+_chem_comp_angle.value_angle       106.800
+_chem_comp_angle.value_angle_esd   3.000
+"""
+  from libtbx.test_utils import open_tmp_file
+  from libtbx import easy_run
+  pdb_file = open_tmp_file(suffix="HOH.pdb")
+  pdb_file.write(pdb_string)
+  pdb_file.close()
+  restraints_file = open_tmp_file(suffix="HOH.cif")
+  restraints_file.write(restraints_cif_string)
+  restraints_file.close()
+  cmd = "phenix.pdb_interpretation %s %s write_geo_files=True" %(
+    pdb_file.name, restraints_file.name)
+  result = easy_run.fully_buffered(cmd).raise_if_errors()
+  geo_file = open(pdb_file.name+".geo", "rb")
+  geo_file_str = geo_file.read()
+  assert "Bond angle restraints: 1" in geo_file_str
+
 def run(args):
   assert len(args) == 0
+  exercise_flattened_cif_loop()
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
   exercise_geostd_cif_links(mon_lib_srv, ener_lib)

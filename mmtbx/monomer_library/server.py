@@ -108,6 +108,9 @@ def convert_list_block(
       for row in list_item_block.iterrows():
         obj_inner = cif_type_inner(**row)
         tabulated_items[obj_inner.id] = obj_inner
+    else:
+      obj_inner = cif_type_inner(**list_block)
+      tabulated_items[obj_inner.id] = obj_inner
   for key, cif_data in cif_object.iteritems():
     if (key.startswith(data_prefix)):
       item_id = key[len(data_prefix):]
@@ -118,7 +121,14 @@ def convert_list_block(
       obj_outer = None
       for loop_block,lst_name in outer_mappings:
         rows = cif_data.get('_'+loop_block)
-        if (rows is None): continue
+        if (rows is None):
+          d = dict((k, v) for k, v in cif_data.iteritems()
+                   if k.startswith("_"+loop_block))
+          if len(d) > 0:
+            lst = getattr(obj_outer, lst_name)
+            typ = getattr(cif_types, loop_block)
+            lst.append(typ(**d))
+          continue
         if (obj_outer is None):
           obj_outer = cif_type_outer(source_info, obj_inner)
         lst = getattr(obj_outer, lst_name)
