@@ -317,9 +317,9 @@ def show(log, results, params, detail):
     params.map_2.type)
   print >> log
   if(detail == "atom"):
-    print >> log, " <---id string--->  occ     ADP      CC   Rho1   Rho2"
+    print >> log, " <----id string---->  occ     ADP      CC   Rho1   Rho2"
   else:
-    print >> log, " <id string>   occ     ADP      CC   Rho1   Rho2"
+    print >> log, "  <id string>    occ     ADP      CC   Rho1   Rho2"
   fmt = "%s %4.2f %7.2f %7.4f %6.2f %6.2f"
   for r in results:
     print >> log, fmt%(r.id_str, r.occupancy, r.b, r.cc, r.map_value_1,
@@ -341,8 +341,8 @@ def compute(pdb_hierarchy,
     for residue_group in chain.residue_groups():
       for conformer in residue_group.conformers():
         for residue in conformer.residues():
-          r_id_str = "%2s %1s %3s %4s"%(chain.id, conformer.altloc,
-            residue.resname, residue.resseq)
+          r_id_str = "%2s %1s %3s %4s %1s"%(chain.id, conformer.altloc,
+            residue.resname, residue.resseq, residue.icode)
           r_sites_cart = flex.vec3_double()
           r_b          = flex.double()
           r_occ        = flex.double()
