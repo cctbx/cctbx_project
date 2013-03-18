@@ -15,42 +15,64 @@ from libtbx import easy_mp
 from libtbx.str_utils import make_header
 from libtbx.utils import Sorry, Usage
 from libtbx import adopt_init_args, Auto
+from libtbx import runtime_utils
 from cStringIO import StringIO
 import time
 import os
 import sys
 
 master_phil = libtbx.phil.parse("""
-pdb_file = None
+model = None
   .type = path
+  .style = file_type:pdb bold input_file
 cif_file = None
   .type = path
   .multiple = True
+  .short_caption = Restraints
+  .style = file_type:cif bold input_file
 map_coeffs = None
   .type = path
+  .short_caption = Map coefficients
+  .style = file_type:hkl bold input_file OnChange:extract_ringer_map_labels
 map_label = 2FOFCWT,PH2FOFCWT
   .type = str
+  .input_size = 200
+  .short_caption = 2Fo-FC map labels
+  .style = bold renderer:draw_map_arrays_widget noauto
 difference_map_label = FOFCWT,PHFOFCWT
   .type = str
+  .input_size = 200
+  .short_caption = Fo-Fc map labels
+  .style = bold renderer:draw_map_arrays_widget noauto
 map_file = None
   .type = path
 sampling_method = linear *spline direct
   .type = choice(multi=False)
 sampling_angle = 5
   .type = int
+  .input_size = 80
 grid_spacing = 1./5
   .type = float
 scaling = *sigma volume
   .type = choice(multi=False)
 skip_alt_confs = True
   .type = bool
+  .short_caption = Skip existing alternate conformations
 nproc = 1
   .type = int
+  .short_caption = Processors
+  .style = renderer:draw_nproc_widget
 gui = False
   .type = bool
+  .style = hidden
 output_base = None
   .type = str
-""")
+output_dir = None
+  .type = path
+  .style = output_dir
+include scope libtbx.phil.interface.tracking_params
+""", process_includes=True)
+master_params = master_phil
 
 class ringer_chi (object) :
   def __init__ (self, id, angle_current, densities, fofc_densities, sampling) :
@@ -322,13 +344,14 @@ def run (args, out=None, verbose=True) :
   cmdline = iotbx.phil.process_command_line_with_files(
     args=args,
     master_phil=master_phil,
-    pdb_file_def="pdb_file",
+    pdb_file_def="model",
     reflection_file_def="map_coeffs",
     map_file_def="map_file",
     cif_file_def="cif_file")
+  cmdline.work.show()
   params = cmdline.work.extract()
   validate_params(params)
-  pdb_in = file_reader.any_file(params.pdb_file, force_type="pdb")
+  pdb_in = file_reader.any_file(params.model, force_type="pdb")
   pdb_in.check_file_type("pdb")
   hierarchy = pdb_in.file_object.construct_hierarchy()
   hierarchy.atoms().reset_i_seq()
@@ -385,7 +408,7 @@ def run (args, out=None, verbose=True) :
     print >> out, "Time excluding I/O: %8.1fs" % (t2 - t1)
     print >> out, "Overall runtime:    %8.1fs" % (t2 - t0)
   if (params.output_base is None) :
-    pdb_base = os.path.basename(params.pdb_file)
+    pdb_base = os.path.basename(params.model)
     params.output_base = os.path.splitext(pdb_base)[0] + "_ringer"
   easy_pickle.dump("%s.pkl" % params.output_base, results)
   print >> out, "Wrote %s.pkl" % params.output_base
@@ -404,107 +427,122 @@ def run (args, out=None, verbose=True) :
     return results
 
 def validate_params (params) :
-  if (params.pdb_file is None) :
-    raise Sorry("No PDB file supplied (parameter: pdb_file)")
+  if (params.model is None) :
+    raise Sorry("No PDB file supplied (parameter: model)")
   if (params.map_coeffs is None) and (params.map_file is None) :
     raise Sorry("No map coefficients supplied (parameter: map_coeffs)")
+  if (not (1 < params.sampling_angle < 60)) :
+    raise Sorry("The sampling angle must be an integer between 1 and 60 "+
+      "degrees")
+  if (not (0 < params.grid_spacing < 0.5)) :
+    raise Sorry("The grid spacing must be greater than zero but less than 0.5")
   return True
 
+class launcher (runtime_utils.target_with_save_result) :
+  def run (self) :
+    os.makedirs(self.output_dir)
+    os.chdir(self.output_dir)
+    return run(args=list(self.args), out=sys.stdout)
 ########################################################################
 # GUI
-from wxtbx import plots
-import wx
+try :
+  import wx
+except ImportError :
+  def run_app (results) :
+    raise Sorry("wxPython not available.")
+else :
+  from wxtbx import plots
 
-def run_app (results) :
-  app = wx.App(0)
-  frame = RingerFrame(None, -1, "Ringer results")
-  frame.show_results(results)
-  frame.Show()
-  app.MainLoop()
+  def run_app (results) :
+    app = wx.App(0)
+    frame = RingerFrame(None, -1, "Ringer results")
+    frame.show_results(results)
+    frame.Show()
+    app.MainLoop()
 
-class RingerFrame (plots.plot_frame) :
-  def create_plot_panel (self) :
-    plot = RingerPlot(self, figure_size=(6,8))
-    plot.canvas.Bind(wx.EVT_CHAR, self.OnChar)
-    return plot
+  class RingerFrame (plots.plot_frame) :
+    def create_plot_panel (self) :
+      plot = RingerPlot(self, figure_size=(6,8))
+      plot.canvas.Bind(wx.EVT_CHAR, self.OnChar)
+      return plot
 
-  def draw_top_panel (self) :
-    self.top_panel = wx.Panel(self, style=wx.SUNKEN_BORDER)
-    panel_szr = wx.BoxSizer(wx.VERTICAL)
-    self.top_panel.SetSizer(panel_szr)
-    szr2 = wx.BoxSizer(wx.HORIZONTAL)
-    panel_szr.Add(szr2)
-    txt1 = wx.StaticText(self.top_panel, -1, "Residue to display:")
-    szr2.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-    self.chooser = wx.Choice(self.top_panel, -1, size=(200,-1))
-    szr2.Add(self.chooser, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-    self.Bind(wx.EVT_CHOICE, self.OnSelect, self.chooser)
-    self.Bind(wx.EVT_CHAR, self.OnChar)
-    self.chooser.Bind(wx.EVT_CHAR, self.OnChar)
-    return self.top_panel
+    def draw_top_panel (self) :
+      self.top_panel = wx.Panel(self, style=wx.SUNKEN_BORDER)
+      panel_szr = wx.BoxSizer(wx.VERTICAL)
+      self.top_panel.SetSizer(panel_szr)
+      szr2 = wx.BoxSizer(wx.HORIZONTAL)
+      panel_szr.Add(szr2)
+      txt1 = wx.StaticText(self.top_panel, -1, "Residue to display:")
+      szr2.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+      self.chooser = wx.Choice(self.top_panel, -1, size=(200,-1))
+      szr2.Add(self.chooser, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+      self.Bind(wx.EVT_CHOICE, self.OnSelect, self.chooser)
+      self.Bind(wx.EVT_CHAR, self.OnChar)
+      self.chooser.Bind(wx.EVT_CHAR, self.OnChar)
+      return self.top_panel
 
-  def OnSelect (self, event) :
-    selection = event.GetEventObject().GetSelection()
-    self.plot_panel.show_residue(self.results[selection])
+    def OnSelect (self, event) :
+      selection = event.GetEventObject().GetSelection()
+      self.plot_panel.show_residue(self.results[selection])
 
-  def show_results (self, results) :
-    self.results = results
-    choices = [ result.format() for result in results ]
-    self.chooser.SetItems(choices)
-    self.chooser.SetSelection(0)
-    self.plot_panel.show_residue(self.results[0])
+    def show_results (self, results) :
+      self.results = results
+      choices = [ result.format() for result in results ]
+      self.chooser.SetItems(choices)
+      self.chooser.SetSelection(0)
+      self.plot_panel.show_residue(self.results[0])
 
-  def OnChar (self, event) :
-    key = event.GetKeyCode()
-    if (len(self.results) == 0) : return
-    selection = self.chooser.GetSelection()
-    if (key in [wx.WXK_TAB, wx.WXK_RETURN, wx.WXK_SPACE]) :
-      if (selection < (len(self.results) - 1)) :
-        selection += 1
-      elif (len(self.results) > 0) :
-        selection = 0
-    elif (key in [wx.WXK_DELETE, wx.WXK_BACK]) :
-      if (selection > 0) :
-        selection -= 1
-      else :
-        selection = len(results) - 1
-    self.chooser.SetSelection(selection)
-    self.plot_panel.show_residue(self.results[selection])
+    def OnChar (self, event) :
+      key = event.GetKeyCode()
+      if (len(self.results) == 0) : return
+      selection = self.chooser.GetSelection()
+      if (key in [wx.WXK_TAB, wx.WXK_RETURN, wx.WXK_SPACE]) :
+        if (selection < (len(self.results) - 1)) :
+          selection += 1
+        elif (len(self.results) > 0) :
+          selection = 0
+      elif (key in [wx.WXK_DELETE, wx.WXK_BACK]) :
+        if (selection > 0) :
+          selection -= 1
+        else :
+          selection = len(results) - 1
+      self.chooser.SetSelection(selection)
+      self.plot_panel.show_residue(self.results[selection])
 
-class RingerPlot (plots.plot_container) :
-  def show_residue (self, residue) :
-    if (self.disabled) : return
-    self.figure.clear()
-    subplots = []
-    for i in range(1, residue.n_chi + 1) :
-      chi = residue.get_angle(i)
-      if (chi is None) : continue
-      if (len(subplots) > 0) :
-        p = self.figure.add_subplot(4, 1, i, sharex=subplots[0])
-      else :
-        p = self.figure.add_subplot(4, 1, i)
-        p.set_title(residue.format())
-      p.set_position([0.15, 0.725 - 0.225*(i-1), 0.8, 0.225])
-      x = [ k*chi.sampling for k in range(len(chi.densities)) ]
-      p.plot(x, chi.densities, 'r-', linewidth=1)
-      if (chi.fofc_densities is not None) :
-        p.plot(x, chi.fofc_densities, linestyle='--', color=[0.5,0.0,1.0])
-      p.axvline(chi.angle_current, color='b', linewidth=2, linestyle='--')
-      p.axhline(0, color=(0.4,0.4,0.4), linestyle='--', linewidth=1)
-      p.axhspan(0.3,1,facecolor="green",alpha=0.5)
-      p.axhspan(-1,0.3,facecolor="grey",alpha=0.5)
-      p.set_xlim(0,360)
-      ax = p.get_axes()
-      ax.set_ylabel("Rho")
-      ax.set_xlabel("Chi%d" % i)
-      subplots.append(p)
-    for p in subplots[:-1] :
-      for label in p.get_axes().get_xticklabels() :
-        label.set_visible(False)
-    self.canvas.draw()
-    self.canvas.Fit()
-    self.Layout()
-    self.parent.Refresh()
+  class RingerPlot (plots.plot_container) :
+    def show_residue (self, residue) :
+      if (self.disabled) : return
+      self.figure.clear()
+      subplots = []
+      for i in range(1, residue.n_chi + 1) :
+        chi = residue.get_angle(i)
+        if (chi is None) : continue
+        if (len(subplots) > 0) :
+          p = self.figure.add_subplot(4, 1, i, sharex=subplots[0])
+        else :
+          p = self.figure.add_subplot(4, 1, i)
+          p.set_title(residue.format())
+        p.set_position([0.15, 0.725 - 0.225*(i-1), 0.8, 0.225])
+        x = [ k*chi.sampling for k in range(len(chi.densities)) ]
+        p.plot(x, chi.densities, 'r-', linewidth=1)
+        if (chi.fofc_densities is not None) :
+          p.plot(x, chi.fofc_densities, linestyle='--', color=[0.5,0.0,1.0])
+        p.axvline(chi.angle_current, color='b', linewidth=2, linestyle='--')
+        p.axhline(0, color=(0.4,0.4,0.4), linestyle='--', linewidth=1)
+        p.axhspan(0.3,1,facecolor="green",alpha=0.5)
+        p.axhspan(-1,0.3,facecolor="grey",alpha=0.5)
+        p.set_xlim(0,360)
+        ax = p.get_axes()
+        ax.set_ylabel("Rho")
+        ax.set_xlabel("Chi%d" % i)
+        subplots.append(p)
+      for p in subplots[:-1] :
+        for label in p.get_axes().get_xticklabels() :
+          label.set_visible(False)
+      self.canvas.draw()
+      self.canvas.Fit()
+      self.Layout()
+      self.parent.Refresh()
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
