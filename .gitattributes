@@ -426,6 +426,7 @@ dxtbx/model/goniometer.h -text
 dxtbx/model/goniometer.py -text
 dxtbx/model/goniometer_helpers.py -text
 dxtbx/model/kappa_goniometer.h -text
+dxtbx/model/model_helpers.h -text
 dxtbx/model/panel.h -text
 dxtbx/model/polarized_beam.h -text
 dxtbx/model/scan.h -text
