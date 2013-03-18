@@ -21,7 +21,11 @@ class hklview_3d (wxGLWindow) :
     # FIXME orthographic is definitely best for this application, but it isn't
     # working properly right now
     #self.orthographic = True
-    self.settings = self.GetParent().settings
+    parent = self.GetParent()
+    if (parent is None) :
+      parent = kwds.get("parent")
+    assert (parent is not None)
+    self.settings = parent.settings
     self.buffer_factor = 2.0
     self.min_slab = 4
     self.min_viewport_use_fraction = 0.1
