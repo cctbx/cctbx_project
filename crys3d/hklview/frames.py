@@ -355,7 +355,7 @@ class HKLViewFrame (wx.Frame) :
       self.viewer.Refresh()
 
   def create_viewer_panel (self) :
-    self.viewer = view_3d.hklview_3d(self, size=(800,600),
+    self.viewer = view_3d.hklview_3d(parent=self, size=(800,600),
       style=wx.glcanvas.WX_GL_DOUBLEBUFFER)
 
   def create_settings_panel (self) :
@@ -605,7 +605,7 @@ class settings_window_2d (settings_window) :
 
 class HKLViewFrame2D (HKLViewFrame) :
   def create_viewer_panel (self) :
-    self.viewer = view_2d.hklview_2d(self, -1, size=(640,640))
+    self.viewer = view_2d.hklview_2d(parent=self, size=(640,640))
     self.viewer.SetMinSize((640,640))
 
   def create_settings_panel (self) :
