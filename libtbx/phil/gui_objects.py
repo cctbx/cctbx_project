@@ -53,7 +53,7 @@ class style (object) :
                 "hide_label", "not_none", "noedit", "fixed", "checklist",
                 "set_resolution", "force_data", "anom", "non_anom",
                 "process_hkl", "force_rfree", "combo_box", "optional",
-                "no_map", "file_type_default","expand","output_dir",]
+                "no_map", "file_type_default","expand","output_dir","seq_file"]
   style_kwds = ["auto_launch_dialog", "columns", "dialog_link", "extensions",
                 "file_type", "min", "max", "parent_submenu", "OnUpdate",
                 "OnChange", "renderer", "caption_img", "rlabel", "llabel",

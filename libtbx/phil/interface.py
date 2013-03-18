@@ -630,6 +630,18 @@ class index (object) :
     self._file_type_mappings[file_type] = type_map
     return type_map
 
+  def get_seq_file_def_name (self) :
+    paths = []
+    for path_name, def_style in self.style.iteritems() :
+      if (def_style.seq_file) :
+        paths.append(path_name)
+    if (len(paths) == 0) :
+      return None
+    elif (len(paths) > 1) :
+      raise RuntimeError("Multiple seq_file definitions: %s" % " ".join(paths))
+    else :
+      return paths[0]
+
 ########################################################################
 #--- STANDALONE FUNCTIONS
 def delete_phil_objects (current_phil, phil_path_list, only_scope=None) :
