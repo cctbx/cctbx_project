@@ -745,3 +745,33 @@ class coordinate_shifts (object) :
     f = open(file_name, "w")
     f.write(self.hierarchy_shifted.as_pdb_string())
     f.close()
+
+class trajectory_output (object) :
+  """
+  Callback object for saving the intermediate results of refinement as a stack
+  of PDB and MTZ files.  Equivalent to the interactivity with Coot in the
+  Phenix GUI, but intended for command-line use and demonstrative purposes.
+  """
+  def __init__ (self, file_base="refine", filled_maps=True, log=sys.stdout,
+      verbose=True) :
+    adopt_init_args(self, locals())
+    self._i_trajectory = 0
+
+  def __call__ (self, monitor, model, fmodel, method="monitor_collect") :
+    import iotbx.map_tools
+    self._i_trajectory += 1
+    file_base = "%s_traj_%d" % (self.file_base, self._i_trajectory)
+    pdb_hierarchy = model.pdb_hierarchy(sync_with_xray_structure=True)
+    two_fofc_map_coeffs = fmodel.map_coefficients(map_type="2mFo-DFc",
+      fill_missing=self.filled_maps)
+    fofc_map_coeffs = fmodel.map_coefficients(map_type="mFo-DFc")
+    iotbx.map_tools.write_map_coeffs(
+      fwt_coeffs=two_fofc_map_coeffs,
+      delfwt_coeffs=fofc_map_coeffs,
+      file_name=file_base+".mtz")
+    f = open(file_base + ".pdb", "w")
+    f.write(pdb_hierarchy.as_pdb_string(
+      crystal_symmetry=model.xray_structure))
+    f.close()
+    print >> self.log, "wrote model to %s.pdb" % file_base
+    print >> self.log, "wrote map coefficients to %s.mtz" % file_base
