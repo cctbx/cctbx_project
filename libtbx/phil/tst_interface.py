@@ -13,6 +13,9 @@ refinement {
         .type = path
         .multiple = True
     }
+    sequence = None
+      .type = path
+      .style = seq_file
   }
   refine {
     strategy = *individual_sites *individual_adp *occupancies tls rigid_body
@@ -167,6 +170,8 @@ refinement.ncs.restraint_group {
   i3 = i.copy(preserve_changes=True)
   params3 = i3.get_python_object()
   assert params3.refinement.main.ncs == True
+  seq_file_def = i.get_seq_file_def_name()
+  assert (seq_file_def == "refinement.input.sequence")
 
   # text searching (we can assume this will break quickly, but easily checked
   # by uncommenting the print statements)
