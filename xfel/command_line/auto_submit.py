@@ -34,6 +34,8 @@ master_phil = libtbx.phil.parse("""
     .type = str
   submit_as_group = True
     .type = bool
+  use_in_progress = False
+    .type = bool
 """)
 
 submitted_runs = []
@@ -123,6 +125,7 @@ def run (args) :
   assert (params.queue is not None)
   assert (params.experiment is not None)
   assert (params.submit_as_group is not None)
+  assert (params.use_in_progress is not None)
 
   submitted_runs = []
   submitted_files = [] # used in single stream submit mode
@@ -177,7 +180,7 @@ def run (args) :
         files = os.listdir(params.xtc_dir)
         for f in files:
           r = s = c = None
-          if ".inprogress" in f:
+          if not params.use_in_progress and ".inprogress" in f:
             continue
           for str in f.split("-"):
             try:
@@ -204,8 +207,8 @@ def run (args) :
 
                 submitted_a_run = True
                 submitted_files.append(f)
-                #if '.inprogress' in f:
-                #  submitted_files.append(f.rstrip(".inprogress"))
+                if '.inprogress' in f:
+                  submitted_files.append(f.rstrip(".inprogress"))
         if not submitted_a_run:
           print "No new data... sleepy..."
 
