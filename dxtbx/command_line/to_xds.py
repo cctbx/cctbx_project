@@ -61,9 +61,9 @@ class to_xds:
 
     def XDS(self):
 
-        sensor = self.get_detector().type
-        fast, slow = map(int, self.get_detector().image_size)
-        f, s = self.get_detector().pixel_size
+        sensor = self.get_detector().get_type()
+        fast, slow = map(int, self.get_detector().get_image_size())
+        f, s = self.get_detector().get_pixel_size()
         df = int(1000 * f)
         ds = int(1000 * s)
 
@@ -74,7 +74,7 @@ class to_xds:
 
         detector = xds_detector_name(
             detector_helpers_types.get(sensor, fast, slow, df, ds))
-        trusted = self.get_detector().trusted_range
+        trusted = self.get_detector().get_trusted_range()
 
         print 'DETECTOR=%s MINIMUM_VALID_PIXEL_VALUE=%d OVERLOAD=%d' % \
               (detector, trusted[0] + 1, trusted[1])
@@ -83,20 +83,20 @@ class to_xds:
             print 'SENSOR_THICKNESS= 0.32'
 
         print 'DIRECTION_OF_DETECTOR_X-AXIS= %.3f %.3f %.3f' % \
-              (R * matrix.col(self.get_detector().fast_axis)).elems
+              (R * matrix.col(self.get_detector().get_fast_axis())).elems
 
         print 'DIRECTION_OF_DETECTOR_Y-AXIS= %.3f %.3f %.3f' % \
-              (R * matrix.col(self.get_detector().slow_axis)).elems
+              (R * matrix.col(self.get_detector().get_slow_axis())).elems
 
         print 'NX=%d NY=%d QX=%.4f QY=%.4f' % (fast, slow, f, s)
 
-        F = R * matrix.col(self.get_detector().fast_axis)
-        S = R * matrix.col(self.get_detector().slow_axis)
+        F = R * matrix.col(self.get_detector().get_fast_axis())
+        S = R * matrix.col(self.get_detector().get_slow_axis())
         N = F.cross(S)
 
-        origin = R * matrix.col(self.get_detector().origin)
-        beam = R * matrix.col(self.get_beam().direction) / \
-               math.sqrt(matrix.col(self.get_beam().direction).dot())
+        origin = R * matrix.col(self.get_detector().get_origin())
+        beam = R * matrix.col(self.get_beam().get_direction()) / \
+               math.sqrt(matrix.col(self.get_beam().get_direction()).dot())
         centre = -(origin - origin.dot(N) * N)
         x = centre.dot(F)
         y = centre.dot(S)
@@ -104,28 +104,31 @@ class to_xds:
         print 'DETECTOR_DISTANCE= %.3f' % origin.dot(N)
         print 'ORGX= %.1f ORGY= %.1f' % (x / f, y / s)
         print 'ROTATION_AXIS= %.3f %.3f %.3f' % \
-              (R * matrix.col(self.get_goniometer().rotation_axis)).elems
+              (R * matrix.col(self.get_goniometer().get_rotation_axis())).elems
         print 'STARTING_ANGLE= %.3f' % \
-              self.get_scan().oscillation[0]
+              self.get_scan().get_oscillation()[0]
         print 'OSCILLATION_RANGE= %.3f' % \
-              self.get_scan().oscillation[1]
+              self.get_scan().get_oscillation()[1]
         print 'X-RAY_WAVELENGTH= %.5f' % \
-              self.get_beam().wavelength
+              self.get_beam().get_wavelength()
         print 'INCIDENT_BEAM_DIRECTION= %.3f %.3f %.3f' % \
               (- beam).elems
-        print 'FRACTION_OF_POLARIZATION= %.3f' % \
-              self.get_beam().polarization_fraction
-        print 'POLARIZATION_PLANE_NORMAL= %.3f %.3f %.3f' % \
-              self.get_beam().polarization
+
+        # FIXME LATER
+        if hasattr(self.get_beam(), "get_polatization_fraction"):
+            print 'FRACTION_OF_POLARIZATION= %.3f' % \
+                self.get_beam().get_polarization_fraction()
+            print 'POLARIZATION_PLANE_NORMAL= %.3f %.3f %.3f' % \
+                self.get_beam().get_polarization()
         print 'NAME_TEMPLATE_OF_DATA_FRAMES= %s' % os.path.join(
             self.get_scan().get_directory(),
             self.get_scan().get_template().replace('#', '?'))
         print 'TRUSTED_REGION= 0.0 1.41'
-        for f0, f1, s0, s1 in self.get_detector().mask:
+        for f0, f1, s0, s1 in self.get_detector().get_mask():
             print 'UNTRUSTED_RECTANGLE= %d %d %d %d' % \
                   (f0 - 1, f1 + 1, s0 - 1, s1 + 1)
 
-        start_end = self.get_scan().image_range
+        start_end = self.get_scan().get_image_range()
 
         if start_end[0] == 0:
             start_end = (1, start_end[1])
@@ -167,6 +170,9 @@ def factory(list_of_images):
         i = format(image)
         assert(beam == i.get_beam())
         assert(gonio == i.get_goniometer())
+        if not det == i.get_detector():
+            print det
+            print i.get_detector()
         assert(det == i.get_detector())
         scans.append(i.get_scan())
 

@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-# FormatSMVRigakuSaturn.py
-#   Copyright (C) 2011 Diamond Light Source, Graeme Winter
+# FormatSMVRigakuA200.py
+#   Copyright (C) 2013 Diamond Light Source, Graeme Winter
 #
 #   This code is distributed under the BSD license, a copy of which is
 #   included in the root directory of this package.
 #
-# An implementation of the SMV image reader for Rigaku Saturn images.
+# An implementation of the SMV image reader for Rigaku A200 images.
 # Inherits from FormatSMV.
 
 from __future__ import division
@@ -15,13 +15,13 @@ from scitbx import matrix
 
 from dxtbx.format.FormatSMV import FormatSMV
 
-class FormatSMVRigakuSaturn(FormatSMV):
-    '''A class for reading SMV format Rigaku Saturn images, and correctly
+class FormatSMVRigakuA200(FormatSMV):
+    '''A class for reading SMV format Rigaku A200 images, and correctly
     constructing a model for the experiment from this.'''
 
     @staticmethod
     def understand(image_file):
-        '''Check to see if this looks like a Rigaku Saturn SMV format image,
+        '''Check to see if this looks like a Rigaku A200 SMV format image,
         i.e. we can make sense of it. Essentially that will be if it contains
         all of the keys we are looking for.'''
 
@@ -32,7 +32,7 @@ class FormatSMVRigakuSaturn(FormatSMV):
             'CRYSTAL_GONIO_NUM_VALUES', 'CRYSTAL_GONIO_NAMES',
             'CRYSTAL_GONIO_UNITS', 'CRYSTAL_GONIO_VALUES',
             'ROTATION', 'ROTATION_AXIS_NAME', 'ROTATION_VECTOR',
-            'SOURCE_VECTORS', 'DTREK_DATE_TIME', 'SOURCE_WAVELENGTH',
+            'SOURCE_VECTORS', 'SOURCE_WAVELENGTH',
             'SOURCE_POLARZ', 'DIM', 'SIZE1', 'SIZE2',
             ]
 
@@ -56,7 +56,7 @@ class FormatSMVRigakuSaturn(FormatSMV):
 
     def __init__(self, image_file):
         '''Initialise the image structure from the given file, including a
-        proper model of the experiment. Easy from Rigaku Saturn images as
+        proper model of the experiment. Easy from Rigaku A200 images as
         they contain everything pretty much we need...'''
 
         assert(self.understand(image_file))
@@ -165,8 +165,7 @@ class FormatSMVRigakuSaturn(FormatSMV):
         rotation = map(float, self._header_dictionary['ROTATION'].split())
 
         format = self._scan_factory.format('SMV')
-        epoch = time.mktime(time.strptime(self._header_dictionary[
-            'DTREK_DATE_TIME'], '%d-%b-%Y %H:%M:%S'))
+        epoch = 0
 
         exposure_time = rotation[3]
         osc_start = rotation[0]
@@ -181,4 +180,4 @@ if __name__ == '__main__':
     import sys
 
     for arg in sys.argv[1:]:
-        print FormatSMVRigakuSaturn.understand(arg)
+        print FormatSMVRigakuA200.understand(arg)
