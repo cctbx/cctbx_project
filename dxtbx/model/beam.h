@@ -16,6 +16,7 @@
 #include <scitbx/vec3.h>
 #include <scitbx/array_family/simple_io.h>
 #include <scitbx/array_family/simple_tiny_io.h>
+#include "model_helpers.h"
 
 namespace dxtbx { namespace model {
 
@@ -87,7 +88,7 @@ namespace dxtbx { namespace model {
     /** Check wavlength and direction are (almost) same */
     bool operator==(const Beam &beam) {
       double eps = 1.0e-6;
-      double d_direction =  std::abs(direction_.angle(beam.direction_));
+      double d_direction =  std::abs(angle_safe(direction_, beam.direction_));
       double d_wavelength = std::abs(wavelength_ - beam.wavelength_);
       return (d_direction <= eps && d_wavelength <= eps);
     }

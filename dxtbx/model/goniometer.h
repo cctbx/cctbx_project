@@ -19,6 +19,7 @@
 #include <scitbx/array_family/simple_io.h>
 #include <scitbx/array_family/simple_tiny_io.h>
 #include <dxtbx/error.h>
+#include "model_helpers.h"
 
 namespace dxtbx { namespace model {
 
@@ -113,10 +114,9 @@ namespace dxtbx { namespace model {
     }
 
     /** Check rotation axes are (almost) the same */
-    bool operator==(const Goniometer &goniometer) {
+    bool operator==(const Goniometer &b) {
       double eps = 1.0e-6;
-      double d_axis = rotation_axis_.angle(goniometer.rotation_axis_);
-      return d_axis <= eps;
+      return std::abs(angle_safe(rotation_axis_, b.rotation_axis_)) <= eps;
     }
 
     /** Check rotation axes are not (almost) the same */

@@ -23,6 +23,7 @@
 #include <scitbx/array_family/simple_io.h>
 #include <scitbx/array_family/simple_tiny_io.h>
 #include <dxtbx/error.h>
+#include "model_helpers.h"
 
 namespace dxtbx { namespace model {
 
@@ -236,7 +237,7 @@ namespace dxtbx { namespace model {
       vec3<double> beam_centre = get_beam_centre_lab(s0);
 
       // Calculate the angle to the point
-      double sintheta = sin(0.5 * beam_centre.angle(xyz));
+      double sintheta = sin(0.5 * angle_safe(beam_centre, xyz));
       DXTBX_ASSERT(sintheta != 0);
 
       // Return d = lambda / (2sin(theta))
@@ -264,8 +265,8 @@ namespace dxtbx { namespace model {
 
       // Calculate half the maximum angle to the corners
       double sintheta = sin(0.5 * scitbx::af::max(double4(
-        beam_centre.angle(xyz00), beam_centre.angle(xyz01),
-        beam_centre.angle(xyz10), beam_centre.angle(xyz11))));
+        angle_safe(beam_centre, xyz00), angle_safe(beam_centre, xyz01),
+        angle_safe(beam_centre, xyz10), angle_safe(beam_centre, xyz11))));
       DXTBX_ASSERT(sintheta != 0);
 
       // Return d = lambda / (2sin(theta))
@@ -297,8 +298,8 @@ namespace dxtbx { namespace model {
 
       // Calculate half the minimum angle to the sides around the beam centre
       double sintheta = sin(0.5 * scitbx::af::min(double4(
-        beam_centre.angle(xyz0c), beam_centre.angle(xyzc0),
-        beam_centre.angle(xyz1c), beam_centre.angle(xyzc1))));
+        angle_safe(beam_centre, xyz0c), angle_safe(beam_centre, xyzc0),
+        angle_safe(beam_centre, xyz1c), angle_safe(beam_centre, xyzc1))));
 
       // Return d = lambda / (2sin(theta))
       return wavelength / (2.0 * sintheta);
@@ -340,10 +341,9 @@ namespace dxtbx { namespace model {
     /** Check the detector axis basis vectors are (almost) the same */
     bool operator==(const Panel &panel) const {
       double eps = 1.0e-3;
-
-      return std::abs(get_fast_axis().angle(panel.get_fast_axis())) < eps
-          && std::abs(get_slow_axis().angle(panel.get_slow_axis())) < eps
-          && std::abs(get_origin().normalize().angle(panel.get_origin().normalize())) < eps
+      return std::abs(angle_safe(get_fast_axis(), panel.get_fast_axis())) < eps
+          && std::abs(angle_safe(get_slow_axis(), panel.get_slow_axis())) < eps
+          && std::abs(angle_safe(get_origin(), panel.get_origin())) < eps
           && image_size_ == panel.image_size_;
     }
 
