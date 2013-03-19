@@ -34,7 +34,7 @@ input {
       .help = File containing protein or nucleic acid sequences.  Values for \
         n_residues and n_bases will be extracted automatically if this is \
         provided.
-      .style = file_type:seq input_file
+      .style = file_type:seq input_file seq_file
     n_residues=None
       .type=float
       .help="Number of residues in structural unit"
