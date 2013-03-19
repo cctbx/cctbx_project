@@ -260,10 +260,10 @@ bool rstbx::reflection_prediction::intersect(scitbx::vec3<double> const & ray)
   scitbx::vec2<double> lim1 = sensor.get_lim1();
   scitbx::vec2<double> lim2 = sensor.get_lim2();
 
-  //if (x < lim1[0]) return false;
-  //if (y < lim2[0]) return false;
-  //if (x > lim1[1]) return false;
-  //if (y > lim2[1]) return false;
+  if (x < lim1[0]) return false;
+  if (y < lim2[0]) return false;
+  if (x > lim1[1]) return false;
+  if (y > lim2[1]) return false;
 
   prediction[0] = x;
   prediction[1] = y;
