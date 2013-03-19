@@ -106,7 +106,7 @@ def convert_list_block(
     list_item_block = list_block.get(list_item_name)
     if (list_item_block is not None):
       for row in list_item_block.iterrows():
-        obj_inner = cif_type_inner(**row)
+        obj_inner = cif_type_inner(**dict(row))
         tabulated_items[obj_inner.id] = obj_inner
     else:
       obj_inner = cif_type_inner(**list_block)
