@@ -502,7 +502,6 @@ class manager (object) :
       pdb_hierarchy=self.pdb_hierarchy,
       params=params,
       use_hydrogens=(not self.assume_hydrogens_all_missing),
-      hbond_params=None,
       as_python_objects=True,
       remove_outliers=self.params.h_bond_restraints.remove_outliers,
       master_selection=None,
