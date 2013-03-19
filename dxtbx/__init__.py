@@ -5,7 +5,7 @@ try:
 except Exception:
   ext = None
 else:
-  ext = boost.python.import_ext("dxtbx_ext", optional = False)
+  ext = boost.python.import_ext("dxtbx_ext", optional = True)
 
 if not ext is None:
   from dxtbx_ext import *
