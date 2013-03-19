@@ -20,8 +20,8 @@ namespace dxtbx { namespace model {
 
   inline
   double angle_safe(const vec3<double> &a, const vec3<double> &b) {
-    int den = a.length() * b.length();
-    if (den == 0) return 0.0;
+    double den = a.length() * b.length();
+    if (den <= 0) return 0.0;
     double c = (a * b) / den;
     if      (c < -1) c = -1;
     else if (c >  1) c =  1;
