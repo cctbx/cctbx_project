@@ -198,12 +198,18 @@ def build_angle_start_by_tor_id(
   atom_indices = sequence_index_dict(seq=mon_lib_atom_names)
   for tor_id in i_q_packed_by_tor_id.keys():
     d_sites = []
+    atom_ids = []
     for atom_id in rotamer_tor_atom_ids_by_tor_id[tor_id]:
       i = atom_indices.get(atom_id)
       if (i is None):
         return (atom_id, tor_id)
       d_sites.append(sites_cart[i])
+      atom_ids.append(str(atom_id))
     dihe = scitbx.math.dihedral_angle(sites=d_sites, deg=True)
+    if (dihe is None) :
+      raise RuntimeError(("scitbx.math.dihedral_angle returned None!\n"+
+        "Atom IDs: %s\nSites: %s\n") % (", ".join(atom_ids),
+        ", ".join([ str(xyz) for xyz in d_sites ])))
     assert dihe is not None
     assert tor_id not in result
     result[tor_id] = dihe
