@@ -159,7 +159,7 @@ Command-line options:
           assume_pdb_data=True)
         assert os.path.isfile("%s_maps.mtz" % id)
         print >> log, "Map coefficients saved to %s_maps.mtz" % id
-        files.append("%s_maps.mtz" % id)
+        files.append(os.path.abspath("%s_maps.mtz" % id))
     return files
 
 def validate_params (params) :
