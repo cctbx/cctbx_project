@@ -89,7 +89,7 @@ class ringer_chi (object) :
     # TODO
 
 class ringer_residue (object) :
-  def __init__ (self, resname, chain_id, resid, altloc, n_chi) :
+  def __init__ (self, resname, chain_id, resid, altloc, n_chi, xyz) :
     adopt_init_args(self, locals())
     self._angles = {}
 
@@ -278,13 +278,19 @@ class iterate_over_residues (object) :
       if (get_class(residue.resname) == "common_amino_acid") :
         n_chi = int(self.angle_lookup.chisPerAA.get(residue.resname.lower(),0))
         if (n_chi == 0) : continue
+        xyz = None
+        for atom in residue.atoms() :
+          if (atom.name.strip() == "CA") :
+            xyz = atom.xyz
+            break
         res_out = ringer_residue(
           #residue_id_str=residue.id_str(),
           resname=residue.resname,
           chain_id=residue_group.parent().id,
           resid=residue.resid(),
           altloc=conformer.altloc,
-          n_chi=n_chi)
+          n_chi=n_chi,
+          xyz=xyz)
         if (verbose) :
           print >> self.log, "  %s:" % residue.id_str()
         for i in range(1, n_chi+1) :
@@ -484,6 +490,11 @@ else :
     def OnSelect (self, event) :
       selection = event.GetEventObject().GetSelection()
       self.plot_panel.show_residue(self.results[selection])
+      self.selection_callback(self.results[selection])
+
+    # override in subclasses
+    def selection_callback (self, residue) :
+      pass
 
     def show_results (self, results) :
       self.results = results
