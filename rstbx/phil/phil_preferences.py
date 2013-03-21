@@ -73,6 +73,14 @@ integration {
   use_subpixel_translations = None
     .type = floats
     .help = list slow,fast offsets for correcting tile positions to subpixel resolution (2 numbers for each tile)
+  subpixel_joint_model {
+    rotations = None
+      .type=floats
+      .help = joint-refined tile rotations & translations [along with per-image beam,dist,rotz,wavelength, not stored]
+    translations = None
+      .type=floats
+      .help = joint-refined tile rotations & translations [along with per-image beam,dist,rotz,wavelength, not stored]
+  }
   spot_shape_verbose = False
     .type = bool
     .help = analysis of radial and azimuthal spot shapes.
