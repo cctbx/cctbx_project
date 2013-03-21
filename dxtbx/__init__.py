@@ -35,6 +35,5 @@ def sweep(filenames):
 
     '''
 
-  from sweep import sweep_factory
-
-  return sweep_factory.sweep(filenames)
+  from sweep import SweepFactory
+  return SweepFactory.sweep(filenames)
