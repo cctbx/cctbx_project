@@ -793,9 +793,9 @@ def evt_wavelength(evt):
   @return    Wavelength, in Aangstroem
   """
 
-  if (evt is not None):
+  if evt is not None:
     ebeam = evt.getEBeam()
-    if (ebeam is not None and ebeam.fEbeamL3Energy > 0):
+    if hasattr(ebeam, 'fEbeamL3Energy') and ebeam.fEbeamL3Energy > 0:
       gamma = ebeam.fEbeamL3Energy / 0.510998910
       K = 3.5
       L = 3.0e8
