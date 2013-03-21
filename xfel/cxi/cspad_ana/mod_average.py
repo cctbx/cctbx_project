@@ -94,6 +94,19 @@ class mod_average(average_tbx.average_mixin):
         self.logger.info(
           "Standard deviation written to %s" % p)
 
+      if (self.max_dirname  is not None or
+          self.max_basename is not None):
+        d = cspad_tbx.dpack(
+          active_areas    = self.active_areas,
+          beam_center_x   = cspad_tbx.pixel_size * self.beam_center[0],
+          beam_center_y   = cspad_tbx.pixel_size * self.beam_center[1],
+          data            = self.max_img,
+          distance        = self.avg_distance,
+          wavelength      = self.avg_wavelength)
+        p = cspad_tbx.dwritef(d, self.max_dirname, self.max_basename)
+        self.logger.info(
+          "Max written to %s" % p)
+       
     if (self.nfail == 0):
       self.logger.info(
         "%d images processed" % self.nmemb)
