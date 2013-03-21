@@ -96,7 +96,8 @@ class mod_daq_status (object) :
     if (not isinstance(s, float)) :
       raise RuntimeError("Wrong type for 's': %s" % type(s).__name__)
 
-    det_z = cspad_tbx.env_detz(env)
+    # XXX This hardcodes the address for the front detector!
+    det_z = cspad_tbx.env_detz(env, 'CxiDs1-0|Cspad-0')
     if (det_z is None):
       self.nfail += 1
       self.logger.warning("event(): no distance, shot skipped")

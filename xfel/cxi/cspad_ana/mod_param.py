@@ -75,7 +75,8 @@ class mod_param(object):
     if (evt.get("skip_event")):
       return
 
-    detz = cspad_tbx.env_detz(env)
+    # XXX This hardcodes the address for the front detector!
+    detz = cspad_tbx.env_detz(env, 'CxiDs1-0|Cspad-0')
     if (detz is None):
       self.m_no_detz += 1
 

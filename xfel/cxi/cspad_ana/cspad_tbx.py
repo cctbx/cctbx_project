@@ -535,43 +535,51 @@ def env_injector_xyz(env):
                              for i in range(3)])
 
 
-def env_detz(env):
-  """The env_detz() function returns the position of the Ds1 detector
-  on the z-axis in mm.  The zero-point is as far away as possible from
-  the sample, and values decrease as the detector is moved towards the
-  sample.  According to Marvin Seibert, the current configuration
-  allows for approximately 50 cm of in-vacuum motion.  XXX This only
-  applies to the CSpad at CXI!
+def env_detz(env, address):
+  """The env_detz() function returns the position of the detector with
+  the given address string on the z-axis in mm.  The zero-point is as
+  far away as possible from the sample, and values decrease as the
+  detector is moved towards the sample.
 
-  @param env Environment object
-  @return    Detector z-position, in mm
+  @param env     Environment object
+  @param address Address string XXX Que?!
+  @return        Detector z-position, in mm
   """
 
-  if (env is not None):
-    pv = env.epicsStore().value("CXI:DS1:MMS:06.RBV")
-    if (pv is None):
-      # XXX Should probably return None if the RBV cannot be read.
-      pv = env.epicsStore().value("CXI:DS1:MMS:06")
-    if (pv is not None and len(pv.values) == 1):
-      return (pv.values[0])
-  return (None)
+  if env is not None:
+    import re
+
+    m = re.match('^(?P<detector>\S+)\-\d+\|\S+\-\d+$', address)
+    detector = m.group('detector')
+
+    if detector == 'CxiDs1':
+      pv = env.epicsStore().value('CXI:DS1:MMS:06.RBV')
+    elif detector == 'CxiDsd':
+      pv = env.epicsStore().value('CXI:DS2:MMS:06.RBV')
+    else:
+      return None
+
+    if pv is not None and len(pv.values) == 1:
+      return pv.values[0]
+  return None
 
 
-def env_distance(env, offset):
+def env_distance(env, address, offset):
   """The env_distance() function returns the distance between the
-  sample and the Ds1 detector in mm.  The distance between the sample
-  and the the detector's zero-point can vary by an inch or more
-  between different LCLS runs.  According to Sebastien Boutet the
-  offset should be stable to within +/-0.5 mm during a normal
-  experiment.
+  sample and the detector with the given address string in mm.  The
+  distance between the sample and the the detector's zero-point can
+  vary by an inch or more between different LCLS runs.  According to
+  Sebastien Boutet the offset should be stable to within +/-0.5 mm
+  during a normal experiment.
 
-  @param env    Environment object
-  @param offset Detector-sample offset in mm, corresponding to longest
-                detector-sample distance
-  @return       Detector-sample distance, in mm
+  @param env     Environment object
+  @param address Address string XXX Que?!
+  @param offset  Detector-sample offset in mm, corresponding to
+                 longest detector-sample distance
+  @return        Detector-sample distance, in mm
   """
 
-  detz = env_detz(env)
+  detz = env_detz(env, address)
   if detz is not None:
     return detz + offset
   return None
@@ -812,7 +820,7 @@ def getConfig(address, env):
   """
 
   import re
-  m = re.match('^\S+\-\d+\|(?P<device>\S+)-\d+$', address)
+  m = re.match('^\S+\-\d+\|(?P<device>\S+)\-\d+$', address)
   if m is not None:
     device = m.group('device')
     if device == 'Andor':
