@@ -136,9 +136,10 @@ def view_raw_image(path, *command_line, **kwargs):
     from rstbx.viewer.calibration import pdb_code_wrapper
     pdb_code_wrapper(horizons_phil).display(path)
     return
-  elif horizons_phil.viewer.calibrate_unitcell is not None:
+  elif horizons_phil.viewer.calibrate_unitcell.unitcell is not None:
     from rstbx.viewer.calibration import unit_cell_wrapper
     unit_cell_wrapper(horizons_phil).display(path)
+    return
   elif horizons_phil.viewer.calibrate_silver==True:
     from rstbx.viewer.calibration import sb_wrapper
     sb_wrapper(horizons_phil).display(path)
