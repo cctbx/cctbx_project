@@ -99,6 +99,14 @@ class wrapper_of_use_case_bp3(object):
        detector_origin=self.detector_origin
     )
 
+    if phil_params.integration.subpixel_joint_model.translations is not None:
+      T = phil_params.integration.subpixel_joint_model.translations
+      import copy
+      resortedT = copy.copy(T)
+      for tt in xrange(0,len(T),2):
+        resortedT[tt] = T[tt+1]
+        resortedT[tt+1] = T[tt]
+
     from rstbx.apps.dual_resolution_helpers import get_model_ref_limits
     model_refinement_limiting_resolution = get_model_ref_limits(self,raw_image,spotfinder,
       imageindex,inputai,spot_prediction_limiting_resolution)
@@ -114,6 +122,12 @@ class wrapper_of_use_case_bp3(object):
     if sub != None:
       null_rotations_deg = flex.double(len(sub)//2)
       self.ucbp3.set_subpixel(flex.double(sub),rotations_deg=null_rotations_deg)
+    elif phil_params.integration.subpixel_joint_model.translations is not None:
+      self.ucbp3.set_subpixel(
+          resortedT, rotations_deg = flex.double(
+           phil_params.integration.subpixel_joint_model.rotations)
+        )
+
     # Reduce Miller indices to a manageable set.  NOT VALID if the crystal rotates significantly
     self.ucbp3.prescreen_indices(inputai.wavelength)
     # done with Miller set reduction
