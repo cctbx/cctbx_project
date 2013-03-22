@@ -1,0 +1,4 @@
+{
+#  "modules_required_for_use": ["mmtbx"],
+  "optional_modules": ["auto_build"],
+}
