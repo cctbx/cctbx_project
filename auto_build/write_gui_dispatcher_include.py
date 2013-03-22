@@ -18,6 +18,8 @@ def run (args, prologue=None, epilogue=None) :
     help="Additional dispatcher include to prepend")
   parser.add_option("--epilogue", dest="epilogue", action="store",
     help="Additional dispatcher include to append")
+  # this is detached in case we need to upgrade GTK - setting GTK_PATH is
+  # essential for the themes to be used correctly
   parser.add_option("--gtk_version", dest="gtk_version", action="store",
     help="Version number (major.minor.rev) for GTK+", default="2.10.0")
   options, args = parser.parse_args(args)
