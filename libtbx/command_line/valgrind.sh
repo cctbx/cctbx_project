@@ -7,20 +7,20 @@ else
 fi
 if [ -n "$LIBTBX_VALGRIND_OPTS" ]; then
   for opt in $LIBTBX_VALGRIND_OPTS; do
-    if [ "$opt" == "-q" ]; then
+    if [ "$opt" = "-q" ]; then
       verbose="no"
       break
     fi
   done
 fi
-if [ "$verbose" == "yes" ]; then
+if [ "$verbose" = "yes" ]; then
   valgrind --version
 else
   valgrind --version > /dev/null 2>&1
 fi
 if [ $? -ne 0 ]; then exit 1; fi
 if [ ! -n "$LIBTBX_VALGRIND" ]; then
-  if [ "$verbose" == "yes" ]; then
+  if [ "$verbose" = "yes" ]; then
     echo "### LIBTBX_VALGRIND not set: using default."
     echo "### To override, define LIBTBX_VALGRIND"
     echo "### before calling $LIBTBX_DISPATCHER_NAME."
@@ -41,7 +41,7 @@ if [ ! -n "$LIBTBX_VALGRIND" ]; then
   if [ $? -ne 0 ]; then exit 1; fi
   export LIBTBX_VALGRIND
 fi
-if [ "$verbose" == "yes" ]; then
+if [ "$verbose" = "yes" ]; then
   echo "LIBTBX_VALGRIND=$LIBTBX_VALGRIND"
 fi
 if [ $? -ne 0 ]; then exit 1; fi
