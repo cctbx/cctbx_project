@@ -9,7 +9,6 @@ from libtbx.option_parser import option_parser
 from xfel.cxi.cspad_ana.histogram_finalise import histogram_finalise
 
 if __name__ == '__main__':
-  import sys
   args = sys.argv[1:]
   assert len(args) > 0
   command_line = (option_parser()
