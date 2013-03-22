@@ -117,6 +117,12 @@ class installer (object) :
           pkg_name_label="SciPy",
           confirm_import_module="scipy")
     if (options.labelit) or (options.build_gui) or (options.build_all) :
+      if (sys.platform == "darwin") :
+        self.build_python_module_simple(
+          pkg_url=BASE_CCI_PKG_URL,
+          pkg_name=PY2APP_PKG,
+          pkg_name_label="py2app",
+          confirm_import_module="py2app")
       self.build_imaging()
       self.build_python_module_simple(
         pkg_url=BASE_CCI_PKG_URL,
@@ -195,7 +201,7 @@ class installer (object) :
       f = open(pkg_name, "wb")
       data = urllib2.urlopen(full_url).read()
       assert (len(data) > 0), pkg_name
-      self.log.write("%d bytes\n" % len(data))
+      self.log.write("%d KB\n" % (len(data) / 1024))
       self.log.flush()
       f.write(data)
       f.close()
