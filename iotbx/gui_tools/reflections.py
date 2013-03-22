@@ -323,6 +323,26 @@ class reflections_handler (iotbx.gui_tools.manager) :
           labels_list.append(" ".join(labels))
     return labels_list
 
+  def get_two_fofc_map_labels (self, *args, **kwds) :
+    hkl_file = self.get_file(*args, **kwds)
+    labels_list = []
+    if (hkl_file is not None) :
+      for array in hkl_file.file_server.miller_arrays :
+        labels = array.info().label_string()
+        if (labels.startswith("FWT") or labels.startswith("2FOFC")) :
+          labels_list.append(labels)
+    return labels_list
+
+  def get_fofc_map_labels (self, *args, **kwds) :
+    hkl_file = self.get_file(*args, **kwds)
+    labels_list = []
+    if (hkl_file is not None) :
+      for array in hkl_file.file_server.miller_arrays :
+        labels = array.info().label_string()
+        if (labels.startswith("DELFWT") or labels.startswith("FOFC")) :
+          labels_list.append(labels)
+    return labels_list
+
   def d_max_min (self, file_name=None, file_param_name=None,
       array_name=None, array_names=None) :
     from iotbx.reflection_file_editor import get_best_resolution
