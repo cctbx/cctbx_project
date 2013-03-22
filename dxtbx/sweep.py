@@ -375,6 +375,10 @@ class Sweep(object):
 
     def _to_array_all(self):
         """ Get the array from all the sweep elements. """
+
+        # FIXME this should be using flex arrays not numpy ones as we want
+        # to be able to pass the data to cctbx C++ code...
+        
         from scitbx.array_family import flex
         from numpy import zeros, int32
 
