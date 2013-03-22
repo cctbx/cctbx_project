@@ -67,6 +67,7 @@ class twin_viewer_panel (wx.Panel) :
   def update_settings (self, *args, **kwds) :
     self.view_1.update_settings(*args, **kwds)
     self.view_2.update_settings(*args, **kwds)
+    self.Refresh()
 
   def update_clicked (self, index) :
     hkl_1, d_min_1, value_1 = self.view_1.scene.get_reflection_info(index)
@@ -108,6 +109,11 @@ class ComparisonFrame (HKLViewFrame) :
   def update_settings_for_merged (self) :
     self.settings.expand_to_p1 = True
     self.settings.expand_anomalous = True
+
+  def update_settings (self, *args, **kwds) :
+    if (None in [self._array1, self._array2]) :
+      return False
+    self.viewer.update_settings(*args, **kwds)
 
   def SetupMenus (self) :
     self.menubar = wx.MenuBar(-1)
