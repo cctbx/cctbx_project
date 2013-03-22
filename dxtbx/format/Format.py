@@ -101,7 +101,6 @@ class Format(object):
         self._detector_instance = None
         self._beam_instance = None
         self._scan_instance = None
-        self._raw_data = None
 
         self._goniometer_factory = goniometer_factory
         self._detector_factory = detector_factory
@@ -174,17 +173,17 @@ class Format(object):
         '''Get the pixel intensities (i.e. read the image and return as a
         flex array of integers.'''
 
-        if self._raw_data:
-            return self._raw_data
+        #if self._raw_data:
+        #    return self._raw_data
 
         # FIXME this should be replaced with specialist code in subclasses
 
         from iotbx.detectors import ImageFactory
         image = ImageFactory(self._image_file)
         image.read()
-        self._raw_data = image.get_raw_data()
+        raw_data = image.get_raw_data()
 
-        return self._raw_data
+        return raw_data
 
     def get_image_file(self):
         '''Get the image file provided to the constructor.'''

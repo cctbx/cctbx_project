@@ -142,6 +142,7 @@ class SweepReader(object):
 
         # If the format instance is valid then cache
         if self._is_format_valid(format_instance):
+            pass
             self._format_cache[image_index] = format_instance
         else:
             RuntimeError("Format is invalid.")
@@ -367,6 +368,10 @@ class Sweep(object):
     def reader(self):
         """ Return the sweep reader. """
         return self._reader
+
+    def get_image_size(self):
+        """ Get the image size. """
+        return self._reader.get_image_size()
 
     def _to_array_all(self):
         """ Get the array from all the sweep elements. """
