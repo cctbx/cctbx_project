@@ -2276,6 +2276,7 @@ wxtbx/heavy_atoms.py -text
 wxtbx/icons.py -text
 wxtbx/info_panels.py -text
 wxtbx/layout.py -text
+wxtbx/libtbx_config -text
 wxtbx/listeditor.py -text
 wxtbx/metallicbutton.py -text
 wxtbx/monitor.py -text
