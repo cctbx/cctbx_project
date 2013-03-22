@@ -82,19 +82,6 @@ class mod_event_info(object):
     if (evt.get("skip_event")):
       return
 
-    distance = cspad_tbx.env_distance(env, self.address, self._detz_offset)
-    if (distance is None):
-      self.nfail += 1
-      self.logger.warning("event(): no distance, shot skipped")
-      evt.put(True, "skip_event")
-      return
-    if (self.distance is not None and self.distance != distance):
-      # XXX Should guard against flapping in 0.0002 mm or so
-      self.logger.warning("event(): distance changed mid-run: % 8.4f -> % 8.4f" %
-        (self.distance, distance))
-    self.distance = distance
-    if self.verbose: self.logger.info("Distance: %.4f" %distance)
-
     sifoil = cspad_tbx.env_sifoil(env)
     if (sifoil is None):
       self.nfail += 1

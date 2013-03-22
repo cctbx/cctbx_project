@@ -48,6 +48,12 @@ class mod_hdf5(common_mode.common_mode_correction):
     if (evt.get('skip_event')):
       return
 
+    # If no detector distance is available set it to NaN, since
+    # Python's None is not permitted in HDF5
+    distance = cspad_tbx.env_distance(env, self.address, self._detz_offset)
+    if distance is None:
+      distance = float('nan')
+
     cspad_tbx.hdf5pack(
       hdf5_file=self._file,
       active_areas=self.active_areas,
@@ -57,7 +63,7 @@ class mod_hdf5(common_mode.common_mode_correction):
       beam_center_y=cspad_tbx.pixel_size * self.beam_center[1],
       ccd_image_saturation=cspad_tbx.dynamic_range,
       data=self.cspad_img,
-      distance=self.distance,
+      distance=distance,
       pixel_size=cspad_tbx.pixel_size,
       pulse_length=self.pulse_length,
       saturated_value=cspad_tbx.dynamic_range,
