@@ -46,11 +46,13 @@ class finalise_one_run(object):
     if pickle_pattern is not None:
       path_pattern = "%s/%s/%s" %(scratch_dir, pickle_dirname, pickle_pattern)
     else:
-      path_pattern = "%s/%s/%ss[0-9][0-9]-[0-9].pickle" %(
+      path_pattern = "%s/%s/%ss[0-9][0-9]-*.pickle" %(
         scratch_dir, pickle_dirname, pickle_basename)
     print path_pattern
     g = glob.glob(path_pattern)
-    assert len(g) > 0
+    if len(g) == 0:
+      print "No matches found for pattern: %s" %path_pattern
+      return
     for path in g:
       try:
         d = easy_pickle.load(file_name=path)
