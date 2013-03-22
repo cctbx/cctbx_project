@@ -296,6 +296,7 @@ class mod_view(common_mode.common_mode_correction):
       common_mode_correction=common_mode_correction,
       **kwds)
 
+    self.detector = cspad_tbx.address_split(address)[0]
     self.nvalid   = 0
     self.ncollate = cspad_tbx.getOptInteger(n_collate)
     self.nupdate  = cspad_tbx.getOptInteger(n_update)
@@ -337,6 +338,18 @@ class mod_view(common_mode.common_mode_correction):
     super(mod_view, self).event(evt, env)
     if evt.status() != Event.Normal or evt.get('skip_event'): # XXX transition
       return
+
+    # Get the distance for the detectors that should have it, and set
+    # it to NaN for those that should not.
+    if self.detector == 'CxiDs1' or self.detector == 'CxiDsd':
+      distance = cspad_tbx.env_distance(env, self.address, self._detz_offset)
+      if distance is None:
+        self.nfail += 1
+        self.logger.warning("event(): no distance, shot skipped")
+        evt.put(True, "skip_event")
+        return
+    else:
+      distance = float('nan')
 
     if not self._proc.is_alive():
       evt.setStatus(Event.Stop)
@@ -384,7 +397,7 @@ class mod_view(common_mode.common_mode_correction):
       # self._queue.empty() is unreliable.
       img_obj = (dict(BEAM_CENTER=self.beam_center,
                       DATA=self.img_sum / self.nvalid,
-                      DISTANCE=self.distance,
+                      DISTANCE=distance,
                       WAVELENGTH=self.wavelength),
                  title)
 

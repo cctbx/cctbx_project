@@ -159,6 +159,15 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     if (evt.get("skip_event")):
       return
 
+    # This module only applies to detectors for which a distance is
+    # available.
+    distance = cspad_tbx.env_distance(env, self.address, self._detz_offset)
+    if distance is None:
+      self.nfail += 1
+      self.logger.warning("event(): no distance, shot skipped")
+      evt.put(True, "skip_event")
+      return
+
     # ***** HITFINDING ***** XXX For hitfinding it may be interesting
     # to look at the fraction of subzero pixels in the dark-corrected
     # image.
@@ -197,7 +206,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
 
         peak_heights,outvalue = self.distl_filter(
           self.cspad_img.iround(), # XXX correct?
-          self.distance,
+          distance,
           self.timestamp,
           self.wavelength)
         if ('permissive' in self.m_distl_flags):
@@ -210,7 +219,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
         self.stats_logger.info("BRAGG %.3f %d" %(evt_time, number_of_accepted_peaks))
 
         if self.m_db_logging:
-          self.queue_entry((self.trial, evt.run(), "%.3f"%evt_time, number_of_accepted_peaks, self.distance,
+          self.queue_entry((self.trial, evt.run(), "%.3f"%evt_time, number_of_accepted_peaks, distance,
                             self.sifoil, self.wavelength))
 
         if number_of_accepted_peaks < self.m_distl_min_peaks:
@@ -236,7 +245,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       beam_center_x   = cspad_tbx.pixel_size * self.beam_center[0],
       beam_center_y   = cspad_tbx.pixel_size * self.beam_center[1],
       data            = self.cspad_img.iround(), # XXX ouch!
-      distance        = self.distance,
+      distance        = distance,
       timestamp       = self.timestamp,
       wavelength      = self.wavelength,
       xtal_target     = self.m_xtal_target)

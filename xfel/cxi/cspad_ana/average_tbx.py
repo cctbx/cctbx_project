@@ -70,6 +70,7 @@ class average_mixin(common_mode.common_mode_correction):
     self.roi = None
     self.avg_basename = cspad_tbx.getOptString(avg_basename)
     self.avg_dirname = cspad_tbx.getOptString(avg_dirname)
+    self.detector = cspad_tbx.address_split(address)[0]
     self.flags = cspad_tbx.getOptStrings(flags, default = [])
     self.nmemb_max = cspad_tbx.getOptInteger(n)
     self.stddev_basename = cspad_tbx.getOptString(stddev_basename)
@@ -139,6 +140,18 @@ class average_mixin(common_mode.common_mode_correction):
     super(average_mixin, self).event(evt, env)
     if (evt.get("skip_event")):
       return
+
+    # Get the distance for the detectors that should have it, and set
+    # it to NaN for those that should not.
+    if self.detector == 'CxiDs1' or self.detector == 'CxiDsd':
+      distance = cspad_tbx.env_distance(env, self.address, self._detz_offset)
+      if distance is None:
+        self.nfail += 1
+        self.logger.warning("event(): no distance, shot skipped")
+        evt.put(True, "skip_event")
+        return
+    else:
+      distance = float('nan')
 
     if (self.nmemb_max is not None and self.nmemb >= self.nmemb_max):
       return
@@ -231,14 +244,14 @@ class average_mixin(common_mode.common_mode_correction):
         self._tot_lock.acquire()
         self._tot_peers.value |= (1 << env.subprocess())
         self._tot_lock.release()
-      self.sum_distance = self.distance
+      self.sum_distance = distance
       self.sum_img = self.cspad_img.deep_copy()
       if self.do_max_image:
         self.max_img = self.cspad_img.deep_copy()
       self.sumsq_img = flex.pow2(self.cspad_img)
       self.sum_wavelength = self.wavelength
     else:
-      self.sum_distance += self.distance
+      self.sum_distance += distance
       self.sum_img += self.cspad_img
       if self.do_max_image:
         s = self.cspad_img > self.max_img
@@ -277,8 +290,8 @@ class average_mixin(common_mode.common_mode_correction):
       for i in xrange(len(self._tot_sum)):
         self._tot_sum[i] += self.sum_img.as_1d()[i]
         self._tot_ssq[i] += self.sumsq_img.as_1d()[i]
-	if self.do_max_image:
-	  self._tot_max[i] = max(self._tot_max[i],self.max_img.as_1d()[i])
+        if self.do_max_image:
+          self._tot_max[i] = max(self._tot_max[i],self.max_img.as_1d()[i])
 
       if (env.subprocess() >= 0):
         self._tot_peers.value &= ~(1 << env.subprocess())
@@ -312,8 +325,8 @@ class average_mixin(common_mode.common_mode_correction):
             - flex.double(self._tot_sum) * self.avg_img
         self.avg_distance = self._tot_distance.value / self.nmemb
         self.avg_wavelength = self._tot_wavelength.value / self.nmemb
-	if self.do_max_image:
-	  self.max_img = flex.double(self._tot_max)
+        if self.do_max_image:
+          self.max_img = flex.double(self._tot_max)
 
         self.stddev_img.set_selected(self.stddev_img < 0, 0)
         if (self.nmemb == 1):

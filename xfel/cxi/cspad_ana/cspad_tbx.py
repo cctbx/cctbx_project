@@ -52,6 +52,30 @@ ypos_sec2x1 = [[   0,    0,  214,    1,  425,  425,  615,  402],  # 2:5 were not
                [   0,    0,  214,    1,  425,  425,  615,  403]] # 2:5 were not measured
 
 
+def address_split(address):
+  """The address_split() function splits an address into its four
+  components.  Address strings are on the form
+  detector-detectorID|device-deviceID, where the detectors must be in
+  dir(xtc.DetInfo.Detector) and device must be in
+  (xtc.DetInfo.Device).  XXX Does not handle wildcards!  XXX
+  Documentation XXX I have the sneaky suspicison that code like this
+  already exists somewhere in pyana.  XXX Return dictionary or some
+  such instead?
+
+  @param address Address string XXX Que?!
+  @return        Four-tuple of detector name, detector ID, device, and
+                 device ID
+  """
+
+  import re
+
+  m = re.match(
+    '^(?P<det>\S+)\-(?P<det_id>\d+)\|(?P<dev>\S+)\-(?P<dev_id>\d+)$', address)
+  if m is None:
+    return (None, None, None, None)
+  return (m.group('det'), m.group('det_id'), m.group('dev'), m.group('dev_id'))
+
+
 def cbcaa(config, sections):
   """The cbcaa() function uses on-disk calibration data to estimate
   the beam centre and the active detector areas.  The beam centre is
@@ -547,14 +571,13 @@ def env_detz(env, address):
   """
 
   if env is not None:
-    import re
-
-    m = re.match('^(?P<detector>\S+)\-\d+\|\S+\-\d+$', address)
-    detector = m.group('detector')
-
-    if detector == 'CxiDs1':
+    detector = address_split(address)[0]
+    if detector is None:
+      return None
+    elif detector == 'CxiDs1':
       pv = env.epicsStore().value('CXI:DS1:MMS:06.RBV')
     elif detector == 'CxiDsd':
+      # XXX Note inconsistency in naming: Dsd vs Ds2!
       pv = env.epicsStore().value('CXI:DS2:MMS:06.RBV')
     else:
       return None
@@ -812,28 +835,29 @@ def evt_wavelength(evt):
 
 
 def getConfig(address, env):
-  """Address strings are on the form
-  detector-detectorID|device-deviceID, where the detectors must be in
-  dir(xtc.DetInfo.Detector) and device must be in
-  (xtc.DetInfo.Device).  XXX Documentation XXX I have the sneaky
-  suspicison that code like this already exists somewhere in pyana.
+  """XXX Documentation XXX I have the sneaky suspicison that code like
+  this already exists somewhere in pyana.
   """
 
-  import re
-  m = re.match('^\S+\-\d+\|(?P<device>\S+)\-\d+$', address)
-  if m is not None:
-    device = m.group('device')
-    if device == 'Andor':
-      return env.getConfig(xtc.TypeId.Type.Id_AndorConfig, address)
-    if device == 'pnCCD':
-      return env.getConfig(xtc.TypeId.Type.Id_pnCCDconfig, address)
-    if device == 'Cspad':
-      return env.getConfig(xtc.TypeId.Type.Id_CspadConfig, address)
-    if device == 'Cspad2x2':
-      config = env.getConfig(xtc.TypeId.Type.Id_Cspad2x2Config, address)
-      if config is None:
-        config = env.getConfig(xtc.TypeId.Type.Id_CspadConfig, address)
-      return config
+  device = address_split(address)[2]
+  if device is None:
+    return None
+
+  elif device == 'Andor':
+    return env.getConfig(xtc.TypeId.Type.Id_AndorConfig, address)
+
+  elif device == 'Cspad':
+    return env.getConfig(xtc.TypeId.Type.Id_CspadConfig, address)
+
+  elif device == 'Cspad2x2':
+    config = env.getConfig(xtc.TypeId.Type.Id_Cspad2x2Config, address)
+    if config is None:
+      config = env.getConfig(xtc.TypeId.Type.Id_CspadConfig, address)
+    return config
+
+  elif device == 'pnCCD':
+    return env.getConfig(xtc.TypeId.Type.Id_pnCCDconfig, address)
+
   return None
 
 
@@ -931,54 +955,52 @@ def image(address, config, evt, env, sections=None):
   @return         XXX
   """
 
-  import re
-  m = re.match('^\S+\-\d+\|(?P<device>\S+)-\d+$', address)
-  if m is not None:
-    device = m.group('device')
+  device = address_split(address)[2]
+  if device is None:
+    return None
 
-    if device == 'Andor':
-      # XXX There is no proper getter for Andor frames yet.
-      value = evt.get(xtc.TypeId.Type.Id_AndorFrame, address)
-      if value is not None:
-        img = value.data(config)
-        return img
+  elif device == 'Andor':
+    # XXX There is no proper getter for Andor frames yet.
+    value = evt.get(xtc.TypeId.Type.Id_AndorFrame, address)
+    if value is not None:
+      img = value.data(config)
+      return img
 
-    elif device == 'pnCCD':
-      value = evt.getPnCcdValue(address, env)
-      if value is not None:
-        # Returns the image data as a numpy 1024-by-1024 uint16 array
-        # XXX Should be split up into tiles (halves) to allow
-        # metrology to be adjusted?  Will require a sections
-        # parameter!
-        img = value.data()
+  elif device == 'Cspad':
+    quads = evt.getCsPadQuads(address, env)
+    if quads is not None:
+      if sections is not None:
+        return CsPadDetector(quads, config, sections)
+      else:
+        # XXX This is obsolete code, provided for backwards
+        # compatibility with the days before detector metrology was
+        # used.
+        qimages = numpy.empty((4, npix_quad, npix_quad), dtype='uint16')
+        for q in quads:
+          qimages[q.quad()] = CsPadElement(q.data(), q.quad(), config)
+        return numpy.vstack((numpy.hstack((qimages[0], qimages[1])),
+                             numpy.hstack((qimages[3], qimages[2]))))
 
-        # Deal with overflows.  XXX This might be dependent on the
-        # particular version of pyana.  CASS ignores the two most
-        # significant bits, which is different from what is done
-        # below, but Lutz Foucar says they do contain data which could
-        # be used.
-        img[img > 2**14 - 1] = 2**14 - 1
-        return img
+  elif device == 'Cspad2x2':
+    quads = evt.get(xtc.TypeId.Type.Id_Cspad2x2Element, address)
+    if quads is not None:
+      return CsPad2x2Image(quads.data(), config, sections)
 
-    elif device == 'Cspad':
-      quads = evt.getCsPadQuads(address, env)
-      if quads is not None:
-        if sections is not None:
-          return CsPadDetector(quads, config, sections)
-        else:
-          # XXX This is obsolete code, provided for backwards
-          # compatibility with the days before detector metrology was
-          # used.
-          qimages = numpy.empty((4, npix_quad, npix_quad), dtype='uint16')
-          for q in quads:
-            qimages[q.quad()] = CsPadElement(q.data(), q.quad(), config)
-          return numpy.vstack((numpy.hstack((qimages[0], qimages[1])),
-                               numpy.hstack((qimages[3], qimages[2]))))
+  elif device == 'pnCCD':
+    value = evt.getPnCcdValue(address, env)
+    if value is not None:
+      # Returns the image data as a numpy 1024-by-1024 uint16 array
+      # XXX Should be split up into tiles (halves) to allow metrology
+      # to be adjusted?  Will require a sections parameter!
+      img = value.data()
 
-    elif device == 'Cspad2x2':
-      quads = evt.get(xtc.TypeId.Type.Id_Cspad2x2Element, address)
-      if quads is not None:
-        return CsPad2x2Image(quads.data(), config, sections)
+      # Deal with overflows.  XXX This might be dependent on the
+      # particular version of pyana.  CASS ignores the two most
+      # significant bits, which is different from what is done below,
+      # but Lutz Foucar says they do contain data which could be used.
+      img[img > 2**14 - 1] = 2**14 - 1
+      return img
+  return None
 
 
 def image_central(address, config, evt, env):
