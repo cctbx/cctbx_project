@@ -93,7 +93,9 @@ integration {
     .help = which subset to use for parameter refinement and constructing integration profiles.
     .help = subsets are nested goodspots > spots_non-ice > inlier_spots
 }
+"""
 
+iotbx_defs = """
 viewer {
   powder_arcs{
     show = False
@@ -129,9 +131,6 @@ viewer {
       .help = "Specify spacegroup for the unit cell"
   }
 }
-"""
-
-iotbx_defs = """\
 """
 
 class EffectiveParamGenerator:
