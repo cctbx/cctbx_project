@@ -237,7 +237,8 @@ Example:
       print >> out, "Creating images of plots..."
       base_name = os.path.basename(filename)
       file_base = os.path.splitext(base_name)[0]
-      for pos in ["general", "glycine", "proline", "prepro"] :
+      for pos in ["general", "glycine", "cis-proline", "trans-proline",
+                  "pre-proline", "isoleucine or valine"] :
         stats = utils.get_rotarama_data(
           pos_type=pos,
           convert_to_numpy_array=True)
