@@ -1304,7 +1304,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     return simple_dialogs.get_phil_value_from_dialog(dlg)
 
   def GetNewSegID (self, segid) :
-    if (segid.isspace()) :
+    if (segid is not None) and (segid.isspace()) :
       segid = None
     dlg = simple_dialogs.StringDialog(
       parent=self,
