@@ -91,7 +91,7 @@ class wrapper_of_use_case_bp3(object):
     indices = crystal.build_miller_set(anomalous_flag=True, d_min = spot_prediction_limiting_resolution)
     parameters = parameters_bp3(
        indices=indices.indices(), orientation=inputai.getOrientation(),
-       incident_beam=col((0.,0.,1.)),
+       incident_beam=col((0.,0.,-1.)),
        packed_tophat=col((1.,1.,0.)),
        detector_normal=col((0.,0.,-1.)), detector_fast=col((0.,1.,0.)),detector_slow=col((1.,0.,0.)),
        pixel_size=col((raw_image.pixel_size,raw_image.pixel_size,0)),
