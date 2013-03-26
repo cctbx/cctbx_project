@@ -80,7 +80,7 @@ tst_list = (
   "$D/regression/tst_real_space_correlation.py",
   "$D/regression/tst_examples.py",
   "$D/regression/tst_sort_hetatms.py",
-  #
+  # real-space tools
   "$D/refinement/real_space/tst_fit_residue_1.py",
   "$D/refinement/real_space/tst_fit_residue_2.py",
   "$D/refinement/real_space/tst_fit_residue_3.py",
@@ -90,6 +90,8 @@ tst_list = (
   "$D/refinement/real_space/tst_individual_sites_1.py",
   "$D/refinement/real_space/tst_monitor.py",
   "$D/refinement/real_space/tst_rigid_body.py",
+  "$D/refinement/real_space/tst_fit_water.py",
+  #
   "$D/regression/tst_dssp.py",
   "$D/building/tst.py",
   "$D/building/disorder/tst.py",

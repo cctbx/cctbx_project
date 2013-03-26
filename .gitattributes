@@ -1517,6 +1517,7 @@ mmtbx/refinement/real_space/__init__.py -text
 mmtbx/refinement/real_space/driver.py -text
 mmtbx/refinement/real_space/fit_residue.py -text
 mmtbx/refinement/real_space/fit_residues.py -text
+mmtbx/refinement/real_space/fit_water.py -text
 mmtbx/refinement/real_space/individual_sites.py -text
 mmtbx/refinement/real_space/rigid_body.py -text
 mmtbx/refinement/real_space/tst_fit_residue_1.py -text
@@ -1525,6 +1526,7 @@ mmtbx/refinement/real_space/tst_fit_residue_3.py -text
 mmtbx/refinement/real_space/tst_fit_residue_4.py -text
 mmtbx/refinement/real_space/tst_fit_residues_1.py -text
 mmtbx/refinement/real_space/tst_fit_residues_2.py -text
+mmtbx/refinement/real_space/tst_fit_water.py -text
 mmtbx/refinement/real_space/tst_individual_sites_1.py -text
 mmtbx/refinement/real_space/tst_monitor.py -text
 mmtbx/refinement/real_space/tst_rigid_body.py -text
