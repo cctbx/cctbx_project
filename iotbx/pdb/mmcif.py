@@ -87,111 +87,116 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
           raise CifBuilderError("Error interpreting ADPs: " + str(e))
         adps = flex.sym_mat3_double(*adps)
 
-    # XXX What if _atom_site.pdbx_PDB_model_num is not given?
-    unique_model_ids = OrderedSet(model_ids) # XXX more efficient way to do this?
-    self.hierarchy.pre_allocate_models(len(unique_model_ids))
-    for i_model in unique_model_ids:
-      model_isel = (model_ids == i_model).iselection()
-      if len(unique_model_ids) == 1: i_model = ""
-      model = hierarchy.model(id=i_model)
-      self.hierarchy.append_model(model)
-      label_asym_id_selected = label_asym_id.select(model_isel)
-      unique_chain_ids = OrderedSet(label_asym_id_selected)
-      unique_chain_ids = OrderedSet(label_asym_id.select(model_isel))
-      model.pre_allocate_chains(len(unique_chain_ids))
-      for i_chain in unique_chain_ids:
-        # we use label_asym_id to identify the separate chains because this
-        # separates chains properly in the absence of TER records in the mmcif,
-        # however we need to use auth_asym_id for the chain id so that they match
-        # e.g. the TLS selections
-        chain_isel = model_isel.select(label_asym_id_selected == i_chain)
-        chain_id = set(auth_asym_id.select(chain_isel))
-        assert len(chain_id) == 1
-        chain_id = list(chain_id)[0]
-        chain = hierarchy.chain(id=chain_id)
+    current_model_id = None
+    current_label_asym_id = None
+    current_auth_asym_id = None
+    current_residue_id = None
+    current_ins_code = None
+
+    for i_atom in range(atom_labels.size()):
+      # model(s)
+      last_model_id = current_model_id
+      current_model_id = model_ids[i_atom]
+      assert current_model_id is not None
+      if current_model_id != last_model_id:
+        model = hierarchy.model(id=current_model_id)
+        self.hierarchy.append_model(model)
+
+      # chain(s)
+      last_label_asym_id = current_label_asym_id
+      current_label_asym_id = label_asym_id[i_atom]
+      assert current_label_asym_id is not None
+      last_auth_asym_id = current_auth_asym_id
+      current_auth_asym_id = auth_asym_id[i_atom]
+      assert current_label_asym_id is not None
+      if current_label_asym_id != last_label_asym_id:
+        chain = hierarchy.chain(id=current_auth_asym_id)
         model.append_chain(chain)
-        seq_id_selected = seq_id.select(chain_isel)
-        unique_residue_ids = OrderedSet(seq_id_selected)
-        chain.pre_allocate_residue_groups(len(unique_residue_ids))
-        # XXX do we need to sort the residue ids, or leave them in the order we found them?
-        for i_residue in unique_residue_ids:
-          residue_isel = chain_isel.select(seq_id_selected == i_residue)
-          if pdb_ins_code is not None:
-            ins_codes = pdb_ins_code.select(residue_isel)
-            unique_pdb_ins_codes = OrderedSet(ins_codes)
+      else:
+        assert current_auth_asym_id == last_auth_asym_id
+
+      # residue_group(s)
+      # defined by residue id and insertion code
+      last_residue_id = current_residue_id
+      current_residue_id = seq_id[i_atom]
+      assert current_residue_id is not None
+      last_ins_code = current_ins_code
+      if pdb_ins_code is not None:
+        current_ins_code = pdb_ins_code[i_atom]
+        if current_ins_code in ("?", ".", None): current_ins_code = " "
+      if (current_residue_id != last_residue_id or
+          current_ins_code != last_ins_code):
+        residue_group = hierarchy.residue_group(
+          resseq=hy36encode(width=4, value=int(current_residue_id)),
+          icode=current_ins_code)
+        chain.append_residue_group(residue_group)
+        atom_groups = OrderedDict() # reset atom_groups cache
+
+      # atom_group(s)
+      # defined by resname and altloc id
+      current_altloc = alt_id[i_atom]
+      if current_altloc == ".": current_altloc = "" # Main chain atoms
+      current_resname = comp_id[i_atom]
+      if (current_altloc, current_resname) not in atom_groups:
+        atom_group = hierarchy.atom_group(
+          altloc=current_altloc, resname=current_resname)
+        atom_groups[(current_altloc, current_resname)] = atom_group
+        if current_altloc == "":
+          residue_group.insert_atom_group(0, atom_group)
+        else:
+          residue_group.append_atom_group(atom_group)
+      else:
+        atom_group = atom_groups[(current_altloc, current_resname)]
+
+      # atom(s)
+      atom = hierarchy.atom()
+      atom_group.append_atom(atom)
+      atom.set_element(type_symbol[i_atom])
+      atom.set_name(
+        format_pdb_atom_name(atom_labels[i_atom], type_symbol[i_atom]))
+      atom.set_xyz(
+        new_xyz=(cart_x[i_atom], cart_y[i_atom], cart_z[i_atom]))
+      atom.set_b(B_iso_or_equiv[i_atom])
+      atom.set_occ(occu[i_atom])
+      # hy36encode should go once the pdb.hierarchy has been
+      # modified to no longer store fixed-width strings
+      atom.set_serial(
+        hy36encode(width=5, value=int(atom_site_id[i_atom])))
+      # some code relies on an empty segid being 4 spaces
+      atom.set_segid("    ")
+      if group_PDB is not None and group_PDB[i_atom] == "HETATM":
+        atom.hetero = True
+      if formal_charge is not None:
+        charge = formal_charge[i_atom]
+        if charge not in ("?", "."):
+          if charge.endswith("-") or charge.startswith("-"):
+            sign = "-"
           else:
-            unique_pdb_ins_codes = [None]
-          for ins_code in unique_pdb_ins_codes:
-            if ins_code is not None:
-              ins_code_isel = residue_isel.select(ins_codes == ins_code)
-            else:
-              ins_code_isel = residue_isel
-            if ins_code in ("?", ".", None): ins_code = " "
-            residue_group = hierarchy.residue_group(
-              resseq=hy36encode(width=4, value=int(i_residue)), icode=ins_code)
-            chain.append_residue_group(residue_group)
-            alt_id_selected = alt_id.select(ins_code_isel)
-            unique_altloc_ids = OrderedSet(alt_id_selected)
-            if len(unique_altloc_ids) > 1 and "." in unique_altloc_ids:
-              # main chain atoms should appear before altlocs in the hierarchy
-              unique_altloc_ids.discard(".")
-              unique_altloc_ids = ["."] + list(unique_altloc_ids)
-            residue_group.pre_allocate_atom_groups(len(unique_altloc_ids))
-            for i_altloc in unique_altloc_ids:
-              atom_group_isel = ins_code_isel.select(alt_id_selected == i_altloc)
-              resnames = comp_id.select(atom_group_isel)
-              unique_resnames = OrderedSet(resnames)
-              # by this point there should be only one resname left
-              assert len(unique_resnames) == 1 # should all in the atom group have the same resname?
-              for resname in unique_resnames:
-                if i_altloc == ".": i_altloc = "" # Main chain atoms
-                atom_group = hierarchy.atom_group(altloc=i_altloc, resname=resname)
-                residue_group.append_atom_group(atom_group)
-                atom_group.pre_allocate_atoms(len(atom_group_isel))
-                for i_atom in atom_group_isel:
-                  atom = hierarchy.atom()
-                  atom_group.append_atom(atom)
-                  atom.set_element(type_symbol[i_atom])
-                  atom.set_name(
-                    format_pdb_atom_name(atom_labels[i_atom], type_symbol[i_atom]))
-                  atom.set_xyz(
-                    new_xyz=(cart_x[i_atom], cart_y[i_atom], cart_z[i_atom]))
-                  atom.set_b(B_iso_or_equiv[i_atom])
-                  atom.set_occ(occu[i_atom])
-                  # hy36encode should go once the pdb.hierarchy has been
-                  # modified to no longer store fixed-width strings
-                  atom.set_serial(
-                    hy36encode(width=5, value=int(atom_site_id[i_atom])))
-                  # some code relies on an empty segid being 4 spaces
-                  atom.set_segid("    ")
-                  if group_PDB is not None and group_PDB[i_atom] == "HETATM":
-                    atom.hetero = True
-                  if formal_charge is not None:
-                    charge = formal_charge[i_atom]
-                    if charge not in ("?", "."):
-                      if charge.endswith("-") or charge.startswith("-"):
-                        sign = "-"
-                      else:
-                        sign = "+"
-                      charge = charge.strip(" -+")
-                      charge = int(charge)
-                      if charge == 0: sign = ""
-                      atom.set_charge("%i%s" %(charge, sign))
-                  if atom_site_fp is not None:
-                    fp = atom_site_fp[i_atom]
-                    if fp not in ("?", "."):
-                      atom.set_fp(new_fp=float(fp))
-                  if atom_site_fdp is not None:
-                    fdp = atom_site_fdp[i_atom]
-                    if fdp not in ("?", "."):
-                      atom.set_fdp(new_fdp=float(fdp))
-                  if anisotrop_id is not None and adps is not None:
-                    u_ij_index = flex.first_index(anisotrop_id, atom.serial.strip())
-                    if u_ij_index is not None:
-                      u_ij = adps[u_ij_index]
-                      atom.set_uij(u_ij)
-                    else:
-                      pass
+            sign = "+"
+          charge = charge.strip(" -+")
+          charge = int(charge)
+          if charge == 0: sign = ""
+          atom.set_charge("%i%s" %(charge, sign))
+      if atom_site_fp is not None:
+        fp = atom_site_fp[i_atom]
+        if fp not in ("?", "."):
+          atom.set_fp(new_fp=float(fp))
+      if atom_site_fdp is not None:
+        fdp = atom_site_fdp[i_atom]
+        if fdp not in ("?", "."):
+          atom.set_fdp(new_fdp=float(fdp))
+      if anisotrop_id is not None and adps is not None:
+        u_ij_index = flex.first_index(anisotrop_id, atom.serial.strip())
+        if u_ij_index is not None:
+          u_ij = adps[u_ij_index]
+          atom.set_uij(u_ij)
+        else:
+          pass
+
+    if len(self.hierarchy.models()) == 1:
+      # for compatibility with single-model PDB files
+      self.hierarchy.models()[0].id = ""
+
 
 def format_pdb_atom_name(atom_name, atom_type):
   # The PDB-format atom name is 4 characters long (columns 13 - 16):
