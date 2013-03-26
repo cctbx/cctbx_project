@@ -47,7 +47,7 @@ namespace cctbx {
   u_as_b(sym_mat3<FloatType> const& u_aniso)
   {
     return
-      scitbx::constants::eight_pi_sq * sym_mat3<FloatType>(u_aniso);
+      static_cast<FloatType>(scitbx::constants::eight_pi_sq) * sym_mat3<FloatType>(u_aniso);
   }
 
   //! Converts anisotropic displacement parameters B -> U.

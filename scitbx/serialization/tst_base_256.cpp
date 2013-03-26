@@ -25,7 +25,7 @@ namespace {
   struct integer_max
   {
     static const int loop1 = 1000000;
-    static const int loop2 = 2147481557;
+    static const int loop2 = 2147481557-2357*2;
   };
 
   template <>
@@ -105,7 +105,7 @@ namespace {
           floating_point_core_exercise(T(s/T(i)));
         }
       }
-      for(int i=23571;i<2147481557;i += 23571) {
+      for(int i=23571;i<2147481557-23571;i += 23571) {
         for (int s = 1; s >= -1; s -= 2) {
           floating_point_core_exercise(T(s*T(i)));
           floating_point_core_exercise(T(s/T(i)));
