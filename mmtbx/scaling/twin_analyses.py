@@ -2436,6 +2436,7 @@ class twin_analyses(object):
       perform_ncs_analyses = additional_parameters.twinning_with_ncs.perform_analyses
       n_ncs_bins = additional_parameters.twinning_with_ncs.n_bins
 
+    self.d_hkl_for_l_test = d_hkl_for_l_test
     ## If resolution limits are not specified
     ## use full resolution limit
     if  d_star_sq_high_limit is None:
@@ -2447,7 +2448,7 @@ class twin_analyses(object):
       d_star_sq_low_limit = d_star_sq_low_limit**2.0
       d_star_sq_low_limit = 1.0/d_star_sq_low_limit
     if d_hkl_for_l_test is None:
-      d_hkl_for_l_test=[2.0,2.0,2.0]
+      self.d_hkl_for_l_test=[2.0,2.0,2.0]
 
     if out is None:
       out = sys.stdout
@@ -2519,11 +2520,17 @@ class twin_analyses(object):
 
     self.l_test=None
     if self.translation_pseudo_symmetry is not None:
+      if self.d_hkl_for_l_test is None:
+        d_h = self.translation_pseudo_symmetry.mod_h
+        d_k = self.translation_pseudo_symmetry.mod_k
+        d_l = self.translation_pseudo_symmetry.mod_l
+      else:
+        d_h = self.d_hkl_for_l_test[0]
+        d_k = self.d_hkl_for_l_test[1]
+        d_l = self.d_hkl_for_l_test[2]
       self.l_test = l_test(
         acentric_cut,
-        self.translation_pseudo_symmetry.mod_h,
-        self.translation_pseudo_symmetry.mod_k,
-        self.translation_pseudo_symmetry.mod_l,
+        d_h,d_k,d_l,
         out=out, verbose=verbose)
     else:
       self.l_test = l_test(
