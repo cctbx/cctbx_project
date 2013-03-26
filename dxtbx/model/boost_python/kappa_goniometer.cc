@@ -30,7 +30,7 @@ namespace dxtbx { namespace model { namespace boost_python {
   static boost::shared_ptr<KappaGoniometer> make_kappa_goniometer(
       double alpha, double omega, double kappa, double phi, 
       std::string direction_str, std::string scan_axis_str)
-  {
+  {  
     KappaGoniometer::Direction direction = KappaGoniometer::NoDirection;
     boost::algorithm::to_lower(direction_str);
     if (direction_str == "+y") {
@@ -41,6 +41,8 @@ namespace dxtbx { namespace model { namespace boost_python {
       direction = KappaGoniometer::MinusY;
     } else if (direction_str == "-z") {
       direction = KappaGoniometer::MinusZ;
+    } else {
+      direction = KappaGoniometer::NoDirection;
     }
 
     KappaGoniometer::ScanAxis scan_axis = KappaGoniometer::NoAxis;
@@ -49,6 +51,8 @@ namespace dxtbx { namespace model { namespace boost_python {
       scan_axis = KappaGoniometer::Omega;
     } else if (scan_axis_str == "phi") {
       scan_axis = KappaGoniometer::Phi;
+    } else {
+      scan_axis = KappaGoniometer::NoAxis;
     }
 
     return boost::shared_ptr<KappaGoniometer>(new KappaGoniometer(
@@ -61,11 +65,13 @@ namespace dxtbx { namespace model { namespace boost_python {
       .value("PlusY", KappaGoniometer::PlusY)
       .value("PlusZ", KappaGoniometer::PlusZ)
       .value("MinusY", KappaGoniometer::MinusY)
-      .value("MinusZ", KappaGoniometer::MinusZ);
+      .value("MinusZ", KappaGoniometer::MinusZ)
+      .export_values();
 
     enum_ <KappaGoniometer::ScanAxis> ("KappaScanAxis")
       .value("Omega", KappaGoniometer::Omega)
-      .value("Phi", KappaGoniometer::Phi);
+      .value("Phi", KappaGoniometer::Phi)
+      .export_values();
 
     class_ <KappaGoniometer, bases <Goniometer> > ("KappaGoniometer")
       .def(init <double, 

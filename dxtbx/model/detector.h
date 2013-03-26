@@ -61,8 +61,11 @@ namespace dxtbx { namespace model {
     }
 
     /** Initialise the detector with an array of panels */
-    DetectorBase(const panel_list_type &panel_list)
-      : panel_list_(panel_list) {}
+    DetectorBase(const panel_list_type &panel_list) {
+      for (std::size_t i = 0; i < panel_list.size(); ++i) {
+        panel_list_.push_back(panel_list[i]);
+      }
+    }
 
     /** Virtual destructor */
     virtual ~DetectorBase() {}

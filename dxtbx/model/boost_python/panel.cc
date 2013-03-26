@@ -27,6 +27,20 @@ namespace dxtbx { namespace model { namespace boost_python {
     return os.str();
   }
 
+  struct PanelPickleSuite : boost::python::pickle_suite {
+    static
+    boost::python::tuple getinitargs(const Panel &obj) {
+      return boost::python::make_tuple(
+        obj.get_type(),
+        obj.get_fast_axis(),
+        obj.get_slow_axis(),
+        obj.get_origin(),
+        obj.get_pixel_size(),
+        obj.get_image_size(),
+        obj.get_trusted_range());
+    }
+  };
+
   void export_panel() 
   {
     // Export a flex array - should probably move somewhere else
@@ -40,7 +54,7 @@ namespace dxtbx { namespace model { namespace boost_python {
                  vec3 <double>,
                  vec2 <double>,
                  vec2 <std::size_t>,
-                vec2 <double> > ((                 
+                 vec2 <double> > ((                 
           arg("type"),
           arg("fast_axis"),
           arg("slow_axis"),
@@ -130,7 +144,8 @@ namespace dxtbx { namespace model { namespace boost_python {
         &Panel::pixel_to_millimeter)
       .def("__eq__", &Panel::operator==)
       .def("__ne__", &Panel::operator!=)
-      .def("__str__", &panel_to_string);
+      .def("__str__", &panel_to_string)
+      .def_pickle(PanelPickleSuite());
   }
 
 }}} // namespace dials::model::boost_python

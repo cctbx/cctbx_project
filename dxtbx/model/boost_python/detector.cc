@@ -49,6 +49,11 @@ namespace dxtbx { namespace model { namespace boost_python {
     // Register std::pair conversion for Detector coordinate type 
     boost_adaptbx::std_pair_conversions::to_and_from_tuple<int, vec2<double> >();
 
+    // Export a panel list type
+    scitbx::af::boost_python::flex_wrapper 
+      <Panel>::plain("PanelList")
+        .enable_pickling(); 
+
     // Export a Detector base class
     class_ <DetectorBase> ("DetectorBase")
       .def(init<const Panel&>((
@@ -171,7 +176,8 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("millimeter_to_pixel",
         &Detector::millimeter_to_pixel)
       .def("pixel_to_millimeter",
-        &Detector::pixel_to_millimeter);
+        &Detector::pixel_to_millimeter)
+      .enable_pickling();
   }
 
 }}} // namespace dials::model::boost_python

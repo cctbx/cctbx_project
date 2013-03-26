@@ -74,11 +74,13 @@ namespace dxtbx { namespace model {
      * @param rotation_axis The goniometer rotation axis
      */
     Goniometer(vec3 <double> rotation_axis)
-      : rotation_axis_(rotation_axis.normalize()),
-        fixed_rotation_(
+      : fixed_rotation_(
           1.0, 0.0, 0.0,
           0.0, 1.0, 0.0,
-          0.0, 0.0, 1.0) {}
+          0.0, 0.0, 1.0) {
+      DXTBX_ASSERT(rotation_axis.length() > 0);
+      rotation_axis_ = rotation_axis.normalize();      
+    }
 
     /**
      * Initialise the goniometer.
@@ -87,8 +89,10 @@ namespace dxtbx { namespace model {
      */
     Goniometer(vec3 <double> rotation_axis,
                mat3 <double> fixed_rotation)
-      : rotation_axis_(rotation_axis.normalize()),
-        fixed_rotation_(fixed_rotation) {}
+      : fixed_rotation_(fixed_rotation) {
+      DXTBX_ASSERT(rotation_axis.length() > 0);
+      rotation_axis_ = rotation_axis.normalize();           
+    }
 
     /** Virtual destructor */
     virtual ~Goniometer() {}
@@ -105,7 +109,8 @@ namespace dxtbx { namespace model {
 
     /** Set the rotation axis */
     void set_rotation_axis(vec3 <double> rotation_axis) {
-      rotation_axis_ = rotation_axis.normalize();
+      DXTBX_ASSERT(rotation_axis.length() > 0);
+      rotation_axis_ = rotation_axis.normalize();     
     }
 
     /** Set the fixed rotation matrix */

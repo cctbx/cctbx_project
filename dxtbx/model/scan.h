@@ -37,7 +37,7 @@ namespace dxtbx { namespace model {
       image_range_(0, 0),
       oscillation_(0.0, 0.0),
       exposure_time_(0.0),
-      num_images_(0.0) {}
+      num_images_(0) {}
 
     /**
      * Initialise the class
@@ -106,7 +106,7 @@ namespace dxtbx { namespace model {
     }
 
     /** Get the image epochs */
-    flex_double get_epochs() {
+    flex_double get_epochs() const {
       return epochs_;
     }
 
