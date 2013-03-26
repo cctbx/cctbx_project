@@ -1,6 +1,7 @@
 
 from __future__ import division
 import mmtbx.solvent.ensemble_ordered_solvent as ensemble_ordered_solvent
+import mmtbx.solvent.ensemble_ordered_solvent_m2 as ensemble_ordered_solvent_m2
 from mmtbx.refinement.ensemble_refinement import ensemble_utils
 from mmtbx.dynamics import ensemble_cd
 import mmtbx.tls.tools as tls_tools
@@ -41,7 +42,7 @@ ensemble_refinement.cartesian_dynamics.number_of_steps = 10
 ensemble_refinement.ensemble_ordered_solvent.b_iso_min = 0.0
 ensemble_refinement.ensemble_ordered_solvent.b_iso_max = 100.0
 ensemble_refinement.ensemble_ordered_solvent.find_peaks.map_next_to_model.max_model_peak_dist = 3.0
-ensemble_refinement.ensemble_ordered_solvent.find_peaks.map_next_to_model.use_hydrogens = True
+ensemble_refinement.ensemble_ordered_solvent.find_peaks.map_next_to_model.use_hydrogens = False
 """)
 
 # the extra fetch() at the end with the customized parameters gives us the
@@ -57,6 +58,14 @@ ensemble_refinement {
       .type = bool
       .help = Use protein atoms thermostat
   }
+  use_eos_m2 = False
+    .type = bool
+  update_sigmaa_rfree = 0.001
+    .type = float
+    .help = test function
+  ensemble_reduction = True
+    .type = bool
+    .help = 'Find miminium number of structures to reproduce simulation R-values'
   verbose = -1
     .type = int
   output_file_prefix = None
@@ -67,7 +76,7 @@ ensemble_refinement {
     .style = hidden
   random_seed = 2679941
     .type = int
-    .help = 'Ransom seed'
+    .help = 'Random seed'
   nproc = 1
     .type = int
     .short_caption = Number of processors
@@ -134,13 +143,16 @@ ensemble_refinement {
     .type = choice
     .short_caption = Refinement target
     .help = 'Choices for refinement target'
-  output_running_kinetic_energy_in_occupancy_column = False
-    .type = bool
-    .help = 'Output PDB file contains running kinetic energy in place of occupancy'
-  update_rescale_normalisation_factors_scale_kn = False
+  scale_wrt_n_calc_start = False
     .type = bool
     .help = 'Scale <Ncalc> to starting Ncalc'
     .short_caption = Scale <Ncalc> to starting Ncalc
+  show_wilson_plot = False
+    .type = bool
+    .help = 'Print Wilson plot during simulation'
+  output_running_kinetic_energy_in_occupancy_column = False
+    .type = bool
+    .help = 'Output PDB file contains running kinetic energy in place of occupancy'
   ordered_solvent_update = True
     .type = bool
     .help = 'Ordered water molecules automatically updated every nth macro cycle'
@@ -177,23 +189,26 @@ ensemble_refinement {
   ensemble_ordered_solvent
     .style = menu_item auto_align box
   {
-    tolerance = 1.0
+    diff_map_cutoff = 2.5
+      .type = float
+    e_map_cutoff_keep = 0.5
+      .type = float
+    e_map_cutoff_find = 0.5
+      .type = float
+    tolerance = 0.9
       .type = float
     ordered_solvent_map_to_model = True
       .type = bool
-    reset_all = False
-      .type = bool
-      .help = Removes all water atoms prior to re-picking using mFobs-DFmodel and 2mFobs-DFmodel
     include scope mmtbx.solvent.ordered_solvent.output_params_str
     primary_map_type = mFo-DFmodel
       .type=str
-    primary_map_cutoff = 1.0
+    primary_map_cutoff = 3.0
       .type=float
     secondary_map_type = 2mFo-DFmodel
       .type=str
-    secondary_map_cutoff_keep = 3.0
+    secondary_map_cutoff_keep = 1.0
       .type=float
-    secondary_map_cutoff_find = 3.0
+    secondary_map_cutoff_find = 1.0
       .type=float
     include scope mmtbx.solvent.ordered_solvent.h_bond_params_str
     include scope mmtbx.solvent.ordered_solvent.adp_occ_params_str
@@ -257,6 +272,7 @@ class ensemble_refinement_data(object):
                      system_temp                         = None,
                      xray_structures                     = [],
                      pdb_hierarchys                      = [],
+                     xray_structures_diff_map            = [],
                      seed                                = None,
                      velocities                          = None,
                      ke_protein_running                  = None,
@@ -267,7 +283,8 @@ class ensemble_refinement_data(object):
                      all_sel                             = None,
                      er_harmonic_restraints_info         = None,
                      er_harmonic_restraints_weight       = 0.001,
-                     er_harmonic_restraints_slack        = 1.0
+                     er_harmonic_restraints_slack        = 1.0,
+                     macro_cycle                         = None,
                      ):
     adopt_init_args(self, locals())
 
@@ -291,7 +308,6 @@ class run_ensemble_refinement(object):
                      run_number=None) :
     adopt_init_args(self, locals())
 #    self.params = params.extract().ensemble_refinement
-
 
     if self.params.target_name == 'ml':
       self.fix_scale = False
@@ -396,13 +412,20 @@ class run_ensemble_refinement(object):
 
     self.setup_bulk_solvent_and_scale()
 
+    # Wilson plot for input model
+    if self.params.show_wilson_plot:
+      self.wilson_plot(miller_data = self.fmodel_running.f_obs().data(), header = "Fobs input")
+      self.wilson_plot(miller_data = self.fmodel_running.f_calc().data(), header = "Fcalc input")
+      self.wilson_plot(miller_data = self.fmodel_running.f_model().data(), header = "Fmodel input")
+      self.wilson_plot(miller_data = self.fmodel_running.f_model_scaled_with_k1().data(), header = "Fmodel_k1")
+
     self.fmodel_running.info(
       free_reflections_per_bin = 100,
       max_number_of_bins       = 999).show_rfactors_targets_in_bins(out = self.log)
 
     if self.params.target_name == 'ml':
       #Must be called before reseting ADPs
-      if self.params.update_rescale_normalisation_factors_scale_kn:
+      if self.params.scale_wrt_n_calc_start:
         make_header("Calculate Ncalc and restrain to scale kn", out = self.log)
         self.fmodel_running.n_obs_n_calc(update_nobs_ncalc = True)
         n_obs  = self.fmodel_running.n_obs
@@ -412,12 +435,23 @@ class run_ensemble_refinement(object):
                                                     )
         self.scale_n1_target    = self.scale_n1_reference
         self.scale_n1_current   = self.scale_n1_reference
+        self.n_calc_reference = self.fmodel_running.n_calc.deep_copy()
+        self.n_mc_per_ncalc_update = max(1, int(self.n_mc_per_tx / 10) )
+        print >> self.log, "Number macro cycles per tx     : {0:5.0f}".format(self.n_mc_per_tx)
+        print >> self.log, "Number macro cycles per update : {0:5.0f}".format(self.n_mc_per_ncalc_update)
+        #
+        self.fixed_k1_from_start = self.fmodel_running.scale_k1()
+        self.target_k1 = self.fmodel_running.scale_k1()
         self.update_normalisation_factors()
       else:
         make_header("Calculate and fix scale of Ncalc", out = self.log)
         self.fmodel_running.n_obs_n_calc(update_nobs_ncalc = True)
         print >> self.log, "Fix Ncalc scale          : True"
         print >> self.log, "Sum current Ncalc        : {0:5.3f}".format(sum(self.fmodel_running.n_calc))
+
+      # XXX test
+      self.wilson_plot(miller_data = self.fmodel_running.n_obs, header = "Nobs reference")
+      self.wilson_plot(miller_data = self.fmodel_running.n_calc, header = "Ncalc reference")
       print >> self.log, "|"+"-"*77+"|\n"
 
     #Set ADP model
@@ -432,6 +466,13 @@ class run_ensemble_refinement(object):
       self.model.xray_structure.set_occupancies(
         value      = 1.0)
       self.model.show_occupancy_statistics(out = self.log)
+
+    # Wilson plot for start model
+    if self.params.show_wilson_plot:
+      self.wilson_plot(miller_data = self.fmodel_running.f_obs().data(), header = "Fobs start")
+      self.wilson_plot(miller_data = self.fmodel_running.f_calc().data(), header = "Fcalc start")
+      self.wilson_plot(miller_data = self.fmodel_running.f_model().data(), header = "Fmodel start")
+      self.wilson_plot(miller_data = self.fmodel_running.f_model_scaled_with_k1().data(), header = "Fmodel_k1 start")
 
     #Initiates running average SFs
     self.er_data.f_calc_running = self.fmodel_running.f_calc().data().deep_copy()
@@ -448,6 +489,7 @@ class run_ensemble_refinement(object):
 ############################## START Simulation ################################
     make_header("Start simulation", out = self.log)
     while self.macro_cycle <= self.total_macro_cycles:
+      self.er_data.macro_cycle = self.macro_cycle
       self.time = self.cdp.time_step * self.cdp.number_of_steps * self.macro_cycle
       #XXX Debug
       if False and self.macro_cycle % 10==0:
@@ -456,10 +498,12 @@ class run_ensemble_refinement(object):
         print >> self.log, "Geo grad  : ", self.er_data.geo_grad_rms
         print >> self.log, "Wx        : ", self.wxray
 
-      if self.fmodel_running.target_name == 'ml'\
-          and self.macro_cycle%int(self.n_mc_per_tx)==0\
-          and self.macro_cycle < self.equilibrium_macro_cycles:
-        self.update_normalisation_factors()
+      if self.fmodel_running.target_name == 'ml':
+        if self.macro_cycle < self.equilibrium_macro_cycles:
+          if self.params.scale_wrt_n_calc_start and self.macro_cycle%self.n_mc_per_ncalc_update == 0:
+            self.update_normalisation_factors()
+          elif self.macro_cycle%int(self.n_mc_per_tx)==0:
+            self.update_normalisation_factors()
 
       # Ordered Solvent Update
       if self.params.ordered_solvent_update \
@@ -469,6 +513,14 @@ class run_ensemble_refinement(object):
 
       xrs_previous = self.model.xray_structure.deep_copy_scatterers()
       assert self.fmodel_running.xray_structure is self.model.xray_structure
+
+      if self.cdp.verbose >= 1:
+        if self.macro_cycle == 1 or self.macro_cycle%100 == 0:
+          cdp_verbose = 1
+        else:
+          cdp_verbose = -1
+      else:
+        cdp_verbose = -1
 
       cd_manager = ensemble_cd.cartesian_dynamics(
         structure                   = self.model.xray_structure,
@@ -489,12 +541,12 @@ class run_ensemble_refinement(object):
         stop_cm_motion              = self.cmremove,
         update_f_calc               = False,
         er_data                     = self.er_data,
-        verbose                     = self.cdp.verbose,
+        verbose                     = cdp_verbose,
         log                         = self.log)
 
       self.reset_velocities = False
       self.cmremove = False
-
+      
       #Calc rolling average KE energy
       self.kinetic_energy_running_average()
       #Show KE stats
@@ -546,16 +598,15 @@ class run_ensemble_refinement(object):
       else:
         self.er_data.f_mask_running \
           = (self.a_prime * self.er_data.f_mask_running) + ((1-self.a_prime) * self.fmodel_running.f_masks()[0].data())
-      running_f_mask_update = self.copy_ma.array(data = self.er_data.f_mask_running)
-
+      self.running_f_mask_update = self.copy_ma.array(data = self.er_data.f_mask_running).deep_copy()
 
       #Update runnning average Fcalc and Fmask
       self.fmodel_running.update(f_calc = self.fc_running_ave,
-                                 f_mask = running_f_mask_update)
+                                 f_mask = self.running_f_mask_update)
 
       #Update total average Fcalc
       total_f_mask_update \
-          = self.copy_ma.array(data = self.er_data.f_mask_total / self.er_data.total_SF_cntr_mask)
+          = self.copy_ma.array(data = self.er_data.f_mask_total / self.er_data.total_SF_cntr_mask).deep_copy()
 
 
       if self.fmodel_total == None:
@@ -589,8 +640,15 @@ class run_ensemble_refinement(object):
       #ML params update
       if self.params.target_name == 'ml':
         if self.macro_cycle < self.equilibrium_macro_cycles:
-          if self.fmodel_running.r_free() < (self.best_r_free - 0.005):
+          if self.fmodel_running.r_free() < (self.best_r_free - self.params.update_sigmaa_rfree):
             self.update_sigmaa()
+      
+      # XXX wilson plot
+      if self.params.show_wilson_plot and self.macro_cycle%int(self.n_mc_per_tx) == 0:
+        self.wilson_plot(miller_data = self.fmodel_running.f_obs().data(), header = "Fobs running")
+        self.wilson_plot(miller_data = self.fmodel_running.f_calc().data(), header = "Fcalc running")
+        self.wilson_plot(miller_data = self.fmodel_running.f_model().data(), header = "Fmodel running")
+        self.wilson_plot(miller_data = self.fmodel_running.f_model_scaled_with_k1().data(), header = "Fmodel_k1 running")
 
       # Wxray coupled to temperature bath
       if self.params.wxray_coupled_tbath:
@@ -685,7 +743,8 @@ class run_ensemble_refinement(object):
                             optimize_mask = False)
 
     #Minimize number of ensemble models
-    self.ensemble_utils.ensemble_reduction()
+    if self.params.ensemble_reduction:
+      self.ensemble_utils.ensemble_reduction()
 
     #Optimise fmodel_total k, b_aniso, k_sol, b_sol
     self.fmodel_total.set_scale_switch = 0
@@ -702,11 +761,27 @@ class run_ensemble_refinement(object):
           self.fmodel_total.r_free(),
           self.fmodel_total.r_free() / self.fmodel_total.r_work()
           )
+    print >> self.log, "Final Twork = %6.4f Tfree = %6.4f Tf/Tw = %6.4f"\
+        %(self.fmodel_total.target_w(),
+          self.fmodel_total.target_t(),
+          self.fmodel_total.target_t() / self.fmodel_total.target_w()
+          )
     info = self.fmodel_total.info(free_reflections_per_bin = 100,
                                   max_number_of_bins       = 999
                                   )
     info.show_remark_3(out = self.log)
+    info.show_rfactors_targets_in_bins(out = self.log)
+    
+    # Final wilson plot
+    if self.params.show_wilson_plot:
+      self.wilson_plot(miller_data = self.fmodel_total.f_obs().data(), header = "Fobs final")
+      self.wilson_plot(miller_data = self.fmodel_total.f_calc().data(), header = "Fcalc final")
+      self.wilson_plot(miller_data = self.fmodel_total.f_model().data(), header = "Fmodel final")
+      self.wilson_plot(miller_data = self.fmodel_total.f_model_scaled_with_k1().data(), header = "Fmodel_k1 final")
+
     self.write_output_files(run_number=run_number)
+
+############################## END ER ##########################################
 
   def write_output_files (self, run_number=None) :
     #PDB output
@@ -720,7 +795,6 @@ class run_ensemble_refinement(object):
     else :
       self.write_ensemble_pdb(out = open(pdb_out, 'wb'))
     self.pdb_file = pdb_out
-
     # Map output
     self.mtz_file = write_mtz_file(
       fmodel_total=self.fmodel_total,
@@ -728,8 +802,6 @@ class run_ensemble_refinement(object):
       raw_flags=self.raw_flags,
       prefix=prefix,
       params=self.params)
-
-############################## END ER ##########################################
 
   def show_overall(self, message = "", fmodel_running = True):
     if fmodel_running:
@@ -784,39 +856,37 @@ class run_ensemble_refinement(object):
     return flex.sum(reference * target) / flex.sum(flex.pow2(target))
 
   def update_normalisation_factors(self):
-    if self.params.update_rescale_normalisation_factors_scale_kn:
-      # Restrain w.r.t. scale kn
-      make_header("Update Ncalc and restrain to scale kn", out = self.log)
-      # Target kn
-      self.scale_n1_target = self.scale_helper(target    = self.fmodel_running.n_calc,
-                                               reference = self.fmodel_running.n_obs
-                                               )
-      # Current kn
+    if self.params.scale_wrt_n_calc_start:
+      # Adaptive scaling
+      # Ncalc_start / Ncalc_current
+      make_header("Update Ncalc and restrain to Ncalc ref", out = self.log)
+      # Get N_calc current, compare with reference
       n_obs, n_calc =\
         self.fmodel_running.n_obs_n_calc(update_nobs_ncalc = False)
-      self.scale_n1_current = self.scale_helper(target    = n_calc,
-                                                reference = n_obs
-                                                )
-      print >> self.log, "Scale K1                     : {0:5.3f}".format(self.fmodel_running.scale_k1())
-      print >> self.log, "Kn reference                 : {0:5.3f}".format(self.scale_n1_reference)
-      print >> self.log, "Kn target                    : {0:5.3f}".format(self.scale_n1_target)
-      print >> self.log, "Kn current                   : {0:5.3f}".format(self.scale_n1_current)
-      # Scale current Ncalc
-      n_calc = n_calc * (self.scale_n1_current / self.scale_n1_target) * (self.scale_n1_current / self.scale_n1_reference)
-      self.fmodel_running.n_calc = n_calc
-      self.scale_n1_target = self.scale_helper(target    = self.fmodel_running.n_calc,
-                                               reference = self.fmodel_running.n_obs
-                                               )
-      print >> self.log, "Kn target updated            : {0:5.3f}".format(self.scale_n1_target)
+      ref_div_current = self.n_calc_reference / n_calc
+      
+      n_calc_coeff    = 1.0-math.exp(-self.n_mc_per_ncalc_update/self.n_mc_per_tx)
+      n_calc_scaled   = ref_div_current * n_calc_coeff
+      n_calc_update   = (self.fmodel_running.n_calc * (1.0-n_calc_coeff) ) + (self.fmodel_running.n_calc * ref_div_current * n_calc_coeff)
+
+      # Update with scaled array
+      self.fmodel_running.n_calc = n_calc_update
+
     else:
       # Normalise to reference Sum(Ncalc)
       make_header("Update and renormalise Ncalc array", out = self.log)
       eobs_norm_factor, ecalc_norm_factor =\
         self.fmodel_running.n_obs_n_calc(update_nobs_ncalc = False)
+      self.scale_n1_current = self.scale_helper(target    = ecalc_norm_factor,
+                                                reference = eobs_norm_factor
+                                                )
+      print >> self.log, "Kn current               : {0:5.3f}".format(self.scale_n1_current)
       ecalc_k = sum(self.fmodel_running.n_calc) / sum(ecalc_norm_factor)
+      ecalc_k_alt = flex.sum(self.fmodel_running.n_calc * ecalc_norm_factor) / flex.sum(flex.pow2(ecalc_norm_factor) )
       print >> self.log, "Sum current Ncalc        : {0:5.3f}".format(sum(self.fmodel_running.n_calc) )
       print >> self.log, "Sum updated Ncalc        : {0:5.3f}".format(sum(ecalc_norm_factor) )
       print >> self.log, "Rescaling factor         : {0:5.3f}".format(ecalc_k)
+      print >> self.log, "Rescaling factor alt     : {0:5.3f}".format(ecalc_k_alt)
       ecalc_norm_factor = ecalc_k * ecalc_norm_factor
       self.fmodel_running.n_calc = ecalc_norm_factor
     print >> self.log, "|"+"-"*77+"|\n"
@@ -937,7 +1007,6 @@ class run_ensemble_refinement(object):
     tls_selection_no_sol_hd_exclusions = self.tls_manager.tls_selections_no_sol_no_hd
     pre_fitted_mean = 999999.99
     #
-
     use_isotropic = False
     for group in self.tls_manager.tls_selections_no_sol_no_hd:
       if group.size() < 63:
@@ -1016,7 +1085,7 @@ class run_ensemble_refinement(object):
               atom_info = pdb_atoms[i_seq].fetch_labels()
               print >> self.log, atom_info.name, atom_info.resseq, atom_info.resname, atom_info.chain_id, " | ", i_seq, start_biso[i_seq], fitted_biso[i_seq]
 
-        delta_ref_fit = flex.abs(start_biso - fitted_biso)
+        delta_ref_fit = start_biso - fitted_biso
         hd_selection = model_copy.xray_structure.hd_selection()
         delta_ref_fit_no_h = delta_ref_fit.select(~hd_selection)
         delta_ref_fit_no_h_basic_stats = scitbx.math.basic_statistics(delta_ref_fit_no_h )
@@ -1030,6 +1099,7 @@ class run_ensemble_refinement(object):
         percentile_cutoff = sorted_delta_ref_fit_no_h[int(len(sorted_delta_ref_fit_no_h) * self.ptls)-1]
         if verbose:
           print >> self.log, 'Cutoff (<)                              : ', percentile_cutoff
+
         print >> self.log, 'Number of atoms (non HD)                : ', delta_ref_fit_no_h.size()
         delta_ref_fit_no_h_include = flex.bool(delta_ref_fit_no_h < percentile_cutoff)
         print >> self.log, 'Number of atoms (non HD) used in fit    : ', delta_ref_fit_no_h_include.count(True)
@@ -1042,7 +1112,7 @@ class run_ensemble_refinement(object):
           pre_fitted_mean = fitted_biso_no_hd.min_max_mean().mean
 
         # N.B. map on to full array including hydrogens for i_seqs
-        include_array = flex.bool(delta_ref_fit  < percentile_cutoff)
+        include_array = flex.bool(delta_ref_fit < percentile_cutoff)
         #
         include_i_seq = []
         assert delta_ref_fit.size() == model_copy.xray_structure.sites_cart().size()
@@ -1062,9 +1132,9 @@ class run_ensemble_refinement(object):
             print >> self.log, 'TLS group ', group+1, ' number atoms ', len(new_group)
           tls_selection_no_sol_hd_exclusions.append(new_group)
 
-    ###
     print >> self.log, '\nFinal non-solvent b-factor model'
     model_copy.xray_structure.convert_to_anisotropic()
+
     us_tls = mmtbx.tls.tools.u_cart_from_tls(
              sites_cart = model_copy.xray_structure.sites_cart(),
              selections = self.tls_manager.tls_selections_no_sol_no_hd,
@@ -1142,13 +1212,22 @@ class run_ensemble_refinement(object):
         = (self.a_prime * self.er_data.ke_protein_running) + ( (1-self.a_prime) * ke)
 
   def ordered_solvent_update(self):
-    ensemble_ordered_solvent_manager = ensemble_ordered_solvent.manager(
-      model             = self.model,
-      fmodel            = self.fmodel_running,
-      verbose           = self.params.verbose,
-      params            = self.params.ensemble_ordered_solvent,
-      velocities        = self.er_data.velocities,
-      log               = self.log)
+    if self.params.use_eos_m2:
+      ensemble_ordered_solvent_manager = ensemble_ordered_solvent_m2.manager(
+        model             = self.model,
+        fmodel            = self.fmodel_running,
+        verbose           = self.params.verbose,
+        params            = self.params.ensemble_ordered_solvent,
+        velocities        = self.er_data.velocities,
+        log               = self.log)
+    else: 
+      ensemble_ordered_solvent_manager = ensemble_ordered_solvent.manager(
+        model             = self.model,
+        fmodel            = self.fmodel_running,
+        verbose           = self.params.verbose,
+        params            = self.params.ensemble_ordered_solvent,
+        velocities        = self.er_data.velocities,
+        log               = self.log)
     self.model = ensemble_ordered_solvent_manager.model
     self.er_data.velocities = ensemble_ordered_solvent_manager.velocities
     self.fmodel_running.update_xray_structure(
@@ -1167,6 +1246,7 @@ class run_ensemble_refinement(object):
   def reset_totals(self):
     make_header("Reseting structure ensemble and total Fmodel", out = self.log)
     self.er_data.xray_structures = []
+    self.er_data.xray_structures_diff_map = []
     self.er_data.pdb_hierarchys = []
     self.er_data.ke_pdb = []
     self.er_data.f_calc_data_total = None
@@ -1192,12 +1272,14 @@ class run_ensemble_refinement(object):
     fcalc_block  = self.er_data.f_calc_data_total / self.er_data.total_SF_cntr
     fmask_block  = self.er_data.f_mask_total / self.er_data.total_SF_cntr_mask
     xrs_block    = self.er_data.xray_structures
+    xrs_dm_block = self.er_data.xray_structures_diff_map
     pdb_h_block  = self.er_data.pdb_hierarchys
     ke_pdb_block = self.er_data.ke_pdb
 
     block_info = (fcalc_block,
                   fmask_block,
                   xrs_block,
+                  xrs_dm_block,
                   pdb_h_block,
                   ke_pdb_block)
 
@@ -1287,14 +1369,16 @@ class run_ensemble_refinement(object):
               self.fmodel_total.fmodel_kbu().b_sol() )
     #Update self.er_data.xray_structures and self.er_data.pdb_hierarchys to correspond to optimum fmodel_total
     self.er_data.xray_structures = []
+    self.er_data.xray_structures_diff_map =[]
     self.er_data.pdb_hierarchys  = []
     self.er_data.ke_pdb          = []
     for x in xrange(len(self.fmodel_total_block_list)):
       if x >= best_r_work_block[0] and x < best_r_work_block[1]:
         print  >> self.log, "Block | Number of models in block : ", x+1, " | ", len(self.fmodel_total_block_list[x][2])
         self.er_data.xray_structures.extend(self.fmodel_total_block_list[x][2])
-        self.er_data.pdb_hierarchys.extend(self.fmodel_total_block_list[x][3])
-        self.er_data.ke_pdb.extend(self.fmodel_total_block_list[x][4])
+        self.er_data.xray_structures_diff_map.extend(self.fmodel_total_block_list[x][3])
+        self.er_data.pdb_hierarchys.extend(self.fmodel_total_block_list[x][4])
+        self.er_data.ke_pdb.extend(self.fmodel_total_block_list[x][5])
     assert len(self.er_data.xray_structures) == len(self.er_data.pdb_hierarchys)
     assert len(self.er_data.xray_structures) == len(self.er_data.ke_pdb)
     print >> self.log, "Number of models for PBD          : ", len(self.er_data.xray_structures)
@@ -1335,6 +1419,16 @@ class run_ensemble_refinement(object):
       print >> self.log, "Fmodel total bcart     : {0:14.2f} {1:5.2f} {2:5.2f} {3:5.2f} {4:5.2f} {5:5.2f}".format(*self.fmodel_total.fmodel_kbu().b_cart())
     print >> self.log, "|"+"-"*77+"|\n"
 
+  def write_diff_map_ensemble(self, out):
+    crystal_symmetry = self.er_data.xray_structures_diff_map[0].crystal_symmetry()
+    print >> out, pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry)
+    print >> out, pdb.format_scale_records(unit_cell = crystal_symmetry.unit_cell())
+    for n,xrs in enumerate(self.er_data.xray_structures_diff_map):
+      print >> out, "MODEL %8d"%(n+1)
+      print >> out, xrs.as_pdb_file()
+      print >> out, "ENDMDL"
+    print >> out, "END"
+
   def write_ensemble_pdb(self, out):
     crystal_symmetry = self.er_data.xray_structures[0].crystal_symmetry()
     pr = "REMARK   3"
@@ -1367,11 +1461,11 @@ class run_ensemble_refinement(object):
       print >> out,l, ",".join(authors[i:j])
     fmodel_info = self.fmodel_total.info()
     fmodel_info.show_remark_3(out = out)
-    model_stats = mmtbx.model_statistics.model(model     = self.model,
-                                               ignore_hd = False)
-    # set mode_stats.geometry to None as refers to final structure NOT ensemble
-    model_stats.geometry = None
-    model_stats.show(out = out, pdb_deposition =True)
+#    model_stats = mmtbx.model_statistics.model(model     = self.model,
+#                                               ignore_hd = False)
+#    # set mode_stats.geometry to None as refers to final structure NOT ensemble
+#    model_stats.geometry = None
+#    model_stats.show(out = out, pdb_deposition =True)
     # get mean geometry stats for ensemble
     self.final_geometry_pdb_string = self.ensemble_utils.ensemble_mean_geometry_stats(
         restraints_manager       = self.model.restraints_manager,
@@ -1458,6 +1552,14 @@ class run_ensemble_refinement(object):
         info.max,
         info.mean)
     print >> self.log, "|"+"-"*77+"|\n"
+
+  def wilson_plot(self, miller_data, header = ""):
+    make_header("Wilson Plot " + header, out = self.log)
+    self.copy_ma = self.copy_ma.array(data = flex.abs(miller_data))
+    reflections_per_bin = min(250, self.copy_ma.data().size())
+    self.copy_ma.setup_binner(reflections_per_bin = reflections_per_bin)
+    wilson_plot = self.copy_ma.wilson_plot(use_binning=True)
+    wilson_plot.show(f = self.log)
 
 ################################################################################
 
@@ -1548,7 +1650,6 @@ def write_mtz_file (fmodel_total, raw_data, raw_flags, prefix, params) :
     column_root_label="F-model"+xray_suffix)
   yet_another_dataset = another_dataset.mtz_crystal().add_dataset(
     name = "Fourier-map-coefficients", wavelength=1)
-  # FIXME this will fail if the data are anomalous!
   cmo = mmtbx.maps.compute_map_coefficients(
       fmodel = fmodel_total,
       params = params.electron_density_maps.map_coefficients)
@@ -1636,7 +1737,6 @@ def run(args, command_name = "phenix.ensemble_refinement", log=None,
 
   # Process PDB file
   cif_objects = inputs.cif_objects
-  # XXX shouldn't this accept multiple PDBs as input?
   pdb_file = inputs.pdb_file_names[0]
   pdb_ip = mmtbx.monomer_library.pdb_interpretation.master_params.extract()
   pdb_ip.clash_guard.nonbonded_distance_threshold = -1.0
@@ -1909,8 +2009,7 @@ class result (slots_getstate_setstate) :
       setattr(self, attr, getattr(best_trial, attr))
     self.directory = os.getcwd()
     self.validation = None
-    # FIXME crashes on some models
-    if (False) : #(validate) :
+    if (validate) :
       from mmtbx.command_line import validation_summary
       self.validation = validation_summary.run(
         args=[self.pdb_file],
@@ -1944,9 +2043,6 @@ class launcher (runtime_utils.target_with_save_result) :
 def validate_params (params) :
   if (params.ensemble_refinement.ptls is None) :
     raise Sorry("You must specify a fraction of atoms to use for TLS fitting.")
-  if (params.input.xray_data.labels is None) :
-    raise Sorry("No data selected for refinement.")
-  # FIXME
   elif (len(params.input.xray_data.labels[0].split(",")) > 2) :
     raise Sorry("Anomalous data are not allowed in this program.")
   return mmtbx.utils.validate_input_params(params)

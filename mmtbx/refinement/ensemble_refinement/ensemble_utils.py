@@ -326,19 +326,20 @@ class manager(object):
                                 optimize_mask = False)
       #Parse arrays for output PDB
       copy_ed_data_xray_structures = []
-      copy_pdb_hierarchys      = []
-      copy_ed_data_ke_pdb          = []
+      copy_pdb_hierarchys = []
+      copy_ed_data_ke_pdb = []
       for x in xrange(len(self.ensemble_obj.er_data.xray_structures)):
         if x%int(final_div) == 0:
           copy_ed_data_xray_structures.append(self.ensemble_obj.er_data.xray_structures[x])
           copy_pdb_hierarchys.append(self.ensemble_obj.er_data.pdb_hierarchys[x])
           copy_ed_data_ke_pdb.append(self.ensemble_obj.er_data.ke_pdb[x])
-      self.ensemble_obj.er_data.xray_structures        = copy_ed_data_xray_structures
-      self.ensemble_obj.er_data.pdb_hierarchys         = copy_pdb_hierarchys
-      self.ensemble_obj.er_data.ke_pdb                 = copy_ed_data_ke_pdb
+      self.ensemble_obj.er_data.xray_structures          = copy_ed_data_xray_structures
+      self.ensemble_obj.er_data.pdb_hierarchys           = copy_pdb_hierarchys
+      self.ensemble_obj.er_data.ke_pdb                   = copy_ed_data_ke_pdb
       print >> self.ensemble_obj.log, "Final pdb ensemble contains {0:3d} models".format(len(self.ensemble_obj.er_data.xray_structures))
       assert len(self.ensemble_obj.er_data.xray_structures) == len(self.ensemble_obj.er_data.pdb_hierarchys)
       assert len(self.ensemble_obj.er_data.xray_structures) == len(self.ensemble_obj.er_data.ke_pdb)
+      
       print >> self.ensemble_obj.log, "|"+"-"*77+"|\n"
 
   def ensemble_mean_geometry_stats(self,
