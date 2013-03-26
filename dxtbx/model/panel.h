@@ -72,16 +72,17 @@ namespace dxtbx { namespace model {
         vec3 <double> origin,
         vec2 <double> pixel_size,
         vec2 <std::size_t> image_size,
-        vec2 <double> trusted_range)
-      : type_(type),
-        d_(create_d_matrix(
-          fast_axis.normalize(),
-          slow_axis.normalize(),
-          origin)),
-        D_(d_.inverse()),
-        pixel_size_(pixel_size),
-        image_size_(image_size),
-        trusted_range_(trusted_range) {}
+        vec2 <double> trusted_range) {
+      DXTBX_ASSERT(fast_axis.length() > 0);
+      DXTBX_ASSERT(slow_axis.length() > 0);    
+      type_ = type;
+      d_ = create_d_matrix(fast_axis.normalize(), 
+        slow_axis.normalize(), origin);
+      D_ = d_.inverse();
+      pixel_size_ = pixel_size;
+      image_size_ = image_size;
+      trusted_range_ = trusted_range;
+    }
 
     /** Virtual destructor */
     virtual ~Panel() {}
@@ -174,6 +175,8 @@ namespace dxtbx { namespace model {
     /** Set the origin, fast axis and slow axis */
     void set_frame(vec3<double> fast_axis, vec3<double> slow_axis,
         vec3<double> origin) {
+      DXTBX_ASSERT(fast_axis.length() > 0);
+      DXTBX_ASSERT(slow_axis.length() > 0);    
       d_ = create_d_matrix(
         fast_axis.normalize(),
         slow_axis.normalize(),

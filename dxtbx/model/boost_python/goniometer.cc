@@ -27,6 +27,15 @@ namespace dxtbx { namespace model { namespace boost_python {
     return ss.str();
   }
 
+  struct GoniometerPickleSuite : boost::python::pickle_suite {
+    static
+    boost::python::tuple getinitargs(const Goniometer &obj) {
+      return boost::python::make_tuple(
+        obj.get_rotation_axis(),
+        obj.get_fixed_rotation());
+    }
+  };
+
   void export_goniometer() 
   {
     class_ <GoniometerBase> ("GoniometerBase");
@@ -48,7 +57,8 @@ namespace dxtbx { namespace model { namespace boost_python {
         &Goniometer::set_fixed_rotation)
       .def("__eq__", &Goniometer::operator==)
       .def("__ne__", &Goniometer::operator!=)
-      .def("__str__", &goniometer_to_string);
+      .def("__str__", &goniometer_to_string)
+      .def_pickle(GoniometerPickleSuite());
   }
 
 }}} // namespace dxtbx::model::boost_python

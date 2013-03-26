@@ -28,6 +28,17 @@ namespace dxtbx { namespace model { namespace boost_python {
     return ss.str();
   }
 
+  struct ScanPickleSuite : boost::python::pickle_suite {
+    static
+    boost::python::tuple getinitargs(const ScanData &obj) {
+      return boost::python::make_tuple(
+        obj.get_image_range(),
+        obj.get_oscillation(),
+        obj.get_exposure_time(),
+        obj.get_epochs());
+    }
+  };
+
   static ScanData* make_scan(vec2 <int> image_range, vec2 <double> oscillation,
       double exposure_time, bool deg) {
     ScanData *scan = NULL;
@@ -233,7 +244,8 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("__eq__", &ScanData::operator==)
       .def("__nq__", &ScanData::operator!=)
       .def("__len__", &ScanData::get_num_images)
-      .def("__str__", &scan_to_string);
+      .def("__str__", &scan_to_string)
+      .def_pickle(ScanPickleSuite());
   }
 
 }}} // namespace = dxtbx::model::boost_python

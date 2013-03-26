@@ -16,6 +16,7 @@
 #include <scitbx/vec3.h>
 #include <scitbx/array_family/simple_io.h>
 #include <scitbx/array_family/simple_tiny_io.h>
+#include <dxtbx/error.h>
 #include "model_helpers.h"
 
 namespace dxtbx { namespace model {
@@ -37,9 +38,11 @@ namespace dxtbx { namespace model {
      * Initialise all the beam parameters.
      * @param direction The beam direction vector.
      */
-    Beam(vec3 <double> s0)
-      : wavelength_(1.0 / s0.length()),
-        direction_(s0.normalize()) {}
+    Beam(vec3 <double> s0) {
+      DXTBX_ASSERT(s0.length() > 0);
+      wavelength_ = 1.0 / s0.length();
+      direction_ = s0.normalize();    
+    }
 
     /**
      * Initialise all the beam parameters. Normalize the direction vector
@@ -48,8 +51,10 @@ namespace dxtbx { namespace model {
      * @param direction The beam direction vector.
      */
     Beam(vec3 <double> direction, double wavelength)
-      : wavelength_(wavelength),
-        direction_(direction.normalize()) {}
+      : wavelength_(wavelength) {      
+      DXTBX_ASSERT(direction.length() > 0);
+      direction_ = direction.normalize();    
+    }
 
     /** Virtual destructor */
     virtual ~Beam() {}
@@ -66,6 +71,7 @@ namespace dxtbx { namespace model {
 
     /** Set the direction. */
     void set_direction(vec3 <double> direction) {
+      DXTBX_ASSERT(direction.length() > 0);
       direction_ = direction.normalize();
     }
 
@@ -76,11 +82,13 @@ namespace dxtbx { namespace model {
 
     /** Get the wave vector in units of inverse angstroms */
     vec3 <double> get_s0() const {
+      DXTBX_ASSERT(wavelength_ != 0.0);
       return direction_ * 1.0 / wavelength_;
     }
 
     /** Set the direction and wavelength from s0 */
     void set_s0(vec3<double> s0) {
+      DXTBX_ASSERT(s0.length() > 0);
       direction_ = s0.normalize();
       wavelength_ = 1.0 / s0.length();
     }
@@ -101,6 +109,7 @@ namespace dxtbx { namespace model {
     friend std::ostream& operator<<(std::ostream &os, const Beam &b);
 
   private:
+    
     double wavelength_;
     vec3 <double> direction_;
   };

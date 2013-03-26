@@ -25,6 +25,15 @@ namespace dxtbx { namespace model { namespace boost_python {
     return ss.str();
   }
 
+  struct BeamPickleSuite : boost::python::pickle_suite {
+    static
+    boost::python::tuple getinitargs(const Beam &obj) {
+      return boost::python::make_tuple(
+        obj.get_direction(),
+        obj.get_wavelength());
+    }
+  };
+
   void export_beam()
   {
     // Export BeamBase
@@ -52,7 +61,8 @@ namespace dxtbx { namespace model { namespace boost_python {
         &Beam::set_s0)
       .def("__eq__", &Beam::operator==)
       .def("__ne__", &Beam::operator!=)
-      .def("__str__", &beam_to_string);
+      .def("__str__", &beam_to_string)
+      .def_pickle(BeamPickleSuite());
   }
 
 }}} // namespace = dxtbx::model::boost_python
