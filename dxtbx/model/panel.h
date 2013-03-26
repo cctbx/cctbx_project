@@ -74,9 +74,9 @@ namespace dxtbx { namespace model {
         vec2 <std::size_t> image_size,
         vec2 <double> trusted_range) {
       DXTBX_ASSERT(fast_axis.length() > 0);
-      DXTBX_ASSERT(slow_axis.length() > 0);    
+      DXTBX_ASSERT(slow_axis.length() > 0);
       type_ = type;
-      d_ = create_d_matrix(fast_axis.normalize(), 
+      d_ = create_d_matrix(fast_axis.normalize(),
         slow_axis.normalize(), origin);
       D_ = d_.inverse();
       pixel_size_ = pixel_size;
@@ -176,7 +176,7 @@ namespace dxtbx { namespace model {
     void set_frame(vec3<double> fast_axis, vec3<double> slow_axis,
         vec3<double> origin) {
       DXTBX_ASSERT(fast_axis.length() > 0);
-      DXTBX_ASSERT(slow_axis.length() > 0);    
+      DXTBX_ASSERT(slow_axis.length() > 0);
       d_ = create_d_matrix(
         fast_axis.normalize(),
         slow_axis.normalize(),

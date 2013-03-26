@@ -79,7 +79,7 @@ namespace dxtbx { namespace model {
           0.0, 1.0, 0.0,
           0.0, 0.0, 1.0) {
       DXTBX_ASSERT(rotation_axis.length() > 0);
-      rotation_axis_ = rotation_axis.normalize();      
+      rotation_axis_ = rotation_axis.normalize();
     }
 
     /**
@@ -91,7 +91,7 @@ namespace dxtbx { namespace model {
                mat3 <double> fixed_rotation)
       : fixed_rotation_(fixed_rotation) {
       DXTBX_ASSERT(rotation_axis.length() > 0);
-      rotation_axis_ = rotation_axis.normalize();           
+      rotation_axis_ = rotation_axis.normalize();
     }
 
     /** Virtual destructor */
@@ -110,7 +110,7 @@ namespace dxtbx { namespace model {
     /** Set the rotation axis */
     void set_rotation_axis(vec3 <double> rotation_axis) {
       DXTBX_ASSERT(rotation_axis.length() > 0);
-      rotation_axis_ = rotation_axis.normalize();     
+      rotation_axis_ = rotation_axis.normalize();
     }
 
     /** Set the fixed rotation matrix */

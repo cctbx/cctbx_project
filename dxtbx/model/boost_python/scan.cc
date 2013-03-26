@@ -22,6 +22,13 @@ namespace dxtbx { namespace model { namespace boost_python {
   using scitbx::deg_as_rad;
   using scitbx::rad_as_deg;
 
+  static
+  vec2<double> rad_as_deg(vec2<double> angles) {
+    angles[0] = rad_as_deg(angles[0]);
+    angles[1] = rad_as_deg(angles[1]);
+    return angles;
+  }
+
   std::string scan_to_string(const ScanData &scan) {
     std::stringstream ss;
     ss << scan;
@@ -33,7 +40,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     boost::python::tuple getinitargs(const ScanData &obj) {
       return boost::python::make_tuple(
         obj.get_image_range(),
-        obj.get_oscillation(),
+        rad_as_deg(obj.get_oscillation()),
         obj.get_exposure_time(),
         obj.get_epochs());
     }
@@ -70,13 +77,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     return scan;
   }
   
-  static
-  vec2<double> rad_as_deg(vec2<double> angles) {
-    angles[0] = rad_as_deg(angles[0]);
-    angles[1] = rad_as_deg(angles[1]);
-    return angles;
-  }
-  
+ 
   static
   vec2<double> get_oscillation_range(const ScanData &scan, bool deg) {
     vec2<double> range = scan.get_oscillation_range();

@@ -41,7 +41,7 @@ namespace dxtbx { namespace model {
     Beam(vec3 <double> s0) {
       DXTBX_ASSERT(s0.length() > 0);
       wavelength_ = 1.0 / s0.length();
-      direction_ = s0.normalize();    
+      direction_ = s0.normalize();
     }
 
     /**
@@ -51,9 +51,9 @@ namespace dxtbx { namespace model {
      * @param direction The beam direction vector.
      */
     Beam(vec3 <double> direction, double wavelength)
-      : wavelength_(wavelength) {      
+      : wavelength_(wavelength) {
       DXTBX_ASSERT(direction.length() > 0);
-      direction_ = direction.normalize();    
+      direction_ = direction.normalize();
     }
 
     /** Virtual destructor */
@@ -109,7 +109,7 @@ namespace dxtbx { namespace model {
     friend std::ostream& operator<<(std::ostream &os, const Beam &b);
 
   private:
-    
+
     double wavelength_;
     vec3 <double> direction_;
   };
