@@ -7,6 +7,7 @@ from cctbx import geometry_restraints
 from cctbx import xray
 from cctbx.array_family import flex
 import scitbx.lbfgs
+import scitbx.math
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 import random
@@ -106,7 +107,7 @@ class cartesian_dynamics(object):
                reset_velocities                   = True,
                stop_cm_motion                     = False,
                update_f_calc                      = True,
-               er_data                = None,
+               er_data                            = None,
                log                                = None,
                stop_at_diff                       = None,
                verbose                            = -1):
@@ -120,8 +121,6 @@ class cartesian_dynamics(object):
                                   site       = True)
     self.structure_start = self.structure.deep_copy_scatterers()
     self.k_boltz = boltzmann_constant_akma
-    self.current_temperature = 0.0
-    self.ekin = 0.0
     self.ekcm = 0.0
     self.timfac = akma_time_as_pico_seconds
     self.weights = self.structure.atomic_weights()
@@ -172,51 +171,27 @@ class cartesian_dynamics(object):
 
   def __call__(self):
     self.center_of_mass_info()
-    kt = dynamics.kinetic_energy_and_temperature(self.vxyz,self.weights)
-    self.current_temperature = kt.temperature
-    self.ekin = kt.kinetic_energy
-    if(self.verbose >= 1):
-      self.print_dynamics_stat(text="restrained dynamics start")
-    if(self.reset_velocities):
+    if self.reset_velocities:
        self.set_velocities()
        self.center_of_mass_info()
-       kt = dynamics.kinetic_energy_and_temperature(self.vxyz,self.weights)
-       self.current_temperature = kt.temperature
-       self.ekin = kt.kinetic_energy
-       if(self.verbose >= 1):
-         self.print_dynamics_stat(text="set velocities")
 
-    if(self.stop_cm_motion):
+    self.non_solvent_vxyz    = self.vxyz.select(~self.er_data.solvent_sel)
+    self.non_solvent_weights = self.weights.select(~self.er_data.solvent_sel)
+    self.solvent_vxyz        = self.vxyz.select(self.er_data.solvent_sel)
+    self.solvent_weights     = self.weights.select(self.er_data.solvent_sel)
+        #
+    self.non_solvent_kt      = dynamics.kinetic_energy_and_temperature(self.non_solvent_vxyz, self.non_solvent_weights)
+    self.solvent_kt          = dynamics.kinetic_energy_and_temperature(self.solvent_vxyz, self.solvent_weights)
+    self.kt                  = dynamics.kinetic_energy_and_temperature(self.vxyz,self.weights)
+
+    if self.stop_cm_motion:
       self.stop_global_motion()
-    self.center_of_mass_info()
 
-    if(self.er_data is None):
-      kt = dynamics.kinetic_energy_and_temperature(self.vxyz,self.weights)
-      self.current_temperature = kt.temperature
-      self.ekin = kt.kinetic_energy
-      if(self.verbose >= 1):
-        self.print_dynamics_stat(text="center of mass motion removed")
-      self.velocity_rescaling()
-
-    self.center_of_mass_info()
-    kt = dynamics.kinetic_energy_and_temperature(self.vxyz,self.weights)
-    self.current_temperature = kt.temperature
-    self.ekin = kt.kinetic_energy
-    if(self.verbose >= 1):
-      self.print_dynamics_stat(text="velocities rescaled")
-
-    if(self.verbose >= 1):
-      print >> self.log, "integration starts"
+    self.velocity_rescaling()
 
     self.verlet_leapfrog_integration()
-
-    self.center_of_mass_info()
-    kt = dynamics.kinetic_energy_and_temperature(self.vxyz,self.weights)
-
-    self.current_temperature = kt.temperature
-    self.ekin = kt.kinetic_energy
-    if(self.verbose >= 1):
-      self.print_dynamics_stat(text="after final integration step")
+    if self.verbose >= 1.0:
+      self.print_detailed_dynamics_stats()
 
   def set_velocities(self):
     self.vxyz.clear()
@@ -230,7 +205,7 @@ class cartesian_dynamics(object):
       seed = seed))
 
   def accelerations(self):
-    stereochemistry_residuals = self.restraints_manager.energies_sites(
+    self.stereochemistry_residuals = self.restraints_manager.energies_sites(
       sites_cart=self.structure.sites_cart(),
       compute_gradients=True)
 
@@ -242,9 +217,9 @@ class cartesian_dynamics(object):
                                 ta_harmonic_restraint_info = self.er_data.er_harmonic_restraints_info,
                                 weight = self.er_data.er_harmonic_restraints_weight,
                                 slack = self.er_data.er_harmonic_restraints_slack)
-        assert stereochemistry_residuals.gradients.size() == harmonic_grads.size()
-        stereochemistry_residuals.gradients += harmonic_grads
-    result = stereochemistry_residuals.gradients
+        assert self.stereochemistry_residuals.gradients.size() == harmonic_grads.size()
+        self.stereochemistry_residuals.gradients += harmonic_grads
+    result = self.stereochemistry_residuals.gradients
 
     d_max = None
     if(self.xray_structure_last_updated is not None and self.shift_update > 0):
@@ -252,6 +227,7 @@ class cartesian_dynamics(object):
         flex.sqrt(self.structure.difference_vectors_cart(
            self.xray_structure_last_updated).dot())
       d_max = flex.max(array_of_distances_between_each_atom)
+
     if(self.fmodel is not None):
       if(d_max is not None):
         if(d_max > self.shift_update):
@@ -260,49 +236,38 @@ class cartesian_dynamics(object):
       else:
         self.xray_gradient = self.xray_grads()
       result = self.xray_gradient * self.xray_target_weight \
-             + stereochemistry_residuals.gradients * self.chem_target_weight
+             + self.stereochemistry_residuals.gradients * self.chem_target_weight
+
     factor = 1.0
     if (self.chem_target_weight is not None):
       factor *= self.chem_target_weight
-    if (stereochemistry_residuals.normalization_factor is not None):
-      factor *= stereochemistry_residuals.normalization_factor
+    if (self.stereochemistry_residuals.normalization_factor is not None):
+      factor *= self.stereochemistry_residuals.normalization_factor
+
 
     if (factor != 1.0):
       result *= 1.0 / factor
+
+    #Store RMS non-solvent atom gradients for Xray and Geo
     if self.er_data is not None:
-      gg = stereochemistry_residuals.gradients*(self.chem_target_weight/factor)
-      xg = self.xray_gradient*(self.xray_target_weight/factor)
-      #Select for protein component only
-      gg_pro = gg.select( ~self.er_data.solvent_sel )
-      xg_pro = xg.select( ~self.er_data.solvent_sel )
+      self.wc = self.chem_target_weight / factor
+      self.wx = self.xray_target_weight / factor
+      self.gg = self.stereochemistry_residuals.gradients * self.wc
+      self.xg = self.xray_gradient * self.wx
+      gg_pro = self.gg.select( ~self.er_data.solvent_sel )
+      xg_pro = self.xg.select( ~self.er_data.solvent_sel )
       self.er_data.geo_grad_rms  += (flex.mean_sq(gg_pro.as_double())**0.5) / self.n_steps
       self.er_data.xray_grad_rms += (flex.mean_sq(xg_pro.as_double())**0.5) / self.n_steps
-
-    if (self.show_gradient_rms and self.xray_gradient is not None):
-      gg = stereochemistry_residuals.gradients*(self.chem_target_weight/factor)
-      xg = self.xray_gradient*(self.xray_target_weight/factor)
-      print "CARDY_GRADIENT_RMS_GEO_XRAY:", \
-        flex.mean_sq(gg.as_double())**0.5, \
-        flex.mean_sq(xg.as_double())**0.5
 
     return result
 
   def xray_grads(self):
-    if(self.er_data is None):
-      self.fmodel_copy.update_xray_structure(
-        xray_structure           = self.structure,
-        update_f_calc            = True,
-        update_f_mask            = False)
-
-    elif(self.er_data is not None):
-      self.fmodel_copy.update_xray_structure(
-        xray_structure           = self.structure,
-        update_f_calc            = False,
-        update_f_mask            = False)
-
+    self.fmodel_copy.update_xray_structure(
+      xray_structure           = self.structure,
+      update_f_calc            = self.update_f_calc,
+      update_f_mask            = False)
     sf = self.target_functor(
         compute_gradients=True).gradients_wrt_atomic_parameters(site=True)
-
     return flex.vec3_double(sf.packed())
 
   def center_of_mass_info(self):
@@ -330,21 +295,19 @@ class cartesian_dynamics(object):
 
   def velocity_rescaling(self):
     if self.protein_thermostat and self.er_data is not None:
-      if (self.current_temperature <= 1.e-10):
-        factor_non_solvent = 1.0
+      if (self.kt.temperature <= 1.e-10):
+        self.v_factor = 1.0
       else:
-        solvent_sel         = self.er_data.solvent_sel
-        non_solvent_vxyz    = self.vxyz.select(~solvent_sel)
-        non_solvent_weights = self.weights.select(~solvent_sel)
-        non_solvent_kt      = dynamics.kinetic_energy_and_temperature(non_solvent_vxyz, non_solvent_weights)
-        factor_non_solvent  = math.sqrt(self.temperature/non_solvent_kt.temperature)
-      self.vxyz           = self.vxyz * factor_non_solvent
+        self.v_factor = math.sqrt(self.temperature/self.non_solvent_kt.temperature)
     else:
-      if (self.current_temperature <= 1.e-10):
-        factor = 1.0
+      if (self.kt.temperature <= 1.e-10):
+        self.v_factor = 1.0
       else:
-        factor = math.sqrt(self.temperature/self.current_temperature)
-      self.vxyz = self.vxyz * factor
+        self.v_factor = math.sqrt(self.temperature/self.kt.temperature)
+
+    self.vyz_vscale_remove = self.vxyz * (1.0 - self.v_factor)
+    self.kt_vscale_remove = dynamics.kinetic_energy_and_temperature(self.vyz_vscale_remove, self.weights)
+    self.vxyz = self.vxyz * self.v_factor
 
   def interleaved_minimization(self):
     geo_manager = self.restraints_manager.geometry
@@ -363,87 +326,136 @@ class cartesian_dynamics(object):
 
   def verlet_leapfrog_integration(self):
     # start verlet_leapfrog_integration loop
-    for cycle in range(1,self.n_steps+1,1):
+    for self.cycle in range(1,self.n_steps+1,1):
       if(self.stop_at_diff is not None):
         diff = flex.mean(self.structure_start.distances(other = self.structure))
         if(diff >= self.stop_at_diff): return
       accelerations = self.accelerations()
-      print_flag = 0
-      switch = math.modf(float(cycle)/self.n_print)[0]
-      if((switch==0 or cycle==1 or cycle==self.n_steps) and self.verbose >= 1):
-        print_flag = 1
-      if(print_flag == 1):
-        text = "integration step number = %5d"%cycle
-        self.center_of_mass_info()
-        kt = dynamics.kinetic_energy_and_temperature(self.vxyz, self.weights)
-        self.current_temperature = kt.temperature
-        self.ekin = kt.kinetic_energy
-        self.print_dynamics_stat(text)
       if(self.stop_cm_motion):
         self.center_of_mass_info()
         self.stop_global_motion()
+      
       # calculate velocities at t+dt/2
       dynamics.vxyz_at_t_plus_dt_over_2(
         self.vxyz, self.weights, accelerations, self.tstep)
-      # calculate the temperature and kinetic energy from new velocities
-      kt = dynamics.kinetic_energy_and_temperature(self.vxyz, self.weights)
-      self.current_temperature = kt.temperature
-      self.ekin = kt.kinetic_energy
 
+      # calculate the temperature and kinetic energy from new velocities
+      self.non_solvent_vxyz    = self.vxyz.select(~self.er_data.solvent_sel)
+      self.non_solvent_weights = self.weights.select(~self.er_data.solvent_sel)
+      self.solvent_vxyz        = self.vxyz.select(self.er_data.solvent_sel)
+      self.solvent_weights     = self.weights.select(self.er_data.solvent_sel)
+      #
+      self.kt                  = dynamics.kinetic_energy_and_temperature(self.vxyz, self.weights)
+      self.non_solvent_kt      = dynamics.kinetic_energy_and_temperature(self.non_solvent_vxyz, self.non_solvent_weights)
+      self.solvent_kt          = dynamics.kinetic_energy_and_temperature(self.solvent_vxyz, self.solvent_weights)
       #Store sys, solvent, nonsolvet temperatures
       if self.er_data is not None:
-        solvent_sel         = self.er_data.solvent_sel
-        solvent_vxyz        = self.vxyz.select(solvent_sel)
-        solvent_weights     = self.weights.select(solvent_sel)
-        solvent_kt          = dynamics.kinetic_energy_and_temperature(solvent_vxyz, solvent_weights)
-        non_solvent_vxyz    = self.vxyz.select(~solvent_sel)
-        non_solvent_weights = self.weights.select(~solvent_sel)
-        non_solvent_kt      = dynamics.kinetic_energy_and_temperature(non_solvent_vxyz, non_solvent_weights)
-        if cycle == 1:
-          self.er_data.non_solvent_temp = 0
-          self.er_data.solvent_temp = 0
-          self.er_data.system_temp  = 0
-        self.er_data.non_solvent_temp += (non_solvent_kt.temperature / self.n_steps)
-        self.er_data.solvent_temp += (solvent_kt.temperature /self.n_steps)
-        self.er_data.system_temp  += (kt.temperature /self.n_steps)
-
+        self.store_temperatures()
       self.velocity_rescaling()
-      if(print_flag == 1 and 0):
-        self.center_of_mass_info()
-        self.print_dynamics_stat(text)
+      if self.verbose >= 1.0:
+        print >> self.log, 'Scale factor : ', self.v_factor
+        self.vxyz_length_sq = flex.sqrt(self.vxyz.dot())
+        print >> self.log, 'vxyz_length_sq pst scale'
+        self.vxyz_length_sq.min_max_mean().show(out=self.log)
       # do the verlet_leapfrog_integration to get coordinates at t+dt
       self.structure.set_sites_cart(
         sites_cart=self.structure.sites_cart() + self.vxyz * self.tstep)
       self.structure.apply_symmetry_sites()
       if (self.interleaved_minimization_flag):
         self.interleaved_minimization()
-      kt = dynamics.kinetic_energy_and_temperature(self.vxyz, self.weights)
-      self.current_temperature = kt.temperature
-      self.ekin = kt.kinetic_energy
-      if(print_flag == 1 and 0):
-        self.center_of_mass_info()
-        self.print_dynamics_stat(text)
+      self.kt = dynamics.kinetic_energy_and_temperature(self.vxyz, self.weights)
       if(self.er_data is None):
         self.accelerations()
       else:
         self.er_data.velocities = self.vxyz
 
-  def print_dynamics_stat(self, text):
-    timfac = akma_time_as_pico_seconds
-    line_len = len("| "+text+"|")
-    fill_len = 80 - line_len-1
-    print >> self.log, "| "+text+"-"*(fill_len)+"|"
-    print >> self.log, "| kin.energy = %10.3f            " \
-      "| information about center of free masses|"%(self.ekin)
-    print >> self.log, "| start temperature = %7.3f        " \
-      "| position=%8.3f%8.3f%8.3f      |"% (
-      self.temperature,self.rcm[0],self.rcm[1],self.rcm[2])
-    print >> self.log, "| curr. temperature = %7.3f        " \
-      "| velocity=%8.4f%8.4f%8.4f      |"% (self.current_temperature,
-      self.vcm[0][0]/timfac,self.vcm[0][1]/timfac,self.vcm[0][2]/timfac)
-    print >> self.log, "| number of integration steps = %4d " \
-      "| ang.mom.=%10.2f%10.2f%10.2f|"% (self.n_steps,
-      self.acm[0][0]/timfac,self.acm[0][1]/timfac,self.acm[0][2]/timfac)
-    print >> self.log, "| time step = %6.4f                 | kin.ener.=%8.3f                     |"% (
-      self.time_step,self.ekcm)
-    print >> self.log, "|"+"-"*77+"|"
+  def store_temperatures(self):
+    if self.cycle == 1:
+      self.er_data.non_solvent_temp = 0
+      self.er_data.solvent_temp = 0
+      self.er_data.system_temp  = 0
+    self.er_data.non_solvent_temp += (self.non_solvent_kt.temperature / self.n_steps)
+    self.er_data.solvent_temp += (self.solvent_kt.temperature /self.n_steps)
+    self.er_data.system_temp  += (self.kt.temperature /self.n_steps)
+
+    ### Extra dynamics stats
+  def print_detailed_dynamics_stats(self):
+    # Overall data
+    print >> self.log, '\n'
+    print >> self.log, '         MC |    Temperature (K)   |   Vscale   | Etot = Ekin + Echem + wxExray'
+    print >> self.log, '            |  (sys)  (pro)  (sol) |  Fac  T(K) |   Ekin  Echem     wx  Exray'
+    print >> self.log, '  ~E~ {0:5d} | {1:6.1f} {2:6.1f} {3:6.1f} | {4:4.1f} {5:5.1f} | {6:6.1f} {7:6.1f} {8:6.1f} {9:6.1f}'.format(
+        self.er_data.macro_cycle,
+        self.kt.temperature,
+        self.non_solvent_kt.temperature,
+        self.solvent_kt.temperature,
+        self.v_factor,
+        self.kt_vscale_remove.temperature,
+        self.kt.kinetic_energy,
+        self.stereochemistry_residuals.residual_sum,
+        self.xray_target_weight,
+        self.target_functor(compute_gradients=False).target_work() * self.fmodel_copy.f_calc_w().data().size(),
+        )
+    print >> self.log, '\n'
+
+    # Atomistic histrograms
+    # - Kinetic energy
+    # - Xray grads
+    # - Geo grads
+    self.atomic_ke = 0.5 * self.weights * self.vxyz.dot()
+    self.atomic_wxray_g = self.xray_gradient * self.xray_target_weight
+    self.atomic_wchem_g = self.stereochemistry_residuals.gradients * self.chem_target_weight
+    
+    def show_histogram(data,
+                       n_slots = 50,
+                       out     = None,
+                       prefix  = ""):
+      if (out is None): out = sys.stdout
+      print >> out, '\n' + prefix
+
+      # Stats
+      data_basic_stats = scitbx.math.basic_statistics(data)
+      print >> out, '\n  Number  : %7.4f ' % (data_basic_stats.n)
+      print >> out, '  Min     : %7.4f ' % (data_basic_stats.min)
+      print >> out, '  Max     : %7.4f ' % (data_basic_stats.max)
+      print >> out, '  Mean    : %7.4f ' % (data_basic_stats.mean)
+      print >> out, '  Stdev   : %7.4f ' % (data_basic_stats.biased_standard_deviation)
+      print >> out, '  Skew    : %7.4f ' % (data_basic_stats.skew)
+      print >> out, '  Sum     : %7.4f ' % (data_basic_stats.sum)
+
+      # Histo
+      histogram = flex.histogram(data    = data,
+                                 n_slots = n_slots)
+      low_cutoff = histogram.data_min()
+      for i,n in enumerate(histogram.slots()):
+        high_cutoff = histogram.data_min() + histogram.slot_width() * (i+1)
+        print >> out, "%7.3f - %7.3f: %d" % (low_cutoff, high_cutoff, n)
+        low_cutoff = high_cutoff
+      out.flush()
+      return histogram
+
+    # Select
+    for selection_type in ['System', 'Non_solvent', 'Solvent']:
+      print >> self.log, '\n\n'
+      if selection_type == 'System':
+        selection = self.er_data.all_sel
+      elif selection_type == 'Non_solvent':
+        selection = ~self.er_data.solvent_sel
+      elif selection_type == 'Solvent':
+        selection = self.er_data.solvent_sel
+      else:
+        break
+      # Data
+      for histogram_type in ['Kinetic_energy', 'Xray_grad', 'Chem_grad']:
+        if histogram_type == 'Kinetic_energy':
+          data = self.atomic_ke.select(selection)
+        elif histogram_type == 'Xray_grad':
+          data = flex.sqrt(self.atomic_wxray_g.select(selection).dot())
+        elif histogram_type == 'Chem_grad':
+          data = flex.sqrt(self.atomic_wchem_g.select(selection).dot())
+        else:
+          break
+        # Histrogram
+        show_histogram(data    = data,
+                       out     = self.log,
+                       prefix  = str(self.er_data.macro_cycle) + '_' + selection_type + '_' + histogram_type)
