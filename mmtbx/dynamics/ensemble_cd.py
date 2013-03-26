@@ -11,7 +11,6 @@ import scitbx.math
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 import random
-import time
 import math
 import sys
 import iotbx.phil
@@ -334,7 +333,7 @@ class cartesian_dynamics(object):
       if(self.stop_cm_motion):
         self.center_of_mass_info()
         self.stop_global_motion()
-      
+
       # calculate velocities at t+dt/2
       dynamics.vxyz_at_t_plus_dt_over_2(
         self.vxyz, self.weights, accelerations, self.tstep)
@@ -405,7 +404,7 @@ class cartesian_dynamics(object):
     self.atomic_ke = 0.5 * self.weights * self.vxyz.dot()
     self.atomic_wxray_g = self.xray_gradient * self.xray_target_weight
     self.atomic_wchem_g = self.stereochemistry_residuals.gradients * self.chem_target_weight
-    
+
     def show_histogram(data,
                        n_slots = 50,
                        out     = None,
