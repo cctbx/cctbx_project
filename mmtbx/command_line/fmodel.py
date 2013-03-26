@@ -170,6 +170,10 @@ twin_law = None
 twin_fraction = None
   .type = float
   .help = Twin fraction, ignored if twin_law is not specified
+wavelength = None
+  .type = float
+  .input_size = 80
+  .help = Wavelength, sets all atoms to anomalous
 output
   .short_caption = Reflection output
   .expert_level=0
@@ -337,6 +341,15 @@ def run(args, log = sys.stdout):
       pdb_hierarchy              = pdb_hierarchy,
       xray_structure             = xray_structure,
       anomalous_scatterer_groups = params.anomalous_scatterers.group)
+  elif (params.wavelength is not None) :
+    if (params.scattering_table == "neutron") :
+      raise Sorry("Wavelength parameter not supported when the neutron "+
+        "scattering table is used.")
+    print >> log, "Setting inelastic form factors for wavelength = %g" % \
+      params.wavelength
+    xray_structure.set_inelastic_form_factors(
+      photon=params.wavelength,
+      table="sasaki")
   #
   validate_params_command_line(params)
   #
