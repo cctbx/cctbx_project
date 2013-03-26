@@ -757,8 +757,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
           occ = all_occ[0]
       if (new_occ is None) :
         new_occ = self.GetNewOccupancy(occ)
-      print new_occ
-      assert (0 <= occ <= 1.0)
+      assert (0 <= new_occ <= 1.0)
       def apply_occ (atom) : atom.occ = new_occ
       self._ApplyToAtoms(item, pdb_object, apply_occ)
 
