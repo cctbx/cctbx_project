@@ -339,7 +339,7 @@ class manager(object):
       print >> self.ensemble_obj.log, "Final pdb ensemble contains {0:3d} models".format(len(self.ensemble_obj.er_data.xray_structures))
       assert len(self.ensemble_obj.er_data.xray_structures) == len(self.ensemble_obj.er_data.pdb_hierarchys)
       assert len(self.ensemble_obj.er_data.xray_structures) == len(self.ensemble_obj.er_data.ke_pdb)
-      
+
       print >> self.ensemble_obj.log, "|"+"-"*77+"|\n"
 
   def ensemble_mean_geometry_stats(self,
