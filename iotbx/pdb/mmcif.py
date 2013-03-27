@@ -487,7 +487,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
       return software_name
     if software_classification is not None:
       i = flex.first_index(software_classification, 'refinement')
-      if i > 0: return software_name[i]
+      if i >= 0: return software_name[i]
 
   def extract_tls_params(self, hierarchy):
     return extract_tls_from_cif_block(self.cif_block, hierarchy)
