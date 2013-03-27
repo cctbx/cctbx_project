@@ -377,6 +377,38 @@ THVFRLKKWIQKVIDQFGE
   H
   3  NGDFEEIPEE(TYS)LQ                     NGDFEEIPEEYLQ                         I\
 """)
+  #
+  cb = model.block()
+  cm = model.cif()
+  cm["a"] = cb
+  cb["_a"] = '1 "a" 2'
+  cb["_b"] = "1 'b' 3"
+  cb["_c"] = "O1'"
+  cb["_d"] = 'O2"'
+  cb["_e"] = """1 'a' "b" 3"""
+  s = StringIO()
+  print >> s, cm
+  s.seek(0)
+  assert not show_diff("\n".join(l.rstrip() for l in s.readlines()), """\
+data_a
+_a                                '1 "a" 2'
+_b                                "1 'b' 3"
+_c                                O1'
+_d                                O2"
+_e
+;
+1 'a' "b" 3
+;
+
+""")
+  # verify that what we wrote out above is valid CIF and we can read it back in
+  cm2 = iotbx.cif.reader(input_string=s.getvalue()).model()
+  cb2 = cm2["a"]
+  assert cb2["_a"] == cb["_a"]
+  assert cb2["_b"] == cb["_b"]
+  assert cb2["_c"] == cb["_c"]
+  assert cb2["_d"] == cb["_d"]
+  assert cb2["_e"].strip() == cb["_e"]
 
 
 if __name__ == '__main__':
