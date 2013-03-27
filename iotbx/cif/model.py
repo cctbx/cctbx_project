@@ -644,5 +644,10 @@ def format_value(value_string):
     else:
       for ws in string.whitespace:
         if ws in value_string:
+          if ("'" + ws) in value_string:
+            if ('"' + ws) in value_string:
+              # string can't be quoted, use semi-colon text field instead
+              return "\n;\n%s\n;\n" %value_string
+            return '"%s"' %value_string
           return "'%s'" %value_string
   return value_string
