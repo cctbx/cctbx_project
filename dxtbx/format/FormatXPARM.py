@@ -33,14 +33,10 @@ class FormatXPARM(Format):
         '''Open the image file as a cbf file handle, and keep this somewhere
         safe.'''
 
-        # Open and read the xparm file
-        xparm_handle = xparm.reader()
-        xparm_handle.read_file(self._image_file)
-
         # Convert the parameters to cbf conventions
-        self._convert_to_cbf_convention(xparm_handle)
+        self._convert_to_cbf_convention(self._image_file)
 
-    def _convert_to_cbf_convention(self, xparm_handle):
+    def _convert_to_cbf_convention(self, xparm_filename):
         '''Get the parameters from the XPARM file and convert them to CBF
         conventions.
 
@@ -48,63 +44,28 @@ class FormatXPARM(Format):
             xparm_handle The handle to the xparm file.
 
         '''
-        from dxtbx.model.detector_helpers import compute_frame_rotation
+        from rstbx.cftbx.coordinate_frame_converter import \
+            coordinate_frame_converter
         from scitbx import matrix
-        import math
 
-        # fetch out the interesting things that we need
-        detector_distance = xparm_handle.detector_distance
-        rotation_axis = matrix.col(xparm_handle.rotation_axis)
-        beam_vector = matrix.col(xparm_handle.beam_vector)
-        detector_normal = matrix.col(xparm_handle.detector_normal)
-        image_size = xparm_handle.detector_size
-        pixel_size = xparm_handle.pixel_size
-        pixel_origin = xparm_handle.detector_origin
-        detector_centre = (pixel_size[0] * pixel_origin[0],
-                           pixel_size[1] * pixel_origin[1])
-        detector_fast = matrix.col(xparm_handle.detector_x_axis)
-        detector_slow = matrix.col(xparm_handle.detector_y_axis)
-
-        # compute the detector origin
-        origin_xds = detector_distance * detector_normal
-        origin = origin_xds - (detector_centre[0] * detector_fast +
-                               detector_centre[1] * detector_slow)
-
-        # then convert directions to unit vectors
-        rotation_axis = rotation_axis / math.sqrt(rotation_axis.dot())
-        beam_vector = beam_vector / math.sqrt(beam_vector.dot())
-
-        # want to now calculate a rotation which will align the axis with
-        # the (1, 0, 0) vector, and the component of the beam vector
-        # perpendicular to this with (0, 0, 1) - for convenience then start
-        # by defining our current reference frame
-        x = rotation_axis
-        z = beam_vector - (beam_vector.dot(rotation_axis) * rotation_axis)
-        z = z / math.sqrt(z.dot())
-        y = z.cross(x)
-
-        # and the target reference frame
-        _x = matrix.col([1, 0, 0])
-        _y = matrix.col([0, 1, 0])
-        _z = matrix.col([0, 0, 1])
-
-        # now compute the rotations which need to be applied to move from
-        _m = compute_frame_rotation((x, y, z), (_x, _y, _z))
-
-        # rotate all of the parameters from the XDS to CBF coordinate frame
-        self._detector_origin = _m * origin
-        self._rotation_axis   = _m * rotation_axis
-        self._beam_vector     = _m * beam_vector
-        self._fast_axis       = _m * detector_fast
-        self._slow_axis       = _m * detector_slow
-
-        # Copy other parameters to class members
-        self._image_size = image_size
-        self._pixel_size = pixel_size
-        self._wavelength = xparm_handle.wavelength
-        self._starting_angle = xparm_handle.starting_angle
+        # Read some quantities directly from the XPARM.XDS file
+        xparm_handle = xparm.reader()
+        xparm_handle.read_file(xparm_filename)
+        self._image_size        = xparm_handle.detector_size
+        self._pixel_size        = xparm_handle.pixel_size
+        self._starting_angle    = xparm_handle.starting_angle
         self._oscillation_range = xparm_handle.oscillation_range
-        self._starting_frame = xparm_handle.starting_frame
+        self._starting_frame    = xparm_handle.starting_frame
+
+        # Create a coordinate frame converter and extract other quantities
+        cfc = coordinate_frame_converter(xparm_filename)
+        self._detector_origin = cfc.get('detector_origin')
+        self._rotation_axis   = cfc.get('rotation_axis')
+        self._fast_axis       = cfc.get('detector_fast')
+        self._slow_axis       = cfc.get('detector_slow')
+        self._wavelength      = cfc.get('wavelength')
+        sample_vector         = cfc.get('sample_to_source')
+        self._beam_vector     = tuple(-matrix.col(sample_vector))
 
     def _goniometer(self):
         '''Return a working goniometer instance.'''
