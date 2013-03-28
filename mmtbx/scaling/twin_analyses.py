@@ -1064,9 +1064,9 @@ class h_test(object):
 
 class l_test(object):
   def __init__(self, miller_array,
-               parity_h=2.0,
-               parity_k=2.0,
-               parity_l=2.0,
+               parity_h=2,
+               parity_k=2,
+               parity_l=2,
                out=None,verbose=0):
     if out is None:
       out=sys.stdout
@@ -1081,12 +1081,12 @@ class l_test(object):
 
     l_stats = scaling.l_test( acentric_data.indices(),
                               acentric_data.data()/\
-                               acentric_data.epsilons().data().as_double(),
+                              acentric_data.epsilons().data().as_double(),
                               acentric_data.space_group(),
                               acentric_data.anomalous_flag(),
-                              parity_h,
-                              parity_k,
-                              parity_l,
+                              int(parity_h), # FIXME
+                              int(parity_k), # FIXME
+                              int(parity_l), # FIXME
                               8);
 
     self.mean_l = l_stats.mean_l()
