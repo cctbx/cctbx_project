@@ -300,7 +300,8 @@ class run(object):
       ofn = pfn+"_minimized.pdb" if ind==0 else pfn[:ind]+"_minimized.pdb"
     else: ofn = self.params.output_file_name_prefix+".pdb"
     print >> self.log, "  output file name:", ofn
-    self.pdb_hierarchy.write_pdb_file(file_name = ofn)
+    self.pdb_hierarchy.write_pdb_file(file_name = ofn, crystal_symmetry =
+      self.xray_structure.crystal_symmetry())
     self.output_file_name = os.path.abspath(ofn)
 
 class launcher (runtime_utils.target_with_save_result) :

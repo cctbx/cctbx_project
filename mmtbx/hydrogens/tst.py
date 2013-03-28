@@ -2,6 +2,7 @@ from __future__ import division
 import iotbx.pdb
 from mmtbx import hydrogens
 from mmtbx import monomer_library
+import mmtbx.restraints
 from cctbx.array_family import flex
 import time
 
@@ -86,6 +87,219 @@ ATOM     19 DG22 THR H   8       2.937   5.904   7.048  1.00 10.00           D
 ATOM     20 DG23 THR H   8       3.670   7.255   7.403  1.00 10.00           D
 """
 
+m6_str = """
+CRYST1    4.870   17.281   23.045  90.00  90.00  90.00 P 21 21 21
+ATOM      1  N   PHE A   1       2.305   1.496  17.812  1.00  1.22           N
+ATOM      2  CA  PHE A   1       1.374   2.648  17.647  1.00  1.07           C
+ATOM      3  C   PHE A   1       2.067   3.806  16.938  1.00  1.09           C
+ATOM      4  O   PHE A   1       3.294   3.909  16.951  1.00  1.16           O
+ATOM      5  CB  PHE A   1       0.850   3.108  19.009  1.00  1.41           C
+ATOM      6  CG  PHE A   1       1.930   3.539  19.961  1.00  1.13           C
+ATOM      7  CD1 PHE A   1       2.323   4.866  20.029  1.00  1.42           C
+ATOM      8  CD2 PHE A   1       2.552   2.618  20.787  1.00  1.48           C
+ATOM      9  CE1 PHE A   1       3.316   5.265  20.903  1.00  1.70           C
+ATOM     10  CE2 PHE A   1       3.546   3.011  21.663  1.00  1.44           C
+ATOM     11  CZ  PHE A   1       3.928   4.336  21.721  1.00  1.76           C
+ATOM     12  H1  PHE A   1       2.118   1.070  18.571  1.00  1.40           H
+ATOM     13  H2  PHE A   1       2.210   0.937  17.126  1.00  1.40           H
+ATOM     14  H3  PHE A   1       3.143   1.794  17.838  1.00  1.40           H
+ATOM     15  HA  PHE A   1       0.616   2.372  17.108  1.00  1.25           H
+ATOM     16  HB2 PHE A   1       0.254   3.862  18.877  1.00  1.49           H
+ATOM     17  HB3 PHE A   1       0.367   2.375  19.422  1.00  1.49           H
+ATOM     18  HD1 PHE A   1       1.914   5.495  19.480  1.00  1.59           H
+ATOM     19  HD2 PHE A   1       2.298   1.724  20.752  1.00  1.70           H
+ATOM     20  HE1 PHE A   1       3.572   6.158  20.941  1.00  1.89           H
+ATOM     21  HE2 PHE A   1       3.956   2.384  22.213  1.00  1.75           H
+ATOM     22  HZ  PHE A   1       4.597   4.603  22.310  1.00  1.98           H
+ATOM     23  N   PHE A   2      -0.321   5.485  15.641  1.00  1.12           N
+ATOM     24  CA  PHE A   2       0.601   6.613  15.605  1.00  1.21           C
+ATOM     25  C   PHE A   2      -0.083   7.886  16.091  1.00  1.63           C
+ATOM     26  O   PHE A   2      -1.310   7.980  16.107  1.00  1.87           O
+ATOM     27  CB  PHE A   2       1.137   6.817  14.186  1.00  1.37           C
+ATOM     28  CG  PHE A   2       0.066   7.076  13.165  1.00  1.31           C
+ATOM     29  CD1 PHE A   2      -0.313   8.371  12.851  1.00  1.43           C
+ATOM     30  CD2 PHE A   2      -0.561   6.025  12.517  1.00  1.58           C
+ATOM     31  CE1 PHE A   2      -1.297   8.612  11.912  1.00  1.85           C
+ATOM     32  CE2 PHE A   2      -1.546   6.259  11.577  1.00  1.91           C
+ATOM     33  CZ  PHE A   2      -1.914   7.555  11.274  1.00  1.83           C
+ATOM     34  OXT PHE A   2       0.576   8.850  16.480  1.00  1.73           O
+ATOM     35  H   PHE A   2       0.025   4.742  15.380  1.00  1.22           H
+ATOM     36  HA  PHE A   2       1.353   6.430  16.190  1.00  1.44           H
+ATOM     37  HB2 PHE A   2       1.738   7.579  14.186  1.00  1.52           H
+ATOM     38  HB3 PHE A   2       1.618   6.019  13.916  1.00  1.52           H
+ATOM     39  HD1 PHE A   2       0.100   9.087  13.278  1.00  1.62           H
+ATOM     40  HD2 PHE A   2      -0.316   5.150  12.718  1.00  1.67           H
+ATOM     41  HE1 PHE A   2      -1.544   9.485  11.709  1.00  2.06           H
+ATOM     42  HE2 PHE A   2      -1.960   5.545  11.149  1.00  2.14           H
+ATOM     43  HZ  PHE A   2      -2.577   7.715  10.642  1.00  2.02           H
+"""
+
+m7_str = """
+CRYST1    4.870   17.281   23.045  90.00  90.00  90.00 P 21 21 21
+ATOM     44  CH3 MOH B   1       5.441   7.889  19.813  1.00  2.23           C
+ATOM     45  OH  MOH B   1       4.618   8.936  19.345  1.00  1.81           O
+ATOM     46 HH31 MOH B   1       5.160   7.047  19.406  1.00  2.30           H
+ATOM     47 HH32 MOH B   1       6.369   8.073  19.573  1.00  2.30           H
+ATOM     48 HH33 MOH B   1       5.363   7.822  20.784  1.00  2.30           H
+ATOM     49  HOH MOH B   1       4.367   9.444  20.029  1.00  2.16           H
+"""
+
+m8_str = """
+CRYST1   59.186   87.431   46.405  90.00  90.00  90.00 P 21 21 2
+ATOM   2815  N   ASP B  25      16.862 -16.381 -24.728  1.00 13.97           N
+ATOM   2816  CA  ASP B  25      16.773 -16.667 -23.301  1.00 15.05           C
+ATOM   2817  DA  ASP B  25      16.336 -15.824 -22.767  1.00 14.51           D
+ATOM   2818  CB  ASP B  25      15.862 -17.877 -23.090  1.00 15.17           C
+ATOM   2819  DB2 ASP B  25      14.945 -17.731 -23.662  1.00 14.33           D
+ATOM   2820  CG  ASP B  25      15.482 -18.081 -21.642  1.00 14.41           C
+ATOM   2821  OD2 ASP B  25      16.126 -17.476 -20.764  1.00 14.08           O
+ATOM   2822  OD1 ASP B  25      14.530 -18.848 -21.383  1.00 15.02           O
+ATOM   2823  C   ASP B  25      18.154 -16.938 -22.706  1.00 14.49           C
+ATOM   2824  O   ASP B  25      18.682 -18.044 -22.810  1.00 14.50           O
+ATOM   2828  HN BASP B  25      17.321 -17.116 -25.265  1.00 15.02           H
+ATOM   2829  HB1BASP B  25      16.379 -18.773 -23.430  1.00 14.52           H
+ATOM   2830  DD2BASP B  25      15.766 -17.709 -19.919  1.00 14.05           D
+END
+"""
+
+m9_str = """
+CRYST1   26.468   33.148   34.654  90.00  90.00  90.00 P 1
+ATOM     99  N   THR C  12       9.083  21.642  26.327  1.00 20.97           N
+ATOM    100  CA  THR C  12       9.725  22.948  26.407  1.00 21.31           C
+ATOM    101  CB  THR C  12      11.241  22.810  26.634  1.00 20.73           C
+ATOM    102  OG1 THR C  12      11.823  22.052  25.565  1.00 23.32           O
+ATOM    103  CG2 THR C  12      11.523  22.114  27.957  1.00 21.87           C
+ATOM    104  C   THR C  12       9.495  23.750  25.125  1.00 20.19           C
+ATOM    105  O   THR C  12      10.403  23.870  24.304  1.00 21.54           O
+ATOM      0  HA  THR C  12       9.361  23.440  27.158  1.00 21.31           H
+ATOM      0  HB  THR C  12      11.645  23.691  26.660  1.00 20.73           H
+ATOM      0  HG1 THR C  12      11.728  22.460  24.837  1.00 23.32           H
+ATOM      0 HG21 THR C  12      12.480  22.046  28.098  1.00 21.87           H
+ATOM      0 HG22 THR C  12      11.132  22.619  28.687  1.00 21.87           H
+ATOM      0 HG23 THR C  12      11.141  21.222  27.951  1.00 21.87           H
+TER
+END
+"""
+
+m10_str = """
+CRYST1   26.468   33.148   34.654  90.00  90.00  90.00 P 1
+ATOM    106  N   ILE C  13       8.293  24.298  24.942  1.00 20.53           N
+ATOM    107  CA  ILE C  13       7.196  24.182  25.901  1.00 21.71           C
+ATOM    108  CB  ILE C  13       7.277  25.278  26.988  1.00 21.47           C
+ATOM    109  CG1 ILE C  13       6.236  25.036  28.086  1.00 20.24           C
+ATOM    110  CG2 ILE C  13       7.086  26.658  26.373  1.00 20.55           C
+ATOM    111  CD1 ILE C  13       6.447  23.754  28.867  1.00 20.37           C
+ATOM    112  C   ILE C  13       5.861  24.302  25.175  1.00 21.07           C
+ATOM    113  O   ILE C  13       5.000  23.429  25.290  1.00 22.22           O
+ATOM      0  H   ILE C  13       8.085  24.758  24.246  1.00 20.53           H
+ATOM      0  HA  ILE C  13       7.213  23.314  26.329  1.00 21.71           H
+ATOM      0  HB  ILE C  13       8.158  25.248  27.392  1.00 21.47           H
+ATOM      0 HG12 ILE C  13       6.276  25.772  28.716  1.00 20.24           H
+ATOM      0 HG13 ILE C  13       5.354  24.998  27.686  1.00 20.24           H
+ATOM      0 HG21 ILE C  13       7.378  27.329  27.009  1.00 20.55           H
+ATOM      0 HG22 ILE C  13       7.615  26.720  25.562  1.00 20.55           H
+ATOM      0 HG23 ILE C  13       6.147  26.787  26.165  1.00 20.55           H
+ATOM      0 HD11 ILE C  13       5.881  23.770  29.654  1.00 20.37           H
+ATOM      0 HD12 ILE C  13       6.211  22.998  28.306  1.00 20.37           H
+ATOM      0 HD13 ILE C  13       7.378  23.695  29.131  1.00 20.37           H
+TER
+END
+"""
+
+m11_str = """
+CRYST1   26.468   33.148   34.654  90.00  90.00  90.00 P 1
+ATOM     99  N   THR C  12       9.083  21.642  26.327  1.00 20.97           N
+ATOM    100  CA  THR C  12       9.725  22.948  26.407  1.00 21.31           C
+ATOM    101  CB  THR C  12      11.241  22.810  26.634  1.00 20.73           C
+ATOM    102  OG1 THR C  12      11.823  22.052  25.565  1.00 23.32           O
+ATOM    103  CG2 THR C  12      11.523  22.114  27.957  1.00 21.87           C
+ATOM    104  C   THR C  12       9.495  23.750  25.125  1.00 20.19           C
+ATOM    105  O   THR C  12      10.403  23.870  24.304  1.00 21.54           O
+ATOM      0  HA  THR C  12       9.361  23.440  27.158  1.00 21.31           H
+ATOM      0  HB  THR C  12      11.645  23.691  26.660  1.00 20.73           H
+ATOM      0  HG1 THR C  12      11.728  22.460  24.837  1.00 23.32           H
+ATOM      0 HG21 THR C  12      12.480  22.046  28.098  1.00 21.87           H
+ATOM      0 HG22 THR C  12      11.132  22.619  28.687  1.00 21.87           H
+ATOM      0 HG23 THR C  12      11.141  21.222  27.951  1.00 21.87           H
+ATOM    106  N   ILE C  13       8.293  24.298  24.942  1.00 20.53           N
+ATOM    107  CA  ILE C  13       7.196  24.182  25.901  1.00 21.71           C
+ATOM    108  CB  ILE C  13       7.277  25.278  26.988  1.00 21.47           C
+ATOM    109  CG1 ILE C  13       6.236  25.036  28.086  1.00 20.24           C
+ATOM    110  CG2 ILE C  13       7.086  26.658  26.373  1.00 20.55           C
+ATOM    111  CD1 ILE C  13       6.447  23.754  28.867  1.00 20.37           C
+ATOM    112  C   ILE C  13       5.861  24.302  25.175  1.00 21.07           C
+ATOM    113  O   ILE C  13       5.000  23.429  25.290  1.00 22.22           O
+ATOM      0  H   ILE C  13       8.085  24.758  24.246  1.00 20.53           H
+ATOM      0  HA  ILE C  13       7.213  23.314  26.329  1.00 21.71           H
+ATOM      0  HB  ILE C  13       8.158  25.248  27.392  1.00 21.47           H
+ATOM      0 HG12 ILE C  13       6.276  25.772  28.716  1.00 20.24           H
+ATOM      0 HG13 ILE C  13       5.354  24.998  27.686  1.00 20.24           H
+ATOM      0 HG21 ILE C  13       7.378  27.329  27.009  1.00 20.55           H
+ATOM      0 HG22 ILE C  13       7.615  26.720  25.562  1.00 20.55           H
+ATOM      0 HG23 ILE C  13       6.147  26.787  26.165  1.00 20.55           H
+ATOM      0 HD11 ILE C  13       5.881  23.770  29.654  1.00 20.37           H
+ATOM      0 HD12 ILE C  13       6.211  22.998  28.306  1.00 20.37           H
+ATOM      0 HD13 ILE C  13       7.378  23.695  29.131  1.00 20.37           H
+TER
+END
+"""
+
+m12_str = """\
+CRYST1    9.756    9.585    9.568  90.00  90.00  90.00 P 1
+ATOM     10  HB3 SER H   7       2.966   4.730   3.887  1.00 10.00           H
+ATOM      1  N   SER H   7       4.184   4.600   6.227  1.00 10.00           N
+ATOM      6  OG  SER H   7       4.412   6.045   3.745  1.00 10.00           O
+ATOM      3  C   SER H   7       6.049   3.863   4.811  1.00 10.00           C
+ATOM      5  CB  SER H   7       3.931   4.713   3.791  1.00 10.00           C
+ATOM      8  HA  SER H   7       4.176   3.049   4.965  1.00 10.00           H
+ATOM      4  O   SER H   7       6.790   4.650   5.400  1.00 10.00           O
+ATOM      9  HB2 SER H   7       4.173   4.263   2.966  1.00 10.00           H
+ATOM      2  CA  SER H   7       4.535   3.950   4.970  1.00 10.00           C
+ATOM     11  HG  SER H   7       4.200   6.456   4.459  1.00 10.00           H
+"""
+
+m13_str = """
+CRYST1   19.756   19.585   19.568  90.00  90.00  90.00 P 1
+ATOM      8  HG ASER H   7       3.729   4.456   3.369  0.50 10.00           H
+ATOM      4  O   SER H   7       6.620   2.744   4.947  1.00 10.00           O
+ATOM      5  CB  SER H   7       5.067   3.972   2.131  1.00 10.00           C
+ATOM      6  HA  SER H   7       6.473   3.250   2.923  1.00 10.00           H
+ATOM      2  CA  SER H   7       6.281   4.192   3.051  1.00 10.00           C
+ATOM      7  OG ASER H   7       3.884   3.774   2.885  0.50 10.00           O
+ATOM      1  N   SER H   7       7.561   4.409   2.370  1.00 10.00           N
+ATOM      9  OG BSER H   7       5.247   2.836   1.302  0.50 10.00           O
+ATOM     10  HG BSER H   7       5.189   2.125   1.764  0.50 10.00           H
+ATOM      3  C   SER H   7       6.112   3.781   4.520  1.00 10.00           C
+ATOM     19 DG22 THR H   8       2.937   5.904   7.048  1.00 10.00           D
+ATOM     11  N   THR H   8       5.397   4.602   5.281  1.00 10.00           N
+ATOM     16  OG1 THR H   8       4.686   5.308   8.869  1.00 10.00           O
+ATOM     13  C   THR H   8       3.963   3.404   6.887  1.00 10.00           C
+ATOM     15  CB  THR H   8       4.938   5.627   7.495  1.00 10.00           C
+ATOM     17  CG2 THR H   8       3.757   6.410   6.935  1.00 10.00           C
+ATOM     14  O   THR H   8       4.113   2.257   7.310  1.00 10.00           O
+ATOM     18 DG21 THR H   8       3.891   6.587   5.991  1.00 10.00           D
+ATOM     12  CA  THR H   8       5.161   4.328   6.694  1.00 10.00           C
+ATOM     20 DG23 THR H   8       3.670   7.255   7.403  1.00 10.00           D
+"""
+
+m14_str = """
+CRYST1   13.051   13.521   12.472  90.00  90.00  90.00 P 1
+HETATM  875  C1  IPA A 117       5.585   5.769   5.650  1.00 56.50           C
+HETATM  876  C2  IPA A 117       6.580   6.709   6.074  1.00 57.10           C
+HETATM  877  C3  IPA A 117       5.961   7.904   6.698  1.00 57.31           C
+HETATM  878  O2  IPA A 117       7.451   6.016   6.974  1.00 57.41           O
+HETATM    0  HO2 IPA A 117       8.051   6.539   7.243  1.00 57.41           H
+HETATM    0  H33 IPA A 117       5.379   8.340   6.056  1.00 57.31           H
+HETATM    0  H32 IPA A 117       5.443   7.633   7.472  1.00 57.31           H
+HETATM    0  H31 IPA A 117       6.656   8.521   6.975  1.00 57.31           H
+HETATM    0  H2  IPA A 117       7.085   7.045   5.317  1.00 57.10           H
+HETATM    0  H13 IPA A 117       5.064   5.482   6.416  1.00 56.50           H
+HETATM    0  H12 IPA A 117       5.000   6.188   5.000  1.00 56.50           H
+HETATM    0  H11 IPA A 117       6.017   5.000   5.247  1.00 56.50           H
+TER
+END
+"""
+
 m5_str_HD_rotated = """
 CRYST1   19.756   19.585   19.568  90.00  90.00  90.00 P 1
 ATOM      1  N   SER H   7       7.561   4.409   2.370  1.00 10.00           N
@@ -110,22 +324,282 @@ ATOM     19 DG22 THR H   8       3.370   6.971   7.626  1.00 10.00           D
 ATOM     20 DG23 THR H   8       4.053   6.974   6.204  1.00 10.00           D
 """
 
-loop = [(m1_str, [([4,5], [9])]),
-        (m2_str, [([4,5], [9]), ([4,5], [10])]),
-        (m3_str, [([4,6], [7]), ([4,8], [9])]),
-        (m4_str, [([4,6], [7,8,9])]),
-        (m5_str, [([4,6], [7]), ([4,8], [9]), ([14,16], [17,18,19])])]
+exercise_02_str = """
+CRYST1   26.468   33.148   34.654  90.00  90.00  90.00 P 1
+ATOM      1  N   PRO A   1      14.232  25.725  10.396  1.00 20.59           N
+ATOM      2  CA  PRO A   1      15.656  25.573  10.083  1.00 20.69           C
+ATOM      3  CB  PRO A   1      15.798  26.331   8.761  1.00 22.63           C
+ATOM      4  CG  PRO A   1      14.742  27.375   8.819  1.00 21.05           C
+ATOM      5  CD  PRO A   1      13.588  26.749   9.553  1.00 21.65           C
+ATOM      6  C   PRO A   1      16.549  26.194  11.163  1.00 20.54           C
+ATOM      7  O   PRO A   1      16.890  27.370  11.033  1.00 20.15           O
+ATOM      8  H2  PRO A   1      14.131  25.778  11.248  1.00 20.59           H   std
+ATOM      9  H3  PRO A   1      13.995  24.943  10.127  1.00 20.59           H   std
+ATOM     10  HA  PRO A   1      15.881  24.641   9.935  1.00 20.69           H   std
+ATOM     11  HB2 PRO A   1      16.680  26.729   8.691  1.00 22.63           H   std
+ATOM     12  HB3 PRO A   1      15.638  25.725   8.020  1.00 22.63           H   std
+ATOM     13  HG2 PRO A   1      15.075  28.148   9.302  1.00 21.05           H   std
+ATOM     14  HG3 PRO A   1      14.480  27.622   7.918  1.00 21.05           H   std
+ATOM     15  HD2 PRO A   1      13.141  27.409  10.106  1.00 21.65           H   std
+ATOM     16  HD3 PRO A   1      12.974  26.334   8.927  1.00 21.65           H   std
+ATOM     17  N   CYS A   2      16.920  25.451  12.208  1.00 19.39           N
+ATOM     18  CA  CYS A   2      16.531  24.056  12.415  1.00 18.94           C
+ATOM     19  C   CYS A   2      16.244  23.839  13.900  1.00 20.59           C
+ATOM     20  O   CYS A   2      16.957  24.403  14.730  1.00 19.50           O
+ATOM     21  H   CYS A   2      17.421  25.751  12.839  1.00 19.39           H   std
+ATOM     22  HA  CYS A   2      15.742  23.845  11.891  1.00 18.94           H   std
+ATOM     23  CB  CYS A   2      17.623  23.101  11.929  1.00 20.00           C
+ATOM     24  SG  CYS A   2      17.898  23.129  10.143  1.00 20.00           S
+ATOM      0  HB2 CYS A   2      18.454  23.323  12.377  1.00 20.00           H   new
+ATOM      0  HB3 CYS A   2      17.390  22.198  12.195  1.00 20.00           H   new
+ATOM      0  HG  CYS A   2      18.769  22.353   9.860  1.00 20.00           H   new
+ATOM     25  N   ILE A   3      15.232  23.049  14.280  1.00 18.74           N
+ATOM     26  CA  ILE A   3      14.277  22.348  13.402  1.00 17.42           C
+ATOM     27  CB  ILE A   3      13.316  23.325  12.664  1.00 18.24           C
+ATOM     28  CG1 ILE A   3      12.907  24.472  13.592  1.00 18.08           C
+ATOM     29  CG2 ILE A   3      12.088  22.576  12.161  1.00 17.65           C
+ATOM     30  CD1 ILE A   3      11.879  25.414  12.996  1.00 18.72           C
+ATOM     31  C   ILE A   3      14.903  21.352  12.416  1.00 17.75           C
+ATOM     32  O   ILE A   3      15.097  21.655  11.238  1.00 17.97           O
+ATOM     33  H   ILE A   3      15.069  22.892  15.110  1.00 18.74           H   std
+ATOM     34  HA  ILE A   3      13.711  21.816  13.984  1.00 17.42           H   std
+ATOM     35  HB  ILE A   3      13.760  23.703  11.889  1.00 18.24           H   std
+ATOM     36 HG12 ILE A   3      12.530  24.098  14.404  1.00 18.08           H   std
+ATOM     37 HG13 ILE A   3      13.693  24.998  13.807  1.00 18.08           H   std
+ATOM     38 HG21 ILE A   3      11.575  23.159  11.581  1.00 17.65           H   std
+ATOM     39 HG22 ILE A   3      12.374  21.792  11.666  1.00 17.65           H   std
+ATOM     40 HG23 ILE A   3      11.550  22.307  12.922  1.00 17.65           H   std
+ATOM     41 HD11 ILE A   3      11.824  26.210  13.548  1.00 18.72           H   std
+ATOM     42 HD12 ILE A   3      12.153  25.653  12.097  1.00 18.72           H   std
+ATOM     43 HD13 ILE A   3      11.018  24.969  12.971  1.00 18.72           H   std
+ATOM     44  N   THR A   4      15.190  20.152  12.916  1.00 16.98           N
+ATOM     45  CA  THR A   4      15.689  19.051  12.095  1.00 18.61           C
+ATOM     46  CB  THR A   4      17.201  18.838  12.300  1.00 18.25           C
+ATOM     47  OG1 THR A   4      17.928  19.919  11.704  1.00 18.31           O
+ATOM     48  CG2 THR A   4      17.655  17.530  11.668  1.00 18.01           C
+ATOM     49  C   THR A   4      14.963  17.756  12.477  1.00 17.76           C
+ATOM     50  O   THR A   4      15.199  17.248  13.574  1.00 16.77           O
+ATOM     51  H   THR A   4      15.101  19.947  13.746  1.00 16.98           H   std
+ATOM     52  HA  THR A   4      15.554  19.265  11.159  1.00 18.61           H   std
+ATOM     53  HB  THR A   4      17.396  18.804  13.250  1.00 18.25           H   std
+ATOM     54  HG1 THR A   4      17.765  19.954  10.881  1.00 18.31           H   std
+ATOM     55 HG21 THR A   4      18.614  17.550  11.524  1.00 18.01           H   std
+ATOM     56 HG22 THR A   4      17.443  16.784  12.250  1.00 18.01           H   std
+ATOM     57 HG23 THR A   4      17.214  17.403  10.814  1.00 18.01           H   std
+ATOM     58  N   LEU A   5      14.092  17.196  11.629  1.00 16.14           N
+ATOM     59  CA  LEU A   5      13.724  17.691  10.292  1.00 17.00           C
+ATOM     60  CB  LEU A   5      12.978  19.035  10.373  1.00 16.17           C
+ATOM     61  CG  LEU A   5      11.564  19.020  10.967  1.00 16.47           C
+ATOM     62  CD1 LEU A   5      11.570  18.554  12.417  1.00 16.13           C
+ATOM     63  CD2 LEU A   5      10.630  18.155  10.130  1.00 17.36           C
+ATOM     64  C   LEU A   5      14.894  17.771   9.296  1.00 17.30           C
+ATOM     65  O   LEU A   5      15.227  18.857   8.821  1.00 18.08           O
+ATOM     66  H   LEU A   5      13.670  16.472  11.824  1.00 16.14           H   std
+ATOM     67  HA  LEU A   5      13.089  17.062   9.915  1.00 17.00           H   std
+ATOM     68  HB2 LEU A   5      13.493  19.660  10.907  1.00 16.17           H   std
+ATOM     69  HB3 LEU A   5      12.893  19.384   9.472  1.00 16.17           H   std
+ATOM     70  HG  LEU A   5      11.214  19.924  10.953  1.00 16.47           H   std
+ATOM     71 HD11 LEU A   5      10.724  18.793  12.827  1.00 16.13           H   std
+ATOM     72 HD12 LEU A   5      11.687  17.591  12.441  1.00 16.13           H   std
+ATOM     73 HD13 LEU A   5      12.298  18.991  12.886  1.00 16.13           H   std
+ATOM     74 HD21 LEU A   5       9.717  18.298  10.426  1.00 17.36           H   std
+ATOM     75 HD22 LEU A   5      10.718  18.408   9.198  1.00 17.36           H   std
+ATOM     76 HD23 LEU A   5      10.872  17.223  10.244  1.00 17.36           H   std
+ATOM     77  N   TRP A   6      15.507  16.634   8.960  1.00 16.90           N
+ATOM     78  CA  TRP A   6      15.125  15.315   9.469  1.00 17.53           C
+ATOM     79  CB  TRP A   6      15.441  14.230   8.431  1.00 17.50           C
+ATOM     80  CG  TRP A   6      16.901  14.093   8.068  1.00 18.12           C
+ATOM     81  CD1 TRP A   6      17.948  14.834   8.543  1.00 18.89           C
+ATOM     82  CD2 TRP A   6      17.467  13.151   7.147  1.00 18.05           C
+ATOM     83  NE1 TRP A   6      19.125  14.411   7.976  1.00 18.60           N
+ATOM     84  CE2 TRP A   6      18.857  13.379   7.115  1.00 20.37           C
+ATOM     85  CE3 TRP A   6      16.932  12.136   6.347  1.00 19.14           C
+ATOM     86  CZ2 TRP A   6      19.719  12.631   6.315  1.00 19.76           C
+ATOM     87  CZ3 TRP A   6      17.789  11.395   5.553  1.00 18.94           C
+ATOM     88  CH2 TRP A   6      19.167  11.646   5.544  1.00 18.61           C
+ATOM     89  C   TRP A   6      15.823  14.992  10.787  1.00 18.02           C
+ATOM     90  O   TRP A   6      15.469  14.030  11.469  1.00 17.00           O
+ATOM     91  H   TRP A   6      16.169  16.606   8.412  1.00 16.90           H   std
+ATOM     92  HA  TRP A   6      14.168  15.277   9.623  1.00 17.53           H   std
+ATOM     93  HB2 TRP A   6      15.146  13.375   8.781  1.00 17.50           H   std
+ATOM     94  HB3 TRP A   6      14.955  14.432   7.616  1.00 17.50           H   std
+ATOM     95  HD1 TRP A   6      17.873  15.524   9.161  1.00 18.89           H   std
+ATOM     96  HE1 TRP A   6      19.903  14.741   8.135  1.00 18.60           H   std
+ATOM     97  HE3 TRP A   6      16.018  11.964   6.348  1.00 19.14           H   std
+ATOM     98  HZ2 TRP A   6      20.634  12.795   6.307  1.00 19.76           H   std
+ATOM     99  HZ3 TRP A   6      17.445  10.718   5.017  1.00 18.94           H   std
+ATOM    100  HH2 TRP A   6      19.719  11.132   5.000  1.00 18.61           H   std
+TER     101      TRP A   6
+ATOM    102  N   LYS B   7      16.104  11.520  14.704  1.00 18.31           N
+ATOM    103  CA  LYS B   7      16.294  11.108  16.089  1.00 18.17           C
+ATOM    104  CB  LYS B   7      17.578  11.718  16.655  1.00 17.67           C
+ATOM    105  CG  LYS B   7      18.833  11.386  15.859  1.00 19.54           C
+ATOM    106  CD  LYS B   7      19.123   9.893  15.862  1.00 20.73           C
+ATOM    107  CE  LYS B   7      20.411   9.576  15.119  1.00 22.48           C
+ATOM    108  NZ  LYS B   7      20.711   8.117  15.116  1.00 24.00           N
+ATOM    109  C   LYS B   7      15.100  11.526  16.941  1.00 16.04           C
+ATOM    110  O   LYS B   7      15.263  11.950  18.085  1.00 16.51           O
+ATOM    111  HA  LYS B   7      16.370  10.142  16.129  1.00 18.17           H   std
+ATOM    112  HB2 LYS B   7      17.484  12.683  16.668  1.00 17.67           H   std
+ATOM    113  HB3 LYS B   7      17.708  11.389  17.558  1.00 17.67           H   std
+ATOM    114  HG2 LYS B   7      18.713  11.670  14.939  1.00 19.54           H   std
+ATOM    115  HG3 LYS B   7      19.592  11.843  16.254  1.00 19.54           H   std
+ATOM    116  HD2 LYS B   7      19.217   9.586  16.777  1.00 20.73           H   std
+ATOM    117  HD3 LYS B   7      18.397   9.423  15.423  1.00 20.73           H   std
+ATOM    118  HE2 LYS B   7      20.327   9.869  14.198  1.00 22.48           H   std
+ATOM    119  HE3 LYS B   7      21.149  10.035  15.550  1.00 22.48           H   std
+ATOM    120  HZ1 LYS B   7      21.469   7.964  14.676  1.00 24.00           H   std
+ATOM    121  HZ2 LYS B   7      20.797   7.824  15.952  1.00 24.00           H   std
+ATOM    122  HZ3 LYS B   7      20.050   7.672  14.720  1.00 24.00           H   std
+ATOM    123  N   TYR B   8      13.905  11.402  16.370  1.00 16.27           N
+ATOM    124  CA  TYR B   8      12.667  11.763  17.057  1.00 16.41           C
+ATOM    125  C   TYR B   8      12.691  13.213  17.539  1.00 17.10           C
+ATOM    126  O   TYR B   8      12.799  13.464  18.740  1.00 18.90           O
+ATOM    127  CB  TYR B   8      12.416  10.823  18.239  1.00 20.00           C
+ATOM    128  CG  TYR B   8      12.300   9.367  17.847  1.00 20.00           C
+ATOM    129  CD1 TYR B   8      11.070   8.814  17.514  1.00 20.00           C
+ATOM    130  CD2 TYR B   8      13.419   8.547  17.809  1.00 20.00           C
+ATOM    131  CE1 TYR B   8      10.959   7.484  17.155  1.00 20.00           C
+ATOM    132  CE2 TYR B   8      13.317   7.216  17.451  1.00 20.00           C
+ATOM    133  CZ  TYR B   8      12.085   6.690  17.125  1.00 20.00           C
+ATOM    134  OH  TYR B   8      11.979   5.365  16.768  1.00 20.00           O
+ATOM    135  H   TYR B   8      13.782  11.106  15.572  1.00 16.27           H   std
+ATOM    136  HA  TYR B   8      11.924  11.664  16.441  1.00 16.41           H   std
+ATOM    137  HB2 TYR B   8      13.148  10.901  18.870  1.00 20.00           H   std
+ATOM    138  HB3 TYR B   8      11.585  11.079  18.669  1.00 20.00           H   std
+ATOM    139  HD1 TYR B   8      10.308   9.347  17.534  1.00 20.00           H   std
+ATOM    140  HD2 TYR B   8      14.251   8.899  18.028  1.00 20.00           H   std
+ATOM    141  HE1 TYR B   8      10.129   7.127  16.935  1.00 20.00           H   std
+ATOM    142  HE2 TYR B   8      14.076   6.678  17.430  1.00 20.00           H   std
+ATOM    143  HH  TYR B   8      12.735   5.000  16.791  1.00 20.00           H   std
+ATOM    144  N   PRO B   9      12.608  14.170  16.597  1.00 16.48           N
+ATOM    145  CA  PRO B   9      12.577  15.606  16.896  1.00 17.55           C
+ATOM    146  CB  PRO B   9      12.059  16.223  15.593  1.00 16.00           C
+ATOM    147  CG  PRO B   9      12.367  15.223  14.516  1.00 15.64           C
+ATOM    148  CD  PRO B   9      12.758  13.918  15.153  1.00 16.47           C
+ATOM    149  C   PRO B   9      11.635  15.961  18.044  1.00 18.40           C
+ATOM    150  O   PRO B   9      10.513  15.458  18.098  1.00 17.31           O
+ATOM    151  HA  PRO B   9      13.468  15.939  17.085  1.00 17.55           H   std
+ATOM    152  HB2 PRO B   9      11.102  16.368  15.660  1.00 16.00           H   std
+ATOM    153  HB3 PRO B   9      12.520  17.059  15.424  1.00 16.00           H   std
+ATOM    154  HG2 PRO B   9      11.578  15.100  13.966  1.00 15.64           H   std
+ATOM    155  HG3 PRO B   9      13.099  15.559  13.975  1.00 15.64           H   std
+ATOM    156  HD2 PRO B   9      12.154  13.216  14.863  1.00 16.47           H   std
+ATOM    157  HD3 PRO B   9      13.680  13.702  14.943  1.00 16.47           H   std
+ATOM    158  N   LEU B  10      12.094  16.821  18.947  1.00 20.07           N
+ATOM    159  CA  LEU B  10      11.289  17.237  20.089  1.00 19.87           C
+ATOM    160  CB  LEU B  10      11.231  16.120  21.134  1.00 18.03           C
+ATOM    161  CG  LEU B  10      10.403  16.407  22.389  1.00 20.45           C
+ATOM    162  CD1 LEU B  10       8.948  16.673  22.031  1.00 19.06           C
+ATOM    163  CD2 LEU B  10      10.511  15.252  23.373  1.00 20.13           C
+ATOM    164  C   LEU B  10      11.859  18.506  20.713  1.00 19.53           C
+ATOM    165  O   LEU B  10      12.918  18.479  21.340  1.00 21.35           O
+ATOM    166  H   LEU B  10      12.875  17.180  18.921  1.00 20.07           H   std
+ATOM    167  HA  LEU B  10      10.385  17.425  19.791  1.00 19.87           H   std
+ATOM    168  HB2 LEU B  10      10.855  15.330  20.715  1.00 18.03           H   std
+ATOM    169  HB3 LEU B  10      12.137  15.929  21.424  1.00 18.03           H   std
+ATOM    170  HG  LEU B  10      10.752  17.200  22.824  1.00 20.45           H   std
+ATOM    171 HD11 LEU B  10       8.432  16.749  22.849  1.00 19.06           H   std
+ATOM    172 HD12 LEU B  10       8.892  17.500  21.528  1.00 19.06           H   std
+ATOM    173 HD13 LEU B  10       8.614  15.935  21.497  1.00 19.06           H   std
+ATOM    174 HD21 LEU B  10       9.980  15.456  24.159  1.00 20.13           H   std
+ATOM    175 HD22 LEU B  10      10.180  14.445  22.950  1.00 20.13           H   std
+ATOM    176 HD23 LEU B  10      11.441  15.137  23.623  1.00 20.13           H   std
+ATOM    177  N   VAL B  11      11.150  19.617  20.535  1.00 20.16           N
+ATOM    178  CA  VAL B  11      11.583  20.898  21.081  1.00 18.60           C
+ATOM    179  CB  VAL B  11      10.740  22.063  20.522  1.00 19.39           C
+ATOM    180  CG1 VAL B  11       9.284  21.932  20.952  1.00 18.61           C
+ATOM    181  CG2 VAL B  11      10.853  22.120  19.005  1.00 19.71           C
+ATOM    182  C   VAL B  11      11.486  20.900  22.603  1.00 19.78           C
+ATOM    183  O   VAL B  11      12.498  20.808  23.299  1.00 20.36           O
+ATOM    184  H   VAL B  11      10.410  19.654  20.098  1.00 20.16           H   std
+ATOM    185  HA  VAL B  11      12.509  21.051  20.837  1.00 18.60           H   std
+ATOM    186  HB  VAL B  11      11.083  22.898  20.878  1.00 19.39           H   std
+ATOM    187 HG11 VAL B  11       8.747  22.553  20.435  1.00 18.61           H   std
+ATOM    188 HG12 VAL B  11       8.984  21.024  20.791  1.00 18.61           H   std
+ATOM    189 HG13 VAL B  11       9.210  22.140  21.897  1.00 18.61           H   std
+ATOM    190 HG21 VAL B  11      10.356  22.887  18.681  1.00 19.71           H   std
+ATOM    191 HG22 VAL B  11      11.788  22.204  18.762  1.00 19.71           H   std
+ATOM    192 HG23 VAL B  11      10.485  21.305  18.630  1.00 19.71           H   std
+TER     193      VAL B  11
+ATOM    194  N   THR C  12       9.083  21.642  26.327  1.00 20.97           N
+ATOM    195  CA  THR C  12       9.725  22.948  26.407  1.00 21.31           C
+ATOM    196  CB  THR C  12      11.241  22.810  26.634  1.00 20.73           C
+ATOM    197  OG1 THR C  12      11.823  22.052  25.565  1.00 23.32           O
+ATOM    198  CG2 THR C  12      11.523  22.114  27.957  1.00 21.87           C
+ATOM    199  C   THR C  12       9.495  23.750  25.125  1.00 20.19           C
+ATOM    200  O   THR C  12      10.403  23.870  24.304  1.00 21.54           O
+ATOM    201  HA  THR C  12       9.361  23.441  27.159  1.00 21.31           H   std
+ATOM    202  HB  THR C  12      11.645  23.691  26.660  1.00 20.73           H   std
+ATOM    203  HG1 THR C  12      11.728  22.460  24.837  1.00 23.32           H   std
+ATOM    204 HG21 THR C  12      12.480  22.046  28.098  1.00 21.87           H   std
+ATOM    205 HG22 THR C  12      11.132  22.619  28.687  1.00 21.87           H   std
+ATOM    206 HG23 THR C  12      11.141  21.222  27.951  1.00 21.87           H   std
+ATOM    207  N   ILE C  13       8.293  24.298  24.942  1.00 20.53           N
+ATOM    208  CA  ILE C  13       7.196  24.182  25.901  1.00 21.71           C
+ATOM    209  CB  ILE C  13       7.277  25.278  26.988  1.00 21.47           C
+ATOM    210  CG1 ILE C  13       6.236  25.036  28.086  1.00 20.24           C
+ATOM    211  CG2 ILE C  13       7.086  26.658  26.373  1.00 20.55           C
+ATOM    212  CD1 ILE C  13       6.447  23.754  28.867  1.00 20.37           C
+ATOM    213  C   ILE C  13       5.861  24.302  25.175  1.00 21.07           C
+ATOM    214  O   ILE C  13       5.000  23.429  25.290  1.00 22.22           O
+ATOM    215  H   ILE C  13       8.085  24.758  24.246  1.00 20.53           H   std
+ATOM    216  HA  ILE C  13       7.213  23.312  26.330  1.00 21.71           H   std
+ATOM    217  HB  ILE C  13       8.158  25.248  27.392  1.00 21.47           H   std
+ATOM    218 HG12 ILE C  13       6.276  25.772  28.716  1.00 20.24           H   std
+ATOM    219 HG13 ILE C  13       5.353  24.998  27.686  1.00 20.24           H   std
+ATOM    220 HG21 ILE C  13       7.378  27.329  27.009  1.00 20.55           H   std
+ATOM    221 HG22 ILE C  13       7.615  26.720  25.562  1.00 20.55           H   std
+ATOM    222 HG23 ILE C  13       6.147  26.787  26.165  1.00 20.55           H   std
+ATOM    223 HD11 ILE C  13       5.881  23.770  29.654  1.00 20.37           H   std
+ATOM    224 HD12 ILE C  13       6.211  22.998  28.306  1.00 20.37           H   std
+ATOM    225 HD13 ILE C  13       7.378  23.695  29.131  1.00 20.37           H   std
+TER     226      ILE C  13
+END
+"""
 
-def exercise_00():
+loop = [(m1_str, 1, [[[4,5], [9]]]),
+        (m2_str, 2, [[[4,5], [9]], [[4,5], [10]]]),
+        (m3_str, 2, [[[4,6], [7]], [[4,8], [9]]]),
+        (m4_str, 3, [[[4,6], [7,8,9]]]),
+        (m5_str, 5, [[[4,6], [7]], [[4,8], [9]], [[14,16], [17,18,19]]]),
+        (m6_str, 4, [[[1,0], [11,12,13]], [[23,22],[34]]]),
+        (m7_str, 4, [[[0,1], [5]], [[1,0],[2,3,4]]]),
+        (m8_str, 1, [[[1,0], [10]]]),
+        (m9_str, 4, [[[2,4], [10,11,12]], [[2,3], [9]]]),
+        (m10_str,7, [[[2,4], [13,14,15]], [[1,0], [8]], [[3,5], [16,17,18]]]),
+        (m11_str,10,[[[2,4], [10,11,12]], [[2,3], [9]], [[15,17], [26,27,28]], [[16,18], [29,30,31]]]),
+        (m12_str,1, [[[4,2], [9]]]),
+        (m13_str,5, [[[1,7], [6]], [[1,8], [9]], [[14,15], [10,17,19]]]),
+        (m14_str,7, [[[1,2], [5,6,7]], [[1,3], [4]], [[1,0], [9,10,11]]])
+        ]
+
+def exercise_00(debug=False):
   mon_lib_srv = monomer_library.server.server()
-  for l in loop:
-    pdb_inp = iotbx.pdb.input(source_info=None, lines=l[0])
-    if 0: pdb_inp.write_pdb_file(file_name = "m1.pdb")
-    ph = pdb_inp.construct_hierarchy()
-    ph.atoms().reset_i_seq()
-    xrs_answer = pdb_inp.xray_structure_simple()
-    sel = hydrogens.rotatable(pdb_hierarchy=ph, mon_lib_srv=mon_lib_srv)
-    assert sel == l[1]
+  ener_lib = monomer_library.server.ener_lib()
+  for i, l in enumerate(loop):
+    if(debug): print "-"*70, i
+    ppf = monomer_library.pdb_interpretation.process(
+      mon_lib_srv    = mon_lib_srv,
+      ener_lib       = ener_lib,
+      raw_records    = flex.std_string(l[0].splitlines()),
+      force_symmetry = True)
+    geometry = ppf.geometry_restraints_manager(
+      show_energies      = False,
+      plain_pairs_radius = 5.0)
+    restraints_manager = mmtbx.restraints.manager(
+      geometry = geometry, normalization = False)
+    ph = ppf.all_chain_proxies.pdb_hierarchy
+    sel = hydrogens.rotatable(pdb_hierarchy=ph, mon_lib_srv=mon_lib_srv,
+      restraints_manager = restraints_manager)
+    if(debug):
+      print
+      print sel
+      print l[2]
+    ppf.all_chain_proxies.pdb_inp.write_pdb_file(file_name = "m%s.pdb"%str(i))
+    if(debug): print "-"*80
+    assert sel == l[2]
+    assert hydrogens.count_rotatable(sel) == l[1]
 
 def exercise_01():
   pdb_inp = iotbx.pdb.input(source_info=None, lines=m5_str)
@@ -138,18 +612,31 @@ def exercise_01():
   fft_map.apply_sigma_scaling()
   map_data = fft_map.real_map_unpadded()
   #
-  pdb_inp = iotbx.pdb.input(source_info=None, lines=m5_str_HD_rotated)
-  ph = pdb_inp.construct_hierarchy()
-  ph.atoms().reset_i_seq()
+  mon_lib_srv = monomer_library.server.server()
+  ener_lib = monomer_library.server.ener_lib()
+  ppf = monomer_library.pdb_interpretation.process(
+    mon_lib_srv    = mon_lib_srv,
+    ener_lib       = ener_lib,
+    raw_records    = flex.std_string(m5_str_HD_rotated.splitlines()),
+    force_symmetry = True)
+  geometry = ppf.geometry_restraints_manager(
+    show_energies      = False,
+    plain_pairs_radius = 5.0)
+  restraints_manager = mmtbx.restraints.manager(
+    geometry = geometry, normalization = False)
+  xrs = ppf.all_chain_proxies.pdb_inp.xray_structure_simple()
+  ph = ppf.all_chain_proxies.pdb_hierarchy
   ph.write_pdb_file(file_name = "poor.pdb")
-  xrs = pdb_inp.xray_structure_simple()
   xrs.switch_to_neutron_scattering_dictionary()
   f_calc_poor = f_calc.structure_factors_from_scatterers(
     xray_structure = xrs).f_calc()
   #
-  mon_lib_srv = monomer_library.server.server()
-  hydrogens.fit_rotatable(pdb_hierarchy=ph, mon_lib_srv=mon_lib_srv,
-    xray_structure=xrs, map_data=map_data)
+  rotatable_h_selection = hydrogens.rotatable(
+    pdb_hierarchy      = ph,
+    mon_lib_srv        = mon_lib_srv,
+    restraints_manager = restraints_manager)
+  hydrogens.fit_rotatable(pdb_hierarchy=ph, xray_structure=xrs,
+    map_data=map_data,rotatable_h_selection=rotatable_h_selection)
   ph.write_pdb_file(file_name = "result.pdb")
   #
   f_calc_fixed = f_calc.structure_factors_from_scatterers(
@@ -161,9 +648,29 @@ def exercise_01():
   assert r_factor(f_calc, f_calc_poor) > 0.2
   assert r_factor(f_calc, f_calc_fixed) < 0.015
 
+def exercise_02(debug=False):
+  mon_lib_srv = monomer_library.server.server()
+  ener_lib = monomer_library.server.ener_lib()
+  ppf = monomer_library.pdb_interpretation.process(
+    mon_lib_srv    = mon_lib_srv,
+    ener_lib       = ener_lib,
+    raw_records    = flex.std_string(exercise_02_str.splitlines()),
+    force_symmetry = True)
+  geometry = ppf.geometry_restraints_manager(
+    show_energies      = False,
+    plain_pairs_radius = 5.0)
+  restraints_manager = mmtbx.restraints.manager(
+    geometry = geometry, normalization = False)
+  ph = ppf.all_chain_proxies.pdb_hierarchy
+  sel = hydrogens.rotatable(pdb_hierarchy=ph, mon_lib_srv=mon_lib_srv,
+    restraints_manager = restraints_manager)
+  n_rot_h = hydrogens.count_rotatable(sel)
+  assert n_rot_h == 43, n_rot_h
+
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise_00()
   exercise_01()
+  exercise_02()
   print "Total time: %-8.4f"%(time.time()-t0)
   print "OK"
