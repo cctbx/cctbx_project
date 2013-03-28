@@ -3223,6 +3223,12 @@ class array(set):
     result /= other
     return result
 
+  def value_at_index (self, hkl) :
+    """Extract the value of the array for the specified reflection h,k,l"""
+    hkl_array = self.select_indices([hkl])
+    assert (len(hkl_array.data()) == 1)
+    return hkl_array.data()[0]
+
   def generate_bijvoet_mates(self):
     """
     Given a non-anomalous array, expand to generate anomalous pairs.

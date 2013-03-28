@@ -1204,6 +1204,8 @@ Working crystal symmetry is not compatible with crystal symmetry from reflection
   1   0  12      -6.10      0.03             0.91              0.00          0.86
   1   0   7      45.53     45.88             0.11              0.08          1.43
 """)
+  f = fo2.value_at_index((1,1,2))
+  assert (f == 6685.0)
 
 def exercise_debye_waller():
   xs = crystal.symmetry((3,4,5,85,95,105), "P 1")
