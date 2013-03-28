@@ -131,7 +131,7 @@ fi
 # well as a sorted list of unique, comma-separated stream numbers for
 # ${run}.  Explicitly consider streams being transferred from the DAQ
 # (*.xtc.inprogress), but not failed transfers (*.xtc.inprogress.*).
-xtc="${exp}"
+xtc="${exp}/xtc"
 streams=`ls "${xtc}"/e*-r${run}-s*-c*.xtc                         \
             "${xtc}"/e*-r${run}-s*-c*.xtc.inprogress 2> /dev/null \
     | sed -e "s:.*-s\([[:digit:]]\+\)-c.*:\1:"                    \
@@ -209,6 +209,7 @@ mkdir -p "${out}"
 for s in ${streams}; do
     sed -e "s:\([[:alnum:]]\+\)\(_dirname[[:space:]]*=\).*:\1\2 ${out}/\1:"    \
         -e "s:\([[:alnum:]]\+_basename[[:space:]]*=.*\)[[:space:]]*:\1s${s}-:" \
+        -e "s:\(trial_id[[:space:]]*=\).*:\1${trial}:"                         \
         "${cfg}" > "${out}/pyana_s${s}.cfg"
 
     # Create the run-script for stream ${s}.  Fall back on using a
@@ -261,7 +262,7 @@ cat > "${out}/submit.pbs" << EOF
 
 #PBS -N r${run}
 #PBS -j oe
-#PBS -l gres=project:1,nodes=${nhost}:ppn=${nproc},walltime=08:00:00
+#PBS -l gres=project:1,nodes=${nhost}:ppn=${nproc},walltime=04:00:00
 #PBS -m a
 #PBS -q ${queue}
 #PBS -V
@@ -283,6 +284,7 @@ EOF
 # Copy the configuration files and the submission script to ${out}.
 # Submit the analysis of all streams to the queueing system.  XXX
 # Delete the created output directories?
+cp -p "${cfg}" "${out}/pyana.cfg"
 qsub "${out}/submit.pbs" || cleanup_and_exit 1
 
 echo "Output directory: ${out}"
