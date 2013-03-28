@@ -83,14 +83,18 @@ def tardy_model_one_residue(residue, mon_lib_srv, log = None):
     return None
   return tardy_model
 
-def axes_and_atoms_aa_specific(residue, mon_lib_srv,
-                               remove_clusters_with_all_h=False,
-                               include_labels=False, log=None):
+def axes_and_atoms_aa_specific(
+      residue, mon_lib_srv,
+      remove_clusters_with_all_h=False,
+      include_labels=False,
+      tardy_model=None,
+      log=None):
   get_class = iotbx.pdb.common_residue_names_get_class
   if 0: print residue.id_str(suppress_segid=1)[-12:]
-  if(not (get_class(residue.resname) == "common_amino_acid")): return None
-  tardy_model = tardy_model_one_residue(residue = residue,
-    mon_lib_srv = mon_lib_srv, log = log)
+  if(tardy_model is None):
+    if(not (get_class(residue.resname) == "common_amino_acid")): return None
+    tardy_model = tardy_model_one_residue(residue = residue,
+      mon_lib_srv = mon_lib_srv, log = log)
   if(tardy_model is None):
     if include_labels:
       return None, None

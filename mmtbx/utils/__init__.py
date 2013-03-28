@@ -2698,7 +2698,7 @@ def optimize_h(fmodel, mon_lib_srv, pdb_hierarchy=None, model=None, log=None,
   if(model is not None): pdb_hierarchy = model.pdb_hierarchy()
   import mmtbx.hydrogens
   rmh_sel = mmtbx.hydrogens.rotatable(pdb_hierarchy = pdb_hierarchy,
-    mon_lib_srv=mon_lib_srv)
+    mon_lib_srv=mon_lib_srv, restraints_manager=model.restraints_manager)
   # XXX inefficient
   rmh_sel_i_seqs = flex.size_t()
   for i in rmh_sel:

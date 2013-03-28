@@ -29,12 +29,14 @@ class manager(object):
     if (self.ncs_groups is None):
       ncs_groups = None
     else:
-      ncs_groups = self.ncs_groups.select(iselection=selection.iselection())
+      if(not isinstance(selection, flex.size_t)):
+        selection = selection.iselection()
+      ncs_groups = self.ncs_groups.select(iselection=selection)
     if (self.torsion_ncs_groups is None):
       torsion_ncs_groups = None
     else:
       torsion_ncs_groups = \
-        self.torsion_ncs_groups.select(iselection=selection.iselection())
+        self.torsion_ncs_groups.select(iselection=selection)
     return manager(
       geometry=geometry,
       ncs_groups=ncs_groups,

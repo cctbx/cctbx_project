@@ -324,6 +324,8 @@ class group(object):
     self.registry.register_additional_isolated_sites(number=number)
 
   def select(self, iselection):
+    if(not isinstance(iselection, flex.size_t)):
+      iselection = iselection.iselection()
     return group(
       selection_strings=self.selection_strings,
       registry=self.registry.proxy_select(iselection=iselection),
