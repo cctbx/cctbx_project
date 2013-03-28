@@ -155,8 +155,8 @@ class model(crystal.special_position_settings):
            site=(match.rt*site).elems))
         test_new_model.add_position(position(
            label="ATOM_%03d"%i,
-           site=(match.rt*site).elems)) 
-      new_model_list.append(new_model) 
+           site=(match.rt*site).elems))
+      new_model_list.append(new_model)
       self.test_new_model_list.append(test_new_model)# ZZZ
     return new_model_list
 
@@ -168,10 +168,10 @@ class model(crystal.special_position_settings):
     # 2013-01-25 tt.Find best match to other_model and return it
     # 2013-01-19 return list of best ones (can be alternatives)
 
-    # if you want the superposed model use: 
+    # if you want the superposed model use:
     #  superposed_model2=match.get_transformed_model2()
 
-    if not hasattr(self,'match_dict'): 
+    if not hasattr(self,'match_dict'):
       self.match_dict={}
       match_list=None
     else:
@@ -410,7 +410,7 @@ class match_refine(object):
 
   def get_transformed_model2(self,output_pdb=None,
     scattering_type="SE",f=sys.stdout,
-    return_superposed_model2=True): 
+    return_superposed_model2=True):
       # tt 2013-01-25
       from cctbx import xray
       xray_scatterer = xray.scatterer( scattering_type = scattering_type)
@@ -427,7 +427,7 @@ class match_refine(object):
         print >>ff, pdb_string
         ff.close()
         print >>f,"\nWrote model 2 mapped to model 1 to file %s " %(output_pdb)
-      
+
       if return_superposed_model2:
         return model2.as_emma_model()
 
