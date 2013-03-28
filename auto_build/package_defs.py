@@ -49,5 +49,5 @@ FONT_PKG = "fonts.tar.gz"
 WXPYTHON_DEV_PKG = "wxPython-src-2.9.4.1.tar.gz"  # Mac 64-bit
 WXPYTHON_PKG = "wxPython-src-2.8.12.1.tar.gz"     # Linux, Mac 32-bit
 WEBKIT_PKG = "wxwebkit.tar.gz"                    # not currently used
-MATPLOTLIB_PKG = "matplotlib-1.2.0.tar.gz"
+MATPLOTLIB_PKG = "matplotlib-1.2.1.tar.gz"
 PY2APP_PKG = "py2app-0.7.3.tar.gz"                # Mac only
