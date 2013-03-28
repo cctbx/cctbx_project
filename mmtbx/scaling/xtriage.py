@@ -212,16 +212,6 @@ input {
             I/sigI greater than isigi_cut are more than
             completeness_cut complete'''
        }
-       l_test_dhkl
-       .help = "A manual choice of the d_hkl parameters for the L-test. Don't touch this if you don't know what it is for."
-       {
-         d_h = None
-         .type = int
-         d_k = None
-         .type= int
-         d_l = None
-         .type=int
-       }
        apply_basic_filters_prior_to_twin_analysis=True
          .type=bool
          .help="Keep data cutoffs from the basic_analyses module (I/sigma,Wilson scaling,Anisotropy) when twin stats are computed."
@@ -536,30 +526,10 @@ class xtriage_analyses(object):
 ##----------------------------------------------------##
 
 """
-
-      d_hkl_for_l_test = None
-      d_h = self.params.scaling.input.parameters.misc_twin_parameters.l_test_dhkl.d_h
-      d_k = self.params.scaling.input.parameters.misc_twin_parameters.l_test_dhkl.d_k
-      d_l = self.params.scaling.input.parameters.misc_twin_parameters.l_test_dhkl.d_l
-      settit = False
-      if d_h is None:
-        d_h = 2
-        settit =True
-      if d_k is None:
-        d_k = 2
-        settit = True
-      if d_l is None:
-        d_l = 2
-        settit = True
-
-      if settit:
-        d_hkl_for_l_test = [d_h,d_k,d_l]
-
       self.twin_results = twin_analyses.twin_analyses(
         miller_array=self.miller_obs,
         d_star_sq_low_limit=d_star_sq_low_limit,
         d_star_sq_high_limit=d_star_sq_high_limit,
-        d_hkl_for_l_test = d_hkl_for_l_test,
         normalise=True,
         out=self.text_out,
         out_plots=self.plot_out,
