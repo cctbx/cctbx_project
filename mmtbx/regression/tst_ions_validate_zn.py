@@ -37,7 +37,7 @@ def exercise () :
       n_zn += 1
     if "!!!" in line:
       n_bad += 1
-  assert n_zn == 1 and n_bad == 0
+  assert n_zn == 1 and n_bad == 1
   print "OK"
 
 def write_pdb_input () :
