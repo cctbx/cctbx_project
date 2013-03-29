@@ -117,7 +117,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     self._hierarchy_start = None
     self._i_state = 0
 
-  def PushState (self, action="edit") :
+  def PushState (self, action="edit", set_changes_flag=True) :
     del self._hierarchy_stack[self._i_state+1:]
     del self._hierarchy_actions[self._i_state+1:]
     self._hierarchy_stack.append(self._hierarchy.deep_copy())
@@ -125,7 +125,8 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     if (len(self._hierarchy_stack) > self.max_states) :
       del self._hierarchy_stack[0]
       del self._hierarchy_actions[0]
-    self._changes_made = True
+    if (set_changes_flag) :
+      self._changes_made = True
     self._i_state = len(self._hierarchy_stack) - 1
     self.frame.EnableUndo(True)
     #print self._hierarchy_stack
@@ -136,7 +137,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     self.DeleteAllItems()
     self._hierarchy = pdb_hierarchy
     self._hierarchy_start = pdb_hierarchy
-    self.PushState("starting model")
+    self.PushState("starting model", set_changes_flag=False)
     self.PopulateTree(pdb_hierarchy)
 
   def SetState (self) :
