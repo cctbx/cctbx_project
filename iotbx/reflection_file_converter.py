@@ -522,7 +522,8 @@ def run(
         mtz_history_buffer.append("> Amplitudes converted to intensities.")
     column_root_label = co.mtz_root_label
     if (column_root_label is None):
-      column_root_label = file_name[:min(24,len(file_name)-4)]
+      # XXX 2013-03-29: preserve original root label by default
+      column_root_label = selected_array.info().labels[0]
     mtz_dataset = mtz_output_array.as_mtz_dataset(
       column_root_label=column_root_label)
     del mtz_output_array
