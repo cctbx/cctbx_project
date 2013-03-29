@@ -24,7 +24,11 @@ def run(args, out=sys.stdout):
                   .option(None, "--show_warnings",
                           action="store_true")
                   .option(None, "--show_timings",
-                          action="store_true")).process(args=args)
+                          action="store_true")
+                  .option(None, "--strict",
+                          action="store",
+                          type="bool",
+                          default="true")).process(args=args)
   if len(command_line.args) != 1:
     command_line.parser.show_help()
     return
@@ -45,13 +49,14 @@ def run(args, out=sys.stdout):
       validation.smart_load_dictionary(name=d)) for d in cif_dics[1:]]
   show_warnings = command_line.options.show_warnings == True
   show_timings = command_line.options.show_timings == True
+  strict = command_line.options.strict
   if os.path.isdir(filepath):
     file_ext = command_line.options.file_ext
     crawl(filepath, file_ext=file_ext,
           cif_dic=cif_dic, show_warnings=show_warnings,
-          show_timings=show_timings)
+          show_timings=show_timings, strict=strict)
   elif os.path.isfile(filepath):
-    cm = cif.reader(file_path=filepath).model()
+    cm = cif.reader(file_path=filepath, strict=strict).model()
     cm.validate(cif_dic, show_warnings=show_warnings)
   else:
     try:
@@ -59,13 +64,13 @@ def run(args, out=sys.stdout):
     except urllib2.URLError, e:
       pass
     else:
-      cm = cif.reader(file_object=file_object).model()
+      cm = cif.reader(file_object=file_object, strict=strict).model()
       cm.validate(cif_dic, show_warnings=show_warnings)
   if show_timings:
     total_timer.stop()
     print total_timer.report()
 
-def crawl(directory, file_ext, cif_dic, show_warnings, show_timings):
+def crawl(directory, file_ext, cif_dic, show_warnings, show_timings, strict):
   timer = time_log("parsing")
   validate_timer = time_log("validate")
   for root, dirs, files in os.walk(directory):
@@ -74,7 +79,7 @@ def crawl(directory, file_ext, cif_dic, show_warnings, show_timings):
     for path in files_to_read:
       timer.start()
       try:
-        cm = cif.reader(file_path=path).model()
+        cm = cif.reader(file_path=path, strict=strict).model()
       except AssertionError:
         continue
       timer.stop()
