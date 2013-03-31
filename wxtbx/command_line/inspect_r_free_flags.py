@@ -11,13 +11,14 @@ import sys
 
 def run (args) :
   app = wx.App(0)
+  file_name = None
   if (len(args) == 0) :
     ask_for_file_name()
   else :
     file_name = args[0]
-    if (not os.path.isfile(file_name)) :
-      raise Usage("wxtbx.inspect_r_free_flags data.mtz")
-    display_file_info(file_name)
+  if (file_name is None) or (not os.path.isfile(file_name)) :
+    raise Usage("wxtbx.inspect_r_free_flags data.mtz")
+  display_file_info(file_name)
   app.MainLoop()
 
 def ask_for_file_name (parent=None) :
@@ -26,14 +27,14 @@ def ask_for_file_name (parent=None) :
     message="Select a reflections file",
     flags=wx.OPEN,
     wildcard=iotbx.file_reader.get_wildcard_strings(["hkl"]))
-  display_file_info(file_name, parent)
+  if (file_name == "") or (file_name is None) :
+    raise Abort()
+  return file_name
 
 def display_file_info (file_name, parent=None) :
   from iotbx import reflection_file_editor
   from iotbx import file_reader
   from iotbx import data_plots
-  if (file_name == "") or (file_name is None) :
-    raise Abort()
   hkl_in = file_reader.any_file(file_name, force_type="hkl")
   hkl_in.check_file_type("hkl")
   labels = []

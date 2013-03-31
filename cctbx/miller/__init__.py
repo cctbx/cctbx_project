@@ -2564,6 +2564,23 @@ class array(set):
                                                     return_fail=return_fail))
     return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
 
+  def relative_anomalous_differences (self, obs_type="amplitude",
+      use_overall_mean=False) :
+    obs = self.select(self.data() > 0 )
+    if (obs_type == "amplitude") and (self.is_xray_intensity_array()) :
+      obs = obs.f_sq_as_f()
+    elif (obs_type == "intensity") and (self.is_xray_amplitude_array()) :
+      obs = obs.f_as_f_sq()
+    i_plus, i_minus = obs.hemispheres_acentrics()
+    i_mean = (i_plus.data() + i_minus.data()) / 2
+    d_ano = flex.fabs(i_plus.data() - i_minus.data())
+    non_zero_sele = i_mean > 0
+    d_ano = d_ano.select(non_zero_sele)
+    i_mean = i_mean.select(non_zero_sele)
+    if (use_overall_mean) :
+      i_mean = flex.mean(i_mean)
+    return d_ano / i_mean
+
   def second_moment(self, use_binning=False):
     """<data^2>/(<data>)^2"""
     assert not use_binning or self.binner() is not None
