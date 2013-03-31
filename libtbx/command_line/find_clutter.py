@@ -18,7 +18,6 @@ def run(args):
       flag_dos_format = False
     elif (arg == "--verbose") :
       verbose = True
-      flag_indentation = True
     elif (arg == "--indentation") :
       flag_indentation = True
     else:
