@@ -5,7 +5,8 @@
 
 from __future__ import division
 try :
-  import libtbx.load_env as libtbx_env
+  import libtbx.load_env
+  libtbx_env = libtbx.env
 except ImportError, e :
   libtbx_env = None
 import argparse
@@ -36,6 +37,8 @@ def run (args, out=sys.stdout) :
     help="Path to .ico file", default=ico_path)
   parser.add_argument("--dest", dest="dest", action="store",
     help="Destination path", default=os.getcwd())
+  parser.add_argument("--bundle_all", dest="bundle_all", action="store_true",
+    help="Bundle Python interpreter, etc. into .exe", default=False)
   options, args = parser.parse_known_args(args)
   if (len(args) == 0) :
     return parser.error("Executable name not specified.")
@@ -72,11 +75,13 @@ def run (args, out=sys.stdout) :
   f.write("""
 import subprocess
 subprocess.call(r"%s")
-""" % os.path.join(bin_dir, program_cmd_name))
+""" % os.path.join(bin_dir, program_cmd_file))
   f.close()
   bundle_files = 3
+  #zip_file = "'%s.zip'" %
   if (options.bundle_all) :
     bundle_files = 1 # won't work on win64
+    zip_file = None
   icon_rsrc = ""
   if (options.icon is not None) :
     icon_rsrc = "'icon_resources':[(0,r'%s')]," % options.icon
@@ -92,11 +97,12 @@ setup(
     },
   ],
   zipfile=None,
+  dll_excludes=['w9xpopen.exe'],
   options={
     'py2exe': {
        'includes': ['subprocess'],
        'bundle_files': %d,
-    }
+    },
   })
 """ % (exe_name, icon_rsrc, bundle_files))
   f2.close()
@@ -105,13 +111,18 @@ setup(
   rc = subprocess.call([sys.executable, "setup.py", "py2exe"])
   if (rc != 0) :
     return rc
-  exe_file = os.path.join("dist", "%s.exe" % exe_name)
+  dist_path = os.path.join(os.getcwd(), "dist")
+  dist_files = os.listdir(dist_path)
+  exe_file = os.path.join(dist_path, "%s.exe" % exe_name)
   assert (os.path.isfile(exe_file))
   os.chdir(options.dest)
-  if (os.path.exists("%s.exe" % exe_name)) :
-    shutil.rmtree("%s.exe" % exe_name)
-  shutil.move(exe_file, os.getcwd())
-  print >> out, "Created %s" % os.path.join(os.getcwd(), "%s.exe" % exe_name)
+  for file_name in dist_files :
+    if (file_name == "w9xpopen.exe") :
+      continue
+    if os.path.exists(file_name) :
+      os.remove(file_name)
+    print >> out, "moving %s..." % file_name
+    shutil.move(os.path.join(dist_path, file_name), os.getcwd())
   return 0
 
 if (__name__ == "__main__") :
