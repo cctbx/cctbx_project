@@ -2596,18 +2596,24 @@ class array(set):
     return binned_data(binner=self.binner(), data=result, data_fmt="%7.4f")
 
   def wilson_plot(self, use_binning=False):
-    """<data^2>"""
+    """<F^2>"""
     assert not use_binning or self.binner() is not None
+    obs = None
+    if self.is_xray_amplitude_array():
+      obs = self.f_as_f_sq()
+      obs.use_binning_of(self)
+    else :
+      obs = self
     if (not use_binning):
-      if (self.indices().size() == 0): return None
-      mean_data = flex.mean(self.data())
+      if (obs.indices().size() == 0): return None
+      mean_data = flex.mean(obs.data())
       if (mean_data == 0): return None
       return mean_data
     result = []
-    for i_bin in self.binner().range_all():
-      sel = self.binner().selection(i_bin)
-      result.append(self.select(sel).wilson_plot())
-    return binned_data(binner=self.binner(), data=result, data_fmt="%7.4f")
+    for i_bin in obs.binner().range_all():
+      sel = obs.binner().selection(i_bin)
+      result.append(obs.select(sel).wilson_plot())
+    return binned_data(binner=obs.binner(), data=result, data_fmt="%7.4f")
 
   def i_over_sig_i(self, use_binning=False,return_fail=None):
     """<I/sigma_I>"""
