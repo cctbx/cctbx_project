@@ -11,6 +11,7 @@ except ImportError, e :
   libtbx_env = None
 import argparse
 import shutil
+import stat
 import os
 import sys
 
@@ -97,10 +98,10 @@ setup(
     },
   ],
   zipfile=None,
-  dll_excludes=['w9xpopen.exe'],
   options={
     'py2exe': {
        'includes': ['subprocess'],
+       'dll_excludes' : ['w9xpopen.exe'],
        'bundle_files': %d,
     },
   })
@@ -116,13 +117,20 @@ setup(
   exe_file = os.path.join(dist_path, "%s.exe" % exe_name)
   assert (os.path.isfile(exe_file))
   os.chdir(options.dest)
+  print >> out, ""
   for file_name in dist_files :
-    if (file_name == "w9xpopen.exe") :
-      continue
     if os.path.exists(file_name) :
-      os.remove(file_name)
+      print >> out, "WARNING: %s already exists" % file_name
+      continue
+      # XXX Even for Windows, this is incredibly broken
+      #full_path = os.path.join(options.dest, file_name)
+      #print "removing %s" % file_name
+      #subprocess.call("del /F /Q %s" % os.path.join(os.getcwd(), file_name))
+      #os.chmod(full_path, stat.S_IWRITE)
+      #os.unlink(full_path)
     print >> out, "moving %s..." % file_name
     shutil.move(os.path.join(dist_path, file_name), os.getcwd())
+    os.chmod(file_name, stat.S_IWRITE)
   return 0
 
 if (__name__ == "__main__") :

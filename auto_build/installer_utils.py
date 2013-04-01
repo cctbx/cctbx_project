@@ -37,7 +37,7 @@ def call (args, log, join_stdout_stderr=True) :
   except ImportError : # TODO needs testing
     child_stdin, child_stdout, child_stderr = os.popen3(args, "t")
     child_stdin.close()
-    log.write(child_stdout)
+    log.write(child_stdout.read())
     rc = 0
   if (rc != 0) :
     raise RuntimeError("Call to '%s' failed with exit code %d" % (args, rc))
