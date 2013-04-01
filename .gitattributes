@@ -1,16 +1,4 @@
 * text=auto !eol
-auto_build/__init__.py svneol=native#text/x-python
-auto_build/command_line/__init__.py -text
-auto_build/command_line/create_mac_app.py -text
-auto_build/command_line/create_windows_exe.py -text
-auto_build/create_mac_app.py -text
-auto_build/create_windows_exe.py -text
-auto_build/install -text
-auto_build/install_cctbx_base.py -text
-auto_build/installer_utils.py -text
-auto_build/package_defs.py -text
-auto_build/regenerate_module_files.py -text
-auto_build/write_gui_dispatcher_include.py -text
 boost_adaptbx/__init__.py svneol=native#text/x-python
 boost_adaptbx/boost/std_pair.py -text
 boost_adaptbx/boost/tuple.py -text
@@ -1170,6 +1158,16 @@ ipctbx/ext.cpp svneol=native#text/plain
 ipctbx/libtbx_config -text
 ipctbx/tst_ext.py svneol=native#text/x-python
 libtbx/assert_utils.py -text
+libtbx/auto_build/README -text
+libtbx/auto_build/__init__.py svneol=native#text/x-python
+libtbx/auto_build/create_mac_app.py -text
+libtbx/auto_build/create_windows_exe.py -text
+libtbx/auto_build/install -text
+libtbx/auto_build/install_cctbx_base.py -text
+libtbx/auto_build/installer_utils.py -text
+libtbx/auto_build/package_defs.py -text
+libtbx/auto_build/regenerate_module_files.py -text
+libtbx/auto_build/write_gui_dispatcher_include.py -text
 libtbx/binary_search.py svneol=native#text/x-python
 libtbx/callbacks.py -text
 libtbx/clear_paths.py svneol=native#text/x-python
@@ -1188,6 +1186,8 @@ libtbx/command_line/clear_paths.py svneol=native#text/x-python
 libtbx/command_line/configure.bat -text
 libtbx/command_line/configure.sh svneol=native#text/x-sh
 libtbx/command_line/create_install_script_bat.py svneol=native#text/x-python
+libtbx/command_line/create_mac_app.py -text
+libtbx/command_line/create_windows_exe.py -text
 libtbx/command_line/csh.sh -text
 libtbx/command_line/dtrace.py -text
 libtbx/command_line/easy_qsub.py -text
