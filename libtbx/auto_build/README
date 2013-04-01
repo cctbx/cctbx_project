@@ -1,0 +1,6 @@
+This directory contains scripts used to build CCTBX and the Phenix installers.
+These are largely intended to run under the system-default Python interpreter,
+with several consequences:
+
+- they have almost no dependencies outside of the standard modules, and
+- they use relative imports within this module
