@@ -85,7 +85,8 @@ significance_filter {
 }
 min_corr = 0.1
   .type = float
-  .help = Correlation cutoff for rejecting individual frames
+  .help = Correlation cutoff for rejecting individual frames.
+  .help = This filter is not applied if model==None.
 unit_cell_length_tolerance = 0.1
   .type = float
   .help = Fractional change in unit cell dimensions allowed (versus target \
@@ -114,6 +115,7 @@ scaling {
   mtz_file = None
     .type = str
     .help = for Riso/ CCiso, the reference structure factors, must have data type F
+    .help = a fake file is written out to this file name if model is None
   mtz_column_F = fobs
     .type = str
     .help = for Riso/ CCiso, the column name containing reference structure factors
@@ -813,7 +815,9 @@ class scaling_manager (intensity_data) :
     corr  = (N * sum_xy - sum_x * sum_y) / (math.sqrt(N * sum_xx - sum_x**2) *
              math.sqrt(N * sum_yy - sum_y**2))
 
-    have_sa_params = (result.get("sa_parameters")[0].find('None')!=0)
+    print result.get("sa_parameters")[0]
+    have_sa_params = ( type(result.get("sa_parameters")[0]) == type(dict()) )
+    #have_sa_params = (result.get("sa_parameters")[0].find('None')!=0)
 
     if (self.params.nproc == 1) :
       F = open(self.params.output.prefix+"_frame.db","a")
@@ -918,7 +922,31 @@ class scaling_manager (intensity_data) :
     print >> out, "average obs",sum_y/N, "average calc",sum_x/N
     print >> out, "Rejected %d reflections with negative intensities" % \
         (len(matches.pairs()) - N)
-    if (corr > self.params.min_corr) :
+
+    if (self.params.model is None) :
+      print "No scaling reference, so no correlation filter"
+      data.accept = True
+      for pair in matches.pairs():
+        if (observations.data()[pair[1]] <= 0) :
+          continue
+        Intensity = observations.data()[pair[1]]
+
+        # Add the reflection as a two-tuple of intensity and I/sig(I)
+        # to the dictionary of observations.
+        index = self.i_model.indices()[pair[0]]
+        isigi = (Intensity,
+                 observations.data()[pair[1]] / observations.sigmas()[pair[1]])
+        if (index in data.ISIGI):
+          data.ISIGI[index].append(isigi)
+        else:
+          data.ISIGI[index] = [isigi]
+
+        sigma = observations.sigmas()[pair[1]]
+        variance = sigma * sigma
+        data.summed_N[pair[0]] += 1
+        data.summed_wt_I[pair[0]] += Intensity / variance
+        data.summed_weight[pair[0]] += 1. / variance
+    elif (corr > self.params.min_corr) :
       data.accept = True
       for pair in matches.pairs():
         if (observations.data()[pair[1]] <= 0) :
@@ -959,7 +987,7 @@ def run(args):
 
   if ((work_params.d_min is None) or
       (work_params.data is None) or
-      (work_params.model is None)) :
+      ( (work_params.model is None) and work_params.scaling.algorithm != "mark1") ) :
     raise Usage("cxi.merge "
                 "d_min=4.0 "
                 "data=~/scratch/r0220/006/strong/ "
@@ -975,13 +1003,15 @@ def run(args):
   out.register("log", log, atexit_send_to=None)
   out.register("stdout", sys.stdout)
   print >> out, "I model"
-  from xfel.cxi.merging.general_fcalc import run
-  i_model = run(work_params)
-  i_model.show_summary()
-  if (work_params.target_unit_cell is None) :
+  if work_params.model is not None:
+    from xfel.cxi.merging.general_fcalc import run
+    i_model = run(work_params)
     work_params.target_unit_cell = i_model.unit_cell()
-  if (work_params.target_space_group is None) :
     work_params.target_space_group = i_model.space_group_info()
+  else:
+    from xfel.cxi.merging.general_fcalc import random_structure
+    i_model = random_structure(work_params)
+  i_model.show_summary()
 
   print >> out, "Target unit cell and space group:"
   print >> out, "  ", work_params.target_unit_cell
