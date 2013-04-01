@@ -39,9 +39,12 @@ class xscaling_manager (scaling_manager) :
       self._frames = self._frames_mysql
       self.observations = self.observations_mysql
       self._observations = self._observations_mysql
-
-    self.n_accepted = (self.frames["cc"]>self.params.min_corr).count(True)
-    self.n_low_corr = (self.frames["cc"]>self.params.min_corr).count(False)
+    if self.params.model is None:
+      self.n_accepted = len(self.frames["cc"])
+      self.n_low_corr = 0
+    else:
+      self.n_accepted = (self.frames["cc"]>self.params.min_corr).count(True)
+      self.n_low_corr = (self.frames["cc"]>self.params.min_corr).count(False)
 
     t2 = time.time()
     print >> self.log, ""
@@ -148,7 +151,7 @@ def run(args):
 
   if ((work_params.d_min is None) or
       (work_params.data is None) or
-      (work_params.model is None)) :
+      ( (work_params.model is None) and work_params.scaling.algorithm != "mark1") ) :
     raise Usage("cxi.merge "
                 "d_min=4.0 "
                 "data=~/scratch/r0220/006/strong/ "
@@ -164,13 +167,15 @@ def run(args):
   out.register("log", log, atexit_send_to=None)
   out.register("stdout", sys.stdout)
   print >> out, "I model"
-  from xfel.cxi.merging.general_fcalc import run
-  i_model = run(work_params)
-  i_model.show_summary()
-  if (work_params.target_unit_cell is None) :
+  if work_params.model is not None:
+    from xfel.cxi.merging.general_fcalc import run
+    i_model = run(work_params)
     work_params.target_unit_cell = i_model.unit_cell()
-  if (work_params.target_space_group is None) :
     work_params.target_space_group = i_model.space_group_info()
+  else:
+    from xfel.cxi.merging.general_fcalc import random_structure
+    i_model = random_structure(work_params)
+  i_model.show_summary()
 
   print >> out, "Target unit cell and space group:"
   print >> out, "  ", work_params.target_unit_cell
@@ -193,7 +198,11 @@ def run(args):
 # --- End of x scaling
   scaler.uc_values = unit_cell_distribution()
   for icell in xrange(len(scaler.frames["unit_cell"])):
-    scaler.uc_values.add_cell(
+    if scaler.params.model is None:
+      scaler.uc_values.add_cell(
+      unit_cell=scaler.frames["unit_cell"][icell])
+    else:
+      scaler.uc_values.add_cell(
       unit_cell=scaler.frames["unit_cell"][icell],
       rejected=(scaler.frames["cc"][icell] < scaler.params.min_corr))
 
@@ -218,7 +227,11 @@ def run(args):
     scaler.scale_all()
     scaler.uc_values = unit_cell_distribution()
     for icell in xrange(len(scaler.frames["unit_cell"])):
-      scaler.uc_values.add_cell(
+      if scaler.params.model is None:
+        scaler.uc_values.add_cell(
+        unit_cell=scaler.frames["unit_cell"][icell])
+      else:
+        scaler.uc_values.add_cell(
         unit_cell=scaler.frames["unit_cell"][icell],
         rejected=(scaler.frames["cc"][icell] < scaler.params.min_corr))
     scaler.show_unit_cell_histograms()
@@ -338,15 +351,19 @@ def run(args):
   j_model.setup_binner(
     d_max=100000, d_min=work_params.d_min, n_bins=work_params.output.n_bins)
   table_data = [["Bin", "Resolution Range", "# images"]]
+  if work_params.model is None:
+    appropriate_min_corr = -1.1 # lowest possible c.c.
+  else:
+    appropriate_min_corr = work_params.min_corr
   for i_bin in j_model.binner().range_used():
     col_count = '%8d' % results.count_frames(
-      work_params.min_corr, j_model.binner().selection(i_bin))
+      appropriate_min_corr, j_model.binner().selection(i_bin))
     col_legend = '%-13s' % j_model.binner().bin_legend(
       i_bin=i_bin, show_bin_number=False, show_bin_range=False,
       show_d_range=True, show_counts=False)
     table_data.append(['%3d' % i_bin, col_legend, col_count])
 
-  n_frames = (scaler.frames['cc'] > work_params.min_corr).count(True)
+  n_frames = (scaler.frames['cc'] > appropriate_min_corr).count(True)
   table_data.append([""] * len(table_data[0]))
   table_data.append(["All", "", '%8d' % n_frames])
   print >> out
