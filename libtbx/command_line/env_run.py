@@ -1,5 +1,5 @@
 from __future__ import division
-from libtbx import subprocess_with_fixes
+from libtbx.auto_build import subprocess_with_fixes
 import libtbx.load_env # implicit import
 import sys, os
 
