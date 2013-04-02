@@ -1,7 +1,6 @@
 
 from __future__ import division
 import mmtbx.solvent.ensemble_ordered_solvent as ensemble_ordered_solvent
-import mmtbx.solvent.ensemble_ordered_solvent_m2 as ensemble_ordered_solvent_m2
 from mmtbx.refinement.ensemble_refinement import ensemble_utils
 from mmtbx.dynamics import ensemble_cd
 import mmtbx.tls.tools as tls_tools
@@ -58,8 +57,6 @@ ensemble_refinement {
       .type = bool
       .help = Use protein atoms thermostat
   }
-  use_eos_m2 = False
-    .type = bool
   update_sigmaa_rfree = 0.001
     .type = float
     .help = test function
@@ -546,7 +543,7 @@ class run_ensemble_refinement(object):
 
       self.reset_velocities = False
       self.cmremove = False
-
+      
       #Calc rolling average KE energy
       self.kinetic_energy_running_average()
       #Show KE stats
@@ -642,7 +639,7 @@ class run_ensemble_refinement(object):
         if self.macro_cycle < self.equilibrium_macro_cycles:
           if self.fmodel_running.r_free() < (self.best_r_free - self.params.update_sigmaa_rfree):
             self.update_sigmaa()
-
+      
       # XXX wilson plot
       if self.params.show_wilson_plot and self.macro_cycle%int(self.n_mc_per_tx) == 0:
         self.wilson_plot(miller_data = self.fmodel_running.f_obs().data(), header = "Fobs running")
@@ -771,7 +768,7 @@ class run_ensemble_refinement(object):
                                   )
     info.show_remark_3(out = self.log)
     info.show_rfactors_targets_in_bins(out = self.log)
-
+    
     # Final wilson plot
     if self.params.show_wilson_plot:
       self.wilson_plot(miller_data = self.fmodel_total.f_obs().data(), header = "Fobs final")
@@ -864,7 +861,7 @@ class run_ensemble_refinement(object):
       n_obs, n_calc =\
         self.fmodel_running.n_obs_n_calc(update_nobs_ncalc = False)
       ref_div_current = self.n_calc_reference / n_calc
-
+      
       n_calc_coeff    = 1.0-math.exp(-self.n_mc_per_ncalc_update/self.n_mc_per_tx)
       n_calc_scaled   = ref_div_current * n_calc_coeff
       n_calc_update   = (self.fmodel_running.n_calc * (1.0-n_calc_coeff) ) + (self.fmodel_running.n_calc * ref_div_current * n_calc_coeff)
@@ -1212,16 +1209,7 @@ class run_ensemble_refinement(object):
         = (self.a_prime * self.er_data.ke_protein_running) + ( (1-self.a_prime) * ke)
 
   def ordered_solvent_update(self):
-    if self.params.use_eos_m2:
-      ensemble_ordered_solvent_manager = ensemble_ordered_solvent_m2.manager(
-        model             = self.model,
-        fmodel            = self.fmodel_running,
-        verbose           = self.params.verbose,
-        params            = self.params.ensemble_ordered_solvent,
-        velocities        = self.er_data.velocities,
-        log               = self.log)
-    else:
-      ensemble_ordered_solvent_manager = ensemble_ordered_solvent.manager(
+    ensemble_ordered_solvent_manager = ensemble_ordered_solvent.manager(
         model             = self.model,
         fmodel            = self.fmodel_running,
         verbose           = self.params.verbose,
