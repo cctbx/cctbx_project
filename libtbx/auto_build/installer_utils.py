@@ -21,24 +21,21 @@ def check_python_version () :
 
 def call (args, log, join_stdout_stderr=True) :
   rc = None
-  try :
+  if (sys.version_info[1] >= 7) :
     import subprocess
-    stderr = subprocess.PIPE
-    if (join_stdout_stderr) :
-      stderr = subprocess.STDOUT
-    p = subprocess.Popen(
-      args=args,
-      shell=True,
-      stdout=subprocess.PIPE,
-      stderr=stderr)
-    o, e = p.communicate()
-    log.write(o)
-    rc = p.returncode
-  except ImportError : # TODO needs testing
-    child_stdin, child_stdout, child_stderr = os.popen3(args, "t")
-    child_stdin.close()
-    log.write(child_stdout.read())
-    rc = 0
+  else :
+    import subprocess_with_fixes as subprocess
+  stderr = subprocess.PIPE
+  if (join_stdout_stderr) :
+    stderr = subprocess.STDOUT
+  p = subprocess.Popen(
+    args=args,
+    shell=True,
+    stdout=subprocess.PIPE,
+    stderr=stderr)
+  o, e = p.communicate()
+  log.write(o)
+  rc = p.returncode
   if (rc != 0) :
     raise RuntimeError("Call to '%s' failed with exit code %d" % (args, rc))
 
@@ -59,7 +56,9 @@ def untar (pkg_name, log=sys.stdout, verbose=False) :
                  re.sub(".tar.bz2", "",
                    os.path.basename(pkg_name))))
   if (not os.path.isdir(dir_name)) :
-    raise RuntimeError("Expected directory '%s' not found!" % dir_name)
+    time.sleep(1)
+    if (not os.path.isdir(dir_name)) :
+      raise RuntimeError("Expected directory '%s' not found!" % dir_name)
   return os.path.abspath(dir_name)
 
 def detect_osx_version () :

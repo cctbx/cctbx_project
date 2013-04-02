@@ -12,8 +12,8 @@ BASE_XIA_PKG_URL = "http://www.ccp4.ac.uk/xia"
 
 # from CCI
 PYTHON_PKG = "Python-2.7.3_cci.tgz"
-# XXX apparently there is a problem with 1.6.2 and gcc 3.4
-NUMPY_PKG = "numpy-1.6.1.tar.gz"         # used many places
+# XXX we maintain a patched copy to avoid an ICE with gcc 3.4
+NUMPY_PKG = "numpy-1.6.2.tar.gz"         # used many places
 IMAGING_PKG = "Imaging-1.1.7.tar.gz"     # for labelit, gltbx
 REPORTLAB_PKG = "reportlab-2.6.tar.gz"   # for labelit
 ZLIB_PKG = "zlib-1.2.7.tar.gz"

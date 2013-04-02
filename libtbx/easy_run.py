@@ -4,8 +4,13 @@ import sys
 if (sys.version_info[1] >= 7) :
   import subprocess
 else :
-  try: import subprocess_with_fixes as subprocess
-  except ImportError: import subprocess
+  try:
+    from libtbx.auto_build import subprocess_with_fixes as subprocess
+  except ImportError:
+    try :
+      import subprocess_with_fixes as subprocess
+    except ImportError :
+      import subprocess
 import sys, os
 
 def _show_lines(lines, out, prefix):
