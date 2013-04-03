@@ -74,18 +74,16 @@ argv-emulation=0""")
   f.close()
   script_name = re.sub(".pyc$", ".py", py2app.script_py2applet.__file__)
   import subprocess
-  #executable = sys.executable
-  #if ("Python.framework" in executable) :
-  #  executable = re.sub("Python.framework/Versions/.*",
-  #    "Python.framework/Versions/Current/bin/python", executable)
-  executable = "/usr/bin/python"
+  executable = sys.executable
+  if (libtbx_env is not None) :
+    executable = abs(libtbx.env.python_exe)
   args = [executable, script_name, "--make-setup", "%s.py" % app_name]
   if (options.icon is not None) :
     args.append(options.icon)
   rc = subprocess.call(args)
   if (rc != 0) :
     return rc
-  args = [executable, "setup.py", "py2app"]
+  args = [executable, "setup.py", "py2app", "-A"]
   rc = subprocess.call(args)
   if (rc != 0) :
     return rc
