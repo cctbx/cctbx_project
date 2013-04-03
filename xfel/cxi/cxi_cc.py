@@ -258,14 +258,14 @@ def run_cc(params,output):
   table_data.append(table_header)
   table_data.append(table_header2)
 
-  items = binned_cc_ref.binner.range_used()
+  items = binned_cc_int.binner.range_used()
 
   for bin in items:
     table_row = []
     table_row.append("%3d"%bin)
-    table_row.append("%-13s"%binned_cc_ref.binner.bin_legend(i_bin=bin,show_bin_number=False,show_bin_range=False,
+    table_row.append("%-13s"%binned_cc_int.binner.bin_legend(i_bin=bin,show_bin_number=False,show_bin_range=False,
                                                  show_d_range=True, show_counts=False))
-    table_row.append("%13s"%binned_cc_ref.binner.bin_legend(i_bin=bin,show_bin_number=False,show_bin_range=False,
+    table_row.append("%13s"%binned_cc_int.binner.bin_legend(i_bin=bin,show_bin_number=False,show_bin_range=False,
                                                  show_d_range=False, show_counts=True))
     table_row.append("%.1f%%"%(100.*binned_cc_int.data[bin]))
     table_row.append("%7d"%(binned_cc_int_N.data[bin]))
