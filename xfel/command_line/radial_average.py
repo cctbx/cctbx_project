@@ -147,7 +147,7 @@ def run (args) :
       print "%.3f %.3f %.3f"%(twotheta,results[i],stddev) #.xye format for GSASII
      #print "%.3f %.3f %.3f"%(twotheta,results[i],ds[i])  # include calculated d spacings
 
-  from pylab import scatter, show, xlim, xlabel, ylabel
+  from pylab import scatter, show, xlabel, ylabel
   scatter(xvals,results)
   xlabel("2 theta")
   ylabel("Avg ADUs")
@@ -178,7 +178,7 @@ def get_tile_coords(tiles, tile):
   x2 = tiles[tile*4 + 3]
   return (x1,y1,x2,y2)
 
-from scitbx.matrix import col, rec, sqr, rotate_point_around_axis
+from scitbx.matrix import col, sqr
 
 def apply_sub_pixel_metrology(tile, x, y, tcx, tcy, phil,handedness=0):
   handedness -= 1
