@@ -106,7 +106,7 @@ class mod_average(average_tbx.average_mixin):
         p = cspad_tbx.dwritef(d, self.max_dirname, self.max_basename)
         self.logger.info(
           "Max written to %s" % p)
-       
+
     if (self.nfail == 0):
       self.logger.info(
         "%d images processed" % self.nmemb)

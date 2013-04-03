@@ -7,7 +7,6 @@ from scitbx.python_utils import dicts
 from libtbx.utils import user_plus_sys_time
 from libtbx import adopt_init_args
 import sys, math
-from libtbx.utils import null_out
 
 import boost.python
 ext = boost.python.import_ext("cctbx_emma_ext")
