@@ -73,11 +73,12 @@ def random_structure (params) :
     add_sigmas     = True,
     params         = params2).f_model
   if not params.merge_anomalous:
-    f_model = f_model.generate_bijvoet_mates()
-  i_model = f_model.as_intensity_array()
+    f_model_possibly_anomalous = f_model.generate_bijvoet_mates()
+  i_model = f_model_possibly_anomalous.as_intensity_array()
 
   if params.scaling.mtz_file is not None:
     f_fake = f_model.as_amplitude_array()
+    # as the code that consumes the mtz f-obs expects non-anomalous data
     mtzdata = f_fake.as_mtz_dataset(column_root_label="f-obs")
     mtzdata.mtz_object().write(params.scaling.mtz_file)
 
