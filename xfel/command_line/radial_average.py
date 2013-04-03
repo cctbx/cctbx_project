@@ -18,7 +18,33 @@ master_phil = libtbx.phil.parse("""
     .type = float
   beam_y = None
     .type = float
+  handedness = 0
+    .type = int
 """)
+# Array of handedness possibilities.  Input 0 for no subpixel
+# metrology correction
+                         # id  x/y   theta    x       y
+handednesses = \
+ [[False, 1, 1, 1],      #  1 normal  pos     x       y
+  [False, 1, 1,-1],      #  2 normal  pos     x   neg y
+  [False, 1,-1, 1],      #  3 normal  pos neg x       y
+  [False, 1,-1,-1],      #  4 normal  pos neg x   neg y
+  [False,-1, 1, 1],      #  5 normal  neg     x       y
+  [False,-1, 1,-1],      #  6 normal  neg     x   neg y
+  [False,-1,-1, 1],      #  7 normal  neg neg x       y
+  [False,-1,-1,-1],      #  8 normal  neg neg x   neg y
+  [True , 1, 1, 1],      #  9 swapped pos     x       y
+  [True , 1, 1,-1],      # 10 swapped pos     x   neg y
+  [True , 1,-1, 1],      # 11 swapped pos neg x       y
+  [True , 1,-1,-1],      # 12 swapped pos neg x   neg y
+  [True ,-1, 1, 1],      # 13 swapped neg     x       y
+  [True ,-1, 1,-1],      # 14 swapped neg     x   neg y
+  [True ,-1,-1, 1],      # 15 swapped neg neg x       y
+  [True ,-1,-1,-1]]      # 16 swapped neg neg x   neg y
+h_swapped = 0
+h_theta = 1
+h_x = 2
+h_y = 3
 
 def run (args) :
   user_phil = []
@@ -39,6 +65,7 @@ def run (args) :
   if params.file_path is None or not os.path.isfile(params.file_path) :
     master_phil.show()
     raise Usage("file_path must be defined (either file_path=XXX, or the path alone).")
+  assert params.handedness is not None
 
   from iotbx.detectors.npy import NpyImage
   img = NpyImage(params.file_path)
@@ -68,6 +95,12 @@ def run (args) :
 
   bc = (params.beam_x,params.beam_y)
 
+  #hs = (0,9,11,12,16)
+  ##for i in xrange(17):
+  #for i in hs:
+    #show_tiles(the_tiles, img, horizons_phil, bc, i-1)
+  #return
+
   extent = int(math.ceil(max(distance((0,0),bc),
                              distance((img.image_size_fast,0),bc),
                              distance((0,img.image_size_slow),bc),
@@ -87,7 +120,7 @@ def run (args) :
 
     for y in xrange(y1,y2):
       for x in xrange(x1,x2):
-        corrected = apply_sub_pixel_metrology(tile,x,y,tcx,tcy,horizons_phil)
+        corrected = apply_sub_pixel_metrology(tile,x,y,tcx,tcy,horizons_phil,params.handedness)
         if corrected is None: continue
         val = img.get_pixel_intensity((x,y))
         if val > 0:
@@ -98,6 +131,7 @@ def run (args) :
   xvals = np.ndarray((extent,),float)
   #ds = np.ndarray((extent,),float)
   for i in range(extent):
+    stddev = np.std(results[i])
     results[i] = np.mean(results[i])
     d_in_mm = i * img.pixel_resolution
     twotheta = math.atan(d_in_mm/img.distance)*180/math.pi
@@ -106,11 +140,12 @@ def run (args) :
     #if twotheta==0:
       #ds[i] = 1000
     #else:
-      #ds[i] = img.wavelength/(math.sin(math.pi*twotheta/180))
+      #ds[i] = img.wavelength/(2*math.sin((math.pi*twotheta/180)/2))
 
     if "%.3f"%results[i] != "nan":
-      print "%.3f %.3f"%(twotheta,results[i])  #.xy format for Rex.cell.
-    #print "%.3f %.3f %.3f"%(twotheta,results[i],ds[i])  # include calculated d spacings
+     #print "%.3f %.3f"%     (twotheta,results[i])        #.xy  format for Rex.cell.
+      print "%.3f %.3f %.3f"%(twotheta,results[i],stddev) #.xye format for GSASII
+     #print "%.3f %.3f %.3f"%(twotheta,results[i],ds[i])  # include calculated d spacings
 
   from pylab import scatter, show, xlim, xlabel, ylabel
   scatter(xvals,results)
@@ -145,17 +180,24 @@ def get_tile_coords(tiles, tile):
 
 from scitbx.matrix import col, rec, sqr, rotate_point_around_axis
 
-def apply_sub_pixel_metrology(tile, x, y, tcx, tcy, phil):
-  #return (x,y)
+def apply_sub_pixel_metrology(tile, x, y, tcx, tcy, phil,handedness=0):
+  handedness -= 1
+  if handedness < 0:
+    return (x,y)
+
   if tile < 0: return None
 
   r = col((x, y))      # point of interest
   Ti = col((tcx,tcy))  # center of tile i
 
   # sub pixel translation/rotation
-  ti = col((phil.integration.subpixel_joint_model.translations[tile*2],
-            phil.integration.subpixel_joint_model.translations[(tile*2)+1]))
-  theta = -phil.integration.subpixel_joint_model.rotations[tile] * math.pi/180
+  if handednesses[handedness][h_swapped]:
+    ti = col((phil.integration.subpixel_joint_model.translations[(tile*2)+1] * handednesses[handedness][h_y],
+              phil.integration.subpixel_joint_model.translations[tile*2]     * handednesses[handedness][h_x]))
+  else:
+    ti = col((phil.integration.subpixel_joint_model.translations[tile*2]     * handednesses[handedness][h_x],
+              phil.integration.subpixel_joint_model.translations[(tile*2)+1] * handednesses[handedness][h_y]))
+  theta = phil.integration.subpixel_joint_model.rotations[tile] * (math.pi/180) * handednesses[handedness][h_theta]
 
   Ri = sqr((math.cos(theta),-math.sin(theta),math.sin(theta),math.cos(theta)))
 
@@ -167,14 +209,15 @@ def apply_sub_pixel_metrology(tile, x, y, tcx, tcy, phil):
 
   return (result[0], result[1])
 
-# Debuggind jiffy function to show a few tiles and verify metrology visually
-def show_tiles(the_tiles, img, phil):
+# Debugging jiffy function to show a few tiles and verify metrology visually
+def show_tiles(the_tiles, img, phil, bc, handedness=0):
   import numpy as np
   import matplotlib.pyplot as plt
 
-  tiles_list = (0, 1)
+  #tiles_list = (0, 1)
   #tiles_list = (2, 18)
   #tiles_list = (48, 49)
+  tiles_list = (35, 48, 49, 51)
   #tiles_list = xrange(64)
   arraysx = np.array([])
   arraysy = np.array([])
@@ -197,7 +240,7 @@ def show_tiles(the_tiles, img, phil):
         if tile != t_id:
           print "bug! tile: %d, t_id %d, x %d, y %d"%(tile,t_id,x1+i,y1+j)
           return
-        xt, yt = apply_sub_pixel_metrology(the_tiles,x1+i,y1+j,phil)
+        xt, yt = apply_sub_pixel_metrology(tile,x1+i,y1+j,cx,cy,phil,handedness)
         x[(j*w)+i] = xt
         y[(j*w)+i] = yt
         c = img.get_pixel_intensity((j+y1,i+x1))
@@ -213,8 +256,10 @@ def show_tiles(the_tiles, img, phil):
 
   plt.scatter(arraysx, arraysy, c=arraysz, s=1, marker='s', cmap="gray_r", lw=0)
   plt.gca().invert_yaxis()
-  #circ = plt.Circle((params.beam_x, params.beam_y), radius=200)
-  #plt.gca().add_patch(circ)
+  circ = plt.Circle((bc[0], bc[1]), radius=332, facecolor='none', edgecolor='red')
+  plt.gca().add_patch(circ)
+
+  plt.title("Handedness: %s"%(handedness+1))
 
   plt.show()
   return

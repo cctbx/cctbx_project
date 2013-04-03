@@ -48,7 +48,7 @@ class sb_wrapper:
     twotheta = 2.* flex.asin(
                  flex.double(len(self.two_theta_experimental), wavelength/2.)/
                  self.experimental_d)
-    L_mm = panel.settings.distance * flex.atan(twotheta)
+    L_mm = panel.settings.distance * flex.tan(twotheta)
     L_pixels = L_mm / panel._img._raw.pixel_size
 
     [ dc.DrawCircle(xc, yc, panel._img.get_scale() * pxl) for pxl in L_pixels ]
@@ -87,7 +87,7 @@ class pdb_code_wrapper(sb_wrapper):
       wavelength = info["WAVELENGTH"]
 
     twotheta = self.uc.two_theta(miller_indices = self.hkl_list, wavelength = wavelength)
-    L_mm = panel.settings.distance * flex.atan(twotheta)
+    L_mm = panel.settings.distance * flex.tan(twotheta)
     L_pixels = L_mm / panel._img._raw.pixel_size
 
     [ dc.DrawCircle(xc, yc, panel._img.get_scale() * pxl) for pxl in L_pixels ]
@@ -128,7 +128,7 @@ class unit_cell_wrapper(sb_wrapper):
     twotheta = self.hkl_list.two_theta(wavelength = wavelength)
     L_mm = []
     L_pixels = []
-    for tt in twotheta: L_mm.append(panel.settings.distance * math.atan(tt[1]))
+    for tt in twotheta: L_mm.append(panel.settings.distance * math.tan(tt[1]))
     for lmm in L_mm: L_pixels.append(lmm/panel._img._raw.pixel_size)
 
     [ dc.DrawCircle(xc, yc, panel._img.get_scale() * pxl) for pxl in L_pixels ]
