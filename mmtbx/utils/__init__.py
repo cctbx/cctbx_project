@@ -2398,6 +2398,12 @@ class cmdline_load_pdb_and_data (object) :
       raise Sorry("At least one PDB file is required as input.")
     if (params.input.xray_data.file_name is None) :
       raise Sorry("At least one reflections file is required as input.")
+    # FIXME this makes two assumptions which may be problematic:
+    #   - the reflection file has full crystal symmetry specified
+    #   - if the PDB file contains symmetry information, this will be the same
+    #     as the reflection file
+    # It should probably be made more flexible, although in practice these
+    # assumptions are usually true.
     str_utils.make_header("Processing X-ray data", out=out)
     hkl_in = file_reader.any_file(params.input.xray_data.file_name)
     hkl_in.check_file_type("hkl")
@@ -2419,9 +2425,23 @@ class cmdline_load_pdb_and_data (object) :
       for file_name in self.cif_file_names :
         cif_obj = mmtbx.monomer_library.server.read_cif(file_name=file_name)
         self.cif_objects.append((file_name, cif_obj))
+    hkl_symm = self.raw_data.crystal_symmetry()
+    use_symmetry = hkl_symm
+    pdb_symm = None
+    for pdb_file_name in params.input.pdb.file_name :
+      pdb_symm = crystal_symmetry_from_any.extract_from(pdb_file_name)
+      if (pdb_symm is not None) :
+        break
+    if (pdb_symm is not None) :
+      if (not pdb_symm.unit_cell().is_similar_to(hkl_symm.unit_cell())) :
+        raise Sorry(("Unit cell mismatch between data and PDB file:\n"+
+          "PDB file: %s\nData:%s") % (pdb_symm.unit_cell.parameters(),
+          hkl_symm.unit_cell().parameters()))
+      use_symmetry = pdb_symm
     pdb_file_object = pdb_file(
       pdb_file_names=params.input.pdb.file_name,
       cif_objects=self.cif_objects,
+      crystal_symmetry=use_symmetry,
       log=out)
     if process_pdb_file :
       str_utils.make_header("Processing PDB file(s)", out=out)
@@ -2430,6 +2450,7 @@ class cmdline_load_pdb_and_data (object) :
       geometry = processed_pdb_file.geometry_restraints_manager(
         show_energies=False)
       self.xray_structure = processed_pdb_file.xray_structure()
+      print self.xray_structure.unit_cell().parameters()
       chain_proxies = processed_pdb_file.all_chain_proxies
       self.pdb_hierarchy = chain_proxies.pdb_hierarchy
       self.processed_pdb_file = processed_pdb_file
@@ -2438,7 +2459,8 @@ class cmdline_load_pdb_and_data (object) :
       pdb_in = pdb_file_object.pdb_inp
       self.pdb_hierarchy = pdb_in.construct_hierarchy()
       self.pdb_hierarchy.atoms().reset_i_seq()
-      self.xray_structure = pdb_in.xray_structure_simple()
+      self.xray_structure = pdb_in.xray_structure_simple(
+        crystal_symmetry=use_symmetry)
       self.processed_pdb_file = None
       self.geometry = None
     self.fmodel = None
