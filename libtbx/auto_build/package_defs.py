@@ -11,7 +11,7 @@ BASE_CCI_PKG_URL = "http://cci.lbl.gov/third_party"
 BASE_XIA_PKG_URL = "http://www.ccp4.ac.uk/xia"
 
 # from CCI
-PYTHON_PKG = "Python-2.7.3_cci.tgz"
+PYTHON_PKG = "Python-2.7.3_cci.tar.gz"
 # XXX we maintain a patched copy to avoid an ICE with gcc 3.4
 NUMPY_PKG = "numpy-1.6.2.tar.gz"         # used many places
 IMAGING_PKG = "Imaging-1.1.7.tar.gz"     # for labelit, gltbx
