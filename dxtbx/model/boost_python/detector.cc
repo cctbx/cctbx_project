@@ -21,7 +21,6 @@
 
 namespace dxtbx { namespace model { namespace boost_python {
 
-  using namespace boost::python;
   
   std::string detector_to_string(const Detector &detector) {
     std::stringstream os;
@@ -46,6 +45,7 @@ namespace dxtbx { namespace model { namespace boost_python {
 
   void export_detector() 
   {
+    using namespace boost::python;
     // Register std::pair conversion for Detector coordinate type 
     boost_adaptbx::std_pair_conversions::to_and_from_tuple<int, vec2<double> >();
 

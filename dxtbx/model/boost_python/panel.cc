@@ -19,7 +19,6 @@
 
 namespace dxtbx { namespace model { namespace boost_python {
 
-  using namespace boost::python;
   
   std::string panel_to_string(const Panel &panel) {
     std::stringstream os;
@@ -43,6 +42,7 @@ namespace dxtbx { namespace model { namespace boost_python {
 
   void export_panel() 
   {
+    using namespace boost::python;
     // Export a flex array - should probably move somewhere else
     scitbx::af::boost_python::flex_wrapper <int4>::plain("flex_int4");
 
