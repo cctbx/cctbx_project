@@ -3,7 +3,10 @@ from __future__ import division
 import sys
 import csv
 
-def run(filename, list_type="csv"):
+def run(filename,
+        output,
+        list_type="csv",
+        ):
   print 'filename',filename
   print 'list_type',list_type
   if list_type=="csv":
@@ -13,20 +16,60 @@ def run(filename, list_type="csv"):
       spamreader = csv.reader(csvfile) #, delimiter=' ', quotechar='|')
       for i, row in enumerate(spamreader):
         if i==0:
-          headers = row
-          data["headers"] = headers
+          for i, item in enumerate(row):
+            row[i] = row[i].strip()
+            row[i] = row[i].replace(" ", "_")
+            row[i] = row[i].replace("%", "percent")
+            row[i] = row[i].replace("#", "number")
+            row[i] = row[i].lower()
+          data["headers"] = row
         else:
           data["data"].append(row)
-      def _cmp_pdb_id(l1, l2):
-        if l1[1]<l2[1]: return -1
-        return 1
-      data["data"].sort(_cmp_pdb_id)
+      #def _cmp_pdb_id(l1, l2):
+      #  if l1[1]<l2[1]: return -1
+      #  return 1
+      #data["data"].sort(_cmp_pdb_id)
+      def _guess_type(item):
+        try: 
+          item=int(item)
+          return int
+        except: pass
+        try: 
+          item=float(item)
+          return float
+        except: pass
+        return str
+      funcs = {}
       for row in data["data"]:
         for i, item in enumerate(row):
-          if i in [3,4,5,6,7,8]:
-            row[i]=float(row[i])
-          elif i in [9]:
-            row[i]=int(row[i])
+          funcs.setdefault(i, {})
+          t = _guess_type(item)
+          funcs[i].setdefault(t, 0)
+          funcs[i][t]+=1
+      for i in funcs:
+        for k in funcs[i].keys():
+          funcs[i][funcs[i][k]] = k
+          del funcs[i][k]
+      for row in data["data"]:
+        for i, item in enumerate(row):
+          if type(item)==type(""):
+            if item.lower() in ["yes"]: row[i]=True
+            elif item.lower() in ["no"]: row[i]=False
+            elif item.lower() in ["none"]: row[i]=None
+      for i in funcs:
+        func = max(funcs[i].keys())
+        func = funcs[i][func]
+        for row in data["data"]:
+          for j, item in enumerate(row):
+            if i!=j: continue
+            if type(item)!=type(""): continue
+            try: row[j]=func(item)
+            except ValueError, e:
+              row[j]=float(item)
+            if type(row[j])==type(""): row[j]=row[j].strip()
+      #
+      # output
+      #
       outl =  "data = {"
       outl += '\n  "headers" : ['
       for header in data["headers"]:
@@ -37,10 +80,21 @@ def run(filename, list_type="csv"):
         outl += '\n    %s,' % row
       outl += '\n    ],'
       outl += "\n  }"
+      outl += '''
+
+if __name__=="__main__":
+  print data["headers"]
+  print
+  for item in data["data"]:
+    print item
+  print
+'''
       print outl
-      f=file("top8000.py", "wb")
+      f=file("%s.py" % output, "wb")
       f.write(outl)
       f.close()
+
+      os.system("python %s.py" % output)
 
 
 if __name__=="__main__":
