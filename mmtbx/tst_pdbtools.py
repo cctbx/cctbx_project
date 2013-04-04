@@ -612,6 +612,22 @@ ATOM    514  CE  MSE A 106      50.851  47.140  39.206  1.00  1.19           C
       break
   assert (found_sd)
 
+def exercise_change_of_basis () :
+  open("tmp_pdbtools_cb_op.pdb", "w").write("""\
+CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1      2
+ATOM      1  N   GLY A   1      -9.009   4.612   6.102  1.00 16.77           N
+ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
+ATOM      3  C   GLY A   1      -8.015   3.140   4.419  1.00 16.16           C
+ATOM      4  O   GLY A   1      -7.523   2.521   5.381  1.00 16.78           O  """)
+  cmd = "phenix.pdbtools tmp_pdbtools_cb_op.pdb change_of_basis='a,c,b'"
+  run_command(command=cmd, verbose=False)
+  lines = open("tmp_pdbtools_cb_op.pdb_modified.pdb").readlines()
+  for line in lines :
+    if line.startswith("CRYST1") :
+      assert (line.strip() ==
+        """CRYST1   21.937   23.477    4.866  90.00  90.00 107.08 P 1 1 21""")
+      break
+
 def exercise(args):
   if ("--show-everything" in args):
     verbose = 2
@@ -637,6 +653,7 @@ def exercise(args):
   exercise_set_seg_id()
   exercise_set_charge()
   exercise_convert_semet_to_met()
+  exercise_change_of_basis()
   print "OK"
 
 if (__name__ == "__main__"):

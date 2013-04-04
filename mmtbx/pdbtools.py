@@ -124,6 +124,11 @@ rotate_about_axis
   atom_selection = None
     .type = str
 }
+change_of_basis = None
+  .type = str
+  .short_caption = Change of basis operator
+  .help = Apply change-of-basis operator (e.g. reindexing operator) to \
+    the coordinates and symmetry.  Example: 'a,c,b'.
 renumber_residues = False
   .type = bool
   .help = Re-number residues
@@ -285,6 +290,7 @@ class modify(object):
     self._occupancies_modified = False
     self.remove_selection = None
     self.keep_selection = None
+    self.xray_structure_was_replaced = False
     if(self.params.random_seed is not None):
       random.seed(self.params.random_seed)
       flex.set_random_seed(self.params.random_seed)
@@ -294,6 +300,16 @@ class modify(object):
     try: params_keep_selection = self.params.keep
     except KeyboardInterrupt: raise
     except Exception: params_keep_selection = None
+    if (params.change_of_basis is not None) :
+      print >> log, "Applying change-of-basis operator '%s'" % \
+        params.change_of_basis
+      from cctbx import sgtbx
+      cb_op = sgtbx.change_of_basis_op(params.change_of_basis)
+      self.xray_structure = self.xray_structure.change_basis(cb_op)
+      self.pdb_hierarchy.atoms().set_xyz(self.xray_structure.sites_cart())
+      print >> log, "New symmetry:"
+      self.xray_structure.crystal_symmetry().show_summary(f=log, prefix="  ")
+      self.xray_structure_was_replaced = True
     if(params_remove_selection is not None):
       self.remove_selection = flex.smart_selection(
         flags=~utils.get_atom_selections(
@@ -836,6 +852,8 @@ def run(args, command_name="phenix.pdbtools"):
                   all_chain_proxies = all_chain_proxies,
                   log               = log)
   result.report_number_of_atoms_to_be_removed()
+  if (result.xray_structure_was_replaced) :
+    xray_structure = result.xray_structure
   utils.print_header("Writing output model", out = log)
 ### write output file (if got to this point)
   print >> log, "Output model file name: ", ofn
