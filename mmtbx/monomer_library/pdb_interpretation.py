@@ -1282,6 +1282,14 @@ class link_match_one(object):
         self.len_group_match = 0
       else:
         self.len_group_match = len(chem_link_group_comp)
+    elif ( comp_group in [None, ""] ):
+      print 'self.is_comp_id_match',self.is_comp_id_match,self.len_comp_id_match
+      if self.is_comp_id_match and self.len_comp_id_match>0:
+        self.is_group_match = True
+        self.len_group_match = len(chem_link_group_comp)
+      else:
+        self.is_group_match = False
+        self.len_group_match = -1
     else:
       self.is_group_match = False
       self.len_group_match = 0
@@ -1383,6 +1391,8 @@ Corrupt CIF link definition:
             chem_link.name,
             restr, atom_id,
             restr, comp_id))
+        atom = ad.get(atom_id, None)
+        return atom
       match.n_unresolved_bonds = 0
       for bond in match.link_link_id.bond_list:
         atoms = [
@@ -1402,6 +1412,20 @@ Corrupt CIF link definition:
   if (len(matches) == 0): return None
   matches.sort()
   best_matches = []
+  def _show_match(match):
+    print 'match '*10
+    print match.link_link_id.source_info
+    match.link_link_id.chem_link.show()
+    for attr in [
+      "n_unresolved_bonds",
+      "n_unresolved_angles",
+      "len_comp_id_match_1",
+      "len_comp_id_match_2",
+      "len_group_match_1",
+      "len_group_match_2",
+      ]:
+      print attr, getattr(match, attr, None)
+    print '_'*80
   for m in matches:
     if (cmp(m, matches[0]) != 0): break
     best_matches.append(m)
@@ -3405,6 +3429,12 @@ class build_all_chain_proxies(object):
                                                    data_links,
                                                    atomss,
                                                    ):
+            if verbose:
+              print '-'*80
+              print pdbres_pairs
+              print "data_link",data_link
+              for atom in atoms:
+                print atom.quote()
             outls.setdefault(data_link, "")
             tmp = self.process_custom_links(mon_lib_srv,
                                             pdbres_pair,
@@ -3412,6 +3442,8 @@ class build_all_chain_proxies(object):
                                             atoms,
                                             verbose=verbose,
                                             )
+            if verbose:
+              print "rc :%s:" % tmp
             outls[data_link] = tmp
     # log output about detection
     remove=[]
