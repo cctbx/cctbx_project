@@ -99,6 +99,8 @@ class installer (object) :
     assert os.path.exists(self.python_exe), self.python_exe
     self.update_paths()
     if (not options.basic) :
+      for env_var in ["BLAS","ATLAS","LAPACK"] :
+        os.environ[env_var] = "None"
       self.build_python_module_simple(
         pkg_url=BASE_CCI_PKG_URL,
         pkg_name=NUMPY_PKG,
