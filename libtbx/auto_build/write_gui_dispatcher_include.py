@@ -18,6 +18,8 @@ def run (args, prologue=None, epilogue=None) :
     help="Additional dispatcher include to prepend")
   parser.add_option("--epilogue", dest="epilogue", action="store",
     help="Additional dispatcher include to append")
+  parser.add_option("--ignore_missing_dirs", dest="ignore_missing_dirs",
+    action="store_true", help="Don't raise error if GTK paths don't exist")
   # this is detached in case we need to upgrade GTK - setting GTK_PATH is
   # essential for the themes to be used correctly
   parser.add_option("--gtk_version", dest="gtk_version", action="store",
@@ -39,7 +41,9 @@ def run (args, prologue=None, epilogue=None) :
     if (not os.path.isdir(lib_dir)) :
       raise OSError("%s does not exist." % lib_dir)
   gtk_path = os.path.join(base_path, "lib", "gtk-2.0", options.gtk_version)
-  if (not os.path.isdir(gtk_path)) :
+  if ((sys.platform.startswith("linux")) and
+      (not os.path.isdir(gtk_path)) and
+      (not options.ignore_missing_dirs)) :
     raise OSError("The path for the specified version of GTK+ does not "+
       "exist (%s)." % gtk_path)
   dispatcher = os.path.join(build_path, "dispatcher_include_%s.sh" %
