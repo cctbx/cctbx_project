@@ -238,6 +238,22 @@ class block_base(DictMixin):
       # create a unique loop name
       self.setdefault('_'+str(hash(tuple(loop.keys()))), loop)
 
+  def get_loop(self, loop_name, default=None):
+    loop_ = self.loops.get(loop_name.lower())
+    if loop_ is None:
+      return default
+    return loop_
+
+  def get_loop_with_defaults(self, loop_name, default_dict):
+    loop_ = self.get_loop(loop_name)
+    if loop_ is None:
+      loop_ = loop(header=default_dict.keys())
+    n_rows = loop_.n_rows()
+    for key, value in default_dict.iteritems():
+      if key not in loop_:
+        loop_.add_column(key, flex.std_string(n_rows, value))
+    return loop_
+
   def __copy__(self):
     new = self.__class__()
     new._items = self._items.copy()
@@ -458,10 +474,26 @@ class loop(DictMixin):
       size = max(size, len(column))
     return size
 
-  def add_row(self, row):
-    assert len(row) == len(self)
-    for i, key in enumerate(self):
-      self[key].append(str(row[i]))
+  def n_rows(self):
+    size = 0
+    for column in self.values():
+      size = max(size, len(column))
+    return size
+
+  def n_columns(self):
+    return len(self.keys)
+
+  def add_row(self, row, default_value="?"):
+    if isinstance(row, dict):
+      for key in self:
+        if key in row:
+          self[key].append(str(row[key]))
+        else:
+          self[key].append(default_value)
+    else:
+      assert len(row) == len(self)
+      for i, key in enumerate(self):
+        self[key].append(str(row[i]))
 
   def add_column(self, key, values):
     if self.size() != 0:

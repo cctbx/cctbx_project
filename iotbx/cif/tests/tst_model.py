@@ -409,6 +409,41 @@ _e
   assert cb2["_c"] == cb["_c"]
   assert cb2["_d"] == cb["_d"]
   assert cb2["_e"].strip() == cb["_e"]
+  #
+  cm = iotbx.cif.reader(input_string="""\
+data_a
+loop_
+  _pdbx_refine_tls_group.id
+  _pdbx_refine_tls_group.refine_tls_id
+  _pdbx_refine_tls_group.selection
+  _pdbx_refine_tls_group.selection_details
+  1  1  ?  "chain 'A' and (resid    2  through   15 )"
+  2  2  ?  "chain 'A' and (resid   16  through   26 )"
+  3  3  ?  "chain 'A' and (resid   27  through   43 )"
+  4  4  ?  "chain 'B' and (resid    1  through   14 )"
+  5  5  ?  "chain 'B' and (resid   15  through   20 )"
+""").model()
+  print cm
+  #
+  cif_block = model.block()
+  loop_a = model.loop(header=("_a.1", "_a.2"), data=(1,2,3,4,5,6))
+  cif_block.add_loop(loop_a)
+  assert cif_block.get_loop("_a") is loop_a
+  assert cif_block.get_loop("_b") is None
+  assert cif_block.get_loop("_b", default=loop_a) is loop_a
+  loop_a = cif_block.get_loop_with_defaults(
+    "_a", default_dict={"_a.2":".", "_a.3":"?", "_a.4":"."})
+  assert list(cif_block["_a.1"]) == ['1', '3', '5']
+  assert list(cif_block["_a.2"]) == ['2', '4', '6']
+  assert list(cif_block["_a.3"]) == ['?', '?', '?']
+  assert list(cif_block["_a.4"]) == ['.', '.', '.']
+  loop_a.add_row({"_a.3":"a", "_a.4":"b"})
+  loop_a.add_row({"_a.3":"c", "_a.4":"d"}, default_value=".")
+  assert list(cif_block["_a.1"]) == ['1', '3', '5', '?', '.']
+  assert list(cif_block["_a.2"]) == ['2', '4', '6', '?', '.']
+  assert list(cif_block["_a.3"]) == ['?', '?', '?', 'a', 'c']
+  assert list(cif_block["_a.4"]) == ['.', '.', '.', 'b', 'd']
+
 
 
 if __name__ == '__main__':
