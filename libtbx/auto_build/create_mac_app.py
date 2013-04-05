@@ -35,6 +35,11 @@ def run (args, out=sys.stdout) :
     help="Path to .icns file", default=icns_path)
   parser.add_argument("--dest", dest="dest", action="store",
     help="Destination path", default=os.getcwd())
+  parser.add_argument("--alias_build", dest="alias_build", action="store_true",
+    help="Generate alias build without Python interpreter", default=False)
+  parser.add_argument("--python_interpreter", dest="python_interpreter",
+    action="store", help="Python interpreter to use for final app",
+    default=None)
   options, args = parser.parse_known_args(args)
   if (len(args) == 0) :
     return parser.error("Executable name not specified.")
@@ -75,7 +80,9 @@ argv-emulation=0""")
   script_name = re.sub(".pyc$", ".py", py2app.script_py2applet.__file__)
   import subprocess
   executable = sys.executable
-  if (libtbx_env is not None) :
+  if (options.python_interpreter is not None) :
+    executable = options.python_interpreter
+  elif (libtbx_env is not None) :
     executable = abs(libtbx.env.python_exe)
   args = [executable, script_name, "--make-setup", "%s.py" % app_name]
   if (options.icon is not None) :
@@ -83,7 +90,9 @@ argv-emulation=0""")
   rc = subprocess.call(args)
   if (rc != 0) :
     return rc
-  args = [executable, "setup.py", "py2app", "-A"]
+  args = [executable, "setup.py", "py2app"]
+  if (options.alias_build) :
+    args.append("-A")
   rc = subprocess.call(args)
   if (rc != 0) :
     return rc
