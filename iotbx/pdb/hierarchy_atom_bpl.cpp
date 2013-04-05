@@ -386,8 +386,6 @@ namespace {
   IOTBX_LOC_GET(attr) \
   IOTBX_LOC_SET(attr)
 
-    //IOTBX_LOC_GET_SET(model_id)
-    IOTBX_LOC_GET_SET(chain_id)
     IOTBX_PDB_HIERARCHY_WRAPPERS_SET_HY36(resseq, resseq, 4U,
       /* HY36_WIDTH_4_MIN */ -999,
       /* HY36_WIDTH_4_MAX */ 2436111)
@@ -421,6 +419,7 @@ namespace {
   IOTBX_LOC_SET_STD_STRING(attr)
 
     IOTBX_LOC_GET_SET_STD_STRING(model_id)
+    IOTBX_LOC_GET_SET_STD_STRING(chain_id)
 
 #undef IOTBX_LOC_GET_STD_STRING
 #undef IOTBX_LOC_SET_STD_STRING
