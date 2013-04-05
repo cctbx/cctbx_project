@@ -122,7 +122,7 @@ namespace detail {
     for(unsigned i_md=0;i_md<n_models;i_md++) {
       hierarchy::model const& model = root.models()[i_md];
       if (model.chains_size() == 0) n_empty_models++;
-      model_ids[std::string(model.data->id.elems)]++;
+      model_ids[model.data->id]++;
       std::map<str2, unsigned> model_chain_ids;
       unsigned model_atoms_size = model.atoms_size();
       boost::scoped_array<small_str<19> > model_atom_labels(

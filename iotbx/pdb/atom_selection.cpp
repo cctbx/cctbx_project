@@ -34,7 +34,6 @@ namespace {
     hierarchy::root const& root,
     bool altloc_only)
   {
-    std::map<str8, std::vector<unsigned> > model_id_s;
     std::map<str4, std::vector<unsigned> > name_s;
     std::map<str1, std::vector<unsigned> > altloc_s;
     std::map<str3, std::vector<unsigned> > resname_s;
@@ -104,7 +103,7 @@ namespace {
         }
       }
       if (!altloc_only) {
-        append_range(model_id_s[mo.data->id], model_i_seq_start, i_seq);
+        append_range(model_id[mo.data->id], model_i_seq_start, i_seq);
       }
     }
     n_seq = i_seq;
@@ -115,7 +114,6 @@ namespace {
         s1.insert(s1.end(), s0.begin(), s0.end());
         altloc_s.erase(str1(""));
       }
-      map_array_transfer(model_id_s, model_id);
       map_array_transfer(name_s, name);
       map_array_transfer(resname_s, resname);
       map_array_transfer(chain_id_s, chain_id);

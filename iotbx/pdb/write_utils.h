@@ -12,7 +12,7 @@ namespace iotbx { namespace pdb { namespace write_utils {
   void
   model_record(
     stream_write& write,
-    str8 const& model_id);
+    std::string const& model_id);
 
   struct fstream_write : stream_write
   {

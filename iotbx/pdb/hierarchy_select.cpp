@@ -15,7 +15,7 @@ namespace iotbx { namespace pdb { namespace hierarchy {
     unsigned n_mds = models_size(); \
     for(unsigned i_md=0;i_md<n_mds;i_md++) { \
       model const& md = data->models[i_md]; \
-      model r_md(md.data->id.elems); \
+      model r_md(md.data->id.c_str()); \
       unsigned n_chs = md.chains_size(); \
       std::vector<chain> const& chs = md.chains(); \
       for(unsigned i_ch=0;i_ch<n_chs;i_ch++) { \
