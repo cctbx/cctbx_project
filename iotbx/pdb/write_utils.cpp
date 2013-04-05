@@ -7,8 +7,9 @@ namespace iotbx { namespace pdb { namespace write_utils {
   void
   model_record(
     stream_write& write,
-    str8 const& model_id)
+    std::string const& model_id_)
   {
+    str8 model_id = str8(model_id_.c_str());
     write("MODEL", 5U);
     unsigned n = model_id.rstripped_size();
     if (n != 0) {

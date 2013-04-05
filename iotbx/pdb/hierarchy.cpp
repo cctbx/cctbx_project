@@ -430,7 +430,7 @@ namespace {
           format(result, add_model, add_segid);
         }
         else {
-          model_id = (md->id.size() == 0 ? 0 : md->id.elems);
+          model_id = (md->id.size() == 0 ? 0 : md->id.c_str());
           format(result, add_model, add_segid);
         }
       }
@@ -506,7 +506,7 @@ namespace {
     label_formatter.icode = self.icode.elems;
     label_formatter.chain_id = self.chain_id.elems;
     label_formatter.model_id = (
-      self.model_id.size() == 0 ? 0 : self.model_id.elems);
+      self.model_id.size() == 0 ? 0 : self.model_id.c_str());
   }
 
 } // namespace <anonymous>
@@ -920,7 +920,7 @@ namespace {
   atom_with_labels
   atom::fetch_labels() const
   {
-    str8 model_id;
+    std::string model_id;
     str2 chain_id;
     str4 resseq;
     str1 icode;
@@ -946,7 +946,7 @@ namespace {
     }
     return atom_with_labels(
       *this,
-      model_id.elems,
+      model_id.c_str(),
       chain_id.elems,
       resseq.elems,
       icode.elems,
@@ -2075,7 +2075,7 @@ namespace {
   {
     return atom_with_labels(
       atom::detached_copy(),
-      model_id.elems,
+      model_id.c_str(),
       chain_id.elems,
       resseq.elems,
       icode.elems,

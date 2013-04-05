@@ -32,7 +32,7 @@ namespace {
       {}
 
       virtual bool
-      process_model(str8 const& model_id)
+      process_model(std::string const& model_id)
       {
         if (model_id.size() != 0) {
           write_utils::model_record(write, model_id);
@@ -41,7 +41,7 @@ namespace {
       }
 
       virtual bool
-      process_endmdl(str8 const& model_id)
+      process_endmdl(std::string const& model_id)
       {
         if (model_id.size() != 0) {
           write("ENDMDL\n", 7U);

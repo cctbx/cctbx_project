@@ -25,6 +25,28 @@
   IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET(attr) \
   IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_SET(attr)
 
+
+#define IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_STD_STRING_GET(attr) \
+    static \
+    boost::python::str \
+    get_##attr(w_t const& self) \
+    { \
+      return boost::python::str(self.data->attr.c_str()); \
+    }
+
+#define IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_STD_STRING_SET(attr) \
+    static \
+    void \
+    set_##attr(w_t& self, const char* value) \
+    { \
+      self.data->attr.assign(value); \
+    }
+
+#define IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_STD_STRING_GET_SET(attr) \
+  IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_STD_STRING_GET(attr) \
+  IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_STD_STRING_SET(attr)
+
+
 #define IOTBX_PDB_HIERARCHY_WRAPPERS_SET_HY36( \
           attr, data_attr, width, value_min, value_max) \
     static void \

@@ -1197,11 +1197,11 @@ def exercise_atom_id_str():
   md.id = "12345678"
   assert a.id_str() == 'model="12345678" pdb="NaMeAGLYCh1234J"'
   assert a.id_str(pdbres=True) == 'model="12345678" pdbres="GLYCh1234J"'
-  try: md.id = "123456789"
-  except (ValueError, RuntimeError), e:
-    assert str(e) == "string is too long for target variable " \
-      "(maximum length is 8 characters, 9 given)."
-  else: raise Exception_expected
+  #try: md.id = "123456789"
+  #except (ValueError, RuntimeError), e:
+    #assert str(e) == "string is too long for target variable " \
+      #"(maximum length is 8 characters, 9 given)."
+  #else: raise Exception_expected
   md.id = "12345678"
   a.segid = "1234"
   assert a.id_str(suppress_segid=False) \

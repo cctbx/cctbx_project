@@ -386,7 +386,7 @@ namespace {
   IOTBX_LOC_GET(attr) \
   IOTBX_LOC_SET(attr)
 
-    IOTBX_LOC_GET_SET(model_id)
+    //IOTBX_LOC_GET_SET(model_id)
     IOTBX_LOC_GET_SET(chain_id)
     IOTBX_PDB_HIERARCHY_WRAPPERS_SET_HY36(resseq, resseq, 4U,
       /* HY36_WIDTH_4_MIN */ -999,
@@ -399,6 +399,32 @@ namespace {
 #undef IOTBX_LOC_GET
 #undef IOTBX_LOC_SET
 #undef IOTBX_LOC_GET_SET
+
+#define IOTBX_LOC_GET_STD_STRING(attr) \
+    static \
+    boost::python::str \
+    get_##attr(w_t const& self) \
+    { \
+      return boost::python::str(self.attr.c_str()); \
+    }
+
+#define IOTBX_LOC_SET_STD_STRING(attr) \
+    static \
+    void \
+    set_##attr(w_t& self, const char* value) \
+    { \
+      self.attr.assign(value); \
+    }
+
+#define IOTBX_LOC_GET_SET_STD_STRING(attr) \
+  IOTBX_LOC_GET_STD_STRING(attr) \
+  IOTBX_LOC_SET_STD_STRING(attr)
+
+    IOTBX_LOC_GET_SET_STD_STRING(model_id)
+
+#undef IOTBX_LOC_GET_STD_STRING
+#undef IOTBX_LOC_SET_STD_STRING
+#undef IOTBX_LOC_GET_SET_STD_STRING
 
     static void
     wrap()

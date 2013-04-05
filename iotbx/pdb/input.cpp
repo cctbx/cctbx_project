@@ -1111,7 +1111,7 @@ namespace detail {
         }
         else if (record_type_info.id == record_type::model_) {
           if (model_record_oversight.model_is_allowed_here()) {
-            model_ids_.push_back(read_model_id(line_info));
+            model_ids_.push_back(std::string(read_model_id(line_info).elems));
           }
         }
         else if (record_type_info.id == record_type::endmdl) {
@@ -1178,7 +1178,7 @@ namespace detail {
     }
     if (   model_indices_.size() == 0
         && input_atom_labels_list_.size() != 0) {
-      model_ids_.push_back(str8());
+      model_ids_.push_back(std::string());
       model_indices_.push_back(input_atom_labels_list_.size());
     }
     IOTBX_ASSERT(model_indices_.size() == model_ids_.size());
@@ -1188,17 +1188,6 @@ namespace detail {
     if (sigatm_counts != 0) record_type_counts_["SIGATM"] += sigatm_counts;
     if (anisou_counts != 0) record_type_counts_["ANISOU"] += anisou_counts;
     if (siguij_counts != 0) record_type_counts_["SIGUIJ"] += siguij_counts;
-  }
-
-  af::shared<std::string>
-  input::model_ids() const
-  {
-    af::shared<std::string> result((af::reserve(model_ids_.size())));
-    const str8* model_ids_end = model_ids_.end();
-    for(const str8* i=model_ids_.begin();i!=model_ids_end;i++) {
-      result.push_back(std::string(i->elems));
-    }
-    return result;
   }
 
   af::shared<std::size_t>
