@@ -440,6 +440,8 @@ class dataset_statistics (object) :
       multiplicity=shell.mean_redundancy, # XXX bad
       r_sym=shell.r_merge,
       r_meas=shell.r_meas,
+      cc_one_half=shell.cc_one_half,
+      cc_star=shell.cc_star,
       i_over_sigma=shell.i_over_sigma_mean)
 
   def as_cif_block(self, cif_block=None):
