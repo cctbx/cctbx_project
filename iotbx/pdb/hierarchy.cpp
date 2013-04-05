@@ -417,7 +417,7 @@ namespace {
       format(result, add_model, add_segid);
     }
     else {
-      chain_id = ch->id.elems;
+      chain_id = ch->id.c_str();
       if (!add_model) {
         model_id = 0;
         format(result, add_model, add_segid);
@@ -504,7 +504,7 @@ namespace {
     label_formatter.resname = self.resname.elems;
     label_formatter.resseq = self.resseq.elems;
     label_formatter.icode = self.icode.elems;
-    label_formatter.chain_id = self.chain_id.elems;
+    label_formatter.chain_id = self.chain_id.c_str();
     label_formatter.model_id = (
       self.model_id.size() == 0 ? 0 : self.model_id.c_str());
   }
@@ -921,7 +921,7 @@ namespace {
   atom::fetch_labels() const
   {
     std::string model_id;
-    str2 chain_id;
+    std::string chain_id;
     str4 resseq;
     str1 icode;
     str1 altloc;
@@ -947,7 +947,7 @@ namespace {
     return atom_with_labels(
       *this,
       model_id.c_str(),
-      chain_id.elems,
+      chain_id.c_str(),
       resseq.elems,
       icode.elems,
       altloc.elems,
@@ -2076,7 +2076,7 @@ namespace {
     return atom_with_labels(
       atom::detached_copy(),
       model_id.c_str(),
-      chain_id.elems,
+      chain_id.c_str(),
       resseq.elems,
       icode.elems,
       altloc.elems,

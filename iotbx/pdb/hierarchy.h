@@ -143,7 +143,7 @@ namespace hierarchy {
       friend struct atom_label_columns_formatter;
       weak_ptr<model_data> parent;
     public:
-      str2 id;
+      std::string id;
     protected:
       std::vector<residue_group> residue_groups;
 
@@ -1123,7 +1123,7 @@ namespace hierarchy {
       explicit
       chain(const chain_data* other)
       :
-        data(new chain_data(other->id.elems))
+        data(new chain_data(other->id.c_str()))
       {}
 
       chain(
@@ -1639,7 +1639,7 @@ namespace hierarchy {
   {
     public:
       std::string model_id;
-      str2 chain_id;
+      std::string chain_id;
       str4 resseq;
       str1 icode;
       str1 altloc;

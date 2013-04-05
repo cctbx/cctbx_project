@@ -84,7 +84,7 @@ namespace iotbx { namespace pdb { namespace hierarchy {
       std::vector<chain> const& chains = models[i_md].chains();
       for(unsigned i_ch=0;i_ch<n_chs;i_ch++) {
         chain const& ch = chains[i_ch];
-        label_formatter.chain_id = ch.data->id.elems;
+        label_formatter.chain_id = ch.data->id.c_str();
         residue_groups_as_pdb_string(
           write,
           label_formatter,

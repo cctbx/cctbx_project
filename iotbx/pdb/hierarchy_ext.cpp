@@ -182,7 +182,7 @@ namespace {
   {
     typedef chain w_t;
 
-    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(id)
+    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_STD_STRING_GET_SET(id)
 
     IOTBX_PDB_HIERARCHY_GET_CHILDREN(chain, residue_group, residue_groups)
 

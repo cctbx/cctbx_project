@@ -37,7 +37,6 @@ namespace {
     std::map<str4, std::vector<unsigned> > name_s;
     std::map<str1, std::vector<unsigned> > altloc_s;
     std::map<str3, std::vector<unsigned> > resname_s;
-    std::map<str2, std::vector<unsigned> > chain_id_s;
     std::map<str4, std::vector<unsigned> > resseq_s;
     std::map<str1, std::vector<unsigned> > icode_s;
     std::map<str5, std::vector<unsigned> > resid_s;
@@ -46,7 +45,7 @@ namespace {
     std::map<str2, std::vector<unsigned> > charge_s;
     unsigned i_seq = 0;
     unsigned chain_id_seq = 0;
-    str2 chain_last = -1;
+    //std::string chain_last = -1; // XXX I don't understand what the purpose of this is
     std::vector<model> const& models = root.models();
     unsigned n_mds = root.models_size();
     for(unsigned i_md=0;i_md<n_mds;i_md++) {
@@ -58,9 +57,9 @@ namespace {
         unsigned chain_i_seq_start = i_seq;
         chain const& ch = chains[i_ch];
         unsigned n_rgs = ch.residue_groups_size();
-        if (ch.data->id != chain_last) {
+        //if (ch.data->id != chain_last) {
           chain_id_seq++;
-        }
+        //}
         std::vector<residue_group> const& rgs = ch.residue_groups();
         for(unsigned i_rg=0;i_rg<n_rgs;i_rg++) {
           unsigned rg_i_seq_start = i_seq;
@@ -99,7 +98,7 @@ namespace {
           }
         }
         if (!altloc_only) {
-          append_range(chain_id_s[ch.data->id], chain_i_seq_start, i_seq);
+          append_range(chain_id[ch.data->id], chain_i_seq_start, i_seq);
         }
       }
       if (!altloc_only) {
@@ -116,7 +115,6 @@ namespace {
       }
       map_array_transfer(name_s, name);
       map_array_transfer(resname_s, resname);
-      map_array_transfer(chain_id_s, chain_id);
       map_array_transfer(resseq_s, resseq);
       map_array_transfer(icode_s, icode);
       map_array_transfer(resid_s, resid);
