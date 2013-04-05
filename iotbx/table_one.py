@@ -41,8 +41,8 @@ keywords = [
   # model-based statistics
   ("r_work", "R-work", "%.4f", "_refine.ls_R_factor_R_work"),
   ("r_free", "R-free", "%.4f", "_refine.ls_R_factor_R_free"),
-  ("cc_work", "CC(work)", "%.3f", None),
-  ("cc_free", "CC(free)", "%.3f", None),
+  #("cc_work", "CC(work)", "%.3f", None),
+  #("cc_free", "CC(free)", "%.3f", None),
   ("n_atoms", "Number of atoms", "%d", None),
   ("n_macro_atoms", "  macromolecules", "%d", None),
   ("n_ligand_atoms", "  ligands", "%d", None),
