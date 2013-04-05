@@ -3765,6 +3765,13 @@ class array(set):
     result.ref_twin_components = twin_components
     return result
 
+  def french_wilson (self, **kwds) :
+    assert self.is_xray_intensity_array()
+    from cctbx import french_wilson
+    kwds = dict(kwds)
+    kwds['miller_array'] = self
+    return french_wilson.french_wilson_scale(**kwds)
+
   def remove_cone(self, fraction_percent, vertex=(0,0,0), axis_point_1=(0,0,0),
         axis_point_2=(0,0,1), negate=False):
      # single cone equation:
