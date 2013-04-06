@@ -596,8 +596,8 @@ def get_map_coeff_labels (server,
     if miller_array.is_hendrickson_lattman_array() :
       continue
     elif miller_array.is_complex_array() :
-      if ((labels.startswith("F-model") or labels.startswith("FMODEL")) and
-          (exclude_fmodel)) :
+      if ((labels.startswith("F-model") or labels.startswith("FMODEL") or
+           labels.startswith("FC")) and (exclude_fmodel)) :
         continue
       elif (labels.upper().startswith("ANOM")) and (exclude_anomalous) :
         continue
