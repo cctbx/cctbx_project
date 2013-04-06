@@ -108,7 +108,7 @@ class Format(object):
         self._scan_factory = scan_factory
 
         self.setup()
-
+        self._raw_data = None
         return
 
     def setup(self):
