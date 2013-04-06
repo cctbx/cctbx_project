@@ -279,7 +279,7 @@ class FormatTIFFRayonix(FormatTIFF):
         from boost.python import streambuf
         from dxtbx import read_uint16
 
-        size = self.get_detector().image_size
+        size = self.get_detector().get_image_size()
         f = FormatTIFF.open_file(self._image_file)
         f.read(self._header_size)
         self._raw_data = read_uint16(streambuf(f), int(size[0] * size[1]))
