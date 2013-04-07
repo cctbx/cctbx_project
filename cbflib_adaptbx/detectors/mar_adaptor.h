@@ -84,6 +84,9 @@ class Mar345Adaptor: public AnyImgAdaptor {
   inline double twotheta() { read_header();// XXX Unknown whether 0.001 factor is needed
     return get_number("TWOTHETA");
   }
+  inline double exposure_time() { read_header();
+    return get_number("EXPOSURE TIME");
+  }
   inline std::string test(std::string item) {read_header(); return get_field(item);}
 };
 

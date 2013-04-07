@@ -110,6 +110,7 @@ cbflib_ext_wrap_all()
      .def("osc_range",&Mar345Adaptor::osc_range)
      .def("osc_start",&Mar345Adaptor::osc_start)
      .def("twotheta",&Mar345Adaptor::twotheta)
+     .def("exposure_time",&Mar345Adaptor::exposure_time)
      .def("rawdata",&Mar345Adaptor::rawdata)
      .def("test",&Mar345Adaptor::test)
    ;
