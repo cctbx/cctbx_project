@@ -380,7 +380,7 @@ class installer (object) :
     pkg_config_dir = os.path.join(self.base_dir, "lib", "pkgconfig")
     if (not os.path.isdir(pkg_config_dir)) :
       os.makedirs(pkg_config_dir)
-    pkg_config_paths = [ pkg_config_dir ] + os.environ.get("PKG_CONFIG_PATH", [])
+    pkg_config_paths = [pkg_config_dir] + os.environ.get("PKG_CONFIG_PATH", [])
     os.environ['PKG_CONFIG_PATH'] = ":".join(pkg_config_paths)
     prefix_arg = "--prefix=\"%s\"" % self.base_dir
     # gettext

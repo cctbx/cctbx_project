@@ -39,16 +39,18 @@ def call (args, log, join_stdout_stderr=True) :
   if (rc != 0) :
     raise RuntimeError("Call to '%s' failed with exit code %d" % (args, rc))
 
-def untar (pkg_name, log=sys.stdout, verbose=False) :
+def untar (pkg_name, log=sys.stdout, verbose=False, change_ownership=False) :
   assert os.path.isfile(pkg_name), pkg_name
-  verbose_flag = ""
+  verbose_flag = owner_flag = ""
   if (verbose) :
     verbose_flag = "v"
-  cmd = "tar x%sf" % verbose_flag
+  if (change_ownership) :
+    owner_flag = "o"
+  cmd = "tar x%s%sf" % (owner_flag, verbose_flag)
   if (pkg_name.endswith("gz")) :
-    cmd = "tar zx%sf" % verbose_flag
+    cmd = "tar zx%s%sf" % (owner_flag, verbose_flag)
   elif (pkg_name.endswith("bz2")) :
-    cmd = "tar jx%sf" % verbose_flag
+    cmd = "tar jx%s%sf" % (owner_flag, verbose_flag)
   args = "%s %s" % (cmd, pkg_name)
   call(args, log)
   dir_name = re.sub(".tgz", "",
