@@ -68,7 +68,7 @@ class FormatBruker(Format):
             image_size = (self.detectorbase.parameters["SIZE1"],
                           self.detectorbase.parameters["SIZE2"]),
             trusted_range = (0, self.detectorbase.parameters["CCD_IMAGE_SATURATION"]),
-            mask = [])
+            mask = [])  # a list of dead rectangles
 
     def _beam(self):
         '''Return a simple model for the beam.'''
