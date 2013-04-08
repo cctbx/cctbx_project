@@ -10,12 +10,8 @@ from __future__ import division
 # in internal ticket #1555. This is not designed to be used outside of the
 # XSweep classes.
 
-import os
-import sys
 import pycbf
-import math
 import copy
-import time
 from dxtbx_model_ext import Scan
 
 from scan_helpers import scan_helper_image_files
