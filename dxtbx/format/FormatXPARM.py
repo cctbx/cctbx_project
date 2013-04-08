@@ -96,8 +96,8 @@ class FormatXPARM(Format):
         format = scan_helper_image_formats.FORMAT_CBF
 
         # Create the scan object
-        return self._scan_factory.make_scan(template, directory, format,
-            image_range, 0.0, oscillation, [0], deg=True)
+        return self._scan_factory.make_scan(image_range, 0.0,
+            oscillation, [0], deg=True)
 
     def get_raw_data(self):
         '''Get the raw image data. For GXPARM.XDS file raise am exception.'''
