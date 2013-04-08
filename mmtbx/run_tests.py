@@ -108,6 +108,7 @@ tst_list = (
   "$D/regression/tst_ions_validate_mg.py",
   "$D/regression/tst_ions_validate_zn.py",
   "$D/regression/tst_ringer.py",
+  "$D/regression/tst_fmodel_no_cryst1.py",
   )
 
 def run():

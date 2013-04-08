@@ -180,6 +180,11 @@ wavelength = None
   .input_size = 80
   .help = Wavelength, sets all atoms to anomalous
   .style = noauto
+generate_fake_p1_symmetry = False
+  .type = bool
+  .short_caption = Generate fake symmetry if necessary
+  .help = Allows use of PDB files without CRYST1 records as input.  The \
+    crystal symmetry will be assumed to be a P1 box.
 output
   .short_caption = Reflection output
   .expert_level=0
@@ -329,15 +334,28 @@ def run(args, log = sys.stdout):
   cryst1 = pdb_inp.crystal_symmetry_from_cryst1()
   if(cryst1 is None and miller_array is not None):
     cryst1 = miller_array.crystal_symmetry()
-  if(cryst1 is None):
-    raise Sorry("CRYST1 record in input PDB file is incomplete or missing.")
-  else:
-    if([cryst1.unit_cell(), cryst1.space_group_info()].count(None) != 0):
-      raise Sorry("CRYST1 record in input PDB file is incomplete or missing.")
+    if (cryst1 is not None) and (params.generate_fake_p1_symmetry) :
+      raise Sorry("The input reference data already define crystal symmetry; "+
+        "you may not use this in combination with the option "+
+        "generate_fake_p1_symmetry=True.")
+  if (not params.generate_fake_p1_symmetry) :
+    if(cryst1 is None) :
+      raise Sorry(
+        "CRYST1 record in input PDB file is incomplete or missing.  "+
+        "If you want the program to generate P1 symmetry automatically, set "+
+        "generate_fake_p1_symmetry=True.")
+    else:
+      if([cryst1.unit_cell(), cryst1.space_group_info()].count(None) != 0):
+        raise Sorry(
+          "CRYST1 record in input PDB file is incomplete or missing. "+
+          "If you want the program to generate P1 symmetry automatically, "+
+          "set generate_fake_p1_symmetry=True.")
+  xray_structure = pdb_inp.xray_structure_simple(crystal_symmetry = cryst1)
+  if (cryst1 is None) :
+    cryst1 = xray_structure.crystal_symmetry()
   if (miller_array is not None) :
     if (miller_array.crystal_symmetry() is None) :
       miller_array = miller_array.customized_copy(crystal_symmetry=cryst1)
-  xray_structure = pdb_inp.xray_structure_simple(crystal_symmetry = cryst1)
   xray_structure.show_summary(f = log, prefix="  ")
   if(len(params.anomalous_scatterers.group) != 0):
     pdb_hierarchy = pdb_inp.construct_hierarchy()
