@@ -3,88 +3,103 @@ from __future__ import division
 import subprocess
 import time
 
-from libtbx.object_oriented_patterns import lazy_initialization
-
 # These are not very efficient
-def get_regex(pattern):
-
-  import re
-  return re.compile( pattern )
-
-
-SGE_REGEX = lazy_initialization(
-  calculation = lambda: get_regex( pattern = r"Following jobs do not exist" ),
-  )
-
-
-def sge_single_evaluate(out, err):
-
-  if err:
-    if SGE_REGEX().search( err ):
-      return True
-
-    else:
-      raise RuntimeError, "SGE error:\n%s" % err
-
-  else:
-    return False
-
-
-def lsf_single_evaluate(out, err):
-
-  if err:
-    return True
-
-  else:
-    return False
-
-
-PBS_SEARCH_REGEX = lazy_initialization(
-  calculation = lambda: get_regex( pattern = r"Unknown Job Id" )
-  )
-PBS_EVAL_REGEX = lazy_initialization(
-  calculation = lambda: get_regex( pattern = r"job_state\s*=\s*(\w+)" )
-  )
-
-
-def pbs_single_evaluate(out, err):
-
-  if err:
-    if PBS_SEARCH_REGEX.search( err ):
-      return True
-
-    else:
-      raise RuntimeError, "PBS error:\n%s" % err
-
-  state = PBS_EVAL_REGEX.search( out )
-
-  if not state:
-    raise RuntimeError, "Unexpected response from queue:\n%s" % out
-
-  return state.group(1) == "C"
-
-
-class SinglePoller(object):
+class SGEPoller(object):
   """
-  Polls status for single jobs
+  Polls job status for SGE
   """
 
-  def __init__(self, cmdline, evaluator):
+  def __init__(self):
 
-    self.cmdline = cmdline
-    self.evaluator = evaluator
+    import re
+    self.regex = re.compile( r"Following jobs do not exist" )
 
 
   def is_finished(self, jobid):
 
     process = subprocess.Popen(
-      self.cmdline + ( jobid, ),
+      [ "qstat", "-j", jobid ],
       stdout = subprocess.PIPE,
       stderr = subprocess.PIPE
       )
     ( out, err ) = process.communicate()
 
-    return self.evaluator( out = out, err = err )
+    if err:
+      if self.regex.search( err ):
+        return True
+
+      else:
+        raise RuntimeError, "SGE error:\n%s" % err
+
+    else:
+      return False
+
+
+  def new_job_submitted(self, jobid):
+
+    pass
+
+
+class LSFPoller(object):
+  """
+  Polls job status for LSF
+  """
+
+  def is_finished(self, jobid):
+
+    process = subprocess.Popen(
+      [ "bjobs", jobid ],
+      stdout = subprocess.PIPE,
+      stderr = subprocess.PIPE
+      )
+    ( out, err ) = process.communicate()
+
+    if err:
+      return True
+
+    else:
+      return False
+
+
+  def new_job_submitted(self, jobid):
+
+    pass
+
+
+class PBSPoller(object):
+  """
+  Polls job status for PBS
+  """
+
+  def __init__(self):
+
+    import re
+    self.state = re.compile( r"job_state\s*=\s*(\w+)" )
+    self.missing = re.compile( r"Unknown Job Id" )
+
+
+  def is_finished(self, jobid):
+
+    process = subprocess.Popen(
+      [ "qstat", "-f", jobid ],
+      stdout = subprocess.PIPE,
+      stderr = subprocess.PIPE
+      )
+    ( out, err ) = process.communicate()
+
+    if err:
+      if self.missing.search( err ):
+        return True
+
+      else:
+        raise RuntimeError, "PBS error:\n%s" % err
+
+    state = self.state.search( out )
+
+    if not state:
+      raise RuntimeError, "Unexpected response from queue:\n%s" % out
+
+    return state.group(1) == "C"
 
 
   def new_job_submitted(self, jobid):
