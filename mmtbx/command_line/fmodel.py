@@ -304,6 +304,8 @@ def run(args, log = sys.stdout):
   miller_array = None
   if(len(processed_args.reflection_files) > 1):
     raise Sorry("Multiple reflection files found at input.")
+  # FIXME this does not pick up the reference_file parameter!  in fact, it
+  # appears to be ignored completely when run on the command line.
   if(len(processed_args.reflection_files) == 1):
     print >> log, "-"*79
     print >> log, "Input reflection data:", \
