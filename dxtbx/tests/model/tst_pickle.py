@@ -1,7 +1,7 @@
 
 from __future__ import division
 from dxtbx.model import Beam, PolarizedBeam, Goniometer
-from dxtbx.model import Panel, Detector, ScanData
+from dxtbx.model import Panel, Detector, Scan
 
 def pickle_then_unpickle(obj):
     '''Pickle to a temp file then un-pickle.'''
@@ -58,9 +58,9 @@ def tst_detector():
     assert(obj1 == obj2)
     print "OK"
 
-def tst_scan_data():
+def tst_scan():
     '''Test pickling the scan data object.'''
-    obj1 = ScanData((1, 2), (1, 1), 0.0)
+    obj1 = Scan((1, 2), (1, 1), 0.0)
     obj2 = pickle_then_unpickle(obj1)
     assert(obj1 == obj2)
     print "OK"
@@ -72,7 +72,7 @@ def run():
     tst_goniometer()
     tst_panel()
     tst_detector()
-    tst_scan_data()
+    tst_scan()
 
 if __name__ == '__main__':
     run()

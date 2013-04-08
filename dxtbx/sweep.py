@@ -52,6 +52,19 @@ class SweepReader(object):
         self._format_cache = {}
         self._format_cache[0] = format_instance
 
+    def __cmp__(self, other):
+        """ Compare this reader to another. """
+        return (self.get_template() == other.get_template() and
+                self.get_format() == other.get_format())
+
+    def get_format(self):
+        """ Get the format instance. """
+        return self._format
+
+    def get_template(self):
+        """ Get the template. """
+        return self._template_format
+
     def get_filename(self, image):
         """ Get the filename for the given image. """
         return self._template_format % image
@@ -311,6 +324,10 @@ class Sweep(object):
         """ Iterate over the array indices and read each image in turn. """
         for f in self.indices():
             yield self._reader.read(f)
+
+    def __cmp__(self, other):
+        """ Compare this sweep to another. """
+        return self.reader() == other.reader()
 
     def get_array_range(self):
         """ Get the array range. """

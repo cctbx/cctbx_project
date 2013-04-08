@@ -11,6 +11,7 @@
 #ifndef DXTBX_MODEL_SCAN_H
 #define DXTBX_MODEL_SCAN_H
 
+#include <cmath>
 #include <iostream>
 #include <scitbx/vec2.h>
 #include <scitbx/array_family/flex_types.h>
@@ -21,6 +22,7 @@
 
 namespace dxtbx { namespace model {
 
+  using std::fabs;
   using scitbx::vec2;
   using scitbx::af::flex_double;
   using scitbx::rad_as_deg;
@@ -29,11 +31,11 @@ namespace dxtbx { namespace model {
   class ScanBase {};
 
   /** A class to represent a scan */
-  class ScanData : public ScanBase {
+  class Scan : public ScanBase {
   public:
 
     /** The default constructor */
-    ScanData() :
+    Scan() :
       image_range_(0, 0),
       oscillation_(0.0, 0.0),
       exposure_time_(0.0),
@@ -45,9 +47,9 @@ namespace dxtbx { namespace model {
      * @param starting_angle The starting rotation angle
      * @param oscillation_range The oscillation range of each frame
      */
-    ScanData(vec2 <int> image_range,
-             vec2 <double> oscillation,
-             double exposure_time)
+    Scan(vec2 <int> image_range,
+         vec2 <double> oscillation,
+         double exposure_time)
       : image_range_(image_range),
         oscillation_(oscillation),
         exposure_time_(exposure_time),
@@ -63,10 +65,10 @@ namespace dxtbx { namespace model {
      * @param starting_angle The starting rotation angle
      * @param oscillation_range The oscillation range of each frame
      */
-    ScanData(vec2 <int> image_range,
-             vec2 <double> oscillation,
-             double exposure_time,
-             const flex_double &epochs)
+    Scan(vec2 <int> image_range,
+         vec2 <double> oscillation,
+         double exposure_time,
+         const flex_double &epochs)
       : image_range_(image_range),
         oscillation_(oscillation),
         exposure_time_(exposure_time),
@@ -78,7 +80,7 @@ namespace dxtbx { namespace model {
     }
 
     /** Virtual destructor */
-    virtual ~ScanData() {}
+    virtual ~Scan() {}
 
     /** Get the image range */
     vec2 <int> get_image_range() const {
@@ -155,7 +157,7 @@ namespace dxtbx { namespace model {
     }
 
     /** Check the scans are the same */
-    bool operator==(const ScanData &scan) const {
+    bool operator==(const Scan &scan) const {
       double eps = 1.0e-6;
       double d_angle = std::abs(oscillation_[0] - scan.oscillation_[0]);
       double d_range = std::abs(oscillation_[1] - scan.oscillation_[1]);
@@ -165,8 +167,59 @@ namespace dxtbx { namespace model {
     }
 
     /** Check the scans are not the same */
-    bool operator!=(const ScanData &scan) const {
+    bool operator!=(const Scan &scan) const {
       return !(*this == scan);
+    }
+
+    /** Comparison operator */
+    bool operator<(const Scan &scan) const {
+      return image_range_[0] < scan.image_range_[0];
+    }
+
+    /** Comparison operator */
+    bool operator<=(const Scan &scan) const {
+      return image_range_[0] <= scan.image_range_[0];
+    }
+
+    /** Comparison operator */
+    bool operator>(const Scan &scan) const {
+      return image_range_[0] > scan.image_range_[0];
+    }
+
+    /** Comparison operator */
+    bool operator>=(const Scan &scan) const {
+      return image_range_[0] >= scan.image_range_[0];
+    }
+
+    /**
+     * Return a new sweep which cosists of the contents of this sweep and
+     * the contents of the other sweep, provided that they are consistent -
+     * if they are not consistent then an AssertionError will result.
+     */
+    Scan operator+(const Scan &scan) const {
+
+      // Ensurw scans are consistent
+      double eps = 1e-6;
+      DXTBX_ASSERT(exposure_time_ == scan.exposure_time_);
+      DXTBX_ASSERT(image_range_[1] + 1 == scan.image_range_[0]);
+      DXTBX_ASSERT(fabs(oscillation_[1] - scan.oscillation_[1]) < eps);
+      DXTBX_ASSERT(fabs(get_oscillation_range()[1] -
+                        scan.get_oscillation_range()[0]) < eps);
+
+      // Create the new image range
+      vec2<int> new_image_range(image_range_[0], scan.image_range_[1]);
+
+      // Create the new array of epochs
+      flex_double new_epochs(epochs_.size() + scan.epochs_.size());
+      for (std::size_t i = 0; i < epochs_.size(); ++i) {
+        new_epochs[i] = epochs_[i];
+      }
+      for (std::size_t i = 0; i < scan.epochs_.size(); ++i) {
+        new_epochs[i + epochs_.size()] = scan.epochs_[i];
+      }
+
+      // Return a new scan
+      return Scan(new_image_range, oscillation_, exposure_time_, new_epochs);
     }
 
     /**
@@ -256,7 +309,7 @@ namespace dxtbx { namespace model {
       return result;
     }
 
-    friend std::ostream& operator<<(std::ostream &os, const ScanData &s);
+    friend std::ostream& operator<<(std::ostream &os, const Scan &s);
 
   private:
 
@@ -267,9 +320,9 @@ namespace dxtbx { namespace model {
     flex_double epochs_;
   };
 
-  /** Print ScanData information */
+  /** Print Scan information */
   inline
-  std::ostream& operator<<(std::ostream &os, const ScanData &s) {
+  std::ostream& operator<<(std::ostream &os, const Scan &s) {
     // Print oscillation as degrees!
     vec2<double> oscillation = s.get_oscillation();
     oscillation[0] = rad_as_deg(oscillation[0]);
