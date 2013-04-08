@@ -15,6 +15,8 @@ import itertools
 import glob
 from Queue import Empty as QueueEmptyException
 
+from libtbx.queuing_system_utils.processing import polling
+
 class InstantTimeout(object):
   """
   Timeout immediately
@@ -261,19 +263,14 @@ def get_libtbx_env_setpaths():
 
 def SGE(
   name = "libtbx_python",
-  command = None,
+  command = "qsub",
+  switches = [],
   asynchronous = True,
   input = None,
   include = None,
   poller = None,
   handler = None,
   ):
-
-  if not command:
-    ( command, switches ) = ( "qsub", [] )
-
-  else:
-    ( command, switches ) = lex_command_line( command = command )
 
   from libtbx.queuing_system_utils.processing import submission
 
@@ -283,7 +280,6 @@ def SGE(
       handler = status.StdStreamStrategy
 
     if poller is None:
-      from libtbx.queuing_system_utils.processing import polling
       poller = polling.SGECentralPoller()
 
     submitter = submission.AsynchronousCmdLine.SGE(
@@ -313,7 +309,8 @@ def SGE(
 
 def LSF(
   name = "libtbx_python",
-  command = None,
+  command = "bsub",
+  switches = [],
   asynchronous = True,
   input = None,
   include = None,
@@ -321,17 +318,10 @@ def LSF(
   handler = None,
   ):
 
-  if not command:
-    ( command, switches ) = ( "bsub", [] )
-
-  else:
-    ( command, switches ) = lex_command_line( command = command )
-
   from libtbx.queuing_system_utils.processing import submission
 
   if asynchronous:
     if poller is None:
-      from libtbx.queuing_system_utils.processing import polling
       poller = polling.LSFPoller()
 
     submitter = submission.AsynchronousCmdLine.LSF(
@@ -360,7 +350,8 @@ def LSF(
 
 def PBS(
   name = "libtbx_python",
-  command = None,
+  command = "qsub",
+  switches = [],
   asynchronous = True,
   input = None,
   include = None,
@@ -368,17 +359,10 @@ def PBS(
   handler = None,
   ):
 
-  if not command:
-    ( command, switches) = ( "qsub", [] )
-
-  else:
-    ( command, switches ) = lex_command_line( command = command )
-
   from libtbx.queuing_system_utils.processing import submission
 
   if asynchronous:
     if poller is None:
-      from libtbx.queuing_system_utils.processing import polling
       poller = polling.PBSCentralPoller()
 
     submitter = submission.AsynchronousCmdLine.PBS(
@@ -407,7 +391,8 @@ def PBS(
 
 def Condor(
   name = "libtbx_python",
-  command = None,
+  command = "condor_submit",
+  switches = [],
   asynchronous = True,
   input = None,
   include = None,
@@ -415,17 +400,10 @@ def Condor(
   handler = None,
   ):
 
-  if not command:
-    ( command, switches ) = ( "condor_submit", [] )
-
-  else:
-    ( command, switches ) = lex_command_line( command = command )
-
   from libtbx.queuing_system_utils.processing import submission
 
   if asynchronous:
     if poller is None:
-      from libtbx.queuing_system_utils.processing import polling
       poller = polling.CondorCentralPoller()
 
     submitter = submission.AsynchronousScript.Condor(
@@ -461,10 +439,10 @@ def lex_command_line(command):
 
 
 INTERFACE_FOR = {
-  "sge": SGE,
-  "lsf": LSF,
-  "pbs": PBS,
-  "condor": Condor,
+  "sge": ( SGE, polling.sge_single_evaluate, ( "qstat", "-j" ) ),
+  "lsf": ( LSF, polling.lsf_single_evaluate, ( "bjobs", ) ),
+  "pbs": ( PBS, polling.pbs_single_evaluate, ( "qstat", "-f" ) ),
+# "condor": ( Condor, None, None ),
   }
 
 def qsub (
@@ -472,7 +450,7 @@ def qsub (
   name="libtbx_python",
   platform="sge",
   command=None,
-  asynchronous=True
+  polling_command=None,
   ):
 
   assert hasattr(target, "__call__")
@@ -480,10 +458,19 @@ def qsub (
   if platform not in INTERFACE_FOR:
     raise RuntimeError, "Unknown platform: %s" % platform
 
-  qinterface = INTERFACE_FOR[ platform ](
-      name = name,
-      command = command,
-      asynchronous = asynchronous,
-      )
-  return qinterface.Job( target = target )
+  ( factory, evaluator, default_poll_command ) = INTERFACE_FOR[ platform ]
 
+  if polling_command is not None:
+    cmdline = lex_command_line( command = polling_command )
+
+  else:
+    cmdline = default_poll_command
+
+  qinterface = factory(
+      name = name,
+      command = lex_command_line( command = command ),
+      poller = polling.SinglePoller( cmdline = cmdline, evaluator = evaluator ),
+      asynchronous = True,
+      )
+
+  return qinterface.Job( target = target )
