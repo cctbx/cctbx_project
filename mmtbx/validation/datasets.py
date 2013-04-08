@@ -27,9 +27,9 @@ rna11_data = imp_dataset("rna11").data
 hiq54_data = imp_dataset("hiq54").data
 
 hiq54_data["info"] = """
-The HiQ54 dataset for tests in methods development: small (60-200 residues), 
-monomeric, non-redundant, high-quality (both resolution and MolProbity score 
-both >=1.4), with no tightly-bound ligands.  
+The HiQ54 dataset for tests in methods development: small (60-200 residues),
+monomeric, non-redundant, high-quality (both resolution and MolProbity score
+both >=1.4), with no tightly-bound ligands.
 
 Literature reference: Leaver-Fay et al (2013) Meth Enzymol 523: 109-143."""
 
