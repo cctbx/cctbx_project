@@ -30,14 +30,14 @@ def run(filename,
       #  return 1
       #data["data"].sort(_cmp_pdb_id)
       def _guess_type(item):
-        try: 
+        try:
           item=int(item)
           return int
-        except: pass
-        try: 
+        except ValueError : pass
+        try:
           item=float(item)
           return float
-        except: pass
+        except ValueError: pass
         return str
       funcs = {}
       for row in data["data"]:
