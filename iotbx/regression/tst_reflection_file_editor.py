@@ -287,6 +287,10 @@ mtz_file {
   params.mtz_file.output_file = "tst4.mtz"
   miller_arrays = run_and_reload(params, "tst4.mtz")
   assert (miller_arrays[1].data().size() == 221)
+  # and now to arbitrarily high resolution
+  params.mtz_file.d_min = 0.8
+  miller_arrays = run_and_reload(params, "tst4.mtz")
+  assert (miller_arrays[1].data().size() == 428)
   # export for ccp4 programs (flag=0, everything else > 0)
   params = master_phil.fetch(source=new_phil).extract()
   params.mtz_file.r_free_flags.export_for_ccp4 = True

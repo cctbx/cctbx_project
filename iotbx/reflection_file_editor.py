@@ -349,9 +349,12 @@ class process_arrays (object) :
         raise Sorry("No high-resolution cutoff could be found in the "+
           "parameters or input file(s); you need to explicitly set this "+
           "value for the program to run.")
-    if params.mtz_file.d_max is not None and params.mtz_file.d_max < d_max :
+    # XXX resolution limits are used even if outside the range used by the
+    # input data, in case we want to generate extra R-free flags for future
+    # use
+    if (params.mtz_file.d_max is not None) :
       d_max = params.mtz_file.d_max
-    if params.mtz_file.d_min is not None and params.mtz_file.d_min > d_min :
+    if (params.mtz_file.d_min is not None) :
       d_min = params.mtz_file.d_min
     if params.mtz_file.r_free_flags.random_seed is not None :
       random.seed(params.mtz_file.r_free_flags.random_seed)
@@ -690,7 +693,7 @@ class process_arrays (object) :
       have_r_free_array = True
       if len(self.final_arrays) > 0 :
         complete_set = make_joined_set(self.final_arrays
-          ).complete_set()
+          ).complete_set(d_min=d_min, d_max=d_max)
       else :
         complete_set = None
       i = 0
