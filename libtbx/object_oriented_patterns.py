@@ -152,3 +152,29 @@ class journal_mixin(object):
     else:
       key = name
     del self.__dict__[key]
+
+
+class lazy_initialization(object):
+  """
+  Defers initialization until the value is accessed (state pattern)
+  """
+
+  def __init__(self, calculation):
+
+    self.data = calculation
+    self.action = self.calculate
+
+  def calculate(self):
+
+    self.data = self.data()
+    self.action = self.retrieve
+    return self.data
+
+  def retrieve(self):
+
+   return self.data
+
+  def __call__(self):
+
+    return self.action()
+
