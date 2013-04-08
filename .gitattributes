@@ -371,6 +371,7 @@ dxtbx/data/detectors.lib -text
 dxtbx/error.h -text
 dxtbx/example/to_xds.py -text
 dxtbx/format/Format.py -text
+dxtbx/format/FormatBruker.py -text
 dxtbx/format/FormatCBF.py -text
 dxtbx/format/FormatCBFFull.py -text
 dxtbx/format/FormatCBFFullPilatus.py -text
