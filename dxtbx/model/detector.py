@@ -33,7 +33,7 @@ class detector_factory:
 
     @staticmethod
     def make_detector(stype, fast_axis, slow_axis, origin,
-                      pixel_size, image_size, trusted_range):
+                      pixel_size, image_size, trusted_range = (0.0, 0.0)):
         """Ensure all types are correct before creating c++ detector class."""
         return Detector(Panel(
             str(stype),
@@ -41,7 +41,7 @@ class detector_factory:
             tuple(map(float, slow_axis)),
             tuple(map(float, origin)),
             tuple(map(float, pixel_size)),
-            tuple(map(int,   image_size)),
+            tuple(map(int, image_size)),
             tuple(map(float, trusted_range))))
 
     @staticmethod
