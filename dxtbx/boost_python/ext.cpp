@@ -1,19 +1,11 @@
 #include <boost/python.hpp>
-#include <stdint.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/flex_types.h>
 #include <boost_adaptbx/python_streambuf.h>
+#include <boost/cstdint.hpp>
 #include <cctype>
 #include <fstream>
 #include <vector>
-
-#if defined(_MSC_VER)
-// earlier versions of MSVC do not define uint32_t
-#ifndef uint32_t
-typedef __int32 int32_t;
-typedef unsigned __int32 uint32_t;
-#endif
-#endif
 
 namespace dxtbx {
   namespace ext {
