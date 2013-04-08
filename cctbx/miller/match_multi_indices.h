@@ -19,7 +19,8 @@ namespace cctbx { namespace miller {
       af::shared<std::size_t>
       number_of_matches(std::size_t i_array) const
       {
-        return number_of_matches_[i_array==0?0:1];
+        CCTBX_ASSERT(i_array <= 1);
+        return number_of_matches_[i_array];
       }
 
       bool

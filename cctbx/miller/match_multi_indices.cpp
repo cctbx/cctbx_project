@@ -64,6 +64,7 @@ namespace cctbx { namespace miller {
   af::shared<bool>
   match_multi_indices::pair_selection(std::size_t i_array) const
   {
+    CCTBX_ASSERT(i_array <= 1);
     af::shared<bool> result(miller_indices_[i_array].size(), false);
     for(std::size_t i=0;i<miller_indices_[i_array].size();i++) {
       result[i] = number_of_matches_[i_array][i] > 0;
@@ -74,6 +75,7 @@ namespace cctbx { namespace miller {
   af::shared<bool>
   match_multi_indices::single_selection(std::size_t i_array) const
   {
+    CCTBX_ASSERT(i_array <= 1);
     af::shared<bool> result(miller_indices_[i_array].size(), false);
     for(std::size_t i=0;i<miller_indices_[i_array].size();i++) {
       result[i] = number_of_matches_[i_array][i] == 0;
@@ -84,6 +86,7 @@ namespace cctbx { namespace miller {
   af::shared<index<> >
   match_multi_indices::paired_miller_indices(std::size_t i_array) const
   {
+    CCTBX_ASSERT(i_array <= 1);
     af::shared<index<> > result((af::reserve(pairs_.size())));
     for(std::size_t i=0;i<pairs_.size();i++) {
       if(number_of_matches_[i_array][i] > 0) {
