@@ -109,7 +109,7 @@ def convert_list_block(
         obj_inner = cif_type_inner(**dict(row))
         tabulated_items[obj_inner.id] = obj_inner
     else:
-      obj_inner = cif_type_inner(**list_block)
+      obj_inner = cif_type_inner(**dict(list_block))
       tabulated_items[obj_inner.id] = obj_inner
   for key, cif_data in cif_object.iteritems():
     if (key.startswith(data_prefix)):
@@ -127,14 +127,14 @@ def convert_list_block(
           if len(d) > 0:
             lst = getattr(obj_outer, lst_name)
             typ = getattr(cif_types, loop_block)
-            lst.append(typ(**d))
+            lst.append(typ(**dict(d)))
           continue
         if (obj_outer is None):
           obj_outer = cif_type_outer(source_info, obj_inner)
         lst = getattr(obj_outer, lst_name)
         typ = getattr(cif_types, loop_block)
         for row in rows.iterrows():
-          lst.append(typ(**row))
+          lst.append(typ(**dict(row)))
       if (obj_outer is not None):
         yield obj_outer
 
@@ -328,7 +328,7 @@ class server(process_cif_mixin):
   def convert_deriv_list_dict(self, cif_object):
     for row in get_rows(cif_object,
                  "deriv_list", "_chem_comp_deriv"):
-      deriv = cif_types.chem_comp_deriv(**row)
+      deriv = cif_types.chem_comp_deriv(**dict(row))
       self.deriv_list_dict[deriv.comp_id] = deriv
 
   def convert_comp_synonym_list(self, cif_object):
@@ -340,7 +340,7 @@ class server(process_cif_mixin):
   def convert_comp_synonym_atom_list(self, cif_object):
     for row in get_rows(cif_object,
                  "comp_synonym_atom_list", "_chem_comp_synonym_atom"):
-      synonym = cif_types.chem_comp_synonym_atom(**row)
+      synonym = cif_types.chem_comp_synonym_atom(**dict(row))
       d = self.comp_synonym_atom_list_dict[synonym.comp_id]
       d[synonym.atom_alternative_id] = synonym.atom_id
       if (synonym.comp_alternative_id != ""):
@@ -519,12 +519,12 @@ class ener_lib(process_cif_mixin):
 
   def convert_lib_synonym(self, cif_object):
     for row in get_rows(cif_object, "energy", "_lib_synonym"):
-      syn = cif_types.energy_lib_synonym(**row)
+      syn = cif_types.energy_lib_synonym(**dict(row))
       self.lib_synonym[syn.atom_alternative_type] = syn.atom_type
 
   def convert_lib_atom(self, cif_object, use_neutron_distances=False):
     for row in get_rows(cif_object, "energy", "_lib_atom"):
-      entry = cif_types.energy_lib_atom(**row)
+      entry = cif_types.energy_lib_atom(**dict(row))
       if use_neutron_distances:
         if entry.vdw_radius_neuton is not None:
           entry.vdw_radius = entry.vdw_radius_neuton
@@ -532,5 +532,5 @@ class ener_lib(process_cif_mixin):
 
   def convert_lib_vdw(self, cif_object):
     for row in get_rows(cif_object, "energy", "_lib_vdw"):
-      vdw = cif_types.energy_lib_vdw(**row)
+      vdw = cif_types.energy_lib_vdw(**dict(row))
       self.lib_vdw.append(vdw)
