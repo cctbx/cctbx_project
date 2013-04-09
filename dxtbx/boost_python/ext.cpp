@@ -10,6 +10,8 @@
 namespace dxtbx {
   namespace ext {
 
+    using boost::uint32_t;
+
     bool
     is_big_endian()
     {
