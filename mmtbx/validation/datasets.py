@@ -45,7 +45,6 @@ class dataset_item(object):
     return outl
 
 def generate_top8000():
-  top8000_data = imp_dataset("top8000").data
   for row in top8000_data["data"]:
     yield dataset_item(top8000_data["headers"], row)
 
