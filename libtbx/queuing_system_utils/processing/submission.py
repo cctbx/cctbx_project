@@ -8,23 +8,23 @@ class Submission(object):
   Handles job submissions
   """
 
-  def __init__(self, command, name, out, err, extra):
+  def __init__(self, cmds, name, out, err):
 
-    self.command = command
+    self.cmds = cmds
     self.name = name
     self.out = out
     self.err = err
-    self.extra = extra
 
 
-  def subprocess_command_list(self, name):
+  def create(self, name):
 
     outfile = "%s.out" % name
     errfile = "%s.err" % name
-    commands = ( [ self.command ] + self.extra
-      + [ self.name, name, self.out, outfile, self.err, errfile ] )
+    commands = (
+      self.cmds + [ self.name, name, self.out, outfile, self.err, errfile ]
+      )
 
-    return ( commands, outfile, errfile )
+    return ( execute( args = commands ), outfile, errfile )
 
 
 class Synchronous(Submission):
@@ -40,10 +40,9 @@ source %s
 EOF
 """
 
-  def __call__(self, name, executable, script, include, extra):
+  def __call__(self, name, executable, script, include, cleanup):
 
-    ( commands, outfile, errfile ) = self.subprocess_command_list( name = name )
-    process = build_submission_for( commands = commands )
+    ( process, outfile, errfile ) = self.create( name = name )
     process.stdin.write( self.SCRIPT % ( include, executable, script ) )
     process.stdin.close()
 
@@ -52,32 +51,30 @@ EOF
     return status.Synchronous(
       outfile = outfile,
       errfile = errfile,
-      extra = extra,
+      additional = cleanup,
       process = process,
       )
 
 
   @classmethod
-  def SGE(cls, command = "qsub", extra = []):
+  def SGE(cls, command = [ "qsub" ]):
 
     return cls(
-      command = command,
+      cmds = command + [ "-S", "/bin/sh", "-cwd", "-sync", "y" ],
       name = "-N",
       out = "-o",
       err = "-e",
-      extra = extra + [ "-S", "/bin/sh", "-cwd", "-sync", "y" ],
       )
 
 
   @classmethod
-  def LSF(cls, command = "bsub", extra = []):
+  def LSF(cls, command = [ "bsub" ]):
 
     return cls(
-      command = command,
-      name_switch = "-J",
-      out_switch = "-o",
-      err_switch = "-e",
-      extra = extra + [ "-K" ],
+      command = command + [ "-K" ],
+      name = "-J",
+      out = "-o",
+      err = "-e",
       )
 
 
@@ -86,24 +83,22 @@ class AsynchronousCmdLine(Submission):
   Submits jobs asynchronously
   """
 
-  def __init__(self, command, name, out, err, extra, extract, poller, handler):
+  def __init__(self, cmds, name, out, err, extract, poller, handler):
 
     super( AsynchronousCmdLine, self ).__init__(
-      command = command,
+      cmds = cmds,
       name = name,
       out = out,
       err = err,
-      extra = extra,
       )
     self.extract = extract
     self.poller = poller
     self.handler = handler
 
 
-  def __call__(self, name, executable, script, include, extra):
+  def __call__(self, name, executable, script, include, cleanup):
 
-    ( commands, outfile, errfile ) = self.subprocess_command_list( name = name )
-    process = build_submission_for( commands = commands )
+    ( process, outfile, errfile ) = self.create( name = name )
 
     ( out, err ) = process.communicate(
       input = self.handler.script( include = include, executable = executable, script = script )
@@ -117,19 +112,18 @@ class AsynchronousCmdLine(Submission):
       poller = self.poller,
       outfile = outfile,
       errfile = errfile,
-      extra = extra,
+      additional = cleanup,
       )
 
 
   @classmethod
-  def SGE(cls, poller, handler, command = "qsub", extra = []):
+  def SGE(cls, poller, handler, command = [ "qsub" ]):
 
     return cls(
-      command = command,
+      command = command + [ "-S", "/bin/sh", "-cwd", "-terse" ],
       name = "-N",
       out = "-o",
       err = "-e",
-      extra = extra + [ "-S", "/bin/sh", "-cwd", "-terse" ],
       extract = cls.generic_jobid_extract,
       poller = poller,
       handler = handler,
@@ -137,7 +131,7 @@ class AsynchronousCmdLine(Submission):
 
 
   @classmethod
-  def LSF(cls, poller, command = "bsub", extra = []):
+  def LSF(cls, poller, command = [ "bsub" ]):
 
     from libtbx.queuing_system_utils.processing import status
 
@@ -146,7 +140,6 @@ class AsynchronousCmdLine(Submission):
       name = "-J",
       out = "-o",
       err = "-e",
-      extra = extra,
       extract = cls.lsf_jobid_extract,
       poller = poller,
       handler = status.StdStreamStrategy,
@@ -154,16 +147,15 @@ class AsynchronousCmdLine(Submission):
 
 
   @classmethod
-  def PBS(cls, poller, command = "qsub", extra = []):
+  def PBS(cls, poller, command = [ "qsub" ]):
 
     from libtbx.queuing_system_utils.processing import status
 
     return cls(
-      command = command,
+      command = command + [ "-d", "." ],
       name = "-N",
       out = "-o",
       err = "-e",
-      extra = extra + [ "-d", "." ],
       extract = cls.generic_jobid_extract,
       poller = poller,
       handler = status.StdStreamStrategy,
@@ -173,7 +165,7 @@ class AsynchronousCmdLine(Submission):
   @staticmethod
   def lsf_jobid_extract(output):
 
-    match = get_lsf_jobid_extract_regex().search( output )
+    match = LSF_JOBID_EXTRACT_REGEX().search( output )
 
     if not match:
       raise RuntimeError, "Unexpected response from queuing system"
@@ -206,17 +198,21 @@ Notification = Never
 Queue
 """
 
-  def __init__(self, command, script, extra, extract, poller, handler):
+  def __init__(self, cmds, script, extract, poller, handler):
 
-    self.command = command
+    self.cmds = cmds
     self.script = script
-    self.extra = extra
     self.extract = extract
     self.poller = poller
     self.handler = handler
 
 
-  def __call__(self, name, executable, script, include, extra):
+  def create(self):
+
+    return execute( args = self.cmds )
+
+
+  def __call__(self, name, executable, script, include, cleanup):
 
     outfile = "%s.out" % name
     errfile = "%s.err" % name
@@ -232,7 +228,7 @@ Queue
     import stat
     os.chmod( scriptfile, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR )
 
-    process = build_submission_for( commands = [ self.command ]  + self.extra )
+    process = self.create()
 
     ( out, err ) = process.communicate(
       input = self.script % ( scriptfile, outfile, errfile, logfile )
@@ -247,18 +243,17 @@ Queue
       outfile = outfile,
       errfile = errfile,
       logfile = logfile,
-      extra = extra + [ scriptfile ],
+      additional = cleanup + [ scriptfile ],
       )
 
   @classmethod
-  def Condor(cls, poller, command = "condor_submit", script = CONDOR_SCRIPT, extra = []):
+  def Condor(cls, poller, command = [ "condor_submit" ], script = CONDOR_SCRIPT):
 
     from libtbx.queuing_system_utils.processing import status
 
     return cls(
       command = command,
       script = script,
-      extra = extra,
       extract = cls.condor_jobid_extract,
       poller = poller,
       handler = status.LogfileStrategy,
@@ -268,7 +263,7 @@ Queue
   @staticmethod
   def condor_jobid_extract(output):
 
-    match = get_condor_jobid_extract_regex().search( output )
+    match = CONDOR_JOBID_EXTRACT_REGEX().search( output )
 
     if not match:
       raise RuntimeError, "Unexpected response from queuing system"
@@ -277,46 +272,29 @@ Queue
 
 
 # Helpers
-def build_submission_for(commands):
+def execute(args):
 
   try:
     process = subprocess.Popen(
-      commands,
+      args,
       stdin = subprocess.PIPE,
       stdout = subprocess.PIPE,
       stderr = subprocess.PIPE,
       )
 
   except OSError, e:
-    raise RuntimeError, "Error: '%s': %s" % ( " ".join( commands ), e )
+    raise RuntimeError, "Error: '%s': %s" % ( " ".join( args ), e )
 
   return process
 
 # Regex caching
-LSF_JOBID_EXTRACT_REGEX = None
+from libtbx.queuing_system_utils.processing import util
 
-def get_lsf_jobid_extract_regex():
+LSF_JOBID_EXTRACT_REGEX = util.get_lazy_initialized_regex(
+  pattern = r"Job <(\d+)> is submitted",
+  )
 
-  global LSF_JOBID_EXTRACT_REGEX
-
-  if LSF_JOBID_EXTRACT_REGEX is None:
-    import re
-    LSF_JOBID_EXTRACT_REGEX = re.compile( r"Job <(\d+)> is submitted" )
-
-  return LSF_JOBID_EXTRACT_REGEX
-
-
-CONDOR_JOBID_EXTRACT_REGEX = None
-
-def get_condor_jobid_extract_regex():
-
-  global CONDOR_JOBID_EXTRACT_REGEX
-
-  if CONDOR_JOBID_EXTRACT_REGEX is None:
-    import re
-    CONDOR_JOBID_EXTRACT_REGEX = re.compile(
-      r"\d+ job\(s\) submitted to cluster (\d+)\."
-      )
-
-  return CONDOR_JOBID_EXTRACT_REGEX
+CONDOR_JOBID_EXTRACT_REGEX = util.get_lazy_initialized_regex(
+  pattern = r"\d+ job\(s\) submitted to cluster (\d+)\.",
+  )
 

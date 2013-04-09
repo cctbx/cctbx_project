@@ -9,11 +9,11 @@ class JobStatus(object):
   Status class
   """
 
-  def __init__(self, outfile, errfile, extra):
+  def __init__(self, outfile, errfile, additional):
 
     self.outfile = outfile
     self.errfile = errfile
-    self.extra = extra + [ self.outfile, self.errfile ]
+    self.cleanup = additional + [ self.outfile, self.errfile ]
 
 
   def get_stdout(self):
@@ -40,7 +40,7 @@ class JobStatus(object):
 
   def cleanup(self):
 
-    for fname in self.extra:
+    for fname in self.cleanup:
       if os.path.exists( fname ):
         os.remove( fname )
 
@@ -53,12 +53,12 @@ class Synchronous(JobStatus):
   Determines job status for synchronous jobs
   """
 
-  def __init__(self, process, outfile, errfile, extra):
+  def __init__(self, process, outfile, errfile, additional):
 
     super( Synchronous, self ).__init__(
       outfile = outfile,
       errfile = errfile,
-      extra = extra,
+      additional = additional,
       )
     self.process = process
 
@@ -92,12 +92,12 @@ class Asynchronous(JobStatus):
   Handler for asynchronous jobs
   """
 
-  def __init__(self, jobid, poller, outfile, errfile, extra):
+  def __init__(self, jobid, poller, outfile, errfile, additional):
 
     super( Asynchronous, self ).__init__(
       outfile = outfile,
       errfile = errfile,
-      extra = extra,
+      additional = additional,
       )
     self.jobid = jobid
     self.poller = poller
@@ -215,17 +215,16 @@ source %s
 EOF
 """
 
-  def __init__(self, jobid, poller, outfile, errfile, logfile, extra):
+  def __init__(self, jobid, poller, outfile, errfile, logfile, additional):
 
+    self.logfile = logfile
     super( LogfileStrategy, self ).__init__(
       jobid = jobid,
       poller = poller,
       outfile = outfile,
       errfile = errfile,
-      extra = extra,
+      additional = additional + [ self.logfile ],
       )
-    self.logfile = logfile
-    self.extra.append( self.logfile )
 
 
   def get_stdlog(self):

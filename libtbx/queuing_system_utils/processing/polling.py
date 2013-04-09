@@ -3,108 +3,102 @@ from __future__ import division
 import subprocess
 import time
 
+from libtbx.queuing_system_utils.processing import util
+
 # These are not very efficient
-class SGEPoller(object):
-  """
-  Polls job status for SGE
-  """
-
-  def __init__(self):
-
-    import re
-    self.regex = re.compile( r"Following jobs do not exist" )
+SGE_REGEX = util.get_lazy_initialized_regex( pattern = r"Following jobs do not exist" )
 
 
-  def is_finished(self, jobid):
+def sge_single_evaluate(out, err):
+  "Evaluates SGE text output in single mode"
 
-    process = subprocess.Popen(
-      [ "qstat", "-j", jobid ],
-      stdout = subprocess.PIPE,
-      stderr = subprocess.PIPE
-      )
-    ( out, err ) = process.communicate()
-
-    if err:
-      if self.regex.search( err ):
-        return True
-
-      else:
-        raise RuntimeError, "SGE error:\n%s" % err
-
-    else:
-      return False
-
-
-  def new_job_submitted(self, jobid):
-
-    pass
-
-
-class LSFPoller(object):
-  """
-  Polls job status for LSF
-  """
-
-  def is_finished(self, jobid):
-
-    process = subprocess.Popen(
-      [ "bjobs", jobid ],
-      stdout = subprocess.PIPE,
-      stderr = subprocess.PIPE
-      )
-    ( out, err ) = process.communicate()
-
-    if err:
+  if err:
+    if SGE_REGEX().search( err ):
       return True
 
     else:
-      return False
+      raise RuntimeError, "SGE error:\n%s" % err
+
+  else:
+    return False
 
 
-  def new_job_submitted(self, jobid):
+def lsf_single_evaluate(out, err):
+  "Evaluates LSF text output in single mode"
 
-    pass
+  if err:
+    return True
+
+  else:
+    return False
 
 
-class PBSPoller(object):
+PBS_SEARCH_REGEX = util.get_lazy_initialized_regex( pattern = r"Unknown Job Id" )
+PBS_EVAL_REGEX = util.get_lazy_initialized_regex( pattern = r"job_state\s*=\s*(\w+)" )
+
+
+def pbs_single_evaluate(out, err):
+  "Evaluates PBS text output in single mode"
+
+  if err:
+    if PBS_SEARCH_REGEX.search( err ):
+      return True
+
+    else:
+      raise RuntimeError, "PBS error:\n%s" % err
+
+  state = PBS_EVAL_REGEX.search( out )
+
+  if not state:
+    raise RuntimeError, "Unexpected response from queue:\n%s" % out
+
+  return state.group(1) == "C"
+
+
+class SinglePoller(object):
   """
-  Polls job status for PBS
+  Polls status for single jobs
   """
 
-  def __init__(self):
+  def __init__(self, command, evaluate):
 
-    import re
-    self.state = re.compile( r"job_state\s*=\s*(\w+)" )
-    self.missing = re.compile( r"Unknown Job Id" )
+    self.command = command
+    self.evaluate = evaluate
 
 
   def is_finished(self, jobid):
 
     process = subprocess.Popen(
-      [ "qstat", "-f", jobid ],
+      self.command + [ jobid ],
       stdout = subprocess.PIPE,
       stderr = subprocess.PIPE
       )
     ( out, err ) = process.communicate()
 
-    if err:
-      if self.missing.search( err ):
-        return True
-
-      else:
-        raise RuntimeError, "PBS error:\n%s" % err
-
-    state = self.state.search( out )
-
-    if not state:
-      raise RuntimeError, "Unexpected response from queue:\n%s" % out
-
-    return state.group(1) == "C"
+    return self.evaluate( out = out, err = err )
 
 
   def new_job_submitted(self, jobid):
 
     pass
+
+
+  @classmethod
+  def SGE(cls):
+
+    return cls( command = [ "qstat", "-j" ], evaluate = sge_single_evaluate )
+
+
+  @classmethod
+  def LSF(cls):
+
+    return cls( command = [ "bjobs" ], evaluate = lsf_single_evaluate )
+
+
+  @classmethod
+  def PBS(cls):
+
+    return cls( command = [ "qstat", "-f" ], evaluate = pbs_single_evaluate )
 
 
 class CentralPoller(object):
@@ -112,111 +106,32 @@ class CentralPoller(object):
   Polls job status in batch
   """
 
-  def __init__(self, waittime = 5):
+  def __init__(self, command, evaluate, waittime = 5):
 
     self.waittime = waittime
-    self.running = set()
-    self.update()
-    self.polltime = time.time()
-
-
-  def is_finished(self, jobid):
-
-    now = time.time()
-
-    if self.waittime < ( now - self.polltime ) or now < self.polltime:
-      self.update()
-      self.polltime = now
-
-    if jobid in self.running:
-      return False
-
-    else:
-      raise ValueError, "Unknown job id"
-
-
-  def new_job_submitted(self, jobid):
-
-    self.running.add( jobid )
-
-
-class SGECentralPoller(CentralPoller):
-  """
-  Polls job status for SGE in batch
-  """
-
-  def update(self):
-
-    process = subprocess.Popen(
-      [ "qstat", "-xml" ],
-      stdout = subprocess.PIPE,
-      stderr = subprocess.PIPE
-      )
-    ( out, err ) = process.communicate()
-
-    if err:
-      raise RuntimeError, "SGE error:\n%s" % err
-
-    import xml.etree.ElementTree as ET
-    root = ET.fromstring( out )
-    self.running = set()
-
-    for n in root.iter( "job_list" ):
-      status_node = n.find( "JB_job_number" )
-      assert status_node is not None
-      self.running.add( status_node.text )
-
-
-class CondorCentralPoller(CentralPoller):
-  """
-  Polls job status for Condor in batch
-  """
-
-  def __init__(self, waittime = 5):
-
-    import re
-    self.regex = re.compile( "^.*?(?=<\?xml)", re.DOTALL )
-    super( CondorCentralPoller, self ).__init__( waittime = waittime )
-
-
-  def update(self):
-
-    process = subprocess.Popen(
-      [ "condor_q", "-xml" ], # "-attribute", "ClusterId"
-      stdout = subprocess.PIPE,
-      stderr = subprocess.PIPE
-      )
-    ( out, err ) = process.communicate()
-
-    if err:
-      raise RuntimeError, "Condor error:\n%s" % err
-
-    # Necessary to fix broken XML from Condor 7.2
-    xml = self.regex.sub( "", out )
-
-    import xml.etree.ElementTree as ET
-    root = ET.fromstring( xml )
-    self.running = set()
-
-    for job_node in root.iter( "c" ):
-      res = [ e for e in job_node.iter( "a" ) if e.attrib.get( "n" ) == "ClusterId" ]
-      assert res
-      number_node = res[-1].find( "i" )
-      assert number_node is not None
-      self.running.add( number_node.text )
-
-
-class PBSCentralPoller(object):
-  """
-  Polls job status for PBS in batch
-  """
-
-  def __init__(self, waittime = 5):
-
-    self.waittime = waittime
+    self.command = command
+    self.evaluate = evaluate
     self.running = set()
     self.completed = set()
     self.update()
+
+
+  def update(self):
+
+    process = subprocess.Popen(
+      self.command,
+      stdout = subprocess.PIPE,
+      stderr = subprocess.PIPE
+      )
+    ( out, err ) = process.communicate()
+
+    if err:
+      raise RuntimeError, "Polling error:\n%s" % err
+
+    self.running.clear()
+    self.completed.clear()
+
+    self.evaluate( out = out, running = self.running, completed = self.completed )
     self.polltime = time.time()
 
 
@@ -226,7 +141,6 @@ class PBSCentralPoller(object):
 
     if self.waittime < ( now - self.polltime ) or now < self.polltime:
       self.update()
-      self.polltime = now
 
     if jobid in self.running:
       return False
@@ -243,33 +157,73 @@ class PBSCentralPoller(object):
     self.running.add( jobid )
 
 
-  def update(self):
+  @classmethod
+  def SGE(cls):
 
-    process = subprocess.Popen(
-      [ "qstat", "-x" ],
-      stdout = subprocess.PIPE,
-      stderr = subprocess.PIPE
-      )
-    ( out, err ) = process.communicate()
+    return cls( command = [ "qstat", "-xml" ], evaluate = sge_xml_evaluate )
 
-    if err:
-      raise RuntimeError, "PBS error:\n%s" % err
 
-    self.running = set()
-    self.completed = set()
+  @classmethod
+  def PBS(cls):
 
-    if not out:
-      return
+    return cls( command = [ "qstat", "-x" ], evaluate = pbs_xml_evaluate )
 
-    import xml.etree.ElementTree as ET
-    root = ET.fromstring( out )
-    for n in root.iter( "Job" ):
-      status_node = n.find( "job_state" )
-      assert status_node is not None
 
-      if status_node.text == "C":
-        self.completed.add( n.text )
+  @classmethod
+  def Condor(cls):
 
-      else:
-        self.running.add( n.text )
+    return cls( command = [ "condor_q", "-xml" ], evaluate = condor_xml_evaluate )
+
+
+def sge_xml_evaluate(out, running, completed):
+  "Parses SGE xml output"
+
+  import xml.etree.ElementTree as ET
+  root = ET.fromstring( out )
+
+  for n in root.iter( "job_list" ):
+    status_node = n.find( "JB_job_number" )
+    assert status_node is not None
+    running.add( status_node.text )
+
+
+CONDOR_XML_OUTPUT_REGEX = util.get_lazy_initialized_regex(
+  pattern = "^.*?(?=<\?xml)",
+  flags = [ "DOTALL" ],
+  )
+
+def condor_xml_evaluate(out, running, completed):
+  "Parses Condor xml output"
+
+  # Necessary to fix broken XML from Condor 7.2
+  xml = CONDOR_XML_OUTPUT_REGEX().sub( "", out )
+
+  import xml.etree.ElementTree as ET
+  root = ET.fromstring( xml )
+
+  for job_node in root.iter( "c" ):
+    res = [ e for e in job_node.iter( "a" ) if e.attrib.get( "n" ) == "ClusterId" ]
+    assert res
+    number_node = res[-1].find( "i" )
+    assert number_node is not None
+    running.add( number_node.text )
+
+
+def pbs_xml_evaluate(out, running, completed):
+  "Parses PBS xml output"
+
+  if not out:
+    return
+
+  import xml.etree.ElementTree as ET
+  root = ET.fromstring( out )
+  for n in root.iter( "Job" ):
+    status_node = n.find( "job_state" )
+    assert status_node is not None
+
+    if status_node.text == "C":
+      completed.add( n.text )
+
+    else:
+      running.add( n.text )
 
