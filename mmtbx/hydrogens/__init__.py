@@ -6,36 +6,36 @@ from cctbx import maptbx
 import iotbx.pdb
 
 hydrogens_master_params_str = """
-    refine = individual riding *Auto
-      .type = choice
-      .help = Choice for refinement: riding model or full (H is refined as \
-              other atoms, useful at very high resolutions only)
-      .short_caption = Hydrogen refinement model
-      .expert_level=1
-    optimize_scattering_contribution = True
-      .type = bool
-    contribute_to_f_calc = True
-      .type = bool
-      .help = Add H contribution to Xray (Fcalc) calculations
-      .short_caption=Include hydrogens in Fcalc
-      .expert_level=1
-    high_resolution_limit_to_include_scattering_from_h = 1.6
-      .type = float
-      .short_caption = High-resolution limit to include scattering from H
-      .expert_level=2
-    real_space_optimize_x_h_orientation = True
-      .type = bool
-      .short_caption = Optimize X-H orientation in real-space
-      .expert_level = 1
-    xh_bond_distance_deviation_limit = 0.0
-      .type = float
-      .help = Idealize XH bond distances if deviation from ideal is greater \
-              than xh_bond_distance_deviation_limit
-      .short_caption = X-H bond distance deviation limit
-      .expert_level=2
+refine = individual riding *Auto
+  .type = choice
+  .help = Choice for refinement: riding model or full (H is refined as \
+          other atoms, useful at very high resolutions only)
+  .short_caption = Hydrogen refinement model
+  .expert_level=1
+optimize_scattering_contribution = True
+  .type = bool
+contribute_to_f_calc = True
+  .type = bool
+  .help = Add H contribution to Xray (Fcalc) calculations
+  .short_caption=Include hydrogens in Fcalc
+  .expert_level=1
+high_resolution_limit_to_include_scattering_from_h = 1.6
+  .type = float
+  .short_caption = High-resolution limit to include scattering from H
+  .expert_level=2
+real_space_optimize_x_h_orientation = True
+  .type = bool
+  .short_caption = Optimize X-H orientation in real-space
+  .expert_level = 1
+xh_bond_distance_deviation_limit = 0.0
+  .type = float
+  .help = Idealize XH bond distances if deviation from ideal is greater \
+          than xh_bond_distance_deviation_limit
+  .short_caption = X-H bond distance deviation limit
+  .expert_level=2
 """
 
-def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager):
+def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log):
   """
   General tool to identify rotatable H, such as C-O-H, C-H3, in any molecule.
   """
@@ -134,7 +134,7 @@ def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager):
                not first_or_last):
               fr = rotatable_bonds.axes_and_atoms_aa_specific(
                 residue=residue, mon_lib_srv=mon_lib_srv,
-                remove_clusters_with_all_h=False, log=None)
+                remove_clusters_with_all_h=False, log=log)
               if(fr is not None):
                 r = analyze_group_aa_specific(g=fr, atoms=atoms)
                 if(r is not None):
@@ -240,7 +240,8 @@ def run_fit_rotatable(
   rotatable_h_selection = rotatable(
     pdb_hierarchy      = pdb_hierarchy,
     mon_lib_srv        = ref_model.processed_pdb_files_srv.mon_lib_srv,
-    restraints_manager = ref_model.restraints_manager)
+    restraints_manager = ref_model.restraints_manager,
+    log                = log)
   rotatable_h_selection_1d = []
   for s in rotatable_h_selection:
     rotatable_h_selection_1d.extend(s[1])

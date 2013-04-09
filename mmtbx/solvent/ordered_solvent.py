@@ -166,13 +166,6 @@ class manager(object):
                      find_peaks_params = None,
                      log = None):
     adopt_init_args(self, locals())
-    #
-    #XXXsave_k_part, save_b_part = None, None
-    #XXXif(self.fmodel.k_part()!=0):
-    #XXX  save_k_part = self.fmodel.k_part()
-    #XXX  save_b_part = self.fmodel.b_part()
-    #XXX  self.fmodel.update_core(k_part=0, b_part=0)
-    #
     assert (0 < len(self.params.output_atom_name) <= 4)
     assert (len(self.params.output_chain_id) <= 2)
     assert (0 < len(self.params.output_residue_name) <= 3)
@@ -246,11 +239,6 @@ class manager(object):
     self.move_solvent_to_the_end_of_atom_list()
     self.convert_water_adp()
     assert self.fmodel.xray_structure is self.model.xray_structure
-    #
-    #XXXif(save_k_part is not None):
-    #XXX  self.fmodel.update_core(k_part=save_k_part, b_part=save_b_part)
-    #XXX  self.fmodel.update_f_part()
-    #
 
   def convert_water_adp(self):
     sol_sel = self.model.solvent_selection().iselection()
