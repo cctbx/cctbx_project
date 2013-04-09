@@ -120,7 +120,7 @@ class AsynchronousCmdLine(Submission):
   def SGE(cls, poller, handler, command = [ "qsub" ]):
 
     return cls(
-      command = command + [ "-S", "/bin/sh", "-cwd", "-terse" ],
+      cmds = command + [ "-S", "/bin/sh", "-cwd", "-terse" ],
       name = "-N",
       out = "-o",
       err = "-e",
@@ -136,7 +136,7 @@ class AsynchronousCmdLine(Submission):
     from libtbx.queuing_system_utils.processing import status
 
     return cls(
-      command = command,
+      cmds = command,
       name = "-J",
       out = "-o",
       err = "-e",
@@ -152,7 +152,7 @@ class AsynchronousCmdLine(Submission):
     from libtbx.queuing_system_utils.processing import status
 
     return cls(
-      command = command + [ "-d", "." ],
+      cmds = command + [ "-d", "." ],
       name = "-N",
       out = "-o",
       err = "-e",

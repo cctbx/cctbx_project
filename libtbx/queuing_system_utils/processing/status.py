@@ -13,7 +13,7 @@ class JobStatus(object):
 
     self.outfile = outfile
     self.errfile = errfile
-    self.cleanup = additional + [ self.outfile, self.errfile ]
+    self.files = additional + [ self.outfile, self.errfile ]
 
 
   def get_stdout(self):
@@ -40,7 +40,7 @@ class JobStatus(object):
 
   def cleanup(self):
 
-    for fname in self.cleanup:
+    for fname in self.files:
       if os.path.exists( fname ):
         os.remove( fname )
 
