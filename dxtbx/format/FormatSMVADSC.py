@@ -30,7 +30,6 @@ class FormatSMVADSC(FormatSMV):
         wanted_header_items = ['BEAM_CENTER_X', 'BEAM_CENTER_Y',
                                'DISTANCE', 'WAVELENGTH', 'PIXEL_SIZE',
                                'OSC_START', 'OSC_RANGE', 'SIZE1', 'SIZE2',
-                               'DETECTOR_SN',
                                'BYTE_ORDER']
 
         for header_item in wanted_header_items:
