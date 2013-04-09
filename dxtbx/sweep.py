@@ -507,7 +507,7 @@ class SweepFactory:
 
         # Ensure we have enough images and format has been specified
         assert(len(filenames) > 0)
-
+        print filenames
         # Get the format object
         filenames = sorted(filenames)
         format_class = Registry.find(filenames[0])
