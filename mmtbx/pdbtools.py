@@ -9,7 +9,7 @@ import libtbx.phil
 from iotbx import pdb
 from cctbx import crystal
 from libtbx.utils import Sorry, null_out
-from iotbx.pdb import crystal_symmetry_from_pdb
+from iotbx import crystal_symmetry_from_any
 from mmtbx import monomer_library
 import mmtbx.restraints
 import mmtbx.model
@@ -997,18 +997,25 @@ class interpreter:
         if (params is not None):
           parsed_params.append(params)
           arg_is_processed = True
-        elif (pdb.is_pdb_file(file_name=arg)):
+        elif (pdb.is_pdb_file(file_name=arg) or
+              pdb.is_pdb_mmcif_file(file_name=arg)):
+          # XXX this is an inefficient way to do this - a CIF file could get
+          # read 3 times, once by pdb.is_pdb_mmcif_file, once by
+          # crystal_symmetry_from_cif.extract_from and finally once again when
+          # we actually try to read the file properly
+          def extract_from(file_name):
+            from iotbx.cif import crystal_symmetry_from_cif
+            from iotbx.pdb import crystal_symmetry_from_pdb
+            for extract_function in (crystal_symmetry_from_pdb.extract_from,
+                                     crystal_symmetry_from_cif.extract_from):
+              try: return extract_function(file_name)
+              except Exception: continue
           self.pdb_file_names.append(arg)
           arg_is_processed = True
-          try:
-            crystal_symmetry = crystal_symmetry_from_pdb.extract_from(
-              file_name=arg)
-          except KeyboardInterrupt: raise
-          except Exception: pass
-          else:
-            if (crystal_symmetry is not None):
-              crystal_symmetries_from_coordinate_file.append(
-                crystal_symmetry)
+          crystal_symmetry_from_any.extract_and_append(
+            file_names=[arg],
+            target_list=crystal_symmetries_from_coordinate_file,
+            extract_function=extract_from)
         else:
           try: cif_object = mmtbx.monomer_library.server.read_cif(file_name=arg)
           except KeyboardInterrupt: raise

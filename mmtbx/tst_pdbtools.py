@@ -628,6 +628,58 @@ ATOM      4  O   GLY A   1      -7.523   2.521   5.381  1.00 16.78           O  
         """CRYST1   21.937   23.477    4.866  90.00  90.00 107.08 P 1 1 21""")
       break
 
+def exercise_mmcif_support():
+  from libtbx.test_utils import open_tmp_file
+  f = open_tmp_file(suffix="pdbtools.cif")
+  f.write("""\
+data_phenix
+_space_group.name_H-M_alt         'C 1 2 1'
+_space_group.name_Hall            ' C 2y'
+_cell.length_a                    46.053
+_cell.length_b                    9.561
+_cell.length_c                    20.871
+_cell.angle_alpha                 90.0
+_cell.angle_beta                  97.43
+_cell.angle_gamma                 90.0
+_cell.volume                      9112.60599144
+loop_
+  _atom_site.group_PDB
+  _atom_site.id
+  _atom_site.label_atom_id
+  _atom_site.label_alt_id
+  _atom_site.label_comp_id
+  _atom_site.auth_asym_id
+  _atom_site.auth_seq_id
+  _atom_site.pdbx_PDB_ins_code
+  _atom_site.Cartn_x
+  _atom_site.Cartn_y
+  _atom_site.Cartn_z
+  _atom_site.occupancy
+  _atom_site.B_iso_or_equiv
+  _atom_site.type_symbol
+  _atom_site.pdbx_formal_charge
+  _atom_site.label_asym_id
+  _atom_site.label_entity_id
+  _atom_site.label_seq_id
+  _atom_site.pdbx_PDB_model_num
+  ATOM      2  CA  .  LYS  A  1  ?    7.49733  -0.62028   4.35289  1.000  10.25989  C  ?  A  ?   1  1
+  ATOM     11  CA  .  LEU  A  2  ?    3.72032  -0.19320   3.89326  1.000   7.80433  C  ?  A  ?   2  1
+  ATOM     19  CA  .  VAL  A  3  ?    0.78668  -0.39555   6.35234  1.000   5.03864  C  ?  A  ?   3  1
+  ATOM     26  CA  .  PHE  A  4  ?   -2.75438  -0.21383   5.02429  1.000   8.93080  C  ?  A  ?   4  1
+  ATOM     37  CA  .  PHE  A  5  ?   -6.05155  -0.46197   6.85390  1.000   9.57417  C  ?  A  ?   5  1
+  ATOM     48  CA  .  ALA  A  6  ?   -9.57646  -0.10942   5.55847  1.000  17.73488  C  ?  A  ?   6  1
+  ATOM     54  CA  .  LYS  B  1  ?   -8.86604  -5.20044   5.46515  1.000  16.15297  C  ?  B  ?   7  1
+""")
+  f.close()
+  cmd = " ".join(["phenix.pdbtools", f.name, "rename_chain_id.old_id=A",
+                  "rename_chain_id.new_id=C"])
+  run_command(command=cmd, verbose=False)
+  assert os.path.isfile(f.name+"_modified.pdb")
+  pdb_inp = iotbx.pdb.input(file_name=f.name+"_modified.pdb")
+  hierarchy = pdb_inp.construct_hierarchy()
+  assert [chain.id for chain in hierarchy.chains()] == ['C', 'B']
+
+
 def exercise(args):
   if ("--show-everything" in args):
     verbose = 2
@@ -641,6 +693,7 @@ def exercise(args):
     print "Skipping exercise(): input files not available"
     return
   eargs = {"pdb_dir": pdb_dir, "verbose": verbose}
+  exercise_mmcif_support()
   exercise_basic(**eargs)
   exercise_multiple(**eargs)
   exercise_no_cryst1(**eargs)
