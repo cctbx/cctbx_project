@@ -18,6 +18,7 @@ from scitbx import matrix
 
 from dxtbx.model.detector_helpers_types import detector_helpers_types
 from dxtbx.format.Registry import Registry
+from dxtbx.sweep import SweepFactory
 
 def xds_detector_name(xia2_name):
     '''Translate from a xia2 name from the detector library to an XDS detector
@@ -39,25 +40,25 @@ def xds_detector_name(xia2_name):
 class to_xds:
     '''A class to export contents of an XSweep2 as XDS.INP.'''
 
-    def __init__(self, goniometer, detector, beam, scan):
-        self._goniometer = goniometer
-        self._detector = detector
-        self._beam = beam
-        self._scan = scan
+    def __init__(self, sweep):
+        self._sweep = sweep
 
         return
 
     def get_detector(self):
-        return self._detector
+        return self._sweep.get_detector()
 
     def get_goniometer(self):
-        return self._goniometer
+        return self._sweep.get_goniometer()
 
     def get_beam(self):
-        return self._beam
+        return self._sweep.get_beam()
 
     def get_scan(self):
-        return self._scan
+        return self._sweep.get_scan()
+        
+    def get_template(self):
+        return self._sweep.reader().get_template()
 
     def XDS(self):
 
@@ -120,9 +121,8 @@ class to_xds:
                 self.get_beam().get_polarization_fraction()
             print 'POLARIZATION_PLANE_NORMAL= %.3f %.3f %.3f' % \
                 self.get_beam().get_polarization()
-        print 'NAME_TEMPLATE_OF_DATA_FRAMES= %s' % os.path.join(
-            self.get_scan().get_directory(),
-            self.get_scan().get_template().replace('#', '?'))
+        print 'NAME_TEMPLATE_OF_DATA_FRAMES= %s' % \
+            self.get_template().replace('#', '?')
         print 'TRUSTED_REGION= 0.0 1.41'
         for f0, f1, s0, s1 in self.get_detector().get_mask():
             print 'UNTRUSTED_RECTANGLE= %d %d %d %d' % \
@@ -136,58 +136,12 @@ class to_xds:
         print 'DATA_RANGE= %d %d' % start_end
         print 'JOB=XYCORR INIT COLSPOT IDXREF DEFPIX INTEGRATE CORRECT'
 
-def factory(list_of_images):
-    '''Instantiate the data model bits and pieces we need...'''
-
-    for image in list_of_images:
-        assert(os.path.exists(image))
-
-    list_of_images.sort()
-
-    format = Registry.find(list_of_images[0])
-
-    # verify that these are all the same format i.e. that they are all
-    # understood equally well by the format instance.
-
-    format_score = format.understand(list_of_images[0])
-
-    for image in list_of_images:
-        assert(format.understand(image) == format_score)
-
-    i = format(list_of_images[0])
-
-    beam = i.get_beam()
-    gonio = i.get_goniometer()
-    det = i.get_detector()
-    scan = i.get_scan()
-
-    # now verify that they share the same detector position, rotation axis
-    # and beam properties.
-
-    scans = [scan]
-
-    for image in list_of_images[1:]:
-        i = format(image)
-        assert(beam == i.get_beam())
-        assert(gonio == i.get_goniometer())
-        if not det == i.get_detector():
-            print det
-            print i.get_detector()
-        assert(det == i.get_detector())
-        scans.append(i.get_scan())
-
-    for s in sorted(scans)[1:]:
-        scan += s
-
-    return gonio, det, beam, scan
-
 
 if __name__ == '__main__':
 
-    # run some tests
 
-    gonio, det, beam, scan = factory(sys.argv[1:])
+    from dxtbx.sweep import SweepFactory
 
-    xsx = to_xds(gonio, det, beam, scan)
+    xsx = to_xds(SweepFactory.sweep(sys.argv[1:]))
 
     xsx.XDS()
