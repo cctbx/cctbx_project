@@ -117,11 +117,9 @@ class FormatSMVADSC(FormatSMV):
         '''Get the pixel intensities (i.e. read the image and return as a
         flex array of integers.)'''
 
-        if self._raw_data:
-            return self._raw_data
-
         from boost.python import streambuf
         from dxtbx import read_uint16, read_uint16_bs, is_big_endian
+        from scitbx.array_family import flex
 
         size = self.get_detector().get_image_size()
         f = FormatSMVADSC.open_file(self._image_file, 'rb')
@@ -133,12 +131,14 @@ class FormatSMVADSC(FormatSMV):
             big_endian = False
 
         if big_endian == is_big_endian():
-            self._raw_data = read_uint16(streambuf(f), int(size[0] * size[1]))
+            raw_data = read_uint16(streambuf(f), int(size[0] * size[1]))
         else:
-            self._raw_data = read_uint16_bs(streambuf(f),
-                                            int(size[0] * size[1]))
+            raw_data = read_uint16_bs(streambuf(f), int(size[0] * size[1]))
 
-        return self._raw_data
+        image_size = self.get_detector().get_image_size()
+        raw_data.reshape(flex.grid(image_size[1], image_size[0]))
+
+        return raw_data
 
 if __name__ == '__main__':
 

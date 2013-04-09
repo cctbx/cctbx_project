@@ -108,7 +108,6 @@ class Format(object):
         self._scan_factory = scan_factory
 
         self.setup()
-        self._raw_data = None
         return
 
     def setup(self):
@@ -172,9 +171,6 @@ class Format(object):
     def get_raw_data(self):
         '''Get the pixel intensities (i.e. read the image and return as a
         flex array of integers.'''
-
-        #if self._raw_data:
-        #    return self._raw_data
 
         # FIXME this should be replaced with specialist code in subclasses
 
