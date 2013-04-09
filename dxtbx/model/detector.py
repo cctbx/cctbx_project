@@ -46,7 +46,7 @@ class detector_factory:
 
     @staticmethod
     def simple(sensor, distance, beam_centre, fast_direction, slow_direction,
-               pixel_size, image_size, trusted_range, mask):
+               pixel_size, image_size, trusted_range = (0.0, 0.0), mask = []):
         '''Construct a simple detector at a given distance from the sample
         along the direct beam presumed to be aligned with -z, offset by the
         beam centre - the directions of which are given by the fast and slow
@@ -74,15 +74,16 @@ class detector_factory:
                  fast * beam_centre[0] - slow * beam_centre[1]
 
         detector = detector_factory.make_detector(
-                      detector_factory.sensor(sensor),
-                      fast, slow, origin, pixel_size, image_size, trusted_range)
+            detector_factory.sensor(sensor),
+            fast, slow, origin, pixel_size, image_size, trusted_range)
         detector.mask = mask
         return detector
 
     @staticmethod
     def two_theta(sensor, distance, beam_centre, fast_direction,
                   slow_direction, two_theta_direction, two_theta_angle,
-                  pixel_size, image_size, trusted_range, mask):
+                  pixel_size, image_size, trusted_range = (0.0, 0.0),
+                  mask = []):
         '''Construct a simple detector at a given distance from the sample
         along the direct beam presumed to be aligned with -z, offset by the
         beam centre - the directions of which are given by the fast and slow
@@ -118,14 +119,15 @@ class detector_factory:
                                                            deg = True)
 
         detector = detector_factory.make_detector(
-                      detector_factory.sensor(sensor),
-                      (R * fast), (R * slow), (R * origin), pixel_size,
-                      image_size, trusted_range)
+            detector_factory.sensor(sensor),
+            (R * fast), (R * slow), (R * origin), pixel_size,
+            image_size, trusted_range)
         detector.mask = mask
         return detector
 
     @staticmethod
-    def complex(sensor, origin, fast, slow, pixel, size, trusted_range):
+    def complex(sensor, origin, fast, slow, pixel, size,
+                trusted_range = (0.0, 0.0)):
         '''A complex detector model, where you know exactly where everything
         is. This is useful for implementation of the Rigaku Saturn header
         format, as that is exactly what is in there. Origin, fast and slow are
@@ -172,9 +174,13 @@ class detector_factory:
         slow = tuple([dslow[j] / lslow for j in range(3)])
 
         size = tuple(reversed(cbf_handle.get_image_size(0)))
-        underload = find_undefined_value(cbf_handle)
-        overload = cbf_handle.get_overload(0)
-        trusted_range = (underload, overload)
+
+        try:
+            underload = find_undefined_value(cbf_handle)
+            overload = cbf_handle.get_overload(0)
+            trusted_range = (underload, overload)
+        except: # intentional
+            trusted_range = (0.0, 0.0)
 
         cbf_detector.__swig_destroy__(cbf_detector)
         del(cbf_detector)
@@ -211,9 +217,13 @@ class detector_factory:
         slow = tuple([dslow[j] / lslow for j in range(3)])
 
         size = tuple(reversed(cbf_handle.get_image_size(0)))
-        underload = find_undefined_value(cbf_handle)
-        overload = cbf_handle.get_overload(0)
-        trusted_range = (underload, overload)
+
+        try:
+            underload = find_undefined_value(cbf_handle)
+            overload = cbf_handle.get_overload(0)
+            trusted_range = (underload, overload)
+        except: # intentional
+            trusted_range = (0.0, 0.0)
 
         cbf_detector.__swig_destroy__(cbf_detector)
         del(cbf_detector)
