@@ -1,6 +1,5 @@
-
 from __future__ import division
-import sys
+import os, sys
 import csv
 
 def run(filename,
@@ -25,10 +24,10 @@ def run(filename,
           data["headers"] = row
         else:
           data["data"].append(row)
-      #def _cmp_pdb_id(l1, l2):
-      #  if l1[1]<l2[1]: return -1
-      #  return 1
-      #data["data"].sort(_cmp_pdb_id)
+      def _cmp_pdb_id(l1, l2):
+        if l1[1]<l2[1]: return -1
+        return 1
+      data["data"].sort(_cmp_pdb_id)
       def _guess_type(item):
         try:
           item=int(item)
@@ -68,15 +67,26 @@ def run(filename,
               row[j]=float(item)
             if type(row[j])==type(""): row[j]=row[j].strip()
       #
+      # filter
+      #
+      remove = []
+      for i, header in enumerate(data["headers"]):
+        if header in ["cluster_id"]:
+          remove.append(i)
+      remove.reverse()
+      #
       # output
       #
       outl =  "data = {"
       outl += '\n  "headers" : ['
-      for header in data["headers"]:
+      for i, header in enumerate(data["headers"]):
+        if i in remove: continue
         outl += '\n    "%s",' % header
       outl += '\n    ],'
       outl += '\n  "data" : ['
       for row in data["data"]:
+        for i in remove:
+          del row[i]
         outl += '\n    %s,' % row
       outl += '\n    ],'
       outl += "\n  }"
