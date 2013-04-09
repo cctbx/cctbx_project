@@ -591,7 +591,7 @@ def exercise_00(debug=False):
       geometry = geometry, normalization = False)
     ph = ppf.all_chain_proxies.pdb_hierarchy
     sel = hydrogens.rotatable(pdb_hierarchy=ph, mon_lib_srv=mon_lib_srv,
-      restraints_manager = restraints_manager)
+      restraints_manager = restraints_manager, log=None)
     if(debug):
       print
       print sel
@@ -634,7 +634,8 @@ def exercise_01():
   rotatable_h_selection = hydrogens.rotatable(
     pdb_hierarchy      = ph,
     mon_lib_srv        = mon_lib_srv,
-    restraints_manager = restraints_manager)
+    restraints_manager = restraints_manager,
+    log                = None)
   hydrogens.fit_rotatable(pdb_hierarchy=ph, xray_structure=xrs,
     map_data=map_data,rotatable_h_selection=rotatable_h_selection)
   ph.write_pdb_file(file_name = "result.pdb")
@@ -663,7 +664,7 @@ def exercise_02(debug=False):
     geometry = geometry, normalization = False)
   ph = ppf.all_chain_proxies.pdb_hierarchy
   sel = hydrogens.rotatable(pdb_hierarchy=ph, mon_lib_srv=mon_lib_srv,
-    restraints_manager = restraints_manager)
+    restraints_manager = restraints_manager, log = None)
   n_rot_h = hydrogens.count_rotatable(sel)
   assert n_rot_h == 43, n_rot_h
 

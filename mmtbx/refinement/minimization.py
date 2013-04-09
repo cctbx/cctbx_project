@@ -36,9 +36,9 @@ class lbfgs(object):
     self.fmodels.prepare_target_functors_for_minimization()
     if(self.refine_adp and fmodels.fmodel_neutron() is None):
       self.xray_structure.tidy_us()
-    self.hd_selection = self.xray_structure.hd_selection()
-    self.hd_flag = self.hd_selection.count(True) > 0
-    self.regularize_h_and_update_xray_structure()
+      self.fmodels.update_xray_structure(
+        xray_structure = self.xray_structure,
+        update_f_calc  = True)
     self.weights = None
     self.correct_special_position_tolerance = correct_special_position_tolerance
     if(refine_xyz and target_weights is not None):
@@ -79,8 +79,9 @@ class lbfgs(object):
     self.compute_target(compute_gradients = False,u_iso_refinable_params = None)
     if(self.refine_adp and self.fmodels.fmodel_neutron() is None):
       self.xray_structure.tidy_us()
-    self.regularize_h_and_update_xray_structure(xray_structure =
-      self.xray_structure)
+      self.fmodels.update_xray_structure(
+        xray_structure = self.xray_structure,
+        update_f_calc  = True)
     if(self.collect_monitor):
       self.monitor.collect(iter = self.minimizer.iter(),
                            nfun = self.minimizer.nfun())
@@ -116,8 +117,9 @@ class lbfgs(object):
 
   def compute_target(self, compute_gradients, u_iso_refinable_params):
     self.stereochemistry_residuals = None
-    self.fmodels.update_xray_structure(xray_structure = self.xray_structure,
-                                       update_f_calc  = True)
+    self.fmodels.update_xray_structure(
+      xray_structure = self.xray_structure,
+      update_f_calc  = True)
     fmodels_target_and_gradients = self.fmodels.target_and_gradients(
       weights                = self.weights,
       compute_gradients      = compute_gradients,
@@ -187,37 +189,6 @@ class lbfgs(object):
       print "xray.minimization line search: f,rms(g):",
       print self.f, math.sqrt(flex.mean_sq(self.g))
     return self.f, self.g
-
-  def regularize_h_and_update_xray_structure(self, xray_structure = None):
-    if(self.model is None): return
-    if(xray_structure is None):
-      xray_structure = self.model.xray_structure
-    self.fmodels.update_xray_structure(
-      xray_structure = xray_structure,
-      update_f_calc  = True)
-    self.model.xray_structure = self.fmodels.fmodel_xray().xray_structure
-    modified = False
-    if(self.h_params is not None and self.refine_xyz and self.hd_flag and
-       self.h_params.refine != "individual" ):
-      self.model.idealize_h(xh_bond_distance_deviation_limit =
-        self.h_params.xh_bond_distance_deviation_limit, show=False)
-      modified = True
-    if(self.h_params is not None and self.refine_xyz and self.hd_flag and
-       self.h_params.refine == "individual" and
-       self.h_params.xh_bond_distance_deviation_limit > 0 and
-       self.fmodels.fmodel_n is None and
-       (self.is_neutron_scat_table is not None and
-        self.is_neutron_scat_table != "neutron")):
-      modified = True
-      self.model.idealize_h(xh_bond_distance_deviation_limit =
-        self.h_params.xh_bond_distance_deviation_limit, show=False) # do it anyway if distortion is too big
-    if(self.h_params is not None and self.refine_xyz and self.hd_flag):
-      self.model.reset_coordinates_for_exchangable_hd()
-      modified = True
-    if(modified):
-      self.fmodels.update_xray_structure(
-        xray_structure = self.model.xray_structure,
-        update_f_calc  = True)
 
 class monitor(object):
   def __init__(self, weights,

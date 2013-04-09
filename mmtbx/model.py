@@ -16,6 +16,7 @@ from mmtbx import ias
 from mmtbx import utils
 from mmtbx import model_statistics
 import iotbx.pdb
+from libtbx import group_args
 
 time_model_show = 0.0
 
@@ -286,23 +287,66 @@ class manager(object):
         else:
           scatterers[i].site = scatterers[j].site
 
-  def idealize_h(self, xh_bond_distance_deviation_limit=0, show=True): # XXX _limit is not used
+  def rotatable_hd_selection(self):
+    import mmtbx.hydrogens
+    if(self.processed_pdb_files_srv is not None):
+      mon_lib_srv = self.processed_pdb_files_srv.mon_lib_srv
+    else:
+      import mmtbx.monomer_library
+      mon_lib_srv = mmtbx.monomer_library.server.server()
+    rmh_sel = mmtbx.hydrogens.rotatable(
+      pdb_hierarchy      = self.pdb_hierarchy(),
+      mon_lib_srv        = mon_lib_srv,
+      restraints_manager = self.restraints_manager,
+      log                = self.log)
+    sel_i = []
+    for s in rmh_sel: sel_i.extend(s[1])
+    return flex.size_t(sel_i)
+
+  def h_counts(self):
+    occupancies = self.xray_structure.scatterers().extract_occupancies()
+    occ_sum = flex.sum(occupancies)
+    hd_selection = self.xray_structure.hd_selection()
+    h_occ_sum = flex.sum(occupancies.select(hd_selection))
+    sel_rot = self.rotatable_hd_selection()
+    hrot_occ_sum = flex.sum(occupancies.select(sel_rot))
+    return group_args(
+      h_count             = hd_selection.count(True),
+      h_occ_sum           = h_occ_sum,
+      h_fraction_of_total = h_occ_sum/occ_sum*100.,
+      hrot_count             = sel_rot.size(),
+      hrot_occ_sum           = hrot_occ_sum,
+      hrot_fraction_of_total = hrot_occ_sum/occ_sum*100.)
+
+  def show_h_counts(self, prefix=""):
+    hc = self.h_counts()
+    print >> self.log, "%sTotal:"%prefix
+    print >> self.log, "%s  count: %d"%(prefix, hc.h_count)
+    print >> self.log, "%s  occupancy sum: %6.2f (%s of total atoms %6.2f)"%(
+      prefix, hc.h_occ_sum, "%", hc.h_fraction_of_total)
+    print >> self.log, "%sRotatable:"%prefix
+    print >> self.log, "%s  count: %d"%(prefix, hc.hrot_count)
+    print >> self.log, "%s  occupancy sum: %6.2f (%s of total atoms %6.2f)"%(
+      prefix, hc.hrot_occ_sum, "%", hc.hrot_fraction_of_total)
+
+  def idealize_h(self, selection=None, show=True):
     if(self.restraints_manager is None): return
     if(self.xray_structure.hd_selection().count(True) > 0):
-      sol_hd = self.solvent_selection().set_selected(
-        ~self.xray_structure.hd_selection(), False)
-      mac_hd = self.xray_structure.hd_selection().set_selected(
-        self.solvent_selection(), False)
-      selx = ~self.xray_structure.hd_selection()
+      hd_selection = self.xray_structure.hd_selection()
+      if(selection is not None): hd_selection = selection
+      if(hd_selection.count(True)==0): return
+      not_hd_selection = ~hd_selection
+      sol_hd = self.solvent_selection().set_selected(~hd_selection, False)
+      mac_hd = hd_selection.deep_copy().set_selected(self.solvent_selection(), False)
       if(self.ias_selection is not None):
-        selx.set_selected(self.ias_selection, False)
-      sites_cart_mac_before = self.xray_structure.sites_cart().select(selx)
+        not_hd_selection.set_selected(self.ias_selection, False)
+      sites_cart_mac_before = \
+        self.xray_structure.sites_cart().select(not_hd_selection)
       xhd = flex.double()
+      if(hd_selection.count(True)==0): return
       for t in self.xh_connectivity_table():
-        xhd.append(abs(t[-1]-t[-2]))
-        if(abs(t[3]-t[4]) < xh_bond_distance_deviation_limit):
-          sol_hd[t[1]] = False
-          mac_hd[t[1]] = False
+        if(hd_selection[t[1]]):
+          xhd.append(abs(t[-1]-t[-2]))
       if(show):
         print >> self.log, \
         "X-H deviation from ideal before regularization (bond): mean=%6.3f max=%6.3f"%\
@@ -320,13 +364,14 @@ class manager(object):
             dihedral  = True,
             chirality = True,
             planarity = True)
-      if 0: print min_result.final_target_value
-      sites_cart_mac_after = self.xray_structure.sites_cart().select(selx)
+      sites_cart_mac_after = \
+        self.xray_structure.sites_cart().select(not_hd_selection)
       assert approx_equal(flex.max(sites_cart_mac_before.as_double() -
         sites_cart_mac_after.as_double()), 0)
       xhd = flex.double()
       for t in self.xh_connectivity_table():
-        xhd.append(abs(t[-1]-t[-2]))
+        if(hd_selection[t[1]]):
+          xhd.append(abs(t[-1]-t[-2]))
       if(show):
         print >> self.log,\
         "X-H deviation from ideal after  regularization (bond): mean=%6.3f max=%6.3f"%\
