@@ -10,6 +10,7 @@ import mmtbx.utils
 from cctbx import maptbx
 from cctbx import sgtbx
 import cctbx
+import sys
 
 master_params_part1 = iotbx.phil.parse("""\
 map_type = mFobs-DFmodel
@@ -27,6 +28,26 @@ dod_and_od = False
 filter_dod = False
   .type = bool
   .help = Filter DOD/OD/O by correlation
+min_od_dist = 0.9
+  .type = float
+  .help = Minimum O-D distance when building water from peaks
+max_od_dist = 1.35
+  .type = float
+  .help = Maximum O-D distance when building water from peaks
+min_dod_angle = 85.0
+  .type = float
+  .help = Minimum D-O-D angle when building water from peaks
+max_dod_angle = 170.0
+  .type = float
+  .help = Maximum D-O-D angle when building water from peaks
+h_bond_min_mac = 1.8
+  .type = float
+  .short_caption = H-bond minimum for DOD solvent-model
+  .expert_level = 1
+h_bond_max = 3.2
+  .type = float
+  .short_caption = Maximum H-bond length in DOD solvent model
+  .expert_level = 1
 """)
 
 master_params_part2 = find_peaks.master_params.fetch(iotbx.phil.parse("""\
@@ -253,6 +274,9 @@ def run(fmodel, model, log, params = None):
   model.xray_structure.set_u_iso(value = u_iso_mean, selection = sel_big)
 
 def build_dod_and_od(model, fmodels, log=None, params=None):
+  hbparams = params.hydrogens.build
+  if hbparams is None:
+    hbparams = all_master_params().extract()
   if log is None:
     log = fmodels.log
   if fmodels.fmodel_n is not None:
@@ -264,27 +288,33 @@ def build_dod_and_od(model, fmodels, log=None, params=None):
     title="neutron"
   print_statistics.make_header("Build water hydrogens into "+title+" difference"
     " map", out=log)
-  build_water_hydrogens_from_map(model, fmodel, params=params, log=log)
-  model.reprocess_pdb_hierarchy_inefficient()
+  model = build_water_hydrogens_from_map(model, fmodel, params=hbparams, log=log)
   #
-  if params is None:
-    params = all_master_params().extract()
-  if params.filter_dod:
+  if hbparams.filter_dod:
+    bmax=params.ordered_solvent.b_iso_max
     water_map_correlations(model, fmodels, log)
-    model = remove_zero_occupancy(model)
+    model = remove_zero_occupancy(model,0.01,bmax)
     model.reprocess_pdb_hierarchy_inefficient()
   fmodels.update_xray_structure(xray_structure = model.xray_structure,
     update_f_calc  = True,
     update_f_mask  = True)
   fmodels.show_short()
-  return model
+  compare_hierarchy(model.pdb_hierarchy(), model.xray_structure.scatterers(),
+      model.xray_structure.unit_cell())
+  sol_sel = model.solvent_selection()
+  hd_sel = sol_sel & model.xray_structure.hd_selection()
+  print>>log, "Final number of water hydrogens: ", hd_sel.count(True)
+  return model, fmodels
 
-def remove_zero_occupancy(model, min_occupancy=0.01):
+def remove_zero_occupancy(model, min_occupancy=0.05, max_b_iso=80.):
   atoms = model.xray_structure.scatterers()
   occ = atoms.extract_occupancies()
+  # print "dir(atoms): ", dir(atoms)
+  umax = cctbx.adptbx.b_as_u(max_b_iso)
+  uiso = atoms.extract_u_iso_or_u_equiv(model.xray_structure.unit_cell())
   sol_sel = model.solvent_selection()
   hd_sel = model.xray_structure.hd_selection()
-  sel = sol_sel & hd_sel & (occ < min_occupancy)
+  sel = sol_sel & hd_sel & ((occ < min_occupancy) | (uiso>umax))
   sel = ~sel
   return model.select( selection = sel)
 
@@ -308,17 +338,20 @@ def insert_atom_into_model(xs, atom, atom_name, site_frac, occupancy, uiso, elem
   ag = atom.parent() # atom group
   rg = ag.parent()
   na =  ag.atoms().size()
+  assert na==2 or na==1
+  j_seq = i_seq+1
+  if na==2:
+    j_seq = j_seq +1
+  h.set_serial("") # 0) # j_seq+1)
+  # h.i_seq = j_seq
   ag.append_atom(atom=h)
+  appat = ag.atoms()[-1]
   scatterer = cctbx.xray.scatterer(
     label           = h.name,
     scattering_type = h.element.strip(),
     site            = site_frac,
     u               = uiso,
     occupancy       = h.occ)
-  j_seq = i_seq+1
-  if na==2:
-    j_seq = j_seq +1
-  assert na==2 or na==1
   xs.add_scatterer(
     scatterer = scatterer,
     insert_at_index = j_seq)
@@ -363,7 +396,8 @@ def distances_to_peaks(xray_structure, sites_frac, peak_heights,
           result[jn] = [(height, new_site_frac)]
   return result
 
-def choose_h_for_water(unit_cell, o_site, xyz_h, h1_site=None):
+def choose_h_for_water(unit_cell, o_site, xyz_h, h1_site=None, min_dod_angle=80,
+    max_dod_angle=170):
   hh1_site = h1_site
   if hh1_site is None:
     mx = max(xyz_h)
@@ -371,9 +405,14 @@ def choose_h_for_water(unit_cell, o_site, xyz_h, h1_site=None):
     hh1_site = mx[1]
   h_max = -1.e300
   h2_site = None
+  d1 = unit_cell.distance(o_site, hh1_site)
+  assert d1 > 0.5 and d1 < 1.5, "D-O distance is out of range: %f"%d1
   for h,s in xyz_h:
+    d = unit_cell.distance(o_site, s)
+    if d<0.5:
+      continue
     a = unit_cell.angle(s, o_site, hh1_site)
-    if a>105-15 and a<105+15 :
+    if a>min_dod_angle and a<max_dod_angle :
       if h>h_max:
         h_max = h
         h2_site = s
@@ -384,28 +423,137 @@ def choose_h_for_water(unit_cell, o_site, xyz_h, h1_site=None):
     result.extend( [h2_site] )
   return result
 
+def len_peaks(set_of_peaks):
+  r = 0
+  for peaks in set_of_peaks.values():
+    r += len(peaks)
+  return r
+
+def print_scats(xray_structure, fn):
+  import cctbx
+  ftmp = file(fn, "w")
+  print>>ftmp, " scats "
+  itmp=0
+  for scat in xray_structure.scatterers():
+    itmp=itmp+1
+    print>>ftmp, itmp, ' ', scat.label.strip(), \
+      ' ', scat.scattering_type.strip(), ' ', \
+      xray_structure.unit_cell().orthogonalize(scat.site), \
+      ' ', scat.occupancy, ' ', cctbx.adptbx.u_as_b(scat.u_iso)
+  ftmp.close()
+
+def print_atom(out,atom):
+  print>>out, '     ', atom.format_atom_record()
+  print>>out, "        atom.xyz:  ", atom.xyz
+  print>>out, "        atom.occ:  ", atom.occ
+  print>>out, "        atom.b:    ", atom.b
+  print>>out, '        atom.segid: "%s"' % atom.segid
+  print>>out, "        atom.i_seq: ", atom.i_seq
+  print>>out, "        atom.name: ", atom.name
+  print>>out, "        atom.element: ", atom.element.strip()
+
+def print_scat(out, s):
+  print>>out, "scatterer  label : ", s.label.strip()
+  print>>out, "            site : ", s.site
+  print>>out, "         element : ", s.scattering_type.strip()
+  print>>out, "            biso : ", cctbx.adptbx.u_as_b(s.u_iso)
+  print>>out, "             occ : ", s.occupancy
+
+def atom_scat(atom,scat):
+  import StringIO
+  s=StringIO.StringIO()
+  print_atom(s,atom)
+  print_scat(s,scat)
+  # print>>s, "dir(s):\n",dir(scat)
+  return s.getvalue()
+
+def compare_hierarchy(hierarchy, scatterers, cell):
+  from libtbx.test_utils import approx_equal
+  # Primary "view" of hierarchy:
+  #   model, chain, residue_group, atom_group, atom"""
+  n = hierarchy.atoms_size()
+  n2 = scatterers.size()
+  assert n == n2, " size mismatch %d != %d"%(n,n2)
+  match = flex.bool()
+  match.resize(n, False)
+  assert match.size() == n
+  if n>0:
+    assert match[0] == False
+    assert match[n-1] == False
+  for model in hierarchy.models():
+    # print 'model: "%s"' % model.id
+    for chain in model.chains():
+      # print 'chain: "%s"' % chain.id
+      for residue_group in chain.residue_groups():
+        #print '  residue_group: resseq="%s" icode="%s"' % (
+        #  residue_group.resseq, residue_group.icode)
+        for atom_group in residue_group.atom_groups():
+          #print '    atom_group: altloc="%s" resname="%s"' % (
+          #  atom_group.altloc, atom_group.resname)
+          for atom in atom_group.atoms():
+            # print_atom(atom)
+            assert atom.i_seq < n
+            assert match[atom.i_seq] == False
+            s = scatterers[atom.i_seq]
+            # assert (atom.serial_as_int() == atom.i_seq + 1), atom_scat(atom,s)
+            match[atom.i_seq] = True
+            assert atom.element.strip().upper() == \
+                s.scattering_type.strip().upper(), atom_scat(atom,s)
+            assert len(atom.name.strip())>0, atom_scat(atom,s)
+            # assert len(s.label.strip())>0, atom_scat(atom,s)
+            # assert approx_equal(atom.occ, s.occupancy, 0.01), atom_scat(atom,s)
+            assert approx_equal(cell.orthogonalize(s.site), atom.xyz, 0.001), \
+                atom_scat(atom,s)
+            #assert approx_equal(atom.b, cctbx.adptbx.u_as_b(s.u_iso), 2.01), \
+            #    atom_scat(atom,s)
+  #
+  assert match.all_eq(True)
+  if n>0:
+    assert match[0] == True
+    assert match[n-1] == True
+
 def build_water_hydrogens_from_map(model, fmodel, params=None, log=None):
+  self = model
+  xs = self.xray_structure
+  unit_cell = xs.unit_cell()
+  scatterers = xs.scatterers()
+  hier = model.pdb_hierarchy()
+  compare_hierarchy(hier, scatterers, unit_cell)
   if log is None:
     log = model.log
   if params is None:
     params = all_master_params().extract()
-  # TODO: default value max_model_peak_dist 1.05, need 1.15 ?
+  max_od_dist = params.max_od_dist
+  min_od_dist = params.min_od_dist
+  assert min_od_dist >0.5
+  assert max_od_dist >min_od_dist and max_od_dist<1.5
+  keep_max = params.map_next_to_model.max_model_peak_dist
+  keep_min = params.map_next_to_model.min_model_peak_dist
+  params.map_next_to_model.max_model_peak_dist = max_od_dist * 1.8
+  params.map_next_to_model.min_model_peak_dist = min_od_dist
+  params.map_next_to_model.use_hydrogens = True
+  # params.map_next_to_model.min_peak_peak_dist = 0.8
+  max_dod_angle = params.max_dod_angle
+  min_dod_angle = params.min_dod_angle
+  assert max_dod_angle<180 and min_dod_angle>30 and max_dod_angle>min_dod_angle
   peaks = find_hydrogen_peaks(
     fmodel = fmodel,
     pdb_atoms = model.pdb_atoms,
     params = params,
     log = log)
-  self = model
-  xs = self.xray_structure
+  params.map_next_to_model.use_hydrogens = False
   hs = peaks.heights
-  scatterers = xs.scatterers()
-  unit_cell = xs.unit_cell()
+  params.map_next_to_model.max_model_peak_dist = keep_max
+  params.map_next_to_model.min_model_peak_dist = keep_min
   sol_O = model.solvent_selection().set_selected(
     model.xray_structure.hd_selection(), False)
   print >>log, "Number of solvent molecules: ", sol_O.count(True)
-  cutoff = params.map_next_to_model.max_model_peak_dist # 1.15
-  pks = distances_to_peaks(xs, peaks.sites, hs, cutoff, use_selection=sol_O)
-  # TODO it is less than n added H : print >>log, "Number of close peaks: ", len(pks)
+  sol_sel = model.solvent_selection()
+  hd_sel = sol_sel & model.xray_structure.hd_selection()
+  print>>log, "Number of water hydrogens: ", hd_sel.count(True)
+  pks = distances_to_peaks(xs, peaks.sites, hs, max_od_dist, use_selection=sol_O)
+  pkss = distances_to_peaks(xs, peaks.sites, hs, max_od_dist*1.7, use_selection=sol_O)
+  print>>log, "Peaks to consider: ", len(pks.keys()), " : ", len(pkss.keys())
   water_rgs = self.extract_water_residue_groups()
   water_rgs.reverse()
   element='D'
@@ -417,6 +565,9 @@ def build_water_hydrogens_from_map(model, fmodel, params=None, log=None):
     ag = rg.only_atom_group()
     atoms = ag.atoms()
     h1=0
+    h1_atom=None
+    h1_site=None
+    h1_i_seq=None
     if atoms.size()==2:
       o_atom = None
       h_atom = None
@@ -424,7 +575,9 @@ def build_water_hydrogens_from_map(model, fmodel, params=None, log=None):
         if (atom.element.strip() == "O"): o_atom = atom
         else:                             h_atom = atom
       assert [o_atom, h_atom].count(None) == 0
-      h1_site=scatterers[h_atom.i_seq].site
+      h1_i_seq = h_atom.i_seq
+      h1_site=scatterers[h1_i_seq].site
+      h1_atom=h_atom
       if h_atom.name.strip().endswith('1'):
         h1=1
       elif h_atom.name.strip().endswith('2'):
@@ -441,7 +594,30 @@ def build_water_hydrogens_from_map(model, fmodel, params=None, log=None):
       o_site = scatterers[o_i].site
       o_u = scatterers[o_i].u_iso_or_equiv(unit_cell)
       h_sites = pks[o_i]
-      hh = choose_h_for_water(unit_cell, o_site, h_sites, h1_site=h1_site)
+      hh = choose_h_for_water(unit_cell, o_site, h_sites, h1_site=h1_site,
+          min_dod_angle=min_dod_angle, max_dod_angle=max_dod_angle)
+      nats = atoms.size() + len(hh)
+      if nats==2:
+        if len(hh)==0:
+          h_swap = h1_site
+        else:
+          h_swap = hh[0]
+        assert pkss.has_key(o_i)
+        h_sitess = pkss[o_i]
+        hhs = choose_h_for_water(unit_cell, h_swap, h_sitess, h1_site=o_site,
+            min_dod_angle=min_dod_angle, max_dod_angle=max_dod_angle)
+        if len(hhs)>0:
+          assert len(hhs)==1
+          scatterers[o_i].site = h_swap
+          o_atom.xyz = unit_cell.orthogonalize(h_swap)
+          if h1_site is not None:
+            scatterers[h1_i_seq].site = o_site
+            h1_atom.xyz = unit_cell.orthogonalize(o_site)
+          else:
+            hhs.append(o_site)
+            assert len(hhs)==2
+          hh = hhs
+          assert (atoms.size() + len(hh)) == 3
       for i,site_frac in enumerate(hh):
         assert (h1>0 and i<1) or (h1==0 and i<2)
         if h1==1: j=2
@@ -453,14 +629,20 @@ def build_water_hydrogens_from_map(model, fmodel, params=None, log=None):
         insert_atom_into_model(xs, atom=o_atom, atom_name=name, site_frac=site_frac,
           occupancy=1, uiso=o_u, element=element)
         next_to_i_seqs.append(i_seq)
-  print >> log, "Number of H added:", len(next_to_i_seqs)
-  if( len(next_to_i_seqs)!=0 and model.refinement_flags is not None):
+  if( model.refinement_flags is not None and len(next_to_i_seqs)!=0):
     # TODO: adp_group=True according to params.dod_and_od_group_adp
     model.refinement_flags.add(
-      next_to_i_seqs=next_to_i_seqs,
+      next_to_i_seqs=next_to_i_seqs, # [i_seq], # ,
       sites_individual = True,
       s_occupancies    = False,
       adp_individual_iso=True)
+  print >> log, "Number of H added:", len(next_to_i_seqs)
+  model.reprocess_pdb_hierarchy_inefficient()
+  compare_hierarchy(model.pdb_hierarchy(), model.xray_structure.scatterers(), unit_cell)
+  sol_sel = model.solvent_selection()
+  hd_sel = sol_sel & model.xray_structure.hd_selection()
+  assert hd_sel.count(True) >= len(next_to_i_seqs)
+  return model
 
 def select_one_water(water_residue_group, n_atoms):
   rg = water_residue_group
