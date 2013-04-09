@@ -20,7 +20,7 @@ class SweepReader(object):
     '''Definition for a sweep of images, defined to be a set of diffraction
     images in files with matching templates, or a volume formatted file.'''
 
-    def __init__(self, format_class, template_format, image_range):
+    def __init__(self, format_class, template, image_range):
         """ Construct a sweep object from the given format.
 
         Params:
@@ -29,14 +29,21 @@ class SweepReader(object):
             image_range The range of the images in the full sweep
 
         """
+        import os
+
         # Ensure we have enough images and format has been specified
         assert(format_class != None)
 
         # Set the internal format class
         self._format = format_class
 
-        # Set the image range
-        self._template_format = template_format
+        # Set the template
+        self._template = template
+
+        # Get the template format
+        pfx = template.split('#')[0]
+        sfx = template.split('#')[-1]
+        self._template_format = '%s%%0%dd%s' % (pfx, template.count('#'), sfx)
 
         # Get the first format instance and get the models
         first_filename = self.get_filename(image_range[0])
@@ -63,7 +70,7 @@ class SweepReader(object):
 
     def get_template(self):
         """ Get the template. """
-        return self._template_format
+        return self._template
 
     def get_filename(self, image):
         """ Get the filename for the given image. """
@@ -188,7 +195,7 @@ class SweepReader(object):
 class BufferedSweepReader(SweepReader):
     """ Class to provide cached reading of images. """
 
-    def __init__(self, format_class, template_format, image_range, max_cache=None):
+    def __init__(self, format_class, template, image_range, max_cache=None):
         """ Initialise the SweepBuffer class.
 
         Params:
@@ -199,7 +206,7 @@ class BufferedSweepReader(SweepReader):
         from collections import OrderedDict
 
         # Initialise the base class
-        SweepReader.__init__(self, format_class, template_format, image_range)
+        SweepReader.__init__(self, format_class, template, image_range)
 
         # Set the maximum images to cache
         if max_cache:
@@ -507,7 +514,7 @@ class SweepFactory:
 
         # Ensure we have enough images and format has been specified
         assert(len(filenames) > 0)
-        print filenames
+
         # Get the format object
         filenames = sorted(filenames)
         format_class = Registry.find(filenames[0])
@@ -518,10 +525,11 @@ class SweepFactory:
         # Get the directory and first filename and set the template format
         directory, first_image_name = os.path.split(first_image)
         template, first_image_number = template_regex(first_image_name)
+
         pfx = template.split('#')[0]
         sfx = template.split('#')[-1]
         template_format = '%s%%0%dd%s' % (pfx, template.count('#'), sfx)
-        template_format = os.path.join(directory, template_format)
+        template = os.path.join(directory, template)
 
         # Check the input filenames are valid
         image_numbers = [first_image_number]
@@ -537,7 +545,7 @@ class SweepFactory:
 
         # Create the sweep object
         sweep = Sweep(BufferedSweepReader(format_class,
-            template_format, image_range))
+            template, image_range))
 
         # Check the sweep is valid
         if check_headers and not sweep.is_valid():

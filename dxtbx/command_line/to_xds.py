@@ -56,7 +56,7 @@ class to_xds:
 
     def get_scan(self):
         return self._sweep.get_scan()
-        
+
     def get_template(self):
         return self._sweep.reader().get_template()
 
