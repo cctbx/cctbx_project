@@ -28,7 +28,7 @@ dod_and_od = False
 filter_dod = False
   .type = bool
   .help = Filter DOD/OD/O by correlation
-min_od_dist = 0.9
+min_od_dist = 0.8
   .type = float
   .help = Minimum O-D distance when building water from peaks
 max_od_dist = 1.35
@@ -44,7 +44,7 @@ h_bond_min_mac = 1.8
   .type = float
   .short_caption = H-bond minimum for DOD solvent-model
   .expert_level = 1
-h_bond_max = 3.2
+h_bond_max = 3.5
   .type = float
   .short_caption = Maximum H-bond length in DOD solvent model
   .expert_level = 1
@@ -274,6 +274,10 @@ def run(fmodel, model, log, params = None):
   model.xray_structure.set_u_iso(value = u_iso_mean, selection = sel_big)
 
 def build_dod_and_od(model, fmodels, log=None, params=None):
+  fmodels.update_xray_structure(xray_structure = model.xray_structure,
+    update_f_calc  = True,
+    update_f_mask  = True)
+  fmodels.show_short()
   hbparams = params.hydrogens.build
   if hbparams is None:
     hbparams = all_master_params().extract()
@@ -531,8 +535,9 @@ def build_water_hydrogens_from_map(model, fmodel, params=None, log=None):
   keep_min = params.map_next_to_model.min_model_peak_dist
   params.map_next_to_model.max_model_peak_dist = max_od_dist * 1.8
   params.map_next_to_model.min_model_peak_dist = min_od_dist
+  params.peak_search.min_cross_distance = params.min_od_dist # 0.5
   params.map_next_to_model.use_hydrogens = True
-  # params.map_next_to_model.min_peak_peak_dist = 0.8
+  params.map_next_to_model.min_peak_peak_dist = min_od_dist #0.8
   max_dod_angle = params.max_dod_angle
   min_dod_angle = params.min_dod_angle
   assert max_dod_angle<180 and min_dod_angle>30 and max_dod_angle>min_dod_angle
@@ -541,6 +546,8 @@ def build_water_hydrogens_from_map(model, fmodel, params=None, log=None):
     pdb_atoms = model.pdb_atoms,
     params = params,
     log = log)
+  if peaks is None:
+    return model
   params.map_next_to_model.use_hydrogens = False
   hs = peaks.heights
   params.map_next_to_model.max_model_peak_dist = keep_max
