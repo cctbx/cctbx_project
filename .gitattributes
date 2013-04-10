@@ -1572,6 +1572,7 @@ mmtbx/regression/tst_ions_pick_mg.py -text
 mmtbx/regression/tst_ions_validate_ca.py -text
 mmtbx/regression/tst_ions_validate_mg.py -text
 mmtbx/regression/tst_ions_validate_zn.py -text
+mmtbx/regression/tst_isomorphous_difference_misc.py -text
 mmtbx/regression/tst_map_coeffs_simple.py -text
 mmtbx/regression/tst_maps_misc.py -text
 mmtbx/regression/tst_ml_estimate.py -text
