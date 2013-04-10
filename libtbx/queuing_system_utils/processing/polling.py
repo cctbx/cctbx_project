@@ -41,13 +41,13 @@ def pbs_single_evaluate(out, err):
   "Evaluates PBS text output in single mode"
 
   if err:
-    if PBS_SEARCH_REGEX.search( err ):
+    if PBS_SEARCH_REGEX().search( err ):
       return True
 
     else:
       raise RuntimeError, "PBS error:\n%s" % err
 
-  state = PBS_EVAL_REGEX.search( out )
+  state = PBS_EVAL_REGEX().search( out )
 
   if not state:
     raise RuntimeError, "Unexpected response from queue:\n%s" % out
