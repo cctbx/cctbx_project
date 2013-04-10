@@ -66,6 +66,18 @@ ignore_non_isomorphous_unit_cells = False
   .type = bool
   .short_caption = Ignore non-isomorphous unit cells
 include scope libtbx.phil.interface.tracking_params
+advanced
+  .expert_level = 3
+  .short_caption = Advanced options
+  .style = auto_align menu_item
+{
+  multiscale = False
+    .type = bool
+    .expert_level = 3
+  omit_selection = None
+    .type = atom_selection
+    .expert_level = 3
+}
 find_peaks_holes = False
   .type = bool
   .short_caption = Find peaks and holes in map
@@ -92,7 +104,8 @@ class compute_fo_minus_fo_map (object) :
       peak_search=False,
       map_cutoff=None,
       peak_search_params=None,
-      write_map=True) :
+      write_map=True,
+      multiscale=False) :
     if (log is None) : log = sys.stdout
     adopt_init_args(self, locals())
     fmodels = []
@@ -137,7 +150,8 @@ class compute_fo_minus_fo_map (object) :
       scale_k1 = flex.sum(flex.abs(fobs_1.data())*flex.abs(fobs_2.data())) / den
     #
     fobs_2 = fobs_2.array(data = fobs_2.data()*scale_k1)
-    if 0: fobs_1 = fobs_2.multiscale(other = fobs_1, reflections_per_bin=250)
+    if multiscale:
+      fobs_1 = fobs_2.multiscale(other = fobs_1, reflections_per_bin=250)
     if(not silent):
       print >> log, "Fobs1_vs_Fobs2 statistics:"
       print >> log, "Bin# Resolution range  Compl.  No.of refl. R-factor"
@@ -378,8 +392,17 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
   raw_recs.append(iotbx.pdb.format_cryst1_record(
     crystal_symmetry = crystal_symmetry))
   #
-  xray_structure = iotbx.pdb.input(source_info = None, lines =
-    raw_recs).xray_structure_simple()
+  pdb_in = iotbx.pdb.input(source_info = None, lines = raw_recs)
+  hierarchy = pdb_in.construct_hierarchy()
+  omit_sel = flex.bool(hierarchy.atoms().size(), False)
+  if (params.advanced.omit_selection is not None) :
+    print >> log, "Will omit selection from phasing model:"
+    print >> log, "  " + params.advanced.omit_selection
+    omit_sel = hierarchy.atom_selection_cache().selection(
+      params.advanced.omit_selection)
+    print >> log, "%d atoms selected for removal" % omit_sel.count(True)
+  xray_structure = pdb_in.xray_structure_simple()
+  xray_structure = xray_structure.select(~omit_sel)
   if(not command_line.options.silent):
     print >> log, "*** Model summary:"
     xray_structure.show_summary(f = log)
@@ -407,7 +430,8 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
     output_file = params.output_file,
     peak_search=params.find_peaks_holes,
     map_cutoff=params.map_cutoff,
-    peak_search_params=params.peak_search).file_names
+    peak_search_params=params.peak_search,
+    multiscale=params.advanced.multiscale).file_names
   return output_files
 
 class launcher (runtime_utils.target_with_save_result) :
