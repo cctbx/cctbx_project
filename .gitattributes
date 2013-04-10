@@ -378,6 +378,7 @@ dxtbx/format/FormatCBFFullPilatus.py -text
 dxtbx/format/FormatCBFMini.py -text
 dxtbx/format/FormatCBFMiniPilatus.py -text
 dxtbx/format/FormatCBFMiniPilatusHelpers.py -text
+dxtbx/format/FormatEDFALS733.py -text
 dxtbx/format/FormatMAR.py -text
 dxtbx/format/FormatMarIP.py -text
 dxtbx/format/FormatPilatusHelpers.py -text
