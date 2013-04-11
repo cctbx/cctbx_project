@@ -43,6 +43,68 @@ class _(boost.python.injector, ext.statistics):
 use_space_group_symmetry = sgtbx.search_symmetry_flags(
   use_space_group_symmetry=True)
 
+class _(boost.python.injector, ext.histogram) :
+  """
+  Injector for extending cctbx.maptbx.histogram
+  """
+  def get_percentile_cutoffs (self, map, vol_cutoff_plus_percent,
+      vol_cutoff_minus_percent) :
+    """
+    For the double-step filtration in cctbx.miller (used as part of the
+    procedure for replacing missing F-obs in maps), we need to calculate upper
+    and lower cutoffs for the data based on percentile values.  This can be
+    done in just a few lines of code by using flex.sort_permutation over the
+    entire map, but this has a huge memory overhead (and possibly computational
+    overhead as well).  Since we are only interested in subsets of values at
+    the extreme ends of the distribution, we can perform the sort for these
+    subsets instead, which should cut down on memory use.
+
+    Returns the upper and lower map value cutoffs (as Python floats).
+    """
+    # XXX there are almost certainly more efficient ways to do this, but this
+    # is the best I could come up with quickly.  it does not offer much
+    # improvement when the histogram is extremely lopsided, but this is
+    # hopefully a rare case.
+    map_values = map.as_1d()
+    size = map_values.size()
+    # upper limit
+    i_bin_plus = -1
+    for i_bin, value in enumerate(self.v_values()) :
+      if ((value*100) <= vol_cutoff_plus_percent) :
+        i_bin_plus = i_bin - 1
+        break
+    assert (i_bin_plus >= 0)
+    cutoffp_lower_limit = self.arguments()[i_bin_plus]
+    top_values = map_values.select(map_values >= cutoffp_lower_limit)
+    i_upper = min(int(size * (vol_cutoff_plus_percent / 100.)),
+                  top_values.size())
+    s = flex.sort_permutation(top_values)
+    top_values_sorted = top_values.select(s)
+    del s
+    assert (top_values_sorted.size() >= i_upper)
+    cutoffp = top_values_sorted[-i_upper]
+    del top_values
+    del top_values_sorted
+    # lower limit
+    i_bin_minus = -1
+    for i_bin, value in enumerate(self.c_values()) :
+      if ((value*100) > vol_cutoff_minus_percent) :
+        i_bin_minus = i_bin
+        break
+    assert (i_bin_minus >= 0)
+    cutoffm_upper_limit = self.arguments()[i_bin_minus]
+    bottom_values = map_values.select(map_values <= cutoffm_upper_limit)
+    i_lower = min(int(size * (vol_cutoff_minus_percent / 100.)),
+                  bottom_values.size() - 1)
+    s = flex.sort_permutation(bottom_values)
+    bottom_values_sorted = bottom_values.select(s)
+    del s
+    assert (bottom_values_sorted.size() > i_lower)
+    cutoffm = bottom_values_sorted[i_lower]
+    del bottom_values
+    del bottom_values_sorted
+    return cutoffp, cutoffm
+
 class peak_list(ext.peak_list):
 
   def __init__(self, data,

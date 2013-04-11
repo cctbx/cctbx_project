@@ -3403,18 +3403,23 @@ class array(set):
         resolution_factor=0.25,
         scale_to=None):
     assert self.is_complex_array()
-    # Can this be done faster?
     fft_map = self.fft_map(resolution_factor=resolution_factor)
     fft_map.apply_sigma_scaling()
     map_data = fft_map.real_map_unpadded()
     n_real = fft_map.n_real()
     del fft_map
-    s = flex.sort_permutation(map_data.as_1d())
-    i = map_data.size()-1-int(map_data.size()*(vol_cutoff_plus_percent/100.))
-    cutoffp = map_data[s[i]]
-    j = int(map_data.size()*(vol_cutoff_minus_percent/100.))
-    cutoffm = map_data[s[j]]
-    del s
+    value_min = flex.min(map_data.as_1d())
+    value_max = flex.max(map_data.as_1d())
+    if (value_min == value_max) :
+      cutoffp = cutoffm = value_max
+    else :
+      # XXX this avoids the huge memory overhead of sorting the entire map to
+      # determine cutoffs, but still not optimal.  to be revisited...
+      hist = maptbx.histogram(map_data, n_bins=min(1000, map_data.size()))
+      cutoffp, cutoffm = hist.get_percentile_cutoffs(
+        map=map_data,
+        vol_cutoff_plus_percent=vol_cutoff_plus_percent,
+        vol_cutoff_minus_percent=vol_cutoff_minus_percent)
     map_data = maptbx.denmod_simple(
       map_data = map_data,
       n_real   = n_real,
