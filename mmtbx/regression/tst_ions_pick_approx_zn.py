@@ -1,6 +1,7 @@
 
 from __future__ import division
 from libtbx import easy_run
+import time
 import os
 
 def exercise () :
@@ -28,6 +29,7 @@ def exercise () :
   open("zn_frag_fmodel.eff", "w").write(params)
   assert (easy_run.fully_buffered("phenix.fmodel zn_frag_fmodel.eff"
     ).raise_if_errors().return_code == 0)
+  time.sleep(2)
   pdb_in = any_file("zn_frag.pdb")
   hierarchy = pdb_in.file_object.construct_hierarchy()
   for chain in hierarchy.models()[0].chains() :
