@@ -388,7 +388,8 @@ class installer (object) :
     self.fetch_untar_and_chdir(pkg_name=GETTEXT_PKG, log=pkg_log)
     os.chdir("gettext-runtime")
     self.set_cppflags_ldflags_tmp()
-    gettext_conf_args = [ prefix_arg, "--disable-java", ]
+    gettext_conf_args = [ prefix_arg, "--disable-java", "--disable-csharp",
+      "--disable-intl-java", "--disable-gcj" ]
     self.configure_and_build(config_args=gettext_conf_args, log=pkg_log)
     self.print_sep()
     # glib
