@@ -1,6 +1,7 @@
 
 from __future__ import division
 from libtbx import easy_run
+import time
 import os
 
 def exercise () :
@@ -21,6 +22,7 @@ def exercise () :
   assert (easy_run.fully_buffered("phenix.fmodel mg_frag_fmodel.eff"
     ).raise_if_errors().return_code == 0)
   assert os.path.isfile("mg_frag.mtz")
+  time.sleep(2)
   from iotbx.file_reader import any_file
   pdb_in = any_file("mg_frag.pdb")
   hierarchy = pdb_in.file_object.construct_hierarchy()
