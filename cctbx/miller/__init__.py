@@ -3407,16 +3407,17 @@ class array(set):
     fft_map = self.fft_map(resolution_factor=resolution_factor)
     fft_map.apply_sigma_scaling()
     map_data = fft_map.real_map_unpadded()
+    n_real = fft_map.n_real()
+    del fft_map
     s = flex.sort_permutation(map_data.as_1d())
-    map_data_sorted = map_data.select(s)
     i = map_data.size()-1-int(map_data.size()*(vol_cutoff_plus_percent/100.))
-    cutoffp = map_data_sorted[i]
+    cutoffp = map_data[s[i]]
     j = int(map_data.size()*(vol_cutoff_minus_percent/100.))
-    cutoffm = map_data_sorted[j]
-    del map_data_sorted
+    cutoffm = map_data[s[j]]
+    del s
     map_data = maptbx.denmod_simple(
       map_data = map_data,
-      n_real   = fft_map.n_real(),
+      n_real   = n_real,
       cutoffp  = cutoffp,
       cutoffm  = cutoffm)
     if(complete_set is None): complete_set = self.complete_set()
