@@ -63,10 +63,13 @@ def mon_lib_list_cif(path=None, strict=False):
     strict=strict)
 
 def geostd_list_cif(path=None, strict=False):
-  return mon_lib_cif_loader(
-    path=path,
-    relative_path_components=["list", "geostd_list.cif"],
-    strict=strict)
+  try:
+    return mon_lib_cif_loader(
+      path=path,
+      relative_path_components=["list", "geostd_list.cif"],
+      strict=strict)
+  except MonomerLibraryServerError, e:
+    return None
 
 def mon_lib_ener_lib_cif(path=None, strict=False):
   return mon_lib_cif_loader(
@@ -106,11 +109,8 @@ def convert_list_block(
     list_item_block = list_block.get(list_item_name)
     if (list_item_block is not None):
       for row in list_item_block.iterrows():
-        obj_inner = cif_type_inner(**dict(row))
+        obj_inner = cif_type_inner(**row)
         tabulated_items[obj_inner.id] = obj_inner
-    else:
-      obj_inner = cif_type_inner(**dict(list_block))
-      tabulated_items[obj_inner.id] = obj_inner
   for key, cif_data in cif_object.iteritems():
     if (key.startswith(data_prefix)):
       item_id = key[len(data_prefix):]
@@ -121,20 +121,13 @@ def convert_list_block(
       obj_outer = None
       for loop_block,lst_name in outer_mappings:
         rows = cif_data.get('_'+loop_block)
-        if (rows is None):
-          d = dict((k, v) for k, v in cif_data.iteritems()
-                   if k.startswith("_"+loop_block))
-          if len(d) > 0:
-            lst = getattr(obj_outer, lst_name)
-            typ = getattr(cif_types, loop_block)
-            lst.append(typ(**dict(d)))
-          continue
+        if (rows is None): continue
         if (obj_outer is None):
           obj_outer = cif_type_outer(source_info, obj_inner)
         lst = getattr(obj_outer, lst_name)
         typ = getattr(cif_types, loop_block)
         for row in rows.iterrows():
-          lst.append(typ(**dict(row)))
+          lst.append(typ(**row))
       if (obj_outer is not None):
         yield obj_outer
 
@@ -235,67 +228,68 @@ class server(process_cif_mixin):
       # get the geostd CIF links object and merge
       geostd_list_cif_obj = geostd_list_cif()
       mon_lib_cif = list_cif.cif
-      geostd_cif = geostd_list_cif_obj.cif
-      for geostd_block_key in geostd_cif:
-        geostd_block = geostd_cif[geostd_block_key]
-        mon_lib_block = mon_lib_cif.get(geostd_block_key)
-        if verbose:
-          print '+'*80
-          print geostd_block_key
-          print '-'*80
-          print mon_lib_block
-          print '+'*80
-        replace_block=False
-        if geostd_block_key.endswith("_list"):
-          pass
-        else:
-          replace_block=True
-        if not mon_lib_block:
-          replace_block=True
-        if not replace_block:
-          # add to loops row-wise
-          geostd_loop_keys = geostd_block.keys()
-          if not geostd_loop_keys: continue
-          done = []
-          for geostd_loop_key in geostd_loop_keys:
-            if geostd_loop_key.find(".")==-1: continue
-            geostd_loop_key = geostd_loop_key.split(".")[0]
-            if geostd_loop_key in done: continue
-            done.append(geostd_loop_key)
-            geostd_loop = geostd_block.get(geostd_loop_key)
-            mon_lib_loop = mon_lib_block.get(geostd_loop_key)
-            if not mon_lib_loop: continue
-            if verbose: print '''
-%s
-  Adding rows to CIF
-    block "%s"
-      loop "%s
-%s
-''' % (
-            "-"*80,
-            geostd_block_key,
-            geostd_loop_key,
-            "-"*80,
-            )
-            for row in geostd_loop.iterrows():
-              if verbose:
-                for key in row:
-                  print "    %-20s : %s" % (
-                    key.replace("%s." % geostd_loop_key, ""),
-                    row[key],
-                    )
-                print
-              mon_lib_loop.add_row(row.values())
-        else:
-          # add block
+      if geostd_list_cif_obj is not None:
+        geostd_cif = geostd_list_cif_obj.cif
+        for geostd_block_key in geostd_cif:
+          geostd_block = geostd_cif[geostd_block_key]
+          mon_lib_block = mon_lib_cif.get(geostd_block_key)
           if verbose:
-            print '\n%s\n  Adding/replacing CIF block\n%s' % ("-"*80, "-"*80)
-            print geostd_block
-          mon_lib_cif[geostd_block_key] = geostd_block
-        if verbose:
-          print '+'*80
-          print mon_lib_block
-          print '+'*80
+            print '+'*80
+            print geostd_block_key
+            print '-'*80
+            print mon_lib_block
+            print '+'*80
+          replace_block=False
+          if geostd_block_key.endswith("_list"):
+            pass
+          else:
+            replace_block=True
+          if not mon_lib_block:
+            replace_block=True
+          if not replace_block:
+            # add to loops row-wise
+            geostd_loop_keys = geostd_block.keys()
+            if not geostd_loop_keys: continue
+            done = []
+            for geostd_loop_key in geostd_loop_keys:
+              if geostd_loop_key.find(".")==-1: continue
+              geostd_loop_key = geostd_loop_key.split(".")[0]
+              if geostd_loop_key in done: continue
+              done.append(geostd_loop_key)
+              geostd_loop = geostd_block.get(geostd_loop_key)
+              mon_lib_loop = mon_lib_block.get(geostd_loop_key)
+              if not mon_lib_loop: continue
+              if verbose: print '''
+  %s
+    Adding rows to CIF
+      block "%s"
+        loop "%s
+  %s
+  ''' % (
+              "-"*80,
+              geostd_block_key,
+              geostd_loop_key,
+              "-"*80,
+              )
+              for row in geostd_loop.iterrows():
+                if verbose:
+                  for key in row:
+                    print "    %-20s : %s" % (
+                      key.replace("%s." % geostd_loop_key, ""),
+                      row[key],
+                      )
+                  print
+                mon_lib_loop.add_row(row.values())
+          else:
+            # add block
+            if verbose:
+              print '\n%s\n  Adding/replacing CIF block\n%s' % ("-"*80, "-"*80)
+              print geostd_block
+            mon_lib_cif[geostd_block_key] = geostd_block
+          if verbose:
+            print '+'*80
+            print mon_lib_block
+            print '+'*80
 
     self.root_path = os.path.dirname(os.path.dirname(list_cif.path))
     self.geostd_path = os.path.join(os.path.dirname(self.root_path), "geostd")
@@ -328,7 +322,7 @@ class server(process_cif_mixin):
   def convert_deriv_list_dict(self, cif_object):
     for row in get_rows(cif_object,
                  "deriv_list", "_chem_comp_deriv"):
-      deriv = cif_types.chem_comp_deriv(**dict(row))
+      deriv = cif_types.chem_comp_deriv(**row)
       self.deriv_list_dict[deriv.comp_id] = deriv
 
   def convert_comp_synonym_list(self, cif_object):
@@ -340,7 +334,7 @@ class server(process_cif_mixin):
   def convert_comp_synonym_atom_list(self, cif_object):
     for row in get_rows(cif_object,
                  "comp_synonym_atom_list", "_chem_comp_synonym_atom"):
-      synonym = cif_types.chem_comp_synonym_atom(**dict(row))
+      synonym = cif_types.chem_comp_synonym_atom(**row)
       d = self.comp_synonym_atom_list_dict[synonym.comp_id]
       d[synonym.atom_alternative_id] = synonym.atom_id
       if (synonym.comp_alternative_id != ""):
@@ -519,12 +513,12 @@ class ener_lib(process_cif_mixin):
 
   def convert_lib_synonym(self, cif_object):
     for row in get_rows(cif_object, "energy", "_lib_synonym"):
-      syn = cif_types.energy_lib_synonym(**dict(row))
+      syn = cif_types.energy_lib_synonym(**row)
       self.lib_synonym[syn.atom_alternative_type] = syn.atom_type
 
   def convert_lib_atom(self, cif_object, use_neutron_distances=False):
     for row in get_rows(cif_object, "energy", "_lib_atom"):
-      entry = cif_types.energy_lib_atom(**dict(row))
+      entry = cif_types.energy_lib_atom(**row)
       if use_neutron_distances:
         if entry.vdw_radius_neuton is not None:
           entry.vdw_radius = entry.vdw_radius_neuton
@@ -532,5 +526,5 @@ class ener_lib(process_cif_mixin):
 
   def convert_lib_vdw(self, cif_object):
     for row in get_rows(cif_object, "energy", "_lib_vdw"):
-      vdw = cif_types.energy_lib_vdw(**dict(row))
+      vdw = cif_types.energy_lib_vdw(**row)
       self.lib_vdw.append(vdw)
