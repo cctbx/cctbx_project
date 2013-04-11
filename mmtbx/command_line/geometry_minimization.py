@@ -282,6 +282,42 @@ class run(object):
     self.grm = get_geometry_restraints_manager(
       processed_pdb_file = self.processed_pdb_file,
       xray_structure = self.xray_structure)
+    # correct hydrogens
+    if self.params.pdb_interpretation.correct_hydrogens:
+      import time
+      from mmtbx.monomer_library.pdb_interpretation import \
+        correct_hydrogen_geometries
+      t0=time.time()
+      print "\n  Correcting hydrogen positions\n"
+      bad_hydrogen_count, corrected_hydrogen_count = \
+          correct_hydrogen_geometries(
+            self.pdb_hierarchy,
+            xray_structure=self.xray_structure,
+            restraints_manager=self.grm,
+            verbose=True,
+            )
+      if len(corrected_hydrogen_count):
+        print >> log, "\n  Number of hydrogens corrected : %d" % len(corrected_hydrogen_count)
+      if bad_hydrogen_count:
+        print >> log, "  Number of uncorrected         : %d" % (
+          bad_hydrogen_count-len(corrected_hydrogen_count))
+      print >> log, "  Time to correct hydrogens : %0.2fs" % (time.time()-t0)
+    # CDL
+    if self.params.pdb_interpretation.cdl:
+      from mmtbx.conformation_dependent_library import setup_restraints
+      from mmtbx.conformation_dependent_library import update_restraints
+      import time
+      t0=time.time()
+      cdl_proxies=setup_restraints(self.grm)
+      update_restraints(
+        self.pdb_hierarchy,
+        self.grm,
+        current_geometry=self.xray_structure,
+        cdl_proxies=cdl_proxies,
+        verbose=False,
+        )
+      cdl_time = time.time()-t0
+      print >> log, "\n  Time to apply CDL : %0.2fs" % (time.time()-t0)
 
   def minimization(self, prefix): # XXX USE alternate_nonbonded_off_on etc
     broadcast(m=prefix, log = self.log)
