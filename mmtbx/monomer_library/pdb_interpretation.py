@@ -113,7 +113,7 @@ master_params_str = """\
     .help = Use Conformation Dependent Library (CDL) \
       for geometry minimization restraints
     .style = bold
-  correct_hydrogens = False
+  correct_hydrogens = True
     .type = bool
     .short_caption = Correct the hydrogen positions trapped in chirals
   automatic_linking
