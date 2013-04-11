@@ -51,6 +51,8 @@ class DIPImage(DetectorImageBase):
       self.parameters['OSC_RANGE']=struct.unpack(
              self.floatformat(),self.rawheader[196:200])[0] - self.osc_start
       self.parameters['TWOTHETA']=0.0
+      self.parameters["TIME"] = struct.unpack(
+             self.floatformat(),self.rawheader[172:176])[0]
 
   def integerdepth(self):
     return 2
