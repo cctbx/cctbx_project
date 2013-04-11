@@ -361,6 +361,9 @@ dox/tutorial/chapterI.tex -text
 dxtbx/SConscript -text
 dxtbx/__init__.py -text
 dxtbx/boost_python/ext.cpp -text
+dxtbx/command_line/SConscript -text
+dxtbx/command_line/boost_python/command_line_ext.cc -text
+dxtbx/command_line/boost_python/to_ewald_sphere_helpers.cc -text
 dxtbx/command_line/print_header.py -text
 dxtbx/command_line/print_matching_images.py -text
 dxtbx/command_line/print_sweep.py -text

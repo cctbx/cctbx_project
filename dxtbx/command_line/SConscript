@@ -1,0 +1,9 @@
+
+Import('env')
+
+sources = [
+    'boost_python/to_ewald_sphere_helpers.cc',
+    'boost_python/command_line_ext.cc']
+
+env.SharedLibrary(target='#/lib/dxtbx_command_line_ext', source=sources)
+
