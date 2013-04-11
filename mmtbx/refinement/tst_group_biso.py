@@ -3,7 +3,7 @@ from iotbx import pdb
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import libtbx.load_env
-from libtbx import subprocess_with_fixes as subprocess
+from libtbx import easy_run
 import random
 import sys, os
 
@@ -62,7 +62,7 @@ def exercise_1(hkl = "enk_gbr.mtz"):
     "refinement.input.xray_data.labels=FOBS",
     "main.bulk_solvent_and_scale=false",
     "output.prefix=ref1"]
-  subprocess.call(cmd)
+  easy_run.fully_buffered(cmd).raise_if_errors()
 
 def exercise_2(pdb = "enk_gbr_e.pdb", hkl = "enk_gbr.mtz"):
   pdb = libtbx.env.find_in_repositories(
@@ -96,7 +96,7 @@ def exercise_2(pdb = "enk_gbr_e.pdb", hkl = "enk_gbr.mtz"):
     'adp.group="chain C"',
     'adp.group="chain D"',
     "output.prefix=ref2"]
-  subprocess.call(cmd)
+  easy_run.fully_buffered(cmd).raise_if_errors()
 
 def check_result():
   for st in open("ref1_001.pdb","r").read().splitlines():
