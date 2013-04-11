@@ -11,13 +11,11 @@ from __future__ import division
 # an example XDS.INP file. This should illustrate the usage of the dxtbx
 # classes.
 
-import os
 import sys
 import math
 from scitbx import matrix
 
 from dxtbx.model.detector_helpers_types import detector_helpers_types
-from dxtbx.format.Registry import Registry
 from dxtbx.sweep import SweepFactory
 
 def xds_detector_name(xia2_name):
