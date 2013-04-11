@@ -29,7 +29,7 @@ H5PY_PKG = "h5py-2.0.1-edit.tar.gz"  # dxtbx
 LIBPNG_PKG = "libpng-1.2.32.tar.gz"
 FREETYPE_PKG = "freetype-2.4.2.tar.gz"
 # Linux-only
-GETTEXT_PKG = "gettext-0.14.5.tar.gz"
+GETTEXT_PKG = "gettext-0.18.2.tar.gz"
 GLIB_PKG = "glib-2.12.11.tar.gz"
 EXPAT_PKG = "expat-1.95.8.tar.gz"
 FONTCONFIG_PKG = "fontconfig-2.3.95.tar.gz"
