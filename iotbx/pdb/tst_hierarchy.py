@@ -6056,6 +6056,23 @@ ANISOU    6  O   HOH     1      788    626    677   -344    621   -232       O
   #assert xrs_new5.scatterers() is not xrs_new4.scatterers()
   #assert approx_equal([sc.fp for sc in xrs_new5.scatterers()], expected_fp)
   #assert approx_equal([sc.fdp for sc in xrs_new5.scatterers()], expected_fdp)
+  hierarchy.adopt_xray_structure(xray_structure=xrs_new1)
+  for model in hierarchy.models():
+    for chain in model.chains():
+      if chain.id == "A": chain.id = "C"
+  try: hierarchy.adopt_xray_structure(xray_structure=xrs)
+  except Exception, e: pass
+  else: raise Exception_expected
+  hierarchy.adopt_xray_structure(
+    xray_structure=xrs, assert_identical_id_str=False)
+  xrs_new5 = hierarchy.extract_xray_structure(
+    crystal_symmetry=xrs.crystal_symmetry())
+  for s1,s2 in zip(xrs.scatterers(), xrs_new5.scatterers()):
+    assert approx_equal(orth(s1.site), orth(s2.site), 1.e-3)
+    assert approx_equal(adptbx.u_as_b(s1.u_iso), adptbx.u_as_b(s2.u_iso), 1.e-2)
+    assert approx_equal(s1.occupancy, s2.occupancy, 1.e-2)
+    assert approx_equal(s1.u_star, s2.u_star)
+    assert s1.scattering_type == s2.scattering_type
 
 
 def exercise_substitute_atom_group () :

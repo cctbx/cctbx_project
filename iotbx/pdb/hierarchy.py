@@ -550,7 +550,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
   def extract_xray_structure(self, crystal_symmetry=None) :
     return self.as_pdb_input(crystal_symmetry).xray_structure_simple()
 
-  def adopt_xray_structure(self, xray_structure):
+  def adopt_xray_structure(self, xray_structure, assert_identical_id_str=True):
     from iotbx.pdb import common_residue_names_get_class as gc
     from cctbx import adptbx
     if(self.atoms().size() != xray_structure.scatterers().size()):
@@ -564,8 +564,10 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       a.set_occ(new_occ=sc.occupancy)
       if(sc.u_iso != -1):
         a.set_b(new_b=adptbx.u_as_b(sc.u_iso))
-      if(sc.u_star != (-1.0, -1.0, -1.0, -1.0, -1.0, -1.0)):
+      if(sc.flags.use_u_aniso() and sc.u_star != (-1.0, -1.0, -1.0, -1.0, -1.0, -1.0)):
         a.set_uij(new_uij = adptbx.u_star_as_u_cart(uc,sc.u_star))
+      else:
+        a.uij_erase()
       a.set_fp(new_fp=sc.fp)
       a.set_fdp(new_fdp=sc.fdp)
     for sc, a in zip(scatterers, awl):
@@ -579,7 +581,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
         set_attr(sc=sc, a=a)
       else:
         # XXX may be fix it when creating IS ? or make another special case?
-        if(sc.scattering_type[:2] != "IS"):
+        if (assert_identical_id_str and sc.scattering_type[:2] != "IS"):
           assert sc.label == a.id_str()
         set_attr(sc=sc, a=a)
 
