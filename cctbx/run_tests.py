@@ -117,6 +117,7 @@ tst_list = (
    "$D/r_free_utils.py",
    "$D/xray/observations/tst_observations.py",
    "$D/maptbx/tst_ccp.py",
+   "$D/maptbx/tst_get_percentile_cutoffs.py",
    "$D/regression/tst_sphericity.py",
   )
 
