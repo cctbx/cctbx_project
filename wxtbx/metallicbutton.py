@@ -57,7 +57,8 @@ class MetallicButton (wx.PyControl) :
                 label_size=LABEL_SIZE,
                 caption_size=CAPTION_SIZE,
                 button_margin=2,
-                disable_after_click=0):
+                disable_after_click=0,
+                bmp2=None):
     wx.PyControl.__init__(self, parent, id_, pos, size,
       wx.NO_BORDER, name=name)
     self.InheritAttributes()
@@ -70,6 +71,8 @@ class MetallicButton (wx.PyControl) :
       self._bmp['disable'] = img.ConvertToBitmap()
     else :
       self._bmp['disable'] = None
+    self._bmp2 = bmp2
+    self._use_secondary_bitmap = False
     self._label2_font = self.GetFont()
     self._label2_font.SetPointSize(caption_size)
     # XXX this crashes on wxOSX_Cocoa!
@@ -123,7 +126,11 @@ class MetallicButton (wx.PyControl) :
     @return: x cordinate to draw text at
 
     """
-    if self.IsEnabled():
+    bmp = None
+    if (self._use_secondary_bitmap) :
+      assert (self._bmp2 is not None)
+      bmp = self._bmp2
+    elif self.IsEnabled():
       bmp = self._bmp['enable']
     else:
       bmp = self._bmp['disable']
@@ -724,6 +731,13 @@ class MetallicButton (wx.PyControl) :
       self.SetState(GRADIENT_PRESSED)
     else:
       self.SetState(GRADIENT_HIGHLIGHT)
+
+  def SwapBitmap (self) :
+    assert (self._bmp2 is not None)
+    if (self._use_secondary_bitmap) :
+      self._use_secondary_bitmap = False
+    else :
+      self._use_secondary_bitmap = True
 
 if __name__ == "__main__" :
   from wx.lib.embeddedimage import PyEmbeddedImage
