@@ -1,5 +1,5 @@
 from __future__ import division
-
+import os, sys
 from libtbx import easy_run
 
 pdbs = {"linking_test_NAG-NAG.pdb" : """
@@ -39,6 +39,8 @@ HETATM 2717  O4  NAG A 362      64.893  45.314  57.706  1.00 22.28           O
 HETATM 2718  O5  NAG A 362      63.154  42.081  57.584  1.00 16.19           O
 HETATM 2719  O6  NAG A 362      61.496  43.532  59.419  1.00 20.18           O
 HETATM 2720  O7  NAG A 362      66.009  40.389  54.022  1.00 14.38           O
+""",
+  "linking_test_MAN-SER.pdb" : """
 HETATM 2721  C1  MAN A 364      43.704  27.933  15.645  1.00 16.07           C
 HETATM 2722  C2  MAN A 364      42.296  27.563  15.194  1.00 20.45           C
 HETATM 2723  C3  MAN A 364      42.280  26.343  14.240  1.00 21.29           C
@@ -778,7 +780,156 @@ BGC         HD     H   HOH1  .         -2.7570   -0.9641   -0.8647
 BGC         H6     H   HOH1  .         -0.5848   -2.2177    3.5527
 #
 """,
+  "linking_test_LEU-CSY-VAL.pdb" : """
+ATOM    470  N   LEU A  64      11.530  10.554   5.290  1.00 15.95           N
+ATOM    471  CA  LEU A  64      12.272   9.726   6.192  1.00 21.72           C
+ATOM    472  CB  LEU A  64      13.571  10.414   6.526  1.00 18.65           C
+ATOM    473  CG  LEU A  64      14.569  10.566   5.400  1.00 16.06           C
+ATOM    474  CD1 LEU A  64      15.684  11.496   5.782  1.00 15.79           C
+ATOM    475  CD2 LEU A  64      15.142   9.234   5.000  1.00 19.26           C
+ATOM    476  C   LEU A  64      11.524   9.463   7.499  1.00 47.31           C
+ATOM    477  O   LEU A  64      11.704   8.447   8.057  1.00 19.74           O
+ATOM    478  O   CSY A  66       7.079   6.443   8.014  1.00 20.23           O
+ATOM    479  C   CSY A  66       7.307   7.455   8.592  1.00 42.84           C
+ATOM    480  CA3 CSY A  66       7.949   8.535   7.772  1.00 22.48           C
+ATOM    481  N3  CSY A  66       7.755   9.898   8.205  1.00 20.36           N
+ATOM    482  C2  CSY A  66       6.699  10.604   7.953  1.00 18.89           C
+ATOM    483  O2  CSY A  66       5.661  10.200   7.389  1.00 18.87           O
+ATOM    484  CA2 CSY A  66       6.889  11.895   8.529  1.00 17.00           C
+ATOM    485  N2  CSY A  66       8.098  11.934   9.059  1.00 17.35           N
+ATOM    486  C1  CSY A  66       8.613  10.698   8.850  1.00 23.65           C
+ATOM    487  CA1 CSY A  66       9.984  10.257   9.208  1.00 15.87           C
+ATOM    488  N   CSY A  66      10.796  10.290   7.982  1.00 16.92           N
+ATOM    489  CB1 CSY A  66      10.657  11.187  10.190  1.00 22.76           C
+ATOM    490  OG1 CSY A  66      10.041  11.081  11.425  1.00 26.93           O
+ATOM    491  CB2 CSY A  66       5.901  12.951   8.489  1.00 21.22           C
+ATOM    492  CG2 CSY A  66       6.045  14.317   8.943  1.00 17.77           C
+ATOM    493  CD1 CSY A  66       7.186  14.821   9.489  1.00 16.75           C
+ATOM    494  CE1 CSY A  66       7.230  16.153   9.841  1.00 17.97           C
+ATOM    495  CZ  CSY A  66       6.167  16.999   9.597  1.00 17.84           C
+ATOM    496  OH  CSY A  66       6.180  18.295   9.906  1.00 18.10           O
+ATOM    497  CE2 CSY A  66       5.053  16.481   9.007  1.00 17.93           C
+ATOM    498  CD2 CSY A  66       5.000  15.167   8.689  1.00 16.52           C
+ATOM    499  N   VAL A  68       7.337   7.591   9.827  1.00 22.68           N
+ATOM    500  CA  VAL A  68       6.874   6.579  10.743  1.00 17.94           C
+ATOM    501  CB  VAL A  68       8.031   5.907  11.484  1.00 18.83           C
+ATOM    502  CG1 VAL A  68       8.808   5.000  10.546  1.00 18.49           C
+ATOM    503  CG2 VAL A  68       8.940   6.946  12.060  1.00 21.81           C
+ATOM    504  C   VAL A  68       5.837   7.169  11.692  1.00 18.71           C
+ATOM    505  O   VAL A  68       6.046   7.339  12.840  1.00 18.66           O
+""",
+  "csy.cif" : """
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+CSY        CSY 'Unknown                  ' ligand 36 21 .
+#
+data_comp_CSY
+#
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+CSY         O      O   O     .          6.5225    8.8391   10.1578
+CSY         C      C   C1    .          6.8040    8.0495    9.2786
+CSY         CA3    C   CH2   .          7.7300    8.4648    8.1571
+CSY         N3     N   NR5   .          7.7692    9.9112    8.0435
+CSY         C2     C   CR5   .          6.8095   10.6833    7.5020
+CSY         O2     O   OH1   .          5.5652   10.2401    6.9578
+CSY         CA2    C   CR5   .          7.2462   12.0320    7.6413
+CSY         N2     N   N     .          8.4469   11.9889    8.2606
+CSY         C1     C   CR5   .          8.7507   10.7094    8.4972
+CSY         CA1    C   CH1   .         10.0456   10.2262    9.1064
+CSY         N      N   NH2   .         11.0914   10.3565    8.1586
+CSY         CB1    C   C1    .         10.3683   11.0559   10.3320
+CSY         OG1    O   O     .          9.6909   10.9426   11.3400
+CSY         CB2    C   CH2   .          6.5545   13.2812    7.0704
+CSY         CG2    C   CR6   .          6.3534   14.3333    8.2072
+CSY         CD1    C   CR16  .          7.3740   15.2590    8.4985
+CSY         CE1    C   CR16  .          7.1903   16.2102    9.5124
+CSY         CZ     C   CR6   .          5.9969   16.2401   10.2329
+CSY         OH     O   OH1   .          5.8390   17.1584   11.3068
+CSY         CE2    C   CR16  .          4.9783   15.3171    9.9430
+CSY         CD2    C   CR16  .          5.1631   14.3623    8.9250
+CSY        HC1     H   H     .          6.4050    7.1514    9.2787
+CSY        HA31    H   HCH2  .          7.4089    8.0824    7.3139
+CSY        HA32    H   HCH2  .          8.6295    8.1304    8.3411
+CSY        H21     H   HOH1  .          5.6829    9.9885    6.1182
+CSY        HA11    H   HCH1  .          9.9540    9.2881    9.3635
+CSY        HN2     H   HNH2  .         11.6123    9.6000    8.1723
+CSY        HN3     H   HNH2  .         11.6050   11.0843    8.3689
+CSY        HB11    H   H     .         11.0974   11.7100   10.3027
+CSY        HB21    H   HCH2  .          5.6862   13.0307    6.7011
+CSY        HB22    H   HCH2  .          7.1096   13.6673    6.3644
+CSY        HD11    H   HCR6  .          8.1999   15.2679    7.9588
+CSY        HE11    H   HCR6  .          7.9314   16.8265    9.7542
+CSY        HH1     H   HOH1  .          5.2232   17.7727   11.0875
+CSY        HE21    H   HCR6  .          4.1503   15.3164   10.4733
+CSY        HD21    H   HCR6  .          4.4341   13.7482    8.6900
+#
+""",
+  "linking_test_ALA-ALA-ALA.pdb" : """
+HETATM    1  N   ALA A   1      -0.424   1.960   3.877  1.00 20.00      A    N+1
+HETATM    2  H   ALA A   1       0.452   1.694   3.861  1.00 20.00      A    H  
+HETATM    3  H2  ALA A   1      -0.472   2.843   4.121  1.00 20.00      A    H  
+HETATM    4  H3  ALA A   1      -0.888   1.448   4.484  1.00 20.00      A    H  
+HETATM    5  CA  ALA A   1      -0.994   1.794   2.582  1.00 20.00      A    C  
+HETATM    6  HA  ALA A   1      -0.584   2.442   1.977  1.00 20.00      A    H  
+HETATM    7  CB  ALA A   1      -2.476   2.066   2.644  1.00 20.00      A    C  
+HETATM    8  HB1 ALA A   1      -2.627   2.987   2.945  1.00 20.00      A    H  
+HETATM    9  HB2 ALA A   1      -2.867   1.945   1.755  1.00 20.00      A    H  
+HETATM   10  HB3 ALA A   1      -2.896   1.444   3.272  1.00 20.00      A    H  
+HETATM   11  C   ALA A   1      -0.695   0.397   2.070  1.00 20.00      A    C  
+HETATM   12  O   ALA A   1      -1.218  -0.566   2.593  1.00 20.00      A    O  
+HETATM   13  N   ALA A   2       0.165   0.219   0.945  1.00 20.00      A    N  
+HETATM   14  H   ALA A   2       0.578   0.941   0.568  1.00 20.00      A    H  
+HETATM   15  CA  ALA A   2       0.460  -1.094   0.477  1.00 20.00      A    C  
+HETATM   16  HA  ALA A   2      -0.095  -1.682   1.027  1.00 20.00      A    H  
+HETATM   17  CB  ALA A   2       1.882  -1.540   0.755  1.00 20.00      A    C  
+HETATM   18  HB1 ALA A   2       2.509  -0.921   0.323  1.00 20.00      A    H  
+HETATM   19  HB2 ALA A   2       2.039  -1.544   1.721  1.00 20.00      A    H  
+HETATM   20  HB3 ALA A   2       2.016  -2.441   0.399  1.00 20.00      A    H  
+HETATM   21  C   ALA A   2      -0.001  -1.357  -0.949  1.00 20.00      A    C  
+HETATM   22  O   ALA A   2      -1.001  -2.020  -1.152  1.00 20.00      A    O  
+HETATM   23  N   ALA A   3       0.750  -0.851  -2.042  1.00 20.00      A    N  
+HETATM   24  H   ALA A   3       1.494  -0.350  -1.890  1.00 20.00      A    H  
+HETATM   25  CA  ALA A   3       0.361  -1.157  -3.372  1.00 20.00      A    C  
+HETATM   26  HA  ALA A   3      -0.113  -2.013  -3.369  1.00 20.00      A    H  
+HETATM   27  CB  ALA A   3       1.587  -1.293  -4.240  1.00 20.00      A    C  
+HETATM   28  HB1 ALA A   3       2.124  -0.477  -4.175  1.00 20.00      A    H  
+HETATM   29  HB2 ALA A   3       1.315  -1.431  -5.171  1.00 20.00      A    H  
+HETATM   30  HB3 ALA A   3       2.118  -2.058  -3.937  1.00 20.00      A    H  
+HETATM   31  C   ALA A   3      -0.576  -0.091  -3.884  1.00 20.00      A    C  
+HETATM   32  O   ALA A   3      -1.633  -0.418  -4.488  1.00 20.00      A    O  
+HETATM   33  OXT ALA A   3      -0.293   1.123  -3.725  1.00 20.00      A    O-1
+""",
         }
+links = {
+  "linking_test_ASN-NAG.pdb" : [21, 22],
+  "linking_test_ASN-NAG-altloc1.pdb" : [35, 37],
+  "linking_test_ASN-NAG-altloc2.pdb" : [42, 44],
+  "linking_test_ASN-NAG-altloc3.pdb" : [38, 40],
+  "linking_test_NAG-FU4.pdb" : [24, 25],
+  "linking_test_NAG-NAG.pdb" : [35, 37],
+  'linking_test_BGC-BGC.pdb' : [0, 1],
+  'linking_test_CYS-VSP.pdb' : [66, 68],
+  "linking_test_LEU-CSY-VAL.pdb" : [13,15],
+  'linking_test_DT-4MF-DA.pdb' : [69, 69],
+  'linking_test_LYS-ABA-GLU.pdb' : [23,23],
+  "linking_test_ALA-ALA-ALA.pdb" : [32,32],
+  "linking_test_MAN-SER.pdb" : [17, 17],
+  }
 
 def run():
   cifs = ""
@@ -789,16 +940,29 @@ def run():
     if pdb.endswith(".cif"): cifs += " %s" % pdb
   for pdb in pdbs:
     if pdb.endswith(".cif"): continue
-    #if pdb.find("linking_test_BGC-BGC")==-1: continue
+    #if pdb.find("linking_test_LEU-CSY-VAL")==-1: continue
     for i in range(2):
       log_filename = "%s_%d.log" % (pdb, i)
-      cmd = "phenix.pdbtools %s" % pdb
+      cmd = "phenix.geometry_minimization %s" % pdb
       cmd += " intra_chain=%d %s > %s" % (i, cifs, log_filename)
       print cmd
       easy_run.call(cmd)
       f=file(log_filename, "rb")
       lines = f.read()
-      assert lines.find("Output model")>-1
+      assert lines.find("Write PDB file")>-1
+      print "OK"
+      f=file(pdb.replace(".pdb", "_minimized.geo"), "rb")
+      lines = f.readlines()
+      f.close()
+      for line in lines:
+        if line.find("Bond restraints:")>-1:
+          bonds = int(line.split()[2])
+          break
+      print bonds
+      assert bonds == links[pdb][i]
+      os.rename(pdb.replace(".pdb", "_minimized.geo"),
+                pdb.replace(".pdb", "_minimized_%d.geo" % i),
+                )
       print "OK"
 
 if __name__=="__main__":
