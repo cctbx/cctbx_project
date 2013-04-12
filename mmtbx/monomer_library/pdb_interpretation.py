@@ -91,6 +91,24 @@ test_cdl_params = """\
     .type = bool
 """
 
+altloc_weighting_params = """\
+  altloc_weighting
+    .expert_level = 2
+    .style = box noauto auto_align
+  {
+    weight = False
+      .type = bool
+    bonds = True
+      .type = bool
+    angles = True
+      .type = bool
+    factor = 1
+      .type = float
+    sqrt = True
+      .type = bool
+  }
+"""
+
 master_params_str = """\
   altloc_weighting
     .expert_level = 2
@@ -115,7 +133,7 @@ master_params_str = """\
     .style = bold
   correct_hydrogens = True
     .type = bool
-    .short_caption = Correct the hydrogen positions trapped in chirals
+    .short_caption = Correct the hydrogen positions trapped in chirals etc
   automatic_linking
   {
     intra_chain = False
@@ -2724,25 +2742,17 @@ class build_all_chain_proxies(object):
                   + "  If none of this applies, send email to:\n"
                   + "    bugs@phenix-online.org")
             # automatic link creation
-            #print '='*80
-            #print apply.data_link
-            #print mon_lib_srv.link_link_id_dict.keys()
-            #print m_i.conf_altloc
-            #print m_j.conf_altloc
             if not mon_lib_srv.link_link_id_dict.get(apply.data_link, False):
-              if getattr(apply, "possible_peptide_link", False):   pass
-              elif getattr(apply, "possible_rna_dna_link", False): pass
+              if getattr(apply, "possible_peptide_link", False):
+                link = self.create_link(apply, m_i, m_j)
+                mon_lib_srv.link_link_id_dict[apply.data_link] = link
+              elif getattr(apply, "possible_rna_dna_link", False):
+                link = self.create_link(apply, m_i, m_j)
+                mon_lib_srv.link_link_id_dict[apply.data_link] = link
               else:
-                rc = self.create_link(apply, m_i, m_j)
-                if False:
-                  print dir(rc)
-                  print rc.source_info
-                  print 'bond'
-                  for bond in rc.bond_list:
-                    bond.show()
-                  for angle in rc.angle_list:
-                    angle.show()
-                mon_lib_srv.link_link_id_dict[apply.data_link] = rc
+                link = self.create_link(apply, m_i, m_j)
+                mon_lib_srv.link_link_id_dict[apply.data_link] = link
+                # perform this in process_custom_links
               continue
             link = mon_lib_srv.link_link_id_dict[apply.data_link]
             link_resolution = add_bond_proxies(

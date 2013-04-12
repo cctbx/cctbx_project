@@ -340,6 +340,20 @@ class run(object):
       self.xray_structure.crystal_symmetry())
     self.output_file_name = os.path.abspath(ofn)
 
+    if(self.grm is None): return
+
+    f=file(ofn.replace(".pdb", ".geo"), "wb")
+    print >> f, "# Geometry restraints before refinement"
+    print >> f
+    xray_structure = self.xray_structure
+    sites_cart = xray_structure.sites_cart()
+    site_labels = xray_structure.scatterers().extract_labels()
+    self.grm.geometry.show_sorted(
+      sites_cart=sites_cart,
+      site_labels=site_labels,
+      f=f)
+    f.close()
+
 class launcher (runtime_utils.target_with_save_result) :
   def run (self) :
     os.mkdir(self.output_dir)
