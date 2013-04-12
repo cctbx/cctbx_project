@@ -188,17 +188,20 @@ set_charge
     .type = int(value_max=7,value_min=-3)
 }
 output
-  .help = Write out PDB file with modified model (file name is defined in \
+  .help = Write out file with modified model (file name is defined in \
           write_modified)
   .style = noauto
 {
   file_name=None
     .type=path
     .input_size=400
-    .short_caption = Output PDB file
+    .short_caption = Output model file
     .help = Default is the original file name with the file extension \
             replaced by "_modified.pdb".
     .style = bold new_file file_type:pdb
+  format = *pdb mmcif
+    .type = choice
+    .help = Choose the output format of coordinate file (PDB or mmCIF)
 }
 remove_first_n_atoms_fraction = None
   .short_caption = Remove first N atoms (fraction)
@@ -671,6 +674,17 @@ def renumber_residues(pdb_hierarchy, atom_selection=None, log=None):
         rg.resseq=counter
         counter += 1
 
+def write_model_file(pdb_hierarchy, crystal_symmetry, file_name, output_format):
+  assert output_format in ("pdb", "mmcif")
+  if output_format == "pdb":
+    pdb_hierarchy.write_pdb_file(
+      file_name=file_name, crystal_symmetry=crystal_symmetry, append_end=True,
+      atoms_reset_serial_first_value=1)
+  elif output_format == "mmcif":
+    pdb_hierarchy.write_mmcif_file(
+      file_name=file_name, crystal_symmetry=crystal_symmetry)
+
+
 def run(args, command_name="phenix.pdbtools"):
   log = utils.set_log(args)
   utils.print_programs_start_header(
@@ -683,21 +697,25 @@ def run(args, command_name="phenix.pdbtools"):
   ### get i/o file names
   params = command_line_interpreter.params
   ofn = params.modify.output.file_name
+  output_format = params.modify.output.format
   ifn = params.input.pdb.file_name
   if(ofn is None):
-    if(len(ifn)==1): ofn = os.path.basename(ifn[0]) + "_modified.pdb"
-    elif(len(ifn)>1): ofn = os.path.basename(ifn[0]) + "_et_al_modified.pdb"
+    if output_format == "pdb": ext = "pdb"
+    elif output_format == "mmcif": ext = "cif"
+    if(len(ifn)==1): ofn = os.path.basename(ifn[0]) + "_modified."+ext
+    elif(len(ifn)>1): ofn = os.path.basename(ifn[0]) + "_et_al_modified"+ext
     else:
       pdbout = os.path.basename(command_line_interpreter.pdb_file_names[0])
-      ofn = pdbout+"_modified.pdb"
+      ofn = pdbout+"_modified."+ext
 ### Truncate to poly-Ala
   if(params.modify.truncate_to_polyala):
     xray_structure = command_line_interpreter.pdb_inp.xray_structure_simple()
     utils.print_header("Truncating to poly-Ala", out = log)
     pdb_hierarchy = command_line_interpreter.pdb_inp.construct_hierarchy()
     truncate_to_poly_ala(hierarchy = pdb_hierarchy)
-    pdb_hierarchy.write_pdb_file(file_name = ofn,
-      crystal_symmetry = command_line_interpreter.pdb_inp.crystal_symmetry())
+    write_model_file(
+      pdb_hierarchy, command_line_interpreter.pdb_inp.crystal_symmetry(),
+      file_name=ofn, output_format=output_format)
     output_files.append(ofn)
     return output_files
 ### Remove alt. confs.
@@ -706,8 +724,9 @@ def run(args, command_name="phenix.pdbtools"):
     pdb_hierarchy = command_line_interpreter.pdb_inp.construct_hierarchy()
     remove_alt_confs(hierarchy = pdb_hierarchy)
     print >> log, "All occupancies reset to 1.0."
-    pdb_hierarchy.write_pdb_file(file_name = ofn,
-      crystal_symmetry = command_line_interpreter.pdb_inp.crystal_symmetry())
+    write_model_file(
+      pdb_hierarchy, command_line_interpreter.pdb_inp.crystal_symmetry(),
+      file_name=ofn, output_format=output_format)
     output_files.append(ofn)
     return output_files
 ###
@@ -754,6 +773,8 @@ def run(args, command_name="phenix.pdbtools"):
     return None
 ### add hydrogens and exit
   if(command_line_interpreter.command_line.options.add_h):
+    if output_format == "mmcif":
+      raise Sorry("mmcif format not currently supported with the option add_h")
     utils.print_header("Adding hydrogen atoms", out = log)
     if(len(ifn) > 1): raise Sorry("Multiple input PDB files found.")
     ifn = command_line_interpreter.pdb_file_names[0]
@@ -857,15 +878,16 @@ def run(args, command_name="phenix.pdbtools"):
   utils.print_header("Writing output model", out = log)
 ### write output file (if got to this point)
   print >> log, "Output model file name: ", ofn
-  ofo = open(ofn, "w")
-  utils.write_pdb_file(
-    xray_structure       = xray_structure,
-    pdb_hierarchy        = pdb_hierarchy,
-    pdb_atoms            = pdb_atoms,
-    selection            = getattr(result.remove_selection, "flags", None),
-    write_cryst1_record  = not command_line_interpreter.fake_crystal_symmetry,
-    out                  = ofo)
-  ofo.close()
+  selection = getattr(result.remove_selection, "flags", None)
+  if selection is not None:
+    xray_structure = xray_structure.select(selection)
+    pdb_hierarchy = pdb_hierarchy.select(selection)
+  pdb_hierarchy.adopt_xray_structure(xray_structure, assert_identical_id_str=False)
+  crystal_symmetry = xray_structure.crystal_symmetry()
+  if command_line_interpreter.fake_crystal_symmetry:
+    crystal_symmetry = None
+  write_model_file(
+    pdb_hierarchy, crystal_symmetry, file_name=ofn, output_format=output_format)
   output_files.append(ofn)
   utils.print_header("Done", out = log)
   return output_files

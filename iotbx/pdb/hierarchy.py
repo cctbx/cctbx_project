@@ -623,6 +623,19 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     return pdb_hierarchy_as_cif_block(
       self, crystal_symmetry=crystal_symmetry).cif_block
 
+  def write_mmcif_file(self,
+                       file_name,
+                       crystal_symmetry=None,
+                       data_block_name=None):
+    import iotbx.cif.model
+    cif_object = iotbx.cif.model.cif()
+    if data_block_name is None:
+      data_block_name = "phenix"
+    cif_object[data_block_name] = self.as_cif_block(
+      crystal_symmetry=crystal_symmetry)
+    with open(file_name, 'wb') as f:
+      print >> f, cif_object
+
   def atoms_with_labels(self):
     for model in self.models():
       for chain in model.chains():
