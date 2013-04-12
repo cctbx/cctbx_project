@@ -16,6 +16,8 @@ CALLBACK_ID = wx.NewId()
 JOB_EXCEPTION_ID = wx.NewId()
 JOB_KILLED_ID = wx.NewId()
 JOB_COMPLETE_ID = wx.NewId()
+JOB_PAUSE_ID = wx.NewId()
+JOB_RESUME_ID = wx.NewId()
 DOWNLOAD_COMPLETE_ID = wx.NewId()
 
 class SubprocessEvent (wx.PyEvent) :
@@ -45,6 +47,12 @@ class JobCompleteEvent (SubprocessEvent) :
 class CallbackEvent (SubprocessEvent) :
   event_id = CALLBACK_ID
 
+class JobPauseEvent (SubprocessEvent) :
+  event_id = JOB_PAUSE_ID
+
+class JobResumeEvent (SubprocessEvent) :
+  event_id = JOB_RESUME_ID
+
 class DownloadCompleteEvent (SubprocessEvent) :
   event_id = DOWNLOAD_COMPLETE_ID
 
@@ -58,7 +66,9 @@ def setup_process_gui_events (
     OnUpdate=None,
     OnExcept=None,
     OnAbort=None,
-    OnComplete=None) :
+    OnComplete=None,
+    OnPause=None,
+    OnResume=None) :
   if OnStart is not None :
     assert hasattr(OnStart, "__call__")
     window.Connect(-1, -1, JOB_START_ID, OnStart)
@@ -77,6 +87,12 @@ def setup_process_gui_events (
   if OnComplete is not None :
     assert hasattr(OnComplete, "__call__")
     window.Connect(-1, -1, JOB_COMPLETE_ID, OnComplete)
+  if OnPause is not None :
+    assert hasattr(OnPause, "__call__")
+    window.Connect(-1, -1, JOB_PAUSE_ID, OnPause)
+  if OnResume is not None :
+    assert hasattr(OnResume, "__call__")
+    window.Connect(-1, -1, JOB_RESUME_ID, OnResume)
 
 class event_agent (object) :
   def __init__ (self, window, **kwds) :
@@ -117,6 +133,16 @@ class event_agent (object) :
     event = CallbackEvent(data, **kwds)
     wx.PostEvent(self.window, event)
 
+  def callback_pause (self) :
+    kwds = self.get_kwds()
+    event = JobPauseEvent(None, **kwds)
+    wx.PostEvent(self.window, event)
+
+  def callback_resume (self) :
+    kwds = self.get_kwds()
+    event = JobResumeEvent(None, **kwds)
+    wx.PostEvent(self.window, event)
+
 # simplified for when the window is really the app object
 class background_event_agent (event_agent) :
   def callback_stdout (self, data) :
@@ -148,6 +174,12 @@ class detached_process (runtime_utils.detached_process_client) :
   def callback_error (self, error, traceback_info) :
     self.proxy.callback_error(error, traceback_info)
 
+  def callback_pause (self) :
+    self.proxy.callback_pause()
+
+  def callback_resume (self) :
+    self.proxy.callback_resume()
+
   def start (self) :
     pass
 
@@ -163,6 +195,8 @@ class process_with_gui_callbacks (thread_utils.process_with_callbacks) :
       callback_err    = proxy.callback_error,
       callback_abort  = proxy.callback_abort,
       callback_other  = proxy.callback_other,
+      callback_pause  = proxy.callback_pause,
+      callback_resume = proxy.callback_resume,
       buffer_stdout   = buffer_stdout)
 
   def set_job (self, job) :
