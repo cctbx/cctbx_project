@@ -119,6 +119,7 @@ cctbx/maptbx/real_space_target_and_gradients.py -text
 cctbx/maptbx/sphericity.h -text
 cctbx/maptbx/standard_deviations_around_sites.hpp svneol=native#text/plain
 cctbx/maptbx/tst_ccp.py -text
+cctbx/maptbx/tst_get_percentile_cutoffs.py -text
 cctbx/maptbx/tst_real_space_refinement_simple.py svneol=native#text/x-python
 cctbx/maptbx/tst_real_space_target_and_gradients.py -text
 cctbx/math/SConscript -text
