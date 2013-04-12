@@ -219,8 +219,9 @@ def run(phenix_source=None,
     print '\n  Need to choose number_of_chunks>1'
     return
   print '-'*80
+  old_where = os.getcwd()
   if where is None:
-    where = os.getcwd()
+    where = old_where
 
   assert phenix_source
 
@@ -299,6 +300,7 @@ def run(phenix_source=None,
   print "> %s\n" % cmd
   easy_run.call(cmd)
 
+  os.chdir(old_where)
 
 if __name__=="__main__":
   args=sys.argv[1:]
