@@ -559,7 +559,7 @@ END
   open("tmp_seg_id.pdb", "w").write(input_pdb)
   easy_run.call("phenix.pdbtools tmp_seg_id.pdb set_seg_id_to_chain_id=True --quiet")
   pdb_out_1 = open("tmp_seg_id.pdb_modified.pdb").read()
-  assert (pdb_out_1 == """\
+  assert not show_diff(pdb_out_1, """\
 ATOM      1  O   GLY A   3       1.434   1.460   2.496  1.00  6.04      A    O
 ATOM      2  O   CYS A   7       2.196   4.467   3.911  1.00  4.51      A    O
 ATOM      3  O   CYS A   1      -1.433   4.734   5.405  1.00  7.85      A    O
@@ -676,9 +676,17 @@ loop_
   run_command(command=cmd, verbose=False)
   assert os.path.isfile(f.name+"_modified.pdb")
   pdb_inp = iotbx.pdb.input(file_name=f.name+"_modified.pdb")
+  assert pdb_inp.file_type() == "pdb"
   hierarchy = pdb_inp.construct_hierarchy()
   assert [chain.id for chain in hierarchy.chains()] == ['C', 'B']
-
+  cmd = " ".join(["phenix.pdbtools", f.name, "adp.convert_to_anisotropic=True",
+                  "output.format=mmcif"])
+  run_command(command=cmd, verbose=False)
+  assert os.path.isfile(f.name+"_modified.cif")
+  pdb_inp = iotbx.pdb.input(file_name=f.name+"_modified.cif")
+  assert pdb_inp.file_type() == "mmcif"
+  xs = pdb_inp.xray_structure_simple()
+  assert xs.use_u_aniso().all_eq(True)
 
 def exercise(args):
   if ("--show-everything" in args):
@@ -707,7 +715,6 @@ def exercise(args):
   exercise_set_charge()
   exercise_convert_semet_to_met()
   exercise_change_of_basis()
-  print "OK"
 
 if (__name__ == "__main__"):
   show_times_at_exit()
