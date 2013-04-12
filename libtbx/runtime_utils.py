@@ -223,6 +223,12 @@ class detached_process_server (detached_base) :
     self.cleanup()
     easy_pickle.dump(self.result_file, result)
 
+  def callback_pause (self) : # TODO
+    pass
+
+  def callback_resume (self) : # TODO
+    pass
+
   def callback_other (self, data) :
     if not data.cached :
       return
@@ -240,6 +246,7 @@ class detached_process_server (detached_base) :
     self._stdout.flush()
     self._stdout.close()
 
+# TODO pause/resume?
 class detached_process_client (detached_base) :
   def __init__ (self, *args, **kwds) :
     detached_base.__init__(self, *args, **kwds)
@@ -348,7 +355,8 @@ class detached_process_client (detached_base) :
         else :
           self.callback_other(current_status)
 
-  def abort (self) :
+  def abort (self, force=None) :
+    # TODO add support for 'force' using os.kill
     touch_file(self.stop_file)
 
   def purge_files (self) :

@@ -1,13 +1,15 @@
-from __future__ import division
 
+from __future__ import division
 from libtbx import easy_pickle
-from libtbx.utils import Sorry, Abort
+from libtbx.utils import Abort
 from libtbx import object_oriented_patterns as oop
 from libtbx import adopt_init_args
+import libtbx.callbacks # import dependency
 import Queue
 import threading
 import warnings
 import traceback
+import signal
 import time
 import os
 import sys
@@ -221,7 +223,7 @@ else:
         self._stdout = stdout_pipe(connection)
 
     def run (self) :
-      import libtbx.callbacks
+      import libtbx.callbacks # import dependency
       libtbx.call_back.add_piped_callback(self._c)
       old_stdout = sys.stdout
       sys.stdout = self._stdout
@@ -269,6 +271,8 @@ else:
         callback_err=null_callback,
         callback_abort=null_callback,
         callback_other=null_callback,
+        callback_pause=null_callback,  # XXX experimental
+        callback_resume=null_callback, # XXX experimental
         buffer_stdout=True,
         sleep_after_start=None) :
       threading.Thread.__init__(self)
@@ -279,23 +283,68 @@ else:
               hasattr(callback_final, "__call__") and
               hasattr(callback_err, "__call__") and
               hasattr(callback_abort, "__call__") and
-              hasattr(callback_other, "__call__"))
+              hasattr(callback_other, "__call__") and
+              hasattr(callback_pause, "__call__") and
+              hasattr(callback_resume, "__call__"))
       self._cb_stdout = callback_stdout
       self._cb_final  = callback_final
       self._cb_err    = callback_err
       self._cb_abort  = callback_abort
       self._cb_other  = callback_other
+      self._cb_pause  = callback_pause
+      self._cb_resume = callback_resume
       self._buffer_stdout = buffer_stdout
       self._abort = False
+      self._killed = False
       self._completed = False
       self._error = False
+      self._pid = None
+      self._child_process = None
       assert ((sleep_after_start is None) or
               isinstance(sleep_after_start, int) or
               isinstance(sleep_after_start, float))
       self._sleep_after_start = sleep_after_start
 
-    def abort (self) :
+    def abort (self, force=False) :
       self._abort = True
+      if (force) :
+        self.kill()
+
+    # XXX experimental, and apparently not working
+    def kill (self) :
+      if (self._child_process is not None) :
+        try :
+          self._child_process.terminate()
+          self.join(0.1)
+          self._killed = True
+        except OSError, e :
+          print e
+        else :
+          self._cb_abort()
+
+    def send_signal (self, signal_number) : # XXX experimental
+      """
+      Signals the process using os.kill, which despite the name, can also
+      pause or resume processes on Unix.
+      """
+      assert (self._child_process is not None) and (sys.platform != "win32")
+      try :
+        os.kill(self._child_process.pid, signal_number)
+      except OSError, e :
+        print e
+        if (not self._child_process.is_alive()) :
+          self._cb_abort() # XXX not sure if this is ideal
+        return False
+      else :
+        return True
+
+    def pause (self) : # XXX experimental, Unix only
+      if (self.send_signal(signal.SIGSTOP)) :
+        self._cb_pause()
+
+    def resume (self) : # XXX experimental, Unix only
+      if (self.send_signal(signal.SIGCONT)) :
+        self._cb_resume()
 
     def run (self) :
       if (self._sleep_after_start is not None) :
@@ -310,11 +359,13 @@ else:
           connection    = child_process_pipe(connection_object=child_conn),
           buffer_stdout = self._buffer_stdout)
         os.environ["OMP_NUM_THREADS"] = "1"
+        self._child_process = child_process
         child_process.start()
       except Exception, e :
         sys.__stderr__.write("Error starting child process: %s\n" % str(e))
         child_process = None
       while child_process is not None :
+        if (self._killed) : break
         if self._abort :
           child_process.terminate()
           self._cb_abort()
@@ -345,284 +396,3 @@ else:
           self._cb_other(pipe_output)
       if child_process is not None and child_process.is_alive() :
         child_process.join()
-
-########################################################################
-# tests
-#
-def exercise_threading() :
-
-  def first_callback(i):
-    collected.append(-i*10)
-
-  def callback(i):
-    collected.append(i*10)
-    return (i < 5)
-
-  def run(n=3, callback=None):
-    i = 1
-    while (callback is not None or i <= n):
-      collected.append(i)
-      if (callback is not None):
-        status = callback(i)
-        if (status == False):
-          break
-      i += 1
-
-  collected = []
-  run()
-  assert collected == [1,2,3]
-
-  for callback1,expected in [
-        (None, [1,10]),
-        (first_callback, [1,-10])]:
-    for n_resume in xrange(7):
-      collected = []
-      t = thread_with_callback_and_wait(
-        run=run,
-        callback=callback,
-        first_callback=callback1)
-      if (callback1 is None):
-        t.start()
-      else:
-        t.start_and_wait_for_first_callback()
-      for i in xrange(n_resume):
-        t.resume()
-      t.resume(last_iteration=True).join()
-      assert collected == expected
-      if (n_resume < 4):
-        expected.extend([n_resume+2, (n_resume+2)*10])
-
-
-class _callback_handler (object) :
-  def __init__ (self) :
-    self._err = None
-    self._result = None
-    self._abort = None
-    self._stdout = None
-    self._other = None
-
-  def cb_err (self, error, traceback_info) :
-    self._err = error
-    self._tb = traceback_info
-
-  def cb_abort (self) :
-    self._abort = True
-
-  def cb_result (self, result) :
-    self._result = result
-
-  def cb_stdout (self, stdout) :
-    if self._stdout is not None : self._stdout += str(stdout)
-    else                        : self._stdout = str(stdout)
-
-  def cb_other (self, data) :
-    if self._other is not None :
-      self._other.append(data)
-    else :
-      self._other = [data]
-
-  def tst_error_raised (self) :
-    assert self._err is not None
-    assert self._result is None
-
-  def tst_run_success (self, expected_result=None, expected_stdout=None,
-      expected_other=None) :
-    assert self._err is None
-    assert self._abort is None
-    assert self._result == expected_result
-    assert self._stdout == expected_stdout
-    assert self._other == expected_other
-
-#--- test 01 : propagate args and kwds to target
-def _inner_target_with_args_and_kwds (a, b, c=-1, d=-1) :
-  assert a < 0 and b < 0
-  assert c > 0 and d > 0
-  return True
-
-def _target_function01 (args, kwds, connection) :
-  return _inner_target_with_args_and_kwds(*args, **kwds)
-
-def tst_01 () :
-  ch = _callback_handler()
-  p = process_with_callbacks(
-    target = _target_function01,
-    args   = (-2, -2),
-    kwargs = {"c": 2, "d" : 2},
-    callback_stdout = ch.cb_stdout,
-    callback_final  = ch.cb_result,
-    callback_err    = ch.cb_err,
-    callback_other  = ch.cb_other)
-  p.start()
-  while p.isAlive() :
-    pass
-  ch.tst_run_success(expected_result=True, expected_stdout=None,
-    expected_other=None)
-
-#--- test 02 : target function does not return a value
-def _inner_target_no_return () :
-  n = 1
-
-def _target_function02 (args, kwds, connection) :
-  return _inner_target_no_return(*args, **kwds)
-
-def tst_02 () :
-  ch = _callback_handler()
-  p = process_with_callbacks(
-    target = _target_function02,
-    callback_stdout = ch.cb_stdout,
-    callback_final  = ch.cb_result,
-    callback_err    = ch.cb_err,
-    callback_other  = ch.cb_other)
-  p.start()
-  while p.isAlive() :
-    pass
-  ch.tst_run_success(expected_result=None)
-
-#--- test 03 : callbacks for stdout, runtime, result
-def _target_function03 (args, kwds, connection) :
-  for i in xrange(4) :
-    print i
-    connection.send(i)
-  return 4
-
-def tst_03 () :
-  ch = _callback_handler()
-  p = process_with_callbacks(
-    target = _target_function03,
-    callback_stdout = ch.cb_stdout,
-    callback_final  = ch.cb_result,
-    callback_err    = ch.cb_err,
-    callback_other  = ch.cb_other)
-  p.start()
-  while p.isAlive() :
-    pass
-  tstout = \
-"""0
-1
-2
-3
-"""
-  ch.tst_run_success(expected_result=4, expected_stdout=tstout,
-    expected_other=[0,1,2,3])
-
-#--- test 04 : stdout consistency
-def _tst_print (out=None) :
-  if out is None :
-    out = sys.stdout
-  for i in xrange(1000) :
-    out.write("%s\n" % i)
-  return None
-
-def _target_function04 (args, kwds, connection) :
-  return _tst_print(*args, **kwds)
-
-def tst_04 () :
-  import cStringIO
-  tmpout = cStringIO.StringIO()
-  _tst_print(tmpout)
-
-  for buffer_stdout in [True, False] :
-    ch = _callback_handler()
-    p = process_with_callbacks(
-      target = _target_function04,
-      callback_stdout = ch.cb_stdout,
-      buffer_stdout = buffer_stdout)
-    p.start()
-    while p.isAlive() :
-      pass
-    assert tmpout.getvalue() == ch._stdout
-
-#--- test 05 : propagating standard Exceptions and Sorry
-def _target_function05a (args, kwds, connection) :
-  raise Exception("_target_function05a")
-
-def _target_function05b (args, kwds, connection) :
-  raise Sorry("_target_function05b")
-
-def tst_05 () :
-  for f in [_target_function05a, _target_function05b] :
-    ch = _callback_handler()
-    p = process_with_callbacks(
-      target = f,
-      callback_err = ch.cb_err,
-      callback_final = ch.cb_result)
-    p.start()
-    while p.isAlive() :
-      pass
-    ch.tst_error_raised()
-    if f is _target_function05b :
-      assert isinstance(ch._err, Sorry)
-
-#--- test 06 : aborting
-# Process.terminate() does not work on RedHat 8, but this test will still
-# be successful despite taking an extra 100 seconds to finish.
-def _target_function06 (args, kwds, connection) :
-  for i in xrange(10) :
-    print i
-    time.sleep(1)
-
-def tst_06 () :
-  ch = _callback_handler()
-  p = process_with_callbacks(
-    target = _target_function06,
-    callback_abort = ch.cb_abort)
-  p.start()
-  p.abort()
-  while p.isAlive() :
-    pass
-  assert ch._abort == True
-
-def _target_function07 (args, kwds, connection) :
-  time.sleep(2)
-  raise Abort()
-
-def tst_07 () :
-  ch = _callback_handler()
-  p = process_with_callbacks(
-    target=_target_function07,
-    callback_abort=ch.cb_abort)
-  p.start()
-  p.abort()
-  while p.isAlive() :
-    pass
-  assert ch._abort == True
-
-def _target_function08 (args, kwds, connection) :
-  import libtbx.callbacks # import dependency
-  import cStringIO
-  log = cStringIO.StringIO()
-  libtbx.call_back.set_warning_log(log)
-  time.sleep(1)
-  libtbx.warn("Hello, world!")
-  time.sleep(1)
-
-def tst_08 () :
-  ch = _callback_handler()
-  p = process_with_callbacks(
-    target=_target_function08,
-    callback_other=ch.cb_other)
-  p.start()
-  while p.isAlive() :
-    pass
-  assert (ch._other[0].message == "warn")
-  assert (ch._other[0].data == "Hello, world!")
-
-def exercise_process () :
-  #--- run all tests
-  try :
-    tst_01()
-    tst_02()
-    tst_03()
-    tst_04()
-    tst_05()
-    tst_06()
-    tst_07()
-    tst_08()
-  except ImportError, e:
-    print "Skipping thread_utils tests:", str(e)
-
-if (__name__ == "__main__"):
-  from libtbx import thread_utils
-  thread_utils.exercise_threading()
-  thread_utils.exercise_process()
-  print "OK"
