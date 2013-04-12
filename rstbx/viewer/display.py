@@ -344,6 +344,7 @@ class ThumbnailView (XrayView) :
     dc.DrawRectangle(x, y, w-1, h-1)
 
   def OnLeftDown (self, event) :
+    if (self._img is None) : return
     x, y = event.GetPositionTuple()
     self._img.center_view_from_thumbnail(x, y)
     self.Refresh()
