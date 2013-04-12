@@ -67,8 +67,9 @@ class ReflectionFileInfo (InfoPanelBase) :
   def set_file (self, file_name) :
     self.file_name = os.path.abspath(file_name)
     from iotbx import file_reader
-    self._hkl_in = file_reader.any_file(file_name, force_type="hkl")
-    self._hkl_in.assert_file_type("hkl")
+    self._hkl_in = file_reader.any_file(file_name, force_type="hkl",
+      raise_sorry_if_not_expected_format=True)
+    self._hkl_in.check_file_type("hkl")
     self.SetTitle("Info for %s" % self.file_name)
     self.file_txt.SetLabel(self.file_name)
     self.miller_arrays = self._hkl_in.file_server.miller_arrays
@@ -155,8 +156,9 @@ class PDBFileInfo (InfoPanelBase) :
     self.file_name = os.path.abspath(file_name)
     from iotbx import file_reader
     import iotbx.pdb
-    self._pdb_in = file_reader.any_file(file_name, force_type="pdb")
-    self._pdb_in.assert_file_type("pdb")
+    self._pdb_in = file_reader.any_file(file_name, force_type="pdb",
+      raise_sorry_if_not_expected_format=True)
+    self._pdb_in.check_file_type("pdb")
     self._hierarchy = self._pdb_in.file_object.construct_hierarchy()
     info_list = iotbx.pdb.show_file_summary(
       pdb_in=self._pdb_in.file_object,
@@ -238,8 +240,9 @@ class PDBChainBisoPanel (InfoPanelBase) :
     if (hierarchy is None) :
       from iotbx import file_reader
       import iotbx.pdb
-      pdb_in = file_reader.any_file(file_name, force_type="pdb")
-      pdb_in.assert_file_type("pdb")
+      pdb_in = file_reader.any_file(file_name, force_type="pdb",
+        raise_sorry_if_not_expected_format=True)
+      pdb_in.check_file_type("pdb")
       hierarchy = pdb_in.file_object.construct_hierarchy()
     if (len(hierarchy.models()) > 1) :
       raise Sorry("Multi-MODEL PDB files not supported.")
@@ -300,7 +303,8 @@ class ImageFileInfo (InfoPanelBase) :
     img_in = file_reader.any_file(
       file_name=file_name,
       valid_types=["img"],
-      force_type="img")
+      force_type="img",
+      raise_sorry_if_not_expected_format=True)
     img_in.assert_file_type("img")
     self._img_in = img_in
     out = cStringIO.StringIO()
