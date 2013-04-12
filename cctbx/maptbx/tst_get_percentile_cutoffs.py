@@ -93,11 +93,15 @@ def exercise():
         vol_cutoff_minus_percent = vcm)
       assert approx_equal(po,pn, 0.01)
       assert approx_equal(mo,mn, 0.01)
+      rp = (map_data >= po).count(True)*100./map_data.size()
+      rm = (map_data <= mo).count(True)*100./map_data.size()
+      assert approx_equal(rp, vcp, 1.e-3)
+      assert approx_equal(rm, vcm, 1.e-3)
       assert approx_equal(
-        (map_data >= po).count(True)*100./map_data.size(),
+        rp,
         (map_data >= pn).count(True)*100./map_data.size(), 0.1)
       assert approx_equal(
-        (map_data <= mo).count(True)*100./map_data.size(),
+        rm,
         (map_data <= mn).count(True)*100./map_data.size(), 0.1)
 
 if (__name__ == "__main__"):
