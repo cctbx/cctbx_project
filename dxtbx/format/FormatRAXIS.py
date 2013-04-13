@@ -109,7 +109,9 @@ class FormatRAXIS(Format):
             self._f = '<f'
             self._i = '<i'
 
-        return
+        from iotbx.detectors.raxis import RAXISImage
+        self.detectorbase = RAXISImage(self._image_file)
+        self.detectorbase.readHeader()
 
     def _goniometer(self):
         '''Return a model for the goniometer from the values stored in the

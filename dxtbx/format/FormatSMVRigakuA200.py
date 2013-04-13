@@ -64,6 +64,13 @@ class FormatSMVRigakuA200(FormatSMV):
 
         return
 
+    def _start(self):
+
+        FormatSMV._start(self)
+        from iotbx.detectors.dtrek import DTREKImage
+        self.detectorbase = DTREKImage(self._image_file)
+        self.detectorbase.readHeader()
+
     def _goniometer(self):
         '''Initialize the structure for the goniometer - this will need to
         correctly compose the axes given in the image header. In this case

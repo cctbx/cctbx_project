@@ -29,8 +29,8 @@ class FormatMarIP(Format):
         pairs into an internal dictionary self._header_dictionary along with
         the length of the header in bytes self._header_size.'''
         from iotbx.detectors.marIP import MARIPImage
-        self.maripimage = MARIPImage(self._image_file)
-        self.maripimage.readHeader()
+        self.detectorbase = MARIPImage(self._image_file)
+        self.detectorbase.readHeader()
 
     def _goniometer(self):
 
@@ -40,26 +40,26 @@ class FormatMarIP(Format):
         '''Return a model for a simple detector, which at the moment insists
         that the offsets and rotations are all 0.0.'''
 
-        assert self.maripimage.parameters["TWOTHETA"] == 0.0
+        assert self.detectorbase.parameters["TWOTHETA"] == 0.0
 
         return self._detector_factory.simple(
             sensor = 'IMAGE_PLATE',
-            distance = self.maripimage.parameters["DISTANCE"],
-            beam_centre = (self.maripimage.parameters["BEAM_CENTER_X"],
-                           self.maripimage.parameters["BEAM_CENTER_Y"]),
+            distance = self.detectorbase.parameters["DISTANCE"],
+            beam_centre = (self.detectorbase.parameters["BEAM_CENTER_X"],
+                           self.detectorbase.parameters["BEAM_CENTER_Y"]),
             fast_direction = '+x',
             slow_direction = '-y',
-            pixel_size = (self.maripimage.parameters["PIXEL_SIZE"],
-                          self.maripimage.parameters["PIXEL_SIZE"]),
-            image_size = (self.maripimage.parameters["SIZE1"],
-                          self.maripimage.parameters["SIZE2"]),
-            trusted_range = (0, self.maripimage.parameters["CCD_IMAGE_SATURATION"]),
+            pixel_size = (self.detectorbase.parameters["PIXEL_SIZE"],
+                          self.detectorbase.parameters["PIXEL_SIZE"]),
+            image_size = (self.detectorbase.parameters["SIZE1"],
+                          self.detectorbase.parameters["SIZE2"]),
+            trusted_range = (0, self.detectorbase.parameters["CCD_IMAGE_SATURATION"]),
             mask = [])
 
     def _beam(self):
         '''Return a simple model for the beam.'''
 
-        return self._beam_factory.simple(self.maripimage.parameters["WAVELENGTH"])
+        return self._beam_factory.simple(self.detectorbase.parameters["WAVELENGTH"])
 
     def _scan(self):
         '''Return the scan information for this image.'''
@@ -67,9 +67,9 @@ class FormatMarIP(Format):
         return self._scan_factory.single(
           filename = self._image_file,
           format = "MARIP",
-          exposure_time = self.maripimage.adaptor.exposure_time(),
-          osc_start = self.maripimage.parameters["OSC_START"],
-          osc_width = self.maripimage.parameters["OSC_RANGE"],
+          exposure_time = self.detectorbase.adaptor.exposure_time(),
+          osc_start = self.detectorbase.parameters["OSC_START"],
+          osc_width = self.detectorbase.parameters["OSC_RANGE"],
           epoch = None)
 
 if __name__ == '__main__':

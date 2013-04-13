@@ -170,15 +170,9 @@ class Format(object):
 
     def get_raw_data(self):
         '''Get the pixel intensities (i.e. read the image and return as a
-        flex array of integers.'''
+        flex array.'''
 
-        # FIXME this should be replaced with specialist code in subclasses
-        try:
-          image = self.detectorbase
-        except Exception:
-          from iotbx.detectors import ImageFactory
-          image = ImageFactory(self._image_file)
-
+        image = self.detectorbase
         image.read()
         raw_data = image.get_raw_data()
 
