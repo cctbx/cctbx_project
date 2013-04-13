@@ -633,8 +633,9 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       data_block_name = "phenix"
     cif_object[data_block_name] = self.as_cif_block(
       crystal_symmetry=crystal_symmetry)
-    with open(file_name, 'wb') as f:
-      print >> f, cif_object
+    f = open(file_name, "wb")
+    print >> f, cif_object
+    f.close()
 
   def atoms_with_labels(self):
     for model in self.models():
