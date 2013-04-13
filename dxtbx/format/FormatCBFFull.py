@@ -49,7 +49,9 @@ class FormatCBFFull(FormatCBF):
         self._cbf_handle = pycbf.cbf_handle_struct()
         self._cbf_handle.read_file(self._image_file, pycbf.MSG_DIGEST)
 
-        return
+        from iotbx.detectors.cbf import CBFImage
+        self.detectorbase = CBFImage(self._image_file)
+        self.detectorbase.readHeader()
 
     def _goniometer(self):
         '''Return a working goniometer instance.'''
