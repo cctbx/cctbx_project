@@ -174,10 +174,11 @@ class Format(object):
 
         # FIXME this should be replaced with specialist code in subclasses
         try:
+          image = self.detectorbase
+        except Exception:
           from iotbx.detectors import ImageFactory
           image = ImageFactory(self._image_file)
-        except Exception:
-          image = self.detectorbase
+
         image.read()
         raw_data = image.get_raw_data()
 
