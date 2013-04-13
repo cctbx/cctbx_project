@@ -388,7 +388,9 @@ dxtbx/format/FormatEDFALS733.py -text
 dxtbx/format/FormatMAR.py -text
 dxtbx/format/FormatMarIP.py -text
 dxtbx/format/FormatPY.py -text
+dxtbx/format/FormatPYCXI51.py -text
 dxtbx/format/FormatPYmultitile.py -text
+dxtbx/format/FormatPYunspecified.py -text
 dxtbx/format/FormatPilatusHelpers.py -text
 dxtbx/format/FormatRAXIS.py -text
 dxtbx/format/FormatSMV.py -text
@@ -407,6 +409,12 @@ dxtbx/format/FormatTIFFRayonixESRF.py -text
 dxtbx/format/FormatXPARM.py -text
 dxtbx/format/Registry.py -text
 dxtbx/format/RegistryHelpers.py -text
+dxtbx/format/TemplatePYCXI31.py -text
+dxtbx/format/TemplatePYCXI32.py -text
+dxtbx/format/TemplatePYCXI41.py -text
+dxtbx/format/TemplatePYCXI61.py -text
+dxtbx/format/TemplatePYCXI71.py -text
+dxtbx/format/TemplatePYCXI7d.py -text
 dxtbx/format/__init__.py -text
 dxtbx/format/doc/adding_new_formats.txt -text
 dxtbx/format/tests/TestFormat.py -text
