@@ -483,7 +483,10 @@ namespace rstbx { namespace bandpass {
          beam_coor[1]/P.pixel_size[1]+P.pixel_offset[1],0.);
       scitbx::af::shared<vec3 > polydata;
       vec3 crystal_to_detector = -P.distance * P.detector_normal;
-
+      SCITBX_ASSERT (P.pixel_size[0] == P.pixel_size[1]);
+      // need to assert this because all calculations including detector distance
+      // are done in units of pixels; if not equal then formulae will have to
+      // be reimplemented in units of mm.
       for (int idx = 0; idx < lo_E_limit.size(); ++idx){
         if (!observed_flag[idx]) {continue;}
         vec3 hi_pos = hi_E_limit[idx];
@@ -494,16 +497,16 @@ namespace rstbx { namespace bandpass {
         vec3 tangential_unit_vec(-radial_unit_vec[1],radial_unit_vec[0],0.); // 90-degree rotation
         vec3 tangential_excursion = tangential_unit_vec * radius * P.half_mosaicity_rad;
         if (p_domain_size_ang > 0.) {
-          double half_scherrer_broadening = (crystal_to_detector + radius).length() * P.wavelengthHE / (2.*p_domain_size_ang);
+          double half_scherrer_broadening = ((crystal_to_detector.length())/P.pixel_size[0]) * P.wavelengthHE / (2.*p_domain_size_ang);
           tangential_excursion += tangential_unit_vec * half_scherrer_broadening;
           hi_pos -= half_scherrer_broadening*radial_unit_vec;
           lo_pos += half_scherrer_broadening*radial_unit_vec;
         }
-        polydata.push_back( hi_pos + tangential_excursion);
-        polydata.push_back( hi_pos - tangential_excursion);
-        polydata.push_back( lo_pos - tangential_excursion);
-        polydata.push_back( lo_pos + tangential_excursion);
-        polydata.push_back( hi_pos + tangential_excursion);
+        polydata.push_back( (hi_pos + tangential_excursion)-P.pixel_offset);
+        polydata.push_back( (hi_pos - tangential_excursion)-P.pixel_offset);
+        polydata.push_back( (lo_pos - tangential_excursion)-P.pixel_offset);
+        polydata.push_back( (lo_pos + tangential_excursion)-P.pixel_offset);
+        polydata.push_back( (hi_pos + tangential_excursion)-P.pixel_offset);
       }
       spot_rectangle_vertices = polydata;
       return polydata;
@@ -1077,7 +1080,8 @@ namespace ext {
            arg("translations"), arg("rotations_deg")))
         .def("set_mosaicity", &use_case_bp3::set_mosaicity)
         .def("set_domain_size", &use_case_bp3::set_domain_size)
-        .def("set_bandpass", &use_case_bp3::set_bandpass)
+        .def("set_bandpass", &use_case_bp3::set_bandpass,(
+           arg("wave_HI"), arg("wave_LO")))
         .def("set_orientation", &use_case_bp3::set_orientation)
         .def("set_adaptor", &use_case_bp3::set_adaptor)
         .def("set_detector_origin", &use_case_bp3::set_detector_origin)
