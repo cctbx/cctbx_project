@@ -56,6 +56,8 @@ except ImportError:
     import pickle
 import Image
 import wx
+from scitbx.matrix import col
+import math
 
 # if we don't have log.py, don't crash
 try:
@@ -899,6 +901,122 @@ class PySlip(_BufferedCanvas):
                              visible=visible, show_levels=show_levels,
                              selectable=selectable, name=name,
                              type=self.TypePoint)
+
+    def AddEllipseLayer(self, data, map_rel=True, visible=True,
+                        show_levels=None, selectable=False,
+                        name='<polygon_layer>', **kwargs):
+        # get global values, if required
+        default_placement = kwargs.get('placement',
+                                       self.DefaultPolygonPlacement)
+        default_width = kwargs.get('width', self.DefaultPolygonWidth)
+        default_colour = self.get_i18n_kw(kwargs, ('colour', 'color'),
+                                          self.DefaultPolygonColour)
+        default_close = kwargs.get('closed', self.DefaultPolygonClose)
+        default_filled = kwargs.get('filled', self.DefaultPolygonFilled)
+        default_fillcolour = self.get_i18n_kw(kwargs,
+                                              ('fillcolour', 'fillcolor'),
+                                              self.DefaultPolygonFillcolour)
+        default_offset_x = kwargs.get('offset_x', self.DefaultPolygonOffsetX)
+        default_offset_y = kwargs.get('offset_y', self.DefaultPolygonOffsetY)
+
+        draw_data = []
+        grouped_data = []
+        for x in xrange(0,len(data),5):
+          side1=col(( (data[x][0]+data[x+1][0])/2., (data[x][1]+data[x+1][1])/2.))
+          side2=col(( (data[x+1][0]+data[x+2][0])/2., (data[x+1][1]+data[x+2][1])/2.))
+          side3=col(( (data[x+2][0]+data[x+3][0])/2., (data[x+2][1]+data[x+3][1])/2.))
+          side4=col(( (data[x+3][0]+data[x+4][0])/2., (data[x+3][1]+data[x+4][1])/2.))
+
+          ellipse_center = (side1+side3)/2.
+          semimajor_axis = side3 - ellipse_center
+          semiminor_axis = side2 - ellipse_center
+
+          points = []
+          # parametric expression
+          for t in xrange(3,16):    # more precise ellipse possible with xrange(6,31) and (t/12.)
+            theta = (t/6.)*math.pi
+            points.append( (ellipse_center + semimajor_axis * math.cos(theta) + semiminor_axis * math.sin(theta)).elems )
+
+          grouped_data.append((points,))
+
+        for d in grouped_data:
+
+            if len(d) == 2:
+                (p, attributes) = d
+            elif len(d) == 1:
+                p = d
+                attributes = {}
+            else:
+                msg = ('Polygon data must be iterable of tuples: '
+                       '(poly, [attributes])\n'
+                       'Got: %s' % str(d))
+                raise Exception(msg)
+
+
+            # get polygon attributes
+            placement = attributes.get('placement', default_placement)
+            width = attributes.get('width', default_width)
+            colour = self.get_i18n_kw(attributes, ('colour', 'color'),
+                                      default_colour)
+
+            close = True
+            filled = attributes.get('filled', default_filled)
+
+            if filled:
+                close = True
+            fillcolour = self.get_i18n_kw(attributes,
+                                          ('fillcolour', 'fillcolor'),
+                                          default_fillcolour)
+            offset_x = attributes.get('offset_x', default_offset_x)
+            offset_y = attributes.get('offset_y', default_offset_y)
+            data = attributes.get('data', None)
+
+            # if polygon is to be filled, ensure closed (not necessary)
+            #if close:
+            #    p = list(p)
+            #    p.append(p[0])
+
+            draw_data.append((p[0], placement.lower(), width, colour, close,
+                              filled, fillcolour, offset_x, offset_y, data))
+        return self.AddLayer(self.DrawLightweightEllipticalSpline, draw_data, map_rel,
+                             visible, show_levels=show_levels,
+                             selectable=False, name=name,
+                             type=self.TypePolygon)
+
+    def DrawLightweightEllipticalSpline(self, dc, data, map_rel):
+        assert map_rel
+
+        # draw polygons on map/view
+        print "IN lightweight elliptical spline"
+        # Draw points on map/view, using transparency if implemented.
+        try:
+            dc = wx.GCDC(dc)
+        except NotImplementedError:
+            pass
+
+        (p, place, width, colour, closed,
+             filled, fillcolour, x_off, y_off, pdata) = data[0]
+
+        dc.SetPen(wx.Pen(colour, width=width))
+
+        if filled:
+            dc.SetBrush(wx.Brush(fillcolour))
+        else:
+            dc.SetBrush(wx.TRANSPARENT_BRUSH)
+
+        assert closed
+        assert x_off==0
+        assert y_off==0
+
+        for (p, place, width, colour, closed,
+             filled, fillcolour, x_off, y_off, pdata) in data:
+            # gather all polygon points as view coords
+
+            p_lonlat = []
+            for lonlat in p:
+                p_lonlat.append(self.ConvertGeo2View(lonlat))
+
+            dc.DrawSpline(p_lonlat)
 
     def AddPolygonLayer(self, data, map_rel=True, visible=True,
                         show_levels=None, selectable=False,
