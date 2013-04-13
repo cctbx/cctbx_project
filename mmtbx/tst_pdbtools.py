@@ -671,16 +671,18 @@ loop_
   ATOM     54  CA  .  LYS  B  1  ?   -8.86604  -5.20044   5.46515  1.000  16.15297  C  ?  B  ?   7  1
 """)
   f.close()
-  cmd = " ".join(["phenix.pdbtools", f.name, "rename_chain_id.old_id=A",
-                  "rename_chain_id.new_id=C"])
+  cmd = " ".join(["phenix.pdbtools", "\"%s\"" % f.name,
+    "rename_chain_id.old_id=A",
+    "rename_chain_id.new_id=C"])
   run_command(command=cmd, verbose=False)
   assert os.path.isfile(f.name+"_modified.pdb")
   pdb_inp = iotbx.pdb.input(file_name=f.name+"_modified.pdb")
   assert pdb_inp.file_type() == "pdb"
   hierarchy = pdb_inp.construct_hierarchy()
   assert [chain.id for chain in hierarchy.chains()] == ['C', 'B']
-  cmd = " ".join(["phenix.pdbtools", f.name, "adp.convert_to_anisotropic=True",
-                  "output.format=mmcif"])
+  cmd = " ".join(["phenix.pdbtools", "\"%s\"" % f.name,
+    "adp.convert_to_anisotropic=True",
+    "output.format=mmcif"])
   run_command(command=cmd, verbose=False)
   assert os.path.isfile(f.name+"_modified.cif")
   pdb_inp = iotbx.pdb.input(file_name=f.name+"_modified.cif")
