@@ -393,6 +393,7 @@ dxtbx/format/FormatPYmultitile.py -text
 dxtbx/format/FormatPYunspecified.py -text
 dxtbx/format/FormatPilatusHelpers.py -text
 dxtbx/format/FormatRAXIS.py -text
+dxtbx/format/FormatRAXISII.py -text
 dxtbx/format/FormatSMV.py -text
 dxtbx/format/FormatSMVADSC.py -text
 dxtbx/format/FormatSMVADSCSN.py -text

@@ -35,7 +35,10 @@ class FormatSMVRigakuSaturnSN07400090(FormatSMVRigakuSaturn):
         # event.
 
         detector_prefix = header['DETECTOR_NAMES'].split()[0].strip()
-        serial_number = header['%sSERIAL_NUMBER' % detector_prefix]
+        try:
+          serial_number = header['%sSERIAL_NUMBER' % detector_prefix]
+        except KeyError:
+          return False
 
         if serial_number != '07400090':
             return False
