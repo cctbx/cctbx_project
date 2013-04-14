@@ -310,7 +310,7 @@ else:
       if (force) :
         self.kill()
 
-    # XXX experimental, and apparently not working
+    # XXX experimental
     def kill (self) :
       if (self._child_process is not None) :
         try :
