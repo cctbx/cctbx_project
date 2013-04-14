@@ -121,7 +121,14 @@ def convert_list_block(
       obj_outer = None
       for loop_block,lst_name in outer_mappings:
         rows = cif_data.get('_'+loop_block)
-        if (rows is None): continue
+        if (rows is None):
+           d = dict((k, v) for k, v in cif_data.iteritems()
+                    if k.startswith("_"+loop_block))
+           if len(d) > 0:
+             lst = getattr(obj_outer, lst_name)
+             typ = getattr(cif_types, loop_block)
+             lst.append(typ(**dict(d)))
+           continue
         if (obj_outer is None):
           obj_outer = cif_type_outer(source_info, obj_inner)
         lst = getattr(obj_outer, lst_name)
