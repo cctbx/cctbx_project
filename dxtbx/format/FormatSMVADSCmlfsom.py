@@ -27,7 +27,12 @@ class FormatSMVADSCmlfsom(FormatSMVADSC):
 
         FormatSMVADSC.__init__(self, image_file)
 
-        return
+    def _start(self):
+
+        FormatSMVADSC._start(self)
+        from iotbx.detectors import SMVImage
+        self.detectorbase = SMVImage(self._image_file)
+        self.detectorbase.readHeader()
 
     def _scan(self):
         '''Return the scan information for this image.'''

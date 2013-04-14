@@ -81,6 +81,13 @@ class FormatTIFFRayonix(FormatTIFF):
 
         return
 
+    def _start(self):
+
+        FormatTIFF._start(self)
+        from iotbx.detectors.mar import MARImage
+        self.detectorbase = MARImage(self._image_file)
+        self.detectorbase.readHeader()
+
     # FIXME have implemented none of those which follow...
 
     def _goniometer(self):
