@@ -30,6 +30,13 @@ class FormatSMVADSCSN(FormatSMVADSC):
 
         return
 
+    def _start(self):
+
+        FormatSMVADSC._start(self)
+        from iotbx.detectors.adsc import ADSCImage
+        self.detectorbase = ADSCImage(self._image_file)
+        self.detectorbase.readHeader()
+
 if __name__ == '__main__':
 
     import sys
