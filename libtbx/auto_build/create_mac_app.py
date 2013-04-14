@@ -9,7 +9,7 @@ except ImportError, e :
   libtbx_env = None
 else :
   libtbx_env = libtbx.env
-import argparse
+import optparse
 import shutil
 import re
 import os
@@ -19,7 +19,7 @@ def run (args, out=sys.stdout) :
   if (sys.platform != "darwin") :
     print >> out, "This application will only run on Mac systems."
     return 1
-  parser = argparse.ArgumentParser(
+  parser = optparse.OptionParser(
     description="Utility for creating an iconified Mac launcher for the specified command, which must be present in $LIBTBX_BUILD/bin.")
   bin_path = icns_path = None
   if (libtbx_env is not None) :
@@ -27,17 +27,17 @@ def run (args, out=sys.stdout) :
     icns_path = libtbx_env.find_in_repositories(
       relative_path="gui_resources/icons/custom/phenix.icns",
       test=os.path.exists)
-  parser.add_argument("--bin_dir", dest="bin_dir", action="store",
+  parser.add_option("--bin_dir", dest="bin_dir", action="store",
     help="Directory containing target executable.", default=bin_path)
-  parser.add_argument("--app_name", dest="app_name", action="store",
+  parser.add_option("--app_name", dest="app_name", action="store",
     help="Name of iconified program", default=None)
-  parser.add_argument("--icon", dest="icon", action="store",
+  parser.add_option("--icon", dest="icon", action="store",
     help="Path to .icns file", default=icns_path)
-  parser.add_argument("--dest", dest="dest", action="store",
+  parser.add_option("--dest", dest="dest", action="store",
     help="Destination path", default=os.getcwd())
-  parser.add_argument("--alias_build", dest="alias_build", action="store_true",
+  parser.add_option("--alias_build", dest="alias_build", action="store_true",
     help="Generate alias build without Python interpreter", default=False)
-  parser.add_argument("--python_interpreter", dest="python_interpreter",
+  parser.add_option("--python_interpreter", dest="python_interpreter",
     action="store", help="Python interpreter to use for final app",
     default=None)
   options, args = parser.parse_known_args(args)
