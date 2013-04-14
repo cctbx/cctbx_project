@@ -6,49 +6,62 @@ from cStringIO import StringIO
 import os
 import sys
 
-def run (args) :
-  if (len(args) == 0) or (len(args) > 2) :
-    raise Usage("""\
-labelit.png file_name [output_file]
+usage_message ="""\
+labelit.png file_name [output_file] [bin=1|2]
 
   Convert an X-ray detector image to PNG format.
 
   Input file is a detector image (CBF, ADSC, MAR, etc.).  If the name of the
   output file is not specified, it will be identical to the image file but
-  with the extension replaced by '.png'.""")
+  with the extension replaced by '.png'.
+
+  bin argument: 1 ( default, same-sized png  as detector )
+                2 ( bin detector pixels 2x2 for display )"""
+
+def run (args) :
+  if (len(args) == 0) or (len(args) > 3) or "-large" in args or "help" in args:
+    raise Usage(usage_message)
+  graphics_bin = 1
+  if len(args)==3 and args[2].find("bin=")==0 and args[2][4]=="2":
+    graphics_bin = 2
   img_file = args[0]
   output_file = None
-  if (len(args) == 2) :
+  if (len(args) >= 2) :
     output_file = args[1]
-  convert_image(img_file, output_file)
+  if (output_file is None) :
+    output_file = os.path.basename(os.path.splitext(img_file)[0]) + ".png"
+  C = convert_image(img_file,graphics_bin)
+  C.img.show_header()
+  open(output_file, "wb").write(C.output().getvalue())
+  print "Wrote %s" % output_file
 
-def convert_image (file_name, output_file=None) :
+class convert_image:
+
+ def __init__(self,file_name,graphics_bin=1):#, output_file=None) :
   from iotbx.detectors import ImageFactory, ImageException
   import Image
-  if (output_file is None) :
-    output_file = os.path.basename(os.path.splitext(file_name)[0]) + ".png"
   try :
     img = ImageFactory(file_name)
   except ImageException, e :
     raise Sorry(str(e))
   img.read()
-  print img.show_header()
-  binning = 2
+  self.img = img
   if (img.vendortype in ["Pilatus-6M","Pilatus-2M","Pilatus-300K"]) :
-    binning = 1
-  flex_img = img.get_flex_image(binning=binning, brightness=1)
+    graphics_bin = 1
+  flex_img = img.get_flex_image(binning=graphics_bin, brightness=1)
   flex_img.setWindow(0.0, 0.0, 1)
   flex_img.spot_convention(0)
   flex_img.adjust(color_scheme=0)
   flex_img.prep_string()
   data_string = flex_img.export_string
-  imageout = Image.fromstring("RGB",
+  self.imageout = Image.fromstring("RGB",
                      (flex_img.ex_size2(), flex_img.ex_size1()),
                      data_string)
+
+ def output(self):
   out = StringIO()
-  imageout.save(out, "PNG")
-  open(output_file, "wb").write(out.getvalue())
-  print "Wrote %s" % output_file
+  self.imageout.save(out, "PNG")
+  return out
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
