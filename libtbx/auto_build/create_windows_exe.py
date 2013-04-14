@@ -9,7 +9,7 @@ try :
   libtbx_env = libtbx.env
 except ImportError, e :
   libtbx_env = None
-import argparse
+import optparse
 import shutil
 import stat
 import os
@@ -19,7 +19,7 @@ def run (args, out=sys.stdout) :
   if (sys.platform != "win32") :
     print >> out, "This application will only run on Windows systems."
     return 1
-  parser = argparse.ArgumentParser(
+  parser = optparse.OptionParser(
     description="Utility for creating an iconified Windows launcher for the specified command, which must be present in %LIBTBX_BUILD%\\bin.")
   bin_path = icns_path = None
   if (libtbx_env is not None) :
@@ -29,16 +29,16 @@ def run (args, out=sys.stdout) :
       test=os.path.exists)
   else :
     bin_path = os.getcwd()
-  parser.add_argument("--bin_dir", dest="bin_dir", action="store",
+  parser.add_option("--bin_dir", dest="bin_dir", action="store",
     help="Directory containing target executable or batch script.",
     default=bin_path)
-  parser.add_argument("--exe_name", dest="exe_name", action="store",
+  parser.add_option("--exe_name", dest="exe_name", action="store",
     help="Name of iconified program", default=None)
-  parser.add_argument("--icon", dest="icon", action="store",
+  parser.add_option("--icon", dest="icon", action="store",
     help="Path to .ico file", default=ico_path)
-  parser.add_argument("--dest", dest="dest", action="store",
+  parser.add_option("--dest", dest="dest", action="store",
     help="Destination path", default=os.getcwd())
-  parser.add_argument("--bundle_all", dest="bundle_all", action="store_true",
+  parser.add_option("--bundle_all", dest="bundle_all", action="store_true",
     help="Bundle Python interpreter, etc. into .exe", default=False)
   options, args = parser.parse_known_args(args)
   if (len(args) == 0) :
