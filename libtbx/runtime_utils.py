@@ -1,4 +1,3 @@
-from __future__ import division
 
 # detached process management (used in Phenix GUI)
 # This is intended to imitate running a process using libtbx.thread_utils,
@@ -7,14 +6,22 @@ from __future__ import division
 #
 #   easy_run.call("libtbx.start_process run.pkl &")
 
-import libtbx.phil
-import libtbx.load_env
+# FIXME this duplicates code in libtbx.thread_utils; it is also not especially
+# well tested except to the extent it is used daily in the Phenix GUI
+
+from __future__ import division
 from libtbx.utils import Sorry, Abort, multi_out, host_and_user
 from libtbx import easy_pickle
 from libtbx import adopt_init_args, group_args
-import traceback
-import sys, os, stat, time
+import libtbx.load_env
+import libtbx.phil
 import cStringIO
+import traceback
+import signal
+import stat
+import time
+import os
+import sys
 
 process_master_phil = libtbx.phil.parse("""
 run_file = None
@@ -255,6 +262,8 @@ class detached_process_client (detached_base) :
     self._state_mtime = 0.0 # time.time()
     self.running = False
     self.finished = False
+    self._process_host = None
+    self._process_pid = None
     self.update_progress = True
 
   def isAlive (self) :
@@ -277,6 +286,13 @@ class detached_process_client (detached_base) :
     if not self.running and os.path.exists(self.start_file) :
       self.running = True
       data = open(self.start_file, "r").read()
+      try :
+        host, pid = data.split()
+        self._process_host = host
+        self._process_pid = int(pid)
+      except Exception, e :
+        print "Error acquiring runtime info:"
+        print e
       self.callback_start(data)
     if self.update_progress :
       self.check_stdout()
@@ -355,9 +371,46 @@ class detached_process_client (detached_base) :
         else :
           self.callback_other(current_status)
 
+  # XXX in practice the phenix GUI only sets force=True for jobs running on the
+  # same machine; qdel is pretty thorough anyway.
   def abort (self, force=None) :
-    # TODO add support for 'force' using os.kill
     touch_file(self.stop_file)
+    if (force) and (not None in [self._process_host, self._process_pid]) :
+      info = host_and_user()
+      if (info.get_host_name() == self._process_host) :
+        os.kill(self._process_pid)
+        self.running = False
+        self.callback_abort()
+
+  # XXX See also libtbx.thread_utils implementation
+  def send_signal (self, signal_number) : # XXX experimental
+    """
+    Signals the process using os.kill, which despite the name, can also
+    pause or resume processes on Unix.
+    """
+    assert (self._process_pid is not None) and (sys.platform != "win32")
+    try :
+      os.kill(self._process_pid, signal_number)
+    except OSError, e :
+      print e
+      #self.callback_abort()
+      return False
+    else :
+      return True
+
+  def pause (self) : # XXX experimental, Unix only
+    if (self.send_signal(signal.SIGSTOP)) :
+      self.callback_pause()
+
+  def resume (self) : # XXX experimental, Unix only
+    if (self.send_signal(signal.SIGCONT)) :
+      self.callback_resume()
+
+  def callback_pause (self) : # TODO
+    pass
+
+  def callback_resume (self) : # TODO
+    pass
 
   def purge_files (self) :
     files = ["start","stdout","error","stop","abort","result","info","state"]
@@ -459,7 +512,7 @@ class simple_run (object) :
       pol =[0] * 100
       r = range(0,100)
       libtbx.call_back("run %d" % run, None, accumulate=True)
-
+      time.sleep(1)
       for i in range(0,n):
         for j in r:
           pol[j] = mu = (mu + 2.0) / 2.0
