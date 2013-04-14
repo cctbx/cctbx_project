@@ -3,7 +3,6 @@ def to_ewald_sphere(list_of_images):
 
     from dxtbx.sweep import SweepFactory
     from dxtbx_command_line_ext import ImageToEwaldSphere
-    from scitbx import matrix
 
     sweep = SweepFactory.sweep(list_of_images)
     beam = sweep.get_beam()

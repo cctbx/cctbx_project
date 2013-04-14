@@ -10,7 +10,6 @@ import mmtbx.utils
 from cctbx import maptbx
 from cctbx import sgtbx
 import cctbx
-import sys
 
 master_params_part1 = iotbx.phil.parse("""\
 map_type = mFobs-DFmodel
