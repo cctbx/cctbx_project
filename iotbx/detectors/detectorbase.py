@@ -190,12 +190,12 @@ CCD_IMAGE_SATURATION=65535;
     elif attr=='saturation' : return self.parameters.get('CCD_IMAGE_SATURATION',65535)
     elif attr=='rawdata' : return self.linearintdata
     elif attr=='pixel_size' : return self.parameters['PIXEL_SIZE']
-    elif attr=='osc_start' : return self.parameters['OSC_START']
+    elif attr=='osc_start' : return self.parameters.get('OSC_START',0.0)
     elif attr=='distance' : return self.parameters['DISTANCE']
-    elif attr=='wavelength' : return self.parameters['WAVELENGTH']
+    elif attr=='wavelength' : return self.parameters.get('WAVELENGTH',0.0)
     elif attr=='beamx' : return self.parameters['BEAM_CENTER_X']
     elif attr=='beamy' : return self.parameters['BEAM_CENTER_Y']
-    elif attr=='deltaphi' : return self.parameters['OSC_RANGE']
+    elif attr=='deltaphi' : return self.parameters.get('OSC_RANGE',0.0)
     elif attr=='twotheta' : return self.parameters.get('TWOTHETA',0.0)
     elif attr=='serial_number' : return self.parameters['DETECTOR_SN']
 
