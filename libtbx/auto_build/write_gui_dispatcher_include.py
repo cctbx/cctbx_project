@@ -5,7 +5,7 @@ from optparse import OptionParser
 import os.path
 import sys
 
-def run (args, prologue=None, epilogue=None) :
+def run (args, prologue=None, epilogue=None, out=sys.stdout) :
   parser = OptionParser(
     description="Generate the dispatcher include file for using "+
       "locally installed GUI (and related) libraries.  (Used in Phenix "+
@@ -20,6 +20,7 @@ def run (args, prologue=None, epilogue=None) :
     help="Additional dispatcher include to append")
   parser.add_option("--ignore_missing_dirs", dest="ignore_missing_dirs",
     action="store_true", help="Don't raise error if GTK paths don't exist")
+  parser.add_option("--quiet", action="store_true")
   # this is detached in case we need to upgrade GTK - setting GTK_PATH is
   # essential for the themes to be used correctly
   parser.add_option("--gtk_version", dest="gtk_version", action="store",
@@ -124,8 +125,9 @@ fi
   if (options.epilogue is not None) :
     f.write(open(options.epilogue).read() + "\n")
   f.close()
-  print "Wrote %s" % dispatcher
-  print "You should now run libtbx.refresh to regenerate dispatchers."
+  if (not options.quiet) :
+    print >> out, "Wrote %s" % dispatcher
+    print >> out, "You should now run libtbx.refresh to regenerate dispatchers."
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
