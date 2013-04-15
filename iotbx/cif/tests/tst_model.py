@@ -313,6 +313,21 @@ loop_
     .       ?  .
 
 """)
+  l.delete_row(index=1)
+  s = StringIO()
+  cm.show(out=s)
+  assert not show_diff(s.getvalue(),"""\
+data_fred
+loop_
+  _loop_a
+  _loop_b
+  _loop_c
+    1  -221.3  a
+  -13   4.246  cc
+    .       ?  .
+
+""")
+  #
   loop = model.loop(data={"_a_1": ('string with spaces','nospaces'),
                           "_a_2": ('a', 'b')})
   s = StringIO()
