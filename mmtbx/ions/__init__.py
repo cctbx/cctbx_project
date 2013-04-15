@@ -94,7 +94,7 @@ water
     .input_size = 80
     .help = Maximum water mFo-DFc map value
     .short_caption = Max. expected mFo-DFc map value
-  max_anom_level = 3.0
+  max_anom_level = 2.5
     .type = float
     .input_size = 80
     .help = Maximum water anomalous map value
@@ -104,11 +104,11 @@ water
     .input_size = 80
     .help = Maximum water occupancy
     .short_caption = Max. expected occupancy
-  max_stddev_b_iso = 6
+  max_stddev_b_iso = 5
     .type = float
     .input_size = 80
     .short_caption = Max. standard deviations below mean B-iso
-  min_frac_b_iso = 0.1
+  min_frac_b_iso = 0.2
     .type = float
     .input_size = 80
     .short_caption = Min. fraction of mean B-iso
@@ -139,12 +139,12 @@ phaser
     .type = float
     .input_size = 80
     .short_caption = Max. separation from mapped atom
-  fpp_ratio_min = 0.3
+  fpp_ratio_min = 0.2
     .type = float
     .input_size = 80
     .help = Minimum ratio of refined/theoretical f-double-prime.
     .short_caption = Min. f-double-prime ratio
-  fpp_ratio_max = 1.08
+  fpp_ratio_max = 1.1
     .type = float
     .input_size = 80
     .help = Maximum ratio of refined/theoretical f-double-prime.
