@@ -22,7 +22,8 @@ if (not env_etc.no_boost_python and hasattr(env_etc, "boost_adaptbx_include")):
 
   env.SharedLibrary(
     target="#lib/dxtbx_ext",
-    source=["boost_python/ext.cpp"])
+    source=[
+      "boost_python/to_ewald_sphere_helpers.cc",
+      "boost_python/ext.cpp"])
     
   env.SConscript('model/SConscript', exports={ 'env' : env })
-  env.SConscript('command_line/SConscript', exports={ 'env' : env })
