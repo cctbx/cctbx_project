@@ -24,7 +24,7 @@ standard_file_types = ["hkl", "ccp4_map", "xplor_map", "pdb", "cif", "phil",
 standard_file_extensions = {
   'pdb'  : ["pdb", "ent"],
   'hkl'  : ["mtz", "hkl", "sca", "cns", "xplor", "cv", "ref", "fobs"],
-  'cif'  : ["cif"],
+  'cif'  : ["cif", "mmcif"],
   'seq'  : ["fa", "faa", "seq", "pir", "dat", "fasta"],
   'xplor_map' : ["xplor", "map"],
   'ccp4_map'  : ["ccp4", "map"],
@@ -228,18 +228,14 @@ class any_file_input (object) :
 
   def try_as_pdb (self) :
     from iotbx.pdb import input as pdb_input
-    from scitbx.array_family import flex
-    raw_records = flex.std_string()
-    pdb_file = smart_open.for_reading(file_name=self.file_name)
-    raw_records.extend(flex.split_lines(pdb_file.read()))
     try :
-      structure = pdb_input(source_info=None, lines=raw_records)
+      pdb_inp = pdb_input(self.file_name)
     except ValueError, e :
       raise Sorry(str(e))
-    if (len(structure.atoms()) == 0) :
+    if (len(pdb_inp.atoms()) == 0) :
       raise ValueError("No ATOM or HETATM records found in %s."%self.file_name)
     self.file_type = "pdb"
-    self.file_object = structure
+    self.file_object = pdb_inp
 
   def try_as_hkl (self) :
     from iotbx.reflection_file_reader import any_reflection_file
