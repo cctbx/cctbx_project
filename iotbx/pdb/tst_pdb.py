@@ -553,8 +553,62 @@ def write_icosahedron():
       file_name="icosahedron_%d.pdb"%level,
       sites_cart=icosahedron.sites*scale)
 
+def exercise_pdb_input_error_handling():
+  from libtbx.test_utils import open_tmp_file
+  from libtbx.test_utils import Exception_expected
+  bad_pdb_string = """\
+ATOM   1  CB  LYS 109  16.113   7.345  47.084  1.00 20.00      A
+ATOM   2  CG  LYS 109  17.058   6.315  47.703  1.00 20.00      A
+ATOM   3  CB  LYS 109  26.721   1.908  15.275  1.00 20.00      B
+ATOM   4  CG  LYS 109  27.664   2.793  16.091  1.00 20.00      B
+"""
+  f = open_tmp_file(suffix="bad.pdb")
+  f.write(bad_pdb_string)
+  f.close()
+  try: pdb_inp = pdb.input(file_name=f.name, source_info=None)
+  except ValueError, e:
+    err_message = str(e)
+    assert bad_pdb_string.splitlines()[0] in err_message
+  else: raise Exception_expected
+  bad_cif_loop_string = """\
+data_cif
+loop_
+  _atom_site.group_PDB
+  _atom_site.id
+  _atom_site.label_atom_id
+  _atom_site.label_alt_id
+  _atom_site.label_comp_id
+  _atom_site.auth_asym_id
+  _atom_site.auth_seq_id
+  _atom_site.pdbx_PDB_ins_code
+  _atom_site.Cartn_x
+  _atom_site.Cartn_y
+  _atom_site.Cartn_z
+  _atom_site.occupancy
+  _atom_site.B_iso_or_equiv
+  _atom_site.type_symbol
+  _atom_site.pdbx_formal_charge
+  _atom_site.label_asym_id
+  _atom_site.label_entity_id
+  _atom_site.label_seq_id
+  #_atom_site.pdbx_PDB_model_num
+ATOM  47  CA . THR  C   22  ?   -7.12300  19.28700  -2.26800  1.000   8.32783  C   ? B  ?  11  1
+ATOM  52  CA . ASN  C   25  ?  -11.06500  18.97000  -5.48100  1.000   8.20531  C   ? C  ?  12  1
+ATOM  60  CA . VAL  C   26  ?  -12.16900  22.54800  -4.78000  1.000   8.45988  C   ? C  ?  13  1
+"""
+  f = open_tmp_file(suffix="bad.cif")
+  f.write(bad_cif_loop_string)
+  f.close()
+  try: pdb_inp = pdb.input(file_name=f.name, source_info=None)
+  except iotbx.cif.CifParserError, e:
+    err_message = str(e)
+    assert err_message == \
+           "Wrong number of data items for loop containing _atom_site.group_PDB"
+  else: raise Exception_expected
+
 def run():
   verbose = "--verbose" in sys.argv[1:]
+  exercise_pdb_input_error_handling()
   exercise_systematic_chain_ids()
   exercise_amino_acid_codes()
   exercise_records()

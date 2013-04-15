@@ -605,7 +605,13 @@ class pdb_input_from_any(object):
                raise_sorry_if_format_error=False):
     content = None
     from iotbx.pdb.mmcif import cif_input
-    for file_input in (pdb_input, cif_input):
+    mmcif_exts = ('.cif', '.mmcif')
+    if file_name is not None and file_name.endswith(mmcif_exts):
+      file_inputs = (cif_input, pdb_input)
+    else:
+      file_inputs = (pdb_input, cif_input)
+    exc_info = None
+    for file_input in file_inputs:
       try:
         content = file_input(
           file_name=file_name,
@@ -613,7 +619,12 @@ class pdb_input_from_any(object):
           lines=lines,
           pdb_id=pdb_id,
           raise_sorry_if_format_error=raise_sorry_if_format_error)
-      except Exception, e: continue
+      except Exception, e:
+        # store the first error encountered and re-raise later if can't
+        # interpret as any file type
+        if exc_info is None: exc_info = sys.exc_info()
+        continue
+      else: exc_info = None
       if file_input is pdb_input:
         # XXX nasty hack:
         #   pdb_input only raises an error if there are lines starting with
@@ -626,7 +637,8 @@ class pdb_input_from_any(object):
             n_unknown_records == (n_records - n_blank_records)):
           continue
       break
-
+    if exc_info is not None:
+      raise exc_info[0], exc_info[1], exc_info[2]
     if content is None:
       raise Sorry("Could not interpret input as any file type.")
     self._file_content = content
