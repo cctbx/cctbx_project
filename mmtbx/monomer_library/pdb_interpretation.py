@@ -3175,20 +3175,23 @@ class build_all_chain_proxies(object):
     if verbose:
       print 'Link created'
       bond.show()
-    try:
-      link_resolution = add_bond_proxies(
-        counters=counters(label="apply_cif_link_bond"),
-        m_i=m_i,
-        m_j=m_j,
-        bond_list=[bond],
-        bond_simple_proxy_registry=self.geometry_proxy_registries
-        .bond_simple,
-        sites_cart=self.sites_cart,
-        distance_cutoff=self.params.link_distance_cutoff,
-        )
-    except Exception, e:
-      if str(e).find("Conflicting bond_simple restraints:")>-1: return False
-      raise e
+    i_seqs = [apply.atom1.i_seq, apply.atom2.i_seq]
+    print i_seqs
+    print bond.show()
+    if self.geometry_proxy_registries.bond_simple.is_proxy_set(
+      i_seqs=i_seqs,
+      ):
+      return False
+    link_resolution = add_bond_proxies(
+      counters=counters(label="apply_cif_link_bond"),
+      m_i=m_i,
+      m_j=m_j,
+      bond_list=[bond],
+      bond_simple_proxy_registry=self.geometry_proxy_registries
+      .bond_simple,
+      sites_cart=self.sites_cart,
+      distance_cutoff=self.params.link_distance_cutoff,
+      )
     link.bond_list.append(bond)
     # angles
     bonds1=[]
