@@ -120,6 +120,12 @@ class bond_simple_proxy_registry(proxy_registry_base):
     proxy_registry_base.initialize_table(self)
     self.table = [{} for i in xrange(self.n_seq)]
 
+  def is_proxy_set(self, i_seqs):
+    if (not self.table[i_seqs[0]].has_key(i_seqs[1])):
+      return None
+    else:
+      return True
+
   def process(self, source_info, proxy, tolerance=1.e-6):
     result = proxy_registry_process_result()
     proxy = proxy.sort_i_seqs()

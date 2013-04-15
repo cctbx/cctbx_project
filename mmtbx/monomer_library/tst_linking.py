@@ -881,38 +881,82 @@ CSY        HD21    H   HCR6  .          4.4341   13.7482    8.6900
 """,
   "linking_test_ALA-ALA-ALA.pdb" : """
 HETATM    1  N   ALA A   1      -0.424   1.960   3.877  1.00 20.00      A    N+1
-HETATM    2  H   ALA A   1       0.452   1.694   3.861  1.00 20.00      A    H  
-HETATM    3  H2  ALA A   1      -0.472   2.843   4.121  1.00 20.00      A    H  
-HETATM    4  H3  ALA A   1      -0.888   1.448   4.484  1.00 20.00      A    H  
-HETATM    5  CA  ALA A   1      -0.994   1.794   2.582  1.00 20.00      A    C  
-HETATM    6  HA  ALA A   1      -0.584   2.442   1.977  1.00 20.00      A    H  
-HETATM    7  CB  ALA A   1      -2.476   2.066   2.644  1.00 20.00      A    C  
-HETATM    8  HB1 ALA A   1      -2.627   2.987   2.945  1.00 20.00      A    H  
-HETATM    9  HB2 ALA A   1      -2.867   1.945   1.755  1.00 20.00      A    H  
-HETATM   10  HB3 ALA A   1      -2.896   1.444   3.272  1.00 20.00      A    H  
-HETATM   11  C   ALA A   1      -0.695   0.397   2.070  1.00 20.00      A    C  
-HETATM   12  O   ALA A   1      -1.218  -0.566   2.593  1.00 20.00      A    O  
-HETATM   13  N   ALA A   2       0.165   0.219   0.945  1.00 20.00      A    N  
-HETATM   14  H   ALA A   2       0.578   0.941   0.568  1.00 20.00      A    H  
-HETATM   15  CA  ALA A   2       0.460  -1.094   0.477  1.00 20.00      A    C  
-HETATM   16  HA  ALA A   2      -0.095  -1.682   1.027  1.00 20.00      A    H  
-HETATM   17  CB  ALA A   2       1.882  -1.540   0.755  1.00 20.00      A    C  
-HETATM   18  HB1 ALA A   2       2.509  -0.921   0.323  1.00 20.00      A    H  
-HETATM   19  HB2 ALA A   2       2.039  -1.544   1.721  1.00 20.00      A    H  
-HETATM   20  HB3 ALA A   2       2.016  -2.441   0.399  1.00 20.00      A    H  
-HETATM   21  C   ALA A   2      -0.001  -1.357  -0.949  1.00 20.00      A    C  
-HETATM   22  O   ALA A   2      -1.001  -2.020  -1.152  1.00 20.00      A    O  
-HETATM   23  N   ALA A   3       0.750  -0.851  -2.042  1.00 20.00      A    N  
-HETATM   24  H   ALA A   3       1.494  -0.350  -1.890  1.00 20.00      A    H  
-HETATM   25  CA  ALA A   3       0.361  -1.157  -3.372  1.00 20.00      A    C  
-HETATM   26  HA  ALA A   3      -0.113  -2.013  -3.369  1.00 20.00      A    H  
-HETATM   27  CB  ALA A   3       1.587  -1.293  -4.240  1.00 20.00      A    C  
-HETATM   28  HB1 ALA A   3       2.124  -0.477  -4.175  1.00 20.00      A    H  
-HETATM   29  HB2 ALA A   3       1.315  -1.431  -5.171  1.00 20.00      A    H  
-HETATM   30  HB3 ALA A   3       2.118  -2.058  -3.937  1.00 20.00      A    H  
-HETATM   31  C   ALA A   3      -0.576  -0.091  -3.884  1.00 20.00      A    C  
-HETATM   32  O   ALA A   3      -1.633  -0.418  -4.488  1.00 20.00      A    O  
+HETATM    2  H   ALA A   1       0.452   1.694   3.861  1.00 20.00      A    H
+HETATM    3  H2  ALA A   1      -0.472   2.843   4.121  1.00 20.00      A    H
+HETATM    4  H3  ALA A   1      -0.888   1.448   4.484  1.00 20.00      A    H
+HETATM    5  CA  ALA A   1      -0.994   1.794   2.582  1.00 20.00      A    C
+HETATM    6  HA  ALA A   1      -0.584   2.442   1.977  1.00 20.00      A    H
+HETATM    7  CB  ALA A   1      -2.476   2.066   2.644  1.00 20.00      A    C
+HETATM    8  HB1 ALA A   1      -2.627   2.987   2.945  1.00 20.00      A    H
+HETATM    9  HB2 ALA A   1      -2.867   1.945   1.755  1.00 20.00      A    H
+HETATM   10  HB3 ALA A   1      -2.896   1.444   3.272  1.00 20.00      A    H
+HETATM   11  C   ALA A   1      -0.695   0.397   2.070  1.00 20.00      A    C
+HETATM   12  O   ALA A   1      -1.218  -0.566   2.593  1.00 20.00      A    O
+HETATM   13  N   ALA A   2       0.165   0.219   0.945  1.00 20.00      A    N
+HETATM   14  H   ALA A   2       0.578   0.941   0.568  1.00 20.00      A    H
+HETATM   15  CA  ALA A   2       0.460  -1.094   0.477  1.00 20.00      A    C
+HETATM   16  HA  ALA A   2      -0.095  -1.682   1.027  1.00 20.00      A    H
+HETATM   17  CB  ALA A   2       1.882  -1.540   0.755  1.00 20.00      A    C
+HETATM   18  HB1 ALA A   2       2.509  -0.921   0.323  1.00 20.00      A    H
+HETATM   19  HB2 ALA A   2       2.039  -1.544   1.721  1.00 20.00      A    H
+HETATM   20  HB3 ALA A   2       2.016  -2.441   0.399  1.00 20.00      A    H
+HETATM   21  C   ALA A   2      -0.001  -1.357  -0.949  1.00 20.00      A    C
+HETATM   22  O   ALA A   2      -1.001  -2.020  -1.152  1.00 20.00      A    O
+HETATM   23  N   ALA A   3       0.750  -0.851  -2.042  1.00 20.00      A    N
+HETATM   24  H   ALA A   3       1.494  -0.350  -1.890  1.00 20.00      A    H
+HETATM   25  CA  ALA A   3       0.361  -1.157  -3.372  1.00 20.00      A    C
+HETATM   26  HA  ALA A   3      -0.113  -2.013  -3.369  1.00 20.00      A    H
+HETATM   27  CB  ALA A   3       1.587  -1.293  -4.240  1.00 20.00      A    C
+HETATM   28  HB1 ALA A   3       2.124  -0.477  -4.175  1.00 20.00      A    H
+HETATM   29  HB2 ALA A   3       1.315  -1.431  -5.171  1.00 20.00      A    H
+HETATM   30  HB3 ALA A   3       2.118  -2.058  -3.937  1.00 20.00      A    H
+HETATM   31  C   ALA A   3      -0.576  -0.091  -3.884  1.00 20.00      A    C
+HETATM   32  O   ALA A   3      -1.633  -0.418  -4.488  1.00 20.00      A    O
 HETATM   33  OXT ALA A   3      -0.293   1.123  -3.725  1.00 20.00      A    O-1
+""",
+  "linking_test_LEU-ILE-LLP.pdb" : """
+ATOM   3495  N   LEU A 224      84.936  56.370  26.492  1.00 31.32           N
+ATOM   3496  CA  LEU A 224      86.087  57.225  26.135  1.00 30.82           C
+ATOM   3497  C   LEU A 224      86.112  57.549  24.649  1.00 27.78           C
+ATOM   3498  O   LEU A 224      86.895  58.382  24.225  1.00 29.46           O
+ATOM   3499  CB  LEU A 224      87.435  56.606  26.579  1.00 31.34           C
+ATOM   3500  CG  LEU A 224      87.711  56.416  28.076  1.00 35.99           C
+ATOM   3501  CD1ALEU A 224      89.180  56.120  28.257  1.00 36.23           C
+ATOM   3502  CD2ALEU A 224      87.332  57.588  28.929  1.00 29.84           C
+ATOM   3501  CD1BLEU A 224      89.180  56.120  28.257  1.00 36.23           C
+ATOM   3502  CD2BLEU A 224      87.332  57.588  28.929  1.00 29.84           C
+ATOM   3514  N   ILE A 225      85.265  56.900  23.851  1.00 31.47           N
+ATOM   3515  CA  ILE A 225      85.181  57.246  22.396  1.00 30.32           C
+ATOM   3516  C   ILE A 225      84.077  58.310  22.174  1.00 30.83           C
+ATOM   3517  O   ILE A 225      83.708  58.680  21.038  1.00 30.42           O
+ATOM   3518  CB  ILE A 225      85.181  56.034  21.373  1.00 30.48           C
+ATOM   3519  CG1 ILE A 225      83.888  55.195  21.401  1.00 31.63           C
+ATOM   3520  CG2 ILE A 225      86.446  55.202  21.595  1.00 28.87           C
+ATOM   3521  CD1 ILE A 225      83.847  54.133  20.295  1.00 27.74           C
+HETATM 3533  N1  LLP A 226      74.140  55.244  27.139  1.00 34.78           N
+HETATM 3534  C2  LLP A 226      74.022  56.296  26.306  1.00 34.37           C
+HETATM 3535  C2A LLP A 226      72.981  57.298  26.636  1.00 31.20           C
+HETATM 3536  C3  LLP A 226      74.910  56.419  25.219  1.00 46.03           C
+HETATM 3537  O3  LLP A 226      74.838  57.405  24.475  1.00 43.89           O
+HETATM 3538  C4  LLP A 226      75.894  55.425  24.988  1.00 45.75           C
+HETATM 3539  C4A LLP A 226      76.887  55.499  23.835  1.00 41.98           C
+HETATM 3540  C5  LLP A 226      75.956  54.329  25.861  1.00 42.65           C
+HETATM 3541  C6  LLP A 226      75.082  54.259  26.926  1.00 39.54           C
+HETATM 3542  C5A LLP A 226      76.977  53.242  25.678  1.00 37.94           C
+HETATM 3543  O4P LLP A 226      77.255  52.892  24.324  1.00 45.67           O
+HETATM 3544  P   LLP A 226      78.607  52.234  23.701  1.00 46.08           P
+HETATM 3545  O1P LLP A 226      78.642  50.849  24.248  1.00 49.13           O
+HETATM 3546  O2P LLP A 226      78.105  52.317  22.321  1.00 45.15           O
+HETATM 3547  O3P LLP A 226      79.820  53.020  24.061  1.00 43.19           O
+HETATM 3548  N   LLP A 226      83.553  58.762  23.305  1.00 29.45           N
+HETATM 3549  CA  LLP A 226      82.694  59.914  23.355  1.00 29.89           C
+HETATM 3550  CB  LLP A 226      81.352  59.615  24.024  1.00 34.17           C
+HETATM 3551  CG  LLP A 226      80.579  58.528  23.261  1.00 29.70           C
+HETATM 3552  CD  LLP A 226      79.204  58.226  23.823  1.00 37.04           C
+HETATM 3553  CE  LLP A 226      78.592  56.995  23.132  1.00 37.84           C
+HETATM 3554  NZ  LLP A 226      77.163  56.757  23.459  1.00 42.07           N
+HETATM 3555  C   LLP A 226      83.444  61.050  24.065  1.00 28.64           C
+HETATM 3556  O   LLP A 226      84.683  61.078  24.109  1.00 26.60           O
 """,
         }
 links = {
@@ -929,6 +973,7 @@ links = {
   'linking_test_LYS-ABA-GLU.pdb' : [23,23],
   "linking_test_ALA-ALA-ALA.pdb" : [32,32],
   "linking_test_MAN-SER.pdb" : [17, 17],
+  "linking_test_LEU-ILE-LLP.pdb" : [42, 42],
   }
 
 def run():
