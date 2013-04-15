@@ -152,7 +152,7 @@ class manager(object):
     if(self.map_cutoff < 0):
       self.map_cutoff *= -1
       negative = True
-      fft_map_data = fft_map_data * (-1.)
+      fft_map_data *= -1
     min_distance_sym_equiv = self.params.peak_search.min_distance_sym_equiv
     if(min_distance_sym_equiv is None):
       min_distance_sym_equiv = \
