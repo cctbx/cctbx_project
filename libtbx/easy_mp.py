@@ -481,7 +481,7 @@ def parallel_map (
     queue = None
     factory_tmp = factory
     if (factory_tmp is None) :
-      qhandler_function = processing.INTERFACE_FOR[method]
+      qhandler_function, evaluator = processing.INTERFACE_FOR[method]
       qhandler = qhandler_function(
         command=qsub_command,
         asynchronous=asynchronous)
