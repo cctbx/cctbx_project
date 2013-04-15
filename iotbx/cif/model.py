@@ -506,6 +506,11 @@ class loop(DictMixin):
     for key, value in columns.iteritems():
       self.add_column(key, value)
 
+  def delete_row(self, index):
+    assert index < self.n_rows()
+    for column in self._columns.values():
+      del column[index]
+
   def __copy__(self):
     new = loop()
     new._columns = self._columns.copy()
