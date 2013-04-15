@@ -17,7 +17,7 @@
 #include <dxtbx/model/goniometer.h>
 #include <dxtbx/model/scan.h>
 
-namespace dxtbx { namespace command_line { namespace boost_python {
+namespace dxtbx { namespace boost_python {
 
   using namespace boost::python;
   
@@ -84,4 +84,4 @@ namespace dxtbx { namespace command_line { namespace boost_python {
       .def("__call__", &ImageToEwaldSphere::operator());  
   }
 
-}}} // namespace dxtbx::command_line::boost_python
+}} // namespace dxtbx::boost_python
