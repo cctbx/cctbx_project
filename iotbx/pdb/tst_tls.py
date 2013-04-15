@@ -40,7 +40,8 @@ def exercise_mmcif_tls():
   s = StringIO()
   print >> s, cif_model
   s.seek(0)
-  cif_hierarchy_recycled = iotbx.pdb.input(lines=s.readlines()).construct_hierarchy()
+  cif_hierarchy_recycled = iotbx.pdb.input(
+    lines=s.readlines(), source_info=None).construct_hierarchy()
   tls_params_recycled = cif_input.extract_tls_params(cif_hierarchy_recycled).tls_params
   assert len(tls_params_recycled) == len(cif_tls_params) == 3
   check_tls_params(tls_params_recycled, cif_tls_params)
@@ -73,7 +74,8 @@ def exercise_mmcif_tls():
   s = StringIO()
   print >> s, cif_model
   s.seek(0)
-  cif_hierarchy_recycled = iotbx.pdb.input(lines=s.readlines()).construct_hierarchy()
+  cif_hierarchy_recycled = iotbx.pdb.input(
+    lines=s.readlines(), source_info=None).construct_hierarchy()
   tls_params_recycled = cif_input.extract_tls_params(cif_hierarchy_recycled).tls_params
   assert len(tls_params_recycled) == len(cif_tls_params) == 18
   check_tls_params(tls_params_recycled, cif_tls_params)
@@ -107,7 +109,8 @@ def exercise_mmcif_tls():
   s = StringIO()
   print >> s, cif_model
   s.seek(0)
-  cif_hierarchy_recycled = iotbx.pdb.input(lines=s.readlines()).construct_hierarchy()
+  cif_hierarchy_recycled = iotbx.pdb.input(
+    lines=s.readlines(), source_info=None).construct_hierarchy()
   tls_params_recycled = cif_input.extract_tls_params(cif_hierarchy_recycled).tls_params
   assert len(tls_params_recycled) == len(cif_tls_params) == 1
   check_tls_params(tls_params_recycled, cif_tls_params)
