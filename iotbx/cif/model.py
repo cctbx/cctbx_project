@@ -58,7 +58,7 @@ class cif(DictMixin):
   def deepcopy(self):
     return copy.deepcopy(self)
 
-  def show(self, out=None, indent="  ",
+  def show(self, out=None, indent="  ", indent_row=None,
            data_name_field_width=34,
            loop_format_strings=None):
     if out is None:
@@ -66,7 +66,8 @@ class cif(DictMixin):
     for name, block in self.items():
       print >> out, "data_%s" %name
       block.show(
-        out=out, indent=indent, data_name_field_width=data_name_field_width,
+        out=out, indent=indent, indent_row=indent_row,
+        data_name_field_width=data_name_field_width,
         loop_format_strings=loop_format_strings)
 
   def __str__(self):
@@ -368,7 +369,7 @@ class block(block_base):
     block_base.update(self, other, **kwargs)
     self.saves.update(other.saves)
 
-  def show(self, out=None, indent="  ",
+  def show(self, out=None, indent="  ", indent_row=None,
            data_name_field_width=34,
            loop_format_strings=None):
     if out is None:
@@ -388,9 +389,10 @@ class block(block_base):
       else:
         if loop_format_strings is not None and k in loop_format_strings:
           self.loops[k].show(
-            out=out, indent=indent, fmt_str=loop_format_strings[k])
+            out=out, indent=indent, indent_row=indent_row,
+            fmt_str=loop_format_strings[k])
         else:
-          self.loops[k].show(out=out, indent=indent)
+          self.loops[k].show(out=out, indent=indent, indent_row=indent_row)
         print >> out
 
   def sort(self, recursive=False, key=None, reverse=False):
@@ -528,10 +530,12 @@ class loop(DictMixin):
   def deepcopy(self):
     return copy.deepcopy(self)
 
-  def show(self, out=None, indent="  ", fmt_str=None, align_columns=True):
+  def show(self, out=None, indent="  ", indent_row=None, fmt_str=None, align_columns=True):
     assert self.n_rows() > 0 and self.n_columns() > 0
     if out is None:
       out = sys.stdout
+    if indent_row is None:
+      indent_row = indent
     print >> out, "loop_"
     for k in self.keys():
       print >> out, indent + k
@@ -553,7 +557,7 @@ class loop(DictMixin):
             else:
               break
       if fmt_str is None:
-        fmt_str = indent + ' '.join(["%s"]*len(values))
+        fmt_str = indent_row + ' '.join(["%s"]*len(values))
       for i in range(self.size()):
         print >> out, fmt_str % tuple([values[j][i] for j in range(len(values))])
     elif align_columns:
@@ -572,7 +576,7 @@ class loop(DictMixin):
         except ValueError:
           width *= -1
         fmt_str.append("%%%is" %width)
-      fmt_str = indent + "  ".join(fmt_str)
+      fmt_str = indent_row + "  ".join(fmt_str)
       for i in range(self.size()):
         print >> out, (fmt_str %
                        tuple([values[j][i]
