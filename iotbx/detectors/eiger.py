@@ -144,3 +144,9 @@ class EIGERImage(DetectorImageBase):
 
   def dataoffset(self):
       return 0
+
+if __name__=="__main__":
+  import sys
+  E = EIGERImage(sys.argv[1])
+  E.readHeader()
+  E.show_header()
