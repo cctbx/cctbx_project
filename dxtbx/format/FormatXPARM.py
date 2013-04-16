@@ -19,7 +19,7 @@ class FormatXPARM(Format):
     def understand(image_file):
         '''Check to see if this looks like an CBF format image, i.e. we can
         make sense of it.'''
-        return xparm.reader.is_xparm_file(image_file)
+        return xparm.reader.is_xparm_file(image_file, check_filename = False)
 
     def __init__(self, image_file):
         '''Initialise the image structure from the given file.'''
@@ -50,22 +50,22 @@ class FormatXPARM(Format):
 
         # Read some quantities directly from the XPARM.XDS file
         xparm_handle = xparm.reader()
-        xparm_handle.read_file(xparm_filename)
-        self._image_size        = xparm_handle.detector_size
-        self._pixel_size        = xparm_handle.pixel_size
-        self._starting_angle    = xparm_handle.starting_angle
+        xparm_handle.read_file(xparm_filename, check_filename = False)
+        self._image_size = xparm_handle.detector_size
+        self._pixel_size = xparm_handle.pixel_size
+        self._starting_angle = xparm_handle.starting_angle
         self._oscillation_range = xparm_handle.oscillation_range
-        self._starting_frame    = xparm_handle.starting_frame
+        self._starting_frame = xparm_handle.starting_frame
 
         # Create a coordinate frame converter and extract other quantities
         cfc = coordinate_frame_converter(xparm_filename)
         self._detector_origin = cfc.get('detector_origin')
-        self._rotation_axis   = cfc.get('rotation_axis')
-        self._fast_axis       = cfc.get('detector_fast')
-        self._slow_axis       = cfc.get('detector_slow')
-        self._wavelength      = cfc.get('wavelength')
-        sample_vector         = cfc.get('sample_to_source')
-        self._beam_vector     = tuple(-matrix.col(sample_vector))
+        self._rotation_axis = cfc.get('rotation_axis')
+        self._fast_axis = cfc.get('detector_fast')
+        self._slow_axis = cfc.get('detector_slow')
+        self._wavelength  = cfc.get('wavelength')
+        sample_vector = cfc.get('sample_to_source')
+        self._beam_vector = tuple(-matrix.col(sample_vector))
 
     def _goniometer(self):
         '''Return a working goniometer instance.'''
