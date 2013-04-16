@@ -1,4 +1,7 @@
 from __future__ import division
+
+from libtbx.queuing_system_utils import result
+
 import time
 from collections import deque
 
@@ -24,9 +27,10 @@ class Result(object):
   Empty calculation result
   """
 
-  def __init__(self, identifier):
+  def __init__(self, identifier, value):
 
     self.identifier = identifier
+    self.value = value
 
 
   def __repr__(self):
@@ -36,28 +40,7 @@ class Result(object):
 
   def __call__(self):
 
-    return None
-
-
-class ErrorEnding(object):
-  """
-  Error raised by the calculation result
-  """
-
-  def __init__(self, identifier, exception):
-
-    self.identifier = identifier
-    self.exception = exception
-
-
-  def __repr__(self):
-
-    return "ErrorEnding(id = %s)" % id( self.identifier )
-
-
-  def __call__(self):
-
-    raise self.exception
+    return self.value()
 
 
 class ProcessingException(Exception):
@@ -80,7 +63,7 @@ class NullProcessor(object):
   @staticmethod
   def finalize(identifier):
 
-    return Result( identifier = identifier )
+    return Result( identifier = identifier, value = result.Sucess( value = None ) )
 
 
   @staticmethod
@@ -106,27 +89,6 @@ class RetrieveTarget(object):
     self.queue.put( result )
 
 
-class RetrieveResult(object):
-  """
-  Result bundled with job
-  """
-
-  def __init__(self, identifier, result):
-
-    self.identifier = identifier
-    self.result = result
-
-
-  def __repr__(self):
-
-    return "RetrieveResult(id = %s)" % id( self.identifier )
-
-
-  def __call__(self):
-
-    return self.result
-
-
 class RetrieveProcessor(object):
   """
   Adds a retrieve step
@@ -146,12 +108,12 @@ class RetrieveProcessor(object):
     return RetrieveTarget( queue = self.queue, target = target )
 
 
-  def finalize(self, identifier):
+  def finalize(self, job):
 
     from Queue import Empty
 
     try:
-      result = self.queue.get( block = self.block, timeout = self.timeout )
+      job_result = self.queue.get( block = self.block, timeout = self.timeout )
 
     except Empty:
       now = time.time()
@@ -163,16 +125,51 @@ class RetrieveProcessor(object):
       if ( now - self.request_timeout ) <= self.grace:
         raise ProcessingException, "Timeout on %s" % self.queue
 
+      self.reset()
       raise RuntimeError, "Timeout on %s" % self.queue
 
     self.request_timeout = None
 
-    return RetrieveResult( identifier = identifier, result = result )
+    return job_result
 
 
   def reset(self):
 
     self.request_timeout = None
+
+
+class FetchProcessor(object):
+  """
+  Adds a fetch step. Only affects postprocessing. Can only be combined with
+  job classes that save the return value as property
+  """
+
+  def __init__(self, transformation):
+
+    self.transformation = transformation
+
+
+  def prepare(self, target):
+
+    return target
+
+
+
+  def finalize(self, job):
+
+    return self.transformation( job.result )
+
+
+  @classmethod
+  def Unpack(cls):
+
+    return cls( transformation = lambda r: r() )
+
+
+  @classmethod
+  def Identity(cls):
+
+    return cls( transformation = lambda r: r )
 
 
 class ExecutionUnit(object):
@@ -198,20 +195,148 @@ class ExecutionUnit(object):
     return job
 
 
-  def finalize(self, identifier):
+  def finalize(self, job):
 
-    return self.processor.finalize( identifier = identifier )
+    return self.processor.finalize( job = job )
 
 
-  def error(self, identifier, exception):
+  def reset(self):
 
     self.processor.reset()
-    return ErrorEnding( identifier = identifier, exception = exception )
 
 
   def __str__(self):
 
     return "%s(id = %s)" % ( self.__class__.__name__, id( self ) )
+
+
+class RunningState(object):
+  """
+  A job that is currently running
+  """
+
+  def __init__(self, job):
+
+    self.job = job
+
+
+  def is_alive(self):
+
+    return self.job.is_alive()
+
+
+  def initiate_postprocessing(self, job):
+
+    self.job.join()
+
+    exit_code = getattr( self.job, "exitcode", 0 ) # Thread has no "exitcode" attribute
+
+    if exit_code == 0:
+      job.status = PostprocessingState( job = self.job )
+
+    else:
+      job.status = ValueState(
+        value = result.Error(
+          exception =RuntimeError( "exit code = %s" % exit_code ),
+          ),
+        )
+
+
+  def perform_postprocessing(self, job):
+
+    self.initiate_postprocessing( job = job )
+    job.perform_postprocessing()
+
+
+  def get(self, job):
+
+    self.initiate_postprocessing( job = job )
+    return job.get()
+
+
+  def __str__(self):
+
+    return "running"
+
+
+class PostprocessingState(object):
+  """
+  A job that is trying to postprocess
+  """
+
+  def __init__(self, job):
+
+    self.job = job
+
+
+  def is_alive(self):
+
+    return False
+
+
+  def initiate_postprocessing(self, job):
+
+    raise RuntimeError, "initiate_postprocess called second time"
+
+
+  def perform_postprocessing(self, job):
+
+    try:
+      value = result.Success( value = job.unit.finalize( job = self.job ) )
+
+    except ProcessingException, e:
+      raise
+
+    except Exception, e:
+      value = result.Error( exception = e )
+
+    job.status = ValueState( value = value )
+
+
+  def get(self, job):
+
+    self.perform_postprocessing( job = job )
+    return job.get()
+
+
+  def __str__(self):
+
+    return "postprocessing"
+
+
+class ValueState(object):
+  """
+  A job that either exited with an error or failed postprocessing
+  """
+
+  def __init__(self, value):
+
+    self.value = value
+
+
+  def is_alive(self):
+
+    return False
+
+
+  def initiate_postprocessing(self, job):
+
+    raise RuntimeError, "initiate_postprocess called second time"
+
+
+  def perform_postprocessing(self, job):
+
+    pass
+
+
+  def get(self, job):
+
+    return self.value
+
+
+  def __str__(self):
+
+    return "finished"
 
 
 class ExecutingJob(object):
@@ -223,135 +348,167 @@ class ExecutingJob(object):
 
     self.unit = unit
     self.identifier = identifier
-    self.job = self.unit.start(
-      target = identifier.target,
-      args = identifier.args,
-      kwargs = identifier.kwargs,
+    self.status = RunningState(
+      job = self.unit.start(
+        target = identifier.target,
+        args = identifier.args,
+        kwargs = identifier.kwargs,
+        )
       )
 
 
   def is_alive(self):
 
-    return self.job.is_alive()
+    return self.status.is_alive()
 
 
-  def postprocess(self):
+  def initiate_postprocessing(self):
 
-    self.job.join()
+    self.status.initiate_postprocessing( job = self )
 
-    exit_code = getattr( self.job, "exitcode", 0 ) # Thread has no "exitcode" attribute
 
-    if exit_code == 0:
-      self.method = self.unit.finalize
-      self.args = ( self.identifier, )
+  def perform_postprocessing(self):
 
-    else:
-      self.method = self.unit.error
-      self.args = ( self.identifier, RuntimeError( "exit code = %s" % exit_code ) )
+    self.status.perform_postprocessing( job = self )
 
 
   def get(self):
 
-    assert hasattr( self, "method" ) and hasattr( self, "args" )
-
-    try:
-      result = self.method( *self.args )
-
-    except RuntimeError, e:
-      self.method = self.unit.error
-      self.args = ( self.identifier, e )
-      result = self.method( * self.args )
-
-    return result
+    return Result(
+      identifier = self.identifier,
+      value = self.status.get( job = self ),
+      )
 
 
   def __str__(self):
 
-    return "%s(\n  unit = %s,\n  indentifier = %s,\n  job = %s\n)" % (
+    return "%s(\n  unit = %s,\n  identifier = %s,\n  status = %s\n)" % (
       self.__class__.__name__,
       self.unit,
       self.identifier,
-      self.job,
+      self.status,
       )
 
 
-class ResultIterator(object):
+# Manager implementation
+"""
+Process queue Manager interface
+
+Manager properties:
+  waiting_jobs
+  running_jobs
+  completed_jobs
+  known_jobs
+  completed_results
+
+Manager iterators:
+  results
+
+Manager methods:
+  submit(target, args = (), kwargs = {}):
+  is_empty():
+  is_full():
+  wait():
+  wait_for(identifier):
+  result_for(identifier):
+  join():
+  poll():
+"""
+
+
+class Allocated(object):
   """
-  Iterate over completed results
+  The number of units is know upfront
   """
 
-  def __init__(self, manager):
+  def __init__(self, units):
 
-    self.manager = manager
+    self.units = set( units )
 
 
-  def next(self):
+  def empty(self):
 
-    self.manager.wait()
+    return not bool( self.units )
+
+
+  def put(self, unit):
+
+    self.units.add( unit )
+
+
+  def get(self):
+
+    unit = max( self.units, key = lambda s: s.priority )
+    self.units.remove( unit )
+    return unit
+
+
+class Unlimited(object):
+  """
+  No limit on the number of execution units
+  """
+
+  def __init__(self, factory):
+
+    self.factory = factory
+
+
+  def empty(self):
+
+    return False
+
+
+  def put(self, unit):
+
+    pass
+
+
+  def get(self):
+
+    return self.factory()
+
+
+class UnlimitedCached(object):
+  """
+  No limit on the number of execution units. Created units are cached for reuse
+  """
+
+  def __init__(self, factory):
+
+    self.factory = factory
+    self.cache = set()
+
+
+  def empty(self):
+
+    return False
+
+
+  def put(self, unit):
+
+    self.cache.add( unit )
+
+
+  def get(self):
 
     try:
-      result = self.manager.completed_results.popleft()
+      unit = self.cache.pop()
 
-    except IndexError:
-      raise StopIteration
+    except KeyError:
+      unit = self.factory()
 
-    return result
-
-
-  def __iter__(self):
-
-    return self
+    return unit
 
 
-class OrderedResultIterator(object):
+class Scheduler(object):
   """
-  Iterate over completed results in specified order
+  Pure scheduler
+  Job startup and pulldown is delegated to a handler object
   """
 
-  def __init__(self, manager, identifiers):
+  def __init__(self, handler, polling_interval = 0.01):
 
-    self.manager = manager
-    self.identifiers = iter( identifiers )
-
-
-  def next(self):
-
-    identifier = self.identifiers.next() # raise StopIteration
-    return self.manager.result_for( identifier = identifier )
-
-
-  def __iter__(self):
-
-    return self
-
-
-class Manager(object):
-  """
-  Process queue
-
-  Manager properties:
-    waiting_jobs
-    running_jobs
-    completed_jobs
-    known_jobs
-
-  Manager iterators:
-    results
-
-  Manager methods:
-    submit(target, args = (), kwargs = {}):
-    is_empty():
-    is_full():
-    wait():
-    wait_for(identifier):
-    result_for(identifier):
-    join():
-    poll():
-  """
-
-  def __init__(self, units, polling_interval = 0.01):
-
-    self.available_units = set( units )
+    self.handler = handler
     self.executing = set()
     self.waiting_jobs = deque()
     self.postprocessing = deque()
@@ -397,11 +554,6 @@ class Manager(object):
       yield self.completed_results.popleft()
 
 
-  def results_in_order_of(self, identifiers):
-
-    return OrderedResultIterator( manager = self, identifiers = identifiers )
-
-
   def submit(self, target, args = (), kwargs = {}):
 
     identifier = Identifier( target = target, args = args, kwargs = kwargs )
@@ -417,7 +569,7 @@ class Manager(object):
 
   def is_full(self):
 
-    return not self.available_units
+    return self.handler.empty()
 
 
   def wait(self):
@@ -460,7 +612,7 @@ class Manager(object):
     for job in list( self.executing ):
       if not job.is_alive():
         self.executing.remove( job )
-        job.postprocess()
+        job.initiate_postprocessing()
         self.postprocessing.append( job )
 
     # Postprocess jobs
@@ -468,22 +620,30 @@ class Manager(object):
       ej = self.postprocessing.popleft()
 
       try:
-        result = ej.get()
+        ej.perform_postprocessing()
 
-      except ProcessingException, e:
+      except ProcessingException:
         self.postprocessing.append( ej )
         continue
 
-      self.available_units.add( ej.unit )
-      self.completed_results.append( result )
+      self.completed_results.append( ej.get() )
+      self.handler.put( ej.unit )
 
     # Submit new jobs
     while not self.is_full() and self.waiting_jobs:
       identifier = self.waiting_jobs.popleft()
-      unit = max( self.available_units, key = lambda s: s.priority )
-      self.available_units.remove( unit )
+      unit = self.handler.get()
       job = ExecutingJob( unit = unit, identifier = identifier )
       self.executing.add( job )
+
+
+# Backward compatibility
+def Manager(units, polling_interval = 0.01):
+
+  return Scheduler(
+    handler = Allocated( units = units ),
+    polling_interval = polling_interval,
+    )
 
 
 class Adapter(object):
@@ -534,7 +694,9 @@ class Adapter(object):
   @property
   def results(self):
 
-    return ResultIterator( manager = self )
+    while self.known_jobs:
+      self.wait()
+      yield self.completed_results.popleft()
 
 
   def submit(self, target, args = (), kwargs = {}):
@@ -630,13 +792,13 @@ class MainthreadJob(object):
       self.target( *self.args, **self.kwargs )
 
     except Exception, e:
-      self.exception = e
+      self.exitcode = 1
+      self.err = e
 
 
   def join(self):
 
-    if self.exception:
-      raise self.exception
+    pass
 
 
   def is_alive(self):
@@ -713,12 +875,9 @@ class MainthreadManager(object):
   @property
   def results(self):
 
-    return ResultIterator( manager = self )
-
-
-  def results_in_order_of(self, identifiers):
-
-    return OrderedResultIterator( manager = self, identifiers = identifiers )
+    while self.known_jobs:
+      self.wait()
+      yield self.completed_results.popleft()
 
 
   def submit(self, target, args = (), kwargs = {}):
@@ -775,9 +934,19 @@ class MainthreadManager(object):
       identifier = self.waiting_jobs.popleft()
       job = ExecutingJob( unit = self.unit, identifier = identifier )
       assert not job.is_alive()
-      job.postprocess()
-      result = job.get()
-      self.completed_results.append( result )
+      job.initiate_postprocessing()
+
+      while True:
+        try:
+          job.perform_postprocessing()
+
+        except ProcessingException:
+          time.sleep( 0.1 )
+          continue
+
+        break
+
+      self.completed_results.append( job.get() )
 
 
 # Parallel execution iterator
@@ -870,25 +1039,31 @@ class PooledRun(object):
     results = []
 
     try:
-      result = raw()
+      res = raw()
 
     except Exception, e:
       results.extend(
-        [ ErrorEnding( identifier = i, exception = e ) for i in self.identifiers ]
+        [
+          Result(
+            identifier = i,
+            value = result.Error( exception = e ),
+            )
+          for i in self.identifiers
+          ]
         )
 
     else:
-      assert len( result ) == len( self.identifiers )
+      assert len( res ) == len( self.identifiers )
 
-      for ( identifier, ( failure, data ) ) in zip( self.identifiers, result ):
+      for ( identifier, ( failure, data ) ) in zip( self.identifiers, res ):
         if failure:
           results.append(
-            ErrorEnding( identifier = identifier, exception = data )
+            Result( identifier = identifier, value = result.Error( exception = data ) )
             )
 
         else:
           results.append(
-            RetrieveResult( identifier = identifier, result = data )
+            Result( identifier = identifier, value = result.Success( value = data ) )
             )
 
     return results
