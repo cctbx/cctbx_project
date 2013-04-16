@@ -71,12 +71,13 @@ class mod_average(average_tbx.average_mixin):
       if (self.avg_dirname  is not None or
           self.avg_basename is not None):
         d = cspad_tbx.dpack(
-          active_areas    = self.active_areas,
-          beam_center_x   = cspad_tbx.pixel_size * self.beam_center[0],
-          beam_center_y   = cspad_tbx.pixel_size * self.beam_center[1],
-          data            = self.avg_img,
-          distance        = self.avg_distance,
-          wavelength      = self.avg_wavelength)
+          active_areas=self.active_areas,
+          beam_center_x=cspad_tbx.pixel_size * self.beam_center[0],
+          beam_center_y=cspad_tbx.pixel_size * self.beam_center[1],
+          data=self.avg_img,
+          detector_format_version=self.detector_format_version,
+          distance=self.avg_distance,
+          wavelength=self.avg_wavelength)
         p = cspad_tbx.dwritef(d, self.avg_dirname, self.avg_basename)
         self.logger.info(
           "Average written to %s" % p)
@@ -84,12 +85,13 @@ class mod_average(average_tbx.average_mixin):
       if (self.stddev_dirname  is not None or
           self.stddev_basename is not None):
         d = cspad_tbx.dpack(
-          active_areas    = self.active_areas,
-          beam_center_x   = cspad_tbx.pixel_size * self.beam_center[0],
-          beam_center_y   = cspad_tbx.pixel_size * self.beam_center[1],
-          data            = self.stddev_img,
-          distance        = self.avg_distance,
-          wavelength      = self.avg_wavelength)
+          active_areas=self.active_areas,
+          beam_center_x=cspad_tbx.pixel_size * self.beam_center[0],
+          beam_center_y=cspad_tbx.pixel_size * self.beam_center[1],
+          data=self.stddev_img,
+          detector_format_version=self.detector_format_version,
+          distance=self.avg_distance,
+          wavelength=self.avg_wavelength)
         p = cspad_tbx.dwritef(d, self.stddev_dirname, self.stddev_basename)
         self.logger.info(
           "Standard deviation written to %s" % p)
@@ -97,12 +99,13 @@ class mod_average(average_tbx.average_mixin):
       if (self.max_dirname  is not None or
           self.max_basename is not None):
         d = cspad_tbx.dpack(
-          active_areas    = self.active_areas,
-          beam_center_x   = cspad_tbx.pixel_size * self.beam_center[0],
-          beam_center_y   = cspad_tbx.pixel_size * self.beam_center[1],
-          data            = self.max_img,
-          distance        = self.avg_distance,
-          wavelength      = self.avg_wavelength)
+          active_areas=self.active_areas,
+          beam_center_x=cspad_tbx.pixel_size * self.beam_center[0],
+          beam_center_y=cspad_tbx.pixel_size * self.beam_center[1],
+          data=self.max_img,
+          detector_format_version=self.detector_format_version,
+          distance=self.avg_distance,
+          wavelength=self.avg_wavelength)
         p = cspad_tbx.dwritef(d, self.max_dirname, self.max_basename)
         self.logger.info(
           "Max written to %s" % p)
