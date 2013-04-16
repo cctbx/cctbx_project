@@ -24,8 +24,11 @@ import time
 import re
 import os
 
+def looks_like_pdb_id (id) :
+  return (len(id) == 4) and (re.match("[1-9]{1}[a-zA-Z0-9]{3}", id))
+
 def validate_pdb_id (id) :
-  if (len(id) != 4) or (not re.match("[1-9]{1}[a-zA-Z0-9]{3}", id)) :
+  if (not looks_like_pdb_id(id)) :
     raise RuntimeError(("Invalid PDB ID '%s'.  IDs must be exactly four "+
       "alphanumeric characters, starting with a number from 1-9.") % id)
 
