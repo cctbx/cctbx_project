@@ -1232,6 +1232,7 @@ libtbx/command_line/prime_factors_of.py svneol=native#text/x-python
 libtbx/command_line/raise_exception_for_testing.py svneol=native#text/x-python
 libtbx/command_line/refresh.bat -text
 libtbx/command_line/refresh.sh svneol=native#text/x-sh
+libtbx/command_line/remote_processing.py -text
 libtbx/command_line/run_pickled_function.py -text
 libtbx/command_line/run_tests_parallel.py svneol=native#text/x-python
 libtbx/command_line/sge_available_slots.py svneol=native#text/x-python
@@ -1275,6 +1276,7 @@ libtbx/program_utils/statistics_info.py -text
 libtbx/pyplot.py svneol=native#text/x-python
 libtbx/pythonpath/deep_thought.py svneol=native#text/x-python
 libtbx/queuing_system_utils/__init__.py svneol=native#text/x-python
+libtbx/queuing_system_utils/communication.py -text
 libtbx/queuing_system_utils/generic.py -text
 libtbx/queuing_system_utils/looping.py -text
 libtbx/queuing_system_utils/lsf.py -text
@@ -1285,6 +1287,8 @@ libtbx/queuing_system_utils/processing/status.py -text
 libtbx/queuing_system_utils/processing/submission.py -text
 libtbx/queuing_system_utils/processing/transfer.py -text
 libtbx/queuing_system_utils/processing/util.py -text
+libtbx/queuing_system_utils/remote.py -text
+libtbx/queuing_system_utils/result.py -text
 libtbx/queuing_system_utils/scheduling.py -text
 libtbx/queuing_system_utils/scheduling_helpers.py -text
 libtbx/queuing_system_utils/sge_utils.py svneol=native#text/x-python
