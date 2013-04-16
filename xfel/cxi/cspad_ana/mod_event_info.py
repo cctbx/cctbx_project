@@ -65,6 +65,12 @@ class mod_event_info(object):
     if (self.config is None):
       self.logger.error("beginjob(): no config")
 
+    self.detector_format_version = cspad_tbx.detector_format_version(
+      self.address, evt)
+    if self.detector_format_version is None:
+      self.logger.warning("beginjob(): %s has no detector format version" %
+                          self.address)
+
     self.nfail  = 0
     self.nshots = 0
     self.nmemb = 0

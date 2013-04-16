@@ -206,6 +206,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
 
         peak_heights,outvalue = self.distl_filter(
           self.cspad_img.iround(), # XXX correct?
+          self.detector_format_version,
           distance,
           self.timestamp,
           self.wavelength)
@@ -241,14 +242,15 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
                      (env.subprocess(), self.nshots, self.timestamp))
 
     d = cspad_tbx.dpack(
-      active_areas    = self.active_areas,
-      beam_center_x   = cspad_tbx.pixel_size * self.beam_center[0],
-      beam_center_y   = cspad_tbx.pixel_size * self.beam_center[1],
-      data            = self.cspad_img.iround(), # XXX ouch!
-      distance        = distance,
-      timestamp       = self.timestamp,
-      wavelength      = self.wavelength,
-      xtal_target     = self.m_xtal_target)
+      active_areas=self.active_areas,
+      beam_center_x=cspad_tbx.pixel_size * self.beam_center[0],
+      beam_center_y=cspad_tbx.pixel_size * self.beam_center[1],
+      data=self.cspad_img.iround(), # XXX ouch!
+      detector_format_version=self.detector_format_version,
+      distance=distance,
+      timestamp=self.timestamp,
+      wavelength=self.wavelength,
+      xtal_target=self.m_xtal_target)
 
     if (self.m_dispatch == "index"):
       import sys
@@ -268,9 +270,10 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     elif (self.m_dispatch == "view"): #interactive image viewer
 
       from cxi_user.xfel_targets import targets
-      args = ["indexing.data=dummy",
-              "distl.detector_format_version=CXI 5.1",
-              ] + targets[self.m_xtal_target]
+      args = ["indexing.data=dummy"] + targets[self.m_xtal_target]
+      if self.detector_format_version is not None:
+        args += ["distl.detector_format_version=%" %
+                 self.detector_format_version]
 
       from spotfinder.applications.xfel import cxi_phil
       horizons_phil = cxi_phil.cxi_versioned_extract(args)
@@ -283,9 +286,10 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     elif (self.m_dispatch == "spots"): #interactive spotfinder viewer
 
       from cxi_user.xfel_targets import targets
-      args = ["indexing.data=dummy",
-              "distl.detector_format_version=CXI 5.1",
-              ] + targets[self.m_xtal_target]
+      args = ["indexing.data=dummy"] + targets[self.m_xtal_target]
+      if self.detector_format_version is not None:
+        args += ["distl.detector_format_version=%s" %
+                 self.detector_format_version]
 
       from spotfinder.applications.xfel import cxi_phil
       horizons_phil = cxi_phil.cxi_versioned_extract(args)

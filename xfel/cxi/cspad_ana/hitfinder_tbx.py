@@ -12,11 +12,17 @@ from xfel.cxi.cspad_ana import cspad_tbx
 
 class distl_hitfinder(object):
 
-  def distl_filter(self,cspad_img,distance,timestamp,wavelength):
+  def distl_filter(self,
+                   cspad_img,
+                   detector_format_version,
+                   distance,
+                   timestamp,
+                   wavelength):
     self.hitfinder_d["DATA"] = cspad_img
     self.hitfinder_d["DISTANCE"] = distance
     self.hitfinder_d["TIMESTAMP"] = timestamp
     self.hitfinder_d["WAVELENGTH"] = wavelength
+    self.hitfinder_d["DETECTOR_FORMAT_VERSION"] = detector_format_version
 
     from cxi_user.xfel_targets import targets
     args = ["indexing.data=dummy",

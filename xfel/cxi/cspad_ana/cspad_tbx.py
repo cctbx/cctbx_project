@@ -360,11 +360,89 @@ def CsPadElement(data3d, qn, config):
   return quadrant
 
 
+def detector_format_version(address, evt):
+  """The detector_format_version() function returns a format version
+  string appropriate for the detector whose address is given by @p
+  address at the time of the event @p evt.
+
+  @note The last shift of a run generally ends at 09:00 local time the
+        after the last day of the run.
+
+  @param address Address string XXX Que?!
+  @param evt     Event data object, a configure object
+  @return        Format version string
+  """
+
+  from calendar import timegm
+  from time import strptime
+
+  if evt is None or address is None:
+    return None
+
+  t = evt.getTime()
+  if t is None:
+    return None
+
+  d = address_split(address)[0]
+  f = '%Y-%m-%d, %H:%M %Z'
+  s = t.seconds()
+
+  # Note: one must take daylight savings into account when defining
+  # the cutoff-times for the LCLS runs.
+  if d is None or s is None:
+    return None
+
+  elif s < timegm(strptime('2009-10-01, 02:00 UTC', f)):
+    # LCLS started operation Oct 1, 2009
+    return None
+
+  elif s < timegm(strptime('2009-12-18, 01:00 UTC', f)):
+    # LCLS run 1: until Dec 17, 2009
+    return None
+
+  elif s < timegm(strptime('2010-09-16, 02:00 UTC', f)):
+    # LCLS run 2: until Sep 15, 2010
+    return None
+
+  elif s < timegm(strptime('2011-03-09, 02:00 UTC', f)):
+    # LCLS run 3: until Mar 8, 2011
+    #
+    # 'CXI 3.1' corresponds to a quirky, old, and deprecated version
+    # of the cctbx.xfel pickle format.
+    if d == 'CxiDs1':
+      return 'CXI 3.2'
+
+  elif s < timegm(strptime('2011-10-29, 02:00 UTC', f)):
+    # LCLS run 4: until Oct 28, 2011
+    if d == 'CxiDs1':
+      return 'CXI 4.1'
+
+  elif s < timegm(strptime('2012-05-31, 02:00 UTC', f)):
+    # LCLS run 5: until May 31, 2012
+    if d == 'CxiDs1':
+      return 'CXI 5.1'
+
+  elif s < timegm(strptime('2013-01-01, 01:00 UTC', f)):
+    # LCLS run 6: until Dec 31, 2012
+    if d == 'CxiDs1':
+      return 'CXI 6.1'
+
+  elif s < timegm(strptime('2013-08-01, 02:00 UTC', f)):
+    # LCLS run 7: until Jul 31, 2013
+    if d == 'CxiDs1':
+      return 'CXI 7.1'
+    elif d == 'CxiDsd':
+      return 'CXI 7.d'
+
+  return None
+
+
 def dpack(active_areas=None,
           beam_center_x=None,
           beam_center_y=None,
           ccd_image_saturation=None,
           data=None,
+          detector_format_version=None,
           distance=None,
           pixel_size=pixel_size,
           saturated_value=None,
@@ -418,6 +496,7 @@ def dpack(active_areas=None,
           'BEAM_CENTER_Y': beam_center_y,
           'CCD_IMAGE_SATURATION': ccd_image_saturation,
           'DATA': data,
+          'DETECTOR_FORMAT_VERSION': detector_format_version,
           'DISTANCE': distance,
           'PIXEL_SIZE': pixel_size,
           'SATURATED_VALUE': saturated_value,
@@ -669,21 +748,25 @@ def env_wavelength_sxr(evt, env):
   """
 
   if evt is not None and env is not None:
-    from time import mktime, strptime
+    from calendar import timegm
+    from time import strptime
 
     t = evt.getTime()
     if t is None:
       return None
 
     # Note that the coefficients for the monochromator could change
-    # from day to day.  XXX The cutoff-times could be precomputed and
-    # the corresponding coefficients stored in a lookup table.
-    f = '%Y-%m-%d, %H:%M'
+    # from day to day.  The compiler could recognize that strptime()
+    # and timegm() are pure and reduce the test expression to an
+    # integer comparison.
+    f = '%Y-%m-%d, %H:%M %Z'
     s = t.seconds()
-    if s is None or s < mktime(strptime('2012-11-12, 09:00', f)):
+    if s is None:
+      return None
+    elif s < timegm(strptime('2012-11-12, 01:00 UTC', f)):
       # No spectrometer positions for this time.
       return None
-    elif s < mktime(strptime('2012-11-17, 09:00', f)):
+    elif s < timegm(strptime('2012-11-17, 01:00 UTC', f)):
       (a, b, c) = (+3.65920, -0.76851, +0.02105)
     else:
       # Assume the last known values are valid for all future.
@@ -765,8 +848,7 @@ def evt_seqno(evt=None):
   t = evt_time(evt=evt)
   if t is None:
     return None
-  return time.strftime("%Y%m%d%H%M%S", time.gmtime(t[0])) + \
-      ("%03d" % t[1])
+  return time.strftime("%Y%m%d%H%M%S", time.gmtime(t[0])) + ("%03d" % t[1])
 
 
 def evt_time(evt=None):
@@ -960,7 +1042,8 @@ def image(address, config, evt, env, sections=None):
     return None
 
   elif device == 'Andor':
-    # XXX There is no proper getter for Andor frames yet.
+    # XXX There is no proper getter for Andor frames yet.  What about
+    # evt.getFrameValue(address)?
     value = evt.get(xtc.TypeId.Type.Id_AndorFrame, address)
     if value is not None:
       img = value.data(config)
