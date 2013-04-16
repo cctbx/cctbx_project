@@ -134,6 +134,7 @@ class trapping(object):
 
       >>> import boost.python
       >>> from scitbx.array_family import flex
+      >>> a = flex.double((0, 0, 0))
       >>> with boost.python.trapping(division_by_zero=False):
       >>>   b = 1/a
       >>> tuple(b)
