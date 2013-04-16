@@ -128,6 +128,33 @@ def floating_point_exceptions():
     division_by_zero=flag, invalid=flag, overflow=flag)
 floating_point_exceptions = floating_point_exceptions()
 
+
+class trapping(object):
+  """ Synopsis:
+
+      >>> import boost.python
+      >>> from scitbx.array_family import flex
+      >>> with boost.python.trapping(division_by_zero=False):
+      >>>   b = 1/a
+      >>> tuple(b)
+      (inf, inf, inf)
+      >>> 1/a
+      ... CRASH ...
+  """
+  def __init__(self, division_by_zero=True, invalid=True, overflow=True):
+    self.division_by_zero = ext.is_division_by_zero_trapped()
+    self.invalid = ext.is_invalid_trapped()
+    self.overflow = ext.is_overflow_trapped()
+    ext.trap_exceptions(division_by_zero, invalid, overflow)
+
+
+  def __enter__(self):
+    return self
+
+  def __exit__(self, exc_type, exc_val, exc_tb):
+    ext.trap_exceptions(self.division_by_zero, self.invalid, self.overflow)
+
+
 meta_class = ext.holder.__class__
 platform_info = ext.platform_info()
 assert len(platform_info) > 0 # please disable this assertion and send email to cctbx@cci.lbl.gov
