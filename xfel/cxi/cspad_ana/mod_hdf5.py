@@ -50,7 +50,7 @@ class mod_hdf5(common_mode.common_mode_correction):
 
     # If no detector distance is available set it to NaN, since
     # Python's None is not permitted in HDF5
-    distance = cspad_tbx.env_distance(env, self.address, self._detz_offset)
+    distance = cspad_tbx.env_distance(self.address, env, self._detz_offset)
     if distance is None:
       distance = float('nan')
 

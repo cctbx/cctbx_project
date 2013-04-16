@@ -161,7 +161,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
 
     # This module only applies to detectors for which a distance is
     # available.
-    distance = cspad_tbx.env_distance(env, self.address, self._detz_offset)
+    distance = cspad_tbx.env_distance(self.address, env, self._detz_offset)
     if distance is None:
       self.nfail += 1
       self.logger.warning("event(): no distance, shot skipped")
