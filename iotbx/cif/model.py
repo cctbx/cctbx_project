@@ -481,7 +481,7 @@ class loop(DictMixin):
     return size
 
   def n_columns(self):
-    return len(self.keys)
+    return len(self.keys())
 
   def add_row(self, row, default_value="?"):
     if isinstance(row, dict):
@@ -529,6 +529,7 @@ class loop(DictMixin):
     return copy.deepcopy(self)
 
   def show(self, out=None, indent="  ", fmt_str=None, align_columns=True):
+    assert self.n_rows() > 0 and self.n_columns() > 0
     if out is None:
       out = sys.stdout
     print >> out, "loop_"
