@@ -15,7 +15,7 @@ class reader:
     pass
 
   @staticmethod
-  def is_xparm_file(filename):
+  def is_xparm_file(filename, check_filename = True):
     """Check if the given file is a (G)XPARM.XDS file.
 
     Ensure it is named correctly and contains exactly 11 lines and 42
@@ -32,7 +32,7 @@ class reader:
 
     # Check filename is (G)XPARM.XDS
     basename = os.path.basename(filename)
-    if basename != 'XPARM.XDS' and basename != 'GXPARM.XDS':
+    if basename != 'XPARM.XDS' and basename != 'GXPARM.XDS' and check_filename:
       return False
 
     # Check file contains 11 lines and 42 tokens
@@ -50,7 +50,7 @@ class reader:
     # Is a (G)XPARM.XDS file
     return True
 
-  def _read_lines(self, filename):
+  def _read_lines(self, filename, check_filename = True):
     """Read the (G)XPARM.XDS file.
 
     If the file is not valid then return an IOError.
@@ -62,12 +62,12 @@ class reader:
       The lines in the file as a list
 
     """
-    if reader.is_xparm_file(filename):
+    if reader.is_xparm_file(filename, check_filename):
       return open(filename, 'r').readlines()
     else:
       raise IOError("{0} is not a (G)XPARM.XDS file".format(filename))
 
-  def read_file(self, filename):
+  def read_file(self, filename, check_filename = True):
     """Read the XPARM.XDS/GXPARAM.XDS file.
 
     See http://xds.mpimf-heidelberg.mpg.de/html_doc/xds_files.html for more
@@ -78,7 +78,7 @@ class reader:
 
     """
     # Read the text from the file and split into an array of tokens
-    tokens = [l.split() for l in self._read_lines(filename)]
+    tokens = [l.split() for l in self._read_lines(filename, check_filename)]
 
     # Read the parameters from the list of tokens
     self.starting_frame    = int(tokens[0][0])
