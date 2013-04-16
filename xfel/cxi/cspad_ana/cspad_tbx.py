@@ -638,14 +638,14 @@ def env_injector_xyz(env):
                              for i in range(3)])
 
 
-def env_detz(env, address):
+def env_detz(address, env):
   """The env_detz() function returns the position of the detector with
   the given address string on the z-axis in mm.  The zero-point is as
   far away as possible from the sample, and values decrease as the
   detector is moved towards the sample.
 
-  @param env     Environment object
   @param address Address string XXX Que?!
+  @param env     Environment object
   @return        Detector z-position, in mm
   """
 
@@ -666,7 +666,7 @@ def env_detz(env, address):
   return None
 
 
-def env_distance(env, address, offset):
+def env_distance(address, env, offset):
   """The env_distance() function returns the distance between the
   sample and the detector with the given address string in mm.  The
   distance between the sample and the the detector's zero-point can
@@ -681,7 +681,7 @@ def env_distance(env, address, offset):
   @return        Detector-sample distance, in mm
   """
 
-  detz = env_detz(env, address)
+  detz = env_detz(address, env)
   if detz is not None:
     return detz + offset
   return None
