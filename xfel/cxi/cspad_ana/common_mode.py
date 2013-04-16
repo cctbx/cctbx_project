@@ -147,16 +147,14 @@ class common_mode_correction(mod_event_info):
     @param env Environment object
     """
 
+    super(common_mode_correction, self).beginjob(evt, env)
+
     self.config = cspad_tbx.getConfig(self.address, env)
     if self.config is None:
       self.logger.error("beginjob(): no config")
     else:
       (self.beam_center, self.active_areas) = \
         cspad_tbx.cbcaa(self.config, self.sections)
-
-    self.nfail  = 0
-    self.nshots = 0
-    self.nmemb = 0
 
 
   def common_mode(self, img, stddev, mask):
