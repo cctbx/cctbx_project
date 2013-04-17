@@ -3238,11 +3238,12 @@ class build_all_chain_proxies(object):
 
     if order==1:
       if len(bonds1)>3:
-        assert 0
+        pass
       if len(bonds2)>3:
         atom_names = []
         for bond in bonds2:
           other = get_other(bond, apply.atom2)
+          if other is None: continue
           if other.element.strip() not in ["H", "D"]: continue
           atom_names.append(other.name.strip())
         atom_names.sort()
@@ -3252,6 +3253,7 @@ class build_all_chain_proxies(object):
     angle_list = []
     for bond in bonds1:
       other = get_other(bond, apply.atom1)
+      if other is None: continue
       angle = chem_link_angle()
       angle.atom_1_comp_id = 1
       angle.atom_id_1 = other.name.strip()
