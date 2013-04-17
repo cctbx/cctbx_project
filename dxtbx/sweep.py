@@ -56,8 +56,8 @@ class SweepReader(object):
         self._scan.set_image_range(image_range)
 
         # Create the format cache and cache the first format
-        self._format_cache = {}
-        self._format_cache[0] = format_instance
+        self._model_cache = {}
+        self._cache_models(image_range[0], format_instance)
 
     def __cmp__(self, other):
         """ Compare this reader to another. """
@@ -99,13 +99,13 @@ class SweepReader(object):
 
             # If format is in cache, it's valid
             try:
-                self._format_cache[image]
+                self._model_cache[image]
             except KeyError:
 
                 # Read and try to cache the format, if this fails, the
                 # format is invalid, so return false.
                 try:
-                    self._read_and_cache_format(image)
+                    self._read_format_and_cache_models(image)
                 except RuntimeError:
                     return False
 
@@ -121,10 +121,7 @@ class SweepReader(object):
             raise IndexError, 'array index out of range'
 
         # Try to read format from cache, otherwise read from file
-        try:
-            format_instance = self._format_cache[image_index]
-        except KeyError:
-            format_instance = self._read_and_cache_format(image_index)
+        format_instance = self._read_format_and_cache_models(image_index)
 
         # Return the raw data
         return format_instance.get_raw_data()
@@ -154,7 +151,7 @@ class SweepReader(object):
         """ Get the scan model. """
         return self._scan
 
-    def _read_and_cache_format(self, image_index):
+    def _read_format_and_cache_models(self, image_index):
         """ Read and cache the format object at the given image index. """
 
         # Get the format instance
@@ -162,8 +159,7 @@ class SweepReader(object):
 
         # If the format instance is valid then cache
         if self._is_format_valid(format_instance):
-            pass
-            self._format_cache[image_index] = format_instance
+            self._cache_models(image_index, format_instance)
         else:
             RuntimeError("Format is invalid.")
 
@@ -191,6 +187,13 @@ class SweepReader(object):
         # Format is valid
         return True
 
+    def _cache_models(self, image_index, format_instance):
+        """ Cache the models. """
+        b = format_instance.get_beam()
+        d = format_instance.get_detector()
+        g = format_instance.get_goniometer()
+        s = format_instance.get_scan()
+        self._model_cache[image_index] = (b, d, g, s)
 
 class BufferedSweepReader(SweepReader):
     """ Class to provide cached reading of images. """
@@ -212,7 +215,7 @@ class BufferedSweepReader(SweepReader):
         if max_cache:
             self._max_cache = max_cache
         else:
-            self._max_cache = 20
+            self._max_cache = 1
 
         # Create the image cache
         self._image_cache = OrderedDict()
