@@ -716,6 +716,8 @@ class reference_model(object):
                         mon_lib_srv=mon_lib_srv,
                         remove_clusters_with_all_h=True,
                         log=None)
+                  if axis_and_atoms_to_rotate is None:
+                    continue
                   assert len(m_chis) == len(r_chis)
                   assert len(m_chis) == len(axis_and_atoms_to_rotate)
                   counter = 0
@@ -751,6 +753,8 @@ class reference_model(object):
                         mon_lib_srv=mon_lib_srv,
                         remove_clusters_with_all_h=True,
                         log=None)
+                    if axis_and_atoms_to_rotate is None:
+                      continue
                     counter = 0
                     residue_iselection = residue.atoms().extract_i_seq()
                     sites_cart_residue = \
