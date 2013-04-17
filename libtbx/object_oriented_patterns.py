@@ -154,6 +154,18 @@ class journal_mixin(object):
     del self.__dict__[key]
 
 
+def calculate_state(holder):
+
+  holder.data = holder.data()
+  holder.state = retrieve_state
+  return holder.data
+
+
+def retrieve_state(holder):
+
+  return holder.data
+
+
 class lazy_initialization(object):
   """
   Defers initialization until the value is accessed (state pattern)
@@ -162,19 +174,10 @@ class lazy_initialization(object):
   def __init__(self, calculation):
 
     self.data = calculation
-    self.action = self.calculate
+    self.state = calculate_state
 
-  def calculate(self):
-
-    self.data = self.data()
-    self.action = self.retrieve
-    return self.data
-
-  def retrieve(self):
-
-   return self.data
 
   def __call__(self):
 
-    return self.action()
+    return self.state( holder = self )
 
