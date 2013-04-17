@@ -115,6 +115,7 @@ loggraph = False
 master_params = master_phil # for phenix GUI
 
 def show_symmetry_error (file1, file2, symm1, symm2) :
+  import cStringIO
   symm_out1 = cStringIO.StringIO()
   symm_out2 = cStringIO.StringIO()
   symm1.show_summary(f=symm_out1, prefix="  ")
