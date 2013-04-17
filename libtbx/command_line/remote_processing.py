@@ -2,7 +2,6 @@ from __future__ import division
 
 if __name__ == "__main__":
   import argparse
-  import pickle
 
   parser = argparse.ArgumentParser(
     description = "Server process handling far end of remote execution",
@@ -31,8 +30,10 @@ if __name__ == "__main__":
   os.chdir( params.folder )
   sys.path.append( os.path.abspath( params.folder ) )
 
-  jfact = pickle.loads( params.job.decode( "string-escape" ) )
-  qfact = pickle.loads( params.queue.decode( "string-escape" ) )
+  from libtbx.queuing_system_utils import remote
+
+  jfact = remote.argument_to_object( arg = params.job )
+  qfact = remote.argument_to_object( arg = params.queue )
 
   from libtbx.queuing_system_utils import scheduling
 
@@ -47,8 +48,6 @@ if __name__ == "__main__":
     polling_interval = params.polltime,
     )
 
-  from libtbx.queuing_system_utils import remote
-
   server = remote.SchedulerServer(
     instream = sys.stdin,
     outstream = sys.stdout,
@@ -56,8 +55,7 @@ if __name__ == "__main__":
     )
 
   # Redirect standard filehandles, so that the communication stream is intact
-  from libtbx import utils
-  sys.stdout = utils.null_out()
+  sys.stdout = sys.stderr
 
   server.serve()
 

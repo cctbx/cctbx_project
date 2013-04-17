@@ -73,28 +73,38 @@ class SchedulerActor(object):
     self.daemon.join()
 
 
-class SubmitJob(communication.Command):
+class SubmitJobs(communication.Command):
   """
   Request for job submission
   """
 
-  def __init__(self, identifier, target, args, kwargs):
+  def __init__(self, job_infos):
 
-    self.identifier = identifier
-    self.callparms = ( target, args, kwargs )
+    self.job_infos = job_infos
 
 
   def process(self, environment):
 
-    environment.jobs_in.put( ( self.identifier, self.callparms ) )
+    for ( identifier, callparms ) in self.job_infos:
+      environment.jobs_in.put( ( identifier, callparms ) )
 
 
-class GetJob(communication.Command):
+class GetJobs(communication.Command):
 
   def process(self, environment):
 
-    ( identifier, result ) = environment.jobs_out.get( block = False )
-    return ( identifier, result.value )
+    jobs = []
+
+    while True:
+      try:
+        jres = environment.jobs_out.get( block = False )
+
+      except Queue.Empty:
+        break
+
+      jobs.append( jres )
+
+    return jobs
 
 
 class SchedulerServer(communication.Server):
@@ -116,7 +126,7 @@ class SchedulerClient(communication.Client):
   Client-side connection to a potentially remote SchedulerServer
   """
 
-  def __init__(self, instream, outstream):
+  def __init__(self, instream, outstream, waittime = 1, submittime = 0.5, poolsize = 4):
 
     super(SchedulerClient, self).__init__(
       instream = instream,
@@ -124,6 +134,12 @@ class SchedulerClient(communication.Client):
       )
     self.running = set()
     self.result_for = {}
+    self.waiting = []
+    self.waittime = waittime
+    self.submittime = submittime
+    self.polltime = time.time() # assume queue is empty
+    self.enqueuetime = self.polltime
+    self.poolsize = poolsize
 
 
   def is_known(self, identifier):
@@ -135,22 +151,12 @@ class SchedulerClient(communication.Client):
 
     assert not self.is_known( identifier = identifier )
 
-    response = self.send(
-      command = SubmitJob(
-        identifier = identifier,
-        target = target,
-        args = args,
-        kwargs = kwargs,
-        ),
-      )
+    if not self.waiting:
+      self.enqueuetime = time.time()
 
-    try:
-      response() # successful if no exception raised
-
-    except Exception, e:
-      raise RuntimeError, "Submission failure: %s" % e
-
+    self.waiting.append( ( identifier, ( target, args, kwargs ) ) )
     self.running.add( identifier )
+    self.poll()
 
 
   def is_alive(self, identifier):
@@ -171,20 +177,38 @@ class SchedulerClient(communication.Client):
 
   def poll(self):
 
-    while True:
-      response = self.send( command = GetJob() )
+    now = time.time()
+
+    if self.running and ( self.waittime < ( now - self.polltime ) or now < self.polltime ):
+      response = self.send( command = GetJobs() )
+
+      jobs = response()
+
+      for ( identifier, value ) in jobs:
+        assert identifier in self.running
+        self.running.remove( identifier )
+
+        assert identifier not in self.result_for
+        self.result_for[ identifier ] = value
+
+      now = time.time()
+      self.polltime = now
+
+    if (
+      ( self.poolsize <= len( self.waiting ) )
+      or ( self.waiting
+        and ( self.submittime < ( now - self.enqueuetime ) or now < self.enqueuetime )
+        )
+      ):
+      response = self.send( command = SubmitJobs( job_infos = self.waiting ) )
 
       try:
-        ( identifier, value ) = response()
+        response()
 
-      except Queue.Empty:
-        break
+      except Exception, e:
+        raise RuntimeError, "Submission failure: %s" % e
 
-      assert identifier in self.running
-      self.running.remove( identifier )
-
-      assert identifier not in self.result_for
-      self.result_for[ identifier ] = value
+      self.waiting = []
 
 
   def Job(self, target, args = (), kwargs = {}):
@@ -308,4 +332,62 @@ class Job(object):
   def __str__(self):
 
     return "%s(name = '%s')" % ( self.__class__.__name__, self.name )
+
+
+class RemoteFactory(object):
+  """
+  Remote instance method factory. There is no check that the instance has
+  a method passed along with the constructor
+  """
+
+  def __init__(self, calculation, method):
+
+    from libtbx.object_oriented_patterns import lazy_initialization
+    self.instance = lazy_initialization( calculation = calculation )
+    self.method = method
+
+
+  def __call__(self, *args, **kwargs):
+
+    return getattr( self.instance(), self.method )( *args, **kwargs )
+
+
+def object_to_argument(obj):
+
+  import pickle
+  return pickle.dumps( obj, 0 )
+
+
+def argument_to_object(arg):
+
+  import pickle
+  return pickle.loads( arg.decode( "string-escape" ) )
+
+
+def command_merge(cmdline):
+
+  return "%s %r %r %s" % cmdline
+
+
+def command_unmerge(cmdline):
+
+  return cmdline
+
+
+def server_process_command_line(
+  job_factory,
+  queue_factory,
+  executable = "libtbx.remote_processing",
+  folder = ".",
+  transformation = command_merge,
+  ):
+
+  return transformation(
+    cmdline = (
+      executable,
+      object_to_argument( obj = job_factory ),
+      object_to_argument( obj = queue_factory ),
+      "--folder=%s" % folder,
+      ),
+    )
 
