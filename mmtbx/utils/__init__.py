@@ -1374,6 +1374,86 @@ def assert_xray_structures_equal(x1, x2, selection = None, sites = True,
     for sct1_, sct2_ in zip(sct1, sct2):
       assert sct1_ == sct2_
 
+def compare_hierarchy(hierarchy, scatterers, cell):
+  from libtbx.test_utils import approx_equal
+  # Primary "view" of hierarchy:
+  #   model, chain, residue_group, atom_group, atom"""
+  n = hierarchy.atoms_size()
+  n2 = scatterers.size()
+  assert n == n2, " size mismatch %d != %d"%(n,n2)
+  match = flex.bool()
+  match.resize(n, False)
+  assert match.size() == n
+  if n>0:
+    assert match[0] == False
+    assert match[n-1] == False
+  for model in hierarchy.models():
+    # print 'model: "%s"' % model.id
+    for chain in model.chains():
+      # print 'chain: "%s"' % chain.id
+      for residue_group in chain.residue_groups():
+        #print '  residue_group: resseq="%s" icode="%s"' % (
+        #  residue_group.resseq, residue_group.icode)
+        for atom_group in residue_group.atom_groups():
+          #print '    atom_group: altloc="%s" resname="%s"' % (
+          #  atom_group.altloc, atom_group.resname)
+          for atom in atom_group.atoms():
+            # print_atom(atom)
+            assert atom.i_seq < n
+            assert match[atom.i_seq] == False
+            s = scatterers[atom.i_seq]
+            # assert (atom.serial_as_int() == atom.i_seq + 1)
+            match[atom.i_seq] = True
+            assert atom.element.strip().upper() == \
+                s.scattering_type.strip().upper()
+            assert len(atom.name.strip())>0
+            # assert len(s.label.strip())>0
+            # assert approx_equal(atom.occ, s.occupancy, 0.01)
+            assert approx_equal(cell.orthogonalize(s.site), atom.xyz, 0.001)
+            #assert approx_equal(atom.b, cctbx.adptbx.u_as_b(s.u_iso), 0.05)
+  #
+  assert match.all_eq(True)
+  if n>0:
+    assert match[0] == True
+    assert match[n-1] == True
+
+def assert_model_is_consistent(model):
+  xs = model.xray_structure
+  unit_cell = xs.unit_cell()
+  scatterers = xs.scatterers()
+  hier = model.pdb_hierarchy()
+  compare_hierarchy(hier, scatterers, unit_cell)
+
+def assert_water_is_consistent(model):
+  xs = model.xray_structure
+  unit_cell = xs.unit_cell()
+  scatterers = xs.scatterers()
+  hier = model.pdb_hierarchy()
+  water_rgs = model.extract_water_residue_groups()
+  for rg in water_rgs:
+    if (rg.atom_groups_size() != 1):
+      raise RuntimeError(
+        "Not implemented: cannot handle water with alt. conf.")
+    ag = rg.only_atom_group()
+    atoms = ag.atoms()
+    h_atoms = []
+    o_atom=None
+    if atoms.size()>0:
+      for atom in atoms:
+        if (atom.element.strip() == "O"):
+          o_atom = atom
+        else:
+          h_atoms.append(atom)
+    else:
+      assert False
+    o_i = o_atom.i_seq
+    o_site = scatterers[o_i].site
+    for hatom in h_atoms:
+      hsite = scatterers[hatom.i_seq].site
+      doh = unit_cell.distance(hsite, o_site)
+      assert doh >0.35 and doh < 1.45, doh
+
+
 class xray_structures_from_processed_pdb_file(object):
 
   def __init__(self, processed_pdb_file, scattering_table, d_min, log = None):
