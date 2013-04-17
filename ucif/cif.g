@@ -89,7 +89,11 @@ scope {
   $loop_body::column_cntr = 0;
 }
   :	v1=value
-{ (*($data_items::curr_loop_values))[0]->push_back(to_std_string($v1.start)); }
+{
+  if (($data_items::curr_loop_values)->size() > 0) {
+    (*($data_items::curr_loop_values))[0]->push_back(to_std_string($v1.start));
+  }
+}
   ( v2=value
 {
   $loop_body::column_cntr++;
@@ -126,27 +130,31 @@ scope {
 }
   :	TAG value
 {
-  ($parse::builder)->add_data_item(
-    to_std_string($TAG),
-    to_std_string($value.start));
+  if (($value.start)->type != EOF) {
+    ($parse::builder)->add_data_item(
+      to_std_string($TAG),
+      to_std_string($value.start));
+  }
 }
   | loop_header loop_body
 {
   std::vector<ucif::array_wrapper_base*> values = *($data_items::curr_loop_values);
   std::size_t n_cols = $data_items::curr_loop_headers->size();
-  std::size_t n_rows = values[0]->size();
-  bool loop_is_good = true;
-  for (std::size_t i=1; i<n_cols; i++) {
-    if (values[i]->size() != n_rows) {
-      std::string msg = "Wrong number of data items for loop containing ";
-      msg += (*$data_items::curr_loop_headers)[0];
-      CTX->errors->push_back(msg);
-      loop_is_good = false;
-      break;
+  if (n_cols > 0) {
+    std::size_t n_rows = values[0]->size();
+    bool loop_is_good = true;
+    for (std::size_t i=1; i<n_cols; i++) {
+      if (values[i]->size() != n_rows) {
+        std::string msg = "Wrong number of data items for loop containing ";
+        msg += (*$data_items::curr_loop_headers)[0];
+        CTX->errors->push_back(msg);
+        loop_is_good = false;
+        break;
+      }
     }
-  }
-  if (loop_is_good) {
-    ($parse::builder)->add_loop(*$data_items::curr_loop_headers, values);
+    if (loop_is_good) {
+      ($parse::builder)->add_loop(*$data_items::curr_loop_headers, values);
+    }
   }
 }
   ;

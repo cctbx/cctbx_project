@@ -862,8 +862,34 @@ def exercise_detect_binary():
   except CifParserError, e: pass
   else: raise Exception_expected
 
+def exercise_syntax_errors():
+  empty_loop_str = """\
+data_fred
+loop_
+loop_
+_a
+_b
+1 2
+3 4
+"""
+  try: cif.reader(input_string=empty_loop_str)
+  except CifParserError, e: pass
+  else: raise Exception_expected
+  bad_semicolon_text_field = """\
+data_sucrose
+_a 1
+_exptl_absorpt_process_details
+;
+Final HKLF 4 output contains 64446 reflections, Rint = 0.0650
+ (47528 with I > 3sig(I), Rint = 0.0624);
+"""
+  try: cif.reader(input_string=bad_semicolon_text_field)
+  except CifParserError, e: pass
+  else: raise Exception_expected
+
 
 def exercise():
+  exercise_syntax_errors()
   exercise_detect_binary()
   exercise_crystal_symmetry()
   exercise_miller_arrays_as_cif_block()
