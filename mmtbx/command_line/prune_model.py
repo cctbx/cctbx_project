@@ -17,7 +17,7 @@ model_prune_master_phil = """
   sidechains = True
     .type = bool
     .help = Remove poor sidechains
-  residues = True
+  mainchain = False
     .type = bool
     .help = Remove entire residues in poor density
   min_backbone_2fofc = 0.8
@@ -187,7 +187,7 @@ class prune_model (object) :
               backbone_atoms.append(atom)
             else :
               sidechain_atoms.append(atom)
-          if (len(backbone_atoms) > 0) and (self.params.residues) :
+          if (len(backbone_atoms) > 0) and (self.params.mainchain) :
             mc_stats = self.get_map_stats_for_atoms(backbone_atoms)
             if (mc_stats.mean_2fofc < self.params.min_backbone_2fofc) :
               pruned.append(residue_summary(
@@ -210,7 +210,7 @@ class prune_model (object) :
           # map values look okay - now check overall CC
           if (not remove_atom_group) :
             res_stats = self.get_map_stats_for_atoms(atom_group.atoms())
-            if (res_stats.cc < self.params.min_cc) and (self.params.residues) :
+            if (res_stats.cc < self.params.min_cc) and (self.params.mainchain):
               pruned.append(residue_summary(
                 chain_id=chain.id,
                 residue_group=residue_group,
@@ -255,14 +255,14 @@ class prune_model (object) :
                   atom_group.remove_atom(atom)
                 n_sc_removed += 1
           if (remove_atom_group) :
-            assert (self.params.residues)
+            assert (self.params.mainchain)
             residue_group.remove_atom_group(atom_group)
         if (len(residue_group.atom_groups()) == 0) :
           chain.remove_residue_group(residue_group)
           n_res_removed += 1
           removed_resseqs.append(residue_group.resseq_as_int())
       # Final pass: remove lone single/pair residues
-      if ((self.params.residues) and
+      if ((self.params.mainchain) and
           (self.params.min_fragment_size is not None)) :
         n_rg = len(chain.residue_groups())
         for j_seq, residue_group in enumerate(chain.residue_groups()) :
