@@ -48,7 +48,8 @@ class mod_filter(object):
     self.negate = cspad_tbx.getOptBool(negate)
 
     if (timestamps_path is not None):
-      p = re.compile("\d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z\d{2}\.\d{3}")
+      p_old = re.compile("\d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z\d{2}\.\d{3}")
+      p_new = re.compile("\d{17}")
       f = open(timestamps_path, "r")
       self.timestamps_list = []
       for line in f.readlines():
@@ -56,9 +57,11 @@ class mod_filter(object):
         if (len(s) == 0 or s[0] == "#"):
           continue
         for t in s.split():
-          m = p.findall(t)
+          m = p_old.findall(t)
+          if len(m) == 0:
+            m = p_new.findall(t)
           if (len(m) == 1):
-            self.timestamps_list.append(m[0])
+            self.timestamps_list.append(self._ts2sms(m[0]))
       f.close()
       self.timestamps_interval = None
     else:
@@ -139,12 +142,17 @@ class mod_filter(object):
     from calendar import timegm
     from time import strptime
 
-    if (len(timestamp) != 23 or timestamp[19] != "."):
+    if (len(timestamp) != 17 and (len(timestamp) != 23 or timestamp[19] != ".")):
       raise ValueError()
 
-    # int() and strptime() both raise ValueError on error.
-    s = timegm(strptime(timestamp[0:19], "%Y-%m-%dT%H:%MZ%S"))
-    ms = int(timestamp[20:23])
+    if len(timestamp) == 17:
+      s = timegm(strptime(timestamp[0:14], "%Y%m%d%H%M%S"))
+      ms = int(timestamp[14:])
+
+    else:
+      # int() and strptime() both raise ValueError on error.
+      s = timegm(strptime(timestamp[0:19], "%Y-%m-%dT%H:%MZ%S"))
+      ms = int(timestamp[20:23])
 
     return (s, ms)
 
@@ -166,7 +174,7 @@ class mod_filter(object):
       return
 
     if (self.timestamps_list is not None):
-      t = cspad_tbx.evt_timestamp(evt)
+      t = cspad_tbx.evt_time(evt)
       if (t is None):
         self.logger.warning("event(): no timestamp, shot skipped")
         evt.put(True, "skip_event")
