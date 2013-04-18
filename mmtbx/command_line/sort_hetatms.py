@@ -346,8 +346,7 @@ Full parameters:
   pdb_hierarchy = pdb_in.file_object.construct_hierarchy()
   pdb_hierarchy.atoms().reset_i_seq()
   xray_structure = pdb_in.file_object.xray_structure_simple(
-    crystal_symmetry=final_symm,
-    unit_cube_pseudo_crystal=params.ignore_symmetry)
+    crystal_symmetry=final_symm)
   if (sorting_params is None) :
     sorting_params = params
   result = sort_hetatms(
