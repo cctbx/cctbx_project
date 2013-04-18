@@ -682,6 +682,12 @@ class type_symbol_registry_base(object):
       print >> log, "%sNumber of resolved %s type symbol conflicts: %d" % (
         prefix, self.type_label, self.n_resolved_conflicts)
 
+  def get_unknown_atoms (self, pdb_atoms) :
+    n_unknown = self.n_unknown_type_symbols()
+    if (n_unknown > 0):
+      i_seqs = (self.symbols == "").iselection()
+      return pdb_atoms.select(i_seqs)
+
 class scattering_type_registry(type_symbol_registry_base):
 
   def __init__(self, scattering_types, strict_conflict_handling):
