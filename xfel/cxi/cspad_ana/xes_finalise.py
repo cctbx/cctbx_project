@@ -12,10 +12,18 @@ def cspad_unbound_pixel_mask():
   # Every 10th pixel along the diagonal from the top left hand corner are not
   # bonded, hence we ignore them in the summed spectrum
   mask = flex.int(flex.grid(370, 391), 0)
-  print mask.all()
   for section_offset in ((0,0), (0, 197), (185, 197), (185, 0)):
     for i in range(19):
       mask[section_offset[0] + i * 10, section_offset[1] + i * 10] = 1
+  return mask
+
+def cspad2x2_bad_pixel_mask_cxi_run7():
+  bad_pixels = set((
+    (279,289), (277,254), (273,295), (268,247), (269,260), (281,383), (268,57),
+    (262,184), (291,206), (275,106), (261,28), (286,189), (265,304), (284,277)))
+  mask = flex.int(flex.grid(370, 391), 0)
+  for bad_pixel in bad_pixels:
+    mask[bad_pixel] = 1
   return mask
 
 
@@ -102,13 +110,53 @@ class xes_finalise(object):
 
     print "Total number of images used from %i runs: %i" %(i_run+1, self.nmemb)
 
-def get_spectrum(spectrum_focus, mask_focus=None):
+def filter_outlying_pixels(spectrum_focus, mask_focus):
+  for i in range(spectrum_focus.all()[0]):
+    for j in range(spectrum_focus.all()[1]):
+      neighbouring_pixels = flex.double()
+      for ii in range(i-1, i+2):
+        for jj in range(j-1, j+2):
+          if ii == i and jj == j: continue
+          try:
+            if mask_focus[ii, jj] > 0: continue
+            neighbouring_pixels.append(spectrum_focus[ii, jj])
+          except IndexError:
+            continue
+      if len(neighbouring_pixels) == 0: continue
+      if spectrum_focus[i, j] > 2 * flex.mean(neighbouring_pixels):
+        print "Bad pixel: (%i, %i)" %(i, j)
+        spectrum_focus[i, j] = 0
+        mask_focus[i,j] = 1
 
+def get_spectrum(spectrum_focus, mask_focus=None):
   spectrum = flex.sum(spectrum_focus, axis=0).as_double()
   # take care of columns where one or more pixels are inactive
   # and/or flagged as a "hot" - in this case the sum is over fewer rows and
   # will introduce artefacts into the spectrum
-  if mask_focus is not None:
+  if 1 and mask_focus is not None:
+    # estimate values for bad pixels as the mean value of
+    # neighbouring pixels
+    for j in range(spectrum_focus.all()[1]):
+      for i in range(spectrum_focus.all()[0]):
+        if mask_focus[i,j] > 0:
+          neighbouring_pixels = flex.double()
+          for ii in range(i-1, i+2):
+            for jj in range(j-1, j+2):
+              if ii == i and jj == j: continue
+              try:
+                if mask_focus[ii, jj] > 0: continue
+                neighbouring_pixels.append(spectrum_focus[ii, jj])
+              except IndexError:
+                continue
+          if len(neighbouring_pixels) == 0: continue
+          spectrum[j] += flex.mean(neighbouring_pixels)
+          print "bad pixel at (%i,%i): estimating value from neighbouring pixels: %.0f" %(
+            i,j, flex.mean(neighbouring_pixels))
+
+  if 0 and mask_focus is not None:
+    # Upweight columns that contain bad pixels based on the
+    # relative strength of the signal on the rows containing
+    # bad pixels
     scales = flex.sum(spectrum_focus, axis=1).as_double()
     scales /= flex.sum(scales)
     for j in range(spectrum_focus.all()[1]):
@@ -117,8 +165,8 @@ def get_spectrum(spectrum_focus, mask_focus=None):
         if mask_focus[i,j] == 0:
           sum_column_weights += scales[i]
       if sum_column_weights < 1:
-        #print "pixels missing from column %i" %j
-        #print sum_column_weights
+        print "pixels missing from column %i" %j
+        print sum_column_weights
         if sum_column_weights > 0:
           spectrum[j] *= (1/sum_column_weights)
 
@@ -135,9 +183,6 @@ def get_spectrum(spectrum_focus, mask_focus=None):
       if (column_i in omit_columns
           or column_i+1 in omit_columns
           or column_i-1 in omit_columns): continue
-      if spectrum[column_i] < 0.3 * (spectrum[column_i-1]+spectrum[column_i+1]):
-        # row 13
-        omit_columns.add(column_i)
     plot_x = flex.int(xrange(spectrum.size()))
     plot_y = spectrum.deep_copy()
     for i in reversed(sorted(omit_columns)):
@@ -145,7 +190,7 @@ def get_spectrum(spectrum_focus, mask_focus=None):
       del plot_y[i]
     plot_x += 1
   else:
-    plot_x = range(1,len(spectrum)+1)
+    plot_x = flex.double(range(1,len(spectrum)+1))
     plot_y = spectrum
 
   return plot_x, plot_y
