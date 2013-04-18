@@ -14,7 +14,7 @@ def exercise ():
   if (None in [pdb_file, mtz_file]) :
     print "Input files not found, skipping test"
     return
-  cmd = "mmtbx.prune_model \"%s\" \"%s\"" % (pdb_file, mtz_file)
+  cmd = "mmtbx.prune_model \"%s\" \"%s\" mainchain=True" % (pdb_file, mtz_file)
   result = easy_run.fully_buffered(cmd).raise_if_errors()
   if (not "Removed 3 residues and 1 sidechains" in result.stdout_lines) :
     raise RuntimeError(("Program output differs from expected - last 20 lines "+
