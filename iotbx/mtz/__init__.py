@@ -510,6 +510,34 @@ class _(boost.python.injector, ext.object):
           result.append(column_group)
     return result
 
+  def as_miller_arrays_map(self, *args, **kwargs):
+    """
+    Returns a python dictionary with keys of tuples containing
+    (crystal name, dataset name, column label) and values of
+    the Miller arrays from :func:`as_miller_arrays`.
+
+    >>> miller_map = mtz_file.as_miller_arrays_map()
+    >>> miller_map[('NATIVE', 'NATIVE', 'FTOXD3')]
+    <cctbx.miller.array at 0x108a87b90>
+    >>> miller_map[('NATIVE', 'NATIVE', 'SIGFTOXD3')]
+    <cctbx.miller.array at 0x108a87b90>
+    """
+    miller_arrays = self.as_miller_arrays(*args, **kwargs)
+    keys = []
+    for crystal in self.crystals():
+      for dataset in crystal.datasets():
+        for label in dataset.column_labels():
+          keys.append((crystal.name(), dataset.name(), label))
+    miller_map = {}
+    ikeys = iter(keys)
+    for miller_array in miller_arrays:
+      for label in miller_array.info().labels:
+        for key in ikeys:
+           if label == key[2]:
+             miller_map[key] = miller_array
+             break
+    return miller_map
+
   def group_columns(self,
         crystal_symmetry_from_file,
         crystal_symmetry,
