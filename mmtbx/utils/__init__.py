@@ -6,7 +6,7 @@ import cctbx.xray.structure_factors
 from cctbx.array_family import flex
 from libtbx.utils import \
   Sorry, show_exception_info_if_full_testing, \
-  date_and_time, host_and_user, multi_out
+  date_and_time, host_and_user, multi_out, null_out
 import iotbx.phil
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
@@ -3088,3 +3088,37 @@ class f_000(object):
       f_000 = unit_cell_volume*mean_solvent_density
     self.f_000 = f_000
     self.solvent_fraction = solvent_fraction
+
+def detect_asparagine_link_problem (pdb_file, cif_files=()) :
+  """
+  This allows us to avoid a bug in automatic linking which deletes the
+  monomer library definition for HD22 for an N-linked Asn, even though it may
+  not actually be replaced by a sugar link.
+  """
+  args = [ pdb_file, ] + list(cif_files)
+  import mmtbx.monomer_library.server
+  mon_lib_srv = mmtbx.monomer_library.server.server()
+  ener_lib = mmtbx.monomer_library.server.ener_lib()
+  params = mmtbx.monomer_library.pdb_interpretation.master_params.extract()
+  params.automatic_linking.intra_chain=True
+  processed_pdb_file = mmtbx.monomer_library.pdb_interpretation.run(
+    args=args,
+    params=params,
+    strict_conflict_handling=False,
+    substitute_non_crystallographic_unit_cell_if_necessary=True,
+    log=null_out())
+  all_chain_proxies = processed_pdb_file.all_chain_proxies
+  pdb_atoms = all_chain_proxies.pdb_atoms
+  nb_reg = all_chain_proxies.nonbonded_energy_type_registry
+  n_asn_hd22 = 0
+  n_other = 0
+  if (nb_reg.n_unknown_type_symbols() > 0) :
+    unknown_atoms = nb_reg.get_unknown_atoms(pdb_atoms)
+    for atom in unknown_atoms :
+      labels = atom.fetch_labels()
+      if (atom.name == "HD22") and (labels.resname == "ASN") :
+        n_asn_hd22 += 1
+      else :
+        n_other += 1
+  # XXX should this do something different if n_other > 0?
+  return n_asn_hd22
