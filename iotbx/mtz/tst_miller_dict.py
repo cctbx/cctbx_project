@@ -5,9 +5,9 @@ from iotbx import mtz
 m = mtz.object(file_name=os.path.join(os.environ["CEXAM"],"data",
                          "insulin_unmerged.mtz"))
 
-miller_map = m.as_miller_arrays_map()
+miller_dict = m.as_miller_arrays_dict()
 
-keys = sorted(miller_map.keys())
+keys = sorted(miller_dict.keys())
 
 assert keys == [('HKL_base', 'HKL_base', 'BATCH'),
                 ('HKL_base', 'HKL_base', 'BGPKRATIOS'),
