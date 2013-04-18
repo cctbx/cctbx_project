@@ -822,6 +822,55 @@ END
   r_factor = cmdline.fmodel.r_work()
   assert (r_factor < 0.001)
 
+def exercise_detect_link_problems () :
+  open("tmp_mmtbx_utils_asn_nag.pdb", "w").write("""\
+CRYST1  124.702  124.702   71.573  90.00  90.00  90.00 P 4 21 2
+ATOM   3196  N   ASN A 284      36.622 -19.654  35.782  1.00 19.63           N
+ATOM   3197  CA  ASN A 284      36.491 -18.279  35.327  1.00 19.79           C
+ATOM   3198  C   ASN A 284      35.037 -17.835  35.322  1.00 20.05           C
+ATOM   3199  O   ASN A 284      34.751 -16.634  35.341  1.00 28.11           O
+ATOM   3200  CB  ASN A 284      37.063 -18.130  33.915  1.00 21.07           C
+ATOM   3201  CG  ASN A 284      38.549 -17.829  33.904  1.00 20.78           C
+ATOM   3202  OD1 ASN A 284      39.040 -17.053  34.702  1.00 19.74           O
+ATOM   3203  ND2 ASN A 284      39.263 -18.449  32.968  1.00 21.82           N
+ATOM   3204  H   ASN A 284      36.875 -20.208  35.174  1.00 23.56           H
+ATOM   3205 HD21 ASN A 284      38.893 -18.679  32.227  1.00 26.19           H
+ATOM   3206  HA  ASN A 284      36.987 -17.719  35.944  1.00 19.79           H
+ATOM   3207  HB2 ASN A 284      36.900 -18.947  33.418  1.00 21.07           H
+ATOM   3208  HB3 ASN A 284      36.591 -17.419  33.454  1.00 21.07           H
+ATOM   3209 HD22 ASN A 284      38.878 -18.991  32.422  1.00 21.82           H
+HETATM 5988  C1  NAG A 467      40.601 -17.959  32.799  1.00 27.22           C
+HETATM 5989  C2  NAG A 467      41.289 -19.314  32.714  1.00 22.16           C
+HETATM 5990  C3  NAG A 467      42.783 -19.123  32.507  1.00 54.68           C
+HETATM 5991  C4  NAG A 467      43.034 -18.265  31.278  1.00 23.55           C
+HETATM 5992  C5  NAG A 467      42.261 -16.957  31.391  1.00 33.78           C
+HETATM 5993  C6  NAG A 467      42.388 -16.125  30.141  1.00 24.49           C
+HETATM 5994  C7  NAG A 467      41.114 -21.444  33.906  1.00 21.47           C
+HETATM 5995  C8  NAG A 467      40.844 -22.107  35.214  1.00 20.34           C
+HETATM 5996  N2  NAG A 467      41.041 -20.110  33.902  1.00 24.73           N
+HETATM 5997  O3  NAG A 467      43.399 -20.391  32.338  1.00 54.77           O
+HETATM 5998  O4  NAG A 467      44.417 -17.960  31.155  1.00 53.51           O
+HETATM 5999  O5  NAG A 467      40.861 -17.215  31.600  1.00 31.39           O
+HETATM 6000  O6  NAG A 467      41.470 -15.043  30.154  1.00 46.51           O
+HETATM 6001  O7  NAG A 467      41.392 -22.081  32.897  1.00 22.76           O
+HETATM 6002  H1  NAG A 467      40.952 -17.467  33.566  1.00 32.66           H
+HETATM 6003  H2  NAG A 467      40.934 -19.790  31.940  1.00 26.59           H
+HETATM 6004  H3  NAG A 467      43.163 -18.682  33.290  1.00 65.62           H
+HETATM 6005  H4  NAG A 467      42.738 -18.746  30.482  1.00 28.26           H
+HETATM 6006  H5  NAG A 467      42.608 -16.449  32.148  1.00 40.54           H
+HETATM 6007  H61 NAG A 467      42.210 -16.687  29.363  1.00 29.39           H
+HETATM 6008  H62 NAG A 467      43.296 -15.773  30.082  1.00 29.39           H
+HETATM 6009  H81 NAG A 467      40.882 -23.076  35.101  1.00 24.41           H
+HETATM 6010  H82 NAG A 467      39.958 -21.851  35.532  1.00 24.41           H
+HETATM 6011  H83 NAG A 467      41.516 -21.829  35.865  1.00 24.41           H
+HETATM 6012  HN2 NAG A 467      40.836 -19.681  34.680  1.00 29.67           H
+HETATM 6013  HO3 NAG A 467      42.779 -20.998  32.145  1.00 65.72           H
+HETATM 6014  HO4 NAG A 467      44.884 -18.471  31.711  1.00 64.21           H
+HETATM 6015  HO6 NAG A 467      40.829 -15.206  30.746  1.00 55.81           H
+""")
+  n_bad = utils.detect_asparagine_link_problem("tmp_mmtbx_utils_asn_nag.pdb")
+  assert (n_bad == 1)
+
 def run():
   verbose = "--verbose" in sys.argv[1:]
   exercise_00(verbose=verbose)
@@ -851,6 +900,7 @@ def run():
   exercise_get_atom_selections(verbose=verbose)
   exercise_f_000()
   exercise_cmdline_load_pdb_and_data()
+  exercise_detect_link_problems()
   print format_cpu_times()
 
 if (__name__ == "__main__"):
