@@ -106,6 +106,7 @@ class pixel_histograms(object):
     normalise=False # XXX
     assert [pixels, starting_pixel].count(None) > 0
     print "n_images:", flex.sum(self.histograms.values()[0].slots())
+    print "n_pixels:", len(self.histograms)
     if pixels is None:
       pixels = sorted(self.histograms.keys())
       if starting_pixel is not None:
@@ -119,7 +120,7 @@ class pixel_histograms(object):
       self.plot_one_histogram(
         hist, window_title=window_title, title=title,log_scale=log_scale,
         normalise=normalise, save_image=save_image)
-      fontsize = 24
+      fontsize = 18
       pyplot.ylabel("Counts", fontsize=fontsize)
       pyplot.xlabel("ADUs", fontsize=fontsize)
       if fit_gaussians:
@@ -151,6 +152,7 @@ class pixel_histograms(object):
       y = g(x)
       y_calc += y
       pyplot.plot(x, y, linewidth=2)
+
     #print "Peak height ratio: %.2f" %(gaussians[0].params[0]/gaussians[1].params[0])
     pyplot.plot(x, y_calc)
     # Plot the fit residuals
@@ -174,15 +176,12 @@ class pixel_histograms(object):
       data.set_selected(data == 0, 0.1) # otherwise lines don't get drawn when we have some empty bins
       pyplot.yscale("log")
     pyplot.plot(bins, data, '-k', linewidth=2)
-    #pyplot.bar(hist.slot_centers()-0.5*hist.slot_width(), slots, width=hist.slot_width())
-    pyplot.xlim(histogram.data_min(), histogram.data_max())
     pyplot.suptitle(title)
     data_min = min([slot.low_cutoff for slot in histogram.slot_infos() if slot.n > 0])
     data_max = max([slot.low_cutoff for slot in histogram.slot_infos() if slot.n > 0])
-    pyplot.xlim(data_min, data_max)
+    pyplot.xlim(data_min, data_max+histogram.slot_width())
 
   def fit_one_histogram(self, pixel, n_gaussians=2):
-    #n_gaussians = 1
     histogram = self.histograms[pixel]
     fitted_gaussians = []
 
@@ -274,6 +273,10 @@ class pixel_histograms(object):
         starting_gaussians, x[lower_slot:upper_slot], y[lower_slot:upper_slot])
       sigma = abs(fit.functions[0].params[2])
       if sigma < 1 or sigma > 10:
+        if flex.sum(y[lower_slot:upper_slot]) < 15:
+          # No point wasting time attempting to fit a gaussian if there aren't any counts
+          #raise PixelFitError("Not enough counts to fit gaussian")
+          return fit
         print "using cma_es:", sigma
         fit = curve_fitting.cma_es_minimiser(
           starting_gaussians, x[lower_slot:upper_slot], y[lower_slot:upper_slot])
@@ -286,13 +289,20 @@ class pixel_histograms(object):
     for pixel in self.histograms.keys():
       yield pixel
 
-def sliding_average(y):
-  y_trimmed = y[1:-1]
-  y_right_shifted = y[:-2]
-  y_left_shifted = y[2:]
-  averaged = (y_trimmed + y_right_shifted + y_left_shifted) * (1/3)
-  averaged.insert(0, y[0])
-  averaged.append(y[-1])
+def sliding_average(y, n=3):
+  assert n % 2 == 1 # n must be odd
+  n_either_side = n//2
+  summed = y[n_either_side:-n_either_side]
+  for i in range(n_either_side):
+    summed += y[n_either_side-i-1:-(n_either_side+i+1)]
+    end = -(n_either_side-i-1)
+    if end == 0: end = None
+    summed += y[(n_either_side+i+1):end]
+  averaged = summed / n
+  for i in range(n_either_side):
+    averaged.insert(i, y[i])
+  for i in range(n_either_side, 0, -1):
+    averaged.append(y[-i])
   return averaged
 
 def hist_outline(hist):
@@ -343,9 +353,9 @@ def check_pixel_histogram_fit(hist, gaussians):
   # check the residual around the zero photon peak
   zero_gaussian = gaussians[0]
   selection = ((x < zero_gaussian.params[1] + 1 * zero_gaussian.sigma))
-  if ((flex.max(residual.select(selection))/flex.sum(hist.slots()) > 0.008)
-      or (flex.min(residual.select(selection))/flex.sum(hist.slots()) < -0.0067)):
-    raise PixelFitError("Bad fit residual around zero photon peak")
+  #if ((flex.max(residual.select(selection))/flex.sum(hist.slots()) > 0.008)
+      #or (flex.min(residual.select(selection))/flex.sum(hist.slots()) < -0.0067)):
+    #raise PixelFitError("Bad fit residual around zero photon peak")
 
   # check the residual around the one photon peak
   one_gaussian = gaussians[1]
