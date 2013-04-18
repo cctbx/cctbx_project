@@ -334,9 +334,9 @@ Full parameters:
       raise Sorry("Crystal symmetry information is required; please specify "+
         "the space_group and unit_cell parameters.")
   else :
-    if (space_group is None) :
+    if (space_group is None) and (pdb_symm is not None) :
       space_group = pdb_symm.space_group_info()
-    if (unit_cell is None) :
+    if (unit_cell is None) and (pdb_symm is not None) :
       unit_cell = pdb_symm.unit_cell()
   final_symm = None
   if (not params.ignore_symmetry) :
