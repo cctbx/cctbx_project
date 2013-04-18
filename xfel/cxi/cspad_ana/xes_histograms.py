@@ -54,6 +54,7 @@ def run(args):
     args=args, master_string=master_phil_str)
   args = processed.remaining_args
   work_params = processed.work.extract().xes
+  processed.work.show()
   assert len(args) == 1
   output_dirname = work_params.output_dirname
   roi = cspad_tbx.getOptROI(work_params.roi)
@@ -137,7 +138,6 @@ class xes_from_histograms(object):
             or j > roi[1]):
           del pixels[n_pixels-k-1]
 
-
     if gain_map is None:
       fixed_func = pixel_histograms.fit_one_histogram
     else:
@@ -158,7 +158,6 @@ class xes_from_histograms(object):
     gains = flex.double()
 
     for i, pixel in enumerate(pixels):
-      #print i
       start_row = min(start_row, pixel[0])
       end_row = max(end_row, pixel[0])
       n_photons = 0
@@ -167,7 +166,7 @@ class xes_from_histograms(object):
         try:
           gaussians = pixel_histograms.fit_one_histogram(pixel)
         except RuntimeError, e:
-          print "Error fitting pixel %s" %pixel
+          print "Error fitting pixel %s" %str(pixel)
           print str(e)
           mask[pixel] = 1
           continue
@@ -205,7 +204,6 @@ class xes_from_histograms(object):
           #mask[pixel] = 1
           #continue
       if method == "sum_adu":
-        #print "summing adus"
         sum_adu = 0
         one_photon_cutoff, two_photon_cutoff = [
           (threshold * gain + zero_peak_diff)
@@ -217,13 +215,12 @@ class xes_from_histograms(object):
         for j in range(i_one_photon_cutoff, len(slots)):
           center = slot_centers[j]
           sum_adu += slots[j] * (center - zero_peak_diff) * 30/gain
+
         self.sum_img[pixel] = sum_adu
       elif method == "photon_counting":
-        #print "counting photons"
         one_photon_cutoff, two_photon_cutoff = [
           (threshold * gain + zero_peak_diff)
           for threshold in (photon_threshold, two_photon_threshold)]
-        #print "cutoffs: %s %.2f, %.2f" %(pixel, one_photon_cutoff, two_photon_cutoff)
         i_one_photon_cutoff = hist.get_i_slot(one_photon_cutoff)
         i_two_photon_cutoff = hist.get_i_slot(two_photon_cutoff)
         slots = hist.slots()
@@ -249,12 +246,18 @@ class xes_from_histograms(object):
     mask.set_selected(self.sum_img == 0, 1)
     unbound_pixel_mask = xes_finalise.cspad_unbound_pixel_mask()
     mask.set_selected(unbound_pixel_mask > 0, 1)
+    bad_pixel_mask = xes_finalise.cspad2x2_bad_pixel_mask_cxi_run7()
+    mask.set_selected(bad_pixel_mask > 0, 1)
 
     for row in range(self.sum_img.all()[0]):
       self.sum_img[row:row+1,:].count(0)
 
     spectrum_focus = self.sum_img[start_row:end_row,:]
     mask_focus = mask[start_row:end_row,:]
+
+    spectrum_focus.set_selected(mask_focus > 0, 0)
+
+    xes_finalise.filter_outlying_pixels(spectrum_focus, mask_focus)
 
     print "Number of rows: %i" %spectrum_focus.all()[0]
     print "Estimated no. photons counted: %i" %flex.sum(spectrum_focus)
@@ -291,7 +294,7 @@ class xes_from_histograms(object):
     self.spectrum_focus = spectrum_focus
 
     xes_finalise.output_matlab_form(spectrum_focus, "%s/sum.m" %output_dirname)
-
+    print output_dirname
 
 if __name__ == '__main__':
   run(sys.argv[1:])
