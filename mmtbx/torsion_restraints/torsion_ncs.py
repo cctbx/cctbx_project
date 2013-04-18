@@ -1336,7 +1336,7 @@ class torsion_ncs(object):
         coordinate_sigma           = param_group.coordinate_sigma,
         b_factor_weight            = param_group.b_factor_weight,
         special_position_warnings_only
-          = False,
+          = True,
         log = log)
       ncs_groups.members.append(group)
       print >> log
