@@ -1125,24 +1125,23 @@ class structure(crystal.special_position_settings):
     return flex.bool([ label_regex.search(sc.label) is not None
                        for sc in self.scatterers() ])
 
-  def by_number_selection(self, selected_scatterers):
-    """Get a selector array for scatterers with specified number from the
+  def by_index_selection(self, selected_scatterers):
+    """Get a selector array for scatterers with specified index from the
     structure. For example you can select scatterers 1,4 and 5 by passing
     (1,4,5) as argument.
 
-    :param selected_scatterers: list of scatterer numbers to select
+    :param selected_scatterers: list of scatterers to select
     :type selected_scatterers: list(int)
 
     :returns: an array to select the desired scatterers of the structure
     :rtype: flex.bool[]
     """
     result = flex.bool(self._scatterers.size(), False)
-    for number in selected_scatterers:
-      try:
-        result[number] = True
-      except(IndexError):
-        sorry("Tried to select a scatterer which is not in the list of " + \
-              "scatterers for this structuture.")
+    try:
+      result.set_selected(flex.size_t(selected_scatterers), True)
+    except(RuntimeError):
+      raise(IndexError("Tried to select a scatterer by index with index => "+\
+            "of scatterers for this structuture."))
     return result
 
   def apply_rigid_body_shift(self, rot, trans, selection = None,
