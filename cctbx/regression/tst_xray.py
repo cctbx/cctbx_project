@@ -111,6 +111,16 @@ def exercise_structure():
     xray.scatterer("O1", (0.18700, -0.20700, 0.83333))))
   xs = xray.structure(sp, scatterers)
   assert xs.scatterers().size() == 2
+  # test selections
+  assert list(xs.by_index_selection([0,])) == [True, False]
+  assert list(xs.by_index_selection([1,])) == [False, True]
+  assert list(xs.by_index_selection([0,1])) == [True, True]
+  try: sel = xs.by_index_selection([2,])
+  except IndexError, e:
+    assert str(e) == """\
+Tried to select a scatterer by index with index \
+=> of scatterers for this structuture."""
+  else: raise Exception_expected
   assert not xs.non_unit_occupancy_implies_min_distance_sym_equiv_zero()
   assert xs.n_undefined_multiplicities() == 0
   assert tuple(xs.special_position_indices()) == (0, 1)
