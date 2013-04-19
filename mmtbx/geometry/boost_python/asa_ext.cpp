@@ -7,6 +7,9 @@
 #include <boost/python/stl_iterator.hpp>
 #include <boost/python/operators.hpp>
 #include <boost/python/list.hpp>
+#include <boost/python/tuple.hpp>
+#include <boost/python/to_python_converter.hpp>
+
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/range/adaptor/filtered.hpp>
 #include <boost/mpl/for_each.hpp>
@@ -14,6 +17,9 @@
 #include <boost/mpl/vector.hpp>
 #include <boost/mpl/placeholders.hpp>
 #include <boost/mpl/transform.hpp>
+
+#include <boost/fusion/algorithm/iteration/for_each.hpp>
+#include <boost/bind.hpp>
 
 #include <scitbx/vec3.h>
 #include <boost_adaptbx/boost_range_python.hpp>
@@ -26,22 +32,6 @@
 #include <mmtbx/geometry/range_adaptors.hpp>
 
 #include <string>
-
-namespace scitbx
-{
-
-size_t
-hash_value(const scitbx::vec3< int >& voxel)
-{
-  std::size_t seed = 0;
-  boost::hash_combine( seed, voxel[0] );
-  boost::hash_combine( seed, voxel[1] );
-  boost::hash_combine( seed, voxel[2] );
-
-  return seed;
-}
-
-} // namespace scitbx
 
 namespace mmtbx
 {
@@ -110,25 +100,67 @@ namespace indexing
 namespace
 {
 
-template < typename Predicate, typename InputRange >
+template< typename Predicate, typename InputRange >
 struct filtered_range_type
 {
   typedef boost::filtered_range< Predicate, InputRange > type;
 };
 
-template < typename Sphere, typename Voxel >
+// Adapted from http://mail.python.org/pipermail/cplusplus-sig/attachments/20090227/0dd51fec/attachment.hpp
+struct ListBuilder
+{
+  typedef void result_type;
+
+  template< typename T >
+  void operator ()(boost::python::list mylist, const T& value) const
+  {
+    mylist.append( value );
+  }
+};
+
+template< typename FusionSequence >
+struct FusionSequenceConverter
+{
+  static PyObject* convert(const FusionSequence& seq)
+  {
+    boost::python::list mylist;
+    boost::fusion::for_each(
+      seq,
+      boost::bind( ListBuilder(), mylist, _1 )
+      );
+
+    return boost::python::incref( boost::python::tuple( mylist ).ptr() );
+  }
+};
+
+template< typename Predicate >
+struct indexer_filtered_range_type
+{
+  template< typename Indexer >
+  struct apply
+  {
+    typedef boost::filtered_range< Predicate, typename Indexer::range_type >
+      type;
+  };
+};
+
+template< typename Sphere, typename Discrete >
 struct indexing_wrappers
 {
 public:
   typedef Sphere sphere_type;
   typedef typename Sphere::vector_type vector_type;
   typedef Linear< Sphere > linear_spheres_type;
-  typedef Voxelizer< vector_type, Voxel > voxelizer_type;
-  typedef Hash< Sphere, voxelizer_type > hash_spheres_type;
+  typedef Hash< Sphere, Discrete> hash_spheres_type;
+  typedef typename hash_spheres_type::voxelizer_type voxelizer_type;
   typedef adaptors::OverlapEqualityFilter< Sphere, overlap::BetweenSpheres >
     predicate_type;
 
   typedef boost::mpl::vector< linear_spheres_type, hash_spheres_type > indexers;
+  typedef typename boost::mpl::transform<
+    indexers,
+    indexer_filtered_range_type< predicate_type >
+    >::type filtered_range_types;
 
   static void wrap()
   {
@@ -203,6 +235,11 @@ public:
     wrap_ranges_and_filters< hash_spheres_type >( "hash_spheres" );
 
     using namespace boost::python;
+    to_python_converter<
+      typename voxelizer_type::voxel_type,
+      FusionSequenceConverter< typename voxelizer_type::voxel_type >
+      >();
+
     class_< voxelizer_type >( "voxelizer", no_init )
       .def(
         init< const vector_type&, const vector_type& >(
@@ -230,7 +267,7 @@ public:
 void init_module()
 {
   typedef asa::Sphere< scitbx::vec3< double > > sphere_type;
-  indexing_wrappers< sphere_type, scitbx::vec3< int > >::wrap();
+  indexing_wrappers< sphere_type, int >::wrap();
 }
 
 } // namespace <anonymous>
@@ -284,17 +321,6 @@ public:
   }
 };
 
-template< typename Predicate >
-struct indexer_filtered_range_type
-{
-  template< typename Indexer >
-  struct apply
-  {
-    typedef boost::filtered_range< Predicate, typename Indexer::range_type >
-      type;
-  };
-};
-
 template < typename IndexerWrapper >
 struct accessibility_wrappers
 {
@@ -305,10 +331,6 @@ struct accessibility_wrappers
   typedef adaptors::Transform< vector_type > transformation_type;
   typedef boost::transformed_range< transformation_type, points_range >
     transformed_points_range;
-  typedef typename boost::mpl::transform<
-    typename IndexerWrapper::indexers,
-    indexer_filtered_range_type< typename IndexerWrapper::predicate_type >
-    >::type filtered_range_types;
 
   static void wrap()
   {
@@ -379,7 +401,7 @@ struct accessibility_wrappers
       ;
 
     boost::mpl::for_each<
-      filtered_range_types,
+      typename IndexerWrapper::filtered_range_types,
       boost::mpl::make_identity< boost::mpl::placeholders::_ >
       >( add_method_definer< Checker >( myclass ) );
 
@@ -406,8 +428,7 @@ struct accessibility_wrappers
 void init_module()
 {
   typedef asa::Sphere< scitbx::vec3< double > > sphere_type;
-  typedef scitbx::vec3< int > voxel_type;
-  typedef indexing::indexing_wrappers< sphere_type, voxel_type >
+  typedef indexing::indexing_wrappers< sphere_type, int >
     indexer_wrapper_type;
   accessibility_wrappers< indexer_wrapper_type >::wrap();
 }
