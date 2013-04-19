@@ -4,6 +4,7 @@
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/serialization/single_buffered.h>
 #include <boost/python/make_constructor.hpp>
+#include <boost/optional.hpp>
 #include <tbxx/error_utils.hpp>
 
 namespace scitbx { namespace serialization { namespace single_buffered {
@@ -85,6 +86,22 @@ namespace {
     return result;
   }
 
+  boost::optional<std::size_t>
+  first_index(
+    af::const_ref<cctbx::miller::index<> > const& miller_indices,
+    af::tiny<double, 3> const& x)
+  {
+    boost::optional<std::size_t> result ;
+    for(std::size_t i=0;i<miller_indices.size();i++) {
+      cctbx::miller::index<> const& h = miller_indices[i];
+      if ((h[0]==x[0]) && (h[1]==x[1]) && (h[2]==x[2])) {
+        result = i;
+        break;
+      };
+    };
+    return result;
+  }
+
 } // namespace <anonymous>
 
   void wrap_flex_miller_index(boost::python::object const& flex_root_scope)
@@ -101,6 +118,9 @@ namespace {
       .def("fourier_transform_real_part_at_x",
         fourier_transform_real_part_at_x, (
           bp::arg("fourier_coeffs"), bp::arg("x")))
+      .def("first_index",
+        first_index, (
+          bp::arg("miller_index")))
     ;
   }
 

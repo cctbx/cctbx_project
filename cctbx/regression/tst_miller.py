@@ -514,6 +514,9 @@ def exercise_array():
 : (0, 0, -4) 2.0
 """
   ma = miller.array(ms, data, sigmas)
+  assert ma.first_index((0, 0, -4)) == 1
+  assert ma.data_at_first_index((0, 0, -4)) == 2.0
+  assert ma.sigma_at_first_index((0, 0, -4)) == 0.2
   s = StringIO()
   ma.show_array(f=s, prefix=" :")
   assert s.getvalue() == """\
