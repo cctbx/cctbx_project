@@ -494,12 +494,12 @@ def match_od(unit_cell, xyz_h, min_dod_angle=85, max_dod_angle=170):
       d1 = unit_cell.distance(x1, x2)
       if d1<0.5:
         continue
-      dd1 =abs(d1-1.) 
+      dd1 =abs(d1-1.)
       if dd1 < besta:
         r = (x1,x2)
         besta = dd1
   return r, besta
-  
+
 def len_peaks(set_of_peaks):
   r = 0
   for peaks in set_of_peaks.values():

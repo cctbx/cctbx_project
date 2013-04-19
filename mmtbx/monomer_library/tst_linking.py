@@ -1,5 +1,5 @@
 from __future__ import division
-import os, sys
+import os
 from libtbx import easy_run
 
 pdbs = {"linking_test_NAG-NAG.pdb" : """

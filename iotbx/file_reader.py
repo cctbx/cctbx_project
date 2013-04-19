@@ -11,7 +11,6 @@ from __future__ import division
 # XXX note that there is some cross-importing from mmtbx here, but it is done
 # inline, not globally
 
-from libtbx import smart_open
 from libtbx.utils import Sorry
 import cPickle
 import os
