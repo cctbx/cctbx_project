@@ -12,8 +12,14 @@ where [list of commands]) is
 "python run.py modelN.pdb dataN.mtz" ]
 """
 from __future__ import division
+import getpass
+import os
+import re
+import subprocess
+import StringIO
+import sys
+import time
 
-import os, sys
 from libtbx import easy_run
 from libtbx.utils import Sorry
 
@@ -170,6 +176,32 @@ def run(phenix_source=None,
         end=None,
         host_scratch_dir=None,
         ):
+  """
+  Submits a job to run commands on the queueing system using qsub. One master
+  job is sent, which then deploys multiple sub jobs (Of the same job ID) to run
+  each separate command.
+
+  phenix_source: A path to the script used to initial the phenix environment
+  where: A path to the directory in which to run the commands
+  commands: A list of commands to run on the queue
+  size_of_chunks: Number of commands to run within each queue job
+  code: The task name used during submissions
+  js: ???
+  qsub_cmd: The command to submit a job from a shell
+  start: The start number for the task range
+  end: The end number for the task range
+  host_scratch_dir: If not None, will run the job within a local scratch
+                    directory on each queue machine, then copy back all output
+                    files to the directory set by where
+
+  Returns the job id of the submission.
+
+  Ex:
+  run(
+    where = path_to_where_you_want_to_run_your_jobs,
+    source = "/net/chevy/raid1/afonine/build/setpaths.csh",
+    commands = ["phenix.fetch_pdb abcd", "phenix.fetch_pdb efgh"])
+  """
   if not phenix_source:
     print '-'*80
     print "\n  Automatically setting phenix_source to current $PHENIX/phenix_env\n"
@@ -292,15 +324,93 @@ def run(phenix_source=None,
   cmd = "%s -t %d-%d -js %d %s" % (
     qsub_cmd,
     start,
-    end, #number_of_jobs,
+    end,
     js,
     qsub_run_filename,
     )
   print '\n  Queue command\n'
   print "> %s\n" % cmd
-  easy_run.call(cmd)
+
+  # Run the command, and then find the job id in the output
+  ero = easy_run.fully_buffered(command = cmd)
+  out = StringIO.StringIO()
+  ero.show_stdout(out = out)
+  # Line looks like:
+  # "Your job-array 5436256.1-122:1 ("easy_qsub") has been submitted"
+  pattern = re.compile(
+      r"Your job-array (\d+)\..* \(\".*\"\) has been submitted")
+
+  for line in out.getvalue().split("\n"):
+    if not line: continue
+
+    match = pattern.search(line)
+    if match:
+      job_id = int(match.group(1))
+      break
+  else:
+    print("Unable to determine job ID")
+    job_id = None
 
   os.chdir(old_where)
+
+  return job_id
+
+def wait(task_name = "easy_qsub",
+         job_id = None,
+         user = None,
+         qstat_cmd = "qstat",
+         sleep_time = 10):
+  """
+  Repeatedly checks the queue and waits until all jobs for a user have
+  completed. The caller may specify further information, such as the job name,
+  id, and user if jobs of another user are to be monitored.
+
+  job_id and task_name may be ints, strings, or lists of ints or strings.
+  """
+
+  if user is None:
+    user = getpass.getuser()
+
+  # Turn job_id into an array of strings if it isn't already one
+  if job_id:
+    if hasattr(job_id, "__iter__"):
+      job_id = [str(i).strip() for i in job_id]
+    else:
+      job_id = [str(task_name).strip()]
+
+  # Do the same for task_name
+  if task_name:
+    if hasattr(task_name, "__iter__"):
+      task_name = [str(i).strip() for i in task_name]
+    else:
+      task_name = [str(task_name).strip()]
+
+  # Monitor the queue until we don't see any more tasks for the user
+  # or with a given job id / task name
+  while True:
+    p = subprocess.Popen([qstat_cmd], stdout = subprocess.PIPE)
+    stdout = p.communicate()[0]
+    for line in stdout.split("\n")[2:]:
+      if not line: continue
+
+      # Check for a job with the same ID
+      if job_id and line[:7].strip() in job_id:
+        # Break the for loop
+        break
+
+      if line[27:39].strip() == user:
+        if task_name is not None:
+          if line[16:26].strip() in task_name:
+            # Break the for loop
+            break
+        else:
+          # Break the for loop
+          break
+    else:
+      # No lines matched, so break the while loop
+      break
+
+    time.sleep(sleep_time)
 
 if __name__=="__main__":
   args=sys.argv[1:]
