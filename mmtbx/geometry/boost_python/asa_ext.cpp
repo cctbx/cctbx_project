@@ -100,12 +100,6 @@ namespace indexing
 namespace
 {
 
-template< typename Predicate, typename InputRange >
-struct filtered_range_type
-{
-  typedef boost::filtered_range< Predicate, InputRange > type;
-};
-
 // Adapted from http://mail.python.org/pipermail/cplusplus-sig/attachments/20090227/0dd51fec/attachment.hpp
 struct ListBuilder
 {
@@ -192,7 +186,7 @@ public:
       ( prefix + "_close_objects_range" ).c_str()
       );
 
-    typedef typename filtered_range_type< predicate_type, range_type >::type
+    typedef typename indexer_filtered_range_type< predicate_type >::template apply< Indexer >::type
       filtered_range;
     boost_adaptbx::python::generic_range_wrapper< filtered_range >
       ::wrap( ( "filtered_" + prefix + "_close_objects_range" ).c_str() );
