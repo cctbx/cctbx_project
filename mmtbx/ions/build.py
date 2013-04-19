@@ -269,4 +269,5 @@ def clean_up_ions (fmodel, model, params, log=None, verbose=True) :
     for atom in ion_atoms :
       print >> log, "    %s" % atom.id_str()
     print >> log, ""
+  fmodel.update_xray_structure(new_model.xray_structure)
   return new_model

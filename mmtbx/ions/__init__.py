@@ -79,6 +79,10 @@ use_phaser = True
   .type = bool
   .help = Toggles the use of Phaser for calculation of f-prime values.
   .short_caption = Use Phaser to calculate f-double-prime
+aggressive = False
+  .type = bool
+  .help = Toggles more permissive settings for flagging waters as heavier \
+    elements.  Not recommended for automated use.
 water
   .short_caption = Water filtering
   .style = box auto_align
@@ -94,7 +98,7 @@ water
     .input_size = 80
     .help = Maximum water mFo-DFc map value
     .short_caption = Max. expected mFo-DFc map value
-  max_anom_level = 2.5
+  max_anom_level = 2.0
     .type = float
     .input_size = 80
     .help = Maximum water anomalous map value
@@ -112,6 +116,10 @@ water
     .type = float
     .input_size = 80
     .short_caption = Min. fraction of mean B-iso
+  min_frac_calpha_b_iso = 0.75
+    .type = float
+  max_frac_calpha_2fofc = 1.2
+    .type = float
   min_2fofc_coordinating = 1.0
     .type = float
     .help = Minimum 2mFo-DFc for waters involved in coordination shells.
@@ -290,6 +298,7 @@ class Manager (object) :
         raise Sorry("Anomalous data required when "+
                     "find_anomalous_substructure=True.")
       if ((params.use_phaser) and (libtbx.env.has_module("phaser"))) :
+        print >> log, "  Running Phaser substructure completion..."
         t1 = time.time()
         self.phaser_substructure = find_anomalous_scatterers(
           fmodel=fmodel,
@@ -354,7 +363,7 @@ class Manager (object) :
     self.use_fdp = flex.bool(xray_structure.scatterers().size(), False)
     self.ax_chain = None
     self._pair_asu_cache = {}
-
+    u_iso_all = xray_structure.extract_u_iso_or_u_equiv()
     # Extract some information about the structure, including B-factor
     # statistics for non-HD atoms and waters
     sctr_keys = xray_structure.scattering_type_registry().type_count_dict()\
@@ -362,6 +371,7 @@ class Manager (object) :
     self.hd_present = ("H" in sctr_keys) or ("D" in sctr_keys)
     sel_cache = pdb_hierarchy.atom_selection_cache()
     self.carbon_sel = sel_cache.selection("element C").iselection()
+    self.calpha_sel = sel_cache.selection("name CA and element C").iselection()
     assert (len(self.carbon_sel) > 0)
     water_sel = sel_cache.selection("(%s) and name O" %
       (" or ".join("resname " + i for i in WATER_RES_NAMES)))
@@ -369,11 +379,14 @@ class Manager (object) :
 
     self.n_waters = len(water_sel)
     self.n_heavy = len(not_hd_sel)
-    u_iso_all = xray_structure.extract_u_iso_or_u_equiv()
     u_iso_all_tmp = u_iso_all.select(not_hd_sel)
     self.b_mean_all = adptbx.u_as_b(flex.mean(u_iso_all_tmp))
     self.b_stddev_all = adptbx.u_as_b(
        u_iso_all_tmp.standard_deviation_of_the_sample())
+    self.b_mean_calpha = 0
+    if (len(self.calpha_sel) > 0) :
+      self.b_mean_calpha = adptbx.u_as_b(flex.mean(u_iso_all.select(
+        self.calpha_sel)))
     self.b_mean_hoh = self.b_stddev_hoh = None
     if (self.n_waters > 0) :
       u_iso_hoh = u_iso_all.select(water_sel)
@@ -431,6 +444,7 @@ class Manager (object) :
     sites_cart = self.xray_structure.sites_cart()
     self._principal_axes_of_inertia = [ None ] * len(sites_frac)
     self._map_variances = [ None ] * len(sites_frac)
+    self.calpha_mean_two_fofc = 0
     for map_type, map_key in zip(map_types, map_keys) :
       real_map = self.get_map(map_type)
       if (real_map is not None) :
@@ -459,15 +473,22 @@ class Manager (object) :
                 site_cart = site_cart,
                 radius = self.params.chloride.radius)
               self._map_variances[i_seq] = variance
+            elif (i_seq in self.calpha_sel) :
+              self.calpha_mean_two_fofc += real_map.eight_point_interpolation(
+                sites_frac[i_seq])
         del real_map
+    if (self.calpha_mean_two_fofc > 0) :
+      n_calpha = len(self.calpha_sel)
+      assert (n_calpha > 0)
+      self.calpha_mean_two_fofc /= n_calpha
     self.carbon_fo_values = None
     if (len(self.carbon_sel) > 0) :
+      self.carbon_fo_values = flex.double()
       self._map_values["mFo"] = flex.double(sites_frac.size(), 0)
       fo_map = fft_map(self.fmodel.map_coefficients(
         map_type="mFo",
         exclude_free_r_reflections=True,
         fill_missing=True))
-      self.carbon_fo_values = flex.double()
       for i_seq, site_frac in enumerate(sites_frac) :
         resname = self.pdb_atoms[i_seq].fetch_labels().resname
         element = self.pdb_atoms[i_seq].element.strip()
@@ -483,7 +504,13 @@ class Manager (object) :
     print >> out, "Model and map statistics:"
     print >> out, "  mean mFo map height @ carbon: %s" % format_value("%.2f",
       flex.max(self.carbon_fo_values))
+    if (self.calpha_mean_two_fofc > 0) :
+      print >> out, "  mean 2mFo-DFc map height @ C-alpha: %s" % format_value(
+        "%.2f", self.calpha_mean_two_fofc)
     print >> out, "  mean B-factor: %s" % format_value("%.2f", self.b_mean_all)
+    if (self.b_mean_calpha > 0) :
+      print >> out, "  mean C-alpha B-factor: %s" % format_value("%.2f",
+        self.b_mean_calpha)
     print >> out, "  mean water B-factor: %s" % format_value("%.2f",
       self.b_mean_hoh)
     print >> out, ""
@@ -601,6 +628,10 @@ class Manager (object) :
     expected manner around a single atom.
     """
     return self._map_variances[i_seq]
+
+  def get_b_iso (self, i_seq) :
+    sc = self.xray_structure.scatterers()[i_seq]
+    return adptbx.u_as_b(sc.u_iso_or_equiv(self.unit_cell))
 
   def map_stats (self, i_seq) :
     """
@@ -992,12 +1023,23 @@ class Manager (object) :
     # deviations from the mean and above a specified fraction of
     # the mean.
     if (self.b_stddev_hoh is not None) and (self.b_stddev_hoh > 0) :
-      z_value = (atom_props.atom.b - self.b_mean_hoh) / self.b_stddev_hoh
+      z_value = (atom_props.b_iso - self.b_mean_hoh) / self.b_stddev_hoh
 
       if z_value < -params.max_stddev_b_iso:
         inaccuracies.add(atom_props.LOW_B)
       elif atom_props.atom.b < self.b_mean_hoh * params.min_frac_b_iso:
         inaccuracies.add(atom_props.LOW_B)
+
+    if (self.params.aggressive) :
+      if (self.b_mean_calpha > 0) :
+        relative_b = atom_props.b_iso / self.b_mean_calpha
+        if (relative_b < params.min_frac_calpha_b_iso) :
+          inaccuracies.add(atom_props.LOW_B)
+
+      if (self.calpha_mean_two_fofc > 0) :
+        relative_2fofc = atom_props.peak_2fofc / self.calpha_mean_two_fofc
+        if (relative_2fofc > params.max_frac_calpha_2fofc) :
+          inaccuracies.add(atom_props.HIGH_2FOFC)
 
     return atom_props.is_correctly_identified(identity = "HOH")
 
@@ -1548,8 +1590,8 @@ class AtomProperties (object) :
     ANOM_PEAK, NO_ANOM_PEAK, BAD_GEOMETRY, NO_GEOMETRY, BAD_VECTORS, \
     BAD_VALENCES, TOO_FEW_NON_WATERS, TOO_FEW_COORD, TOO_MANY_COORD, \
     LIKE_COORD, BAD_COORD_ATOM, BAD_FPP, BAD_COORD_RESIDUE, VERY_BAD_VALENCES, \
-    BAD_HALIDE \
-    = range(22)
+    BAD_HALIDE, HIGH_2FOFC \
+    = range(23)
 
   error_strs = {LOW_B: "Abnormally low b-factor",
                 HIGH_B: "Abnormally high b-factor",
@@ -1573,6 +1615,7 @@ class AtomProperties (object) :
                 BAD_COORD_RESIDUE: "Disallowed coordinating residue",
                 VERY_BAD_VALENCES: "BVS far above or below cutoff",
                 BAD_HALIDE: "Bad halide site",
+                HIGH_2FOFC: "Unexpectedly high 2mFo-DFc value",
                 }
 
   def __init__(self, i_seq, manager):
@@ -1606,6 +1649,7 @@ class AtomProperties (object) :
     self.peak_fofc = map_stats.fofc
     self.peak_anom = map_stats.anom
     self.estimated_weight = manager.guess_molecular_weight(i_seq)
+    self.b_iso = manager.get_b_iso(i_seq)
 
     self.inaccuracies = {}
     self.ignored = {}
@@ -1950,6 +1994,8 @@ class AtomProperties (object) :
     twofofc_flag = ""
     if (self.NO_2FOFC_PEAK in self.inaccuracies[identity]) :
       twofofc_flag = " !!!"
+    elif (self.HIGH_2FOFC in self.inaccuracies[identity]) :
+      twofofc_flag = " <<<"
     print >> out, "  2mFo-DFc map:  %6.2f%s" % (self.peak_2fofc, twofofc_flag)
     fofc_flag = ""
     if (self.FOFC_PEAK in self.inaccuracies[identity]) :
