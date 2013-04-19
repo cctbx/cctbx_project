@@ -89,7 +89,7 @@ namespace dxtbx { namespace model {
 
     /** Get the array range (zero based) */
     vec2<int> get_array_range() const {
-      return vec2<int>(0, image_range_[1]);
+      return vec2<int>(image_range_[0]-1, image_range_[1]);
     }
 
     /** Get the oscillation */
