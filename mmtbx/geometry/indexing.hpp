@@ -15,6 +15,7 @@
 #include <boost/fusion/include/vector_fwd.hpp>
 #include <boost/fusion/sequence/intrinsic/at_c.hpp>
 #include <boost/fusion/include/at_c.hpp>
+#include <boost/fusion/algorithm/iteration/fold.hpp>
 
 #include <vector>
 
@@ -72,14 +73,14 @@ public:
   discrete_type operator ()(const continuous_type& value) const;
 };
 
-template< typename Vector, typename Voxel >
+template< typename Vector, typename Voxel, typename Discrete >
 class Voxelizer
 {
 public:
   typedef Vector vector_type;
   typedef Voxel voxel_type;
   typedef typename vector_type::value_type continuous_type;
-  typedef typename voxel_type::value_type discrete_type;
+  typedef Discrete discrete_type;
   typedef Discretizer< continuous_type, discrete_type > discretizer_type;
   typedef boost::fusion::vector3<
     discretizer_type, discretizer_type, discretizer_type
@@ -95,24 +96,43 @@ public:
   voxel_type operator ()(const vector_type& vector) const;
 };
 
-template< typename Object, typename Voxelizer >
+struct HashCombine
+{
+  typedef std::size_t result_type;
+
+  template< typename T >
+  result_type operator ()(const T& arg, result_type current) const;
+};
+
+template< typename FusionVector >
+struct FusionVectorHasher
+{
+  typedef std::size_t result_type;
+  result_type operator ()(const FusionVector& myvector) const;
+};
+
+template< typename Object, typename Discrete >
 class Hash
 {
 public:
   typedef Object object_type;
-  typedef Voxelizer voxelizer_type;
   typedef typename object_type::vector_type vector_type;
-  typedef typename voxelizer_type::voxel_type voxel_type;
-  typedef typename voxelizer_type::discrete_type discrete_type;
-  typedef std::vector< object_type > bucket_type;
-  typedef boost::unordered_map< voxel_type, bucket_type > storage_type;
-  typedef boost::unordered_set< object_type > range_type;
+
+  typedef Discrete discrete_type;
 
 private:
   typedef boost::counting_iterator< discrete_type > itercount;
   typedef boost::mpl::vector< itercount, itercount, itercount > itercount_list;
   typedef scitbx::math::cartesian_product::fixed_size_iterator< itercount_list >
     cartesian_type;
+
+public:
+  typedef typename cartesian_type::value_type voxel_type;
+  typedef Voxelizer< vector_type, voxel_type, discrete_type > voxelizer_type;
+  typedef std::vector< object_type > bucket_type;
+  typedef FusionVectorHasher< voxel_type > hasher_type;
+  typedef boost::unordered_map< voxel_type, bucket_type, hasher_type > storage_type;
+  typedef boost::unordered_set< object_type > range_type;
 
 private:
   voxelizer_type voxelizer_;
@@ -133,13 +153,6 @@ private:
     const voxel_type& low,
     const voxel_type& high
     ) const;
-};
-
-template< typename OutputVector >
-struct vector_reformat
-{
-  template< typename InputVector >
-  OutputVector operator ()(const InputVector& input);
 };
 
 #include "indexing.hxx"
