@@ -1,3 +1,5 @@
+
+from __future__ import division
 import inspect
 
 class error(Exception):
