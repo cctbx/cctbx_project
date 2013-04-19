@@ -40,7 +40,7 @@ def run (args, out=sys.stdout) :
     help="Destination path", default=os.getcwd())
   parser.add_option("--bundle_all", dest="bundle_all", action="store_true",
     help="Bundle Python interpreter, etc. into .exe", default=False)
-  options, args = parser.parse_known_args(args)
+  options, args = parser.parse_args(args)
   if (len(args) == 0) :
     return parser.error("Executable name not specified.")
   if (options.bin_dir is None) :

@@ -40,7 +40,7 @@ def run (args, out=sys.stdout) :
   parser.add_option("--python_interpreter", dest="python_interpreter",
     action="store", help="Python interpreter to use for final app",
     default=None)
-  options, args = parser.parse_known_args(args)
+  options, args = parser.parse_args(args)
   if (len(args) == 0) :
     return parser.error("Executable name not specified.")
   if (options.bin_dir is None) :
