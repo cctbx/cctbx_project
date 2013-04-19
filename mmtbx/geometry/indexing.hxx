@@ -49,8 +49,8 @@ Discretizer< Continuous, Discrete >::operator ()(const continuous_type& value)
   return converter_type::convert( ( value - base_ ) / unit_ );
 }
 
-template< typename Vector, typename Voxel >
-Voxelizer< Vector, Voxel >::Voxelizer(
+template< typename Vector, typename Voxel, typename Discrete >
+Voxelizer< Vector, Voxel, Discrete >::Voxelizer(
   const vector_type& base,
   const vector_type& step
   )
@@ -61,19 +61,34 @@ Voxelizer< Vector, Voxel >::Voxelizer(
     )
 {}
 
-template< typename Vector, typename Voxel >
-Voxelizer< Vector, Voxel >::~Voxelizer()
+template< typename Vector, typename Voxel, typename Discrete >
+Voxelizer< Vector, Voxel, Discrete >::~Voxelizer()
 {}
 
-template< typename Vector, typename Voxel >
-typename Voxelizer< Vector, Voxel >::voxel_type
-Voxelizer< Vector, Voxel >::operator ()(const vector_type& vector) const
+template< typename Vector, typename Voxel, typename Discrete >
+typename Voxelizer< Vector, Voxel, Discrete >::voxel_type
+Voxelizer< Vector, Voxel, Discrete >::operator ()(const vector_type& vector) const
 {
   return voxel_type(
     boost::fusion::at_c<0>( discretizers_ )( vector[0] ),
     boost::fusion::at_c<1>( discretizers_ )( vector[1] ),
     boost::fusion::at_c<2>( discretizers_ )( vector[2] )
     );
+}
+
+template< typename T >
+HashCombine::result_type
+HashCombine::operator ()(const T& arg, result_type current) const
+{
+  boost::hash_combine( current, arg );
+  return current;
+}
+
+template< typename FusionVector >
+typename FusionVectorHasher< FusionVector >::result_type
+FusionVectorHasher< FusionVector >::operator ()(const FusionVector& myvec) const
+{
+  return boost::fusion::fold( myvec, 0, HashCombine() );
 }
 
 template< typename Object, typename Voxelizer >
@@ -89,8 +104,6 @@ template< typename Object, typename Voxelizer >
 void
 Hash< Object, Voxelizer >::add(const object_type& object)
 {
-  vector_reformat< voxel_type > converter;
-
   for(
     cartesian_type cit = make_cartesian_iterator(
       voxelizer_( object.low() ),
@@ -100,7 +113,7 @@ Hash< Object, Voxelizer >::add(const object_type& object)
     ++cit
     )
   {
-    voxel_type key = converter( *cit );
+    const voxel_type& key = *cit;
     typename storage_type::iterator it = objects_.find( key );
 
     if ( it == objects_.end() )
@@ -122,7 +135,6 @@ typename Hash< Object, Voxelizer >::range_type
 Hash< Object, Voxelizer >::close_to(const object_type& object) const
 {
   range_type result;
-  vector_reformat< voxel_type > converter;
 
   for(
     cartesian_type cit = make_cartesian_iterator(
@@ -133,8 +145,7 @@ Hash< Object, Voxelizer >::close_to(const object_type& object) const
     ++cit
     )
   {
-    voxel_type key = converter( *cit );
-    typename storage_type::const_iterator it = objects_.find( key );
+    typename storage_type::const_iterator it = objects_.find( *cit );
 
     if ( it != objects_.end() )
     {
@@ -201,22 +212,19 @@ Hash< Object, Voxelizer >::make_cartesian_iterator(
   typedef typename cartesian_type::range_vector_type initializer_type;
   return cartesian_type(
     initializer_type(
-      cart_range_type( itercount( low[0] ), itercount( high[0] + 1 ) ),
-      cart_range_type( itercount( low[1] ), itercount( high[1] + 1 ) ),
-      cart_range_type( itercount( low[2] ), itercount( high[2] + 1 ) )
+      cart_range_type(
+        itercount( boost::fusion::at_c<0>( low ) ),
+        itercount( boost::fusion::at_c<0>( high ) + 1 )
+        ),
+      cart_range_type(
+        itercount( boost::fusion::at_c<1>( low ) ),
+        itercount( boost::fusion::at_c<1>( high ) + 1 )
+        ),
+      cart_range_type(
+        itercount( boost::fusion::at_c<2>( low ) ),
+        itercount( boost::fusion::at_c<2>( high ) + 1 )
+        )
       )
-    );
-}
-
-template< typename OutputVector >
-template< typename InputVector >
-OutputVector
-vector_reformat< OutputVector >::operator ()(const InputVector& input)
-{
-  return OutputVector(
-    boost::fusion::at_c< 0 >( input ),
-    boost::fusion::at_c< 1 >( input ),
-    boost::fusion::at_c< 2 >( input )
     );
 }
 
