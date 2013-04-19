@@ -543,6 +543,62 @@ class set(crystal.symmetry):
     span = self.index_span()
     return (span.min(), span.max())
 
+  def at_first_index(self, ary, miller_index):
+    """
+    Returns the element `ary` coresponding to the `miller_index` if
+    `miller_index exists, otherwise returns None.
+
+    :param miller_index: Miller index as a 3-tuple
+    :type miller_index: tuple
+    :param ary: any array (e.g. self.data(), self.sigmas())
+    :type ary: sequence (list, array, etc)
+    :returns: type of contents of `ary`, or None
+    """
+    first = self._indices.first_index(miller_index)
+    if first is None:
+      result = None
+    else:
+      result = ary[first]
+    return result
+
+  def first_index(self, miller_index):
+    """
+    Returns the first index of the item  matching
+    `miller_index`. If the `miller_index` is not found in `self`,
+    then returns ``None``.
+
+    :param miller_index: Miller index as a 3-tuple
+    :type miller_index: tuple
+    :returns: int, None -- index of first occurrence of
+              `miller_index` or None
+    """
+    return self._indices.first_index(miller_index)
+
+  def data_at_first_index(self, miller_index):
+    """
+    Returns the value of data of the first index matching
+    `miller_index`. If the `miller_index` is not found in `self`,
+    then returns ``None``.
+
+    :param miller_index: Miller index as a 3-tuple
+    :type miller_index: tuple
+    :returns: int, float, complex, None -- data value or None
+    """
+    return self.at_first_index(self._data, miller_index)
+
+  def sigma_at_first_index(self, miller_index):
+    """
+    Returns the value of sigmas of the first index matching
+    `miller_index`. If the `miller_index` is not found in `self`,
+    then returns ``None``.
+
+    :param miller_index: Miller index as a 3-tuple
+    :type miller_index: tuple
+    :returns: int, float, complex, None -- sigmas value or None
+    """
+    assert self._sigmas is not None
+    return self.at_first_index(self._sigmas, miller_index)
+
   def d_min_along_a_b_c_star(self):
     min_mi, max_mi = self.min_max_indices()
     max_h = max(abs(min_mi[0]), max_mi[0])
