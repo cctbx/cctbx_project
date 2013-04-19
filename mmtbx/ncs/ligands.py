@@ -236,22 +236,23 @@ class sample_operators (object) :
         dxyz = xyz_distance(sites_other_mean, sites_new.mean())
         if (dxyz < params.min_dist_center) :
           print >> log, "  operator %d specifies an existing ligand" % (j+1)
-          continue
-      atoms.set_xyz(sites_new)
-      stats_new = self.get_sites_cc(best_atoms, sites_new)
-      show_map_stats("NCS op. %2d" % (j+1), stats_new)
-      if (params.write_sampled_pdbs) :
-        lig_rg = hierarchy.residue_group()
-        lig_rg.resseq = j+1
-        lig_rg.append_atom_group(new_ligand)
-        f = open("ncs_ligand_%d.pdb" % (j+1), "w")
-        for atom in new_ligand.atoms() :
-          f.write(atom.format_atom_record()+"\n")
-        f.close()
-      if (stats_new.cc > params.min_cc) :
-        print >> log, "  operator %d has acceptable CC (%.3f)" % (j+1,
-          stats_new.cc)
-        self.new_ligands.append(new_ligand)
+          break
+      else :
+        atoms.set_xyz(sites_new)
+        stats_new = self.get_sites_cc(best_atoms, sites_new)
+        show_map_stats("NCS op. %2d" % (j+1), stats_new)
+        if (params.write_sampled_pdbs) :
+          lig_rg = hierarchy.residue_group()
+          lig_rg.resseq = j+1
+          lig_rg.append_atom_group(new_ligand)
+          f = open("ncs_ligand_%d.pdb" % (j+1), "w")
+          for atom in new_ligand.atoms() :
+            f.write(atom.format_atom_record()+"\n")
+          f.close()
+        if (stats_new.cc > params.min_cc) :
+          print >> log, "  operator %d has acceptable CC (%.3f)" % (j+1,
+            stats_new.cc)
+          self.new_ligands.append(new_ligand)
 
   def setup_maps (self) :
     map_helper = self.fmodel.electron_density_map()
