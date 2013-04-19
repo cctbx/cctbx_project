@@ -3,7 +3,7 @@
 
 # You can set these variables from the command line.
 SPHINXOPTS    =
-SPHINXBUILD   = sphinx-build
+SPHINXBUILD   = ../bin/cctbx.python $(shell which sphinx-build)
 PAPER         = a4
 BUILDDIR      = _build
 
