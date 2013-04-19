@@ -185,7 +185,7 @@ class prune_model (object) :
           for atom in atom_group.atoms() :
             if (atom.name.strip() in ["N", "O", "C", "H", "CA", "CB"]) :
               backbone_atoms.append(atom)
-            else :
+            elif (not atom_group.resname in ["ALA", "GLY"]) :
               sidechain_atoms.append(atom)
           if (len(backbone_atoms) > 0) and (self.params.mainchain) :
             mc_stats = self.get_map_stats_for_atoms(backbone_atoms)
@@ -221,6 +221,8 @@ class prune_model (object) :
               # overall CC is acceptable - now look at sidechain alone
               remove_sidechain = False
               sc_stats = self.get_map_stats_for_atoms(sidechain_atoms)
+              if (sc_stats is None) :
+                continue
               if (sc_stats.cc < self.params.min_cc_sidechain) :
                 pruned.append(residue_summary(
                   chain_id=chain.id,
