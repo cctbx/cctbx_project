@@ -2357,6 +2357,12 @@ wxtbx/symmetry_dialog.py -text
 wxtbx/utils.py -text
 xfel/SConscript -text
 xfel/__init__.py -text
+xfel/cftbx/__init__.py -text
+xfel/cftbx/detector/__init__.py -text
+xfel/cftbx/detector/cspad_detector.py -text
+xfel/cftbx/detector/generic_detector.py -text
+xfel/cftbx/detector/metrology.py -text
+xfel/cftbx/detector/metrology2phil.py -text
 xfel/command_line/__init__.py -text
 xfel/command_line/auto_submit.py -text
 xfel/command_line/convert_gain_map.py -text
