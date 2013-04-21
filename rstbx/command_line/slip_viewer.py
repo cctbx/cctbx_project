@@ -43,8 +43,8 @@ show_effective_tiling = False
 def modify_the_iotbx_detector_list():
   from iotbx import detectors
   try:
-    from cxi_xdr_xes.cftbx.detector.cspad_detector import CSPadDetector
-    from cxi_xdr_xes.cftbx.detector.generic_detector import GenericDetector
+    from xfel.cftbx.detector.cspad_detector import CSPadDetector
+    from xfel.cftbx.detector.generic_detector import GenericDetector
     detectors.all_image_types.append(CSPadDetector)
     detectors.all_image_types.append(GenericDetector)
   except ImportError: pass
@@ -114,8 +114,8 @@ def run(argv=None):
   frame.settings_frame.panel.collect_values()
 
   if (work_params.effective_metrology is not None):
-    from cxi_xdr_xes.cftbx.detector.metrology2phil import master_phil
-    from cxi_xdr_xes.cftbx.detector.metrology import metrology_as_transformation_matrices
+    from xfel.cftbx.detector.metrology2phil import master_phil
+    from xfel.cftbx.detector.metrology import metrology_as_transformation_matrices
 
     stream = open(work_params.effective_metrology)
     metrology_phil = master_phil.fetch(sources=[phil.parse(stream.read())])
