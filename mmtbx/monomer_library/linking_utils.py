@@ -50,6 +50,7 @@ MO LU CR OS GD TB LA AG HO GA CE W RU RE PR IR EU AL V PD U
 #  atom = AtomClass.AtomClass(e)
 #  print atom
 #  assert atom.isMetal()
+ad_hoc_non_linking_elements = "H D F Cl Br I At".split()
 
 class empty:
   def __repr__(self):
@@ -221,10 +222,10 @@ def get_closest_atoms(atom_group1,
   min_atom2 = None
   for i, atom1 in enumerate(atom_group1.atoms()):
     if ignore_hydrogens:
-      if atom1.element.strip() in ["H", "D"]: continue
+      if atom1.element.strip() in ad_hoc_non_linking_elements: continue
     for j, atom2 in enumerate(atom_group2.atoms()):
       if ignore_hydrogens:
-        if atom2.element.strip() in ["H", "D"]: continue
+        if atom2.element.strip() in ad_hoc_non_linking_elements: continue
       #if i>=j: continue
       d2 = get_distance2(atom1, atom2)
       if d2<min_d2:
@@ -242,10 +243,10 @@ def get_link_atoms(atom_group1,
   link_atoms = []
   for i, atom1 in enumerate(atom_group1.atoms()):
     if ignore_hydrogens:
-      if atom1.element.strip() in ["H", "D"]: continue
+      if atom1.element.strip() in ad_hoc_non_linking_elements: continue
     for j, atom2 in enumerate(atom_group2.atoms()):
       if ignore_hydrogens:
-        if atom2.element.strip() in ["H", "D"]: continue
+        if atom2.element.strip() in ad_hoc_non_linking_elements: continue
       #if i>=j: continue
       d2 = get_distance2(atom1, atom2)
       if d2<bond_cutoff:
