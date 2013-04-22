@@ -25,15 +25,15 @@ class reader(object):
 
     # Open the file
     with open(filename, 'r') as handle:
-        for line in handle:
-            tokens = line.split()
-            if len(tokens) < 4:
-                raise IndexError('Not enough tokens')
-            if len(tokens) >= 4:
-                self.centroid.append(map(float, tokens[0:3]))
-                self.intensity.append(float(tokens[3]))
-            if len(tokens) >= 7:
-                self.miller_index.append(map(int, tokens[4:7]))
+      for line in handle:
+        tokens = line.split()
+        if len(tokens) < 4:
+          raise IndexError('Not enough tokens')
+        if len(tokens) >= 4:
+          self.centroid.append(map(float, tokens[0:3]))
+          self.intensity.append(float(tokens[3]))
+        if len(tokens) >= 7:
+          self.miller_index.append(map(int, tokens[4:7]))
 
 
 if __name__ == '__main__':
