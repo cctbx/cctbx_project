@@ -33,7 +33,7 @@ dod_and_od = False
 filter_dod = False
   .type = bool
   .help = Filter DOD/OD/O by correlation
-min_od_dist = 0.7
+min_od_dist = 0.60
   .type = float
   .help = Minimum O-D distance when building water from peaks
 max_od_dist = 1.35
@@ -772,8 +772,14 @@ def build_water_hydrogens_from_map2(model, fmodel, params=None, log=None):
   params.map_next_to_model.max_model_peak_dist = max_od_dist * 1.8
   params.map_next_to_model.min_model_peak_dist = min_od_dist
   params.peak_search.min_cross_distance = params.min_od_dist # 0.5
+  if params.peak_search.min_cross_distance < 0.7:
+    params.peak_search.min_cross_distance = 0.7
+  #if params.map_next_to_model.min_model_peak_dist < 0.7:
+  #  params.map_next_to_model.min_model_peak_dist = 0.7
   params.map_next_to_model.use_hydrogens = True
-  params.map_next_to_model.min_peak_peak_dist = min_od_dist #0.8
+  params.map_next_to_model.min_peak_peak_dist = min_od_dist
+  #if params.map_next_to_model.min_peak_peak_dist <0.7:
+  #  params.map_next_to_model.min_peak_peak_dist = 0.7
   max_dod_angle = params.max_dod_angle
   min_dod_angle = params.min_dod_angle
   assert max_dod_angle<180 and min_dod_angle>30 and max_dod_angle>min_dod_angle
@@ -926,6 +932,11 @@ def build_water_hydrogens_from_map2(model, fmodel, params=None, log=None):
   hd_sel = sol_sel & model.xray_structure.hd_selection()
   assert hd_sel.count(True) >= len(next_to_i_seqs)
   assert_water_is_consistent(model)
+  if False:
+    model.idealize_h()
+    model.pdb_hierarchy(sync_with_xray_structure=True)
+    mmtbx.utils.assert_model_is_consistent(model)
+    assert_water_is_consistent(model)
   return model
 
 
