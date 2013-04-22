@@ -252,7 +252,7 @@ Queue
     from libtbx.queuing_system_utils.processing import status
 
     return cls(
-      command = command,
+      cmds = command,
       script = script,
       extract = cls.condor_jobid_extract,
       poller = poller,
