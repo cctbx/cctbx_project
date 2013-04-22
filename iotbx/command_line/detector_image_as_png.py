@@ -38,7 +38,8 @@ def run (args) :
 class convert_image:
 
  def __init__(self,file_name,graphics_bin=1):#, output_file=None) :
-  from iotbx.detectors import ImageFactory, ImageException
+  from rstbx.slip_viewer.slip_viewer_image_factory import SlipViewerImageFactory as ImageFactory
+  from iotbx.detectors import ImageException
   import Image
   try :
     img = ImageFactory(file_name)
