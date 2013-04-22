@@ -18,6 +18,12 @@ map_type = mFobs-DFmodel
 map_cutoff = 2.0
   .type = float
   .help = Map cutoff
+secondary_map_type = 2mFobs-DFmodel
+  .type = str
+  .help = Map type to be used to validate peaks in primary map
+secondary_map_cutoff = 1.4
+  .type = float
+  .help = Secondary map cutoff
 angular_step = 3.0
   .type = float
   .help = Step in degrees for 6D rigid body search for best fit
@@ -63,6 +69,7 @@ peak_search
 {
   peak_search_level = 1
   min_cross_distance = 1.0
+  general_positions_only=True
 }
 """))
 
@@ -115,13 +122,13 @@ def find_hydrogen_peaks(fmodel,
   fp_manager.show_mapped(pdb_atoms = pdb_atoms)
   return result
 
-def make_peak_dict(peaks, selection, obs_map):
+def make_peak_dict(peaks, selection, obs_map, cutoff):
   result = {}
   for i in flex.sort_permutation(data=peaks.iseqs_of_closest_atoms):
     s = peaks.sites[i]
     h = peaks.heights[i]
     obsh = obs_map.eight_point_interpolation(s)
-    if obsh<1.4:
+    if obsh<cutoff:
       continue
     i_seq = peaks.iseqs_of_closest_atoms[i]
     if(selection[i_seq]):
@@ -318,8 +325,7 @@ def build_dod_and_od(model, fmodels, log=None, params=None):
     update_f_calc  = True,
     update_f_mask  = True)
   fmodels.show_short()
-  compare_hierarchy(model.pdb_hierarchy(), model.xray_structure.scatterers(),
-      model.xray_structure.unit_cell())
+  mmtbx.utils.assert_model_is_consistent(model)
   sol_sel = model.solvent_selection()
   hd_sel = sol_sel & model.xray_structure.hd_selection()
   print>>log, "Final number of water hydrogens: ", hd_sel.count(True)
@@ -443,7 +449,8 @@ def choose_h_for_water(unit_cell, o_site, xyz_h, h1_site=None, min_dod_angle=80,
     result.extend( [h2_site] )
   return result
 
-def match_dod(unit_cell, xyz_h, min_dod_angle=85, max_dod_angle=170):
+def match_dod(unit_cell, xyz_h, min_od=0.5, max_od=1.35, min_dod_angle=85.,
+    max_dod_angle=170.):
   n=len(xyz_h)
   besta=360.
   r = None
@@ -454,16 +461,16 @@ def match_dod(unit_cell, xyz_h, min_dod_angle=85, max_dod_angle=170):
       x2h=xyz_h[j]
       x2 = x2h[1]
       d1 = unit_cell.distance(x1, x2)
-      if d1<0.5:
+      if d1<min_od:
         continue
       for k in xrange(j+1,n):
         x3h=xyz_h[k]
         x3 = x3h[1]
         d2 = unit_cell.distance(x2, x3)
         d3 = unit_cell.distance(x1, x3)
-        if d2<0.5:
+        if d2<min_od:
           continue
-        if d3<0.5:
+        if d3<min_od:
           continue
         a = [(x2,x1,x3), (x1,x2,x3), (x1,x3,x2) ]
         da = []
@@ -471,17 +478,17 @@ def match_dod(unit_cell, xyz_h, min_dod_angle=85, max_dod_angle=170):
           av = unit_cell.angle(t[0],t[1],t[2])
           td1 = unit_cell.distance(t[0],t[1])
           td2 = unit_cell.distance(t[1],t[2])
-          if( td1>1.35 or td2>1.35 ):
+          if( td1>max_od or td2>max_od or av>max_dod_angle or av<min_dod_angle):
             da.append(360.)
           else:
             da.append(abs(av - 105.0))
         ibest = min(xrange(len(da)), key=da.__getitem__)
-        if da[ibest] < besta:
+        if da[ibest] < besta and da[ibest]<90.:
           r = a[ibest]
           besta = da[ibest]
-  return r, besta
+  return r
 
-def match_od(unit_cell, xyz_h, min_dod_angle=85, max_dod_angle=170):
+def match_od(unit_cell, xyz_h, min_od=0.5, max_od=1.35):
   n=len(xyz_h)
   besta=1.e10
   r = None
@@ -492,13 +499,13 @@ def match_od(unit_cell, xyz_h, min_dod_angle=85, max_dod_angle=170):
       x2h=xyz_h[j]
       x2 = x2h[1]
       d1 = unit_cell.distance(x1, x2)
-      if d1<0.5:
+      if d1<min_od or d1>max_od:
         continue
       dd1 =abs(d1-1.)
       if dd1 < besta:
         r = (x1,x2)
         besta = dd1
-  return r, besta
+  return r
 
 def len_peaks(set_of_peaks):
   r = 0
@@ -550,59 +557,6 @@ def atom_as_str(atom):
   print_atom(s,atom)
   return s.getvalue()
 
-
-def compare_hierarchy(hierarchy, scatterers, cell):
-  from libtbx.test_utils import approx_equal
-  # Primary "view" of hierarchy:
-  #   model, chain, residue_group, atom_group, atom"""
-  n = hierarchy.atoms_size()
-  n2 = scatterers.size()
-  assert n == n2, " size mismatch %d != %d"%(n,n2)
-  match = flex.bool()
-  match.resize(n, False)
-  assert match.size() == n
-  if n>0:
-    assert match[0] == False
-    assert match[n-1] == False
-  for model in hierarchy.models():
-    # print 'model: "%s"' % model.id
-    for chain in model.chains():
-      # print 'chain: "%s"' % chain.id
-      for residue_group in chain.residue_groups():
-        #print '  residue_group: resseq="%s" icode="%s"' % (
-        #  residue_group.resseq, residue_group.icode)
-        for atom_group in residue_group.atom_groups():
-          #print '    atom_group: altloc="%s" resname="%s"' % (
-          #  atom_group.altloc, atom_group.resname)
-          for atom in atom_group.atoms():
-            # print_atom(atom)
-            assert atom.i_seq < n
-            assert match[atom.i_seq] == False
-            s = scatterers[atom.i_seq]
-            # assert (atom.serial_as_int() == atom.i_seq + 1), atom_scat(atom,s)
-            match[atom.i_seq] = True
-            assert atom.element.strip().upper() == \
-                s.scattering_type.strip().upper(), atom_scat(atom,s)
-            assert len(atom.name.strip())>0, atom_scat(atom,s)
-            # assert len(s.label.strip())>0, atom_scat(atom,s)
-            # assert approx_equal(atom.occ, s.occupancy, 0.01), atom_scat(atom,s)
-            assert approx_equal(cell.orthogonalize(s.site), atom.xyz, 0.001), \
-                atom_scat(atom,s)
-            #assert approx_equal(atom.b, cctbx.adptbx.u_as_b(s.u_iso), 2.01), \
-            #    atom_scat(atom,s)
-  #
-  assert match.all_eq(True)
-  if n>0:
-    assert match[0] == True
-    assert match[n-1] == True
-
-def assert_model_is_consistent(model):
-  xs = model.xray_structure
-  unit_cell = xs.unit_cell()
-  scatterers = xs.scatterers()
-  hier = model.pdb_hierarchy()
-  compare_hierarchy(hier, scatterers, unit_cell)
-
 def assert_water_is_consistent(model):
   xs = model.xray_structure
   unit_cell = xs.unit_cell()
@@ -639,7 +593,7 @@ def build_water_hydrogens_from_map(model, fmodel, params=None, log=None):
   unit_cell = xs.unit_cell()
   scatterers = xs.scatterers()
   hier = model.pdb_hierarchy()
-  compare_hierarchy(hier, scatterers, unit_cell)
+  mmtbx.utils.assert_model_is_consistent(model)
   if log is None:
     log = model.log
   if params is None:
@@ -768,7 +722,7 @@ def build_water_hydrogens_from_map(model, fmodel, params=None, log=None):
   np =  model.refinement_flags.sites_individual.size()
   assert np == model.xray_structure.scatterers().size()
   assert model.refinement_flags.sites_individual.count(True) == np
-  compare_hierarchy(model.pdb_hierarchy(), model.xray_structure.scatterers(), unit_cell)
+  mmtbx.utils.assert_model_is_consistent(model)
   sol_sel = model.solvent_selection()
   hd_sel = sol_sel & model.xray_structure.hd_selection()
   assert hd_sel.count(True) >= len(next_to_i_seqs)
@@ -801,7 +755,7 @@ def build_water_hydrogens_from_map2(model, fmodel, params=None, log=None):
   unit_cell = xs.unit_cell()
   scatterers = xs.scatterers()
   hier = model.pdb_hierarchy()
-  compare_hierarchy(hier, scatterers, unit_cell)
+  mmtbx.utils.assert_model_is_consistent(model)
   #assert_water_is_consistent(model)
   model.reprocess_pdb_hierarchy_inefficient()
   assert_water_is_consistent(model)
@@ -841,17 +795,19 @@ def build_water_hydrogens_from_map2(model, fmodel, params=None, log=None):
   hd_sel = sol_sel & model.xray_structure.hd_selection()
   print>>log, "Number of water hydrogens: ", hd_sel.count(True)
   # pks = distances_to_peaks(xs, peaks.sites, hs, max_od_dist, use_selection=sol_O)
-  obsmap = obs_map(fmodel)
-  filtered_peaks = map_peak_filter(peaks.sites, obsmap)
-  print>>log, "Number of filtered peaks: ", len(filtered_peaks)
+  obsmap = obs_map(fmodel, map_type=params.secondary_map_type)
+  # filtered_peaks = map_peak_filter(peaks.sites, obsmap)
+  #print>>log, "Number of filtered peaks: ", len(filtered_peaks)
   # pkss = distances_to_peaks(xs, peaks.sites, hs, max_od_dist*1.7, use_selection=sol_O)
   #pkss = distances_to_peaks(xs, filtered_peaks, hs, max_od_dist*1.7,
   #    use_selection=sol_O)
-  pkss = make_peak_dict(peaks,sol_O,obsmap)
+  cutoff2 = params.secondary_map_cutoff
+  assert cutoff2 > 0. and cutoff2 < 100.
+  pkss = make_peak_dict(peaks, sol_O, obsmap, cutoff2)
   npeaks=0
   for pk in pkss.values():
     npeaks = npeaks + len(pk)
-  print>>log, "Peaks to consider: ",  npeaks
+  print>>log, "Peaks to consider: ", npeaks
   water_rgs = self.extract_water_residue_groups()
   water_rgs.reverse()
   element='D'
@@ -875,23 +831,32 @@ def build_water_hydrogens_from_map2(model, fmodel, params=None, log=None):
     o_i = o_atom.i_seq
     if pkss.has_key(o_i) :
       o_site = scatterers[o_i].site
+      site_symmetry = sgtbx.site_symmetry(xs.unit_cell(), xs.space_group(),
+        o_site, 0.5, True)
+      if(site_symmetry.n_matrices() != 1):
+        special = True
+        continue # TODO: handle this situation
+
       o_u = scatterers[o_i].u_iso_or_equiv(unit_cell)
       h_sites = pkss[o_i]
       # print_atom(sys.stdout, o_atom)
       val = obsmap.eight_point_interpolation(o_site)
-      if val>1.2:
+      if val>cutoff2:
         h_sites.append((0., o_site))
       for hatom in h_atoms:
         hsite = scatterers[hatom.i_seq].site
         doh = unit_cell.distance(hsite, o_site)
         assert doh >0.5 and doh < 1.45, "%f\n%s"%(doh,atom_as_str(hatom))
         val = obsmap.eight_point_interpolation(hsite)
-        if val>1.2:
+        if val>cutoff2:
           h_sites.append((0., hsite))
-      dod,da = match_dod(unit_cell, h_sites)
+      dod = match_dod(unit_cell, h_sites, min_od=params.min_od_dist,
+          max_od=params.max_od_dist, min_dod_angle=params.min_dod_angle,
+          max_dod_angle=params.max_dod_angle)
       if dod is None:
-        od,dd = match_od(unit_cell, h_sites)
-        if od is not None and dd<0.35: # and dd<1.35:
+        od= match_od(unit_cell, h_sites, min_od=params.min_od_dist,
+            max_od=params.max_od_dist)
+        if od is not None:
           scatterers[o_i].site = od[0]
           o_atom.xyz = unit_cell.orthogonalize(od[0])
           h=od[1]
@@ -956,8 +921,7 @@ def build_water_hydrogens_from_map2(model, fmodel, params=None, log=None):
     np =  model.refinement_flags.sites_individual.size()
     assert np == model.xray_structure.scatterers().size()
     assert model.refinement_flags.sites_individual.count(True) == np
-  compare_hierarchy(model.pdb_hierarchy(), model.xray_structure.scatterers(),
-      unit_cell)
+  mmtbx.utils.assert_model_is_consistent(model)
   sol_sel = model.solvent_selection()
   hd_sel = sol_sel & model.xray_structure.hd_selection()
   assert hd_sel.count(True) >= len(next_to_i_seqs)
@@ -1015,18 +979,18 @@ def scatterers_info(scatterers, selection):
 
 def obs_map(
     fmodel,
-    resolution_factor=0.25,
-    map_type="2mFo-DFc") :
+    map_type,
+    resolution_factor=0.25):
   map_coeffs = fmodel.electron_density_map().map_coefficients(map_type)
   return map_coeffs.fft_map(
     resolution_factor=resolution_factor).apply_sigma_scaling().real_map()
 
 
-def map_peak_filter(sites_frac, obs_map):
+def map_peak_filter(sites_frac, obs_map, cutoff):
   result = flex.vec3_double()
   for site_frac in sites_frac:
     val = obs_map.eight_point_interpolation(site_frac)
-    if val>1.2:
+    if val>cutoff:
       result.append(site_frac)
   return result
 
