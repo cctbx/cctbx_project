@@ -100,7 +100,7 @@ namespace cma_es {
 
   // returns new population for function evaluation
   scitbx::af::versa<double,scitbx::af::c_grid<2> >
-  cma_es::cma_es::sample_population() {
+  cma_es::sample_population() {
     pop = cmaes_SamplePopulation(&evo);
     scitbx::af::versa<double,scitbx::af::c_grid<2> >
       p(scitbx::af::c_grid<2>(pop_size,N));
@@ -113,16 +113,16 @@ namespace cma_es {
   }
 
   // updates minizmizer with new function values
-  void cma_es::cma_es::update_distribution
+  void cma_es::update_distribution
   (const scitbx::af::const_ref<double>& new_function_values) {
     cmaes_UpdateDistribution(&evo,new_function_values.begin());
   }
 
-  bool cma_es::cma_es::converged() {
+  bool cma_es::converged() {
     return cmaes_TestForTermination(&evo);
   }
 
-  scitbx::af::shared<double> cma_es::cma_es::get_result() {
+  scitbx::af::shared<double> cma_es::get_result() {
     xfinal = cmaes_GetNew(&evo,"xbestever");
     scitbx::af::shared<double> result(&xfinal[0],&xfinal[0] + N);
     return result;
@@ -143,13 +143,13 @@ namespace cma_es {
                     scitbx::af::ref<double>,const int&>() )
           .def(init<std::string>() )
           .def("sample_population",
-               &cma_es::cma_es::sample_population)
+               &cma_es::sample_population)
           .def("update_distribution",
-               &cma_es::cma_es::update_distribution)
+               &cma_es::update_distribution)
           .def("converged",
-               &cma_es::cma_es::converged)
+               &cma_es::converged)
           .def("get_result",
-               &cma_es::cma_es::get_result)
+               &cma_es::get_result)
           ;
       }
     };
