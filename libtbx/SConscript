@@ -636,7 +636,17 @@ int main() {
       opts = [
         "-DNDEBUG",
         "-O3",
-        "-ffast-math"]
+        ]
+      # Detect clang problem with -ffast-math
+      # (undefined macro __extern_always_inline)
+      clone = env_base.Clone(
+        CCFLAGS = env_etc.ccflags_base + [ "-ffast-math" ]
+        )
+      conf = clone.Configure()
+      flag = conf.TryCompile( "#include <math.h>", extension='.cpp')
+      conf.Finish()
+      if flag:
+        opts.append( "-ffast-math" )
     else:
       opts = ["-O0", "-fno-inline"]
     if (libtbx.env.build_options.debug_symbols):
