@@ -1175,6 +1175,7 @@ iotbx/utils.py svneol=native#text/x-python
 iotbx/xds/correction.py -text
 iotbx/xds/geometry.py -text
 iotbx/xds/integrate_hkl.py -text
+iotbx/xds/spot_xds.py -text
 iotbx/xds/xparm.py -text
 ipctbx/SConscript -text
 ipctbx/__init__.py svneol=native#text/x-python
