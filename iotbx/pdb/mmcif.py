@@ -5,7 +5,7 @@ from libtbx.containers import OrderedDict, OrderedSet
 from libtbx import dict_with_default_0
 from libtbx import group_args
 from libtbx.table_utils import wrap_always
-from libtbx.utils import null_out
+from libtbx.utils import null_out, Sorry
 import iotbx.pdb
 from iotbx.pdb import hierarchy
 from iotbx.pdb import hy36encode, hy36decode
@@ -387,6 +387,8 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
       self.cif_model = reader.model()
     elif cif_object is not None:
       self.cif_model = cif_object
+    if len(self.cif_model) == 0:
+      raise Sorry("mmCIF file must contain at least one data block")
     self.cif_block = self.cif_model.values()[0]
     self.builder = pdb_hierarchy_builder(self.cif_block)
     self.hierarchy = self.builder.hierarchy
