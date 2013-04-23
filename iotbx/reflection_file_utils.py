@@ -245,7 +245,7 @@ def looks_like_r_free_flags_info(array_info):
   if (not isinstance(array_info, miller.array_info)): return False
   if (len(array_info.labels) > 2): return False
   label = array_info.labels[-1].lower()
-  for word in ["free", "test", "cross", "status"]:
+  for word in ["free", "test", "cross", "status", "flag"]:
     if (label.find(word) >= 0): return True
   return False
 
