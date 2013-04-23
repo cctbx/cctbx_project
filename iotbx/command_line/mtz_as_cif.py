@@ -4,12 +4,25 @@ from __future__ import division
 import os
 import sys
 from cctbx.array_family import flex
+from libtbx.utils import plural_s
+from libtbx.utils import Usage
 import iotbx.phil
 import iotbx.cif.model
+from iotbx import reflection_file_utils
 
 phenix_to_cif_labels_dict = {
   'FOBS': '_refln.F_meas_au',
   'SIGFOBS': '_refln.F_meas_sigma_au',
+  'IOBS': '_refln.F_squared_meas',
+  'SIGIOBS': '_refln.F_squared_sigma',
+  'FOBS(+)': '_refln.pdbx_F_plus',
+  'SIGFOBS(+)': '_refln.pdbx_F_plus_sigma',
+  'FOBS(-)': '_refln.pdbx_F_minus',
+  'SIGFOBS(-)': '_refln.pdbx_F_minus_sigma',
+  'IOBS(+)': '_refln.pdbx_I_plus',
+  'SIGIOBS(+)': '_refln.pdbx_I_plus_sigma',
+  'IOBS(-)': '_refln.pdbx_I_minus',
+  'SIGIOBS(-)': '_refln.pdbx_I_minus_sigma',
   'F-obs': '_refln.F_meas_au',
   'SIGF-obs': '_refln.F_meas_sigma_au',
   'F-obs(+)': '_refln.pdbx_F_plus',
@@ -33,15 +46,12 @@ phenix_to_cif_labels_dict = {
   'PHFOFCWT': '_refln.pdbx_DELPHWT',
   }
 
-def mtz_to_cif_label(mtz_to_cif_label_dict, mtz_label):
-  if mtz_label.endswith("xray"):
-    mtz_label = mtz_label[:-5]
-  elif mtz_label.endswith("neutron"):
-    mtz_label = mtz_label[:-8]
-  return mtz_to_cif_label_dict.get(mtz_label)
-
 # Source: http://www.ccp4.ac.uk/html/cif2mtz.html
 ccp4_to_cif_labels_dict = {
+  'FWT': '_refln.pdbx_FWT',
+  'PHWT': '_refln.pdbx_PHWT',
+  'DELFWT': '_refln.pdbx_DELFWT',
+  'DELPHWT': '_refln.pdbx_DELPHWT',
   'FREE': '_refln.status',
   'F': '_refln.F_meas_au',
   'SIGF': '_refln.F_meas_sigma_au',
@@ -73,38 +83,54 @@ ccp4_to_cif_labels_dict = {
   'HLD': '_refln.pdbx_HL_D_iso',
 }
 
+def mtz_to_cif_label(mtz_to_cif_label_dict, mtz_label):
+  if mtz_label.endswith("xray"):
+    mtz_label = mtz_label[:-5]
+  elif mtz_label.endswith("neutron"):
+    mtz_label = mtz_label[:-8]
+  elif mtz_label.endswith(("_X", "_N")):
+    mtz_label = mtz_label[:-2]
+  cif_label = mtz_to_cif_label_dict.get(mtz_label)
+  if cif_label is None:
+    # to catch e.g. IOBS_N(+), SIGIOBS_N(+), IOBS_N(-), SIGIOBS_N(-)
+    mtz_label = mtz_label.replace("_N", "").replace("_X", "")
+    cif_label = mtz_to_cif_label_dict.get(mtz_label)
+  return cif_label
 
 master_phil = iotbx.phil.parse("""
 mtz_labels = None
+  .help = Custom input labels for unknown MTZ columns
   .type = strings
 cif_labels = None
+  .help = Custom output labels for unknown mmCIF columns
   .type = strings
 output_file = None
+  .help = Optional output file name to override default
   .type = path
   .optional = True
   .help = 'Enter a .cif output name'
-
 """)
 
 def run(args):
   from iotbx import file_reader
   interpreter = master_phil.command_line_argument_interpreter()
   sources = []
-  mtz_file_name = None
-  mtz_object = None
+  mtz_file_names = []
+  mtz_objects = []
   for arg in args:
     if os.path.isfile(arg):
       input_file = file_reader.any_file(arg)
       if input_file.file_type == "hkl":
-        mtz_file_name = input_file.file_name
+        mtz_file_names.append(input_file.file_name)
         assert input_file.file_object.file_type() == 'ccp4_mtz'
-        assert mtz_object is None # only one file as input
-        mtz_object = input_file.file_object.file_content()
+        mtz_objects.append(input_file.file_object.file_content())
       elif (input_file.file_type == "phil"):
         sources.append(input_file.file_object)
     else :
       arg_phil = interpreter.process(arg=arg)
       sources.append(arg_phil)
+  if len(mtz_objects) == 0:
+    raise Usage("phenix.mtz_as_cif data.mtz [params.eff] [options ...]")
   work_phil = master_phil.fetch(sources=sources)
   work_params = work_phil.extract()
 
@@ -114,20 +140,23 @@ def run(args):
     for mtz_label, cif_label in zip(work_params.mtz_labels, work_params.cif_labels):
       custom_cif_labels_dict.setdefault(mtz_label, cif_label)
 
-  cif_blocks = mtz_as_cif_blocks(
-    mtz_object, custom_cif_labels_dict=custom_cif_labels_dict).cif_blocks
+  for mtz_file_name, mtz_object in zip(mtz_file_names, mtz_objects):
+    print "Converting %s" %mtz_file_name
+    cif_blocks = mtz_as_cif_blocks(
+      mtz_object, custom_cif_labels_dict=custom_cif_labels_dict).cif_blocks
 
-  prefix = os.path.splitext(os.path.basename(mtz_file_name))[0]
-  output_file = work_params.output_file
-  if output_file is None:
-    output_file = prefix + ".reflections.cif"
-  cif_model = iotbx.cif.model.cif()
-  cif_model[prefix] = cif_blocks["xray"].cif_block
-  if cif_blocks["neutron"] is not None:
-    cif_model[prefix+"_neutron"] = self.cif_blocks["neutron"].cif_block
-  with open(output_file, "wb") as f:
-    print "Writing data and map coefficients to CIF file:\n  %s" % (f.name)
-    print >> f, cif_model
+    prefix = os.path.splitext(os.path.basename(mtz_file_name))[0]
+    output_file = work_params.output_file
+    if output_file is None:
+      output_file = prefix + ".reflections.cif"
+    cif_model = iotbx.cif.model.cif()
+    if cif_blocks["xray"] is not None:
+      cif_model[prefix] = cif_blocks["xray"].cif_block
+    if cif_blocks["neutron"] is not None:
+      cif_model[prefix+"_neutron"] = cif_blocks["neutron"].cif_block
+    with open(output_file, "wb") as f:
+      print "Writing data and map coefficients to CIF file:\n  %s" % (f.name)
+      print >> f, cif_model
 
 class mtz_as_cif_blocks(object):
 
@@ -140,7 +169,6 @@ class mtz_as_cif_blocks(object):
 
     if log is None: log = sys.stdout
 
-    #mtz_object = mtz_dataset.mtz_object()
     miller_arrays = mtz_object.as_miller_arrays()
 
     miller_arrays_as_cif_block = None
@@ -158,36 +186,43 @@ class mtz_as_cif_blocks(object):
     if custom_cif_labels_dict is not None:
       mtz_to_cif_labels_dict.update(custom_cif_labels_dict)
 
+    unknown_mtz_labels = []
+
     for array in miller_arrays:
       labels = array.info().labels
       label = labels[0]
-      if label.startswith("F-obs-filtered"):
-        if label.endswith("neutron"):
+      if reflection_file_utils.looks_like_r_free_flags_info(array.info()):
+        if "(+)" in label:
+          array = array.average_bijvoet_mates()
+          labels = [label.replace("(+)", "")]
+        if label.endswith(("neutron", "_N")):
+          r_free_neutron = array
+        else:
+          r_free_xray = array
+        continue # deal with these later
+      elif label.startswith("F-obs-filtered"):
+        if label.endswith(("neutron", "_N")):
           f_obs_filtered_neutron = array
         else:
           f_obs_filtered_xray = array
       elif label.startswith("F-obs") or label.startswith("I-obs"):
-        if label.endswith("neutron"):
+        if label.strip("(+)").endswith(("neutron", "_N")):
           input_observations_neutron = array
         else:
           input_observations_xray = array
-      elif label.startswith("R-free-flags"):
-        if "(+)" in label:
-          array = array.average_bijvoet_mates()
-          labels = [label.replace("(+)", "")]
-        if label.endswith("neutron"):
-          r_free_neutron = array
-        else:
-          r_free_xray = array
+      #elif label.startswith("R-free-flags"):
       column_names = []
       for mtz_label in labels:
         cif_label = mtz_to_cif_label(mtz_to_cif_labels_dict, mtz_label)
         column_names.append(cif_label)
-      if column_names.count(None) == len(column_names):
+      if column_names.count(None) > 0:
         # I don't know what to do with this array
+        for i, mtz_label in enumerate(labels):
+          if column_names[i] is None:
+            unknown_mtz_labels.append(mtz_label)
         continue
       assert column_names.count(None) == 0
-      if labels[0].endswith("neutron"):
+      if labels[0].strip("(+)").endswith(("neutron", "_N")):
         data_type = "neutron"
       else:
         data_type = "xray"
@@ -195,12 +230,21 @@ class mtz_as_cif_blocks(object):
                                      "_refln.F_squared_meas",
                                      "_refln.pdbx_F_",
                                      "_refln.pdbx_I_")):
-        input_observations_xray = array
+        if data_type == "neutron":
+          input_observations_neutron = array
+        else:
+          input_observations_xray = array
+
       if self.cif_blocks.get(data_type) is None:
         self.cif_blocks[data_type] = iotbx.cif.miller_arrays_as_cif_block(
           array=array, column_names=column_names, format="mmcif")
       else:
         self.cif_blocks[data_type].add_miller_array(array, column_names=column_names)
+
+    if len(unknown_mtz_labels):
+      print >> log, "Warning: Unknown mtz label%s: %s" %(
+        plural_s(len(unknown_mtz_labels))[1], ", ".join(unknown_mtz_labels))
+      print >> log, "  Use mtz_labels and cif_labels keywords to provide translation for custom labels."
 
     data_types = set(["xray"])
     if self.cif_blocks['neutron'] is not None:
@@ -220,11 +264,17 @@ class mtz_as_cif_blocks(object):
         r_free = r_free_xray
         input_obs = input_observations_xray
         f_obs_filtered = f_obs_filtered_xray
+        if (self.cif_blocks["xray"] is None and r_free_xray is not None and
+            self.cif_blocks["neutron"] is not None and r_free_neutron is None):
+          r_free_neutron = r_free_xray
       elif data_type == "neutron":
         r_free = r_free_neutron
         input_obs = input_observations_neutron
         f_obs_filtered = f_obs_filtered_neutron
-      #assert input_obs is not None
+      if self.cif_blocks[data_type] is not None and r_free is not None:
+        self.cif_blocks[data_type].add_miller_array(
+          array=r_free, column_name='_refln.phenix_R_free_flags')
+
       if input_obs is None or r_free is None: continue
       refln_status = r_free.array(data=flex.std_string(r_free.size(), "."))
       input_obs_non_anom = input_obs.average_bijvoet_mates()

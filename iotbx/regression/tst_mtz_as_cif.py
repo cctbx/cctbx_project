@@ -82,7 +82,8 @@ def exercise():
     mtz_arrays = mtz.object(file_name=file_name).as_miller_arrays()
     f_anom_cif = get_array_by_label(miller_arrays, '_refln.pdbx_F_plus')
     f_anom_mtz = get_array_by_label(mtz_arrays, 'F-obs(+)')
-    f_anom_cif, f_anom_mtz = f_anom_cif.common_sets(f_anom_mtz)
+    f_anom_cif, f_anom_mtz = f_anom_cif.common_sets(
+      f_anom_mtz, assert_no_singles=True)
     rfree_cif = get_array_by_label(miller_arrays, '_refln.phenix_R_free_flags')
     rfree_mtz = get_array_by_label(mtz_arrays, 'R-free-flags(+)')
     assert f_anom_cif.anomalous_flag()
@@ -116,7 +117,48 @@ def exercise():
     assert HL_coeffs_mtz.is_hendrickson_lattman_array()
     assert approx_equal(HL_coeffs_cif.data(), HL_coeffs_mtz.data())
 
+  file_name = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/reflection_files/r1wqzsf.mtz",
+    test=os.path.isfile)
+  if file_name is None:
+    print "Skipping r1wqzsf.mtz test: input file not available"
+  else:
+    mtz_as_cif.run(
+      args=[file_name])
+    assert os.path.exists("r1wqzsf.reflections.cif")
+    miller_arrays = iotbx.cif.reader(
+      file_path="r1wqzsf.reflections.cif").as_miller_arrays()
+    mtz_arrays = mtz.object(file_name=file_name).as_miller_arrays()
+    fobs_cif = get_array_by_label(miller_arrays, '_refln.F_meas_au')
+    fobs_mtz = get_array_by_label(mtz_arrays, 'FOBS_N')
+    assert approx_equal(fobs_cif.data(), fobs_mtz.data())
+    assert approx_equal(fobs_cif.sigmas(), fobs_mtz.sigmas())
+    rfree_cif = get_array_by_label(miller_arrays, '_refln.phenix_R_free_flags')
+    rfree_mtz = get_array_by_label(mtz_arrays, 'R-free-flags')
+    assert approx_equal(rfree_cif.data(), rfree_mtz.data())
 
+  file_name = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/reflection_files/ur0013.sf.mtz",
+    test=os.path.isfile)
+  if file_name is None:
+    print "Skipping ur0013.sf.mtz test: input file not available"
+  else:
+    mtz_as_cif.run(
+      args=[file_name])
+    assert os.path.exists("ur0013.sf.reflections.cif")
+    cif_reader = iotbx.cif.reader(
+      file_path="ur0013.sf.reflections.cif")
+    miller_arrays = cif_reader.as_miller_arrays()
+    cif_object = cif_reader.model()
+    assert cif_object.keys() == ['ur0013.sf_neutron']
+    mtz_arrays = mtz.object(file_name=file_name).as_miller_arrays()
+    iobs_cif = get_array_by_label(miller_arrays, '_refln.pdbx_I_plus')
+    iobs_mtz = get_array_by_label(mtz_arrays, 'IOBS_N(+)')
+    assert iobs_cif.anomalous_flag()
+    assert iobs_mtz.anomalous_flag()
+    iobs_cif, iobs_mtz = iobs_cif.common_sets(iobs_mtz, assert_no_singles=True)
+    assert approx_equal(iobs_cif.data(), iobs_mtz.data())
+    assert approx_equal(iobs_cif.sigmas(), iobs_mtz.sigmas())
 
 
 def run():
