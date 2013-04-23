@@ -125,7 +125,8 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
         current_ins_code = pdb_ins_code[i_atom]
         if current_ins_code in ("?", ".", None): current_ins_code = " "
       if (current_residue_id != last_residue_id or
-          current_ins_code != last_ins_code):
+          current_ins_code != last_ins_code or
+          current_label_asym_id != last_label_asym_id):
         residue_group = hierarchy.residue_group(
           resseq=hy36encode(width=4, value=int(current_residue_id)),
           icode=current_ins_code)
