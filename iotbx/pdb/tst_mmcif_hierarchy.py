@@ -415,6 +415,8 @@ END
   pdb_in = iotbx.pdb.input(lines=(input_empty_chain_id).splitlines(), source_info=None)
   pdb_hierarchy = pdb_in.construct_hierarchy()
   cif_block = pdb_hierarchy.as_cif_block()
+  assert list(cif_block['_atom_site.auth_asym_id']) == [
+    'A', '.', '.', '.', 'A', '.', '.']
   cif_object = iotbx.cif.model.cif()
   cif_object["test"] = cif_block
   s = StringIO()

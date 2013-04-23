@@ -108,6 +108,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
       assert current_label_asym_id is not None
       last_auth_asym_id = current_auth_asym_id
       current_auth_asym_id = auth_asym_id[i_atom]
+      if current_auth_asym_id == ".": current_auth_asym_id = " "
       assert current_label_asym_id is not None
       if current_label_asym_id != last_label_asym_id:
         chain = hierarchy.chain(id=current_auth_asym_id)
@@ -709,6 +710,7 @@ class pdb_hierarchy_as_cif_block(iotbx.cif.crystal_symmetry_as_cif_block):
       if model_id == '': model_id = '1'
       for chain in model.chains():
         auth_asym_id = chain.id
+        if auth_asym_id.strip() == '': auth_asym_id = '.'
         label_asym_id = increment_label_asym_id(label_asym_id)
         for residue_group in chain.residue_groups():
           seq_id = residue_group.resseq.strip()
