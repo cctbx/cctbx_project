@@ -84,6 +84,12 @@ argv-emulation=0""")
     executable = options.python_interpreter
   elif (libtbx_env is not None) :
     executable = abs(libtbx.env.python_exe)
+  try :
+    args = [executable, "-c", "'import py2app'"]
+    subprocess.call(args)
+  except RuntimeError :
+    print >> out, "py2app not available, aborting .app creation."
+    return 1
   args = [executable, script_name, "--make-setup", "%s.py" % app_name]
   if (options.icon is not None) :
     args.append(options.icon)
