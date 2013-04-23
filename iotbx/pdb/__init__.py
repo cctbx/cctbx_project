@@ -1278,7 +1278,10 @@ class join_fragment_files(object):
     for file_name in file_names:
       pdb_inp = iotbx.pdb.input(file_name=file_name)
       z_ = pdb_inp.extract_cryst1_z_columns()
-      if z_: z_ = int(z_.strip())
+      if (z_ is not None) :
+        z_ = z_.strip()
+        if (z_ != "") : z_ = int(z_)
+        else : z_ = None
       else: z_ = None
       if z is None:
         z = z_
