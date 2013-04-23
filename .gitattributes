@@ -1174,10 +1174,13 @@ iotbx/tst_bioinformatics.py -text
 iotbx/tst_data_plots.py -text
 iotbx/tst_poscar.py svneol=native#text/x-python
 iotbx/utils.py svneol=native#text/x-python
+iotbx/xds/blank_cbf.py -text
 iotbx/xds/correction.py -text
+iotbx/xds/gain_cbf.py -text
 iotbx/xds/geometry.py -text
 iotbx/xds/integrate_hkl.py -text
 iotbx/xds/spot_xds.py -text
+iotbx/xds/xds_cbf.py -text
 iotbx/xds/xparm.py -text
 ipctbx/SConscript -text
 ipctbx/__init__.py svneol=native#text/x-python
