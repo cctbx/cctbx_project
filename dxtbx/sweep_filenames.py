@@ -50,6 +50,9 @@ def find_matching_images(image_name):
     import os
 
     directory, filename = os.path.split(image_name)
+    if directory is None or directory == '':
+        directory = '.'
+
     template, digits = template_regex(filename)
 
     if template:
