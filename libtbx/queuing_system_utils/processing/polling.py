@@ -164,6 +164,12 @@ class CentralPoller(object):
 
 
   @classmethod
+  def LSF(cls):
+
+    return cls( command = [ "bjobs" ], evaluate = lsf_text_evaluate )
+
+
+  @classmethod
   def PBS(cls):
 
     return cls( command = [ "qstat", "-x" ], evaluate = pbs_xml_evaluate )
@@ -226,4 +232,34 @@ def pbs_xml_evaluate(out, running, completed):
 
     else:
       running.add( n.text )
+
+LSF_CENTRAL_NO_RESULTS_REGEX = util.get_lazy_initialized_regex(
+  pattern = r"No unfinished job found"
+  )
+LSF_CENTRAL_HEADER_REGEX = util.get_lazy_initialized_regex(
+  pattern = r"JOBID\s+USER\s+STAT\s+QUEUE\s+FROM_HOST\s+EXEC_HOST\s+JOB_NAME\s+SUBMIT_TIME"
+  )
+LSF_CENTRAL_JOBID_REGEX = util.get_lazy_initialized_regex(
+  pattern = r"\s*(\S+)\s.+"
+  )
+
+def lsf_text_evaluate(out, running, completed):
+  "Parses LSF bjobs text output"
+
+  if LSF_CENTRAL_NO_RESULTS_REGEX().search( out ):
+    return
+
+  if not LSF_CENTRAL_HEADER_REGEX().match( out ):
+    raise RuntimeError, "Unexpected response from queue"
+
+  regex = LSF_CENTRAL_JOBID_REGEX()
+
+  for line in out.splitlines()[1:]:
+    match = regex.match( line )
+
+    if not match:
+      raise RuntimeError, "Unexpected response from queue"
+
+    jobid = match.group( 1 )
+    running.add( jobid )
 
