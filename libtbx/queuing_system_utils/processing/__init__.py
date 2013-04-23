@@ -324,7 +324,7 @@ def LSF(
   if asynchronous:
     if poller is None:
       from libtbx.queuing_system_utils.processing import polling
-      poller = polling.SinglePoller.LSF()
+      poller = polling.CentralPoller.LSF()
 
     submitter = submission.AsynchronousCmdLine.LSF(
       poller = poller,
