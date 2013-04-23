@@ -58,6 +58,7 @@ tst_list = (
   "$D/tst_csv_utils.py",
   "$D/regression/tst_file_reader.py",
   "$D/tst_bioinformatics.py",
+  "$D/regression/tst_mtz_as_cif.py",
   "$D/regression/tst_add_conformations.py",
   "$D/regression/tst_symmetry.py",
   "$D/regression/tst_reindex.py",
