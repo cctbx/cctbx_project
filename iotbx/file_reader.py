@@ -73,7 +73,7 @@ def get_wildcard_string (format) :
 def get_wildcard_strings (formats, include_any=True) :
   wildcards = [ get_wildcard_string(format) for format in formats ]
   if (include_any) :
-    if (sys.platform == "win32") :
+    if (sys.platform != "darwin") :
       wildcards.insert(0, "All files (*.*)|*.*")
     else :
       wildcards.append("All files (*.*)|*.*")
