@@ -382,7 +382,7 @@ def exercise_misc () :
   file_names = sort_by_file_type(file_names, sort_order=["pdb","hkl","seq"])
   assert (file_names == ['foo.pdb','bar.pdb','foo.mtz','bar.mtz','seq.dat'])
   wc = file_reader.get_wildcard_strings(["hkl","pdb","seq"])
-  if (sys.platform != "win32") :
+  if (sys.platform == "win32") :
     assert (wc == """Reflections file (*.mtz, *.hkl, *.sca, *.cns, *.xplor, *.cv, *.ref, *.fobs)|*.mtz;*.hkl;*.sca;*.cns;*.xplor;*.cv;*.ref;*.fobs|Model file (*.pdb, *.ent)|*.pdb;*.ent|Sequence file (*.fa, *.faa, *.seq, *.pir, *.dat, *.fasta)|*.fa;*.faa;*.seq;*.pir;*.dat;*.fasta|All files (*.*)|*.*""")
   wc = file_reader.get_wildcard_strings([])
   assert (wc == """All files (*.*)|*.*""")
