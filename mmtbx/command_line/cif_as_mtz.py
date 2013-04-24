@@ -272,6 +272,13 @@ def extract(file_name,
         elif (l.endswith("FWT")) :
           label = "FWT"
           break
+      elif (miller_array.is_real_array()) :
+        if (l.endswith(".phase_calc")) :
+          label = "PHIC"
+          break
+        elif ("pdbx_anom_difference" in l) :
+          label = "DANO"
+          break
     if label is not None:
       label_base = label
       i = 1
@@ -434,9 +441,14 @@ def extract(file_name,
       dec = None
       if ("FWT" in label) :
         dec = iotbx.mtz.ccp4_label_decorator()
+      # XXX what about DANO,SIGDANO?
+      column_types = None
+      if ("PHI" in label) and (ma.is_real_array()) :
+        column_types = "P"
       dataset.add_miller_array(ma,
         column_root_label=label,
-        label_decorator=dec)
+        label_decorator=dec,
+        column_types=column_types)
   return mtz_object
 
 ########################################################################
