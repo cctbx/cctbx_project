@@ -1712,6 +1712,14 @@ class twin_results_interpretation(object):
             "be the reason for the departure of the intensity statistics from normality."
           print >> self.twinning_verdict, \
             "It might be worthwhile carrying out refinement with a twin specific target function."
+          print >> self.twinning_verdict, \
+            "Please note however that R-factors from twinned refinement cannot be directly"
+          print >> self.twinning_verdict, \
+            "compared to R-factors without twinning, as they will always be lower when a"
+          print >> self.twinning_verdict, \
+            "twin law is used.  You should also use caution when interpreting the maps from"
+          print >> self.twinning_verdict, \
+            "refinement, as they will have significantly more model bias."
           self.twinning_short=True
           if not self.twin_results.input_point_group == self.twin_results.suspected_point_group:
             print >> self.twinning_verdict
@@ -1764,13 +1772,6 @@ class twin_results_interpretation(object):
 
       if self.twin_results.n_twin_laws > 0:
         if (self.twin_results.input_point_group == self.twin_results.suspected_point_group):
-          print >> self.twinning_verdict, \
-            "Even though no twinning is suspected, it might be worthwhile carrying out "
-          print >> self.twinning_verdict, \
-            "a refinement using a dedicated twin target anyway, as twinned structures with"
-          print >> self.twinning_verdict, \
-            "low twin fractions are difficult to distinguish from non-twinned structures."
-          print >> self.twinning_verdict
           if self.twin_results.most_worrysome_twin_law != None:
             if self.twin_results.britton_alpha[ self.twin_results.most_worrysome_twin_law ]> 0.05:
               print >> self.twinning_verdict,\
