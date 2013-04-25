@@ -84,7 +84,7 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
     return self._path_style
 
   def GetValue (self) :
-    val = self._path_text.GetValue()
+    val = self._path_text.GetValue().strip()
     if (isinstance(val, unicode)) :
       return val.encode('utf8')
     else :
@@ -103,7 +103,7 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
 
   def GetPhilValue (self) :
     self._path_text.GetValidator().Validate(self)
-    val_str = self.GetValue().strip()
+    val_str = self.GetValue()
     assert isinstance(val_str, str)
     if (val_str == "") :
       return self.ReturnNoneIfOptional()
@@ -185,7 +185,7 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
 
   def OnEnter (self, event) :
     if (self._path_style & WXTBX_PHIL_PATH_DEFAULT_CWD) :
-      value = self.GetValue().strip()
+      value = self.GetValue()
       if (value == "") :
         from libtbx.utils import getcwd_safe
         self.SetValue(getcwd_safe())
