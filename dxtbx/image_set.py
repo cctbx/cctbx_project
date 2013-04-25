@@ -20,7 +20,7 @@ class ImageSetReader(object):
     '''Definition for a image set of images, defined to be a set of diffraction
     images in files with matching templates, or a volume formatted file.'''
 
-    def __init__(self, format_class, template, image_indices):
+    def __init__(self, format_class, template, filenames):
         """ Construct a image set object from the given format.
 
         Params:
@@ -38,48 +38,53 @@ class ImageSetReader(object):
         self._format = format_class
 
         # Set the template
-        self._template = template
+        #self._template = template
 
         # Get the template format
-        pfx = template.split('#')[0]
-        sfx = template.split('#')[-1]
-        self._template_format = '%s%%0%dd%s' % (pfx, template.count('#'), sfx)
+#        pfx = template.split('#')[0]
+#        sfx = template.split('#')[-1]
+#        self._template_format = '%s%%0%dd%s' % (pfx, template.count('#'), sfx)
 
         # Get the first format instance and get the models
-        first_filename = self.get_filename(image_indices[0])
-        format_instance = self._format(first_filename)
-        self._understanding = self._format.understand(first_filename)
+        #first_filename = self.get_filename(image_indices[0])
+        format_instance = self._format(filenames[0])
+        self._understanding = self._format.understand(filenames[0])
         self._detector = format_instance.get_detector()
         self._beam = format_instance.get_beam()
 
         # Create the format cache and cache the first format
         self._model_cache = {}
-        self._cache_models(image_indices[0], format_instance)
+        self._cache_models(0, format_instance)
         self._current_format_instance = None
 
         # Save the image indices
-        self._indices = image_indices
+        #self._indices = image_indices
+        self._filenames = filenames
 
     def __cmp__(self, other):
         """ Compare this reader to another. """
-        return (self.get_template() == other.get_template() and
-                self.get_format() == other.get_format())
+        return True
+#        return (self.get_template() == other.get_template() and
+#                self.get_format() == other.get_format())
 
     def get_format(self):
-        """ Get the format instance. """
+        """ Get the format class. """
         return self._format
 
-    def get_template(self):
-        """ Get the template. """
-        return self._template
+#    def get_template(self):
+#        """ Get the template. """
+#        return self._template
 
-    def get_filename(self, image):
+    def get_filename(self, index):
         """ Get the filename for the given image. """
-        return self._template_format % image
+        return self._filenames[index]
 
-    def get_image_indices(self):
-        """ Get the image indices."""
-        return self._indices
+#    def get_image_indices(self):
+#        """ Get the image indices."""
+#        return self._indices
+
+    def get_image_paths(self):
+        return self._filenames
 
     def is_valid(self, image_indices=None):
         """ Check that all the images in the given range are valid.
@@ -95,20 +100,20 @@ class ImageSetReader(object):
 
         # If no range set then use all
         if not image_indices:
-            image_indices = self.get_image_indices()
+            image_indices = range(len(self.get_image_paths()))
 
         # Loop through all the images
-        for image in image_indices:
+        for index in image_indices:
 
             # If format is in cache, it's valid
             try:
-                self._model_cache[image]
+                self._model_cache[index]
             except KeyError:
 
                 # Read and try to cache the format, if this fails, the
                 # format is invalid, so return false.
                 try:
-                    self._read_format_and_cache_models(image)
+                    self._read_format_and_cache_models(index)
                 except RuntimeError:
                     return False
 
@@ -119,7 +124,7 @@ class ImageSetReader(object):
         """ Read an image at the given array index. """
 
         # Convert from array to image numbering and ensure is valid
-        if image_index not in self.get_image_indices():
+        if image_index < 0 and image_index >= len(self.get_image_paths()):
             raise IndexError, 'Invalid image index'
 
         # Try to read format from cache, otherwise read from file
@@ -135,22 +140,20 @@ class ImageSetReader(object):
         """ Get the image size. """
         return self._detector.get_image_size()
 
-    def get_detectorbase(self, array_index=None):
+    def get_detectorbase(self, index=None):
         ''' Get the instance of the detector base at this index.'''
 
         # Get the format instance
-        if array_index == None and self._current_format_instance != None:
+        if index == None and self._current_format_instance != None:
             format_instance = self._current_format_instance
         else:
 
             # Get the image index
-            if array_index == None:
-                image_index = 1
-            else:
-                image_index = array_index + 1
+            if index == None:
+                index = 0
 
             # Read the format instance
-            format_instance = self._read_format_and_cache_models(image_index)
+            format_instance = self._read_format_and_cache_models(index)
 
         # Return the instance of detector base
         return format_instance.get_detectorbase()
@@ -163,15 +166,15 @@ class ImageSetReader(object):
         """ Get the beam model. """
         return self._beam
 
-    def _read_format_and_cache_models(self, image_index):
+    def _read_format_and_cache_models(self, index):
         """ Read and cache the format object at the given image index. """
 
         # Get the format instance
-        format_instance = self._format(self.get_filename(image_index))
+        format_instance = self._format(self.get_filename(index))
 
         # If the format instance is valid then cache
         if self._is_format_valid(format_instance):
-            self._cache_models(image_index, format_instance)
+            self._cache_models(index, format_instance)
         else:
             RuntimeError("Format is invalid.")
 
@@ -197,19 +200,19 @@ class ImageSetReader(object):
         # Format is valid
         return True
 
-    def _cache_models(self, image_index, format_instance):
+    def _cache_models(self, index, format_instance):
         """ Cache the models. """
         b = format_instance.get_beam()
         d = format_instance.get_detector()
         g = format_instance.get_goniometer()
         s = format_instance.get_scan()
-        self._model_cache[image_index] = (b, d, g, s)
+        self._model_cache[index] = (b, d, g, s)
 
 
 class BufferedImageSetReader(ImageSetReader):
     """ Class to provide cached reading of images. """
 
-    def __init__(self, format_class, template, image_indices, max_cache=None):
+    def __init__(self, format_class, template, filenames, max_cache=None):
         """ Initialise the BufferedImageSetReader class.
 
         Params:
@@ -220,7 +223,7 @@ class BufferedImageSetReader(ImageSetReader):
         from collections import OrderedDict
 
         # Initialise the base class
-        ImageSetReader.__init__(self, format_class, template, image_indices)
+        ImageSetReader.__init__(self, format_class, template, filenames)
 
         # Set the maximum images to cache
         if max_cache:
@@ -309,7 +312,7 @@ class ImageSet(object):
             else:
                 raise ValueError("indices should be a list")
         else:
-            self._indices = self._reader.get_image_indices()
+            self._indices = range(len(self._reader.get_image_paths()))
 
     def __getitem__(self, item):
         """ Get an item from the image set stream.
@@ -353,6 +356,10 @@ class ImageSet(object):
     def indices(self):
         """ Return the indices in the image set. """
         return self._indices
+
+    def paths(self):
+        filenames = self.reader().get_image_paths()
+        return [filenames[i] for i in self.indices()]
 
     def is_valid(self):
         """ Validate all the images in the image set. Can take a long time. """
@@ -405,33 +412,30 @@ class ImageSetFactory:
         assert(len(filenames) > 0)
 
         # Get the format object
+        filenames = sorted(filenames)
         format_class = Registry.find(filenames[0])
 
-        # Get the first image and our understanding
-        first_image = filenames[0]
+#        # Get the first image and our understanding
+#        first_image = filenames[0]
 
-        # Get the directory and first filename and set the template format
-        directory, first_image_name = os.path.split(first_image)
-        template, first_image_index = template_regex(first_image_name)
+#        # Get the directory and first filename and set the template format
+#        directory, first_image_name = os.path.split(first_image)
+#        template, first_image_index = template_regex(first_image_name)
 
-        pfx = template.split('#')[0]
-        sfx = template.split('#')[-1]
-        template_format = '%s%%0%dd%s' % (pfx, template.count('#'), sfx)
-        template = os.path.join(directory, template)
+#        pfx = template.split('#')[0]
+#        sfx = template.split('#')[-1]
+#        template_format = '%s%%0%dd%s' % (pfx, template.count('#'), sfx)
+#        template = os.path.join(directory, template)
 
-        # Check the input filenames are valid
-        image_indices = [first_image_index]
-        assert(first_image_index > 0)
-        for j, image in enumerate(filenames[1:]):
-            path, image_name = os.path.split(image)
-            assert(path == directory)
-            image_index = int(image_name.replace(pfx, '').replace(sfx, ''))
-            assert(image_index > 0)
-            image_indices.append(image_index)
+#        # Check the input filenames are valid
+#        for image in filenames[1:]:
+#            path, image_name = os.path.split(image)
+#            assert(path == directory)
 
+        template = None
         # Create the image set object
         image_set = ImageSet(BufferedImageSetReader(format_class,
-            template, image_indices))
+            template, filenames))
 
         # Check the image set is valid
         if check_headers and not image_set.is_valid():
