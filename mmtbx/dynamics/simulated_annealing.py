@@ -60,8 +60,11 @@ def manager(params,
             h_params,
             fmodels,
             model,
-            out = None):
+            out = None,
+            states_collector=None):
   if(out is None): out = sys.stdout
+  if (states_collector is not None) :
+    assert hasattr(states_collector, "add")
   print_statistics.make_header("simulated annealing refinement", out = out)
   model.set_refine_individual_sites()
   fmodel = fmodels.fmodel_xray() # XXX use only xray data
@@ -96,6 +99,7 @@ def manager(params,
     fmodel             = fmodel,
     wx                 = wx,
     wc                 = target_weights.xyz_weights_result.w,
+    states_collector   = states_collector,
     log                = out)
 
 class run(object):
@@ -150,13 +154,13 @@ class run(object):
       reset_velocities = False
       vxyz = cd_manager.vxyz
       self.xray_structure = cd_manager.xray_structure
-      if(states_collector is not None):
-        self.states_collector.add(sites_cart = cd_manager.xray_structure.sites_cart())
       if(self.fmodel is not None):
         self.fmodel.update_xray_structure(
           xray_structure = self.xray_structure,
           update_f_calc  = True,
           update_f_mask  = True)
+      if(states_collector is not None):
+        self.states_collector.add(sites_cart = cd_manager.xray_structure.sites_cart())
       self.show(curr_temp = self.curr_temp)
       self.curr_temp -= params.cool_rate
       if(cartesian_den_restraints):
