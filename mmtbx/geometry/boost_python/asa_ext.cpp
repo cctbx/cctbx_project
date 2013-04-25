@@ -217,7 +217,7 @@ public:
       .def(
         "close_to",
         &linear_spheres_type::close_to,
-        return_internal_reference<>(),
+        with_custodian_and_ward_postcall< 0, 1 >(),
         arg( "object" )
         )
       .def( "__len__", &linear_spheres_type::size )
@@ -249,11 +249,11 @@ public:
       .def(
         "close_to",
         &hash_spheres_type::close_to,
+        with_custodian_and_ward_postcall< 0, 1 >(),
         arg( "object" )
         )
       .def( "__len__", &hash_spheres_type::size )
       .def( "cubes", &hash_spheres_type::cubes )
-      .def( "count", &hash_spheres_type::count )
       ;
   }
 };
@@ -360,6 +360,9 @@ struct accessibility_wrappers
 
     typedef Checker< sphere_type, PurePythagorean< false > >
       pythagorean_checker;
+    boost_adaptbx::python::generic_range_wrapper< typename pythagorean_checker::storage_type >
+      ::wrap( "spheres_range" );
+
     create_wrappings< pythagorean_checker >( "pythagorean" );
 
     /*

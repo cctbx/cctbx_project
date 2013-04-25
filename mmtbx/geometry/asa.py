@@ -43,15 +43,15 @@ class Description(object):
 
   def accept(self, processor):
 
-    self.strategy( sphere = self.sphere, processor = processor )
+    self.strategy( self.sphere, processor = processor )
 
 
   @classmethod
-  def from_parameters(cls, centre, radius, altloc):
+  def from_parameters(cls, centre, radius, strategy):
 
     return cls(
       sphere = sphere( centre = centre, radius = radius ),
-      strategy = Regular if not altloc else Altloc( identifier = altloc ),
+      strategy = strategy,
       )
 
 
@@ -74,22 +74,38 @@ class Indexer(object):
     self.altlocs[ altloc ] = self.factory()
 
 
+  @classmethod
+  def create(cls, factory, descriptions):
+
+    indexer = cls( factory = factory )
+    inserter = Inserter( indexer = indexer )
+
+    for d in descriptions:
+      d.accept( processor = inserter )
+
+    return indexer
+
+
 def get_linear_indexer_for(descriptions):
 
-  return Indexer( factory = indexing.linear_spheres )
+  return Indexer.create(
+    factory = indexing.linear_spheres,
+    descriptions = descriptions,
+    )
 
 
 def get_hash_indexer_for(descriptions):
 
   voxelizer = get_voxelizer_for( descriptions = descriptions )
-  return Indexer(
-    factory = lambda: indexing.hash_spheres( voxelizer = voxelizer )
+  return Indexer.create(
+    factory = lambda: indexing.hash_spheres( voxelizer = voxelizer ),
+    descriptions = descriptions,
     )
 
 
 def get_optimal_indexer_for(descriptions):
 
-  return Indexer( factory = indexing.linear_spheres )
+  return get_linear_indexer_for( descriptions = descriptions )
 
 
 def get_voxelizer_for(descriptions, step = 7):
@@ -130,10 +146,11 @@ class CompositeCheckerBuilder(object):
   Finds neighbours for a sphere
   """
 
-  def __init__(self, indexer):
+  def __init__(self, indexer, description):
 
     self.indexer = indexer
     self.checker = accessibility.pythagorean_checker()
+    description.accept( processor = self )
 
 
   def process_regular(self, sphere):
@@ -168,11 +185,12 @@ class SeparateCheckerBuilder(object):
   Finds neighbours for a sphere
   """
 
-  def __init__(self, indexer):
+  def __init__(self, indexer, description):
 
     self.indexer = indexer
     self.regular = accessibility.pythagorean_checker()
     self.altlocs = {}
+    description.accept( processor = self )
 
 
   def process_regular(self, sphere):
@@ -191,7 +209,7 @@ class SeparateCheckerBuilder(object):
         checker = checker,
         )
 
-      if list( checker.neighbours() ):
+      if checker.neighbours():
         self.altlocs[ identifier ] = checker
 
 
@@ -219,27 +237,6 @@ class SeparateCheckerBuilder(object):
         predicate = indexing.overlap_equality_predicate( object = sphere )
         )
       )
-
-
-# Parameters
-class CalcParams(object):
-  """
-  Parameters of the calculation
-  """
-
-  def __init__(self, probe = 1.4, precision = 960):
-
-    self.probe = probe
-
-    from mmtbx.geometry import sphere_surface_sampling
-    self.sampling = sphere_surface_sampling.golden_spiral( count = precision )
-
-
-  @property
-  def van_der_waals_radii(self):
-
-    from cctbx.eltbx import van_der_waals_radii
-    return van_der_waals_radii.vdw.table
 
 
 # Results
@@ -284,127 +281,102 @@ class AccessibleSurfaceAreas(object):
 
 
 # Ways for calculating ASA
-class SimpleSurfaceCalculator(object):
+def simple_surface_calculation(indexer, sampling, description):
   """
   Calculates ASA by not worrying about altlocs
   """
 
-  def __init__(self, indexer, params):
-
-    self.indexer = indexer
-    self.sampling = params.sampling
-    self.values = []
-
-
-  def process(self, description):
-
-    builder = CompositeCheckerBuilder( indexer = self.indexer )
-    description.accept( processor = builder )
-    overlapped = accessibility.filter(
-      range = accessibility.transform(
-        range = self.sampling.points,
-        transformation = accessibility.transformation(
-          centre = description.sphere.centre,
-          radius = description.sphere.radius,
-          ),
+  builder = CompositeCheckerBuilder( indexer = indexer, description = description )
+  overlapped = accessibility.filter(
+    range = accessibility.transform(
+      range = sampling.points,
+      transformation = accessibility.transformation(
+        centre = description.sphere.centre,
+        radius = description.sphere.radius,
         ),
-      predicate = builder.checker,
-      )
+      ),
+    predicate = builder.checker,
+    )
 
-    self.values.append(
-      AccessibleSurfaceResult(
-        count = len( overlapped ),
-        radius_sq = description.sphere.radius_sq,
-        )
-      )
+  return AccessibleSurfaceResult(
+    count = len( overlapped ),
+    radius_sq = description.sphere.radius_sq,
+    )
 
 
-class AltlocAveragedCalculator(object):
+def altloc_averaged_calculation(indexer, sampling, description):
   """
   For atoms with altloc identifier, use empty altloc + atom with same altloc.
   For atoms with empty altloc, run a calculation for each know altloc and
   average the results.
   """
 
-  def __init__(self, indexer, params):
+  builder = SeparateCheckerBuilder( indexer = indexer, description = description )
 
-    self.indexer = indexer
-    self.sampling = params.sampling
-    self.values = []
-
-
-  def process(self, description):
-
-    builder = SeparateCheckerBuilder( indexer = self.indexer )
-    description.accept( processor = builder )
-
-    overlapped = accessibility.filter(
-      range = accessibility.transform(
-        range = self.sampling.points,
-        transformation = accessibility.transformation(
-          centre = description.sphere.centre,
-          radius = description.sphere.radius,
-          ),
+  overlapped = accessibility.filter(
+    range = accessibility.transform(
+      range = sampling.points,
+      transformation = accessibility.transformation(
+        centre = description.sphere.centre,
+        radius = description.sphere.radius,
         ),
-      predicate = builder.regular,
-      )
+      ),
+    predicate = builder.regular,
+    )
 
-    accessible_for = {}
+  accessible_for = {}
 
-    for ( identifier, checker ) in builder.altlocs.items():
-      accessible_for[ identifier ] = [
-        p for p in overlapped if checker( point = p )
-        ]
+  for ( identifier, checker ) in builder.altlocs.items():
+    accessible_for[ identifier ] = [
+      p for p in overlapped if checker( point = p )
+      ]
 
-    if not accessible_for:
-      count = len( overlapped )
+  if not accessible_for:
+    count = len( overlapped )
 
-    else:
-      count = sum( [ len( l ) for l in accessible_for.values() ] ) / len( accessible_for )
+  else:
+    count = sum( [ len( l ) for l in accessible_for.values() ] ) / len( accessible_for )
 
-    self.values.append(
-      AccessibleSurfaceResult(
-        count = count,
-        radius_sq = description.sphere.radius_sq,
-        )
-      )
+  return AccessibleSurfaceResult(
+    count = count,
+    radius_sq = description.sphere.radius_sq,
+    )
 
 
 # Module-level function
 def calculate(
   atoms,
-  calculator = SimpleSurfaceCalculator,
+  calculation = simple_surface_calculation,
   indexer_selector = get_optimal_indexer_for,
-  params = CalcParams(),
+  probe = 1.4,
+  precision = 960,
   ):
 
-  centres = [ a.xyz for a in atoms ]
+  from cctbx.eltbx import van_der_waals_radii
+  radius_for = van_der_waals_radii.vdw.table
 
-  radius_for = params.van_der_waals_radii
-  radii = [
-    radius_for[ a.determine_chemical_element_simple().strip().capitalize() ] + params.probe
-    for a in atoms
-    ]
-  altlocs = [ a.parent().altloc if a.parent() else None for a in atoms ]
-
+  from mmtbx.geometry import altloc
   descriptions = [
-    Description.from_parameters( centre = c, radius = r, altloc = a )
-    for ( c, r, a ) in zip( centres, radii, altlocs )
+    Description.from_parameters(
+      centre = a.xyz,
+      radius = radius_for[ a.determine_chemical_element_simple().strip().capitalize() ] + probe,
+      strategy = altloc.from_atom( entity = a ),
+      )
+    for a in atoms
     ]
 
   indexer = indexer_selector( descriptions = descriptions )
-  inserter = Inserter( indexer = indexer )
 
-  for d in descriptions:
-    d.accept( processor = inserter )
+  from mmtbx.geometry import sphere_surface_sampling
+  sampling = sphere_surface_sampling.golden_spiral( count = precision )
 
-  calculator = calculator( indexer = indexer, params = params )
-
-  for d in descriptions:
-    calculator.process( description = d )
+  values = [
+    calculation( indexer = indexer, sampling = sampling, description = d )
+    for d in descriptions
+    ]
 
   return AccessibleSurfaceAreas(
-    values = calculator.values,
-    unit = params.sampling.unit_area,
+    values = values,
+    unit = sampling.unit_area,
     )
 

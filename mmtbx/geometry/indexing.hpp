@@ -1,6 +1,7 @@
 #ifndef MMTBX_GEOMETRY_INDEXING_H
 #define MMTBX_GEOMETRY_INDEXING_H
 
+#include <mmtbx/geometry/flattening.hpp>
 #include <scitbx/math/cartesian_product_fixed_size.hpp>
 
 #include <boost/iterator/counting_iterator.hpp>
@@ -34,7 +35,8 @@ class Linear
 public:
   typedef Object object_type;
   typedef std::vector< object_type > storage_type;
-  typedef storage_type range_type;
+  typedef boost::iterator_range< typename storage_type::const_iterator >
+      range_type;
 
 private:
   storage_type objects_;
@@ -44,7 +46,7 @@ public:
   ~Linear();
 
   inline void add(const object_type& object);
-  inline const range_type& close_to(const object_type& object) const;
+  inline range_type close_to(const object_type& object) const;
   inline size_t size() const;
 };
 
@@ -132,7 +134,9 @@ public:
   typedef std::vector< object_type > bucket_type;
   typedef FusionVectorHasher< voxel_type > hasher_type;
   typedef boost::unordered_map< voxel_type, bucket_type, hasher_type > storage_type;
-  typedef boost::unordered_set< object_type > range_type;
+  typedef boost::iterator_range< typename bucket_type::const_iterator >
+    bucket_range_type;
+  typedef utility::flattening_range< bucket_range_type > range_type;
 
 private:
   voxelizer_type voxelizer_;
@@ -146,13 +150,9 @@ public:
   inline range_type close_to(const object_type& object) const;
   inline size_t size() const;
   inline size_t cubes() const;
-  inline size_t count() const;
 
 private:
-  cartesian_type make_cartesian_iterator(
-    const voxel_type& low,
-    const voxel_type& high
-    ) const;
+  cartesian_type make_cartesian_iterator_around(const voxel_type& voxel) const;
 };
 
 #include "indexing.hxx"

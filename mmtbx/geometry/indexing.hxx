@@ -14,10 +14,10 @@ Linear< Object >::add(const object_type& object)
 }
 
 template< typename Object >
-const typename Linear< Object >::range_type&
+typename Linear< Object >::range_type
 Linear< Object >::close_to(const object_type& object) const
 {
-  return objects_;
+  return range_type( objects_.begin(), objects_.end() );
 }
 
 template< typename Object >
@@ -96,51 +96,40 @@ Hash< Object, Voxelizer >::Hash(const voxelizer_type& voxelizer)
   : voxelizer_( voxelizer )
 {}
 
-template< typename Object, typename Voxelizer >
-Hash< Object, Voxelizer >::~Hash()
+template< typename Object, typename Discrete >
+Hash< Object, Discrete >::~Hash()
 {}
 
-template< typename Object, typename Voxelizer >
+template< typename Object, typename Discrete >
 void
-Hash< Object, Voxelizer >::add(const object_type& object)
+Hash< Object, Discrete >::add(const object_type& object)
 {
-  for(
-    cartesian_type cit = make_cartesian_iterator(
-      voxelizer_( object.low() ),
-      voxelizer_( object.high() )
-      );
-    cit != cartesian_type::end();
-    ++cit
-    )
+  voxel_type key = voxelizer_( object.centre() );
+
+  typename storage_type::iterator it = objects_.find( key );
+
+  if ( it == objects_.end() )
   {
-    const voxel_type& key = *cit;
-    typename storage_type::iterator it = objects_.find( key );
-
-    if ( it == objects_.end() )
-    {
-      std::pair< typename storage_type::iterator, bool > result =
-        objects_.insert(
-          typename storage_type::value_type( key, bucket_type() )
-          );
-      assert ( result.second );
-      it = result.first;
-    }
-
-    it->second.push_back( object );
+    std::pair< typename storage_type::iterator, bool > result =
+      objects_.insert(
+        typename storage_type::value_type( key, bucket_type() )
+        );
+    assert ( result.second );
+    it = result.first;
   }
+
+  it->second.push_back( object );
 }
 
-template< typename Object, typename Voxelizer >
-typename Hash< Object, Voxelizer >::range_type
-Hash< Object, Voxelizer >::close_to(const object_type& object) const
+template< typename Object, typename Discrete >
+typename Hash< Object, Discrete >::range_type
+Hash< Object, Discrete >::close_to(const object_type& object) const
 {
   range_type result;
+  voxel_type key = voxelizer_( object.centre() );
 
   for(
-    cartesian_type cit = make_cartesian_iterator(
-      voxelizer_( object.low() ),
-      voxelizer_( object.high() )
-      );
+    cartesian_type cit = make_cartesian_iterator_around( voxelizer_( object.centre() ) );
     cit != cartesian_type::end();
     ++cit
     )
@@ -149,41 +138,16 @@ Hash< Object, Voxelizer >::close_to(const object_type& object) const
 
     if ( it != objects_.end() )
     {
-      result.insert( it->second.begin(), it->second.end() );
+      result.storage.push_back( bucket_range_type( it->second.begin(), it->second.end() ) );
     }
   }
 
   return result;
 }
 
-template< typename Object, typename Voxelizer >
+template< typename Object, typename Discrete >
 size_t
-Hash< Object, Voxelizer >::size() const
-{
-  range_type result;
-
-  for (
-    typename storage_type::const_iterator it = objects_.begin();
-    it != objects_.end();
-    ++it
-    )
-  {
-    result.insert( it->second.begin(), it->second.end() );
-  }
-
-  return result.size();
-}
-
-template< typename Object, typename Voxelizer >
-size_t
-Hash< Object, Voxelizer >::cubes() const
-{
-  return objects_.size();
-}
-
-template< typename Object, typename Voxelizer >
-size_t
-Hash< Object, Voxelizer >::count() const
+Hash< Object, Discrete >::size() const
 {
   size_t count = 0;
 
@@ -199,31 +163,31 @@ Hash< Object, Voxelizer >::count() const
   return count;
 }
 
-template< typename Object, typename Voxelizer >
-typename Hash< Object, Voxelizer >::cartesian_type
-Hash< Object, Voxelizer >::make_cartesian_iterator(
-  const voxel_type& low,
-  const voxel_type& high
+template< typename Object, typename Discrete >
+size_t
+Hash< Object, Discrete >::cubes() const
+{
+  return objects_.size();
+}
+
+template< typename Object, typename Discrete >
+typename Hash< Object, Discrete >::cartesian_type
+Hash< Object, Discrete >::make_cartesian_iterator_around(
+  const voxel_type& voxel
   ) const
 {
   typedef typename
     boost::mpl::at_c< typename cartesian_type::range_types_vector, 0 >::type
     cart_range_type;
+  const discrete_type& voxel_x = boost::fusion::at_c<0>( voxel );
+  const discrete_type& voxel_y = boost::fusion::at_c<1>( voxel );
+  const discrete_type& voxel_z = boost::fusion::at_c<2>( voxel );
   typedef typename cartesian_type::range_vector_type initializer_type;
   return cartesian_type(
     initializer_type(
-      cart_range_type(
-        itercount( boost::fusion::at_c<0>( low ) ),
-        itercount( boost::fusion::at_c<0>( high ) + 1 )
-        ),
-      cart_range_type(
-        itercount( boost::fusion::at_c<1>( low ) ),
-        itercount( boost::fusion::at_c<1>( high ) + 1 )
-        ),
-      cart_range_type(
-        itercount( boost::fusion::at_c<2>( low ) ),
-        itercount( boost::fusion::at_c<2>( high ) + 1 )
-        )
+      cart_range_type( itercount( voxel_x - 1 ), itercount( voxel_x + 2 ) ),
+      cart_range_type( itercount( voxel_y - 1 ), itercount( voxel_y + 2 ) ),
+      cart_range_type( itercount( voxel_z - 1 ), itercount( voxel_z + 2 ) )
       )
     );
 }
