@@ -419,12 +419,11 @@ def get_final_maps_and_cc (
   final_cc = []
   for k, ligand in enumerate(ligands) :
     atoms = ligand.atoms()
-    sites = atoms.extract_xyz()
+    sites = flex.vec3_double()
     radii = flex.double()
     for atom in atoms :
-      if (atom.element.strip() in ["H", "D"]) :
-        radii.append(1.)
-      else :
+      if (not atom.element.strip() in ["H","D"]) :
+        sites.append(atom.xyz)
         radii.append(1.5)
     sel = maptbx.grid_indices_around_sites(
       unit_cell  = map_coeffs.unit_cell(),
