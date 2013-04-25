@@ -135,9 +135,16 @@ master_params_str = """\
     .type = bool
     .short_caption = Correct the hydrogen positions trapped in chirals etc
   automatic_linking
+    .style = box auto_align
+    .caption = Automatic covalent linking
   {
     intra_chain = False
       .type = bool
+      .short_caption = Automatically add intra-chain covalent bonds for ligands
+      .help = If True, bond restraints will be generated for any appropriate \
+        ligand-protein or ligand-nucleic acid covalent bonds if the chain IDs \
+        are the same.  This includes sugars, amino acid modifications, and \
+        other prosthetic groups.
     amino_acid_bond_cutoff = 1.9
       .type = float
       .short_caption = Distance cutoff for automatic linking of aminoacids
