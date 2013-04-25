@@ -1,21 +1,22 @@
 from __future__ import division
-import re
-
-# filename template code stolen from xia2...
-
-# N.B. these are reversed patterns...
-
-patterns = [r'([0-9]{2,12})\.(.*)',
-            r'(.*)\.([0-9]{2,12})_(.*)',
-            r'(.*)\.([0-9]{2,12})(.*)']
-
-joiners = ['.', '_', '']
-
-compiled_patterns = [re.compile(pattern) for pattern in patterns]
 
 def template_regex(filename):
     '''Try a bunch of templates to work out the most sensible. N.B. assumes
     that the image index will be the last digits found in the file name.'''
+
+    import re
+
+    # filename template code stolen from xia2...
+
+    # N.B. these are reversed patterns...
+
+    patterns = [r'([0-9]+)\.(.*)',
+                r'(.*)\.([0-9]+)_(.*)',
+                r'(.*)\.([0-9]+)(.*)']
+
+    joiners = ['.', '_', '']
+
+    compiled_patterns = [re.compile(pattern) for pattern in patterns]
 
     rfilename = filename[::-1]
 
@@ -42,6 +43,39 @@ def template_regex(filename):
         break
 
     return template, int(digits)
+
+
+def group_files_by_imageset(filenames):
+    '''Group filenames by supposed imageset.
+
+    Get the template for each file in the list. Then add to a dictionary
+    indexed by template containing a list of indices within that template.
+    For files that do not match a template, these are added by filename
+    instead.
+
+    '''
+    from collections import defaultdict
+
+    # Calculate the template for each image. If the template is None
+    # (i.e. there are no numbers to identify the filename, add the
+    # filename itself.
+    template = []
+    for f in filenames:
+        t = template_regex(f)
+        if t[0] == None:
+            template.append((f, None))
+        else:
+            template.append(t)
+
+    # Loop through all the templates and add the new item to a dictionary
+    # with a list of files per template.
+    matched = defaultdict(list)
+    for t in template:
+        matched[t[0]].append(t[1])
+
+    # Return the matched filenames
+    return matched
+
 
 def find_matching_images(image_name):
     '''Search in the directory in which this image is for images which share
