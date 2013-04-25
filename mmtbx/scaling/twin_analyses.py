@@ -1895,9 +1895,9 @@ class twin_results_summary(object):
     print >> out
     print >> out, "Statistics independent of twin laws"
     self.independent_stats = """\
-  <I^2>/<I>^2 : %5.3f
-  <F>^2/<F^2> : %5.3f
-  <|E^2-1|>   : %5.3f
+  <I^2>/<I>^2 : %5.3f  (untwinned: 2.0, perfect twin: 1.5)
+  <F>^2/<F^2> : %5.3f  (untwinned: 0.785, perfect twin: 0.885)
+  <|E^2-1|>   : %5.3f  (untwinned: 0.736, perfect twin: 0.541)
   <|L|>, <L^2>: %5.3f, %4.3f
   Multivariate Z score L-test: %5.3f
 """ % (self.i_ratio, self.f_ratio, self.e_sq_minus_1, self.l_mean,
