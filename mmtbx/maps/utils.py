@@ -215,6 +215,8 @@ class generate_water_omit_map (object) :
       exclude_free_r_reflections=False,
       fill_missing_f_obs=False,
       write_f_model=False,
+      maxent=False,
+      maxent_d_min=1.7,
       log=None) :
     if (log is None) :
       log = null_out()
@@ -248,7 +250,27 @@ class generate_water_omit_map (object) :
       self.fofc_map = fmodel.map_coefficients(
         map_type="mFo-DFc",
         exclude_free_r_reflections=exclude_free_r_reflections,
-        fill_missing=fill_missing_f_obs)
+        fill_missing=False)
+      if (maxent) :
+        import cctbx.maptbx.mem
+        print >> log, "  running maximum entropy calculation on mFo-DFc map..."
+        mem = cctbx.maptbx.mem.run(
+          f                       = self.fofc_map,
+          f_000                   = None,
+          lam                     = 0.05,
+          lambda_increment_factor = 1.02,
+          resolution_factor       = 0.25,
+          verbose                 = False,
+          start_map               = "min_shifted",
+          max_iterations          = 1000,
+          use_modification        = True,
+          beta                    = 0.7,
+          convergence_at_r_factor = 0.05,
+          xray_structure          = xrs,
+          log                     = log)
+        maxent_d_min = min(maxent_d_min, fmodel.f_obs().d_min())
+        f1, f2 = mem.map_coefficients(d_min=maxent_d_min)
+        self.fofc_map = f1
       if (fmodel.f_obs().anomalous_flag()) :
         self.anom_map = fmodel.map_coefficients(
           map_type="anom",
