@@ -58,6 +58,7 @@ class SweepReader(object):
         # Create the format cache and cache the first format
         self._model_cache = {}
         self._cache_models(image_range[0], format_instance)
+        self._current_format_instance = None
 
     def __cmp__(self, other):
         """ Compare this reader to another. """
@@ -123,6 +124,9 @@ class SweepReader(object):
         # Try to read format from cache, otherwise read from file
         format_instance = self._read_format_and_cache_models(image_index)
 
+        # Set the current format instance
+        self._current_format_instance = format_instance
+
         # Return the raw data
         return format_instance.get_raw_data()
 
@@ -134,6 +138,26 @@ class SweepReader(object):
     def get_image_size(self):
         """ Get the image size. """
         return self._detector.get_image_size()
+
+    def get_detectorbase(self, array_index=None):
+        ''' Get the instance of the detector base at this index.'''
+
+        # Get the format instance
+        if array_index == None and self._current_format_instance != None:
+            format_instance = self._current_format_instance
+        else:
+
+            # Get the image index
+            if array_index == None:
+                image_index = 1
+            else:
+                image_index = array_index + 1
+
+            # Read the format instance
+            format_instance = self._read_format_and_cache_models(image_index)
+
+        # Return the instance of detector base
+        return format_instance.get_detectorbase()
 
     def get_detector(self):
         """ Get the detector model. """
@@ -399,6 +423,10 @@ class Sweep(object):
     def get_image_size(self):
         """ Get the image size. """
         return self._reader.get_image_size()
+
+    def get_detectorbase(self, index=None):
+        """ Get the detector base instance for the given index. """
+        return self._reader.get_detectorbase(index)
 
     def _to_array_all(self):
         """ Get the array from all the sweep elements. """

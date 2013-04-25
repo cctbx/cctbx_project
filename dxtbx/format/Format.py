@@ -178,6 +178,10 @@ class Format(object):
 
         return raw_data
 
+    def get_detectorbase(self):
+        '''Return the instance of detector base.'''
+        return self.detectorbase
+
     def get_image_file(self):
         '''Get the image file provided to the constructor.'''
 
