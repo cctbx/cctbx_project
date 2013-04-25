@@ -25,6 +25,7 @@ struct generic_range_wrapper
         boost::python::iterator< Range >()
         )
       .def( "__len__", boost::distance< Range > )
+      .def( "empty", boost::empty< Range > )
       ;
   }
 };

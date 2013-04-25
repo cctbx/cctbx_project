@@ -18,19 +18,31 @@ PDB = os.path.join(
 ROOT = iotbx.pdb.input( PDB ).construct_hierarchy()
 ATOMS = ROOT.atoms()
 
-PARAMS = asa.CalcParams()
-TABLE = PARAMS.van_der_waals_radii
+from mmtbx.geometry import sphere_surface_sampling
+SAMPLING_POINTS = sphere_surface_sampling.golden_spiral( count = 960 )
+
+from cctbx.eltbx import van_der_waals_radii
+TABLE = van_der_waals_radii.vdw.table
+
+PROBE = 1.4
+
 RADII = [
   TABLE[ atom.determine_chemical_element_simple().strip().capitalize() ]
   for atom in ATOMS
   ]
 SPHERES = [
-  asa.sphere( centre = atom.xyz, radius = radius + PARAMS.probe )
+  asa.sphere( centre = atom.xyz, radius = radius + PROBE )
   for ( atom, radius ) in zip( ATOMS, RADII )
   ]
+
+from mmtbx.geometry import altloc
 DESCRIPTIONS = [
-  asa.Description.from_parameters( centre = s.centre, radius = s.radius, altloc = "" )
-    for s in SPHERES
+  asa.Description.from_parameters(
+    centre = s.centre,
+    radius = s.radius,
+    strategy = altloc.from_atom( entity = atom ),
+    )
+    for ( s, atom ) in zip( SPHERES, ATOMS )
   ]
 
 class TestSphere(unittest.TestCase):
@@ -231,6 +243,7 @@ class TestPredicate(unittest.TestCase):
       range = indexer.close_to( object = self.sphere ),
       predicate = self.predicate,
       )
+    self.assertFalse( range.empty() )
     self.assertEqual( len( range ), 2 )
     self.assertTrue( self.overlap1 in range )
     self.assertTrue( self.overlap2 in range )
@@ -239,6 +252,7 @@ class TestPredicate(unittest.TestCase):
       range = indexer.close_to( object = self.no_overlap ),
       predicate = asa.indexing.overlap_equality_predicate( object = self.no_overlap ),
       )
+    self.assertTrue( range.empty() )
     self.assertEqual( len( range ), 0 )
 
 
@@ -379,21 +393,30 @@ class TestAccessibleSurfaceArea(unittest.TestCase):
 
   def check_indexer(self, indexer, type):
 
-    self.assertEqual( indexer.factory, type )
     self.assertTrue( isinstance( indexer.regular, type ) )
-    self.assertEqual( len( indexer.regular ), 0 )
+    self.assertEqual(
+      len( indexer.regular ),
+      len( [ a for a in ATOMS if not a.parent().altloc ] ),
+      )
 
 
   def test_get_linear_indexer(self):
 
-    indexer = asa.get_linear_indexer_for( descriptions = ATOMS )
+    indexer = asa.get_linear_indexer_for( descriptions = DESCRIPTIONS )
     self.assertTrue( isinstance( indexer, asa.Indexer ) )
     self.check_indexer( indexer = indexer, type = asa.indexing.linear_spheres )
 
 
+  def test_get_hash_indexer(self):
+
+    indexer = asa.get_hash_indexer_for( descriptions = DESCRIPTIONS )
+    self.assertTrue( isinstance( indexer, asa.Indexer ) )
+    self.check_indexer( indexer = indexer, type = asa.indexing.hash_spheres )
+
+
   def test_get_optimal_indexer(self):
 
-    indexer = asa.get_optimal_indexer_for( descriptions = ATOMS )
+    indexer = asa.get_optimal_indexer_for( descriptions = DESCRIPTIONS )
     self.assertTrue( isinstance( indexer, asa.Indexer ) )
     self.check_indexer( indexer = indexer, type = asa.indexing.linear_spheres )
 
@@ -408,9 +431,8 @@ class TestAccessibleSurfaceArea(unittest.TestCase):
 
     result = asa.calculate(
       atoms = ATOMS,
-      params = PARAMS,
       indexer_selector = asa.get_linear_indexer_for,
-      calculator = asa.SimpleSurfaceCalculator,
+      calculation = asa.simple_surface_calculation,
       )
     self.asa_result_check( result = result )
 
@@ -419,9 +441,8 @@ class TestAccessibleSurfaceArea(unittest.TestCase):
 
     result = asa.calculate(
       atoms = ATOMS,
-      params = PARAMS,
       indexer_selector = asa.get_linear_indexer_for,
-      calculator = asa.AltlocAveragedCalculator,
+      calculation = asa.altloc_averaged_calculation,
       )
     self.asa_result_check( result = result )
 
@@ -430,9 +451,8 @@ class TestAccessibleSurfaceArea(unittest.TestCase):
 
     result = asa.calculate(
       atoms = ATOMS,
-      params = PARAMS,
       indexer_selector = asa.get_hash_indexer_for,
-      calculator = asa.SimpleSurfaceCalculator,
+      calculation = asa.simple_surface_calculation,
       )
     self.asa_result_check( result = result )
 
@@ -450,7 +470,7 @@ class TestAccessibleSurfaceArea(unittest.TestCase):
     for ( count, sphere, area ) in zip( self.ACCESSIBLES, SPHERES, result.areas ):
       self.assertAlmostEqual(
         area,
-        PARAMS.sampling.unit_area * count * sphere.radius_sq,
+        SAMPLING_POINTS.unit_area * count * sphere.radius_sq,
         7,
         )
 

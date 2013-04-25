@@ -1438,6 +1438,7 @@ mmtbx/f_model_info.py -text
 mmtbx/find_peaks.py -text
 mmtbx/geometry/SConscript -text
 mmtbx/geometry/__init__.py -text
+mmtbx/geometry/altloc.py -text
 mmtbx/geometry/asa.hpp -text
 mmtbx/geometry/asa.hxx -text
 mmtbx/geometry/asa.py -text
@@ -1447,6 +1448,7 @@ mmtbx/geometry/boost_python/sphere_surface_sampling_ext.cpp -text
 mmtbx/geometry/boost_python/volume_ext.cpp -text
 mmtbx/geometry/containment.hpp -text
 mmtbx/geometry/containment.hxx -text
+mmtbx/geometry/flattening.hpp -text
 mmtbx/geometry/indexing.hpp -text
 mmtbx/geometry/indexing.hxx -text
 mmtbx/geometry/overlap.hpp -text
