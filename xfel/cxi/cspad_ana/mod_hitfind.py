@@ -205,8 +205,8 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       elif (self.m_distl_min_peaks is not None):
 
         peak_heights,outvalue = self.distl_filter(
+          self.address,
           self.cspad_img.iround(), # XXX correct?
-          self.detector_format_version,
           distance,
           self.timestamp,
           self.wavelength)
@@ -243,10 +243,10 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
 
     d = cspad_tbx.dpack(
       active_areas=self.active_areas,
+      address=self.address,
       beam_center_x=cspad_tbx.pixel_size * self.beam_center[0],
       beam_center_y=cspad_tbx.pixel_size * self.beam_center[1],
       data=self.cspad_img.iround(), # XXX ouch!
-      detector_format_version=self.detector_format_version,
       distance=distance,
       timestamp=self.timestamp,
       wavelength=self.wavelength,
@@ -271,9 +271,10 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
 
       from cxi_user.xfel_targets import targets
       args = ["indexing.data=dummy"] + targets[self.m_xtal_target]
-      if self.detector_format_version is not None:
-        args += ["distl.detector_format_version=%" %
-                 self.detector_format_version]
+      detector_format_version = cspad_tbx.detector_format_version(
+        self.address, evt.GetTime())
+      if detector_format_version is not None:
+        args += ["distl.detector_format_version=%" % detector_format_version]
 
       from spotfinder.applications.xfel import cxi_phil
       horizons_phil = cxi_phil.cxi_versioned_extract(args)
@@ -287,9 +288,10 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
 
       from cxi_user.xfel_targets import targets
       args = ["indexing.data=dummy"] + targets[self.m_xtal_target]
-      if self.detector_format_version is not None:
-        args += ["distl.detector_format_version=%s" %
-                 self.detector_format_version]
+      detector_format_version = cspad_tbx.detector_format_version(
+        self.address, evt.GetTime())
+      if detector_format_version is not None:
+        args += ["distl.detector_format_version=%s" % detector_format_version]
 
       from spotfinder.applications.xfel import cxi_phil
       horizons_phil = cxi_phil.cxi_versioned_extract(args)

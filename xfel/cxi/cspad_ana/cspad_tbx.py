@@ -360,89 +360,79 @@ def CsPadElement(data3d, qn, config):
   return quadrant
 
 
-def detector_format_version(address, evt):
+def detector_format_version(address, time):
   """The detector_format_version() function returns a format version
   string appropriate for the detector whose address is given by @p
-  address at the time of the event @p evt.
-
-  @note The last shift of a run generally ends at 09:00 local time the
-        after the last day of the run.
+  address at the time @p time.
 
   @param address Address string XXX Que?!
-  @param evt     Event data object, a configure object
+  @param time    Time of the event, in number of seconds since
+                 midnight, 1 January 1970 UTC (Unix time)
   @return        Format version string
   """
 
   from calendar import timegm
   from time import strptime
 
-  if evt is None or address is None:
+  if address is None or time is None:
     return None
-
-  t = evt.getTime()
-  if t is None:
-    return None
-
-  d = address_split(address)[0]
-  f = '%Y-%m-%d, %H:%M %Z'
-  s = t.seconds()
 
   # Note: one must take daylight savings into account when defining
-  # the cutoff-times for the LCLS runs.
-  if d is None or s is None:
-    return None
-
-  elif s < timegm(strptime('2009-10-01, 02:00 UTC', f)):
+  # the cutoff-times for the LCLS runs.  The last shift of a run
+  # generally ends at 09:00 local time the day after the last day of
+  # the run.
+  f = '%Y-%m-%d, %H:%M %Z'
+  if time < timegm(strptime('2009-10-01, 02:00 UTC', f)):
     # LCLS started operation Oct 1, 2009
     return None
 
-  elif s < timegm(strptime('2009-12-18, 01:00 UTC', f)):
+  elif time < timegm(strptime('2009-12-18, 01:00 UTC', f)):
     # LCLS run 1: until Dec 17, 2009
     return None
 
-  elif s < timegm(strptime('2010-09-16, 02:00 UTC', f)):
+  elif time < timegm(strptime('2010-09-16, 02:00 UTC', f)):
     # LCLS run 2: until Sep 15, 2010
     return None
 
-  elif s < timegm(strptime('2011-03-09, 02:00 UTC', f)):
+  elif time < timegm(strptime('2011-03-09, 02:00 UTC', f)):
     # LCLS run 3: until Mar 8, 2011
     #
     # 'CXI 3.1' corresponds to a quirky, old, and deprecated version
     # of the cctbx.xfel pickle format.
-    if d == 'CxiDs1':
+    if address == 'CxiDs1-0|Cspad-0':
       return 'CXI 3.2'
 
-  elif s < timegm(strptime('2011-10-29, 02:00 UTC', f)):
+  elif time < timegm(strptime('2011-10-29, 02:00 UTC', f)):
     # LCLS run 4: until Oct 28, 2011
-    if d == 'CxiDs1':
+    if address == 'CxiDs1-0|Cspad-0':
       return 'CXI 4.1'
 
-  elif s < timegm(strptime('2012-05-31, 02:00 UTC', f)):
+  elif time < timegm(strptime('2012-05-31, 02:00 UTC', f)):
     # LCLS run 5: until May 31, 2012
-    if d == 'CxiDs1':
+    if address == 'CxiDs1-0|Cspad-0':
       return 'CXI 5.1'
 
-  elif s < timegm(strptime('2013-01-01, 01:00 UTC', f)):
+  elif time < timegm(strptime('2013-01-01, 01:00 UTC', f)):
     # LCLS run 6: until Dec 31, 2012
-    if d == 'CxiDs1':
+    if address == 'CxiDs1-0|Cspad-0':
       return 'CXI 6.1'
 
-  elif s < timegm(strptime('2013-08-01, 02:00 UTC', f)):
+  elif time < timegm(strptime('2013-08-01, 02:00 UTC', f)):
     # LCLS run 7: until Jul 31, 2013
-    if d == 'CxiDs1':
+    if address == 'CxiDs1-0|Cspad-0':
       return 'CXI 7.1'
-    elif d == 'CxiDsd':
+    elif address == 'CxiDsd-0|Cspad-0':
       return 'CXI 7.d'
 
   return None
 
 
 def dpack(active_areas=None,
+          address=None,
           beam_center_x=None,
           beam_center_y=None,
           ccd_image_saturation=None,
           data=None,
-          detector_format_version=None,
           distance=None,
           pixel_size=pixel_size,
           saturated_value=None,
@@ -496,7 +486,7 @@ def dpack(active_areas=None,
           'BEAM_CENTER_Y': beam_center_y,
           'CCD_IMAGE_SATURATION': ccd_image_saturation,
           'DATA': data,
-          'DETECTOR_FORMAT_VERSION': detector_format_version,
+          'DETECTOR_ADDRESS': address,
           'DISTANCE': distance,
           'PIXEL_SIZE': pixel_size,
           'SATURATED_VALUE': saturated_value,

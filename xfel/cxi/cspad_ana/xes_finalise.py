@@ -64,11 +64,13 @@ class xes_finalise(object):
       if (not os.path.isdir(output_dirname)):
         os.makedirs(output_dirname)
       d = cspad_tbx.dpack(
+        address='CxiSc1-0|Cspad2x2-0',
         data=self.avg_img,
         distance=1,
       )
       cspad_tbx.dwritef(d, output_dirname, avg_basename)
       d = cspad_tbx.dpack(
+        address='CxiSc1-0|Cspad2x2-0',
         data=self.sum_img,
         distance=1,
       )
@@ -84,6 +86,7 @@ class xes_finalise(object):
 
     if (stddev_basename is not None):
       d = cspad_tbx.dpack(
+        address='CxiSc1-0|Cspad2x2-0',
         data=self.stddev_img,
         distance=1,
       )
