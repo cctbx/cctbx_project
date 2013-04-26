@@ -6,15 +6,15 @@
 #   included in the root directory of this package.
 #
 # An implementation of the SMV image reader for Rigaku A200 images.
-# Inherits from FormatSMV.
+# Inherits from FormatSMVRigaku.
 
 from __future__ import division
 
 from scitbx import matrix
 
-from dxtbx.format.FormatSMV import FormatSMV
+from dxtbx.format.FormatSMVRigaku import FormatSMVRigaku
 
-class FormatSMVRigakuA200(FormatSMV):
+class FormatSMVRigakuA200(FormatSMVRigaku):
     '''A class for reading SMV format Rigaku A200 images, and correctly
     constructing a model for the experiment from this.'''
 
@@ -24,7 +24,7 @@ class FormatSMVRigakuA200(FormatSMV):
         i.e. we can make sense of it. Essentially that will be if it contains
         all of the keys we are looking for.'''
 
-        size, header = FormatSMV.get_smv_header(image_file)
+        size, header = FormatSMVRigaku.get_smv_header(image_file)
 
         wanted_header_items = [
             'DETECTOR_NUMBER', 'DETECTOR_NAMES',
@@ -51,7 +51,16 @@ class FormatSMVRigakuA200(FormatSMV):
             if not '%s%s' % (detector_prefix, header_item) in header:
                 return False
 
-        return True
+        descriptive_items = [
+            'DETECTOR_IDENTIFICATION', 'DETECTOR_DESCRIPTION'
+        ]
+
+        for header_item in descriptive_items:
+            test = '%s%s' % (detector_prefix, header_item)
+            if test in header and 'raxis' in header[test].lower():
+                return True
+
+        return False
 
     def __init__(self, image_file):
         '''Initialise the image structure from the given file, including a
@@ -60,13 +69,13 @@ class FormatSMVRigakuA200(FormatSMV):
 
         assert(self.understand(image_file))
 
-        FormatSMV.__init__(self, image_file)
+        FormatSMVRigaku.__init__(self, image_file)
 
         return
 
     def _start(self):
 
-        FormatSMV._start(self)
+        FormatSMVRigaku._start(self)
         from iotbx.detectors.dtrek import DTREKImage
         self.detectorbase = DTREKImage(self._image_file)
         self.detectorbase.readHeader()
