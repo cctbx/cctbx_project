@@ -491,6 +491,7 @@ dxtbx/tests/test_detector.py -text
 dxtbx/tests/test_goniometer.py -text
 dxtbx/tests/test_scan.py -text
 dxtbx/tests/tst_image_set.py -text
+dxtbx/tests/tst_imageset2.py -text
 dxtbx/tst_dxtbx.py -text
 fable/SConscript -text
 fable/__init__.py svneol=native#text/x-python
