@@ -72,10 +72,10 @@ class mod_average(average_tbx.average_mixin):
           self.avg_basename is not None):
         d = cspad_tbx.dpack(
           active_areas=self.active_areas,
+          address=self.address,
           beam_center_x=cspad_tbx.pixel_size * self.beam_center[0],
           beam_center_y=cspad_tbx.pixel_size * self.beam_center[1],
           data=self.avg_img,
-          detector_format_version=self.detector_format_version,
           distance=self.avg_distance,
           wavelength=self.avg_wavelength)
         p = cspad_tbx.dwritef(d, self.avg_dirname, self.avg_basename)
@@ -86,10 +86,10 @@ class mod_average(average_tbx.average_mixin):
           self.stddev_basename is not None):
         d = cspad_tbx.dpack(
           active_areas=self.active_areas,
+          address=self.address,
           beam_center_x=cspad_tbx.pixel_size * self.beam_center[0],
           beam_center_y=cspad_tbx.pixel_size * self.beam_center[1],
           data=self.stddev_img,
-          detector_format_version=self.detector_format_version,
           distance=self.avg_distance,
           wavelength=self.avg_wavelength)
         p = cspad_tbx.dwritef(d, self.stddev_dirname, self.stddev_basename)
@@ -100,10 +100,10 @@ class mod_average(average_tbx.average_mixin):
           self.max_basename is not None):
         d = cspad_tbx.dpack(
           active_areas=self.active_areas,
+          address=self.address,
           beam_center_x=cspad_tbx.pixel_size * self.beam_center[0],
           beam_center_y=cspad_tbx.pixel_size * self.beam_center[1],
           data=self.max_img,
-          detector_format_version=self.detector_format_version,
           distance=self.avg_distance,
           wavelength=self.avg_wavelength)
         p = cspad_tbx.dwritef(d, self.max_dirname, self.max_basename)

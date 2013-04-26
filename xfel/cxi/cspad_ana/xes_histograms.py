@@ -265,6 +265,7 @@ class xes_from_histograms(object):
       pixel_histograms.histograms.values()[0].slots())
 
     d = cspad_tbx.dpack(
+      address='CxiSc1-0|Cspad2x2-0',
       data=spectrum_focus,
       distance=1,
       ccd_image_saturation=2e8, # XXX
@@ -275,6 +276,7 @@ class xes_from_histograms(object):
       gain_map = flex.double(gain_img.accessor(), 0)
       img_sel = (gain_img > 0).as_1d()
       d = cspad_tbx.dpack(
+        address='CxiSc1-0|Cspad2x2-0',
         data=gain_img,
         distance=1
       )
@@ -282,6 +284,7 @@ class xes_from_histograms(object):
       gain_map.as_1d().set_selected(img_sel.iselection(), 1/gain_img.as_1d().select(img_sel))
       gain_map /= flex.mean(gain_map.as_1d().select(img_sel))
       d = cspad_tbx.dpack(
+        address='CxiSc1-0|Cspad2x2-0',
         data=gain_map,
         distance=1
       )

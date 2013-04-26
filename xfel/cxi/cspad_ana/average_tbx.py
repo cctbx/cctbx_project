@@ -223,8 +223,8 @@ class average_mixin(common_mode.common_mode_correction):
         os.makedirs(self.pickle_dirname)
       flexdata = flex.int(self.cspad_img.astype(numpy.int32))
       d = cspad_tbx.dpack(
+        address=self.address,
         data=flexdata,
-        detector_format_version=self.detector_format_version,
         timestamp=cspad_tbx.evt_timestamp(evt)
       )
       G = open(os.path.join(".",self.pickle_dirname)+"/"+self.pickle_basename,
