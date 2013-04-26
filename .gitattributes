@@ -2398,6 +2398,7 @@ xfel/command_line/subtract_background.py -text
 xfel/command_line/trial_stats.py -text
 xfel/command_line/view_pixel_histograms.py -text
 xfel/command_line/xes_finalise.py -text
+xfel/command_line/xes_histograms.py -text
 xfel/cxi/__init__.py -text
 xfel/cxi/completeness_plot.py -text
 xfel/cxi/correction_vector_plot.py -text
