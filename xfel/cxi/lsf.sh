@@ -116,6 +116,7 @@ while test ${#} -ge 0; do
                 cleanup_and_exit 1
             fi
             run=`echo "${2}" | awk '{ printf("%04d", $1); }'`
+            run_int=`echo "${2}"`
             shift
             shift
             ;;
@@ -258,6 +259,7 @@ EOF
 for s in ${streams}; do
     sed -e "s:\([[:alnum:]]\+\)\(_dirname[[:space:]]*=\).*:\1\2 ${out}/\1:"    \
         -e "s:\([[:alnum:]]\+_basename[[:space:]]*=.*\)[[:space:]]*:\1s${s}-:" \
+        -e "s/RUN_NO/${run_int}/g" \
         -e "s:\(trial_id[[:space:]]*=\).*:\1${trial}:"              \
         "${cfg}" > "${tmpdir}/pyana_s${s}.cfg"
 
@@ -269,7 +271,7 @@ for s in ${streams}; do
     # permitted by libtbx.find_clutter.
     i=`expr "${s}" \+ 1`
     cat >> "${tmpdir}/submit.sh" << EOF
-bsub -J "r${run}[${i}]" -n "1,${nproc}" -o "\${OUT}/stdout/s${s}.out" \\
+bsub -J "r${run}[${i}]" -n "${nproc}" -o "\${OUT}/stdout/s${s}.out" \\
     -q "${queue}" -R "span[hosts=1]" "\${OUT}/pyana_s${s}.sh"
 EOF
     # limited cores/user:  psfehq.  unlimited: psfehmpiq

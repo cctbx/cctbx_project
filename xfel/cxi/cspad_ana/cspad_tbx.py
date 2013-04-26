@@ -940,6 +940,17 @@ def getOptBool(s):
   s = s.strip().lower()
   return s == "true"
 
+def getOptEvalOrString(s) :
+  """Allow python code macros in the pyana configuration file, e.g.
+  dark_path   = "/location_of_darks/r%%04d/Ds1-avg.pickle"%%(max([{True:dark,False:0}[3 > dark] for dark in [1,2,6,9,12,14,17,19]]))
+  """
+  possible_string = getOptString(s)
+  try:
+    eval_string = eval(possible_string,{},{})
+    return eval_string
+  except SyntaxError,e:
+    return possible_string
+
 def getOptString(s) :
   """XXX Return the string, strip of any white space (make sure there
   are no newline characters here).  This function was originally
