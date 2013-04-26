@@ -69,8 +69,8 @@ class common_mode_correction(mod_event_info):
     # class.
     mod_event_info.__init__(self, address=address, **kwds)
 
-    self.dark_path = cspad_tbx.getOptString(dark_path)
-    self.dark_stddev = cspad_tbx.getOptString(dark_stddev)
+    self.dark_path = cspad_tbx.getOptEvalOrString(dark_path)
+    self.dark_stddev_path = cspad_tbx.getOptEvalOrString(dark_stddev)
     gain_map_path = cspad_tbx.getOptString(gain_map_path)
     self.common_mode_correction = cspad_tbx.getOptString(common_mode_correction)
     self.photon_threshold = cspad_tbx.getOptFloat(photon_threshold)
@@ -118,14 +118,14 @@ class common_mode_correction(mod_event_info):
     # is provided, a standard deviation image is required, and all the
     # ADU scales must match up.
     self.dark_img = None
-    if (dark_path is not None):
-      assert dark_stddev is not None
-      dark_dict = easy_pickle.load(dark_path)
+    if (self.dark_path is not None):
+      assert self.dark_stddev_path is not None
+      dark_dict = easy_pickle.load(self.dark_path)
       #assert "ADU_SCALE" not in dark_dict # force use of recalculated dark
       self.dark_img = dark_dict['DATA']
       assert isinstance(self.dark_img, flex.double)
 
-      dark_stddev_dict = easy_pickle.load(dark_stddev)
+      dark_stddev_dict = easy_pickle.load(self.dark_stddev_path)
       self.dark_stddev = dark_stddev_dict['DATA']
       assert isinstance(self.dark_stddev, flex.double)
       self.dark_mask = (self.dark_stddev > 0)

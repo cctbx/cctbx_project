@@ -75,6 +75,7 @@ while test ${#} -ge 0; do
                 cleanup_and_exit 1
             fi
             run=`echo "${2}" | awk '{ printf("%04d", $1); }'`
+            run_int=`echo "${2}"`
             shift
             shift
             ;;
@@ -209,6 +210,7 @@ mkdir -p "${out}"
 for s in ${streams}; do
     sed -e "s:\([[:alnum:]]\+\)\(_dirname[[:space:]]*=\).*:\1\2 ${out}/\1:"    \
         -e "s:\([[:alnum:]]\+_basename[[:space:]]*=.*\)[[:space:]]*:\1s${s}-:" \
+        -e "s/RUN_NO/${run_int}/g" \
         -e "s:\(trial_id[[:space:]]*=\).*:\1${trial}:"                         \
         "${cfg}" > "${out}/pyana_s${s}.cfg"
 
