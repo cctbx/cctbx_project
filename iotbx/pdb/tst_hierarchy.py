@@ -5558,6 +5558,8 @@ END
   xray_structure = hierarchy.extract_xray_structure()
   assert xray_structure.sites_cart().size() == hierarchy.atoms().size()
   xray_structure.scale_adps(2.0)
+  ag = hierarchy.only_model().only_chain().residue_groups()[0].atom_groups()[0]
+  assert (ag.id_str() == 'SO4     0 ')
   atoms = hierarchy.atoms()
   atoms.set_adps_from_scatterers(xray_structure.scatterers(),
     xray_structure.unit_cell())
@@ -6120,16 +6122,16 @@ ATOM     59  OXT TYR A   7      11.358   2.999   7.612  1.00 17.49           O
 ATOM     39  N   TYR A   6       5.514   2.664   4.856  1.00 11.99           N
 ATOM     40  CA  TYR A   6       6.831   2.310   4.318  1.00 12.30           C
 ATOM     41  C   TYR A   6       7.854   2.761   5.324  1.00 13.40           C
-ATOM     42  O   TYR A   6       8.219   3.943   5.374  1.00 13.92           O
-ATOM     51  CB  TYR A   6       6.991   2.144   2.934  1.00 15.35           C
-ATOM     52  CG  TYR A   6       5.870   1.429   2.238  1.00 14.45           C
-ATOM     53  CD1 TYR A   6       4.740   2.131   1.807  1.00 15.68           C
-ATOM     54  CD2 TYR A   6       5.895   0.050   2.082  1.00 14.80           C
-ATOM     55  CE1 TYR A   6       3.696   1.479   1.187  1.00 13.46           C
-ATOM     56  CE2 TYR A   6       4.848  -0.630   1.447  1.00 14.33           C
-ATOM     57  CZ  TYR A   6       3.748   0.098   1.020  1.00 15.09           C
-ATOM     58  OH  TYR A   6       2.707  -0.528   0.390  1.00 14.39           O
-ATOM     59  OXT TYR A   6       9.056   2.078   5.240  1.00 17.49           O
+ATOM     43  CB  TYR A   6       7.065   3.016   2.993  1.00 12.13           C
+ATOM     50  O   TYR A   6       7.691   3.636   6.157  1.00 13.92           O
+ATOM     52  CG  TYR A   6       6.101   2.535   1.948  1.00 12.77           C
+ATOM     53  CD1 TYR A   6       4.898   3.215   1.734  1.00 14.27           C
+ATOM     54  CD2 TYR A   6       6.343   1.371   1.232  1.00 14.27           C
+ATOM     55  CE1 TYR A   6       3.994   2.773   0.792  1.00 14.27           C
+ATOM     56  CE2 TYR A   6       5.440   0.910   0.265  1.00 14.27           C
+ATOM     57  CZ  TYR A   6       4.262   1.615   0.069  1.00 14.27           C
+ATOM     58  OH  TYR A   6       3.358   1.201  -0.871  1.00 14.27           O
+ATOM     59  OXT TYR A   6       9.015   2.205   5.262  1.00 14.27           O
 TER
 """)
 
