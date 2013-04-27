@@ -979,6 +979,11 @@ class _(boost.python.injector, ext.atom_group, __hash_eq_mixin):
     assert self.atoms_size() == 1
     return self.atoms()[0]
 
+  def id_str (self) :
+    chain = self.parent().parent()
+    resid = self.parent().resid()
+    return "%3s%2s%5s" % (self.resname, chain.id, resid)
+
 class _(boost.python.injector, ext.atom, __hash_eq_mixin):
 
   def is_in_same_conformer_as(self, other):
@@ -1527,14 +1532,13 @@ def substitute_atom_group (
     new_group,
     backbone_only=True,
     exclude_hydrogens=False,
+    ignore_b_factors=False,
     log=None) :
   """
   Substitute the sidechain atoms from one residue for another, using
   least-squares superposition to align the backbone atoms.
   """
   if (log is None) : log = null_out()
-  if (new_group.resname == "GLY") :
-    substitute_cbeta = False
   from iotbx.pdb import common_residue_names_get_class
   from scitbx.math import superpose
   new_atoms = new_group.detached_copy().atoms()
@@ -1542,7 +1546,7 @@ def substitute_atom_group (
   selection_moving = flex.size_t()
   res_class = common_residue_names_get_class(current_group.resname)
   # TODO nucleic acids?
-  backbone_atoms = [" CA ", " C  ", " O  ", " N  "]
+  backbone_atoms = [" CA ", " C  ", " N  ", " CB "]
   for i_seq, atom in enumerate(current_group.atoms()) :
     if (atom.element == " H") and (exclude_hydrogens) :
       continue
@@ -1565,12 +1569,22 @@ def substitute_atom_group (
   keep_atoms = []
   if (backbone_only) and (res_class == "common_amino_acid") :
     keep_atoms = backbone_atoms
+  atom_b_iso = {}
+  max_b = flex.max(current_group.atoms().extract_b())
   for atom in current_group.atoms() :
     if (not atom.name in keep_atoms) :
       current_group.remove_atom(atom)
+      atom_b_iso[atom.name] = atom.b
   for atom in new_atoms :
     if ((not atom.name in keep_atoms) and
         ((atom.element != "H ") or (not exclude_hydrogens))) :
+      if (not ignore_b_factors) :
+        # XXX a more sophisticated approach would probably be helpful here,
+        # but this seems safer than using B-factors of unknown origin
+        if (atom.name in atom_b_iso) :
+          atom.b = atom_b_iso[atom.name]
+        else :
+          atom.b = max_b
       current_group.append_atom(atom)
   current_group.resname = new_group.resname
   return current_group
