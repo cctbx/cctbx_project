@@ -61,6 +61,33 @@ def mon_lib_query(residue, mon_lib_srv):
   if (get_func is not None): return get_func(comp_id=residue)
   return mon_lib_srv.get_comp_comp_id_direct(comp_id=residue)
 
+def eval_residue_completeness (residue, mon_lib_srv, ignore_hydrogens=True) :
+  atom_list = []
+  ca_xyz = []
+  for atom in residue.atoms():
+    atom_list.append(atom.name.strip().upper())
+    if atom.name == " CA ":
+      ca_xyz = atom.xyz
+  mlq = mon_lib_query(residue.resname.strip().upper(), mon_lib_srv)
+  reference_list = []
+  if(not ignore_hydrogens):
+    for at in mlq.atom_dict():
+      reference_list.append(atom.strip().upper())
+  elif (mlq is not None) :
+    for non in mlq.non_hydrogen_atoms():
+      reference_list.append(non.atom_id.strip().upper())
+  missing=[]
+  for atom in reference_list:
+    if atom not in atom_list:
+      atom_temp = atom.replace("*", "'")
+      if atom.upper() == "O1P":
+        atom_temp = "OP1"
+      elif atom.upper() == "O2P":
+        atom_temp = "OP2"
+      if atom_temp not in atom_list:
+        missing.append(atom)
+  return missing
+
 def eval_sidechain_completeness(pdb_hierarchy,
                                 mon_lib_srv=None,
                                 ignore_hydrogens=True,
@@ -82,30 +109,9 @@ def eval_sidechain_completeness(pdb_hierarchy,
           else:
             key = "%2s%5s%1s%3s" % (chain.id, residue_group.resid(),
               conformer.altloc, residue.resname)
-          atom_list = []
-          ca_xyz = []
-          for atom in residue.atoms():
-            atom_list.append(atom.name.strip().upper())
-            if atom.name == " CA ":
-              ca_xyz = atom.xyz
-          mlq = mon_lib_query(residue.resname.strip().upper(), mon_lib_srv)
-          reference_list = []
-          if(not ignore_hydrogens):
-            for at in mlq.atom_dict():
-              reference_list.append(atom.strip().upper())
-          elif (mlq is not None) :
-            for non in mlq.non_hydrogen_atoms():
-              reference_list.append(non.atom_id.strip().upper())
-          missing=[]
-          for atom in reference_list:
-            if atom not in atom_list:
-              atom_temp = atom.replace("*", "'")
-              if atom.upper() == "O1P":
-                atom_temp = "OP1"
-              elif atom.upper() == "O2P":
-                atom_temp = "OP2"
-              if atom_temp not in atom_list:
-                missing.append(atom)
+          missing = eval_residue_completeness(
+            residue=residue,
+            mon_lib_srv=mon_lib_srv)
           if not report_whole_res:
             if len(missing) > 0:
               item.append(key)

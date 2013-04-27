@@ -5,12 +5,6 @@ import sys
 
 #-----------------------------------------------------------------------
 # MODEL UTILITIES
-def residue_id_str (residue) :
-  chain = residue.parent().parent()
-  resid = residue.parent().resid()
-  id_str="%2s %3s%5s"%(chain.id,residue.resname,resid)
-  return id_str
-
 def reprocess_pdb (pdb_hierarchy, crystal_symmetry, cif_objects, out) :
   from mmtbx.monomer_library import pdb_interpretation
   from mmtbx.monomer_library import server
@@ -485,3 +479,38 @@ def run_real_space_annealing (
   if (rsr_after_anneal) :
     box.real_space_refine(selection=box.selection_in_box)
   return box.update_original_coordinates()
+
+#-----------------------------------------------------------------------
+# SAMPLING UTILITIES
+def generate_sidechain_clusters (residue, mon_lib_srv) :
+  """
+  Extract Chi angle indices (including rotation axis) from the atom_group
+  """
+  from mmtbx.refinement.real_space import fit_residue
+  from mmtbx.utils import rotatable_bonds
+  from scitbx.array_family import flex
+  atoms = residue.atoms()
+  axes_and_atoms_aa_specific = \
+      rotatable_bonds.axes_and_atoms_aa_specific(residue = residue,
+        mon_lib_srv = mon_lib_srv)
+  result = []
+  if(axes_and_atoms_aa_specific is not None):
+    for i_aa, aa in enumerate(axes_and_atoms_aa_specific):
+      n_heavy = 0
+      for i_seq in aa[1] :
+        if (atoms[i_seq].element.strip() != "H") :
+          n_heavy += 1
+      if (n_heavy == 0) : continue
+      if(i_aa == len(axes_and_atoms_aa_specific)-1):
+        result.append(fit_residue.cluster(
+          axis=aa[0],
+          atoms_to_rotate=aa[1],
+          selection=flex.size_t(aa[1]),
+          vector=None)) # XXX
+      else:
+        result.append(fit_residue.cluster(
+          axis=aa[0],
+          atoms_to_rotate=aa[1],
+          selection=flex.size_t([aa[1][0]]),
+          vector=None)) # XXX
+  return result
