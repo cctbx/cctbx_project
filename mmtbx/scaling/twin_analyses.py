@@ -1787,14 +1787,14 @@ class twin_results_interpretation(object):
                     "supplying calculated data as well."
         else:
           print >> self.twinning_verdict,\
-            "As the symmetry is suspected to be incorrect, it is advicable to reconsider data processing."
+            "As the symmetry is suspected to be incorrect, it is advisable to reconsider data processing."
           if self.twin_results.patterson_p_value <= self.patterson_p_cut:
             print >> self.twinning_verdict,\
                      "Note however that the presence of translational NCS (and possible rotational pseudo"
             print >> self.twinning_verdict,\
                      "symmetry parallel to the twin axis) can make the detection of twinning difficult."
             print >> self.twinning_verdict,\
-                     "Trying various space group and twinning hypothesis in structure refinement might provide an answer"
+                     "Trying various space groups and twinning hypotheses in structure refinement might provide an answer."
           print >> self.twinning_verdict,\
             " "
 
