@@ -6,13 +6,21 @@ from libtbx.utils import null_out
 def exercise_model_utils () :
   pdb_in = get_1yjp_pdb()
   residue = pdb_in.hierarchy.only_model().chains()[0].residue_groups()[0].only_atom_group()
-  id = building.residue_id_str(residue)
   sele = pdb_in.hierarchy.atom_selection_cache().selection("resname TYR")
   water_sel = building.get_nearby_water_selection(
     pdb_hierarchy=pdb_in.hierarchy,
     xray_structure=pdb_in.input.xray_structure_simple(),
     selection=sele)
   assert (list(water_sel.iselection()) == [59, 60, 61, 62, 63])
+  from mmtbx.monomer_library import idealized_aa
+  from mmtbx.monomer_library import server
+  mon_lib_srv = server.server()
+  ideal_dict = idealized_aa.residue_dict()
+  for resname, hierarchy in ideal_dict.iteritems() :
+    residue = hierarchy.only_model().only_chain().only_residue_group().only_atom_group()
+    result = building.generate_sidechain_clusters(residue, mon_lib_srv)
+    if (len(result) == 0) :
+      assert (residue.resname in ["ALA", "GLY"])
 
 def exercise_box_rebuild () :
   pdb_in = get_1yjp_pdb()

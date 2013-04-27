@@ -228,12 +228,11 @@ class generate_water_omit_map (object) :
     self.n_waters = water_sel.count(True)
     self.two_fofc_map = self.fofc_map = self.anom_map = self.fmodel_map = None
     if (self.n_waters == 0) and (skip_if_no_waters) :
-      print >> log, "No waters in model, skipping omit map calculation"
+      print >> log, "  No waters in model, skipping omit map calculation"
       self.pdb_hierarchy_omit = pdb_hierarchy
     else :
-      print >> log, ""
-      print >> log, "Calculating new 2mFo-DFc and mFo-DFc maps..."
-      print >> log, "  %d waters temporarily set to zero occupancy" % \
+      print >> log, "  Calculating new 2mFo-DFc and mFo-DFc maps..."
+      print >> log, "    %d waters temporarily set to zero occupancy" % \
         self.n_waters
       print >> log, ""
       self.pdb_hierarchy_omit = pdb_hierarchy.select(~water_sel)
