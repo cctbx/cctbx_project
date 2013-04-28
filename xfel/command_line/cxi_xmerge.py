@@ -121,7 +121,7 @@ class xscaling_manager (scaling_manager) :
       self.frames["cc"].append(float(tokens[5]))
       self.frames["slope"].append(float(tokens[6]))
       self.frames["offset"].append(float(tokens[7]))
-      self.frames["odd_numbered"].append( is_odd_numbered(tokens[24]) )
+      self.frames["odd_numbered"].append( is_odd_numbered(tokens[17]) )
       # components of orientation direct matrix
       odm = (float(tokens[8]), float(tokens[9]), float(tokens[10]),
              float(tokens[11]), float(tokens[12]), float(tokens[13]),
