@@ -5,7 +5,7 @@ from cctbx import sgtbx
 import cctbx.xray.structure_factors
 from cctbx.array_family import flex
 from libtbx.utils import \
-  Sorry, show_exception_info_if_full_testing, \
+  Sorry, Usage, show_exception_info_if_full_testing, \
   date_and_time, host_and_user, multi_out, null_out
 import iotbx.phil
 from iotbx import reflection_file_reader
@@ -2458,8 +2458,13 @@ class cmdline_load_pdb_and_data (object) :
       process_pdb_file=True,
       create_fmodel=True,
       scattering_table="n_gaussian",
-      prefer_anomalous=None) :
+      prefer_anomalous=None,
+      usage_string=None) :
     from iotbx import file_reader
+    if (usage_string is not None) :
+      if (len(args) == 0) or ("--help" in args) :
+        raise Usage("""%s\n\nFull parameters:\n%s""" % (usage_string,
+          master_phil.as_str(prefix="  ")))
     self.args = args
     self.master_phil = master_phil
     cmdline = process_command_line_args(

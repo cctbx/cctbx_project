@@ -12,6 +12,12 @@ build_hydrogens = Auto
   .type = bool
 max_atoms_missing = None
   .type = int
+use_rotamers = True
+  .type = bool
+anneal_residues = False
+  .type = bool
+skip_rsr = False
+  .type = bool
 """
 
 class conformation_scorer (object) :
@@ -100,8 +106,13 @@ def extend_residue (residue,
     scorer.apply_final()
   return new_residue
 
-def extend_protein_model (pdb_hierarchy, selection=None,
-    hydrogens=Auto, max_atoms_missing=None, log=None) :
+def extend_protein_model (pdb_hierarchy,
+    selection=None,
+    hydrogens=Auto,
+    max_atoms_missing=None,
+    log=None,
+    modify_segids=True,
+    prefilter_callback=None) :
   """
   Replace all sidechains with missing non-hydrogen atoms in a PDB hierarchy.
   """
@@ -110,6 +121,10 @@ def extend_protein_model (pdb_hierarchy, selection=None,
   import mmtbx.monomer_library.server
   from iotbx.pdb import common_residue_names_get_class
   from scitbx.array_family import flex
+  if (prefilter_callback is not None) :
+    assert hasattr(prefilter_callback, "__call__")
+  else :
+    prefilter_callback = lambda r: True
   ideal_dict = idealized_aa.residue_dict()
   if (log is None) : log = null_out()
   mon_lib_srv = mmtbx.monomer_library.server.server()
@@ -119,12 +134,12 @@ def extend_protein_model (pdb_hierarchy, selection=None,
   partial_sidechains = []
   for chain in pdb_hierarchy.only_model().chains() :
     if (not chain.is_protein()) :
-      print >> log, "  skipping non-protein chain '%s'" % chain.id
+      print >> log, "    skipping non-protein chain '%s'" % chain.id
       continue
     for residue_group in chain.residue_groups() :
       atom_groups = residue_group.atom_groups()
       if (len(atom_groups) > 1) :
-        print >> log, "  %s %s has multiple conformations, skipping" % \
+        print >> log, "    %s %s has multiple conformations, skipping" % \
           (chain.id, residue_group.resid())
         continue
       residue = atom_groups[0]
@@ -134,25 +149,28 @@ def extend_protein_model (pdb_hierarchy, selection=None,
         continue
       res_class = common_residue_names_get_class(residue.resname)
       if (res_class != "common_amino_acid") :
-        print >> log, "  skipping non-standard residue %s" % residue.resname
+        print >> log, "    skipping non-standard residue %s" % residue.resname
         continue
       missing_atoms = rotamer_eval.eval_residue_completeness(
         residue=residue,
         mon_lib_srv=mon_lib_srv,
         ignore_hydrogens=True)
       if (len(missing_atoms) > 0) :
-        print >> log, "  missing %d atoms in %s:" % (len(missing_atoms),
-          residue.id_str())
-        print >> log, "    %s" % " ".join(missing_atoms)
+        print >> log, "    missing %d atoms in %s: %s" % (len(missing_atoms),
+          residue.id_str(), ",".join(missing_atoms))
         if ((max_atoms_missing is None) or
             (len(missing_atoms) < max_atoms_missing)) :
-          partial_sidechains.append(residue)
+          if (prefilter_callback(residue)) :
+            partial_sidechains.append(residue)
   for residue in partial_sidechains :
     new_residue = extend_residue(residue=residue,
       ideal_dict=ideal_dict,
       hydrogens=hydrogens,
       mon_lib_srv=mon_lib_srv,
       match_conformation=True)
+    if (modify_segids) :
+      for atom in new_residue.atoms() :
+        atom.segid = "XXXX"
     rg = residue.parent()
     rg.remove_atom_group(residue)
     rg.append_atom_group(new_residue.detached_copy())
@@ -160,18 +178,114 @@ def extend_protein_model (pdb_hierarchy, selection=None,
   pdb_hierarchy.atoms().reset_serial()
   return len(partial_sidechains)
 
-# XXX debugging code, to be removed?
-def run (args, out=sys.stdout) :
-  from iotbx.file_reader import any_file
-  f = any_file(args[0])
-  f.check_file_type("pdb")
-  pdb_hierarchy = f.file_object.construct_hierarchy()
-  xrs = f.file_object.xray_structure_simple()
-  n_extended = extend_protein_model(pdb_hierarchy, log=out)
-  print >> out, "%d sidechains rebuilt." % n_extended
-  f = open("extended.pdb", "w")
-  f.write(pdb_hierarchy.as_pdb_string(crystal_symmetry=xrs))
-  f.close()
+def refit_residues (
+    pdb_hierarchy,
+    cif_objects,
+    fmodel,
+    use_rotamers=True,
+    anneal=False,
+    verbose=True,
+    out=sys.stdout) :
+  from mmtbx.rotamer import rotamer_eval
+  import mmtbx.monomer_library.server
+  from mmtbx import building
+  from scitbx.array_family import flex
+  mon_lib_srv = mmtbx.monomer_library.server.server()
+  rotamer_manager = rotamer_eval.RotamerEval()
+  ppdb_out = box_out = out
+  if (not verbose) :
+    ppdb_out = null_out()
+    box_out = null_out()
+  processed_pdb = building.reprocess_pdb(
+    pdb_hierarchy=pdb_hierarchy,
+    crystal_symmetry=fmodel.f_obs().crystal_symmetry(),
+    cif_objects=cif_objects,
+    out=ppdb_out)
+  target_map = fmodel.map_coefficients(
+    map_type="2mFo-DFc",
+    exclude_free_r_reflections=True).fft_map(
+      resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
+  hierarchy = processed_pdb.all_chain_proxies.pdb_hierarchy
+  xrs = processed_pdb.xray_structure()
+  unit_cell = xrs.unit_cell()
+  for chain in hierarchy.only_model().chains() :
+    if (not chain.is_protein()) : continue
+    residue_groups = chain.residue_groups()
+    for i_rg, residue_group in enumerate(residue_groups) :
+      atom_groups = residue_group.atom_groups()
+      if (len(atom_groups) > 1) : continue
+      residue = atom_groups[0]
+      atoms = residue.atoms()
+      segids = atoms.extract_segid()
+      if (segids.all_eq("XXXX")) :
+        sites_start = atoms.extract_xyz()
+        iselection = atoms.extract_i_seq()
+        assert (not iselection.all_eq(0))
+        selection = flex.bool(xrs.scatterers().size(), False)
+        selection.set_selected(iselection, True)
+        # FIXME this doesn't really do what I want, unfortunately
+        box = building.box_build_refine_base(
+          pdb_hierarchy=hierarchy,
+          xray_structure=xrs,
+          processed_pdb_file=processed_pdb,
+          target_map=target_map,
+          selection=selection,
+          d_min=fmodel.f_obs().d_min(),
+          out=null_out())
+        cc_start = box.cc_model_map()
+        if (use_rotamers) :
+          box.fit_residue_in_box(
+            mon_lib_srv=mon_lib_srv,
+            rotamer_manager=rotamer_manager)
+        else :
+          box.real_space_refine()
+        if (anneal) :
+          box.anneal()
+          box.real_space_refine()
+        cc_end = box.cc_model_map()
+        flag = ""
+        sites_backup = xrs.sites_cart().deep_copy()
+        sites_cart = box.update_original_coordinates()
+        hierarchy.atoms().set_xyz(sites_cart)
+        sites_end = residue.atoms().extract_xyz()
+        if (cc_end > cc_start) :
+          flag = " <-- keep"
+          xrs.set_sites_cart(sites_cart)
+        else :
+          hierarchy.atoms().set_xyz(sites_backup)
+        print >> out, \
+          "    residue '%s' : rmsd=%5.3f cc_start=%5.3f cc_end=%5.3f%s" % \
+          (residue.id_str(), sites_end.rms_difference(sites_start), cc_start,
+           cc_end, flag)
+  return hierarchy
 
-if (__name__ == "__main__") :
-  run(sys.argv[1:])
+class prefilter (object) :
+  """
+  Optional filter for excluding residues with poor backbone density from being
+  extended.  This is done as a separate callback to enable the main rebuilding
+  routine to be independent of data/maps.
+  """
+  def __init__ (self, fmodel, out, backbone_min_sigma=1.0) :
+    target_map = fmodel.map_coefficients(
+      map_type="2mFo-DFc",
+      exclude_free_r_reflections=True).fft_map(
+        resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
+    self.unit_cell = fmodel.f_obs().unit_cell()
+    self.map = target_map
+    self.out = out
+    self.backbone_min_sigma = backbone_min_sigma
+
+  def __call__ (self, residue) :
+    atoms = residue.atoms()
+    sigma_mean = n_bb = 0
+    for atom in atoms :
+      if (atom.name.strip() in ["N","C","CA", "CB"]) :
+        site_frac = self.unit_cell.fractionalize(site_cart=atom.xyz)
+        sigma_mean += self.map.eight_point_interpolation(site_frac)
+        n_bb += 1
+    if (n_bb > 1) :
+      sigma_mean /= n_bb
+    if (sigma_mean < self.backbone_min_sigma) :
+      print >> self.out, "      *** poor backbone density, skipping"
+      return False
+    return True
