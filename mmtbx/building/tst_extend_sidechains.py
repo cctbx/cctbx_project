@@ -17,6 +17,7 @@ ATOM     72  CE  LYS A   7       2.976   6.471  -1.165  1.00 48.81           C
 """)
   extend_sidechains.extend_protein_model(
     pdb_hierarchy=pdb_in.hierarchy,
+    modify_segids=False,
     log=null_out())
   assert (pdb_in.hierarchy.as_pdb_string() == """\
 ATOM      1  N   LYS A   7       6.033   4.704   1.582  1.00 17.49           N

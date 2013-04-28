@@ -163,6 +163,8 @@ class box_build_refine_base (object) :
       out,
       cif_objects=(),
       resolution_factor=0.25,
+      selection_buffer_radius=5,
+      box_cushion=2,
       target_map_rsr=None,
       debug=False) :
     adopt_init_args(self, locals())
@@ -181,7 +183,7 @@ class box_build_refine_base (object) :
       processed_pdb_file = self.processed_pdb_file,
       xray_structure     = self.xray_structure)
     self.selection_within = xray_structure.selection_within(
-      radius    = 5,#selection_buffer_radius,
+      radius    = selection_buffer_radius,
       selection = selection)
     self.box = mmtbx.utils.extract_box_around_model_and_map(
       xray_structure   = xray_structure,
@@ -189,7 +191,7 @@ class box_build_refine_base (object) :
       map_data         = target_map,
       map_data_2       = target_map_rsr,
       selection        = self.selection_within,
-      box_cushion      = 2)
+      box_cushion      = box_cushion)
     self.hd_selection_box = self.box.xray_structure_box.hd_selection()
     self.n_sites_box = self.box.xray_structure_box.sites_cart().size()
     self.target_map_box = self.box.map_box
@@ -226,6 +228,22 @@ class box_build_refine_base (object) :
     if (not hydrogens) :
       selection &= ~self.hd_selection_box
     return self.box.xray_structure_box.sites_cart().select(selection)
+
+  def only_residue (self) :
+    """
+    Returns the atom_group object corresponding to the original selection.
+    Will raise an exception if the selection covers more than one atom_group.
+    """
+    residue = None
+    box_atoms = self.box.pdb_hierarchy_box.atoms()
+    sel_atoms = box_atoms.select(self.selection_in_box)
+    for atom in sel_atoms :
+      parent = atom.parent()
+      if (residue is None) :
+        residue = parent
+      else :
+        assert (parent == residue)
+    return residue
 
   def mean_density_at_sites (self, selection=None) :
     """
@@ -315,6 +333,32 @@ class box_build_refine_base (object) :
       "  after real-space refinement: rms_bonds=%.3f  rms_angles=%.3f" % \
         (refined.rms_bonds_final, refined.rms_angles_final)
     return refined.weight_final
+
+  def fit_residue_in_box (self, mon_lib_srv=None, rotamer_manager=None) :
+    import mmtbx.refinement.real_space.fit_residue
+    if (mon_lib_srv is None) :
+      import mmtbx.monomer_library.server
+      mon_lib_srv = mmtbx.monomer_library.server.server()
+    if (rotamer_manager is None) :
+      from mmtbx.rotamer import rotamer_eval
+      rotamer_manager = rotamer_eval.RotamerEval()
+    residue = self.only_residue()
+    self.restrain_atoms(
+      selection=self.others_in_box,
+      reference_sigma=0.1)
+    self.real_space_refine()
+    mmtbx.refinement.real_space.fit_residue.manager(
+      target_map           = self.target_map_box,
+      mon_lib_srv          = mon_lib_srv,
+      special_position_settings = \
+        self.box.xray_structure_box.special_position_settings(),
+      residue              = residue,
+      sites_cart_all       = None,
+      rotamer_manager      = rotamer_manager,
+      debug                = False,# XXX
+      torsion_search_all_start = 0,
+      torsion_search_all_stop  = 360,
+      torsion_search_all_step  = 5)
 
   def update_coordinates (self, sites_cart) :
     """

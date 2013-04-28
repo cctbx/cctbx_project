@@ -1372,6 +1372,7 @@ mmtbx/command_line/density_modification.py -text
 mmtbx/command_line/distance_difference.py -text
 mmtbx/command_line/dssp.py -text
 mmtbx/command_line/estimate_resolution_cutoff.py -text
+mmtbx/command_line/extend_sidechains.py -text
 mmtbx/command_line/fake_f_obs.py -text
 mmtbx/command_line/fetch_pdb.py -text
 mmtbx/command_line/find_peaks_holes.py -text
