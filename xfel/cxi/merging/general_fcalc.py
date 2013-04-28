@@ -74,6 +74,8 @@ def random_structure (params) :
     params         = params2).f_model
   if not params.merge_anomalous:
     f_model_possibly_anomalous = f_model.generate_bijvoet_mates()
+  else:
+    f_model_possibly_anomalous = f_model
   i_model = f_model_possibly_anomalous.as_intensity_array()
 
   if params.scaling.mtz_file is not None:

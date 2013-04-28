@@ -66,6 +66,9 @@ include_bulk_solvent = True
   .type = bool
 wavelength = None
   .type = float
+elements = None
+  .type = str
+  .multiple = True
 significance_filter {
   apply = True
     .type = bool
@@ -781,6 +784,7 @@ class scaling_manager (intensity_data) :
         Stats = flex.mean_and_variance(no_signal)
         SDFAC = Stats.unweighted_sample_standard_deviation()
       else: SDFAC=1.
+      print "The applied SDFAC is %7.4f"%SDFAC
       corrected_sigmas = observations.sigmas() * SDFAC
       observations = observations.customized_copy(sigmas = corrected_sigmas)
 
