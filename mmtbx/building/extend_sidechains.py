@@ -1,6 +1,7 @@
 
 from __future__ import division
 from scitbx.matrix import col
+from libtbx.str_utils import make_sub_header
 from libtbx.utils import null_out
 from libtbx import Auto
 import sys
@@ -257,7 +258,7 @@ def refit_residues (
           "    residue '%s' : rmsd=%5.3f cc_start=%5.3f cc_end=%5.3f%s" % \
           (residue.id_str(), sites_end.rms_difference(sites_start), cc_start,
            cc_end, flag)
-  return hierarchy
+  return hierarchy, xrs
 
 class prefilter (object) :
   """
@@ -289,3 +290,75 @@ class prefilter (object) :
       print >> self.out, "      *** poor backbone density, skipping"
       return False
     return True
+
+class extend_and_refine (object) :
+  """
+  Run the combined sidechain extension and real-space fitting, and optionally
+  write final model and map coefficients.
+  """
+  def __init__ (self,
+      pdb_hierarchy,
+      xray_structure,
+      fmodel,
+      params,
+      cif_objects=(),
+      out=sys.stdout,
+      output_model=None,
+      output_map_coeffs=None,
+      prefix=None,
+      write_files=True,
+      verbose=True) :
+    if (write_files) :
+      assert ((prefix is not None) or
+              (not None in [output_model,output_map_coeffs]))
+    if (params.build_hydrogens is Auto) :
+      params.build_hydrogens = xray_structure.hd_selection().count(True) > 0
+    make_sub_header("Filling in partial sidechains", out=out)
+    prefilter_callback = prefilter(
+      fmodel=fmodel,
+      out=out)
+    n_atoms_start = xray_structure.sites_cart().size()
+    self.n_extended = extend_protein_model(
+      pdb_hierarchy=pdb_hierarchy,
+      hydrogens=params.build_hydrogens,
+      max_atoms_missing=params.max_atoms_missing,
+      prefilter_callback=prefilter_callback,
+      log=out)
+    print >> out, "  %d sidechains extended." % self.n_extended
+    if (self.n_extended > 0) and (not params.skip_rsr) :
+      make_sub_header("Real-space refinement", out=out)
+      pdb_hierarchy, xray_structure = refit_residues(
+        pdb_hierarchy=pdb_hierarchy,
+        cif_objects=cif_objects,
+        fmodel=fmodel,
+        use_rotamers=params.use_rotamers,
+        anneal=params.anneal_residues,
+        out=out)
+    else :
+      xray_structure = pdb_hierarchy.extract_xray_structure(
+        crystal_symmetry=xray_structure)
+    fmodel.update_xray_structure(xray_structure, update_f_calc=True)
+    n_atoms_end = xray_structure.sites_cart().size()
+    self.r_work = fmodel.r_work()
+    self.r_free = fmodel.r_free()
+    self.n_new_atoms = n_atoms_end - n_atoms_start
+    self.pdb_file = self.map_file = None
+    if (write_files) :
+      if (output_model is None) :
+        output_model = prefix + "_extended.pdb"
+      f = open(output_model, "w")
+      f.write(pdb_hierarchy.as_pdb_string(fmodel.xray_structure))
+      f.close()
+      self.pdb_file = output_model
+      print >> out, "  wrote new model to %s" % output_model
+      if (output_map_coeffs is None) :
+        output_map_coeffs = prefix + "_maps.mtz"
+      from mmtbx.maps.utils import get_maps_from_fmodel
+      import iotbx.map_tools
+      two_fofc_map, fofc_map = get_maps_from_fmodel(fmodel)
+      iotbx.map_tools.write_map_coeffs(
+        fwt_coeffs=two_fofc_map,
+        delfwt_coeffs=fofc_map,
+        file_name=output_map_coeffs)
+      print >> out, "  wrote map coefficients to %s" % output_map_coeffs
+      self.map_file = output_map_coeffs
