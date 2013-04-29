@@ -203,7 +203,13 @@ class MultiFileReader(ReaderBase):
 
     def get_scan(self, index=None):
         '''Get the scan instance at given index.'''
-        return self.get_format(index).get_scan()
+        if isinstance(index, tuple):
+            scan = self.get_format(index[0]).get_scan()
+            scan.set_image_range((index[0] + 1, index[1]))
+        else:
+            scan = self.get_format(index).get_scan()
+
+        return scan
 
     def read(self, index=None):
         '''Read the image frame at the given index.'''
@@ -446,7 +452,12 @@ class Sweep(ImageSet):
 
     def get_scan(self, index=None):
         ''' Get the scan. '''
-        return self.reader().get_scan(self._image_index(index))
+        if index == None:
+            index = self.get_array_range()
+        else:
+            index = self._image_index(index)
+
+        return self.reader().get_scan(index)
 
     def to_array(self, item=None):
         ''' Read all the files in the sweep and convert them into an array
