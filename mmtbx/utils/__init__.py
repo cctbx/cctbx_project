@@ -2520,7 +2520,7 @@ class cmdline_load_pdb_and_data (object) :
     if (pdb_symm is not None) :
       if (not pdb_symm.unit_cell().is_similar_to(hkl_symm.unit_cell())) :
         raise Sorry(("Unit cell mismatch between data and PDB file:\n"+
-          "PDB file: %s\nData:%s") % (pdb_symm.unit_cell.parameters(),
+          "PDB file: %s\nData:%s") % (pdb_symm.unit_cell().parameters(),
           hkl_symm.unit_cell().parameters()))
       use_symmetry = pdb_symm
     pdb_file_object = pdb_file(
