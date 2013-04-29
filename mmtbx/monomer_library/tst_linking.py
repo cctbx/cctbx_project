@@ -1005,9 +1005,10 @@ def run():
           break
       print bonds
       assert bonds == links[pdb][i]
-      os.rename(pdb.replace(".pdb", "_minimized.geo"),
-                pdb.replace(".pdb", "_minimized_%d.geo" % i),
-                )
+      new_geo = pdb.replace(".pdb", "_minimized_%d.geo" % i)
+      if (os.path.isfile(new_geo)) :
+        os.remove(new_geo)
+      os.rename(pdb.replace(".pdb", "_minimized.geo"), new_geo)
       print "OK"
 
 if __name__=="__main__":
