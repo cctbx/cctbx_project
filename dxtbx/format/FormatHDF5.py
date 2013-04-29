@@ -1,31 +1,31 @@
 from __future__ import division
-from FormatMultiImage import FormatMultiImage
+from dxtbx.format.FormatMultiImage import FormatMultiImage
 
 class FormatHDF5(FormatMultiImage):
 
     def __init__(self, image_file):
-        Format.__init__(self, image_file)
+        FormatMultiImage.__init__(self, image_file)
 
     def get_num_images(self):
-        pass
+        raise RuntimeError('Overload!')
 
     def get_goniometer(self, index=None):
-        pass
+        raise RuntimeError('Overload!')
 
     def get_detector(self, index=None):
-        pass
+        raise RuntimeError('Overload!')
 
     def get_beam(self, index=None):
-        pass
+        raise RuntimeError('Overload!')
 
     def get_scan(self, index=None):
-        pass
+        raise RuntimeError('Overload!')
 
     def get_raw_data(self, index=None):
-        pass
+        raise RuntimeError('Overload!')
 
     def get_detectorbase(self, index=None):
-        pass
+        raise RuntimeError('Overload!')
 
     def get_image_file(self, index=None):
-        pass
+        raise RuntimeError('Overload!')
