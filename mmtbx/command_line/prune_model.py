@@ -28,7 +28,7 @@ model_prune_master_phil = """
     .type = float
     .help = Maximum mFo-DFc sigma level at C-alpha to keep.  Residues with \
       C-alpha in difference density below this cutoff will be deleted.
-  min_sidechain_2fofc = 0.5
+  min_sidechain_2fofc = 0.6
     .type = float
     .help = Minimum mean 2mFo-DFc sigma level for sidechain atoms to keep. \
       Residues with sidechains below this level will be truncated.
@@ -48,6 +48,10 @@ model_prune_master_phil = """
       be deleted in the final step (based on the assumption that the adjacent \
       residues were already removed).  Set this to None to prevent fragment \
       filtering.
+  check_arg_lys_cgamma = True
+    .type = bool
+    .help = Check for poor density at Arg/Lys C-gamma atom.  Useful in cases \
+      where the terminal atoms may have been misfit into nearby density.
 """
 
 master_phil = libtbx.phil.parse("""
@@ -158,6 +162,12 @@ class prune_model (object) :
       mean_2fofc=flex.mean(values_2fofc),
       mean_fofc=flex.mean(values_fofc))
 
+  def get_density_at_atom (self, atom) :
+    site_frac = self.unit_cell.fractionalize(site_cart=atom.xyz)
+    two_fofc_value = self.f_map.eight_point_interpolation(site_frac)
+    fofc_value = self.diff_map.eight_point_interpolation(site_frac)
+    return group_args(two_fofc=two_fofc_value, fofc=fofc_value)
+
   def process_residues (self, out=None) :
     if (out is None) :
       out = sys.stdout
@@ -251,6 +261,26 @@ class prune_model (object) :
                     atoms_type="sidechain",
                     map_type="mFo-Dfc"))
                   remove_sidechain = True
+                if ((atom_group.resname in ["ARG", "LYS"]) and
+                    self.params.check_arg_lys_cgamma) :
+                  c_gamma = c_delta = None
+                  for atom in atom_group.atoms() :
+                    if (atom.name.strip() == "CG") :
+                      c_gamma = atom
+                    elif (atom.name.strip() == "CD") :
+                      c_delta = atom
+                  if (c_gamma is not None) :
+                    map_values = self.get_density_at_atom(c_gamma)
+                    if (map_values.two_fofc < 0.8) :
+                      pruned.append(residue_summary(
+                        chain_id=chain.id,
+                        residue_group=residue_group,
+                        atom_group=atom_group,
+                        score=map_values.two_fofc,
+                        score_type="sigma",
+                        atoms_type="sidechain",
+                        map_type="2mFo-Dfc"))
+                      remove_sidechain = True
               if (remove_sidechain) :
                 assert (self.params.sidechains)
                 for atom in sidechain_atoms :
