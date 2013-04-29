@@ -1576,6 +1576,7 @@ mmtbx/refinement/real_space/tst_fit_residue_1.py -text
 mmtbx/refinement/real_space/tst_fit_residue_2.py -text
 mmtbx/refinement/real_space/tst_fit_residue_3.py -text
 mmtbx/refinement/real_space/tst_fit_residue_4.py -text
+mmtbx/refinement/real_space/tst_fit_residue_5.py -text
 mmtbx/refinement/real_space/tst_fit_residues_1.py -text
 mmtbx/refinement/real_space/tst_fit_residues_2.py -text
 mmtbx/refinement/real_space/tst_fit_water.py -text
