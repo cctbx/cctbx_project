@@ -1,8 +1,8 @@
 from __future__ import division
-
 from dxtbx.format.Format import Format
+from dxtbx.format.FormatHDF5 import FormatHDF5
 
-class FormatHDF5Dectris(Format):
+class FormatHDF5Dectris(FormatHDF5):
     """ This is a placeholder implementation only.  Open example dataset
         provided by Dectris Ltd, Jan 2013.  Read the first image only.
         Later replace this with a sweep-oriented implementation that
@@ -20,7 +20,7 @@ class FormatHDF5Dectris(Format):
 
         assert(self.understand(image_file))
 
-        Format.__init__(self, image_file)
+        FormatHDF5.__init__(self, image_file)
 
     def _start(self):
         from iotbx.detectors.eiger import EIGERImage
@@ -65,6 +65,30 @@ class FormatHDF5Dectris(Format):
             self.detectorbase.osc_start + self.detectorbase.deltaphi),
           epochs = {1:0.} # Later get the true time values from HDF5 file
           )
+
+    def get_num_images(self):
+        raise RuntimeError("not implemented yet")
+
+    def get_goniometer(self, index=None):
+        return Format.get_goniometer(self)
+
+    def get_detector(self, index=None):
+        return Format.get_detector(self)
+
+    def get_beam(self, index=None):
+        return Format.get_beam(self)
+
+    def get_scan(self, index=None):
+        return Format.get_scan(self)
+
+    def get_raw_data(self, index=None):
+        return Format.get_raw_data(self)
+
+    def get_detectorbase(self, index=None):
+        return Format.get_detectorbase(self)
+
+    def get_image_file(self, index=None):
+        return Format.get_image_file(self)
 
 if __name__ == '__main__':
 
