@@ -338,8 +338,8 @@ class score(object):
                special_position_settings,
                sites_cart_all,
                target_map,
-               rotamer_eval,
                residue,
+               rotamer_eval = None,
                vector = None,
                slope_decrease_factor = 3,
                tmp = None,
@@ -387,8 +387,9 @@ class score(object):
       slope = self.get_slope(sites_cart = sites_cart)
     if(target > self.target and (slope is None or (slope is not None and slope))):
       self.residue.atoms().set_xyz(sites_cart)
-      rotameric = self.rotamer_eval.evaluate_residue(residue = self.residue)
-      if(rotameric != "OUTLIER"):
+      fl = self.rotamer_eval is None or \
+        self.rotamer_eval.evaluate_residue(residue = self.residue) != "OUTLIER"
+      if(fl):
         clash_list=flex.size_t()
         if(self.use_clash_filter):
           clash_list = self.find_clashes(sites_cart=sites_cart)
