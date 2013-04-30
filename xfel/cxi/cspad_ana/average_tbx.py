@@ -108,24 +108,27 @@ class average_mixin(common_mode.common_mode_correction):
     self._tot_peers = multiprocessing.Value('L', 0, lock=False)
     self._tot_wavelength = multiprocessing.Value('d', 0, lock=False)
 
-    if address == 'Camp-0|pnCCD-0' or address == 'Camp-0|pnCCD-1':
-      self._tot_sum = multiprocessing.Array('d', 1024 * 1024, lock=False)
-      self._tot_ssq = multiprocessing.Array('d', 1024 * 1024, lock=False)
-      self._tot_max = multiprocessing.Array('d', 1024 * 1024, lock=False)
-    elif address == 'CxiDs1-0|Cspad-0':
+    device = cspad_tbx.address_split(address)[2]
+    if device == 'Andor':
+      # XXX Maximum size of Andor 2048 x 2048, commonly binned to 128
+      # x 128.
+      self._tot_sum = multiprocessing.Array('d', 128 * 128, lock=False)
+      self._tot_ssq = multiprocessing.Array('d', 128 * 128, lock=False)
+      self._tot_max = multiprocessing.Array('d', 128 * 128, lock=False)
+    elif device == 'Cspad':
       self._tot_sum = multiprocessing.Array('d', 1765 * 1765, lock=False)
       self._tot_ssq = multiprocessing.Array('d', 1765 * 1765, lock=False)
       self._tot_max = multiprocessing.Array('d', 1765 * 1765, lock=False)
-    elif address == 'CxiDsd-0|Cspad-0':
-      self._tot_sum = multiprocessing.Array('d', 1765 * 1765, lock=False)
-      self._tot_ssq = multiprocessing.Array('d', 1765 * 1765, lock=False)
-      self._tot_max = multiprocessing.Array('d', 1765 * 1765, lock=False)
-    elif address == 'CxiSc1-0|Cspad2x2-0':
+    elif device == 'Cspad2x2':
       self._tot_sum = multiprocessing.Array('d', 370 * 391, lock=False)
       self._tot_ssq = multiprocessing.Array('d', 370 * 391, lock=False)
       self._tot_max = multiprocessing.Array('d', 370 * 391, lock=False)
+    elif device == 'pnCCD':
+      self._tot_sum = multiprocessing.Array('d', 1024 * 1024, lock=False)
+      self._tot_ssq = multiprocessing.Array('d', 1024 * 1024, lock=False)
+      self._tot_max = multiprocessing.Array('d', 1024 * 1024, lock=False)
     else:
-      raise RuntimeError("Unsupported detector address")
+      raise RuntimeError("Unsupported device %s" % address)
 
 
   def event(self, evt, env):
@@ -337,11 +340,11 @@ class average_mixin(common_mode.common_mode_correction):
 
     # Resize the images to their proper dimensions.  XXX Hardcoded
     # detector size... again!
-    if len(self._tot_sum) == 1024 * 1024:
-      self.avg_img.resize(flex.grid(1024, 1024))
-      self.stddev_img.resize(flex.grid(1024, 1024))
+    if len(self._tot_sum) == 128 * 128:
+      self.avg_img.resize(flex.grid(128, 128))
+      self.stddev_img.resize(flex.grid(128, 128))
       if self.do_max_image:
-        self.max_img.resize(flex.grid(1024, 1024))
+        self.max_img.resize(flex.grid(128, 128))
     elif len(self._tot_sum) == 1765 * 1765:
       self.avg_img.resize(flex.grid(1765, 1765))
       self.stddev_img.resize(flex.grid(1765, 1765))
@@ -352,6 +355,11 @@ class average_mixin(common_mode.common_mode_correction):
       self.stddev_img.resize(flex.grid(370, 391))
       if self.do_max_image:
         self.max_img.resize(flex.grid(370, 391))
+    elif len(self._tot_sum) == 1024 * 1024:
+      self.avg_img.resize(flex.grid(1024, 1024))
+      self.stddev_img.resize(flex.grid(1024, 1024))
+      if self.do_max_image:
+        self.max_img.resize(flex.grid(1024, 1024))
     else:
       raise RuntimeError("Unsupported detector size")
     self._tot_lock.release()

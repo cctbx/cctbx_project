@@ -1043,11 +1043,11 @@ def image(address, config, evt, env, sections=None):
     return None
 
   elif device == 'Andor':
-    # XXX There is no proper getter for Andor frames yet.  What about
-    # evt.getFrameValue(address)?
+    # XXX There is no proper getter for Andor frames yet, and
+    # evt.getFrameValue(address) does not appear to work.
     value = evt.get(xtc.TypeId.Type.Id_AndorFrame, address)
     if value is not None:
-      img = value.data(config)
+      img = value.data()
       return img
 
   elif device == 'Cspad':
