@@ -2077,7 +2077,7 @@ def exercise_structure_factors_from_map():
       use_sg         = False)
     assert approx_equal(fc1.mean_phase_error(phase_source=fc2), 0)
     diff = abs(fc1).data()-abs(fc2).data()
-    approx_equal([flex.min(diff), flex.max(diff), flex.mean(diff)], [0,0,0])
+    assert approx_equal([flex.min(diff), flex.max(diff), flex.mean(diff)], [0,0,0])
     fc1 = fc2.deep_copy()
 
 def exercise_build_set_using_max_index():
