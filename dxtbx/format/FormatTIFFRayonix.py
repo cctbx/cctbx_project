@@ -99,8 +99,7 @@ class FormatTIFFRayonix(FormatTIFF):
 
         for j in range(len(starts)):
             if j != offset:
-                assert(starts[j] == 0.0)
-                assert(ends[j] == 0.0)
+                assert(starts[j] == ends[j])
 
         return self._goniometer_factory.single_axis()
 
