@@ -77,6 +77,7 @@ class mod_average(average_tbx.average_mixin):
           beam_center_y=cspad_tbx.pixel_size * self.beam_center[1],
           data=self.avg_img,
           distance=self.avg_distance,
+          timestamp=cspad_tbx.evt_timestamp(self.avg_time),
           wavelength=self.avg_wavelength)
         p = cspad_tbx.dwritef(d, self.avg_dirname, self.avg_basename)
         self.logger.info(
@@ -91,6 +92,7 @@ class mod_average(average_tbx.average_mixin):
           beam_center_y=cspad_tbx.pixel_size * self.beam_center[1],
           data=self.stddev_img,
           distance=self.avg_distance,
+          timestamp=cspad_tbx.evt_timestamp(self.avg_time),
           wavelength=self.avg_wavelength)
         p = cspad_tbx.dwritef(d, self.stddev_dirname, self.stddev_basename)
         self.logger.info(
@@ -105,6 +107,7 @@ class mod_average(average_tbx.average_mixin):
           beam_center_y=cspad_tbx.pixel_size * self.beam_center[1],
           data=self.max_img,
           distance=self.avg_distance,
+          timestamp=cspad_tbx.evt_timestamp(self.avg_time),
           wavelength=self.avg_wavelength)
         p = cspad_tbx.dwritef(d, self.max_dirname, self.max_basename)
         self.logger.info(

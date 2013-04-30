@@ -84,7 +84,7 @@ class mod_param(object):
     if (sifoil is None):
       self.m_no_sifoil += 1
 
-    timestamp = cspad_tbx.evt_timestamp(evt)
+    timestamp = cspad_tbx.evt_timestamp(cspad_tbx.evt_time(evt))
     if (timestamp is None):
       self.m_no_timestamp += 1
 

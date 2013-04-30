@@ -796,23 +796,22 @@ def evt_time(evt=None):
   return (t.seconds(), t.nanoseconds() // 1000000)
 
 
-def evt_timestamp(evt=None):
+def evt_timestamp(t=None):
   """The evt_timestamp() function returns a string representation of
-  an extended human-readable ISO 8601 timestamp.  If @p evt is not
-  None the return value reflects the time at which @p evt occurred,
-  otherwise the current time is used.  If @p evt does not contain a
-  time, evt_timestamp() returns @c None.
+  an extended human-readable ISO 8601 timestamp.  If @p t is @c None
+  the current time is used.  The function returns @c None on failure.
 
-  @param evt Event data object, a configure object
-  @return    Human-readable ISO 8601 timestamp in string
-             representation
+  @param t Tuple of the time in seconds and milliseconds
+  @return  Human-readable ISO 8601 timestamp in string representation
   """
 
-  t = evt_time(evt=evt)
   if t is None:
-    return None
+    t = evt_time(evt=None)
+    if t is None:
+      return None
   return time.strftime("%Y-%m-%dT%H:%MZ%S", time.gmtime(t[0])) + \
       (".%03d" % t[1])
+
 
 def evt_wavelength(evt):
   """The evt_wavelength() function returns the wavelength in
