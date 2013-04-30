@@ -18,16 +18,23 @@ class run(object):
                rotamer_manager,
                geometry_restraints_manager,
                real_space_gradients_delta,
-               anchor_site_cart_1,
-               anchor_site_cart_2,
-               anchor_atom_name_1,
-               anchor_atom_name_2):
+               selection_radius = 5):
     adopt_init_args(self, locals())
+    self.backbone_atom_names = ["N", "CA", "O", "CB", "C"]
+    self.residue_iselection = self.residue.atoms().extract_i_seq()
+    self.residue_selection = flex.bool(
+      xray_structure.scatterers().size(), self.residue_iselection)
+    self.residue_backbone_selection = flex.size_t()
+    for atom in self.residue.atoms():
+      if(atom.name.strip() in self.backbone_atom_names):
+        self.residue_backbone_selection.append(atom.i_seq)
+    self.residue_backbone_selection = flex.bool(
+      xray_structure.scatterers().size(), self.residue_backbone_selection)
     self.target_map_work = target_map
     self.fit_backbone()
     negate_selection = mmtbx.refinement.real_space.selection_around_to_negate(
       xray_structure          = self.xray_structure,
-      selection_within_radius = 5,
+      selection_within_radius = self.selection_radius,
       iselection              = self.residue.atoms().extract_i_seq())
     self.target_map_work = mmtbx.refinement.real_space.\
       negate_map_around_selected_atoms_except_selected_atoms(
@@ -37,105 +44,89 @@ class run(object):
         atom_radius      = 1.5)
     self.fit_rotamers()
 
-  def add_anchors(self):
-    reference_selection = flex.size_t()
-    reference_sites = flex.vec3_double()
-    for atom in self.residue.atoms():
-      if(atom.name.strip()==self.anchor_atom_name_1):
-        reference_selection.append(atom.i_seq)
-        reference_sites.append(self.anchor_site_cart_1)
-      if(atom.name.strip()==self.anchor_atom_name_2):
-        reference_selection.append(atom.i_seq)
-        reference_sites.append(self.anchor_site_cart_2)
-    self.geometry_restraints_manager.geometry.generic_restraints_manager.\
-      reference_manager.add_coordinate_restraints(
-        sites_cart = reference_sites,
-        selection  = reference_selection,
-        sigma      = 0.02)
-    return reference_selection
-
-  def remove_anchors(self, reference_selection):
-    self.geometry_restraints_manager.geometry.generic_restraints_manager.\
-      reference_manager.remove_coordinate_restraints(
-          selection = reference_selection)
-
   def fit_backbone(self):
-    # move in place
-    reference_selection = self.add_anchors()
-    sites_cart_poor = self.xray_structure.sites_cart()
-    selection = self.residue.atoms().extract_i_seq()
-    rsr_simple_refiner = individual_sites.simple(
-      target_map                  = self.target_map_work,
-      selection                   = selection, # XXX
-      real_space_gradients_delta  = self.real_space_gradients_delta,
-      max_iterations              = 150,
-      geometry_restraints_manager = self.geometry_restraints_manager.geometry)
-    # pure geometry minimization
-    refined = individual_sites.refinery(
-      refiner                  = rsr_simple_refiner,
-      xray_structure           = self.xray_structure,
-      optimize_weight          = False,
-      start_trial_weight_value = 0,
-      rms_bonds_limit          = 0.02,
-      rms_angles_limit         = 2.0)
-    selection = flex.bool(sites_cart_poor.size(), selection)
-    sites_cart_poor.set_selected(selection, refined.sites_cart_result)
-    self.xray_structure = self.xray_structure.replace_sites_cart(sites_cart_poor)
-    self.residue.atoms().set_xyz(refined.sites_cart_result.select(selection))
-    # clean up
-    self.remove_anchors(reference_selection=reference_selection)
+    # move in place (pure geometry regularizaition of residue in question)
+    self.real_space_refine(optimize_weight=False, start_trial_weight_value=0,
+      use_selection_real_space=False)
+    # fit n-c-o-ca-cb only (ignore side chain!). XXX BAD: amino-acid specific!
+    self.grid_sample_around_c_n_axis()
     # fine-tune
+    self.real_space_refine(optimize_weight=True, start_trial_weight_value=50,
+      use_selection_real_space=True)
+
+  def fit_rotamers(self):
+    sps = self.xray_structure.special_position_settings()
+    mmtbx.refinement.real_space.fit_residue.manager(
+      target_map                = self.target_map_work,
+      mon_lib_srv               = self.mon_lib_srv,
+      special_position_settings = sps,
+      residue                   = self.residue,
+      use_clash_filter          = True,
+      sites_cart_all            = self.xray_structure.sites_cart(),
+      rotamer_manager           = self.rotamer_manager)
+    sites_cart_poor = self.xray_structure.sites_cart()
+    sites_cart_poor.set_selected(self.residue_iselection,
+      self.residue.atoms().extract_xyz())
+    self.xray_structure= self.xray_structure.replace_sites_cart(sites_cart_poor)
+
+  def grid_sample_around_c_n_axis(self):
     sps = self.xray_structure.special_position_settings()
     scorer = mmtbx.refinement.real_space.score(
       target_map                = self.target_map_work,
-      sites_cart_all            = self.residue.atoms().extract_xyz(),
+      sites_cart_all            = self.xray_structure.sites_cart(),
       residue                   = self.residue,
       special_position_settings = sps)
     def get_cluster(self):
       axis=[]
       atoms_to_rotate=[]
-      selection = flex.size_t()
-      backbone_atom_names = ["N", "CA", "O", "CB", "C"] # XXX BAD: aa specific
+      use_in_target_selection = flex.size_t()
+      counter = 0
       for atom in self.residue.atoms():
-        if(atom.name.strip() in [self.anchor_atom_name_1, self.anchor_atom_name_2]):
-          axis.append(atom.i_seq)
+        if(atom.name.strip() in ["N", "C"]):
+          axis.append(counter)
         else:
-          atoms_to_rotate.append(atom.i_seq)
-        if(atom.name.strip() in backbone_atom_names):
-          selection.append(atom.i_seq)
+          atoms_to_rotate.append(counter)
+        if(atom.name.strip() in self.backbone_atom_names):
+          use_in_target_selection.append(counter)
+        counter += 1
       return mmtbx.refinement.real_space.fit_residue.cluster(
-        axis=axis,
-        atoms_to_rotate=atoms_to_rotate,
-        selection=selection)
+        axis            = axis,
+        atoms_to_rotate = atoms_to_rotate,
+        selection       = use_in_target_selection)
     cl = get_cluster(self)
-    scorer.reset_with(sites_cart = self.residue.atoms().extract_xyz().deep_copy(),
-      selection=cl.selection)
+    residue_sites_cart = self.residue.atoms().extract_xyz()
+    scorer.reset_with(
+      sites_cart = residue_sites_cart,
+      selection  = cl.selection)
     mmtbx.refinement.real_space.torsion_search(
       clusters   = [cl],
-      sites_cart = self.residue.atoms().extract_xyz(),
+      sites_cart = residue_sites_cart,
       scorer     = scorer,
       start      = 0,
       stop       = 360,
       step       = 1)
     self.residue.atoms().set_xyz(new_xyz=scorer.sites_cart)
-    sites_cart_poor.set_selected(selection, scorer.sites_cart)
-    self.xray_structure = self.xray_structure.replace_sites_cart(sites_cart_poor)
-
-  def fit_rotamers(self):
+    selection = self.residue.atoms().extract_i_seq()
     sites_cart_poor = self.xray_structure.sites_cart()
-    sps = self.xray_structure.special_position_settings()
-    mmtbx.refinement.real_space.fit_residue.manager(
-      target_map           = self.target_map_work,
-      mon_lib_srv          = self.mon_lib_srv,
-      special_position_settings = sps,
-      residue              = self.residue,
-      use_clash_filter=True,
-      sites_cart_all = self.xray_structure.sites_cart(),
-      rotamer_manager      = self.rotamer_manager)
-    sites_cart_poor.set_selected(self.residue.atoms().extract_i_seq(),
-      self.residue.atoms().extract_xyz())
-    self.xray_structure = self.xray_structure.replace_sites_cart(sites_cart_poor)
+    sites_cart_poor.set_selected(selection, scorer.sites_cart)
+    self.xray_structure= self.xray_structure.replace_sites_cart(sites_cart_poor)
 
+  def real_space_refine(self, optimize_weight, start_trial_weight_value,
+        use_selection_real_space):
+    brm = individual_sites.box_refinement_manager(
+      xray_structure              = self.xray_structure,
+      target_map                  = self.target_map_work,
+      geometry_restraints_manager = self.geometry_restraints_manager.geometry,
+      real_space_gradients_delta  = 1./4,
+      max_iterations              = 500)
+    brm.refine(
+      selection                = self.residue_selection,
+      optimize_weight          = optimize_weight,
+      start_trial_weight_value = start_trial_weight_value,
+      selection_buffer_radius  = self.selection_radius,
+      box_cushion              = 2)
+    self.xray_structure = brm.xray_structure
+    self.residue.atoms().set_xyz(brm.sites_cart.select(self.residue_iselection))
 
 def get_rotamer_iterator(mon_lib_srv, residue):
   rotamer_iterator = mon_lib_srv.rotamer_iterator(

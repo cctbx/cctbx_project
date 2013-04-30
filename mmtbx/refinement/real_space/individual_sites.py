@@ -12,6 +12,7 @@ class simple(object):
                target_map,
                selection,
                real_space_gradients_delta,
+               selection_real_space=None,
                geometry_restraints_manager=None,
                max_iterations=150):
     adopt_init_args(self, locals())
@@ -27,6 +28,7 @@ class simple(object):
     #assert self.selection.size() == xray_structure.scatterers().size()
     self.refined = maptbx.real_space_refinement_simple.lbfgs(
       selection_variable              = self.selection,
+      selection_variable_real_space   = self.selection_real_space,
       sites_cart                      = xray_structure.sites_cart(),
       density_map                     = self.target_map,
       geometry_restraints_manager     = self.geometry_restraints_manager,
@@ -173,14 +175,12 @@ class refinery(object):
 class box_refinement_manager(object):
   def __init__(self,
                xray_structure,
-               pdb_hierarchy,
                target_map,
                geometry_restraints_manager,
                real_space_gradients_delta=1./4,
                max_iterations = 50):
     self.xray_structure = xray_structure
     self.sites_cart = xray_structure.sites_cart()
-    self.pdb_hierarchy = pdb_hierarchy
     self.target_map = target_map
     self.geometry_restraints_manager = geometry_restraints_manager
     self.max_iterations=max_iterations
@@ -194,9 +194,10 @@ class box_refinement_manager(object):
 
   def refine(self,
              selection,
+             optimize_weight = True,
+             start_trial_weight_value = 50,
              selection_buffer_radius=5,
-             box_cushion=2,
-             monitor_clashscore=False):
+             box_cushion=2):
     sites_cart_moving = self.sites_cart
     selection_within = self.xray_structure.selection_within(
       radius    = selection_buffer_radius,
@@ -206,22 +207,11 @@ class box_refinement_manager(object):
     for i, state in enumerate(selection):
       if state:
         iselection.append(i)
-    if monitor_clashscore:
-      pdb_string = utils.write_pdb_file(
-                     xray_structure=self.xray_structure,
-                     pdb_hierarchy=self.pdb_hierarchy,
-                     write_cryst1_record = False,
-                     selection = selection_within,
-                     return_pdb_string = True)
-      csm = clashscore.probe_clashscore_manager(
-              pdb_string=pdb_string)
-      self.clashscore = csm.clashscore
     box = utils.extract_box_around_model_and_map(
-            xray_structure   = self.xray_structure,
-            pdb_hierarchy    = self.pdb_hierarchy,
-            map_data         = self.target_map,
-            selection        = selection_within,
-            box_cushion      = box_cushion)
+      xray_structure = self.xray_structure,
+      map_data       = self.target_map,
+      selection      = selection_within,
+      box_cushion    = box_cushion)
     new_unit_cell = box.xray_structure_box.unit_cell()
     geo_box = \
       self.geometry_restraints_manager.select(box.selection_within)
@@ -236,8 +226,10 @@ class box_refinement_manager(object):
       max_iterations              = self.max_iterations,
       geometry_restraints_manager = geo_box)
     real_space_result = refinery(
-      refiner          = rsr_simple_refiner,
-      xray_structure   = box.xray_structure_box)
+      refiner                  = rsr_simple_refiner,
+      xray_structure           = box.xray_structure_box,
+      optimize_weight          = optimize_weight,
+      start_trial_weight_value = start_trial_weight_value)
     sites_cart_box_refined = real_space_result.sites_cart_result
     sites_cart_box_refined_shifted_back = \
       sites_cart_box_refined + box.shift_to_map_boxed_sites_back
@@ -247,13 +239,3 @@ class box_refinement_manager(object):
       iselection, sites_cart_refined)
     self.xray_structure.set_sites_cart(sites_cart_moving)
     self.sites_cart = self.xray_structure.sites_cart()
-    if monitor_clashscore:
-      pdb_string = utils.write_pdb_file(
-                     xray_structure=self.xray_structure,
-                     pdb_hierarchy=self.pdb_hierarchy,
-                     write_cryst1_record = False,
-                     selection = selection_within,
-                     return_pdb_string = True)
-      csm = clashscore.probe_clashscore_manager(
-              pdb_string=pdb_string)
-      self.clashscore_refined = csm.clashscore

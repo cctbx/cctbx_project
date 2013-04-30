@@ -10,97 +10,67 @@ from mmtbx.rotamer.rotamer_eval import RotamerEval
 import mmtbx.command_line.real_space_refine as rs
 
 pdb_answer = """\
-CRYST1   14.074   16.834   17.360  90.00  90.00  90.00 P 1
-ATOM      1  N   ARG A  21       8.318  11.834   9.960  1.00 10.00           N
-ATOM      2  CA  ARG A  21       7.146  11.154   9.422  1.00 10.00           C
-ATOM      3  C   ARG A  21       6.012  11.120  10.440  1.00 10.00           C
-ATOM      4  O   ARG A  21       5.000  10.449  10.235  1.00 10.00           O
-ATOM      5  CB  ARG A  21       7.505   9.732   8.987  1.00 10.00           C
-ATOM      6  CG  ARG A  21       7.923   8.820  10.129  0.70 20.00           C
-ATOM      7  CD  ARG A  21       8.312   7.441   9.621  0.70 20.00           C
-ATOM      8  NE  ARG A  21       8.694   6.545  10.708  0.70 20.00           N
-ATOM      9  CZ  ARG A  21       7.839   5.785  11.385  0.70 20.00           C
-ATOM     10  NH1 ARG A  21       6.546   5.811  11.088  0.70 20.00           N
-ATOM     11  NH2 ARG A  21       8.275   5.000  12.360  0.70 20.00           N
-TER
-HETATM    1  U   ION B   1       9.074   7.848   5.000  1.00 10.00           U
-TER
-END
-"""
-
-pdb_poor1 = """\
-CRYST1   14.074   16.834   17.360  90.00  90.00  90.00 P 1
-ATOM      1  N   ARG A  21       8.318  11.834   9.960  1.00 10.00           N
-ATOM      2  CA  ARG A  21       7.248  10.924   9.570  1.00 10.00           C
-ATOM      3  C   ARG A  21       6.012  11.120  10.440  1.00 10.00           C
-ATOM      4  O   ARG A  21       5.064  10.337  10.375  1.00 10.00           O
-ATOM      5  CB  ARG A  21       7.724   9.472   9.652  1.00 10.00           C
-ATOM      6  CG  ARG A  21       8.797   9.112   8.637  1.00 10.00           C
-ATOM      7  CD  ARG A  21       9.187   7.647   8.741  1.00 10.00           C
-ATOM      8  NE  ARG A  21      10.266   7.301   7.820  1.00 10.00           N
-ATOM      9  CZ  ARG A  21      10.871   6.118   7.790  1.00 10.00           C
-ATOM     10  NH1 ARG A  21      10.505   5.162   8.634  1.00 10.00           N
-ATOM     11  NH2 ARG A  21      11.844   5.891   6.920  1.00 10.00           N
-TER
-HETATM   12  U   ION B   1       9.074   7.848   5.000  1.00 10.00           U
+CRYST1   14.230   10.991   17.547  90.00  90.00  90.00 P 1
+ATOM     43  N   GLY A   8       3.000   7.369   9.591  1.00  6.97           N
+ATOM     44  CA  GLY A   8       4.304   7.980   9.410  1.00  7.38           C
+ATOM     45  C   GLY A   8       5.375   6.966   9.058  1.00  6.50           C
+ATOM     46  O   GLY A   8       5.074   5.814   8.745  1.00  6.23           O
+ATOM     47  N   TYR A   9       6.631   7.398   9.110  1.00  6.94           N
+ATOM     48  CA  TYR A   9       7.755   6.524   8.796  1.00  7.32           C
+ATOM     49  C   TYR A   9       8.787   6.527   9.918  1.00  8.00           C
+ATOM     50  O   TYR A   9       9.205   7.585  10.387  1.00  9.95           O
+ATOM     51  CB  TYR A   9       8.410   6.945   7.478  1.00  8.02           C
+ATOM     52  CG  TYR A   9       7.484   6.880   6.284  1.00  8.02           C
+ATOM     53  CD1 TYR A   9       7.345   5.709   5.552  1.00  8.16           C
+ATOM     54  CD2 TYR A   9       6.750   7.991   5.889  1.00  8.88           C
+ATOM     55  CE1 TYR A   9       6.500   5.645   4.459  1.00  8.74           C
+ATOM     56  CE2 TYR A   9       5.903   7.937   4.798  1.00  9.46           C
+ATOM     57  CZ  TYR A   9       5.782   6.761   4.087  1.00  9.31           C
+ATOM     58  OH  TYR A   9       4.940   6.702   3.000  1.00 11.26           O
+ATOM     59  N   ASN A  10       9.193   5.336  10.345  1.00  7.07           N
+ATOM     60  CA  ASN A  10      10.177   5.199  11.413  1.00  6.83           C
+ATOM     61  C   ASN A  10      11.230   4.143  11.093  1.00  6.42           C
+ATOM     62  O   ASN A  10      10.900   3.000  10.778  1.00  6.41           O
+ATOM     63  CB  ASN A  10       9.486   4.870  12.738  1.00  7.59           C
+ATOM     64  CG  ASN A  10      10.465   4.730  13.887  1.00  8.66           C
+ATOM     65  OD1 ASN A  10      10.947   3.635  14.178  1.00  8.74           O
+ATOM     66  ND2 ASN A  10      10.766   5.843  14.547  1.00 11.51           N
 TER
 END
 """
 
-pdb_poor2 = """\
-CRYST1   14.074   16.834   17.360  90.00  90.00  90.00 P 1
-ATOM      1  N   ARG A  21       8.318  11.834   9.960  1.00 10.00           N
-ATOM      2  CA  ARG A  21       7.248  10.924   9.570  1.00 10.00           C
-ATOM      3  C   ARG A  21       6.012  11.120  10.440  1.00 10.00           C
-ATOM      4  O   ARG A  21       5.064  10.337  10.375  1.00 10.00           O
-ATOM      5  CB  ARG A  21       7.724   9.472   9.652  1.00 10.00           C
-ATOM      6  CG  ARG A  21       8.797   9.112   8.637  1.00 10.00           C
-ATOM      7  CD  ARG A  21       9.187   7.647   8.741  1.00 10.00           C
-ATOM      8  NE  ARG A  21      10.266   7.301   7.820  1.00 10.00           N
-ATOM      9  CZ  ARG A  21      10.871   6.118   7.790  1.00 10.00           C
-ATOM     10  NH1 ARG A  21      10.505   5.162   8.634  1.00 10.00           N
-ATOM     11  NH2 ARG A  21      11.844   5.891   6.920  1.00 10.00           N
-TER
+pdb_poor = """\
+CRYST1   14.230   10.991   17.547  90.00  90.00  90.00 P 1
+ATOM     43  N   GLY A   8       3.000   7.369   9.591  1.00  6.97           N
+ATOM     44  CA  GLY A   8       4.304   7.980   9.410  1.00  7.38           C
+ATOM     45  C   GLY A   8       5.375   6.966   9.058  1.00  6.50           C
+ATOM     46  O   GLY A   8       5.074   5.814   8.745  1.00  6.23           O
+ATOM     47  N   TYR A   9      10.261   7.310   2.887  1.00  6.94           N
+ATOM     48  CA  TYR A   9      10.362   7.269   4.341  1.00  7.32           C
+ATOM     49  C   TYR A   9      11.382   6.231   4.795  1.00  8.00           C
+ATOM     50  O   TYR A   9      11.354   5.084   4.350  1.00  9.95           O
+ATOM     51  CB  TYR A   9       8.996   6.971   4.965  1.00  8.02           C
+ATOM     52  CG  TYR A   9       9.029   6.816   6.469  1.00  8.02           C
+ATOM     53  CD1 TYR A   9       9.116   7.925   7.299  1.00  8.16           C
+ATOM     54  CD2 TYR A   9       8.973   5.559   7.058  1.00  8.88           C
+ATOM     55  CE1 TYR A   9       9.148   7.788   8.675  1.00  8.74           C
+ATOM     56  CE2 TYR A   9       9.004   5.412   8.432  1.00  9.46           C
+ATOM     57  CZ  TYR A   9       9.091   6.530   9.235  1.00  9.31           C
+ATOM     58  OH  TYR A   9       9.122   6.388  10.604  1.00 11.26           O
+ATOM     59  N   ASN A  10       9.193   5.336  10.345  1.00  7.07           N
+ATOM     60  CA  ASN A  10      10.177   5.199  11.413  1.00  6.83           C
+ATOM     61  C   ASN A  10      11.230   4.143  11.093  1.00  6.42           C
+ATOM     62  O   ASN A  10      10.900   3.000  10.778  1.00  6.41           O
+ATOM     63  CB  ASN A  10       9.486   4.870  12.738  1.00  7.59           C
+ATOM     64  CG  ASN A  10      10.465   4.730  13.887  1.00  8.66           C
+ATOM     65  OD1 ASN A  10      10.947   3.635  14.178  1.00  8.74           O
+ATOM     66  ND2 ASN A  10      10.766   5.843  14.547  1.00 11.51           N
+TER      25      ASN A  10
 END
 """
 
-pdb_poor3 = """\
-CRYST1   14.074   16.834   17.360  90.00  90.00  90.00 P 1
-ATOM      1  N   ARG A  21       9.932  12.353  13.861  1.00 10.00           N
-ATOM      2  CA  ARG A  21       9.452  10.985  14.024  1.00 10.00           C
-ATOM      3  C   ARG A  21       9.990  10.362  15.308  1.00 10.00           C
-ATOM      4  O   ARG A  21       9.369   9.469  15.883  1.00 10.00           O
-ATOM      5  CB  ARG A  21       9.849  10.131  12.819  1.00 10.00           C
-ATOM      6  CG  ARG A  21       9.292  10.629  11.495  1.00 10.00           C
-ATOM      7  CD  ARG A  21       9.724   9.736  10.343  1.00 10.00           C
-ATOM      8  NE  ARG A  21       9.197  10.200   9.063  1.00 10.00           N
-ATOM      9  CZ  ARG A  21       9.825  11.057   8.264  1.00 10.00           C
-ATOM     10  NH1 ARG A  21      11.007  11.547   8.611  1.00 10.00           N
-ATOM     11  NH2 ARG A  21       9.270  11.425   7.117  1.00 10.00           N
-TER
-HETATM   12  U   ION B   1       9.074   7.848   5.000  1.00 10.00           U
-TER
-"""
-
-pdb_poor4 = """\
-CRYST1   14.074   16.834   17.360  90.00  90.00  90.00 P 1
-ATOM      1  N   ARG A  21       9.932  12.353  13.861  1.00 10.00           N
-ATOM      2  CA  ARG A  21       9.452  10.985  14.024  1.00 10.00           C
-ATOM      3  C   ARG A  21       9.990  10.362  15.308  1.00 10.00           C
-ATOM      4  O   ARG A  21       9.369   9.469  15.883  1.00 10.00           O
-ATOM      5  CB  ARG A  21       9.849  10.131  12.819  1.00 10.00           C
-ATOM      6  CG  ARG A  21       9.292  10.629  11.495  1.00 10.00           C
-ATOM      7  CD  ARG A  21       9.724   9.736  10.343  1.00 10.00           C
-ATOM      8  NE  ARG A  21       9.197  10.200   9.063  1.00 10.00           N
-ATOM      9  CZ  ARG A  21       9.825  11.057   8.264  1.00 10.00           C
-ATOM     10  NH1 ARG A  21      11.007  11.547   8.611  1.00 10.00           N
-ATOM     11  NH2 ARG A  21       9.270  11.425   7.117  1.00 10.00           N
-TER
-"""
-
-def exercise(pdb_poor_str, i_file, d_min = 1.0, resolution_factor = 0.1):
-  # Fit one residue. There is a huge heavy atom nearby that overlaps with a
-  # plausible rotamer.
+def exercise(pdb_poor_str, d_min = 1.0, resolution_factor = 0.25):
+  # Fit one residue in many-residues model
   #
   # answer
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_answer)
@@ -113,12 +83,18 @@ def exercise(pdb_poor_str, i_file, d_min = 1.0, resolution_factor = 0.1):
   mtz_dataset = f_calc.as_mtz_dataset(column_root_label = "FCmap")
   mtz_object = mtz_dataset.mtz_object()
   mtz_object.write(file_name = "answer.mtz")
+  # take TYR9
   sites_answer = list(
-    pdb_inp.construct_hierarchy().residue_groups())[0].atoms().extract_xyz()
+    pdb_inp.construct_hierarchy().residue_groups())[1].atoms().extract_xyz()
   # poor
   mon_lib_srv = monomer_library.server.server()
+  master_params = iotbx.phil.parse(
+    input_string=mmtbx.monomer_library.pdb_interpretation.master_params_str,
+    process_includes=True).extract()
+  master_params.link_distance_cutoff=999
   processed_pdb_file = monomer_library.pdb_interpretation.process(
     mon_lib_srv              = mon_lib_srv,
+    params                   = master_params,
     ener_lib                 = monomer_library.server.ener_lib(),
     raw_records              = flex.std_string(pdb_poor_str.splitlines()),
     strict_conflict_handling = True,
@@ -127,7 +103,7 @@ def exercise(pdb_poor_str, i_file, d_min = 1.0, resolution_factor = 0.1):
   pdb_hierarchy_poor = processed_pdb_file.all_chain_proxies.pdb_hierarchy
   xrs_poor = processed_pdb_file.xray_structure()
   sites_cart_poor = xrs_poor.sites_cart()
-  pdb_hierarchy_poor.write_pdb_file(file_name = "poor_%s.pdb"%str(i_file))
+  pdb_hierarchy_poor.write_pdb_file(file_name = "poor.pdb")
   grm = rs.get_geometry_restraints_manager(
     processed_pdb_file = processed_pdb_file,
     xray_structure     = xrs_poor)
@@ -137,7 +113,8 @@ def exercise(pdb_poor_str, i_file, d_min = 1.0, resolution_factor = 0.1):
   for model in pdb_hierarchy_poor.models():
     for chain in model.chains():
       for residue in chain.only_conformer().residues():
-        if(get_class(residue.resname) == "common_amino_acid"):
+        if(get_class(residue.resname) == "common_amino_acid" and
+           int(residue.resseq)==9): # take TYR9
           t0 = time.time()
           ro = mmtbx.refinement.real_space.fit_residue.run(
             target_map      = target_map,
@@ -146,21 +123,15 @@ def exercise(pdb_poor_str, i_file, d_min = 1.0, resolution_factor = 0.1):
             mon_lib_srv     = mon_lib_srv,
             rotamer_manager = rotamer_manager,
             real_space_gradients_delta  = d_min/4,
-            geometry_restraints_manager = grm,
-            anchor_site_cart_1=[8.318, 11.834,  9.960],
-            anchor_site_cart_2=[6.012, 11.120, 10.440],
-            anchor_atom_name_1="N",
-            anchor_atom_name_2="C")
+            geometry_restraints_manager = grm)
           sites_final = residue.atoms().extract_xyz()
           t1 = time.time()-t0
   pdb_hierarchy_poor.adopt_xray_structure(ro.xray_structure)
-  pdb_hierarchy_poor.write_pdb_file(file_name = "refined_%s.pdb"%str(i_file))
+  pdb_hierarchy_poor.write_pdb_file(file_name = "refined.pdb")
   dist = flex.mean(flex.sqrt((sites_answer - sites_final).dot()))
   return dist, t1
 
 if(__name__ == "__main__"):
-  for i, pdb_poor in enumerate([pdb_poor1, pdb_poor2, pdb_poor3, pdb_poor4]):
-    dist, t = exercise(pdb_poor_str = pdb_poor, i_file=i)
-    print dist, t
-    if(i in [0,1]): assert dist < 0.03
-    else:           assert dist < 0.3
+  dist, t = exercise(pdb_poor_str = pdb_poor)
+  print dist, t
+  assert dist < 0.1

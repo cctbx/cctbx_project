@@ -2863,9 +2863,9 @@ class set_map_to_value(object):
 class extract_box_around_model_and_map(object):
   def __init__(self,
                xray_structure,
-               pdb_hierarchy,
                map_data,
                box_cushion,
+               pdb_hierarchy=None,
                selection_radius=None,
                selection_string=None,
                selection=None,
@@ -2873,6 +2873,7 @@ class extract_box_around_model_and_map(object):
     adopt_init_args(self, locals())
     assert [selection_string, selection_radius].count(None) in [0,2]
     if(selection_string is not None):
+      assert pdb_hierarchy is not None
       selection = pdb_hierarchy.atom_selection_cache().selection(
         string = selection_string)
       self.selection_within = xray_structure.selection_within(
@@ -2920,14 +2921,16 @@ class extract_box_around_model_and_map(object):
     sp = crystal.special_position_settings(cs)
     xray_structure_box = xray_structure_box.replace_sites_frac(sites_frac)
     self.xray_structure_box = xray.structure(sp,xray_structure_box.scatterers())
-    self.pdb_hierarchy_box = self.pdb_hierarchy.select(self.selection_within)
-    self.pdb_hierarchy_box.adopt_xray_structure(self.xray_structure_box)
+    if(self.pdb_hierarchy is not None):
+      self.pdb_hierarchy_box = self.pdb_hierarchy.select(self.selection_within)
+      self.pdb_hierarchy_box.adopt_xray_structure(self.xray_structure_box)
     # shift to map (boxed) sites back
     sc1 = xray_structure_selected.sites_cart()
     sc2 = self.xray_structure_box.sites_cart()
     self.shift_to_map_boxed_sites_back = (sc1-sc2)[0]
 
   def write_pdb_file(self, file_name):
+    assert self.pdb_hierarchy is not None
     self.pdb_hierarchy_box.write_pdb_file(file_name=file_name,
       crystal_symmetry = self.xray_structure_box.crystal_symmetry())
 

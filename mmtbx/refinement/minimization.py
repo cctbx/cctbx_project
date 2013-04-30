@@ -26,7 +26,7 @@ class lbfgs(object):
                      correct_special_position_tolerance = 1.0,
                      iso_restraints           = None,
                      h_params                 = None,
-                     u_min                    = adptbx.b_as_u(-30.0),
+                     u_min                    = adptbx.b_as_u(-5.0),
                      u_max                    = adptbx.b_as_u(1000.0),
                      collect_monitor          = True):
     timer = user_plus_sys_time()

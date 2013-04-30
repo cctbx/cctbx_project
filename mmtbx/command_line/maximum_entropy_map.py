@@ -57,6 +57,8 @@ beta = 0.7
   .type = float
 convergence_at_r_factor = 0.05
   .type = float
+convergence_r_threshold = 0.1
+  .type = float
 gui_output_dir = None
   .type = path
   .short_caption = Output directory
@@ -156,6 +158,7 @@ def run(args, log):
     beta                    = params.beta,
     convergence_at_r_factor = params.convergence_at_r_factor,
     xray_structure          = xray_structure,
+    convergence_r_threshold = params.convergence_r_threshold,
     log                     = log)
   ###
   broadcast(m="Output MEM map coefficients", log = log)

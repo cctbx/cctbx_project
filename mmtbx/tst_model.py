@@ -10,6 +10,7 @@ import mmtbx.monomer_library.pdb_interpretation
 from cStringIO import StringIO
 from mmtbx import utils
 from libtbx.utils import format_cpu_times, null_out
+from libtbx.test_utils import approx_equal
 
 def exercise():
   mon_lib_srv = monomer_library.server.server()
@@ -279,12 +280,85 @@ def exercise_convert_atom() :
     xyz_max = max([ abs(n) for n in atom.xyz])
     assert (xyz_max < 2.5)
 
+pdb_file_exercise_h_counts="""
+CRYST1    8.228   11.366   10.991  90.00  90.00  90.00 P 1
+ATOM      1  N  AGLY B   1       3.102   3.878   3.794  0.70  7.85           N
+ATOM      2  CA AGLY B   1       3.985   4.960   4.314  0.70  6.79           C
+ATOM      3  C  AGLY B   1       5.454   4.600   4.162  0.70  5.59           C
+ATOM      4  O  AGLY B   1       5.756   3.431   3.920  0.70  6.04           O
+ATOM      5  H1 AGLY B   1       2.660   4.173   3.080  0.70  7.85           H
+ATOM      6  H2 AGLY B   1       3.597   3.175   3.566  0.70  7.85           H
+ATOM      7  H3 AGLY B   1       2.522   3.640   4.425  0.70  7.85           H
+ATOM      8  HA2AGLY B   1       3.815   5.782   3.828  0.70  6.79           H
+ATOM      9  HA3AGLY B   1       3.798   5.111   5.254  0.70  6.79           H
+ATOM     10  N  BGLY B   1       4.731   2.369   3.426  0.30  7.85           N
+ATOM     11  CA BGLY B   1       5.847   3.227   3.917  0.30  6.79           C
+ATOM     12  C  BGLY B   1       5.408   4.661   4.138  0.30  5.59           C
+ATOM     13  O  BGLY B   1       4.212   4.956   4.163  0.30  6.04           O
+ATOM     14  H1 BGLY B   1       4.655   1.653   3.949  0.30  7.85           H
+ATOM     15  H2 BGLY B   1       3.971   2.832   3.444  0.30  7.85           H
+ATOM     16  H3 BGLY B   1       4.901   2.110   2.592  0.30  7.85           H
+ATOM     17  HA2BGLY B   1       6.182   2.874   4.756  0.30  6.79           H
+ATOM     18  HA3BGLY B   1       6.569   3.222   3.269  0.30  6.79           H
+ATOM     19  N   CYS B   2       6.380   5.555   4.293  1.00  5.95           N
+ATOM     20  CA  CYS B   2       6.109   6.982   4.531  1.00  5.17           C
+ATOM     21  C   CYS B   2       5.169   7.274   5.709  1.00  4.74           C
+ATOM     22  O   CYS B   2       5.516   7.016   6.861  1.00  4.51           O
+ATOM     23  CB  CYS B   2       5.631   7.673   3.244  1.00  5.99           C
+ATOM     24  SG  CYS B   2       5.163   9.405   3.466  1.00  5.51           S
+ATOM     25  H   CYS B   2       7.222   5.382   4.256  1.00  5.95           H
+ATOM     26  HA  CYS B   2       6.956   7.396   4.758  1.00  5.17           H
+ATOM     27  HB2 CYS B   2       6.346   7.642   2.590  1.00  5.99           H
+ATOM     28  HB3 CYS B   2       4.856   7.199   2.905  1.00  5.99           H
+ATOM     29  HG  CYS B   2       4.807   9.852   2.411  1.00  5.51           H
+ATOM     30  N   CYS B   3       3.986   7.810   5.419  1.00  4.88           N
+ATOM     31  CA  CYS B   3       3.018   8.129   6.461  1.00  5.24           C
+ATOM     32  C   CYS B   3       2.431   6.857   7.062  1.00  6.13           C
+ATOM     33  O   CYS B   3       1.976   6.851   8.205  1.00  7.85           O
+ATOM     34  CB  CYS B   3       1.896   9.003   5.897  1.00  4.92           C
+ATOM     35  SG  CYS B   3       2.450  10.600   5.255  1.00  6.13           S
+ATOM     36  H   CYS B   3       3.720   7.999   4.623  1.00  4.88           H
+ATOM     37  HA  CYS B   3       3.461   8.623   7.169  1.00  5.24           H
+ATOM     38  HB2 CYS B   3       1.466   8.526   5.170  0.30  4.92           H
+ATOM     39  HB3 CYS B   3       1.252   9.176   6.602  0.10  4.92           H
+ATOM     40  HG  CYS B   3       3.237  10.413   4.368  1.00  6.13           H
+TER
+ATOM     41  O   HOH C   1       1.194   0.871   7.026  1.00  7.85           O
+ATOM     42  H1  HOH C   1       2.011   1.046   7.112  1.00  7.85           H
+ATOM     43  H2  HOH C   1       0.786   1.605   7.030  1.00  7.85           H
+ATOM     44  O   HOH C   2       2.387   2.996   6.915  1.00  6.79           O
+ATOM     45  H1  HOH C   2       3.061   3.497   6.915  1.00  6.79           H
+ATOM     46  H2  HOH C   2       1.712   3.496   6.915  1.00  6.79           H
+ATOM     47  O   HOH C   3       6.169   4.601   8.563  1.00  5.59           O
+ATOM     48  D1  HOH C   3       6.992   4.768   8.578  1.00  5.59           D
+ATOM     49  D2  HOH C   3       5.784   5.301   8.302  1.00  5.59           D
+TER
+END
+"""
+
+def exercise_h_counts():
+  of = open("exercise_h_counts.pdb", "w")
+  print >> of, pdb_file_exercise_h_counts
+  of.close()
+  import mmtbx.utils
+  model = mmtbx.utils.model_simple(pdb_file_names=["exercise_h_counts.pdb"],
+    scattering_table="n_gaussian")
+  hc = model.h_counts()
+  assert approx_equal(hc.h_count                , 26   , 0.01)
+  assert approx_equal(hc.h_occ_sum              , 19.4 , 0.01)
+  assert approx_equal(hc.h_fraction_of_total    , 50.52, 0.01)
+  assert approx_equal(hc.hrot_count             , 8    , 0.01)
+  assert approx_equal(hc.hrot_occ_sum           , 5    , 0.01)
+  assert approx_equal(hc.hrot_fraction_of_total , 13.02, 0.01)
+  model.show_h_counts()
+
 def run():
   exercise()
   exercise_2()
   exercise_3()
   exercise_4()
   exercise_convert_atom()
+  exercise_h_counts()
   print format_cpu_times()
 
 if (__name__ == "__main__"):
