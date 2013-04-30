@@ -11,6 +11,7 @@ def start_coot_and_wait (
     map_file,
     ligand_files,
     ligand_ccs,
+    cif_files=(),
     work_dir=None,
     coot_cmd="coot",
     log=None) :
@@ -19,9 +20,11 @@ def start_coot_and_wait (
   from libtbx import easy_run
   assert (len(ligand_files) > 0) and (len(ligand_files) == len(ligand_ccs))
   if (log is None) : log = sys.stdout
-  if (work_dir is None) : work_dir = os.getcwd()
+  cwd = os.getcwd()
+  if (work_dir is None) : work_dir = cwd
   if (not os.path.isdir(work_dir)) :
     os.makedirs(work_dir)
+  os.chdir(work_dir)
   base_script = __file__.replace(".pyc", ".py")
   ligand_xyzs = []
   for pdb_file in ligand_files :
@@ -34,6 +37,10 @@ def start_coot_and_wait (
   f.write(open(base_script).read())
   f.write("\n")
   f.write("import coot\n")
+  f.write("read_pdb(\"%s\")\n" % pdb_file)
+  f.write("auto_read_make_and_draw_maps(\"%s\")\n" % map_file)
+  for cif_file in cif_files :
+    f.write("read_cif_dictionary(\"%s\")\n" % cif_file)
   f.write("m = manager(%s)\n" % str(ligand_info))
   f.close()
   make_header("Ligand selection in Coot", log)
@@ -43,34 +50,22 @@ def start_coot_and_wait (
     raise RuntimeError("Launching Coot failed with status %d" % rc)
   print >> log, "  Waiting for user input at %s" % str(time.asctime())
   out_file = ".COOT_LIGANDS"
+  output_files = output_ccs = None
   while (True) :
     if (os.path.isfile(out_file)) :
       print >> log, "  Coot editing complete at %s" % str(time.asctime())
-      selected_ligands = [ int(s) for s in open(out_file).read().split() ]
-      if (len(selected_ligands) == 0) :
-        return None
-      elif (len(selected_ligands) == 1) :
-        return ligand_files[selected_ligands[0]]
-      else :
-        combined_hierarchy = hierarchy.root()
-        model = hierarchy.model()
-        combined_hierarchy.append_model(model)
-        ligand_chain = hierarchy.chain(id='X')
-        model.append_chain(ligand_chain)
-        # TODO check for ligand overlaps
-        for k, i_lig in enumerate(selected_ligands) :
-          ligand_in = file_reader.any_file(ligand_files[i_lig], force_type="pdb")
-          lig_hierarchy = ligand_in.file_object.construct_hierarchy()
-          residue = lig_hierarchy.only_model().only_chain().only_residue_group()
-          residue.resseq = "%4d" % (k+1)
-          ligand_chain.append_residue_group(residue.detached_copy())
-        f = open("ligands_from_coot.pdb", "w")
-        f.write(combined_hierarchy.as_pdb_string())
-        f.close()
-        return os.path.join(os.getcwd(), "ligands_from_coot.pdb")
+      ligand_indices = [ int(i) for i in open(out_file).read().split() ]
+      output_files = []
+      for i in ligand_indices :
+        ligand_file = os.path.join(work_dir, "coot_ligand_out_%d.pdb" % (i+1))
+        output_files.append(ligand_file)
+      output_ccs = [ ligand_ccs[i] for i in ligand_indices ]
+      break
     else :
       time.sleep(t_wait / 1000.)
-  assert (False)
+  assert (output_files is not None)
+  os.chdir(cwd)
+  return output_files, output_ccs
 
 class manager (object) :
   def __init__ (self, ligand_file_info) :
@@ -78,6 +73,9 @@ class manager (object) :
     import coot # import dependency
     title = "Select ligand(s)"
     self.ligand_file_info = ligand_file_info
+    self.ligand_imols = []
+    for file_name, cc, xyz in ligand_file_info :
+      self.ligand_imols.append(read_pdb(file_name))
     self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
     self.window.set_default_size(300, 200)
     self.window.set_title(title)
@@ -122,14 +120,18 @@ class manager (object) :
     model[path][0] = not model[path][0]
 
   def OnContinue (self, *args) :
+    import gtk
     selected = []
     for i_lig in range(len(self.ligand_file_info)) :
-      if (model[i_lig][0]) :
-        print "  selected %d" % i_lig
-        selected.append(i_lig)
-    open(".COOT_LIGANDS", "W").write(" ".join(selected))
+      if (self.model[i_lig][0]) :
+        print "  selected ligand %d" % (i_lig+1)
+        pdb_out = "coot_ligand_out_%d.pdb" % (i_lig+1)
+        save_coordinates(self.ligand_imols[i_lig], pdb_out)
+        selected.append(str(i_lig))
+    open(".COOT_LIGANDS", "w").write(" ".join(selected))
     dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO,
       gtk.BUTTONS_OK,
       "The selected ligands have been saved.  You may now close Coot.")
     dialog.run()
     dialog.destroy()
+    gtk.main_quit()

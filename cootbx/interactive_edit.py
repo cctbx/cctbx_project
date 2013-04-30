@@ -160,9 +160,11 @@ class manager (object) :
     save_coordinates(self._imol, pdb_out)
     dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO,
       gtk.BUTTONS_OK,
-      "The PDB file has been saved to %s.  You may now close Coot." % pdb_out)
+      ("The PDB file has been saved to %s.  Click the \"Okay\" button to "+
+       "close Coot and continue.") % pdb_out)
     dialog.run()
     dialog.destroy()
+    gtk.main_quit()
 
   def OnNewMaps (self, *args) :
     import coot
