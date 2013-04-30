@@ -10,8 +10,6 @@
 
 from __future__ import division
 
-from scitbx import matrix
-
 from dxtbx.format.FormatSMV import FormatSMV
 
 class FormatSMVRigaku(FormatSMV):

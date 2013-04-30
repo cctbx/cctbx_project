@@ -690,8 +690,6 @@ class ImageSetFactory(object):
             A list of imagesets
 
         '''
-        from sweep_filenames import find_matching_images
-
         # Ensure we have enough images
         if isinstance(filenames, list):
             assert(len(filenames) > 0)
