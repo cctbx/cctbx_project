@@ -879,7 +879,7 @@ def getOptEvalOrString(s) :
   try:
     eval_string = eval(possible_string,{},{})
     return eval_string
-  except SyntaxError,e:
+  except (SyntaxError, TypeError):
     return possible_string
 
 def getOptString(s) :
