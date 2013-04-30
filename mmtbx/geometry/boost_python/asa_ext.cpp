@@ -424,7 +424,7 @@ BOOST_PYTHON_MODULE(mmtbx_geometry_asa_ext)
   typedef mmtbx::geometry::asa::asa_wrappers< scitbx::vec3< double > > asa_wrapper;
   asa_wrapper::wrap();
   typedef mmtbx::geometry::indexing::indexing_wrappers<
-    typename asa_wrapper::sphere_type,
+    asa_wrapper::sphere_type,
     int
     > indexing_wrapper;
   indexing_wrapper::wrap();
