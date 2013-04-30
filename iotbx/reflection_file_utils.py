@@ -846,7 +846,7 @@ def extract_miller_array_from_file(file_name, label=None, type=None, log=None):
       suitable_arrays.append(ma)
       suitable_labels.append(ma.info().label_string())
   if(  len(suitable_arrays) == 0): raise Sorry("No suitable arrays.")
-  elif(len(suitable_arrays) == 1): result = ma
+  elif(len(suitable_arrays) == 1): result = suitable_arrays[0]
   elif(len(suitable_arrays) >  1):
     m="Multiple choices available."
     if(label is None): raise Sorry(m)
