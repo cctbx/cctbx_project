@@ -21,6 +21,7 @@ from iotbx.detectors.raxis import RAXISImage
 from iotbx.detectors.raxis_nonsquare import NonSquareRAXISImage
 from iotbx.detectors.macscience import DIPImage
 from iotbx.detectors.saturn import SaturnImage
+from iotbx.detectors.noir import NoirImage
 from iotbx.detectors.bruker import BrukerImage
 from iotbx.detectors.pilatus_minicbf import PilatusImage
 from iotbx.detectors.edf import EDFImage
@@ -48,7 +49,7 @@ class SMVImage(ADSCImage):
     DetectorImageBase.__init__(self,filename)
     self.vendortype = "SMV(Generic)"
 
-all_image_types = [EDFWrapper,SaturnImage,DIPImage,ADSCImage,HamamatsuImage,
+all_image_types = [EDFWrapper,SaturnImage,DIPImage,NoirImage,ADSCImage,HamamatsuImage,
                   MARImage,MARIPImage,DTREKImage,RAXISImage,
                   NonSquareRAXISImage,SMVImage,PilatusImage,CBFImage,BrukerImage]
 try :
