@@ -6,6 +6,10 @@ class FormatPYunspecified(FormatPY):
 
     @staticmethod
     def understand(image_file):
+        """Seems like the static method wastes a lot of effort here; it's not possible to
+        just read the first few bytes; instead understand() reads the entire first data
+        item in the file; an entire binary image.  This data is then read again in the
+        _start() method and again in the detectorbase constructor."""
         try:
           stream = FormatPYunspecified.open_file(image_file, 'rb')
           import cPickle as pickle
@@ -13,16 +17,10 @@ class FormatPYunspecified(FormatPY):
         except IOError,e:
           return False
 
-        wanted_header_items = ['SIZE1','SIZE2']
+        wanted_header_items = ['SIZE1','SIZE2','TIMESTAMP']
 
         for header_item in wanted_header_items:
             if not header_item in data:
-                return False
-
-        unwanted_header_items = ['DETECTOR_FORMAT_VERSION']
-
-        for header_item in unwanted_header_items:
-            if header_item in data:
                 return False
 
         return True
@@ -33,6 +31,26 @@ class FormatPYunspecified(FormatPY):
         assert(self.understand(image_file))
 
         FormatPY.__init__(self, image_file)
+
+    def _start(self):
+
+        stream = FormatPYunspecified.open_file(self._image_file, 'rb')
+
+        import cPickle as pickle
+        data = pickle.load(stream)
+        if not "DETECTOR_ADDRESS" in data:
+          # legacy format; try to guess the address
+          self.LCLS_detector_address = 'CxiDs1-0|Cspad-0'
+          if "DISTANCE" in data and data["DISTANCE"] > 1000:
+            # downstream CS-PAD detector station of CXI instrument
+            self.LCLS_detector_address = 'CxiDsd-0|Cspad-0'
+        else:
+          self.LCLS_detector_address = data["DETECTOR_ADDRESS"]
+        from xfel.detector_formats import reverse_timestamp
+        timesec = reverse_timestamp( data["TIMESTAMP"] )[0]
+        from xfel.detector_formats import detector_format_version as detector_format_function
+        version_lookup = detector_format_function(self.LCLS_detector_address,timesec)
+        self.start_helper(version_token="distl.detector_format_version=%s"%version_lookup)
 
     def start_helper(self, version_token):
 
