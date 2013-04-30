@@ -1366,6 +1366,7 @@ mmtbx/command_line/cbetadev.py -text
 mmtbx/command_line/cc_star.py -text
 mmtbx/command_line/cif_as_mtz.py -text
 mmtbx/command_line/clashscore.py -text
+mmtbx/command_line/compare_ligands.py -text
 mmtbx/command_line/compute_map_coefficients.py -text
 mmtbx/command_line/density_modification.py -text
 mmtbx/command_line/distance_difference.py -text
@@ -1599,6 +1600,7 @@ mmtbx/regression/tst_add_h_to_water.py -text
 mmtbx/regression/tst_altloc_chain_break.py -text
 mmtbx/regression/tst_anomalous_substructure.py -text
 mmtbx/regression/tst_cablam.py -text
+mmtbx/regression/tst_compare_ligands.py -text
 mmtbx/regression/tst_dssp.py -text
 mmtbx/regression/tst_examples.py -text
 mmtbx/regression/tst_find_peaks_holes.py -text
@@ -1683,6 +1685,7 @@ mmtbx/validation/cbetadev.py svneol=native#text/x-python
 mmtbx/validation/clashscore.py svneol=native#text/x-python
 mmtbx/validation/convert_lists.py -text
 mmtbx/validation/datasets.py -text
+mmtbx/validation/ligands.py -text
 mmtbx/validation/ramalyze.py svneol=native#text/x-python
 mmtbx/validation/rna_validate.py svneol=native#text/x-python
 mmtbx/validation/rotalyze.py svneol=native#text/x-python
