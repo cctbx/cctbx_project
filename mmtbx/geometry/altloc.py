@@ -34,8 +34,10 @@ def from_identifier(entity):
 
 def from_atom(entity):
 
-  if entity.parent():
-    return from_identifier( entity.parent().altloc )
+  parent = entity.parent()
+
+  if parent:
+    return from_identifier( parent.altloc )
 
   else:
     return Empty

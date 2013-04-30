@@ -1,6 +1,7 @@
 from __future__ import division
 
 import mmtbx.geometry.primitive # import dependency
+import mmtbx.geometry.shared_types # import dependency
 
 import boost.python
 ext = boost.python.import_ext( "mmtbx_geometry_asa_ext" )
@@ -173,9 +174,9 @@ class CompositeCheckerBuilder(object):
   def append_neighbours(self, indexer, sphere):
 
     self.checker.add(
-      neighbours = indexing.filter(
+      neighbours = accessibility.filter(
         range = indexer.close_to( object = sphere ),
-        predicate = indexing.overlap_equality_predicate( object = sphere )
+        predicate = accessibility.overlap_equality_predicate( object = sphere )
         )
       )
 
@@ -232,9 +233,9 @@ class SeparateCheckerBuilder(object):
   def append_neighbours(indexer, sphere, checker):
 
     checker.add(
-      neighbours = indexing.filter(
+      neighbours = accessibility.filter(
         range = indexer.close_to( object = sphere ),
-        predicate = indexing.overlap_equality_predicate( object = sphere )
+        predicate = accessibility.overlap_equality_predicate( object = sphere )
         )
       )
 

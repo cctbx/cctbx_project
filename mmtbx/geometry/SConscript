@@ -20,4 +20,8 @@ if not env_etc.no_boost_python:
     target="#lib/mmtbx_geometry_asa_ext",
     source=[ "boost_python/asa_ext.cpp" ],
     )
+  env_scitbx_boost_python_ext.SharedLibrary(
+    target="#lib/mmtbx_geometry_shared_types_ext",
+    source=[ "boost_python/shared_types_ext.cpp" ],
+    )
 
