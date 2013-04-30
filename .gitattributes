@@ -389,7 +389,6 @@ dxtbx/format/FormatMAR.py -text
 dxtbx/format/FormatMarIP.py -text
 dxtbx/format/FormatMultiImage.py -text
 dxtbx/format/FormatPY.py -text
-dxtbx/format/FormatPYCXI51.py -text
 dxtbx/format/FormatPYmultitile.py -text
 dxtbx/format/FormatPYunspecified.py -text
 dxtbx/format/FormatPilatusHelpers.py -text
@@ -416,6 +415,7 @@ dxtbx/format/RegistryHelpers.py -text
 dxtbx/format/TemplatePYCXI31.py -text
 dxtbx/format/TemplatePYCXI32.py -text
 dxtbx/format/TemplatePYCXI41.py -text
+dxtbx/format/TemplatePYCXI51.py -text
 dxtbx/format/TemplatePYCXI61.py -text
 dxtbx/format/TemplatePYCXI71.py -text
 dxtbx/format/TemplatePYCXI7d.py -text
@@ -2423,6 +2423,7 @@ xfel/cxi/merging/general_fcalc.py -text
 xfel/cxi/merging_database.py -text
 xfel/cxi/strong_zulu.py -text
 xfel/cxi/util.py -text
+xfel/detector_formats.py -text
 xfel/libtbx_config -text
 xfel/metrology/__init__.py -text
 xfel/metrology_ext.cpp -text

@@ -14,6 +14,7 @@ from scitbx.array_family import flex
 from xfel.cxi.cspad_ana.hitfinder_tbx import distl_hitfinder
 from xfel.cxi.cspad_ana import common_mode
 from xfel.cxi.cspad_ana import cspad_tbx
+from xfel.detector_formats import detector_format_version as detector_format_function
 import getpass
 
 # import matplotlib
@@ -271,7 +272,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
 
       from cxi_user.xfel_targets import targets
       args = ["indexing.data=dummy"] + targets[self.m_xtal_target]
-      detector_format_version = cspad_tbx.detector_format_version(
+      detector_format_version = detector_format_function(
         self.address, evt.GetTime())
       if detector_format_version is not None:
         args += ["distl.detector_format_version=%" % detector_format_version]
@@ -288,7 +289,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
 
       from cxi_user.xfel_targets import targets
       args = ["indexing.data=dummy"] + targets[self.m_xtal_target]
-      detector_format_version = cspad_tbx.detector_format_version(
+      detector_format_version = detector_format_function(
         self.address, evt.GetTime())
       if detector_format_version is not None:
         args += ["distl.detector_format_version=%s" % detector_format_version]
