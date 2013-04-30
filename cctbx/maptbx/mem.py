@@ -67,6 +67,7 @@ class run(object) :
                 verbose           = False,
                 lambda_increment_factor = None,
                 convergence_at_r_factor = 0,
+                convergence_r_threshold = 0.1,
                 detect_convergence = True,
                 crystal_gridding  = None,
                 use_scale         = True,
@@ -86,9 +87,10 @@ class run(object) :
     self.xray_structure   = xray_structure
     self.lambda_increment_factor = lambda_increment_factor
     self.convergence_at_r_factor = convergence_at_r_factor
-    self.detect_convergence = detect_convergence
-    self.crystal_gridding = crystal_gridding
-    self.use_scale       = use_scale
+    self.detect_convergence      = detect_convergence
+    self.crystal_gridding        = crystal_gridding
+    self.use_scale               = use_scale
+    self.convergence_r_threshold = convergence_r_threshold
     # current monitor and optimized functional values
     self.cntr         = None
     self.r            = None
@@ -231,7 +233,7 @@ class run(object) :
   def is_converged(self, rho_trial):
     result = False
     r = r_factor(self.f, self.f_mem, use_scale=False)
-    if(r < 0.20):
+    if(r < self.convergence_r_threshold):
       if(self.xray_structure is None):
         self.r_factors.append(r)
         size = self.r_factors.size()
