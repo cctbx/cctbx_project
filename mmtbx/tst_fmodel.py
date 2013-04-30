@@ -526,8 +526,60 @@ def exercise_5_bulk_sol_and_scaling_and_H(symbol = "C 2"):
   assert fmodel.r_work() < 0.025
   map_coeffs = fmodel.map_coefficients(map_type="2mFo-DFc")
 
+def exercise_top_largest_f_obs_f_model_differences(threshold_percent=10,
+      symbol = "C 2"):
+  random.seed(0)
+  flex.set_random_seed(0)
+  x = random_structure.xray_structure(
+    space_group_info       = sgtbx.space_group_info(symbol=symbol),
+    elements               =(("O","N","C")*5+("H",)*10),
+    volume_per_atom        = 200,
+    min_distance           = 1.5,
+    general_positions_only = True,
+    random_u_iso           = True,
+    random_occupancy       = False)
+  f_obs = abs(x.structure_factors(d_min = 1.5, algorithm="fft").f_calc())
+  x.shake_sites_in_place(mean_distance=1)
+  fmodel = mmtbx.f_model.manager(
+    xray_structure = x,
+    f_obs          = f_obs)
+  fmodel.update_all_scales()
+  v, d = fmodel.top_largest_f_obs_f_model_differences(
+    threshold_percent=threshold_percent)
+  n = (d>v).count(True)*100./d.size()
+  assert approx_equal(threshold_percent, n, 0.5)
+
+def exercise_f_model_no_scales(symbol = "C 2"):
+  random.seed(0)
+  flex.set_random_seed(0)
+  x = random_structure.xray_structure(
+    space_group_info       = sgtbx.space_group_info(symbol=symbol),
+    elements               =(("O","N","C")*5+("H",)*10),
+    volume_per_atom        = 200,
+    min_distance           = 1.5,
+    general_positions_only = True,
+    random_u_iso           = True,
+    random_occupancy       = False)
+  f_obs = abs(x.structure_factors(d_min = 1.5, algorithm="fft").f_calc())
+  x.shake_sites_in_place(mean_distance=1)
+  k_iso = flex.double(f_obs.data().size(), 2)
+  k_aniso = flex.double(f_obs.data().size(), 3)
+  fmodel = mmtbx.f_model.manager(
+    xray_structure = x,
+    k_isotropic    = k_iso,
+    k_anisotropic  = k_aniso,
+    f_obs          = f_obs)
+  fc = abs(fmodel.f_calc()).data()
+  fm = abs(fmodel.f_model()).data()
+  fmns = abs(fmodel.f_model_no_scales()).data()
+  assert approx_equal(flex.mean(fm/fc), 6)
+  assert approx_equal(flex.mean(fmns/fc), 1)
+
+
 def run(args):
   assert len(args) == 0
+  exercise_f_model_no_scales()
+  exercise_top_largest_f_obs_f_model_differences()
   exercise_5_bulk_sol_and_scaling()
   exercise_5_bulk_sol_and_scaling_and_H()
   exercise_1()

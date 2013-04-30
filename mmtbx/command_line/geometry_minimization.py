@@ -148,7 +148,6 @@ def process_input_files(inputs, params, log):
     for file_name in restraint_files :
       if (file_name.endswith(".cif")) :
         full_path = os.path.join(params.restraints_directory, file_name)
-        print full_path
         cif_object = iotbx.cif.reader(file_path=full_path,
           strict=False).model()
         cif_objects.append((full_path, cif_object))
@@ -282,26 +281,6 @@ class run(object):
     self.grm = get_geometry_restraints_manager(
       processed_pdb_file = self.processed_pdb_file,
       xray_structure = self.xray_structure)
-    # correct hydrogens
-    if self.params.pdb_interpretation.correct_hydrogens:
-      import time
-      from mmtbx.monomer_library.pdb_interpretation import \
-        correct_hydrogen_geometries
-      t0=time.time()
-      print "\n  Correcting hydrogen positions\n"
-      bad_hydrogen_count, corrected_hydrogen_count = \
-          correct_hydrogen_geometries(
-            self.pdb_hierarchy,
-            xray_structure=self.xray_structure,
-            restraints_manager=self.grm,
-            verbose=True,
-            )
-      if len(corrected_hydrogen_count):
-        print >> log, "\n  Number of hydrogens corrected : %d" % len(corrected_hydrogen_count)
-      if bad_hydrogen_count:
-        print >> log, "  Number of uncorrected         : %d" % (
-          bad_hydrogen_count-len(corrected_hydrogen_count))
-      print >> log, "  Time to correct hydrogens : %0.2fs" % (time.time()-t0)
     # CDL
     if self.params.pdb_interpretation.cdl:
       from mmtbx.conformation_dependent_library import setup_restraints
@@ -314,8 +293,7 @@ class run(object):
         self.grm,
         current_geometry=self.xray_structure,
         cdl_proxies=cdl_proxies,
-        verbose=False,
-        )
+        verbose=False)
       cdl_time = time.time()-t0
       print >> log, "\n  Time to apply CDL : %0.2fs" % (time.time()-t0)
 

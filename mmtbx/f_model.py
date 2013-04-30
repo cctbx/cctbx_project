@@ -614,6 +614,34 @@ class manager(manager_mixin):
     else: result = self._wilson_b
     return result
 
+  def top_largest_f_obs_f_model_differences(self, threshold_percent,
+        n_slots=10000):
+    # XXX make a method of scitbx
+    def build_histogram(data, n_slots, threshold):
+      hm = flex.histogram(data = data, n_slots = n_slots)
+      lc_1 = hm.data_min()
+      size = data.size()
+      values = flex.double()
+      counts = flex.double()
+      s_1 = enumerate(hm.slots())
+      for (i_1,n_1) in s_1:
+        hc_1 = hm.data_min() + hm.slot_width() * (i_1+1)
+        count = n_1*100./size
+        values.append((lc_1+hc_1)/2)
+        counts.append(count)
+        lc_1 = hc_1
+      new_counts = flex.double()
+      for i, c in enumerate(counts):
+        new_counts.append(flex.sum(counts[i:]))
+      result = None
+      for v, c in zip(values, new_counts):
+        if(c<threshold and result is None): result = v
+      return result
+    d = flex.abs(flex.abs(self.f_obs().data()) -
+      flex.abs(self.f_model_scaled_with_k1().data()))
+    r = build_histogram(data=d, n_slots=n_slots, threshold=threshold_percent)
+    return r, d
+
   def deep_copy(self):
     return self.select()
 
@@ -1486,6 +1514,15 @@ class manager(manager_mixin):
 
   def f_model(self):
     return self.arrays.f_model
+
+  def f_model_no_scales(self):
+    # or better name: f_calc + f_bulk
+    f_masks = self.f_masks()
+    k_masks = self.k_masks()
+    assert len(f_masks)==1
+    assert len(k_masks)==1
+    d = self.f_calc().data() + f_masks[0].data()*k_masks[0]
+    return f_masks[0].customized_copy(data = d)
 
   def f_model_work(self):
     return self.arrays.f_model_work

@@ -35,7 +35,7 @@ def evaluate(pdb_file,
   assert evaluated >= 0
 
 def exercise_1 (args) :
-  pdb_file, kick = args
+  pdb_file, dummy = args
   rcs = []
   pdb = libtbx.env.find_in_repositories(
         relative_path="phenix_regression/pdb/"+pdb_file, test=os.path.isfile)
@@ -45,8 +45,6 @@ def exercise_1 (args) :
   print pdb,hkl
   base = os.path.basename(os.path.splitext(pdb_file)[0])
   suffix = "_wat_pik_no_h"
-  if (kick) :
-    suffix += "_kick"
   new_pdb = base + suffix + ".pdb"
   if(pdb_file == "lysozyme_nohoh.pdb"):
     rcs.append(easy_run.call("phenix.pdbtools %s output.file_name=%s"%(
@@ -60,26 +58,17 @@ def exercise_1 (args) :
   opt2= "main.number_of_macro_cycles=3 main.ordered_solvent=True "
   opt3 = "--overwrite target_weights.wxc_scale=3.0 target_weights.wxu_scale=3.0 target_weights.shake_sites=false "
   opt4 = " ordered_solvent.mode=every_macro_cycle main.nqh_flips=False optimize_mask=False"
-  if (not kick) :
-    cmd = " ".join(["phenix.refine", new_pdb, hkl, opt1, opt2, opt3, opt4,
-      "> /dev/null"])
-    print cmd
-    print
-    sys.stdout.flush()
-    rcs.append(easy_run.call(cmd))
-    evaluate(pdb_file = output_file_prefix+"_001.pdb",
-             rw_tol   = 0.0155,
-             rf_tol   = 0.0155,
-             n_water  = 186,
-             n_water_tol = 0)
-  else :
-    opt5 = "ordered_solvent.use_kick_maps=True output.serial=2"
-    cmd = " ".join(["phenix.refine", new_pdb, hkl, opt1, opt2, opt3, opt4, opt5,
-      "> /dev/null"])
-    print cmd
-    print
-    rcs.append(easy_run.call(cmd))
-    rcs.append(easy_run.call("rm -rf %s"%new_pdb))
+  cmd = " ".join(["phenix.refine", new_pdb, hkl, opt1, opt2, opt3, opt4,
+    "> /dev/null"])
+  print cmd
+  print
+  sys.stdout.flush()
+  rcs.append(easy_run.call(cmd))
+  evaluate(pdb_file = output_file_prefix+"_001.pdb",
+           rw_tol   = 0.0155,
+           rf_tol   = 0.0155,
+           n_water  = 186,
+           n_water_tol = 0)
   return (rcs == [ 0 for x in range(len(rcs)) ])
 
 def run(args=()):
