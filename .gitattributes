@@ -1058,6 +1058,7 @@ iotbx/detectors/hamamatsu.py -text
 iotbx/detectors/image_divider.cpp -text
 iotbx/detectors/image_divider.h -text
 iotbx/detectors/image_from_http_request.py -text
+iotbx/detectors/noir.py -text
 iotbx/detectors/pilatus_minicbf.py -text
 iotbx/detectors/pilatus_slice.py -text
 iotbx/detectors/scanbox.h -text
