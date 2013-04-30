@@ -63,11 +63,8 @@ def mon_lib_query(residue, mon_lib_srv):
 
 def eval_residue_completeness (residue, mon_lib_srv, ignore_hydrogens=True) :
   atom_list = []
-  ca_xyz = []
   for atom in residue.atoms():
     atom_list.append(atom.name.strip().upper())
-    if atom.name == " CA ":
-      ca_xyz = atom.xyz
   mlq = mon_lib_query(residue.resname.strip().upper(), mon_lib_srv)
   reference_list = []
   if(not ignore_hydrogens):
@@ -109,6 +106,10 @@ def eval_sidechain_completeness(pdb_hierarchy,
           else:
             key = "%2s%5s%1s%3s" % (chain.id, residue_group.resid(),
               conformer.altloc, residue.resname)
+          ca_xyz = []
+          for atom in residue.atoms():
+            if atom.name == " CA ":
+              ca_xyz = atom.xyz
           missing = eval_residue_completeness(
             residue=residue,
             mon_lib_srv=mon_lib_srv)
