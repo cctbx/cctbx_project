@@ -40,7 +40,30 @@ class FormatTIFFRayonixESRF(FormatTIFFRayonix):
         if serial_number > 0:
             return False
 
-        return True
+        #return True
+        # NKS This simply cannot be the only criterion used to identify ESRF images
+        #  since some APS beamlines also pass this test.  If worried about beam
+        #  center in mm, must test explicitly for this.  Rely on a heuristic rule:
+        #  beam center must be in the general neighborhood of the middle of the
+        #  detector in pixels, otherwise it's in mm.
+        import struct
+        from scitbx.matrix import col
+        from dxtbx.format.FormatTIFFHelpers import LITTLE_ENDIAN, BIG_ENDIAN
+        format = {LITTLE_ENDIAN:'<', BIG_ENDIAN:'>'}[order]
+        offset = 1024
+
+        detector_size_pixels = col(struct.unpack(format+'ii',bytes[offset+80:offset+88]))
+        detector_center_px   = 0.5 * detector_size_pixels
+
+        detector_pixel_sz_mm =  1.E-6 * col( # convert from nano to milli
+                                    struct.unpack(format+'ii',bytes[offset+772:offset+780]))
+
+        header_beam_center = 0.001 * col( # Rayonix says this should be pixels
+                                    struct.unpack(format+'ii',bytes[offset+644:offset+652]))
+
+        disagreement = header_beam_center[0]/detector_center_px[0]
+        return disagreement < 0.5  # if header was in mm, disagreement should be
+                                   # approximately the pixel size in mm
 
     def __init__(self, image_file):
         '''Initialise the image structure from the given file, including a
