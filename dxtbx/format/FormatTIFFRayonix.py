@@ -104,16 +104,14 @@ class FormatTIFFRayonix(FormatTIFF):
         return self._goniometer_factory.single_axis()
 
     def _detector(self):
-        '''Return a model for a simple detector, which at the moment insists
+        '''Return a model for a simple detector, which at the moment [NKS does not] insist
         that the offsets and rotations are all 0.0.'''
 
         starts, ends, offset, width = self._get_rayonix_scan_angles()
         rotations = self._get_rayonix_detector_rotations()
 
-        # assert that two-theta offset is 0.0
-
-        assert(starts[0] == 0.0)
-        assert(ends[0] == 0.0)
+        # NKS removed the assertion that two-theta offset is 0.0; support the general case
+        assert(starts[0] == ends[0])
 
         # assert that the rotations are all 0.0
 
