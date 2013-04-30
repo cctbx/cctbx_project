@@ -427,6 +427,7 @@ dxtbx/image_set.py -text
 dxtbx/image_set_factory.py -text
 dxtbx/imageset2.py -text
 dxtbx/libtbx_config -text
+dxtbx/license.txt -text
 dxtbx/model/SConscript -text
 dxtbx/model/__init__.py -text
 dxtbx/model/beam.h -text
