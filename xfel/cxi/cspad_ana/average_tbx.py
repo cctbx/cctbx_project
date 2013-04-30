@@ -20,6 +20,7 @@ class average_mixin(common_mode.common_mode_correction):
   sumsq_img = None
   max_img = None
   sum_distance = None
+  sum_time = None
   sum_wavelength = None
 
   def __init__(self,
@@ -98,14 +99,19 @@ class average_mixin(common_mode.common_mode_correction):
 
     # Initialise all totals to zero.  self._tot_peers is a bit field
     # where a bit is set if the partial sum from the corresponding
-    # worker process is pending.  XXX Hardcoding the detector size is
-    # not nice.
+    # worker process is pending.  self._time_base and self._tot_time
+    # are two-long arrays of seconds and milliseconds, where the first
+    # array gives the base time, and the second array gives the total
+    # time with respect to the base time.  XXX Hardcoding the detector
+    # size is not nice.
     self._tot_lock = multiprocessing.Lock()
 
+    self._time_base = multiprocessing.Array('L', 2, lock=False)
     self._tot_distance = multiprocessing.Value('d', 0, lock=False)
     self._tot_nfail = multiprocessing.Value('L', 0, lock=False)
     self._tot_nmemb = multiprocessing.Value('L', 0, lock=False)
     self._tot_peers = multiprocessing.Value('L', 0, lock=False)
+    self._tot_time = multiprocessing.Array('l', 2, lock=False)
     self._tot_wavelength = multiprocessing.Value('d', 0, lock=False)
 
     device = cspad_tbx.address_split(address)[2]
@@ -129,6 +135,27 @@ class average_mixin(common_mode.common_mode_correction):
       self._tot_max = multiprocessing.Array('d', 1024 * 1024, lock=False)
     else:
       raise RuntimeError("Unsupported device %s" % address)
+
+
+  def beginjob(self, evt, env):
+    """The beginjob() function does one-time initialisation from
+    event- or environment data.  It is called at an XTC configure
+    transition.
+
+    @param evt Event data object, a configure object
+    @param env Environment object
+    """
+
+    super(average_mixin, self).beginjob(evt, env)
+
+    # Record the base time only once.  Assuming an average run length
+    # of ten minutes, five minutes past the start of a run is a good
+    # base time.
+    self._tot_lock.acquire()
+    if self._time_base[0] == 0 and self._time_base[1] == 0:
+      self._time_base[0] = cspad_tbx.evt_time(evt)[0] + 5 * 60
+      self._time_base[1] = 500
+    self._tot_lock.release()
 
 
   def event(self, evt, env):
@@ -228,7 +255,7 @@ class average_mixin(common_mode.common_mode_correction):
       d = cspad_tbx.dpack(
         address=self.address,
         data=flexdata,
-        timestamp=cspad_tbx.evt_timestamp(evt)
+        timestamp=cspad_tbx.evt_timestamp(cspad_tbx.evt_time(evt))
       )
       G = open(os.path.join(".",self.pickle_dirname)+"/"+self.pickle_basename,
                "ab")
@@ -241,6 +268,7 @@ class average_mixin(common_mode.common_mode_correction):
     if self.background_path is not None:
       self.cspad_img -= self.background_img
 
+    t = cspad_tbx.evt_time(evt)
     if (self.nmemb == 0):
       # If this is a worker process, set its corresponding bit in the
       # bit field since it will contribute a partial sum.
@@ -254,6 +282,9 @@ class average_mixin(common_mode.common_mode_correction):
         self.max_img = self.cspad_img.deep_copy()
       self.sumsq_img = flex.pow2(self.cspad_img)
       self.sum_wavelength = self.wavelength
+      self.sum_time = (t[0] - self._time_base[0],
+                       t[1] - self._time_base[1])
+
     else:
       self.sum_distance += distance
       self.sum_img += self.cspad_img
@@ -262,6 +293,9 @@ class average_mixin(common_mode.common_mode_correction):
         self.max_img.as_1d().set_selected(s.as_1d(), self.cspad_img.as_1d().select(s.as_1d()))
       self.sumsq_img += flex.pow2(self.cspad_img)
       self.sum_wavelength += self.wavelength
+      self.sum_time = (self.sum_time[0] + (t[0] - self._time_base[0]),
+                       self.sum_time[1] + (t[1] - self._time_base[1]))
+
     self.nmemb += 1
 
     if 0:
@@ -286,6 +320,8 @@ class average_mixin(common_mode.common_mode_correction):
       self._tot_distance.value += self.sum_distance
       self._tot_nfail.value += self.nfail
       self._tot_nmemb.value += self.nmemb
+      self._tot_time[0] += self.sum_time[0]
+      self._tot_time[1] += self.sum_time[1]
       self._tot_wavelength.value += self.sum_wavelength
 
       # XXX @rwgk: is this really the way to do it?  Need something
@@ -307,6 +343,7 @@ class average_mixin(common_mode.common_mode_correction):
     # "private".
     self.avg_distance = 0
     self.avg_img = flex.double(self._tot_sum)
+    self.avg_time = (0, 0)
     self.avg_wavelength = 0
     self.nfail = 0
     self.nmemb = 0
@@ -328,6 +365,9 @@ class average_mixin(common_mode.common_mode_correction):
         self.stddev_img = flex.double(self._tot_ssq) \
             - flex.double(self._tot_sum) * self.avg_img
         self.avg_distance = self._tot_distance.value / self.nmemb
+        self.avg_time = (
+          self._time_base[0] + int(round(self._tot_time[0] / self.nmemb)),
+          self._time_base[1] + int(round(self._tot_time[1] / self.nmemb)))
         self.avg_wavelength = self._tot_wavelength.value / self.nmemb
         if self.do_max_image:
           self.max_img = flex.double(self._tot_max)

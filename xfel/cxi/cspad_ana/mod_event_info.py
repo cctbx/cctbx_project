@@ -94,8 +94,8 @@ class mod_event_info(object):
     self.sifoil = sifoil
     if self.verbose: self.logger.info("Si-foil thickness: %i" %sifoil)
 
-    self.timestamp = cspad_tbx.evt_timestamp(evt) # human readable format
     self.evt_time = cspad_tbx.evt_time(evt) # tuple of seconds, milliseconds
+    self.timestamp = cspad_tbx.evt_timestamp(self.evt_time) # human readable format
     if (self.timestamp is None):
       self.nfail += 1
       self.logger.warning("event(): no timestamp, shot skipped")
