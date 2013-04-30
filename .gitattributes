@@ -423,9 +423,7 @@ dxtbx/format/__init__.py -text
 dxtbx/format/doc/adding_new_formats.txt -text
 dxtbx/format/tests/TestFormat.py -text
 dxtbx/format/tests/TestRegistry.py -text
-dxtbx/image_set.py -text
-dxtbx/image_set_factory.py -text
-dxtbx/imageset2.py -text
+dxtbx/imageset.py -text
 dxtbx/libtbx_config -text
 dxtbx/license.txt -text
 dxtbx/model/SConscript -text
@@ -457,7 +455,6 @@ dxtbx/model/scan.py -text
 dxtbx/model/scan_helpers.h -text
 dxtbx/model/scan_helpers.py -text
 dxtbx/readme.txt -text
-dxtbx/sweep.py -text
 dxtbx/sweep_filenames.py -text
 dxtbx/tests/__init__.py -text
 dxtbx/tests/example-xparm.xds -text
@@ -487,15 +484,13 @@ dxtbx/tests/model/tst_pickle.py -text
 dxtbx/tests/model/tst_ray_intersection.py -text
 dxtbx/tests/model/tst_scan_data.py -text
 dxtbx/tests/model/tst_scan_helpers.py -text
-dxtbx/tests/model/tst_sweep.py -text
 dxtbx/tests/omega_scan.cbf -text svneol=unset#unset
 dxtbx/tests/phi_scan_001.cbf -text svneol=unset#unset
 dxtbx/tests/test_beam.py -text
 dxtbx/tests/test_detector.py -text
 dxtbx/tests/test_goniometer.py -text
 dxtbx/tests/test_scan.py -text
-dxtbx/tests/tst_image_set.py -text
-dxtbx/tests/tst_imageset2.py -text
+dxtbx/tests/tst_imageset.py -text
 dxtbx/tst_dxtbx.py -text
 fable/SConscript -text
 fable/__init__.py svneol=native#text/x-python
