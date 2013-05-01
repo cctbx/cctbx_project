@@ -246,7 +246,10 @@ def refit_residues (
           mon_lib_srv=mon_lib_srv,
           rotamer_manager=rotamer_manager,
           geometry_restraints_manager=grm,
-          real_space_gradients_delta=fmodel.f_obs().d_min()*0.25)
+          real_space_gradients_delta=fmodel.f_obs().d_min()*0.25,
+          rms_bonds_limit=0.01,
+          rms_angles_limit=1.0,
+          backbone_sample_angle=20)
         two_fofc_mean_end = get_two_fofc_mean(residue)
         sites_end = atoms.extract_xyz()
         flag = ""

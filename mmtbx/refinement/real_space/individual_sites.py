@@ -197,7 +197,9 @@ class box_refinement_manager(object):
              optimize_weight = True,
              start_trial_weight_value = 50,
              selection_buffer_radius=5,
-             box_cushion=2):
+             box_cushion=2,
+             rms_bonds_limit = 0.03,
+             rms_angles_limit = 3.0):
     sites_cart_moving = self.sites_cart
     selection_within = self.xray_structure.selection_within(
       radius    = selection_buffer_radius,
@@ -229,7 +231,9 @@ class box_refinement_manager(object):
       refiner                  = rsr_simple_refiner,
       xray_structure           = box.xray_structure_box,
       optimize_weight          = optimize_weight,
-      start_trial_weight_value = start_trial_weight_value)
+      start_trial_weight_value = start_trial_weight_value,
+      rms_bonds_limit = rms_bonds_limit,
+      rms_angles_limit = rms_angles_limit)
     sites_cart_box_refined = real_space_result.sites_cart_result
     sites_cart_box_refined_shifted_back = \
       sites_cart_box_refined + box.shift_to_map_boxed_sites_back
