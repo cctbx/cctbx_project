@@ -18,7 +18,10 @@ class run(object):
                rotamer_manager,
                geometry_restraints_manager,
                real_space_gradients_delta,
-               selection_radius = 5):
+               selection_radius = 5,
+               rms_bonds_limit = 0.03, # XXX probably needs to be much lower
+               rms_angles_limit = 3.0, # XXX
+               backbone_sample_angle=None):
     adopt_init_args(self, locals())
     self.backbone_atom_names = ["N", "CA", "O", "CB", "C"]
     self.residue_iselection = self.residue.atoms().extract_i_seq()
@@ -98,12 +101,18 @@ class run(object):
     scorer.reset_with(
       sites_cart = residue_sites_cart,
       selection  = cl.selection)
+    angle_start = 0
+    angle_end = 360
+    if (self.backbone_sample_angle is not None) :
+      assert (self.backbone_sample_angle > 0)
+      angle_start = - self.backbone_sample_angle
+      angle_end = self.backbone_sample_angle
     mmtbx.refinement.real_space.torsion_search(
       clusters   = [cl],
       sites_cart = residue_sites_cart,
       scorer     = scorer,
-      start      = 0,
-      stop       = 360,
+      start      = angle_start,
+      stop       = angle_end,
       step       = 1)
     self.residue.atoms().set_xyz(new_xyz=scorer.sites_cart)
     selection = self.residue.atoms().extract_i_seq()
@@ -124,7 +133,9 @@ class run(object):
       optimize_weight          = optimize_weight,
       start_trial_weight_value = start_trial_weight_value,
       selection_buffer_radius  = self.selection_radius,
-      box_cushion              = 2)
+      box_cushion              = 2,
+      rms_bonds_limit          = self.rms_bonds_limit,
+      rms_angles_limit         = self.rms_angles_limit)
     self.xray_structure = brm.xray_structure
     self.residue.atoms().set_xyz(brm.sites_cart.select(self.residue_iselection))
 
