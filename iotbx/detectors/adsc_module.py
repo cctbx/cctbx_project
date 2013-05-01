@@ -4,13 +4,6 @@ from iotbx.detectors.adsc import ADSCImage
 from scitbx.array_family import flex
 from iotbx.detectors import image_divider
 
-def vendor_specific_null_value(object):
-    if object.vendortype.lower().find("pilatus")>=0:
-      nullvalue = -1
-    else:
-      nullvalue = 0
-    return nullvalue
-
 def ADSC_module_from_file_url(url):
   #backward compatibility with Python 2.5
   try: from urlparse import parse_qs
@@ -81,7 +74,7 @@ class ADSCModule(ADSCImage):
     #beam_center_convention = beam_center_convention_from_image_object(object)
     print "CC",beam_center_convention
     assert self.object.beam_center_reference_frame == "instrument"
-    nullvalue = vendor_specific_null_value(self.object)
+    nullvalue = self.object.vendor_specific_null_value
     ID = image_divider(data = self.object.linearintdata, nullvalue=nullvalue)
     from iotbx.detectors.beam_center_convention import convert_beam_instrument_to_module
     self.parameters['BEAM_CENTER_X'],self.parameters['BEAM_CENTER_Y'] = convert_beam_instrument_to_module(
@@ -104,7 +97,7 @@ class ADSCModule(ADSCImage):
 
   def slice_callback_with_object_data(self):
     self.object.read()
-    nullvalue = vendor_specific_null_value(self.object)
+    nullvalue = self.object.vendor_specific_null_value
     ID = image_divider(data = self.object.linearintdata, nullvalue=nullvalue)
     assert 0 <= self.moduleindex < ID.module_count()
     new_data_array = ID.tile_data(self.moduleindex)

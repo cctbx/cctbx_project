@@ -13,6 +13,7 @@ class DetectorImageBase(object):
     self.vendortype = "baseclass"
     self.beam_center_reference_frame = "instrument"#cf beam_center_convention.py
     self.beam_center_convention = None
+    self.vendor_specific_null_value = 0
 
   def copy_common_attributes_from_parent_instance(self, parentobject):
     self.filename = copy.copy(parentobject.filename)
@@ -306,6 +307,7 @@ class tile_manager_base(object):
 
   def __init__(self, working_params, beam=None, size1=None, size2=None,
                reference_image=None):
+
     self.working_params = working_params
     self.beam = beam # direct beam position supplied as slow,fast pixels
     self.size1 = size1
@@ -359,12 +361,10 @@ class tile_manager_base(object):
 
     IT = flex.int()
     from iotbx.detectors import image_divider
-    # XXX TODO: replace this with DetectorImageBase.vendor_specific_null_value
-    from iotbx.detectors.adsc_module import vendor_specific_null_value
     if self.reference_image.linearintdata is None:
       self.reference_image.readHeader()
       self.reference_image.read()
-    null_value = vendor_specific_null_value(self.reference_image)
+    null_value = self.reference_image.vendor_specific_null_value
     divider = image_divider(
       self.reference_image.linearintdata,
       null_value
