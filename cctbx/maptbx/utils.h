@@ -4,6 +4,8 @@
 #include <cstddef>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/accessors/flex_grid.h>
+#include <cctbx/uctbx.h>
+
 
 namespace cctbx { namespace maptbx {
 
@@ -82,6 +84,32 @@ namespace cctbx { namespace maptbx {
     }
     return ih;
   }
+
+template <typename DataType>
+void hoppe_gassman_modification2(af::ref<DataType, af::c_grid<3> > map_data,
+       DataType mean_scale, int n_iterations)
+/* A modified version of rho->3*rho^2-2*rho^3 modification.
+   Acta Cryst. (1968). B24, 97-107
+   Acta Cryst. (1975). A31, 388-389
+   Acta Cryst. (1979). B35, 1776-1785
+*/
+{
+  int nx = map_data.accessor()[0];
+  int ny = map_data.accessor()[1];
+  int nz = map_data.accessor()[2];
+  for(int iter = 0; iter < n_iterations; iter++) {
+    for(int i = 0; i < nx; i++) {
+      for(int j = 0; j < ny; j++) {
+        for(int k = 0; k < nz; k++) {
+           DataType rho = map_data(i,j,k);
+           if(rho<0) map_data(i,j,k) = 0;
+           if(rho >=0 && rho<=1) {
+             DataType rho_sq = rho*rho;
+             map_data(i,j,k) = 3*rho_sq - 2*rho*rho_sq;
+    }}}}
+  }
+}
+
 
 template <typename DataType>
 void hoppe_gassman_modification(af::ref<DataType, af::c_grid<3> > map_data,
@@ -184,6 +212,24 @@ void convert_to_non_negative(
       for(int k = 0; k < nz; k++) {
          double rho = map_data(i,j,k);
          if(rho<0) map_data(i,j,k) = substitute_value;
+  }}}
+}
+
+template <typename DataType>
+void reset(
+       af::ref<DataType, af::c_grid<3> > map_data,
+       DataType substitute_value,
+       DataType less_than_threshold)
+{
+  int nx = map_data.accessor()[0];
+  int ny = map_data.accessor()[1];
+  int nz = map_data.accessor()[2];
+  double rho_max = af::max(map_data);
+  for(int i = 0; i < nx; i++) {
+    for(int j = 0; j < ny; j++) {
+      for(int k = 0; k < nz; k++) {
+         double rho = map_data(i,j,k);
+         if(rho<less_than_threshold) map_data(i,j,k) = substitute_value;
   }}}
 }
 
