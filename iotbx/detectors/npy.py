@@ -83,6 +83,22 @@ class NpyImage(DetectorImageBase):
 
       if (self.parameters['ACTIVE_AREAS'] is not None):
         horizons_phil.distl.detector_tiling = self.parameters['ACTIVE_AREAS']
+    elif version_control is None:
+      #approrpiate for detectors other than the CS-PAD diffraction detectors
+      self.parameters['ACTIVE_AREAS']         = cspad_data.get('ACTIVE_AREAS', None)
+      self.parameters['BEAM_CENTER_X']        = cspad_data.get('BEAM_CENTER_X',None)
+      self.parameters['BEAM_CENTER_Y']        = cspad_data.get('BEAM_CENTER_Y',None)
+      self.parameters['CCD_IMAGE_SATURATION'] = cspad_data['CCD_IMAGE_SATURATION']
+      self.parameters['DISTANCE']             = cspad_data.get('DISTANCE',None)
+      self.parameters['PIXEL_SIZE']           = cspad_data['PIXEL_SIZE']
+      self.parameters['SATURATED_VALUE']      = cspad_data['SATURATED_VALUE']
+      self.parameters['SIZE1']                = cspad_data['SIZE1']
+      self.parameters['SIZE2']                = cspad_data['SIZE2']
+      self.parameters['WAVELENGTH']           = cspad_data['WAVELENGTH']
+      import math
+      if  ( math.isnan(self.parameters["DISTANCE"]) ):
+         self.parameters["DISTANCE"]=0.0
+      self.bin_safe_set_data(cspad_data['DATA'])
 
     if version_control in ["CXI 4.1","CXI 5.1","CXI 6.1","CXI 7.1","CXI 7.d"]:
       if horizons_phil.distl.tile_translations==None and \
