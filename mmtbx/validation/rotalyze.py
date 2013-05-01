@@ -39,6 +39,8 @@ def get_master_phil():
 }
 """)
 
+header = """residue:occupancy:score%:chi1:chi2:chi3:chi4:rotamer"""
+
 class rotalyze(object):
 
   #{{{ flag routines

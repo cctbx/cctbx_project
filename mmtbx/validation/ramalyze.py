@@ -117,6 +117,8 @@ def get_master_phil():
 }
 """)
 
+header = """residue:score%:phi:psi:evaluation:type"""
+
 class ramalyze(object):
 
   #{{{ flag routines
