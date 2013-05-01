@@ -18,7 +18,7 @@ class NoirImage(ADSCImage):
       parsed.remove('')
     return [typefunc(I) for I in parsed]
 
-  def readHeader(self,maxlength=6144): 
+  def readHeader(self,maxlength=6144):
     if not self.parameters:
       rawdata = open(self.filename,"rb").read(maxlength)
       headeropen = rawdata.index("{")

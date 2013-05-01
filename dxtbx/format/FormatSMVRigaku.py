@@ -35,7 +35,7 @@ class FormatSMVRigaku(FormatSMV):
         detector_prefixes = header['DETECTOR_NAMES'].split()
         try:
             detector_number = int(header['DETECTOR_NUMBER'].strip())
-        except: #intentional
+        except (KeyError,AttributeError,ValueError),e:
             return False
 
         if detector_number != len(detector_prefixes):
