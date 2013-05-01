@@ -22,6 +22,14 @@ def exercise () :
   assert approx_equal(summary.clashscore, 2.71, eps=0.0001)
   ss = easy_pickle.dumps(summary)
   sss = easy_pickle.loads(ss)
+  out_1 = StringIO()
+  out_2 = StringIO()
+  summary.show(out=out_1)
+  sss.show(out=out_2)
+  assert out_1.getvalue() == out_2.getvalue()
+  out3 = StringIO()
+  summary = validation_summary.run(args=[regression_pdb, "--verbose"],
+    out=out3)
   pdb_in = file_reader.any_file(regression_pdb)
   hierarchy = pdb_in.file_object.construct_hierarchy()
   new_hierarchy = iotbx.pdb.hierarchy.root()
@@ -34,8 +42,6 @@ def exercise () :
   summary = validation_summary.run(args=["tst_validation_summary.pdb"],
     out=out2)
   assert (type(summary).__name__ == 'ensemble')
-  ss = easy_pickle.dumps(summary)
-  sss = easy_pickle.loads(ss)
   print "OK"
 
 if (__name__ == "__main__") :
