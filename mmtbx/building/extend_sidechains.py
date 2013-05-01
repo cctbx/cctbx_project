@@ -187,6 +187,8 @@ def refit_residues (
     anneal=False,
     verbose=True,
     out=sys.stdout) :
+  from mmtbx.command_line import real_space_refine
+  from mmtbx.refinement.real_space import fit_residue
   from mmtbx.rotamer import rotamer_eval
   import mmtbx.monomer_library.server
   from mmtbx import building
@@ -202,17 +204,22 @@ def refit_residues (
     crystal_symmetry=fmodel.f_obs().crystal_symmetry(),
     cif_objects=cif_objects,
     out=ppdb_out)
+  print >> ppdb_out, ""
+  hierarchy = processed_pdb.all_chain_proxies.pdb_hierarchy
+  xrs = processed_pdb.xray_structure()
+  grm = real_space_refine.get_geometry_restraints_manager(
+    processed_pdb_file = processed_pdb,
+    xray_structure     = xrs)
   target_map = fmodel.map_coefficients(
     map_type="2mFo-DFc",
     exclude_free_r_reflections=True).fft_map(
       resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
-  hierarchy = processed_pdb.all_chain_proxies.pdb_hierarchy
-  xrs = processed_pdb.xray_structure()
   unit_cell = xrs.unit_cell()
   for chain in hierarchy.only_model().chains() :
     if (not chain.is_protein()) : continue
     residue_groups = chain.residue_groups()
     for i_rg, residue_group in enumerate(residue_groups) :
+      prev_res = next_res = None
       atom_groups = residue_group.atom_groups()
       if (len(atom_groups) > 1) : continue
       residue = atom_groups[0]
@@ -220,44 +227,38 @@ def refit_residues (
       segids = atoms.extract_segid()
       if (segids.all_eq("XXXX")) :
         sites_start = atoms.extract_xyz()
-        iselection = atoms.extract_i_seq()
-        assert (not iselection.all_eq(0))
-        selection = flex.bool(xrs.scatterers().size(), False)
-        selection.set_selected(iselection, True)
-        # FIXME this doesn't really do what I want, unfortunately
-        box = building.box_build_refine_base(
-          pdb_hierarchy=hierarchy,
-          xray_structure=xrs,
-          processed_pdb_file=processed_pdb,
+        def get_two_fofc_mean (residue) :
+          sum = 0
+          n_atoms = 0
+          for atom in residue.atoms() :
+            if (not atom.element.strip() in ["H","D"]) :
+              site_frac = unit_cell.fractionalize(site_cart=atom.xyz)
+              sum += target_map.eight_point_interpolation(site_frac)
+              n_atoms += 1
+          assert (n_atoms > 0)
+          return sum / n_atoms
+        sites_start = atoms.extract_xyz().deep_copy()
+        two_fofc_mean_start = get_two_fofc_mean(residue)
+        refit = fit_residue.run(
           target_map=target_map,
-          selection=selection,
-          d_min=fmodel.f_obs().d_min(),
-          out=null_out())
-        cc_start = box.cc_model_map()
-        if (use_rotamers) :
-          box.fit_residue_in_box(
-            mon_lib_srv=mon_lib_srv,
-            rotamer_manager=rotamer_manager)
-        else :
-          box.real_space_refine()
-        if (anneal) :
-          box.anneal()
-          box.real_space_refine()
-        cc_end = box.cc_model_map()
+          residue=residue,
+          xray_structure=xrs,
+          mon_lib_srv=mon_lib_srv,
+          rotamer_manager=rotamer_manager,
+          geometry_restraints_manager=grm,
+          real_space_gradients_delta=fmodel.f_obs().d_min()*0.25)
+        two_fofc_mean_end = get_two_fofc_mean(residue)
+        sites_end = atoms.extract_xyz()
         flag = ""
-        sites_backup = xrs.sites_cart().deep_copy()
-        sites_cart = box.update_original_coordinates()
-        hierarchy.atoms().set_xyz(sites_cart)
-        sites_end = residue.atoms().extract_xyz()
-        if (cc_end > cc_start) :
+        if (two_fofc_mean_end > two_fofc_mean_start) :
           flag = " <-- keep"
-          xrs.set_sites_cart(sites_cart)
+          xrs = refit.xray_structure
         else :
-          hierarchy.atoms().set_xyz(sites_backup)
+          atoms.set_xyz(sites_start)
         print >> out, \
-          "    residue '%s' : rmsd=%5.3f cc_start=%5.3f cc_end=%5.3f%s" % \
-          (residue.id_str(), sites_end.rms_difference(sites_start), cc_start,
-           cc_end, flag)
+          "    residue '%s' : rmsd=%5.3f 2fofc_start=%5.3f 2fofc_end=%5.3f%s" \
+          % (residue.id_str(), sites_end.rms_difference(sites_start),
+            two_fofc_mean_start, two_fofc_mean_end, flag)
   return hierarchy, xrs
 
 class prefilter (object) :
