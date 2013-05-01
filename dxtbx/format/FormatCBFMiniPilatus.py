@@ -36,6 +36,9 @@ class FormatCBFMiniPilatus(FormatCBFMini):
             if '_array_data.header_convention' in record and \
                    '?' in record:
                 return True
+            if '# Detector' in record and \
+                   'PILATUS' in record:  #CBFlib v0.8.0 allowed
+                return True
 
         return False
 
@@ -62,7 +65,9 @@ class FormatCBFMiniPilatus(FormatCBFMini):
         there are limited options for this.'''
 
         if 'Phi' in self._cif_header_dictionary:
-            assert(float(self._cif_header_dictionary['Phi'].split()[0]) == 0.0)
+            phi_value = float(self._cif_header_dictionary['Phi'].split()[0])
+            # NKS remove assertion that phi == 0 so those data can be processed
+            # assert( phi_value == 0.0)
 
         return self._goniometer_factory.single_axis()
 
