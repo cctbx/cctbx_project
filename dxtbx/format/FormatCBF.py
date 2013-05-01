@@ -68,3 +68,9 @@ class FormatCBF(Format):
                 break
 
         return
+if __name__ == '__main__':
+
+    import sys
+
+    for arg in sys.argv[1:]:
+        print FormatCBF.understand(arg)

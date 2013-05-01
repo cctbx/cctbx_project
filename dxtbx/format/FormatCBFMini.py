@@ -37,6 +37,9 @@ class FormatCBFMini(FormatCBF):
             if '_array_data.header_convention' in record and \
                    '?' in record:
                 return True
+            if '# Detector' in record and \
+                   'PILATUS' in record:  #CBFlib v0.8.0 allowed
+                return True
 
         return False
 
@@ -78,3 +81,9 @@ class FormatCBFMini(FormatCBF):
             self._cif_header_dictionary[token.strip()] = value.strip()
 
         return
+if __name__ == '__main__':
+
+    import sys
+
+    for arg in sys.argv[1:]:
+        print FormatCBFMini.understand(arg)
