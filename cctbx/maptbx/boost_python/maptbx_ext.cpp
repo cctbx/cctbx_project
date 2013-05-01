@@ -226,6 +226,15 @@ namespace {
       arg("mean_scale"),
       arg("n_iterations")));
 
+    def("hoppe_gassman_modification2",
+      (void(*)
+        (af::ref<double, af::c_grid<3> >,
+         double,
+         int)) hoppe_gassman_modification, (
+      arg("data"),
+      arg("mean_scale"),
+      arg("n_iterations")));
+
     def("sphericity",
       (af::shared<double>(*)
         (af::const_ref<double, af::c_grid<3> > const&,
@@ -254,6 +263,15 @@ namespace {
          double)) convert_to_non_negative, (
       arg("data"),
       arg("substitute_value")));
+
+    def("reset",
+      (void(*)
+        (af::ref<double, af::c_grid<3> >,
+         double,
+         double)) reset, (
+      arg("data"),
+      arg("substitute_value"),
+      arg("less_than_threshold")));
 
     def("intersection",
       (void(*)
