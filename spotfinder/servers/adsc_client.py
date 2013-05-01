@@ -58,10 +58,9 @@ def do_main(filepath, force_binning, convention, host, port):
   get_spotfinder_url(Q,host,port)
 
   from iotbx.detectors import image_divider
-  from iotbx.detectors.adsc_module import vendor_specific_null_value
   number_of_modules = image_divider(
                         Q.linearintdata,
-                        vendor_specific_null_value(Q)
+                        Q.vendor_specific_null_value
                       ).module_count()
 
   for x in xrange(number_of_modules):

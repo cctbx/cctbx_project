@@ -8,6 +8,7 @@ class PilatusImage(DetectorImageBase):
   def __init__(self,filename):
     DetectorImageBase.__init__(self,filename)
     self.vendortype = "Pilatus"
+    self.vendor_specific_null_value = -1
 
   mandatory_keys = ['PIXEL_SIZE_UNITS', 'DISTANCE', 'PHI', 'WAVELENGTH', 'SIZE1',
     'SIZE2', 'TWOTHETA', 'DISTANCE_UNITS', 'OSC_RANGE',

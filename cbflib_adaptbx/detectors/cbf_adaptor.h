@@ -44,7 +44,7 @@ class CBFAdaptor {
   std::size_t i_size1,i_size2;
   int i_rows,i_columns;
   double d_overload, d_wavelength, d_detector_distance, d_pixel_size;
-  double d_osc_start, d_osc_range;
+  double d_osc_start, d_osc_range, d_vendor_specific_null_value;
 
  public:
   cbf_handle cbf_h;
@@ -67,6 +67,16 @@ class CBFAdaptor {
   inline double overload(){ read_header();
     cbf_failnez ( cbf_get_overload(cbf_h,0,&d_overload) );
     return d_overload;}
+
+  inline double undefined_value(){ read_header();
+    const char *array_id;
+    cbf_failnez (cbf_get_array_id (cbf_h, 0, &array_id));
+    cbf_failnez (cbf_find_category(cbf_h, "array_intensities"))
+    cbf_failnez (cbf_find_column  (cbf_h, "array_id"))
+    cbf_failnez (cbf_find_row     (cbf_h, array_id))
+    cbf_failnez (cbf_find_column  (cbf_h, "undefined_value"))
+    cbf_failnez (cbf_get_doublevalue (cbf_h, &d_vendor_specific_null_value))
+    return d_vendor_specific_null_value;}
 
   inline double wavelength(){ read_header();
     cbf_failnez ( cbf_get_wavelength(cbf_h,&d_wavelength) );
