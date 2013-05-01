@@ -63,41 +63,16 @@ all_url_types = [pilatus_slice_from_file_url,pilatus_slice_from_http_url,
                  ADSC_module_from_file_url
 ]
 
-names_and_types = { "EIGER"         : EIGERImage,
-                    "ADSC"          : ADSCImage,
-                    "Saturn"        : SaturnImage,
-                    "DIP"           : DIPImage,
-                    "MAR"           : MARImage,
-                    "MARIP"         : MARIPImage,
-                    "DTREK"         : DTREKImage,
-                    "RAXIS"         : RAXISImage,
-                    "NonSquareRAXIS": NonSquareRAXISImage,
-                    "Pilatus"       : PilatusImage,
-                    "CBF"           : CBFImage,
-                    "Bruker"        : BrukerImage,
-                    "EDF"           : EDFWrapper
-                   }
-
 def ImageFactory(filename):
   from iotbx.detectors import url_support
   from libtbx.utils import Sorry
   if os.path.isfile(filename):
     if not os.access(filename, os.R_OK):
       raise Sorry("No read access to file %s" % filename)
-    for itype in all_image_types:
-      try:
-        I = itype(filename)
-        I.readHeader()
-        if itype==RAXISImage:
-          assert I.head['sizeFast']==I.head['sizeSlow']
-          assert 0.4 < I.head['wavelength'] < 10.0 #needed to disambiguate from Bruker
-        if itype==ADSCImage:
-          assert I.parameters.has_key('DETECTOR_SN')
-        if itype==BrukerImage:
-          assert I.distance > 0.0 #needed to disambiguate from RAXIS
-        return I
-      except Exception:
-        pass
+    from dxtbx.format.Registry import Registry
+    format_instance = Registry.find(filename)
+    instance = format_instance(filename)
+    return instance.detectorbase
   A = url_support.potential_url_request(filename)
   if A.is_url_request():
     for utype in all_url_types:
@@ -109,10 +84,6 @@ def ImageFactory(filename):
         pass
     raise ImageException(filename+" does not work as a functioning image URL")
   raise ImageException(filename+" not recognized as any known detector image type")
-
-def TrySingleImageType(filename,image_type):
-  I = names_and_types[ image_type ](filename)
-  return I
 
 def identify_dataset (path_name) :
   def get_file_name_components (file_name_) :
