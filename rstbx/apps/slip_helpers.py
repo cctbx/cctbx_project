@@ -119,14 +119,21 @@ class wrapper_of_use_case_bp3(object):
     self.ucbp3.set_active_areas( the_tiles )
     self.ucbp3.set_sensor_model( thickness_mm = 0.5, mu_rho = 8.36644, # CS_PAD detector at 1.3 Angstrom
       signal_penetration = phil_params.integration.signal_penetration)
-    if sub != None:
+
+    if sub != None and phil_params.integration.subpixel_joint_model.translations is not None:
+      raise Exception("Cannot use both subpixel mechanisms simultaneously")
+    elif sub != None:
+      print "Subpixel corrections: using translation-pixel mechanism"
       null_rotations_deg = flex.double(len(sub)//2)
       self.ucbp3.set_subpixel(flex.double(sub),rotations_deg=null_rotations_deg)
     elif phil_params.integration.subpixel_joint_model.translations is not None:
+      print "Subpixel corrections: using joint-refined translation + rotation"
       self.ucbp3.set_subpixel(
           resortedT, rotations_deg = flex.double(
            phil_params.integration.subpixel_joint_model.rotations)
         )
+    else:
+      print "Subpixel corrections: none used"
 
     # Reduce Miller indices to a manageable set.  NOT VALID if the crystal rotates significantly
     self.ucbp3.prescreen_indices(inputai.wavelength)
