@@ -28,10 +28,10 @@ def compare_ligands (ligand_code,
   def extract_ligand (hierarchy) :
     copies = []
     for chain in hierarchy.only_model().chains() :
-      for residue_group in chain.residue_groups() :
-        for atom_group in residue_group.atom_groups() :
-          if (atom_group.resname == ligand_code) :
-            copies.append(atom_group)
+      main_conf = chain.conformers()[0]
+      for residue in main_conf.residues() :
+        if (residue.resname == ligand_code) :
+          copies.append(residue)
     return copies
   rmsds = []
   ligands_1 = extract_ligand(hierarchy_1)
@@ -50,8 +50,9 @@ def compare_ligands (ligand_code,
       dxyz = abs(col(xyz_mean_1) - col(xyz_mean_2))
       if (dxyz < max_distance_between_centers_of_mass) :
         matching.append(ligand_2)
-    if (len(matching) == 1) :
-      ligand_2 = matching[0]
+      else :
+        print dxyz
+    for ligand_2 in matching :
       isel_1 = flex.size_t()
       isel_2 = flex.size_t()
       for i_seq, atom_1 in enumerate(ligand_1.atoms()) :
@@ -67,7 +68,7 @@ def compare_ligands (ligand_code,
       sites_1 = sites_1.select(isel_1)
       sites_2 = ligand_2.atoms().extract_xyz().select(isel_2)
       rmsd = sites_1.rms_difference(sites_2)
-      print >> out, "  '%s' matches '%s': rmsd=%.3f" % (ligand_1.id_str(),
-        ligand_2.id_str(), rmsd)
+      print >> out, "  '%s' matches '%s': atoms=%d rmsd=%.3f" % (ligand_1.id_str(),
+        ligand_2.id_str(), sites_1.size(), rmsd)
       rmsds.append(rmsd)
   return rmsds
