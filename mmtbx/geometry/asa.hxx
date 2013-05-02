@@ -1,10 +1,11 @@
+// Sphere
 template< typename Vector >
-size_t
-Sphere< Vector >::current = 0;
-
-template< typename Vector >
-Sphere< Vector >::Sphere(const vector_type& centre, const value_type& radius)
-  : primitive::Sphere< Vector >( centre, radius ), index_( current++ )
+Sphere< Vector >::Sphere(
+  const vector_type& centre,
+  const value_type& radius,
+  const size_t& index
+  )
+  : primitive::Sphere< Vector >( centre, radius ), index_( index )
 {}
 
 template< typename Vector >
@@ -37,28 +38,6 @@ Sphere< Vector >::index() const
 }
 
 template< typename Vector >
-bool
-operator ==(const Sphere< Vector >& left, const Sphere< Vector >& right)
-{
-  return left.index() == right.index();
-}
-
-template< typename Vector >
-bool
-operator !=(const Sphere< Vector >& left, const Sphere< Vector >& right)
-{
-  return left.index() != right.index();
-}
-
-template< typename Sphere >
-size_t
-hash_value(const Sphere& object)
-{
-  boost::hash< typename Sphere::index_type > hasher;
-  return hasher( object.index() );
-}
-
-template< typename Vector >
 Transform< Vector >::Transform(
   const vector_type& centre,
   const value_type& radius
@@ -66,6 +45,7 @@ Transform< Vector >::Transform(
   : centre_( centre ), radius_( radius )
 {}
 
+// Transformation
 template< typename Vector >
 Transform< Vector >::~Transform()
 {}
@@ -77,6 +57,7 @@ Transform< Vector>::operator ()(const vector_type& point) const
   return radius_ * point + centre_;
 }
 
+// Overlap and equivalence
 template< typename Object, typename Algorithm >
 OverlapEqualityFilter< Object, Algorithm >::OverlapEqualityFilter(
   const object_type& object
@@ -95,6 +76,6 @@ OverlapEqualityFilter< Object, Algorithm >::operator ()(
   )
   const
 {
-  return ( other != object_ ) && Algorithm::operator ()( object_, other );
+  return ( other.index() != object_.index() ) && Algorithm::operator ()( object_, other );
 }
 

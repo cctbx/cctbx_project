@@ -48,10 +48,10 @@ class Description(object):
 
 
   @classmethod
-  def from_parameters(cls, centre, radius, strategy):
+  def from_parameters(cls, centre, radius, index, strategy):
 
     return cls(
-      sphere = sphere( centre = centre, radius = radius ),
+      sphere = sphere( centre = centre, radius = radius, index = index ),
       strategy = strategy,
       )
 
@@ -115,7 +115,10 @@ def get_voxelizer_for(descriptions, step = 7):
   ( low_xs, low_ys, low_zs ) = zip( *lows )
   low = ( min( low_xs ), min( low_ys ), min( low_zs ) )
 
-  return indexing.voxelizer( base = low, step = ( step, step, step ) )
+  return mmtbx.geometry.shared_types.voxelizer(
+    base = low,
+    step = ( step, step, step ),
+    )
 
 
 # Visitors
@@ -361,9 +364,10 @@ def calculate(
     Description.from_parameters(
       centre = a.xyz,
       radius = radius_for[ a.determine_chemical_element_simple().strip().capitalize() ] + probe,
+      index = i,
       strategy = altloc.from_atom( entity = a ),
       )
-    for a in atoms
+    for ( i, a ) in enumerate( atoms )
     ]
 
   indexer = indexer_selector( descriptions = descriptions )
