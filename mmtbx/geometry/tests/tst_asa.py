@@ -31,8 +31,8 @@ RADII = [
   for atom in ATOMS
   ]
 SPHERES = [
-  asa.sphere( centre = atom.xyz, radius = radius + PROBE )
-  for ( atom, radius ) in zip( ATOMS, RADII )
+  asa.sphere( centre = atom.xyz, radius = radius + PROBE, index = index )
+  for ( index, ( atom, radius ) ) in enumerate( zip( ATOMS, RADII ) )
   ]
 
 from mmtbx.geometry import altloc
@@ -40,6 +40,7 @@ DESCRIPTIONS = [
   asa.Description.from_parameters(
     centre = s.centre,
     radius = s.radius,
+    index = s.index,
     strategy = altloc.from_atom( entity = atom ),
     )
     for ( s, atom ) in zip( SPHERES, ATOMS )
@@ -49,33 +50,16 @@ class TestSphere(unittest.TestCase):
 
   def test_creation(self):
 
-    s1 = asa.sphere( centre = ( 0, 0, 0 ), radius = 3 )
-    s2 = asa.sphere( centre = ( 0, 0, 0 ), radius = 3 )
+    s1 = asa.sphere( centre = ( 0, 0, 0 ), radius = 3, index = 1 )
+    s2 = asa.sphere( centre = ( 0, 0, 0 ), radius = 3, index = 2 )
 
     self.assertTrue( s1.index != s2.index )
-    self.assertTrue( s1 != s2 )
-
-    s3 = asa.sphere.copy( sample = s1 )
-    self.assertEqual( s1.index, s3.index )
-    self.assertEqual( s1, s3 )
-
-
-  def test_equality(self):
-
-    s1 = asa.sphere( centre = ( 0, 0, 0 ), radius = 3 )
-    s2 = asa.sphere( centre = ( 0, 0, 0 ), radius = 3 )
-    self.assertTrue( s1 != s2 )
-
-    s3 = asa.sphere.copy( sample = s1 )
-    self.assertTrue( s1 == s3 )
-    self.assertEqual( hash( s1 ), hash( s3 ) )
-    self.assertTrue( s1 is not s3 )
 
 
   def test_low(self):
 
     self.assertIterablesAlmostEqual(
-      asa.sphere( centre = ( 1, 2, 3 ), radius = 4 ).low,
+      asa.sphere( centre = ( 1, 2, 3 ), radius = 4, index = 0 ).low,
       ( -3, -2, -1 ),
       7,
       )
@@ -84,7 +68,7 @@ class TestSphere(unittest.TestCase):
   def test_high(self):
 
     self.assertIterablesAlmostEqual(
-      asa.sphere( centre = ( 1, 2, 3 ), radius = 4 ).high,
+      asa.sphere( centre = ( 1, 2, 3 ), radius = 4, index = 0 ).high,
       ( 5, 6, 7 ),
       7,
       )
@@ -209,11 +193,11 @@ class TestPredicate(unittest.TestCase):
 
   def setUp(self):
 
-    self.sphere = asa.sphere( centre = ( 1, 1, 1 ), radius = 2 )
+    self.sphere = asa.sphere( centre = ( 1, 1, 1 ), radius = 2, index = 0 )
     self.predicate = asa.accessibility.overlap_equality_predicate( object = self.sphere )
-    self.overlap1 = asa.sphere( centre = ( 1, 1, 1 ), radius = 0.1 )
-    self.overlap2 = asa.sphere( centre = ( 2, 2, 2 ), radius = 0.1 )
-    self.no_overlap = asa.sphere( centre = ( -1, -1, -1 ), radius = 0.1 )
+    self.overlap1 = asa.sphere( centre = ( 1, 1, 1 ), radius = 0.1, index = 1 )
+    self.overlap2 = asa.sphere( centre = ( 2, 2, 2 ), radius = 0.1, index = 1 )
+    self.no_overlap = asa.sphere( centre = ( -1, -1, -1 ), radius = 0.1, index = 1 )
 
 
   def test_filtering(self):
@@ -245,8 +229,8 @@ class TestPredicate(unittest.TestCase):
       )
     self.assertFalse( range.empty() )
     self.assertEqual( len( range ), 2 )
-    self.assertTrue( self.overlap1 in range )
-    self.assertTrue( self.overlap2 in range )
+    self.assertTrue( self.overlap1.index in set( s.index for s in range ) )
+    self.assertTrue( self.overlap2.index in set( s.index for s in range ) )
 
     range = asa.accessibility.filter(
       range = indexer.close_to( object = self.no_overlap ),
@@ -268,8 +252,8 @@ class TestPredicate(unittest.TestCase):
 
     range = self.get_overlapping_spheres( sphere = self.sphere )
     self.assertEqual( len( range ), 2 )
-    self.assertTrue( self.overlap1 in range )
-    self.assertTrue( self.overlap2 in range )
+    self.assertTrue( self.overlap1.index in set( s.index for s in range ) )
+    self.assertTrue( self.overlap2.index in set( s.index for s in range ) )
 
 
 class TestPythagoreanChecker(unittest.TestCase):
@@ -282,7 +266,7 @@ class TestPythagoreanChecker(unittest.TestCase):
   def test_add_from_list(self):
 
     self.assertTrue( self.checker( point = ( 1, 1, 1 ) ) )
-    s = asa.sphere( centre = ( 1, 1, 1 ), radius = 0.1 )
+    s = asa.sphere( centre = ( 1, 1, 1 ), radius = 0.1, index = 0 )
     self.checker.add( neighbours = [ s ] )
     self.assertFalse( self.checker( point = ( 1, 1, 1 ) ) )
     self.assertTrue( self.checker( point = ( 1.2, 1, 1 ) ) )
@@ -292,7 +276,7 @@ class TestPythagoreanChecker(unittest.TestCase):
 
     self.assertTrue( self.checker( point = ( 1, 1, 1 ) ) )
 
-    s = asa.sphere( centre = ( 1, 1, 1 ), radius = 0.1 )
+    s = asa.sphere( centre = ( 1, 1, 1 ), radius = 0.1, index = 0 )
     indexer = asa.indexing.linear_spheres()
     indexer.add( object = s )
 
@@ -308,7 +292,7 @@ class TestPythagoreanChecker(unittest.TestCase):
     neighbours = asa.accessibility.filter(
       range = indexer.close_to( object = s ),
       predicate = asa.accessibility.overlap_equality_predicate(
-        object = asa.sphere( centre = ( 1, 1, 1 ), radius = 0.1 )
+        object = asa.sphere( centre = ( 1, 1, 1 ), radius = 0.1, index = 1 )
         ),
       )
     self.assertEqual( len( neighbours ), 1 )
@@ -320,14 +304,14 @@ class TestPythagoreanChecker(unittest.TestCase):
 
     self.assertTrue( self.checker( point = ( 1, 1, 1 ) ) )
 
-    s = asa.sphere( centre = ( 1, 1, 1 ), radius = 0.1 )
+    s = asa.sphere( centre = ( 1, 1, 1 ), radius = 0.1, index = 0 )
     indexer = asa.indexing.linear_spheres()
     indexer.add( object = s )
 
     neighbours = asa.accessibility.filter(
       range = indexer.close_to( object = s ),
       predicate = asa.accessibility.overlap_equality_predicate(
-        object = asa.sphere( centre = ( 2, 2, 2 ), radius = 0.1 )
+        object = asa.sphere( centre = ( 2, 2, 2 ), radius = 0.1, index = 1 )
         ),
       )
     self.assertEqual( len( neighbours ), 0 )
@@ -337,7 +321,7 @@ class TestPythagoreanChecker(unittest.TestCase):
     neighbours = asa.accessibility.filter(
       range = indexer.close_to( object = s ),
       predicate = asa.accessibility.overlap_equality_predicate(
-        object = asa.sphere( centre = ( 2, 2, 2 ), radius = 1.64 )
+        object = asa.sphere( centre = ( 2, 2, 2 ), radius = 1.64, index = 2 )
         ),
       )
     self.assertEqual( len( neighbours ), 1 )
@@ -424,7 +408,8 @@ class TestAccessibleSurfaceArea(unittest.TestCase):
   def test_get_voxelizer_for(self):
 
     voxelizer = asa.get_voxelizer_for( descriptions = DESCRIPTIONS )
-    self.assertTrue( isinstance( voxelizer, asa.indexing.voxelizer ) )
+    from mmtbx.geometry import shared_types
+    self.assertTrue( isinstance( voxelizer, shared_types.voxelizer ) )
 
 
   def test_asa_calculation_simple_linear(self):
@@ -475,71 +460,6 @@ class TestAccessibleSurfaceArea(unittest.TestCase):
         )
 
 
-class TestVoxelizer(unittest.TestCase):
-
-  def setUp(self):
-
-    self.voxelizer = asa.indexing.voxelizer(
-      base = ( 100, 200, 300 ),
-      step = ( 2.0, 3.0, 4.0 ),
-      )
-
-
-  def test_1(self):
-
-    self.assertEqual(
-      self.voxelizer( vector = ( 100, 200, 300 ) ),
-      ( 0, 0, 0 ),
-      )
-    self.assertEqual(
-      self.voxelizer( vector = ( 101, 201, 301 ) ),
-      ( 0, 0, 0 ),
-      )
-    self.assertEqual(
-      self.voxelizer( vector = ( 101.99, 202, 302 ) ),
-      ( 0, 0, 0 ),
-      )
-    self.assertEqual(
-      self.voxelizer( vector = ( 102, 202.99, 303 ) ),
-      ( 1, 0, 0 ),
-      )
-    self.assertEqual(
-      self.voxelizer( vector = ( 103, 203, 303.99 ) ),
-      ( 1, 1, 0 ),
-      )
-    self.assertEqual(
-      self.voxelizer( vector = ( 104, 204, 304 ) ),
-      ( 2, 1, 1 ),
-      )
-
-  def test_2(self):
-
-    self.assertEqual(
-      self.voxelizer( vector = ( 99.99, 199.99, 299.99 ) ),
-      ( -1, -1, -1 ),
-      )
-    self.assertEqual(
-      self.voxelizer( vector = ( 98.00, 197.00, 296.00 ) ),
-      ( -1, -1, -1 ),
-      )
-    self.assertEqual(
-      self.voxelizer( vector = ( 97.99, 197.00, 296.00 ) ),
-      ( -2, -1, -1 ),
-      )
-    self.assertEqual(
-      self.voxelizer( vector = ( 96.00, 196.99, 296.00 ) ),
-      ( -2, -2, -1 ),
-      )
-    self.assertEqual(
-      self.voxelizer( vector = ( 96.00, 194.00, 295.99 ) ),
-      ( -2, -2, -2 ),
-      )
-    self.assertEqual(
-      self.voxelizer( vector = ( 96.00, 194.00, 292.00 ) ),
-      ( -2, -2, -2 ),
-      )
-
-
 suite_sphere = unittest.TestLoader().loadTestsFromTestCase(
   TestSphere
   )
@@ -561,9 +481,6 @@ suite_pythagorean_checker = unittest.TestLoader().loadTestsFromTestCase(
 suite_accessible_surface_area = unittest.TestLoader().loadTestsFromTestCase(
   TestAccessibleSurfaceArea
   )
-suite_voxelizer = unittest.TestLoader().loadTestsFromTestCase(
-  TestVoxelizer
-  )
 
 
 alltests = unittest.TestSuite(
@@ -575,7 +492,6 @@ alltests = unittest.TestSuite(
     suite_predicate,
     suite_pythagorean_checker,
     suite_accessible_surface_area,
-    suite_voxelizer,
     ]
   )
 

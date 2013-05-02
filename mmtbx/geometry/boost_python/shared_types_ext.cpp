@@ -1,4 +1,5 @@
 #include <boost/python/module.hpp>
+#include <boost/python/class.hpp>
 #include <boost/python/list.hpp>
 #include <boost/python/tuple.hpp>
 #include <boost/python/to_python_converter.hpp>
@@ -13,6 +14,9 @@
 #include <boost/fusion/algorithm/iteration/for_each.hpp>
 
 #include <boost/bind.hpp>
+
+#include <scitbx/vec3.h>
+#include <mmtbx/geometry/indexing.hpp>
 
 namespace mmtbx
 {
@@ -76,6 +80,24 @@ public:
 
   static void wrap()
   {
+    typedef scitbx::vec3< double > vector_type;
+    typedef mmtbx::geometry::indexing::Voxelizer<
+      vector_type,
+      boost::fusion::vector3< int, int, int >,
+      int
+      > voxelizer_type;
+
+    using namespace boost::python;
+
+    class_< voxelizer_type >( "voxelizer", no_init )
+      .def(
+        init< const vector_type&, const vector_type& >(
+          ( arg( "base" ), arg( "step" ) )
+          )
+        )
+      .def( "__call__", &voxelizer_type::operator (), arg( "vector" ) )
+      ;
+
     boost::mpl::for_each<
       to_python_export_types,
       boost::mpl::make_identity< boost::mpl::placeholders::_ >
