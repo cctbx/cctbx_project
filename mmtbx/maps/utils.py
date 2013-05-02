@@ -249,7 +249,8 @@ class generate_water_omit_map (object) :
       self.fofc_map = fmodel.map_coefficients(
         map_type="mFo-DFc",
         exclude_free_r_reflections=exclude_free_r_reflections,
-        fill_missing=False)
+        fill_missing=False,
+        merge_anomalous=True)
       if (maxent) :
         import cctbx.maptbx.mem
         print >> log, "  running maximum entropy calculation on mFo-DFc map..."

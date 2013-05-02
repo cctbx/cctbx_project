@@ -119,7 +119,8 @@ class electron_density_map(object):
                        isotropize=True,
                        sharp=False,
                        post_processing_callback=None,
-                       pdb_hierarchy=None): # XXX required for map_type=llg
+                       pdb_hierarchy=None, # XXX required for map_type=llg
+                       merge_anomalous=None) :
     map_name_manager = mmtbx.map_names(map_name_string = map_type)
     # Special case #1: anomalous map
     if(map_name_manager.anomalous):
@@ -204,6 +205,8 @@ class electron_density_map(object):
         adptbx.u_as_b(1))/2
       k_sharp = 1./flex.exp(-ss * b)
       coeffs = coeffs.customized_copy(data = coeffs.data()*k_sharp)
+    if (merge_anomalous) and (coeffs.anomalous_flag()) :
+      return coeffs.average_bijvoet_mates()
     return coeffs
 
   def fft_map(self,
