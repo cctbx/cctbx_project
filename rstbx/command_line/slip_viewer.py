@@ -11,12 +11,10 @@ import os
 import sys
 import wx
 
-import iotbx.detectors
 from rstbx.slip_viewer.frame import XrayFrame
 from libtbx import phil
 from spotfinder import phil_str
 from spotfinder.command_line.signal_strength import additional_spotfinder_phil_defs
-
 
 master_str="""
 anti_aliasing = False
@@ -38,24 +36,6 @@ show_effective_tiling = False
   .type = bool
   .help = "Show the effective tiling of the detector"
 """
-
-
-def modify_the_iotbx_detector_list():
-  from iotbx import detectors
-  try:
-    from xfel.cftbx.detector.cspad_detector import CSPadDetector
-    from xfel.cftbx.detector.generic_detector import GenericDetector
-    detectors.all_image_types.append(CSPadDetector)
-    detectors.all_image_types.append(GenericDetector)
-  except ImportError: pass
-
-# store default ImageFactory function
-defaultImageFactory = iotbx.detectors.ImageFactory
-
-from rstbx.slip_viewer.slip_viewer_image_factory import SlipViewerImageFactory
-
-# install modified ImageFactory function from above
-iotbx.detectors.ImageFactory = SlipViewerImageFactory
 
 def run(argv=None):
   if (argv is None):
@@ -114,5 +94,4 @@ def run(argv=None):
 
 
 if (__name__ == "__main__"):
-  modify_the_iotbx_detector_list()
   sys.exit(run())
