@@ -1808,20 +1808,24 @@ class AtomProperties (object) :
       self.strict_valence or (ion_params.element in ["NA","MG"])
 
     # Check for all non-overlapping atoms within 3 A of the metal
+    n_closest = 0
     coord_atoms = []
     for i_pair, contact1 in enumerate(self.nearby_atoms) :
-      if (contact1.distance() < 3.0) :
+      distance = contact1.distance()
+      if (distance < 3.0) :
         for contact2 in self.nearby_atoms[(i_pair+1):] :
           if ((contact1 == contact2) or
               (contact1.distance_from(contact2) <= 0.3)) :
             break
         else :
           coord_atoms.append(contact1)
+          if (distance < 2.7) :
+            n_closest += 1
 
     if len(coord_atoms) < ion_params.coord_num_lower:
       inaccuracies.add(self.TOO_FEW_COORD)
 
-    if len(coord_atoms) > ion_params.coord_num_upper:
+    if n_closest > ion_params.coord_num_upper:
       inaccuracies.add(self.TOO_MANY_COORD)
 
     # Coordinating atoms closer than 3.0 A are not positively charged
