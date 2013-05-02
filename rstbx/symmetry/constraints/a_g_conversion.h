@@ -83,14 +83,17 @@ struct AG { // convert orientation matrix A to metrical matrix g & reverse
 
     //Note:g0 = a*.a*  g1 = b*.b*  g2 = c*.c*  g3 = a*.b*  g4 = a*.c*  g5 = b*.c*
 
-    if (g2 <= 0.){  g2 = 1.E-7; }
+    if (g2 <= 0.){
+      throw scitbx::error("g2 <= 0."); g2 = 1.E-7; }
     double cstrz = std::sqrt(g2);
     double bstrz = g5/cstrz;
     double astrz = g4/cstrz;
-    if (g1-bstrz*bstrz <= 0.){ g1 = bstrz*bstrz + 1.E-7; }
+    if (g1-bstrz*bstrz <= 0.){
+      throw scitbx::error("g1-bstrz*bstrz <= 0."); g1 = bstrz*bstrz + 1.E-7; }
     double bstry = std::sqrt(g1-bstrz*bstrz);
     double astry = (g3-astrz*bstrz)/bstry;
-    if (g0 - astry*astry -astrz*astrz <= 0.){ g0 = astry*astry + astrz*astrz + 1.E-7; }
+    if (g0 - astry*astry -astrz*astrz <= 0.){
+      throw scitbx::error("g0 - astry*astry -astrz*astrz <= 0."); g0 = astry*astry + astrz*astrz + 1.E-7; }
     //double astrx = std::sqrt(g0 - astry*astry -astrz*astrz);
 
     G = uc_sym_mat3(g0,g1,g2,g3,g4,g5);
