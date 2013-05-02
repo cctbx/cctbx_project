@@ -659,14 +659,16 @@ class FilenameAnalyser(object):
             return False
         else:
             indices = sorted(indices)
-            if self._indices_sequential(indices):
+            if self._indices_sequential_gt_zero(indices):
                 return True
             else:
                 return False
 
-    def _indices_sequential(self, indices):
+    def _indices_sequential_gt_zero(self, indices):
         ''' Determine if indices are sequential.'''
         prev = indices[0]
+        if prev <= 0:
+            return False
         for curr in indices[1:]:
             if curr != prev + 1:
                 return False
@@ -786,13 +788,12 @@ class ImageSetFactory(object):
         pfx = template.split('#')[0]
         sfx = template.split('#')[-1]
         template_format = '%s%%0%dd%s' % (pfx, template.count('#'), sfx)
-        template = os.path.join(directory, template_format)
 
         # Set the image range
         array_range = (min(indices) - 1, max(indices))
 
         # Create the sweep file list
-        filenames = SweepFileList(template, array_range)
+        filenames = SweepFileList(template_format, array_range)
 
         # Create the sweep object
         sweep = ImageSweep(MultiFileReader(format_class, filenames))
