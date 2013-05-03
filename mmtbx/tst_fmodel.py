@@ -443,7 +443,7 @@ def exercise_5_bulk_sol_and_scaling(symbol = "C 2"):
     sf_and_grads_accuracy_params = sfg_params)
   assert fmodel.r_work() > 0.3
   fmodel.update_solvent_and_scale(fast=True)
-  assert fmodel.r_work() < 0.003, fmodel.r_work()
+  assert fmodel.r_work() < 0.0031, fmodel.r_work()
   # part 2 of test 4
   d=fmodel.k_isotropic()*fmodel.k_anisotropic()*(
     f_calc.data()+fmodel.k_masks()[0]*f_mask.data())

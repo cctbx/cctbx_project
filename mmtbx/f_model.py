@@ -1074,7 +1074,7 @@ class manager(manager_mixin):
     #     prefix="Final:", log=log)
     #print >> log
 
-  def show(self, log=None, suffix=None, show_header=True):
+  def show(self, log=None, suffix=None, show_header=True, show_approx=True):
     if(log is None): log = sys.stdout
     l="Statistics in resolution bins"
     if(suffix is not None): l += " %s"%suffix
@@ -1124,8 +1124,9 @@ class manager(manager_mixin):
     print >> log
     f3="  Approximation of k_total with k_overall*exp(-b_overall*s**2/4)"
     f4="    k_overall=%-8.4f b_overall=%-8.4f"%(k_overall, b_overall)
-    print >> log, f3
-    print >> log, f4
+    if(show_approx):
+      print >> log, f3
+      print >> log, f4
 
   def update_all_scales(self,
                         apply_back_trace=False,
