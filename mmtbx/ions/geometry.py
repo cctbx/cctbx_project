@@ -103,9 +103,9 @@ def _is_trigonal_bipyramid(vectors, dev_cutoff = 15):
   for v1, v2, angle in angles:
     # Python has no boolean xor!
     # Grab the angles between the two endpoints of the bipyramid and the base
-    if v1 in [ax1, ax2] != v2 in [ax1, ax2]:
+    if (v1 in [ax1, ax2]) != (v2 in [ax1, ax2]):
       base_to_axials += angle,
-    elif v1 not in [ax1, ax2] and v2 not in [ax1, ax2]:
+    elif (v1 not in [ax1, ax2]) and (v2 not in [ax1, ax2]):
       equatorial_angles += angle,
 
   deviants =  [axial_angle - 180]
@@ -127,12 +127,23 @@ def _is_pentagonal_bipyramid(vectors, dev_cutoff = 15):
 
   angles = _bond_angles(vectors)
 
-  # Grab the two axial vectors
-  ax1, ax2, axial_angle = max(angles, key = lambda x: abs(x[-1]))
+  # Determine which two vectors define the axial angles
+  axials = []
+  for v1 in vectors:
+    v_angles = [v1.angle(v2, deg = True) for v2 in vectors
+                if v2 != v1]
+    a_180s = len([i for i in v_angles if abs(i - 180) < 20])
+    a_90s = len([i for i in v_angles if abs(i - 90) < 20])
 
-  if axial_angle < 150:
-    # Missing one of the two axial vectors, just quit
+    if a_180s > 0  and a_90s > 4:
+      axials.append(v1)
+
+  if len(axials) != 2:
+    # Couldn't determine axial angles
     return
+
+  ax1, ax2 = axials
+  axial_angle = ax1.angle(ax2, deg = True)
 
   base_to_axials = []
   equatorial_angles = []
@@ -140,14 +151,14 @@ def _is_pentagonal_bipyramid(vectors, dev_cutoff = 15):
   for v1, v2, angle in angles:
     # Python has no boolean xor!
     # Grab the angles between the two endpoints of the bipyramid and the base
-    if v1 in [ax1, ax2] != v2 in [ax1, ax2]:
+    if (v1 in [ax1, ax2]) != (v2 in [ax1, ax2]):
       base_to_axials += angle,
-    elif v1 not in [ax1, ax2] and v2 not in [ax1, ax2]:
+    elif (v1 not in [ax1, ax2]) and (v2 not in [ax1, ax2]):
       equatorial_angles += angle,
 
   deviants =  [axial_angle - 180]
   deviants += [i - 90 for i in base_to_axials]
-  deviants += [i - 72 for i in equatorial_angles]
+  deviants += [min(abs(i - 72), abs(i - 144)) for i in equatorial_angles]
   deviation = sqrt(sum(abs(i) ** 2 for i in deviants) / len(deviants))
 
   if deviation <= dev_cutoff:
