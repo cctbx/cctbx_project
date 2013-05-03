@@ -1,5 +1,3 @@
-#include <string>
-
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
@@ -12,6 +10,8 @@
 #include <boost/mpl/vector.hpp>
 #include <boost/mpl/pair.hpp>
 #include <boost/mpl/string.hpp>
+
+#include <string>
 
 #include <scitbx/vec3.h>
 #include <boost_adaptbx/boost_range_python.hpp>
