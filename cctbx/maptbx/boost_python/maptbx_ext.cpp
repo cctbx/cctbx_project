@@ -282,6 +282,13 @@ namespace {
       arg("map_data_2"),
       arg("threshold")));
 
+    def("cut_by",
+      (void(*)
+        (af::ref<double, af::c_grid<3> >,
+         af::ref<double, af::c_grid<3> >)) cut_by, (
+      arg("kick"),
+      arg("fem")));
+
     def("rotate_translate_map",
       (af::versa<double, af::c_grid<3> >(*)
         (uctbx::unit_cell const&,
