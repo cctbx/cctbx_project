@@ -168,8 +168,8 @@ SUPPORTED_GEOMETRIES = {
   "tetrahedral": _is_tetrahedral,
   "square planar": _is_square_planar,
   "octahedral": _is_octahedral,
-  "trigonal bipyramid": _is_trigonal_bipyramid,
-  "pentagonal bipyramid": _is_pentagonal_bipyramid,
+  "trigonal_bipyramid": _is_trigonal_bipyramid,
+  "pentagonal_bipyramid": _is_pentagonal_bipyramid,
   }
 
 def find_coordination_geometry(nearby_atoms, cutoff = 2.5):
