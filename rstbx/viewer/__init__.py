@@ -224,13 +224,21 @@ class screen_params (object) :
 class image (screen_params) :
   def __init__ (self, file_name) :
     screen_params.__init__(self)
-    self.file_name = file_name
-    from iotbx.detectors import ImageFactory, ImageException
-    try :
-      img = ImageFactory(file_name)
-    except ImageException, e :
-      raise Sorry(str(e))
-    img.read()
+    if isinstance(file_name, str):
+      self.file_name = file_name
+      from iotbx.detectors import ImageFactory, ImageException
+      try :
+        img = ImageFactory(file_name)
+      except ImageException, e :
+        raise Sorry(str(e))
+      img.read()
+    else :
+      from iotbx.detectors import DetectorImageBase
+      if isinstance(file_name, DetectorImageBase):
+        #assume it's already been read
+        img = file_name
+      else:
+        raise Sorry("Unrecognized type : %s"%type(file_name))
     self._raw = img
     print img.show_header()
     self.set_image_size(

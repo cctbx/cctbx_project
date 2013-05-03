@@ -67,7 +67,7 @@ class FormatHDF5Dectris(FormatHDF5):
           )
 
     def get_num_images(self):
-        raise RuntimeError("not implemented yet")
+        return self.detectorbase.image_count()
 
     def get_goniometer(self, index=None):
         return Format.get_goniometer(self)
@@ -85,10 +85,11 @@ class FormatHDF5Dectris(FormatHDF5):
         return Format.get_raw_data(self)
 
     def get_detectorbase(self, index=None):
-        return Format.get_detectorbase(self)
+        self.detectorbase.img_number = index
+        return self.detectorbase
 
     def get_image_file(self, index=None):
-        return Format.get_image_file(self)
+        return self.detectorbase.get_data_link(index)
 
 if __name__ == '__main__':
 

@@ -82,10 +82,17 @@ def run(argv=None):
     assert os.path.isfile(paths[0])
     frame.load_distl_output(paths[0])
   elif (len(paths) > 0):
-    for path in paths:
-      assert os.path.isfile(path)
-      frame.add_file_name_or_data(path)
-    frame.load_image(paths[0])
+    frame.CHOOSER_SIZE = 1500
+
+    from dxtbx.imageset import ImageSetFactory
+    from rstbx.slip_viewer.frame import chooser_wrapper
+    sets = ImageSetFactory.new(paths)
+
+    for imgset in sets:
+      for idx in imgset.indices():
+        frame.add_file_name_or_data(chooser_wrapper(imgset, idx))
+    idx = sets[0].indices()[0]
+    frame.load_image(chooser_wrapper(sets[0],idx))
 
   frame.Show()
   app.MainLoop()

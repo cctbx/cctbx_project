@@ -6,7 +6,7 @@ class EIGERImage(DetectorImageBase):
     DetectorImageBase.__init__(self,filename)
     self.vendortype = "EIGER"
     self.supports_multiple_images = True
-    self.img_number = 1 # 1-indexed
+    self.img_number = 0 # 0-indexed to clients, internally 1-indexed
 
   def readHeader(self,maxlength=12288): # XXX change maxlength!!!
     if not self.parameters:
@@ -98,12 +98,12 @@ class EIGERImage(DetectorImageBase):
   def read(self):
       datalink = ''
       try:
-          (datalink,imageNrOffset) = self.LUT[self.img_number]
+          (datalink,imageNrOffset) = self.LUT[self.img_number+1]
       except KeyError, e:
           raise ImageReadException('imgNr out of range')
       data = self.hdf5File['entry'][datalink]
       # use slicing access to get images with image number self.img_number
-      image = data[self.img_number, : , : ] ## z / y / x
+      image = data[imageNrOffset, : , : ] ## z / y / x
 
       if len(image) <=0 or len(image[0]) <=0:
         raise ImageReadException('an image dimension is zero')
@@ -115,35 +115,20 @@ class EIGERImage(DetectorImageBase):
       tmp = flex.int(tmp)
       self.bin_safe_set_data(tmp)
 
-  ##future functions to implement viewing other images in the HDF5 file
-  #def go_to_image_idx(self, img_idx):
-    #self.img_number = img_idx
-    #self.read()
-
-  #def go_to_next_image(self):
-    #imgNr = self.img_number + 1
-    #try:
-      #(datalink,imageNrOffset) = self.LUT[imgNr]
-    #except KeyError as e:
-      #pass
-    #self.go_to_image_idx(imgNr)
-
-  #def go_to_next_image(self):
-    #imgNr = self.img_number - 1
-    #try:
-      #(datalink,imageNrOffset) = self.LUT[imgNr]
-    #except KeyError as e:
-      #pass
-    #self.go_to_image_idx(imgNr)
-
-  #def image_count(self):
-    #return len(self.LUT)
+  def image_count(self):
+    return len(self.LUT)
 
   def integerdepth(self):
-      return 2
+    return 2
 
   def dataoffset(self):
-      return 0
+    return 0
+
+  def get_data_link(self,index=None):
+    if index == None:
+      return self.LUT[self.img_number+1][0]
+    else:
+      return self.LUT[index+1][0]
 
 if __name__=="__main__":
   import sys
