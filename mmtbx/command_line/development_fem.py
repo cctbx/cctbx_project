@@ -12,6 +12,7 @@ import mmtbx.maps
 from scitbx.array_family import flex
 from cctbx import adptbx
 from libtbx.test_utils import approx_equal
+from libtbx.utils import Sorry
 
 master_params_str="""\
 f_obs_label = None
