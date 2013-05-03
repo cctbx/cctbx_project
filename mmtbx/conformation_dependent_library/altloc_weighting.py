@@ -3,17 +3,22 @@ import sys
 import math
 
 import iotbx.pdb
+from libtib.utils import Sorry
 
 def update_restraints(hierarchy,
                       restraints_manager,
                       altloc_weights_object={},
-                      sqrt_func=True,
-                      func_factor=1,
+                      min_occ = 0.5,
+                      sqrt_func=False,
+                      func_factor=1.,
                       bond_weighting=True,
                       angle_weighting=True,
                       log=None,
                       verbose=False,
                       ):
+  raise Sorry("altloc weighting still being tested")
+  verbose=1
+  sqrt_func=False
   if verbose:
     print 'sqrt_func',sqrt_func
     print 'func_factor',func_factor
@@ -93,54 +98,65 @@ def update_restraints(hierarchy,
         if previous_residue_group is None:
           previous_residue_group = residue_group
           continue
-        atom_group = atom_group1
-        for atom_group_k, previous_atom_group in enumerate(previous_residue_group.atom_groups()):
-          #################################
-          # both blank altloc
-          #################################
-          if not atom_group.altloc.strip() and not previous_atom_group.altloc.strip(): continue
-          #################################
-          # both altloc
-          #################################
-          if atom_group.altloc.strip() and previous_atom_group.altloc.strip():
-            if atom_group.altloc.strip()!=previous_atom_group.altloc.strip():
+        for atom_group in residue_group.atom_groups():
+          for atom_group_k, previous_atom_group in enumerate(previous_residue_group.atom_groups()):
+            #################################
+            # both blank altloc
+            #################################
+            if (not atom_group.altloc.strip() and
+                not previous_atom_group.altloc.strip()
+                ):
               continue
-          #################################
-          # one blank altloc, one not
-          #################################
-          else:
-            pass
-          if verbose: print '    %03d previous_atom_group: altloc="%s" resname="%s"' % (
-              atom_group_k, previous_atom_group.altloc, previous_atom_group.resname)
-          for i, atom1 in enumerate(atom_group.atoms()):
-            for j, atom2 in enumerate(previous_atom_group.atoms()):
-              bond = bond_params_table.lookup(atom1.i_seq, atom2.i_seq)
-              if bond is None: continue
-              altloc_bonds[tuple(sorted([atom1.i_seq, atom2.i_seq]))] = [bond, atom1.occ]
-              if verbose:
-                print 'inter-residue_group'
-                print atom1.format_atom_record()
-                print atom2.format_atom_record()
-                print bond.distance_ideal, bond.weight
+            #################################
+            # both altloc
+            #################################
+            if atom_group.altloc.strip() and previous_atom_group.altloc.strip():
+              if atom_group.altloc.strip()!=previous_atom_group.altloc.strip():
+                continue
+            #################################
+            # one blank altloc, one not
+            #################################
+            else:
+              pass
+            if verbose: print '    %03d previous_atom_group: altloc="%s" resname="%s"' % (
+                atom_group_k, previous_atom_group.altloc, previous_atom_group.resname)
+            for i, atom1 in enumerate(atom_group.atoms()):
+              for j, atom2 in enumerate(previous_atom_group.atoms()):
+                bond = bond_params_table.lookup(atom1.i_seq, atom2.i_seq)
+                if bond is None: continue
+                altloc_bonds[tuple(sorted([atom1.i_seq, atom2.i_seq]))] = [bond, atom1.occ]
+                if verbose:
+                  print 'inter-residue_group'
+                  print atom1.format_atom_record()
+                  print atom2.format_atom_record()
+                  print bond.distance_ideal, bond.weight
 
-  factor = 10
+        previous_residue_group = residue_group
+
   i_seqs = {}
   for key in altloc_bonds:
     bond, occ = altloc_bonds[key]
+    print 'altloc_bonds',key,bond,occ
     if key in altloc_weights_object:
       bond.weight = altloc_weights_object[key]
     else:
       altloc_weights_object[key] = bond.weight
-    occ = max(0.1, occ)
+    occ = max(min_occ, occ)
     if bond_weighting:
-      #print 'weight',key,bond.weight,occ,
+      print 'weight bond',key,bond.weight,occ,
       if sqrt_func:
         bond.weight = bond.weight/math.sqrt(occ)
       else:
-        bond.weight = bond.weight/occ*factor
-      #print bond.weight
+        bond.weight = bond.weight/occ*func_factor
+      print bond.weight,occ*func_factor,sqrt_func
     i_seqs[key[0]]=occ
     i_seqs[key[1]]=occ
+    if verbose:
+      print '-'*80
+      for atom in hierarchy.atoms():
+        if atom.i_seq==key[0]: print atom.quote()
+        if atom.i_seq==key[1]: print atom.quote()
+    
 
   if angle_weighting:
     for angle_proxy in restraints_manager.geometry.angle_proxies:
@@ -148,11 +164,11 @@ def update_restraints(hierarchy,
       if angle_proxy.i_seqs[1] not in i_seqs: continue
       if angle_proxy.i_seqs[2] not in i_seqs: continue
       occ = i_seqs[angle_proxy.i_seqs[1]]
-      occ = max(0.1, occ)
+      occ = max(min_occ, occ)
       if sqrt_func:
         angle_proxy.weight = angle_proxy.weight/math.sqrt(occ)
       else:
-        angle_proxy.weight = angle_proxy.weight/occ*factor
+        angle_proxy.weight = angle_proxy.weight/occ*func_factor
 
   restraints_manager.geometry.reset_internals()
   return altloc_weights_object

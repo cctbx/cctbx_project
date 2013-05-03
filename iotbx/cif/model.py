@@ -187,6 +187,18 @@ class block_base(DictMixin):
     else:
       return default
 
+  def loop_keys(self):
+    done = []
+    for key in self:
+      key = key.split(".")[0]
+      if key in done: continue
+      done.append(key)
+    return done
+      
+  def iterloops(self):
+    for key in self.loop_keys():
+      yield self.get(key)
+
   def get_single_item(self,
                       key,
                       key_error=KeyError,

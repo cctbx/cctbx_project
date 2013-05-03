@@ -228,7 +228,7 @@ class process_cif_mixin(object):
 
 class server(process_cif_mixin):
 
-  def __init__(self, list_cif=None, another_list_cif=None, verbose = False):
+  def __init__(self, list_cif=None, another_list_cif=None, verbose=False):
     if (list_cif is None):
       list_cif = mon_lib_list_cif()
     if (another_list_cif is None):

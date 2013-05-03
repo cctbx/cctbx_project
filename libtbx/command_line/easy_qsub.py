@@ -35,6 +35,7 @@ key_words = {
   "start"            : int,
   "end"              : int,
   "host_scratch_dir" : str,
+  "python_script"    : str,
   }
 
 script_file = """
@@ -57,13 +58,13 @@ def run(only_i=None,
   try: chunk_size = int(chunk_size)
   except ValueError: chunk_size=len(cmds)
 
-  assert chunk_size==len(cmds) or chunk_n==1
+  #assert chunk_size==len(cmds) or chunk_n==1
   assert chunk_n>0
   assert chunk_size>0
-  if chunk_n!=1:
-    chunk_size = (len(cmds)-1)//chunk_n+1
-  elif chunk_size!=1:
-    chunk_n = len(cmds)%%chunk_size+1
+  #if chunk_n!=1:
+  #  chunk_size = (len(cmds)-1)//chunk_n+1
+  #elif chunk_size!=1:
+  #  chunk_n = len(cmds)%%chunk_size+1
 
   for i, cmd in enumerate(cmds):
     if only_i is None:
@@ -130,7 +131,7 @@ source %s
 
 %s
 
-phenix.python %s $SGE_TASK_ID $SGE_TASK_LAST >& %s.$SGE_TASK_ID.out
+phenix.python %s $SGE_TASK_ID %s %s >& %s.$SGE_TASK_ID.out
 
 %s
 
@@ -151,18 +152,118 @@ if __name__=="__main__":
   run(*tuple(sys.argv[1:]))
 """
 
+def test_easy_qsub():
+  def _clean():
+    for filename in os.listdir(os.getcwd()):
+      if filename.startswith("commands"):
+        print 'remove',filename
+        os.remove(filename)
+  def _write_cmds(number_of_cmds):
+    print "\n  test list of commands"
+    outl = ""
+    for i in range(number_of_cmds):
+      outl += "echo %d\n" % (i+101)
+    print outl
+    f=file("commands.txt", "wb")
+    f.write(outl[:-1])
+    f.close()
+  def _wait():
+    import time
+    time.sleep(5)
+    running=True
+    while running:
+      running=False
+      for line in os.popen("qstat"):
+        if line.find("commands")>-1:
+          print 'running',line
+          running=True
+          break
+  def _check(number_of_output_files,
+             number_of_runs,
+             ):
+    runs=[]
+    for filename in os.listdir(os.getcwd()):
+      if filename.startswith("commands") and filename.endswith(".out"):
+        number_of_output_files-=1
+        f=file(filename, "rb")
+        lines=f.readlines()
+        f.close()
+        for line in lines:
+          if line.find("Running")>-1:
+            number_of_runs-=1
+            tmp = line.split()
+            assert tmp[1] not in runs
+            runs.append(tmp[1])
+
+    assert not number_of_output_files
+    assert not number_of_runs
+
+  print '#'*80
+  print '# testing easy_qsub'
+  print '#'*80
+  cmd = 'libtbx.easy_qsub phenix_source="/net/cci/xp/phenix/phenix_env" commands=commands.txt'
+  old_cmd = cmd
+  for cmds, new_cmd, number_of_output_files, number_of_runs in [
+      [10,"",10,10],
+      [10," number_of_chunks=2", 2, 10],
+      [11," number_of_chunks=2", 2, 11],
+      [10," size_of_chunks=2",   5, 10],
+      [11," size_of_chunks=2",   6, 11],
+      [10," start=6",            5, 5],
+      [10," end=5",              5, 5],
+      [20," start=5 size_of_chunks=2", 6, 12],
+      [20," end=5 size_of_chunks=2", 5, 10],
+      ]:
+    cmd = old_cmd + new_cmd
+    _clean()
+    _write_cmds(cmds)
+    os.system(cmd)
+    _wait()
+    _check(number_of_output_files=number_of_output_files,
+           number_of_runs=number_of_runs,
+      )
+  _clean()
+  #
+  sys.exit()
+
 def process_args(args):
   kwds = {}
   for t in args:
+    if t == "--help":
+      print """
+  Program to sumbit jobs easily to a SGE queue
+    e.g.
+
+    libtbx.easy_qsub phenix_source="/net/cci/xp/phenix/phenix_env" commands=commands.txt
+
+  """
+      sys.exit()
+    elif t=="--test":
+      test_easy_qsub()
+      return {}
+    elif t=="--dry":
+      kwds["dry_run"]=True
     for key in key_words:
       if t.find("%s=" % key)==0:
         kwds[key]=t.split("=")[1]
         kwds[key] = key_words[key](kwds[key])
         break
     else:
-      print '\n  failed to process "%s"\n' % t
-      assert 0
+      if t not in ["--dry"]:
+        print '\n  failed to process "%s"\n' % t
+        assert 0
   return kwds
+
+def get_python_bin(source):
+  if os.path.islink(source):
+    source = os.path.realpath(source)
+  source=source[:-11]
+  print source
+  for d in os.listdir(source):
+    if d!="build": continue
+    for e in os.listdir(os.path.join(source, d)):
+      for f in os.listdir(os.path.join(source, d, e)):
+        if f=="bin": return os.path.join(source, d, e, f, "phenix.python")
 
 def run(phenix_source=None,
         where=None,
@@ -175,6 +276,8 @@ def run(phenix_source=None,
         start=1,
         end=None,
         host_scratch_dir=None,
+        python_script=None,
+        dry_run=False,
         ):
   """
   Submits a job to run commands on the queueing system using qsub. One master
@@ -186,7 +289,7 @@ def run(phenix_source=None,
   commands: A list of commands to run on the queue
   size_of_chunks: Number of commands to run within each queue job
   code: The task name used during submissions
-  js: ???
+  js: queue priority (default 0)
   qsub_cmd: The command to submit a job from a shell
   start: The start number for the task range
   end: The end number for the task range
@@ -207,7 +310,7 @@ def run(phenix_source=None,
     print "\n  Automatically setting phenix_source to current $PHENIX/phenix_env\n"
     phenix_source = "%s/phenix_env" % os.environ.get("PHENIX", "")
 
-  if not commands:
+  if not (commands or python_script):
     print '-'*80
     print "\n  Generating a test run script and queuing 10 times\n"
     f=file("easy_qsub_test_script.py", "wb")
@@ -233,18 +336,19 @@ def run(phenix_source=None,
     raise Sorry('source file for PHENIX environment not found "%s"' % phenix_source)
   print '    where',where
   if type(commands)==type([]):
-#  if commands is None:
-#    print '  Need to supply a list of commands, either by file or python list'
-#    return False
-#  elif type(commands)==type([]):
     if code is None: code = "easy_qsub"
     print '    commands',len(commands),
     if len(commands)>1:
       print 'similar to\n\n> %s\n' % (commands[0])
-  else:
-    print '    commands',commands
-    assert os.path.exists(commands)
+
+  elif commands is not None and os.path.exists(commands):
     if code is None: code = commands[:8]
+
+  elif python_script is not None and os.path.exists(python_script):
+    if code is None: code = python_script.replace("../","")[:8]
+
+  code = code.replace("/", "")
+
   print '    size_of_chunks',size_of_chunks
   print '    number_of_chunks',number_of_chunks
   if number_of_chunks==1:
@@ -259,12 +363,22 @@ def run(phenix_source=None,
 
   if type(commands)==type([]):
     lines = commands
-  else:
+  elif commands is not None and os.path.exists(commands):
     f=file(commands, "rb")
     lines = f.readlines()
     f.close()
+
+  elif python_script is not None and os.path.exists(python_script):
+    if not end: raise Sorry('Need to supply "end=n" for python_script')
+    phenix_python_bin = get_python_bin(phenix_source)
+    assert phenix_python_bin
+    lines = []
+    for i in range(start, end+1):
+      lines.append("%s %s %d" % (phenix_python_bin, python_script, i))
+
   number_of_jobs = len(lines)
   print '\n  Number of lines in command file',number_of_jobs
+  number_of_chunks = min(number_of_chunks, number_of_jobs)
   if number_of_chunks is None:
     if size_of_chunks==1:
       number_of_chunks=len(lines)
@@ -273,7 +387,9 @@ def run(phenix_source=None,
       if number_of_jobs%size_of_chunks: number_of_chunks+=1
   else:
     size_of_chunks = number_of_jobs//number_of_chunks
-    if number_of_jobs%size_of_chunks: size_of_chunks+=1
+    size_of_chunks = max(1, size_of_chunks)
+    if number_of_chunks%size_of_chunks: size_of_chunks+=1
+
   number_of_jobs = number_of_chunks
 
   print '\n  Number of queue jobs',number_of_jobs
@@ -312,24 +428,28 @@ def run(phenix_source=None,
     phenix_source,
     pre,
     python_run_filename,
+    number_of_chunks,
+    size_of_chunks,
     code,
     post,
     )
     )
   f.close()
 
-  if end is None:
-    end = number_of_jobs
+  if end is not None:
+    number_of_jobs = min(number_of_jobs, end)
 
   cmd = "%s -t %d-%d -js %d %s" % (
     qsub_cmd,
     start,
-    end,
+    number_of_jobs,
     js,
     qsub_run_filename,
     )
   print '\n  Queue command\n'
   print "> %s\n" % cmd
+  if not dry_run:
+    easy_run.call(cmd)
 
   # Run the command, and then find the job id in the output
   ero = easy_run.fully_buffered(command = cmd)
