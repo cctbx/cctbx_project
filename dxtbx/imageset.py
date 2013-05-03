@@ -29,6 +29,9 @@ class ReaderBase(object):
     def get_format(self, index=None):
         pass
 
+    def get_format_class(self, index=None):
+        pass
+
     def get_path(self, index=None):
         pass
 
@@ -87,6 +90,10 @@ class SingleFileReader(ReaderBase):
     def get_format(self, index=None):
         '''Get the format instance'''
         return self._format
+
+    def get_format_class(self, index=None):
+        '''Get the format class'''
+        return self._format.__class__
 
     def get_path(self, index=None):
         '''Get the image file for the given index.'''
@@ -743,7 +750,13 @@ class ImageSetFactory(object):
         format_class = Registry.find(filenames[0])
 
         # Create the image set object
-        image_set = ImageSet(MultiFileReader(format_class, filenames))
+        from format.FormatMultiImage import FormatMultiImage
+        if issubclass(format_class, FormatMultiImage):
+            assert len(filenames) == 1
+            format_instance = format_class(filenames[0])
+            image_set = ImageSet(SingleFileReader(format_instance))
+        else:
+            image_set = ImageSet(MultiFileReader(format_class, filenames))
 
         # Check the image set is valid
         if check_headers and not image_set.is_valid():

@@ -14,6 +14,20 @@ from rstbx.viewer.frame import XrayFrame as XFBaseClass
 from rstbx.viewer import settings as rv_settings, image as rv_image
 from wxtbx import bitmaps
 
+class chooser_wrapper:
+  def __init__(self, image_set, index):
+    from dxtbx.imageset import ImageSet
+    isinstance(image_set, ImageSet)
+    self.image_set = image_set
+    self.path = os.path.basename(image_set.paths()[index])
+    self.index = index
+
+  def __str__(self):
+    return "%s [%d]"%(self.path,self.index)
+
+  def get_detector_base(self):
+    return self.image_set.get_detectorbase(self.index)
+
 from rstbx.slip_viewer.slip_display import AppFrame
 class XrayFrame (AppFrame,XFBaseClass) :
   def __init__ (self, *args, **kwds) :
@@ -121,11 +135,37 @@ class XrayFrame (AppFrame,XFBaseClass) :
     item = actions_menu.Append(self._id_ring, " ")
     self.Bind(wx.EVT_MENU, self.OnRing, source=item)
 
+  def add_file_name_or_data (self, file_name_or_data) :
+      """The add_file_name_or_data() function appends @p
+      file_name_or_data to the image chooser, unless it is already
+      present.  For file-backed images, the base name is displayed in
+      the chooser.  If necessary, the number of entries in the chooser
+      is pruned.  The function returns the index of the recently added
+      entry.  XXX This is probably the place for heuristics to determine
+      if the viewer was given a pattern, or a plain list of files.  XXX
+      Rename this function, because it only deals with the chooser?
+      """
+
+      key = self.get_key(file_name_or_data)
+      for i in xrange(self.image_chooser.GetCount()) :
+        if (key == str(self.image_chooser.GetClientData(i))) :
+          return i
+      if (self.image_chooser.GetCount() >= self.CHOOSER_SIZE) :
+        self.image_chooser.Delete(0)
+      i = self.image_chooser.GetCount()
+      if (type(file_name_or_data) is dict) :
+        self.image_chooser.Insert(key, i, None)
+      elif (isinstance(file_name_or_data, chooser_wrapper)):
+        self.image_chooser.Insert(key, i, file_name_or_data)
+      else :
+        self.image_chooser.Insert(os.path.basename(key), i, key)
+      return i
 
   def load_image (self, file_name_or_data) :
     """The load_image() function displays the image from @p
     file_name_or_data.  The chooser is updated appropriately.
     """
+    from iotbx.detectors.detectorbase import DetectorImageBase
 
     if (isinstance(file_name_or_data, dict)):
       img = rv_image(file_name_or_data)
@@ -134,6 +174,12 @@ class XrayFrame (AppFrame,XFBaseClass) :
     elif (isinstance(file_name_or_data, str)):
       img = rv_image(os.path.abspath(file_name_or_data))
       self.SetTitle(file_name_or_data)
+    elif (isinstance(file_name_or_data, DetectorImageBase)):
+      img = rv_image(file_name_or_data)
+      self.SetTitle(file_name_or_data.filename)
+    elif (isinstance(file_name_or_data, chooser_wrapper)):
+      img = rv_image(file_name_or_data.get_detector_base())
+      self.SetTitle(str(file_name_or_data))
     else:
       img = rv_image(os.path.abspath(file_name_or_data.encode("ascii")))
       self.SetTitle(file_name_or_data)
@@ -200,6 +246,19 @@ class XrayFrame (AppFrame,XFBaseClass) :
     if (self._calibration_frame and
         not self.pyslip.tiles.raw_image.supports_quadrant_calibration()):
       self.OnCalibration(None)
+
+  def get_key (self, file_name_or_data) :
+      """This overridden get_key() function returns the key of @p file_name_or_data
+      if it's an DetectorImageBase object.  Otherwise it returns the super class's
+      key
+      """
+      from iotbx.detectors.detectorbase import DetectorImageBase
+      if isinstance(file_name_or_data, DetectorImageBase):
+        return file_name_or_data.filename
+      elif isinstance(file_name_or_data, chooser_wrapper):
+        return str(file_name_or_data)
+      else: return super(XrayFrame, self).get_key(file_name_or_data)
+
 
   def update_settings (self, layout=True) :
     # XXX The zoom level from the settings panel are not taken into
