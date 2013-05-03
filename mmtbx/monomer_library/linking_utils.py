@@ -100,7 +100,16 @@ def is_glyco_bond(atom1, atom2, verbose=False):
   if atom2.parent().resname in not_correct_sugars: return False
   return True
 
-def is_glyco_amino_bond(atom1, atom2):
+def is_glyco_amino_bond(atom1, atom2, verbose=False):
+  if verbose:
+    print '----- is_glyco_amino_bond -----'
+    print atom1.quote()
+    print atom2.quote()
+    print get_type(atom1.parent().resname)
+    print get_type(atom2.parent().resname)
+    print sugar_types
+    print get_type(atom1.parent().resname).upper()
+    print get_type(atom2.parent().resname).upper()
   if get_type(atom1.parent().resname) is None: return False
   if get_type(atom2.parent().resname) is None: return False
   sugars = 0

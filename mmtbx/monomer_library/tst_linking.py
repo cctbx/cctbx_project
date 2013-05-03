@@ -958,12 +958,56 @@ HETATM 3554  NZ  LLP A 226      77.163  56.757  23.459  1.00 42.07           N
 HETATM 3555  C   LLP A 226      83.444  61.050  24.065  1.00 28.64           C
 HETATM 3556  O   LLP A 226      84.683  61.078  24.109  1.00 26.60           O
 """,
+  "linking_test_ASN-NAG-altloc4.pdb" : """
+HETATM  125  C1 ANAG A   1      30.978  40.626 -25.446  0.50 98.96      E    C
+HETATM  126  C2 ANAG A   1      30.428  41.897 -26.138  0.50100.81      E    C
+HETATM  127  N2 ANAG A   1      29.783  41.751 -27.447  0.50 94.26      E    N
+HETATM  128  C7 ANAG A   1      28.807  42.561 -27.924  0.50 89.45      E    C
+HETATM  129  O7 ANAG A   1      28.325  42.377 -29.035  0.50 83.16      E    O
+HETATM  130  C8 ANAG A   1      28.252  43.720 -27.128  0.50 87.63      E    C
+HETATM  131  C3 ANAG A   1      31.618  42.847 -26.221  0.50102.77      E    C
+HETATM  132  O3 ANAG A   1      31.420  43.888 -27.159  0.50102.25      E    O
+HETATM  133  C4 ANAG A   1      31.840  43.369 -24.802  0.50103.37      E    C
+HETATM  134  O4 ANAG A   1      32.969  44.217 -24.782  0.50104.91      E    O
+HETATM  135  C5 ANAG A   1      32.040  42.223 -23.785  0.50 94.99      E    C
+HETATM  136  C6 ANAG A   1      31.564  42.633 -22.381  0.50 86.60      E    C
+HETATM  137  O6 ANAG A   1      32.632  42.591 -21.462  0.50 77.76      E    O
+HETATM  138  O5 ANAG A   1      31.458  40.954 -24.130  0.50 99.19      E    O
+HETATM  139  C1 BNAG A   1      30.271  40.925 -24.108  0.50 98.96      E    C
+HETATM  140  C2 BNAG A   1      31.415  41.878 -23.684  0.50100.81      E    C
+HETATM  141  N2 BNAG A   1      32.048  41.664 -22.378  0.50 94.26      E    N
+HETATM  142  C7 BNAG A   1      33.331  41.981 -22.079  0.50 89.45      E    C
+HETATM  143  O7 BNAG A   1      33.784  41.778 -20.959  0.50 83.16      E    O
+HETATM  144  C8 BNAG A   1      34.276  42.586 -23.092  0.50 87.63      E    C
+HETATM  145  C3 BNAG A   1      30.816  43.277 -23.775  0.50102.77      E    C
+HETATM  146  O3 BNAG A   1      31.569  44.240 -23.061  0.50102.25      E    O
+HETATM  147  C4 BNAG A   1      30.718  43.597 -25.266  0.50103.37      E    C
+HETATM  148  O4 BNAG A   1      30.115  44.862 -25.440  0.50104.91      E    O
+HETATM  149  C5 BNAG A   1      29.907  42.532 -26.038  0.50 94.99      E    C
+HETATM  150  C6 BNAG A   1      30.373  42.426 -27.500  0.50 86.60      E    C
+HETATM  151  O6 BNAG A   1      29.320  42.743 -28.381  0.50 77.76      E    O
+HETATM  152  O5 BNAG A   1      29.866  41.216 -25.458  0.50 99.19      E    O
+ATOM    745  N   ASN A 116      27.207  36.475 -25.453  1.00 62.15      A    N
+ATOM    746  CA AASN A 116      28.475  37.144 -25.135  0.50 61.77      A    C
+ATOM    747  CB AASN A 116      28.182  38.336 -24.223  0.50 69.02      A    C
+ATOM    748  CG AASN A 116      29.037  39.555 -24.495  0.50 79.45      A    C
+ATOM    749  OD1AASN A 116      28.656  40.644 -24.047  0.50 83.18      A    O
+ATOM    750  ND2AASN A 116      30.178  39.419 -25.218  0.50 87.72      A    N
+ATOM    751  C   ASN A 116      29.353  36.143 -24.389  1.00 53.28      A    C
+ATOM    752  O   ASN A 116      29.778  36.380 -23.266  1.00 48.83      A    O
+ATOM    753  CA BASN A 116      28.575  37.144 -25.135  0.50 61.77      A    C
+ATOM    754  CB BASN A 116      28.282  38.336 -24.223  0.50 69.02      A    C
+ATOM    755  CG BASN A 116      29.487  39.201 -23.920  0.50 79.45      A    C
+ATOM    756  OD1BASN A 116      30.611  38.710 -24.084  0.50 83.18      A    O
+ATOM    757  ND2BASN A 116      29.299  40.471 -23.478  0.50 87.72      A    N
+""",
         }
 links = {
   "linking_test_ASN-NAG.pdb" : [21, 22],
   "linking_test_ASN-NAG-altloc1.pdb" : [35, 37],
   "linking_test_ASN-NAG-altloc2.pdb" : [42, 44],
   "linking_test_ASN-NAG-altloc3.pdb" : [38, 40],
+  "linking_test_ASN-NAG-altloc4.pdb" : [43, 43],
   "linking_test_NAG-FU4.pdb" : [24, 25],
   "linking_test_NAG-NAG.pdb" : [35, 37],
   'linking_test_BGC-BGC.pdb' : [0, 1],
@@ -983,7 +1027,7 @@ def run():
     f.write(pdbs[pdb])
     f.close()
     if pdb.endswith(".cif"): cifs += " %s" % pdb
-  for pdb in pdbs:
+  for pdb in sorted(pdbs):
     if pdb.endswith(".cif"): continue
     #if pdb.find("linking_test_LEU-CSY-VAL")==-1: continue
     for i in range(2):

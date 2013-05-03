@@ -850,6 +850,11 @@ class monomer_mapping(slots_getstate_setstate):
       apply_cif_links_mm_pdbres_dict[self.pdb_residue_id_str].setdefault(
         self.i_conformer, []).append(self)
 
+  def __setattr1__(self, attr, value):
+    if attr == "lib_link":
+      if value: assert 0
+    slots_getstate_setstate.__setattr__(self, attr, value)
+
   def _collect_atom_names(self):
     self.ignored_atoms = {}
     self.active_atoms = []
@@ -1314,7 +1319,7 @@ class link_match_one(object):
       else:
         self.len_group_match = len(chem_link_group_comp)
     elif ( comp_group in [None, ""] ):
-      print 'self.is_comp_id_match',self.is_comp_id_match,self.len_comp_id_match
+      # linking non-standard amino acids
       if self.is_comp_id_match and self.len_comp_id_match>0:
         self.is_group_match = True
         self.len_group_match = len(chem_link_group_comp)
@@ -1378,15 +1383,18 @@ def get_lib_link_peptide(mon_lib_srv, m_i, m_j):
     link_id = "P" + link_id
   return mon_lib_srv.link_link_id_dict[link_id]
 
-def get_lib_link(mon_lib_srv, m_i, m_j):
+def get_lib_link(mon_lib_srv, m_i, m_j, verbose=False):
+  if (m_i.monomer.is_water() or m_j.monomer.is_water()): return None
   if (m_i.monomer.is_peptide() and m_j.monomer.is_peptide()):
+    if verbose: print 'peptide-peptide'
     return get_lib_link_peptide(mon_lib_srv, m_i, m_j)
   elif (    (m_i.is_rna_dna or m_i.monomer.is_rna_dna())
         and (m_j.is_rna_dna or m_j.monomer.is_rna_dna())):
     if (m_i.is_rna2p):
+      if verbose: print 'rna2p'
       return mon_lib_srv.link_link_id_dict["rna2p"]
+    if verbose: print 'rna3p'
     return mon_lib_srv.link_link_id_dict["rna3p"]
-  if (m_i.monomer.is_water() or m_j.monomer.is_water()): return None
   comp_id_1 = m_i.monomer.chem_comp.id
   comp_id_2 = m_j.monomer.chem_comp.id
   comp_1 = mon_lib_srv.get_comp_comp_id_direct(comp_id_1)
@@ -1458,6 +1466,7 @@ Corrupt CIF link definition:
       print attr, getattr(match, attr, None)
     print '_'*80
   for m in matches:
+    if verbose: _show_match(m)
     if (cmp(m, matches[0]) != 0): break
     best_matches.append(m)
   match = best_matches[0]
@@ -1570,24 +1579,6 @@ class add_angle_proxies(object):
         angle_proxy_registry,
         special_position_indices,
         broken_bond_i_seq_pairs=None):
-    if 0:
-      print '='*80
-      print counters
-      print m_i
-      print m_j
-      print dir(m_i)
-      print m_i.residue_name
-      print m_i.atom_names_given
-      print m_i.chainid
-      print m_i.conf_altloc
-      if m_j:
-        print m_j.residue_name
-        print m_j.atom_names_given
-        print m_j.chainid
-        print m_j.conf_altloc
-      for angle in angle_list:
-        print '-'*80
-        angle.show()
     self.counters = counters
     if (m_j is None):
       m_1,m_2,m_3 = m_i,m_i,m_i
@@ -1636,7 +1627,6 @@ class add_angle_proxies(object):
               i_seqs=i_seqs,
               angle_ideal=angle.value_angle,
               weight=1/angle.value_angle_esd**2))
-          #print i_seqs
           evaluate_registry_process_result(
             proxy_label="angle", m_i=m_i, m_j=m_j, i_seqs=i_seqs,
             registry_process_result=registry_process_result)
@@ -2768,6 +2758,17 @@ class build_all_chain_proxies(object):
                 # perform this in process_custom_links
               continue
             link = mon_lib_srv.link_link_id_dict[apply.data_link]
+            if hasattr(apply, "atom1") and hasattr(apply, "atom2"):
+              i_seqs = [apply.atom1.i_seq, apply.atom2.i_seq]
+              if self.geometry_proxy_registries.bond_simple.is_proxy_set(
+                  i_seqs=i_seqs,
+                  ):
+                if apply.automatic:
+                  print >> log, '%sDuplicate links ignored : %s' % (
+                    ' '*6,
+                    apply.data_link,
+                    )
+                  continue
             link_resolution = add_bond_proxies(
               counters=counters(label="apply_cif_link_bond"),
               m_i=m_i,
@@ -3189,8 +3190,6 @@ class build_all_chain_proxies(object):
       print 'Link created'
       bond.show()
     i_seqs = [apply.atom1.i_seq, apply.atom2.i_seq]
-    print i_seqs
-    print bond.show()
     if self.geometry_proxy_registries.bond_simple.is_proxy_set(
       i_seqs=i_seqs,
       ):
@@ -3326,8 +3325,6 @@ class build_all_chain_proxies(object):
     # so are nucleotide links
     possible_rna_dna_link = False
     if classes1.common_rna_dna or classes2.common_rna_dna:
-      print atoms[0].format_atom_record()
-      print atoms[1].format_atom_record()
       if(atoms[0].name.strip() in ["O3'", "O3*"] and
          atoms[1].name.strip() in ["P"]
          ):
@@ -3343,7 +3340,8 @@ class build_all_chain_proxies(object):
       atom1=atoms[0],
       atom2=atoms[1],
       )
-    # check if the link as already been applied
+    # check if the link as already been added to apply list
+    # could move this to class self.apply_cif_links
     count = 0
     matches = 2
     for i, apply in enumerate(self.apply_cif_links):

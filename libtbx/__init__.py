@@ -160,8 +160,12 @@ class group_args(object):
 
   def __repr__(self):
     outl = "group_args"
-    for attr in self.__dict__.keys():
-      outl += "\n  %-30s : %s" % (attr, getattr(self, attr))
+    for attr in sorted(self.__dict__.keys()):
+      tmp=getattr(self, attr)
+      if str(tmp).find("ext.atom")>-1:
+        outl += "\n  %-30s : %s" % (attr, tmp.quote())
+      else:
+        outl += "\n  %-30s : %s" % (attr, tmp)
     return outl
 
 if (os.environ.has_key("LIBTBX_PRINT_TRACE")):
