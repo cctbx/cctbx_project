@@ -47,6 +47,7 @@ class _(boost.python.injector, ext.histogram) :
   """
   Injector for extending cctbx.maptbx.histogram
   """
+  # XXX make a method of scitbx
   def get_percentile_cutoffs (self, map, vol_cutoff_plus_percent,
       vol_cutoff_minus_percent) :
     """
@@ -61,10 +62,6 @@ class _(boost.python.injector, ext.histogram) :
 
     Returns the upper and lower map value cutoffs (as Python floats).
     """
-    # XXX there are almost certainly more efficient ways to do this, but this
-    # is the best I could come up with quickly.  it does not offer much
-    # improvement when the histogram is extremely lopsided, but this is
-    # hopefully a rare case.
     map_values = map.as_1d()
     size = map_values.size()
     # upper limit
@@ -831,6 +828,12 @@ def principal_axes_of_inertia (
     points=sites,
     weights=values)
 
+#def scale_tmp(x,y):
+#  n = flex.sum(flex.abs(x)*flex.abs(y))
+#  d = flex.sum(flex.abs(y)*flex.abs(y))
+#  if(d == 0): return 1
+#  return n/d
+
 class local_scale(object):
   def __init__(
         self,
@@ -840,6 +843,7 @@ class local_scale(object):
         map_data=None,
         miller_array=None,
         d_min = None,
+        hg = True,
         mean_positive_scale = 1): #XXX =1: more features and noise
     # process inputs
     assert [f_map, map_data].count(None) == 1
@@ -858,32 +862,55 @@ class local_scale(object):
       unit_cell  = crystal_symmetry.unit_cell(),
       box_size_as_unit_cell_fraction = 0.025)
     # Truncate high density
-    mean_positive = flex.mean(map_data.as_1d().select(map_data.as_1d()>0))
-    map_data = map_data.set_selected(map_data>mean_positive*mean_positive_scale,
-      mean_positive*mean_positive_scale)
+    #mean_positive = flex.mean(map_data.as_1d().select(map_data.as_1d()>0))
+    #map_data = map_data.set_selected(map_data>mean_positive*mean_positive_scale,
+    #  mean_positive*mean_positive_scale)
     # Apply Hoppe-Gassmann modification
-    hoppe_gassman_modification(data=map_data, mean_scale=2, n_iterations=1)
+#    hoppe_gassman_modification2(data=map_data, mean_scale=2, n_iterations=1)
     # Loop over boxes, fill map_result with one box at a time
     self.map_result = flex.double(flex.grid(b.n_real))
+    ref_box = None
     for s,e in zip(b.starts, b.ends):
       box = copy(map_data, s, e)
       box.reshape(flex.grid(box.all()))
       #XXX more features and noise
-      #ave = flex.mean(box.as_1d().select(box.as_1d()>0))
-      #box.set_selected(box>ave*3, ave*3)
-      hoppe_gassman_modification(data=box, mean_scale=4, n_iterations=1)
-      sd = box.sample_standard_deviation()
-      if(sd!=0): box = box/sd
+      #try:
+      #  ave = flex.mean(box.as_1d().select(box.as_1d()>0))
+      #  box.set_selected(box>ave, ave)
+      #except: print "FAILED, but it's ok"
+#      if(hg): hoppe_gassman_modification(data=box, mean_scale=2, n_iterations=1)
+      #sd = box.sample_standard_deviation()
+      #if(sd!=0): box = box/sd
+      #hoppe_gassman_modification2(data=box, mean_scale=2, n_iterations=1)
+      mi,ma,me = box.as_1d().min_max_mean().as_tuple()
+      if(mi < ma):
+        o = volume_scale(map = box, n_bins = 1000)
+        box = o.map_data()
+      #hoppe_gassman_modification(data=box, mean_scale=2, n_iterations=1)
+      ###
+      #sc = 1
+      #if(ref_box is None): ref_box = box.deep_copy()
+      #else:
+      #  m1=flex.mean(ref_box)
+      #  m2=flex.mean(box)
+      #  if(m2 != 0): sc = m2/m1
+      #  box = box/sc
+      #
+      #  m1=flex.mean(ref_box)
+      #  m2=flex.mean(box)
+      #  if(m2 != 0): sc2 = m2/m1
+      #  print sc, sc2
+      ###
       set_box(
         map_data_from = box,
         map_data_to   = self.map_result,
         start         = s,
         end           = e)
-    hoppe_gassman_modification(data=self.map_result, mean_scale=2, n_iterations=1)
+    #hoppe_gassman_modification2(data=self.map_result, mean_scale=2, n_iterations=1)
     if(miller_array is not None):
       complete_set = miller_array
       if(d_min is not None):
-        d_min = miller_array.d_min()-0.25
+        d_min = miller_array.d_min()#-0.25
         complete_set = miller_array.complete_set(d_min=d_min)
       self.map_coefficients = complete_set.structure_factors_from_map(
         map            = self.map_result,
