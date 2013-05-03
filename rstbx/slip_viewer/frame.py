@@ -387,76 +387,83 @@ class XrayFrame (AppFrame,XFBaseClass) :
       ### XXX TODO: Save overlays
       ### XXX TODO: Fix bug where multi-asic images are slightly cropped due to tranformation error'
 
-      wildcard_str = ".png"
-      file_name = wx.SaveFileSelector("PNG",wildcard_str,"",self)
+      wildcard_str = "PNG file (*.png)|*.png|PDF file (*.pdf)|*.pdf"
+      file_name = wx.SaveFileSelector("PNG or PDF",wildcard_str,"",self)
 
       if file_name == "":
         return
 
-      import Image
-      from cStringIO import StringIO
-      self.update_statusbar("Writing " + file_name + "...")
+      ext = os.path.splitext(file_name)[1].lower()
 
-      flex_img = self.pyslip.tiles.raw_image.get_flex_image(brightness=1)
-      if flex_img.supports_rotated_tiles_antialiasing_recommended:
-          currentZoom = self.pyslip.level
-          self.pyslip.tiles.UseLevel(0) #1:1 zoom level
+      if ext == ".png":
+        import Image
+        from cStringIO import StringIO
+        self.update_statusbar("Writing " + file_name + "...")
 
-          x, y, width, height = self._img._raw.bounding_box_mm()
-          x1, y1 = self._img._raw.detector_coords_as_image_coords(x,y)
-          x2, y2 = self._img._raw.detector_coords_as_image_coords(x+width,y+height)
+        flex_img = self.pyslip.tiles.raw_image.get_flex_image(brightness=1)
+        if flex_img.supports_rotated_tiles_antialiasing_recommended:
+            currentZoom = self.pyslip.level
+            self.pyslip.tiles.UseLevel(0) #1:1 zoom level
 
-          # Map > View - determine layout in X direction
-          x_offset = x1
-          import math
-          start_x_tile = int(math.floor(x_offset / self.pyslip.tile_size_x))
-          stop_x_tile = ((x2 + self.pyslip.tile_size_x - 1)/ self.pyslip.tile_size_x)
-          stop_x_tile = int(stop_x_tile)
-          col_list = range(start_x_tile, stop_x_tile)
-          x_pix = start_x_tile * self.pyslip.tile_size_y - x_offset
+            x, y, width, height = self._img._raw.bounding_box_mm()
+            x1, y1 = self._img._raw.detector_coords_as_image_coords(x,y)
+            x2, y2 = self._img._raw.detector_coords_as_image_coords(x+width,y+height)
 
-          y_offset = y1
-          start_y_tile = int(math.floor(y_offset / self.pyslip.tile_size_y))
-          stop_y_tile = ((y2 + self.pyslip.tile_size_y - 1) / self.pyslip.tile_size_y)
-          stop_y_tile = int(stop_y_tile)
-          row_list = range(start_y_tile, stop_y_tile)
-          y_pix_start = start_y_tile * self.pyslip.tile_size_y - y_offset
+            # Map > View - determine layout in X direction
+            x_offset = x1
+            import math
+            start_x_tile = int(math.floor(x_offset / self.pyslip.tile_size_x))
+            stop_x_tile = ((x2 + self.pyslip.tile_size_x - 1)/ self.pyslip.tile_size_x)
+            stop_x_tile = int(stop_x_tile)
+            col_list = range(start_x_tile, stop_x_tile)
+            x_pix = start_x_tile * self.pyslip.tile_size_y - x_offset
 
-          bitmap = wx.EmptyBitmap(x2-x1, y2-y1)
-          dc = wx.MemoryDC()
-          dc.SelectObject(bitmap)
+            y_offset = y1
+            start_y_tile = int(math.floor(y_offset / self.pyslip.tile_size_y))
+            stop_y_tile = ((y2 + self.pyslip.tile_size_y - 1) / self.pyslip.tile_size_y)
+            stop_y_tile = int(stop_y_tile)
+            row_list = range(start_y_tile, stop_y_tile)
+            y_pix_start = start_y_tile * self.pyslip.tile_size_y - y_offset
 
-          # start pasting tiles
-          for x in col_list:
-              y_pix = y_pix_start
-              for y in row_list:
-                  dc.DrawBitmap(self.pyslip.tiles.GetTile(x, y), x_pix, y_pix, False)
-                  y_pix += self.pyslip.tile_size_y
-              x_pix += self.pyslip.tile_size_x
+            bitmap = wx.EmptyBitmap(x2-x1, y2-y1)
+            dc = wx.MemoryDC()
+            dc.SelectObject(bitmap)
 
-          dc.SelectObject(wx.NullBitmap)
+            # start pasting tiles
+            for x in col_list:
+                y_pix = y_pix_start
+                for y in row_list:
+                    dc.DrawBitmap(self.pyslip.tiles.GetTile(x, y), x_pix, y_pix, False)
+                    y_pix += self.pyslip.tile_size_y
+                x_pix += self.pyslip.tile_size_x
 
-          wximg = wx.ImageFromBitmap(bitmap)
-          imageout = Image.new('RGB', (wximg.GetWidth(), wximg.GetHeight()))
-          imageout.fromstring(wximg.GetData())
+            dc.SelectObject(wx.NullBitmap)
 
-          self.pyslip.tiles.UseLevel(currentZoom)
+            wximg = wx.ImageFromBitmap(bitmap)
+            imageout = Image.new('RGB', (wximg.GetWidth(), wximg.GetHeight()))
+            imageout.fromstring(wximg.GetData())
 
-      else: # write the image out at full resolution
-          flex_img.setWindow(0.0, 0.0, 1)
-          flex_img.spot_convention(0)
-          flex_img.adjust(color_scheme=0)
-          flex_img.prep_string()
-          data_string = flex_img.export_string
-          imageout = Image.fromstring("RGB",
-                                   (flex_img.ex_size2(), flex_img.ex_size1()),
-                                   data_string)
+            self.pyslip.tiles.UseLevel(currentZoom)
 
-      out = StringIO()
-      imageout.save(out, "PNG")
-      open(file_name, "wb").write(out.getvalue())
+        else: # write the image out at full resolution
+            flex_img.setWindow(0.0, 0.0, 1)
+            flex_img.spot_convention(0)
+            flex_img.adjust(color_scheme=0)
+            flex_img.prep_string()
+            data_string = flex_img.export_string
+            imageout = Image.fromstring("RGB",
+                                     (flex_img.ex_size2(), flex_img.ex_size1()),
+                                     data_string)
 
-      self.update_statusbar("Writing " + file_name + "..." + " Done.")
+        out = StringIO()
+        imageout.save(out, "PNG")
+        open(file_name, "wb").write(out.getvalue())
+
+        self.update_statusbar("Writing " + file_name + "..." + " Done.")
+      elif ext == ".pdf":
+        self.update_statusbar("Save as pdf not implemented.")
+      else:
+        self.update_statusbar("Unrecognized file extension: %s"%ext)
 
 from rstbx.viewer.frame import SettingsFrame
 
