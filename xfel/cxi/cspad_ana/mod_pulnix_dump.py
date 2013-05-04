@@ -107,6 +107,10 @@ class mod_pulnix_dump(object):
     # 0.1 radians corresponds to 5.7 degrees.  Three standard
     # deviations around the mean account for almost 100% of the area
     # under a Gaussian curve.
+    #
+    # XXX This works perfectly for r0047 and r0210 from cxi78513, but
+    # has problems with r0090, r0098, r0099, r0109, r0197, r0267,
+    # r0273, r0274, r0281, r0287, and probably others.
     visible = False
     self._angles.append(atan2(v[0, 0], v[0, 1]))
     if len(self._angles) == self._angles.maxlen:
