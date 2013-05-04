@@ -194,7 +194,7 @@ class block_base(DictMixin):
       if key in done: continue
       done.append(key)
     return done
-      
+
   def iterloops(self):
     for key in self.loop_keys():
       yield self.get(key)
