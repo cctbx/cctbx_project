@@ -27,7 +27,6 @@ except: # intentional
     gzip = None
 
 import exceptions
-import traceback
 
 # first - import access to all of the factories that we will be needing
 

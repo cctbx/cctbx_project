@@ -17,7 +17,8 @@ class reader(xds_cbf.reader):
 
   def get_data(self):
     """Get the dark current array from the file"""
-    import numpy
+    # XXX is this actually necessary here?
+    import numpy # import dependency
 
     # Get the image data
     return = xds_cbf.reader.get_data(self)
@@ -25,7 +26,6 @@ class reader(xds_cbf.reader):
 
 if __name__ == '__main__':
     import sys
-    import numpy
     handle = reader()
     handle.read_file(sys.argv[1])
     image = handle.get_data()

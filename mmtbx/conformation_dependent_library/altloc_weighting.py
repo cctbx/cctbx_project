@@ -156,7 +156,7 @@ def update_restraints(hierarchy,
       for atom in hierarchy.atoms():
         if atom.i_seq==key[0]: print atom.quote()
         if atom.i_seq==key[1]: print atom.quote()
-    
+
 
   if angle_weighting:
     for angle_proxy in restraints_manager.geometry.angle_proxies:
