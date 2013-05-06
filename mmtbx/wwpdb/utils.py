@@ -57,7 +57,7 @@ def fetch_pdb_data (
       (mtz_file, "\n".join(import_out.stderr_lines)))
   return os.path.abspath(pdb_file), os.path.abspath(mtz_file)
 
-def find_data_arrays (mtz_file, log=None) :
+def find_data_arrays (mtz_file, log=None, merge_anomalous=False) :
   """
   Guess an appropriate data array to use for refinement, plus optional
   Hendrickson-Lattman coefficients and R-free flags if present.
@@ -107,7 +107,7 @@ def find_data_arrays (mtz_file, log=None) :
     test_flag_value=flag_value,
     phases=phases,
     log=log,
-    merge_anomalous=False)
+    merge_anomalous=merge_anomalous)
 
 def combine_split_structure (
     pdb_file,
