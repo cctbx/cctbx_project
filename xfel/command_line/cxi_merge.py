@@ -1194,7 +1194,7 @@ def show_overall_observations(
         plt.show()
 
     if sel_measurements > 0:
-      mean_I = mean_I_sig_I = 0
+      mean_I = mean_I_sigI = 0
       if I_n > 0:
         mean_I = I_sum / I_n
         mean_I_sigI = I_sigI_sum / I_n
@@ -1208,7 +1208,7 @@ def show_overall_observations(
         completeness = n_present / sel_redundancy.size(),
         measurements = sel_measurements,
         mean_I       = mean_I,
-        mean_I_sigI  = mean_I_sig_I
+        mean_I_sigI  = mean_I_sigI
         )
       result.append(bin)
     cumulative_unique += n_present
