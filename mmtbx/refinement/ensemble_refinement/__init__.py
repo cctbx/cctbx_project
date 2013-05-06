@@ -140,6 +140,9 @@ ensemble_refinement {
     .type = choice
     .short_caption = Refinement target
     .help = 'Choices for refinement target'
+  remove_alt_conf_from_input_pdb = True
+    .type = bool
+    .help = 'Removes any alternative conformations if present in input PDB model'
   scale_wrt_n_calc_start = False
     .type = bool
     .help = 'Scale <Ncalc> to starting Ncalc'
@@ -399,10 +402,6 @@ class run_ensemble_refinement(object):
     #Atom selections
     self.atom_selections()
 
-    #Harmonic restraints
-    if self.params.harmonic_restraints.selections is not None:
-      self.add_harmonic_restraints()
-
     self.model.show_geometry_statistics(message   = "Starting model",
                                         ignore_hd = True,
                                         out       = self.log)
@@ -482,6 +481,10 @@ class run_ensemble_refinement(object):
       self.sigmaa_array = self.fmodel_running.sigmaa().sigmaa().data()
       self.best_r_free = self.fmodel_running.r_free()
       self.fmodel_running.set_sigmaa = self.sigmaa_array
+
+    #Harmonic restraints
+    if self.params.harmonic_restraints.selections is not None:
+      self.add_harmonic_restraints()
 
 ############################## START Simulation ################################
     make_header("Start simulation", out = self.log)
@@ -810,6 +813,8 @@ class run_ensemble_refinement(object):
 
   def add_harmonic_restraints(self):
     make_header("Add specific harmonic restraints", out = self.log)
+    # ensures all solvent atoms are at the end prior to applying harmonic restraints
+    self.ordered_solvent_update()
     all_chain_proxies = self.generate_all_chain_proxies(model = self.model)
     hr_selections = mmtbx.utils.get_atom_selections(
         all_chain_proxies = all_chain_proxies,
@@ -1741,35 +1746,36 @@ def run(args, command_name = "phenix.ensemble_refinement", log=None,
 
   # Remove alternative conformations if present
   hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-  atoms_size_pre = hierarchy.atoms().size()
-  for model in hierarchy.models() :
-    for chain in model.chains() :
-      for residue_group in chain.residue_groups() :
-        atom_groups = residue_group.atom_groups()
-        assert (len(atom_groups) > 0)
-        for atom_group in atom_groups :
-          if (not atom_group.altloc in ["", "A"]) :
-            residue_group.remove_atom_group(atom_group=atom_group)
-          else :
-            atom_group.altloc = ""
-        if (len(residue_group.atom_groups()) == 0) :
-          chain.remove_residue_group(residue_group=residue_group)
-      if (len(chain.residue_groups()) == 0) :
-        model.remove_chain(chain=chain)
-  atoms = hierarchy.atoms()
-  new_occ = flex.double(atoms.size(), 1.0)
-  atoms.set_occ(new_occ)
-  atoms_size_post = hierarchy.atoms().size()
-  if atoms_size_pre != atoms_size_post:
-    pdb_file_removed_alt_confs = pdb_file[0:-4]+'_removed_alt_confs.pdb'
-    print >> log, "\nRemoving alternative conformations"
-    print >> log, "All occupancies reset to 1.0"
-    print >> log, "New PDB : ", pdb_file_removed_alt_confs, "\n"
-    hierarchy.write_pdb_file(file_name        = pdb_file_removed_alt_confs,
-                             crystal_symmetry = pdb_inp.crystal_symmetry())
-    processed_pdb_file, pdb_inp = \
-    processed_pdb_files_srv.process_pdb_files(
-      pdb_file_names = [pdb_file_removed_alt_confs])
+  if er_params.remove_alt_conf_from_input_pdb:
+    atoms_size_pre = hierarchy.atoms().size()
+    for model in hierarchy.models() :
+      for chain in model.chains() :
+        for residue_group in chain.residue_groups() :
+          atom_groups = residue_group.atom_groups()
+          assert (len(atom_groups) > 0)
+          for atom_group in atom_groups :
+            if (not atom_group.altloc in ["", "A"]) :
+              residue_group.remove_atom_group(atom_group=atom_group)
+            else :
+              atom_group.altloc = ""
+          if (len(residue_group.atom_groups()) == 0) :
+            chain.remove_residue_group(residue_group=residue_group)
+        if (len(chain.residue_groups()) == 0) :
+          model.remove_chain(chain=chain)
+    atoms = hierarchy.atoms()
+    new_occ = flex.double(atoms.size(), 1.0)
+    atoms.set_occ(new_occ)
+    atoms_size_post = hierarchy.atoms().size()
+    if atoms_size_pre != atoms_size_post:
+      pdb_file_removed_alt_confs = pdb_file[0:-4]+'_removed_alt_confs.pdb'
+      print >> log, "\nRemoving alternative conformations"
+      print >> log, "All occupancies reset to 1.0"
+      print >> log, "New PDB : ", pdb_file_removed_alt_confs, "\n"
+      hierarchy.write_pdb_file(file_name        = pdb_file_removed_alt_confs,
+                               crystal_symmetry = pdb_inp.crystal_symmetry())
+      processed_pdb_file, pdb_inp = \
+      processed_pdb_files_srv.process_pdb_files(
+        pdb_file_names = [pdb_file_removed_alt_confs])
 
   d_min = f_obs.d_min()
   xsfppf = mmtbx.utils.xray_structures_from_processed_pdb_file(
