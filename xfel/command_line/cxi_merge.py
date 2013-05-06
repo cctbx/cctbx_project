@@ -1156,8 +1156,7 @@ def show_overall_observations(
       val_redundancy_alt = flex.sum(sel_redundancy) / n_present
 
     # Per-bin sum of I and I/sig(I).  For any reflection, the weight
-    # of the merged intensity must be non-negative for this to make
-    # sense.
+    # of the merged intensity must be positive for this to make sense.
     sel_o = (sel_w & (summed_weight > 0))
     intensity = summed_wt_I.select(sel_o) / summed_weight.select(sel_o)
     I_sum = flex.sum(intensity)
@@ -1194,7 +1193,11 @@ def show_overall_observations(
         plt.bar(center, hist, align="center", width=width)
         plt.show()
 
-    if (sel_measurements > 0):
+    if sel_measurements > 0:
+      mean_I = mean_I_sig_I = 0
+      if I_n > 0:
+        mean_I = I_sum / I_n
+        mean_I_sigI = I_sigI_sum / I_n
       bin = resolution_bin(
         i_bin        = i_bin,
         d_range      = d_range,
@@ -1204,8 +1207,8 @@ def show_overall_observations(
         complete_tag = sel_complete_tag,
         completeness = n_present / sel_redundancy.size(),
         measurements = sel_measurements,
-        mean_I       = I_sum / I_n,
-        mean_I_sigI  = I_sigI_sum / I_n,
+        mean_I       = mean_I,
+        mean_I_sigI  = mean_I_sig_I
         )
       result.append(bin)
     cumulative_unique += n_present
