@@ -54,6 +54,13 @@ class FormatSMVADSC(FormatSMV):
 
         return
 
+    def _start(self):
+
+        FormatSMV._start(self)
+        from iotbx.detectors import SMVImage
+        self.detectorbase = SMVImage(self._image_file)
+        self.detectorbase.readHeader()
+
     def _goniometer(self):
         '''Return a model for a simple single-axis goniometer. This should
         probably be checked against the image header.'''
