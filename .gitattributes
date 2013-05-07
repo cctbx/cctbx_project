@@ -1024,6 +1024,7 @@ iotbx/command_line/pdb_add_conformations.py -text
 iotbx/command_line/pdb_as_cif.py -text
 iotbx/command_line/pdb_as_fasta.py svneol=native#text/x-python
 iotbx/command_line/pdb_expand_ncs.py -text
+iotbx/command_line/pdb_get_citation.py -text
 iotbx/command_line/pdb_labels_comparison.py svneol=native#text/x-python
 iotbx/command_line/pdb_labels_diff.py svneol=native#text/x-python
 iotbx/command_line/pdb_remediator.py svneol=native#text/x-python
