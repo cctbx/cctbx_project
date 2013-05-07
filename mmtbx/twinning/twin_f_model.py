@@ -1869,7 +1869,8 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                            post_processing_callback=None,
                            fill_missing=None,
                            sharp=None,
-                           pdb_hierarchy=None):
+                           pdb_hierarchy=None,
+                           merge_anomalous=None): # FIXME ignored
         if (map_type in ["gradient", "m_gradient", "anom"]) :
           return self.fmodel.compute_map_coefficients(map_type=map_type)
         else :
