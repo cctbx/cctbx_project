@@ -1146,14 +1146,14 @@ def show_overall_observations(
     sel_complete_tag = "[%d/%d]" % (n_present, sel_redundancy.size())
     sel_measurements = flex.sum(sel_redundancy)
 
-    # Alternatively, redundancy (XXX or multiplicity?  the table
-    # header "redundancy2" is really bad) is calculated as the average
-    # number of observations for the observed reflections--missing
-    # reflections do not affect the redundancy adversely, and the
-    # reported value becomes completeness-independent.
-    val_redundancy_alt = 0
-    if (n_present > 0):
-      val_redundancy_alt = flex.sum(sel_redundancy) / n_present
+    # Alternatively, redundancy (or multiplicity) is calculated as the
+    # average number of observations for the observed
+    # reflections--missing reflections do not affect the redundancy
+    # adversely, and the reported value becomes
+    # completeness-independent.
+    val_redundancy_obs = 0
+    if n_present > 0:
+      val_redundancy_obs = flex.sum(sel_redundancy) / n_present
 
     # Per-bin sum of I and I/sig(I).  For any reflection, the weight
     # of the merged intensity must be positive for this to make sense.
@@ -1199,17 +1199,16 @@ def show_overall_observations(
         mean_I = I_sum / I_n
         mean_I_sigI = I_sigI_sum / I_n
       bin = resolution_bin(
-        i_bin        = i_bin,
-        d_range      = d_range,
-        d_min        = obs.binner().bin_d_min(i_bin),
-        redundancy   = flex.mean(sel_redundancy.as_double()),
-        redundancy2  = val_redundancy_alt,
-        complete_tag = sel_complete_tag,
-        completeness = n_present / sel_redundancy.size(),
-        measurements = sel_measurements,
-        mean_I       = mean_I,
-        mean_I_sigI  = mean_I_sigI
-        )
+        i_bin=i_bin,
+        d_range=d_range,
+        d_min=obs.binner().bin_d_min(i_bin),
+        redundancy_asu=flex.mean(sel_redundancy.as_double()),
+        redundancy_obs=val_redundancy_obs,
+        complete_tag=sel_complete_tag,
+        completeness=n_present / sel_redundancy.size(),
+        measurements=sel_measurements,
+        mean_I=mean_I,
+        mean_I_sigI=mean_I_sigI)
       result.append(bin)
     cumulative_unique += n_present
     cumulative_meas   += sel_measurements
@@ -1228,14 +1227,14 @@ def show_overall_observations(
   table_data.append(table_header2)
   for bin in result:
     table_row = []
-    table_row.append("%3d"%bin.i_bin)
-    table_row.append("%-13s"%bin.d_range)
-    table_row.append("%13s"%bin.complete_tag)
-    table_row.append("%6.2f"%bin.redundancy)
-    table_row.append("%6.2f"% bin.redundancy2)
-    table_row.append("%6d"% bin.measurements)
-    table_row.append("%8.0f"% bin.mean_I)
-    table_row.append("%8.3f"% bin.mean_I_sigI)
+    table_row.append("%3d" % bin.i_bin)
+    table_row.append("%-13s" % bin.d_range)
+    table_row.append("%13s" % bin.complete_tag)
+    table_row.append("%6.2f" % bin.redundancy_asu)
+    table_row.append("%6.2f" % bin.redundancy_obs)
+    table_row.append("%6d" % bin.measurements)
+    table_row.append("%8.0f" % bin.mean_I)
+    table_row.append("%8.3f" % bin.mean_I_sigI)
     table_data.append(table_row)
   table_data.append([""]*len(table_header))
   table_data.append(  [
@@ -1260,19 +1259,19 @@ def show_overall_observations(
     x_is_inverse_d_min=True,
     force_exact_x_labels=True)
   table.add_column(
-    column=[ 1/bin.d_min**2 for bin in result ],
+    column=[1 / bin.d_min**2 for bin in result],
     column_name="d_min",
     column_label="Resolution")
   table.add_column(
-    column=[ bin.redundancy for bin in result ],
+    column=[bin.redundancy_asu for bin in result],
     column_name="redundancy",
     column_label="Redundancy")
   table.add_column(
-    column=[ bin.completeness for bin in result ],
+    column=[bin.completeness for bin in result],
     column_name="completeness",
     column_label="Completeness")
   table.add_column(
-    column=[ bin.mean_I_sigI for bin in result ],
+    column=[bin.mean_I_sigI for bin in result],
     column_name="mean_i_over_sigI",
     column_label="<I/sig(I)>")
   table.add_graph(
@@ -1291,18 +1290,18 @@ def show_overall_observations(
 
 class resolution_bin(object):
   def __init__(self,
-               i_bin         = None,
-               d_range       = None,
-               d_min         = None,
-               redundancy    = None,
-               redundancy2   = None,
-               absent        = None,
-               complete_tag  = None,
-               completeness  = None,
-               measurements  = None,
-               mean_I        = None,
-               mean_I_sigI   = None,
-               sigmaa        = None):
+               i_bin=None,
+               d_range=None,
+               d_min=None,
+               redundancy_asu=None,
+               redundancy_obs=None,
+               absent=None,
+               complete_tag=None,
+               completeness=None,
+               measurements=None,
+               mean_I=None,
+               mean_I_sigI=None,
+               sigmaa=None):
     adopt_init_args(self, locals())
 
 class scaling_result (group_args) :
