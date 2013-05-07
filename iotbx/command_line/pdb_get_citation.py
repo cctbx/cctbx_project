@@ -59,7 +59,7 @@ the article XML from NCBI, and print a bibliography entry.
     retmode="text")
   def get_node_data (xml_node, node_name) :
     child_nodes = xml_node.getElementsByTagName(node_name)
-    return str(child_nodes[0].childNodes[0].data)
+    return unicode(child_nodes[0].childNodes[0].data)
   xmlrec = parseString(data.read())
   articles = xmlrec.getElementsByTagName("PubmedArticle")
   assert (len(articles) == 1)
@@ -82,7 +82,8 @@ the article XML from NCBI, and print a bibliography entry.
   pages = get_node_data(article, "MedlinePgn")
   # TODO other formats
   print >> out, "%s (%s).  %s %s %s, %s." % \
-    (people, year, title, journal, volume, pages)
+    (people.encode('ascii', 'ignore'), year, title.encode('ascii', 'ignore'),
+     journal, volume, pages)
 
 def validate_params (params) :
   if (params.pdb_id is None) :
