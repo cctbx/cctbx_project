@@ -72,6 +72,7 @@ def find_and_build_ions (
   import scitbx.lbfgs
   assert (1.0 >= params.initial_occupancy >= 0)
   fmodel = fmodels.fmodel_xray()
+  anomalous_flag = fmodel.f_obs().anomalous_flag()
   if (out is None) : out = sys.stdout
   pdb_hierarchy = model.pdb_hierarchy(sync_with_xray_structure=True)
   if (manager is None) :
@@ -141,7 +142,7 @@ def find_and_build_ions (
         segid="ION",
         refine_adp=refine_adp,
         refine_occupancies=False) #params.refine_ion_occupancies)
-      if (params.refine_anomalous) :
+      if (params.refine_anomalous) and (anomalous_flag) :
         scatterer = model.xray_structure.scatterers()[i_seq]
         if (wavelength is not None) :
           fp_fdp_info = sasaki.table(final_choice.element).at_angstrom(
@@ -176,7 +177,8 @@ def find_and_build_ions (
       xray_structure=model.xray_structure,
       update_f_calc=True,
       update_f_mask=True)
-    refine_anomalous = (params.refine_anomalous) and (len(anomalous_groups)>0)
+    n_anom = len(anomalous_groups)
+    refine_anomalous = anomalous_flag and params.refine_anomalous and n_anom>0
     refine_occupancies = ((params.refine_ion_occupancies or refine_anomalous)
       and ((not occupancy_strategy_enabled) or
            (model.refinement_flags.s_occupancies is None) or
@@ -222,6 +224,7 @@ def find_and_build_ions (
           print >> out, "    %s" % atoms[i_seq].id_str(suppress_segid=True)
       print >> out, ""
     if (refine_anomalous) :
+      assert fmodel.f_obs().anomalous_flag()
       print >> out, "  anomalous refinement (new ions only): start %s" % \
         show_r_factors()
       anomalous_scatterer_groups.minimizer(

@@ -50,8 +50,6 @@ def compare_ligands (ligand_code,
       dxyz = abs(col(xyz_mean_1) - col(xyz_mean_2))
       if (dxyz < max_distance_between_centers_of_mass) :
         matching.append(ligand_2)
-      else :
-        print dxyz
     for ligand_2 in matching :
       isel_1 = flex.size_t()
       isel_2 = flex.size_t()
