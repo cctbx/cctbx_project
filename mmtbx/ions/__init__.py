@@ -98,7 +98,7 @@ water
     .input_size = 80
     .help = Maximum water mFo-DFc map value
     .short_caption = Max. expected mFo-DFc map value
-  max_anom_level = 2.0
+  max_anom_level = 2.5
     .type = float
     .input_size = 80
     .help = Maximum water anomalous map value
