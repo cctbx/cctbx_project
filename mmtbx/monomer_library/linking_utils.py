@@ -33,7 +33,7 @@ standard_o_links = [
   "XYS-THR",
   ]
 #################################################
-# saccahrides that have non-standard atom names #
+# saccharides that have non-standard atom names #
 #  in the names in the standard links           #
 #################################################
 not_correct_sugars = [
@@ -318,15 +318,27 @@ def is_atom_pair_linked(atom1,
                         verbose=False,
                         ):
   #if atom1.parent().parent()==atom2.parent().parent(): return False
-  metal_coordination_cutoff *= metal_coordination_cutoff
-  amino_acid_bond_cutoff += amino_acid_bond_cutoff
-  skip_if_one = ["common_water"]
+  #skip_if_one = ["common_water"]
+  skip_if_both = [
+    ["common_water", "common_water"],
+    ]
+  skip_if_longer = {
+    ("common_amino_acid", "common_amino_acid") : amino_acid_bond_cutoff*amino_acid_bond_cutoff,
+    }
   class1 = get_class(atom1.parent().resname)
   class2 = get_class(atom2.parent().resname)
-  #print class1, class2
-  if class1 in skip_if_one or class2 in skip_if_one: return False
-  # metals
+  print class1, class2
+  lookup = [class1, class2]
+  lookup.sort()
+  if lookup in skip_if_both: return False
+  lookup = tuple(lookup)
+  limit = skip_if_longer.get(lookup, None)
   d2 = get_distance2(atom1, atom2)
+  if limit and limit<d2: return False
+  #if class1 in skip_if_one or class2 in skip_if_one: return False
+  # metals
+  metal_coordination_cutoff *= metal_coordination_cutoff
+  #amino_acid_bond_cutoff *= amino_acid_bond_cutoff
   #print 'd2',d2,metal_coordination_cutoff,amino_acid_bond_cutoff
   if d2>metal_coordination_cutoff: return False
   if class1=="common_element" and class2=="common_element":
@@ -378,6 +390,7 @@ def process_nonbonded_for_linking(pdb_inp,
       result.append(item)
     else:
       print
+  print result
   return result
 
 def get_bonded(hierarchy,
