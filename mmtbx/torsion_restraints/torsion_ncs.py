@@ -1483,6 +1483,9 @@ class get_ncs_groups(object):
                            am.padded_sequences[chain_j_str])
         struct_pair = (am.structures[chain_i_str],
                        am.structures[chain_j_str])
+        if ( (len(seq_pair[0])==0 and len(seq_pair[1])==0) or
+             (len(seq_pair_padded[0])==0 and len(seq_pair_padded[1])==0) ):
+          continue
         residue_match_map = \
           utils._alignment(
             params=params,
