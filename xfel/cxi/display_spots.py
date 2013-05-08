@@ -29,7 +29,7 @@ def ImageFactory(filename):
 
 
 from iotbx import detectors
-detectors.ImageFactory = ImageFactory
+#detectors.ImageFactory = ImageFactory
 
 from spotfinder.diffraction.imagefiles import FileName
 FileName.exts.append("pickle")
