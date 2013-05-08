@@ -1966,6 +1966,8 @@ def model_simple(pdb_file_names,
                  scattering_table = None,
                  d_min = None):
   #
+  if (not libtbx.env.has_module("elbow")) :
+    use_elbow = False
   cryst1 = None
   mmtbx_pdb_file = pdb_file(
     pdb_file_names   = pdb_file_names,
