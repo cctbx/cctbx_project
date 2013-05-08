@@ -13,6 +13,8 @@ master_phil = """
     .type = float
   exclude_hydrogens = True
     .type = bool
+  verbose = False
+    .type = bool
 """
 
 def run (args, out=sys.stdout) :
@@ -27,7 +29,7 @@ ligand fitting tools in Phenix.""")
   import iotbx.phil
   class _cmdline (iotbx.phil.process_command_line_with_files) :
     def process_other (self, arg) :
-      if (len(args) <= 3) and (arg.isalnum()) :
+      if (len(arg) <= 3) and (arg.isalnum()) :
         return iotbx.phil.parse("""ligand_code=%s""" % arg)
   cmdline = _cmdline(
     args=args,
@@ -44,6 +46,7 @@ ligand fitting tools in Phenix.""")
     pdb_file_1=params.pdb_file[0],
     pdb_file_2=params.pdb_file[1],
     exclude_hydrogens=params.exclude_hydrogens,
+    verbose=params.verbose,
     out=out)
   if (len(rmsds) == 0) :
     raise Sorry("No matching ligands found!")

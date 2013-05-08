@@ -10,6 +10,7 @@ def compare_ligands (ligand_code,
     pdb_file_2=None,
     max_distance_between_centers_of_mass=8.0,
     exclude_hydrogens=True,
+    verbose=False,
     out=sys.stdout) :
   from scitbx.array_family import flex
   from scitbx.matrix import col
@@ -42,7 +43,8 @@ def compare_ligands (ligand_code,
     (len(ligands_1), len(ligands_2))
   for ligand_1 in ligands_1 :
     matching = []
-    sites_1 = ligand_1.atoms().extract_xyz()
+    atoms_1 = ligand_1.atoms()
+    sites_1 = atoms_1.extract_xyz()
     xyz_mean_1 = sites_1.mean()
     for ligand_2 in ligands_2 :
       sites_2 = ligand_2.atoms().extract_xyz()
@@ -51,6 +53,7 @@ def compare_ligands (ligand_code,
       if (dxyz < max_distance_between_centers_of_mass) :
         matching.append(ligand_2)
     for ligand_2 in matching :
+      atoms_2 = ligand_2.atoms()
       isel_1 = flex.size_t()
       isel_2 = flex.size_t()
       for i_seq, atom_1 in enumerate(ligand_1.atoms()) :
@@ -66,7 +69,13 @@ def compare_ligands (ligand_code,
       sites_1 = sites_1.select(isel_1)
       sites_2 = ligand_2.atoms().extract_xyz().select(isel_2)
       rmsd = sites_1.rms_difference(sites_2)
-      print >> out, "  '%s' matches '%s': atoms=%d rmsd=%.3f" % (ligand_1.id_str(),
-        ligand_2.id_str(), sites_1.size(), rmsd)
+      print >> out, "  '%s' matches '%s': atoms=%d rmsd=%.3f" % (
+        ligand_1.id_str(), ligand_2.id_str(), sites_1.size(), rmsd)
       rmsds.append(rmsd)
+      if (verbose) :
+        atoms = ligand_1.atoms()
+        dxyz = (sites_2 - sites_1).norms()
+        for i_seq, j_seq in zip(isel_1, isel_2) :
+          print >> out, "    %s: dxyz=%.2f" % (atoms_1[i_seq].id_str(),
+            dxyz[i_seq])
   return rmsds
