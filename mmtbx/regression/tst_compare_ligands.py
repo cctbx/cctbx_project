@@ -30,7 +30,7 @@ HETATM    7  H3  ACT X   1       0.183  -0.460  -1.277  1.00 20.00      A    H
     hierarchy_2=pdb_2.hierarchy,
     out=null_out())
   assert (len(rmsds) == 1)
-  assert approx_equal(rmsds[0], 0.444, eps=0.0001)
+  assert approx_equal(rmsds[0][0], 0.444, eps=0.0001)
   print "OK"
 
 if (__name__ == "__main__") :
