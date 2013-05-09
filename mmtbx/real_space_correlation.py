@@ -418,6 +418,89 @@ def set_detail_level_and_radius(detail, atom_radius, d_min):
     else:                               atom_radius = 2.5
   return detail, atom_radius
 
+class selection_map_statistics_manager (object) :
+  """
+  Utility class for performing repeated calculations on multiple maps.  Useful
+  in post-refinement validation, ligand fitting, etc. where we want to collect
+  both CC and values for 2mFo-DFc and mFo-DFc maps.
+  """
+  __slots__ = ["fft_m_real", "fft_n_real", "atom_selection", "sites",
+               "sites_frac", "atom_radii", "map_sel"]
+
+  def __init__ (self,
+      atom_selection,
+      xray_structure,
+      fft_m_real,
+      fft_n_real,
+      atom_radius=1.5,
+      exclude_hydrogens=False) :
+    self.fft_m_real = fft_m_real
+    self.fft_n_real = fft_n_real
+    if (isinstance(atom_selection, flex.bool)) :
+      atom_selection = atom_selection.iselection()
+    assert (len(atom_selection) == 1) or (not atom_selection.all_eq(0))
+    if (exclude_hydrogens) :
+      not_hd_selection = (~(xray_structure.hd_selection())).iselection()
+      atom_selection = atom_selection.intersection(not_hd_selection)
+    assert (len(atom_selection) != 0)
+    self.atom_selection = atom_selection
+    self.sites = xray_structure.sites_cart().select(atom_selection)
+    self.sites_frac = xray_structure.sites_frac().select(atom_selection)
+    scatterers = xray_structure.scatterers().select(atom_selection)
+    self.atom_radii = flex.double(self.sites.size(), atom_radius)
+    for i_seq, sc in enumerate(scatterers):
+      if (sc.element_symbol().strip().lower() in ["h","d"]):
+        assert (not exclude_hydrogens)
+        self.atom_radii[i_seq] = 1.0
+    self.map_sel = maptbx.grid_indices_around_sites(
+      unit_cell  = xray_structure.unit_cell(),
+      fft_n_real = fft_n_real,
+      fft_m_real = fft_m_real,
+      sites_cart = self.sites,
+      site_radii = self.atom_radii)
+
+  def analyze_map (self, map, model_map=None, min=None, max=None,
+      compare_at_sites_only=False) :
+    """
+    Extract statistics for the given map, plus statistics for the model map
+    if given.  The CC can either be calculated across grid points within the
+    given radius of the sites, or at the sites directly.
+    """
+    assert (map.focus() == self.fft_n_real) and (map.all() == self.fft_m_real)
+    map_sel = map.select(self.map_sel)
+    map_values = flex.double()
+    model_map_sel = model_map_mean = model_map_values = None
+    if (model_map is not None) :
+      assert ((model_map.focus() == self.fft_n_real) and
+              (model_map.all() == self.fft_m_real))
+      model_map_sel = model_map.select(self.map_sel)
+      model_map_values = flex.double()
+    for site_frac in self.sites_frac:
+      map_values.append(map.eight_point_interpolation(site_frac))
+      if (model_map is not None) :
+        model_map_values.append(model_map.eight_point_interpolation(site_frac))
+    cc = None
+    if (model_map is not None) :
+      if (compare_at_sites_only) :
+        cc = flex.linear_correlation(x=map_values,
+          y=model_map_values).coefficient()
+      else :
+        cc = flex.linear_correlation(x=map_sel, y=model_map_sel).coefficient()
+      model_map_mean = flex.mean(model_map_values)
+    n_above_max = n_below_min = None
+    if (min is not None) :
+      n_below_min = (map_values < min).count(True)
+    if (max is not None) :
+      n_above_max = (map_values > max).count(True)
+    return group_args(
+      cc=cc,
+      min=flex.min(map_values),
+      max=flex.max(map_values),
+      mean=flex.mean(map_values),
+      n_below_min=n_below_min,
+      n_above_max=n_above_max,
+      model_mean=model_map_mean)
+
 def map_statistics_for_atom_selection (
     atom_selection,
     fmodel=None,
@@ -459,31 +542,19 @@ def map_statistics_for_atom_selection (
     else :
       assert (type(atom_selection).__name__ == "bool")
       atom_selection &= ~hd_selection
-  sites = xray_structure.sites_cart().select(atom_selection)
-  sites_frac = xray_structure.sites_frac().select(atom_selection)
-  scatterers = xray_structure.scatterers().select(atom_selection)
-  atom_radii = flex.double(sites.size(), atom_radius)
-  for i_seq, sc in enumerate(scatterers):
-    if (sc.element_symbol().strip().lower() in ["h","d"]):
-      atom_radii[i_seq] = 1.0
-  sel = maptbx.grid_indices_around_sites(
-    unit_cell  = xray_structure.unit_cell(),
+  manager = selection_map_statistics_manager(
+    atom_selection=atom_selection,
+    xray_structure=xray_structure,
     fft_n_real = map1.focus(),
     fft_m_real = map1.all(),
-    sites_cart = sites,
-    site_radii = atom_radii)
-  map1_sel = map1.select(sel)
-  map2_sel = map2.select(sel)
-  values_1 = flex.double()
-  values_2 = flex.double()
-  for site_frac in sites_frac:
-    values_1.append(map1.eight_point_interpolation(site_frac))
-    values_2.append(map2.eight_point_interpolation(site_frac))
-  cc = flex.linear_correlation(x=map1_sel, y=map2_sel).coefficient()
+    exclude_hydrogens=exclude_hydrogens)
+  stats = manager.analyze_map(
+    map=map1,
+    model_map=map2)
   return group_args(
-    cc=cc,
-    map1_mean=flex.mean(values_1),
-    map2_mean=flex.mean(values_2))
+    cc=stats.cc,
+    map1_mean=stats.mean,
+    map2_mean=stats.model_mean)
 
 def map_statistics_for_fragment (fragment, **kwds) :
   """
