@@ -20,24 +20,27 @@ namespace exporting
 template< typename ExportList, typename ExportSpec >
 struct class_list
 {
-  static void process()
+  static void process(const ExportSpec& export_spec = ExportSpec())
   {
     boost::mpl::for_each<
       ExportList,
       boost::mpl::make_identity< boost::mpl::placeholders::_ >
-      >( ExportSpec() );
+      >( export_spec );
   }
 };
 
 template< typename ExportList, typename ExportSpec >
 struct method_list
 {
-  static void process(typename ExportSpec::export_class_type& myclass)
+  static void process(
+    typename ExportSpec::export_class_type& myclass,
+    const ExportSpec& export_spec = ExportSpec()
+    )
   {
     boost::mpl::for_each<
       ExportList,
       boost::mpl::make_identity< boost::mpl::placeholders::_ >
-      >( boost::bind( ExportSpec(), myclass, _1 ) );
+      >( boost::bind( export_spec, myclass, _1 ) );
   }
 };
 

@@ -18,6 +18,16 @@ struct BetweenSpheres
   inline bool operator ()(const Sphere& left, const Sphere& right) const;
 };
 
+struct BetweenSpheresTolerance
+{
+  template< typename Sphere >
+  inline bool operator ()(
+    const Sphere& left,
+    const Sphere& right,
+    const typename Sphere::value_type& tolerance
+    ) const;
+};
+
 struct BetweenBoxes
 {
   template< typename FloatType >

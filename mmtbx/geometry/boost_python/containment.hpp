@@ -25,39 +25,6 @@ namespace containment
 namespace python
 {
 
-template< typename Predicate >
-struct filter_and_range_export
-{
-  typedef Predicate predicate_type;
-
-  template< typename Export >
-  void operator ()(boost::mpl::identity< Export > myexport) const
-  {
-    typedef typename Export::first indexer_type;
-    typedef typename indexer_type::range_type range_type;;
-    typedef boost::filtered_range< predicate_type, range_type > filtered_range_type;
-    typedef typename Export::second name_type;
-
-    std::string prefix = std::string( boost::mpl::c_str< name_type >::value );
-
-    boost_adaptbx::python::generic_range_wrapper< filtered_range_type >
-      ::wrap( ( "filtered_" + prefix + "_close_objects_range" ).c_str() );
-
-    filtered_range_type
-      (*filterfunc)( range_type&, predicate_type ) =
-        &boost::adaptors::filter< range_type, predicate_type >;
-
-    using namespace boost::python;
-
-    def(
-      "filter",
-      filterfunc,
-      with_custodian_and_ward_postcall< 0, 1 >(),
-      ( arg( "range" ), arg( "predicate" ) )
-      );
-    }
-};
-
 template< typename Checker >
 struct add_neighbours_from_range_export
 {

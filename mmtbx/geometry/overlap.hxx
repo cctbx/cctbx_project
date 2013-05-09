@@ -7,6 +7,18 @@ BetweenSpheres::operator ()(const Sphere& left, const Sphere& right) const
   return ( left.centre() - right.centre() ).length_sq() < sum_radii * sum_radii;
 }
 
+template< typename Sphere >
+bool
+BetweenSpheresTolerance::operator ()(
+  const Sphere& left,
+  const Sphere& right,
+  const typename Sphere::value_type& tolerance
+  ) const
+{
+  typename Sphere::value_type cutoff = left.radius() + right.radius() - tolerance;
+  return ( left.centre() - right.centre() ).length_sq() < cutoff * cutoff;
+}
+
 template< typename FloatType >
 bool
 BetweenBoxes::one_dimensional_overlap(

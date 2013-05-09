@@ -1452,6 +1452,7 @@ mmtbx/geometry/asa.hpp -text
 mmtbx/geometry/asa.hxx -text
 mmtbx/geometry/asa.py -text
 mmtbx/geometry/boost_python/asa_ext.cpp -text
+mmtbx/geometry/boost_python/clash_ext.cpp -text
 mmtbx/geometry/boost_python/containment.hpp -text
 mmtbx/geometry/boost_python/exporting.hpp -text
 mmtbx/geometry/boost_python/indexing.hpp -text
@@ -1459,6 +1460,8 @@ mmtbx/geometry/boost_python/primitive_ext.cpp -text
 mmtbx/geometry/boost_python/shared_types_ext.cpp -text
 mmtbx/geometry/boost_python/sphere_surface_sampling_ext.cpp -text
 mmtbx/geometry/boost_python/volume_ext.cpp -text
+mmtbx/geometry/clash.hpp -text
+mmtbx/geometry/clash.hxx -text
 mmtbx/geometry/containment.hpp -text
 mmtbx/geometry/containment.hxx -text
 mmtbx/geometry/flattening.hpp -text

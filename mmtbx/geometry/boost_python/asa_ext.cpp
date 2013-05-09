@@ -48,7 +48,7 @@ struct filtered_range_type
 };
 
 template< typename Traits >
-struct asa_python_exports
+struct python_exports
 {
   static void wrap()
   {
@@ -140,8 +140,12 @@ struct asa_python_exports
 
       exporting::class_list<
         typename Traits::indexers,
-        containment::python::filter_and_range_export< predicate_type >
-        >::process();
+        indexing::python::filter_and_range_export< predicate_type >
+        >::process(
+            indexing::python::filter_and_range_export< predicate_type >(
+              "overlap_equality_filtered_"
+              )
+            );
 
       typedef typename boost::mpl::transform<
         typename Traits::indexers,
@@ -159,7 +163,7 @@ struct asa_python_exports
 };
 
 template< typename Vector, typename Discrete = int >
-struct asa_python_export_traits
+struct python_export_traits
 {
   typedef Sphere< Vector > sphere_type;
   typedef boost::python::bases< primitive::Sphere< Vector > > sphere_bases_type;
@@ -169,6 +173,8 @@ struct asa_python_export_traits
   typedef Discrete discrete_type;
 
   // Exported indexers - indexing module
+  #pragma clang diagnostic push
+  #pragma clang diagnostic ignored "-Wmultichar"
   typedef boost::mpl::vector<
     boost::mpl::pair<
       indexing::Linear< sphere_type >,
@@ -187,6 +193,7 @@ struct asa_python_export_traits
       boost::mpl::string< 'pyth', 'agor', 'ean' >
       >
     > checkers;
+  #pragma clang diagnostic pop
 };
 
 } // namespace <anonymous>
@@ -196,8 +203,8 @@ struct asa_python_export_traits
 
 BOOST_PYTHON_MODULE(mmtbx_geometry_asa_ext)
 {
-  mmtbx::geometry::asa::asa_python_exports<
-    mmtbx::geometry::asa::asa_python_export_traits< scitbx::vec3< double > >
+  mmtbx::geometry::asa::python_exports<
+    mmtbx::geometry::asa::python_export_traits< scitbx::vec3< double > >
     >::wrap();
 }
 
