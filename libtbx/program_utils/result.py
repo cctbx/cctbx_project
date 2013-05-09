@@ -17,7 +17,8 @@ class program_result (object) :
                 cif_files=(),
                 phil_files=(),
                 other_files=(),
-                statistics={}) :
+                statistics={},
+                other_result=None) :
     adopt_init_args(self, locals())
 
   def get_output_dir (self) :
