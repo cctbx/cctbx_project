@@ -346,6 +346,9 @@ class framed_output (object) :
     self._current_line = None
     self._closed = False
 
+  def get_best_text_width (self) :
+    return self.width - 4
+
   def write (self, text) :
     current_text = ""
     if (self._current_line is not None) :
@@ -449,3 +452,9 @@ class framed_output (object) :
   def __del__ (self) :
     if (not self._closed) :
       self.close()
+
+def print_message_in_box (message, **kwds) :
+  box = framed_output(**kwds)
+  for line in line_breaker(message, box.get_best_text_width()) :
+    print >> box, line
+  del box

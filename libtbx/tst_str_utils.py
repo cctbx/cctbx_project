@@ -217,7 +217,22 @@ Clashscore:            10.9"""
     | Clashscore:            10.9                                          |
     |----------------------------------------------------------------------|
 """)
-
+  from libtbx.str_utils import print_message_in_box
+  out = StringIO()
+  print_message_in_box(
+    message="This is some terminal-formatted text which needs to be reset.",
+    out=out,
+    width=32,
+    center=True,
+    prefix="  ",
+    frame='*')
+  assert (out.getvalue() == """
+  ********************************
+  *         This is some         *
+  *   terminal-formatted text    *
+  *   which needs to be reset.   *
+  ********************************
+""")
 
 def run(args):
   assert len(args) == 0
