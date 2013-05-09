@@ -2491,7 +2491,7 @@ class cmdline_load_pdb_and_data (object) :
     #     as the reflection file
     # It should probably be made more flexible, although in practice these
     # assumptions are usually true.
-    str_utils.make_header("Processing X-ray data", out=out)
+    str_utils.make_sub_header("Processing X-ray data", out=out)
     hkl_in = file_reader.any_file(params.input.xray_data.file_name)
     hkl_in.check_file_type("hkl")
     data_and_flags = determine_data_and_flags(
