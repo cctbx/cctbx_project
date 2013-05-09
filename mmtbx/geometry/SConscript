@@ -24,4 +24,8 @@ if not env_etc.no_boost_python:
     target="#lib/mmtbx_geometry_shared_types_ext",
     source=[ "boost_python/shared_types_ext.cpp" ],
     )
+  env_scitbx_boost_python_ext.SharedLibrary(
+    target="#lib/mmtbx_geometry_clash_ext",
+    source=[ "boost_python/clash_ext.cpp" ],
+    )
 

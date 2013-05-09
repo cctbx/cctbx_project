@@ -81,8 +81,51 @@ struct indexer_exports
       .def( "__len__", &indexer_type::size )
       ;
     indexer_specific_exports< indexer_type >::process( myindexer );
-
   }
+};
+
+template< typename Predicate >
+class filter_and_range_export
+{
+public:
+  typedef Predicate predicate_type;
+
+private:
+  std::string predicate_id_;
+
+public:
+  filter_and_range_export(const std::string& predicate_id)
+    : predicate_id_( predicate_id )
+  {};
+
+  ~filter_and_range_export() {};
+
+  template< typename Export >
+  void operator ()(boost::mpl::identity< Export > myexport) const
+  {
+    typedef typename Export::first indexer_type;
+    typedef typename indexer_type::range_type range_type;;
+    typedef boost::filtered_range< predicate_type, range_type > filtered_range_type;
+    typedef typename Export::second name_type;
+
+    std::string indexer_id = std::string( boost::mpl::c_str< name_type >::value );
+
+    boost_adaptbx::python::generic_range_wrapper< filtered_range_type >
+      ::wrap( ( predicate_id_ + indexer_id + "_close_objects_range" ).c_str() );
+
+    filtered_range_type
+      (*filterfunc)( range_type&, predicate_type ) =
+        &boost::adaptors::filter< range_type, predicate_type >;
+
+    using namespace boost::python;
+
+    def(
+      "filter",
+      filterfunc,
+      with_custodian_and_ward_postcall< 0, 1 >(),
+      ( arg( "range" ), arg( "predicate" ) )
+      );
+    }
 };
 
 } // namespace python
