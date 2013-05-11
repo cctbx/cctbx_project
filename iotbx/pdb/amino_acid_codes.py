@@ -20,7 +20,16 @@ one_letter_given_three_letter = {
 "THR": "T",
 "TRP": "W",
 "TYR": "Y",
-"VAL": "V"}
+"VAL": "V",
+# modified AA
+"CSO" : "C", # oxidized Cys
+"LLP" : "K", # Lys + PLP
+"MLY" : "K", # dimethyllysine
+"PTR" : "Y", # phosphotyrosine
+"SEP" : "S", # phosphoserine
+"TPO" : "T", # phosphothreonine
+"TYS" : "Y", # sulfonated tyrosine
+}
 
 three_letter_given_one_letter = {
 "A": "ALA",
