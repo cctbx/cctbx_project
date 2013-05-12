@@ -21,6 +21,9 @@ one_letter_given_three_letter = {
 "TRP": "W",
 "TYR": "Y",
 "VAL": "V",
+}
+
+one_letter_given_three_letter_modified_aa  = {
 # modified AA
 "CSO" : "C", # oxidized Cys
 "LLP" : "K", # Lys + PLP
