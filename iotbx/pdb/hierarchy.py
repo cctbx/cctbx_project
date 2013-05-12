@@ -879,10 +879,15 @@ class _(boost.python.injector, ext.chain, __hash_eq_mixin):
     n_na = residue_classes["common_rna_dna"]
     seq = []
     if (n_aa > n_na):
-      from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
-      aa_3_as_1 = one_letter_given_three_letter.get
+      from iotbx.pdb import amino_acid_codes
+      aa_3_as_1 = amino_acid_codes.one_letter_given_three_letter
+      aa_3_as_1_mod = \
+        amino_acid_codes.one_letter_given_three_letter_modified_aa
       for rn in rn_seq:
-        seq.append(aa_3_as_1(rn, substitute_unknown))
+        if (rn in aa_3_as_1_mod) :
+          seq.append(aa_3_as_1_mod.get(rn, substitute_unknown))
+        else :
+          seq.append(aa_3_as_1.get(rn, substitute_unknown))
     elif (n_na != 0):
       for rn in rn_seq:
         seq.append({
@@ -1092,10 +1097,15 @@ class _(boost.python.injector, ext.conformer):
     n_na = residue_classes["common_rna_dna"]
     seq = []
     if (n_aa > n_na):
-      from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
-      aa_3_as_1 = one_letter_given_three_letter.get
+      from iotbx.pdb import amino_acid_codes
+      aa_3_as_1 = amino_acid_codes.one_letter_given_three_letter
+      aa_3_as_1_mod = \
+        amino_acid_codes.one_letter_given_three_letter_modified_aa
       for rn in rn_seq:
-        seq.append(aa_3_as_1(rn, substitute_unknown))
+        if (rn in aa_3_as_1_mod) :
+          seq.append(aa_3_as_1_mod.get(rn, substitute_unknown))
+        else :
+          seq.append(aa_3_as_1.get(rn, substitute_unknown))
     elif (n_na != 0):
       for rn in rn_seq:
         seq.append({
