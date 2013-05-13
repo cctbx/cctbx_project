@@ -321,6 +321,7 @@ class reference_model(object):
                       moving_chain = mod_h)
         except RuntimeError, e:
           if (str(e) != "can't make graph for first structure" and \
+              str(e) != "can't make graph for second structure" and \
               str(e) != "secondary structure does not match"):
             raise e
           else:
