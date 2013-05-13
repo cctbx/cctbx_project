@@ -111,6 +111,7 @@ class api:
     self.solution_setting_ai = ai
     self.solution_pd = inputpd
     self.image_centers = image_centers
+    self.one_setting = setting
     return [ai.getOrientation().unit_cell(),hkllist]
 
   def parameters(self):
@@ -138,6 +139,7 @@ class IntegrationMetaProcedure(base_class):
     if self.indexing_ai.getData().size() < 40: return # initial protection
 
     self.inputpd = inputs.solution_pd #parameter dictionary
+    self.inputpd["symmetry"] = inputs.one_setting["best_subsym"]
     self.inputframes = inputs.frames
     self.imagefiles = inputs.files
     self.spotfinder = inputs.spotfinder_results
