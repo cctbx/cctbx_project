@@ -182,6 +182,8 @@ namespace rstbx { namespace integration {
     scitbx::af::shared<double> integrated_data;
     scitbx::af::shared<double> integrated_sigma;
     scitbx::af::shared<cctbx::miller::index<> > integrated_miller;
+    scitbx::af::shared<cctbx::miller::index<> > rejected_miller;
+    scitbx::af::shared<std::string > rejected_reason;
     scitbx::af::shared<scitbx::vec2<double> > detector_xy;
     scitbx::af::shared<double> max_signal;
 
@@ -236,6 +238,10 @@ namespace rstbx { namespace integration {
     scitbx::af::shared<double> get_integrated_sigma(){return integrated_sigma;}
     scitbx::af::shared<cctbx::miller::index<> > get_integrated_miller(){
       return integrated_miller;}
+    scitbx::af::shared<cctbx::miller::index<> > get_rejected_miller(){
+      return rejected_miller;}
+    scitbx::af::shared<std::string > get_rejected_reason(){
+      return rejected_reason;}
     scitbx::af::shared<scitbx::vec2<double> > get_detector_xy(){
       return detector_xy;}
     scitbx::af::shared<double> get_max_signal(){
@@ -499,6 +505,8 @@ namespace rstbx { namespace integration {
       integrated_data.clear();
       integrated_sigma.clear();
       integrated_miller.clear();
+      rejected_miller.clear();
+      rejected_reason.clear();
       detector_xy.clear();
 
       for (int i=0; i<predicted.size(); ++i){
@@ -506,27 +514,35 @@ namespace rstbx { namespace integration {
         af::shared<double> bkgrnd;
         bool sig_bkg_is_overload = false;
 
-        if (BSmasks[i].size()==0){continue;} // out-of-boundary spots
+        if (BSmasks[i].size()==0){
+          rejected_miller.push_back(hkllist[i]);
+          rejected_reason.push_back("out-of-boundary spot");
+          continue;}
 
         for (mask_t::const_iterator k=ISmasks[i].begin();
                                     k != ISmasks[i].end(); ++k){
           double dvalue(rawdata(k->first[0],k->first[1]));
-          if (dvalue > detector_saturation) {sig_bkg_is_overload=true;}
+          if (dvalue >= detector_saturation) {sig_bkg_is_overload=true;}
           signal.push_back(dvalue);
         }
         rstbx::corrected_backplane BP(0,0);
         for (mask_t::const_iterator k=BSmasks[i].begin();
                                     k != BSmasks[i].end(); ++k){
           int ivalue(rawdata(k->first[0],k->first[1]));
-          if (ivalue > detector_saturation) {sig_bkg_is_overload=true;}
+          if (ivalue >= detector_saturation) {sig_bkg_is_overload=true;}
           bkgrnd.push_back(double(ivalue));
           BP.accumulate(k->first[0],k->first[1],ivalue);
         }
-        if (sig_bkg_is_overload) {continue;} // do not integrate if the pixels are overloaded
+        if (sig_bkg_is_overload) {
+          rejected_miller.push_back(hkllist[i]);
+          rejected_reason.push_back("do not integrate if signal/background pixels are overloaded");
+          continue;}
         try{
           BP.finish();
         } catch (rstbx::backplane_zero_determinant) {
-          continue; // not possible to fit backplane, skip this spot
+          rejected_miller.push_back(hkllist[i]);
+          rejected_reason.push_back("not possible to fit backplane, skip this spot");
+          continue;
         }
 
         /*
@@ -565,7 +581,10 @@ namespace rstbx { namespace integration {
         // variance formula from Andrew Leslie, Int Tables article
         double variance = uncorrected_signal +
           sum_background*mcount*mcount/double(ncount*ncount);
-        if (variance<=0.) {continue;} // a spot measured on an inactive area
+        if (variance<=0.) {
+          rejected_miller.push_back(hkllist[i]);
+          rejected_reason.push_back("a spot measured on an inactive area");
+          continue;}
         double sigma = std::sqrt(variance);
 
         integrated_data.push_back(summation_intensity);
