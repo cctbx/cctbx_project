@@ -239,7 +239,8 @@ def validate_ligands (
       resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
   ligands = extract_ligand_atom_group(pdb_hierarchy, ligand_code)
   if (len(ligands) == 0) :
-    raise Sorry("No residues named '%s' found." % ligand_code)
+    return None
+    #raise Sorry("No residues named '%s' found." % ligand_code)
   reference_ligands = None
   if (reference_structure is not None) :
     from iotbx import file_reader
