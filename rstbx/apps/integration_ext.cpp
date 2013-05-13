@@ -73,6 +73,8 @@ namespace rstbx { namespace integration { namespace ext {
         .def("get_integrated_data",&simple_integration::get_integrated_data)
         .def("get_integrated_sigma",&simple_integration::get_integrated_sigma)
         .def("get_integrated_miller",&simple_integration::get_integrated_miller)
+        .def("get_rejected_miller",&simple_integration::get_rejected_miller)
+        .def("get_rejected_reason",&simple_integration::get_rejected_reason)
         .def("get_detector_xy",&simple_integration::get_detector_xy)
         .def("get_max_signal",&simple_integration::get_max_signal)
       ;

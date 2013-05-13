@@ -341,6 +341,12 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
     #print "Done"
     return
 
+  def show_rejected_spots(self):
+    miller = self.get_rejected_miller()
+    messag = self.get_rejected_reason()
+    for i,j in zip(self.get_rejected_miller(),self.get_rejected_reason()):
+      print i,j
+
   def integration_proper(self):
     image_obj = self.imagefiles.imageindex(self.frame_numbers[self.image_number])
     image_obj.read()
@@ -352,6 +358,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
     self.integrated_miller=self.get_integrated_miller()
     self.detector_xy = self.get_detector_xy()
     self.max_signal = self.get_max_signal()
+    #self.show_rejected_spots()
     return # function has been recoded in C++
 
   def get_obs(self,space_group_symbol):
