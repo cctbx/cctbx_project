@@ -843,13 +843,17 @@ namespace rstbx { namespace bandpass {
     }
     void set_mosaicity(double const& half_mosaicity_rad){
       P.half_mosaicity_rad=half_mosaicity_rad;}
+    double get_mosaicity()const { return P.half_mosaicity_rad; }
     double p_domain_size_ang;
     void set_domain_size(double const& value){
       p_domain_size_ang=value;}
+    double get_domain_size()const{ return p_domain_size_ang; }
     void set_bandpass(double const& wave_HI,double const& wave_LO){
       P.wavelengthHE = wave_HI;
       P.wavelengthLE = wave_LO;
       SCITBX_ASSERT (P.wavelengthHE <= P.wavelengthLE); SCITBX_ASSERT (P.wavelengthHE > 0.);   }
+    double get_wave_HI()const{ return P.wavelengthHE; }
+    double get_wave_LO()const{ return P.wavelengthLE; }
     void set_detector_origin(vec3 const& detector_origin){
       P.detector_origin = detector_origin;
     }
@@ -1079,9 +1083,13 @@ namespace ext {
         .def("set_subpixel", &use_case_bp3::set_subpixel,(
            arg("translations"), arg("rotations_deg")))
         .def("set_mosaicity", &use_case_bp3::set_mosaicity)
+        .def("get_mosaicity", &use_case_bp3::get_mosaicity)
         .def("set_domain_size", &use_case_bp3::set_domain_size)
+        .def("get_domain_size", &use_case_bp3::get_domain_size)
         .def("set_bandpass", &use_case_bp3::set_bandpass,(
            arg("wave_HI"), arg("wave_LO")))
+        .def("get_wave_HI", &use_case_bp3::get_wave_HI)
+        .def("get_wave_LO", &use_case_bp3::get_wave_LO)
         .def("set_orientation", &use_case_bp3::set_orientation)
         .def("set_adaptor", &use_case_bp3::set_adaptor)
         .def("set_detector_origin", &use_case_bp3::set_detector_origin)
