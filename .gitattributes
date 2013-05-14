@@ -2440,5 +2440,8 @@ xfel/detector_formats.py -text
 xfel/libtbx_config -text
 xfel/metrology/__init__.py -text
 xfel/metrology_ext.cpp -text
+xfel/mono_simulation/SConscript -text
+xfel/mono_simulation/bandpass_gaussian.cpp -text
+xfel/mono_simulation/bandpass_gaussian.h -text
 xfel/mono_simulation/parameters.h -text
 xfel/mono_simulation/vector_collection.h -text
