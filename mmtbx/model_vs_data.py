@@ -991,5 +991,6 @@ def summarize_results (mvd_obj) :
     clashscore=clashscore,
     mpscore=mpscore,
     twin_law=mvd_obj.data.twinned,
+    anomalous_flag=mvd_obj.data.anomalous_flag,
     tls=getattr(getattr(getattr(mvd_obj.pdb_header, "tls", None), "pdb_inp_tls",
       None), "tls_present"))
