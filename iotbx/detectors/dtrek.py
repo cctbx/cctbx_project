@@ -80,6 +80,8 @@ class DTREKImage(DetectorImageBase):
       self.keys[integer]=int(self.keys[integer])
 
   def tokenize(self,string_):
+    if type(string_) is list:
+      return string_
     tokens = string_.split(" ")
     while "" in tokens: tokens.remove("")
     return tokens
@@ -127,7 +129,12 @@ class DTREKImage(DetectorImageBase):
       tt_idx = self.keys[dname_prefix+"GONIO_NAMES"].index("2Theta")
       assert self.keys[dname_prefix+"GONIO_UNITS"][tt_idx]=="deg"
       self.parameters['TWOTHETA'] = self.keys[dname_prefix+"GONIO_VALUES"][tt_idx]
-      self.parameters['DETECTOR_SN'] = self.keys["DETECTOR_TYPE"]
+      if self.keys.has_key("DETECTOR_TYPE"):
+        self.parameters['DETECTOR_SN'] = self.keys["DETECTOR_TYPE"]
+      elif self.keys.has_key(self.keys["DETECTOR_NAMES"][0] + "DETECTOR_IDENTIFICATION"):
+        self.parameters['DETECTOR_SN'] = self.keys[self.keys["DETECTOR_NAMES"][0] + "DETECTOR_IDENTIFICATION"]
+      else:
+        self.parameters['DETECTOR_SN'] = "No serial number"
 
 
   def readHeader(self,):

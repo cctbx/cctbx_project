@@ -57,7 +57,7 @@ class FormatSMVRigakuA200(FormatSMVRigaku):
 
         for header_item in descriptive_items:
             test = '%s%s' % (detector_prefix, header_item)
-            if test in header and 'raxis' in header[test].lower():
+            if test in header and ('raxis' in header[test].lower() or "a200" in header[test].lower()):
                 return True
 
         return False
