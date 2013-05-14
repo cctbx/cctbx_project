@@ -27,6 +27,11 @@ env_etc.include_registry.append(
 if (env_etc.static_libraries): builder = env.StaticLibrary
 else:                          builder = env.SharedLibrary
 
+builder(
+  target="#lib/xfel_mono_sim",
+  source=["mono_simulation/bandpass_gaussian.cpp"
+  ])
+
 if (not env_etc.no_boost_python):
   Import("env_boost_python_ext")
   env_xfel_boost_python_ext = env_boost_python_ext.Clone()
@@ -40,3 +45,5 @@ if (not env_etc.no_boost_python):
     env=env_xfel_boost_python_ext,
     paths=env_etc.xfel_common_includes)
   Export("env_xfel_boost_python_ext")
+  #SConscript("mono_simulation/SConscript")
+
