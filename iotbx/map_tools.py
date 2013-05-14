@@ -272,15 +272,7 @@ class server (object) :
         "File contents:\n%s\nExpected labels: F=%s PHI=%s FOM=%s") %
         (self.file_name, "\n".join(self.array_labels), str(f_label),
          str(phi_label), str(fom_label)))
-    if (f.anomalous_flag()) :
-      f = f.merge_bijvoet_mates()
-    if (f.is_complex_array()) :
-      map_coeffs = f
-    else :
-      if (weighted) and (fom is not None) :
-        f = f * fom
-      map_coeffs = f.phase_transfer(phi, deg=True) # XXX is deg always True?
-    return map_coeffs
+    return combine_f_phi_and_fom(f=f, phi=phi, fom=fom, weighted=weighted)
 
   def convert_any_map (self, f_label, phi_label, fom_label, **kwds) :
     map_coeffs = self._convert_amplitudes_and_phases(f_label, phi_label,
@@ -610,3 +602,16 @@ class auto_convert_map_coefficients (object) :
         pdb_file=pdb_file,
         use_standard_map_names=True,
         resolution_factor=resolution_factor)
+
+def combine_f_phi_and_fom (f, phi, fom=None, weighted=True) :
+  if (f.anomalous_flag()) :
+    f = f.merge_bijvoet_mates()
+  if (f.is_complex_array()) :
+    return f
+  else :
+    assert f.is_real_array()
+    if (weighted) and (fom is not None) :
+      f, fom = f.common_sets(other=fom)
+      f = f * fom
+    f, phi = f.common_sets(other=phi)
+    return f.phase_transfer(phi, deg=True) # XXX is deg always True?
