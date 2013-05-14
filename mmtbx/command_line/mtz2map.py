@@ -1,9 +1,10 @@
-from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.mtz2map
 
 # TODO: remove R-free set from map coefficients?
 
+from __future__ import division
 from mmtbx.maps import utils
+import iotbx.map_tools
 import iotbx.phil
 from iotbx import file_reader
 from libtbx import runtime_utils
@@ -233,17 +234,7 @@ def run (args, log=sys.stdout) :
       assert f.is_xray_amplitude_array()
       assert phi.is_real_array()
       assert (fom is None) or (fom.is_real_array())
-      if (f.anomalous_flag()) :
-        f = f.average_bijvoet_mates()
-      f = f.common_set(phi)
-      phi = phi.common_set(f)
-      if (fom is not None) :
-        fom = fom.common_set(f)
-        f = f.common_set(fom)
-        phi = phi.common_set(f)
-        map_coeffs = (f * fom).phase_transfer(phi, deg=True)
-      else :
-        map_coeffs = f.phase_transfer(phi, deg=True)
+      map_coeffs = iotbx.map_tools.combine_f_phi_and_fom(f=f, phi=phi, fom=fom)
     print >> log, "Processing map: %s" % " ".join(map_labels)
     assert map_coeffs.is_complex_array()
     map_coeffs = map_coeffs.resolution_filter(d_min=params.d_min,
