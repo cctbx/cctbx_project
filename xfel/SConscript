@@ -29,7 +29,8 @@ else:                          builder = env.SharedLibrary
 
 builder(
   target="#lib/xfel_mono_sim",
-  source=["mono_simulation/bandpass_gaussian.cpp"
+  source=["mono_simulation/bandpass_gaussian.cpp",
+          "mono_simulation/ccixfel_core.cpp",
   ])
 
 if (not env_etc.no_boost_python):
