@@ -189,7 +189,7 @@ namespace rstbx { namespace integration {
 
     simple_integration(): BACKGROUND_FACTOR(1),MAXOVER(6),NEAR(10),
       detector_saturation(std::numeric_limits<double>::max()),
-      check_tiles(false) {}
+      check_tiles(false),guard_width_sq(11) {}
 
     /* accessors and mutators */
     void set_pixel_size(double const& pxsz) {pixel_size=pxsz;}
@@ -202,6 +202,8 @@ namespace rstbx { namespace integration {
     void set_background_factor(int const& f) {BACKGROUND_FACTOR=f;}
 
     void set_nbr_cutoff_sq(double const& b) {nbr_cutoff_sq=b;}
+
+    void set_guard_width_sq(int const& b) {guard_width_sq=b;}
 
     double detector_saturation;
     void set_detector_saturation(double const& b) {detector_saturation = b;}
@@ -303,13 +305,13 @@ namespace rstbx { namespace integration {
         return safe_background(predicted,OS_adapt,flex_sorted);
     }
 
+    int guard_width_sq;
     scitbx::af::shared<scitbx::vec2<double> >
     safe_background(
       scitbx::af::shared<scitbx::vec3<double> > predicted,
       annlib_adaptbx::AnnAdaptor const& OS_adapt,
       scitbx::af::shared<int > flex_sorted
       ){
-      int guard_width_sq = 11;
 
       /* Set up some needed data structures based on flex_sorted,
          which is a generic sorted list of points (XY) close in distance
