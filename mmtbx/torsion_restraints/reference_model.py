@@ -365,11 +365,17 @@ class reference_model(object):
             new_num = "%4d" % (int(resnum) - offset)
             key = \
               re.sub(r"(.{5}\D{3})(.{2})(.{4})",r"\1"+ref_chain+new_num,key)
-          try:
-            assert ref_iseq_hash[file][key] in sel_atoms_ref
-            match_map[file][i_seq] = ref_iseq_hash[file][key]
-          except Exception:
+          cur_ref = ref_iseq_hash[file].get(key)
+          if cur_ref is None:
+            #try no alternate
+            key = \
+              re.sub(r"(.{4}).(\D{3})(.{2})(.{4})",
+                     r"\1"+" "+r"\2"+ref_chain+r"\4",key)
+          cur_ref = ref_iseq_hash[file].get(key)
+          if cur_ref is None:
             continue
+          else:
+            match_map[file][i_seq] = ref_iseq_hash[file][key]
     return match_map
 
   def build_reference_dihedral_proxy_hash(self):
