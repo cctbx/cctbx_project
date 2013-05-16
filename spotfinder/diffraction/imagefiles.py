@@ -15,6 +15,7 @@ pattern1c = re.compile(r'\A(?P<fileroot>.*)(?P<number>[0-9]{3,6})\.(?P<ext>.*)\Z
   # valid for MarCCD images from Blum's ftp site
 pattern2 = re.compile(r'\A(?P<fileroot>.*)\.(?P<number>[0-9]{3,5})\Z')
 pattern_small2grid = re.compile(r'\A(?P<fileroot>.*)_(?P<number1>[0-9]{1,3})_(?P<number2>[0-9]{1,3})\.(?P<ext>.*)\Z')
+pattern_general = re.compile(r'\A(?P<fileroot>.*)_(?P<otherstuff>.*)\.(?P<ext>.*)\Z') # no file number
 
 class FileName:
   exts = ["img","tif","tiff","image","mccd",
@@ -43,6 +44,7 @@ class FileName:
     match1b = pattern1b.match(self.base)
     match1c = pattern1c.match(self.base)
     match_small2grid = pattern_small2grid.match(self.base)
+    match_general = pattern_general.match(self.base)
     match2 = pattern2.match(self.base)
     if match1a!=None:
       d = match1a.groupdict()
@@ -76,6 +78,15 @@ class FileName:
       self.template = "%s_%s_%s.%s"%(self.fileroot,'#'*len(d['number1']),'#'*len(d['number2']),self.ext)
       self.pattern = 1
       if self.ext.lower() in FileName.exts: return 1
+    elif match_general!=None:
+      d = match_general.groupdict()
+      self.fileroot = d['fileroot']
+      self.otherstuff = d['otherstuff']
+      self.number = 3
+      self.ext = d['ext']
+      self.template = "%s_%s.%s"%(self.fileroot,self.otherstuff,self.ext)
+      self.pattern = 0
+      if self.ext.lower() in FileName.exts: print self.template;return 1
     if match2!=None:
       d = match2.groupdict()
       self.fileroot = d['fileroot']

@@ -4,8 +4,10 @@ def pretty_filename(spotfinder,key):
   nwildcard = spotfinder.pd['template'].count('#')
   template_f='#'*nwildcard
   extensn_f='%%0%dd'%nwildcard
-  path = spotfinder.pd['template'].replace(template_f,extensn_f%key)
-  return path
+  if nwildcard > 0:
+    return spotfinder.pd['template'].replace(template_f,extensn_f%key)
+  else:
+    return spotfinder.pd['template']
 
 def optionally_add_saturation(canonical_info,image):
   if image.has_key('saturation'):
