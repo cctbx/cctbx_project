@@ -63,6 +63,11 @@ integration {
   mosaicity_deg = 0.0
     .type = float
     .help = full width effective mosaicity, degrees, for specified rocking curve model such as gh1982a
+  guard_width_sq = 11
+    .type = int
+    .help = Guard is the reserved area around the Bragg spot mask that cannot be used for background
+    .help = plane determination because the tail of the signal distribution may leak from the spot.
+    .help = Value represents max disallowed squared hypotenuse between neighboring signal & background pixels, as integer px**2.
   background_factor = 1
     .type = int (value_min=1)
     .help = require minimum number of pixels for background fit = background_factor x # spot pixels
