@@ -2445,5 +2445,6 @@ xfel/mono_simulation/__init__.py -text
 xfel/mono_simulation/bandpass_gaussian.cpp -text
 xfel/mono_simulation/bandpass_gaussian.h -text
 xfel/mono_simulation/ext.cpp -text
+xfel/mono_simulation/mono_treatment.py -text
 xfel/mono_simulation/parameters.h -text
 xfel/mono_simulation/vector_collection.h -text
