@@ -272,7 +272,7 @@ namespace parameter {
       scitbx::vec3<double> mean_position_part_r_part_half_mos = s1;
 
       vec3* part_half_mos_ptr = gradient_mapping["half_mosaicity_rad"];
-      vec3* curv_half_mos_ptr = gradient_mapping["half_mosaicity_rad"];
+      //vec3* curv_half_mos_ptr = gradient_mapping["half_mosaicity_rad"];
 
       //  Cn, the circular section through the Ewald sphere.
       for (int idx = 0; idx < P.indices.size(); ++idx){
@@ -428,8 +428,6 @@ namespace parameter {
       scitbx::vec3<double> s0 = (1./wavelength) * P.incident_beam;
       double s0_length = s0.length();
       scitbx::vec3<double> s0_hat = s0.normalize();
-
-      double spot_resolution_ang = P.orientation.unit_cell().d(P.indices[observation_no]);
 
       scitbx::vec3<double> H(P.indices[observation_no][0],
                              P.indices[observation_no][1],

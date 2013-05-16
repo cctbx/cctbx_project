@@ -45,5 +45,5 @@ if (not env_etc.no_boost_python):
     env=env_xfel_boost_python_ext,
     paths=env_etc.xfel_common_includes)
   Export("env_xfel_boost_python_ext")
-  #SConscript("mono_simulation/SConscript")
+  SConscript("mono_simulation/SConscript")
 
