@@ -28,7 +28,8 @@ def LoadFormatClasses():
 
     format_dir = os.path.split(dxtbx.format.__file__)[0]
 
-    if os.name == 'nt':
+    home = os.curdir
+    if os.name == 'nt' and os.environ.has_key('HOMEDRIVE') and os.environ.has_key('HOMEPATH'):
         home = os.path.join(os.environ['HOMEDRIVE'],
                             os.environ['HOMEPATH'])
     else:
