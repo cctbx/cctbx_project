@@ -55,9 +55,10 @@ class manager(object):
         max_number_of_iterations      = max_number_of_iterations)
       if(minimized is not None): par_initial = minimized.par_min
       set_refinable_parameters(
-        xray_structure = fmodels.fmodel_xray().xray_structure,
-        parameters     = par_initial,
-        selections     = selections)
+        xray_structure     = fmodels.fmodel_xray().xray_structure,
+        parameters         = par_initial,
+        selections         = selections,
+        enforce_positivity = True)
       fmodels.fmodel_xray().xray_structure.adjust_occupancy(
         occ_max   = occupancy_max,
         occ_min   = occupancy_min,
@@ -161,13 +162,31 @@ class minimizer(object):
       table = self.constrained_groups_selections)
     return self.f, self.g
 
-def set_refinable_parameters(xray_structure, parameters, selections):
+def set_refinable_parameters(xray_structure, parameters, selections,
+                             enforce_positivity=False):
+  # XXX PVA: Code below is terribly inefficient and MUST be moved into C++
   sz = xray_structure.scatterers().size()
   i = 0
   for sel in selections:
+    # pre-check for positivity begin
+    # spread negative occupancies across i_seqs having positive ones
+    par_all = flex.double()
+    par_neg = flex.double()
+    i_p = i
     for sel_ in sel:
+      p = parameters[i_p]
+      par_all.append(p)
+      if(p<0): par_neg.append(p)
+      i_p += 1
+    if(enforce_positivity and par_neg.size()>0):
+      par_all = par_all - flex.min(par_all)
+      fs = flex.sum(par_all)
+      if(fs != 0):
+        par_all = par_all / fs
+    # pre-check for positivity end
+    for j, sel_ in enumerate(sel):
       sel__b = flex.bool(sz, flex.size_t(sel_))
-      xray_structure.set_occupancies(parameters[i], sel__b)
+      xray_structure.set_occupancies(par_all[j], sel__b)
       i+=1
 
 def pack_unpack(x, table) :
