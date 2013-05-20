@@ -1199,8 +1199,9 @@ def occupancy_selections(
     remove_selection = None
 
   result = all_chain_proxies.pdb_hierarchy.occupancy_groups_simple(
-    common_residue_name_class_only = "common_amino_acid",
-    ignore_hydrogens = False)
+    common_residue_name_class_only = None,
+    always_group_adjacent          = False,
+    ignore_hydrogens               = False)
   exchangable_hd_pairs = combine_hd_exchangable(hierarchy =
     all_chain_proxies.pdb_hierarchy)
   result = remove_selections(selection = result, other = exchangable_hd_pairs,

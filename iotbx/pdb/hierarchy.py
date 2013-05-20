@@ -691,6 +691,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     return cache(root=self)
 
   def occupancy_groups_simple(self, common_residue_name_class_only=None,
+                              always_group_adjacent=True,
                               ignore_hydrogens=True):
     if(ignore_hydrogens):
       sentinel = self.atoms().reset_tmp_for_occupancy_groups_simple()
@@ -698,8 +699,14 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       sentinel = self.atoms().reset_tmp(first_value=0, increment=1)
     result = []
     for chain in self.chains():
+      if(common_residue_name_class_only is None):
+        if(chain.is_protein()):
+          common_residue_name_class_only = "common_amino_acid"
+        if(chain.is_na()):
+          common_residue_name_class_only = "common_rna_dna"
       result.extend(chain.occupancy_groups_simple(
-        common_residue_name_class_only=common_residue_name_class_only))
+        common_residue_name_class_only=common_residue_name_class_only,
+        always_group_adjacent=always_group_adjacent))
     del sentinel
     return result
 
@@ -807,7 +814,8 @@ class _(boost.python.injector, ext.chain, __hash_eq_mixin):
   def is_na (self) :
     return self.only_conformer().is_na()
 
-  def occupancy_groups_simple(self, common_residue_name_class_only=None):
+  def occupancy_groups_simple(self, common_residue_name_class_only=None,
+        always_group_adjacent=True):
     result = []
     residue_groups = self.residue_groups()
     n_rg = len(residue_groups)
@@ -817,6 +825,7 @@ class _(boost.python.injector, ext.chain, __hash_eq_mixin):
       groups = {}
       for i_rg in xrange(i_begin, i_end):
         done[i_rg] = True
+        rg = residue_groups[i_rg]
         for ag in residue_groups[i_rg].atom_groups():
           altloc = ag.altloc
           if (altloc == ""):
@@ -841,7 +850,22 @@ class _(boost.python.injector, ext.chain, __hash_eq_mixin):
         result.append([[i]])
     for i_begin,i_end in self.find_pure_altloc_ranges(
           common_residue_name_class_only=common_residue_name_class_only):
-      process_range(i_begin, i_end)
+      # use always_group_adjacent
+      do_this_step = True
+      nc = None
+      for i_rg in xrange(i_begin, i_end):
+        rg = residue_groups[i_rg]
+        n_conf = len(residue_groups[i_rg].conformers())
+        if(nc is None): nc = n_conf
+        else:
+          if(nc != n_conf):
+            do_this_step = False
+      #
+      if(always_group_adjacent):
+        process_range(i_begin, i_end)
+      else:
+        if(do_this_step):
+          process_range(i_begin, i_end)
     for i_rg in xrange(n_rg):
       if (done[i_rg]): continue
       process_range(i_rg, i_rg+1)

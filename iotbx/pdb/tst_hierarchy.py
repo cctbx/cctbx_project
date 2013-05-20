@@ -3650,13 +3650,15 @@ def exercise_occupancy_groups_simple():
   #
   def grouped_serials(
         pdb_inp,
-        common_residue_name_class_only="common_amino_acid"):
+        common_residue_name_class_only="common_amino_acid",
+        always_group_adjacent=True):
     hierarchy = pdb_inp.construct_hierarchy()
     atoms = hierarchy.atoms()
     sentinel = atoms.reset_tmp_for_occupancy_groups_simple()
     chain = hierarchy.only_chain()
     return atom_serials(atoms, chain.occupancy_groups_simple(
-      common_residue_name_class_only=common_residue_name_class_only))
+      common_residue_name_class_only=common_residue_name_class_only,
+      always_group_adjacent=always_group_adjacent))
   #
   for altloc_o2_a in ["A", " "]:
     pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
@@ -3779,6 +3781,21 @@ HETATM  288  CG BDLE A  12      25.429   9.378  36.572  0.35 15.20           C
     [[221, 224], [245, 248], [256, 259]], [[285, 287], [286, 288]]]
   assert grouped_serials(pdb_inp, common_residue_name_class_only=None) == [
     [[221, 224, 285, 287], [245, 248], [256, 259, 286, 288]]]
+  #
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM      0  N   SER A  41       4.113   5.460   7.786  1.00  5.58           N
+ATOM      6  N  ALYS A  42       6.572   6.690   8.417  0.30  4.64           N
+ATOM     15  N  BLYS A  42       6.744   6.602   8.454  0.20  5.86           N
+ATOM     24  N  CLYS A  42       6.661   6.659   8.442  0.10  5.63           N
+ATOM     33  N  DLYS A  42       6.664   6.660   8.439  0.40  4.72           N
+ATOM     42  N  AGLU A  43       6.158   9.341   9.210  0.60  4.32           N
+ATOM     51  N  BGLU A  43       6.272   9.302   9.294  0.40  5.00           N
+
+"""))
+  assert grouped_serials(pdb_inp, common_residue_name_class_only=None) == \
+    [[[6, 42], [15, 51], [24], [33]]]
+  assert grouped_serials(pdb_inp, common_residue_name_class_only=None,
+    always_group_adjacent=False) == [[[6], [15], [24], [33]], [[42], [51]]]
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM      1  O  AHOH A   1                                                   O
