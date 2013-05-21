@@ -68,6 +68,11 @@ integration {
     .help = Guard is the reserved area around the Bragg spot mask that cannot be used for background
     .help = plane determination because the tail of the signal distribution may leak from the spot.
     .help = Value represents max disallowed squared hypotenuse between neighboring signal & background pixels, as integer px**2.
+  detector_gain = 0.0
+    .type = float
+    .help = Detector gain in units of Analog Digital Units per photon.
+    .help = Future plan: this value overrides any given through the dxtbx format mechanism.
+    .help = Present: this is a mandatory value, code throws an exception with the default value.
   background_factor = 1
     .type = int (value_min=1)
     .help = require minimum number of pixels for background fit = background_factor x # spot pixels

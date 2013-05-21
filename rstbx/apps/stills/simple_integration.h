@@ -10,6 +10,7 @@
 #include <cctbx/miller.h>
 #include <scitbx/array_family/flex_types.h>
 #include <rstbx/backplane.h>
+#include <scitbx/error.h>
 
 #define round(x) ((x)>=0?(int)((x)+0.5):(int)((x)-0.5))
 
@@ -189,7 +190,7 @@ namespace rstbx { namespace integration {
 
     simple_integration(): BACKGROUND_FACTOR(1),MAXOVER(6),NEAR(10),
       detector_saturation(std::numeric_limits<double>::max()),
-      check_tiles(false),guard_width_sq(11) {}
+      check_tiles(false),guard_width_sq(11),detector_gain(0) {}
 
     /* accessors and mutators */
     void set_pixel_size(double const& pxsz) {pixel_size=pxsz;}
@@ -204,6 +205,8 @@ namespace rstbx { namespace integration {
     void set_nbr_cutoff_sq(double const& b) {nbr_cutoff_sq=b;}
 
     void set_guard_width_sq(int const& b) {guard_width_sq=b;}
+
+    void set_detector_gain(double const& b) {detector_gain=b;}
 
     double detector_saturation;
     void set_detector_saturation(double const& b) {detector_saturation = b;}
@@ -306,6 +309,7 @@ namespace rstbx { namespace integration {
     }
 
     int guard_width_sq;
+    double detector_gain;
     scitbx::af::shared<scitbx::vec2<double> >
     safe_background(
       scitbx::af::shared<scitbx::vec3<double> > predicted,
@@ -504,6 +508,8 @@ namespace rstbx { namespace integration {
       scitbx::af::shared<scitbx::vec2<double> > detector_xy_draft
       ){
 
+      if (detector_gain<=0.) {
+        throw scitbx::error("Unphysical gain; must be set with phil: integration.detector_gain="); }
       integrated_data.clear();
       integrated_sigma.clear();
       integrated_miller.clear();
@@ -583,6 +589,7 @@ namespace rstbx { namespace integration {
         // variance formula from Andrew Leslie, Int Tables article
         double variance = uncorrected_signal +
           sum_background*mcount*mcount/double(ncount*ncount);
+        variance *= detector_gain;
         if (variance<=0.) {
           rejected_miller.push_back(hkllist[i]);
           rejected_reason.push_back("a spot measured on an inactive area");

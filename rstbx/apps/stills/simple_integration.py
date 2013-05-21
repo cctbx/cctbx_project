@@ -319,6 +319,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
     self.set_background_factor(kwargs["background_factor"])
     self.set_nbr_cutoff_sq(nbr_cutoff_sq)
     self.set_guard_width_sq(self.horizons_phil.integration.guard_width_sq)
+    self.set_detector_gain(self.horizons_phil.integration.detector_gain)
     flex_sorted = flex.int()
     for item in self.sorted:
       flex_sorted.append(item[0]);flex_sorted.append(item[1]);
