@@ -18,6 +18,7 @@ def start_coot_and_wait (
   from iotbx import file_reader
   from libtbx.str_utils import make_header
   from libtbx import easy_run
+  import cootbx
   assert (len(ligand_files) > 0) and (len(ligand_files) == len(ligand_ccs))
   if (log is None) : log = sys.stdout
   cwd = os.getcwd()
@@ -37,6 +38,7 @@ def start_coot_and_wait (
   f.write(open(base_script).read())
   f.write("\n")
   f.write("import coot\n")
+  cootbx.write_disable_nomenclature_errors(f)
   f.write("read_pdb(\"%s\")\n" % pdb_file)
   f.write("auto_read_make_and_draw_maps(\"%s\")\n" % map_file)
   for cif_file in cif_files :
