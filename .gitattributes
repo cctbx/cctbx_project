@@ -1463,6 +1463,7 @@ mmtbx/geometry/boost_python/sphere_surface_sampling_ext.cpp -text
 mmtbx/geometry/boost_python/volume_ext.cpp -text
 mmtbx/geometry/clash.hpp -text
 mmtbx/geometry/clash.hxx -text
+mmtbx/geometry/clash.py -text
 mmtbx/geometry/containment.hpp -text
 mmtbx/geometry/containment.hxx -text
 mmtbx/geometry/flattening.hpp -text
@@ -1479,6 +1480,7 @@ mmtbx/geometry/sphere_surface_sampling.hxx -text
 mmtbx/geometry/sphere_surface_sampling.py -text
 mmtbx/geometry/tests/1ahq_trunc.pdb -text
 mmtbx/geometry/tests/tst_asa.py -text
+mmtbx/geometry/tests/tst_clash.py -text
 mmtbx/geometry/tests/tst_primitive.py -text
 mmtbx/geometry/tests/tst_shared_types.py -text
 mmtbx/geometry/tests/tst_sphere_surface_sampling.py -text
