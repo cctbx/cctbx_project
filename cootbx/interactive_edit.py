@@ -1,6 +1,5 @@
-from __future__ import division
 
-# standard imports
+from __future__ import division
 import shutil
 import time
 import os
@@ -26,6 +25,7 @@ def start_coot_and_wait (
   from libtbx.str_utils import make_header
   from libtbx import easy_run
   from libtbx import group_args
+  import cootbx
   base_script = __file__.replace(".pyc", ".py")
   os.chdir(work_dir)
   if (os.path.exists("coot_out_tmp.pdb")) :
@@ -36,6 +36,7 @@ def start_coot_and_wait (
   f.write(open(base_script).read())
   f.write("\n")
   f.write("import coot\n")
+  cootbx.write_disable_nomenclature_errors(f)
   f.write("m = manager(\"%s\", \"%s\", needs_rebuild=%s)\n" %
     (pdb_file, map_file, needs_rebuild))
   f.close()
