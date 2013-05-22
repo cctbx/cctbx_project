@@ -271,8 +271,10 @@ class installer (object) :
     self.lib_dirs.append(lib_paths[0])
 
   def set_cppflags_ldflags_tmp (self) :
-    inc_paths = [ "-I\"%s\"" % p for p in self.include_dirs ]
-    lib_paths = [ "-L\"%s\"" % p for p in self.lib_dirs ]
+    # XXX ideally we would like to quote the paths to allow for spaces, but
+    # the compiler doesn't like this
+    inc_paths = [ "-I%s" % p for p in self.include_dirs ]
+    lib_paths = [ "-L%s" % p for p in self.lib_dirs ]
     os.environ['CPPFLAGS'] = "%s %s" % (" ".join(inc_paths),
       self.cppflags_start)
     os.environ['LDFLAGS'] = "%s %s" % (" ".join(lib_paths), self.ldflags_start)
