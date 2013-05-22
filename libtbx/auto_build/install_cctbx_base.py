@@ -63,6 +63,9 @@ class installer (object) :
       help="Build in debugging mode", default=False)
     parser.add_option("--no-download", dest="no_download", action="store_true",
       help="Use only local packages (no downloads)", default=False)
+    parser.add_option("--python-shared", dest="python_shared",
+      action="store_true", default=False,
+      help="Compile Python shared library (Linux only)")
     options, args = parser.parse_args(args)
     # basic setup
     self.tmp_dir = options.tmp_dir
@@ -238,6 +241,8 @@ class installer (object) :
         self.base_dir, log=log)
     else :
       configure_args = ["--prefix=\"%s\"" % self.base_dir,]
+      if (self.options.python_shared) :
+        configure_args.append("--enable-shared")
       self.configure_and_build(config_args=configure_args, log=log)
     log.close()
     self.python_exe = os.path.abspath(
