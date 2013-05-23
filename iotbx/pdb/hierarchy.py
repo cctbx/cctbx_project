@@ -1008,7 +1008,8 @@ class _(boost.python.injector, ext.atom_group, __hash_eq_mixin):
     assert self.atoms_size() == 1
     return self.atoms()[0]
 
-  def id_str (self) :
+  # FIXME suppress_segid has not effect here
+  def id_str (self, suppress_segid=None) :
     chain = self.parent().parent()
     resid = self.parent().resid()
     return "%3s%2s%5s" % (self.resname, chain.id, resid)
