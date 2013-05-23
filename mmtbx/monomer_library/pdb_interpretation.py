@@ -3252,8 +3252,12 @@ class build_all_chain_proxies(object):
       if len(bonds1)>3:
         pass
       if len(bonds2)>3:
+        pass
+      if False:
+        atoms = self.pdb_hierarchy.atoms()
         atom_names = []
         for bond in bonds2:
+          print bond.i_seqs, atoms[bond.i_seqs[0]].quote(), atoms[bond.i_seqs[1]].quote(),bond.distance_ideal
           other = get_other(bond, apply.atom2)
           if other is None: continue
           if other.element.strip() not in ["H", "D"]: continue
