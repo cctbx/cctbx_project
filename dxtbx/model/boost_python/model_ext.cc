@@ -23,6 +23,7 @@ namespace dxtbx { namespace model { namespace boost_python {
   void export_detector();
   void export_scan();
   void export_scan_helpers();
+  void export_attenuation_coefficient();
 
   BOOST_PYTHON_MODULE(dxtbx_model_ext)
   {
@@ -34,6 +35,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     export_detector();
     export_scan();
     export_scan_helpers();
+    export_attenuation_coefficient();
   }
 
 }}} // namespace dxtbx::model::boost_python

@@ -2,6 +2,8 @@
 Import('env')
 
 sources = [
+    'attenuation_coefficient.cc',
+    
     'boost_python/beam.cc',
     'boost_python/polarized_beam.cc',
     'boost_python/goniometer.cc',
@@ -10,6 +12,7 @@ sources = [
     'boost_python/detector.cc',
     'boost_python/scan.cc',
     'boost_python/scan_helpers.cc',
+    'boost_python/attenuation_coefficient.cc',
     'boost_python/model_ext.cc']
 
 env.SharedLibrary(target='#/lib/dxtbx_model_ext', source=sources)
