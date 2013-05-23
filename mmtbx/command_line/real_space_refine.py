@@ -208,7 +208,7 @@ def run(args, log = None, resolution_factor=1./4):
   pdb_hierarchy.write_pdb_file(file_name=inputs.pdb_file_name[:-4]+"_real_space_refined.pdb",
     crystal_symmetry = xray_structure_refined.crystal_symmetry())
   broadcast(m="Almost done... Run time infromation:", log=log)
-  mmtbx.refinement.real_space.show_time(
+  mmtbx.refinement.real_space.driver.show_time(
     external=[["  time_startup      : %6.3f", time_startup]])
 
 if(__name__ == "__main__"):
