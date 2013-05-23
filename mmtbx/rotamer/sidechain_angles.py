@@ -210,6 +210,7 @@ def collect_sidechain_chi_angles (pdb_hierarchy, atom_selection=None) :
             continue
           chis = []
           altloc = residue.atoms()[0].fetch_labels().altloc
+          i_seqs = []
           for i in range(1, n_chi+1) :
             atoms = angle_lookup.extract_chi_atoms("chi%d" % i, residue)
             if atoms is None:
