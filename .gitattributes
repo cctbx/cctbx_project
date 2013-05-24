@@ -2066,8 +2066,10 @@ scitbx/math/tests/tst_weighted_correlation.py svneol=native#text/x-python
 scitbx/math/traits.h -text
 scitbx/math/tst_2d_zernike.py -text
 scitbx/math/tst_so3_lie_algebra.py -text
+scitbx/math/tst_undirected_graph.py -text
 scitbx/math/tst_zernike.py -text
 scitbx/math/tst_zernike_mom.py -text
+scitbx/math/undirected_graph.py -text
 scitbx/math/weighted_covariance.h -text
 scitbx/math/zernike.h -text
 scitbx/math/zernike_align_fft.py -text
