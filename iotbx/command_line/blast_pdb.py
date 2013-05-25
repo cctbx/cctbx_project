@@ -2,8 +2,6 @@ from __future__ import division
 
 import libtbx.phil
 from libtbx.utils import Sorry
-from libtbx import adopt_init_args
-import cStringIO
 import os
 import sys
 
@@ -43,7 +41,8 @@ def run (args=(), params=None, out=None) :
     params = cmdline.work.extract()
   validate_params(params)
   params = params.blast_pdb
-  from iotbx.pdb.fetch import get_ncbi_pdb_blast
+  from iotbx.bioinformatics.structure import get_ncbi_pdb_blast, \
+    summarize_blast_output
   from iotbx.file_reader import any_file
   seq_file = any_file(params.file_name, force_type="seq")
   seq_file.check_file_type("seq")
@@ -65,59 +64,14 @@ def run (args=(), params=None, out=None) :
     print >> out, ""
     print >> out, "%d matching structures" % len(results)
     print >> out, ""
-    print >> out, "ID    Chain     evalue  length  %ident    %pos"
-    print >> out, "-" * 46
+    print >> out, "ID    Chain     evalue  length  %ident    %pos  #structures"
+    print >> out, "-" * 59
     for result in results :
       result.show(out)
   if (len(results) > 0) :
     return sequence, os.path.abspath(params.output_file)
   else :
     return sequence, None
-
-class blast_hit (object) :
-  def __init__ (self, hit_num, pdb_id, chain_id, evalue, length, identity,
-      positives) :
-    adopt_init_args(self, locals())
-
-  def show (self, out=None) :
-    if (out is None) : out = sys.stdout
-    print >> out, "%3s  %1s   %12g  %6d  %6.2f  %6.2f" % (self.pdb_id,
-      self.chain_id, self.evalue, self.length, self.identity, self.positives)
-
-# XXX this should probably use Bio.Blast.NCBIXML
-def summarize_blast_output (blast_out=None, blast_file=None) :
-  """
-  Parse NCBI BLAST XML output and convert to a list of simple summary
-  objects.  Note that this is very specific to searching the PDB, and returns
-  incomplete information (suitable for summarizing in a flat table).
-  """
-  assert ([blast_out, blast_file].count(None) == 1)
-  from Bio.Blast import NCBIXML
-  if (blast_out is not None) :
-    blast_in = cStringIO.StringIO(blast_out)
-  else :
-    assert os.path.isfile(blast_file)
-    blast_in = open(blast_file)
-  parsed = NCBIXML.parse(blast_in)
-  blast = parsed.next()
-  if (len(blast.alignments) == 0) :
-    raise Sorry("No matching sequences!")
-  results = []
-  for i, hit in enumerate(blast.alignments) :
-    pdb_chain_id = str(hit.accession)
-    pdb_id, chain_id = pdb_chain_id.split("_")
-    hsp = hit.hsps[0]
-    assert (hsp.align_length > 0)
-    summary = blast_hit(
-      hit_num=i+1,
-      pdb_id=pdb_id,
-      chain_id=chain_id,
-      evalue=hsp.expect,
-      length=hsp.align_length,
-      identity=100*hsp.identities/hsp.align_length,
-      positives=100*hsp.positives/hsp.align_length)
-    results.append(summary)
-  return results
 
 def validate_params (params) :
   if (params.blast_pdb.file_name is None) :
