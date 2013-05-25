@@ -74,12 +74,13 @@ class BlastList (wx.ListCtrl) :
 if (__name__ == "__main__") :
   from iotbx.command_line import blast_pdb
   from iotbx.file_reader import any_file
+  from iotbx.bioinformatics.structure import summarize_blast_output
   seq_file = any_file(sys.argv[1], force_type="seq")
   seq_file.check_file_type("seq")
   seq_objects = seq_file.file_object
   assert (len(seq_objects) == 1)
   sequence = seq_objects[0].sequence
-  results = blast_pdb.summarize_blast_output(blast_file=sys.argv[2])
+  results = summarize_blast_output(blast_file=sys.argv[2])
   app = wx.App(0)
   frame = BlastFrame(None, -1, "BLAST results")
   frame.SetResults(sequence, results)
