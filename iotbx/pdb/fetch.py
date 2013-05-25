@@ -1,4 +1,3 @@
-from __future__ import division
 # TODO other PDB sites?
 #
 # See RCSB documentation at:
@@ -15,12 +14,11 @@ from __future__ import division
 # http://www.ebi.ac.uk/pdbe-srv/view/files/2vz8.ent
 # http://www.ebi.ac.uk/pdbe-srv/view/files/r2vz8sf.ent
 
+from __future__ import division
 from libtbx.utils import Sorry, null_out
 from libtbx import smart_open
 import libtbx.load_env
 import urllib2
-import urllib
-import time
 import re
 import os
 
@@ -167,86 +165,6 @@ def get_pdb (id, data_type, mirror, log, quiet=False, format="pdb") :
       print >> log, "Model saved to %s" % file_name
   return file_name
 
-def get_ncbi_pdb_blast (sequence, file_name=None, blast_type="blastp",
-    expect=0.01) :
-  """
-  Run BLAST against the PDB sequence database on the NCBI's web server.
-  Basically just a frontend to a BioPython module.
-
-  :param sequence: plaintext amino-acid or nucleotide sequence
-  :param file_name: optional output file name
-  :param blast_type: program to run ("blastp" or "blastn")
-  :param expect: BLAST e-value cutoff
-
-  :returns: XML string
-  """
-  assert (blast_type in ["blastp", "blastn"])
-  if (sequence[-1] == '*') :
-    sequence = sequence[:-1]
-  if (not sequence.isalpha()) :
-    raise Sorry("The sequence contains non-alphabetical characters; in "+
-      "addition to A-Z, only an asterisk denoting a stop codon is permitted.")
-  assert (expect >= 0)
-  try :
-    from Bio.Blast import NCBIWWW
-  except ImportError :
-    raise Sorry("You need to have BioPython installed to use this function.")
-  blast = NCBIWWW.qblast(blast_type, "pdb", sequence, expect=expect)
-  blast_out = blast.read()
-  if (file_name is not None) :
-    f = open(file_name, "w")
-    f.write(blast_out)
-    f.close()
-  return blast_out
-
-def get_ebi_pdb_wublast (sequence, email, file_name=None, blast_type="blastp",
-    sequence_type="protein", exp="1e-3") :
-  """
-  Run WU-BLAST against the PDB sequence database on the EBI's web server.
-  Somewhat more complicated than the NCBI BLAST service, because of two-step
-  process (submission and retrieval).  An email address is required to submit
-  a job.
-
-  :param sequence: plaintext amino-acid or nucleotide sequence
-  :param email: user email address
-  :param file_name: optional output file name
-  :param blast_type: program to run ("blastp" or "blastn")
-  :param sequence_type: currently ignored
-  :param exp: BLAST e-value cutoff
-
-  :returns: XML string
-  """
-  assert (email is not None)
-  url = "http://www.ebi.ac.uk/Tools/services/rest/wublast/run/"
-  params = urllib.urlencode({
-    'sequence': sequence,
-    'program' : program,
-    'email'   : email,
-    'exp'     : exp,
-    'database': 'pdb',
-    'stype'   : 'protein',
-  })
-  job_id = urllib.urlopen(url, params).read()
-  while (True) :
-    time.sleep(1)
-    url = "http://www.ebi.ac.uk/Tools/services/rest/wublast/status/%s" % job_id
-    status = urllib.urlopen(url).read()
-    if (status == "RUNNING") :
-      continue
-    elif (status == "FINISHED") :
-      url = "http://www.ebi.ac.uk/Tools/services/rest/wublast/result/%s/xml" %\
-        job_id
-      result = urllib.urlopen(url).read()
-      return result
-    elif (status == "ERROR") :
-      raise RuntimeError("The EBI server reported an error.")
-    elif (status == "FAILURE") :
-      raise Sorry("Search failed!")
-    elif (status == "NOT_FOUND") :
-      raise RuntimeError("The EBI server can't find the job!")
-    else :
-      raise RuntimeError("Unknown status %s" % status)
-
 def get_chemical_components_cif (code, return_none_if_already_present=False) :
   assert (code is not None)
   if (len(code) == 0) or (len(code) > 3) :
@@ -274,3 +192,12 @@ def get_chemical_components_cif (code, return_none_if_already_present=False) :
   elif (not return_none_if_already_present) :
     return chem_comp_cif
   return None
+
+# TODO backwards compatibility, remove ASAP
+def get_ncbi_pdb_blast (*args, **kwds) :
+  import iotbx.bioinformatics.structure
+  return iotbx.bioinformatics.structure.get_ncbi_pdb_blast(*args, **kwds)
+
+def get_ebi_pdb_wublast (*args, **kwds) :
+  import iotbx.bioinformatics.structure
+  return iotbx.bioinformatics.structure.get_ebi_pdb_wublast(*args, **kwds)
