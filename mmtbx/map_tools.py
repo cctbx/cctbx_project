@@ -173,13 +173,19 @@ class electron_density_map(object):
       fc_scale               = fc_scale,
       map_calculation_helper = self.mch).map_coefficients()
     r_free_flags = None
+    # XXX the default scale array (used for the isotropize option) needs to be
+    # calculated and processed now to avoid array size errors
+    scale_default = 1. / (self.fmodel.k_isotropic()*self.fmodel.k_anisotropic())
+    scale_array = coeffs.customized_copy(data=scale_default)
     if (exclude_free_r_reflections) :
       if (coeffs.anomalous_flag()) :
         coeffs = coeffs.average_bijvoet_mates()
       r_free_flags = self.fmodel.r_free_flags()
       if (r_free_flags.anomalous_flag()) :
         r_free_flags = r_free_flags.average_bijvoet_mates()
+        scale_array = scale_array.average_bijvoet_mates()
       coeffs = coeffs.select(~r_free_flags.data())
+      scale_array = scale_array.select(~r_free_flags.data())
     scale=None
     if(fill_missing):
       if(coeffs.anomalous_flag()):
@@ -194,9 +200,9 @@ class electron_density_map(object):
         map_type=map_type)
     if(isotropize):
       if(scale is None):
-        scale = 1. / (self.fmodel.k_isotropic()*self.fmodel.k_anisotropic())
-        if(exclude_free_r_reflections) :
-          scale = scale.select(~r_free_flags.data())
+        if (scale_array.anomalous_flag()) and (not coeffs.anomalous_flag()) :
+          scale_array = scale_array.average_bijvoet_mates()
+        scale = scale_array.data()
       coeffs = coeffs.customized_copy(data = coeffs.data()*scale)
     if(sharp):
       ss = 1./flex.pow2(coeffs.d_spacings().data()) / 4.
