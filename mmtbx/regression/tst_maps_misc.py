@@ -1,7 +1,7 @@
 
 from __future__ import division
 
-def exercise_anomalous_residual_map () :
+def exercise_anomalous_maps_misc () :
   from mmtbx.regression import make_fake_anomalous_data
   import mmtbx.utils
   from iotbx import file_reader
@@ -35,7 +35,12 @@ def exercise_anomalous_residual_map () :
       assert (map.eight_point_interpolation(s.site) < 0)
     elif (s.scattering_type == 'Cl1-') :
       assert (map.eight_point_interpolation(s.site) > 10)
+  # this simply checks whether anomalous data will cause problems when
+  # mixed with other options (i.e. array size errors)
+  map2 = fmodel.map_coefficients(
+    map_type="2mFo-DFc",
+    exclude_free_r_reflections=True)
 
 if (__name__ == "__main__") :
-  exercise_anomalous_residual_map()
+  exercise_anomalous_maps_misc()
   print "OK"
