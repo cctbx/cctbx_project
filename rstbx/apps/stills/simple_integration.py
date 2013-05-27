@@ -79,6 +79,9 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
       return
 
     if self.horizons_phil.integration.model == "user_supplied":
+
+     if cb_op_to_primitive==None:
+
       from cxi_user import pre_get_predictions
       self.bp3_wrapper = pre_get_predictions(self.inputai, self.horizons_phil,
         raw_image = self.imagefiles.images[self.image_number],
@@ -93,6 +96,35 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
       BPhkllist = self.bp3_wrapper.ucbp3.selected_hkls()
 
       self.predicted,self.hkllist = BPpredicted, BPhkllist
+      if self.inputai.active_areas != None:
+        self.predicted,self.hkllist = self.inputai.active_areas(
+                                      self.predicted,self.hkllist,self.pixel_size)
+      return
+
+     else:
+
+      rot_mat = matrix.sqr(cb_op_to_primitive.c().r().as_double()).transpose()
+      centered_orientation = self.inputai.getOrientation()
+      self.current_orientation = centered_orientation
+      self.current_cb_op_to_primitive = cb_op_to_primitive
+      primitive_orientation = centered_orientation.change_basis(rot_mat)
+      self.inputai.setOrientation(primitive_orientation)
+      from cxi_user import pre_get_predictions
+      self.bp3_wrapper = pre_get_predictions(self.inputai, self.horizons_phil,
+        raw_image = self.imagefiles.images[self.image_number],
+        imageindex = self.frame_numbers[self.image_number],
+        spotfinder = self.spotfinder,
+        limiting_resolution = self.limiting_resolution,
+        domain_size_ang = kwargs.get("domain_size_ang",0))
+
+      BPpredicted = self.bp3_wrapper.ucbp3.selected_predictions_labelit_format()
+      BPhkllist = self.bp3_wrapper.ucbp3.selected_hkls()
+
+      self.predicted = BPpredicted
+      primitive_hkllist = BPhkllist
+      #not sure if matrix needs to be transposed first for outputting HKL's???:
+      self.hkllist = cb_op_to_primitive.inverse().apply(primitive_hkllist)
+      self.inputai.setOrientation(centered_orientation)
       if self.inputai.active_areas != None:
         self.predicted,self.hkllist = self.inputai.active_areas(
                                       self.predicted,self.hkllist,self.pixel_size)
