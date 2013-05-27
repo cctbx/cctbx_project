@@ -100,13 +100,17 @@ class manager:
     db = self.connection()
     assert self.use_mysql()
     cursor = db.cursor()
-    cursor.execute("SELECT hkl_id_0_base,i,sigi,frame_id_0_base FROM %s_observation"%self.params.mysql.runtag)
+    cursor.execute("SELECT hkl_id_0_base,i,sigi,frame_id_0_base,original_h,original_k,original_l FROM %s_observation"%self.params.mysql.runtag)
     ALL = cursor.fetchall()
 
     return dict(hkl_id = flex.int([a[0] for a in ALL]), #as MySQL indices are 1-based
                i = flex.double([a[1] for a in ALL]),
                sigi = flex.double([a[2] for a in ALL]),
-               frame_id = flex.int([a[3] for a in ALL]))
+               frame_id = flex.int([a[3] for a in ALL]),
+               original_h = flex.int([a[4] for a in ALL]),
+               original_k = flex.int([a[5] for a in ALL]),
+               original_l = flex.int([a[6] for a in ALL]),
+               )
 
   def read_frames(self):
     from xfel.cxi.util import is_odd_numbered

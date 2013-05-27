@@ -61,6 +61,7 @@ class xscaling_manager (scaling_manager) :
     from xfel.cxi.merging_database import manager
     CART = manager(self.params)
     self.millers_mysql = CART.read_indices()
+    self.millers = self.millers_mysql
 
     self.observations_mysql = CART.read_observations()
     parser = column_parser()
@@ -68,7 +69,18 @@ class xscaling_manager (scaling_manager) :
     parser.set_double("i",self.observations_mysql["i"])
     parser.set_double("sigi",self.observations_mysql["sigi"])
     parser.set_int("frame_id",self.observations_mysql["frame_id"])
+    parser.set_int("H",self.observations_mysql["original_h"])
+    parser.set_int("K",self.observations_mysql["original_k"])
+    parser.set_int("L",self.observations_mysql["original_l"])
     self._observations_mysql = parser
+    self.observations = dict(hkl_id=parser.get_int("hkl_id"),
+                             i=parser.get_double("i"),
+                             sigi=parser.get_double("sigi"),
+                             frame_id=parser.get_int("frame_id"),
+                             H=parser.get_int("H"),
+                             K=parser.get_int("K"),
+                             L=parser.get_int("L"),
+                             )
 
     self.frames_mysql = CART.read_frames()
     parser = column_parser()
@@ -101,6 +113,10 @@ class xscaling_manager (scaling_manager) :
     parser.set_double("i",1)
     parser.set_double("sigi",2)
     parser.set_int("frame_id",5)
+    parser.set_int("H",7)
+    parser.set_int("K",8)
+    parser.set_int("L",9)
+
     G = open(self.params.output.prefix+"_observation.db","r")
     for line in G.xreadlines():
       parser.parse_from_line(line)
@@ -108,6 +124,9 @@ class xscaling_manager (scaling_manager) :
                              i=parser.get_double("i"),
                              sigi=parser.get_double("sigi"),
                              frame_id=parser.get_int("frame_id"),
+                             H=parser.get_int("H"),
+                             K=parser.get_int("K"),
+                             L=parser.get_int("L"),
                              )
     self._observations = parser
     G.close()
