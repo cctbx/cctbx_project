@@ -574,7 +574,7 @@ class process_arrays (object) :
         array_params.add_b_aniso = None
       if ((array_params.add_b_iso is not None) or
           (array_params.add_b_aniso is not None)) :
-        if (not isinstance(new_array.data(), flex.double) or
+        if (not isinstance(new_array.data(), flex.double) and
                 isinstance(new_array.data(), flex.complex_double)) :
           raise Sorry(("Applying a B-factor to the data in %s is not "+
             "permitted.") % array_name)
@@ -595,10 +595,17 @@ class process_arrays (object) :
         data = new_array.data().select(perm)
         new_array = new_array.customized_copy(data=data, sigmas=sigmas)
       if (array_params.reset_values_to) :
+        if (not isinstance(new_array.data(), flex.double) and
+            not isinstance(new_array.data(), flex.int)) :
+          raise Sorry("Resetting the values for %s is not permitted." %
+            array_name)
         print >> log, "Resetting values for %s to %g" % (array_name,
           array_params.reset_values_to)
         data = new_array.data().deep_copy()
-        data.fill(array_params.reset_values_to)
+        new_value = array_params.reset_values_to
+        if isinstance(data, flex.int) :
+          new_value = int(new_value)
+        data.fill(new_value)
         new_array = new_array.customized_copy(data=data)
 
       #-----------------------------------------------------------------
