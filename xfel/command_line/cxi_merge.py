@@ -690,7 +690,7 @@ class scaling_manager (intensity_data) :
     print "Step 3. Correct for polarization."
     indexed_cell = observations.unit_cell()
 
-    observations_original_index = observations.indices()
+    observations_original_index = observations.deep_copy()
     if result.get("model_partialities",None) is not None and result["model_partialities"][0] is not None:
       # some recordkeeping useful for simulations
       partialities_original_index = observations.customized_copy(
@@ -700,6 +700,8 @@ class scaling_manager (intensity_data) :
         indices = result["model_partialities"][0]["indices"],
         ).resolution_filter(d_min=self.params.d_min)
 
+    assert len(observations_original_index.indices()) == len(observations.indices())
+
     # Now manipulate the data to conform to unit cell, asu, and space group
     # of reference.  The resolution will be cut later.
     # Only works if there is NOT an indexing ambiguity!
@@ -708,6 +710,10 @@ class scaling_manager (intensity_data) :
       crystal_symmetry=self.miller_set.crystal_symmetry()
       ).map_to_asu()
 
+    observations_original_index = observations_original_index.customized_copy(
+      anomalous_flag=not self.params.merge_anomalous,
+      crystal_symmetry=self.miller_set.crystal_symmetry()
+      )
     print "Step 4. Filter on global resolution and map to asu"
     print >> out, "Data in reference setting:"
     #observations.show_summary(f=out, prefix="  ")
@@ -741,6 +747,9 @@ class scaling_manager (intensity_data) :
         observations = observations.resolution_filter(d_min =
           imposed_res_filter
           )
+        observations_original_index = observations_original_index.resolution_filter(d_min =
+          imposed_res_filter
+          )
         print "New resolution filter at %7.2f"%imposed_res_filter,file_name
       print "N acceptable bins",N_acceptable_bins
       print "Old n_obs: %d, new n_obs: %d"%(N_obs_pre_filter,observations.size())
@@ -751,6 +760,9 @@ class scaling_manager (intensity_data) :
     # Match up the observed intensities against the reference data
     # set, i_model, instead of the pre-generated miller set,
     # miller_set.
+
+    assert len(observations_original_index.indices()) == len(observations.indices())
+
     matches = miller.match_multi_indices(
       miller_indices_unique=self.i_model.indices(),
       miller_indices=observations.indices())
@@ -822,6 +834,7 @@ class scaling_manager (intensity_data) :
     print result.get("sa_parameters")[0]
     have_sa_params = ( type(result.get("sa_parameters")[0]) == type(dict()) )
     #have_sa_params = (result.get("sa_parameters")[0].find('None')!=0)
+    observations_original_index_indices = observations_original_index.indices()
 
     if (self.params.nproc == 1) :
       F = open(self.params.output.prefix+"_frame.db","a")
@@ -846,7 +859,7 @@ class scaling_manager (intensity_data) :
       xypred = result["mapped_predictions"][0]
       G = open(self.params.output.prefix+"_observation.db","a")
       for pair in matches.pairs():
-        idx = observations_original_index[pair[1]]
+        idx = observations_original_index_indices[pair[1]]
         Intensity = observations.data()[pair[1]]
         Sigma = observations.sigmas()[pair[1]]
         print >>G, "%7d %14.8f %14.8f %8.2f %8.2f %7d"%(pair[0], Intensity, Sigma,
@@ -885,7 +898,7 @@ class scaling_manager (intensity_data) :
         VALUES """%self.params.mysql.runtag)
       firstcomma = ""
       for pair in matches.pairs():
-        idx = observations_original_index[pair[1]]
+        idx = observations_original_index_indices[pair[1]]
         query.write(firstcomma); firstcomma=","
         Intensity = observations.data()[pair[1]]
         Sigma = observations.sigmas()[pair[1]]
