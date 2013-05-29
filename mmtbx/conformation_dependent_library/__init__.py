@@ -3,8 +3,8 @@ import sys
 import copy
 from string import letters, digits
 
+from libtbx.utils import Sorry
 import iotbx.pdb
-
 from scitbx.math import dihedral_angle
 
 from mmtbx.conformation_dependent_library.cdl_database import cdl_database
@@ -258,7 +258,15 @@ class ThreeProteinResidues(list):
         angle_proxy = cdl_proxies.get(tuple(names), None)
         if angle_proxy is None:
           angle_proxy = cdl_proxies.get(tuple(rnames), None)
-        assert angle_proxy
+        if angle_proxy is None:
+          outl=""
+          for key in atoms:
+            outl += "\n    %-10s %s" % ( key, atoms[key].quote())
+          raise Sorry("""CDL angle to be changed not set in model.
+  Possible problems:
+    Residue on special positions.
+
+  Check:%s""" % outl)
         if verbose:
           print " i_seqs %-15s initial %12.3f %12.3f final %12.3f %12.3f" % (
             angle_proxy.i_seqs,
@@ -269,7 +277,6 @@ class ThreeProteinResidues(list):
             )
         names.sort()
         registry[tuple(names)] = restraint_values[i]
-        #print "ANGLE", 1/restraint_values[i+1]**2/angle.weight,1/restraint_values[i+1]**2, angle.weight
         if ideal: angle_proxy.angle_ideal = restraint_values[i]
         if esd: angle_proxy.weight = 1/restraint_values[i+1]**2
       elif len(names)==2:
@@ -413,7 +420,7 @@ def update_restraints(hierarchy,
                                         #verbose=verbose,
                                         ):
     if threes.cis_group():
-      if verbose:
+      if verbose and 0:
         print 'cis '*20
         print threes
       continue

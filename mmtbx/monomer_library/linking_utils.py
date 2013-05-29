@@ -500,6 +500,7 @@ def process_atom_groups_for_linking(pdb_hierarchy,
   else:
     atom1, atom2 = get_closest_atoms(residue_group1, residue_group2)
     #if get_distance2(atom1, atom2)>bond_cutoff:
+    if atom1 is None or atom2 is None: return None
     if get_distance2(atom1, atom2)>intra_residue_bond_cutoff:
       if verbose: print "atoms too far apart %s %s %0.1f %0.1f" % (
         atom1.quote(),
