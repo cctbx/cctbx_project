@@ -388,6 +388,12 @@ namespace dxtbx { namespace model {
       return DetectorBase::panel_list_[0].get_distance();
     }
 
+    /** Get the origin of the normal on the detector */
+    vec2<double> get_normal_origin() const {
+      DXTBX_ASSERT(DetectorBase::panel_list_.size() == 1);
+      return DetectorBase::panel_list_[0].get_normal_origin();
+    }
+
     /** Get the first panel image size in millimeters */
     vec2<double> get_image_size_mm() const {
       DXTBX_ASSERT(DetectorBase::panel_list_.size() == 1);

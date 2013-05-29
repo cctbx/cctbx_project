@@ -3,6 +3,7 @@ Import('env')
 
 sources = [
     'attenuation_coefficient.cc',
+    'pixel_to_millimeter.cc',
     
     'boost_python/beam.cc',
     'boost_python/polarized_beam.cc',
