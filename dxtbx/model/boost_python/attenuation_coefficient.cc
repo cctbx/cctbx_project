@@ -30,6 +30,12 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("mu_en_rho_at_ev", &XrayMassCoeffTable::mu_rho_at_ev)
       .def("mu_en_rho_at_kev", &XrayMassCoeffTable::mu_rho_at_kev)
       .def("mu_en_rho_at_angstrom", &XrayMassCoeffTable::mu_rho_at_angstrom);
+
+    class_<XrayAttenuationCoeffTable>("XrayAttenuationCoeffTable", no_init)
+      .def(init<std::size_t>((arg("z"))))
+      .def("at_ev", &XrayAttenuationCoeffTable::at_ev)
+      .def("at_kev", &XrayAttenuationCoeffTable::at_kev)
+      .def("at_angstrom", &XrayAttenuationCoeffTable::at_angstrom);
   }
 
 }}} // namespace = dxtbx::model::boost_python
