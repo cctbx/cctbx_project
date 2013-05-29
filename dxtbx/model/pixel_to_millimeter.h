@@ -27,6 +27,9 @@ namespace dxtbx { namespace model {
   class PxMmStrategy {
   public:
 
+    /** Virtual desctructor */
+    virtual ~PxMmStrategy() {}
+
     /**
      * Convert a pixel coordinate to a millimeter coordinate
      * @param panel The panel structure
@@ -34,7 +37,7 @@ namespace dxtbx { namespace model {
      * @return The (x, y) millimeter coordinate
      */
     virtual vec2<double> to_millimeter(const Panel &panel,
-      vec2<double> xy) const = 0;
+      vec2<double> xy) const { return xy; };
 
     /**
      * Convert a millimeter coordinate to a pixel coordinate
@@ -43,7 +46,7 @@ namespace dxtbx { namespace model {
      * @return The (x, y) pixel coordinate
      */
     virtual vec2<double> to_pixel(const Panel &panel,
-      vec2<double> xy) const= 0;
+      vec2<double> xy) const { return xy; };
   };
 
   /**
@@ -52,6 +55,9 @@ namespace dxtbx { namespace model {
    */
   class SimplePxMmStrategy : public PxMmStrategy {
   public:
+
+    /** Virtual desctructor */
+    virtual ~SimplePxMmStrategy() {}
 
     virtual vec2<double> to_millimeter(const Panel &panel,
         vec2<double> xy) const;
@@ -66,6 +72,9 @@ namespace dxtbx { namespace model {
   class ParallaxCorrectedPxMmStrategy : public SimplePxMmStrategy {
   public:
     ParallaxCorrectedPxMmStrategy(double la) : la_(la) {}
+
+    /** Virtual desctructor */
+    virtual ~ParallaxCorrectedPxMmStrategy() {}
 
     virtual vec2<double> to_millimeter(const Panel &panel,
         vec2<double> xy) const;
