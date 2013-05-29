@@ -48,6 +48,15 @@ class _(boost.python.injector,ext.crystal_orientation):
       return self.change_basis((-1.,0.,0.,0.,-1.,0.,0.,0.,-1.))
     return self
 
+  def reduced_cell(self):
+    #convenience function to transform the orientation matrix to the reduced cell
+    from cctbx.uctbx import fast_minimum_reduction
+    from scitbx import matrix
+    uc = UC.unit_cell()
+    R = fast_minimum_reduction(uc)
+    rinverse = matrix.sqr( R.r_inv() )
+    return self.change_basis(rinverse.transpose().inverse().elems)
+
   def __copy__(self):
     return crystal_orientation(self.reciprocal_matrix(),basis_type.reciprocal)
 
