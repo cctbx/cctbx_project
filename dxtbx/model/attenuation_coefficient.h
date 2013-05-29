@@ -36,6 +36,10 @@ namespace dxtbx { namespace model {
     double mu_en_rho[XRAY_MASS_COEFF_TABLE_MAX_SIZE];
   };
 
+  // The array of densities
+  extern
+  const double DENSITY[XRAY_MASS_COEFF_TABLE_SIZE];
+
   // The array of tables
   extern
   const XrayMassCoeffTableData
@@ -78,6 +82,7 @@ namespace dxtbx { namespace model {
 
     /** @return mu_rho at ev */
     double mu_rho_at_ev(double en) {
+      en = en / 1000000;
       std::size_t index = find_energy_index(en);
       double x0 = log(energy(index));
       double x1 = log(energy(index + 1));
@@ -98,6 +103,7 @@ namespace dxtbx { namespace model {
 
     /** @return mu_en_rho at ev */
     double mu_en_rho_at_ev(double en) {
+      en = en / 1000000;
       std::size_t index = find_energy_index(en);
       double x0 = log(energy(index));
       double x1 = log(energy(index + 1));
@@ -131,6 +137,41 @@ namespace dxtbx { namespace model {
     }
 
     const XrayMassCoeffTableData *data_;
+  };
+
+
+  /**
+   * The xray attenuation coefficient table class.
+   */
+  class XrayAttenuationCoeffTable {
+  public:
+
+    /** Initialise */
+    XrayAttenuationCoeffTable(std::size_t z)
+      : table_(z),
+        density_(DENSITY[z]) {}
+
+    /** @return mu at ev */
+    double at_ev(double en) {
+      double mu_rho = table_.mu_rho_at_ev(en);
+      return mu_rho * density_;
+    }
+
+    /** @return mu at kev */
+    double at_kev(double energy) {
+      return at_ev(energy * 1000);
+    }
+
+    /** @return mu at wavelength */
+    double at_angstrom(double wavelength) {
+      return at_ev(factor_ev_angstrom / wavelength);
+    }
+
+  protected:
+
+    XrayMassCoeffTable table_;
+    double density_;
+
   };
 
 }} // namespace dxtbx::model
