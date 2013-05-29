@@ -59,7 +59,7 @@ namespace dxtbx { namespace model {
    */ 
   vec2<double> ParallaxCorrectedPxMmStrategy::to_pixel(const Panel &panel, 
       vec2<double> xy) const {
-    return SimplePxMmStrategy::to_millimeter(panel, 
+    return SimplePxMmStrategy::to_pixel(panel, 
       parallax_correction(panel.get_distance(), la_, 
         panel.get_normal_origin(), xy));
   }
