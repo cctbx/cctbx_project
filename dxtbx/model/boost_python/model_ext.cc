@@ -25,6 +25,7 @@ namespace dxtbx { namespace model { namespace boost_python {
   void export_scan_helpers();
   void export_attenuation_coefficient();
   void export_parallax_correction();
+  void export_pixel_to_millimeter();
 
   BOOST_PYTHON_MODULE(dxtbx_model_ext)
   {
@@ -38,6 +39,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     export_scan_helpers();
     export_attenuation_coefficient();
     export_parallax_correction();
+    export_pixel_to_millimeter();
   }
 
 }}} // namespace dxtbx::model::boost_python
