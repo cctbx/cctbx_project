@@ -440,6 +440,7 @@ dxtbx/model/boost_python/kappa_goniometer.cc -text
 dxtbx/model/boost_python/model_ext.cc -text
 dxtbx/model/boost_python/panel.cc -text
 dxtbx/model/boost_python/parallax_correction.cc -text
+dxtbx/model/boost_python/pixel_to_millimeter.cc -text
 dxtbx/model/boost_python/polarized_beam.cc -text
 dxtbx/model/boost_python/scan.cc -text
 dxtbx/model/boost_python/scan_helpers.cc -text
