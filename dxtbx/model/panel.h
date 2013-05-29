@@ -39,9 +39,9 @@ namespace dxtbx { namespace model {
   typedef scitbx::af::shared<int4> shared_int4;
 
   /**
-  * A class representing a detector panel. A detector can have multiple
-  * panels which are each represented by this class.
-  */
+   * A class representing a detector panel. A detector can have multiple
+   * panels which are each represented by this class.
+   */
   class Panel {
   public:
 
@@ -52,7 +52,10 @@ namespace dxtbx { namespace model {
         D_(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
         pixel_size_(0.0, 0.0),
         image_size_(0, 0),
-        trusted_range_(0, 0) {}
+        trusted_range_(0, 0),
+        normal_(0.0, 0.0, 0.0),
+        normal_origin_(0.0, 0.0),
+        distance_(0.0) {}
 
     /**
     * Initialise the detector panel.
@@ -82,6 +85,9 @@ namespace dxtbx { namespace model {
       pixel_size_ = pixel_size;
       image_size_ = image_size;
       trusted_range_ = trusted_range;
+
+      // Update the normal etc
+      update_normal();
     }
 
     /** Virtual destructor */
@@ -114,7 +120,7 @@ namespace dxtbx { namespace model {
 
     /** Get the normal */
     vec3 <double> get_normal() const {
-      return get_fast_axis().cross(get_slow_axis());
+      return normal_;
     }
 
     /** Get the pixel size */
@@ -182,11 +188,19 @@ namespace dxtbx { namespace model {
         slow_axis.normalize(),
         origin);
       D_ = d_.inverse();
+
+      // Update the normal etc
+      update_normal();
     }
 
     /** Get the distance from the sample to the detector plane */
     double get_distance() const {
-      return get_origin() * get_normal();
+      return distance_;
+    }
+
+    /** Get the origin of the normal. */
+    vec2<double> get_normal_origin() const {
+      return normal_origin_;
     }
 
     /** Get the image size in millimeters */
@@ -367,6 +381,13 @@ namespace dxtbx { namespace model {
         fast_axis[2], slow_axis[2], origin[2]);
     }
 
+    /** Update the normal properties. */
+    void update_normal() {
+      normal_ = get_fast_axis().cross(get_slow_axis());
+      normal_origin_ = get_ray_intersection(get_normal());
+      distance_ = get_origin() * get_normal();
+    }
+
     std::string type_;
     mat3<double> d_;
     mat3<double> D_;
@@ -374,6 +395,9 @@ namespace dxtbx { namespace model {
     vec2 <std::size_t> image_size_;
     vec2 <double> trusted_range_;
     shared_int4 mask_;
+    vec3<double> normal_;
+    vec2<double> normal_origin_;
+    double distance_;
   };
 
   /** Print the panel information to the ostream */
