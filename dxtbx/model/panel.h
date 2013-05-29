@@ -13,6 +13,7 @@
 
 #include <string>
 #include <iostream>
+#include <boost/shared_ptr.hpp>
 #include <scitbx/vec2.h>
 #include <scitbx/vec3.h>
 #include <scitbx/mat3.h>
@@ -23,10 +24,12 @@
 #include <scitbx/array_family/simple_io.h>
 #include <scitbx/array_family/simple_tiny_io.h>
 #include <dxtbx/error.h>
+#include <dxtbx/model/pixel_to_millimeter.h>
 #include "model_helpers.h"
 
 namespace dxtbx { namespace model {
 
+  using boost::shared_ptr;
   using scitbx::vec2;
   using scitbx::vec3;
   using scitbx::mat3;
@@ -55,7 +58,8 @@ namespace dxtbx { namespace model {
         trusted_range_(0, 0),
         normal_(0.0, 0.0, 0.0),
         normal_origin_(0.0, 0.0),
-        distance_(0.0) {}
+        distance_(0.0),
+        convert_coord_(new SimplePxMmStrategy()) {}
 
     /**
     * Initialise the detector panel.
@@ -75,7 +79,44 @@ namespace dxtbx { namespace model {
         vec3 <double> origin,
         vec2 <double> pixel_size,
         vec2 <std::size_t> image_size,
-        vec2 <double> trusted_range) {
+        vec2 <double> trusted_range)
+      : convert_coord_(new SimplePxMmStrategy()) {
+      DXTBX_ASSERT(fast_axis.length() > 0);
+      DXTBX_ASSERT(slow_axis.length() > 0);
+      type_ = type;
+      d_ = create_d_matrix(fast_axis.normalize(),
+        slow_axis.normalize(), origin);
+      D_ = d_.inverse();
+      pixel_size_ = pixel_size;
+      image_size_ = image_size;
+      trusted_range_ = trusted_range;
+
+      // Update the normal etc
+      update_normal();
+    }
+
+    /**
+    * Initialise the detector panel.
+    * @param type The type of the detector panel
+    * @param fast_axis The fast axis of the detector. The vector is normalized.
+    * @param slow_axis The slow axis of the detector. The vector is normalized.
+    * @param normal The detector normal. The given vector is normalized.
+    * @param origin The detector origin
+    * @param pixel_size The size of the individual pixels
+    * @param image_size The size of the detector panel (in pixels)
+    * @param trusted_range The trusted range of the detector pixel values.
+    * @param distance The distance from the detector to the crystal origin
+    * @param px_mm The pixel to millimeter strategy
+    */
+    Panel(std::string type,
+        vec3 <double> fast_axis,
+        vec3 <double> slow_axis,
+        vec3 <double> origin,
+        vec2 <double> pixel_size,
+        vec2 <std::size_t> image_size,
+        vec2 <double> trusted_range,
+        shared_ptr<PxMmStrategy> px_mm)
+      : convert_coord_(px_mm) {
       DXTBX_ASSERT(fast_axis.length() > 0);
       DXTBX_ASSERT(slow_axis.length() > 0);
       type_ = type;
@@ -347,12 +388,12 @@ namespace dxtbx { namespace model {
 
     /** Map coordinates in mm to pixels */
     vec2<double> millimeter_to_pixel(vec2<double> xy) const {
-      return vec2<double> (xy[0] / pixel_size_[0], xy[1] / pixel_size_[1]);
+      return convert_coord_->to_pixel(*this, xy);
     }
 
     /** Map the coordinates in pixels to millimeters */
     vec2<double> pixel_to_millimeter(vec2<double> xy) const {
-      return vec2<double> (xy[0] * pixel_size_[0], xy[1] * pixel_size_[1]);
+      return convert_coord_->to_millimeter(*this, xy);
     }
 
     /** Check the detector axis basis vectors are (almost) the same */
@@ -398,6 +439,9 @@ namespace dxtbx { namespace model {
     vec3<double> normal_;
     vec2<double> normal_origin_;
     double distance_;
+
+    // Pixel to millimeter function
+    shared_ptr<PxMmStrategy> convert_coord_;
   };
 
   /** Print the panel information to the ostream */

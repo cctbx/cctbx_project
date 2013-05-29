@@ -62,7 +62,22 @@ def tst_pixel_to_millimeter_to_pixel(detector):
     # Test Passed
     print "OK"
 
+def tst_parallax_correction(detector):
+    from random import uniform
+    from scitbx import matrix
+    random_coord = lambda: (
+        uniform(-1000, 1000),
+        uniform(-1000, 1000))
+    for i in range(10000):
+        mm = random_coord()
+        px = detector.millimeter_to_pixel(mm)
+        mm2 = detector.pixel_to_millimeter(px)
+        assert(abs(matrix.col(mm) - matrix.col(mm2)) < 1e-3)
+
+    print 'OK'
+
 def tst_detector():
+    from dxtbx.model import ParallaxCorrectedPxMmStrategy
 
     # Create the detector
     detector = Detector(Panel(
@@ -80,6 +95,22 @@ def tst_detector():
     tst_is_value_in_trusted_range(detector)
     tst_is_coord_valid(detector)
     tst_pixel_to_millimeter_to_pixel(detector)
+
+    # Attenuation length
+    la = 0.252500934883
+
+    # Create the detector
+    detector = Detector(Panel(
+        "",                 # Type
+        (10, 0, 0),         # Fast axis
+        (0, 10, 0),         # Slow axis
+        (0, 0, 200),        # Origin
+        (0.172, 0.172),     # Pixel size
+        (512, 512),         # Image size
+        (0, 1000),          # Trusted range
+        ParallaxCorrectedPxMmStrategy(la)))
+
+    tst_parallax_correction(detector)
 
 def run():
     tst_detector()

@@ -62,6 +62,22 @@ namespace dxtbx { namespace model { namespace boost_python {
           arg("pixel_size"),
           arg("image_size"),
           arg("trusted_range"))))
+      .def(init <std::string,
+                 vec3 <double>,
+                 vec3 <double>,
+                 vec3 <double>,
+                 vec2 <double>,
+                 vec2 <std::size_t>,
+                 vec2 <double>,
+                 shared_ptr<PxMmStrategy> > ((                 
+          arg("type"),
+          arg("fast_axis"),
+          arg("slow_axis"),
+          arg("origin"),
+          arg("pixel_size"),
+          arg("image_size"),
+          arg("trusted_range"),
+          arg("px_mm"))))          
       .def("get_type",
         &Panel::get_type)
       .def("set_type",
