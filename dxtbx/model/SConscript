@@ -15,6 +15,7 @@ sources = [
     'boost_python/scan_helpers.cc',
     'boost_python/attenuation_coefficient.cc',
     'boost_python/parallax_correction.cc',
+    'boost_python/pixel_to_millimeter.cc',
     'boost_python/model_ext.cc']
 
 env.SharedLibrary(target='#/lib/dxtbx_model_ext', source=sources)
