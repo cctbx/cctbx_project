@@ -157,8 +157,8 @@ class reader:
 
     # Detector stuff
     self.num_segments      = int(tokens[7][0])
-    self.detector_size     = tuple(map(int, tokens[7][0:2]))
-    self.pixel_size        = tuple(map(float, tokens[7][2:4]))
+    self.detector_size     = tuple(map(int, tokens[7][1:3]))
+    self.pixel_size        = tuple(map(float, tokens[7][3:5]))
     self.detector_origin   = tuple(map(float, tokens[8][0:2]))
     self.detector_distance = float(tokens[8][2])
     self.detector_x_axis   = tuple(map(float, tokens[9]))
