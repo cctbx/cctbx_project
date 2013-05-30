@@ -14,6 +14,7 @@ from dxtbx.format.FormatCBFMini import FormatCBFMini
 from dxtbx.format.FormatCBFMiniPilatusHelpers import \
      get_pilatus_timestamp
 from dxtbx.format.FormatPilatusHelpers import determine_pilatus_mask
+from dxtbx.model import ParallaxCorrectedPxMmStrategy
 
 class FormatCBFMiniPilatus(FormatCBFMini):
     '''A class for reading mini CBF format Pilatus images, and correctly
@@ -102,7 +103,8 @@ class FormatCBFMiniPilatus(FormatCBFMini):
             'PAD', distance * 1000.0, (beam_x * pixel_x * 1000.0,
                                        beam_y * pixel_y * 1000.0), '+x', '-y',
             (1000 * pixel_x, 1000 * pixel_y),
-            (nx, ny), (underload, overload), [])
+            (nx, ny), (underload, overload), [],
+            ParallaxCorrectedPxMmStrategy(0.252500934883))
 
         for f0, s0, f1, s1 in determine_pilatus_mask(detector):
             detector[0].add_mask(f0, s0, f1, s1)
