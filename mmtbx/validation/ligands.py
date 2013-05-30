@@ -70,6 +70,7 @@ def compare_ligands_impl (ligand,
     exclude_hydrogens=True,
     verbose=False,
     quiet=False,
+    raise_sorry_if_no_matching_atoms=True,
     out=sys.stdout) :
   """
   Given a target ligand and a list of reference ligands, return the RMSD(s)
@@ -102,7 +103,11 @@ def compare_ligands_impl (ligand,
           isel_2.append(j_seq)
           break
     if (len(isel_1) == 0) :
-      raise Sorry("No matching atoms found!")
+      if (raise_sorry_if_no_matching_atoms) :
+        raise Sorry("No matching atoms found!")
+      else :
+        print >> out, "  WARNING: no matching atoms found!"
+        return None
     sites_1 = sites_1.select(isel_1)
     sites_2 = ligand_2.atoms().extract_xyz().select(isel_2)
     rmsd = sites_1.rms_difference(sites_2)
@@ -175,10 +180,11 @@ class ligand_validation (slots_getstate_setstate) :
       self.atom_selection)
     self.occupancy_mean = flex.mean(occ)
     self.rmsds = None
-    if (reference_ligands is not None) :
+    if (reference_ligands is not None) and (len(reference_ligands) > 0) :
       self.rmsds = compare_ligands_impl(ligand=ligand,
         reference_ligands=reference_ligands,
         max_distance_between_centers_of_mass=8.0,
+        raise_sorry_if_no_matching_atoms=False,
         verbose=False,
         quiet=True)
 
