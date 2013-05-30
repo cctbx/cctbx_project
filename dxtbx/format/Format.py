@@ -117,9 +117,9 @@ class Format(object):
         in mind that your implementation may be further subclassed by
         someone else.'''
 
-        try:
-            self._start()
+        self._start()
 
+        try:
             goniometer_instance = self._goniometer()
             assert(isinstance(goniometer_instance, Goniometer))
             self._goniometer_instance = goniometer_instance
