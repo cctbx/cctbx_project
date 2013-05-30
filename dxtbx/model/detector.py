@@ -15,7 +15,8 @@ from __future__ import division
 import math
 import pycbf
 from scitbx import matrix
-from dxtbx_model_ext import Panel, Detector
+from dxtbx_model_ext import Panel, Detector, SimplePxMmStrategy, \
+    ParallaxCorrectedPxMmStrategy
 
 from detector_helpers import detector_helper_sensors
 from detector_helpers import find_undefined_value
@@ -33,20 +34,29 @@ class detector_factory:
 
     @staticmethod
     def make_detector(stype, fast_axis, slow_axis, origin,
-                      pixel_size, image_size, trusted_range = (0.0, 0.0)):
+                      pixel_size, image_size, trusted_range = (0.0, 0.0),
+                      px_mm=None):
         """Ensure all types are correct before creating c++ detector class."""
-        return Detector(Panel(
+
+        if px_mm == None:
+            px_mm = SimplePxMmStrategy()
+
+        d = Detector(Panel(
             str(stype),
             tuple(map(float, fast_axis)),
             tuple(map(float, slow_axis)),
             tuple(map(float, origin)),
             tuple(map(float, pixel_size)),
             tuple(map(int, image_size)),
-            tuple(map(float, trusted_range))))
+            tuple(map(float, trusted_range)),
+            px_mm))
+
+        return d
 
     @staticmethod
     def simple(sensor, distance, beam_centre, fast_direction, slow_direction,
-               pixel_size, image_size, trusted_range = (0.0, 0.0), mask = []):
+               pixel_size, image_size, trusted_range = (0.0, 0.0), mask = [],
+               px_mm=None):
         '''Construct a simple detector at a given distance from the sample
         along the direct beam presumed to be aligned with -z, offset by the
         beam centre - the directions of which are given by the fast and slow
@@ -83,7 +93,7 @@ class detector_factory:
     def two_theta(sensor, distance, beam_centre, fast_direction,
                   slow_direction, two_theta_direction, two_theta_angle,
                   pixel_size, image_size, trusted_range = (0.0, 0.0),
-                  mask = []):
+                  mask = [], px_mm = None):
         '''Construct a simple detector at a given distance from the sample
         along the direct beam presumed to be aligned with -z, offset by the
         beam centre - the directions of which are given by the fast and slow
@@ -122,12 +132,13 @@ class detector_factory:
             detector_factory.sensor(sensor),
             (R * fast), (R * slow), (R * origin), pixel_size,
             image_size, trusted_range)
+
         detector.mask = mask
         return detector
 
     @staticmethod
     def complex(sensor, origin, fast, slow, pixel, size,
-                trusted_range = (0.0, 0.0)):
+                trusted_range = (0.0, 0.0), px_mm = None):
         '''A complex detector model, where you know exactly where everything
         is. This is useful for implementation of the Rigaku Saturn header
         format, as that is exactly what is in there. Origin, fast and slow are
@@ -185,9 +196,19 @@ class detector_factory:
         cbf_detector.__swig_destroy__(cbf_detector)
         del(cbf_detector)
 
+        # Get the sensor type
+        dtype = detector_factory.sensor(sensor)
+
+        # If the sensor type is PAD then create the detector with a
+        # parallax corrected pixel to millimeter function
+        if dtype == detector_helper_sensors.SENSOR_PAD:
+            px_mm = ParallaxCorrectedPxMmStrategy(0.252500934883)
+        else:
+            px_mm = SimplePxMmStrategy()
+
         return detector_factory.make_detector(
-                  detector_factory.sensor(sensor),
-                  fast, slow, origin, pixel, size, trusted_range)
+                  dtype, fast, slow, origin, pixel, size,
+                  trusted_range, px_mm)
 
     @staticmethod
     def imgCIF_H(cbf_handle, sensor):
