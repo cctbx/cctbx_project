@@ -2,7 +2,7 @@ from __future__ import division
 from cctbx import sgtbx
 from cctbx import uctbx
 import libtbx.phil.command_line
-from libtbx.utils import Sorry, import_python_object
+from libtbx.utils import Sorry, Usage, import_python_object
 from libtbx.phil import tokenizer
 from libtbx import Auto
 import sys, os
@@ -113,13 +113,22 @@ class process_command_line_with_files (object) :
                 pickle_file_def=None,
                 directory_def=None,
                 integer_def=None,
-                float_def=None) :
+                float_def=None,
+                usage_string=None) :
     assert (master_phil is not None) or (master_phil_string is not None)
     if (master_phil_string is not None) :
       assert (master_phil is None)
       import iotbx.phil
       master_phil = iotbx.phil.parse(input_string=master_phil_string,
         process_includes=True)
+    if (usage_string is not None) :
+      if (len(args) == 0) or ("--help" in args) :
+        raise Usage("""
+%s
+
+Full parameters:
+
+%s""" % (usage_string, master_phil.as_str(prefix="  ")))
     self.master = master_phil
     self.pdb_file_def = pdb_file_def
     self.reflection_file_def = reflection_file_def
