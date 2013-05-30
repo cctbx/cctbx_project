@@ -163,15 +163,8 @@ def align_reference_frame(primary_axis, primary_target,
 def is_xds_xparm(putative_xds_xparm_file):
     '''See if this file looks like an XDS XPARM file i.e. it consists of 42
     floating point values and nothing else.'''
-
-    tokens = open(putative_xds_xparm_file).read(1000).split()
-    if len(tokens) != 42:
-        return False
-    try:
-        values = map(float, tokens)
-    except ValueError, e:
-        return False
-    return True
+    from iotbx.xds import xparm
+    return xparm.reader.is_xparm_file(putative_xds_xparm_file)
 
 def is_xds_integrate_hkl(putative_integrate_hkl_file):
     '''See if this looks like an XDS INTEGRATE.HKL file.'''
@@ -272,24 +265,22 @@ def import_xds_integrate_hkl(integrate_hkl_file):
         rotation_axis, sample_to_source, wavelength,
         real_space_a, real_space_b, real_space_c, space_group_number)
 
-##### FIXME the following method should now use iotbx.xds.geometry #####
-
 def import_xds_xparm(xparm_file):
     '''Read an XDS XPARM file, transform the parameters contained therein
     into the standard coordinate frame, record this as a dictionary.'''
+    from iotbx.xds import xparm
 
-    values = map(float, open(xparm_file).read().split())
-
-    assert(len(values) == 42)
+    handle = xparm.reader()
+    handle.read_file(xparm_file)
 
     # first determine the rotation R from the XDS coordinate frame used in
     # the processing to the central (i.e. imgCIF) coordinate frame. N.B.
     # if the scan was e.g. a PHI scan the resulting frame could well come out
     # a little odd...
 
-    axis = values[3:6]
-    beam = values[7:10]
-    x, y = values[17:20], values[20:23]
+    axis = handle.rotation_axis
+    beam = handle.beam_vector
+    x, y = handle.detector_x_axis, handle.detector_y_axis
 
     # XDS defines the beam vector as s0 rather than from sample -> source.
 
@@ -309,24 +300,28 @@ def import_xds_xparm(xparm_file):
     # now transform contents of the XPARM file to the form which we want to
     # return...
 
-    nx, ny = map(int, values[10:12])
-    px, py = values[12:14]
+    nx, ny = handle.detector_size
+    px, py = handle.pixel_size
 
-    distance = values[14]
-    ox, oy = values[15:17]
+    distance = handle.detector_distance
+    ox, oy = handle.detector_origin
 
-    a, b, c = values[33:36], values[36:39], values[39:42]
+    a = handle.unit_cell_a_axis
+    b = handle.unit_cell_b_axis
+    c = handle.unit_cell_c_axis
+
+    print distance, ox, oy, px, py
 
     detector_origin = R * (distance * N - ox * px * X - oy * py * Y)
     detector_fast = R * X
     detector_slow = R * Y
     rotation_axis = R * A
     sample_to_source = R * B
-    wavelength = values[6]
+    wavelength = handle.wavelength
     real_space_a = R * matrix.col(a)
     real_space_b = R * matrix.col(b)
     real_space_c = R * matrix.col(c)
-    space_group_number = int(values[26])
+    space_group_number = handle.space_group
 
     return coordinate_frame_information(
         detector_origin, detector_fast, detector_slow, (nx, ny), (px, py),
