@@ -411,16 +411,16 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       glMultMatrixd(mvm)
       self.OnRedraw()
 
-  def ZoomOnSelection(self, atoms):
-    if not atoms: return
+  def ZoomOnSelection(self, xyzs):
+    if not xyzs: return
     x,y,z = (0,0,0)
-    for atom in atoms:
-      x += atom.xyz[0]
-      y += atom.xyz[1]
-      z += atom.xyz[2]
-    x /= len(atoms)
-    y /= len(atoms)
-    z /= len(atoms)
+    for xyz in xyzs:
+      x += xyz[0]
+      y += xyz[1]
+      z += xyz[2]
+    x /= len(xyzs)
+    y /= len(xyzs)
+    z /= len(xyzs)
     self.rotation_center = (x,y,z)
     self.move_to_center_of_viewport(self.rotation_center)
 
