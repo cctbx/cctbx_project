@@ -238,7 +238,14 @@ class image (screen_params) :
         #assume it's already been read
         img = file_name
       else:
-        raise Sorry("Unrecognized type : %s"%type(file_name))
+        try:
+          from xfel.cftbx.detector.generic_detector import GenericDetector
+          if isinstance(file_name, GenericDetector):
+            img = file_name
+          else:
+            raise Sorry("Unrecognized type : %s"%type(file_name))
+        except ImportError:
+          raise Sorry("Unrecognized type : %s"%type(file_name))
     self._raw = img
     print img.show_header()
     self.set_image_size(
