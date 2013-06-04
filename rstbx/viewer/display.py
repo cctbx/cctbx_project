@@ -401,7 +401,7 @@ class ZoomView (XrayView) :
         black = wx.Colour(0,0,0,255)
         white = wx.Colour(255,255,255,255)
         yellow = wx.Colour(255,255,0,255)
-        dc.SetFont(wx.Font(7, wx.MODERN, wx.NORMAL, wx.NORMAL))
+        dc.SetFont(wx.Font(self.zoom_level//2, wx.MODERN, wx.NORMAL, wx.NORMAL))
         for i, row in enumerate(values) :
           y = int(self.Size[1]/len(values) * (i + 0.5))
           if (y > (h-1)) :
