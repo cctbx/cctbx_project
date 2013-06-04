@@ -31,6 +31,7 @@ def compare_ligands (ligand_code,
     max_distance_between_centers_of_mass=8.0,
     exclude_hydrogens=True,
     verbose=False,
+    implicit_matching=False,
     out=sys.stdout) :
   assert (ligand_code.isalnum())
   assert (([hierarchy_1, hierarchy_2] == [None, None]) or
@@ -59,6 +60,7 @@ def compare_ligands (ligand_code,
       reference_ligands=ligands_2,
       verbose=verbose,
       exclude_hydrogens=exclude_hydrogens,
+      implicit_matching=False,
       quiet=False,
       out=out)
     rmsds.append(rmsds_curr)
@@ -68,6 +70,7 @@ def compare_ligands_impl (ligand,
     reference_ligands,
     max_distance_between_centers_of_mass=8.0,
     exclude_hydrogens=True,
+    implicit_matching=False,
     verbose=False,
     quiet=False,
     raise_sorry_if_no_matching_atoms=True,
@@ -103,11 +106,33 @@ def compare_ligands_impl (ligand,
           isel_2.append(j_seq)
           break
     if (len(isel_1) == 0) :
-      if (raise_sorry_if_no_matching_atoms) :
-        raise Sorry("No matching atoms found!")
-      else :
-        print >> out, "  WARNING: no matching atoms found!"
-        return None
+      if (implicit_matching) :
+        print >> out, "  warning: no atom name matches found - will guess equivalence from sites"
+        # XXX this is embarrassing... needs to be much smarter
+        for i_seq, atom_1 in enumerate(ligand.atoms()) :
+          if (atom_1.element.strip() in ["H","D"]) and (exclude_hydrogens) :
+            continue
+          j_seq_best = None
+          name_best = None
+          dxyz_best = sys.maxint
+          for j_seq, atom_2 in enumerate(ligand_2.atoms()) :
+            if (atom_1.element == atom_2.element) :
+              dxyz = abs(col(atom_1.xyz) - col(atom_2.xyz))
+              if (dxyz < dxyz_best) :
+                j_seq_best = j_seq
+                name_best = atom_2.name
+                dxyz_best = dxyz
+          if (j_seq_best is not None) :
+            print >> out, "    '%s' : '%s' (distance = %.2f)" % (atom_1.name,
+              name_best, dxyz_best)
+            isel_1.append(i_seq)
+            isel_2.append(j_seq_best)
+      if (len(isel_1) == 0) :
+        if (raise_sorry_if_no_matching_atoms) :
+          raise Sorry("No matching atoms found!")
+        else :
+          print >> out, "  WARNING: no matching atoms found!"
+          return None
     sites_1 = sites_1.select(isel_1)
     sites_2 = ligand_2.atoms().extract_xyz().select(isel_2)
     rmsd = sites_1.rms_difference(sites_2)
