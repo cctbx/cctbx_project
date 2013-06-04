@@ -1,5 +1,6 @@
 
 from __future__ import division
+from libtbx.utils import Sorry
 from math import sqrt
 import sys
 
@@ -9,6 +10,8 @@ element = None
   .help = Anomalously scattering atom type
 n_sites = None
   .type = int
+fdp = None
+  .type = float
 wavelength = None
   .type = float
   .help = Data collection wavelength (in Angstroms)
@@ -37,6 +40,7 @@ def run (args, out=sys.stdout, params=None) :
       args=args,
       master_phil_string=master_phil_str,
       integer_def="n_sites",
+      float_def="fdp",
       usage_string="""\
 mmtbx.estimate_bijvoet_ratios Se 20 n_res=1000 wavelength=0.9792
 
@@ -44,12 +48,14 @@ Estimate the Bijvoet ratio for a macromolecular X-ray diffraction experiment
 given an anomalous scatterer type and expected asymmetric unit contents.""")
     params = cmdline.work.extract()
   validate_params(params)
-  if (params.wavelength is not None) :
-    fdp = sasaki.table(params.element).at_angstrom(params.wavelength).fdp()
-    caption = "%s A" % params.wavelength
-  else :
-    fdp = sasaki.table(params.element).at_ev(params.energy).fdp()
-    caption = "%s eV" % params.energy
+  fdp = params.fdp
+  if (fdp is None) :
+    if (params.wavelength is not None) :
+      fdp = sasaki.table(params.element).at_angstrom(params.wavelength).fdp()
+      caption = "%s A" % params.wavelength
+    else :
+      fdp = sasaki.table(params.element).at_ev(params.energy).fdp()
+      caption = "%s eV" % params.energy
   if (params.n_res is not None) :
     n_atoms = params.n_res * 110 / 15
   else :
@@ -58,7 +64,10 @@ given an anomalous scatterer type and expected asymmetric unit contents.""")
   print >> out, "Heavy atom type: %s" % params.element
   print >> out, "Number of sites: %d" % params.n_sites
   print >> out, "Approx. # of non-H/D atoms: %d" % n_atoms
-  print >> out, "f'' of %s at %s : %6.3f" % (params.element, caption, fdp)
+  if (params.fdp is None) :
+    print >> out, "f'' of %s at %s : %6.3f" % (params.element, caption, fdp)
+  else :
+    print >> out, "f'' (experimental) : %6.3f" % fdp
   print >> out, "Expected Bijvoet ratio : %4.1f%%" % \
     (bijvoet_ratio_acentric * 100)
   return bijvoet_ratio_acentric
@@ -72,9 +81,10 @@ def validate_params (params) :
     raise Sorry("Element symbol '%s' not recognized." % params.element)
   if (params.n_sites is None) :
     raise Sorry("Number of sites not specified.")
-  if ([params.energy, params.wavelength].count(None) != 1) :
+  if ([params.fdp, params.energy, params.wavelength].count(None) != 2) :
+    print [params.fdp, params.energy, params.wavelength]
     raise Sorry("Please specify either an X-ray wavelength or energy "+
-      "(but not both).")
+      "(but not both), or the expected f''.")
   if ([params.n_res, params.mw].count(None) != 1) :
     raise Sorry("Please specify either the number of residues or the "+
       "approximate molecular weight (but not both).")
