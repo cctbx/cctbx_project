@@ -53,6 +53,9 @@ class XrayView (wx.Panel) :
     self._img.set_screen_size(*(self.GetSize()))
     if (old_img is not None) and (type(self).__name__ != 'ZoomView') :
       self._img.inherit_params(old_img)
+      if (self.GetParent().zoom_frame is not None):
+        self.GetParent().zoom_frame.set_image(image)
+        self.GetParent().zoom_frame.Refresh()
     self.update_settings()
 
   def get_scale (self) :
