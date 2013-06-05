@@ -257,7 +257,10 @@ class XrayView (wx.Panel) :
 
   def OnRightDown (self, event) :
     self.was_dragged = False
-    self.OnZoom(event)
+    if (event.ShiftDown()) :
+      self.OnZoom3D(event)
+    else :
+      self.OnZoom(event)
 
   def OnRightDrag (self, event) :
     self.OnZoom(event)
@@ -272,6 +275,18 @@ class XrayView (wx.Panel) :
     img_x, img_y = self._img.screen_coords_as_image_coords(x, y)
     self.GetParent().OnShowZoom(None)
     self.GetParent().zoom_frame.recenter(img_x, img_y)
+    if (self.GetParent().zoom_3d is not None) :
+      self.GetParent().zoom_3d.recenter(img_x, img_y)
+    self._img.set_screen_size(*(self.GetSize()))
+
+  def OnZoom3D (self, event) :
+    if (self._img is None) : return
+    x, y = event.GetPositionTuple()
+    img_x, img_y = self._img.screen_coords_as_image_coords(x, y)
+    self.GetParent().OnShow3D(None)
+    self.GetParent().zoom_3d.recenter(img_x, img_y)
+    if (self.GetParent().zoom_frame is not None) :
+      self.GetParent().zoom_frame.recenter(img_x, img_y)
     self._img.set_screen_size(*(self.GetSize()))
 
   def OnTranslate (self, event) :

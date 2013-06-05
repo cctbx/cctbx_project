@@ -37,6 +37,7 @@ class XrayFrame (wx.Frame) :
     self.statusbar = self.CreateStatusBar()
     self.settings_frame = None
     self.zoom_frame = None
+    self.zoom_3d = None
     self.plot_frame = None
     self._img = None
     self._distl = None
@@ -280,6 +281,15 @@ class XrayFrame (wx.Frame) :
       self.zoom_frame.set_image(self._img)
       self.zoom_frame.Show()
     self.zoom_frame.Raise()
+
+  def OnShow3D (self, event) :
+    if (self.zoom_3d is None) :
+      from rstbx.viewer import pixels3d
+      self.zoom_3d = pixels3d.pixel_viewer_3d_frame(self, -1, "3D view",
+        style=wx.CAPTION|wx.CLOSE_BOX|wx.RESIZE_BORDER|wx.SYSTEM_MENU)
+      self.zoom_3d.set_image(self._img)
+      self.zoom_3d.Show()
+    self.zoom_3d.Raise()
 
   def OnShowPlot (self, event) :
     if (self.plot_frame is None) :
