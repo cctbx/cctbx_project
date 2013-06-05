@@ -18,10 +18,12 @@ namespace smtbx { namespace refinement { namespace constraints {
                std::auto_ptr<wt> >("dependent_occupancy", no_init)
           .def(init<scalar_parameter *,
                     double,
+                    double,
                     bool,
                     wt::scatterer_type *>
                ((arg("occupancy"),
                  arg("multiplier"),
+                 arg("original_multiplier"),
                  arg("as_one"),
                  arg("scatterer"))))
           .add_property("occupancy", make_function(&wt::reference, rir))

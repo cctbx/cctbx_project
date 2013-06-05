@@ -11,17 +11,18 @@ namespace smtbx { namespace refinement { namespace constraints {
               sparse_matrix_type *jacobian_transpose)
   {
     scalar_parameter *o = reference();
+    double k = multiplier/original_multiplier;
     if( as_one )
-      value = multiplier*o->value;
+      value = k*o->value;
     else
-      value = multiplier*(1.0 - o->value);
+      value = multiplier - k*o->value;
 
     if (!jacobian_transpose) return;
     sparse_matrix_type &jt = *jacobian_transpose;
     if( as_one )
-      jt.col(index()) = multiplier*jt.col(o->index());
+      jt.col(index()) = k*jt.col(o->index());
     else
-      jt.col(index()) = (-multiplier)*jt.col(o->index());
+      jt.col(index()) = (-k)*jt.col(o->index());
   }
 
 }}}
