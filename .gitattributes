@@ -1898,6 +1898,7 @@ rstbx/viewer/drivers.py -text
 rstbx/viewer/frame.py -text
 rstbx/viewer/indexing.py -text
 rstbx/viewer/integration.py -text
+rstbx/viewer/pixels3d.py -text
 rstbx/viewer/processing.py -text
 rstbx/viewer/results_base.py -text
 rstbx/viewer/spotfinder_frame.py -text
