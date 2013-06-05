@@ -2585,8 +2585,8 @@ def validate_input_params (params) :
       "the reflection file editor to generate a new tests set.")
   return True
 
-def max_distant_rotomer(xray_structure, pdb_hierarchy, selection,
-      min_dist_flag=False):
+def max_distant_rotomer(xray_structure, pdb_hierarchy, selection=None,
+      min_dist_flag=False, exact_match=False):
   from mmtbx.command_line import lockit
   mon_lib_srv = mmtbx.monomer_library.server.server()
   sites_cart_start = xray_structure.sites_cart()
@@ -2600,13 +2600,14 @@ def max_distant_rotomer(xray_structure, pdb_hierarchy, selection,
         for conformer in residue_group.conformers():
           residue = conformer.only_residue()
           residue_iselection = flex.size_t()
-          exclude = False
           for atom in residue.atoms():
             residue_iselection.append(atom.i_seq)
-          for r_i_seq in residue_iselection:
-            if(not selection[r_i_seq]):
-              exclude = True
-              break
+          exclude = False
+          if(selection is not None):
+            for r_i_seq in residue_iselection:
+              if(not selection[r_i_seq]):
+                exclude = True
+                break
           if(not exclude):
             rotamer_iterator = lockit.get_rotamer_iterator(
               mon_lib_srv         = mon_lib_srv,
@@ -2617,35 +2618,40 @@ def max_distant_rotomer(xray_structure, pdb_hierarchy, selection,
               distances = flex.double()
               sites = []
               for rotamer, rotamer_sites_cart in rotamer_iterator:
-                dist = flex.max(flex.sqrt((sites_cart_start_ - rotamer_sites_cart).dot()))
+                dist = flex.max(flex.sqrt((
+                  sites_cart_start_ - rotamer_sites_cart).dot()))
                 distances.append(dist)
                 sites.append(rotamer_sites_cart.deep_copy())
               ###
               dist_start = -1.
-              if(min_dist_flag): dist_start = 1.e+6
+              if(min_dist_flag or exact_match): dist_start = 1.e+6
               res = None
               for d, s in zip(distances, sites):
                 if(min_dist_flag):
                   if(d<dist_start and d>0.5):
                     dist_start = d
                     res = s.deep_copy()
+                elif(exact_match):
+                  if(d<dist_start):
+                    dist_start = d
+                    res = s.deep_copy()
                 else:
                   if(d>dist_start):
                     res = s.deep_copy()
                     dist_start = d
-              if(res is None):
-                dist_start = -1.
-                if(min_dist_flag): dist_start = 1.e+6
+
+              if(res is None and min_dist_flag):
+                dist_start = 1.e+6
                 for d, s in zip(distances, sites):
-                  if(min_dist_flag):
-                    if(d<dist_start):
-                      dist_start = d
-                      res = s.deep_copy()
+                  if(d<dist_start):
+                    dist_start = d
+                    res = s.deep_copy()
               ###
-              if 1:#(res is not None):
-                sites_cart_result = sites_cart_result.set_selected(
-                  residue_iselection, res)
+              assert res is not None
+              sites_cart_result = sites_cart_result.set_selected(
+                residue_iselection, res)
   xray_structure.set_sites_cart(sites_cart_result)
+  pdb_hierarchy.adopt_xray_structure(xray_structure)
   return xray_structure
 
 def seg_id_to_chain_id(pdb_hierarchy):
@@ -3065,7 +3071,7 @@ class states(object):
     self.root.write_pdb_file(file_name = file_name)
 
 def structure_factors_from_map(map_data, unit_cell_lengths, n_real,
-                               crystal_symmetry, resolution_factor=1/3.):
+                               crystal_symmetry, resolution_factor=1/4.):
   a,b,c = unit_cell_lengths
   nx,ny,nz = n_real[0],n_real[1],n_real[2]
   d1,d2,d3=a/nx/resolution_factor,b/ny/resolution_factor,c/nz/resolution_factor
