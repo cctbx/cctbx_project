@@ -227,9 +227,11 @@ def find_and_build_ions (
       assert fmodel.f_obs().anomalous_flag()
       print >> out, "  anomalous refinement (new ions only): start %s" % \
         show_r_factors()
+      fmodel.update(target_name="ls")
       anomalous_scatterer_groups.minimizer(
         fmodel=fmodel,
         groups=anomalous_groups)
+      fmodel.update(target_name="ml")
       print >> out, "                                        final %s" % \
         show_r_factors()
       print >> out, ""

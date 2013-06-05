@@ -205,6 +205,7 @@ def refine_anomalous_substructure (
   assert (fmodel.f_obs().anomalous_flag())
   assert (map_type in ["llg", "anom_residual"])
   make_sub_header("Iterative anomalous substructure refinement", out=out)
+  fmodel.update(target_name="ls")
   pdb_atoms = pdb_hierarchy.atoms()
   non_water_non_hd_selection = pdb_hierarchy.atom_selection_cache().selection(
     "(not element H and not element D and not resname HOH)")
@@ -292,6 +293,7 @@ def refine_anomalous_substructure (
     print >> out, ""
     if (verbose) :
       print >> out, "  time for this cycle: %.1fs" % (t_end_cycle-t_start_cycle)
+  fmodel.update(target_name="ml")
   print >> out, "%d anomalous scatterer groups refined" % len(anomalous_groups)
   t_end = time.time()
   print >> out, "overall time: %.1fs" % (t_end - t_start)
