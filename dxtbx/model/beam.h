@@ -83,7 +83,7 @@ namespace dxtbx { namespace model {
     /** Get the wave vector in units of inverse angstroms */
     vec3 <double> get_s0() const {
       DXTBX_ASSERT(wavelength_ != 0.0);
-      return direction_ * 1.0 / wavelength_;
+      return -direction_ * 1.0 / wavelength_;
     }
 
     /** Set the direction and wavelength from s0 */
