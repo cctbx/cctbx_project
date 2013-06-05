@@ -581,8 +581,11 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
         set_attr(sc=sc, a=a)
       else:
         # XXX may be fix it when creating IS ? or make another special case?
-        if (assert_identical_id_str and sc.scattering_type[:2] != "IS"):
-          assert sc.label == a.id_str()
+        if(assert_identical_id_str and sc.scattering_type[:2] != "IS"):
+          l1 = sc.label.replace("pdb=","").replace(" ","")
+          l2 = a.id_str().replace("pdb=","").replace(" ","")
+          if(l1 != l2):
+            raise RuntimeError("Mismatch: \n %s \n %s \n"%(sc.label,a.id_str()))
         set_attr(sc=sc, a=a)
 
   def write_pdb_file(self,

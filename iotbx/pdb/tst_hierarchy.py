@@ -6107,6 +6107,22 @@ ANISOU    6  O   HOH     1      788    626    677   -344    621   -232       O
     assert approx_equal(s1.u_star, s2.u_star)
     assert s1.scattering_type == s2.scattering_type
 
+def exercise_adopt_xray_structure2():
+  p1 = pdb.input(source_info=None, lines="""\
+CRYST1   12.000   13.000   14.000  80.00  90.00 100.00 P 1
+ATOM   1134  MG  MG  A1002      46.207  95.853 116.979  1.00 40.88          Mg
+""")
+  h1 = p1.construct_hierarchy()
+  xrs1 = p1.xray_structure_simple()
+  #
+  p2 = pdb.input(source_info=None, lines="""\
+CRYST1   12.000   13.000   14.000  80.00  90.00 100.00 P 1
+HETATM 1135 MG   MG  A1002      46.279  95.897 117.018  1.00 40.88          Mg
+""")
+  h2 = p2.construct_hierarchy()
+  xrs2 = p2.xray_structure_simple()
+  #
+  h2.adopt_xray_structure(xrs1)
 
 def exercise_substitute_atom_group () :
   hierarchy1 = pdb.input(source_info=None, lines="""\
@@ -6243,6 +6259,7 @@ def exercise(args):
   while True:
     exercise_get_peptide_c_alpha_selection()
     exercise_adopt_xray_structure()
+    exercise_adopt_xray_structure2()
     exercise_atom()
     exercise_atom_group()
     exercise_residue_group()
