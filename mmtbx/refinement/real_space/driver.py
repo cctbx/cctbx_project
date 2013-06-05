@@ -130,20 +130,96 @@ def get_rotamer_iterator(mon_lib_srv, residue):
        rotamer_iterator.rotamer_info is None):
       rotamer_iterator = None
   return rotamer_iterator
+  
+def morph(structure_monitor):
+  sm = structure_monitor
+  from solve_resolve.resolve_python import resolve_in_memory
+  import iotbx.pdb
+  input_text="""morph  MEMORY
+morph_main
+rad_morph 6
+      """
+  sm.pdb_hierarchy.write_pdb_file(file_name="tmp_morphing_in.pdb")
+  pdb_inp = iotbx.pdb.input(file_name = "tmp_morphing_in.pdb")
+  cmn=resolve_in_memory.run(
+    input_text=input_text,
+    map_coeffs=sm.target_map_object.miller_array,
+    model_pdb_inp=pdb_inp)
+  morphed_model_pdb=cmn.atom_db.pdb_out_as_string
+  of = open("tmp_morphed.pdb","w")
+  print >> of, morphed_model_pdb
+  of.close()
+  pdb_inp = iotbx.pdb.input(file_name = "tmp_morphed.pdb")
+  pdb_hierarchy = pdb_inp.construct_hierarchy()
+  pdb_hierarchy.atoms().reset_i_seq()
+  xrs = pdb_inp.xray_structure_simple()
+  sm.update(xray_structure=xrs, accept_as_is=True)
+  sm.show(prefix="morph:")
+  return sm.xray_structure.deep_copy_scatterers()
+  
+def simulated_annealing(structure_monitor, tmp):
+  sm = structure_monitor
+  from mmtbx.dynamics import simulated_annealing as sa
+  params = sa.master_params().extract()
+  params.start_temperature=5000
+  params.final_temperature=0
+  params.cool_rate = 300
+  params.number_of_steps = 100
+  params.update_grads_shift = 0.
+  sa.run(
+    params             = params,
+    xray_structure     = tmp,
+    real_space         = True,
+    target_map         = target_map.data,
+    restraints_manager = geometry_restraints_manager,
+    wx                 = weight_s,
+    wc                 = 1.,
+    verbose            = True)
+  sm.update(xray_structure=tmp, accept_as_is=True)
+  sm.show(prefix="SA:")
+  
+def refine_residue(structure_monitor, mon_lib_srv, geometry_restraints_manager):
+  sm = structure_monitor
+  result = mmtbx.refinement.real_space.fit_residues.manager(
+    structure_monitor = sm,
+    mon_lib_srv       = mon_lib_srv)
+  sm.show(prefix="rota_s:")
+  tmp = sm.xray_structure.deep_copy_scatterers()
+  def switch_to_exact_rotamers(tmp, sm):
+    xrs = tmp.deep_copy_scatterers()
+    ph = sm.pdb_hierarchy.deep_copy()
+    ph.atoms().reset_i_seq()
+    xrs = mmtbx.utils.max_distant_rotomer(
+      xray_structure = xrs, 
+      pdb_hierarchy  = ph, 
+      exact_match    = True)
+    return ph, xrs
+  ph, xrs = switch_to_exact_rotamers(tmp=tmp, sm=sm)
+  geometry_restraints_manager.geometry.generic_restraints_manager.reference_manager.\
+    remove_chi_angle_restraints(pdb_hierarchy=sm.pdb_hierarchy)
+  geometry_restraints_manager.geometry.generic_restraints_manager.reference_manager.\
+    add_torsion_restraints(
+      pdb_hierarchy   = ph, #sm.pdb_hierarchy,
+      sites_cart      = xrs.sites_cart(),#tmp.sites_cart(),
+      chi_angles_only = True,
+      sigma           = 5.0)
+  return tmp
 
 def run(target_map,
         pdb_hierarchy,
         xray_structure,
         geometry_restraints_manager,
         xray_structure_reference = None,
-        rms_bonds_limit  = 0.02,
-        rms_angles_limit = 2.0,
-        max_iterations   = 500,
-        macro_cycles     = 20,
-        minimization     = True,
-        expload          = True,
-        rotamer_search   = True,
-        verbose          = True):
+        rms_bonds_limit         = 0.02,
+        rms_angles_limit        = 2.0,
+        max_iterations          = 500,
+        macro_cycles            = 20,
+        minimization            = True,
+        rotamer_search          = True,
+        verbose                 = True,
+        run_morphing            = True,
+        run_simulated_annealing = False,
+        expload_size            = 1.0):
   sel = flex.bool(xray_structure.scatterers().size(), True)
   d_min = target_map.miller_array.d_min()
   mon_lib_srv = monomer_library.server.server()
@@ -176,56 +252,22 @@ def run(target_map,
   weights = flex.double()
   optimize_weight = True
   ####
-  #geometry_restraints_manager.geometry.generic_restraints_manager.reference_manager.\
-  #  remove_chi_angle_restraints(pdb_hierarchy=pdb_hierarchy)
-  #geometry_restraints_manager.geometry.generic_restraints_manager.reference_manager.\
-  #  add_torsion_restraints(
-  #    pdb_hierarchy   = pdb_hierarchy,
-  #    sites_cart      = tmp.sites_cart(),
-  #    chi_angles_only = True,
-  #    sigma           = 10.0)
-  ####
+  expload_step = expload_size/macro_cycles
+  
   for i in range(macro_cycles):
     tmp_dc = tmp.deep_copy_scatterers()
     if(i==0):
-      result = mmtbx.refinement.real_space.fit_residues.manager(
-        structure_monitor = sm,
-        mon_lib_srv       = mon_lib_srv)
-      sm.show(prefix="rota_s:")
-      tmp = sm.xray_structure.deep_copy_scatterers()
-      geometry_restraints_manager.geometry.generic_restraints_manager.reference_manager.\
-        remove_chi_angle_restraints(pdb_hierarchy=pdb_hierarchy)
-      geometry_restraints_manager.geometry.generic_restraints_manager.reference_manager.\
-        add_torsion_restraints(
-          pdb_hierarchy   = pdb_hierarchy,
-          sites_cart      = tmp.sites_cart(),
-          chi_angles_only = True,
-          sigma           = 1.0)
-
-    if 0:#(expload and i>1):# and i%2==0):
-      #XXXtmp.shake_sites_in_place(mean_distance=2)
-      from mmtbx.dynamics import simulated_annealing as sa
-      params = sa.master_params().extract()
-      params.start_temperature=10000
-      params.final_temperature=0
-      params.cool_rate = 300
-      params.number_of_steps = 100
-      params.update_grads_shift = 0.
-      sa.run(
-        params             = params,
-        xray_structure     = tmp,
-        real_space         = True,
-        target_map         = target_map.data,
-        restraints_manager = geometry_restraints_manager,
-        wx                 = weight_s,
-        wc                 = 1.,
-        verbose            = True)
-      sm.update(xray_structure=tmp, accept_as_is=True)
-      sm.show(prefix="SA:")
-      #
+      tmp = refine_residue(structure_monitor=sm, mon_lib_srv=mon_lib_srv,
+        geometry_restraints_manager=geometry_restraints_manager)
+    if(i==0 and run_morphing):
+      tmp = morph(structure_monitor = sm)
+    if(run_simulated_annealing):
+      simulated_annealing(structure_monitor = sm, tmp=tmp)
+    if(expload_size is not None):
+      tmp.shake_sites_in_place(mean_distance=expload_size)
+      expload_size = max(expload_size-expload_step, 0)
 
     if(minimization):
-      target_type = "simple"
       refined = mmtbx.refinement.real_space.individual_sites.refinery(
         refiner                  = rsr_simple_refiner,
         optimize_weight          = True,#optimize_weight,
@@ -241,59 +283,15 @@ def run(target_map,
           sm.show(prefix="mc %s:"%str(weight_s))
         tmp = sm.xray_structure.deep_copy_scatterers()
         weights.append(refined.weight_final)
-        #if(weights.size() == 2):
-        #  weight_s = flex.mean(weights)
-        #  optimize_weight = False
+        if(weights.size() == 2):
+          weight_s = flex.mean(weights)
+          optimize_weight = False
       else:
         tmp = tmp_dc
         print "Refinement failed."
       #
-      if 1:#i>macro_cycles-3:#(rotamer_search):
-        result = mmtbx.refinement.real_space.fit_residues.manager(
-          structure_monitor = sm,
-          mon_lib_srv       = mon_lib_srv)
-        sm.show(prefix="rota_s:")
-        tmp = sm.xray_structure.deep_copy_scatterers()
-        geometry_restraints_manager.geometry.generic_restraints_manager.reference_manager.\
-          remove_chi_angle_restraints(pdb_hierarchy=pdb_hierarchy)
-        geometry_restraints_manager.geometry.generic_restraints_manager.reference_manager.\
-          add_torsion_restraints(
-            pdb_hierarchy   = pdb_hierarchy,
-            sites_cart      = tmp.sites_cart(),
-            chi_angles_only = True,
-            sigma           = 1.0)
-      #
-        #
-#    #if(rotamer_search or ((not expload or (expload and minimization)) and i>macro_cycles/2)):
-#    if(not (i>1 and i%2==0) and (rotamer_search or (not expload or (expload and minimization)))):
-#      sites_cart = tmp.sites_cart()
-#      for r in monitor_object.residues:
-#        sites_cart_ = rotamer_fit(
-#          residue     = r.pdb_hierarchy_residue,
-#          target_map  = target_map.data,
-#          mon_lib_srv = monitor_object.mon_lib_srv,
-#          unit_cell   = tmp.unit_cell(),
-#          xray_structure = tmp,
-#          residue_selection = r.selection_all,
-#          rotamer_manager = monitor_object.rotamer_manager)
-#        sites_cart.set_selected(r.selection_all, sites_cart_)
-#      tmp = tmp.replace_sites_cart(sites_cart)
-#      monitor_object.update(xray_structure=tmp, accept_any=True)
-#      # add reference restraints
-#      geometry_restraints_manager.geometry.generic_restraints_manager.reference_manager.\
-#        remove_chi_angle_restraints(pdb_hierarchy=pdb_hierarchy)
-#      geometry_restraints_manager.geometry.generic_restraints_manager.reference_manager.\
-#        add_torsion_restraints(
-#          pdb_hierarchy   = pdb_hierarchy,
-#          sites_cart      = tmp.sites_cart(),
-#          chi_angles_only = True,
-#          sigma           = 2.0)
-#      #
-#      if(verbose):
-#        monitor_object.show(suffix=" weight: %s"%str(None))
-#      tmp = monitor_object.xray_structure.deep_copy_scatterers()
-#        #
-
+      tmp = refine_residue(structure_monitor=sm, mon_lib_srv=mon_lib_srv,
+        geometry_restraints_manager=geometry_restraints_manager)
   #
   if(minimization):
     refined = mmtbx.refinement.real_space.individual_sites.refinery(
@@ -301,8 +299,8 @@ def run(target_map,
       refiner                  = rsr_simple_refiner,
       xray_structure           = tmp,
       start_trial_weight_value = 50,
-      rms_bonds_limit          = 0.02,
-      rms_angles_limit         = 3.0)
+      rms_bonds_limit          = 0.015,
+      rms_angles_limit         = 1.5)
     if(verbose):
       print "FINAL:", refined.rms_bonds_final,refined.rms_angles_final
     if(refined.sites_cart_result is not None):
