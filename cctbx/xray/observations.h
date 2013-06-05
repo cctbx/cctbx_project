@@ -37,7 +37,9 @@ namespace cctbx { namespace xray {
       index_twin_component(miller::index<> const& h_,
         twin_fraction<FloatType> const* fraction_, FloatType scale_)
         : h(h_), fraction(fraction_), scale_(scale_) {}
-      FloatType scale() const { return scale_*fraction->value; }
+      FloatType scale() const {
+        return (fraction == NULL ? scale_ : scale_*fraction->value);
+      }
     };
     // HKLF 5 requires special filtering
     struct filter {
@@ -81,8 +83,11 @@ namespace cctbx { namespace xray {
       const int h_index;
       int current, current_merohedral;
       observations const& parent;
-      iterator_(observations const &parent_, int h_index_)
-        : parent(parent_), h_index(h_index_), current(-1), current_merohedral(0)
+      twin_fraction<FloatType> const* measured_fraction;
+      iterator_(observations const &parent_, int h_index_,
+        twin_fraction<FloatType> const* measured_fraction)
+        : parent(parent_), h_index(h_index_), current(-1),
+          current_merohedral(0), measured_fraction(measured_fraction)
       {}
       bool has_next() const {
         if (parent.index_components_.size() == 0)
@@ -110,8 +115,12 @@ namespace cctbx { namespace xray {
           parent.index_components_[h_index][++current];
         return index_twin_component(
           ltw.h,
-          parent.twin_fractions_[ltw.fraction_index],
-          parent.prime_twin_fraction_);
+          (ltw.fraction_index < 0 ? NULL
+            : parent.twin_fractions_[ltw.fraction_index]),
+          (ltw.fraction_index < 0 ?
+            parent.prime_fraction_*parent.prime_twin_fraction_
+            : parent.prime_twin_fraction_)
+        );
       }
     };
   protected:
@@ -164,10 +173,10 @@ namespace cctbx { namespace xray {
       int index = 0;
       for (int i=0; i<indices.size(); i++) {
         if (scale_indices[i] < 0) {
-          int s_ind = std::abs(scale_indices[i])-2;
+          int s_ind = -scale_indices[i]-1;
           CCTBX_ASSERT(!(s_ind < 0 || s_ind >= twin_fractions_.size()));
           index_components_[index].push_back(
-            local_twin_component(indices[i], s_ind));
+            local_twin_component(indices[i], s_ind-1));
         }
         else {
           int s_ind = scale_indices[i];
@@ -247,7 +256,9 @@ namespace cctbx { namespace xray {
       return twin_fractions_.size() != 0 || merohedral_components_.size() != 0;
     }
     iterator_ iterator(int i) const {
-      return iterator_(*this, i);
+      return iterator_(*this, i,
+        ((measured_scale_indices_.size() == 0 || measured_scale_indices_[i] < 2)
+         ? 0 : twin_fractions_[measured_scale_indices_[i]-2]));
     }
     /* must be called before using scale(index) or iterator */
     void update_prime_fraction() const {
@@ -274,7 +285,6 @@ namespace cctbx { namespace xray {
                       : twin_fractions_[measured_scale_indices_[i]-2]->value;
       return rv*prime_twin_fraction_;
     }
-
     scitbx::af::tiny<scitbx::af::shared<FloatType>, 2> detwin(
       sgtbx::space_group const& space_group,
       bool anomalous_flag,

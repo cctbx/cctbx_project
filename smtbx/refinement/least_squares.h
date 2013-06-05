@@ -236,26 +236,42 @@ namespace smtbx { namespace refinement { namespace least_squares {
       if (reflections.has_twin_components()) {
         typename cctbx::xray::observations<FloatType>::iterator_ itr =
           reflections.iterator(h_i);
-        const FloatType identity_part = obs;
-        obs *= reflections.scale(h_i);
+        scitbx::af::shared<cctbx::xray::twin_fraction<FloatType> const*>
+          to_update;
+        FloatType identity_part = 0,
+          obs_scale = reflections.scale(h_i);
+        obs *= obs_scale;
         if (compute_grad) {
-          gradients *= reflections.scale(h_i);
+          gradients *= obs_scale;
+          if (itr.measured_fraction != 0 && itr.measured_fraction->grad) {
+            gradients[itr.measured_fraction->grad_index] +=
+              f_calc_func.observable;
+            to_update.push_back(itr.measured_fraction);
+          }
         }
         while (itr.has_next()) {
-          typename cctbx::xray::observations<FloatType>::index_twin_component twc =
-            itr.next();
+          typename cctbx::xray::observations<FloatType>::index_twin_component
+            twc = itr.next();
           f_calc_func.compute(twc.h, compute_grad);
           obs += twc.scale()*f_calc_func.observable;
           if (compute_grad) {
             af::shared<FloatType> tmp_gradients =
               jacobian_transpose_matching_grad_fc*f_calc_func.grad_observable;
             gradients += twc.scale()*tmp_gradients;
-            if (twc.fraction->grad) {
+            if (twc.fraction != 0 && twc.fraction->grad) {
               SMTBX_ASSERT(!(twc.fraction->grad_index < 0 ||
                 twc.fraction->grad_index >= gradients.size()));
-              gradients[twc.fraction->grad_index] +=
-                f_calc_func.observable - identity_part;
+              gradients[twc.fraction->grad_index] += f_calc_func.observable;
+              to_update.push_back(twc.fraction);
             }
+            else if (twc.fraction == 0) {
+              identity_part = f_calc_func.observable;
+            }
+          }
+        }
+        if (identity_part != 0) {
+          for (size_t i=0; i < to_update.size(); i++) {
+            gradients[to_update[i]->grad_index] -= identity_part;
           }
         }
       }
