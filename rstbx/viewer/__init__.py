@@ -233,19 +233,8 @@ class image (screen_params) :
         raise Sorry(str(e))
       img.read()
     else :
-      from iotbx.detectors import DetectorImageBase
-      if isinstance(file_name, DetectorImageBase):
-        #assume it's already been read
-        img = file_name
-      else:
-        try:
-          from xfel.cftbx.detector.generic_detector import GenericDetector
-          if isinstance(file_name, GenericDetector):
-            img = file_name
-          else:
-            raise Sorry("Unrecognized type : %s"%type(file_name))
-        except ImportError:
-          raise Sorry("Unrecognized type : %s"%type(file_name))
+      img = file_name # assume it's already been read
+
     self._raw = img
     print img.show_header()
     self.set_image_size(

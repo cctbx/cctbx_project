@@ -1546,7 +1546,7 @@ class AppFrame(wx.Frame):
                     else:
                       import math
                       yaya = int(math.ceil(math.log10(abs(possible_intensity))))
-                      format_str = " I=%%6.%df"%(5-yaya)
+                      format_str = " I=%%6.%df"%(max(0,5-yaya))
                     posn_str += format_str%possible_intensity
 
                 if (len(coords) > 2 and coords[2] >=0): # indicates it's a tiled image
