@@ -274,9 +274,7 @@ namespace dxtbx { namespace model {
 
     /** Get the beam centre in lab coordinates */
     vec3<double> get_beam_centre_lab(vec3<double> s0) const {
-      double s0dotd3 = (s0 * get_normal());
-      DXTBX_ASSERT(s0dotd3 > 0);
-      return s0 * get_distance() / s0dotd3;
+      return get_lab_coord(get_ray_intersection(s0));
     }
 
     /**

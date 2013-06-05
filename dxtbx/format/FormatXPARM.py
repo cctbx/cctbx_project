@@ -65,7 +65,7 @@ class FormatXPARM(Format):
         self._slow_axis = cfc.get('detector_slow')
         self._wavelength  = cfc.get('wavelength')
         sample_vector = cfc.get('sample_to_source')
-        self._beam_vector = tuple(-matrix.col(sample_vector))
+        self._beam_vector = tuple(matrix.col(sample_vector))
 
     def _goniometer(self):
         '''Return a working goniometer instance.'''
