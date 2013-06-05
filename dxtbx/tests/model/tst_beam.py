@@ -22,7 +22,7 @@ def tst_set_direction_wavelength():
 
     # Check s0 is in direction and has length 1/wavelength
     assert(abs(matrix.col(b.get_s0()).length() - 1.0 / wavelength) <= eps)
-    assert(abs(matrix.col(b.get_s0()).normalize() - unit_direction) <= eps)
+    assert(abs(-matrix.col(b.get_s0()).normalize() - unit_direction) <= eps)
 
     # Test passed
     print "OK"
@@ -42,7 +42,7 @@ def tst_set_s0():
 
     # Check direction is a unit vector
     assert(abs(matrix.col(b.get_direction()).length() - 1) <= eps)
-    assert(abs(matrix.col(b.get_direction()) - unit_direction) <= eps)
+    assert(abs(-matrix.col(b.get_direction()) - unit_direction) <= eps)
 
     # Check wavelength is correct
     assert(abs(b.get_wavelength() - wavelength) <= eps)
