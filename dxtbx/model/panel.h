@@ -381,6 +381,13 @@ namespace dxtbx { namespace model {
       return vec2<double>(v[0] / v[2], v[1] / v[2]);
     }
 
+    /** Get the coordinate of a ray intersecting with the detector */
+    vec2<double> get_bidirectional_ray_intersection(vec3<double> s1) const {
+      vec3 <double> v = D_ * s1;
+      DXTBX_ASSERT(v[2] != 0);
+      return vec2<double>(v[0] / v[2], v[1] / v[2]);
+    }
+
     /** Get the ray intersection in pixel coordinates */
     vec2<double> get_ray_intersection_px(vec3<double> s1) const {
       return millimeter_to_pixel(get_ray_intersection(s1));
@@ -425,7 +432,7 @@ namespace dxtbx { namespace model {
     /** Update the normal properties. */
     void update_normal() {
       normal_ = get_fast_axis().cross(get_slow_axis());
-      normal_origin_ = get_ray_intersection(get_normal());
+      normal_origin_ = get_bidirectional_ray_intersection(get_normal());
       distance_ = get_origin() * get_normal();
     }
 
