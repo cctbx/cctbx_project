@@ -23,13 +23,29 @@ class beam_factory:
         pass
 
     @staticmethod
-    def make_beam(direction, wavelength = None):
-        if wavelength == None:
-            return Beam(tuple(map(float, direction)))
-        else:
+    def make_beam(sample_to_source=None, wavelength=None, s0=None, unit_s0=None):
+        if sample_to_source:
+            assert(wavelength)
             return Beam(
-                tuple(map(float, direction)),
+                tuple(map(float, sample_to_source)),
                 float(wavelength))
+        elif unit_s0:
+            assert(wavelength)
+            return Beam(
+                tuple(map(float, -unit_s0)),
+                float(wavelength))
+        else:
+            assert(s0)
+            return Beam(tuple(map(float, s0)))
+
+    #@staticmethod
+    #def make_beam(direction, wavelength = None):
+        #if wavelength == None:
+            #return Beam(tuple(map(float, direction)))
+        #else:
+            #return Beam(
+                #tuple(map(float, direction)),
+                #float(wavelength))
 
     @staticmethod
     def make_polarized_beam(direction, wavelength, polarization,
