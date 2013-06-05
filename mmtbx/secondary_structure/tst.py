@@ -64,7 +64,7 @@ def exercise_protein () :
       m.params.h_bond_restraints.remove_outliers = False
       hbond_params.restraint_type = "simple"
       build_proxies = m.create_hbond_proxies(hbond_params=hbond_params, log=log)
-      assert (build_proxies.proxies.size() == 81)
+      assert (build_proxies.proxies.size() == 90)
 
 def exercise_nucleic_acids () :
   pdb_file_rna = libtbx.env.find_in_repositories(

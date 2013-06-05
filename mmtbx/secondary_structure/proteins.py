@@ -312,7 +312,9 @@ def create_helix_hydrogen_bond_proxies (
           continue
         residues = conformer.residues()
         n_residues = len(residues)
-        for j_seq, residue in enumerate(residues) :
+        j_seq = 0
+        while (j_seq < len(residues)) :
+          residue = residues[j_seq]
           resi_atoms = residue.atoms()
           resseq = residue.resseq_as_int()
           donor = None
@@ -327,10 +329,12 @@ def create_helix_hydrogen_bond_proxies (
               if (bonded_resi.resname == "PRO") :
                 print >> log, "  Proline residue at %s %s - end of helix" % \
                   (chain.id, bonded_resseq)
-                break # XXX is this safe?
+                j_seq += 3
+                continue # XXX is this safe?
               elif (bonded_resseq != (resseq + helix_step)) :
                 print >> log, "  Confusing residue numbering: %s %s -> %s %s" \
                   % (chain.id, residue.resid(), chain.id, bonded_resi.resid())
+                j_seq += 1
                 continue
               bonded_atoms = bonded_resi.atoms()
               if (helix_selection[bonded_atoms[0].i_seq] == True) :
@@ -348,6 +352,7 @@ def create_helix_hydrogen_bond_proxies (
                   sigma=params.restraint_sigma,
                   slack=params.restraint_slack,
                   log=log)
+          j_seq += 1
   return n_proxies
 
 def create_sheet_hydrogen_bond_proxies (
