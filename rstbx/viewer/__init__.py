@@ -224,7 +224,7 @@ class screen_params (object) :
 class image (screen_params) :
   def __init__ (self, file_name) :
     screen_params.__init__(self)
-    if isinstance(file_name, str):
+    if isinstance(file_name, str) or isinstance(file_name, dict):
       self.file_name = file_name
       from iotbx.detectors import ImageFactory, ImageException
       try :
