@@ -310,8 +310,6 @@ def import_xds_xparm(xparm_file):
     b = handle.unit_cell_b_axis
     c = handle.unit_cell_c_axis
 
-    print distance, ox, oy, px, py
-
     detector_origin = R * (distance * N - ox * px * X - oy * py * Y)
     detector_fast = R * X
     detector_slow = R * Y
