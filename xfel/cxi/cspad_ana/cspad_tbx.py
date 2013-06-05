@@ -1,4 +1,4 @@
-﻿# -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
+# -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
 # $Id$
 
@@ -6,6 +6,8 @@
 (CSpad).
 
 XXX Better named cspad_common?
+
+XXX Read out detector temperature (see Hart et al., 2012)?
 """
 from __future__ import division
 
@@ -23,7 +25,7 @@ from scitbx.array_family import flex
 from xfel.cxi.cspad_ana.parse_calib import Section
 
 
-# The CAMP and CSpad counters are both 14 bits wide (Strueder et al
+# The CAMP and CSpad counters are both 14 bits wide (Strüder et al
 # 2010; Philipp et al., 2007).  XXX Capitalise these constants.  XXX
 # This really has nothing to do with dynamic range.
 dynamic_range = 2**14 - 1
@@ -32,10 +34,12 @@ dynamic_range = 2**14 - 1
 # XXX This should be obsoleted!
 npix_quad = 850
 
-# The pixel size in mm.  Both CAMP and CSpad pixels are fixed and
-# square, with side lengths of 75 um and 110 um, respectively
-# (Strueder et al., 2010; Philipp et al., 2007).  XXX UTF-8 comments?
-# XXX Should really clarify this with Sol and Chris.
+# The pixel size in mm.  The pixel size is fixed and square, with side
+# length of 110 µm (Philipp et al., 2007).  XXX Should really clarify
+# this with Sol and Chris.
+#
+# XXX Andor: 13.5 µm square, CAMP: 75 µm, square (Strüder et al.,
+# 2010)
 pixel_size = 110e-3
 
 # origin of section in quad coordinate system.  x-position
@@ -593,7 +597,7 @@ def env_distance(address, env, offset):
   sample and the detector with the given address string in mm.  The
   distance between the sample and the the detector's zero-point can
   vary by an inch or more between different LCLS runs.  According to
-  Sebastien Boutet the offset should be stable to within +/-0.5 mm
+  Sébastien Boutet the offset should be stable to within ±0.5 mm
   during a normal experiment.
 
   @param env     Environment object
@@ -656,17 +660,17 @@ def env_sifoil(env):
 
 def env_wavelength_sxr(evt, env):
   """The env_wavelength_sxr() function returns the wavelength in
-  Aangstroem of the environment pointed to by @p env at the time of
-  the event @p evt.  The function returns a positive value or @c None
-  if no wavelength is available for the event.  See Heimann et
-  al. (2011) Rev. Sci. Instrum. 82, 093104.
+  Ångström of the environment pointed to by @p env at the time of the
+  event @p evt.  The function returns a positive value or @c None if
+  no wavelength is available for the event.  See Heimann et al. (2011)
+  Rev. Sci. Instrum. 82, 093104.
 
   @note The wavelength in eV is 12398.4187 divided by the value
         returned from env_wavelength_sxr().
 
   @param evt Event data object, a configure object
   @param env Environment object
-  @return    Wavelength, in Aangstroem
+  @return    Wavelength, in Ångström
   """
 
   if evt is not None and env is not None:
@@ -814,16 +818,16 @@ def evt_timestamp(t=None):
 
 
 def evt_wavelength(evt):
-  """The evt_wavelength() function returns the wavelength in
-  Aangstroem of the event pointed to by @p evt.  From Margaritondo &
-  Rebernik Ribic (2011): the dimensionless relativistic gamma-factor
-  is derived from beam energy in MeV and the electron rest mass, K is
-  a dimensionless "undulator parameter", and L is the macroscopic
-  undulator period in Aangstroem (XXX).  See also
+  """The evt_wavelength() function returns the wavelength in Ångström
+  of the event pointed to by @p evt.  From Margaritondo & Rebernik
+  Ribic (2011): the dimensionless relativistic γ-factor is derived
+  from beam energy in MeV and the electron rest mass, K is a
+  dimensionless "undulator parameter", and L is the macroscopic
+  undulator period in Ångström.  See also
   http://ast.coe.berkeley.edu/srms/2007/Lec10.pdf.
 
   @param evt Event data object, a configure object
-  @return    Wavelength, in Aangstroem
+  @return    Wavelength, in Ångström
   """
 
   if evt is not None:
