@@ -174,7 +174,7 @@ namespace cctbx { namespace xray {
       for (int i=0; i<indices.size(); i++) {
         if (scale_indices[i] < 0) {
           int s_ind = -scale_indices[i]-1;
-          CCTBX_ASSERT(!(s_ind < 0 || s_ind >= twin_fractions_.size()));
+          CCTBX_ASSERT(!(s_ind < 0 || (s_ind-1) >= twin_fractions_.size()));
           index_components_[index].push_back(
             local_twin_component(indices[i], s_ind-1));
         }

@@ -20,17 +20,18 @@ class dependent_occupancy(object):
     scatterers = reparametrisation.structure.scatterers()
     if len(self.as_var) != 0:
       sc_idx = self.as_var[0][0]
-      ratio = 1./self.as_var[0][1]
+      original_mult = self.as_var[0][1]
     else:
       sc_idx = self.as_one_minus_var[0][0]
-      ratio = 1./self.as_one_minus_var[0][1]
+      original_mult = self.as_one_minus_var[0][1]
     occupancy = reparametrisation.add_new_occupancy_parameter(sc_idx)
     for sc in self.as_var:
       if sc[0] == sc_idx:  continue
       param = reparametrisation.add(
         _.dependent_occupancy,
         occupancy = occupancy,
-        multiplier = sc[1]*ratio,
+        original_multiplier = original_mult,
+        multiplier = sc[1],
         as_one = True,
         scatterer = reparametrisation.structure.scatterers()[sc[0]])
       reparametrisation.asu_scatterer_parameters[sc[0]].occupancy = param
@@ -41,7 +42,8 @@ class dependent_occupancy(object):
       param = reparametrisation.add(
         _.dependent_occupancy,
         occupancy = occupancy,
-        multiplier = sc[1]*ratio,
+        original_multiplier = original_mult,
+        multiplier = sc[1],
         as_one = as_one,
         scatterer = reparametrisation.structure.scatterers()[sc[0]])
       reparametrisation.asu_scatterer_parameters[sc[0]].occupancy = param

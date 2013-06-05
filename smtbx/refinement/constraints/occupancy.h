@@ -14,11 +14,13 @@ public:
     this_occu = _multiplier*(1 - original_occu)
  */
   dependent_occupancy(scalar_parameter *original_occu,
+                double original_multiplier,
                 double _multiplier,
                 bool _as_one,
                 scatterer_type *scatterer)
   : parameter(1),
     multiplier(_multiplier),
+    original_multiplier(original_multiplier),
     as_one(_as_one),
     single_asu_scatterer_parameter(scatterer)
   {
@@ -31,7 +33,7 @@ public:
 
   virtual void linearise(uctbx::unit_cell const &unit_cell,
                          sparse_matrix_type *jacobian_transpose);
-  double multiplier;
+  double multiplier, original_multiplier;
   bool as_one;
 };
 
