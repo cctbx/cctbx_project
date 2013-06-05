@@ -128,7 +128,7 @@ class process_command_line_with_files (object) :
 
 Full parameters:
 
-%s""" % (usage_string, master_phil.as_str(prefix="  ")))
+%s""" % (usage_string, master_phil.as_str(prefix="  ", attributes_level=1)))
     self.master = master_phil
     self.pdb_file_def = pdb_file_def
     self.reflection_file_def = reflection_file_def
