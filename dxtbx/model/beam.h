@@ -41,7 +41,7 @@ namespace dxtbx { namespace model {
     Beam(vec3 <double> s0) {
       DXTBX_ASSERT(s0.length() > 0);
       wavelength_ = 1.0 / s0.length();
-      direction_ = s0.normalize();
+      direction_ = -s0.normalize();
     }
 
     /**
@@ -91,6 +91,17 @@ namespace dxtbx { namespace model {
       DXTBX_ASSERT(s0.length() > 0);
       direction_ = s0.normalize();
       wavelength_ = 1.0 / s0.length();
+    }
+
+    /** Get the wave vector from source to sample with unit length */
+    vec3 <double> get_unit_s0() const {
+      return -direction_;
+    }
+
+    /** Set the direction using the unit_s0 vector */
+    void set_unit_s0(vec3<double> unit_s0) {
+      DXTBX_ASSERT(unit_s0.length() > 0);
+      direction_ = -(unit_s0.normalize());
     }
 
     /** Check wavlength and direction are (almost) same */
