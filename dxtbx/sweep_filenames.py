@@ -105,3 +105,50 @@ def find_matching_images(image_name):
         matching_images = [image_name]
 
     return matching_images
+
+def replace_template_format_with_hash(match):
+    '''Replace the format match with hashes'''
+    return '#'*len(match.group(0))
+
+def template_format_to_string(template):
+    '''Convert the template format to the template string.'''
+    import re
+    return re.sub(r'%0[0-9]+d', replace_template_format_with_hash, template)
+
+def template_string_to_glob_expr(template):
+    '''Convert the template to a glob expression.'''
+    pfx = template.split('#')[0]
+    sfx = template.split('#')[-1]
+    return '%s%s%s' % (pfx, '[0-9]'*template.count('#'), sfx)
+
+def template_string_number_index(template):
+    '''Get the number idex of the template.'''
+    pfx = template.split('#')[0]
+    sfx = template.split('#')[-1]
+    return len(pfx), len(pfx) + template.count('#')
+
+def locate_files_matching_template_string(template):
+    '''Return all files matching template.'''
+    from glob import glob
+    return glob(template_string_to_glob_expr(template))
+
+def template_image_range(template):
+    '''Return the image range of files with this template.'''
+
+    # Find the files matching the template
+    filenames = locate_files_matching_template_string(template)
+    filenames = sorted(filenames)
+
+    # Check that the template matches some files
+    if len(filenames) == 0:
+        raise ValueError('Template doesn\'t match any files.')
+
+    # Get the templete format
+    index = slice(*template_string_number_index(template))
+
+    # Get the first and last indices
+    first = int(filenames[0][index])
+    last  = int(filenames[-1][index])
+
+    # Reutrn the image range
+    return (first, last)
