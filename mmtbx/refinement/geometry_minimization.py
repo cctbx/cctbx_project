@@ -163,7 +163,11 @@ class run2(object):
                generic_restraints             = False,
                rmsd_bonds_termination_cutoff  = 0,
                rmsd_angles_termination_cutoff = 0,
-               alternate_nonbonded_off_on     = False):
+               alternate_nonbonded_off_on     = False,
+               log                            = None):
+    self.log = log
+    if self.log is None:
+      self.log = sys.stdout
     self.minimized = None
     self.sites_cart = sites_cart
     self.restraints_manager = restraints_manager
@@ -188,7 +192,7 @@ class run2(object):
       generic_restraints = True)
     self.show()
     for i_macro_cycle in xrange(number_of_macro_cycles):
-      print "  macro-cycle:", i_macro_cycle
+      print >> self.log, "  macro-cycle:", i_macro_cycle
       if(alternate_nonbonded_off_on and i_macro_cycle<=number_of_macro_cycles/2):
         geometry_restraints_flags.nonbonded = bool(i_macro_cycle % 2)
       self.minimized = lbfgs(
@@ -209,4 +213,4 @@ class run2(object):
   def show(self):
     es = self.restraints_manager.geometry.energies_sites(
       sites_cart = self.sites_cart, compute_gradients = False)
-    es.show(prefix="    ")
+    es.show(prefix="    ", f=self.log)
