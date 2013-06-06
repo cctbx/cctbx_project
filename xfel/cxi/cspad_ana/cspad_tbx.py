@@ -584,6 +584,11 @@ def env_detz(address, env):
     elif detector == 'CxiDsd':
       # XXX Note inconsistency in naming: Dsd vs Ds2!
       pv = env.epicsStore().value('CXI:DS2:MMS:06.RBV')
+    elif detector == 'XppGon':
+      # There is no distance recorded for the XPP's CSPAD on the robot
+      # arm.  Always return zero to allow the distance to be set using
+      # the offset.
+      return 0
     else:
       return None
 

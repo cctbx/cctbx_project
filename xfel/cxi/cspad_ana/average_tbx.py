@@ -173,7 +173,9 @@ class average_mixin(common_mode.common_mode_correction):
 
     # Get the distance for the detectors that should have it, and set
     # it to NaN for those that should not.
-    if self.detector == 'CxiDs1' or self.detector == 'CxiDsd':
+    if self.detector == 'CxiDs1' or \
+       self.detector == 'CxiDsd' or \
+       self.detector == 'XppGon':
       distance = cspad_tbx.env_distance(self.address, env, self._detz_offset)
       if distance is None:
         self.nfail += 1
