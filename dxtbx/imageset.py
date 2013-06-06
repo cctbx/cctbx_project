@@ -479,6 +479,10 @@ class ImageSweep(ImageSet):
         else:
             return self.reader().read(self._indices[item])
 
+    def get_template(self):
+        ''' Get the template. '''
+        return self.reader()._filenames.template()
+
     def get_array_range(self):
         ''' Get the array range. '''
         return (self._indices[0], self._indices[-1] + 1)
@@ -716,6 +720,46 @@ class ImageSetFactory(object):
         # returned in the same list.
         return [ImageSetFactory._create_imageset_or_sweep(
             filelist, check_headers) for filelist in filelist_per_imageset]
+
+    @staticmethod
+    def from_template(template, image_range, check_headers=False):
+        '''Create a new sweep from a template.
+
+        Params:
+            template The template argument
+            image_range The image range
+            check_headers Check the headers to ensure all images are valid
+
+        Returns:
+            A list of sweeps
+
+        '''
+        import os
+        from dxtbx.format.Registry import Registry
+
+        # Get the template format
+        pfx = template.split('#')[0]
+        sfx = template.split('#')[-1]
+        template_format = '%s%%0%dd%s' % (pfx, template.count('#'), sfx)
+
+        # Set the image range
+        array_range = (image_range[0] - 1, image_range[1])
+
+        # Create the sweep file list
+        filenames = SweepFileList(template_format, array_range)
+
+        # Get the format class
+        format_class = Registry.find(filenames[0])
+
+        # Create the sweep object
+        sweep = ImageSweep(MultiFileReader(format_class, filenames))
+
+        # Check the sweep is valid
+        if check_headers and not sweep.is_valid():
+            raise RuntimeError('Invalid sweep of images')
+
+        # Return the sweep
+        return sweep[0]
 
     @staticmethod
     def _create_imageset_or_sweep(filelist, check_headers):
