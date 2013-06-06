@@ -1,6 +1,4 @@
-# -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
-#
-# LIBTBX_SET_DISPATCHER_NAME cxi.image_diff
+# -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
 # $Id$
 
@@ -1250,6 +1248,8 @@ def parse_metrology(path):
 
   sections = calib2sections(calib_dir)
 
+  aa_new = []
+
   # Now working with (slow, fast) in 2D.  Enforce right angles and
   # integer pixel positions.  Temporary thingy: output the vertices in
   # Q0 convention to stdout.  Scale factor (micrometers per pixel).
@@ -1301,10 +1301,40 @@ def parse_metrology(path):
       # this reordering have been resolved above?  The sensor rotation
       # is *very* poorly defined at the moment!  Sensors 6 and 7 do
       # not follow the pattern!
-      if s == 6 or s == 7:
-        l = (vertices[0] - vertices[1]).normalize()
+#      if s == 6 or s == 7:
+#        l = (vertices[0] - vertices[1]).normalize()
+#      else:
+#        l = (vertices[1] - vertices[0]).normalize()
+
+      l = (vertices[1] - vertices[0]).normalize()
+      if   q == 0 and s in [0, 1]       or \
+           q == 2 and s in [4, 5]       or \
+           q == 3 and s in [2, 3, 6, 7]:
+        # l should point in -slow direction
+        if l.elems[0] > 0:
+          l *= -1
+      elif q == 0 and s in [2, 3, 6, 7] or \
+           q == 1 and s in [0, 1]       or \
+           q == 3 and s in [4, 5]:
+        # l should point in +fast direction
+        if l.elems[1] < 0:
+          l *= -1
+      elif q == 0 and s in [4, 5]       or \
+           q == 1 and s in [2, 3, 6, 7] or \
+           q == 2 and s in [0, 1]:
+        # l should point in +slow direction
+        if l.elems[0] < 0:
+          l *= -1
+      elif q == 1 and s in [4, 5]       or \
+           q == 2 and s in [2, 3, 6, 7] or \
+           q == 3 and s in [0, 1]:
+        # l should point in -fast direction
+        if l.elems[1] > 0:
+          l *= -1
       else:
-        l = (vertices[1] - vertices[0]).normalize()
+        # NOTREACHED
+        raise RuntimeError(
+          "Unknown direction for sensor %d in quadrant %d" % (s, q))
 
       # Force l to right angle
       if l.elems[0] < -0.5:
@@ -1371,6 +1401,9 @@ def parse_metrology(path):
           ax.add_patch(Polygon(
               v_old, closed=True, color='red', fill=False))
 
+          aa_new += [corners_new[0], corners_new[1],
+                     corners_new[2], corners_new[3]]
+
         # Second ASIC, now in units of pixels.  XXX Note: this aint't
         # always the top or the bottom ASIC.
 
@@ -1409,10 +1442,14 @@ def parse_metrology(path):
           ax.add_patch(Polygon(
               v_old, closed=True, color='red', fill=False))
 
+          aa_new += [corners_new[0], corners_new[1],
+                     corners_new[2], corners_new[3]]
+
       else:
         # Sensor is laying down.
 
-        # Left ASIC, now in units of pixels.
+        # First ASIC (not necessarily the left), now in units of
+        # pixels .
         c = m - (194 + 3) / 2 * l
         corners_new = [
           int(math.floor(c.elems[0] - (185 - 1) / 2)) + offset[0],
@@ -1447,7 +1484,11 @@ def parse_metrology(path):
           ax.add_patch(Polygon(
               v_old, closed=True, color='red', fill=False))
 
-        # Right ASIC, now in units of pixels.
+          aa_new += [corners_new[0], corners_new[1],
+                     corners_new[2], corners_new[3]]
+
+        # Second ASIC (not necessarily the right), now in units of
+        # pixels.
         c = m + (194 + 3) / 2 * l
         corners_new = [
           int(math.floor(c.elems[0] - (185 - 1) / 2)) + offset[0],
@@ -1482,11 +1523,14 @@ def parse_metrology(path):
           ax.add_patch(Polygon(
               v_old, closed=True, color='red', fill=False))
 
+          aa_new += [corners_new[0], corners_new[1],
+                     corners_new[2], corners_new[3]]
+
   if plot:
     #ax.set_xlim((0, 1850))
     #ax.set_ylim((0, 1850))
-    ax.set_xlim((-2000, 2000))
-    ax.set_ylim((-200, 2000))
+    ax.set_xlim((-1000, 2000))
+    ax.set_ylim((-1000, 2000))
     plt.show()
 
   # Build list and output differences to old-style metrology.
@@ -1498,6 +1542,12 @@ def parse_metrology(path):
       corrections_list[q * 8 * 2 * 2 + s * 2 * 2 + 1 * 2 + 0] = correction[1][0]
       corrections_list[q * 8 * 2 * 2 + s * 2 * 2 + 1 * 2 + 1] = correction[1][1]
   #print "corrected_auxiliary_translations =", list(corrections_list)
+
+  for i in range(len(aa_new)):
+    aa_new[i] += 1765 // 2 # XXX magic number, again!
+    assert aa_new[i] >= 0 and aa_new[i] <= 1765
+
+  print "new active areas", len(aa_new), aa_new
 
   return
 
