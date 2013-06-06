@@ -1348,6 +1348,14 @@ def parse_metrology(path):
       else:
         print "This should not happen!"
 
+      # According to Henrik Lemke, the XPP detector is actually
+      # rotated by 180 degrees with respect to the optical metrology
+      # measurements.
+      if det == 'XppDs1': # XXX Correct detector name?
+        l *= -1
+        for i in range(len(vertices)):
+          vertices[i] *= -1
+
 #      print "Quadrant %d sensor %d vector l [% 3.2f, % 3.2f]" % \
 #        (q, s, l.elems[0], l.elems[1])
 
