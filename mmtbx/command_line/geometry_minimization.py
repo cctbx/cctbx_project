@@ -191,7 +191,12 @@ def get_geometry_restraints_manager(processed_pdb_file, xray_structure):
     restraints_manager.crystal_symmetry = xray_structure.crystal_symmetry()
   return restraints_manager
 
-def run_minimization(sites_cart, selection, restraints_manager, params):
+def run_minimization(
+      sites_cart,
+      selection,
+      restraints_manager,
+      params,
+      log):
   o = mmtbx.refinement.geometry_minimization.run2(
     sites_cart                     = sites_cart,
     restraints_manager             = restraints_manager,
@@ -207,7 +212,8 @@ def run_minimization(sites_cart, selection, restraints_manager, params):
     generic_restraints             = False,
     rmsd_bonds_termination_cutoff  = params.rmsd_bonds_termination_cutoff,
     rmsd_angles_termination_cutoff = params.rmsd_angles_termination_cutoff,
-    alternate_nonbonded_off_on     = params.alternate_nonbonded_off_on)
+    alternate_nonbonded_off_on     = params.alternate_nonbonded_off_on,
+    log                            = log)
 
 class run(object):
   def __init__(self, args, log):
@@ -266,7 +272,7 @@ class run(object):
     self.inputs = mmtbx.utils.process_command_line_args(args = self.args,
       master_params = parsed, log = self.log)
     self.params = self.inputs.params.extract()
-    self.inputs.params.show(prefix="  ")
+    self.inputs.params.show(prefix="  ", out=self.log)
     if(len(self.args)==0): sys.exit(0)
 
   def process_inputs(self, prefix):
@@ -337,7 +343,8 @@ class run(object):
     broadcast(m=prefix, log = self.log)
     self.sites_cart = self.xray_structure.sites_cart()
     run_minimization(sites_cart = self.sites_cart, selection = self.selection,
-      restraints_manager = self.grm, params = self.params.minimization)
+      restraints_manager = self.grm, params = self.params.minimization,
+      log = self.log)
 
   def write_pdb_file(self, prefix):
     broadcast(m=prefix, log = self.log)
