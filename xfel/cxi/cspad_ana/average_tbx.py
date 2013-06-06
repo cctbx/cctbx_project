@@ -1,7 +1,8 @@
-from __future__ import division
-# -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
+# -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
 # $Id$
+
+from __future__ import division
 
 import math
 import multiprocessing
@@ -129,6 +130,10 @@ class average_mixin(common_mode.common_mode_correction):
       self._tot_sum = multiprocessing.Array('d', 370 * 391, lock=False)
       self._tot_ssq = multiprocessing.Array('d', 370 * 391, lock=False)
       self._tot_max = multiprocessing.Array('d', 370 * 391, lock=False)
+    elif device == 'marccd':
+      self._tot_sum = multiprocessing.Array('d', 2400 * 2400, lock=False)
+      self._tot_ssq = multiprocessing.Array('d', 2400 * 2400, lock=False)
+      self._tot_max = multiprocessing.Array('d', 2400 * 2400, lock=False)
     elif device == 'pnCCD':
       self._tot_sum = multiprocessing.Array('d', 1024 * 1024, lock=False)
       self._tot_ssq = multiprocessing.Array('d', 1024 * 1024, lock=False)
@@ -397,6 +402,11 @@ class average_mixin(common_mode.common_mode_correction):
       self.stddev_img.resize(flex.grid(370, 391))
       if self.do_max_image:
         self.max_img.resize(flex.grid(370, 391))
+    elif len(self._tot_sum) == 2400 * 2400:
+      self.avg_img.resize(flex.grid(2400, 2400))
+      self.stddev_img.resize(flex.grid(2400, 2400))
+      if self.do_max_image:
+        self.max_img.resize(flex.grid(2400, 2400))
     elif len(self._tot_sum) == 1024 * 1024:
       self.avg_img.resize(flex.grid(1024, 1024))
       self.stddev_img.resize(flex.grid(1024, 1024))

@@ -1,4 +1,4 @@
-# -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
+# -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
 # $Id$
 """First- and second-order statistics for CS-PAD images
@@ -67,46 +67,57 @@ class mod_average(average_tbx.average_mixin):
     """
 
     super(mod_average, self).endjob(env)
-    if (self.nmemb > 0):
-      if (self.avg_dirname  is not None or
-          self.avg_basename is not None):
+
+    if self.address == 'XppGon-0|marccd-0':
+      beam_center = tuple(t // 2 for t in self.avg_img.focus())
+      pixel_size = 0.079346
+    else:
+      beam_center = self.beam_center
+      pixel_size = cspad_tbx.pixel_size
+
+    if self.nmemb > 0:
+      if self.avg_dirname  is not None or \
+         self.avg_basename is not None:
         d = cspad_tbx.dpack(
           active_areas=self.active_areas,
           address=self.address,
-          beam_center_x=cspad_tbx.pixel_size * self.beam_center[0],
-          beam_center_y=cspad_tbx.pixel_size * self.beam_center[1],
+          beam_center_x=pixel_size * beam_center[0],
+          beam_center_y=pixel_size * beam_center[1],
           data=self.avg_img,
           distance=self.avg_distance,
+          pixel_size=pixel_size,
           timestamp=cspad_tbx.evt_timestamp(self.avg_time),
           wavelength=self.avg_wavelength)
         p = cspad_tbx.dwritef(d, self.avg_dirname, self.avg_basename)
         self.logger.info(
           "Average written to %s" % p)
 
-      if (self.stddev_dirname  is not None or
-          self.stddev_basename is not None):
+      if self.stddev_dirname  is not None or \
+         self.stddev_basename is not None:
         d = cspad_tbx.dpack(
           active_areas=self.active_areas,
           address=self.address,
-          beam_center_x=cspad_tbx.pixel_size * self.beam_center[0],
-          beam_center_y=cspad_tbx.pixel_size * self.beam_center[1],
+          beam_center_x=pixel_size * beam_center[0],
+          beam_center_y=pixel_size * beam_center[1],
           data=self.stddev_img,
           distance=self.avg_distance,
+          pixel_size=pixel_size,
           timestamp=cspad_tbx.evt_timestamp(self.avg_time),
           wavelength=self.avg_wavelength)
         p = cspad_tbx.dwritef(d, self.stddev_dirname, self.stddev_basename)
         self.logger.info(
           "Standard deviation written to %s" % p)
 
-      if (self.max_dirname  is not None or
-          self.max_basename is not None):
+      if self.max_dirname  is not None or \
+         self.max_basename is not None:
         d = cspad_tbx.dpack(
           active_areas=self.active_areas,
           address=self.address,
-          beam_center_x=cspad_tbx.pixel_size * self.beam_center[0],
-          beam_center_y=cspad_tbx.pixel_size * self.beam_center[1],
+          beam_center_x=pixel_size * beam_center[0],
+          beam_center_y=pixel_size * beam_center[1],
           data=self.max_img,
           distance=self.avg_distance,
+          pixel_size=pixel_size,
           timestamp=cspad_tbx.evt_timestamp(self.avg_time),
           wavelength=self.avg_wavelength)
         p = cspad_tbx.dwritef(d, self.max_dirname, self.max_basename)
