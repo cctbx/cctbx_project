@@ -112,7 +112,7 @@ class MARImage(DetectorImageBase):
         end_xtal_to_detector = struct.unpack(format+'i',rawdata)[0]/1000.
         #assert start_xtal_to_detector == end_xtal_to_detector
         #that assertion would've been nice but ESRF BM14 frames fail; instead:
-        assert start_xtal_to_detector>0.
+        #assert start_xtal_to_detector>0.  # this assert doesn't work for XFEL images where the distance is set externally
         parameters['DISTANCE'] = start_xtal_to_detector
 
         f.seek(offset+772)
