@@ -1126,25 +1126,27 @@ def image_xpp(address, evt, env, aa):
       # Rotate the "lying down" sensor readout from the XTC stream by
       # an integer multiples of 90 degrees to match the orientation on
       # the detector.  This assumes that the horizontal dimension of
-      # the unrotated sensor is even.
+      # the unrotated sensor is even.  Note that the XPP CSPAD is
+      # rotated by 180 degrees with respect to the optical metrology
+      # measurements.
       if   q_idx == 0 and s in [2, 3, 6, 7] or \
            q_idx == 1 and s in [0, 1]       or \
            q_idx == 3 and s in [4, 5]:
-        asics = numpy.hsplit(numpy.rot90(q_data[s], 0), 2)
+        asics = numpy.hsplit(numpy.rot90(q_data[s], 0 + 2), 2)
+        asics.reverse()
       elif q_idx == 0 and s in [0, 1]       or \
            q_idx == 2 and s in [4, 5]       or \
            q_idx == 3 and s in [2, 3, 6, 7]:
-        asics = numpy.vsplit(numpy.rot90(q_data[s], 1), 2)
-        asics.reverse()
+        asics = numpy.vsplit(numpy.rot90(q_data[s], 1 + 2), 2)
       elif q_idx == 1 and s in [4, 5]       or \
            q_idx == 2 and s in [2, 3, 6, 7] or \
            q_idx == 3 and s in [0, 1]:
-        asics = numpy.hsplit(numpy.rot90(q_data[s], 2), 2)
-        asics.reverse()
+        asics = numpy.hsplit(numpy.rot90(q_data[s], 2 + 2), 2)
       elif q_idx == 0 and s in [4, 5]       or \
            q_idx == 1 and s in [2, 3, 6, 7] or \
            q_idx == 2 and s in [0, 1]:
-        asics = numpy.vsplit(numpy.rot90(q_data[s], 3), 2)
+        asics = numpy.vsplit(numpy.rot90(q_data[s], 3 + 2), 2)
+        asics.reverse()
       else:
         # NOTREACHED
         return None
