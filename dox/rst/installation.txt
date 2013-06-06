@@ -182,7 +182,7 @@ get easy access to the most recent changes, it may be useful
 to checkout the cctbx project directly from the SVN repository
 maintained at Sourceforge_. An easy way to get started is::
 
-  svn export https://cctbx.svn.sourceforge.net/svnroot/cctbx/trunk/libtbx/development/cctbx_svn_getting_started.csh
+  svn export svn://svn.code.sf.net/p/cctbx/code/trunk/libtbx/development/cctbx_svn_getting_started.csh
   ./cctbx_svn_getting_started.csh
 
 The script will create a ``sources`` directory with a ``cctbx_project``
