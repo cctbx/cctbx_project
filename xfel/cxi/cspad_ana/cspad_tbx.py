@@ -1069,6 +1069,91 @@ def image_central2(address, config, evt, env):
   return (l)
 
 
+def image_xpp(address, evt, env, aa):
+  """Assemble the uint16 detector image.  XXX Documentation! XXX Would
+  be nice to get rid of the constant string names.  XXX Better named
+  evt_image()?
+
+  @param address Address string XXX Que?!
+  @param evt     Event data object, a configure object
+  @param env     Environment object
+  @param aa      Active areas, in lieue of full metrology object
+  @return        XXX
+  """
+
+  if address != 'XppGon-0|Cspad-0':
+    return None
+
+  # Get a current configure object for the detector, see
+  # cspad_tbx.getConfig().
+  config = env.getConfig(xtc.TypeId.Type.Id_CspadConfig, address)
+  if config is None:
+    return None
+
+  quads = evt.getCsPadQuads(address, env)
+  if quads is None:
+    return None
+
+  # What follows is is really cspad_tbx.CsPadDetector().  For
+  # consistency, one could/should verify that len(quads) is equal to
+  # len(sections).
+  assert len(quads) == len(aa) // (8 * 2 * 4)
+
+  # Start out with a blank image of the detector.  Mikhail
+  # S. Dubrovin's HDF5Explorer/src/ConfigCSpad.py uses a detector
+  # size of 1765-by-1765 pixels.  This assumes that the type of the
+  # first section in the first quadrant is identical to the type of
+  # all the other sections.
+  det = numpy.zeros((1765, 1765), dtype=quads[0].data()[0].dtype)
+  mask = map(config.sections, range(4))
+
+  for q in range(len(quads)):
+    q_data = quads[q].data()
+    q_idx = quads[q].quad()
+
+    # For consistency, one could/should verify that len(q_data) is
+    # equal to len(sections[q_idx]).
+    assert len(q_data) == len(aa) // (4 * 2 * 4)
+    for s in range(len(q_data)):
+      if s not in mask[q_idx]:
+        continue
+
+      # Rotate the "lying down" sensor readout from the XTC stream by
+      # an integer multiples of 90 degrees to match the orientation on
+      # the detector.  This assumes that the horizontal dimension of
+      # the unrotated sensor is even.
+      if   q_idx == 0 and s in [2, 3, 6, 7] or \
+           q_idx == 1 and s in [0, 1]       or \
+           q_idx == 3 and s in [4, 5]:
+        asics = numpy.hsplit(numpy.rot90(q_data[s], 0), 2)
+      elif q_idx == 0 and s in [0, 1]       or \
+           q_idx == 2 and s in [4, 5]       or \
+           q_idx == 3 and s in [2, 3, 6, 7]:
+        asics = numpy.vsplit(numpy.rot90(q_data[s], 1), 2)
+        asics.reverse()
+      elif q_idx == 1 and s in [4, 5]       or \
+           q_idx == 2 and s in [2, 3, 6, 7] or \
+           q_idx == 3 and s in [0, 1]:
+        asics = numpy.hsplit(numpy.rot90(q_data[s], 2), 2)
+        asics.reverse()
+      elif q_idx == 0 and s in [4, 5]       or \
+           q_idx == 1 and s in [2, 3, 6, 7] or \
+           q_idx == 2 and s in [0, 1]:
+        asics = numpy.vsplit(numpy.rot90(q_data[s], 3), 2)
+      else:
+        # NOTREACHED
+        return None
+
+      # Use the active areas to place the two ASICS on the
+      # destination detector image.
+      for a in range(len(asics)):
+        aa_idx = q_idx * (8 * 2 * 4) + s * (2 * 4) + a * 4
+        det[aa[aa_idx + 0]:aa[aa_idx + 2],
+            aa[aa_idx + 1]:aa[aa_idx + 3]] = asics[a]
+
+  return det
+
+
 def iplace(dst, src, angle, center):
     """The iplace() function places @p src in @p dst centred on @p
     center after rotating it by @p angle degrees counter-clockwise.

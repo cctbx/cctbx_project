@@ -1,4 +1,4 @@
-# -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
+# -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
 # $Id$
 
@@ -94,22 +94,23 @@ class common_mode_correction(mod_event_info):
 
     # Get and parse metrology.  There is no metrology information for
     # the Sc1 detector, so make it up.
-    import re
     self.sections = None
-    m = re.match('^\S+\-\d+\|(?P<device>\S+)-\d+$', self.address)
-    if m is not None:
-      device = m.group('device')
-      if device == 'Andor':
-        self.sections = [] # XXX FICTION
-      elif device == 'pnCCD':
-        self.sections = [] # XXX FICTION
-      elif device == 'Cspad':
+    device = cspad_tbx.address_split(self.address)[2]
+    if device == 'Andor':
+      self.sections = [] # XXX FICTION
+    elif device == 'Cspad':
+      if self.address == 'XppGon-0|Cspad-0':
+        self.sections = [] # Not used for XPP
+      else:
         self.sections = calib2sections(cspad_tbx.getOptString(calib_dir))
-      elif device == 'Cspad2x2':
+    elif device == 'Cspad2x2':
         # The sections are rotated by 90 degrees with respect to the
         # "standing up" convention.
         self.sections = [[Section(90, (185 / 2 + 0,   (2 * 194 + 3) / 2)),
                           Section(90, (185 / 2 + 185, (2 * 194 + 3) / 2))]]
+    elif device == 'pnCCD':
+      self.sections = [] # XXX FICTION
+
     if self.sections is None:
       raise RuntimeError("Failed to load metrology")
 
@@ -153,8 +154,16 @@ class common_mode_correction(mod_event_info):
     if self.config is None:
       self.logger.error("beginjob(): no config")
     else:
-      (self.beam_center, self.active_areas) = \
-        cspad_tbx.cbcaa(self.config, self.sections)
+      if self.address == 'XppGon-0|Cspad-0':
+        # Kludge deluxe for the CSPAD at XPP.  This does not respect
+        # the current configuration of the detector.  On the other
+        # hand, there is not really a need for metrology to do so.
+        self.active_areas = flex.int([705, 458, 899, 643, 508, 458, 702, 643, 706, 670, 900, 855, 509, 670, 703, 855, 496, 36, 681, 230, 496, 233, 681, 427, 708, 32, 893, 226, 708, 229, 893, 423, 75, 253, 269, 438, 272, 253, 466, 438, 74, 40, 268, 225, 271, 40, 465, 225, 97, 465, 282, 659, 97, 662, 282, 856, 309, 463, 494, 657, 309, 660, 494, 854, 456, 864, 641, 1058, 456, 1061, 641, 1255, 669, 864, 854, 1058, 669, 1061, 854, 1255, 35, 1081, 229, 1266, 232, 1081, 426, 1266, 36, 868, 230, 1053, 233, 868, 427, 1053, 255, 1493, 440, 1687, 255, 1296, 440, 1490, 42, 1495, 227, 1689, 42, 1298, 227, 1492, 466, 1481, 660, 1666, 663, 1481, 857, 1666, 465, 1269, 659, 1454, 662, 1269, 856, 1454, 864, 1122, 1058, 1307, 1061, 1122, 1255, 1307, 865, 910, 1059, 1095, 1062, 910, 1256, 1095, 1083, 1534, 1268, 1728, 1083, 1337, 1268, 1531, 870, 1532, 1055, 1726, 870, 1335, 1055, 1529, 1493, 1323, 1687, 1508, 1296, 1323, 1490, 1508, 1493, 1535, 1687, 1720, 1296, 1535, 1490, 1720, 1481, 1103, 1666, 1297, 1481, 906, 1666, 1100, 1268, 1103, 1453, 1297, 1268, 906, 1453, 1100, 1122, 703, 1307, 897, 1122, 506, 1307, 700, 909, 705, 1094, 899, 909, 508, 1094, 702, 1533, 495, 1727, 680, 1336, 495, 1530, 680, 1533, 708, 1727, 893, 1336, 708, 1530, 893, 1323, 75, 1508, 269, 1323, 272, 1508, 466, 1536, 73, 1721, 267, 1536, 270, 1721, 464, 1101, 98, 1295, 283, 904, 98, 1098, 283, 1103, 310, 1297, 495, 906, 310, 1100, 495])
+        self.beam_center = [1765 // 2, 1765 // 2]
+
+      else:
+        (self.beam_center, self.active_areas) = cspad_tbx.cbcaa(
+          self.config, self.sections)
 
 
   def common_mode(self, img, stddev, mask):
@@ -270,11 +279,17 @@ class common_mode_correction(mod_event_info):
     # the image on self.address, so we should come up with our own
     # namespace.  XXX Misnomer--could be CAMP, too
     self.cspad_img = evt.get(self.address)
-    if (self.cspad_img is not None):
+    if self.cspad_img is not None:
       return
-    self.cspad_img = cspad_tbx.image(
-      self.address, self.config, evt, env, self.sections)
-    if (self.cspad_img is None):
+    if self.address == 'XppGon-0|Cspad-0':
+      # Kludge until cspad_tbx.image() can be rewritten to handle the
+      # XPP metrology.
+      self.cspad_img = cspad_tbx.image_xpp(
+        self.address, evt, env, self.active_areas)
+    else:
+      self.cspad_img = cspad_tbx.image(
+        self.address, self.config, evt, env, self.sections)
+    if self.cspad_img is None:
       self.nfail += 1
       self.logger.warning("event(): no image, shot skipped")
       evt.put(True, "skip_event")
