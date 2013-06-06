@@ -1395,6 +1395,7 @@ mmtbx/command_line/find_tls_groups.py -text
 mmtbx/command_line/find_torsion_angle_ncs_groups.py svneol=native#text/x-python
 mmtbx/command_line/flip_peptides.py -text
 mmtbx/command_line/fmodel.py -text
+mmtbx/command_line/fmodel_simple.py -text
 mmtbx/command_line/fobs_minus_fobs_map.py -text
 mmtbx/command_line/grow_density.py -text
 mmtbx/command_line/interpolate.py -text
@@ -1628,7 +1629,7 @@ mmtbx/regression/tst_compare_ligands.py -text
 mmtbx/regression/tst_dssp.py -text
 mmtbx/regression/tst_examples.py -text
 mmtbx/regression/tst_find_peaks_holes.py -text
-mmtbx/regression/tst_fmodel_anomalous.py -text
+mmtbx/regression/tst_fmodel_misc.py -text
 mmtbx/regression/tst_fmodel_no_cryst1.py -text
 mmtbx/regression/tst_interpolation.py -text
 mmtbx/regression/tst_ions_parameters.py svneol=native#text/x-python
