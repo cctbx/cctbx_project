@@ -1,3 +1,7 @@
+# -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
+#
+# $Id$
+
 from __future__ import division
 import logging
 
@@ -61,7 +65,10 @@ class mod_event_info(object):
     # XXX Not needed now that the distance is read in the event?
     env.update(evt)
 
-    self.config = env.getConfig(xtc.TypeId.Type.Id_CspadConfig, self.address)
+    if self.address == 'XppGon-0|marccd-0':
+      self.config = None
+    else:
+      self.config = env.getConfig(xtc.TypeId.Type.Id_CspadConfig, self.address)
     if (self.config is None):
       self.logger.error("beginjob(): no config")
 

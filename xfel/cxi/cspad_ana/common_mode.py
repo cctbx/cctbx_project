@@ -92,8 +92,7 @@ class common_mode_correction(mod_event_info):
     assert self.common_mode_correction in \
         ("gaussian", "mean", "median", "mode", "none", "chebyshev")
 
-    # Get and parse metrology.  There is no metrology information for
-    # the Sc1 detector, so make it up.
+    # Get and parse metrology.
     self.sections = None
     device = cspad_tbx.address_split(self.address)[2]
     if device == 'Andor':
@@ -104,10 +103,13 @@ class common_mode_correction(mod_event_info):
       else:
         self.sections = calib2sections(cspad_tbx.getOptString(calib_dir))
     elif device == 'Cspad2x2':
-        # The sections are rotated by 90 degrees with respect to the
-        # "standing up" convention.
-        self.sections = [[Section(90, (185 / 2 + 0,   (2 * 194 + 3) / 2)),
-                          Section(90, (185 / 2 + 185, (2 * 194 + 3) / 2))]]
+      # There is no metrology information for the Sc1 detector, so
+      # make it up.  The sections are rotated by 90 degrees with
+      # respect to the "standing up" convention.
+      self.sections = [[Section(90, (185 / 2 + 0,   (2 * 194 + 3) / 2)),
+                        Section(90, (185 / 2 + 185, (2 * 194 + 3) / 2))]]
+    elif device == 'marccd':
+      self.sections = [] # XXX FICTION
     elif device == 'pnCCD':
       self.sections = [] # XXX FICTION
 
@@ -282,13 +284,14 @@ class common_mode_correction(mod_event_info):
     if (evt.get("skip_event")):
       return
 
-    if self.config is None:
-      self.config = cspad_tbx.getConfig(self.address, env)
-      if self.config is None:
-        self.logger.error("event(): no config for %s" % self.address)
-        evt.put(True, 'skip_event')
-        return
-    if self.active_areas is None or self.beam_center is None:
+#    if self.config is None:
+#      self.config = cspad_tbx.getConfig(self.address, env)
+#      if self.config is None:
+#        self.logger.error("event(): no config for %s" % self.address)
+#        evt.put(True, 'skip_event')
+#        return
+    if not hasattr(self, 'active_areas') or self.active_areas is None or \
+       not hasattr(self, 'beam_center')  or self.beam_center  is None:
       (self.beam_center, self.active_areas) = \
           cspad_tbx.cbcaa(self.config, self.sections)
 
