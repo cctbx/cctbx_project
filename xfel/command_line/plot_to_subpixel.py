@@ -18,30 +18,30 @@ def run (input=None) :
       delx.append( float(tokens[7]) )
       dely.append( float(tokens[9][:-1]) )
       if len(tile)==64: break
-  
+
   order = flex.sort_permutation(tile)
   for x in xrange(64):
     #print tile[order[x]], delx[order[x]], dely[order[x]]
     pass
-  
+
   for x in xrange(8):
     for y in xrange(8):
       print "%5.2f,"%delx[order[x*8+y]], "%5.2f,"%dely[order[x*8+y]],
     print
   print
-  
+
   for x in xrange(8):
     for y in xrange(8):
       print "%5.2f,"%dely[order[x*8+y]], "%5.2f,"%delx[order[x*8+y]],
     print
   print
-  
+
   for x in xrange(8):
     for y in xrange(8):
       print "%5.2f,"%-delx[order[x*8+y]], "%5.2f,"%-dely[order[x*8+y]],
     print
   print
-  
+
   for x in xrange(8):
     for y in xrange(8):
       print "%5.2f,"%-dely[order[x*8+y]], "%5.2f,"%-delx[order[x*8+y]],

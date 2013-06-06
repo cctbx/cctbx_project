@@ -72,7 +72,6 @@ class BlastList (wx.ListCtrl) :
     return None
 
 if (__name__ == "__main__") :
-  from iotbx.command_line import blast_pdb
   from iotbx.file_reader import any_file
   from iotbx.bioinformatics.structure import summarize_blast_output
   seq_file = any_file(sys.argv[1], force_type="seq")

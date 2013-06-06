@@ -29,7 +29,6 @@ class reader:
       The version or None if the file is not recognised
 
     """
-    import os
 
     # Check file contains 11 lines and 42 tokens
     with open(filename, 'r') as file_handle:

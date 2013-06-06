@@ -130,7 +130,7 @@ def get_rotamer_iterator(mon_lib_srv, residue):
        rotamer_iterator.rotamer_info is None):
       rotamer_iterator = None
   return rotamer_iterator
-  
+
 def morph(structure_monitor):
   sm = structure_monitor
   from solve_resolve.resolve_python import resolve_in_memory
@@ -156,7 +156,7 @@ rad_morph 6
   sm.update(xray_structure=xrs, accept_as_is=True)
   sm.show(prefix="morph:")
   return sm.xray_structure.deep_copy_scatterers()
-  
+
 def simulated_annealing(structure_monitor, tmp):
   sm = structure_monitor
   from mmtbx.dynamics import simulated_annealing as sa
@@ -177,7 +177,7 @@ def simulated_annealing(structure_monitor, tmp):
     verbose            = True)
   sm.update(xray_structure=tmp, accept_as_is=True)
   sm.show(prefix="SA:")
-  
+
 def refine_residue(structure_monitor, mon_lib_srv, geometry_restraints_manager):
   sm = structure_monitor
   result = mmtbx.refinement.real_space.fit_residues.manager(
@@ -190,8 +190,8 @@ def refine_residue(structure_monitor, mon_lib_srv, geometry_restraints_manager):
     ph = sm.pdb_hierarchy.deep_copy()
     ph.atoms().reset_i_seq()
     xrs = mmtbx.utils.max_distant_rotomer(
-      xray_structure = xrs, 
-      pdb_hierarchy  = ph, 
+      xray_structure = xrs,
+      pdb_hierarchy  = ph,
       exact_match    = True)
     return ph, xrs
   ph, xrs = switch_to_exact_rotamers(tmp=tmp, sm=sm)
@@ -253,7 +253,7 @@ def run(target_map,
   optimize_weight = True
   ####
   expload_step = expload_size/macro_cycles
-  
+
   for i in range(macro_cycles):
     tmp_dc = tmp.deep_copy_scatterers()
     if(i==0):

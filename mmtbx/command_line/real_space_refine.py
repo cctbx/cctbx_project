@@ -24,7 +24,7 @@ import mmtbx.secondary_structure
 if (1):
   random.seed(0)
   flex.set_random_seed(0)
-  
+
 # XXX TO BE MOVED OR RESTRUCTURED
 def get_processed_pdb_object(rama_potential, log,
       raw_records=None, pdb_file_name=None):
@@ -75,8 +75,8 @@ def get_geometry_restraints_manager(processed_pdb_file, xray_structure, log):
     geometry      = geometry,
     normalization = True)
   restraints_manager.crystal_symmetry = xray_structure.crystal_symmetry()
-  return restraints_manager  
-  
+  return restraints_manager
+
 def process_inputs(args, log=None):
   got_pdb = False
   got_hkl = False
