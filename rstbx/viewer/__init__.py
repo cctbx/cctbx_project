@@ -247,6 +247,7 @@ class image (screen_params) :
     self._beam_center = None
     self._integration = None
     self._spots = None
+    self._color_scheme = None
     #self.update_image()
     #self.convert_to_bitmap()
 
@@ -281,12 +282,19 @@ class image (screen_params) :
     self._wx_img = None
     self.update_image(**kwds)
 
+  def get_opengl_background (self) :
+    if (self._color_scheme == 0) :
+      return (0.8,0.8,1.)
+    else :
+      return (0,0,0)
+
   def update_image (self, brightness=100, color_scheme=0) :
     """
     Re-process the image to adjust brightness and colors, and generate a new
     wx.Image object and corresponding thumbnail image.
     """
     import wx
+    self._color_scheme = color_scheme
     self._img = self.create_flex_image(
       brightness=brightness,
       color_scheme=color_scheme)
