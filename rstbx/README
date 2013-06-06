@@ -26,7 +26,7 @@ INSTALLATION FROM SOURCE
 
 1) Check out the project from sourceforge:
 
-svn checkout https://cctbx.svn.sourceforge.net/svnroot/cctbx/trunk cctbx_project
+svn checkout svn://svn.code.sf.net/p/cctbx/code/trunk/ cctbx_project
 
 2) Change directory to cctbx_project, and add boost & scons:
 

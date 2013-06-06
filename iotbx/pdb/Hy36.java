@@ -11,7 +11,7 @@
 
     See also: http://cci.lbl.gov/hybrid_36/
     svn master at:
-    https://cctbx.svn.sourceforge.net/svnroot/cctbx/trunk/iotbx/pdb/Hy36.java
+    http://sourceforge.net/p/cctbx/code/HEAD/tree/trunk/iotbx/pdb/Hy36.java
 
     Ralf W. Grosse-Kunstleve, Vincent B. Chen, Jeff J. Headd, Sep 2007.
  */
