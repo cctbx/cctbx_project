@@ -15,7 +15,14 @@ class ReaderBase(object):
     '''The imageset reader base class.'''
 
     def __init__(self):
-        pass
+
+        # Save some overidden models. If these models are not set, then
+        # getting the models defers to the reader. Otherwise, if they are
+        # set and the get functions are called without an index then
+        # these models will be returned
+        self._beam = None
+        self._detector = None
+        self._goniometer = None
 
     def __cmp__(self, other):
         pass
@@ -45,23 +52,50 @@ class ReaderBase(object):
         pass
 
     def get_detector(self, index=None):
-        pass
+        if index is None and self._detector is not None:
+            return self._detector
+
+        return self.read_detector(index)
+
+    def set_detector(self, detector):
+        self._detector = detector
 
     def get_beam(self, index=None):
-        pass
+        if index is None and self._beam is not None:
+            return self._beam
+
+        return self.read_beam(index)
+
+    def set_beam(self, beam):
+        self._beam = beam
 
     def get_goniometer(self, index=None):
-        pass
+        if index is None and self._goniometer is not None:
+            return self._goniometer
+
+        return self.read_goniometer(index)
+
+    def set_goniometer(self, goniometer):
+        self._goniometer = goniometer
 
     def get_scan(self, index=None):
         pass
 
+    def read_detector(self, index=None):
+        pass
+
+    def read_goniometer(self, index=None):
+        pass
+
+    def read_beam(self, index=None):
+        pass
 
 class SingleFileReader(ReaderBase):
     '''The single file reader class.'''
 
     def __init__(self, format_instance):
         '''Initialise the reader class.'''
+        ReaderBase.__init__(self)
 
         # Set the format instance
         self._format = format_instance
@@ -111,15 +145,15 @@ class SingleFileReader(ReaderBase):
         '''Get the detector base instance.'''
         return self._format.get_detectorbase(index)
 
-    def get_detector(self, index=None):
+    def read_detector(self, index=None):
         '''Get the detector instance.'''
         return self._format.get_detector(index)
 
-    def get_beam(self, index=None):
+    def read_beam(self, index=None):
         '''Get the beam instance.'''
         return self._format.get_beam(index)
 
-    def get_goniometer(self, index=None):
+    def read_goniometer(self, index=None):
         '''Get the goniometer instance.'''
         return self._format.get_goniometer(index)
 
@@ -177,6 +211,8 @@ class MultiFileReader(ReaderBase):
 
     def __init__(self, format_class, filenames, formatchecker=None):
         '''Initialise the reader with the format and list of filenames.'''
+        ReaderBase.__init__(self)
+
         import os
 
         # Ensure we have enough images and format has been specified
@@ -226,15 +262,15 @@ class MultiFileReader(ReaderBase):
         '''Get the detector base instance at given index.'''
         return self.get_format(index).get_detectorbase()
 
-    def get_detector(self, index=None):
+    def read_detector(self, index=None):
         '''Get the detector instance at given index.'''
         return self.get_format(index).get_detector()
 
-    def get_beam(self, index=None):
+    def read_beam(self, index=None):
         '''Get the beam instance at given index.'''
         return self.get_format(index).get_beam()
 
-    def get_goniometer(self, index=None):
+    def read_goniometer(self, index=None):
         '''Get the goniometer instance at given index.'''
         return self.get_format(index).get_goniometer()
 
@@ -369,9 +405,17 @@ class ImageSet(object):
         ''' Get the detector. '''
         return self.reader().get_detector(self._image_index(index))
 
+    def set_detector(self, detector):
+        ''' Set the detector model.'''
+        self.reader().set_detector(detector)
+
     def get_beam(self, index=None):
         ''' Get the beam. '''
         return self.reader().get_beam(self._image_index(index))
+
+    def set_beam(self, beam):
+        ''' Set the beam model.'''
+        self.reader().set_beam(beam)
 
     def get_image_size(self):
         ''' Get the image size. '''
@@ -490,6 +534,10 @@ class ImageSweep(ImageSet):
     def get_goniometer(self, index=None):
         ''' Get goniometer, '''
         return self.reader().get_goniometer(self._image_index(index))
+
+    def set_goniometer(self, goniometer):
+        ''' Set the goniometer model '''
+        self.reader().set_goniometer(goniometer)
 
     def get_scan(self, index=None):
         ''' Get the scan. '''
