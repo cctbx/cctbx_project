@@ -44,7 +44,7 @@ def LoadFormatClasses():
     format_dir = os.path.join(home, '.dxtbx')
     if os.path.exists(format_dir):
         for f in os.listdir(format_dir):
-            if 'Format' in f[:6] and '.py' in f[:-3]:
+            if 'Format' in f[:6] and '.py' in f[-3:]:
                 name = f[:-3]
                 _LoadFormatModule(name, name, format_dir)
 
