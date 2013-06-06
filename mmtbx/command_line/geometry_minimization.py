@@ -102,6 +102,16 @@ minimization
     .short_caption = Planarity
   }
 }
+reference_restraints {
+  restrain_starting_coord_selection = None
+    .type = str
+    .help = Atom selection string: restraint selected to starting position
+    .short_caption = Restrain selection
+    .input_size = 400
+  coordinate_sigma = 0.5
+    .type = float
+    .help = sigma value for coordinates restrained to starting positions
+}
 """
 
 def master_params():
@@ -209,6 +219,7 @@ class run(object):
     self.xray_structure     = None
     self.pdb_hierarchy      = None
     self.selection          = None
+    self.restrain_selection = None
     self.grm                = None
     self.sites_cart         = None
     self.time_strings       = []
@@ -275,6 +286,12 @@ class run(object):
       string = self.params.selection)
     print >> self.log, "  selected %s atoms out of total %s"%(
       str(self.selection.count(True)),str(self.selection.size()))
+    if self.params.reference_restraints.\
+         restrain_starting_coord_selection is not None:
+      self.restrain_selection = mmtbx.utils.atom_selection(
+      all_chain_proxies = self.processed_pdb_file.all_chain_proxies,
+      string = \
+        self.params.reference_restraints.restrain_starting_coord_selection)
 
   def get_restraints(self, prefix):
     broadcast(m=prefix, log = self.log)
@@ -296,6 +313,25 @@ class run(object):
         verbose=False)
       cdl_time = time.time()-t0
       print >> log, "\n  Time to apply CDL : %0.2fs" % (time.time()-t0)
+    # reference
+    if self.restrain_selection is not None:
+      restrain_sites_cart = self.processed_pdb_file.all_chain_proxies.\
+        sites_cart.deep_copy().select(self.restrain_selection)
+      self.grm.geometry.generic_restraints_manager.reference_manager.\
+        add_coordinate_restraints(
+          sites_cart=restrain_sites_cart,
+          selection=self.restrain_selection,
+          sigma=self.params.reference_restraints.coordinate_sigma)
+      ##### sanity check #####
+      assert(self.grm.geometry.
+             generic_restraints_manager.flags.reference==True)
+      assert(self.grm.geometry.
+             generic_restraints_manager.reference_manager.
+             reference_coordinate_proxies is not None)
+      assert(len(self.grm.geometry.
+             generic_restraints_manager.reference_manager.
+             reference_coordinate_proxies) == len(restrain_sites_cart))
+      ########################
 
   def minimization(self, prefix): # XXX USE alternate_nonbonded_off_on etc
     broadcast(m=prefix, log = self.log)
