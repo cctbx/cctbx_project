@@ -477,6 +477,35 @@ class TestImageSet(object):
         imageset.get_detector(index)
         imageset.get_beam(index)
 
+    def tst_set_models(self, imageset):
+        from dxtbx.model import Beam, Detector, Panel
+
+        # Create some other models
+        beam = Beam((1, 0, 0), 0.5)
+        detector = Detector(Panel("UNKNOWN",
+                                  (1, 0, 0), (0, 1, 0), (0, 0, 1),
+                                  (0.1, 0.1), (1000, 1000), (0, 1)))
+
+        # Override sweep models
+        imageset.set_beam(beam)
+        imageset.set_detector(detector)
+
+        # Ensure this doens't interfere with reading
+        for i in imageset:
+            pass
+
+        # Get the models back and check they're ok
+        beam2 = imageset.get_beam()
+        detector2 = imageset.get_detector()
+        assert(beam2 == beam)
+        assert(detector2 == detector)
+
+        # Get the models from an index back and check they're not the same
+        beam2 = imageset.get_beam(0)
+        detector2 = imageset.get_detector(0)
+        assert(beam2 != beam)
+        assert(detector2 != detector)
+
 
 class TestImageSweep(object):
 
@@ -531,6 +560,7 @@ class TestImageSweep(object):
         self.tst_get_models(sweep, range(len(filenames)), 9)
         self.tst_get_array_range(sweep, (0, 9))
         self.tst_to_array(sweep, (3, 7), (3, 7, 50, 100, 100, 200))
+        self.tst_set_models(sweep)
 
     def tst_get_item(self, sweep):
         image = sweep[0]
@@ -650,6 +680,60 @@ class TestImageSweep(object):
                 sub_section[3]-sub_section[2],
                 sub_section[5]-sub_section[4])
         assert(volume.all() == size)
+
+    def tst_set_models(self, sweep):
+        from dxtbx.model import Beam, Goniometer, Detector, Panel
+
+        # Create some other models
+        beam = Beam((1, 0, 0), 0.5)
+        gonio = Goniometer((0, 1, 0))
+        detector = Detector(Panel("UNKNOWN",
+                                  (1, 0, 0), (0, 1, 0), (0, 0, 1),
+                                  (0.1, 0.1), (1000, 1000), (0, 1)))
+
+        # Override sweep models
+        sweep.set_beam(beam)
+        sweep.set_goniometer(gonio)
+        sweep.set_detector(detector)
+
+        # Ensure this doens't interfere with reading
+        for i in sweep:
+            pass
+
+        # Get the models back and check they're ok
+        beam2 = sweep.get_beam()
+        gonio2 = sweep.get_goniometer()
+        detector2 = sweep.get_detector()
+        assert(beam2 == beam)
+        assert(gonio2 == gonio)
+        assert(detector2 == detector)
+
+        # Get the models from an index back and check they're not the same
+        beam2 = sweep.get_beam(0)
+        gonio2 = sweep.get_goniometer(0)
+        detector2 = sweep.get_detector(0)
+        assert(beam2 != beam)
+        assert(gonio2 != gonio)
+        assert(detector2 != detector)
+
+        # Get a sub sweep
+        sub_sweep = sweep[3:7]
+
+        # Get the models back and check they're ok
+        beam2 = sub_sweep.get_beam()
+        gonio2 = sub_sweep.get_goniometer()
+        detector2 = sub_sweep.get_detector()
+        assert(beam2 == beam)
+        assert(gonio2 == gonio)
+        assert(detector2 == detector)
+
+        # Get the models from an index back and check they're not the same
+        beam2 = sub_sweep.get_beam(0)
+        gonio2 = sub_sweep.get_goniometer(0)
+        detector2 = sub_sweep.get_detector(0)
+        assert(beam2 != beam)
+        assert(gonio2 != gonio)
+        assert(detector2 != detector)
 
 
 class TestImageSetFactory(object):
