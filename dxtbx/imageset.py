@@ -759,7 +759,7 @@ class ImageSetFactory(object):
             raise RuntimeError('Invalid sweep of images')
 
         # Return the sweep
-        return sweep[0]
+        return [sweep]
 
     @staticmethod
     def _create_imageset_or_sweep(filelist, check_headers):
