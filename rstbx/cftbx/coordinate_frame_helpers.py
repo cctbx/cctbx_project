@@ -13,7 +13,9 @@ class coordinate_frame_information:
                  real_space_a = None, real_space_b = None,
                  real_space_c = None, space_group_number = None,
                  sigma_divergence = None,
-                 mosaicity = None):
+                 mosaicity = None,
+                 starting_angle = None, oscillation_range = None,
+                 starting_frame = None):
         self._detector_origin = detector_origin
         self._detector_fast = detector_fast
         self._detector_slow = detector_slow
@@ -28,6 +30,9 @@ class coordinate_frame_information:
         self._space_group_number = space_group_number
         self._sigma_divergence = sigma_divergence,
         self._mosaicity = mosaicity
+        self._starting_angle = starting_angle
+        self._oscillation_range = oscillation_range
+        self._starting_frame = starting_frame
 
         self._R_to_CBF = None
         self._R_to_Rossmann = None
@@ -192,6 +197,18 @@ def is_xds_ascii_hkl(putative_xds_ascii_hkl_file):
 
     return False
 
+def is_recognized_file(filename):
+    ''' Check if the file is recognized.'''
+    if is_xds_xparm(filename):
+        return True
+    elif is_xds_integrate_hkl(filename):
+        return True
+    elif is_xds_ascii_hkl(filename):
+        return True
+
+    # Not recognices
+    return False
+
 def import_xds_integrate_hkl(integrate_hkl_file):
     '''Read an XDS INTEGRATE.HKL file, transform the parameters contained therein
     into the standard coordinate frame, record this as a dictionary.'''
@@ -255,6 +272,15 @@ def import_xds_integrate_hkl(integrate_hkl_file):
             ox = float(record.split()[1])
             oy = float(record.split()[3])
             continue
+        if record.startswith('!STARTING_FRAME'):
+            starting_frame = int(record.split()[-1])
+            continue
+        if record.startswith('!STARTING_ANGLE'):
+            starting_angle = float(record.split()[-1])
+            continue
+        if record.startswith('!OSCILLATION_RANGE'):
+            oscillation_range = float(record.split()[-1])
+            continue
 
     # XDS defines the beam vector as s0 rather than from sample -> source.
     # Keep in mind that any inversion of a vector needs to be made with great
@@ -286,7 +312,8 @@ def import_xds_integrate_hkl(integrate_hkl_file):
         detector_origin, detector_fast, detector_slow, (nx, ny), (px, py),
         rotation_axis, sample_to_source, wavelength,
         real_space_a, real_space_b, real_space_c, space_group_number,
-        sigma_divergence, mosaicity)
+        sigma_divergence, mosaicity,
+        starting_angle, oscillation_range, starting_frame)
 
 def import_xds_ascii_hkl(xds_ascii_hkl_file):
     '''Read an XDS INTEGRATE.HKL file, transform the parameters contained therein
@@ -351,6 +378,15 @@ def import_xds_ascii_hkl(xds_ascii_hkl_file):
             ox = float(record.split()[1])
             oy = float(record.split()[3])
             continue
+        if record.startswith('!STARTING_FRAME'):
+            starting_frame = int(record.split()[-1])
+            continue
+        if record.startswith('!STARTING_ANGLE'):
+            starting_angle = float(record.split()[-1])
+            continue
+        if record.startswith('!OSCILLATION_RANGE'):
+            oscillation_range = float(record.split()[-1])
+            continue
 
     # XDS defines the beam vector as s0 rather than from sample -> source.
     # Keep in mind that any inversion of a vector needs to be made with great
@@ -382,7 +418,8 @@ def import_xds_ascii_hkl(xds_ascii_hkl_file):
         detector_origin, detector_fast, detector_slow, (nx, ny), (px, py),
         rotation_axis, sample_to_source, wavelength,
         real_space_a, real_space_b, real_space_c, space_group_number,
-        sigma_divergence, mosaicity)
+        sigma_divergence, mosaicity,
+        starting_angle, oscillation_range, starting_frame)
 
 def import_xds_xparm(xparm_file):
     '''Read an XDS XPARM file, transform the parameters contained therein
@@ -439,11 +476,15 @@ def import_xds_xparm(xparm_file):
     real_space_b = R * matrix.col(b)
     real_space_c = R * matrix.col(c)
     space_group_number = handle.space_group
+    starting_angle = handle.starting_angle
+    oscillation_range = handle.oscillation_range
+    starting_frame = handle.starting_frame
 
     return coordinate_frame_information(
         detector_origin, detector_fast, detector_slow, (nx, ny), (px, py),
         rotation_axis, sample_to_source, wavelength,
-        real_space_a, real_space_b, real_space_c, space_group_number)
+        real_space_a, real_space_b, real_space_c, space_group_number,
+        None, None, starting_angle, oscillation_range, starting_frame)
 
 def test_align_reference_frame():
 
