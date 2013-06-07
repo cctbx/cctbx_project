@@ -59,7 +59,7 @@ def compact_simple_lists(string):
     return re.sub(r'(.*"\w+".*:.*)(\[[^\{\}\[\]]*\])',
         compact_simple_list, string)
 
-def dumps(obj, compact=False):
+def imageset_to_string(obj, compact=False):
     ''' Dump the given object to string.
 
     Params:
@@ -72,22 +72,22 @@ def dumps(obj, compact=False):
     '''
     import json
     import textwrap
-    from dxtbx.serialize import imageset
+    from dxtbx.serialize.imageset import imageset_to_dict
 
     # Return as a JSON string
     if compact == False:
-        string = json.dumps(imageset.to_dict(obj), indent=2)
+        string = json.dumps(imageset_to_dict(obj), indent=2)
 
         # Hack to make more readable
         string = compact_simple_lists(string)
 
     else:
-        string = json.dumps(imageset.to_dict(obj), separators=(',',':'))
+        string = json.dumps(imageset_to_dict(obj), separators=(',',':'))
 
     # Return the string
     return string
 
-def dump(obj, outfile, compact=False):
+def imageset(obj, outfile, compact=False):
     ''' Dump the given object to file.
 
     Params:
@@ -99,8 +99,8 @@ def dump(obj, outfile, compact=False):
     # If the input is a string then open and write to that file
     if isinstance(outfile, str):
         with open(outfile, 'w') as outfile:
-            outfile.write(dumps(obj, compact))
+            outfile.write(imageset_to_string(obj, compact))
 
     # Otherwise assume the input is a file and write to it
     else:
-        outfile.write(dumps(obj, compact))
+        outfile.write(imageset_to_string(obj, compact))
