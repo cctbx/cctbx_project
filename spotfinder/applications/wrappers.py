@@ -63,15 +63,15 @@ class DistlOrganizer:
     S = spotfinder_factory(self.rundir,self.Files,self.phil_params)
     self.S = S
     for frame in self.frames:
-     if self.verbose:
-      pretty_image_stats(S,frame)
-      notes(S,self.frames[0])
+      if self.verbose:
+        pretty_image_stats(S,frame)
+        notes(S,self.frames[0])
 
   def printSpots(self):
     '''spotfinder and pickle implicitly assumes ADSC format'''
     S = spotfinder_factory(self.rundir,self.Files,self.phil_params)
     self.S = S
     for frame in self.frames:
-     if self.verbose:
-      pretty_image_stats(S,frame)
-      notes(S,self.frames[0])
+      if self.verbose:
+        pretty_image_stats(S,frame)
+        notes(S,self.frames[0])
