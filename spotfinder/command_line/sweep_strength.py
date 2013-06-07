@@ -107,8 +107,9 @@ def as_columns(spotfinder_results):
   d = {}
   keys = (
     'N_spots_total', 'N_spots_non-ice', 'N_spots_resolution',
-    'N_spots_unimodal', 'N_spots_inlier', 'intensity', 'area', 'neighbor',
-    'maxcel', 'resolution', 'distl_resolution', 'ice-ring_impact')
+    'N_spots_unimodal', 'N_spots_inlier',
+    #'intensity', 'area', 'neighbor', #'maxcel',
+    'resolution', 'distl_resolution', 'ice-ring_impact')
 
   for i in sorted(spotfinder_results.images.keys()):
     spotfinder_result = spotfinder_results.images[i]
