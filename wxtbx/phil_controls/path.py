@@ -56,6 +56,7 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
     szr.Add(szr2, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|szr2_pad, 5)
     szr2.Add(browse_btn, 0, wx.ALIGN_CENTER_VERTICAL, 5)
     self.Bind(wx.EVT_BUTTON, self.OnBrowse, browse_btn)
+    self.browse_btn = browse_btn
     if (self._path_style & WXTBX_PHIL_PATH_VIEW_BUTTON) :
       bitmap = wxtbx.icons.viewmag.GetBitmap()
       view_btn = wx.BitmapButton(self, -1, bitmap)
@@ -69,6 +70,7 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
     self.SetDropTarget(drop_target)
     self.SetValue(value)
     self._pathmgr = None
+    self._cached_paths = None
 
   def SetFormats (self, formats) :
     if (isinstance(formats, str)) :
@@ -192,6 +194,34 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
     self.Validate()
     self.DoSendEvent()
 
+  def SetCachedPaths (self, paths) :
+    self._cached_paths = paths
+    # XXX on Mac, right-clicking on the TextCtrl is already handled by the OS,
+    # so only the browse button will work for this; need to check other OSes
+    self.browse_btn.Bind(wx.EVT_RIGHT_DOWN, self.OnRightClick, self.browse_btn)
+
+  def OnRightClick (self, event) :
+    assert (self._cached_paths is not None)
+    menu = wx.Menu()
+    current_path_name = self.GetValue()
+    n_items = 0
+    def set_path (pn) :
+      self.SetValue(pn)
+    if (current_path_name not in [None, ""]) :
+      item = menu.Append(-1, current_path_name)
+      self.Bind(wx.EVT_MENU, lambda evt, pn=current_path_name: set_path(pn),
+        item)
+      n_items +=1
+    for path_name in self._cached_paths :
+      if (path_name != current_path_name) :
+        item = menu.Append(-1, path_name)
+        self.Bind(wx.EVT_MENU, lambda evt, pn=path_name: set_path(pn),
+          item)
+        n_items +=1
+    if (n_items > 0) :
+      self.PopupMenu(menu)
+    menu.Destroy()
+
 class PathValidator (text_base.TextCtrlValidator) :
   def CheckFormat (self, value) :
     style = self.GetWindow().GetParent().GetPathStyle()
@@ -249,6 +279,7 @@ if (__name__ == "__main__") :
     style=WXTBX_PHIL_PATH_DIRECTORY|WXTBX_PHIL_PATH_VIEW_BUTTON|
       WXTBX_PHIL_PATH_UPDATE_ON_KILL_FOCUS|WXTBX_PHIL_PATH_DEFAULT_CWD)
   path3.SetOptional(False)
+  path3.SetCachedPaths(["/var/tmp", "/tmp"])
   path4 = PathCtrl(panel, -1, pos=(20,300), name="Default parameters",
     style=WXTBX_PHIL_PATH_NARROW|WXTBX_PHIL_PATH_VIEW_BUTTON)
   path4.SetFormats("phil")
