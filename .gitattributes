@@ -472,6 +472,7 @@ dxtbx/serialize/goniometer.py -text
 dxtbx/serialize/imageset.py -text
 dxtbx/serialize/load.py -text
 dxtbx/serialize/scan.py -text
+dxtbx/serialize/xds.py -text
 dxtbx/sweep_filenames.py -text
 dxtbx/tests/__init__.py -text
 dxtbx/tests/example-xparm.xds -text
