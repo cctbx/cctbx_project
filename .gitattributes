@@ -1205,6 +1205,12 @@ iotbx/xds/gain_cbf.py -text
 iotbx/xds/geometry.py -text
 iotbx/xds/integrate_hkl.py -text
 iotbx/xds/spot_xds.py -text
+iotbx/xds/tests/INTEGRATE.HKL -text
+iotbx/xds/tests/XDS.INP -text
+iotbx/xds/tests/XPARM.XDS -text
+iotbx/xds/tests/tst_integrate_hkl.py -text
+iotbx/xds/tests/tst_xds_inp.py -text
+iotbx/xds/tests/tst_xparm.py -text
 iotbx/xds/xds_cbf.py -text
 iotbx/xds/xds_inp.py -text
 iotbx/xds/xparm.py -text

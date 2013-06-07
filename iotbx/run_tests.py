@@ -67,6 +67,9 @@ tst_list = (
   "$D/regression/tst_expand_ncs.py",
   "$D/regression/tst_merging_statistics.py",
   "$D/regression/tst_simple_map_coefficients.py",
+  "$D/xds/tests/tst_xparm.py",
+  "$D/xds/tests/tst_xds_inp.py",
+  "$D/xds/tests/tst_integrate_hkl.py"
   )
 
 def run():

@@ -91,7 +91,7 @@ class reader:
       if record.startswith('MAXIMUM_NUMBER_OF_PROCESSORS='):
         self.maximum_number_of_processor = int(comp[-1])
         continue
-      if record.startswith('NX='):
+      if record.startswith('NY='):
         self.nx = int(comp[1])
         self.ny = int(comp[3])
         self.px = float(comp[5])
