@@ -11,7 +11,9 @@ class coordinate_frame_information:
                  detector_size_fast_slow, detector_pixel_size_fast_slow,
                  rotation_axis, sample_to_source, wavelength,
                  real_space_a = None, real_space_b = None,
-                 real_space_c = None, space_group_number = None):
+                 real_space_c = None, space_group_number = None,
+                 sigma_divergence = None,
+                 mosaicity = None):
         self._detector_origin = detector_origin
         self._detector_fast = detector_fast
         self._detector_slow = detector_slow
@@ -24,6 +26,8 @@ class coordinate_frame_information:
         self._real_space_b = real_space_b
         self._real_space_c = real_space_c
         self._space_group_number = space_group_number
+        self._sigma_divergence = sigma_divergence,
+        self._mosaicity = mosaicity
 
         self._R_to_CBF = None
         self._R_to_Rossmann = None
@@ -176,6 +180,18 @@ def is_xds_integrate_hkl(putative_integrate_hkl_file):
 
     return False
 
+def is_xds_ascii_hkl(putative_xds_ascii_hkl_file):
+    '''See if this looks like an XDS INTEGRATE.HKL file.'''
+
+    lines = open(putative_xds_ascii_hkl_file).readlines()
+    if len(lines) < 2:
+        return False
+
+    if '!OUTPUT_FILE=XDS_ASCII.HKL' in lines[1]:
+        return True
+
+    return False
+
 def import_xds_integrate_hkl(integrate_hkl_file):
     '''Read an XDS INTEGRATE.HKL file, transform the parameters contained therein
     into the standard coordinate frame, record this as a dictionary.'''
@@ -223,6 +239,12 @@ def import_xds_integrate_hkl(integrate_hkl_file):
         if record.startswith('!SPACE_GROUP_NUMBER='):
             space_group_number = int(record.split()[-1])
             continue
+        if record.startswith('!BEAM_DIVERGENCE_E.S.D.'):
+            sigma_divergence = float(record.split()[-1])
+            continue
+        if record.startswith('!REFLECTING_RANGE_E.S.D.'):
+            mosaicity = float(record.split()[-1])
+            continue
         if record.startswith('!NX='):
             nx = int(record.split()[1])
             ny = int(record.split()[3])
@@ -263,7 +285,104 @@ def import_xds_integrate_hkl(integrate_hkl_file):
     return coordinate_frame_information(
         detector_origin, detector_fast, detector_slow, (nx, ny), (px, py),
         rotation_axis, sample_to_source, wavelength,
-        real_space_a, real_space_b, real_space_c, space_group_number)
+        real_space_a, real_space_b, real_space_c, space_group_number,
+        sigma_divergence, mosaicity)
+
+def import_xds_ascii_hkl(xds_ascii_hkl_file):
+    '''Read an XDS INTEGRATE.HKL file, transform the parameters contained therein
+    into the standard coordinate frame, record this as a dictionary.'''
+
+    assert(is_xds_ascii_hkl(xds_ascii_hkl_file))
+
+    header = []
+
+    for record in open(xds_ascii_hkl_file):
+        if not record.startswith('!'):
+            break
+
+        header.append(record)
+
+    # now need to dig out the values I want, convert and return
+
+    for record in header:
+        if record.startswith('!ROTATION_AXIS='):
+            axis = map(float, record.split()[-3:])
+            continue
+        if record.startswith('!INCIDENT_BEAM_DIRECTION='):
+            beam = map(float, record.split()[-3:])
+            continue
+        if record.startswith('!DIRECTION_OF_DETECTOR_X-AXIS='):
+            x = map(float, record.split()[-3:])
+            continue
+        if record.startswith('!DIRECTION_OF_DETECTOR_Y-AXIS='):
+            y = map(float, record.split()[-3:])
+            continue
+        if record.startswith('!UNIT_CELL_A-AXIS='):
+            a = map(float, record.split()[-3:])
+            continue
+        if record.startswith('!UNIT_CELL_B-AXIS='):
+            b = map(float, record.split()[-3:])
+            continue
+        if record.startswith('!UNIT_CELL_C-AXIS='):
+            c = map(float, record.split()[-3:])
+            continue
+        if record.startswith('!X-RAY_WAVELENGTH='):
+            wavelength = float(record.split()[-1])
+            continue
+        if record.startswith('!DETECTOR_DISTANCE='):
+            distance = float(record.split()[-1])
+            continue
+        if record.startswith('!SPACE_GROUP_NUMBER='):
+            space_group_number = int(record.split()[-1])
+            continue
+        if record.startswith('!BEAM_DIVERGENCE_E.S.D.'):
+            sigma_divergence = float(record.split()[-1])
+            continue
+        if record.startswith('!REFLECTING_RANGE_E.S.D.'):
+            mosaicity = float(record.split()[-1])
+            continue
+        if record.startswith('!NX='):
+            nx = int(record.split()[1])
+            ny = int(record.split()[3])
+            px = float(record.split()[5])
+            py = float(record.split()[7])
+            continue
+        if record.startswith('!ORGX='):
+            ox = float(record.split()[1])
+            oy = float(record.split()[3])
+            continue
+
+    # XDS defines the beam vector as s0 rather than from sample -> source.
+    # Keep in mind that any inversion of a vector needs to be made with great
+    # care!
+
+    B = - matrix.col(beam).normalize()
+    A = matrix.col(axis).normalize()
+
+    X = matrix.col(x).normalize()
+    Y = matrix.col(y).normalize()
+    N = X.cross(Y)
+
+    _X = matrix.col([1, 0, 0])
+    _Y = matrix.col([0, 1, 0])
+    _Z = matrix.col([0, 0, 1])
+
+    R = align_reference_frame(A, _X, B, _Z)
+
+    detector_origin = R * (distance * N - ox * px * X - oy * py * Y)
+    detector_fast = R * X
+    detector_slow = R * Y
+    rotation_axis = R * A
+    sample_to_source = R * B
+    real_space_a = R * matrix.col(a)
+    real_space_b = R * matrix.col(b)
+    real_space_c = R * matrix.col(c)
+
+    return coordinate_frame_information(
+        detector_origin, detector_fast, detector_slow, (nx, ny), (px, py),
+        rotation_axis, sample_to_source, wavelength,
+        real_space_a, real_space_b, real_space_c, space_group_number,
+        sigma_divergence, mosaicity)
 
 def import_xds_xparm(xparm_file):
     '''Read an XDS XPARM file, transform the parameters contained therein
