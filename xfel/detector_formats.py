@@ -72,5 +72,7 @@ def detector_format_version(address, time):
       return 'CXI 7.1'
     elif address == 'CxiDsd-0|Cspad-0':
       return 'CXI 7.d'
+    elif address == 'XppGon-0|Cspad-0':
+      return 'XPP 7.1'
 
   return None
