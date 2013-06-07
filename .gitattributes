@@ -1206,6 +1206,7 @@ iotbx/xds/geometry.py -text
 iotbx/xds/integrate_hkl.py -text
 iotbx/xds/spot_xds.py -text
 iotbx/xds/xds_cbf.py -text
+iotbx/xds/xds_inp.py -text
 iotbx/xds/xparm.py -text
 ipctbx/SConscript -text
 ipctbx/__init__.py svneol=native#text/x-python
