@@ -10,7 +10,6 @@
 from __future__ import division
 
 from dxtbx.format.Format import Format
-from iotbx.xds import xparm
 
 class FormatXPARM(Format):
     '''An image reading class for XDS XPARM.XDS files'''
@@ -19,7 +18,9 @@ class FormatXPARM(Format):
     def understand(image_file):
         '''Check to see if this looks like an CBF format image, i.e. we can
         make sense of it.'''
-        return xparm.reader.is_xparm_file(image_file, check_filename = False)
+        from rstbx.cftbx.coordinate_frame_helpers import is_recognized_file
+        return is_recognized_file(image_file)
+#        return xparm.reader.is_xparm_file(image_file, check_filename = False)
 
     def __init__(self, image_file):
         '''Initialise the image structure from the given file.'''
@@ -48,15 +49,6 @@ class FormatXPARM(Format):
             coordinate_frame_converter
         from scitbx import matrix
 
-        # Read some quantities directly from the XPARM.XDS file
-        xparm_handle = xparm.reader()
-        xparm_handle.read_file(xparm_filename, check_filename = False)
-        self._image_size = xparm_handle.detector_size
-        self._pixel_size = xparm_handle.pixel_size
-        self._starting_angle = xparm_handle.starting_angle
-        self._oscillation_range = xparm_handle.oscillation_range
-        self._starting_frame = xparm_handle.starting_frame
-
         # Create a coordinate frame converter and extract other quantities
         cfc = coordinate_frame_converter(xparm_filename)
         self._detector_origin = cfc.get('detector_origin')
@@ -64,6 +56,11 @@ class FormatXPARM(Format):
         self._fast_axis = cfc.get('detector_fast')
         self._slow_axis = cfc.get('detector_slow')
         self._wavelength  = cfc.get('wavelength')
+        self._image_size  = cfc.get('detector_size_fast_slow')
+        self._pixel_size  = cfc.get('detector_pixel_size_fast_slow')
+        self._starting_angle = cfc.get('starting_angle')
+        self._oscillation_range = cfc.get('oscillation_range')
+        self._starting_frame = cfc.get('starting_frame')
         sample_vector = cfc.get('sample_to_source')
         self._beam_vector = tuple(matrix.col(sample_vector))
 
