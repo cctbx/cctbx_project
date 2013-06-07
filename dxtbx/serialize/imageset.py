@@ -9,6 +9,14 @@
 #  This code is distributed under the BSD license, a copy of which is
 #  included in the root directory of this package.
 
+def filename_to_absolute(filename):
+    ''' Convert filenames to absolute form. '''
+    import os
+    if isinstance(filename, list):
+        return [os.path.abspath(f) for f in filename]
+
+    return os.path.abspath(filename)
+
 def imageset_to_dict(imageset):
     ''' Convert an imageset to a dictionary
 
@@ -25,7 +33,7 @@ def imageset_to_dict(imageset):
     # Return the dictionary representation
     return OrderedDict([
         ("__id__", "imageset"),
-        ("filenames", imageset.paths()),
+        ("filenames", filename_to_absolute(imageset.paths())),
         ("beam", beam.to_dict(imageset.get_beam())),
         ("detector", detector.to_dict(imageset.get_detector()))])
 
@@ -45,7 +53,7 @@ def imagesweep_to_dict(sweep):
     # Return the dictionary representation
     return OrderedDict([
         ("__id__", "imageset"),
-        ("template", sweep.get_template()),
+        ("template", filename_to_absolute(sweep.get_template())),
         ("beam", beam.to_dict(sweep.get_beam())),
         ("detector", detector.to_dict(sweep.get_detector())),
         ("goniometer", goniometer.to_dict(sweep.get_goniometer())),
