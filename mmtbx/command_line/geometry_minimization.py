@@ -351,11 +351,14 @@ class run(object):
     self.xray_structure.set_sites_cart(sites_cart = self.sites_cart)
     self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
     ofn = self.params.output_file_name_prefix
+    directory = self.params.directory
     if(ofn is None):
       pfn = os.path.basename(self.pdb_file_names[0])
       ind = max(0,pfn.rfind("."))
       ofn = pfn+"_minimized.pdb" if ind==0 else pfn[:ind]+"_minimized.pdb"
     else: ofn = self.params.output_file_name_prefix+".pdb"
+    if directory is not None:
+      ofn = os.path.join(directory, ofn)
     print >> self.log, "  output file name:", ofn
     self.pdb_hierarchy.write_pdb_file(file_name = ofn, crystal_symmetry =
       self.xray_structure.crystal_symmetry())
