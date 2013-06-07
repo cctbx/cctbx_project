@@ -2239,6 +2239,7 @@ spotfinder/command_line/find_active_area.py -text
 spotfinder/command_line/image_viewer.py -text
 spotfinder/command_line/mp_spotfinder_server_read_file.py -text
 spotfinder/command_line/signal_strength.py -text
+spotfinder/command_line/sweep_strength.py -text
 spotfinder/command_line/thin_client.py -text
 spotfinder/core_toolbox/__init__.py -text
 spotfinder/core_toolbox/boost_python/SConscript -text
