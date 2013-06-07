@@ -139,7 +139,7 @@ def run (args) :
         rs = match_runs(params.xtc_dir)
         add_runs = []
         for r in rs:
-          if not ((params.start_run is not None and r.id < params.start_run) or (params.end_run is not None and  r > params.end_run)):
+          if not ((params.start_run is not None and r.id < params.start_run) or (params.end_run is not None and r.id > params.end_run)):
             if not db.run_in_trial(r.id, params.trial_id):
               doit = True
               for test in submitted_runs:
@@ -193,7 +193,7 @@ def run (args) :
             except ValueError:
               pass
           if r is not None and s is not None and c is not None and c == 0:
-            if not ((params.start_run is not None and r < params.start_run) or (params.end_run is not None and  r > params.end_run)):
+            if not ((params.start_run is not None and r.id < params.start_run) or (params.end_run is not None and r.id > params.end_run)):
             #  if not db.run_in_trial(r.id, params.trial_id):  can't check for this when queueing streams.  can lead to duplicate data.
               if not f in submitted_files:
 
