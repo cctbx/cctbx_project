@@ -66,6 +66,10 @@ distl {
   processors = 1
     .type = int
     .help="For the multithreaded server version, number of server processes to be used"
+  nproc = 1
+    .type = int
+    .short_caption = Number of processes
+    .help="Number of processes to be used when processing multiple images."
 }
 """ % spotfinder.inner_phil_str
 
