@@ -33,16 +33,32 @@ def spotfinder_factory(absrundir,frames,phil_params):
   from spotfinder.applications.practical_heuristics import heuristics_base
   Spotfinder = heuristics_base(pd,phil_params)
 
-  for framenumber in local_frames:
+  from libtbx import easy_mp
+
+  def run_spotfinder(args):
+    assert len(args) == 2
+    framenumber, frames = args
     try:
       assert Spotfinder.images.has_key(framenumber)
     except Exception:
       Spotfinder.register_frames(framenumber,frames)
       if phil_params.spotfinder_verbose: Spotfinder.show()
+    return Spotfinder
 
+  iterable = [(framenumber, frames) for framenumber in local_frames]
+  results = easy_mp.parallel_map(
+    func=run_spotfinder,
+    iterable=iterable,
+    processes=phil_params.distl.nproc,
+    method="multiprocessing",
+    preserve_order=True
+  )
+  for result in results:
+    Spotfinder.images.update(result.images)
   return Spotfinder
 
-class DistlOrganizer:
+
+class DistlOrganizer(object):
 
   def __init__(self,verbose = 0,**kwargs):
     self.rundir = os.getcwd()
