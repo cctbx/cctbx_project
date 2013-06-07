@@ -118,24 +118,34 @@ def as_columns(spotfinder_results):
       d[k].append(spotfinder_result[k])
   return d
 
-def plot(spotfinder_results, file_name, format="png"):
-  from matplotlib import pyplot
+def plot(spotfinder_results, file_name):
+  try:
+    from matplotlib import pyplot
+  except ImportError:
+    raise Sorry("matplotlib must be installed to generate a plot.")
   columns = as_columns(spotfinder_results)
   n_spots = columns.get('N_spots_inlier')
   resolution = columns.get('resolution')
-  i_image = range(len(n_spots))
+  i_image = range(1, len(n_spots)+1)
   fig = pyplot.figure()
   ax1 = fig.add_subplot(111)
-  ln1 = ax1.plot(i_image, n_spots, 'b--')
+  sc1 = ax1.scatter(i_image, n_spots, s=20, color='blue', marker='o', alpha=0.5)
   ax1.set_xlabel('Image #')
   ax1.set_ylabel('# spots')
+  ax1.set_xlim((0, len(n_spots)))
   ax1.set_ylim(bottom=0)
   ax2 = ax1.twinx()
-  ln2 = ax2.plot(i_image, resolution, 'r:')
+  sc2 = ax2.scatter(i_image, resolution, s=20, color='red', marker='^', alpha=0.5)
   ax2.set_ylabel(u'resolution (\u00c5)')
-  ax2.set_ylim(bottom=0)
-  pyplot.legend(ln1+ln2, ('# good spots', 'resolution (method 2)'), loc=0)
-  pyplot.savefig(file_name, dpi=600)
+  ax2.set_xlim((0, len(n_spots)))
+  ax2.invert_yaxis()
+  lgd = pyplot.legend(
+    (sc1, sc2), ('# good spots', 'resolution (method 2)'), ncol=2,
+    loc='upper center',
+    mode="expand", borderaxespad=0.,
+    bbox_to_anchor=(0.0,-0.22, 1., .102))
+  pyplot.savefig(file_name, dpi=600, bbox_extra_artists=(lgd,),
+                 bbox_inches='tight')
 
 def as_csv(spotfinder_results, out=None):
   if out is None:
