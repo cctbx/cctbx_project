@@ -130,6 +130,9 @@ def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log):
           for residue in conformer.residues():
             if(residue.resname.strip().upper() == "PRO"): continue
             atoms = residue.atoms()
+            if(get_class(name=residue.resname)=="common_water" and
+               len(atoms)==1):
+                 continue
             if(get_class(name=residue.resname)=="common_amino_acid" and
                not first_or_last):
               fr = rotatable_bonds.axes_and_atoms_aa_specific(
