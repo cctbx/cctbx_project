@@ -602,33 +602,47 @@ def exercise_mask_data_2(space_group_info, n_sites=100, d_min=2.0,
                          resolution_factor=1./4):
   from cctbx import maptbx
   from cctbx.masks import vdw_radii_from_xray_structure
-  for yn in [0,1]:
-    xrs = random_structure.xray_structure(
-      space_group_info=space_group_info,
-      elements=(("O","N","C")*(n_sites//3+1))[:n_sites],
-      volume_per_atom=50,
-      min_distance=1.5)
-    atom_radii = vdw_radii_from_xray_structure(xray_structure = xrs)
-    asu_mask = masks.atom_mask(
-      unit_cell                = xrs.unit_cell(),
-      group                    = xrs.space_group(),
-      resolution               = d_min,
-      grid_step_factor         = resolution_factor,
-      solvent_radius           = 1.0,
-      shrink_truncation_radius = 1.0)
-    asu_mask.compute(xrs.sites_frac(), atom_radii)
-    mask_data = asu_mask.mask_data_whole_uc()
-    mask_data = mask_data / xrs.space_group().order_z()
-    if(yn == 1):
-      mask_data = maptbx.copy(mask_data, flex.grid(mask_data.focus()))
-    fc = xrs.structure_factors(d_min = d_min).f_calc()
-    f_mask_1 = fc.set().array(data = asu_mask.structure_factors(fc.indices()))
-    f_mask_2 = f_mask_1.structure_factors_from_map(map=mask_data,
-      use_scale = True, anomalous_flag = False, use_sg = True)
-    fm1 = abs(f_mask_1).data()
-    fm2 = abs(f_mask_2).data()
-    r = flex.sum( flex.abs( fm1 - fm2 ) ) / flex.sum( fm1 + fm2 )
-    assert approx_equal(r, 0.0)
+  for yn2 in [0,1]:
+    for yn in [0,1]:
+      xrs = random_structure.xray_structure(
+        space_group_info=space_group_info,
+        elements=(("O","N","C")*(n_sites//3+1))[:n_sites],
+        volume_per_atom=50,
+        min_distance=1.5)
+      xrs.shake_sites_in_place(mean_distance=10)
+      if(yn2): xrs = xrs.expand_to_p1(sites_mod_positive=True)
+      atom_radii = vdw_radii_from_xray_structure(xray_structure = xrs)
+      asu_mask = masks.atom_mask(
+        unit_cell                = xrs.unit_cell(),
+        group                    = xrs.space_group(),
+        resolution               = d_min,
+        grid_step_factor         = resolution_factor,
+        solvent_radius           = 1.0,
+        shrink_truncation_radius = 1.0)
+      asu_mask.compute(xrs.sites_frac(), atom_radii)
+      mask_data = asu_mask.mask_data_whole_uc()
+      #
+      xrs_p1 = xrs.expand_to_p1(sites_mod_positive=True)
+      for site_frac in xrs_p1.sites_frac():
+        mv = mask_data.value_at_closest_grid_point(site_frac)
+        assert mv == 0
+      #
+      mask_data = mask_data / xrs.space_group().order_z()
+      if(yn == 1):
+        mask_data = maptbx.copy(mask_data, flex.grid(mask_data.focus()))
+      #
+      for site_frac in xrs_p1.sites_frac():
+        mv = mask_data.value_at_closest_grid_point(site_frac)
+        assert mv == 0
+      #
+      fc = xrs.structure_factors(d_min = d_min).f_calc()
+      f_mask_1 = fc.set().array(data = asu_mask.structure_factors(fc.indices()))
+      f_mask_2 = f_mask_1.structure_factors_from_map(map=mask_data,
+        use_scale = True, anomalous_flag = False, use_sg = True)
+      fm1 = abs(f_mask_1).data()
+      fm2 = abs(f_mask_2).data()
+      r = flex.sum( flex.abs( fm1 - fm2 ) ) / flex.sum( fm1 + fm2 )
+      assert approx_equal(r, 0.0)
 
 def run_call_back(flags, space_group_info):
   exercise_mask_data_1(space_group_info)
