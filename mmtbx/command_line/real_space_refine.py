@@ -20,6 +20,7 @@ import mmtbx.restraints
 import mmtbx.refinement.real_space.driver
 import mmtbx.utils
 import mmtbx.secondary_structure
+from iotbx import reflection_file_utils
 
 if (1):
   random.seed(0)
