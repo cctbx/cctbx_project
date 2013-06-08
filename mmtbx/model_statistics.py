@@ -539,7 +539,7 @@ class adp(object):
     if cif_block is None:
       cif_block = iotbx.cif.model.block()
     cif_block["_reflns.B_iso_Wilson_estimate"] = self.wilson_b
-    cif_block["_refine.B_iso_mean"] = self.rms_b_iso_or_b_equiv_bonded
+    cif_block["_refine.B_iso_mean"] = self.b_mean_a
     #_refine.aniso_B[1][1]
     #_refine.aniso_B[2][2]
     #_refine.aniso_B[3][3]
