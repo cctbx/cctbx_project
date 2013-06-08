@@ -30,26 +30,27 @@ af::shared<FloatType>
     result.resize(sites_frac.size(), 0.0);
     af::ref<FloatType> result_ref = result.ref();
     scitbx::sym_mat3<FloatType> sphericity_tensor;
-    sphericity_tensor.fill(0);
     af::tiny<FloatType, 6> ucp = unit_cell.parameters();
     FloatType ucs = unit_cell.volume() / (ucp[0]*ucp[1]*ucp[2]);
     for(int j = 0; j < sites_frac.size(); j++) {
+      sphericity_tensor.fill(0);
       cctbx::fractional<> site_frac = sites_frac[j];
       af::tiny<int, 3> box_min, box_max, n_center;
       for(int i = 0; i <= 2; i++) {
         FloatType rf=radius/ucp[i]/(ucs/std::sin(scitbx::deg_as_rad(ucp[i+3])));
         box_min[i] = sm::nearest_integer(n_real[i]*(site_frac[i]-rf));
         box_max[i] = sm::nearest_integer(n_real[i]*(site_frac[i]+rf));
-        n_center[i] = sm::nearest_integer(n_real[i]*site_frac[i]);
+        n_center[i] = sm::mod_positive(
+          sm::nearest_integer(n_real[i]*site_frac[i]), n_real[i]);
       }
       FloatType min_peak_value = map_data(n_center)/3.;
-      for(int kx = box_min[0]; kx <= box_max[0]; kx++) {
+      for(int kx = box_min[0]; kx < box_max[0]; kx++) {
         FloatType xn=site_frac[0]-FloatType(kx)/n_real[0];
         int mx = sm::mod_positive(kx, n_real[0]);
-        for(int ky = box_min[1]; ky <= box_max[1]; ky++) {
+        for(int ky = box_min[1]; ky < box_max[1]; ky++) {
           FloatType yn=site_frac[1]-FloatType(ky)/n_real[1];
           int my = sm::mod_positive(ky, n_real[1]);
-          for(int kz = box_min[2]; kz <= box_max[2]; kz++) {
+          for(int kz = box_min[2]; kz < box_max[2]; kz++) {
             FloatType zn=site_frac[2]-FloatType(kz)/n_real[2];
             int mz = sm::mod_positive(kz, n_real[2]);
             FloatType map_value = map_data(mx,my,mz);

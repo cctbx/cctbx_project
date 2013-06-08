@@ -111,6 +111,7 @@ cctbx/maptbx/boost_python/time_grid_indices_around_sites.py svneol=native#text/x
 cctbx/maptbx/fft.h -text
 cctbx/maptbx/grid_indices_around_sites.h svneol=native#text/plain
 cctbx/maptbx/histogram.h -text
+cctbx/maptbx/mask.h -text
 cctbx/maptbx/mem.py -text
 cctbx/maptbx/real_space_gradients_simple.h svneol=native#text/plain
 cctbx/maptbx/real_space_refinement_simple.py svneol=native#text/x-python
@@ -120,6 +121,8 @@ cctbx/maptbx/sphericity.h -text
 cctbx/maptbx/standard_deviations_around_sites.hpp svneol=native#text/plain
 cctbx/maptbx/tst_ccp.py -text
 cctbx/maptbx/tst_get_percentile_cutoffs.py -text
+cctbx/maptbx/tst_map_peak_3d_as_2d.py -text
+cctbx/maptbx/tst_mask.py -text
 cctbx/maptbx/tst_real_space_refinement_simple.py svneol=native#text/x-python
 cctbx/maptbx/tst_real_space_target_and_gradients.py -text
 cctbx/math/SConscript -text

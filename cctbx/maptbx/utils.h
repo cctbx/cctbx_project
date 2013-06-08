@@ -6,7 +6,6 @@
 #include <scitbx/array_family/accessors/flex_grid.h>
 #include <cctbx/uctbx.h>
 
-
 namespace cctbx { namespace maptbx {
 
   //! Miller index element corresponding to 1-dimensional array index.
@@ -245,6 +244,23 @@ void convert_to_non_negative(
       for(int k = 0; k < nz; k++) {
          double rho = map_data(i,j,k);
          if(rho<0) map_data(i,j,k) = substitute_value;
+  }}}
+}
+
+template <typename DataType>
+void flexible_boundary_mask(
+       af::ref<DataType, af::c_grid<3> > map_data,
+       af::ref<DataType, af::c_grid<3> > mask_data)
+{
+  int nx = map_data.accessor()[0];
+  int ny = map_data.accessor()[1];
+  int nz = map_data.accessor()[2];
+  for(int i = 0; i < nx; i++) {
+    for(int j = 0; j < ny; j++) {
+      for(int k = 0; k < nz; k++) {
+         double r = map_data(i,j,k);
+         double m = mask_data(i,j,k);
+         mask_data(i,j,k)=std::max(m-r, 0.0);
   }}}
 }
 

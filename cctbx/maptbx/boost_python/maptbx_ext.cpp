@@ -12,6 +12,7 @@
 #include <boost/python/args.hpp>
 #include <cctbx/maptbx/histogram.h>
 #include <cctbx/maptbx/sphericity.h>
+#include <cctbx/maptbx/mask.h>
 #include <cctbx/maptbx/utils.h>
 
 namespace cctbx { namespace maptbx { namespace boost_python {
@@ -257,12 +258,30 @@ namespace {
       arg("sites_frac"),
       arg("radius")));
 
+    def("mask",
+      (af::versa<double, af::c_grid<3> >(*)
+        (af::const_ref<scitbx::vec3<double> > const&,
+          uctbx::unit_cell const&,
+          af::tiny<int, 3> const&,
+          af::const_ref<double> const&)) mask, (
+      arg("sites_frac"),
+      arg("unit_cell"),
+      arg("n_real"),
+      arg("radii")));
+
     def("convert_to_non_negative",
       (void(*)
         (af::ref<double, af::c_grid<3> >,
          double)) convert_to_non_negative, (
       arg("data"),
       arg("substitute_value")));
+
+    def("flexible_boundary_mask",
+      (void(*)
+        (af::ref<double, af::c_grid<3> >,
+         af::ref<double, af::c_grid<3> >)) flexible_boundary_mask, (
+      arg("data"),
+      arg("mask")));
 
     def("reset",
       (void(*)

@@ -300,7 +300,6 @@ Returns None if a*x=b has no solution.
       x = ct.matrix_multiply(x)
   return x
 
-
 class finite_difference_computation(object):
   """ Computing the derivative of a scalar function f(x, ...) wrt x,
   where x may be a vector, involves computing f(x + h, ...)
@@ -326,3 +325,17 @@ class finite_difference_computation(object):
     h = s*u
     h = (x + h) - x
     return h
+
+def point_on_sphere(r, s_deg, t_deg, center):
+  """
+  Returns a point on sphere of radius r: see definition of polar (sperical)
+  coordinate system in 3D.
+  """
+  sin = math.sin
+  cos = math.cos
+  s = s_deg*math.pi/180
+  t = t_deg*math.pi/180
+  x = center[0] + r * cos(s) * sin(t)
+  y = center[1] + r * sin(s) * sin(t)
+  z = center[2] + r * cos(t)
+  return x,y,z
