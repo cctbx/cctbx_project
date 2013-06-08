@@ -14,6 +14,7 @@ from libtbx import adopt_init_args
 import libtbx.load_env
 import math
 import sys, os
+import scitbx.math
 
 debug_peak_cluster_analysis = os.environ.get(
   "CCTBX_MAPTBX_DEBUG_PEAK_CLUSTER_ANALYSIS", "")
@@ -25,6 +26,17 @@ flex.int.value_at_closest_grid_point = value_at_closest_grid_point
 flex.double.value_at_closest_grid_point = value_at_closest_grid_point
 flex.double.eight_point_interpolation = eight_point_interpolation
 flex.double.tricubic_interpolation = tricubic_interpolation
+
+def mask(xray_structure, n_real, solvent_radius):
+  xrs_p1 = xray_structure.expand_to_p1(sites_mod_positive=True)
+  from cctbx.masks import vdw_radii_from_xray_structure
+  radii = vdw_radii_from_xray_structure(xray_structure = xrs_p1)
+  radii = radii + solvent_radius
+  return ext.mask(
+    sites_frac = xrs_p1.sites_frac(),
+    unit_cell  = xrs_p1.unit_cell(),
+    n_real     = n_real,
+    radii      = radii)
 
 class statistics(ext.statistics):
 
@@ -917,6 +929,31 @@ class local_scale(object):
         use_scale      = True,
         anomalous_flag = False,
         use_sg         = False)
+
+def map_peak_3d_as_2d(
+      map_data,
+      unit_cell,
+      center_cart,
+      radius,
+      step = 0.01,
+      s_angle_sampling_step = 10,
+      t_angle_sampling_step = 10):
+  rho_1d = flex.double()
+  dist = flex.double()
+  radius = int(radius*100)+1
+  step = int(step*100)
+  for r in range(0,radius,step):
+    r = r/100.
+    dist.append(r)
+    rho = flex.double()
+    for s in xrange(0,360,s_angle_sampling_step):
+      for t in xrange(0,360,t_angle_sampling_step):
+        xc,yc,zc = scitbx.math.point_on_sphere(r=r, s_deg=s, t_deg=t,
+          center=center_cart)
+        xf,yf,zf = unit_cell.fractionalize([xc,yc,zc])
+        rho.append(map_data.eight_point_interpolation([xf,yf,zf]))
+    rho_1d.append(flex.mean(rho))
+  return dist, rho_1d
 
 class positivity_constrained_density_modification(object):
   def __init__(self, f, f_000, n_cycles=100, resolution_factor=0.25, d_min=None,
