@@ -1,4 +1,4 @@
-# -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
+# -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
 # $Id$
 """Interactive image viewer for CSPad images
@@ -58,20 +58,19 @@ def _image_factory(img_dict):
   cspad_tbx.  See also iotbx.detectors.NpyImage.
   """
 
-  data       = img_dict["DATA"]
   parameters = dict(
-    BEAM_CENTER_X        = cspad_tbx.pixel_size * img_dict["BEAM_CENTER"][0],
-    BEAM_CENTER_Y        = cspad_tbx.pixel_size * img_dict["BEAM_CENTER"][1],
-    CCD_IMAGE_SATURATION = cspad_tbx.dynamic_range,
-    DISTANCE             = img_dict["DISTANCE"],
-    OSC_RANGE            = 0,
-    OSC_START            = 0,
-    PIXEL_SIZE           = cspad_tbx.pixel_size,
-    SATURATED_VALUE      = cspad_tbx.dynamic_range,
-    SIZE1                = data.focus()[0],
-    SIZE2                = data.focus()[1],
-    WAVELENGTH           = img_dict["WAVELENGTH"])
-  return (_ImgDict(data, parameters))
+    BEAM_CENTER_X=img_dict['PIXEL_SIZE'] * img_dict['BEAM_CENTER'][0],
+    BEAM_CENTER_Y=img_dict['PIXEL_SIZE'] * img_dict['BEAM_CENTER'][1],
+    CCD_IMAGE_SATURATION=img_dict['SATURATED_VALUE'],
+    DISTANCE=img_dict['DISTANCE'],
+    OSC_RANGE=0,
+    OSC_START=0,
+    PIXEL_SIZE=img_dict['PIXEL_SIZE'],
+    SATURATED_VALUE=img_dict['SATURATED_VALUE'],
+    SIZE1=img_dict['DATA'].focus()[0],
+    SIZE2=img_dict['DATA'].focus()[1],
+    WAVELENGTH=img_dict['WAVELENGTH'])
+  return _ImgDict(img_dict['DATA'], parameters)
 
 from iotbx import detectors
 detectors.ImageFactory = _image_factory
@@ -393,13 +392,25 @@ class mod_view(common_mode.common_mode_correction):
       title = "r%04d@%s: average of %d last images on %s" \
           % (evt.run(), time_str, self.nvalid, self.address)
 
+      # See mod_average.py.
+      if self.address == 'XppGon-0|marccd-0':
+        beam_center = tuple(t // 2 for t in self.img_sum.focus())
+        pixel_size = 0.079346
+        saturated_value = 65535
+      else:
+        beam_center = self.beam_center
+        pixel_size = cspad_tbx.pixel_size
+        saturated_value = cspad_tbx.dynamic_range
+
       # Wait for the viewer process to empty the queue before feeding
       # it a new image, and ensure not to hang if the viewer process
       # exits.  Because of multithreading/multiprocessing semantics,
       # self._queue.empty() is unreliable.
-      img_obj = (dict(BEAM_CENTER=self.beam_center,
+      img_obj = (dict(BEAM_CENTER=beam_center,
                       DATA=self.img_sum / self.nvalid,
                       DISTANCE=distance,
+                      PIXEL_SIZE=pixel_size,
+                      SATURATED_VALUE=saturated_value,
                       WAVELENGTH=self.wavelength),
                  title)
 
