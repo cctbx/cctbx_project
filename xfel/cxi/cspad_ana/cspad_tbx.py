@@ -11,18 +11,16 @@ XXX Read out detector temperature (see Hart et al., 2012)?
 """
 from __future__ import division
 
-__version__ = "$Revision$"
-
 import math
 import numpy
 import os
 import time
 
-from pypdsdata import xtc
-
 from libtbx import easy_pickle
 from scitbx.array_family import flex
 from xfel.cxi.cspad_ana.parse_calib import Section
+
+__version__ = "$Revision$"
 
 
 # The CAMP and CSpad counters are both 14 bits wide (Strüder et al
@@ -724,7 +722,9 @@ def evt_pulse_energy(evt):
   """
 
   if evt is not None:
-    gmd = evt.get(key=xtc.TypeId.Type.Id_GMD)
+    from pypdsdata.xtc import TypeId
+
+    gmd = evt.get(key=TypeId.Type.Id_GMD)
     if hasattr(gmd, 'fRelativeEnergyPerPulse'):
       # Note that fRelativeEnergyPerPulse actually gives the negated
       # value sought.  Details are given in Moeller, S. (2012) "GMD
@@ -850,24 +850,26 @@ def getConfig(address, env):
   this already exists somewhere in pyana.
   """
 
+  from pypdsdata.xtc import TypeId
+
   device = address_split(address)[2]
   if device is None:
     return None
 
   elif device == 'Andor':
-    return env.getConfig(xtc.TypeId.Type.Id_AndorConfig, address)
+    return env.getConfig(TypeId.Type.Id_AndorConfig, address)
 
   elif device == 'Cspad':
-    return env.getConfig(xtc.TypeId.Type.Id_CspadConfig, address)
+    return env.getConfig(TypeId.Type.Id_CspadConfig, address)
 
   elif device == 'Cspad2x2':
-    config = env.getConfig(xtc.TypeId.Type.Id_Cspad2x2Config, address)
+    config = env.getConfig(TypeId.Type.Id_Cspad2x2Config, address)
     if config is None:
-      config = env.getConfig(xtc.TypeId.Type.Id_CspadConfig, address)
+      config = env.getConfig(TypeId.Type.Id_CspadConfig, address)
     return config
 
   elif device == 'pnCCD':
-    return env.getConfig(xtc.TypeId.Type.Id_pnCCDconfig, address)
+    return env.getConfig(TypeId.Type.Id_pnCCDconfig, address)
 
   return None
 
@@ -977,6 +979,8 @@ def image(address, config, evt, env, sections=None):
   @return         XXX
   """
 
+  from pypdsdata.xtc import TypeId
+
   device = address_split(address)[2]
   if device is None:
     return None
@@ -984,7 +988,7 @@ def image(address, config, evt, env, sections=None):
   elif device == 'Andor':
     # XXX There is no proper getter for Andor frames yet, and
     # evt.getFrameValue(address) does not appear to work.
-    value = evt.get(xtc.TypeId.Type.Id_AndorFrame, address)
+    value = evt.get(TypeId.Type.Id_AndorFrame, address)
     if value is not None:
       img = value.data()
       return img
@@ -1005,7 +1009,7 @@ def image(address, config, evt, env, sections=None):
                              numpy.hstack((qimages[3], qimages[2]))))
 
   elif device == 'Cspad2x2':
-    quads = evt.get(xtc.TypeId.Type.Id_Cspad2x2Element, address)
+    quads = evt.get(TypeId.Type.Id_Cspad2x2Element, address)
     if quads is not None:
       return CsPad2x2Image(quads.data(), config, sections)
 
@@ -1059,10 +1063,12 @@ def image_central2(address, config, evt, env):
   """Low-levelish implementation of image_central().
   """
 
+  from pypdsdata.xtc import TypeId
+
   # Get the first XTC object matching the address and the type.
-  xtcObj = evt.findFirstXtc(address = address,
-                            typeId  = xtc.TypeId.Type.Id_CspadElement)
-  if (not xtcObj):
+  xtcObj = evt.findFirstXtc(
+    address=address, typeId=TypeId.Type.Id_CspadElement)
+  if not xtcObj:
     return None
 
   l = []
@@ -1071,7 +1077,7 @@ def image_central2(address, config, evt, env):
   for i in xrange(config.numQuads()):
     l.append(p.data(config)[s])
     p = p.next(config)
-  return (l)
+  return l
 
 
 def image_xpp(address, evt, env, aa):
@@ -1086,12 +1092,14 @@ def image_xpp(address, evt, env, aa):
   @return        XXX
   """
 
+  from pypdsdata.xtc import TypeId
+
   if address != 'XppGon-0|Cspad-0':
     return None
 
   # Get a current configure object for the detector, see
   # cspad_tbx.getConfig().
-  config = env.getConfig(xtc.TypeId.Type.Id_CspadConfig, address)
+  config = env.getConfig(TypeId.Type.Id_CspadConfig, address)
   if config is None:
     return None
 
