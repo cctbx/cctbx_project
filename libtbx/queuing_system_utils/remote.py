@@ -31,7 +31,7 @@ class SchedulerActor(object):
       self.manager.poll()
 
       while self.manager.completed_results:
-        current = self.manager.completed_results.popleft()
+        current = self.manager.completed_results[0]
         assert current.identifier in self.identifier_for
 
         try:
@@ -41,20 +41,21 @@ class SchedulerActor(object):
             )
 
         except Queue.Full:
-          self.manager.completed_results.appendleft( current )
           break
 
+        self.manager.completed_results.popleft()
         del self.identifier_for[ current.identifier ]
 
       while True:
         try:
-          (identifier, ( target, args, kwargs ) ) = self.jobs_in.get( block = False )
-          i = self.manager.submit( target = target, args = args, kwargs = kwargs )
-          assert i not in self.identifier_for
-          self.identifier_for[ i ] = identifier
+          ( identifier, ( target, args, kwargs ) ) = self.jobs_in.get( block = False )
 
         except Queue.Empty:
           break
+
+        i = self.manager.submit( target = target, args = args, kwargs = kwargs )
+        assert i not in self.identifier_for
+        self.identifier_for[ i ] = identifier
 
       if not self.manager.completed_results:
         time.sleep( self.waittime )
