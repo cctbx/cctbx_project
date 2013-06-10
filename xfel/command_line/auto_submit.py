@@ -48,11 +48,13 @@ class _run:
   def __eq__(self, other): return other == self.id
   def __ne__(self, other): return not __eq__(self,other)
 
-def match_runs(dir):
+def match_runs(dir,use_in_progress):
   runs = []
   files = os.listdir(dir)
   for file in files:
     r = s = c = None
+    if not use_in_progress and ".inprogress" in file:
+      continue
     for str in file.split("-"):
       try:
         if 'c' in str:
@@ -121,7 +123,7 @@ def run (args) :
      raise Sorry("%s does not exist or is not a file!" % params.config_file)
 
   assert (params.stream_count is not None) and (params.stream_count > 0)
-  assert (params.num_procs is not None) and (params.stream_count > 0)
+  assert (params.num_procs is not None) and (params.num_procs > 0)
   assert (params.queue is not None)
   assert (params.experiment is not None)
   assert (params.submit_as_group is not None)
@@ -136,7 +138,7 @@ def run (args) :
   if params.submit_as_group:
     try:
       while(True):
-        rs = match_runs(params.xtc_dir)
+        rs = match_runs(params.xtc_dir,params.use_in_progress)
         add_runs = []
         for r in rs:
           if not ((params.start_run is not None and r.id < params.start_run) or (params.end_run is not None and r.id > params.end_run)):
