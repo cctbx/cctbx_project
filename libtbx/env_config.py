@@ -37,11 +37,11 @@ default_enable_cuda = False
 default_opt_resources = False
 
 def is_64bit_architecture():
-  try :
-    return (platform.architecture()[0] == "64bit")
-  except Exception :
-    # XXX this is safer, but only on newer versions of Python
-    return (sys.maxsize > 2**32)
+  # this appears to be most compatible (hat tip: James Stroud)
+  # http://stackoverflow.com/questions/1405913/how-do-i-determine-if-my-python-shell-is-executing-in-32bit-or-64bit-mode-on-os
+  import struct
+  nbits = 8 * struct.calcsize("P")
+  return (nbits == 64)
 
 def unique_paths(paths):
   hash = set()
