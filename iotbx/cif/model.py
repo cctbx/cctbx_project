@@ -689,14 +689,16 @@ def format_value(value_string):
   if not string_is_quoted:
     if len(value_string) == 0:
       return "''"
-    elif (value_string.lstrip()[0] == ';'
+    elif (';' in value_string and value_string.lstrip()[0] == ';'
           and  re.match(semicolon_string_re, value_string) is not None):
       # a semicolon text field
       return "\n%s\n" %value_string.strip()
-    elif value_string[0] == '\n' and value_string[0] == '\n':
-      return "\n;%s;\n" %value_string
     elif '\n' in value_string:
-      return "\n;\n%s\n;\n" %value_string
+      if value_string[0] != '\n':
+        value_string = '\n' + value_string
+      if value_string[-1] != '\n':
+        value_string = value_string + '\n'
+      return "\n;%s;\n" %value_string
     elif (value_string[0] in ('#','$','[',']','_')):
       return "'%s'" %value_string
     else:

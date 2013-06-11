@@ -492,7 +492,21 @@ loop_
   assert list(cif_block["_a.2"]) == ['2', '4', '6', '?', '.']
   assert list(cif_block["_a.3"]) == ['?', '?', '?', 'a', 'c']
   assert list(cif_block["_a.4"]) == ['.', '.', '.', 'b', 'd']
-
+  #
+  cif_block = model.block()
+  cif_block['_a'] = """\
+123
+456"""
+  s = StringIO()
+  cif_block.show(out=s)
+  s.seek(0)
+  assert not show_diff("\n".join([l.strip() for l in s.readlines()]), """\
+_a
+;
+123
+456
+;
+""")
 
 
 if __name__ == '__main__':
