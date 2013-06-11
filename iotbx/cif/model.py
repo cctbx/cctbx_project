@@ -330,6 +330,7 @@ class save(block_base):
   def show(self, out=None, indent="  ", data_name_field_width=34):
     if out is None:
       out = sys.stdout
+      assert indent.strip() == ""
     format_str = "%%-%is" %(data_name_field_width-1)
     for k in self._set:
       v = self._items.get(k)
@@ -384,6 +385,7 @@ class block(block_base):
   def show(self, out=None, indent="  ", indent_row=None,
            data_name_field_width=34,
            loop_format_strings=None):
+    assert indent.strip() == ""
     if out is None:
       out = sys.stdout
     format_str = "%%-%is" %(data_name_field_width-1)
@@ -548,6 +550,8 @@ class loop(DictMixin):
       out = sys.stdout
     if indent_row is None:
       indent_row = indent
+    assert indent.strip() == ""
+    assert indent_row.strip() == ""
     print >> out, "loop_"
     for k in self.keys():
       print >> out, indent + k
