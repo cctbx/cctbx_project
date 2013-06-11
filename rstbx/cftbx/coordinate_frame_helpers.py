@@ -16,6 +16,7 @@ class coordinate_frame_information:
                  mosaicity = None,
                  starting_angle = None, oscillation_range = None,
                  starting_frame = None):
+
         self._detector_origin = detector_origin
         self._detector_fast = detector_fast
         self._detector_slow = detector_slow
@@ -28,7 +29,7 @@ class coordinate_frame_information:
         self._real_space_b = real_space_b
         self._real_space_c = real_space_c
         self._space_group_number = space_group_number
-        self._sigma_divergence = sigma_divergence,
+        self._sigma_divergence = sigma_divergence
         self._mosaicity = mosaicity
         self._starting_angle = starting_angle
         self._oscillation_range = oscillation_range
