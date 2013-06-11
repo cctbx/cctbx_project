@@ -196,7 +196,7 @@ loop_
 
 """)
   s = StringIO()
-  cif_model.show(out=s, indent="", indent_row="DA", data_name_field_width=0)
+  cif_model.show(out=s, indent="", indent_row="   ", data_name_field_width=0)
   assert not show_diff(s.getvalue(),
 """\
 data_fred
@@ -205,17 +205,17 @@ _another_tag 3.142
 loop_
 _loop_a
 _loop_b
-DA6  5
-DA4  3
-DA2  1
+   6  5
+   4  3
+   2  1
 
 _tag2 1.2
 loop_
 _loop2_a
 _loop2_b
-DA1  2
-DA3  4
-DA5  6
+   1  2
+   3  4
+   5  6
 
 """)
   cif_model.sort(recursive=True)
