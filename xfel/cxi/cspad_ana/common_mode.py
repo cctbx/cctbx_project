@@ -39,6 +39,7 @@ class common_mode_correction(mod_event_info):
                two_photon_threshold=None,
                dark_path=None,
                dark_stddev=None,
+               mask_path=None,
                gain_map_path=None,
                cache_image=True,
                roi=None,
@@ -56,6 +57,7 @@ class common_mode_correction(mod_event_info):
     @param dark_path       Path to input average dark image
     @param dark_stddev     Path to input standard deviation dark
                            image, required if @p dark_path is given
+    @param mask_path       Path to input mask.  Pixels to mask out should be set to -2
     @param laser_1_status  0 or 1 to indicate that the laser should be off or on respectively
     @param laser_4_status  0 or 1 to indicate that the laser should be off or on respectively
     @param laser_wait_time Length of time in milliseconds to wait after a laser
@@ -71,6 +73,7 @@ class common_mode_correction(mod_event_info):
 
     self.dark_path = cspad_tbx.getOptEvalOrString(dark_path)
     self.dark_stddev_path = cspad_tbx.getOptEvalOrString(dark_stddev)
+    self.mask_path = cspad_tbx.getOptEvalOrString(mask_path)
     gain_map_path = cspad_tbx.getOptString(gain_map_path)
     self.common_mode_correction = cspad_tbx.getOptString(common_mode_correction)
     self.photon_threshold = cspad_tbx.getOptFloat(photon_threshold)
@@ -132,6 +135,14 @@ class common_mode_correction(mod_event_info):
       self.dark_stddev = dark_stddev_dict['DATA']
       assert isinstance(self.dark_stddev, flex.double)
       self.dark_mask = (self.dark_stddev > 0)
+      
+    # Load the mask image and ensure it is signed and at least 32 bits
+    # wide, since it will be used for differencing.  
+    self.mask_img = None
+    if (self.mask_path is not None):
+      mask_dict = easy_pickle.load(self.mask_path)
+      self.mask_img = mask_dict['DATA']
+      assert isinstance(self.mask_img, flex.double)
 
     self.gain_map = None
     if gain_map_path is not None:
@@ -433,6 +444,10 @@ class common_mode_correction(mod_event_info):
                 i_row    = i_row,
                 i_column = i_column)
 
+    if (self.mask_img is not None):
+      sel = self.mask_img == -2
+      self.cspad_img.set_selected(sel, -2)
+      
     if self.gain_map is not None:
       self.cspad_img *= self.gain_map
 
