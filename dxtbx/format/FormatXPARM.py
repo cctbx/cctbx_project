@@ -60,6 +60,8 @@ class FormatXPARM(Format):
         self._starting_angle = cfc.get('starting_angle')
         self._oscillation_range = cfc.get('oscillation_range')
         self._starting_frame = cfc.get('starting_frame')
+        self._divergence = 0.0
+        self._sigma_divergence = cfc.get('sigma_divergence')
         sample_vector = cfc.get('sample_to_source')
         self._beam_vector = tuple(matrix.col(sample_vector))
 
@@ -76,8 +78,11 @@ class FormatXPARM(Format):
 
     def _beam(self):
         '''Return a working beam instance.'''
-        return self._beam_factory.simple_directional(
-            self._beam_vector, self._wavelength)
+        return self._beam_factory.make_beam(
+            sample_to_source=self._beam_vector,
+            wavelength=self._wavelength,
+            divergence=self._divergence,
+            sigma_divergence=self._sigma_divergence)
 
     def _scan(self):
         '''Return a working scan instance.'''

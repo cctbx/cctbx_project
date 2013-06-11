@@ -24,17 +24,27 @@ class beam_factory:
 
     @staticmethod
     def make_beam(sample_to_source=None, wavelength=None,
-                  s0=None, unit_s0=None):
+                  s0=None, unit_s0=None,
+                  divergence=None, sigma_divergence=None):
+
+        if divergence == None or sigma_divergence == None:
+            divergence = 0.0
+            sigma_divergence = 0.0
+
         if sample_to_source:
             assert(wavelength)
             return Beam(
                 tuple(map(float, sample_to_source)),
-                float(wavelength))
+                float(wavelength),
+                float(divergence),
+                float(sigma_divergence))
         elif unit_s0:
             assert(wavelength)
             return Beam(
                 tuple(map(lambda x: - x, map(float, unit_s0))),
-                float(wavelength))
+                float(wavelength),
+                float(divergence),
+                float(sigma_divergence))
         else:
             assert(s0)
             return Beam(tuple(map(float, s0)))
