@@ -37,7 +37,11 @@ default_enable_cuda = False
 default_opt_resources = False
 
 def is_64bit_architecture():
-  return (platform.architecture()[0] == "64bit")
+  try :
+    return (platform.architecture()[0] == "64bit")
+  except Exception :
+    # XXX this is safer, but only on newer versions of Python
+    return (sys.maxsize > 2**32)
 
 def unique_paths(paths):
   hash = set()
