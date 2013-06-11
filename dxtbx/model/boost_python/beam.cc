@@ -12,12 +12,15 @@
 #include <boost/python/def.hpp>
 #include <string>
 #include <sstream>
+#include <scitbx/constants.h>
 #include <dxtbx/model/beam.h>
 #include <dxtbx/model/polarized_beam.h>
 
 namespace dxtbx { namespace model { namespace boost_python {
 
   using namespace boost::python;
+  using scitbx::deg_as_rad;
+  using scitbx::rad_as_deg;
 
   std::string beam_to_string(const Beam &beam) {
     std::stringstream ss;
@@ -34,6 +37,56 @@ namespace dxtbx { namespace model { namespace boost_python {
     }
   };
 
+  static Beam* make_beam(vec3<double> sample_to_source, double wavelength,
+                         double divergence, double sigma_divergence, bool deg) {
+    Beam *beam = NULL;
+    if (deg) {
+      beam = new Beam(sample_to_source, wavelength, 
+                      deg_as_rad(divergence), 
+                      deg_as_rad(sigma_divergence));
+    } else {
+      beam = new Beam(sample_to_source, wavelength, 
+                      divergence, sigma_divergence);
+    }
+    return beam;
+  }
+
+  static Beam* make_beam_w_s0(vec3<double> s0, double divergence, 
+                              double sigma_divergence, bool deg) {
+    Beam *beam = NULL;
+    if (deg) {
+      beam = new Beam(s0, deg_as_rad(divergence), 
+                      deg_as_rad(sigma_divergence));
+    } else {
+      beam = new Beam(s0, divergence, sigma_divergence);
+    }
+    return beam;
+  }
+   
+  static
+  double get_divergence(const Beam &beam, bool deg) {
+    double divergence = beam.get_divergence();
+    return deg ? rad_as_deg(divergence) : divergence;
+  }
+
+  static
+  double get_sigma_divergence(const Beam &beam, bool deg) {
+    double sigma_divergence = beam.get_sigma_divergence();
+    return deg ? rad_as_deg(sigma_divergence) : sigma_divergence;
+  }
+
+  static
+  void set_divergence(Beam &beam, double divergence, bool deg) {
+    beam.set_divergence(deg ? deg_as_rad(divergence) : divergence);
+  }
+
+  static
+  void set_sigma_divergence(Beam &beam, double sigma_divergence, 
+                            bool deg) {
+    beam.set_sigma_divergence(
+      deg ? deg_as_rad(sigma_divergence) : sigma_divergence);
+  }
+
   void export_beam()
   {
     // Export BeamBase
@@ -47,6 +100,23 @@ namespace dxtbx { namespace model { namespace boost_python {
           arg("wavelength"))))
       .def(init <vec3 <double> > ((
           arg("s0"))))
+      .def("__init__",
+          make_constructor(
+          &make_beam, 
+          default_call_policies(), (
+          arg("direction"),
+          arg("wavelength"),
+          arg("divergence"),
+          arg("sigma_divergence"),
+          arg("deg") = true)))          
+      .def("__init__",
+          make_constructor(
+          &make_beam_w_s0, 
+          default_call_policies(), (
+          arg("s0"),
+          arg("divergence"),
+          arg("sigma_divergence"),
+          arg("deg") = true)))
       .def("get_direction", 
         &Beam::get_direction)
       .def("set_direction",
@@ -63,6 +133,20 @@ namespace dxtbx { namespace model { namespace boost_python {
         &Beam::get_unit_s0)
       .def("set_unit_s0",
         &Beam::set_unit_s0)
+      .def("get_divergence",
+        &get_divergence, (
+          arg("deg") = true))
+      .def("set_divergence",
+        &set_divergence, (
+          arg("divergence"),
+          arg("deg") = true))
+      .def("get_sigma_divergence",
+        &get_sigma_divergence, (
+          arg("deg") = true))
+      .def("set_sigma_divergence",
+        &set_sigma_divergence, (
+          arg("sigma_divergence"),
+          arg("deg") = true))
       .def("__eq__", &Beam::operator==)
       .def("__ne__", &Beam::operator!=)
       .def("__str__", &beam_to_string)

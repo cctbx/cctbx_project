@@ -29,16 +29,21 @@ namespace dxtbx { namespace model {
   /** A class to represent a simple beam. */
   class Beam : public BeamBase {
   public:
+
     /** Default constructor: initialise all to zero */
     Beam()
       : wavelength_(0.0),
-        direction_(0.0, 0.0, 0.0) {}
+        direction_(0.0, 0.0, 0.0),
+        divergence_(0.0),
+        sigma_divergence_(0.0) {}
 
     /**
      * Initialise all the beam parameters.
      * @param direction The beam direction vector.
      */
-    Beam(vec3 <double> s0) {
+    Beam(vec3 <double> s0)
+      : divergence_(0.0),
+        sigma_divergence_(0.0) {
       DXTBX_ASSERT(s0.length() > 0);
       wavelength_ = 1.0 / s0.length();
       direction_ = -s0.normalize();
@@ -51,7 +56,36 @@ namespace dxtbx { namespace model {
      * @param direction The beam direction vector.
      */
     Beam(vec3 <double> direction, double wavelength)
-      : wavelength_(wavelength) {
+      : wavelength_(wavelength),
+        divergence_(0.0),
+        sigma_divergence_(0.0) {
+      DXTBX_ASSERT(direction.length() > 0);
+      direction_ = direction.normalize();
+    }
+
+    /**
+     * Initialise all the beam parameters.
+     * @param direction The beam direction vector.
+     */
+    Beam(vec3 <double> s0, double divergence, double sigma_divergence)
+      : divergence_(divergence),
+        sigma_divergence_(sigma_divergence) {
+      DXTBX_ASSERT(s0.length() > 0);
+      wavelength_ = 1.0 / s0.length();
+      direction_ = -s0.normalize();
+    }
+
+    /**
+     * Initialise all the beam parameters. Normalize the direction vector
+     * and give it the length of 1.0 / wavelength
+     * @param wavelength The wavelength of the beam
+     * @param direction The beam direction vector.
+     */
+    Beam(vec3 <double> direction, double wavelength,
+         double divergence, double sigma_divergence)
+      : wavelength_(wavelength),
+        divergence_(divergence),
+        sigma_divergence_(sigma_divergence)  {
       DXTBX_ASSERT(direction.length() > 0);
       direction_ = direction.normalize();
     }
@@ -67,6 +101,16 @@ namespace dxtbx { namespace model {
     /** Get the wavelength */
     double get_wavelength() const {
       return wavelength_;
+    }
+
+    /** Get the beam divergence */
+    double get_divergence() const {
+      return divergence_;
+    }
+
+    /** Get the standard deviation of the beam divergence */
+    double get_sigma_divergence() const {
+      return sigma_divergence_;
     }
 
     /** Set the direction. */
@@ -104,12 +148,26 @@ namespace dxtbx { namespace model {
       direction_ = -(unit_s0.normalize());
     }
 
+    /** Set the beam divergence */
+    void set_divergence(double divergence) {
+      divergence_ = divergence;
+    }
+
+    /** Set the standard deviation of the beam divergence */
+    void set_sigma_divergence(double sigma_divergence) {
+      sigma_divergence_ = sigma_divergence;
+    }
+
     /** Check wavlength and direction are (almost) same */
     bool operator==(const Beam &beam) {
       double eps = 1.0e-6;
       double d_direction =  std::abs(angle_safe(direction_, beam.direction_));
       double d_wavelength = std::abs(wavelength_ - beam.wavelength_);
-      return (d_direction <= eps && d_wavelength <= eps);
+      double d_divergence = std::abs(divergence_ - beam.divergence_);
+      double d_sigma_divergence = std::abs(
+          sigma_divergence_ - beam.sigma_divergence_);
+      return (d_direction <= eps && d_wavelength <= eps &&
+              d_divergence <= eps && d_sigma_divergence <= eps);
     }
 
     /** Check wavelength and direction are not (almost) equal. */
@@ -123,6 +181,8 @@ namespace dxtbx { namespace model {
 
     double wavelength_;
     vec3 <double> direction_;
+    double divergence_;
+    double sigma_divergence_;
   };
 
   /** Print beam information */
@@ -131,6 +191,8 @@ namespace dxtbx { namespace model {
     os << "Beam:\n";
     os << "    wavelength: " << b.get_wavelength() << "\n";
     os << "    direction : " << b.get_direction().const_ref() << "\n";
+    os << "    divergence: " << b.get_divergence() << "\n";
+    os << "    sigma divergence: " << b.get_sigma_divergence() << "\n";
     return os;
   }
 
