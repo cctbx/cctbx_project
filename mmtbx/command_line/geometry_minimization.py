@@ -10,6 +10,7 @@ from cctbx.array_family import flex
 from libtbx.utils import user_plus_sys_time, Sorry
 from libtbx import runtime_utils
 import os
+import mmtbx.secondary_structure
 import sys
 
 master_params_str = """\
@@ -100,6 +101,9 @@ minimization
   planarity = True
     .type = bool
     .short_caption = Planarity
+  secondary_structure = False
+    .type = bool
+    .short_caption = Secondary structure
   }
 }
 reference_restraints {
@@ -161,7 +165,6 @@ def process_input_files(inputs, params, log):
         cif_object = iotbx.cif.reader(file_path=full_path,
           strict=False).model()
         cif_objects.append((full_path, cif_object))
-  #print cif_objects
   processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
     crystal_symmetry          = cs,
     pdb_interpretation_params = params.pdb_interpretation,
@@ -175,14 +178,28 @@ def process_input_files(inputs, params, log):
     process_pdb_files(pdb_file_names = pdb_file_names) # XXX remove junk
   return processed_pdb_file
 
-def get_geometry_restraints_manager(processed_pdb_file, xray_structure):
+def get_geometry_restraints_manager(processed_pdb_file, xray_structure, params):
   has_hd = None
   if(xray_structure is not None):
     sctr_keys = xray_structure.scattering_type_registry().type_count_dict().keys()
     has_hd = "H" in sctr_keys or "D" in sctr_keys
+  hbond_params = None
+  if(params.minimization.move.secondary_structure):
+    sec_str = mmtbx.secondary_structure.process_structure(
+      params             = None,
+      processed_pdb_file = processed_pdb_file,
+      tmp_dir            = os.getcwd(),
+      log                = log,
+      assume_hydrogens_all_missing=(not has_hd))
+    sec_str.initialize(log=log)
+    build_proxies = sec_str.create_hbond_proxies(
+      log          = log,
+      hbond_params = None)
+    hbond_params = build_proxies.proxies
   geometry = processed_pdb_file.geometry_restraints_manager(
     show_energies                = False,
     plain_pairs_radius           = 5,
+    hydrogen_bond_proxies        = hbond_params,
     assume_hydrogens_all_missing = not has_hd)
   restraints_manager = mmtbx.restraints.manager(
     geometry      = geometry,
@@ -303,7 +320,8 @@ class run(object):
     broadcast(m=prefix, log = self.log)
     self.grm = get_geometry_restraints_manager(
       processed_pdb_file = self.processed_pdb_file,
-      xray_structure = self.xray_structure)
+      xray_structure     = self.xray_structure,
+      params             = self.params)
     # CDL
     if self.params.pdb_interpretation.cdl:
       from mmtbx.conformation_dependent_library import setup_restraints

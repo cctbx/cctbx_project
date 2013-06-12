@@ -27,8 +27,9 @@ if (1):
   flex.set_random_seed(0)
 
 # XXX TO BE MOVED OR RESTRUCTURED
-def get_processed_pdb_object(rama_potential, log,
+def get_processed_pdb_object(rama_potential, log=None,
       raw_records=None, pdb_file_name=None):
+  if(log is None): log = sys.stdout
   rama_potential = "emsley"
   assert [raw_records, pdb_file_name].count(None) == 1
   master_params = iotbx.phil.parse(
@@ -50,7 +51,9 @@ def get_processed_pdb_object(rama_potential, log,
     log                      = log)
   return result
 
-def get_geometry_restraints_manager(processed_pdb_file, xray_structure, log):
+def get_geometry_restraints_manager(processed_pdb_file, xray_structure,
+      log=None):
+  if(log is None): log = sys.stdout
   sctr_keys=xray_structure.scattering_type_registry().type_count_dict().keys()
   has_hd = "H" in sctr_keys or "D" in sctr_keys
   #

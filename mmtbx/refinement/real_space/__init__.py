@@ -2,7 +2,7 @@ from __future__ import division
 from libtbx import adopt_init_args
 from scitbx.array_family import flex
 from scitbx.matrix import rotate_point_around_axis
-import time
+import time, sys
 from cctbx import maptbx
 import mmtbx.utils
 from mmtbx.rotamer.rotamer_eval import RotamerEval
@@ -78,52 +78,56 @@ class structure_monitor(object):
     current_map = self.compute_map(xray_structure = self.xray_structure)
     for model in self.pdb_hierarchy.models():
       for chain in model.chains():
-        for residue in chain.only_conformer().residues():
-          id_str="%s%s%s"%(chain.id,residue.resname,residue.resseq.strip())
-          if(get_class(residue.resname) == "common_amino_acid"):
-            residue_i_seqs_backbone  = flex.size_t()
-            residue_i_seqs_sidechain = flex.size_t()
-            residue_i_seqs_all       = flex.size_t()
-            residue_i_seqs_c         = flex.size_t()
-            residue_i_seqs_n         = flex.size_t()
-            for atom in residue.atoms():
-              an = atom.name.strip()
-              bb = an in backbone_atoms
-              residue_i_seqs_all.append(atom.i_seq)
-              if(bb): residue_i_seqs_backbone.append(atom.i_seq)
-              else:   residue_i_seqs_sidechain.append(atom.i_seq)
-              if(an == "C"): residue_i_seqs_c.append(atom.i_seq)
-              if(an == "N"): residue_i_seqs_n.append(atom.i_seq)
-            sca = sites_cart.select(residue_i_seqs_all)
-            scs = sites_cart.select(residue_i_seqs_sidechain)
-            scb = sites_cart.select(residue_i_seqs_backbone)
-            if(scs.size()==0): ccs = None
-            else: ccs = self.map_cc(sites_cart=scs, other_map = current_map)
-            if(sca.size()==0): cca = None
-            else: cca = self.map_cc(sites_cart=sca, other_map = current_map)
-            if(scb.size()==0): ccb = None
-            else: ccb = self.map_cc(sites_cart=scb, other_map = current_map)
-            self.residue_monitors.append(residue_monitor(
-              residue             = residue,
-              id_str              = id_str,
-              selection_sidechain = residue_i_seqs_sidechain,
-              selection_backbone  = residue_i_seqs_backbone,
-              selection_all       = residue_i_seqs_all,
-              selection_c         = residue_i_seqs_c,
-              selection_n         = residue_i_seqs_n,
-              map_cc_sidechain    = ccs,
-              map_cc_backbone     = ccb,
-              map_cc_all          = cca,
-              rotamer_status   = self.rotamer_manager.evaluate_residue(residue)))
-          else:
-            residue_i_seqs_all = residue.atoms().extract_i_seq()
-            sca = sites_cart.select(residue_i_seqs_all)
-            cca = self.map_cc(sites_cart=sca, other_map = current_map)
-            self.residue_monitors.append(residue_monitor(
-              residue       = residue,
-              id_str        = id_str,
-              selection_all = residue_i_seqs_all,
-              map_cc_all    = cca))
+        for residue_group in chain.residue_groups():
+          conformers = residue_group.conformers()
+          if(len(conformers)>1): continue
+          for conformer in residue_group.conformers():
+            residue = conformer.only_residue()
+            id_str="%s%s%s"%(chain.id,residue.resname,residue.resseq.strip())
+            if(get_class(residue.resname) == "common_amino_acid"):
+              residue_i_seqs_backbone  = flex.size_t()
+              residue_i_seqs_sidechain = flex.size_t()
+              residue_i_seqs_all       = flex.size_t()
+              residue_i_seqs_c         = flex.size_t()
+              residue_i_seqs_n         = flex.size_t()
+              for atom in residue.atoms():
+                an = atom.name.strip()
+                bb = an in backbone_atoms
+                residue_i_seqs_all.append(atom.i_seq)
+                if(bb): residue_i_seqs_backbone.append(atom.i_seq)
+                else:   residue_i_seqs_sidechain.append(atom.i_seq)
+                if(an == "C"): residue_i_seqs_c.append(atom.i_seq)
+                if(an == "N"): residue_i_seqs_n.append(atom.i_seq)
+              sca = sites_cart.select(residue_i_seqs_all)
+              scs = sites_cart.select(residue_i_seqs_sidechain)
+              scb = sites_cart.select(residue_i_seqs_backbone)
+              if(scs.size()==0): ccs = None
+              else: ccs = self.map_cc(sites_cart=scs, other_map = current_map)
+              if(sca.size()==0): cca = None
+              else: cca = self.map_cc(sites_cart=sca, other_map = current_map)
+              if(scb.size()==0): ccb = None
+              else: ccb = self.map_cc(sites_cart=scb, other_map = current_map)
+              self.residue_monitors.append(residue_monitor(
+                residue             = residue,
+                id_str              = id_str,
+                selection_sidechain = residue_i_seqs_sidechain,
+                selection_backbone  = residue_i_seqs_backbone,
+                selection_all       = residue_i_seqs_all,
+                selection_c         = residue_i_seqs_c,
+                selection_n         = residue_i_seqs_n,
+                map_cc_sidechain    = ccs,
+                map_cc_backbone     = ccb,
+                map_cc_all          = cca,
+                rotamer_status= self.rotamer_manager.evaluate_residue(residue)))
+            else:
+              residue_i_seqs_all = residue.atoms().extract_i_seq()
+              sca = sites_cart.select(residue_i_seqs_all)
+              cca = self.map_cc(sites_cart=sca, other_map = current_map)
+              self.residue_monitors.append(residue_monitor(
+                residue       = residue,
+                id_str        = id_str,
+                selection_all = residue_i_seqs_all,
+                map_cc_all    = cca))
     # globals
     self.map_cc_whole_unit_cell = self.map_cc(other_map = current_map)
     self.map_cc_around_atoms = self.map_cc(other_map = current_map,
@@ -190,9 +194,10 @@ class structure_monitor(object):
     #time_map_cc += timer.elapsed()
     return result
 
-  def show(self, prefix=""):
+  def show(self, prefix="", log=None):
+    if(log is None): log = sys.stdout
     fmt="%s cc(cell,atoms): %6.3f %6.3f rmsd(b,a): %6.4f %5.2f moved: %6.3f rota: %3d"
-    print fmt%(
+    print >> log, fmt%(
       prefix,
       self.map_cc_whole_unit_cell,
       self.map_cc_around_atoms,
@@ -201,18 +206,20 @@ class structure_monitor(object):
       self.dist_from_start,
       self.number_of_rotamer_outliers)
 
-  def show_residues(self, map_cc_all=0.8):
+  def show_residues(self, map_cc_all=0.8, map_cc_sidechain=0.8, log=None):
+    if(log is None): log = sys.stdout
     header_printed = True
     for r in self.residue_monitors:
-      i1 = r.map_cc_all < map_cc_all
-      i2 = r.rotamer_status == "OUTLIER"
-      i3 = r.clashes_with_resseqs is not None
-      if([i1,i2,i3].count(True)>0):
+      i1=r.map_cc_all < map_cc_all
+      i2=r.rotamer_status == "OUTLIER"
+      i3=r.clashes_with_resseqs is not None
+      i4=r.map_cc_sidechain is not None and r.map_cc_sidechain<map_cc_sidechain
+      if([i1,i2,i3,i4].count(True)>0):
         if(header_printed):
-          print "Residue     CC        CC         CC   Rotamer Clashes"
-          print "     id    all  backbone  sidechain        id    with"
+          print >> log, "Residue     CC        CC         CC   Rotamer Clashes"
+          print >> log, "     id    all  backbone  sidechain        id    with"
           header_printed = False
-        print r.format_info_string()
+        print >> log, r.format_info_string()
 
   def update(self, xray_structure, accept_as_is=True):
     if(not accept_as_is):
@@ -270,16 +277,16 @@ class structure_monitor(object):
         if(pair[0] in r.selection_all or pair[1] in r.selection_all):
           residue_pair_i_seqs.append(i_res)
           residue_pair_resseqs.append(r.id_str)
-      assert len(residue_pair_i_seqs)==2 # =1 means residue clashes with self
-      self.residue_monitors[residue_pair_i_seqs[0]].clashes_with_resseqs=residue_pair_resseqs[1]
-      self.residue_monitors[residue_pair_i_seqs[1]].clashes_with_resseqs=residue_pair_resseqs[0]
-      if(self.residue_monitors[residue_pair_i_seqs[0]].map_cc_all <
-         self.residue_monitors[residue_pair_i_seqs[1]].map_cc_all):
-        if(not residue_pair_i_seqs[0] in result):
-          result.append(residue_pair_i_seqs[0])
-      else:
-        if(not residue_pair_i_seqs[1] in result):
-          result.append(residue_pair_i_seqs[1])
+      if(len(residue_pair_i_seqs)==2): # XXX this means not handling alt conformations
+        self.residue_monitors[residue_pair_i_seqs[0]].clashes_with_resseqs=residue_pair_resseqs[1]
+        self.residue_monitors[residue_pair_i_seqs[1]].clashes_with_resseqs=residue_pair_resseqs[0]
+        if(self.residue_monitors[residue_pair_i_seqs[0]].map_cc_all <
+           self.residue_monitors[residue_pair_i_seqs[1]].map_cc_all):
+          if(not residue_pair_i_seqs[0] in result):
+            result.append(residue_pair_i_seqs[0])
+        else:
+          if(not residue_pair_i_seqs[1] in result):
+            result.append(residue_pair_i_seqs[1])
     return result
 
 def selection_around_to_negate(
@@ -307,9 +314,9 @@ def selection_around_to_negate(
     negate_selection = sel_around_minus_self & selection_good
   else:
     negate_selection = sel_around_minus_self
-  if(iselection_n_external is not None):
+  if(iselection_n_external is not None and iselection_n_external.size()>0):
     negate_selection[iselection_n_external[0]]=False
-  if(iselection_c_external is not None):
+  if(iselection_c_external is not None and iselection_c_external.size()>0):
     negate_selection[iselection_c_external[0]]=False
   return negate_selection
 
@@ -410,6 +417,13 @@ class score(object):
           tmp.append(self.target_map.eight_point_interpolation(sites_frac[v_]))
         y.append(flex.mean(tmp))
     result = True
+    # smooth-average along vector to avoide false-negatives due to oscillations
+    for i, y_ in enumerate(y):
+      if(i==0): continue
+      if(i>0 and i+1<y.size()):
+        y[i] = (y[i-1]+y[i]+y[i+1])/3
+      else: y[i] = (y[i-1]+y[i])/2
+    #
     ynew = flex.double()
     for y_ in y:
       if(y_<1): ynew.append(0)

@@ -40,6 +40,7 @@ from libtbx import Auto
 import mmtbx.arrays
 import mmtbx.bulk_solvent.scaler
 import scitbx.math
+from cctbx import maptbx
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
@@ -505,7 +506,7 @@ class manager(manager_mixin):
     p = self.sfg_params
     if(miller_array.indices().size()==0):
       raise RuntimeError("Empty miller_array.")
-    return miller_array.structure_factors_from_scatterers(
+    manager = miller_array.structure_factors_from_scatterers(
       xray_structure               = xrs,
       algorithm                    = p.algorithm,
       cos_sin_table                = p.cos_sin_table,
@@ -514,7 +515,9 @@ class manager(manager_mixin):
       u_base                       = p.u_base,
       b_base                       = p.b_base,
       wing_cutoff                  = p.wing_cutoff,
-      exp_table_one_over_step_size = p.exp_table_one_over_step_size).f_calc()
+      exp_table_one_over_step_size = p.exp_table_one_over_step_size)
+    m = manager.manager()
+    return manager.f_calc()
 
   def update_twin_fraction(self):
     if(self.twin_set is None):
@@ -967,6 +970,66 @@ class manager(manager_mixin):
     if(log is None): log = sys.stdout
     return phenix_masks.nu(fmodel = self, params = params)
 
+
+#Fully functional method that produces better R-factors than the one currently
+#used. Instability is the only problem. Revisit later. PVA.
+#
+#  def update_f_hydrogens(self, log=None):
+#    #print "XXX1:",self.r_work(), self.r_free()
+#    #self.update_core(
+#    #  f_part2 = self.f_calc().customized_copy(data = self.f_calc().data()*0))
+#    #print "XXX2:",self.r_work(), self.r_free()
+#    hd_sel = self.xray_structure.hd_selection()
+#    xrsh = self.xray_structure.select(hd_sel)
+#    occ = xrsh.scatterers().extract_occupancies()
+#    assert occ.all_eq(0)
+#    from cctbx import maptbx
+#    crystal_gridding = maptbx.crystal_gridding(
+#      unit_cell             = self.xray_structure.unit_cell(),
+#      space_group_info      = self.f_obs().space_group_info(),
+#      d_min                 = self.f_obs().d_min(),
+#      resolution_factor     = 1./7)
+#    # ASSUMES MASK IS INVERTED 0->1, 1->0 (NOT THE CASE BY DEFAULT!)
+#    mask_data = maptbx.mask(
+#      xray_structure = xrsh, # Expanded to P1 internally
+#      n_real         = crystal_gridding.n_real(),
+#      solvent_radius = 0.0)
+#    #s = mask_data == 1
+#    #mask_data = mask_data.set_selected(s, 0)
+#    #mask_data = mask_data.set_selected(~s, 1)
+#    #
+#    mc = self.electron_density_map().map_coefficients(
+#      map_type = "Fo-Fc", isotropize = True, fill_missing=False)
+#    fft_map = mc.fft_map(crystal_gridding=crystal_gridding)
+#    fft_map.apply_volume_scaling()
+#    map_data = fft_map.real_map_unpadded()
+#    map_data = map_data*mask_data
+#    #s = map_data < 0
+#    #map_data = map_data.set_selected(s, 0)
+#    f_diff = mc.structure_factors_from_map(
+#      map            = map_data,
+#      use_scale      = True,
+#      anomalous_flag = False,
+#      use_sg         = False)
+#    fm = manager(
+#      f_obs        = self.f_obs(),
+#      r_free_flags = self.r_free_flags(),
+#      f_calc       = self.f_model(),#_scaled_with_k1(), # What goes here ?
+#      f_mask       = f_diff)
+#    fm.update_all_scales(update_f_part1=False, remove_outliers=False)
+##    fm.show()
+#    print "LOOK2:",fm.r_work(), fm.r_free()
+#    # put into self
+#    kt  = self.k_isotropic()*self.k_anisotropic()
+#    ktp = fm.k_isotropic()*fm.k_anisotropic()
+#    self.update_core(
+#      k_isotropic   = flex.double(kt.size(),1),
+#      k_anisotropic = kt*ktp,
+#      f_part2       = f_diff.customized_copy(data = f_diff.data()*(1/kt)*fm.k_masks()[0])
+#    )
+#    #self.show()
+#    print "LOOK3:",self.r_work(), self.r_free()
+
   def update_f_hydrogens(self, log=None):
     if(self.xray_structure is None): return None
     def f_k_exp_scaled(k,b,ss,f):
@@ -987,8 +1050,8 @@ class manager(manager_mixin):
     ss = self.ss
     kbest = 0
     bbest = 0
-    zero = flex.complex_double(fh.data().size(),0)
     f_part2_twin = None
+    zero = flex.complex_double(self.f_calc().data().size(),0)
     if(fh_twin is not None):
       f_part2_twin = fh_twin.customized_copy(data=zero)
     self.update_core(
@@ -1014,65 +1077,54 @@ class manager(manager_mixin):
     if(fh_twin is not None):
       fh_kb_twin = f_k_exp_scaled(k = kbest, b = bbest, ss = ss, f = fh_twin)
     self.update_core(f_part2 = fh_kb, f_part2_twin = fh_kb_twin)
-    #print "self.k_h, self.b_h", self.k_h, self.b_h
     self.k_h, self.b_h = kbest, bbest
 
   def update_f_part1(self, params=None, log=None):
-    raise RuntimeError("Not implemented")
-    #def show(r_work,r_free,k_part,b_part,k_sol,b_sol,prefix,log):
-    #  fmt = "%s %6.4f %6.4f %5.2f %6.2f %5.2f %6.2f"
-    #  print >> log, fmt % (prefix,r_work,r_free,k_part,b_part,k_sol,b_sol)
-    #show(r_work=self.r_work(), r_free=self.r_free(), k_part=self.k_part(),
-    #     b_part=self.b_part(), k_sol=self.k_sol(), b_sol=self.b_sol(),
-    #     prefix="Start:", log=log)
-    #self.update_core(k_part = 0, b_part = 0)
-    #self.update_xray_structure(update_f_mask=True)
-    #show(r_work=self.r_work(), r_free=self.r_free(), k_part=self.k_part(),
-    #     b_part=self.b_part(), k_sol=self.k_sol(), b_sol=self.b_sol(),
-    #     prefix="  ", log=log)
-    #self.update_solvent_and_scale(optimize_mask=False)
-    #show(r_work=self.r_work(), r_free=self.r_free(), k_part=self.k_part(),
-    #     b_part=self.b_part(), k_sol=self.k_sol(), b_sol=self.b_sol(),
-    #     prefix="  ", log=log)
-    #nuo = self.compute_f_part(params = params, log = log)
-    #self.passive_arrays.f_part_base = nuo.f_part
-    ## This is how it should be in theory, but in practice is not the case...
-    ##self.update_core(f_mask      = nuo.f_mask_new.common_set(self.f_obs()),
-    ##                 f_part_base = nuo.f_part.common_set(self.f_obs()))
-    #self.update_core(f_mask      = nuo.f_mask.common_set(self.f_obs()),
-    #                 f_part_base = nuo.f_part.common_set(self.f_obs()))
-    #show(r_work=self.r_work(), r_free=self.r_free(), k_part=self.k_part(),
-    #     b_part=self.b_part(), k_sol=self.k_sol(), b_sol=self.b_sol(),
-    #     prefix="  ", log=log)
-    #self.update_solvent_and_scale(optimize_mask=False)
-    #show(r_work=self.r_work(), r_free=self.r_free(), k_part=self.k_part(),
-    #     b_part=self.b_part(), k_sol=self.k_sol(), b_sol=self.b_sol(),
-    #     prefix="  ", log=log)
-    #rws = self.r_work()
-    #kbest=self.k_part()
-    #bbest=self.b_part()
-    #b_part_range = range(0,100,5)
-    #for b_part in b_part_range:
-    #  kpr = [i/10. for i in xrange(22)] + [i/1. for i in range(2,21)]
-    #  for k_part in kpr:
-    #    self.update_core(k_part = k_part, b_part = b_part)
-    #    rw = self.r_work()
-    #    if(rw < rws):
-    #      rws = rw
-    #      kbest=k_part
-    #      bbest=b_part
-    #      show(r_work=rws, r_free=self.r_free(), k_part=kbest,
-    #           b_part=bbest, k_sol=self.k_sol(), b_sol=self.b_sol(),
-    #           prefix="   ", log=log)
-    #self.update_core(k_part = kbest, b_part = bbest)
-    #show(r_work=self.r_work(), r_free=self.r_free(), k_part=self.k_part(),
-    #     b_part=self.b_part(), k_sol=self.k_sol(), b_sol=self.b_sol(),
-    #     prefix="Final:", log=log)
-    #self.update_solvent_and_scale(optimize_mask=False)
-    #show(r_work=self.r_work(), r_free=self.r_free(), k_part=self.k_part(),
-    #     b_part=self.b_part(), k_sol=self.k_sol(), b_sol=self.b_sol(),
-    #     prefix="Final:", log=log)
-    #print >> log
+    raise RuntimeErorr("Not implemented.")
+    mp = mmtbx.masks.mask_master_params.extract()
+    mp.solvent_radius=0.
+    mmtbx_masks_asu_mask_obj = mmtbx.masks.asu_mask(
+      xray_structure = self.xray_structure.expand_to_p1(sites_mod_positive=True),
+      d_min          = self.f_obs().d_min(),
+      mask_params    = mp)
+    bulk_solvent_mask = mmtbx_masks_asu_mask_obj.mask_data_whole_uc()
+    crystal_gridding = maptbx.crystal_gridding(
+      unit_cell             = self.xray_structure.unit_cell(),
+      space_group_info      = self.f_obs().space_group_info(),
+      pre_determined_n_real = bulk_solvent_mask.focus())
+    #
+    mc = self.electron_density_map().map_coefficients(
+      map_type = "mFo-DFc", isotropize = True)
+    fft_map = mc.fft_map(crystal_gridding=crystal_gridding)
+    fft_map.apply_volume_scaling()
+    map_data = fft_map.real_map_unpadded()
+    map_data = map_data*bulk_solvent_mask
+    s = map_data < -0.05
+    map_data = map_data.set_selected(~s, 0)
+    f_diff = mc.structure_factors_from_map(
+      map            = map_data,
+      use_scale      = True,
+      anomalous_flag = False,
+      use_sg         = False)
+    fm = manager(
+      f_obs        = self.f_obs(),
+      r_free_flags = self.r_free_flags(),
+      f_calc       = self.f_model_scaled_with_k1(), # What goes here ?
+      #f_calc       = self.f_model(), # This is better for disabled update_f_hydrogens
+      f_mask       = f_diff)
+    fm.update_all_scales(update_f_part1=False, remove_outliers=False)
+#    fm.show()
+#    print "LOOK2:",fm.r_work(), fm.r_free()
+    # put back into self
+    kt  = self.k_isotropic()*self.k_anisotropic()
+    ktp = fm.k_isotropic()*fm.k_anisotropic()
+    self.update_core(
+      k_isotropic   = flex.double(kt.size(),1),
+      k_anisotropic = kt*ktp,
+      f_part1       = f_diff.customized_copy(data = f_diff.data()*(1/kt)*fm.k_masks()[0])
+    )
+    self.show()
+    print "LOOK3:",self.r_work(), self.r_free()
 
   def show(self, log=None, suffix=None, show_header=True, show_approx=True):
     if(log is None): log = sys.stdout
@@ -1091,7 +1143,7 @@ class manager(manager_mixin):
     k_masks       = self.k_masks()
     k_isotropic   = self.k_isotropic()
     k_anisotropic = self.k_anisotropic()
-    f_model       = self.f_model()
+    f_model       = self.f_model_scaled_with_k1()
     f_obs         = self.f_obs()
     work_flags    =~self.r_free_flags().data()
     free_flags    = self.r_free_flags().data()
@@ -1142,6 +1194,18 @@ class manager(manager_mixin):
                         verbose=None,
                         log = None):
     if(log is None): log = sys.stdout
+    # Always start from scratch to avoide irreproducible results or instability
+    # due to correlation of parameters
+    zero = flex.complex_double(self.f_calc().data().size(),0)
+    zero_d = flex.double(self.f_calc().data().size(),0)
+    one_d = flex.double(self.f_calc().data().size(),1)
+    zero_a = self.f_calc().customized_copy(data = zero)
+    self.update_core(
+      f_part2       = zero_a,
+      k_isotropic   = one_d,
+      k_anisotropic = one_d,
+      k_mask        = [zero_d]*len(self.k_masks()))#, f_part2_twin = zero) # Does it need to be set too?
+    #
     def get_r(self):
       return "r_work=%6.4f r_free=%6.4f"%(self.r_work(), self.r_free())
     if(show): print >> log, "start: %s"%get_r(self)
@@ -1176,7 +1240,9 @@ class manager(manager_mixin):
       if(refine_hd_scattering and show):
         print >> log, "    HD scattering refinement: %s k_h=%4.2f b_h=%-7.2f"%(
           get_r(self), self.k_h, self.b_h)
-    if(remove_outliers): self.remove_outliers(use_model=True)
+    if(remove_outliers):
+      self.remove_outliers(use_model=True)
+      if(show): print >> log, "  remove outliers: %s"%get_r(self)
     if(show):
       print >> log, "final: %s"%get_r(self)
       print >> log

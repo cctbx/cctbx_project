@@ -460,8 +460,6 @@ class manager (object) :
                             master_selection=None) :
     params = self.params
     remove_outliers = self.params.h_bond_restraints.remove_outliers
-    if (remove_outliers is None) :
-      remove_outliers = True
     # choice of atoms to restraint is a three-way option: default is to guess
     # based on whether hydrogens are present in the model, but this can be
     # misleading in some cases.

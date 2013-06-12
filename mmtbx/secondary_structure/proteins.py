@@ -313,7 +313,8 @@ def create_helix_hydrogen_bond_proxies (
         residues = conformer.residues()
         n_residues = len(residues)
         j_seq = 0
-        while (j_seq < len(residues)) :
+        for i_residue, residue in enumerate(residues):
+          if(i_residue+helix_step >= n_residues): break
           residue = residues[j_seq]
           resi_atoms = residue.atoms()
           resseq = residue.resseq_as_int()
@@ -321,37 +322,36 @@ def create_helix_hydrogen_bond_proxies (
           acceptor = None
           acceptor_base = None
           hydrogen = None
-          if (helix_selection[resi_atoms[0].i_seq] == True) :
+          if(helix_selection[resi_atoms[0].i_seq]):
             k_seq = j_seq + helix_step
-            if (k_seq < n_residues) :
-              bonded_resi = residues[k_seq]
-              bonded_resseq = bonded_resi.resseq_as_int()
-              if (bonded_resi.resname == "PRO") :
-                print >> log, "  Proline residue at %s %s - end of helix" % \
-                  (chain.id, bonded_resseq)
-                j_seq += 3
-                continue # XXX is this safe?
-              elif (bonded_resseq != (resseq + helix_step)) :
-                print >> log, "  Confusing residue numbering: %s %s -> %s %s" \
-                  % (chain.id, residue.resid(), chain.id, bonded_resi.resid())
-                j_seq += 1
-                continue
-              bonded_atoms = bonded_resi.atoms()
-              if (helix_selection[bonded_atoms[0].i_seq] == True) :
-                n_proxies += _create_hbond_proxy(
-                  acceptor_atoms=resi_atoms,
-                  donor_atoms=bonded_atoms,
-                  build_proxies=build_proxies,
-                  hbond_counts=hbond_counts,
-                  distance_ideal=distance_ideal,
-                  distance_cut=distance_cut,
-                  hbond_params=hbond_params,
-                  remove_outliers=remove_outliers,
-                  use_hydrogens=use_hydrogens,
-                  weight=weight,
-                  sigma=params.restraint_sigma,
-                  slack=params.restraint_slack,
-                  log=log)
+            bonded_resi = residues[k_seq]
+            bonded_resseq = bonded_resi.resseq_as_int()
+            if (bonded_resi.resname == "PRO") :
+              print >> log, "  Proline residue at %s %s - end of helix" % \
+                (chain.id, bonded_resseq)
+              j_seq += 3
+              continue # XXX is this safe?
+            elif (bonded_resseq != (resseq + helix_step)) :
+              print >> log, "  Confusing residue numbering: %s %s -> %s %s" \
+                % (chain.id, residue.resid(), chain.id, bonded_resi.resid())
+              j_seq += 1
+              continue
+            bonded_atoms = bonded_resi.atoms()
+            if (helix_selection[bonded_atoms[0].i_seq] == True) :
+              n_proxies += _create_hbond_proxy(
+                acceptor_atoms=resi_atoms,
+                donor_atoms=bonded_atoms,
+                build_proxies=build_proxies,
+                hbond_counts=hbond_counts,
+                distance_ideal=distance_ideal,
+                distance_cut=distance_cut,
+                hbond_params=hbond_params,
+                remove_outliers=remove_outliers,
+                use_hydrogens=use_hydrogens,
+                weight=weight,
+                sigma=params.restraint_sigma,
+                slack=params.restraint_slack,
+                log=log)
           j_seq += 1
   return n_proxies
 

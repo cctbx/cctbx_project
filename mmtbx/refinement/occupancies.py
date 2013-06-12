@@ -12,11 +12,29 @@ class manager(object):
                      number_of_macro_cycles      = 3,
                      occupancy_max               = None,
                      occupancy_min               = None,
-                     log                         = None):
+                     log                         = None,
+                     exclude_hd                  = False):
     self.show(fmodels=fmodels, log= log, message="occupancy refinement: start")
     fmodels.update_xray_structure(xray_structure = model.xray_structure,
                                   update_f_calc  = True)
     selections = model.refinement_flags.s_occupancies
+    # exclude H or D from refinement if requested
+    if(exclude_hd):
+      hd_sel = model.xray_structure.hd_selection()
+      tmp_sel = []
+      for sel in selections:
+        tmp_sel_ = []
+        for sel_ in sel:
+          tmp_sel__ = flex.size_t()
+          for sel__ in sel_:
+            if(not hd_sel[sel__]):
+              tmp_sel__.append(sel__)
+          if(tmp_sel__.size()>0):
+            tmp_sel_.append(tmp_sel__)
+        if(len(tmp_sel_)>0):
+          tmp_sel.append(tmp_sel_)
+      selections = tmp_sel
+    #
     i_selection = flex.size_t()
     for s in selections:
       for ss in s:
