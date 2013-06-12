@@ -1705,6 +1705,8 @@ class PDBTreeFrame (wx.Frame) :
     self.Bind(wx.EVT_CLOSE, self.OnClose)
     self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy, self)
     self.path_mgr = self._tree.path_mgr
+    self._callback = None
+    self._callback_program = None
 
   def LoadPDB (self, file_name) :
     from iotbx import file_reader
@@ -1770,8 +1772,14 @@ class PDBTreeFrame (wx.Frame) :
       crystal_symmetry=self._crystal_symmetry))
     f.write("END")
     f.close()
-    wx.MessageBox("Modified structure saved to %s." % file_name)
     self._tree.SaveChanges()
+    if (self._callback is not None) :
+      confirm_action(("Modified structure saved to %s.  Do you want "+
+        "to update the file path in %s?") % (file_name,self._callback_program))
+      self._callback(old_file_name=self._pdb_in.file_name,
+                     new_file_name=file_name)
+    else :
+      wx.MessageBox("Modified structure saved to %s." % file_name)
 
   def OnEditSymmetry (self, event) :
     dlg = symmetry_dialog.SymmetryDialog(parent=self,
@@ -1813,10 +1821,14 @@ class PDBTreeFrame (wx.Frame) :
   def OnDestroy (self, event) :
     pass
 
+  def SetCallback (self, callback, program_name) :
+    self._callback = callback
+    self._callback_program = program_name
+
 def confirm_action (msg) :
   confirm = wx.MessageBox(
     message=msg,
-    style=wx.YES_NO)
+    style=wx.YES_NO|wx.ICON_QUESTION)
   if (confirm == wx.NO) :
     raise Abort()
   return True
