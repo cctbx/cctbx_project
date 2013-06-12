@@ -5,6 +5,7 @@ import wxtbx.plots
 from wxtbx import bitmaps
 from wxtbx import icons
 import wx.lib.colourselect
+from libtbx.utils import Sorry
 from libtbx import easy_pickle
 import wx
 import os
@@ -146,7 +147,12 @@ class XrayFrame (wx.Frame) :
     if (type(file_name_or_data) is dict) :
       self._img = rstbx.viewer.image(file_name_or_data)
     else :
-      self._img = rstbx.viewer.image(key)
+      try :
+        self._img = rstbx.viewer.image(key)
+      except IOError :
+        raise Sorry(("The file '%s' could not be recognized as a supported "+
+          "image format; please make sure it is actually a detector image.") %
+           key)
 
     # Update the selection in the chooser.
     i = self.add_file_name_or_data(file_name_or_data)
