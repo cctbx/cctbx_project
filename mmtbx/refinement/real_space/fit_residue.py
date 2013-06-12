@@ -8,6 +8,7 @@ import iotbx.pdb
 import mmtbx.refinement.real_space
 import cctbx.geometry_restraints.flags
 from mmtbx.refinement.real_space import individual_sites
+import sys
 
 class run(object):
   def __init__(self,
@@ -179,8 +180,10 @@ class manager(object):
                torsion_search_all_step  = 1,
                torsion_search_local_start = -50,
                torsion_search_local_stop  = 50,
-               torsion_search_local_step  = 5):
+               torsion_search_local_step  = 5,
+               log                        = None):
     adopt_init_args(self, locals())
+    if(self.log is None): self.log = sys.stdout
     get_class = iotbx.pdb.common_residue_names_get_class
     assert get_class(residue.resname) == "common_amino_acid", residue.resname
     self.vector_selections = None
@@ -210,8 +213,10 @@ class manager(object):
       atoms_to_rotate=backrub_atoms_to_rotate,
       selection=backrub_atoms_to_evaluate))
     self.axes_and_atoms_aa_specific = \
-      rotatable_bonds.axes_and_atoms_aa_specific(residue = self.residue,
-        mon_lib_srv = self.mon_lib_srv)
+      rotatable_bonds.axes_and_atoms_aa_specific(
+        residue     = self.residue,
+        mon_lib_srv = self.mon_lib_srv,
+        log         = self.log)
     if(self.axes_and_atoms_aa_specific is not None):
       for i_aa, aa in enumerate(self.axes_and_atoms_aa_specific):
         if(i_aa == len(self.axes_and_atoms_aa_specific)-1):

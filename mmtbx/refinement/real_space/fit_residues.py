@@ -6,13 +6,14 @@ import iotbx.ccp4_map
 import mmtbx.refinement.real_space
 import mmtbx.refinement.real_space.fit_residue
 from mmtbx.rotamer.rotamer_eval import RotamerEval
-import time
+import time, sys
 
 class manager(object):
   def __init__(self,
                structure_monitor,
                mon_lib_srv,
                map_cc_all_threshold = 0.8,
+               map_cc_sidechain_threshold=0.8,
                use_slope            = True,
                use_torsion_search   = True,
                use_rotamer_iterator = True,
@@ -21,8 +22,10 @@ class manager(object):
                torsion_search_all_step  = 1,
                torsion_search_local_start = -50,
                torsion_search_local_stop  = 50,
-               torsion_search_local_step  = 5):
+               torsion_search_local_step  = 5,
+               log                        = None):
     adopt_init_args(self, locals())
+    if(self.log is None): self.log = sys.stdout
     self.rotamer_manager = RotamerEval()
     self.atom_radius_to_negate_map_within = None
     if(self.structure_monitor.target_map_object.miller_array.d_min()>3.5):
@@ -62,7 +65,8 @@ class manager(object):
       if(iselection is not None and not i_res in iselection): continue
       if(get_class(r.residue.resname) == "common_amino_acid" and
          (use_clash_filter or (r.rotamer_status=="OUTLIER" or
-          r.map_cc_all < self.map_cc_all_threshold))):
+          r.map_cc_all < self.map_cc_all_threshold or
+          r.map_cc_sidechain < self.map_cc_sidechain_threshold))):
         #print i_res, len(sm.residue_monitors)
         #and str(r.residue.resseq).strip() in ["49"]):
         #print
@@ -120,7 +124,8 @@ class manager(object):
           torsion_search_all_step  = self.torsion_search_all_step ,
           torsion_search_local_start = self.torsion_search_local_start,
           torsion_search_local_stop  = self.torsion_search_local_stop,
-          torsion_search_local_step  = self.torsion_search_local_step)
+          torsion_search_local_step  = self.torsion_search_local_step,
+          log                        = self.log)
         sites_cart.set_selected(r.residue.atoms().extract_i_seq(),
           r.residue.atoms().extract_xyz())
         sm.xray_structure = sm.xray_structure.replace_sites_cart(sites_cart)

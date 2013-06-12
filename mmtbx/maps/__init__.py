@@ -738,7 +738,7 @@ class kick(object):
       rc = random.choice([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0])
       sel = flex.random_bool(map_coeffs.size(), rc)
       ar = random.choice([0,0.01,0.02,0.03])
-      pr = random.choice(list(xrange(20)))
+      pr = random.choice(list(xrange(10)))
       mc = map_coeffs.randomize_amplitude_and_phase(
         amplitude_error=ar, phase_error_deg=pr, selection=sel)
       if(map_coeff_data is None): map_coeff_data = mc.data()
