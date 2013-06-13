@@ -98,50 +98,65 @@ def mtz_to_cif_label(mtz_to_cif_label_dict, mtz_label):
   return cif_label
 
 master_phil = iotbx.phil.parse("""
+mtz_as_cif
+  .short_caption = MTZ as mmCIF
+  .caption = This program will convert reflections in MTZ format to mmCIF, \
+    suitable for PDB deposition.  Note that phenix.refine can also write \
+    mmCIF files directly if desired.
+  .style = auto_align box \
+    caption_img:icons/custom/phenix.reflection_file_editor.png
+{
+mtz_file = None
+  .type = path
+  .multiple = True
+  .short_caption = MTZ file
+  .style = file_type:mtz input_file bold
+output_file = None
+  .type = path
+  .help = Optional output file name to override default
+  .optional = True
+  .help = 'Enter a .cif output name'
+  .style = file_type:cif bold
 mtz_labels = None
   .help = Custom input labels for unknown MTZ columns
+  .short_caption = Custom input labels
   .type = strings
 cif_labels = None
   .help = Custom output labels for unknown mmCIF columns
+  .short_caption = Custom output labels
   .type = strings
-output_file = None
-  .help = Optional output file name to override default
-  .type = path
-  .optional = True
-  .help = 'Enter a .cif output name'
+}
 """)
 
-def run(args):
+def run(args, params=None, out=sys.stdout):
   from iotbx import file_reader
-  interpreter = master_phil.command_line_argument_interpreter()
-  sources = []
-  mtz_file_names = []
-  mtz_objects = []
-  for arg in args:
-    if os.path.isfile(arg):
-      input_file = file_reader.any_file(arg)
-      if input_file.file_type == "hkl":
-        mtz_file_names.append(input_file.file_name)
-        assert input_file.file_object.file_type() == 'ccp4_mtz'
-        mtz_objects.append(input_file.file_object.file_content())
-      elif (input_file.file_type == "phil"):
-        sources.append(input_file.file_object)
-    else :
-      arg_phil = interpreter.process(arg=arg)
-      sources.append(arg_phil)
-  if len(mtz_objects) == 0:
+  work_params = params
+  if (work_params is None) :
+    cmdline = iotbx.phil.process_command_line_with_files(
+      args=args,
+      master_phil=master_phil,
+      reflection_file_def="mtz_as_cif.mtz_file")
+    work_params = cmdline.work.extract()
+  if (len(work_params.mtz_as_cif.mtz_file) == 0) :
     raise Usage("phenix.mtz_as_cif data.mtz [params.eff] [options ...]")
-  work_phil = master_phil.fetch(sources=sources)
-  work_params = work_phil.extract()
-
+  work_params = work_params.mtz_as_cif
+  mtz_objects = []
+  for file_name in work_params.mtz_file :
+    input_file = file_reader.any_file(file_name)
+    input_file.check_file_type("hkl")
+    if (input_file.file_object.file_type() != 'ccp4_mtz') :
+      raise Sorry("Error reading '%s' - only MTZ files may be used as input."
+        % file_name)
+    mtz_objects.append(input_file.file_object.file_content())
+  assert (len(mtz_objects) != 0)
   custom_cif_labels_dict = {}
   if work_params.mtz_labels is not None and work_params.cif_labels is not None:
     assert len(work_params.mtz_labels) == len(work_params.cif_labels)
     for mtz_label, cif_label in zip(work_params.mtz_labels, work_params.cif_labels):
       custom_cif_labels_dict.setdefault(mtz_label, cif_label)
-
-  for mtz_file_name, mtz_object in zip(mtz_file_names, mtz_objects):
-    print "Converting %s" %mtz_file_name
+  output_files = []
+  for mtz_file_name, mtz_object in zip(work_params.mtz_file, mtz_objects):
+    print >> out, "Converting %s" %mtz_file_name
     cif_blocks = mtz_as_cif_blocks(
       mtz_object, custom_cif_labels_dict=custom_cif_labels_dict).cif_blocks
 
@@ -155,8 +170,11 @@ def run(args):
     if cif_blocks["neutron"] is not None:
       cif_model[prefix+"_neutron"] = cif_blocks["neutron"].cif_block
     with open(output_file, "wb") as f:
-      print "Writing data and map coefficients to CIF file:\n  %s" % (f.name)
+      print >> out, "Writing data and map coefficients to CIF file:\n  %s" % \
+        (f.name)
       print >> f, cif_model
+      output_files.append(output_file)
+  return output_files
 
 class mtz_as_cif_blocks(object):
 
@@ -288,8 +306,10 @@ class mtz_as_cif_blocks(object):
       self.cif_blocks[data_type].add_miller_array(
         array=refln_status, column_name="_refln.status")
 
-
-
+def validate_params (params) :
+  if (len(params.mtz_as_cif.mtz_file) == 0) :
+    raise Sorry("No MTZ file(s) specified!")
+  return True
 
 if __name__ == '__main__':
   run(sys.argv[1:])
