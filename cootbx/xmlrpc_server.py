@@ -2,7 +2,8 @@
 """
 Prototype for Coot XML-RPC plugin used by the Phenix GUI.  This is a fully
 functional implementation, but the code used in Phenix contains many additional
-methods in the coot_interface class which may also be called over XML-RPC.
+methods in the coot_interface class which may also be called over XML-RPC.  A
+simple example is update_model() in the coot_interface class.
 
 libtbx.xmlrpc_utils contains tools used to launch and communicate with Coot
 from another Python process, including a fault-sensitive replacement for the
@@ -42,6 +43,7 @@ class coot_interface (object) :
     self.flag_enable_xmlrpc = True
     self.xmlrpc_server = None
     self._server_toggle_btn = None
+    self._current_model = None
     toolbar = coot_python.main_toolbar()
     port = 40000
     if ("COOT_XMLRPC_PORT" in os.environ) :
@@ -84,6 +86,18 @@ class coot_interface (object) :
       else :
         self._server_toggle_btn.set_label("XML-RPC disabled")
         self.flag_enable_xmlrpc = False
+
+  def update_model (self, pdb_file) :
+    """
+    Example of a user-defined function which will automatically be made
+    accessible via XML-RPC.
+    """
+    import coot
+    if (self.current_imol is None) :
+      self.current_imol = read_pdb(pdb_file)
+    else :
+      clear_and_update_molecule_from_file(self.current_imol,
+        pdb_file)
 
 class coot_xmlrpc_server (SimpleXMLRPCServer.SimpleXMLRPCServer) :
   """
