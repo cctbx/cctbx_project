@@ -42,66 +42,19 @@ def altloc_strategy_from_atom(atom):
     return altloc_strategy.regular()
 
 
-def radius_from_atom(atom, table):
+def element_of(atom):
 
-  return table[ atom.determine_chemical_element_simple().strip().capitalize() ]
-
-
-def largest_atom_in(root, radii_table):
-
-  radii = [
-    radius_from_atom( atom = a, table = radii_table ) for a in root.atoms()
-    ]
-
-  if radii:
-    return max( radii )
-
-  else:
-    return 0.0
+  return atom.determine_chemical_element_simple().strip().capitalize()
 
 
-def max_radius_in(roots, vdw_table):
-
-  max_radii = [
-      largest_atom_in( root = r, radii_table = vdw_table ) for r in roots
-      ]
-  return max( max_radii ) if max_radii else 0.0
-
-
-def voxelizer_for(symmetry, max_radius, margin = 0.5):
-
-  ( xs, ys, zs ) = zip(
-    *symmetry.space_group_info().direct_space_asu().shape_vertices()
-    )
-
-  centre = (
-    ( min( xs ) + max( xs ) ) / 2.0,
-    ( min( ys ) + max( ys ) ) / 2.0,
-    ( min( zs ) + max( zs ) ) / 2.0,
-    )
-
-  step = 2 * max_radius + margin
-
-  return mmtbx.geometry.shared_types.voxelizer(
-    base = symmetry.unit_cell().orthogonalize( centre ),
-    step = ( step, step, step ),
-    )
-
-
-def linear_indexer_for(symmetry, max_radius, margin):
+def linear_indexer_for(params):
 
   return indexing.linear_spheres()
 
 
-def hash_indexer_for(symmetry, max_radius, margin):
+def hash_indexer_for(params):
 
-  return indexing.hash_spheres(
-    voxelizer = voxelizer_for(
-      symmetry = symmetry,
-      max_radius = max_radius,
-      margin = margin,
-      )
-    )
+  return indexing.hash_spheres( voxelizer = params.voxelizer() )
 
 
 class SymmetryEquivalent(object):
@@ -238,6 +191,246 @@ class ClashCollection(object):
         yield pair
 
 
+class Model(object):
+  """
+  A model, providing fast access to atoms by memory_id
+  """
+
+  def __init__(self, root):
+
+    self.identifier = root.memory_id()
+    self.atom_for = dict( ( a.memory_id(), a ) for a in root.atoms() )
+
+
+  def atoms(self):
+
+    return self.atom_for.values()
+
+
+  def elements(self):
+
+    return set( element_of( atom = a ) for a in self.atoms() )
+
+
+  def __hash__(self):
+
+    return hash( self.identifier )
+
+
+  def __eq__(self, other):
+
+    return self.identifier == other.identifier
+
+
+  def __ne__(self, other):
+
+    return not( self == other )
+
+
+  def __getitem__(self, key):
+
+    return self.atom_for[ key ]
+
+
+class Case(object):
+  """
+  Calculation parameters that are transferable
+  """
+
+  def __init__(self, symmetry, vdw_radius_for, max_radius, margin):
+
+    self.symmetry = symmetry
+    self.vdw_radius_for = vdw_radius_for
+    self.max_radius = max_radius
+    self.margin = margin
+
+
+  def asu_mapping_for(self, atoms):
+
+    structure = to_xray_structure( atoms = atoms, symmetry = self.symmetry )
+    return structure.asu_mappings(
+      buffer_thickness = 2 * self.max_radius + self.margin
+      )
+
+
+  def voxelizer(self):
+
+    vertices = self.symmetry.space_group_info().direct_space_asu().shape_vertices()
+    ( xs, ys, zs ) = zip( *vertices )
+
+    centre = (
+      ( min( xs ) + max( xs ) ) / 2.0,
+      ( min( ys ) + max( ys ) ) / 2.0,
+      ( min( zs ) + max( zs ) ) / 2.0,
+      )
+
+    step = 2 * self.max_radius
+
+    return mmtbx.geometry.shared_types.voxelizer(
+      base = self.symmetry.unit_cell().orthogonalize( centre ),
+      step = ( step, step, step ),
+      )
+
+  def radius_for(self, atom):
+
+    return self.vdw_radius_for[ element_of( atom = atom ) ]
+
+
+  def sphere_model_group_for(self, model):
+
+    atoms = model.atoms()
+    asu_mapping = self.asu_mapping_for( atoms = atoms )
+    mappings = asu_mapping.mappings()
+    assert len( atoms ) == len( mappings )
+    asu_spheres = []
+    other_spheres = []
+
+    for ( atom, mapping ) in zip( atoms, mappings ):
+      radius = self.radius_for( atom = atom )
+      altloc = altloc_strategy_from_atom( atom = atom )
+      aid = atom.memory_id()
+      considered = [
+        sphere(
+          centre = m.mapped_site(),
+          radius = radius,
+          molecule = model.identifier,
+          atom = aid,
+          altloc = altloc,
+          symop = asu_mapping.get_rt_mx( m ),
+          )
+        for m in mapping
+        ]
+      assert 1 <= len( considered )
+      asu_spheres.append( considered[0] )
+      other_spheres.extend( considered[1:] )
+
+    return SphereModelGroup(
+      model = model,
+      group = [ asu_spheres, other_spheres ],
+      )
+
+
+  @classmethod
+  def create(cls, symmetry, models, vdw_radius_for, margin = 1.0):
+
+    import operator
+    elements = reduce(
+      operator.or_,
+      [ m.elements() for m in models ],
+      set()
+      )
+
+    return cls(
+      symmetry = symmetry,
+      vdw_radius_for = vdw_radius_for,
+      max_radius = (
+        max( [ vdw_radius_for[ e ] for e in elements ] ) if elements else 0.0
+        ),
+      margin = margin,
+      )
+
+
+class AtomDescriptor(object):
+  """
+  A descriptor that allows looking up the original object is necessary
+  """
+
+  def __init__(self, model, sphere):
+
+    self.model = model
+    self.sphere = sphere
+
+
+  @property
+  def atom(self):
+
+    return self.model[ self.sphere.atom ]
+
+
+class SphereModel(object):
+  """
+  Sphere representation of a model
+  """
+
+  def __init__(self, model, spheres):
+
+    self.model = model
+    self.spheres = spheres
+
+
+  def descriptors(self):
+
+    return (
+      AtomDescriptor( model = self.model, sphere = s ) for s in self.spheres
+      )
+
+
+class SphereModelGroup(object):
+  """
+  Partitioned sphere model
+  """
+
+  def __init__(self, model, group):
+
+    self.model = model
+    self._group = group
+
+
+  def group(self):
+
+    return [
+      SphereModel( model = self.model, spheres = s ) for s in self._group
+      ]
+
+
+class ASUContent(object):
+  """
+  Contains the asymmetric unit
+  """
+
+  def __init__(self, case, ifactory = hash_indexer_for):
+
+    self.case = case
+    self.indexer = ifactory( params = self.case )
+    self.model_with = {}
+    self.asu_transforms = []
+
+
+  def add(self, sequence):
+
+    self.model_with[ sequence.model.identifier ] = sequence.model
+    ( asu, other ) = sequence.group()
+    self.asu_transforms.append( asu )
+
+    self._insert( sphere_model = asu )
+    self._insert( sphere_model = other )
+
+
+  def clashing_with(self, sphere, tolerance):
+
+    return filter(
+      range = self.indexer.close_to( object = sphere ),
+      predicate = overlap_interaction_predicate(
+        object = sphere,
+        tolerance = tolerance,
+        ),
+      )
+
+
+  def descriptor_for(self, sphere):
+
+    return AtomDescriptor(
+      model = self.model_with[ sphere.molecule ],
+      sphere = sphere,
+      )
+
+
+  def _insert(self, sphere_model):
+
+    for d in sphere_model.descriptors():
+      self.indexer.add( object = d.sphere )
+
+
 class DistanceCalculation(object):
   """
   Calculates clash distance for atom pair
@@ -259,78 +452,137 @@ class DistanceCalculation(object):
     return math.sqrt( sum( [ d * d for d in diff ] ) )
 
 
-def calculate(roots, symmetry, vdw_table, ifactory = hash_indexer_for, margin = 1.0, tolerance = 0.5):
+class ClashCalculation(object):
+  """
+  Calculates clashpoints
+  """
 
-  max_radius = max_radius_in( roots = roots, vdw_table = vdw_table )
-  asu_buffer = 2 * max_radius + margin
+  def __init__(self, tolerance = 0.5):
 
-  asu_spheres = []
-  indexer = ifactory(
+    self.tolerance = tolerance
+
+
+  def __call__(self, asu, descriptor, accumulator):
+
+    clashing = asu.clashing_with(
+      sphere = descriptor.sphere,
+      tolerance = self.tolerance,
+      )
+
+    if clashing:
+      accumulator(
+        ClashPoint(
+          centre = SymmetryEquivalent(
+            atom = descriptor.atom,
+            symop = descriptor.sphere.symop,
+            ),
+          others = [
+            SymmetryEquivalent(
+              atom = asu.descriptor_for( sphere = s ).atom,
+              symop = s.symop,
+              )
+            for s in clashing
+            ]
+          )
+        )
+
+
+class ClashCountCalculation(object):
+  """
+  Calculates number of clashes
+  """
+
+  def __init__(self, tolerance = 0.5):
+
+    self.tolerance = tolerance
+
+
+  def __call__(self, asu, descriptor, accumulator):
+
+    clashing = asu.clashing_with(
+      sphere = descriptor.sphere,
+      tolerance = self.tolerance,
+      )
+    accumulator( len( clashing ) )
+
+
+class ElementAccumulator(object):
+  """
+  Collects all elements in a list
+  """
+
+  def __init__(self):
+
+    self.result = []
+
+
+  def __call__(self, element):
+
+    self.result.append( element )
+
+
+class ReducingAccumulator(object):
+  """
+  Sums up the elements as they come in
+  """
+
+  def __init__(self, initial, operation):
+
+    self.result = initial
+    self.operation = operation
+
+
+  def __call__(self, element):
+
+    self.result = self.operation( self.result, element )
+
+
+def calculate_contents(roots, symmetry, vdw_radius_for, ifactory, margin):
+
+  models = [ Model( root = r ) for r in roots ]
+  asu = ASUContent(
+    case = Case.create(
+      symmetry = symmetry,
+      models = models,
+      vdw_radius_for = vdw_radius_for,
+      margin = margin,
+      ),
+    ifactory = ifactory,
+    )
+
+  for m in models:
+    asu.add( sequence = asu.case.sphere_model_group_for( model = m ) )
+
+  return asu
+
+
+def calculate(
+  roots,
+  symmetry,
+  vdw_table,
+  ifactory = hash_indexer_for,
+  margin = 1.0,
+  calculation = None,
+  accumulator = None,
+  ):
+
+  asu = calculate_contents(
+    roots = roots,
     symmetry = symmetry,
-    max_radius = max_radius,
+    vdw_radius_for = vdw_table,
+    ifactory = ifactory,
     margin = margin,
     )
 
-  for ( mid, root ) in enumerate( roots ):
-    structure = to_xray_structure( atoms = root.atoms(), symmetry = symmetry )
-    asu_mapping = structure.asu_mappings( buffer_thickness = asu_buffer )
-    mappings = asu_mapping.mappings()
-    assert len( root.atoms() ) == len( mappings )
-    root_asu_spheres = []
+  if calculation is None:
+    calculation = ClashCalculation()
 
-    for ( aid, ( atom, mapping ) ) in enumerate( zip( root.atoms(), mappings ) ):
-      radius = radius_from_atom( atom = atom, table = vdw_table )
-      altloc = altloc_strategy_from_atom( atom = atom )
-      considered = [
-        sphere(
-          centre = m.mapped_site(),
-          radius = radius,
-          molecule = mid,
-          atom = aid,
-          altloc = altloc,
-          symop = asu_mapping.get_rt_mx( m ),
-          )
-        for m in mapping
-        ]
-      assert 1 <= len( considered )
-      root_asu_spheres.append( considered[0] )
-      indexer.add( object = considered[0] )
+  if accumulator is None:
+    accumulator = ElementAccumulator() # avoid changing mutable default
 
-      for sph in considered[1:]:
-        indexer.add( object = sph )
+  for sphere_model in asu.asu_transforms:
+    for d in sphere_model.descriptors():
+      calculation( asu = asu, descriptor = d, accumulator = accumulator )
 
-    asu_spheres.append( root_asu_spheres )
-
-  clashes = []
-  root_atoms = [ r.atoms() for r in roots ]
-
-  for root_asu_spheres in asu_spheres:
-    clash_points = []
-
-    for sph in root_asu_spheres:
-      interacting = filter(
-        range = indexer.close_to( object = sph ),
-        predicate = overlap_interaction_predicate( object = sph, tolerance = tolerance ),
-        )
-
-      if interacting:
-        clash_points.append(
-          ClashPoint(
-            centre = SymmetryEquivalent(
-              atom = root_atoms[ sph.molecule ][ sph.atom ],
-              symop = sph.symop,
-              ),
-            others = [
-              SymmetryEquivalent(
-                atom = root_atoms[ s.molecule ][ s.atom ],
-                symop = s.symop,
-                )
-              for s in interacting
-              ]
-            )
-          )
-
-    clashes.append( ClashCollection( points = clash_points ) )
-
-  return clashes
+  return accumulator.result
 
