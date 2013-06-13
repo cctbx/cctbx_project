@@ -1,3 +1,4 @@
+# -*- coding: utf-8; py-indent-offset: 2 -*-
 """
 Examines a structure for metal ions. Can iterate over all atoms, examining
 their density and chemical environment to determine if they are correctly
@@ -202,7 +203,7 @@ class atom_contact (slots_getstate_setstate) :
     """Distance from another contact"""
     return abs(self.vector - other.vector)
 
-  def id_str (self, suppress_rt_mx=False) :
+  def id_str (self, suppress_rt_mx = False) :
     if (not self.rt_mx.is_unit_mx()) and (not suppress_rt_mx) :
       return self.atom.id_str() + " " + str(self.rt_mx)
     else :
@@ -226,7 +227,7 @@ class atom_contact (slots_getstate_setstate) :
   def altloc (self) :
     return self.atom.fetch_labels().altloc.strip()
 
-  def atom_id_no_altloc (self, suppress_rt_mx=False) :
+  def atom_id_no_altloc (self, suppress_rt_mx = False) :
     """Unique identifier for an atom, ignoring the altloc but taking the
     symmetry operator (if any) into account."""
     labels = self.atom.fetch_labels()
@@ -266,6 +267,7 @@ class Manager (object) :
                 log = None) :
     if (log is None) : log = null_out()
     self.fmodel = fmodel
+    self.atoms_to_props = {}
     self.params = params
     self.wavelength = wavelength
     self.server = server()
@@ -301,11 +303,11 @@ class Manager (object) :
         print >> log, "  Running Phaser substructure completion..."
         t1 = time.time()
         self.phaser_substructure = find_anomalous_scatterers(
-          fmodel=fmodel,
-          pdb_hierarchy=pdb_hierarchy,
-          wavelength=wavelength,
-          verbose=verbose,
-          n_cycles=params.phaser.llgc_ncycles).atoms()
+          fmodel = fmodel,
+          pdb_hierarchy = pdb_hierarchy,
+          wavelength = wavelength,
+          verbose = verbose,
+          n_cycles = params.phaser.llgc_ncycles).atoms()
         t2 = time.time()
         print >> log, "    time: %.1fs" % (t2-t1)
         if (len(self.phaser_substructure) == 0) :
@@ -316,7 +318,7 @@ class Manager (object) :
           self.analyze_substructure(log = log, verbose = True)
       else :
         self.flag_refine_substructure = True
-        self.refine_anomalous_substructure(log=log)
+        self.refine_anomalous_substructure(log = log)
 
   def refine_anomalous_substructure (self, log) :
     """
@@ -328,13 +330,13 @@ class Manager (object) :
     fmodel_tmp = self.fmodel.deep_copy()
     # XXX should we only be refining f''?
     anom_groups = anomalous_scatterer_groups.refine_anomalous_substructure(
-      fmodel=fmodel_tmp,
-      pdb_hierarchy=self.pdb_hierarchy,
-      wavelength=self.wavelength,
-      reset_water_u_iso=True,
-      verbose=True,
-      use_all_anomalous=False,
-      out=log)
+      fmodel = fmodel_tmp,
+      pdb_hierarchy = self.pdb_hierarchy,
+      wavelength = self.wavelength,
+      reset_water_u_iso = True,
+      verbose = True,
+      use_all_anomalous = True,
+      out = log)
     scatterers = fmodel_tmp.xray_structure.scatterers()
     self.use_fdp = flex.bool(scatterers.size(), False)
     self.site_fp = flex.double(scatterers.size(), 0)
@@ -347,7 +349,7 @@ class Manager (object) :
         self.site_fdp[i_seq] = sc.fdp
 
   def update_structure (self, pdb_hierarchy, xray_structure,
-      connectivity = None, log = None, refine_if_necessary=True) :
+      connectivity = None, log = None, refine_if_necessary = True) :
     """
     Set the current atomic data: PDB hierarchy, Xray structure, and simple
     connectivity list.
@@ -394,9 +396,9 @@ class Manager (object) :
       self.b_stddev_hoh = adptbx.u_as_b(
         u_iso_hoh.standard_deviation_of_the_sample())
     if (self.phaser_substructure is not None) :
-      self.analyze_substructure(log=log)
+      self.analyze_substructure(log = log)
     elif (self.flag_refine_substructure) and (refine_if_necessary) :
-      self.refine_anomalous_substructure(log=log)
+      self.refine_anomalous_substructure(log = log)
 
   def get_initial_b_iso (self) :
     if (getattr(self, "b_mean_hoh", None) is not None) :
@@ -406,13 +408,13 @@ class Manager (object) :
 
   def get_map (self, map_type) :
     map_coeffs = self.fmodel.map_coefficients(
-      map_type=map_type,
-      exclude_free_r_reflections=True,
-      fill_missing=True,
-      pdb_hierarchy=self.pdb_hierarchy)
+      map_type = map_type,
+      exclude_free_r_reflections = True,
+      fill_missing = True,
+      pdb_hierarchy = self.pdb_hierarchy)
     if (map_coeffs is None) :
       return None
-    return map_coeffs.fft_map(resolution_factor=0.25,
+    return map_coeffs.fft_map(resolution_factor = 0.25,
       ).apply_sigma_scaling().real_map_unpadded()
 
   def update_maps (self) :
@@ -438,7 +440,7 @@ class Manager (object) :
       else :
         map_types.append("anom")
       map_keys.append("anom")
-    # XXX to save memory, we sample atomic positions immediately and throw out
+    # To save memory, we sample atomic positions immediately and throw out
     # the actual maps (instead of keeping up to 3 in memory)
     sites_frac = self.xray_structure.sites_frac()
     sites_cart = self.xray_structure.sites_cart()
@@ -448,18 +450,22 @@ class Manager (object) :
     for map_type, map_key in zip(map_types, map_keys) :
       real_map = self.get_map(map_type)
       if (real_map is not None) :
+        # Gather values for map peaks at each site
         self._map_values[map_key] = flex.double(sites_frac.size(), 0)
         for i_seq, site_frac in enumerate(sites_frac) :
           atom = self.pdb_atoms[i_seq]
-          resname = atom.fetch_labels().resname
-          if (resname in WATER_RES_NAMES) or (atom.segid.strip() == "ION") :
+          resname = atom.fetch_labels().resname.strip().upper()
+          if (resname in WATER_RES_NAMES + SUPPORTED or
+              atom.segid.strip().upper() in ["ION"]):
             value = real_map.eight_point_interpolation(site_frac)
             self._map_values[map_key][i_seq] = value
-        if (map_type == "2mFo-DFc") :
+
+        if map_type == "2mFo-DFc":
+          # Gather values on map variance and principal axes of interia
           from cctbx import maptbx
           for i_seq, site_cart in enumerate(sites_cart) :
-            resname = self.pdb_atoms[i_seq].fetch_labels().resname
-            if (resname in WATER_RES_NAMES) :
+            resname = self.pdb_atoms[i_seq].fetch_labels().resname.strip()
+            if resname in WATER_RES_NAMES + SUPPORTED:
               # XXX not totally confident about how I'm weighting this...
               p_a_i = maptbx.principal_axes_of_inertia(
                 real_map = real_map,
@@ -474,32 +480,38 @@ class Manager (object) :
                 radius = self.params.chloride.radius)
               self._map_variances[i_seq] = variance
             elif (i_seq in self.calpha_sel) :
+              # Also collect some info in average C_alpha 2FoFc peak heights
               self.calpha_mean_two_fofc += real_map.eight_point_interpolation(
                 sites_frac[i_seq])
         del real_map
+
     if (self.calpha_mean_two_fofc > 0) :
       n_calpha = len(self.calpha_sel)
       assert (n_calpha > 0)
       self.calpha_mean_two_fofc /= n_calpha
+
+    # Gather info on carbons' average Fo peak height for use in estimating other
+    # sites' atomic weight
     self.carbon_fo_values = None
     if (len(self.carbon_sel) > 0) :
       self.carbon_fo_values = flex.double()
       self._map_values["mFo"] = flex.double(sites_frac.size(), 0)
       fo_map = fft_map(self.fmodel.map_coefficients(
-        map_type="mFo",
-        exclude_free_r_reflections=True,
-        fill_missing=True))
+        map_type = "mFo",
+        exclude_free_r_reflections = True,
+        fill_missing = True))
+
       for i_seq, site_frac in enumerate(sites_frac) :
-        resname = self.pdb_atoms[i_seq].fetch_labels().resname
+        resname = self.pdb_atoms[i_seq].fetch_labels().resname.strip()
         element = self.pdb_atoms[i_seq].element.strip()
-        if (element == "C") or ((element == "O") and (resname == "HOH")) :
+        if (element == "C") or ((element == "O") and (resname in WATER_RES_NAMES)):
           map_value = fo_map.eight_point_interpolation(site_frac)
           self._map_values["mFo"][i_seq] = map_value
           if (element == "C") :
             self.carbon_fo_values.append(map_value)
       del fo_map
 
-  def show_current_scattering_statistics (self, out=sys.stdout) :
+  def show_current_scattering_statistics (self, out = sys.stdout) :
     print >> out, ""
     print >> out, "Model and map statistics:"
     print >> out, "  mean mFo map height @ carbon: %s" % format_value("%.2f",
@@ -559,10 +571,10 @@ class Manager (object) :
         vec_ji = col(site_ji_cart)
         assert abs(vec_i - vec_ji) < distance_cutoff + 0.5
         contact = atom_contact(
-          atom=self.pdb_atoms[j_seq],
-          vector=vec_i - vec_ji,
-          site_cart=site_ji_cart,
-          rt_mx=rt_mx)
+          atom = self.pdb_atoms[j_seq],
+          vector = vec_i - vec_ji,
+          site_cart = site_ji_cart,
+          rt_mx = rt_mx)
         # XXX I have no idea why the built-in handling of special positions
         # doesn't catch this for us
         if (j_seq == i_seq) and (not rt_mx.is_unit_mx()) :
@@ -840,7 +852,7 @@ class Manager (object) :
       # same ASU as the interacting site
       def get_site (k_seq) :
         return self.unit_cell.orthogonalize(
-          site_frac=(contact.rt_mx * sites_frac[k_seq]))
+          site_frac = (contact.rt_mx * sites_frac[k_seq]))
       other = contact.atom
       resname = contact.resname()
       atom_name = contact.atom_name()
@@ -880,7 +892,7 @@ class Manager (object) :
             (assume_hydrogens_all_missing or resname == "ARG") and
             distance <= params.max_distance_to_cation) :
         if (is_coplanar_with_sidechain(atom, other.parent(),
-              distance_cutoff=params.max_deviation_from_plane)) :
+              distance_cutoff = params.max_deviation_from_plane)) :
           binds_amide_hydrogen = True
           if (resname == "ARG") and (distance < min_distance_to_cation) :
             min_distance_to_cation = distance
@@ -1068,7 +1080,7 @@ class Manager (object) :
     resname = atom.fetch_labels().resname.strip().upper()
     assert resname in WATER_RES_NAMES
 
-    atom_props = AtomProperties(i_seq = i_seq, manager = self)
+    atom_props = self.atoms_to_props[i_seq]
     final_choice = None
 
     # Gather some quick statistics on the atom and see if it looks like water
@@ -1129,10 +1141,10 @@ class Manager (object) :
           wavelength = self.wavelength,
           require_valence = require_valence)
         atom_props.check_fpp_ratio(
-          ion_params=elem_params,
-          wavelength=self.wavelength,
-          fpp_ratio_min=self.params.phaser.fpp_ratio_min,
-          fpp_ratio_max=self.params.phaser.fpp_ratio_max)
+          ion_params = elem_params,
+          wavelength = self.wavelength,
+          fpp_ratio_min = self.params.phaser.fpp_ratio_min,
+          fpp_ratio_max = self.params.phaser.fpp_ratio_max)
         identity = str(elem_params)
         if atom_props.is_correctly_identified(identity = identity):
           reasonable.append((elem_params, atom_props.score[identity]))
@@ -1156,10 +1168,10 @@ class Manager (object) :
       filtered_halides = []
       for element in candidate_halides :
         fpp_ratio = atom_props.check_fpp_ratio(
-          ion_params=MetalParameters(element=element, charge=-1),
-          wavelength=self.wavelength,
-          fpp_ratio_min=self.params.phaser.fpp_ratio_min,
-          fpp_ratio_max=self.params.phaser.fpp_ratio_max)
+          ion_params = MetalParameters(element = element, charge = -1),
+          wavelength = self.wavelength,
+          fpp_ratio_min = self.params.phaser.fpp_ratio_min,
+          fpp_ratio_max = self.params.phaser.fpp_ratio_max)
         # XXX chlorides are tricky, because they tend to be partial occupancy
         # anyway and the f'' is already small, so prone to error here
         if (fpp_ratio is not None) and (element != "CL") :
@@ -1167,7 +1179,7 @@ class Manager (object) :
               (fpp_ratio > self.params.phaser.fpp_ratio_max)) :
             #print "fpp_ratio:", fpp_ratio
             continue
-        if (self.looks_like_halide_ion(i_seq=i_seq, element=element)) :
+        if (self.looks_like_halide_ion(i_seq = i_seq, element = element)) :
           filtered_halides.append(element)
 
       looks_like_halide = (len(filtered_halides) > 0)
@@ -1194,7 +1206,7 @@ class Manager (object) :
             (not auto_candidates) and
             (atom_props.is_compatible_site(ion_params))) :
           n_good_res = atom_props.number_of_favored_ligand_residues(ion_params,
-            distance=2.7)
+            distance = 2.7)
           n_total_coord_atoms = atom_props.number_of_atoms_within_radius(2.8)
           # if we see at least one favorable residue coordinating the atom
           # and no more than six atoms total, accept the current guess
@@ -1208,11 +1220,11 @@ class Manager (object) :
               (not auto_candidates) and
               (atom_props.is_compatible_site(ion_params))) :
           n_good_res = atom_props.number_of_favored_ligand_residues(ion_params,
-            distance=2.9, exclude_atoms=["O"])
+            distance = 2.9, exclude_atoms = ["O"])
           n_bb_oxygen = atom_props.number_of_backbone_oxygens(
-            distance_cutoff=2.9)
+            distance_cutoff = 2.9)
           n_total_coord_atoms = atom_props.number_of_atoms_within_radius(
-            distance_cutoff=2.9)
+            distance_cutoff = 2.9)
           if ((n_good_res + n_bb_oxygen) >= 2) and (n_total_coord_atoms >= 4) :
             reasonable.append((ion_params, 0))
         # another special case: very heavy ions, which are probably not binding
@@ -1298,6 +1310,8 @@ class Manager (object) :
     if (len(waters) == 0) : return
     nproc = easy_mp.get_processes(self.nproc)
     ions = []
+    self.atoms_to_props = dict((i_seq, AtomProperties(i_seq, self))
+                               for i_seq in waters)
     if (nproc == 1) :
       print >> out, ""
       for water_i_seq in waters :
@@ -1342,9 +1356,8 @@ class Manager (object) :
     returning a boolean indicating correctness.
     """
 
-    atom = self.pdb_atoms[i_seq]
-    atom_props = AtomProperties(i_seq = i_seq, manager = self)
-    element = atom.element.strip().upper()
+    atom_props = self.atoms_to_props[i_seq]
+    element = get_element(atom_props.atom)
     elem_params = self.server.get_metal_parameters(element)
 
     if elem_params is not None:
@@ -1361,14 +1374,14 @@ class Manager (object) :
         fpp_ratio_min = self.params.phaser.fpp_ratio_min,
         fpp_ratio_max = self.params.phaser.fpp_ratio_max)
     elif element in HALIDES:
-      identity = _identity(atom)
+      identity = _identity(atom_props.atom)
       atom_props.inaccuracies[identity] = set()
 
       if not self.looks_like_halide_ion(i_seq = i_seq, element = element):
         atom_props.inaccuracies[identity].add(atom_props.BAD_HALIDE)
     else:
       raise Sorry("Element '%s' not supported:\n%s" % (element,
-        atom.format_atom_record()))
+        atom_props.atom.format_atom_record()))
 
     return atom_props
 
@@ -1384,14 +1397,12 @@ class Manager (object) :
     """
 
     if segid is None:
-      from cctbx.eltbx import chemical_elements
-      elements = chemical_elements.proper_upper_list()
       ions = []
       for model in self.pdb_hierarchy.models():
         for chain in model.chains():
           for residue_group in chain.residue_groups():
             for atom_group in residue_group.atom_groups():
-              if atom_group.resname.strip() in elements:
+              if atom_group.resname.strip() in SUPPORTED:
                 atoms = atom_group.atoms()
                 assert (len(atoms) == 1)
                 for atom in atoms:
@@ -1404,6 +1415,8 @@ class Manager (object) :
       return
     ion_status = []
 
+    self.atoms_to_props = dict((i_seq, AtomProperties(i_seq, self))
+                               for i_seq in ions)
     for i_seq in ions:
       atom_props = self.validate_ion(
         i_seq = i_seq,
@@ -1411,9 +1424,9 @@ class Manager (object) :
       ion_status.append((atom_props, atom_props.is_correctly_identified()))
     scatterers = self.xray_structure.scatterers()
     headers = ("atom", "occ", "b_iso", "2mFo-DFc", "mFo-DFc", "fp", "fdp",
-               "BVS", "VECSUM")
-    fmt = "%-15s %-5s  %-5s  %-8s  %-7s  %-5s  %-5s  %-5s  %-6s"
-    box = framed_output(out, title="Validating new ions", width=80)
+               "ratio", "BVS", "VECSUM")
+    fmt = "%-15s %-5s  %-5s  %-8s  %-7s  %-5s  %-5s  %-5s %-5s  %-6s"
+    box = framed_output(out, title = "Validating new ions", width = 80)
     print >> box, fmt % headers
     print >> box, " " + ("-" * 75)
     for props, okay_flag in ion_status :
@@ -1424,13 +1437,15 @@ class Manager (object) :
         fp = sc.fp
         fdp = sc.fdp
       # XXX props.atom.b does not work here!
-      b_iso = adptbx.u_as_b(sc.u_iso_or_equiv(unit_cell=self.unit_cell))
+      b_iso = adptbx.u_as_b(sc.u_iso_or_equiv(unit_cell = self.unit_cell))
       identity = _identity(props.atom)
-      def ff (fs, val) : return format_value(fs, val, replace_none_with="---")
-      print >> box, (fmt % (props.atom.id_str(suppress_segid=True)[5:-1],
+      def ff (fs, val) : return format_value(fs, val, replace_none_with = "---")
+      print >> box, (fmt % (props.atom.id_str(suppress_segid = True)[5:-1],
         ff("%.2f", props.atom.occ), ff("%.2f", b_iso),
         ff("%.2f", props.peak_2fofc), ff("%.2f", props.peak_fofc),
         ff("%.2f", fp), ff("%.2f", fdp),
+        ff("%.2f", None if self.wavelength is None else fdp / sasaki.table(
+            get_element(props.atom)).at_angstrom(self.wavelength).fdp()),
         ff("%.2f", props.valence_sum.get(identity)),
         ff("%.2f", props.vector_sum.get(identity))))
       # print >> box, props.geometries
@@ -1501,7 +1516,7 @@ class water_result (object):
       ambiguous_valence_cutoff,
       valence_used,
       final_choice,
-      no_final=False) :
+      no_final = False) :
     adopt_init_args(self, locals())
 
   def show_summary (self, out = None, debug = False) :
@@ -1590,8 +1605,8 @@ class AtomProperties (object) :
     ANOM_PEAK, NO_ANOM_PEAK, BAD_GEOMETRY, NO_GEOMETRY, BAD_VECTORS, \
     BAD_VALENCES, TOO_FEW_NON_WATERS, TOO_FEW_COORD, TOO_MANY_COORD, \
     LIKE_COORD, BAD_COORD_ATOM, BAD_FPP, BAD_COORD_RESIDUE, VERY_BAD_VALENCES, \
-    BAD_HALIDE, HIGH_2FOFC \
-    = range(23)
+    BAD_HALIDE, HIGH_2FOFC, COORDING_GEOMETRY \
+    = range(24)
 
   error_strs = {LOW_B: "Abnormally low b-factor",
                 HIGH_B: "Abnormally high b-factor",
@@ -1616,12 +1631,13 @@ class AtomProperties (object) :
                 VERY_BAD_VALENCES: "BVS far above or below cutoff",
                 BAD_HALIDE: "Bad halide site",
                 HIGH_2FOFC: "Unexpectedly high 2mFo-DFc value",
+                COORDING_GEOMETRY: "No distinct geometry and coordinating another atom with distinct geometry",
                 }
 
   def __init__(self, i_seq, manager):
     self.i_seq = i_seq
     self.atom = manager.pdb_atoms[i_seq]
-    self.resname = self.atom.parent().resname
+    self.resname = self.atom.parent().resname.strip().upper()
     self.d_min = manager.fmodel.f_obs().d_min()
     self.anomalous_flag = manager.fmodel.f_obs().anomalous_flag()
     self.strict_valence = manager.get_strict_valence_flag()
@@ -1665,6 +1681,7 @@ class AtomProperties (object) :
     self.fpp = manager.get_fpp(i_seq)
     self.fpp_ratios = {}
     self.fp = manager.get_fp(i_seq)
+    self.manager = manager
 
   def is_correctly_identified(self, identity = None):
     """
@@ -1684,7 +1701,7 @@ class AtomProperties (object) :
     return ((len(self.bad_coords[identity]) == 0) and
             (not self.BAD_COORD_RESIDUE in self.inaccuracies[identity]))
 
-  def is_compatible_site (self, ion_params, require_anom=True) :
+  def is_compatible_site (self, ion_params, require_anom = True) :
     """
     More minimal criteria for determining whether a site is chemically
     compatible, allowing for incomplete coordination shells.
@@ -1698,8 +1715,8 @@ class AtomProperties (object) :
             (not self.BAD_COORD_RESIDUE in inaccuracies) and
             (anom_allowed))
 
-  def number_of_favored_ligand_residues (self, ion_params, distance=3.0,
-      exclude_atoms=()) :
+  def number_of_favored_ligand_residues (self, ion_params, distance = 3.0,
+      exclude_atoms = ()) :
     """
     Counts the number of preferred residues coordinating the atom.  Used for
     approximate detection of transition-metal binding sites.
@@ -1731,7 +1748,7 @@ class AtomProperties (object) :
         atom_ids.append(other_id) # check for alt confs.
     return n_atoms
 
-  def number_of_backbone_oxygens (self, distance_cutoff=3.0) :
+  def number_of_backbone_oxygens (self, distance_cutoff = 3.0) :
     n_bb_ox = 0
     for contact in self.nearby_atoms :
       if (contact.atom_name() == "O") :
@@ -1804,8 +1821,10 @@ class AtomProperties (object) :
     # if the atom is clearly not a water, optionally relax some rules.  this
     # will be more sensitive for transition metals, without finding a lot of
     # spurious Mg/Na sites.
-    strict_rules = require_valence or self.is_correctly_identified(identity = "HOH") or \
-      self.strict_valence or (ion_params.element in ["NA","MG"])
+    strict_rules = require_valence or \
+      self.is_correctly_identified(identity = "HOH") or \
+      self.strict_valence or \
+      ion_params.element in ["NA","MG"]
 
     # Check for all non-overlapping atoms within 3 A of the metal
     n_closest = 0
@@ -1911,6 +1930,16 @@ class AtomProperties (object) :
       else:
         strict_rules = False
 
+    # If no distinct geometry, check that none of the coordinating have distinct
+    # geometry, either
+    if self.geometries == []:
+      for contact in self.nearby_atoms:
+        o_atom = contact.atom
+        if o_atom.i_seq in self.manager.atoms_to_props:
+          o_geometry = self.manager.atoms_to_props[o_atom.i_seq].geometries
+          if o_geometry != []:
+            inaccuracies.add(self.COORDING_GEOMETRY)
+
     # Check for reasonable vector/valence values
     vectors = server.calculate_valences(ion_params, self.nearby_atoms)
     self.vectors[identity] = vectors
@@ -1946,8 +1975,8 @@ class AtomProperties (object) :
   def check_fpp_ratio (self,
       ion_params,
       wavelength,
-      fpp_ratio_min=0.3,
-      fpp_ratio_max=1.05) :
+      fpp_ratio_min = 0.3,
+      fpp_ratio_max = 1.05) :
     """Compare the refined and theoretical f'' values if available"""
     identity = str(ion_params)
     inaccuracies = self.inaccuracies.get(identity, None)
@@ -2021,6 +2050,8 @@ class AtomProperties (object) :
       if (self.fpp >= 0.2) :
         fpp_flag = " <<<"
       print >> out, "  f'':           %6.2f%s" % (self.fpp, fpp_flag)
+      print >> out, "  f'' ratio:     %6.2f%s" % (
+          self.fpp /sasaki.table(get_element(self.atom)).at_angstrom(wavelength).fdp())
     if self.nearby_atoms is not None:
       angstrom = u"\N{ANGSTROM SIGN}".encode("utf-8", "strict")
       degree = u"\N{DEGREE SIGN}".encode("utf-8", "strict")
@@ -2235,7 +2266,7 @@ def is_negatively_charged_oxygen (atom_name, resname) :
   return False
 
 # XXX distance cutoff may be too generous, but 0.5 is too strict
-def is_coplanar_with_sidechain (atom, residue, distance_cutoff=0.75) :
+def is_coplanar_with_sidechain (atom, residue, distance_cutoff = 0.75) :
   """
   Given an isolated atom and an interacting residue with one or more amine
   groups, determine whether the atom is approximately coplanar with the terminus
