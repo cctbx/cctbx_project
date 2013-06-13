@@ -1116,6 +1116,7 @@ iotbx/fullprof/__init__.py -text
 iotbx/fullprof/read_pcr.py -text
 iotbx/fullprof/write_pcr.py -text
 iotbx/gui_tools/__init__.py -text
+iotbx/gui_tools/cif_conversions.py -text
 iotbx/gui_tools/import_data_and_flags.py -text
 iotbx/gui_tools/models.py -text
 iotbx/gui_tools/reflections.py -text

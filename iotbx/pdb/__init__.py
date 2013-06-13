@@ -603,6 +603,7 @@ class pdb_input_from_any(object):
                lines=None,
                pdb_id=None,
                raise_sorry_if_format_error=False):
+    self.file_format = None
     content = None
     from iotbx.pdb.mmcif import cif_input
     mmcif_exts = ('.cif', '.mmcif')
@@ -636,6 +637,9 @@ class pdb_input_from_any(object):
         if (n_unknown_records == n_records or
             n_unknown_records == (n_records - n_blank_records)):
           continue
+        self.file_format = "pdb"
+      else :
+        self.file_format = "cif"
       break
     if exc_info is not None:
       raise exc_info[0], exc_info[1], exc_info[2]
