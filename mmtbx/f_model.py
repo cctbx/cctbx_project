@@ -2181,6 +2181,24 @@ class manager(manager_mixin):
     emap = self.electron_density_map()
     return emap.map_coefficients(**kwds)
 
+  def _get_real_map (self, **kwds) :
+    map_coeffs = self.map_coefficients(**kwds)
+    return map_coeffs.fft_map(
+      resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
+
+  def two_fofc_map (self, **kwds) :
+    kwds['map_type'] = "2mFo-DFc"
+    return self._get_real_map(**kwds)
+
+  def fofc_map (self, **kwds) :
+    kwds['map_type'] = "mFo-DFc"
+    return self._get_real_map(**kwds)
+
+  def anomalous_map (self, **kwds) :
+    if (not self.f_obs().anomalous_flag()) : return None
+    kwds['map_type'] = "anom"
+    return self._get_real_map(**kwds)
+
   def info(self, free_reflections_per_bin = None, max_number_of_bins = None,
       n_bins=None):
     if(free_reflections_per_bin is None):

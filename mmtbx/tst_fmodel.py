@@ -307,6 +307,11 @@ def exercise_4_f_hydrogens():
   assert approx_equal(fmodel.k_h, 0.9)
   assert approx_equal(fmodel.b_h, 0)
   assert approx_equal(fmodel.r_work(), 0)
+  # test map convenience functions
+  map1 = fmodel.two_fofc_map()
+  map2 = fmodel.fofc_map()
+  map3 = fmodel.anomalous_map()
+  assert (not None in [map1, map2]) and (map3 is None)
 
 def exercise_1():
   n_elements = 70

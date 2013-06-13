@@ -1694,6 +1694,24 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
     emap = self.electron_density_map()
     return emap.map_coefficients(**kwds)
 
+  def _get_real_map (self, **kwds) :
+    map_coeffs = self.map_coefficients(**kwds)
+    return map_coeffs.fft_map(
+      resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
+
+  def two_fofc_map (self, **kwds) :
+    kwds['map_type'] = "2mFo-DFc"
+    return self._get_real_map(**kwds)
+
+  def fofc_map (self, **kwds) :
+    kwds['map_type'] = "mFo-DFc"
+    return self._get_real_map(**kwds)
+
+  def anomalous_map (self, **kwds) :
+    if (not self.f_obs().anomalous_flag()) : return None
+    kwds['map_type'] = "anom"
+    return self._get_real_map(**kwds)
+
   def compute_map_coefficients(self,
                        map_type = None,
                        k        = None,
