@@ -57,7 +57,8 @@ def fetch_pdb_data (
       (mtz_file, "\n".join(import_out.stderr_lines)))
   return os.path.abspath(pdb_file), os.path.abspath(mtz_file)
 
-def find_data_arrays (mtz_file, log=None, merge_anomalous=False) :
+def find_data_arrays (mtz_file, log=None, merge_anomalous=False,
+    crystal_symmetry=None) :
   """
   Guess an appropriate data array to use for refinement, plus optional
   Hendrickson-Lattman coefficients and R-free flags if present.
@@ -101,6 +102,12 @@ def find_data_arrays (mtz_file, log=None, merge_anomalous=False) :
     minimum_score=1)
   if (len(flags_and_values) > 0) :
     flags, flag_value = flags_and_values[0]
+  if (crystal_symmetry is not None) :
+    data = data.customized_copy(crystal_symmetry=crystal_symmetry)
+    if (flags is not None) :
+      flags = flags.customized_copy(crystal_symmetry=crystal_symmetry)
+    if (phases is not None) :
+      phases = phases.customized_copy(crystal_symmetry=crystal_symmetry)
   return reflection_file_utils.process_raw_data(
     obs=data,
     r_free_flags=flags,
