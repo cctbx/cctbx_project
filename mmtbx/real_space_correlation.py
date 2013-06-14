@@ -640,3 +640,67 @@ def find_suspicious_residues (
             (min_acceptable_2fofc, frac_below_min)
           print >> log, "  Mean 2mFo-DFc value = %.2f" % map_mean
   return outliers
+
+def extract_map_stats_for_single_atoms (xray_structure, pdb_atoms, fmodel,
+    selection=None) :
+  """
+  Memory-efficient routine for harvesting map values for individual atoms
+  (e.g. waters).  Only one FFT'd map at a time is in memory.
+  """
+  if (selection is None) :
+    selection = ~(xray_structure.hd_selection())
+  sites_cart = xray_structure.sites_cart()
+  sites_frac = xray_structure.sites_frac()
+  unit_cell = xray_structure.unit_cell()
+  def collect_map_values (map, get_selections=False) :
+    values = []
+    selections = []
+    if (map is None) :
+      assert (not get_selections)
+      return [ None ] * len(pdb_atoms)
+    for i_seq, atom in enumerate(pdb_atoms) :
+      if (selection[i_seq]) :
+        site_frac = sites_frac[i_seq]
+        values.append(map.eight_point_interpolation(site_frac))
+        if (get_selections) :
+          sel = maptbx.grid_indices_around_sites(
+            unit_cell  = unit_cell,
+            fft_n_real = map.focus(),
+            fft_m_real = map.all(),
+            sites_cart = flex.vec3_double([sites_cart[i_seq]]),
+            site_radii = flex.double([1.5]))
+          selections.append(map.select(sel))
+      else :
+        values.append(None)
+        selections.append(None)
+    if (get_selections) :
+      return values, selections
+    else :
+      return values
+  two_fofc_map = fmodel.two_fofc_map()
+  two_fofc, two_fofc_sel = collect_map_values(two_fofc_map, get_selections=True)
+  del two_fofc_map
+  fofc_map = fmodel.two_fofc_map()
+  fofc = collect_map_values(fofc_map)
+  del fofc_map
+  anom_map = fmodel.two_fofc_map()
+  anom = collect_map_values(anom_map)
+  del anom_map
+  fmodel_map = fmodel.f_model().fft_map(
+    resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
+  f_model_val, f_model_sel = collect_map_values(fmodel_map, get_selections=True)
+  del fmodel_map
+  two_fofc_ccs = []
+  for i_seq, atom in enumerate(pdb_atoms) :
+    if (selection[i_seq]) :
+      cc = flex.linear_correlation(x=two_fofc_sel[i_seq],
+        y=f_model_sel[i_seq]).coefficient()
+      two_fofc_ccs.append(cc)
+    else :
+      two_fofc_ccs.append(None)
+  return group_args(
+    two_fofc_values=two_fofc,
+    fofc_values=fofc,
+    anom_values=anom,
+    fmodel_values=f_model_val,
+    two_fofc_ccs=two_fofc_ccs)

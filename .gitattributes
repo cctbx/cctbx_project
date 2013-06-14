@@ -1458,6 +1458,7 @@ mmtbx/command_line/ssm_rmsd_for_chains.py -text
 mmtbx/command_line/tls.py -text
 mmtbx/command_line/validate_ions.py -text
 mmtbx/command_line/validate_ligands.py -text
+mmtbx/command_line/validate_waters.py -text
 mmtbx/command_line/validation_summary.py -text
 mmtbx/command_line/verify_mon_lib_data.py -text
 mmtbx/command_line/water_screen.py -text
@@ -1674,6 +1675,7 @@ mmtbx/regression/tst_rigid_bond_test.py -text
 mmtbx/regression/tst_ringer.py -text
 mmtbx/regression/tst_sort_hetatms.py -text
 mmtbx/regression/tst_validate_utils.py svneol=native#text/x-python
+mmtbx/regression/tst_validate_waters.py -text
 mmtbx/regression/tst_validation_summary.py -text
 mmtbx/resolve_resources.py -text
 mmtbx/rotamer/graphics.py -text
@@ -1739,6 +1741,7 @@ mmtbx/validation/rna_validate.py svneol=native#text/x-python
 mmtbx/validation/rotalyze.py svneol=native#text/x-python
 mmtbx/validation/sequence.py -text
 mmtbx/validation/utils.py -text
+mmtbx/validation/waters.py -text
 mmtbx/wwpdb/__init__.py -text
 mmtbx/wwpdb/rcsb_web_services.py -text
 mmtbx/wwpdb/standard_geometry_cif.py -text
