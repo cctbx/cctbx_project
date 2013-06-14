@@ -27,9 +27,12 @@ distl {
   csv = None
     .type = path
     .help = "Optional file name for output of distl results in CSV format."
-  verbose = False
-    .type = bool
-    .help="Lengthy spot printout"
+  verbosity = 1
+    .type = int
+    .help="Control the amount of output:"
+          "  0: print just the table"
+          "  1: also print the parameters used by the program"
+          "  2: also print distl summary for each individual image"
   bins {
     verbose = False
       .type = bool
@@ -57,7 +60,7 @@ def run_sweep_strength(image_file_names, params):
 
 def run_signal_strength_core(params,E):
   from spotfinder.applications.wrappers import DistlOrganizer
-  verbose = params.distl.verbose
+  verbosity = params.distl.verbosity
   if params.distl.res.inner!=None:
     params.distl_lowres_limit = params.distl.res.inner
   if params.distl.res.outer!=None:
@@ -68,7 +71,7 @@ def run_signal_strength_core(params,E):
   params.distl_permit_binning = False
   params.wedgelimit = len(E.argv)
   params.spotfinder_header_tests = False
-  Org = DistlOrganizer(verbose = False, argument_module=E,
+  Org = DistlOrganizer(verbose=(verbosity>1), argument_module=E,
                        phil_params=params)
   Org.printSpots()
   return Org
@@ -195,14 +198,15 @@ plots of number of spots and resolution with image number.
   working_params = master_params.fetch(sources=phil_objects)
   params = working_params.extract()
 
-  print "#Parameters used:"
-  print "#phil __ON__"
-  print
-  working_params = master_params.format(python_object=params)
-  working_params.show(expert_level=1)
-  print
-  print "#phil __OFF__"
-  print
+  if params.distl.verbosity > 0:
+    print "#Parameters used:"
+    print "#phil __ON__"
+    print
+    working_params = master_params.format(python_object=params)
+    working_params.show(expert_level=1)
+    print
+    print "#phil __OFF__"
+    print
 
   from spotfinder.applications import signal_strength
 
