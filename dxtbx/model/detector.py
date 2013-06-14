@@ -38,7 +38,9 @@ class detector_factory:
                       px_mm=None):
         """Ensure all types are correct before creating c++ detector class."""
 
-        if px_mm == None:
+        if stype == 'SENSOR_PAD':
+            px_mm = ParallaxCorrectedPxMmStrategy(0.252500934883)
+        else:
             px_mm = SimplePxMmStrategy()
 
         d = Detector(Panel(

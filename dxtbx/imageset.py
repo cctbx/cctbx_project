@@ -58,7 +58,24 @@ class ReaderBase(object):
         return self.read_detector(index)
 
     def set_detector(self, detector):
-        self._detector = detector
+
+        # Get the current detector
+        curr_detector = self.get_detector()
+
+        # Ensure the same number of panels
+        assert(len(curr_detector) == len(detector))
+
+        # Loop through all the panels
+        for i in range(len(curr_detector)):
+
+            # Override the geometry in the detector
+            curr_detector[i].set_frame(
+                detector[i].get_fast_axis(),
+                detector[i].get_slow_axis(),
+                detector[i].get_origin())
+
+        # Set the new detector
+        self._detector = curr_detector
 
     def get_beam(self, index=None):
         if index is None and self._beam is not None:
@@ -67,7 +84,17 @@ class ReaderBase(object):
         return self.read_beam(index)
 
     def set_beam(self, beam):
-        self._beam = beam
+
+        # Get the current beam
+        curr_beam = self.get_beam()
+
+        # Set beam geometry
+        curr_beam.set_direction(beam.get_direction())
+        curr_beam.set_divergence(beam.get_divergence())
+        curr_beam.set_sigma_divergence(beam.get_sigma_divergence())
+
+        # Set the new beam
+        self._beam = curr_beam
 
     def get_goniometer(self, index=None):
         if index is None and self._goniometer is not None:
@@ -76,7 +103,16 @@ class ReaderBase(object):
         return self.read_goniometer(index)
 
     def set_goniometer(self, goniometer):
-        self._goniometer = goniometer
+
+        # Get the current goniometer
+        curr_goniometer = self.get_goniometer()
+
+        # Set goniometer geometry
+        curr_goniometer.set_rotation_axis(goniometer.get_rotation_axis())
+        curr_goniometer.set_fixed_rotation(goniometer.get_fixed_rotation())
+
+        # Set the new goniometer
+        self._goniometer = curr_goniometer
 
     def get_scan(self, index=None):
         pass

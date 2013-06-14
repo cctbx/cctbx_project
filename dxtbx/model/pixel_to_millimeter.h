@@ -37,7 +37,7 @@ namespace dxtbx { namespace model {
      * @return The (x, y) millimeter coordinate
      */
     virtual vec2<double> to_millimeter(const Panel &panel,
-      vec2<double> xy) const { return xy; };
+      vec2<double> xy) const = 0;
 
     /**
      * Convert a millimeter coordinate to a pixel coordinate
@@ -46,7 +46,7 @@ namespace dxtbx { namespace model {
      * @return The (x, y) pixel coordinate
      */
     virtual vec2<double> to_pixel(const Panel &panel,
-      vec2<double> xy) const { return xy; };
+      vec2<double> xy) const = 0;
   };
 
   /**

@@ -19,7 +19,7 @@ namespace dxtbx { namespace model { namespace boost_python {
 
   void export_pixel_to_millimeter()
   {
-    class_<PxMmStrategy>("PxMmStrategy")
+    class_<PxMmStrategy, boost::noncopyable>("PxMmStrategy", no_init)
       .def("to_millimeter", &PxMmStrategy::to_millimeter, (
         arg("panel"), arg("xy")))
       .def("to_pixel", &PxMmStrategy::to_pixel, (
@@ -31,6 +31,7 @@ namespace dxtbx { namespace model { namespace boost_python {
       "ParallaxCorrectedPxMmStrategy", no_init)
       .def(init<double>((arg("la"))));
 
+    register_ptr_to_python<shared_ptr<PxMmStrategy> >();
     register_ptr_to_python<shared_ptr<SimplePxMmStrategy> >();
     register_ptr_to_python<shared_ptr<ParallaxCorrectedPxMmStrategy> >();
   }
