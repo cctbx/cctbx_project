@@ -321,9 +321,12 @@ Can't seem to find mmtbx/rotamer/ directory.
     aa_name = aa_name.lower()
     wrap_chis = []
     for i in range(0, len(chis)):
-      wrap_chis.append(chis[i] % 360)
-      if wrap_chis[i] < 0:
-        wrap_chis[i] += 360
+      if chis[i] is not None:
+        wrap_chis.append(chis[i] % 360)
+        if wrap_chis[i] < 0:
+          wrap_chis[i] += 360
+      else:
+        wrap_chis.append(None)
     if (symmetry==True):
       wrap_chis = self.wrap_sym(aa_name, wrap_chis)
     #MOVED TO SEPARATE FUNCTION 'wrap_sym' for accurate angle reporting
@@ -339,9 +342,10 @@ Can't seem to find mmtbx/rotamer/ directory.
     aa_name = aa_name.lower()
     if (aa_name == "asp" or aa_name == "glu" or aa_name == "phe" or aa_name == "tyr"):
       i = len(wrap_chis) - 1
-      wrap_chis[i] = wrap_chis[i] % 180
-      if wrap_chis[i] < 0:
-        wrap_chis[i] += 180
+      if wrap_chis[i] is not None:
+        wrap_chis[i] = wrap_chis[i] % 180
+        if wrap_chis[i] < 0:
+          wrap_chis[i] += 180
     return wrap_chis
 
 #}}}
