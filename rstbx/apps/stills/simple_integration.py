@@ -356,14 +356,23 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
     for item in self.sorted:
       flex_sorted.append(item[0]);flex_sorted.append(item[1]);
 
+    if self.horizons_phil.integration.mask_pixel_value is not None:
+      self.set_mask_pixel_val(self.horizons_phil.integration.mask_pixel_value)
+
+    image_obj = self.imagefiles.imageindex(self.frame_numbers[self.image_number])
+    image_obj.read()
+    rawdata = image_obj.linearintdata # assume image #1
+
     if self.inputai.active_areas != None:
-      self.detector_xy_draft = self.safe_background( predicted=self.predicted,
+      self.detector_xy_draft = self.safe_background( rawdata=rawdata,
+                          predicted=self.predicted,
                           OS_adapt=OS_adapt,
                           sorted=flex_sorted,
                           tiles=self.inputai.active_areas.IT,
                           tile_id=self.inputai.active_areas.tile_id);
     else:
-      self.detector_xy_draft = self.safe_background( predicted=self.predicted,
+      self.detector_xy_draft = self.safe_background( rawdata=rawdata,
+                          predicted=self.predicted,
                           OS_adapt=OS_adapt,
                           sorted=flex_sorted);
     for i in xrange(len(self.predicted)): # loop over predicteds
@@ -383,7 +392,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
 
   def integration_proper(self):
     image_obj = self.imagefiles.imageindex(self.frame_numbers[self.image_number])
-    image_obj.read()
+    #image_obj.read() #assume image already read
     rawdata = image_obj.linearintdata # assume image #1
 
     self.integration_proper_fast(rawdata,self.predicted,self.hkllist,self.detector_xy_draft)

@@ -30,6 +30,7 @@ namespace rstbx { namespace integration { namespace ext {
         .def("set_detector_saturation",&simple_integration::set_detector_saturation)
         .def("get_bsmask",&simple_integration::get_bsmask)
         .def("get_ISmask",&simple_integration::get_ISmask)
+        .def("set_mask_pixel_val",&simple_integration::set_mask_pixel_val)
         .def("positional_correction_mapping",
              &simple_integration::positional_correction_mapping,(
            arg_("predicted"),
@@ -40,24 +41,28 @@ namespace rstbx { namespace integration { namespace ext {
             ))
         .def("safe_background",
            (scitbx::af::shared<scitbx::vec2<double> >(simple_integration::*)
-           (scitbx::af::shared<scitbx::vec3<double> >,
+           (scitbx::af::flex_int const& rawdata,
+            scitbx::af::shared<scitbx::vec3<double> >,
             annlib_adaptbx::AnnAdaptor const&,
             scitbx::af::shared<int >)
            )
            &simple_integration::safe_background,(
+           arg_("rawdata"),
            arg_("predicted"),
            arg_("OS_adapt"),
            arg_("sorted")
             ))
         .def("safe_background",
            (scitbx::af::shared<scitbx::vec2<double> >(simple_integration::*)
-           (scitbx::af::shared<scitbx::vec3<double> >,
+           (scitbx::af::flex_int const& rawdata,
+            scitbx::af::shared<scitbx::vec3<double> >,
             annlib_adaptbx::AnnAdaptor const&,
             scitbx::af::shared<int >,
             scitbx::af::shared<int >,
             scitbx::af::shared<int >)
            )
            &simple_integration::safe_background,(
+           arg_("rawdata"),
            arg_("predicted"),
            arg_("OS_adapt"),
            arg_("sorted"),

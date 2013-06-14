@@ -190,7 +190,8 @@ namespace rstbx { namespace integration {
 
     simple_integration(): BACKGROUND_FACTOR(1),MAXOVER(6),NEAR(10),
       detector_saturation(std::numeric_limits<double>::max()),
-      check_tiles(false),guard_width_sq(11),detector_gain(0) {}
+      use_mask_pixel_val(false),mask_pixel_val(-2),check_tiles(false),
+      guard_width_sq(11),detector_gain(0) {}
 
     /* accessors and mutators */
     void set_pixel_size(double const& pxsz) {pixel_size=pxsz;}
@@ -210,6 +211,10 @@ namespace rstbx { namespace integration {
 
     double detector_saturation;
     void set_detector_saturation(double const& b) {detector_saturation = b;}
+
+    bool use_mask_pixel_val;
+    int mask_pixel_val;
+    void set_mask_pixel_val(int const&val) {use_mask_pixel_val = true; mask_pixel_val = val;}
 
     void append_ISmask(scitbx::af::shared<int> mask){
       mask_t newmask;
@@ -295,7 +300,7 @@ namespace rstbx { namespace integration {
     bool check_tiles;
 
     scitbx::af::shared<scitbx::vec2<double> >
-    safe_background(
+    safe_background(scitbx::af::flex_int const& rawdata,
       scitbx::af::shared<scitbx::vec3<double> > predicted,
       annlib_adaptbx::AnnAdaptor const& OS_adapt,
       scitbx::af::shared<int > flex_sorted,
@@ -305,13 +310,13 @@ namespace rstbx { namespace integration {
         tiling_boundaries_m = tiling_boundaries;
         tile_locations_m = tile_locations;
         check_tiles = true;
-        return safe_background(predicted,OS_adapt,flex_sorted);
+        return safe_background(rawdata,predicted,OS_adapt,flex_sorted);
     }
 
     int guard_width_sq;
     double detector_gain;
     scitbx::af::shared<scitbx::vec2<double> >
-    safe_background(
+    safe_background(scitbx::af::flex_int const& rawdata,
       scitbx::af::shared<scitbx::vec3<double> > predicted,
       annlib_adaptbx::AnnAdaptor const& OS_adapt,
       scitbx::af::shared<int > flex_sorted
@@ -375,17 +380,25 @@ namespace rstbx { namespace integration {
           base_spot_size = std::max(base_spot_size,MIN_BACKGROUND_SZ);
 
           //Guard against spot mask pixels off the active area
-          if (check_tiles){
+          if (check_tiles || use_mask_pixel_val){
                int itile = tile_locations_m[i];
                bool pixels_are_active = true;
                for (mask_t::const_iterator k=spot_keys.begin();
                     k != spot_keys.end(); ++k){
-                 if ( (k->first)[0] < tiling_boundaries_m[4*itile] ||
+                 if ( check_tiles &&
+                      (k->first)[0] < tiling_boundaries_m[4*itile] ||
                       (k->first)[0] >= tiling_boundaries_m[4*itile+2] ||
                       (k->first)[1] < tiling_boundaries_m[4*itile+1] ||
                       (k->first)[1] >= tiling_boundaries_m[4*itile+3]) {
                    pixels_are_active = false;
                    break;
+                 }
+                 if (use_mask_pixel_val) {
+                   int ivalue(rawdata(k->first[0],k->first[1]));
+                   if (ivalue == mask_pixel_val) {
+                   pixels_are_active = false;
+                   break;
+                   }
                  }
                }
                if (!pixels_are_active) {BSmasks.push_back(altB_S_mask);continue;}
@@ -458,13 +471,19 @@ namespace rstbx { namespace integration {
             scitbx::vec2<int>candidate_bkgd=spot_position+increments_xy[isort];
 
             //Guard against background pixels off the active area
-            if (check_tiles) {
+            if (check_tiles || use_mask_pixel_val) {
                int itile = tile_locations_m[i];
-               if ( candidate_bkgd[0] < tiling_boundaries_m[4*itile] ||
+               if ( check_tiles &&
+                    candidate_bkgd[0] < tiling_boundaries_m[4*itile] ||
                     candidate_bkgd[0] >= tiling_boundaries_m[4*itile+2] ||
                     candidate_bkgd[1] < tiling_boundaries_m[4*itile+1] ||
                     candidate_bkgd[1] >= tiling_boundaries_m[4*itile+3])
                   {continue;}
+               if (use_mask_pixel_val) {
+                  int ivalue(rawdata(candidate_bkgd[0],candidate_bkgd[1]));
+                  if (ivalue == mask_pixel_val)
+                    {continue;}
+               }
             }
             altB_S_mask[candidate_bkgd] = true;
             alt_bs+=1;
@@ -521,7 +540,6 @@ namespace rstbx { namespace integration {
         af::shared<double> signal;
         af::shared<double> bkgrnd;
         bool sig_bkg_is_overload = false;
-
         if (BSmasks[i].size()==0){
           rejected_miller.push_back(hkllist[i]);
           rejected_reason.push_back("out-of-boundary spot");

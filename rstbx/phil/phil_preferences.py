@@ -102,6 +102,9 @@ integration {
     .type = choice
     .help = which subset to use for parameter refinement and constructing integration profiles.
     .help = subsets are nested goodspots > spots_non-ice > inlier_spots
+  mask_pixel_value = None
+    .type = int
+    .help = pixels set to this value will be ignored during integration
 }
 """
 
