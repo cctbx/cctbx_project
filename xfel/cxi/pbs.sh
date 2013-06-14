@@ -240,12 +240,13 @@ done
 # Create all directories for the output from the analysis.  This
 # eliminates a race condition when run in parallel.
 mkdir -p "${out}/stdout"
-awk -F=                                    \
+directories=`awk -F=                                    \
     '/^[[:space:]]*[[:alnum:]]+_dirname[[:space:]]*=/ { \
-         gsub(/^ /, "", $2);                            \
-         gsub(/ $/, "", $2);                            \
+         gsub(/^[ \t]/, "", $2);                        \
+         gsub(/[ \t]$/, "", $2);                        \
          printf("\"%s\"\n", $2);                        \
-     }' "${out}"/pyana_s[0-9][0-9].cfg | sort -u | xargs mkdir -p
+     }' "${out}"/pyana_s[0-9][0-9].cfg | sort -u`
+test -n "${directories}" && echo -e "${directories}" | xargs -d '\n' mkdir -p
 
 # The PBS script is not to be executed directly, but has to be passed
 # to qsub.  XXX The maximum wallclock limit is hardcoded to suit the

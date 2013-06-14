@@ -302,12 +302,12 @@ chmod 755 "${tmpdir}/submit.sh"
 # eliminates a race condition when run in parallel.
 directories=`awk -F=                                    \
     '/^[[:space:]]*[[:alnum:]]+_dirname[[:space:]]*=/ { \
-         gsub(/^ /, "", $2);                            \
-         gsub(/ $/, "", $2);                            \
+         gsub(/^[ \t]/, "", $2);                        \
+         gsub(/[ \t]$/, "", $2);                        \
          printf("\"%s\"\n", $2);                        \
-     }' "${tmpdir}"/pyana_s[0-9][0-9].cfg | sort -u | tr -s '[:space:]' ' '`
+     }' "${tmpdir}"/pyana_s[0-9][0-9].cfg | sort -u`
 ssh -S "${tmpdir}/control.socket" ${NODE} \
-    "mkdir -p \"${out}/stdout\" ${directories}"
+    "echo -e \"\"${out}/stdout\"\n${directories}\" | xargs -d '\n' mkdir -p"
 
 # Copy the configuration files and the submission script to ${out}.
 # Submit the analysis of all streams to the queueing system from
