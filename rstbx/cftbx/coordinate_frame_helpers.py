@@ -300,6 +300,10 @@ def import_xds_integrate_hkl(integrate_hkl_file):
 
     R = align_reference_frame(A, _X, B, _Z)
 
+    # Need to subtract 0.5 because XDS seems to do centroids in fortran coords
+    ox = ox - 0.5
+    oy = oy - 0.5
+
     detector_origin = R * (distance * N - ox * px * X - oy * py * Y)
     detector_fast = R * X
     detector_slow = R * Y
@@ -406,6 +410,11 @@ def import_xds_ascii_hkl(xds_ascii_hkl_file):
 
     R = align_reference_frame(A, _X, B, _Z)
 
+    # Need to subtract 0.5 because XDS seems to do centroids in fortran coords
+    ox = ox - 0.5
+    oy = oy - 0.5
+
+
     detector_origin = R * (distance * N - ox * px * X - oy * py * Y)
     detector_fast = R * X
     detector_slow = R * Y
@@ -466,6 +475,10 @@ def import_xds_xparm(xparm_file):
     a = handle.unit_cell_a_axis
     b = handle.unit_cell_b_axis
     c = handle.unit_cell_c_axis
+
+    # Need to subtract 0.5 because XDS seems to do centroids in fortran coords
+    ox = ox - 0.5
+    oy = oy - 0.5
 
     detector_origin = R * (distance * N - ox * px * X - oy * py * Y)
     detector_fast = R * X
