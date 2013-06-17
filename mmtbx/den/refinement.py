@@ -374,6 +374,7 @@ class manager(object):
 
   def bulk_solvent_and_scale(self, log):
     self.fmodels.update_all_scales(
+      update_f_part1_for = "refinement",
       params = self.params.bulk_solvent_and_scale,
       optimize_mask = self.params.main.optimize_mask,
       force_update_f_mask = True,
