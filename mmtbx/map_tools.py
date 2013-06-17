@@ -95,8 +95,15 @@ class electron_density_map(object):
 
   def __init__(self,
                fmodel,
+               update_f_part1 = True,
                map_calculation_helper = None):
-    self.fmodel = fmodel
+    if(update_f_part1):
+      if(fmodel.f_part1().data().all_eq(0)):
+        self.fmodel = fmodel.deep_copy()
+        self.fmodel.update_all_scales(update_f_part1_for = "map")
+      else: self.fmodel = fmodel
+    else:
+      self.fmodel = fmodel
     self.anom_diff = None
     self.mch = map_calculation_helper
     if(self.fmodel.f_obs().anomalous_flag()):
@@ -262,7 +269,8 @@ def fill_missing_f_obs(coeffs, fmodel) :
   fmdc = mmtbx.f_model.manager(
     f_obs = fo,
     xray_structure = fmodel.xray_structure)
-  fmdc.update_all_scales(remove_outliers=False)
+  fmdc.update_all_scales(remove_outliers=False, update_f_part1_for = None,
+    refine_hd_scattering=False)
   #
   scale_data_c = 1. / (fmdc.k_isotropic()*fmdc.k_anisotropic())
   scale_c = fmdc.f_obs().customized_copy(data = scale_data_c)
