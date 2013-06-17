@@ -162,6 +162,7 @@ class fast_maps_from_hkl_file (object) :
       d_min            = self.f_obs.d_min(),
       log              = null_out())
     fmodel = mmtbx.utils.fmodel_simple(
+      update_f_part1_for="map",
       xray_structures=[self.xray_structure],
       scattering_table = self.scattering_table,
       f_obs=self.f_obs,
@@ -186,7 +187,7 @@ class fast_maps_from_hkl_file (object) :
     iotbx.map_tools.write_map_coeffs(f_map, df_map, self.map_out, anom_map)
 
 def get_maps_from_fmodel (fmodel) :
-  map_manager = fmodel.electron_density_map()
+  map_manager = fmodel.electron_density_map(update_f_part1=True)
   fwt_coeffs = map_manager.map_coefficients(map_type = "2mFo-DFc")
   if fwt_coeffs.anomalous_flag() :
     fwt_coeffs = fwt_coeffs.average_bijvoet_mates()
@@ -196,7 +197,7 @@ def get_maps_from_fmodel (fmodel) :
   return (fwt_coeffs, delfwt_coeffs)
 
 def get_anomalous_map (fmodel) :
-  map_manager = fmodel.electron_density_map()
+  map_manager = fmodel.electron_density_map(update_f_part1=True)
   anom_coeffs = map_manager.map_coefficients(map_type="anom")
   if (anom_coeffs.anomalous_flag()) :
     anom_coeffs = anom_coeffs.average_bijvoet_mates()

@@ -152,6 +152,9 @@ master_params_str = """\
      number_of_kicks = 100
        .type = int
   }
+  update_f_part1 = True
+    .type = bool
+    .expert_level = 3
 """ % (output_params_str, h_bond_params_str, adp_occ_params_str)
 
 def master_params():
@@ -396,6 +399,7 @@ class manager(object):
       params          = self.find_peaks_params,
       use_kick_map    = use_kick_map,
       kick_map_params = self.params.kick_map,
+      update_f_part1  = self.params.update_f_part1,
       log             = self.log)
 
   def correct_drifted_waters(self, map_cutoff):
@@ -409,11 +413,13 @@ class manager(object):
     find_peaks_params_drifted.peak_search.min_cross_distance=0.5
     find_peaks_params_drifted.resolution_factor = \
       self.find_peaks_params.resolution_factor
-    peaks = find_peaks.manager(fmodel     = self.fmodel,
-                               map_type   = "2mFobs-DFmodel",
-                               map_cutoff = map_cutoff,
-                               params     = find_peaks_params_drifted,
-                               log        = self.log).peaks_mapped()
+    peaks = find_peaks.manager(
+      fmodel         = self.fmodel,
+      map_type       = "2mFobs-DFmodel",
+      map_cutoff     = map_cutoff,
+      params         = find_peaks_params_drifted,
+      update_f_part1 = self.params.update_f_part1,
+      log            = self.log).peaks_mapped()
     if(peaks is not None and self.fmodel.r_work() > 0.01):
       sites_frac, heights = peaks.sites, peaks.heights
       model_sites_frac = self.model.xray_structure.sites_frac()
@@ -440,7 +446,8 @@ class manager(object):
     par = self.params.secondary_map_and_map_cc_filter
     selection = self.model.solvent_selection()
     # filter by map cc and value
-    e_map_obj = self.fmodel.electron_density_map()
+    e_map_obj = self.fmodel.electron_density_map(
+      update_f_part1=self.params.update_f_part1)
     coeffs_1 = e_map_obj.map_coefficients(
       map_type     = par.cc_map_1_type,
       fill_missing = False,
