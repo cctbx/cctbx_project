@@ -229,6 +229,7 @@ Examples:
     r_free_flags = data_and_flags.f_obs.array(
       data = flex.bool(data_and_flags.f_obs.size(), False))
     fmodel = mmtbx.utils.fmodel_simple(
+      update_f_part1_for  = "map",
       xray_structures     = [pdbo.xray_structure],
       scattering_table    = params.scattering_table,
       f_obs               = data_and_flags.f_obs,
@@ -236,7 +237,7 @@ Examples:
     broadcast(m="R-factors, reflection counts and scales", log=log)
     fmodel.show(log=log, show_header=False)
     # compute map coefficients
-    e_map_obj = fmodel.electron_density_map()
+    e_map_obj = fmodel.electron_density_map(update_f_part1=True)
     coeffs_1 = e_map_obj.map_coefficients(
       map_type     = params.map_1.type,
       fill_missing = params.map_1.fill_missing_reflections,
@@ -257,7 +258,7 @@ def simple(fmodel, pdb_hierarchy, params=None, log=None, show_results=False):
   if(params is None): params =master_params().extract()
   if(log is None): log = sys.stdout
   # compute map coefficients
-  e_map_obj = fmodel.electron_density_map()
+  e_map_obj = fmodel.electron_density_map(update_f_part1=True)
   coeffs_1 = e_map_obj.map_coefficients(
     map_type     = params.map_1.type,
     fill_missing = params.map_1.fill_missing_reflections,
@@ -520,10 +521,11 @@ def map_statistics_for_atom_selection (
   assert (atom_selection is not None) and (len(atom_selection) > 0)
   if (fmodel is not None) :
     assert (map1 is None) and (map2 is None) and (xray_structure is None)
-    map1_coeffs = fmodel.electron_density_map().map_coefficients(map1_type)
+    edm = fmodel.electron_density_map(update_f_part1=True)
+    map1_coeffs = edm.map_coefficients(map1_type)
     map1 = map1_coeffs.fft_map(
       resolution_factor=resolution_factor).apply_sigma_scaling().real_map()
-    map2_coeffs = fmodel.electron_density_map().map_coefficients(map2_type)
+    map2_coeffs = edm.map_coefficients(map2_type)
     map2 = map2_coeffs.fft_map(
       resolution_factor=resolution_factor).apply_sigma_scaling().real_map()
     xray_structure = fmodel.xray_structure
@@ -580,12 +582,13 @@ def find_suspicious_residues (
   if (log is None) : log = null_out()
   xray_structure = fmodel.xray_structure
   assert (len(pdb_hierarchy.atoms()) == xray_structure.scatterers().size())
-  map_coeffs1 = fmodel.electron_density_map().map_coefficients(
+  edm = fmodel.electron_density_map(update_f_part1=True)
+  map_coeffs1 = edm.map_coefficients(
     map_type="2mFo-DFc",
     fill_missing=False)
   map1 = map_coeffs1.fft_map(
     resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
-  map_coeffs2 = fmodel.electron_density_map().map_coefficients(
+  map_coeffs2 = edm.map_coefficients(
     map_type="Fc",
     fill_missing=False)
   map2 = map_coeffs2.fft_map(

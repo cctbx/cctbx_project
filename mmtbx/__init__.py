@@ -121,8 +121,15 @@ class fmodels(object):
       print_statistics.make_sub_header("Neutron data", out = self.log)
       self.fmodel_neutron().info().show_all(header = message, out = self.log)
 
-  def update_all_scales(self, params = None, optimize_mask = False,
-        force_update_f_mask = False, nproc=1, log=None, apply_back_trace=False,
+  def update_all_scales(
+        self,
+        update_f_part1_for,
+        params              = None,
+        optimize_mask       = False,
+        force_update_f_mask = False,
+        nproc               = 1,
+        log                 = None,
+        apply_back_trace    = False,
         refine_hd_scattering=None):
     if log is None: log = self.log
     fast=True
@@ -137,18 +144,30 @@ class fmodels(object):
       if(self.fmodel_n is not None):
         msg = "X-ray:"
         print >> log, msg
-      self.fmodel_xray().update_all_scales(params = params, fast=fast,
-        log = log, show = True, optimize_mask = optimize_mask, nproc=nproc,
-        apply_back_trace = apply_back_trace,
-        refine_hd_scattering=refine_hd_scattering)
+      self.fmodel_xray().update_all_scales(
+        update_f_part1_for   = update_f_part1_for,
+        params               = params,
+        fast                 = fast,
+        log                  = log,
+        show                 = True,
+        optimize_mask        = optimize_mask,
+        nproc                = nproc,
+        apply_back_trace     = apply_back_trace,
+        refine_hd_scattering = refine_hd_scattering)
       self.fmodel_x.show(log = log, suffix = msg)
     if(self.fmodel_n is not None):
       msg = "Neutron:"
       print >> log, msg
-      self.fmodel_neutron().update_all_scales(params = params, fast=fast,
-        log = log, show = True, optimize_mask = optimize_mask, nproc=nproc,
-        apply_back_trace = apply_back_trace,
-        refine_hd_scattering=refine_hd_scattering)
+      self.fmodel_neutron().update_all_scales(
+        update_f_part1_for   = update_f_part1_for,
+        params               = params,
+        fast                 = fast,
+        log                  = log,
+        show                 = True,
+        optimize_mask        = optimize_mask,
+        nproc                = nproc,
+        apply_back_trace     = apply_back_trace,
+        refine_hd_scattering = refine_hd_scattering)
       self.fmodel_n.show(log = log, suffix = msg)
 
   def show_targets(self, log, text=""):

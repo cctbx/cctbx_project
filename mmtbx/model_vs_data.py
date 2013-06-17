@@ -759,13 +759,13 @@ def run(args,
   ###########################
   mp = mmtbx.masks.mask_master_params.extract()
   fmodel = utils.fmodel_simple(
-    xray_structures  = xray_structures,
-    scattering_table = scattering_table,
-    mask_params      = mp,
-    f_obs            = f_obs,
-    r_free_flags     = r_free_flags,
+    update_f_part1_for  = "refinement",
+    xray_structures     = xray_structures,
+    scattering_table    = scattering_table,
+    mask_params         = mp,
+    f_obs               = f_obs,
+    r_free_flags        = r_free_flags,
     skip_twin_detection = params.skip_twin_detection)
-  #
   n_outl = f_obs.data().size() - fmodel.f_obs().data().size()
   mvd_obj.collect(model_vs_data = show_model_vs_data(fmodel))
   #
@@ -812,10 +812,11 @@ def run(args,
     tmp_sel &= fmodel.f_obs().d_spacings().data() < pub_low
   if(tmp_sel.count(True) != tmp_sel.size() and tmp_sel.count(True) > 0):
     fmodel_cut = utils.fmodel_simple(
-      xray_structures  = xray_structures,
-      scattering_table = scattering_table,
-      f_obs            = fmodel.f_obs().select(tmp_sel),
-      r_free_flags     = fmodel.r_free_flags().select(tmp_sel),
+      update_f_part1_for  = "refinement",
+      xray_structures     = xray_structures,
+      scattering_table    = scattering_table,
+      f_obs               = fmodel.f_obs().select(tmp_sel),
+      r_free_flags        = fmodel.r_free_flags().select(tmp_sel),
       skip_twin_detection = params.skip_twin_detection)
   mvd_obj.collect(misc = group_args(
     r_work_cutoff = fmodel_cut.r_work(),
