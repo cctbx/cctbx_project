@@ -2464,7 +2464,7 @@ class cmdline_load_pdb_and_data (object) :
   def __init__ (self,
       args,
       master_phil,
-      update_f_part1_for=None,
+      update_f_part1_for="refinement",
       out=sys.stdout,
       process_pdb_file=True,
       create_fmodel=True,
