@@ -7,7 +7,6 @@ from scitbx import matrix
 from libtbx import adopt_init_args
 from mmtbx.refinement import print_statistics
 import mmtbx.utils
-from cctbx import maptbx
 from cctbx import sgtbx
 import cctbx
 
