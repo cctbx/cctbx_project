@@ -37,6 +37,7 @@ scattering coefficients.  Intended as a diagnostic/development tool only!
 Full options:
 %s""" % master_phil.as_str(prefix="  "))
   cmdline = mmtbx.utils.cmdline_load_pdb_and_data(
+    update_f_part1_for="refinement",
     args=args,
     master_phil=master_phil,
     out=out,

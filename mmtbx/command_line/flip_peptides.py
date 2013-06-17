@@ -22,6 +22,7 @@ def run (args, out=sys.stdout) :
   cmdline = utils.cmdline_load_pdb_and_data(
     args=args,
     master_phil=master_phil,
+    update_f_part1_for=None,
     out=out)
   print >> out, ""
   print_statistics.make_header("Analyzing peptide bonds", out=out)

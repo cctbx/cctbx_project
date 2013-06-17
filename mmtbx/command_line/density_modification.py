@@ -179,6 +179,7 @@ def run(args, log = sys.stdout, as_gui_program=False):
       hl_ = hl_.change_basis(change_of_basis_op).map_to_asu()
     #fo_, hl_ = fo_.common_sets(hl_)
     fmodel_refined = mmtbx.utils.fmodel_simple(
+      update_f_part1_for = "map",
       f_obs=fo_,
       scattering_table="wk1995",#XXX pva: 1) neutrons? 2) move up as a parameter.
       xray_structures=[xs],

@@ -48,6 +48,7 @@ Full parameters:
   from mmtbx import map_tools
   import iotbx.mtz
   cmdline = mmtbx.utils.cmdline_load_pdb_and_data(
+    update_f_part1_for="map",
     args=args,
     master_phil=master_params,
     process_pdb_file=False,

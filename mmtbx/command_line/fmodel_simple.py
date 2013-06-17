@@ -13,6 +13,7 @@ output_file = fmodel.pkl
 def run (args, out=sys.stdout) :
   import mmtbx.utils
   cmdline = mmtbx.utils.cmdline_load_pdb_and_data(
+    update_f_part1_for="refinement",
     args=args,
     master_phil=master_phil,
     process_pdb_file=False,
