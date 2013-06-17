@@ -414,6 +414,7 @@ Full parameters:
   from mmtbx.utils import cmdline_load_pdb_and_data
   import iotbx.pdb
   cmdline = cmdline_load_pdb_and_data(
+    update_f_part1_for="map",
     args=args,
     master_phil=master_phil,
     out=out,
@@ -430,7 +431,7 @@ Full parameters:
   out2 = multi_out()
   out2.register("out", out)
   out2.register("log", log)
-  map_helper = fmodel.electron_density_map()
+  map_helper = fmodel.electron_density_map(update_f_part1=True)
   f_map_coeffs = map_helper.map_coefficients(map_type="2mFo-DFc")
   diff_map_coeffs = map_helper.map_coefficients(map_type="mFo-DFc")
   model_map_coeffs = map_helper.map_coefficients(map_type="Fc")

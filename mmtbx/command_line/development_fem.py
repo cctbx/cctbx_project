@@ -74,6 +74,10 @@ Usage:
   if(r_free_flags is None):
     r_free_flags=f_obs.array(data=flex.bool(f_obs.data().size(), False))
     test_flag_value=None
+  # convert to non-anomalous
+  f_obs = f_obs.average_bijvoet_mates()
+  r_free_flags = r_free_flags.average_bijvoet_mates()
+  f_obs, r_free_flags = f_obs.common_sets(r_free_flags)
   #
   pdb_file_names = processed_args.pdb_file_names
   assert len(pdb_file_names)==1
@@ -87,8 +91,15 @@ Usage:
     f_obs = f_obs,
     r_free_flags = r_free_flags,
     xray_structure = xray_structure)
-  fmodel.update_all_scales()
+  fmodel.update_all_scales(update_f_part1_for=None)
   fmodel.show(show_approx=False)
+  ### BEGIN: compute THE SIMPLEST possible 2mFo-DFc (the most original one)
+  mc_orig = fmodel.electron_density_map(
+    update_f_part1 = False).map_coefficients(
+      map_type     = "2mFo-DFc",
+      isotropize   = True,
+      fill_missing = False)
+  ### END: compute THE SIMPLEST possible 2mFo-DFc (the most original one)
   print >> log, "r_work: %6.4f r_free: %6.4f"%(fmodel.r_work(), fmodel.r_free())
   # b-factor sharpen
   xrs = fmodel.xray_structure
@@ -100,7 +111,7 @@ Usage:
   fmodel.update_xray_structure(
     xray_structure = xrs,
     update_f_calc = True)
-  fmodel.update_all_scales()
+  fmodel.update_all_scales(update_f_part1_for="map")
   print >>log,"r_work: %6.4f r_free: %6.4f (after subtracting max possible b)"%(
     fmodel.r_work(), fmodel.r_free())
   #
@@ -117,11 +128,14 @@ Usage:
   ko = mmtbx.maps.kick(
     fmodel           = fmodel.deep_copy(),
     crystal_gridding = crystal_gridding)
-  mc_orig = fmodel.electron_density_map().map_coefficients(
-    map_type = "2mFo-DFc", isotropize = True, fill_missing = True)
+  mc_orig_for_fem = fmodel.electron_density_map(
+    update_f_part1 = True).map_coefficients(
+      map_type     = "2mFo-DFc",
+      isotropize   = True,
+      fill_missing = True)
   #### Compute FEM start
   fem = mmtbx.maps.fem(ko=ko, crystal_gridding=crystal_gridding,
-    mc_orig=mc_orig, fmodel=fmodel)
+    mc_orig=mc_orig_for_fem, fmodel=fmodel)
   #### Compute FEM end
   mtz_dataset = mc_orig.as_mtz_dataset(column_root_label="2mFoDFc")
   mtz_dataset.add_miller_array(
