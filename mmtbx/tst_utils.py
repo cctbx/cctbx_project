@@ -661,73 +661,74 @@ HETATM  115  O   HOH A  19       5.000   5.000   8.000  0.90 10.00           O
 TER
 END
   """
-  pdb_inp = iotbx.pdb.input(source_info=None, lines=bad)
-  xrs = pdb_inp.xray_structure_simple()
-  xrs.scattering_type_registry(table = "wk1995")
-  #
-  xb = iotbx.pdb.input(source_info=None, lines=good).xray_structure_simple()
-  xb.scattering_type_registry(table = "wk1995")
-  f_obs = abs(xb.structure_factors(d_min=1,
-    algorithm="direct").f_calc()).set_observation_type_xray_amplitude()
-  #
-  sfp = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract()
-  sfp.algorithm="direct"
-  for target_name in ["ls_wunit_kunit", "ls_wunit_k1", "ml"]:
-    print "%s"%target_name, "-"*50
-    fmodel = mmtbx.f_model.manager(
-      f_obs                        = f_obs,
-      xray_structure               = xrs.deep_copy_scatterers(),
-      target_name                  = target_name,
-      sf_and_grads_accuracy_params = sfp)
-    fmodel.update_all_scales()
-    alpha_beta = fmodel.alpha_beta()
-    print "R-work: %6.4f"%fmodel.r_work()
+  for update_f_part1_for in [None, "map"]:
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=bad)
+    xrs = pdb_inp.xray_structure_simple()
+    xrs.scattering_type_registry(table = "wk1995")
     #
-    tg = mmtbx.utils.experimental_data_target_and_gradients(fmodel = fmodel,
-      alpha_beta=alpha_beta)
-    tg.show()
-    eps = 1.e-6
-    # occupancies
-    go = tg.grad_occ()
-    for i in [0,1]:
-      xrs1 = fmodel.xray_structure.deep_copy_scatterers()
-      xrs2 = fmodel.xray_structure.deep_copy_scatterers()
+    xb = iotbx.pdb.input(source_info=None, lines=good).xray_structure_simple()
+    xb.scattering_type_registry(table = "wk1995")
+    f_obs = abs(xb.structure_factors(d_min=1,
+      algorithm="direct").f_calc()).set_observation_type_xray_amplitude()
+    #
+    sfp = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract()
+    sfp.algorithm="direct"
+    for target_name in ["ls_wunit_kunit", "ls_wunit_k1", "ml"]:
+      print "%s"%target_name, "-"*50
+      fmodel = mmtbx.f_model.manager(
+        f_obs                        = f_obs,
+        xray_structure               = xrs.deep_copy_scatterers(),
+        target_name                  = target_name,
+        sf_and_grads_accuracy_params = sfp)
+      fmodel.update_all_scales(update_f_part1_for=None)
+      alpha_beta = fmodel.alpha_beta()
+      print "R-work: %6.4f"%fmodel.r_work()
       #
-      xrs1.scatterers()[i].occupancy+=+eps
-      tg.update_xray_structure(xray_structure=xrs1, alpha_beta=alpha_beta)
-      t1 = tg.target()
-      #
-      xrs2.scatterers()[i].occupancy+=-eps
-      tg.update_xray_structure(xray_structure=xrs2, alpha_beta=alpha_beta)
-      t2 = tg.target()
-      #
-      gfd = (t1-t2)/(2*eps)
-      print gfd, go[i]
-      assert approx_equal(go[i], gfd, 1.e-5)
-    # sites_cart
-    gc = tg.grad_sites_cart()
-    uc = fmodel.xray_structure.unit_cell()
-    for i in [0,1]:
-      gfd = []
-      for e in [(eps,0,0),(0,eps,0),(0,0,eps)]:
+      tg = mmtbx.utils.experimental_data_target_and_gradients(fmodel = fmodel,
+        alpha_beta=alpha_beta)
+      tg.show()
+      eps = 1.e-6
+      # occupancies
+      go = tg.grad_occ()
+      for i in [0,1]:
         xrs1 = fmodel.xray_structure.deep_copy_scatterers()
         xrs2 = fmodel.xray_structure.deep_copy_scatterers()
         #
-        s1 = flex.vec3_double([uc.orthogonalize(xrs1.scatterers()[i].site)])
-        s1 = s1+flex.vec3_double([e])
-        xrs1.scatterers()[i].site = uc.fractionalize(s1[0])
+        xrs1.scatterers()[i].occupancy+=+eps
         tg.update_xray_structure(xray_structure=xrs1, alpha_beta=alpha_beta)
         t1 = tg.target()
         #
-        s2 = flex.vec3_double([uc.orthogonalize(xrs2.scatterers()[i].site)])
-        s2 = s2-flex.vec3_double([e])
-        xrs2.scatterers()[i].site = uc.fractionalize(s2[0])
+        xrs2.scatterers()[i].occupancy+=-eps
         tg.update_xray_structure(xray_structure=xrs2, alpha_beta=alpha_beta)
         t2 = tg.target()
         #
-        gfd.append( (t1-t2)/(2*eps) )
-      print gfd, list(gc[i])
-      assert approx_equal(gc[i], gfd, 1.e-5)
+        gfd = (t1-t2)/(2*eps)
+        print gfd, go[i]
+        assert approx_equal(go[i], gfd, 1.e-5)
+      # sites_cart
+      gc = tg.grad_sites_cart()
+      uc = fmodel.xray_structure.unit_cell()
+      for i in [0,1]:
+        gfd = []
+        for e in [(eps,0,0),(0,eps,0),(0,0,eps)]:
+          xrs1 = fmodel.xray_structure.deep_copy_scatterers()
+          xrs2 = fmodel.xray_structure.deep_copy_scatterers()
+          #
+          s1 = flex.vec3_double([uc.orthogonalize(xrs1.scatterers()[i].site)])
+          s1 = s1+flex.vec3_double([e])
+          xrs1.scatterers()[i].site = uc.fractionalize(s1[0])
+          tg.update_xray_structure(xray_structure=xrs1, alpha_beta=alpha_beta)
+          t1 = tg.target()
+          #
+          s2 = flex.vec3_double([uc.orthogonalize(xrs2.scatterers()[i].site)])
+          s2 = s2-flex.vec3_double([e])
+          xrs2.scatterers()[i].site = uc.fractionalize(s2[0])
+          tg.update_xray_structure(xray_structure=xrs2, alpha_beta=alpha_beta)
+          t2 = tg.target()
+          #
+          gfd.append( (t1-t2)/(2*eps) )
+        print gfd, list(gc[i])
+        assert approx_equal(gc[i], gfd, 1.e-5)
 
 def exercise_get_atom_selections (verbose=False) :
   pdb_in = """\
@@ -814,6 +815,7 @@ END
   mtz.mtz_object().write(file_base+".mtz")
   open(file_base+".fa", "w").write(">Tyr\nY\n")
   cmdline = utils.cmdline_load_pdb_and_data(
+    update_f_part1_for=None,
     args=[ file_base + ext for ext in [".pdb",".mtz",".fa"] ],
     master_phil=utils.cmdline_input_phil(),
     out=null_out())
