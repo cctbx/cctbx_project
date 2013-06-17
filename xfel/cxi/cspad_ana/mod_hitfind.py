@@ -1,4 +1,4 @@
-# -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
+# -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
 # $Id$
 
@@ -242,13 +242,24 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     self.logger.info("Subprocess %02d: process image #%05d @ %s" %
                      (env.subprocess(), self.nshots, self.timestamp))
 
+    # See r17537 of mod_average.py.
+    device = cspad_tbx.address_split(self.address)[2]
+    if device == 'Cspad':
+      pixel_size = cspad_tbx.pixel_size
+      saturated_value = cspad_tbx.dynamic_range
+    elif device == 'marccd':
+      pixel_size = 0.079346
+      saturated_value = 2**16 - 1
+
     d = cspad_tbx.dpack(
       active_areas=self.active_areas,
       address=self.address,
-      beam_center_x=cspad_tbx.pixel_size * self.beam_center[0],
-      beam_center_y=cspad_tbx.pixel_size * self.beam_center[1],
+      beam_center_x=pixel_size * self.beam_center[0],
+      beam_center_y=pixel_size * self.beam_center[1],
       data=self.cspad_img.iround(), # XXX ouch!
       distance=distance,
+      pixel_size=pixel_size,
+      saturated_value=saturated_value,
       timestamp=self.timestamp,
       wavelength=self.wavelength,
       xtal_target=self.m_xtal_target)
