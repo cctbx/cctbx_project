@@ -207,6 +207,24 @@ void cut_by(
   }}}}
 }
 
+template <typename DataType>
+void truncate(
+       af::ref<DataType, af::c_grid<3> > map_data,
+       DataType const& standard_deviation,
+       DataType const& by_sigma_less_than,
+       DataType const& scale_by,
+       DataType const& set_value)
+{
+  af::tiny<int, 3> a = map_data.accessor();
+  for(int i = 0; i < a[0]; i++) {
+    for(int j = 0; j < a[1]; j++) {
+      for(int k = 0; k < a[2]; k++) {
+         DataType md = map_data(i,j,k);
+         if(md/standard_deviation > by_sigma_less_than) md = set_value*scale_by;
+         else md = md * scale_by;
+         map_data(i,j,k)=md;
+  }}}
+}
 
 template <typename DataType>
 void intersection(

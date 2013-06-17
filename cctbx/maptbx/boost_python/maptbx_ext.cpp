@@ -353,6 +353,19 @@ namespace {
       arg("cutoffp"),
       arg("cutoffm")));
 
+    def("truncate",
+      (void(*)
+        (af::ref<double, af::c_grid<3> >,
+         double const&,
+         double const&,
+         double const&,
+         double const&)) truncate, (
+      arg("map_data"),
+      arg("standard_deviation"),
+      arg("by_sigma_less_than"),
+      arg("scale_by"),
+      arg("set_value")));
+
     def("set_box",
       (void(*)
         (af::const_ref<double, af::c_grid<3> > const&,
