@@ -514,7 +514,7 @@ def exercise_5_bulk_sol_and_scaling_and_H(symbol = "C 2"):
     r_free_flags   = r_free_flags,
     sf_and_grads_accuracy_params = sfg_params)
   assert fmodel.r_work() > 0.25
-  fmodel.update_all_scales(cycles=6, fast=False)
+  fmodel.update_all_scales(cycles=6, fast=False, update_f_part1_for=None)
   assert approx_equal(fmodel.k_h, 0.9)
   assert approx_equal(fmodel.b_h, 0)
   assert approx_equal(fmodel.r_work(), 0)
@@ -525,7 +525,8 @@ def exercise_5_bulk_sol_and_scaling_and_H(symbol = "C 2"):
     r_free_flags   = r_free_flags,
     sf_and_grads_accuracy_params = sfg_params)
   assert fmodel.r_work() > 0.25
-  fmodel.update_all_scales(cycles=6, fast=True, show=False)
+  fmodel.update_all_scales(cycles=6, fast=True, show=False,
+    update_f_part1_for=None)
   assert approx_equal(fmodel.k_h, 0.9)
   assert approx_equal(fmodel.b_h, 0)
   assert fmodel.r_work() < 0.025
@@ -548,7 +549,7 @@ def exercise_top_largest_f_obs_f_model_differences(threshold_percent=10,
   fmodel = mmtbx.f_model.manager(
     xray_structure = x,
     f_obs          = f_obs)
-  fmodel.update_all_scales()
+  fmodel.update_all_scales(update_f_part1_for=None)
   v, d = fmodel.top_largest_f_obs_f_model_differences(
     threshold_percent=threshold_percent)
   n = (d>v).count(True)*100./d.size()

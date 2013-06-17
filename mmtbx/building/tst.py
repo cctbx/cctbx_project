@@ -100,6 +100,7 @@ def get_1yjp_pdb_and_fmodel () :
   f_calc.set_observation_type_xray_amplitude()
   flags = f_calc.generate_r_free_flags()
   fmodel = mmtbx.utils.fmodel_simple(
+    update_f_part1_for=None,
     xray_structures=[xrs],
     f_obs=f_calc,
     r_free_flags=flags,

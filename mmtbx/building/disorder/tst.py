@@ -76,6 +76,7 @@ ATOM   1658  HZ  PHE A 113      18.093  43.330  49.263  1.00 26.17           H
   f_calc.set_observation_type_xray_amplitude()
   flags = f_calc.generate_r_free_flags()
   fmodel = mmtbx.utils.fmodel_simple(
+    update_f_part1_for=None,
     xray_structures=[xrs],
     f_obs=f_calc,
     r_free_flags=flags,
