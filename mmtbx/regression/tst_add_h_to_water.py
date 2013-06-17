@@ -214,31 +214,31 @@ expected_result2 = """\
 
                     ----------find peak-candidates----------
 
-Number of peaks found at mFobs-DFmodel map (map cutoff=6.50 sigma)= 9
+Number of peaks found at mFobs-DFmodel map (map cutoff=6.50 sigma)= 11
 Filter by distance & map next to the model:
-mapped sites are within: 0.981 - 1.005
-number of sites selected in [dist_min= 0.70, dist_max= 1.05]: 9 from: 9
-mapped sites are within: 0.981 - 1.005
+   mapped sites are within: 0.967 - 1.012
+   number of sites selected in [dist_min= 0.70, dist_max= 1.05]: 9 from: 11
+   mapped sites are within: 0.967 - 1.012
 
-peak=   25.542 closest distance to pdb=" O   HOH     1 " =    0.988
-peak=   23.147 closest distance to pdb=" O   HOH     1 " =    0.982
-peak=   25.066 closest distance to pdb=" O   HOH     2 " =    0.997
-peak=   23.664 closest distance to pdb=" O   HOH     2 " =    0.995
-peak=   24.609 closest distance to pdb=" O   HOH     3 " =    0.988
-peak=   23.323 closest distance to pdb=" O   HOH     3 " =    0.981
-peak=   23.680 closest distance to pdb=" O   HOH     4 " =    0.998
-peak=   24.477 closest distance to pdb=" O   HOH     5 " =    0.986
-peak=   23.000 closest distance to pdb=" O   HOH     6 " =    1.005
+peak=   27.860 closest distance to pdb=" O   HOH     1 " =    1.000
+peak=   26.774 closest distance to pdb=" O   HOH     1 " =    0.967
+peak=   29.029 closest distance to pdb=" O   HOH     2 " =    1.010
+peak=   26.909 closest distance to pdb=" O   HOH     2 " =    0.996
+peak=   25.985 closest distance to pdb=" O   HOH     3 " =    0.994
+peak=   24.923 closest distance to pdb=" O   HOH     3 " =    0.987
+peak=   26.707 closest distance to pdb=" O   HOH     4 " =    0.995
+peak=   26.372 closest distance to pdb=" O   HOH     5 " =    0.990
+peak=   24.816 closest distance to pdb=" O   HOH     6 " =    1.012
 
-----------6D rigid body fit of HOH----------
+                  ----------6D rigid body fit of HOH----------
 
 Fit quality:
-0.028
-0.040
-0.021
-0.018
-0.007
-0.024
+ 0.039
+ 0.041
+ 0.026
+ 0.016
+ 0.010
+ 0.031
 """
 
 def exercise_02():
@@ -259,11 +259,9 @@ def exercise_02():
   sf_par = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract()
   sf_par.algorithm = "direct"
   sf_par.cos_sin_table = False
-  flags = f_obs.array(data=flex.bool(f_obs.data().size(),False))
   fmodel = mmtbx.f_model.manager(
     xray_structure               = xrs_part,
     sf_and_grads_accuracy_params = sf_par,
-    r_free_flags                 = flags,
     target_name                  = "ls_wunit_k1",
     f_obs                        = f_obs)
   #

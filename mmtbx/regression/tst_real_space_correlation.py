@@ -4,7 +4,7 @@ import libtbx.load_env
 from libtbx.test_utils import approx_equal
 import os
 
-def exercise_1 () :
+def exercise_1():
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/1yjp_h.pdb",
     test=os.path.isfile)
@@ -28,17 +28,19 @@ def exercise_1 () :
   r_free = r_free.customized_copy(data=(r_free.data()==1))
   fmodel = mmtbx.utils.fmodel_simple(
     f_obs=f_obs,
+    update_f_part1_for=None,
     r_free_flags=r_free,
     xray_structures=[xrs],
     scattering_table="n_gaussian")
   map_stats = real_space_correlation.map_statistics_for_fragment(
     fragment=hierarchy,
     fmodel=fmodel)
-  assert approx_equal(map_stats.cc, 0.963, eps=0.003)
-  map1_coeffs = fmodel.electron_density_map().map_coefficients("2mFo-DFc")
+  assert approx_equal(map_stats.cc, 0.969, eps=0.003)
+  edm = fmodel.electron_density_map(update_f_part1=False)
+  map1_coeffs = edm.map_coefficients("2mFo-DFc")
   map1 = map1_coeffs.fft_map(
     resolution_factor=0.25).apply_sigma_scaling().real_map()
-  map2_coeffs = fmodel.electron_density_map().map_coefficients("Fmodel")
+  map2_coeffs = edm.map_coefficients("Fmodel")
   map2 = map2_coeffs.fft_map(
     resolution_factor=0.25).apply_sigma_scaling().real_map()
   xray_structure = fmodel.xray_structure
@@ -47,8 +49,7 @@ def exercise_1 () :
     map1=map1,
     map2=map2,
     xray_structure=xrs)
-  assert (map_stats2.cc == map_stats.cc)
-  # map_stats.map1_mean, map_stats.map2_mean
+  assert approx_equal(map_stats2.cc, map_stats.cc, 0.01)
   return True
 
 if (__name__ == "__main__") :

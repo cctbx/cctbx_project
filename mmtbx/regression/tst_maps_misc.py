@@ -20,6 +20,7 @@ def exercise_anomalous_maps_misc () :
   flags = mtz_in.file_server.miller_arrays[0]
   flags = flags.customized_copy(data=flags.data()==1)
   fmodel = mmtbx.utils.fmodel_simple(
+    update_f_part1_for=None,
     f_obs=f_obs,
     r_free_flags=flags,
     xray_structures=[xrs],
