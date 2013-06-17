@@ -1,3 +1,7 @@
+# -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
+#
+# $Id: common_mode.py 17569 2013-06-11 07:58:18Z phyy-nx $
+
 from __future__ import division
 import numpy
 import math
@@ -91,28 +95,43 @@ class distl_hitfinder(object):
     return active_data
 
   def set_up_hitfinder(self):
+    # See r17537 of mod_average.py.
+    device = cspad_tbx.address_split(self.address)[2]
+    if device == 'Cspad':
+      img_dim = (1765, 1765)
+      pixel_size = cspad_tbx.pixel_size
+    elif device == 'marccd':
+      img_dim = (2400, 2400)
+      pixel_size = 0.079346
+    else:
+      raise RuntimeError("Unsupported device %s" % self.address)
+
     self.hitfinder_d = cspad_tbx.dpack(
-      active_areas    = self.active_areas,
-      beam_center_x   = cspad_tbx.pixel_size * self.beam_center[0],
-      beam_center_y   = cspad_tbx.pixel_size * self.beam_center[1],
-      data            = flex.int(flex.grid(1765,1765),0),
-      xtal_target     = self.m_xtal_target)
+      active_areas=self.active_areas,
+      beam_center_x=pixel_size * self.beam_center[0],
+      beam_center_y=pixel_size * self.beam_center[1],
+      data=flex.int(flex.grid(img_dim[0], img_dim[1]), 0),
+      xtal_target=self.m_xtal_target)
 
-    #figure out which asics are on the central four sensors
-    B = self.active_areas
-    assert len(B)%4 == 0
-    asics = [(B[i],B[i+1],B[i+2],B[i+3]) for i in xrange(0,len(B),4)]
+    if device == 'Cspad':
+      # Figure out which ASIC:s are on the central four sensors.  This
+      # only applies to the CSPAD.
+      assert len(self.active_areas) % 4 == 0
+      distances = flex.double()
+      for i in range(0, len(self.active_areas), 4):
+        cenasic = ((self.active_areas[i + 0] + self.active_areas[i + 2]) / 2,
+                   (self.active_areas[i + 1] + self.active_areas[i + 3]) / 2)
+        distances.append(math.hypot(cenasic[0] - self.beam_center[0],
+                                    cenasic[1] - self.beam_center[1]))
+      orders = flex.sort_permutation(distances)
 
-    center = self.beam_center
-    distances = flex.double()
-    for iasic in xrange(len(asics)):
-      cenasic = ((asics[iasic][2] + asics[iasic][0])/2. ,
-                 (asics[iasic][3] + asics[iasic][1])/2. )
+      # Use the central 8 ASIC:s (central 4 sensors).
+      flags = flex.int(len(self.active_areas) // 4, 0)
+      for i in range(8):
+        flags[orders[i]] = 1
+      self.asic_filter = "distl.tile_flags=" + ",".join(
+        ["%1d" % b for b in flags])
 
-      distances.append(math.hypot(cenasic[0]-center[0], cenasic[1]-center[1]))
-    orders = flex.sort_permutation(distances)
-
-    flags = flex.int(len(asics),0)
-    #Use the central 8 asics (central 4 sensors)
-    for i in xrange(8): flags[orders[i]]=1
-    self.asic_filter = "distl.tile_flags="+",".join(["%1d"%b for b in flags])
+    elif device == 'marccd':
+      # There is only one active area for the MAR CCD, so use it.
+      self.asic_filter = "distl.tile_flags=1"
