@@ -12,6 +12,7 @@ import mmtbx.utils
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
+import mmtbx.refinement.real_space.individual_sites
 
 pdb_str_1 = """\
 CRYST1   26.960   29.455   29.841  90.00  90.00  90.00 P 21 21 21
