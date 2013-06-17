@@ -41,6 +41,7 @@ import mmtbx.arrays
 import mmtbx.bulk_solvent.scaler
 import scitbx.math
 from cctbx import maptbx
+from libtbx.test_utils import approx_equal
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
@@ -316,10 +317,6 @@ class manager_kbu(object):
   def k_isotropic(self):
     return flex.double(self.f_obs.data().size(),
       bulk_solvent.scale(self.f_obs.data(), self.f_model.data()))
-
-
-
-
 
 class manager(manager_mixin):
 
@@ -1037,6 +1034,8 @@ class manager(manager_mixin):
     hds = self.xray_structure.hd_selection()
     if(hds.count(True)==0): return None
     xrsh = self.xray_structure.select(selection = hds)
+    occ = xrsh.scatterers().extract_occupancies()
+    if(not occ.all_eq(0)): return
     xrsh.set_occupancies(value=1) # XXX use parent values
     fh = self.f_obs().structure_factors_from_scatterers(
       xray_structure = xrsh,
@@ -1079,10 +1078,24 @@ class manager(manager_mixin):
     self.update_core(f_part2 = fh_kb, f_part2_twin = fh_kb_twin)
     self.k_h, self.b_h = kbest, bbest
 
-  def update_f_part1(self, params=None, log=None):
-    raise RuntimeErorr("Not implemented.")
+  def update_f_part1(self, purpose):
+    """
+    Identify negative blobs in mFo-DFc synthesis in solvent region only,
+    then leave only those blobs (set everything else to zero),
+    then FT modified synthesis into f_diff s.f. and add them to Fmodel as scaled
+    Fmask contribution. Finally, extract updated scales and scaled f_diff and
+    update self with them. Store f_diff in F_part_1 partial contribution array
+    of Fmodel, which is an arbitrary choice (could be F_part_2, for instance).
+    Rationale: there should not be negative peaks in bulk-solvent region unless
+               they are noise or errors of bulk-solvent model, so they are
+               always good to remove.
+    """
+    if(self.xray_structure is None): return # need mask
+    assert purpose in ["refinement", "map"]
     mp = mmtbx.masks.mask_master_params.extract()
-    mp.solvent_radius=0.
+    if(purpose == "map"):
+      mp.solvent_radius = mp.solvent_radius/2
+      mp.shrink_truncation_radius = mp.shrink_truncation_radius/2
     mmtbx_masks_asu_mask_obj = mmtbx.masks.asu_mask(
       xray_structure = self.xray_structure.expand_to_p1(sites_mod_positive=True),
       d_min          = self.f_obs().d_min(),
@@ -1092,15 +1105,28 @@ class manager(manager_mixin):
       unit_cell             = self.xray_structure.unit_cell(),
       space_group_info      = self.f_obs().space_group_info(),
       pre_determined_n_real = bulk_solvent_mask.focus())
-    #
-    mc = self.electron_density_map().map_coefficients(
-      map_type = "mFo-DFc", isotropize = True)
-    fft_map = mc.fft_map(crystal_gridding=crystal_gridding)
-    fft_map.apply_volume_scaling()
-    map_data = fft_map.real_map_unpadded()
+    if(purpose == "map"): exclude_free_r_reflections = False
+    else:                 exclude_free_r_reflections = True
+    mc = self.electron_density_map(update_f_part1 = False).map_coefficients(
+      map_type   = "mFo-DFc",
+      isotropize = True,
+      exclude_free_r_reflections = False)
+    r_free_flags_data = self.r_free_flags().data()
+    if(exclude_free_r_reflections and
+       0 not in [r_free_flags_data.count(True),r_free_flags_data.count(False)]):
+      mc = mc.customized_copy(
+        data = mc.data().set_selected(r_free_flags_data, 0+0j))
+    fft_map = mc.fft_map(crystal_gridding = crystal_gridding)
+    map_data = fft_map.real_map_unpadded() # important: not scaled!
+    unit_cell_volume = self.xray_structure.unit_cell().volume()
+    if(purpose == "map"):
+      maptbx.truncate(map_data = map_data, by_sigma_less_than = 0.0,
+        scale_by = 1./unit_cell_volume)
+    else:
+      maptbx.truncate(map_data = map_data, by_sigma_less_than =-2.5,
+        scale_by = 1./unit_cell_volume)
     map_data = map_data*bulk_solvent_mask
-    s = map_data < -0.05
-    map_data = map_data.set_selected(~s, 0)
+    assert flex.min(map_data)<=0
     f_diff = mc.structure_factors_from_map(
       map            = map_data,
       use_scale      = True,
@@ -1109,22 +1135,23 @@ class manager(manager_mixin):
     fm = manager(
       f_obs        = self.f_obs(),
       r_free_flags = self.r_free_flags(),
-      f_calc       = self.f_model_scaled_with_k1(), # What goes here ?
-      #f_calc       = self.f_model(), # This is better for disabled update_f_hydrogens
+      f_calc       = self.f_model(), # important: not f_model_scaled_with_k1() !
       f_mask       = f_diff)
-    fm.update_all_scales(update_f_part1=False, remove_outliers=False)
-#    fm.show()
-#    print "LOOK2:",fm.r_work(), fm.r_free()
-    # put back into self
+    fm.update_all_scales(remove_outliers=False, update_f_part1_for=None)
+    rw, rf = fm.r_work(), fm.r_free()
+    # put back into self: tricky!
     kt  = self.k_isotropic()*self.k_anisotropic()
     ktp = fm.k_isotropic()*fm.k_anisotropic()
+    assert kt.all_ne(0)
     self.update_core(
       k_isotropic   = flex.double(kt.size(),1),
       k_anisotropic = kt*ktp,
-      f_part1       = f_diff.customized_copy(data = f_diff.data()*(1/kt)*fm.k_masks()[0])
-    )
-    self.show()
-    print "LOOK3:",self.r_work(), self.r_free()
+      f_part1       = f_diff.customized_copy(
+        data = f_diff.data()*(1/kt)*fm.k_masks()[0]))
+    # normally it holds up to 1.e-6, so if assertion below breakes then
+    # there must be something terribly wrong!
+    assert approx_equal(rw, self.r_work(), 1.e-4)
+    assert approx_equal(rf, self.r_free(), 1.e-4)
 
   def show(self, log=None, suffix=None, show_header=True, show_approx=True):
     if(log is None): log = sys.stdout
@@ -1180,20 +1207,23 @@ class manager(manager_mixin):
       print >> log, f3
       print >> log, f4
 
-  def update_all_scales(self,
-                        apply_back_trace=False,
-                        params = None, # XXX DUMMY
-                        nproc = None,  # XXX DUMMY
-                        cycles = None,
-                        fast = True,
-                        optimize_mask = False,
-                        refine_hd_scattering = True,
-                        bulk_solvent_and_scaling = True,
-                        remove_outliers = True,
-                        show = False,
-                        verbose=None,
-                        log = None):
+  def update_all_scales(
+        self,
+        update_f_part1_for,
+        apply_back_trace=False,
+        params = None, # XXX DUMMY
+        nproc = None,  # XXX DUMMY
+        cycles = None,
+        fast = True,
+        optimize_mask = False,
+        refine_hd_scattering = True,
+        bulk_solvent_and_scaling = True,
+        remove_outliers = True,
+        show = False,
+        verbose=None,
+        log = None):
     if(log is None): log = sys.stdout
+    assert update_f_part1_for in [False, None, "map", "refinement"]
     # Always start from scratch to avoide irreproducible results or instability
     # due to correlation of parameters
     zero = flex.complex_double(self.f_calc().data().size(),0)
@@ -1201,6 +1231,7 @@ class manager(manager_mixin):
     one_d = flex.double(self.f_calc().data().size(),1)
     zero_a = self.f_calc().customized_copy(data = zero)
     self.update_core(
+      f_part1       = zero_a,
       f_part2       = zero_a,
       k_isotropic   = one_d,
       k_anisotropic = one_d,
@@ -1237,12 +1268,15 @@ class manager(manager_mixin):
         if(show):
           print >> log, "    bulk-solvent and scaling: %s"%get_r(self)
       if(refine_hd_scattering): self.update_f_hydrogens()
-      if(refine_hd_scattering and show):
+      if(refine_hd_scattering and show and [self.k_h, self.b_h].count(None)==0):
         print >> log, "    HD scattering refinement: %s k_h=%4.2f b_h=%-7.2f"%(
           get_r(self), self.k_h, self.b_h)
     if(remove_outliers):
       self.remove_outliers(use_model=True)
-      if(show): print >> log, "  remove outliers: %s"%get_r(self)
+      if(show): print >> log, "    remove outliers:          %s"%get_r(self)
+    if(update_f_part1_for):
+      self.update_f_part1(purpose=update_f_part1_for)
+      if(show): print >> log, "    correct solvent mask:     %s"%get_r(self)
     if(show):
       print >> log, "final: %s"%get_r(self)
       print >> log
@@ -2174,11 +2208,13 @@ class manager(manager_mixin):
       result = tmp(phase_source = phase_source)
     return result
 
-  def electron_density_map(self):
-    return map_tools.electron_density_map(fmodel = self)
+  def electron_density_map(self, update_f_part1):
+    return map_tools.electron_density_map(
+      fmodel         = self,
+      update_f_part1 = update_f_part1)
 
   def map_coefficients (self, **kwds) :
-    emap = self.electron_density_map()
+    emap = self.electron_density_map(update_f_part1=True)
     return emap.map_coefficients(**kwds)
 
   def _get_real_map (self, **kwds) :
