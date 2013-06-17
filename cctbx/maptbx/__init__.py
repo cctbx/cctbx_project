@@ -27,6 +27,24 @@ flex.double.value_at_closest_grid_point = value_at_closest_grid_point
 flex.double.eight_point_interpolation = eight_point_interpolation
 flex.double.tricubic_interpolation = tricubic_interpolation
 
+def truncate(map_data, by_sigma_less_than, scale_by, set_value=0):
+  """
+  Trunate map inplace by standard deviation (sigma) while scale it with
+  specified scale, such as volume (scale_by=1/volume) or sigma
+  (scale_by=1/standard_deviation). Input map_data is expected to be unscaled (
+  right out of FT).
+  """
+  sigma = statistics(map_data).sigma()
+  if(sigma == 0):
+    map_data = map_data*scale_by
+    return
+  ext.truncate(
+    map_data           = map_data,
+    standard_deviation = sigma,
+    by_sigma_less_than = by_sigma_less_than,
+    scale_by           = scale_by,
+    set_value          = set_value)
+
 def mask(xray_structure, n_real, solvent_radius):
   xrs_p1 = xray_structure.expand_to_p1(sites_mod_positive=True)
   from cctbx.masks import vdw_radii_from_xray_structure
