@@ -66,7 +66,7 @@ def run():
 
   f_model_manager.info().show_all()
 
-  fft_map = f_model_manager.electron_density_map().fft_map(
+  fft_map = f_model_manager.electron_density_map(update_f_part1=True).fft_map(
     map_type = "mFobs - DFmodel")
   fft_map.as_xplor_map(
     file_name="mfo-dfm.xplor",
