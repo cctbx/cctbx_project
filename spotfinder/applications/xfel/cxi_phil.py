@@ -222,5 +222,11 @@ def cxi_versioned_extract(*args):
                                                 2, -21]
     return working_extract
 
+  elif cxi_version in ["XPP 7.marccd"]:
+    working_extract = working_phil.command_extractor
+    working_extract.distl.quad_translations = None
+    working_extract.distl.tile_translations = [0, 0]
+    return working_extract
+
   else:
     return working_phil.command_extractor

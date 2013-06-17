@@ -2480,7 +2480,6 @@ xfel/cxi/merging/general_fcalc.py -text
 xfel/cxi/merging_database.py -text
 xfel/cxi/strong_zulu.py -text
 xfel/cxi/util.py -text
-xfel/detector_formats.py -text
 xfel/libtbx_config -text
 xfel/metrology/__init__.py -text
 xfel/metrology_ext.cpp -text
