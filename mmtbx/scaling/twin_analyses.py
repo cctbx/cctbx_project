@@ -2781,7 +2781,7 @@ def merge_data_and_guess_space_groups(miller_array, txt, xs=None,out=None, sigma
 
 
 def twin_analyses_brief(miller_array,
-                        cut_off=4.0,
+                        cut_off=2.5,
                         out = None,
                         verbose=0):
   """
@@ -2827,7 +2827,7 @@ def twin_analyses_brief(miller_array,
     if verbose>0:
       twin_results.twin_summary.twin_results.show(out=out)
     if (twin_results.twin_summary.twin_results.maha_l>cut_off):
-      if twin_results.twin_summary.twin_results.l_mean <= 0.48:
+      if twin_results.twin_summary.twin_results.l_mean <= cut_off:
         twinned = True
     if (twin_results.twin_summary.twin_results.maha_l<=cut_off):
         twinned = False
