@@ -399,7 +399,7 @@ def map_coefficients_from_fmodel (fmodel,
   #XXX  save_k_part = fmodel.k_part()
   #XXX  save_b_part = fmodel.b_part()
   #XXX  fmodel.update_core(k_part=0, b_part=0)
-  e_map_obj = fmodel.electron_density_map()
+  e_map_obj = fmodel.electron_density_map(update_f_part1=True)
   coeffs = None
   if(not params.kicked):
     coeffs = e_map_obj.map_coefficients(
@@ -570,8 +570,11 @@ class kick(object):
         assert_shannon_sampling = True)
     fmodel = self.convert_to_non_anomalous(fmodel=fmodel)
     # starting map coefficients and sigma-scaled map
-    self.complete_set = fmodel.electron_density_map().map_coefficients(
-      map_type = self.map_type, isotropize = True, fill_missing = self.fill_missing)
+    self.complete_set = fmodel.electron_density_map(
+      update_f_part1=True).map_coefficients(
+        map_type     = self.map_type,
+        isotropize   = True,
+        fill_missing = self.fill_missing)
     fft_map = miller.fft_map(
       crystal_gridding     = crystal_gridding,
       fourier_coefficients = self.complete_set)
@@ -624,22 +627,31 @@ class kick(object):
         f_calc_kick = self.call_run_kick_loop(map_coeffs=f_calc)
         fmodel_dc = self.recreate_r_free_flags(fmodel = fmodel_dc)
         fmodel_dc.update(f_calc = f_calc_kick)
-        mc = fmodel_dc.electron_density_map().map_coefficients(
-          map_type = map_type, isotropize = True, fill_missing = False)
+        mc = fmodel_dc.electron_density_map(
+          update_f_part1=True).map_coefficients( # XXX is this slow?
+            map_type     = map_type,
+            isotropize   = True,
+            fill_missing = False)
         if(use_complete_with): mc = mc.complete_with(complete_set, scale=True)
       if(shake_f_mask or (shake_f_mask is None and switch==2)):
         f_mask_kick = self.call_run_kick_loop(map_coeffs=f_mask)
         fmodel_dc = self.recreate_r_free_flags(fmodel = fmodel_dc)
         fmodel_dc.update(f_mask=f_mask_kick)
-        mc = fmodel_dc.electron_density_map().map_coefficients(
-          map_type = map_type, isotropize = True, fill_missing = False)
+        mc = fmodel_dc.electron_density_map(
+          update_f_part1=True).map_coefficients( # XXX is this slow?
+            map_type     = map_type,
+            isotropize   = True,
+            fill_missing = False)
         if(use_complete_with): mc = mc.complete_with(complete_set, scale=True)
       if(shake_f_model or (shake_f_model is None and switch==3)):
         f_model_kick = self.call_run_kick_loop(map_coeffs=f_model)
         fmodel_dc2 = self.recreate_r_free_flags(fmodel = fmodel_dc2)
         fmodel_dc2.update(f_calc = f_model_kick)
-        mc = fmodel_dc2.electron_density_map().map_coefficients(
-          map_type = map_type, isotropize = True, fill_missing = False)
+        mc = fmodel_dc2.electron_density_map(
+          update_f_part1=False).map_coefficients( # XXX is this slow? Also, could FALSE cause problems (It's true everywhere else)?
+            map_type     = map_type,
+            isotropize   = True,
+            fill_missing = False)
         if(use_complete_with): mc = mc.complete_with(complete_set, scale=True)
       if(shake_f_map or (shake_f_map is None and switch==4)):
         mc = self.call_run_kick_loop(map_coeffs=complete_set)
@@ -695,9 +707,12 @@ class kick(object):
       f_obs        = f_obs.select(SELR_),
       r_free_flags = r_free_flags.select(SELR_),
       xray_structure = fmodel.xray_structure)
-    fmodel_dc.update_all_scales()
-    self.complete_set_2 = fmodel_dc.electron_density_map().map_coefficients(
-      map_type = self.map_type, isotropize = True, fill_missing = self.fill_missing)
+    fmodel_dc.update_all_scales(update_f_part1_for="map")
+    self.complete_set_2 = fmodel_dc.electron_density_map(
+      update_f_part1 = True).map_coefficients( # XXX This may slow down. Check if really need it!
+        map_type     = self.map_type,
+        isotropize   = True,
+        fill_missing = self.fill_missing)
     outlier_substitute1, dummy = self.complete_set_2.common_sets(outliers)
     outlier_substitute2, dummy = fmodel.f_obs().common_sets(outliers)
     outlier_substitute1, outlier_substitute2 = outlier_substitute1.common_sets(outlier_substitute2)
@@ -719,7 +734,7 @@ class kick(object):
         f_obs = f_obs,
         r_free_flags = r_free_flags,
         xray_structure = fmodel.xray_structure)
-      fmodel.update_all_scales()
+      fmodel.update_all_scales(update_f_part1_for="map")
       r_work_2 = fmodel.r_work()
       if(r_work_2 > r_work_1):
         assert abs(r_work_2-r_work_1)*100 < 1.0, [r_work_1, r_work_2]

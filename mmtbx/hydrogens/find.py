@@ -992,7 +992,8 @@ def obs_map(
     fmodel,
     map_type,
     resolution_factor=0.25):
-  map_coeffs = fmodel.electron_density_map().map_coefficients(map_type)
+  map_coeffs = fmodel.electron_density_map(
+    update_f_part1=True).map_coefficients(map_type)
   return map_coeffs.fft_map(
     resolution_factor=resolution_factor).apply_sigma_scaling().real_map()
 
@@ -1043,64 +1044,3 @@ def water_map_correlations(model, fmodels, log=None):
             else:
               neutron_cc = ncc
   return True
-
-def run_flip_hd(fmodel, model, log, params = None):
-  if(params is None):
-    params = all_master_params().extract()
-  params.map_next_to_model.min_model_peak_dist = 0 # XXX
-  print_statistics.make_sub_header("find peak-candidates", out = log)
-  xray_structure_dc = fmodel.xray_structure.deep_copy_scatterers()
-  xh_connectivity_table = model.xh_connectivity_table()
-  scatterers = fmodel.xray_structure.scatterers()
-  scattering_types = scatterers.extract_scattering_types()
-  fmodel_dc = fmodel.deep_copy()
-  ed_values = flex.double()
-  for h_in_residue in model.refinement_flags.group_h:
-    xray_structure_dc_dc = xray_structure_dc.deep_copy_scatterers()
-    xray_structure_dc_dc.set_occupancies(value = 0, selection = h_in_residue)
-    fmodel_dc.update_xray_structure(
-      xray_structure = xray_structure_dc_dc,
-      update_f_calc  = True,
-      update_f_mask  = True)
-    fft_map = fmodel_dc.electron_density_map(
-      map_type          = "mFo-DFc",
-      resolution_factor = 1/4.,
-      symmetry_flags    = maptbx.use_space_group_symmetry)
-    fft_map.apply_sigma_scaling()
-    fft_map_data = fft_map.real_map_unpadded()
-    for i_seq_h in h_in_residue:
-      ed_val = maptbx.eight_point_interpolation(fft_map_data,
-          scatterers[i_seq_h].site)
-      ed_values.append(ed_val)
-      assert fmodel_dc.xray_structure.scatterers()[i_seq_h].occupancy == 0
-      if 1:#((ed_val < 0 and scattering_types[i_seq_h]=='D') or
-         #(ed_val > 0 and scattering_types[i_seq_h]=='H')):
-        #print >> log, "%3d %6.2f %s" % (i_seq_h, ed_val, scattering_types[i_seq_h]), \
-        #  model.pdb_atoms[i_seq_h].quote()
-        pass
-  #
-  #hd_selection = model.xray_structure.hd_selection()
-  scattering_types = model.xray_structure.scatterers().extract_scattering_types()
-  hd_selection = flex.bool()
-  for sct in scattering_types:
-    if(sct.strip() in ['H','D']): hd_selection.append(True)
-    else: hd_selection.append(False)
-
-  total = int(flex.sum(model.xray_structure.scatterers().
-    extract_occupancies().select(hd_selection)))
-  ed_values_abs = flex.abs(ed_values)
-  for sigma in (1,2,3):
-    ns = (ed_values_abs > sigma).count(True)
-    print "sigma = %6.2f n_visible = %5d out of total %-5d" % (sigma, ns, total),ed_values.size()
-  #
-
-      #if(abs(ed_val) < 1.0):
-      #  print >> log, "*** %3d %6.2f %s" % (i_seq_h, ed_val, scattering_types[i_seq_h]), \
-      #  model.pdb_atoms[i_seq_h].quote()
-      #  for map_cutoff in [3, -3]:
-      #    params.map_cutoff = map_cutoff
-      #    peaks = find_hydrogen_peaks(
-      #      fmodel               = fmodel,
-      #      pdb_atoms = model.pdb_atoms,
-      #      params               = params,
-      #      log                  = log)
