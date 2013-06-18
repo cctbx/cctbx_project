@@ -438,11 +438,8 @@ dxtbx/libtbx_config -text
 dxtbx/license.txt -text
 dxtbx/model/SConscript -text
 dxtbx/model/__init__.py -text
-dxtbx/model/attenuation_coefficient.cc -text
-dxtbx/model/attenuation_coefficient.h -text
 dxtbx/model/beam.h -text
 dxtbx/model/beam.py -text
-dxtbx/model/boost_python/attenuation_coefficient.cc -text
 dxtbx/model/boost_python/beam.cc -text
 dxtbx/model/boost_python/detector.cc -text
 dxtbx/model/boost_python/goniometer.cc -text
