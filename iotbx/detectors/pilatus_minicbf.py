@@ -106,17 +106,28 @@ class PilatusImage(DetectorImageBase):
       self.parameters['BEAM_CENTER_Y']=copy.copy(swp)
 
       # read array size
-      headeropen = rawdata.index("_array_data.data")
-      headerclose= rawdata.index("X-Binary-Size-Padding")
-      self.header = rawdata[headeropen+1:headerclose]
+      header_lines = []
+      found_array_data_data = False
+      for record in rawdata.splitlines():
+        if "_array_data.data" in record:
+          found_array_data_data = True
+        elif not found_array_data_data:
+          continue
+        elif len(record.strip()) == 0:
+          # http://sourceforge.net/apps/trac/cbflib/wiki/ARRAY_DATA%20Category
+          #    In an imgCIF file, the encoded binary data begins after
+          #    the empty line terminating the header.
+          break
+        header_lines.append(record)
+      self.header = "\n".join(header_lines)
       self.headerlines = [x.strip() for x in self.header.split("\n")]
       for idx in xrange(len(self.headerlines)):
         for character in '\r\n,();':
           self.headerlines[idx] = self.headerlines[idx].replace(character,'')
 
       for tag,search,idx,datatype in [
-          ('SIZE1','X-Binary-Size-Second-Dimension',1,int),
-          ('SIZE2','X-Binary-Size-Fastest-Dimension',1,int),
+          ('SIZE1','X-Binary-Size-Second-Dimension',-1,int),
+          ('SIZE2','X-Binary-Size-Fastest-Dimension',-1,int),
           ]:
           for line in self.headerlines:
             if line.find(search)==0:
