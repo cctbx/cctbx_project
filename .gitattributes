@@ -470,6 +470,7 @@ dxtbx/model/scan.py -text
 dxtbx/model/scan_helpers.h -text
 dxtbx/model/scan_helpers.py -text
 dxtbx/readme.txt -text
+dxtbx/run_tests.py -text
 dxtbx/serialize/__init__.py -text
 dxtbx/serialize/beam.py -text
 dxtbx/serialize/detector.py -text
@@ -517,8 +518,8 @@ dxtbx/tests/test_beam.py -text
 dxtbx/tests/test_detector.py -text
 dxtbx/tests/test_goniometer.py -text
 dxtbx/tests/test_scan.py -text
+dxtbx/tests/tst_dxtbx.py -text
 dxtbx/tests/tst_imageset.py -text
-dxtbx/tst_dxtbx.py -text
 fable/SConscript -text
 fable/__init__.py svneol=native#text/x-python
 fable/command_line/__init__.py svneol=native#text/x-python

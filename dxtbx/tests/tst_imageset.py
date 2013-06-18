@@ -684,12 +684,15 @@ class TestImageSweep(object):
     def tst_set_models(self, sweep):
         from dxtbx.model import Beam, Goniometer, Detector, Panel
 
-        # Create some other models
-        beam = Beam((1, 0, 0), 0.5)
-        gonio = Goniometer((0, 1, 0))
-        detector = Detector(Panel("UNKNOWN",
-                                  (1, 0, 0), (0, 1, 0), (0, 0, 1),
-                                  (0.1, 0.1), (1000, 1000), (0, 1)))
+        # Get some models
+        beam = sweep.get_beam()
+        gonio = sweep.get_goniometer()
+        detector = sweep.get_detector()
+
+        # Modify the geometry
+        beam.set_direction((1, 0, 0))
+        gonio.set_rotation_axis((0, 1, 0))
+        detector.set_frame((1, 0, 0), (0, 1, 0), (0, 0, 1))
 
         # Override sweep models
         sweep.set_beam(beam)

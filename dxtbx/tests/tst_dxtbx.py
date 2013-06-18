@@ -70,4 +70,4 @@ def tst_sweep():
 
 if __name__ == '__main__':
     tst_dxtbx()
-    #tst_dxtbx_models()  # these tests are failing in the misc_build.  Disable them until they can be debugged.
+    tst_dxtbx_models()  # these tests are failing in the misc_build.  Disable them until they can be debugged.
