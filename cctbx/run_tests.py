@@ -39,6 +39,7 @@ tst_list = (
   "$D/eltbx/tests/tst_tiny_pse.py",
   "$D/eltbx/tests/tst_wavelengths.py",
   "$D/eltbx/tests/tst_formula.py",
+  "$D/eltbx/tests/tst_attenuation_coefficient.py",
   "$D/maptbx/boost_python/tst_maptbx.py",
   "$D/dmtbx/boost_python/tst_dmtbx.py",
   "$D/translation_search/boost_python/tst_translation_search.py",
