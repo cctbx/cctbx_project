@@ -68,12 +68,15 @@ class mod_average(average_tbx.average_mixin):
 
     super(mod_average, self).endjob(env)
 
-    if self.address == 'XppGon-0|marccd-0':
-      beam_center = tuple(t // 2 for t in self.avg_img.focus())
-      pixel_size = 0.079346
-    else:
+    device = cspad_tbx.address_split(self.address)[2]
+    if device == 'Cspad':
       beam_center = self.beam_center
       pixel_size = cspad_tbx.pixel_size
+      saturated_value = cspad_tbx.dynamic_range
+    elif device == 'marccd':
+      beam_center = tuple(t // 2 for t in self.avg_img.focus())
+      pixel_size = 0.079346
+      saturated_value = 2**16 - 1
 
     if self.nmemb > 0:
       if self.avg_dirname  is not None or \
@@ -86,6 +89,7 @@ class mod_average(average_tbx.average_mixin):
           data=self.avg_img,
           distance=self.avg_distance,
           pixel_size=pixel_size,
+          saturated_value=saturated_value,
           timestamp=cspad_tbx.evt_timestamp(self.avg_time),
           wavelength=self.avg_wavelength)
         p = cspad_tbx.dwritef(d, self.avg_dirname, self.avg_basename)
@@ -102,6 +106,7 @@ class mod_average(average_tbx.average_mixin):
           data=self.stddev_img,
           distance=self.avg_distance,
           pixel_size=pixel_size,
+          saturated_value=saturated_value,
           timestamp=cspad_tbx.evt_timestamp(self.avg_time),
           wavelength=self.avg_wavelength)
         p = cspad_tbx.dwritef(d, self.stddev_dirname, self.stddev_basename)
@@ -118,6 +123,7 @@ class mod_average(average_tbx.average_mixin):
           data=self.max_img,
           distance=self.avg_distance,
           pixel_size=pixel_size,
+          saturated_value=saturated_value,
           timestamp=cspad_tbx.evt_timestamp(self.avg_time),
           wavelength=self.avg_wavelength)
         p = cspad_tbx.dwritef(d, self.max_dirname, self.max_basename)

@@ -392,15 +392,16 @@ class mod_view(common_mode.common_mode_correction):
       title = "r%04d@%s: average of %d last images on %s" \
           % (evt.run(), time_str, self.nvalid, self.address)
 
-      # See mod_average.py.
-      if self.address == 'XppGon-0|marccd-0':
-        beam_center = tuple(t // 2 for t in self.img_sum.focus())
-        pixel_size = 0.079346
-        saturated_value = 65535
-      else:
+      # See also mod_average.py.
+      device = cspad_tbx.address_split(self.address)[2]
+      if device == 'Cspad':
         beam_center = self.beam_center
         pixel_size = cspad_tbx.pixel_size
         saturated_value = cspad_tbx.dynamic_range
+      elif device == 'marccd':
+        beam_center = tuple(t // 2 for t in self.img_sum.focus())
+        pixel_size = 0.079346
+        saturated_value = 2**16 - 1
 
       # Wait for the viewer process to empty the queue before feeding
       # it a new image, and ensure not to hang if the viewer process
