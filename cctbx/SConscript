@@ -52,6 +52,7 @@ lib_cctbx_sources = [
   "eltbx/tiny_pse.cpp",
   "eltbx/wavelengths.cpp",
   "eltbx/electron_scattering/peng1996.cpp",
+  "eltbx/attenuation_coefficient.cpp",
 
   "miller/asu.cpp",
   "miller/bins.cpp",
