@@ -69,8 +69,8 @@ class mod_event_info(object):
       self.config = None
     else:
       self.config = env.getConfig(xtc.TypeId.Type.Id_CspadConfig, self.address)
-    if (self.config is None):
-      self.logger.error("beginjob(): no config")
+      if self.config is None:
+        self.logger.error("beginjob(): no config")
 
     self.nfail  = 0
     self.nshots = 0
