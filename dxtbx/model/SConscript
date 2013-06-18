@@ -2,7 +2,6 @@
 Import('env')
 
 sources = [
-    'attenuation_coefficient.cc',
     'pixel_to_millimeter.cc',
     
     'boost_python/beam.cc',
@@ -13,7 +12,6 @@ sources = [
     'boost_python/detector.cc',
     'boost_python/scan.cc',
     'boost_python/scan_helpers.cc',
-    'boost_python/attenuation_coefficient.cc',
     'boost_python/parallax_correction.cc',
     'boost_python/pixel_to_millimeter.cc',
     'boost_python/model_ext.cc']
