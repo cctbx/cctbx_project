@@ -462,8 +462,9 @@ class ncs_averager (object) :
         mask.set_selected(indices, 1)
         mask.reshape(real_map.accessor())
       else :
-        mask_map_coeffs = fmodel.electron_density_map().map_coefficients(
-          map_type="2mFo-DFc")
+        mask_map_coeffs = fmodel.electron_density_map(
+          update_f_part1=True).map_coefficients(
+            map_type="2mFo-DFc")
         mask_fft_map = mask_map_coeffs.fft_map(
           symmetry_flags=maptbx.use_space_group_symmetry,
           resolution_factor=self.params.resolution_factor)
