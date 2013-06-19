@@ -710,6 +710,27 @@ def exercise_nd_slicing():
     assert c.all() == (2,1)
     assert approx_equal(c, (6,11))
 
+def exercise_set_nd_slicing():
+  for flex_t in (flex.int, flex.double):
+    for n in range(0,3):
+      for nd in range(1,11): # flex grid supports up to 10-d
+        a = flex_t(n**nd, 0)
+        a.resize(flex.grid(tuple([n]*nd)))
+        b = flex_t(range(n**nd))
+        b.resize(flex.grid(tuple([n]*nd)))
+        slices = tuple([slice(None) for i in range(nd)])
+        a[slices] = b
+        assert approx_equal(b, a)
+        assert a is not b
+
+    a = flex_t(flex.grid(5,6,7), 0)
+    b = flex_t(range(4*5))
+    b.resize(flex.grid(1, 4, 5))
+    a[2:3,1:5,1:6] = b
+    c = a[2:3,1:5,1:6]
+    assert approx_equal(b, c)
+    assert not b is c
+
 def exercise_numpy_slicing_compatibility():
   try:
     import numpy
@@ -3280,6 +3301,7 @@ def run(iterations):
   while (iterations == 0 or i < iterations):
     exercise_flex_sum_axis()
     exercise_nd_slicing()
+    exercise_set_nd_slicing()
     exercise_numpy_slicing_compatibility()
     exercise_matrix_packed_u_diagonal()
     exercise_versa_packed_u_to_flex()

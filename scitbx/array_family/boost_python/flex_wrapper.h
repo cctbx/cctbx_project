@@ -251,6 +251,47 @@ namespace scitbx { namespace af { namespace boost_python {
     }
 
     static void
+    setitem_nd_slice(
+      f_t& self,
+      small<boost::python::slice, 10> const& slices,
+      f_t const& other)
+    {
+      small<long, 10> dim = self.accessor().all();
+      small<af::slice, 10> slices_simple;
+      for (unsigned i=0; i<slices.size(); i++) {
+        scitbx::boost_python::adapted_slice sl(slices[i], dim[i]);
+        SCITBX_ASSERT(sl.step == 1);
+        slices_simple.push_back(af::slice(sl.start, sl.stop));
+      }
+      copy_to_slice<e_t>(self, slices_simple, other.const_ref());
+    }
+
+    static void
+    setitem_tuple(boost::python::object& a_obj, boost::python::object obj,
+                  boost::python::object& b_obj) {
+      f_t a = boost::python::extract<f_t>(a_obj)();
+      PyObject* obj_ptr = obj.ptr();
+      flex_grid_default_index_type tuple = _getitem_tuple_helper<
+        flex_grid_default_index_type,
+        flex_grid_default_index_type::value_type>(obj_ptr);
+      if (tuple.size()>0) {
+        PyErr_SetString(PyExc_TypeError, "Expecting a slice.");
+        boost::python::throw_error_already_set();
+      }
+      af::small<boost::python::slice, 10> slices = _getitem_tuple_helper<
+        af::small<boost::python::slice, 10>,
+        boost::python::slice>(obj_ptr);
+      if (slices.size()>0) {
+        f_t b = boost::python::extract<f_t>(b_obj)();
+        setitem_nd_slice(a, slices, b);
+      }
+      else {
+        PyErr_SetString(PyExc_TypeError, "Expecting a slice.");
+        boost::python::throw_error_already_set();
+      }
+    }
+
+    static void
     delitem_1d(f_t& a, long i)
     {
       base_array_type b = flex_as_base_array(a);
@@ -762,6 +803,7 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("__getitem__", getitem_1d_slice)
         .def("__getitem__", getitem_1d, GetitemReturnValuePolicy())
         .def("__getitem_fgdit__", getitem_fgdit, GetitemReturnValuePolicy())
+        .def("__setitem__", setitem_tuple) // must be before other __setitem__
         .def("__setitem__", setitem_1d)
         .def("__setitem__", setitem_flex_grid)
         .def("__delitem__", delitem_1d)
