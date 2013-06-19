@@ -59,7 +59,7 @@ output {
     .type = path
     .short_caption = Output directory
     .help = Output directory (defaults to current)
-    .style = directory
+    .style = output_dir bold
   prefix = None
     .type = str
     .input_size = 400
@@ -82,6 +82,8 @@ output {
 #  test_flag_value = None
 #    .type = int
 #}
+include_fmodel = False
+  .type = bool
 show_maps = False
   .type = bool
 """, process_includes=True)
@@ -93,7 +95,7 @@ def find_array (miller_arrays, labels) :
       return array
   return None
 
-def run (args, log=sys.stdout) :
+def run (args, log=sys.stdout, run_in_current_working_directory=False) :
   import iotbx.phil # FIXME this should not be necessary!
   pdb_file = None
   mtz_file = None
@@ -142,13 +144,17 @@ def run (args, log=sys.stdout) :
   params = working_phil.extract()
   if mtz_file is None and params.mtz_file is None :
     raise Sorry("Please specify an MTZ file containing map coefficients.")
-  if params.output.directory is None :
-    params.output.directory = os.getcwd()
-  if (not os.path.exists(params.output.directory)) :
-    os.makedirs(params.output.directory)
-  elif (not os.path.isdir(params.output.directory)) :
-    raise Sorry("The specified output path '%s' is not a directory!" %
-      params.output.directory)
+  if (not run_in_current_working_directory) :
+    if params.output.directory is None :
+      params.output.directory = os.getcwd()
+    if (not os.path.exists(params.output.directory)) :
+      os.makedirs(params.output.directory)
+    elif (not os.path.isdir(params.output.directory)) :
+      raise Sorry("The specified output path '%s' is not a directory!" %
+        params.output.directory)
+    output_dir = params.output.directory
+  else :
+    output_dir = os.getcwd()
   if params.output.prefix is None :
     params.output.prefix = os.path.splitext(
       os.path.basename(params.mtz_file))[0]
@@ -157,7 +163,7 @@ def run (args, log=sys.stdout) :
   if params.show_maps or len(params.labels) == 0 :
     all_labels = utils.get_map_coeff_labels(mtz_file.file_server,
       exclude_anomalous=False,
-      exclude_fmodel=False,
+      exclude_fmodel=not params.include_fmodel,
       keep_array_labels=True)
     if len(all_labels) > 0 :
       print >> log, "Available map coefficients in this MTZ file:"
@@ -211,7 +217,7 @@ def run (args, log=sys.stdout) :
         all_labels = utils.get_map_coeff_labels(mtz_file.file_server,
           keep_array_labels=True,
           exclude_anomalous=False,
-          exclude_fmodel=False)
+          exclude_fmodel=not params.include_fmodel)
         labels_out = []
         if len(all_labels) > 0 :
           for labels in all_labels :
@@ -296,7 +302,7 @@ def run (args, log=sys.stdout) :
       elif format == "ccp4" and not extension in ["ccp4", "map"] :
         raise Sorry("%s is not an appropriate extension for CCP4 maps." %
           extension)
-    map_file_name = os.path.join(params.output.directory,
+    map_file_name = os.path.join(output_dir,
       params.output.prefix + suffix + "." + extension)
     if format == "xplor" :
       utils.write_xplor_map(
@@ -328,7 +334,11 @@ def finish_job (result) :
 
 class launcher (runtime_utils.target_with_save_result) :
   def run (self) :
-    return run(args=list(self.args), log=sys.stdout)
+    os.makedirs(self.output_dir)
+    os.chdir(self.output_dir)
+    return run(args=list(self.args),
+      log=sys.stdout,
+      run_in_current_working_directory=True)
 
 def validate_params (params) :
   if (params.mtz_file is None) :
