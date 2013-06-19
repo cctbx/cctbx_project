@@ -1175,3 +1175,8 @@ def show_development_warning (out=sys.stdout) :
   !! email bugs@phenix-online.org.                                          !!
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 """
+
+def check_if_output_directory_exists (file_name) :
+  if (not op.isdir(op.dirname(file_name))) :
+    raise Sorry(("The specified directory for the output file (%s) does "+
+      "not exist or is not a directory.") % op.dirname(file_name))

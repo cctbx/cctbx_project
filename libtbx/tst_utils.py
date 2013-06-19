@@ -2,6 +2,7 @@ from __future__ import division
 from libtbx import utils
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 from cStringIO import StringIO
+import random
 import time
 import os
 
@@ -245,6 +246,13 @@ def exercise_dir_utils () :
   assert (os.path.basename(dir_name) == "tst_utils_45")
   for dir_name in dirs :
     os.rmdir(dir_name)
+  file_name = "/cctbx/%s/%s/XXXX.pdb" % (random.random(), random.random())
+  try :
+    utils.check_if_output_directory_exists(file_name)
+  except utils.Sorry :
+    pass
+  else :
+    raise Exception_expected
 
 def run(args):
   assert len(args) == 0
