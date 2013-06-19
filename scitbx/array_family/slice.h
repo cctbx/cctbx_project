@@ -50,6 +50,30 @@ namespace scitbx { namespace af {
       return r;
     }
 
+    template <typename T>
+    void
+    copy_to_slice_detail(
+      af::versa<T, af::flex_grid<> > &self,
+      af::small<slice, 10> slices,
+      af::const_ref<T, af::flex_grid<> > const &other)
+    {
+      af::small<long, 10> idx_a(slices.size());
+      std::size_t idx_b = 0;
+      for (std::size_t i = 0; i < slices.size(); ++i) {
+        idx_a[i] = slices[i].start;
+      }
+      while (true) {
+        self[self.accessor()(idx_a)] = other[idx_b++];
+        int j;
+        for (j = idx_a.size()-1; j >= 0; --j) {
+          idx_a[j]++;
+          if (idx_a[j] < slices[j].stop) break;
+          idx_a[j] = slices[j].start;
+        }
+        if (j < 0) break;
+      }
+    }
+
   } // namespace detail
 
   template <typename T>
@@ -71,6 +95,29 @@ namespace scitbx { namespace af {
     typename af::versa<T, af::flex_grid<> >::const_iterator s = self.begin();
     detail::copy_slice_detail(self, s, r, slices, 0, true);
     return result;
+  }
+
+  template <typename T>
+  void
+  copy_to_slice(
+    af::versa<T, af::flex_grid<> > &self,
+    af::small<slice, 10> slices,
+    af::const_ref<T, af::flex_grid<> > const &other)
+  {
+    SCITBX_ASSERT(self.accessor().nd() == slices.size())
+      (self.accessor().nd())(slices.size());
+    SCITBX_ASSERT(other.accessor().nd() == slices.size())
+      (other.accessor().nd())(slices.size());
+    af::small<long, 10> self_dim = self.accessor().all();
+    af::small<long, 10> other_dim = other.accessor().all();
+    af::small<long, 10> slice_dim;
+    for (int i=0;i<self.accessor().nd();i++) {
+      slice_dim.push_back(slices[i].stop-slices[i].start);
+    }
+    SCITBX_ASSERT(slice_dim.all_eq(other_dim));
+    if (self.size() != 0 && other.size() != 0) {
+      detail::copy_to_slice_detail(self, slices, other);
+    }
   }
 
 }}
