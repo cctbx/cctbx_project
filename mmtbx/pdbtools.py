@@ -8,7 +8,7 @@ from libtbx.str_utils import show_string
 import libtbx.phil
 from iotbx import pdb
 from cctbx import crystal
-from libtbx.utils import Sorry, null_out
+from libtbx.utils import Sorry, null_out, check_if_output_directory_exists
 from iotbx import crystal_symmetry_from_any
 from mmtbx import monomer_library
 import mmtbx.restraints
@@ -1106,10 +1106,7 @@ def validate_params (params, callback=None) :
     if (os.path.isdir(params.modify.output.file_name)) :
       raise Sorry("The specified output file is a currently existing "+
         "directory.")
-    elif (not os.path.isdir(os.path.dirname(params.modify.output.file_name))) :
-      raise Sorry(("The specified directory for the output file (%s) does "+
-        "not exist or is not a directory.") %
-        os.path.dirname(params.modify.output.file_name))
+    check_if_output_directory_exists(params.modify.output.file_name)
   return True
 
 def finish_job (result) :
