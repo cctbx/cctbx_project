@@ -296,7 +296,7 @@ def find_peaks_holes (
   from cctbx import maptbx
   f_map = None
   if (filter_peaks_by_2fofc is not None) :
-    f_map_ = fmodel.electron_density_map().fft_map(
+    f_map_ = fmodel.electron_density_map(update_f_part1=True).fft_map(
       resolution_factor=params.resolution_factor,
       symmetry_flags=maptbx.use_space_group_symmetry,
       map_type="2mFo-DFc",
@@ -396,7 +396,7 @@ def find_peaks_holes (
           resolution_factor=params.resolution_factor,
           symmetry_flags=maptbx.use_space_group_symmetry)
       else :
-        fft_map = fmodel.electron_density_map().fft_map(
+        fft_map = fmodel.electron_density_map(update_f_part1=True).fft_map(
           resolution_factor=params.resolution_factor,
           symmetry_flags=maptbx.use_space_group_symmetry,
           map_type=map_type,
@@ -424,7 +424,7 @@ def find_peaks_holes (
   if (fmodel.f_obs().anomalous_flag()) :
     non_water_anom_peaks = []
     if (anom_map is None) :
-      fft_map = fmodel.electron_density_map().fft_map(
+      fft_map = fmodel.electron_density_map(update_f_part1=True).fft_map(
         resolution_factor=params.resolution_factor,
         symmetry_flags=maptbx.use_space_group_symmetry,
         map_type="anom",
