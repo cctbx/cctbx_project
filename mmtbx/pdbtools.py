@@ -1102,9 +1102,14 @@ class interpreter:
 def validate_params (params, callback=None) :
   if (len(params.input.pdb.file_name) == 0) :
     raise Sorry("No PDB file(s) specified.")
-  elif ((params.modify.output.file_name is not None) and
-        (os.path.isdir(params.modify.output.file_name))) :
-    raise Sorry("The specified output file is a currently existing directory.")
+  elif (params.modify.output.file_name is not None) :
+    if (os.path.isdir(params.modify.output.file_name)) :
+      raise Sorry("The specified output file is a currently existing "+
+        "directory.")
+    elif (not os.path.isdir(os.path.dirname(params.modify.output.file_name))) :
+      raise Sorry(("The specified directory for the output file (%s) does "+
+        "not exist or is not a directory.") %
+        os.path.dirname(params.modify.output.file_name))
   return True
 
 def finish_job (result) :
