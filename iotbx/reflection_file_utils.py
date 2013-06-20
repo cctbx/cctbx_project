@@ -46,6 +46,7 @@ class label_table(object):
       labels = [label]
     else:
       assert len(labels) > 0
+    if(type(labels)==type("")): labels = [labels]
     result = []
     labels_lower = [lbl.lower() for lbl in labels]
     for info_string,info_labels in zip(self.info_strings, self.info_labels):
