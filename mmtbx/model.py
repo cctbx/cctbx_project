@@ -147,12 +147,18 @@ class manager(object):
       self.exchangable_hd_groups = utils.combine_hd_exchangable(
         hierarchy = self._pdb_hierarchy)
     self.original_xh_lengths = None
+    self.sync_pdb_hierarchy_with_xray_structure()
 
   def pdb_hierarchy(self, sync_with_xray_structure=False):
     if(sync_with_xray_structure):
       self._pdb_hierarchy.adopt_xray_structure(
         xray_structure = self.xray_structure)
     return self._pdb_hierarchy
+
+  def sync_pdb_hierarchy_with_xray_structure(self):
+    self._pdb_hierarchy.adopt_xray_structure(xray_structure=self.xray_structure)
+    self.pdb_atoms = self._pdb_hierarchy.atoms()
+    self.pdb_atoms.reset_i_seq()
 
   def xh_connectivity_table(self):
     result = None

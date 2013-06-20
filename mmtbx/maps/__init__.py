@@ -727,7 +727,6 @@ class kick(object):
 
   def convert_to_non_anomalous(self, fmodel):
     if(fmodel.f_obs().anomalous_flag()):
-      r_work_1 = fmodel.r_work()
       f_obs        = fmodel.f_obs().average_bijvoet_mates()
       r_free_flags = fmodel.r_free_flags().average_bijvoet_mates()
       fmodel = mmtbx.f_model.manager(
@@ -735,9 +734,6 @@ class kick(object):
         r_free_flags = r_free_flags,
         xray_structure = fmodel.xray_structure)
       fmodel.update_all_scales(update_f_part1_for="map")
-      r_work_2 = fmodel.r_work()
-      if(r_work_2 > r_work_1):
-        assert abs(r_work_2-r_work_1)*100 < 1.0, [r_work_1, r_work_2]
     return fmodel
 
   def call_run_kick_loop(self, map_coeffs):

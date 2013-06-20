@@ -17,7 +17,6 @@ class manager(object):
             model,
             params,
             target_weights,
-            monitors,
             macro_cycle,
             ncs_manager=None,
             log=None):
@@ -33,7 +32,6 @@ class manager(object):
     self.model = model
     self.params = params
     self.target_weights = target_weights
-    self.monitors = monitors
     self.adp_refinement_manager = None
     self.macro_cycle = macro_cycle
     self.tan_b_iso_max = 0
@@ -222,7 +220,6 @@ class manager(object):
         params=self.params.tardy,
         log=local_log,
         format_for_phenix_refine=True,
-        monitor=self.monitors.monitor_xray,
         call_back_after_step=False)
       if self.params.den.bulk_solvent_and_scale:
         self.bulk_solvent_and_scale(log=local_log)
@@ -412,9 +409,6 @@ class manager(object):
       log                    = log,
       h_params               = self.params.hydrogens,
       nproc                  = 1)
-    #self.monitors.collect(step    = str(self.macro_cycle)+"_adp:",
-    #                 model   = self.model,
-    #                 fmodels = self.fmodels)
 
   def minimize(self, ca_only=False):
     pdb_hierarchy = self.model.pdb_hierarchy(sync_with_xray_structure=True)

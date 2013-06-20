@@ -1078,7 +1078,8 @@ class manager(manager_mixin):
     self.update_core(f_part2 = fh_kb, f_part2_twin = fh_kb_twin)
     self.k_h, self.b_h = kbest, bbest
 
-  def update_f_part1(self, purpose):
+  def update_f_part1(self, purpose, map_neg_cutoff=None,
+                     refinement_neg_cutoff=-2.5):
     """
     Identify negative blobs in mFo-DFc synthesis in solvent region only,
     then leave only those blobs (set everything else to zero),
@@ -1090,6 +1091,7 @@ class manager(manager_mixin):
                they are noise or errors of bulk-solvent model, so they are
                always good to remove.
     """
+    if(map_neg_cutoff is None): map_neg_cutoff = -2.0
     if(self.xray_structure is None): return # need mask
     assert purpose in ["refinement", "map"]
     mp = mmtbx.masks.mask_master_params.extract()
@@ -1119,12 +1121,13 @@ class manager(manager_mixin):
     fft_map = mc.fft_map(crystal_gridding = crystal_gridding)
     map_data = fft_map.real_map_unpadded() # important: not scaled!
     unit_cell_volume = self.xray_structure.unit_cell().volume()
-    if(purpose == "map"):
-      maptbx.truncate(map_data = map_data, by_sigma_less_than = 0.0,
-        scale_by = 1./unit_cell_volume)
-    else:
-      maptbx.truncate(map_data = map_data, by_sigma_less_than =-2.5,
-        scale_by = 1./unit_cell_volume)
+    cutoff=None
+    if(purpose == "map"): cutoff = map_neg_cutoff
+    else:                 cutoff = refinement_neg_cutoff
+    maptbx.truncate(
+      map_data           = map_data,
+      by_sigma_less_than = cutoff,
+      scale_by           = 1./unit_cell_volume)
     map_data = map_data*bulk_solvent_mask
     assert flex.min(map_data)<=0
     f_diff = mc.structure_factors_from_map(
@@ -1220,6 +1223,7 @@ class manager(manager_mixin):
         bulk_solvent_and_scaling = True,
         remove_outliers = True,
         show = False,
+        map_neg_cutoff=None,
         verbose=None,
         log = None):
     if(log is None): log = sys.stdout
@@ -1239,7 +1243,7 @@ class manager(manager_mixin):
     #
     def get_r(self):
       return "r_work=%6.4f r_free=%6.4f"%(self.r_work(), self.r_free())
-    if(show): print >> log, "start: %s"%get_r(self)
+    if(show): print >> log, "start: %s (reset all scales to undefined)"%get_r(self)
     if(remove_outliers): self.remove_outliers(use_model=False)
     if(self.xray_structure is None or
        self.xray_structure.guess_scattering_type_neutron() or
@@ -1275,7 +1279,8 @@ class manager(manager_mixin):
       self.remove_outliers(use_model=True)
       if(show): print >> log, "    remove outliers:          %s"%get_r(self)
     if(update_f_part1_for):
-      self.update_f_part1(purpose=update_f_part1_for)
+      self.update_f_part1(purpose=update_f_part1_for,
+        map_neg_cutoff=map_neg_cutoff)
       if(show): print >> log, "    correct solvent mask:     %s"%get_r(self)
     if(show):
       print >> log, "final: %s"%get_r(self)
