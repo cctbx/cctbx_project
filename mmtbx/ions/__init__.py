@@ -215,9 +215,11 @@ class atom_contact (slots_getstate_setstate) :
   def resname (self) :
     return self.atom.fetch_labels().resname.strip().upper()
 
+  @property
   def element (self) :
     return get_element(self.atom)
 
+  @property
   def charge (self) :
     return get_charge(self.atom)
 
@@ -558,10 +560,18 @@ class Manager (object) :
     site_i = self.sites_frac[i_seq]
     site_i_cart = self.sites_cart[i_seq]
     rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq, 0).inverse()
+    atom_i = self.pdb_atoms[i_seq]
 
+    # Create the primary list of contacts
     for j_seq, j_sym_groups in asu_dict.items():
       site_j = self.sites_frac[j_seq]
+      atom_j = self.pdb_atoms[j_seq]
 
+      # Filter out alternate conformations of this atom
+      if _same_atom_different_altloc(atom_i, atom_j):
+        continue
+
+      # Gather up contacts with all symmetric copies
       for j_sym_group in j_sym_groups:
         rt_mx = rt_mx_i_inv.multiply(asu_mappings.get_rt_mx(j_seq,
           j_sym_group[0]))
@@ -571,7 +581,7 @@ class Manager (object) :
         vec_ji = col(site_ji_cart)
         assert abs(vec_i - vec_ji) < distance_cutoff + 0.5
         contact = atom_contact(
-          atom = self.pdb_atoms[j_seq],
+          atom = atom_j,
           vector = vec_i - vec_ji,
           site_cart = site_ji_cart,
           rt_mx = rt_mx)
@@ -590,7 +600,7 @@ class Manager (object) :
       all_i_seqs = [contact.atom_i_seq() for contact in contacts]
 
       for contact in contacts:
-        if contact.element() not in ["C"]:
+        if contact.element not in ["C"]:
           filtered.append(contact)
           continue
 
@@ -603,7 +613,7 @@ class Manager (object) :
         for j_seq in bonded_j_seqs:
           other_contact = contacts[all_i_seqs.index(j_seq)]
 
-          if (other_contact.element() in ["N", "O", "S"]) :
+          if (other_contact.element in ["N", "O", "S"]) :
             if abs(other_contact) < abs(contact):
               keep = False
               break
@@ -612,7 +622,7 @@ class Manager (object) :
           filtered.append(contact)
       contacts = filtered
 
-    # discard waters in poor density
+    # Discard waters in poor density
     if (filter_by_two_fofc) :
       filtered = []
       for contact in contacts :
@@ -856,7 +866,7 @@ class Manager (object) :
       other = contact.atom
       resname = contact.resname()
       atom_name = contact.atom_name()
-      element = contact.element()
+      element = contact.element
       distance = abs(contact)
       j_seq = other.i_seq
 
@@ -1649,7 +1659,7 @@ class AtomProperties (object) :
     self.nearby_atoms = []
     nearby_atoms_no_alts = []
     for contact in nearby_atoms_unfiltered :
-      if (contact.element() not in ["H", "D"]) :
+      if (contact.element not in ["H", "D"]) :
         self.nearby_atoms.append(contact)
         for other in nearby_atoms_no_alts :
           if (other == contact) :
@@ -1854,7 +1864,7 @@ class AtomProperties (object) :
     for contact in self.nearby_atoms:
       other_name = contact.atom_name()
       other_resname = contact.resname()
-      other_element = contact.element()
+      other_element = contact.element
 
       if (not other_resname in WATER_RES_NAMES) :
         n_non_water += 1
@@ -2146,7 +2156,7 @@ class AtomProperties (object) :
     n_phosphate_oxygens = 0
     for contact in self.nearby_atoms :
       atom_name = contact.atom_name()
-      if (len(atom_name) < 3) or (contact.element() not in ["O"]) :
+      if (len(atom_name) < 3) or (contact.element not in ["O"]) :
         continue
       if ((atom_name[0:2] in ["O1","O2","O3"]) and
           (atom_name[2] in ["A","B","G"])) :
