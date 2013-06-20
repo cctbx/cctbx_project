@@ -3,7 +3,7 @@ from cctbx.array_family import flex
 import scitbx.math.euler_angles
 from scitbx import matrix
 from libtbx.utils import format_cpu_times, getenv_bool
-from libtbx import adopt_init_args
+from libtbx import adopt_init_args, slots_getstate_setstate
 import sys, time
 from libtbx import str_utils
 from libtbx.str_utils import prefix_each_line_suffix
@@ -641,6 +641,47 @@ class refinement_monitor(object):
     #
     t2 = time.time()
     time_collect_and_process += (t2 - t1)
+
+  def format_stats_for_phenix_gui (self) :
+    steps = []
+    r_works = []
+    r_frees = []
+    as_ave = []
+    bs_ave = []
+    for i_step, label in enumerate(self.steps) :
+      if ("weight" in label) or ("nqh" in label) :
+        continue
+      label = label.replace("realsrg", "rsrg").replace("realsrl",
+        "rsrl").replace("xyzrec", "xyz")
+      steps.append(label)
+      r_works.append(self.r_works[i_step])
+      r_frees.append(self.r_frees[i_step])
+      if (self.as_ave is not None) and (len(self.as_ave) != 0) :
+        as_ave.append(self.as_ave[i_step])
+        bs_ave.append(self.bs_ave[i_step])
+      else :
+        as_ave.append(None)
+        bs_ave.append(None)
+    return stats_table(
+      steps=steps,
+      r_works=r_works,
+      r_frees=r_frees,
+      as_ave=as_ave,
+      bs_ave=bs_ave,
+      neutron_flag=self.is_neutron_monitor)
+
+class stats_table (slots_getstate_setstate) :
+  __slots__ = [
+    "steps",
+    "r_works",
+    "r_frees",
+    "as_ave",
+    "bs_ave",
+    "neutron_flag",
+  ]
+  def __init__ (self, **kwds) :
+    for attr in self.__slots__ :
+      setattr(self, attr, kwds.get(attr))
 
 class relative_errors(object):
   def __init__(self, model, model_ini, model_ref, compute_optimal_errors):
