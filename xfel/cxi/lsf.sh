@@ -57,7 +57,7 @@ cleanup_and_exit() {
 }
 trap "cleanup_and_exit 1" HUP INT QUIT TERM
 
-args=`getopt c:o:p:q:r:t:x: $*`
+args=`getopt c:o:p:q:r:st:x: $*`
 if test $? -ne 0; then
     echo "Usage: lsf.sh -c config -r run-num [-o output] [-p num-cpu] [-q queue] [-t trial] [-x exp]" > /dev/stderr
     cleanup_and_exit 1
@@ -118,6 +118,11 @@ while test ${#} -ge 0; do
             run=`echo "${2}" | awk '{ printf("%04d", $1); }'`
             run_int=`echo "${2}"`
             shift
+            shift
+            ;;
+
+        -s)
+            single_host="yes"
             shift
             ;;
 
@@ -257,10 +262,11 @@ OUT="${out}"
 
 EOF
 for s in ${streams}; do
+    test "X${single_host}" = "Xyes" && s="NN"
     sed -e "s:\([[:alnum:]]\+\)\(_dirname[[:space:]]*=\).*:\1\2 ${out}/\1:"    \
         -e "s:\([[:alnum:]]\+_basename[[:space:]]*=.*\)[[:space:]]*:\1s${s}-:" \
-        -e "s/RUN_NO/${run_int}/g" \
-        -e "s:\(trial_id[[:space:]]*=\).*:\1${trial}:"              \
+        -e "s/RUN_NO/${run_int}/g"                                             \
+        -e "s:\(trial_id[[:space:]]*=\).*:\1${trial}:"                         \
         "${cfg}" > "${tmpdir}/pyana_s${s}.cfg"
 
     # Process each stream on a single host as a base-1 indexed job,
@@ -269,9 +275,14 @@ for s in ${streams}; do
     # available on the host.  Cannot use an indented here-document
     # (<<-), because that would require leading tabs which are not
     # permitted by libtbx.find_clutter.
-    i=`expr "${s}" \+ 1`
+    if test "X${single_host}" = "Xyes"; then
+        job_name="r${run}"
+    else
+        i=`expr "${s}" \+ 1`
+        job_name="r${run}[${i}]"
+    fi
     cat >> "${tmpdir}/submit.sh" << EOF
-bsub -J "r${run}[${i}]" -n "${nproc}" -o "\${OUT}/stdout/s${s}.out" \\
+bsub -J "${job_name}" -n "${nproc}" -o "\${OUT}/stdout/s${s}.out" \\
     -q "${queue}" -R "span[hosts=1]" "\${OUT}/pyana_s${s}.sh"
 EOF
     # limited cores/user:  psfehq.  unlimited: psfehmpiq
@@ -283,10 +294,23 @@ EOF
 
 NPROC=\`printenv LSB_MCPU_HOSTS \
     | awk '{ printf("%d\n", \$2 > 2 ? \$2 : 1); }'\`
+EOF
+
+    if test "X${single_host}" = "Xyes"; then
+        cat >> "${tmpdir}/pyana_s${s}.sh" << EOF
+STREAMS=\`ls "${xtc}"/e*-r${run}-s*.xtc                         \
+             "${xtc}"/e*-r${run}-s*.xtc.inprogress 2> /dev/null \
+    | tr -s '[:space:]' ' '\`
+EOF
+    else
+        cat >> "${tmpdir}/pyana_s${s}.sh" << EOF
 STREAMS=\`ls "${xtc}"/e*-r${run}-s${s}-c*.xtc                         \
              "${xtc}"/e*-r${run}-s${s}-c*.xtc.inprogress 2> /dev/null \
     | tr -s '[:space:]' ' '\`
+EOF
+    fi
 
+    cat >> "${tmpdir}/pyana_s${s}.sh" << EOF
 test "\${NPROC}" -gt 2 2> /dev/null || NPROC="1"
 "${PYANA}" \\
     -c "${out}/pyana_s${s}.cfg" \\
@@ -294,6 +318,7 @@ test "\${NPROC}" -gt 2 2> /dev/null || NPROC="1"
     "\${STREAMS}"
 EOF
     chmod 755 "${tmpdir}/pyana_s${s}.sh"
+    test "X${single_host}" = "Xyes" && break
 done
 
 chmod 755 "${tmpdir}/submit.sh"
@@ -305,7 +330,7 @@ directories=`awk -F=                                    \
          gsub(/^[ \t]/, "", $2);                        \
          gsub(/[ \t]$/, "", $2);                        \
          printf("\"%s\"\n", $2);                        \
-     }' "${tmpdir}"/pyana_s[0-9][0-9].cfg | sort -u`
+     }' "${tmpdir}"/pyana_s[0-9N][0-9N].cfg | sort -u`
 ssh -S "${tmpdir}/control.socket" ${NODE} \
     "echo -e \"\"${out}/stdout\"\n${directories}\" | xargs -d '\n' mkdir -p"
 
@@ -315,8 +340,8 @@ ssh -S "${tmpdir}/control.socket" ${NODE} \
 scp -o "ControlPath ${tmpdir}/control.socket" -pq \
     "${cfg}"                         "${NODE}:${out}/pyana.cfg"
 scp -o "ControlPath ${tmpdir}/control.socket" -pq \
-    "${tmpdir}"/pyana_s[0-9][0-9].cfg             \
-    "${tmpdir}"/pyana_s[0-9][0-9].sh              \
+    "${tmpdir}"/pyana_s[0-9N][0-9N].cfg           \
+    "${tmpdir}"/pyana_s[0-9N][0-9N].sh            \
     "${tmpdir}/submit.sh"             "${NODE}:${out}"
 ssh -S "${tmpdir}/control.socket" ${NODE} \
     "cd \"${PWD}\" && \"${out}/submit.sh\""
