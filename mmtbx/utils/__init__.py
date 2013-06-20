@@ -1403,9 +1403,10 @@ def compare_hierarchy(hierarchy, scatterers, cell):
             s = scatterers[atom.i_seq]
             # assert (atom.serial_as_int() == atom.i_seq + 1)
             match[atom.i_seq] = True
-            assert atom.element.strip().upper() == \
-                s.scattering_type.strip().upper()
+            aes=[atom.element.strip().upper(),s.element_symbol().strip().upper()]
+            assert aes[0]==aes[1], aes
             assert len(atom.name.strip())>0
+            # XXX ADD CHARGE!
             # assert len(s.label.strip())>0
             # assert approx_equal(atom.occ, s.occupancy, 0.01)
             assert approx_equal(cell.orthogonalize(s.site), atom.xyz, 0.001)

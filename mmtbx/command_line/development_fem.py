@@ -101,7 +101,7 @@ Usage:
       fill_missing = False)
   ### END: compute THE SIMPLEST possible 2mFo-DFc (the most original one)
   print >> log, "r_work: %6.4f r_free: %6.4f"%(fmodel.r_work(), fmodel.r_free())
-  # b-factor sharpen
+  ### b-factor sharpen
   xrs = fmodel.xray_structure
   b_iso_min = flex.min(xrs.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1))
   print "Max B subtracted from atoms and used to sharpen map:", b_iso_min
@@ -111,10 +111,8 @@ Usage:
   fmodel.update_xray_structure(
     xray_structure = xrs,
     update_f_calc = True)
-  fmodel.update_all_scales(update_f_part1_for="map")
-  print >>log,"r_work: %6.4f r_free: %6.4f (after subtracting max possible b)"%(
-    fmodel.r_work(), fmodel.r_free())
-  #
+  ###
+  fmodel.update_all_scales(update_f_part1_for="map", map_neg_cutoff=0)
   cs=fmodel.f_obs().crystal_symmetry()
   crystal_gridding = fmodel.f_obs().crystal_gridding(
     d_min                   = fmodel.f_obs().d_min(),
@@ -138,6 +136,9 @@ Usage:
     mc_orig=mc_orig_for_fem, fmodel=fmodel)
   #### Compute FEM end
   mtz_dataset = mc_orig.as_mtz_dataset(column_root_label="2mFoDFc")
+  mtz_dataset.add_miller_array(
+    miller_array=mc_orig_for_fem,
+    column_root_label="2mFoDFc_FilSharp")
   mtz_dataset.add_miller_array(
     miller_array=ko.map_coefficients,
     column_root_label="KICK")

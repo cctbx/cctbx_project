@@ -214,31 +214,31 @@ expected_result2 = """\
 
                     ----------find peak-candidates----------
 
-Number of peaks found at mFobs-DFmodel map (map cutoff=6.50 sigma)= 11
+Number of peaks found at mFobs-DFmodel map (map cutoff=6.50 sigma)= 9
 Filter by distance & map next to the model:
-   mapped sites are within: 0.967 - 1.012
-   number of sites selected in [dist_min= 0.70, dist_max= 1.05]: 9 from: 11
-   mapped sites are within: 0.967 - 1.012
+   mapped sites are within: 0.984 - 1.007
+   number of sites selected in [dist_min= 0.70, dist_max= 1.05]: 9 from: 9
+   mapped sites are within: 0.984 - 1.007
 
-peak=   27.860 closest distance to pdb=" O   HOH     1 " =    1.000
-peak=   26.774 closest distance to pdb=" O   HOH     1 " =    0.967
-peak=   29.029 closest distance to pdb=" O   HOH     2 " =    1.010
-peak=   26.909 closest distance to pdb=" O   HOH     2 " =    0.996
-peak=   25.985 closest distance to pdb=" O   HOH     3 " =    0.994
-peak=   24.923 closest distance to pdb=" O   HOH     3 " =    0.987
-peak=   26.707 closest distance to pdb=" O   HOH     4 " =    0.995
-peak=   26.372 closest distance to pdb=" O   HOH     5 " =    0.990
-peak=   24.816 closest distance to pdb=" O   HOH     6 " =    1.012
+peak=   26.730 closest distance to pdb=" O   HOH     1 " =    0.989
+peak=   24.366 closest distance to pdb=" O   HOH     1 " =    0.984
+peak=   26.526 closest distance to pdb=" O   HOH     2 " =    1.000
+peak=   24.945 closest distance to pdb=" O   HOH     2 " =    0.998
+peak=   24.980 closest distance to pdb=" O   HOH     3 " =    0.989
+peak=   24.312 closest distance to pdb=" O   HOH     3 " =    0.984
+peak=   24.152 closest distance to pdb=" O   HOH     4 " =    1.004
+peak=   24.564 closest distance to pdb=" O   HOH     5 " =    0.988
+peak=   24.243 closest distance to pdb=" O   HOH     6 " =    1.007
 
                   ----------6D rigid body fit of HOH----------
 
 Fit quality:
- 0.039
- 0.041
- 0.026
- 0.016
- 0.010
- 0.031
+ 0.029
+ 0.040
+ 0.020
+ 0.024
+ 0.009
+ 0.027
 """
 
 def exercise_02():
