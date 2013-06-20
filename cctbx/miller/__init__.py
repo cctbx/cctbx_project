@@ -892,7 +892,10 @@ class set(crystal.symmetry):
   def scale(self, other):
     s, o = self.common_sets(other)
     s, o = abs(s).data(), abs(o).data()
-    scale_factor = flex.sum(s*o)/flex.sum(o*o)
+    den = flex.sum(o*o)
+    scale_factor = 1
+    if(den != 0):
+      scale_factor = flex.sum(s*o)/flex.sum(o*o)
     return other.customized_copy(data = other.data()*scale_factor)
 
   def complete_with(self, other, scale=False, replace_phases=False):
