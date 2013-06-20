@@ -122,7 +122,7 @@ cctbx links
 
   - `smtbx <current/python/smtbx.html>`_
 
-- `SVN repository <http://cctbx.svn.sourceforge.net/viewvc/cctbx/trunk/>`_
+- `SVN repository <http://sourceforge.net/p/cctbx/code/HEAD/tree/trunk/>`_
 
 - `Mailing list for cctbx SVN activity <https://lists.sourceforge.net/lists/listinfo/cctbx-cvs>`_
 
