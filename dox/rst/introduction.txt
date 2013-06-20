@@ -126,7 +126,7 @@ Links
 
 .. _`cctbx - Automatic multi-platform builds`: http://cci.lbl.gov/cctbx_build/
 
-.. _`cctbx - Public SVN repository`: http://cctbx.svn.sourceforge.net/viewvc/cctbx/trunk/
+.. _`cctbx - Public SVN repository`: http://sourceforge.net/p/cctbx/code/HEAD/tree/trunk/
 
 .. _`cctbx - Project page at SourceForge`: http://sourceforge.net/projects/cctbx/
 
