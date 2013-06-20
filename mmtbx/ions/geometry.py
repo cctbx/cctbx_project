@@ -3,6 +3,7 @@ Methods for examining bond angles around an ion and categorizing
 the coordination geometry.
 """
 from __future__ import division
+from collections import OrderedDict
 from math import sqrt
 
 def _bond_angles(vectors):
@@ -164,15 +165,15 @@ def _is_pentagonal_bipyramid(vectors, dev_cutoff = 15):
   if deviation <= dev_cutoff:
     return deviation, 7 - len(vectors)
 
-SUPPORTED_GEOMETRIES = {
-  "tetrahedral": _is_tetrahedral,
-  "square planar": _is_square_planar,
-  "octahedral": _is_octahedral,
-  "trigonal_bipyramid": _is_trigonal_bipyramid,
-  "pentagonal_bipyramid": _is_pentagonal_bipyramid,
-  }
+SUPPORTED_GEOMETRIES = OrderedDict([
+    ("tetrahedral", _is_tetrahedral),
+    ("square planar", _is_square_planar),
+    ("octahedral", _is_octahedral),
+    ("trigonal_bipyramid", _is_trigonal_bipyramid),
+    ("pentagonal_bipyramid", _is_pentagonal_bipyramid),
+  ])
 
-def find_coordination_geometry(nearby_atoms, cutoff = 2.5):
+def find_coordination_geometry(nearby_atoms, cutoff = 2.9):
   """
   Returns a list of tuples of potential geometries for the vectors given by
   nearby_atoms, along with the average deviation from those geometries.
