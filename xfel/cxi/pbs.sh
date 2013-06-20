@@ -19,7 +19,7 @@ cleanup_and_exit() {
 }
 trap "cleanup_and_exit 1" HUP INT QUIT TERM
 
-args=`getopt c:o:p:q:r:t:x: $*`
+args=`getopt c:o:p:q:r:st:x: $*`
 if test $? -ne 0; then
     echo "Usage: pbs.sh -c config -r run-num [-o output] [-p num-cpu] [-q queue] [-t trial] [-x exp]" > /dev/stderr
     cleanup_and_exit 1
@@ -77,6 +77,11 @@ while test ${#} -ge 0; do
             run=`echo "${2}" | awk '{ printf("%04d", $1); }'`
             run_int=`echo "${2}"`
             shift
+            shift
+            ;;
+
+        -s)
+            single_host="yes"
             shift
             ;;
 
@@ -208,9 +213,10 @@ out="${out}/${trial}"
 # all streams to a single host, so as to do averaging?
 mkdir -p "${out}"
 for s in ${streams}; do
+    test "X${single_host}" = "Xyes" && s="NN"
     sed -e "s:\([[:alnum:]]\+\)\(_dirname[[:space:]]*=\).*:\1\2 ${out}/\1:"    \
         -e "s:\([[:alnum:]]\+_basename[[:space:]]*=.*\)[[:space:]]*:\1s${s}-:" \
-        -e "s/RUN_NO/${run_int}/g" \
+        -e "s/RUN_NO/${run_int}/g"                                             \
         -e "s:\(trial_id[[:space:]]*=\).*:\1${trial}:"                         \
         "${cfg}" > "${out}/pyana_s${s}.cfg"
 
@@ -224,10 +230,23 @@ for s in ${streams}; do
 #! /bin/sh
 
 NPROC="\${PBS_NUM_PPN}"
+EOF
+
+    if test "X${single_host}" = "Xyes"; then
+        cat >> "${out}/pyana_s${s}.sh" << EOF
+STREAMS=\`ls "${xtc}"/e*-r${run}-s*.xtc                         \
+             "${xtc}"/e*-r${run}-s*.xtc.inprogress 2> /dev/null \
+    | tr -s '[:space:]' ' '\`
+EOF
+    else
+        cat >> "${out}/pyana_s${s}.sh" << EOF
 STREAMS=\`ls "${xtc}"/e*-r${run}-s${s}-c*.xtc                         \
              "${xtc}"/e*-r${run}-s${s}-c*.xtc.inprogress 2> /dev/null \
     | tr -s '[:space:]' ' '\`
+EOF
+    fi
 
+    cat >> "${out}/pyana_s${s}.sh" << EOF
 test "\${NPROC}" -gt 2 2> /dev/null || NPROC="1"
 "${PYANA}" \\
     -c "${out}/pyana_s${s}.cfg" \\
@@ -235,6 +254,7 @@ test "\${NPROC}" -gt 2 2> /dev/null || NPROC="1"
     "\${STREAMS}"
 EOF
     chmod 755 "${out}/pyana_s${s}.sh"
+    test "X${single_host}" = "Xyes" && break
 done
 
 # Create all directories for the output from the analysis.  This
@@ -245,7 +265,7 @@ directories=`awk -F=                                    \
          gsub(/^[ \t]/, "", $2);                        \
          gsub(/[ \t]$/, "", $2);                        \
          printf("\"%s\"\n", $2);                        \
-     }' "${out}"/pyana_s[0-9][0-9].cfg | sort -u`
+     }' "${out}"/pyana_s[0-9N][0-9N].cfg | sort -u`
 test -n "${directories}" && echo -e "${directories}" | xargs -d '\n' mkdir -p
 
 # The PBS script is not to be executed directly, but has to be passed
