@@ -131,9 +131,9 @@ class average_mixin(common_mode.common_mode_correction):
       self._tot_ssq = multiprocessing.Array('d', 370 * 391, lock=False)
       self._tot_max = multiprocessing.Array('d', 370 * 391, lock=False)
     elif device == 'marccd':
-      self._tot_sum = multiprocessing.Array('d', 4300 * 4300, lock=False)
-      self._tot_ssq = multiprocessing.Array('d', 4300 * 4300, lock=False)
-      self._tot_max = multiprocessing.Array('d', 4300 * 4300, lock=False)
+      self._tot_sum = multiprocessing.Array('d', 4500 * 4500, lock=False)
+      self._tot_ssq = multiprocessing.Array('d', 4500 * 4500, lock=False)
+      self._tot_max = multiprocessing.Array('d', 4500 * 4500, lock=False)
     elif device == 'pnCCD':
       self._tot_sum = multiprocessing.Array('d', 1024 * 1024, lock=False)
       self._tot_ssq = multiprocessing.Array('d', 1024 * 1024, lock=False)
@@ -402,11 +402,11 @@ class average_mixin(common_mode.common_mode_correction):
       self.stddev_img.resize(flex.grid(370, 391))
       if self.do_max_image:
         self.max_img.resize(flex.grid(370, 391))
-    elif len(self._tot_sum) == 4300 * 4300:
-      self.avg_img.resize(flex.grid(4300, 4300))
-      self.stddev_img.resize(flex.grid(4300, 4300))
+    elif len(self._tot_sum) == 4500 * 4500:
+      self.avg_img.resize(flex.grid(4500, 4500))
+      self.stddev_img.resize(flex.grid(4500, 4500))
       if self.do_max_image:
-        self.max_img.resize(flex.grid(4300, 4300))
+        self.max_img.resize(flex.grid(4500, 4500))
     elif len(self._tot_sum) == 1024 * 1024:
       self.avg_img.resize(flex.grid(1024, 1024))
       self.stddev_img.resize(flex.grid(1024, 1024))

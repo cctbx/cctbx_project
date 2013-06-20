@@ -101,7 +101,7 @@ class distl_hitfinder(object):
       img_dim = (1765, 1765)
       pixel_size = cspad_tbx.pixel_size
     elif device == 'marccd':
-      img_dim = (4300, 4300)
+      img_dim = (4500, 4500)
       pixel_size = 0.079346
     else:
       raise RuntimeError("Unsupported device %s" % self.address)
