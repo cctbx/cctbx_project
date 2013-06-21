@@ -75,6 +75,7 @@ def find_and_build_ions (
   anomalous_flag = fmodel.f_obs().anomalous_flag()
   if (out is None) : out = sys.stdout
   pdb_hierarchy = model.pdb_hierarchy(sync_with_xray_structure=True)
+  pdb_hierarchy.atoms().reset_i_seq()
   if (manager is None) :
     manager = mmtbx.ions.create_manager(
       pdb_hierarchy=pdb_hierarchy,
@@ -105,9 +106,7 @@ def find_and_build_ions (
     out=out,
     candidates=elements)
   modified_iselection = flex.size_t()
-  initial_b_iso = params.initial_b_iso
-  if (initial_b_iso is Auto) :
-    initial_b_iso = manager.get_initial_b_iso()
+  default_b_iso = manager.get_initial_b_iso()
   # Build in the identified ions
   for_building = []
   for i_seq, final_choices in water_ion_candidates :
@@ -129,6 +128,10 @@ def find_and_build_ions (
             refine_adp = "anisotropic"
       # Modify the atom object - this is clumsy but they will be grouped into
       # a single chain at the end of refinement
+      initial_b_iso = params.initial_b_iso
+      if (initial_b_iso is Auto) :
+        initial_b_iso = manager.guess_b_iso_real(i_seq)
+      print model.xray_structure.scatterers()[i_seq].label, model.pdb_hierarchy().atoms()[i_seq].id_str()
       modified_atom = model.convert_atom(
         i_seq=i_seq,
         scattering_type=final_choice.scattering_type(),
