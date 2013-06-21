@@ -135,9 +135,9 @@ class common_mode_correction(mod_event_info):
       self.dark_stddev = dark_stddev_dict['DATA']
       assert isinstance(self.dark_stddev, flex.double)
       self.dark_mask = (self.dark_stddev > 0)
-      
+
     # Load the mask image and ensure it is signed and at least 32 bits
-    # wide, since it will be used for differencing.  
+    # wide, since it will be used for differencing.
     self.mask_img = None
     if (self.mask_path is not None):
       mask_dict = easy_pickle.load(self.mask_path)
@@ -165,7 +165,12 @@ class common_mode_correction(mod_event_info):
 
     self.config = cspad_tbx.getConfig(self.address, env)
     if self.config is None:
-      self.logger.error("beginjob(): no config")
+      if self.address == 'XppGon-0|marccd-0':
+        # Kludge for the MAR at XPP.
+        self.active_areas = flex.int([0, 0, 2400, 2400])
+        self.beam_center = [2400 // 2, 2400 // 2]
+      else:
+        self.logger.error("beginjob(): no config")
     else:
       if self.address == 'XppGon-0|Cspad-0':
         # Kludge deluxe for the CSPAD at XPP.  This does not respect
@@ -447,7 +452,7 @@ class common_mode_correction(mod_event_info):
     if (self.mask_img is not None):
       sel = self.mask_img == -2
       self.cspad_img.set_selected(sel, -2)
-      
+
     if self.gain_map is not None:
       self.cspad_img *= self.gain_map
 
