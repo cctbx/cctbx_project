@@ -3,6 +3,7 @@ from libtbx.str_utils import make_sub_header, format_value
 from libtbx.utils import Sorry, null_out
 from libtbx import group_args, Auto
 from math import sqrt
+import cStringIO
 import sys
 
 citations_str = """\
@@ -503,6 +504,71 @@ class dataset_statistics (object) :
         bin_stats.cc_one_half))
     cif_block.add_loop(reflns_shell_loop)
     return cif_block
+
+  def as_remark_200 (self, wavelength=None) :
+    from libtbx.test_utils import approx_equal
+    synchrotron = wl = "NULL"
+    if (wavelength is not None) :
+      out = cStringIO.StringIO()
+      # XXX somewhat risky...
+      if (not approx_equal(wavelength, 1.5418, eps=0.01, out=out) and
+          not approx_equal(wavelength, 0.7107, eps=0.01, out=out)) :
+        synchrotron = "Y"
+      else :
+        synchrotron = "N"
+      wl = "%.4f" % wavelength
+    lines = []
+    lines.append("")
+    lines.append("EXPERIMENTAL DETAILS")
+    lines.append(" EXPERIMENT TYPE                : X-RAY DIFFRACTION")
+    lines.append(" DATE OF DATA COLLECTION        : NULL")
+    lines.append(" TEMPERATURE           (KELVIN) : NULL")
+    lines.append(" PH                             : NULL")
+    lines.append(" NUMBER OF CRYSTALS USED        : NULL")
+    lines.append("")
+    lines.append(" SYNCHROTRON              (Y/N) : NULL")
+    lines.append(" RADIATION SOURCE               : NULL")
+    lines.append(" BEAMLINE                       : NULL")
+    lines.append(" X-RAY GENERATOR MODEL          : NULL")
+    lines.append(" MONOCHROMATIC OR LAUE    (M/L) : M")
+    lines.append(" WAVELENGTH OR RANGE        (A) : %s" % wl)
+    lines.append(" MONOCHROMATOR                  : NULL")
+    lines.append(" OPTICS                         : NULL")
+    lines.append("")
+    lines.append(" DETECTOR TYPE                  : NULL")
+    lines.append(" DETECTOR MANUFACTURER          : NULL")
+    lines.append(" INTENSITY-INTEGRATION SOFTWARE : NULL")
+    lines.append(" DATA SCALING SOFTWARE          : NULL")
+    lines.append("")
+    lines.append("OVERALL.")
+    comp_overall = format_value("%.1f", self.overall.completeness * 100)
+    mult_overall = format_value("%.1f", self.overall.mean_redundancy)
+    rmerg_overall = format_value("%.5f", self.overall.r_merge)
+    s2n_overall = format_value("%.4f", self.overall.i_over_sigma_mean)
+    lines.append(" COMPLETENESS FOR RANGE     (%%) : %s" % comp_overall)
+    lines.append(" DATA REDUNDANCY                : %s" % mult_overall)
+    lines.append(" R MERGE                    (I) : %s" % rmerg_overall)
+    lines.append(" R SYM                      (I) : NULL")
+    lines.append(" <I/SIGMA(I)> FOR THE DATA SET  : %s" % s2n_overall)
+    lines.append("")
+    lines.append("IN THE HIGHEST RESOLUTION SHELL.")
+    bin_stats = self.bins[-1]
+    d_max = format_value("%.2f", bin_stats.d_max)
+    d_min = format_value("%.2f", bin_stats.d_min)
+    comp_lastbin = format_value("%.1f", bin_stats.completeness * 100)
+    mult_lastbin = format_value("%.1f", bin_stats.mean_redundancy)
+    rmerg_lastbin = format_value("%.5f", bin_stats.r_merge)
+    s2n_lastbin = format_value("%.4f", bin_stats.i_over_sigma_mean)
+    lines.append(" HIGHEST RESOLUTION SHELL, RANGE HIGH (A) : %s" % d_min)
+    lines.append(" HIGHEST RESOLUTION SHELL, RANGE LOW  (A) : %s" % d_max)
+    lines.append(" COMPLETENESS FOR SHELL     (%%) : %s" % comp_lastbin)
+    lines.append(" DATA REDUNDANCY IN SHELL       : %s" % mult_lastbin)
+    lines.append(" R MERGE FOR SHELL          (I) : %s" % rmerg_lastbin)
+    lines.append(" R SYM FOR SHELL            (I) : NULL")
+    lines.append(" <I/SIGMA(I)> FOR SHELL         : %s" % s2n_lastbin)
+    lines.append("")
+    remark_lines = [ "REMARK 200 %s" % line for line in lines ]
+    return "\n".join(remark_lines)
 
   def show_model_vs_data (self, out=None, prefix="") :
     assert (self.overall.cc_work is not None)

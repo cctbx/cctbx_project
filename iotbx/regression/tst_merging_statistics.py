@@ -40,6 +40,9 @@ def exercise (debug=False) :
     [15737, 15728, 15668, 15371, 14996, 14771, 13899, 13549, 13206, 12528])
   assert "_reflns_shell.phenix_cc_star" in cif_block
   assert "_reflns_shell.phenix_cc_1/2" in cif_block
+  remark_200 = result.as_remark_200(wavelength=0.9792).splitlines()
+  assert ("REMARK 200  <I/SIGMA(I)> FOR SHELL         : 5.4942" in remark_200)
+  assert ("REMARK 200  WAVELENGTH OR RANGE        (A) : 0.9792" in remark_200)
 
 if (__name__ == "__main__") :
   exercise(debug=("--debug" in sys.argv))
