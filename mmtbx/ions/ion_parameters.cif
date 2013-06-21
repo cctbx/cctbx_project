@@ -47,7 +47,7 @@ _lib_ligands.allowed_coordinating_residues
 _lib_ligands.allowed_geometries
 _lib_ligands.allowed_backbone_atoms
 NA  O,N       .                            octahedral,any                O
-MG  O,F       SER,THR,ASP,ASN,GLU,GLN,HIS  octahedral                    O
+MG  O,N,F     SER,THR,ASP,ASN,GLU,GLN,HIS  octahedral                    O
 K   O         .                            .                             O
 CA  O         SER,THR,ASP,ASN,GLU,GLN,TYR  octahedral,pentagonal_bipyramid,any                O
 MN  O,N       SER,THR,ASP,GLU,ASN,GLN,HIS  .                             .

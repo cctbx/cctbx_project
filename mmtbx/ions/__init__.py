@@ -223,6 +223,10 @@ class atom_contact (slots_getstate_setstate) :
   def charge (self) :
     return get_charge(self.atom)
 
+  @property
+  def occ (self) :
+    return self.atom.occ
+
   def atom_i_seq (self) :
     return self.atom.i_seq
 
@@ -367,7 +371,7 @@ class Manager (object) :
     self.use_fdp = flex.bool(xray_structure.scatterers().size(), False)
     self.ax_chain = None
     self._pair_asu_cache = {}
-    u_iso_all = xray_structure.extract_u_iso_or_u_equiv()
+    self.u_iso_all = xray_structure.extract_u_iso_or_u_equiv()
     # Extract some information about the structure, including B-factor
     # statistics for non-HD atoms and waters
     sctr_keys = xray_structure.scattering_type_registry().type_count_dict()\
@@ -383,17 +387,17 @@ class Manager (object) :
 
     self.n_waters = len(water_sel)
     self.n_heavy = len(not_hd_sel)
-    u_iso_all_tmp = u_iso_all.select(not_hd_sel)
+    u_iso_all_tmp = self.u_iso_all.select(not_hd_sel)
     self.b_mean_all = adptbx.u_as_b(flex.mean(u_iso_all_tmp))
     self.b_stddev_all = adptbx.u_as_b(
        u_iso_all_tmp.standard_deviation_of_the_sample())
     self.b_mean_calpha = 0
     if (len(self.calpha_sel) > 0) :
-      self.b_mean_calpha = adptbx.u_as_b(flex.mean(u_iso_all.select(
+      self.b_mean_calpha = adptbx.u_as_b(flex.mean(self.u_iso_all.select(
         self.calpha_sel)))
     self.b_mean_hoh = self.b_stddev_hoh = None
     if (self.n_waters > 0) :
-      u_iso_hoh = u_iso_all.select(water_sel)
+      u_iso_hoh = self.u_iso_all.select(water_sel)
       self.b_mean_hoh = adptbx.u_as_b(flex.mean(u_iso_hoh))
       self.b_stddev_hoh = adptbx.u_as_b(
         u_iso_hoh.standard_deviation_of_the_sample())
@@ -600,7 +604,8 @@ class Manager (object) :
       all_i_seqs = [contact.atom_i_seq() for contact in contacts]
 
       for contact in contacts:
-        if contact.element not in ["C"]:
+        # oxygen is always allowed, other elements may not be
+        if contact.element not in ["C", "P", "S", "N"]:
           filtered.append(contact)
           continue
 
@@ -612,8 +617,10 @@ class Manager (object) :
 
         for j_seq in bonded_j_seqs:
           other_contact = contacts[all_i_seqs.index(j_seq)]
-
-          if (other_contact.element in ["N", "O", "S"]) :
+          # if the current atom is closer to one of these elements bonded to
+          # the contact under consideration, skip this contact.  this will
+          # account for bidentate carboxyl groups, sulfates, phosphates, etc.
+          if (other_contact.element in ["N", "O", "S",]) :
             if abs(other_contact) < abs(contact):
               keep = False
               break
@@ -634,6 +641,21 @@ class Manager (object) :
       contacts = filtered
 
     return contacts
+
+  def guess_b_iso_real (self, i_seq) :
+    """
+    Guess an approximate B_iso for an atom by averaging the values for
+    coordinating atoms.  This should partially compensate for the deflation of
+    the B-factor due to incorrect scattering type, and consequently make the
+    occupancy refinement more accurate.
+    """
+    contacts = self.find_nearby_atoms(i_seq, distance_cutoff=3.0)
+    if (len(contacts) == 0) :
+      return adptbx.u_as_b(self.u_iso_all[i_seq])
+    u_iso_sum = 0
+    for contact in contacts :
+      u_iso_sum += self.u_iso_all[contact.atom_i_seq()]
+    return adptbx.u_as_b(u_iso_sum / len(contacts))
 
   def principal_axes_of_inertia (self, i_seq) :
     """
@@ -1284,6 +1306,7 @@ class Manager (object) :
       ambiguous_valence_cutoff = self.params.ambiguous_valence_cutoff,
       valence_used = valence_used,
       final_choice = final_choice,
+      wavelength = self.wavelength,
       no_final = no_final)
 
   def analyze_waters (self, out = sys.stdout, debug = True, candidates = Auto):
@@ -1526,6 +1549,7 @@ class water_result (object):
       ambiguous_valence_cutoff,
       valence_used,
       final_choice,
+      wavelength=None,
       no_final = False) :
     adopt_init_args(self, locals())
 
@@ -1885,7 +1909,6 @@ class AtomProperties (object) :
         # might drop the site's pKa enough to lose the hydrogen.
         if ((ion_params.allowed_coordinating_atoms is not None) and
             (other_element not in ion_params.allowed_coordinating_atoms)) :
-          # Check if atom is of an allowed element, if restricted
           self.bad_coords[identity].append(contact)
           inaccuracies.add(self.BAD_COORD_ATOM)
         if (get_class(other_resname) == "common_amino_acid") :
@@ -2060,8 +2083,8 @@ class AtomProperties (object) :
       if (self.fpp >= 0.2) :
         fpp_flag = " <<<"
       print >> out, "  f'':           %6.2f%s" % (self.fpp, fpp_flag)
-      print >> out, "  f'' ratio:     %6.2f%s" % (
-          self.fpp /sasaki.table(get_element(self.atom)).at_angstrom(wavelength).fdp())
+      print >> out, "  f'' ratio:     %s" % format_value("%6.2f",
+        self.fpp_ratios.get(identity))
     if self.nearby_atoms is not None:
       angstrom = u"\N{ANGSTROM SIGN}".encode("utf-8", "strict")
       degree = u"\N{DEGREE SIGN}".encode("utf-8", "strict")
