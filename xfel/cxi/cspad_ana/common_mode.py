@@ -167,8 +167,8 @@ class common_mode_correction(mod_event_info):
     if self.config is None:
       if self.address == 'XppGon-0|marccd-0':
         # Kludge for the MAR at XPP.
-        self.active_areas = flex.int([0, 0, 2400, 2400])
-        self.beam_center = [2400 // 2, 2400 // 2]
+        self.active_areas = flex.int([0, 0, 4500, 4500])
+        self.beam_center = [4500 // 2, 4500 // 2]
       else:
         self.logger.error("beginjob(): no config")
     else:
