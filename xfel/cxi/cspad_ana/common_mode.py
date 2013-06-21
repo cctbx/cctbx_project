@@ -142,7 +142,7 @@ class common_mode_correction(mod_event_info):
     if (self.mask_path is not None):
       mask_dict = easy_pickle.load(self.mask_path)
       self.mask_img = mask_dict['DATA']
-      assert isinstance(self.mask_img, flex.double)
+      assert isinstance(self.mask_img, flex.double) or isinstance(self.mask_img, flex.int)
 
     self.gain_map = None
     if gain_map_path is not None:
@@ -295,10 +295,10 @@ class common_mode_correction(mod_event_info):
     @param evt Event data object, a configure object
     @param env Environment object
     """
-
     super(common_mode_correction, self).event(evt, env)
     if (evt.get("skip_event")):
       return
+
 
 #    if self.config is None:
 #      self.config = cspad_tbx.getConfig(self.address, env)
@@ -331,6 +331,9 @@ class common_mode_correction(mod_event_info):
     # namespace.  XXX Misnomer--could be CAMP, too
     self.cspad_img = evt.get(self.address)
     if self.cspad_img is not None:
+      if (self.mask_img is not None):
+        sel = self.mask_img == -2
+        self.cspad_img.set_selected(sel, -2)
       return
     if self.address == 'XppGon-0|Cspad-0':
       # Kludge until cspad_tbx.image() can be rewritten to handle the
