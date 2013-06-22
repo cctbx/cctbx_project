@@ -2503,7 +2503,6 @@ class build_all_chain_proxies(object):
         raw_records = flex.std_string(raw_records)
       self.pdb_inp = pdb.input(source_info=None, lines=raw_records)
     self.pdb_hierarchy = self.pdb_inp.construct_hierarchy()
-
     if atom_selection_string is not None:
       sel = self.pdb_hierarchy.atom_selection_cache().selection(atom_selection_string)
       temp_string = self.pdb_hierarchy.select(sel).as_pdb_string()
@@ -2888,6 +2887,9 @@ class build_all_chain_proxies(object):
       log=log,
       curr_sym_excl_index=len(sym_excl_residue_groups))
     self.time_building_chain_proxies = timer.elapsed()
+    # Make sure pdb_hierarchy and xray_structure are consistent
+    if(self.special_position_settings is not None):
+      self.pdb_hierarchy.adopt_xray_structure(self.extract_xray_structure())
 
   def fatal_problems_report(self, prefix="", log=None, max_lines=10):
     self.scattering_type_registry.report(
