@@ -1792,7 +1792,7 @@ def exercise_least_squares_plane():
     d1 = d + random.uniform(-0.1, 0.1)
     n1 = matrix.rec(flex.random_double_r3_rotation_matrix(), (3,3))*n
     dist = distance(n1, d1)
-    assert dist > dist0
+    assert dist >= dist0
 
 def exercise_continued_fraction():
   continued_fraction = scitbx.math.continued_fraction
