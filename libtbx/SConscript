@@ -696,6 +696,13 @@ int main() {
     elif cc == "cc": cxx = "c++"
     elif cc == "gcc": cxx = "g++"
     else: cxx = "%s++" % cc
+    # darwin_c++ pretty much means Apple Compilers,
+    # which we know are in /usr/bin
+    # this is to survive the installation of e.g. gcc 4.7
+    # that may install a soft link named c++ that shadows
+    # Apple Compiler
+    if env_etc.compiler == 'darwin_c++':
+      cc, cxx = ["/usr/bin/" + p for p in (cc, cxx)]
     env_base.Replace(
       CC=cc,
       SHCC=cc,
