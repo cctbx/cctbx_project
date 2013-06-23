@@ -6,12 +6,13 @@
 
 namespace scitbx { namespace math {
 
-template<typename VectorType=double>
+template<typename ScalarType=double>
 class least_squares_plane
 {
   public:
-    typedef VectorType vector_type;
-    typedef typename vector_type::value_type float_type;
+    typedef ScalarType scalar_type;
+    typedef vec3<scalar_type> vector_type;
+    typedef mat3<scalar_type> matrix_type;
 
     least_squares_plane(af::const_ref<vector_type> const &points)
     {
@@ -36,11 +37,11 @@ class least_squares_plane
 
     vector_type const &normal() { return n; }
 
-    float_type distance_to_origin() { return d; }
+    scalar_type distance_to_origin() { return d; }
 
   private:
     vector_type n;
-    float_type d;
+    scalar_type d;
 };
 
 }}
