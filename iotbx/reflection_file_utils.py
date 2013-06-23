@@ -651,18 +651,21 @@ class reflection_file_server(object):
       return sort_arrays_by_score(miller_arrays, data_scores, minimum_score)
     # Recognize phenix.refine file and do the "right thing". May be too ad hoc..
     # XXX can we just check the first label instead?
-    new_miller_arrays = []
-    new_data_scores = []
-    for ma, ds in zip(miller_arrays, data_scores):
-      if(not ((ma.info().labels in [
-         ['F-obs-filtered', 'SIGF-obs-filtered'],
-         ['F-obs-filtered(+)', 'SIGF-obs-filtered(+)', 'F-obs-filtered(-)',
-          'SIGF-obs-filtered(-)',],
-         ['F-model', 'PHIF-model'],
-         ['F-model(+)', 'PHIF-model(+)', 'F-model(-)', 'PHIF-model(-)'] ]) or
-         isinstance(ma.data(), flex.complex_double))):
-        new_miller_arrays.append(ma)
-        new_data_scores.append(ds)
+    new_miller_arrays = miller_arrays
+    new_data_scores = data_scores
+    if(labels is None):
+      new_miller_arrays = []
+      new_data_scores = []
+      for ma, ds in zip(miller_arrays, data_scores):
+        if(not ((ma.info().labels in [
+           ['F-obs-filtered', 'SIGF-obs-filtered'],
+           ['F-obs-filtered(+)', 'SIGF-obs-filtered(+)', 'F-obs-filtered(-)',
+            'SIGF-obs-filtered(-)',],
+           ['F-model', 'PHIF-model'],
+           ['F-model(+)', 'PHIF-model(+)', 'F-model(-)', 'PHIF-model(-)'] ]) or
+           isinstance(ma.data(), flex.complex_double))):
+          new_miller_arrays.append(ma)
+          new_data_scores.append(ds)
     #
     i = select_array(
       parameter_name=parameter_scope+"."+parameter_name,
