@@ -1781,8 +1781,7 @@ def exercise_least_squares_plane():
                                      (1.2, 2.1, 2.9), (-0.9, -2.1, -3.1),
                                      (1.1, 0.8, 1.2)] ]
   def distance(n,d):
-    u = n/d
-    return sum([ (u.dot(x) - 1)**2 for x in points ])
+    return sum([ (n.dot(x) - d)**2 for x in points ])
   flex_points = flex.vec3_double(points)
   p = scitbx.math.least_squares_plane(flex_points)
   n = matrix.col(p.normal)
