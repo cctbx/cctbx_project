@@ -1,7 +1,9 @@
 from __future__ import division
 import sys
+from cStringIO import StringIO
 import libtbx.phil
 from libtbx.phil import interface
+from libtbx.test_utils import show_diff
 import libtbx.load_env
 
 def exercise () :
@@ -450,10 +452,70 @@ phaser.search {
   # Windows - we need to caution users against this
   assert (p.hklin == "C:\\projects\\xtal\\beta-blip/beta_blip_P3221.mtz")
 
+def exercise_adopt_phil():
+  master_phil = libtbx.phil.parse("""\
+scope1 {
+  a = 1
+    .type = int
+  b = 2
+    .type = int
+}
+""")
+  working_phil = libtbx.phil.parse("""\
+scope1.a = 3
+scope1.b = 4
+""")
+  i = libtbx.phil.interface.index(master_phil=master_phil,
+                                  working_phil=working_phil,
+                                  fetch_new=True)
+  params = i.get_python_object()
+  other_master_phil = libtbx.phil.parse("""\
+scope1 {
+  c = 3
+    .type = int
+}
+scope2 {
+  subscope2 {
+    d = 4
+      .type = int
+  }
+  e = 5
+    .type = int
+}
+""")
+  i.adopt_phil(phil_object=other_master_phil)
+  scope1 = i.get_scope_by_name("scope1")
+  s = StringIO()
+  scope1.show(out=s)
+  assert not show_diff(s.getvalue(), """\
+scope1 {
+  a = 3
+  b = 4
+  c = 3
+}
+""")
+  s = StringIO()
+  i.working_phil.show(out=s)
+  assert not show_diff(s.getvalue(), """\
+scope1 {
+  a = 3
+  b = 4
+  c = 3
+}
+scope2 {
+  subscope2 {
+    d = 4
+  }
+  e = 5
+}
+""")
+
+
 if __name__ == "__main__" :
   exercise()
   exercise_2(verbose=("-v" in sys.argv[1:] or "--verbose" in sys.argv[1:]))
   exercise_3()
+  exercise_adopt_phil()
   print "OK"
 
 #---end
