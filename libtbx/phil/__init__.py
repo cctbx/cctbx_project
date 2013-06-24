@@ -1488,6 +1488,15 @@ class scope(slots_getstate_setstate):
     object.primary_parent_scope = primary_parent_scope
     primary_parent_scope.objects.append(object)
 
+  def adopt_scope(self, other):
+    for active_object in other.active_objects():
+      results = self.get_without_substitution(active_object.full_path())
+      if len(results) == 0:
+        self.adopt(active_object)
+        continue
+      for result in results:
+        result.adopt_scope(active_object)
+
   def change_primary_parent_scope(self, new_value):
     objects = []
     for object in self.objects:
