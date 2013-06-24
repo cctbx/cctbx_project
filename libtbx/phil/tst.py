@@ -5626,8 +5626,80 @@ c = Auto
   assert params.b is None
   assert params.c is Auto
 
+def exercise_adopt_scope():
+  master_phil = phil.parse("""\
+scope1 {
+  a = 1
+    .type = int
+  b = 2
+    .type = int
+}
+""")
+  phil2 = phil.parse("""\
+scope1 {
+  c = 3
+    .type = int
+}
+""")
+  master_phil.adopt_scope(phil2)
+  s = StringIO()
+  master_phil.show(out=s)
+  assert not show_diff(s.getvalue(), """\
+scope1 {
+  a = 1
+  b = 2
+  c = 3
+}
+""")
+  phil3 = phil.parse("""
+scope2 {
+  subscope2 {
+    d = 4
+      .type = int
+  }
+}
+""")
+  master_phil.adopt_scope(phil3)
+  s = StringIO()
+  master_phil.show(out=s)
+  assert not show_diff(s.getvalue(), """\
+scope1 {
+  a = 1
+  b = 2
+  c = 3
+}
+scope2 {
+  subscope2 {
+    d = 4
+  }
+}
+""")
+  phil4 = phil.parse("""\
+scope2.subscope2 {
+  e = 5
+    .type = int
+}
+""")
+  master_phil.adopt_scope(phil4)
+  s = StringIO()
+  master_phil.show(out=s)
+  assert not show_diff(s.getvalue(), """\
+scope1 {
+  a = 1
+  b = 2
+  c = 3
+}
+scope2 {
+  subscope2 {
+    d = 4
+    e = 5
+  }
+}
+""")
+
 
 def exercise():
+  exercise_adopt_scope()
   exercise_path()
   exercise_find_scope()
   exercise_string_quote_and_tokenize()
