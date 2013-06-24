@@ -408,6 +408,7 @@ dxtbx/format/FormatSMV.py -text
 dxtbx/format/FormatSMVADSC.py -text
 dxtbx/format/FormatSMVADSCSN.py -text
 dxtbx/format/FormatSMVADSCSN457.py -text
+dxtbx/format/FormatSMVADSCSN926.py -text
 dxtbx/format/FormatSMVADSCmlfsom.py -text
 dxtbx/format/FormatSMVHamamatsu.py -text
 dxtbx/format/FormatSMVNOIR.py -text
