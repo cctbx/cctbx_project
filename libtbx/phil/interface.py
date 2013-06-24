@@ -504,6 +504,17 @@ class index (object) :
                   "to the console.")
     self.merge_phil(phil_object=phil_object, only_scope=only_scope)
 
+  def adopt_phil(self, phil_object=None, phil_string=None, phil_file=None):
+    assert [phil_object, phil_string, phil_file].count(None) == 2
+    if phil_string:
+      phil_object = self.parse(phil_string)
+    elif phil_file:
+      phil_object = libtbx.phil.parse(file_name=phil_file)
+    self.master_phil.adopt_scope(phil_object)
+    self.working_phil = self.master_phil.fetch(sources=[self.working_phil])
+    self.rebuild_index()
+    self.params = self.working_phil.extract()
+
   #---------------------------------------------------------------------
   # DEBUG/TEST METHODS
   def check_scopes (self, phil_names) :
