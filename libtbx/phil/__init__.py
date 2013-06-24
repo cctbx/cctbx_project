@@ -1495,7 +1495,16 @@ class scope(slots_getstate_setstate):
         self.adopt(active_object)
         continue
       for result in results:
-        result.adopt_scope(active_object)
+        assert result.is_scope == active_object.is_scope
+        if result.is_definition:
+          # This parameter is defined in both phil scopes: replace definition
+          # in self with the definition in other.
+          primary_parent_scope = result.primary_parent_scope
+          i = primary_parent_scope.objects.index(result)
+          primary_parent_scope.objects[i] = active_object
+          del result
+        else:
+          result.adopt_scope(active_object)
 
   def change_primary_parent_scope(self, new_value):
     objects = []

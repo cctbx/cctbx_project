@@ -5696,6 +5696,31 @@ scope2 {
   }
 }
 """)
+  phil5 = phil.parse("""\
+scope1 {
+  a = 4.123
+    .type = float
+  f = 6
+    .type = int
+}
+""")
+  master_phil.adopt_scope(phil5)
+  s = StringIO()
+  master_phil.show(out=s)
+  assert not show_diff(s.getvalue(), """\
+scope1 {
+  a = 4.123
+  b = 2
+  c = 3
+  f = 6
+}
+scope2 {
+  subscope2 {
+    d = 4
+    e = 5
+  }
+}
+""")
 
 
 def exercise():
