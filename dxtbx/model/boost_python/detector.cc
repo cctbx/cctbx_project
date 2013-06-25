@@ -180,4 +180,4 @@ namespace dxtbx { namespace model { namespace boost_python {
       .enable_pickling();
   }
 
-}}} // namespace dials::model::boost_python
+}}} // namespace dxtbx::model::boost_python

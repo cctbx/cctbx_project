@@ -164,4 +164,4 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def_pickle(PanelPickleSuite());
   }
 
-}}} // namespace dials::model::boost_python
+}}} // namespace dxtbx::model::boost_python
