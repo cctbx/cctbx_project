@@ -5,6 +5,7 @@ import libtbx.load_env
 tst_list = (
   "$D/regression/tst_miller_double_step_filtration.py",
   "$D/miller/tst_reindexing.py",
+  "$D/miller/tst_map_to_asu_isym.py",
   "$D/regression/tst_miller_ellipsoidal_truncation.py",
   "$D/omz/tst_bfgs.py",
   ["$D/omz/tst_dev.py", "P31"],

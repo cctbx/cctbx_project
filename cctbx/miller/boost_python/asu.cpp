@@ -88,6 +88,12 @@ namespace {
                bool,
                af::ref<index<> > const&))
       map_to_asu);
+    def("map_to_asu_isym",
+      (void(*)(sgtbx::space_group_type const&,
+               bool,
+               af::ref<index<> > const&,
+               af::ref<int> const &))
+      map_to_asu_isym);
     def("map_to_asu", map_to_asu_no_bool<double>::wrapper);
     def("map_to_asu", map_to_asu_with_bool<double>::wrapper);
     def("map_to_asu", map_to_asu_no_bool<std::complex<double> >::wrapper);

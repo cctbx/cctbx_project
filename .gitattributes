@@ -144,6 +144,7 @@ cctbx/miller/randomize_amplitude_and_phase.h -text
 cctbx/miller/reindexing.py svneol=native#text/x-python
 cctbx/miller/slices.h -text
 cctbx/miller/transform_and_change_of_basis.tex -text
+cctbx/miller/tst_map_to_asu_isym.py -text
 cctbx/miller/tst_reindexing.py svneol=native#text/x-python
 cctbx/miller/union_of_indices.h svneol=native#text/plain
 cctbx/omz/__init__.py svneol=native#text/x-python
