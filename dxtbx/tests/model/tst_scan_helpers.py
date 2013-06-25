@@ -9,7 +9,6 @@ def tst_is_angle_in_range():
     is in the range.
 
     """
-    from dials.model.experiment import is_angle_in_range
     from random import random
 
     # Some helper lambda functions
