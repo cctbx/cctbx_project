@@ -850,13 +850,14 @@ def run(args, command_name="phenix.pdbtools"):
   if (params.modify.convert_semet_to_met) :
     scatterers = xray_structure.scatterers()
     for i_seq, atom in enumerate(pdb_hierarchy.atoms()) :
-      if (atom.name == " SE ") :
+      if (atom.name.strip() == "SE") and (atom.element.upper() == "SE") :
         atom_group = atom.parent()
-        atom_group.resname = "MET"
-        atom.name = " SD "
-        atom.element = " S"
-        scatterer = scatterers[i_seq]
-        scatterer.scattering_type = 'S'
+        if (atom_group.resname == "MSE") :
+          atom_group.resname = "MET"
+          atom.name = " SD "
+          atom.element = " S"
+          scatterer = scatterers[i_seq]
+          scatterer.scattering_type = 'S'
 ### set atomic charge
   if (params.modify.set_charge.charge_selection is not None) :
     set_atomic_charge(
