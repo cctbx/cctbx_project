@@ -156,6 +156,13 @@ namespace cctbx { namespace miller {
         return index_table_layout_adaptor(*this,
           friedel_flag_, friedel_flag_, false);
       }
+
+      int
+      isym() const { return isym_; }
+
+    private:
+      int isym_;
+
   };
 
   namespace data_classes {
@@ -256,6 +263,13 @@ namespace cctbx { namespace miller {
     sgtbx::space_group_type const& sg_type,
     bool anomalous_flag,
     af::ref<index<> > const& miller_indices);
+
+  void
+  map_to_asu_isym(
+    sgtbx::space_group_type const& sg_type,
+    bool anomalous_flag,
+    af::ref<index<> > const& miller_indices,
+    af::ref<int> const& isym);
 
   template <typename ValueType>
   void

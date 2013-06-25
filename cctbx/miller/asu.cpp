@@ -16,6 +16,11 @@ namespace cctbx { namespace miller {
         hr_ = h * s.r();
         if (asu.is_inside(hr_)) {
           ht_ = sgtbx::ht_mod_1(h, s.t());
+          if (i_inv == 0) {
+            isym_ = i_smx;
+          } else {
+            isym_ = - i_smx;
+          }
           return;
         }
       }
@@ -27,6 +32,7 @@ namespace cctbx { namespace miller {
       if (asu.is_inside(-hr_)) {
         ht_ = sgtbx::ht_mod_1(h, s.t());
         friedel_flag_ = true;
+        isym_ = - i_smx;
         return;
       }
     }
@@ -71,6 +77,23 @@ namespace cctbx { namespace miller {
     sgtbx::space_group const& sg = sg_type.group();
     for(std::size_t i=0;i<miller_indices.size();i++) {
       asym_index ai(sg, asu, miller_indices[i]);
+      index_table_layout_adaptor ila = ai.one_column(anomalous_flag);
+      miller_indices[i] = ila.h();
+    }
+  }
+
+  void
+  map_to_asu_isym(
+    sgtbx::space_group_type const& sg_type,
+    bool anomalous_flag,
+    af::ref<index<> > const& miller_indices,
+    af::ref<int> const& isym)
+  {
+    sgtbx::reciprocal_space::asu asu(sg_type);
+    sgtbx::space_group const& sg = sg_type.group();
+    for(std::size_t i=0;i<miller_indices.size();i++) {
+      asym_index ai(sg, asu, miller_indices[i]);
+      isym[i] = ai.isym();
       index_table_layout_adaptor ila = ai.one_column(anomalous_flag);
       miller_indices[i] = ila.h();
     }
