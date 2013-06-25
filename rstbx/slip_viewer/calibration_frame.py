@@ -1,7 +1,7 @@
 from __future__ import division
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
-# $Id: calibration_frame.py 289 2012-03-06 05:08:56Z hattne $
+# $Id$
 
 import wx
 
@@ -138,7 +138,7 @@ class SBSettingsPanel(wx.Panel):
         stream = open(path, "w")
         stream.write(metrology_params.as_str())
         stream.close()
-        print "Dumped pickled metrology to ", path
+        print "Dumped pickled metrology to", path
 
 
   def OnUpdateQuad(self, event):
