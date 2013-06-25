@@ -233,6 +233,10 @@ mtz_file
         be relative to all possible reflections, even those not measured in \
         the input.  Note that this option is not compatible with preserving \
         input values.
+    d_eps = 0.0001
+      .type = float
+      .short_caption = Resolution buffer
+      .expert_level = 2
   }
 }""", process_includes=True)
 
@@ -699,8 +703,9 @@ class process_arrays (object) :
         make_joined_set
       have_r_free_array = True
       if len(self.final_arrays) > 0 :
+        eps = params.mtz_file.r_free_flags.d_eps
         complete_set = make_joined_set(self.final_arrays
-          ).complete_set(d_min=d_min, d_max=d_max)
+          ).complete_set(d_min=d_min-eps, d_max=d_max+eps)
       else :
         complete_set = None
       i = 0

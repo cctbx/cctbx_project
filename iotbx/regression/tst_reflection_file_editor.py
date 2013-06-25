@@ -286,7 +286,7 @@ mtz_file {
     ma.file_name = "tst_data2.mtz"
   params.mtz_file.output_file = "tst4.mtz"
   miller_arrays = run_and_reload(params, "tst4.mtz")
-  assert (miller_arrays[1].data().size() == 221)
+  assert (miller_arrays[1].data().size() == 222)
   # and now to arbitrarily high resolution
   params.mtz_file.d_min = 0.8
   miller_arrays = run_and_reload(params, "tst4.mtz")
@@ -297,6 +297,7 @@ mtz_file {
   params.mtz_file.r_free_flags.preserve_input_values = False
   params.mtz_file.output_file = "tst_data3.mtz"
   miller_arrays = run_and_reload(params, "tst_data3.mtz")
+  f_obs_orig = miller_arrays[1]
   free_selection = (miller_arrays[1].data() == 0)
   old_selection = (orig_arrays[1].data() == 1)
   assert (free_selection.all_eq(old_selection))
@@ -329,7 +330,7 @@ mtz_file {
   params.mtz_file.miller_array[1].d_min = None
   params.mtz_file.r_free_flags.preserve_input_values = False
   miller_arrays = run_and_reload(params, "tst4.mtz")
-  new_selection = (miller_arrays[1].data() == 1)
+  new_selection = (miller_arrays[1].common_set(other=f_obs_orig).data() == 1)
   assert (free_selection.all_eq(new_selection))
   #
   # XXX note that the tests for adjust_fraction in cctbx.r_free_utils are
