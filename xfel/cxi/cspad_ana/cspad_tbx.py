@@ -750,6 +750,31 @@ def evt_pulse_length(evt):
   return None
 
 
+def evt_repetition_rate(evt, address='*'):
+  """The evt_repetition_rate() function returns the repititon rate of
+  the instrument in Hz.  See
+  https://confluence.slac.stanford.edu/display/PCDS/EVR+Event+Codes
+
+  @param evt     Event data object, a configure object
+  @param address XXX
+  @return        Integer repetition rate, in Hz
+  """
+
+  evr = evt.getEvrData(address)
+  if evr is not None:
+    event_code_map = [120, 60, 30, 10, 5, 1]
+    for i in range(evr.numFifoEvents() - 1, -1, -1):
+      # Search for the last repetition rate event code.
+      j = evr.fifoEvent(i).EventCode
+      if j >= 40 and j <= 45:
+        # These are the NO BEAM event codes.
+        return event_code_map[j - 40]
+      if j >= 140 and j <= 145:
+        # These are the undocumented BEAM event codes.
+        return event_code_map[j - 140]
+  return None
+
+
 def evt_beam_charge(evt):
   """The evt_beam_charge() function returns the charge of the pulse in
   nC.
