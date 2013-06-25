@@ -1,3 +1,4 @@
+# -*- coding: utf-8; py-indent-offset: 2 -*-
 """
 Methods for examining bond angles around an ion and categorizing
 the coordination geometry.
@@ -42,7 +43,23 @@ def _is_square_planar(vectors, dev_cutoff = 20):
     return
 
   angles = _bond_angles(vectors)
-  deviation = sqrt(sum(abs(i[2] - 90) ** 2 for i in angles) / len(vectors))
+
+  # Expect 2x 180 degrees and 4x 90 degrees
+  a_90s = []
+  a_180s = []
+
+  for angle in angles:
+    if abs(angle[2] - 90) < abs(angle[2] - 180):
+      a_90s.append(angle[2] - 90)
+    else:
+      a_180s.append(angle[2] - 180)
+
+  # With up to one atom missing, we must have 2 to 4 90 degree angles and 1 to 2
+  # 180 degree angles
+  if len(a_90s) < 2 or len(a_90s) > 4 or len(a_180s) < 1 or len(a_180s) > 2:
+    return
+
+  deviation = sqrt(sum(i ** 2 for i in a_90s + a_180s) / len(angles))
 
   if deviation <= dev_cutoff:
     return deviation, 4 - len(vectors)
