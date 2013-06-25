@@ -596,7 +596,7 @@ ATOM    509  C   MSE A 106      50.937  45.462  33.968  1.00  3.57           C
 ATOM    510  O   MSE A 106      49.956  44.737  33.860  1.00  4.67           O
 ATOM    511  CB  MSE A 106      51.318  46.310  36.304  1.00  1.07           C
 ATOM    512  CG  MSE A 106      49.833  46.180  36.603  1.00  1.06           C
-ATOM    513  SE  MSE A 106      49.249  47.284  38.129  0.82 10.02          Se
+ATOM    513 SE   MSE A 106      49.249  47.284  38.129  0.82 10.02          Se
 ATOM    514  CE  MSE A 106      50.851  47.140  39.206  1.00  1.19           C
 """)
   cmd = "phenix.pdbtools tmp_semet.pdb convert_semet_to_met=True"
