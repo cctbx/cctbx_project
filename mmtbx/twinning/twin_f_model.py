@@ -1735,6 +1735,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                         "mFo-DFc", "mFobs-DFmodel",
                         "gradient",
                         "m_gradient",
+                        "mFo",
                         "Fc",
                         "DFc",
                         "anom",
@@ -1791,6 +1792,15 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
         dt_f_obs, tmp_f_model = dt_f_obs.common_sets( tmp_f_model )
         result = tmp_f_model.customized_copy(
           data=tmp_f_model.data()*d.data())
+      elif (map_type == "mFo") :
+        sigmaa_object = self.sigmaa_object(
+          detwinned_data=dt_f_obs,
+          f_model_data=tmp_f_model,
+          tmp_free=tmp_free,
+          forced_update=True)
+        m, dt_f_obs = sigmaa_object.fom().common_sets( dt_f_obs )
+        result = dt_f_obs.customized_copy(
+          data=dt_f_obs.data()*m.data())
       elif (map_type in ["Fo-Fc", "Fobs-Fmodel"]) :
         if ([k,n]).count(None) > 0:
           raise Sorry("Map coefficient multipliers (k and n) must be provided to generate detwinned maps")
