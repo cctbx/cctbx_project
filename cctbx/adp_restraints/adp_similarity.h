@@ -221,8 +221,11 @@ class adp_u_eq_similarity : public adp_restraint_base_n {
     {}
   };
 
-/* in this restraint the gradients are estimated considering that eigen
-values and eigen vectors are independent */
+/* The Olex2 refinement engine,
+  L.J. Bourhis,* O.V. Dolomanov, R.J. Gildea, J.A.K. Howard
+  and H. Puschmann,
+  ADP volume = 4*pi/sqrt(det(u_cart))/3
+*/
   class adp_volume_similarity : public adp_restraint_base_n {
   public:
 
@@ -237,11 +240,11 @@ values and eigen vectors are independent */
       for (int i=0; i < proxy.i_seqs.size(); i++) {
         if (use_u_aniso[i]) {
           CCTBX_ASSERT(proxy.i_seqs[i] < params.u_cart.size());
-          adptbx::eigensystem<double> es(params.u_cart[proxy.i_seqs[i]]);
-          const vec3<double> &v = es.values();
-          deltas_[i] = std::sqrt(v[0]*v[1]*v[2]);
+          scitbx::sym_mat3<double> uc = params.u_cart[proxy.i_seqs[i]];
+          double det = uc.determinant();
+          deltas_[i] = std::sqrt(det);
           mean_u_volume += deltas_[i];
-          u_cart_grads.push_back(calc_grad(es));
+          u_cart_grads.push_back(calc_grad(uc, det));
           grad_indices[i] = u_star_idx++;
         }
         else {
@@ -316,36 +319,23 @@ values and eigen vectors are independent */
     }
 
     static scitbx::sym_mat3<double> calc_grad(
-      adptbx::eigensystem<double> const& es)
+      scitbx::sym_mat3<double> const& u_cart, double det)
     {
-      const vec3<double> &v = es.values();
-      vec3<double> vp(v[1]*v[2], v[0]*v[2], v[0]*v[1]);
-      double coeff = (4*scitbx::constants::pi/3)/(2*std::sqrt(v[0]*v[1]*v[2]));
+      double coeff = (4*scitbx::constants::pi)/(6*std::sqrt(det));
       af::tiny<double, 6> u_cart_grad;
       u_cart_grad[0] = coeff*(
-        vp[0]*es.vectors(0)[0]*es.vectors(0)[0] +
-        vp[1]*es.vectors(1)[0]*es.vectors(1)[0] +
-        vp[2]*es.vectors(2)[0]*es.vectors(2)[0]);
+        u_cart(1,1)*u_cart(2,2) - scitbx::fn::pow2(u_cart(1,2)));
       u_cart_grad[1] = coeff*(
-        vp[0]*es.vectors(0)[1]*es.vectors(0)[1] +
-        vp[1]*es.vectors(1)[1]*es.vectors(1)[1] +
-        vp[2]*es.vectors(2)[1]*es.vectors(2)[1]);
+        u_cart(0,0)*u_cart(2,2) - scitbx::fn::pow2(u_cart(0,2)));
       u_cart_grad[2] = coeff*(
-        vp[0]*es.vectors(0)[2]*es.vectors(0)[2] +
-        vp[1]*es.vectors(1)[2]*es.vectors(1)[2] +
-        vp[2]*es.vectors(2)[2]*es.vectors(2)[2]);
-      u_cart_grad[3] = 2*coeff*(
-        vp[0]*es.vectors(0)[0]*es.vectors(0)[1] +
-        vp[1]*es.vectors(1)[1]*es.vectors(1)[0] +
-        vp[2]*es.vectors(2)[1]*es.vectors(2)[0]);
-      u_cart_grad[4] = 2*coeff*(
-        vp[0]*es.vectors(0)[0]*es.vectors(0)[2] +
-        vp[1]*es.vectors(1)[2]*es.vectors(1)[0] +
-        vp[2]*es.vectors(2)[2]*es.vectors(2)[0]);
-      u_cart_grad[5] = 2*coeff*(
-        vp[0]*es.vectors(0)[1]*es.vectors(0)[2] +
-        vp[1]*es.vectors(1)[1]*es.vectors(1)[2] +
-        vp[2]*es.vectors(2)[1]*es.vectors(2)[2]);
+        u_cart(0,0)*u_cart(1,1) - scitbx::fn::pow2(u_cart(0,1)));
+      coeff *= 2;
+      u_cart_grad[3] = coeff*(
+        u_cart(0,2)*u_cart(1,2) - u_cart(0,1)*u_cart(2,2));
+      u_cart_grad[4] = coeff*(
+        u_cart(0,1)*u_cart(1,2) - u_cart(0,2)*u_cart(1,1));
+      u_cart_grad[5] = coeff*(
+        u_cart(0,1)*u_cart(0,2) - u_cart(1,2)*u_cart(0,0));
 
       return u_cart_grad;
     }
