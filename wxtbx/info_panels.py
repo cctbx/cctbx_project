@@ -157,6 +157,7 @@ class PDBFileInfo (InfoPanelBase) :
     from iotbx import file_reader
     import iotbx.pdb
     self._pdb_in = file_reader.any_file(file_name, force_type="pdb",
+      raise_sorry_if_errors=True,
       raise_sorry_if_not_expected_format=True)
     self._pdb_in.check_file_type("pdb")
     self._hierarchy = self._pdb_in.file_object.construct_hierarchy()
