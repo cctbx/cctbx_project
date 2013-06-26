@@ -1405,7 +1405,14 @@ def compare_hierarchy(hierarchy, scatterers, cell):
             match[atom.i_seq] = True
             aes=[atom.element.strip().upper(),s.element_symbol().strip().upper()]
             assert aes[0]==aes[1], aes
-            assert len(atom.name.strip())>0
+            if len(atom.name.strip())<1:
+              raise RuntimeError(
+                "\nAtom serial='%s' chain='%s' resseq='%s' resname='%s' " %
+                (atom.serial,
+                 chain.id,
+                 residue_group.resseq,
+                 atom_group.resname) +
+                "has no atom name. \nPlease check your input model.")
             # XXX ADD CHARGE!
             # assert len(s.label.strip())>0
             # assert approx_equal(atom.occ, s.occupancy, 0.01)
