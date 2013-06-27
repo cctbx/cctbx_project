@@ -36,8 +36,8 @@ namespace dxtbx { namespace model {
         direction_(0.0, 0.0, 0.0),
         divergence_(0.0),
         sigma_divergence_(0.0),
-        polarization_normal_(0.0, 0.0, 0.0),
-        polarization_fraction_(0.0) {}
+        polarization_normal_(0.0, 1.0, 0.0),
+        polarization_fraction_(0.999) {}
 
     /**
      * Initialise all the beam parameters.
@@ -46,8 +46,8 @@ namespace dxtbx { namespace model {
     Beam(vec3 <double> s0)
       : divergence_(0.0),
         sigma_divergence_(0.0),
-        polarization_normal_(0.0, 0.0, 0.0),
-        polarization_fraction_(0.0) {
+        polarization_normal_(0.0, 1.0, 0.0),
+        polarization_fraction_(0.999) {
       DXTBX_ASSERT(s0.length() > 0);
       wavelength_ = 1.0 / s0.length();
       direction_ = -s0.normalize();
@@ -63,8 +63,8 @@ namespace dxtbx { namespace model {
       : wavelength_(wavelength),
         divergence_(0.0),
         sigma_divergence_(0.0),
-        polarization_normal_(0.0, 0.0, 0.0),
-        polarization_fraction_(0.0) {
+        polarization_normal_(0.0, 1.0, 0.0),
+        polarization_fraction_(0.999) {
       DXTBX_ASSERT(direction.length() > 0);
       direction_ = direction.normalize();
     }
@@ -76,8 +76,8 @@ namespace dxtbx { namespace model {
     Beam(vec3 <double> s0, double divergence, double sigma_divergence)
       : divergence_(divergence),
         sigma_divergence_(sigma_divergence),
-        polarization_normal_(0.0, 0.0, 0.0),
-        polarization_fraction_(0.0) {
+        polarization_normal_(0.0, 1.0, 0.0),
+        polarization_fraction_(0.999) {
       DXTBX_ASSERT(s0.length() > 0);
       wavelength_ = 1.0 / s0.length();
       direction_ = -s0.normalize();
@@ -94,8 +94,8 @@ namespace dxtbx { namespace model {
       : wavelength_(wavelength),
         divergence_(divergence),
         sigma_divergence_(sigma_divergence),
-        polarization_normal_(0.0, 0.0, 0.0),
-        polarization_fraction_(0.0)  {
+        polarization_normal_(0.0, 1.0, 0.0),
+        polarization_fraction_(0.999)  {
       DXTBX_ASSERT(direction.length() > 0);
       direction_ = direction.normalize();
     }
