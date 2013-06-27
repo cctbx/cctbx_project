@@ -3,7 +3,7 @@
 Methods for examining bond angles around an ion and categorizing
 the coordination geometry.
 """
-from __future__ import division, print_function
+from __future__ import division
 from collections import OrderedDict
 from math import sqrt
 
