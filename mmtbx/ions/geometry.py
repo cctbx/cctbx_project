@@ -3,7 +3,7 @@
 Methods for examining bond angles around an ion and categorizing
 the coordination geometry.
 """
-from __future__ import division
+from __future__ import division, print_function
 from collections import OrderedDict
 from math import sqrt
 
@@ -76,23 +76,19 @@ def _is_octahedral(vectors, dev_cutoff = 15):
   angles = _bond_angles(vectors)
 
   # Grab the two axial vectors
-  deviants = []
-  opposites = 0
+  a_90s = []
+  a_180s = []
 
-  for v1, v2, angle in angles:
-    from_90 = abs(90 - angle)
-    from_180 = abs(180 - angle)
-
-    if from_180 < from_90:
-      opposites += 1
-      deviants += from_180,
+  for angle in angles:
+    if abs(angle[2] - 90) < abs(angle[2] - 180):
+      a_90s.append(angle[2] - 90)
     else:
-      deviants += from_90,
+      a_180s.append(angle[2] - 180)
 
-  deviation = sqrt(sum(abs(i) ** 2 for i in deviants) / len(deviants))
-
-  if opposites > 3 or opposites < 2:
+  if len(a_180s) > 3 or len(a_180s) < 2 or len(a_90s) < 8 or len(a_90s) > 12:
     return
+
+  deviation = sqrt(sum(i ** 2 for i in a_90s + a_180s) / len(angles))
 
   if deviation <= dev_cutoff:
     return deviation, 6 - len(vectors)
