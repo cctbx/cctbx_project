@@ -177,6 +177,8 @@ namespace dxtbx { namespace model { namespace boost_python {
         &set_sigma_divergence, (
           arg("sigma_divergence"),
           arg("deg") = true))
+      .def("get_polarization_normal",
+        &Beam::get_polarization_normal)
       .def("set_polarization_normal",
         &Beam::set_polarization_normal)
       .def("get_polarization_fraction",
