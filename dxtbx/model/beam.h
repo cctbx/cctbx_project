@@ -35,7 +35,9 @@ namespace dxtbx { namespace model {
       : wavelength_(0.0),
         direction_(0.0, 0.0, 0.0),
         divergence_(0.0),
-        sigma_divergence_(0.0) {}
+        sigma_divergence_(0.0),
+        polarization_normal_(0.0, 0.0, 0.0),
+        polarization_fraction_(0.0) {}
 
     /**
      * Initialise all the beam parameters.
@@ -43,7 +45,9 @@ namespace dxtbx { namespace model {
      */
     Beam(vec3 <double> s0)
       : divergence_(0.0),
-        sigma_divergence_(0.0) {
+        sigma_divergence_(0.0),
+        polarization_normal_(0.0, 0.0, 0.0),
+        polarization_fraction_(0.0) {
       DXTBX_ASSERT(s0.length() > 0);
       wavelength_ = 1.0 / s0.length();
       direction_ = -s0.normalize();
@@ -58,7 +62,9 @@ namespace dxtbx { namespace model {
     Beam(vec3 <double> direction, double wavelength)
       : wavelength_(wavelength),
         divergence_(0.0),
-        sigma_divergence_(0.0) {
+        sigma_divergence_(0.0),
+        polarization_normal_(0.0, 0.0, 0.0),
+        polarization_fraction_(0.0) {
       DXTBX_ASSERT(direction.length() > 0);
       direction_ = direction.normalize();
     }
@@ -69,7 +75,9 @@ namespace dxtbx { namespace model {
      */
     Beam(vec3 <double> s0, double divergence, double sigma_divergence)
       : divergence_(divergence),
-        sigma_divergence_(sigma_divergence) {
+        sigma_divergence_(sigma_divergence),
+        polarization_normal_(0.0, 0.0, 0.0),
+        polarization_fraction_(0.0) {
       DXTBX_ASSERT(s0.length() > 0);
       wavelength_ = 1.0 / s0.length();
       direction_ = -s0.normalize();
@@ -85,7 +93,22 @@ namespace dxtbx { namespace model {
          double divergence, double sigma_divergence)
       : wavelength_(wavelength),
         divergence_(divergence),
-        sigma_divergence_(sigma_divergence)  {
+        sigma_divergence_(sigma_divergence),
+        polarization_normal_(0.0, 0.0, 0.0),
+        polarization_fraction_(0.0)  {
+      DXTBX_ASSERT(direction.length() > 0);
+      direction_ = direction.normalize();
+    }
+
+    Beam(vec3 <double> direction, double wavelength,
+         double divergence, double sigma_divergence,
+         vec3<double> polarization_normal,
+         double polarization_fraction)
+      : wavelength_(wavelength),
+        divergence_(divergence),
+        sigma_divergence_(sigma_divergence),
+        polarization_normal_(polarization_normal),
+        polarization_fraction_(polarization_fraction)  {
       DXTBX_ASSERT(direction.length() > 0);
       direction_ = direction.normalize();
     }
@@ -158,6 +181,26 @@ namespace dxtbx { namespace model {
       sigma_divergence_ = sigma_divergence;
     }
 
+    /** Get the polarization */
+    vec3 <double> get_polarization_normal() const {
+      return polarization_normal_;
+    }
+
+    /** Get the polarization fraction */
+    double get_polarization_fraction() const {
+      return polarization_fraction_;
+    }
+
+    /** Set the polarization plane */
+    void set_polarization_normal(vec3 <double> polarization_normal) {
+      polarization_normal_ = polarization_normal;
+    }
+
+    /** Set the polarization fraction */
+    void set_polarization_fraction(double polarization_fraction) {
+      polarization_fraction_ = polarization_fraction;
+    }
+
     /** Check wavlength and direction are (almost) same */
     bool operator==(const Beam &beam) {
       double eps = 1.0e-6;
@@ -183,6 +226,8 @@ namespace dxtbx { namespace model {
     vec3 <double> direction_;
     double divergence_;
     double sigma_divergence_;
+    vec3 <double> polarization_normal_;
+    double polarization_fraction_;
   };
 
   /** Print beam information */
@@ -193,6 +238,10 @@ namespace dxtbx { namespace model {
     os << "    direction : " << b.get_direction().const_ref() << "\n";
     os << "    divergence: " << b.get_divergence() << "\n";
     os << "    sigma divergence: " << b.get_sigma_divergence() << "\n";
+    os << "    polarization normal: " <<
+        b.get_polarization_normal().const_ref() << "\n";
+    os << "    polarization fraction: " <<
+        b.get_polarization_fraction() << "\n";
     return os;
   }
 

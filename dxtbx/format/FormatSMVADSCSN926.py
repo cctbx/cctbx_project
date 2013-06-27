@@ -59,7 +59,7 @@ class FormatSMVADSCSN926(FormatSMVADSCSN):
             'CCD', distance, (beam_y, beam_x), '+x', '-y',
             '+x', two_theta, (pixel_size, pixel_size), image_size,
             (underload, overload), [])
-        
+
 if __name__ == '__main__':
 
     import sys

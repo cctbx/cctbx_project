@@ -14,7 +14,6 @@
 #include <sstream>
 #include <scitbx/constants.h>
 #include <dxtbx/model/beam.h>
-#include <dxtbx/model/polarized_beam.h>
 
 namespace dxtbx { namespace model { namespace boost_python {
 
@@ -62,6 +61,27 @@ namespace dxtbx { namespace model { namespace boost_python {
     }
     return beam;
   }
+   
+  static Beam* make_beam_w_all(vec3<double> sample_to_source, double wavelength,
+                         double divergence, double sigma_divergence, 
+                         vec3<double> polarization_normal, 
+                         double polarization_fraction, bool deg) {
+    Beam *beam = NULL;
+    if (deg) {
+      beam = new Beam(sample_to_source, wavelength, 
+                      deg_as_rad(divergence), 
+                      deg_as_rad(sigma_divergence),
+                      polarization_normal,
+                      polarization_fraction);
+    } else {
+      beam = new Beam(sample_to_source, wavelength, 
+                      divergence, sigma_divergence,
+                      polarization_normal,
+                      polarization_fraction);
+    }
+    return beam;
+  }
+ 
    
   static
   double get_divergence(const Beam &beam, bool deg) {
@@ -117,6 +137,16 @@ namespace dxtbx { namespace model { namespace boost_python {
           arg("divergence"),
           arg("sigma_divergence"),
           arg("deg") = true)))
+      .def("__init__",
+          make_constructor(
+            &make_beam_w_all,
+            default_call_policies(), (
+              arg("s0"),
+              arg("divergence"),
+              arg("sigma_divergence"),
+              arg("polarization_normal"),
+              arg("polarization_fraction"),
+              arg("deg") = true)))
       .def("get_direction", 
         &Beam::get_direction)
       .def("set_direction",
@@ -147,6 +177,12 @@ namespace dxtbx { namespace model { namespace boost_python {
         &set_sigma_divergence, (
           arg("sigma_divergence"),
           arg("deg") = true))
+      .def("set_polarization_normal",
+        &Beam::set_polarization_normal)
+      .def("get_polarization_fraction",
+        &Beam::get_polarization_fraction)
+      .def("set_polarization_fraction",
+        &Beam::set_polarization_fraction)          
       .def("__eq__", &Beam::operator==)
       .def("__ne__", &Beam::operator!=)
       .def("__str__", &beam_to_string)
