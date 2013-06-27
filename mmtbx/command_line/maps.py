@@ -346,7 +346,11 @@ def run (args, log = sys.stdout, use_output_directory=True,
     pdb_hierarchy = pdb_hierarchy,
     log = log)
   map_coeff_file_name = file_name_base+"_map_coeffs.mtz"
-  write_mtz_file_result = cmo.write_mtz_file(file_name = map_coeff_file_name)
+  r_free_flags_output = None
+  if (params.maps.output.include_r_free_flags) :
+    r_free_flags_output = fmodel.r_free_flags().average_bijvoet_mates()
+  write_mtz_file_result = cmo.write_mtz_file(file_name = map_coeff_file_name,
+    r_free_flags=r_free_flags_output)
   if(params.maps.output.fmodel_data_file_format is not None):
     fmodel_file_name = file_name_base + "_fmodel." + \
       params.maps.output.fmodel_data_file_format
