@@ -32,7 +32,6 @@ def exercise () :
     ).raise_if_errors()
   n_zn, n_bad = 0, 0
   for line in result.stdout_lines:
-    print line
     if "| ZN" in line:
       n_zn += 1
     if "!!!" in line:
