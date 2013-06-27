@@ -160,7 +160,7 @@ phaser
 }
 """ % (chloride_params_str))
 
-WATER_RES_NAMES = ["HOH", "WAT"]
+from iotbx.pdb import common_residue_names_water as WATER_RES_NAMES
 DEFAULT_IONS = ["MG", "CA", "ZN", "CL"]
 HALIDES = ["F", "CL", "BR", "I"]
 TRANSITION_METALS = ["MN", "FE", "CO", "CU", "NI", "ZN"]
