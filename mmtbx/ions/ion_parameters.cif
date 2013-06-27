@@ -67,13 +67,23 @@ _lib_charge.resname
 _lib_charge.element
 _lib_charge.charge
 H	H	-1
+.	HE	0
 LI	LI	1
+.	BE	2 # ?
+.	B	3 # ?
 C	C	4
 N	N	-3
 O	O	-2
 HOH	O	-2
-WAT	0	-2
+H2O	O	-2
+OH2	O	-2
+DOD	O	-2
+D2O	O	-2
+OD2	O	-2
+WAT	O	-2
+TIP	O	-2
 F	F	-1
+.	NE	0 # ?
 NA	NA	1
 MG	MG	2
 AL	AL	3
@@ -81,8 +91,11 @@ SI	SI	4
 P	P	-3
 S	S	-2
 CL	CL	-1
+.	AR	0 # ?
 K	K	1
 CA	CA	2
+.	SC	3 # ?
+.	TI	3 # ?
 V	V	3
 CR	CR	3
 MN	MN	2
@@ -98,24 +111,56 @@ CU1	CU	1
 CU3	CU	3
 ZN	ZN	2
 ZN2	ZN	2
+.	GA	3 # ?
+.	GE	4 # ?
 ARS	AS	0
 SE	SE	2 # XXX: PDB has marked as charge of 0 (H2Se)
 BR	BR	-1
+.	KR	0 # ?
 RB	RB	1
 SR	SR	2
 Y1	Y	2
 YT3	Y	3
+.	ZR	3 # ?
+.	NB	3 # ?
 MO	MO	0
 4MO	MO	4
 6MO	MO	6
+.	TC	2 # ?
 RU	RU	3
+.	RH	2 # ?
 PD	PD	2
 AG	AG	1
 CD	CD	2
 IN	IN	3
+.	SN	4 # ?
+.	SB	-3 # ?
+.	TE	-2 # ?
 I	I	-1
+.	XE	0 # ?
 CS	CS	1
 BA	BA	2
+LA	LA	3
+CE	CE	3
+PR	PR	3
+.	ND	0 # ???
+.	PM	0 # ???
+SM	SM	3
+EU	EU	2
+EU3	EU	3
+GD	GD	0
+GD3	GD	3
+TB	TB	3
+.	DY	0 # ???
+HO	HO	0
+HO3	HO	3
+ER	ER	3
+.	TM	0 # ???
+YB	YB	3
+YB2	YB	2
+LU	LU	3
+.	HF	0 # ???
+.	TA	0 # ???
 W	W	6
 RE	RE	0
 OS	OS	3
@@ -129,7 +174,36 @@ AU3	AU	3
 HG	HG	2
 TL	TL	1
 PB	PB	2
-BS3	BS	3
+BS3	BI	3
+.	PO	-2 # ???
+.	AT	-1 # ???
+.	RN	0 # ???
+.	FR	1 # ???
+.	RA	2 # ???
+.	AC	0 # ???
+.	TH	0 # ???
+.	PA	0 # ???
+U	U	0
+.	NP	0 # ???
+.	PU	0 # ???
+.	AM	0 # ???
+.	CM	0 # ???
+.	BK	0 # ???
+.	CF	0 # ???
+.	ES	0 # ???
+.	FM	0 # ???
+.	MD	0 # ???
+.	NO	0 # ???
+.	LR	0 # ???
+.	RF	0 # ???
+.	DB	0 # ???
+.	SG	0 # ???
+.	BH	0 # ???
+.	HS	0 # ???
+.	MT	0 # ???
+.	DS	0 # ???
+.	RG	0 # ???
+
 #
 loop_
 _lib_valence.atom_symbol
