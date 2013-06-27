@@ -58,6 +58,79 @@ NI  O,N,S     CYS,ASP,GLU,HIS              tetrahedral,any               .
 ZN  O,N,S     CYS,ASP,GLU,HIS              tetrahedral,octahedral,any    .
 CD  O,N,S,CL  .                            octahedral,any                .
 #
+# Ion residue names and their corresponding elements and charges. When multiple
+# charges may be possible for a given element, put the line for the default
+# charge first. This information was taken from:
+# http://www.rcsb.org/pdb/ligand/ligandsummary.do?hetId={resname}
+loop_
+_lib_charge.resname
+_lib_charge.element
+_lib_charge.charge
+H	H	-1
+LI	LI	1
+C	C	4
+N	N	-3
+O	O	-2
+HOH	O	-2
+WAT	0	-2
+F	F	-1
+NA	NA	1
+MG	MG	2
+AL	AL	3
+SI	SI	4
+P	P	-3
+S	S	-2
+CL	CL	-1
+K	K	1
+CA	CA	2
+V	V	3
+CR	CR	3
+MN	MN	2
+MN3	MN	3
+FE2	FE	2
+FE	FE	3
+CO	CO	2
+3CO	CO	3
+NI	NI	2
+3NI	NI	3
+CU	CU	2
+CU1	CU	1
+CU3	CU	3
+ZN	ZN	2
+ZN2	ZN	2
+ARS	AS	0
+SE	SE	2 # XXX: PDB has marked as charge of 0 (H2Se)
+BR	BR	-1
+RB	RB	1
+SR	SR	2
+Y1	Y	2
+YT3	Y	3
+MO	MO	0
+4MO	MO	4
+6MO	MO	6
+RU	RU	3
+PD	PD	2
+AG	AG	1
+CD	CD	2
+IN	IN	3
+I	I	-1
+CS	CS	1
+BA	BA	2
+W	W	6
+RE	RE	0
+OS	OS	3
+OS4	OS	4
+IR	IR	4
+IR3	IR	3
+PT	PT	2
+PT4	PT	4
+AU	AU	1
+AU3	AU	3
+HG	HG	2
+TL	TL	1
+PB	PB	2
+BS3	BS	3
+#
 loop_
 _lib_valence.atom_symbol
 _lib_valence.atom_charge

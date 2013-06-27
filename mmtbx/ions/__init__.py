@@ -10,8 +10,7 @@ only prints out messages to the log.
 """
 
 from __future__ import division
-from mmtbx.ions.parameters import default_charge, get_charge, get_element, \
-     server, MetalParameters
+from mmtbx.ions.parameters import server, MetalParameters
 from mmtbx.ions.geometry import find_coordination_geometry
 from cctbx import crystal, adptbx
 from cctbx.eltbx import sasaki, henke
@@ -188,12 +187,13 @@ class atom_contact (slots_getstate_setstate) :
   are simply wrappers for frequently called operations on the atom object, but
   symmetry-aware.
   """
-  __slots__ = ["atom", "vector", "site_cart", "rt_mx"]
-  def __init__ (self, atom, vector, site_cart, rt_mx) :
+  __slots__ = ["atom", "vector", "site_cart", "rt_mx", "server"]
+  def __init__ (self, atom, vector, site_cart, rt_mx, server) :
     self.atom = atom
     self.vector = vector
     self.site_cart = site_cart
     self.rt_mx = rt_mx
+    self.server = server
 
   def distance (self) :
     """Actual distance from target atom"""
@@ -217,11 +217,11 @@ class atom_contact (slots_getstate_setstate) :
 
   @property
   def element (self) :
-    return get_element(self.atom)
+    return self.server.get_element(self.atom)
 
   @property
   def charge (self) :
-    return get_charge(self.atom)
+    return self.server.get_charge(self.atom)
 
   @property
   def occ (self) :
@@ -313,6 +313,7 @@ class Manager (object) :
           pdb_hierarchy = pdb_hierarchy,
           wavelength = wavelength,
           verbose = verbose,
+          log = log,
           n_cycles = params.phaser.llgc_ncycles).atoms()
         t2 = time.time()
         print >> log, "    time: %.1fs" % (t2-t1)
@@ -588,7 +589,8 @@ class Manager (object) :
           atom = atom_j,
           vector = vec_i - vec_ji,
           site_cart = site_ji_cart,
-          rt_mx = rt_mx)
+          rt_mx = rt_mx,
+          server = self.server)
         # XXX I have no idea why the built-in handling of special positions
         # doesn't catch this for us
         if (j_seq == i_seq) and (not rt_mx.is_unit_mx()) :
@@ -900,8 +902,8 @@ class Manager (object) :
       if (distance < params.min_distance_to_other_sites) :
         return False
 
-      if not element in ["C","N","H","O","S"]:
-        charge = default_charge(element)
+      if not element in ["C", "N", "H", "O", "S"]:
+        charge = self.server.get_charge(element)
 
         if charge < 0 and distance <= params.min_distance_to_anion:
           # Nearby anion that is too close
@@ -1393,7 +1395,7 @@ class Manager (object) :
     """
 
     atom_props = self.atoms_to_props[i_seq]
-    element = get_element(atom_props.atom)
+    element = self.server.get_element(atom_props.atom)
     elem_params = self.server.get_metal_parameters(element)
 
     if elem_params is not None:
@@ -1410,7 +1412,7 @@ class Manager (object) :
         fpp_ratio_min = self.params.phaser.fpp_ratio_min,
         fpp_ratio_max = self.params.phaser.fpp_ratio_max)
     elif element in HALIDES:
-      identity = _identity(atom_props.atom)
+      identity = atom_props.identity()
       atom_props.inaccuracies[identity] = set()
 
       if not self.looks_like_halide_ion(i_seq = i_seq, element = element):
@@ -1474,14 +1476,14 @@ class Manager (object) :
         fdp = sc.fdp
       # XXX props.atom.b does not work here!
       b_iso = adptbx.u_as_b(sc.u_iso_or_equiv(unit_cell = self.unit_cell))
-      identity = _identity(props.atom)
+      identity = props.identity()
       def ff (fs, val) : return format_value(fs, val, replace_none_with = "---")
       print >> box, fmt % (props.atom.id_str(suppress_segid = True)[5:-1],
         ff("%.2f", props.atom.occ), ff("%.2f", b_iso),
         ff("%.2f", props.peak_2fofc), ff("%.2f", props.peak_fofc),
         ff("%.2f", fp), ff("%.2f", fdp),
         ff("%.2f", None if self.wavelength is None else fdp / sasaki.table(
-            get_element(props.atom)).at_angstrom(self.wavelength).fdp()),
+            self.server.get_element(props.atom)).at_angstrom(self.wavelength).fdp()),
         ff("%.2f", props.valence_sum.get(identity)),
         ff("%.2f", props.vector_sum.get(identity)))
       # print >> box, props.geometries
@@ -1644,31 +1646,32 @@ class AtomProperties (object) :
     BAD_HALIDE, HIGH_2FOFC, COORDING_GEOMETRY \
     = range(24)
 
-  error_strs = {LOW_B: "Abnormally low b-factor",
-                HIGH_B: "Abnormally high b-factor",
-                LOW_OCC: "Abnormally low occupancy",
-                HIGH_OCC: "Abnormally high occupancy",
-                NO_2FOFC_PEAK: "No 2mFo-DFc map peak",
-                FOFC_PEAK: "Peak in mFo-DFc map",
-                FOFC_HOLE: "Negative peak in dFo-mFc map",
-                ANOM_PEAK: "Peak in the anomalous map",
-                NO_ANOM_PEAK: "No peak in the anomalous map",
-                BAD_GEOMETRY: "Unexpected geometry for coordinating atoms",
-                NO_GEOMETRY: "No distinct geometry for coordinating atoms",
-                BAD_VECTORS: "VECSUM above cutoff",
-                BAD_VALENCES: "BVS above or below cutoff",
-                TOO_FEW_NON_WATERS: "Too few non-water coordinating atoms",
-                TOO_FEW_COORD: "Too few coordinating atoms",
-                TOO_MANY_COORD: "Too many coordinating atoms",
-                LIKE_COORD: "Like charge coordinating like",
-                BAD_COORD_ATOM: "Disallowed coordinating atom",
-                BAD_FPP: "Bad refined f'' value",
-                BAD_COORD_RESIDUE: "Disallowed coordinating residue",
-                VERY_BAD_VALENCES: "BVS far above or below cutoff",
-                BAD_HALIDE: "Bad halide site",
-                HIGH_2FOFC: "Unexpectedly high 2mFo-DFc value",
-                COORDING_GEOMETRY: "No distinct geometry and coordinating another atom with distinct geometry",
-                }
+  error_strs = {
+    LOW_B: "Abnormally low b-factor",
+    HIGH_B: "Abnormally high b-factor",
+    LOW_OCC: "Abnormally low occupancy",
+    HIGH_OCC: "Abnormally high occupancy",
+    NO_2FOFC_PEAK: "No 2mFo-DFc map peak",
+    FOFC_PEAK: "Peak in mFo-DFc map",
+    FOFC_HOLE: "Negative peak in dFo-mFc map",
+    ANOM_PEAK: "Peak in the anomalous map",
+    NO_ANOM_PEAK: "No peak in the anomalous map",
+    BAD_GEOMETRY: "Unexpected geometry for coordinating atoms",
+    NO_GEOMETRY: "No distinct geometry for coordinating atoms",
+    BAD_VECTORS: "VECSUM above cutoff",
+    BAD_VALENCES: "BVS above or below cutoff",
+    TOO_FEW_NON_WATERS: "Too few non-water coordinating atoms",
+    TOO_FEW_COORD: "Too few coordinating atoms",
+    TOO_MANY_COORD: "Too many coordinating atoms",
+    LIKE_COORD: "Like charge coordinating like",
+    BAD_COORD_ATOM: "Disallowed coordinating atom",
+    BAD_FPP: "Bad refined f'' value",
+    BAD_COORD_RESIDUE: "Disallowed coordinating residue",
+    VERY_BAD_VALENCES: "BVS far above or below cutoff",
+    BAD_HALIDE: "Bad halide site",
+    HIGH_2FOFC: "Unexpectedly high 2mFo-DFc value",
+    COORDING_GEOMETRY: "No distinct geometry and coordinating another atom with distinct geometry",
+    }
 
   def __init__(self, i_seq, manager):
     self.i_seq = i_seq
@@ -1724,7 +1727,7 @@ class AtomProperties (object) :
     Returns whether factors indicate that the atom was correctly identified.
     """
     if identity is None:
-      identity = _identity(self.atom)
+      identity = self.identity()
 
     return len(self.inaccuracies[identity]) == 0
 
@@ -1803,7 +1806,7 @@ class AtomProperties (object) :
       # XXX somewhat dangerous - we really need f'' for this to work reliably
       if (self.fpp is None) :
         return (self.peak_anom is not None) and (self.peak_anom > 3.0)
-      identity = _identity(ion_params)
+      identity = self.identity(ion = ion_params)
       if (identity in self.fpp_ratios) :
         return (not self.BAD_FPP in self.inaccuracies[identity])
     return False
@@ -1816,7 +1819,7 @@ class AtomProperties (object) :
 
     Returns -1 if lighter, 0 if isoelectronic, and 1 if heavier.
     """
-    identity = "HOH" if self.resname in WATER_RES_NAMES else _identity(self.atom)
+    identity = "HOH" if self.resname in WATER_RES_NAMES else self.identity()
 
     # Waters that don't have B-factors at least 1 stddev below the mean are
     # presumed to be correct
@@ -1849,7 +1852,7 @@ class AtomProperties (object) :
     """
     from iotbx.pdb import common_residue_names_get_class as get_class
 
-    identity = _identity(ion_params)
+    identity = self.identity(ion_params)
     inaccuracies = self.inaccuracies[identity] = set()
     self.expected_params[identity] = ion_params
     ignored = self.ignored[identity] = set()
@@ -1932,7 +1935,7 @@ class AtomProperties (object) :
                 # XXX probably just O
               self.bad_coords[identity].append(contact)
               inaccuracies.add(self.BAD_COORD_RESIDUE)
-        elif (cmp(0, get_charge(contact.atom)) ==
+        elif (cmp(0, server.get_charge(contact.atom)) ==
               cmp(0, ion_params.charge)) :
           # Check if coordinating atom is of opposite charge
           self.bad_coords[identity].append(contact)
@@ -2111,12 +2114,12 @@ class AtomProperties (object) :
     """
 
     if not identity:
-      identity = _identity(self.atom)
+      identity = self.identity(self.atom)
 
     inaccuracies = self.inaccuracies.get(identity, set([]))
     ignored = self.ignored.get(identity, set([]))
 
-    if identity != _identity(self.atom):
+    if identity != self.identity():
       if (confirmed) :
         print >> out, "  Probable cation: %s" % identity
       else :
@@ -2185,14 +2188,15 @@ class AtomProperties (object) :
           n_phosphate_oxygens += 1
     return (n_phosphate_oxygens == min_phosphate_oxygen_atoms)
 
-def _identity(atom):
-  """
-  Covers an atom into a string representing its element and charge.
-  """
-  element = get_element(atom)
-  charge = get_charge(atom)
-
-  return "{}{:+}".format(element, charge)
+  def identity(self, ion = None):
+    """
+    Covers an atom into a string representing its element and charge.
+    """
+    if ion is None:
+      ion = self.atom
+    element = self.manager.server.get_element(ion)
+    charge = self.manager.server.get_charge(ion)
+    return "{}{:+}".format(element, charge)
 
 def find_anomalous_scatterers (*args, **kwds) :
   """
@@ -2200,7 +2204,8 @@ def find_anomalous_scatterers (*args, **kwds) :
   available and configured.
   """
   if (not libtbx.env.has_module("phaser")) :
-    print "Phaser not available"
+    if "log" in kwds:
+      print >> kwds["log"], "Phaser not available"
     return None
   from phaser import substructure
   return substructure.find_anomalous_scatterers(*args, **kwds)
