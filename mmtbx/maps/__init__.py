@@ -209,6 +209,9 @@ maps {
       .optional=True
       .type=choice
       .help=Write Fobs, Fmodel, various scales and more to MTZ file
+    include_r_free_flags = False
+      .type = bool
+      .short_caption = Include R-free flags in output MTZ file
   }
   scattering_table = wk1995  it1992  *n_gaussian  neutron
     .type = choice
@@ -526,9 +529,13 @@ class compute_map_coefficients(object):
               "merged data, or indicates a twinning-related incompatibility.")%
               mcp.map_type)
 
-  def write_mtz_file(self, file_name, mtz_history_buffer = None):
+  def write_mtz_file(self, file_name, mtz_history_buffer = None,
+      r_free_flags=None):
     from cctbx.array_family import flex
     if(self.mtz_dataset is not None):
+      if (r_free_flags is not None) :
+        self.mtz_dataset.add_miller_array(r_free_flags,
+          column_root_label="FreeR_flag")
       if(mtz_history_buffer is None):
         mtz_history_buffer = flex.std_string()
       mtz_history_buffer.append(date_and_time())
