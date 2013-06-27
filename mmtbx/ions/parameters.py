@@ -49,6 +49,8 @@ class server (object) :
     cif_model = iotbx.cif.reader(file_path=params_path).model()
     self.params = cif_model["ions"]
     self._metal_params = {}
+    self._charge_parms = {}
+    self._default_charges = {}
 
   def is_supported_element (self, symbol) :
     return (symbol in self.params['_lib_valence.atom_symbol'])
@@ -68,6 +70,63 @@ class server (object) :
           valence = float(self.params['_lib_valence.value'][i_elem])
           return valence, 0.37
     return None, None
+
+  def _get_default_charge(self, element):
+    if element in self._default_charges:
+      return self._default_charges[element]
+    p = self.params
+    for i_elem, elem in enumerate(p["_lib_charge.element"]):
+      if elem == element:
+        charge = int(p["_lib_charge.charge"][i_elem])
+        self._default_charges[element] = charge
+        return charge
+    return 0
+
+  def _get_charge_param(self, resname, element = None):
+    if resname in self._charge_parms:
+      return self._charge_parms[resname]
+    p = self.params
+    for i_resn, resn in enumerate(p["_lib_charge.resname"]):
+      if resn == resname:
+        elem_charge = \
+          p["_lib_charge.element"][i_resn], int(p["_lib_charge.charge"][i_resn])
+        break
+    else:
+      if element is not None:
+        elem_charge = element, self._get_default_charge(element)
+      else:
+        raise Sorry("Unknown element for residue: {}".format(resname))
+
+    self._charge_parms[resname] = elem_charge
+    return elem_charge
+
+  def get_element(self, atom):
+    if isinstance(atom, str):
+      resname = atom.strip().upper()
+      if resname in self.params["_lib_charge.element"]:
+        return resname
+    else:
+      if hasattr(atom, "element") and isinstance(atom.element, str):
+        return atom.element.strip().upper()
+
+      resname = atom.fetch_labels().resname.strip().upper()
+
+    return self._get_charge_param(resname)[0]
+
+  def get_charge(self, atom):
+    if isinstance(atom, str):
+      resname = atom.strip().upper()
+      element = resname
+    else:
+      charge = atom.charge
+      if not isinstance(charge, int):
+        charge = atom.charge_as_int()
+      if charge != 0:
+        return charge
+      resname = atom.fetch_labels().resname.strip().upper()
+      element = atom.element.strip().upper()
+
+    return self._get_charge_param(resname, element = element)[1]
 
   def get_metal_parameters (self, element) :
     p = self.params
@@ -117,7 +176,7 @@ class server (object) :
     if (r_0 is None) :
       # Try again, this time using the default charge for the donor
       tmp = donor.charge
-      donor.charge = default_charge(donor.element)
+      donor.charge = self.get_charge(donor.element)
       r_0, b = self.get_valence_params(ion, donor)
       donor.charge = tmp
 
@@ -154,77 +213,10 @@ class server (object) :
 
     return vectors
 
-# TODO move to ion_parameters.cif
-CHARGES = {
-  "H": -1,
-  "LI": 1,
-  "C": 4,
-  "N": -3,
-  "O": -2,
-  "F": -1,
-  "NA": 1,
-  "MG": 2,
-  "AL": 3,
-  "SI": 4,
-  "P": -3,
-  "S": -2,
-  "CL": -1,
-  "K": 1,
-  "CA": 2,
-  "V": 3,
-  "CR": 3,
-  "MN": 2,
-  "MN3": 3,
-  "FE2": 2,
-  "FE": 3,
-  "CO": 2,
-  "3CO": 3,
-  "NI": 2,
-  "3NI": 3,
-  "CU1": 1,
-  "CU": 2,
-  "CU3": 3,
-  "ZN": 2,
-  "ZN2": 2,
-  "ARS": 0,
-  "SE": 2, # XXX: PDB has marked as charge of 0 (H2Se)
-  "BR": -1,
-  "RB": 1,
-  "SR": 2,
-  "Y1": 2,
-  "YT3": 3,
-  "MO": 0,
-  "4MO": 4,
-  "6MO": 6,
-  "RU": 3,
-  "PD": 2,
-  "AG": 1,
-  "CD": 2,
-  "IN": 3,
-  "I": -1,
-  "CS": 1,
-  "BA": 2,
-  "W": 6,
-  "RE": 0,
-  "OS": 3,
-  "OS4": 4,
-  "IR3": 3,
-  "IR": 4,
-  "PT": 2,
-  "PT4": 4,
-  "AU": 1,
-  "AU3": 3,
-  "HG": 2,
-  "TL": 1,
-  "PB": 2,
-  "BS3": 3,
-  "AX": 0, # Dummy atom
-}
-
 class AtomGuess(object):
-  def __init__(self, element, charge = None):
-    self.element = element.upper()
-    self.charge = charge if charge else default_charge(element)
+  def __init__(self, element, charge):
+    self.element = element
+    self.charge = charge
 
   def charge_as_int (self) :
     return self.charge
@@ -239,64 +231,3 @@ class AtomGuess(object):
     elif (self.charge < 0) :
       charge_symbol = "-"
     return "%s%d%s" % (self.element, self.charge, charge_symbol)
-
-def get_element(atom):
-  """
-  Grabs an atom's element, stripping off whitespace and making sure the
-  letters are capitalized.
-  """
-  return atom.element.strip().upper()
-
-def get_charge(atom):
-  if isinstance(atom, str):
-    try:
-      return default_charge(atom)
-    except Sorry:
-      return 0
-
-  charge = atom.charge
-
-  if not isinstance(charge, int):
-    charge = atom.charge_as_int()
-
-  if charge == 0:
-    try:
-      charge = default_charge(get_element(atom))
-    except Sorry:
-      return 0
-
-  return charge
-
-def default_charge(element):
-  # Guess the charge state, may need to play around and try multiple when
-  # guessing
-  try:
-    return CHARGES[element]
-  except KeyError:
-    raise Sorry("Unknown charge state for element: %s" % (element))
-
-def compare_atom_weight(atom1, atom2):
-  """
-  Evaluates whether atom1 is lighter, heavier, or isoelectric to atom2, when
-  atomic number and charge is taken into account.
-
-  Returns -1 if lighter, 0 if isoelectric, and 1 if heavier.
-  """
-  from cctbx.eltbx import sasaki
-  element1 = atom1.element.strip().upper()
-  atom_num1 = sasaki.table(element1).atomic_number()
-  charge1 = atom1.charge_as_int()
-
-  if not charge1:
-    charge1 = default_charge(element1)
-
-  # Technically atom2 is a MetalParameter object, but it walks and talks
-  # mostly like an atom
-  element2 = atom2.element.strip().upper()
-  atom_num2 = sasaki.table(element2).atomic_number()
-  charge2 = int(atom2.charge)
-
-  if not charge2:
-    charge2 = default_charge(element2)
-
-  return cmp(atom_num1 - charge1, atom_num2 - charge2)
