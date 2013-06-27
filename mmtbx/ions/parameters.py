@@ -1,5 +1,4 @@
 # -*- coding: utf-8; py-indent-offset: 2 -*-
-
 from __future__ import division
 from libtbx import group_args
 from libtbx.utils import Sorry
@@ -82,7 +81,7 @@ class server (object) :
         return charge
     return 0
 
-  def _get_charge_param(self, resname, element = None):
+  def _get_charge_params(self, resname, element = None):
     if resname in self._charge_parms:
       return self._charge_parms[resname]
     p = self.params
@@ -111,7 +110,7 @@ class server (object) :
 
       resname = atom.fetch_labels().resname.strip().upper()
 
-    return self._get_charge_param(resname)[0]
+    return self._get_charge_params(resname)[0]
 
   def get_charge(self, atom):
     if isinstance(atom, str):
@@ -126,7 +125,7 @@ class server (object) :
       resname = atom.fetch_labels().resname.strip().upper()
       element = atom.element.strip().upper()
 
-    return self._get_charge_param(resname, element = element)[1]
+    return self._get_charge_params(resname, element = element)[1]
 
   def get_metal_parameters (self, element) :
     p = self.params
