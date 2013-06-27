@@ -1,6 +1,6 @@
 # -*- coding: utf-8; py-indent-offset: 2 -*-
 
-from __future__ import division, print_function
+from __future__ import division
 from libtbx import group_args
 from libtbx.utils import Sorry
 from math import exp
@@ -147,9 +147,9 @@ class server (object) :
         if ((donor.element not in ["H", "C", "AX"]) and
             (not self.is_supported_donor(donor.element))) :
           pass
-          #print("Unknown interaction: %s %s" % (ion.element, donor.element))
+          #print "Unknown interaction: %s %s" % (ion.element, donor.element)
       elif distance != 0:
-        #print(contact.vector, contact.distance(), valence)
+        #print contact.vector, contact.distance(), valence
         vectors.append(contact.vector / distance * valence)
 
     return vectors
@@ -164,28 +164,60 @@ CHARGES = {
   "F": -1,
   "NA": 1,
   "MG": 2,
+  "AL": 3,
   "SI": 4,
   "P": -3,
   "S": -2,
   "CL": -1,
   "K": 1,
   "CA": 2,
-  "MN": 2, # can also occur as +3
-  "FE": 2, # can also occur as +3
-  "CO": 2, # can also occur as +3
-  "NI": 2, # can also occur as +3
-  "CU": 2, # can also occur as +1
+  "V": 3,
+  "CR": 3,
+  "MN": 2,
+  "MN3": 3,
+  "FE2": 2,
+  "FE": 3,
+  "CO": 2,
+  "3CO": 3,
+  "NI": 2,
+  "3NI": 3,
+  "CU1": 1,
+  "CU": 2,
+  "CU3": 3,
   "ZN": 2,
-  "AS": 3, # ?
-  "SE": 2, # XXX ???
+  "ZN2": 2,
+  "ARS": 0,
+  "SE": 2, # XXX: PDB has marked as charge of 0 (H2Se)
   "BR": -1,
   "RB": 1,
   "SR": 2,
+  "Y1": 2,
+  "YT3": 3,
+  "MO": 0,
+  "4MO": 4,
+  "6MO": 6,
+  "RU": 3,
+  "PD": 2,
+  "AG": 1,
   "CD": 2,
+  "IN": 3,
   "I": -1,
   "CS": 1,
   "BA": 2,
+  "W": 6,
+  "RE": 0,
+  "OS": 3,
+  "OS4": 4,
+  "IR3": 3,
+  "IR": 4,
+  "PT": 2,
+  "PT4": 4,
+  "AU": 1,
+  "AU3": 3,
   "HG": 2,
+  "TL": 1,
+  "PB": 2,
+  "BS3": 3,
   "AX": 0, # Dummy atom
 }
 
