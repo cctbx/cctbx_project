@@ -1,6 +1,6 @@
 
 from __future__ import division
-from dxtbx.model import Beam, PolarizedBeam, Goniometer
+from dxtbx.model import Beam, Goniometer
 from dxtbx.model import Panel, Detector, Scan
 
 def pickle_then_unpickle(obj):
@@ -22,13 +22,6 @@ def pickle_then_unpickle(obj):
 def tst_beam():
     '''Test pickling the beam object.'''
     obj1 = Beam((1, 1, 1))
-    obj2 = pickle_then_unpickle(obj1)
-    assert(obj1 == obj2)
-    print "OK"
-
-def tst_polarized_beam():
-    '''Test pickling the polarized beam object.'''
-    obj1 = PolarizedBeam((1, 1, 1), (1, 1, 1), 1)
     obj2 = pickle_then_unpickle(obj1)
     assert(obj1 == obj2)
     print "OK"
@@ -68,7 +61,6 @@ def tst_scan():
 def run():
     '''Run all the tests'''
     tst_beam()
-    tst_polarized_beam()
     tst_goniometer()
     tst_panel()
     tst_detector()

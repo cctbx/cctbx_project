@@ -5,7 +5,6 @@ sources = [
     'pixel_to_millimeter.cc',
     
     'boost_python/beam.cc',
-    'boost_python/polarized_beam.cc',
     'boost_python/goniometer.cc',
     'boost_python/kappa_goniometer.cc',
     'boost_python/panel.cc',

@@ -16,7 +16,6 @@ namespace dxtbx { namespace model { namespace boost_python {
   using namespace boost::python;
 
   void export_beam();
-  void export_polarized_beam();
   void export_goniometer();
   void export_kappa_goniometer();
   void export_panel();
@@ -29,7 +28,6 @@ namespace dxtbx { namespace model { namespace boost_python {
   BOOST_PYTHON_MODULE(dxtbx_model_ext)
   {
     export_beam();
-    export_polarized_beam();
     export_goniometer();
     export_kappa_goniometer();
     export_panel();
