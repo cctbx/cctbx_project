@@ -9,7 +9,7 @@ See mmtbx.ions.build to actually modify the structure, code in this module
 only prints out messages to the log.
 """
 
-from __future__ import division, print_function
+from __future__ import division
 from mmtbx.ions.parameters import default_charge, get_charge, get_element, \
      server, MetalParameters
 from mmtbx.ions.geometry import find_coordination_geometry
@@ -306,7 +306,7 @@ class Manager (object) :
         raise Sorry("Anomalous data required when "+
                     "find_anomalous_substructure=True.")
       if ((params.use_phaser) and (libtbx.env.has_module("phaser"))) :
-        print("  Running Phaser substructure completion...", file = log)
+        print >> log, "  Running Phaser substructure completion..."
         t1 = time.time()
         self.phaser_substructure = find_anomalous_scatterers(
           fmodel = fmodel,
@@ -315,12 +315,12 @@ class Manager (object) :
           verbose = verbose,
           n_cycles = params.phaser.llgc_ncycles).atoms()
         t2 = time.time()
-        print("    time: %.1fs" % (t2-t1), file = log)
+        print >> log, "    time: %.1fs" % (t2-t1)
         if (len(self.phaser_substructure) == 0) :
-          print("  No anomalous scatterers found!", file = log)
+          print >> log, "  No anomalous scatterers found!"
         else :
-          print("  %d anomalous scatterers found" %
-                len(self.phaser_substructure), file = log)
+          print >> log, "  %d anomalous scatterers found" % \
+            len(self.phaser_substructure)
           self.analyze_substructure(log = log, verbose = True)
       else :
         self.flag_refine_substructure = True
@@ -518,21 +518,20 @@ class Manager (object) :
       del fo_map
 
   def show_current_scattering_statistics (self, out = sys.stdout) :
-    print("", file = out)
-    print("Model and map statistics:", file = out)
-    print("  mean mFo map height @ carbon: %s" % format_value("%.2f",
-      flex.max(self.carbon_fo_values)), file = out)
+    print >> out, ""
+    print >> out, "Model and map statistics:"
+    print >> out, "  mean mFo map height @ carbon: %s" % format_value("%.2f",
+      flex.max(self.carbon_fo_values))
     if (self.calpha_mean_two_fofc > 0) :
-      print("  mean 2mFo-DFc map height @ C-alpha: %s" % format_value(
-        "%.2f", self.calpha_mean_two_fofc), file = out)
-    print("  mean B-factor: %s" % format_value("%.2f", self.b_mean_all),
-          file = out)
+      print >> out, "  mean 2mFo-DFc map height @ C-alpha: %s" % format_value(
+        "%.2f", self.calpha_mean_two_fofc)
+    print >> out, "  mean B-factor: %s" % format_value("%.2f", self.b_mean_all)
     if (self.b_mean_calpha > 0) :
-      print("  mean C-alpha B-factor: %s" % format_value("%.2f",
-        self.b_mean_calpha), file = out)
-    print("  mean water B-factor: %s" % format_value("%.2f",
-      self.b_mean_hoh), file = out)
-    print("", file = out)
+      print >> out, "  mean C-alpha B-factor: %s" % format_value("%.2f",
+        self.b_mean_calpha)
+    print >> out, "  mean water B-factor: %s" % format_value("%.2f",
+      self.b_mean_hoh)
+    print >> out, ""
 
   def get_strict_valence_flag (self) :
     d_min = self.fmodel.f_obs().d_min()
@@ -640,7 +639,6 @@ class Manager (object) :
         if (contact.resname() in WATER_RES_NAMES) :
           two_fofc = self._map_values["2mFo-DFc"][contact.atom_i_seq()]
           if two_fofc < self.params.water.min_2fofc_coordinating:
-            print("Discarding", contact.id_str())
             continue
         filtered.append(contact)
       contacts = filtered
@@ -804,22 +802,20 @@ class Manager (object) :
         return "AX %s (fpp=%.3f)" % (atom.serial.strip(), atom.occ)
 
       if (len(same_atoms) == 0) :
-        print("  No match for %s" % ax_atom_id(atom), file = log)
+        print >> log, "  No match for %s" % ax_atom_id(atom)
         for site_info in other_atoms :
-          print("    %s (distance = %.3f)" %
-                (self.pdb_atoms[site_info.i_seq].id_str(), site_info.distance),
-                file = log)
+          print >> log, "    %s (distance = %.3f)" % \
+                (self.pdb_atoms[site_info.i_seq].id_str(), site_info.distance)
       elif (len(same_atoms) == 1) :
-        print("  %s maps to %s" %
-              (ax_atom_id(atom), self.pdb_atoms[same_atoms[0].i_seq].id_str()),
-               file = log)
+        print >> log, "  %s maps to %s" % \
+          (ax_atom_id(atom), self.pdb_atoms[same_atoms[0].i_seq].id_str())
         self.use_fdp[same_atoms[0].i_seq] = True
         self.fpp_from_phaser_ax_sites[same_atoms[0].i_seq] = atom.occ
       else :
-        print("  ambiguous results for %s:" % ax_atom_id(atom), file = log)
+        print >> log, "  ambiguous results for %s:" % ax_atom_id(atom)
         for a in same_atoms :
-          print("    %s" % self.pdb_atoms[a.i_seq].id_str(), file = log)
-    print("", file = log)
+          print >> log, "    %s" % self.pdb_atoms[a.i_seq].id_str()
+    print >> log, ""
 
   def get_fpp (self, i_seq) :
     """
@@ -858,12 +854,12 @@ class Manager (object) :
     """
     atom = self.pdb_atoms[i_seq]
     sites_frac = self.xray_structure.sites_frac()
-    #print("checking for halide:", atom.id_str())
+    #print "checking for halide:", atom.id_str()
     assert element.upper() in HALIDES
     # discard atoms with B-factors greater than mean-1sigma for waters
     if ((self.b_mean_hoh is not None) and
         (atom.b > self.b_mean_hoh - self.b_stddev_hoh)) :
-      #print("Bad b-factor")
+      #print "Bad b-factor"
       return False
 
     params = self.params.chloride
@@ -960,7 +956,7 @@ class Manager (object) :
         if abs(angle - 180) <= params.delta_amide_h_angle:
           binds_amide_hydrogen = True
         else :
-          pass #print("%s N-H-X angle: %s" % (atom.id_str(), angle))
+          pass #print "%s N-H-X angle: %s" % (atom.id_str(), angle)
       # Backbone amide, implicit H
       elif atom_name in ["N"] and assume_hydrogens_all_missing:
         xyz_n = col(contact.site_cart)
@@ -1003,7 +999,7 @@ class Manager (object) :
         if abs(angle - 180) <= params.delta_amide_h_angle:
           binds_amide_hydrogen = True
         else :
-          pass #print("%s amide angle: %s" % (atom.id_str(), angle))
+          pass #print "%s amide angle: %s" % (atom.id_str(), angle)
 
     # now check again for negatively charged sidechain (etc.) atoms (e.g.
     # carboxyl groups), but with some leeway if a cation is also nearby.
@@ -1017,18 +1013,18 @@ class Manager (object) :
       if ((distance < 3.2) and
           (distance < (min_distance_to_cation + 0.2)) and
           is_negatively_charged_oxygen(atom_name, resname)) :
-        #print(contact.id_str(), distance)
+        #print contact.id_str(), distance
         return False
 
     # TODO something smart...
     # the idea here is to determine whether the blob of density around the
     # site is approximately spherical and limited in extent.
     pai = self.principal_axes_of_inertia(i_seq)
-    #print(list(pai.eigensystem().values()))
+    #print list(pai.eigensystem().values())
     map_variance = self.get_map_sphere_variance(i_seq)
     #map_variance.show(prefix = "  ")
     good_map_falloff = False
-    #print(map_variance.mean, map_variance.standard_deviation)
+    #print map_variance.mean, map_variance.standard_deviation
     if ((map_variance is not None) and
         (map_variance.mean < 1.5) and
         (map_variance.standard_deviation < 0.4)) : # XXX very arbitrary
@@ -1216,7 +1212,7 @@ class Manager (object) :
         if (fpp_ratio is not None) and (element != "CL") :
           if ((fpp_ratio < self.params.phaser.fpp_ratio_min) or
               (fpp_ratio > self.params.phaser.fpp_ratio_max)) :
-            #print("fpp_ratio:", fpp_ratio)
+            #print "fpp_ratio:", fpp_ratio
             continue
         if (self.looks_like_halide_ion(i_seq = i_seq, element = element)) :
           filtered_halides.append(element)
@@ -1252,8 +1248,8 @@ class Manager (object) :
           if ((n_good_res >= 1) and (2 <= n_total_coord_atoms <= 6)) :
             reasonable.append((ion_params, 0))
           else : pass
-            #print("n_good_res = %d, n_total_coord_atoms = %d" % (n_good_res,
-            #  n_total_coord_atoms))
+            #print "n_good_res = %d, n_total_coord_atoms = %d" % (n_good_res,
+            #  n_total_coord_atoms)
         elif ((ion_params.element in ["K","CA"]) and
               (not looks_like_water) and
               (not auto_candidates) and
@@ -1277,8 +1273,8 @@ class Manager (object) :
           if (n_total_coord_atoms >= 3) :
             reasonable.append((ion_params, 0))
         else : pass
-          #print(atom.id_str(), atomic_number, looks_like_water, weight_ratio,\
-          #  atom_props.is_compatible_site(ion_params))
+          #print atom.id_str(), atomic_number, looks_like_water, weight_ratio, \
+          #  atom_props.is_compatible_site(ion_params)
       if (len(compatible) == 1) and (not self.get_strict_valence_flag()) :
         inaccuracies = atom_props.inaccuracies[str(ion_params)]
         if (compatible[0] in atom_props.fpp_ratios and
@@ -1345,15 +1341,15 @@ class Manager (object) :
             atoms = atom_group.atoms()
             if (len(atoms) == 1) : # otherwise it probably has hydrogens, skip
               waters.append(atoms[0].i_seq)
-    print("", file = out)
-    print("  %d waters to analyze" % len(waters), file = out)
+    print >> out, ""
+    print >> out, "  %d waters to analyze" % len(waters)
     if (len(waters) == 0) : return
     nproc = easy_mp.get_processes(self.nproc)
     ions = []
     self.atoms_to_props = dict((i_seq, AtomProperties(i_seq, self))
                                for i_seq in waters)
     if (nproc == 1) :
-      print("", file = out)
+      print >> out, ""
       for water_i_seq in waters :
         t1 = time.time()
         water_props = self.analyze_water(
@@ -1367,10 +1363,10 @@ class Manager (object) :
               (not water_props.no_final)) :
             ions.append((water_i_seq, [water_props.final_choice]))
         t2 = time.time()
-        #print("%s: %.3fs" % (self.pdb_atoms[water_i_seq].id_str(), t2-t1))
+        #print "%s: %.3fs" % (self.pdb_atoms[water_i_seq].id_str(), t2-t1)
     else :
-      print("  Parallelizing across %d processes" % nproc, file = out)
-      print("", file = out)
+      print "  Parallelizing across %d processes" % nproc
+      print ""
       analyze_water = _analyze_water_wrapper(manager = self,
         debug = debug,
         candidates = candidates,
@@ -1384,7 +1380,7 @@ class Manager (object) :
           continue
         water_i_seq, final_choice, result_str = result
         if (result_str is not None) :
-          print(result_str, file = out)
+          print >> out, result_str
         if final_choice is not None :
           ions.append((water_i_seq, [final_choice]))
 
@@ -1467,7 +1463,7 @@ class Manager (object) :
                "ratio", "BVS", "VECSUM")
     fmt = "%-15s %-5s  %-5s  %-8s  %-7s  %-5s  %-5s  %-5s %-5s  %-6s"
     box = framed_output(out, title = "Validating new ions", width = 80)
-    print(fmt % headers, file = box)
+    print >> box, fmt % headers
     print >> box, " " + ("-" * 75)
     for props, okay_flag in ion_status :
       i_seq = props.atom.i_seq
@@ -1480,19 +1476,19 @@ class Manager (object) :
       b_iso = adptbx.u_as_b(sc.u_iso_or_equiv(unit_cell = self.unit_cell))
       identity = _identity(props.atom)
       def ff (fs, val) : return format_value(fs, val, replace_none_with = "---")
-      print(fmt % (props.atom.id_str(suppress_segid = True)[5:-1],
+      print >> box, fmt % (props.atom.id_str(suppress_segid = True)[5:-1],
         ff("%.2f", props.atom.occ), ff("%.2f", b_iso),
         ff("%.2f", props.peak_2fofc), ff("%.2f", props.peak_fofc),
         ff("%.2f", fp), ff("%.2f", fdp),
         ff("%.2f", None if self.wavelength is None else fdp / sasaki.table(
             get_element(props.atom)).at_angstrom(self.wavelength).fdp()),
         ff("%.2f", props.valence_sum.get(identity)),
-        ff("%.2f", props.vector_sum.get(identity))), file = box)
+        ff("%.2f", props.vector_sum.get(identity)))
       # print >> box, props.geometries
       if not okay_flag:
-        print("\n".join("!!! " + props.error_strs[i]
-                        for i in props.inaccuracies[identity]), file = box)
-      print("", file = box)
+        print >> box, "\n".join("!!! " + props.error_strs[i]
+                                for i in props.inaccuracies[identity])
+      print >> box, ""
     box.close()
 
 class _analyze_water_wrapper (object) :
@@ -1566,11 +1562,10 @@ class water_result (object):
     if (len(results) > 0) :
       self.atom_props.show_properties(identity = "HOH", out = out)
       if (self.nuc_phosphate_site) :
-        print("  appears to be nucleotide coordination site", file = out)
+        print >> out, "  appears to be nucleotide coordination site"
       if (self.no_final) :
-        print("  Found potential ion%s outside of specified set:" %
-              ("s" if len(results) > 1 else ""),
-              file = out)
+        print >> out, "  Found potential ion%s outside of specified set:" % \
+          ("s" if len(results) > 1 else "")
       if (self.final_choice is not None) :
         # We have one result that we are reasonably certain of
         elem_params, score = results[0]
@@ -1581,61 +1576,60 @@ class water_result (object):
             valence_used = self.valence_used,
             confirmed = True)
         else:
-          print("  Probable anion:", str(elem_params), file = out)
-        print("", file = out)
+          print >> out, "  Probable anion:", str(elem_params)
+        print >> out, ""
       elif (len(results) > 1) :
         # We have a couple possible identities for the atom
         below_cutoff = [ elem_params for elem_params, score in results
                         if score < self.ambiguous_valence_cutoff]
         if len(below_cutoff) == 1:
           elem_params = below_cutoff[0]
-          print("  ambigous results, best valence from %s" %
-                str(elem_params), file = out)
+          print >> out, "  ambigous results, best valence from %s" % \
+            str(elem_params)
           self.atom_props.show_ion_results(
             identity = str(elem_params),
             out = out,
             valence_used = True)
-          print("", file = out)
+          print >> out, ""
         else:
           ions = [str(i[0]) for i in sorted(results, key = lambda x: x[1])]
-          print("  ambiguous results, could be %s" %
-                (", ".join(ions)), file = out)
+          print >> out, "  ambiguous results, could be %s" % ", ".join(ions)
           for elem_params, score in results :
             self.atom_props.show_ion_results(identity = str(elem_params),
               out = out)
-          print("", file = out)
+          print >> out, ""
     else:
       if (not self.looks_like_water) or (self.nuc_phosphate_site) :
         self.atom_props.show_properties(identity = "HOH", out = out)
         if (self.nuc_phosphate_site) :
-          print("  appears to be nucleotide coordination site", file = out)
+          print >> out, "  appears to be nucleotide coordination site"
         # try anions now
         if (self.looks_like_halide) :
-          print("  Probable cation: %s" % str(self.final_choice), file = out)
-          print("", file = out)
+          print >> out, "  Probable cation: %s" % str(self.final_choice)
+          print >> out, ""
         else:
           # atom is definitely not water, but no reasonable candidates found
           # print out why all the metals we tried failed
           if (debug) and (len(self.filtered_candidates) > 0) :
-            print("  insufficient data to identify atom", file = out)
+            print >> out, "  insufficient data to identify atom"
             possible = True
             for params in self.filtered_candidates:
               if (self.atom_props.has_compatible_ligands(str(params))) :
                 if possible:
-                  print("  possible candidates:", file = out)
+                  print >> out, "  possible candidates:"
                   possible = False
                 self.atom_props.show_ion_results(identity = str(params),
                   out = out)
               else :
-                print("  incompatible ligands for %s" % str(params), file = out)
-            #print("  rejected as unsuitable:", file = out)
+                print >> out, "  incompatible ligands for %s" % str(params)
+            #print >> out, "  rejected as unsuitable:"
             #for params in self.rejected_candidates:
             #  if (self.atom_props.has_compatible_ligands(str(params))) :
             #    self.atom_props.show_ion_results(identity = str(params),
             #      out = out)
             #  else :
-            #    print("  incompatible ligands for %s" % str(params), file = out)
-          print("", file = out)
+            #    print >> out, "  incompatible ligands for %s" % str(params)
+          print >> out, ""
 
 class AtomProperties (object) :
   """
@@ -2052,65 +2046,63 @@ class AtomProperties (object) :
     """
     Show atomic properties that are independent of the suspected identity.
     """
-    print("%s:" % self.atom.id_str(), file = out)
+    print >> out, "%s:" % self.atom.id_str()
     b_flag = ""
     if (self.LOW_B in self.inaccuracies[identity]) :
       b_flag = " <<<"
     elif (self.HIGH_B in self.inaccuracies[identity]) :
       b_flag = " !!!"
-    print("  B-factor:      %6.2f%s" % (self.atom.b, b_flag), file = out)
+    print >> out, "  B-factor:      %6.2f%s" % (self.atom.b, b_flag)
     occ_flag = ""
     if (self.LOW_OCC in self.inaccuracies[identity]) :
       occ_flag = " !!!"
     elif (self.HIGH_OCC in self.inaccuracies[identity]) :
       occ_flag = " <<<"
-    print("  Occupancy:     %6.2f%s" % (self.atom.occ, occ_flag), file = out)
+    print >> out, "  Occupancy:     %6.2f%s" % (self.atom.occ, occ_flag)
     twofofc_flag = ""
     if (self.NO_2FOFC_PEAK in self.inaccuracies[identity]) :
       twofofc_flag = " !!!"
     elif (self.HIGH_2FOFC in self.inaccuracies[identity]) :
       twofofc_flag = " <<<"
-    print("  2mFo-DFc map:  %6.2f%s" % (self.peak_2fofc, twofofc_flag), file = out)
+    print >> out, "  2mFo-DFc map:  %6.2f%s" % (self.peak_2fofc, twofofc_flag)
     fofc_flag = ""
     if (self.FOFC_PEAK in self.inaccuracies[identity]) :
       fofc_flag = " <<<"
     elif (self.FOFC_HOLE in self.inaccuracies[identity]) :
       fofc_flag = " !!!"
-    print("  mFo-DFc map:   %6.2f%s" % (self.peak_fofc, fofc_flag), file = out)
+    print >> out, "  mFo-DFc map:   %6.2f%s" % (self.peak_fofc, fofc_flag)
     if (self.peak_anom is not None) :
       anom_flag = ""
       if (self.ANOM_PEAK in self.inaccuracies[identity]) :
         anom_flag = " <<<"
       elif (self.NO_ANOM_PEAK in self.inaccuracies[identity]) :
         anom_flag = " !!!"
-      print("  Anomalous map: %6.2f%s" % (self.peak_anom, anom_flag), file = out)
+      print >> out, "  Anomalous map: %6.2f%s" % (self.peak_anom, anom_flag)
     if (self.estimated_weight is not None) :
-      print("  Approx. mass:  %6d" % self.estimated_weight, file = out)
+      print >> out, "  Approx. mass:  %6d" % self.estimated_weight
     if self.fpp is not None:
       fpp_flag = ""
       if (self.fpp >= 0.2) :
         fpp_flag = " <<<"
-      print("  f'':           %6.2f%s" % (self.fpp, fpp_flag), file = out)
-      print("  f'' ratio:     %s" % format_value("%6.2f",
-        self.fpp_ratios.get(identity)), file = out)
+      print >> out, "  f'':           %6.2f%s" % (self.fpp, fpp_flag)
+      print >> out, "  f'' ratio:     %s" % format_value("%6.2f",
+        self.fpp_ratios.get(identity))
     if self.nearby_atoms is not None:
       angstrom = u"\N{ANGSTROM SIGN}".encode("utf-8", "strict")
       degree = u"\N{DEGREE SIGN}".encode("utf-8", "strict")
 
-      print("  Nearby atoms: (%d within 3.0 %s)" %
-            (len([i for i in self.nearby_atoms if i.distance() < 3]), angstrom),
-            file = out)
+      print >> out, "  Nearby atoms: (%d within 3.0 %s)" % \
+        (len([i for i in self.nearby_atoms if i.distance() < 3]), angstrom)
 
       for contact in self.nearby_atoms :
-        print("    %s (%5.3f %s)" %
-              (contact.id_str(), contact.distance(), angstrom),
-              file = out)
+        print >> out, "    %s (%5.3f %s)" % \
+        (contact.id_str(), contact.distance(), angstrom)
 
       if self.geometries:
-        print("  Coordinating geometry:", file = out)
+        print >> out, "  Coordinating geometry:"
         for geometry, deviation, missing in self.geometries:
-          print("    %-15s (average deviation: %.3f%s)" %
-                (geometry, deviation, degree), file = out)
+          print >> out, "    %-15s (average deviation: %.3f%s)" % \
+            (geometry, deviation, degree)
 
   def show_ion_results (self, identity = None, out = sys.stdout,
       confirmed = False, valence_used = True):
@@ -2126,58 +2118,53 @@ class AtomProperties (object) :
 
     if identity != _identity(self.atom):
       if (confirmed) :
-        print("  Probable cation: %s" % identity, file = out)
+        print >> out, "  Probable cation: %s" % identity
       else :
-        print("  Atom as %s:" % identity, file = out)
+        print >> out, "  Atom as %s:" % identity
     else:
-      print("    %s:" % self.atom.id_str(), file = out)
+      print >> out, "    %s:" % self.atom.id_str()
 
     if identity in self.vector_sum and self.vector_sum[identity] is not None:
       problem = ((self.BAD_VECTORS in inaccuracies) or
                  (self.BAD_VECTORS in ignored))
 
-      print("    Vector sum:  %6.3f %s" %
-            (self.vector_sum[identity], " !!!" if problem else ""), file = out)
+      print >> out, "    Vector sum:  %6.3f %s" % \
+        (self.vector_sum[identity], " !!!" if problem else "")
 
     if identity in self.valence_sum and self.valence_sum[identity] is not None:
       problem = inaccuracies.union(ignored).intersection(
         [self.BAD_VALENCES, self.VERY_BAD_VALENCES])
 
-      print("    Valence sum: %6.3f" % self.valence_sum[identity], file = out)
+      print >> out, "    Valence sum: %6.3f" % self.valence_sum[identity]
       if valence_used:
-        print("(expected: %6.3f) %s" %
-              (self.expected_params[identity].cvbs_expected,
-               " !!!" if problem else ""),
-              file = out)
+        print >> out, "(expected: %6.3f) %s" % \
+        (self.expected_params[identity].cvbs_expected, " !!!" if problem else ""),
 
     if self.NO_GEOMETRY in inaccuracies:
-      print("    No distinct geometry !!!", file = out)
+      print >> out, "    No distinct geometry !!!"
 
     if self.BAD_GEOMETRY in inaccuracies:
-      print("    Unexpected geometry  !!!", file = out)
+      print >> out, "    Unexpected geometry  !!!"
 
     bad_coord = [self.LIKE_COORD, self.BAD_COORD_ATOM, self.BAD_COORD_RESIDUE]
     if inaccuracies.intersection(bad_coord):
-      print("    Bad coordinating atom%s:" %
-            ("s" if len(self.bad_coords[identity]) != 1 else ""), file = out)
+      print >> out, "    Bad coordinating atom%s:" % \
+         ("s" if len(self.bad_coords[identity]) != 1 else "")
       angstrom = u"\u00C5".encode("utf-8", "strict").strip()
       for atom, vector in self.bad_coords[identity]:
-        print("    %s (%5.3f %s) !!!" %
-              (atom.id_str(), abs(vector), angstrom),
-              file = out)
+        print >> out, "    %s (%5.3f %s) !!!" % \
+          (atom.id_str(), abs(vector), angstrom)
 
     if self.TOO_FEW_NON_WATERS in inaccuracies:
-      print("    Too few coordinating non-waters !!!", file = out)
+      print >> out, "    Too few coordinating non-waters !!!"
     if self.TOO_FEW_COORD in inaccuracies:
-      print("    Too few coordinating atoms !!!", file = out)
+      print >> out, "    Too few coordinating atoms !!!"
     if self.TOO_MANY_COORD in inaccuracies:
-      print("    Too many coordinating atoms !!!", file = out)
+      print >> out, "    Too many coordinating atoms !!!"
 
     if (self.fpp is not None) and (identity in self.fpp_ratios) :
-      print("    f'' ratio:   %6.3f%s" %
-            (self.fpp_ratios[identity],
-             " !!!" if self.BAD_FPP in inaccuracies else ""),
-            file = out)
+      print >> out, "    f'' ratio:   %6.3f%s" % \
+         (self.fpp_ratios[identity], " !!!" if self.BAD_FPP in inaccuracies else "")
 
   # XXX can we get away with just one oxygen?
   def looks_like_nucleotide_phosphate_site (self,
@@ -2213,7 +2200,7 @@ def find_anomalous_scatterers (*args, **kwds) :
   available and configured.
   """
   if (not libtbx.env.has_module("phaser")) :
-    print("Phaser not available")
+    print "Phaser not available"
     return None
   from phaser import substructure
   return substructure.find_anomalous_scatterers(*args, **kwds)
@@ -2277,7 +2264,7 @@ def count_coordinating_residues (nearby_atoms, distance_cutoff = 3.0) :
   return residue_counts
 
 def PRINT_DEBUG (*args) :
-  print(sys.stderr, args, file = sys.stderr)
+  print >> sys.stderr, sys.stderr, args
 
 def is_carboxy_terminus (pdb_object) :
   atoms = None
@@ -2330,5 +2317,5 @@ def is_coplanar_with_sidechain (atom, residue, distance_cutoff = 0.75) :
   if (len(sidechain_sites) != 3) : # XXX probably shouldn't happen
     return False
   D = distance_from_plane(atom.xyz, sidechain_sites)
-  #print(atom.id_str(), D)
+  #print atom.id_str(), D
   return (D <= distance_cutoff)
