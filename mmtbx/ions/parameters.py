@@ -1,5 +1,6 @@
+# -*- coding: utf-8; py-indent-offset: 2 -*-
 
-from __future__ import division
+from __future__ import division, print_function
 from libtbx import group_args
 from libtbx.utils import Sorry
 from math import exp
@@ -146,9 +147,9 @@ class server (object) :
         if ((donor.element not in ["H", "C", "AX"]) and
             (not self.is_supported_donor(donor.element))) :
           pass
-          #print "Unknown interaction: %s %s" % (ion.element, donor.element)
+          #print("Unknown interaction: %s %s" % (ion.element, donor.element))
       elif distance != 0:
-        #print contact.vector, contact.distance(), valence
+        #print(contact.vector, contact.distance(), valence)
         vectors.append(contact.vector / distance * valence)
 
     return vectors
@@ -215,6 +216,12 @@ def get_element(atom):
   return atom.element.strip().upper()
 
 def get_charge(atom):
+  if isinstance(atom, str):
+    try:
+      return default_charge(atom)
+    except Sorry:
+      return 0
+
   charge = atom.charge
 
   if not isinstance(charge, int):
