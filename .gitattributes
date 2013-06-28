@@ -408,6 +408,7 @@ dxtbx/format/FormatRAXIS.py -text
 dxtbx/format/FormatRAXISII.py -text
 dxtbx/format/FormatSMV.py -text
 dxtbx/format/FormatSMVADSC.py -text
+dxtbx/format/FormatSMVADSCDBG.py -text
 dxtbx/format/FormatSMVADSCSN.py -text
 dxtbx/format/FormatSMVADSCSN457.py -text
 dxtbx/format/FormatSMVADSCSN926.py -text
