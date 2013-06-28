@@ -11,13 +11,11 @@ from __future__ import division
 # an example XDS.INP file. This should illustrate the usage of the dxtbx
 # classes.
 
-import os
 import sys
 import math
 from scitbx import matrix
 
 from dxtbx.model.detector_helpers_types import detector_helpers_types
-from dxtbx.format.Registry import Registry
 
 def xds_detector_name(xia2_name):
     '''Translate from a xia2 name from the detector library to an XDS detector
@@ -39,11 +37,13 @@ def xds_detector_name(xia2_name):
 class to_xds:
     '''A class to export contents of an XSweep2 as XDS.INP.'''
 
-    def __init__(self, goniometer, detector, beam, scan):
-        self._goniometer = goniometer
-        self._detector = detector
-        self._beam = beam
-        self._scan = scan
+    def __init__(self, sweep):
+        self._template = sweep.get_template()
+        self._start_end = min(sweep.indices()), max(sweep.indices())
+        self._goniometer = sweep.get_goniometer()
+        self._detector = sweep.get_detector()
+        self._beam = sweep.get_beam()
+        self._scan = sweep.get_scan()
 
         return
 
@@ -61,7 +61,7 @@ class to_xds:
 
     def XDS(self):
 
-        sensor = self.get_detector().get_sensor()
+        sensor = self.get_detector().get_type()
         fast, slow = map(int, self.get_detector().get_image_size())
         f, s = self.get_detector().get_pixel_size()
         df = int(1000 * f)
@@ -83,20 +83,20 @@ class to_xds:
             print 'SENSOR_THICKNESS= 0.32'
 
         print 'DIRECTION_OF_DETECTOR_X-AXIS= %.3f %.3f %.3f' % \
-              (R * self.get_detector().get_fast_c()).elems
+              (R * self.get_detector().get_fast_axis()).elems
 
         print 'DIRECTION_OF_DETECTOR_Y-AXIS= %.3f %.3f %.3f' % \
-              (R * self.get_detector().get_slow_c()).elems
+              (R * self.get_detector().get_slow_axis()).elems
 
         print 'NX=%d NY=%d QX=%.4f QY=%.4f' % (fast, slow, f, s)
 
-        F = R * self.get_detector().get_fast_c()
-        S = R * self.get_detector().get_slow_c()
+        F = R * self.get_detector().get_fast_axis()
+        S = R * self.get_detector().get_slow_axis()
         N = F.cross(S)
 
-        origin = R * self.get_detector().get_origin_c()
-        beam = R * self.get_beam().get_direction_c() / \
-               math.sqrt(self.get_beam().get_direction_c().dot())
+        origin = R * self.get_detector().get_origin()
+        beam = R * self.get_beam().get_direction() / \
+               math.sqrt(matrix.col(self.get_beam().get_direction()).dot())
         centre = -(origin - origin.dot(N) * N)
         x = centre.dot(F)
         y = centre.dot(S)
@@ -104,7 +104,7 @@ class to_xds:
         print 'DETECTOR_DISTANCE= %.3f' % origin.dot(N)
         print 'ORGX= %.1f ORGY= %.1f' % (x / f, y / s)
         print 'ROTATION_AXIS= %.3f %.3f %.3f' % \
-              (R * self.get_goniometer().get_axis_c()).elems
+              (R * self.get_goniometer().get_rotation_axis()).elems
         print 'STARTING_ANGLE= %.3f' % \
               self.get_scan().get_oscillation()[0]
         print 'OSCILLATION_RANGE= %.3f' % \
@@ -116,10 +116,9 @@ class to_xds:
         print 'FRACTION_OF_POLARIZATION= %.3f' % \
               self.get_beam().get_polarization_fraction()
         print 'POLARIZATION_PLANE_NORMAL= %.3f %.3f %.3f' % \
-              self.get_beam().get_polarization_plane()
-        print 'NAME_TEMPLATE_OF_DATA_FRAMES= %s' % os.path.join(
-            self.get_scan().get_directory(),
-            self.get_scan().get_template().replace('#', '?'))
+              self.get_beam().get_polarization_normal()
+        print 'NAME_TEMPLATE_OF_DATA_FRAMES= %s' % self._template.replace(
+            '#', '?')
         print 'TRUSTED_REGION= 0.0 1.41'
         for f0, f1, s0, s1 in self.get_detector().get_mask():
             print 'UNTRUSTED_RECTANGLE= %d %d %d %d' % \
@@ -134,54 +133,14 @@ class to_xds:
         print 'JOB=XYCORR INIT COLSPOT IDXREF DEFPIX INTEGRATE CORRECT'
 
 def factory(list_of_images):
-    '''Instantiate the data model bits and pieces we need...'''
-
-    for image in list_of_images:
-        assert(os.path.exists(image))
-
-    list_of_images.sort()
-
-    format = Registry.find(list_of_images[0])
-
-    # verify that these are all the same format i.e. that they are all
-    # understood equally well by the format instance.
-
-    format_score = format.understand(list_of_images[0])
-
-    for image in list_of_images:
-        assert(format.understand(image) == format_score)
-
-    i = format(list_of_images[0])
-
-    beam = i.get_beam()
-    gonio = i.get_goniometer()
-    det = i.get_detector()
-    scan = i.get_scan()
-
-    # now verify that they share the same detector position, rotation axis
-    # and beam properties.
-
-    scans = [scan]
-
-    for image in list_of_images[1:]:
-        i = format(image)
-        assert(beam == i.get_beam())
-        assert(gonio == i.get_goniometer())
-        assert(det == i.get_detector())
-        scans.append(i.get_scan())
-
-    for s in sorted(scans)[1:]:
-        scan += s
-
-    return gonio, det, beam, scan
-
+    from dxtbx.imageset import ImageSetFactory
+    sweeps = ImageSetFactory.new(list_of_images)
+    assert(len(sweeps) == 1)
+    return sweeps[0]
 
 if __name__ == '__main__':
 
     # run some tests
 
-    gonio, det, beam, scan = factory(sys.argv[1:])
-
-    xsx = to_xds(gonio, det, beam, scan)
-
+    xsx = to_xds(factory(sys.argv[1:]))
     xsx.XDS()
