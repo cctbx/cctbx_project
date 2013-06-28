@@ -162,6 +162,12 @@ class DetectorImageBase(object):
     except ImageException:
       endian = 0
       self.parameters["BYTE_ORDER"]="little_endian"
+
+    #handle pilatus
+    if self.parameters['SIZE1'] == 2463 and self.parameters['SIZE2'] == 2527:
+      self.parameters['SIZE1'] = 2527
+      self.parameters['SIZE2'] = 2463
+
     info = """{
 HEADER_BYTES= 1024;
 DIM=2;
