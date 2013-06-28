@@ -682,7 +682,7 @@ class TestImageSweep(object):
         assert(volume.all() == size)
 
     def tst_set_models(self, sweep):
-        from dxtbx.model import Beam, Goniometer, Detector, Panel
+        from dxtbx.model import Beam, Detector, Panel
 
         # Get some models
         beam = sweep.get_beam()
