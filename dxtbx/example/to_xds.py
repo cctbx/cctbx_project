@@ -35,8 +35,6 @@ def xds_detector_name(xia2_name):
     raise RuntimeError, 'detector %s unknown' % xia2_name
 
 class to_xds:
-    '''A class to export contents of an XSweep2 as XDS.INP.'''
-
     def __init__(self, sweep):
         self._template = sweep.get_template()
         self._start_end = min(sweep.indices()), max(sweep.indices())
