@@ -202,5 +202,8 @@ class beam_factory:
         polar_plane_normal = (
             math.sin(polar_angle * d2r), math.cos(polar_angle * d2r), 0.0)
 
-        return beam_factory.make_polarized_beam(direction, wavelength,
-                polar_plane_normal, polar_fraction)
+        return beam_factory.make_polarized_beam(
+            sample_to_source=direction,
+            wavelength=wavelength,
+            polarization=polar_plane_normal,
+            polarization_fraction=polar_fraction)
