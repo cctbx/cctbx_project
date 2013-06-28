@@ -21,7 +21,7 @@ class reader(xds_cbf.reader):
     import numpy # import dependency
 
     # Get the image data
-    return = xds_cbf.reader.get_data(self)
+    return xds_cbf.reader.get_data(self)
 
 
 if __name__ == '__main__':
