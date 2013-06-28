@@ -152,9 +152,15 @@ class DetectorImageBase(object):
   def debug_write(self,fileout,mod_data=None):
     if not self.parameters.has_key("TWOTHETA"):
       self.parameters["TWOTHETA"]=0.0
-    if self.getEndian()==1:
-      self.parameters["BYTE_ORDER"]="big_endian"
-    else:
+    from iotbx.detectors import ImageException
+    try:
+      endian = self.getEndian()
+      if endian==1:
+        self.parameters["BYTE_ORDER"]="big_endian"
+      else:
+        self.parameters["BYTE_ORDER"]="little_endian"
+    except ImageException:
+      endian = 0
       self.parameters["BYTE_ORDER"]="little_endian"
     info = """{
 HEADER_BYTES= 1024;
@@ -162,7 +168,7 @@ DIM=2;
 BYTE_ORDER=%(BYTE_ORDER)s;
 TYPE=unsigned_short;
 SIZE1=%(SIZE1)4d;
-SIZE2=%(SIZE1)4d;
+SIZE2=%(SIZE2)4d;
 PIXEL_SIZE=%(PIXEL_SIZE)8.6f;
 TIME=0.000000;
 DISTANCE=%(DISTANCE).2f;
@@ -182,7 +188,7 @@ CCD_IMAGE_SATURATION=65535;
     F.close()
     from iotbx.detectors import WriteADSC
     if mod_data==None: mod_data=self.linearintdata
-    WriteADSC(fileout,mod_data,self.size1,self.size2,self.getEndian())
+    WriteADSC(fileout,mod_data,self.size1,self.size2,endian)
 
   def __getattr__(self, attr):
     if   attr=='size1' : return self.parameters['SIZE1']
