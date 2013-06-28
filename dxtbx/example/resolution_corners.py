@@ -9,15 +9,15 @@ from __future__ import division
 #
 # Print out the resolution (two-theta) of the corners of the detector
 
-def resolution_corners(sweep):
+def resolution_corners(frame):
     '''Compute the resolution limit corresponding to the corners of the detector
     surface.'''
 
     import math
     from scitbx import matrix
     
-    detector = sweep.get_detector()
-    beam = sweep.get_beam()
+    detector = frame.get_detector()
+    beam = frame.get_beam()
 
     nfast, nslow = map(int, detector.get_image_size())
     dfast, dslow = detector.get_pixel_size()
@@ -36,7 +36,6 @@ def resolution_corners(sweep):
 if __name__ == '__main__':
 
     import sys
-    from dxtbx.imageset import ImageSetFactory
-    
-    sweeps = ImageSetFactory.new(sys.argv[1:])
-    resolution_corners(sweeps[0])
+    import dxtbx
+     
+    resolution_corners(dxtbx.load(sys.argv[1]))
