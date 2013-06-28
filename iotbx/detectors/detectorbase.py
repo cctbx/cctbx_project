@@ -164,9 +164,9 @@ class DetectorImageBase(object):
       self.parameters["BYTE_ORDER"]="little_endian"
 
     #handle pilatus
-    if self.parameters['SIZE1'] == 2463 and self.parameters['SIZE2'] == 2527:
-      self.parameters['SIZE1'] = 2527
-      self.parameters['SIZE2'] = 2463
+    if self.parameters['SIZE1'] == 2527 and self.parameters['SIZE2'] == 2463:
+      self.parameters['SIZE1'] = 2463
+      self.parameters['SIZE2'] = 2527
 
     info = """{
 HEADER_BYTES= 1024;
