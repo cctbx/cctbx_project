@@ -949,7 +949,7 @@ class ImageSetFactory(object):
 
         # Create the sweep object
         sweep = ImageSweep(MultiFileReader(format_class, filenames))
-
+        
         # Check the sweep is valid
         if check_headers and not sweep.is_valid():
             raise RuntimeError('Invalid sweep of images')
