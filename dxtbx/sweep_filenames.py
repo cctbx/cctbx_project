@@ -108,7 +108,7 @@ def find_matching_images(image_name):
 
 def replace_template_format_with_hash(match):
     '''Replace the format match with hashes'''
-    return '#'*len(match.group(0))
+    return '#' * len(match.group(0) % 0)
 
 def template_format_to_string(template):
     '''Convert the template format to the template string.'''
