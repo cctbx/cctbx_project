@@ -383,6 +383,7 @@ dxtbx/command_line/to_ewald_sphere.py -text
 dxtbx/command_line/to_xds.py -text
 dxtbx/data/detectors.lib -text
 dxtbx/error.h -text
+dxtbx/example/resolution_corners.py -text
 dxtbx/example/to_xds.py -text
 dxtbx/format/Format.py -text
 dxtbx/format/FormatBruker.py -text
