@@ -48,8 +48,8 @@ class DetectorImageBase(object):
     #  size1 corresponds to number of rows.  Columns are slow.
     #  size2 corresponds to number of columns.  Rows are fast.
 
-  def getEndian(self): pass
-    # must be defined in derived class
+  def getEndian(self):
+    raise NotImplementedError # must be defined in derived class
 
   def endian_swap_required(self):
     data_is_big_endian = self.getEndian()
