@@ -25,11 +25,14 @@ class scan_factory:
     @staticmethod
     def make_scan(image_range, exposure_time, oscillation, epochs, deg=True):
         from scitbx.array_family import flex
+
+        epoch_list = [epochs[j] for j in sorted(epochs)]
+
         return Scan(
             tuple(map(int, image_range)),
             tuple(map(float, oscillation)),
             float(exposure_time),
-            flex.double(list(map(int, epochs))),
+            flex.double(list(map(int, epoch_list))),
             deg)
 
     @staticmethod
