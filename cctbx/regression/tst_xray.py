@@ -1413,7 +1413,30 @@ def exercise_guess_scattering_type_neutron():
   xs.switch_to_neutron_scattering_dictionary()
   assert xs.guess_scattering_type_neutron()
 
+def exercise_truncate_at_pdb_format_precision(d_min=2, n_repeats=1,
+      algorithm = "direct"):
+  for i in xrange(n_repeats):
+    xrs = random_structure.xray_structure(
+      space_group_info = sgtbx.space_group_info("P1"),
+      elements=["H", "C", "O", "U", "Ca", "N", "Mg"]*50,
+      volume_per_atom=50,
+      min_distance=1.5,
+      general_positions_only=True,
+      use_u_iso = True,
+      use_u_aniso = True,
+      random_u_iso = True,
+      random_occupancy=True)
+    fc1 = xrs.structure_factors(d_min=d_min, algorithm=algorithm).f_calc()
+    xrs.truncate_at_pdb_format_precision()
+    fc2 = fc1.structure_factors_from_scatterers(xray_structure=xrs,
+      algorithm=algorithm).f_calc()
+    fc1 = abs(fc1).data()
+    fc2 = abs(fc2).data()
+    r = flex.sum(flex.abs(fc1-fc2))/flex.sum(flex.abs(fc1+fc2))*2*100
+    assert r > 0.1
+
 def run():
+  exercise_truncate_at_pdb_format_precision()
   exercise_discard_scattering_type_registry()
   exercise_delta_sites_cart_measure()
   exercise_xray_structure_as_py_code()
