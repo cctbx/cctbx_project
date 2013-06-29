@@ -758,6 +758,9 @@ def run(args,
     atom_selections          = atom_selections)
   ###########################
   mp = mmtbx.masks.mask_master_params.extract()
+  f_obs_labels = f_obs.info().label_string()
+  f_obs = f_obs.sort(reverse=True, by_value="packed_indices")
+  r_free_flags = r_free_flags.sort(reverse=True, by_value="packed_indices")
   fmodel = utils.fmodel_simple(
     update_f_part1_for  = "refinement",
     xray_structures     = xray_structures,
@@ -768,7 +771,6 @@ def run(args,
     skip_twin_detection = params.skip_twin_detection)
   n_outl = f_obs.data().size() - fmodel.f_obs().data().size()
   mvd_obj.collect(model_vs_data = show_model_vs_data(fmodel))
-  #
   # Extract information from PDB file header and output (if any)
   pub_r_work       = None
   pub_r_free       = None
@@ -826,7 +828,7 @@ def run(args,
     show_data(fmodel          = fmodel,
               n_outl          = n_outl,
               test_flag_value = test_flag_value,
-              f_obs_labels    = f_obs.info().label_string(),
+              f_obs_labels    = f_obs_labels,
               fmodel_cut      = fmodel_cut))
   # map statistics
   if(len(xray_structures)==1): # XXX no multi-model support yet

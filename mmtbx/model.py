@@ -1011,10 +1011,12 @@ class manager(object):
     out.flush()
     time_model_show += timer.elapsed()
 
-  def write_pdb_file(self, out = None, selection = None, xray_structure = None):
+  def write_pdb_file(self, out = None, selection = None, xray_structure = None,
+        return_pdb_string=False):
     return utils.write_pdb_file(
       xray_structure       = self.xray_structure,
       pdb_hierarchy        = self._pdb_hierarchy,
+      return_pdb_string    = return_pdb_string,
       pdb_atoms            = self.pdb_atoms,
       selection            = selection,
       out                  = out)
