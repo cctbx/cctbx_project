@@ -98,6 +98,7 @@ class electron_density_map(object):
                update_f_part1 = True,
                map_calculation_helper = None):
     if(update_f_part1):
+      # XXX problem: does not distinguish if it was done by "map" or "refinement"
       if(fmodel.f_part1().data().all_eq(0)):
         self.fmodel = fmodel.deep_copy()
         self.fmodel.update_all_scales(update_f_part1_for = "map")
@@ -252,10 +253,12 @@ class electron_density_map(object):
         crystal_gridding     = other_fft_map,
         fourier_coefficients = map_coefficients)
 
-def fill_missing_f_obs(coeffs, fmodel) :
+def fill_missing_f_obs(coeffs, fmodel):
   scale_data = 1. / (fmodel.k_isotropic()*fmodel.k_anisotropic())
-  scale = fmodel.f_obs().customized_copy(data = scale_data)
+  scale = fmodel.f_obs().customized_copy(data = scale_data, sigmas = None)
   scale = scale.average_bijvoet_mates()
+  scale = scale.common_set(coeffs)
+  assert scale.indices().all_eq(coeffs.indices())
   #
   scale_to = fmodel.f_obs().average_bijvoet_mates()
   dsf = coeffs.double_step_filtration(
@@ -273,12 +276,13 @@ def fill_missing_f_obs(coeffs, fmodel) :
     refine_hd_scattering=False)
   #
   scale_data_c = 1. / (fmdc.k_isotropic()*fmdc.k_anisotropic())
-  scale_c = fmdc.f_obs().customized_copy(data = scale_data_c)
+  scale_c = fmdc.f_obs().customized_copy(data = scale_data_c, sigmas = None)
   #
   dsf = fmdc.f_model().array(data = fmdc.f_model().data() *
     fmdc.alpha_beta()[0].data())
   coeffs = coeffs.complete_with(other = dsf, scale=True)
   scale = scale.complete_with(other = scale_c, scale=True)
+  assert scale.indices().all_eq(coeffs.indices())
   return coeffs, scale.data()
 
 def sharp_evaluation_target(sites_frac, map_coeffs, resolution_factor = 0.25):
