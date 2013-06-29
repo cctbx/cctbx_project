@@ -339,3 +339,20 @@ def point_on_sphere(r, s_deg, t_deg, center):
   y = center[1] + r * sin(s) * sin(t)
   z = center[2] + r * cos(t)
   return x,y,z
+
+def equally_spaced_points_on_vector(start, end, n=None, step=None):
+  assert [n, step].count(None) == 1
+  vec = [end[0]-start[0],end[1]-start[1],end[2]-start[2]]
+  r = flex.vec3_double([vec])
+  if(n is not None):
+    assert n > 0
+  else:
+    assert step > 0
+    vec_length = math.sqrt(vec[0]**2+vec[1]**2+vec[2]**2)
+    n = int(vec_length/step)-1
+  dr = r*(1/float(n+1))
+  points = flex.vec3_double()
+  for i in xrange(n+1):
+    points.extend(dr * i + start)
+  points.append(end)
+  return points

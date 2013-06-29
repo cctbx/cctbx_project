@@ -1941,7 +1941,24 @@ def exercise_misc () :
     a = ddm.as_numpy_array()
     assert (a[0][0] == 0) and (approx_equal(a[1][2], 3.4641016))
 
+def exercise_equally_spaced_points_on_vector():
+  espov = scitbx.math.equally_spaced_points_on_vector
+  start = [1,2,3]
+  end   = [1,2,8]
+  r = list(espov(start=start, end=end, n=1, step=None))
+  assert approx_equal(r, [(1.0, 2.0, 3.0), (1.0, 2.0, 5.5), (1.0, 2.0, 8.0)])
+  r = list(espov(start=start, end=end, n=3, step=None))
+  assert approx_equal(r, [(1.0, 2.0, 3.0), (1.0, 2.0, 4.25), (1.0, 2.0, 5.5),
+    (1.0, 2.0, 6.75), (1.0, 2.0, 8.0)])
+  #
+  r = list(espov(start=start, end=end, n=None, step=2.5))
+  assert approx_equal(r, [(1.0, 2.0, 3.0), (1.0, 2.0, 5.5), (1.0, 2.0, 8.0)])
+  r = list(espov(start=start, end=end, n=None, step=1.25))
+  assert approx_equal(r, [(1.0, 2.0, 3.0), (1.0, 2.0, 4.25), (1.0, 2.0, 5.5),
+    (1.0, 2.0, 6.75), (1.0, 2.0, 8.0)])
+
 def run():
+  exercise_equally_spaced_points_on_vector()
   exercise_weighted_covariance()
   exercise_distributions()
   exercise_approx_equal()
