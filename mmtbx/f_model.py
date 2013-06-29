@@ -380,6 +380,7 @@ class manager(manager_mixin):
           new_data_value=(0,0,0,0), d_min=f_obs.d_min()).common_set(f_obs)
     self._f_obs = f_obs
     self._r_free_flags = r_free_flags
+    assert type(f_obs) == type(r_free_flags)
     self._hl_coeffs = abcd
     if(sf_and_grads_accuracy_params is None):
       sf_and_grads_accuracy_params = sf_and_grads_accuracy_master_params.extract()
@@ -1079,7 +1080,38 @@ class manager(manager_mixin):
     self.k_h, self.b_h = kbest, bbest
 
   def update_f_part1(self, purpose, map_neg_cutoff=None,
-                     refinement_neg_cutoff=-2.5):
+                     refinement_neg_cutoff=-2.5, refine_threshold=True):
+    if(purpose=="refinement"):
+      if(refine_threshold):
+        r_free_start = self.r_free()
+        r_free_best = r_free_start
+        delta_best = 999
+        sigma_best = None
+        was_better = False
+        for sc in [2.0, 2.25, 2.5, 2.75, 3.0, 3.25, 3.5]:
+          self._update_f_part1(purpose="refinement", refinement_neg_cutoff=-sc,
+            map_neg_cutoff=map_neg_cutoff)
+          r_free_ = self.r_free()
+          if(r_free_ < r_free_best):
+            sigma_best = sc
+            r_free_best = r_free_
+            was_better = True
+          elif(not was_better):
+            delta_ = r_free_ - r_free_best
+            if(delta_ < delta_best):
+              delta_best = delta_
+              sigma_best = sc
+        self._update_f_part1(purpose="refinement",
+          refinement_neg_cutoff=-sigma_best, map_neg_cutoff=map_neg_cutoff)
+      else:
+        self._update_f_part1(purpose=purpose, map_neg_cutoff=map_neg_cutoff,
+                      refinement_neg_cutoff=refinement_neg_cutoff)
+    else:
+      self._update_f_part1(purpose=purpose, map_neg_cutoff=map_neg_cutoff,
+                      refinement_neg_cutoff=refinement_neg_cutoff)
+
+  def _update_f_part1(self, purpose, map_neg_cutoff,
+                      refinement_neg_cutoff):
     """
     Identify negative blobs in mFo-DFc synthesis in solvent region only,
     then leave only those blobs (set everything else to zero),
@@ -1091,6 +1123,9 @@ class manager(manager_mixin):
                they are noise or errors of bulk-solvent model, so they are
                always good to remove.
     """
+    zero = flex.complex_double(self.f_calc().data().size(),0)
+    zero_a = self.f_calc().customized_copy(data = zero)
+    self.update_core(f_part1 = zero_a)
     if(map_neg_cutoff is None): map_neg_cutoff = -2.0
     if(self.xray_structure is None): return # need mask
     assert purpose in ["refinement", "map"]
@@ -1120,6 +1155,10 @@ class manager(manager_mixin):
         data = mc.data().set_selected(r_free_flags_data, 0+0j))
     fft_map = mc.fft_map(crystal_gridding = crystal_gridding)
     map_data = fft_map.real_map_unpadded() # important: not scaled!
+    maptbx.map_box_average(
+      map_data   = map_data,
+      cutoff     = flex.max(map_data)*2,
+      index_span = 1)
     unit_cell_volume = self.xray_structure.unit_cell().volume()
     cutoff=None
     if(purpose == "map"): cutoff = map_neg_cutoff
@@ -1129,7 +1168,9 @@ class manager(manager_mixin):
       by_sigma_less_than = cutoff,
       scale_by           = 1./unit_cell_volume)
     map_data = map_data*bulk_solvent_mask
-    assert flex.min(map_data)<=0
+    min_map = flex.min(map_data)
+    if(min_map == 0): return
+    assert min_map < 0
     f_diff = mc.structure_factors_from_map(
       map            = map_data,
       use_scale      = True,
@@ -1213,6 +1254,7 @@ class manager(manager_mixin):
   def update_all_scales(
         self,
         update_f_part1_for,
+        refine_threshold=True,
         apply_back_trace=False,
         params = None, # XXX DUMMY
         nproc = None,  # XXX DUMMY
@@ -1228,6 +1270,10 @@ class manager(manager_mixin):
         log = None):
     if(log is None): log = sys.stdout
     assert update_f_part1_for in [False, None, "map", "refinement"]
+    def get_r(self):
+      return "r_work=%6.4f r_free=%6.4f"%(self.r_work(), self.r_free())
+    if(show): print >> log, "start: %s"%get_r(self), \
+      "n_reflections:", self.f_obs().data().size()
     # Always start from scratch to avoide irreproducible results or instability
     # due to correlation of parameters
     zero = flex.complex_double(self.f_calc().data().size(),0)
@@ -1241,8 +1287,6 @@ class manager(manager_mixin):
       k_anisotropic = one_d,
       k_mask        = [zero_d]*len(self.k_masks()))#, f_part2_twin = zero) # Does it need to be set too?
     #
-    def get_r(self):
-      return "r_work=%6.4f r_free=%6.4f"%(self.r_work(), self.r_free())
     if(show): print >> log, "start: %s (reset all scales to undefined)"%get_r(self)
     if(remove_outliers): self.remove_outliers(use_model=False)
     if(self.xray_structure is None or
@@ -1280,10 +1324,11 @@ class manager(manager_mixin):
       if(show): print >> log, "    remove outliers:          %s"%get_r(self)
     if(update_f_part1_for):
       self.update_f_part1(purpose=update_f_part1_for,
-        map_neg_cutoff=map_neg_cutoff)
+        map_neg_cutoff=map_neg_cutoff, refine_threshold=refine_threshold)
       if(show): print >> log, "    correct solvent mask:     %s"%get_r(self)
     if(show):
-      print >> log, "final: %s"%get_r(self)
+      print >> log, "final: %s"%get_r(self), "n_reflections:", \
+        self.f_obs().data().size()
       print >> log
       print >> log, "overall anisotropic scale matrix:"
       russ.format_scale_matrix(log=log)
