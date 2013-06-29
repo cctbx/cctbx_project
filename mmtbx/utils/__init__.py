@@ -878,7 +878,7 @@ def write_pdb_file(
       atoms_reset_serial = True,
       out = None,
       return_pdb_string = False):
-  if (write_cryst1_record):
+  if (write_cryst1_record and out is not None):
     crystal_symmetry = xray_structure.crystal_symmetry()
     print >> out, pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry)
     print >> out, pdb.format_scale_records(
@@ -921,6 +921,7 @@ def write_pdb_file(
   else:
     return pdb_hierarchy.as_pdb_string(
       append_end=True,
+      crystal_symmetry = xray_structure.crystal_symmetry(),
       atoms_reset_serial_first_value=atoms_reset_serial_first_value)
 
 def print_programs_start_header(log, text):
@@ -1353,8 +1354,15 @@ def occupancy_selections(
   if(len(result) == 0): result = None
   return result
 
-def assert_xray_structures_equal(x1, x2, selection = None, sites = True,
-                                 adp = True, occupancies = True, elements=True):
+def assert_xray_structures_equal(
+      x1,
+      x2,
+      selection = None,
+      sites = True,
+      adp = True,
+      occupancies = True,
+      elements = True,
+      scattering_types = True):
   assert x1.scatterers().size() == x2.scatterers().size()
   if(selection is not None):
     x1 = x1.select(selection)
@@ -1372,6 +1380,11 @@ def assert_xray_structures_equal(x1, x2, selection = None, sites = True,
     sct2 = x2.scatterers().extract_scattering_types()
     for sct1_, sct2_ in zip(sct1, sct2):
       assert sct1_ == sct2_
+  if(scattering_types):
+    sr1 = x1.scattering_type_registry().unique_gaussians_as_list()
+    sr2 = x2.scattering_type_registry().unique_gaussians_as_list()
+    for s1,s2 in zip(sr1,sr2):
+      assert approx_equal(s1.parameters(), s2.parameters())
 
 def compare_hierarchy(hierarchy, scatterers, cell):
   from libtbx.test_utils import approx_equal
