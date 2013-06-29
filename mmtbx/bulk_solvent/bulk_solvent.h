@@ -688,10 +688,11 @@ public:
     for(std::size_t j=0; j < 3; j++) {
       if(ceo.x[j]) {
         FloatType root = *ceo.x[j];
-        if(root>=0) {
+        // residual = x**3 + ax**2 + bc + c = 0
+        FloatType residual = std::abs(*ceo.residual()[j]);
+        if(root>=0 && residual<1.e-4) { // to avoid numerical issues
           x.push_back(root);
         }
-        MMTBX_ASSERT(std::abs(*ceo.residual()[j]) < 1.e-4);
       }
     }
     // put together plausible results
