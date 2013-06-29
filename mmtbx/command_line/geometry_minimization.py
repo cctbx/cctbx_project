@@ -116,6 +116,14 @@ reference_restraints {
     .type = float
     .help = sigma value for coordinates restrained to starting positions
 }
+geometry_restraints.edits
+    .short_caption = Edit geometry restraints
+    .style = menu_item parent_submenu:geometry_restraints scrolled
+    .expert_level = 2
+  {
+    include scope \
+      mmtbx.monomer_library.pdb_interpretation.geometry_restraints_edits_str
+  }
 """
 
 def master_params():
@@ -198,6 +206,7 @@ def get_geometry_restraints_manager(processed_pdb_file, xray_structure, params):
     hbond_params = build_proxies.proxies
   geometry = processed_pdb_file.geometry_restraints_manager(
     show_energies                = False,
+    params_edits                 = params.geometry_restraints.edits,
     plain_pairs_radius           = 5,
     hydrogen_bond_proxies        = hbond_params,
     assume_hydrogens_all_missing = not has_hd)
