@@ -1936,6 +1936,19 @@ class structure(crystal.special_position_settings):
   def parameter_map(self):
     return cctbx.xray.parameter_map(self.scatterers())
 
+  def truncate_at_pdb_format_precision(self):
+    uc = self.unit_cell()
+    fra = uc.fractionalize
+    ort = uc.orthogonalize
+    for sc in self.scatterers():
+      sc.site = fra([float("%8.3f"%i) for i in ort(sc.site)])
+      if(sc.u_iso != -1.0):
+        sc.u_iso = adptbx.b_as_u(float("%6.2f"%adptbx.u_as_b(sc.u_iso)))
+      sc.occupancy = float("%5.2f"%sc.occupancy)
+      if(sc.u_star != (-1,-1,-1,-1,-1,-1)):
+        u_pdb = [int(i*10000) for i in adptbx.u_star_as_u_cart(uc, sc.u_star)]
+        sc.u_star = adptbx.u_cart_as_u_star(uc, [float(i)/10000 for i in u_pdb])
+
   def grads_and_curvs_target_simple(self, miller_indices, da_db, daa_dbb_dab):
     return ext.structure_factors_curvatures_simple_grads_and_curvs_target(
       unit_cell=self.unit_cell(),
