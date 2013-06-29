@@ -5,6 +5,8 @@
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/accessors/flex_grid.h>
 #include <cctbx/uctbx.h>
+#include <scitbx/math/utils.h>
+#include <scitbx/math/modulo.h>
 
 namespace cctbx { namespace maptbx {
 
@@ -298,6 +300,72 @@ void reset(
          double rho = map_data(i,j,k);
          if(rho<less_than_threshold) map_data(i,j,k) = substitute_value;
   }}}
+}
+
+template <typename DataType>
+void
+map_box_average(
+  af::ref<DataType, af::c_grid<3> > map_data,
+  cctbx::uctbx::unit_cell const& unit_cell,
+  double const& radius)
+{
+  int nx = map_data.accessor()[0];
+  int ny = map_data.accessor()[1];
+  int nz = map_data.accessor()[2];
+  DataType xrad = radius*unit_cell.reciprocal_parameters()[0]*nx;
+  DataType yrad = radius*unit_cell.reciprocal_parameters()[1]*ny;
+  DataType zrad = radius*unit_cell.reciprocal_parameters()[2]*nz;
+  for (int lx = 0; lx < nx; lx++) {
+    for (int ly = 0; ly < ny; ly++) {
+      for (int lz = 0; lz < nz; lz++) {
+        DataType rho = 0.0;
+        int counter = 0;
+        int x1box=scitbx::math::nearest_integer(static_cast<DataType>(lx)-xrad);
+        int x2box=scitbx::math::nearest_integer(static_cast<DataType>(lx)+xrad);
+        int y1box=scitbx::math::nearest_integer(static_cast<DataType>(ly)-yrad);
+        int y2box=scitbx::math::nearest_integer(static_cast<DataType>(ly)+yrad);
+        int z1box=scitbx::math::nearest_integer(static_cast<DataType>(lz)-zrad);
+        int z2box=scitbx::math::nearest_integer(static_cast<DataType>(lz)+zrad);
+        for (int kx = x1box; kx <= x2box; kx++) {
+          for (int ky = y1box; ky <= y2box; ky++) {
+            for (int kz = z1box; kz <= z2box; kz++) {
+              int mx = scitbx::math::mod_positive(kx, nx);
+              int my = scitbx::math::mod_positive(ky, ny);
+              int mz = scitbx::math::mod_positive(kz, nz);
+              rho += map_data(mx,my,mz);
+              counter += 1;
+        }}}
+        map_data(lx,ly,lz) = rho / counter;
+  }}}
+}
+
+template <typename DataType>
+void
+map_box_average(
+  af::ref<DataType, af::c_grid<3> > map_data,
+  DataType const& cutoff,
+  int const& index_span)
+{
+  int nx = map_data.accessor()[0];
+  int ny = map_data.accessor()[1];
+  int nz = map_data.accessor()[2];
+  for (int lx = 0; lx < nx; lx++) {
+    for (int ly = 0; ly < ny; ly++) {
+      for (int lz = 0; lz < nz; lz++) {
+        if(map_data(lx,ly,lz)<cutoff) {
+          DataType rho = 0.0;
+          int counter = 0;
+          for (int i = lx-index_span; i <= lx+index_span; i++) {
+            for (int j = ly-index_span; j <= ly+index_span; j++) {
+              for (int k = lz-index_span; k <= lz+index_span; k++) {
+                int mx = scitbx::math::mod_positive(i, nx);
+                int my = scitbx::math::mod_positive(j, ny);
+                int mz = scitbx::math::mod_positive(k, nz);
+                rho += map_data(mx,my,mz);
+                counter += 1;
+          }}}
+          map_data(lx,ly,lz) = rho / counter;
+  }}}}
 }
 
 }} // namespace cctbx::maptbx

@@ -212,11 +212,25 @@ namespace {
             arg("data"),
             arg("site_frac")));
 
-    def("box_map_averaging",box_map_averaging);
-
     def("cc_weighted_maps",cc_weighted_maps);
 
-    def("node_interplation_averaging",node_interplation_averaging);
+    def("map_box_average",
+      (void(*)
+        (af::ref<double, af::c_grid<3> >,
+         double const&,
+         int const&)) map_box_average, (
+      arg("map_data"),
+      arg("cutoff"),
+      arg("index_span")));
+
+    def("map_box_average",
+      (void(*)
+        (af::ref<double, af::c_grid<3> >,
+         cctbx::uctbx::unit_cell const&,
+         double const&)) map_box_average, (
+      arg("map_data"),
+      arg("unit_cell"),
+      arg("radius")));
 
     def("hoppe_gassman_modification",
       (void(*)
