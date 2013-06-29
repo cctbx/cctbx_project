@@ -680,8 +680,10 @@ class kick(object):
         map_data = (m+map_data)/2
     if(use_intersection):
       for i in xrange(3):
-        map_data = maptbx.node_interplation_averaging(
-          self.complete_set.unit_cell(), map_data, 0.5)
+        maptbx.map_box_average(
+          map_data   = map_data,
+          cutoff     = 0.5,
+          index_span = 1)
     if(use_intersection):
       # Very powerful in combination with NO HP modification.
       sd = map_data.sample_standard_deviation()

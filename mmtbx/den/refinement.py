@@ -375,6 +375,7 @@ class manager(object):
       params = self.params.bulk_solvent_and_scale,
       optimize_mask = self.params.main.optimize_mask,
       force_update_f_mask = True,
+      refine_threshold=True,
       nproc=1,
       log=log)
 
