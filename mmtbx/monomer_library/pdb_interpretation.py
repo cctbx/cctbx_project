@@ -179,6 +179,12 @@ master_params_str = """\
     residue_selection_2 = None
       .type = atom_selection
   }
+  disulfide_bond_exclusions_selection_string = None
+    .type = str
+  exclusion_distance_cutoff = 3
+    .type = float
+    .help = If SG of CYS forming SS bond is closer than this distance to an \
+            atom that it may coordinate then this SG is excluded from SS bond.
   link_distance_cutoff = 3
     .type=float
     .optional=False
@@ -2508,14 +2514,13 @@ class build_all_chain_proxies(object):
       temp_string = self.pdb_hierarchy.select(sel).as_pdb_string()
       self.pdb_inp = pdb.input(source_info=None, lines=temp_string)
       self.pdb_hierarchy = self.pdb_inp.construct_hierarchy()
-
     self.pdb_atoms = self.pdb_hierarchy.atoms()
+    self.pdb_atoms.reset_i_seq()
     self.counts = self.pdb_hierarchy.overall_counts()
     self.counts.raise_residue_groups_with_multiple_resnames_using_same_altloc_if_necessary()
     self.counts.raise_improper_alt_conf_if_necessary()
     self.counts.raise_chains_with_mix_of_proper_and_improper_alt_conf_if_necessary()
     self.counts.raise_duplicate_atom_labels_if_necessary()
-    self.pdb_atoms.reset_i_seq()
     if (log is not None):
       print >> log, "  Monomer Library directory:"
       print >> log, "   ", show_string(mon_lib_srv.root_path)
@@ -2693,6 +2698,42 @@ class build_all_chain_proxies(object):
             chain_proxies.conformation_dependent_restraints_list
           del chain_proxies
           flush_log(log)
+      #
+      # Identify disulfide bond exclusions BEGIN
+      self.disulfide_bond_exclusions_selection = flex.size_t()
+      if(self.cystein_sulphur_i_seqs.size()>0):
+        if(params.disulfide_bond_exclusions_selection_string is not None):
+          self.disulfide_bond_exclusions_selection = \
+            self.pdb_hierarchy.atom_selection_cache().selection(
+              params.disulfide_bond_exclusions_selection_string).iselection()
+        else:
+          exclusion_list = ["H","D","T","S","O","P","N","C","SE"]
+          cystein_sulphur_atoms_exclude = []
+          for atom in self.pdb_atoms:
+            e = atom.element.strip().upper()
+            if(not e in exclusion_list):
+              for cs_i_seq in self.cystein_sulphur_i_seqs:
+                csa = self.pdb_atoms[cs_i_seq]
+                if(csa.distance(atom) < params.exclusion_distance_cutoff):
+                  cystein_sulphur_atoms_exclude.append(csa)
+                  self.disulfide_bond_exclusions_selection.append(csa.i_seq)
+      if(self.disulfide_bond_exclusions_selection.size()>0):
+        print >>log
+        print >>log, "List of CYS excluded from plausible disulfide bonds:"
+        print >>log, "  (reason: may participate in coordination)"
+        for i_seq in self.disulfide_bond_exclusions_selection:
+          a = self.pdb_atoms[i_seq]
+          print >> log, "  %s"%a.format_atom_record()
+          e = a.determine_chemical_element_simple().strip().upper()
+          if(e!="S"):
+            raise Sorry("disulfide_bond_exclusions_selection_string must select CYS sulfur.")
+        print >>log
+      tmp = flex.size_t()
+      for i_seq in self.cystein_sulphur_i_seqs:
+        if(not i_seq in self.disulfide_bond_exclusions_selection):
+          tmp.append(i_seq)
+      self.cystein_sulphur_i_seqs = tmp
+      # Identify disulfide bond exclusions END
       #
       n_unresolved_apply_cif_link_bonds = 0
       n_unresolved_apply_cif_link_angles = 0
@@ -4305,13 +4346,6 @@ class build_all_chain_proxies(object):
       max_bond_distance = max(max_bond_distance,
         processed_edits.bond_distance_model_max)
     #
-    #if (h_bond_table is None) :
-    #  hydrogen_bonds = None
-    #else :
-    #  hydrogen_bonds = self.process_hydrogen_bonds(h_bond_table,
-    #    log=log)
-    #  max_bond_distance = max(max_bond_distance,
-    #    hydrogen_bonds.bond_distance_model_max)
     asu_mappings = self.special_position_settings.asu_mappings(
       buffer_thickness=max_bond_distance*3)
         # factor 3 is to reach 1-4 interactions
@@ -4328,11 +4362,6 @@ class build_all_chain_proxies(object):
 
     geometry_restraints.add_pairs(
       bond_asu_table, self.geometry_proxy_registries.bond_simple.proxies)
-    #
-    if 0:
-      self.other_bonds(bond_params_table,
-                       bond_asu_table,
-                       )
     #
     self.geometry_proxy_registries.bond_simple.proxies = None # free memory
     #
