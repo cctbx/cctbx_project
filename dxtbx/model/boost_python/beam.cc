@@ -62,10 +62,11 @@ namespace dxtbx { namespace model { namespace boost_python {
     return beam;
   }
    
-  static Beam* make_beam_w_all(vec3<double> sample_to_source, double wavelength,
-                         double divergence, double sigma_divergence, 
-                         vec3<double> polarization_normal, 
-                         double polarization_fraction, bool deg) {
+  static Beam* make_beam_w_all(vec3<double> sample_to_source, 
+			       double wavelength,
+			       double divergence, double sigma_divergence, 
+			       vec3<double> polarization_normal, 
+			       double polarization_fraction, bool deg) {
     Beam *beam = NULL;
     if (deg) {
       beam = new Beam(sample_to_source, wavelength, 
@@ -81,8 +82,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     }
     return beam;
   }
- 
-   
+    
   static
   double get_divergence(const Beam &beam, bool deg) {
     double divergence = beam.get_divergence();
@@ -147,6 +147,17 @@ namespace dxtbx { namespace model { namespace boost_python {
               arg("polarization_normal"),
               arg("polarization_fraction"),
               arg("deg") = true)))
+      .def("__init__",
+          make_constructor(
+          &make_beam_w_all, 
+          default_call_policies(), (
+	      arg("direction"),
+	      arg("wavelength"),
+	      arg("divergence"),
+	      arg("sigma_divergence"),
+              arg("polarization_normal"),
+              arg("polarization_fraction"),
+              arg("deg") = true)))          
       .def("get_direction", 
         &Beam::get_direction)
       .def("set_direction",

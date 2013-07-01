@@ -48,7 +48,7 @@ class FormatSMVADSCDBG(FormatSMVADSC):
         beam_y = float(self._header_dictionary['BEAM_CENTER_Y'])
         pixel_size = float(self._header_dictionary['PIXEL_SIZE'])
         # size1 and size2 swapped here
-        image_size = (float(self._header_dictionary['SIZE2']), 
+        image_size = (float(self._header_dictionary['SIZE2']),
                       float(self._header_dictionary['SIZE1']))
         overload = 65535
         underload = 0
