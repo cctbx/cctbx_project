@@ -332,6 +332,7 @@ class dataset_statistics (object) :
       file_name=None,
       model_arrays=None,
       sigma_filtering=Auto,
+      eps=0.0001, # fudge factor for resolution cutoffs
       log=None) :
     self.file_name = file_name
     if (log is None) : log = null_out()
@@ -348,9 +349,15 @@ class dataset_statistics (object) :
       raise Sorry(("The data in %s are already merged.  Only unmerged (but "+
         "scaled) data may be used in this program.")%
         i_obs.info().label_string())
+    d_min_cutoff = d_min
+    d_max_cutoff = d_max
+    if (d_min is not None) :
+      d_min_cutoff -= eps
+    if (d_max is not None) :
+      d_max_cutoff += eps
     i_obs = i_obs.resolution_filter(
-      d_min=d_min,
-      d_max=d_max).set_info(info)
+      d_min=d_min_cutoff,
+      d_max=d_max_cutoff).set_info(info)
     i_obs.show_summary(f=log)
     self.anom_extra = ""
     if (not anomalous) :
