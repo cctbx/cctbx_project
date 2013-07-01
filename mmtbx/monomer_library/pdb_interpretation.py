@@ -2963,7 +2963,9 @@ class build_all_chain_proxies(object):
         "  columns 77-78 of the PDB file."])
     result.extend([
       "  Also note that phenix.ready_set and phenix.elbow are available",
-      "  for creating restraint definitions (CIF files)."])
+      "  for creating restraint definitions (CIF files).  Make sure that "+
+      "  the residue and atom names in your model agree with the names "+
+      "  defined in restraint files."])
     return "\n  ".join(result)
 
   def extract_secondary_structure (self) :
