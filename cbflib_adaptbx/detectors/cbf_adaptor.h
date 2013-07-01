@@ -145,7 +145,7 @@ class CBFAdaptor {
     if (!cbf_h) throw Error("bad CBF handle");
     private_file = std::fopen(filename.c_str(),"rb");
     if (!private_file) throw Error("cbf file BAD_OPEN");
-    cbf_failnez (cbf_read_file (cbf_h, private_file, MSG_DIGEST))
+    cbf_failnez (cbf_read_widefile (cbf_h, private_file, MSG_DIGEST))
     //file must be left open & is closed by the cbf library.
 
     try {
