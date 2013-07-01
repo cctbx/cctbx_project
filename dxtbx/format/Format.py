@@ -84,7 +84,7 @@ class Format(object):
         are given a different example return False.
 
         Implementing understand() in a subclass, one can safely assume
-        that the superclass's understand() function returned True.
+        that the superclasss understand() function returned True.
         The understand() function of two different classes directly
         derived from the same base should never both return True for
         the same input image.'''

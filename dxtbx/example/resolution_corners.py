@@ -15,7 +15,7 @@ def resolution_corners(frame):
 
     import math
     from scitbx import matrix
-    
+
     detector = frame.get_detector()
     beam = frame.get_beam()
 
@@ -37,5 +37,5 @@ if __name__ == '__main__':
 
     import sys
     import dxtbx
-     
+
     resolution_corners(dxtbx.load(sys.argv[1]))
