@@ -163,7 +163,7 @@ phaser
 from iotbx.pdb import common_residue_names_water as WATER_RES_NAMES
 DEFAULT_IONS = ["MG", "CA", "ZN", "CL"]
 HALIDES = ["F", "CL", "BR", "I"]
-TRANSITION_METALS = ["MN", "FE", "CO", "CU", "NI", "ZN"]
+TRANSITION_METALS = ["MN", "FE", "CO", "CU", "NI", "ZN", "PT"]
 NUC_PHOSPHATE_BINDING = ["MG", "CA", "MN"]
 SUPPORTED = TRANSITION_METALS + HALIDES + ["NA", "MG", "K", "CA", "CD"]
 
