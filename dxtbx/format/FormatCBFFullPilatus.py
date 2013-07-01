@@ -48,7 +48,7 @@ class FormatCBFFullPilatus(FormatCBFFull):
         FormatCBFFull._start(self)
 
         self._cbf_handle = pycbf.cbf_handle_struct()
-        self._cbf_handle.read_file(self._image_file, pycbf.MSG_DIGEST)
+        self._cbf_handle.read_widefile(self._image_file, pycbf.MSG_DIGEST)
 
         return
 
