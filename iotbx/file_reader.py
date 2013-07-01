@@ -173,7 +173,7 @@ class any_file_input (object) :
     self.file_name = file_name
     self.file_object = None
     self.file_type = None
-    self.file_server = None
+    self._file_server = None
     self.file_description = None
     self._cached_file = None # XXX: used in phenix.file_reader
     self._tried_types = []
@@ -225,6 +225,18 @@ class any_file_input (object) :
     if self.file_type is not None :
       self.file_description = self.__descriptions__[self.file_type]
 
+  @property
+  def file_server (self) :
+    from iotbx.reflection_file_utils import reflection_file_server
+    if (self._file_server is None) :
+      if (self.file_type == "hkl") :
+        self._file_server = reflection_file_server(
+          crystal_symmetry=None,
+          force_symmetry=True,
+          reflection_files=[self.file_object],
+          err=sys.stderr)
+    return self._file_server
+
   def try_as_pdb (self) :
     from iotbx.pdb import input as pdb_input
     try :
@@ -238,15 +250,9 @@ class any_file_input (object) :
 
   def try_as_hkl (self) :
     from iotbx.reflection_file_reader import any_reflection_file
-    from iotbx.reflection_file_utils import reflection_file_server
     # XXX this is unfortunate, but unicode breaks Boost.Python extensions
     hkl_file = any_reflection_file(str(self.file_name))
     assert (hkl_file.file_type() is not None), "Not a valid reflections file."
-    self.file_server = reflection_file_server(
-      crystal_symmetry=None,
-      force_symmetry=True,
-      reflection_files=[hkl_file],
-      err=sys.stderr)
     self.file_type = "hkl"
     self.file_object = hkl_file
 
@@ -259,11 +265,6 @@ class any_file_input (object) :
     from iotbx.reflection_file_utils import reflection_file_server
     cif_file = any_reflection_file(str(self.file_name))
     if cif_file.file_type() is not None:
-      self.file_server = reflection_file_server(
-        crystal_symmetry=None,
-        force_symmetry=True,
-        reflection_files=[cif_file],
-        err=sys.stderr)
       self.file_object = cif_file
       self.file_type = "hkl"
     else:
