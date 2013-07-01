@@ -351,7 +351,7 @@ class HKLViewFrame (wx.Frame) :
             lambda evt, f=example_file: self.load_reflections_file(f), item)
 
   def OnActive (self, event) :
-    if (self.IsShown()) :
+    if (self.IsShown()) and (type(self.viewer).__name__ != "_wxPyDeadObject") :
       self.viewer.Refresh()
 
   def create_viewer_panel (self) :
@@ -398,6 +398,7 @@ class HKLViewFrame (wx.Frame) :
     self.settings_panel.get_control("expand_anomalous").Enable(True)
 
   def process_miller_array (self, array) :
+    if (array is None) : return
     if (array.is_hendrickson_lattman_array()) :
       raise Sorry("Hendrickson-Lattman coefficients are not supported.")
     info = array.info()
@@ -541,7 +542,7 @@ class HKLViewFrame (wx.Frame) :
         return valid_arrays[0]
       else :
         #dlg = SelectArrayDialog(self, -1, "Select data")
-        dlg = wx.SingleChoiceDialog(parent=self,
+        dlg = wx.SingleChoiceDialog(parent=None,
           message="Please select the data you wish to view:",
           caption="Select data",
           choices=array_info)
@@ -549,6 +550,7 @@ class HKLViewFrame (wx.Frame) :
           sel = dlg.GetSelection()
           if (set_array) :
             self.set_miller_array(valid_arrays[sel])
+          wx.CallAfter(dlg.Destroy)
           return valid_arrays[sel]
         wx.CallAfter(dlg.Destroy)
     raise Abort()
