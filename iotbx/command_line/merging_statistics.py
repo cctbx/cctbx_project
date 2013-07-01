@@ -49,7 +49,7 @@ class cmdline_processor (iotbx.phil.process_command_line_with_files) :
             arg))
     return False
 
-def run (args, out=None, assume_shelx_observation_type_is=None) :
+def run (args, out=None, assume_shelx_observation_type_is="intensities") :
   if (out is None) : out = sys.stdout
   import iotbx.phil
   master_params = iotbx.phil.parse(master_phil, process_includes=True)
