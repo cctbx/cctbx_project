@@ -17,7 +17,7 @@ def _bond_angles(vectors):
           for index, v1 in enumerate(vectors)
           for v2 in vectors[index + 1:]]
 
-def _is_tetrahedral(vectors, dev_cutoff = 16):
+def _is_tetrahedral(vectors, dev_cutoff = 20):
   """
   Tetrahedrons have four vertices, with angles between all pairs of vertices
   uniformly about 104.5 degrees.
@@ -64,7 +64,7 @@ def _is_square_planar(vectors, dev_cutoff = 20):
   if deviation <= dev_cutoff:
     return deviation, 4 - len(vectors)
 
-def _is_octahedral(vectors, dev_cutoff = 15):
+def _is_octahedral(vectors, dev_cutoff = 20):
   """
   Octahedrons have six vertices (Their name comes from their eight faces).
   The expected angles are all either 90 degrees (Next to each other),
