@@ -51,7 +51,7 @@ class style (object) :
                 "scrolled", "selection", "spinner", "submenu", "tribool",
                 "hidden", "directory", "new_file", "default_cwd", "resolution",
                 "hide_label", "not_none", "noedit", "fixed", "checklist",
-                "set_resolution", "force_data", "anom", "non_anom",
+                "set_resolution", "force_data", "anom", "non_anom", "no_view",
                 "process_hkl", "force_rfree", "combo_box", "optional",
                 "no_map", "file_type_default","expand","output_dir","seq_file"]
   style_kwds = ["auto_launch_dialog", "columns", "dialog_link", "extensions",

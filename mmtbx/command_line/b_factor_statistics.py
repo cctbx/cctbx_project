@@ -28,8 +28,11 @@ adp_statistics
     .optional = True
     .short_caption = Restraints (CIF) file
     .style = file_type:cif input_file
-  selection = None
+  selection = all
     .type = atom_selection
+    .short_caption = Atom selection
+    # FIXME
+    .style = no_view
 }
 """
 
