@@ -1401,6 +1401,7 @@ mmtbx/chemical_components/__init__.py -text
 mmtbx/chemical_components/cif_parser.py -text
 mmtbx/chemical_components/tst.py -text
 mmtbx/command_line/analyze_peptides.py -text
+mmtbx/command_line/b_factor_statistics.py -text
 mmtbx/command_line/cablam_training.py -text
 mmtbx/command_line/cablam_validate.py -text
 mmtbx/command_line/cbetadev.py -text
@@ -1656,6 +1657,7 @@ mmtbx/regression/make_fake_anomalous_data.py -text
 mmtbx/regression/tst_add_h_to_water.py -text
 mmtbx/regression/tst_altloc_chain_break.py -text
 mmtbx/regression/tst_anomalous_substructure.py -text
+mmtbx/regression/tst_b_factor_statistics.py -text
 mmtbx/regression/tst_cablam.py -text
 mmtbx/regression/tst_compare_ligands.py -text
 mmtbx/regression/tst_dssp.py -text

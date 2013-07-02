@@ -1,72 +1,8 @@
+
 from __future__ import division
-
 from wxtbx import plots
-from libtbx.utils import Sorry, null_out
 import wx
-import os
 import sys
-
-master_phil = """
-adp_statistics
-  .short_caption = ADP statistics
-  .caption = This tool displays tables and plots of statistics for isotropic \
-    and anisotropic ADPs in a PDB file.  You can get the same information on \
-    the command line by running phenix.pdbtools model_statistics=True \
-    model.pdb.
-  .style = box auto_align caption_img:icons/custom/phenix.pdbtools.png
-{
-  pdb_file = None
-    .type = path
-    .optional = False
-    .short_caption = PDB file
-    .style = bold file_type:pdb input_file
-  cif_file = None
-    .type = path
-    .multiple = True
-    .optional = True
-    .short_caption = Restraints (CIF) file
-    .style = file_type:cif input_file
-}
-"""
-
-def run (args=(), params=None, out=None) :
-  if (out is None) :
-    out = sys.stdout
-  if (len(args) > 0) :
-    assert (params is None)
-    import iotbx.phil
-    cmdline = iotbx.phil.process_command_line_with_files(
-      args=args,
-      master_phil_string=master_phil,
-      pdb_file_def="adp_statistics.pdb_file",
-      cif_file_def="adp_statistics.cif_file")
-    params = cmdline.work.extract()
-    validate_params(params)
-  import mmtbx.model
-  import mmtbx.restraints
-  from mmtbx.monomer_library import pdb_interpretation
-  processed_pdb_file = pdb_interpretation.run(
-    args=[params.adp_statistics.pdb_file] + params.adp_statistics.cif_file,
-    log=null_out())
-  geometry = processed_pdb_file.geometry_restraints_manager(show_energies=True)
-  restraints_manager = mmtbx.restraints.manager(
-    geometry = geometry,
-    normalization = True)
-  model = mmtbx.model.manager(
-    xray_structure     = processed_pdb_file.xray_structure(),
-    pdb_hierarchy      = processed_pdb_file.all_chain_proxies.pdb_hierarchy,
-    restraints_manager = restraints_manager,
-    log                = out)
-  stats = model.adp_statistics()
-  stats.file_name = params.adp_statistics.pdb_file
-  stats.show_1(out=out)
-  return stats
-
-def validate_params (params) :
-  if (params.adp_statistics.pdb_file is None) :
-    raise Sorry("A PDB file is required to run this program.")
-  elif (not os.path.isfile(params.adp_statistics.pdb_file)) :
-    raise Sorry("The path %s is not a file or does not exist.")
 
 #-----------------------------------------------------------------------
 # GUI objects
@@ -85,6 +21,12 @@ class ADPStatisticsFrame (wx.Frame) :
     s0.Add(txt0, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self.file_text = wx.StaticText(p, -1, "--unknown--")
     s0.Add(self.file_text, 1, wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.EXPAND, 5)
+    s1 = wx.BoxSizer(wx.HORIZONTAL)
+    s2.Add(s1)
+    txt00 = wx.StaticText(p, -1, "Atom selection:")
+    s1.Add(txt00, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    self.sele_text = wx.StaticText(p, -1, "(all)")
+    s1.Add(self.sele_text, 1, wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.EXPAND, 5)
     txt1 = wx.StaticText(p, -1, "Overall statistics:")
     s2.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     if (sys.platform == "darwin") :
@@ -155,6 +97,9 @@ class ADPStatisticsFrame (wx.Frame) :
     file_name = getattr(stats, "file_name", None)
     if (file_name is not None) :
       self.file_text.SetLabel(file_name)
+    selection = getattr(stats, "selection", None)
+    if (selection is not None) :
+      self.sele_text.SetLabel(selection)
     t1, t2, t3 = stats.format_tables()
     for row in t1 :
       i = self.list1.InsertStringItem(sys.maxint, str(row[0]))
@@ -186,7 +131,8 @@ class adp_histogram (plots.histogram) :
     self.show_histogram(values, len(bins), y_label="# of atoms")
 
 if (__name__ == "__main__") :
-  stats = run(sys.argv[1:])
+  from mmtbx.command_line import b_factor_statistics
+  stats = b_factor_statistics.run(sys.argv[1:])
   app = wx.App(0)
   frame = ADPStatisticsFrame(None, -1, "ADP statistics")
   frame.show_statistics(stats)

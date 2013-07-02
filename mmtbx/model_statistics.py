@@ -311,8 +311,11 @@ class model_content(object):
     print >> out,prefix+fmt%("TOTAL",self.atoms_count,self.atoms_occupancy_sum)
 
 class adp(object):
-  def __init__(self, model,  n_histogram_slots = 10):
+  def __init__(self, model,  n_histogram_slots = 10, file_name=None,
+      selection=None):
     self.wilson_b = model.wilson_b
+    self.file_name = file_name
+    self.selection = selection
     self.rms_b_iso_or_b_equiv_bonded = model.rms_b_iso_or_b_equiv_bonded()
     eps = math.pi**2*8
     solvent_selection = model.solvent_selection()
