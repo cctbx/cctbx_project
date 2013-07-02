@@ -179,7 +179,7 @@ def run(args, params=None, out=sys.stdout):
 class mtz_as_cif_blocks(object):
 
   def __init__(self, mtz_object, custom_cif_labels_dict=None, log=None,
-      test_flag_value=0): # FIXME
+      test_flag_value=None):
 
     self.cif_blocks = {
       'xray': None,
@@ -295,12 +295,14 @@ class mtz_as_cif_blocks(object):
           array=r_free, column_name='_refln.phenix_R_free_flags')
 
       if input_obs is None or r_free is None: continue
+      if (test_flag_value is None) :
+        test_flag_value = reflection_file_utils.guess_r_free_flag_value(
+          miller_array=r_free)
+      assert (test_flag_value is not None)
       refln_status = r_free.array(data=flex.std_string(r_free.size(), "."))
       input_obs_non_anom = input_obs.average_bijvoet_mates()
       match = r_free.match_indices(input_obs_non_anom)
-      # FIXME test_flag_value should be automatically determined!
-      refln_status.data().set_selected(match.pair_selection(test_flag_value),
-        "o")
+      refln_status.data().set_selected(match.pair_selection(0), "o")
       refln_status.data().set_selected(r_free.data() == test_flag_value, "f")
       if f_obs_filtered is not None:
         f_obs_filtered_non_anom = f_obs_filtered.average_bijvoet_mates()
