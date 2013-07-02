@@ -124,40 +124,30 @@ namespace dxtbx { namespace model { namespace boost_python {
           make_constructor(
           &make_beam, 
           default_call_policies(), (
-          arg("direction"),
-          arg("wavelength"),
-          arg("divergence"),
-          arg("sigma_divergence"),
-          arg("deg") = true)))          
+            arg("direction"),
+            arg("wavelength"),
+            arg("divergence"),
+            arg("sigma_divergence"),
+            arg("deg") = true)))          
       .def("__init__",
           make_constructor(
           &make_beam_w_s0, 
           default_call_policies(), (
-          arg("s0"),
-          arg("divergence"),
-          arg("sigma_divergence"),
-          arg("deg") = true)))
-      .def("__init__",
-          make_constructor(
-            &make_beam_w_all,
-            default_call_policies(), (
-              arg("s0"),
-              arg("divergence"),
-              arg("sigma_divergence"),
-              arg("polarization_normal"),
-              arg("polarization_fraction"),
-              arg("deg") = true)))
+            arg("s0"),
+            arg("divergence"),
+            arg("sigma_divergence"),
+            arg("deg") = true)))
       .def("__init__",
           make_constructor(
           &make_beam_w_all, 
           default_call_policies(), (
-	      arg("direction"),
-	      arg("wavelength"),
-	      arg("divergence"),
-	      arg("sigma_divergence"),
-              arg("polarization_normal"),
-              arg("polarization_fraction"),
-              arg("deg") = true)))          
+	          arg("direction"),
+	          arg("wavelength"),
+	          arg("divergence"),
+	          arg("sigma_divergence"),
+            arg("polarization_normal"),
+            arg("polarization_fraction"),
+            arg("deg") = true)))          
       .def("get_direction", 
         &Beam::get_direction)
       .def("set_direction",
