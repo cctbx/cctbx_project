@@ -1,3 +1,4 @@
+from __future__ import division
 
 def tst_for_z(z):
   from cctbx.eltbx import attenuation_coefficient
