@@ -112,6 +112,7 @@ tst_list = (
   "$D/regression/tst_fmodel_no_cryst1.py",
   "$D/regression/tst_fmodel_misc.py",
   "$D/regression/tst_isomorphous_difference_misc.py",
+  "$D/regression/tst_b_factor_statistics.py",
   )
 
 def run():
