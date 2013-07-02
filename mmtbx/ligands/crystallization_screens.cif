@@ -5,8 +5,7 @@ data_crystal_screen
 _xtal.manufacturer "Hampton Research"
 _xtal.screen_url "http://hamptonresearch.com/product_detail.aspx?sid=17&pid=1"
 _xtal.conditions 96
-_xtal.comments "Consists of two sets of 48 conditions (Crystal Screens I and
-II), also sold as 96-well block (Crystal Screen HT)"
+_xtal.comments "Consists of two sets of 48 conditions (Crystal Screens I and II), also sold as 96-well block (Crystal Screen HT)"
 loop_
 _xtal_screen.name "Crystal Screen"
 _xtal_screen.name "Crystal Screen I"
