@@ -1559,7 +1559,6 @@ mmtbx/ias/__init__.py -text
 mmtbx/ias/tst_ias.py -text
 mmtbx/ions/__init__.py -text
 mmtbx/ions/build.py -text
-mmtbx/ions/crystal_screen.cif -text
 mmtbx/ions/geometry.py -text
 mmtbx/ions/ion_parameters.cif -text
 mmtbx/ions/parameters.py -text
@@ -1568,6 +1567,8 @@ mmtbx/kinemage/__init__.py -text
 mmtbx/kinemage/validation.py -text
 mmtbx/lattice.py -text
 mmtbx/libtbx_refresh.py svneol=native#text/x-python
+mmtbx/ligands/__init__.py -text
+mmtbx/ligands/crystallization_screens.cif -text
 mmtbx/map_tools.py -text
 mmtbx/maps/__init__.py -text
 mmtbx/maps/fobs_minus_fobs_map.py -text
