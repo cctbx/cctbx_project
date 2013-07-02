@@ -1570,6 +1570,7 @@ mmtbx/lattice.py -text
 mmtbx/libtbx_refresh.py svneol=native#text/x-python
 mmtbx/ligands/__init__.py -text
 mmtbx/ligands/crystallization_screens.cif -text
+mmtbx/ligands/tst_xtal_screens.py -text
 mmtbx/ligands/xtal_screens.py -text
 mmtbx/map_tools.py -text
 mmtbx/maps/__init__.py -text
@@ -1688,7 +1689,6 @@ mmtbx/regression/tst_sort_hetatms.py -text
 mmtbx/regression/tst_validate_utils.py svneol=native#text/x-python
 mmtbx/regression/tst_validate_waters.py -text
 mmtbx/regression/tst_validation_summary.py -text
-mmtbx/regression/tst_xtal_screens.py -text
 mmtbx/resolve_resources.py -text
 mmtbx/rotamer/graphics.py -text
 mmtbx/rotamer/rotamer_names.props -text
