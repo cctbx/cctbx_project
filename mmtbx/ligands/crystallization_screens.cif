@@ -264,11 +264,11 @@ data_peg_ion
 _xtal.manufacturer "Hampton Research"
 _xtal.screen_url "http://hamptonresearch.com/product_detail.aspx?sid=30&pid=11"
 _xtal.conditions 96
-_xtal.comments "Consists of two sets of 48 conditions (Crystal Screens I and II), also sold as 96-well block (Crystal Screen HT)"
+_xtal.comments "Consists of two sets of 48 conditions (PEG/Ion I and II), also sold as 96-well block (PEG/Ion HT)"
 loop_
 _xtal_screen.name "PEG/Ion"
-_xtal_screen.name "PEG/Ion 1"
-_xtal_screen.name "PEG/Ion 2"
+_xtal_screen.name "PEG/Ion I"
+_xtal_screen.name "PEG/Ion II"
 _xtal_screen.name "PEG/Ion HT"
 
 loop_
