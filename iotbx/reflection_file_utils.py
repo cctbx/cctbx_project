@@ -794,6 +794,12 @@ def cif_status_flags_as_int_r_free_flags(miller_array, test_flag_value):
     test_flag_value = 0
   return miller_array, test_flag_value
 
+def guess_r_free_flag_value (miller_array, test_flag_value=None) :
+  flag_scores = get_r_free_flags_scores(
+    miller_arrays=[miller_array],
+    test_flag_value=test_flag_value)
+  return flag_scores.test_flag_values[0]
+
 def construct_output_file_name(input_file_names,
                                user_file_name,
                                file_type_label,

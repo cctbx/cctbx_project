@@ -2,7 +2,8 @@ from __future__ import division
 import libtbx.load_env
 if (libtbx.env.has_module("ccp4io")):
   from iotbx import reflection_file_reader
-  from iotbx.reflection_file_utils import reflection_file_server
+  from iotbx.reflection_file_utils import reflection_file_server, \
+    guess_r_free_flag_value
   from iotbx import mtz
 else:
   mtz = None
@@ -540,6 +541,10 @@ No matching array: r_free_flags.label=foo
               err = reflection_file_srv.err = StringIO()
             else:
               assert i_exercise == 0
+              actual_test_flag_value_2 = guess_r_free_flag_value(
+                miller_array=r_free_flags,
+                test_flag_value=trial_test_flag_value)
+              assert (actual_test_flag_value_2 == actual_test_flag_value)
   for second_label in ["test", "foo"]:
     input_array = miller_set.array(data=exercise_flag_arrays[0])
     mtz_dataset = input_array.as_mtz_dataset(
