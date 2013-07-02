@@ -21,6 +21,7 @@ import mmtbx.refinement.real_space.driver
 import mmtbx.utils
 import mmtbx.secondary_structure
 from iotbx import reflection_file_utils
+import libtbx.load_env
 
 if (1):
   random.seed(0)
@@ -57,18 +58,22 @@ def get_geometry_restraints_manager(processed_pdb_file, xray_structure,
   sctr_keys=xray_structure.scattering_type_registry().type_count_dict().keys()
   has_hd = "H" in sctr_keys or "D" in sctr_keys
   #
-  sec_str = mmtbx.secondary_structure.process_structure(
-    params             = None,
-    processed_pdb_file = processed_pdb_file,
-    tmp_dir            = os.getcwd(),
-    log                = log,
-    assume_hydrogens_all_missing=(not has_hd))
-  sec_str.initialize(log=log)
-  build_proxies = sec_str.create_hbond_proxies(
-    log          = log,
-    hbond_params = None)
-  hbond_params = build_proxies.proxies
   hbond_params=None
+  # XXX in theory we could use mmtbx.secondary_structure.dssp for this, but
+  # parameter switch is not exposed here and it needs further testing and
+  # debugging anyway
+  if (libtbx.env.has_module("ksdssp")) :
+    sec_str = mmtbx.secondary_structure.process_structure(
+      params             = None,
+      processed_pdb_file = processed_pdb_file,
+      tmp_dir            = os.getcwd(),
+      log                = log,
+      assume_hydrogens_all_missing=(not has_hd))
+    sec_str.initialize(log=log)
+    build_proxies = sec_str.create_hbond_proxies(
+      log          = log,
+      hbond_params = None)
+    hbond_params = build_proxies.proxies
   #
   geometry = processed_pdb_file.geometry_restraints_manager(
     show_energies                = False,
