@@ -259,7 +259,7 @@ _lib_screen.condition
 1       H11     95      95      "K,SCN,PEG"                     .       "0.1 M Potassium thiocyanate, 30% w/v Polyethylene glycol monomethyl ether 2,000"
 1       H12     96      96      "K,BR,PEG"                      .       "0.15 M Potassium bromide, 30% w/v Polyethylene glycol monomethyl ether 2,000"
 #
-data_index
+data_peg_ion
 
 _xtal.manufacturer "Hampton Research"
 _xtal.screen_url "http://hamptonresearch.com/product_detail.aspx?sid=30&pid=11"
