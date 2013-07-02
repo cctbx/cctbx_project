@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8; py-indent-offset: 2 -*-
 from __future__ import division
 from libtbx import slots_getstate_setstate
 import os.path
@@ -12,15 +12,16 @@ class server (object) :
     self._cif_model = iotbx.cif.reader(file_path=params_path).model()
 
   def get_condition (self, screen_name, condition_id) :
+    screen_name = screen_name.lower().replace(" ", "_")
     keys = self._cif_model.keys()
     data = None
-    if (screen_name in keys) :
+    if screen_name in keys:
       data = self._cif_model[screen_name]
     else :
       for other_key in keys :
         other_data = self._cif_model[other_key]
-        for name in data["_xtal_screen.name"] :
-          if (name == screen_name) :
+        for name in other_data["_xtal_screen.name"]:
+          if name == screen_name:
             data = other_data
             break
     if (data is None) :
@@ -36,7 +37,7 @@ class server (object) :
       if (_id is not None) :
         # XXX sloppy
         kwds = dict([ ("screen_name_", official_name) ] + [
-          (name, data["_lib_screen."+name[:-1]][_id]) 
+          (name, data["_lib_screen."+name[:-1]][_id])
             for name in solution.__slots__[1:] ])
         return solution(**kwds)
     raise RuntimeError("Condition '%s' not found in '%s'." % (condition_id,
