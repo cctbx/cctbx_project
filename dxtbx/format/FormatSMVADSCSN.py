@@ -10,9 +10,7 @@ class FormatSMVADSCSN(FormatSMVADSC):
 
         size, header = FormatSMVADSC.get_smv_header(image_file)
 
-        wanted_header_items = [
-                               'DETECTOR_SN',
-                              ]
+        wanted_header_items = ['DETECTOR_SN', 'DATE']
 
         for header_item in wanted_header_items:
             if not header_item in header:
