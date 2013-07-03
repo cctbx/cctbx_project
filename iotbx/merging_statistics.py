@@ -175,13 +175,13 @@ class merging_stats (object) :
     filter = filter_intensities_by_sigma(
       array=array,
       sigma_filtering=sigma_filtering)
-    self.filter = filter
+    self.d_max, self.d_min = array.d_max_min()
+    self.observed_criterion_sigma_I = filter.observed_criterion_sigma_I
     array = filter.array
     merge = filter.merge
     array_merged = filter.array_merged
     self.n_rejected_before_merge = filter.n_rejected_before_merge
     self.n_rejected_after_merge = filter.n_rejected_after_merge
-    self.d_max, self.d_min = array.d_max_min()
     self.n_obs = array.indices().size()
     self.n_uniq = array_merged.indices().size()
     complete_set = array_merged.complete_set().resolution_filter(
@@ -457,7 +457,7 @@ class dataset_statistics (object) :
     if cif_block is None:
       cif_block = iotbx.cif.model.block()
 
-    observed_criterion_sigma_I = self.overall.filter.observed_criterion_sigma_I
+    observed_criterion_sigma_I = self.overall.observed_criterion_sigma_I
     if observed_criterion_sigma_I is None:
       observed_criterion_sigma_I = "?"
 
