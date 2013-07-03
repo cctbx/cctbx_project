@@ -196,7 +196,7 @@ map_coefficients {
 }
 """)).extract().map_coefficients[0]
     model_map_coeffs = mmtbx.maps.map_coefficients_from_fmodel(
-      fmodel_refined, map_params)
+      fmodel=fmodel_refined, params=map_params)
     model_map = model_map_coeffs.fft_map(
       resolution_factor=params.grid_resolution_factor).real_map_unpadded()
 

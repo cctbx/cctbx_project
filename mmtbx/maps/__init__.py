@@ -385,24 +385,29 @@ def compute_f_calc(fmodel, params):
     coeffs = coeffs_partial_set
   return coeffs
 
-def map_coefficients_from_fmodel (fmodel,
-    params,
-    post_processing_callback=None,
-    pdb_hierarchy=None):
+def map_coefficients_from_fmodel(
+      params,
+      fmodel = None,
+      map_calculation_server = None,
+      post_processing_callback=None,
+      pdb_hierarchy=None):
+  assert [fmodel, map_calculation_server].count(None) == 1
   from mmtbx import map_tools
   import mmtbx
   from cctbx import miller
   mnm = mmtbx.map_names(map_name_string = params.map_type)
   if(mnm.k==0 and abs(mnm.n)==1):
     return compute_f_calc(fmodel, params)
-  if (fmodel.is_twin_fmodel_manager()) and (mnm.phaser_sad_llg) :
+  if(fmodel is not None and
+     fmodel.is_twin_fmodel_manager() and
+     mnm.phaser_sad_llg):
     return None
-  #XXXsave_k_part, save_b_part = None, None
-  #XXXif(mnm.k is not None and abs(mnm.k) == abs(mnm.n) and fmodel.k_part()!=0):
-  #XXX  save_k_part = fmodel.k_part()
-  #XXX  save_b_part = fmodel.b_part()
-  #XXX  fmodel.update_core(k_part=0, b_part=0)
-  e_map_obj = fmodel.electron_density_map(update_f_part1=True)
+  if(fmodel is not None):
+    e_map_obj = fmodel.electron_density_map(update_f_part1=True)
+    xrs = fmodel.xray_structure
+  else:
+    e_map_obj = map_calculation_server
+    xrs = map_calculation_server.fmodel.xray_structure
   coeffs = None
   if(not params.kicked):
     coeffs = e_map_obj.map_coefficients(
@@ -421,15 +426,10 @@ def map_coefficients_from_fmodel (fmodel,
     if(params.sharpening):
       from mmtbx import map_tools
       coeffs, b_sharp = map_tools.sharp_map(
-        sites_frac = fmodel.xray_structure.sites_frac(),
+        sites_frac = xrs.sites_frac(),
         map_coeffs = coeffs,
         b_sharp    = params.sharpening_b_factor)
   else:
-    if (fmodel.is_twin_fmodel_manager()) :
-      raise Sorry("Kicked maps are not supported when twinning is present.  "+
-        "You can disable the automatic twin law detection by setting the "+
-        "parameter maps.skip_twin_detection to True (or check the "+
-        "corresponding box in the Phenix GUI).")
     if(params.map_type.count("anom")==0):
       coeffs = kick(
         fmodel   = e_map_obj.fmodel,
@@ -443,8 +443,6 @@ def map_coefficients_from_fmodel (fmodel,
   # XXX is this redundant?
   if(coeffs.anomalous_flag()) :
     coeffs = coeffs.average_bijvoet_mates()
-  #XXXif(mnm.k is not None and abs(mnm.k) == abs(mnm.n) and save_k_part is not None):
-  #XXX  fmodel.update_core(k_part=save_k_part, b_part=save_b_part)
   return coeffs
 
 def compute_xplor_maps(
@@ -495,16 +493,23 @@ class compute_map_coefficients(object):
             (hasattr(post_processing_callback, "__call__")))
     self.mtz_dataset = mtz_dataset
     coeffs = None
+    # Avoid doing slow calculation several times!
+    map_calculation_server = fmodel.electron_density_map(update_f_part1=True)
     self.map_coeffs = []
     for mcp in params:
       if(mcp.map_type is not None):
-        # XXX
+        if(fmodel.is_twin_fmodel_manager() and mcp.kicked) :
+          raise Sorry("Kicked maps are not supported when twinning is present.  "+
+            "You can disable the automatic twin law detection by setting the "+
+            "parameter maps.skip_twin_detection to True (or check the "+
+            "corresponding box in the Phenix GUI).")
         if(fmodel.is_twin_fmodel_manager()) and (mcp.isotropize) :
           mcp.isotropize = False
-        coeffs = map_coefficients_from_fmodel(fmodel = fmodel,
-          params = mcp,
+        coeffs = map_coefficients_from_fmodel(
+          map_calculation_server   = map_calculation_server,
+          params                   = mcp,
           post_processing_callback = post_processing_callback,
-          pdb_hierarchy = pdb_hierarchy)
+          pdb_hierarchy            = pdb_hierarchy)
         if("mtz" in mcp.format and coeffs is not None):
           lbl_mgr = map_coeffs_mtz_label_manager(map_params = mcp)
           if(self.mtz_dataset is None):

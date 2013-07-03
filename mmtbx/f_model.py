@@ -347,8 +347,10 @@ class manager(manager_mixin):
          b_sol = None,
          b_cart =None,
          _target_memory               = None,
-         n_resolution_bins_output     = None):
+         n_resolution_bins_output     = None,
+         f_part_1_updated_for_purpose = None):
     if(twin_law is not None): target_name = "twin_lsq_f"
+    self.f_part_1_updated_for_purpose = f_part_1_updated_for_purpose
     self.bin_selections = bin_selections
     self.arrays = None
     self.twin_law = twin_law
@@ -672,7 +674,6 @@ class manager(manager_mixin):
       k_anisotropic = None
     else:
       k_anisotropic = self.arrays.core.k_anisotropic.select(selection)
-
     k_anisotropic_twin = None
     if(self.twin_set):
       if(self.arrays.core_twin.k_anisotropic is None):
@@ -701,7 +702,8 @@ class manager(manager_mixin):
       k_anisotropic                = k_anisotropic,
       k_anisotropic_twin           = k_anisotropic_twin,
       _target_memory               = self._target_memory,
-      n_resolution_bins_output     = self.n_resolution_bins_output)
+      n_resolution_bins_output     = self.n_resolution_bins_output,
+      f_part_1_updated_for_purpose = self.f_part_1_updated_for_purpose)
     result.twin = self.twin
     result.twin_law_str = self.twin_law_str
     result.k_h = self.k_h
@@ -1123,6 +1125,7 @@ class manager(manager_mixin):
                they are noise or errors of bulk-solvent model, so they are
                always good to remove.
     """
+    self.f_part_1_updated_for_purpose = purpose
     zero = flex.complex_double(self.f_calc().data().size(),0)
     zero_a = self.f_calc().customized_copy(data = zero)
     self.update_core(f_part1 = zero_a)
@@ -1332,7 +1335,23 @@ class manager(manager_mixin):
       print >> log
       print >> log, "overall anisotropic scale matrix:"
       russ.format_scale_matrix(log=log)
+    self.apply_scale_k1_to_f_obs()
     return russ
+
+  def apply_scale_k1_to_f_obs(self, threshold=10):
+    assert threshold > 0
+    r_start = self.r_work()
+    one = flex.double(self.f_obs().data().size(), 1)
+    k_total = self.k_isotropic()*self.k_anisotropic()
+    sc = flex.sum(one*k_total)/flex.sum(one*one)
+    if(sc == 0 or r_start>0.5 or
+       (abs(sc)<threshold and abs(sc)>1./threshold) or
+       self.twin_law is not None): return
+    self.update(
+      f_obs         = self.f_obs().customized_copy(data=self.f_obs().data()/sc),
+      k_anisotropic = self.k_anisotropic()/sc)
+    r_final = self.r_work()
+    assert approx_equal(r_start, r_final), [r_start, r_final]
 
   def update_solvent_and_scale(self, params = None, out = None, verbose=None,
         optimize_mask = False, nproc=1, fast=True, apply_back_trace=False):
@@ -2259,8 +2278,21 @@ class manager(manager_mixin):
     return result
 
   def electron_density_map(self, update_f_part1):
+    if(update_f_part1):
+      if(self.f_part1().data().all_eq(0) or
+         self.f_part_1_updated_for_purpose != "map"):
+        fmodel = self.deep_copy()
+        fast=True
+        if(len(self.f_masks()) != 1): fast = False
+        fmodel.update_all_scales(fast = fast, update_f_part1_for = "map")
+      else: fmodel = self
+    else:
+      fmodel = self
+    if(update_f_part1):
+      assert fmodel.f_part_1_updated_for_purpose == "map", \
+        fmodel.f_part_1_updated_for_purpose
     return map_tools.electron_density_map(
-      fmodel         = self,
+      fmodel         = fmodel,
       update_f_part1 = update_f_part1)
 
   def map_coefficients (self, **kwds) :
