@@ -675,9 +675,9 @@ class ncs:
 
 
   def format_all_for_group_specification(self,log=None,quiet=True,out=None,
-       file=None):
-    if file is not None:
-       out=open(file,'w')
+       file_name=None):
+    if file_name is not None:
+       out=open(file_name,'w')
     if out==None:
        out=sys.stdout
     if log==None:
@@ -847,15 +847,15 @@ if __name__=="__main__":
   log=sys.stdout
   args=sys.argv[1:]
   if 'exercise' in args:
-    file='TEST.NCS'
-    f=open(file,'w')
+    file_name='TEST.NCS'
+    f=open(file_name,'w')
     f.write(test_ncs_info)
     f.close()
     ncs_object=ncs()
-    ncs_object.read_ncs(file,source_info=file)
+    ncs_object.read_ncs(file_name,source_info=file_name)
     ncs_object.display_all()
     file2='TEST2.NCS'
-    text=ncs_object.format_all_for_group_specification(file=file2)
+    text=ncs_object.format_all_for_group_specification(file_name=file2)
 
     if not text or text != test_ncs_info:
      print "NOT OK ...please compare TEST.NCS (std) vs TEST2.NCS (output)"
@@ -870,4 +870,4 @@ if __name__=="__main__":
     ncs_object.display_all()
     if 1:
       file2='OUTPUT.NCS'
-      text=ncs_object.format_all_for_group_specification(file=file2)
+      text=ncs_object.format_all_for_group_specification(file_name=file2)
