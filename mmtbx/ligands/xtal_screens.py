@@ -1,6 +1,7 @@
 # -*- coding: utf-8; py-indent-offset: 2 -*-
 from __future__ import division
 import errno
+import libtbx
 from libtbx import slots_getstate_setstate
 from libtbx.command_line.easy_qsub import run as run_easy_qsub
 from libtbx.command_line.easy_qsub import wait as qsub_wait
@@ -79,7 +80,7 @@ class server (object) :
 
     if phenix_source is None:
       phenix_source = \
-        os.path.join(os.environ["HOME"], "build", "setpaths_all.csh")
+        os.path.join(libtbx.env.build_path, "setpaths_all.csh")
 
     cache = os.path.join(os.path.split(__file__)[0], "cache")
 
