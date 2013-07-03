@@ -97,14 +97,7 @@ class electron_density_map(object):
                fmodel,
                update_f_part1 = True,
                map_calculation_helper = None):
-    if(update_f_part1):
-      # XXX problem: does not distinguish if it was done by "map" or "refinement"
-      if(fmodel.f_part1().data().all_eq(0)):
-        self.fmodel = fmodel.deep_copy()
-        self.fmodel.update_all_scales(update_f_part1_for = "map")
-      else: self.fmodel = fmodel
-    else:
-      self.fmodel = fmodel
+    self.fmodel = fmodel
     self.anom_diff = None
     self.mch = map_calculation_helper
     if(self.fmodel.f_obs().anomalous_flag()):
