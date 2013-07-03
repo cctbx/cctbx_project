@@ -1,12 +1,6 @@
 # -*- coding: utf-8; py-indent-offset: 2 -*-
 from __future__ import division
-import errno
-import libtbx
 from libtbx import slots_getstate_setstate
-from libtbx.command_line.easy_qsub import run as run_easy_qsub
-from libtbx.command_line.easy_qsub import wait as qsub_wait
-from mmtbx.ions.parameters import server as metal_server
-from mmtbx.monomer_library.server import server as cif_server
 
 import os.path
 
@@ -18,12 +12,6 @@ screen_number = None
   .type = int
   .help = ...
 """
-
-def _have_ligand(ligand):
-  ligand = ligand.strip().upper()
-  assert len(ligand) <= 3
-  mon_lib_entry = cif_server().get_comp_comp_id_direct(ligand)
-  return mon_lib_entry is not None
 
 class server (object) :
   def __init__ (self) :
@@ -64,47 +52,6 @@ class server (object) :
         return solution(**kwds)
     raise RuntimeError("Condition '%s' not found in '%s'." % (condition_id,
       screen_name))
-
-  def generate_restraints(self, phenix_source = None):
-    ligands = set(lig.strip()
-                  for data in self._cif_model.values()
-                  for ligs in data["_lib_screen.ligands"]
-                  for lig in ligs.split(","))
-    s = metal_server()
-    ligands.difference_update(
-      resname.strip() for resname in s.params["_lib_charge.resname"])
-
-    cmds = ["phenix.elbow --chem={} --opt".format(lig)
-            for lig in ligands
-            if not _have_ligand(lig)]
-
-    if phenix_source is None:
-      phenix_source = \
-        os.path.join(libtbx.env.build_path, "setpaths_all.csh")
-
-    cache = os.path.join(os.path.split(__file__)[0], "cache")
-
-    try:
-      os.makedirs(cache)
-    except OSError as err:
-      if err.errno != errno.EEXIST:
-        raise err
-
-    if not cmds:
-      return
-
-    job_id = run_easy_qsub(
-      phenix_source = phenix_source,
-      where = cache,
-      commands = cmds,
-      code = "gen_ligs",
-      host_scratch_dir = "gen_ligs"
-      )
-
-    qsub_wait(task_name = "gen_ligs",
-              job_id = job_id)
-
-    print("Done! Find generated cif restraints in {}".format(cache))
 
 class solution (slots_getstate_setstate) :
   """
