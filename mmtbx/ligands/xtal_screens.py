@@ -1,13 +1,11 @@
 # -*- coding: utf-8; py-indent-offset: 2 -*-
 from __future__ import division
 import errno
-from elbow.utilities import geostd_utils
-from elbow.utilities import mmtbx_utils
 from libtbx import slots_getstate_setstate
 from libtbx.command_line.easy_qsub import run as run_easy_qsub
 from libtbx.command_line.easy_qsub import wait as qsub_wait
 from mmtbx.ions.parameters import server as metal_server
-from mmtbx import chemical_components
+from mmtbx.monomer_library.server import server as cif_server
 
 import os.path
 
@@ -22,33 +20,9 @@ screen_number = None
 
 def _have_ligand(ligand):
   ligand = ligand.strip().upper()
-  filename = geostd_utils.get_geostd_cif_file(ligand)
-
-  if filename is None:
-    filename = mmtbx_utils.get_monomer_cif_file(ligand)
-
-  if filename is None:
-    filename = chemical_components.get_cif_filename(ligand)
-
-    if filename is not None and not os.path.exists(filename):
-      filename = None
-
-  if filename is None:
-    for filename in ["geostd_list.cif", "mon_lib_list.cif"]:
-      if filename in ["geostd_list.cif"]:
-        cif_list = geostd_utils.get_cif_list(filename)
-      else:
-        cif_list = mmtbx_utils.get_cif_list(filename)
-      for key in cif_list.keys():
-        if key.upper().find(ligand) > -1:
-          break
-      else:
-        filename = None
-
-      if filename is not None:
-        break
-
-  return filename
+  assert len(ligand) <= 3
+  mon_lib_entry = cif_server().get_comp_comp_id_direct(ligand)
+  return mon_lib_entry is not None
 
 class server (object) :
   def __init__ (self) :
@@ -101,7 +75,7 @@ class server (object) :
 
     cmds = ["phenix.elbow --chem={} --opt".format(lig)
             for lig in ligands
-            if _have_ligand(lig) is None]
+            if not _have_ligand(lig)]
 
     if phenix_source is None:
       phenix_source = \
