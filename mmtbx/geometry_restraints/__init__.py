@@ -129,6 +129,7 @@ class manager (object) :
               n_seq,
               iselection) :
     ramachandran_proxies = hydrogen_bond_proxies = den_manager = None
+    c_beta_dihedral_proxies = None
     if (self.ramachandran_proxies is not None) :
       ramachandran_proxies = self.ramachandran_proxies.proxy_select(
         n_seq, iselection)
@@ -137,12 +138,16 @@ class manager (object) :
         n_seq, iselection)
     if (self.den_manager is not None) :
       den_manager = self.den_manager.select(n_seq, iselection)
+    if (self.c_beta_dihedral_proxies is not None) :
+      c_beta_dihedral_proxies = self.c_beta_dihedral_proxies.proxy_select(
+        n_seq, iselection)
     return manager(
       ramachandran_proxies=ramachandran_proxies,
       ramachandran_lookup=self.ramachandran_lookup,
       hydrogen_bond_proxies=hydrogen_bond_proxies,
       hydrogen_bond_params=self.hydrogen_bond_params,
       den_manager=den_manager,
+      c_beta_dihedral_proxies=c_beta_dihedral_proxies,
       flags=self.flags)
 
   def add_c_beta_torsion_restraints(self,
