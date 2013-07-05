@@ -42,10 +42,11 @@ class FormatSMVADSCNoDateStamp(FormatSMVADSC):
 
     def _start(self):
 
-        FormatSMVADSC._start(self)
         from iotbx.detectors.adsc import ADSCImage
         self.detectorbase = ADSCImage(self._image_file)
         self.detectorbase.readHeader()
+
+        FormatSMVADSC._start(self)
 
     def _scan(self):
         '''Return the scan information for this image, using the timestamp
