@@ -53,7 +53,7 @@ def exercise_1():
       sigma=2.5)
   assert len(grm.generic_restraints_manager.c_beta_dihedral_proxies) == 4
 
-  #test removing c-beta restraints
+  #test global selection and removing c-beta restraints
   tst_iselection = flex.size_t()
   for model in pdb_hierarchy.models():
     for chain in model.chains():
@@ -62,10 +62,13 @@ def exercise_1():
           for atom in atom_group.atoms():
             if atom_group.resname == "TYR":
               tst_iselection.append(atom.i_seq)
+  #test global selection
+  grm2 = grm.select(iselection=tst_iselection)
+  assert len(grm2.generic_restraints_manager.c_beta_dihedral_proxies) == 2
+  #remove a selection
   grm.generic_restraints_manager.\
     remove_c_beta_torsion_restraints(selection=tst_iselection)
   assert len(grm.generic_restraints_manager.c_beta_dihedral_proxies) == 2
-
   #add a selection
   grm.generic_restraints_manager.c_beta_dihedral_proxies = None
   grm.generic_restraints_manager.\
