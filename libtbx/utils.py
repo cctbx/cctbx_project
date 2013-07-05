@@ -1176,7 +1176,17 @@ def show_development_warning (out=sys.stdout) :
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 """
 
-def check_if_output_directory_exists (file_name) :
-  if (not op.isdir(op.dirname(file_name))) :
-    raise Sorry(("The specified directory for the output file (%s) does "+
-      "not exist or is not a directory.") % op.dirname(file_name))
+def check_if_output_directory_exists (file_name=None, dir_name=None) :
+  if (file_name is not None) :
+    assert (dir_name is None)
+    dir_name = os.path.dirname(file_name)
+  if (not op.isdir(dir_name)) :
+    raise Sorry(("The specified output directory (%s) does not exist or "+
+      "is not a directory.") % dir_name)
+  else :
+    # XXX writing to Dropbox folders is generally not a good idea
+    head, tail = os.path.split(dir_name)
+    while tail != "" :
+      if (tail == "Dropbox") :
+        raise Sorry("Dropbox folders may not be used for output.")
+      head, tail = os.path.split(head)
