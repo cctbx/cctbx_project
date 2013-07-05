@@ -332,7 +332,7 @@ class dataset_statistics (object) :
       file_name=None,
       model_arrays=None,
       sigma_filtering=Auto,
-      eps=0.0001, # fudge factor for resolution cutoffs
+      d_min_tolerance=1.e-6,
       log=None) :
     self.file_name = file_name
     if (log is None) : log = null_out()
@@ -352,9 +352,9 @@ class dataset_statistics (object) :
     d_min_cutoff = d_min
     d_max_cutoff = d_max
     if (d_min is not None) :
-      d_min_cutoff -= eps
+      d_min_cutoff *= (1-d_min_tolerance)
     if (d_max is not None) :
-      d_max_cutoff += eps
+      d_max_cutoff *= 1+d_min_tolerance
     i_obs = i_obs.resolution_filter(
       d_min=d_min_cutoff,
       d_max=d_max_cutoff).set_info(info)
