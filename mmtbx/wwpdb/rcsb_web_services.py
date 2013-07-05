@@ -21,13 +21,15 @@ def post_query (query_xml, xray_only=True, d_max=None, d_min=None,
   """Generate the full XML for a multi-part query with generic search options,
   starting from the basic query passed by another function, post it to the
   RCSB's web service, and return a list of matching PDB IDs."""
-  other_queries = []
+  queries = []
+  if (query_xml is not None) :
+    queries.append(query_xml)
   if (xray_only) :
     xray_query = "<queryType>org.pdb.query.simple.ExpTypeQuery</queryType>\n"+\
       "<mvStructure.expMethod.value>X-RAY</mvStructure.expMethod.value>"
     if (data_only) :
       xray_query += "\n<mvStructure.hasExperimentalData.value>Y</mvStructure.hasExperimentalData.value>"
-    other_queries.append(xray_query)
+    queries.append(xray_query)
   if (d_max is not None) or (d_min is not None) :
     base_clause = "<queryType>org.pdb.query.simple.ResolutionQuery</queryType>"
     base_clause += "\n<refine.ls_d_res_high.comparator>between" + \
@@ -40,35 +42,30 @@ def post_query (query_xml, xray_only=True, d_max=None, d_min=None,
       assert (d_max >= 0)
       base_clause += \
         "\n<refine.ls_d_res_high.max>%f</refine.ls_d_res_high.max>" % d_max
-    other_queries.append(base_clause)
+    queries.append(base_clause)
   if (protein_only) :
-    other_queries.append(
+    queries.append(
       "<queryType>org.pdb.query.simple.ChainTypeQuery</queryType>\n" +
       "<containsProtein>Y</containsProtein>")
-  other_queries_full = ""
-  if (len(other_queries) > 0) :
-    k = 1
-    for other in other_queries :
-      other_queries_full += """\
+  if (len(queries) == 0) :
+    raise RuntimeError("No queries specified!")
+  queries_string = ""
+  k = 0
+  for clause in queries :
+    queries_string += """\
         <queryRefinement>
           <queryRefinementLevel>%d</queryRefinementLevel>
           <conjunctionType>and</conjunctionType>
           <orgPdbQuery>
             %s
           </orgPdbQuery>
-        </queryRefinement>""" % (k, other)
-      k += 1
+        </queryRefinement>""" % (k, clause)
+    k += 1
   query_str = """\
 <orgPdbCompositeQuery version="1.0">
- <queryRefinement>
-  <queryRefinementLevel>0</queryRefinementLevel>
-  <orgPdbQuery>
-  %s
-  </orgPdbQuery>
- </queryRefinement>
   %s
 </orgPdbCompositeQuery>
-""" % (query_xml, other_queries_full)
+""" % (queries_string)
   parsed = parseString(query_str)
   result = urllib.urlopen(url_search, query_str).read()
   return result.splitlines()
