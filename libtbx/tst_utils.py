@@ -253,6 +253,21 @@ def exercise_dir_utils () :
     pass
   else :
     raise Exception_expected
+  dir_name = os.getcwd()
+  utils.check_if_output_directory_exists(dir_name=dir_name)
+  dir_created = False
+  if (not os.path.exists("Dropbox")) :
+    os.mkdir("Dropbox")
+    dir_created = True
+  dir_name = os.path.join(os.getcwd(), "Dropbox")
+  try :
+    utils.check_if_output_directory_exists(dir_name=dir_name)
+  except utils.Sorry, s :
+    assert "Dropbox folders" in str(s)
+  else :
+    raise Exception_expected
+  if (dir_created) :
+    os.rmdir("Dropbox")
 
 def run(args):
   assert len(args) == 0
