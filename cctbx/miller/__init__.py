@@ -889,13 +889,19 @@ class set(crystal.symmetry):
     return self.select(
       self.sort_permutation(by_value=by_value, reverse=reverse))
 
-  def scale(self, other):
+  def scale(self, other, resolution_dependent=False):
     s, o = self.common_sets(other)
+    if(resolution_dependent): ss = 1./flex.pow2(s.d_spacings().data()) / 4.
     s, o = abs(s).data(), abs(o).data()
-    den = flex.sum(o*o)
     scale_factor = 1
-    if(den != 0):
-      scale_factor = flex.sum(s*o)/flex.sum(o*o)
+    if(resolution_dependent):
+      r = scitbx.math.gaussian_fit_1d_analytical(x=flex.sqrt(ss), y=s, z=o)
+      ss_other = 1./flex.pow2(other.d_spacings().data()) / 4.
+      scale_factor = r.a*flex.exp(-ss_other*r.b)
+    else:
+      den = flex.sum(o*o)
+      if(den != 0):
+        scale_factor = flex.sum(s*o)/flex.sum(o*o)
     return other.customized_copy(data = other.data()*scale_factor)
 
   def complete_with(self, other, scale=False, replace_phases=False):

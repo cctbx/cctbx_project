@@ -1362,19 +1362,20 @@ def assert_xray_structures_equal(
       adp = True,
       occupancies = True,
       elements = True,
-      scattering_types = True):
+      scattering_types = True,
+      eps = 1.e-6):
   assert x1.scatterers().size() == x2.scatterers().size()
   if(selection is not None):
     x1 = x1.select(selection)
     x2 = x2.select(selection)
   if(sites):
-    assert approx_equal(x1.sites_frac(), x2.sites_frac())
+    assert approx_equal(x1.sites_frac(), x2.sites_frac(), eps)
   if(adp):
     assert approx_equal(x1.extract_u_iso_or_u_equiv(),
-                        x2.extract_u_iso_or_u_equiv())
+                        x2.extract_u_iso_or_u_equiv(), eps)
   if(occupancies):
     assert approx_equal(x1.scatterers().extract_occupancies(),
-                        x2.scatterers().extract_occupancies())
+                        x2.scatterers().extract_occupancies(), eps)
   if(elements):
     sct1 = x1.scatterers().extract_scattering_types()
     sct2 = x2.scatterers().extract_scattering_types()
@@ -1384,7 +1385,7 @@ def assert_xray_structures_equal(
     sr1 = x1.scattering_type_registry().unique_gaussians_as_list()
     sr2 = x2.scattering_type_registry().unique_gaussians_as_list()
     for s1,s2 in zip(sr1,sr2):
-      assert approx_equal(s1.parameters(), s2.parameters())
+      assert approx_equal(s1.parameters(), s2.parameters(), eps)
 
 def compare_hierarchy(hierarchy, scatterers, cell):
   from libtbx.test_utils import approx_equal

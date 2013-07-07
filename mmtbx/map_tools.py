@@ -188,10 +188,6 @@ class electron_density_map(object):
       coeffs = coeffs.select(~r_free_flags.data())
       scale_array = scale_array.select(~r_free_flags.data())
     scale=None
-    if(fill_missing):
-      if(coeffs.anomalous_flag()):
-        coeffs = coeffs.average_bijvoet_mates()
-      coeffs, scale = fill_missing_f_obs(coeffs, self.fmodel)
     if (ncs_average) and (post_processing_callback is not None) :
       # XXX NCS averaging done here
       assert hasattr(post_processing_callback, "__call__")
@@ -205,6 +201,10 @@ class electron_density_map(object):
           scale_array = scale_array.average_bijvoet_mates()
         scale = scale_array.data()
       coeffs = coeffs.customized_copy(data = coeffs.data()*scale)
+    if(fill_missing):
+      if(coeffs.anomalous_flag()):
+        coeffs = coeffs.average_bijvoet_mates()
+      coeffs = fill_missing_f_obs(coeffs, self.fmodel)
     if(sharp):
       ss = 1./flex.pow2(coeffs.d_spacings().data()) / 4.
       from cctbx import adptbx
@@ -246,37 +246,32 @@ class electron_density_map(object):
         crystal_gridding     = other_fft_map,
         fourier_coefficients = map_coefficients)
 
-def fill_missing_f_obs(coeffs, fmodel):
-  scale_data = 1. / (fmodel.k_isotropic()*fmodel.k_anisotropic())
-  scale = fmodel.f_obs().customized_copy(data = scale_data, sigmas = None)
-  scale = scale.average_bijvoet_mates()
-  scale = scale.common_set(coeffs)
-  assert scale.indices().all_eq(coeffs.indices())
-  #
+def fill_missing_f_obs_1(coeffs, fmodel):
+  cs = fmodel.f_obs().average_bijvoet_mates().complete_set(
+    d_min = fmodel.f_obs().d_min())
+  ca = cs.array(data = flex.double(cs.indices().size(), 0))
+  fm = mmtbx.f_model.manager(
+    f_obs = ca,
+    xray_structure = fmodel.xray_structure,
+    k_sol = 0.35,
+    b_sol = 46.0)
+  f_map = fm.f_model()
+  return coeffs.complete_with(other = f_map, scale=True)
+
+def fill_missing_f_obs_2(coeffs, fmodel):
   scale_to = fmodel.f_obs().average_bijvoet_mates()
   dsf = coeffs.double_step_filtration(
-    vol_cutoff_plus_percent=1.0,
-    vol_cutoff_minus_percent=1.0,
+    vol_cutoff_plus_percent=10.0,
+    vol_cutoff_minus_percent=10.0,
     scale_to=scale_to)
-  #
-  fo = fmodel.f_obs().average_bijvoet_mates().discard_sigmas()
-  fo = fo.complete_with(other = abs(dsf))
-  import mmtbx.f_model
-  fmdc = mmtbx.f_model.manager(
-    f_obs = fo,
-    xray_structure = fmodel.xray_structure)
-  fmdc.update_all_scales(remove_outliers=False, update_f_part1_for = None,
-    refine_hd_scattering=False)
-  #
-  scale_data_c = 1. / (fmdc.k_isotropic()*fmdc.k_anisotropic())
-  scale_c = fmdc.f_obs().customized_copy(data = scale_data_c, sigmas = None)
-  #
-  dsf = fmdc.f_model().array(data = fmdc.f_model().data() *
-    fmdc.alpha_beta()[0].data())
-  coeffs = coeffs.complete_with(other = dsf, scale=True)
-  scale = scale.complete_with(other = scale_c, scale=True)
-  assert scale.indices().all_eq(coeffs.indices())
-  return coeffs, scale.data()
+  return coeffs.complete_with(other = dsf, scale=True)
+
+def fill_missing_f_obs(coeffs, fmodel):
+  c1 = fill_missing_f_obs_1(coeffs=coeffs, fmodel=fmodel)
+  c2 = fill_missing_f_obs_2(coeffs=coeffs, fmodel=fmodel)
+  c1,c2 = c1.common_sets(c2)
+  c = c1.customized_copy(data = (c1.data()+c2.data())*0.5)
+  return c
 
 def sharp_evaluation_target(sites_frac, map_coeffs, resolution_factor = 0.25):
   fft_map = map_coeffs.fft_map(resolution_factor=resolution_factor)
