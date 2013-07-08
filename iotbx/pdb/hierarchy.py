@@ -503,6 +503,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
         sigatm=True,
         anisou=True,
         siguij=True,
+        output_break_records=True, # TODO deprecate
         cstringio=None,
         return_cstringio=Auto):
     if (cstringio is None):
@@ -525,7 +526,8 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       atom_hetatm=atom_hetatm,
       sigatm=sigatm,
       anisou=anisou,
-      siguij=siguij)
+      siguij=siguij,
+      output_break_records=output_break_records)
     if (return_cstringio):
       return cstringio
     return cstringio.getvalue()
@@ -1006,11 +1008,11 @@ class _(boost.python.injector, ext.atom_group, __hash_eq_mixin):
     assert self.atoms_size() == 1
     return self.atoms()[0]
 
-  # FIXME suppress_segid has not effect here
+  # FIXME suppress_segid has no effect here
   def id_str (self, suppress_segid=None) :
     chain = self.parent().parent()
     resid = self.parent().resid()
-    return "%3s%2s%5s" % (self.resname, chain.id, resid)
+    return "%1s%3s%2s%5s" % (self.altloc, self.resname, chain.id, resid)
 
 class _(boost.python.injector, ext.atom, __hash_eq_mixin):
 

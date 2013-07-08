@@ -1407,7 +1407,8 @@ namespace hierarchy {
         bool atom_hetatm=true,
         bool sigatm=true,
         bool anisou=true,
-        bool siguij=true) const;
+        bool siguij=true,
+        bool output_break_records=true) const;
 
       root
       select(
@@ -1430,7 +1431,8 @@ namespace hierarchy {
     bool atom_hetatm,
     bool sigatm,
     bool anisou,
-    bool siguij);
+    bool siguij,
+    bool output_break_records);
 
   void
   models_as_pdb_string(
@@ -1441,7 +1443,8 @@ namespace hierarchy {
     bool atom_hetatm,
     bool sigatm,
     bool anisou,
-    bool siguij);
+    bool siguij,
+    bool output_break_records=true);
 
   struct overall_counts : boost::noncopyable
   {

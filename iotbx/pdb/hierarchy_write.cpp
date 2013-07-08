@@ -12,13 +12,14 @@ namespace iotbx { namespace pdb { namespace hierarchy {
     bool atom_hetatm,
     bool sigatm,
     bool anisou,
-    bool siguij)
+    bool siguij,
+    bool output_break_records)
   {
     char buf[81U + 81U + 81U + 81U];
     unsigned n_rg = static_cast<unsigned>(residue_groups.size());
     for(unsigned i_rg=0;i_rg<n_rg;i_rg++) {
       residue_group const& rg = residue_groups[i_rg];
-      if (i_rg != 0 && !rg.data->link_to_previous) {
+      if (i_rg != 0 && !rg.data->link_to_previous && output_break_records) {
         write("BREAK\n", 6U);
       }
       label_formatter.resseq = rg.data->resseq.elems;
@@ -72,7 +73,8 @@ namespace iotbx { namespace pdb { namespace hierarchy {
     bool atom_hetatm,
     bool sigatm,
     bool anisou,
-    bool siguij)
+    bool siguij,
+    bool output_break_records)
   {
     atom_label_columns_formatter label_formatter;
     unsigned n_mds = static_cast<unsigned>(models.size());
@@ -90,7 +92,7 @@ namespace iotbx { namespace pdb { namespace hierarchy {
           label_formatter,
           ch.residue_groups(),
           interleaved_conf,
-          atom_hetatm, sigatm, anisou, siguij);
+          atom_hetatm, sigatm, anisou, siguij, output_break_records);
         write("TER\n", 4U);
       }
       if (n_mds != 1U) {
@@ -112,7 +114,8 @@ namespace iotbx { namespace pdb { namespace hierarchy {
     bool atom_hetatm,
     bool sigatm,
     bool anisou,
-    bool siguij) const
+    bool siguij,
+    bool output_break_records) const
   {
     if (atoms_reset_serial_first_value) {
       atoms_reset_serial(interleaved_conf, *atoms_reset_serial_first_value);
@@ -127,7 +130,8 @@ namespace iotbx { namespace pdb { namespace hierarchy {
       atom_hetatm,
       sigatm,
       anisou,
-      siguij);
+      siguij,
+      output_break_records);
   }
 
 }}} // namespace iotbx::pdb::hierarchy

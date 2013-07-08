@@ -869,6 +869,14 @@ BREAK
 ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
 %sTER
 """ % siguij_2_line)
+  assert r.as_pdb_string(output_break_records=False) == """\
+ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00
+SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00
+ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
+ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
+ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
+TER
+"""
   atoms[0].set_uij((6,3,8,2,9,1))
   siguij_0_line = ""
   if (pdb.hierarchy.atom.has_siguij()):
@@ -5576,7 +5584,7 @@ END
   assert xray_structure.sites_cart().size() == hierarchy.atoms().size()
   xray_structure.scale_adps(2.0)
   ag = hierarchy.only_model().only_chain().residue_groups()[0].atom_groups()[0]
-  assert (ag.id_str() == 'SO4     0 ')
+  assert (ag.id_str() == ' SO4     0 ')
   atoms = hierarchy.atoms()
   atoms.set_adps_from_scatterers(xray_structure.scatterers(),
     xray_structure.unit_cell())

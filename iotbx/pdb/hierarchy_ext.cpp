@@ -282,7 +282,8 @@ namespace {
       bool atom_hetatm=true,
       bool sigatm=true,
       bool anisou=true,
-      bool siguij=true)
+      bool siguij=true,
+      bool output_break_records=true)
     {
       if (atoms_reset_serial_first_value) {
         self.atoms_reset_serial(
@@ -297,7 +298,8 @@ namespace {
         atom_hetatm,
         sigatm,
         anisou,
-        siguij);
+        siguij,
+        output_break_records);
     }
 
     static void
@@ -435,7 +437,8 @@ namespace {
           arg("atom_hetatm"),
           arg("sigatm"),
           arg("anisou"),
-          arg("siguij")))
+          arg("siguij"),
+          arg("output_break_records")=true))
         .def("_write_pdb_file", &w_t::write_pdb_file, (
           arg("file_name"),
           arg("open_append"),
@@ -445,7 +448,8 @@ namespace {
           arg("atom_hetatm"),
           arg("sigatm"),
           arg("anisou"),
-          arg("siguij")))
+          arg("siguij"),
+          arg("output_break_records")=true))
         .def("select",
           (root(w_t::*)(af::const_ref<bool> const&, bool) const)
             &w_t::select, (
