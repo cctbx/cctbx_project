@@ -448,8 +448,8 @@ def run(phenix_source=None,
     )
   print '\n  Queue command\n'
   print "> %s\n" % cmd
-  if not dry_run:
-    easy_run.call(cmd)
+  if dry_run:
+    print '  Skipping run...'
 
   # Run the command, and then find the job id in the output
   ero = easy_run.fully_buffered(command = cmd)
