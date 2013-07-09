@@ -1158,10 +1158,11 @@ class manager(manager_mixin):
         data = mc.data().set_selected(r_free_flags_data, 0+0j))
     fft_map = mc.fft_map(crystal_gridding = crystal_gridding)
     map_data = fft_map.real_map_unpadded() # important: not scaled!
-    maptbx.map_box_average(
-      map_data   = map_data,
-      cutoff     = flex.max(map_data)*2,
-      index_span = 1)
+    if(purpose == "refinement"):
+      maptbx.map_box_average(
+        map_data   = map_data,
+        cutoff     = flex.max(map_data)*2,
+        index_span = 1)
     unit_cell_volume = self.xray_structure.unit_cell().volume()
     cutoff=None
     if(purpose == "map"): cutoff = map_neg_cutoff
