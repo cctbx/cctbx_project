@@ -100,9 +100,9 @@ def pre_screen_file(filename, atom_exch, alt_atom_exch):
 #--Build Hash Table------------------------------------------------
 def build_hash(remediated_out, custom_dict, user_dict):
   atom_exch = {}
-  f = open(libtbx.env.find_in_repositories(
-        relative_path="cctbx_project/iotbx/pdb/remediation/remediation.dict",
-        test=os.path.isfile), "rb")
+  file_name = os.path.join(libtbx.env.dist_path("iotbx"), "pdb",
+    "remediation", "remediation.dict")
+  f = open(file_name, "rb")
   if remediated_out == True: #converting to remediated
     for line in f:
       line=line.rstrip()
