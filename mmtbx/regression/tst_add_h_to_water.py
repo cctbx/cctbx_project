@@ -283,13 +283,22 @@ def exercise_02():
   for a,b in zip(out.getvalue().splitlines(), expected_result2.splitlines()):
     a = a.strip()
     b = b.strip()
+    if (len(a) == 0) :
+      assert len(b) == 0
+      continue
+    a_ = a.split()
+    b_ = b.split()
     try:
-      a = float(a)
-      b = float(b)
-      assert a < 0.05
-      assert b < 0.05
-    except Exception:
-      assert not show_diff(a, b)
+      af = float(a_[0])
+      bf = float(b_[0])
+      assert af < 0.05
+      assert bf < 0.05
+    except ValueError :
+      if (a_[0] == "peak=") :
+        # XXX differences > 0.01 are not uncommon depending on platform
+        assert approx_equal(float(a_[1]), float(b_[1]), eps=0.05)
+      else :
+        assert not show_diff(a, b)
 
 def exercise():
   exercise_01()
