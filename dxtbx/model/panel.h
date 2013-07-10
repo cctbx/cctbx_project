@@ -41,6 +41,20 @@ namespace dxtbx { namespace model {
   typedef scitbx::af::flex<int4>::type flex_int4;
   typedef scitbx::af::shared<int4> shared_int4;
 
+  /** Get the coordinate of a ray intersecting with the detector */
+  inline
+  vec2<double> plane_ray_intersection(mat3<double> D, vec3<double> s1) {
+    vec3 <double> v = D * s1;
+    DXTBX_ASSERT(v[2] > 0);
+    return vec2<double>(v[0] / v[2], v[1] / v[2]);
+  }
+
+  /** Get world coordinate of plane xy */
+  inline
+  vec3<double> plane_world_coordinate(mat3<double> d, vec2<double> xy) {
+    return d * vec3<double>(xy[0], xy[1], 1.0);
+  }
+
   /**
    * A class representing a detector panel. A detector can have multiple
    * panels which are each represented by this class.
