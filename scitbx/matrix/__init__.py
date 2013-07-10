@@ -901,7 +901,7 @@ def plane_equation(point_1, point_2, point_3):
   d = -n.dot(point_1)
   return a,b,c,d
 
-def distance_from_plane (xyz, points, absolute=True) :
+def distance_from_plane(xyz, points):
   """
   http://mathworld.wolfram.com/Point-PlaneDistance.html
   Given three points describing a plane and a fourth point outside the plane,
@@ -915,9 +915,14 @@ def distance_from_plane (xyz, points, absolute=True) :
   x,y,z = xyz
   den = math.sqrt(a**2+b**2+c**2)
   if(den==0): return None
-  D = (a*x+b*y+c*z+d) / den
-  if (absolute) : D = abs(D)
-  return D
+  return abs(a*x+b*y+c*z+d) / den
+
+def all_in_plane(points, tolerance):
+  assert len(points)>3
+  for point in points[3:]:
+    d = distance_from_plane(xyz=point, points=points[:3])
+    if(d>tolerance): return False
+  return True
 
 def rotate_point_around_axis(
       axis_point_1,
@@ -1134,7 +1139,7 @@ def determinant_via_lu(m):
     result = -result
   return result
 
-def exercise():
+def exercise_1():
   try:
     from libtbx import test_utils
   except ImportError:
@@ -1715,5 +1720,42 @@ def exercise():
   #
   print "OK"
 
+def exercise_2():
+  points = \
+    [[20.559, 2.613, 29.030],
+     [21.030, 3.817, 29.627],
+     [21.079, 3.972, 30.986],
+     [21.604, 5.302, 31.090],
+     [21.813, 5.803, 29.779],
+     [21.448, 4.862, 28.912],
+     [20.781, 3.239, 32.060],
+     [20.978, 3.765, 33.283],
+     [21.472, 5.018, 33.416],
+     [21.774, 5.761, 32.331],
+     [22.288, 7.066, 32.547],
+     [21.481, 4.924, 27.938],
+     [20.765, 3.241, 34.078],
+     [22.403, 7.376, 33.397],
+     [22.503, 7.595, 31.835]]
+  assert all_in_plane(points=points, tolerance=0.005)
+  points = \
+    [[20.559, 2.613, 29.030],
+     [21.030, 3.817, 29.627],
+     [21.079, 3.972, 30.986],
+     [21.604, 5.302, 31.090],
+     [21.813, 5.803, 29.779],
+     [21.448, 4.862, 28.912],
+     [20.781, 3.239, 32.060],
+     [20.978, 3.765, 33.283],
+     [21.472, 0.018, 33.416],
+     [21.774, 5.761, 32.331],
+     [22.288, 7.066, 32.547],
+     [21.481, 4.924, 27.938],
+     [20.765, 3.241, 34.078],
+     [22.403, 7.376, 33.397],
+     [22.503, 7.595, 31.835]]
+  assert not all_in_plane(points=points, tolerance=0.005)
+
 if (__name__ == "__main__"):
-  exercise()
+  exercise_1()
+  exercise_2()
