@@ -12,8 +12,13 @@ from libtbx import runtime_utils
 import os
 import mmtbx.secondary_structure
 import sys
+from cStringIO import StringIO
 
 master_params_str = """\
+silent = False
+  .type = bool
+write_geo_file = False
+  .type = bool
 file_name = None
   .type = path
   .short_caption = Model file
@@ -265,6 +270,7 @@ class run(object):
     self.caller(func = self.get_restraints, prefix="Geometry Restraints")
     self.caller(func = self.minimization,   prefix="Minimization")
     self.caller(func = self.write_pdb_file, prefix="Write PDB file")
+    self.caller(func = self.write_geo_file, prefix="Write GEO file")
     #
     self.show_times()
 
@@ -291,13 +297,15 @@ class run(object):
       str("%8.3f"%self.total_time).strip()
 
   def initialize(self, prefix):
+    self.log = sys.stdout
     if(len(self.args)==0):
       format_usage_message(log = self.log)
-    broadcast(m=prefix, log = self.log)
     parsed = master_params()
     self.inputs = mmtbx.utils.process_command_line_args(args = self.args,
-      master_params = parsed, log = self.log)
+      master_params = parsed)
     self.params = self.inputs.params.extract()
+    if(self.params.silent): self.log = StringIO()
+    broadcast(m=prefix, log = self.log)
     self.inputs.params.show(prefix="  ", out=self.log)
     if(len(self.args)==0): sys.exit(0)
 
@@ -391,19 +399,22 @@ class run(object):
       self.xray_structure.crystal_symmetry())
     self.output_file_name = os.path.abspath(ofn)
 
-    if(self.grm is None): return
-
-    f=file(ofn.replace(".pdb", ".geo"), "wb")
-    print >> f, "# Geometry restraints before refinement"
-    print >> f
-    xray_structure = self.xray_structure
-    sites_cart = xray_structure.sites_cart()
-    site_labels = xray_structure.scatterers().extract_labels()
-    self.grm.geometry.show_sorted(
-      sites_cart=sites_cart,
-      site_labels=site_labels,
-      f=f)
-    f.close()
+  def write_geo_file(self, prefix):
+    if(self.params.write_geo_file and self.grm is not None):
+      broadcast(m=prefix, log = self.log)
+      ofn = os.path.basename(self.output_file_name).replace(".pdb",".geo")
+      f=file(ofn,"wb")
+      print >> self.log, "  output file name:", ofn
+      print >> f, "# Geometry restraints after refinement"
+      print >> f
+      xray_structure = self.xray_structure
+      sites_cart = xray_structure.sites_cart()
+      site_labels = xray_structure.scatterers().extract_labels()
+      self.grm.geometry.show_sorted(
+        sites_cart=sites_cart,
+        site_labels=site_labels,
+        f=f)
+      f.close()
 
 class launcher (runtime_utils.target_with_save_result) :
   def run (self) :
@@ -431,5 +442,5 @@ if(__name__ == "__main__"):
   log = sys.stdout
   o = run(sys.argv[1:], log=log)
   tt = timer.elapsed()
-  print >> log, "Overall runtime: %-8.3f" % tt
+  print >> o.log, "Overall runtime: %-8.3f" % tt
   assert abs(tt-o.total_time) < 0.1 # guard against unaccounted times

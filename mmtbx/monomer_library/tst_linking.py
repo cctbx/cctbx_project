@@ -1032,7 +1032,7 @@ def run():
     #if pdb.find("linking_test_LEU-CSY-VAL")==-1: continue
     for i in range(2):
       log_filename = "%s_%d.log" % (pdb, i)
-      cmd = "phenix.geometry_minimization %s" % pdb
+      cmd = "phenix.geometry_minimization %s write_geo_file=True" % pdb
       cmd += " intra_chain=%d %s > %s" % (i, cifs, log_filename)
       print cmd
       easy_run.call(cmd)
