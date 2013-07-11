@@ -391,6 +391,7 @@ class SettingsPanel (wx.Panel) :
     grid.Add(txt11, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self.color_ctrl = wx.Choice(self, -1,
       choices=["grayscale","rainbow","heatmap"])
+    self.color_ctrl.SetSelection(0)
     grid.Add(self.color_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self._sizer.Fit(self)
     box = wx.BoxSizer(wx.HORIZONTAL)
