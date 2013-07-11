@@ -136,8 +136,8 @@ IN      IN      3
 .       SN      4 # ?
 .       SB      -3 # ?
 .       TE      -2 # ?
-I       I       -1
-.       XE      0 # ?
+IOD     I       -1
+XE      XE      0 # ?
 CS      CS      1
 BA      BA      2
 LA      LA      3
