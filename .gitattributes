@@ -1244,7 +1244,6 @@ libtbx/auto_build/install_cctbx_base.py -text
 libtbx/auto_build/installer_utils.py -text
 libtbx/auto_build/package_defs.py -text
 libtbx/auto_build/regenerate_module_files.py -text
-libtbx/auto_build/subprocess_with_fixes.py svneol=native#text/x-python
 libtbx/auto_build/write_gui_dispatcher_include.py -text
 libtbx/binary_search.py svneol=native#text/x-python
 libtbx/callbacks.py -text
@@ -1351,6 +1350,7 @@ libtbx/queuing_system_utils/tst.py svneol=native#text/x-python
 libtbx/runtime_utils.py -text
 libtbx/simplexml.py -text
 libtbx/smart_open.py svneol=native#text/x-python
+libtbx/subprocess_with_fixes.py svneol=native#text/x-python
 libtbx/subversion.py -text
 libtbx/test_utils/__init__.py -text
 libtbx/test_utils/parallel.py -text
