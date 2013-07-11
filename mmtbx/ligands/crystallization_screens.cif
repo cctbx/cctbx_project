@@ -115,7 +115,7 @@ _lib_screen.condition
 2       F6      66      18 "FE,CL,NA,FLC,JEF"                   5.6     "0.01 M Iron(III) chloride hexahydrate, 0.1 M Sodium citrate tribasic dihydrate pH 5.6, 10% v/v Jeffamine M-600"
 2       F7      67      19 "NA,FLC,HEZ"                         5.6     "0.1 M Sodium citrate tribasic dihydrate pH 5.6, 2.5 M 1,6-Hexanediol"
 2       F8      68      20 "MES,MG,SO4"                         6.5     "0.1 M MES monohydrate pH 6.5, 1.6 M Magnesium sulfate heptahydrate"
-2       F9      69      21 "NA,PO4,KMES,CL"                     6.5     "0.1 M Sodium phosphate monobasic monohydrate, 0.1 M Potassium phosphate monobasic, 0.1 M MES monohydrate pH 6.5, 2.0 M Sodium chloride"
+2       F9      69      21 "NA,PO4,K,MES,CL"                     6.5     "0.1 M Sodium phosphate monobasic monohydrate, 0.1 M Potassium phosphate monobasic, 0.1 M MES monohydrate pH 6.5, 2.0 M Sodium chloride"
 2       F10     70      22 "MES,PEG"                            6.5     "0.1 M MES monohydrate pH 6.5, 12% w/v Polyethylene glycol 20,000"
 2       F11     71      23 "NH4,SO4,MES,DIO"                    6.5     "1.6 M Ammonium sulfate, 0.1 M MES monohydrate pH 6.5, 10% v/v 1,4-Dioxane"
 2       F12     72      24 "CS,CL,MES,JEF"                      6.5     "0.05 M Cesium chloride, 0.1 M MES monohydrate pH 6.5, 30% v/v Jeffamine M-600"
