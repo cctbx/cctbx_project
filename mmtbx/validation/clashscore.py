@@ -40,6 +40,10 @@ def get_master_phil():
         nuclear = False
         .type = bool
         .help = '''Use nuclear hydrogen positions'''
+
+        time_limit = 30
+        .type = int
+        .help = '''Time limit (sec) for Reduce optimization'''
   }
 
     """)
@@ -131,9 +135,11 @@ Example:
       return
     keep_hydrogens = self.params.clashscore.keep_hydrogens
     nuclear = self.params.clashscore.nuclear
+    time_limit = self.params.clashscore.time_limit
     clashscore, bad_clashes = self.analyze_clashes(pdb_io=pdb_io,
         keep_hydrogens=keep_hydrogens,
         nuclear=nuclear,
+        time_limit=time_limit,
         verbose=self.params.clashscore.verbose)
     if not quiet :
       self.print_clashlist(out)
@@ -149,6 +155,7 @@ Example:
         keep_hydrogens=True,
         nuclear=False,
         force_unique_chain_ids=False,
+        time_limit=30,
         verbose=False) :
     if (not libtbx.env.has_module(name="probe")):
       print "Probe could not be detected on your system.  Please make sure Probe is in your path."
@@ -203,9 +210,12 @@ Example:
             print "\nNo H/D atoms detected - forcing hydrogen addition!\n"
           keep_hydrogens = False
       input_str = tmp_r.as_pdb_string()
+      largest_occupancy = self.get_largest_occupancy(atoms=tmp_r.atoms())
       pcm = probe_clashscore_manager(pdb_string=input_str,
                                      keep_hydrogens=keep_hydrogens,
                                      nuclear=nuclear,
+                                     time_limit=time_limit,
+                                     largest_occupancy=largest_occupancy,
                                      verbose=verbose)
       self.pdb_hierarchy = pdb.hierarchy.\
         input(pdb_string=pcm.h_pdb_string).hierarchy
@@ -244,28 +254,46 @@ Example:
         print >> out, "Bad Clashes >= 0.4 Angstrom MODEL%s" % k
         print >> out, self.list_dict[k]
 
+  def get_largest_occupancy(self, atoms):
+    largest_occupancy = 0.0
+    for atom in atoms:
+      if atom.occ > largest_occupancy:
+        largest_occupancy = float(atom.occ)
+    return int(largest_occupancy * 100)
+
 class probe_clashscore_manager(object):
   def __init__(self,
                pdb_string,
                keep_hydrogens=True,
                nuclear=False,
+               time_limit=30,
+               largest_occupancy=10,
                verbose=False):
     assert (libtbx.env.has_module(name="reduce") and
             libtbx.env.has_module(name="probe"))
 
+    ogt = 10
+    if largest_occupancy < ogt:
+      ogt = largest_occupancy
+
     self.trim = "phenix.reduce -quiet -trim -"
     if not nuclear:
-      self.build = "phenix.reduce -oh -his -flip -pen9999 -keep -allalt -"
+      self.build = "phenix.reduce -oh -his -flip -pen9999" +\
+                   " -keep -allalt -limit%d -" % time_limit
       self.probe_txt = \
-        'phenix.probe -u -q -mc -het -once "ogt33 not water" "ogt33" -'
+        'phenix.probe -u -q -mc -het -once "ogt%d not water" "ogt%d" -' % \
+          (ogt, ogt)
       self.probe_atom_txt = \
-        'phenix.probe -q -mc -het -dumpatominfo "ogt33 not water" -'
+        'phenix.probe -q -mc -het -dumpatominfo "ogt%d not water" -' % ogt
     else: #use nuclear distances
-      self.build = "phenix.reduce -oh -his -flip -pen9999 -keep -allalt -nuc -"
+      self.build = "phenix.reduce -oh -his -flip -pen9999" +\
+                   " -keep -allalt -limit%d -nuc -" % time_limit
       self.probe_txt = \
-        'phenix.probe -u -q -mc -het -once -nuclear "ogt33 not water" "ogt33" -'
+        'phenix.probe -u -q -mc -het -once -nuclear' +\
+          ' "ogt%d not water" "ogt%d" -' % (ogt, ogt)
       self.probe_atom_txt = \
-        'phenix.probe -q -mc -het -dumpatominfo -nuclear "ogt33 not water" -'
+        'phenix.probe -q -mc -het -dumpatominfo -nuclear' +\
+          ' "ogt%d not water" -' % ogt
 
     if not keep_hydrogens:
       h_pdb_string = self.run_reduce(pdb_string)

@@ -19,7 +19,7 @@ def exercise () :
     test=os.path.isfile)
   out = StringIO()
   summary = validation_summary.run(args=[regression_pdb], out=out)
-  assert approx_equal(summary.clashscore, 2.71, eps=0.0001)
+  assert approx_equal(summary.clashscore, 13.597, eps=0.0001)
   ss = easy_pickle.dumps(summary)
   sss = easy_pickle.loads(ss)
   out_1 = StringIO()
