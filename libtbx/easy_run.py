@@ -5,7 +5,7 @@ if (sys.version_info[1] >= 7) :
   import subprocess
 else :
   try:
-    from libtbx.auto_build import subprocess_with_fixes as subprocess
+    from libtbx import subprocess_with_fixes as subprocess
   except ImportError:
     try :
       import subprocess_with_fixes as subprocess
