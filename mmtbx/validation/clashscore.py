@@ -41,7 +41,7 @@ def get_master_phil():
         .type = bool
         .help = '''Use nuclear hydrogen positions'''
 
-        time_limit = 30
+        time_limit = 120
         .type = int
         .help = '''Time limit (sec) for Reduce optimization'''
   }
@@ -155,7 +155,7 @@ Example:
         keep_hydrogens=True,
         nuclear=False,
         force_unique_chain_ids=False,
-        time_limit=30,
+        time_limit=120,
         verbose=False) :
     if (not libtbx.env.has_module(name="probe")):
       print "Probe could not be detected on your system.  Please make sure Probe is in your path."
@@ -266,7 +266,7 @@ class probe_clashscore_manager(object):
                pdb_string,
                keep_hydrogens=True,
                nuclear=False,
-               time_limit=30,
+               time_limit=120,
                largest_occupancy=10,
                verbose=False):
     assert (libtbx.env.has_module(name="reduce") and
