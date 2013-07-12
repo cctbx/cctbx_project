@@ -1375,8 +1375,7 @@ def occupancy_regroupping(pdb_hierarchy, cgs):
         # find "-1" (previous to given constraint group) residue group
         rg_prev = None
         for i_rg, rg in enumerate(rgs):
-          if(c[0] in rg.atoms().extract_i_seq()):
-            assert i_rg != 0
+          if(i_rg > 0 and c[0] in rg.atoms().extract_i_seq()):
             rg_prev = rgs[i_rg-1]
             break
         assert rg_prev is not None
