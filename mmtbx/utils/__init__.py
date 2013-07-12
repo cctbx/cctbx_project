@@ -1369,8 +1369,8 @@ def occupancy_regroupping(pdb_hierarchy, cgs):
     for c in cg: # loop over conformers of constrained group
       altloc_h = awl[c[0]].altloc
       if(len(c)==1 and
-         elements[c[0]].strip().upper()=="H" and
-         awl[c[0]].name.strip().upper()=="H" and
+         elements[c[0]].strip().upper() in ["H","D"] and
+         awl[c[0]].name.strip().upper() in ["H","D"] and
          altloc_h.strip() != ""):
         # find "-1" (previous to given constraint group) residue group
         rg_prev = None
