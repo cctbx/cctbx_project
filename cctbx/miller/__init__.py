@@ -433,6 +433,11 @@ class set(crystal.symmetry):
         if (n_complete != 0):
           print >> f, prefix + "Completeness with d_max=infinity: %.6g" % (
             n_obs / n_complete)
+        if (self.anomalous_flag()) and (self.is_xray_intensity_array() or
+            self.is_xray_amplitude_array()) :
+          print >> f, prefix + \
+            "Anomalous completeness in resolution range: %.6g" % \
+            self.anomalous_completeness()
     if (self.space_group_info() is not None
         and no_sys_abs.anomalous_flag()
         and is_unique_set_under_symmetry):
@@ -2480,6 +2485,10 @@ class array(set):
     return e * 180/math.pi
 
   def anomalous_differences(self):
+    """
+    Returns an array object with DANO (i.e. F(+) - F(-)) as data, and
+    optionally SIGDANO as sigmas.
+    """
     assert self.data() is not None
     asu, matches = self.match_bijvoet_mates()
     i = matches.miller_indices_in_hemisphere("+")
@@ -2506,6 +2515,37 @@ class array(set):
         selection=matches.pairs().column(i_column),
         anomalous_flag=False)
        for i_column in (0,1)])
+
+  def anomalous_completeness (self, use_binning=False, d_min_tolerance=1.e-6,
+      d_max=None, d_min=None, relative_to_complete_set=True) :
+    """
+    Return the percent of acenric reflections with both h,k,l and -h,-k,-l 
+    observed (only meaningful for amplitude and intensity arrays).  By default
+    this is calculated relative to the complete set.
+    """
+    assert self.anomalous_flag() and self.is_real_array()
+    if (not use_binning):
+      merged = self.average_bijvoet_mates()
+      if (relative_to_complete_set) :
+        merged = merged.complete_set(d_max=d_max, d_min=d_min,
+          d_min_tolerance=d_min_tolerance)
+      centric_flags = merged.centric_flags().data()
+      if (centric_flags.count(False) == 0) :
+        return 0
+      merged_acentric = merged.select(~centric_flags)
+      n_acentric = merged_acentric.size()
+      anom_diffs = self.anomalous_differences()
+      return min(anom_diffs.size() / n_acentric, 1.0)
+    assert self.binner() is not None
+    results = []
+    for i_bin in self.binner().range_all():
+      sel = self.binner().selection(i_bin)
+      array_sel = self.select(sel)
+      d_max_bin, d_min_bin = self.binner().bin_d_range(i_bin)
+      results.append(array_sel.anomalous_completeness(
+        d_max=d_max_bin, d_min=d_min_bin,
+        relative_to_complete_set=relative_to_complete_set))
+    return binned_data(binner=self.binner(), data=results, data_fmt="%5.3f")
 
   def anomalous_signal(self, use_binning=False):
     """Get the anomalous signal according to this formula:
