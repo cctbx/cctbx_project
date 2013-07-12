@@ -1378,7 +1378,7 @@ def occupancy_regroupping(pdb_hierarchy, cgs):
           if(i_rg > 0 and c[0] in rg.atoms().extract_i_seq()):
             rg_prev = rgs[i_rg-1]
             break
-        assert rg_prev is not None
+        if(rg_prev is None): continue
         all_altlocs = [rgpc.altloc for rgpc in rg_prev.conformers()]
         assert altloc_h in all_altlocs
         rg_prev_i_seqs = rg_prev.atoms().extract_i_seq()
