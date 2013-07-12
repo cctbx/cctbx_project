@@ -1180,6 +1180,7 @@ def check_if_output_directory_exists (file_name=None, dir_name=None) :
   if (file_name is not None) :
     assert (dir_name is None)
     dir_name = os.path.dirname(file_name)
+  if (dir_name == "") : return
   if (not op.isdir(dir_name)) :
     raise Sorry(("The specified output directory (%s) does not exist or "+
       "is not a directory.") % dir_name)

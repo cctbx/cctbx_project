@@ -86,7 +86,8 @@ argv-emulation=0""")
     executable = abs(libtbx.env.python_exe)
   try :
     args = [executable, "-c", "'import py2app'"]
-    subprocess.call(args)
+    rc = subprocess.call(args)
+    if (rc != 0) : raise RuntimeError("oops!")
   except RuntimeError :
     print >> out, "py2app not available, aborting .app creation."
     return 1
