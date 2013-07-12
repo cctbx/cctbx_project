@@ -837,10 +837,13 @@ def rigid_groups_from_pdb_chains(
     min_chain_size=2,
     xray_structure=None,
     check_for_atoms_on_special_positions=None,
+    group_all_by_chain=False,
     log=None):
   assert (not pdb_hierarchy.atoms().extract_i_seq().all_eq(0))
   if (log is None) : log = null_out()
-  sel_string = "not (not pepnames and single_atom_residue)"
+  sel_string = "not (resname HOH or resname WAT)"
+  if (not group_all_by_chain) :
+    sel_string = "not (not pepnames and single_atom_residue)"
   selection = pdb_hierarchy.atom_selection_cache().selection(string=sel_string)
   pdb_hierarchy = pdb_hierarchy.select(selection)
   models = pdb_hierarchy.models()
@@ -848,14 +851,21 @@ def rigid_groups_from_pdb_chains(
   atom_labels = list(pdb_hierarchy.atoms_with_labels())
   selections = []
   for chain in models[0].chains():
-    if(chain.atoms().size() >= min_chain_size):
+    if (not (chain.is_protein() or chain.is_na())) :
+      continue
+    chain_atoms = chain.atoms()
+    if(chain_atoms.size() >= min_chain_size):
       rgs = chain.residue_groups()
       chain_sele = "(chain '%s'" % chain.id
-      resid_first = rgs[0].resid().strip()
-      resid_last  = rgs[-1].resid().strip()
-      chain_sele += " and resid %s through %s"%(resid_first, resid_last)
+      if (not group_all_by_chain) :
+        resid_first = rgs[0].resid().strip()
+        resid_last  = rgs[-1].resid().strip()
+        chain_sele += " and resid %s through %s"%(resid_first, resid_last)
+      else :
+        chain_sele += " and " + sel_string
       chain_sele += ")"
-      selections.append(chain_sele)
+      if (not chain_sele in selections) :
+        selections.append(chain_sele)
   if (check_for_atoms_on_special_positions) :
     assert (xray_structure is not None)
     sel_cache = pdb_hierarchy.atom_selection_cache()

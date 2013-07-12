@@ -175,6 +175,32 @@ TER
 END
 """
 
+m3_in_str = """\
+CRYST1   72.240   72.010   86.990  90.00  90.00  90.00 P 21 21 21    4
+ATOM      1  N   ASP L  -1      49.347 -62.804  60.380  1.00 34.60           N
+ATOM      2  CA  ASP L  -1      47.975 -63.194  59.946  1.00 33.86           C
+ATOM      3  C   ASP L  -1      47.122 -63.665  61.114  1.00 34.02           C
+ATOM      4  O   ASP L  -1      47.573 -64.451  61.947  1.00 32.23           O
+ATOM      9  N   VAL L  -2      45.889 -63.176  61.175  1.00 31.94           N
+ATOM     10  CA  VAL L  -2      44.978 -63.576  62.233  1.00 29.81           C
+ATOM     20  CB  GLN L   0      45.127 -68.170  63.455  1.00 29.74           C
+ATOM     21  CG  GLN L   0      44.676 -69.611  63.591  1.00 39.72           C
+ATOM     22  CD  GLN L   0      45.288 -70.292  64.807  1.00 51.31           C
+ATOM     25  N   MET L   4      41.894 -68.026  62.256  1.00 24.27           N
+ATOM     26  CA CMET L   4      40.497 -68.318  62.576  0.30 22.89           C
+ATOM     27  C  CMET L   4      40.326 -69.824  62.795  0.30 21.48           C
+ATOM     28  O  CMET L   4      40.633 -70.625  61.911  0.30 23.73           O
+TER
+HETATM 3387  O   WAT L 219      33.576 -94.407  39.044  1.08 30.66
+HETATM 3388  O   WAT L 220      39.377 -73.892  61.395  1.40 42.96
+HETATM 3389  O  AWAT L 221      21.907 -98.365  40.731  0.40 16.45
+HETATM 3390  O  BWAT L 221      28.591 -95.257  59.711  0.60 20.75
+TER
+ATOM   1001 AU   AU  L 500      14.333   3.856  26.301  1.00  7.97          Au
+TER
+END
+"""
+
 def exercise_00():
   pdb_inp = iotbx.pdb.input(source_info=None, lines=m1_in_str)
   pdb_hierarchy = pdb_inp.construct_hierarchy()
@@ -218,6 +244,17 @@ def exercise_01():
     xrs_1.structure_factors(d_min=2).f_calc().data(),
     xrs_2.structure_factors(d_min=2).f_calc().data())
 
+def exercise_02 () :
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=m3_in_str)
+  pdb_hierarchy = pdb_inp.construct_hierarchy()
+  pdb_hierarchy.atoms().reset_i_seq()
+  sel_strings=mmtbx.refinement.rigid_body.rigid_groups_from_pdb_chains(
+    pdb_hierarchy=pdb_hierarchy,
+    group_all_by_chain=True)
+  assert sel_strings == ["(chain 'L' and not (resname HOH or resname WAT))"]
+
 if (__name__ == "__main__"):
   exercise_00()
   exercise_01()
+  exercise_02()
+  print "OK"
