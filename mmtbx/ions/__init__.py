@@ -572,6 +572,10 @@ class Manager (object) :
       site_j = self.sites_frac[j_seq]
       atom_j = self.pdb_atoms[j_seq]
 
+      # Filter out hydrogens
+      if atom_j.element.upper().strip() in ["H", "D"]:
+        continue
+
       # Filter out alternate conformations of this atom
       if _same_atom_different_altloc(atom_i, atom_j):
         continue
