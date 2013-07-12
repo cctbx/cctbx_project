@@ -382,12 +382,6 @@ dxtbx/command_line/serialize.py -text
 dxtbx/command_line/to_ewald_sphere.py -text
 dxtbx/command_line/to_xds.py -text
 dxtbx/data/detectors.lib -text
-dxtbx/doc/papers/dxtbx/Figures/fig1.eps -text
-dxtbx/doc/papers/dxtbx/Figures/fig2.eps -text
-dxtbx/doc/papers/dxtbx/Makefile -text
-dxtbx/doc/papers/dxtbx/README -text
-dxtbx/doc/papers/dxtbx/dxtbx.bib -text
-dxtbx/doc/papers/dxtbx/dxtbx.tex -text
 dxtbx/error.h -text
 dxtbx/example/resolution_corners.py -text
 dxtbx/example/to_xds.py -text
