@@ -1824,6 +1824,7 @@ rstbx/cftbx/coordinate_frame_helpers.py -text
 rstbx/cftbx/readme.txt -text
 rstbx/cftbx/tests/example-mosflm.mat -text
 rstbx/cftbx/tests/example-xparm.xds -text
+rstbx/cftbx/tst_coordinate_frame_converter.py -text
 rstbx/command_line/__init__.py -text
 rstbx/command_line/example_viewer.py -text
 rstbx/command_line/index.py -text
