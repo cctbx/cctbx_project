@@ -1,10 +1,11 @@
-from __future__ import division
-# -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
+# -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
 # Known issues: Recentering on resize and when switching between
 # different image types.  Ring centre on image switch.
 #
 # $Id: frame.py 323 2012-05-16 21:40:27Z hattne $
+
+from __future__ import division
 
 import os
 import wx
@@ -400,7 +401,8 @@ class XrayFrame (AppFrame,XFBaseClass) :
         from cStringIO import StringIO
         self.update_statusbar("Writing " + file_name + "...")
 
-        flex_img = self.pyslip.tiles.raw_image.get_flex_image(brightness=1)
+        flex_img = self.pyslip.tiles.raw_image.get_flex_image(
+          brightness=self.settings.brightness / 100)
         if flex_img.supports_rotated_tiles_antialiasing_recommended:
             currentZoom = self.pyslip.level
             self.pyslip.tiles.UseLevel(0) #1:1 zoom level
@@ -448,7 +450,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
         else: # write the image out at full resolution
             flex_img.setWindow(0.0, 0.0, 1)
             flex_img.spot_convention(0)
-            flex_img.adjust(color_scheme=0)
+            flex_img.adjust(color_scheme=self.settings.color_scheme)
             flex_img.prep_string()
             data_string = flex_img.export_string
             imageout = Image.fromstring("RGB",
