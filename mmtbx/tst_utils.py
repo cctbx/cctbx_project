@@ -857,6 +857,56 @@ END
   answer = [ [[9],[10]], [[26],[27]] ]
   assert approx_equal(res, answer)
 
+def exercise_26(verbose):
+  pdb_str="""\
+CRYST1   71.040   72.017   72.362  90.00 100.48  90.00 C 1 2 1
+ATOM     96  N   PRO L   5       2.689  13.877  15.387  1.00 13.65           N
+ATOM     97  CA  PRO L   5       1.824  14.762  14.572  1.00 17.31           C
+ATOM     98  C   PRO L   5       0.338  14.432  14.641  1.00 20.79           C
+ATOM     99  O   PRO L   5      -0.466  15.376  14.642  1.00 20.37           O
+ATOM    100  CB  PRO L   5       2.330  14.534  13.143  1.00 20.71           C
+ATOM    101  CG  PRO L   5       3.772  14.184  13.326  1.00 20.25           C
+ATOM    102  CD  PRO L   5       3.871  13.403  14.633  1.00 16.57           C
+ATOM    103  HA  PRO L   5       1.981  15.805  14.846  1.00 17.31           H
+ATOM    104  HB2 PRO L   5       1.780  13.709  12.691  1.00 20.71           H
+ATOM    105  HB3 PRO L   5       2.220  15.447  12.558  1.00 20.71           H
+ATOM    106  HG2 PRO L   5       4.103  13.567  12.492  1.00 20.25           H
+ATOM    107  HG3 PRO L   5       4.363  15.098  13.382  1.00 20.25           H
+ATOM    108  HD2 PRO L   5       3.805  12.331  14.446  1.00 16.57           H
+ATOM    109  HD3 PRO L   5       4.791  13.666  15.154  1.00 16.57           H
+ATOM    110  N   LEU L   6      -0.052  13.175  14.677  1.00 13.93           N
+ATOM    111  CA  LEU L   6      -1.446  12.769  14.667  1.00 15.53           C
+ATOM    112  C   LEU L   6      -2.079  12.634  16.029  1.00 17.57           C
+ATOM    113  O   LEU L   6      -3.268  12.311  16.111  1.00 18.17           O
+ATOM    114  CB  LEU L   6      -1.648  11.435  13.889  1.00 17.76           C
+ATOM    115  CG  LEU L   6      -1.291  11.544  12.396  1.00 18.22           C
+ATOM    116  CD1 LEU L   6      -1.474  10.257  11.651  1.00 18.93           C
+ATOM    117  CD2 LEU L   6      -2.125  12.629  11.689  1.00 22.55           C
+ATOM    118  HA  LEU L   6      -2.017  13.534  14.144  1.00 15.53           H
+ATOM    119  HB2 LEU L   6      -1.011  10.669  14.331  1.00 17.76           H
+ATOM    120  HB3 LEU L   6      -2.693  11.135  13.959  1.00 17.76           H
+ATOM    121  HG  LEU L   6      -0.242  11.827  12.310  1.00 18.22           H
+ATOM    122 HD11 LEU L   6      -0.750  10.210  10.838  1.00 18.93           H
+ATOM    123 HD12 LEU L   6      -1.319   9.426  12.338  1.00 18.93           H
+ATOM    124 HD13 LEU L   6      -2.488  10.221  11.252  1.00 18.93           H
+ATOM    125 HD21 LEU L   6      -2.084  12.462  10.613  1.00 22.55           H
+ATOM    126 HD22 LEU L   6      -3.156  12.565  12.037  1.00 22.55           H
+ATOM    127 HD23 LEU L   6      -1.712  13.609  11.929  1.00 22.55           H
+ATOM    128  H  ALEU L   6       0.595  12.387  14.715  0.50 13.93           H
+ATOM    129  D  BLEU L   6       0.595  12.387  14.715  0.50 13.93           D
+"""
+  if (verbose): log = sys.stdout
+  else: log = StringIO()
+  processed_pdb_files_srv = utils.process_pdb_file_srv(log=log)
+  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
+    raw_records = pdb_str.splitlines())
+  res = utils.occupancy_selections(
+    all_chain_proxies = processed_pdb_file.all_chain_proxies,
+    xray_structure    = processed_pdb_file.xray_structure(),
+    as_flex_arrays    = False)
+  answer = [ [[32], [33]] ]
+  assert approx_equal(res, answer)
+
 def exercise_d_data_target_d_atomic_params():
   import iotbx.pdb
   import mmtbx.f_model
@@ -1114,6 +1164,7 @@ def run():
   exercise_23(verbose=verbose)
   exercise_24(verbose=verbose)
   exercise_25(verbose=verbose)
+  exercise_26(verbose=verbose)
   exercise_d_data_target_d_atomic_params()
   exercise_get_atom_selections(verbose=verbose)
   exercise_f_000()
