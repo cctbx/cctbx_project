@@ -32,6 +32,26 @@ def _is_tetrahedral(vectors, dev_cutoff = 20):
   if deviation <= dev_cutoff:
     return deviation, 4 - len(vectors)
 
+def _is_triagular_planar(vectors, dev_cutoff = 20):
+  """
+  Triangular planar geometry has three vertices (By definition all on the same
+  equatorial plane). The expected angles are 120 degrees between neighboring
+  vertices.
+  """
+  if len(vectors) != 3:
+    return
+
+  angles = _bond_angles(vectors)
+  a_120s = []
+
+  for angle in angles:
+    a_120s.append(angle[2] - 120)
+
+  deviation = sqrt(sum(i ** 2 for i in a_120s) / len(angles))
+
+  if deviation <= dev_cutoff:
+    return deviation, 3 - len(vectors)
+
 def _is_square_planar(vectors, dev_cutoff = 20):
   """
   Square planar geometry has four vertices, all on the same equatorial plane.
@@ -39,7 +59,7 @@ def _is_square_planar(vectors, dev_cutoff = 20):
   degrees between vertices across from one another.
   """
 
-  if len(vectors) > 4 or len(vectors) < 3:
+  if len(vectors) != 4:
     return
 
   angles = _bond_angles(vectors)
@@ -64,20 +84,44 @@ def _is_square_planar(vectors, dev_cutoff = 20):
   if deviation <= dev_cutoff:
     return deviation, 4 - len(vectors)
 
+def _is_square_pyramid(vectors, dev_cutoff = 20):
+  """
+  Square bipyramids have five vertices, four on the same equatorial plane with
+  one above. The expected angles are all either 90 degrees or 180 degrees.
+  """
+  if len(vectors) != 5:
+    return
+
+  angles = _bond_angles(vectors)
+  a_90s, a_180s = [], []
+
+  for angle in angles:
+    if abs(angle[2] - 90) < abs(angle[2] - 180):
+      a_90s.append(angle[2] - 90)
+    else:
+      a_180s.append(angle[2] - 180)
+
+  if len(a_90s) != 8 or len(a_180s) != 2:
+    return
+
+  deviation = sqrt(sum(i ** 2 for i in a_90s + a_180s) / len(angles))
+
+  if deviation <= dev_cutoff:
+    return deviation, 5 - len(vectors)
+
 def _is_octahedral(vectors, dev_cutoff = 20):
   """
   Octahedrons have six vertices (Their name comes from their eight faces).
   The expected angles are all either 90 degrees (Next to each other),
   or 180 degrees (Across from each other).
+
+  Another name for this shape is square bipyramidal.
   """
-  if len(vectors) > 6 or len(vectors) < 5:
+  if len(vectors) != 6:
     return
 
   angles = _bond_angles(vectors)
-
-  # Grab the two axial vectors
-  a_90s = []
-  a_180s = []
+  a_90s, a_180s = [], []
 
   for angle in angles:
     if abs(angle[2] - 90) < abs(angle[2] - 180):
@@ -96,8 +140,9 @@ def _is_octahedral(vectors, dev_cutoff = 20):
 def _is_trigonal_bipyramid(vectors, dev_cutoff = 15):
   """
   Trigonal bipyramids have five vertices. Three vertices form a plane in the
-  middle and the angles between all three are 120 degrees. The two other vertices
-  reside axial to the plane, at 90 degrees from all the equatorial vertices.
+  middle and the angles between all three are 120 degrees. The two other
+  vertices reside axial to the plane, at 90 degrees from all the equatorial
+  vertices.
   """
   if len(vectors) > 5 or len(vectors) < 4:
     return
@@ -180,7 +225,9 @@ def _is_pentagonal_bipyramid(vectors, dev_cutoff = 15):
 
 SUPPORTED_GEOMETRIES = OrderedDict([
     ("tetrahedral", _is_tetrahedral),
-    ("square planar", _is_square_planar),
+    ("triangular_planar", _is_triagular_planar),
+    ("square_planar", _is_square_planar),
+    ("square_pyramid", _is_square_pyramid),
     ("octahedral", _is_octahedral),
     ("trigonal_bipyramid", _is_trigonal_bipyramid),
     ("pentagonal_bipyramid", _is_pentagonal_bipyramid),
