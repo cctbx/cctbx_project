@@ -15,7 +15,8 @@ class coordinate_frame_information:
                  sigma_divergence = None,
                  mosaicity = None,
                  starting_angle = None, oscillation_range = None,
-                 starting_frame = None):
+                 starting_frame = None,
+                 original_rotation = None):
 
         self._detector_origin = detector_origin
         self._detector_fast = detector_fast
@@ -34,6 +35,7 @@ class coordinate_frame_information:
         self._starting_angle = starting_angle
         self._oscillation_range = oscillation_range
         self._starting_frame = starting_frame
+        self._original_rotation = original_rotation
 
         self._R_to_CBF = None
         self._R_to_Rossmann = None
@@ -70,6 +72,9 @@ class coordinate_frame_information:
 
     def get_space_group_number(self):
         return self._space_group_number
+
+    def get_original_rotation(self):
+        return self._original_rotation
 
     def get(self, parameter_name):
         if not hasattr(self, '_%s' % parameter_name):
@@ -211,8 +216,8 @@ def is_recognized_file(filename):
     return False
 
 def import_xds_integrate_hkl(integrate_hkl_file):
-    '''Read an XDS INTEGRATE.HKL file, transform the parameters contained therein
-    into the standard coordinate frame, record this as a dictionary.'''
+    '''Read an XDS INTEGRATE.HKL file, transform the parameters contained
+    therein into the standard coordinate frame, record this as a dictionary.'''
 
     assert(is_xds_integrate_hkl(integrate_hkl_file))
 
@@ -318,7 +323,7 @@ def import_xds_integrate_hkl(integrate_hkl_file):
         rotation_axis, sample_to_source, wavelength,
         real_space_a, real_space_b, real_space_c, space_group_number,
         sigma_divergence, mosaicity,
-        starting_angle, oscillation_range, starting_frame)
+        starting_angle, oscillation_range, starting_frame, original_rotation = R)
 
 def import_xds_ascii_hkl(xds_ascii_hkl_file):
     '''Read an XDS INTEGRATE.HKL file, transform the parameters contained therein
@@ -429,7 +434,7 @@ def import_xds_ascii_hkl(xds_ascii_hkl_file):
         rotation_axis, sample_to_source, wavelength,
         real_space_a, real_space_b, real_space_c, space_group_number,
         sigma_divergence, mosaicity,
-        starting_angle, oscillation_range, starting_frame)
+        starting_angle, oscillation_range, starting_frame, original_rotation = R)
 
 def import_xds_xparm(xparm_file):
     '''Read an XDS XPARM file, transform the parameters contained therein
@@ -498,7 +503,8 @@ def import_xds_xparm(xparm_file):
         detector_origin, detector_fast, detector_slow, (nx, ny), (px, py),
         rotation_axis, sample_to_source, wavelength,
         real_space_a, real_space_b, real_space_c, space_group_number,
-        None, None, starting_angle, oscillation_range, starting_frame)
+        None, None, starting_angle, oscillation_range, starting_frame,
+        original_rotation = R)
 
 def test_align_reference_frame():
 

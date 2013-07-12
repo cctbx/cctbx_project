@@ -90,6 +90,10 @@ class coordinate_frame_converter:
         '''Rotate input vector assumed to be in input coordinate frame into
         standard coordinate frame, returning cctbx vector.'''
 
+        R0 = self._coordinate_frame_information.get_original_rotation()
+        if R0:
+            vector = R0 * vector
+
         if convention == coordinate_frame_converter.CBF:
             R = self._coordinate_frame_information.R_to_CBF()
             return R * vector
