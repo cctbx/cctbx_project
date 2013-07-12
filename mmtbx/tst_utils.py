@@ -642,7 +642,7 @@ def exercise_23(verbose):
     as_flex_arrays    = False)
   res = extract_serials(processed_pdb_file.all_chain_proxies.pdb_atoms, res)
   assert approx_equal(res, base)
-  
+
 def exercise_24(verbose):
   pdb_str1="""\
 CRYST1   10.707   11.101   13.552  90.00  90.00  90.00 P 1
@@ -802,15 +802,15 @@ END
       all_chain_proxies = processed_pdb_file.all_chain_proxies,
       xray_structure    = processed_pdb_file.xray_structure(),
       as_flex_arrays    = False)
-    answer = [ [[0,1,2,3,4,5,6,7,8,9], 
-                [10,11,12,13,14,15,16,17,18,19], 
-                [20,21,22,23,24,25,26,27,28,29,67], 
-                [30,31,32,33,34,35,36,37,38,39,68]], 
-               [[45,46,47,48,49,50,51,52,53,54,55], 
+    answer = [ [[0,1,2,3,4,5,6,7,8,9],
+                [10,11,12,13,14,15,16,17,18,19],
+                [20,21,22,23,24,25,26,27,28,29,67],
+                [30,31,32,33,34,35,36,37,38,39,68]],
+               [[45,46,47,48,49,50,51,52,53,54,55],
                 [56,57,58,59,60,61,62,63,64,65,66]]]
-    
+
     assert approx_equal(res, answer)
-  
+
 def exercise_25(verbose):
   pdb_str="""\
 CRYST1   10.707   11.101   13.552  90.00  90.00  90.00 P 1

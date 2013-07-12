@@ -2519,7 +2519,7 @@ class array(set):
   def anomalous_completeness (self, use_binning=False, d_min_tolerance=1.e-6,
       d_max=None, d_min=None, relative_to_complete_set=True) :
     """
-    Return the percent of acenric reflections with both h,k,l and -h,-k,-l 
+    Return the percent of acenric reflections with both h,k,l and -h,-k,-l
     observed (only meaningful for amplitude and intensity arrays).  By default
     this is calculated relative to the complete set.
     """

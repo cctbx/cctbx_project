@@ -212,9 +212,9 @@ expected_result2 = """\
 ==================== Fit water hydrogens into residual map ====================
 
 
-                    ----------find peak-candidates----------                   
+                    ----------find peak-candidates----------
 
-Number of peaks found at mFobs-DFmodel map (map cutoff=6.50 sigma)= 9           
+Number of peaks found at mFobs-DFmodel map (map cutoff=6.50 sigma)= 9
 Filter by distance & map next to the model:
    mapped sites are within: 0.984 - 1.007
    number of sites selected in [dist_min= 0.70, dist_max= 1.05]: 9 from: 9
@@ -230,7 +230,7 @@ peak=   24.152 closest distance to pdb=" O   HOH     4 " =    1.004
 peak=   24.564 closest distance to pdb=" O   HOH     5 " =    0.988
 peak=   24.243 closest distance to pdb=" O   HOH     6 " =    1.007
 
-                  ----------6D rigid body fit of HOH----------                 
+                  ----------6D rigid body fit of HOH----------
 
 Fit quality:
  0.029
