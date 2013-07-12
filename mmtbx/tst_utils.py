@@ -642,6 +642,220 @@ def exercise_23(verbose):
     as_flex_arrays    = False)
   res = extract_serials(processed_pdb_file.all_chain_proxies.pdb_atoms, res)
   assert approx_equal(res, base)
+  
+def exercise_24(verbose):
+  pdb_str1="""\
+CRYST1   10.707   11.101   13.552  90.00  90.00  90.00 P 1
+ATOM      0  N  AALA A   9       3.452   6.807   3.508  0.19  9.33      A    N
+ATOM      1  CA AALA A   9       4.572   6.204   4.211  0.19  9.82      A    C
+ATOM      2  C  AALA A   9       4.165   5.990   5.664  0.19 10.34      A    C
+ATOM      3  O  AALA A   9       3.000   6.165   6.021  0.19 10.96      A    O
+ATOM      4  CB AALA A   9       5.792   7.098   4.116  0.19 10.31      A    C
+ATOM      5  H  AALA A   9       3.466   7.667   3.487  0.19  8.78      A    H
+ATOM      6  HA AALA A   9       4.802   5.351   3.810  0.19  9.23      A    H
+ATOM      7  HB1AALA A   9       6.533   6.686   4.588  0.19  9.91      A    H
+ATOM      8  HB2AALA A   9       6.031   7.221   3.184  0.19  9.91      A    H
+ATOM      9  HB3AALA A   9       5.594   7.960   4.515  0.19  9.91      A    H
+ATOM     10  N  BALA A   9       3.348   6.697   3.518  0.28  8.28      A    N
+ATOM     11  CA BALA A   9       4.461   6.052   4.195  0.28  9.14      A    C
+ATOM     12  C  BALA A   9       4.138   5.964   5.683  0.28  9.84      A    C
+ATOM     13  O  BALA A   9       3.003   6.215   6.089  0.28 10.68      A    O
+ATOM     14  CB BALA A   9       5.726   6.829   3.952  0.28  9.20      A    C
+ATOM     15  H  BALA A   9       3.422   7.551   3.454  0.28  8.78      A    H
+ATOM     16  HA BALA A   9       4.597   5.156   3.849  0.28  9.23      A    H
+ATOM     17  HB1BALA A   9       6.465   6.395   4.406  0.28  9.91      A    H
+ATOM     18  HB2BALA A   9       5.907   6.863   3.000  0.28  9.91      A    H
+ATOM     19  HB3BALA A   9       5.623   7.731   4.294  0.28  9.91      A    H
+ATOM     20  N  CALA A   9       3.608   6.763   3.402  0.28  8.32      A    N
+ATOM     21  CA CALA A   9       4.617   6.060   4.177  0.28  9.56      A    C
+ATOM     22  C  CALA A   9       4.219   6.081   5.651  0.28 10.15      A    C
+ATOM     23  O  CALA A   9       3.126   6.528   6.006  0.28 10.64      A    O
+ATOM     24  CB CALA A   9       5.981   6.684   3.973  0.28 10.39      A    C
+ATOM     25  H  CALA A   9       3.801   7.579   3.210  0.28  8.78      A    H
+ATOM     26  HA CALA A   9       4.671   5.139   3.876  0.28  9.23      A    H
+ATOM     27  HB1CALA A   9       6.639   6.202   4.497  0.28  9.91      A    H
+ATOM     28  HB2CALA A   9       6.220   6.639   3.034  0.28  9.91      A    H
+ATOM     29  HB3CALA A   9       5.959   7.611   4.257  0.28  9.91      A    H
+ATOM     30  N  DALA A   9       3.518   6.930   3.530  0.25  8.78      A    N
+ATOM     31  CA DALA A   9       4.639   6.333   4.232  0.25  9.23      A    C
+ATOM     32  C  DALA A   9       4.203   6.093   5.674  0.25 10.10      A    C
+ATOM     33  O  DALA A   9       3.051   6.346   6.031  0.25 10.72      A    O
+ATOM     34  CB DALA A   9       5.837   7.255   4.177  0.25  9.91      A    C
+ATOM     35  H  DALA A   9       3.490   7.789   3.568  0.25  8.78      A    H
+ATOM     36  HA DALA A   9       4.898   5.494   3.819  0.25  9.23      A    H
+ATOM     37  HB1DALA A   9       6.581   6.848   4.648  0.25  9.91      A    H
+ATOM     38  HB2DALA A   9       6.086   7.408   3.252  0.25  9.91      A    H
+ATOM     39  HB3DALA A   9       5.614   8.101   4.595  0.25  9.91      A    H
+ATOM     40  N   VAL A  10       5.119   5.606   6.502  1.00 11.13      A    N
+ATOM     41  CA  VAL A  10       4.846   5.470   7.925  1.00 12.50      A    C
+ATOM     42  C   VAL A  10       4.347   6.801   8.520  1.00 11.26      A    C
+ATOM     43  O   VAL A  10       4.763   7.871   8.095  1.00 11.53      A    O
+ATOM     44  HA  VAL A  10       4.118   4.835   8.017  1.00 12.50      A    H
+ATOM     45  CB AVAL A  10       5.994   4.806   8.722  0.21 14.17      A    C
+ATOM     46  CG1AVAL A  10       6.640   3.699   7.889  0.21 14.17      A    C
+ATOM     47  CG2AVAL A  10       7.005   5.815   9.197  0.21 15.20      A    C
+ATOM     48  H  AVAL A  10       5.926   5.421   6.269  0.19 11.13      A    H
+ATOM     49  HB AVAL A  10       5.616   4.404   9.520  0.21 14.91      A    H
+ATOM     50 HG11AVAL A  10       7.358   3.289   8.396  0.21 16.29      A    H
+ATOM     51 HG12AVAL A  10       5.975   3.028   7.671  0.21 16.29      A    H
+ATOM     52 HG13AVAL A  10       6.998   4.077   7.070  0.21 16.29      A    H
+ATOM     53 HG21AVAL A  10       7.707   5.363   9.691  0.21 15.63      A    H
+ATOM     54 HG22AVAL A  10       7.391   6.271   8.433  0.21 15.63      A    H
+ATOM     55 HG23AVAL A  10       6.570   6.462   9.774  0.21 15.63      A    H
+ATOM     56  CB BVAL A  10       6.135   4.987   8.645  0.79 14.91      A    C
+ATOM     57  CG1BVAL A  10       6.081   5.228  10.144  0.79 16.28      A    C
+ATOM     58  CG2BVAL A  10       6.351   3.507   8.360  0.79 15.63      A    C
+ATOM     59  H  BVAL A  10       5.928   5.441   6.263  0.28 11.13      A    H
+ATOM     60  HB BVAL A  10       6.879   5.504   8.299  0.79 14.91      A    H
+ATOM     61 HG11BVAL A  10       6.902   4.913  10.552  0.79 16.29      A    H
+ATOM     62 HG12BVAL A  10       5.978   6.177  10.316  0.79 16.29      A    H
+ATOM     63 HG13BVAL A  10       5.328   4.748  10.522  0.79 16.29      A    H
+ATOM     64 HG21BVAL A  10       7.156   3.205   8.809  0.79 15.63      A    H
+ATOM     65 HG22BVAL A  10       5.590   3.000   8.685  0.79 15.63      A    H
+ATOM     66 HG23BVAL A  10       6.445   3.372   7.404  0.79 15.63      A    H
+ATOM     67  H  CVAL A  10       5.907   5.353   6.270  0.28 11.13      A    H
+ATOM     68  H  DVAL A  10       5.903   5.349   6.260  0.25 11.13      A    H
+TER
+END
+"""
+  pdb_str2="""\
+CRYST1   10.707   11.101   13.552  90.00  90.00  90.00 P 1
+ATOM      0  N  AALA A   9       3.452   6.807   3.508  0.19  9.33      A    N
+ATOM      1  CA AALA A   9       4.572   6.204   4.211  0.19  9.82      A    C
+ATOM      2  C  AALA A   9       4.165   5.990   5.664  0.19 10.34      A    C
+ATOM      3  O  AALA A   9       3.000   6.165   6.021  0.19 10.96      A    O
+ATOM      4  CB AALA A   9       5.792   7.098   4.116  0.19 10.31      A    C
+ATOM      5  D  AALA A   9       3.466   7.667   3.487  0.19  8.78      A    D
+ATOM      6  DA AALA A   9       4.802   5.351   3.810  0.19  9.23      A    D
+ATOM      7  DB1AALA A   9       6.533   6.686   4.588  0.19  9.91      A    D
+ATOM      8  DB2AALA A   9       6.031   7.221   3.184  0.19  9.91      A    D
+ATOM      9  DB3AALA A   9       5.594   7.960   4.515  0.19  9.91      A    D
+ATOM     10  N  BALA A   9       3.348   6.697   3.518  0.28  8.28      A    N
+ATOM     11  CA BALA A   9       4.461   6.052   4.195  0.28  9.14      A    C
+ATOM     12  C  BALA A   9       4.138   5.964   5.683  0.28  9.84      A    C
+ATOM     13  O  BALA A   9       3.003   6.215   6.089  0.28 10.68      A    O
+ATOM     14  CB BALA A   9       5.726   6.829   3.952  0.28  9.20      A    C
+ATOM     15  D  BALA A   9       3.422   7.551   3.454  0.28  8.78      A    D
+ATOM     16  DA BALA A   9       4.597   5.156   3.849  0.28  9.23      A    D
+ATOM     17  DB1BALA A   9       6.465   6.395   4.406  0.28  9.91      A    D
+ATOM     18  DB2BALA A   9       5.907   6.863   3.000  0.28  9.91      A    D
+ATOM     19  DB3BALA A   9       5.623   7.731   4.294  0.28  9.91      A    D
+ATOM     20  N  CALA A   9       3.608   6.763   3.402  0.28  8.32      A    N
+ATOM     21  CA CALA A   9       4.617   6.060   4.177  0.28  9.56      A    C
+ATOM     22  C  CALA A   9       4.219   6.081   5.651  0.28 10.15      A    C
+ATOM     23  O  CALA A   9       3.126   6.528   6.006  0.28 10.64      A    O
+ATOM     24  CB CALA A   9       5.981   6.684   3.973  0.28 10.39      A    C
+ATOM     25  D  CALA A   9       3.801   7.579   3.210  0.28  8.78      A    D
+ATOM     26  DA CALA A   9       4.671   5.139   3.876  0.28  9.23      A    D
+ATOM     27  DB1CALA A   9       6.639   6.202   4.497  0.28  9.91      A    D
+ATOM     28  DB2CALA A   9       6.220   6.639   3.034  0.28  9.91      A    D
+ATOM     29  DB3CALA A   9       5.959   7.611   4.257  0.28  9.91      A    D
+ATOM     30  N  DALA A   9       3.518   6.930   3.530  0.25  8.78      A    N
+ATOM     31  CA DALA A   9       4.639   6.333   4.232  0.25  9.23      A    C
+ATOM     32  C  DALA A   9       4.203   6.093   5.674  0.25 10.10      A    C
+ATOM     33  O  DALA A   9       3.051   6.346   6.031  0.25 10.72      A    O
+ATOM     34  CB DALA A   9       5.837   7.255   4.177  0.25  9.91      A    C
+ATOM     35  D  DALA A   9       3.490   7.789   3.568  0.25  8.78      A    D
+ATOM     36  DA DALA A   9       4.898   5.494   3.819  0.25  9.23      A    D
+ATOM     37  DB1DALA A   9       6.581   6.848   4.648  0.25  9.91      A    D
+ATOM     38  DB2DALA A   9       6.086   7.408   3.252  0.25  9.91      A    D
+ATOM     39  DB3DALA A   9       5.614   8.101   4.595  0.25  9.91      A    D
+ATOM     40  N   VAL A  10       5.119   5.606   6.502  1.00 11.13      A    N
+ATOM     41  CA  VAL A  10       4.846   5.470   7.925  1.00 12.50      A    C
+ATOM     42  C   VAL A  10       4.347   6.801   8.520  1.00 11.26      A    C
+ATOM     43  O   VAL A  10       4.763   7.871   8.095  1.00 11.53      A    O
+ATOM     44  HA  VAL A  10       4.118   4.835   8.017  1.00 12.50      A    D
+ATOM     45  CB AVAL A  10       5.994   4.806   8.722  0.21 14.17      A    C
+ATOM     46  CG1AVAL A  10       6.640   3.699   7.889  0.21 14.17      A    C
+ATOM     47  CG2AVAL A  10       7.005   5.815   9.197  0.21 15.20      A    C
+ATOM     48  D  AVAL A  10       5.926   5.421   6.269  0.19 11.13      A    D
+ATOM     49  DB AVAL A  10       5.616   4.404   9.520  0.21 14.91      A    D
+ATOM     50 DG11AVAL A  10       7.358   3.289   8.396  0.21 16.29      A    D
+ATOM     51 DG12AVAL A  10       5.975   3.028   7.671  0.21 16.29      A    D
+ATOM     52 DG13AVAL A  10       6.998   4.077   7.070  0.21 16.29      A    D
+ATOM     53 DG21AVAL A  10       7.707   5.363   9.691  0.21 15.63      A    D
+ATOM     54 DG22AVAL A  10       7.391   6.271   8.433  0.21 15.63      A    D
+ATOM     55 DG23AVAL A  10       6.570   6.462   9.774  0.21 15.63      A    D
+ATOM     56  CB BVAL A  10       6.135   4.987   8.645  0.79 14.91      A    C
+ATOM     57  CG1BVAL A  10       6.081   5.228  10.144  0.79 16.28      A    C
+ATOM     58  CG2BVAL A  10       6.351   3.507   8.360  0.79 15.63      A    C
+ATOM     59  D  BVAL A  10       5.928   5.441   6.263  0.28 11.13      A    D
+ATOM     60  DB BVAL A  10       6.879   5.504   8.299  0.79 14.91      A    D
+ATOM     61 DG11BVAL A  10       6.902   4.913  10.552  0.79 16.29      A    D
+ATOM     62 DG12BVAL A  10       5.978   6.177  10.316  0.79 16.29      A    D
+ATOM     63 DG13BVAL A  10       5.328   4.748  10.522  0.79 16.29      A    D
+ATOM     64 DG21BVAL A  10       7.156   3.205   8.809  0.79 15.63      A    D
+ATOM     65 DG22BVAL A  10       5.590   3.000   8.685  0.79 15.63      A    D
+ATOM     66 DG23BVAL A  10       6.445   3.372   7.404  0.79 15.63      A    D
+ATOM     67  D  CVAL A  10       5.907   5.353   6.270  0.28 11.13      A    D
+ATOM     68  D  DVAL A  10       5.903   5.349   6.260  0.25 11.13      A    D
+TER
+END
+"""
+  if (verbose): log = sys.stdout
+  else: log = StringIO()
+  for pdb_str in [pdb_str1, pdb_str2]:
+    processed_pdb_files_srv = utils.process_pdb_file_srv(log=log)
+    processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
+      raw_records = pdb_str.splitlines())
+    res = utils.occupancy_selections(
+      all_chain_proxies = processed_pdb_file.all_chain_proxies,
+      xray_structure    = processed_pdb_file.xray_structure(),
+      as_flex_arrays    = False)
+    answer = [ [[0,1,2,3,4,5,6,7,8,9], 
+                [10,11,12,13,14,15,16,17,18,19], 
+                [20,21,22,23,24,25,26,27,28,29,67], 
+                [30,31,32,33,34,35,36,37,38,39,68]], 
+               [[45,46,47,48,49,50,51,52,53,54,55], 
+                [56,57,58,59,60,61,62,63,64,65,66]]]
+    
+    assert approx_equal(res, answer)
+  
+def exercise_25(verbose):
+  pdb_str="""\
+CRYST1   10.707   11.101   13.552  90.00  90.00  90.00 P 1
+ATOM      0  N   ALA A   9       3.452   6.807   3.508  1.00  9.33      A    N
+ATOM      1  CA  ALA A   9       4.572   6.204   4.211  1.00  9.82      A    C
+ATOM      2  C   ALA A   9       4.165   5.990   5.664  1.00 10.34      A    C
+ATOM      3  O   ALA A   9       3.000   6.165   6.021  1.00 10.96      A    O
+ATOM      4  CB  ALA A   9       5.792   7.098   4.116  1.00 10.31      A    C
+ATOM      5  HA  ALA A   9       4.802   5.351   3.810  1.00  9.23      A    H
+ATOM      6  HB1 ALA A   9       6.533   6.686   4.588  1.00  9.91      A    H
+ATOM      7  HB2 ALA A   9       6.031   7.221   3.184  1.00  9.91      A    H
+ATOM      8  HB3 ALA A   9       5.594   7.960   4.515  1.00  9.91      A    H
+ATOM      9  H  AALA A   9       3.466   7.667   3.487  0.40  8.78      A    H
+ATOM     10  D  BALA A   9       3.466   7.667   3.487  0.60  8.78      A    D
+ATOM     11  N   VAL A  10       5.119   5.606   6.502  1.00 11.13      A    N
+ATOM     12  CA  VAL A  10       4.846   5.470   7.925  1.00 12.50      A    C
+ATOM     13  C   VAL A  10       4.347   6.801   8.520  1.00 11.26      A    C
+ATOM     14  O   VAL A  10       4.763   7.871   8.095  1.00 11.53      A    O
+ATOM     15  HA  VAL A  10       4.118   4.835   8.017  1.00 12.50      A    H
+ATOM     16  CB  VAL A  10       5.994   4.806   8.722  1.00 14.17      A    C
+ATOM     17  CG1 VAL A  10       6.640   3.699   7.889  1.00 14.17      A    C
+ATOM     18  CG2 VAL A  10       7.005   5.815   9.197  1.00 15.20      A    C
+ATOM     19  HB  VAL A  10       5.616   4.404   9.520  1.00 14.91      A    H
+ATOM     20 HG11 VAL A  10       7.358   3.289   8.396  1.00 16.29      A    H
+ATOM     21 HG12 VAL A  10       5.975   3.028   7.671  1.00 16.29      A    H
+ATOM     22 HG13 VAL A  10       6.998   4.077   7.070  1.00 16.29      A    H
+ATOM     23 HG21 VAL A  10       7.707   5.363   9.691  1.00 15.63      A    H
+ATOM     24 HG22 VAL A  10       7.391   6.271   8.433  1.00 15.63      A    H
+ATOM     25 HG23 VAL A  10       6.570   6.462   9.774  1.00 15.63      A    H
+ATOM     26  H  AVAL A  10       5.926   5.421   6.269  0.30 11.13      A    H
+ATOM     27  D  BVAL A  10       5.926   5.421   6.269  0.70 11.13      A    D
+TER
+END
+"""
+  if (verbose): log = sys.stdout
+  else: log = StringIO()
+  processed_pdb_files_srv = utils.process_pdb_file_srv(log=log)
+  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
+    raw_records = pdb_str.splitlines())
+  res = utils.occupancy_selections(
+    all_chain_proxies = processed_pdb_file.all_chain_proxies,
+    xray_structure    = processed_pdb_file.xray_structure(),
+    as_flex_arrays    = False)
+  answer = [ [[9],[10]], [[26],[27]] ]
+  assert approx_equal(res, answer)
 
 def exercise_d_data_target_d_atomic_params():
   import iotbx.pdb
@@ -898,6 +1112,8 @@ def run():
   exercise_21(verbose=verbose)
   exercise_22(verbose=verbose)
   exercise_23(verbose=verbose)
+  exercise_24(verbose=verbose)
+  exercise_25(verbose=verbose)
   exercise_d_data_target_d_atomic_params()
   exercise_get_atom_selections(verbose=verbose)
   exercise_f_000()
