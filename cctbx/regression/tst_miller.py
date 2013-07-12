@@ -654,6 +654,11 @@ def exercise_array():
     assert approx_equal(tuple(hm.sigmas()), (0.2,0.4))
   assert approx_equal(ma.anomalous_signal(), 0.5063697)
   assert ma.measurability() == 1.0
+  assert approx_equal(ma.anomalous_completeness(), 0.018018)
+  assert approx_equal(ma.anomalous_completeness(
+    relative_to_complete_set=False), 0.66666667)
+  ma.setup_binner(n_bins=3)
+  acb = ma.anomalous_completeness(use_binning=True)
   sigma_test_meas = flex.double(5,0.3)
   m_test_meas = miller.array(ms, data, sigma_test_meas )
   assert m_test_meas.measurability() == 0.5
