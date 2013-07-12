@@ -4,7 +4,7 @@ from __future__ import division
 # TODO: confirm old_test_flag_value if ambiguous
 
 import iotbx.phil
-from libtbx.utils import Sorry, null_out
+from libtbx.utils import Sorry, null_out, check_if_output_directory_exists
 from libtbx import adopt_init_args
 import random
 import string
@@ -1079,10 +1079,7 @@ def validate_params (params) :
       params.mtz_file.r_free_flags.preserve_input_values) :
     raise Sorry("Preserving input values of R-free flags is not supported "+
       "when resizing a test set to the specified fraction.")
-  output_base = os.path.dirname(params.mtz_file.output_file)
-  if (output_base != "") and (not os.path.isdir(output_base)) :
-    raise Sorry(("The directory specified for the output file (%s) does not "+
-      "exist, or is not a directory.") % output_base)
+  check_if_output_directory_exists(file_name=params.mtz_file.output_file)
 
 #-----------------------------------------------------------------------
 def run (args, out=sys.stdout) :
