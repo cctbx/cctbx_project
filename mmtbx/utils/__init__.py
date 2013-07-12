@@ -1203,6 +1203,12 @@ def occupancy_selections(
     common_residue_name_class_only = None,
     always_group_adjacent          = False,
     ignore_hydrogens               = False)
+  #
+  if(result is not None):
+    occupancy_regroupping(
+      pdb_hierarchy = all_chain_proxies.pdb_hierarchy,
+      cgs           = result)
+  #
   exchangable_hd_pairs = combine_hd_exchangable(hierarchy =
     all_chain_proxies.pdb_hierarchy)
   result = remove_selections(selection = result, other = exchangable_hd_pairs,
@@ -1343,7 +1349,8 @@ def occupancy_selections(
       hd_special = None)
   list_3d_as_bool_selection(
     list_3d=result, size=xray_structure.scatterers().size())
-  if(as_flex_arrays):
+  if(len(result) == 0): result = None
+  if(as_flex_arrays and result is not None):
     result_ = []
     for gsel in result:
       result__ = []
@@ -1351,8 +1358,56 @@ def occupancy_selections(
         result__.append(flex.size_t(sel))
       result_.append(result__)
     result = result_
-  if(len(result) == 0): result = None
   return result
+
+def occupancy_regroupping(pdb_hierarchy, cgs):
+  h = pdb_hierarchy
+  awl = list(h.atoms_with_labels())
+  elements = h.atoms().extract_element()
+  rgs = list(h.residue_groups())
+  for cg in cgs: # loop over constraint groups
+    for c in cg: # loop over conformers of constrained group
+      altloc_h = awl[c[0]].altloc
+      if(len(c)==1 and
+         elements[c[0]].strip().upper()=="H" and
+         awl[c[0]].name.strip().upper()=="H" and
+         altloc_h.strip() != ""):
+        # find "-1" (previous to given constraint group) residue group
+        rg_prev = None
+        for i_rg, rg in enumerate(rgs):
+          if(c[0] in rg.atoms().extract_i_seq()):
+            assert i_rg != 0
+            rg_prev = rgs[i_rg-1]
+            break
+        assert rg_prev is not None
+        all_altlocs = [rgpc.altloc for rgpc in rg_prev.conformers()]
+        assert altloc_h in all_altlocs
+        rg_prev_i_seqs = rg_prev.atoms().extract_i_seq()
+        # find constarint group corresponding to rg_prev
+        cg_prev=None
+        for cg2 in cgs:
+          for c2 in cg2:
+            if(len(set(c2).intersection(set(rg_prev_i_seqs)))>0):
+              cg_prev = cg2
+              break
+          if(cg_prev is not None): break
+        assert cg_prev is not None
+        # identify to which constraint group H belongs and move it there
+        found = False
+        for conformer_prev in rg_prev.conformers():
+          if(conformer_prev.altloc == altloc_h):
+            conformer_prev_i_seqs = conformer_prev.atoms().extract_i_seq()
+            for cg2 in cgs:
+              for c2 in cg2:
+                if(len(set(c2).intersection(set(conformer_prev_i_seqs)))>0):
+                  c2.extend(c)
+                  ind = cg.index(c)
+                  cg[cg.index(c)]=[None]
+                  found = True
+        assert found
+  for cg in cgs:
+    while cg.count([None])>0:
+      cg.remove([None])
 
 def assert_xray_structures_equal(
       x1,
