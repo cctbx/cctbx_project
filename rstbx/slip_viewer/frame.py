@@ -385,18 +385,23 @@ class XrayFrame (AppFrame,XFBaseClass) :
       return
 
   def OnSaveAs (self, event) :
-      ### XXX TODO: Save overlays
-      ### XXX TODO: Fix bug where multi-asic images are slightly cropped due to tranformation error'
+    ### XXX TODO: Save overlays
+    ### XXX TODO: Fix bug where multi-asic images are slightly cropped due to tranformation error'
 
-      wildcard_str = "PNG file (*.png)|*.png|PDF file (*.pdf)|*.pdf"
-      file_name = wx.SaveFileSelector("PNG or PDF",wildcard_str,"",self)
+    dialog = wx.FileDialog(
+      self,
+      defaultDir='',
+      message="Save PNG or PDF file",
+      style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
+      wildcard="PNG file (*.png)|*.png|PDF file (*.pdf)|*.pdf")
+    if dialog.ShowModal() != wx.ID_OK:
+      return
 
-      if file_name == "":
-        return
+    file_name = dialog.GetPath()
+    if file_name == '':
+      return
 
-      ext = os.path.splitext(file_name)[1].lower()
-
-      if ext == ".png":
+    if dialog.GetFilterIndex() == 0:
         import Image
         from cStringIO import StringIO
         self.update_statusbar("Writing " + file_name + "...")
@@ -462,10 +467,8 @@ class XrayFrame (AppFrame,XFBaseClass) :
         open(file_name, "wb").write(out.getvalue())
 
         self.update_statusbar("Writing " + file_name + "..." + " Done.")
-      elif ext == ".pdf":
-        self.update_statusbar("Save as pdf not implemented.")
-      else:
-        self.update_statusbar("Unrecognized file extension: %s"%ext)
+    elif dialog.GetFilterIndex() == 1:
+      self.update_statusbar("Save as pdf not implemented.")
 
 from rstbx.viewer.frame import SettingsFrame
 
