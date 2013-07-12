@@ -47,25 +47,12 @@ class coordinate_frame_converter:
         '''Get a parameter, in a given reference frame if a vector quantity,
         as a Python basic type.'''
 
-        parameter_value = self._coordinate_frame_information.get(parameter)
+        result = self.get_c(parameter, convention)
 
-        if not hasattr(parameter_value, 'elems'):
-            return parameter_value
+        if hasattr(result, 'elems'):
+            return result.elems
 
-        if convention == coordinate_frame_converter.CBF:
-            R = self._coordinate_frame_information.R_to_CBF()
-            return (R * parameter_value).elems
-        elif convention == coordinate_frame_converter.ROSSMANN:
-            R = self._coordinate_frame_information.R_to_Rossmann()
-            return (R * parameter_value).elems
-        elif convention == coordinate_frame_converter.MOSFLM:
-            R = self._coordinate_frame_information.R_to_Mosflm()
-            return (R * parameter_value).elems
-        else:
-            raise RuntimeError, 'convention %s not currently supported' % \
-                  convention
-
-        return
+        return result
 
     def get_c(self, parameter, convention = CBF):
         '''Get the parameter, in the correct coordinate convention if a
@@ -85,6 +72,33 @@ class coordinate_frame_converter:
         elif convention == coordinate_frame_converter.MOSFLM:
             R = self._coordinate_frame_information.R_to_Mosflm()
             return R * parameter_value
+        else:
+            raise RuntimeError, 'convention %s not currently supported' % \
+                  convention
+
+        return
+
+    def move(self, vector, convention = CBF):
+        '''Rotate input vector assumed to be in input coordinate frame into
+        standard coordinate frame.'''
+
+        from scitbx import matrix
+
+        return self.move_c(matrix.col(vector), convention).elems
+
+    def move_c(self, vector, convention = CBF):
+        '''Rotate input vector assumed to be in input coordinate frame into
+        standard coordinate frame, returning cctbx vector.'''
+
+        if convention == coordinate_frame_converter.CBF:
+            R = self._coordinate_frame_information.R_to_CBF()
+            return R * vector
+        elif convention == coordinate_frame_converter.ROSSMANN:
+            R = self._coordinate_frame_information.R_to_Rossmann()
+            return R * vector
+        elif convention == coordinate_frame_converter.MOSFLM:
+            R = self._coordinate_frame_information.R_to_Mosflm()
+            return R * vector
         else:
             raise RuntimeError, 'convention %s not currently supported' % \
                   convention
