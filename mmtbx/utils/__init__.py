@@ -1198,19 +1198,16 @@ def occupancy_selections(
     other_constrained_groups = None
   if(remove_selection is not None and len(remove_selection) == 0):
     remove_selection = None
-
   result = all_chain_proxies.pdb_hierarchy.occupancy_groups_simple(
     common_residue_name_class_only = None,
     always_group_adjacent          = False,
     ignore_hydrogens               = False)
-  #
-  if(result is not None):
+  exchangable_hd_pairs = combine_hd_exchangable(hierarchy =
+    all_chain_proxies.pdb_hierarchy)
+  if(len(exchangable_hd_pairs)==0 and result is not None):
     occupancy_regroupping(
       pdb_hierarchy = all_chain_proxies.pdb_hierarchy,
       cgs           = result)
-  #
-  exchangable_hd_pairs = combine_hd_exchangable(hierarchy =
-    all_chain_proxies.pdb_hierarchy)
   result = remove_selections(selection = result, other = exchangable_hd_pairs,
     size = xray_structure.scatterers().size())
   result.extend(exchangable_hd_pairs)
