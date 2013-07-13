@@ -800,8 +800,11 @@ def show_attributes(self, out, prefix, attributes_level, print_width):
     if (name == "deprecated") and (not value) :
       continue # only show .deprecated if True
     if ((name == "help" and value is not None)
+        or (name == "alias" and value is not None)
         or (value is not None and attributes_level > 1)
         or attributes_level > 2):
+      if (name == "alias") and (value is None) :
+        continue
       if (not isinstance(value, str)):
         # Python 2.2 workaround
         if (name in ["optional", "multiple", "disable_add", "disable_delete"]):
@@ -864,8 +867,8 @@ class definition(slots_getstate_setstate):
   is_scope = False
 
   attribute_names = [
-    "help", "caption", "short_caption", "optional",
-    "type", "multiple", "input_size", "style", "expert_level", "deprecated"]
+    "help", "caption", "short_caption", "optional", "type", "multiple",
+    "input_size", "style", "expert_level", "deprecated", "alias",]
 
   __slots__ = ["name", "words", "primary_id", "primary_parent_scope",
                "is_disabled", "is_template", "where_str", "merge_names",
@@ -890,7 +893,8 @@ class definition(slots_getstate_setstate):
         input_size=None,
         style=None,
         expert_level=None,
-        deprecated=None) :
+        deprecated=None,
+        alias=None) :
     if (is_reserved_identifier(name)):
       raise RuntimeError('Reserved identifier: "%s"%s' % (name, where_str))
     if (name != "include" and "include" in name.split(".")):
@@ -914,6 +918,7 @@ class definition(slots_getstate_setstate):
     self.style = style
     self.expert_level = expert_level
     self.deprecated = deprecated
+    self.alias = alias
 
   def __setstate__ (self, *args, **kwds) :
     slots_getstate_setstate.__setstate__(self, *args, **kwds)
@@ -1383,7 +1388,8 @@ class scope(slots_getstate_setstate):
     "sequential_format",
     "disable_add",
     "disable_delete",
-    "expert_level"]
+    "expert_level",
+    "alias"]
 
   __slots__ = [
     "name",
@@ -1414,7 +1420,8 @@ class scope(slots_getstate_setstate):
         sequential_format=None,
         disable_add=None,
         disable_delete=None,
-        expert_level=None):
+        expert_level=None,
+        alias=None) :
     self.name = name
     self.objects = objects
     self.primary_id = primary_id
@@ -1434,6 +1441,7 @@ class scope(slots_getstate_setstate):
     self.disable_add = disable_add
     self.disable_delete = disable_delete
     self.expert_level = expert_level
+    self.alias = alias
     if (objects is None):
       self.objects = []
     if (is_reserved_identifier(name)):
@@ -1797,6 +1805,11 @@ class scope(slots_getstate_setstate):
       else:
         path = self.name + "." + master_object.name
       matching_sources = source.get(path=path, with_substitution=False)
+      if (master_object.alias is not None) and (master_object.alias != path) :
+        aliased_sources = source.get(path=master_object.alias,
+          with_substitution=False)
+        if (len(aliased_sources.objects) > 0) :
+          matching_sources.objects.extend(aliased_sources.objects)
       if (not master_object.multiple):
         if (master_object.is_definition):
           # loop over all matching_sources to support track_unused_definitions
