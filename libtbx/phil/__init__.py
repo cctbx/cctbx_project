@@ -793,6 +793,26 @@ def full_path(self):
   result.reverse()
   return ".".join(result)
 
+def alias_path (self) :
+  if (self.alias is not None) :
+    return self.alias
+  have_alias = False
+  result = [self.name]
+  pps = self.primary_parent_scope
+  while (pps is not None):
+    if (pps.alias is not None) :
+      result.append(pps.alias)
+      have_alias = True
+      break
+    elif (pps.name == ""):
+      break
+    else :
+      result.append(pps.name)
+    pps = pps.primary_parent_scope
+  if (not have_alias) : return None
+  result.reverse()
+  return ".".join(result)
+
 def show_attributes(self, out, prefix, attributes_level, print_width):
   if (attributes_level <= 0): return
   for name in self.attribute_names:
@@ -941,6 +961,9 @@ class definition(slots_getstate_setstate):
   def full_path(self):
     return full_path(self)
 
+  def alias_path (self) :
+    return alias_path(self)
+
   def assign_tmp(self, value, active_only=False):
     if (not active_only or not self.is_disabled):
       self.tmp = value
@@ -1069,8 +1092,9 @@ class definition(slots_getstate_setstate):
     result.append(object_locator(
       parent=parent, path=parent_path+self.name, object=self))
 
-  def get_without_substitution(self, path):
-    if (self.is_disabled or self.name != path): return []
+  def get_without_substitution(self, path, alias_path=None):
+    if (self.is_disabled or (self.name != path and
+        ((alias_path is None) or (self.name != alias_path)))) : return []
     return [self]
 
   def _type_from_words(self):
@@ -1470,6 +1494,9 @@ class scope(slots_getstate_setstate):
   def full_path(self):
     return full_path(self)
 
+  def alias_path (self) :
+    return alias_path(self)
+
   def assign_tmp(self, value, active_only=False):
     if (not active_only):
       for object in self.objects:
@@ -1663,23 +1690,30 @@ class scope(slots_getstate_setstate):
         result=result)
     return result
 
-  def get_without_substitution(self, path):
-    if (self.is_disabled): return []
+  def get_without_substitution(self, path, alias_path=None):
+    if (self.is_disabled):
+      return []
     if (len(self.name) == 0):
       if (len(path) == 0): return self.objects
-    elif (self.name == path):
+    elif (self.name == path) or (self.name == alias_path) :
       return [self]
     elif (path.startswith(self.name+".")):
       path = path[len(self.name)+1:]
+    elif (alias_path is not None) :
+      full_path = self.full_path()
+      if (full_path.startswith(alias_path)) :
+        path = path[len(self.name)+1:]
     else:
       return []
     result = []
     for object in self.active_objects():
-      result.extend(object.get_without_substitution(path=path))
+      result.extend(object.get_without_substitution(path=path,
+        alias_path=alias_path))
     return result
 
-  def get(self, path, with_substitution=True):
-    result = scope(name="", objects=self.get_without_substitution(path=path))
+  def get(self, path, with_substitution=True, alias_path=None):
+    result = scope(name="", objects=self.get_without_substitution(path=path,
+      alias_path=alias_path))
     if (not with_substitution): return result
     return result.resolve_variables()
 
@@ -1804,12 +1838,9 @@ class scope(slots_getstate_setstate):
         path = master_object.name
       else:
         path = self.name + "." + master_object.name
-      matching_sources = source.get(path=path, with_substitution=False)
-      if (master_object.alias is not None) and (master_object.alias != path) :
-        aliased_sources = source.get(path=master_object.alias,
-          with_substitution=False)
-        if (len(aliased_sources.objects) > 0) :
-          matching_sources.objects.extend(aliased_sources.objects)
+      alias_path = master_object.alias_path()
+      matching_sources = source.get(path=path, with_substitution=False,
+        alias_path=alias_path)
       if (not master_object.multiple):
         if (master_object.is_definition):
           # loop over all matching_sources to support track_unused_definitions
