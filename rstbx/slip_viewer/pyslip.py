@@ -937,6 +937,9 @@ class PySlip(_BufferedCanvas):
             theta = (t/6.)*math.pi
             points.append( (ellipse_center + semimajor_axis * math.cos(theta) + semiminor_axis * math.sin(theta)).elems )
 
+          points.extend((ellipse_center.elems,
+                         (semimajor_axis + ellipse_center).elems,
+                         (semiminor_axis + ellipse_center).elems))
           grouped_data.append((points,))
 
         for d in grouped_data:
@@ -989,10 +992,12 @@ class PySlip(_BufferedCanvas):
         # draw polygons on map/view
         print "IN lightweight elliptical spline"
         # Draw points on map/view, using transparency if implemented.
+        # No point in attempting to recover from the error below,
+        # because ellipses require a GraphicsContext.
         try:
             dc = wx.GCDC(dc)
         except NotImplementedError:
-            pass
+            return
 
         (p, place, width, colour, closed,
              filled, fillcolour, x_off, y_off, pdata) = data[0]
@@ -1008,15 +1013,34 @@ class PySlip(_BufferedCanvas):
         assert x_off==0
         assert y_off==0
 
+        # Ellipses can be convenintly rendered on a graphics context,
+        # but not on a generic device context.
+        gc = dc.GetGraphicsContext()
         for (p, place, width, colour, closed,
              filled, fillcolour, x_off, y_off, pdata) in data:
             # gather all polygon points as view coords
 
             p_lonlat = []
-            for lonlat in p:
+            for lonlat in p[0:-3]:
                 p_lonlat.append(self.ConvertGeo2View(lonlat))
 
             dc.DrawSpline(p_lonlat)
+
+            (ellipse_center, semimajor_axis, semiminor_axis) = [
+                self.ConvertGeo2View(lonlat) for lonlat in p[-3:]]
+
+            major = col(semimajor_axis) - col(ellipse_center)
+            minor = col(semiminor_axis) - col(ellipse_center)
+            angle = math.atan2(major.elems[1], major.elems[0])
+            r_major = math.hypot(major.elems[0], major.elems[1])
+            r_minor = math.hypot(minor.elems[0], minor.elems[1])
+
+            gc.PushState()
+            gc.Translate(ellipse_center[0], ellipse_center[1])
+            gc.Rotate(angle)
+            gc.DrawEllipse(-r_major, -r_minor, 2 * r_major, 2 * r_minor)
+            gc.PopState()
+
 
     def AddPolygonLayer(self, data, map_rel=True, visible=True,
                         show_levels=None, selectable=False,
