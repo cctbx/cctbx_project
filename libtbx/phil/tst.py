@@ -5723,7 +5723,59 @@ scope2 {
 """)
 
 
+def exercise_alias () :
+  master_phil = phil.parse("""
+refinement {
+  main {
+    nproc = 1
+      .type = int
+  }
+}
+pdb_interpretation
+  .alias = refinement.pdb_interpretation
+{
+  auto_link = False
+    .type = bool
+}
+""", process_includes=True)
+  geo_phil_new = phil.parse("""
+pdb_interpretation {
+  auto_link = True
+}""")
+  geo_phil_old = phil.parse("""
+refinement {
+  pdb_interpretation {
+    auto_link = True
+  }
+}""")
+
+  work_old = master_phil.fetch(source=geo_phil_old)
+  work_new = master_phil.fetch(source=geo_phil_new)
+  p1 = work_old.extract()
+  p2 = work_new.extract()
+  assert p2.pdb_interpretation.auto_link == p2.pdb_interpretation.auto_link
+  s1 = StringIO()
+  s2 = StringIO()
+  work_old.show(out=s1)
+  work_new.show(out=s2)
+  assert (s1.getvalue() == s2.getvalue())
+  s = StringIO()
+  master_phil.show(attributes_level=1, out=s)
+  assert s.getvalue() == """\
+refinement {
+  main {
+    nproc = 1
+  }
+}
+pdb_interpretation
+  .alias = refinement.pdb_interpretation
+{
+  auto_link = False
+}
+"""
+
 def exercise():
+  exercise_alias()
   exercise_adopt_scope()
   exercise_path()
   exercise_find_scope()
