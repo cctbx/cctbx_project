@@ -920,8 +920,8 @@ class PySlip(_BufferedCanvas):
         default_offset_y = kwargs.get('offset_y', self.DefaultPolygonOffsetY)
 
         draw_data = []
-        grouped_data = []
         for x in xrange(0,len(data),5):
+          # Calculate ellipse center, major and minor axes.
           side1=col(( (data[x][0]+data[x+1][0])/2., (data[x][1]+data[x+1][1])/2.))
           side2=col(( (data[x+1][0]+data[x+2][0])/2., (data[x+1][1]+data[x+2][1])/2.))
           side3=col(( (data[x+2][0]+data[x+3][0])/2., (data[x+2][1]+data[x+3][1])/2.))
@@ -931,56 +931,15 @@ class PySlip(_BufferedCanvas):
           semimajor_axis = side3 - ellipse_center
           semiminor_axis = side2 - ellipse_center
 
-          points = []
-          # parametric expression
-          for t in xrange(3,16):    # more precise ellipse possible with xrange(6,31) and (t/12.)
-            theta = (t/6.)*math.pi
-            points.append( (ellipse_center + semimajor_axis * math.cos(theta) + semiminor_axis * math.sin(theta)).elems )
+          p = (ellipse_center.elems,
+               (semimajor_axis + ellipse_center).elems,
+               (semiminor_axis + ellipse_center).elems)
 
-          points.extend((ellipse_center.elems,
-                         (semimajor_axis + ellipse_center).elems,
-                         (semiminor_axis + ellipse_center).elems))
-          grouped_data.append((points,))
+          draw_data.append((p, default_placement.lower(),
+                            default_width, default_colour, True,
+                            default_filled, default_fillcolour,
+                            default_offset_x, default_offset_y, None))
 
-        for d in grouped_data:
-
-            if len(d) == 2:
-                (p, attributes) = d
-            elif len(d) == 1:
-                p = d
-                attributes = {}
-            else:
-                msg = ('Polygon data must be iterable of tuples: '
-                       '(poly, [attributes])\n'
-                       'Got: %s' % str(d))
-                raise Exception(msg)
-
-
-            # get polygon attributes
-            placement = attributes.get('placement', default_placement)
-            width = attributes.get('width', default_width)
-            colour = self.get_i18n_kw(attributes, ('colour', 'color'),
-                                      default_colour)
-
-            close = True
-            filled = attributes.get('filled', default_filled)
-
-            if filled:
-                close = True
-            fillcolour = self.get_i18n_kw(attributes,
-                                          ('fillcolour', 'fillcolor'),
-                                          default_fillcolour)
-            offset_x = attributes.get('offset_x', default_offset_x)
-            offset_y = attributes.get('offset_y', default_offset_y)
-            data = attributes.get('data', None)
-
-            # if polygon is to be filled, ensure closed (not necessary)
-            #if close:
-            #    p = list(p)
-            #    p.append(p[0])
-
-            draw_data.append((p[0], placement.lower(), width, colour, close,
-                              filled, fillcolour, offset_x, offset_y, data))
         return self.AddLayer(self.DrawLightweightEllipticalSpline, draw_data, map_rel,
                              visible, show_levels=show_levels,
                              selectable=False, name=name,
@@ -990,7 +949,6 @@ class PySlip(_BufferedCanvas):
         assert map_rel
 
         # draw polygons on map/view
-        print "IN lightweight elliptical spline"
         # Draw points on map/view, using transparency if implemented.
         # No point in attempting to recover from the error below,
         # because ellipses require a GraphicsContext.
@@ -1018,16 +976,11 @@ class PySlip(_BufferedCanvas):
         gc = dc.GetGraphicsContext()
         for (p, place, width, colour, closed,
              filled, fillcolour, x_off, y_off, pdata) in data:
-            # gather all polygon points as view coords
 
-            p_lonlat = []
-            for lonlat in p[0:-3]:
-                p_lonlat.append(self.ConvertGeo2View(lonlat))
-
-            dc.DrawSpline(p_lonlat)
-
+            # Gather ellipse center, major and minor axes in view
+            # coordinates.
             (ellipse_center, semimajor_axis, semiminor_axis) = [
-                self.ConvertGeo2View(lonlat) for lonlat in p[-3:]]
+                self.ConvertGeo2View(lonlat) for lonlat in p]
 
             major = col(semimajor_axis) - col(ellipse_center)
             minor = col(semiminor_axis) - col(ellipse_center)
