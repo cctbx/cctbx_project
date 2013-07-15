@@ -463,14 +463,20 @@ planarities=None
 """
 
 grand_master_phil_str = """\
-pdb_interpretation {
+pdb_interpretation
+  .alias = refinement.pdb_interpretation
+{
   %(master_params_str)s
 }
-geometry_restraints.edits {
-  %(geometry_restraints_edits_str)s
-}
-geometry_restraints.remove {
-  %(geometry_restraints_remove_str)s
+geometry_restraints
+  .alias = refinement.geometry_restraints
+{
+  edits {
+    %(geometry_restraints_edits_str)s
+  }
+  remove {
+    %(geometry_restraints_remove_str)s
+  }
 }
 """ % vars()
 
