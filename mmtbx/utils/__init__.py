@@ -934,14 +934,15 @@ def print_programs_start_header(log, text):
   print >> log, "-"*79
   print >> log
 
-def set_log(args):
+def set_log(args, out=sys.stdout, replace_stderr=True):
   log = multi_out()
   if(not "--quiet" in args):
-     log.register(label="stdout", file_object=sys.stdout)
+     log.register(label="stdout", file_object=out)
   string_buffer = StringIO()
   string_buffer_plots = StringIO()
   log.register(label="log_buffer", file_object=string_buffer)
-  sys.stderr = log
+  if (replace_stderr) :
+    sys.stderr = log
   return log
 
 def print_header(line, out=None):

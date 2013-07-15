@@ -31,17 +31,6 @@ restraints = None
 restraints_directory = None
   .type = path
   .style = directory
-pdb_interpretation
-  .help = Model file interpretation parameters
-  .short_caption = Model interpretation
-  .expert_level=1
-{
-  stop_for_unknowns = True
-    .type = bool
-    .short_caption = Stop for unknown residues
-    .style = noauto
-  include scope mmtbx.monomer_library.pdb_interpretation.master_params
-}
 selection = all
   .type = str
   .help = Atom selection string: selected atoms are subject to move
@@ -106,7 +95,7 @@ minimization
   planarity = True
     .type = bool
     .short_caption = Planarity
-  secondary_structure = False
+  secondary_structure_restraints = False
     .type = bool
     .short_caption = Secondary structure
   }
@@ -121,14 +110,16 @@ reference_restraints {
     .type = float
     .help = sigma value for coordinates restrained to starting positions
 }
-geometry_restraints.edits
-    .short_caption = Edit geometry restraints
-    .style = menu_item parent_submenu:geometry_restraints scrolled
-    .expert_level = 2
-  {
-    include scope \
-      mmtbx.monomer_library.pdb_interpretation.geometry_restraints_edits_str
-  }
+stop_for_unknowns = True
+  .type = bool
+  .short_caption = Stop for unknown residues
+  .style = noauto
+include scope mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str
+secondary_structure
+  .alias = refinement.secondary_structure
+{
+  include scope mmtbx.secondary_structure.sec_str_master_phil
+}
 """
 
 def master_params():
@@ -181,7 +172,7 @@ def process_input_files(inputs, params, log):
   processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
     crystal_symmetry          = cs,
     pdb_interpretation_params = params.pdb_interpretation,
-    stop_for_unknowns         = params.pdb_interpretation.stop_for_unknowns,
+    stop_for_unknowns         = params.stop_for_unknowns,
     log                       = log,
     cif_objects               = cif_objects,
     use_neutron_distances     = params.use_neutron_distances,
@@ -191,15 +182,16 @@ def process_input_files(inputs, params, log):
     process_pdb_files(pdb_file_names = pdb_file_names) # XXX remove junk
   return processed_pdb_file
 
-def get_geometry_restraints_manager(processed_pdb_file, xray_structure, params):
+def get_geometry_restraints_manager(processed_pdb_file, xray_structure, params,
+    log=sys.stdout):
   has_hd = None
   if(xray_structure is not None):
     sctr_keys = xray_structure.scattering_type_registry().type_count_dict().keys()
     has_hd = "H" in sctr_keys or "D" in sctr_keys
   hbond_params = None
-  if(params.minimization.move.secondary_structure):
+  if(params.minimization.move.secondary_structure_restraints):
     sec_str = mmtbx.secondary_structure.process_structure(
-      params             = None,
+      params             = params.secondary_structure,
       processed_pdb_file = processed_pdb_file,
       tmp_dir            = os.getcwd(),
       log                = log,
@@ -297,7 +289,7 @@ class run(object):
       str("%8.3f"%self.total_time).strip()
 
   def initialize(self, prefix):
-    self.log = sys.stdout
+    if (self.log is None) : self.log = sys.stdout
     if(len(self.args)==0):
       format_usage_message(log = self.log)
     parsed = master_params()
@@ -338,7 +330,8 @@ class run(object):
     self.grm = get_geometry_restraints_manager(
       processed_pdb_file = self.processed_pdb_file,
       xray_structure     = self.xray_structure,
-      params             = self.params)
+      params             = self.params,
+      log                = self.log)
     # CDL
     if self.params.pdb_interpretation.cdl:
       from mmtbx.conformation_dependent_library import setup_restraints

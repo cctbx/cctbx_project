@@ -259,13 +259,6 @@ input {
 model_statistics = None
   .type = bool
   .style = hidden
-pdb_interpretation
-  .short_caption = PDB Interpretation
-  .style = menu_item
-  .expert_level=3
-{
-  include scope mmtbx.monomer_library.pdb_interpretation.master_params
-}
 stop_for_unknowns = True
   .type = bool
   .short_caption = Stop for residues missing geometry restraints
@@ -279,6 +272,7 @@ cartesian_dynamics
 {
   include scope mmtbx.dynamics.cartesian_dynamics.master_params
 }
+include scope mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str
 include scope libtbx.phil.interface.tracking_params
 """%modify_params_str, process_includes=True)
 
@@ -685,8 +679,9 @@ def write_model_file(pdb_hierarchy, crystal_symmetry, file_name, output_format):
       file_name=file_name, crystal_symmetry=crystal_symmetry)
 
 
-def run(args, command_name="phenix.pdbtools"):
-  log = utils.set_log(args)
+def run(args, command_name="phenix.pdbtools", out=sys.stdout,
+    replace_stderr=True):
+  log = utils.set_log(args, out=out, replace_stderr=replace_stderr)
   utils.print_programs_start_header(
     log  = log,
     text = "  %s tools for PDB model manipulations." % command_name)
@@ -742,9 +737,9 @@ def run(args, command_name="phenix.pdbtools"):
 ### show_geometry_statistics and exit
   if(params.model_statistics):
     utils.print_header("Geometry statistics", out = log)
-    command_line_interpreter.processed_pdb_file.log = None # to disable output
     geometry = command_line_interpreter.processed_pdb_file.\
-      geometry_restraints_manager(show_energies = True)
+      geometry_restraints_manager(show_energies = True,
+        params_edits=params.geometry_restraints.edits)
     restraints_manager = mmtbx.restraints.manager(
       geometry = geometry,
       normalization = True)
@@ -788,9 +783,10 @@ def run(args, command_name="phenix.pdbtools"):
 ### simple cartesian dynamics
   if (params.simple_dynamics) :
     utils.print_header("Simple cartesian dynamics", out=log)
-    command_line_interpreter.processed_pdb_file.log = None # to disable output
     geometry = command_line_interpreter.processed_pdb_file.\
-      geometry_restraints_manager(show_energies = True)
+      geometry_restraints_manager(
+        params_edits=params.geometry_restraints.edits,
+        show_energies = True)
     restraints_manager = mmtbx.restraints.manager(
       geometry = geometry,
       normalization = True)
