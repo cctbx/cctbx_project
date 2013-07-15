@@ -63,14 +63,13 @@ class manager(object):
     get_class = iotbx.pdb.common_residue_names_get_class
     for i_res, r in enumerate(sm.residue_monitors):
       if(iselection is not None and not i_res in iselection): continue
-      if(get_class(r.residue.resname) == "common_amino_acid" and
-         (use_clash_filter or (r.rotamer_status=="OUTLIER" or
-          r.map_cc_all < self.map_cc_all_threshold or
-          r.map_cc_sidechain < self.map_cc_sidechain_threshold))):
-        #print i_res, len(sm.residue_monitors)
-        #and str(r.residue.resseq).strip() in ["49"]):
-        #print
-        #print r.residue.resname, r.residue.resseq, "<"*40
+      if(get_class(r.residue.resname) != "common_amino_acid"): continue
+      go = (r.map_cc_all < self.map_cc_all_threshold or \
+            r.map_cc_sidechain < self.map_cc_sidechain_threshold) or \
+           (r.rotamer_status=="OUTLIER" and (
+            r.map_cc_all < self.map_cc_all_threshold or
+            r.map_cc_sidechain < self.map_cc_sidechain_threshold))
+      if(use_clash_filter or go):
         iselection_n_external=None
         iselection_c_external=None
         if(i_res!=0 and i_res!=len(sm.residue_monitors)-1):
