@@ -643,17 +643,36 @@ class refinement_monitor(object):
     time_collect_and_process += (t2 - t1)
 
   def format_stats_for_phenix_gui (self) :
+    # these are the steps we actually want to display in the GUI
+    show_actions = {
+      "bss" : "bss",
+      "sol" : "sol",
+      "ion" : "ion",
+      "rbr" : "rbr",
+      "realsrl" : "rsrl",
+      "realsrg" : "rsrg",
+      "den" : "den",
+      "tardy" : "SA",
+      "sacart" : "SA",
+      "xyzrec" : "xyz",
+      "occ" : "occ",
+      "fp_fdp" : "anom",
+    }
     steps = []
     r_works = []
     r_frees = []
     as_ave = []
     bs_ave = []
     for i_step, label in enumerate(self.steps) :
-      if ("weight" in label) or ("nqh" in label) :
-        continue
-      label = label.replace("realsrg", "rsrg").replace("realsrl",
-        "rsrl").replace("xyzrec", "xyz")
-      steps.append(label)
+      label = label.replace(":", "")
+      fields = label.split("_")
+      if (len(fields) < 2) :
+        steps.append(label)
+      else :
+        cycle, action = fields
+        action_label = show_actions.get(action, None)
+        if (action_label is None) : continue
+        steps.append(cycle + "_" + action_label)
       r_works.append(self.r_works[i_step])
       r_frees.append(self.r_frees[i_step])
       if (self.as_ave is not None) and (len(self.as_ave) != 0) :
