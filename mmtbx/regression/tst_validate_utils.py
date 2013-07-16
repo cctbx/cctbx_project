@@ -85,7 +85,7 @@ pdb1jxt :a:val: A:   8 :  0.184:-155.36:   0.50:a:
 pdb1jxt :b:val: A:   8 :  0.258:  80.92:   0.30:b:
 pdb1jxt :c:val: A:   8 :  0.641: -53.98:   0.20:c:
 pdb1jxt : :ala: A:   9 :  0.061: -82.84:   1.00: :
-pdb1jxt :a:arg: A:  10 :  0.023: 172.24:   1.00:a:
+pdb1jxt :a:arg: A:  10 :  0.023: 172.25:   1.00:a:
 pdb1jxt : :ser: A:  11 :  0.028:-129.11:   1.00: :
 pdb1jxt :a:asn: A:  12 :  0.021: -80.80:   0.50:a:
 pdb1jxt :b:asn: A:  12 :  0.199:  50.01:   0.50:b:
@@ -114,10 +114,10 @@ pdb1jxt : :ile: A:  33 :  0.048:-119.17:   1.00: :
 pdb1jxt : :ile: A:  34 :  0.045:  99.02:   1.00: :
 pdb1jxt : :ile: A:  35 :  0.052:-128.24:   1.00: :
 pdb1jxt : :pro: A:  36 :  0.084:-142.29:   1.00: :
-pdb1jxt : :ala: A:  38 :  0.039:  50.02:   1.00: :
+pdb1jxt : :ala: A:  38 :  0.039:  50.01:   1.00: :
 pdb1jxt :a:thr: A:  39 :  0.093: -96.63:   0.70:a:
 pdb1jxt :b:thr: A:  39 :  0.924:  56.41:   0.30:b:
-pdb1jxt : :cys: A:  40 :  0.013:-144.12:   1.00: :
+pdb1jxt : :cys: A:  40 :  0.013:-144.11:   1.00: :
 pdb1jxt : :pro: A:  41 :  0.039: -97.09:   1.00: :
 pdb1jxt :a:asp: A:  43 :  0.130:-146.91:   0.75:a:
 pdb1jxt :b:asp: A:  43 :  0.500:   7.56:   0.25:b:
@@ -432,6 +432,7 @@ ATOM   2563  HG  SER A 263     -37.560 -21.925 105.312  1.00 32.20           H
 
 def run():
   verbose = "--verbose" in sys.argv[1:]
+  exercise_cbetadev()
   if (not libtbx.env.has_module(name="phenix")):
     print \
       "Skipping exercise_rna_validate():" \
@@ -440,7 +441,6 @@ def run():
     exercise_rna_validate()
   exercise_ramalyze()
   exercise_rotalyze()
-  exercise_cbetadev()
   if (not libtbx.env.has_module(name="probe")):
     print \
       "Skipping exercise_clashscore():" \
