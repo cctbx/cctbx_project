@@ -104,8 +104,10 @@ altloc_weighting_params = """\
       .type = bool
     factor = 1
       .type = float
-    sqrt = True
+    sqrt = False
       .type = bool
+    min_occupancy = 0.5
+      .type = float
   }
 """
 
@@ -122,8 +124,10 @@ master_params_str = """\
       .type = bool
     factor = 1
       .type = float
-    sqrt = True
+    sqrt = False
       .type = bool
+    min_occupancy = 0.5
+      .type = float
   }
   cdl = False
     .type = bool
