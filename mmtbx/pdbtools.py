@@ -134,15 +134,13 @@ renumber_residues = False
   .help = Re-number residues
 truncate_to_polyala = False
   .type = bool
-  .help = Truncate a model to poly-Ala.  If True, other options will be \
-    ignored.
+  .help = Truncate a model to poly-Ala.
   .short_caption = Truncate to poly-Ala
   .style = noauto
 remove_alt_confs = False
   .type = bool
   .help = Deletes atoms whose altloc identifier is not blank or 'A', and \
-    resets the occupancies of the remaining atoms to 1.0.  If True, other \
-    options will be ignored.
+    resets the occupancies of the remaining atoms to 1.0.
   .short_caption = Remove alternate conformers
   .style = noauto
 set_chemical_element_simple_if_necessary = None
@@ -262,16 +260,6 @@ model_statistics = None
 stop_for_unknowns = True
   .type = bool
   .short_caption = Stop for residues missing geometry restraints
-simple_dynamics = False
-  .type = bool
-  .short_caption = Perform crude dynamics
-  .help = Shake atoms while maintaining proper geometry.  Not intended to be \
-    physically realistic, but useful for testing purposes.
-cartesian_dynamics
-  .short_caption = Cartesian dynamics
-{
-  include scope mmtbx.dynamics.cartesian_dynamics.master_params
-}
 include scope mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str
 include scope libtbx.phil.interface.tracking_params
 """%modify_params_str, process_includes=True)
@@ -702,29 +690,6 @@ def run(args, command_name="phenix.pdbtools", out=sys.stdout,
     else:
       pdbout = os.path.basename(command_line_interpreter.pdb_file_names[0])
       ofn = pdbout+"_modified."+ext
-### Truncate to poly-Ala
-  if(params.modify.truncate_to_polyala):
-    xray_structure = command_line_interpreter.pdb_inp.xray_structure_simple()
-    utils.print_header("Truncating to poly-Ala", out = log)
-    pdb_hierarchy = command_line_interpreter.pdb_inp.construct_hierarchy()
-    truncate_to_poly_ala(hierarchy = pdb_hierarchy)
-    write_model_file(
-      pdb_hierarchy, command_line_interpreter.pdb_inp.crystal_symmetry(),
-      file_name=ofn, output_format=output_format)
-    output_files.append(ofn)
-    return output_files
-### Remove alt. confs.
-  if (params.modify.remove_alt_confs) :
-    utils.print_header("Removing alternate conformations", out = log)
-    pdb_hierarchy = command_line_interpreter.pdb_inp.construct_hierarchy()
-    remove_alt_confs(hierarchy = pdb_hierarchy)
-    print >> log, "All occupancies reset to 1.0."
-    write_model_file(
-      pdb_hierarchy, command_line_interpreter.pdb_inp.crystal_symmetry(),
-      file_name=ofn, output_format=output_format)
-    output_files.append(ofn)
-    return output_files
-###
   command_line_interpreter.set_ppf()
   all_chain_proxies = \
     command_line_interpreter.processed_pdb_file.all_chain_proxies
@@ -780,37 +745,6 @@ def run(args, command_name="phenix.pdbtools", out=sys.stdout,
 ### show parameters
   utils.print_header("Complete set of parameters", out = log)
   master_params.format(params).show(out = log)
-### simple cartesian dynamics
-  if (params.simple_dynamics) :
-    utils.print_header("Simple cartesian dynamics", out=log)
-    geometry = command_line_interpreter.processed_pdb_file.\
-      geometry_restraints_manager(
-        params_edits=params.geometry_restraints.edits,
-        show_energies = True)
-    restraints_manager = mmtbx.restraints.manager(
-      geometry = geometry,
-      normalization = True)
-    sites_cart_start = xray_structure.sites_cart().deep_copy()
-    from mmtbx.dynamics import cartesian_dynamics
-    dyna_params = params.cartesian_dynamics
-    gradients_calculator=cartesian_dynamics.gradients_calculator_reciprocal_space(
-      restraints_manager = restraints_manager,
-      sites_cart         = xray_structure.sites_cart(),
-      wc                 = 1)
-    cartesian_dynamics.run(
-      xray_structure=xray_structure,
-      gradients_calculator=gradients_calculator,
-      temperature=dyna_params.temperature,
-      n_steps=dyna_params.number_of_steps,
-      time_step=dyna_params.time_step,
-      initial_velocities_zero_fraction=dyna_params.initial_velocities_zero_fraction,
-      n_print=dyna_params.n_print,
-      log=log,
-      verbose=1)
-    sites_cart_end = xray_structure.sites_cart()
-    rmsd = sites_cart_end.rms_difference(sites_cart_start)
-    print >> log, ""
-    print >> log, "RMSD from starting structure: %.3f" % rmsd
 ### set_chemical_element_simple_if_necessary
   if(params.modify.set_chemical_element_simple_if_necessary):
     utils.print_header("Restore 77-78 column", out = log)
@@ -872,14 +806,32 @@ def run(args, command_name="phenix.pdbtools", out=sys.stdout,
   result.report_number_of_atoms_to_be_removed()
   if (result.xray_structure_was_replaced) :
     xray_structure = result.xray_structure
-  utils.print_header("Writing output model", out = log)
-### write output file (if got to this point)
-  print >> log, "Output model file name: ", ofn
   selection = getattr(result.remove_selection, "flags", None)
   if selection is not None:
     xray_structure = xray_structure.select(selection)
     pdb_hierarchy = pdb_hierarchy.select(selection)
-  pdb_hierarchy.adopt_xray_structure(xray_structure, assert_identical_id_str=False)
+### Truncate to poly-ALA (keeping original residue names)
+  if(params.modify.truncate_to_polyala):
+    utils.print_header("Truncating to poly-Ala", out = log)
+    pdb_atoms = pdb_hierarchy.atoms()
+    pdb_atoms.reset_i_seq()
+    truncate_to_poly_ala(hierarchy=pdb_hierarchy)
+    pdb_atoms = pdb_hierarchy.atoms()
+    xray_structure = xray_structure.select(pdb_atoms.extract_i_seq())
+### Remove alt. confs.
+  if (params.modify.remove_alt_confs) :
+    utils.print_header("Removing alternate conformations", out = log)
+    pdb_atoms = pdb_hierarchy.atoms()
+    pdb_atoms.reset_i_seq()
+    remove_alt_confs(hierarchy = pdb_hierarchy)
+    pdb_atoms = pdb_hierarchy.atoms()
+    xray_structure = xray_structure.select(pdb_atoms.extract_i_seq())
+    print >> log, "All occupancies reset to 1.0."
+  utils.print_header("Writing output model", out = log)
+### write output file (if got to this point)
+  print >> log, "Output model file name: ", ofn
+  pdb_hierarchy.adopt_xray_structure(xray_structure,
+    assert_identical_id_str=False)
   crystal_symmetry = xray_structure.crystal_symmetry()
   if command_line_interpreter.fake_crystal_symmetry:
     crystal_symmetry = None
