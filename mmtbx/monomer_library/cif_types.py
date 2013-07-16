@@ -284,6 +284,9 @@ class comp_comp_id(slots_getstate_setstate):
     for i_atom in xrange(len(self.atom_list)):
       if (self.atom_list[i_atom].atom_id == atom_id):
         return i_atom
+      if (atom_id.find("'")>-1):
+        if (self.atom_list[i_atom].atom_id.replace("*","'") == atom_id):
+          return i_atom
     return None
 
   def non_hydrogen_atoms(self):
