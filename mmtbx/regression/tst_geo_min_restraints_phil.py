@@ -9,41 +9,41 @@ def exercise_metal_coordination () :
 HETATM    6  PA  ANP A   1      -2.347   2.100 -17.803  1.00 10.27           P
 HETATM    7  PB  ANP A   1       0.438   2.937 -18.222  1.00 10.85           P
 HETATM    8  PG  ANP A   1       1.125   2.500 -21.112  1.00 10.56           P
-HETATM    9  C5' ANP A   1      -1.973  -0.334 -17.074  1.00 10.24           C  
+HETATM    9  C5' ANP A   1      -1.973  -0.334 -17.074  1.00 10.24           C
 HETATM   10  O5' ANP A   1      -2.737   0.857 -16.887  1.00  9.76           O
-HETATM   11  C4' ANP A   1      -2.889  -1.539 -17.210  1.00 10.40           C  
+HETATM   11  C4' ANP A   1      -2.889  -1.539 -17.210  1.00 10.40           C
 HETATM   12  O4' ANP A   1      -3.627  -1.699 -15.990  1.00 10.47           O
-HETATM   13  C3' ANP A   1      -3.936  -1.477 -18.319  1.00  9.24           C  
+HETATM   13  C3' ANP A   1      -3.936  -1.477 -18.319  1.00  9.24           C
 HETATM   14  O3' ANP A   1      -3.371  -1.834 -19.590  1.00 10.01           O
-HETATM   15  C2' ANP A   1      -4.953  -2.483 -17.795  1.00  9.88           C  
+HETATM   15  C2' ANP A   1      -4.953  -2.483 -17.795  1.00  9.88           C
 HETATM   16  O2' ANP A   1      -4.490  -3.826 -17.960  1.00 11.25           O
-HETATM   17  C1' ANP A   1      -4.915  -2.225 -16.303  1.00 11.21           C  
-HETATM   18  N1  ANP A   1      -9.509  -1.559 -14.126  1.00 11.19           N  
+HETATM   17  C1' ANP A   1      -4.915  -2.225 -16.303  1.00 11.21           C
+HETATM   18  N1  ANP A   1      -9.509  -1.559 -14.126  1.00 11.19           N
 HETATM   19  O1A ANP A   1      -3.108   3.253 -17.261  1.00 10.62           O
-HETATM   20  O1B ANP A   1       0.034   4.332 -18.573  1.00 10.23           O  
-HETATM   21  O1G ANP A   1       2.434   1.809 -21.423  1.00 12.01           O  
-HETATM   22  C2  ANP A   1      -8.855  -2.697 -14.422  1.00 11.32           C  
-HETATM   23  O2A ANP A   1      -2.510   1.726 -19.235  1.00  9.76           O  
-HETATM   24  O2B ANP A   1       1.600   2.764 -17.285  1.00 12.69           O  
-HETATM   25  O2G ANP A   1      -0.014   2.061 -22.037  1.00 10.31           O  
-HETATM   26  N3  ANP A   1      -7.636  -2.728 -14.988  1.00 10.83           N  
-HETATM   27  N3B ANP A   1       0.614   2.050 -19.591  1.00 13.13           N  
-HETATM   28  O3A ANP A   1      -0.783   2.257 -17.423  1.00 11.18           O  
-HETATM   29  O3G ANP A   1       1.269   4.014 -21.065  1.00 10.83           O  
-HETATM   30  C4  ANP A   1      -7.053  -1.540 -15.290  1.00 10.41           C  
-HETATM   31  C5  ANP A   1      -7.703  -0.266 -15.019  1.00 10.36           C  
-HETATM   32  C6  ANP A   1      -9.013  -0.333 -14.380  1.00 10.39           C  
-HETATM   33  N6  ANP A   1      -9.709   0.784 -14.079  1.00 10.34           N  
-HETATM   34  N7  ANP A   1      -6.889   0.732 -15.437  1.00 10.05           N  
-HETATM   35  C8  ANP A   1      -5.791   0.126 -15.942  1.00 10.13           C  
-HETATM   36  N9  ANP A   1      -5.898  -1.223 -15.869  1.00 10.39           N  
-HETATM   37 MG   MG  A   2      -1.727   1.886 -21.040  1.00  8.15          MG  
-HETATM   38 MG   MG  A   3      -0.077   5.289 -20.356  1.00  9.42          MG  
-HETATM    1  O   HOH A   4      -3.435   1.768 -22.164  1.00  8.59           O  
-HETATM    3  O   HOH A   5      -2.158   5.884 -19.807  1.00  9.00           O  
+HETATM   20  O1B ANP A   1       0.034   4.332 -18.573  1.00 10.23           O
+HETATM   21  O1G ANP A   1       2.434   1.809 -21.423  1.00 12.01           O
+HETATM   22  C2  ANP A   1      -8.855  -2.697 -14.422  1.00 11.32           C
+HETATM   23  O2A ANP A   1      -2.510   1.726 -19.235  1.00  9.76           O
+HETATM   24  O2B ANP A   1       1.600   2.764 -17.285  1.00 12.69           O
+HETATM   25  O2G ANP A   1      -0.014   2.061 -22.037  1.00 10.31           O
+HETATM   26  N3  ANP A   1      -7.636  -2.728 -14.988  1.00 10.83           N
+HETATM   27  N3B ANP A   1       0.614   2.050 -19.591  1.00 13.13           N
+HETATM   28  O3A ANP A   1      -0.783   2.257 -17.423  1.00 11.18           O
+HETATM   29  O3G ANP A   1       1.269   4.014 -21.065  1.00 10.83           O
+HETATM   30  C4  ANP A   1      -7.053  -1.540 -15.290  1.00 10.41           C
+HETATM   31  C5  ANP A   1      -7.703  -0.266 -15.019  1.00 10.36           C
+HETATM   32  C6  ANP A   1      -9.013  -0.333 -14.380  1.00 10.39           C
+HETATM   33  N6  ANP A   1      -9.709   0.784 -14.079  1.00 10.34           N
+HETATM   34  N7  ANP A   1      -6.889   0.732 -15.437  1.00 10.05           N
+HETATM   35  C8  ANP A   1      -5.791   0.126 -15.942  1.00 10.13           C
+HETATM   36  N9  ANP A   1      -5.898  -1.223 -15.869  1.00 10.39           N
+HETATM   37 MG   MG  A   2      -1.727   1.886 -21.040  1.00  8.15          MG
+HETATM   38 MG   MG  A   3      -0.077   5.289 -20.356  1.00  9.42          MG
+HETATM    1  O   HOH A   4      -3.435   1.768 -22.164  1.00  8.59           O
+HETATM    3  O   HOH A   5      -2.158   5.884 -19.807  1.00  9.00           O
 HETATM    4  O   HOH A   6      -1.791   4.005 -20.881  1.00  7.86           O
-HETATM   39  O   HOH A   7      -1.518  -0.155 -21.151  1.00 13.31           O  
-HETATM   40  O   HOH A   8      -0.256   6.271 -22.179  1.00 12.97           O  
+HETATM   39  O   HOH A   7      -1.518  -0.155 -21.151  1.00 13.31           O
+HETATM   40  O   HOH A   8      -0.256   6.271 -22.179  1.00 12.97           O
 HETATM   41  O   HOH A   9       0.913   6.863 -19.633  1.00 13.62           O  """
   open("tst_geo_min_metal_coord.pdb", "w").write(pdb_in)
   params1 = """\
@@ -170,8 +170,10 @@ geometry_restraints.edits {
     out2.getvalue())
   for line1, line2 in zip(out1.getvalue().splitlines(),
                           out2.getvalue().splitlines()) :
+    line1 = line1.strip()
+    line2 = line2.strip()
     if (line1.startswith("Date") or line1.startswith("PID") or
-        line1.startswith("Command line")) :
+        line1.startswith("Command line") or line1.startswith("Time building")):
       continue
     else :
       assert not show_diff(line1, line2)
