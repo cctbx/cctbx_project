@@ -465,13 +465,16 @@ planarities=None
 grand_master_phil_str = """\
 pdb_interpretation
   .alias = refinement.pdb_interpretation
+  .short_caption = Model interpretation
 {
   %(master_params_str)s
 }
 geometry_restraints
   .alias = refinement.geometry_restraints
 {
-  edits {
+  edits
+    .short_caption = Custom geometry restraints
+  {
     %(geometry_restraints_edits_str)s
   }
   remove {

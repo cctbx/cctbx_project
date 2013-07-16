@@ -114,6 +114,7 @@ tst_list = (
   "$D/regression/tst_isomorphous_difference_misc.py",
   "$D/regression/tst_b_factor_statistics.py",
   "$D/regression/tst_geo_min_restraints_phil.py",
+  "$D/regression/tst_dynamics_cli.py",
   "$D/ligands/tst_xtal_screens.py",
   )
 
