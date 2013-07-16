@@ -343,3 +343,42 @@ def construct_fourth(resN,resCA,resC,dist,angle,dihedral,method="NCAB"):
       angle=angledhdrl,
       deg=True)
   return None
+
+def extract_atoms_from_residue_group (residue_group) :
+  """
+  Given a residue_group object, which may or may not have multiple
+  conformations, extract the relevant atoms for each conformer, taking into
+  account any atoms shared between conformers.  This is implemented
+  separately from the main validation routine, which accesses the hierarchy
+  object via the chain->conformer->residue API.  Returns a list of hashes,
+  each suitable for calling calculate_ideal_and_deviation.
+  """
+  atom_groups = residue_group.atom_groups()
+  if (len(atom_groups) == 1) :
+    relevant_atoms = {}
+    for atom in atom_groups[0].atoms() :
+      relevant_atoms[atom.name] = atom
+    return [ relevant_atoms ]
+  else :
+    all_relevant_atoms = []
+    expected_names = [" CA ", " N  ", " CB ", " C  "]
+    main_conf = {}
+    for atom_group in atom_groups :
+      if (atom_group.altloc.strip() == '') :
+        for atom in atom_group.atoms() :
+          if (atom.name in expected_names) :
+            main_conf[atom.name] = atom
+      else :
+        relevant_atoms = {}
+        for atom in atom_group.atoms() :
+          if (atom.name in expected_names) :
+            relevant_atoms[atom.name] = atom
+        if (len(relevant_atoms) == 0) : continue
+        for atom_name in main_conf.keys() :
+          if (not atom_name in relevant_atoms) :
+            relevant_atoms[atom_name] = main_conf[atom_name]
+        if (len(relevant_atoms) != 0) :
+          all_relevant_atoms.append(relevant_atoms)
+    if (len(main_conf) == 4) :
+      all_relevant_atoms.insert(0, main_conf)
+    return all_relevant_atoms
