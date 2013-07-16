@@ -907,6 +907,65 @@ ATOM    129  D  BLEU L   6       0.595  12.387  14.715  0.50 13.93           D
   answer = [ [[32], [33]] ]
   assert approx_equal(res, answer)
 
+def exercise_27(verbose):
+  pdb_str="""\
+CRYST1   92.690   97.876  102.244  90.00  90.00  90.00 I 2 2 2
+ATOM      1  N   ARG A  38      10.000  16.540  31.355  1.00 11.52           N
+ATOM      2  CA  ARG A  38       8.929  17.060  30.517  1.00 11.91           C
+ATOM      3  CB  ARG A  38       7.566  16.533  30.970  1.00 12.97           C
+ATOM      4  CG  ARG A  38       6.372  17.202  30.286  1.00 13.54           C
+ATOM      5  CD  ARG A  38       5.064  16.455  30.540  1.00 14.24           C
+ATOM      6  NE  ARG A  38       3.905  17.347  30.627  1.00 15.82           N
+ATOM      7  CZ  ARG A  38       3.324  17.935  29.587  1.00 16.48           C
+ATOM      8  NH1 ARG A  38       3.808  17.740  28.366  1.00 16.66           N
+ATOM      9  NH2 ARG A  38       2.273  18.741  29.773  1.00 16.56           N
+ATOM     10  C   ARG A  38       8.941  18.588  30.508  1.00 10.69           C
+ATOM     11  O   ARG A  38       8.673  19.194  29.472  1.00 11.09           O
+ATOM     12  H   ARG A  38       9.738  16.154  32.078  1.00 11.97           H
+ATOM     13  HA  ARG A  38       9.071  16.759  29.606  1.00 11.64           H
+ATOM     14  HB2 ARG A  38       7.521  15.583  30.779  1.00 13.47           H
+ATOM     15  HB3 ARG A  38       7.478  16.679  31.925  1.00  9.40           H
+ATOM     16  HG2 ARG A  38       6.272  18.104  30.629  1.00 14.14           H
+ATOM     17  HG3 ARG A  38       6.526  17.224  29.329  1.00 13.22           H
+ATOM     18  HD2 ARG A  38       4.910  15.831  29.814  1.00 13.26           H
+ATOM     19  HD3 ARG A  38       5.134  15.974  31.379  1.00 10.91           H
+ATOM     20  HE  ARG A  38       3.575  17.498  31.407  1.00 15.18           H
+ATOM     21 HH11 ARG A  38       4.486  17.226  28.245  1.00 15.98           H
+ATOM     22 HH12 ARG A  38       3.435  18.122  27.692  1.00 15.99           H
+ATOM     23 HH21 ARG A  38       1.963  18.868  30.565  1.00 14.27           H
+ATOM     24 HH22 ARG A  38       1.899  19.123  29.099  1.00 13.82           H
+ATOM     25  N   SER A  39       9.237  19.217  31.643  1.00 10.51           N
+ATOM     26  CA  SER A  39       9.333  20.672  31.656  1.00 10.27           C
+ATOM     27  CB  SER A  39       9.530  21.175  33.074  1.00 11.08           C
+ATOM     28  OG  SER A  39       8.356  20.911  33.800  1.00 13.08           O
+ATOM     29  C   SER A  39      10.454  21.169  30.762  1.00  9.74           C
+ATOM     30  O   SER A  39      10.278  22.135  30.026  1.00  9.73           O
+ATOM     31  HA  SER A  39       8.501  21.043  31.323  1.00 10.54           H
+ATOM     32  HB2 SER A  39      10.276  20.708  33.483  1.00  9.70           H
+ATOM     33  HB3 SER A  39       9.694  22.131  33.059  1.00  7.22           H
+ATOM     34  HG  SER A  39       8.435  21.195  34.587  1.00 12.03           H
+ATOM     35  H  ASER A  39       9.383  18.836  32.400  0.56 10.85           H
+ATOM     36  H  BSER A  39       9.383  18.836  32.400  0.44 10.89           H
+TER
+END
+"""
+  if (verbose): log = sys.stdout
+  else: log = StringIO()
+  processed_pdb_files_srv = utils.process_pdb_file_srv(log=log)
+  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
+    raw_records = pdb_str.splitlines())
+  sorry_message = None
+  try:
+    res = utils.occupancy_selections(
+      all_chain_proxies = processed_pdb_file.all_chain_proxies,
+      xray_structure    = processed_pdb_file.xray_structure(),
+      as_flex_arrays    = False)
+  except Exception, e:
+    sorry_message = str(e)
+  assert sorry_message.splitlines()[0] == "Alternative conformers don't match:"
+  assert sorry_message.splitlines()[1] == "  chain: A resseq:   38"
+  assert sorry_message.splitlines()[2] == "  chain: A resseq:   39"
+
 def exercise_d_data_target_d_atomic_params():
   import iotbx.pdb
   import mmtbx.f_model
@@ -1165,6 +1224,7 @@ def run():
   exercise_24(verbose=verbose)
   exercise_25(verbose=verbose)
   exercise_26(verbose=verbose)
+  exercise_27(verbose=verbose)
   exercise_d_data_target_d_atomic_params()
   exercise_get_atom_selections(verbose=verbose)
   exercise_f_000()
