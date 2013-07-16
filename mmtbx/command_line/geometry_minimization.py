@@ -299,10 +299,13 @@ class run(object):
     print >> self.log, "  Sum of individual times: %s"%\
       str("%8.3f"%self.total_time).strip()
 
+  def format_usage_message (self) :
+    format_usage_message(log=self.log)
+
   def initialize(self, prefix):
     if (self.log is None) : self.log = sys.stdout
     if(len(self.args)==0):
-      format_usage_message(log = self.log)
+      self.format_usage_message()
     parsed = self.master_params()
     self.inputs = mmtbx.utils.process_command_line_args(args = self.args,
       master_params = parsed)
