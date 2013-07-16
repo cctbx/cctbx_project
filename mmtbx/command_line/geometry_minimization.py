@@ -14,7 +14,7 @@ import mmtbx.secondary_structure
 import sys
 from cStringIO import StringIO
 
-master_params_str = """\
+base_params_str = """\
 silent = False
   .type = bool
 write_geo_file = False
@@ -31,11 +31,6 @@ restraints = None
 restraints_directory = None
   .type = path
   .style = directory
-selection = all
-  .type = str
-  .help = Atom selection string: selected atoms are subject to move
-  .short_caption = Atom selection
-  .input_size = 400
 use_neutron_distances = False
   .type = bool
   .help = Use neutron X-H distances (which are longer than X-ray ones)
@@ -49,6 +44,38 @@ directory = None
   .short_caption = Output directory
   .style = output_dir
 include scope libtbx.phil.interface.tracking_params
+reference_restraints {
+  restrain_starting_coord_selection = None
+    .type = str
+    .help = Atom selection string: restraint selected to starting position
+    .short_caption = Restrain selection
+    .input_size = 400
+  coordinate_sigma = 0.5
+    .type = float
+    .help = sigma value for coordinates restrained to starting positions
+}
+stop_for_unknowns = True
+  .type = bool
+  .short_caption = Stop for unknown residues
+  .style = noauto
+include scope mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str
+secondary_structure_restraints = False
+  .type = bool
+  .short_caption = Secondary structure restraints
+secondary_structure
+  .alias = refinement.secondary_structure
+{
+  include scope mmtbx.secondary_structure.sec_str_master_phil
+}
+"""
+
+master_params_str = """
+%s
+selection = all
+  .type = str
+  .help = Atom selection string: selected atoms are subject to move
+  .short_caption = Atom selection
+  .input_size = 400
 minimization
   .help = Geometry minimization parameters
   .short_caption = Minimization parameters
@@ -95,32 +122,9 @@ minimization
   planarity = True
     .type = bool
     .short_caption = Planarity
-  secondary_structure_restraints = False
-    .type = bool
-    .short_caption = Secondary structure
   }
 }
-reference_restraints {
-  restrain_starting_coord_selection = None
-    .type = str
-    .help = Atom selection string: restraint selected to starting position
-    .short_caption = Restrain selection
-    .input_size = 400
-  coordinate_sigma = 0.5
-    .type = float
-    .help = sigma value for coordinates restrained to starting positions
-}
-stop_for_unknowns = True
-  .type = bool
-  .short_caption = Stop for unknown residues
-  .style = noauto
-include scope mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str
-secondary_structure
-  .alias = refinement.secondary_structure
-{
-  include scope mmtbx.secondary_structure.sec_str_master_phil
-}
-"""
+""" % base_params_str
 
 def master_params():
   return iotbx.phil.parse(master_params_str, process_includes=True)
@@ -189,7 +193,7 @@ def get_geometry_restraints_manager(processed_pdb_file, xray_structure, params,
     sctr_keys = xray_structure.scattering_type_registry().type_count_dict().keys()
     has_hd = "H" in sctr_keys or "D" in sctr_keys
   hbond_params = None
-  if(params.minimization.move.secondary_structure_restraints):
+  if(params.secondary_structure_restraints):
     sec_str = mmtbx.secondary_structure.process_structure(
       params             = params.secondary_structure,
       processed_pdb_file = processed_pdb_file,
@@ -239,6 +243,7 @@ def run_minimization(
     log                            = log)
 
 class run(object):
+  _pdb_suffix = "minimized"
   def __init__(self, args, log):
     self.log                = log
     self.params             = None
@@ -255,6 +260,9 @@ class run(object):
     self.total_time         = 0
     self.output_file_name   = None
     self.pdb_file_names     = []
+    self.__execute()
+
+  def __execute (self) :
     #
     self.caller(func = self.initialize,     prefix="Initialization, inputs")
     self.caller(func = self.process_inputs, prefix="Processing inputs")
@@ -265,6 +273,9 @@ class run(object):
     self.caller(func = self.write_geo_file, prefix="Write GEO file")
     #
     self.show_times()
+
+  def master_params (self) :
+    return master_params()
 
   def caller(self, func, prefix):
     timer = user_plus_sys_time()
@@ -292,7 +303,7 @@ class run(object):
     if (self.log is None) : self.log = sys.stdout
     if(len(self.args)==0):
       format_usage_message(log = self.log)
-    parsed = master_params()
+    parsed = self.master_params()
     self.inputs = mmtbx.utils.process_command_line_args(args = self.args,
       master_params = parsed)
     self.params = self.inputs.params.extract()
@@ -318,12 +329,15 @@ class run(object):
       string = self.params.selection)
     print >> self.log, "  selected %s atoms out of total %s"%(
       str(self.selection.count(True)),str(self.selection.size()))
+    self.generate_restrain_selection()
+
+  def generate_restrain_selection (self) :
     if self.params.reference_restraints.\
          restrain_starting_coord_selection is not None:
       self.restrain_selection = mmtbx.utils.atom_selection(
-      all_chain_proxies = self.processed_pdb_file.all_chain_proxies,
-      string = \
-        self.params.reference_restraints.restrain_starting_coord_selection)
+        all_chain_proxies = self.processed_pdb_file.all_chain_proxies,
+        string = \
+          self.params.reference_restraints.restrain_starting_coord_selection)
 
   def get_restraints(self, prefix):
     broadcast(m=prefix, log = self.log)
@@ -380,10 +394,11 @@ class run(object):
     self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
     ofn = self.params.output_file_name_prefix
     directory = self.params.directory
+    suffix = "_" + self._pdb_suffix  + ".pdb"
     if(ofn is None):
       pfn = os.path.basename(self.pdb_file_names[0])
       ind = max(0,pfn.rfind("."))
-      ofn = pfn+"_minimized.pdb" if ind==0 else pfn[:ind]+"_minimized.pdb"
+      ofn = pfn+suffix if ind==0 else pfn[:ind]+suffix
     else: ofn = self.params.output_file_name_prefix+".pdb"
     if directory is not None:
       ofn = os.path.join(directory, ofn)
