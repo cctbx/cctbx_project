@@ -4,7 +4,7 @@ from __future__ import division
 from mmtbx.command_line import geometry_minimization
 import iotbx.phil
 from scitbx.array_family import flex
-from libtbx.utils import user_plus_sys_time
+from libtbx.utils import user_plus_sys_time, Usage
 from libtbx import runtime_utils
 from libtbx.str_utils import make_header
 import sys
@@ -54,6 +54,14 @@ class run (geometry_minimization.run) :
   _pdb_suffix = "shaken"
   def master_params (self) :
     return master_params()
+
+  def format_usage_message (self) :
+    raise Usage("""\
+phenix.dynamics: perform simple dynamics to perturb a model
+Usage examples:
+  phenix.dynamics model.pdb
+  phenix.dynamics model.pdb ligands.cif
+""")
 
   def __execute (self) :
     #
