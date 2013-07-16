@@ -2,7 +2,8 @@ from __future__ import division
 #(jEdit options) :folding=explicit:collapseFolds=1:
 from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.validation.rotalyze import rotalyze
-from mmtbx.validation.cbetadev import cbetadev
+from mmtbx.validation.cbetadev import cbetadev, \
+  extract_atoms_from_residue_group
 from mmtbx.validation.clashscore import clashscore
 from mmtbx.validation.rna_validate import rna_validate
 from mmtbx.rotamer.rotamer_eval import find_rotarama_data_dir
@@ -125,6 +126,50 @@ pdb1jxt : :tyr: A:  44 :  0.085:-143.63:   1.00: :
 pdb1jxt : :ala: A:  45 :  0.055:  33.32:   1.00: :
 pdb1jxt : :asn: A:  46 :  0.066: -50.46:   1.00: :""")
 #}}}
+
+  # Auxilary function: extract_atoms_from_residue_group
+  pdb_1 = pdb.input(source_info=None, lines="""\
+ATOM   1185  N  ASER A 146      24.734  37.097  16.303  0.50 16.64           N
+ATOM   1186  N  BSER A 146      24.758  37.100  16.337  0.50 16.79           N
+ATOM   1187  CA ASER A 146      24.173  37.500  17.591  0.50 16.63           C
+ATOM   1188  CA BSER A 146      24.237  37.427  17.662  0.50 16.87           C
+ATOM   1189  C  ASER A 146      22.765  36.938  17.768  0.50 15.77           C
+ATOM   1190  C  BSER A 146      22.792  36.945  17.783  0.50 15.94           C
+ATOM   1191  O  ASER A 146      22.052  36.688  16.781  0.50 14.91           O
+ATOM   1192  O  BSER A 146      22.091  36.741  16.779  0.50 15.17           O
+ATOM   1193  CB ASER A 146      24.118  39.035  17.649  0.50 16.93           C
+ATOM   1194  CB BSER A 146      24.321  38.940  17.904  0.50 17.48           C
+ATOM   1195  OG ASER A 146      23.183  39.485  18.611  0.50 17.56           O
+ATOM   1196  OG BSER A 146      23.468  39.645  17.028  0.50 18.32           O  """).construct_hierarchy()
+  pdb_2 = pdb.input(source_info=None, lines="""\
+ATOM   1185  N   SER A 146      24.734  37.097  16.303  0.50 16.64           N
+ATOM   1187  CA  SER A 146      24.173  37.500  17.591  0.50 16.63           C
+ATOM   1189  C   SER A 146      22.765  36.938  17.768  0.50 15.77           C
+ATOM   1191  O   SER A 146      22.052  36.688  16.781  0.50 14.91           O
+ATOM   1193  CB ASER A 146      24.118  39.035  17.649  0.50 16.93           C
+ATOM   1194  CB BSER A 146      24.321  38.940  17.904  0.50 17.48           C
+ATOM   1195  OG ASER A 146      23.183  39.485  18.611  0.50 17.56           O
+ATOM   1196  OG BSER A 146      23.468  39.645  17.028  0.50 18.32           O  """).construct_hierarchy()
+  pdb_3 = pdb.input(source_info=None, lines="""\
+ATOM   1185  N   SER A 146      24.734  37.097  16.303  0.50 16.64           N
+ATOM   1187  CA  SER A 146      24.173  37.500  17.591  0.50 16.63           C
+ATOM   1189  C   SER A 146      22.765  36.938  17.768  0.50 15.77           C
+ATOM   1191  O   SER A 146      22.052  36.688  16.781  0.50 14.91           O
+ATOM   1193  CB  SER A 146      24.118  39.035  17.649  0.50 16.93           C
+ATOM   1195  OG ASER A 146      23.183  39.485  18.611  0.50 17.56           O
+ATOM   1196  OG BSER A 146      23.468  39.645  17.028  0.50 18.32           O  """).construct_hierarchy()
+  rg1 = pdb_1.only_model().only_chain().only_residue_group()
+  rg2 = pdb_2.only_model().only_chain().only_residue_group()
+  rg3 = pdb_3.only_model().only_chain().only_residue_group()
+  all_relevant_atoms_1 = extract_atoms_from_residue_group(rg1)
+  all_relevant_atoms_2 = extract_atoms_from_residue_group(rg2)
+  all_relevant_atoms_3 = extract_atoms_from_residue_group(rg3)
+  keys_1 = [ sorted([ k for k in a.keys() ]) for a in all_relevant_atoms_1 ]
+  keys_2 = [ sorted([ k for k in a.keys() ]) for a in all_relevant_atoms_2 ]
+  keys_3 = [ sorted([ k for k in a.keys() ]) for a in all_relevant_atoms_3 ]
+  assert keys_1 == [[' C  ',' CA ',' CB ',' N  '],[' C  ',' CA ',' CB ',' N  ']]
+  assert keys_2 == [[' C  ',' CA ',' CB ',' N  '],[' C  ',' CA ',' CB ',' N  ']]
+  assert keys_3 == [[' C  ', ' CA ', ' CB ', ' N  ']]
 
 #{{{ exercise_ramalyze
 def exercise_ramalyze():
