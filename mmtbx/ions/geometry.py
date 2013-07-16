@@ -137,6 +137,32 @@ def _is_octahedral(vectors, dev_cutoff = 20):
   if deviation <= dev_cutoff:
     return deviation, 6 - len(vectors)
 
+def _is_trigonal_pyramid(vectors, dev_cutoff = 15):
+  """
+  Trigional pyramids have four vertices. Three vertices form a plane with
+  angles of 120 degrees between each pair. The last vertex resides axial
+  to the plane, at 90 degrees from all of the equatorial vertices.
+  """
+  if len(vectors) != 4:
+    return
+
+  angles = _bond_angles(vectors)
+  a_90s, a_120s = [], []
+
+  for angle in angles:
+    if abs(angle[2] - 90) < abs(angle[2] - 120):
+      a_90s.append(angle[2] - 90)
+    else:
+      a_120s.append(angle[2] - 120)
+
+  if len(a_90s) != 3 or len(a_120s) != 3:
+    return
+
+  deviation = sqrt(sum(i ** 2 for i in a_90s + a_120s) / len(angles))
+
+  if deviation <= dev_cutoff:
+    return deviation, 4 - len(vectors)
+
 def _is_trigonal_bipyramid(vectors, dev_cutoff = 15):
   """
   Trigonal bipyramids have five vertices. Three vertices form a plane in the
@@ -229,6 +255,7 @@ SUPPORTED_GEOMETRIES = OrderedDict([
     ("square_planar", _is_square_planar),
     ("square_pyramid", _is_square_pyramid),
     ("octahedral", _is_octahedral),
+    ("trigonal_pyramid", _is_trigonal_pyramid),
     ("trigonal_bipyramid", _is_trigonal_bipyramid),
     ("pentagonal_bipyramid", _is_pentagonal_bipyramid),
   ])
