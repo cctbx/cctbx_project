@@ -3,7 +3,7 @@ import sys
 import math
 
 import iotbx.pdb
-from libtib.utils import Sorry
+from libtbx.utils import Sorry
 
 def update_restraints(hierarchy,
                       restraints_manager,
@@ -16,10 +16,9 @@ def update_restraints(hierarchy,
                       log=None,
                       verbose=False,
                       ):
-  raise Sorry("altloc weighting still being tested")
-  verbose=1
-  sqrt_func=False
+  #raise Sorry("altloc weighting still being tested")
   if verbose:
+    print 'min_occ',min_occ
     print 'sqrt_func',sqrt_func
     print 'func_factor',func_factor
     print 'bond_weighting',bond_weighting
@@ -136,14 +135,14 @@ def update_restraints(hierarchy,
   i_seqs = {}
   for key in altloc_bonds:
     bond, occ = altloc_bonds[key]
-    print 'altloc_bonds',key,bond,occ
+    #print 'altloc_bonds',key,bond,occ
     if key in altloc_weights_object:
       bond.weight = altloc_weights_object[key]
     else:
       altloc_weights_object[key] = bond.weight
     occ = max(min_occ, occ)
     if bond_weighting:
-      print 'weight bond',key,bond.weight,occ,
+      #print 'weight bond',key,bond.weight,occ,
       if sqrt_func:
         bond.weight = bond.weight/math.sqrt(occ)
       else:
@@ -171,6 +170,7 @@ def update_restraints(hierarchy,
         angle_proxy.weight = angle_proxy.weight/occ*func_factor
 
   restraints_manager.geometry.reset_internals()
+  #assert 0
   return altloc_weights_object
 
 def run(filename):
