@@ -16,6 +16,7 @@ def exercise () :
 
   models = {
     "3rva": (["octahedral"], ["trigonal_bipyramid"], ["square_planar"]),
+    "1mjh": (["octahedral"], ["octahedral"]),
   }
 
   for model, geometries in models.items():
