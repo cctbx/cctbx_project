@@ -12,8 +12,13 @@ from installer_utils import *
 from package_defs import *
 from optparse import OptionParser
 import urllib2
-import os
+import os.path
 import sys
+# XXX HACK
+libtbx_path = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+if (not libtbx_path in sys.path) :
+  sys.path.append(libtbx_path)
+
 
 class installer (object) :
   # XXX various defaults go here, to be overridden in subclasses

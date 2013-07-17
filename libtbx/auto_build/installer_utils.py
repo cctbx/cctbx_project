@@ -24,11 +24,11 @@ def call (args, log) :
   if (sys.version_info[1] >= 7) :
     import subprocess
   else :
-    try :
-      import subprocess_with_fixes as subprocess
-    except ImportError :
-      sys.path.append(os.path.dirname(os.path.dirname(__file__))) # XXX hack
-      import subprocess_with_fixes as subprocess
+    # XXX HACK
+    libtbx_path = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+    if (not libtbx_path in sys.path) :
+      sys.path.append(libtbx_path)
+    import subprocess_with_fixes as subprocess
   if isinstance(args, list) :
     args = " ".join(args)
   p = subprocess.Popen(
