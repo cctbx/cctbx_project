@@ -259,6 +259,8 @@ Example:
     assert [pdb_io, hierarchy].count(None) == 1
     if(pdb_io is not None):
       hierarchy = pdb_io.construct_hierarchy()
+    use_segids = utils.use_segids_in_place_of_chainids(
+                   hierarchy=hierarchy)
     analysis = ""
     output_list = []
     self.numoutliers = 0
@@ -278,6 +280,10 @@ Example:
     next_resseq = None
     for model in hierarchy.models():
       for chain in model.chains():
+        if use_segids:
+          chain_id = utils.get_segid_as_chainid(chain=chain)
+        else:
+          chain_id = chain.id
         residues = list(chain.residue_groups())
         for i, residue_group in enumerate(residues):
           # The reason I pass lists of atom_groups to get_phi and get_psi is to
@@ -359,7 +365,7 @@ Example:
               ramaType = self.evaluateScore(resType, value)
               if (not outliers_only or self.isOutlier(resType, value)):
                 analysis += '%s%5s %s%s:%.2f:%.2f:%.2f:%s:%s\n' % \
-                  (chain.id,
+                  (chain_id,
                    residue_group.resid(),atom_group.altloc,
                    atom_group.resname,
                    value*100,
@@ -368,7 +374,7 @@ Example:
                    ramaType,
                    resType.capitalize())
 
-                output_list.append([chain.id,
+                output_list.append([chain_id,
                                     residue_group.resid(),
                                     atom_group.altloc+atom_group.resname,
                                     value*100,

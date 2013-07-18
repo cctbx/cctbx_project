@@ -182,20 +182,23 @@ Example:
       r = iotbx.pdb.hierarchy.root()
       mdc = m.detached_copy()
       r.append_model(mdc)
-      bare_chains = \
-        utils.find_bare_chains_with_segids(pdb_hierarchy=r)
-      if bare_chains:
-        tmp_r = r.deep_copy()
-        tmp_r.atoms().reset_i_seq()
-        seg_dict = utils.seg_id_to_chain_id(pdb_hierarchy=tmp_r)
-        rename_txt = utils.assign_chain_ids(pdb_hierarchy=tmp_r,
-                                            seg_dict=seg_dict)
-      else:
-        tmp_r = r
-      duplicate_chain_ids = \
-        utils.check_for_duplicate_chain_ids(pdb_hierarchy=tmp_r)
-      if duplicate_chain_ids:
-        utils.force_unique_chain_ids(pdb_hierarchy=tmp_r)
+      tmp_r = r
+      # removed old style SEGID handling for compatibility with Probe
+      # 130622 - JJH
+      #bare_chains = \
+      #  utils.find_bare_chains_with_segids(pdb_hierarchy=r)
+      #if bare_chains:
+      #  tmp_r = r.deep_copy()
+      #  tmp_r.atoms().reset_i_seq()
+      #  seg_dict = utils.seg_id_to_chain_id(pdb_hierarchy=tmp_r)
+      #  rename_txt = utils.assign_chain_ids(pdb_hierarchy=tmp_r,
+      #                                      seg_dict=seg_dict)
+      #else:
+      #  tmp_r = r
+      #duplicate_chain_ids = \
+      #  utils.check_for_duplicate_chain_ids(pdb_hierarchy=tmp_r)
+      #if duplicate_chain_ids:
+      #  utils.force_unique_chain_ids(pdb_hierarchy=tmp_r)
       if keep_hydrogens:
         elements = tmp_r.atoms().extract_element()
         h_count = elements.count(' H') + elements.count(' D')

@@ -2,6 +2,7 @@ from __future__ import division
 
 from libtbx import easy_pickle
 from libtbx import group_args
+from libtbx.utils import Sorry
 import os.path
 import math
 import sys
@@ -122,6 +123,30 @@ def molprobity_score (clashscore, rota_out, rama_fav) :
   else :
     return -1 # FIXME prevents crashing on RNA
   return mpscore
+
+def use_segids_in_place_of_chainids(hierarchy):
+  use_segids = False
+  for model in hierarchy.models():
+    for chain in model.chains():
+      if chain.id in [' ', '  ']:
+        cur_segid = None
+        for atom in chain.atoms():
+          if cur_segid is None:
+            cur_segid = atom.segid
+          if atom.segid not in ['    ', '']:
+            if atom.segid != cur_segid:
+              raise Sorry("Chains with blank chainID may not have multiple"+
+                          "segID values")
+        if len(cur_segid.strip()) > 0:
+          use_segids = True
+        else:
+          return False
+  return use_segids
+
+#this function assumes that use_segids_in_place_of_chainids() is True
+def get_segid_as_chainid(chain):
+  for atom in chain.atoms():
+    return atom.segid
 
 def exercise () :
   from libtbx.test_utils import approx_equal
