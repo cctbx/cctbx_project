@@ -4,8 +4,9 @@ from libtbx import easy_run
 import time
 
 def exercise () :
-  from mmtbx.regression import make_fake_anomalous_data
-  mtz_file, pdb_file = make_fake_anomalous_data.generate_calcium_inputs()
+  from mmtbx.regression.make_fake_anomalous_data import generate_calcium_inputs
+  mtz_file, pdb_file = generate_calcium_inputs(
+    file_base = "tst_ions_pick_ca", anonymize = True)
   time.sleep(2)
   args = ["\"%s\"" % pdb_file, "\"%s\"" % mtz_file, "wavelength=1.1",
     "nproc=1", "use_phaser=False", "fpp_ratio_max=1.2"]
@@ -13,7 +14,6 @@ def exercise () :
     ).raise_if_errors()
   n_ca = 0
   for line in result.stdout_lines:
-    #print line
     if "Probable cation: CA+2" in line:
       n_ca += 1
   if (n_ca != 1) :
