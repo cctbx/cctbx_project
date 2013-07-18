@@ -6,6 +6,7 @@ from iotbx import pdb
 from mmtbx.rotamer.sidechain_angles import SidechainAngles
 from mmtbx.rotamer import rotamer_eval
 from mmtbx.rotamer.rotamer_eval import RotamerID
+from mmtbx.validation import utils
 import iotbx.phil
 from libtbx.utils import Usage, Sorry
 
@@ -156,6 +157,8 @@ Example:
     self.r = rotamer_eval.RotamerEval()
     if(pdb_io is not None):
       hierarchy = pdb_io.construct_hierarchy()
+    use_segids = utils.use_segids_in_place_of_chainids(
+                   hierarchy=hierarchy)
     analysis = ""
     output_list = []
     self.current_rotamers = {}
@@ -164,6 +167,10 @@ Example:
     self.rot_id = rotamer_eval.RotamerID() # loads in the rotamer names
     for model in hierarchy.models():
       for chain in model.chains():
+        if use_segids:
+          chain_id = utils.get_segid_as_chainid(chain=chain)
+        else:
+          chain_id = chain.id
         for rg in chain.residue_groups():
           all_dict = self.construct_complete_sidechain(rg)
           #print all_dict
@@ -178,10 +185,10 @@ Example:
                        atom_dict)#.get(conformer.altloc))
             except AttributeError:
               if show_errors:
-                res_info = "%s%5s %s" % (chain.id, rg.resid(),
+                res_info = "%s%5s %s" % (chain_id, rg.resid(),
                   atom_group.altloc+resname)
                 print >> out, '%s is missing some sidechain atoms' % res_info
-                output_list.append([chain.id, rg.resid(),
+                output_list.append([chain_id, rg.resid(),
                   atom_group.altloc+resname, -1, None, None, None, None,
                   "INCOMPLETE", coords])
               continue
@@ -193,12 +200,12 @@ Example:
                 occupancy = get_occupancy(atom_group)
                 self.numtotal += 1
                 s = '%s%5s %s:%.2f:%.1f' % \
-                  (chain.id,
+                  (chain_id,
                    rg.resid(),
                    atom_group.altloc+resname.strip(),
                    occupancy,
                    value*100)
-                res_out_list = [chain.id,
+                res_out_list = [chain_id,
                                 rg.resid(),
                                 atom_group.altloc+resname,
                                 value*100]

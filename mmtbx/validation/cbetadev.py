@@ -2,6 +2,7 @@ from __future__ import division
 import iotbx.phil
 from scitbx.matrix import col, dihedral_angle, rotate_point_around_axis
 from libtbx.utils import Usage
+from mmtbx.validation import utils
 import os
 import sys
 
@@ -137,8 +138,14 @@ Example:
     assert [pdb_io, hierarchy].count(None) == 1
     if(pdb_io is not None):
       hierarchy = pdb_io.construct_hierarchy()
+    use_segids = utils.use_segids_in_place_of_chainids(
+                   hierarchy=hierarchy)
     for model in hierarchy.models():
       for chain in model.chains():
+        if use_segids:
+          chain_id = utils.get_segid_as_chainid(chain=chain)
+        else:
+          chain_id = chain.id
         for rg in chain.residue_groups():
           for i_cf,cf in enumerate(rg.conformers()):
             for i_residue,residue in enumerate(cf.residues()):
