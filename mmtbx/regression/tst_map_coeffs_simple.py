@@ -5,9 +5,9 @@ import os
 
 def exercise () :
   from mmtbx.command_line import compute_map_coefficients
-  from mmtbx.regression import make_fake_anomalous_data
+  from mmtbx.regression.make_fake_anomalous_data import generate_cd_cl_inputs
   from iotbx import file_reader
-  mtz_file, pdb_file = make_fake_anomalous_data.generate_cd_cl_inputs(
+  mtz_file, pdb_file = generate_cd_cl_inputs(
     file_base="tst_map_coeffs_simple")
   args = [mtz_file, pdb_file, "map_type=anom_residual", "wavelength=1.116",
           "skip_twin_detection=True"]

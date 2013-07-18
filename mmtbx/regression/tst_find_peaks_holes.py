@@ -6,10 +6,10 @@ from cStringIO import StringIO
 import os
 
 def exercise () :
-  from mmtbx.regression import make_fake_anomalous_data
+  from mmtbx.regression.make_fake_anomalous_data import generate_calcium_inputs
   from mmtbx.command_line import find_peaks_holes
-  mtz_file, pdb_file = make_fake_anomalous_data.generate_calcium_inputs(
-    file_base="tst_find_peaks_holes")
+  mtz_file, pdb_file = generate_calcium_inputs(
+    file_base = "tst_find_peaks_holes", anonymize = True)
   out = StringIO()
   peaks_holes = find_peaks_holes.run(
     args=[pdb_file, mtz_file],
