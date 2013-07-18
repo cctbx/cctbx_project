@@ -124,7 +124,7 @@ def molprobity_score (clashscore, rota_out, rama_fav) :
     return -1 # FIXME prevents crashing on RNA
   return mpscore
 
-def use_segids_in_place_of_chainids(hierarchy):
+def use_segids_in_place_of_chainids(hierarchy, strict=False):
   use_segids = False
   for model in hierarchy.models():
     for chain in model.chains():
@@ -135,8 +135,11 @@ def use_segids_in_place_of_chainids(hierarchy):
             cur_segid = atom.segid
           if atom.segid not in ['    ', '']:
             if atom.segid != cur_segid:
-              raise Sorry("Chains with blank chainID may not have multiple"+
-                          "segID values")
+              if strict:
+                raise Sorry("Chains with blank chainID may not have multiple"+
+                            " segID values")
+              else:
+                return False
         if len(cur_segid.strip()) > 0:
           use_segids = True
         else:
