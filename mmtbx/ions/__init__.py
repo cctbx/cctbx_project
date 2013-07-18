@@ -143,7 +143,7 @@ phaser
     .type = float
     .input_size = 80
     .short_caption = Min. required separation from other atoms
-  distance_cutoff_same_site = 0.5
+  distance_cutoff_same_site = 0.7
     .type = float
     .input_size = 80
     .short_caption = Max. separation from mapped atom
@@ -294,7 +294,8 @@ class Manager (object) :
     # this can use either the CCTBX anomalous group refinement or Phaser's
     # substructure completion (but not both).  Some additional machinery is
     # required to handle this distinction.
-    refine_substructure = params.find_anomalous_substructure
+    refine_substructure = \
+      params.find_anomalous_substructure if params is not None else False
     if (refine_substructure is Auto) :
       refine_substructure = fmodel.f_obs().anomalous_flag() and \
                             (wavelength is not None)
@@ -363,7 +364,8 @@ class Manager (object) :
     """
     self.pdb_hierarchy = pdb_hierarchy
     self.xray_structure = xray_structure
-    self.fmodel.update_xray_structure(xray_structure, update_f_calc = True)
+    if self.fmodel:
+      self.fmodel.update_xray_structure(xray_structure, update_f_calc = True)
     self.sites_frac = self.xray_structure.sites_frac()
     self.sites_cart = self.xray_structure.sites_cart()
     self.connectivity = connectivity
@@ -434,6 +436,8 @@ class Manager (object) :
     anomalous difference map. This is only really useful if the anomalous
     scattering of existing atoms is modeled (and ideally, refined).
     """
+    if self.fmodel is None:
+      return
     def fft_map (map_coeffs, resolution_factor = 0.25):
       return map_coeffs.fft_map(resolution_factor = resolution_factor,
         ).apply_sigma_scaling().real_map_unpadded()
@@ -616,12 +620,13 @@ class Manager (object) :
           continue
 
         # Remove atoms within 1.9 A contact distance
-        if any(other_contact != contact and contact.distance_from(other_contact) < 1.9
-               and contact.distance() > other_contact.distance()
+        if any(other_contact != contact and
+               contact.distance_from(other_contact) < 1.9 and
+               contact.distance() > other_contact.distance()
                for other_contact in contacts):
           continue
 
-        # Examine the mode connectivity to catch another other bonds
+        # Examine the mode connectivity to catch more closely bonded atoms
         bonded_j_seqs = []
         for j_seq in self.connectivity[contact.atom_i_seq()]:
           if (j_seq in all_i_seqs) :
@@ -746,42 +751,27 @@ class Manager (object) :
     for pair in pair_generator:
       # Find a pair where one's sequence ID is < n_xray and the other's
       # is >= n_xray and gather the site information about it
-      if pair.i_seq < n_xray:
-        if pair.j_seq < n_xray:
-          continue
+      if (pair.i_seq < n_xray and pair.j_seq < n_xray) or \
+        (pair.i_seq >= n_xray and pair.j_seq >= n_xray):
+        continue
 
-        rt_mx_i = asu_mappings.get_rt_mx_i(pair)
-        rt_mx_j = asu_mappings.get_rt_mx_j(pair)
-        rt_mx_ji = rt_mx_i.inverse().multiply(rt_mx_j)
-        new_site_frac = rt_mx_ji * site_frac
-        new_site_cart = self.unit_cell.orthogonalize(site_frac = new_site_frac)
+      rt_mx_i = asu_mappings.get_rt_mx_i(pair)
+      rt_mx_j = asu_mappings.get_rt_mx_j(pair)
+      rt_mx_ji = rt_mx_i.inverse().multiply(rt_mx_j)
+      new_site_frac = rt_mx_ji * site_frac
+      new_site_cart = self.unit_cell.orthogonalize(site_frac = new_site_frac)
+      atom_seq = pair.i_seq if pair.i_seq < n_xray else pair.j_seq
 
-        site_info = group_args(
-          i_seq = pair.i_seq,
-          rt_mx = rt_mx_ji,
-          new_site_cart = new_site_cart,
-          distance = sqrt(pair.dist_sq))
+      site_info = group_args(
+        i_seq = atom_seq,
+        rt_mx = rt_mx_ji,
+        new_site_cart = new_site_cart,
+        distance = sqrt(pair.dist_sq))
+
+      if site_info.distance < distance_cutoff_same_site:
+        same_atoms.append(site_info)
       else:
-        if pair.j_seq >= n_xray:
-          continue
-
-        rt_mx_i = asu_mappings.get_rt_mx_i(pair)
-        rt_mx_j = asu_mappings.get_rt_mx_j(pair)
-        rt_mx_ij = rt_mx_j.inverse().multiply(rt_mx_i)
-        new_site_frac = rt_mx_ij * site_frac
-        new_site_cart = self.unit_cell.orthogonalize(site_frac = new_site_frac)
-
-        site_info = group_args(
-          i_seq = pair.j_seq,
-          rt_mx = rt_mx_ij,
-          new_site_cart = new_site_cart,
-          distance = sqrt(pair.dist_sq))
-
-      if site_info:
-        if site_info.distance < distance_cutoff_same_site:
-          same_atoms.append(site_info)
-        else:
-          other_atoms.append(site_info)
+        other_atoms.append(site_info)
 
     same_atoms.sort(key = lambda x: x.distance)
     other_atoms.sort(key = lambda x: x.distance)
@@ -793,34 +783,59 @@ class Manager (object) :
     Given a list of AX pseudo-atoms placed by Phaser, finds the nearest real
     atoms, and if possible determines their equivalence.
     """
+    def ax_atom_id (atom) :
+      return "AX %s (fpp=%.3f)" % (atom.serial.strip(), atom.occ)
+
     assert (self.phaser_substructure is not None)
     self.fpp_from_phaser_ax_sites = flex.double(self.pdb_atoms.size(), -1)
     if (log is None) or (not verbose) : log = null_out()
 
+    def _filter_site_infos(site_infos):
+      # Organize a dictionary, keyed with each site's atom i_seq
+      from collections import OrderedDict
+      i_seqs = OrderedDict()
+      for site_info in site_infos:
+        if site_info.i_seq in i_seqs:
+          i_seqs[site_info.i_seq].append(site_info)
+        else:
+          i_seqs[site_info.i_seq] = [site_info]
+
+      # If we are picking from multiple of the same i_seq, select the closest
+      for val in i_seqs.values():
+        # Prefer unit operators
+        if any(i.rt_mx.is_unit_mx() for i in val):
+          for site_info in val:
+            if not site_info.rt_mx.is_unit_mx():
+              val.remove(site_info)
+        val.sort(key = lambda x: x.distance)
+
+      return [i[0] for i in i_seqs.values()]
+
     make_sub_header("Analyzing Phaser anomalous substructure", out = log)
     for atom in self.phaser_substructure :
+      print >> log, ax_atom_id(atom)
       same_atoms, other_atoms = self.find_atoms_near_site(
         atom.xyz,
         distance_cutoff = self.params.phaser.distance_cutoff,
         distance_cutoff_same_site = self.params.phaser.distance_cutoff_same_site)
 
-      def ax_atom_id (atom) :
-        return "AX %s (fpp=%.3f)" % (atom.serial.strip(), atom.occ)
+      same_atoms, other_atoms = \
+        _filter_site_infos(same_atoms), _filter_site_infos(other_atoms)
 
-      if (len(same_atoms) == 0) :
+      if len(same_atoms) == 0:
         print >> log, "  No match for %s" % ax_atom_id(atom)
-        for site_info in other_atoms :
+        for other_atom in other_atoms:
           print >> log, "    %s (distance = %.3f)" % \
-                (self.pdb_atoms[site_info.i_seq].id_str(), site_info.distance)
-      elif (len(same_atoms) == 1) :
+                (self.pdb_atoms[other_atom.i_seq].id_str(), other_atom.distance)
+      elif len(same_atoms) == 1:
         print >> log, "  %s maps to %s" % \
           (ax_atom_id(atom), self.pdb_atoms[same_atoms[0].i_seq].id_str())
         self.use_fdp[same_atoms[0].i_seq] = True
         self.fpp_from_phaser_ax_sites[same_atoms[0].i_seq] = atom.occ
       else :
         print >> log, "  ambiguous results for %s:" % ax_atom_id(atom)
-        for a in same_atoms :
-          print >> log, "    %s" % self.pdb_atoms[a.i_seq].id_str()
+        for same_atom in same_atoms:
+          print >> log, "    %s" % self.pdb_atoms[same_atom.i_seq].id_str()
     print >> log, ""
 
   def get_fpp (self, i_seq) :
@@ -1371,8 +1386,8 @@ class Manager (object) :
         t2 = time.time()
         #print "%s: %.3fs" % (self.pdb_atoms[water_i_seq].id_str(), t2-t1)
     else :
-      print "  Parallelizing across %d processes" % nproc
-      print ""
+      print >> out, "  Parallelizing across %d processes" % nproc
+      print >> out, ""
       analyze_water = _analyze_water_wrapper(manager = self,
         debug = debug,
         candidates = candidates,
