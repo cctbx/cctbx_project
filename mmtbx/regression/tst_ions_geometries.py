@@ -10,7 +10,7 @@ from iotbx import file_reader
 from cctbx.eltbx import chemical_elements
 
 def exercise () :
-  if not libtbx.env.has_module("phenix_regression") or True:
+  if not libtbx.env.has_module("phenix_regression"):
     print "Skipping {}".format(os.path.split(__file__)[1])
     return
 
