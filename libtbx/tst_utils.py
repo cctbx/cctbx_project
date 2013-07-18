@@ -2,6 +2,7 @@ from __future__ import division
 from libtbx import utils
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 from cStringIO import StringIO
+import warnings
 import random
 import time
 import os
@@ -260,12 +261,11 @@ def exercise_dir_utils () :
     os.mkdir("Dropbox")
     dir_created = True
   dir_name = os.path.join(os.getcwd(), "Dropbox")
-  try :
+  with warnings.catch_warnings(record=True) as w:
+    warnings.simplefilter("always")
     utils.check_if_output_directory_exists(dir_name=dir_name)
-  except utils.Sorry, s :
-    assert "Dropbox folders" in str(s)
-  else :
-    raise Exception_expected
+    assert len(w) == 1
+    assert "Dropbox directory" in str(w[-1].message)
   if (dir_created) :
     os.rmdir("Dropbox")
 

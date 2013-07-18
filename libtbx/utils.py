@@ -12,6 +12,7 @@ except ImportError:
   import md5
   hashlib_md5 = md5.new
 from stdlib import math
+import warnings
 import shutil
 import glob
 import time
@@ -1189,5 +1190,7 @@ def check_if_output_directory_exists (file_name=None, dir_name=None) :
     head, tail = os.path.split(dir_name)
     while tail != "" :
       if (tail == "Dropbox") :
-        raise Sorry("Dropbox folders may not be used for output.")
+        warnings.warn("You are directing output to a Dropbox directory.  "+
+          "Please note that this is not guaranteed to work in all cases; "+
+          "use at your own risk.", UserWarning)
       head, tail = os.path.split(head)
