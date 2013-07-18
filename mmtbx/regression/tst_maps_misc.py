@@ -2,11 +2,11 @@
 from __future__ import division
 
 def exercise_anomalous_maps_misc () :
-  from mmtbx.regression import make_fake_anomalous_data
+  from mmtbx.regression.make_fake_anomalous_data import generate_cd_cl_inputs
   import mmtbx.utils
   from iotbx import file_reader
-  mtz_file, pdb_file = make_fake_anomalous_data.generate_cd_cl_inputs(
-    file_base="tst_mmtbx_maps_misc")
+  mtz_file, pdb_file = generate_cd_cl_inputs(
+    file_base = "tst_mmtbx_maps_misc")
   pdb_in = file_reader.any_file(pdb_file)
   hierarchy = pdb_in.file_object.construct_hierarchy()
   xrs = pdb_in.file_object.xray_structure_simple()
@@ -29,13 +29,13 @@ def exercise_anomalous_maps_misc () :
   map_coeffs = fmodel.map_coefficients(
     map_type="anom_residual",
     exclude_free_r_reflections=True)
-  map = map_coeffs.fft_map(
+  map_anom = map_coeffs.fft_map(
     resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
   for s in xrs.scatterers() :
     if (s.scattering_type == "Cd2+") :
-      assert (map.eight_point_interpolation(s.site) < 0)
+      assert (map_anom.eight_point_interpolation(s.site) < 0)
     elif (s.scattering_type == 'Cl1-') :
-      assert (map.eight_point_interpolation(s.site) > 10)
+      assert (map_anom.eight_point_interpolation(s.site) > 10)
   # this simply checks whether anomalous data will cause problems when
   # mixed with other options (i.e. array size errors)
   map2 = fmodel.map_coefficients(

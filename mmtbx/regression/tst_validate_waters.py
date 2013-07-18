@@ -3,10 +3,10 @@ from __future__ import division
 from cStringIO import StringIO
 
 def exercise () :
-  from mmtbx.regression import make_fake_anomalous_data
+  from mmtbx.regression.make_fake_anomalous_data import generate_calcium_inputs
   from mmtbx.command_line import validate_waters
-  mtz_file, pdb_file = make_fake_anomalous_data.generate_calcium_inputs(
-    file_base="tst_validate_waters")
+  mtz_file, pdb_file = generate_calcium_inputs(
+    file_base = "tst_validate_waters", anonymize = True)
   out = StringIO()
   waters = validate_waters.run(
     args=[pdb_file, mtz_file, "skip_twin_detection=True"],
