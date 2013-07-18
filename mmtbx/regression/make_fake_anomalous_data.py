@@ -1,36 +1,41 @@
 
 from __future__ import division
+
+import os
+
 from libtbx.utils import null_out
 from libtbx import group_args
 from libtbx import easy_run
-import os
+from iotbx.file_reader import any_file
+from mmtbx.ions.utils import anonymize_ions
 
-def generate_calcium_inputs (file_base="ca_frag") :
+def generate_calcium_inputs (file_base="ca_frag", anonymize = True) :
   """
   Generate both a PDB file and an MTZ file for the calcium-bound structure,
   with the calcium replaced by solvent after F(model) was calculated. (This
   method is also a suitable template for generating any other model/data files
   for specific structures.)
   """
-  import mmtbx.ions.utils
-  from iotbx.file_reader import any_file
   pdb_file = write_pdb_input_calcium_binding(file_base=file_base)
   mtz_file = generate_mtz_file(
     file_base=file_base,
     d_min=1.5,
-    anomalous_scatterers=[group_args(selection="element CA",fp=0.25,fdp=0.5)])
+    anomalous_scatterers = [
+      group_args(selection="element CA", fp = 0.25, fdp = 0.5)
+      ])
   assert (os.path.isfile(pdb_file)) and (os.path.isfile(mtz_file))
-  pdb_in = any_file(pdb_file)
-  hierarchy = pdb_in.file_object.construct_hierarchy()
-  hierarchy, n = mmtbx.ions.utils.anonymize_ions(hierarchy, log=null_out())
-  hierarchy.write_pdb_file(
-    file_name="%s_hoh.pdb" % file_base,
-    crystal_symmetry=pdb_in.file_object.crystal_symmetry())
-  return os.path.abspath(mtz_file), os.path.abspath("%s_hoh.pdb" % file_base)
+  if anonymize:
+    pdb_in = any_file(pdb_file)
+    hierarchy = pdb_in.file_object.construct_hierarchy()
+    hierarchy, n = anonymize_ions(hierarchy, log=null_out())
+    pdb_file = file_base + "_hoh.pdb"
+    hierarchy.write_pdb_file(
+      file_name = pdb_file,
+      crystal_symmetry=pdb_in.file_object.crystal_symmetry())
+    assert os.path.isfile(pdb_file)
+  return os.path.abspath(mtz_file), os.path.abspath(pdb_file)
 
 def generate_cd_cl_inputs (file_base="cd_cl_frag") :
-  import mmtbx.ions.utils
-  from iotbx.file_reader import any_file
   pdb_file = write_pdb_input_cd_cl(file_base=file_base)
   mtz_file = generate_mtz_file(
     file_base=file_base,
@@ -42,7 +47,44 @@ def generate_cd_cl_inputs (file_base="cd_cl_frag") :
   assert (os.path.isfile(pdb_file)) and (os.path.isfile(mtz_file))
   return mtz_file, pdb_file
 
-def generate_mtz_file (file_base, anomalous_scatterers, d_min) :
+def generate_zinc_inputs (file_base = "zn_frag", anonymize = True) :
+  pdb_file = write_pdb_input_zinc_binding(file_base = file_base)
+  mtz_file = generate_mtz_file(
+    file_base = file_base,
+    d_min = 1.9,
+    anomalous_scatterers = [
+      group_args(selection = "element ZN", fp = -1.3, fdp = 0.47),
+    ])
+  assert os.path.isfile(pdb_file) and os.path.isfile(mtz_file)
+  if anonymize:
+    pdb_in = any_file(pdb_file)
+    hierarchy = pdb_in.file_object.construct_hierarchy()
+    hierarchy, n = anonymize_ions(hierarchy, log = null_out())
+    pdb_file = file_base + "_hoh.pdb"
+    hierarchy.write_pdb_file(
+      file_name = pdb_file,
+      crystal_symmetry = pdb_in.file_object.crystal_symmetry())
+    assert os.path.isfile(pdb_file)
+  return os.path.abspath(mtz_file), os.path.abspath(pdb_file)
+
+def generate_magnessium_inputs (file_base = "mg_frag", anonymize = True) :
+  pdb_file = write_pdb_input_magnessium_binding (file_base = file_base)
+  mtz_file = generate_mtz_file(
+    file_base = file_base,
+    d_min = 1.5)
+  assert os.path.isfile(pdb_file) and os.path.isfile(mtz_file)
+  if anonymize:
+    pdb_in = any_file(pdb_file)
+    hierarchy = pdb_in.file_object.construct_hierarchy()
+    hierarchy, n = anonymize_ions(hierarchy, log = null_out())
+    pdb_file = file_base + "_hoh.pdb"
+    hierarchy.write_pdb_file(
+      file_name = pdb_file,
+      crystal_symmetry = pdb_in.file_object.crystal_symmetry())
+    assert os.path.isfile(pdb_file)
+  return os.path.abspath(mtz_file), os.path.abspath(pdb_file)
+
+def generate_mtz_file (file_base, d_min, anomalous_scatterers = None) :
   """
   Create an MTZ file containing amplitudes (and R-free-flags) calculated from
   the PDB file, at the specified resolution and with enumerated anomalous
@@ -51,13 +93,6 @@ def generate_mtz_file (file_base, anomalous_scatterers, d_min) :
   mtz_file = file_base + ".mtz"
   if (os.path.isfile(mtz_file)) :
     os.remove(mtz_file)
-  anom_params = []
-  for group in anomalous_scatterers :
-    anom_params.append("""group {
-        selection = %s
-        f_prime = %g
-        f_double_prime = %g
-      }""" % (group.selection, group.fp, group.fdp))
   params = """
     high_resolution = %g
     r_free_flags_fraction = 0.1
@@ -67,12 +102,20 @@ def generate_mtz_file (file_base, anomalous_scatterers, d_min) :
       label = F
       type = *real complex
       file_name = %s.mtz
-    }
-    anomalous_scatterers {
-      %s
-    }""" % (d_min, file_base, file_base, "\n".join(anom_params))
-  open("%s_fmodel.eff" % file_base, "w").write(params)
-  assert (easy_run.fully_buffered("phenix.fmodel %s_fmodel.eff" % file_base,
+    }\n""" % (d_min, file_base, file_base)
+  if anomalous_scatterers is not None:
+    params += "anomalous_scatterers {\n"
+    for group in anomalous_scatterers :
+      params += ("  group {\n"
+                 "    selection = %s\n"
+                 "    f_prime = %g\n"
+                 "    f_double_prime = %g\n"
+                 "  }\n") % (group.selection, group.fp, group.fdp)
+    params += "}\n"
+  eff_file = file_base + "_fmodel.eff"
+  with open(eff_file, "w") as f:
+    f.write(params)
+  assert (easy_run.fully_buffered("phenix.fmodel %s" % eff_file,
     ).raise_if_errors().return_code == 0)
   return mtz_file
 
@@ -320,3 +363,246 @@ END""")
   f.write(pdb_in.hierarchy.as_pdb_string(crystal_symmetry=xrs))
   f.close()
   return pdb_file
+
+def write_pdb_input_zinc_binding(file_base = "zn_frag", write_files = True):
+  import iotbx.pdb.hierarchy
+  # XXX extracted from 2whz (thermolysin, wavelength = 1.54A), but with an
+  # incomplete coordination shell
+  pdb_in = iotbx.pdb.hierarchy.input(source_info=None, pdb_string="""\
+ATOM      1  OD1 ASN A 112      34.902  38.381  -2.709  1.00 12.10           O
+ATOM      2  C   ALA A 113      31.533  40.581  -3.237  1.00 12.06           C
+ATOM      3  O   ALA A 113      32.560  40.184  -3.842  1.00 12.75           O
+ATOM      4  N   PHE A 114      30.551  41.251  -3.854  1.00 11.88           N
+ATOM      5  CA  PHE A 114      30.707  41.621  -5.277  1.00 12.52           C
+ATOM      6  C   PHE A 114      29.633  42.613  -5.705  1.00 12.63           C
+ATOM      7  CB  PHE A 114      30.665  40.371  -6.202  1.00 12.72           C
+ATOM      8  N   TRP A 115      29.933  43.311  -6.794  1.00 13.30           N
+ATOM      9  CA  TRP A 115      28.968  44.084  -7.575  1.00 13.94           C
+ATOM     10  O   TRP A 115      29.375  42.549  -9.378  1.00 15.06           O
+ATOM     11  CB  TRP A 115      29.646  45.329  -8.137  1.00 14.57           C
+ATOM     13  O   VAL A 139      33.773  47.006  -1.063  1.00 11.73           O
+ATOM     15  N   HIS A 142      34.994  49.588  -2.455  1.00 13.21           N
+ATOM     16  CA  HIS A 142      35.593  48.855  -3.582  1.00 11.38           C
+ATOM     17  C   HIS A 142      34.455  48.358  -4.484  1.00 12.11           C
+ATOM     18  O   HIS A 142      34.468  48.596  -5.693  1.00 11.57           O
+ATOM     19  CB  HIS A 142      36.442  47.680  -3.082  1.00 11.93           C
+ATOM     20  CG  HIS A 142      36.945  46.756  -4.150  1.00  9.54           C
+ATOM     21  CD2 HIS A 142      36.303  45.839  -4.912  1.00  9.50           C
+ATOM     22  ND1 HIS A 142      38.289  46.628  -4.440  1.00 11.23           N
+ATOM     23  CE1 HIS A 142      38.446  45.706  -5.381  1.00 14.08           C
+ATOM     24  NE2 HIS A 142      37.258  45.206  -5.676  1.00 14.47           N
+ATOM     25  N   GLU A 143      33.448  47.732  -3.879  1.00 11.17           N
+ATOM     26  CA  GLU A 143      32.363  47.129  -4.683  1.00 12.04           C
+ATOM     27  C   GLU A 143      31.546  48.215  -5.395  1.00 12.79           C
+ATOM     28  O   GLU A 143      31.237  48.078  -6.584  1.00 12.97           O
+ATOM     29  CB  GLU A 143      31.461  46.221  -3.834  1.00 11.99           C
+ATOM     30  CG  GLU A 143      32.199  45.096  -3.030  1.00 12.94           C
+ATOM     31  CD  GLU A 143      32.974  44.075  -3.867  1.00 15.46           C
+ATOM     32  OE1 GLU A 143      33.029  44.153  -5.112  1.00 16.48           O
+ATOM     33  OE2 GLU A 143      33.563  43.175  -3.251  1.00 16.80           O1-
+ATOM     35  C   THR A 145      33.305  50.876  -8.608  1.00 12.68           C
+ATOM     36  N   HIS A 146      33.071  49.560  -8.540  1.00 12.36           N
+ATOM     37  CA  HIS A 146      32.869  48.794  -9.756  1.00 13.33           C
+ATOM     38  CB  HIS A 146      32.643  47.318  -9.470  1.00 12.80           C
+ATOM     39  CG  HIS A 146      33.919  46.567  -9.214  1.00 14.00           C
+ATOM     40  CD2 HIS A 146      34.290  45.747  -8.206  1.00 12.81           C
+ATOM     41  ND1 HIS A 146      34.992  46.623 -10.084  1.00 12.00           N
+ATOM     42  CE1 HIS A 146      35.970  45.863  -9.617  1.00 15.40           C
+ATOM     43  NE2 HIS A 146      35.552  45.289  -8.506  1.00 11.49           N
+ATOM     45  CG  TYR A 157      36.255  42.005 -14.146  1.00 19.06           C
+ATOM     46  CD1 TYR A 157      36.607  43.119 -13.385  1.00 20.01           C
+ATOM     47  CD2 TYR A 157      36.279  40.754 -13.542  1.00 19.69           C
+ATOM     48  CE1 TYR A 157      36.970  42.993 -12.047  1.00 18.89           C
+ATOM     49  CE2 TYR A 157      36.645  40.612 -12.193  1.00 20.96           C
+ATOM     50  CZ  TYR A 157      36.971  41.732 -11.462  1.00 20.87           C
+ATOM     51  OH  TYR A 157      37.304  41.604 -10.142  1.00 21.10           O
+ATOM     53  O   GLY A 162      40.788  44.717 -13.313  1.00 13.40           O
+ATOM     55  CA  ASN A 165      39.280  47.961 -13.045  1.00 11.01           C
+ATOM     56  C   ASN A 165      39.422  47.647 -11.555  1.00 11.21           C
+ATOM     57  O   ASN A 165      38.940  48.402 -10.709  1.00 10.60           O
+ATOM     58  CB  ASN A 165      38.414  46.889 -13.730  1.00 12.11           C
+ATOM     59  CG  ASN A 165      36.977  46.958 -13.330  1.00 13.51           C
+ATOM     60  ND2 ASN A 165      36.082  46.882 -14.307  1.00 12.19           N
+ATOM     61  OD1 ASN A 165      36.661  47.056 -12.155  1.00 13.28           O
+ATOM     62  N   GLU A 166      40.119  46.539 -11.250  1.00 11.43           N
+ATOM     63  CA  GLU A 166      40.413  46.155  -9.851  1.00 10.59           C
+ATOM     64  C   GLU A 166      41.166  47.218  -9.055  1.00 10.24           C
+ATOM     65  O   GLU A 166      40.744  47.581  -7.940  1.00  9.90           O
+ATOM     66  CB  GLU A 166      41.140  44.803  -9.783  1.00 10.41           C
+ATOM     67  CG  GLU A 166      40.169  43.654  -9.741  1.00 11.01           C
+ATOM     68  CD  GLU A 166      39.267  43.743  -8.537  1.00 15.78           C
+ATOM     69  OE1 GLU A 166      39.745  43.921  -7.380  1.00 14.70           O
+ATOM     70  OE2 GLU A 166      38.063  43.637  -8.765  1.00 12.05           O1-
+ATOM     71  N   ALA A 167      42.243  47.759  -9.628  1.00 11.39           N
+ATOM     72  C   ILE A 168      39.558  51.420  -8.190  1.00 10.98           C
+ATOM     73  N   SER A 169      39.076  50.192  -8.040  1.00 10.62           N
+ATOM     74  CA  SER A 169      38.198  49.860  -6.904  1.00 11.23           C
+ATOM     75  C   SER A 169      38.998  49.850  -5.589  1.00 11.38           C
+ATOM     76  O   SER A 169      38.484  50.325  -4.547  1.00 11.01           O
+ATOM     77  CB  SER A 169      37.462  48.529  -7.144  1.00 12.04           C
+ATOM     78  OG  SER A 169      36.259  48.790  -7.899  1.00 11.91           O
+ATOM     79  N   ASP A 170      40.233  49.353  -5.645  1.00 11.74           N
+ATOM     80  CA  ASP A 170      41.142  49.411  -4.436  1.00 11.68           C
+ATOM     81  CB  ASP A 170      42.424  48.581  -4.612  1.00 11.14           C
+ATOM     82  CG  ASP A 170      42.166  47.082  -4.475  1.00 10.59           C
+ATOM     83  OD1 ASP A 170      41.076  46.659  -3.990  1.00 11.83           O
+ATOM     84  OD2 ASP A 170      43.010  46.278  -4.909  1.00 12.10           O1-
+ATOM     86  NE  ARG A 203      42.877  43.716  -3.830  1.00 12.26           N
+ATOM     87  CZ  ARG A 203      41.692  43.111  -3.748  1.00 11.93           C
+ATOM     88  NH1 ARG A 203      41.631  41.782  -3.754  1.00 12.22           N1+
+ATOM     89  NH2 ARG A 203      40.579  43.829  -3.675  1.00 11.99           N
+ATOM     91  C   VAL A 230      43.021  41.431 -10.925  1.00 14.80           C
+ATOM     92  O   VAL A 230      43.311  42.599 -10.716  1.00 14.05           O
+ATOM     93  CB  VAL A 230      41.294  41.138 -12.775  1.00 14.48           C
+ATOM     94  CG2 VAL A 230      40.404  40.176 -11.957  1.00 14.82           C
+ATOM     95  N   HIS A 231      42.923  40.503  -9.959  1.00 15.61           N
+ATOM     96  CA  HIS A 231      43.233  40.790  -8.542  1.00 15.70           C
+ATOM     97  CB  HIS A 231      42.434  39.898  -7.566  1.00 15.19           C
+ATOM     98  CG  HIS A 231      40.955  40.000  -7.734  1.00 16.56           C
+ATOM     99  CD2 HIS A 231      40.056  40.844  -7.174  1.00 17.34           C
+ATOM    100  ND1 HIS A 231      40.241  39.168  -8.573  1.00 16.47           N
+ATOM    101  CE1 HIS A 231      38.960  39.505  -8.529  1.00 15.36           C
+ATOM    102  NE2 HIS A 231      38.825  40.518  -7.687  1.00 15.29           N
+HETATM  104  N   ILE A1001      35.271  41.187  -4.048  1.00 16.78           N
+HETATM  105  CA  ILE A1001      36.473  41.816  -3.412  1.00 17.77           C
+HETATM  106  C   ILE A1001      37.764  41.046  -3.756  1.00 18.36           C
+HETATM  107  O   ILE A1001      38.832  41.640  -3.838  1.00 16.99           O
+HETATM  108  CB  ILE A1001      36.323  42.040  -1.875  1.00 17.98           C
+HETATM  109  CG1 ILE A1001      37.464  42.899  -1.320  1.00 16.76           C
+HETATM  110  CG2 ILE A1001      36.360  40.753  -1.098  1.00 20.77           C
+HETATM  111  CD1 ILE A1001      37.576  44.234  -1.913  1.00 17.79           C
+HETATM  112  N   TYR A1002      37.653  39.739  -3.981  1.00 18.85           N
+HETATM  113  CA  TYR A1002      38.834  38.984  -4.422  1.00 20.77           C
+HETATM  114  C   TYR A1002      38.430  37.858  -5.360  1.00 21.31           C
+HETATM  115  O   TYR A1002      39.302  37.219  -5.983  1.00 22.07           O
+HETATM  116  CB  TYR A1002      39.632  38.473  -3.225  1.00 21.20           C
+HETATM  117  OXT TYR A1002      37.226  37.594  -5.543  1.00 22.10           O
+HETATM  118  O   HOH A2080      32.747  43.340 -10.935  1.00 44.97           O
+HETATM  119  O   HOH A2097      33.150  44.796 -12.822  1.00 35.29           O
+HETATM  120  O   HOH A2190      32.628  42.780  -7.708  1.00 17.31           O
+HETATM  121  O   HOH A2206      36.319  49.625 -10.585  1.00 16.17           O
+HETATM  122  O   HOH A2210      33.342  47.349 -12.959  1.00 24.18           O
+HETATM  123  O   HOH A2284      42.614  44.224  -6.731  1.00 15.85           O
+HETATM  125 ZN   ZN  A1317      36.762  44.115  -7.277  1.00 15.32          ZN+2
+END
+""")
+# XXX this is the missing water
+#HETATM  124  O   HOH A2351      36.007  42.038  -6.782  1.00 10.54           O
+  xrs = pdb_in.input.xray_structure_simple(cryst1_substitution_buffer_layer=5)
+  if write_files:
+    pdb_file = file_base + ".pdb"
+    if (os.path.exists(pdb_file)) :
+      os.remove(pdb_file)
+    with open(pdb_file, "w") as f:
+      f.write(pdb_in.hierarchy.as_pdb_string(crystal_symmetry=xrs))
+    return pdb_file
+  else:
+    return pdb_in, xrs
+def write_pdb_input_magnessium_binding (file_base = "mg_frag", write_files = True):
+  import iotbx.pdb.hierarchy
+  pdb_in = iotbx.pdb.hierarchy.input(source_info=None, pdb_string="""\
+REMARK  fragment derived from 3ip0
+ATOM      1  N   ASP A  95     -12.581   4.250  10.804  1.00  5.08           N
+ATOM      2  CA  ASP A  95     -11.950   3.273   9.927  1.00  5.04           C
+ATOM      3  C   ASP A  95     -11.505   2.089  10.784  1.00  4.97           C
+ATOM      4  O   ASP A  95     -10.680   2.251  11.678  1.00  5.43           O
+ATOM      5  CB  ASP A  95     -10.737   3.916   9.223  1.00  5.26           C
+ATOM      6  CG  ASP A  95     -10.103   3.032   8.160  1.00  5.03           C
+ATOM      7  OD1 ASP A  95     -10.879   2.437   7.372  1.00  5.23           O
+ATOM      8  OD2 ASP A  95      -8.836   2.949   8.149  1.00  5.44           O1-
+TER       9      ASP A  95
+ATOM     10  N   ASP A  97      -9.724  -1.416  10.219  1.00  4.47           N
+ATOM     11  CA  ASP A  97      -8.951  -2.179   9.250  1.00  4.64           C
+ATOM     12  C   ASP A  97      -8.480  -3.469   9.910  1.00  4.67           C
+ATOM     13  O   ASP A  97      -7.947  -3.449  11.042  1.00  5.63           O
+ATOM     14  CB  ASP A  97      -7.746  -1.380   8.744  1.00  5.20           C
+ATOM     15  CG  ASP A  97      -8.132  -0.223   7.828  1.00  5.06           C
+ATOM     16  OD1 ASP A  97      -9.317  -0.118   7.445  1.00  5.31           O
+ATOM     17  OD2 ASP A  97      -7.197   0.558   7.508  1.00  5.74           O1-
+TER      18      ASP A  97
+HETATM   19  PA  APC A 171     -11.494   1.693   3.101  1.00  5.93           P
+HETATM   20  PB  APC A 171      -8.904   2.838   3.989  1.00  5.40           P
+HETATM   21  PG  APC A 171      -6.189   1.883   3.824  1.00  5.44           P
+HETATM   22  C5' APC A 171     -11.917  -0.062   1.209  1.00  6.23           C
+HETATM   23  O5' APC A 171     -11.907   0.228   2.621  1.00  5.98           O
+HETATM   24  C4' APC A 171     -12.005  -1.551   1.015  1.00  6.31           C
+HETATM   25  O4' APC A 171     -10.811  -2.160   1.564  1.00  6.21           O
+HETATM   26  C3' APC A 171     -13.142  -2.283   1.727  1.00  6.94           C
+HETATM   27  O3' APC A 171     -14.374  -2.203   1.097  1.00  8.42           O
+HETATM   28  C2' APC A 171     -12.584  -3.692   1.886  1.00  6.56           C
+HETATM   29  O2' APC A 171     -13.250  -4.576   0.968  1.00  8.16           O
+HETATM   30  C1' APC A 171     -11.120  -3.552   1.530  1.00  6.15           C
+HETATM   31  N1  APC A 171      -9.299  -4.552   6.318  1.00  5.61           N
+HETATM   32  O1A APC A 171     -12.241   2.714   2.317  1.00  6.59           O
+HETATM   33  O1B APC A 171      -9.519   4.202   3.986  1.00  6.49           O
+HETATM   34  O1G APC A 171      -5.931   1.987   5.301  1.00  5.83           O
+HETATM   35  C2  APC A 171     -10.353  -3.827   5.903  1.00  5.64           C
+HETATM   36  O2A APC A 171     -11.698   1.666   4.588  1.00  5.88           O
+HETATM   37  O2B APC A 171      -8.855   2.079   5.313  1.00  5.21           O
+HETATM   38  O2G APC A 171      -5.035   2.418   2.993  1.00  6.01           O
+HETATM   39  C3A APC A 171      -9.734   1.834   2.758  1.00  5.70           C
+HETATM   40  N3  APC A 171     -10.798  -3.610   4.683  1.00  5.70           N
+HETATM   41  O3B APC A 171      -7.396   2.924   3.462  1.00  5.24           O
+HETATM   42  O3G APC A 171      -6.675   0.503   3.400  1.00  6.98           O
+HETATM   43  C4  APC A 171     -10.034  -4.246   3.763  1.00  5.51           C
+HETATM   44  C5  APC A 171      -8.964  -5.056   4.033  1.00  5.40           C
+HETATM   45  C6  APC A 171      -8.569  -5.207   5.373  1.00  5.37           C
+HETATM   46  N6  APC A 171      -7.500  -5.912   5.734  1.00  5.71           N
+HETATM   47  N7  APC A 171      -8.414  -5.587   2.862  1.00  5.73           N
+HETATM   48  C8  APC A 171      -9.167  -5.072   1.920  1.00  6.02           C
+HETATM   49  N9  APC A 171     -10.168  -4.254   2.383  1.00  5.71           N
+HETATM   50  N1 AHHR A 181      -3.249   8.723   8.653  0.45  3.59           N
+HETATM   51  C2 AHHR A 181      -3.170   8.473   9.936  0.45  3.27           C
+HETATM   52  N2 AHHR A 181      -2.312   9.188  10.698  0.45  4.00           N
+HETATM   53  N3 AHHR A 181      -3.822   7.446  10.541  0.45  3.91           N
+HETATM   54  C4 AHHR A 181      -4.648   6.566   9.912  0.45  3.74           C
+HETATM   55  O4 AHHR A 181      -5.221   5.635  10.511  0.45  4.44           O
+HETATM   56  N5 AHHR A 181      -5.483   5.915   7.737  0.45  3.23           N
+HETATM   57  C6 AHHR A 181      -5.582   6.218   6.448  0.45  3.92           C
+HETATM   58  C6AAHHR A 181      -6.336   5.270   5.533  0.45  4.40           C
+HETATM   59  O6AAHHR A 181      -7.145   4.378   6.216  0.45  4.54           O
+HETATM   60  C7 AHHR A 181      -4.896   7.322   5.892  0.45  5.79           C
+HETATM   61  N8 AHHR A 181      -4.134   8.150   6.611  0.45  5.53           N
+HETATM   62  C9 AHHR A 181      -4.046   7.908   7.922  0.45  3.58           C
+HETATM   63  C10AHHR A 181      -4.762   6.791   8.479  0.45  3.12           C
+HETATM   64  N1 BHHS A 182      -3.604   8.719   8.748  0.55  6.49           N
+HETATM   65  C2 BHHS A 182      -3.478   8.455  10.036  0.55  6.53           C
+HETATM   66  N2 BHHS A 182      -2.673   9.243  10.809  0.55  6.01           N
+HETATM   67  N3 BHHS A 182      -4.109   7.429  10.645  0.55  5.05           N
+HETATM   68  C4 BHHS A 182      -4.896   6.564   9.963  0.55  5.93           C
+HETATM   69  O4 BHHS A 182      -5.536   5.719  10.560  0.55  5.29           O
+HETATM   70  N5 BHHS A 182      -5.756   5.984   7.764  0.55  7.30           N
+HETATM   71  C6 BHHS A 182      -6.698   5.438   5.588  0.55  6.59           C
+HETATM   72  C6ABHHS A 182      -5.887   6.282   6.483  0.55  5.89           C
+HETATM   73  O6ABHHS A 182      -7.411   4.466   6.183  0.55  6.94           O
+HETATM   74  O6BBHHS A 182      -6.769   5.796   4.398  0.55  7.23           O
+HETATM   75  C7 BHHS A 182      -5.274   7.421   5.955  0.55  5.00           C
+HETATM   76  N8 BHHS A 182      -4.530   8.228   6.695  0.55  4.94           N
+HETATM   77  C9 BHHS A 182      -4.383   7.927   7.998  0.55  5.58           C
+HETATM   78  C10BHHS A 182      -5.029   6.797   8.531  0.55  6.96           C
+HETATM   79  O   HOH A 201     -12.056  -0.140   6.826  1.00  5.82           O
+HETATM   80  O   HOH A 202     -10.078  -0.655   4.762  1.00  6.16           O
+HETATM   81  O   HOH A 203      -5.851   3.057   8.110  1.00  6.43           O
+HETATM   82  O   HOH A 205      -7.904   1.644  10.650  1.00  6.56           O
+HETATM   83  O   HOH A 216     -13.376  -2.280   5.233  1.00  7.21           O
+HETATM   84  O   HOH A 219      -5.353   2.683  10.917  1.00  8.33           O
+HETATM   85  O   HOH A 243      -8.078   5.439   9.608  1.00  9.50           O
+HETATM   86  O   HOH A 264     -14.344   0.622   4.874  1.00 14.43           O
+HETATM   87  O  AHOH A 499      -7.735  -1.646   4.892  0.50  5.41           O
+HETATM   88  O  BHOH A 499      -7.601  -1.751   4.259  0.50  8.56           O
+HETATM   89  O  BHOH A 501     -13.472   3.920   6.947  0.56  7.54           O
+HETATM   90  O  BHOH A 504      -9.634   5.594   6.224  0.25  5.98           O
+HETATM   91  O  CHOH A 504      -9.119   6.099   7.366  0.25  7.90           O
+HETATM   92 MG   MG  A 161     -10.440   0.924   6.059  1.00  5.29      MG  MG
+HETATM   93 MG   MG  A 162      -7.326   2.422   6.749  1.00  5.40      MG  MG
+""")
+  xrs = pdb_in.input.xray_structure_simple(cryst1_substitution_buffer_layer=5)
+  if write_files:
+    pdb_file = file_base + ".pdb"
+    if (os.path.exists(pdb_file)) :
+      os.remove(pdb_file)
+    with open(pdb_file, "w") as f:
+      f.write(pdb_in.hierarchy.as_pdb_string(crystal_symmetry=xrs))
+    return pdb_file
+  else:
+    return pdb_in, xrs
