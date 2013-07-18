@@ -116,6 +116,7 @@ def sort_hetatms (
   assert (n_atoms == len(xray_structure.scatterers()))
   ignore_selection = flex.bool(n_atoms, False)
   mm_selection = flex.bool(n_atoms, False)
+  hd_selection = xray_structure.hd_selection()
   sites_frac = xray_structure.sites_frac()
   new_sites_cart = xray_structure.sites_cart()
   pair_asu_table = xray_structure.pair_asu_table(
@@ -218,11 +219,13 @@ def sort_hetatms (
       for i_seq, atom in zip(i_seqs, rg_atoms) :
         if (params.set_hetatm_record) :
           atom.hetero = True
+        if (hd_selection[i_seq]) :
+          continue
         site_i = sites_frac[i_seq]
         asu_dict = asu_table[i_seq]
         rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq, 0).inverse()
         for j_seq, j_sym_groups in asu_dict.items() :
-          if (not mm_selection[j_seq]) :
+          if (hd_selection[j_seq]) or (not mm_selection[j_seq]) :
             continue
           site_j = sites_frac[j_seq]
           for j_sym_group in j_sym_groups:
