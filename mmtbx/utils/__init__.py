@@ -1831,8 +1831,14 @@ def fmodel_simple(f_obs,
   return fmodel
 
 class process_command_line_args(object):
-  def __init__(self, args, cmd_cs=None, master_params=None, log=None,
-               home_scope=None, suppress_symmetry_related_errors=False):
+  def __init__(self,
+               args,
+               cmd_cs=None,
+               master_params=None,
+               log=None,
+               home_scope=None,
+               suppress_symmetry_related_errors=False):
+    from iotbx import file_reader
     self.log = log
     self.pdb_file_names   = []
     self.cif_objects      = []
@@ -1845,6 +1851,8 @@ class process_command_line_args(object):
     self.cmd_cs = cmd_cs
     self.reflection_file_server = None
     self.pdb_file_object = None
+    self.ccp4_map = None
+    self.ccp4_map_file_name = None
     crystal_symmetries = []
     if(master_params is not None):
       assert home_scope is None
@@ -1881,6 +1889,11 @@ class process_command_line_args(object):
              pdb.is_pdb_mmcif_file(file_name=arg_file)):
           self.pdb_file_names.append(arg_file)
           arg_is_processed = True
+        elif(file_reader.any_file(arg_file).file_type == "ccp4_map"):
+          assert [self.ccp4_map, self.ccp4_map_file_name].count(None)==2
+          from iotbx import ccp4_map
+          self.ccp4_map = iotbx.ccp4_map.map_reader(file_name=arg_file)
+          self.ccp4_map_file_name = arg_file
         else:
           try:
             cif_object = []

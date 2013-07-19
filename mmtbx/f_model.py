@@ -1081,6 +1081,65 @@ class manager(manager_mixin):
     self.update_core(f_part2 = fh_kb, f_part2_twin = fh_kb_twin)
     self.k_h, self.b_h = kbest, bbest
 
+  def update_f_part1_all(self, purpose, map_neg_cutoff=None,
+                     refinement_neg_cutoff=-2.5, refine_threshold=True):
+    zero = flex.complex_double(self.f_calc().data().size(),0)
+    zero_a = self.f_calc().customized_copy(data = zero)
+    self.update_core(f_part1 = zero_a)
+    mp = mmtbx.masks.mask_master_params.extract()
+    mp.solvent_radius = mp.solvent_radius/2
+    mp.shrink_truncation_radius = mp.shrink_truncation_radius/2
+    mmtbx_masks_asu_mask_obj = mmtbx.masks.asu_mask(
+      xray_structure = self.xray_structure.expand_to_p1(sites_mod_positive=True),
+      d_min          = self.f_obs().d_min(),
+      mask_params    = mp)
+    bulk_solvent_mask = mmtbx_masks_asu_mask_obj.mask_data_whole_uc()
+    crystal_gridding = maptbx.crystal_gridding(
+      unit_cell             = self.xray_structure.unit_cell(),
+      space_group_info      = self.f_obs().space_group_info(),
+      pre_determined_n_real = bulk_solvent_mask.focus())
+    mc = self.electron_density_map(update_f_part1 = False).map_coefficients(
+      map_type   = "mFo-DFc",
+      isotropize = True,
+      exclude_free_r_reflections = False)
+    fft_map = mc.fft_map(crystal_gridding = crystal_gridding)
+    fft_map.apply_sigma_scaling()
+    map_data = fft_map.real_map_unpadded() # important: not scaled!
+    maptbx.truncate_between_min_max(
+      map_data = map_data,
+      min      = 0,
+      max      = 2)
+    map_data = map_data*bulk_solvent_mask
+    min_map = flex.min(map_data)
+    if(min_map == 0): return
+    assert min_map < 0
+    f_diff = mc.structure_factors_from_map(
+      map            = map_data,
+      use_scale      = True,
+      anomalous_flag = False,
+      use_sg         = False)
+    fm = manager(
+      f_obs        = self.f_obs(),
+      r_free_flags = self.r_free_flags(),
+      f_calc       = self.f_model(), # important: not f_model_scaled_with_k1() !
+      f_mask       = f_diff)
+    fm.update_all_scales(remove_outliers=False, update_f_part1_for=None)
+    rw, rf = fm.r_work(), fm.r_free()
+    # put back into self: tricky!
+    kt  = self.k_isotropic()*self.k_anisotropic()
+    ktp = fm.k_isotropic()*fm.k_anisotropic()
+    assert kt.all_ne(0)
+    self.update_core(
+      k_isotropic   = flex.double(kt.size(),1),
+      k_anisotropic = kt*ktp,
+      f_part1       = f_diff.customized_copy(
+        data = f_diff.data()*(1/kt)*fm.k_masks()[0]))
+    # normally it holds up to 1.e-6, so if assertion below breakes then
+    # there must be something terribly wrong!
+    assert approx_equal(rw, self.r_work(), 1.e-4)
+    assert approx_equal(rf, self.r_free(), 1.e-4)
+    self.f_part_1_updated_for_purpose="map"
+
   def update_f_part1(self, purpose, map_neg_cutoff=None,
                      refinement_neg_cutoff=-2.5, refine_threshold=True):
     if(purpose=="refinement"):
