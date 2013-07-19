@@ -162,17 +162,30 @@ def run (args, log=sys.stdout, run_in_current_working_directory=False) :
     mtz_file = file_reader.any_file(params.mtz_file, force_type="hkl")
   all_labels=[]
   if params.show_maps or len(params.labels) == 0 :
-    for miller_array in mtz_file.file_server.miller_arrays:
-      if(miller_array.is_complex_array()):
-        all_labels.append(miller_array.info().label_string())
+    map_labels = utils.get_map_coeff_labels(mtz_file.file_server,
+      exclude_anomalous=False,
+      exclude_fmodel=not params.include_fmodel,
+      keep_array_labels=True)
+    if (not params.include_fmodel) :
+      all_labels = utils.get_map_coeff_labels(mtz_file.file_server,
+        exclude_anomalous=False,
+        exclude_fmodel=False,
+        keep_array_labels=True)
+    else :
+      all_labels = map_labels
     if len(all_labels) > 0 :
       print >> log, "Available map coefficients in this MTZ file:"
       for labels in all_labels :
         if isinstance(labels, str) :
-          labels = [labels]
-        extra = ""
-        params.labels.append(labels)
-        print >> log, "  %s%s" % (" ".join(labels), extra)
+          labels_list = [labels]
+        else :
+          labels_list = labels
+        if (not labels in map_labels) :
+          extra = " (skipping, add include_fmodel=True to include)"
+        else :
+          extra = ""
+          params.labels.append(labels_list)
+        print >> log, "  %s%s" % (labels_list, extra)
     else :
       raise Sorry("No map coefficients found in this MTZ file.")
     if params.show_maps : return False
