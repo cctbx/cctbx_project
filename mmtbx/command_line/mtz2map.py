@@ -160,21 +160,18 @@ def run (args, log=sys.stdout, run_in_current_working_directory=False) :
       os.path.basename(params.mtz_file))[0]
   if mtz_file is None :
     mtz_file = file_reader.any_file(params.mtz_file, force_type="hkl")
+  all_labels=[]
   if params.show_maps or len(params.labels) == 0 :
-    all_labels = utils.get_map_coeff_labels(mtz_file.file_server,
-      exclude_anomalous=False,
-      exclude_fmodel=not params.include_fmodel,
-      keep_array_labels=True)
+    for miller_array in mtz_file.file_server.miller_arrays:
+      if(miller_array.is_complex_array()):
+        all_labels.append(miller_array.info().label_string())
     if len(all_labels) > 0 :
       print >> log, "Available map coefficients in this MTZ file:"
       for labels in all_labels :
         if isinstance(labels, str) :
           labels = [labels]
-        if labels[0] in ["FC", "Fcalc"] :
-          extra = " (skipping)"
-        else :
-          extra = ""
-          params.labels.append(labels)
+        extra = ""
+        params.labels.append(labels)
         print >> log, "  %s%s" % (" ".join(labels), extra)
     else :
       raise Sorry("No map coefficients found in this MTZ file.")
