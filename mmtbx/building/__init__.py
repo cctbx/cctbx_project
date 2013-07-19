@@ -168,7 +168,6 @@ class box_build_refine_base (object) :
       target_map_rsr=None,
       debug=False) :
     adopt_init_args(self, locals())
-    from mmtbx.command_line import real_space_refine
     import mmtbx.restraints
     import mmtbx.utils
     from scitbx.array_family import flex
@@ -179,9 +178,9 @@ class box_build_refine_base (object) :
         crystal_symmetry=xray_structure,
         out=out)
     self.iselection = selection.iselection()
-    grm = real_space_refine.get_geometry_restraints_manager(
-      processed_pdb_file = self.processed_pdb_file,
-      xray_structure     = self.xray_structure)
+    grm = mmtbx.restraints.manager(
+      geometry=self.processed_pdb_file.geometry_restraints_manager(show_energies=False),
+      normalization = True)
     self.selection_within = xray_structure.selection_within(
       radius    = selection_buffer_radius,
       selection = selection)
