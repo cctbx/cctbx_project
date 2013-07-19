@@ -5,7 +5,9 @@ from cctbx.array_family import flex
 import time
 from mmtbx import monomer_library
 from libtbx import group_args
-import mmtbx.command_line.real_space_refine
+import mmtbx.restraints
+import mmtbx.refinement.real_space
+import mmtbx.refinement.real_space.fit_residues
 
 pdb_answer = """\
 CRYST1   16.960   19.455   19.841  90.00  90.00  90.00 P 1
@@ -96,8 +98,9 @@ def exercise(use_slope, use_torsion_search, use_rotamer_iterator,
     data             = target_map,
     miller_array     = f_calc,
     crystal_gridding = fft_map)
-  grm = mmtbx.command_line.real_space_refine.get_geometry_restraints_manager(
-    processed_pdb_file = processed_pdb_file, xray_structure = xrs_poor)
+  grm = mmtbx.restraints.manager(
+    geometry=processed_pdb_file.geometry_restraints_manager(show_energies=False),
+    normalization = True)
   sm = mmtbx.refinement.real_space.structure_monitor(
     pdb_hierarchy               = pdb_hierarchy_poor,
     xray_structure              = xrs_poor,

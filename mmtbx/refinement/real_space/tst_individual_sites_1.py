@@ -1,10 +1,10 @@
 from __future__ import division
 from scitbx.array_family import flex
-import mmtbx.command_line.real_space_refine as rs
 from libtbx import group_args
 from libtbx.utils import user_plus_sys_time
 import random
 from mmtbx.refinement.real_space import individual_sites
+import mmtbx
 
 pdb_str_1 = """\
 CRYST1   19.547   20.035   19.435  90.00  90.00  90.00 P 1
@@ -82,17 +82,15 @@ END
 """
 
 def get_pdb_inputs(pdb_str):
-  raw_records = flex.std_string(pdb_str.splitlines())
-  processed_pdb_file = rs.get_processed_pdb_object(raw_records=raw_records,
-    rama_potential=None, log = None)
-  xrs = processed_pdb_file.xray_structure(show_summary = False)
-  geometry_restraints_manager = rs.get_geometry_restraints_manager(
-    processed_pdb_file = processed_pdb_file,
-    xray_structure     = xrs)
-  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  ppf = mmtbx.utils.process_pdb_file_srv().process_pdb_files(
+    raw_records=pdb_str.splitlines())[0]
+  xrs = ppf.xray_structure(show_summary = False)
+  restraints_manager = mmtbx.restraints.manager(
+    geometry      = ppf.geometry_restraints_manager(show_energies = False),
+    normalization = True)
   return group_args(
-    ph  = pdb_hierarchy,
-    grm = geometry_restraints_manager,
+    ph  = ppf.all_chain_proxies.pdb_hierarchy,
+    grm = restraints_manager,
     xrs = xrs)
 
 def exercise(d_min = 3.5):

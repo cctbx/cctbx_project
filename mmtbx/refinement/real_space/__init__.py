@@ -49,7 +49,7 @@ class structure_monitor(object):
     adopt_init_args(self, locals())
     self.unit_cell = self.xray_structure.unit_cell()
     self.xray_structure = xray_structure.deep_copy_scatterers()
-    #XXX assert xrs are identical !!!
+    self.xray_structure_start = xray_structure.deep_copy_scatterers()
     self.states_collector = mmtbx.utils.states(
       pdb_hierarchy  = self.pdb_hierarchy,
       xray_structure = self.xray_structure)
@@ -61,6 +61,7 @@ class structure_monitor(object):
     self.rmsd_b = None
     self.rmsd_a = None
     self.dist_from_start = 0
+    self.dist_from_previous = 0
     self.number_of_rotamer_outliers = 0
     self.residue_monitors = None
     self.clashing_residue_i_seqs = None
@@ -137,8 +138,8 @@ class structure_monitor(object):
     es = self.geometry_restraints_manager.energies_sites(sites_cart=sites_cart)
     self.rmsd_a = es.angle_deviations()[2]
     self.rmsd_b = es.bond_deviations()[2]
-    #self.dist_from_start = flex.mean(self.xray_structure_start.distances(
-    #  other = self.xray_structure))
+    self.dist_from_start = flex.mean(self.xray_structure_start.distances(
+      other = self.xray_structure))
     #assert self.dist_from_start < 1.e-6
     self.number_of_rotamer_outliers = 0
     for r in self.residue_monitors:
@@ -196,15 +197,21 @@ class structure_monitor(object):
 
   def show(self, prefix="", log=None):
     if(log is None): log = sys.stdout
-    fmt="%s cc(cell,atoms): %6.3f %6.3f rmsd(b,a): %6.4f %5.2f moved: %6.3f rota: %3d"
+    fmt = """%s Map CC (whole unit cell):  %-6.3f
+%s Map CC (around atoms):     %-6.3f
+%s rmsd (bonds):              %-6.4f
+%s rmsd (angles):             %-5.2f
+%s Dist. moved from start:    %-6.3f
+%s Dist. moved from previous: %-6.3f
+%s Rotamer outliers:          %-3d"""
     print >> log, fmt%(
-      prefix,
-      self.map_cc_whole_unit_cell,
-      self.map_cc_around_atoms,
-      self.rmsd_b,
-      self.rmsd_a,
-      self.dist_from_start,
-      self.number_of_rotamer_outliers)
+      prefix, self.map_cc_whole_unit_cell,
+      prefix, self.map_cc_around_atoms,
+      prefix, self.rmsd_b,
+      prefix, self.rmsd_a,
+      prefix, self.dist_from_start,
+      prefix, self.dist_from_previous,
+      prefix, self.number_of_rotamer_outliers)
 
   def show_residues(self, map_cc_all=0.8, map_cc_sidechain=0.8, log=None):
     if(log is None): log = sys.stdout
@@ -249,6 +256,8 @@ class structure_monitor(object):
             residue_sites_cart_new)
       xray_structure = xray_structure.replace_sites_cart(sites_cart_)
     # re-initialize monitor
+    self.dist_from_previous = flex.mean(self.xray_structure.distances(
+      other = xray_structure))
     self.xray_structure = xray_structure
     self.pdb_hierarchy.adopt_xray_structure(xray_structure)
     self.initialize()
