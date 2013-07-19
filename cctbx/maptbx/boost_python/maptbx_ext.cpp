@@ -367,6 +367,15 @@ namespace {
       arg("cutoffp"),
       arg("cutoffm")));
 
+    def("truncate_between_min_max",
+      (void(*)
+        (af::ref<double, af::c_grid<3> >,
+         double const&,
+         double const&)) truncate_between_min_max, (
+      arg("map_data"),
+      arg("min"),
+      arg("max")));
+
     def("truncate",
       (void(*)
         (af::ref<double, af::c_grid<3> >,

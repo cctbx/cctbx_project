@@ -210,6 +210,21 @@ void cut_by(
 }
 
 template <typename DataType>
+void truncate_between_min_max(
+       af::ref<DataType, af::c_grid<3> > map_data,
+       DataType const& min,
+       DataType const& max)
+{
+  af::tiny<int, 3> a = map_data.accessor();
+  for(int i = 0; i < a[0]; i++) {
+    for(int j = 0; j < a[1]; j++) {
+      for(int k = 0; k < a[2]; k++) {
+         DataType md = map_data(i,j,k);
+         if(md > min && md < max) map_data(i,j,k) = 0;
+  }}}
+}
+
+template <typename DataType>
 void truncate(
        af::ref<DataType, af::c_grid<3> > map_data,
        DataType const& standard_deviation,
