@@ -863,7 +863,7 @@ def extract_miller_array_from_file(file_name, label=None, type=None, log=None):
     else:
       for ma in miller_arrays:
         if(get_flag(ma=ma) and (ma.info().label_string() == label)):
-          print >> log, "  Selected:", ma.info().labels
+          print >> log, "  Selected:", ma.info().label_string()
           result = ma
   if(result is None):
     msg="""
