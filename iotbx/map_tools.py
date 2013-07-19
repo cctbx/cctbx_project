@@ -605,7 +605,7 @@ class auto_convert_map_coefficients (object) :
 
 def combine_f_phi_and_fom (f, phi, fom=None, weighted=True) :
   if (f.anomalous_flag()) :
-    f = f.merge_bijvoet_mates()
+    f = f.average_bijvoet_mates()
   if (f.is_complex_array()) :
     return f
   else :
