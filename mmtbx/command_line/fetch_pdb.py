@@ -31,9 +31,9 @@ fetch_pdb
     .type = choice
     .caption = Download_PDB_file(s) Download_all_data Download_all_data_and_convert_CIF_to_MTZ Download_all_data_and_create_maps
     .style = bold
-  site = *rcsb pdbe
+  site = *rcsb pdbe pdbj
     .type = choice
-    .caption = RCSB PDBe
+    .caption = RCSB PDBe PDBj
     .short_caption = Mirror site
     .style = bold
 }""")
@@ -86,6 +86,7 @@ Command-line options:
   convert_to_mtz = maps = fill_maps = False
   data_type = "pdb"
   format = "pdb"
+  mirror = "rcsb"
   ids = []
   for arg in args :
     if (arg == "--all") :
@@ -107,15 +108,16 @@ Command-line options:
       format = "cif"
     elif (arg.startswith("--mirror=")) :
       mirror = arg.split("=")[1]
-      if (not mirror in ["rcsb", "pdbe"]) :
-        raise Sorry("Unrecognized mirror site '%s' (choices: rcsb, pdbe)" %
+      if (not mirror in ["rcsb", "pdbe", "pdbj"]) :
+        raise Sorry(
+          "Unrecognized mirror site '%s' (choices: rcsb, pdbe, pdbj)" %
           mirror)
     else :
       ids.append(arg)
   if (len(ids) == 0) :
     raise Sorry("No PDB IDs specified.")
-  mirror = "rcsb"
   if (data_type != "all") :
+    #mirror = "rcsb"
     files = []
     for id in ids :
       files.append(get_pdb(id, data_type, mirror, log, format=format))
