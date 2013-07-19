@@ -167,8 +167,8 @@ class merging_stats (object) :
     import cctbx.miller
     from scitbx.array_family import flex
     assert (array.sigmas() is not None)
-    array = array.customized_copy(anomalous_flag=anomalous).map_to_asu()
     array = array.eliminate_sys_absent()
+    array = array.customized_copy(anomalous_flag=anomalous).map_to_asu()
     non_negative_sel = array.sigmas() >= 0
     self.n_neg_sigmas = non_negative_sel.count(False)
     array = array.select(non_negative_sel)
@@ -191,6 +191,12 @@ class merging_stats (object) :
       raise RuntimeError(("No reflections within specified resolution range "+
         "(%g - %g)") % (self.d_max, self.d_min))
     self.completeness = min(self.n_uniq / n_expected, 1.)
+    self.anom_completeness = None
+    # TODO also calculate when anomalous=False, since it is customary to
+    # calculate merging statistics with F+ and F- treated as redundant
+    # observations even when we're going to keep them separate.
+    if (anomalous) :
+      self.anom_completeness = array_merged.anomalous_completeness()
     redundancies = merge.redundancies().data()
     self.redundancies = {}
     for x in sorted(set(redundancies)) :
