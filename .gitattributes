@@ -1450,7 +1450,6 @@ mmtbx/command_line/prune_model.py -text
 mmtbx/command_line/r_factor_statistics.py -text
 mmtbx/command_line/ramalyze.py -text
 mmtbx/command_line/real_space_correlation.py -text
-mmtbx/command_line/real_space_refine.py -text
 mmtbx/command_line/reciprocal_space_arrays.py -text
 mmtbx/command_line/refine_anomalous_substructure.py -text
 mmtbx/command_line/rigid_bond_test.py -text
