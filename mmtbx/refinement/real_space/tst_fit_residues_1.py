@@ -7,7 +7,6 @@ from mmtbx import monomer_library
 import mmtbx.refinement.real_space.fit_residues
 import iotbx.pdb
 from libtbx import group_args
-import mmtbx.command_line.real_space_refine
 
 pdb_str_answer_1="""\n
 CRYST1   41.392   28.519   38.664  90.00  90.00  90.00 P 1
@@ -1543,8 +1542,9 @@ def exercise(pdb_str_answer, pdb_str_poor, d_min, prefix, cntr,
     data             = target_map,
     miller_array     = f_calc,
     crystal_gridding = fft_map)
-  grm = mmtbx.command_line.real_space_refine.get_geometry_restraints_manager(
-    processed_pdb_file = processed_pdb_file, xray_structure = xrs_poor)
+  grm = mmtbx.restraints.manager(
+    geometry=processed_pdb_file.geometry_restraints_manager(show_energies=False),
+    normalization = True)
   sm = mmtbx.refinement.real_space.structure_monitor(
     pdb_hierarchy               = pdb_hierarchy_poor,
     xray_structure              = xrs_poor,

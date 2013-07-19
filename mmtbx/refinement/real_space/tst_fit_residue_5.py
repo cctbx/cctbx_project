@@ -7,7 +7,6 @@ from mmtbx import monomer_library
 import mmtbx.refinement.real_space.fit_residue
 import iotbx.pdb
 from mmtbx.rotamer.rotamer_eval import RotamerEval
-import mmtbx.command_line.real_space_refine as rs
 
 pdb_answer = """\
 CRYST1   14.230   10.991   17.547  90.00  90.00  90.00 P 1
@@ -104,9 +103,9 @@ def exercise(pdb_poor_str, d_min = 1.0, resolution_factor = 0.25):
   xrs_poor = processed_pdb_file.xray_structure()
   sites_cart_poor = xrs_poor.sites_cart()
   pdb_hierarchy_poor.write_pdb_file(file_name = "poor.pdb")
-  grm = rs.get_geometry_restraints_manager(
-    processed_pdb_file = processed_pdb_file,
-    xray_structure     = xrs_poor)
+  grm = mmtbx.restraints.manager(
+    geometry=processed_pdb_file.geometry_restraints_manager(show_energies=False),
+    normalization = True)
   #
   rotamer_manager = RotamerEval()
   get_class = iotbx.pdb.common_residue_names_get_class
