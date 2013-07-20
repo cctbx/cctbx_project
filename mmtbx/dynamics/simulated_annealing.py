@@ -8,7 +8,7 @@ import iotbx.phil
 import sys
 from libtbx import adopt_init_args
 
-master_params_str = """\
+main_params_str = """\
 start_temperature = 5000
   .type = float
 final_temperature = 300
@@ -25,6 +25,9 @@ initial_velocities_zero_fraction = 0
   .expert_level=2
 interleave_minimization = False
   .type = bool
+verbose = -1
+  .type = int
+  .short_caption = Verbosity level
 n_print = 100
   .type = int
   .short_caption = Steps between log output
@@ -33,6 +36,10 @@ update_grads_shift = 0.3
   .type = float
   .short_caption = Update gradient shifts
   .expert_level=2
+"""
+
+master_params_str = """\
+%s
 refine_sites = True
   .caption = "lbfgs refinement of atomic coordinates before sa"
   .short_caption=Refine sites first
@@ -45,10 +52,7 @@ max_number_of_iterations = 25
   .type = int
 mode = every_macro_cycle *second_and_before_last once first first_half
   .type = choice
-verbose = -1
-  .type = int
-  .short_caption = Verbosity level
-"""
+"""%main_params_str
 
 def master_params():
   return iotbx.phil.parse(master_params_str, process_includes=False)
