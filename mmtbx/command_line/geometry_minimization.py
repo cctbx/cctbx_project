@@ -67,6 +67,8 @@ secondary_structure
 {
   include scope mmtbx.secondary_structure.sec_str_master_phil
 }
+use_c_beta_deviation_restraints=True
+  .type = bool
 """
 
 master_params_str = """
@@ -318,7 +320,7 @@ class run(object):
   def process_inputs(self, prefix):
     broadcast(m=prefix, log = self.log)
     self.pdb_file_names = list(self.inputs.pdb_file_names)
-    if (self.params.file_name is not None) :
+    if(self.params.file_name is not None):
       self.pdb_file_names.append(self.params.file_name)
     self.processed_pdb_file = process_input_files(inputs=self.inputs,
       params=self.params, log=self.log)
@@ -334,13 +336,19 @@ class run(object):
       str(self.selection.count(True)),str(self.selection.size()))
     self.generate_restrain_selection()
 
-  def generate_restrain_selection (self) :
-    if self.params.reference_restraints.\
-         restrain_starting_coord_selection is not None:
+  def generate_restrain_selection(self):
+    if(self.params.reference_restraints.\
+       restrain_starting_coord_selection is not None):
       self.restrain_selection = mmtbx.utils.atom_selection(
         all_chain_proxies = self.processed_pdb_file.all_chain_proxies,
-        string = \
+        string =
           self.params.reference_restraints.restrain_starting_coord_selection)
+
+  def addcbetar(self):
+    mmtbx.torsion_restraints.utils.add_c_beta_restraints(
+      geometry      = self.grm.geometry,
+      pdb_hierarchy = self.pdb_hierarchy,
+      log           = self.log)
 
   def get_restraints(self, prefix):
     broadcast(m=prefix, log = self.log)
@@ -349,23 +357,9 @@ class run(object):
       xray_structure     = self.xray_structure,
       params             = self.params,
       log                = self.log)
-    # CDL
-    if self.params.pdb_interpretation.cdl:
-      from mmtbx.conformation_dependent_library import setup_restraints
-      from mmtbx.conformation_dependent_library import update_restraints
-      import time
-      t0=time.time()
-      cdl_proxies=setup_restraints(self.grm)
-      update_restraints(
-        self.pdb_hierarchy,
-        self.grm,
-        current_geometry=self.xray_structure,
-        cdl_proxies=cdl_proxies,
-        verbose=False)
-      cdl_time = time.time()-t0
-      print >> log, "\n  Time to apply CDL : %0.2fs" % (time.time()-t0)
+    if(self.params.use_c_beta_deviation_restraints): self.addcbetar()
     # reference
-    if self.restrain_selection is not None:
+    if(self.restrain_selection is not None):
       restrain_sites_cart = self.processed_pdb_file.all_chain_proxies.\
         sites_cart.deep_copy().select(self.restrain_selection)
       self.grm.geometry.generic_restraints_manager.reference_manager.\
@@ -373,16 +367,12 @@ class run(object):
           sites_cart=restrain_sites_cart,
           selection=self.restrain_selection,
           sigma=self.params.reference_restraints.coordinate_sigma)
-      ##### sanity check #####
-      assert(self.grm.geometry.
-             generic_restraints_manager.flags.reference==True)
-      assert(self.grm.geometry.
-             generic_restraints_manager.reference_manager.
-             reference_coordinate_proxies is not None)
-      assert(len(self.grm.geometry.
-             generic_restraints_manager.reference_manager.
-             reference_coordinate_proxies) == len(restrain_sites_cart))
-      ########################
+      # sanity check
+      assert self.grm.geometry.generic_restraints_manager.flags.reference is True
+      assert self.grm.geometry.generic_restraints_manager.reference_manager.\
+        reference_coordinate_proxies is not None
+      assert len(self.grm.geometry.generic_restraints_manager.reference_manager.
+        reference_coordinate_proxies) == len(restrain_sites_cart)
 
   def minimization(self, prefix): # XXX USE alternate_nonbonded_off_on etc
     broadcast(m=prefix, log = self.log)
