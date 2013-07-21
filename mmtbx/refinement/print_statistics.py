@@ -655,6 +655,7 @@ class refinement_monitor(object):
       "tardy" : "SA",
       "sacart" : "SA",
       "xyzrec" : "xyz",
+      "adp" : "adp",
       "occ" : "occ",
       "fp_fdp" : "anom",
     }
