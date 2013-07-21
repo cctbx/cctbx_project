@@ -433,7 +433,8 @@ def create_sheet_hydrogen_bond_proxies (
             i += 2
             j += 2
         elif (curr_strand.sense == "antiparallel") :
-          while (i < len(prev_residues)) and (j > 0) :
+          len_prev_residues = len(prev_residues)
+          while(i < len_prev_residues and j >= 0):
             if (prev_residues[i].resname.strip() != "PRO") :
               n_proxies += _create_hbond_proxy(
                 acceptor_atoms=curr_residues[j].atoms(),
@@ -464,8 +465,8 @@ def create_sheet_hydrogen_bond_proxies (
                 sigma=sheet_params.restraint_sigma,
                 slack=sheet_params.restraint_slack,
                 log=log)
-            i += 2
-            j -= 2
+            i += 2; i = min(i, len_prev_residues)
+            j -= 2; j = max(0, j)
         else :
           print >> log, "  WARNING: strand direction not defined!"
           print >> log, "    previous: %s" % prev_strand
