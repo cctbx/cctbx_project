@@ -1,6 +1,7 @@
 //// DO NOT USE. UNDER CONSTRUCTION.
 
 #include <array>
+#include <set>
 
 #include <scitbx/array_family/accessors/c_grid_padded.h>
 #include <scitbx/array_family/accessors/c_grid_padded_periodic.h>
@@ -52,5 +53,12 @@ public:
 skeleton swanson(const_map_t &map, double sigma=3.);
 
 std::vector<std::size_t> find_clusters(const skeleton &skelet);
+
+class shortest_paths
+{
+public:
+  std::vector<std::size_t> predecessors, distances;
+};
+
 
 }}
