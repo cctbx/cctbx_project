@@ -3,6 +3,7 @@
 namespace cctbx { namespace maptbx
 {
 
+  // consider useing boost::graph
 shortest_paths dijkstra(const skeleton &skelet,
     const std::vector<std::size_t> &molids, std::size_t iatom)
 {
