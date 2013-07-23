@@ -113,6 +113,7 @@ cctbx/geometry_restraints/tst_angle_derivs.py svneol=native#text/x-python
 cctbx/geometry_restraints/tst_proxy_registry.py svneol=native#text/x-python
 cctbx/maptbx/boost_python/grid_indices_around_sites.cpp svneol=native#text/plain
 cctbx/maptbx/boost_python/time_grid_indices_around_sites.py svneol=native#text/x-python
+cctbx/maptbx/dijkstra.cpp svneol=native#text/plain
 cctbx/maptbx/fft.h -text
 cctbx/maptbx/grid_indices_around_sites.h svneol=native#text/plain
 cctbx/maptbx/histogram.h -text
