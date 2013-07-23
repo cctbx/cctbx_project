@@ -8,7 +8,8 @@ def exercise () :
   mtz_file, pdb_file = generate_magnessium_inputs(
     file_base = "tst_ions_pick_mg", anonymize = True)
   time.sleep(2)
-  args = [pdb_file, mtz_file, "nproc=1", "use_phaser=False", "elements=MG"]
+  args = [ "\"%s\"" % pdb_file, "\"%s\"" % mtz_file, "nproc=1",
+           "use_phaser=False", "elements=MG" ]
   result = easy_run.fully_buffered("mmtbx.water_screen %s" % " ".join(args)
     ).raise_if_errors()
   n_mg = 0
