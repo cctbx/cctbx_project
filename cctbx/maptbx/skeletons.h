@@ -35,8 +35,8 @@ struct join_t
 
 inline bool operator< (const join_t &a, const join_t &b)
 {
-  return 
-    (a.ilt < b.ilt) || 
+  return
+    (a.ilt < b.ilt) ||
     (a.ilt == b.ilt && a.igt < b.igt )
   ;
 }
