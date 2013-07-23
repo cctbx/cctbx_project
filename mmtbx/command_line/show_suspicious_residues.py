@@ -52,8 +52,7 @@ Full parameters:
     args=args,
     master_phil=master_phil,
     out=out,
-    process_pdb_file=False,
-    scattering_table="n_gaussian")
+    process_pdb_file=False)
   params = cmdline.params
   ignore_list = []
   if (params.skip_xtal_solution_mols) :

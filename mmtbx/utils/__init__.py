@@ -261,7 +261,8 @@ class determine_data_and_flags(object):
                      extract_r_free_flags = True,
                      keep_going = False,
                      log = None,
-                     prefer_anomalous = None):
+                     prefer_anomalous = None,
+                     force_non_anomalous = False):
     adopt_init_args(self, locals())
     if(self.parameters is None):
       self.parameters = data_and_flags_master_params().extract()
@@ -328,6 +329,8 @@ class determine_data_and_flags(object):
       print >> self.log
       processed = merged.array()
       info = info.customized_copy(merged=True)
+    if (self.force_non_anomalous) :
+      processed = processed.average_bijvoet_mates()
     return processed.set_info(info)
 
   def extract_flags(self, data, data_description = "R-free flags"):
@@ -386,6 +389,8 @@ class determine_data_and_flags(object):
            processed = merged.array()
            info = info.customized_copy(merged=True)
            del merged
+        if (self.force_non_anomalous) :
+          processed = processed.average_bijvoet_mates()
         r_free_flags = processed.set_info(info)
     if(r_free_flags is None):
       if ((params.fraction is None) or
@@ -2518,10 +2523,12 @@ input {
   monomers {
     %s
   }
-  skip_twin_detection = False
-    .type = bool
   sequence = None
     .type = path
+  skip_twin_detection = False
+    .type = bool
+  scattering_table = k1995  it1992  *n_gaussian  neutron
+    .type = choice
 }
 """ % (xray_data_str, pdb_params.as_str(attributes_level=3),
        cif_params.as_str(attributes_level=3))
@@ -2559,14 +2566,16 @@ class cmdline_load_pdb_and_data (object) :
       out=sys.stdout,
       process_pdb_file=True,
       create_fmodel=True,
-      scattering_table="n_gaussian",
       prefer_anomalous=None,
+      force_non_anomalous=False,
       usage_string=None) :
     from iotbx import file_reader
     if (usage_string is not None) :
       if (len(args) == 0) or ("--help" in args) :
         raise Usage("""%s\n\nFull parameters:\n%s""" % (usage_string,
           master_phil.as_str(prefix="  ")))
+    if (force_non_anomalous) :
+      assert (not prefer_anomalous)
     self.args = args
     self.master_phil = master_phil
     cmdline = process_command_line_args(
@@ -2600,6 +2609,7 @@ class cmdline_load_pdb_and_data (object) :
       data_parameter_scope="input.xray_data",
       flags_parameter_scope="input.xray_data.r_free_flags",
       prefer_anomalous=prefer_anomalous,
+      force_non_anomalous=force_non_anomalous,
       log=out)
     self.intensity_flag = data_and_flags.intensity_flag
     self.raw_data = data_and_flags.raw_data
@@ -2637,7 +2647,6 @@ class cmdline_load_pdb_and_data (object) :
       geometry = processed_pdb_file.geometry_restraints_manager(
         show_energies=False)
       self.xray_structure = processed_pdb_file.xray_structure()
-      print self.xray_structure.unit_cell().parameters()
       chain_proxies = processed_pdb_file.all_chain_proxies
       self.pdb_hierarchy = chain_proxies.pdb_hierarchy
       self.processed_pdb_file = processed_pdb_file
@@ -2650,12 +2659,15 @@ class cmdline_load_pdb_and_data (object) :
         crystal_symmetry=use_symmetry)
       self.processed_pdb_file = None
       self.geometry = None
+    if (params.input.scattering_table == "neutron") :
+      print >> out, "Using scattering table: neutron"
+      self.xray_structure.switch_to_neutron_scattering_dictionary()
     self.fmodel = None
     if create_fmodel :
       fmodel = fmodel_simple(
         update_f_part1_for=update_f_part1_for,
         xray_structures=[self.xray_structure],
-        scattering_table=scattering_table,
+        scattering_table=params.input.scattering_table,
         f_obs=data_and_flags.f_obs,
         r_free_flags=data_and_flags.r_free_flags,
         skip_twin_detection=params.input.skip_twin_detection,
