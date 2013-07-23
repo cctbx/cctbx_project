@@ -2,6 +2,7 @@
 from __future__ import division
 
 import os
+import sys
 
 import libtbx
 from mmtbx.ions.geometry import find_coordination_geometry
@@ -17,7 +18,9 @@ def exercise () :
   models = {
     "3rva": (["octahedral"], ["trigonal_bipyramid"], ["square_planar"]),
     "1mjh": (["octahedral"], ["octahedral"]),
-    "4e1h": (["octahedral"], ["octahedral"], ["octahedral"])
+    "4e1h": (["octahedral"], ["octahedral"], ["octahedral"]),
+    "2xuz": (["triangular_prism"],),
+    "3zli": (["octahedral"], ["tetrahedral"], ["octahedral"], ["tetrahedral"])
   }
 
   for model, geometries in models.items():
@@ -41,7 +44,11 @@ def exercise () :
       contacts = manager.find_nearby_atoms(metal, filter_by_two_fofc = False)
       found = find_coordination_geometry(contacts)
       geometry_names = [i[0] for i in found]
-      assert geometry_names == geometry
+      if geometry_names != geometry:
+        print "Problem detecting geometries in", model
+        print "Found geometries:", geometry_names
+        print "Should be:", geometry
+        sys.exit(1)
 
   print "OK"
 
