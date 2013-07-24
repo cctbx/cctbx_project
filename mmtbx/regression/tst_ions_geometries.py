@@ -9,19 +9,21 @@ from mmtbx.ions.geometry import find_coordination_geometry
 from mmtbx.ions import Manager
 from iotbx import file_reader
 from cctbx.eltbx import chemical_elements
+from collections import OrderedDict
 
 def exercise () :
   if not libtbx.env.has_module("phenix_regression"):
     print "Skipping {}".format(os.path.split(__file__)[1])
     return
 
-  models = {
-    "3rva": (["octahedral"], ["trigonal_bipyramid"], ["square_planar"]),
-    "1mjh": (["octahedral"], ["octahedral"]),
-    "4e1h": (["octahedral"], ["octahedral"], ["octahedral"]),
-    "2xuz": (["triangular_prism"],),
-    "3zli": (["octahedral"], ["tetrahedral"], ["octahedral"], ["tetrahedral"])
-  }
+  models = OrderedDict([
+    ("3rva", (["octahedral"], ["trigonal_bipyramid"], ["square_planar"])),
+    ("1mjh", (["octahedral"], ["octahedral"])),
+    ("4e1h", (["octahedral"], ["octahedral"], ["octahedral"])),
+    ("2xuz", (["triangular_prism"],)),
+    ("3zli", (["octahedral"], ["tetrahedral"], ["octahedral"], ["tetrahedral"])),
+    ("3e0f", ([], ["trigonal_pyramid"], ["square_pyramid"])),
+  ])
 
   for model, geometries in models.items():
     pdb_path = libtbx.env.find_in_repositories(
@@ -40,14 +42,14 @@ def exercise () :
 
     metals = [i_seq for i_seq, atom in enumerate(manager.pdb_atoms)
              if atom.fetch_labels().resname.strip().upper() in elements]
-    for metal, geometry in zip(metals, geometries):
+    for metal, expected_geometry in zip(metals, geometries):
       contacts = manager.find_nearby_atoms(metal, filter_by_two_fofc = False)
       found = find_coordination_geometry(contacts)
       geometry_names = [i[0] for i in found]
-      if geometry_names != geometry:
+      if geometry_names != expected_geometry:
         print "Problem detecting geometries in", model
         print "Found geometries:", geometry_names
-        print "Should be:", geometry
+        print "Should be:", expected_geometry
         sys.exit(1)
 
   print "OK"
