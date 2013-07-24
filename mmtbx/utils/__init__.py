@@ -1371,23 +1371,28 @@ def occupancy_regroupping(pdb_hierarchy, cgs):
   for cg in cgs: # loop over constraint groups
     for c in cg: # loop over conformers of constrained group
       altloc_h = awl[c[0]].altloc
-      if(len(c)==1 and
-         elements[c[0]].strip().upper() in ["H","D"] and
-         awl[c[0]].name.strip().upper() in ["H","D"] and
-         altloc_h.strip() != ""):
+      ind=None
+      for ind_ in c:
+        if(elements[ind_].strip().upper() in ["H","D"] and
+           awl[ind_].name.strip().upper() in ["H","D"] and
+           altloc_h.strip() != ""):
+          ind = ind_
+          break
+      if(ind is not None):
         # find "-1" (previous to given constraint group) residue group
         rg_prev = None
         for i_rg, rg in enumerate(rgs):
-          if(i_rg > 0 and c[0] in rg.atoms().extract_i_seq()):
+          if(i_rg > 0 and ind in rg.atoms().extract_i_seq()):
             rg_prev = rgs[i_rg-1]
             break
         if(rg_prev is None): continue
-        all_altlocs = [rgpc.altloc for rgpc in rg_prev.conformers()]
-        if(not altloc_h in all_altlocs):
-          id_prev= "  chain: %s resseq: %s"%(rg_prev.parent().id,rg_prev.resseq)
-          id_curr= "  chain: %s resseq: %s"%(rg.parent().id, rg.resseq)
-          msg="Alternative conformers don't match:\n%s\n%s"%(id_prev, id_curr)
-          raise Sorry(msg)
+        if(0):
+          all_altlocs = [rgpc.altloc for rgpc in rg_prev.conformers()]
+          if(not altloc_h in all_altlocs):
+            id_prev= "  chain: %s resseq: %s"%(rg_prev.parent().id,rg_prev.resseq)
+            id_curr= "  chain: %s resseq: %s"%(rg.parent().id, rg.resseq)
+            msg="Alternative conformers don't match:\n%s\n%s"%(id_prev, id_curr)
+            raise Sorry(msg)
         rg_prev_i_seqs = rg_prev.atoms().extract_i_seq()
         # find constarint group corresponding to rg_prev
         cg_prev=None
@@ -1399,6 +1404,11 @@ def occupancy_regroupping(pdb_hierarchy, cgs):
           if(cg_prev is not None): break
         assert cg_prev is not None
         # identify to which constraint group H belongs and move it there
+        for cg2 in cgs:
+          for c2 in cg2:
+            if(ind in c2):
+              c2.remove(ind)
+              break
         found = False
         for conformer_prev in rg_prev.conformers():
           if(conformer_prev.altloc == altloc_h):
@@ -1406,14 +1416,14 @@ def occupancy_regroupping(pdb_hierarchy, cgs):
             for cg2 in cgs:
               for c2 in cg2:
                 if(len(set(c2).intersection(set(conformer_prev_i_seqs)))>0):
-                  c2.extend(c)
-                  ind = cg.index(c)
-                  cg[cg.index(c)]=[None]
+                  c2.append(ind)
                   found = True
-        assert found
+        if(0): assert found
   for cg in cgs:
     while cg.count([None])>0:
       cg.remove([None])
+    while cg.count([])>0:
+      cg.remove([])
 
 def assert_xray_structures_equal(
       x1,
