@@ -61,6 +61,8 @@ def display_file_info (file_name, parent=None) :
       data=[accu.reflection_counts, accu.free_fractions])
     tables.append(table)
     stats.append(group_args(
+      n_free=n_free,
+      n_all=array.indices().size(),
       percent_free=n_free/array.indices().size(),
       completeness=array.completeness()))
   if (len(labels) == 0) :
@@ -100,9 +102,9 @@ class RfreeInspector (wx.Panel) :
       wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self.comp_txt = wx.StaticText(self, -1, "", size=(100,-1))
     grid.Add(self.comp_txt, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-    grid.Add(wx.StaticText(self, -1, "Overall % free:"), 0,
+    grid.Add(wx.StaticText(self, -1, "Test set size:"), 0,
       wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-    self.percent_txt = wx.StaticText(self, -1, "", size=(100,-1))
+    self.percent_txt = wx.StaticText(self, -1, "", size=(300,-1))
     grid.Add(self.percent_txt, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     txt = wx.StaticText(self, -1,
 """The graph on the right shows the total nubmer of test set \
@@ -145,8 +147,9 @@ in shells; we suggest creating a new set in such cases.""")
       table_index=array_selection)
     self.comp_txt.SetLabel("%.2f%%" %
       (100 * self.stats[array_selection].completeness))
-    self.percent_txt.SetLabel("%.2f%%" %
-      (100 * self.stats[array_selection].percent_free))
+    self.percent_txt.SetLabel("%d / %d (%.2f%%)" %
+      (self.stats[array_selection].n_free, self.stats[array_selection].n_all,
+       100 * self.stats[array_selection].percent_free))
     self.Refresh()
 
 class RfreeFlagsPlot (wxtbx.plots.plot_container) :
