@@ -6,9 +6,10 @@ from cctbx import miller
 from cctbx import crystal, sgtbx, uctbx
 from scitbx.array_family import flex
 import libtbx.load_env
-from libtbx.utils import Sorry, null_out
-import os.path
 from libtbx.test_utils import Exception_expected, approx_equal
+from libtbx.utils import Sorry, null_out
+import warnings
+import os.path
 
 # this will run without phenix_regression
 def exercise_basic () :
@@ -284,12 +285,19 @@ mtz_file {
   params.mtz_file.r_free_flags.extend = True
   for ma in params.mtz_file.miller_array :
     ma.file_name = "tst_data2.mtz"
-  params.mtz_file.output_file = "tst4.mtz"
-  miller_arrays = run_and_reload(params, "tst4.mtz")
+  params.mtz_file.output_file = "tst4a.mtz"
+  miller_arrays = run_and_reload(params, "tst4a.mtz")
+  assert (miller_arrays[1].data().size() == 221)
+  params.mtz_file.r_free_flags.relative_to_complete_set = True
+  miller_arrays = run_and_reload(params, "tst4a.mtz")
   assert (miller_arrays[1].data().size() == 222)
   # and now to arbitrarily high resolution
+  params.mtz_file.r_free_flags.relative_to_complete_set = False
   params.mtz_file.d_min = 0.8
-  miller_arrays = run_and_reload(params, "tst4.mtz")
+  miller_arrays = run_and_reload(params, "tst4a.mtz")
+  assert (miller_arrays[1].data().size() == 221)
+  params.mtz_file.r_free_flags.relative_to_complete_set = True
+  miller_arrays = run_and_reload(params, "tst4a.mtz")
   assert (miller_arrays[1].data().size() == 428)
   # export for ccp4 programs (flag=0, everything else > 0)
   params = master_phil.fetch(source=new_phil).extract()
@@ -589,6 +597,8 @@ def exercise_command_line () :
           ['F_INFL(+)', 'S_INFL(+)', 'F_INFL(-)', 'S_INFL(-)'])
 
 if __name__ == "__main__" :
-  exercise_basic()
-  exercise_command_line()
+  with warnings.catch_warnings(record=True) as w:
+    exercise_basic()
+    assert (len(w) == 5)
+    exercise_command_line()
   print "OK"
