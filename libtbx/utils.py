@@ -1194,3 +1194,20 @@ def check_if_output_directory_exists (file_name=None, dir_name=None) :
           "Please note that this is not guaranteed to work in all cases; "+
           "use at your own risk.", UserWarning)
       head, tail = os.path.split(head)
+
+def concatenate_python_script (out, file_name) :
+  """
+  Insert a Python script into an existing file, removing any __future__
+  import to prevent syntax errors.  (This could be dangerous in most contexts
+  but is required for some of our Coot-related scripts to work.)
+  """
+  data = open(file_name, "r").read()
+  print >> out, ""
+  print >> out, "#--- script copied from %s" % os.path.basename(file_name)
+  for line in data.splitlines() :
+    if line.startswith("from __future__") :
+      continue
+    else :
+      print >> out, line
+  print >> out, "#--- end"
+  print >> out, ""
