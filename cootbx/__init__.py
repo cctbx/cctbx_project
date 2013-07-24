@@ -18,6 +18,7 @@ def create_refinement_view_script (
     bad_ligand_list=None,
     placed_ligand_list=None) :
   from iotbx.file_reader import any_file
+  from libtbx.utils import concatenate_python_script
   import libtbx.load_env
   have_anom_map = False
   have_anom_residual_map = False
@@ -36,8 +37,7 @@ def create_refinement_view_script (
     relative_path="cctbx_project/cootbx/simple_zoom_list.py",
     test=os.path.isfile)
   if (zoom_ligand_script is not None) :
-    script = open(zoom_ligand_script).read()
-    print >> f, script
+    concatenate_python_script(out=f, file_name=zoom_ligand_script)
     if (bad_ligand_list is not None) and (len(bad_ligand_list) > 0) :
       print >> f, """draw_simple_zoom_list("""
       print >> f, """  title="Residues in suspicious density","""
