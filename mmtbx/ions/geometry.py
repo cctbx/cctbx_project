@@ -124,10 +124,10 @@ def _is_octahedral(vectors, dev_cutoff = 20):
   a_90s, a_180s = [], []
 
   for angle in angles:
-    if abs(angle[2] - 90) < abs(angle[2] - 180):
-      a_90s.append(angle[2] - 90)
+    if abs(angle[-1] - 90) < abs(angle[-1] - 180):
+      a_90s.append(angle[-1] - 90)
     else:
-      a_180s.append(angle[2] - 180)
+      a_180s.append(angle[-1] - 180)
 
   if len(a_180s) > 3 or len(a_180s) < 2 or len(a_90s) < 8 or len(a_90s) > 12:
     return
@@ -155,7 +155,7 @@ def _is_trigonal_pyramid(vectors, dev_cutoff = 15):
     else:
       a_120s.append(angle[2] - 120)
 
-  if len(a_90s) != 3 or len(a_120s) != 3:
+  if len(a_90s) < 2 or len(a_90s) > 4 or len(a_120s) < 2 or len(a_120s) > 4:
     return
 
   deviation = sqrt(sum(i ** 2 for i in a_90s + a_120s) / len(angles))
@@ -196,7 +196,7 @@ def _is_trigonal_bipyramid(vectors, dev_cutoff = 15):
   deviants =  [axial_angle - 180]
   deviants += [i - 90 for i in base_to_axials]
   deviants += [i - 120 for i in equatorial_angles]
-  deviation = sqrt(sum(abs(i) ** 2 for i in deviants) / len(deviants))
+  deviation = sqrt(sum(i ** 2 for i in deviants) / len(deviants))
 
   if deviation <= dev_cutoff:
     return deviation, 5 - len(vectors)
@@ -244,10 +244,39 @@ def _is_pentagonal_bipyramid(vectors, dev_cutoff = 15):
   deviants =  [axial_angle - 180]
   deviants += [i - 90 for i in base_to_axials]
   deviants += [min(abs(i - 72), abs(i - 144)) for i in equatorial_angles]
-  deviation = sqrt(sum(abs(i) ** 2 for i in deviants) / len(deviants))
+  deviation = sqrt(sum(i ** 2 for i in deviants) / len(deviants))
 
   if deviation <= dev_cutoff:
     return deviation, 7 - len(vectors)
+
+def _is_triangular_prism(vectors, dev_cutoff = 15):
+  """
+  Triangular prisms are defined by 3 vertices in a triangular pattern on two
+  aligned planes. Unfortunately, the angles are dependent on the length and
+  width of the prism. Need more examples to come up with a better way of
+  detecting this shape.
+
+  For now, this code is experimental.
+  """
+  if len(vectors) != 6:
+    return
+
+  angles = _bond_angles(vectors)
+  a_85s, a_135s = [], []
+
+  for angle in angles:
+    if abs(angle[-1] - 85) < abs(angle[-1] - 135):
+      a_85s.append(angle[-1] - 85)
+    else:
+      a_135s.append(angle[-1] - 135)
+
+  if len(a_85s) != 9 and len(a_135s) != 6:
+    return
+
+  deviation = sqrt(sum(i ** 2 for i in a_85s + a_135s) / len(angles))
+
+  if deviation < dev_cutoff:
+    return deviation, 6 - len(vectors)
 
 SUPPORTED_GEOMETRIES = OrderedDict([
     ("tetrahedral", _is_tetrahedral),
@@ -258,6 +287,7 @@ SUPPORTED_GEOMETRIES = OrderedDict([
     ("trigonal_pyramid", _is_trigonal_pyramid),
     ("trigonal_bipyramid", _is_trigonal_bipyramid),
     ("pentagonal_bipyramid", _is_pentagonal_bipyramid),
+    ("triangular_prism", _is_triangular_prism),
   ])
 
 def find_coordination_geometry(nearby_atoms, cutoff = 2.9):
