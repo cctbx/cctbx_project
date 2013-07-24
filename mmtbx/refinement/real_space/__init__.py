@@ -53,6 +53,7 @@ class structure_monitor(object):
     self.states_collector = mmtbx.utils.states(
       pdb_hierarchy  = self.pdb_hierarchy,
       xray_structure = self.xray_structure)
+    self.states_collector.add(sites_cart = self.xray_structure.sites_cart())
     self.rotamer_manager = RotamerEval()
     #
     self.map_cc_whole_unit_cell = None
