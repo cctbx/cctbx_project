@@ -31,9 +31,8 @@ class installer (object) :
     self.log = log
     print >> log, """
   ****************************************************************************
-                 Automated CCTBX + dependencies build script
-         This is experimental software - not guaranteed to work yet.
-                report problems to cctbx-dev@cci.lbl.gov
+                 Automated CCTBX dependencies build script
+                 report problems to cctbx-dev@cci.lbl.gov
   ****************************************************************************
 """
     dist_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
