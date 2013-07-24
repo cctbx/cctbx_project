@@ -1,11 +1,11 @@
-from __future__ import division
 
-# TODO: much better regression testing
 # TODO: confirm old_test_flag_value if ambiguous
 
+from __future__ import division
 import iotbx.phil
 from libtbx.utils import Sorry, null_out, check_if_output_directory_exists
 from libtbx import adopt_init_args
+import warnings
 import random
 import string
 import re
@@ -237,6 +237,9 @@ mtz_file
       .type = float
       .short_caption = Resolution buffer
       .expert_level = 2
+    relative_to_complete_set = False
+      .type = bool
+      .short_caption = Generate R-free flags relative to complete set
   }
 }""", process_includes=True)
 
@@ -247,6 +250,7 @@ class process_arrays (object) :
       input_files = {}
     adopt_init_args(self, locals())
     validate_params(params)
+    r_free_params = params.mtz_file.r_free_flags
     from iotbx import file_reader
     import cctbx.miller
     from cctbx import r_free_utils
@@ -360,9 +364,9 @@ class process_arrays (object) :
       d_max = params.mtz_file.d_max
     if (params.mtz_file.d_min is not None) :
       d_min = params.mtz_file.d_min
-    if params.mtz_file.r_free_flags.random_seed is not None :
-      random.seed(params.mtz_file.r_free_flags.random_seed)
-      flex.set_random_seed(params.mtz_file.r_free_flags.random_seed)
+    if r_free_params.random_seed is not None :
+      random.seed(r_free_params.random_seed)
+      flex.set_random_seed(r_free_params.random_seed)
 
     #-------------------------------------------------------------------
     # MAIN LOOP
@@ -702,12 +706,23 @@ class process_arrays (object) :
       from iotbx.reflection_file_utils import get_r_free_flags_scores, \
         make_joined_set
       have_r_free_array = True
+      combined_set = complete_set = None
       if len(self.final_arrays) > 0 :
-        eps = params.mtz_file.r_free_flags.d_eps
-        complete_set = make_joined_set(self.final_arrays
-          ).complete_set(d_min=d_min-eps, d_max=d_max+eps)
-      else :
-        complete_set = None
+        eps = r_free_params.d_eps
+        combined_set = make_joined_set(self.final_arrays)
+        complete_set = combined_set.complete_set(d_min=d_min-eps,
+          d_max=d_max+eps)
+      if (len(self.final_arrays) > 1) :
+        warnings.warn("Multiple Miller arrays are already present in this "+
+          "file; the R-free flags will be generated based on the total "+
+          "of reflections in all arrays combined.  If you want the fraction "+
+          "of test set reflections to be relative to a specific array, you "+
+          "should run the editor with that array separately first.",
+          UserWarning)
+      if (r_free_params.relative_to_complete_set) :
+        combined_set = complete_set
+      elif (combined_set is not None) :
+        self.check_and_warn_about_incomplete_r_free_flags(combined_set)
       i = 0
       for (new_array, info, output_labels, file_name) in r_free_arrays :
         # XXX this is important for guessing the right flag when dealing
@@ -716,13 +731,13 @@ class process_arrays (object) :
         new_array.set_info(info)
         test_flag_value = None
         flag_scores = get_r_free_flags_scores(miller_arrays=[new_array],
-          test_flag_value=params.mtz_file.r_free_flags.old_test_flag_value)
+          test_flag_value=r_free_params.old_test_flag_value)
         test_flag_value = flag_scores.test_flag_values[0]
         if (test_flag_value is None) :
-          if (params.mtz_file.r_free_flags.old_test_flag_value is not None) :
-            test_flag_value=params.mtz_file.r_free_flags.old_test_flag_value
-          elif ((params.mtz_file.r_free_flags.warn_if_all_same_value) or
-                (params.mtz_file.r_free_flags.extend)) :
+          if (r_free_params.old_test_flag_value is not None) :
+            test_flag_value = r_free_params.old_test_flag_value
+          elif ((r_free_params.warn_if_all_same_value) or
+                (r_free_params.extend)) :
             raise Sorry(("The data in %s:%s appear to be R-free flags, but "+
               "a suitable test flag value (usually 1 or 0) could not be "+
               "automatically determined.  This may indicate that the flags "+
@@ -735,7 +750,7 @@ class process_arrays (object) :
               "\"Warn if R-free flags are all the same value\" will skip this "+
               "step, but you will not be able to extend the flags to higher "+
               "resolution.") % (file_name, info.label_string()))
-        if (params.mtz_file.r_free_flags.preserve_input_values) :
+        if (r_free_params.preserve_input_values) :
           r_free_flags = new_array
         else :
           new_data = (new_array.data()==test_flag_value)
@@ -748,27 +763,26 @@ class process_arrays (object) :
         if (r_free_flags.anomalous_flag()) :
           r_free_flags = r_free_flags.average_bijvoet_mates()
           if (len(output_labels) != 1) :
-            assert (not complete_set.anomalous_flag())
+            assert (not combined_set.anomalous_flag())
             # XXX can't do this operation on a miller set - will expand the
             # r-free flags later
             generate_bijvoet_mates = True
-        if (params.mtz_file.r_free_flags.adjust_fraction) :
+        if (r_free_params.adjust_fraction) :
           print >> log, "Resizing test set in %s" % array_name
           r_free_as_bool = get_r_free_as_bool(r_free_flags,
             test_flag_value)
           r_free_flags = r_free_utils.adjust_fraction(
             miller_array=r_free_as_bool,
-            fraction=params.mtz_file.r_free_flags.fraction,
+            fraction=r_free_params.fraction,
             log=log)
-        if (params.mtz_file.r_free_flags.extend) :
+        if (r_free_params.extend) :
           r_free_flags = r_free_utils.extend_flags(
             r_free_flags=r_free_flags,
             test_flag_value=test_flag_value,
             array_label=array_name,
-            complete_set=complete_set,
+            complete_set=combined_set,
             accumulation_callback=accumulation_callback,
-            preserve_input_values=\
-              params.mtz_file.r_free_flags.preserve_input_values,
+            preserve_input_values=r_free_params.preserve_input_values,
             d_max=d_max,
             d_min=d_min,
             log=log)
@@ -778,7 +792,7 @@ class process_arrays (object) :
         if (len(params.mtz_file.exclude_reflection) > 0) :
           for hkl in params.mtz_file.exclude_reflection :
             output_array = output_array.delete_index(hkl)
-        if (params.mtz_file.r_free_flags.export_for_ccp4) :
+        if (r_free_params.export_for_ccp4) :
           print >> log, "%s: converting to CCP4 convention" % array_name
           output_array = export_r_free_flags(
             miller_array=output_array,
@@ -797,13 +811,27 @@ class process_arrays (object) :
 
     #-------------------------------------------------------------------
     # NEW R-FREE ARRAY
-    if ((params.mtz_file.r_free_flags.generate and not have_r_free_array) or
-        params.mtz_file.r_free_flags.force_generate) :
+    if ((r_free_params.generate and not have_r_free_array) or
+        r_free_params.force_generate) :
+      if (len(self.final_arrays) > 1) :
+        warnings.warn("Multiple Miller arrays are already present in this "+
+          "file; the R-free flags will be generated based on the total "+
+          "of reflections in all arrays combined.  If you want the fraction "+
+          "of test set reflections to be relative to a specific array, you "+
+          "should run the editor with that array separately first.",
+          UserWarning)
       from iotbx.reflection_file_utils import make_joined_set
-      complete_set = make_joined_set(self.final_arrays
-        ).complete_set()
-      r_free_params = params.mtz_file.r_free_flags
-      new_r_free_array = complete_set.generate_r_free_flags(
+      combined_set = make_joined_set(self.final_arrays)
+      complete_set = combined_set.complete_set(
+        d_min=d_min-r_free_params.d_eps,
+        d_max=d_max+r_free_params.d_eps)
+      if (r_free_params.relative_to_complete_set) :
+        combined_set = complete_set
+      else :
+        self.check_and_warn_about_incomplete_r_free_flags(combined_set)
+      # XXX this used to generate the test set from the actually complete set,
+      # but the fraction free needs to be relative to the
+      new_r_free_array = combined_set.generate_r_free_flags(
         fraction=r_free_params.fraction,
         max_free=r_free_params.max_free,
         lattice_symmetry_max_delta=r_free_params.lattice_symmetry_max_delta,
@@ -812,7 +840,7 @@ class process_arrays (object) :
         n_shells=r_free_params.n_shells)
       if r_free_params.new_label is None or r_free_params.new_label == "" :
         r_free_params.new_label = "FreeR_flag"
-      if params.mtz_file.r_free_flags.export_for_ccp4 :
+      if r_free_params.export_for_ccp4 :
         print >> log, "%s: converting to CCP4 convention" % array_name
         output_array = export_r_free_flags(
           miller_array=new_r_free_array,
@@ -915,6 +943,18 @@ class process_arrays (object) :
     del self.mtz_object
     self.mtz_object = None
     return n_refl
+
+  def check_and_warn_about_incomplete_r_free_flags (self, combined_set) :
+    completeness = combined_set.completeness()
+    if (completeness < 0.99) :
+      warnings.warn(("The arrays in the input file are incomplete "+
+        "(%.1f%% of reflections missing), so the newly generated R-free "+
+        "flags will be incomplete as well.  This will not cause a problem "+
+        "for refinement, but may result in inconsistent flags later on if "+
+        "you collect additional data.  You can disable this warning by "+
+        "clicking the box labeled \"Generate flags relative to maximum "+
+        "complete set\" in the R-free options dialog window.") %
+        (100 * (1-completeness)), UserWarning)
 
 #-----------------------------------------------------------------------
 # TODO get rid of these two (need to make sure they aren't imported elsewhere)
