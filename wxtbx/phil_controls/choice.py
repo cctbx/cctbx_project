@@ -10,7 +10,7 @@ class ChoiceCtrl (wx.Choice, phil_controls.PhilCtrl) :
     self._options = None
     self.Bind(wx.EVT_CHOICE, lambda evt: self.DoSendEvent(), self)
 
-  def SetChoices (self, choices, captions=None) :
+  def SetChoices (self, choices, captions=None, allow_none=True) :
     selection = None
     is_selected = [ ("*" in choice) for choice in choices ]
     if (True in is_selected) :
@@ -21,7 +21,7 @@ class ChoiceCtrl (wx.Choice, phil_controls.PhilCtrl) :
     if (len(captions) != len(choices)) :
       raise RuntimeError("Wrong number of caption items for '%s':\n%s\n%s" %
         (self.GetName(), ";".join(choices), ";".join(captions)))
-    if (selection is None) :
+    if (selection is None) and (allow_none) :
       captions.insert(0, "---")
       choices.insert(0, None)
       selection = 0
