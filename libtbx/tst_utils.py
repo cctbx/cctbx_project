@@ -154,6 +154,28 @@ def exercise_misc():
   #
   print "get_svn_revision():", utils.get_svn_revision()
   print "get_build_tag():", utils.get_build_tag()
+  # concatenate_python_script
+  # XXX the string concatenation here is required to trick libtbx.find_clutter,
+  # which will warn about repetition of the future division import.
+  script = """
+from __future__ """ + """import division
+import os.path
+
+def foo () :
+  print "bar"
+"""
+  open("tst_libtbx_utils_python_script.py", "w").write(script)
+  f = open("tst_libtbx_utils_python_script2.py", "w")
+  utils.concatenate_python_script(out=f,
+    file_name="tst_libtbx_utils_python_script.py")
+  f.close()
+  lines = open("tst_libtbx_utils_python_script2.py").readlines()
+  have_def = False
+  for line in lines :
+    assert (not "__future__" in line)
+    if line.startswith("def foo") :
+      have_def = True
+  assert have_def
 
 def exercise_user_plus_sys_time():
   s = StringIO()
