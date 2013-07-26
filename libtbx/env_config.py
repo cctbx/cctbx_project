@@ -1291,6 +1291,9 @@ redo:
 \t./bin/libtbx.configure . --clear-scons-memory
 \t%(lsj)s
 
+clean:
+\t%(lsj)s -c
+
 # example
 selfx:
 \trm -rf selfx_tmp
