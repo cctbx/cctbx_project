@@ -3468,7 +3468,9 @@ class build_all_chain_proxies(object):
         for i_residue_group, residue_group in enumerate(chain.residue_groups()):
           if verbose: print '  residue_group: resseq="%s" icode="%s"' % (
             residue_group.resseq, residue_group.icode)
-          yield residue_group.atoms()[0]
+          atoms = residue_group.atoms()
+          if atoms:
+              yield atoms[0]
     #
     chain_ids = []
     outls = {}
