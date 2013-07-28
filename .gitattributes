@@ -1016,6 +1016,7 @@ gltbx/viewer_utils_ext.cpp svneol=native#text/plain
 gltbx/wx_ellipsoids_test.py -text
 gltbx/wx_motion_on_tab.py svneol=native#text/x-python
 gltbx/wx_viewer_example.py -text
+gltbx/wx_viewer_leapmotion.py -text
 gltbx/wx_viewers_images.py -text
 iotbx/bioinformatics/__init__.py -text
 iotbx/bioinformatics/structure.py -text
