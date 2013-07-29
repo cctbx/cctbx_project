@@ -2,13 +2,15 @@
 #
 # iotbx.xds.xparm.py
 #
-#   James Parkhurst, Diamond Light Source, 2012/OCT/16
+#   Copyright (C) 2013 Diamond Light Source, James Parkhurst & Richard Gildea
 #
 #   Class to read all the data from a (G)XPARM.XDS file
 #
 from __future__ import division
+import sys
+from libtbx import adopt_init_args
 
-class reader:
+class reader(object):
   """A class to read the XPARM.XDS/GXPARM.XDS file used in XDS"""
 
   def __init__(self):
@@ -115,6 +117,7 @@ class reader:
     self.beam_vector       = tuple(map(float, tokens[1][1:4]))
 
     # Detector stuff
+    self.num_segments      = None
     self.detector_size     = tuple(map(int, tokens[2][0:2]))
     self.pixel_size        = tuple(map(float, tokens[2][2:4]))
     self.detector_distance = float(tokens[3][0])
@@ -170,3 +173,70 @@ class reader:
     for i in range(self.num_segments):
         self.segments.append(tuple(map(int, tokens[12+i*2])))
         self.orientation.append(tuple(map(float, tokens[12+i*2+1])))
+
+
+class writer(object):
+
+  def __init__(self,
+               starting_frame,
+               starting_angle,
+               oscillation_range,
+               rotation_axis,
+               wavelength,
+               beam_vector,
+               space_group,
+               unit_cell,
+               unit_cell_a_axis,
+               unit_cell_b_axis,
+               unit_cell_c_axis,
+               num_segments,
+               detector_size,
+               pixel_size,
+               detector_origin,
+               detector_distance,
+               detector_x_axis,
+               detector_y_axis,
+               detector_normal,
+               segments=None,
+               orientation=None):
+    adopt_init_args(self, locals())
+    if [num_segments, segments, orientation].count(None) == 3:
+      self.num_segments = 1
+      self.segments = []
+      self.orientation = []
+      for i in range(self.num_segments):
+        self.segments.append((i+1, 1, self.pixel_size[0], 1, self.pixel_size[1]))
+        self.orientation.append((0, 0, 0, 1, 0, 0, 0, 1, 0))
+
+  def show(self, out=None):
+    """
+    http://xds.mpimf-heidelberg.mpg.de/html_doc/xds_files.html#XPARM.XDS
+    """
+    if out is None:
+      out = sys.stdout
+    print >> out, "XPARM.XDS"
+    print >> out, "%6i %13.4f %9.4f" %(
+      self.starting_frame, self.starting_angle, self.oscillation_range),
+    print >> out, "%9.6f %9.6f %9.6f" %(self.rotation_axis)
+    print >> out, " %14.6f" %self.wavelength,
+    print >> out, "%14.6f %14.6f %14.6f" %(self.beam_vector)
+    print >> out, "   %3i" %(self.space_group),
+    print >> out, "%11.4f %11.4f %11.4f %7.3f %7.3f %7.3f" %self.unit_cell
+    print >> out, " %14.6f  %14.6f  %14.6f" %self.unit_cell_a_axis
+    print >> out, " %14.6f  %14.6f  %14.6f" %self.unit_cell_b_axis
+    print >> out, " %14.6f  %14.6f  %14.6f" %self.unit_cell_c_axis
+    print >> out, " %8i %9i %9i %11.6f %11.6f" %(
+      self.num_segments, self.detector_size[0], self.detector_size[1],
+      self.pixel_size[0], self.pixel_size[1])
+    print >> out, " %14.6f %14.6f" %self.detector_origin,
+    print >> out, " %14.6f" %self.detector_distance
+    print >> out, " %14.6f %14.6f %14.6f" %self.detector_x_axis
+    print >> out, " %14.6f %14.6f %14.6f" %self.detector_y_axis
+    print >> out, " %14.6f %14.6f %14.6f" %self.detector_normal
+    for i in range(self.num_segments):
+      print >> out, " %9i %9i %9i %9i %9i" %tuple(self.segments[i])
+      print >> out, "".join([" %7.2f"*3] + [" %8.5f"]*6) %tuple(self.orientation[i])
+
+  def write_file(self, filename):
+    with open(filename, 'wb') as f:
+      self.show(out=f)
