@@ -15,6 +15,7 @@ tst_list = (
     "$D/tests/model/tst_scan_data.py",
     "$D/tests/model/tst_scan_helpers.py",
     "$D/tests/serialize/tst_serialize.py",
+    "$D/tests/serialize/tst_xds.py",
     )
 
 def run () :
