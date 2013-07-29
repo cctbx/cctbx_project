@@ -1,12 +1,14 @@
-from __future__ import division
 
 # TODO:
 #  - cached scenes
 
+from __future__ import division
 from crys3d import hklview
+#from crys3d.leapmotion import wxGLWindowLeapEnabled as wxGLWindow
 from gltbx.wx_viewer import wxGLWindow
 import gltbx.viewer_utils
 import gltbx.gl_managed
+import gltbx.quadrics
 import gltbx.util
 import gltbx.fonts
 from gltbx.glu import *
@@ -32,6 +34,7 @@ class hklview_3d (wxGLWindow) :
     self.min_dist = 4.0
     self.flag_show_fog = True
     self.flag_use_lights = True
+    self.flag_use_quadrics = False
     self.minimum_covering_sphere = None
     self.spheres_display_list = None
     self.points_display_list = None
@@ -86,6 +89,7 @@ class hklview_3d (wxGLWindow) :
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
     self.initialize_modelview()
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+    self.proto_sphere = gltbx.quadrics.proto_ellipsoid(slices=8, stacks=8)
     gltbx.util.handle_error()
 
   def OnRedrawGL (self, event=None) :
@@ -129,23 +133,29 @@ class hklview_3d (wxGLWindow) :
       self.spheres_display_list = gltbx.gl_managed.display_list()
       self.spheres_display_list.compile()
       colors = self.scene.colors
-      radii = self.scene.radii
+      radii = self.scene.radii * self.settings.scale
+      points = self.scene.points
+      sphere = self.proto_sphere
       max_radius = self.scene.max_radius
       scale_factor = self.settings.sphere_detail / self.scene.max_radius
       assert (colors.size() == radii.size() == self.scene.points.size())
       glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, [0.1, 0.1, 0.1, 1.0])
       glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, [0.1, 0.1, 0.1, 1.0])
-      for i, hkl in enumerate(self.scene.points) :
+      for i, hkl in enumerate(points) :
         col = list(colors[i]) + [1.0]
-        detail = max(4, int(radii[i] * scale_factor))
         #glColor3f(*colors[i])
         glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, col)
-        glPushMatrix()
-        glTranslated(*hkl)
-        gltbx.util.SolidSphere(radius=radii[i] * self.settings.scale,
-          slices=detail,
-          stacks=detail)
-        glPopMatrix()
+        if (self.flag_use_quadrics) :
+          r = max(radii[i] / 10, 0.001)
+          sphere.draw(hkl, (r, r, r, 0, 0, 0))
+        else :
+          detail = max(4, int(radii[i] * scale_factor))
+          glPushMatrix()
+          glTranslated(*hkl)
+          gltbx.util.SolidSphere(radius=radii[i],
+            slices=detail,
+            stacks=detail)
+          glPopMatrix()
       self.spheres_display_list.end()
     self.spheres_display_list.call()
 
@@ -275,6 +285,9 @@ class hklview_3d (wxGLWindow) :
       self.adjust_slab(-0.04)
     elif (key == ord("f")) :
       self.adjust_slab(0.04)
+    elif (key == ord("Q")) :
+      self.flag_use_quadrics = not self.flag_use_quadrics
+      self.spheres_display_list = None
     elif (key == wx.WXK_UP) :
       self.rotate_view(0, 0, 0, 5, event.ShiftDown())
     elif (key == wx.WXK_DOWN) :
