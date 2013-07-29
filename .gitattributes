@@ -2087,6 +2087,8 @@ scitbx/math/copysign.h -text
 scitbx/math/cubic_equation.h -text
 scitbx/math/cubic_spline.py -text
 scitbx/math/curve_fitting.py -text
+scitbx/math/des_3_100_13.py -text
+scitbx/math/des_3_240_21.py -text
 scitbx/math/dihedral.h svneol=native#text/plain
 scitbx/math/distance_difference.h -text
 scitbx/math/euler_angles.h -text
