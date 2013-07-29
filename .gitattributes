@@ -489,6 +489,7 @@ dxtbx/serialize/scan.py -text
 dxtbx/serialize/xds.py -text
 dxtbx/sweep_filenames.py -text
 dxtbx/tests/__init__.py -text
+dxtbx/tests/command_line/tst_to_xds.py -text
 dxtbx/tests/example-xparm.xds -text
 dxtbx/tests/image_001.dat -text
 dxtbx/tests/image_002.dat -text

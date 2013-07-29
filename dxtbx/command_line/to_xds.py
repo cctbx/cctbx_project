@@ -16,7 +16,6 @@ import math
 from scitbx import matrix
 
 from dxtbx.model.detector_helpers_types import detector_helpers_types
-from dxtbx.sweep import SweepFactory
 
 def xds_detector_name(xia2_name):
     '''Translate from a xia2 name from the detector library to an XDS detector
@@ -35,7 +34,7 @@ def xds_detector_name(xia2_name):
 
     raise RuntimeError, 'detector %s unknown' % xia2_name
 
-class to_xds:
+class to_xds(object):
     '''A class to export contents of an XSweep2 as XDS.INP.'''
 
     def __init__(self, sweep):
@@ -56,7 +55,7 @@ class to_xds:
         return self._sweep.get_scan()
 
     def get_template(self):
-        return self._sweep.reader().get_template()
+        return self._sweep.get_template()
 
     def XDS(self):
 
@@ -138,8 +137,10 @@ class to_xds:
 if __name__ == '__main__':
 
 
-    from dxtbx.sweep import SweepFactory
+    from dxtbx.imageset import ImageSetFactory
+    file_names = sys.argv[1:]
+    sweep = ImageSetFactory.new(file_names)[0]
 
-    xsx = to_xds(SweepFactory.sweep(sys.argv[1:]))
+    xsx = to_xds(sweep)
 
     xsx.XDS()
