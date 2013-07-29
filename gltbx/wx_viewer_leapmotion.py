@@ -127,6 +127,7 @@ class wxLeapMotionWindowMixin (object) :
     self.Connect(-1, -1, LEAP_TRANSLATE_ID, self.OnLeapTranslate)
     self.Connect(-1, -1, LEAP_ROTATE_ID, self.OnLeapRotate)
     self.Connect(-1, -1, LEAP_SCALE_ID, self.OnLeapScale)
+    self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
     self._leap_controller = None
     self._leap_listener = None
 
@@ -139,6 +140,9 @@ class wxLeapMotionWindowMixin (object) :
   def stop_leapmotion_controller_listener (self) :
     if (self._leap_controller is not None) :
       self._leap_controller.remove_listener(self._leap_listener)
+
+  def OnDestroy (self, event) :
+    self.stop_leapmotion_controller_listener()
 
   def OnLeapTranslate (self, event) :
     pass
