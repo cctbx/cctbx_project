@@ -5,7 +5,11 @@ import os
 
 import libtbx.load_env
 from libtbx import easy_run
+from libtbx.test_utils import open_tmp_file
 from libtbx.test_utils import show_diff
+
+from dxtbx.serialize import dump
+from dxtbx.imageset import ImageSetFactory
 
 def exercise_to_xds():
   if not libtbx.env.has_module("dials_regression"):
@@ -16,10 +20,21 @@ def exercise_to_xds():
     relative_path="dials_regression/centroid_test_data",
     test=os.path.isdir)
   template = os.path.join(data_dir, "centroid_00*.cbf")
-  g = glob.glob(template)
-  cmd = " ".join(["dxtbx.to_xds"] + g)
+  file_names = glob.glob(template)
+  cmd = " ".join(["dxtbx.to_xds"] + file_names)
   result = easy_run.fully_buffered(cmd)
-  assert not show_diff("\n".join(result.stdout_lines), """\
+  assert not show_diff("\n".join(result.stdout_lines), expected_output)
+
+  # now test reading from a json file
+  sweep = ImageSetFactory.new(file_names)[0]
+  f = open_tmp_file(suffix="sweep.json", mode="wb")
+  dump.imageset(sweep, f)
+  f.close()
+  cmd = " ".join(["dxtbx.to_xds", f.name])
+  result = easy_run.fully_buffered(cmd)
+  assert not show_diff("\n".join(result.stdout_lines), expected_output)
+
+expected_output = """\
 DETECTOR=PILATUS MINIMUM_VALID_PIXEL_VALUE=0 OVERLOAD=495976
 SENSOR_THICKNESS= 0.32
 DIRECTION_OF_DETECTOR_X-AXIS= 1.000 0.000 0.000
@@ -51,7 +66,7 @@ UNTRUSTED_RECTANGLE= 0 2105 2462 2121
 UNTRUSTED_RECTANGLE= 0 2317 2462 2333
 DATA_RANGE= 1 9
 JOB=XYCORR INIT COLSPOT IDXREF DEFPIX INTEGRATE CORRECT\
-""")
+"""
 
 def run():
   exercise_to_xds()

@@ -137,9 +137,13 @@ class to_xds(object):
 if __name__ == '__main__':
 
 
-    from dxtbx.imageset import ImageSetFactory
     file_names = sys.argv[1:]
-    sweep = ImageSetFactory.new(file_names)[0]
+    if len(file_names) == 1 and file_names[0].endswith('json'):
+        from dxtbx.serialize import load
+        sweep = load.imageset(file_names[0])
+    else:
+        from dxtbx.imageset import ImageSetFactory
+        sweep = ImageSetFactory.new(file_names)[0]
 
     xsx = to_xds(sweep)
 
