@@ -2,6 +2,7 @@
 from __future__ import division
 from libtbx.test_utils import Exception_expected
 from libtbx.utils import null_out, Sorry
+from cStringIO import StringIO
 import os.path
 
 def exercise () :
@@ -17,7 +18,7 @@ def exercise () :
   mtz_in = file_reader.any_file(mtz_file)
   f_obs = mtz_in.file_server.miller_arrays[0]
   f_obs_mean = f_obs.average_bijvoet_mates()
-  flags = mtz_in.file_server.miller_arrays[0]
+  flags = mtz_in.file_server.miller_arrays[1]
   flags = flags.customized_copy(data=flags.data()==1)
   fmodel = mmtbx.utils.fmodel_simple(
     update_f_part1_for=None,
@@ -56,6 +57,8 @@ def exercise () :
   mtz_data.add_miller_array(
     miller_array=fmodel.map_coefficients(map_type="anom"),
     column_root_label="ANOM")
+  mtz_data.add_miller_array(flags,
+    column_root_label="FreeR_flag")
   map_file = "tst_mmtbx_mtz2map_map_coeffs.mtz"
   mtz_data.mtz_object().write(map_file)
   # exercise defaults with PDB file
@@ -91,6 +94,11 @@ def exercise () :
     pass
   else :
     raise Exception_expected
+  # remove R-free flags
+  out = StringIO()
+  mtz2map.run([pdb_file, "tst_mmtbx_mtz2map_map_coeffs.mtz",
+    "r_free_flags.remove=True"], log=out)
+  assert (out.getvalue().count("removing 1130 R-free flagged reflections")==4)
   print "OK"
 
 if (__name__ == "__main__") :

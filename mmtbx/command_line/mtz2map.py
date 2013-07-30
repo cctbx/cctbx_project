@@ -72,18 +72,25 @@ output {
   extension = *Auto ccp4 xplor map
     .type = choice
 }
-#r_free_flags {
-#  remove = False
-#    .type = bool
-#  file_name = None
-#    .type = path
-#  label = None
-#    .type = str
-#  test_flag_value = None
-#    .type = int
-#}
+r_free_flags {
+  remove = False
+    .type = bool
+    .short_caption = Remove R-free set from map
+  file_name = None
+    .type = path
+    .short_caption = R-free flags
+    .style = OnChange:extract_r_free_flags_for_fft
+  label = None
+    .type = str
+    .input_size = 120
+    .short_caption = R-free label
+    .style = renderer:draw_rfree_label_widget
+  test_flag_value = None
+    .type = int
+}
 include_fmodel = False
   .type = bool
+  .short_caption = Include F(model) if present
 show_maps = False
   .type = bool
 """, process_includes=True)
@@ -193,20 +200,21 @@ def run (args, log=sys.stdout, run_in_current_working_directory=False) :
     pdb_file = file_reader.any_file(params.pdb_file, force_type="pdb")
     pdb_file.assert_file_type("pdb")
   miller_arrays = mtz_file.file_object.as_miller_arrays()
-  #r_free_array = None
-  #if params.r_free_flags.remove :
-  #  if params.r_free_flags.file_name is not None :
-  #    rfree_file = file_reader.any_file(params.r_free_flags.file_name,
-  #      force_type="hkl")
-  #  else :
-  #    rfree_file = mtz_file
-  #  raw_array, flag_value = rfree_file.file_server.get_r_free_flags(
-  #    file_name=rfree_file.file_name,
-  #    label=params.r_free_flags.label,
-  #    test_flag_value=params.r_free_flags.test_flag_value,
-  #    disable_suitability_test=False,
-  #    parameter_scope="r_free_flags")
-  #  r_free_array = raw_array.array(data=raw_array.data()==flag_value)
+  r_free_flags = None
+  if params.r_free_flags.remove :
+    if params.r_free_flags.file_name is not None :
+      rfree_file = file_reader.any_file(params.r_free_flags.file_name,
+        force_type="hkl")
+    else :
+      rfree_file = mtz_file
+    raw_array, flag_value = rfree_file.file_server.get_r_free_flags(
+      file_name=rfree_file.file_name,
+      label=params.r_free_flags.label,
+      test_flag_value=params.r_free_flags.test_flag_value,
+      disable_suitability_test=False,
+      parameter_scope="r_free_flags")
+    r_free_flags = raw_array.array(
+      data=raw_array.data()==flag_value).map_to_asu().average_bijvoet_mates()
   sites_cart = None
   if pdb_file is not None :
     pdb_hierarchy = pdb_file.file_object.construct_hierarchy()
@@ -253,8 +261,14 @@ def run (args, log=sys.stdout, run_in_current_working_directory=False) :
       map_coeffs = iotbx.map_tools.combine_f_phi_and_fom(f=f, phi=phi, fom=fom)
     print >> log, "Processing map: %s" % " ".join(map_labels)
     assert map_coeffs.is_complex_array()
+    map_coeffs = map_coeffs.map_to_asu().average_bijvoet_mates()
     map_coeffs = map_coeffs.resolution_filter(d_min=params.d_min,
       d_max=params.d_max)
+    if (r_free_flags is not None) :
+      map_coeffs, flags = map_coeffs.common_sets(other=r_free_flags)
+      print >> log, "  removing %d R-free flagged reflections" % \
+        flags.data().count(True)
+      map_coeffs = map_coeffs.select(~(flags.data()))
     map = map_coeffs.fft_map(resolution_factor=params.grid_resolution_factor)
     if params.scale == "sigma" :
       print >> log, "  applying sigma-scaling"
