@@ -47,18 +47,18 @@ inline bool any_ge(const int3_t &a, const int3_t &b)
   return false;
 }
 
-inline bool all_eq(const std::set<int> &s, int a)
+inline bool all_eq(const std::set<std::size_t> &s, std::size_t a)
 {
   if( s.empty() )
     return false;
-  std::set<int>::const_iterator b=s.begin(), e = s.end();
+  std::set<std::size_t>::const_iterator b=s.begin(), e = s.end();
   --e;
   return (*b == a) && (*e == a);
 }
 
-inline bool all_ne(const std::set<int> &s, int a)
+inline bool all_ne(const std::set<std::size_t> &s, std::size_t a)
 {
-  for(std::set<int>::const_iterator i=s.begin(); i != s.end(); ++i)
+  for(std::set<std::size_t>::const_iterator i=s.begin(); i != s.end(); ++i)
   {
     if( *i == a )
       return false;
@@ -92,7 +92,8 @@ skeleton swanson(const_map_t &map, double sigma)
         double m = map(i,j,k);
         if( m>mapcutoff )
         {
-          xyzm_t x({i,j,k},m);
+          int3_t p(i,j,k);
+          xyzm_t x(p,m);
           xyzm.push_back( x );
         }
       }
@@ -118,15 +119,15 @@ skeleton swanson(const_map_t &map, double sigma)
   skeleton result;
   for(std::size_t jj=0; jj<xyzm.size(); ++jj)
   {
-    std::set<int> featureset;
+    std::set<std::size_t> featureset;
     //featureset.fill(-1);
-    xyz_t x = get<0>(xyzm[jj]);
+    int3_t x = get<0>(xyzm[jj]);
     for(unsigned short ic=0; ic<cube_size; ++ic)
     {
-      xyz_t neighbor = x + cube[ic];
+      int3_t neighbor = x + cube[ic];
       if( any_lt(neighbor,0) || any_ge(neighbor,indim) )
         continue;
-      int mark = marks(neighbor);
+      std::size_t mark = marks(neighbor);
       featureset.insert(mark);
     }
 
@@ -146,7 +147,7 @@ skeleton swanson(const_map_t &map, double sigma)
     else if( fssize == 2 )
     {
       // part of the growing nodule
-      std::set<int>::const_iterator b = featureset.begin();
+      std::set<std::size_t>::const_iterator b = featureset.begin();
       if( *b != 0 )
         marks(x) = *b;
       else
@@ -154,19 +155,19 @@ skeleton swanson(const_map_t &map, double sigma)
     }
     else if( fssize>2 )
     {
-      for(std::set<int>::const_iterator i=featureset.begin();
+      for(std::set<std::size_t>::const_iterator i=featureset.begin();
           i!=featureset.end(); ++i)
       {
-        int fi = *i;
+        std::size_t fi = *i;
         if( fi<=0 )
           continue;
         if( fi>nmarks )
           throw std::logic_error("wrong feautreset i");
-        std::set<int>::const_iterator j=i;
+        std::set<std::size_t>::const_iterator j=i;
         ++j;
         for( ; j!=featureset.end(); ++j)
         {
-          int fj = *j;
+          std::size_t fj = *j;
           if( fj<=0 )
             continue;
           if( fj>nmarks )
@@ -256,7 +257,8 @@ std::vector<std::size_t> find_clusters(const skeleton &skelet)
   for(std::size_t i=0; i<imx; ++i)
   {
     imn = std::count(atoms.begin(), atoms.end(), i);
-    molecules.push_back({imn,0});
+    array< std::size_t,2 > m = {imn,0};
+    molecules.push_back(m);
     if( imn!=0 )
       ++mol_id;
     if( imn>imxsz )
