@@ -6,6 +6,7 @@ from __future__ import division
 from libtbx.math_utils import ifloor, iceil
 from libtbx.utils import Sorry, null_out
 from libtbx import adopt_init_args
+import libtbx.phil
 import os
 import sys
 
@@ -271,6 +272,68 @@ class generate_water_omit_map (object) :
     self.pdb_hierarchy_omit.write_pdb_file(
       file_name=file_name,
       crystal_symmetry=self.crystal_symmetry)
+
+def get_default_map_coefficients_phil (
+    show_filled=True,
+    disable_filled=False,
+    exclude_free_r_reflections=False,
+    enclosing_scope=None,
+    as_phil_object=True) :
+  """
+  Generate the map coefficients PHIL string for phenix.maps, phenix.refine,
+  and related applications, based on several toggles which control the
+  handling of missing reflections and R-free flags.  Used by the Phenix GUI.
+  """
+  secondary_two_fofc_params = ""
+  if (not disable_filled) :
+    if (show_filled) :
+      secondary_two_fofc_params = """
+      map_coefficients {
+        mtz_label_amplitudes = 2FOFCWT_no_fill
+        mtz_label_phases = PH2FOFCWT_no_fill
+        map_type = 2mFo-DFc
+        fill_missing_f_obs = False
+        exclude_free_r_reflections = %s
+      }""" % exclude_free_r_reflections
+    else :
+      secondary_two_fofc_params = """
+      map_coefficients {
+        mtz_label_amplitudes = 2FOFCWT_filled
+        mtz_label_phases = PH2FOFCWT_filled
+        map_type = 2mFo-DFc
+        fill_missing_f_obs = True
+        exclude_free_r_reflections = %s
+      }""" % exclude_free_r_reflections
+  maps_phil = """
+    map_coefficients {
+      mtz_label_amplitudes = 2FOFCWT
+      mtz_label_phases = PH2FOFCWT
+      map_type = 2mFo-DFc
+      fill_missing_f_obs = %(show_filled)s
+      exclude_free_r_reflections = %(exclude_rfree)s
+    }
+    %(other_two_fofc)s
+    map_coefficients {
+      mtz_label_amplitudes = FOFCWT
+      mtz_label_phases = PHFOFCWT
+      map_type = mFo-DFc
+      exclude_free_r_reflections = %(exclude_rfree)s
+    }
+    map_coefficients {
+      map_type = anomalous
+      format = *mtz phs
+      mtz_label_amplitudes = ANOM
+      mtz_label_phases = PHANOM
+      exclude_free_r_reflections = %(exclude_rfree)s
+    }
+""" % { "exclude_rfree" : exclude_free_r_reflections,
+        "other_two_fofc" : secondary_two_fofc_params,
+        "show_filled" : show_filled and not disable_filled, }
+  if (enclosing_scope is not None) :
+    maps_phil = """%s {\n%s\n}""" % (enclosing_scope, maps_phil)
+  if (as_phil_object) :
+    return libtbx.phil.parse(maps_phil)
+  return maps_phil
 
 # XXX redundant, needs to be eliminated
 def write_map_coeffs (*args, **kwds) :
