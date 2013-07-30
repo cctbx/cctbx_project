@@ -61,6 +61,7 @@ map_coeff_params_base_str = """\
     exclude_free_r_reflections = False
       .type = bool
       .help = Exclude free-R selected reflections from output map coefficients
+      .short_caption = Exclude R-free set from map coefficients
     isotropize = True
       .type = bool
     dev
