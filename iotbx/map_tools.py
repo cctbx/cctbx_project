@@ -604,14 +604,18 @@ class auto_convert_map_coefficients (object) :
         resolution_factor=resolution_factor)
 
 def combine_f_phi_and_fom (f, phi, fom=None, weighted=True) :
+  info = f.info()
   if (f.anomalous_flag()) :
     f = f.average_bijvoet_mates()
+  f = f.map_to_asu().set_info(info)
   if (f.is_complex_array()) :
     return f
   else :
     assert f.is_real_array()
     if (weighted) and (fom is not None) :
-      f, fom = f.common_sets(other=fom)
+      f, fom = f.common_sets(other=fom.map_to_asu())
       f = f * fom
-    f, phi = f.common_sets(other=phi)
-    return f.phase_transfer(phi, deg=True) # XXX is deg always True?
+    f, phi = f.common_sets(other=phi.map_to_asu())
+    # XXX is deg always True?
+    return f.phase_transfer(phi,
+      deg=True).customized_copy(sigmas=None).set_info(info)
