@@ -205,7 +205,8 @@ class writer(object):
       self.segments = []
       self.orientation = []
       for i in range(self.num_segments):
-        self.segments.append((i+1, 1, self.pixel_size[0], 1, self.pixel_size[1]))
+        self.segments.append(
+          (i+1, 1, self.detector_size[0], 1, self.detector_size[1]))
         self.orientation.append((0, 0, 0, 1, 0, 0, 0, 1, 0))
 
   def show(self, out=None):

@@ -77,7 +77,7 @@ class Test(object):
 
     # segment stuff
     assert handle_recycled.num_segments == 1
-    assert handle_recycled.segments == [(1, 1, 0, 1, 0)]
+    assert handle_recycled.segments == [(1, 1, 2463, 1, 2527)]
     assert handle_recycled.orientation == [
       (0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0)]
 
