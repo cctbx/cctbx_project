@@ -1386,13 +1386,6 @@ def occupancy_regroupping(pdb_hierarchy, cgs):
             rg_prev = rgs[i_rg-1]
             break
         if(rg_prev is None): continue
-        if(0):
-          all_altlocs = [rgpc.altloc for rgpc in rg_prev.conformers()]
-          if(not altloc_h in all_altlocs):
-            id_prev= "  chain: %s resseq: %s"%(rg_prev.parent().id,rg_prev.resseq)
-            id_curr= "  chain: %s resseq: %s"%(rg.parent().id, rg.resseq)
-            msg="Alternative conformers don't match:\n%s\n%s"%(id_prev, id_curr)
-            raise Sorry(msg)
         rg_prev_i_seqs = rg_prev.atoms().extract_i_seq()
         # find constarint group corresponding to rg_prev
         cg_prev=None
@@ -1402,7 +1395,7 @@ def occupancy_regroupping(pdb_hierarchy, cgs):
               cg_prev = cg2
               break
           if(cg_prev is not None): break
-        assert cg_prev is not None
+        if(cg_prev is None): continue
         # identify to which constraint group H belongs and move it there
         for cg2 in cgs:
           for c2 in cg2:

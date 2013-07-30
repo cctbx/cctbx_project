@@ -64,8 +64,6 @@ individual_adp_master_params = iotbx.phil.parse("""\
   iso {
     max_number_of_iterations = 25
       .type = int
-    automatic_randomization_if_all_equal = True
-      .type = bool
     scaling {
       scale_max       = 3.0
         .type = float
