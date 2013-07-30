@@ -1387,13 +1387,20 @@ def occupancy_regroupping(pdb_hierarchy, cgs):
             break
         if(rg_prev is None): continue
         rg_prev_i_seqs = rg_prev.atoms().extract_i_seq()
+        # find i_seq of C of previous residue
+        i_seq_c_prev=None
+        for a_prev in rg_prev.atoms():
+          if(a_prev.name.strip().upper()=="C"): i_seq_c_prev = a_prev.i_seq
+        if(i_seq_c_prev is None): continue
         # find constarint group corresponding to rg_prev
         cg_prev=None
         for cg2 in cgs:
           for c2 in cg2:
             if(len(set(c2).intersection(set(rg_prev_i_seqs)))>0):
-              cg_prev = cg2
-              break
+              for cg2_ in cg2:
+                if(i_seq_c_prev in cg2_):
+                  cg_prev = cg2
+                  break
           if(cg_prev is not None): break
         if(cg_prev is None): continue
         # identify to which constraint group H belongs and move it there
@@ -1411,12 +1418,13 @@ def occupancy_regroupping(pdb_hierarchy, cgs):
                 if(len(set(c2).intersection(set(conformer_prev_i_seqs)))>0):
                   c2.append(ind)
                   found = True
-        if(0): assert found
   for cg in cgs:
     while cg.count([None])>0:
       cg.remove([None])
     while cg.count([])>0:
       cg.remove([])
+  while cgs.count([])>0:
+    cgs.remove([])
 
 def assert_xray_structures_equal(
       x1,

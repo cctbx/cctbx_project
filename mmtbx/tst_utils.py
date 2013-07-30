@@ -802,7 +802,6 @@ END
       all_chain_proxies = processed_pdb_file.all_chain_proxies,
       xray_structure    = processed_pdb_file.xray_structure(),
       as_flex_arrays    = False)
-    print res
     answer = \
       [[[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 48],
         [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 59],
@@ -969,6 +968,94 @@ ATOM     45  HE3BMET A   0      18.343  15.241  22.899  0.51 40.99           H
     as_flex_arrays    = False)
   answer = [[[13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29],
              [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45]]]
+  assert approx_equal(res, answer)
+
+def exercise_28(verbose):
+  pdb_str="""\
+CRYST1   64.360   64.360   46.038  90.00  90.00 120.00 P 63
+ATOM      0  N   ASP A  48       8.896  25.394  -7.791  1.00  8.05           N
+ATOM      1  CA  ASP A  48       8.495  26.452  -6.936  1.00  8.42           C
+ATOM      2  C   ASP A  48       8.287  26.047  -5.477  1.00  8.20           C
+ATOM      3  O   ASP A  48       8.309  26.881  -4.579  1.00 10.68           O
+ATOM      4  CB  ASP A  48       7.216  27.151  -7.426  1.00  9.40           C
+ATOM      5  CG  ASP A  48       7.457  27.744  -8.791  1.00 10.91           C
+ATOM      6  OD1 ASP A  48       8.234  28.729  -8.836  1.00 16.64           O
+ATOM      7  OD2 ASP A  48       6.845  27.293  -9.764  1.00 12.53           O
+ATOM      8  HA  ASP A  48       9.193  27.122  -6.935  1.00  8.42           H
+ATOM      9  HB2 ASP A  48       6.494  26.507  -7.490  1.00  9.40           H
+ATOM     10  HB3 ASP A  48       6.981  27.867  -6.815  1.00  9.40           H
+ATOM     11  H  AASP A  48       8.303  25.156  -8.367  0.50  8.04           H
+ATOM     12  H  BASP A  48       8.242  25.041  -8.223  0.50  8.04           H
+ATOM     13  N  ALEU A  49       8.083  24.740  -5.245  0.79  7.34           N
+ATOM     14  CA ALEU A  49       7.817  24.239  -3.906  0.79  6.67           C
+ATOM     15  C  ALEU A  49       8.124  22.738  -3.941  0.79  5.81           C
+ATOM     16  O  ALEU A  49       7.880  22.074  -4.958  0.79  6.71           O
+ATOM     17  CB ALEU A  49       6.385  24.559  -3.494  0.79  7.19           C
+ATOM     18  CG ALEU A  49       5.914  24.092  -2.111  0.79  7.07           C
+ATOM     19  CD1ALEU A  49       4.885  25.059  -1.536  0.79  8.84           C
+ATOM     20  CD2ALEU A  49       5.323  22.713  -2.192  0.79  7.46           C
+ATOM     21  H  ALEU A  49       8.095  24.131  -5.852  0.79  7.25           H
+ATOM     22  HA ALEU A  49       8.421  24.661  -3.275  0.79  7.14           H
+ATOM     23  HB2ALEU A  49       6.277  25.523  -3.518  0.79  9.16           H
+ATOM     24  HB3ALEU A  49       5.791  24.158  -4.147  0.79  9.16           H
+ATOM     25  HG ALEU A  49       6.673  24.062  -1.508  0.79  6.91           H
+ATOM     26 HD11ALEU A  49       4.592  24.730  -0.672  0.79  9.95           H
+ATOM     27 HD12ALEU A  49       5.294  25.933  -1.437  0.79  9.95           H
+ATOM     28 HD13ALEU A  49       4.130  25.113  -2.143  0.79  9.95           H
+ATOM     29 HD21ALEU A  49       4.960  22.476  -1.324  0.79  8.29           H
+ATOM     30 HD22ALEU A  49       4.616  22.710  -2.856  0.79  8.29           H
+ATOM     31 HD23ALEU A  49       6.015  22.082  -2.442  0.79  8.29           H
+ATOM     32  N  BLEU A  49       7.975  24.768  -5.242  0.21  7.25           N
+ATOM     33  CA BLEU A  49       7.654  24.205  -3.941  0.21  7.15           C
+ATOM     34  C  BLEU A  49       8.003  22.716  -3.887  0.21  7.83           C
+ATOM     35  O  BLEU A  49       7.689  22.025  -4.858  0.21  5.06           O
+ATOM     36  CB BLEU A  49       6.162  24.365  -3.605  0.21  9.16           C
+ATOM     37  CG BLEU A  49       5.681  23.652  -2.331  0.21  6.91           C
+ATOM     38  CD1BLEU A  49       6.301  24.276  -1.095  0.21  9.95           C
+ATOM     39  CD2BLEU A  49       4.156  23.640  -2.248  0.21  8.29           C
+ATOM     40  H  BLEU A  49       7.943  24.178  -5.867  0.21  7.25           H
+ATOM     41  HA BLEU A  49       8.173  24.662  -3.262  0.21  7.14           H
+ATOM     42  HB2BLEU A  49       5.975  25.310  -3.494  0.21  9.16           H
+ATOM     43  HB3BLEU A  49       5.645  24.021  -4.346  0.21  9.16           H
+ATOM     44  HG BLEU A  49       5.963  22.725  -2.358  0.21  6.91           H
+ATOM     45 HD11BLEU A  49       6.470  23.579  -0.443  0.21  9.95           H
+ATOM     46 HD12BLEU A  49       7.132  24.697  -1.346  0.21  9.95           H
+ATOM     47 HD13BLEU A  49       5.691  24.937  -0.731  0.21  9.95           H
+ATOM     48 HD21BLEU A  49       3.888  23.174  -1.441  0.21  8.29           H
+ATOM     49 HD22BLEU A  49       3.834  24.555  -2.225  0.21  8.29           H
+ATOM     50 HD23BLEU A  49       3.802  23.184  -3.027  0.21  8.29           H
+ATOM     51  N   VAL A  50       8.616  22.239  -2.807  1.00  5.93           N
+ATOM     52  CA  VAL A  50       8.845  20.793  -2.609  1.00  5.53           C
+ATOM     53  C   VAL A  50       7.981  20.307  -1.457  1.00  5.75           C
+ATOM     54  O   VAL A  50       7.971  20.912  -0.389  1.00  6.63           O
+ATOM     55  CB  VAL A  50      10.325  20.527  -2.343  1.00  6.31           C
+ATOM     56  CG1 VAL A  50      10.556  19.043  -2.072  1.00  7.62           C
+ATOM     57  CG2 VAL A  50      11.170  20.998  -3.512  1.00  7.52           C
+ATOM     58  HA  VAL A  50       8.593  20.305  -3.404  1.00  5.53           H
+ATOM     59  HB  VAL A  50      10.599  21.022  -1.555  1.00  6.31           H
+ATOM     60 HG11 VAL A  50      11.507  18.860  -2.118  1.00  7.62           H
+ATOM     61 HG12 VAL A  50      10.221  18.824  -1.188  1.00  7.62           H
+ATOM     62 HG13 VAL A  50      10.087  18.523  -2.744  1.00  7.62           H
+ATOM     63 HG21 VAL A  50      12.097  20.765  -3.345  1.00  7.52           H
+ATOM     64 HG22 VAL A  50      10.860  20.562  -4.321  1.00  7.52           H
+ATOM     65 HG23 VAL A  50      11.081  21.960  -3.600  1.00  7.52           H
+ATOM     66  H  AVAL A  50       8.830  22.718  -2.125  0.79  5.93           H
+ATOM     67  H  BVAL A  50       8.914  22.729  -2.166  0.21  5.93           H
+TER
+END
+"""
+  if (verbose): log = sys.stdout
+  else: log = StringIO()
+  processed_pdb_files_srv = utils.process_pdb_file_srv(log=log)
+  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
+    raw_records = pdb_str.splitlines())
+  res = utils.occupancy_selections(
+    all_chain_proxies = processed_pdb_file.all_chain_proxies,
+    xray_structure    = processed_pdb_file.xray_structure(),
+    as_flex_arrays    = False)
+  answer = [ [[11],[12]],
+             [[13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,66],
+              [32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,67]]]
   assert approx_equal(res, answer)
 
 def exercise_d_data_target_d_atomic_params():
@@ -1230,6 +1317,7 @@ def run():
   exercise_25(verbose=verbose)
   exercise_26(verbose=verbose)
   exercise_27(verbose=verbose)
+  exercise_28(verbose=verbose)
   exercise_d_data_target_d_atomic_params()
   exercise_get_atom_selections(verbose=verbose)
   exercise_f_000()
