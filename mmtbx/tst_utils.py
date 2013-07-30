@@ -908,6 +908,69 @@ ATOM    129  D  BLEU L   6       0.595  12.387  14.715  0.50 13.93           D
   answer = [ [[32], [33]] ]
   assert approx_equal(res, answer)
 
+def exercise_27(verbose):
+  pdb_str="""\
+CRYST1   64.714   39.225   38.645  90.00 117.38  90.00 C 1 2 1
+ATOM      0  N   SER A  -1      20.605   9.913  24.660  1.00 32.98           N
+ATOM      1  CA  SER A  -1      21.415  10.057  23.431  1.00 25.22           C
+ATOM      2  C   SER A  -1      20.514  10.247  22.233  1.00 25.05           C
+ATOM      3  O   SER A  -1      19.332   9.926  22.266  1.00 28.08           O
+ATOM      4  CB  SER A  -1      22.253   8.810  23.194  1.00 28.97           C
+ATOM      5  OG  SER A  -1      21.417   7.708  22.900  1.00 37.21           O
+ATOM      6  H1  SER A  -1      19.896  10.449  24.612  1.00 38.17           H
+ATOM      7  H2  SER A  -1      20.335   9.069  24.737  1.00 27.38           H
+ATOM      8  H3  SER A  -1      21.098  10.134  25.368  1.00 38.75           H
+ATOM      9  HA  SER A  -1      21.997  10.829  23.514  1.00 12.22           H
+ATOM     10  HB2 SER A  -1      22.844   8.970  22.440  1.00 22.78           H
+ATOM     11  HB3 SER A  -1      22.771   8.614  23.990  1.00 30.47           H
+ATOM     12  HG  SER A  -1      21.872   7.007  22.826  1.00 42.35           H
+ATOM     13  N  AMET A   0      21.097  10.723  21.147  0.49 20.67           N
+ATOM     14  CA AMET A   0      20.340  10.870  19.929  0.49 21.49           C
+ATOM     15  C  AMET A   0      21.236  10.795  18.720  0.49 18.70           C
+ATOM     16  O  AMET A   0      22.394  11.216  18.750  0.49 19.47           O
+ATOM     17  CB AMET A   0      19.569  12.183  19.945  0.49 22.62           C
+ATOM     18  CG AMET A   0      20.423  13.414  20.138  0.49 24.87           C
+ATOM     19  SD AMET A   0      19.580  14.932  19.650  0.49 29.00           S
+ATOM     20  CE AMET A   0      17.946  14.760  20.377  0.49 36.23           C
+ATOM     21  H  AMET A   0      21.920  10.964  21.095  0.49 28.25           H
+ATOM     22  HA AMET A   0      19.697  10.146  19.870  0.49  7.25           H
+ATOM     23  HB2AMET A   0      19.093  12.280  19.105  0.49 13.51           H
+ATOM     24  HB3AMET A   0      18.941  12.141  20.681  0.49  7.62           H
+ATOM     25  HG2AMET A   0      20.671  13.490  21.072  0.49 26.02           H
+ATOM     26  HG3AMET A   0      21.219  13.333  19.589  0.49 30.87           H
+ATOM     27  HE1AMET A   0      17.284  14.819  19.669  0.49 20.79           H
+ATOM     28  HE2AMET A   0      17.863  13.908  20.829  0.49  8.45           H
+ATOM     29  HE3AMET A   0      17.812  15.481  21.012  0.49 30.25           H
+ATOM     30  N  BMET A   0      21.082  10.809  21.171  0.51 21.19           N
+ATOM     31  CA BMET A   0      20.368  11.023  19.923  0.51 23.13           C
+ATOM     32  C  BMET A   0      21.273  10.654  18.766  0.51 21.10           C
+ATOM     33  O  BMET A   0      22.496  10.703  18.893  0.51 19.93           O
+ATOM     34  CB BMET A   0      19.961  12.488  19.782  0.51 27.15           C
+ATOM     35  CG BMET A   0      19.070  12.993  20.889  0.51 29.67           C
+ATOM     36  SD BMET A   0      18.685  14.739  20.684  0.51 41.63           S
+ATOM     37  CE BMET A   0      17.734  15.043  22.171  0.51 35.23           C
+ATOM     38  HA BMET A   0      19.568  10.476  19.897  0.51 36.28           H
+ATOM     39  HB2BMET A   0      20.762  13.035  19.778  0.51  8.59           H
+ATOM     40  HB3BMET A   0      19.485  12.602  18.945  0.51 27.25           H
+ATOM     41  HG2BMET A   0      18.236  12.497  20.877  0.51 21.33           H
+ATOM     42  HG3BMET A   0      19.519  12.877  21.741  0.51 34.36           H
+ATOM     43  HE1BMET A   0      17.141  15.795  22.018  0.51 42.08           H
+ATOM     44  HE2BMET A   0      17.217  14.249  22.380  0.51 22.21           H
+ATOM     45  HE3BMET A   0      18.343  15.241  22.899  0.51 40.99           H
+"""
+  if (verbose): log = sys.stdout
+  else: log = StringIO()
+  processed_pdb_files_srv = utils.process_pdb_file_srv(log=log)
+  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
+    raw_records = pdb_str.splitlines())
+  res = utils.occupancy_selections(
+    all_chain_proxies = processed_pdb_file.all_chain_proxies,
+    xray_structure    = processed_pdb_file.xray_structure(),
+    as_flex_arrays    = False)
+  answer = [[[13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29],
+             [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45]]]
+  assert approx_equal(res, answer)
+
 def exercise_d_data_target_d_atomic_params():
   import iotbx.pdb
   import mmtbx.f_model
@@ -1166,6 +1229,7 @@ def run():
   exercise_24(verbose=verbose)
   exercise_25(verbose=verbose)
   exercise_26(verbose=verbose)
+  exercise_27(verbose=verbose)
   exercise_d_data_target_d_atomic_params()
   exercise_get_atom_selections(verbose=verbose)
   exercise_f_000()

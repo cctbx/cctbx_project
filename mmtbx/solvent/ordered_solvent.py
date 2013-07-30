@@ -139,19 +139,6 @@ master_params_str = """\
   correct_drifted_waters = True
     .type = bool
     .expert_level=2
-  use_kick_maps = False
-    .type = bool
-    .expert_level=2
-    .help = Use Dusan's Turk kick maps for peak picking
-  kick_map
-    .help = parameters for kick maps
-    .expert_level=2
-  {
-     kick_size = 0.5
-       .type = float
-     number_of_kicks = 100
-       .type = int
-  }
   update_f_part1 = True
     .type = bool
     .expert_level = 3
@@ -203,9 +190,8 @@ class manager(object):
     if(not self.filter_only):
       assert self.params.primary_map_type is not None
       peaks = self.find_peaks(
-        map_type     = self.params.primary_map_type,
-        map_cutoff   = self.params.primary_map_cutoff,
-        use_kick_map = self.params.use_kick_maps).peaks_mapped()
+        map_type   = self.params.primary_map_type,
+        map_cutoff = self.params.primary_map_cutoff).peaks_mapped()
       if(peaks is not None):
         self.sites, self.heights = peaks.sites, peaks.heights
         self.add_new_solvent()
@@ -388,7 +374,7 @@ class manager(object):
     print >>self.log,"  dist_sol_mol_min = %s (limit = %s)"%(d_min, dl_min)
     print >>self.log,"  dist_sol_mol_max = %s (limit = %s)"%(d_max, dl_max)
 
-  def find_peaks(self, map_type, map_cutoff, use_kick_map=False):
+  def find_peaks(self, map_type, map_cutoff):
     self.fmodel.update_xray_structure(
       xray_structure = self.model.xray_structure,
       update_f_calc  = True)
@@ -397,8 +383,8 @@ class manager(object):
       map_type        = map_type,
       map_cutoff      = map_cutoff,
       params          = self.find_peaks_params,
-      use_kick_map    = use_kick_map,
-      kick_map_params = self.params.kick_map,
+      use_kick_map    = False,
+      kick_map_params = None,
       update_f_part1  = self.params.update_f_part1,
       log             = self.log)
 

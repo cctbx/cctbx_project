@@ -779,8 +779,11 @@ def fem(ko, crystal_gridding, mc_orig, fmodel):
       fourier_coefficients = ko.map_coefficients)
     fft_map.apply_sigma_scaling()
     map_data = fft_map.real_map_unpadded()
-  # XXX this may not be needed and can even make things worse (see Juan's data)
-  maptbx.hoppe_gassman_modification(data=map_data, mean_scale=2, n_iterations=1)
+  if(0):
+    # XXX need more tests to figure out pros and cons (see Juan's data)
+    # XXX disabling may (or may not ?) require higher degree of shaking.
+    maptbx.hoppe_gassman_modification(
+      data=map_data, mean_scale=2, n_iterations=1)
   if(0):
     o = maptbx.volume_scale(map = map_data, n_bins = 10000)
     fem = ko.complete_set.structure_factors_from_map(
