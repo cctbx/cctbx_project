@@ -1047,9 +1047,25 @@ def exercise_set_box():
       end           = e)
   assert m2.as_1d().min_max_mean().as_tuple() == (1.,1.,1.)
 
+def exercise_median_filter():
+  values = [-2,-1,-0.3,-0.2,-0.1,0,0.1,0.2,0.3,0.4,3,4]
+  av = [values[random.choice([0,1,2,3,4,5,6,7])] for i in xrange(10*20*30)]
+  a = flex.double(av)
+  a.resize(flex.grid((10,20,30)))
+  maptbx.median_filter(map_data=a, index_span=1)
+
+def exercise_kuwahara_filter():
+  values = [-2,-1,-0.3,-0.2,-0.1,0,0.1,0.2,0.3,0.4,3,4]
+  av = [values[random.choice([0,1,2,3,4,5,6,7])] for i in xrange(10*20*30)]
+  a = flex.double(av)
+  a.resize(flex.grid((10,20,30)))
+  maptbx.kuwahara_filter(map_data=a, index_span=2)
+
 def run(args):
   assert args in [[], ["--timing"]]
   timing = len(args) != 0
+  exercise_kuwahara_filter()
+  exercise_median_filter()
   exercise_set_box()
   exercise_boxing()
   exercise_copy()

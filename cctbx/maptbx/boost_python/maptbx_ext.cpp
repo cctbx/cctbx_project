@@ -214,6 +214,20 @@ namespace {
 
     def("cc_weighted_maps",cc_weighted_maps);
 
+    def("kuwahara_filter",
+      (void(*)
+        (af::ref<double, af::c_grid<3> >,
+         int const&)) kuwahara_filter, (
+      arg("map_data"),
+      arg("index_span")));
+
+    def("median_filter",
+      (void(*)
+        (af::ref<double, af::c_grid<3> >,
+         int const&)) median_filter, (
+      arg("map_data"),
+      arg("index_span")));
+
     def("map_box_average",
       (void(*)
         (af::ref<double, af::c_grid<3> >,

@@ -7,6 +7,7 @@
 #include <cctbx/uctbx.h>
 #include <scitbx/math/utils.h>
 #include <scitbx/math/modulo.h>
+#include <scitbx/array_family/sort.h>
 
 namespace cctbx { namespace maptbx {
 
@@ -314,6 +315,104 @@ void reset(
       for(int k = 0; k < nz; k++) {
          double rho = map_data(i,j,k);
          if(rho<less_than_threshold) map_data(i,j,k) = substitute_value;
+  }}}
+}
+
+template <typename DataType>
+void
+median_filter(
+  af::ref<DataType, af::c_grid<3> > map_data,
+  int const& index_span)
+{
+  af::shared<DataType> box;
+  int nx = map_data.accessor()[0];
+  int ny = map_data.accessor()[1];
+  int nz = map_data.accessor()[2];
+  for (int lx = 0; lx < nx; lx++) {
+    for (int ly = 0; ly < ny; ly++) {
+      for (int lz = 0; lz < nz; lz++) {
+        box.resize(0,0);
+        for (int i = lx-index_span; i <= lx+index_span; i++) {
+          for (int j = ly-index_span; j <= ly+index_span; j++) {
+            for (int k = lz-index_span; k <= lz+index_span; k++) {
+              int mx = scitbx::math::mod_positive(i, nx);
+              int my = scitbx::math::mod_positive(j, ny);
+              int mz = scitbx::math::mod_positive(k, nz);
+              DataType rho = map_data(mx,my,mz);
+              box.push_back(rho);
+        }}}
+        af::shared<std::size_t> permut;
+        permut = af::sort_permutation(box.const_ref(),true);
+        DataType median = box[permut[int(permut.size()/2)]];
+        map_data(lx,ly,lz) = median;
+  }}}
+}
+
+template <typename DataType>
+void
+kuwahara_filter(
+  af::ref<DataType, af::c_grid<3> > map_data,
+  int const& index_span)
+{
+  af::tiny<af::shared<DataType>, 8> octants;
+  af::tiny<DataType, 8> mean;
+  af::tiny<DataType, 8> variance;
+  int nx = map_data.accessor()[0];
+  int ny = map_data.accessor()[1];
+  int nz = map_data.accessor()[2];
+  for(int lx = 0; lx < nx; lx++) {
+    for(int ly = 0; ly < ny; ly++) {
+      for(int lz = 0; lz < nz; lz++) {
+        // extract octants
+        for(int o = 0; o < 8; o++) {
+          af::shared<DataType> tmp;
+          octants[o] = tmp;
+        }
+        for(int i = -index_span; i <= index_span; i++) {
+          for(int j = -index_span; j <= index_span; j++) {
+            for(int k = -index_span; k <= index_span; k++) {
+              int mx = scitbx::math::mod_positive(lx+i, nx);
+              int my = scitbx::math::mod_positive(ly+j, ny);
+              int mz = scitbx::math::mod_positive(lz+k, nz);
+              DataType rho = map_data(mx,my,mz);
+              if(i>=0&&j>=0&&k>=0) octants[0].push_back(rho); // octant #1
+              if(i<=0&&j>=0&&k>=0) octants[1].push_back(rho); // octant #2
+              if(i<=0&&j<=0&&k>=0) octants[2].push_back(rho); // octant #3
+              if(i>=0&&j<=0&&k>=0) octants[3].push_back(rho); // octant #4
+              if(i>=0&&j>=0&&k<=0) octants[4].push_back(rho); // octant #5
+              if(i<=0&&j>=0&&k<=0) octants[5].push_back(rho); // octant #6
+              if(i<=0&&j<=0&&k<=0) octants[6].push_back(rho); // octant #7
+              if(i>=0&&j<=0&&k<=0) octants[7].push_back(rho); // octant #8
+        }}}
+        // compute mean and variance in each octant
+        mean.fill(0);
+        variance.fill(0);
+        for(int o = 0; o < 8; o++) {
+          af::shared<DataType> oct = octants[o];
+          CCTBX_ASSERT(oct.size()!=0);
+          // mean
+          DataType m = 0;
+          for(int p = 0; p < oct.size(); p++) m += oct[p];
+          mean[o] = m/oct.size();
+          // variance
+          DataType v = 0;
+          for(int p = 0; p < oct.size(); p++) {
+            DataType delta = oct[p] - mean[o];
+            v += (delta*delta);
+          }
+          variance[o] = v/oct.size();
+        }
+        // find mean corresponding to the lowest variance
+        DataType mean_result = 0;
+        DataType v_smallest = 1.e99;
+        for(int o = 0; o < 8; o++) {
+          if(variance[o] < v_smallest) {
+            v_smallest = variance[o];
+            mean_result = mean[o];
+          }
+        }
+        // set to central pixel
+        map_data(lx,ly,lz) = mean_result;
   }}}
 }
 
