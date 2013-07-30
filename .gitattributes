@@ -1822,7 +1822,6 @@ rstbx/bpcx/detector_model/sensor.cpp -text
 rstbx/bpcx/detector_model/sensor.h -text
 rstbx/bpcx/detector_model/tst_detector_model.py -text
 rstbx/bpcx/ersatz_misset.py -text
-rstbx/bpcx/reeke.py -text
 rstbx/bpcx/uc1_2.py -text
 rstbx/bpcx/uc1_2_positions.py -text
 rstbx/bpcx/uc1_2_positions_idx.py -text

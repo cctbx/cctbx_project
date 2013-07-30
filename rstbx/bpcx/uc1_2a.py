@@ -173,7 +173,7 @@ def regenerate_predictions_reeke(xds_integrate_hkl_file, phi_range):
     from cctbx.sgtbx import space_group, space_group_symbols
     from cctbx.uctbx import unit_cell
     import math
-    from reeke import reeke_model
+    from dials.algorithms.refinement.prediction.reeke import reeke_model
     from cctbx.array_family import flex
 
     cfc = coordinate_frame_converter(xds_integrate_hkl_file)
@@ -338,15 +338,19 @@ def work():
     # assert(float(n_correct) / float(n_correct + n_wrong) > 0.999)
     print 'OK'
 
-    xyz_to_hkl = regenerate_predictions_reeke(integrate_hkl, phi_range)
+    try:
+        from dials.algorithms.refinement.prediction.reeke import reeke_model
+        xyz_to_hkl = regenerate_predictions_reeke(integrate_hkl, phi_range)
 
-    print 'Reeke:', ranges(xyz_to_hkl)
+        print 'Reeke:', ranges(xyz_to_hkl)
 
-    n_correct, n_wrong = compare(xyz_to_hkl, xyz_to_hkl_xds)
-    print n_correct, n_wrong
-    # assert(float(n_correct) / float(n_correct + n_wrong) > 0.999)
+        n_correct, n_wrong = compare(xyz_to_hkl, xyz_to_hkl_xds)
+        print n_correct, n_wrong
+        # assert(float(n_correct) / float(n_correct + n_wrong) > 0.999)
 
-    print 'OK'
+        print 'OK'
+    except ImportError as e:
+        print "Test of the Reeke algorithm requires DIALS."
 
 if __name__ == '__main__':
     work()
