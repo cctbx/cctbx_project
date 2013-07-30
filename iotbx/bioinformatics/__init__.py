@@ -271,6 +271,19 @@ class alignment(object):
     return result
 
 
+
+  def shortest_seqlen(self): # returns the number of aligned residues
+    if not self.alignments:
+      return 0.0
+
+    alignment_length = len( self.alignments[0] )
+    shortest_sequence_length = min(
+      [ alignment_length - seq.count( self.gap ) for seq in self.alignments ]
+      )
+    return shortest_sequence_length
+
+
+
   def identity_fraction(self):
 
     if not self.alignments:
