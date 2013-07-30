@@ -184,30 +184,31 @@ class reeke_model:
         # Find reciprocal lattice axis closest to source direction by checking magnitude
         # of dot products between normalised axes and source, then swap as required
         along_beam = [math.fabs(rl_dirs[j].dot(self._source)) for j in range(3)]
-
-        col1 = along_beam.index(max(along_beam))
-
-        rl_dirs[0], rl_dirs[col1] = rl_dirs[col1], rl_dirs[0]
+        index_of_p = along_beam.index(max(along_beam))
+        indices = range(3)
+        rl_dirs[0], rl_dirs[index_of_p] = rl_dirs[index_of_p], rl_dirs[0]
+        indices[0], indices[index_of_p] = indices[index_of_p], indices[0]
 
         # Now find which of the two remaining reciprocal lattice axes is
         # closest to the rotation axis.
         along_spindle = [math.fabs(rl_dirs[j].dot(self._axis)) for j in (1, 2)]
 
-        col3 = along_spindle.index(max(along_spindle)) + 1
+        index_of_r = along_spindle.index(max(along_spindle)) + 1
+        index_of_r = indices[index_of_r]
 
         # Which is the remaining column index?
-        col2 = [j for j in range(3) if not j in (col1, col3)][0]
+        index_of_q = [j for j in range(3) if not j in (index_of_p, index_of_r)][0]
 
         # permutation matrix such that h, k, l = M * (p, q, r)
         elems = [int(0)] * 9
-        elems[3 * col1] = int(1)
-        elems[3 * col2 + 1] = int(1)
-        elems[3 * col3 + 2] = int(1)
+        elems[3 * index_of_p] = int(1)
+        elems[3 * index_of_q + 1] = int(1)
+        elems[3 * index_of_r + 2] = int(1)
         self._permutation = matrix.sqr(elems)
 
         # Return the permuted order of the columns
 
-        return col1, col2, col3
+        return index_of_p, index_of_q, index_of_r
 
     def _solve_quad(self, a, b, c):
         """Robust solution, for real roots only, of a quadratic in the form
