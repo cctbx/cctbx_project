@@ -52,7 +52,8 @@ class simple_target (object) :
     return True
 
 class target_with_save_result (object) :
-  def __init__ (self, args, file_name, output_dir=None, log_file=None) :
+  def __init__ (self, args, file_name, output_dir=None, log_file=None,
+      job_title=None) :
     assert (isinstance(file_name, str))
     assert (isinstance(args, list) or isinstance(args, tuple))
     assert (output_dir is None) or (isinstance(output_dir, str))

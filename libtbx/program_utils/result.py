@@ -30,6 +30,10 @@ class program_result (object) :
   def get_pdb_files (self) :
     return [ self.get_file_path(fn) for fn in self.pdb_files ]
 
+  @property
+  def n_pdb_files (self) :
+    return len(self.pdb_files)
+
   def get_pdb_file (self) :
     assert (len(self.pdb_files) <= 1)
     if (len(self.pdb_files) == 0) :
@@ -80,8 +84,8 @@ class program_result (object) :
     output_files = []
     for file_name in self.pdb_files :
       output_files.append((file_name, self.get_pdb_file_caption()))
-    for file_name in self.map_file :
-      output_files.append((file_name, self.get_map_file_caption()))
+    if (self.map_file is not None) :
+      output_files.append((self.map_file, self.get_map_file_caption()))
     stats = self.get_final_stats()
     return output_files, stats
 
