@@ -178,15 +178,15 @@ class to_xds(object):
               self.beam_vector
 
         # FIXME LATER
-        if hasattr(self.get_beam(), "get_polatization_fraction"):
+        if hasattr(self.get_beam(), "get_polarization_fraction"):
             print >> out, 'FRACTION_OF_POLARIZATION= %.3f' % \
                 self.get_beam().get_polarization_fraction()
             print >> out, 'POLARIZATION_PLANE_NORMAL= %.3f %.3f %.3f' % \
-                self.get_beam().get_polarization()
+                self.get_beam().get_polarization_normal()
         print >> out, 'NAME_TEMPLATE_OF_DATA_FRAMES= %s' % \
             self.get_template().replace('#', '?')
         print >> out, 'TRUSTED_REGION= 0.0 1.41'
-        for f0, f1, s0, s1 in self.get_detector().get_mask():
+        for f0, s0, f1, s1 in self.get_detector().get_mask():
             print >> out, 'UNTRUSTED_RECTANGLE= %d %d %d %d' % \
                   (f0 - 1, f1 + 1, s0 - 1, s1 + 1)
 
