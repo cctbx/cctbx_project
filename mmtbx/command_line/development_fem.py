@@ -1,27 +1,37 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.development.fem
 
 from __future__ import division
-import sys, time
-import mmtbx.utils
-import iotbx.phil
 import mmtbx.f_model
-import iotbx.pdb
+import mmtbx.utils
 import mmtbx.maps
-from scitbx.array_family import flex
+import iotbx.phil
+import iotbx.pdb
 from cctbx import adptbx
+from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
+from libtbx import runtime_utils
+import os.path
+import time
+import sys
 
 master_phil = iotbx.phil.parse("""
 include scope mmtbx.utils.cmdline_input_phil_str
 output {
   file_name = fem.mtz
     .type = path
+    .style = hidden
   column_root_label = FEM
-    .type = path
+    .type = str
+    .input_size = 120
+    .short_caption = Base MTZ column label
   gui_output_dir = None
     .type = path
+    .short_caption = Output directory
+    .style = bold output_dir
 }
+include scope libtbx.phil.interface.tracking_params
 """, process_includes=True)
+master_params = master_phil # for phenix GUI
 
 def run(args, command_name = "phenix.development.fem", log = sys.stdout):
   cmdline = mmtbx.utils.cmdline_load_pdb_and_data(
@@ -58,7 +68,7 @@ Calculate a "feature-enhanced" 2mFo-DFc map.
   ### b-factor sharpen
   xrs = fmodel.xray_structure
   b_iso_min = flex.min(xrs.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1))
-  print "Max B subtracted from atoms and used to sharpen map:", b_iso_min
+  print >> log, "Max B subtracted from atoms and used to sharpen map:", b_iso_min
   xrs.shift_us(b_shift=-b_iso_min)
   b_iso_min = flex.min(xrs.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1))
   assert approx_equal(b_iso_min, 0, 1.e-3)
@@ -101,6 +111,16 @@ Calculate a "feature-enhanced" 2mFo-DFc map.
     column_root_label=params.output.column_root_label)
   mtz_object = mtz_dataset.mtz_object()
   mtz_object.write(file_name = params.output.file_name)
+  return os.path.abspath(params.output.file_name)
+
+class launcher (runtime_utils.target_with_save_result) :
+  def run (self) :
+    os.mkdir(self.output_dir)
+    os.chdir(self.output_dir)
+    return run(args=self.args, log=sys.stdout)
+
+def validate_params (params) :
+  return mmtbx.utils.validate_input_params(params)
 
 if(__name__ == "__main__"):
   t0 = time.time()
