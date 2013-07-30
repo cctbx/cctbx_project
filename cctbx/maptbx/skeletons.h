@@ -18,19 +18,18 @@ typedef scitbx::af::versa<double,scitbx::af::c_grid_padded<3> > map_t;
 
 typedef scitbx::af::const_ref<double,scitbx::af::c_grid_padded<3> > const_map_t;
 
-typedef scitbx::af::versa<int,scitbx::af::c_grid_padded<3> > marks_t;
+typedef scitbx::af::versa<std::size_t,scitbx::af::c_grid_padded<3> > marks_t;
 
 using std::tuple;
 using std::array;
 using std::get;
 
-typedef scitbx::vec3<int> xyz_t;
 typedef scitbx::vec3<int> int3_t;
-typedef tuple< xyz_t, double > xyzm_t;
+typedef tuple< int3_t, double > xyzm_t;
 
 struct join_t
 {
-  int ilt, igt;
+  std::size_t ilt, igt;
 };
 
 inline bool operator< (const join_t &a, const join_t &b)
