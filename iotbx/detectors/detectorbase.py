@@ -163,6 +163,9 @@ class DetectorImageBase(object):
       endian = 0
       self.parameters["BYTE_ORDER"]="little_endian"
 
+    if not self.parameters.has_key("DETECTOR_SN"):
+      self.parameters["DETECTOR_SN"] = 0
+
     #handle pilatus
     if self.parameters['SIZE1'] == 2527 and self.parameters['SIZE2'] == 2463:
       self.parameters['SIZE1'] = 2463
@@ -186,6 +189,7 @@ WAVELENGTH=%(WAVELENGTH).6f;
 BEAM_CENTER_X=%(BEAM_CENTER_X).2f;
 BEAM_CENTER_Y=%(BEAM_CENTER_Y).2f;
 CCD_IMAGE_SATURATION=65535;
+DETECTOR_SN=%(DETECTOR_SN)d;
 }\f"""%self.parameters
     F = open(fileout,"wb")
     F.write(info)
