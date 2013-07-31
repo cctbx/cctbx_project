@@ -313,8 +313,7 @@ def create_helix_hydrogen_bond_proxies (
         residues = conformer.residues()
         n_residues = len(residues)
         j_seq = 0
-        for i_residue, residue in enumerate(residues):
-          if(i_residue+helix_step >= n_residues): break
+        while (j_seq < n_residues - helix_step) :
           residue = residues[j_seq]
           resi_atoms = residue.atoms()
           resseq = residue.resseq_as_int()
