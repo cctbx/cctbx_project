@@ -2549,7 +2549,7 @@ input {
     .type = path
   skip_twin_detection = False
     .type = bool
-  scattering_table = k1995  it1992  *n_gaussian  neutron
+  scattering_table = wk1995  it1992  *n_gaussian  neutron
     .type = choice
 }
 """ % (xray_data_str, pdb_params.as_str(attributes_level=3),
