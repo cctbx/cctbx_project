@@ -1230,12 +1230,8 @@ class manager(manager_mixin):
       map_data           = map_data,
       by_sigma_less_than = cutoff,
       scale_by           = 1./unit_cell_volume)
-    map_data = map_data*bulk_solvent_mask
-    min_map = flex.min(map_data)
-    if(min_map == 0): return
-    assert min_map < 0
     f_diff = mc.structure_factors_from_map(
-      map            = map_data,
+      map            = map_data*bulk_solvent_mask,
       use_scale      = True,
       anomalous_flag = False,
       use_sg         = False)
