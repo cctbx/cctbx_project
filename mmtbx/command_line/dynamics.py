@@ -7,6 +7,7 @@ from scitbx.array_family import flex
 from libtbx.utils import user_plus_sys_time, Usage
 from libtbx import runtime_utils
 from libtbx.str_utils import make_header
+import os.path
 import sys
 
 master_params_str = """
