@@ -103,8 +103,16 @@ class unit_cell_wrapper(sb_wrapper):
                        space_group_symbol=self.working_phil.viewer.calibrate_unitcell.spacegroup)
     self.hkl_list = cctbx.miller.build_set(self.uc, False, d_min=working_phil.viewer.calibrate_unitcell.d_min)
 
-    spacings = self.hkl_list.d_spacings()
-    print "Printing spacings, len: %s"%spacings.size()
+    spacings = list(self.hkl_list.d_spacings())
+    print "Printing spacings, len: %s"%len(spacings)
+
+    def cmp(a,b):
+      if a[1] > b[1]: return 1
+      elif a[1] < b[1]: return -1
+      return 0
+
+    spacings = sorted(spacings, cmp=cmp, reverse=True)
+
     for d in spacings:
       print d
 
