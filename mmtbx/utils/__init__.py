@@ -1387,20 +1387,26 @@ def occupancy_regroupping(pdb_hierarchy, cgs):
             break
         if(rg_prev is None): continue
         rg_prev_i_seqs = rg_prev.atoms().extract_i_seq()
+        rg_i_seqs = rg.atoms().extract_i_seq()
         # find i_seq of C of previous residue
-        i_seq_c_prev=None
+        i_seqs_c_prev=[]
         for a_prev in rg_prev.atoms():
-          if(a_prev.name.strip().upper()=="C"): i_seq_c_prev = a_prev.i_seq
-        if(i_seq_c_prev is None): continue
+          if(a_prev.name.strip().upper()=="C"):
+            i_seqs_c_prev.append(a_prev.i_seq)
+        if(i_seqs_c_prev == []): continue
         # find constarint group corresponding to rg_prev
         cg_prev=None
         for cg2 in cgs:
           for c2 in cg2:
-            if(len(set(c2).intersection(set(rg_prev_i_seqs)))>0):
+            i_seqs_inter = set(c2).intersection(set(rg_prev_i_seqs))
+            if(len(i_seqs_inter)>1 or
+               (len(i_seqs_inter)==1 and not
+                awl[list(i_seqs_inter)[0]].name.strip().upper() in ["H","D"])):
               for cg2_ in cg2:
-                if(i_seq_c_prev in cg2_):
-                  cg_prev = cg2
-                  break
+                for i_seq_c_prev in i_seqs_c_prev:
+                  if(i_seq_c_prev in cg2_):
+                    cg_prev = cg2
+                    break
           if(cg_prev is not None): break
         if(cg_prev is None): continue
         # identify to which constraint group H belongs and move it there
@@ -1415,9 +1421,14 @@ def occupancy_regroupping(pdb_hierarchy, cgs):
             conformer_prev_i_seqs = conformer_prev.atoms().extract_i_seq()
             for cg2 in cgs:
               for c2 in cg2:
-                if(len(set(c2).intersection(set(conformer_prev_i_seqs)))>0):
-                  c2.append(ind)
-                  found = True
+                i_seqs_inter = set(c2).intersection(set(conformer_prev_i_seqs))
+                if(len(i_seqs_inter)>1 or
+                   (len(i_seqs_inter)==1 and not
+                    awl[list(i_seqs_inter)[0]].name.strip().upper() in ["H","D"])):
+                  for i_seq_c_prev in i_seqs_c_prev:
+                    if(i_seq_c_prev in c2):
+                      c2.append(ind)
+                      found = True
   for cg in cgs:
     while cg.count([None])>0:
       cg.remove([None])

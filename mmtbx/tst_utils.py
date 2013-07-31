@@ -1058,6 +1058,142 @@ END
               [32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,67]]]
   assert approx_equal(res, answer)
 
+def exercise_29(verbose):
+  pdb_str="""\
+CRYST1  148.270   44.010   47.390  90.00 101.57  90.00 C 1 2 1
+ATOM      0  N   GLY A 285     -41.269  16.430  -4.458  1.00 18.77           N
+ATOM      1  CA  GLY A 285     -41.021  16.772  -5.854  1.00 20.45           C
+ATOM      2  H   GLY A 285     -42.080  16.182  -4.313  1.00 22.53           H
+ATOM      3  C  AGLY A 285     -41.133  18.291  -6.119  0.85 20.52           C
+ATOM      4  O  AGLY A 285     -41.030  18.770  -7.258  0.85 22.89           O
+ATOM      5  HA2AGLY A 285     -40.130  16.482  -6.104  0.85 24.54           H
+ATOM      6  HA3AGLY A 285     -41.663  16.314  -6.418  0.85 24.54           H
+ATOM      7  C  BGLY A 285     -40.556  18.155  -6.113  0.15 20.45           C
+ATOM      8  O  BGLY A 285     -39.925  18.445  -7.127  0.15 21.06           O
+ATOM      9  HA2BGLY A 285     -40.352  16.166  -6.208  0.15 24.54           H
+ATOM     10  HA3BGLY A 285     -41.839  16.638  -6.357  0.15 24.54           H
+ATOM     11  N  AASN A 286     -41.375  19.070  -5.066  0.75 20.63           N
+ATOM     12  CA AASN A 286     -41.558  20.524  -5.179  0.75 21.34           C
+ATOM     13  C  AASN A 286     -40.921  21.176  -3.941  0.75 19.76           C
+ATOM     14  O  AASN A 286     -41.136  20.695  -2.825  0.75 18.94           O
+ATOM     15  CB AASN A 286     -43.061  20.822  -5.246  0.75 23.19           C
+ATOM     16  CG AASN A 286     -43.390  22.293  -5.087  0.75 24.76           C
+ATOM     17  OD1AASN A 286     -43.580  22.784  -3.975  0.75 25.15           O
+ATOM     18  ND2AASN A 286     -43.491  22.996  -6.206  0.75 26.38           N
+ATOM     19  H  AASN A 286     -41.441  18.778  -4.260  0.75 24.76           H
+ATOM     20  HA AASN A 286     -41.121  20.863  -5.988  0.75 25.61           H
+ATOM     21  HB2AASN A 286     -43.400  20.532  -6.107  0.75 27.82           H
+ATOM     22  HB3AASN A 286     -43.509  20.338  -4.535  0.75 27.82           H
+ATOM     23 HD21AASN A 286     -43.371  22.614  -6.967  0.75 31.65           H
+ATOM     24 HD22AASN A 286     -43.677  23.835  -6.171  0.75 31.65           H
+ATOM     25  N  BASN A 286     -40.878  19.026  -5.184  0.25 20.30           N
+ATOM     26  CA BASN A 286     -40.589  20.401  -5.396  0.25 20.20           C
+ATOM     27  C  BASN A 286     -40.224  21.016  -4.085  0.25 18.88           C
+ATOM     28  O  BASN A 286     -40.136  20.364  -3.047  0.25 18.65           O
+ATOM     29  CB BASN A 286     -41.798  21.088  -6.023  0.25 22.27           C
+ATOM     30  CG BASN A 286     -42.950  21.238  -5.058  0.25 23.28           C
+ATOM     31  OD1BASN A 286     -42.781  21.720  -3.938  0.25 23.18           O
+ATOM     32  ND2BASN A 286     -44.137  20.828  -5.491  0.25 24.35           N
+ATOM     33  H  BASN A 286     -41.259  18.841  -4.435  0.25 24.36           H
+ATOM     34  HA BASN A 286     -39.828  20.488  -6.007  0.25 24.24           H
+ATOM     35  HB2BASN A 286     -41.538  21.974  -6.321  0.25 26.72           H
+ATOM     36  HB3BASN A 286     -42.105  20.561  -6.777  0.25 26.72           H
+ATOM     37 HD21BASN A 286     -44.216  20.499  -6.282  0.25 29.22           H
+ATOM     38 HD22BASN A 286     -44.826  20.891  -4.981  0.25 29.22           H
+ATOM     39  CA  GLU A 287     -39.388  22.905  -3.000  1.00 16.67           C
+ATOM     40  C   GLU A 287     -40.376  23.372  -1.952  1.00 15.65           C
+ATOM     41  O   GLU A 287     -40.132  23.201  -0.755  1.00 14.31           O
+ATOM     42  CB  GLU A 287     -38.514  24.074  -3.481  1.00 17.80           C
+ATOM     43  CG  GLU A 287     -37.273  23.645  -4.302  1.00 19.41           C
+ATOM     44  CD  GLU A 287     -36.290  24.789  -4.558  1.00 20.84           C
+ATOM     45  OE1 GLU A 287     -36.554  25.925  -4.128  1.00 21.26           O
+ATOM     46  OE2 GLU A 287     -35.220  24.552  -5.185  1.00 22.93           O
+ATOM     47  HB2 GLU A 287     -39.052  24.654  -4.041  1.00 21.36           H
+ATOM     48  HB3 GLU A 287     -38.200  24.566  -2.707  1.00 21.36           H
+ATOM     49  HG2 GLU A 287     -36.801  22.949  -3.818  1.00 23.29           H
+ATOM     50  HG3 GLU A 287     -37.568  23.308  -5.163  1.00 23.29           H
+ATOM     51  N  AGLU A 287     -40.109  22.235  -4.122  0.02 18.26           N
+ATOM     52  H  AGLU A 287     -39.954  22.592  -4.889  0.02 21.91           H
+ATOM     53  HA AGLU A 287     -38.796  22.250  -2.576  0.02 20.01           H
+ATOM     54  N  BGLU A 287     -40.017  22.305  -4.119  0.98 18.44           N
+ATOM     55  H  BGLU A 287     -40.228  22.836  -4.762  0.98 22.13           H
+ATOM     56  HA BGLU A 287     -38.799  22.245  -2.580  0.98 20.01           H
+TER
+END
+"""
+  if (verbose): log = sys.stdout
+  else: log = StringIO()
+  processed_pdb_files_srv = utils.process_pdb_file_srv(log=log)
+  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
+    raw_records = pdb_str.splitlines())
+  res = utils.occupancy_selections(
+    all_chain_proxies = processed_pdb_file.all_chain_proxies,
+    xray_structure    = processed_pdb_file.xray_structure(),
+    as_flex_arrays    = False)
+  answer = [ [[3,4,5,6,19],
+              [7,8,9,10,33]],
+             [[11,12,13,14,15,16,17,18,20,21,22,23,24,52],
+              [25,26,27,28,29,30,31,32,34,35,36,37,38,55]],
+             [[51,53],
+              [54,56]]]
+  assert approx_equal(res, answer)
+
+def exercise_30(verbose):
+  pdb_str="""\
+CRYST1   42.198  121.958   37.277  90.00  90.00  90.00 P 21 21 2
+ATOM      0  CG  GLU A 115      30.700  22.521   0.401  0.55 25.56           C
+ATOM      1  CD  GLU A 115      31.809  23.320  -0.265  1.00 25.96           C
+ATOM      2  OE1 GLU A 115      32.842  22.797  -0.723  1.00 24.92           O
+ATOM      3  OE2 GLU A 115      31.621  24.544  -0.376  1.00 27.30           O
+ATOM      4  N  AGLU A 115      27.819  20.841  -1.012  0.44 19.61           N
+ATOM      5  CA AGLU A 115      28.757  21.222  -0.004  0.44 20.79           C
+ATOM      6  C  AGLU A 115      28.192  21.930   1.203  0.44 19.50           C
+ATOM      7  O  AGLU A 115      27.475  22.922   1.098  0.44 20.38           O
+ATOM      8  CB AGLU A 115      29.799  22.079  -0.601  0.44 23.59           C
+ATOM      9  N  BGLU A 115      27.018  20.969  -0.446  0.56 27.49           N
+ATOM     10  CA BGLU A 115      28.194  21.387   0.311  0.56 26.06           C
+ATOM     11  C  BGLU A 115      27.541  21.859   1.611  0.56 25.00           C
+ATOM     12  O  BGLU A 115      26.660  22.715   1.640  0.56 26.43           O
+ATOM     13  CB BGLU A 115      29.189  22.459  -0.356  0.56 26.03           C
+ATOM     14  N  AVAL A 116      28.585  21.407   2.363  0.53 19.29           N
+ATOM     15  CA AVAL A 116      28.181  21.931   3.670  0.53 18.27           C
+ATOM     16  C  AVAL A 116      29.427  21.990   4.589  0.53 17.81           C
+ATOM     17  O  AVAL A 116      30.464  21.420   4.280  0.53 17.67           O
+ATOM     18  CB AVAL A 116      27.090  21.046   4.342  0.53 20.31           C
+ATOM     19  CG1AVAL A 116      25.743  21.168   3.633  0.53 22.78           C
+ATOM     20  CG2AVAL A 116      27.498  19.598   4.395  0.53 20.85           C
+ATOM     21  H  AVAL A 116      29.104  20.724   2.421  0.53 23.15           H
+ATOM     22  HA AVAL A 116      27.827  22.838   3.564  0.53 21.92           H
+ATOM     23  HB AVAL A 116      26.967  21.353   5.264  0.53 24.37           H
+ATOM     24  N  BVAL A 116      27.987  21.231   2.690  0.47 21.87           N
+ATOM     25  CA BVAL A 116      27.614  21.560   4.041  0.47 19.86           C
+ATOM     26  C  BVAL A 116      28.915  21.857   4.746  0.47 19.34           C
+ATOM     27  O  BVAL A 116      29.983  21.603   4.213  0.47 18.81           O
+ATOM     28  CB BVAL A 116      26.938  20.336   4.707  0.47 19.81           C
+ATOM     29  CG1BVAL A 116      25.591  20.061   4.058  0.47 21.33           C
+ATOM     30  CG2BVAL A 116      27.825  19.086   4.627  0.47 19.25           C
+ATOM     31  H  BVAL A 116      28.539  20.573   2.651  0.47 26.24           H
+ATOM     32  HA BVAL A 116      27.021  22.340   4.070  0.47 23.83           H
+ATOM     33  HB BVAL A 116      26.782  20.535   5.654  0.47 23.76           H
+TER
+END
+"""
+  if (verbose): log = sys.stdout
+  else: log = StringIO()
+  processed_pdb_files_srv = utils.process_pdb_file_srv(log=log)
+  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
+    raw_records = pdb_str.splitlines())
+  res = utils.occupancy_selections(
+    all_chain_proxies = processed_pdb_file.all_chain_proxies,
+    xray_structure    = processed_pdb_file.xray_structure(),
+    as_flex_arrays    = False)
+  answer = [ [[0]],
+             [[4, 5, 6, 7, 8, 21],
+              [9, 10, 11, 12, 13, 31]],
+             [[14, 15, 16, 17, 18, 19, 20, 22, 23],
+              [24, 25, 26, 27, 28, 29, 30, 32, 33]] ]
+  assert approx_equal(res, answer)
+
 def exercise_d_data_target_d_atomic_params():
   import iotbx.pdb
   import mmtbx.f_model
@@ -1318,6 +1454,8 @@ def run():
   exercise_26(verbose=verbose)
   exercise_27(verbose=verbose)
   exercise_28(verbose=verbose)
+  exercise_29(verbose=verbose)
+  exercise_30(verbose=verbose)
   exercise_d_data_target_d_atomic_params()
   exercise_get_atom_selections(verbose=verbose)
   exercise_f_000()
