@@ -377,6 +377,7 @@ dxtbx/SConscript -text
 dxtbx/__init__.py -text
 dxtbx/boost_python/ext.cpp -text
 dxtbx/boost_python/to_ewald_sphere_helpers.cc -text
+dxtbx/command_line/overload.py -text
 dxtbx/command_line/print_header.py -text
 dxtbx/command_line/print_matching_images.py -text
 dxtbx/command_line/print_sweep.py -text
