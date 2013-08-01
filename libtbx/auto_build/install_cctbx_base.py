@@ -178,10 +178,15 @@ class installer (object) :
     print >> self.log, "  log file is %s" % install_log
     return open(install_log, "w")
 
-  def patch_src (self, src_file, target, replace_with) :
-    os.rename(src_file, src_file + ".dist")
-    src_in = open(src_file + ".dist")
-    src_out = open(src_file, "w")
+  def patch_src (self, src_file, target, replace_with, output_file=None) :
+    in_file = src_file
+    if (output_file is None) :
+      in_file += ".dist"
+      os.rename(src_file, in_file)
+    src_in = open(in_file)
+    if (output_file is None) :
+      output_file = src_file
+    src_out = open(output_file, "w")
     for line in src_in.readlines() :
       src_out.write(line.replace(target, replace_with))
     src_in.close()
@@ -590,13 +595,19 @@ class installer (object) :
       pkg_name_label="PyRTF",
       confirm_import_module="PyRTF")
     self.set_cppflags_ldflags_tmp()
-    # TODO we are patching the source in the CCTBX builds (but not the Phenix
-    # installer) to force it to use the correct backend - not sure if this
-    # is truly necessary or if there's a cleaner way to do it
+    # TODO we are patching the source to force it to use the correct backend.
+    # I'm not sure if this is truly necessary or if there's a cleaner way...
+    def patch_matplotlib_src (out) :
+      print >> out, "  patching setup.cfg"
+      self.patch_src(src_file="setup.cfg.template",
+                     output_file="setup.cfg",
+                     target="#backend = Agg",
+                     replace_with="backend = WXAgg")
     self.build_python_module_simple(
       pkg_url=BASE_CCI_PKG_URL,
       pkg_name=MATPLOTLIB_PKG,
       pkg_name_label="Matplotlib",
+      callback_before_build=patch_matplotlib_src,
       confirm_import_module="matplotlib")
     self.restore_cppflags_ldflags()
 
