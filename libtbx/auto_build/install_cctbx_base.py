@@ -603,6 +603,7 @@ class installer (object) :
                      output_file="setup.cfg",
                      target="#backend = Agg",
                      replace_with="backend = WXAgg")
+      return True
     self.build_python_module_simple(
       pkg_url=BASE_CCI_PKG_URL,
       pkg_name=MATPLOTLIB_PKG,
