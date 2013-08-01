@@ -35,10 +35,16 @@ class align(object):
     ea = self.best_ea
     self.moving_nlm = self.cc_obj.rotate_moving_obj( ea[0],ea[1], ea[2], self.inversion )
 
-  def get_cc( self ):
+
+
+
+  def get_cc( self, this_score=None ):
+    if this_score is None:
+      this_score = self.best_score
+
     fix_mean, fix_s = get_mean_sigma( self.fixed )
     mov_mean, mov_s = get_mean_sigma( self.moving)
-    self.cc = ( self.best_score - fix_mean*mov_mean ) / ( fix_s*mov_s )
+    self.cc = ( this_score - fix_mean*mov_mean ) / ( fix_s*mov_s )
     return self.cc
 
   def scan( self ):
@@ -94,13 +100,14 @@ class align(object):
     self.find_top( self.topn )
     if( self.refine ):
       self.refined = []
+      self.refined_moving_nlm = []
       self.refined_score = flex.double()
       for t in self.top_align:
         r = self.run_simplex( t )
         self.refined.append ( r )
-        self.refined_score.append( self.target( r ) )
-
-      orders=flex.sort_permutation( self.refined_score )
+        self.refined_score.append( self.get_cc( self.target( r ) ) )
+        self.refined_moving_nlm.append(  self.cc_obj.rotate_moving_obj( r[0],r[1], r[2], self.inversion )  )
+      orders=flex.sort_permutation( self.refined_score, True )
       self.best_score = -self.refined_score[orders[0]]
 
 
