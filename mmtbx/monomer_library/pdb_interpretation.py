@@ -4821,8 +4821,8 @@ class process(object):
         print >> self.log
         def note_geo():
           print >> self.log, """\
-  NOTE: a complete listing of the restraints can be found in the
-        .geo file."""
+  NOTE: a complete listing of the restraints can be obtained by requesting
+        output of .geo file."""
         note_geo()
         print >> self.log
         flush_log(self.log)
