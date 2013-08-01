@@ -8,7 +8,7 @@ def exercise () :
   mtz_file, pdb_file = generate_magnessium_inputs(
       file_base = "tst_ions_validate_mg", anonymize = False)
   time.sleep(2)
-  args = [pdb_file, mtz_file, "nproc=1"]
+  args = ["\"%s\"" % pdb_file, "\"%s\"" % mtz_file, "nproc=1"]
   result = easy_run.fully_buffered("mmtbx.validate_ions %s" % " ".join(args)
     ).raise_if_errors()
   n_mg, n_bad = 0, 0

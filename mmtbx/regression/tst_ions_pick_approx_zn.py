@@ -8,8 +8,8 @@ def exercise () :
   mtz_file, pdb_file = generate_zinc_inputs(
     file_base = "tst_ions_pick_approx_zn", anonymize = True)
   time.sleep(2)
-  args = [pdb_file, mtz_file, "wavelength=1.54", "nproc=1",
-          "elements=CA,ZN", "use_phaser=False"]
+  args = ["\"%s\"" % pdb_file, "\"%s\"" % mtz_file, "wavelength=1.54",
+          "nproc=1", "elements=CA,ZN", "use_phaser=False"]
   result = easy_run.fully_buffered("mmtbx.water_screen %s" % " ".join(args)
     ).raise_if_errors()
   n_zn = 0
