@@ -2095,6 +2095,8 @@ scitbx/math/distance_difference.h -text
 scitbx/math/euler_angles.h -text
 scitbx/math/farey.py -text
 scitbx/math/fit_peak.py -text
+scitbx/math/fliege_mayer_400.py -text
+scitbx/math/fliege_mayer_900.py -text
 scitbx/math/gaussian_fit_1d_analytical.h -text
 scitbx/math/gcd.h svneol=native#text/plain
 scitbx/math/imaginary.h -text
