@@ -179,6 +179,8 @@ class index (object) :
         python_object = self.params
       else :
         return False
+    else :
+      self.params = python_object
     self.push_state()
     self.working_phil = self.master_phil.format(python_object=python_object)
     self.rebuild_index()

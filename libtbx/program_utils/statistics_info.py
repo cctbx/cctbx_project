@@ -87,6 +87,10 @@ keys_and_labels = {
   "clashscore" : "Clashscore",
   "skew" : "Skew",
   "fom" : "Figure of merit",
+  "rna_puckers" : "RNA pucker outliers",
+  "rna_suites" : "RNA suite outliers",
+  "rna_bonds" : "RNA bonds outliers",
+  "rna_angles" : "RNA angles outliers",
 }
 
 precisions_dict_ = None
@@ -98,5 +102,6 @@ def get_format (stat_name, default="%g") :
     return "%%.%df" % precisions_dict_[stat_name]
   elif (stat_name in keys_and_labels) :
     stat_label = keys_and_labels[stat_name]
-    return "%%.%df" % precisions_dict_[stat_label]
+    if (stat_label in precisions_dict_) :
+      return "%%.%df" % precisions_dict_[stat_label]
   return default
