@@ -132,7 +132,7 @@ namespace scattering {
     if (i < n_h) {
       // read h from global memory (stored in registers)
       h_i = h[               i];
-      k_i = h[padded_n_h   + i];
+      k_i = h[  padded_n_h + i];
       l_i = h[2*padded_n_h + i];
 
       // calculate form factors (stored in local memory)
@@ -165,7 +165,7 @@ namespace scattering {
       // total length = # of threads/block
       if (current_atom < n_xyz) {
         x[threadIdx.x] = xyz[                 current_atom];
-        y[threadIdx.x] = xyz[padded_n_xyz   + current_atom];
+        y[threadIdx.x] = xyz[  padded_n_xyz + current_atom];
         z[threadIdx.x] = xyz[2*padded_n_xyz + current_atom];
         solvent[threadIdx.x] = solvent_weights[current_atom];
         s_type[threadIdx.x] = scattering_type[current_atom];
@@ -244,6 +244,166 @@ namespace scattering {
     }
   }
 
+  /* ==========================================================================
+     "Rapid and accurate calculation of small-angle scattering profiles using
+      the golden ratio"
+     Watson, MC, Curtis, JE. J. Appl. Cryst. (2013). 46, 1171-1177
+
+     Quadrature approach for calculating SAXS intensities
+     --------------------------------------------------------------------------
+   */
+  template <typename floatType>
+  __global__ void expand_q_lattice_kernel
+  (const floatType* q, const int n_q,
+   const floatType* lattice, const int n_lattice, const int padded_n_lattice,
+   floatType* workspace, const int padded_n_workspace) {
+
+    int i = blockDim.x * blockIdx.x + threadIdx.x;
+
+    // copy lattice points into shared memory and expand for all q
+    __shared__ floatType lx[threads_per_block];
+    __shared__ floatType ly[threads_per_block];
+    __shared__ floatType lz[threads_per_block];
+    int current_l, current_w;
+    floatType q_i;
+    for (int l=0; l<n_lattice; l += blockDim.x) {
+      current_l = l + threadIdx.x;
+      if (current_l < n_lattice) {
+        lx[threadIdx.x] = lattice[                     current_l];
+        ly[threadIdx.x] = lattice[  padded_n_lattice + current_l];
+        lz[threadIdx.x] = lattice[2*padded_n_lattice + current_l];
+      }
+      __syncthreads();
+
+      if (i < n_q) {
+        q_i = q[i];
+        for (int j=0; j<blockDim.x; j++) {
+          current_l = l + j;  // track lattice point
+          if (current_l < n_lattice) {
+            current_w = i*n_lattice + current_l;
+            workspace[                       current_w] = q_i * lx[j];
+            workspace[  padded_n_workspace + current_w] = q_i * ly[j];
+            workspace[2*padded_n_workspace + current_w] = q_i * lz[j];
+          }
+        }
+      }
+      __syncthreads();
+    }
+  }
+
+  // --------------------------------------------------------------------------
+
+  template <typename floatType>
+  __global__ void saxs_kernel
+  (const int* scattering_type, const floatType* xyz,
+   const int n_xyz, const int padded_n_xyz,
+   const int n_q, const int n_lattice,
+   floatType* workspace, const int padded_n_workspace) {
+
+    int i = blockDim.x * blockIdx.x + threadIdx.x;
+
+    // loop over all q and lattice points (more parallel than loop over q)
+    floatType q_x,q_y,q_z,stol_sq;
+    floatType f[max_types];
+    int n_total = n_q * n_lattice;
+    floatType c = 0.0625/(CUDART_PI_F*CUDART_PI_F);
+    if (i < n_total) {
+      // read q from global memory (stored in registers)
+      q_x = workspace[                       i];
+      q_y = workspace[  padded_n_workspace + i];
+      q_z = workspace[2*padded_n_workspace + i];
+
+      // calculate form factors (stored in local memory)
+      stol_sq = c * (q_x*q_x + q_y*q_y + q_z*q_z);
+      for (int type=0; type<dc_n_types; type++) {
+        f[type] = form_factor(type,stol_sq);
+      }
+    }
+
+    // copy atoms into shared memory one chunk at a time and sum
+    // all threads are used for reading data
+    __shared__ floatType x[threads_per_block];
+    __shared__ floatType y[threads_per_block];
+    __shared__ floatType z[threads_per_block];
+    __shared__ int s_type[threads_per_block];
+    floatType real_sum = 0.0;
+    floatType imag_sum = 0.0;
+    floatType s,f1,f2;
+    int current_atom;
+
+    for (int atom=0; atom<n_xyz; atom += blockDim.x) {
+      current_atom = atom + threadIdx.x;
+      // coalesce reads using threads, but don't read past n_xyz
+      // one read for each variable should fill chunk of 32 atoms
+      // total length = # of threads/block
+      if (current_atom < n_xyz) {
+        x[threadIdx.x] = xyz[                 current_atom];
+        y[threadIdx.x] = xyz[  padded_n_xyz + current_atom];
+        z[threadIdx.x] = xyz[2*padded_n_xyz + current_atom];
+        s_type[threadIdx.x] = scattering_type[current_atom];
+      }
+
+      // wait for all data to be copied into shared memory
+      __syncthreads();
+
+      // then sum over all the atoms that are now available to all threads
+      if (i < n_total) {
+        for (int a=0; a<blockDim.x; a++) {
+          current_atom = atom + a;  // overall counter for atom number
+          if (current_atom < n_xyz) {
+            __sincosf((x[a] * q_x + y[a] * q_y + z[a] * q_z),&s,&c);
+
+            // structure factor = sum{(form factor)[exp(2pi h*x)]}
+            if (dc_complex_form_factor) {
+              // form factor = f1 + i f2
+              f1 = dc_a[s_type[a]*dc_n_terms];
+              f2 = dc_b[s_type[a]*dc_n_terms];
+              real_sum += f1*c - f2*s;
+              imag_sum += f1*s + f2*c;
+            } else {
+              f1 = f[s_type[a]];
+              real_sum += f1 * c;
+              imag_sum += f1 * s;
+            }
+          }
+        }
+      }
+      // wait before starting next chunk so data isn't changed for lagging threads
+      __syncthreads();
+    }
+
+    // transfer result to global memory
+    if (i < n_total) {
+      workspace[i] = real_sum * real_sum + imag_sum * imag_sum;
+    }
+
+  }
+
+  // --------------------------------------------------------------------------
+
+  template <typename floatType>
+  __global__ void collect_saxs_kernel
+  (const int n_q, const int n_lattice, floatType* weights,
+   floatType* sf_real,
+   floatType* workspace, const int padded_n_workspace) {
+    
+    int i = blockDim.x * blockIdx.x + threadIdx.x;
+    
+    // sum up lattice points for each q
+    // since the number of points is small, this implementaion is not optimized
+    float I_sum = 0.0;
+    int l_start = i*n_lattice;
+    if (i < n_q) {
+      for (int j=0; j<n_lattice; j++) {
+        I_sum += weights[j] * workspace[l_start + j];
+      }
+
+      // transfer final result to global memory
+      sf_real[i] = I_sum;
+    }
+    
+  }
+  
   /* ==========================================================================
    */
 

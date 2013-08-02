@@ -38,6 +38,13 @@ namespace scattering {
              const scitbx::af::const_ref<scitbx::vec3<double> >&,
              const cctbx::xray::scattering_type_registry&,
              const bool&);
+    void add_saxs(const scitbx::af::const_ref<std::string>&,
+                  const scitbx::af::const_ref<scitbx::vec3<double> >&,
+                  const scitbx::af::const_ref<double>&,
+                  const scitbx::af::const_ref<double>&,
+                  const scitbx::af::const_ref<double>&,
+                  const cctbx::xray::scattering_type_registry&,
+                  const bool&);
     scitbx::af::shared<std::complex<double> > get_sum();
 
   private:
@@ -46,6 +53,9 @@ namespace scattering {
       (const scitbx::af::const_ref<scitbx::vec3<double> >&,
        const scitbx::af::const_ref<double>&);
     void reorganize_h(const scitbx::af::const_ref<scitbx::vec3<double> >&);
+    void reorganize_q(const scitbx::af::const_ref<double>&,
+                      const scitbx::af::const_ref<double>&,
+                      const scitbx::af::const_ref<double>&);
     void reorganize_rt(const scitbx::af::const_ref<double>&,
                        const scitbx::af::const_ref<scitbx::vec3<double> >&);
     void convert_scatterers(const scitbx::af::const_ref<std::string>&,
