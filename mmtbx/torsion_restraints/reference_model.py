@@ -241,13 +241,14 @@ class reference_model(object):
       sel_model = re.split(r"AND|OR|NOT",rg.selection.upper())
       sel_ref = re.split(r"AND|OR|NOT",rg.reference.upper())
       for sel in sel_model:
-        if sel.strip().startswith("CHAIN"):
+        if sel.strip().strip('(').strip(')').startswith("CHAIN"):
           if model_chain is None:
-            model_chain = sel.strip().split(' ')[-1].\
+            model_chain = sel.strip().strip('(').strip(')').split(' ')[-1].\
               strip("'").strip('"')
           else:
             raise Sorry("Cannot specify more than one chain per selection")
-        if sel.strip().startswith("RESSEQ") or sel.strip().startswith("RESID"):
+        if sel.strip().strip('(').strip(')').startswith("RESSEQ") or \
+           sel.strip().strip('(').strip(')').startswith("RESID"):
           res = sel.strip().split(' ')[-1].split(':')
           if len(res) > 1:
             if model_res_min is None and model_res_max is None:
@@ -263,9 +264,9 @@ class reference_model(object):
           else:
             raise Sorry("Do not understand residue selection")
       for sel in sel_ref:
-        if sel.strip().startswith("CHAIN"):
+        if sel.strip().strip('(').strip(')').startswith("CHAIN"):
           if ref_chain is None:
-            ref_chain = sel.strip().split(' ')[-1].\
+            ref_chain = sel.strip().strip('(').strip(')').split(' ')[-1].\
               strip("'").strip('"')
             if ref_chain.startswith("'") or ref_chain.startswith('"'):
               ref_chain = ref_chain.lstrip()
@@ -273,8 +274,9 @@ class reference_model(object):
               ref_chain = ref_chain.rstrip()
           else:
             raise Sorry("Cannot specify more than one chain per selection")
-        if sel.strip().startswith("RESSEQ") or sel.strip().startswith("RESID"):
-          res = sel.strip().split(' ')[-1].split(':')
+        if sel.strip().strip('(').strip(')').startswith("RESSEQ") or \
+           sel.strip().strip('(').strip(')').startswith("RESID"):
+          res = sel.strip().strip('(').strip(')').split(' ')[-1].split(':')
           if len(res) > 1:
             if ref_res_min is None and ref_res_max is None:
               ref_res_min = res[0]
