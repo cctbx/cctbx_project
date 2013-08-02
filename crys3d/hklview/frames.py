@@ -233,6 +233,9 @@ class settings_window (wxtbx.utils.SettingsPanel) :
     self._last_sg_sel = str(sg_info)
 
   def OnSetSlice (self, event) :
+    if (self._index_span is None) :
+      self.slice_index.SetValue(0)
+      return
     self.settings.slice_axis = str(self.hkl_choice.GetStringSelection())
     axis_index = ["h","k","l"].index(self.settings.slice_axis)
     min_value = self._index_span.min()[axis_index]
