@@ -15,6 +15,7 @@ namespace cudatbx { namespace scattering {
       using namespace boost::python;
       class_<cudatbx::scattering::direct_summation>("direct_summation",init<>() )
         .def("add",&cudatbx::scattering::direct_summation::add)
+        .def("add_saxs",&cudatbx::scattering::direct_summation::add_saxs)
         .def("get_sum",&cudatbx::scattering::direct_summation::get_sum)
         ;
     }
