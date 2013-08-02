@@ -44,6 +44,8 @@ def exercise_to_xds():
   assert approx_equal(real_space_c, converter.get_real_space_c())
   assert approx_equal(goniometer.get_rotation_axis(),
                       converter.get_rotation_axis())
+  assert approx_equal(
+    beam.get_direction(), converter.get_sample_to_source().elems)
   assert approx_equal(detector.get_fast_axis(), converter.get_detector_fast())
   assert approx_equal(detector.get_slow_axis(), converter.get_detector_slow())
   assert approx_equal(detector.get_origin(), converter.get_detector_origin())

@@ -13,6 +13,7 @@ from __future__ import division
 import math
 import sys
 from scitbx import matrix
+from rstbx.cftbx.coordinate_frame_helpers import align_reference_frame
 from dxtbx.model.detector_helpers_types import detector_helpers_types
 
 def to_imageset(input_filename, extra_filename=None):
@@ -78,9 +79,11 @@ class to_xds(object):
         # detector dimensions in pixels
         self.detector_size = map(int, self.get_detector().get_image_size())
         self.fast, self.slow = self.detector_size
+        
+        R = align_reference_frame(
+            self.get_detector().get_fast_axis(), (1,0,0), 
+            self.get_detector().get_slow_axis(), (0,1,0))
 
-        R = matrix.col((1.0, 0.0, 0.0)).axis_and_angle_as_r3_rotation_matrix(
-            180.0, deg = True)
         self.imagecif_to_xds_transformation_matrix = R
 
         self.detector_x_axis = (
@@ -107,8 +110,9 @@ class to_xds(object):
 
         # Beam stuff
         self.wavelength = self.get_beam().get_wavelength()
-        self.beam_vector = R * matrix.col(self.get_beam().get_direction()) / \
-               math.sqrt(matrix.col(self.get_beam().get_direction()).dot())
+        self.beam_vector = R * matrix.col(self.get_beam().get_direction())
+        # just to make sure it is the correct length
+        self.beam_vector = self.beam_vector.normalize() / self.wavelength
         self.beam_vector = (- self.beam_vector).elems
 
         # Scan and goniometer stuff
