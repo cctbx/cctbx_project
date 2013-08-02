@@ -1,9 +1,8 @@
-from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.data_viewer
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 
-import crys3d.hklview
+from __future__ import division
 from crys3d.hklview.frames import *
 from cctbx.miller.display import master_phil
 from wxtbx import icons
@@ -17,24 +16,12 @@ def run (args) :
   if ("--2d" in args) :
     show_2d = True
     args.remove("--2d")
-  if (len(args) == 0) :
-    from cctbx import miller, crystal
-    from cctbx.array_family import flex
-    xs = crystal.symmetry((3,3,5,90,90,120), "P6")
-    mi = flex.miller_index([
-      (0,0,1),(0,0,2),(0,0,3),
-      (0,1,0),(0,2,0),(0,3,0),
-      (1,1,0),(1,2,0),(1,3,0)])
-    d = flex.double([1.0, 2.0, 3.0, 5.0, 10.0, 15.0, 6.0, 9.0, 12.0])
-    s = miller.set(xs, mi, anomalous_flag=False)
-    ma = s.array(data=d).set_info("test")
-    settings = crys3d.hklview.settings()
-  else :
-    pcl = iotbx.phil.process_command_line_with_files(
-      args=args,
-      master_phil=master_phil,
-      reflection_file_def="data")
-    settings = pcl.work.extract()
+  pcl = iotbx.phil.process_command_line_with_files(
+    args=args,
+    master_phil=master_phil,
+    reflection_file_def="data",
+    usage_string="phenix.data_viewer f_obs.mtz [options]")
+  settings = pcl.work.extract()
   a = wx.App(0)
   app_icon = wx.EmptyIcon()
   app_icon.CopyFromBitmap(icons.hklview_3d.GetBitmap())

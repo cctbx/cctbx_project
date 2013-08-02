@@ -43,6 +43,7 @@ class hklview_3d (wxGLWindow) :
     self.d_min = None
     self.scene = None
     self.animation_time = 0
+    #self.fps = gltbx.viewer_utils.fps_monitor()
     # XXX prevent exception when no data are loaded
     from scitbx.math import minimum_covering_sphere
     from scitbx.array_family import flex
@@ -120,6 +121,7 @@ class hklview_3d (wxGLWindow) :
       self.draw_points()
     if (self.settings.show_labels) :
       self.draw_labels()
+    #self.fps.update()
 
   def draw_spheres (self) :
     glMatrixMode(GL_MODELVIEW)
