@@ -394,6 +394,7 @@ def setup_restraints(restraints_manager,
 def update_restraints(hierarchy,
                       restraints_manager,
                       current_geometry=None, # xray_structure!!
+                      sites_cart=None,
                       cdl_proxies=None,
                       ideal=True,
                       esd=True,
@@ -403,7 +404,9 @@ def update_restraints(hierarchy,
   global registry
   registry = RestraintsRegistry()
   if current_geometry:
+    assert not sites_cart
     sites_cart = current_geometry.sites_cart()
+  if sites_cart:
     pdb_atoms = hierarchy.atoms()
     #if atom_lookup:
     #  for j_seq, scatterer in enumerate(current_geometry.scatterers()):
@@ -434,7 +437,7 @@ def update_restraints(hierarchy,
     key = threes.get_cdl_key() #verbose=verbose)
 
     restraint_values = cdl_database[res_type_group][key]
-    #if verbose:
+    #if 1:
     #  print threes, threes.are_linked(), res_type_group, key, restraint_values
 
     threes.apply_updates(restraint_values,
