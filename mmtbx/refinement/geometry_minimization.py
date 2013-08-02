@@ -151,6 +151,7 @@ class run2(object):
   def __init__(self,
                sites_cart,
                restraints_manager,
+               pdb_hierarchy,
                max_number_of_iterations       = 500,
                number_of_macro_cycles         = 5,
                selection                      = None,
@@ -164,6 +165,7 @@ class run2(object):
                rmsd_bonds_termination_cutoff  = 0,
                rmsd_angles_termination_cutoff = 0,
                alternate_nonbonded_off_on     = False,
+               cdl=False,
                log                            = None):
     self.log = log
     if self.log is None:
@@ -190,11 +192,33 @@ class run2(object):
       reference_dihedral = True,
       bond_similarity    = True,
       generic_restraints = True)
+    if cdl:
+      from mmtbx.conformation_dependent_library import setup_restraints
+      from mmtbx.conformation_dependent_library import update_restraints
+      cdl_proxies=setup_restraints(restraints_manager)
+      rc = update_restraints(
+        pdb_hierarchy,
+        restraints_manager,
+        cdl_proxies=cdl_proxies,
+        log=self.log,
+        verbose=True,
+        )
+      print >> self.log, "CDL restraints update performed"
     self.show()
     for i_macro_cycle in xrange(number_of_macro_cycles):
       print >> self.log, "  macro-cycle:", i_macro_cycle
       if(alternate_nonbonded_off_on and i_macro_cycle<=number_of_macro_cycles/2):
         geometry_restraints_flags.nonbonded = bool(i_macro_cycle % 2)
+      if cdl and i_macro_cycle:
+        rc = update_restraints(
+          pdb_hierarchy,
+          restraints_manager,
+          sites_cart=self.sites_cart,
+          cdl_proxies=cdl_proxies,
+          log=self.log,
+          verbose=True,
+          )
+        print >> self.log, "CDL restraints update performed"
       self.minimized = lbfgs(
         sites_cart                      = self.sites_cart,
         geometry_restraints_manager     = restraints_manager.geometry,
@@ -214,3 +238,4 @@ class run2(object):
     es = self.restraints_manager.geometry.energies_sites(
       sites_cart = self.sites_cart, compute_gradients = False)
     es.show(prefix="    ", f=self.log)
+

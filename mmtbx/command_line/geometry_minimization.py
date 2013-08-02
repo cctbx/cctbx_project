@@ -17,7 +17,7 @@ from cStringIO import StringIO
 base_params_str = """\
 silent = False
   .type = bool
-write_geo_file = False
+write_geo_file = True
   .type = bool
 file_name = None
   .type = path
@@ -224,11 +224,14 @@ def run_minimization(
       sites_cart,
       selection,
       restraints_manager,
+      pdb_hierarchy,
       params,
+      cdl,
       log):
   o = mmtbx.refinement.geometry_minimization.run2(
     sites_cart                     = sites_cart,
     restraints_manager             = restraints_manager,
+    pdb_hierarchy = pdb_hierarchy,
     max_number_of_iterations       = params.max_iterations,
     number_of_macro_cycles         = params.macro_cycles,
     selection                      = selection,
@@ -242,6 +245,7 @@ def run_minimization(
     rmsd_bonds_termination_cutoff  = params.rmsd_bonds_termination_cutoff,
     rmsd_angles_termination_cutoff = params.rmsd_angles_termination_cutoff,
     alternate_nonbonded_off_on     = params.alternate_nonbonded_off_on,
+    cdl=cdl,
     log                            = log)
 
 class run(object):
@@ -379,6 +383,8 @@ class run(object):
     self.sites_cart = self.xray_structure.sites_cart()
     run_minimization(sites_cart = self.sites_cart, selection = self.selection,
       restraints_manager = self.grm, params = self.params.minimization,
+      pdb_hierarchy = self.pdb_hierarchy,
+      cdl=self.params.pdb_interpretation.cdl,
       log = self.log)
 
   def write_pdb_file(self, prefix):
