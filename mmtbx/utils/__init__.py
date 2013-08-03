@@ -3273,3 +3273,13 @@ def detect_asparagine_link_problem (pdb_file, cif_files=()) :
         n_other += 1
   # XXX should this do something different if n_other > 0?
   return n_asn_hd22
+
+def is_water_last(model):
+  result = True
+  sol_sel = model.solvent_selection()
+  i_sol_sel = sol_sel.iselection()
+  i_mac_sel = (~sol_sel).iselection()
+  if(i_sol_sel.size() > 0 and i_mac_sel.size() > 0):
+    if(flex.min_default(i_sol_sel,0)-flex.max_default(i_mac_sel,0) != 1):
+      result = False
+    return result
