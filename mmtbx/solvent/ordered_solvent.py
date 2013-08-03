@@ -258,7 +258,15 @@ class manager(object):
     self.fmodel.xray_structure = self.model.xray_structure
 
   def is_water_last(self):
-    return mmtbx.utils.is_water_last(model=self.model)
+    #return mmtbx.utils.is_water_last(model=self.model)
+    result = True
+    sol_sel = self.model.solvent_selection()
+    i_sol_sel = sol_sel.iselection()
+    i_mac_sel = (~sol_sel).iselection()
+    if(i_sol_sel.size() > 0 and i_mac_sel.size() > 0):
+      if(flex.min_default(i_sol_sel,0)-flex.max_default(i_mac_sel,0) != 1):
+        result = False
+    return result
 
   def filter_solvent(self):
     sol_sel = self.model.solvent_selection()
