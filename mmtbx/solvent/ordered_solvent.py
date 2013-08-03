@@ -258,7 +258,7 @@ class manager(object):
     self.fmodel.xray_structure = self.model.xray_structure
 
   def is_water_last(self):
-    return utils.is_water_last(model=self.model)
+    return mmtbx.utils.is_water_last(model=self.model)
 
   def filter_solvent(self):
     sol_sel = self.model.solvent_selection()
