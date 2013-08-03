@@ -199,17 +199,23 @@ class wxGLWindowLeapEnabled (wxGLWindow, wxLeapMotionWindowMixin) :
       self.OnScale(self._leap_scale)
       self._leap_scale = None
     if (self._leap_rotation is not None) :
-      dx, dy = self._leap_rotation
-      self.rotate_view(0, 0, dx*self._leap_rscale, -dy*self._leap_rscale,
-        shift_down=False)
-      self._leap_rotation = None
+      self.leap_rotate()
     if (self._leap_translation is not None) :
-      rc = self.rotation_center
-      rc_eye = gltbx.util.object_as_eye_coordinates(rc)
-      dx, dy = self._leap_translation
-      gltbx.util.translate_object(1, 0, 0, -dx*self._leap_tscale,
-        dy*self._leap_tscale)
-      self._leap_translation = None
-      self.rotation_center = tuple(
-        gltbx.util.modelview_matrix_as_rt().inverse() * matrix.col(rc_eye))
-      self.OnRedraw()
+      self.leap_translate()
+
+  def leap_rotate (self) :
+    dx, dy = self._leap_rotation
+    self.rotate_view(0, 0, dx*self._leap_rscale, -dy*self._leap_rscale,
+      shift_down=False)
+    self._leap_rotation = None
+
+  def leap_translate (self) :
+    rc = self.rotation_center
+    rc_eye = gltbx.util.object_as_eye_coordinates(rc)
+    dx, dy = self._leap_translation
+    gltbx.util.translate_object(1, 0, 0, -dx*self._leap_tscale,
+      dy*self._leap_tscale)
+    self._leap_translation = None
+    self.rotation_center = tuple(
+      gltbx.util.modelview_matrix_as_rt().inverse() * matrix.col(rc_eye))
+    self.OnRedraw()
