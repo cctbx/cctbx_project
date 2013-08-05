@@ -26,6 +26,8 @@ def exercise () :
     ("3e0f", (["octahedron"], ["trigonal_pyramid"], ["square_pyramid"])),
     ("3dkq", (["square_pyramid"], ["three_legs"], ["square_pyramid"])),
     ("2o8q", (["octahedron"], ["octahedron"])),
+    ("1tgg", (["octahedron"], ["square_pyramid", "trigonal_bipyramid"],
+              ["see_saw"])),
   ])
 
   for model, geometries in models.items():
