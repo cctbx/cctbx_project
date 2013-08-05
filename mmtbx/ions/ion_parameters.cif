@@ -46,17 +46,17 @@ _lib_ligands.allowed_coordinating_atoms
 _lib_ligands.allowed_coordinating_residues
 _lib_ligands.allowed_geometries
 _lib_ligands.allowed_backbone_atoms
-NA  O,N       .                            octahedral,any                O
-MG  O,N,F     SER,THR,ASP,ASN,GLU,GLN,HIS  octahedral                    O
+NA  O,N       .                            octahedron,any                O
+MG  O,N,F     SER,THR,ASP,ASN,GLU,GLN,HIS  octahedron                    O
 K   O         .                            .                             O
-CA  O         SER,THR,ASP,ASN,GLU,GLN,TYR  octahedral,pentagonal_bipyramid,any                O
+CA  O         SER,THR,ASP,ASN,GLU,GLN,TYR  octahedron,pentagonal_bipyramid,any                O
 MN  O,N       SER,THR,ASP,GLU,ASN,GLN,HIS  .                             .
 FE  O,N,S     CYS,ASP,GLU,HIS,TYR          .                             .
 CO  O,N       CYS,ASP,GLU,HIS              .                             .
-CU  O,N,S     CYS,MET,HIS                  tetrahedral,any               .
-NI  O,N,S     CYS,ASP,GLU,HIS              tetrahedral,any               .
-ZN  O,N,S     CYS,ASP,GLU,HIS              tetrahedral,octahedral,any    .
-CD  O,N,S,CL  .                            octahedral,any                .
+CU  O,N,S     CYS,MET,HIS                  tetrahedron,any               .
+NI  O,N,S     CYS,ASP,GLU,HIS              tetrahedron,any               .
+ZN  O,N,S     CYS,ASP,GLU,HIS              tetrahedron,octahedron,any    .
+CD  O,N,S,CL  .                            octahedron,any                .
 #
 # Ion residue names and their corresponding elements and charges. When multiple
 # charges may be possible for a given element, put the line for the default
@@ -287,9 +287,24 @@ FE   3   O    -2   1.759
 FE   3   F    -1   1.67
 FE   3   CL   -1   2.09
 FE   3   S    -2   2.149
-K    1   CL   -1   2.519
-K    1   F    -1   1.992
+HG   1   O    -2   1.90
+HG   1   F    -1   1.81
+HG   1   CL   -1   2.28
+HG   2   H    -1   1.71
+HG   2   N    -3   2.02
+HG   2   O    -2   1.93
+HG   2   F    -1   1.90
+HG   2   P    -3   2.42
+HG   2   S    -2   2.32
+HG   2   CL   -1   2.25
+HG   2   AS   -3   2.50
+HG   2   SE   -2   2.47
+HG   2   BR   -1   2.40
+HG   2   TE   -2   2.61
+HG   2   I    -1   2.59
 K    1   O    -2   2.132
+K    1   F    -1   1.992
+K    1   CL   -1   2.519
 MG   2   N    -3   1.85
 MG   2   O    -2   1.693
 MG   2   F    -1   1.578
