@@ -690,6 +690,63 @@ loop_
   xs = pdb_inp.xray_structure_simple()
   assert xs.use_u_aniso().all_eq(True)
 
+def exercise_move_waters () :
+  pdb_in = """\
+ATOM     16  O  AHOH A   2       5.131   5.251   5.823  0.60 10.00           O
+ATOM     60  CA  LYS A  32      10.574   8.177  11.768  1.00 11.49           C
+ATOM     63  CB ALYS A  32       9.197   8.686  12.246  0.29 14.71           C
+ATOM     64  CB BLYS A  32       9.193   8.732  12.170  0.71 12.23           C
+ATOM     74  CA  VAL A  33      11.708   5.617  14.332  1.00 11.42           C
+ATOM     77  CB  VAL A  33      11.101   4.227  14.591  1.00 11.47           C
+ATOM     18  O   HOH A   3       1.132   5.963   7.065  1.00 15.00           O
+ATOM     19  H1  HOH A   3       1.160   5.211   6.437  1.00 15.00           H
+ATOM     20  H2  HOH A   3       1.122   5.579   7.967  1.00 15.00           H
+HETATM 2397  P   PO4     1      -7.520  25.376  38.369  1.00 39.37           P
+HETATM 2398  O1  PO4     1      -6.610  24.262  38.967  1.00 40.00           O
+HETATM 2399  O2  PO4     1      -6.901  25.919  37.049  1.00 41.07           O
+HETATM 2400  O3  PO4     1      -8.894  24.741  38.097  1.00 45.09           O
+HETATM 2401  O4  PO4     1      -7.722  26.556  39.350  1.00 42.48           O
+ATOM     23 CL   CL  B   1       6.302   6.419   1.560  0.50 10.00          CL
+HETATM 6362  O   HOH B   2      47.616  10.724 150.212  1.00 46.48       B   O
+HETATM 6363  O  AHOH B   3      46.408  16.672 146.066  0.50 12.81       B   O
+HETATM 6364  O   HOH B   4      29.343  12.806 185.898  1.00 35.57       B   O
+HETATM 6365  O  BHOH B   5      43.786  12.615 147.734  0.50 28.43       B   O
+HETATM 6366  O   HOH B   6      35.068  19.167 155.349  1.00 15.97       B   O
+"""
+  pdb_out = """\
+ATOM      1  CA  LYS A  32      10.574   8.177  11.768  1.00 11.49           C
+ATOM      2  CB ALYS A  32       9.197   8.686  12.246  0.29 14.71           C
+ATOM      3  CB BLYS A  32       9.193   8.732  12.170  0.71 12.23           C
+ATOM      4  CA  VAL A  33      11.708   5.617  14.332  1.00 11.42           C
+ATOM      5  CB  VAL A  33      11.101   4.227  14.591  1.00 11.47           C
+TER
+HETATM    6  P   PO4     1      -7.520  25.376  38.369  1.00 39.37           P
+HETATM    7  O1  PO4     1      -6.610  24.262  38.967  1.00 40.00           O
+HETATM    8  O2  PO4     1      -6.901  25.919  37.049  1.00 41.07           O
+HETATM    9  O3  PO4     1      -8.894  24.741  38.097  1.00 45.09           O
+HETATM   10  O4  PO4     1      -7.722  26.556  39.350  1.00 42.48           O
+TER
+ATOM     11 CL   CL  B   1       6.302   6.419   1.560  0.50 10.00          Cl
+TER
+ATOM     12  O  AHOH A   2       5.131   5.251   5.823  0.60 10.00           O
+ATOM     13  O   HOH A   3       1.132   5.963   7.065  1.00 15.00           O
+ATOM     14  H1  HOH A   3       1.160   5.211   6.437  1.00 15.00           H
+ATOM     15  H2  HOH A   3       1.122   5.579   7.967  1.00 15.00           H
+TER
+HETATM   16  O   HOH B   2      47.616  10.724 150.212  1.00 46.48       B   O
+HETATM   17  O  AHOH B   3      46.408  16.672 146.066  0.50 12.81       B   O
+HETATM   18  O   HOH B   4      29.343  12.806 185.898  1.00 35.57       B   O
+HETATM   19  O  BHOH B   5      43.786  12.615 147.734  0.50 28.43       B   O
+HETATM   20  O   HOH B   6      35.068  19.167 155.349  1.00 15.97       B   O
+TER
+END
+"""
+  open("tst_pdbtools_move_waters.pdb", "w").write(pdb_in)
+  cmd = "phenix.pdbtools tst_pdbtools_move_waters.pdb move_waters_last=True"
+  run_command(command=cmd, verbose=False)
+  pdb_new = open("tst_pdbtools_move_waters.pdb_modified.pdb").read()
+  assert pdb_new == pdb_out, pdb_new
+
 def exercise(args):
   if ("--show-everything" in args):
     verbose = 2
@@ -717,6 +774,7 @@ def exercise(args):
   exercise_set_charge()
   exercise_convert_semet_to_met()
   exercise_change_of_basis()
+  exercise_move_waters()
 
 if (__name__ == "__main__"):
   show_times_at_exit()

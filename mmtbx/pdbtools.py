@@ -234,6 +234,11 @@ put_into_box_with_buffer = None
   .type = float
   .help = Move molecule into center of box.
 %s
+move_waters_last = False
+  .type = bool
+  .short_caption = Move waters to end of model
+  .help = Transfer waters to the end of the model.  Addresses some \
+    limitations of water picking in phenix.refine.
 }
 input {
   pdb
@@ -666,6 +671,32 @@ def write_model_file(pdb_hierarchy, crystal_symmetry, file_name, output_format):
     pdb_hierarchy.write_mmcif_file(
       file_name=file_name, crystal_symmetry=crystal_symmetry)
 
+# XXX only works for one MODEL at present
+def move_waters (pdb_hierarchy, xray_structure, out) :
+  if (len(pdb_hierarchy.models()) > 1) :
+    raise Sorry("Rearranging water molecules is not supported for "+
+      "multi-MODEL structures.")
+  sel_cache = pdb_hierarchy.atom_selection_cache()
+  water_sel = sel_cache.selection("resname HOH or resname WAT")
+  n_waters = water_sel.count(True)
+  if (n_waters == 0) :
+    print >> out, "No waters found, skipping"
+    return pdb_hierarchy, xray_structure
+  else :
+    print >> out, "%d atoms will be moved." % n_waters
+    hierarchy_water = pdb_hierarchy.select(water_sel)
+    hierarchy_non_water = pdb_hierarchy.select(~water_sel)
+    xrs_water = xray_structure.select(water_sel)
+    xrs_non_water = xray_structure.select(~water_sel)
+    for chain in hierarchy_water.only_model().chains() :
+      hierarchy_non_water.only_model().append_chain(chain.detached_copy())
+    xrs_non_water.add_scatterers(xrs_water.scatterers())
+    assert len(xrs_non_water.scatterers()) == \
+           len(hierarchy_non_water.atoms()) == len(pdb_hierarchy.atoms())
+    for atom, scat in zip(hierarchy_non_water.atoms(),
+                          xrs_non_water.scatterers()) :
+      assert (atom.id_str() == scat.label)
+    return hierarchy_non_water, xrs_non_water
 
 def run(args, command_name="phenix.pdbtools", out=sys.stdout,
     replace_stderr=True):
@@ -827,6 +858,10 @@ def run(args, command_name="phenix.pdbtools", out=sys.stdout,
     pdb_atoms = pdb_hierarchy.atoms()
     xray_structure = xray_structure.select(pdb_atoms.extract_i_seq())
     print >> log, "All occupancies reset to 1.0."
+  if (params.modify.move_waters_last) :
+    utils.print_header("Moving waters to end of model", out=log)
+    pdb_hierarchy, xray_structure = move_waters(pdb_hierarchy, xray_structure,
+      out=log)
   utils.print_header("Writing output model", out = log)
 ### write output file (if got to this point)
   print >> log, "Output model file name: ", ofn
