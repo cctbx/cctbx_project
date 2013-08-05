@@ -251,17 +251,15 @@ def find_coordination_geometry(nearby_atoms, cutoff = 2.9):
                   if not [other for other in nearby_atoms[index + 1:]
                           if atom.distance_from(other) < 0.5]]
 
-  geometries = []
+  filtered = [contact for contact in nearby_atoms
+              if contact.distance() < cutoff]
   vectors = rec(
-    [i for contact in nearby_atoms
-     for i in contact.vector
-     if contact.distance() < cutoff],
-    n = (len(nearby_atoms), 3)
-    )
+    [i for contact in filtered for i in contact.vector],
+    n = (len(filtered), 3))
 
   n_vectors = vectors.n[0]
   if n_vectors not in SUPPORTED_GEOMETRIES:
-    return geometries
+    return []
 
   rmsas = []
   for name, func, symmetry, rmsa_cutoff in SUPPORTED_GEOMETRIES[n_vectors]:
