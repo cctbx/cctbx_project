@@ -84,18 +84,19 @@ torsion_ncs_params = iotbx.phil.parse("""
 
 class torsion_ncs(object):
   def __init__(self,
-               pdb_hierarchy,
+               pdb_hierarchy=None,
                fmodel=None,
                params=None,
                b_factor_weight=None,
                coordinate_sigma=None,
                selection=None,
+               ncs_groups=None,
+               alignments=None,
+               ncs_dihedral_proxies=None,
                log=None):
     if(log is None): log = sys.stdout
     if params is None:
       params = torsion_ncs_params.extract()
-    #sanity check
-    pdb_hierarchy.reset_i_seq_if_necessary()
     #parameter initialization
     if params.sigma is None or params.sigma < 0:
       raise Sorry("torsion NCS sigma parameter must be >= 0.0")
@@ -113,42 +114,28 @@ class torsion_ncs(object):
     self.b_factor_weight = b_factor_weight
     self.coordinate_sigma = coordinate_sigma
     self.fmodel = fmodel
-    self.ncs_groups = []
-    self.dp_ncs = []
-    self.cb_dp_ncs = []
-    self.phi_list = []
-    self.psi_list = []
-    self.omega_list = []
-    self.ncs_dihedral_proxies = None
-    self.dihedral_proxies_backup = None
-    self.name_hash = utils.build_name_hash(pdb_hierarchy)
-    self.segid_hash = utils.build_segid_hash(pdb_hierarchy)
-    self.sym_atom_hash = utils.build_sym_atom_hash(pdb_hierarchy)
-    self.params = params
-    self.found_ncs = None
+    self.ncs_groups = ncs_groups
     self.log = log
-    self.njump = 1
-    self.min_length = 10
-    self.sa = SidechainAngles(False)
-    self.sidechain_angle_hash = self.build_sidechain_angle_hash()
-    self.rotamer_search_manager = None
-    self.r = rotalyze()
-    self.unit_cell = None
-    sites_cart = pdb_hierarchy.atoms().extract_xyz()
-    if self.selection is None:
-      self.selection = flex.bool(len(sites_cart), True)
-    complete_dihedral_proxies = utils.get_complete_dihedral_proxies(
-                                  pdb_hierarchy=pdb_hierarchy)
+    self.params = params
+    self.dp_ncs = None
+    self.ncs_dihedral_proxies = ncs_dihedral_proxies
+    self.ncs_groups = ncs_groups
+    self.alignments = alignments
 
+    #sanity check
+    if pdb_hierarchy is not None:
+      pdb_hierarchy.reset_i_seq_if_necessary()
+    if self.ncs_groups is None or self.alignments is None:
+      self.find_ncs_groups(pdb_hierarchy=pdb_hierarchy)
+    if pdb_hierarchy is not None:
+      self.find_ncs_matches_from_hierarchy(pdb_hierarchy=pdb_hierarchy)
+
+  def find_ncs_groups(self, pdb_hierarchy):
     print >> self.log, "Determining NCS matches..."
-    dp_hash = {}
+    self.ncs_groups = []
+    self.found_ncs = None
     self.use_segid = False
-    i_seq_hash = utils.build_i_seq_hash(pdb_hierarchy)
-    chain_hash = utils.build_chain_hash(pdb_hierarchy)
-    name_hash = utils.build_name_hash(pdb_hierarchy)
-    element_hash = utils.build_element_hash(pdb_hierarchy)
     chains = pdb_hierarchy.models()[0].chains()
-    sel_cache = pdb_hierarchy.atom_selection_cache()
     n_ncs_groups = 0
     for i_seq, group in enumerate(self.params.restraint_group):
       n_selections = 0
@@ -169,7 +156,7 @@ class torsion_ncs(object):
       for i, restraint_group in enumerate(params.restraint_group):
         for selection_i in restraint_group.selection:
           sel_atoms_i = (utils.phil_atom_selections_as_i_seqs_multiple(
-                           cache=sel_cache,
+                           cache=pdb_hierarchy.atom_selection_cache(),
                            string_list=[selection_i]))
           sel_seq, sel_seq_padded, sel_structures = \
             utils.extract_sequence_and_sites(
@@ -256,7 +243,33 @@ class torsion_ncs(object):
         new_ncs_groups += "  }\n }\n}"
       self.found_ncs = new_ncs_groups
 
+  def find_ncs_matches_from_hierarchy(self,
+                                      pdb_hierarchy):
+    self.dp_ncs = []
+    self.cb_dp_ncs = []
+    self.phi_list = []
+    self.psi_list = []
+    self.omega_list = []
+    self.dihedral_proxies_backup = None
+    self.name_hash = utils.build_name_hash(pdb_hierarchy)
+    self.segid_hash = utils.build_segid_hash(pdb_hierarchy)
+    self.sym_atom_hash = utils.build_sym_atom_hash(pdb_hierarchy)
+    self.njump = 1
+    self.min_length = 10
+    self.sa = SidechainAngles(False)
+    self.sidechain_angle_hash = self.build_sidechain_angle_hash()
+    self.rotamer_search_manager = None
+    self.r = rotalyze()
+    self.unit_cell = None
+    sites_cart = pdb_hierarchy.atoms().extract_xyz()
+    if self.selection is None:
+      self.selection = flex.bool(len(sites_cart), True)
+    complete_dihedral_proxies = utils.get_complete_dihedral_proxies(
+                                  pdb_hierarchy=pdb_hierarchy)
     if len(self.ncs_groups) > 0:
+      element_hash = utils.build_element_hash(pdb_hierarchy)
+      i_seq_hash = utils.build_i_seq_hash(pdb_hierarchy)
+      dp_hash = {}
       for dp in complete_dihedral_proxies:
         h_atom = False
         for i_seq in dp.i_seqs:
@@ -277,7 +290,7 @@ class torsion_ncs(object):
         for chain_i in group:
           selection = utils.selection(
                        string=chain_i,
-                       cache=sel_cache)
+                       cache=pdb_hierarchy.atom_selection_cache())
           c_atoms = pdb_hierarchy.select(selection).atoms()
           for atom in c_atoms:
             for chain_j in group:
@@ -355,7 +368,8 @@ class torsion_ncs(object):
             except Exception:
               temp[key] = []
               temp[key].append(cur_matches[key])
-        dp_match = []
+        dp_match = \
+          cctbx.geometry_restraints.shared_dihedral_proxy()
         dp_match.append(dp)
         for key in temp.keys():
           cur_dp_hash = dp_hash.get(tuple(temp[key]))
@@ -459,16 +473,19 @@ class torsion_ncs(object):
           finish = previous
           self.master_ranges[key].append( (start, finish) )
 
-      if self.params.verbose:
-        self.show_ncs_summary(log=log)
-      print >> self.log, "Initializing torsion NCS restraints..."
+      if self.params.verbose and self.ncs_dihedral_proxies is None:
+        self.show_ncs_summary(log=self.log)
+      if self.ncs_dihedral_proxies is None: #first time run
+        print >> self.log, "Initializing torsion NCS restraints..."
+      else:
+        print >> self.log, "Verifying torsion NCS restraints..."
       self.rama = ramalyze()
       self.generate_dihedral_ncs_restraints(
         sites_cart=sites_cart,
         pdb_hierarchy=pdb_hierarchy,
-        log=log)
+        log=self.log)
     elif(not self.params.silence_warnings):
-      print >> log, \
+      print >> self.log, \
         "** WARNING: No torsion NCS found!!" + \
         "  Please check parameters. **"
 
@@ -728,9 +745,8 @@ class torsion_ncs(object):
           "  Please check parameters. **"
     else:
       print >> log, \
-        "Number of torsion NCS restraints: %d" \
+        "Number of torsion NCS restraints: %d\n" \
           % len(self.ncs_dihedral_proxies)
-    #STOP()
 
   def sync_dihedral_restraints(self,
                                geometry):
@@ -766,9 +782,12 @@ class torsion_ncs(object):
     make_sub_header(
       "Updating torsion NCS restraints",
       out=log)
-    self.generate_dihedral_ncs_restraints(sites_cart=sites_cart,
-                                          pdb_hierarchy=pdb_hierarchy,
-                                          log=log)
+    if self.dp_ncs is None:
+      self.find_ncs_matches_from_hierarchy(pdb_hierarchy=pdb_hierarchy)
+    else:
+      self.generate_dihedral_ncs_restraints(sites_cart=sites_cart,
+                                            pdb_hierarchy=pdb_hierarchy,
+                                            log=log)
     self.add_ncs_dihedral_proxies(geometry=geometry)
     if self.remove_conflicting_torsion_restraints:
       self.sync_dihedral_restraints(geometry=geometry)
@@ -1429,6 +1448,20 @@ class torsion_ncs(object):
     for delta in deltas:
       delta_sq_sum += ( abs(delta)**2 )
     return math.sqrt(delta_sq_sum / len(deltas))
+
+  def select (self, nseq, iselection) :
+    assert (self.ncs_dihedral_proxies is not None)
+    return torsion_ncs(
+             fmodel=self.fmodel,
+             params=self.params,
+             b_factor_weight=self.b_factor_weight,
+             coordinate_sigma=self.coordinate_sigma,
+             selection=None, #not sure here
+             ncs_groups=self.ncs_groups,
+             alignments=self.alignments,
+             ncs_dihedral_proxies= \
+               self.ncs_dihedral_proxies.proxy_select(nseq, iselection),
+             log=self.log)
 
 #split out functions
 class get_ncs_groups(object):
