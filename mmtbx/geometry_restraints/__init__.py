@@ -13,6 +13,7 @@ class manager (object) :
                 hydrogen_bond_params=None,
                 reference_manager=None,
                 den_manager=None,
+                ncs_manager=None,
                 c_beta_dihedral_proxies=None,
                 flags=None) :
     adopt_init_args(self, locals())
@@ -129,7 +130,7 @@ class manager (object) :
               n_seq,
               iselection) :
     ramachandran_proxies = hydrogen_bond_proxies = den_manager = None
-    c_beta_dihedral_proxies = None
+    c_beta_dihedral_proxies = ncs_manager = None
     if (self.ramachandran_proxies is not None) :
       ramachandran_proxies = self.ramachandran_proxies.proxy_select(
         n_seq, iselection)
@@ -141,12 +142,15 @@ class manager (object) :
     if (self.c_beta_dihedral_proxies is not None) :
       c_beta_dihedral_proxies = self.c_beta_dihedral_proxies.proxy_select(
         n_seq, iselection)
+    if (self.ncs_manager is not None) :
+      ncs_manager = self.ncs_manager.select(n_seq, iselection)
     return manager(
       ramachandran_proxies=ramachandran_proxies,
       ramachandran_lookup=self.ramachandran_lookup,
       hydrogen_bond_proxies=hydrogen_bond_proxies,
       hydrogen_bond_params=self.hydrogen_bond_params,
       den_manager=den_manager,
+      ncs_manager=ncs_manager,
       c_beta_dihedral_proxies=c_beta_dihedral_proxies,
       flags=self.flags)
 

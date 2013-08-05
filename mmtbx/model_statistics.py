@@ -555,8 +555,7 @@ class model(object):
   def __init__(self,
                model,
                ignore_hd,
-               use_molprobity=True,
-               ncs_manager=None):
+               use_molprobity=True):
     self.geometry = model.geometry_statistics(ignore_hd = ignore_hd,
       molprobity_scores=use_molprobity)
     self.content = model_content(model)
@@ -564,7 +563,11 @@ class model(object):
     self.tls_groups = model.tls_groups
     self.anomalous_scatterer_groups = model.anomalous_scatterer_groups
     self.ncs_groups = model.extract_ncs_groups()
-    self.ncs_manager = ncs_manager
+    if hasattr(model.restraints_manager, 'geometry'):
+      self.ncs_manager = model.restraints_manager.geometry.\
+                           generic_restraints_manager.ncs_manager
+    else:
+      self.ncs_manager = None
     self.pdb_hierarchy = model.pdb_hierarchy(sync_with_xray_structure=True)
 
   def show(self, out=None, prefix="", padded=None, pdb_deposition=False):
@@ -795,14 +798,12 @@ class info(object):
                      fmodel_n          = None,
                      refinement_params = None,
                      ignore_hd         = True,
-                     use_molprobity    = True,
-                     ncs_manager       = None):
+                     use_molprobity    = True):
     ref_par = refinement_params
     self.model = mmtbx.model_statistics.model(
       model = model,
       ignore_hd = ignore_hd,
-      use_molprobity = use_molprobity,
-      ncs_manager = ncs_manager)
+      use_molprobity = use_molprobity)
     self.data_x, self.data_n = None, None
     if(fmodel_x is not None):
       self.data_x = fmodel_x.info(
