@@ -229,7 +229,7 @@ def test_easy_qsub():
 def process_args(args):
   kwds = {}
   for t in args:
-    if t == "--help":
+    if t in ["--help", "-h"]:
       print """
   Program to sumbit jobs easily to a SGE queue
     e.g.
@@ -279,7 +279,7 @@ def run(phenix_source=None,
         python_script=None,
         dry_run=False,
         ):
-  """
+  help = """
   Submits a job to run commands on the queueing system using qsub. One master
   job is sent, which then deploys multiple sub jobs (Of the same job ID) to run
   each separate command.
@@ -299,14 +299,20 @@ def run(phenix_source=None,
 
   Returns the job id of the submission.
 
-  Ex:
+  Example of python script:
   run(
     where = path_to_where_you_want_to_run_your_jobs,
-    source = "/net/chevy/raid1/afonine/build/setpaths.csh",
-    commands = ["phenix.fetch_pdb abcd", "phenix.fetch_pdb efgh"])
+    source = "/net/chevy/raid1/nigel/build/setpaths.csh",
+    commands = ["phenix.fetch_pdb 101m", "phenix.fetch_pdb 1s72"])
+
+  For more help type:
+    libtbx.easy_qsub --help
   """
   if not phenix_source:
     print '-'*80
+    if not os.environ.get("PHENIX", ""):
+      print help
+      return
     print "\n  Automatically setting phenix_source to current $PHENIX/phenix_env\n"
     phenix_source = "%s/phenix_env" % os.environ.get("PHENIX", "")
 
