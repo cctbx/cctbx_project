@@ -1211,3 +1211,10 @@ def concatenate_python_script (out, file_name) :
       print >> out, line
   print >> out, "#--- end"
   print >> out, ""
+
+def greek_time(secs):
+  for greek in ["","milli", "micro", "nano"]:
+    if secs>1:
+      break
+    secs*=1000
+  return secs, greek
