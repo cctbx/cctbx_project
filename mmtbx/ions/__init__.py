@@ -120,7 +120,7 @@ water
     .type = float
   max_frac_calpha_2fofc = 1.2
     .type = float
-  min_2fofc_coordinating = 1.0
+  min_2fofc_coordinating = 0.9
     .type = float
     .help = Minimum 2mFo-DFc for waters involved in coordination shells.
 }
@@ -162,10 +162,10 @@ phaser
 
 from iotbx.pdb import common_residue_names_water as WATER_RES_NAMES
 DEFAULT_IONS = ["MG", "CA", "ZN", "CL"]
-HALIDES = ["F", "CL", "BR", "I"]
+HALIDES = ["F", "CL", "BR", "IOD"]
 TRANSITION_METALS = ["MN", "FE", "CO", "CU", "NI", "ZN", "PT"]
 NUC_PHOSPHATE_BINDING = ["MG", "CA", "MN"]
-SUPPORTED = TRANSITION_METALS + HALIDES + ["NA", "MG", "K", "CA", "CD"]
+SUPPORTED = TRANSITION_METALS + HALIDES + ["NA", "MG", "K", "CA", "CD", "HG"]
 
 def check_supported (elements) :
   if (elements is None) :
@@ -542,8 +542,9 @@ class Manager (object) :
     d_min = self.fmodel.f_obs().d_min()
     return (d_min < self.params.d_min_strict_valence)
 
-  def find_nearby_atoms (self, i_seq, distance_cutoff = 3.0,
-      filter_by_bonding = True, filter_by_two_fofc = True):
+  def find_nearby_atoms (self, i_seq, far_distance_cutoff = 3.0,
+      near_distance_cutoff = 1.5, filter_by_bonding = True,
+      filter_by_two_fofc = True):
     """
     Given site in the structure, return a list of nearby atoms with the
     supplied cutoff, and the vectors between them and the atom's site. Takes
@@ -556,13 +557,13 @@ class Manager (object) :
     # taking into account potential cell symmetry.
     # XXX should probably move this up, but it seems relatively fast
     pair_asu_table, asu_mappings, asu_table = self._pair_asu_cache.get(
-      distance_cutoff, (None,None,None))
+      far_distance_cutoff, (None,None,None))
     if (pair_asu_table is None) :
       pair_asu_table = self.xray_structure.pair_asu_table(
-        distance_cutoff = distance_cutoff)
+        distance_cutoff = far_distance_cutoff)
       asu_mappings = pair_asu_table.asu_mappings()
       asu_table = pair_asu_table.table()
-      self._pair_asu_cache[distance_cutoff] = (pair_asu_table, asu_mappings,
+      self._pair_asu_cache[far_distance_cutoff] = (pair_asu_table, asu_mappings,
         asu_table)
     asu_dict = asu_table[i_seq]
     contacts = []
@@ -592,7 +593,7 @@ class Manager (object) :
         site_ji_cart = self.unit_cell.orthogonalize(site_ji)
         vec_i = col(site_i_cart)
         vec_ji = col(site_ji_cart)
-        assert abs(vec_i - vec_ji) < distance_cutoff + 0.5
+        assert abs(vec_i - vec_ji) < far_distance_cutoff + 0.5
         contact = atom_contact(
           atom = atom_j,
           vector = vec_i - vec_ji,
@@ -602,6 +603,8 @@ class Manager (object) :
         # XXX I have no idea why the built-in handling of special positions
         # doesn't catch this for us
         if (j_seq == i_seq) and (not rt_mx.is_unit_mx()) :
+          continue
+        if contact.distance() < near_distance_cutoff:
           continue
         contacts.append(contact)
 
@@ -663,7 +666,7 @@ class Manager (object) :
     the B-factor due to incorrect scattering type, and consequently make the
     occupancy refinement more accurate.
     """
-    contacts = self.find_nearby_atoms(i_seq, distance_cutoff=3.0)
+    contacts = self.find_nearby_atoms(i_seq, far_distance_cutoff = 3.0)
     if (len(contacts) == 0) :
       return adptbx.u_as_b(self.u_iso_all[i_seq])
     u_iso_sum = 0
@@ -886,7 +889,7 @@ class Manager (object) :
     params = self.params.chloride
     nearby_atoms = self.find_nearby_atoms(
       i_seq,
-      distance_cutoff = 4.0,
+      far_distance_cutoff = 4.0,
       filter_by_bonding = False)
 
     if (assume_hydrogens_all_missing in [Auto,None]) :
@@ -1703,7 +1706,7 @@ class AtomProperties (object) :
     # Grab all the atoms within 3.5 Angstroms
     nearby_atoms_unfiltered = manager.find_nearby_atoms(
       i_seq = i_seq,
-      distance_cutoff = 3.5)
+      far_distance_cutoff = 3.5)
     self.nearby_atoms = []
     nearby_atoms_no_alts = []
     for contact in nearby_atoms_unfiltered :
@@ -2122,7 +2125,7 @@ class AtomProperties (object) :
 
       if self.geometries:
         print >> out, "  Coordinating geometry:"
-        for geometry, deviation, missing in self.geometries:
+        for geometry, deviation in self.geometries:
           print >> out, "    %-15s (average deviation: %.3f%s)" % \
             (geometry, deviation, degree)
 
