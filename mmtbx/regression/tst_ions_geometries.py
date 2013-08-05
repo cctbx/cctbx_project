@@ -17,12 +17,15 @@ def exercise () :
     return
 
   models = OrderedDict([
-    ("3rva", (["octahedral"], ["trigonal_bipyramid"], ["square_planar"])),
-    ("1mjh", (["octahedral"], ["octahedral"])),
-    ("4e1h", (["octahedral"], ["octahedral"], ["octahedral"])),
-    ("2xuz", (["triangular_prism"],)),
-    ("3zli", (["octahedral"], ["tetrahedral"], ["octahedral"], ["tetrahedral"])),
-    ("3e0f", ([], ["trigonal_pyramid"], ["square_pyramid"])),
+    ("3rva", (["octahedron"], ["trigonal_bipyramid"], ["square_plane"])),
+    ("1mjh", (["octahedron"], ["octahedron"])),
+    ("4e1h", (["octahedron"], ["octahedron"], ["octahedron"])),
+    ("2xuz", (["trigonal_prism"],)),
+    ("3zli", (["octahedron"], ["tetrahedron"],
+              ["octahedron"], ["tetrahedron"])),
+    ("3e0f", (["octahedron"], ["trigonal_pyramid"], ["square_pyramid"])),
+    ("3dkq", (["square_pyramid"], ["three_legs"], ["square_pyramid"])),
+    ("2o8q", (["octahedron"], ["octahedron"])),
   ])
 
   for model, geometries in models.items():
