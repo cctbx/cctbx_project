@@ -18,14 +18,6 @@ def get_master_phil():
         .type = bool
         .help = '''Only print outliers'''
 
-        changes = False
-        .type = bool
-        .help = '''Print list of changes'''
-
-        version = False
-        .type = bool
-        .help = '''Print version'''
-
         verbose = True
         .type = bool
         .help = '''Verbose'''
@@ -50,10 +42,6 @@ Example:
   phenix.cbetadev pdb=1ubq.pdb outliers_only=True
 
 """
-  def changes(self):
-    print "\nversion 0.10 080504 Initial version\nversion 0.12 090604 Added Summary line\n"
-  def version(self):
-    print "\nversion 0.11 090604 - Copyright 2008,2009 Jeffrey J. Headd\n"
   def get_summary_and_header(self,command_name):
     header="\n"
     header+="\n#                       "+str(command_name)
@@ -94,14 +82,6 @@ Example:
       #master_params.format(python_object=params).show(out=out)
 
     self.params=work_params # makes params available to whole class
-
-    if self.params.cbetadev.changes:
-      self.changes()
-      return
-
-    if self.params.cbetadev.version:
-      self.version()
-      return
 
     log=out
     if (log is None): log = sys.stdout
