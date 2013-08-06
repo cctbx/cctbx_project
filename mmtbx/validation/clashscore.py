@@ -21,14 +21,6 @@ def get_master_phil():
         .type = path
         .help = '''Enter a PDB file name'''
 
-        changes = False
-        .type = bool
-        .help = '''Print list of changes'''
-
-        version = False
-        .type = bool
-        .help = '''Print version'''
-
         verbose = False
         .type = bool
         .help = '''Verbose'''
@@ -66,13 +58,6 @@ Example:
   phenix.clashscore pdb=1ubq.pdb keep_hydrogens=True
 
 """
-  def changes(self):
-    print "\nversion 0.10 - Development Version\n"
-    print "\nversion 0.11 - Input hydrogens now kept by default\n"
-    print "\nversion 0.12 - Option to use nuclear x-H distances and\n"
-    print "                 vdW radii\n"
-  def version(self):
-    print "\nversion 0.12 - Copyright 2013, Jeffrey J. Headd and Mike Word\n"
   def get_summary_and_header(self,command_name):
     header="\n"
     header+="\n#                       "+str(command_name)
@@ -114,14 +99,6 @@ Example:
       #master_params.format(python_object=params).show(out=out)
 
     self.params=work_params # makes params available to whole class
-
-    if self.params.clashscore.changes:
-      self.changes()
-      return
-
-    if self.params.clashscore.version:
-      self.version()
-      return
 
     log=out
     if (log is None): log = sys.stdout
