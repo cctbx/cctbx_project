@@ -152,8 +152,8 @@ class torsion_ncs(object):
       padded_sequences = {}
       structures = {}
       alignments = {}
-      restraint_group_check = [True]*len(params.restraint_group)
-      for i, restraint_group in enumerate(params.restraint_group):
+      restraint_group_check = [True]*len(self.params.restraint_group)
+      for i, restraint_group in enumerate(self.params.restraint_group):
         for selection_i in restraint_group.selection:
           sel_atoms_i = (utils.phil_atom_selections_as_i_seqs_multiple(
                            cache=pdb_hierarchy.atom_selection_cache(),
@@ -178,9 +178,9 @@ class torsion_ncs(object):
       cleaned_restraint_groups = []
       for i, check in enumerate(restraint_group_check):
         if check:
-          cleaned_restraint_groups.append(params.restraint_group[i])
-      params.restraint_group = cleaned_restraint_groups
-      for restraint_group in params.restraint_group:
+          cleaned_restraint_groups.append(self.params.restraint_group[i])
+      self.params.restraint_group = cleaned_restraint_groups
+      for restraint_group in self.params.restraint_group:
         ncs_set = []
         for selection_i in restraint_group.selection:
           ncs_set.append(selection_i)
@@ -195,11 +195,11 @@ class torsion_ncs(object):
                            structures[selection_j])
             residue_match_map = \
               utils._alignment(
-                params=params,
+                params=self.params,
                 sequences=seq_pair,
                 padded_sequences=seq_pair_padded,
                 structures=struct_pair,
-                log=log)
+                log=self.log)
             key = (selection_i, selection_j)
             alignments[key] = residue_match_map
         self.ncs_groups.append(ncs_set)
