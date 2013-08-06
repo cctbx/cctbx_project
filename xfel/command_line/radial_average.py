@@ -5,7 +5,6 @@ from __future__ import division
 
 import libtbx.phil
 from libtbx.utils import Usage, Sorry
-from cxi_user.xfel_targets import targets
 import sys
 import os
 import math
@@ -20,6 +19,8 @@ master_phil = libtbx.phil.parse("""
     .type = float
   handedness = 0
     .type = int
+  xfel_target = None
+    .type = str
   n_bins = 0
     .type = int
 """)
@@ -68,6 +69,8 @@ def run (args) :
     master_phil.show()
     raise Usage("file_path must be defined (either file_path=XXX, or the path alone).")
   assert params.handedness is not None
+  if params.handedness > 0:
+    assert params.xfel_target is not None
   assert params.n_bins is not None
 
   from iotbx.detectors.npy import NpyImage
@@ -78,7 +81,11 @@ def run (args) :
           "distl.detector_format_version=CXI 7.1",
           "viewer.powder_arcs.show=False",
           "viewer.powder_arcs.code=3n9c",
-          ] + targets["thermolysinL785hi"]
+          ]
+  if params.handedness > 0:
+    from cxi_user.xfel_targets import targets
+    args += targets[params.xfel_target]
+
   params_sf = cxi_phil.cxi_versioned_extract(args)
   horizons_phil = params_sf.persist.commands
 
