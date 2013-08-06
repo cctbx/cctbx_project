@@ -204,6 +204,17 @@ Full parameters:
   def get_cached_file (self, file_name) :
     return self._cache.get(file_name, None)
 
+  def get_file (self, file_name, force_type=None) :
+    input_file = self._cache.get(file_name)
+    if (input_file is None) :
+      from iotbx import file_reader
+      input_file = file_reader.any_file(file_name,
+        force_type=force_type,
+        raise_sorry_if_errors=True)
+    elif (force_type is not None) :
+      input_file.assert_file_type(force_type)
+    return input_file
+
 # Utilities for Phenix GUI
 class setup_app_generic (object) :
   def __init__ (self, master_phil_path) :

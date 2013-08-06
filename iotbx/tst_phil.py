@@ -123,6 +123,7 @@ ATOM      1  O   HOH     1      53.448  18.599 -10.134  1.00 20.00
   assert (pdb_in is not None)
   assert (params.model == os.path.join(os.getcwd(), "model.pdb"))
   assert (params.use_geometry_restraints)
+  model_in = pcl.get_file(params.model, force_type="pdb")
   master_phil_str = """
 data_dir = None
   .type = path
