@@ -20,6 +20,8 @@ master_phil = libtbx.phil.parse("""
     .type = float
   handedness = 0
     .type = int
+  n_bins = 0
+    .type = int
 """)
 # Array of handedness possibilities.  Input 0 for no subpixel
 # metrology correction
@@ -66,6 +68,7 @@ def run (args) :
     master_phil.show()
     raise Usage("file_path must be defined (either file_path=XXX, or the path alone).")
   assert params.handedness is not None
+  assert params.n_bins is not None
 
   from iotbx.detectors.npy import NpyImage
   img = NpyImage(params.file_path)
@@ -87,6 +90,9 @@ def run (args) :
         reapply_peripheral_margin=False,encode_inactive_as_zeroes=True)
   assert len(the_tiles) == 256
 
+  if params.beam_x is None or params.beam_y is None:
+    img.initialize_viewer_properties(horizons_phil)
+
   if params.beam_x is None:
     params.beam_x = img.get_beam_center_pixels_fast_slow()[0]
   if params.beam_y is None:
@@ -96,9 +102,10 @@ def run (args) :
   bc = (params.beam_x,params.beam_y)
 
   #hs = (0,9,11,12,16)
-  ##for i in xrange(17):
+  #for i in xrange(17):
   #for i in hs:
-    #show_tiles(the_tiles, img, horizons_phil, bc, i-1)
+    #show_tiles(the_tiles, img, horizons_phil, bc, i)
+    #break
   #return
 
   extent = int(math.ceil(max(distance((0,0),bc),
@@ -106,8 +113,14 @@ def run (args) :
                              distance((0,img.image_size_slow),bc),
                              distance((img.image_size_fast,img.image_size_slow),bc))))
 
+  if params.n_bins < extent:
+    params.n_bins = extent
+
+  extent_in_mm = extent * img.pixel_resolution
+  extent_two_theta = math.atan(extent_in_mm/img.distance)*180/math.pi
+
   results = []
-  for i in range(extent): results.append([])
+  for i in range(params.n_bins): results.append([])
 
   sys.stdout.write("Generating average...tile:")
   sys.stdout.flush()
@@ -124,23 +137,18 @@ def run (args) :
         if corrected is None: continue
         val = img.get_pixel_intensity((x,y))
         if val > 0:
-          results[int(math.floor(distance(corrected,bc)))].append(val)
+          d_in_mm = distance(corrected,bc) * img.pixel_resolution
+          twotheta = math.atan(d_in_mm/img.distance)*180/math.pi
+          results[int(math.floor(twotheta*params.n_bins/extent_two_theta))].append(val)
 
   print " Finishing..."
 
-  xvals = np.ndarray((extent,),float)
-  #ds = np.ndarray((extent,),float)
-  for i in range(extent):
+  xvals = np.ndarray((len(results),),float)
+  for i in range(len(results)):
     stddev = np.std(results[i])
     results[i] = np.mean(results[i])
-    d_in_mm = i * img.pixel_resolution
-    twotheta = math.atan(d_in_mm/img.distance)*180/math.pi
+    twotheta = i * extent_two_theta/params.n_bins
     xvals[i] = twotheta
-
-    #if twotheta==0:
-      #ds[i] = 1000
-    #else:
-      #ds[i] = img.wavelength/(2*math.sin((math.pi*twotheta/180)/2))
 
     if "%.3f"%results[i] != "nan":
      #print "%.3f %.3f"%     (twotheta,results[i])        #.xy  format for Rex.cell.
@@ -256,10 +264,12 @@ def show_tiles(the_tiles, img, phil, bc, handedness=0):
 
   plt.scatter(arraysx, arraysy, c=arraysz, s=1, marker='s', cmap="gray_r", lw=0)
   plt.gca().invert_yaxis()
-  circ = plt.Circle((bc[0], bc[1]), radius=332, facecolor='none', edgecolor='red')
+  circ = plt.Circle((bc[0], bc[1]), radius=377, facecolor='none', edgecolor='red')
+  plt.gca().add_patch(circ)
+  circ = plt.Circle((bc[0], bc[1]), radius=365, facecolor='none', edgecolor='red')
   plt.gca().add_patch(circ)
 
-  plt.title("Handedness: %s"%(handedness+1))
+  plt.title("Handedness: %s"%(handedness))
 
   plt.show()
   return
