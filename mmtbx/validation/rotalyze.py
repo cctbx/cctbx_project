@@ -22,14 +22,6 @@ def get_master_phil():
       .type = bool
       .help = '''Only print rotamer outliers'''
 
-      changes = False
-      .type = bool
-      .help = '''Print change_log for rotalyze script'''
-
-      version = False
-      .type = bool
-      .help = '''Print version'''
-
       verbose = True
       .type = bool
       .help = '''Verbose'''
@@ -61,17 +53,6 @@ Example:
   phenix.rotalyze pdb=1ubq.pdb outliers_only=True
 
 """
-
-  def changes(self):
-    print """
-    version 0.04 090605 - Added summary and description to text output.
-                          New functions to obtain percentages and goals.
-    version 0.03 081212 - Fixes for better altconf behaviour
-    version 0.02 081022 - Updated for use with GUI
-    version 0.1  080326 - First version
-    """
-  def version(self):
-    print "\nversion 0.04 090605 - created 2007, Vincent Chen\n"
   #------------------------------------------------------------------------------------------------
   #}}}
 
@@ -117,14 +98,6 @@ Example:
       #master_params.format(python_object=params).show(out=out)
 
     self.params=work_params # makes params available to whole class
-
-    if self.params.rotalyze.changes:
-      self.changes()
-      return None, None
-
-    if self.params.rotalyze.version:
-      self.version()
-      return None, None
 
     log=out
     if (log is None): log = sys.stdout
