@@ -6,6 +6,7 @@ The design has been taken from
 http://www.personal.soton.ac.uk/jf1w07/nodes/nodes.html
 
 """
+from __future__ import division
 
 from scitbx.array_family import flex
 

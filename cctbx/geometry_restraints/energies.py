@@ -218,68 +218,68 @@ class energies(scitbx.restraints.energies):
   def bond_deviations_z(self):
     '''
     Calculate rmsz of bond deviations
-    
+
     Compute rmsz, the Root-Mean-Square of the z-scors for a set of data
     using z_i = {x_i - mu / sigma}  and rmsz = sqrt(mean(z*z))
-    
-    :returns: 
+
+    :returns:
     b_rmsz: rmsz, root mean square of the z-scors of all bonds
     b_z_min/max: min/max abolute values of z-scors
     '''
     if(self.n_bond_proxies is not None):
       bond_deltas = geometry_restraints.bond_deltas(
         sites_cart         = self.sites_cart,
-        sorted_asu_proxies = self.bond_proxies) 	# asu is asymmetric unit  
+        sorted_asu_proxies = self.bond_proxies)         # asu is asymmetric unit
       sigmas = [geometry_restraints.weight_as_sigma(x.weight) for x in self.bond_proxies.simple]
       z_scores = flex.double([(bond_delta/sigma) for bond_delta,sigma in zip(bond_deltas,sigmas)])
       b_rmsz = math.sqrt(flex.mean_default(z_scores*z_scores,0))
       b_z_max = math.sqrt(flex.max_default(flex.abs(z_scores), 0))
-      b_z_min = math.sqrt(flex.min_default(flex.abs(z_scores), 0))      
-      return b_z_min, b_z_max, b_rmsz 
-    
+      b_z_min = math.sqrt(flex.min_default(flex.abs(z_scores), 0))
+      return b_z_min, b_z_max, b_rmsz
+
   def bond_deviations(self):
     if(self.n_bond_proxies is not None):
       bond_deltas = geometry_restraints.bond_deltas(
         sites_cart         = self.sites_cart,
-        sorted_asu_proxies = self.bond_proxies) 	
+        sorted_asu_proxies = self.bond_proxies)
       b_sq  = bond_deltas * bond_deltas
       b_ave = math.sqrt(flex.mean_default(b_sq, 0))
       b_max = math.sqrt(flex.max_default(b_sq, 0))
-      b_min = math.sqrt(flex.min_default(b_sq, 0))    
+      b_min = math.sqrt(flex.min_default(b_sq, 0))
       return b_min, b_max, b_ave
-    
+
   def angle_deviations_z(self):
     '''
     Calculate rmsz of angles deviations
-    
+
     Compute rmsz, the Root-Mean-Square of the z-scors for a set of data
     using z_i = {x_i - mu / sigma}  and rmsz = sqrt(mean(z*z))
-    
-    :returns: 
+
+    :returns:
     a_rmsz: rmsz, root mean square of the z-scors of all angles
     a_z_min/max: min/max values of z-scors
-    '''    
+    '''
     if(self.n_angle_proxies is not None):
       angle_deltas = geometry_restraints.angle_deltas(
         sites_cart = self.sites_cart,
         proxies    = self.angle_proxies)
       sigmas = [geometry_restraints.weight_as_sigma(x.weight) for x in self.angle_proxies]
-      z_scores = flex.double([(angle_delta/sigma) for angle_delta,sigma in zip(angle_deltas,sigmas)])      
+      z_scores = flex.double([(angle_delta/sigma) for angle_delta,sigma in zip(angle_deltas,sigmas)])
       a_rmsz = math.sqrt(flex.mean_default(z_scores*z_scores,0))
       a_z_max = math.sqrt(flex.max_default(flex.abs(z_scores), 0))
-      a_z_min = math.sqrt(flex.min_default(flex.abs(z_scores), 0))      
-      return a_z_min, a_z_max, a_rmsz 
-    
-  def angle_deviations(self):   
+      a_z_min = math.sqrt(flex.min_default(flex.abs(z_scores), 0))
+      return a_z_min, a_z_max, a_rmsz
+
+  def angle_deviations(self):
     if(self.n_angle_proxies is not None):
       angle_deltas = geometry_restraints.angle_deltas(
         sites_cart = self.sites_cart,
-        proxies    = self.angle_proxies)            
+        proxies    = self.angle_proxies)
       a_sq  = angle_deltas * angle_deltas
       a_ave = math.sqrt(flex.mean_default(a_sq, 0))
       a_max = math.sqrt(flex.max_default(a_sq, 0))
-      a_min = math.sqrt(flex.min_default(a_sq, 0))      
-      return a_min, a_max, a_ave  
+      a_min = math.sqrt(flex.min_default(a_sq, 0))
+      return a_min, a_max, a_ave
 
   def nonbonded_distances(self):
     return geometry_restraints.nonbonded_deltas(

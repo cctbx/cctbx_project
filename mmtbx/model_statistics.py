@@ -19,11 +19,11 @@ class geometry(object):
                ignore_side_chain = False,
                n_histogram_slots = 10,
                molprobity_scores=False):
-    
+
     zero1 = [0, 0, 0, 0, 0]
     zero2 = [0, 0, 0, 0, 0, 0, 0, 0]
-    self.a_target, self.a_mean, self.a_max, self.a_min, self.a_z, self.a_z_min, self.a_z_max, self.a_number = zero2 	# angle
-    self.b_target, self.b_mean, self.b_max, self.b_min, self.b_z, self.b_z_min, self.b_z_max, self.b_number = zero2	# bond
+    self.a_target, self.a_mean, self.a_max, self.a_min, self.a_z, self.a_z_min, self.a_z_max, self.a_number = zero2     # angle
+    self.b_target, self.b_mean, self.b_max, self.b_min, self.b_z, self.b_z_min, self.b_z_max, self.b_number = zero2     # bond
     self.c_target, self.c_mean, self.c_max, self.c_min, self.c_number = zero1
     self.d_target, self.d_mean, self.d_max, self.d_min, self.d_number = zero1
     self.p_target, self.p_mean, self.p_max, self.p_min, self.p_number = zero1
@@ -44,14 +44,14 @@ class geometry(object):
     esg = energies_sites.geometry
     bond_proxies_simple = restraints_manager.geometry.pair_proxies(sites_cart = sites_cart).bond_proxies.simple
     b_deviations = esg.bond_deviations()
-    b_deviations_z = esg.bond_deviations_z()	# get z-score info
+    b_deviations_z = esg.bond_deviations_z()    # get z-score info
     n_deviations = esg.nonbonded_deviations()
     a_deviations = esg.angle_deviations()
-    a_deviations_z = esg.angle_deviations_z()	# get z-score info
+    a_deviations_z = esg.angle_deviations_z()   # get z-score info
     d_deviations = esg.dihedral_deviations()
     c_deviations = esg.chirality_deviations()
     p_deviations = esg.planarity_deviations()
-    self.a_min, self.a_max, self.a_mean = a_deviations 
+    self.a_min, self.a_max, self.a_mean = a_deviations
     self.a_z_min, self.a_z_max, self.a_rmsz = a_deviations_z
     self.b_min, self.b_max, self.b_mean = b_deviations
     self.b_z_min, self.b_z_max,self.b_rmsz = b_deviations_z
@@ -170,7 +170,7 @@ class geometry(object):
     fill_len = 80-line_len-1
     s0 = message_+"-"*(fill_len)+"|"
     s1 = "|      Type |    Count |    Deviation from ideal |    Targets  | Target (sum) |"
-    s2 = "|           |          |    rmsd     max     min |             |              |"  
+    s2 = "|           |          |    rmsd     max     min |             |              |"
     s3 = fmt%(format_value("%9s","bond"),
               format_value("%8d",self.b_number),
               format_value("%7.3f",self.b_mean),
@@ -217,7 +217,7 @@ class geometry(object):
     for line in [s0,s1,s2,s3,s4,s5,s6,s7,s8,s9]:
       print >> out, line
     out.flush()
-    
+
   def show_overall_rmsz(self, out = None, message = ""):
       if(out is None): out = sys.stdout
       fmt = "| %s | %s | %s %s %s | %s |"
@@ -229,7 +229,7 @@ class geometry(object):
       # Make sure to change the relevant test if changing them
       s0 = message_+"-"*(fill_len)+"|"
       s1 = "|      Type |    Count |    Deviation from ideal |    Targets  |"
-      s2 = "|           |          |    rmsZ     max     min |             |"  
+      s2 = "|           |          |    rmsZ     max     min |             |"
       s3 = fmt%(format_value("%9s","Bond"),
                 format_value("%8d",self.b_number),
                 format_value("%7.3f",self.b_rmsz),
@@ -277,7 +277,7 @@ class geometry(object):
       s9 = "|"+"-"*62+"|"
       for line in [s0,s1,s2,s3,s4,s9]:
         print >> out, line
-      out.flush()    
+      out.flush()
 
   def show_bond_angle_nonbonded_histogram_2(self, out = None, prefix = ""):
     if(out is None): out = sys.stdout
