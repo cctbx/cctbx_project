@@ -9,31 +9,31 @@ import sys
 class energies(scitbx.restraints.energies):
 
   def __init__(self, sites_cart,
-                     unit_cell=None,
-                     bond_proxies=None,
-                     nonbonded_proxies=None,
-                     nonbonded_function=None,
-                     angle_proxies=None,
-                     dihedral_proxies=None,
-                     reference_dihedral_proxies=None,
-                     ncs_dihedral_proxies=None,
-                     chirality_proxies=None,
-                     planarity_proxies=None,
-                     bond_similarity_proxies=None,
-                     generic_restraints_manager=None,
-                     external_energy_function=None,
-                     compute_gradients=True,
-                     gradients=None,
-                     disable_asu_cache=False,
-                     normalization=False,
-                     extension_objects=[]):
+               unit_cell=None,
+               bond_proxies=None,
+               nonbonded_proxies=None,
+               nonbonded_function=None,
+               angle_proxies=None,
+               dihedral_proxies=None,
+               reference_dihedral_proxies=None,
+               ncs_dihedral_proxies=None,
+               chirality_proxies=None,
+               planarity_proxies=None,
+               bond_similarity_proxies=None,
+               generic_restraints_manager=None,
+               external_energy_function=None,
+               compute_gradients=True,
+               gradients=None,
+               disable_asu_cache=False,
+               normalization=False,
+               extension_objects=[]):
     adopt_init_args(self, locals())
     scitbx.restraints.energies.__init__(self,
-      compute_gradients=compute_gradients,
-      gradients=gradients,
-      gradients_size=sites_cart.size(),
-      gradients_factory=flex.vec3_double,
-      normalization=normalization)
+                                        compute_gradients=compute_gradients,
+                                        gradients=gradients,
+                                        gradients_size=sites_cart.size(),
+                                        gradients_factory=flex.vec3_double,
+                                        normalization=normalization)
     self.n_dihedral_restraints = None
     self.dihedral_restraints_residual_sum = 0
     if (nonbonded_proxies is not None): assert nonbonded_function is not None
@@ -148,9 +148,9 @@ class energies(scitbx.restraints.energies):
     else:
       self.n_chirality_proxies = len(chirality_proxies)
       self.chirality_residual_sum = geometry_restraints.chirality_residual_sum(
-          sites_cart=sites_cart,
-          proxies=chirality_proxies,
-          gradient_array=self.gradients)
+        sites_cart=sites_cart,
+        proxies=chirality_proxies,
+        gradient_array=self.gradients)
       self.number_of_restraints += self.n_chirality_proxies
       self.residual_sum += self.chirality_residual_sum
     if (planarity_proxies is None):
@@ -180,17 +180,17 @@ class energies(scitbx.restraints.energies):
       self.n_bond_similarity_proxies = len(bond_similarity_proxies)
       if unit_cell is None: # ignore proxy.i_seqs
         self.bond_similarity_residual_sum = \
-            geometry_restraints.bond_similarity_residual_sum(
-              sites_cart=sites_cart,
-              proxies=bond_similarity_proxies,
-              gradient_array=self.gradients)
+          geometry_restraints.bond_similarity_residual_sum(
+            sites_cart=sites_cart,
+            proxies=bond_similarity_proxies,
+            gradient_array=self.gradients)
       else:
         self.bond_similarity_residual_sum = \
-            geometry_restraints.bond_similarity_residual_sum(
-              unit_cell=unit_cell,
-              sites_cart=sites_cart,
-              proxies=bond_similarity_proxies,
-              gradient_array=self.gradients)
+          geometry_restraints.bond_similarity_residual_sum(
+            unit_cell=unit_cell,
+            sites_cart=sites_cart,
+            proxies=bond_similarity_proxies,
+            gradient_array=self.gradients)
       self.number_of_restraints += self.n_bond_similarity_proxies
       self.residual_sum += self.bond_similarity_residual_sum
     if (generic_restraints_manager is None) :
@@ -215,96 +215,140 @@ class energies(scitbx.restraints.energies):
       extension_obj.energies_add(energies_obj=self)
     self.finalize_target_and_gradients()
 
+  def bond_deviations_z(self):
+    '''
+    Calculate rmsz of bond deviations
+    
+    Compute rmsz, the Root-Mean-Square of the z-scors for a set of data
+    using z_i = {x_i - mu / sigma}  and rmsz = sqrt(mean(z*z))
+    
+    :returns: 
+    b_rmsz: rmsz, root mean square of the z-scors of all bonds
+    b_z_min/max: min/max abolute values of z-scors
+    '''
+    if(self.n_bond_proxies is not None):
+      bond_deltas = geometry_restraints.bond_deltas(
+        sites_cart         = self.sites_cart,
+        sorted_asu_proxies = self.bond_proxies) 	# asu is asymmetric unit  
+      sigmas = [geometry_restraints.weight_as_sigma(x.weight) for x in self.bond_proxies.simple]
+      z_scores = flex.double([(bond_delta/sigma) for bond_delta,sigma in zip(bond_deltas,sigmas)])
+      b_rmsz = math.sqrt(flex.mean_default(z_scores*z_scores,0))
+      b_z_max = math.sqrt(flex.max_default(flex.abs(z_scores), 0))
+      b_z_min = math.sqrt(flex.min_default(flex.abs(z_scores), 0))      
+      return b_z_min, b_z_max, b_rmsz 
+    
   def bond_deviations(self):
     if(self.n_bond_proxies is not None):
-       bond_deltas = geometry_restraints.bond_deltas(
-                                        sites_cart         = self.sites_cart,
-                                        sorted_asu_proxies = self.bond_proxies)
-       b_sq  = bond_deltas * bond_deltas
-       b_ave = math.sqrt(flex.mean_default(b_sq, 0))
-       b_max = math.sqrt(flex.max_default(b_sq, 0))
-       b_min = math.sqrt(flex.min_default(b_sq, 0))
-       return b_min, b_max, b_ave
-
-  def angle_deviations(self):
+      bond_deltas = geometry_restraints.bond_deltas(
+        sites_cart         = self.sites_cart,
+        sorted_asu_proxies = self.bond_proxies) 	
+      b_sq  = bond_deltas * bond_deltas
+      b_ave = math.sqrt(flex.mean_default(b_sq, 0))
+      b_max = math.sqrt(flex.max_default(b_sq, 0))
+      b_min = math.sqrt(flex.min_default(b_sq, 0))    
+      return b_min, b_max, b_ave
+    
+  def angle_deviations_z(self):
+    '''
+    Calculate rmsz of angles deviations
+    
+    Compute rmsz, the Root-Mean-Square of the z-scors for a set of data
+    using z_i = {x_i - mu / sigma}  and rmsz = sqrt(mean(z*z))
+    
+    :returns: 
+    a_rmsz: rmsz, root mean square of the z-scors of all angles
+    a_z_min/max: min/max values of z-scors
+    '''    
     if(self.n_angle_proxies is not None):
-       angle_deltas = geometry_restraints.angle_deltas(
-                                               sites_cart = self.sites_cart,
-                                               proxies    = self.angle_proxies)
-       a_sq  = angle_deltas * angle_deltas
-       a_ave = math.sqrt(flex.mean_default(a_sq, 0))
-       a_max = math.sqrt(flex.max_default(a_sq, 0))
-       a_min = math.sqrt(flex.min_default(a_sq, 0))
-       return a_min, a_max, a_ave
+      angle_deltas = geometry_restraints.angle_deltas(
+        sites_cart = self.sites_cart,
+        proxies    = self.angle_proxies)
+      sigmas = [geometry_restraints.weight_as_sigma(x.weight) for x in self.angle_proxies]
+      z_scores = flex.double([(angle_delta/sigma) for angle_delta,sigma in zip(angle_deltas,sigmas)])      
+      a_rmsz = math.sqrt(flex.mean_default(z_scores*z_scores,0))
+      a_z_max = math.sqrt(flex.max_default(flex.abs(z_scores), 0))
+      a_z_min = math.sqrt(flex.min_default(flex.abs(z_scores), 0))      
+      return a_z_min, a_z_max, a_rmsz 
+    
+  def angle_deviations(self):   
+    if(self.n_angle_proxies is not None):
+      angle_deltas = geometry_restraints.angle_deltas(
+        sites_cart = self.sites_cart,
+        proxies    = self.angle_proxies)            
+      a_sq  = angle_deltas * angle_deltas
+      a_ave = math.sqrt(flex.mean_default(a_sq, 0))
+      a_max = math.sqrt(flex.max_default(a_sq, 0))
+      a_min = math.sqrt(flex.min_default(a_sq, 0))      
+      return a_min, a_max, a_ave  
 
   def nonbonded_distances(self):
     return geometry_restraints.nonbonded_deltas(
-                                  sites_cart         = self.sites_cart,
-                                  sorted_asu_proxies = self.nonbonded_proxies)
+      sites_cart         = self.sites_cart,
+      sorted_asu_proxies = self.nonbonded_proxies)
 
   def nonbonded_deviations(self):
     if(self.n_nonbonded_proxies is not None):
-       nonbonded_deltas = self.nonbonded_distances()
-       r_sq  = nonbonded_deltas * nonbonded_deltas
-       r_ave = math.sqrt(flex.mean_default(r_sq, 0))
-       r_max = math.sqrt(flex.max_default(r_sq, 0))
-       r_min = math.sqrt(flex.min_default(r_sq, 0))
-       return r_min, r_max, r_ave
+      nonbonded_deltas = self.nonbonded_distances()
+      r_sq  = nonbonded_deltas * nonbonded_deltas
+      r_ave = math.sqrt(flex.mean_default(r_sq, 0))
+      r_max = math.sqrt(flex.max_default(r_sq, 0))
+      r_min = math.sqrt(flex.min_default(r_sq, 0))
+      return r_min, r_max, r_ave
 
   def dihedral_deviations(self):
     if(self.n_dihedral_proxies is not None):
-       dihedral_deltas = geometry_restraints.dihedral_deltas(
-                                            sites_cart = self.sites_cart,
-                                            proxies    = self.dihedral_proxies)
-       d_sq  = dihedral_deltas * dihedral_deltas
-       d_ave = math.sqrt(flex.mean_default(d_sq, 0))
-       d_max = math.sqrt(flex.max_default(d_sq, 0))
-       d_min = math.sqrt(flex.min_default(d_sq, 0))
-       return d_min, d_max, d_ave
+      dihedral_deltas = geometry_restraints.dihedral_deltas(
+        sites_cart = self.sites_cart,
+        proxies    = self.dihedral_proxies)
+      d_sq  = dihedral_deltas * dihedral_deltas
+      d_ave = math.sqrt(flex.mean_default(d_sq, 0))
+      d_max = math.sqrt(flex.max_default(d_sq, 0))
+      d_min = math.sqrt(flex.min_default(d_sq, 0))
+      return d_min, d_max, d_ave
 
   def reference_dihedral_deviations(self):
     if(self.n_reference_dihedral_proxies is not None):
-       reference_dihedral_deltas = geometry_restraints.reference_dihedral_deltas(
-                                            sites_cart = self.sites_cart,
-                                            proxies    = self.reference_dihedral_proxies)
-       d_sq  = reference_dihedral_deltas * reference_dihedral_deltas
-       d_ave = math.sqrt(flex.mean_default(d_sq, 0))
-       d_max = math.sqrt(flex.max_default(d_sq, 0))
-       d_min = math.sqrt(flex.min_default(d_sq, 0))
-       return d_min, d_max, d_ave
+      reference_dihedral_deltas = geometry_restraints.reference_dihedral_deltas(
+        sites_cart = self.sites_cart,
+        proxies    = self.reference_dihedral_proxies)
+      d_sq  = reference_dihedral_deltas * reference_dihedral_deltas
+      d_ave = math.sqrt(flex.mean_default(d_sq, 0))
+      d_max = math.sqrt(flex.max_default(d_sq, 0))
+      d_min = math.sqrt(flex.min_default(d_sq, 0))
+      return d_min, d_max, d_ave
 
   def ncs_dihedral_deviations(self):
     if(self.n_ncs_dihedral_proxies is not None):
-       ncs_dihedral_deltas = geometry_restraints.ncs_dihedral_deltas(
-                                            sites_cart = self.sites_cart,
-                                            proxies    = self.ncs_dihedral_proxies)
-       d_sq  = ncs_dihedral_deltas * ncs_dihedral_deltas
-       d_ave = math.sqrt(flex.mean_default(d_sq, 0))
-       d_max = math.sqrt(flex.max_default(d_sq, 0))
-       d_min = math.sqrt(flex.min_default(d_sq, 0))
-       return d_min, d_max, d_ave
+      ncs_dihedral_deltas = geometry_restraints.ncs_dihedral_deltas(
+        sites_cart = self.sites_cart,
+        proxies    = self.ncs_dihedral_proxies)
+      d_sq  = ncs_dihedral_deltas * ncs_dihedral_deltas
+      d_ave = math.sqrt(flex.mean_default(d_sq, 0))
+      d_max = math.sqrt(flex.max_default(d_sq, 0))
+      d_min = math.sqrt(flex.min_default(d_sq, 0))
+      return d_min, d_max, d_ave
 
   def chirality_deviations(self):
     if(self.n_chirality_proxies is not None):
-       chirality_deltas = geometry_restraints.chirality_deltas(
-                                           sites_cart = self.sites_cart,
-                                           proxies    = self.chirality_proxies)
-       c_sq  = chirality_deltas * chirality_deltas
-       c_ave = math.sqrt(flex.mean_default(c_sq, 0))
-       c_max = math.sqrt(flex.max_default(c_sq, 0))
-       c_min = math.sqrt(flex.min_default(c_sq, 0))
-       return c_min, c_max, c_ave
+      chirality_deltas = geometry_restraints.chirality_deltas(
+        sites_cart = self.sites_cart,
+        proxies    = self.chirality_proxies)
+      c_sq  = chirality_deltas * chirality_deltas
+      c_ave = math.sqrt(flex.mean_default(c_sq, 0))
+      c_max = math.sqrt(flex.max_default(c_sq, 0))
+      c_min = math.sqrt(flex.min_default(c_sq, 0))
+      return c_min, c_max, c_ave
 
   def planarity_deviations(self):
     if(self.n_planarity_proxies is not None):
-       planarity_deltas = geometry_restraints.planarity_deltas_rms(
-                                           sites_cart = self.sites_cart,
-                                           proxies    = self.planarity_proxies)
-       p_sq  = planarity_deltas * planarity_deltas
-       p_ave = math.sqrt(flex.mean_default(p_sq, 0))
-       p_max = math.sqrt(flex.max_default(p_sq, 0))
-       p_min = math.sqrt(flex.min_default(p_sq, 0))
-       return p_min, p_max, p_ave
+      planarity_deltas = geometry_restraints.planarity_deltas_rms(
+        sites_cart = self.sites_cart,
+        proxies    = self.planarity_proxies)
+      p_sq  = planarity_deltas * planarity_deltas
+      p_ave = math.sqrt(flex.mean_default(p_sq, 0))
+      p_max = math.sqrt(flex.max_default(p_sq, 0))
+      p_min = math.sqrt(flex.min_default(p_sq, 0))
+      return p_min, p_max, p_ave
 
   def show(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
