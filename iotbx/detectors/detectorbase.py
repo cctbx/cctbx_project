@@ -163,7 +163,12 @@ class DetectorImageBase(object):
       endian = 0
       self.parameters["BYTE_ORDER"]="little_endian"
 
-    if not self.parameters.has_key("DETECTOR_SN"):
+    if self.parameters.has_key("DETECTOR_SN"):
+      try:
+        self.parameters["DETECTOR_SN"] = int(self.parameters["DETECTOR_SN"])
+      except ValueError:
+        self.parameters["DETECTOR_SN"] = 0
+    else:
       self.parameters["DETECTOR_SN"] = 0
 
     #handle pilatus
