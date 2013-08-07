@@ -1,5 +1,7 @@
 #include "skeletons.h"
 
+#include "cctbx/error.h"
+
 namespace cctbx { namespace maptbx
 {
 

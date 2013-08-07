@@ -2,13 +2,15 @@
 
 #include <array>
 #include <set>
+#include <vector>
 
 #include <scitbx/array_family/accessors/c_grid_padded.h>
 #include <scitbx/array_family/accessors/c_grid_padded_periodic.h>
 #include <scitbx/array_family/tiny_types.h>
 #include <scitbx/array_family/tiny_algebra.h>
 #include <scitbx/array_family/simple_tiny_io.h>
-#include <cctbx/xray/scatterer.h>
+#include <scitbx/array_family/versa.h>
+#include <scitbx/vec3.h>
 
 namespace cctbx { namespace maptbx
 {
