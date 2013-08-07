@@ -521,6 +521,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       ("Reset element field...", self.OnResetElement),
       ("Add residues...", self.OnAddResidues),
       ("Renumber residues...", self.OnRenumberChain),
+      ("Reset residue numbers...", self.OnResetNumbering),
     ]
     if (len(chain.conformers()) > 1) :
       labels_and_actions.append(
@@ -706,6 +707,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         else :
           residue_group.resseq = "%4d" % new_resseq
         self.SetItemText(item, format_residue_group(residue_group))
+      self.PushState("renumber residues by '%d'" % resseq_shift)
 
   # chain
   def OnSetChainID (self, event) :
@@ -737,6 +739,24 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         self.SetItemText(child, format_residue_group(residue_group))
         child, cookie = self.GetNextChild(item, cookie)
       self.PushState("incremented residue numbers by %d" % resseq_shift)
+
+  # chain
+  def OnResetNumbering (self, event) :
+    item, chain = self.GetSelectedObject('chain')
+    confirm = wx.MessageBox("This will renumber all residues in the chain "+
+      "to start from 1, and reset the insertion code to blank.  Are you "+
+      "sure you want to do this?", style=wx.YES_NO)
+    if (confirm == wx.YES) :
+      i_res = 1
+      child, cookie = self.GetFirstChild(item)
+      while (child is not None) :
+        residue_group = self.GetItemPyData(child)
+        assert (type(residue_group).__name__ == 'residue_group')
+        residue_group.resseq = "%4d" % i_res
+        i_res += 1
+        self.SetItemText(child, format_residue_group(residue_group))
+        child, cookie = self.GetNextChild(item, cookie)
+      self.PushState("reset numbering for chain '%s'" % chain.id)
 
   # model
   def OnSetModelID (self, event) :
