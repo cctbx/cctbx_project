@@ -19,13 +19,15 @@ class geometry(object):
                ignore_side_chain = False,
                n_histogram_slots = 10,
                molprobity_scores=False):
-    zero = [0, 0, 0, 0, 0]
-    self.a_target, self.a_mean, self.a_max, self.a_min, self.a_number = zero
-    self.b_target, self.b_mean, self.b_max, self.b_min, self.b_number = zero
-    self.c_target, self.c_mean, self.c_max, self.c_min, self.c_number = zero
-    self.d_target, self.d_mean, self.d_max, self.d_min, self.d_number = zero
-    self.p_target, self.p_mean, self.p_max, self.p_min, self.p_number = zero
-    self.n_target, self.n_mean, self.n_max, self.n_min, self.n_number = zero
+    
+    zero1 = [0, 0, 0, 0, 0]
+    zero2 = [0, 0, 0, 0, 0, 0, 0, 0]
+    self.a_target, self.a_mean, self.a_max, self.a_min, self.a_z, self.a_z_min, self.a_z_max, self.a_number = zero2 	# angle
+    self.b_target, self.b_mean, self.b_max, self.b_min, self.b_z, self.b_z_min, self.b_z_max, self.b_number = zero2	# bond
+    self.c_target, self.c_mean, self.c_max, self.c_min, self.c_number = zero1
+    self.d_target, self.d_mean, self.d_max, self.d_min, self.d_number = zero1
+    self.p_target, self.p_mean, self.p_max, self.p_min, self.p_number = zero1
+    self.n_target, self.n_mean, self.n_max, self.n_min, self.n_number = zero1
     self.dr_target, self.dr_number = 0, 0
     self.target = 0.0
     self.number_of_restraints = 0.0
@@ -40,14 +42,19 @@ class geometry(object):
       restraints_manager.energies_sites(sites_cart        = sites_cart,
                                         compute_gradients = True)
     esg = energies_sites.geometry
+    bond_proxies_simple = restraints_manager.geometry.pair_proxies(sites_cart = sites_cart).bond_proxies.simple
     b_deviations = esg.bond_deviations()
+    b_deviations_z = esg.bond_deviations_z()	# get z-score info
     n_deviations = esg.nonbonded_deviations()
     a_deviations = esg.angle_deviations()
+    a_deviations_z = esg.angle_deviations_z()	# get z-score info
     d_deviations = esg.dihedral_deviations()
     c_deviations = esg.chirality_deviations()
     p_deviations = esg.planarity_deviations()
-    self.a_min, self.a_max, self.a_mean = a_deviations
+    self.a_min, self.a_max, self.a_mean = a_deviations 
+    self.a_z_min, self.a_z_max, self.a_rmsz = a_deviations_z
     self.b_min, self.b_max, self.b_mean = b_deviations
+    self.b_z_min, self.b_z_max,self.b_rmsz = b_deviations_z
     self.c_min, self.c_max, self.c_mean = c_deviations
     self.d_min, self.d_max, self.d_mean = d_deviations
     self.p_min, self.p_max, self.p_mean = p_deviations
@@ -138,6 +145,7 @@ class geometry(object):
     else:
       self.show_bond_angle_nonbonded_histogram_1(out = out, message = message)
       self.show_overall_1(out = out, message = message)
+      self.show_overall_rmsz(out = out, message = message)
 
   def show_bond_angle_nonbonded_histogram_1(self, out = None, message = ""):
     if(out is None): out = sys.stdout
@@ -161,8 +169,8 @@ class geometry(object):
     line_len = len(message_+"|")
     fill_len = 80-line_len-1
     s0 = message_+"-"*(fill_len)+"|"
-    s1 = "|      Type |    Count |    Deviation from ideal |     Targets | Target (sum) |"
-    s2 = "|           |          |    rmsd      max    min |             |              |"
+    s1 = "|      Type |    Count |    Deviation from ideal |    Targets  | Target (sum) |"
+    s2 = "|           |          |    rmsd     max     min |             |              |"  
     s3 = fmt%(format_value("%9s","bond"),
               format_value("%8d",self.b_number),
               format_value("%7.3f",self.b_mean),
@@ -209,6 +217,67 @@ class geometry(object):
     for line in [s0,s1,s2,s3,s4,s5,s6,s7,s8,s9]:
       print >> out, line
     out.flush()
+    
+  def show_overall_rmsz(self, out = None, message = ""):
+      if(out is None): out = sys.stdout
+      fmt = "| %s | %s | %s %s %s | %s |"
+      if(len(message) > 0): message_ = "|-Geometry statistics: "+message
+      else: message_ = "|-Geometry statistics"
+      line_len = len(message_+"|")
+      fill_len = 80-line_len-1
+      # NOTE: the formating of the table and the names a used in some of the tests
+      # Make sure to change the relevant test if changing them
+      s0 = message_+"-"*(fill_len)+"|"
+      s1 = "|      Type |    Count |    Deviation from ideal |    Targets  |"
+      s2 = "|           |          |    rmsZ     max     min |             |"  
+      s3 = fmt%(format_value("%9s","Bond"),
+                format_value("%8d",self.b_number),
+                format_value("%7.3f",self.b_rmsz),
+                format_value("%8.3f",self.b_max),
+                format_value("%6.3f",self.b_min),
+                format_value("%11.3f",self.b_target))
+      s4 = fmt%(format_value("%9s","Angle"),
+                format_value("%8d",self.a_number),
+                format_value("%7.3f",self.a_rmsz),
+                format_value("%8.3f",self.a_max),
+                format_value("%6.3f",self.a_min),
+                format_value("%11.3f",self.a_target))
+      #s5 = fmt%(format_value("%9s","chirality"),
+                #format_value("%8d",self.c_number),
+                ##format_value("%7.3f",self.c_rmsz),
+                #format_value("%12s"," "),
+                #format_value("%8.3f",self.c_max),
+                #format_value("%6.3f",self.c_min),
+                #format_value("%11.3f",self.c_target),
+                #format_value("%12.3f",self.target))
+      #s6 = fmt%(format_value("%9s","planarity"),
+                #format_value("%8d",self.p_number),
+                ##format_value("%7.3f",self.p_rmsz),
+                #format_value("%12s"," "),
+                #format_value("%8.3f",self.p_max),
+                #format_value("%6.3f",self.p_min),
+                #format_value("%11.3f",self.p_target),
+                #format_value("%12s"," "))
+      #s7 = fmt%(format_value("%9s","dihedral"),
+                #format_value("%8d",self.d_number),
+                ##format_value("%7.3f",self.d_rmsz),
+                #format_value("%12s"," "),
+                #format_value("%8.3f",self.d_max),
+                #format_value("%6.3f",self.d_min),
+                #format_value("%11.3f",self.d_target),
+                #format_value("%12s"," "))
+      #s8 = fmt%(format_value("%9s","nonbonded"),
+                #format_value("%8d",self.n_number),
+                ##format_value("%7.3f",self.n_rmsz),
+                #format_value("%12s"," "),
+                #format_value("%8.3f",self.n_max),
+                #format_value("%6.3f",self.n_min),
+                #format_value("%11.3f",self.n_target),
+                #format_value("%12s"," "))
+      s9 = "|"+"-"*62+"|"
+      for line in [s0,s1,s2,s3,s4,s9]:
+        print >> out, line
+      out.flush()    
 
   def show_bond_angle_nonbonded_histogram_2(self, out = None, prefix = ""):
     if(out is None): out = sys.stdout
@@ -555,7 +624,8 @@ class model(object):
   def __init__(self,
                model,
                ignore_hd,
-               use_molprobity=True):
+               use_molprobity=True,
+               ncs_manager=None):
     self.geometry = model.geometry_statistics(ignore_hd = ignore_hd,
       molprobity_scores=use_molprobity)
     self.content = model_content(model)
@@ -563,11 +633,7 @@ class model(object):
     self.tls_groups = model.tls_groups
     self.anomalous_scatterer_groups = model.anomalous_scatterer_groups
     self.ncs_groups = model.extract_ncs_groups()
-    if hasattr(model.restraints_manager, 'geometry'):
-      self.ncs_manager = model.restraints_manager.geometry.\
-                           generic_restraints_manager.ncs_manager
-    else:
-      self.ncs_manager = None
+    self.ncs_manager = ncs_manager
     self.pdb_hierarchy = model.pdb_hierarchy(sync_with_xray_structure=True)
 
   def show(self, out=None, prefix="", padded=None, pdb_deposition=False):
@@ -798,12 +864,14 @@ class info(object):
                      fmodel_n          = None,
                      refinement_params = None,
                      ignore_hd         = True,
-                     use_molprobity    = True):
+                     use_molprobity    = True,
+                     ncs_manager       = None):
     ref_par = refinement_params
     self.model = mmtbx.model_statistics.model(
       model = model,
       ignore_hd = ignore_hd,
-      use_molprobity = use_molprobity)
+      use_molprobity = use_molprobity,
+      ncs_manager = ncs_manager)
     self.data_x, self.data_n = None, None
     if(fmodel_x is not None):
       self.data_x = fmodel_x.info(
