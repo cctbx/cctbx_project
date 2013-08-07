@@ -80,9 +80,11 @@ class ringer_chi (object) :
     if (angle_current < 0) :
       self.angle_current = 360 + angle_current
 
-  def format_csv (self) :
-    return "chi%d,%.1f,%s" % (self.id, self.angle_current, ",".join(
-      [ "%.3f" % x for x in self.densities ]))
+  def format_csv (self, fofc=False) :
+    densities = [ "%.3f" % x for x in self.densities ]
+    if (fofc) and (self.fofc_densities is not None) :
+      densities = [ "%.3f" % x for x in self.fofc_densities ]
+    return "chi%d,%.1f,%s" % (self.id, self.angle_current, ",".join(densities))
 
   def find_peaks (self, threshold=0) :
     peaks = []
@@ -110,7 +112,9 @@ class ringer_residue (object) :
     for i in range(1, self.n_chi+1) :
       chi = self.get_angle(i)
       if (chi is not None) :
-        lines.append(prefix + chi.format_csv())
+        lines.append(prefix + "2mFo-DFc," + chi.format_csv())
+      if (chi.fofc_densities is not None) :
+        lines.append(prefix + "mFo-DFc," + chi.format_csv(fofc=True))
     return "\n".join(lines)
 
   def add_angle (self, **kwds) :
