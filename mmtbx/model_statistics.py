@@ -233,47 +233,15 @@ class geometry(object):
       s3 = fmt%(format_value("%9s","Bond"),
                 format_value("%8d",self.b_number),
                 format_value("%7.3f",self.b_rmsz),
-                format_value("%8.3f",self.b_max),
-                format_value("%6.3f",self.b_min),
+                format_value("%8.3f",self.b_z_max),
+                format_value("%6.3f",self.b_z_min),
                 format_value("%11.3f",self.b_target))
       s4 = fmt%(format_value("%9s","Angle"),
                 format_value("%8d",self.a_number),
                 format_value("%7.3f",self.a_rmsz),
-                format_value("%8.3f",self.a_max),
-                format_value("%6.3f",self.a_min),
+                format_value("%8.3f",self.a_z_max),
+                format_value("%6.3f",self.a_z_min),
                 format_value("%11.3f",self.a_target))
-      #s5 = fmt%(format_value("%9s","chirality"),
-                #format_value("%8d",self.c_number),
-                ##format_value("%7.3f",self.c_rmsz),
-                #format_value("%12s"," "),
-                #format_value("%8.3f",self.c_max),
-                #format_value("%6.3f",self.c_min),
-                #format_value("%11.3f",self.c_target),
-                #format_value("%12.3f",self.target))
-      #s6 = fmt%(format_value("%9s","planarity"),
-                #format_value("%8d",self.p_number),
-                ##format_value("%7.3f",self.p_rmsz),
-                #format_value("%12s"," "),
-                #format_value("%8.3f",self.p_max),
-                #format_value("%6.3f",self.p_min),
-                #format_value("%11.3f",self.p_target),
-                #format_value("%12s"," "))
-      #s7 = fmt%(format_value("%9s","dihedral"),
-                #format_value("%8d",self.d_number),
-                ##format_value("%7.3f",self.d_rmsz),
-                #format_value("%12s"," "),
-                #format_value("%8.3f",self.d_max),
-                #format_value("%6.3f",self.d_min),
-                #format_value("%11.3f",self.d_target),
-                #format_value("%12s"," "))
-      #s8 = fmt%(format_value("%9s","nonbonded"),
-                #format_value("%8d",self.n_number),
-                ##format_value("%7.3f",self.n_rmsz),
-                #format_value("%12s"," "),
-                #format_value("%8.3f",self.n_max),
-                #format_value("%6.3f",self.n_min),
-                #format_value("%11.3f",self.n_target),
-                #format_value("%12s"," "))
       s9 = "|"+"-"*62+"|"
       for line in [s0,s1,s2,s3,s4,s9]:
         print >> out, line
