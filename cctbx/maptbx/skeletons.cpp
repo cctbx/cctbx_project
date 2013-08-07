@@ -4,6 +4,11 @@
 #include <set>
 
 
+#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/cxx11/all_of.hpp>
+#include <boost/algorithm/cxx11/any_of.hpp>
+
+
 // #include "util/push_disable_warnings.hxx"
 #include <scitbx/error.h>
 #include <cctbx/error.h>
@@ -17,7 +22,7 @@
 
 namespace cctbx { namespace maptbx
 {
-
+  
 inline bool gr(const xyzm_t &a, const xyzm_t &b)
 {
   return (get<1>(a)) > (get<1>(b));
@@ -49,21 +54,27 @@ inline bool any_ge(const int3_t &a, const int3_t &b)
 
 inline bool all_eq(const std::set<std::size_t> &s, std::size_t a)
 {
+#if 0
   if( s.empty() )
     return false;
   std::set<std::size_t>::const_iterator b=s.begin(), e = s.end();
   --e;
   return (*b == a) && (*e == a);
+#endif
+  return boost::algorithm::all_of_equal(s,a);
 }
 
 inline bool all_ne(const std::set<std::size_t> &s, std::size_t a)
 {
+#if 0
   for(std::set<std::size_t>::const_iterator i=s.begin(); i != s.end(); ++i)
   {
     if( *i == a )
       return false;
   }
   return true;
+#endif
+  return !boost::algorithm::any_of_equal(s,a);
 }
 
 
