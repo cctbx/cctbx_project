@@ -97,7 +97,7 @@ def run (args) :
         reapply_peripheral_margin=False,encode_inactive_as_zeroes=True)
   assert len(the_tiles) == 256
 
-  if params.beam_x is None or params.beam_y is None:
+  if params.beam_x is None or params.beam_y is None or img.image_size_fast is None or img.image_size_slow is None:
     img.initialize_viewer_properties(horizons_phil)
 
   if params.beam_x is None:
