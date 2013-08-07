@@ -10,7 +10,6 @@ from __future__ import division
 #  This code is distributed under the BSD license, a copy of which is
 #  included in the root directory of this package.
 
-import math
 import sys
 from scitbx import matrix
 from rstbx.cftbx.coordinate_frame_helpers import align_reference_frame
@@ -79,9 +78,9 @@ class to_xds(object):
         # detector dimensions in pixels
         self.detector_size = map(int, self.get_detector().get_image_size())
         self.fast, self.slow = self.detector_size
-        
+
         R = align_reference_frame(
-            self.get_detector().get_fast_axis(), (1,0,0), 
+            self.get_detector().get_fast_axis(), (1,0,0),
             self.get_detector().get_slow_axis(), (0,1,0))
 
         self.imagecif_to_xds_transformation_matrix = R
