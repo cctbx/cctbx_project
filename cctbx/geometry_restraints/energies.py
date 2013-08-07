@@ -233,8 +233,8 @@ class energies(scitbx.restraints.energies):
       sigmas = [geometry_restraints.weight_as_sigma(x.weight) for x in self.bond_proxies.simple]
       z_scores = flex.double([(bond_delta/sigma) for bond_delta,sigma in zip(bond_deltas,sigmas)])
       b_rmsz = math.sqrt(flex.mean_default(z_scores*z_scores,0))
-      b_z_max = math.sqrt(flex.max_default(flex.abs(z_scores), 0))
-      b_z_min = math.sqrt(flex.min_default(flex.abs(z_scores), 0))
+      b_z_max = flex.max_default(flex.abs(z_scores), 0)
+      b_z_min = flex.min_default(flex.abs(z_scores), 0)
       return b_z_min, b_z_max, b_rmsz
 
   def bond_deviations(self):
@@ -266,8 +266,8 @@ class energies(scitbx.restraints.energies):
       sigmas = [geometry_restraints.weight_as_sigma(x.weight) for x in self.angle_proxies]
       z_scores = flex.double([(angle_delta/sigma) for angle_delta,sigma in zip(angle_deltas,sigmas)])
       a_rmsz = math.sqrt(flex.mean_default(z_scores*z_scores,0))
-      a_z_max = math.sqrt(flex.max_default(flex.abs(z_scores), 0))
-      a_z_min = math.sqrt(flex.min_default(flex.abs(z_scores), 0))
+      a_z_max = flex.max_default(flex.abs(z_scores), 0)
+      a_z_min = flex.min_default(flex.abs(z_scores), 0)
       return a_z_min, a_z_max, a_rmsz
 
   def angle_deviations(self):
