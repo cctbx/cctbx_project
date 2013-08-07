@@ -11,6 +11,7 @@ namespace scattering {
     h_solvent = NULL;
     h_h = NULL;
     h_rt = NULL;
+    h_weights = NULL;
     h_scattering_type = NULL;
     h_a = NULL;
     h_b = NULL;
@@ -20,6 +21,7 @@ namespace scattering {
     d_solvent = NULL;
     d_h = NULL;
     d_rt = NULL;
+    d_weights = NULL;
     d_scattering_type = NULL;
     d_a = NULL;
     d_b = NULL;
@@ -98,16 +100,15 @@ namespace scattering {
       h_h[i] = fType(q[i]);
     }
 
-    // lattice points, use rotation/translation and solvent variables
+    // lattice points, use rotation/translation
     n_rt = lattice_weights.size();
     size_rt = int(std::floor(n_rt/padding + 1.0)) * padding;
-    delete[] h_solvent;
-    cudaSafeCall( cudaFree(d_solvent) );
+    delete[] h_weights;
     delete[] h_rt;
-    h_solvent = new fType[size_rt];
+    h_weights = new fType[size_rt];
     h_rt = new fType[3*size_rt];
     for (int i=0; i<n_rt; i++) {
-      h_solvent[i] = fType(lattice_weights[i]);
+      h_weights[i] = fType(lattice_weights[i]);
       for (int j=0; j<3; j++) {
         h_rt[j*size_rt + i] = fType(lattice[j*n_rt + i]);
       }
@@ -116,8 +117,8 @@ namespace scattering {
     cudaSafeCall( cudaMalloc((void**)&d_h,size_h*sizeof(fType)) );
     cudaSafeCall( cudaMemcpy(d_h, h_h, size_h*sizeof(fType),
                              cudaMemcpyHostToDevice) );
-    cudaSafeCall( cudaMalloc((void**)&d_solvent,size_rt*sizeof(fType)) );
-    cudaSafeCall( cudaMemcpy(d_solvent, h_solvent, size_rt*sizeof(fType),
+    cudaSafeCall( cudaMalloc((void**)&d_weights,size_rt*sizeof(fType)) );
+    cudaSafeCall( cudaMemcpy(d_weights, h_weights, size_rt*sizeof(fType),
                              cudaMemcpyHostToDevice) );
     cudaSafeCall( cudaMalloc((void**)&d_rt,3*size_rt*sizeof(fType)) );
     cudaSafeCall( cudaMemcpy(d_rt, h_rt, 3*size_rt*sizeof(fType),
@@ -222,6 +223,7 @@ namespace scattering {
     delete[] h_solvent;
     delete[] h_h;
     delete[] h_rt;
+    delete[] h_weights;
     delete[] h_scattering_type;
     delete[] h_a;
     delete[] h_b;
@@ -231,6 +233,7 @@ namespace scattering {
     cudaSafeCall( cudaFree(d_solvent) );
     cudaSafeCall( cudaFree(d_h) );
     cudaSafeCall( cudaFree(d_rt) );
+    cudaSafeCall( cudaFree(d_weights) );
     cudaSafeCall( cudaFree(d_scattering_type) );
     cudaSafeCall( cudaFree(d_a) );
     cudaSafeCall( cudaFree(d_b) );
@@ -241,6 +244,7 @@ namespace scattering {
     h_solvent = NULL;
     h_h = NULL;
     h_rt = NULL;
+    h_weights = NULL;
     h_scattering_type = NULL;
     h_a = NULL;
     h_b = NULL;
@@ -250,6 +254,7 @@ namespace scattering {
     d_solvent = NULL;
     d_h = NULL;
     d_rt = NULL;
+    d_weights = NULL;
     d_scattering_type = NULL;
     d_a = NULL;
     d_b = NULL;
@@ -312,6 +317,7 @@ namespace scattering {
   void cudatbx::scattering::direct_summation::add_saxs
   (const scitbx::af::const_ref<std::string>& scatterers,
    const scitbx::af::const_ref<scitbx::vec3<double> >& xyz,
+   const scitbx::af::const_ref<double>& solvent_weights,
    const scitbx::af::const_ref<double>& q,
    const scitbx::af::const_ref<double>& lattice_weights,
    const scitbx::af::const_ref<double>& lattice,
@@ -319,8 +325,7 @@ namespace scattering {
    const bool& complex_form_factor) {
 
     // reorganize input data, allocates arrays, transfer to GPU, order matters
-    scitbx::af::shared<double> dummy_solvent(xyz.size(),0.0);
-    reorganize_coordinates(xyz,dummy_solvent.const_ref());
+    reorganize_coordinates(xyz,solvent_weights);
     reorganize_q(q,lattice_weights,lattice);
     convert_scatterers(scatterers,registry,complex_form_factor);
 
@@ -339,19 +344,19 @@ namespace scattering {
     int padded_n_workspace = int(std::floor(n_h*n_rt/padding + 1.0)) * padding;
     cudaSafeCall( cudaMalloc((void**)&d_workspace,3*padded_n_workspace*sizeof(fType)) );
 
-    // run calculation
+    // run calculation, unoptimized thread and block sizes
     int blocks_per_grid = (n_h*n_rt + threads_per_block - 1)/threads_per_block;
     expand_q_lattice_kernel<fType><<<blocks_per_grid,threads_per_block>>>
       (d_h, n_h,
        d_rt, n_rt, size_rt,
        d_workspace, padded_n_workspace);
     saxs_kernel<fType><<<blocks_per_grid,threads_per_block>>>
-      (d_scattering_type, d_xyz, n_xyz, padded_n_xyz,
+      (d_scattering_type, d_xyz, d_solvent, n_xyz, padded_n_xyz,
        n_h, n_rt,
        d_workspace, padded_n_workspace);
     collect_saxs_kernel<fType><<<blocks_per_grid,threads_per_block>>>
-      (n_h, n_rt, d_solvent,
-       sf_real,
+      (n_h, n_rt, d_weights,
+       sf_real, sf_imag,
        d_workspace, padded_n_workspace);
     
     // deallocate arrays

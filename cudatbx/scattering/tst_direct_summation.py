@@ -74,6 +74,7 @@ def test_saxs():
   p = pdb.input(source_info='string',lines=test_pdb)
   x = p.xray_structure_simple()
   xyz = x.sites_cart()
+  blsf = flex.double(len(xyz),0.0)
   sr = x.scattering_type_registry()
   st = x.scattering_types()
   q = flex.double(range(101))/200.0
@@ -86,7 +87,7 @@ def test_saxs():
   l.extend(t_z)
 
   intensities = direct_summation()
-  intensities.add_saxs(st,xyz,q,t_w,l,sr,False)
+  intensities.add_saxs(st,xyz,blsf,q,t_w,l,sr,False)
   intensities = intensities.get_sum()
   intensities = intensities/float(len(t_x))
 

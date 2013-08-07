@@ -296,7 +296,7 @@ namespace scattering {
   template <typename floatType>
   __global__ void saxs_kernel
   (const int* scattering_type, const floatType* xyz,
-   const int n_xyz, const int padded_n_xyz,
+   const floatType* solvent_weights, const int n_xyz, const int padded_n_xyz,
    const int n_q, const int n_lattice,
    floatType* workspace, const int padded_n_workspace) {
 
@@ -325,6 +325,7 @@ namespace scattering {
     __shared__ floatType x[threads_per_block];
     __shared__ floatType y[threads_per_block];
     __shared__ floatType z[threads_per_block];
+    __shared__ floatType solvent[threads_per_block];
     __shared__ int s_type[threads_per_block];
     floatType real_sum = 0.0;
     floatType imag_sum = 0.0;
@@ -340,6 +341,7 @@ namespace scattering {
         x[threadIdx.x] = xyz[                 current_atom];
         y[threadIdx.x] = xyz[  padded_n_xyz + current_atom];
         z[threadIdx.x] = xyz[2*padded_n_xyz + current_atom];
+        solvent[threadIdx.x] = solvent_weights[current_atom];
         s_type[threadIdx.x] = scattering_type[current_atom];
       }
 
@@ -356,12 +358,14 @@ namespace scattering {
             // structure factor = sum{(form factor)[exp(2pi h*x)]}
             if (dc_complex_form_factor) {
               // form factor = f1 + i f2
-              f1 = dc_a[s_type[a]*dc_n_terms];
-              f2 = dc_b[s_type[a]*dc_n_terms];
+              f1 = dc_a[s_type[a]*dc_n_terms] +
+                solvent[a]*dc_a[(dc_n_types-1)*dc_n_terms];
+              f2 = dc_b[s_type[a]*dc_n_terms] +
+                solvent[a]*dc_b[(dc_n_types-1)*dc_n_terms];
               real_sum += f1*c - f2*s;
               imag_sum += f1*s + f2*c;
             } else {
-              f1 = f[s_type[a]];
+              f1 = f[s_type[a]] + solvent[a]*f[dc_n_types-1];
               real_sum += f1 * c;
               imag_sum += f1 * s;
             }
@@ -384,7 +388,7 @@ namespace scattering {
   template <typename floatType>
   __global__ void collect_saxs_kernel
   (const int n_q, const int n_lattice, floatType* weights,
-   floatType* sf_real,
+   floatType* sf_real, floatType* sf_imag,
    floatType* workspace, const int padded_n_workspace) {
     
     int i = blockDim.x * blockIdx.x + threadIdx.x;
@@ -400,6 +404,7 @@ namespace scattering {
 
       // transfer final result to global memory
       sf_real[i] = I_sum;
+      sf_imag[i] = 0.0;
     }
     
   }
