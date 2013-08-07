@@ -86,8 +86,12 @@ class program_result (object) :
       output_files.append((file_name, self.get_pdb_file_caption()))
     if (self.map_file is not None) :
       output_files.append((self.map_file, self.get_map_file_caption()))
+    output_files.extend(self.get_additional_output_files())
     stats = self.get_final_stats()
     return output_files, stats
 
   def get_final_stats (self) :
+    return []
+
+  def get_additional_output_files (self) :
     return []
