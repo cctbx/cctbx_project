@@ -43,6 +43,7 @@ namespace scattering {
                   const scitbx::af::const_ref<double>&,
                   const scitbx::af::const_ref<double>&,
                   const scitbx::af::const_ref<double>&,
+                  const scitbx::af::const_ref<double>&,
                   const cctbx::xray::scattering_type_registry&,
                   const bool&);
     scitbx::af::shared<std::complex<double> > get_sum();
@@ -67,10 +68,10 @@ namespace scattering {
     int n_xyz;
     int padded_n_xyz;
     int size_xyz;
-    fType * h_xyz, * d_xyz, * h_solvent;
+    fType * h_xyz, * d_xyz;
 
     // solvent weight parameters
-    fType * d_solvent;
+    fType * h_solvent, * d_solvent;
 
     // reciprocal space parameters
     int n_h;
@@ -82,6 +83,9 @@ namespace scattering {
     int n_rt;
     int size_rt;
     fType * h_rt, * d_rt;
+
+    // scaling parameters
+    fType * h_weights, * d_weights;
 
     // scatterer parameters
     int * h_scattering_type, * d_scattering_type;
