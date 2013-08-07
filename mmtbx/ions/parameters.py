@@ -49,6 +49,7 @@ class server (object) :
     self.params = cif_model["ions"]
     self._metal_params = {}
     self._charge_parms = {}
+    self._resname_elem = {}
     self._default_charges = {}
 
   def is_supported_element (self, symbol) :
@@ -68,6 +69,8 @@ class server (object) :
             (i_other_charge == atom2.charge_as_int())) :
           valence = float(self.params['_lib_valence.value'][i_elem])
           return valence, 0.37
+    charge1 = atom1.charge_as_int()
+    charge2 = atom2.charge_as_int()
     return None, None
 
   def _get_default_charge(self, element):
@@ -82,21 +85,37 @@ class server (object) :
     return 0
 
   def _get_charge_params(self, resname, element = None):
-    if resname in self._charge_parms:
-      return self._charge_parms[resname]
+    resname = resname.strip().upper()
+    if element is not None: element = element.strip().upper()
+
     p = self.params
+
+    if element is None:
+      # Determine the element from the residue name (I.E. "HOH" => "O")
+      if resname in self._resname_elem:
+        element = self._resname_elem[resname]
+      else:
+        resn_elements = [(resn, p["_lib_charge.element"][i_resn])
+                         for i_resn, resn in enumerate(p["_lib_charge.resname"])
+                         if resn == resname]
+        if len(resn_elements) > 1:
+          raise Sorry("Ambiguous element for residue: " + resname)
+        elif len(resn_elements) < 1:
+          raise Sorry("Unknown element for residue: " + resname)
+        element = resn_elements[0][1]
+        self._resname_elem[resname] = element
+
+    if (resname, element) in self._charge_parms:
+      return self._charge_parms[(resname, element)]
     for i_resn, resn in enumerate(p["_lib_charge.resname"]):
-      if resn == resname:
+      if resn == resname and element == p["_lib_charge.element"][i_resn]:
         elem_charge = \
           p["_lib_charge.element"][i_resn], int(p["_lib_charge.charge"][i_resn])
         break
     else:
-      if element is not None:
-        elem_charge = element, self._get_default_charge(element)
-      else:
-        raise Sorry("Unknown element for residue: {}".format(resname))
+      elem_charge = element, self._get_default_charge(element)
 
-    self._charge_parms[resname] = elem_charge
+    self._charge_parms[(resname, element)] = elem_charge
     return elem_charge
 
   def get_element(self, atom):
@@ -110,12 +129,17 @@ class server (object) :
 
       resname = atom.fetch_labels().resname.strip().upper()
 
-    return self._get_charge_params(resname)[0]
+    return self._get_charge_params(resname = resname)[0]
 
   def get_charge(self, atom):
     if isinstance(atom, str):
-      resname = atom.strip().upper()
-      element = resname
+      atom = atom.strip().upper()
+      try:
+        charge = \
+          self._get_charge_params(resname = atom)[1]
+      except Sorry:
+        charge = \
+          self._get_charge_params(resname = "", element = atom)[1]
     else:
       charge = atom.charge
       if not isinstance(charge, int):
@@ -124,8 +148,21 @@ class server (object) :
         return charge
       resname = atom.fetch_labels().resname.strip().upper()
       element = atom.element.strip().upper()
+      charge = self._get_charge_params(resname = resname, element = element)[1]
 
-    return self._get_charge_params(resname, element = element)[1]
+    return charge
+
+  def get_charges(self, atom):
+    """
+    Return all charges associated with element in our table.
+    """
+    element = self.get_element(atom)
+    p = self.params
+    charges = []
+    for i_elem, elem in enumerate(p["_lib_charge.element"]):
+      if elem == element:
+        charges.append(int(p["_lib_charge.charge"][i_elem]))
+    return charges
 
   def get_metal_parameters (self, element) :
     p = self.params
@@ -174,10 +211,12 @@ class server (object) :
 
     if (r_0 is None) :
       # Try again, this time using the default charge for the donor
-      tmp = donor.charge
-      donor.charge = self.get_charge(donor.element)
+      donor = MetalParameters(
+        charge = self.get_charge(donor.element),
+        element = donor.element,
+        )
+
       r_0, b = self.get_valence_params(ion, donor)
-      donor.charge = tmp
 
       if r_0 is None:
         return 0
@@ -197,7 +236,10 @@ class server (object) :
     vectors = []
 
     for contact in nearby_atoms:
-      donor = AtomGuess(contact.element, contact.charge)
+      donor = MetalParameters(
+        element = contact.element,
+        charge = contact.charge
+        )
       distance = abs(contact.vector)
       valence = self.calculate_valence(ion, donor, distance) * contact.occ
 
@@ -205,28 +247,7 @@ class server (object) :
         if ((donor.element not in ["H", "C", "AX"]) and
             (not self.is_supported_donor(donor.element))) :
           pass
-          #print "Unknown interaction: %s %s" % (ion.element, donor.element)
       elif distance != 0:
-        #print contact.vector, contact.distance(), valence
         vectors.append(contact.vector / distance * valence)
 
     return vectors
-
-class AtomGuess(object):
-  def __init__(self, element, charge):
-    self.element = element
-    self.charge = charge
-
-  def charge_as_int (self) :
-    return self.charge
-
-  def __str__ (self) :
-    return "%s%+d" % (self.element, self.charge)
-
-  def scattering_type (self) :
-    charge_symbol = ""
-    if (self.charge > 0) :
-      charge_symbol = "+"
-    elif (self.charge < 0) :
-      charge_symbol = "-"
-    return "%s%d%s" % (self.element, self.charge, charge_symbol)

@@ -37,13 +37,40 @@ def exercise () :
   common_residues = [getattr(iotbx.pdb, i) for i in dir(iotbx.pdb)
                      if i.startswith("common_residue_names") and
                      isinstance(getattr(iotbx.pdb, i), list)]
+
+  common_atoms = {
+    "H": -1,
+    "C": 4,
+    "N": -3,
+    "O": -2,
+    "S": -2,
+    }
   for common in common_residues:
     for resn in common:
       mlq = mon_lib_query(resn, mon_lib_srv)
       if mlq is None:
         continue
       for atom in mlq.atom_dict().values():
-        s._get_charge_params(resn, element = atom.type_symbol)
+        elem, charge = s._get_charge_params(resname = resn,
+                                            element = atom.type_symbol)
+        from libtbx import group_args
+        class GAtom(group_args):
+          def fetch_labels(self):
+            return group_args(resname = self.resname)
+          def id_str(self):
+            return "gatom=\"{} {}\"".format(self.resname, self.element)
+          def charge_as_int(self):
+            return int(self.charge)
+        gatom = GAtom(
+          element = atom.type_symbol,
+          resname = resn,
+          charge = "0",
+          )
+        get_charge_val, get_elem_val = s.get_charge(gatom), s.get_element(gatom)
+        if elem in common_atoms:
+          assert charge == common_atoms[elem]
+        assert get_charge_val == charge
+        assert get_elem_val == elem
 
   # And we support all waters
   for resn in iotbx.pdb.common_residue_names_water:
