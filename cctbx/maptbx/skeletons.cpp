@@ -80,18 +80,22 @@ inline bool all_ne(const std::set<std::size_t> &s, std::size_t a)
 
 skeleton swanson(const_map_t &map, double sigma)
 {
-  double mean=0., esd=0.;
+  double mean=0., esd=0., mx=-9.E200;
   for(std::size_t ii=0; ii<map.size(); ++ii)
   {
     double m = map[ii];
     mean += m;
     esd += m*m;
+    if( m > mx )
+      mx = m;
   }
   mean /= map.size();
   esd = esd/map.size() - mean*mean;
+  esd = std::sqrt(esd);
   double mapcutoff = mean + esd * sigma;
 
   std::vector<xyzm_t> xyzm;
+  xyzm.reserve(10000);
   const scitbx::af::tiny<std::size_t,3> ndim( map.accessor().focus() );
   int3_t indim(ndim);
   for(std::size_t i=0; i<ndim[0]; ++i)
