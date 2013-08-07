@@ -2,6 +2,7 @@
 #define SCITBX_MATH_GCD_H
 
 #if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__)) \
+ && (!defined(__clang__)) \
  && (defined(__APPLE_CC__) && __APPLE_CC__ >= 5465) // OS X 10.5
 # define SCITBX_MATH_GCD_USING_ASM
 #endif
