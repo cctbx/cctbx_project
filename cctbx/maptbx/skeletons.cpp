@@ -22,7 +22,7 @@
 
 namespace cctbx { namespace maptbx
 {
-  
+
 inline bool gr(const xyzm_t &a, const xyzm_t &b)
 {
   return (get<1>(a)) > (get<1>(b));
