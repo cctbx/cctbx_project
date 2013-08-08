@@ -1,7 +1,8 @@
-from __future__ import division
-# -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
+# -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
 # $Id$
+
+from __future__ import division
 
 import wx
 

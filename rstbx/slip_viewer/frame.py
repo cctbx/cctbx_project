@@ -3,7 +3,7 @@
 # Known issues: Recentering on resize and when switching between
 # different image types.  Ring centre on image switch.
 #
-# $Id: frame.py 323 2012-05-16 21:40:27Z hattne $
+# $Id$
 
 from __future__ import division
 
@@ -67,10 +67,14 @@ class XrayFrame (AppFrame,XFBaseClass) :
     self.OnShowSettings(None)
     self.Bind(EVT_EXTERNAL_UPDATE, self.OnExternalUpdate)
 
-    self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUI, id=wx.ID_BACKWARD)
-    self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUI, id=wx.ID_FORWARD)
-    self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUI, id=self._id_calibration)
-    self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUI, id=self._id_ring)
+    self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUICalibration,
+              id=self._id_calibration)
+    self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUINext,
+              id=wx.ID_FORWARD)
+    self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIPrevious,
+              id=wx.ID_BACKWARD)
+    self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIRing,
+              id=self._id_ring)
 
   def setup_toolbar(self) :
     XFBaseClass.setup_toolbar(self)
@@ -320,9 +324,10 @@ class XrayFrame (AppFrame,XFBaseClass) :
   def OnCalibration(self, event):
     from rstbx.slip_viewer.calibration_frame import SBSettingsFrame
 
-    if (not self._calibration_frame):
+    if not self._calibration_frame:
       self._calibration_frame = SBSettingsFrame(
-        self, -1, "Quadrant calibration", style=wx.CAPTION | wx.CLOSE_BOX)
+        self, wx.ID_ANY, "Quadrant calibration",
+        style=wx.CAPTION | wx.CLOSE_BOX)
       self._calibration_frame.Show()
       self._calibration_frame.Raise()
     else:
@@ -332,57 +337,55 @@ class XrayFrame (AppFrame,XFBaseClass) :
   def OnRing(self, event):
     from rstbx.slip_viewer.ring_frame import RingSettingsFrame
 
-    if (not self._ring_frame):
+    if not self._ring_frame:
       self._ring_frame = RingSettingsFrame(
-        self, -1, "Ring tool", style=wx.CAPTION | wx.CLOSE_BOX)
+        self, wx.ID_ANY, "Ring tool",
+        style=wx.CAPTION | wx.CLOSE_BOX)
       self._ring_frame.Show()
       self._ring_frame.Raise()
     else:
       self._ring_frame.Destroy()
 
 
-  def OnUpdateUI(self, event):
-    # Toggle the text of the menu items depending on the state of the
-    # calibration and ring frames.  If quadrant calibration is not
-    # supported for this image, disable the corresponding menu item.
-    # Enable/disable previous and next buttons based on the image's
-    # position in the list.
+  def OnUpdateUICalibration(self, event):
+    # If quadrant calibration is not supported for this image, disable
+    # the corresponding menu item.  Toggle the menu item text
+    # depending on the state of the tool.
 
-    eid = event.GetId()
-    if (eid == self._id_calibration):
-
-      if (self._calibration_frame):
+    if self.pyslip.tiles.raw_image.supports_quadrant_calibration():
+      event.Enable(True)
+      if self._calibration_frame:
         event.SetText("Hide quadrant calibration")
       else:
         event.SetText("Show quadrant calibration")
+    else:
+      event.Enable(False)
+      event.SetText("Show quadrant calibration")
 
-      if self.pyslip.tiles.raw_image.supports_quadrant_calibration():
-        event.Enable(True)
-      else:
-        event.Enable(False)
-      return
 
-    elif (eid == self._id_ring):
-      if (self._ring_frame):
-        event.SetText("Hide ring tool")
-      else:
-        event.SetText("Show ring tool")
-      return
+  def OnUpdateUINext(self, event):
+    # Enable/disable the "Next" button based on the image's position
+    # in the list.
 
-    elif (eid == wx.ID_BACKWARD):
-      if (self.image_chooser.GetSelection() - 1 >= 0):
-        event.Enable(True)
-      else:
-        event.Enable(False)
-      return
+    event.Enable(
+      self.image_chooser.GetSelection() + 1 < self.image_chooser.GetCount())
 
-    elif (eid == wx.ID_FORWARD):
-      if (self.image_chooser.GetSelection() + 1 <
-          self.image_chooser.GetCount()):
-        event.Enable(True)
-      else:
-        event.Enable(False)
-      return
+
+  def OnUpdateUIPrevious(self, event):
+    # Enable/disable the "Previous" button based on the image's
+    # position in the list.
+
+    event.Enable(self.image_chooser.GetSelection() >= 1)
+
+
+  def OnUpdateUIRing(self, event):
+    # Toggle the menu item text depending on the state of the tool.
+
+    if self._ring_frame:
+      event.SetText("Hide ring tool")
+    else:
+      event.SetText("Show ring tool")
+
 
   def OnSaveAs (self, event) :
     ### XXX TODO: Save overlays

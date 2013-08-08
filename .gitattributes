@@ -1926,7 +1926,6 @@ rstbx/simulation/sim_utils.py -text
 rstbx/simulation/sim_xfel1.h -text
 rstbx/simulation/tst_xfel1_simple.py -text
 rstbx/slip_viewer/__init__.py -text
-rstbx/slip_viewer/frame.py -text
 rstbx/slip_viewer/slip_display.py -text
 rstbx/slip_viewer/slip_viewer_image_factory.py -text
 rstbx/slip_viewer/tile_generation.py -text
