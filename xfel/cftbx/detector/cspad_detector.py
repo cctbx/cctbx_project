@@ -121,6 +121,8 @@ class CSPadDetector(GenericDetector):
     # no kwargs supported at present
     """XXX"""
 
+    from xfel.cftbx.detector.metrology import get_projection_matrix
+
     # Horizontal and vertical dimensions of a pixel, in meters.  XXX
     # Sort out relationship to pixel_size member!
     pixel_size = [110e-6, 110e-6]
@@ -137,13 +139,10 @@ class CSPadDetector(GenericDetector):
                    0, 0, 1],
             n=[4, 3])
 
-    # P: [x, y, z, 1] -> [row, column, 1] XXX Projection matrix should
-    # probably be implemented elsewhere.
-    P = rec(
-      elems=[0, -1 / pixel_size[1], 0, (self._asic_focus[0] - 1) / 2,
-             +1 / pixel_size[0], 0, 0, (self._asic_focus[1] - 1) / 2,
-             0, 0, 0, 1],
-      n=[3, 4])
+    # P: [x, y, z, 1] -> [row, column, 1].  Note that self._asic_focus
+    # needs to be flipped.
+    Pf = get_projection_matrix(pixel_size,
+                               (self._asic_focus[1], self._asic_focus[0]))[0]
 
     # XXX Add ASIC:s in order?  If a point is contained in two ASIC:s
     # simultaneously, it will be assigned to the ASIC defined first.
@@ -169,7 +168,7 @@ class CSPadDetector(GenericDetector):
       # key is guaranteed to exist in self._matrices as per
       # readHeader().  Last row of self._matrices[key][0] is always
       # [0, 0, 0, 1].
-      T = P * self._matrices[key][0] * E
+      T = Pf * self._matrices[key][0] * E
       R = sqr([T(0, 0), T(0, 1),
                T(1, 0), T(1, 1)])
       t = col([T(0, 2), T(1, 2)])
@@ -187,6 +186,8 @@ class CSPadDetector(GenericDetector):
     directly.
     """
 
+    from xfel.cftbx.detector.metrology import get_projection_matrix
+
     center = col([self._asic_focus[0] / 2, self._asic_focus[1] / 2, 1])
     fast, nmemb, slow = 0, 0, 0
 
@@ -200,15 +201,11 @@ class CSPadDetector(GenericDetector):
           E = rec(elems=[+1 / a.pixel_size[0], 0, 0, 0,
                          0, -1 / a.pixel_size[1], 0, 0],
                   n=[2, 4])
-          P = rec(elems=[
-              0, +a.pixel_size[0], a.pixel_size[0] * (1 - a.dimension[0]) / 2,
-              -a.pixel_size[1], 0, a.pixel_size[1] * (a.dimension[1] - 1) / 2,
-              0, 0, 0,
-              0, 0, 1],
-                  n=[4, 3])
-          T = self._matrices[(0, p.serial, s.serial, a.serial)][1]
 
-          t = E * T * P * center
+          Pb = get_projection_matrix(a.pixel_size, a.dimension)[1]
+          Tb = self._matrices[(0, p.serial, s.serial, a.serial)][1]
+
+          t = E * Tb * Pb * center
           fast += t(0, 0)
           slow += t(1, 0)
           nmemb += 1
