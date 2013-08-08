@@ -16,7 +16,6 @@
 
 #include <cmath>
 #include <set>
-#include <iostream>
 
 namespace mmtbx { namespace geometry_restraints {
 
