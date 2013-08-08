@@ -49,6 +49,7 @@ class skeleton
 public:
   std::vector<int3_t> maximums;
   joins_t joins;
+  std::size_t min_count, grows_count, join_count;
 };
 
 skeleton swanson(const_map_t &map, double sigma=3.);
