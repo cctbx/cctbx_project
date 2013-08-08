@@ -124,8 +124,8 @@ class XrayFrame (AppFrame,XFBaseClass) :
     self.Bind(wx.EVT_MENU, self.OnChangeBeamCenter, item)
     item = actions_menu.Append(-1, "Reset beam center to header value")
     self.Bind(wx.EVT_MENU, lambda evt: self.viewer.ResetBeamCenter(), item)
-    item = actions_menu.Append(-1, "Save screenshot...")
-    self.Bind(wx.EVT_MENU, self.OnScreenShot, item)
+    item = actions_menu.Append(-1, "Save As...")
+    self.Bind(wx.EVT_MENU, self.OnSaveAs, item)
 
     # Known wxWidgets/wxPython issue
     # (http://trac.wxwidgets.org/ticket/12394): stock item ID is
