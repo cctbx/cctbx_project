@@ -17,17 +17,28 @@ def exercise () :
     return
 
   models = OrderedDict([
-    ("3rva", (["octahedron"], ["trigonal_bipyramid"], ["square_plane"])),
-    ("1mjh", (["octahedron"], ["octahedron"])),
-    ("4e1h", (["octahedron"], ["octahedron"], ["octahedron"])),
-    ("2xuz", (["trigonal_prism"],)),
-    ("3zli", (["octahedron"], ["tetrahedron"],
-              ["octahedron"], ["tetrahedron"])),
-    ("3e0f", (["octahedron"], ["trigonal_pyramid"], ["square_pyramid"])),
-    ("3dkq", (["square_pyramid"], ["three_legs"], ["square_pyramid"])),
-    ("2o8q", (["octahedron"], ["octahedron"])),
-    ("1tgg", (["octahedron"], ["square_pyramid", "trigonal_bipyramid"],
-              ["see_saw"])),
+    ("3rva", [["octahedron"], ["trigonal_bipyramid"], ["square_plane"]]),
+    ("1mjh", [["octahedron"], ["octahedron"]]),
+    ("4e1h", [["octahedron"], ["octahedron"], ["octahedron"]]),
+    ("2xuz", [["trigonal_prism"]]),
+    ("3zli", [["octahedron"], ["tetrahedron"],
+              ["octahedron"], ["tetrahedron"],]),
+    ("3e0f", [["octahedron"], ["trigonal_pyramid"], ["square_pyramid"]]),
+    ("3dkq", [["square_pyramid"], ["three_legs"], ["square_pyramid"]]),
+    ("2o8q", [["octahedron"], ["octahedron"]]),
+    ("1tgg", [["octahedron"], ["square_pyramid"], ["see_saw"]]),
+    ("3zu8", [["pentagonal_bipyramid"], []]),
+    ("1ofs", [["square_pyramid"], ["ring_pop"], ["octahedron"],
+              ["ring_pop"]]),
+    ("3ul2", [["ring_pop"], ["octahedron"],
+              ["ring_pop"], ["octahedron"],
+              ["ring_pop"], ["octahedron"],
+              ["ring_pop"], ["octahedron"],]),
+    ("3snm", [[], ["see_saw"]]),
+    ("3qlq", [["ring_pop"], ["octahedron"], ["octahedron"], ["ring_pop"],
+              ["octahedron"], ["ring_pop"], ["ring_pop"], ["octahedron"]]),
+    ("2gdf", [["square_pyramid"], ["pentagonal_pyramid"],
+              ["square_pyramid"], ["pentagonal_pyramid"]]),
   ])
 
   for model, geometries in models.items():
@@ -47,12 +58,12 @@ def exercise () :
 
     metals = [i_seq for i_seq, atom in enumerate(manager.pdb_atoms)
              if atom.fetch_labels().resname.strip().upper() in elements]
-    for metal, expected_geometry in zip(metals, geometries):
+    for index, metal, expected_geometry in zip(xrange(100), metals, geometries):
       contacts = manager.find_nearby_atoms(metal, filter_by_two_fofc = False)
-      found = find_coordination_geometry(contacts)
+      found = find_coordination_geometry(contacts, minimizer_method = True)
       geometry_names = [i[0] for i in found]
       if geometry_names != expected_geometry:
-        print "Problem detecting geometries in", model
+        print "Problem detecting geometries in", model, index
         print "Found geometries:", geometry_names
         print "Should be:", expected_geometry
         sys.exit(1)

@@ -378,6 +378,13 @@ def _pentagonal_pyramid():
 def _pentagonal_bipyramid():
   return _bipyramid(_pentagon())
 
+def _ring_pop():
+  return _concatenate(
+    _square_pyramid(),
+    col([sqrt(2) / 2, sqrt(2) / 2, -1]),
+    col([-sqrt(2) / 2, -sqrt(2) / 2, -1])
+    )
+
 def _see_saw():
   """
   An octahedron missing two adjacent points.
@@ -421,10 +428,11 @@ SUPPORTED_GEOMETRIES = OrderedDict([
   (6, [
     ("octahedron", _octahedron, [4, 4, 4], 20),
     ("trigonal_prism", _trigonal_prism, [3, 1, 1], 15),
-    ("pentagonal_pyramid", _pentagonal_pyramid, [5, 1, 1], 15),
+    ("pentagonal_pyramid", _pentagonal_pyramid, [5, 1, 1], 20),
     ]),
   (7, [
-    ("pentagonal_bipyramid", _pentagonal_bipyramid, [5, 2, 2], 15),
+    ("pentagonal_bipyramid", _pentagonal_bipyramid, [5, 2, 2], 20),
+    ("ring_pop", _ring_pop, [2, 1, 1], 20), # better name, please.
     ]),
   ])
 
@@ -549,11 +557,14 @@ def find_coordination_geometry(nearby_atoms, minimizer_method = False,
 
     for name, func, symmetry, rmsa_cutoff in SUPPORTED_GEOMETRIES[n_vectors]:
       rmsa = _minimize_points(vectors, func(), symmetry = symmetry)
+      print name, rmsa
       if rmsa < rmsa_cutoff:
         geometries.append((name, rmsa))
 
-    geometries.sort(key = lambda x: x[-1])
-    geometries = [i for i in geometries if i[-1] < geometries[0][-1] * 1.5]
+    if geometries:
+      geometries.sort(key = lambda x: x[-1])
+      geometries = [geometries[0]]
+    # [i for i in geometries if i[-1] < geometries[0][-1] * 1.5]
   else:
     for name, func in SUPPORTED_GEOMETRIES_OLD.items():
       val = func(filtered)
