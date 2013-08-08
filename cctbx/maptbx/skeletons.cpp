@@ -4,17 +4,10 @@
 #include <set>
 
 
-#include <boost/algorithm/string.hpp>
 #include <boost/algorithm/cxx11/all_of.hpp>
 #include <boost/algorithm/cxx11/any_of.hpp>
 
-
-// #include "util/push_disable_warnings.hxx"
-#include <scitbx/error.h>
 #include <cctbx/error.h>
-#include <cctbx/uctbx.h>
-//#include "util/pop_enable_warnings.hxx"
-
 
 //// DO NOT USE. UNDER CONSTRUCTION.
 
@@ -117,11 +110,10 @@ skeleton swanson(const_map_t &map, double sigma)
   std::sort(xyzm.begin(), xyzm.end(), gr);
   //[](const xyzm_t &a, const xyzm_t &b) {return (get<1>(a)) > (get<1>(b));}
 
-  marks_t marks;
-  marks.resize( ndim );
-  marks.fill(0);
-  std::size_t nmarks=0, nbonds=0;
-  const unsigned short cube_size = 26;
+  CCTBX_ASSERT( get<1>(xyzm.front()) == mx );
+  marks_t marks(ndim, 0UL); // 0 means no mark
+  std::size_t nmarks=0, nbonds=0, min_count = 0, grows_count=0, join_count=0;
+  const unsigned short cube_size = 26; // 3*3 + (3*3-1) + (3*3) == 3^3 - 1
   typedef int3_t i3t;
   int3_t cube[cube_size] = {
     i3t(-1,-1,-1),  i3t(0,-1,-1),  i3t(1,-1,-1),  i3t(-1,0,-1),  i3t(0,0,-1),
@@ -135,8 +127,8 @@ skeleton swanson(const_map_t &map, double sigma)
   skeleton result;
   for(std::size_t jj=0; jj<xyzm.size(); ++jj)
   {
+    //! @todo very inefficient, consider boost::pool_allocator
     std::set<std::size_t> featureset;
-    //featureset.fill(-1);
     int3_t x = get<0>(xyzm[jj]);
     for(unsigned short ic=0; ic<cube_size; ++ic)
     {
@@ -144,48 +136,41 @@ skeleton swanson(const_map_t &map, double sigma)
       if( any_lt(neighbor,0) || any_ge(neighbor,indim) )
         continue;
       std::size_t mark = marks(neighbor);
-      featureset.insert(mark);
+      if( mark != 0U ) // 0 is not a mark
+        featureset.insert(mark);
     }
 
     const unsigned fssize =featureset.size();
-    CCTBX_ASSERT( fssize!=0U );
-    if( all_eq(featureset, 0) )
+    if( featureset.empty() ) // all_eq(featureset, 0) )
     {
-      // new maximum
+      // 2a: new maximum
       ++nmarks;
       marks(x) = nmarks;
       result.maximums.push_back(x);
     }
-    else if( all_ne(featureset, 0) )
+    else if( fssize == 1 )
     {
-      ; // local minimum will not be in the neighborhood of any point
+      // 2b: part of the growing nodule
+      std::size_t mark = *featureset.begin();
+      CCTBX_ASSERT( mark != 0 );
+      marks(x) = mark;
+      ++grows_count;
     }
-    else if( fssize == 2 )
+    else if( fssize>1 )
     {
-      // part of the growing nodule
-      std::set<std::size_t>::const_iterator b = featureset.begin();
-      if( *b != 0 )
-        marks(x) = *b;
-      else
-        marks(x) = *(++b);
-    }
-    else if( fssize>2 )
-    {
+      ++join_count;
+      // 2c: two or more nodules merging
       for(std::set<std::size_t>::const_iterator i=featureset.begin();
           i!=featureset.end(); ++i)
       {
         std::size_t fi = *i;
-        if( fi<=0 )
-          continue;
-        if( fi>nmarks )
-          throw std::logic_error("wrong feautreset i");
+        CCTBX_ASSERT( fi>0U && fi<=nmarks );
         std::set<std::size_t>::const_iterator j=i;
         ++j;
         for( ; j!=featureset.end(); ++j)
         {
           std::size_t fj = *j;
-          if( fj<=0 )
-            continue;
+          CCTBX_ASSERT( fj>0U );
           if( fj>nmarks )
             throw std::logic_error("wrong featureset j");
           join_t join;
@@ -199,14 +184,24 @@ skeleton swanson(const_map_t &map, double sigma)
             join.ilt = fj;
             join.igt = fi;
           }
+          //! @todo search existing joins
           bool bnewjoing = true;
           result.joins.insert(join);
         }
       }
     }
+    else if( fssize == cube_size ) // all_ne(featureset, 0) )
+    {
+      // 2d: local minimum will not be in the neighborhood of any point
+      ++min_count;
+    }
     else
       throw std::logic_error("impossible");
   }
+  CCTBX_ASSERT( nmarks + grows_count + join_count + min_count == xyzm.size() );
+  result.min_count = min_count;
+  result.grows_count = grows_count;
+  result.join_count = join_count;
   return result;
 }
 
