@@ -4,7 +4,6 @@
 #include <scitbx/array_family/loops.h>
 #include <scitbx/array_family/tiny.h>
 
-#include <iostream>
 
 namespace scitbx { namespace math {
 

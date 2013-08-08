@@ -1,7 +1,7 @@
 #ifndef SCITBX_ARRAY_FAMILY_SIMPLE_IO_H
 #define SCITBX_ARRAY_FAMILY_SIMPLE_IO_H
 
-#include <iostream>
+#include <ostream>
 #include <scitbx/array_family/ref.h>
 
 namespace scitbx { namespace af {

@@ -7,7 +7,6 @@
 
 #include <cmath>
 #include <cstdio>
-#include <iostream>
 
 namespace scitbx { namespace math {
 namespace resample{
