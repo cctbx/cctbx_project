@@ -557,7 +557,7 @@ def find_coordination_geometry(nearby_atoms, minimizer_method = False,
 
     for name, func, symmetry, rmsa_cutoff in SUPPORTED_GEOMETRIES[n_vectors]:
       rmsa = _minimize_points(vectors, func(), symmetry = symmetry)
-      print name, rmsa
+      # print name, rmsa
       if rmsa < rmsa_cutoff:
         geometries.append((name, rmsa))
 
