@@ -1,5 +1,6 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
+#
+# $Id$
 
 """
 A 'slippy map' widget for wxPython.
@@ -700,6 +701,7 @@ class PySlip(_BufferedCanvas):
     TypeImage = 1
     TypePolygon = 2
     TypeText = 3
+    TypeEllipse = 4
 
     def __init__(self, parent, tile_dir=None, start_level=None,
                  min_level=None, max_level=None, **kwargs):
@@ -943,7 +945,7 @@ class PySlip(_BufferedCanvas):
         return self.AddLayer(self.DrawLightweightEllipticalSpline, draw_data, map_rel,
                              visible, show_levels=show_levels,
                              selectable=False, name=name,
-                             type=self.TypePolygon)
+                             type=self.TypeEllipse)
 
     def DrawLightweightEllipticalSpline(self, dc, data, map_rel):
         assert map_rel

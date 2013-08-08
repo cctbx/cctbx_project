@@ -1928,7 +1928,6 @@ rstbx/simulation/tst_xfel1_simple.py -text
 rstbx/slip_viewer/__init__.py -text
 rstbx/slip_viewer/slip_display.py -text
 rstbx/slip_viewer/slip_viewer_image_factory.py -text
-rstbx/slip_viewer/tile_generation.py -text
 rstbx/symmetry/__init__.py -text
 rstbx/symmetry/constraints/SConscript -text
 rstbx/symmetry/constraints/__init__.py -text
