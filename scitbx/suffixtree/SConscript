@@ -1,0 +1,20 @@
+Import( "env_etc" )
+
+if not env_etc.no_boost_python:
+  Import( "env_scitbx_boost_python_ext" )
+  env_scitbx_boost_python_ext.SharedLibrary(
+    target="#lib/scitbx_suffixtree_ext",
+    source=[ "boost_python/suffixtree_ext.cpp" ],
+    )
+  env_scitbx_boost_python_ext.SharedLibrary(
+    target="#lib/scitbx_suffixtree_shared_ext",
+    source=[ "boost_python/suffixtree_shared_ext.cpp" ],
+    )
+  env_scitbx_boost_python_ext.SharedLibrary(
+    target="#lib/scitbx_suffixtree_single_ext",
+    source=[
+      "boost_python/suffixtree_single_ext.cpp",
+      "boost_python/object_extensions.cpp",
+      ],
+    )
+
