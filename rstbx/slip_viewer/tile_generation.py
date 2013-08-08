@@ -1,7 +1,8 @@
-from __future__ import division
-# -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
+# -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
-# $Id: tile_generation.py 321 2012-05-15 19:31:42Z sauter $
+# $Id$
+
+from __future__ import division
 
 import math
 import wx
@@ -237,6 +238,10 @@ class _Tiles(object):
     def picture_fast_slow_to_map_relative(self,pic_fast_pixel,pic_slow_pixel):
       #return up/down, left/right map relative coords for pyslip layers
       return pic_fast_pixel+self.extent[0],-pic_slow_pixel+self.extent[3]
+
+    def map_relative_to_picture_fast_slow(self, map_rel_vert, map_rel_horiz):
+      # return fast, slow picture coords
+      return map_rel_vert-self.extent[0],-map_rel_horiz+self.extent[3]
 
     def vec_picture_fast_slow_to_map_relative(self,vector):
       value = []

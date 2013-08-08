@@ -391,6 +391,8 @@ class XrayFrame (AppFrame,XFBaseClass) :
     ### XXX TODO: Save overlays
     ### XXX TODO: Fix bug where multi-asic images are slightly cropped due to tranformation error'
 
+    import Image
+
     dialog = wx.FileDialog(
       self,
       defaultDir='',
@@ -404,10 +406,9 @@ class XrayFrame (AppFrame,XFBaseClass) :
     if file_name == '':
       return
 
+    self.update_statusbar("Writing " + file_name + "...")
     if dialog.GetFilterIndex() == 0:
-        import Image
         from cStringIO import StringIO
-        self.update_statusbar("Writing " + file_name + "...")
 
         flex_img = self.pyslip.tiles.raw_image.get_flex_image(
           brightness=self.settings.brightness / 100)
@@ -469,9 +470,139 @@ class XrayFrame (AppFrame,XFBaseClass) :
         imageout.save(out, "PNG")
         open(file_name, "wb").write(out.getvalue())
 
-        self.update_statusbar("Writing " + file_name + "..." + " Done.")
     elif dialog.GetFilterIndex() == 1:
-      self.update_statusbar("Save as pdf not implemented.")
+        from reportlab.lib.units import inch
+        from reportlab.pdfgen import canvas
+
+        # Dots per inch in PDF output, and fudge factor to not make
+        # fine features impossible small.  XXX The fudge factor should
+        # go.
+        DPI = 72
+        LINE_WIDTH_FACTOR = 0.6
+
+        flex_img = self.pyslip.tiles.raw_image.get_flex_image(
+          brightness=self.settings.brightness / 100)
+
+        flex_img.setWindow(0, 0, 1)
+        flex_img.adjust(color_scheme=self.settings.color_scheme)
+        flex_img.prep_string()
+
+        # XXX Order of size1/size2 correct?
+        pdf_size = (flex_img.size2() * inch / DPI,
+                    flex_img.size1() * inch / DPI)
+        pdf_canvas = canvas.Canvas(filename=file_name, pagesize=pdf_size)
+        pil_img = Image.fromstring(
+          'RGB', (flex_img.size2(), flex_img.size1()), flex_img.export_string)
+
+        pdf_canvas.drawInlineImage(
+          pil_img, 0, 0, width=pdf_size[0], height=pdf_size[1])
+
+        for layer_id in self.pyslip.layer_z_order:
+          layer = self.pyslip.layer_mapping[layer_id]
+
+          # XXX This would probably be more elegant if these were
+          # functions in some layer class.  Note repeated roundabout
+          # way (via a wx.Pen object) to extract RGB values from the
+          # colour parameter.
+          if layer.type == self.pyslip.TypeEllipse:
+            from math import atan2, degrees, hypot
+            from scitbx.matrix import col
+
+            for (p, place, width, colour, closed, filled, fillcolour,
+                 x_off, y_off, pdata) in layer.data:
+              if layer.map_rel:
+                pp = []
+                for i in range(len(p)):
+                  fs = self.pyslip.tiles.map_relative_to_picture_fast_slow(
+                    p[i][0], p[i][1])
+                  pp.append((fs[0] * inch / DPI,
+                             pdf_size[1] - fs[1] * inch / DPI))
+                ellipse_center = col(pp[0])
+                major = col(pp[1]) - ellipse_center
+                minor = col(pp[2]) - ellipse_center
+              else:
+                raise NotImplementedError(
+                  "PDF output in view-relative coordinates not implemented")
+
+              pen = wx.Pen(colour)
+              pdf_canvas.setLineWidth(width * LINE_WIDTH_FACTOR)
+              pdf_canvas.setStrokeColorRGB(pen.Colour.Red() / 255,
+                                           pen.Colour.Green() / 255,
+                                           pen.Colour.Blue() / 255)
+
+              angle = atan2(major.elems[1], major.elems[0])
+              r_major = hypot(major.elems[0], major.elems[1])
+              r_minor = hypot(minor.elems[0], minor.elems[1])
+
+              pdf_canvas.saveState()
+              pdf_canvas.translate(
+                ellipse_center.elems[0], ellipse_center.elems[1])
+
+              pdf_canvas.rotate(degrees(angle))
+              pdf_canvas.ellipse(-r_major, -r_minor, r_major, r_minor)
+              pdf_canvas.restoreState()
+
+          elif layer.type == self.pyslip.TypeImage:
+            raise NotImplementedError(
+              "PDF output of image layers not implemented")
+
+          elif layer.type == self.pyslip.TypePoint:
+            for (lon, lat, place, radius, colour,
+                 x_off, y_off, pdata) in layer.data:
+              if layer.map_rel:
+                fs = self.pyslip.tiles.map_relative_to_picture_fast_slow(
+                  lon, lat)
+              else:
+                raise NotImplementedError(
+                  "PDF output in view-relative coordinates not implemented")
+
+              pt = (fs[0] * inch / DPI, pdf_size[1] - fs[1] * inch / DPI)
+              pen = wx.Pen(colour)
+              pdf_canvas.setLineWidth(radius)
+              pdf_canvas.setStrokeColorRGB(pen.Colour.Red() / 255,
+                                           pen.Colour.Green() / 255,
+                                           pen.Colour.Blue() / 255)
+              pdf_canvas.circle(pt[0], pt[1], 0.5 * radius * inch / DPI)
+
+          elif layer.type == self.pyslip.TypePolygon:
+            for (p, place, width, colour, closed, filled, fillcolour,
+                 x_off, y_off, pdata) in layer.data:
+              path = pdf_canvas.beginPath()
+              for i in range(len(p)):
+                if layer.map_rel:
+                  fs = self.pyslip.tiles.map_relative_to_picture_fast_slow(
+                    p[i][0], p[i][1])
+                else:
+                  raise NotImplementedError(
+                    "PDF output in view-relative coordinates not implemented")
+
+                pt = (fs[0] * inch / DPI, pdf_size[1] - fs[1] * inch / DPI)
+                if i == 0:
+                  path.moveTo(pt[0], pt[1])
+                else:
+                  path.lineTo(pt[0], pt[1])
+
+              if closed:
+                path.close()
+
+              pen = wx.Pen(colour)
+              pdf_canvas.setFillColorRGB(pen.Colour.Red() / 255,
+                                         pen.Colour.Green() / 255,
+                                         pen.Colour.Blue() / 255)
+              pdf_canvas.setLineWidth(width * LINE_WIDTH_FACTOR)
+              pdf_canvas.setStrokeColorRGB(pen.Colour.Red() / 255,
+                                           pen.Colour.Green() / 255,
+                                           pen.Colour.Blue() / 255)
+              pdf_canvas.drawPath(path, fill=filled)
+
+          elif layer.type == self.pyslip.TypeText:
+            raise NotImplementedError(
+              "PDF output of text layers not yet implemented")
+
+        pdf_canvas.save()
+
+    self.update_statusbar("Writing " + file_name + "..." + " Done.")
+
 
 from rstbx.viewer.frame import SettingsFrame
 
