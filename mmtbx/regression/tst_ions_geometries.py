@@ -38,7 +38,7 @@ def exercise () :
     ("3qlq", [["ring_pop"], ["octahedron"], ["octahedron"], ["ring_pop"],
               ["octahedron"], ["ring_pop"], ["ring_pop"], ["octahedron"]]),
     ("2gdf", [["square_pyramid"], ["pentagonal_pyramid"],
-              ["square_pyramid"], ["pentagonal_pyramid"]]),
+              ["square_pyramid"], []]),
   ])
 
   for model, geometries in models.items():
