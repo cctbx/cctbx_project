@@ -715,6 +715,7 @@ class manager(object):
                     params               = ias_params,
                     file_name            = file_name,
                     log                  = self.log)
+    size_all = self.xray_structure.scatterers().size()
     if(not build_only):
       self.ias_xray_structure = self.ias_manager.ias_xray_structure
       ias_size = self.ias_xray_structure.scatterers().size()
@@ -744,7 +745,8 @@ class manager(object):
            sites_individual     = ssites,
            s_occupancies        = occupancy_flags,
            adp_individual_iso   = sadp,
-           adp_individual_aniso = sadp)
+           adp_individual_aniso = sadp,
+           size_all             = size_all)
          # adjust flags
          if(self.refinement_flags.sites_individual is not None):
            self.refinement_flags.sites_individual.set_selected(self.ias_selection, False)
@@ -1028,13 +1030,6 @@ class manager(object):
                         refine_occupancies = False,
                         refine_adp = None):
     assert refine_adp is not None
-    if(refine_adp == "isotropic"):
-      solvent_xray_structure.convert_to_isotropic()
-    elif(refine_adp == "anisotropic"):
-      solvent_xray_structure.convert_to_anisotropic(selection =
-        ~solvent_xray_structure.hd_selection())
-    else :
-      raise RuntimeError("refine_adp must be 'isotropic' or 'anisotropic'")
     n_atoms = solvent_xray_structure.scatterers().size()
     new_atom_name = atom_name.strip()
     if(len(new_atom_name) < 4): new_atom_name = " " + new_atom_name
@@ -1044,8 +1039,6 @@ class manager(object):
     nonbonded_types = flex.std_string([ "OH2" ] * n_atoms)
     i_seq = find_common_water_resseq_max(pdb_hierarchy=self._pdb_hierarchy)
     if (i_seq is None or i_seq < 0): i_seq = 0
-    refine_iso_selection = flex.bool(n_atoms, refine_adp=="isotropic")
-    refine_aniso_seelction = flex.bool(n_atoms, refine_adp=="anisotropic")
     return self.append_single_atoms(
       new_xray_structure=solvent_xray_structure,
       atom_names=atom_names,
@@ -1078,43 +1071,25 @@ class manager(object):
     if(self.refinement_flags.individual_sites):
       ssites = flex.bool(new_xray_structure.scatterers().size(), True)
     else: ssites = None
-
-    #XXX Tom
-    try:
-      if(self.refinement_flags.torsion_angles):
-        ssites_tors = flex.bool(new_xray_structure.scatterers().size(), True)
-      else: ssites_tors = None
-      if(self.refinement_flags.adp_individual_iso):
-        sadp_iso = new_xray_structure.use_u_iso()
-      else: sadp_iso = None
-      if(self.refinement_flags.adp_individual_aniso):
-        sadp_aniso = new_xray_structure.use_u_aniso()
-      else: sadp_aniso = None
-      self.refinement_flags.inflate(
-        sites_individual       = ssites,
-        sites_torsion_angles   = ssites_tors,
-        adp_individual_iso     = sadp_iso,
-        adp_individual_aniso   = sadp_aniso,
-        s_occupancies          = occupancy_flags)#torsion_angles
-    except Exception:
-      pass
-
-#    if(self.refinement_flags.torsion_angles):
-#      ssites_tors = flex.bool(new_xray_structure.scatterers().size(), True)
-#    else: ssites_tors = None
-#    if(self.refinement_flags.adp_individual_iso):
-#      sadp_iso = new_xray_structure.use_u_iso()
-#    else: sadp_iso = None
-#    if(self.refinement_flags.adp_individual_aniso):
-#      sadp_aniso = new_xray_structure.use_u_aniso()
-#    else: sadp_aniso = None
-#    self.refinement_flags.inflate(
-#      sites_individual       = ssites,
-#      sites_torsion_angles   = ssites_tors,
-#      adp_individual_iso     = sadp_iso,
-#      adp_individual_aniso   = sadp_aniso,
-#      s_occupancies          = occupancy_flags)#torsion_angles
-
+    # add flags
+    if(self.refinement_flags.torsion_angles):
+      ssites_tors = flex.bool(new_xray_structure.scatterers().size(), True)
+    else: ssites_tors = None
+    nxrs_ui = new_xray_structure.use_u_iso()
+    if(self.refinement_flags.adp_individual_iso or nxrs_ui.count(True)>0):
+      sadp_iso = nxrs_ui
+    else: sadp_iso = None
+    nxrs_ua = new_xray_structure.use_u_aniso()
+    if(self.refinement_flags.adp_individual_aniso or nxrs_ua.count(True)>0):
+      sadp_aniso = nxrs_ua
+    else: sadp_aniso = None
+    self.refinement_flags.inflate(
+      sites_individual       = ssites,
+      sites_torsion_angles   = ssites_tors,
+      adp_individual_iso     = sadp_iso,
+      adp_individual_aniso   = sadp_aniso,
+      s_occupancies          = occupancy_flags,
+      size_all               = ms)#torsion_angles
     #
     self._append_pdb_atoms(
       new_xray_structure=new_xray_structure,

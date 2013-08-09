@@ -230,18 +230,23 @@ class manager(object):
     assert self.fmodel.xray_structure is self.model.xray_structure
 
   def convert_water_adp(self):
-    sol_sel = self.model.solvent_selection().iselection()
-    if(self.params.new_solvent == "isotropic"):
-      self.model.xray_structure.convert_to_isotropic(selection = sol_sel)
-    elif(self.params.new_solvent == "anisotropic"):
-      selection_aniso = self.model.solvent_selection().deep_copy()
-      selection_iso = self.model.solvent_selection().deep_copy()
-      selection_aniso.set_selected(self.model.xray_structure.hd_selection(),
-        False)
-      selection_iso.set_selected(selection_aniso, False)
-      selection_iso.set_selected(self.model.xray_structure.hd_selection(), True)
-      self.model.xray_structure.convert_to_anisotropic(selection = selection_aniso)
-      self.model.xray_structure.convert_to_isotropic(selection = selection_iso.iselection())
+    hd_sel     = self.model.xray_structure.hd_selection()
+    not_hd_sel = ~hd_sel
+    sol_sel    = self.model.solvent_selection()
+    not_sol_sel= ~sol_sel
+    selection_aniso = self.model.xray_structure.use_u_aniso().deep_copy()
+    if(self.params.new_solvent == "anisotropic"):
+      selection_aniso.set_selected(sol_sel, True)
+    selection_iso   = self.model.xray_structure.use_u_iso().deep_copy()
+    selection_aniso.set_selected(not_sol_sel, False)
+    selection_iso  .set_selected(not_sol_sel, False)
+    if(not self.is_neutron_scat_table):
+      selection_aniso.set_selected(hd_sel, False)
+      selection_iso.set_selected(hd_sel, False)
+    selection_aniso.set_selected(selection_iso, False)
+    selection_iso.set_selected(selection_aniso, False)
+    self.model.xray_structure.convert_to_anisotropic(selection = selection_aniso)
+    self.model.xray_structure.convert_to_isotropic(selection = selection_iso.iselection())
     self.fmodel.update_xray_structure(
       xray_structure = self.model.xray_structure,
       update_f_calc  = True)
@@ -550,22 +555,24 @@ class manager(object):
       print >> self.log, \
         "ADP refinement (water only), start r_work=%6.4f r_free=%6.4f"%(
         self.fmodel.r_work(), self.fmodel.r_free())
+      # set refinement flags (not exercised!)
+      hd_sel     = self.model.xray_structure.hd_selection()
+      not_hd_sel = ~hd_sel
+      sol_sel    = self.model.solvent_selection()
+      not_sol_sel= ~sol_sel
+      selection_aniso = self.model.xray_structure.use_u_aniso().deep_copy()
       if(self.params.new_solvent == "anisotropic"):
-        selection_aniso = self.model.solvent_selection().deep_copy()
-        selection_iso = self.model.solvent_selection().deep_copy()
-        selection_aniso.set_selected(self.model.xray_structure.hd_selection(),
-          False)
-        selection_iso.set_selected(selection_aniso, False)
-        selection_iso.set_selected(self.model.xray_structure.hd_selection(),
-          False)
-        #
-        self.model.set_refine_individual_adp(selection_aniso = selection_aniso,
-                                             selection_iso   = selection_iso)
-      else:
-        selection_iso = self.model.solvent_selection().deep_copy()
-        selection_iso.set_selected(self.model.xray_structure.hd_selection(),
-          False)
-        self.model.set_refine_individual_adp(selection_iso = selection_iso)
+        selection_aniso.set_selected(sol_sel, True)
+      selection_iso   = self.model.xray_structure.use_u_iso().deep_copy()
+      selection_aniso.set_selected(not_sol_sel, False)
+      selection_iso  .set_selected(not_sol_sel, False)
+      if(not self.is_neutron_scat_table):
+        selection_aniso.set_selected(hd_sel, False)
+        selection_iso.set_selected(hd_sel, False)
+      selection_aniso.set_selected(selection_iso, False)
+      selection_iso.set_selected(selection_aniso, False)
+      self.model.set_refine_individual_adp(
+        selection_aniso = selection_aniso, selection_iso = selection_iso)
       lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
           max_iterations = 25)
       minimized = minimization.lbfgs(
