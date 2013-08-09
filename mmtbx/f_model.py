@@ -2348,9 +2348,7 @@ class manager(manager_mixin):
     if(update_f_part1):
       assert fmodel.f_part_1_updated_for_purpose == "map", \
         fmodel.f_part_1_updated_for_purpose
-    return map_tools.electron_density_map(
-      fmodel         = fmodel,
-      update_f_part1 = update_f_part1)
+    return map_tools.electron_density_map(fmodel = fmodel)
 
   def map_coefficients (self, **kwds) :
     emap = self.electron_density_map(update_f_part1=True)

@@ -95,7 +95,6 @@ class electron_density_map(object):
 
   def __init__(self,
                fmodel,
-               update_f_part1 = True,
                map_calculation_helper = None):
     self.fmodel = fmodel
     self.anom_diff = None

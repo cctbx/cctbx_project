@@ -13,9 +13,12 @@ from libtbx import runtime_utils
 import os.path
 import time
 import sys
+import random
 
 master_phil = iotbx.phil.parse("""
 include scope mmtbx.utils.cmdline_input_phil_str
+random_seed=2679941
+  .type = int
 output {
   file_name = fem.mtz
     .type = path
@@ -32,6 +35,12 @@ output {
 include scope libtbx.phil.interface.tracking_params
 """, process_includes=True)
 master_params = master_phil # for phenix GUI
+
+def manage_random_seed(random_seed):
+  if(random_seed is None):
+    random_seed = flex.get_random_seed()
+  random.seed(random_seed)
+  flex.set_random_seed(random_seed)
 
 def run(args, command_name = "phenix.development.fem", log = sys.stdout):
   cmdline = mmtbx.utils.cmdline_load_pdb_and_data(
@@ -51,6 +60,7 @@ Calculate a "feature-enhanced" 2mFo-DFc map.
   xray_structure = cmdline.xray_structure
   f_obs = cmdline.f_obs
   r_free_flags = cmdline.r_free_flags
+  manage_random_seed(random_seed=params.random_seed)
   fmodel = mmtbx.f_model.manager(
     f_obs = f_obs,
     r_free_flags = r_free_flags,
@@ -96,8 +106,11 @@ Calculate a "feature-enhanced" 2mFo-DFc map.
       isotropize   = True,
       fill_missing = True)
   #### Compute FEM start
-  fem = mmtbx.maps.fem(ko=ko, crystal_gridding=crystal_gridding,
-    mc_orig=mc_orig_for_fem, fmodel=fmodel)
+  fem = mmtbx.maps.fem(
+    ko=ko,
+    crystal_gridding=crystal_gridding,
+    mc_orig=mc_orig_for_fem,
+    fmodel=fmodel)
   #### Compute FEM end
   mtz_dataset = mc_orig.as_mtz_dataset(column_root_label="2mFoDFc")
   mtz_dataset.add_miller_array(
