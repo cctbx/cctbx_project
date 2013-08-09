@@ -11,6 +11,43 @@ from __future__ import division
 from scitbx import matrix
 
 
+def _average_transformation(matrices, keys):
+  """The _average_transformation() function determines the average
+  rotation and translation from the transformation matrices in @p
+  matrices with keys matching @p keys.  The function returns a
+  two-tuple of the average rotation in quaternion representation and
+  the average translation.
+  """
+
+  from scitbx.array_family import flex
+  from tntbx import svd
+
+  # Sum all rotation matrices and translation vectors.
+  sum_R = flex.double(flex.grid(3, 3))
+  sum_t = flex.double(flex.grid(3, 1))
+  nmemb = 0
+  for key in keys:
+    T = matrices[key][1]
+    sum_R += flex.double([T(0, 0), T(0, 1), T(0, 2),
+                          T(1, 0), T(1, 1), T(1, 2),
+                          T(2, 0), T(2, 1), T(2, 2)])
+    sum_t += flex.double([T(0, 3), T(1, 3), T(2, 3)])
+    nmemb += 1
+  if nmemb == 0:
+    # Return zero-rotation and zero-translation.
+    return (matrix.col([1, 0, 0, 0]), matrix.zeros((3, 1)))
+
+  # Calculate average rotation matrix as U * V^T where sum_R = U * S *
+  # V^T and S diagonal (Curtis et al. (1993) 377-385 XXX proper
+  # citation, repeat search), and convert to quaternion.
+  svd = svd(sum_R)
+  R_avg = matrix.sqr(list(svd.u().matrix_multiply_transpose(svd.v())))
+  o_avg = R_avg.r3_rotation_matrix_as_unit_quaternion()
+  t_avg = matrix.col(list(sum_t / nmemb))
+
+  return (o_avg, t_avg)
+
+
 def _transform(o, t):
   """The _transform() function returns the transformation matrices in
   homogeneous coordinates between the parent and child frames.  The
@@ -168,3 +205,27 @@ def metrology_as_transformation_matrices(params):
         matrices[(d.serial, p.serial, s.serial, a.serial)] = (T_a[0], T_a[1])
 
   return matrices
+
+
+def regularize_transformation_matrices(matrices, key=(0,)):
+  """The _regularize_transformation_matrices() function recursively sets
+  the transformation of each element to the average transformation of
+  its children.  XXX Round average orientations to multiples of 90
+  degrees?  XXX Should they maybe return matrices instead?.
+  """
+
+  # The length of the key tuple identifies the current recursion
+  # depth.
+  next_depth = len(key) + 1
+
+  # Base case: return if at the maximum depth.
+  keys = [k for k in matrices.keys()
+          if (len(k) == next_depth and k[0:next_depth - 1] == key)]
+  if (len(keys) == 0):
+    return
+
+  # Recursion: regularize at next depth, and get the average.
+  for k in keys:
+    regularize_transformation_matrices(matrices, k)
+  o, t = _average_transformation(matrices, keys)
+  matrices[key] = _transform(o, t)
