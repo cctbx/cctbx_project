@@ -26,6 +26,8 @@ class manager(object):
                log                        = None):
     adopt_init_args(self, locals())
     if(self.log is None): self.log = sys.stdout
+    self.special_position_indices = \
+      self.structure_monitor.xray_structure.special_position_indices()
     self.rotamer_manager = RotamerEval()
     self.atom_radius_to_negate_map_within = None
     if(self.structure_monitor.target_map_object.miller_array.d_min()>3.5):
@@ -47,6 +49,11 @@ class manager(object):
       self.loop_over_residues(iselection = clash_list, use_clash_filter=True,
         use_torsion_search=True, use_rotamer_iterator=False)
 
+  def on_special_position(self, sm_residue):
+    if(self.special_position_indices.size()==0): return False
+    for i_seq in sm_residue.selection_all:
+      if(i_seq in self.special_position_indices): return True
+    return False
 
   def loop_over_residues(self,
                          iselection           = None,
@@ -70,6 +77,7 @@ class manager(object):
             r.map_cc_all < self.map_cc_all_threshold or
             r.map_cc_sidechain < self.map_cc_sidechain_threshold))
       if(use_clash_filter or go):
+        if(self.on_special_position(sm_residue=r)): continue
         iselection_n_external=None
         iselection_c_external=None
         if(i_res!=0 and i_res!=len(sm.residue_monitors)-1):
