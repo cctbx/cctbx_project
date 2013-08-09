@@ -165,16 +165,21 @@ class run2(object):
                rmsd_bonds_termination_cutoff  = 0,
                rmsd_angles_termination_cutoff = 0,
                alternate_nonbonded_off_on     = False,
-               cdl=False,
+               cdl                            = False,
                log                            = None):
     self.log = log
     if self.log is None:
       self.log = sys.stdout
+    self.pdb_hierarchy = pdb_hierarchy
     self.minimized = None
     self.sites_cart = sites_cart
     self.restraints_manager = restraints_manager
     assert max_number_of_iterations+number_of_macro_cycles > 0
     assert [bond,nonbonded,angle,dihedral,chirality,planarity].count(False) < 6
+    self.cdl_proxies = None
+    if(cdl):
+      from mmtbx.conformation_dependent_library import setup_restraints
+      self.cdl_proxies = setup_restraints(restraints_manager)
     if(alternate_nonbonded_off_on and number_of_macro_cycles % 2 != 0):
       number_of_macro_cycles += 1
     import scitbx.lbfgs
@@ -192,33 +197,13 @@ class run2(object):
       reference_dihedral = True,
       bond_similarity    = True,
       generic_restraints = True)
-    if cdl:
-      from mmtbx.conformation_dependent_library import setup_restraints
-      from mmtbx.conformation_dependent_library import update_restraints
-      cdl_proxies=setup_restraints(restraints_manager)
-      rc = update_restraints(
-        pdb_hierarchy,
-        restraints_manager,
-        cdl_proxies=cdl_proxies,
-        log=self.log,
-        verbose=True,
-        )
-      print >> self.log, "CDL restraints update performed"
+    self.update_cdl_restraints()
     self.show()
     for i_macro_cycle in xrange(number_of_macro_cycles):
       print >> self.log, "  macro-cycle:", i_macro_cycle
       if(alternate_nonbonded_off_on and i_macro_cycle<=number_of_macro_cycles/2):
         geometry_restraints_flags.nonbonded = bool(i_macro_cycle % 2)
-      if cdl and i_macro_cycle:
-        rc = update_restraints(
-          pdb_hierarchy,
-          restraints_manager,
-          sites_cart=self.sites_cart,
-          cdl_proxies=cdl_proxies,
-          log=self.log,
-          verbose=True,
-          )
-        print >> self.log, "CDL restraints update performed"
+      self.update_cdl_restraints(macro_cycle=i_macro_cycle)
       self.minimized = lbfgs(
         sites_cart                      = self.sites_cart,
         geometry_restraints_manager     = restraints_manager.geometry,
@@ -234,8 +219,26 @@ class run2(object):
       lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
           max_iterations = max_number_of_iterations)
 
+  def update_cdl_restraints(self, macro_cycle=None):
+    if(self.cdl_proxies is not None):
+      from mmtbx.conformation_dependent_library import update_restraints
+      if(macro_cycle is None):
+        rc = update_restraints(
+          self.pdb_hierarchy,
+          self.restraints_manager,
+          cdl_proxies=self.cdl_proxies,
+          log=self.log,
+          verbose=False)
+      elif(macro_cycle>0):
+        rc = update_restraints(
+          self.pdb_hierarchy,
+          self.restraints_manager,
+          sites_cart=self.sites_cart,
+          cdl_proxies=self.cdl_proxies,
+          log=self.log,
+          verbose=False)
+
   def show(self):
     es = self.restraints_manager.geometry.energies_sites(
       sites_cart = self.sites_cart, compute_gradients = False)
     es.show(prefix="    ", f=self.log)
-
