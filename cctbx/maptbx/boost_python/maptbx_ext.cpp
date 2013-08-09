@@ -332,9 +332,11 @@ namespace {
     def("cut_by",
       (void(*)
         (af::ref<double, af::c_grid<3> >,
-         af::ref<double, af::c_grid<3> >)) cut_by, (
+         af::ref<double, af::c_grid<3> >,
+         double)) cut_by, (
       arg("kick"),
-      arg("fem")));
+      arg("fem"),
+      arg("cut_by_threshold")));
 
     def("rotate_translate_map",
       (af::versa<double, af::c_grid<3> >(*)
