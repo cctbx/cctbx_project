@@ -156,6 +156,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       self._InsertModelItem(root_node, model)
 
   def _InsertModelItem (self, root_node, model, index=None) :
+    model_node = None
     if (index is None) :
       model_node = self.AppendItem(root_node, format_model(model), data=model)
     else :
@@ -164,8 +165,10 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     for chain in model.chains() :
       self._InsertChainItem(model_node, chain)
     self.Expand(model_node)
+    return model_node
 
   def _InsertChainItem (self, model_node, chain, index=None) :
+    chain_node = None
     if (index is None) :
       chain_node = self.AppendItem(model_node, format_chain(chain), data=chain)
     else :
@@ -173,8 +176,10 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         format_chain(chain), data=chain)
     for rg in chain.residue_groups() :
       self._InsertResidueGroupItem(chain_node, rg)
+    return chain_node
 
   def _InsertResidueGroupItem (self, chain_node, residue_group, index=None) :
+    rg_node = None
     if (index is None) :
       rg_node = self.AppendItem(chain_node, format_residue_group(residue_group),
         data=residue_group)
@@ -184,8 +189,10 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         format_residue_group(residue_group), data=residue_group)
     for ag in residue_group.atom_groups() :
       self._InsertAtomGroupItem(rg_node, ag)
+    return rg_node
 
   def _InsertAtomGroupItem (self, rg_node, atom_group, index=None) :
+    ag_node = None
     if (index is None) :
       ag_node = self.AppendItem(rg_node, format_atom_group(atom_group),
         data=atom_group)
@@ -194,8 +201,10 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         format_atom_group(atom_group), data=atom_group)
     for atom in atom_group.atoms() :
       self._InsertAtomItem(ag_node, atom)
+    return ag_node
 
   def _InsertAtomItem (self, ag_node, atom, index=None) :
+    atom_node = None
     if (index is None) :
       atom_node = self.AppendItem(ag_node, format_atom(atom), data=atom)
     else :
@@ -205,6 +214,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       self.SetItemImage(atom_node, 0)
     else :
       self.SetItemImage(atom_node, 1)
+    return atom_node
 
   def PropagateAtomChanges (self, node) :
     child, cookie = self.GetFirstChild(node)
@@ -488,6 +498,9 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       labels_and_actions.append(("Convert to SeMet", self.OnConvertMet))
     elif (atom_group.resname == "MSE") :
       labels_and_actions.append(("Convert to Met", self.OnConvertSeMet))
+    labels_and_actions.append([
+      ("Separate atoms...", self.OnSeparateAtoms),
+    ])
     self.ShowMenu(labels_and_actions, source_window)
 
   def ShowResidueGroupMenu (self, residue_group, source_window) :
@@ -507,6 +520,9 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     ]
     if (len(residue_group.atom_groups()) == 1) :
       labels_and_actions.append(("Set occupancy...", self.OnSetOccupancy))
+    labels_and_actions.append([
+      ("Separate atoms...", self.OnSeparateAtoms),
+    ])
     self.ShowMenu(labels_and_actions, source_window)
 
   def ShowChainMenu (self, chain, source_window) :
@@ -547,10 +563,19 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     self.ShowMenu(labels_and_actions, source_window)
 
   def ShowMenu (self, items, source_window) :
-    menu = wx.Menu()
-    for label, action in items :
-      item = menu.Append(-1, label)
+    def add_to_menu (m, label, action) :
+      item = m.Append(-1, label)
       source_window.Bind(wx.EVT_MENU, action, item)
+    menu = wx.Menu()
+    for entry in items :
+      if isinstance(entry, list) :
+        advanced_menu = wx.Menu()
+        menu.AppendMenu(-1, "Advanced options", advanced_menu)
+        for label, action in entry :
+          add_to_menu(advanced_menu, label, action)
+      else :
+        label, action = entry
+        add_to_menu(menu, label, action)
     source_window.PopupMenu(menu)
     menu.Destroy()
 
@@ -668,19 +693,6 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     self.PushState("converted MSE to MET")
 
   # residue_group
-  def OnSetResseq (self, event) :
-    item, residue_group = self.GetSelectedObject('residue_group')
-    new_resseq = self.GetNewResseq(residue_group.resseq_as_int())
-    assert (new_resseq is not None)
-    if (new_resseq != residue_group.resseq_as_int()) :
-      if (new_resseq > 9999) or (new_resseq < -999) :
-        raise NotImplementedError("Hybrid36 support not available.")
-      else :
-        residue_group.resseq = "%4d" % new_resseq
-      self.SetItemText(item, format_residue_group(residue_group))
-      self.PushState("set residue number to %s" % new_resseq)
-
-  # residue_group
   def OnSetIcode (self, event) :
     item, residue_group = self.GetSelectedObject('residue_group')
     new_icode = self.GetNewIcode(residue_group.icode)
@@ -692,6 +704,15 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         residue_group.icode = new_icode
       self.SetItemText(item, format_residue_group(residue_group))
       self.PushState("set insertion code to '%s'" % new_icode)
+
+  def OnSetResseq (self, event) :
+    item, residue_group = self.GetSelectedObject('residue_group')
+    new_resseq = self.GetNewResseq(residue_group.resseq_as_int())
+    assert (new_resseq is not None)
+    if (new_resseq != residue_group.resseq_as_int()) :
+      residue_group.resseq = "%4d" % new_resseq
+      self.SetItemText(item, format_residue_group(residue_group))
+      self.PushState("set residue number to '%s'" % new_resseq)
 
   def OnRenumberResidues (self, event) :
     items = self.GetSelections()
@@ -1012,6 +1033,47 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       new_occ=new_occ)
     self._hierarchy.atoms().reset_i_seq()
     self.PushState("cloned atom group")
+
+  # atom_group, residue_group
+  def OnSeparateAtoms (self, event) :
+    item, pdb_object = self.GetSelectedObject()
+    assert (type(pdb_object).__name__ in ["atom_group", "residue_group"])
+    confirm_action("This action will divide all atoms in the selected "+
+      "residue into separate residues, and renumber them starting "+
+      "from 1.  Are you sure you want to do this?")
+    if (type(pdb_object).__name__ == "atom_group") :
+      self.SeparateAtoms(item, pdb_object)
+    else :
+      for atom_group in pdb_object.atom_groups() :
+        ag_item = self.FindItem(atom_group)
+        self.SeparateAtoms(ag_item, atom_group)
+
+  def SeparateAtoms (self, item, atom_group) :
+    import iotbx.pdb.hierarchy
+    rg_item = self.GetItemParent(item)
+    chain_item = self.GetItemParent(rg_item)
+    assert (not None in [rg_item, chain_item])
+    rg = atom_group.parent()
+    chain = rg.parent()
+    i = 1
+    for atom in atom_group.atoms() :
+      atom_new = atom.detached_copy()
+      atom_group.remove_atom(atom)
+      atom_item = self.FindItem(atom)
+      self.Delete(atom_item)
+      ag_new = iotbx.pdb.hierarchy.atom_group(resname=atom_group.resname,
+        altloc=atom_group.altloc)
+      ag_new.append_atom(atom_new)
+      rg_new = iotbx.pdb.hierarchy.residue_group(resseq="%d" % i)
+      rg_new.append_atom_group(ag_new)
+      chain.append_residue_group(rg_new)
+      self._InsertResidueGroupItem(chain_item, rg_new)
+      i += 1
+    self.Delete(item)
+    if (len(rg.atoms()) == 0) :
+      chain.remove_residue_group(rg)
+      self.Delete(rg_item)
+    self.PushState("split residue")
 
   # residue_group
   def OnSplitResidue (self, event) :
