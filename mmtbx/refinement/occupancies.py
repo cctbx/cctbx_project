@@ -35,61 +35,62 @@ class manager(object):
           tmp_sel.append(tmp_sel_)
       selections = tmp_sel
     #
-    i_selection = flex.size_t()
-    for s in selections:
-      for ss in s:
-        i_selection.extend(ss)
-    fmodels.fmodel_xray().xray_structure.scatterers().flags_set_grads(
-      state=False)
-    fmodels.fmodel_xray().xray_structure.scatterers().flags_set_grad_occupancy(
-      iselection = i_selection)
-    fmodels.fmodel_xray().xray_structure.adjust_occupancy(
-      occ_max   = occupancy_max,
-      occ_min   = occupancy_min,
-      selection = i_selection)
-    xray_structure_dc = fmodels.fmodel_xray().xray_structure.\
-      deep_copy_scatterers()
-    par_initial = flex.double()
-    occupancies = xray_structure_dc.scatterers().extract_occupancies()
-    constrained_groups_selections = []
-    group_counter = 0
-    for sel in selections:
-      ss = []
-      for sel_ in sel:
-        ss.append(group_counter)
-        group_counter += 1
-        val = flex.mean(occupancies.select(sel_))
-        par_initial.append(val)
-      constrained_groups_selections.append(ss)
-    minimized = None
-    r_work_start = fmodels.fmodel_xray().r_work()
-    for macro_cycle in xrange(number_of_macro_cycles):
-      if(minimized is not None): par_initial = minimized.par_min
-      minimized = minimizer(
-        fmodels                       = fmodels,
-        selections                    = selections,
-        constrained_groups_selections = constrained_groups_selections,
-        par_initial                   = par_initial,
-        max_number_of_iterations      = max_number_of_iterations)
-      if(minimized is not None): par_initial = minimized.par_min
-      set_refinable_parameters(
-        xray_structure     = fmodels.fmodel_xray().xray_structure,
-        parameters         = par_initial,
-        selections         = selections,
-        enforce_positivity = True)
+    if(len(selections)>0):
+      i_selection = flex.size_t()
+      for s in selections:
+        for ss in s:
+          i_selection.extend(ss)
+      fmodels.fmodel_xray().xray_structure.scatterers().flags_set_grads(
+        state=False)
+      fmodels.fmodel_xray().xray_structure.scatterers().flags_set_grad_occupancy(
+        iselection = i_selection)
       fmodels.fmodel_xray().xray_structure.adjust_occupancy(
         occ_max   = occupancy_max,
         occ_min   = occupancy_min,
         selection = i_selection)
-    xray_structure_final = fmodels.fmodel_xray().xray_structure
-    model.xray_structure = xray_structure_final
-    fmodels.update_xray_structure(xray_structure = xray_structure_final,
-                                  update_f_calc  = True)
-    refined_occ = xray_structure_final.scatterers().extract_occupancies().\
-      select(i_selection)
-    assert flex.min(refined_occ) >= occupancy_min
-    assert flex.max(refined_occ) <= occupancy_max
-    self.show(fmodels= fmodels, log = log, message="occupancy refinement: end")
+      xray_structure_dc = fmodels.fmodel_xray().xray_structure.\
+        deep_copy_scatterers()
+      par_initial = flex.double()
+      occupancies = xray_structure_dc.scatterers().extract_occupancies()
+      constrained_groups_selections = []
+      group_counter = 0
+      for sel in selections:
+        ss = []
+        for sel_ in sel:
+          ss.append(group_counter)
+          group_counter += 1
+          val = flex.mean(occupancies.select(sel_))
+          par_initial.append(val)
+        constrained_groups_selections.append(ss)
+      minimized = None
+      r_work_start = fmodels.fmodel_xray().r_work()
+      for macro_cycle in xrange(number_of_macro_cycles):
+        if(minimized is not None): par_initial = minimized.par_min
+        minimized = minimizer(
+          fmodels                       = fmodels,
+          selections                    = selections,
+          constrained_groups_selections = constrained_groups_selections,
+          par_initial                   = par_initial,
+          max_number_of_iterations      = max_number_of_iterations)
+        if(minimized is not None): par_initial = minimized.par_min
+        set_refinable_parameters(
+          xray_structure     = fmodels.fmodel_xray().xray_structure,
+          parameters         = par_initial,
+          selections         = selections,
+          enforce_positivity = True)
+        fmodels.fmodel_xray().xray_structure.adjust_occupancy(
+          occ_max   = occupancy_max,
+          occ_min   = occupancy_min,
+          selection = i_selection)
+      xray_structure_final = fmodels.fmodel_xray().xray_structure
+      model.xray_structure = xray_structure_final
+      fmodels.update_xray_structure(xray_structure = xray_structure_final,
+                                    update_f_calc  = True)
+      refined_occ = xray_structure_final.scatterers().extract_occupancies().\
+        select(i_selection)
+      assert flex.min(refined_occ) >= occupancy_min
+      assert flex.max(refined_occ) <= occupancy_max
+      self.show(fmodels= fmodels, log = log, message="occupancy refinement: end")
 
   def show(self, fmodels, message, log):
     if(log is not None):
