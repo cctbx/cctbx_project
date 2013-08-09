@@ -998,7 +998,10 @@ def exercise_boxing():
   cs=crystal.symmetry(
     unit_cell=(21,37,58,80,111,117),
     space_group_symbol="P1")
-  maptbx.boxes(n_real = n_real, unit_cell = cs.unit_cell(), show=True)
+  maptbx.boxes(n_real = n_real, unit_cell = cs.unit_cell(), show=True,
+    box_size_as_unit_cell_fraction=0.1)
+  maptbx.boxes(n_real = n_real, unit_cell = cs.unit_cell(), show=True,
+    box_size_step=10)
 
 def exercise_hoppe_gassman_modification__and__convert_to_non_negative():
   values = [-2,-1,-0.3,-0.2,-0.1,0,0.1,0.2,0.3,0.4,3,4]
@@ -1030,7 +1033,8 @@ def exercise_set_box():
   cs=crystal.symmetry(
     unit_cell=(21,37,58,80,111,117),
     space_group_symbol="P1")
-  be = maptbx.boxes(n_real = n_real, unit_cell = cs.unit_cell(), show=True)
+  be = maptbx.boxes(n_real = n_real, unit_cell = cs.unit_cell(), show=True,
+    box_size_as_unit_cell_fraction=0.1)
   #
   m1 = flex.double([-1 for i in xrange(n)])
   m1.resize(flex.grid(n_real))
@@ -1064,10 +1068,10 @@ def exercise_kuwahara_filter():
 def run(args):
   assert args in [[], ["--timing"]]
   timing = len(args) != 0
+  exercise_boxing()
   exercise_kuwahara_filter()
   exercise_median_filter()
   exercise_set_box()
-  exercise_boxing()
   exercise_copy()
   exercise_statistics()
   exercise_grid_tags()

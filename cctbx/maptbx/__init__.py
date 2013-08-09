@@ -296,12 +296,14 @@ class crystal_gridding_tags(crystal_gridding):
 
 class boxes(object):
   """
-  Split unit cell into boxes where each box is a cube with edge size box_size_as_unit_cell_fraction.
+  Split unit cell into boxes where each box is a cube with edge size
+  box_size_as_unit_cell_fraction.
   """
   def __init__(self,
                n_real,
                unit_cell,
-               box_size_as_unit_cell_fraction=0.05,
+               box_size_step=None,
+               box_size_as_unit_cell_fraction=None,
                show=True,
                log=None,
                prefix=""):
@@ -309,35 +311,43 @@ class boxes(object):
     a,b,c = unit_cell.parameters()[:3]
     self.n_real = n_real
     ga,gb,gc = a/self.n_real[0], b/self.n_real[1], c/self.n_real[2]
-    #
-    f = box_size_as_unit_cell_fraction**(1./3)
-    box_size_a, box_size_b, box_size_c = 10,10,10 #a*f, b*f, c*f
-    #box_size_a, box_size_b, box_size_c = a*f, b*f, c*f
-    print box_size_a, box_size_b, box_size_c
-    print unit_cell.volume(), box_size_a*box_size_b*box_size_c, \
-      box_size_a*box_size_b*box_size_c/unit_cell.volume()*100
-    #
+    assert [box_size_step, box_size_as_unit_cell_fraction].count(None) == 1
+    if(box_size_as_unit_cell_fraction is not None):
+      f = box_size_as_unit_cell_fraction**(1./3)
+      box_size_a, box_size_b, box_size_c = a*f, b*f, c*f
+    else:
+      box_size_a, box_size_b, box_size_c = \
+        box_size_step,box_size_step,box_size_step
     ba,bb,bc = int(box_size_a/ga), int(box_size_b/gb), int(box_size_c/gc)
     nba,nbb,nbc = self.n_real[0]//ba, self.n_real[1]//bb, self.n_real[2]//bc
     nla,nlb,nlc = self.n_real[0]%ba,  self.n_real[1]%bb,  self.n_real[2]%bc
     if(show):
       print >> log, prefix, "unit cell edges    :", a, b, c
+      print >> log, prefix, "box dimensions     :", box_size_a, box_size_b, box_size_c
       print >> log, prefix, "n1,n2,n3           :", self.n_real
       print >> log, prefix, "step along edges   :", ga,gb,gc
       print >> log, prefix, "points per box edge:", ba,bb,bc
       print >> log, prefix, "number of boxes    :", (nba+1)*(nbb+1)*(nbc+1)
-      #
-      #v = crystal_symmetry.unit_cell().volume()
-      #f = 0.05
-      #print v
-      #print (f*v)**(1./3)
-      #ab,bb,cb = a*f**(1./3), b*f**(1./3), c*f**(1./3)
-      #print ab,bb,cb, ab*bb*cb, (ab*bb*cb)/v*100
-      #STOP()
-      #
+    def regroup(be):
+      maxe = be[len(be)-1][1]
+      step = int(maxe/len(be))
+      result = []
+      for i in xrange(len(be)):
+        if(i==0):
+          l = 0
+          r = step
+        elif(i==len(be)-1):
+          l=i*step
+          r = maxe
+        else:
+          l = i*step
+          r = (i+1)*step
+        result.append([l,r])
+      return result
     be = []
     for i, b in enumerate([ba,bb,bc]):
       be_ = self._box_edges(n_real_1d = self.n_real[i], step=b)
+      be_ = regroup(be_)
       be.append(be_)
       if(show): print >> log, prefix, "box edges %d:"%i, be_
     self.starts = []
@@ -858,12 +868,6 @@ def principal_axes_of_inertia (
     points=sites,
     weights=values)
 
-#def scale_tmp(x,y):
-#  n = flex.sum(flex.abs(x)*flex.abs(y))
-#  d = flex.sum(flex.abs(y)*flex.abs(y))
-#  if(d == 0): return 1
-#  return n/d
-
 class local_scale(object):
   def __init__(
         self,
@@ -872,9 +876,7 @@ class local_scale(object):
         f_map=None,
         map_data=None,
         miller_array=None,
-        d_min = None,
-        hg = True,
-        mean_positive_scale = 1): #XXX =1: more features and noise
+        d_min = None): #XXX =1: more features and noise
     # process inputs
     assert [f_map, map_data].count(None) == 1
     if(f_map is not None):
@@ -890,57 +892,27 @@ class local_scale(object):
     b = boxes(
       n_real     = crystal_gridding.n_real(),
       unit_cell  = crystal_symmetry.unit_cell(),
-      box_size_as_unit_cell_fraction = 0.025)
-    # Truncate high density
-    #mean_positive = flex.mean(map_data.as_1d().select(map_data.as_1d()>0))
-    #map_data = map_data.set_selected(map_data>mean_positive*mean_positive_scale,
-    #  mean_positive*mean_positive_scale)
-    # Apply Hoppe-Gassmann modification
-#    hoppe_gassman_modification2(data=map_data, mean_scale=2, n_iterations=1)
+      box_size_step = 10)
     # Loop over boxes, fill map_result with one box at a time
     self.map_result = flex.double(flex.grid(b.n_real))
     ref_box = None
     for s,e in zip(b.starts, b.ends):
       box = copy(map_data, s, e)
       box.reshape(flex.grid(box.all()))
-      #XXX more features and noise
-      #try:
-      #  ave = flex.mean(box.as_1d().select(box.as_1d()>0))
-      #  box.set_selected(box>ave, ave)
-      #except: print "FAILED, but it's ok"
-#      if(hg): hoppe_gassman_modification(data=box, mean_scale=2, n_iterations=1)
-      #sd = box.sample_standard_deviation()
-      #if(sd!=0): box = box/sd
-      #hoppe_gassman_modification2(data=box, mean_scale=2, n_iterations=1)
       mi,ma,me = box.as_1d().min_max_mean().as_tuple()
       if(mi < ma):
-        o = volume_scale(map = box, n_bins = 1000)
-        box = o.map_data()
-      #hoppe_gassman_modification(data=box, mean_scale=2, n_iterations=1)
-      ###
-      #sc = 1
-      #if(ref_box is None): ref_box = box.deep_copy()
-      #else:
-      #  m1=flex.mean(ref_box)
-      #  m2=flex.mean(box)
-      #  if(m2 != 0): sc = m2/m1
-      #  box = box/sc
-      #
-      #  m1=flex.mean(ref_box)
-      #  m2=flex.mean(box)
-      #  if(m2 != 0): sc2 = m2/m1
-      #  print sc, sc2
-      ###
+        box = volume_scale(map = box, n_bins = 1000).map_data()
       set_box(
         map_data_from = box,
         map_data_to   = self.map_result,
         start         = s,
         end           = e)
-    #hoppe_gassman_modification2(data=self.map_result, mean_scale=2, n_iterations=1)
+    sd = self.map_result.sample_standard_deviation()
+    self.map_result = self.map_result/sd
     if(miller_array is not None):
       complete_set = miller_array
       if(d_min is not None):
-        d_min = miller_array.d_min()#-0.25
+        d_min = miller_array.d_min()
         complete_set = miller_array.complete_set(d_min=d_min)
       self.map_coefficients = complete_set.structure_factors_from_map(
         map            = self.map_result,
