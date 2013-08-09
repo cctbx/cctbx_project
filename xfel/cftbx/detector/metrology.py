@@ -116,6 +116,7 @@ def metrology_as_dxtbx_vectors(params):
         vectors[(d.serial, p.serial, s.serial, a.serial)] = (
           matrix.col((t * 1e3).elems[0:3])
           for t in [v_00, v_01 - v_00, v_10 - v_00])
+
   return vectors
 
 
@@ -141,32 +142,27 @@ def metrology_as_transformation_matrices(params):
   """
 
   d = params.detector
-  o_d = matrix.col(d.orientation)
-  t_d = matrix.col(d.translation)
-  T_d = _transform(o_d, t_d)
+  T_d = _transform(matrix.col(d.orientation),
+                   matrix.col(d.translation))
 
   matrices = {(0,): T_d}
-
   for p in d.panel:
-    o_p = matrix.col(p.orientation).normalize()
-    t_p = matrix.col(p.translation)
-    T_p = _transform(o_p, t_p)
+    T_p = _transform(matrix.col(p.orientation).normalize(),
+                     matrix.col(p.translation))
     T_p = (T_p[0] * T_d[0], T_d[1] * T_p[1])
 
     matrices[(d.serial, p.serial)] = T_p
 
     for s in p.sensor:
-      o_s = matrix.col(s.orientation).normalize()
-      t_s = matrix.col(s.translation)
-      T_s = _transform(o_s, t_s)
+      T_s = _transform(matrix.col(s.orientation).normalize(),
+                       matrix.col(s.translation))
       T_s = (T_s[0] * T_p[0], T_p[1] * T_s[1])
 
       matrices[(d.serial, p.serial, s.serial)] = T_s
 
       for a in s.asic:
-        o_a = matrix.col(a.orientation).normalize()
-        t_a = matrix.col(a.translation)
-        T_a = _transform(o_a, t_a)
+        T_a = _transform(matrix.col(a.orientation).normalize(),
+                         matrix.col(a.translation))
         T_a = (T_a[0] * T_s[0], T_s[1] * T_a[1])
 
         matrices[(d.serial, p.serial, s.serial, a.serial)] = (T_a[0], T_a[1])
