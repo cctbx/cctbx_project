@@ -6,6 +6,7 @@ from cctbx import maptbx
 from cctbx.array_family import flex
 from mmtbx import utils
 from libtbx.test_utils import approx_equal
+from cctbx import crystal
 
 class simple(object):
   def __init__(self,
@@ -23,9 +24,12 @@ class simple(object):
       ignore_line_search_failed_step_at_upper_bound = True,
       ignore_line_search_failed_maxfev              = True)
     self.refined = None
+    self.crystal_symmetry = None
+    self.site_symmetry_table = None
 
   def refine(self, weight, xray_structure):
-    #assert self.selection.size() == xray_structure.scatterers().size()
+    self.crystal_symmetry = xray_structure.crystal_symmetry()
+    self.site_symmetry_table = xray_structure.site_symmetry_table()
     self.refined = maptbx.real_space_refinement_simple.lbfgs(
       selection_variable              = self.selection,
       selection_variable_real_space   = self.selection_real_space,
@@ -42,6 +46,15 @@ class simple(object):
     sites_cart = self.refined.sites_cart
     if(self.selection):
       sites_cart.set_selected(self.selection, self.refined.sites_cart_variable)
+    special_position_indices = self.site_symmetry_table.special_position_indices()
+    if(special_position_indices.size()>0):
+      for i_seq in special_position_indices:
+        sites_cart[i_seq] = crystal.correct_special_position(
+          crystal_symmetry = self.crystal_symmetry,
+          special_op       = self.site_symmetry_table.get(i_seq).special_op(),
+          site_cart        = sites_cart[i_seq],
+          site_label       = None,
+          tolerance        = 1)
     return sites_cart
 
 class diff_map(object):
