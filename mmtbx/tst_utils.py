@@ -1356,6 +1356,9 @@ END
   pdb_in = iotbx.pdb.input(source_info=None,lines=pdb_str)
   hierarchy = pdb_in.construct_hierarchy()
   xrs = pdb_in.xray_structure_simple()
+  xrs.scattering_type_registry(
+    d_min=1.5,
+    table="n_gaussian")
   file_base = "tmp_mmtbx_utils"
   open(file_base+".pdb", "w").write(
     hierarchy.as_pdb_string(crystal_symmetry=xrs))

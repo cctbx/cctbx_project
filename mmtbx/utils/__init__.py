@@ -2681,9 +2681,13 @@ class cmdline_load_pdb_and_data (object) :
         crystal_symmetry=use_symmetry)
       self.processed_pdb_file = None
       self.geometry = None
-    if (params.input.scattering_table == "neutron") :
-      print >> out, "Using scattering table: neutron"
-      self.xray_structure.switch_to_neutron_scattering_dictionary()
+    # set scattering table
+    self.xray_structure.scattering_type_registry(
+      d_min=data_and_flags.f_obs.d_min(),
+      table=params.input.scattering_table)
+    str_utils.make_sub_header("xray_structure summary", out=out)
+    self.xray_structure.scattering_type_registry().show(out = out)
+    self.xray_structure.show_summary()
     self.fmodel = None
     if create_fmodel :
       fmodel = fmodel_simple(
@@ -2705,6 +2709,8 @@ class cmdline_load_pdb_and_data (object) :
         raise_sorry_if_errors=True)
       self.sequence = seq_file.file_object
     self.params = params
+    print >> out
+    print >> out, "End of input processing"
 
 def validate_input_params (params) :
   if params.input.pdb.file_name is None :
