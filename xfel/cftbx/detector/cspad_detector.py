@@ -15,7 +15,6 @@ from xfel.cftbx.detector.generic_detector import GenericDetector
 class CSPadDetector(GenericDetector):
   def __init__(self, filename):
     self.filename = filename
-    self.pixel_size = 0.1
     self.vendortype = "npy_raw"
     self.beamx = 0.
     self.beamy = 0.
@@ -24,6 +23,10 @@ class CSPadDetector(GenericDetector):
     if   attr=='attenuation' : return self._metrology_params.attenuation
     elif attr=='beam_center' : return self._metrology_params.beam_center
     elif attr=='distance' : return self._metrology_params.distance
+    elif attr=='pixel_size':
+      # Return (square) pixel size in mm.
+      assert self._pixel_size[0] == self._pixel_size[1]
+      return self._pixel_size[0] / 1e3
     elif attr=='pulse_length' : return self._metrology_params.pulse_length
     elif attr=='sequence_number' : return self._metrology_params.sequence_number
     elif attr=='timestamp' : return self._metrology_params.timestamp
@@ -55,7 +58,7 @@ class CSPadDetector(GenericDetector):
       assert key in self._matrices
 
     # Assert that all specified pixel sizes and saturated values are
-    # equal.
+    # equal and not None.
     for p in self._metrology_params.detector.panel:
       for s in p.sensor:
         for a in s.asic:
@@ -70,8 +73,8 @@ class CSPadDetector(GenericDetector):
             # XXX real-valued equality!  See
             # cctbx_project/scitbx/math/approx_equal.h
             assert self._saturation == a.saturation
-    assert hasattr(self, "_pixel_size")
-    assert hasattr(self, "_saturation")
+    assert hasattr(self, "_pixel_size") and self._pixel_size is not None
+    assert hasattr(self, "_saturation") and self._saturation is not None
 
     # Determine next multiple of eight.  Set size1 and size2 to the
     # focus of the padded rawdata.
@@ -105,13 +108,8 @@ class CSPadDetector(GenericDetector):
 
   def get_flex_image(self, brightness, **kwargs):
     # no kwargs supported at present
-    """XXX"""
 
     from xfel.cftbx.detector.metrology import get_projection_matrix
-
-    # Horizontal and vertical dimensions of a pixel, in meters.  XXX
-    # Sort out relationship to pixel_size member!
-    pixel_size = [110e-6, 110e-6]
 
     # E maps picture coordinates onto metric Cartesian coordinates,
     # i.e. [row, column, 1 ] -> [x, y, z, 1].  Both frames share the
@@ -119,15 +117,15 @@ class CSPadDetector(GenericDetector):
     # system increases downwards, while the second increases towards
     # the right.  XXX Is this orthographic projection the only one
     # that makes any sense?
-    E = rec(elems=[0, +pixel_size[1], 0,
-                   -pixel_size[0], 0, 0,
+    E = rec(elems=[0, +self._pixel_size[1], 0,
+                   -self._pixel_size[0], 0, 0,
                    0, 0, 0,
                    0, 0, 1],
             n=[4, 3])
 
     # P: [x, y, z, 1] -> [row, column, 1].  Note that self._asic_focus
     # needs to be flipped.
-    Pf = get_projection_matrix(pixel_size,
+    Pf = get_projection_matrix(self._pixel_size,
                                (self._asic_focus[1], self._asic_focus[0]))[0]
 
     # XXX Add ASIC:s in order?  If a point is contained in two ASIC:s
@@ -206,10 +204,8 @@ class CSPadDetector(GenericDetector):
     function returns the updated transformation matrices.
     """
 
-    # XXX Get from elsewhere!
-    pixel_size = [110e-6, 110e-6]
-
-    dx, dy = fast * pixel_size[0], -slow * pixel_size[1]
+    # XXX Should use per-ASIC pixel size from the phil object.
+    dx, dy = fast * self._pixel_size[0], -slow * self._pixel_size[1]
 
     for key, (Tf, Tb) in self._matrices.iteritems():
       if (len(key) == 4 and key[1] == serial):
