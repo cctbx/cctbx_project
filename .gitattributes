@@ -2484,7 +2484,6 @@ xfel/SConscript -text
 xfel/__init__.py -text
 xfel/cftbx/__init__.py -text
 xfel/cftbx/detector/__init__.py -text
-xfel/cftbx/detector/cspad_detector.py -text
 xfel/cftbx/detector/generic_detector.py -text
 xfel/cftbx/detector/metrology2phil.py -text
 xfel/command_line/__init__.py -text

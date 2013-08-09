@@ -1,8 +1,8 @@
-from __future__ import division
-
-# -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
+# -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
-# $Id: cspad_detector.py 371 2013-04-14 18:25:42Z sauter $
+# $Id$
+
+from __future__ import division
 
 import math
 
@@ -254,70 +254,6 @@ class CSPadDetector(GenericDetector):
       return None
 
 
-  def _average_transformation(self, matrices, keys):
-    """The _average_transformation() function determines the average
-    rotation and translation from the transformation matrices in @p
-    matrices with keys matching @p keys.  The function returns a
-    two-tuple of the average rotation in quaternion representation and
-    the average translation.
-    """
-
-    from xfel.cftbx.detector.metrology import _transform # XXX private!
-    from scitbx.matrix import zeros
-    from tntbx import svd
-
-    # Sum all rotation matrices and translation vectors.
-    sum_R = flex.double(flex.grid(3, 3))
-    sum_t = flex.double(flex.grid(3, 1))
-    nmemb = 0
-    for key in keys:
-      T = matrices[key][1]
-      sum_R += flex.double([T(0, 0), T(0, 1), T(0, 2),
-                            T(1, 0), T(1, 1), T(1, 2),
-                            T(2, 0), T(2, 1), T(2, 2)])
-      sum_t += flex.double([T(0, 3), T(1, 3), T(2, 3)])
-      nmemb += 1
-    if (nmemb == 0):
-      # Return zero-rotation and zero-translation.
-      return (col([1, 0, 0, 0]), zeros((3, 1)))
-
-    # Calulate average rotation matrix as U * V^T where sum_R = U * S
-    # * V^T and S diagonal (Curtis et al. (1993) 377-385 XXX proper
-    # citation, repeat search), and convert to quaternion.
-    svd = svd(sum_R)
-    R_avg = sqr(list(svd.u().matrix_multiply_transpose(svd.v())))
-    o_avg = R_avg.r3_rotation_matrix_as_unit_quaternion()
-    t_avg = col(list(sum_t / nmemb))
-
-    return (o_avg, t_avg)
-
-
-  def _regularize_transformations(self, matrices, key=(0,)):
-    """The _regularize_transformations() function recursively sets the
-    transformation of each element to the average transformation of
-    its children.  XXX Round average orientations to multiples of 90
-    degrees?  XXX Should they maybe return matrices instead?.
-    """
-
-    from xfel.cftbx.detector.metrology import _transform # XXX private!
-
-    # The length of the key tuple identifies the current recursion
-    # depth.
-    next_depth = len(key) + 1
-
-    # Base case: return if at the maximum depth.
-    keys = [k for k in matrices.keys()
-            if (len(k) == next_depth and k[0:next_depth - 1] == key)]
-    if (len(keys) == 0):
-      return
-
-    # Recursion: regularize at next depth, and get the average.
-    for k in keys:
-      self._regularize_transformations(matrices, k)
-    o, t = self._average_transformation(matrices, keys)
-    matrices[key] = _transform(o, t)
-
-
   def _matrix_as_string(self, T):
     """XXX other uses?"""
 
@@ -337,11 +273,12 @@ class CSPadDetector(GenericDetector):
     object.
     """
 
-    from xfel.cftbx.detector.metrology2phil import master_phil
     from libtbx import phil
+    from xfel.cftbx.detector.metrology import regularize_transformation_matrices
+    from xfel.cftbx.detector.metrology2phil import master_phil
 
     # XXX Experimental!
-    self._regularize_transformations(self._matrices)
+    regularize_transformation_matrices(self._matrices)
 
     (Tf_d, Tb_d) = self._matrices[(0,)]
     metrology_str = "detector {\n"
