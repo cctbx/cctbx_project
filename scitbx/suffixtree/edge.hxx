@@ -153,6 +153,168 @@ template<
   typename SuffixLabel,
   template< typename, typename > class NodeAdapter
   >
+typename Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::const_ptr_type
+Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::get_parent() const
+{
+  const_ptr_type parent = this->parent().lock();
+
+  if ( not parent )
+  {
+    throw unavailable();
+  }
+
+  return parent;
+}
+
+template<
+  typename Glyph,
+  typename Index,
+  typename WordLength,
+  typename SuffixLabel,
+  template< typename, typename > class NodeAdapter
+  >
+typename Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::ptr_type
+Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::get_parent()
+{
+  ptr_type parent = this->parent().lock();
+
+  if ( not parent )
+  {
+    throw unavailable();
+  }
+
+  return parent;
+}
+
+template<
+  typename Glyph,
+  typename Index,
+  typename WordLength,
+  typename SuffixLabel,
+  template< typename, typename > class NodeAdapter
+  >
+typename Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::const_ptr_type
+Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::get_suffix() const
+{
+  const_ptr_type suffix = this->suffix().lock();
+
+  if ( not suffix )
+  {
+    throw unavailable();
+  }
+
+  return suffix;
+}
+
+template<
+  typename Glyph,
+  typename Index,
+  typename WordLength,
+  typename SuffixLabel,
+  template< typename, typename > class NodeAdapter
+  >
+typename Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::ptr_type
+Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::get_suffix()
+{
+  ptr_type suffix = this->suffix().lock();
+
+  if ( not suffix )
+  {
+    throw unavailable();
+  }
+
+  return suffix;
+}
+
+template<
+  typename Glyph,
+  typename Index,
+  typename WordLength,
+  typename SuffixLabel,
+  template< typename, typename > class NodeAdapter
+  >
+typename Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::const_ptr_type
+Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::get_child_with_label(
+  glyph_type const& label
+  ) const
+{
+  const_iterator it = find( label );
+
+  if ( it == end() )
+  {
+    throw nonexistent();
+  }
+
+  return it->second;
+}
+
+template<
+  typename Glyph,
+  typename Index,
+  typename WordLength,
+  typename SuffixLabel,
+  template< typename, typename > class NodeAdapter
+  >
+typename Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::ptr_type
+Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::get_child_with_label(
+  glyph_type const& label
+  )
+{
+  iterator it = find( label );
+
+  if ( it == end() )
+  {
+    throw nonexistent();
+  }
+
+  return it->second;
+}
+
+template<
+  typename Glyph,
+  typename Index,
+  typename WordLength,
+  typename SuffixLabel,
+  template< typename, typename > class NodeAdapter
+  >
+void
+Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::attach_child(
+  ptr_type const& child,
+  glyph_type const& label
+  )
+{
+  std::pair< typename edge_type::iterator, bool > res = insert( value_type( label, child ) );
+
+  if ( not res.second )
+  {
+    res.first->second = child;
+  }
+}
+
+template<
+  typename Glyph,
+  typename Index,
+  typename WordLength,
+  typename SuffixLabel,
+  template< typename, typename > class NodeAdapter
+  >
+bool
+Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::attach_child_if_not_present(
+  ptr_type const& child,
+  glyph_type const& label
+  )
+{
+  return insert( value_type( label, child ) ).second;
+}
+
+
+template<
+  typename Glyph,
+  typename Index,
+  typename WordLength,
+  typename SuffixLabel,
+  template< typename, typename > class NodeAdapter
+  >
 typename Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::ptr_type
 Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::root()
 {
@@ -756,3 +918,4 @@ Leaf< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::is_leaf() const
 {
   return true;
 }
+

@@ -2,13 +2,10 @@
 #define SUFFIXTREE_TREE_HPP_
 
 #include <scitbx/suffixtree/edge.hpp>
+#include <scitbx/suffixtree/exception.hpp>
 
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
-
-
-#include <utility>
-#include <iostream>
 
 namespace scitbx
 {
@@ -24,6 +21,56 @@ template< typename Tree >
 class Builder;
 
 } // namespace builder
+
+template< typename Edge, typename Word >
+class Cursor
+{
+public:
+  typedef Edge edge_type;
+  typedef edge::Traits< Edge > edge_traits;
+  typedef typename edge_traits::ptr_type edge_ptr_type;
+  typedef typename edge_traits::weak_ptr_type edge_weak_ptr_type;
+  typedef typename edge_traits::iterator edge_iterator;
+  typedef typename edge_type::glyph_type glyph_type;
+  typedef typename edge_type::index_type index_type;
+
+  typedef Word word_type;
+  typedef boost::shared_ptr< word_type const > word_ptr_type;
+  typedef typename word_type::length_type length_type;
+  typedef typename word_type::const_iterator word_iterator;
+
+private:
+  word_ptr_type word_ptr_;
+  edge_ptr_type edge_ptr_;
+  index_type index_;
+
+public:
+  Cursor(edge_ptr_type const& edge_ptr, word_ptr_type const& word_ptr);
+  ~Cursor();
+
+  edge_ptr_type const& get_edge_ptr() const;
+  index_type const& get_index() const;
+
+  bool is_at_edge_top() const;
+  bool is_at_edge_bottom() const;
+  bool is_at_leaf_bottom() const;
+
+  glyph_type const& get_current_character() const;
+  //edge_ptr_type get_child_with_label(glyph_type const& glyph) const;
+
+  void forth_with(glyph_type const& glyph);
+  void break_edge_here();
+  void to_suffix_position();
+
+private:
+  void forth_to_child(glyph_type const& label);
+  void forth_on_edge();
+  void path_jump_from_top_of(
+    edge_ptr_type edge_ptr,
+    word_iterator begin,
+    word_iterator end
+    );
+};
 
 template<
   typename Word,
@@ -57,6 +104,8 @@ public:
   typedef typename edge_type::weak_ptr_type edge_weak_ptr_type;
   typedef typename edge_type::const_weak_ptr_type const_edge_weak_ptr_type;
 
+  typedef Cursor< edge_type const, word_type const> cursor_type;
+
 private:
   edge_ptr_type root_;
   word_ptr_type word_ptr_;
@@ -69,66 +118,23 @@ public:
   const_edge_ptr_type root() const;
   word_type const& word() const;
   bool in_construction() const;
+  cursor_type cursor() const;
 
   friend class builder::Builder< Tree >;
+
+  template< typename W, typename SL, template< typename, typename > class NA >
+  friend bool operator ==(Tree< W, SL, NA > const& lhs, Tree< W, SL, NA > const& rhs);
 };
 
-template< typename Tree >
-class Linkage
-{
-public:
-  typedef Tree tree_type;
-  typedef typename tree_type::edge_type edge_type;
-  typedef typename tree_type::edge_ptr_type edge_ptr_type;
-  typedef typename tree_type::glyph_type glyph_type;
-
-public:
-  static edge_ptr_type get_parent(edge_ptr_type const& edge_ptr);
-  static edge_ptr_type get_suffix(edge_ptr_type const& edge_ptr);
-  static edge_ptr_type get_child_with_label(
-    edge_ptr_type const& edge_ptr,
-    glyph_type const& glyph
-    );
-};
-
-template< typename Tree >
-class Movement
-{
-public:
-  typedef Tree tree_type;
-
-  typedef typename tree_type::edge_type edge_type;
-  typedef typename tree_type::edge_ptr_type edge_ptr_type;
-  typedef typename tree_type::word_type word_type;
-  typedef typename tree_type::word_ptr_type word_ptr_type;
-  typedef typename tree_type::glyph_type glyph_type;
-  typedef typename tree_type::index_type index_type;
-  typedef typename word_type::length_type length_type;
-  typedef typename word_type::const_iterator word_iterator;
-  typedef typename edge_type::iterator edge_iterator;
-
-  typedef std::pair< edge_ptr_type, index_type > cursor_type;
-
-  typedef Linkage< tree_type > linkage;
-
-public:
-  static edge_ptr_type const& get_edge_ptr(cursor_type const& cursor);
-  static edge_ptr_type& get_edge_ptr(cursor_type& cursor);
-  static index_type const& get_index(cursor_type const& cursor);
-  static index_type& get_index(cursor_type& cursor);
-
-  static bool is_at_edge_bottom(cursor_type const& cursor);
-
-  static void set_to_edge_top(cursor_type& cursor, edge_ptr_type const& edge_ptr);
-  static void forth(cursor_type& cursor);
-
-  static cursor_type get_path_jump_destination(
-    edge_ptr_type edge_ptr,
-    word_iterator begin,
-    word_iterator end
-    );
-  static cursor_type get_suffix_position(cursor_type const& cursor, word_type const& word);
-};
+template<
+  typename Word,
+  typename SuffixLabel,
+  template< typename, typename > class NodeAdaptor
+  >
+bool operator ==(
+  Tree< Word, SuffixLabel, NodeAdaptor > const& lhs,
+  Tree< Word, SuffixLabel, NodeAdaptor > const& rhs
+  );
 
 #include "tree.hxx"
 

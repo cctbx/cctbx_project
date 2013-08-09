@@ -11,7 +11,9 @@
 
 #include <boost/shared_ptr.hpp>
 #include <boost/functional.hpp>
+#include <boost/range/iterator_range.hpp>
 
+#include <boost_adaptbx/boost_range_python.hpp>
 #include <scitbx/suffixtree/edge.hpp>
 #include <scitbx/suffixtree/iterator.hpp>
 
@@ -21,51 +23,6 @@ namespace suffixtree
 {
 namespace python
 {
-
-template< typename Iterator >
-class PythonIterator
-{
-public:
-  typedef Iterator iterator_type;
-  typedef typename iterator_type::value_type value_type;
-
-private:
-  iterator_type current_;
-  iterator_type end_;
-
-public:
-  PythonIterator(iterator_type const& begin, iterator_type const& end)
-    : current_( begin ), end_( end )
-  {};
-  ~PythonIterator()
-  {};
-
-  value_type next()
-  {
-    if ( current_ == end_ )
-    {
-      PyErr_SetString(PyExc_StopIteration, "No more data.");
-      boost::python::throw_error_already_set();
-    }
-
-    return *( current_++ );
-  }
-
-  static boost::python::object pass_through(boost::python::object const& o)
-  {
-    return o;
-  }
-
-  static void wrap(const char* python_name)
-  {
-    using namespace boost::python;
-
-    class_< PythonIterator >(python_name, no_init)
-      .def( "next", &PythonIterator::next)
-      .def("__iter__", PythonIterator::pass_through )
-      ;
-  }
-};
 
 template<
   typename Glyph,
@@ -158,29 +115,27 @@ struct edge_exports
 
   static const_ptr_type node_get_item_const(const_ptr_type const& edge_ptr, glyph_type const& key)
   {
-    typename edge_type::const_iterator it = edge_ptr->find( key );
-
-    if ( it != edge_ptr->end() )
+    try
     {
-      return it->second;
+      return edge_ptr->get_child_with_label( key );
     }
-    else
+
+    catch ( nonexistent& e )
     {
-      throw_python_key_error();
+        throw_python_key_error();
     }
   }
 
   static ptr_type node_get_item(ptr_type const& edge_ptr, glyph_type const& key)
   {
-    typename edge_type::iterator it = edge_ptr->find( key );
-
-    if ( it != edge_ptr->end() )
+    try
     {
-      return it->second;
+      return edge_ptr->get_child_with_label( key );
     }
-    else
+
+    catch ( nonexistent& e )
     {
-      throw_python_key_error();
+        throw_python_key_error();
     }
   }
 
@@ -192,14 +147,7 @@ struct edge_exports
     ptr_type const& value
     )
   {
-    std::pair< typename edge_type::iterator, bool > res = edge_ptr->insert(
-      typename edge_type::value_type( key, value )
-      );
-
-    if ( not res.second )
-    {
-      ( res.first )->second = value;
-    }
+    edge_ptr->attach_child( value, key );
   }
 
   static boost::python::list node_keys_const(const_ptr_type const& edge_ptr)
@@ -224,32 +172,60 @@ struct edge_exports
     return node_keys_const( to_const_ptr( edge_ptr ) );
   }
 
-  static const_weak_ptr_type const get_parent_const(const_ptr_type const& edge_ptr)
+  static boost::python::object const get_parent_const(const_ptr_type const& edge_ptr)
   {
-    return edge_ptr->parent();
+    try
+    {
+      return boost::python::object( edge_ptr->get_parent() );
+    }
+    catch ( unavailable& e )
+    {
+      return boost::python::object();
+    }
   }
 
-  static weak_ptr_type const get_parent(ptr_type const& edge_ptr)
+  static boost::python::object const get_parent(ptr_type const& edge_ptr)
   {
-    return edge_ptr->parent();
+    try
+    {
+      return boost::python::object( edge_ptr->get_parent() );
+    }
+    catch ( unavailable& e )
+    {
+      return boost::python::object();
+    }
   }
 
-  static void set_parent(ptr_type const& edge_ptr, weak_ptr_type const& parent)
+  static void set_parent(ptr_type const& edge_ptr, ptr_type const& parent)
   {
     edge_ptr->parent() = parent;
   }
 
-  static const_weak_ptr_type const get_suffix_const(const_ptr_type const& edge_ptr)
+  static boost::python::object const get_suffix_const(const_ptr_type const& edge_ptr)
   {
-    return edge_ptr->suffix();
+    try
+    {
+      return boost::python::object( edge_ptr->get_suffix() );
+    }
+    catch ( unavailable& e )
+    {
+      return boost::python::object();
+    }
   }
 
-  static weak_ptr_type const get_suffix(ptr_type const& edge_ptr)
+  static boost::python::object const get_suffix(ptr_type const& edge_ptr)
   {
-    return edge_ptr->suffix();
+    try
+    {
+      return boost::python::object( edge_ptr->get_suffix() );
+    }
+    catch ( unavailable& e )
+    {
+      return boost::python::object();
+    }
   }
 
-  static void set_suffix(ptr_type const& edge_ptr, weak_ptr_type const& suffix)
+  static void set_suffix(ptr_type const& edge_ptr, ptr_type const& suffix)
   {
     edge_ptr->suffix() = suffix;
   }
@@ -274,44 +250,6 @@ struct edge_exports
     return edge_ptr->is_leaf();
   }
 
-  static boost::python::object const_weak_ptr_upgrade(const_weak_ptr_type const& weak_edge)
-  {
-    const_ptr_type edge_ptr = weak_edge.lock();
-
-    if ( edge_ptr )
-    {
-        return boost::python::object( edge_ptr );
-    }
-    else
-    {
-      return boost::python::object();
-    }
-  }
-
-  static boost::python::object weak_ptr_upgrade(weak_ptr_type const& weak_edge)
-  {
-    ptr_type edge_ptr = weak_edge.lock();
-
-    if ( edge_ptr )
-    {
-      return boost::python::object( edge_ptr );
-    }
-    else
-    {
-      return boost::python::object();
-    }
-  }
-
-  static const_weak_ptr_type const_ptr_downgrade(const_ptr_type const& edge_ptr)
-  {
-    return edge_ptr;
-  }
-
-  static weak_ptr_type ptr_downgrade(ptr_type const& edge_ptr)
-  {
-    return edge_ptr;
-  }
-
   static std::size_t calculate_hash_const(const_ptr_type const& edge_ptr)
   {
     return boost::hash_value( edge_ptr );
@@ -323,11 +261,11 @@ struct edge_exports
   }
 
   template< typename IteratorType >
-  static PythonIterator< IteratorType > get_iterator(
+  static boost::iterator_range< IteratorType > get_range(
     typename IteratorType::ptr_type const& root
     )
   {
-    return PythonIterator< IteratorType >(
+    return boost::iterator_range< IteratorType >(
       IteratorType::begin( root ),
       IteratorType::end( root )
       )
@@ -352,7 +290,6 @@ struct edge_exports
       .add_property( "suffix", get_suffix, set_suffix )
       .def( "is_root", is_root )
       .def( "is_leaf", is_leaf )
-      .def( "weakref", ptr_downgrade )
       .def( "is_empty", node_empty )
       .def( "__contains__", node_contains, arg( "key" ) )
       .def( "__getitem__", node_get_item, arg( "key" ) )
@@ -365,10 +302,6 @@ struct edge_exports
       .def( "__hash__", calculate_hash )
       ;
 
-    class_< weak_ptr_type >( "weak_edge", no_init )
-      .def( "__call__", weak_ptr_upgrade )
-      ;
-
     class_< const_ptr_type >( "const_edge", no_init )
       .def( "from_edge", to_const_ptr )
       .staticmethod( "from_edge" )
@@ -379,7 +312,6 @@ struct edge_exports
       .add_property( "suffix", get_suffix_const )
       .def( "is_leaf", is_leaf_const )
       .def( "is_root", is_root_const )
-      .def( "weakref", const_ptr_downgrade )
       .def( "is_empty", node_empty_const )
       .def( "__contains__", node_contains_const, arg( "key" ) )
       .def( "__getitem__", node_get_item_const, arg( "key" ) )
@@ -391,34 +323,39 @@ struct edge_exports
       .def( "__hash__", calculate_hash_const )
       ;
 
-    class_< const_weak_ptr_type >( "const_weak_edge", no_init )
-      .def( "__call__", const_weak_ptr_upgrade )
-      ;
-
-    PythonIterator< iterator::PreOrder< edge_type > >::wrap( "preorder_iterator" );
+    boost_adaptbx::python::generic_range_wrapper<
+      boost::iterator_range< iterator::PreOrder< edge_type > >
+      >::wrap( "preorder_iteration_range" );
     def(
       "preorder_iteration",
-      get_iterator< iterator::PreOrder< edge_type > >,
+      get_range< iterator::PreOrder< edge_type > >,
       arg( "root" )
       );
 
-    PythonIterator< iterator::PreOrder< edge_type const > >::wrap( "const_preorder_iterator" );
+    boost_adaptbx::python::generic_range_wrapper<
+      boost::iterator_range< iterator::PreOrder< edge_type const > >
+      >::wrap( "preorder_const_iteration_range" );
     def(
       "preorder_iteration",
-      get_iterator< iterator::PreOrder< edge_type const > >,
+      get_range< iterator::PreOrder< edge_type const > >,
       arg( "root" )
       );
 
-    PythonIterator< iterator::PostOrder< edge_type > >::wrap( "postorder_iterator" );
+    boost_adaptbx::python::generic_range_wrapper<
+      boost::iterator_range< iterator::PostOrder< edge_type > >
+      >::wrap( "postorder_iteration_range" );
     def(
       "postorder_iteration",
-      get_iterator< iterator::PostOrder< edge_type > >,
+      get_range< iterator::PostOrder< edge_type > >,
       arg( "root" )
       );
-    PythonIterator< iterator::PostOrder< edge_type const > >::wrap( "const_postorder_iterator" );
+
+    boost_adaptbx::python::generic_range_wrapper<
+      boost::iterator_range< iterator::PostOrder< edge_type const > >
+      >::wrap( "postorder_const_iteration_range" );
     def(
       "postorder_iteration",
-      get_iterator< iterator::PostOrder< edge_type const > >,
+      get_range< iterator::PostOrder< edge_type const > >,
       arg( "root" )
       );
   }

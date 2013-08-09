@@ -54,7 +54,7 @@ Ukkonen< Tree >::Ukkonen(tree_type const& tree)
   : tree_root_( Builder< Tree >::tree_root( tree ) ),
     tree_word_ptr_( Builder< Tree >::tree_word_ptr( tree ) ),
     tree_construction_ptr_( Builder< Tree >::tree_construction_ptr( tree ) ),
-    position_( tree_root_, const_cast< edge_type const& >( *tree_root_ ).start() ),
+    position_( tree_root_, tree_word_ptr_ ),
     phase_( *( tree_word_ptr_->length_ptr() ) ),
     extension_( phase_ ),
     is_attached_( true )
@@ -119,69 +119,30 @@ Ukkonen< Tree >::push_back(glyph_type const& glyph)
 
   while ( extension_ <= phase_ )
   {
-    if ( movement::is_at_edge_bottom( position_ ) )
+    try
     {
-      edge_ptr_type& edge_ptr = movement::get_edge_ptr( position_ );
-      typename edge_type::iterator it = edge_ptr->find( glyph );
-
-      if ( it != edge_ptr->end() )
-      {
-        movement::set_to_edge_top( position_, it->second );
-        movement::forth( position_ );
-        break;
-      }
+      position_.forth_with( glyph );
+      break;
     }
+    catch ( nonexistent& e )
+    {}
 
-    else
+    catch ( mismatch& e )
     {
-
-      if ( glyph == word[ movement::get_index( position_ ) ] )
-      {
-        movement::forth( position_ );
-        break;
-      }
-
-      else
-      {
-        edge_ptr_type const& edge_ptr = movement::get_edge_ptr( position_ );
-        index_type const& index = movement::get_index( position_ );
-        index_type start = edge_ptr->start();
-        edge_ptr_type new_branch_ptr = edge_type::branch( start, index );
-
-        edge_weak_ptr_type parent_weak_ptr = edge_ptr->parent();
-        new_branch_ptr->parent() = parent_weak_ptr;
-        edge_ptr_type parent_ptr = parent_weak_ptr.lock();
-        assert ( parent_ptr ); // root held
-        typename edge_type::iterator pit = parent_ptr->find( word[ start ] );
-        assert ( pit != parent_ptr->end() );
-        pit->second = new_branch_ptr;
-
-        edge_ptr->start() = position_.second;
-        edge_ptr->parent() = new_branch_ptr;
-
-        std::pair< typename edge_type::iterator, bool > res = new_branch_ptr->insert(
-          typename edge_type::value_type( word[ index ], edge_ptr )
-          );
-        assert ( res.second );
-
-        suffix_linker( new_branch_ptr );
-
-        movement::get_edge_ptr( position_ ) = new_branch_ptr;
-      }
+      position_.break_edge_here();
+      suffix_linker( position_.get_edge_ptr() );
     }
-    edge_ptr_type& current = movement::get_edge_ptr( position_ );
+    edge_ptr_type const& current = position_.get_edge_ptr();
     edge_ptr_type new_leaf = edge_type::leaf( phase_, word.length_ptr(), extension_ );
-    std::pair< typename edge_type::iterator, bool > res = current->insert(
-      typename edge_type::value_type( word[ phase_ ], new_leaf )
-      );
-    assert ( res.second );
+    bool res = current->attach_child_if_not_present( new_leaf, word[ phase_ ] );
+    assert ( res );
     new_leaf->parent() = current;
 
-    position_ = movement::get_suffix_position( position_, word );
+    position_.to_suffix_position();
     ++extension_;
   }
 
   ++phase_;
-  suffix_linker( position_.first );
+  suffix_linker( position_.get_edge_ptr() );
 }
 

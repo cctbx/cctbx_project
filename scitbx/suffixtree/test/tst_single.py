@@ -45,21 +45,14 @@ class TestEdge(unittest.TestCase):
     
   def test_root(self):
     
-    wr = self.root.weakref()
-    self.assertTrue( isinstance( wr, single.weak_edge ) )
-    self.assertFalse( wr == self.root )
-    self.assertTrue( wr != self.root )
-    self.assertTrue( isinstance( wr(), single.edge ) )
-    self.assertEqual( wr(), self.root )
-    
     self.assertEqual( self.root.start, 0 )
     self.assertRaises( RuntimeError, setattr, self.root, "start", 1 )
     self.assertEqual( self.root.stop, 0 )
     self.assertRaises( RuntimeError, getattr, self.root, "label" )
     self.assertRaises( RuntimeError, getattr, self.root, "parent" )
-    self.assertRaises( RuntimeError, setattr, self.root, "parent", self.branch.weakref() )
+    self.assertRaises( RuntimeError, setattr, self.root, "parent", self.branch )
     self.assertRaises( RuntimeError, getattr, self.root, "suffix" )
-    self.assertRaises( RuntimeError, setattr, self.root, "suffix", self.branch.weakref() )
+    self.assertRaises( RuntimeError, setattr, self.root, "suffix", self.branch )
     
     self.assertTrue( self.root.is_root() )
     self.assertFalse( self.root.is_leaf() )
@@ -89,13 +82,6 @@ class TestEdge(unittest.TestCase):
     self.assertEqual( hash( self.root ), hash( cr ) )
     self.assertNotEqual( single.edge.root(), cr )
     
-    wcr = cr.weakref()
-    self.assertTrue( isinstance( wcr, single.const_weak_edge ) )
-    self.assertFalse( wcr == cr )
-    self.assertTrue( wcr != cr )
-    self.assertTrue( isinstance( wcr(), single.const_edge ) )
-    self.assertEqual( wcr(), cr )
-    
     self.assertEqual( cr.start, 0 )
     self.assertEqual( cr.stop, 0 )
     self.assertRaises( RuntimeError, getattr, cr, "label" )
@@ -114,28 +100,21 @@ class TestEdge(unittest.TestCase):
   
   def test_branch(self):
     
-    wb = self.branch.weakref()
-    self.assertTrue( isinstance( wb, single.weak_edge ) )
-    self.assertFalse( wb == self.branch )
-    self.assertTrue( wb != self.branch )
-    self.assertTrue( isinstance( wb(), single.edge ) )
-    self.assertEqual( wb(), self.branch )
-    
     self.assertEqual( self.branch.start, 1 )
     self.branch.start = 3
     self.assertEqual( self.branch.start, 3 )
     self.assertEqual( self.branch.stop, 2 )
     self.assertRaises( RuntimeError, getattr, self.branch, "label" )
+  
+    self.assertEqual( self.branch.parent, None )
+    self.branch.parent = self.root
+    self.assertTrue( isinstance( self.branch.parent, single.edge ) )
+    self.assertEqual( self.branch.parent, self.root )
     
-    self.assertTrue( isinstance( self.branch.parent, single.weak_edge ) )
-    self.assertEqual( self.branch.parent(), None )
-    self.branch.parent = self.root.weakref()
-    self.assertEqual( self.branch.parent(), self.root )
-    
-    self.assertTrue( isinstance( self.branch.suffix, single.weak_edge ) )
-    self.assertEqual( self.branch.suffix(), None )
-    self.branch.suffix = self.root.weakref()
-    self.assertEqual( self.branch.suffix(), self.root )
+    self.assertEqual( self.branch.suffix, None )
+    self.branch.suffix = self.root
+    self.assertTrue( isinstance( self.branch.parent, single.edge ) )
+    self.assertEqual( self.branch.suffix, self.root )
     
     self.assertFalse( self.branch.is_root() )
     self.assertFalse( self.branch.is_leaf() )
@@ -165,26 +144,19 @@ class TestEdge(unittest.TestCase):
     self.assertEqual( hash( self.branch ), hash( cb ) )
     self.assertNotEqual( single.edge.branch( start = 1, stop = 2 ), cb )
     
-    wcb = cb.weakref()
-    self.assertTrue( isinstance( wcb, single.const_weak_edge ) )
-    self.assertFalse( wcb == cb )
-    self.assertTrue( wcb != cb )
-    self.assertTrue( isinstance( wcb(), single.const_edge ) )
-    self.assertEqual( wcb(), cb )
-    
     self.assertEqual( cb.start, 1 )
     self.assertEqual( cb.stop, 2 )
     self.assertRaises( RuntimeError, getattr, cb, "label" )
     
-    self.assertTrue( isinstance( cb.parent, single.const_weak_edge ) )
-    self.assertEqual( cb.parent(), None )
-    self.branch.parent = self.root.weakref()
-    self.assertEqual( cb.parent(), self.root )
+    self.assertEqual( cb.parent, None )
+    self.branch.parent = self.root
+    self.assertTrue( isinstance( cb.parent, single.const_edge ) )
+    self.assertEqual( cb.parent, self.root )
     
-    self.assertTrue( isinstance( cb.suffix, single.const_weak_edge ) )
-    self.assertEqual( cb.suffix(), None )
-    self.branch.suffix = self.root.weakref()
-    self.assertEqual( cb.suffix(), self.root )
+    self.assertEqual( cb.suffix, None )
+    self.branch.suffix = self.root
+    self.assertTrue( isinstance( cb.suffix, single.const_edge ) )
+    self.assertEqual( cb.suffix, self.root )
     
     self.assertFalse( cb.is_root() )
     self.assertFalse( cb.is_leaf() )
@@ -198,13 +170,6 @@ class TestEdge(unittest.TestCase):
   
   def test_leaf(self):
     
-    wl = self.leaf.weakref()
-    self.assertTrue( isinstance( wl, single.weak_edge ) )
-    self.assertFalse( wl == self.leaf )
-    self.assertTrue( wl != self.leaf )
-    self.assertTrue( isinstance( wl(), single.edge ) )
-    self.assertEqual( wl(), self.leaf )
-    
     self.assertEqual( self.leaf.start, 4 )
     self.leaf.start = 5
     self.assertEqual( self.leaf.start, 5 )
@@ -216,13 +181,13 @@ class TestEdge(unittest.TestCase):
     
     self.assertEqual( self.leaf.label, 6 )
     
-    self.assertTrue( isinstance( self.leaf.parent, single.weak_edge ) )
-    self.assertEqual( self.leaf.parent(), None )
-    self.leaf.parent = self.root.weakref()
-    self.assertEqual( self.leaf.parent(), self.root )
+    self.assertEqual( self.leaf.parent, None )
+    self.leaf.parent = self.root
+    self.assertTrue( isinstance( self.leaf.parent, single.edge ) )
+    self.assertEqual( self.leaf.parent, self.root )
     
     self.assertRaises( RuntimeError, getattr, self.leaf, "suffix" )
-    self.assertRaises( RuntimeError, setattr, self.leaf, "suffix", self.branch.weakref() )
+    self.assertRaises( RuntimeError, setattr, self.leaf, "suffix", self.branch )
     
     self.assertFalse( self.leaf.is_root() )
     self.assertTrue( self.leaf.is_leaf() )
@@ -246,13 +211,6 @@ class TestEdge(unittest.TestCase):
       cl,
       )
     
-    wcl = cl.weakref()
-    self.assertTrue( isinstance( wcl, single.const_weak_edge ) )
-    self.assertFalse( wcl == cl )
-    self.assertTrue( wcl != cl )
-    self.assertTrue( isinstance( wcl(), single.const_edge ) )
-    self.assertEqual( wcl(), cl )
-    
     self.assertEqual( cl.start, 4 )
     ld = self.word.length()
     self.assertEqual( cl.stop, ld() )
@@ -262,10 +220,10 @@ class TestEdge(unittest.TestCase):
     
     self.assertEqual( cl.label, 6 )
     
-    self.assertTrue( isinstance( cl.parent, single.const_weak_edge ) )
-    self.assertEqual( cl.parent(), None )
-    self.leaf.parent = self.root.weakref()
-    self.assertEqual( cl.parent(), self.root )
+    self.assertEqual( cl.parent, None )
+    self.leaf.parent = self.root
+    self.assertTrue( isinstance( cl.parent, single.const_edge ) )
+    self.assertEqual( cl.parent, self.root )
     
     self.assertRaises( RuntimeError, getattr, cl, "suffix" )
     
@@ -678,17 +636,11 @@ class TestTree(unittest.TestCase):
     tree = single.tree()
     builder = single.ukkonen( tree )
     
-    print "a:"
     builder.append( glyph = "a" )
     self.assertTrue( builder.is_valid )
-    print suffixtree.tree_string( module = single, tree = tree )
-    print
-    
-    print "an:"
+  
     builder.append( glyph = "n" )
     self.assertTrue( builder.is_valid )
-    print suffixtree.tree_string( module = single, tree = tree )
-    print
     
     builder.detach()
     self.assertFalse( builder.is_attached )
@@ -699,32 +651,20 @@ class TestTree(unittest.TestCase):
     self.assertTrue( builder.is_attached )
     self.assertTrue( tree.in_construction )
     
-    
-    print "ana:"
     builder.append( glyph = "a" )
     self.assertFalse( builder.is_valid )
     self.assertRaises( builder.detach )
-    print suffixtree.tree_string( module = single, tree = tree )
-    print
     
-    print "anan:"
     builder.append( glyph = "n" )
     self.assertFalse( builder.is_valid )
     self.assertRaises( builder.detach )
-    print suffixtree.tree_string( module = single, tree = tree )
-    print
     
-    print "anana:"
     builder.append( glyph = "a" )
     self.assertFalse( builder.is_valid )
     self.assertRaises( builder.detach )
-    print suffixtree.tree_string( module = single, tree = tree )
-    print
     
-    print "ananas:"
     builder.append( glyph = "s" )
     self.assertTrue( builder.is_valid )
-    print suffixtree.tree_string( module = single, tree = tree )
     
     builder.detach()
     self.assertFalse( builder.is_attached )
@@ -735,14 +675,91 @@ class TestTree(unittest.TestCase):
     self.assertTrue( builder.is_attached )
     self.assertTrue( tree.in_construction )
     
-    print "ananas$:"
     builder.append( glyph = "$" )
     self.assertTrue( builder.is_valid )
-    print suffixtree.tree_string( module = single, tree = tree )
     
     builder.detach()
     
+    root = tree.root
+    self.assertTrue( root.is_root() )
+    self.assertEqual( set( root.keys() ), set( [ "a", "n", "s", "$" ] ) )
     
+    b_a = root[ "a" ]
+    self.assertFalse( b_a.is_root() )
+    self.assertFalse( b_a.is_leaf() )
+    self.assertEqual( b_a.start, 0 )
+    self.assertEqual( b_a.stop, 1 )
+    self.assertEqual( set( b_a.keys() ), set( [ "n", "s" ] ) )
+    self.assertEqual( b_a.parent, root )
+    
+    b_a_n = b_a[ "n" ]
+    self.assertFalse( b_a_n.is_root() )
+    self.assertFalse( b_a_n.is_leaf() )
+    self.assertEqual( b_a_n.start, 1 )
+    self.assertEqual( b_a_n.stop, 3 )
+    self.assertEqual( set( b_a_n.keys() ), set( [ "n", "s" ] ) )
+    self.assertEqual( b_a_n.parent, b_a )
+    
+    b_a_n_n = b_a_n[ "n" ]
+    self.assertTrue( b_a_n_n.is_leaf() )
+    self.assertEqual( b_a_n_n.start, 3 )
+    self.assertEqual( b_a_n_n.stop, 7 )
+    self.assertEqual( b_a_n_n.label, 0 )
+    self.assertEqual( b_a_n_n.parent, b_a_n )
+    
+    b_a_n_s = b_a_n[ "s" ]
+    self.assertTrue( b_a_n_s.is_leaf() )
+    self.assertEqual( b_a_n_s.start, 5 )
+    self.assertEqual( b_a_n_s.stop, 7 )
+    self.assertEqual( b_a_n_s.label, 2 )
+    self.assertEqual( b_a_n_s.parent, b_a_n )
+    
+    b_a_s = b_a[ "s" ]
+    self.assertTrue( b_a_s.is_leaf() )
+    self.assertEqual( b_a_s.start, 5 )
+    self.assertEqual( b_a_s.stop, 7 )
+    self.assertEqual( b_a_s.label, 4 )
+    self.assertEqual( b_a_s.parent, b_a )
+    
+    b_n = root[ "n" ]
+    self.assertFalse( b_n.is_root() )
+    self.assertFalse( b_n.is_leaf() )
+    self.assertEqual( b_n.start, 1 )
+    self.assertEqual( b_n.stop, 3 )
+    self.assertEqual( set( b_n.keys() ), set( [ "n", "s" ] ) )
+    self.assertEqual( b_n.parent, root )
+    
+    b_n_n = b_n[ "n" ]
+    self.assertTrue( b_n_n.is_leaf() )
+    self.assertEqual( b_n_n.start, 3 )
+    self.assertEqual( b_n_n.stop, 7 )
+    self.assertEqual( b_n_n.label, 1 )
+    self.assertEqual( b_n_n.parent, b_n )
+    
+    b_n_s = b_n[ "s" ]
+    self.assertTrue( b_n_s.is_leaf() )
+    self.assertEqual( b_n_s.start, 5 )
+    self.assertEqual( b_n_s.stop, 7 )
+    self.assertEqual( b_n_s.label, 3 )
+    self.assertEqual( b_n_s.parent, b_n )
+    
+    b_s = root[ "s" ]
+    self.assertTrue( b_s.is_leaf() )
+    self.assertEqual( b_s.start, 5 )
+    self.assertEqual( b_s.stop, 7 )
+    self.assertEqual( b_s.label, 5 )
+    self.assertEqual( b_s.parent, root )
+    
+    b_dl = root[ "$" ]
+    self.assertTrue( b_dl.is_leaf() )
+    self.assertEqual( b_dl.start, 6 )
+    self.assertEqual( b_dl.stop, 7 )
+    self.assertEqual( b_dl.label, 6 )
+    self.assertEqual( b_dl.parent, root )
+    
+    self.assertEqual( b_a.suffix, root )
+    self.assertEqual( b_n.suffix, b_a )
+    self.assertEqual( b_a_n.suffix, b_n )
     
 
 suite_word = unittest.TestLoader().loadTestsFromTestCase(
