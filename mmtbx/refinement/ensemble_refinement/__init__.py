@@ -1816,6 +1816,10 @@ def run(args, command_name = "phenix.ensemble_refinement", log=None,
       self.individual_adp       = False
       self.sites_individual     = flex.bool(size, True)
       self.sites_torsion_angles = None
+      self.torsion_angles       = None
+      self.adp_individual_iso   = None
+      self.adp_individual_aniso = None
+    def inflate(self, **keywords): pass
 
   refinement_flags = rf(size = xray_structure.scatterers().size())
 

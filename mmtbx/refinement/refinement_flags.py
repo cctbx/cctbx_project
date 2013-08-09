@@ -258,7 +258,8 @@ class manager(object):
                     group_h                = None,
                     adp_tls                = None,
                     s_occupancies          = None,
-                    occupancies_group      = None):
+                    occupancies_group      = None,
+                    size_all               = None):
                     # XXX group_anomalous selection should be added
     if(sites_individual is not None and self.sites_individual is not None):
       assert self.is_bool(sites_individual)
@@ -267,11 +268,17 @@ class manager(object):
        and self.sites_torsion_angles is not None):
       assert self.is_bool(sites_torsion_angles)
       self.sites_torsion_angles.extend(sites_torsion_angles)
-    if(adp_individual_iso is not None and self.adp_individual_iso is not None):
+    if(adp_individual_iso is not None):
       assert self.is_bool(adp_individual_iso)
+      if(self.adp_individual_iso is None):
+        assert size_all is not None
+        self.adp_individual_iso = flex.bool(size_all, False)
       self.adp_individual_iso.extend(adp_individual_iso)
-    if(adp_individual_aniso is not None and self.adp_individual_aniso is not None):
+    if(adp_individual_aniso is not None):
       assert self.is_bool(adp_individual_aniso)
+      if(self.adp_individual_aniso is None):
+        assert size_all is not None
+        self.adp_individual_aniso = flex.bool(size_all, False)
       self.adp_individual_aniso.extend(adp_individual_aniso)
     if(sites_rigid_body is not None):
       assert hasattr(sites_rigid_body, 'count')
