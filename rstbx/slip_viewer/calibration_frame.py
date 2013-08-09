@@ -87,22 +87,37 @@ class SBSettingsPanel(wx.Panel):
     if dialog.ShowModal() == wx.ID_OK:
       path = dialog.GetPath()
       if (path != "") :
-        from cxi_xdr_xes.cftbx.detector.metrology2phil import master_phil
-        from cxi_xdr_xes.cftbx.detector.metrology import metrology_as_transformation_matrices
+        from xfel.cftbx.detector.metrology2phil import master_phil
+        from xfel.cftbx.detector.metrology import metrology_as_transformation_matrices
         from libtbx import phil
 
         frame = self.GetParent().GetParent()
         stream = open(path)
         metrology_phil = master_phil.fetch(sources=[phil.parse(stream.read())])
         stream.close()
-        frame.metrology_matrices = metrology_as_transformation_matrices(
-          metrology_phil.extract())
+
+        # Merge restored metrology into the raw image
+        from libtbx.phil import experimental
+        experimental.merge_params_by_key(
+          frame.pyslip.tiles.raw_image._metrology_params,
+          metrology_phil.extract(),
+          'serial')
 
         img = frame.pyslip.tiles.raw_image
-        img.apply_metrology_from_matrices(frame.metrology_matrices)
+        img.apply_metrology_from_matrices(metrology_as_transformation_matrices(
+          metrology_phil.extract()))
 
-        # Update the view.
-        frame.load_image(frame._img.file_name) # XXX ugly?
+        # Update the view, trigger redraw.  XXX Duplication
+        # w.r.t. OnUpdateQuad().
+        tiles = frame.pyslip.tiles
+        tiles.flex_image = frame.pyslip.tiles.raw_image.get_flex_image(
+          brightness=tiles.current_brightness / 100)
+        tiles.flex_image.adjust(color_scheme=tiles.current_color_scheme)
+
+        tiles.reset_the_cache()
+        tiles.tile_cache = tiles.cache[tiles.zoom_level]
+        tiles.tile_list = tiles.lru[tiles.zoom_level]
+        frame.pyslip.Update()
 
         # Update the controls, remember to reset the default values
         # for the spinners.
@@ -129,7 +144,7 @@ class SBSettingsPanel(wx.Panel):
     if dialog.ShowModal() == wx.ID_OK:
       path = dialog.GetPath()
       if (path != "") :
-        from cxi_xdr_xes.cftbx.detector.metrology2phil import master_phil
+        from xfel.cftbx.detector.metrology2phil import master_phil
 
         # Round-trip the metrology string for pretty-printing.
         frame = self.GetParent().GetParent()

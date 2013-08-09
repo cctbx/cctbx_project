@@ -102,20 +102,6 @@ class CSPadDetector(GenericDetector):
 
     self._matrices = matrices
 
-    # Old apply_metrology_from_params() implementation, bound to be
-    # useful somewhere.
-    """
-    from xfel.cftbx.detector.metrology import metrology_as_transformation_matrices
-    from libtbx.phil import experimental
-
-    experimental.merge_params_by_key(self._metrology_params, params, "serial")
-    self._matrices = metrology_as_transformation_matrices(
-      self._metrology_params)
-
-#    from xfel.cftbx.detector.metrology2phil import master_phil
-#    master_phil.format(python_object=self._metrology_params).show()
-    """
-
 
   def get_flex_image(self, brightness, **kwargs):
     # no kwargs supported at present
