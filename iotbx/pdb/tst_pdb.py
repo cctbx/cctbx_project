@@ -520,6 +520,25 @@ def exercise_mtrix(regression_pdb):
       -22.67001, 73.03197, 0.78307]])
   assert mtrix_info[0].coordinates_present
   assert mtrix_info[1].serial_number == "  2"
+  
+def exercise_BIOMT(regression_pdb):
+  '''
+  Verifying correct information extraction
+  '''
+  pdb_inp = pdb.input(file_name=op.join(regression_pdb, "pdb1zff.ent"))
+  mtrix_info = pdb_inp.process_BIOMT_records()
+  assert len(mtrix_info) == 2
+  assert approx_equal(mtrix_info[0].values, [[
+    1.000000,0.000000,0.000000,
+    0.000000,1.000000,0.000000,
+    0.000000,0.000000,1.000000], [0.00000,0.00000,0.00000]])
+  assert approx_equal(mtrix_info[1].values, [[
+      -1.000000,0.000000,0.000000,
+      0.000000,1.000000,0.000000,
+      0.000000,0.000000,-1.000000], [
+        21.74942,0.00000,31.04397]])  
+  assert mtrix_info[0].serial_number == 1
+  assert mtrix_info[1].serial_number == 2
 
 def exercise_header_misc (regression_pdb) :
   pdb_inp = pdb.input(file_name=op.join(regression_pdb, "pdb1a1q.ent"))
