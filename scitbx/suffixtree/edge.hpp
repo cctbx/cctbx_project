@@ -7,6 +7,8 @@
 #include <boost/make_shared.hpp>
 #include <boost/weak_ptr.hpp>
 #include <boost/iterator/transform_iterator.hpp>
+#include <boost/mpl/if.hpp>
+#include <boost/type_traits.hpp>
 
 #include <utility>
 
@@ -77,6 +79,19 @@ public:
   const_iterator find(const glyph_type& key) const;
 
   std::pair< iterator, bool > insert(value_type const& val);
+
+  // Convenience functions
+  const_ptr_type get_parent() const;
+  ptr_type get_parent();
+
+  const_ptr_type get_suffix() const;
+  ptr_type get_suffix();
+
+  const_ptr_type get_child_with_label(glyph_type const& label) const;
+  ptr_type get_child_with_label(glyph_type const& label);
+
+  void attach_child(ptr_type const& child, glyph_type const& label);
+  bool attach_child_if_not_present(ptr_type const& child, glyph_type const& label);
 
   // Virtual functions
   virtual index_type const& start() const = 0;
@@ -273,6 +288,29 @@ public:
 private:
   virtual node_type const& node() const;
   virtual node_type& node();
+};
+
+template< typename Edge >
+struct Traits
+{
+  typedef boost::is_const< Edge > selector_type;
+  typedef typename boost::mpl::if_<
+    selector_type,
+    typename Edge::const_iterator,
+    typename Edge::iterator
+    >::type iterator;
+
+  typedef typename boost::mpl::if_<
+    selector_type,
+    typename Edge::const_ptr_type,
+    typename Edge::ptr_type
+    >::type ptr_type;
+
+  typedef typename boost::mpl::if_<
+    selector_type,
+    typename Edge::const_weak_ptr_type,
+    typename Edge::weak_ptr_type
+    >::type weak_ptr_type;
 };
 
 #include "edge.hxx"

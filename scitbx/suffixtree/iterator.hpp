@@ -4,7 +4,6 @@
 #include <scitbx/suffixtree/edge.hpp>
 
 #include <boost/mpl/if.hpp>
-#include <boost/type_traits.hpp>
 
 #include <iterator>
 #include <deque>
@@ -21,42 +20,26 @@ namespace iterator
 template< typename Edge >
 struct Selector
 {
-  typedef boost::is_const< Edge > selector_type;
-  typedef typename boost::mpl::if_<
-    selector_type,
-    typename Edge::const_iterator,
-    typename Edge::iterator
-    >::type iterator;
+  typedef edge::Traits< Edge > traits;
+  typedef typename traits::iterator iterator;
+  typedef typename traits::ptr_type value_type;
+  typedef value_type ptr_type;
 
   typedef typename boost::mpl::if_<
-    selector_type,
-    typename Edge::const_ptr_type,
-    typename Edge::ptr_type
-    >::type ptr_type;
-
-  typedef ptr_type value_type;
-
-  typedef typename boost::mpl::if_<
-      selector_type,
-      typename Edge::const_weak_ptr_type,
-      typename Edge::weak_ptr_type
-      >::type weak_ptr_type;
-
-  typedef typename boost::mpl::if_<
-    selector_type,
+    typename traits::selector_type,
     typename Edge::const_ptr_type const&,
     typename Edge::ptr_type&
     >::type reference;
 
   typedef typename boost::mpl::if_<
-    selector_type,
+    typename traits::selector_type,
     typename Edge::const_ptr_type* const,
     typename Edge::ptr_type*
     >::type pointer;
 };
 
 template< typename Edge >
-class PreOrder : std::iterator<
+class PreOrder : public std::iterator<
   std::forward_iterator_tag,
   typename Selector< Edge >::value_type,
   std::ptrdiff_t,
@@ -105,7 +88,13 @@ template< typename Edge >
 bool operator !=(PreOrder< Edge > const& lhs, PreOrder< Edge > const& rhs);
 
 template< typename Edge >
-class PostOrder : std::iterator< std::forward_iterator_tag, typename Edge::ptr_type >
+class PostOrder : public std::iterator<
+  std::forward_iterator_tag,
+  typename Selector< Edge >::value_type,
+  std::ptrdiff_t,
+  typename Selector< Edge >::reference,
+  typename Selector< Edge >::pointer
+  >
 {
 public:
   typedef Edge edge_type;
@@ -115,7 +104,6 @@ public:
   typedef typename selector_type::pointer pointer_type;
   typedef typename selector_type::iterator underlying_iterator;
   typedef typename selector_type::ptr_type ptr_type;
-  typedef typename selector_type::weak_ptr_type weak_ptr_type;
 
   typedef PostOrder iterator;
 

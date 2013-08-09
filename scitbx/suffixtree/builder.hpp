@@ -82,9 +82,7 @@ public:
   typedef typename builder_type::suffix_label_type suffix_label_type;
 
   typedef SuffixLinker< edge_ptr_type > suffix_linker_type;
-  typedef Linkage< tree_type > linkage;
-  typedef Movement< tree_type > movement;
-  typedef typename movement::cursor_type cursor_type;
+  typedef Cursor< edge_type, word_type > cursor_type;
 
 private:
   edge_ptr_type tree_root_;

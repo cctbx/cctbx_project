@@ -15,13 +15,12 @@ def dump(module, root, word):
     
 def tree_string(module, tree):
   
-  result = []
-  
   depth_for = calculate_edge_depth( module = module, root = tree.root )
   iter = module.preorder_iteration( root = tree.root )
   iter.next()
+  result = [ "(0-0 root)" ]
   
-  for edge in iter: 
+  for edge in iter:
     parent = edge.parent()
     result.append(
       "-" * depth_for[ parent ]
@@ -29,7 +28,7 @@ def tree_string(module, tree):
       + " (%s-%s, %s)" % (
         edge.start,
         edge.stop,
-        "root" if edge.is_root() else ( "leaf (index=%s)" % edge.label if edge.is_leaf() else "branch" ),
+        "leaf (index=%s)" % edge.label if edge.is_leaf() else "branch",
         )
       )
   

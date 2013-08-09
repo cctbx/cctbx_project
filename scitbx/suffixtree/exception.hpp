@@ -35,6 +35,33 @@ class bad_tree : public std::exception
   }
 };
 
+
+class unavailable : public std::exception
+{
+  const char* what() const throw()
+  {
+    return "Edge nonexistent or expired";
+  }
+};
+
+
+class nonexistent : public std::exception
+{
+  const char* what() const throw()
+  {
+    return "Child with label does not exist";
+  }
+};
+
+
+class mismatch : public std::exception
+{
+  const char* what() const throw()
+  {
+    return "Characters do not match";
+  }
+};
+
 } // namespace suffixtree
 } // namespace scitbx
 
