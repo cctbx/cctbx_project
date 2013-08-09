@@ -1433,11 +1433,407 @@ _chem_comp_angle.value_angle_esd   3.000
   geo_file_str = geo_file.read()
   assert "Bond angle restraints: 1" in geo_file_str
 
+def exercise_do_not_link(mon_lib_srv, ener_lib):
+  """
+  Do not attempt to link two residues below.
+  """
+  raw_records = """\
+CRYST1   48.273   28.843   18.740  90.00  90.00  90.00 P 1
+ATOM  17464  C1  BOG R  16      30.175 -15.554   9.755  1.00 35.95      R    C
+ATOM  17465  O1  BOG R  16      31.099 -15.296   8.697  1.00 42.53      R    O
+ATOM  17466  C2  BOG R  16      29.782 -17.026   9.758  1.00 39.47      R    C
+ATOM  17467  O2  BOG R  16      29.087 -17.331   8.552  1.00 40.97      R    O
+ATOM  17468  C3  BOG R  16      28.901 -17.357  10.950  1.00 40.73      R    C
+ATOM  17469  O3  BOG R  16      28.635 -18.764  10.974  1.00 46.27      R    O
+ATOM  17470  C4  BOG R  16      29.617 -16.951  12.225  1.00 40.76      R    C
+ATOM  17471  O4  BOG R  16      28.755 -17.165  13.351  1.00 42.98      R    O
+ATOM  17472  C5  BOG R  16      29.971 -15.472  12.137  1.00 39.41      R    C
+ATOM  17473  O5  BOG R  16      30.787 -15.208  10.993  1.00 37.94      R    O
+ATOM  17474  C6  BOG R  16      30.688 -14.989  13.394  1.00 40.91      R    C
+ATOM  17475  O6  BOG R  16      31.999 -15.553  13.445  1.00 37.31      R    O
+ATOM  17476  C1' BOG R  16      31.264 -13.898   8.462  1.00 38.79      R    C
+ATOM  17477  C2' BOG R  16      32.250 -13.694   7.317  1.00 39.57      R    C
+ATOM  17478  C3' BOG R  16      32.609 -12.219   7.133  1.00 44.82      R    C
+ATOM  17479  C4' BOG R  16      31.515 -11.448   6.400  1.00 50.44      R    C
+ATOM  17480  C5' BOG R  16      31.977 -10.037   6.047  1.00 48.33      R    C
+ATOM      1  C1  BOG R  18      66.170  -7.947   8.034  1.00 55.33      R    C
+ATOM      2  O1  BOG R  18      65.900  -6.739   8.753  1.00 55.00      R    O
+ATOM      3  C2  BOG R  18      65.682  -9.113   8.883  1.00 55.62      R    C
+ATOM      4  O2  BOG R  18      66.397  -9.125  10.123  1.00 61.39      R    O
+ATOM      5  C3  BOG R  18      65.843 -10.438   8.147  1.00 60.20      R    C
+ATOM      6  O3  BOG R  18      65.302 -11.514   8.924  1.00 64.46      R    O
+ATOM      7  C4  BOG R  18      65.106 -10.358   6.821  1.00 55.23      R    C
+ATOM      8  O4  BOG R  18      65.294 -11.575   6.088  1.00 58.17      R    O
+ATOM      9  C5  BOG R  18      65.635  -9.174   6.022  1.00 55.29      R    C
+ATOM     10  O5  BOG R  18      65.506  -7.953   6.761  1.00 55.00      R    O
+ATOM     11  C6  BOG R  18      64.879  -9.032   4.705  1.00 50.53      R    C
+ATOM     12  O6  BOG R  18      63.593  -8.452   4.947  1.00 41.70      R    O
+ATOM     13  C1' BOG R  18      66.554  -5.574   8.243  1.00 52.47      R    C
+ATOM     14  C2' BOG R  18      66.138  -4.389   9.113  1.00 55.51      R    C
+ATOM     15  C3' BOG R  18      66.908  -3.115   8.772  1.00 56.45      R    C
+ATOM     16  C4' BOG R  18      66.061  -2.210   7.826  1.00 56.42      R    C
+ATOM     17  C5' BOG R  18      66.250  -0.997   7.016  1.00 58.47      R    C
+ATOM     18  C6' BOG R  18      66.002   0.079   5.931  1.00 59.92      R    C
+""".splitlines()
+  cif_records = """
+# ------------------------------------------------
+#
+# ---   LIST OF MONOMERS ---
+#
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+BOG      BOG 'B-OCTYLGLUCOSIDE                    ' pyranose           48  20 .
+# ------------------------------------------------------
+# ------------------------------------------------------
+#
+# --- DESCRIPTION OF MONOMERS ---
+#
+data_comp_BOG
+#
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ BOG           C1     C    CH1       0.000      0.000    0.000    0.000
+ BOG           H1     H    H         0.000      0.135   -1.086    0.103
+ BOG           O1     O    O2        0.000     -1.360    0.279   -0.341
+ BOG           "C1'"  C    CH2       0.000     -2.165   -0.233    0.721
+ BOG           "H1'1" H    H         0.000     -1.890    0.259    1.656
+ BOG           "H1'2" H    H         0.000     -2.001   -1.309    0.815
+ BOG           "C2'"  C    CH2       0.000     -3.640    0.035    0.417
+ BOG           "H2'1" H    H         0.000     -3.913   -0.458   -0.519
+ BOG           "H2'2" H    H         0.000     -3.801    1.110    0.321
+ BOG           "C3'"  C    CH2       0.000     -4.504   -0.514    1.554
+ BOG           "H3'1" H    H         0.000     -4.228   -0.021    2.489
+ BOG           "H3'2" H    H         0.000     -4.340   -1.589    1.649
+ BOG           "C4'"  C    CH2       0.000     -5.979   -0.246    1.250
+ BOG           "H4'1" H    H         0.000     -6.252   -0.737    0.314
+ BOG           "H4'2" H    H         0.000     -6.141    0.830    1.155
+ BOG           "C5'"  C    CH2       0.000     -6.843   -0.795    2.386
+ BOG           "H5'1" H    H         0.000     -6.567   -0.303    3.322
+ BOG           "H5'2" H    H         0.000     -6.679   -1.870    2.480
+ BOG           "C6'"  C    CH2       0.000     -8.318   -0.527    2.083
+ BOG           "H6'1" H    H         0.000     -8.591   -1.019    1.147
+ BOG           "H6'2" H    H         0.000     -8.479    0.549    1.988
+ BOG           "C7'"  C    CH2       0.000     -9.181   -1.075    3.219
+ BOG           "H7'1" H    H         0.000     -8.906   -0.583    4.154
+ BOG           "H7'2" H    H         0.000     -9.017   -2.151    3.314
+ BOG           "C8'"  C    CH3       0.000    -10.656   -0.807    2.915
+ BOG           "H8'3" H    H         0.000    -10.818    0.237    2.823
+ BOG           "H8'2" H    H         0.000    -10.926   -1.285    2.008
+ BOG           "H8'1" H    H         0.000    -11.257   -1.186    3.702
+ BOG           O5     O    O2        0.000      0.320    0.635    1.235
+ BOG           C5     C    CH1       0.000      1.615    0.188    1.628
+ BOG           H5     H    H         0.000      1.639   -0.911    1.621
+ BOG           C4     C    CH1       0.000      2.668    0.725    0.656
+ BOG           H4     H    H         0.000      2.630    1.824    0.644
+ BOG           O4     O    OH1       0.000      3.965    0.296    1.072
+ BOG           HO4    H    H         0.000      4.629    0.637    0.457
+ BOG           C3     C    CH1       0.000      2.372    0.187   -0.747
+ BOG           H3     H    H         0.000      2.512   -0.903   -0.761
+ BOG           O3     O    OH1       0.000      3.255    0.796   -1.691
+ BOG           HO3    H    H         0.000      3.066    0.455   -2.575
+ BOG           C2     C    CH1       0.000      0.919    0.523   -1.105
+ BOG           H2     H    H         0.000      0.805    1.612   -1.194
+ BOG           O2     O    OH1       0.000      0.577   -0.095   -2.346
+ BOG           HO2    H    H         0.000     -0.339    0.119   -2.570
+ BOG           C6     C    CH2       0.000      1.922    0.693    3.039
+ BOG           H61    H    H         0.000      1.898    1.785    3.047
+ BOG           H62    H    H         0.000      2.914    0.349    3.340
+ BOG           O6     O    OH1       0.000      0.944    0.187    3.950
+ BOG           HO6    H    H         0.000      1.174    0.528    4.825
+loop_
+_chem_comp_tree.comp_id
+_chem_comp_tree.atom_id
+_chem_comp_tree.atom_back
+_chem_comp_tree.atom_forward
+_chem_comp_tree.connect_type
+ BOG      C1     n/a    O5     START
+ BOG      H1     C1     .      .
+ BOG      O1     C1     "C1'"  .
+ BOG      "C1'"  O1     "C2'"  .
+ BOG      "H1'1" "C1'"  .      .
+ BOG      "H1'2" "C1'"  .      .
+ BOG      "C2'"  "C1'"  "C3'"  .
+ BOG      "H2'1" "C2'"  .      .
+ BOG      "H2'2" "C2'"  .      .
+ BOG      "C3'"  "C2'"  "C4'"  .
+ BOG      "H3'1" "C3'"  .      .
+ BOG      "H3'2" "C3'"  .      .
+ BOG      "C4'"  "C3'"  "C5'"  .
+ BOG      "H4'1" "C4'"  .      .
+ BOG      "H4'2" "C4'"  .      .
+ BOG      "C5'"  "C4'"  "C6'"  .
+ BOG      "H5'1" "C5'"  .      .
+ BOG      "H5'2" "C5'"  .      .
+ BOG      "C6'"  "C5'"  "C7'"  .
+ BOG      "H6'1" "C6'"  .      .
+ BOG      "H6'2" "C6'"  .      .
+ BOG      "C7'"  "C6'"  "C8'"  .
+ BOG      "H7'1" "C7'"  .      .
+ BOG      "H7'2" "C7'"  .      .
+ BOG      "C8'"  "C7'"  "H8'1" .
+ BOG      "H8'3" "C8'"  .      .
+ BOG      "H8'2" "C8'"  .      .
+ BOG      "H8'1" "C8'"  .      .
+ BOG      O5     C1     .      END
+ BOG      C5     O5     C6     .
+ BOG      H5     C5     .      .
+ BOG      C4     C5     C3     .
+ BOG      H4     C4     .      .
+ BOG      O4     C4     HO4    .
+ BOG      HO4    O4     .      .
+ BOG      C3     C4     C2     .
+ BOG      H3     C3     .      .
+ BOG      O3     C3     HO3    .
+ BOG      HO3    O3     .      .
+ BOG      C2     C3     O2     .
+ BOG      H2     C2     .      .
+ BOG      O2     C2     HO2    .
+ BOG      HO2    O2     .      .
+ BOG      C6     C5     O6     .
+ BOG      H61    C6     .      .
+ BOG      H62    C6     .      .
+ BOG      O6     C6     .      .
+ BOG      HO6    O6     .      .
+ BOG      C1     C2     .    ADD
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ BOG      O1     C1        single      1.426    0.020
+ BOG      C1     C2        single      1.524    0.020
+ BOG      O5     C1        single      1.426    0.020
+ BOG      H1     C1        single      1.099    0.020
+ BOG      "C1'"  O1        single      1.426    0.020
+ BOG      O2     C2        single      1.432    0.020
+ BOG      C2     C3        single      1.524    0.020
+ BOG      H2     C2        single      1.099    0.020
+ BOG      HO2    O2        single      0.967    0.020
+ BOG      O3     C3        single      1.432    0.020
+ BOG      C3     C4        single      1.524    0.020
+ BOG      H3     C3        single      1.099    0.020
+ BOG      HO3    O3        single      0.967    0.020
+ BOG      O4     C4        single      1.432    0.020
+ BOG      C4     C5        single      1.524    0.020
+ BOG      H4     C4        single      1.099    0.020
+ BOG      HO4    O4        single      0.967    0.020
+ BOG      C5     O5        single      1.426    0.020
+ BOG      C6     C5        single      1.524    0.020
+ BOG      H5     C5        single      1.099    0.020
+ BOG      O6     C6        single      1.432    0.020
+ BOG      H61    C6        single      1.092    0.020
+ BOG      H62    C6        single      1.092    0.020
+ BOG      HO6    O6        single      0.967    0.020
+ BOG      "C2'"  "C1'"     single      1.524    0.020
+ BOG      "H1'1" "C1'"     single      1.092    0.020
+ BOG      "H1'2" "C1'"     single      1.092    0.020
+ BOG      "C3'"  "C2'"     single      1.524    0.020
+ BOG      "H2'1" "C2'"     single      1.092    0.020
+ BOG      "H2'2" "C2'"     single      1.092    0.020
+ BOG      "C4'"  "C3'"     single      1.524    0.020
+ BOG      "H3'1" "C3'"     single      1.092    0.020
+ BOG      "H3'2" "C3'"     single      1.092    0.020
+ BOG      "C5'"  "C4'"     single      1.524    0.020
+ BOG      "H4'1" "C4'"     single      1.092    0.020
+ BOG      "H4'2" "C4'"     single      1.092    0.020
+ BOG      "C6'"  "C5'"     single      1.524    0.020
+ BOG      "H5'1" "C5'"     single      1.092    0.020
+ BOG      "H5'2" "C5'"     single      1.092    0.020
+ BOG      "C7'"  "C6'"     single      1.524    0.020
+ BOG      "H6'1" "C6'"     single      1.092    0.020
+ BOG      "H6'2" "C6'"     single      1.092    0.020
+ BOG      "C8'"  "C7'"     single      1.513    0.020
+ BOG      "H7'1" "C7'"     single      1.092    0.020
+ BOG      "H7'2" "C7'"     single      1.092    0.020
+ BOG      "H8'1" "C8'"     single      1.059    0.020
+ BOG      "H8'2" "C8'"     single      1.059    0.020
+ BOG      "H8'3" "C8'"     single      1.059    0.020
+loop_
+_chem_comp_angle.comp_id
+_chem_comp_angle.atom_id_1
+_chem_comp_angle.atom_id_2
+_chem_comp_angle.atom_id_3
+_chem_comp_angle.value_angle
+_chem_comp_angle.value_angle_esd
+ BOG      H1     C1     O1      109.470    3.000
+ BOG      H1     C1     O5      109.470    3.000
+ BOG      O1     C1     O5      109.470    3.000
+ BOG      H1     C1     C2      108.340    3.000
+ BOG      O1     C1     C2      109.470    3.000
+ BOG      O5     C1     C2      109.470    3.000
+ BOG      C1     O1     "C1'"   111.800    3.000
+ BOG      O1     "C1'"  "H1'1"  109.470    3.000
+ BOG      O1     "C1'"  "H1'2"  109.470    3.000
+ BOG      O1     "C1'"  "C2'"   109.470    3.000
+ BOG      "H1'1" "C1'"  "H1'2"  107.900    3.000
+ BOG      "H1'1" "C1'"  "C2'"   109.470    3.000
+ BOG      "H1'2" "C1'"  "C2'"   109.470    3.000
+ BOG      "C1'"  "C2'"  "H2'1"  109.470    3.000
+ BOG      "C1'"  "C2'"  "H2'2"  109.470    3.000
+ BOG      "C1'"  "C2'"  "C3'"   111.000    3.000
+ BOG      "H2'1" "C2'"  "H2'2"  107.900    3.000
+ BOG      "H2'1" "C2'"  "C3'"   109.470    3.000
+ BOG      "H2'2" "C2'"  "C3'"   109.470    3.000
+ BOG      "C2'"  "C3'"  "H3'1"  109.470    3.000
+ BOG      "C2'"  "C3'"  "H3'2"  109.470    3.000
+ BOG      "C2'"  "C3'"  "C4'"   111.000    3.000
+ BOG      "H3'1" "C3'"  "H3'2"  107.900    3.000
+ BOG      "H3'1" "C3'"  "C4'"   109.470    3.000
+ BOG      "H3'2" "C3'"  "C4'"   109.470    3.000
+ BOG      "C3'"  "C4'"  "H4'1"  109.470    3.000
+ BOG      "C3'"  "C4'"  "H4'2"  109.470    3.000
+ BOG      "C3'"  "C4'"  "C5'"   111.000    3.000
+ BOG      "H4'1" "C4'"  "H4'2"  107.900    3.000
+ BOG      "H4'1" "C4'"  "C5'"   109.470    3.000
+ BOG      "H4'2" "C4'"  "C5'"   109.470    3.000
+ BOG      "C4'"  "C5'"  "H5'1"  109.470    3.000
+ BOG      "C4'"  "C5'"  "H5'2"  109.470    3.000
+ BOG      "C4'"  "C5'"  "C6'"   111.000    3.000
+ BOG      "H5'1" "C5'"  "H5'2"  107.900    3.000
+ BOG      "H5'1" "C5'"  "C6'"   109.470    3.000
+ BOG      "H5'2" "C5'"  "C6'"   109.470    3.000
+ BOG      "C5'"  "C6'"  "H6'1"  109.470    3.000
+ BOG      "C5'"  "C6'"  "H6'2"  109.470    3.000
+ BOG      "C5'"  "C6'"  "C7'"   111.000    3.000
+ BOG      "H6'1" "C6'"  "H6'2"  107.900    3.000
+ BOG      "H6'1" "C6'"  "C7'"   109.470    3.000
+ BOG      "H6'2" "C6'"  "C7'"   109.470    3.000
+ BOG      "C6'"  "C7'"  "H7'1"  109.470    3.000
+ BOG      "C6'"  "C7'"  "H7'2"  109.470    3.000
+ BOG      "C6'"  "C7'"  "C8'"   111.000    3.000
+ BOG      "H7'1" "C7'"  "H7'2"  107.900    3.000
+ BOG      "H7'1" "C7'"  "C8'"   109.470    3.000
+ BOG      "H7'2" "C7'"  "C8'"   109.470    3.000
+ BOG      "C7'"  "C8'"  "H8'3"  109.470    3.000
+ BOG      "C7'"  "C8'"  "H8'2"  109.470    3.000
+ BOG      "C7'"  "C8'"  "H8'1"  109.470    3.000
+ BOG      "H8'3" "C8'"  "H8'2"  109.470    3.000
+ BOG      "H8'3" "C8'"  "H8'1"  109.470    3.000
+ BOG      "H8'2" "C8'"  "H8'1"  109.470    3.000
+ BOG      C1     O5     C5      111.800    3.000
+ BOG      O5     C5     H5      109.470    3.000
+ BOG      O5     C5     C4      109.470    3.000
+ BOG      O5     C5     C6      109.470    3.000
+ BOG      H5     C5     C4      108.340    3.000
+ BOG      H5     C5     C6      108.340    3.000
+ BOG      C4     C5     C6      111.000    3.000
+ BOG      C5     C4     H4      108.340    3.000
+ BOG      C5     C4     O4      109.470    3.000
+ BOG      C5     C4     C3      111.000    3.000
+ BOG      H4     C4     O4      109.470    3.000
+ BOG      H4     C4     C3      108.340    3.000
+ BOG      O4     C4     C3      109.470    3.000
+ BOG      C4     O4     HO4     109.470    3.000
+ BOG      C4     C3     H3      108.340    3.000
+ BOG      C4     C3     O3      109.470    3.000
+ BOG      C4     C3     C2      111.000    3.000
+ BOG      H3     C3     O3      109.470    3.000
+ BOG      H3     C3     C2      108.340    3.000
+ BOG      O3     C3     C2      109.470    3.000
+ BOG      C3     O3     HO3     109.470    3.000
+ BOG      C3     C2     H2      108.340    3.000
+ BOG      C3     C2     O2      109.470    3.000
+ BOG      C3     C2     C1      111.000    3.000
+ BOG      H2     C2     O2      109.470    3.000
+ BOG      H2     C2     C1      108.340    3.000
+ BOG      O2     C2     C1      109.470    3.000
+ BOG      C2     O2     HO2     109.470    3.000
+ BOG      C5     C6     H61     109.470    3.000
+ BOG      C5     C6     H62     109.470    3.000
+ BOG      C5     C6     O6      109.470    3.000
+ BOG      H61    C6     H62     107.900    3.000
+ BOG      H61    C6     O6      109.470    3.000
+ BOG      H62    C6     O6      109.470    3.000
+ BOG      C6     O6     HO6     109.470    3.000
+loop_
+_chem_comp_tor.comp_id
+_chem_comp_tor.id
+_chem_comp_tor.atom_id_1
+_chem_comp_tor.atom_id_2
+_chem_comp_tor.atom_id_3
+_chem_comp_tor.atom_id_4
+_chem_comp_tor.value_angle
+_chem_comp_tor.value_angle_esd
+_chem_comp_tor.period
+ BOG      var_1    O5     C1     O1     "C1'"    -59.799   20.000   1
+ BOG      var_2    C1     O1     "C1'"  "C2'"    179.999   20.000   1
+ BOG      var_3    O1     "C1'"  "C2'"  "C3'"   -179.965   20.000   3
+ BOG      var_4    "C1'"  "C2'"  "C3'"  "C4'"    180.000   20.000   3
+ BOG      var_5    "C2'"  "C3'"  "C4'"  "C5'"    179.946   20.000   3
+ BOG      var_6    "C3'"  "C4'"  "C5'"  "C6'"    179.980   20.000   3
+ BOG      var_7    "C4'"  "C5'"  "C6'"  "C7'"   -179.963   20.000   3
+ BOG      var_8    "C5'"  "C6'"  "C7'"  "C8'"   -179.980   20.000   3
+ BOG      var_9    "C6'"  "C7'"  "C8'"  "H8'1"  -179.975   20.000   3
+ BOG      var_10   C1     O5     C5     C6       180.000   20.000   1
+ BOG      var_11   O5     C5     C4     C3       -60.000   20.000   3
+ BOG      var_12   C5     C4     O4     HO4     -179.949   20.000   1
+ BOG      var_13   C5     C4     C3     C2        60.000   20.000   3
+ BOG      var_14   C4     C3     O3     HO3     -179.973   20.000   1
+ BOG      var_15   C4     C3     C2     O2       180.000   20.000   3
+ BOG      var_16   C3     C2     C1     O5        60.000   20.000   3
+ BOG      var_17   C3     C2     O2     HO2     -179.932   20.000   1
+ BOG      var_18   O5     C5     C6     O6        59.890   20.000   3
+ BOG      var_1    C5     O5     C1     C2       -55.000   20.000   1 #
+loop_
+_chem_comp_chir.comp_id
+_chem_comp_chir.id
+_chem_comp_chir.atom_id_centre
+_chem_comp_chir.atom_id_1
+_chem_comp_chir.atom_id_2
+_chem_comp_chir.atom_id_3
+_chem_comp_chir.volume_sign
+ BOG      chir_01  C1     O1     C2     O5        negativ
+ BOG      chir_02  C2     C1     O2     C3        positiv
+ BOG      chir_03  C3     C2     O3     C4        negativ
+ BOG      chir_04  C4     C3     O4     C5        positiv
+ BOG      chir_05  C5     C4     O5     C6        positiv
+# ------------------------------------------------------
+"""
+  import iotbx.cif
+  cif_object = iotbx.cif.reader(input_string=cif_records).model()
+  mon_lib_srv.process_cif_object(cif_object=cif_object)
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    file_name=None,
+    raw_records=raw_records,
+    force_symmetry=False,
+    log = None)
+  # this is to check there is no covalent bonds between two residues
+  xrs = processed_pdb_file.xray_structure()
+  grm = processed_pdb_file.geometry_restraints_manager()
+  rgs=list(processed_pdb_file.all_chain_proxies.pdb_hierarchy.residue_groups())
+  rg1_i_seqs_1 = rgs[0].atoms().extract_i_seq()
+  rg1_i_seqs_2 = rgs[1].atoms().extract_i_seq()
+  for bps in grm.pair_proxies(sites_cart = xrs.sites_cart()).bond_proxies.simple:
+    for i_seq in bps.i_seqs:
+      r = []
+      r.append(i_seq in rg1_i_seqs_1)
+      r.append(i_seq in rg1_i_seqs_2)
+      assert r.count(True)==1
+
 def run(args):
   assert len(args) == 0
   exercise_flattened_cif_loop()
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
+  exercise_do_not_link(mon_lib_srv, ener_lib)
   exercise_geostd_cif_links(mon_lib_srv, ener_lib)
   exercise_handle_case_insensitive(mon_lib_srv, ener_lib)
   exercise_pdb_string(mon_lib_srv, ener_lib)
