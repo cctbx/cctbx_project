@@ -2,7 +2,6 @@
 #define MMTBX_GEOMETRY_CONTAINMENT_H
 
 #include <boost/iterator/filter_iterator.hpp>
-#include <boost/range/iterator_range.hpp>
 
 #include <cmath>
 #include <vector>
