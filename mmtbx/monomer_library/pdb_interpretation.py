@@ -2131,13 +2131,27 @@ class build_chain_proxies(object):
             link_ids[None] += 1
             mm_pairs_not_linked.append((prev_mm, mm))
           else:
+            def within_linking_cutoff():
+              result = True
+              if(prev_mm.lib_link is None): return result
+              for bond in prev_mm.lib_link.bond_list:
+                atoms = (prev_mm.expected_atoms.get(bond.atom_id_1, None),
+                         mm     .expected_atoms.get(bond.atom_id_2, None))
+                i_seqs = [atom.i_seq for atom in atoms]
+                s1 = sites_cart[i_seqs[0]]
+                s2 = sites_cart[i_seqs[1]]
+                import math
+                link_distance = math.sqrt(
+                  (s1[0]-s2[0])**2+(s1[1]-s2[1])**2+(s1[2]-s2[2])**2)
+                if(link_distance > link_distance_cutoff): result = False
+                return result
             mod_id = prev_mm.lib_link.chem_link.mod_id_1
-            if (mod_id not in [None, ""]):
+            if (mod_id not in [None, ""] and within_linking_cutoff()):
               mod_mod_id = mon_lib_srv.mod_mod_id_dict[mod_id]
               prev_mm.apply_mod(mod_mod_id=mod_mod_id)
               prev_mm.resolve_unexpected()
             mod_id = prev_mm.lib_link.chem_link.mod_id_2
-            if (mod_id not in [None, ""]):
+            if (mod_id not in [None, ""] and within_linking_cutoff()):
               mod_mod_id = mon_lib_srv.mod_mod_id_dict[mod_id]
               mm.apply_mod(mod_mod_id=mod_mod_id)
               mm.resolve_unexpected()
