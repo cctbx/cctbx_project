@@ -171,6 +171,13 @@ class SBSettingsPanel(wx.Panel):
     elif (name == "Q3_slow_ctrl"):
       frame.metrology_matrices = img.displace_panel_fast_slow(3, 0, delta)
 
-    # Update the view.
-    frame = self.GetParent().GetParent()
-    frame.load_image(frame._img.file_name) # XXX ugly?
+    # Update the view, trigger redraw.
+    tiles = frame.pyslip.tiles
+    tiles.flex_image = frame.pyslip.tiles.raw_image.get_flex_image(
+      brightness=tiles.current_brightness / 100)
+    tiles.flex_image.adjust(color_scheme=tiles.current_color_scheme)
+
+    tiles.reset_the_cache()
+    tiles.tile_cache = tiles.cache[tiles.zoom_level]
+    tiles.tile_list = tiles.lru[tiles.zoom_level]
+    frame.pyslip.Update()
