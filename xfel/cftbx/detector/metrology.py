@@ -1,6 +1,6 @@
-# -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
+# -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
-# $Id: metrology.py 299 2012-04-04 18:46:56Z hattne $
+# $Id$
 
 """The metrology module does conversion of this and that.  XXX Need to
 describe the keys of the dictionaries here.  XXX Just like in OpenGL,
@@ -73,6 +73,50 @@ def get_projection_matrix(dim_pixel, dim_readout):
            0, 0, 0, 1),
     n=(3, 4))
   return (Pf, Pb)
+
+
+def metrology_as_dxtbx_vectors(params):
+  """The metrology_as_dxtbx_vectors() functions converts a pure Python
+  object extracted from a metrology Phil object to a dictionary of
+  DXTBX-style transformation vectors.  Only ASIC:s are considered,
+  since DXTBX metrology is not concerned with hierarchies
+
+  The DXTBX-style metrology description consists of three vectors for
+  each ASIC.  The first vector locates the (0, 0)-pixel in the
+  laboratory frame. The second and third vectors give the locations of
+  the pixels immediately next to (0, 0) in the fast and slow
+  directions, respectively.  All vectors are in units of mm.
+
+  @param params Pure Python object, extracted from a metrology Phil
+                object
+  @return       Dictionary of DXTBX-style metrology description
+  """
+
+  d = params.detector
+  Tb_d = _transform(matrix.col(d.orientation),
+                    matrix.col(d.translation))[1]
+  vectors = {}
+  for p in d.panel:
+    Tb_p = Tb_d * _transform(matrix.col(p.orientation).normalize(),
+                             matrix.col(p.translation))[1]
+
+    for s in p.sensor:
+      Tb_s = Tb_p * _transform(matrix.col(s.orientation).normalize(),
+                               matrix.col(s.translation))[1]
+
+      for a in s.asic:
+        Tb_a = Tb_s * _transform(matrix.col(a.orientation).normalize(),
+                                 matrix.col(a.translation))[1]
+        Pb = get_projection_matrix(a.pixel_size, a.dimension)[1]
+
+        v_00 = Tb_a * Pb * matrix.col((0, 0, 1))
+        v_01 = Tb_a * Pb * matrix.col((0, 1, 1))
+        v_10 = Tb_a * Pb * matrix.col((1, 0, 1))
+
+        vectors[(d.serial, p.serial, s.serial, a.serial)] = (
+          matrix.col((t * 1e3).elems[0:3])
+          for t in [v_00, v_01 - v_00, v_10 - v_00])
+  return vectors
 
 
 def metrology_as_transformation_matrices(params):
