@@ -5,6 +5,7 @@
 #include <scitbx/math/cartesian_product_fixed_size.hpp>
 
 #include <boost/iterator/counting_iterator.hpp>
+#include <boost/range/iterator_range.hpp>
 
 #include <boost/numeric/conversion/converter.hpp>
 #include <boost/unordered_map.hpp>
