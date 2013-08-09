@@ -44,7 +44,10 @@ def run (args=(), params=None, out=None) :
   from iotbx.bioinformatics.structure import get_ncbi_pdb_blast, \
     summarize_blast_output
   from iotbx.file_reader import any_file
-  seq_file = any_file(params.file_name, force_type="seq")
+  seq_file = any_file(params.file_name,
+    force_type="seq",
+    raise_sorry_if_not_expected_format=True,
+    raise_sorry_if_errors=True)
   seq_file.check_file_type("seq")
   seq_objects = seq_file.file_object
   if (len(seq_objects) == 0) :
@@ -52,6 +55,10 @@ def run (args=(), params=None, out=None) :
   elif (len(seq_objects) > 1) :
     print >> out, "WARNING: multiple sequences provided; searching only the 1st"
   sequence = seq_objects[0].sequence
+  if (len(sequence) == 0) :
+    raise Sorry("No data in sequence file.")
+  elif (len(sequence) < 6) :
+    raise Sorry("Sequence must be at least six residues.")
   if (params.output_file is None) :
     params.output_file = "blast.xml"
   blast_out = get_ncbi_pdb_blast(sequence,
