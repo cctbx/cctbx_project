@@ -1013,29 +1013,29 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
         raise ValueError(
           "Improper set of PDB SCALE records%s" % source_info)
     return self._scale_matrix
-  
+
   def process_BIOMT_records(self):
     '''
-    extract REMARK 350 BIOMT information, information that provides rotation matrices 
+    extract REMARK 350 BIOMT information, information that provides rotation matrices
     and translation  data, required for generating  a complete multimer from the asymmetric unit.
-    
+
     BIOMT data sample:
-    REMARK 350   BIOMT1   1  1.000000  0.000000  0.000000        0.00000            
-    REMARK 350   BIOMT2   1  0.000000  1.000000  0.000000        0.00000            
-    REMARK 350   BIOMT3   1  0.000000  0.000000  1.000000        0.00000            
-    REMARK 350   BIOMT1   2  0.559048 -0.789435  0.253492        0.30000            
-    REMARK 350   BIOMT2   2  0.722264  0.313528 -0.616470        0.00100            
-    REMARK 350   BIOMT3   2  0.407186  0.527724  0.745457        0.05000 
-    
-    The data from every 3 lines will be combined to a list 
+    REMARK 350   BIOMT1   1  1.000000  0.000000  0.000000        0.00000
+    REMARK 350   BIOMT2   1  0.000000  1.000000  0.000000        0.00000
+    REMARK 350   BIOMT3   1  0.000000  0.000000  1.000000        0.00000
+    REMARK 350   BIOMT1   2  0.559048 -0.789435  0.253492        0.30000
+    REMARK 350   BIOMT2   2  0.722264  0.313528 -0.616470        0.00100
+    REMARK 350   BIOMT3   2  0.407186  0.527724  0.745457        0.05000
+
+    The data from every 3 lines will be combined to a list
     [[x11,x12,x13,x21,x22,x23,x31,x32,x33],[x1,x2,x3]]
-    the first component, with the 9 numbers are the rotation matrix, 
+    the first component, with the 9 numbers are the rotation matrix,
     and the second component, with the 3 numbers is the translation information
     x is the serial number of the operation
-    
+
     for x=2 the transformation_data will be
     [[0.559048,-0.789435,0.253492,0.722264,0.313528,-0.616470,0.407186,0.527724,0.745457][0.30000,0.00100,0.05000]]
-    
+
     the result is a list of libtx group_arg constructs, each one contains
       pdb_inp.process_BIOMT_records()[1].values give a list containing float type numbers
       pdb_inp.process_BIOMT_records()[1].serial_number is an integer
@@ -1043,31 +1043,31 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
     '''
     from libtbx import group_args
     source_info = self.extract_remark_iii_records(350)
-    result = []				# the returned list of retoation and translation data
-    if source_info:			# check if any BIOMT info is available
+    result = []                         # the returned list of retoation and translation data
+    if source_info:                     # check if any BIOMT info is available
       # collecting the data from the remarks
-      # Checking that we are collecting only data by verifying that the 3rd component contains "BIOMT" 
-      # and that the length of that component is 6 
-      biomt_data = [map(float,x.split()[3:]) for x in source_info if (x.split()[2].find('BIOMT') > -1) 
+      # Checking that we are collecting only data by verifying that the 3rd component contains "BIOMT"
+      # and that the length of that component is 6
+      biomt_data = [map(float,x.split()[3:]) for x in source_info if (x.split()[2].find('BIOMT') > -1)
                     and (len(x.split()[2]) == 6)]
       # test that there is no missing data
-      if len(biomt_data)%3 != 0:	
-        raise RuntimeError("Improper or missing set of PDB BIOMAT records. Data length = %s" % str(len(biomt_data)))   
+      if len(biomt_data)%3 != 0:
+        raise RuntimeError("Improper or missing set of PDB BIOMAT records. Data length = %s" % str(len(biomt_data)))
       # test that the length of the data match the serial number, that there are no missing records
-      temp = int(source_info[-1].split()[3])	# expected number of records
+      temp = int(source_info[-1].split()[3])    # expected number of records
       if len(biomt_data)/3.0 != int(source_info[-1].split()[3]):
-        raise RuntimeError("Missing record sets in PDB BIOMAT records. Actual data length = %s, expected %s" % 
+        raise RuntimeError("Missing record sets in PDB BIOMAT records. Actual data length = %s, expected %s" %
                            (str(len(biomt_data)/3.0),str(temp)))
-      
-      for i in range(len(biomt_data)//3):	
+
+      for i in range(len(biomt_data)//3):
         # i is the group number in biomt_data
-        # Each group composed from 3 data sets. 
-        j = 3*i;	 
+        # Each group composed from 3 data sets.
+        j = 3*i;
         rotation_data = biomt_data[j][1:4] + biomt_data[j+1][1:4] + biomt_data[j+2][1:4]
         tansation_data = [biomt_data[j][-1], biomt_data[j+1][-1], biomt_data[j+2][-1]]
         result.append(group_args(
           values=[rotation_data,tansation_data],
-          serial_number=i + 1))           
+          serial_number=i + 1))
     return result
 
   def process_mtrix_records(self):

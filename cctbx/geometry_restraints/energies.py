@@ -226,8 +226,8 @@ class energies(scitbx.restraints.energies):
     sigma:  geometry restraints standard deviation
     z_i: z-score for bond i
     z: array of z_i
-    
-    The sigma and the (x_i - mu) are model constrains, geometry restraints. They function extracts 
+
+    The sigma and the (x_i - mu) are model constrains, geometry restraints. They function extracts
     from self, not calculated from data.
 
     :returns:
@@ -262,7 +262,7 @@ class energies(scitbx.restraints.energies):
 
     Compute rmsz, the Root-Mean-Square of the z-scors for a set of data
     using z_i = {x_i - mu / sigma}  and rmsz = sqrt(mean(z*z))
-    
+
     Compute rmsz, the Root-Mean-Square of the z-scors for a set of data
     using z_i = {x_i - mu / sigma}  and rmsz = sqrt(mean(z*z))
     x_i: atcual bond angle
@@ -270,8 +270,8 @@ class energies(scitbx.restraints.energies):
     sigma:  geometry restraints standard deviation
     z_i: z-score for bond i
     z: array of z_i
-    
-    The sigma and the (x_i - mu) are model constrains, geometry restraints. They function extracts 
+
+    The sigma and the (x_i - mu) are model constrains, geometry restraints. They function extracts
     from self, not calculated from data.
 
     :returns:
