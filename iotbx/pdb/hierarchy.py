@@ -754,6 +754,18 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
                   result.append(atom.i_seq)
     return result
 
+  def contains_protein (self) :
+    for model in self.models() :
+      for chain in self.chains() :
+        if chain.is_protein() : return True
+    return False
+
+  def contains_nucleic_acid (self) :
+    for model in self.models() :
+      for chain in self.chains() :
+        if chain.is_na() : return True
+    return False
+
 class _(boost.python.injector, ext.model, __hash_eq_mixin):
 
   def residue_groups(self):
