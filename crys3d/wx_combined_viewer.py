@@ -3,6 +3,7 @@ from __future__ import division
 from crys3d import wx_tools
 from crys3d.wx_selection_editor import selection_editor_mixin
 import iotbx.phil
+#from gltbx.wx_viewer_leapmotion import wxGLWindowLeapEnabled as wxGLWindow
 from gltbx.wx_viewer import wxGLWindow
 import gltbx.util
 from gltbx.gl import *
@@ -377,5 +378,10 @@ class model_and_map_viewer (selection_editor_mixin, map_viewer_mixin) :
   def update_all_settings (self, params, redraw=False) :
     selection_editor_mixin.update_settings(self, params, redraw)
     self.update_maps = True
+
+  def leap_translate (self) :
+    wxGLWindow.leap_translate(self)
+    self.update_map_scenes()
+    self.OnRedraw()
 
 #---end
