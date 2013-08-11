@@ -1,25 +1,23 @@
+//// DO NOT USE. UNDER CONSTRUCTION.
+
 #include <cstdio>
 #include <string>
 #include <limits>
 #include <set>
-
 
 #include <boost/algorithm/cxx11/all_of.hpp>
 #include <boost/algorithm/cxx11/any_of.hpp>
 
 #include <cctbx/error.h>
 
-//// DO NOT USE. UNDER CONSTRUCTION.
+// iostream is included by this one
+#include <cctbx/sgtbx/direct_space_asu/proto/direct_space_asu.h>
+
 
 #include "cctbx/maptbx/skeletons.h"
 
 namespace cctbx { namespace maptbx
 {
-
-inline bool gr(const xyzm_t &a, const xyzm_t &b)
-{
-  return (get<1>(a)) > (get<1>(b));
-}
 
 inline bool any_lt(const int3_t &a, const int3_t &b)
 {
@@ -45,33 +43,52 @@ inline bool any_ge(const int3_t &a, const int3_t &b)
   return false;
 }
 
-inline bool all_eq(const std::set<std::size_t> &s, std::size_t a)
+// faster version of small size std::set ?
+template<typename T, unsigned short N=1000> class array_as_set :
+  private scitbx::af::small<T,N>
 {
-#if 0
-  if( s.empty() )
-    return false;
-  std::set<std::size_t>::const_iterator b=s.begin(), e = s.end();
-  --e;
-  return (*b == a) && (*e == a);
-#endif
-  return boost::algorithm::all_of_equal(s,a);
-}
-
-inline bool all_ne(const std::set<std::size_t> &s, std::size_t a)
-{
-#if 0
-  for(std::set<std::size_t>::const_iterator i=s.begin(); i != s.end(); ++i)
+public:
+  typedef scitbx::af::small<T,N> buf_t;
+  using buf_t::begin;
+  using buf_t::end;
+  using buf_t::empty;
+  using buf_t::size;
+  using typename buf_t::iterator;
+  using typename buf_t::const_iterator;
+  void insert(const T &v)
   {
-    if( *i == a )
-      return false;
+    iterator l=std::lower_bound(this->begin(), this->end(),v);
+    // *l >= v;
+    if( l!=this->end() )
+    {
+      if( *l != v )
+        this->buf_t::insert(l,v);
+    }
+    else
+        this->buf_t::insert(l,v);
+    //CCTBX_ASSERT( !this->empty() );
+    //CCTBX_ASSERT( std::is_sorted(this->begin(), this->end()) );
+    //CCTBX_ASSERT( std::adjacent_find(this->begin(), this->end()) == this->end() );
   }
-  return true;
-#endif
-  return !boost::algorithm::any_of_equal(s,a);
+};
+
+//! @todo code duplication: mmtbx/masks/atom_mask.cpp
+inline void translate_into_cell(scitbx::int3 &num, const scitbx::int3 &den)
+{
+  for(register unsigned char i=0; i<3; ++i)
+  {
+    register int tn = num[i];
+    register const int td = den[i];
+    tn %= td;
+    if( tn < 0 )
+      tn += td;
+    num[i] = tn;
+  }
 }
 
 
-skeleton swanson(const_map_t &map, double sigma)
+skeleton swanson(const const_map_t &map, const sgtbx::space_group_type &spgr,
+  double sigma)
 {
   double mean=0., esd=0., mx=-9.E200;
   for(std::size_t ii=0; ii<map.size(); ++ii)
@@ -91,27 +108,50 @@ skeleton swanson(const_map_t &map, double sigma)
   xyzm.reserve(10000);
   const scitbx::af::tiny<std::size_t,3> ndim( map.accessor().focus() );
   int3_t indim(ndim);
-  for(std::size_t i=0; i<ndim[0]; ++i)
+  //! @todo asu could be outside unit cell, move to the cell ?
+  sgtbx::asu::direct_space_asu asu(spgr);
+
+  //! @todo code duplication: mmtbx::masks::atom_mask::determin_boundaries
+  sgtbx::asu::rvector3_t box_min, box_max;
+  asu.box_corners(box_min, box_max);
+  scitbx::mul(box_min, indim);
+  scitbx::mul(box_max, indim);
+  int3_t ibox_min = scitbx::floor(box_min);
+  int3_t ibox_max = scitbx::ceil(box_max);
+  ibox_max += int3_t(1,1,1); // range: [box_min,box_max)
+
+  //! @todo code duplication: mmtbx::masks::atom_mask::mask_asu
+  asu.optimize_for_grid(indim);
+  std::size_t inside=0, tot=0;
+  for(int i=ibox_min[0]; i<ibox_max[0]; ++i)
   {
-    for(std::size_t j=0; j<ndim[1]; ++j)
+    for(int j=ibox_min[0]; j<ibox_max[1]; ++j)
     {
-      for(std::size_t k=0; k<ndim[2]; ++k)
+      for(int k=ibox_min[0]; k<ibox_max[2]; ++k)
       {
-        double m = map(i,j,k);
+        int3_t p(i,j,k);
+        scitbx::int3 pos_in_cell(p);
+        translate_into_cell(pos_in_cell, indim);
+        double m = map(pos_in_cell);
         if( m>mapcutoff )
         {
-          int3_t p(i,j,k);
-          xyzm_t x(p,m);
-          xyzm.push_back( x );
+          ++tot;
+          if( asu.where_is(p) != 0 ) // inside or on the face
+          {
+            ++inside;
+            xyzm_t x(p,m);
+            xyzm.push_back( x );
+          }
         }
       }
     }
   }
-  std::sort(xyzm.begin(), xyzm.end(), gr);
-  //[](const xyzm_t &a, const xyzm_t &b) {return (get<1>(a)) > (get<1>(b));}
+  std::sort(xyzm.begin(), xyzm.end(),
+    [](const xyzm_t &a, const xyzm_t &b) {return (get<1>(a)) > (get<1>(b));}
+  );
 
   CCTBX_ASSERT( get<1>(xyzm.front()) == mx );
-  marks_t marks(ndim, 0UL); // 0 means no mark
+  marks_t marks(map.accessor(), 0UL); // 0 means no mark
   std::size_t nmarks=0, nbonds=0, min_count = 0, grows_count=0, join_count=0;
   const unsigned short cube_size = 26; // 3*3 + (3*3-1) + (3*3) == 3^3 - 1
   typedef int3_t i3t;
@@ -125,10 +165,12 @@ skeleton swanson(const_map_t &map, double sigma)
   };
 
   skeleton result;
+  result.maximums.reserve(1000);
   for(std::size_t jj=0; jj<xyzm.size(); ++jj)
   {
-    //! @todo very inefficient, consider boost::pool_allocator
-    std::set<std::size_t> featureset;
+    // typedef std::set<std::size_t> feature_set_t;
+    typedef array_as_set<std::size_t> feature_set_t;
+    feature_set_t featureset;
     int3_t x = get<0>(xyzm[jj]);
     for(unsigned short ic=0; ic<cube_size; ++ic)
     {
@@ -140,8 +182,8 @@ skeleton swanson(const_map_t &map, double sigma)
         featureset.insert(mark);
     }
 
-    const unsigned fssize =featureset.size();
-    if( featureset.empty() ) // all_eq(featureset, 0) )
+    const unsigned fssize = featureset.size();
+    if( fssize==0U ) // all_eq(featureset, 0) )
     {
       // 2a: new maximum
       ++nmarks;
@@ -156,52 +198,42 @@ skeleton swanson(const_map_t &map, double sigma)
       marks(x) = mark;
       ++grows_count;
     }
+    else if( fssize == cube_size )
+    {
+      // 2d: local minimum will not be in the neighborhood of any point
+      ++min_count;
+      marks(x) = *featureset.begin(); // highest nodule
+    }
     else if( fssize>1 )
     {
-      ++join_count;
       // 2c: two or more nodules merging
-      for(std::set<std::size_t>::const_iterator i=featureset.begin();
+      ++join_count;
+      marks(x) = *featureset.begin(); // highest nodule
+      for(feature_set_t::const_iterator i=featureset.begin();
           i!=featureset.end(); ++i)
       {
         std::size_t fi = *i;
         CCTBX_ASSERT( fi>0U && fi<=nmarks );
-        std::set<std::size_t>::const_iterator j=i;
+        feature_set_t::const_iterator j=i;
         ++j;
         for( ; j!=featureset.end(); ++j)
         {
           std::size_t fj = *j;
-          CCTBX_ASSERT( fj>0U );
-          if( fj>nmarks )
-            throw std::logic_error("wrong featureset j");
+          CCTBX_ASSERT( fj>0U && fj<=nmarks );
+          CCTBX_ASSERT( fi<fj );
           join_t join;
-          if( fi<fj )
-          {
-            join.ilt = fi;
-            join.igt = fj;
-          }
-          else
-          {
-            join.ilt = fj;
-            join.igt = fi;
-          }
-          //! @todo search existing joins
-          bool bnewjoing = true;
-          result.joins.insert(join);
+          join.ilt = fi;
+          join.igt = fj;
+          result.joins.insert(join); // inserts only new joins
         }
       }
     }
-    else if( fssize == cube_size ) // all_ne(featureset, 0) )
-    {
-      // 2d: local minimum will not be in the neighborhood of any point
-      ++min_count;
-    }
-    else
-      throw std::logic_error("impossible");
   }
   CCTBX_ASSERT( nmarks + grows_count + join_count + min_count == xyzm.size() );
   result.min_count = min_count;
   result.grows_count = grows_count;
   result.join_count = join_count;
+  result.marks = marks;
   return result;
 }
 
@@ -215,9 +247,9 @@ std::vector<std::size_t> find_clusters(const skeleton &skelet)
     const join_t &join = *i;
     long i_cat = join.ilt;
     long i_an = join.igt;
-    //CCTBX_ASSERT( i_cat < i_an && i_cat>=0 && i_an>=0 && i_cat<nmaxs
-    //  && i_an<nmaxs );
-    if( atoms[i_cat]==0 && atoms[i_an]==0 )
+    CCTBX_ASSERT( i_cat < i_an && i_cat>0 && i_an>0 && i_cat<=nmaxs
+      && i_an<=nmaxs );
+    if( atoms[i_cat-1U]==0 && atoms[i_an-1U]==0 )
     {
       ++mol_id;
       atoms[i_cat] = mol_id;
