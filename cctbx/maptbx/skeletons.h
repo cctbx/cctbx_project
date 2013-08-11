@@ -12,6 +12,8 @@
 #include <scitbx/array_family/versa.h>
 #include <scitbx/vec3.h>
 
+#include <cctbx/sgtbx/space_group_type.h>
+
 namespace cctbx { namespace maptbx
 {
 
@@ -50,9 +52,11 @@ public:
   std::vector<int3_t> maximums;
   joins_t joins;
   std::size_t min_count, grows_count, join_count;
+  marks_t marks;
 };
 
-skeleton swanson(const_map_t &map, double sigma=3.);
+skeleton swanson(const const_map_t &map,
+  const cctbx::sgtbx::space_group_type &spgr, double sigma);
 
 std::vector<std::size_t> find_clusters(const skeleton &skelet);
 
