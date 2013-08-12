@@ -7,9 +7,6 @@ namespace cctbx { namespace sgtbx { namespace asu {
 
   void direct_space_asu::show_summary(std::ostream &os) const
   {
-    if( is_optimized() )
-      throw cctbx::error("Optimized asu may only be used for"
-        " is_inside/where_is operations on the grid");
     const size_type sz = this->n_faces();
     os << "Hall symbol: " << hall_symbol
        << "\nNumber of facets: " << sz;
@@ -37,9 +34,6 @@ namespace cctbx { namespace sgtbx { namespace asu {
 
   void direct_space_asu::shape_vertices(set_rvector3_t &result) const
   {
-    if( is_optimized() )
-      throw cctbx::error("Optimized asu may only be used for"
-        " is_inside/where_is operations on the grid");
     result.clear();
     size_type n_facets = this->n_faces();
     for(size_type i0=0; i0<n_facets-2; ++i0)
@@ -186,9 +180,6 @@ namespace cctbx { namespace sgtbx { namespace asu {
 
   rvector3_t direct_space_asu::move_inside(const cctbx::sgtbx::space_group &group, const rvector3_t &v) const
   {
-    if( is_optimized() )
-      throw cctbx::error("Optimized asu may only be used for"
-        " is_inside/where_is operations on the grid");
     std::vector<scitbx::tiny3> cells;
     this->get_cells(cells);
 
@@ -213,9 +204,6 @@ namespace cctbx { namespace sgtbx { namespace asu {
       const cctbx::uctbx::unit_cell &cell,
       double epsilon) const
   {
-    if( is_optimized() )
-      throw cctbx::error("Optimized asu may only be used for"
-        " is_inside/where_is operations on the grid");
     cctbx::crystal::direct_space_asu::float_asu<>::cuts_t ffaces;
     size_type nf = this->n_faces();
     for(size_type i=0; i<nf; ++i)

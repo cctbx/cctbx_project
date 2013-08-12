@@ -6,6 +6,8 @@
 #include <memory>
 #include <iosfwd>
 
+#include <boost/config.hpp>
+
 #include "cut.h"
 
 namespace cctbx { namespace sgtbx { namespace asu {
@@ -45,6 +47,41 @@ namespace cctbx { namespace sgtbx { namespace asu {
   typedef facet_collection::pointer (*asu_func)();
 
   extern asu_func asu_table[230];
+
+namespace { namespace detail {
+class faces
+{
+public:
+
+#ifndef BOOST_NO_CXX11_RVALUE_REFERENCES
+  faces(faces &&a) : faces_(std::move(a.faces_)) {}
+
+  faces& operator= (faces &&a )
+  {
+    if( this != &a )
+      faces_ = std::move(a.faces_);
+    return *this;
+  }
+#endif
+
+  faces(const faces &a) : faces_(a.faces_->new_copy()) {}
+
+  faces & operator=(const faces &a)
+  {
+    if( this != &a )
+      faces_ = facet_collection::pointer(a.faces_->new_copy());
+    return *this;
+  }
+
+protected:
+
+  faces(const facet_collection::pointer &a) : faces_(a->new_copy()) {}
+
+  // one template expression with all the faces
+  facet_collection::pointer faces_;
+};
+
+}}
 
 
 }}}

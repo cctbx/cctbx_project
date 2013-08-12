@@ -111,6 +111,7 @@ cctbx/geometry_restraints/bond_misc.h svneol=native#text/plain
 cctbx/geometry_restraints/gradients.tex -text
 cctbx/geometry_restraints/tst_angle_derivs.py svneol=native#text/x-python
 cctbx/geometry_restraints/tst_proxy_registry.py svneol=native#text/x-python
+cctbx/maptbx/asymmetric_map.h svneol=native#text/plain
 cctbx/maptbx/boost_python/grid_indices_around_sites.cpp svneol=native#text/plain
 cctbx/maptbx/boost_python/time_grid_indices_around_sites.py svneol=native#text/x-python
 cctbx/maptbx/dijkstra.cpp svneol=native#text/plain
@@ -187,6 +188,7 @@ cctbx/sgtbx/direct_space_asu/plane_group_reference_table.py svneol=native#text/x
 cctbx/sgtbx/direct_space_asu/proto/SConscript -text
 cctbx/sgtbx/direct_space_asu/proto/__init__.py svneol=native#text/x-python
 cctbx/sgtbx/direct_space_asu/proto/asu_ext.cpp svneol=native#text/plain
+cctbx/sgtbx/direct_space_asu/proto/asymmetric_unit.h svneol=native#text/plain
 cctbx/sgtbx/direct_space_asu/proto/cut.cpp svneol=native#text/plain
 cctbx/sgtbx/direct_space_asu/proto/cut.h svneol=native#text/plain
 cctbx/sgtbx/direct_space_asu/proto/direct_space_asu.cpp svneol=native#text/plain

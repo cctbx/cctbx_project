@@ -19,6 +19,8 @@ namespace cctbx { namespace sgtbx { namespace asu {
   {
   public:
 
+    const facet_collection::pointer &get_faces() const {return faces;}
+
     //! Hall symbol
     std::string hall_symbol;
 
@@ -31,24 +33,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
     //! Returns 1D tolerance based on 3D
     double get_tolerance(const scitbx::af::double3 &tol3d) const
     {
-      if( is_optimized() )
-        throw cctbx::error("Optimized asu may only be used for is_inside/where_is operations on the grid");
       return faces->get_tolerance(tol3d);
-    }
-
-    void optimize_for_grid(const scitbx::af::int3 &grid_size)
-    {
-      if( is_optimized() )
-        throw cctbx::error("Asymmetric unit can only be optimized once");
-      b_is_optimized = true;
-      faces->optimize_for_grid(grid_size);
-    }
-
-    void get_optimized_grid_limits(scitbx::af::long3 &max_p) const
-    {
-      if( !is_optimized() )
-        throw error("Asu must be optimized");
-      faces->get_optimized_grid_limits(max_p);
     }
 
     void show_summary(std::ostream &os) const;
@@ -107,15 +92,6 @@ namespace cctbx { namespace sgtbx { namespace asu {
       return faces->is_inside(num,den);
     }
 
-    //! Tests where num/grid_size is: fully inside, fully outside or on the face
-    /*! Returns 1 : inside, 0 : outside, -1 : on the face
-     * Must be used only with asymmetric unit optimized_for_grid grid_size.
-     */
-    short where_is(const scitbx::int3 &num) const
-    {
-      return faces->where_is(num);
-    }
-
     // this should go away?
     short where_is(const scitbx::int3 &num, const scitbx::int3 &den) const
     {
@@ -153,8 +129,6 @@ namespace cctbx { namespace sgtbx { namespace asu {
     //! Changes space group basis of the asu
     void change_basis(const change_of_basis_op &op)
     {
-      if( is_optimized() )
-        throw cctbx::error("Optimized asu may only be used for is_inside/where_is operations on the grid");
       std::string new_hall;
       if( !hall_symbol.empty() )
         new_hall = space_group(hall_symbol).change_basis(op).type().hall_symbol();
@@ -204,7 +178,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
       const cctbx::uctbx::unit_cell &cell,
       double epsilon=1.0E-6) const;
 
-    bool is_optimized() const { return this->b_is_optimized; }
+    // bool is_optimized() const { return this->b_is_optimized; }
 
     direct_space_asu(const direct_space_asu &a) : hall_symbol(a.hall_symbol),
       faces(a.faces->new_copy()), b_is_optimized(false) {}

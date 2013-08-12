@@ -73,13 +73,6 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
     return result;
   }
 
-  scitbx::af::long3 asu_grid_limits(const direct_space_asu &a)
-  {
-    scitbx::af::long3 result;
-    a.get_optimized_grid_limits(result);
-    return result;
-  }
-
   void wrap_direct_space_asu()
   {
     typedef direct_space_asu w_t;
@@ -96,8 +89,6 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
       double tol) const = &w_t::is_inside_shape_only;
     short (w_t::*const where_is1)(const scitbx::int3 &num,
       const scitbx::int3 &den) const = &w_t::where_is;
-    short (w_t::*const where_is2)(const scitbx::int3 &num) const =
-      &w_t::where_is;
 
     class_<w_t>("direct_space_asu", no_init)
       .def(init< const std::string& >(( arg("group_symbol") )))
@@ -108,7 +99,6 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
       .def("is_inside_shape_only", is_inside_shape_only1)
       .def("is_inside_shape_only", is_inside_shape_only2)
       .def("where_is", where_is1)
-      .def("where_is", where_is2)
       .def("change_basis", &w_t::change_basis)
       .def("get_nth_plane", &w_t::get_nth_plane)
       .def("shape_only", &w_t::shape_only)
@@ -121,9 +111,6 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
       .def("as_string", &w_t::as_string)
       .def("as_float_asu", &w_t::as_float_asu)
       .def("__copy__", asu_copy)
-      .def("optimize_for_grid", &w_t::optimize_for_grid)
-      .def("is_optimized", &w_t::is_optimized)
-      .def("get_optimized_grid_limits", asu_grid_limits)
     ;
   }
 

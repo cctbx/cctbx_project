@@ -4,6 +4,7 @@
 #include <cctbx/maptbx/structure_factors.h>
 #include <cctbx/maptbx/gridding.h>
 #include <cctbx/sgtbx/direct_space_asu/proto/small_vec_math.h>
+#include <cctbx/sgtbx/direct_space_asu/proto/asymmetric_unit.h>
 #include <scitbx/fftpack/real_to_complex_3d.h>
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/tiny_types.h>
@@ -135,13 +136,11 @@ namespace mmtbx { namespace masks {
       MMTBX_ASSERT( scitbx::lt_all( emx, imx ) );
     }
 
-    cctbx::sgtbx::asu::direct_space_asu opt_asu = this->asu;
-    opt_asu.optimize_for_grid(n);
+    asymmetric_unit<direct,optimized> opt_asu(this->asu, n);
     scitbx::int3 smn, smx;
     this->get_expanded_asu_boundaries(smn,smx); // [smn, smx)
     // determine expanded asu limits, due to is_inside arithmetics
-    scitbx::af::long3 grmx;
-    opt_asu.get_optimized_grid_limits(grmx);
+    scitbx::af::long3 grmx = opt_asu.get_optimized_grid_limits();
     for(unsigned char j=0; j<3U; ++j)
     {
       if( grmx[j] < max_grid[j] )
@@ -349,7 +348,7 @@ namespace mmtbx { namespace masks {
   {
     if( sites_frac.size() != atom_radii.size() )
     {
-      std::stringstream str;
+      std::ostringstream str;
       str << "Mask calculation: number of atomic coordinates and radii"
         " must be the same. Provided: coordinates= " << sites_frac.size()
         << "  radii= " << atom_radii.size();

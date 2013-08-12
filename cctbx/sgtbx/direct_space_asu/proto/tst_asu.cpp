@@ -46,7 +46,8 @@ std::size_t loop_over_grid_points(const direct_space_asu &a, unsigned n_)
   const char *asun = "n asu points:  ";
   const char *vol = "   volume: ";
   space_group grp(a.hall_symbol);
-  std::cout << asun << result << vol << get_double(box[0]*box[1]*box[2]) * result/(double(n)*n*n)
+  std::cout << asun << result << vol << get_double(box[0]*box[1]*box[2])
+    * result/(double(n)*n*n)
     <<"   expected volume= "<< 1.0/grp.order_z() << std::endl;
   return result;
 }
@@ -68,7 +69,8 @@ int main(int argc, const char* argv[])
       spgr = "P 21 21 21";
 
     cctbx::sgtbx::space_group_type grp( spgr );
-    std::cout << "Space group: " << spgr << "  number: "<< grp.number() << "  hall: " << grp.hall_symbol() << std::endl;
+    std::cout << "Space group: " << spgr << "  number: "<< grp.number()
+      << "  hall: " << grp.hall_symbol() << std::endl;
 
     // direct_space_asu asu( grp );
     direct_space_asu asu( spgr );

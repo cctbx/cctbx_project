@@ -11,7 +11,7 @@
 #include <cctbx/error.h>
 
 // iostream is included by this one
-#include <cctbx/sgtbx/direct_space_asu/proto/direct_space_asu.h>
+#include <cctbx/sgtbx/direct_space_asu/proto/asymmetric_unit.h>
 
 
 #include "cctbx/maptbx/skeletons.h"
@@ -93,6 +93,7 @@ skeleton swanson(const const_map_t &map, const sgtbx::space_group_type &spgr,
   double mean=0., esd=0., mx=-9.E200;
   for(std::size_t ii=0; ii<map.size(); ++ii)
   {
+    //! @todo discard points outside asu
     double m = map[ii];
     mean += m;
     esd += m*m;
@@ -110,6 +111,8 @@ skeleton swanson(const const_map_t &map, const sgtbx::space_group_type &spgr,
   int3_t indim(ndim);
   //! @todo asu could be outside unit cell, move to the cell ?
   sgtbx::asu::direct_space_asu asu(spgr);
+  sgtbx::asu::asymmetric_unit<sgtbx::asu::direct,sgtbx::asu::optimized>
+    opt_asu(asu, indim);
 
   //! @todo code duplication: mmtbx::masks::atom_mask::determin_boundaries
   sgtbx::asu::rvector3_t box_min, box_max;
@@ -121,7 +124,6 @@ skeleton swanson(const const_map_t &map, const sgtbx::space_group_type &spgr,
   ibox_max += int3_t(1,1,1); // range: [box_min,box_max)
 
   //! @todo code duplication: mmtbx::masks::atom_mask::mask_asu
-  asu.optimize_for_grid(indim);
   std::size_t inside=0, tot=0;
   for(int i=ibox_min[0]; i<ibox_max[0]; ++i)
   {
@@ -136,10 +138,10 @@ skeleton swanson(const const_map_t &map, const sgtbx::space_group_type &spgr,
         if( m>mapcutoff )
         {
           ++tot;
-          if( asu.where_is(p) != 0 ) // inside or on the face
+          if( opt_asu.where_is(p) != 0 ) // inside or on the face
           {
             ++inside;
-            xyzm_t x(p,m);
+            xyzm_t x(p,m); // @todo pos_in_cell ?
             xyzm.push_back( x );
           }
         }
@@ -174,7 +176,7 @@ skeleton swanson(const const_map_t &map, const sgtbx::space_group_type &spgr,
     int3_t x = get<0>(xyzm[jj]);
     for(unsigned short ic=0; ic<cube_size; ++ic)
     {
-      int3_t neighbor = x + cube[ic];
+      int3_t neighbor = x + cube[ic]; //! @todo check if in cell ?
       if( any_lt(neighbor,0) || any_ge(neighbor,indim) )
         continue;
       std::size_t mark = marks(neighbor);
