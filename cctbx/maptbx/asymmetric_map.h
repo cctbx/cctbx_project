@@ -30,9 +30,38 @@ public:
   using asu_grid_t = scitbx::af::c_grid<3> ;
   using unit_cell_grid_t = scitbx::af::c_grid_padded<3> ;
   typedef scitbx::af::versa<double, asu_grid_t  > data_type;
+  using data_ref_t = scitbx::af::ref<double, asu_grid_t  > ;
   using unit_cell_map_t = scitbx::af::versa<double, unit_cell_grid_t>;
 
   const data_type &data() const { return data_; }
+
+  data_ref_t data_ref() { return data_.ref(); }
+
+  scitbx::int3 box_begin() const
+  {
+    scitbx::int3 grid(optimized_asu_.grid_size());
+    asu::rvector3_t box_min, box_max;
+    asu_.box_corners(box_min, box_max);
+    scitbx::mul(box_min, grid);
+    auto ibox_min = scitbx::floor(box_min);
+    return ibox_min;
+  }
+
+  scitbx::int3 box_end() const
+  {
+    scitbx::int3 grid(optimized_asu_.grid_size());
+    asu::rvector3_t box_min, box_max;
+    asu_.box_corners(box_min, box_max);
+    scitbx::mul(box_max, grid);
+    auto ibox_max = scitbx::ceil(box_max);
+    ibox_max += scitbx::int3(1,1,1); // range: [box_min,box_max)
+    return ibox_max;
+  }
+
+  const asu::asymmetric_unit<asu::direct,asu::optimized> &optimized_asu() const
+  {
+    return optimized_asu_;
+  }
 
   asymmetric_map(const sgtbx::space_group_type &group,
     const unit_cell_map_t &cell_data) : asu_(group),

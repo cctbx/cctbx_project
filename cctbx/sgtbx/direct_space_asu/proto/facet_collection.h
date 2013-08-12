@@ -48,7 +48,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
 
   extern asu_func asu_table[230];
 
-namespace { namespace detail {
+namespace detail {
 class faces
 {
 public:
@@ -81,7 +81,7 @@ protected:
   facet_collection::pointer faces_;
 };
 
-}}
+}
 
 
 }}}

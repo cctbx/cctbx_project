@@ -13,7 +13,6 @@
 // iostream is included by this one
 #include <cctbx/sgtbx/direct_space_asu/proto/asymmetric_unit.h>
 
-
 #include "cctbx/maptbx/skeletons.h"
 
 namespace cctbx { namespace maptbx
@@ -72,25 +71,10 @@ public:
   }
 };
 
-//! @todo code duplication: mmtbx/masks/atom_mask.cpp
-inline void translate_into_cell(scitbx::int3 &num, const scitbx::int3 &den)
-{
-  for(register unsigned char i=0; i<3; ++i)
-  {
-    register int tn = num[i];
-    register const int td = den[i];
-    tn %= td;
-    if( tn < 0 )
-      tn += td;
-    num[i] = tn;
-  }
-}
-
-
-skeleton swanson(const const_map_t &map, const sgtbx::space_group_type &spgr,
-  double sigma)
+skeleton swanson(const cctbx::maptbx::asymmetric_map &amap, double sigma)
 {
   double mean=0., esd=0., mx=-9.E200;
+  const auto &map = amap.data();
   for(std::size_t ii=0; ii<map.size(); ++ii)
   {
     //! @todo discard points outside asu
@@ -107,24 +91,15 @@ skeleton swanson(const const_map_t &map, const sgtbx::space_group_type &spgr,
 
   std::vector<xyzm_t> xyzm;
   xyzm.reserve(10000);
-  const scitbx::af::tiny<std::size_t,3> ndim( map.accessor().focus() );
+  const scitbx::af::tiny<std::size_t,3> ndim( map.accessor() );
   int3_t indim(ndim);
   //! @todo asu could be outside unit cell, move to the cell ?
-  sgtbx::asu::direct_space_asu asu(spgr);
-  sgtbx::asu::asymmetric_unit<sgtbx::asu::direct,sgtbx::asu::optimized>
-    opt_asu(asu, indim);
-
-  //! @todo code duplication: mmtbx::masks::atom_mask::determin_boundaries
-  sgtbx::asu::rvector3_t box_min, box_max;
-  asu.box_corners(box_min, box_max);
-  scitbx::mul(box_min, indim);
-  scitbx::mul(box_max, indim);
-  int3_t ibox_min = scitbx::floor(box_min);
-  int3_t ibox_max = scitbx::ceil(box_max);
-  ibox_max += int3_t(1,1,1); // range: [box_min,box_max)
 
   //! @todo code duplication: mmtbx::masks::atom_mask::mask_asu
   std::size_t inside=0, tot=0;
+  auto ibox_min = amap.box_begin();
+  auto ibox_max = amap.box_end();
+  const auto &opt_asu = amap.optimized_asu();
   for(int i=ibox_min[0]; i<ibox_max[0]; ++i)
   {
     for(int j=ibox_min[0]; j<ibox_max[1]; ++j)
@@ -132,9 +107,8 @@ skeleton swanson(const const_map_t &map, const sgtbx::space_group_type &spgr,
       for(int k=ibox_min[0]; k<ibox_max[2]; ++k)
       {
         int3_t p(i,j,k);
-        scitbx::int3 pos_in_cell(p);
-        translate_into_cell(pos_in_cell, indim);
-        double m = map(pos_in_cell);
+        scitbx::int3 pos_in_box(p+ibox_min);
+        double m = map(pos_in_box);
         if( m>mapcutoff )
         {
           ++tot;
