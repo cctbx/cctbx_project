@@ -12,6 +12,7 @@
 #include <scitbx/array_family/versa.h>
 #include <scitbx/vec3.h>
 
+#include <cctbx/maptbx/asymmetric_map.h>
 #include <cctbx/sgtbx/space_group_type.h>
 
 namespace cctbx { namespace maptbx
@@ -57,6 +58,8 @@ public:
 
 skeleton swanson(const const_map_t &map,
   const cctbx::sgtbx::space_group_type &spgr, double sigma);
+
+skeleton swanson(const cctbx::maptbx::asymmetric_map &map, double sigma);
 
 std::vector<std::size_t> find_clusters(const skeleton &skelet);
 

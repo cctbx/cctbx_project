@@ -31,7 +31,7 @@ public:
   typedef scitbx::int3 grid_size_t;
 
   asymmetric_unit(const direct_space_asu &a, const scitbx::af::int3 &g)
-    : base_t(a.get_faces()), grid_size_(g) 
+    : base_t(a.get_faces()), grid_size_(g)
   {
     faces_->optimize_for_grid(grid_size_);
   }
