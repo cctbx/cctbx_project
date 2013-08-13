@@ -48,6 +48,44 @@ namespace scattering {
                   const bool&);
     scitbx::af::shared<std::complex<double> > get_sum();
 
+    // low level functions for reorganizing and transferring data
+    void reorganize_xyz(const scitbx::af::const_ref<scitbx::vec3<double> >&);
+    void transfer_xyz();
+    void clear_xyz();
+    void copy_solvent_weights(const scitbx::af::const_ref<double>&);
+    void transfer_solvent_weights();
+    void clear_solvent_weights();
+    void reorganize_hkl(const scitbx::af::const_ref<scitbx::vec3<double> >&);
+    void transfer_hkl();
+    void clear_hkl();
+    void copy_q(const scitbx::af::const_ref<double>&);
+    void transfer_q();
+    void clear_q();
+    void copy_lattice(const scitbx::af::const_ref<double>&,
+                      const scitbx::af::const_ref<double>&);
+    void transfer_lattice();
+    void clear_weights();
+    void clear_lattice();
+    void reorganize_rotations_translations
+      (const scitbx::af::const_ref<double>&,
+       const scitbx::af::const_ref<scitbx::vec3<double> >&);
+    void transfer_rotations_translations();
+    void clear_rotations_translations();
+    void convert_scattering_types(const scitbx::af::const_ref<std::string>&,
+                                  const cctbx::xray::scattering_type_registry&);
+    void transfer_scattering_types();
+    void clear_scattering_types();
+    void convert_scattering_type_registry(const cctbx::xray::scattering_type_registry&);
+    void transfer_scattering_type_registry(const bool&);
+    void clear_scattering_type_registry();
+    void allocate_amplitudes();
+    void reset_amplitudes();
+    void clear_amplitudes();
+    void allocate_workspace(const int&);
+    void clear_workspace();
+    void run_kernel();
+    void run_saxs_kernel();
+
   private:
     // functions for reorganizing data
     void reorganize_coordinates
@@ -92,13 +130,18 @@ namespace scattering {
     int n_types;
     int n_terms;
     int f_size;
-    fType * h_a, * d_a;
-    fType * h_b, * d_b;
-    fType * h_c, * d_c;
+    fType * h_a;
+    fType * h_b;
+    fType * h_c;
 
     // structure factor parameters
-    int sf_size;
-    fType * sf_real, * sf_imag;
+    bool amplitudes_allocated;
+    fType * h_real, * h_imag, * d_real, * d_imag;
+
+    // workspace
+    bool workspace_allocated;
+    int workspace_size;
+    fType * d_workspace;
   };
 
   /* ==========================================================================
