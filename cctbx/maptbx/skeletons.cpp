@@ -74,27 +74,23 @@ public:
 skeleton swanson(const cctbx::maptbx::asymmetric_map &amap, double sigma)
 {
   double mean=0., esd=0., mx=-9.E200;
-  const auto &map = amap.data();
-  for(std::size_t ii=0; ii<map.size(); ++ii)
+  const auto &map_data = amap.data();
+  for(std::size_t ii=0; ii<map_data.size(); ++ii)
   {
     //! @todo discard points outside asu
-    double m = map[ii];
+    double m = map_data[ii];
     mean += m;
     esd += m*m;
     if( m > mx )
       mx = m;
   }
-  mean /= map.size();
-  esd = esd/map.size() - mean*mean;
+  mean /= map_data.size();
+  esd = esd/map_data.size() - mean*mean;
   esd = std::sqrt(esd);
   double mapcutoff = mean + esd * sigma;
 
   std::vector<xyzm_t> xyzm;
   xyzm.reserve(10000);
-  const scitbx::af::tiny<std::size_t,3> ndim( map.accessor() );
-  int3_t indim(ndim);
-  //! @todo asu could be outside unit cell, move to the cell ?
-
   //! @todo code duplication: mmtbx::masks::atom_mask::mask_asu
   std::size_t inside=0, tot=0;
   auto ibox_min = amap.box_begin();
@@ -107,15 +103,14 @@ skeleton swanson(const cctbx::maptbx::asymmetric_map &amap, double sigma)
       for(int k=ibox_min[0]; k<ibox_max[2]; ++k)
       {
         int3_t p(i,j,k);
-        scitbx::int3 pos_in_box(p+ibox_min);
-        double m = map(pos_in_box);
+        double m = map_data(p);
         if( m>mapcutoff )
         {
           ++tot;
           if( opt_asu.where_is(p) != 0 ) // inside or on the face
           {
             ++inside;
-            xyzm_t x(p,m); // @todo pos_in_cell ?
+            xyzm_t x(p,m);
             xyzm.push_back( x );
           }
         }
@@ -127,7 +122,7 @@ skeleton swanson(const cctbx::maptbx::asymmetric_map &amap, double sigma)
   );
 
   CCTBX_ASSERT( get<1>(xyzm.front()) == mx );
-  marks_t marks(map.accessor(), 0UL); // 0 means no mark
+  marks_t marks(map_data.accessor(), 0UL); // 0 means no mark
   std::size_t nmarks=0, nbonds=0, min_count = 0, grows_count=0, join_count=0;
   const unsigned short cube_size = 26; // 3*3 + (3*3-1) + (3*3) == 3^3 - 1
   typedef int3_t i3t;
@@ -151,9 +146,9 @@ skeleton swanson(const cctbx::maptbx::asymmetric_map &amap, double sigma)
     for(unsigned short ic=0; ic<cube_size; ++ic)
     {
       int3_t neighbor = x + cube[ic]; //! @todo check if in cell ?
-      if( any_lt(neighbor,0) || any_ge(neighbor,indim) )
+      if( any_lt(neighbor,ibox_min) || any_ge(neighbor,ibox_max) )
         continue;
-      std::size_t mark = marks(neighbor);
+      unsigned mark = marks(neighbor);
       if( mark != 0U ) // 0 is not a mark
         featureset.insert(mark);
     }
