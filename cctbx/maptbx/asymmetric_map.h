@@ -28,11 +28,11 @@ namespace asu = cctbx::sgtbx::asu;
 class asymmetric_map
 {
 public:
-  using asu_grid_t = scitbx::af::c_interval_grid<3> ;
-  using unit_cell_grid_t = scitbx::af::c_grid_padded<3> ;
+  typedef scitbx::af::c_interval_grid<3> asu_grid_t;
+  typedef scitbx::af::c_grid_padded<3> unit_cell_grid_t;
   typedef scitbx::af::versa<double, asu_grid_t  > data_type;
-  using data_ref_t = scitbx::af::ref<double, asu_grid_t  > ;
-  using unit_cell_map_t = scitbx::af::versa<double, unit_cell_grid_t>;
+  typedef scitbx::af::ref<double, asu_grid_t  >  data_ref_t;
+  typedef scitbx::af::versa<double, unit_cell_grid_t> unit_cell_map_t;
 
   const data_type &data() const { return data_; }
 
