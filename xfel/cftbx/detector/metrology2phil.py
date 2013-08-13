@@ -1,8 +1,8 @@
-from __future__ import division
-#! /usr/bin/python
-# -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
+# -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
-# $Id: metrology2phil.py 353 2013-02-26 00:59:36Z hattne $
+# $Id$
+
+from __future__ import division
 
 import sys
 
@@ -15,7 +15,10 @@ from xfel.cxi.cspad_ana.parse_calib import calib2sections
 
 # XXX FROM NAT--with modifications!  XXX Update and commit separately!
 # XXX None of these names are settled yet.  XXX separate out the
-# un-scoped bits into a new master_phil called... what?
+# un-scoped bits into a new master_phil called... what?  XXX detector
+# should have .multiple = True to allow for multiple detectors, and
+# the distance should be account for in their translation (which fixes
+# the origin to that of the laboratory frame).
 master_phil = phil.parse("""
 attenuation = None
   .type = float
@@ -41,7 +44,10 @@ sequence_number = None
 timestamp = None
   .type = str
   .optional = False
-  .help = ISO 8601 timestamp to ms precision
+  .help = "ISO 8601 timestamp to ms precision.  XXX Would have been
+           better as a two-tuple of seconds and nanoseconds since
+           midnight, 1 January 1970 (Unix time), like in the XTC
+           streams."
 wavelength = None
   .type = float
   .optional = False
@@ -134,7 +140,8 @@ detector {
 
 def metrology2phil(calib_dir, verbose):
   """XXX Should really review the SLAC progress since last time
-  around!
+  around!  XXX Note that this is all SLAC-specific (as is the whole
+  thing, I guess).
   """
 
   # XXX Can this fail?  How?

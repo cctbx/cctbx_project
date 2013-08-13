@@ -2491,7 +2491,6 @@ xfel/__init__.py -text
 xfel/cftbx/__init__.py -text
 xfel/cftbx/detector/__init__.py -text
 xfel/cftbx/detector/generic_detector.py -text
-xfel/cftbx/detector/metrology2phil.py -text
 xfel/command_line/__init__.py -text
 xfel/command_line/auto_submit.py -text
 xfel/command_line/convert_gain_map.py -text
