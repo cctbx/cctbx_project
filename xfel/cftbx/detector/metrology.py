@@ -179,7 +179,7 @@ def metrology_as_transformation_matrices(params):
   """
 
   d = params.detector
-  T_d = _transform(matrix.col(d.orientation),
+  T_d = _transform(matrix.col(d.orientation).normalize(),
                    matrix.col(d.translation))
 
   matrices = {(0,): T_d}
