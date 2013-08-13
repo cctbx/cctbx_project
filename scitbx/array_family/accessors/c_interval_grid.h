@@ -88,6 +88,11 @@ namespace scitbx { namespace af {
             throw scitbx::error("Invalid interval");
       }
 
+      af::flex_grid<> as_flex_grid() const
+      {
+        return af::flex_grid<>(af::adapt(origin_), af::adapt(this->last()));
+      }
+
       const index_type& all() const { return all_; }
       const index_type& origin() const { return origin_; }
       index_type last(bool open_range=true) const // origin + size
