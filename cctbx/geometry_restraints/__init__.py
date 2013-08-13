@@ -986,12 +986,10 @@ class _(boost.python.injector, shared_planarity_proxy):
     sorted_table = []
     for i_proxy in i_proxies_sorted:
       proxy = O[i_proxy]
-      len_max = 0
       labels = []
       for i_seq in proxy.i_seqs:
         if (site_labels is None): l = str(i_seq)
         else:                     l = site_labels[i_seq]
-        len_max = max(len_max, len(l))
         labels.append(l)
       if unit_cell is None:
         restraint = planarity(sites_cart=sites_cart, proxy=proxy)
