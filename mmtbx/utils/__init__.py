@@ -2587,6 +2587,7 @@ class cmdline_load_pdb_and_data (object) :
       update_f_part1_for="refinement",
       out=sys.stdout,
       process_pdb_file=True,
+      require_data=True,
       create_fmodel=True,
       prefer_anomalous=None,
       force_non_anomalous=False,
@@ -2600,6 +2601,18 @@ class cmdline_load_pdb_and_data (object) :
       assert (not prefer_anomalous)
     self.args = args
     self.master_phil = master_phil
+    self.processed_pdb_file = None
+    self.geometry = None
+    self.sequence = None
+    self.fmodel = None
+    self.f_obs = None
+    self.r_free_flags = None
+    self.intensity_flag = None
+    self.raw_data = None
+    self.raw_flags = None
+    self.test_flag_value = None
+    self.miller_arrays = None
+    self.cif_objects = []
     cmdline = process_command_line_args(
       args=args,
       master_params=master_phil)
@@ -2614,44 +2627,50 @@ class cmdline_load_pdb_and_data (object) :
     params = self.working_phil.extract()
     if len(params.input.pdb.file_name) == 0 :
       raise Sorry("At least one PDB file is required as input.")
+    data_and_flags = hkl_symm = None
     if (params.input.xray_data.file_name is None) :
-      raise Sorry("At least one reflections file is required as input.")
-    # FIXME this makes two assumptions which may be problematic:
-    #   - the reflection file has full crystal symmetry specified
-    #   - if the PDB file contains symmetry information, this will be the same
-    #     as the reflection file
-    # It should probably be made more flexible, although in practice these
-    # assumptions are usually true.
-    str_utils.make_sub_header("Processing X-ray data", out=out)
-    hkl_in = file_reader.any_file(params.input.xray_data.file_name)
-    hkl_in.check_file_type("hkl")
-    data_and_flags = determine_data_and_flags(
-      reflection_file_server=hkl_in.file_server,
-      parameters=params.input.xray_data,
-      data_parameter_scope="input.xray_data",
-      flags_parameter_scope="input.xray_data.r_free_flags",
-      prefer_anomalous=prefer_anomalous,
-      force_non_anomalous=force_non_anomalous,
-      log=out)
-    self.intensity_flag = data_and_flags.intensity_flag
-    self.raw_data = data_and_flags.raw_data
-    self.raw_flags = data_and_flags.raw_flags
-    self.test_flag_value = data_and_flags.test_flag_value
+      if (require_data) :
+        raise Sorry("At least one reflections file is required as input.")
+    else :
+      # FIXME this makes two assumptions which may be problematic:
+      #   - the reflection file has full crystal symmetry specified
+      #   - if the PDB file contains symmetry information, this will be the same
+      #     as the reflection file
+      # It should probably be made more flexible, although in practice these
+      # assumptions are usually true.
+      str_utils.make_sub_header("Processing X-ray data", out=out)
+      hkl_in = file_reader.any_file(params.input.xray_data.file_name)
+      hkl_in.check_file_type("hkl")
+      data_and_flags = determine_data_and_flags(
+        reflection_file_server=hkl_in.file_server,
+        parameters=params.input.xray_data,
+        data_parameter_scope="input.xray_data",
+        flags_parameter_scope="input.xray_data.r_free_flags",
+        prefer_anomalous=prefer_anomalous,
+        force_non_anomalous=force_non_anomalous,
+        log=out)
+      self.intensity_flag = data_and_flags.intensity_flag
+      self.raw_data = data_and_flags.raw_data
+      self.raw_flags = data_and_flags.raw_flags
+      self.test_flag_value = data_and_flags.test_flag_value
+      self.f_obs = data_and_flags.f_obs
+      self.r_free_flags = data_and_flags.r_free_flags
+      self.miller_arrays = hkl_in.file_server.miller_arrays
+      hkl_symm = self.raw_data.crystal_symmetry()
     self.cif_file_names = params.input.monomers.file_name
-    self.cif_objects = []
     self.pdb_file_names = params.input.pdb.file_name
     if len(self.cif_file_names) > 0 :
       for file_name in self.cif_file_names :
         cif_obj = mmtbx.monomer_library.server.read_cif(file_name=file_name)
         self.cif_objects.append((file_name, cif_obj))
-    hkl_symm = self.raw_data.crystal_symmetry()
-    use_symmetry = hkl_symm
-    pdb_symm = None
+    use_symmetry = pdb_symm = None
+    if (hkl_symm is not None) :
+      use_symmetry = hkl_symm
     for pdb_file_name in params.input.pdb.file_name :
       pdb_symm = crystal_symmetry_from_any.extract_from(pdb_file_name)
       if (pdb_symm is not None) :
         break
-    if (pdb_symm is not None) :
+    if (pdb_symm is not None) and (hkl_symm is not None) :
       if (not pdb_symm.unit_cell().is_similar_to(hkl_symm.unit_cell())) :
         raise Sorry(("Unit cell mismatch between data and PDB file:\n"+
           "PDB file: %s\nData:%s") % (pdb_symm.unit_cell().parameters(),
@@ -2679,18 +2698,16 @@ class cmdline_load_pdb_and_data (object) :
       self.pdb_hierarchy.atoms().reset_i_seq()
       self.xray_structure = pdb_in.xray_structure_simple(
         crystal_symmetry=use_symmetry)
-      self.processed_pdb_file = None
-      self.geometry = None
     # set scattering table
-    self.xray_structure.scattering_type_registry(
-      d_min=data_and_flags.f_obs.d_min(),
-      table=params.input.scattering_table)
-    str_utils.make_sub_header("xray_structure summary", out=out)
-    self.xray_structure.scattering_type_registry().show(out = out)
-    self.xray_structure.show_summary()
-    self.fmodel = None
-    if create_fmodel :
-      fmodel = fmodel_simple(
+    if (data_and_flags is not None) :
+      self.xray_structure.scattering_type_registry(
+        d_min=data_and_flags.f_obs.d_min(),
+        table=params.input.scattering_table)
+      str_utils.make_sub_header("xray_structure summary", out=out)
+      self.xray_structure.scattering_type_registry().show(out = out)
+      self.xray_structure.show_summary(f=out)
+    if (create_fmodel) and (data_and_flags is not None) :
+      self.fmodel = fmodel_simple(
         update_f_part1_for=update_f_part1_for,
         xray_structures=[self.xray_structure],
         scattering_table=params.input.scattering_table,
@@ -2698,11 +2715,6 @@ class cmdline_load_pdb_and_data (object) :
         r_free_flags=data_and_flags.r_free_flags,
         skip_twin_detection=params.input.skip_twin_detection,
         log=out)
-      self.fmodel = fmodel
-    self.miller_arrays = hkl_in.file_server.miller_arrays
-    self.f_obs = data_and_flags.f_obs
-    self.r_free_flags = data_and_flags.r_free_flags
-    self.sequence = None
     if (params.input.sequence is not None) :
       seq_file = file_reader.any_file(params.input.sequence,
         force_type="seq",
