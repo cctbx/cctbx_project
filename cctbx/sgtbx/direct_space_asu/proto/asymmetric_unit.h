@@ -7,7 +7,7 @@
 
 namespace cctbx { namespace sgtbx { namespace asu {
 
-#ifdef BOOST_NO_CXX11_SCOPED_ENUMS
+#if (2*2==4) || defined(BOOST_NO_CXX11_SCOPED_ENUMS)
 namespace space { enum id {direct, reciprocal}; }
 namespace optimization { enum id {unoptimized, optimized }; }
 using namespace space;
@@ -16,7 +16,8 @@ template<space::id S, optimization::id O=unoptimized> class asymmetric_unit;
 #else
 enum class optimization : short {unoptimized, optimized };
 enum class space : short {direct, reciprocal };
-using space::direct;
+
+using space::direct;  this fails with gcc on linux
 using space::reciprocal;
 using optimization::unoptimized;
 using optimization::optimized;
