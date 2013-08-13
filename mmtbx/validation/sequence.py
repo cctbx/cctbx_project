@@ -701,8 +701,11 @@ def group_chains_and_sequences (seq_file, pdb_file, **kwds) :
   sequence_to_chain_mappings = {}
   for chain in v.chains :
     seq_id = chain.sequence_id
-    sequence = seq_in.file_object[seq_id].sequence
     chain_id = chain.chain_id
+    if (seq_id is None) :
+      raise Sorry("Can't map chain %s to a sequence in %s." % (chain_id,
+        seq_file))
+    sequence = seq_in.file_object[seq_id].sequence
     if (chain_id in chain_to_sequence_mappings) :
       if (chain_to_sequence_mappings[chain_id] != sequence) :
         raise Sorry("Multiple unique chains named '%s'" % chain_id)

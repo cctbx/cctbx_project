@@ -6,7 +6,7 @@ from libtbx.utils import format_cpu_times, getenv_bool
 from libtbx import adopt_init_args, slots_getstate_setstate
 import sys, time
 from libtbx import str_utils
-from libtbx.str_utils import prefix_each_line_suffix
+from libtbx.str_utils import prefix_each_line_suffix, format_value
 from libtbx import introspection
 from stdlib import math
 from cctbx import xray
@@ -142,6 +142,24 @@ def show_rigid_body_rotations_and_translations(
         % tuple([i] + r + [r_total] + list(t) + [t_total])
       + frame).rstrip()
   out.flush()
+
+# these are the steps we actually want to display in the GUI
+show_actions = {
+   "bss" : "bss",
+   "sol" : "sol",
+   "ion" : "ion",
+   "rbr" : "rbr",
+   "realsrl" : "rsrl",
+   "realsrg" : "rsrg",
+   "den" : "den",
+   "tardy" : "SA",
+   "sacart" : "SA",
+   "xyzrec" : "xyz",
+   "adp" : "adp",
+   "occ" : "occ",
+   "fp_fdp" : "anom",
+}
+
 
 class refinement_monitor(object):
   __arrays__ = [
@@ -643,22 +661,6 @@ class refinement_monitor(object):
     time_collect_and_process += (t2 - t1)
 
   def format_stats_for_phenix_gui (self) :
-    # these are the steps we actually want to display in the GUI
-    show_actions = {
-      "bss" : "bss",
-      "sol" : "sol",
-      "ion" : "ion",
-      "rbr" : "rbr",
-      "realsrl" : "rsrl",
-      "realsrg" : "rsrg",
-      "den" : "den",
-      "tardy" : "SA",
-      "sacart" : "SA",
-      "xyzrec" : "xyz",
-      "adp" : "adp",
-      "occ" : "occ",
-      "fp_fdp" : "anom",
-    }
     steps = []
     r_works = []
     r_frees = []
@@ -689,6 +691,28 @@ class refinement_monitor(object):
       as_ave=as_ave,
       bs_ave=bs_ave,
       neutron_flag=self.is_neutron_monitor)
+
+  def show_current_r_factors_summary (self, out, prefix="") :
+    if (len(self.steps) == 0) :
+      return
+    last_step = self.steps[-1].replace(":", "")
+    fields = last_step.split("_")
+    action_label = None
+    if (len(fields) == 2) :
+      cycle, action = fields
+      action_label = show_actions.get(action, None)
+      if (action_label is None) :
+        return
+      action_label = cycle + "_" + action_label
+    if (action_label is None) :
+      if (len(self.steps) == 1) :
+        action_label = "start"
+      else :
+        action_label = "end"
+    print >> out, "%s%-6s  r_work=%s  r_free=%s" % (prefix,
+      action_label,
+      format_value("%.4f", self.r_works[-1]),
+      format_value("%.4f", self.r_frees[-1]))
 
 class stats_table (slots_getstate_setstate) :
   __slots__ = [

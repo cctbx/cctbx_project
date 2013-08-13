@@ -48,10 +48,11 @@ model_prune_master_phil = """
       be deleted in the final step (based on the assumption that the adjacent \
       residues were already removed).  Set this to None to prevent fragment \
       filtering.
-  check_arg_lys_cgamma = True
+  check_cgamma = True
     .type = bool
-    .help = Check for poor density at Arg/Lys C-gamma atom.  Useful in cases \
-      where the terminal atoms may have been misfit into nearby density.
+    .help = Check for poor density at the C-gamma atom for long sidechains.  \
+      Useful in cases where the terminal atoms may have been misfit into \
+      nearby density.
 """
 
 master_phil = libtbx.phil.parse("""
@@ -177,18 +178,18 @@ class prune_model (object) :
     pruned = []
     make_header("Pruning residues and sidechains", out=out)
     for chain in self.pdb_hierarchy.models()[0].chains() :
+      if (not chain.is_protein()) :
+        continue
       residue_id_hash = {}
       removed_resseqs = []
       if (len(chain.conformers()) > 1) :
         print >> out, "WARNING: chain '%s' has multiple conformers" % chain.id
-      first_conf = chain.conformers()[0]
-      if (not first_conf.is_protein()) :
-        continue
       for j_seq, residue_group in enumerate(chain.residue_groups()) :
         n_res_protein += 1
         residue_id_hash[residue_group.resid()] = j_seq
         for atom_group in residue_group.atom_groups() :
           ag_id_str = id_str(chain, residue_group, atom_group)
+          resname = atom_group.resname
           remove_atom_group = False
           sidechain_atoms = []
           backbone_atoms = []
@@ -261,8 +262,8 @@ class prune_model (object) :
                     atoms_type="sidechain",
                     map_type="mFo-Dfc"))
                   remove_sidechain = True
-                if ((atom_group.resname in ["ARG", "LYS"]) and
-                    self.params.check_arg_lys_cgamma) :
+                if ((self.params.check_cgamma) and
+                    (resname in ["ARG","LYS","TYR","TRP","PHE"])) :
                   c_gamma = c_delta = None
                   for atom in atom_group.atoms() :
                     if (atom.name.strip() == "CG") :
@@ -271,7 +272,11 @@ class prune_model (object) :
                       c_delta = atom
                   if (c_gamma is not None) :
                     map_values = self.get_density_at_atom(c_gamma)
-                    if (map_values.two_fofc < 0.8) :
+                    # FIXME this is horribly subjective, but so is the logic
+                    # I use for manual pruning...
+                    if ((map_values.two_fofc < 0.8) or
+                        ((map_values.two_fofc < 1.0) and
+                         (map_values.fofc < -3.0))) :
                       pruned.append(residue_summary(
                         chain_id=chain.id,
                         residue_group=residue_group,
