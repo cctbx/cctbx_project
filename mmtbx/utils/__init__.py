@@ -2613,9 +2613,8 @@ class cmdline_load_pdb_and_data (object) :
     self.test_flag_value = None
     self.miller_arrays = None
     self.cif_objects = []
-    cmdline = process_command_line_args(
-      args=args,
-      master_params=master_phil)
+    if ("--quiet" in args) or ("quiet=True" in args) :
+      out = null_out()
     cmdline = iotbx.phil.process_command_line_with_files(
       args=args,
       master_phil=master_phil,
