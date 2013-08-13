@@ -1986,6 +1986,8 @@ scitbx/array_family/tst_optional_copy.cpp svneol=native#text/plain
 scitbx/array_family/tst_ref_matrix_facet.cpp -text
 scitbx/array_family/tst_unsigned_float_arithmetic.cpp -text
 scitbx/boost_python/cstringio_utils.h svneol=native#text/plain
+scitbx/boost_python/iterator_range.hpp -text
+scitbx/boost_python/pair_as_tuple.hpp -text
 scitbx/boost_python/sequence_as_array.h svneol=native#text/plain
 scitbx/command_line/apply_tapenade_hints.py svneol=native#text/x-python
 scitbx/command_line/generate_error_h.py -text
@@ -2254,6 +2256,7 @@ scitbx/suffixtree/glyph.hpp -text
 scitbx/suffixtree/glyph.hxx -text
 scitbx/suffixtree/iterator.hpp -text
 scitbx/suffixtree/iterator.hxx -text
+scitbx/suffixtree/matching_statistics.hpp -text
 scitbx/suffixtree/single.py -text
 scitbx/suffixtree/test/tst_single.py -text
 scitbx/suffixtree/tree.hpp -text

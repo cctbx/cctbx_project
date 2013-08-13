@@ -53,6 +53,13 @@ Cursor< Edge, Word >::get_current_character() const
   return ( *word_ptr_ )[ get_index() ];
 }
 
+template< typename Edge, typename Word >
+typename Cursor< Edge, Word >::word_type const&
+Cursor< Edge, Word >::get_word() const
+{
+  return *word_ptr_;
+}
+
 /*
 template< typename Edge, typename Word >
 typename Cursor< Edge, Word >::edge_ptr_type
@@ -162,7 +169,7 @@ Cursor< Edge, Word >::to_suffix_position()
     }
     else
     {
-      suffix_ptr = edge_ptr_->get_suffix();
+      suffix_ptr = parent_ptr->get_suffix();
     }
 
     word_iterator path_end = word.get_iterator_to( index_ );
@@ -205,7 +212,7 @@ Cursor< Edge, Word >::path_jump_from_top_of(
     }
 
     path_begin += edge_length;
-    edge_ptr = edge_ptr_->get_child_with_label( *path_begin );
+    edge_ptr = edge_ptr->get_child_with_label( *path_begin );
   }
 }
 

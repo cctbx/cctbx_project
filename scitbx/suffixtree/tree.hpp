@@ -56,6 +56,7 @@ public:
   bool is_at_leaf_bottom() const;
 
   glyph_type const& get_current_character() const;
+  word_type const& get_word() const;
   //edge_ptr_type get_child_with_label(glyph_type const& glyph) const;
 
   void forth_with(glyph_type const& glyph);

@@ -11,9 +11,8 @@
 
 #include <boost/shared_ptr.hpp>
 #include <boost/functional.hpp>
-#include <boost/range/iterator_range.hpp>
 
-#include <boost_adaptbx/boost_range_python.hpp>
+#include <scitbx/boost_python/iterator_range.hpp>
 #include <scitbx/suffixtree/edge.hpp>
 #include <scitbx/suffixtree/iterator.hpp>
 
@@ -261,15 +260,14 @@ struct edge_exports
   }
 
   template< typename IteratorType >
-  static boost::iterator_range< IteratorType > get_range(
+  static boost::python::object get_range(
     typename IteratorType::ptr_type const& root
     )
   {
-    return boost::iterator_range< IteratorType >(
+    return scitbx::boost_python::as_iterator< IteratorType >(
       IteratorType::begin( root ),
       IteratorType::end( root )
-      )
-      ;
+      );
   }
 
   static void wrap()
@@ -323,41 +321,29 @@ struct edge_exports
       .def( "__hash__", calculate_hash_const )
       ;
 
-    boost_adaptbx::python::generic_range_wrapper<
-      boost::iterator_range< iterator::PreOrder< edge_type > >
-      >::wrap( "preorder_iteration_range" );
-    def(
-      "preorder_iteration",
-      get_range< iterator::PreOrder< edge_type > >,
-      arg( "root" )
+    typedef iterator::PreOrder< edge_type > preorder_iterator;
+    scitbx::boost_python::export_range_as_iterator< preorder_iterator >(
+      "preorder_iteration_range"
       );
+    def( "preorder_iteration", get_range< preorder_iterator >, arg( "root" ) );
 
-    boost_adaptbx::python::generic_range_wrapper<
-      boost::iterator_range< iterator::PreOrder< edge_type const > >
-      >::wrap( "preorder_const_iteration_range" );
-    def(
-      "preorder_iteration",
-      get_range< iterator::PreOrder< edge_type const > >,
-      arg( "root" )
+    typedef iterator::PreOrder< edge_type const > preorder_const_iterator;
+    scitbx::boost_python::export_range_as_iterator< preorder_const_iterator >(
+      "preorder_const_iteration_range"
       );
+    def( "preorder_iteration", get_range< preorder_const_iterator >, arg( "root" ) );
 
-    boost_adaptbx::python::generic_range_wrapper<
-      boost::iterator_range< iterator::PostOrder< edge_type > >
-      >::wrap( "postorder_iteration_range" );
-    def(
-      "postorder_iteration",
-      get_range< iterator::PostOrder< edge_type > >,
-      arg( "root" )
+    typedef iterator::PostOrder< edge_type > postorder_iterator;
+    scitbx::boost_python::export_range_as_iterator< postorder_iterator >(
+      "postorder_iteration_range"
       );
+    def( "postorder_iteration", get_range< postorder_iterator >, arg( "root" ) );
 
-    boost_adaptbx::python::generic_range_wrapper<
-      boost::iterator_range< iterator::PostOrder< edge_type const > >
-      >::wrap( "postorder_const_iteration_range" );
-    def(
-      "postorder_iteration",
-      get_range< iterator::PostOrder< edge_type const > >,
-      arg( "root" )
+    typedef iterator::PostOrder< edge_type const > postorder_const_iterator;
+    scitbx::boost_python::export_range_as_iterator< postorder_const_iterator >(
+      "postorder_const_iteration_range"
       );
+    def( "postorder_iteration", get_range< postorder_const_iterator >, arg( "root" ) );
   }
 };
 
