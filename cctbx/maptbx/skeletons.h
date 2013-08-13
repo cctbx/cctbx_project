@@ -23,7 +23,8 @@ typedef scitbx::af::versa<double,scitbx::af::c_grid_padded<3> > map_t;
 
 typedef scitbx::af::const_ref<double,scitbx::af::c_grid_padded<3> > const_map_t;
 
-typedef scitbx::af::versa<std::size_t,scitbx::af::c_grid_padded<3> > marks_t;
+typedef scitbx::af::versa<unsigned,cctbx::maptbx::asymmetric_map::asu_grid_t >
+  marks_t;
 
 using std::tuple;
 using std::array;

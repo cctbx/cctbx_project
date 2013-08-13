@@ -2,7 +2,7 @@
 #define CCTBX_MAPTBX_ASYMMETRIC_MAP_H
 
 #include <cctbx/sgtbx/space_group_type.h>
-
+#include <scitbx/array_family/accessors/c_interval_grid.h>
 #include <cctbx/sgtbx/direct_space_asu/proto/asymmetric_unit.h>
 
 namespace cctbx { namespace maptbx
@@ -24,10 +24,11 @@ inline void translate_into_cell(scitbx::int3 &num, const scitbx::int3 &den)
 
 namespace asu = cctbx::sgtbx::asu;
 
+// see atom_mask.h
 class asymmetric_map
 {
 public:
-  using asu_grid_t = scitbx::af::c_grid<3> ;
+  using asu_grid_t = scitbx::af::c_interval_grid<3> ;
   using unit_cell_grid_t = scitbx::af::c_grid_padded<3> ;
   typedef scitbx::af::versa<double, asu_grid_t  > data_type;
   using data_ref_t = scitbx::af::ref<double, asu_grid_t  > ;
@@ -39,23 +40,12 @@ public:
 
   scitbx::int3 box_begin() const
   {
-    scitbx::int3 grid(optimized_asu_.grid_size());
-    asu::rvector3_t box_min, box_max;
-    asu_.box_corners(box_min, box_max);
-    scitbx::mul(box_min, grid);
-    auto ibox_min = scitbx::floor(box_min);
-    return ibox_min;
+    return scitbx::int3(data_.accessor().origin());
   }
 
   scitbx::int3 box_end() const
   {
-    scitbx::int3 grid(optimized_asu_.grid_size());
-    asu::rvector3_t box_min, box_max;
-    asu_.box_corners(box_min, box_max);
-    scitbx::mul(box_max, grid);
-    auto ibox_max = scitbx::ceil(box_max);
-    ibox_max += scitbx::int3(1,1,1); // range: [box_min,box_max)
-    return ibox_max;
+    return scitbx::int3(data_.accessor().last());
   }
 
   const asu::asymmetric_unit<asu::direct,asu::optimized> &optimized_asu() const
@@ -76,16 +66,15 @@ public:
     auto ibox_min = scitbx::floor(box_min);
     auto ibox_max = scitbx::ceil(box_max);
     ibox_max += scitbx::int3(1,1,1); // range: [box_min,box_max)
-    auto asu_size = ibox_max - ibox_min;
-    data_.resize(asu_grid_t(asu_size), 0.); //! @todo optimize
-    for(int i=0; i<asu_size[0]; ++i)
+    // auto asu_size = ibox_max - ibox_min;
+    data_.resize(asu_grid_t(ibox_min, ibox_max), 0.); //! @todo optimize
+    for(int i=ibox_min[0]; i<ibox_max[0]; ++i)
     {
-      for(int j=0; j<asu_size[1]; ++j)
+      for(int j=ibox_min[1]; j<ibox_max[1]; ++j)
       {
-        for(int k=0; k<asu_size[2]; ++k)
+        for(int k=ibox_min[2]; k<ibox_max[2]; ++k)
         {
           scitbx::int3 pos(i,j,k);
-          pos -= ibox_min;
           if( optimized_asu_.where_is(pos)!=0 )
           {
             scitbx::int3 pos_in_cell(pos);
@@ -111,22 +100,15 @@ public:
   {
     scitbx::int3 grid(this->unit_cell_grid().focus());
     unit_cell_map_t result(this->unit_cell_grid(), 0.);
-    asu::rvector3_t box_min, box_max;
-    asu_.box_corners(box_min, box_max);
-    scitbx::mul(box_min, grid);
-    scitbx::mul(box_max, grid);
-    auto ibox_min = scitbx::floor(box_min);
-    auto ibox_max = scitbx::ceil(box_max);
-    ibox_max += scitbx::int3(1,1,1); // range: [box_min,box_max)
-    auto asu_size = ibox_max - ibox_min;
-    for(int i=0; i<asu_size[0]; ++i)
+    auto ibox_min = data_.accessor().origin();
+    auto ibox_max = data_.accessor().last();
+    for(int i=ibox_min[0]; i<ibox_max[0]; ++i)
     {
-      for(int j=0; j<asu_size[1]; ++j)
+      for(int j=ibox_min[1]; j<ibox_max[1]; ++j)
       {
-        for(int k=0; k<asu_size[2]; ++k)
+        for(int k=ibox_min[2]; k<ibox_max[2]; ++k)
         {
           scitbx::int3 pos(i,j,k);
-          pos -= ibox_min;
           if( optimized_asu_.where_is(pos)!=0 )
           {
             scitbx::int3 pos_in_cell(pos);
