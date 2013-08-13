@@ -239,8 +239,8 @@ namespace scattering {
 
     // transfer result to global memory
     if (i < n_h) {
-      sf_real[i] = real_sum;
-      sf_imag[i] = imag_sum;
+      sf_real[i] += real_sum;
+      sf_imag[i] += imag_sum;
     }
   }
 

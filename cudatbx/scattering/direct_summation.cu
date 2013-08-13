@@ -23,51 +23,89 @@ namespace scattering {
     d_rt = NULL;
     d_weights = NULL;
     d_scattering_type = NULL;
-    d_a = NULL;
-    d_b = NULL;
-    d_c = NULL;
 
-    sf_size = 0;
-    sf_real = NULL;
-    sf_imag = NULL;
+    amplitudes_allocated = false;
+    h_real = NULL;
+    h_imag = NULL;
+    d_real = NULL;
+    d_imag = NULL;
+
+    workspace_allocated = false;
+    d_workspace = NULL;
   }
 
   cudatbx::scattering::direct_summation::~direct_summation() {
     clear_arrays();
-    cudaSafeCall( cudaFree(sf_real) );
-    cudaSafeCall( cudaFree(sf_imag) );
+    clear_amplitudes();
+    clear_workspace();
   }
 
   // --------------------------------------------------------------------------
-  void cudatbx::scattering::direct_summation::reorganize_coordinates
-  (const scitbx::af::const_ref<scitbx::vec3<double> >& xyz,
-   const scitbx::af::const_ref<double>& solvent_weights) {
+  void cudatbx::scattering::direct_summation::reorganize_xyz
+  (const scitbx::af::const_ref<scitbx::vec3<double> >& xyz) {
     n_xyz = xyz.size();
-    SCITBX_ASSERT (solvent_weights.size() == n_xyz);
     padded_n_xyz = int(std::floor(n_xyz/padding + 1.0)) * padding;
     size_xyz = 3 * padded_n_xyz;
     delete[] h_xyz;
-    delete[] h_solvent;
     h_xyz = new fType[size_xyz];
-    h_solvent = new fType[padded_n_xyz];
     for (int i=0; i<n_xyz; i++) {
       for (int j=0; j<3; j++) {
         h_xyz[j*padded_n_xyz + i] = fType(xyz[i][j]);
       }
-      h_solvent[i] = solvent_weights[i];
     }
+  }
 
+  void cudatbx::scattering::direct_summation::transfer_xyz() {
     cudaSafeCall( cudaMalloc((void**)&d_xyz,size_xyz*sizeof(fType)) );
     cudaSafeCall( cudaMemcpy(d_xyz, h_xyz, size_xyz*sizeof(fType),
                              cudaMemcpyHostToDevice) );
+  }
+
+  void cudatbx::scattering::direct_summation::clear_xyz() {
+    delete[] h_xyz;
+    cudaSafeCall( cudaFree(d_xyz) );
+    h_xyz = NULL;
+    d_xyz = NULL;
+  }
+
+  // --------------------------------------------------------------------------
+  void cudatbx::scattering::direct_summation::copy_solvent_weights
+  (const scitbx::af::const_ref<double>& solvent_weights) {
+    delete[] h_solvent;
+    h_solvent = new fType[padded_n_xyz];
+    for (int i=0; i<n_xyz; i++) {
+      h_solvent[i] = fType(solvent_weights[i]);
+    }
+  }
+
+  void cudatbx::scattering::direct_summation::transfer_solvent_weights() {
     cudaSafeCall( cudaMalloc((void**)&d_solvent,padded_n_xyz*sizeof(fType)) );
     cudaSafeCall( cudaMemcpy(d_solvent, h_solvent,
                              padded_n_xyz*sizeof(fType),
                              cudaMemcpyHostToDevice) );
   }
 
+  void cudatbx::scattering::direct_summation::clear_solvent_weights() {
+    delete[] h_solvent;
+    cudaSafeCall( cudaFree(d_solvent) );
+    h_solvent = NULL;
+    d_solvent = NULL;
+  }
+
   // --------------------------------------------------------------------------
-  void cudatbx::scattering::direct_summation::reorganize_h
+  void cudatbx::scattering::direct_summation::reorganize_coordinates
+  (const scitbx::af::const_ref<scitbx::vec3<double> >& xyz,
+   const scitbx::af::const_ref<double>& solvent_weights) {
+    reorganize_xyz(xyz);
+    transfer_xyz();
+
+    SCITBX_ASSERT (solvent_weights.size() == n_xyz);
+    copy_solvent_weights(solvent_weights);
+    transfer_solvent_weights();
+  }
+
+  // --------------------------------------------------------------------------
+  void cudatbx::scattering::direct_summation::reorganize_hkl
   (const scitbx::af::const_ref<scitbx::vec3<double> >& h) {
     n_h = h.size();
     padded_n_h = int(std::floor(n_h/padding + 1.0)) * padding;
@@ -78,18 +116,32 @@ namespace scattering {
       for (int j=0; j<3; j++) {
         h_h[j*padded_n_h + i] = fType(h[i][j]);
       }
-    }
+    }    
+  }
 
+  void cudatbx::scattering::direct_summation::transfer_hkl() {
     cudaSafeCall( cudaMalloc((void**)&d_h,size_h*sizeof(fType)) );
     cudaSafeCall( cudaMemcpy(d_h, h_h, size_h*sizeof(fType),
                              cudaMemcpyHostToDevice) );
   }
 
+  void cudatbx::scattering::direct_summation::clear_hkl() {
+    delete[] h_h;
+    cudaSafeCall( cudaFree(d_h) );
+    h_h = NULL;
+    d_h = NULL;
+  }
+
   // --------------------------------------------------------------------------
-  void cudatbx::scattering::direct_summation::reorganize_q
-  (const scitbx::af::const_ref<double>& q,
-   const scitbx::af::const_ref<double>& lattice_weights,
-   const scitbx::af::const_ref<double>& lattice) {
+  void cudatbx::scattering::direct_summation::reorganize_h
+  (const scitbx::af::const_ref<scitbx::vec3<double> >& h) {
+    reorganize_hkl(h);
+    transfer_hkl();
+  }
+
+  // --------------------------------------------------------------------------
+  void cudatbx::scattering::direct_summation::copy_q
+  (const scitbx::af::const_ref<double>& q) {
     // q data, use h variables
     n_h = q.size();
     padded_n_h = int(std::floor(n_h/padding + 1.0)) * padding;
@@ -99,7 +151,22 @@ namespace scattering {
     for (int i=0; i<n_h; i++) {
       h_h[i] = fType(q[i]);
     }
+  }
 
+  void cudatbx::scattering::direct_summation::transfer_q() {
+    cudaSafeCall( cudaMalloc((void**)&d_h,size_h*sizeof(fType)) );
+    cudaSafeCall( cudaMemcpy(d_h, h_h, size_h*sizeof(fType),
+                             cudaMemcpyHostToDevice) );
+  }
+
+  void cudatbx::scattering::direct_summation::clear_q() {
+    clear_hkl();
+  }
+
+  // --------------------------------------------------------------------------
+  void cudatbx::scattering::direct_summation::copy_lattice
+  (const scitbx::af::const_ref<double>& lattice_weights,
+   const scitbx::af::const_ref<double>& lattice) {
     // lattice points, use rotation/translation
     n_rt = lattice_weights.size();
     size_rt = int(std::floor(n_rt/padding + 1.0)) * padding;
@@ -113,10 +180,9 @@ namespace scattering {
         h_rt[j*size_rt + i] = fType(lattice[j*n_rt + i]);
       }
     }
+  }
 
-    cudaSafeCall( cudaMalloc((void**)&d_h,size_h*sizeof(fType)) );
-    cudaSafeCall( cudaMemcpy(d_h, h_h, size_h*sizeof(fType),
-                             cudaMemcpyHostToDevice) );
+  void cudatbx::scattering::direct_summation::transfer_lattice() {
     cudaSafeCall( cudaMalloc((void**)&d_weights,size_rt*sizeof(fType)) );
     cudaSafeCall( cudaMemcpy(d_weights, h_weights, size_rt*sizeof(fType),
                              cudaMemcpyHostToDevice) );
@@ -125,8 +191,32 @@ namespace scattering {
                              cudaMemcpyHostToDevice) );
   }
 
+  void cudatbx::scattering::direct_summation::clear_weights() {
+    delete[] h_weights;
+    cudaSafeCall( cudaFree(d_weights) );
+    h_weights = NULL;
+    d_weights = NULL;
+  }
+
+  void cudatbx::scattering::direct_summation::clear_lattice() {
+    clear_weights();
+    clear_rotations_translations();
+  }
+
   // --------------------------------------------------------------------------
-  void cudatbx::scattering::direct_summation::reorganize_rt
+  void cudatbx::scattering::direct_summation::reorganize_q
+  (const scitbx::af::const_ref<double>& q,
+   const scitbx::af::const_ref<double>& lattice_weights,
+   const scitbx::af::const_ref<double>& lattice) {
+    copy_q(q);
+    transfer_q();
+
+    copy_lattice(lattice_weights,lattice);
+    transfer_lattice();
+  }
+
+  // --------------------------------------------------------------------------
+  void cudatbx::scattering::direct_summation::reorganize_rotations_translations
   (const scitbx::af::const_ref<double>& rotations,
    const scitbx::af::const_ref<scitbx::vec3<double> >& translations) {
     // each rotation/translation pair is combined and padded to take up
@@ -143,24 +233,59 @@ namespace scattering {
         h_rt[padded_size*i + j + 9] = fType(translations[i][j]);
       }
     }
+  }
 
+  void cudatbx::scattering::direct_summation::transfer_rotations_translations() {
     cudaSafeCall( cudaMalloc((void**)&d_rt,size_rt*sizeof(fType)) );
     cudaSafeCall( cudaMemcpy(d_rt, h_rt, size_rt*sizeof(fType),
                              cudaMemcpyHostToDevice) );
   }
 
+  void cudatbx::scattering::direct_summation::clear_rotations_translations() {
+    delete[] h_rt;
+    cudaSafeCall( cudaFree(d_rt) );
+    h_rt = NULL;
+    d_rt = NULL;
+  }
+
   // --------------------------------------------------------------------------
-  void cudatbx::scattering::direct_summation::convert_scatterers
+  void cudatbx::scattering::direct_summation::reorganize_rt
+  (const scitbx::af::const_ref<double>& rotations,
+   const scitbx::af::const_ref<scitbx::vec3<double> >& translations) {
+    reorganize_rotations_translations(rotations,translations);
+    transfer_rotations_translations();
+  }
+
+  // --------------------------------------------------------------------------
+  void cudatbx::scattering::direct_summation::convert_scattering_types
   (const scitbx::af::const_ref<std::string>& scatterers,
-   const cctbx::xray::scattering_type_registry& registry,
-   const bool& complex_form_factor) {
-    // convert scattering types and form factors
-    // add ordinary oxygen form factor at end for boundary layer solvent
+   const cctbx::xray::scattering_type_registry& registry) {
+    // convert scattering types
     delete[] h_scattering_type;
     h_scattering_type = new int[padded_n_xyz];
     for (int i=0; i<n_xyz; i++) {
       h_scattering_type[i] = registry.unique_index(scatterers[i]);
     }
+  }
+
+  void cudatbx::scattering::direct_summation::transfer_scattering_types() {
+    cudaSafeCall( cudaMalloc((void**)&d_scattering_type,padded_n_xyz*sizeof(int)) );
+    cudaSafeCall( cudaMemcpy(d_scattering_type,h_scattering_type,
+                             padded_n_xyz*sizeof(int),cudaMemcpyHostToDevice) );
+  }
+
+  void cudatbx::scattering::direct_summation::clear_scattering_types() {
+    delete[] h_scattering_type;
+    cudaSafeCall( cudaFree(d_scattering_type) );
+    h_scattering_type = NULL;
+    d_scattering_type = NULL;
+  }
+
+  // --------------------------------------------------------------------------
+  void cudatbx::scattering::direct_summation::convert_scattering_type_registry
+  (const cctbx::xray::scattering_type_registry& registry) {
+    // convert form factors
+    // add ordinary oxygen form factor at end for boundary layer solvent
     scitbx::af::shared<boost::optional
                        <cctbx::eltbx::xray_scattering::gaussian> >
       unique_gaussians = registry.unique_gaussians;
@@ -203,10 +328,10 @@ namespace scattering {
     else {
       h_c[n_types-1] = fType(0.0);
     }
+  }
 
-    cudaSafeCall( cudaMalloc((void**)&d_scattering_type,padded_n_xyz*sizeof(int)) );
-    cudaSafeCall( cudaMemcpy(d_scattering_type,h_scattering_type,
-                             padded_n_xyz*sizeof(int),cudaMemcpyHostToDevice) );
+  void cudatbx::scattering::direct_summation::transfer_scattering_type_registry
+  (const bool& complex_form_factor) {
     cudaSafeCall( cudaMemcpyToSymbol(dc_a, h_a, f_size*sizeof(fType)) );
     cudaSafeCall( cudaMemcpyToSymbol(dc_b, h_b, f_size*sizeof(fType)) );
     cudaSafeCall( cudaMemcpyToSymbol(dc_c, h_c, n_types*sizeof(fType)) );
@@ -216,55 +341,98 @@ namespace scattering {
                                      &complex_form_factor, sizeof(bool)) );
   }
 
-  // --------------------------------------------------------------------------
-  void cudatbx::scattering::direct_summation::clear_arrays() {
-    // all pointers are NULL or point to allocated arrays
-    delete[] h_xyz;
-    delete[] h_solvent;
-    delete[] h_h;
-    delete[] h_rt;
-    delete[] h_weights;
-    delete[] h_scattering_type;
+  void cudatbx::scattering::direct_summation::clear_scattering_type_registry() {
     delete[] h_a;
     delete[] h_b;
     delete[] h_c;
-
-    cudaSafeCall( cudaFree(d_xyz) );
-    cudaSafeCall( cudaFree(d_solvent) );
-    cudaSafeCall( cudaFree(d_h) );
-    cudaSafeCall( cudaFree(d_rt) );
-    cudaSafeCall( cudaFree(d_weights) );
-    cudaSafeCall( cudaFree(d_scattering_type) );
-    cudaSafeCall( cudaFree(d_a) );
-    cudaSafeCall( cudaFree(d_b) );
-    cudaSafeCall( cudaFree(d_c) );
-
-    // reset all pointers to NULL
-    h_xyz = NULL;
-    h_solvent = NULL;
-    h_h = NULL;
-    h_rt = NULL;
-    h_weights = NULL;
-    h_scattering_type = NULL;
     h_a = NULL;
     h_b = NULL;
     h_c = NULL;
+  }
 
-    d_xyz = NULL;
-    d_solvent = NULL;
-    d_h = NULL;
-    d_rt = NULL;
-    d_weights = NULL;
-    d_scattering_type = NULL;
-    d_a = NULL;
-    d_b = NULL;
-    d_c = NULL;
+  // --------------------------------------------------------------------------
+  void cudatbx::scattering::direct_summation::convert_scatterers
+  (const scitbx::af::const_ref<std::string>& scatterers,
+   const cctbx::xray::scattering_type_registry& registry,
+   const bool& complex_form_factor) {
+    convert_scattering_types(scatterers,registry);
+    transfer_scattering_types();
+
+    convert_scattering_type_registry(registry);
+    transfer_scattering_type_registry(complex_form_factor);
+  }
+
+  // --------------------------------------------------------------------------
+  void cudatbx::scattering::direct_summation::clear_arrays() {
+    // clear pointers and set all pointers to NULL
+    clear_xyz();
+    clear_solvent_weights();
+    clear_hkl();
+    clear_rotations_translations();
+    clear_weights();
+    clear_scattering_types();
+    clear_scattering_type_registry();
+  }
+
+  // --------------------------------------------------------------------------
+  void cudatbx::scattering::direct_summation::allocate_amplitudes() {
+    h_real = new fType[n_h];
+    h_imag = new fType[n_h];
+    cudaSafeCall( cudaMalloc((void**)&d_real,n_h*sizeof(fType)) );
+    cudaSafeCall( cudaMalloc((void**)&d_imag,n_h*sizeof(fType)) );
+    amplitudes_allocated = true;
+  }
+
+  void cudatbx::scattering::direct_summation::reset_amplitudes() {
+    fType zero = fType(0.0);
+    for (int i=0; i<n_h; i++) {
+      h_real[i] = zero;
+      h_imag[i] = zero;
+    }
+    cudaSafeCall( cudaMemcpy(d_real,h_real,n_h*sizeof(fType),
+                             cudaMemcpyHostToDevice) );
+    cudaSafeCall( cudaMemcpy(d_imag,h_imag,n_h*sizeof(fType),
+                             cudaMemcpyHostToDevice) );
+  }
+
+  void cudatbx::scattering::direct_summation::clear_amplitudes() {
+    delete[] h_real;
+    delete[] h_imag;
+    cudaSafeCall( cudaFree(d_real) );
+    cudaSafeCall( cudaFree(d_imag) );
+    h_real = NULL;
+    h_imag = NULL;
+    d_real = NULL;
+    d_imag = NULL;
+    amplitudes_allocated = false;
+  }
+
+  // --------------------------------------------------------------------------
+  void cudatbx::scattering::direct_summation::allocate_workspace
+  (const int& length) {
+    cudaSafeCall( cudaMalloc((void**)&d_workspace,length*sizeof(fType)) );
+    workspace_allocated = true;
+  }
+
+  void cudatbx::scattering::direct_summation::clear_workspace() {
+    cudaSafeCall( cudaFree(d_workspace) );
+    d_workspace = NULL;
+    workspace_allocated = false;
   }
 
   /* --------------------------------------------------------------------------
      reorganizes data and calls cuda
      padded to multiple of 128 bytes, (32 * sizeof(float or int))
   */
+  void cudatbx::scattering::direct_summation::run_kernel() {
+    int blocks_per_grid = (n_h + threads_per_block - 1)/threads_per_block;
+    structure_factor_kernel<fType><<<blocks_per_grid,threads_per_block>>>
+      (d_scattering_type, d_xyz, d_solvent, n_xyz, padded_n_xyz,
+       d_h, n_h, padded_n_h,
+       d_rt, n_rt,
+       d_real, d_imag);
+  }
+
   void cudatbx::scattering::direct_summation::add
   (const scitbx::af::const_ref<std::string>& scatterers,
    const scitbx::af::const_ref<scitbx::vec3<double> >& xyz,
@@ -282,22 +450,13 @@ namespace scattering {
     convert_scatterers(scatterers,registry,complex_form_factor);
 
     // allocate arrays for results if necessary
-    if (sf_size == 0) {
-      sf_size = n_h;
-      cudaSafeCall( cudaMalloc((void**)&sf_real,n_h*sizeof(fType)) );
-      cudaSafeCall( cudaMalloc((void**)&sf_imag,n_h*sizeof(fType)) );
-    }
-    else {
-      assert(sf_size == n_h);
+    if (!amplitudes_allocated) {
+      allocate_amplitudes();
+      reset_amplitudes();
     }
 
     // run calculation
-    int blocks_per_grid = (n_h + threads_per_block - 1)/threads_per_block;
-    structure_factor_kernel<fType><<<blocks_per_grid,threads_per_block>>>
-      (d_scattering_type, d_xyz, d_solvent, n_xyz, padded_n_xyz,
-       d_h, n_h, padded_n_h,
-       d_rt, n_rt,
-       sf_real, sf_imag);
+    run_kernel();
 
     // deallocate arrays
     clear_arrays();
@@ -314,6 +473,28 @@ namespace scattering {
      solvent variables are used for weights and code is not optimal
      possibly subclass or split everything into functions
   */
+  void cudatbx::scattering::direct_summation::run_saxs_kernel() {
+    // allocate working space if necessary
+    if (!workspace_allocated) {
+      workspace_size = int(std::floor(n_h*n_rt/padding + 1.0)) * padding;
+      allocate_workspace(3*workspace_size);
+    }
+
+    int blocks_per_grid = (n_h*n_rt + threads_per_block - 1)/threads_per_block;
+    expand_q_lattice_kernel<fType><<<blocks_per_grid,threads_per_block>>>
+      (d_h, n_h,
+       d_rt, n_rt, size_rt,
+       d_workspace, workspace_size);
+    saxs_kernel<fType><<<blocks_per_grid,threads_per_block>>>
+      (d_scattering_type, d_xyz, d_solvent, n_xyz, padded_n_xyz,
+       n_h, n_rt,
+       d_workspace, workspace_size);
+    collect_saxs_kernel<fType><<<blocks_per_grid,threads_per_block>>>
+      (n_h, n_rt, d_weights,
+       d_real, d_imag,
+       d_workspace, workspace_size);
+  }
+
   void cudatbx::scattering::direct_summation::add_saxs
   (const scitbx::af::const_ref<std::string>& scatterers,
    const scitbx::af::const_ref<scitbx::vec3<double> >& xyz,
@@ -330,38 +511,16 @@ namespace scattering {
     convert_scatterers(scatterers,registry,complex_form_factor);
 
     // allocate arrays for results if necessary
-    if (sf_size == 0) {
-      sf_size = n_h;
-      cudaSafeCall( cudaMalloc((void**)&sf_real,n_h*sizeof(fType)) );
-      cudaSafeCall( cudaMalloc((void**)&sf_imag,n_h*sizeof(fType)) );
-    }
-    else {
-      assert(sf_size == n_h);
+    if (!amplitudes_allocated) {
+      allocate_amplitudes();
     }
 
-    // allocate working space
-    fType * d_workspace;
-    int padded_n_workspace = int(std::floor(n_h*n_rt/padding + 1.0)) * padding;
-    cudaSafeCall( cudaMalloc((void**)&d_workspace,3*padded_n_workspace*sizeof(fType)) );
-
-    // run calculation, unoptimized thread and block sizes
-    int blocks_per_grid = (n_h*n_rt + threads_per_block - 1)/threads_per_block;
-    expand_q_lattice_kernel<fType><<<blocks_per_grid,threads_per_block>>>
-      (d_h, n_h,
-       d_rt, n_rt, size_rt,
-       d_workspace, padded_n_workspace);
-    saxs_kernel<fType><<<blocks_per_grid,threads_per_block>>>
-      (d_scattering_type, d_xyz, d_solvent, n_xyz, padded_n_xyz,
-       n_h, n_rt,
-       d_workspace, padded_n_workspace);
-    collect_saxs_kernel<fType><<<blocks_per_grid,threads_per_block>>>
-      (n_h, n_rt, d_weights,
-       sf_real, sf_imag,
-       d_workspace, padded_n_workspace);
+    // run calculation
+    run_saxs_kernel();
     
     // deallocate arrays
     clear_arrays();
-    cudaSafeCall( cudaFree(d_workspace) );
+    clear_workspace();
   }
 
   /* --------------------------------------------------------------------------
@@ -369,20 +528,16 @@ namespace scattering {
   */
   scitbx::af::shared<std::complex<double> >
   cudatbx::scattering::direct_summation::get_sum() {
-    scitbx::af::shared<std::complex<double> > sf(sf_size);
-    if (sf_size != 0) {
-      fType* h_real = new fType[sf_size];
-      fType* h_imag = new fType[sf_size];
-      cudaSafeCall( cudaMemcpy(h_real,sf_real,sf_size*sizeof(fType),
-                               cudaMemcpyDeviceToHost) );
-      cudaSafeCall( cudaMemcpy(h_imag,sf_imag,sf_size*sizeof(fType),
-                               cudaMemcpyDeviceToHost) );
-      for (int i=0; i<sf_size; i++) {
-        sf[i] = std::complex<double>(double(h_real[i]),double(h_imag[i]));
-      }
-      delete[] h_real;
-      delete[] h_imag;
+    scitbx::af::shared<std::complex<double> > sf(n_h);
+    assert(amplitudes_allocated);
+    cudaSafeCall( cudaMemcpy(h_real,d_real,n_h*sizeof(fType),
+                             cudaMemcpyDeviceToHost) );
+    cudaSafeCall( cudaMemcpy(h_imag,d_imag,n_h*sizeof(fType),
+                             cudaMemcpyDeviceToHost) );
+    for (int i=0; i<n_h; i++) {
+      sf[i] = std::complex<double>(double(h_real[i]),double(h_imag[i]));
     }
+
     return sf;
   }
 
