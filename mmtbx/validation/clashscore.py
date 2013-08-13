@@ -143,7 +143,6 @@ Example:
       hierarchy = pdb_io.construct_hierarchy()
 
     self.clashscore = []
-    self.bad_clashes_list = []
     self.clash_dict = {}
     self.list_dict = {}
 
@@ -200,7 +199,6 @@ Example:
       self.pdb_hierarchy = pdb.hierarchy.\
         input(pdb_string=pcm.h_pdb_string).hierarchy
       self.clashscore.append(pcm.clashscore)
-      self.bad_clashes_list.append(pcm.bad_clashes)
       self.clash_dict[m.id]=pcm.clashscore
       self.list_dict[m.id]=pcm.bad_clashes
     self.clashscore=pcm.clashscore
@@ -212,9 +210,6 @@ Example:
   #{{{ get_functions
   def get_clashscore(self):
     return self.clashscore
-
-  def get_bad_clashes_list(self):
-    return self.bad_clashes_list
 
   def print_clashscore(self, out=sys.stdout):
     if out is None :
