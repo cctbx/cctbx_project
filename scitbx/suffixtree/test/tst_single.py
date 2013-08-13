@@ -632,7 +632,6 @@ class TestTree(unittest.TestCase):
 
   def test_ukkonen2(self):
 
-    from scitbx import suffixtree
     tree = single.tree()
     builder = single.ukkonen( tree )
 
@@ -762,6 +761,63 @@ class TestTree(unittest.TestCase):
     self.assertEqual( b_a_n.suffix, b_n )
 
 
+class TestMatchingStatistics(unittest.TestCase):
+
+  def test(self):
+
+    tree = single.tree()
+    result = list( single.matching_statistics( tree, list( "ABC" ) ) )
+    self.assertEqual( result, [ ( 0, ( tree.root, 0 ) ) ] * 3 )
+
+    builder = single.ukkonen( tree = tree )
+
+    for c in "TTAGC$":
+      builder.append( c )
+
+    self.assertRaises( RuntimeError, single.matching_statistics, tree, list() );
+
+    builder.detach()
+    root = tree.root
+    branch_t = root[ "T" ]
+    leaf_0 = branch_t[ "T" ]
+    leaf_1 = branch_t[ "A" ]
+    leaf_2 = root[ "A" ]
+    leaf_3 = root[ "G" ]
+    leaf_4 = root[ "C" ]
+
+    result = list( single.matching_statistics( tree, [] ) )
+    self.assertEqual( result, [] )
+
+    result = list( single.matching_statistics( tree, list( "QTTATTATTTAGCQWTTAGFK" ) ) )
+
+    self.assertEqual(
+      result,
+      [
+        ( 0, (   root, 0 ) ),
+        ( 3, ( leaf_0, 3 ) ),
+        ( 2, ( leaf_1, 3 ) ),
+        ( 1, ( leaf_2, 3 ) ),
+        ( 3, ( leaf_0, 3 ) ),
+        ( 2, ( leaf_1, 3 ) ),
+        ( 1, ( leaf_2, 3 ) ),
+        ( 2, ( leaf_0, 2 ) ),
+        ( 5, ( leaf_0, 5 ) ),
+        ( 4, ( leaf_1, 5 ) ),
+        ( 3, ( leaf_2, 5 ) ),
+        ( 2, ( leaf_3, 5 ) ),
+        ( 1, ( leaf_4, 5 ) ),
+        ( 0, (   root, 0 ) ),
+        ( 0, (   root, 0 ) ),
+        ( 4, ( leaf_0, 4 ) ),
+        ( 3, ( leaf_1, 4 ) ),
+        ( 2, ( leaf_2, 4 ) ),
+        ( 1, ( leaf_3, 4 ) ),
+        ( 0, (   root, 0 ) ),
+        ( 0, (   root, 0 ) ),
+        ]
+      )
+
+
 suite_word = unittest.TestLoader().loadTestsFromTestCase(
   TestWord
   )
@@ -777,6 +833,9 @@ suite_postorder = unittest.TestLoader().loadTestsFromTestCase(
 suite_tree = unittest.TestLoader().loadTestsFromTestCase(
   TestTree
   )
+suite_msi = unittest.TestLoader().loadTestsFromTestCase(
+  TestMatchingStatistics
+  )
 
 
 alltests = unittest.TestSuite(
@@ -786,6 +845,7 @@ alltests = unittest.TestSuite(
     suite_preorder,
     suite_postorder,
     suite_tree,
+    suite_msi,
     ]
   )
 
@@ -797,3 +857,4 @@ def load_tests(loader, tests, pattern):
 
 if __name__ == "__main__":
     unittest.TextTestRunner( verbosity = 2 ).run( alltests )
+

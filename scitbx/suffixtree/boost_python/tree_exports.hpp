@@ -53,7 +53,7 @@ struct ukkonen_builder_exports
     using namespace boost::python;
 
     class_< builder_type >( "ukkonen", no_init )
-      .def( init< tree_type const& >() )
+      .def( init< tree_type const& >( arg( "tree" ) ) )
       .add_property( "is_attached", &builder_type::is_attached )
       .add_property( "is_valid", &builder_type::is_valid )
       .def( "append", &builder_type::push_back, arg( "glyph" ) )
