@@ -2626,17 +2626,14 @@ class cmdline_load_pdb_and_data (object) :
     params = self.working_phil.extract()
     if len(params.input.pdb.file_name) == 0 :
       raise Sorry("At least one PDB file is required as input.")
+    # DATA INPUT
     data_and_flags = hkl_symm = None
     if (params.input.xray_data.file_name is None) :
       if (require_data) :
         raise Sorry("At least one reflections file is required as input.")
     else :
-      # FIXME this makes two assumptions which may be problematic:
-      #   - the reflection file has full crystal symmetry specified
-      #   - if the PDB file contains symmetry information, this will be the same
-      #     as the reflection file
-      # It should probably be made more flexible, although in practice these
-      # assumptions are usually true.
+      # FIXME this may still require that the data file has full crystal
+      # symmetry defined (although for MTZ input this will not be a problem)
       str_utils.make_sub_header("Processing X-ray data", out=out)
       hkl_in = file_reader.any_file(params.input.xray_data.file_name)
       hkl_in.check_file_type("hkl")
@@ -2662,6 +2659,7 @@ class cmdline_load_pdb_and_data (object) :
       for file_name in self.cif_file_names :
         cif_obj = mmtbx.monomer_library.server.read_cif(file_name=file_name)
         self.cif_objects.append((file_name, cif_obj))
+    # SYMMETRY HANDLING
     use_symmetry = pdb_symm = None
     if (hkl_symm is not None) :
       use_symmetry = hkl_symm
@@ -2669,12 +2667,16 @@ class cmdline_load_pdb_and_data (object) :
       pdb_symm = crystal_symmetry_from_any.extract_from(pdb_file_name)
       if (pdb_symm is not None) :
         break
-    if (pdb_symm is not None) and (hkl_symm is not None) :
-      if (not pdb_symm.unit_cell().is_similar_to(hkl_symm.unit_cell())) :
-        raise Sorry(("Unit cell mismatch between data and PDB file:\n"+
-          "PDB file: %s\nData:%s") % (pdb_symm.unit_cell().parameters(),
-          hkl_symm.unit_cell().parameters()))
-      use_symmetry = pdb_symm
+    from iotbx.symmetry import combine_model_and_data_symmetry
+    use_symmetry = combine_model_and_data_symmetry(
+      model_symmetry=pdb_symm,
+      data_symmetry=hkl_symm)
+    if (use_symmetry is not None) and (self.f_obs is not None) :
+      self.f_obs = self.f_obs.customized_copy(
+        crystal_symmetry=use_symmetry).set_info(self.f_obs.info())
+      self.r_free_flags = self.r_free_flags.customized_copy(
+        crystal_symmetry=use_symmetry).set_info(self.r_free_flags.info())
+    # PDB INPUT
     pdb_file_object = pdb_file(
       pdb_file_names=params.input.pdb.file_name,
       cif_objects=self.cif_objects,
@@ -2700,18 +2702,19 @@ class cmdline_load_pdb_and_data (object) :
     # set scattering table
     if (data_and_flags is not None) :
       self.xray_structure.scattering_type_registry(
-        d_min=data_and_flags.f_obs.d_min(),
+        d_min=self.f_obs.d_min(),
         table=params.input.scattering_table)
       str_utils.make_sub_header("xray_structure summary", out=out)
       self.xray_structure.scattering_type_registry().show(out = out)
       self.xray_structure.show_summary(f=out)
+    # FMODEL SETUP
     if (create_fmodel) and (data_and_flags is not None) :
       self.fmodel = fmodel_simple(
         update_f_part1_for=update_f_part1_for,
         xray_structures=[self.xray_structure],
         scattering_table=params.input.scattering_table,
-        f_obs=data_and_flags.f_obs,
-        r_free_flags=data_and_flags.r_free_flags,
+        f_obs=self.f_obs,
+        r_free_flags=self.r_free_flags,
         skip_twin_detection=params.input.skip_twin_detection,
         log=out)
     if (params.input.sequence is not None) :
