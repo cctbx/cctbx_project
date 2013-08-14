@@ -367,7 +367,7 @@ template<
   >
 typename Root< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::index_type const
 Root< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::shared_start =
-    Root< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::index_type();
+    typename Root< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::index_type();
 
 template<
   typename Glyph,
@@ -736,7 +736,7 @@ template<
   >
 typename Leaf< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::node_type const
 Leaf< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::shared_node =
-    Leaf< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::node_type();
+    typename Leaf< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::node_type();
 
 template<
   typename Glyph,
