@@ -48,6 +48,8 @@ def create_refinement_view_script (
       print >> f, """  items=%s)""" % str(placed_ligand_list)
   if (work_dir is not None) :
     print >> f, """os.chdir("%s")""" % work_dir
+    pdb_file_name = os.path.basename(pdb_file_name)
+    mtz_file_name = os.path.basename(mtz_file_name)
   print >> f, """read_pdb("%s")""" % pdb_file_name
   if (show_symmetry) :
     print >> f, """set_show_symmetry_master(True)"""
