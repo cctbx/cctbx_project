@@ -68,8 +68,8 @@ def run(argv=None):
   frame.settings_frame.panel.collect_values()
 
   if (work_params.effective_metrology is not None):
-    from xfel.cftbx.detector.metrology2phil import master_phil
-    from xfel.cftbx.detector.metrology import metrology_as_transformation_matrices
+    from xfel.cftbx.detector.metrology import \
+      master_phil, metrology_as_transformation_matrices
 
     stream = open(work_params.effective_metrology)
     metrology_phil = master_phil.fetch(sources=[phil.parse(stream.read())])

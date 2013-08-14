@@ -256,8 +256,8 @@ class CSPadDetector(GenericDetector):
     """
 
     from libtbx import phil
-    from xfel.cftbx.detector.metrology import regularize_transformation_matrices
-    from xfel.cftbx.detector.metrology2phil import master_phil
+    from xfel.cftbx.detector.metrology import \
+      master_phil, regularize_transformation_matrices
 
     # XXX Experimental!
     regularize_transformation_matrices(self._matrices)

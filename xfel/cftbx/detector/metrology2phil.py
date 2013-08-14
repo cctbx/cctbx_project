@@ -13,136 +13,13 @@ from scitbx import matrix
 from xfel.cxi.cspad_ana.parse_calib import calib2sections
 
 
-# XXX FROM NAT--with modifications!  XXX Update and commit separately!
-# XXX None of these names are settled yet.  XXX separate out the
-# un-scoped bits into a new master_phil called... what?  XXX detector
-# should have .multiple = True to allow for multiple detectors, and
-# the distance should be account for in their translation (which fixes
-# the origin to that of the laboratory frame).
-master_phil = phil.parse("""
-attenuation = None
-  .type = float
-  .optional = False
-  .help = mm of Si-foil used to attenuate the shot
-beam_center = None
-  .type = floats(size=2)
-  .optional = False
-  .help = "Location of the beam center in mm (XXX this is broken,
-           fixed at 0, 0)"
-distance = None
-  .type = float
-  .optional = False
-  .help = Sample-detector distance, in mm
-pulse_length = None
-  .type = float
-  .optional = False
-  .help = Pulse length of the shot, in fs
-sequence_number = None
-  .type = int
-  .optional = True
-  .help = Sequence number, probably useless for CSPad XXX
-timestamp = None
-  .type = str
-  .optional = False
-  .help = "ISO 8601 timestamp to ms precision.  XXX Would have been
-           better as a two-tuple of seconds and nanoseconds since
-           midnight, 1 January 1970 (Unix time), like in the XTC
-           streams."
-wavelength = None
-  .type = float
-  .optional = False
-  .help = Wavelength of the shot, in Aangstroem
-xtal_target = None
-  .type = str
-  .optional = True
-  .help = Processing target for shot
-detector {
-  serial = None
-    .type = int
-    .optional = False
-  label = None
-    .type = str
-    .optional = True
-  translation = None
-    .type = floats(size=3)
-  orientation = None
-    .type = floats(size=4)
-    .help = "Unit quaternion, (w, x, y, z) relating child coordinate
-             frame to parent XXX Optional or mandatory?"
-  panel
-    .multiple = True
-    .optional = True
-  {
-    serial = None
-      .type = int
-      .optional = False
-    label = None
-      .type = str
-      .optional = True
-    translation = None
-      .type = floats(size=3)
-      .optional = False
-    orientation = None
-      .type = floats(size=4)
-      .optional = False
-    sensor
-      .multiple = True
-      .optional = True
-    {
-      serial = None
-        .type = int
-        .optional = False
-      label = None
-        .type = str
-        .optional = True
-      translation = None
-        .type = floats(size=3)
-        .optional = False
-      orientation = None
-        .type = floats(size=4)
-        .optional = False
-      asic
-        .multiple = True
-        .optional = True
-      {
-        serial = None
-          .type = int
-          .optional = False
-        label = None
-          .type = str
-          .optional = True
-        translation = None
-          .type = floats(size=3)
-          .optional = False
-        orientation = None
-          .type = floats(size=4)
-          .optional = False
-        pixel_size = None
-          .type = floats(size=2)
-          .optional = False
-          .help = "Size of a pixel along a horizontal row (width), and
-                   a vertical column (height), in meters."
-        saturation = None
-          .type = float
-          .optional = False
-          .help = Saturated pixel value XXX float or int?
-        dimension = None
-          .type = ints(size=2)
-          .optional = False
-          .help = "Number of pixels in a horizontal row (width), and a
-                   vertical column of the ASIC (height)."
-      }
-    }
-  }
-}
-""")
-
-
 def metrology2phil(calib_dir, verbose):
   """XXX Should really review the SLAC progress since last time
   around!  XXX Note that this is all SLAC-specific (as is the whole
   thing, I guess).
   """
+
+  from xfel.cftbx.detector.metrology import master_phil
 
   # XXX Can this fail?  How?
   sections = calib2sections(calib_dir)
