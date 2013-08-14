@@ -217,6 +217,7 @@ class generate_water_omit_map (object) :
       exclude_free_r_reflections=False,
       fill_missing_f_obs=False,
       write_f_model=False,
+      update_f_part1=True,
       log=None) :
     if (log is None) :
       log = null_out()
@@ -242,20 +243,27 @@ class generate_water_omit_map (object) :
       fmodel.update_xray_structure(xrs,
         update_f_calc=True,
         update_f_mask=False)
-      self.two_fofc_map = fmodel.map_coefficients(
-        map_type="2mFo-DFc",
-        exclude_free_r_reflections=exclude_free_r_reflections,
-        fill_missing=fill_missing_f_obs)
-      self.fofc_map = fmodel.map_coefficients(
-        map_type="mFo-DFc",
-        exclude_free_r_reflections=exclude_free_r_reflections,
-        fill_missing=False,
-        merge_anomalous=True)
-      if (fmodel.f_obs().anomalous_flag()) :
-        self.anom_map = fmodel.map_coefficients(
-          map_type="anom",
+      if (update_f_part1) :
+        fmodel.update_all_scales(update_f_part1_for="maps", log=log)
+      else :
+        fmodel.update_all_scales(update_f_part1_for=None, log=log)
+      self.two_fofc_map = fmodel.electron_density_map(
+        update_f_part1=update_f_part1).map_coefficients(
+          map_type="2mFo-DFc",
           exclude_free_r_reflections=exclude_free_r_reflections,
           fill_missing=fill_missing_f_obs)
+      self.fofc_map = fmodel.electron_density_map(
+        update_f_part1=update_f_part1).map_coefficients(
+          map_type="mFo-DFc",
+          exclude_free_r_reflections=exclude_free_r_reflections,
+          fill_missing=False,
+          merge_anomalous=True)
+      if (fmodel.f_obs().anomalous_flag()) :
+        self.anom_map = fmodel.electron_density_map(
+          update_f_part1=update_f_part1).map_coefficients(
+            map_type="anom",
+            exclude_free_r_reflections=exclude_free_r_reflections,
+            fill_missing=fill_missing_f_obs)
       if (write_f_model) :
         self.fmodel_map = fmodel.f_model().average_bijvoet_mates()
 
