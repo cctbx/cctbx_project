@@ -1,5 +1,5 @@
-from __future__ import division
 
+from __future__ import division
 from libtbx import group_args
 from libtbx.utils import Sorry
 import os
@@ -182,3 +182,37 @@ class manager (object) :
       space_group, unit_cell = self.symmetry_by_file[file_name]
       print >> out, "%s: %s %s" % (os.path.basename(file_name), str(unit_cell),
         str(space_group))
+
+# FIXME combine with the above code
+def combine_model_and_data_symmetry (
+    model_symmetry,
+    data_symmetry) :
+  """
+  Given data from a model (PDB) file and a reflections file, attempt to
+  reconcile them.  Precedence is given to the space group from the PDB file
+  and the unit cell from the data file.
+  """
+  from cctbx import crystal
+  use_symmetry = None
+  if (model_symmetry is not None) and (data_symmetry is not None) :
+    if (not model_symmetry.unit_cell().is_similar_to(
+        data_symmetry.unit_cell())) :
+      raise Sorry(("Unit cell mismatch between data and PDB file:\n"+
+        "PDB file: %s\nData:%s") % (model_symmetry.unit_cell().parameters(),
+        data_symmetry.unit_cell().parameters()))
+    pdb_sg = model_symmetry.space_group_info()
+    hkl_sg = data_symmetry.space_group_info()
+    if (pdb_sg != hkl_sg) :
+      pdb_group = pdb_sg.group()
+      derived_sg = pdb_group.build_derived_point_group()
+      if (hkl_sg.group().build_derived_point_group() != derived_sg) :
+        raise Sorry("Incompatible space groups in data and PDB files:\n" +
+          "PDB file: %s\nData:%s" % (pdb_sg, hkl_sg))
+    use_symmetry = crystal.symmetry(
+      unit_cell=data_symmetry.unit_cell(),
+      space_group_info=model_symmetry.space_group_info())
+  elif (model_symmetry is not None) :
+    use_symmetry = model_symmetry
+  elif (data_symmetry is not None) :
+    use_symmetry = data_symmetry
+  return use_symmetry
