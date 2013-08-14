@@ -87,8 +87,8 @@ class SBSettingsPanel(wx.Panel):
     if dialog.ShowModal() == wx.ID_OK:
       path = dialog.GetPath()
       if (path != "") :
-        from xfel.cftbx.detector.metrology2phil import master_phil
-        from xfel.cftbx.detector.metrology import metrology_as_transformation_matrices
+        from xfel.cftbx.detector.metrology import \
+          master_phil, metrology_as_transformation_matrices
         from libtbx import phil
 
         frame = self.GetParent().GetParent()
@@ -144,7 +144,7 @@ class SBSettingsPanel(wx.Panel):
     if dialog.ShowModal() == wx.ID_OK:
       path = dialog.GetPath()
       if (path != "") :
-        from xfel.cftbx.detector.metrology2phil import master_phil
+        from xfel.cftbx.detector.metrology import master_phil
 
         # Round-trip the metrology string for pretty-printing.
         frame = self.GetParent().GetParent()
