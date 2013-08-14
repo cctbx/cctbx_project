@@ -27,7 +27,7 @@ struct shared_python_exports
     class_< length_descriptor_type >( "length_descriptor", no_init )
       .def(
         "__call__",
-        &dereference< typename length_descriptor_type::element_type >,
+        &dereference< length_descriptor_type::element_type >,
         return_value_policy< copy_const_reference >()
         )
       ;
