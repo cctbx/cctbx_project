@@ -2673,9 +2673,11 @@ class cmdline_load_pdb_and_data (object) :
       data_symmetry=hkl_symm)
     if (use_symmetry is not None) and (self.f_obs is not None) :
       self.f_obs = self.f_obs.customized_copy(
-        crystal_symmetry=use_symmetry).set_info(self.f_obs.info())
+        crystal_symmetry=use_symmetry).eliminate_sys_absent().set_info(
+          self.f_obs.info())
       self.r_free_flags = self.r_free_flags.customized_copy(
-        crystal_symmetry=use_symmetry).set_info(self.r_free_flags.info())
+        crystal_symmetry=use_symmetry).eliminate_sys_absent().set_info(
+          self.r_free_flags.info())
     # PDB INPUT
     pdb_file_object = pdb_file(
       pdb_file_names=params.input.pdb.file_name,
