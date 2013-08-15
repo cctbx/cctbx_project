@@ -65,6 +65,9 @@ mtz_file
     disable_space_group_check = False
       .type = bool
       .style = noauto
+    eliminate_sys_absent = True
+      .type = bool
+      .short_caption = Eliminate systematic absences
   }
   d_max = None
     .type = float
@@ -917,6 +920,8 @@ class process_arrays (object) :
         eliminate_invalid_indices=\
           self.params.mtz_file.crystal_symmetry.eliminate_invalid_indices,
         out=out)
+    if (self.params.mtz_file.crystal_symmetry.eliminate_sys_absent) :
+      output_array = output_array.eliminate_sys_absent()
     if self.mtz_dataset is None :
       self.mtz_dataset = output_array.as_mtz_dataset(
         column_root_label=fake_label,
