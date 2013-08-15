@@ -203,6 +203,7 @@ DETECTOR_SN=%(DETECTOR_SN)d;
     F.close()
     from iotbx.detectors import WriteADSC
     if mod_data==None: mod_data=self.linearintdata
+    mod_data = mod_data.set_selected(mod_data < 0, 0)
     WriteADSC(fileout,mod_data,self.size1,self.size2,endian)
 
   def __getattr__(self, attr):
