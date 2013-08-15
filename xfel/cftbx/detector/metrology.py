@@ -8,14 +8,17 @@ all matrices are to be pre-multiplied (with column vectors)?
 """
 from __future__ import division
 
+from libtbx import phil
 from scitbx import matrix
 
 
- # XXX None of these names are settled yet.  XXX separate out the
+# XXX None of these names are settled yet.  XXX separate out the
 # un-scoped bits into a new master_phil called... what?  XXX detector
 # should have .multiple = True to allow for multiple detectors, and
 # the distance should be account for in their translation (which fixes
-# the origin to that of the laboratory frame).
+# the origin to that of the laboratory frame)--no, maybe it's better
+# for it to be with respect to give the back of the detector stage
+# instead).
 master_phil = phil.parse("""
 attenuation = None
   .type = float
