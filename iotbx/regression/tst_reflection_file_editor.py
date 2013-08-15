@@ -501,6 +501,45 @@ mtz_file {
     pass
   else :
     raise Exception_expected
+  # eliminate_sys_absent
+  symm2 = symm.customized_copy(
+    space_group_info=sgtbx.space_group_info("P222"))
+  set2 = miller.build_set(
+    crystal_symmetry=symm2,
+    anomalous_flag=True,
+    d_min=1.0)
+  data2 = flex.double(set2.indices().size(), 100.)
+  sigmas2 = flex.double(set2.indices().size(), 4.)
+  array2 = set2.array(data=data2, sigmas=sigmas2)
+  array2.set_observation_type_xray_amplitude()
+  flags2 = array2.generate_r_free_flags(
+    use_lattice_symmetry=True).average_bijvoet_mates()
+  mtz2 = array2.as_mtz_dataset(column_root_label="F-obs")
+  mtz2.add_miller_array(flags2, column_root_label="R-free-flags")
+  mtz2.mtz_object().write("tst_data8.mtz")
+  assert (array2.indices().size() == 352)
+  new_phil = libtbx.phil.parse("""
+mtz_file {
+  output_file = tst8.mtz
+  crystal_symmetry.space_group = P212121
+  crystal_symmetry.unit_cell = 6,7,8,90,90,90
+  miller_array {
+    file_name = tst_data8.mtz
+    labels = F-obs(+),SIGF-obs(+),F-obs(-),SIGF-obs(-)
+    output_labels = F-obs(+) SIGF-obs(+) F-obs(-) SIGF-obs(-)
+  }
+  miller_array {
+    file_name = tst_data8.mtz
+    labels = R-free-flags
+    output_labels = R-free-flags
+  }
+}""")
+  params = master_phil.fetch(source=new_phil).extract()
+  miller_arrays = run_and_reload(params, "tst8.mtz")
+  assert (miller_arrays[0].indices().size() == 341)
+  params.mtz_file.crystal_symmetry.eliminate_sys_absent = False
+  miller_arrays = run_and_reload(params, "tst8.mtz")
+  assert (miller_arrays[0].indices().size() == 352)
 
 ########################################################################
 # this requires data in phenix_regression
