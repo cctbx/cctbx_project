@@ -521,7 +521,7 @@ def exercise_mtrix(regression_pdb):
   assert mtrix_info[0].coordinates_present
   assert mtrix_info[1].serial_number == "  2"
 
-def exercise_BIOMT(regression_pdb):
+def exercise_BIOMT():
   '''
   Verifying correct information extraction from pdb file
   '''
@@ -559,7 +559,6 @@ REMARK 350   BIOMT3   4  0.309017  0.809017  0.500000        0.00000
   pdb_inp = pdb.pdb_input(
     source_info=None,
     lines=flex.split_lines(pdb_test_data))
-  pdb_inp2 = pdb.input(file_name=op.join(regression_pdb, "pdb1zff.ent"))
   mtrix_info = pdb_inp.process_BIOMT_records()
   assert len(mtrix_info) == 4
   assert approx_equal(mtrix_info[0].values, [[
@@ -681,6 +680,7 @@ def run():
     exercise_format_fasta(regression_pdb=regression_pdb)
     exercise_merge_files_and_check_for_overlap(regression_pdb=regression_pdb)
     exercise_mtrix(regression_pdb=regression_pdb)
+    exercise_BIOMT()
     exercise_header_misc(regression_pdb=regression_pdb)
   for use_u_aniso in (False, True):
     exercise_xray_structure(use_u_aniso, verbose=verbose)
