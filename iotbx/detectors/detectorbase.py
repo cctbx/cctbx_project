@@ -203,7 +203,9 @@ DETECTOR_SN=%(DETECTOR_SN)d;
     F.close()
     from iotbx.detectors import WriteADSC
     if mod_data==None: mod_data=self.linearintdata
-    mod_data = mod_data.set_selected(mod_data < 0, 0)
+    if not mod_data.all_ge(0):
+      from libtbx.utils import Sorry
+      raise Sorry("Negative values not allowed when writing SMV")
     WriteADSC(fileout,mod_data,self.size1,self.size2,endian)
 
   def __getattr__(self, attr):
