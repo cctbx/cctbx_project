@@ -747,6 +747,20 @@ END
   pdb_new = open("tst_pdbtools_move_waters.pdb_modified.pdb").read()
   assert pdb_new == pdb_out, pdb_new
 
+def exercise_stop_for_unknowns () :
+  pdb_in = """\
+HETATM   16  O   UNK B   2      47.616  10.724 150.212  1.00 46.48       B   O
+HETATM   17  O   UNK B   3      46.408  16.672 146.066  0.50 12.81       B   O
+HETATM   18  O   UNK B   4      29.343  12.806 185.898  1.00 35.57       B   O
+HETATM   19  O   UNK B   5      43.786  12.615 147.734  0.50 28.43       B   O
+HETATM   20  O   UNK B   6      35.068  19.167 155.349  1.00 15.97       B   O
+"""
+  open("tst_pdbtools_unknown.pdb", "w").write(pdb_in)
+  cmd = "phenix.pdbtools tst_pdbtools_unknown.pdb set_b_iso=20"
+  run_command(command=cmd, sorry_expected=True)
+  cmd2 = cmd + " stop_for_unknowns=False"
+  run_command(command=cmd)
+
 def exercise(args):
   if ("--show-everything" in args):
     verbose = 2
@@ -760,6 +774,7 @@ def exercise(args):
     print "Skipping exercise(): input files not available"
     return
   eargs = {"pdb_dir": pdb_dir, "verbose": verbose}
+  exercise_stop_for_unknowns()
   exercise_mmcif_support()
   exercise_basic(**eargs)
   exercise_multiple(**eargs)
