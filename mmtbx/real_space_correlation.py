@@ -683,10 +683,10 @@ def extract_map_stats_for_single_atoms (xray_structure, pdb_atoms, fmodel,
   two_fofc_map = fmodel.two_fofc_map()
   two_fofc, two_fofc_sel = collect_map_values(two_fofc_map, get_selections=True)
   del two_fofc_map
-  fofc_map = fmodel.two_fofc_map()
+  fofc_map = fmodel.fofc_map()
   fofc = collect_map_values(fofc_map)
   del fofc_map
-  anom_map = fmodel.two_fofc_map()
+  anom_map = fmodel.anomalous_map()
   anom = collect_map_values(anom_map)
   del anom_map
   fmodel_map = fmodel.f_model().fft_map(
