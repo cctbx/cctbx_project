@@ -117,9 +117,13 @@ class get_r_rfree_sigma(object):
     if(log is None): log = sys.stdout
     print >> self.log, self.formatted_string()
 
-def extract_remark_2_and_3_records(file_name):
+def extract_remark_2_and_3_records(file_name, file_lines=None):
   result = []
-  file_lines = smart_open.for_reading(file_name = file_name).read().splitlines()
+  if (file_lines is None) :
+    file_lines = smart_open.for_reading(
+      file_name = file_name).read().splitlines()
+  else :
+    assert (file_name is None)
   for rec in file_lines:
     if(rec.startswith("REMARK   3 ") or rec.startswith("REMARK   2 ")):
       start = True
@@ -129,8 +133,9 @@ def extract_remark_2_and_3_records(file_name):
         break
   return result
 
-def extract(file_name):
-  remarks_2_and_3 = extract_remark_2_and_3_records(file_name)
+def extract(file_name, file_lines=None):
+  remarks_2_and_3 = extract_remark_2_and_3_records(file_name=file_name,
+    file_lines=file_lines)
   if(len(remarks_2_and_3) == 0):
     return None
   result = get_r_rfree_sigma(

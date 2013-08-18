@@ -120,6 +120,9 @@ def run():
   assert approx_equal(result.low         , 20.0  )
   assert approx_equal(result.resolution  , 1.05  )
   assert approx_equal(result.sigma       , 0.0   )
+  result = extract_rfactors_resolutions_sigma.extract(
+    file_lines=example_shelx.splitlines(), file_name=None)
+  assert approx_equal(result.r_work      , 0.140 )
 
 if (__name__ == "__main__"):
   run()
