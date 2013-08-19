@@ -1015,7 +1015,7 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
     return self._scale_matrix
 
   def process_BIOMT_records(self):
-    '''    
+    '''
     extract REMARK 350 BIOMT information, information that provides rotation matrices
     and translation  data, required for generating  a complete multimer from the asymmetric unit.
 
@@ -1037,8 +1037,8 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
     [[0.559048,-0.789435,0.253492,0.722264,0.313528,-0.616470,0.407186,0.527724,0.745457][0.30000,0.00100,0.05000]]
 
     the result is a list of libtx group_arg constructs, each one contains
-      pdb_inp.process_BIOMT_records()[1].values 	# give a list containing float type numbers
-      pdb_inp.process_BIOMT_records()[1].serial_number 	# is an integer
+      pdb_inp.process_BIOMT_records()[1].values         # give a list containing float type numbers
+      pdb_inp.process_BIOMT_records()[1].serial_number  # is an integer
 
     '''
     from libtbx import group_args
