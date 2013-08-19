@@ -87,7 +87,8 @@ def test_saxs():
   l.extend(t_z)
 
   intensities = direct_summation()
-  intensities.add_saxs(st,xyz,blsf,q,t_w,l,sr,False)
+  intensities.prepare_saxs(st,xyz,blsf,q,t_w,l,sr,False)
+  intensities.run_saxs_kernel()
   intensities = intensities.get_sum()
   intensities = intensities/float(len(t_x))
 

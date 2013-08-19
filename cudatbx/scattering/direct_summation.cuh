@@ -23,6 +23,8 @@ namespace scattering {
   __device__ __constant__ fType two_pi = fType(2.0)*CUDART_PI_F;
   const int padded_size = 16;
   __device__ __constant__ int d_padded_size = padded_size;
+  __device__ __constant__ fType dc_c1;
+  __device__ __constant__ fType dc_c2;
 
   /* ==========================================================================
 
@@ -380,7 +382,103 @@ namespace scattering {
     if (i < n_total) {
       workspace[i] = real_sum * real_sum + imag_sum * imag_sum;
     }
+  }
 
+  // --------------------------------------------------------------------------
+
+  template <typename floatType>
+  __global__ void solvent_saxs_kernel
+  (const int* scattering_type, const floatType* xyz,
+   const floatType* solvent_weights, const int n_xyz, const int padded_n_xyz,
+   const int n_q, const int n_lattice,
+   floatType* workspace, const int padded_n_workspace) {
+
+    int i = blockDim.x * blockIdx.x + threadIdx.x;
+
+    // loop over all q and lattice points (more parallel than loop over q)
+    floatType q_x,q_y,q_z,stol_sq;
+    floatType f[max_types];
+    int n_total = n_q * n_lattice;
+    floatType c = 0.0625/(CUDART_PI_F*CUDART_PI_F);
+    if (i < n_total) {
+      // read q from global memory (stored in registers)
+      q_x = workspace[                       i];
+      q_y = workspace[  padded_n_workspace + i];
+      q_z = workspace[2*padded_n_workspace + i];
+
+      // calculate form factors (stored in local memory)
+      stol_sq = c * (q_x*q_x + q_y*q_y + q_z*q_z);
+      for (int type=0; type<dc_n_types; type++) {
+        f[             type] = p_form_factor(type,stol_sq);
+        f[dc_n_types + type] = x_form_factor(type,stol_sq);
+      }
+    }
+
+    // copy atoms into shared memory one chunk at a time and sum
+    // all threads are used for reading data
+    __shared__ floatType x[threads_per_block];
+    __shared__ floatType y[threads_per_block];
+    __shared__ floatType z[threads_per_block];
+    __shared__ floatType solvent[threads_per_block];
+    __shared__ int s_type[threads_per_block];
+    floatType p_real_sum = 0.0;
+    floatType p_imag_sum = 0.0;
+    floatType x_real_sum = 0.0;
+    floatType x_imag_sum = 0.0;
+    floatType bl_real_sum = 0.0;
+    floatType bl_imag_sum = 0.0;
+    floatType s,f1,f2;
+    int current_atom;
+
+    for (int atom=0; atom<n_xyz; atom += blockDim.x) {
+      current_atom = atom + threadIdx.x;
+      // coalesce reads using threads, but don't read past n_xyz
+      // one read for each variable should fill chunk of 32 atoms
+      // total length = # of threads/block
+      if (current_atom < n_xyz) {
+        x[threadIdx.x] = xyz[                 current_atom];
+        y[threadIdx.x] = xyz[  padded_n_xyz + current_atom];
+        z[threadIdx.x] = xyz[2*padded_n_xyz + current_atom];
+        solvent[threadIdx.x] = solvent_weights[current_atom];
+        s_type[threadIdx.x] = scattering_type[current_atom];
+      }
+
+      // wait for all data to be copied into shared memory
+      __syncthreads();
+
+      // then sum over all the atoms that are now available to all threads
+      if (i < n_total) {
+        for (int a=0; a<blockDim.x; a++) {
+          current_atom = atom + a;  // overall counter for atom number
+          if (current_atom < n_xyz) {
+            __sincosf((x[a] * q_x + y[a] * q_y + z[a] * q_z),&s,&c);
+
+            // structure factor = sum{(form factor)[exp(2pi h*x)]}
+            f1 = f[s_type[a]];
+            p_real_sum += f1 * c;
+            p_imag_sum += f1 * s;
+            f2 = f[dc_n_types + s_type[a]];
+            x_real_sum += f2 * c;
+            x_imag_sum += f2 * s;
+            f1 = solvent[a]*f[dc_n_types-1];
+            bl_real_sum += f1 * c;
+            bl_imag_sum += f1 * s;
+          }
+        }
+      }
+      // wait before starting next chunk so data isn't changed for lagging threads
+      __syncthreads();
+    }
+
+    // transfer result to global memory
+    if (i < n_total) {
+      workspace[                       i] = p_real_sum;
+      workspace[  padded_n_workspace + i] = p_imag_sum;
+      workspace[2*padded_n_workspace + i] = x_real_sum;
+      workspace[3*padded_n_workspace + i] = x_imag_sum;
+      workspace[4*padded_n_workspace + i] = bl_real_sum;
+      workspace[5*padded_n_workspace + i] = bl_imag_sum;
+    }
   }
 
   // --------------------------------------------------------------------------
@@ -395,7 +493,7 @@ namespace scattering {
     
     // sum up lattice points for each q
     // since the number of points is small, this implementaion is not optimized
-    float I_sum = 0.0;
+    floatType I_sum = 0.0;
     int l_start = i*n_lattice;
     if (i < n_q) {
       for (int j=0; j<n_lattice; j++) {
@@ -406,7 +504,45 @@ namespace scattering {
       sf_real[i] = I_sum;
       sf_imag[i] = 0.0;
     }
+  }
+
+  template <typename floatType>
+  __global__ void collect_solvent_saxs_kernel
+  (const int n_q, const int n_lattice, floatType* weights,
+   floatType* sf_real, floatType* sf_imag,
+   floatType* workspace, const int padded_n_workspace) {
     
+    int i = blockDim.x * blockIdx.x + threadIdx.x;
+    
+    // sum up lattice points for each q
+    // since the number of points is small, this implementaion is not optimized
+    floatType I_sum = 0.0;
+    int l_start = i*n_lattice;
+    floatType p_real = 0.0;
+    floatType p_imag = 0.0;
+    floatType x_real = 0.0;
+    floatType x_imag = 0.0;
+    floatType bl_real = 0.0;
+    floatType bl_imag = 0.0;
+    floatType real_sum = 0.0;
+    floatType imag_sum = 0.0;
+    if (i < n_q) {
+      for (int j=0; j<n_lattice; j++) {
+        p_real =  workspace[                       l_start + j];
+        p_imag =  workspace[  padded_n_workspace + l_start + j];
+        x_real =  workspace[2*padded_n_workspace + l_start + j];
+        x_imag =  workspace[3*padded_n_workspace + l_start + j];
+        bl_real = workspace[4*padded_n_workspace + l_start + j];
+        bl_imag = workspace[5*padded_n_workspace + l_start + j];
+        real_sum = p_real + dc_c1 * x_real + dc_c2 * bl_real;
+        imag_sum = p_imag + dc_c1 * x_imag + dc_c2 * bl_imag;
+        I_sum += weights[j] * (real_sum * real_sum + imag_sum * imag_sum);
+      }
+
+      // transfer final result to global memory
+      sf_real[i] = I_sum;
+      sf_imag[i] = 0.0;
+    }
   }
   
   /* ==========================================================================

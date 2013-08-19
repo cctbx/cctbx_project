@@ -473,6 +473,27 @@ namespace scattering {
      solvent variables are used for weights and code is not optimal
      possibly subclass or split everything into functions
   */
+  void cudatbx::scattering::direct_summation::prepare_saxs
+  (const scitbx::af::const_ref<std::string>& scatterers,
+   const scitbx::af::const_ref<scitbx::vec3<double> >& xyz,
+   const scitbx::af::const_ref<double>& solvent_weights,
+   const scitbx::af::const_ref<double>& q,
+   const scitbx::af::const_ref<double>& lattice_weights,
+   const scitbx::af::const_ref<double>& lattice,
+   const cctbx::xray::scattering_type_registry& registry,
+   const bool& complex_form_factor) {
+
+    // reorganize input data, allocates arrays, transfer to GPU, order matters
+    reorganize_coordinates(xyz,solvent_weights);
+    reorganize_q(q,lattice_weights,lattice);
+    convert_scatterers(scatterers,registry,complex_form_factor);
+
+    // allocate arrays for results if necessary
+    if (!amplitudes_allocated) {
+      allocate_amplitudes();
+    }
+  }
+
   void cudatbx::scattering::direct_summation::run_saxs_kernel() {
     // allocate working space if necessary
     if (!workspace_allocated) {
@@ -495,32 +516,39 @@ namespace scattering {
        d_workspace, workspace_size);
   }
 
-  void cudatbx::scattering::direct_summation::add_saxs
-  (const scitbx::af::const_ref<std::string>& scatterers,
-   const scitbx::af::const_ref<scitbx::vec3<double> >& xyz,
-   const scitbx::af::const_ref<double>& solvent_weights,
-   const scitbx::af::const_ref<double>& q,
-   const scitbx::af::const_ref<double>& lattice_weights,
-   const scitbx::af::const_ref<double>& lattice,
-   const cctbx::xray::scattering_type_registry& registry,
-   const bool& complex_form_factor) {
-
-    // reorganize input data, allocates arrays, transfer to GPU, order matters
-    reorganize_coordinates(xyz,solvent_weights);
-    reorganize_q(q,lattice_weights,lattice);
-    convert_scatterers(scatterers,registry,complex_form_factor);
-
-    // allocate arrays for results if necessary
-    if (!amplitudes_allocated) {
-      allocate_amplitudes();
+  void cudatbx::scattering::direct_summation::run_solvent_saxs_kernel() {
+    // allocate working space if necessary
+    if (!workspace_allocated) {
+      workspace_size = int(std::floor(n_h*n_rt/padding + 1.0)) * padding;
+      allocate_workspace(6*workspace_size);
     }
 
-    // run calculation
-    run_saxs_kernel();
-    
-    // deallocate arrays
-    clear_arrays();
-    clear_workspace();
+    int blocks_per_grid = (n_h*n_rt + threads_per_block - 1)/threads_per_block;
+    expand_q_lattice_kernel<fType><<<blocks_per_grid,threads_per_block>>>
+      (d_h, n_h,
+       d_rt, n_rt, size_rt,
+       d_workspace, workspace_size);
+    solvent_saxs_kernel<fType><<<blocks_per_grid,threads_per_block>>>
+      (d_scattering_type, d_xyz, d_solvent, n_xyz, padded_n_xyz,
+       n_h, n_rt,
+       d_workspace, workspace_size);
+  }
+
+  void cudatbx::scattering::direct_summation::run_collect_solvent_saxs_kernel
+  (const double& c1, const double& c2) {
+
+    // transfer scaling constants to constant memory on GPU
+    fType h_c1 = fType(c1);
+    fType h_c2 = fType(c2);
+    cudaSafeCall( cudaMemcpyToSymbol(dc_c1, &h_c1, sizeof(fType)) );
+    cudaSafeCall( cudaMemcpyToSymbol(dc_c2, &h_c2, sizeof(fType)) );
+
+    assert(workspace_allocated);
+    int blocks_per_grid = (n_h*n_rt + threads_per_block - 1)/threads_per_block;
+    collect_solvent_saxs_kernel<fType><<<blocks_per_grid,threads_per_block>>>
+      (n_h, n_rt, d_weights,
+       d_real, d_imag,
+       d_workspace, workspace_size);
   }
 
   /* --------------------------------------------------------------------------
