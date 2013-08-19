@@ -43,6 +43,11 @@ struct edge_exports
   typedef typename edge_type::word_length_type word_length_type;
   typedef typename edge_type::glyph_type glyph_type;
 
+  typedef iterator::PreOrder< edge_type > preorder_iterator;
+  typedef iterator::PreOrder< edge_type const > preorder_const_iterator;
+  typedef iterator::PostOrder< edge_type > postorder_iterator;
+  typedef iterator::PostOrder< edge_type const > postorder_const_iterator;
+
   static void throw_python_key_error()
   {
     PyErr_SetString(PyExc_KeyError, "Key not found");
@@ -259,14 +264,35 @@ struct edge_exports
     return boost::hash_value( edge_ptr );
   }
 
-  template< typename IteratorType >
-  static boost::python::object get_range(
-    typename IteratorType::ptr_type const& root
-    )
+  static boost::python::object get_preorder_range(ptr_type const& root)
   {
-    return scitbx::boost_python::as_iterator< IteratorType >(
-      IteratorType::begin( root ),
-      IteratorType::end( root )
+    return scitbx::boost_python::as_iterator< preorder_iterator >(
+      preorder_iterator::begin( root ),
+      preorder_iterator::end( root )
+      );
+  }
+
+  static boost::python::object get_preorder_const_range(const_ptr_type const& root)
+  {
+    return scitbx::boost_python::as_iterator< preorder_const_iterator >(
+      preorder_const_iterator::begin( root ),
+      preorder_const_iterator::end( root )
+      );
+  }
+
+  static boost::python::object get_postorder_range(ptr_type const& root)
+  {
+    return scitbx::boost_python::as_iterator< postorder_iterator >(
+      postorder_iterator::begin( root ),
+      postorder_iterator::end( root )
+      );
+  }
+
+  static boost::python::object get_postorder_const_range(const_ptr_type const& root)
+  {
+    return scitbx::boost_python::as_iterator< postorder_const_iterator >(
+      postorder_const_iterator::begin( root ),
+      postorder_const_iterator::end( root )
       );
   }
 
@@ -321,29 +347,26 @@ struct edge_exports
       .def( "__hash__", calculate_hash_const )
       ;
 
-    typedef iterator::PreOrder< edge_type > preorder_iterator;
+
     scitbx::boost_python::export_range_as_iterator< preorder_iterator >(
       "preorder_iteration_range"
       );
-    def( "preorder_iteration", get_range< preorder_iterator >, arg( "root" ) );
+    def( "preorder_iteration", get_preorder_range, arg( "root" ) );
 
-    typedef iterator::PreOrder< edge_type const > preorder_const_iterator;
     scitbx::boost_python::export_range_as_iterator< preorder_const_iterator >(
       "preorder_const_iteration_range"
       );
-    def( "preorder_iteration", get_range< preorder_const_iterator >, arg( "root" ) );
+    def( "preorder_iteration", get_preorder_const_range, arg( "root" ) );
 
-    typedef iterator::PostOrder< edge_type > postorder_iterator;
     scitbx::boost_python::export_range_as_iterator< postorder_iterator >(
       "postorder_iteration_range"
       );
-    def( "postorder_iteration", get_range< postorder_iterator >, arg( "root" ) );
+    def( "postorder_iteration", get_postorder_range, arg( "root" ) );
 
-    typedef iterator::PostOrder< edge_type const > postorder_const_iterator;
     scitbx::boost_python::export_range_as_iterator< postorder_const_iterator >(
       "postorder_const_iteration_range"
       );
-    def( "postorder_iteration", get_range< postorder_const_iterator >, arg( "root" ) );
+    def( "postorder_iteration", get_postorder_const_range, arg( "root" ) );
   }
 };
 
