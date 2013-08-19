@@ -15,8 +15,8 @@ namespace cudatbx { namespace scattering {
       using namespace boost::python;
       class_<cudatbx::scattering::direct_summation>("direct_summation",init<>() )
         .def("add",&cudatbx::scattering::direct_summation::add)
-        .def("add_saxs",&cudatbx::scattering::direct_summation::add_saxs)
         .def("get_sum",&cudatbx::scattering::direct_summation::get_sum)
+        .def("prepare_saxs",&cudatbx::scattering::direct_summation::prepare_saxs)
         .def("reorganize_xyz",&cudatbx::scattering::direct_summation::reorganize_xyz)
         .def("transfer_xyz",&cudatbx::scattering::direct_summation::transfer_xyz)
         .def("clear_xyz",&cudatbx::scattering::direct_summation::clear_xyz)
@@ -63,6 +63,10 @@ namespace cudatbx { namespace scattering {
         .def("clear_workspace",&cudatbx::scattering::direct_summation::clear_workspace)
         .def("run_kernel",&cudatbx::scattering::direct_summation::run_kernel)
         .def("run_saxs_kernel",&cudatbx::scattering::direct_summation::run_saxs_kernel)
+        .def("run_solvent_saxs_kernel",
+             &cudatbx::scattering::direct_summation::run_solvent_saxs_kernel)
+        .def("run_collect_solvent_saxs_kernel",
+             &cudatbx::scattering::direct_summation::run_collect_solvent_saxs_kernel)
         ;
     }
   };

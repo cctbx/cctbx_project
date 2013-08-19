@@ -38,17 +38,17 @@ namespace scattering {
              const scitbx::af::const_ref<scitbx::vec3<double> >&,
              const cctbx::xray::scattering_type_registry&,
              const bool&);
-    void add_saxs(const scitbx::af::const_ref<std::string>&,
-                  const scitbx::af::const_ref<scitbx::vec3<double> >&,
-                  const scitbx::af::const_ref<double>&,
-                  const scitbx::af::const_ref<double>&,
-                  const scitbx::af::const_ref<double>&,
-                  const scitbx::af::const_ref<double>&,
-                  const cctbx::xray::scattering_type_registry&,
-                  const bool&);
     scitbx::af::shared<std::complex<double> > get_sum();
 
     // low level functions for reorganizing and transferring data
+    void prepare_saxs(const scitbx::af::const_ref<std::string>&,
+                      const scitbx::af::const_ref<scitbx::vec3<double> >&,
+                      const scitbx::af::const_ref<double>&,
+                      const scitbx::af::const_ref<double>&,
+                      const scitbx::af::const_ref<double>&,
+                      const scitbx::af::const_ref<double>&,
+                      const cctbx::xray::scattering_type_registry&,
+                      const bool&);
     void reorganize_xyz(const scitbx::af::const_ref<scitbx::vec3<double> >&);
     void transfer_xyz();
     void clear_xyz();
@@ -85,6 +85,8 @@ namespace scattering {
     void clear_workspace();
     void run_kernel();
     void run_saxs_kernel();
+    void run_solvent_saxs_kernel();
+    void run_collect_solvent_saxs_kernel(const double&,const double&);
 
   private:
     // functions for reorganizing data
