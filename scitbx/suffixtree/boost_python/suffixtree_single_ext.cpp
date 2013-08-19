@@ -40,21 +40,22 @@ struct python_exports
   typedef typename word_type::index_type index_type;
 
   typedef std::size_t suffix_label_type;
+  typedef Tree< word_type, suffix_label_type, BoostHashMapAdapter > tree_type;
+  typedef MSI< tree_type, boost::python::stl_input_iterator< glyph_type > > msi_type;
 
-  template< typename IIterator >
-  static boost::python::object get_range(
-    typename IIterator::tree_type const& tree,
+  static boost::python::object get_matching_statistics_range(
+    tree_type const& tree,
     boost::python::object const& iterable
     )
   {
-    typedef boost::python::stl_input_iterator< typename IIterator::glyph_type > iter_type;
+    typedef boost::python::stl_input_iterator< glyph_type > iter_type;
 
     iter_type begin( iterable );
     iter_type end;
 
     return scitbx::boost_python::as_iterator(
-      IIterator( tree, begin, end),
-      IIterator( tree, end, end )
+      msi_type( tree, begin, end),
+      msi_type( tree, end, end )
       );
   }
 
@@ -93,11 +94,7 @@ struct python_exports
       BoostHashMapAdapter
       >::wrap();
     python::tree_exports< word_type, suffix_label_type, BoostHashMapAdapter >::wrap();
-    typedef Tree< word_type, suffix_label_type, BoostHashMapAdapter > tree_type;
     python::ukkonen_builder_exports< tree_type >::wrap();
-
-
-    typedef MSI< tree_type, stl_input_iterator< glyph_type > > msi_type;
 
     scitbx::boost_python::export_range_as_iterator< msi_type >(
       "matching_statistics_iterator"
@@ -113,7 +110,11 @@ struct python_exports
       scitbx::boost_python::PairToTupleConverter< typename msi_type::value_type >
       >();
 
-    def( "matching_statistics", get_range< msi_type >, ( arg( "tree" ), arg( "iterable" ) ) );
+    def(
+      "matching_statistics",
+      get_matching_statistics_range,
+      ( arg( "tree" ), arg( "iterable" ) )
+      );
   }
 };
 
