@@ -599,12 +599,26 @@ class process_arrays (object) :
             apply_to_sigmas=True)
       if (array_params.shuffle_values) :
         print >> log, "Shuffling values for %s" % array_name
-        perm = flex.random_permutation(new_array.data().size())
-        sigmas = new_array.sigmas()
-        if (sigmas is not None) :
-          sigmas = sigmas.select(perm)
-        data = new_array.data().select(perm)
-        new_array = new_array.customized_copy(data=data, sigmas=sigmas)
+        combined_array = None
+        tmp_array = new_array.deep_copy()
+        tmp_array.setup_binner(n_bins=min(100, tmp_array.indices().size()))
+        for i_bin in tmp_array.binner().range_used() :
+          bin_sel = tmp_array.binner().selection(i_bin)
+          bin_array = tmp_array.select(bin_sel)
+          perm = flex.random_permutation(bin_array.data().size())
+          sigmas = bin_array.sigmas()
+          if (sigmas is not None) :
+            sigmas = sigmas.select(perm)
+          data = bin_array.data().select(perm)
+          bin_array = bin_array.customized_copy(data=data, sigmas=sigmas)
+          if (combined_array is None) :
+            combined_array = bin_array.deep_copy()
+          else :
+            combined_array = combined_array.concatenate(bin_array)
+        if (combined_array.indices().size() != new_array.indices().size()) :
+          raise RuntimeError("Array size changed: %d versus %d" %
+            (combined_array.indices().size(), new_array.indices().size()))
+        new_array = combined_array
       if (array_params.reset_values_to) :
         if (not isinstance(new_array.data(), flex.double) and
             not isinstance(new_array.data(), flex.int)) :

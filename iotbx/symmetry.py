@@ -184,6 +184,7 @@ class manager (object) :
         str(space_group))
 
 # FIXME combine with the above code
+# exercised as part of mmtbx/regression/tst_combine_symmetry.py
 def combine_model_and_data_symmetry (
     model_symmetry,
     data_symmetry) :
