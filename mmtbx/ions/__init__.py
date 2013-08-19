@@ -175,6 +175,8 @@ def check_supported (elements) :
     # XXX somehow comma-separation of phil strings fields doesn't work
     if (isinstance(elements, list)) and (len(elements) == 1) :
       elements = elements[0].split(",")
+    if (elements == ['X']) : # XXX hack for testing - X is "dummy" element
+      return True
     for elem in elements :
       if (not elem.strip().upper() in SUPPORTED) :
         raise Sorry("Element '%s' not supported!  Choices are: %s" %
@@ -1135,6 +1137,8 @@ class Manager (object) :
     if auto_candidates:
       candidates = DEFAULT_IONS
     candidates = [i.strip().upper() for i in candidates]
+    if (candidates == ['X']) : # XXX hack for testing - X is "dummy" element
+      candidates = []
 
     resname = atom.fetch_labels().resname.strip().upper()
     assert resname in WATER_RES_NAMES
