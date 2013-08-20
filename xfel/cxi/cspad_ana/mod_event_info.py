@@ -16,7 +16,7 @@ class mod_event_info(object):
   """
 
 
-  def __init__(self, address, detz_offset=575, verbose=False):
+  def __init__(self, address, detz_offset=575, verbose=False, **kwds):
     """The mod_event_info class constructor stores the
     parameters passed from the pyana configuration file in instance
     variables.
@@ -28,6 +28,12 @@ class mod_event_info(object):
 
     self.logger = logging.getLogger(self.__class__.__name__)
     self.logger.setLevel(logging.INFO)
+
+    # The subclasses accept keyword arguments; warn about any
+    # unhandled arguments at the end of the inheritance chain.
+    if len(kwds) > 0:
+      self.logger.warning("Ignored unknown arguments: " +
+                          ", ".join(kwds.keys()))
 
     # This is for messages that are picked up by Nat's monitoring program
     self.stats_logger = logging.getLogger("stats logger")
