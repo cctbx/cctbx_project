@@ -184,7 +184,7 @@ bool operator !=(
   MSI< Tree, InputIterator > const& rhs
   )
 {
-  return not ( lhs == rhs );
+  return ! ( lhs == rhs );
 }
 
 

@@ -89,7 +89,7 @@ template< typename Tree >
 void
 Ukkonen< Tree >::detach()
 {
-  if ( not is_valid() )
+  if ( ! is_valid() )
   {
     throw bad_state();
   }
@@ -108,7 +108,7 @@ template< typename Tree >
 void
 Ukkonen< Tree >::push_back(glyph_type const& glyph)
 {
-  if ( not is_attached() )
+  if ( ! is_attached() )
   {
     throw bad_state();
   }

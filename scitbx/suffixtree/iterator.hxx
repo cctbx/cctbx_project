@@ -2,7 +2,7 @@ template< typename Edge >
 PreOrder< Edge >::PreOrder(ptr_type const& root, bool at_top)
   : root_( root ), at_top_( at_top )
 {
-  if ( not root_->empty() )
+  if ( ! root_->empty() )
   {
     pos_ = at_top ? root->begin() : root->end();
   }
@@ -22,7 +22,7 @@ PreOrder< Edge >::operator ++()
     return *this;
   }
 
-  if ( not ( pos_->second )->empty() )
+  if ( ! ( pos_->second )->empty() )
   {
     underlying_iterators_deque_.push_back( pos_ );
     pos_ = ( pos_->second )->begin();
@@ -91,7 +91,7 @@ bool operator ==(PreOrder<Edge> const& lhs, PreOrder<Edge> const& rhs)
 template< typename Edge >
 bool operator !=(PreOrder<Edge> const& lhs, PreOrder<Edge> const& rhs)
 {
-  return not ( lhs == rhs );
+  return ! ( lhs == rhs );
 }
 
 
@@ -103,7 +103,7 @@ PostOrder< Edge >::PostOrder(ptr_type const& root, bool at_top)
   {
     at_top_ = at_top;
   }
-  else if ( not at_top )
+  else if ( ! at_top )
   {
     at_top_ = false;
     pos_ = root_->end();
@@ -203,7 +203,7 @@ template< typename Edge >
 void
 PostOrder< Edge >::descend()
 {
-  while ( not ( pos_->second )->empty() )
+  while ( ! ( pos_->second )->empty() )
   {
     underlying_iterators_deque_.push_back( pos_ );
     pos_ = ( pos_->second )->begin();
@@ -220,5 +220,5 @@ bool operator ==(PostOrder<Edge> const& lhs, PostOrder<Edge> const& rhs)
 template< typename Edge >
 bool operator !=(PostOrder<Edge> const& lhs, PostOrder<Edge> const& rhs)
 {
-  return not ( lhs == rhs );
+  return ! ( lhs == rhs );
 }

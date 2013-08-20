@@ -130,7 +130,7 @@ Cursor< Edge, Word >::break_edge_here()
   new_branch_ptr->parent() = parent_weak_ptr;
   edge_ptr_type parent_ptr = parent_weak_ptr.lock();
 
-  if (not parent_ptr )
+  if ( ! parent_ptr )
   {
     throw bad_tree();
   }
@@ -155,7 +155,7 @@ Cursor< Edge, Word >::to_suffix_position()
 {
   word_type const& word = *word_ptr_;
 
-  if ( not edge_ptr_->is_root() )
+  if ( ! edge_ptr_->is_root() )
   {
     word_iterator path_begin = word.get_iterator_to( edge_ptr_->start() );
 
