@@ -69,25 +69,14 @@ def run (args) :
     master_phil.show()
     raise Usage("file_path must be defined (either file_path=XXX, or the path alone).")
   assert params.handedness is not None
-  if params.handedness > 0:
-    assert params.xfel_target is not None
+  assert params.xfel_target is not None
   assert params.n_bins is not None
 
   from iotbx.detectors.npy import NpyImage
   img = NpyImage(params.file_path)
 
-  from spotfinder.applications.xfel import cxi_phil
-  args = [params.file_path,
-          "distl.detector_format_version=CXI 7.1",
-          "viewer.powder_arcs.show=False",
-          "viewer.powder_arcs.code=3n9c",
-          ]
-  if params.handedness > 0:
-    from cxi_user.xfel_targets import targets
-    args += targets[params.xfel_target]
-
-  params_sf = cxi_phil.cxi_versioned_extract(args)
-  horizons_phil = params_sf.persist.commands
+  from xfel.phil_preferences import load_cxi_phil
+  horizons_phil = load_cxi_phil(params.xfel_target)
 
   img.readHeader(horizons_phil)
   img.translate_tiles(horizons_phil)
