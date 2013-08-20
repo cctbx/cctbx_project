@@ -28,14 +28,13 @@ class distl_hitfinder(object):
     self.hitfinder_d["WAVELENGTH"] = wavelength
     self.hitfinder_d["DETECTOR_ADDRESS"] = address
 
-    from cxi_user.xfel_targets import targets
     args = ["indexing.data=dummy",
             "distl.bins.verbose=False",
             self.asic_filter,
-            ] + targets[self.m_xtal_target]
+            ]
 
-    from spotfinder.applications.xfel import cxi_phil
-    horizons_phil = cxi_phil.cxi_versioned_extract(args)
+    from xfel.phil_preferences import load_cxi_phil
+    horizons_phil = load_cxi_phil(self.m_xtal_target, args)
     horizons_phil.indexing.data = self.hitfinder_d
 
     from xfel.cxi import display_spots

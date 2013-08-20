@@ -185,7 +185,8 @@ def run_one_index(path, *arguments, **kwargs):
 
   assert arguments[0].find("target=")==0
   target = arguments[0].split("=")[1]
-  from cxi_user.xfel_targets import targets
+
+  from xfel.phil_preferences import load_cxi_phil
 
   args = ["indexing.data=%s"%path,
           "beam_search_scope=0.5",
@@ -198,10 +199,9 @@ def run_one_index(path, *arguments, **kwargs):
           "difflimit_sigma_cutoff=2.0",
           #"indexing.verbose_cv=True",
           "indexing.open_wx_viewer=True"
-          ] + targets[target] + list(arguments[1:])
+          ] + list(arguments[1:])
 
-  horizons_phil = cxi_phil.cxi_versioned_extract(
-                    copy.deepcopy(args))
+  horizons_phil = load_cxi_phil(target, args)
 
   info = run_one_index_core(horizons_phil)
   info.Files = info.organizer.Files
