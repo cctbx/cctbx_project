@@ -97,6 +97,9 @@ lib_cctbx_sources = [
   "uctbx/spoil_optimization.cpp",
   "uctbx/crystal_orientation.cpp",
 ]
+if env_etc.cxx11_is_available:
+  lib_cctbx_sources.append("maptbx/skeletons.cpp")
+
 if (env_etc.static_libraries): builder = envlm.StaticLibrary
 else:                          builder = envlm.SharedLibrary
 builder(
