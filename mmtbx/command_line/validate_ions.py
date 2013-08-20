@@ -15,6 +15,11 @@ wavelength = None
   .type = float
 nproc = Auto
   .type = int
+pdb_interpretation {
+  include scope mmtbx.monomer_library.pdb_interpretation.master_params
+  stop_for_unknowns = False
+    .type = bool
+}
 """, process_includes=True)
 
 def run (args, out=sys.stdout) :
