@@ -41,6 +41,7 @@ namespace scitbx { namespace af { namespace boost_python {
   void wrap_flex_std_string();
   void wrap_flex_vec3_double();
   void wrap_flex_vec2_double();
+  void wrap_flex_vec3_int();
   void wrap_flex_sym_mat3_double();
   void wrap_flex_tiny_size_t_2();
 
@@ -456,6 +457,7 @@ namespace {
     wrap_flex_std_string();
     wrap_flex_vec3_double();
     wrap_flex_vec2_double();
+    wrap_flex_vec3_int();
     wrap_flex_sym_mat3_double();
     wrap_flex_tiny_size_t_2();
 
