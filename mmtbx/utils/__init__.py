@@ -2076,6 +2076,7 @@ class pdb_file(object):
       pdb_interpretation_params = pdb_ip,
       crystal_symmetry          = self.crystal_symmetry,
       use_neutron_distances     = self.use_neutron_distances,
+      stop_for_unknowns         = False,
       log                       = log)
     self.processed_pdb_file, self.pdb_inp = \
       self.processed_pdb_files_srv.process_pdb_files(raw_records =
@@ -2680,23 +2681,38 @@ class cmdline_load_pdb_and_data (object) :
         crystal_symmetry=use_symmetry).eliminate_sys_absent().set_info(
           self.r_free_flags.info())
     # PDB INPUT
-    pdb_file_object = pdb_file(
-      pdb_file_names=params.input.pdb.file_name,
-      cif_objects=self.cif_objects,
-      crystal_symmetry=use_symmetry,
-      log=out)
     if process_pdb_file :
+      pdb_interp_params = getattr(params, "pdb_interpretation", None)
+      if (pdb_interp_params is None) :
+        pdb_interp_params = \
+          mmtbx.monomer_library.pdb_interpretation.master_params.extract()
       str_utils.make_header("Processing PDB file(s)", out=out)
-      pdb_file_object.set_ppf(log=out)
-      processed_pdb_file = pdb_file_object.processed_pdb_file
-      geometry = processed_pdb_file.geometry_restraints_manager(
+      pdb_combined = combine_unique_pdb_files(
+        file_names=params.input.pdb.file_name)
+      pdb_combined.report_non_unique(out=out)
+      pdb_raw_records = pdb_combined.raw_records
+      processed_pdb_files_srv = process_pdb_file_srv(
+        cif_objects=self.cif_objects,
+        pdb_interpretation_params=pdb_interp_params,
+        crystal_symmetry=use_symmetry,
+        use_neutron_distances=params.input.scattering_table=="neutron",
+        stop_for_unknowns=getattr(pdb_interp_params, "stop_for_unknowns",False),
+        log=out)
+      self.processed_pdb_file, self.pdb_inp = \
+        processed_pdb_files_srv.process_pdb_files(
+          raw_records = pdb_raw_records,
+          stop_if_duplicate_labels = False)
+      self.geometry = self.processed_pdb_file.geometry_restraints_manager(
         show_energies=False)
-      self.xray_structure = processed_pdb_file.xray_structure()
-      chain_proxies = processed_pdb_file.all_chain_proxies
+      self.xray_structure = self.processed_pdb_file.xray_structure()
+      chain_proxies = self.processed_pdb_file.all_chain_proxies
       self.pdb_hierarchy = chain_proxies.pdb_hierarchy
-      self.processed_pdb_file = processed_pdb_file
-      self.geometry = geometry
     else :
+      pdb_file_object = pdb_file(
+        pdb_file_names=params.input.pdb.file_name,
+        cif_objects=self.cif_objects,
+        crystal_symmetry=use_symmetry,
+        log=out)
       pdb_in = pdb_file_object.pdb_inp
       self.pdb_hierarchy = pdb_in.construct_hierarchy()
       self.pdb_hierarchy.atoms().reset_i_seq()
