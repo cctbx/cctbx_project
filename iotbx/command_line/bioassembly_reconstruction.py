@@ -33,7 +33,7 @@ def bioassembly_reconstruction(args, command_name="phenix.pdb.bioassembly_recons
   elif ('--help' in args) or ('-h' in args):
     print help(bioassembly_reconstruction)
   elif (len(args) > 2):
-    raise Sorry('To many input parameters are given')  
+    raise Sorry('To many input parameters are given')
   elif not os.path.isfile(args[0]):
     print 'There is no file {} in the current directory \n {}'.format(args[0],os.getcwd())
     raise Sorry('File name error')
@@ -42,11 +42,11 @@ def bioassembly_reconstruction(args, command_name="phenix.pdb.bioassembly_recons
     # write the bio-assembly reconstructed file in current directory
     if len(args) == 2:
       # output file name given
-      m.write(args[1])      
+      m.write(args[1])
     else:
       # output file name not given
       m.write()
-    
+
     print 'bio-assembly reconstructed pdb file was added to your current directory'
     print os.getcwd() + '/' + m.pdb_output_file_name
 
