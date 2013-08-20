@@ -7,7 +7,6 @@ def integrate_one_image(data, **kwargs):
   from libtbx.utils import Sorry
   from spotfinder.exception import SpotfinderError
   from labelit.exception import AutoIndexError
-  from cxi_user.xfel_targets import targets
 
   basename = kwargs.get("integration_basename")
   if (basename is None):
@@ -34,10 +33,10 @@ def integrate_one_image(data, **kwargs):
           "indexing.completeness_pickle=%s"%path,
           "difflimit_sigma_cutoff=2.0",
           #"indexing.open_wx_viewer=True"
-          ] + targets[data["xtal_target"]]
+          ]
 
-  from spotfinder.applications.xfel import cxi_phil
-  horizons_phil = cxi_phil.cxi_versioned_extract(args)
+  from xfel.phil_preferences import load_cxi_phil
+  horizons_phil = load_cxi_phil(data["xtal_target"], args)
   horizons_phil.indexing.data = data
   print "XFEL processing: %s"%path
   try:

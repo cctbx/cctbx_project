@@ -281,15 +281,14 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
 
     elif (self.m_dispatch == "view"): #interactive image viewer
 
-      from cxi_user.xfel_targets import targets
-      args = ["indexing.data=dummy"] + targets[self.m_xtal_target]
+      args = ["indexing.data=dummy"]
       detector_format_version = detector_format_function(
         self.address, evt.GetTime())
       if detector_format_version is not None:
         args += ["distl.detector_format_version=%" % detector_format_version]
 
-      from spotfinder.applications.xfel import cxi_phil
-      horizons_phil = cxi_phil.cxi_versioned_extract(args)
+      from xfel.phil_preferences import load_cxi_phil
+      horizons_phil = load_cxi_phil(self.m_xtal_target, args)
       horizons_phil.indexing.data = d
 
       from xfel.cxi import display_spots
@@ -298,15 +297,14 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
 
     elif (self.m_dispatch == "spots"): #interactive spotfinder viewer
 
-      from cxi_user.xfel_targets import targets
-      args = ["indexing.data=dummy"] + targets[self.m_xtal_target]
+      args = ["indexing.data=dummy"]
       detector_format_version = detector_format_function(
         self.address, evt.GetTime())
       if detector_format_version is not None:
         args += ["distl.detector_format_version=%s" % detector_format_version]
 
-      from spotfinder.applications.xfel import cxi_phil
-      horizons_phil = cxi_phil.cxi_versioned_extract(args)
+      from xfel.phil_preferences import load_cxi_phil
+      horizons_phil = load_cxi_phil(self.m_xtal_target, args)
       horizons_phil.indexing.data = d
 
       from xfel.cxi import display_spots
