@@ -35,6 +35,7 @@ default_build_boost_python_extensions = True
 default_enable_openmp_if_possible = False
 default_enable_cuda = False
 default_opt_resources = False
+default_enable_cxx11 = False
 
 def is_64bit_architecture():
   # this appears to be most compatible (hat tip: James Stroud)
@@ -756,7 +757,8 @@ Wait for the command to finish, then try again.""" % vars())
         opt_resources=command_line.options.opt_resources,
         use_environment_flags=command_line.options.use_environment_flags,
         force_32bit=command_line.options.force_32bit,
-        msvc_arch_flag=command_line.options.msvc_arch_flag)
+        msvc_arch_flag=command_line.options.msvc_arch_flag,
+        enable_cxx11=command_line.options.enable_cxx11)
       self.build_options.get_flags_from_environment()
       if (command_line.options.command_version_suffix is not None):
         self.command_version_suffix = \
@@ -1817,7 +1819,8 @@ class build_options:
         precompile_headers=False,
         use_environment_flags=False,
         force_32bit=False,
-        msvc_arch_flag=default_msvc_arch_flag):
+        msvc_arch_flag=default_msvc_arch_flag,
+        enable_cxx11=default_enable_cxx11):
     adopt_init_args(self, locals())
     assert self.mode in build_options.supported_modes
     assert self.warning_level >= 0
@@ -1869,6 +1872,7 @@ class build_options:
     print >> f, "Enable CUDA:", self.enable_cuda
     print >> f, "Use opt_resources if available:", self.opt_resources
     print >> f, "Use environment flags:", self.use_environment_flags
+    print >> f, "Enable C++11:", self.enable_cxx11
     if( self.use_environment_flags ):
       print >>f, "  CXXFLAGS = ", self.env_cxxflags
       print >>f, "  CFLAGS = ", self.env_cflags
@@ -2071,6 +2075,10 @@ class pre_process_args:
                   default=False,
                   help="do not create <build directory>/bin/python even in a development "
                        "environment")
+    parser.option(None, "--enable_cxx11",
+      action="store_true",
+      default=default_enable_cxx11,
+      help="use C++11 standard")
     self.command_line = parser.process(args=args)
     if (len(self.command_line.args) == 0):
       raise RuntimeError(
@@ -2241,6 +2249,9 @@ def unpickle():
     del env.enable_boost_threads
   except AttributeError:
     pass
+  # XXX backward compatibility 2013-08-20
+  if (not hasattr(env.build_options, "enable_cxx11")):
+    env.build_options.enable_cxx11 = False
   return env
 
 def warm_start(args):
