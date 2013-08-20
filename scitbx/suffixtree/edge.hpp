@@ -24,8 +24,8 @@ namespace edge
 template< typename Key, typename Value >
 struct ToConstPair
 {
-  typedef std::pair< const Key, boost::shared_ptr< Value > > const argument_type;
-  typedef std::pair< const Key, boost::shared_ptr< Value const > > const result_type;
+  typedef std::pair< const Key, boost::shared_ptr< Value > > argument_type;
+  typedef std::pair< const Key, boost::shared_ptr< Value const > > result_type;
 
   result_type operator ()(argument_type const& arg) const;
 };

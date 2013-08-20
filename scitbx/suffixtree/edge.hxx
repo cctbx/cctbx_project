@@ -158,7 +158,7 @@ Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::get_parent() const
 {
   const_ptr_type parent = this->parent().lock();
 
-  if ( not parent )
+  if ( ! parent )
   {
     throw unavailable();
   }
@@ -178,7 +178,7 @@ Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::get_parent()
 {
   ptr_type parent = this->parent().lock();
 
-  if ( not parent )
+  if ( ! parent )
   {
     throw unavailable();
   }
@@ -198,7 +198,7 @@ Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::get_suffix() const
 {
   const_ptr_type suffix = this->suffix().lock();
 
-  if ( not suffix )
+  if ( ! suffix )
   {
     throw unavailable();
   }
@@ -218,7 +218,7 @@ Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::get_suffix()
 {
   ptr_type suffix = this->suffix().lock();
 
-  if ( not suffix )
+  if ( ! suffix )
   {
     throw unavailable();
   }
@@ -285,7 +285,7 @@ Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter >::attach_child(
 {
   std::pair< typename edge_type::iterator, bool > res = insert( value_type( label, child ) );
 
-  if ( not res.second )
+  if ( ! res.second )
   {
     res.first->second = child;
   }
