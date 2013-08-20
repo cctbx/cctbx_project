@@ -1,28 +1,38 @@
 from __future__ import division
 from iotbx import pdb
 from scitbx import matrix
+from libtbx.utils import Sorry
 import string
 import math
 
 
+
 class multimer(object):
   '''
+  Reconstruction of either the biological assembly or the crystallographic asymmetric unit  
+  
   Reconstruction of the biological assembly multimer by applying
   BIOMT transformation, from the pdb file, to all chains.
 
+  Reconstruction of the crystallographic asymmetric unit by applying
+  MTRIX transformations, from the pdb file, to all chains.
+  
   self.assembled_multimer is a pdb.hierarchy object with the multimer information
-
-  The method write gatheres a PDB file containing the multimer
-
-  since chain names string length is limited to two, this process does not maintain any
+  
+  The method write generates a PDB file containing the multimer  
+  
+  since chain names string length is limited to two, this process does not maintain any 
   referance to the original chain names.
 
   '''
-  def __init__(self,pdb_input_file_name):
+  def __init__(self,pdb_input_file_name,reconstruction_type):
     ''' (str) -> NoType
     Arguments:
     pdb_input_file_name -- the name of the pdb file we want to process. a string such as 'pdb_file_name.pdb'
-    '''
+    reconstruction_type -- 'ba' or 'cau'. 
+                           'ba': biological assembly 
+                           'cau': crystallographic asymmetric unit
+    '''          
     # Read and process the pdb file
     self.pdb_input_file_name = pdb_input_file_name              # store input file name
     pdb_inp = pdb.input(file_name=pdb_input_file_name)          # read the pdb file data
@@ -31,14 +41,26 @@ class multimer(object):
     self.assembled_multimer = pdb_obj_new
 
     # take care of potenitial input issues
-
-
-    # Read BIOMT info
-    BIOMT_info = pdb_inp.process_BIOMT_records()
-    # convert BIOMT object to a list of matrices
-    BIOMT = self._convert_lists_to_matrices(BIOMT_info)
-    BIOMT_transform_number = len(BIOMT_info)
-    # number of chains
+    
+    # Read the relevant transformation matrices
+    if reconstruction_type == 'ba':
+      # Read BIOMT info
+      TRASFORM_info = pdb_inp.process_BIOMT_records()
+      self.transform_type = 'biological_assembly'
+    elif reconstruction_type == 'cau':
+      # Read MTRIX info
+      TRASFORM_info = pdb_inp.process_mtrix_records()
+      self.transform_type = 'crystall_asymmetric_unit'
+    else:
+      raise Sorry('Worg reconstruction type is given \n' + \
+                  'Reconstruction type can be: \n' + \
+                  "'ba': biological assembly \n" + \
+                  "'cau': crystallographic asymmetric unit \n")  
+ 
+    # convert TRASFORM object to a list of matrices
+    TRASFORM = self._convert_lists_to_matrices(TRASFORM_info)
+    TRASFORM_transform_number = len(TRASFORM)    
+    # number of chains in hierachy (more than the actual chains in the model)
     chains_number = pdb_obj.hierarchy.overall_counts().n_chains
 
     # apply the transformation
@@ -51,79 +73,82 @@ class multimer(object):
       unique_chain_names = {x.id for x in model.chains()}
       nChains = len(model.chains())
       # get a dictionary for new chains naming
-      new_chains_names = self._chains_names(BIOMT_transform_number,nChains, unique_chain_names)
+      new_chains_names = self._chains_names(TRASFORM_transform_number,nChains, unique_chain_names)
       for iChain in range(nChains):     #instead of: for chain in model.chains():
-        # iterating over the BIOMT transform strating from 1 (not 0)
-        # since BIOMT_info[0] is a unit transformation
-        for i_transform in range(1,BIOMT_transform_number):
+        # iterating over the TRASFORM transform strating from 1 (not 0)
+        # since TRASFORM_info[0] is a unit transformation
+        for i_transform in range(TRASFORM_transform_number):
           new_chain = model.chains()[iChain].detached_copy()
-          new_chain.id = new_chains_names[new_chain.id + str(i_transform)]
+          new_chain.id = new_chains_names[new_chain.id + str(i_transform+1)]
           for res_group in new_chain.residue_groups():
             for ag in res_group.atom_groups():
               for atom in ag.atoms():
                 # apply transform
                 xyz = matrix.col(atom.xyz)      # get current x,y,z coordinate
-                xyz = BIOMT[i_transform][0]*xyz # apply rotation
-                xyz +=  BIOMT[i_transform][1]   # apply translation
+                xyz = TRASFORM[i_transform][0]*xyz # apply rotation
+                xyz +=  TRASFORM[i_transform][1]	# apply translation
                 atom.xyz = xyz.elems            # replace the new chain x,y,z coordinates
           # add a new chain to current model
           model.append_chain(new_chain)
-
-  def _convert_lists_to_matrices(self, BIOMT_info):
+    
+  def _convert_lists_to_matrices(self, TRASFORM_info):  
     ''' (object contianing lists) -> list of scitbx matrices and vectors
 
     Convert the rotation and translation information from lists to matrices and vectors
 
     Argumnets:
-    BIOMT_info -- a object of lists containing the BIOMT transformation information obtained from a pdb file
-    The transformation information in BIOMT_info looks like
-    BIOMT_info[0].values = [[1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0], [0.0, 0.0, 0.0]]
+    TRASFORM_info -- a object of lists containing the BIOMT/MTRIX transformation information obtained 
+    from a pdb file.
+    The transformation information in TRASFORM_info looks like
+    TRASFORM_info[0].values = [[1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0], [0.0, 0.0, 0.0]]
 
     Returns:
-    BIOMT_matrices_list -- a list of matrices and vectors
+    TRASFORM_matrices_list -- a list of matrices and vectors
     [[rotation matrix 1,translation vector 1], [rotation matrix 2,translation vector 2],...]
 
-    >>> BIOMT_matrices_list[0][0]
+    >>> TRASFORM_matrices_list[0][0]
     matrix([[ 1.,  0.,  0.],
         [ 0.,  1.,  0.],
         [ 0.,  0.,  1.]])
-    >>> len(BIOMT_matrices_list) == len(BIOMT_info)
+    >>> len(TRASFORM_matrices_list) == len(TRASFORM_info)
     True
     '''
+    # TRASFORM_info.coordinates_present=True is transformation already included in pdb file
+    TRASFORM_matrices_list = [[matrix.sqr(x.values[0]), matrix.col(x.values[1])] 
+                              for x in TRASFORM_info if not x.coordinates_present]
+    return TRASFORM_matrices_list
 
-    BIOMT_matrices_list = [[matrix.sqr(x.values[0]), matrix.col(x.values[1])] for x in BIOMT_info]
-    return BIOMT_matrices_list
-
-  def _chains_names(self, BIOMT_transform_numbers,nChains, unique_chain_names):
+  def _chains_names(self, TRASFORM_transform_numbers,nChains, unique_chain_names):
     ''' (int, int, set) -> dictionary
 
     Create a dictionary
-    keys: a string made of chain_name + str(BIOMT_transform_number)
+    keys: a string made of chain_name + str(TRASFORM_transform_number)
     values: two letters and digits string combination
 
     The total number of new chains can be large (order of hundereds)
     Chain names might repeat themselves several times in a pdb file
-    We want copies of chains with the same name to stil have the same name after similar BIOMT transformation
+    We want copies of chains with the same name to stil have the same name after 
+    similar BIOMT/MTRIX transformation
 
     Arguments:
-    BIOMT_transform_numbers -- an integer. the number of BIOMT transformation operations in the pdb object
+    TRASFORM_transform_numbers -- an integer. the number of BIOMT/MTRIX transformation operations in the pdb object
     nChains -- an integer. the number of chains as interpreted by pdb.hierarchy.input
     unique_chain_names -- a set. a set of unique chain names
 
     Returns:
     new_names -- a dictionary. {'A1': 'aa', 'A2': 'gq',....} map a chain name and
-    a BIOMT transform number to a new chain name
+    a TRASFORM transform number to a new chain name
 
     >>> self._chains_names(3,4,{'A','B'})
     {'A1': 'aa', 'A3': 'ac', 'A2': 'ab', 'B1': 'ba', 'B2': 'bb', 'B3': 'bc'}
     '''
     # create list of character from which to assemble the list of names
-    total_chains_number = BIOMT_transform_numbers*len(unique_chain_names)
+    total_chains_number = TRASFORM_transform_numbers*len(unique_chain_names)
     chr_number = int(math.sqrt(total_chains_number)) + 1        # the number of charater needed to produce new names
     chr_list = list(string.ascii_letters) + list(string.digits) # build character list
     chr_list = chr_list[:chr_number]                            # take only as many characters as needed
     dictionary_values = set([ x+y for x in chr_list for y in chr_list])
-    dictinary_key = set([x+str(y) for x in unique_chain_names for y in range(1,BIOMT_transform_numbers+1)])
+    dictinary_key = set([x+str(y) for x in unique_chain_names for y in range(1,TRASFORM_transform_numbers+1)])
     # create the dictionary
     new_names_dictionary  = {x:y for (x,y) in zip(dictinary_key,dictionary_values)}
     return new_names_dictionary
@@ -162,32 +187,40 @@ class multimer(object):
     '''
     return 'the multimer attribute self.assembled_multimer is a pdb.hierarchy object that contains: \n' + \
            'a model in assembled_multimer.models()  \n' + \
-           'a chain in model.chains()  \n' + \
-           'a residue_group in chain.residue_groups()  \n' + \
-           'an atom_group in residue_group.atom_groups() \n' + \
-           'an atom in atom_group.atoms() \n' + \
-           'atom.xyz is a tuple with the atom coordinates: (x,y,z)'
+           '   a chain in model.chains()  \n' + \
+           '      a residue_group in chain.residue_groups()  \n' + \
+           '         an atom_group in residue_group.atom_groups() \n' + \
+           '            an atom in atom_group.atoms() \n' + \
+           '            atom.xyz is a tuple with the atom coordinates: (x,y,z) \n' + \
+           ' \n' + \
+           'self.get_xyz() will return a list of x,y,z coordinates for each atoms in the resconstructed multimer'
 
 
-  def write(self,pdb_output_file_name):
+  def write(self,*pdb_output_file_name):
     ''' (string) -> text file
-    Writes the modified protein, with the added chains, obtained by the BIOMT
+    Writes the modified protein, with the added chains, obtained by the BIOMT/MTRIX
     reconstruction, to a text file in a pdb format.
     self.assembled_multimer is the modified pdb object with the added chains
 
     Argumets:
     pdb_output_file_name -- string. 'name.pdb'
-
-    >>> v = multimer('name.pdb')
+    if no pdn_output_file_name is given pdb_output_file_name=pdb_input_file_name
+    
+    >>> v = multimer('name.pdb','ba')
     >>> v.write('new_name.pdb')
     should write a file 'new_name.pdb' to the current directory
     >>> v.write(v.pdb_input_file_name)
     should write a file 'copy_name.pdb' to the current directory
     '''
+    if len(pdb_output_file_name) == 0:
+      pdb_output_file_name = self.pdb_input_file_name
     # Aviod writing over the original file
     if self.pdb_input_file_name == pdb_output_file_name:
       # if file name of output is the same as the input, add 'copy_' in front of the name
-      pdb_output_file_name = 'copy_' + pdb_output_file_name
+      self.pdb_output_file_name = self.transform_type + '_' +pdb_output_file_name
+    else:
+      self.pdb_output_file_name = pdb_output_file_name 
 
     # using the pdb hierarchy pdb file writing method
-    self.assembled_multimer.write_pdb_file(file_name = pdb_output_file_name)
+    self.assembled_multimer.write_pdb_file(file_name=self.pdb_output_file_name)
+
