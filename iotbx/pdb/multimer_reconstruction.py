@@ -9,30 +9,29 @@ import math
 
 class multimer(object):
   '''
-  Reconstruction of either the biological assembly or the crystallographic asymmetric unit  
-  
+  Reconstruction of either the biological assembly or the crystallographic asymmetric unit
+
   Reconstruction of the biological assembly multimer by applying
   BIOMT transformation, from the pdb file, to all chains.
 
   Reconstruction of the crystallographic asymmetric unit by applying
   MTRIX transformations, from the pdb file, to all chains.
-  
-  self.assembled_multimer is a pdb.hierarchy object with the multimer information
-  
-  The method write generates a PDB file containing the multimer  
-  
-  since chain names string length is limited to two, this process does not maintain any 
-  referance to the original chain names.
 
+  self.assembled_multimer is a pdb.hierarchy object with the multimer information
+
+  The method write generates a PDB file containing the multimer
+
+  since chain names string length is limited to two, this process does not maintain any
+  referance to the original chain names.
   '''
   def __init__(self,pdb_input_file_name,reconstruction_type):
     ''' (str) -> NoType
     Arguments:
     pdb_input_file_name -- the name of the pdb file we want to process. a string such as 'pdb_file_name.pdb'
-    reconstruction_type -- 'ba' or 'cau'. 
-                           'ba': biological assembly 
+    reconstruction_type -- 'ba' or 'cau'.
+                           'ba': biological assembly
                            'cau': crystallographic asymmetric unit
-    '''          
+    '''
     # Read and process the pdb file
     self.pdb_input_file_name = pdb_input_file_name              # store input file name
     pdb_inp = pdb.input(file_name=pdb_input_file_name)          # read the pdb file data
@@ -41,7 +40,7 @@ class multimer(object):
     self.assembled_multimer = pdb_obj_new
 
     # take care of potenitial input issues
-    
+
     # Read the relevant transformation matrices
     if reconstruction_type == 'ba':
       # Read BIOMT info
@@ -55,11 +54,11 @@ class multimer(object):
       raise Sorry('Worg reconstruction type is given \n' + \
                   'Reconstruction type can be: \n' + \
                   "'ba': biological assembly \n" + \
-                  "'cau': crystallographic asymmetric unit \n")  
- 
+                  "'cau': crystallographic asymmetric unit \n")
+
     # convert TRASFORM object to a list of matrices
     TRASFORM = self._convert_lists_to_matrices(TRASFORM_info)
-    TRASFORM_transform_number = len(TRASFORM)    
+    TRASFORM_transform_number = len(TRASFORM)
     # number of chains in hierachy (more than the actual chains in the model)
     chains_number = pdb_obj.hierarchy.overall_counts().n_chains
 
@@ -86,18 +85,18 @@ class multimer(object):
                 # apply transform
                 xyz = matrix.col(atom.xyz)      # get current x,y,z coordinate
                 xyz = TRASFORM[i_transform][0]*xyz # apply rotation
-                xyz +=  TRASFORM[i_transform][1]	# apply translation
+                xyz += TRASFORM[i_transform][1]# apply translation
                 atom.xyz = xyz.elems            # replace the new chain x,y,z coordinates
           # add a new chain to current model
           model.append_chain(new_chain)
-    
-  def _convert_lists_to_matrices(self, TRASFORM_info):  
+
+  def _convert_lists_to_matrices(self, TRASFORM_info):
     ''' (object contianing lists) -> list of scitbx matrices and vectors
 
     Convert the rotation and translation information from lists to matrices and vectors
 
     Argumnets:
-    TRASFORM_info -- a object of lists containing the BIOMT/MTRIX transformation information obtained 
+    TRASFORM_info -- a object of lists containing the BIOMT/MTRIX transformation information obtained
     from a pdb file.
     The transformation information in TRASFORM_info looks like
     TRASFORM_info[0].values = [[1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0], [0.0, 0.0, 0.0]]
@@ -114,7 +113,7 @@ class multimer(object):
     True
     '''
     # TRASFORM_info.coordinates_present=True is transformation already included in pdb file
-    TRASFORM_matrices_list = [[matrix.sqr(x.values[0]), matrix.col(x.values[1])] 
+    TRASFORM_matrices_list = [[matrix.sqr(x.values[0]), matrix.col(x.values[1])]
                               for x in TRASFORM_info if not x.coordinates_present]
     return TRASFORM_matrices_list
 
@@ -127,7 +126,7 @@ class multimer(object):
 
     The total number of new chains can be large (order of hundereds)
     Chain names might repeat themselves several times in a pdb file
-    We want copies of chains with the same name to stil have the same name after 
+    We want copies of chains with the same name to stil have the same name after
     similar BIOMT/MTRIX transformation
 
     Arguments:
@@ -205,7 +204,7 @@ class multimer(object):
     Argumets:
     pdb_output_file_name -- string. 'name.pdb'
     if no pdn_output_file_name is given pdb_output_file_name=pdb_input_file_name
-    
+
     >>> v = multimer('name.pdb','ba')
     >>> v.write('new_name.pdb')
     should write a file 'new_name.pdb' to the current directory
@@ -219,7 +218,7 @@ class multimer(object):
       # if file name of output is the same as the input, add 'copy_' in front of the name
       self.pdb_output_file_name = self.transform_type + '_' +pdb_output_file_name
     else:
-      self.pdb_output_file_name = pdb_output_file_name 
+      self.pdb_output_file_name = pdb_output_file_name
 
     # using the pdb hierarchy pdb file writing method
     self.assembled_multimer.write_pdb_file(file_name=self.pdb_output_file_name)
