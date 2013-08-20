@@ -1759,6 +1759,11 @@ def exercise_flex_vec2_double():
   assert a.add_selected(indices=i, values=v) is a
   assert approx_equal(a, [(7,4,-3), (-2,3,4), (-1,13,5)])
 
+def exercise_flex_vec3_int():
+  flex.exercise_triple(flex.vec3_int)
+  a = flex.vec3_int(((1,2,5), (-2,3,4), (3,4,3)))
+  assert approx_equal(a.as_vec3_double(), [(1,2,5), (-2,3,4), (3,4,3)])
+
 def exercise_flex_sym_mat3_double():
   a = flex.sym_mat3_double()
   assert a.size() == 0
@@ -3331,6 +3336,7 @@ def run(iterations):
     exercise_sort()
     exercise_flex_vec3_double()
     exercise_flex_vec2_double()
+    exercise_flex_vec3_int()
     exercise_flex_sym_mat3_double()
     exercise_flex_tiny_size_t_2()
     exercise_histogram()
