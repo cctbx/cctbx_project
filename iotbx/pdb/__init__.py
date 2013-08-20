@@ -1037,8 +1037,9 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
     [[0.559048,-0.789435,0.253492,0.722264,0.313528,-0.616470,0.407186,0.527724,0.745457][0.30000,0.00100,0.05000]]
 
     the result is a list of libtx group_arg constructs, each one contains
-      pdb_inp.process_BIOMT_records()[1].values         # give a list containing float type numbers
-      pdb_inp.process_BIOMT_records()[1].serial_number  # is an integer
+      pdb_inp.process_BIOMT_records()[1].values 		# give a list containing float type numbers
+      pdb_inp.process_BIOMT_records()[1].coordinates_present	# True when transformatin included in pdb file
+      pdb_inp.process_BIOMT_records()[1].serial_number 		# is an integer
 
     '''
     from libtbx import group_args
@@ -1067,6 +1068,7 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
         tansation_data = [biomt_data[j][-1], biomt_data[j+1][-1], biomt_data[j+2][-1]]
         result.append(group_args(
           values=[rotation_data,tansation_data],
+          coordinates_present=(i == 0),		# Only the first transformation included in pdb  file
           serial_number=i + 1))
     return result
 
