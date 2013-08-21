@@ -934,7 +934,7 @@ if env_etc.cxx11_is_available:
   conf.Finish()
   if not flag:
     env_etc.cxx11_is_available = False
-    if opts.enable_cxx11:
+    if libtbx.env.build_options.enable_cxx11:
       raise RuntimeError("C++11 is not available, see config.log")
 
 """ ************************ Custom Builders and Emitters ********************************* """
