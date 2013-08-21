@@ -250,7 +250,7 @@ def run_minimization(
 
 class run(object):
   _pdb_suffix = "minimized"
-  def __init__(self, args, log):
+  def __init__(self, args, log, use_directory_prefix=True):
     self.log                = log
     self.params             = None
     self.inputs             = None
@@ -266,6 +266,7 @@ class run(object):
     self.total_time         = 0
     self.output_file_name   = None
     self.pdb_file_names     = []
+    self.use_directory_prefix = use_directory_prefix
     self.__execute()
 
   def __execute (self) :
@@ -399,7 +400,7 @@ class run(object):
       ind = max(0,pfn.rfind("."))
       ofn = pfn+suffix if ind==0 else pfn[:ind]+suffix
     else: ofn = self.params.output_file_name_prefix+".pdb"
-    if directory is not None:
+    if (self.use_directory_prefix) and (directory is not None) :
       ofn = os.path.join(directory, ofn)
     print >> self.log, "  output file name:", ofn
     self.pdb_hierarchy.write_pdb_file(file_name = ofn, crystal_symmetry =
@@ -427,7 +428,8 @@ class launcher (runtime_utils.target_with_save_result) :
   def run (self) :
     os.mkdir(self.output_dir)
     os.chdir(self.output_dir)
-    return run(args=self.args, log=sys.stdout).output_file_name
+    return run(args=self.args, log=sys.stdout,
+      use_directory_prefix=False).output_file_name
 
 def validate_params (params) :
   if (params.file_name is None) :
