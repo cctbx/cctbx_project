@@ -51,6 +51,9 @@ rescale_with_average_cell = False
 d_min = None
   .type = float
   .help = limiting resolution for scaling and merging
+d_max = None
+  .type = float
+  .help = limiting resolution for scaling and merging.  Implementation currently affects only the CCiso cal
 k_sol = 0.35
   .type = float
   .help = bulk solvent scale factor - approximate mean value in PDB \
@@ -127,6 +130,10 @@ scaling {
     .help = for CC calculation, log(intensity) cutoff, ignore values less than this
   show_plots = False
     .type = bool
+  enable = True
+    .type = bool
+    .help = enable the mark0 algorithm, otherwise individual-image scale factors are set to 1.0
+    .expert_level = 3
   algorithm = mark0
     .type = str
     .help = mark0: original per-image scaling by reference to isomorphous PDB model
@@ -139,6 +146,12 @@ scaling {
   simulation_data = None
     .type = floats
     .help = Extra parameters for the simulation, exact meaning depends on calculation method
+}
+postrefinement {
+  enable = False
+    .type = bool
+    .help = enable the preliminary postrefinement algorithm (monochromatic)
+    .expert_level = 3
 }
 plot_single_index_histograms = False
   .type = bool
@@ -830,6 +843,10 @@ class scaling_manager (intensity_data) :
     offset = (sum_xx * sum_y - sum_x * sum_xy) / (N * sum_xx - sum_x**2)
     corr  = (N * sum_xy - sum_x * sum_y) / (math.sqrt(N * sum_xx - sum_x**2) *
              math.sqrt(N * sum_yy - sum_y**2))
+
+    if not self.params.scaling.enable or self.params.postrefinement.enable: # Do not scale anything
+      slope = 1.0
+      offset = 0.0
 
     print result.get("sa_parameters")[0]
     have_sa_params = ( type(result.get("sa_parameters")[0]) == type(dict()) )
