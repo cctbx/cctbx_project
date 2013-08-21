@@ -1,11 +1,55 @@
+// UNDER CONSTRUCTION
+
+#include <boost/graph/connected_components.hpp>
+#include <cctbx/error.h>
 #include "skeletons.h"
 
-#include "cctbx/error.h"
 
 namespace cctbx { namespace maptbx
 {
 
-  // consider useing boost::graph
+
+//typedef boost::adjacency_list<boost::vecS,boost::vecS,boost::undirectedS> graph_t;
+
+std::pair<size_t,std::vector<int> > skeleton_components(const joins_t &joins,
+  size_t nv)
+{
+  namespace b = boost;
+  graph_t g(nv);
+  for( const auto & j : joins )
+    b::add_edge(j.ilt, j.igt, g);
+  size_t nvj = b::num_vertices(g);
+  CCTBX_ASSERT( nv == nvj );
+  std::vector<int> cm(nv);
+  size_t n = b::connected_components(g,&cm[0]);
+  return std::make_pair(n,std::move(cm));
+}
+
+void mask_components(marks_t &mask,
+  const std::vector<int> &components)
+{
+  for( auto & m : mask )
+  {
+    if( m!=0 )
+      m = components.at(m);
+  }
+}
+
+void mask_density_map(asymmetric_map::data_ref_t map, const marks_t &mask,
+  unsigned val)
+{
+  // CCTBX_ASSERT( map.accessor() == mask.accessor() );
+
+  CCTBX_ASSERT( map.size() == mask.size() );
+  for(size_t i=0; i<map.size(); ++i)
+  {
+    if( mask[i]!=val )
+      map[i] = 0.;
+  }
+}
+
+
+// consider useing boost::graph
 shortest_paths dijkstra(const skeleton &skelet,
     const std::vector<std::size_t> &molids, std::size_t iatom)
 {

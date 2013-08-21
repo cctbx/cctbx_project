@@ -24,7 +24,11 @@ inline void translate_into_cell(scitbx::int3 &num, const scitbx::int3 &den)
 
 namespace asu = cctbx::sgtbx::asu;
 
-// see atom_mask.h
+///// UNDER CONSTRUCTION
+//  purporse: convert full unit_cell map into asymmetric unit sized map
+//            convert processed aysmmetric map into form suitable for FFT
+// motivation: performance improvment of various map algorithms
+// code duplication: see atom_mask.h
 class asymmetric_map
 {
 public:
@@ -96,6 +100,7 @@ public:
   //  return cctbx::sgtbx::space_group(); // asu_.space_group();
   // }
 
+  // ! no symmetry expansion here; this should be good for FFT ?
   unit_cell_map_t unit_cell_map() const
   {
     scitbx::int3 grid(this->unit_cell_grid().focus());
@@ -120,6 +125,9 @@ public:
     }
     return result;
   }
+
+  // do I really need this one ?
+  unit_cell_map_t symmetry_expanded_unit_cell_map() const;
 
 private:
   data_type data_;

@@ -4,6 +4,8 @@
 #include <set>
 #include <vector>
 
+#include <boost/graph/adjacency_list.hpp>
+
 #include <scitbx/array_family/accessors/c_grid_padded.h>
 #include <scitbx/array_family/accessors/c_grid_padded_periodic.h>
 #include <scitbx/array_family/tiny_types.h>
@@ -70,5 +72,14 @@ public:
   std::vector<std::size_t> predecessors, distances;
 };
 
+typedef boost::adjacency_list<boost::vecS,boost::vecS,boost::undirectedS> graph_t;
+
+void mask_components(marks_t &mask, const std::vector<int> &components);
+
+void mask_density_map(asymmetric_map::data_ref_t map, const marks_t &mask,
+  unsigned val);
+
+std::pair<size_t,std::vector<int> > skeleton_components(const joins_t &joins,
+  size_t nv);
 
 }}
