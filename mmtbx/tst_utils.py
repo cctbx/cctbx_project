@@ -197,7 +197,8 @@ def exercise_06(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(log = log)
+  processed_pdb_files_srv = utils.process_pdb_file_srv(log = log,
+    stop_for_unknowns=False)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   #
