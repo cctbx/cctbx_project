@@ -43,7 +43,7 @@ Cursor< Edge, Word >::is_at_leaf_bottom() const
 {
   edge_ptr_type const& edge_ptr = get_edge_ptr();
 
-  return ( edge_ptr->is_leaf() and edge_ptr->stop() == get_index() );
+  return ( edge_ptr->is_leaf() && edge_ptr->stop() == get_index() );
 }
 
 template< typename Edge, typename Word >
@@ -292,7 +292,8 @@ operator ==(
   Tree< Word, SuffixLabel, NodeAdaptor > const& rhs
   )
 {
-  return ( lhs.root_ == rhs.root_ and lhs.word_ptr_ == rhs.word_ptr
-    and lhs.construction_ptr_ == rhs.construction_ptr_ );
+  return ( lhs.root_ == rhs.root_
+    && lhs.word_ptr_ == rhs.word_ptr
+    && lhs.construction_ptr_ == rhs.construction_ptr_ );
 }
 

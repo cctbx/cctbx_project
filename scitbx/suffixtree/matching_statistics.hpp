@@ -174,8 +174,9 @@ bool operator ==(
   MSI< Tree, InputIterator > const& rhs
   )
 {
-  return ( lhs.begin_ == rhs.begin_ ) and ( lhs.end_ == rhs.end_ )
-    and ( lhs.matching_ == rhs.matching_ );
+  return ( lhs.begin_ == rhs.begin_
+    && lhs.end_ == rhs.end_
+    && lhs.matching_ == rhs.matching_ );
 }
 
 template< typename Tree, typename InputIterator >
