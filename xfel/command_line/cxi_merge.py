@@ -902,7 +902,7 @@ class scaling_manager (intensity_data) :
         query.write(firstcomma); firstcomma=","
         Intensity = observations.data()[pair[1]]
         Sigma = observations.sigmas()[pair[1]]
-        query.write("('%7d','%14.8f','%14.8f','%8.2f','%8.2f','%7d','%s','%d','%d','%d')"%(
+        query.write("('%7d','%18.8f','%18.8f','%8.2f','%8.2f','%7d','%s','%d','%d','%d')"%(
           pair[0],Intensity,Sigma,xypred[pair[1]][0],xypred[pair[1]][1],frame_id_0_base,'F',
           idx[0],idx[1],idx[2]))
       cursor.execute( query.getvalue() )

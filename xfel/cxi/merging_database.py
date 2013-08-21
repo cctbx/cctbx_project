@@ -139,8 +139,8 @@ class manager:
     return [(runtag+"_observation","""
             (
               hkl_id_0_base INT,
-              i DOUBLE(14,8) NOT NULL,
-              sigi DOUBLE(14,8) NOT NULL,
+              i DOUBLE(18,8) NOT NULL,
+              sigi DOUBLE(18,8) NOT NULL,
               detector_x DOUBLE(8,2) NOT NULL,
               detector_y DOUBLE(8,2) NOT NULL,
               frame_id_0_base INT,
