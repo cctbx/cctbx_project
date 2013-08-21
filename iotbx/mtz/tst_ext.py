@@ -15,13 +15,13 @@ import sys, os
 
 def exercise_read_corrupt():
   for i_trial in xrange(5):
-    f = open("tmp_iotbx_mtz.mtz", "wb")
+    f = open("tmp_iotbx_mtz_ext.mtz", "wb")
     if (i_trial > 0):
       f.write("\0"*(40*i_trial))
     f.close()
-    try: mtz.object(file_name="tmp_iotbx_mtz.mtz")
+    try: mtz.object(file_name="tmp_iotbx_mtz_ext.mtz")
     except RuntimeError, e:
-      assert str(e) == "cctbx Error: MTZ file read error: tmp_iotbx_mtz.mtz"
+      assert str(e) == "cctbx Error: MTZ file read error: tmp_iotbx_mtz_ext.mtz"
     else: raise Exception_expected
 
 def exercise_basic():
@@ -1010,9 +1010,9 @@ Column data:
  2  3  5            None            None              11               4
 -------------------------------------------------------------------------------
 """)
-  mtz_object.write(file_name="tmp_iotbx_mtz.mtz")
+  mtz_object.write(file_name="tmp_iotbx_mtz_ext.mtz")
   if (not verbose): out = StringIO()
-  mtz.object(file_name="tmp_iotbx_mtz.mtz").show_summary(out=out)
+  mtz.object(file_name="tmp_iotbx_mtz_ext.mtz").show_summary(out=out)
   if (not verbose):
     assert not show_diff(out.getvalue(), """\
 Title: exercise
@@ -1288,8 +1288,8 @@ xtal to detector distance: [84.0, 85.0]
 detector tilt angle: [85.0, 86.0]
 min & max values of detector coords (pixels): [86.0, 87.0, 88.0, 89.0, 90.0, 91.0, 92.0, 93.0]
 """)
-  mtz_object.write(file_name="tmp_iotbx_mtz.mtz")
-  restored = mtz.object(file_name="tmp_iotbx_mtz.mtz")
+  mtz_object.write(file_name="tmp_iotbx_mtz_ext.mtz")
+  restored = mtz.object(file_name="tmp_iotbx_mtz_ext.mtz")
   assert restored.n_batches() == 10
   if (not verbose): out = StringIO()
   restored.batches()[3].show(out=out)
