@@ -1058,9 +1058,13 @@ class process_pdb_file_srv(object):
       use_neutron_distances    = self.use_neutron_distances,
       for_dihedral_reference   = for_dihedral_reference)
     processed_pdb_file.xray_structure(show_summary=True)
+    if self.stop_for_unknowns == False:
+      ignore_unknown_nonbonded_energy_types=True # only ignore if specified
+    else:
+      ignore_unknown_nonbonded_energy_types=False
     msg = processed_pdb_file.all_chain_proxies.fatal_problems_message(
       ignore_unknown_scattering_types=False,
-      ignore_unknown_nonbonded_energy_types=not self.stop_for_unknowns)
+      ignore_unknown_nonbonded_energy_types=ignore_unknown_nonbonded_energy_types)
     if (msg is not None):
       if (self.stop_for_unknowns is not None) :
         msg += """
