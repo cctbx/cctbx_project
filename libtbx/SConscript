@@ -82,6 +82,7 @@ int main()
   if (not flag): return None
   return int(output)
 
+# XXX feature duplication, see env_etc.build_options.enable_cxx11
 def determine_cpp0x_flag():
   result = getenv_bool(variable_name="LIBTBX_CPP0X", default=None)
   if (result is None):
@@ -449,8 +450,10 @@ libtbx.scons: Warning: compiling with /MDd:
       "-fPIC",
       "-fno-strict-aliasing"]
     env_etc.cxxflags_base = []
+    # XXX feature duplication, see env.build_options.enable_cxx11
     if (env_etc.gcc_version >= 40400 and determine_cpp0x_flag()):
       env_etc.cxxflags_base.append("-std=c++0x")
+      env_etc.cxx11_is_available = True
     if (libtbx.env.build_options.warning_level == 0):
       warn_options = ["-w"]
       env_etc._enable_more_warnings = "gcc"
@@ -561,8 +564,10 @@ else:
       "-fPIC",
       "-fno-strict-aliasing"]
     env_etc.cxxflags_base = []
+    # XXX feature duplication, see env.build_options.enable_cxx11
     if (env_etc.gcc_version >= 40400 and determine_cpp0x_flag()):
       env_etc.cxxflags_base.append("-std=c++0x")
+      env_etc.cxx11_is_available = True
     if (libtbx.env.build_options.warning_level == 0):
       warn_options = ["-w"]
       env_etc._enable_more_warnings = "gcc"
@@ -681,8 +686,10 @@ int main() {
     env_etc.ccflags_base = [
       "-fPIC", "-fno-strict-aliasing", "-vec_report0", "-wd161,167"]
     env_etc.cxxflags_base = ["-Wno-deprecated"]
+    # XXX feature duplication, see env.build_options.enable_cxx11
     if (env_etc.icc_version >= 100000 and determine_cpp0x_flag()):
       env_etc.cxxflags_base.append("-std=c++0x")
+      env_etc.cxx11_is_available = True
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O2"]
     else:
@@ -873,7 +880,8 @@ int main() {
       env_etc.ccflags_base = flg
     flg = opts.env_cppflags.split(" ")
     env_etc.ccflags_base.extend(flg)
-  if opts.enable_cxx11:
+  if opts.enable_cxx11  and not env_etc.cxx11_is_available:
+    # XXX feautre duplication, see determine_cpp0x_flag
     def ver(tuple3):
       if tuple3 is None:
         return 0
@@ -883,14 +891,21 @@ int main() {
       if( len(tuple3)>2 ):
         t = t + tuple3[2]
       return t
-    if ver(env_etc.clang_version)>=ver((4,2)):
+    if env_etc.compiler=='darwin_c++' and ver(env_etc.clang_version)>=ver((4,1)):
+      # version numbers are inconsisternt between Apple clang and original clang
+      cxx11_flags = ["-std=c++11", "-stdlib=libc++"]
+    elif ver(env_etc.clang_version)>=ver((3,1)):
       cxx11_flags = ["-std=c++11", "-stdlib=libc++"]
     elif ver(env_etc.gcc_version) >= ver((4,7)):
       cxx11_flags = ["-std=c++11"]
+    elif ver(env_etc.gcc_version) >= ver((4,4)):
+      cxx11_flags = ["-std=c++0x"]
     elif ver(env_etc.icc_version) >= ver((13,0)):
-      # intel compiler on Mac needs C++11 enabled gcc
-      cxx11_flags = ["-std=c++11", "-gxx-name=g++-mp-4.7",
-        "-D__GXX_EXPERIMENTAL_CPP0X__"]
+      # intel compiler on Mac needs C++11 enabled gcc "-gxx-name=g++-mp-4.7"
+      # boost <=1.53 might need: "-D__GXX_EXPERIMENTAL_CPP0X__"
+      cxx11_flags = ["-std=c++11"]
+    elif ver(env_etc.icc_version) >= ver((10,0)):
+      cxx11_flags = ["-std=c++0x"]
     elif env_etc.msvc_version and  env_etc.msvc_version >= 11 :
       cxx11_flags = [] # no options are needed
     else:
