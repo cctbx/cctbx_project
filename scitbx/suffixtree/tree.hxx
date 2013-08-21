@@ -118,7 +118,7 @@ template< typename Edge, typename Word >
 void
 Cursor< Edge, Word >::break_edge_here()
 {
-  if ( is_at_edge_bottom() or is_at_edge_top() )
+  if ( is_at_edge_bottom() || is_at_edge_top() )
   {
     throw bad_state();
   }
