@@ -880,7 +880,7 @@ int main() {
       env_etc.ccflags_base = flg
     flg = opts.env_cppflags.split(" ")
     env_etc.ccflags_base.extend(flg)
-  if opts.enable_cxx11  and not env_etc.cxx11_is_available:
+  if opts.enable_cxx11:
     # XXX feautre duplication, see determine_cpp0x_flag
     def ver(tuple3):
       if tuple3 is None:
