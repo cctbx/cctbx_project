@@ -98,7 +98,8 @@ class launcher (runtime_utils.target_with_save_result) :
   def run (self) :
     os.mkdir(self.output_dir)
     os.chdir(self.output_dir)
-    return run(args=self.args, log=sys.stdout).output_file_name
+    return run(args=self.args, log=sys.stdout,
+      use_directory_prefix=False).output_file_name
 
 def validate_params (params) :
   return geometry_minimization.validate_params(params)
