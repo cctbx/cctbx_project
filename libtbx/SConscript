@@ -877,7 +877,7 @@ int main() {
     def ver(tuple3):
       if tuple3 is None:
         return 0
-      if tuple3 is int:
+      if type(tuple3) is not tuple:
         return tuple3
       t = tuple3[0]*100*100 + tuple3[1]*100
       if( len(tuple3)>2 ):
