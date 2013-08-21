@@ -844,6 +844,170 @@ class scaling_manager (intensity_data) :
     corr  = (N * sum_xy - sum_x * sum_y) / (math.sqrt(N * sum_xx - sum_x**2) *
              math.sqrt(N * sum_yy - sum_y**2))
 
+    if self.params.postrefinement.enable: #New code prototype postrefinement; assumes mosaicity=0 & monochromatic
+      from scitbx import lbfgs
+      from libtbx import adopt_init_args
+
+      print corr
+      pair1 = flex.int([pair[1] for pair in matches.pairs()])
+      pair0 = flex.int([pair[0] for pair in matches.pairs()])
+      #raw_input("go:")
+      # narrow things down to the set that matches, only
+      observations = observations.customized_copy(
+        indices = flex.miller_index([observations.indices()[p] for p in pair1]),
+        data = flex.double([observations.data()[p] for p in pair1]),
+        sigmas = flex.double([observations.sigmas()[p] for p in pair1]),
+      )
+      observations_original_index = observations_original_index.customized_copy(
+        indices = flex.miller_index([observations_original_index.indices()[p] for p in pair1]),
+        data = flex.double([observations_original_index.data()[p] for p in pair1]),
+        sigmas = flex.double([observations_original_index.sigmas()[p] for p in pair1]),
+      )
+
+      #IOBSVEC = flex.double([observations.data()[p] for p in pair1])
+      #MILLER = flex.miller_index([observations_original_index.indices()[p] for p in pair1])
+      IOBSVEC = observations.data()
+      ICALCVEC = flex.double([self.i_model.data()[p] for p in pair0])
+      MILLER = observations_original_index.indices()
+      print "ZZZ",observations.size(), observations_original_index.size(), len(MILLER)
+      ORI = result["current_orientation"][0]
+      Astar = matrix.sqr(ORI.reciprocal_matrix())
+      WAVE = result["wavelength"]
+      BEAM = matrix.col((0.0,0.0,-1./WAVE))
+      BFACTOR = 0.
+      DSSQ = ORI.unit_cell().d_star_sq(MILLER)
+
+      Rhall = flex.double()
+      for mill in MILLER:
+        H = matrix.col(mill)
+        Xhkl = Astar*H
+        Rh = ( Xhkl + BEAM ).length() - (1./WAVE)
+        Rhall.append(Rh)
+      Rs = math.sqrt(flex.mean(Rhall*Rhall))
+
+
+      RS = 1./10000. # reciprocal effective domain size of 1 micron
+      RS = Rs        # try this empirically determined approximate, monochrome, a-mosaic value
+      current = flex.double([slope, BFACTOR, RS, 0., 0.])
+      def scaler_callable(values):
+        thetax = values[3]; thetay = values[4]; rs = values[2]
+        Rh = flex.double()
+        effective_orientation = ORI.rotate_thru((1,0,0),thetax
+           ).rotate_thru((0,1,0),thetay
+           )
+        eff_Astar = matrix.sqr(effective_orientation.reciprocal_matrix())
+        for mill in MILLER:
+          x = eff_Astar * matrix.col(mill)
+          Svec = x + BEAM
+          Rh.append(Svec.length() - (1./WAVE))
+        rs_sq = rs*rs
+        PB = rs_sq / ((2. * (Rh * Rh)) + rs_sq)
+        EXP = flex.exp(-2.*values[1]*DSSQ)
+        terms = values[0] * EXP * PB
+        return terms
+      def lorentz_callable(values):
+        thetax = values[3]; thetay = values[4]; rs = values[2]
+        Rh = flex.double()
+        effective_orientation = ORI.rotate_thru((1,0,0),thetax
+           ).rotate_thru((0,1,0),thetay
+           )
+        eff_Astar = matrix.sqr(effective_orientation.reciprocal_matrix())
+        for mill in MILLER:
+          x = eff_Astar * matrix.col(mill)
+          Svec = x + BEAM
+          Rh.append(Svec.length() - (1./WAVE))
+        rs_sq = rs*rs
+        PB = rs_sq / ((2. * (Rh * Rh)) + rs_sq)
+        return PB
+
+      def fvec_callable(values):
+        thetax = values[3]; thetay = values[4]; rs = values[2]
+        Rh = flex.double()
+        effective_orientation = ORI.rotate_thru((1,0,0),thetax
+           ).rotate_thru((0,1,0),thetay
+           )
+        eff_Astar = matrix.sqr(effective_orientation.reciprocal_matrix())
+        for mill in MILLER:
+          x = eff_Astar * matrix.col(mill)
+          Svec = x + BEAM
+          Rh.append(Svec.length() - (1./WAVE))
+        rs_sq = rs*rs
+        PB = rs_sq / ((2. * (Rh * Rh)) + rs_sq)
+        EXP = flex.exp(-2.*values[1]*DSSQ)
+        terms = (values[0] * EXP * PB * ICALCVEC - IOBSVEC)
+        # this is unweighted; it would be straightforward to also include sigma weighting
+        return terms
+
+      func = fvec_callable(current)
+      functional = flex.sum(func*func)
+      #for idd,pair in enumerate(matches.pairs()):
+      #  print "%4d %8.2f %8.2f %15s Rh %8.6f"%(
+      #    idd,slope*self.i_model.data()[pair[0]], observations.data()[pair[1]], MILLER[idd],
+      #    func[idd]
+      #  )
+      print "functional",functional
+
+      class c_minimizer:
+
+        def __init__(self, current_x=None,
+                     min_iterations=0, max_calls=1000, max_drop_eps=1.e-5):
+          adopt_init_args(self, locals())
+          self.n = current_x.size()
+          self.x = current_x
+          self.minimizer = lbfgs.run(
+            target_evaluator=self,
+            termination_params=lbfgs.termination_parameters(
+              traditional_convergence_test=False,
+              drop_convergence_test_max_drop_eps=max_drop_eps,
+              min_iterations=min_iterations,
+              max_iterations = None,
+              max_calls=max_calls),
+            exception_handling_params=lbfgs.exception_handling_parameters(
+               ignore_line_search_failed_rounding_errors=True,
+               ignore_line_search_failed_step_at_lower_bound=True,#the only change from default
+               ignore_line_search_failed_step_at_upper_bound=False,
+               ignore_line_search_failed_maxfev=False,
+               ignore_line_search_failed_xtol=False,
+               ignore_search_direction_not_descent=False)
+            )
+
+        def compute_functional_and_gradients(self):
+          func = fvec_callable(self.x)
+          functional = flex.sum(func*func)
+          self.f = functional
+          DELTA = 1.E-7
+          self.g = flex.double()
+          for x in xrange(self.n):
+            templist = list(self.x)
+            templist[x]+=DELTA
+            dvalues = flex.double(templist)
+
+            dfunc = fvec_callable(dvalues)
+            dfunctional = flex.sum(dfunc*dfunc)
+            #calculate by finite_difference
+            self.g.append( ( dfunctional-functional )/DELTA )
+          self.g[2]=0.
+          print "rms", math.sqrt(flex.mean(func*func)), list(self.x)[0:3], "%7.3f deg %7.3f deg"%(
+            180.*self.x[3]/math.pi,180.*self.x[4]/math.pi)
+          return self.f, self.g
+
+      MINI = c_minimizer( current_x = current )
+      scaler = scaler_callable(MINI.x)
+      fat_selection = (lorentz_callable(MINI.x) > 0.2)
+      print "On total %5d the fat selection is %5d"%(len(observations.indices()), fat_selection.count(True))
+      print "ZZZ",observations.size(), observations_original_index.size(), len(fat_selection), len(scaler)
+      observations_original_index = observations_original_index.select(fat_selection)
+
+      observations = observations.customized_copy(
+        indices = observations.indices().select(fat_selection),
+        data = (observations.data()/scaler).select(fat_selection),
+        sigmas = (observations.sigmas()/scaler).select(fat_selection)
+      )
+      matches = miller.match_multi_indices(
+        miller_indices_unique=self.i_model.indices(),
+        miller_indices=observations.indices())
+
+
     if not self.params.scaling.enable or self.params.postrefinement.enable: # Do not scale anything
       slope = 1.0
       offset = 0.0
