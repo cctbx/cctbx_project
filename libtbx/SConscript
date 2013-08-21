@@ -750,6 +750,7 @@ int main() {
       env_etc.clang_version = (
         macro['clang_major'], macro['clang_minor'], macro['clang_patchlevel'])
     else:
+      ### XXX inconsistency: on linux gcc_version is an int, not a tuple
       env_etc.gcc_version = (macro['GNUC'], macro['GNUC_MINOR'], macro['GNUC_PATCHLEVEL'])
       m = re.search(r"Apple Inc. build (\d+)\)", macro['VERSION'])
       if m: env_etc.apple_gcc_builds.gcc = int(m.group(1))
@@ -876,7 +877,12 @@ int main() {
     def ver(tuple3):
       if tuple3 is None:
         return 0
-      return tuple3[0]*100 + tuple3[1]
+      if tuple3 is int:
+        return tuple3
+      t = tuple3[0]*100*100 + tuple3[1]*100
+      if( len(tuple3)>2 ):
+        t = t + tuple3[2]
+      return t
     if ver(env_etc.clang_version)>=ver((4,2)):
       cxx11_flags = ["-std=c++11", "-stdlib=libc++"]
     elif ver(env_etc.gcc_version) >= ver((4,7)):
