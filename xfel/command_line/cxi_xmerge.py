@@ -45,6 +45,11 @@ class xscaling_manager (scaling_manager) :
     else:
       self.n_accepted = (self.frames["cc"]>self.params.min_corr).count(True)
       self.n_low_corr = (self.frames["cc"]>self.params.min_corr).count(False)
+      statsy = flex.mean_and_variance(self.frames["cc"])
+      print >> self.log, "%5d images, individual image correlection coefficients are %6.3f +/- %5.3f"%(
+               len(self.frames["cc"]),
+               statsy.mean(),  statsy.unweighted_sample_standard_deviation(),
+               )
 
     t2 = time.time()
     print >> self.log, ""
