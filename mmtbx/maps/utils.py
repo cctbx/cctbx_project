@@ -241,8 +241,8 @@ class generate_water_omit_map (object) :
       if (self.n_waters > 0) :
         xrs.set_occupancies(value=0, selection=water_sel)
       fmodel.update_xray_structure(xrs,
-        update_f_calc=True,
-        update_f_mask=False)
+        update_f_calc=True)
+    #    update_f_mask=False)
       if (update_f_part1) :
         fmodel.update_all_scales(update_f_part1_for="maps", log=log)
       else :
