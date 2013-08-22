@@ -1577,6 +1577,7 @@ mmtbx/ias/__init__.py -text
 mmtbx/ias/tst_ias.py -text
 mmtbx/ions/__init__.py -text
 mmtbx/ions/build.py -text
+mmtbx/ions/environment.py -text
 mmtbx/ions/geometry.py -text
 mmtbx/ions/ion_parameters.cif -text
 mmtbx/ions/parameters.py -text
