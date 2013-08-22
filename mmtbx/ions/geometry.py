@@ -292,42 +292,42 @@ SUPPORTED_GEOMETRIES_OLD = OrderedDict([
   ])
 
 def _tetrahedron():
-  return rec(
-    [1, 1, 1,
-     -1, -1, 1,
-     -1, 1, -1,
-     1, -1, -1],
-     n = (4, 3)
-    )
+  return [
+    col([1, 1, 1]),
+    col([-1, -1, 1]),
+    col([-1, 1, -1]),
+    col([1, -1, -1]),
+    ]
 
 def _octahedron():
-  return rec([
-    1, 0, 0,
-    -1, 0, 0,
-    0, 1, 0,
-    0, -1, 0,
-    0, 0, 1,
-    0, 0, -1,
-    ], n = (6, 3))
+  return _bipyramid(_square_plane())
 
 def _trigonal_plane():
-  return rec([
-    0, 1, 0,
-    -sqrt(3) / 2, -1 / 2, 0,
-    sqrt(3) / 2, -1 / 2, 0,
-    ], n = (3, 3))
+  return [
+    col([0, 1, 0]),
+    col([-sqrt(3) / 2, -1 / 2, 0]),
+    col([sqrt(3) / 2, -1 / 2, 0]),
+    ]
 
 def _square_plane():
-  return rec([
-    0, 1, 0,
-    0, -1, 0,
-    1, 0, 0,
-    -1, 0, 0
-    ], n = (4, 3))
+  return [
+    col([0, 1, 0]),
+    col([0, -1, 0]),
+    col([1, 0, 0]),
+    col([-1, 0, 0]),
+    ]
 
 def _concatenate(*args):
-  lst = [i for arg in args for i in arg]
-  return rec(lst, n = (len(lst) // 3, 3))
+  lst = []
+  for arg in args:
+    if isinstance(arg, list):
+      for elem in arg:
+        lst.append(elem)
+    else:
+      lst.append(arg)
+  # lst = [i for arg in args for i in arg]
+  # return rec(lst, n = (len(lst) // 3, 3))
+  return lst
 
 def _pyramid(base):
   return _concatenate(base, col([0, 0, 1]))
@@ -349,8 +349,8 @@ def _trigonal_bipyramid():
 
 def _trigonal_prism():
   return _concatenate(
-    _trigonal_plane() + rec([0, 0, 1] * 3, n = (3, 3)),
-    _trigonal_plane() + rec([0, 0, -1] * 3, n = (3, 3)),
+    [i + col([0, 0, 1]) for i in _trigonal_plane()],
+    [i + col([0, 0, -1]) for i in _trigonal_plane()],
     )
 
 def _pentagon():
@@ -360,13 +360,13 @@ def _pentagon():
   s_1 = sqrt(10 + 2 * sqrt(5)) / 4
   s_2 = sqrt(10 - 2 * sqrt(5)) / 4
 
-  return rec([
-    1, 0, 0,
-    c_1, s_1, 0,
-    -c_2, s_2, 0,
-    -c_2, -s_2, 0,
-    c_1, -s_1, 0,
-    ], n = (5, 3))
+  return [
+    col([1, 0, 0]),
+    col([c_1, s_1, 0]),
+    col([-c_2, s_2, 0]),
+    col([-c_2, -s_2, 0]),
+    col([c_1, -s_1, 0]),
+    ]
 
 def _pentagonal_pyramid():
   return _pyramid(_pentagon())
@@ -375,34 +375,31 @@ def _pentagonal_bipyramid():
   return _bipyramid(_pentagon())
 
 def _ring_miss_1():
-  return rec([
-    0, 1, 0,
-    0, -1, 0,
-    1, 0, 0,
-    0, 0, 1,
-    sqrt(2) / 2, sqrt(2) / 2, -1,
-    -sqrt(2) / 2, -sqrt(2) / 2, -1,
-  ], n = (6, 3))
+  return _concatenate(
+    _square_plane(),
+    col([sqrt(2) / 2, sqrt(2) / 2, -1]),
+    col([-sqrt(2) / 2, -sqrt(2) / 2, -1]),
+    )
 
 def _ring_miss_2():
-  return rec([
-    0, 1, 0,
-    0, -1, 0,
-    -1, 0, 0,
-    0, 0, 1,
-    sqrt(2) / 2, sqrt(2) / 2, -1,
-    -sqrt(2) / 2, -sqrt(2) / 2, -1,
-  ], n = (6, 3))
+  return [
+    col([0, 1, 0]),
+    col([0, -1, 0]),
+    col([-1, 0, 0]),
+    col([0, 0, 1]),
+    col([sqrt(2) / 2, sqrt(2) / 2, -1]),
+    col([-sqrt(2) / 2, -sqrt(2) / 2, -1]),
+    ]
 
 def _ring_miss_3():
-  return rec([
-    0, 1, 0,
-    0, -1, 0,
-    -1, 0, 0,
-    1, 0, 0,
-    sqrt(2) / 2, sqrt(2) / 2, -1,
-    -sqrt(2) / 2, -sqrt(2) / 2, -1,
-  ], n = (6, 3))
+  return [
+    col([0, 1, 0]),
+    col([0, -1, 0]),
+    col([-1, 0, 0]),
+    col([1, 0, 0]),
+    col([sqrt(2) / 2, sqrt(2) / 2, -1]),
+    col([-sqrt(2) / 2, -sqrt(2) / 2, -1]),
+    ]
 
 def _ring_pop():
   return _concatenate(
@@ -415,25 +412,23 @@ def _see_saw():
   """
   An octahedron missing two adjacent points.
   """
-  return rec(
-    [1, 0, 0,
-     -1, 0, 0,
-     0, 1, 0,
-     0, 0, 1,],
-     n = (4, 3)
-    )
+  return [
+    col([1, 0, 0]),
+    col([-1, 0, 0]),
+    col([0, 1, 0]),
+    col([0, 0, 1]),
+    ]
 
 def _three_legs():
   """
   Better name? Imagine 3 orthogonal vectors pointed in the x, y, and z
   directions.
   """
-  return rec(
-    [1, 0, 0,
-     0, 1, 0,
-     0, 0, 1],
-     n = (3, 3)
-    )
+  return [
+    col([1, 0, 0]),
+    col([0, 1, 0]),
+    col([0, 0, 1]),
+    ]
 
 SUPPORTED_GEOMETRIES = OrderedDict([
   (3, [
@@ -469,10 +464,6 @@ SUPPORTED_GEOMETRY_NAMES = \
   [lst[0] for vals in SUPPORTED_GEOMETRIES.values() for lst in vals]
 
 def _angles_deviation(vectors_a, vectors_b):
-  vectors_b = [rec((vectors_b[i], vectors_b[i + 1], vectors_b[i + 2]), n = (1, 3))
-               for i in xrange(0, len(vectors_b), 3)]
-  vectors_a = [rec((vectors_a[i], vectors_a[i + 1], vectors_a[i + 2]), n = (1, 3))
-               for i in xrange(0, len(vectors_a), 3)]
   assert len(vectors_a) == len(vectors_b)
 
   angles_a = [vec.angle(vec_o, deg = True)
@@ -508,17 +499,13 @@ def find_coordination_geometry(nearby_atoms, minimizer_method = False,
               if contact.distance() < cutoff]
   geometries = []
   if minimizer_method:
-    vectors = rec(
-      [i for vector in filtered for i in vector],
-      n = (len(filtered), 3))
-    # vectors = filtered
+    n_vectors = len(filtered)
 
-    n_vectors = vectors.n[0]
     if n_vectors not in SUPPORTED_GEOMETRIES:
       return geometries
 
     for name, func, rmsa_cutoff in SUPPORTED_GEOMETRIES[n_vectors]:
-      rmsa = _angles_deviation(vectors, func())
+      rmsa = _angles_deviation(filtered, func())
       # print name, rmsa
       if rmsa < rmsa_cutoff:
         geometries.append((name, rmsa))
@@ -526,7 +513,6 @@ def find_coordination_geometry(nearby_atoms, minimizer_method = False,
     if geometries:
       geometries.sort(key = lambda x: x[-1])
       geometries = [geometries[0]]
-    # [i for i in geometries if i[-1] < geometries[0][-1] * 1.5]
   else:
     for name, func in SUPPORTED_GEOMETRIES_OLD.items():
       val = func(filtered)
