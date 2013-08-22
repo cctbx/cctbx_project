@@ -6,7 +6,7 @@ the coordination geometry.
 from __future__ import division
 from collections import OrderedDict
 from math import sqrt
-from scitbx.matrix import col, rec
+from scitbx.matrix import col
 
 def _bond_angles(vectors):
   """
