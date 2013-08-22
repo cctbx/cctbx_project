@@ -43,7 +43,8 @@ def exercise () :
 
   for model, geometries in models.items():
     pdb_path = libtbx.env.find_in_repositories(
-      relative_path = "phenix_regression/mmtbx/geometry/{}.pdb".format(model),
+      relative_path = os.path.join("phenix_regression", "mmtbx",
+                                   "geometry", model + ".pdb"),
       test = os.path.isfile)
     pdb_in = file_reader.any_file(pdb_path, force_type = "pdb")
     manager = Manager(
