@@ -147,13 +147,17 @@ class hbonds_as_cif_loop(object):
                covariance_matrix=None,
                cell_covariance_matrix=None,
                parameter_map=None,
-               eps=2e-16):
+               eps=2e-16,
+               fixed_distances=None,
+               fixed_angles=None):
     assert [sites_frac, sites_cart].count(None) == 1
     fmt_a = "%.1f"
     pair_asu_table = pair_asu_table
     asu_mappings = pair_asu_table.asu_mappings()
     space_group_info = sgtbx.space_group_info(group=asu_mappings.space_group())
     self.unit_cell = asu_mappings.unit_cell()
+    self.fixed_distances = fixed_distances
+    self.fixed_angles = fixed_angles
     if sites_cart is not None:
       sites_frac = self.unit_cell.fractionalize(sites_cart)
     if sites_frac is not None:
@@ -223,7 +227,9 @@ class hbonds_as_cif_loop(object):
           cov, self.cell_covariance_matrix, self.unit_cell, rt_mx_ji)
       else:
         var = distance.variance(cov, self.unit_cell, rt_mx_ji)
-      if var > self.eps:
+      if var > self.eps and not(self.fixed_distances is not None and
+        ((i_seq, j_seq) in self.fixed_distances or
+         (j_seq, i_seq) in self.fixed_distances)):
         return format_float_with_su(distance.distance_model, math.sqrt(var))
     return "%.4f" %distance.distance_model
 
@@ -239,6 +245,8 @@ class hbonds_as_cif_loop(object):
                              (unit_mx, unit_mx, rt_mx_ki))
       else:
         var = angle.variance(cov, self.unit_cell, (unit_mx, unit_mx, rt_mx_ki))
-      if var > self.eps:
+      if var > self.eps and not(self.fixed_angles is not None and
+        ((i_seq, j_seq, k_seq) in self.fixed_angles or
+          (k_seq, j_seq, i_seq) in self.fixed_angles)):
         return format_float_with_su(angle.angle_model, math.sqrt(var))
     return "%.1f" %angle.angle_model
