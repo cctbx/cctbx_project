@@ -584,7 +584,7 @@ class Manager (object) :
         continue
 
       # Filter out alternate conformations of this atom
-      if _same_atom_different_altloc(atom_i, atom_j):
+      if same_atom_different_altloc(atom_i, atom_j):
         continue
 
       # Gather up contacts with all symmetric copies
@@ -2260,7 +2260,7 @@ def create_manager (
     log = log)
   return manager
 
-def _same_atom_different_altloc(atom1, atom2):
+def same_atom_different_altloc(atom1, atom2):
   """
   Determines whether atom1 and atom2 differ only by their alternate location.
   """
