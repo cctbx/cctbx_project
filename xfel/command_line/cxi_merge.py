@@ -1,9 +1,10 @@
-from __future__ import division
-# -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
+# -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME cxi.merge
 #
 # $Id$
+
+from __future__ import division
 
 from rstbx.dials_core.integration_core import show_observations
 import iotbx.phil
@@ -285,7 +286,8 @@ class null_data (object) :
   Stand-in for a frame rejected due to conflicting symmetry.  (No flex arrays
   included, to save pickling time during multiprocessing.)
   """
-  def __init__ (self, file_name, log_out, wrong_cell, wrong_bravais) :
+  def __init__ (self, file_name, log_out,
+                low_signal=False, wrong_bravais=False, wrong_cell=False) :
     adopt_init_args(self, locals())
 
   def show_log_out (self, out) :
@@ -377,6 +379,7 @@ class scaling_manager (intensity_data) :
   def reset (self) :
     self.n_processed = 0
     self.n_accepted = 0
+    self.n_low_signal = 0
     self.n_wrong_bravais = 0
     self.n_wrong_cell = 0
     self.n_low_corr = 0
@@ -427,6 +430,8 @@ class scaling_manager (intensity_data) :
       self.n_wrong_bravais
     print >> self.log, "  %d rejected for unit cell outliers" % \
       self.n_wrong_cell
+    print >> self.log, "  %d rejected for low signal" % \
+      self.n_low_signal
     print >> self.log, "  %d rejected due to poor correlation" % \
       self.n_low_corr
 
@@ -468,11 +473,13 @@ class scaling_manager (intensity_data) :
     """
     self.n_processed += 1
     if (data is None) :
-      return
+      return None
     #data.show_log_out(self.log)
     #self.log.flush()
     if (isinstance(data, null_data)) :
-      if (data.wrong_bravais) :
+      if (data.low_signal) :
+        self.n_low_signal += 1
+      elif (data.wrong_bravais) :
         self.n_wrong_bravais += 1
       elif (data.wrong_cell) :
         self.n_wrong_cell += 1
@@ -501,12 +508,13 @@ class scaling_manager (intensity_data) :
     self.wavelength.append(data.wavelength)
 
   def _add_all_frames (self, data) :
-    """The _add_all_frames() function collects the statistics
-    accumulated in @p data by the individual scaling processes in
-    process pool.  XXX Sure this does not need a lock?
+    """The _add_all_frames() function collects the statistics accumulated
+    in @p data by the individual scaling processes in process pool.
+    This function is run in serial, so it does not need a lock.
     """
     self.n_accepted += data.n_accepted
     self.n_low_corr += data.n_low_corr
+    self.n_low_signal += data.n_low_signal
     self.n_processed += data.n_processed
     self.n_wrong_bravais += data.n_wrong_bravais
     self.n_wrong_cell += data.n_wrong_cell
@@ -654,19 +662,12 @@ class scaling_manager (intensity_data) :
         out=out)
     except OutlierCellError, e :
       print >> out, str(e)
-      result = None
-      wrong_cell = True
+      return null_data(
+        file_name=file_name, log_out=out.getvalue(), wrong_cell=True)
     except WrongBravaisError, e :
       print >> out, str(e)
-      result = None
-      wrong_bravais = True
-    if (result is None) :
-      null = null_data(
-        file_name=file_name,
-        log_out=out.getvalue(),
-        wrong_bravais=wrong_bravais,
-        wrong_cell=wrong_cell)
-      return null
+      return null_data(
+        file_name=file_name, log_out=out.getvalue(), wrong_bravais=True)
 
     # If the pickled integration file does not contain a wavelength,
     # fall back on the value given on the command line.  XXX The
@@ -753,7 +754,8 @@ class scaling_manager (intensity_data) :
       acceptable_nested_bin_sequences = [i for i in xrange(len(acceptable_resolution_bins))
                                          if False not in acceptable_resolution_bins[:i+1]]
       if len(acceptable_nested_bin_sequences)==0:
-        return None
+        return null_data(
+          file_name=file_name, log_out=out.getvalue(), low_signal=True)
       else:
         N_acceptable_bins = max(acceptable_nested_bin_sequences) + 1
         imposed_res_filter = float(bin_results[N_acceptable_bins-1].d_range.split()[2])
@@ -838,7 +840,7 @@ class scaling_manager (intensity_data) :
     # XXX This is backwards, really.
     if (N * sum_xx - sum_x**2)==0:
       print "Skipping frame with",N,sum_xx,sum_x**2
-      return data
+      return None
     slope = (N * sum_xy - sum_x * sum_y) / (N * sum_xx - sum_x**2)
     offset = (sum_xx * sum_y - sum_x * sum_xy) / (N * sum_xx - sum_x**2)
     corr  = (N * sum_xy - sum_x * sum_y) / (math.sqrt(N * sum_xx - sum_x**2) *
