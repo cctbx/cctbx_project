@@ -261,7 +261,7 @@ class manager(object):
       map_type     = self.params.primary_map_type,
       map_cutoff   = self.params.primary_map_cutoff,
       use_kick_map = False).peaks_mapped()
-    if peaks_fo_fc.sites is not None:
+    if (peaks_fo_fc is not None) and (peaks_fo_fc.sites is not None) :
       new_scatterers = flex.xray_scatterer(
         peaks_fo_fc.sites.size(),
         xray.scatterer(occupancy       = self.params.occupancy,

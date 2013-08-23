@@ -1921,12 +1921,15 @@ def run(args, command_name = "phenix.ensemble_refinement", log=None,
     if (er_params.nproc in [1, None]) or (sys.platform == "win32") :
       for ptls in er_params.ptls :
         make_header("Running with pTLS = %g" % ptls, out=log)
-        trials.append(driver(ptls, buffer_output=False, write_log=False))
+        result = driver(ptls, buffer_output=False, write_log=False)
+        assert (result is not None)
+        trials.append(result)
     else :
       trials = easy_mp.pool_map(
         fixed_func=driver,
         args=er_params.ptls,
         processes=er_params.nproc)
+    assert (not None in trials)
     best_trial = min(trials, key=lambda t: t.r_free)
     best_trial.save_final(er_params.output_file_prefix)
 
