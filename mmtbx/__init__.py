@@ -181,6 +181,12 @@ class fmodels(object):
     if(self.fmodel_n is not None):
       self.fmodel_neutron().info().show_targets(out= log, text="neutron "+text)
 
+  def update(self, target_name=None):
+    if(self.fmodel_x is not None):
+      self.fmodel_x.update(target_name=target_name)
+    if(self.fmodel_n is not None):
+      self.fmodel_n.update(target_name=target_name)
+
   def create_target_functors(self):
     self.target_functor_xray = self.fmodel_xray().target_functor()
     self.target_functor_neutron = None
