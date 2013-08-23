@@ -63,7 +63,6 @@ class manager(object):
           par_initial.append(val)
         constrained_groups_selections.append(ss)
       minimized = None
-      r_work_start = fmodels.fmodel_xray().r_work()
       for macro_cycle in xrange(number_of_macro_cycles):
         if(minimized is not None): par_initial = minimized.par_min
         minimized = minimizer(
@@ -77,7 +76,7 @@ class manager(object):
           xray_structure     = fmodels.fmodel_xray().xray_structure,
           parameters         = par_initial,
           selections         = selections,
-          enforce_positivity = True)
+          enforce_positivity = (occupancy_min>=0))
         fmodels.fmodel_xray().xray_structure.adjust_occupancy(
           occ_max   = occupancy_max,
           occ_min   = occupancy_min,
