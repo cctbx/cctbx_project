@@ -651,6 +651,15 @@ class TestImageSweep(object):
         sweep.get_goniometer(index)
         sweep.get_scan(index)
 
+        # Ensure state at zero
+        sweep[0]
+        scan1 = sweep.get_scan()
+        # Put sweep to end
+        sweep[len(sweep)-1]
+        scan2 = sweep.get_scan()
+        assert(scan1 == scan2)
+        print 'OK'
+
     def tst_get_array_range(self, sweep, array_range):
         assert(sweep.get_array_range() == array_range)
         print 'OK'

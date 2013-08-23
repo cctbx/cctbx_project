@@ -141,7 +141,8 @@ def template_image_range(template):
 
     # Check that the template matches some files
     if len(filenames) == 0:
-        raise ValueError('Template doesn\'t match any files.')
+        raise ValueError('Template {0} doesn\'t match any files.'.format(
+            template))
 
     # Get the templete format
     index = slice(*template_string_number_index(template))
