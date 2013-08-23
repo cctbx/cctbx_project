@@ -83,7 +83,14 @@ def get_wildcard_strings (formats, include_any=True) :
 class FormatError (Sorry) :
   pass
 
+def strip_shelx_format_extension (file_name) :
+  if (file_name.endswith("=hklf3") or file_name.endswith("=hklf4") or
+      file_name.endswith("=amplitudes") or file_name.endswith("=intensities")) :
+    file_name = "".join(file_name.split("=")[:-1])
+  return file_name
+
 def splitext (file_name) :
+  file_name = strip_shelx_format_extension(file_name)
   base, ext = os.path.splitext(file_name)
   if (ext == ".gz") :
     base, ext = os.path.splitext(base)
@@ -131,6 +138,10 @@ def any_file (file_name,
               input_class=None,
               raise_sorry_if_errors=False,
               raise_sorry_if_not_expected_format=False) :
+  file_name_raw = file_name
+  file_name = strip_shelx_format_extension(file_name)
+  if (file_name != file_name_raw) and (force_type is None) :
+    force_type = "hkl"
   if not os.path.exists(file_name) :
     raise Sorry("Couldn't find the file %s" % file_name)
   elif os.path.isdir(file_name) :
@@ -143,7 +154,7 @@ def any_file (file_name,
   else :
     if input_class is None :
       input_class = any_file_input
-    return input_class(file_name=file_name,
+    return input_class(file_name=file_name_raw,
       get_processed_file=get_processed_file,
       valid_types=valid_types,
       force_type=force_type,
@@ -178,7 +189,8 @@ class any_file_input (object) :
     self._cached_file = None # XXX: used in phenix.file_reader
     self._tried_types = []
     self._errors = {}
-    self.file_size = os.path.getsize(file_name)
+    file_name_clean = strip_shelx_format_extension(file_name)
+    self.file_size = os.path.getsize(file_name_clean)
     self.get_processed_file = get_processed_file
 
     (file_base, file_ext) = splitext(file_name)

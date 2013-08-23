@@ -1,6 +1,7 @@
 from __future__ import division
 import iotbx.phil
-from libtbx.test_utils import show_diff
+from libtbx.test_utils import show_diff, Exception_expected
+from libtbx.utils import Sorry
 from libtbx import Auto
 import os
 
@@ -142,6 +143,39 @@ nproc = None
   assert (params.data_dir == "/")
   assert (params.d_min == 3.0)
   assert (params.nproc == 5)
+  # shelx file hack
+  open("tst_iotbx_phil.hkl", "w").write("""\
+   1   2  -1  -23.34    4.56   1
+   2  -3   9   12.45    6.12   2
+99999999999999999.9999999.999999
+-999-999-999-9999.99-9999.99-999
+   0   0   0    0.00    0.00   0""")
+  master_phil_str = """
+data = None
+  .type = path
+"""
+  pcl = iotbx.phil.process_command_line_with_files(
+    args=["tst_iotbx_phil.hkl"],
+    master_phil_string=master_phil_str,
+    reflection_file_def="data")
+  params = pcl.work.extract()
+  from iotbx.file_reader import any_file
+  try :
+    hkl_in = any_file(params.data, force_type="hkl")
+    print hkl_in.file_server.miller_arrays[0].is_xray_intensity_array()
+  except Sorry, s :
+    assert ("Unresolved amplitude/intensity ambiguity" in str(s))
+  else :
+    raise Exception_expected
+  pcl = iotbx.phil.process_command_line_with_files(
+    args=["tst_iotbx_phil.hkl=hklf3"],
+    master_phil_string=master_phil_str,
+    reflection_file_def="data")
+  params = pcl.work.extract()
+  assert (params.data == "tst_iotbx_phil.hkl=hklf3")
+  hkl_in = any_file(params.data, force_type="hkl")
+  ma = hkl_in.file_server.miller_arrays[0]
+  assert ma.is_xray_amplitude_array()
   print "OK"
 
 if (__name__ == "__main__"):

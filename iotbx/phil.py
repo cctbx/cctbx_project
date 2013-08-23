@@ -151,9 +151,20 @@ Full parameters:
     return self._type_counts.get(file_type, 0)
 
   def __call__ (self, arg) :
+    file_arg = None
+    is_shelx_file = False
     if (os.path.isfile(arg)) :
+      file_arg = arg
+    # handle SHELX format hack
+    elif (arg.endswith("=hklf3") or arg.endswith("=hklf4") or
+          arg.endswith("=amplitudes") or arg.endswith("=intensities")) :
+      base_arg = "".join(arg.split("=")[:-1])
+      if (base_arg != "") and os.path.isfile(base_arg) :
+        file_arg = arg
+        is_shelx_file = True
+    if (file_arg is not None) :
       from iotbx import file_reader
-      f = file_reader.any_file(os.path.abspath(arg))
+      f = file_reader.any_file(os.path.abspath(file_arg))
       if (f.file_type is not None) :
         if (not f.file_type in self._type_counts) :
           self._type_counts[f.file_type] = 0
@@ -173,7 +184,10 @@ Full parameters:
       elif (f.file_type == "pkl") and (self.pickle_file_def is not None) :
         file_def_name = self.pickle_file_def
       if (file_def_name is not None) :
-        return libtbx.phil.parse("%s=%s" % (file_def_name, f.file_name))
+        file_name = f.file_name
+        if (is_shelx_file) :
+          file_name = file_arg
+        return libtbx.phil.parse("%s=%s" % (file_def_name, file_name))
       else :
         return False
     elif (os.path.isdir(arg)) :
