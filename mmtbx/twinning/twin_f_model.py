@@ -2039,7 +2039,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
   def scale_k3_w(self):
     return self.data_core.koverall()
 
-
+  def hl_coeffs(self): return None
 
 
   def fft_vs_direct(self, reflections_per_bin = 250,
