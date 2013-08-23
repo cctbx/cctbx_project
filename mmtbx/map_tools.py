@@ -266,10 +266,13 @@ def fill_missing_f_obs_2(coeffs, fmodel):
   return coeffs.complete_with(other = dsf, scale=True)
 
 def fill_missing_f_obs(coeffs, fmodel):
-  c1 = fill_missing_f_obs_1(coeffs=coeffs, fmodel=fmodel)
   c2 = fill_missing_f_obs_2(coeffs=coeffs, fmodel=fmodel)
-  c1,c2 = c1.common_sets(c2)
-  c = c1.customized_copy(data = (c1.data()+c2.data())*0.5)
+  if(fmodel.xray_structure is not None):
+    c1 = fill_missing_f_obs_1(coeffs=coeffs, fmodel=fmodel)
+    c1,c2 = c1.common_sets(c2)
+    c = c1.customized_copy(data = (c1.data()+c2.data())*0.5)
+  else:
+    c = c2
   return c
 
 def sharp_evaluation_target(sites_frac, map_coeffs, resolution_factor = 0.25):
