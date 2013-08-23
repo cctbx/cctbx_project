@@ -856,25 +856,29 @@ class omit(object):
   def __init__(
         self,
         crystal_gridding,
-        fmodel):
-    b = boxes(
+        fmodel,
+        box_size_as_unit_cell_fraction = 0.1):
+    b = maptbx.boxes(
       n_real     = crystal_gridding.n_real(),
       unit_cell  = fmodel.f_obs().crystal_symmetry().unit_cell(),
-      box_size_as_unit_cell_fraction = 0.11)
-    #
+      box_size_as_unit_cell_fraction = box_size_as_unit_cell_fraction)
     import mmtbx.f_model
-    def get_map_data(fmodel, map_type):
+    import cctbx.miller
+    def get_map(fmodel, map_type, fill, ref_mc=None):
       f_map = fmodel.electron_density_map(
         update_f_part1=False).map_coefficients(
           map_type     = map_type,
           isotropize   = True,
-          fill_missing = False)
+          fill_missing = fill)
+      if(ref_mc is not None):
+        f_map = f_map.complete_with(ref_mc, scale=True)
       fft_map = cctbx.miller.fft_map(
         crystal_gridding     = crystal_gridding,
         fourier_coefficients = f_map)
-      fft_map.apply_volume_scaling()
-      return fft_map.real_map_unpadded()
-    f_map_data_orig = get_map_data(fmodel=fmodel, map_type="2mFo-DFc")
+      fft_map.apply_sigma_scaling()
+      return fft_map.real_map_unpadded(), f_map
+    f_map_data_orig, map_coeffs_orig = \
+      get_map(fmodel=fmodel, map_type="2mFo-DFc", fill=True)
     f_model = fmodel.f_model_scaled_with_k1()
     fft_map = cctbx.miller.fft_map(
       crystal_gridding     = crystal_gridding,
@@ -883,28 +887,12 @@ class omit(object):
     f_model_map_data = fft_map.real_map_unpadded()
     zero_complex_ma = f_model.customized_copy(data = f_model.data()*0)
     self.map_result = flex.double(flex.grid(b.n_real))
-    if 0: print "start1:",fmodel.r_work()
-    fmodel_ = mmtbx.f_model.manager(
-        f_obs        = fmodel.f_obs(),
-        r_free_flags = fmodel.r_free_flags(),
-        f_calc       = f_model,
-        f_mask       = zero_complex_ma)
-    if 0: print "strat2:",fmodel_.r_work()
-    self.map_ave = None
     for s,e in zip(b.starts, b.ends):
-      #print s,e
-      box = copy(f_model_map_data, s, e)
+      box = maptbx.copy(f_model_map_data, s, e)
       box.reshape(flex.grid(box.all()))
-      # modify map in box
-      #reset(data=box, substitute_value=0.0, less_than_threshold=0.1)
-      #for i in xrange(3):
-      #  map_box_average(
-      #    map_data   = box,
-      #    cutoff     = 1,
-      #    index_span = 1)
-      reset(data=box, substitute_value=0.0, less_than_threshold=9999)
+      maptbx.reset(data=box, substitute_value=0.0, less_than_threshold=1.e+99)
       tmp = f_model_map_data.deep_copy()
-      set_box(
+      maptbx.set_box(
         map_data_from = box,
         map_data_to   = tmp,
         start         = s,
@@ -919,34 +907,21 @@ class omit(object):
         r_free_flags = fmodel.r_free_flags(),
         f_calc       = f_model_,
         f_mask       = zero_complex_ma)
-      print fmodel_.r_work()
-      f_map_data = get_map_data(fmodel=fmodel_, map_type="mFo-DFc")
-      #if(self.map_ave is None): self.map_ave = f_map_data
-      #else: self.map_ave = self.map_ave + f_map_data
-      box = copy(f_map_data, s, e)
+      f_map_data, junk = get_map(fmodel=fmodel_, map_type="2mFo-DFc",
+        fill=False, ref_mc=map_coeffs_orig)
+      box = maptbx.copy(f_map_data, s, e)
       box.reshape(flex.grid(box.all()))
-      #reset(data=box, substitute_value=0.0, less_than_threshold=0)
-      set_box(
+      maptbx.set_box(
         map_data_from = box,
         map_data_to   = self.map_result,
         start         = s,
         end           = e)
-    #
-    #self.map_ave =  self.map_ave/len(b.starts)
-    #self.map_coefficients = f_model.structure_factors_from_map(
-    #  map            = self.map_ave,
-    #  use_scale      = True,
-    #  anomalous_flag = False,
-    #  use_sg         = False)
-   # sd = self.map_result.sample_standard_deviation()
-   # self.map_result = self.map_result/sd
-   #
-   # for i in [0,0.1,0.2,0.3,0.4,0.5]:
-   #   intersection(
-   #     map_data_1 = f_map_data_orig,
-   #     map_data_2 = self.map_result,
-   #     threshold  = i)
-    self.map_coefficients = f_model.structure_factors_from_map(
+    for i in [0,0.1,0.2,0.3,0.4,0.5]:
+      maptbx.intersection(
+        map_data_1 = f_map_data_orig,
+        map_data_2 = self.map_result,
+        threshold  = i)
+    self.map_coefficients = junk.structure_factors_from_map(
       map            = self.map_result,
       use_scale      = True,
       anomalous_flag = False,
