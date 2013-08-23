@@ -310,7 +310,7 @@ class boxes(object):
     if(log is not None): log = sys.stdout
     a,b,c = unit_cell.parameters()[:3]
     self.n_real = n_real
-    ga,gb,gc = a/self.n_real[0], b/self.n_real[1], c/self.n_real[2]
+    self.ga,self.gb,self.gc = a/self.n_real[0], b/self.n_real[1], c/self.n_real[2]
     assert [box_size_step, box_size_as_unit_cell_fraction].count(None) == 1
     if(box_size_as_unit_cell_fraction is not None):
       f = box_size_as_unit_cell_fraction**(1./3)
@@ -318,14 +318,14 @@ class boxes(object):
     else:
       box_size_a, box_size_b, box_size_c = \
         box_size_step,box_size_step,box_size_step
-    ba,bb,bc = int(box_size_a/ga), int(box_size_b/gb), int(box_size_c/gc)
+    ba,bb,bc = int(box_size_a/self.ga), int(box_size_b/self.gb), int(box_size_c/self.gc)
     nba,nbb,nbc = self.n_real[0]//ba, self.n_real[1]//bb, self.n_real[2]//bc
     nla,nlb,nlc = self.n_real[0]%ba,  self.n_real[1]%bb,  self.n_real[2]%bc
     if(show):
       print >> log, prefix, "unit cell edges    :", a, b, c
       print >> log, prefix, "box dimensions     :", box_size_a, box_size_b, box_size_c
       print >> log, prefix, "n1,n2,n3           :", self.n_real
-      print >> log, prefix, "step along edges   :", ga,gb,gc
+      print >> log, prefix, "step along edges   :", self.ga,self.gb,self.gc
       print >> log, prefix, "points per box edge:", ba,bb,bc
       print >> log, prefix, "number of boxes    :", (nba+1)*(nbb+1)*(nbc+1)
     def regroup(be):
