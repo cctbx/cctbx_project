@@ -1,7 +1,7 @@
 # -*- coding: utf-8; py-indent-offset: 2 -*-
 """
-Methods for examining bond angles around an ion and categorizing
-the coordination geometry.
+This module provides tools for examining a set of vectors and find the geometry
+that best fits from a set of built in shapes.
 """
 from __future__ import division
 from collections import OrderedDict
@@ -485,8 +485,34 @@ def _angles_deviation(vectors_a, vectors_b):
 def find_coordination_geometry(nearby_atoms, minimizer_method = False,
                                cutoff = 2.9):
   """
-  Returns a list of tuples of potential geometries for the vectors given by
-  nearby_atoms, along with the average deviation from those geometries.
+  Searches through a list of geometries to find those that fit nearby_atom.
+
+  Geometries are recognized by generating a list of all combinations of angles
+  between the vectors and comparing them against the angles among the vectors
+  of the ideal geometry.
+
+  Parameters
+  ----------
+  nearby_atoms: list of scitbx.matrix.rec
+      A list of vectors indicating the vertices of the shape to be recognized.
+  minimizer_method: bool, optional
+      Optional parameter to use the new, more efficient version of geometry
+      recognition. The old method will be depreciated in later versions of
+      cctbx.
+  cutoff: float, optional
+      A cutoff distance, past which vectors are not included in geometry
+      calculations.
+
+  Returns
+  -------
+  list of tuples of string, float
+      A list of found geometries. Each tuple contains the name of the geometry
+      in string form followed by the deviation from ideal angles.
+
+  See Also
+  --------
+  SUPPORTED_GEOMETRY_NAMES contains a list of geometries supported by this
+  function. See SUPPORTED_GEOMETRIES_OLD for when minimizer_method == False.
   """
 
   # Filter out overlapping atoms, we just want an idea of the coordinating
