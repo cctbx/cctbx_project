@@ -33,12 +33,14 @@ public:
       s += (v*d);
     }
     int n = y.size();
-    SCITBX_ASSERT(r != 0);
-    FloatType den = n-q*q/r;
-    SCITBX_ASSERT(den != 0);
-    FloatType u = (p-s*q/r)/den;
-    b = (u*q-s)/r;
-    a = std::exp(u);
+    if(r != 0) {
+      FloatType den = n-q*q/r;
+      if(den != 0) {
+        FloatType u = (p-s*q/r)/den;
+        b = (u*q-s)/r;
+        a = std::exp(u);
+      }
+    }
   }
 
   compute(
@@ -64,12 +66,14 @@ public:
       s += (v*d);
     }
     int n = y.size();
-    SCITBX_ASSERT(r != 0);
-    FloatType den = n-q*q/r;
-    SCITBX_ASSERT(den != 0);
-    FloatType u = (p-s*q/r)/den;
-    b = (u*q-s)/r;
-    a = std::exp(u);
+    if(r != 0) {
+      FloatType den = n-q*q/r;
+      if(den != 0) {
+        FloatType u = (p-s*q/r)/den;
+        b = (u*q-s)/r;
+        a = std::exp(u);
+      }
+    }
   }
 };
 }}} // namespace scitbx::math::gaussian_fit_1d_analytical
