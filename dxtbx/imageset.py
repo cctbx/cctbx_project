@@ -330,7 +330,7 @@ class MultiFileReader(ReaderBase):
 
     def _update_state(self, index=None):
         '''Update the state and load file at given index.'''
-        if index:
+        if index is not None:
             self._state.load_file(self.get_path(index))
         elif self._state.get_format() == None:
             self._state.load_file(self.get_path(0))
@@ -605,7 +605,7 @@ class ImageSweep(ImageSet):
             The sweep image data as an array.
 
         '''
-        if not item:
+        if item is None:
             return self._to_array_all()
         else:
             return self._to_array_w_range(item)
