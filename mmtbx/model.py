@@ -997,8 +997,6 @@ class manager(object):
     n_zeros = (occ < 0.1).count(True)
     percent_small = n_zeros * 100. / occ.size()
     n_large = (occ > 2.0).count(True)
-    if(occ_min < 0.0):
-       self.xray_structure.set_occupancies(value=0., selection = less_than_zero)
     if(percent_small > 30.0):
        print >> out, "| *** WARNING: more than 30 % of atoms with small occupancy (< 0.1)       *** |"
     if(n_large > 0):
