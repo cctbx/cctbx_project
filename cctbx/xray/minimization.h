@@ -10,6 +10,21 @@
 
 namespace cctbx { namespace xray { namespace minimization {
 
+  template <typename FloatType>
+  void
+  truncate_shifts(
+    af::ref<FloatType> shifts,
+    FloatType const& min_value,
+    FloatType const& max_value)
+  {
+    CCTBX_ASSERT(min_value < max_value);
+    for(std::size_t i=0; i<shifts.size(); i++) {
+      FloatType sh = shifts[i];
+      if(sh>max_value) shifts[i] = max_value;
+      if(sh<min_value) shifts[i] = min_value;
+    }
+  }
+
   template <typename XrayScattererType,
             typename FloatType>
   af::shared<FloatType>
