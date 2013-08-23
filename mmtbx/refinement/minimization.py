@@ -31,6 +31,7 @@ class lbfgs(object):
                      collect_monitor          = True):
     timer = user_plus_sys_time()
     adopt_init_args(self, locals())
+    self.f=None
     self.xray_structure = self.fmodels.fmodel_xray().xray_structure
     self.fmodels.create_target_functors()
     self.fmodels.prepare_target_functors_for_minimization()
@@ -88,17 +89,15 @@ class lbfgs(object):
     self.fmodels.create_target_functors()
 
   def apply_shifts(self):
-    # XXX inefficient
     if(self.refine_adp):
-      sel = self.x < self.u_min
-      if(sel.count(True) > 0): self.x.set_selected(sel, self.u_min)
-      sel = self.x > self.u_max
-      if(sel.count(True) > 0): self.x.set_selected(sel, self.u_max)
-    # XXX inefficient
+      xray.ext.truncate_shifts(
+        shifts    = self.x,
+        min_value = self.u_min,
+        max_value = self.u_max)
     apply_shifts_result = xray.ext.minimization_apply_shifts(
-                              unit_cell      = self.xray_structure.unit_cell(),
-                              scatterers     = self._scatterers_start,
-                              shifts         = self.x)
+      unit_cell      = self.xray_structure.unit_cell(),
+      scatterers     = self._scatterers_start,
+      shifts         = self.x)
     scatterers_shifted = apply_shifts_result.shifted_scatterers
     if(self.refine_xyz):
       site_symmetry_table = self.xray_structure.site_symmetry_table()
