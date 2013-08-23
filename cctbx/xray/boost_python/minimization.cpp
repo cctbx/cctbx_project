@@ -38,6 +38,15 @@ namespace cctbx { namespace xray { namespace boost_python {
   {
     using namespace boost::python;
 
+    def("truncate_shifts",
+      (void(*)(
+        af::ref<double>,
+        double const&,
+        double const&)) minimization::truncate_shifts, (
+          arg("shifts"),
+          arg("min_value"),
+          arg("max_value")));
+
     def("minimization_shift_scales",
       (af::shared<double>(*)(
         af::const_ref<scatterer<> > const&,
