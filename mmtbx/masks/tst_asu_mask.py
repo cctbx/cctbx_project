@@ -644,9 +644,62 @@ def exercise_mask_data_2(space_group_info, n_sites=100, d_min=2.0,
       r = flex.sum( flex.abs( fm1 - fm2 ) ) / flex.sum( fm1 + fm2 )
       assert approx_equal(r, 0.0)
 
+def get_mask_data(xrs, d_min=None, resolution_factor=None, n_real=None):
+  from cctbx.masks import vdw_radii_from_xray_structure
+  atom_radii = vdw_radii_from_xray_structure(xray_structure = xrs)
+  if(n_real is None):
+    assert [d_min, resolution_factor].count(None) == 0
+    asu_mask = masks.atom_mask(
+      unit_cell                = xrs.unit_cell(),
+      group                    = xrs.space_group(),
+      resolution               = d_min,
+      grid_step_factor         = resolution_factor,
+      solvent_radius           = 1.0,
+      shrink_truncation_radius = 1.0)
+  else:
+    assert [d_min, resolution_factor].count(None) == 2
+    asu_mask = masks.atom_mask(
+      unit_cell                = xrs.unit_cell(),
+      space_group              = xrs.space_group(),
+      gridding_n_real          = n_real,
+      solvent_radius           = 1.0,
+      shrink_truncation_radius = 1.0)
+  asu_mask.compute(xrs.sites_frac(), atom_radii)
+  mask_data = asu_mask.mask_data_whole_uc()
+  mask_data = mask_data / xrs.space_group().order_z()
+  return asu_mask, mask_data
+
+def exercise_mask_data_3(space_group_info, n_sites=100, d_min=2.0,
+                         resolution_factor=1./4):
+  from cctbx import maptbx
+  xrs = random_structure.xray_structure(
+    space_group_info=space_group_info,
+    elements=(("O","N","C")*(n_sites//3+1))[:n_sites],
+    volume_per_atom=50,
+    min_distance=1.5)
+  dummy_set = xrs.structure_factors(d_min = d_min).f_calc()
+  xrs.shake_sites_in_place(mean_distance=10)
+  xrs_p1 = xrs.expand_to_p1(sites_mod_positive=True)
+  asu_mask, mask_data1 = get_mask_data(xrs=xrs, d_min=dummy_set.d_min(),
+    resolution_factor=resolution_factor)
+  # get Fmask option 1
+  f_mask_1 = dummy_set.set().array(
+    data = asu_mask.structure_factors(dummy_set.indices()))
+  # get Fmask option 2
+  f_mask_2 = dummy_set.structure_factors_from_map(map=mask_data1,
+    use_scale = True, anomalous_flag = False, use_sg = True)
+  # get Fmask option 3
+  junk, mask_data2 = get_mask_data(xrs=xrs_p1, n_real = mask_data1.focus())
+  f_mask_3 = dummy_set.structure_factors_from_map(map=mask_data2,
+    use_scale = True, anomalous_flag = False, use_sg = False) # Note use_sg = False !
+  #
+  assert approx_equal(f_mask_1.data(), f_mask_2.data())
+  assert approx_equal(f_mask_1.data(), f_mask_3.data())
+
 def run_call_back(flags, space_group_info):
   exercise_mask_data_1(space_group_info)
   exercise_mask_data_2(space_group_info)
+  exercise_mask_data_3(space_group_info)
 
 if (__name__ == "__main__"):
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back,
