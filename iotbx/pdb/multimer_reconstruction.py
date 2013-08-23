@@ -79,14 +79,10 @@ class multimer(object):
         for i_transform in range(TRASFORM_transform_number):
           new_chain = model.chains()[iChain].detached_copy()
           new_chain.id = new_chains_names[new_chain.id + str(i_transform+1)]
-          for res_group in new_chain.residue_groups():
-            for ag in res_group.atom_groups():
-              for atom in ag.atoms():
-                # apply transform
-                xyz = matrix.col(atom.xyz)      # get current x,y,z coordinate
-                xyz = TRASFORM[i_transform][0]*xyz # apply rotation
-                xyz += TRASFORM[i_transform][1]# apply translation
-                atom.xyz = xyz.elems            # replace the new chain x,y,z coordinates
+          sites = new_chain.atoms().extract_xyz()
+          new_chain.atoms().set_xyz(
+            new_chain.atoms().extract_xyz() * TRASFORM[i_transform][0] +
+            TRASFORM[i_transform][1])
           # add a new chain to current model
           model.append_chain(new_chain)
 
@@ -222,4 +218,3 @@ class multimer(object):
 
     # using the pdb hierarchy pdb file writing method
     self.assembled_multimer.write_pdb_file(file_name=self.pdb_output_file_name)
-
