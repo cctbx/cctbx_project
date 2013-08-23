@@ -304,11 +304,11 @@ namespace scattering {
     }
     for (int i=0; i<n_types-1; i++) {
       for (int j=0; j<n_terms; j++) {
-        h_a[i*n_terms + j] = unique_gaussians[i].get().array_of_a()[j];
-        h_b[i*n_terms + j] = unique_gaussians[i].get().array_of_b()[j];
+        h_a[i*n_terms + j] = fType(unique_gaussians[i].get().array_of_a()[j]);
+        h_b[i*n_terms + j] = fType(unique_gaussians[i].get().array_of_b()[j]);
       }
       if (unique_gaussians[i].get().use_c()) {
-        h_c[i] = unique_gaussians[i].get().c();
+        h_c[i] = fType(unique_gaussians[i].get().c());
       }
       else {
         h_c[i] = fType(0.0);
@@ -317,13 +317,13 @@ namespace scattering {
 
     // add form factor for boundary layer solvent
     cctbx::eltbx::xray_scattering::gaussian hoh =
-      unique_gaussians[registry.unique_index("O")].get();
+      cctbx::eltbx::xray_scattering::wk1995("O",true).fetch();
     for (int i=0; i<hoh.array_of_a().size(); i++){
-      h_a[(n_types-1)*n_terms + i] = hoh.array_of_a()[i];
-      h_b[(n_types-1)*n_terms + i] = hoh.array_of_b()[i];
+      h_a[(n_types-1)*n_terms + i] = fType(hoh.array_of_a()[i]);
+      h_b[(n_types-1)*n_terms + i] = fType(hoh.array_of_b()[i]);
     }
     if (hoh.use_c()) {
-      h_c[n_types-1] = hoh.c();
+      h_c[n_types-1] = fType(hoh.c());
     }
     else {
       h_c[n_types-1] = fType(0.0);
