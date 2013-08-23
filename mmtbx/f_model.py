@@ -1404,8 +1404,14 @@ class manager(manager_mixin):
     if(sc == 0 or r_start>0.5 or
        (abs(sc)<threshold and abs(sc)>1./threshold) or
        self.twin_law is not None): return
+    sigmas = self.f_obs().sigmas()
+    if(sigmas is not None):
+      sigmas = sigmas/sc
+    f_obs_new = self.f_obs().customized_copy(
+      data   = self.f_obs().data()/sc,
+      sigmas = sigmas)
     self.update(
-      f_obs         = self.f_obs().customized_copy(data=self.f_obs().data()/sc),
+      f_obs         = f_obs_new,
       k_anisotropic = self.k_anisotropic()/sc)
     r_final = self.r_work()
     assert approx_equal(r_start, r_final), [r_start, r_final]
