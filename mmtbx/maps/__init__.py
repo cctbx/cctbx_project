@@ -398,6 +398,9 @@ def map_coefficients_from_fmodel(
   from cctbx import miller
   mnm = mmtbx.map_names(map_name_string = params.map_type)
   if(mnm.k==0 and abs(mnm.n)==1):
+    # FIXME Fcalc maps require that fmodel is not None!
+    if (fmodel is None) :
+      fmodel = map_calculation_server.fmodel
     return compute_f_calc(fmodel, params)
   if(fmodel is not None and
      fmodel.is_twin_fmodel_manager() and

@@ -796,6 +796,7 @@ class run_ensemble_refinement(object):
       self.write_ensemble_pdb(out = open(pdb_out, 'wb'))
     self.pdb_file = pdb_out
     # Map output
+    assert (self.fmodel_total is not None)
     self.mtz_file = write_mtz_file(
       fmodel_total=self.fmodel_total,
       raw_data=self.raw_data,
@@ -1607,6 +1608,7 @@ def show_model_vs_data(fmodel, log):
   print >> log, "   ", result
 
 def write_mtz_file (fmodel_total, raw_data, raw_flags, prefix, params) :
+  assert (fmodel_total is not None)
   class labels_decorator:
     def __init__(self, amplitudes_label, phases_label):
       self._amplitudes = amplitudes_label
@@ -1644,8 +1646,8 @@ def write_mtz_file (fmodel_total, raw_data, raw_flags, prefix, params) :
   yet_another_dataset = another_dataset.mtz_crystal().add_dataset(
     name = "Fourier-map-coefficients", wavelength=1)
   cmo = mmtbx.maps.compute_map_coefficients(
-      fmodel = fmodel_total,
-      params = params.electron_density_maps.map_coefficients)
+    fmodel = fmodel_total,
+    params = params.electron_density_maps.map_coefficients)
   for ma in cmo.mtz_dataset.mtz_object().as_miller_arrays():
     labels=ma.info().labels
     ld = labels_decorator(amplitudes_label=labels[0], phases_label=labels[1])
@@ -1921,9 +1923,9 @@ def run(args, command_name = "phenix.ensemble_refinement", log=None,
     if (er_params.nproc in [1, None]) or (sys.platform == "win32") :
       for ptls in er_params.ptls :
         make_header("Running with pTLS = %g" % ptls, out=log)
-        result = driver(ptls, buffer_output=False, write_log=False)
-        assert (result is not None)
-        trials.append(result)
+        trial_result = driver(ptls, buffer_output=False, write_log=False)
+        assert (trial_result is not None)
+        trials.append(trial_result)
     else :
       trials = easy_mp.pool_map(
         fixed_func=driver,
