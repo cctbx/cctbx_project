@@ -1,6 +1,7 @@
 from __future__ import division
 from iotbx import pdb
 from scitbx import matrix
+from scitbx.array_family import flex
 from libtbx.utils import Sorry
 import string
 import math
@@ -78,11 +79,11 @@ class multimer(object):
         # since TRASFORM_info[0] is a unit transformation
         for i_transform in range(TRASFORM_transform_number):
           new_chain = model.chains()[iChain].detached_copy()
-          new_chain.id = new_chains_names[new_chain.id + str(i_transform+1)]
+          new_chain.id = new_chains_names[new_chain.id + str(i_transform+1)]          
           sites = new_chain.atoms().extract_xyz()
-          new_chain.atoms().set_xyz(
-            new_chain.atoms().extract_xyz() * TRASFORM[i_transform][0] +
-            TRASFORM[i_transform][1])
+          new_sites = [tuple(TRASFORM[i_transform][0]*v + TRASFORM[i_transform][1])
+             for v in new_chain.atoms().extract_xyz()]
+          new_chain.atoms().set_xyz(flex.vec3_double(new_sites))          
           # add a new chain to current model
           model.append_chain(new_chain)
 
