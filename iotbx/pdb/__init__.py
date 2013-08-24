@@ -1057,8 +1057,9 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
       # test that the length of the data match the serial number, that there are no missing records
       temp = int(source_info[-1].split()[3])    # expected number of records
       if len(biomt_data)/3.0 != int(source_info[-1].split()[3]):
-        raise RuntimeError("Missing record sets in PDB BIOMAT records. Actual data length = %s, expected %s" %
-                           (str(len(biomt_data)/3.0),str(temp)))
+        raise RuntimeError("Missing record sets in PDB BIOMAT records \n" + \
+                           "Actual number of BIOMT matrices: {} \n".format(len(biomt_data)/3.0) + \
+                           "expected according to serial number: {} \n".format(temp))
 
       for i in range(len(biomt_data)//3):
         # i is the group number in biomt_data
