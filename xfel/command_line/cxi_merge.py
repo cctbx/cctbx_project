@@ -434,6 +434,9 @@ class scaling_manager (intensity_data) :
       self.n_low_signal
     print >> self.log, "  %d rejected due to poor correlation" % \
       self.n_low_corr
+    checksum = self.n_accepted + self.n_wrong_bravais + self.n_wrong_cell + \
+               self.n_low_signal + self.n_low_corr
+    assert checksum == len(file_names)
 
   def _scale_all_parallel (self, file_names) :
     import multiprocessing
@@ -850,7 +853,7 @@ class scaling_manager (intensity_data) :
       from scitbx import lbfgs
       from libtbx import adopt_init_args
 
-      print corr
+      print "Old correlation is", corr
       pair1 = flex.int([pair[1] for pair in matches.pairs()])
       pair0 = flex.int([pair[0] for pair in matches.pairs()])
       #raw_input("go:")
@@ -886,7 +889,6 @@ class scaling_manager (intensity_data) :
         Rh = ( Xhkl + BEAM ).length() - (1./WAVE)
         Rhall.append(Rh)
       Rs = math.sqrt(flex.mean(Rhall*Rhall))
-
 
       RS = 1./10000. # reciprocal effective domain size of 1 micron
       RS = Rs        # try this empirically determined approximate, monochrome, a-mosaic value
@@ -937,16 +939,14 @@ class scaling_manager (intensity_data) :
         PB = rs_sq / ((2. * (Rh * Rh)) + rs_sq)
         EXP = flex.exp(-2.*values[1]*DSSQ)
         terms = (values[0] * EXP * PB * ICALCVEC - IOBSVEC)
-        # this is unweighted; it would be straightforward to also include sigma weighting
+
+        # Ideas for improvement
+        #   straightforward to also include sigma weighting
+        #   add extra terms representing rotational excursion: terms.concatenate(1.e7*Rh)
         return terms
 
       func = fvec_callable(current)
       functional = flex.sum(func*func)
-      #for idd,pair in enumerate(matches.pairs()):
-      #  print "%4d %8.2f %8.2f %15s Rh %8.6f"%(
-      #    idd,slope*self.i_model.data()[pair[0]], observations.data()[pair[1]], MILLER[idd],
-      #    func[idd]
-      #  )
       print "functional",functional
 
       class c_minimizer:
@@ -996,7 +996,13 @@ class scaling_manager (intensity_data) :
       MINI = c_minimizer( current_x = current )
       scaler = scaler_callable(MINI.x)
       fat_selection = (lorentz_callable(MINI.x) > 0.2)
-      print "On total %5d the fat selection is %5d"%(len(observations.indices()), fat_selection.count(True))
+      fat_count = fat_selection.count(True)
+
+      #avoid empty database INSERT, if there are insufficient centrally-located Bragg spots:
+      if fat_count < 3:
+        return null_data(
+               file_name=file_name, log_out=out.getvalue(), low_signal=True)
+      print "On total %5d the fat selection is %5d"%(len(observations.indices()), fat_count)
       print "ZZZ",observations.size(), observations_original_index.size(), len(fat_selection), len(scaler)
       observations_original_index = observations_original_index.select(fat_selection)
 
@@ -1008,7 +1014,6 @@ class scaling_manager (intensity_data) :
       matches = miller.match_multi_indices(
         miller_indices_unique=self.i_model.indices(),
         miller_indices=observations.indices())
-
 
     if not self.params.scaling.enable or self.params.postrefinement.enable: # Do not scale anything
       slope = 1.0
