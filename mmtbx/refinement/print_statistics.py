@@ -672,7 +672,8 @@ class refinement_monitor(object):
       if (len(fields) < 2) :
         steps.append(label)
       else :
-        cycle, action = fields
+        cycle = fields[0]
+        action = "_".join(fields[1:])
         action_label = show_actions.get(action, None)
         if (action_label is None) : continue
         steps.append(cycle + "_" + action_label)
@@ -698,8 +699,9 @@ class refinement_monitor(object):
     last_step = self.steps[-1].replace(":", "")
     fields = last_step.split("_")
     action_label = None
-    if (len(fields) == 2) :
-      cycle, action = fields
+    if (len(fields) >= 2) :
+      cycle = fields[0]
+      action = "_".join(fields[1:])
       action_label = show_actions.get(action, None)
       if (action_label is None) :
         return
