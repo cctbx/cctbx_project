@@ -995,6 +995,8 @@ class _(boost.python.injector, ext.chain, __hash_eq_mixin):
     n_na = residue_classes["common_rna_dna"]
     if ((n_aa > n_na) and ((n_aa / len(rn_seq)) >= min_content)) :
       return True
+    elif (rn_seq == (["UNK"] * len(rn_seq))) :
+      return True
     return False
 
   def is_na (self, min_content=0.8) :
