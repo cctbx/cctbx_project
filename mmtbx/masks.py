@@ -39,6 +39,7 @@ mask_master_params = iotbx.phil.parse("""\
     .expert_level=2
   ignore_zero_occupancy_atoms = True
     .type = bool
+    .short_caption = Ignore zero-occupancy atoms when calculating bulk solvent mask
     .help = Include atoms with zero occupancy into mask calculation
   ignore_hydrogens = True
     .type = bool
