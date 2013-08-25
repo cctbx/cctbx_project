@@ -5782,6 +5782,16 @@ ATOM     48  CA  TYR A   9       9.159   2.144   7.299  1.00 15.18           C
   assert pdb_hierarchy.contains_protein()
   assert not pdb_hierarchy.contains_nucleic_acid()
   pdb_hierarchy = pdb.input(source_info=None, lines="""\
+ATOM      2  CA  UNK A   3      -9.052   4.207   4.651  1.00 16.57           C
+ATOM      6  CA  UNK A   4      -6.522   2.038   2.831  1.00 14.10           C
+ATOM     14  CA  UNK A   5      -3.193   1.904   4.589  1.00 11.74           C
+ATOM     22  CA  UNK A   6       0.384   1.888   3.199  1.00 10.53           C
+ATOM     31  CA  UNK A   7       3.270   2.361   5.640  1.00 11.39           C
+ATOM     40  CA  UNK A   8       6.831   2.310   4.318  1.00 12.30           C
+ATOM     48  CA  UNK A   9       9.159   2.144   7.299  1.00 15.18           C
+""").construct_hierarchy()
+  assert pdb_hierarchy.only_model().only_chain().is_protein()
+  pdb_hierarchy = pdb.input(source_info=None, lines="""\
 ATOM      2  CA  GLY A  -2      -9.052   4.207   4.651  1.00 16.57           C
 ATOM      6  CA  ASN A  -1      -6.522   2.038   2.831  1.00 14.10           C
 ATOM     14  CA  ASN A   0      -3.193   1.904   4.589  1.00 11.74           C
