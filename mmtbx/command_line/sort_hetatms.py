@@ -167,7 +167,10 @@ def sort_hetatms (
       new_start_resseq.append(1)
   hetatm_residue_groups = []
   hetatm_residue_chain_ids = []
-  loose_residues = pdb.hierarchy.chain(id=params.loose_chain_id)
+  loose_chain_id = params.loose_chain_id
+  if (loose_chain_id is None) :
+    loose_chain_id = " "
+  loose_residues = pdb.hierarchy.chain(id=loose_chain_id)
   preserve_chains = []
   for chain in hetatm_chains :
     chain_id = chain.id
