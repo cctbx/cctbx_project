@@ -325,6 +325,7 @@ cudatbx/SConscript -text
 cudatbx/__init__.py -text
 cudatbx/cuda_base.cuh -text
 cudatbx/cuda_utilities.cu -text
+cudatbx/cuda_utilities.cuh -text
 cudatbx/cuda_utilities.h -text
 cudatbx/cudatbx_ext.cpp -text
 cudatbx/cufft/__init__.py -text
