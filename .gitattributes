@@ -1492,6 +1492,7 @@ mmtbx/conformation_dependent_library/__init__.py -text
 mmtbx/conformation_dependent_library/altloc_weighting.py -text
 mmtbx/conformation_dependent_library/bond_angle_registry.py -text
 mmtbx/conformation_dependent_library/cdl_database.py -text
+mmtbx/conformation_dependent_library/rdl_database.py -text
 mmtbx/conformation_dependent_library/test_cdl.py -text
 mmtbx/den/SConscript -text
 mmtbx/den/__init__.py svneol=native#text/x-python
