@@ -1425,8 +1425,9 @@ HETATM 6013  HO3 NAG A 467      42.779 -20.998  32.145  1.00 65.72           H
 HETATM 6014  HO4 NAG A 467      44.884 -18.471  31.711  1.00 64.21           H
 HETATM 6015  HO6 NAG A 467      40.829 -15.206  30.746  1.00 55.81           H
 """)
-  n_bad = utils.detect_asparagine_link_problem("tmp_mmtbx_utils_asn_nag.pdb")
-  assert (n_bad == 1)
+  result = utils.detect_hydrogen_nomenclature_problem(
+    pdb_file="tmp_mmtbx_utils_asn_nag.pdb")
+  assert (result.n_asn_hd22 == 1)
 
 def run():
   verbose = "--verbose" in sys.argv[1:]

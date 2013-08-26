@@ -3283,36 +3283,43 @@ class f_000(object):
     self.f_000 = f_000
     self.solvent_fraction = solvent_fraction
 
-def detect_asparagine_link_problem (pdb_file, cif_files=()) :
+class detect_hydrogen_nomenclature_problem (object) :
   """
-  This allows us to avoid a bug in automatic linking which deletes the
-  monomer library definition for HD22 for an N-linked Asn, even though it may
-  not actually be replaced by a sugar link.
+  This allows us to avoid the following problems:
+  1) a bug in automatic linking which deletes the monomer library definition
+     for HD22 for an N-linked Asn, even though it may not actually be replaced
+     by a sugar link.
+  2) general issues with hydrogen nomenclature
   """
-  args = [ pdb_file, ] + list(cif_files)
-  import mmtbx.monomer_library.server
-  mon_lib_srv = mmtbx.monomer_library.server.server()
-  ener_lib = mmtbx.monomer_library.server.ener_lib()
-  params = mmtbx.monomer_library.pdb_interpretation.master_params.extract()
-  params.automatic_linking.intra_chain=True
-  processed_pdb_file = mmtbx.monomer_library.pdb_interpretation.run(
-    args=args,
-    params=params,
-    strict_conflict_handling=False,
-    substitute_non_crystallographic_unit_cell_if_necessary=True,
-    log=null_out())
-  all_chain_proxies = processed_pdb_file.all_chain_proxies
-  pdb_atoms = all_chain_proxies.pdb_atoms
-  nb_reg = all_chain_proxies.nonbonded_energy_type_registry
-  n_asn_hd22 = 0
-  n_other = 0
-  if (nb_reg.n_unknown_type_symbols() > 0) :
-    unknown_atoms = nb_reg.get_unknown_atoms(pdb_atoms)
-    for atom in unknown_atoms :
-      labels = atom.fetch_labels()
-      if (atom.name == "HD22") and (labels.resname == "ASN") :
-        n_asn_hd22 += 1
-      else :
-        n_other += 1
-  # XXX should this do something different if n_other > 0?
-  return n_asn_hd22
+  def __init__ (self, pdb_file, cif_files=()) :
+    args = [ pdb_file, ] + list(cif_files)
+    import mmtbx.monomer_library.server
+    mon_lib_srv = mmtbx.monomer_library.server.server()
+    ener_lib = mmtbx.monomer_library.server.ener_lib()
+    params = mmtbx.monomer_library.pdb_interpretation.master_params.extract()
+    params.automatic_linking.intra_chain=True
+    processed_pdb_file = mmtbx.monomer_library.pdb_interpretation.run(
+      args=args,
+      params=params,
+      strict_conflict_handling=False,
+      substitute_non_crystallographic_unit_cell_if_necessary=True,
+      log=null_out())
+    all_chain_proxies = processed_pdb_file.all_chain_proxies
+    pdb_atoms = all_chain_proxies.pdb_atoms
+    nb_reg = all_chain_proxies.nonbonded_energy_type_registry
+    self.bad_hydrogens = []
+    self.n_asn_hd22 = 0
+    self.n_hydrogen = 0
+    self.n_other = 0
+    if (nb_reg.n_unknown_type_symbols() > 0) :
+      unknown_atoms = nb_reg.get_unknown_atoms(pdb_atoms)
+      for atom in unknown_atoms :
+        labels = atom.fetch_labels()
+        if (atom.name == "HD22") and (labels.resname == "ASN") :
+          self.n_asn_hd22 += 1
+          self.bad_hydrogens.append(atom.id_str())
+        elif (atom.element.strip() == "H") :
+          self.n_hydrogen += 1
+          self.bad_hydrogens.append(atom.id_str())
+        else :
+          self.n_other += 1
