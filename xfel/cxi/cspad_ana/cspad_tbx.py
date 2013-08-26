@@ -468,7 +468,8 @@ def hdf5pack(hdf5_file,
   if pulse_length is None:
     pulse_length = 0
 
-  d = dpack(active_areas=active_areas,
+  d = dpack(address=address,
+            active_areas=active_areas,
             beam_center_x=beam_center_x,
             beam_center_y=beam_center_y,
             ccd_image_saturation=ccd_image_saturation,
