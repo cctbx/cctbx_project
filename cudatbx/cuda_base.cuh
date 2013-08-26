@@ -1,5 +1,5 @@
-#ifndef CUDA_BASE_H
-#define CUDA_BASE_H
+#ifndef CUDA_BASE_CUH
+#define CUDA_BASE_CUH
 
 #include <iostream>
 
@@ -20,4 +20,4 @@ inline void __cudaSafeCall( cudaError err, const char *file, const int line )
   }
 }
 
-#endif // CUDA_BASE_H
+#endif // CUDA_BASE_CUH
