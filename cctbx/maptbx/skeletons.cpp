@@ -204,7 +204,8 @@ skeleton swanson(const cctbx::maptbx::asymmetric_map &amap, double sigma)
   result.min_count = min_count;
   result.grows_count = grows_count;
   result.join_count = join_count;
-  result.marks = marks;
+  result.marks = std::move(marks);
+  result.mapcutoff = mapcutoff;
   return result;
 }
 

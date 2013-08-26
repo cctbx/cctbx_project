@@ -12,7 +12,7 @@ namespace cctbx { namespace maptbx
 //typedef boost::adjacency_list<boost::vecS,boost::vecS,boost::undirectedS> graph_t;
 
 std::pair<size_t,std::vector<int> > skeleton_components(const joins_t &joins,
-  size_t nv)
+  std::size_t nv)
 {
   namespace b = boost;
   graph_t g(nv);
@@ -25,14 +25,19 @@ std::pair<size_t,std::vector<int> > skeleton_components(const joins_t &joins,
   return std::make_pair(n,std::move(cm));
 }
 
-void mask_components(marks_t &mask,
+std::vector<std::size_t> mask_components(marks_t &mask,
   const std::vector<int> &components)
 {
+  std::vector<std::size_t> sizes(components.size(),0);
   for( auto & m : mask )
   {
     if( m!=0 )
+    {
       m = components.at(m);
+      ++(sizes.at(m));
+    }
   }
+  return sizes;
 }
 
 void mask_density_map(asymmetric_map::data_ref_t map, const marks_t &mask,

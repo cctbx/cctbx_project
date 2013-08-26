@@ -178,17 +178,14 @@ namespace cctbx { namespace sgtbx { namespace asu {
       const cctbx::uctbx::unit_cell &cell,
       double epsilon=1.0E-6) const;
 
-    // bool is_optimized() const { return this->b_is_optimized; }
-
     direct_space_asu(const direct_space_asu &a) : hall_symbol(a.hall_symbol),
-      faces(a.faces->new_copy()), b_is_optimized(false) {}
-    direct_space_asu() : hall_symbol(), faces(NULL), b_is_optimized(false) {}
+      faces(a.faces->new_copy()) {}
+    direct_space_asu() : hall_symbol(), faces(NULL) {}
 
     //! Creates asymmetric unit from space group type
     explicit direct_space_asu(const space_group_type &group_type)
       : hall_symbol(group_type.hall_symbol()),
-        faces(asu_table[group_type.number()-1]()), // build reference spacegroup asu
-        b_is_optimized(false)
+        faces(asu_table[group_type.number()-1]()) // build reference spacegroup asu
     {
       change_of_basis_op  op(  group_type.cb_op().inverse() );
       CCTBX_ASSERT( faces.get() != NULL );
@@ -200,8 +197,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
     explicit direct_space_asu(const space_group_type &group_type,
       facet_collection::pointer &faces_)
       : hall_symbol(group_type.hall_symbol()),
-        faces(faces_), // build custom asu
-        b_is_optimized(false)
+        faces(faces_) // build custom asu
     {
       change_of_basis_op  op(  group_type.cb_op().inverse() );
       CCTBX_ASSERT( faces.get() != NULL );
@@ -216,8 +212,8 @@ namespace cctbx { namespace sgtbx { namespace asu {
     }
 
     //! Creates asymmetric unit from space group symbol
-    explicit direct_space_asu(const std::string &group_symbol) :  hall_symbol(), faces(NULL),
-      b_is_optimized(false)
+    explicit direct_space_asu(const std::string &group_symbol) :  hall_symbol(),
+      faces(NULL)
     {
       // new(this) direct_space_asu( space_group_type(spgr) );  this fails
       *this =  direct_space_asu( space_group_type(group_symbol) );
@@ -227,7 +223,6 @@ namespace cctbx { namespace sgtbx { namespace asu {
     {
       faces = facet_collection::pointer(a.faces->new_copy());
       hall_symbol = a.hall_symbol;
-      b_is_optimized = a.b_is_optimized;
       return *this;
     }
 
@@ -235,7 +230,6 @@ namespace cctbx { namespace sgtbx { namespace asu {
 
     // one template expression with all the faces
     facet_collection::pointer faces;
-    bool b_is_optimized;
 
   }; // class direct_space_asu
 

@@ -57,6 +57,7 @@ public:
   joins_t joins;
   std::size_t min_count, grows_count, join_count;
   marks_t marks;
+  double mapcutoff;
 };
 
 skeleton swanson(const const_map_t &map,
@@ -74,7 +75,8 @@ public:
 
 typedef boost::adjacency_list<boost::vecS,boost::vecS,boost::undirectedS> graph_t;
 
-void mask_components(marks_t &mask, const std::vector<int> &components);
+std::vector<std::size_t> mask_components(marks_t &mask,
+  const std::vector<int> &components);
 
 void mask_density_map(asymmetric_map::data_ref_t map, const marks_t &mask,
   unsigned val);
