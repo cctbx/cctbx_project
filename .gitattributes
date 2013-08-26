@@ -1325,6 +1325,7 @@ libtbx/development/__init__.py -text
 libtbx/development/cctbx_svn_getting_started.csh -text
 libtbx/development/dev_guidelines.txt svneol=native#text/plain
 libtbx/development/except_Exception.py svneol=native#text/x-python
+libtbx/development/git-pre-commit-hook.sh svneol=native#text/x-sh
 libtbx/development/move_obsolete_from_bundle.csh -text
 libtbx/development/timers.py -text
 libtbx/dtrace/profile.d -text
