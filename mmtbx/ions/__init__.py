@@ -166,6 +166,7 @@ HALIDES = ["F", "CL", "BR", "IOD"]
 TRANSITION_METALS = ["MN", "FE", "CO", "CU", "NI", "ZN", "PT"]
 NUC_PHOSPHATE_BINDING = ["MG", "CA", "MN"]
 SUPPORTED = TRANSITION_METALS + HALIDES + ["NA", "MG", "K", "CA", "CD", "HG"]
+WATER, WATER_POOR, LIGHT_ION, HEAVY_ION = range(4)
 
 def check_supported (elements) :
   if (elements is None) :
@@ -1062,60 +1063,6 @@ class Manager (object) :
     return (binds_amide_hydrogen or near_cation or near_lys)
            # good_map_falloff)
 
-  def check_water_properties (self, atom_props):
-    """
-    Checks the atom characteristics against what we would expect for a water.
-    Updates atom_props with any inaccuracies noticed (Surpringly low b-factor,
-    high occupancy, etc).
-    """
-
-    params = self.params.water
-    inaccuracies = atom_props.inaccuracies["HOH"] = set()
-
-    # Skip over water if the 2mFo-DFc or mFo-DFc value is too low
-    if ((atom_props.peak_2fofc < params.min_2fofc_level) or
-        (atom_props.peak_fofc < -2.0)) :
-      return None
-
-    if (atom_props.fpp is not None) and (atom_props.fpp > 0) :
-      return False
-
-    if (atom_props.fp is not None) and (atom_props.fp > 0.5) :
-      return False
-
-    if (atom_props.peak_anom > params.max_anom_level) :
-      inaccuracies.add(atom_props.ANOM_PEAK)
-
-    if atom_props.peak_fofc > params.max_fofc_level:
-      inaccuracies.add(atom_props.FOFC_PEAK)
-
-    if atom_props.atom.occ > params.max_occ:
-      inaccuracies.add(atom_props.HIGH_OCC)
-
-    # Check the b-factor is within a specified number of standard
-    # deviations from the mean and above a specified fraction of
-    # the mean.
-    if (self.b_stddev_hoh is not None) and (self.b_stddev_hoh > 0) :
-      z_value = (atom_props.b_iso - self.b_mean_hoh) / self.b_stddev_hoh
-
-      if z_value < -params.max_stddev_b_iso:
-        inaccuracies.add(atom_props.LOW_B)
-      elif atom_props.atom.b < self.b_mean_hoh * params.min_frac_b_iso:
-        inaccuracies.add(atom_props.LOW_B)
-
-    if (self.params.aggressive) :
-      if (self.b_mean_calpha > 0) :
-        relative_b = atom_props.b_iso / self.b_mean_calpha
-        if (relative_b < params.min_frac_calpha_b_iso) :
-          inaccuracies.add(atom_props.LOW_B)
-
-      if (self.calpha_mean_two_fofc > 0) :
-        relative_2fofc = atom_props.peak_2fofc / self.calpha_mean_two_fofc
-        if (relative_2fofc > params.max_frac_calpha_2fofc) :
-          inaccuracies.add(atom_props.HIGH_2FOFC)
-
-    return atom_props.is_correctly_identified(identity = "HOH")
-
   def analyze_water(self,
       i_seq,
       debug = True,
@@ -1147,8 +1094,9 @@ class Manager (object) :
     final_choice = None
 
     # Gather some quick statistics on the atom and see if it looks like water
-    looks_like_water = self.check_water_properties(atom_props)
-    if (looks_like_water is None) : # not trustworthy, skip
+    atom_type = atom_props.get_atom_type(params=self.params.water,
+      aggressive=self.params.aggressive)
+    if (atom_type == WATER_POOR) : # not trustworthy, skip
       #PRINT_DEBUG("SKIPPING %s" % atom.id_str())
       return None
 
@@ -1172,7 +1120,7 @@ class Manager (object) :
 
       # If we definitely look like water, only look at the metals isoelectronic
       # with water.
-      if looks_like_water and symbol not in ["NA", "MG", "F", "NE"]:
+      if (atom_type == WATER) and (symbol not in ["NA", "MG", "F", "NE"]):
         continue
 
       if (nuc_phosphate_site) and (not symbol in NUC_PHOSPHATE_BINDING) :
@@ -1184,7 +1132,7 @@ class Manager (object) :
         continue
       mass_ratio = atom_props.estimated_weight / max(n_elec, 1)
       # note that anomalous peaks are more important than the 2mFo-DFc level
-      if (mass_ratio < 0.4) and (looks_like_water) :
+      if (mass_ratio < 0.4) and (atom_type == WATER) :
         continue
 
       filtered_candidates.append(elem)
@@ -1225,7 +1173,7 @@ class Manager (object) :
         valence_used = False
 
     looks_like_halide = False
-    if (not (reasonable or looks_like_water or nuc_phosphate_site)) :
+    if (not (reasonable or atom_type < HEAVY_ION or nuc_phosphate_site)) :
       # try halides now
       candidate_halides = set(candidates).intersection(HALIDES)
       filtered_halides = []
@@ -1264,7 +1212,7 @@ class Manager (object) :
         # special handling for transition metals, but only if the user has
         # explicitly requested one (and there is no ambiguity)
         if ((ion_params.element in TRANSITION_METALS) and
-            (not looks_like_water) and
+            (atom_type == HEAVY_ION) and
             #(atom_props.peak_2fofc > max_carbon_fo_map_value) and
             (not auto_candidates) and
             (atom_props.is_compatible_site(ion_params))) :
@@ -1279,7 +1227,7 @@ class Manager (object) :
             #print "n_good_res = %d, n_total_coord_atoms = %d" % (n_good_res,
             #  n_total_coord_atoms)
         elif ((ion_params.element in ["K","CA"]) and
-              (not looks_like_water) and
+              (atom_type == HEAVY_ION) and
               (not auto_candidates) and
               (atom_props.is_compatible_site(ion_params))) :
           n_good_res = atom_props.number_of_favored_ligand_residues(ion_params,
@@ -1292,7 +1240,7 @@ class Manager (object) :
             reasonable.append((ion_params, 0))
         # another special case: very heavy ions, which are probably not binding
         # physiologically
-        elif ((atomic_number > 30) and (not looks_like_water) and
+        elif ((atomic_number > 30) and (atom_type == HEAVY_ION) and
               (((weight_ratio > 0.5) and (weight_ratio < 1.05)) or
                (atom_props.fp > 10)) and
               (not auto_candidates) and
@@ -1332,7 +1280,7 @@ class Manager (object) :
       matching_candidates = reasonable,
       rejected_candidates = unreasonable,
       nuc_phosphate_site = nuc_phosphate_site,
-      looks_like_water = looks_like_water,
+      atom_type = atom_type,
       looks_like_halide = looks_like_halide,
       ambiguous_valence_cutoff = self.params.ambiguous_valence_cutoff,
       valence_used = valence_used,
@@ -1425,8 +1373,7 @@ class Manager (object) :
     elem_params = self.server.get_metal_parameters(element)
 
     if elem_params is not None:
-      self.check_water_properties(atom_props)
-
+      atom_type = atom_props.get_atom_type(params=self.params.water)
       atom_props.check_ion_environment(
         ion_params = elem_params,
         server = self.server,
@@ -1575,7 +1522,7 @@ class water_result (object):
       matching_candidates,
       rejected_candidates,
       nuc_phosphate_site,
-      looks_like_water,
+      atom_type,
       looks_like_halide,
       ambiguous_valence_cutoff,
       valence_used,
@@ -1627,7 +1574,7 @@ class water_result (object):
               out = out)
           print >> out, ""
     else:
-      if (not self.looks_like_water) or (self.nuc_phosphate_site) :
+      if (self.atom_type != WATER) or (self.nuc_phosphate_site) :
         self.atom_props.show_properties(identity = "HOH", out = out)
         if (self.nuc_phosphate_site) :
           print >> out, "  appears to be nucleotide coordination site"
@@ -1669,8 +1616,8 @@ class AtomProperties (object) :
     ANOM_PEAK, NO_ANOM_PEAK, BAD_GEOMETRY, NO_GEOMETRY, BAD_VECTORS, \
     BAD_VALENCES, TOO_FEW_NON_WATERS, TOO_FEW_COORD, TOO_MANY_COORD, \
     LIKE_COORD, BAD_COORD_ATOM, BAD_FPP, BAD_COORD_RESIDUE, VERY_BAD_VALENCES, \
-    BAD_HALIDE, HIGH_2FOFC, COORDING_GEOMETRY \
-    = range(24)
+    BAD_HALIDE, HIGH_2FOFC, COORDING_GEOMETRY, CLOSE_CONTACT \
+    = range(25)
 
   error_strs = {
     LOW_B: "Abnormally low b-factor",
@@ -1697,6 +1644,7 @@ class AtomProperties (object) :
     BAD_HALIDE: "Bad halide site",
     HIGH_2FOFC: "Unexpectedly high 2mFo-DFc value",
     COORDING_GEOMETRY: "No distinct geometry and coordinating another atom with distinct geometry",
+    CLOSE_CONTACT : "Close contact to oxygen atom",
     }
 
   def __init__(self, i_seq, manager):
@@ -1731,6 +1679,11 @@ class AtomProperties (object) :
     self.peak_anom = map_stats.anom
     self.estimated_weight = manager.guess_molecular_weight(i_seq)
     self.b_iso = manager.get_b_iso(i_seq)
+    # cache global properties
+    self.b_mean_hoh = manager.b_mean_hoh
+    self.b_stddev_hoh = manager.b_stddev_hoh
+    self.b_mean_calpha = manager.b_mean_calpha
+    self.calpha_mean_two_fofc = manager.calpha_mean_two_fofc
 
     self.inaccuracies = {}
     self.ignored = {}
@@ -2223,6 +2176,69 @@ class AtomProperties (object) :
     element = self.manager.server.get_element(ion)
     charge = self.manager.server.get_charge(ion)
     return "{}{:+}".format(element, charge)
+
+  def get_atom_type (self, params, aggressive=False) :
+    """
+    Checks the atom characteristics against what we would expect for a water.
+    Updates self with any inaccuracies noticed (Surpringly low b-factor,
+    high occupancy, etc).  Note that HEAVY_ION does not necessarily rule out
+    NA/MG, as these often have mFo-DFc peaks at high resolution.
+    """
+    inaccuracies = self.inaccuracies["HOH"] = set()
+    atom_type = WATER
+    # Skip over water if the 2mFo-DFc or mFo-DFc value is too low
+    if ((self.peak_2fofc < params.min_2fofc_level) or
+        (self.peak_fofc < -2.0)) :
+      return WATER_POOR
+    if (self.fpp is not None) and (self.fpp > 0) :
+      return HEAVY_ION
+    if (self.fp is not None) and (self.fp > 0.5) :
+      return HEAVY_ION
+    if (self.peak_anom > params.max_anom_level) :
+      inaccuracies.add(self.ANOM_PEAK)
+      atom_type = HEAVY_ION
+    if self.peak_fofc > params.max_fofc_level:
+      inaccuracies.add(self.FOFC_PEAK)
+      atom_type = HEAVY_ION
+    if self.atom.occ > params.max_occ: # this will probably never happen...
+      inaccuracies.add(self.HIGH_OCC)
+      atom_type = HEAVY_ION
+    # very low B-factors automatically trigger a check
+    if (self.atom.b < 1) :
+      inaccuracies.add(self.LOW_B)
+      atom_type = HEAVY_ION
+    elif (self.b_stddev_hoh is not None) and (self.b_stddev_hoh > 0) :
+      # high B-factor relative to other waters
+      z_value = (self.b_iso - self.b_mean_hoh) / self.b_stddev_hoh
+      if z_value < -params.max_stddev_b_iso:
+        inaccuracies.add(self.LOW_B)
+      elif self.atom.b < self.b_mean_hoh * params.min_frac_b_iso:
+        inaccuracies.add(self.LOW_B)
+      if (atom_type == WATER) and (self.LOW_B in inaccuracies) :
+        atom_type = LIGHT_ION
+    if (aggressive) and (atom_type == WATER) :
+      # high B-factor relative to C-alpha
+      if (self.b_mean_calpha > 0) :
+        relative_b = self.b_iso / self.b_mean_calpha
+        if (relative_b < params.min_frac_calpha_b_iso) :
+          inaccuracies.add(self.LOW_B)
+          atom_type = LIGHT_ION
+      # high 2Fo-Fc relative to C-alpha
+      if (self.calpha_mean_two_fofc > 0) :
+        relative_2fofc = self.peak_2fofc / self.calpha_mean_two_fofc
+        if (relative_2fofc > params.max_frac_calpha_2fofc) :
+          inaccuracies.add(self.HIGH_2FOFC)
+          atom_type = LIGHT_ION
+    # check for close contacts
+    for i_pair, contact1 in enumerate(self.nearby_atoms) :
+      if (contact1.element.strip() == "O") :
+        distance = contact1.distance()
+        if (distance < 2.4) :
+          inaccuracies.add(self.CLOSE_CONTACT)
+          if (atom_type < LIGHT_ION) :
+            atom_type = LIGHT_ION
+    return atom_type
+
 
 def find_anomalous_scatterers (*args, **kwds) :
   """
