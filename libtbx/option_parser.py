@@ -146,6 +146,13 @@ class option_parser(OptionParser):
     self.multiprocessing_is_enabled = True
     return self
 
+  def enable_dry_run (self) :
+    self.add_option(make_option(None, "--dry_run",
+      action="store_true",
+      default=False,
+      help="Perform program initialization and exit (for debugging purposes)"))
+    return self
+
   def process(self, args=None, nargs=None, min_nargs=None, max_nargs=None):
     if (self.show_defaults_callback.is_enabled
         and args is not None
