@@ -1,9 +1,10 @@
-from __future__ import division
-# -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
+# -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME cxi.xmerge
 #
 # $Id$
+
+from __future__ import division
 
 import iotbx.phil
 from cctbx.array_family import flex
@@ -64,6 +65,9 @@ class xscaling_manager (scaling_manager) :
   def read_all_mysql(self):
     print "reading observations from MySQL database"
     from xfel.cxi.merging_database import manager
+    #from xfel.cxi.merging_database_fs import manager
+    #from xfel.cxi.merging_database_sqlite3 import manager
+
     CART = manager(self.params)
     self.millers_mysql = CART.read_indices()
     self.millers = self.millers_mysql
@@ -95,6 +99,8 @@ class xscaling_manager (scaling_manager) :
     parser.set_double("slope",self.frames_mysql["slope"])
     parser.set_double("offset",self.frames_mysql["offset"])
     self._frames_mysql = parser
+
+    CART.join()
 
   def read_all(self):
     print "reading observations from flat-file database"

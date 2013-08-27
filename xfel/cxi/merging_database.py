@@ -39,12 +39,9 @@ mysql {
 class manager:
   def __init__(self,params):
     self.params = params
-  def use_mysql(self):
-    return self.params.mysql.runtag is not None
 
   def connection(self):
     try:
-      assert self.use_mysql()
       import MySQLdb
       db = MySQLdb.connect(passwd=self.params.mysql.passwd,
                            user = self.params.mysql.user,
@@ -56,12 +53,11 @@ class manager:
 
       return db
     except Exception:
-      print "Couldn't connect to mysql database"
-      self.params.mysql.runtag = None
+      raise RuntimeError("Couldn't connect to mysql database")
 
-  def initialize_tag(self):
+
+  def initialize_db(self, indices):
     db = self.connection()
-    assert self.use_mysql()
     print "testing for tables"
     cursor = db.cursor()
     cursor.execute("SHOW TABLES from %s;"%self.params.mysql.database)
@@ -71,23 +67,85 @@ class manager:
     for table in new_tables:
       cursor.execute("DROP TABLE IF EXISTS %s;"%table[0])
       cursor.execute("CREATE TABLE %s "%table[0]+table[1].replace("\n"," ")+" ;")
-
-  def fill_indices(self,idxs):
-    db = self.connection()
-    assert self.use_mysql()
-    cursor = db.cursor()
     import cStringIO
     query = cStringIO.StringIO()
     query.write("INSERT INTO %s_miller (h,k,l) VALUES "%self.params.mysql.runtag)
     firstcomma = ""
-    for item in idxs:
+    for item in indices:
       query.write(firstcomma); firstcomma=","
       query.write("('%d','%d','%d')"%(item[0],item[1],item[2]))
     cursor.execute( query.getvalue() )
 
+
+  def _insert(self, table, **kwargs):
+    """The _insert() function generates the SQL command and parameter
+    argument for the _execute() function.
+    """
+
+    # Note MySQL uses "%s", whereas SQLite uses "?".
+    sql = ("INSERT INTO %s (" % table) \
+          + ", ".join(kwargs.keys()) + ") VALUES (" \
+          + ", ".join(["%s"] * len(kwargs.keys())) + ")"
+
+    # If there are more than one rows to insert, "unpack" the keyword
+    # argument iterables and zip them up.  This effectively rearranges
+    # a list of columns into a list of rows.
+    try:
+      parameters = zip(*kwargs.values())
+    except TypeError:
+      parameters = [kwargs.values()]
+
+    return (sql, parameters)
+
+
+  def insert_frame(self, **kwargs):
+    db = self.connection()
+    cursor = db.cursor()
+
+    (sql, parameters) = self._insert(
+      table='%s_frame' % self.params.mysql.runtag,
+      **kwargs)
+
+    cursor.execute(sql, parameters[0])
+
+    # Entry in the observation table is zero-based.
+    return cursor.lastrowid - 1
+
+
+  def insert_observation(self, **kwargs):
+    db = self.connection()
+    cursor = db.cursor()
+
+    # For MySQLdb, executemany() is six times slower than the single
+    # big command below.
+    import cStringIO
+    query = cStringIO.StringIO()
+    query.write("""INSERT INTO %s_observation
+    (hkl_id_0_base,i,sigi,detector_x,detector_y,frame_id_0_base,overload_flag,original_h,original_k,original_l)
+    VALUES """%self.params.mysql.runtag)
+    firstcomma = ""
+    for i in range(len(kwargs['hkl_id_0_base'])):
+      query.write(firstcomma); firstcomma=","
+      query.write("('%7d','%18.8f','%18.8f','%8.2f','%8.2f','%7d','%d','%d','%d','%d')"%(
+        kwargs['hkl_id_0_base'][i],
+        kwargs['i'][i],
+        kwargs['sigi'][i],
+        kwargs['detector_x'][i],
+        kwargs['detector_y'][i],
+        kwargs['frame_id_0_base'][i],
+        kwargs['overload_flag'][i],
+        kwargs['original_h'][i],
+        kwargs['original_k'][i],
+        kwargs['original_l'][i]))
+    cursor.execute(query.getvalue())
+
+
+  def join(self):
+    pass
+
+
   def read_indices(self):
     db = self.connection()
-    assert self.use_mysql()
     cursor = db.cursor()
     from cctbx.array_family import flex
     millers = dict(merged_asu_hkl=flex.miller_index())
@@ -98,7 +156,6 @@ class manager:
 
   def read_observations(self):
     db = self.connection()
-    assert self.use_mysql()
     cursor = db.cursor()
     cursor.execute("SELECT hkl_id_0_base,i,sigi,frame_id_0_base,original_h,original_k,original_l FROM %s_observation"%self.params.mysql.runtag)
     ALL = cursor.fetchall()
@@ -115,7 +172,6 @@ class manager:
   def read_frames(self):
     from xfel.cxi.util import is_odd_numbered
     db = self.connection()
-    assert self.use_mysql()
     cursor = db.cursor()
     cursor.execute("""SELECT
     frame_id_1_base,wavelength,c_c,slope,offset,res_ori_1,res_ori_2,res_ori_3,
@@ -144,7 +200,7 @@ class manager:
               detector_x DOUBLE(8,2) NOT NULL,
               detector_y DOUBLE(8,2) NOT NULL,
               frame_id_0_base INT,
-              overload_flag ENUM('T','F'),
+              overload_flag INTEGER,
               original_h INT NOT NULL,
               original_k INT NOT NULL,
               original_l INT NOT NULL
