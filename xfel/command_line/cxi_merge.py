@@ -401,24 +401,7 @@ class scaling_manager (intensity_data) :
       print >> self.log, "will scale frames serially"
       self._scale_all_serial(file_names)
     else :
-      if (self.params.nproc == 1) :
-        open(self.params.output.prefix+"_observation.db","w")
-        open(self.params.output.prefix+"_frame.db","w")
-        self.frame_id=0
-        hkl_id=0
-        H = open(self.params.output.prefix+"_miller.db","w")
-        for item in self.i_model.indices():
-          print >>H, "%7d  %5d %5d %5d"%(hkl_id,item[0],item[1],item[2])
-          hkl_id+=1
-        self._scale_all_serial(file_names)
-      else :
-        from xfel.cxi.merging_database import manager
-        self.CART = manager(self.params)
-        print "Using mysql:",self.CART.use_mysql()
-        if self.CART.use_mysql():
-          self.CART.initialize_tag()
-          self.CART.fill_indices(self.i_model.indices())
-        self._scale_all_parallel(file_names)
+      self._scale_all_parallel(file_names)
     t2 = time.time()
     print >> self.log, ""
     print >> self.log, "#" * 80
@@ -441,9 +424,17 @@ class scaling_manager (intensity_data) :
   def _scale_all_parallel (self, file_names) :
     import multiprocessing
     import libtbx.introspection
+    from xfel.cxi.merging_database import manager
+    #from xfel.cxi.merging_database_fs import manager
+    #from xfel.cxi.merging_database_sqlite3 import manager
+
     nproc = self.params.nproc
     if (nproc is None) or (nproc is Auto) :
       nproc = libtbx.introspection.number_of_processors()
+
+    db_mgr = manager(self.params)
+    db_mgr.initialize_db(self.i_model.indices())
+
     pool = multiprocessing.Pool(processes=nproc)
     # Round-robin the frames through the process pool.  Each process
     # accumulates its own statistics in serial, and the grand total is
@@ -453,17 +444,23 @@ class scaling_manager (intensity_data) :
       sm = scaling_manager(self.miller_set, self.i_model, self.params)
       pool.apply_async(
         func=sm,
-        args=[[file_names[j] for j in xrange(i, len(file_names), nproc)]],
+        args=[[file_names[j] for j in xrange(i, len(file_names), nproc)],
+              db_mgr],
         callback=self._add_all_frames)
     pool.close()
     pool.join()
 
-  def _scale_all_serial (self, file_names) :
+    # Block until all database commands have been processed.
+    db_mgr.join()
+
+
+  def _scale_all_serial (self, file_names, db_mgr) :
     """
-    Scale frames sequentially (single-process)
+    Scale frames sequentially (single-process).  The return value is
+    picked up by the callback.
     """
     for file_name in file_names :
-      scaled = self.scale_frame(file_name)
+      scaled = self.scale_frame(file_name, db_mgr)
       if (scaled is not None) :
         self.add_frame(scaled)
     return (self)
@@ -512,8 +509,9 @@ class scaling_manager (intensity_data) :
 
   def _add_all_frames (self, data) :
     """The _add_all_frames() function collects the statistics accumulated
-    in @p data by the individual scaling processes in process pool.
-    This function is run in serial, so it does not need a lock.
+    in @p data by the individual scaling processes in the process
+    pool.  This callback function is run in serial, so it does not
+    need a lock.
     """
     self.n_accepted += data.n_accepted
     self.n_low_corr += data.n_low_corr
@@ -639,14 +637,14 @@ class scaling_manager (intensity_data) :
     all_obs.show_summary(self.log, prefix="  ")
     return mtz_file, all_obs
 
-  def __call__ (self, file_names) :
+  def __call__ (self, file_names, db_mgr) :
     try :
-      return self._scale_all_serial(file_names)
+      return self._scale_all_serial(file_names, db_mgr)
     except Exception, e :
       print >> self.log, str(e)
       return None
 
-  def scale_frame (self, file_name) :
+  def scale_frame (self, file_name, db_mgr) :
     """
     Scales the data from a single frame against the reference dataset, and
     returns an intensity_data object.  Can be called either serially or
@@ -1024,76 +1022,85 @@ class scaling_manager (intensity_data) :
     #have_sa_params = (result.get("sa_parameters")[0].find('None')!=0)
     observations_original_index_indices = observations_original_index.indices()
 
-    if (self.params.nproc == 1) :
-      F = open(self.params.output.prefix+"_frame.db","a")
-      print >>F, "%7d %14.8f %14.8f %14.8f"%(self.frame_id,wavelength,result["xbeam"],result["ybeam"]),
+    #cell_params = data.indexed_cell.parameters()
+    #reserve_cell_params = result["sa_parameters"][0]["reserve_orientation"].unit_cell().parameters()
+    # cell params and reserve cell params are essentially equal within numerical precision
 
-      #cell_params = data.indexed_cell.parameters()
-      #reserve_cell_params = result["sa_parameters"][0]["reserve_orientation"].unit_cell().parameters()
-      # cell params and reserve cell params are essentially equal within numerical precision
+    kwargs = {'wavelength': wavelength,
+              'beam_x': result['xbeam'],
+              'beam_y': result['ybeam'],
+              'distance': result['distance'],
+              'c_c': corr,
+              'slope': slope,
+              'offset': offset,
+              'unique_file_name': data.file_name}
 
-      print >>F, "%14.8f %10.7f"%(result["distance"],corr),
-      print >>F,  "%11.8f %10.2f"%(slope,offset),
-      if have_sa_params:
-        res_ori_direct = result["sa_parameters"][0]["reserve_orientation"].direct_matrix()
-        print >>F, "%14.8f %14.8f %14.8f %14.8f %14.8f %14.8f %14.8f %14.8f %14.8f"%res_ori_direct,
-        print >>F, "%(rotation100_rad)10.7f %(rotation010_rad)10.7f %(rotation001_rad)10.7f %(half_mosaicity_deg)10.7f %(wave_HE_ang)14.8f %(wave_LE_ang)14.8f %(domain_size_ang)10.2f"%result["sa_parameters"][0],
-      else:
-        res_ori_direct = matrix.sqr(data.indexed_cell.orthogonalization_matrix()).transpose().elems
-        print >>F, "%14.8f %14.8f %14.8f %14.8f %14.8f %14.8f %14.8f %14.8f %14.8f"%res_ori_direct,
+    if have_sa_params:
+      sa_parameters = result['sa_parameters'][0]
+      res_ori_direct = sa_parameters['reserve_orientation'].direct_matrix().elems
 
-      print >>F, data.file_name
+      kwargs['res_ori_1'] = res_ori_direct[0]
+      kwargs['res_ori_2'] = res_ori_direct[1]
+      kwargs['res_ori_3'] = res_ori_direct[2]
+      kwargs['res_ori_4'] = res_ori_direct[3]
+      kwargs['res_ori_5'] = res_ori_direct[4]
+      kwargs['res_ori_6'] = res_ori_direct[5]
+      kwargs['res_ori_7'] = res_ori_direct[6]
+      kwargs['res_ori_8'] = res_ori_direct[7]
+      kwargs['res_ori_9'] = res_ori_direct[8]
 
-      xypred = result["mapped_predictions"][0]
-      G = open(self.params.output.prefix+"_observation.db","a")
-      for pair in matches.pairs():
-        idx = observations_original_index_indices[pair[1]]
-        Intensity = observations.data()[pair[1]]
-        Sigma = observations.sigmas()[pair[1]]
-        print >>G, "%7d %14.8f %14.8f %8.2f %8.2f %7d"%(pair[0], Intensity, Sigma,
-          xypred[pair[1]][0], xypred[pair[1]][1], self.frame_id), False, "%d %d %d"%idx
-      self.frame_id += 1
-    elif self.params.mysql.runtag is not None:
-      from xfel.cxi.merging_database import manager
-      CART = manager(self.params)
-      db = CART.connection()
-      cursor = db.cursor()
-      import cStringIO
-      query = cStringIO.StringIO()
-      query.write("INSERT INTO %s_frame SET "%self.params.mysql.runtag)
-      query.write("wavelength=%14.8f,beam_x=%14.8f,beam_y=%14.8f,"%(wavelength,result["xbeam"],result["ybeam"]))
-      query.write("distance=%14.8f,c_c=%10.7f,"%(result["distance"],corr))
-      query.write("slope=%11.8f,offset=%10.2f,"%(slope,offset))
-      if have_sa_params:
-        res_ori_direct = result["sa_parameters"][0]["reserve_orientation"].direct_matrix()
-        query.write("res_ori_1=%14.8f,res_ori_2=%14.8f,res_ori_3=%14.8f,res_ori_4=%14.8f,res_ori_5=%14.8f,res_ori_6=%14.8f,res_ori_7=%14.8f,res_ori_8=%14.8f,res_ori_9=%14.8f,"%res_ori_direct)
-        query.write("rotation100_rad=%(rotation100_rad)10.7f,rotation010_rad=%(rotation010_rad)10.7f,rotation001_rad=%(rotation001_rad)10.7f,"%result["sa_parameters"][0])
-        query.write("half_mosaicity_deg=%(half_mosaicity_deg)10.7f,wave_HE_ang=%(wave_HE_ang)14.8f,wave_LE_ang=%(wave_LE_ang)14.8f,domain_size_ang=%(domain_size_ang)10.2f,"%result["sa_parameters"][0])
-      else:
-        res_ori_direct = matrix.sqr(data.indexed_cell.orthogonalization_matrix()).transpose().elems
-        query.write("res_ori_1=%14.8f,res_ori_2=%14.8f,res_ori_3=%14.8f,res_ori_4=%14.8f,res_ori_5=%14.8f,res_ori_6=%14.8f,res_ori_7=%14.8f,res_ori_8=%14.8f,res_ori_9=%14.8f,"%res_ori_direct)
+      kwargs['rotation100_rad'] = sa_parameters.rotation100_rad
+      kwargs['rotation010_rad'] = sa_parameters.rotation010_rad
+      kwargs['rotation001_rad'] = sa_parameters.rotation001_rad
 
-      query.write("unique_file_name='%s'"%data.file_name)
+      kwargs['half_mosaicity_deg'] = sa_parameters.half_mosaicity_deg
+      kwargs['wave_HE_ang'] = sa_parameters.wave_HE_ang
+      kwargs['wave_LE_ang'] = sa_parameters.wave_LE_ang
+      kwargs['domain_size_ang'] = sa_parameters.domain_size_ang
 
-      cursor.execute( query.getvalue() )
-      cursor.execute("SELECT LAST_INSERT_ID()")
-      frame_id_0_base = cursor.fetchone()[0] - 1 # entry in the observation table is zero-based
-      xypred = result["mapped_predictions"][0]
+    else:
+      res_ori_direct = matrix.sqr(
+        data.indexed_cell.orthogonalization_matrix()).transpose().elems
 
-      query = cStringIO.StringIO()
-      query.write("""INSERT INTO %s_observation
-        (hkl_id_0_base,i,sigi,detector_x,detector_y,frame_id_0_base,overload_flag,original_h,original_k,original_l)
-        VALUES """%self.params.mysql.runtag)
-      firstcomma = ""
-      for pair in matches.pairs():
-        idx = observations_original_index_indices[pair[1]]
-        query.write(firstcomma); firstcomma=","
-        Intensity = observations.data()[pair[1]]
-        Sigma = observations.sigmas()[pair[1]]
-        query.write("('%7d','%18.8f','%18.8f','%8.2f','%8.2f','%7d','%s','%d','%d','%d')"%(
-          pair[0],Intensity,Sigma,xypred[pair[1]][0],xypred[pair[1]][1],frame_id_0_base,'F',
-          idx[0],idx[1],idx[2]))
-      cursor.execute( query.getvalue() )
+      kwargs['res_ori_1'] = res_ori_direct[0]
+      kwargs['res_ori_2'] = res_ori_direct[1]
+      kwargs['res_ori_3'] = res_ori_direct[2]
+      kwargs['res_ori_4'] = res_ori_direct[3]
+      kwargs['res_ori_5'] = res_ori_direct[4]
+      kwargs['res_ori_6'] = res_ori_direct[5]
+      kwargs['res_ori_7'] = res_ori_direct[6]
+      kwargs['res_ori_8'] = res_ori_direct[7]
+      kwargs['res_ori_9'] = res_ori_direct[8]
+
+    frame_id_0_base = db_mgr.insert_frame(**kwargs)
+
+    xypred = result["mapped_predictions"][0]
+    indices = flex.size_t([pair[1] for pair in matches.pairs()])
+
+    sel_observations = flex.intersection(
+      size=observations.data().size(),
+      iselections=[indices])
+    set_original_hkl = observations_original_index_indices.select(
+      flex.intersection(
+        size=observations_original_index_indices.size(),
+        iselections=[indices]))
+    set_xypred = xypred.select(
+      flex.intersection(
+        size=xypred.size(),
+        iselections=[indices]))
+
+    kwargs = {'hkl_id_0_base': [pair[0] for pair in matches.pairs()],
+              'i': observations.data().select(sel_observations),
+              'sigi': observations.sigmas().select(sel_observations),
+              'detector_x': [xy[0] for xy in set_xypred],
+              'detector_y': [xy[1] for xy in set_xypred],
+              'frame_id_0_base': [frame_id_0_base] * len(matches.pairs()),
+              'overload_flag': [0] * len(matches.pairs()),
+              'original_h': [hkl[0] for hkl in set_original_hkl],
+              'original_k': [hkl[1] for hkl in set_original_hkl],
+              'original_l': [hkl[2] for hkl in set_original_hkl]}
+
+    db_mgr.insert_observation(**kwargs)
 
     if False:
       # ******************************************************
