@@ -65,7 +65,8 @@ def manager(params,
             fmodels,
             model,
             out = None,
-            states_collector=None):
+            states_collector=None,
+            callback=None):
   if(out is None): out = sys.stdout
   if (states_collector is not None) :
     assert hasattr(states_collector, "add")
@@ -104,6 +105,7 @@ def manager(params,
     wx                 = wx,
     wc                 = target_weights.xyz_weights_result.w,
     states_collector   = states_collector,
+    callback           = callback,
     log                = out)
 
 class run(object):
@@ -118,8 +120,10 @@ class run(object):
                real_space = False,
                log = None,
                states_collector = None,
+               callback = None,
                verbose=True):
     adopt_init_args(self, locals())
+    assert (callback is None) or hasattr(callback, "__call__")
     if(self.params is None): self.params = master_params().extract()
     if(log is None): self.log = sys.stdout
     if(self.fmodel is not None):
@@ -165,6 +169,8 @@ class run(object):
           update_f_mask  = True)
       if(states_collector is not None):
         self.states_collector.add(sites_cart = cd_manager.xray_structure.sites_cart())
+      if (callback is not None) :
+        callback(fmodel=self.fmodel)
       self.show(curr_temp = self.curr_temp)
       self.curr_temp -= params.cool_rate
       if(cartesian_den_restraints):

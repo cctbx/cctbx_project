@@ -862,3 +862,13 @@ class trajectory_output (object) :
     f.close()
     print >> self.log, "wrote model to %s.pdb" % file_base
     print >> self.log, "wrote map coefficients to %s.mtz" % file_base
+
+class annealing_callback (object) :
+  def __init__ (self, model, monitor) :
+    self.model = model
+    self.monitor = monitor
+
+  def __call__ (self, fmodel) :
+    self.monitor.call_back(model=self.model,
+      fmodel=fmodel,
+      method="anneal")
