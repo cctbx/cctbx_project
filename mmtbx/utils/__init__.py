@@ -1926,6 +1926,9 @@ class process_command_line_args(object):
           from iotbx import ccp4_map
           self.ccp4_map = iotbx.ccp4_map.map_reader(file_name=arg_file)
           self.ccp4_map_file_name = arg_file
+          cs = crystal.symmetry(self.ccp4_map.unit_cell().parameters(),
+            self.ccp4_map.space_group_number)
+          crystal_symmetries.append([arg_file, cs])
         else:
           try:
             cif_object = []
