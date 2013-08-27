@@ -399,7 +399,8 @@ class rec(object):
     OP = unit_axis.outer_product(unit_axis)
     CP = cross_product_matrix(unit_axis.elems)
     c, s = math.cos(angle), math.sin(angle)
-    return prefactor * ( -I3*s + OP*(1+s) + CP*c )
+    return prefactor * ( -I3*s + OP*s + CP*c ) # bug fix 8/27/13 NKS
+    # note: the rotation operator itself is prefactor * (I3*c + OP*(1-c) + CP*s)
 
   def rt_for_rotation_around_axis_through(self, point, angle, deg=False):
     assert self.n in ((3,1), (1,3))
