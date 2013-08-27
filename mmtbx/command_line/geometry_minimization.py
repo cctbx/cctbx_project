@@ -411,6 +411,9 @@ class run(object):
     if(self.params.write_geo_file and self.grm is not None):
       broadcast(m=prefix, log = self.log)
       ofn = os.path.basename(self.output_file_name).replace(".pdb",".geo")
+      directory = self.params.directory
+      if (self.use_directory_prefix) and (directory is not None) :
+        ofn = os.path.join(directory, ofn)
       f=file(ofn,"wb")
       print >> self.log, "  output file name:", ofn
       print >> f, "# Geometry restraints after refinement"
