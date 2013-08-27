@@ -249,6 +249,13 @@ gui
     .short_caption = Output directory
     .style = output_dir
 }
+extra_restraints_file = None
+  .type = path
+  .short_caption = Custom geometry restraints
+  .help = File containing custom geometry restraints, using the same format \
+    as phenix.refine.  On the command line this can be specified directly \
+    as a command-line argument, but this parameter is used by the Phenix GUI.
+  .style = input_file file_type:phil
 """, process_includes=True).fetch(source=customization_params)
 
 class er_pickle(object):
@@ -1666,7 +1673,7 @@ def run(args, command_name = "phenix.ensemble_refinement", log=None,
   command_line = (iotbx_option_parser(
     usage="%s reflection_file pdb_file [options]" % command_name,
     description='Example: %s data.mtz model.pdb' % command_name
-  ).enable_show_defaults()).process(args=args)
+  ).enable_dry_run().enable_show_defaults()).process(args=args)
   if (log is None) :
     log = sys.stdout
   if(command_line.expert_level is not None) :
@@ -1677,13 +1684,22 @@ def run(args, command_name = "phenix.ensemble_refinement", log=None,
     return
   inputs = mmtbx.utils.cmdline_load_pdb_and_data(
     update_f_part1_for="refinement",
-    args=args,
+    args=command_line.args,
     master_phil=master_params,
     out=log,
     create_fmodel=False,
     process_pdb_file=False)
   working_phil = inputs.working_phil
   params = working_phil.extract()
+  if (params.extra_restraints_file is not None) :
+    # XXX this is a revolting hack...
+    print >> log, "Processing custom geometry restraints in file:"
+    print >> log, "  %s" % params.extra_restraints_file
+    restraints_phil = iotbx.phil.parse(file_name=params.extra_restraints_file)
+    cleanup_phil = iotbx.phil.parse("extra_restraints_file=None")
+    working_phil = master_params.fetch(
+      sources=[working_phil, restraints_phil, cleanup_phil])
+    params = working_phil.extract()
   er_params = params.ensemble_refinement
 
   if er_params.electron_density_maps.apply_default_maps != False\
@@ -1853,6 +1869,9 @@ def run(args, command_name = "phenix.ensemble_refinement", log=None,
   print >> log, "Unit cell volume                        : %-15.4f" % \
     f_obs.unit_cell().volume()
   f_obs_labels = f_obs.info().label_string()
+
+  if (command_line.options.dry_run) :
+    return None
 
   fmodel = mmtbx.utils.fmodel_simple(
     update_f_part1_for         = "refinement",
