@@ -180,7 +180,25 @@ class Format(object):
 
     def get_detectorbase(self):
         '''Return the instance of detector base.'''
-        return self.detectorbase
+
+        # XXX Temporary proxy to aid in the transition to dxtbx.  Remove
+        # once completed.
+        class _detectorbase_proxy(object):
+            def __init__(self, format_instance):
+                self._fi = format_instance
+
+            def __getattr__(self, name):
+                try:
+                    return self._fi.__getattribute__(name)
+                except AttributeError:
+                    #print >> sys.stderr, \
+                    #    "requesting iotbx.detectors.detectorbase.%s" % name
+                    try:
+                        return self._fi.detectorbase.__getattribute__(name)
+                    except AttributeError:
+                        return self._fi.detectorbase.__getattr__(name)
+
+        return _detectorbase_proxy(self)
 
     def get_image_file(self):
         '''Get the image file provided to the constructor.'''

@@ -72,7 +72,7 @@ def ImageFactory(filename):
     from dxtbx.format.Registry import Registry
     format_instance = Registry.find(filename)
     instance = format_instance(filename)
-    return instance.detectorbase
+    return instance.get_detectorbase()
   A = url_support.potential_url_request(filename)
   if A.is_url_request():
     for utype in all_url_types:
