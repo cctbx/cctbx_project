@@ -123,6 +123,7 @@ tst_list = (
    "$D/maptbx/tst_map_peak_3d_as_2d.py",
    "$D/maptbx/tst_get_percentile_cutoffs.py",
    "$D/regression/tst_sphericity.py",
+   "$D/regression/tst_miller_statistics.py",
   )
 
 def run():

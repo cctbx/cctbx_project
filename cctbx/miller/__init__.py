@@ -2636,6 +2636,7 @@ class array(set):
     (:math:`\\dfrac{|\\Delta I|}{\\sigma_{dI}}` > cutoff and
     :math:`min(\\dfrac{I_{+}}{\\sigma_{+}},\\dfrac{I_{-}}{\\sigma_{-}})` > cutoff
     """
+    assert self.anomalous_flag()
     assert not use_binning or self.binner() is not None
     assert self.sigmas() is not None
     cutoff = float(cutoff)
@@ -2669,21 +2670,41 @@ class array(set):
                                                     return_fail=return_fail))
     return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
 
-  def relative_anomalous_differences (self, obs_type="amplitude",
-      use_overall_mean=False) :
+  def bijvoet_ratios (self, obs_type="intensity", measurable_only=True,
+      cutoff=3.0) :
+    assert self.anomalous_flag()
     obs = self.select(self.data() > 0 )
     if (obs_type == "amplitude") and (self.is_xray_intensity_array()) :
       obs = obs.f_sq_as_f()
     elif (obs_type == "intensity") and (self.is_xray_amplitude_array()) :
       obs = obs.f_as_f_sq()
     i_plus, i_minus = obs.hemispheres_acentrics()
+    assert i_plus.data().size() == i_minus.data().size()
     i_mean = (i_plus.data() + i_minus.data()) / 2
     d_ano = flex.fabs(i_plus.data() - i_minus.data())
+    if measurable_only :
+      assert self.sigmas() is not None
+      top = flex.fabs(i_plus.data()-i_minus.data())
+      bottom = flex.sqrt( (i_plus.sigmas()*i_plus.sigmas()) +
+                          (i_minus.sigmas()*i_minus.sigmas()) )
+      zeros = flex.bool( bottom <= 0 ).iselection()
+      bottom = bottom.set_selected( zeros, 1 )
+      ratio = top/bottom
+      bottom = i_plus.sigmas().set_selected(
+        flex.bool(i_plus.sigmas()<=0).iselection(), 1 )
+      i_plus_sigma = i_plus.data()/bottom
+      bottom = i_minus.sigmas().set_selected(
+        flex.bool(i_minus.sigmas()<=0).iselection(), 1 )
+      i_minus_sigma = i_minus.data()/bottom
+      meas = (  (ratio > cutoff)
+              & (i_plus_sigma > cutoff)
+              & (i_minus_sigma > cutoff) )
+      i_mean = i_mean.select(meas)
+      d_ano = d_ano.select(meas)
+    assert i_mean.size() == d_ano.size()
     non_zero_sele = i_mean > 0
     d_ano = d_ano.select(non_zero_sele)
     i_mean = i_mean.select(non_zero_sele)
-    if (use_overall_mean) :
-      i_mean = flex.mean(i_mean)
     return d_ano / i_mean
 
   def second_moment(self, use_binning=False):
