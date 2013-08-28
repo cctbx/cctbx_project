@@ -1453,6 +1453,10 @@ def assert_xray_structures_equal(
       scattering_types = True,
       eps = 1.e-6):
   assert x1.scatterers().size() == x2.scatterers().size()
+  cs1 = x1.crystal_symmetry()
+  cs2 = x2.crystal_symmetry()
+  assert [cs1, cs2].count(None) in [0,2]
+  assert cs1.is_similar_symmetry(cs2)
   if(selection is not None):
     x1 = x1.select(selection)
     x2 = x2.select(selection)
