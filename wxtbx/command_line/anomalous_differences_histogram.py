@@ -27,7 +27,7 @@ def display_file_info (file_name, obs_type="amplitudes", parent=None,
     array_name = os.path.basename(file_name)+":"+array.info().label_string()
     frame = AnomHistPlotFrame(
       parent=parent,
-      title="Relative anomalous differences for %s" % array_name,
+      title="Bijvoet ratios for %s" % array_name,
       array=array,
       array_name=array_name)
     frame.Show()
@@ -48,8 +48,8 @@ class AnomHistPlotFrame (wxtbx.plots.plot_frame) :
     self.top_panel.SetSizer(szr)
     szr2 = wx.BoxSizer(wx.HORIZONTAL)
     szr.Add(szr2, 1)
-    self.mean_box = wx.CheckBox(self.top_panel, label="Use overall mean")
-    szr2.Add(self.mean_box, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    self.meas_box = wx.CheckBox(self.top_panel, label="Measurable differences only")
+    szr2.Add(self.meas_box, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self.log_box = wx.CheckBox(self.top_panel, label="Log scale")
     szr2.Add(self.log_box, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     szr2.Add(wx.StaticText(self.top_panel, label="Data type:"), 0,
@@ -62,37 +62,31 @@ class AnomHistPlotFrame (wxtbx.plots.plot_frame) :
     self.n_bins = wx.SpinCtrl(self.top_panel, -1)
     self.n_bins.SetValue(40)
     szr2.Add(self.n_bins, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-    self.Bind(wx.EVT_CHECKBOX, lambda evt: self.recalculate(), self.mean_box)
+    self.Bind(wx.EVT_CHECKBOX, lambda evt: self.recalculate(), self.meas_box)
     self.Bind(wx.EVT_CHECKBOX, lambda evt: self.recalculate(), self.log_box)
     self.Bind(wx.EVT_CHOICE, lambda evt: self.recalculate(), self.obs_type)
     self.Bind(wx.EVT_SPINCTRL, lambda evt: self.recalculate(), self.n_bins)
 
   def recalculate (self) :
     from scitbx.array_family import flex
-    use_overall_mean = self.mean_box.GetValue()
+    measurable_only = self.meas_box.GetValue()
     obs_type = self.obs_type.GetStringSelection()
     n_bins = self.n_bins.GetValue()
-    d_ano_rel = self._array.relative_anomalous_differences(
+    d_ano_rel = self._array.bijvoet_ratios(
       obs_type=obs_type,
-      use_overall_mean=use_overall_mean)
+      measurable_only=measurable_only)
     hist = flex.histogram(d_ano_rel, n_slots=n_bins)
     hist.show(f=sys.stdout)
     if (obs_type == "intensities") :
-      if (use_overall_mean) :
-        x_label = "D_anom(I[hkl]) / <I>"
-      else :
-        x_label = "D_anom(I[hkl]) / I_mean[hkl]"
+      x_label = "D_anom(I[hkl]) / I_mean[hkl]"
     else :
-      if (use_overall_mean) :
-        x_label = "D_anom(F[hkl]) / <F>"
-      else :
-        x_label = "D_anom(F[hkl]) / F_mean[hkl]"
+      x_label = "D_anom(F[hkl]) / F_mean[hkl]"
     self.show_histogram(
       data=list(d_ano_rel),
       n_bins=n_bins,
       x_label=x_label,
       y_label="# hkl",
-      title="Relative anomalous differences for %s" % self._array_name,
+      title="Bijvoet ratios for %s" % self._array_name,
       log_scale=self.log_box.GetValue())
 
   def show_histogram (self, *args, **kwds) :
