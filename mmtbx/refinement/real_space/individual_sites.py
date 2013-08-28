@@ -198,6 +198,7 @@ class box_refinement_manager(object):
     self.geometry_restraints_manager = geometry_restraints_manager
     self.max_iterations=max_iterations
     self.real_space_gradients_delta = real_space_gradients_delta
+    self.weight_optimal = None
 
   def update_xray_structure(self, new_xray_structure):
     self.xray_structure = new_xray_structure
@@ -247,6 +248,7 @@ class box_refinement_manager(object):
       start_trial_weight_value = start_trial_weight_value,
       rms_bonds_limit = rms_bonds_limit,
       rms_angles_limit = rms_angles_limit)
+    self.weight_optimal = real_space_result.weight_final
     sites_cart_box_refined = real_space_result.sites_cart_result
     sites_cart_box_refined_shifted_back = \
       sites_cart_box_refined + box.shift_to_map_boxed_sites_back

@@ -71,12 +71,11 @@ class manager(object):
     for i_res, r in enumerate(sm.residue_monitors):
       if(iselection is not None and not i_res in iselection): continue
       if(get_class(r.residue.resname) != "common_amino_acid"): continue
-      go = (r.map_cc_all < self.map_cc_all_threshold or \
-            r.map_cc_sidechain < self.map_cc_sidechain_threshold) or \
-           (r.rotamer_status=="OUTLIER" and (
-            r.map_cc_all < self.map_cc_all_threshold or
-            r.map_cc_sidechain < self.map_cc_sidechain_threshold))
-      if(use_clash_filter or go):
+      go = r.rotamer_status=="OUTLIER" or \
+           r.map_cc_all < self.map_cc_all_threshold or \
+           r.map_cc_sidechain < self.map_cc_sidechain_threshold or \
+           use_clash_filter
+      if(go):
         if(self.on_special_position(sm_residue=r)): continue
         iselection_n_external=None
         iselection_c_external=None
@@ -87,7 +86,7 @@ class manager(object):
           iselection_n_external = sm.residue_monitors[i_res+1].selection_n
         elif(i_res==len(sm.residue_monitors)-1 and len(sm.residue_monitors)>1):
           iselection_c_external = sm.residue_monitors[i_res-1].selection_c
-        #print r.residue.resname
+        #print r.residue.resname, r.residue.resseq
         #t0=time.time()
         negate_selection = mmtbx.refinement.real_space.selection_around_to_negate(
           xray_structure          = sm.xray_structure,
@@ -133,9 +132,10 @@ class manager(object):
           torsion_search_local_stop  = self.torsion_search_local_stop,
           torsion_search_local_step  = self.torsion_search_local_step,
           log                        = self.log)
-        sites_cart.set_selected(r.residue.atoms().extract_i_seq(),
+        sites_cart = sites_cart.set_selected(r.residue.atoms().extract_i_seq(),
           r.residue.atoms().extract_xyz())
-        sm.xray_structure = sm.xray_structure.replace_sites_cart(sites_cart)
+        sm.xray_structure.set_sites_cart(sites_cart)
         #print "ref: %6.4f"%(time.time()-t0)
     sm.pdb_hierarchy.adopt_xray_structure(sm.xray_structure)
     sm.update(xray_structure = sm.xray_structure)
+    
