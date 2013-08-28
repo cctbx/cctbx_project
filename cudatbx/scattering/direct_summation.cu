@@ -520,7 +520,7 @@ namespace scattering {
     // allocate working space if necessary
     if (!workspace_allocated) {
       workspace_size = int(std::floor(n_h*n_rt/padding + 1.0)) * padding;
-      allocate_workspace(6*workspace_size);
+      allocate_workspace(7*workspace_size);
     }
 
     int blocks_per_grid = (n_h*n_rt + threads_per_block - 1)/threads_per_block;
