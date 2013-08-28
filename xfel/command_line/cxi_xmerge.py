@@ -10,6 +10,7 @@ import iotbx.phil
 from cctbx.array_family import flex
 from cctbx.crystal import symmetry
 from cctbx import uctbx
+from iotbx import mtz
 from libtbx.utils import Usage, multi_out
 from libtbx import easy_pickle
 import os
@@ -190,6 +191,25 @@ def run(args):
       (not work_params.set_average_unit_cell)) :
     raise Usage("If rescale_with_average_cell=True, you must also specify "+
       "set_average_unit_cell=True.")
+
+  # Verify that the externally supplied scaling reference defines a
+  # suitable column of intensities.  Exit early with error if it does
+  # not.
+  data_SR = mtz.object(work_params.scaling.mtz_file)
+  obs_labels = [array.info().label_string().lower().split(',')[0]
+                for array in data_SR.as_miller_arrays()
+                if array.observation_type() is not None]
+  known_labels = ['fobs', 'imean']
+  if not any(i in j
+             for i in known_labels for j in obs_labels) and \
+     not any(l.find(work_params.scaling.mtz_column_F.lower()) == 0
+             for l in obs_labels):
+    raise Usage(work_params.scaling.mtz_file +
+                " does not contain any observations labelled [" +
+                ", ".join(known_labels + [work_params.scaling.mtz_column_F]) +
+                "].  Please set scaling.mtz_column_F to one of [" +
+                ",".join(obs_labels) + "].")
+
   # Read Nat's reference model from an MTZ file.  XXX The observation
   # type is given as F, not I--should they be squared?  Check with Nat!
   log = open("%s_%s.log" % (work_params.output.prefix,work_params.scaling.algorithm), "w")
