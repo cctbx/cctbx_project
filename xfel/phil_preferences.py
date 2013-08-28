@@ -1,17 +1,27 @@
 from __future__ import division
 
 def load_cxi_phil(path, args=[]):
+  import os
   from labelit.phil_preferences import iotbx_defs, libtbx_defs
   from iotbx import phil
+  from libtbx.phil.command_line import argument_interpreter
+  from libtbx.utils import Sorry
+
+  exts = ["", ".params", ".phil"]
+  foundIt = False
+  for ext in exts:
+    if os.path.exists(path + ext):
+      foundIt = True
+      path += ext
+      break
+  if not foundIt:
+    raise Sorry("Target not found: " + path)
 
   cxi_phil_str = iotbx_defs + libtbx_defs
   stream = open(path)
   master_phil = phil.parse(input_string=cxi_phil_str, process_includes=True)
   horizons_phil = master_phil.fetch(sources=[phil.parse(stream.read())])
   stream.close()
-
-  from libtbx.phil.command_line import argument_interpreter
-  from libtbx.utils import Sorry
 
   argument_interpreter = argument_interpreter(
     master_phil=master_phil
