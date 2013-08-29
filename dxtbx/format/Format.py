@@ -187,6 +187,11 @@ class Format(object):
             def __init__(self, format_instance):
                 self._fi = format_instance
 
+            def __getattribute__(self, name):
+                if name == '__class__':
+                    return self._fi.__class__
+                return object.__getattribute__(self, name)
+
             def __getattr__(self, name):
                 try:
                     return self._fi.__getattribute__(name)
