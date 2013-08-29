@@ -43,6 +43,32 @@ def exercise (debug=False) :
   remark_200 = result.as_remark_200(wavelength=0.9792).splitlines()
   assert ("REMARK 200  <I/SIGMA(I)> FOR SHELL         : 5.4942" in remark_200)
   assert ("REMARK 200  WAVELENGTH OR RANGE        (A) : 0.9792" in remark_200)
+  # exercise 2: estimate resolution cutoffs (and symmetry_file argument)
+  hkl_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/harvesting/unmerged.sca",
+    test=os.path.isfile)
+  symm_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/harvesting/refine.mtz",
+    test=os.path.isfile)
+  args = [
+    hkl_file,
+    "symmetry_file=\"%s\"" % symm_file,
+    "--estimate_cutoffs",
+  ]
+  out = StringIO()
+  result = merging_statistics.run(args, out=out)
+  if (debug) :
+    print out.getvalue()
+  for line in """\
+Crude resolution cutoff estimates:
+  resolution of all data          :   2.000
+  based on CC(1/2) > 0.5          : (use all data)
+  based on mean(I/sigma) > 2      :   2.155
+  based on R-merge < 0.5          :   2.372
+  based on R-meas < 0.5           :   2.521
+  based on completeness > 0.9     : (use all data)
+  based on completeness > 0.5     : (use all data)""".splitlines() :
+    assert line in out.getvalue()
 
 if (__name__ == "__main__") :
   exercise(debug=("--debug" in sys.argv))
