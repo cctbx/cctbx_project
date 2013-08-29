@@ -32,6 +32,9 @@ debug = False
   .type = bool
 loggraph = False
   .type = bool
+estimate_cutoffs = False
+  .type = bool
+  .expert_level = 4
 include scope libtbx.phil.interface.tracking_params
 """ % iotbx.merging_statistics.merging_params_str
 
@@ -113,10 +116,12 @@ Full parameters:
     debug=params.debug,
     file_name=params.file_name,
     sigma_filtering=params.sigma_filtering,
+    estimate_cutoffs=params.estimate_cutoffs,
     log=out)
   result.show(out=out)
   if (params.loggraph) :
     result.show_loggraph(out=out)
+  result.show_estimated_cutoffs(out=out)
   print >> out, ""
   print >> out, "References:"
   print >> out, citations_str
