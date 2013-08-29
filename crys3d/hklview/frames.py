@@ -58,6 +58,7 @@ class settings_window (wxtbx.utils.SettingsPanel) :
     self.Bind(wx.EVT_SLIDER, self.OnSetScale, self.scale_ctrl)
     for x in [0, 4, 8, 12, 16] :
       self.scale_ctrl.SetTick(x)
+    self.scale_ctrl.SetValue((self.settings.scale * 4) - 4)
     box.Add(self.scale_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     #
     ctrls = self.create_controls(
