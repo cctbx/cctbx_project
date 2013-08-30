@@ -249,7 +249,7 @@ class reference_model(object):
             raise Sorry("Cannot specify more than one chain per selection")
         if sel.strip().strip('(').strip(')').startswith("RESSEQ") or \
            sel.strip().strip('(').strip(')').startswith("RESID"):
-          res = sel.strip().split(' ')[-1].split(':')
+          res = sel.strip().strip('(').strip(')').split(' ')[-1].split(':')
           if len(res) > 1:
             if model_res_min is None and model_res_max is None:
               model_res_min = res[0]
