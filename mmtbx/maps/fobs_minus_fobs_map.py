@@ -1,22 +1,25 @@
+
 from __future__ import division
-from cctbx.array_family import flex
-from libtbx.utils import Sorry, null_out
-import iotbx.phil
-from iotbx import reflection_file_reader
-from iotbx import reflection_file_utils
-import iotbx.symmetry
-import iotbx.file_reader
-from cStringIO import StringIO
-import sys, os
+from mmtbx import utils
 import mmtbx.f_model
 from iotbx.option_parser import iotbx_option_parser
-from cctbx import miller
-from mmtbx import utils
 from iotbx.pdb import combine_unique_pdb_files
+from iotbx import reflection_file_reader
+from iotbx import reflection_file_utils
+import iotbx.file_reader
+import iotbx.symmetry
+import iotbx.phil
+from cctbx.array_family import flex
 import iotbx.pdb
+from cctbx import miller
+from libtbx.str_utils import format_value
+from libtbx.utils import Sorry, null_out
+from libtbx import adopt_init_args
 from libtbx import runtime_utils
 import libtbx.callbacks # import dependency
-from libtbx import adopt_init_args
+from cStringIO import StringIO
+import os
+import sys
 
 fo_minus_fo_master_params_str = """\
 f_obs_1_file_name = None
@@ -61,7 +64,22 @@ scattering_table = *xray neutron
   .help = Choices of scattering table for structure factors calculations
 output_file = None
   .type = path
-  .style = bold new_file file_type:mtz
+  .style = hidden
+output_dir = None
+  .type = path
+  .short_caption = Output folder
+  .style = output_dir
+  .expert_level = 4
+file_name_prefix = None
+  .type = str
+  .input_size = 400
+  .help = Base file name for output (GUI parameter only)
+  .expert_level = 4
+job_id = None
+  .type = int
+  .style = hidden
+  .help = GUI parameter only
+  .expert_level = 4
 ignore_non_isomorphous_unit_cells = False
   .type = bool
   .short_caption = Ignore non-isomorphous unit cells
@@ -153,8 +171,9 @@ class compute_fo_minus_fo_map (object) :
     if multiscale:
       fobs_1 = fobs_2.multiscale(other = fobs_1, reflections_per_bin=250)
     if(not silent):
+      print >> log, ""
       print >> log, "Fobs1_vs_Fobs2 statistics:"
-      print >> log, "Bin# Resolution range  Compl.  No.of refl. R-factor"
+      print >> log, "Bin# Resolution range  Compl.  No.of refl. CC   R-factor"
       fobs_1.setup_binner(reflections_per_bin = min(500, fobs_1.data().size()))
       fobs_2.use_binning_of(fobs_1)
       for i_bin in fobs_1.binner().range_used():
@@ -169,10 +188,12 @@ class compute_fo_minus_fo_map (object) :
         r = None
         if(den!=0):
           r = num/den
+        cc = flex.linear_correlation(x=f1.data(), y=f2.data()).coefficient()
         d_range = fobs_1.binner().bin_legend(
                        i_bin = i_bin, show_bin_number = False, show_counts = False)
-        fmt = "%3d: %-17s   %4.2f %6d         %6s"
-        print >> log, fmt % (i_bin, d_range, compl, n_ref, str(r))
+        fmt = "%3d: %-17s   %4.2f %6d         %5.3f  %6s"
+        print >> log, fmt % (i_bin, d_range, compl, n_ref, cc,
+          format_value("%6.4f", r))
     # map coefficients
     diff = miller.array(
       miller_set = f_model,
@@ -422,12 +443,15 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
     if (f_obs.indices().size() == 0) :
       raise Sorry("No data left in array %d (labels=%s) after filtering!" % (k+1,
         f_obs.info().label_string()))
+  output_file_name = params.output_file
+  if (output_file_name is None) and (params.file_name_prefix is not None) :
+    output_file_name = "%s_%s.mtz" % (params.file_name_prefix, params.job_id)
   output_files = compute_fo_minus_fo_map(
     data_arrays = f_obss,
     xray_structure = xray_structure,
     log = log,
     silent = command_line.options.silent,
-    output_file = params.output_file,
+    output_file = output_file_name,
     peak_search=params.find_peaks_holes,
     map_cutoff=params.map_cutoff,
     peak_search_params=params.peak_search,
@@ -436,6 +460,8 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
 
 class launcher (runtime_utils.target_with_save_result) :
   def run (self) :
+    os.makedirs(self.output_dir)
+    os.chdir(self.output_dir)
     return run(args=list(self.args))
 
 def validate_params (params, callback=None) :
@@ -445,14 +471,7 @@ def validate_params (params, callback=None) :
     raise Sorry("You must define the labels for both reflection files.")
   if (params.phase_source is None) :
     raise Sorry("You must specify a PDB file for phasing.")
-  if (params.output_file is None) or (params.output_file == "") :
-    raise Sorry("You must specify an output file.")
-  output_dir, output_file = os.path.split(params.output_file)
-  if os.path.isdir(params.output_file) :
-    raise Sorry("Output file is a directory!")
-  elif not output_file.endswith(".mtz") :
-    raise Sorry("Output file must be an MTZ file.")
-  elif not os.path.isdir(output_dir) :
+  if not os.path.isdir(params.output_dir) :
     raise Sorry("Output directory does not exist.")
 
 def finish_job (result) :
