@@ -19,6 +19,7 @@ import subprocess
 import StringIO
 import sys
 import time
+import stat
 
 from libtbx import easy_run
 from libtbx.utils import Sorry
@@ -36,6 +37,7 @@ key_words = {
   "end"              : int,
   "host_scratch_dir" : str,
   "python_script"    : str,
+  "parallel_nodes"   : int,
   }
 
 script_file = """
@@ -152,6 +154,13 @@ if __name__=="__main__":
   run(*tuple(sys.argv[1:]))
 """
 
+qblock = """#! /bin/csh -q
+#$ -j y
+while (1)
+  sleep 3600
+end
+"""
+
 def test_easy_qsub():
   def _clean():
     for filename in os.listdir(os.getcwd()):
@@ -254,6 +263,20 @@ def process_args(args):
         assert 0
   return kwds
 
+def get_queue_machine_details():
+  cmd = "qstat -f"
+  ero = easy_run.fully_buffered(command = cmd)
+  out = StringIO.StringIO()
+  ero.show_stdout(out = out)
+  rc = {}
+  for line in out.getvalue().split("\n"):
+    if line.find("all.q@")>-1:
+      tmp = line.split()
+      rc.setdefault(tmp[0], [])
+      rc[tmp[0]].append(int(tmp[2].split("/")[0]))
+      rc[tmp[0]].append(int(tmp[2].split("/")[1]))
+  return rc
+
 def get_python_bin(source):
   if os.path.islink(source):
     source = os.path.realpath(source)
@@ -277,6 +300,7 @@ def run(phenix_source=None,
         end=None,
         host_scratch_dir=None,
         python_script=None,
+        parallel_nodes=1,
         dry_run=False,
         ):
   help = """
@@ -400,6 +424,33 @@ def run(phenix_source=None,
 
   print '\n  Number of queue jobs',number_of_jobs
   print '  Number of command in each queue job',size_of_chunks
+
+  if parallel_nodes>1:
+    def _cmp_gap(k1, k2):
+      if details[k1][1]-details[k1][0]>details[k2][1]-details[k2][0]:
+        return -1
+      return 1
+    #
+    assert number_of_jobs==1, "Only one job can be run in parallel"
+    details = get_queue_machine_details()
+    keys = details.keys()
+    keys.sort(_cmp_gap)
+    for queue_name in keys:
+      if parallel_nodes<=details[queue_name][1]-details[queue_name][0]:
+        # submit
+        f=file("qblock.csh", "wb")
+        f.write(qblock)
+        f.close()
+        os.chmod("qblock.csh", stat.S_IREAD|stat.S_IWRITE|stat.S_IXUSR)
+        qsub_cmd += " -q %s" % queue_name
+        cmd = "%s -t 1-%d qblock.csh" % (qsub_cmd, parallel_nodes-1)
+        print "  Blocking %d slots on %s" % (parallel_nodes-1, queue_name)
+        print "    Need to remove them manually"
+        print "   ",cmd
+        easy_run.call(cmd)
+        break
+    else:
+      raise Sorry("No queue machine found with %d available slots" % parallel_nodes)
 
   #print '\n  Changing to work directory : %s' % where
   os.chdir(where)

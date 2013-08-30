@@ -372,7 +372,9 @@ gln_interpreter = interpreter(
 tyr_interpreter = interpreter(
   peptide_expected_patterns + [
     "hA",
-    "CB", "1hB", "2hB", "3hB",
+    "CB",
+    "1hB", # needs to be commented for v3
+    "2hB", "3hB",
     "CG",
     "CD1", "hD1",
     "CD2", "hD2",
@@ -381,6 +383,7 @@ tyr_interpreter = interpreter(
     "CZ",
     "OH", "hH"],
   peptide_synonym_patterns,
+  # needs to be commented for v3
   mutually_exclusive_pairs=[
     ("1hB", "2hB", "3hB")],
   non_hydrogens=("N","CA","C","O","CB","CG","CD1","CE1","CZ","OH","CE2","CD2"),
