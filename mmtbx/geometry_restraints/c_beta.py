@@ -21,6 +21,8 @@ def get_c_beta_torsion_proxies(pdb_hierarchy,
         for conformer in rg.conformers():
           if conformer.is_protein():
             for residue in conformer.residues():
+              if residue.resname in three_letter_l_given_three_letter_d:
+                continue
               N_atom = None
               CA_atom = None
               C_atom = None
@@ -42,8 +44,6 @@ def get_c_beta_torsion_proxies(pdb_hierarchy,
                      (CA_atom.i_seq not in selection) or
                      (C_atom.i_seq not in selection) or
                      (CB_atom.i_seq not in selection) ):
-                  continue
-                if residue.resname in three_letter_l_given_three_letter_d:
                   continue
                 dihedralNCAB, dihedralCNAB = get_cb_target_angle_pair(
                                                resname=residue.resname)
