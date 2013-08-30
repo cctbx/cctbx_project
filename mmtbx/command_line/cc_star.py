@@ -121,7 +121,7 @@ def show_symmetry_error (file1, file2, symm1, symm2) :
   symm1.show_summary(f=symm_out1, prefix="  ")
   symm2.show_summary(f=symm_out2, prefix="  ")
   raise Sorry("Incompatible symmetry definitions:\n%s:\n%s\n%s\n%s" %
-    file1, symm_out1.getvalue(), file2, symm_out2.getvalue())
+    (file1, symm_out1.getvalue(), file2, symm_out2.getvalue()))
 
 def load_and_validate_unmerged_data (f_obs, file_name, data_labels,
     log=sys.stdout) :
