@@ -852,7 +852,8 @@ class _(boost.python.injector, shared_dihedral_proxy):
         prefix="",
         max_items=None,
         is_reference=False,
-        is_ncs=False):
+        is_ncs=False,
+        is_c_beta=False):
     if is_reference:
       if is_ncs:
         raise Sorry("torsion restraint assignment conflict")
@@ -863,6 +864,8 @@ class _(boost.python.injector, shared_dihedral_proxy):
         raise Sorry("torsion restraint assignment conflict")
       else:
         proxy_label = "NCS torsion angle"
+    elif is_c_beta:
+      proxy_label = "C-Beta improper torsion angle"
     else:
       proxy_label = "Dihedral angle"
     _show_sorted_impl(O=self,

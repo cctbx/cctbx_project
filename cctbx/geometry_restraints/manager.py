@@ -1033,6 +1033,15 @@ class manager(object):
         by_value="residual",
         sites_cart=sites_cart, site_labels=site_labels, f=f, is_ncs=True)
       print >> f
+    if (self.generic_restraints_manager is not None):
+      if (self.generic_restraints_manager.c_beta_dihedral_proxies is not None):
+        self.generic_restraints_manager.c_beta_dihedral_proxies.\
+          show_sorted(
+            by_value="residual",
+            sites_cart=sites_cart,
+            site_labels=site_labels,
+            f=f, is_c_beta=True)
+        print >> f
     if (self.chirality_proxies is not None):
       self.chirality_proxies.show_sorted(
         by_value="residual",
