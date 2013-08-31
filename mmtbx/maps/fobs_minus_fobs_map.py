@@ -91,9 +91,21 @@ advanced
 {
   multiscale = False
     .type = bool
-    .expert_level = 3
+    .expert_level = 2
+    .short_caption = Use multiscaling method
   omit_selection = None
     .type = atom_selection
+    .short_caption = Omit atom selection
+    .help = The selected atoms will be left out of the phasing model.
+    .expert_level = 1
+  anomalous = False
+    .type = bool
+    .short_caption = Use anomalous differences instead of amplitdues
+    .help = Experimental feature: generate a difference map using the \
+      anomalous differences of each dataset instead of the amplitudes, \
+      similar to the log-likelihood gradient difference map in Phaser \
+      SAD phasing (or simple anomaloues residual map), only using two \
+      experimental datasets instead of F-obs and F-calc.
     .expert_level = 3
 }
 find_peaks_holes = False
@@ -123,15 +135,18 @@ class compute_fo_minus_fo_map (object) :
       map_cutoff=None,
       peak_search_params=None,
       write_map=True,
-      multiscale=False) :
+      multiscale=False,
+      anomalous=False) :
     if (log is None) : log = sys.stdout
     adopt_init_args(self, locals())
     fmodels = []
     for i_seq, d in enumerate(data_arrays):
       if(not silent):
         print >> log, "Data set: %d"%i_seq
-      if(d.anomalous_flag()):
+      if(d.anomalous_flag()) and (not anomalous) :
         d = d.average_bijvoet_mates()
+      elif (anomalous) :
+        assert d.anomalous_flag()
       r_free_flags = d.array(data = flex.bool(d.data().size(), False))
       fmodel = mmtbx.f_model.manager(
         xray_structure = xray_structure,
@@ -195,18 +210,31 @@ class compute_fo_minus_fo_map (object) :
         print >> log, fmt % (i_bin, d_range, compl, n_ref, cc,
           format_value("%6.4f", r))
     # map coefficients
-    diff = miller.array(
-      miller_set = f_model,
-      data       = fobs_1.data()-fobs_2.data())
     def phase_transfer(miller_array, phase_source):
       tmp = miller.array(miller_set = miller_array,
         data = flex.double(miller_array.indices().size(), 1)
         ).phase_transfer(phase_source = phase_source)
       return miller.array(miller_set = miller_array,
         data = miller_array.data() * tmp.data() )
-    self.map_coeff = phase_transfer(
-      miller_array = diff,
-      phase_source = f_model)
+    if (not anomalous) :
+      diff = miller.array(
+        miller_set = f_model,
+        data       = fobs_1.data()-fobs_2.data())
+      self.map_coeff = phase_transfer(
+        miller_array = diff,
+        phase_source = f_model)
+    else :
+      dano_1 = fobs_1.anomalous_differences()
+      dano_2 = fobs_2.anomalous_differences()
+      assert dano_1.indices().all_eq(dano_2.indices())
+      diff = miller.array(
+        miller_set = dano_1,
+        data = dano_1.data() - dano_2.data())
+      f_model_phases = f_model.average_bijvoet_mates().common_set(diff)
+      map_coeffs = phase_transfer(
+        miller_array = diff,
+        phase_source = f_model_phases)
+      self.map_coeff = map_coeffs.customized_copy(data=map_coeffs.data()/(2j))
     if(self.map_coeff.anomalous_flag()):
       self.map_coeff = map_coeff.average_bijvoet_mates()
     self.file_names = []
@@ -455,7 +483,8 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
     peak_search=params.find_peaks_holes,
     map_cutoff=params.map_cutoff,
     peak_search_params=params.peak_search,
-    multiscale=params.advanced.multiscale).file_names
+    multiscale=params.advanced.multiscale,
+    anomalous=params.advanced.anomalous).file_names
   return output_files
 
 class launcher (runtime_utils.target_with_save_result) :
