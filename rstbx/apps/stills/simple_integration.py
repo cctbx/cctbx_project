@@ -177,6 +177,9 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
     NEAR = 10
     pxlsz = self.pixel_size
     self.get_predictions_accounting_for_centering(cb_op_to_primitive,**kwargs)
+    FWMOSAICITY = self.inputai.getMosaicity()
+    DOMAIN_SZ_ANG = kwargs.get("domain_size_ang",0)
+    self.inputpd["symmetry"].show_summary(prefix="EXCURSION REPORT FWMOS= %6.4f DOMAIN= %6.1f "%(FWMOSAICITY,DOMAIN_SZ_ANG))
     from annlib_ext import AnnAdaptor
     self.cell = self.inputai.getOrientation().unit_cell()
     query = flex.double()
