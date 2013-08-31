@@ -1,0 +1,24 @@
+import libtbx.load_env
+import os
+Import("env_base", "env_etc")
+
+if env_etc.cxx11_is_available:
+  env = env_base.Clone(
+    SHLINKFLAGS=env_etc.shlinkflags,
+    LIBS=["omptbx", env_etc.libm]
+  )
+  env_etc.include_registry.append(
+    env=env,
+    paths=env_etc.cctbx_common_includes)
+
+  sources = [
+    "skeletons.cpp",
+    "dijkstra.cpp",
+    "asymmetric_map.cpp"
+  ]
+
+  if (env_etc.static_libraries): builder = env.StaticLibrary
+  else:                          builder = env.SharedLibrary
+  builder(
+    target="#lib/asymmetric_map",
+    source=sources)

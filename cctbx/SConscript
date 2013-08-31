@@ -14,7 +14,8 @@ env_etc.cctbx_common_includes = [
 ]
 
 env = env_base.Clone(
-  SHLINKFLAGS=env_etc.shlinkflags)
+  SHLINKFLAGS=env_etc.shlinkflags
+)
 env_etc.include_registry.append(
   env=env,
   paths=env_etc.cctbx_common_includes)
@@ -97,11 +98,6 @@ lib_cctbx_sources = [
   "uctbx/spoil_optimization.cpp",
   "uctbx/crystal_orientation.cpp",
 ]
-if env_etc.cxx11_is_available:
-  lib_cctbx_sources.extend([
-    "maptbx/skeletons.cpp",
-    "maptbx/dijkstra.cpp",
-  ])
 
 if (env_etc.static_libraries): builder = envlm.StaticLibrary
 else:                          builder = envlm.SharedLibrary
@@ -144,4 +140,4 @@ if (not env_etc.no_boost_python):
 
 SConscript("sgtbx/direct_space_asu/proto/SConscript")
 SConscript("math/SConscript")
-
+SConscript("maptbx/SConscript")

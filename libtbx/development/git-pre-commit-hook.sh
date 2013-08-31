@@ -58,11 +58,19 @@ then
     exit 1
 fi
 
-FILES_PATTERN='\.(cpp|cxx|c|hxx|hpp|h|py|sh|csh|txt|vimdir)$'
+# If there are whitespace errors, print the offending file names and fail.
+# This should catch trailing spaces, see core.whitespace config variable
+git diff-index --check --cached $against --
+result="$?"
+if [ "x$result" != 'x0' ]; then
+    echo "diff-index --check failed\nNOT COMMITING\n" >&2
+    exit 8
+fi
+
+allfiles=`git diff --cached --name-only`
+textfiles=`git grep -I --name-only -e "" -- $allfiles`
 FORBIDDEN='(\t| $)'
-export LANG=C
-files=`git diff --cached --name-only | grep -E "$FILES_PATTERN"`
-for f in $files; do
+for f in $textfiles; do
     echo "Verifying file: $f"
     egrep -Hn "$FORBIDDEN" "$f"  && \
         echo "\nTabs, or trailing spaces at the end of line;\nNOT COMMITING\n" \
@@ -75,6 +83,5 @@ for f in $files; do
         && echo "\nIndents are inconsisternt\n NOT COMMITING\n" \
         && exit 11
 done
-
-# If there are whitespace errors, print the offending file names and fail.
-exec git diff-index --check --cached $against --
+echo "all done"
+# vim:ts=4:sw=4:et
