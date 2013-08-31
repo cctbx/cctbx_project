@@ -2163,6 +2163,7 @@ scitbx/matrix/givens.h -text
 scitbx/matrix/householder.h -text
 scitbx/matrix/matrix_vector_operations.h -text
 scitbx/matrix/norms.h -text
+scitbx/matrix/rotation_formula.tex -text
 scitbx/matrix/row_echelon.py svneol=native#text/x-python
 scitbx/matrix/row_echelon_full_pivoting.h svneol=native#text/plain
 scitbx/matrix/row_echelon_full_pivoting_impl.h svneol=native#text/plain
