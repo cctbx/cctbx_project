@@ -1,0 +1,112 @@
+\documentclass[12pt, letterpaper]{article}
+\usepackage[english]{babel}
+\usepackage{amsmath}
+\usepackage[margin=0.7in]{geometry}
+
+  %%%%%%%%%%%%
+  % PREAMBLE %
+  %%%%%%%%%%%%
+\begin{document}
+\selectlanguage{english}
+
+\section{The rotation matrix, W, within matrix/\_\_init\_\_.py}
+  The rotation of a vector $\mathbf{r}$ through a counterclockwise angle $\theta$ about the
+  normalized axis $\mathbf{\hat{e}}$ is treated geometrically, \textit{e.g.}, by Goldstein (1980).  Eq. 4-92
+  in that text gives the Rodrigues rotation formula for the rotated vector,
+
+  \begin{equation}
+    \mathbf{r'} = \mathbf{r} \cos \theta + \mathbf{\hat{e}}(\mathbf{\hat{e}}\cdot\mathbf{r})
+    \left[ 1 - \cos \theta \right] + (\mathbf{\hat{e}} \times \mathbf{r}) \sin \theta
+    \text{.}
+    \label{eqn:rodrigues}
+  \end{equation}
+
+  Note that Eq. 1 is for a rotating vector in a fixed laboratory frame.  We want to express
+  the rotation in the form of a matrix operator $\mathbf{W}$ (Fischer \& Koch, 1996), such that
+  $\mathbf{r'} = \mathbf{W}\mathbf{r}$.  We expand the formula in $3\times3$ matrix notation and
+  rearrange:
+
+  \begin{equation}
+    \mathbf{r'} = (\mathbf{I} \cos \theta +
+    \left[
+    \begin{array}{c c c}
+       \hat{e}_{x}^2  & \hat{e}_{x}\hat{e}_{y} & \hat{e}_{x}\hat{e}_{z} \\
+       \hat{e}_{y}\hat{e}_{x}  & \hat{e}_{y}^2 & \hat{e}_{y}\hat{e}_{z} \\
+       \hat{e}_{z}\hat{e}_{x}  & \hat{e}_{z}\hat{e}_{y} & \hat{e}_{z}^2 \\
+    \end{array}
+    \right]
+    \left[ 1 - \cos \theta \right] +
+    \left[
+    \begin{array}{c c c}
+       0  & -\hat{e}_{z} & \hat{e}_{y} \\
+       \hat{e}_{z}  & 0 & -\hat{e}_{x} \\
+       -\hat{e}_{y}  & \hat{e}_{x} & 0 \\
+    \end{array}
+    \right] \sin \theta)\mathbf{r}
+    \text{,}
+    \label{eqn:expansion}
+  \end{equation}
+  where $\mathbf{I}$ is the $3\times3$ identity matrix.  Eq. 2 is identical to one given in
+  Boisen \& Gibbs (1990).  Let's simplify it a little bit by introducing notation for the
+  outer product $\mathbf{\hat{e}\otimes\hat{e}}$ and the operator representation of the
+  cross product matrix $\left[\mathbf{\hat{e}}\right]_\times$,
+
+  \begin{equation}
+   \mathbf{r'} = (\mathbf{I} \cos \theta +
+   (\mathbf{\hat{e}\otimes\hat{e}})
+   \left[ 1 - \cos \theta \right] +
+    \left[
+      \mathbf{\hat{e}}
+    \right]_{\times} \sin \theta)\mathbf{r}
+    \text{.}
+    \label{eqn:sabbrev}
+  \end{equation}
+
+
+  Now with this compact notation it's convenient to express the partial derivative of
+  the expression with respect to $\theta$:
+  \begin{equation}
+    \frac{\partial \mathbf{r'}}{\partial \theta} =
+     (-\mathbf{I} \sin \theta +
+   (\mathbf{\hat{e}\otimes\hat{e}})
+     \sin \theta  +
+    \left[
+      \mathbf{\hat{e}}
+    \right]_{\times} \cos \theta)\mathbf{r}
+    \text{.}
+    \label{eqn:gradient}
+  \end{equation}
+
+  We could also specialize Eq. 2 for \textit{e.g.} 2-fold rotations by taking $\theta=180^\circ$,
+  giving the matrix operator
+  \begin{equation}
+    \mathbf{W} =
+    \left[
+    \begin{array}{c c c}
+       2\hat{e}_{x}^{2}-1  & 2\hat{e}_{x}\hat{e}_{y} & 2\hat{e}_{x}\hat{e}_{z} \\
+       2\hat{e}_{y}\hat{e}_{x}  & 2\hat{e}_{y}^{2}-1 & 2\hat{e}_{y}\hat{e}_{z} \\
+       2\hat{e}_{z}\hat{e}_{x}  & 2\hat{e}_{z}\hat{e}_{y} & 2\hat{e}_{z}^{2}-1 \\
+    \end{array}
+    \right]
+    \text{.}
+    \label{eqn:gradient_of_rc}
+  \end{equation}
+
+  It should be stressed that $\mathbf{W}$ and $\mathbf{\hat{e}}$ are expressed in Cartesian laboratory
+  coordinates rather than crystallographic coordinates.
+
+\section{References}
+\setlength{\parindent}{0cm}
+
+  Boisen, M.B. Jr \& Gibbs, G.V. (1990).  \textit{Mathematical Crystallography, Reviews in Minerology,}
+  Vol. 15 (revised edition).  Washington, DC: Mineralogical Society of America.
+  \\
+  \newline
+  Fischer, W. \& Koch, E. (1996).  In \textit{International Tables for Crystallography, Volume A:
+  Space-Group Symmetry}, $4^{th}$ revised edition, Hahn, T., ed.  Dordrecht: Kluwer Academic Publishers.
+  \\
+  \newline
+  Goldstein, H. (1980).  \textit{Classical Mechanics}, $2^{nd}$ edition.  Reading, MA: Addison-Wesley,
+  pp. 164-166.
+
+  \end{document}
