@@ -138,4 +138,3 @@ class manager(object):
         #print "ref: %6.4f"%(time.time()-t0)
     sm.pdb_hierarchy.adopt_xray_structure(sm.xray_structure)
     sm.update(xray_structure = sm.xray_structure)
-    
