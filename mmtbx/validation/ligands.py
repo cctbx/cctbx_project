@@ -14,12 +14,19 @@ def extract_ligand_residue (hierarchy, ligand_code) :
         copies.append(residue)
   return copies
 
-def extract_ligand_atom_group (hierarchy, ligand_code) :
+def extract_ligand_atom_group (hierarchy, ligand_code, only_segid=None) :
   copies = []
   for chain in hierarchy.only_model().chains() :
     for residue_group in chain.residue_groups() :
       for atom_group in residue_group.atom_groups() :
         if (atom_group.resname == ligand_code) :
+          if (only_segid is not None) :
+            have_segid = True
+            for atom in atom_group.atoms() :
+              if (atom.segid.strip() != only_segid.strip()) :
+                have_segid = False
+                break
+            if (not have_segid) : continue
           copies.append(atom_group)
   return copies
 
@@ -254,6 +261,7 @@ def validate_ligands (
     pdb_hierarchy,
     fmodel,
     ligand_code,
+    only_segid=None,
     reference_structure=None) :
   assert (0 < len(ligand_code) <= 3)
   two_fofc_map = fmodel.map_coefficients(map_type="2mFo-DFc",
@@ -268,7 +276,8 @@ def validate_ligands (
     fill_missing=False,
     merge_anomalous=True).fft_map(
       resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
-  ligands = extract_ligand_atom_group(pdb_hierarchy, ligand_code)
+  ligands = extract_ligand_atom_group(pdb_hierarchy, ligand_code,
+    only_segid=only_segid)
   if (len(ligands) == 0) :
     return None
     #raise Sorry("No residues named '%s' found." % ligand_code)
