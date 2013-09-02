@@ -452,14 +452,21 @@ def get_final_maps_and_cc (
     print >> log, "Wrote %s" % params.output_map
   return final_cc
 
-def extract_ligand_residues (pdb_hierarchy, ligand_code) :
+def extract_ligand_residues (pdb_hierarchy, ligand_code, only_segid=None) :
   assert (len(pdb_hierarchy.models()) == 1)
   ligands = []
   for chain in pdb_hierarchy.models()[0].chains() :
     for residue_group in chain.residue_groups() :
       for atom_group in residue_group.atom_groups() :
         if (atom_group.resname == ligand_code) :
-          ligands.append(atom_group)
+          have_segid = True
+          if (only_segid is not None) :
+            for atom in atom_group.atoms() :
+              if (atom.segid != only_segid) :
+                have_segid = False
+                break
+          if (have_segid) :
+            ligands.append(atom_group)
   return ligands
 
 def combine_ligands_and_hierarchy (pdb_hierarchy, ligands) :
@@ -496,6 +503,7 @@ def apply_ligand_ncs (
     fmodel,
     params=None,
     add_new_ligands_to_pdb=False,
+    only_segid=None,
     log=None) :
   if (log is None) : log = sys.stdout
   if (params is None) :
@@ -513,7 +521,8 @@ def apply_ligand_ncs (
     for k, group in enumerate(ncs_group) :
       group.show_summary(log)
   print "Looking for ligands named %s..." % params.ligand_code
-  ligands = extract_ligand_residues(pdb_hierarchy, params.ligand_code)
+  ligands = extract_ligand_residues(pdb_hierarchy, params.ligand_code,
+    only_segid=only_segid)
   if (len(ligands) == 0) :
     raise Sorry("No ligands found!")
   pdb_hierarchy.atoms().reset_i_seq()
@@ -548,8 +557,9 @@ def apply_ligand_ncs (
         xray_structure=xrs_new,
         update_f_calc=True,
         update_f_mask=True)
-  final_ligands = extract_ligand_residues(pdb_hierarchy, params.ligand_code)
-  final_cc = get_final_maps_and_cc (
+  final_ligands = extract_ligand_residues(pdb_hierarchy, params.ligand_code,
+    only_segid=only_segid)
+  final_cc = get_final_maps_and_cc(
     fmodel=fmodel,
     ligands=final_ligands,
     params=params,

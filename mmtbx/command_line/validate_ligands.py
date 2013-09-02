@@ -12,6 +12,8 @@ ligand_code = None
   .multiple = True
 reference_structure = None
   .type = path
+only_segid = None
+  .type = str
 verbose = False
   .type = bool
 """
@@ -43,12 +45,14 @@ electron density values/CC.
     raise Sorry("Ligand code required!")
   make_sub_header("Validating ligands", out=out)
   for ligand_code in params.ligand_code :
-    mmtbx.validation.ligands.validate_ligands(
+    validations = mmtbx.validation.ligands.validate_ligands(
       pdb_hierarchy=cmdline.pdb_hierarchy,
       fmodel=cmdline.fmodel,
       ligand_code=ligand_code,
       reference_structure=params.reference_structure,
-      out=out)
+      only_segid=params.only_segid)
+    if (validations is None) :
+      raise Sorry("No ligands named '%s' found." % ligand_code)
     mmtbx.validation.ligands.show_validation_results(validations=validations,
       out=out,
       verbose=params.verbose)
