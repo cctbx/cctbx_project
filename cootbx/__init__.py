@@ -33,6 +33,7 @@ def create_refinement_view_script (
   f = open(coot_script_name, "w")
   print >> f, "import coot"
   print >> f, "import os"
+  write_disable_nomenclature_errors(f)
   zoom_ligand_script = libtbx.env.find_in_repositories(
     relative_path="cctbx_project/cootbx/simple_zoom_list.py",
     test=os.path.isfile)
