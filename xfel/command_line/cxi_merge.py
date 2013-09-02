@@ -661,6 +661,9 @@ class scaling_manager (intensity_data) :
         ref_bravais_type=self.ref_bravais_type,
         params=self.params,
         out=out)
+      if result is None: # load_result can return None for many reasons
+        return null_data(
+        file_name=file_name, log_out=out.getvalue(), low_signal=True)
     except OutlierCellError, e :
       print >> out, str(e)
       return null_data(
@@ -841,7 +844,9 @@ class scaling_manager (intensity_data) :
     # XXX This is backwards, really.
     if (N * sum_xx - sum_x**2)==0:
       print "Skipping frame with",N,sum_xx,sum_x**2
-      return None
+      return null_data(file_name=file_name,
+                       log_out=out.getvalue(),
+                       low_signal=True)
     slope = (N * sum_xy - sum_x * sum_y) / (N * sum_xx - sum_x**2)
     offset = (sum_xx * sum_y - sum_x * sum_xy) / (N * sum_xx - sum_x**2)
     corr  = (N * sum_xy - sum_x * sum_y) / (math.sqrt(N * sum_xx - sum_x**2) *
