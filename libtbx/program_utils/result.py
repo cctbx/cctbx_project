@@ -69,9 +69,12 @@ class program_result (object) :
     for stat_name in stat_keys :
       stat_value = self.get_statistic(stat_name)
       if (stat_value is not None) :
-        stat_label = statistics_info.keys_and_labels.get(stat_name, stat_name)
-        format = statistics_info.get_format(stat_label)
-        formatted.append((stat_label, format % stat_value))
+        if isinstance(stat_value, str) :
+          formatted.append((stat_label, stat_value))
+        else :
+          stat_label = statistics_info.keys_and_labels.get(stat_name, stat_name)
+          format = statistics_info.get_format(stat_label)
+          formatted.append((stat_label, format % stat_value))
     return formatted
 
   def get_pdb_file_caption (self) :
