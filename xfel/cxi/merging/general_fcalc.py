@@ -7,6 +7,15 @@ import sys
 import math
 
 def run (params) :
+  if params.model[-4:]==".mtz": # assume *.mtz has Iobs and was created in previous step from mark1 algorithm
+    from iotbx import mtz
+    data_SR = mtz.object(params.model)
+    for array in data_SR.as_miller_arrays():
+       this_label = array.info().label_string().lower()
+       if this_label.find("iobs")>=0:
+         return array.as_intensity_array()
+    raise Exception("mtz did not contain expected label Iobs")
+
   pdb_in = file_reader.any_file(params.model, force_type="pdb")
   pdb_in.assert_file_type("pdb")
   xray_structure = pdb_in.file_object.xray_structure_simple()
@@ -18,6 +27,8 @@ def run (params) :
   # even if the observed unit cell differs slightly from the reference.
   ISO_ALLOWANCE = 0.1 # isomorphous recip cell volume changes no more than 10%
   params2.high_resolution = params.d_min / math.pow( (1.+ISO_ALLOWANCE),(1./3.) )
+  if params.d_max is not None:
+    params2.low_resolution = params.d_max
   params2.output.type = "real"
   if (params.include_bulk_solvent) :
     params2.fmodel.k_sol = params.k_sol
