@@ -1,8 +1,9 @@
 #ifndef DIRECT_SUMMATION_CUH
 #define DIRECT_SUMMATION_CUH
 
-#include <cudatbx/scattering/direct_summation.h>
 #include <cudatbx/cuda_base.cuh>
+#include <cudatbx/math/reduction.cuh>
+#include <cudatbx/scattering/direct_summation.h>
 #include <cudatbx/scattering/form_factors.cuh>
 
 /* ============================================================================
@@ -484,35 +485,11 @@ namespace scattering {
   // --------------------------------------------------------------------------
 
   template <typename floatType>
-  __global__ void collect_saxs_kernel
-  (const int n_q, const int n_lattice, floatType* weights,
-   floatType* sf_real, floatType* sf_imag,
-   floatType* workspace, const int padded_n_workspace) {
-    
-    int i = blockDim.x * blockIdx.x + threadIdx.x;
-    
-    // sum up lattice points for each q
-    // since the number of points is small, this implementaion is not optimized
-    floatType I_sum = 0.0;
-    int l_start = i*n_lattice;
-    if (i < n_q) {
-      for (int j=0; j<n_lattice; j++) {
-        I_sum += weights[j] * workspace[l_start + j];
-      }
-
-      // transfer final result to global memory
-      sf_real[i] = I_sum;
-      sf_imag[i] = 0.0;
-    }
-  }
-
-  template <typename floatType>
   __global__ void collect_solvent_saxs_kernel
   (const int n_q, const int n_lattice, floatType* weights,
    floatType* sf_real, floatType* sf_imag,
    floatType* workspace, const int padded_n_workspace) {
     
-    int i = blockDim.x * blockIdx.x + threadIdx.x;
     int current_j, n_total;
     floatType real_sum, imag_sum;
     __shared__ floatType p_real[threads_per_block];
@@ -548,47 +525,6 @@ namespace scattering {
         workspace[current_j] = real_sum * real_sum + imag_sum * imag_sum;
       }
     }
-
-    // calculate weighted sum and transfer to global memory
-    // copy of collect_saxs_kernel for speed
-    floatType I_sum = 0.0;
-    int l_start = i*n_lattice;
-    if (i < n_q) {
-      for (int j=0; j<n_lattice; j++) {
-        I_sum += weights[j] * workspace[l_start + j];
-      }
-      sf_real[i] = I_sum;
-      sf_imag[i] = 0.0;
-    }
-
-    // // since the number of points is small, this implementaion is not optimized
-    // floatType I_sum = 0.0;
-    // int l_start = i*n_lattice;
-    // floatType p_real = 0.0;
-    // floatType p_imag = 0.0;
-    // floatType x_real = 0.0;
-    // floatType x_imag = 0.0;
-    // floatType bl_real = 0.0;
-    // floatType bl_imag = 0.0;
-    // floatType real_sum = 0.0;
-    // floatType imag_sum = 0.0;
-    // if (i < n_q) {
-    //   for (int j=0; j<n_lattice; j++) {
-    //     p_real =  workspace[  padded_n_workspace + l_start + j];
-    //     p_imag =  workspace[2*padded_n_workspace + l_start + j];
-    //     x_real =  workspace[3*padded_n_workspace + l_start + j];
-    //     x_imag =  workspace[4*padded_n_workspace + l_start + j];
-    //     bl_real = workspace[5*padded_n_workspace + l_start + j];
-    //     bl_imag = workspace[6*padded_n_workspace + l_start + j];
-    //     real_sum = p_real + dc_c1 * x_real + dc_c2 * bl_real;
-    //     imag_sum = p_imag + dc_c1 * x_imag + dc_c2 * bl_imag;
-    //     I_sum += weights[j] * (real_sum * real_sum + imag_sum * imag_sum);
-    //   }
-
-    //   // transfer final result to global memory
-    //   sf_real[i] = I_sum;
-    //   sf_imag[i] = 0.0;
-    // }
   }
   
   /* ==========================================================================

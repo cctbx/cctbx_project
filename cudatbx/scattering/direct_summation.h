@@ -87,6 +87,7 @@ namespace scattering {
     void run_saxs_kernel();
     void run_solvent_saxs_kernel();
     void run_collect_solvent_saxs_kernel(const double&,const double&);
+    void sum_over_lattice();
 
   private:
     // functions for reorganizing data
