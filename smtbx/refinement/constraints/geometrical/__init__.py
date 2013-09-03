@@ -26,8 +26,16 @@ class any(object):
     """ finalise the construction with the scatterer index range [first, last)
     """
 
-  def __eq__(self, other):
-    return self.__dict__ == other.__dict__
+  def get_parameter_set(self, reparametrisation):
+    rv_l = []
+    for s in self.constrained_site_indices: rv_l.append("%s_xyz" %s)
+    rv = set(rv_l)
+    if len(rv_l) != len(rv) or len(reparametrisation.constrained_parameters&rv) != 0:
+      print("Redundant atoms in %s - '%s' skipping" %(
+        self.__class__.__name__,
+        reparametrisation.format_scatter_list(self.constrained_site_indices)))
+      return None
+    return rv
 
   def __repr__(self):
     return "%s(\n%s)" % (self.__class__.__name__,

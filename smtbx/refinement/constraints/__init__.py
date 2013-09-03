@@ -105,6 +105,7 @@ class reparametrisation(ext.reparametrisation):
     # bookkeeping of fixed angles and distances - mainly for CIF output
     self.fixed_distances = {}
     self.fixed_angles = {}
+    self.fixed_dihedral_angles = {}
 
     self.structure = xs = structure
     self.connectivity_table = connectivity_table
@@ -132,7 +133,11 @@ class reparametrisation(ext.reparametrisation):
           directions[d[1]] = ext.normal_direction(sites)
       self.directions = directions
 
+    self.constrained_parameters = set()
     for constraint in constraints:
+      c_params = constraint.get_parameter_set(self)
+      if c_params is None: continue
+      self.constrained_parameters |= c_params
       constraint.add_to(self)
 
     for i_sc in xrange(len(self.asu_scatterer_parameters)):
@@ -267,6 +272,13 @@ class reparametrisation(ext.reparametrisation):
       raise "Undefined direction: '" + id_ + "'"
     return res
 
+  def format_scatter_list(self, sl):
+    scatterers = self.structure.scatterers()
+    rv = []
+    for i in sl:
+      rv.append("%s" %scatterers[i].label)
+    return " ".join(rv)
+      
   def parameter_map(self):
     rv = xray.parameter_map(self.structure.scatterers())
     if self.twin_fractions is not None:

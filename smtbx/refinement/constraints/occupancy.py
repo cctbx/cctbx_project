@@ -12,9 +12,18 @@ class dependent_occupancy(object):
     self.as_var = var_refs
     self.as_one_minus_var = var_minus_one_refs
 
-  def __eq__(self, other):
-    if self.indices != other.indices:  return False
-    return True
+  def get_parameter_set(self, reparametrisation):
+    x = [sc[0] for sc in self.as_var] + [sc[0] for sc in self.as_one_minus_var] 
+    rv_l = []
+    for s in x:
+      rv_l.append("%s_o" %s)
+    rv = set(rv_l)
+    if len(rv_l) != len(rv):
+      print("Redundant atoms in %s - '%s' skipping" %(
+        self.__class__.__name__,
+        reparametrisation.format_scatter_list(x)))
+      return None
+    return rv
 
   def add_to(self, reparametrisation):
     scatterers = reparametrisation.structure.scatterers()
