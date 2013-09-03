@@ -1114,6 +1114,8 @@ void diffimage::imgresolution()
 
         for (list<spot>::const_iterator p = spots.begin();
                         p != spots.end(); p++) {
+                if (p->peakresol <= 0)
+                        throw scitbx::error("Spot resolution is not valid. Check distance and wavelength");
                 spotresol.push_back(p->peakresol);
 
                 double dx = p->peak.x - beam_x;
