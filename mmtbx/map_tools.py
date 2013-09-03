@@ -431,7 +431,7 @@ class ncs_averager (object) :
     from cctbx import maptbx
     from scitbx.array_family import flex
     if (map_coeffs.anomalous_flag()) :
-      map_coeffs = coeffs.average_bijvoet_mates()
+      map_coeffs = map_coeffs.average_bijvoet_mates()
     fft_map = map_coeffs.fft_map(
       symmetry_flags=maptbx.use_space_group_symmetry,
       resolution_factor=self.params.resolution_factor)
