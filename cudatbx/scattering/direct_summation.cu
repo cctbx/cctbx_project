@@ -1,5 +1,5 @@
 #include <cudatbx/scattering/direct_summation.cuh>
-
+#include <cudatbx/cuda_utilities.cuh>
 namespace cudatbx {
 namespace scattering {
 
@@ -175,7 +175,7 @@ namespace scattering {
     h_weights = new fType[size_rt];
     h_rt = new fType[3*size_rt];
     for (int i=0; i<n_rt; i++) {
-      h_weights[i] = fType(lattice_weights[i]);
+      h_weights[i] = fType(lattice_weights[i]/n_rt);
       for (int j=0; j<3; j++) {
         h_rt[j*size_rt + i] = fType(lattice[j*n_rt + i]);
       }
@@ -510,10 +510,6 @@ namespace scattering {
       (d_scattering_type, d_xyz, d_solvent, n_xyz, padded_n_xyz,
        n_h, n_rt,
        d_workspace, workspace_size);
-    collect_saxs_kernel<fType><<<blocks_per_grid,threads_per_block>>>
-      (n_h, n_rt, d_weights,
-       d_real, d_imag,
-       d_workspace, workspace_size);
   }
 
   void cudatbx::scattering::direct_summation::run_solvent_saxs_kernel() {
@@ -549,6 +545,15 @@ namespace scattering {
       (n_h, n_rt, d_weights,
        d_real, d_imag,
        d_workspace, workspace_size);
+  }
+
+  void cudatbx::scattering::direct_summation::sum_over_lattice() {
+    int blocks_per_grid = (n_rt + threads_per_block - 1)/threads_per_block;
+    for (int i=0; i<n_h; i++) {
+      cudatbx::math::weighted_sum_kernel<fType>
+        <<<blocks_per_grid,threads_per_block,threads_per_block*sizeof(fType)>>>
+        (&d_workspace[i*n_rt],d_weights,n_rt,&d_real[i]);
+    }
   }
 
   /* --------------------------------------------------------------------------

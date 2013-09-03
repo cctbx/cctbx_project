@@ -340,6 +340,7 @@ cudatbx/cufft/tst_ext.py -text
 cudatbx/libtbx_config -text
 cudatbx/math/__init__.py -text
 cudatbx/math/factorials.cuh -text
+cudatbx/math/reduction.cuh -text
 cudatbx/math/special_functions/__init__.py -text
 cudatbx/math/special_functions/special_functions_ext.cpp -text
 cudatbx/math/special_functions/spherical_bessel_jn.cu -text

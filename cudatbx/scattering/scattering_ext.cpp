@@ -67,6 +67,8 @@ namespace cudatbx { namespace scattering {
              &cudatbx::scattering::direct_summation::run_solvent_saxs_kernel)
         .def("run_collect_solvent_saxs_kernel",
              &cudatbx::scattering::direct_summation::run_collect_solvent_saxs_kernel)
+        .def("sum_over_lattice",
+             &cudatbx::scattering::direct_summation::sum_over_lattice)
         ;
     }
   };
