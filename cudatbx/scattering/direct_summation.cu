@@ -1,5 +1,5 @@
 #include <cudatbx/scattering/direct_summation.cuh>
-#include <cudatbx/cuda_utilities.cuh>
+
 namespace cudatbx {
 namespace scattering {
 
