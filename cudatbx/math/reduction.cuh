@@ -31,37 +31,34 @@ namespace math {
 
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int tid = threadIdx.x;
-    floatType s = floatType(0.0);
+
+    // set initial sum to zero
+    if (tid == 0) {
+      *sum = floatType(0.0);
+    }
     
     // dynamically allocate shared memory (# of threads * sizeof(floatType))
     extern __shared__ floatType workspace[];
     
-    for (int j=0; j<n_values; j+=blockDim.x) {
-      // transfer chunk from global memory to shared memory and apply weight
-      if (i < n_values) {
-        workspace[tid] = weights[i] * values[i];
-      } else {
-        workspace[tid] = floatType(0.0);
+    // transfer chunk from global memory to shared memory and apply weight
+    if (i < n_values) {
+      workspace[tid] = weights[i] * values[i];
+    } else {
+      workspace[tid] = floatType(0.0);
+    }
+    __syncthreads();
+    
+    // do pairwise summing until the first element contains the block sum
+    for (int cycle=blockDim.x/2; cycle>0; cycle=cycle/2) {
+      if (tid < cycle) {
+        workspace[tid] += workspace[tid + cycle];
       }
       __syncthreads();
-      
-      // do pairwise summing until the first element contains the block sum
-      for (int cycle=blockDim.x/2; cycle>0; cycle=cycle/2) {
-        if (i < cycle) {
-          workspace[tid] += workspace[tid + cycle];
-        }
-        __syncthreads();
-      }
-      
-      // add sum from block to total sum
-      if (i == 0) {
-        s += workspace[0];
-      }
     }
-
-    // transfer total sum back to global memory (array or single value)
-    if (i == 0) {
-      *sum = s;
+    
+    // add sum from block to total sum
+    if (tid == 0) {
+      atomicAdd(sum,workspace[0]);
     }
   }
   // ==========================================================================
