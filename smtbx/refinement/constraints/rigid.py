@@ -117,7 +117,7 @@ class rigid_riding_expandable_group(object):
   def get_parameter_set(self, reparametrisation):
     x = [self.pivot] + list(self.indices)
     rv_l = []
-    for s in x: x[i] = "%s_xyz" %s
+    for s in x: rv_l.append("%s_xyz" %s)
     rv = set(rv_l)
     if len(rv_l) != len(rv) or len(reparametrisation.constrained_parameters&rv) != 0:
       print("Redundant atoms in %s - '%s' skipping" %(
