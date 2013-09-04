@@ -80,26 +80,30 @@ class RingSettingsPanel(wx.Panel):
             0, wx.RIGHT | wx.TOP | wx.BOTTOM | wx.ALIGN_CENTER_VERTICAL, 5)
     self.Bind(EVT_FLOATSPIN, self.OnSpin, self.spinner)
 
+    self.auto = wx.Button(self, label="Auto fit")
+    self.Bind(wx.EVT_BUTTON, self.OnAutoFit, self.auto)
+    box.Add(self.auto, 0, wx.RIGHT | wx.TOP | wx.BOTTOM | wx.ALIGN_CENTER_VERTICAL, 5)
+
     sizer.Add(box)
 
     # Centering controls.
     box = wx.BoxSizer(wx.HORIZONTAL)
 
-    spinner_fast = FloatSpin(
+    self.spinner_fast = FloatSpin(
       self, digits=self.digits, name="fast_ctrl", value=self._center[0])
-    box.Add(spinner_fast,
+    box.Add(self.spinner_fast,
             0, wx.RIGHT | wx.TOP | wx.BOTTOM | wx.ALIGN_CENTER_VERTICAL, 5)
     box.Add(wx.StaticText(self, label="Center fast"),
             0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 5)
-    self.Bind(EVT_FLOATSPIN, self.OnSpinCenter, spinner_fast)
+    self.Bind(EVT_FLOATSPIN, self.OnSpinCenter, self.spinner_fast)
 
-    spinner_slow = FloatSpin(
+    self.spinner_slow = FloatSpin(
       self, digits=self.digits, name="slow_ctrl", value=self._center[1])
-    box.Add(spinner_slow,
+    box.Add(self.spinner_slow,
             0, wx.RIGHT | wx.TOP | wx.BOTTOM | wx.ALIGN_CENTER_VERTICAL, 5)
     box.Add(wx.StaticText(self, label="Center slow"),
             0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 5)
-    self.Bind(EVT_FLOATSPIN, self.OnSpinCenter, spinner_slow)
+    self.Bind(EVT_FLOATSPIN, self.OnSpinCenter, self.spinner_slow)
 
     sizer.Add(box)
 
@@ -120,6 +124,51 @@ class RingSettingsPanel(wx.Panel):
 
     self.DrawRing()
 
+  def OnAutoFit(self, event):
+    import math
+    jitter = 6
+
+    beam_pixel_fast, beam_pixel_slow = \
+        self._pyslip.tiles.raw_image.get_beam_center_pixels_fast_slow()
+
+    beam_pixel_fast += self._center[0]
+    beam_pixel_slow += self._center[1]
+
+    db = self._pyslip.tiles.raw_image.detectorbase
+
+    def PointsOnCircle(center, radius, count):
+      for r in range(count):
+        t = (r/count)*2*math.pi
+        yield (center[0] + (radius*math.cos(t)),
+               center[1] + (radius*math.sin(t)))
+
+    best = float("-inf")
+    bestc = [self._center[0],self._center[1]]
+    bestr = self._radius
+
+    for j in range(-jitter, jitter, 1):
+      j /= 2
+      for i in range(-jitter, jitter, 1):
+        i /= 2
+        for r in range(-jitter, jitter, 1):
+          r /= 2
+          total = 0.0
+          for point in PointsOnCircle((beam_pixel_fast+i,beam_pixel_slow+j),self._radius+r,360):
+            total += db.get_pixel_intensity((point[1],point[0]))
+          if total > best:
+            best = total
+            bestc = [self._center[0]+i,self._center[1]+j]
+            bestr = self._radius+r
+          print "r: % 3.1f, i: % 3.1f, j: % 3.1f, best: %f"%(r, i, j, best)
+    print "DONE", bestc, bestr
+    self._radius = bestr
+    self._center = bestc
+
+    self.spinner.SetValue(bestr)
+    self.spinner_fast.SetValue(bestc[0])
+    self.spinner_slow.SetValue(bestc[1])
+
+    self.DrawRing()
 
   def OnSpin(self, event):
     # Keep slider and spinner synchronized.  XXX OnSpinRadius()?
