@@ -173,12 +173,12 @@ class _Tiles(object):
     def get_initial_instrument_centering_within_picture_as_lon_lat(self):
       import sys
       if sys.platform.lower().find("linux") >= 0:
-        if self.raw_image.__class__.__name__.find("CSPadDetector") >= 0:
+        if self.raw_image.__class__.__name__.find('FormatPYmultitile') >= 0:
           return 0.,0.
         else:
           return self.center_x_lon-self.extent[0], self.center_y_lat-self.extent[3]
       else:
-        if self.raw_image.__class__.__name__.find("CSPadDetector") >= 0:
+        if self.raw_image.__class__.__name__.find('FormatPYmultitile') >= 0:
           return self.extent[0], self.extent[3]
         else:
           return self.center_x_lon, self.center_y_lat
