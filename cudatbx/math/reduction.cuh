@@ -28,8 +28,9 @@ namespace math {
   __global__ void weighted_sum_kernel
   (const floatType * values, const floatType * weights, const int n_values,
    floatType * sum) {
-    
-    int cycle, current_j;
+
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int tid = threadIdx.x;
     floatType s = floatType(0.0);
     
     // dynamically allocate shared memory (# of threads * sizeof(floatType))
@@ -37,34 +38,29 @@ namespace math {
     
     for (int j=0; j<n_values; j+=blockDim.x) {
       // transfer chunk from global memory to shared memory and apply weight
-      current_j = j + threadIdx.x;
-      if (current_j < n_values) {
-        workspace[threadIdx.x] = weights[current_j] * values[current_j];
+      if (i < n_values) {
+        workspace[tid] = weights[i] * values[i];
       } else {
-        workspace[threadIdx.x] = floatType(0.0);
+        workspace[tid] = floatType(0.0);
       }
       __syncthreads();
       
       // do pairwise summing until the first element contains the block sum
-      cycle = blockDim.x/2;
-      while (cycle >= 1) {
-        if (threadIdx.x < cycle) {
-          workspace[threadIdx.x] = workspace[threadIdx.x] +
-            workspace[threadIdx.x + cycle];
+      for (int cycle=blockDim.x/2; cycle>0; cycle=cycle/2) {
+        if (i < cycle) {
+          workspace[tid] += workspace[tid + cycle];
         }
-        cycle = cycle/2;
         __syncthreads();
       }
       
       // add sum from block to total sum
-      if (threadIdx.x == 0) {
+      if (i == 0) {
         s += workspace[0];
       }
-      __syncthreads();
     }
 
     // transfer total sum back to global memory (array or single value)
-    if (threadIdx.x == 0) {
+    if (i == 0) {
       *sum = s;
     }
   }
