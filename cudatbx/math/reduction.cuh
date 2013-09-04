@@ -33,7 +33,7 @@ namespace math {
     int tid = threadIdx.x;
 
     // set initial sum to zero
-    if (tid == 0) {
+    if (i == 0) {
       *sum = floatType(0.0);
     }
     
