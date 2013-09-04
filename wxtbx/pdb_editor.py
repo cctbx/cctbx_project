@@ -988,7 +988,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         n_alt_residues += 1
         for ag in atom_groups[1:] :
           n_alt_atoms += len(ag.atoms())
-    if (len(n_alt_atoms) == 0) :
+    if (n_alt_atoms == 0) :
       raise Sorry("No alternate conformations found in this chain.")
     confirm_action(("There are %d residues with alternate conformations; "+
       "removing these will delete %d atoms from the model.  Are you sure "+
