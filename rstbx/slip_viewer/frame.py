@@ -26,7 +26,7 @@ class chooser_wrapper:
   def __str__(self):
     return "%s [%d]"%(self.path,self.index)
 
-  def get_detector_base(self):
+  def get_detectorbase(self):
     return self.image_set.get_detectorbase(self.index)
 
 from rstbx.slip_viewer.slip_display import AppFrame
@@ -172,22 +172,12 @@ class XrayFrame (AppFrame,XFBaseClass) :
     """
     from iotbx.detectors.detectorbase import DetectorImageBase
 
-    if (isinstance(file_name_or_data, dict)):
-      img = rv_image(file_name_or_data)
-      self.SetTitle(
-        file_name_or_data.get("TIMESTAMP", "No timestamp available"))
-    elif (isinstance(file_name_or_data, str)):
+    try:
+      img = rv_image(file_name_or_data.get_detectorbase())
+    except AttributeError:
       img = rv_image(os.path.abspath(file_name_or_data))
-      self.SetTitle(file_name_or_data)
-    elif (isinstance(file_name_or_data, DetectorImageBase)):
-      img = rv_image(file_name_or_data)
-      self.SetTitle(file_name_or_data.filename)
-    elif (isinstance(file_name_or_data, chooser_wrapper)):
-      img = rv_image(file_name_or_data.get_detector_base())
-      self.SetTitle(str(file_name_or_data))
-    else:
-      img = rv_image(os.path.abspath(file_name_or_data.encode("ascii")))
-      self.SetTitle(file_name_or_data)
+
+    self.SetTitle(str(file_name_or_data))
 
     # Update the selection in the chooser.
     i = self.add_file_name_or_data(file_name_or_data)

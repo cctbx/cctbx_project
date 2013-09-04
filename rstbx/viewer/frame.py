@@ -129,13 +129,23 @@ class XrayFrame (wx.Frame) :
     Otherwise, get_key() returns @c None.
     """
 
-    if (type(file_name_or_data) is dict and "TIMESTAMP" in file_name_or_data) :
+    try:
       return file_name_or_data["TIMESTAMP"]
-    if (os.path.isfile(file_name_or_data)) :
-      if (type(file_name_or_data) is str) :
-        return os.path.abspath(file_name_or_data)
-      else :
-        return os.path.abspath(file_name_or_data.encode("ascii"))
+    except TypeError, e: pass
+
+    try:
+      return file_name_or_data.get_image_file()
+    except AttributeError, e: pass
+
+    try:
+      return os.path.abspath(file_name_or_data)
+    except TypeError, e: pass
+
+    try:
+      return os.path.abspath(file_name_or_data.encode("ascii"))
+    except TypeError, e: pass
+    except AttributeError, e: pass
+
     return None
 
   def load_image (self, file_name_or_data) :
