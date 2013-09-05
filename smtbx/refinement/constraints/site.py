@@ -11,8 +11,8 @@ class shared_site(object):
     self.indices = ind_sequence
 
   @property
-  def parameter_set(self):
-    return set((idx, 'site') for idx in self.indices[1:])
+  def constrained_parameters(self):
+    return tuple((idx, 'site') for idx in self.indices[1:])
 
   def add_to(self, reparametrisation):
     scatterers = reparametrisation.structure.scatterers()

@@ -13,8 +13,8 @@ class dependent_occupancy(object):
     self.as_one_minus_var = var_minus_one_refs
 
   @property
-  def parameter_set(self):
-    return set((sc[0], 'occupancy')
+  def constrained_parameters(self):
+    return tuple((sc[0], 'occupancy')
                for sc in itertools.chain(self.as_var, self.as_one_minus_var))
 
   def add_to(self, reparametrisation):

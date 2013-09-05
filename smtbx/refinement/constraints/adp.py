@@ -18,8 +18,8 @@ class u_iso_proportional_to_pivot_u_eq(object):
       setattr(self, attr, value)
 
   @property
-  def parameter_set(self):
-    return set(((self.u_iso_scatterer_idx, 'U'),))
+  def constrained_parameters(self):
+    return tuple(((self.u_iso_scatterer_idx, 'U'),))
 
   def add_to(self, reparametrisation):
     scatterers = reparametrisation.structure.scatterers()
@@ -52,8 +52,8 @@ class shared_u(object):
     self.indices = ind_sequence
 
   @property
-  def parameter_set(self):
-    return set((idx, "U") for idx in self.indices[1:])
+  def constrained_parameters(self):
+    return tuple((idx, "U") for idx in self.indices[1:])
 
   def add_to(self, reparametrisation):
     scatterers = reparametrisation.structure.scatterers()
@@ -94,8 +94,8 @@ class shared_rotated_u(object):
     self.refine_angle = bool(refine_angle)
 
   @property
-  def parameter_set(self):
-    return set(((self.ind_atom, 'U'),))
+  def constrained_parameters(self):
+    return tuple(((self.ind_atom, 'U'),))
 
   def add_to(self, reparametrisation):
     scatterers = reparametrisation.structure.scatterers()
