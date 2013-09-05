@@ -20,17 +20,9 @@ class rigid_pivoted_rotatable_group(object):
     self.sizeable = sizeable
     self.rotatable = rotatable
 
-  def get_parameter_set(self, reparametrisation):
-    x = [self.pivot] + list(self.indices)
-    rv_l = []
-    for s in x: rv_l.append("%s_xyz" %s)
-    rv = set(rv_l)
-    if len(rv_l) != len(rv) or len(reparametrisation.constrained_parameters&rv) != 0:
-      print("Redundant atoms in %s - '%s' skipping" %(
-        self.__class__.__name__,
-        reparametrisation.format_scatter_list(x)))
-      return None
-    return rv
+  @property
+  def parameter_set(self):
+    return set((idx, 'site') for idx in self.indices)
 
   def add_to(self, reparametrisation):
     scatterers = reparametrisation.structure.scatterers()
@@ -65,17 +57,9 @@ class rigid_rotatable_expandable_group(object):
     self.sizeable = sizeable
     self.rotatable = rotatable
 
-  def get_parameter_set(self, reparametrisation):
-    x = [self.pivot] + list(self.indices)
-    rv_l = []
-    for s in x: rv_l.append("%s_xyz" %s)
-    rv = set(rv_l)
-    if len(rv_l) != len(rv) or len(reparametrisation.constrained_parameters&rv) != 0:
-      print("Redundant atoms in %s - '%s' skipping" %(
-        self.__class__.__name__,
-        reparametrisation.format_scatter_list(x)))
-      return None
-    return rv
+  @property
+  def parameter_set(self):
+    return set((idx, 'site') for idx in self.indices)
 
   def add_to(self, reparametrisation):
     scatterers = reparametrisation.structure.scatterers()
@@ -114,17 +98,9 @@ class rigid_riding_expandable_group(object):
     self.indices = ind_sequence
     self.sizeable = sizeable
 
-  def get_parameter_set(self, reparametrisation):
-    x = [self.pivot] + list(self.indices)
-    rv_l = []
-    for s in x: rv_l.append("%s_xyz" %s)
-    rv = set(rv_l)
-    if len(rv_l) != len(rv) or len(reparametrisation.constrained_parameters&rv) != 0:
-      print("Redundant atoms in %s - '%s' skipping" %(
-        self.__class__.__name__,
-        reparametrisation.format_scatter_list(x)))
-      return None
-    return rv
+  @property
+  def parameter_set(self):
+    return set((idx, 'site') for idx in self.indices)
 
   def add_to(self, reparametrisation):
     scatterers = reparametrisation.structure.scatterers()
@@ -247,22 +223,16 @@ class same_group(object):
     self.fix_u = fix_u
     self.angles = angles
 
-  def get_parameter_set(self, reparametrisation):
-    x = []
-    for g in groups[1:]: x += list(g)
-    rv_l = []
-    for s in enumerate(x):
-      if self.fix_xyz:
-        rv_l.append("%s_xyz" %s)
-      if self.fix_u:
-        rv_l.append("%s_u" %s)
-    rv = set(rv_l)
-    if len(rv_l) != len(rv) or len(reparametrisation.constrained_parameters&rv) != 0:
-      print("Redundant atoms in %s - '%s' skipping" %(
-        self.__class__.__name__,
-        reparametrisation.format_scatter_list(x)))
-      return None
-    return rv
+  @property
+  def parameter_set(self):
+    result = set()
+    for g in itertools.islice(groups, 1):
+      for i in g:
+        if self.fix_xyz:
+          result.add((i, 'site'))
+        if self.fix_u:
+          result.add((i, 'U'))
+    return result
 
   def add_to(self, reparametrisation):
     if not self.fix_u and not self.fix_xyz:
