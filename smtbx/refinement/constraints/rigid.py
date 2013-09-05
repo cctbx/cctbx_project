@@ -21,8 +21,8 @@ class rigid_pivoted_rotatable_group(object):
     self.rotatable = rotatable
 
   @property
-  def parameter_set(self):
-    return set((idx, 'site') for idx in self.indices)
+  def constrained_parameters(self):
+    return tuple((idx, 'site') for idx in self.indices)
 
   def add_to(self, reparametrisation):
     scatterers = reparametrisation.structure.scatterers()
@@ -58,8 +58,8 @@ class rigid_rotatable_expandable_group(object):
     self.rotatable = rotatable
 
   @property
-  def parameter_set(self):
-    return set((idx, 'site') for idx in self.indices)
+  def constrained_parameters(self):
+    return tuple((idx, 'site') for idx in self.indices)
 
   def add_to(self, reparametrisation):
     scatterers = reparametrisation.structure.scatterers()
@@ -99,8 +99,8 @@ class rigid_riding_expandable_group(object):
     self.sizeable = sizeable
 
   @property
-  def parameter_set(self):
-    return set((idx, 'site') for idx in self.indices)
+  def constrained_parameters(self):
+    return tuple((idx, 'site') for idx in self.indices)
 
   def add_to(self, reparametrisation):
     scatterers = reparametrisation.structure.scatterers()
@@ -224,14 +224,14 @@ class same_group(object):
     self.angles = angles
 
   @property
-  def parameter_set(self):
-    result = set()
+  def constrained_parameters(self):
+    result = ()
     for g in itertools.islice(groups, 1):
       for i in g:
         if self.fix_xyz:
-          result.add((i, 'site'))
+          result += (i, 'site')
         if self.fix_u:
-          result.add((i, 'U'))
+          result += (i, 'U')
     return result
 
   def add_to(self, reparametrisation):

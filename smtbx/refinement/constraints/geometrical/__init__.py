@@ -27,8 +27,8 @@ class any(object):
     """
 
   @property
-  def parameter_set(self):
-    return set((idx, 'site') for idx in self.constrained_site_indices)
+  def constrained_parameters(self):
+    return tuple((idx, 'site') for idx in self.constrained_site_indices)
 
   def __repr__(self):
     return "%s(\n%s)" % (self.__class__.__name__,

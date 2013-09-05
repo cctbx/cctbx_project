@@ -161,14 +161,22 @@ class reparametrisation(ext.reparametrisation):
 
     self.constrained_parameters = set()
     for constraint in constraints:
-      c_params = constraint.parameter_set
-      conflicts = c_params & self.constrained_parameters
-      if conflicts:
-        warnings.warn(ConflictingConstraintWarning(conflicts,
+      c_params = constraint.constrained_parameters
+      warned_about = set()
+      uniques = set()
+      for p in c_params:
+        if p in uniques:
+          warned_about.add(p) # duplicates
+        else:
+          uniques.add(p)
+      # conflicts with already added constraints
+      warned_about |= uniques & self.constrained_parameters
+      if warned_about:
+        warnings.warn(ConflictingConstraintWarning(warned_about,
                                                    constraint.__class__,
                                                    structure.scatterers()))
       else:
-        self.constrained_parameters |= c_params
+        self.constrained_parameters |= uniques
         constraint.add_to(self)
 
     for i_sc in xrange(len(self.asu_scatterer_parameters)):
