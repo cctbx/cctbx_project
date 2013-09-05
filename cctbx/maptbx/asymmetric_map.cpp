@@ -66,15 +66,16 @@ asymmetric_map::fft_map_t asymmetric_map::map_for_fft() const
   bool has_enclosed_box=asu_.enclosed_box_corners(ebox_min, ebox_max, map_size);
   bool is_asu_inside_cell = this->box_begin().as_tiny().all_ge(0)
     && this->box_end().as_tiny().all_le(map_size+1);
-  CCTBX_ASSERT( has_enclosed_box && is_asu_inside_cell );
+  // CCTBX_ASSERT( is_asu_inside_cell ); No: 48 fails
+  // CCTBX_ASSERT( has_enclosed_box ); No: 99
   scitbx::int3 padded_grid_size( result.accessor().all() );
   boost::timer::cpu_timer timer;
   if( has_enclosed_box && is_asu_inside_cell )
   {
     auto result_ref = result.ref();
     const auto *d = data_.begin();
-    for(grid_iterator_t i3=this->grid_begin(padded_grid_size);
-      !i3.over(); i3.advance(), ++d )
+    for(auto i3=this->mapped_begin(padded_grid_size); !i3.over(); i3.advance(),
+      ++d)
     {
       scitbx::int3 pos = i3();
       auto t = pos.as_tiny();
@@ -90,18 +91,19 @@ asymmetric_map::fft_map_t asymmetric_map::map_for_fft() const
             scitbx::int3 pos_in_cell(pos);
             translate_into_cell(pos_in_cell, map_size);
             unsigned short ns=site_symmetry_order(symops,pos_in_cell,map_size);
-            result_ref[i3.mapped_index_1d()] = *d / ns;
+            result_ref(pos_in_cell) = *d / ns;
           }
           else
             result_ref[i3.mapped_index_1d()] = *d;
         }
       }
     }
+    CCTBX_ASSERT( d==data_.end() );
   }
   else
   {
     // slower generic version
-    for(grid_iterator_t i3=this->grid_begin(); !i3.over(); i3.incr() )
+    for(auto i3=this->grid_begin(); !i3.over(); i3.incr() )
     {
       scitbx::int3 pos = i3();
       short ww = optimized_asu_.where_is(pos);
@@ -127,6 +129,8 @@ void asymmetric_map::copy_to_asu_box(const scitbx::int3 &map_size,
   const scitbx::int3 &padded_map_size, const double *cell_data)
 {
   //! @todo: code duplication, see atom_mask
+  //! @todo: test grid for compatiblity with the troup, see
+  //     crystal_form::determin_grid
   scitbx::int3 grid = map_size;
   CCTBX_ASSERT( this->unit_cell_grid_size().as_tiny().all_eq(grid) );
   asu::rvector3_t box_min, box_max;
@@ -148,23 +152,36 @@ void asymmetric_map::copy_to_asu_box(const scitbx::int3 &map_size,
   data_.resize(asu_grid_t(ibox_min, ibox_max), 0.); //! @todo optimize
   boost::timer::cpu_timer timer;
   scitbx::int3 padded_grid_size = padded_map_size;
+  CCTBX_ASSERT( padded_grid_size.as_tiny().all_ge(grid) );
   if( has_enclosed_box && is_asu_inside_cell )
   {
     auto *d = data_.begin();
-    for(grid_iterator_t loop3=this->grid_begin(padded_grid_size);
-      !loop3.over(); loop3.advance(), ++d)
+    for(auto l3=this->mapped_begin(padded_grid_size); !l3.over(); l3.advance(),
+      ++d)
     {
-      scitbx::int3 pos = loop3();
-      if( (scitbx::ge_all(pos,ebox_min) && scitbx::le_all(pos,ebox_max))
-        || optimized_asu_.where_is(pos)!=0 )
-          *d = cell_data[loop3.mapped_index_1d()];
+      scitbx::int3 pos = l3();
+      if( scitbx::ge_all(pos,ebox_min) && scitbx::le_all(pos,ebox_max) )
+          *d = cell_data[l3.mapped_index_1d()];
+      else
+      {
+        short ww = optimized_asu_.where_is(pos);
+        if( ww==-1 ) // inside on the face
+        {
+          scitbx::int3 pos_in_cell(pos);
+          translate_into_cell(pos_in_cell, grid);
+          *d = cell_data[ l3.mapped_index_1d(pos_in_cell) ];
+        }
+        else if( ww!=0 ) // inside
+          *d = cell_data[l3.mapped_index_1d()];
+      }
     }
+    CCTBX_ASSERT( d==data_.end() );
   }
   else
   {
     // slower generic version
     auto *d = data_.begin();
-    auto indexer = this->grid_begin(padded_grid_size);
+    auto indexer = this->mapped_begin(padded_grid_size);
     for(grid_iterator_t l3=this->grid_begin(); !l3.over(); l3.incr(), ++d)
     {
       scitbx::int3 pos = l3();
@@ -175,6 +192,7 @@ void asymmetric_map::copy_to_asu_box(const scitbx::int3 &map_size,
         *d = cell_data[ indexer.mapped_index_1d(pos_in_cell) ];
       }
     }
+    CCTBX_ASSERT( d==data_.end() );
   }
   this->fill_density_times_ = timer.format();
 }

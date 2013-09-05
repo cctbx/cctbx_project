@@ -54,6 +54,7 @@ template<typename Grid> class mapped_grid_loop :
   using base_t::end_;
   using base_t::begin_;
   using base_t::over_;
+  using base_t::incr;
 
 public:
   mapped_grid_loop(const Grid& b, const Grid &e, const Grid &s) : base_t(b,e),
@@ -74,14 +75,12 @@ public:
       {
         grid_delta_[i] = -1+ grid_step_[i-1] -(end_[i]-begin_[i])*grid_step_[i];
       }
-      CCTBX_ASSERT( grid_delta_[i]>=-2 );
     }
     mapped_index_1d_ = this->mapped_index_1d(b);
   }
 
   bool advance()
   {
-    // CCTBX_ASSERT( this->mapped_index_1d( (*this)() ) == mapped_index_1d_ );
     for(short i = grid_step_.size()-1; i >= 0; --i)
     {
       current_[i]++;
@@ -125,9 +124,8 @@ class asymmetric_map
 {
 public:
   typedef scitbx::af::c_interval_grid<3> asu_grid_t;
-  // typedef scitbx::af::nested_loop<scitbx::int3> grid_iterator_t;
-  // typedef grid_iterator<scitbx::int3> grid_iterator_t;
-  typedef mapped_grid_loop<scitbx::int3> grid_iterator_t;
+  typedef scitbx::af::nested_loop<scitbx::int3> grid_iterator_t;
+  typedef mapped_grid_loop<scitbx::int3> mapped_iterator_t;
   typedef scitbx::af::c_grid_padded<3> fft_grid_t;
   typedef scitbx::af::versa<double, fft_grid_t> fft_map_t;
 
@@ -198,6 +196,11 @@ public:
     return scitbx::int3(data_.accessor().last());
   }
 
+  grid_iterator_t grid_begin() const
+  {
+    return grid_iterator_t(this->box_begin(), this->box_end());
+  }
+
   //! Unit cell sized gridding suitable for FFT
   fft_grid_t fft_grid() const
   {
@@ -240,15 +243,10 @@ private:
     this->copy_to_asu_box(grid, padded_grid_size, cell_data.begin());
   }
 
-  grid_iterator_t grid_begin(const scitbx::int3 &grid_size) const
+  mapped_iterator_t mapped_begin(const scitbx::int3 &grid_size) const
   {
     // open range : [begin, end)
-    return grid_iterator_t(this->box_begin(), this->box_end(), grid_size);
-  }
-
-  grid_iterator_t grid_begin() const
-  {
-    return this->grid_begin(this->unit_cell_grid_size());
+    return mapped_iterator_t(this->box_begin(), this->box_end(), grid_size);
   }
 
   static scitbx::int3 adapt(const scitbx::af::flex_grid<>::index_type &f)
