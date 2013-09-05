@@ -1,4 +1,7 @@
 from __future__ import division
+
+import warnings
+
 import boost.python
 ext = boost.python.import_ext("smtbx_refinement_constraints_ext")
 from smtbx_refinement_constraints_ext import *
@@ -11,7 +14,30 @@ from cctbx import xray
 class InvalidConstraint(libtbx.utils.Sorry):
   __module__ = Exception.__module__
 
+
+class ConflictingConstraintWarning(UserWarning):
+  """ Attempt to constrain some scatterer parameters that have already been
+ constrained: this attempt will be ignored.
+  """
+
+  def __init__(self, conflicts, constraint_type, scatterers):
+    self.conflicts = conflicts
+    self.constraint_type = constraint_type
+    self.scatterers = scatterers
+
+  def __str__(self):
+    conflicts_printout = "\n".join([
+      "\t* %s of scatterer %s (#%i)"
+      % (param_tag, self.scatterers[scatt_idx].label, scatt_idx)
+      for scatt_idx, param_tag in self.conflicts])
+    return (
+      "%s The attempted constraint is of type '%s'"
+      " and the list of already constrained scatterer parameters is\n%s"
+      % (self.__class__.__doc__, self.constraint_type, conflicts_printout))
+
+
 bad_connectivity_msg = "Invalid %s constraint involving %s: bad connectivity"
+
 
 class _(boost.python.injector, ext.parameter):
 
@@ -135,10 +161,15 @@ class reparametrisation(ext.reparametrisation):
 
     self.constrained_parameters = set()
     for constraint in constraints:
-      c_params = constraint.get_parameter_set(self)
-      if c_params is None: continue
-      self.constrained_parameters |= c_params
-      constraint.add_to(self)
+      c_params = constraint.parameter_set
+      conflicts = c_params & self.constrained_parameters
+      if conflicts:
+        warnings.warn(ConflictingConstraintWarning(conflicts,
+                                                   constraint.__class__,
+                                                   structure.scatterers()))
+      else:
+        self.constrained_parameters |= c_params
+        constraint.add_to(self)
 
     for i_sc in xrange(len(self.asu_scatterer_parameters)):
       self.add_new_site_parameter(i_sc)
@@ -278,7 +309,7 @@ class reparametrisation(ext.reparametrisation):
     for i in sl:
       rv.append("%s" %scatterers[i].label)
     return " ".join(rv)
-      
+
   def parameter_map(self):
     rv = xray.parameter_map(self.structure.scatterers())
     if self.twin_fractions is not None:

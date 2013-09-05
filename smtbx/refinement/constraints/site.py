@@ -10,16 +10,9 @@ class shared_site(object):
       raise InvalidConstraint("at least two atoms are expected")
     self.indices = ind_sequence
 
-  def get_parameter_set(self, reparametrisation):
-    rv_l = []
-    for s in self.indices[1:]: rv_l.append("%s_xyz" %s)
-    rv = set(rv_l)
-    if len(rv_l) != len(rv) or len(reparametrisation.constrained_parameters&rv) != 0:
-      print("Redundant atoms in %s - '%s' skipping" %(
-        self.__class__.__name__,
-        reparametrisation.format_scatter_list(self.indices)))
-      return None
-    return rv
+  @property
+  def parameter_set(self):
+    return set((idx, 'site') for idx in self.indices[1:])
 
   def add_to(self, reparametrisation):
     scatterers = reparametrisation.structure.scatterers()

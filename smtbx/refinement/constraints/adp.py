@@ -17,15 +17,10 @@ class u_iso_proportional_to_pivot_u_eq(object):
       ):
       setattr(self, attr, value)
 
-  def get_parameter_set(self, reparametrisation):
-    rv = set(["%s_u" %self.u_iso_scatterer_idx])
-    if len(rv&reparametrisation.constrained_parameters) != 0:
-      print("Redundant atoms in %s - '%s' skipping" %(
-        self.__class__.__name__,
-        reparametrisation.format_scatter_list([self.u_iso_scatterer_idx])))
-      return None
-    return rv 
-     
+  @property
+  def parameter_set(self):
+    return set(((self.u_iso_scatterer_idx, 'U'),))
+
   def add_to(self, reparametrisation):
     scatterers = reparametrisation.structure.scatterers()
     if scatterers[self.u_eq_scatterer_idx].flags.use_u_aniso():
@@ -48,7 +43,7 @@ class u_iso_proportional_to_pivot_u_eq(object):
 
 class shared_u(object):
   """ u_iso or u_star of some scatterer constrained to be equal to
-      u_iso or u_start of another scatterer
+      u_iso or u_star of another scatterer
   """
 
   def __init__(self, ind_sequence):
@@ -56,16 +51,9 @@ class shared_u(object):
       raise InvalidConstraint("at least two atoms are expected")
     self.indices = ind_sequence
 
-  def get_parameter_set(self, reparametrisation):
-    rv_l = []
-    for s in self.indices[1:]: rv_l.append("%s_u" %s)
-    rv = set(rv_l)
-    if len(rv_l) != len(rv) or len(reparametrisation.constrained_parameters&rv) != 0:
-      print("Redundant atoms in %s - '%s' skipping" %(
-        self.__class__.__name__,
-        reparametrisation.format_scatter_list(self.indices)))
-      return None
-    return rv
+  @property
+  def parameter_set(self):
+    return set((idx, "U") for idx in self.indices[1:])
 
   def add_to(self, reparametrisation):
     scatterers = reparametrisation.structure.scatterers()
@@ -105,14 +93,9 @@ class shared_rotated_u(object):
     self.angle_value = angle_value
     self.refine_angle = bool(refine_angle)
 
-  def get_parameter_set(self, reparametrisation):
-    rv = set(["%s_u" %self.ind_atom])
-    if len(rv&reparametrisation.constrained_parameters) != 0:
-      print("Redundant atoms in %s - '%s' skipping" %(
-        self.__class__.__name__,
-        reparametrisation.format_scatter_list([self.ind_atom])))
-      return None
-    return rv 
+  @property
+  def parameter_set(self):
+    return set(((self.ind_atom, 'U'),))
 
   def add_to(self, reparametrisation):
     scatterers = reparametrisation.structure.scatterers()

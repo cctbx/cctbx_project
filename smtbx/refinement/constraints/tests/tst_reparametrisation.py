@@ -1,6 +1,10 @@
 from __future__ import division
+
+import warnings
+
 from cctbx import uctbx, xray, sgtbx, crystal
 from smtbx.refinement import constraints
+import smtbx.refinement.constraints.adp
 from scitbx import sparse
 from scitbx import matrix as mat
 from cctbx.array_family import flex
@@ -301,6 +305,7 @@ def exercise_u_iso_proportional_to_pivot_u_eq():
   assert sparse.approx_equal(tolerance=1e-15)(r.jacobian_transpose, jt0)
 
 def exercise_u_iso_proportional_to_pivot_u_iso():
+  # Test working constraint
   xs = xray.structure(
     crystal_symmetry=crystal.symmetry(
       unit_cell=(),
@@ -320,6 +325,28 @@ def exercise_u_iso_proportional_to_pivot_u_iso():
   r.finalise()
   r.linearise()
   assert approx_equal(u_iso_1.value, 0.24, eps=1e-15)
+
+  # Test conflicting constraints
+  xs = xray.structure(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=(),
+      space_group_symbol='hall: P 2x 2y'),
+    scatterers=flex.xray_scatterer((
+      xray.scatterer('C0', u=0.12),
+      xray.scatterer('C1', u=0.21),
+      xray.scatterer('C2')
+    )))
+  with warnings.catch_warnings(record=True) as w:
+    warnings.simplefilter("always")
+    r = constraints.reparametrisation(
+      structure=xs,
+      constraints=[constraints.adp.shared_u((0, 2)),
+                   constraints.adp.shared_u((1, 2))],
+      connectivity_table=smtbx.utils.connectivity_table(xs))
+    assert len(w) == 1
+    assert w[-1].category == constraints.ConflictingConstraintWarning
+    assert w[-1].message.conflicts == set(((2, 'U'),))
+
 
 def exercise(verbose):
   exercise_u_iso_proportional_to_pivot_u_eq()
