@@ -67,14 +67,14 @@ public:
         this->buf_t::insert(l,v);
     //CCTBX_ASSERT( !this->empty() );
     //CCTBX_ASSERT( std::is_sorted(this->begin(), this->end()) );
-    //CCTBX_ASSERT( std::adjacent_find(this->begin(), this->end()) == this->end() );
+    //CCTBX_ASSERT(std::adjacent_find(this->begin(),this->end())==this->end());
   }
 };
 
 skeleton swanson(const cctbx::maptbx::asymmetric_map &amap, double sigma)
 {
   double mean=0., esd=0., mx=-9.E200;
-  const auto &map_data = amap.data();
+  const auto &map_data = amap.data().const_ref();
   for(std::size_t ii=0; ii<map_data.size(); ++ii)
   {
     //! @todo discard points outside asu
@@ -93,27 +93,20 @@ skeleton swanson(const cctbx::maptbx::asymmetric_map &amap, double sigma)
   xyzm.reserve(10000);
   //! @todo code duplication: mmtbx::masks::atom_mask::mask_asu
   std::size_t inside=0, tot=0;
-  auto ibox_min = amap.box_begin();
-  auto ibox_max = amap.box_end();
   const auto &opt_asu = amap.optimized_asu();
-  for(int i=ibox_min[0]; i<ibox_max[0]; ++i)
+  const double *md = map_data.begin();
+  for(auto i3=amap.grid_begin(); !i3.over(); i3.incr(), ++md)
   {
-    for(int j=ibox_min[0]; j<ibox_max[1]; ++j)
+    int3_t p=i3();
+    double m = *md;
+    if( m>mapcutoff )
     {
-      for(int k=ibox_min[0]; k<ibox_max[2]; ++k)
+      ++tot;
+      if( opt_asu.where_is(p) != 0 ) // inside or on the face
       {
-        int3_t p(i,j,k);
-        double m = map_data(p);
-        if( m>mapcutoff )
-        {
-          ++tot;
-          if( opt_asu.where_is(p) != 0 ) // inside or on the face
-          {
-            ++inside;
-            xyzm_t x(p,m);
-            xyzm.push_back( x );
-          }
-        }
+        ++inside;
+        xyzm_t x(p,m);
+        xyzm.push_back( x );
       }
     }
   }
@@ -135,6 +128,8 @@ skeleton swanson(const cctbx::maptbx::asymmetric_map &amap, double sigma)
     i3t(1,1,1)
   };
 
+  auto ibox_min = amap.box_begin();
+  auto ibox_max = amap.box_end();
   skeleton result;
   result.maximums.reserve(1000);
   for(std::size_t jj=0; jj<xyzm.size(); ++jj)
