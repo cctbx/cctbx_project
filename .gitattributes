@@ -1248,6 +1248,11 @@ iotbx/xds/tests/tst_xparm.py -text
 iotbx/xds/xds_cbf.py -text
 iotbx/xds/xds_inp.py -text
 iotbx/xds/xparm.py -text
+iotbx/xplor/SConscript -text
+iotbx/xplor/map_reader.cpp svneol=native#text/plain
+iotbx/xplor/map_reader.h svneol=native#text/plain
+iotbx/xplor/map_writer.cpp svneol=native#text/plain
+iotbx/xplor/map_writer.h svneol=native#text/plain
 ipctbx/SConscript -text
 ipctbx/__init__.py svneol=native#text/x-python
 ipctbx/command_line/delete_all_segments.py svneol=native#text/x-python

@@ -1,0 +1,23 @@
+Import("env_base", "env_etc")
+
+env = env_base.Clone(
+  SHLINKFLAGS=env_etc.shlinkflags,
+  LIBS=[env_etc.libm]
+)
+env_etc.include_registry.append(
+  env=env,
+  paths=env_etc.cctbx_common_includes)
+
+sources = [
+  "map_reader.cpp",
+  "map_writer.cpp"
+]
+
+if (env_etc.static_libraries): builder = env.StaticLibrary
+else:                          builder = env.SharedLibrary
+builder(
+  target="#lib/iotbx_xplor",
+  source=sources)
+
+if (not env_etc.no_boost_python):
+  SConscript("boost_python/SConscript")
