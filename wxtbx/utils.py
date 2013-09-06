@@ -104,3 +104,12 @@ class SettingsPanel (wx.Panel, SettingsToolBase) :
     self.SetSizer(self.panel_sizer)
     self.add_controls()
     self.panel_sizer.Layout()
+
+def bold_text (parent, label) :
+  txt = wx.StaticText(parent, label=label)
+  font = txt.GetFont()
+  font.SetWeight(wx.FONTWEIGHT_BOLD)
+  txt.SetFont(font)
+  return txt
+
+std_sizer_flags = wx.ALL|wx.ALIGN_CENTER_VERTICAL
