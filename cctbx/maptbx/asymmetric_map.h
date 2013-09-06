@@ -220,6 +220,12 @@ public:
   // not implemented, do I really need this one ?
   // unit_cell_map_t symmetry_expanded_unit_cell_map() const;
 
+  enum class format : short { xplor };
+
+  //! Saves asymmetric map into xplor formatted file
+  void save(const std::string &file_name, const uctbx::unit_cell &unit_cell,
+    format f=format::xplor) const;
+
   //! Timings for profiling
   mutable std::string map_for_fft_times_, fill_density_times_, fill_fft_times_;
 

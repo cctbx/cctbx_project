@@ -3,6 +3,7 @@
 #include <cctbx/maptbx/structure_factors.h>
 #include <scitbx/array_family/tiny_algebra.h>
 #include <cctbx/maptbx/asymmetric_map.h>
+#include <iotbx/xplor/map_writer.h>
 
 namespace cctbx { namespace maptbx
 {
@@ -195,6 +196,17 @@ void asymmetric_map::copy_to_asu_box(const scitbx::int3 &map_size,
     CCTBX_ASSERT( d==data_.end() );
   }
   this->fill_density_times_ = timer.format();
+}
+
+void asymmetric_map::save(const std::string &file_name,
+    const uctbx::unit_cell &unit_cell, format f) const
+{
+  if( f!=format::xplor )
+    throw error("unsupported file format");
+  af::const_ref<double, af::flex_grid<> > flex_data(data_.begin(),
+    data_.accessor().as_flex_grid());
+  iotbx::xplor::map_writer(file_name, unit_cell, flex_data,
+    this->unit_cell_grid_size());
 }
 
 }}
