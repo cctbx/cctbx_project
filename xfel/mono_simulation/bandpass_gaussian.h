@@ -282,8 +282,8 @@ namespace parameter {
           scitbx::vec3<double> H(P.indices[idx][0],P.indices[idx][1], P.indices[idx][2]); // the Miller index
           scitbx::vec3<double> s = A * H; //s, the reciprocal space coordinates, lab frame, of the oriented Miller index
           double s_rad_sq = s.length_sq();
-          scitbx::vec3<double> s_unit = s.normalize();
           SCITBX_ASSERT(s_rad_sq > 0.);
+          scitbx::vec3<double> s_unit = s.normalize();
           scitbx::vec3<double> rotax = s.normalize().cross(s0_unit); //The axis that most directly brings the Bragg spot onto Ewald sphere
           scitbx::vec3<double> sxrx = s_unit.cross(rotax);
           scitbx::vec3<double> chord_direction =      (rotax.cross(s0)).normalize();
