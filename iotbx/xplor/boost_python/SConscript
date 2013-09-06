@@ -1,6 +1,6 @@
 Import("env_iotbx_boost_python_ext")
 env = env_iotbx_boost_python_ext.Clone()
-env.Prepend(LIBS=["cctbx"])
+env.Prepend(LIBS=["iotbx_xplor", "cctbx"])
 env.SharedLibrary(
   target="#lib/iotbx_xplor_ext",
   source=["xplor_ext.cpp"])

@@ -48,10 +48,10 @@ if (libtbx.env.has_module("ccp4io")):
   SConscript("ccp4_map/SConscript")
 
 SConscript("pdb/SConscript")
+SConscript("xplor/SConscript")
 
 if (not env_etc.no_boost_python):
   SConscript("detectors/SConscript")
-  SConscript("xplor/boost_python/SConscript")
   SConscript("misc/boost_python/SConscript")
   SConscript("shelx/SConscript")
   SConscript("cif/boost_python/SConscript")
