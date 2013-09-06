@@ -5,7 +5,7 @@ Import("env_base", "env_etc")
 if env_etc.cxx11_is_available:
   env = env_base.Clone(
     SHLINKFLAGS=env_etc.shlinkflags,
-    LIBS=["omptbx", env_etc.libm]
+    LIBS=["iotbx_xplor", "omptbx", env_etc.libm]
   )
   env_etc.include_registry.append(
     env=env,

@@ -31,6 +31,14 @@ map_writer_box(
   double average,
   double standard_deviation);
 
+//! Saves density map in xplor format, computes mean and esd
+void
+map_writer(
+  std::string const& file_name,
+  cctbx::uctbx::unit_cell const& unit_cell,
+  scitbx::af::const_ref<double, scitbx::af::flex_grid<> > const& data,
+  const scitbx::af::tiny<unsigned,3> &whole_unit_cell_size);
+
 }}
 
 #endif
