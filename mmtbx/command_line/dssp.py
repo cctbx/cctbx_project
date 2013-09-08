@@ -1,6 +1,7 @@
 
 from __future__ import division
 from libtbx.utils import Sorry
+import time
 import sys
 
 def run (args, out=sys.stdout) :
@@ -19,13 +20,17 @@ def run (args, out=sys.stdout) :
   xray_structure = f.file_object.xray_structure_simple()
   pdb_atoms = pdb_hierarchy.atoms()
   pdb_atoms.reset_i_seq()
-  return dssp.dssp(
+  t1 = time.time()
+  SS = dssp.dssp(
     pdb_hierarchy=pdb_hierarchy,
     pdb_atoms=pdb_atoms,
     xray_structure=xray_structure,
     params=params,
     out=out,
     log=sys.stderr)
+  t2 = time.time()
+  #print "runtime: %.3fs" % (t2-t1)
+  return SS
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])

@@ -1744,7 +1744,9 @@ mmtbx/secondary_structure/SConscript -text
 mmtbx/secondary_structure/__init__.py -text
 mmtbx/secondary_structure/base_pairing.data -text
 mmtbx/secondary_structure/base_pairing.py -text
+mmtbx/secondary_structure/dssp.hpp -text
 mmtbx/secondary_structure/dssp.py -text
+mmtbx/secondary_structure/dssp_ext.cpp -text
 mmtbx/secondary_structure/ext.cpp -text
 mmtbx/secondary_structure/identify.hpp -text
 mmtbx/secondary_structure/proteins.py -text

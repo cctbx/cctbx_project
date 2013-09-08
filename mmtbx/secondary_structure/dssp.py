@@ -1,6 +1,9 @@
 
 # FIXME: bifurcated sheets are just not handled at all right now
-# FIXME: can this be faster?
+# FIXME: make sheet extraction much faster?  This would require moving the
+# hbond and bridge classes to C++ (with accompanying scitbx.array_family
+# types), which may be overkill.
+# TODO: incorporate angle-dependence?
 # TODO: test on entire PDB
 #
 # implementation of:
@@ -14,6 +17,7 @@ import libtbx.phil
 from libtbx.utils import null_out
 from libtbx import group_args, adopt_init_args
 import cStringIO
+import time
 import sys
 
 master_phil = libtbx.phil.parse("""
@@ -33,22 +37,13 @@ pymol_script = None
 
 turn_start = 0 # XXX see comment below
 
-def hbond_energy (c_xyz, h_xyz, o_xyz, n_xyz) :
-  r_ON = abs(o_xyz - n_xyz)
-  r_CH = abs(c_xyz - h_xyz)
-  r_OH = abs(o_xyz - h_xyz)
-  r_CN = abs(c_xyz - n_xyz)
-  q1 = 0.42
-  q2 = 0.2
-  f = 332
-  E = f * q1 * q2 * (1./r_ON + 1./r_CH - 1./r_OH - 1./r_CN)
-  return E # kcal/mol
-
 class hbond (object) :
   def __init__ (self, residue1, residue2, energy) : # atom_group objects
     adopt_init_args(self, locals())
     self.i_res = residue1.atoms()[0].tmp
     self.j_res = residue2.atoms()[0].tmp
+    self._i_res_offset = self.i_res + 2
+    self._j_res_offset = self.j_res - 2
     self.within_chain = (residue1.parent().parent() ==
                          residue2.parent().parent())
 
@@ -90,20 +85,19 @@ class hbond (object) :
       return True
     return False
 
-
   def is_bridge (self, other) :
     if (((other.j_res == self.i_res) and
-         (other.i_res == self.j_res - 2)) or
+         (other.i_res == self._j_res_offset)) or
         ((other.i_res == self.j_res) and
-         (other.j_res == self.i_res + 2))) :
+         (other.j_res == self._i_res_offset))) :
       return 1 # parallel
     elif (((other.i_res == self.j_res) and (other.j_res == self.i_res)) or
-          ((other.i_res == self.j_res - 2) and
-           (other.j_res == self.i_res + 2))) :
+          ((other.i_res == self._j_res_offset) and
+           (other.j_res == self._i_res_offset))) :
       return -1 # antiparallel
     return 0
 
-class _bridge (object) :
+class bridge (object) :
   def __init__ (self, hbond1, hbond2, direction, i_res=None, j_res=None) :
     adopt_init_args(self, locals())
     assert ([i_res,j_res].count(None) in [0,2])
@@ -127,7 +121,7 @@ class _bridge (object) :
       self.j_res = max(i_res, j_res)
 
   def invert (self) :
-    return _bridge(
+    return bridge(
       hbond1=self.hbond2,
       hbond2=self.hbond1,
       direction=self.direction,
@@ -147,7 +141,7 @@ class _bridge (object) :
     self.hbond1.show(out=out, prefix=prefix+"  ")
     self.hbond2.show(out=out, prefix=prefix+"  ")
 
-class _ladder (object) :
+class ladder (object) :
   def __init__ (self) :
     self.bridges = []
     self.bridge_i_res = []
@@ -253,6 +247,7 @@ class _ladder (object) :
     if (start_hbond is None) :
       out = cStringIO.StringIO()
       self.show(out=out)
+      return None
       raise RuntimeError("Can't find start of H-bonding:\n%s" % out.getvalue())
     if (start_on_n) :
       curr_atom = " N  "
@@ -286,27 +281,6 @@ def get_pdb_fields (atom_group) :
     resseq=residue_group.resseq_as_int(),
     icode=residue_group.icode)
 
-def get_hydrogen_position (n_atom, bond_length=1.01) :
-  from scitbx.matrix import col
-  n_xyz = col(n_atom.xyz)
-  c_prev_xyz = ca_same_xyz = None
-  atom_group = n_atom.parent()
-  for atom in atom_group.atoms() :
-    if (atom.name.strip() == "CA") :
-      ca_same_xyz = col(atom.xyz)
-      break
-  chain = atom_group.parent().parent()
-  for atom in chain.atoms() :
-    if (atom.name.strip() == "C") and (atom.tmp == n_atom.tmp - 1) :
-      c_prev_xyz = col(atom.xyz)
-      break
-  if (None in [c_prev_xyz, ca_same_xyz]) :
-    return None
-  midpoint = (ca_same_xyz + c_prev_xyz) / 2
-  vec_nm = n_xyz - midpoint
-  xyz_h = n_xyz + (vec_nm.normalize() * bond_length)
-  return xyz_h
-
 class dssp (object) :
   def __init__ (self,
           pdb_hierarchy,
@@ -326,6 +300,7 @@ class dssp (object) :
     self.pdb_atoms = pdb_atoms
     self.params = params
     self.log = log
+    t1 = time.time()
     assert (not pdb_atoms.extract_i_seq().all_eq(0))
     unit_cell = xray_structure.unit_cell()
     pair_asu_table = xray_structure.pair_asu_table(
@@ -350,20 +325,33 @@ class dssp (object) :
           atom.tmp = k
         k += 1
     # now iterate over backbone O atoms and look for H-bonds
+    # XXX this loop takes up most of the runtime
+    t1 = time.time()
+    t_process = 0
+    t_find = 0
     for chain in pdb_hierarchy.only_model().chains() :
-      main_conf = chain.conformers()[0]
-      if (not main_conf.is_protein()) :
+      if (not chain.is_protein()) :
         continue
       for residue_group in chain.residue_groups() :
         atom_group = residue_group.atom_groups()[0]
         ag_atoms = atom_group.atoms()
         for atom in ag_atoms :
-          if (atom.name.strip() == "O") :
+          if (atom.name == " O  ") :
+            tf0 = time.time()
             n_atoms = self.find_nearby_backbone_n(atom)
+            t_find += time.time() - tf0
+            tp0 = time.time()
             for n_atom in n_atoms :
               hbond = self.process_o_n_interaction(atom, n_atom)
               if (hbond is not None) :
                 self.hbonds.append(hbond)
+            t_process += time.time() - tp0
+            break
+    t2 = time.time()
+    if (self.params.verbosity >= 1) :
+      print >> log, "Time to find H-bonds: %.3f" % (t2 - t1)
+      print >> log, "  local atom detection: %.3f" % t_find
+      print >> log, "  analysis: %.3f" % t_process
     if (self.params.verbosity >= 2) :
       print >> log, "All hydrogen bonds:"
       for hbond in self.hbonds :
@@ -372,8 +360,15 @@ class dssp (object) :
       self._pml = open(self.params.pymol_script, "w")
     else :
       self._pml = null_out()
+    t1 = time.time()
     self.helices = self.find_helices()
+    t2 = time.time()
+    if (self.params.verbosity >= 1) :
+      print >> log, "Time to find helices: %.3f" % (t2 - t1)
     self.sheets = self.find_sheets()
+    t3 = time.time()
+    if (self.params.verbosity >= 1) :
+      print >> log, "Time to find sheets: %.3f" % (t3 - t2)
     self.show(out=out)
     self._pml.close()
     self.log = None
@@ -417,28 +412,9 @@ class dssp (object) :
     return n_atoms
 
   def process_o_n_interaction (self, o_atom, n_atom) :
-    from scitbx.matrix import col
-    c_xyz = h_xyz = None
-    residue1 = o_atom.parent() # actually an atom_group
-    for atom in residue1.atoms() :
-      if (atom.name.strip() == "C") :
-        c_xyz = col(atom.xyz)
-        break
-    if (c_xyz is None) :
-      if (self.params.verbosity >= 2) :
-        print >> self.log, "Warning: missing C atom for %s" % o_atom.id_str()
-      return None
-    h_xyz = get_hydrogen_position(n_atom,
-      bond_length=self.params.nh_bond_length)
-    if (h_xyz is None) :
-      if (self.params.verbosity >= 2) :
-        print >> self.log, "Warning: missing H atom for %s" % n_atom.id_str()
-      return None
-    energy = hbond_energy(
-      c_xyz=c_xyz,
-      h_xyz=h_xyz,
-      o_xyz=col(o_atom.xyz),
-      n_xyz=col(n_atom.xyz))
+    import boost.python
+    ext = boost.python.import_ext("mmtbx_dssp_ext")
+    energy = ext.get_o_n_hbond_energy(O=o_atom, N=n_atom)
     # TODO incorporate angle filtering - need to ask Jane and/or look at
     # Reduce source code for ideas
     #angle = hbond_base_angle(
@@ -446,7 +422,7 @@ class dssp (object) :
     #  h_xyz=h_xyz,
     #  o_xyz=col(o_atom.xyz),
     #  n_xyz=col(n_atom.xyz))
-    if (energy < self.params.energy_cutoff) :
+    if (energy is not None) and (energy < self.params.energy_cutoff) :
       return hbond(residue1=o_atom.parent(),
                    residue2=n_atom.parent(),
                    energy=energy)
@@ -459,20 +435,20 @@ class dssp (object) :
     current_turn = []
     prev_n_turn = None
     prev_hbond = None
-    for hbond in self.hbonds :
-      n_turn = hbond.get_n_turn()
+    for hb in self.hbonds :
+      n_turn = hb.get_n_turn()
       if (n_turn is not None) :
-        if ((not hbond.is_same_chain(prev_hbond)) or
+        if ((not hb.is_same_chain(prev_hbond)) or
             (n_turn != prev_n_turn) or
-            (hbond.i_res != i_prev + 1)) :
+            (hb.i_res != i_prev + 1)) :
           if (len(current_turn) > 0) :
             turns.append(current_turn)
-          current_turn = [hbond]
+          current_turn = [hb]
         else :
-          current_turn.append(hbond)
-        i_prev = hbond.i_res
+          current_turn.append(hb)
+        i_prev = hb.i_res
         prev_n_turn = n_turn
-        prev_hbond = hbond
+        prev_hbond = hb
     if (len(current_turn) > 0) :
       turns.append(current_turn)
     if (self.params.verbosity >= 1) :
@@ -517,33 +493,30 @@ class dssp (object) :
         length=end.resseq-start.resseq+1) # XXX is this safe?
       helices.append(helix)
       prev_turn = turn
-      for hbond in turn[turn_start:] :
-        print >> self._pml, hbond.as_pymol_cmd()
+      for hb in turn[turn_start:] :
+        print >> self._pml, hb.as_pymol_cmd()
     return helices
 
-  def find_sheets (self) :
+  def find_sheets (self) : # FIXME very slow!
     from iotbx.pdb import secondary_structure
     i_max = len(self.hbonds) - 1
     # first collect bridges
+    # XXX this is the slow step
     bridges = []
-    bridge_keys = [] # (i_res, j_res)
     for k, hbond1 in enumerate(self.hbonds) :
-      for hbond2 in self.hbonds :
-        if (hbond2 is hbond1) : continue
+      for hbond2 in self.hbonds[k+1:] :
         is_bridge = hbond1.is_bridge(hbond2)
         if (is_bridge != 0) :
-          bridge = _bridge(hbond1, hbond2, is_bridge)
-          if (not (bridge.i_res,bridge.j_res) in bridge_keys) :
-            bridges.append(bridge)
-            bridge_keys.append((bridge.i_res, bridge.j_res))
+          B = bridge(hbond1, hbond2, is_bridge)
+          bridges.append(B)
     bridges.sort(lambda a,b: cmp(a.i_res, b.i_res))
     if (self.params.verbosity >= 2) :
-      for b in bridges :
-        b.show(out=self.log)
+      for B in bridges :
+        B.show(out=self.log)
     # now collect indices of all residues involved in bridges, and identify
     # continuous segments (i.e. strands)
-    all_i_res = set([ b.i_res for b in bridges ])
-    all_j_res = set([ b.j_res for b in bridges ])
+    all_i_res = set([ B.i_res for B in bridges ])
+    all_j_res = set([ B.j_res for B in bridges ])
     all_indices = sorted(list(all_i_res.union(all_j_res)))
     strands = []
     curr_strand = []
@@ -564,12 +537,12 @@ class dssp (object) :
     for u, strand in enumerate(strands) :
       linked = set([])
       for i_res in strand :
-        for b in bridges :
+        for B in bridges :
           other_i_res = None
-          if (b.i_res == i_res) :
-            other_i_res = b.j_res
-          elif (b.j_res == i_res) :
-            other_i_res = b.i_res
+          if (B.i_res == i_res) :
+            other_i_res = B.j_res
+          elif (B.j_res == i_res) :
+            other_i_res = B.i_res
           if (other_i_res is not None) :
             for v, other_strand in enumerate(strands) :
               if (u == v) :
@@ -604,7 +577,7 @@ class dssp (object) :
       while (u < len(connections)) :
         linked = connections[u]
         if (len(linked) == 1) or (start_on_next_strand) :
-          ladder = _ladder()
+          L = ladder()
           strand = strands[u]
           max_connecting_strand_length = 0
           best_strand_index = v = None
@@ -623,12 +596,12 @@ class dssp (object) :
           assert (v is not None)
           other_strand = strands[v]
           for i_res in strand :
-            for b in bridges :
-              if ((b.j_res in strand) and (b.i_res in other_strand)) :
-                ladder.add_bridge(b.invert())
-              elif ((b.i_res in strand) and (b.j_res in other_strand)) :
-                ladder.add_bridge(b)
-          sheet_ladders.append(ladder)
+            for B in bridges :
+              if ((B.j_res in strand) and (B.i_res in other_strand)) :
+                L.add_bridge(B.invert())
+              elif ((B.i_res in strand) and (B.j_res in other_strand)) :
+                L.add_bridge(B)
+          sheet_ladders.append(L)
           next_linked = connections[v]
           start_on_next_strand = True
           next_linked.remove(u)
@@ -655,8 +628,8 @@ class dssp (object) :
     for k, ladders in enumerate(all_sheet_ladders) :
       if (self.params.verbosity >= 2) :
         print >> self.log, "SHEET:"
-        for ladder in ladders :
-          ladder.show(self.log, prefix="  ")
+        for L in ladders :
+          L.show(self.log, prefix="  ")
       sheet_id = k+1
       current_sheet = secondary_structure.pdb_sheet(
         sheet_id=sheet_id,
@@ -667,19 +640,20 @@ class dssp (object) :
       current_sheet.add_strand(first_strand)
       current_sheet.add_registration(None)
       sheets.append(current_sheet)
-      for u, ladder in enumerate(ladders) :
+      for i_ladder, L in enumerate(ladders) :
         next_ladder = None
-        if (u < len(ladders) - 1) :
-          next_ladder = ladders[u+1]
-        next_strand = ladder.get_next_strand(
+        if (i_ladder < len(ladders) - 1) :
+          next_ladder = ladders[i_ladder+1]
+        next_strand = L.get_next_strand(
           sheet_id=sheet_id,
-          strand_id=u+2,
+          strand_id=i_ladder+2,
           pdb_labels=self.pdb_labels,
           next_ladder=next_ladder)
-        register = ladder.get_strand_register(
+        register = L.get_strand_register(
           hbonds=self.hbonds,
           pdb_labels=self.pdb_labels,
           is_last_strand=(next_ladder is None))
+        if (register is None) : break
         current_sheet.add_strand(next_strand)
         current_sheet.add_registration(register)
     return sheets
