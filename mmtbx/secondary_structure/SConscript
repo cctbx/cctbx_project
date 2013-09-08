@@ -8,3 +8,6 @@ if (not env_etc.no_boost_python):
   env.SharedLibrary(
     target="#lib/mmtbx_secondary_structure_ext",
     source=["ext.cpp"])
+  env.SharedLibrary(
+    target="#lib/mmtbx_dssp_ext",
+    source=["dssp_ext.cpp"])
