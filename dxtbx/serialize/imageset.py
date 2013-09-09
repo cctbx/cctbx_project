@@ -1,4 +1,3 @@
-from __future__ import division
 #!/usr/bin/env python
 #
 # dxtbx.serialize.imageset.py
@@ -9,7 +8,7 @@ from __future__ import division
 #
 #  This code is distributed under the BSD license, a copy of which is
 #  included in the root directory of this package.
-
+from __future__ import division
 
 class NullSweep(object):
     ''' A class to facilitate reading in without access to images. '''
