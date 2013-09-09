@@ -21,6 +21,9 @@ def to_dict(scan):
 
     '''
     from collections import OrderedDict
+    if scan == None:
+        return None
+
     return OrderedDict([
         ('image_range', scan.get_image_range()),
         ('oscillation', scan.get_oscillation()),

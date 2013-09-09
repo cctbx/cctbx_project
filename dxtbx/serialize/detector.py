@@ -21,6 +21,9 @@ def panel_to_dict(panel):
 
     '''
     from collections import OrderedDict
+    if panel == None:
+        return None
+
     return OrderedDict([
         ('type', panel.get_type()),
         ('name', panel.get_name()),
@@ -68,6 +71,9 @@ def to_dict(detector):
         A dictionary of the parameters
 
     '''
+    if detector == None:
+        return None
+
     return [panel_to_dict(p) for p in detector]
 
 def from_dict(d, t=None):

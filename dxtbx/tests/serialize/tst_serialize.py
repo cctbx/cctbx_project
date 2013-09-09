@@ -10,6 +10,8 @@ class Test(object):
         self.tst_detector()
         self.tst_goniometer()
         self.tst_scan()
+        self.tst_sweep()
+        self.tst_null_sweep()
 
     def tst_beam(self):
         from dxtbx.serialize import beam
@@ -118,6 +120,73 @@ class Test(object):
         assert(abs(s4.get_epochs()[2] - 0.3) < 1e-7)
         assert(abs(s4.get_epochs()[9] - 1.0) < 1e-7)
 
+        print 'OK'
+
+    def tst_sweep(self):
+        from dxtbx.serialize import load
+        from dxtbx.serialize.helpers import tuple_almost_equal
+        import libtbx.load_env
+        import os
+        path = libtbx.env.dist_path('dxtbx')
+        filename = os.path.join(path, "tests", "sweep.json")
+        sweep = load.imageset(filename)
+        b = sweep.get_beam()
+        d = sweep.get_detector()
+        g = sweep.get_goniometer()
+        s = sweep.get_scan()
+        eps = 1e-7
+        assert(tuple_almost_equal(b.get_direction(), (0.0, 0.0, 1.0)))
+        assert(abs(b.get_wavelength() - 0.9795) < eps)
+        assert(abs(b.get_divergence() - 0.0) < eps)
+        assert(abs(b.get_sigma_divergence() - 0.058) < eps)
+        assert(d.get_type() == "SENSOR_PAD")
+        assert(d.get_name() == "Panel")
+        assert(tuple_almost_equal(d.get_fast_axis(), (1.0, 0.0, 0.0)))
+        assert(tuple_almost_equal(d.get_slow_axis(), (0.0, -1.0, 0.0)))
+        assert(tuple_almost_equal(d.get_origin(), (-211.5, 219.5, -192.7)))
+        assert(tuple_almost_equal(d.get_pixel_size(), (0.172, 0.172)))
+        assert(tuple_almost_equal(d.get_image_size(), (2463, 2527)))
+        assert(tuple_almost_equal(d.get_trusted_range(), (-1.0, 495976.0)))
+        assert(tuple_almost_equal(g.get_rotation_axis(), (1.0, 0.0, 0.0)))
+        assert(tuple_almost_equal(g.get_fixed_rotation(),
+            (1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0)))
+        assert(tuple_almost_equal(s.get_image_range(), (1, 3)))
+        assert(tuple_almost_equal(s.get_oscillation(), (0.0, 0.2)))
+        assert(abs(s.get_exposure_time() - 0.2) < eps)
+
+        print 'OK'
+
+    def tst_null_sweep(self):
+        from dxtbx.serialize import load
+        from dxtbx.serialize.helpers import tuple_almost_equal
+        import libtbx.load_env
+        import os
+        path = libtbx.env.dist_path('dxtbx')
+        filename = os.path.join(path, "tests", "null_sweep.json")
+        sweep = load.imageset(filename)
+        b = sweep.get_beam()
+        d = sweep.get_detector()
+        g = sweep.get_goniometer()
+        s = sweep.get_scan()
+        eps = 1e-7
+        assert(tuple_almost_equal(b.get_direction(), (0.0, 0.0, 1.0)))
+        assert(abs(b.get_wavelength() - 0.9795) < eps)
+        assert(abs(b.get_divergence() - 0.0) < eps)
+        assert(abs(b.get_sigma_divergence() - 0.058) < eps)
+        assert(d.get_type() == "SENSOR_PAD")
+        assert(d.get_name() == "Panel")
+        assert(tuple_almost_equal(d.get_fast_axis(), (1.0, 0.0, 0.0)))
+        assert(tuple_almost_equal(d.get_slow_axis(), (0.0, -1.0, 0.0)))
+        assert(tuple_almost_equal(d.get_origin(), (-211.5, 219.5, -192.7)))
+        assert(tuple_almost_equal(d.get_pixel_size(), (0.172, 0.172)))
+        assert(tuple_almost_equal(d.get_image_size(), (2463, 2527)))
+        assert(tuple_almost_equal(d.get_trusted_range(), (-1.0, 495976.0)))
+        assert(tuple_almost_equal(g.get_rotation_axis(), (1.0, 0.0, 0.0)))
+        assert(tuple_almost_equal(g.get_fixed_rotation(),
+            (1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0)))
+        assert(tuple_almost_equal(s.get_image_range(), (1, 3)))
+        assert(tuple_almost_equal(s.get_oscillation(), (0.0, 0.2)))
+        assert(abs(s.get_exposure_time() - 0.2) < eps)
         print 'OK'
 
 

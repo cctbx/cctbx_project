@@ -492,6 +492,7 @@ dxtbx/serialize/beam.py -text
 dxtbx/serialize/detector.py -text
 dxtbx/serialize/dump.py -text
 dxtbx/serialize/goniometer.py -text
+dxtbx/serialize/helpers.py -text
 dxtbx/serialize/imageset.py -text
 dxtbx/serialize/load.py -text
 dxtbx/serialize/scan.py -text
@@ -500,6 +501,9 @@ dxtbx/sweep_filenames.py -text
 dxtbx/tests/__init__.py -text
 dxtbx/tests/command_line/tst_to_xds.py -text
 dxtbx/tests/example-xparm.xds -text
+dxtbx/tests/image_0001.cbf -text svneol=unset#unset
+dxtbx/tests/image_0002.cbf -text svneol=unset#unset
+dxtbx/tests/image_0003.cbf -text svneol=unset#unset
 dxtbx/tests/image_001.dat -text
 dxtbx/tests/image_002.dat -text
 dxtbx/tests/image_003.dat -text
@@ -528,10 +532,12 @@ dxtbx/tests/model/tst_pixel_to_millimeter.py -text
 dxtbx/tests/model/tst_ray_intersection.py -text
 dxtbx/tests/model/tst_scan_data.py -text
 dxtbx/tests/model/tst_scan_helpers.py -text
+dxtbx/tests/null_sweep.json -text
 dxtbx/tests/omega_scan.cbf -text svneol=unset#unset
 dxtbx/tests/phi_scan_001.cbf -text svneol=unset#unset
 dxtbx/tests/serialize/tst_serialize.py -text
 dxtbx/tests/serialize/tst_xds.py -text
+dxtbx/tests/sweep.json -text
 dxtbx/tests/test_beam.py -text
 dxtbx/tests/test_detector.py -text
 dxtbx/tests/test_goniometer.py -text
