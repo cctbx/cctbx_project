@@ -1,6 +1,7 @@
 from __future__ import division
 import smtbx.refinement.constraints as _
 from smtbx.refinement.constraints import InvalidConstraint
+import itertools
 
 class dependent_occupancy(object):
   """ occupancy of a site depend on the occupancy of the other site
