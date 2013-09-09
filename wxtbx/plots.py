@@ -60,6 +60,12 @@ class plot_container (wx.BoxSizer, wxtbx.MouseWheelTransparencyMixin) :
       font = txt.GetFont()
       font.SetWeight(wx.FONTWEIGHT_BOLD)
       txt.SetFont(font)
+      txt2 = wx.StaticText(parent=panel, label="Original error:")
+      txt2.SetForegroundColour((255,0,0))
+      szr.Add(txt2, 1, wx.ALL|wx.ALIGN_CENTER, 10)
+      txt3 = wx.StaticText(parent=panel, label=str(e))
+      txt3.SetForegroundColour((255,0,0))
+      szr.Add(txt3, 1, wx.ALL|wx.ALIGN_CENTER, 10)
       self.Add(panel, 1, wx.EXPAND|wx.ALL)
       self.null_fmt = oop.null()
     else :
