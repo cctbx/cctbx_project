@@ -480,7 +480,7 @@ class SweepFileList(object):
     def __init__(self, template, array_range):
         '''Initialise the class with the template and array range.'''
 
-        assert(array_range[0] >= 0)
+        #assert(array_range[0] >= 0)
         assert(array_range[0] <= array_range[1])
         self._template = template
         self._array_range = array_range
@@ -755,15 +755,15 @@ class FilenameAnalyser(object):
             return False
         else:
             indices = sorted(indices)
-            if self._indices_sequential_gt_zero(indices):
+            if self._indices_sequential_ge_zero(indices):
                 return True
             else:
                 return False
 
-    def _indices_sequential_gt_zero(self, indices):
+    def _indices_sequential_ge_zero(self, indices):
         ''' Determine if indices are sequential.'''
         prev = indices[0]
-        if prev <= 0:
+        if prev < 0:
             return False
         for curr in indices[1:]:
             if curr != prev + 1:

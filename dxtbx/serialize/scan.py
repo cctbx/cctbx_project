@@ -1,4 +1,3 @@
-from __future__ import division
 #!/usr/bin/env python
 #
 # dxtbx.serialize.scan.py
@@ -9,6 +8,7 @@ from __future__ import division
 #
 #  This code is distributed under the BSD license, a copy of which is
 #  included in the root directory of this package.
+from __future__ import division
 
 def to_dict(scan):
     ''' Convert the scan model to a dictionary
@@ -27,11 +27,12 @@ def to_dict(scan):
         ('exposure_time', scan.get_exposure_time()),
         ('epochs', list(scan.get_epochs()))])
 
-def from_dict(d):
+def from_dict(d, t=None):
     ''' Convert the dictionary to a scan model
 
     Params:
         d The dictionary of parameters
+        t The template dictionary to use
 
     Returns:
         The scan model
@@ -42,7 +43,23 @@ def from_dict(d):
 
     # If None, return None
     if d == None:
-        return None
+        if t == None: return None
+        else: return from_dict(t, None)
+    elif t != None:
+        d = dict(t.items() + d.items())
+
+    # Check the number of epochs set and expand if necessary
+    numi = d['image_range'][1] - d['image_range'][0] + 1
+    nume = len(d['epochs'])
+    if numi > 2:
+        if nume == 2:
+            diff = d['epochs'][1] - d['epochs'][0]
+            offs = d['epochs'][1]
+            d['epochs'] += [offs + (i + 1) * diff for i in range(numi - 2)]
+        elif nume != numi:
+            raise RuntimeError("Num epochs does not match num images")
+    elif nume != numi:
+            raise RuntimeError("Num epochs does not match num images")
 
     # Create the model from the dictionary
     return Scan(tuple(d['image_range']),

@@ -31,6 +31,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     boost::python::tuple getinitargs(const Panel &obj) {
       return boost::python::make_tuple(
         obj.get_type(),
+        obj.get_name(),
         obj.get_fast_axis(),
         obj.get_slow_axis(),
         obj.get_origin(),
@@ -49,6 +50,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     // Export the Panel class
     class_ <Panel> ("Panel")
       .def(init <std::string,
+                 std::string,
                  vec3 <double>,
                  vec3 <double>,
                  vec3 <double>,
@@ -56,6 +58,7 @@ namespace dxtbx { namespace model { namespace boost_python {
                  vec2 <std::size_t>,
                  vec2 <double> > ((                 
           arg("type"),
+          arg("name"),
           arg("fast_axis"),
           arg("slow_axis"),
           arg("origin"),
@@ -63,6 +66,7 @@ namespace dxtbx { namespace model { namespace boost_python {
           arg("image_size"),
           arg("trusted_range"))))
       .def(init <std::string,
+                 std::string,
                  vec3 <double>,
                  vec3 <double>,
                  vec3 <double>,
@@ -71,6 +75,7 @@ namespace dxtbx { namespace model { namespace boost_python {
                  vec2 <double>,
                  shared_ptr<PxMmStrategy> > ((                 
           arg("type"),
+          arg("name"),
           arg("fast_axis"),
           arg("slow_axis"),
           arg("origin"),
@@ -81,7 +86,11 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("get_type",
         &Panel::get_type)
       .def("set_type",
-        &Panel::set_type)    
+        &Panel::set_type)   
+      .def("get_name",
+        &Panel::get_name)
+      .def("set_name",
+        &Panel::set_name)   
       .def("get_fast_axis",
         &Panel::get_fast_axis)
       .def("get_slow_axis",

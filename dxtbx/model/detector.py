@@ -35,7 +35,7 @@ class detector_factory:
     @staticmethod
     def make_detector(stype, fast_axis, slow_axis, origin,
                       pixel_size, image_size, trusted_range = (0.0, 0.0),
-                      px_mm=None):
+                      px_mm=None, name="Panel"):
         """Ensure all types are correct before creating c++ detector class."""
 
         if stype == 'SENSOR_PAD':
@@ -45,6 +45,7 @@ class detector_factory:
 
         d = Detector(Panel(
             str(stype),
+            str(name),
             tuple(map(float, fast_axis)),
             tuple(map(float, slow_axis)),
             tuple(map(float, origin)),

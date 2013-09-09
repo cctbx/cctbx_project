@@ -482,7 +482,7 @@ class TestImageSet(object):
 
         # Create some other models
         beam = Beam((1, 0, 0), 0.5)
-        detector = Detector(Panel("UNKNOWN",
+        detector = Detector(Panel("UNKNOWN", "Panel",
                                   (1, 0, 0), (0, 1, 0), (0, 0, 1),
                                   (0.1, 0.1), (1000, 1000), (0, 1)))
 

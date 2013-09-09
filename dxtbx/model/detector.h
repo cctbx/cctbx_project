@@ -36,6 +36,7 @@ namespace dxtbx { namespace model {
   typedef scitbx::af::flex<int4>::type flex_int4;
   typedef scitbx::af::shared<int4> shared_int4;
   typedef scitbx::af::flex<mat3<double> >::type flex_mat3_double;
+  typedef scitbx::af::flex<std::string>::type flex_string;
 
   /**
   * A class representing a detector made up of multiple flat panel detectors.
@@ -124,6 +125,15 @@ namespace dxtbx { namespace model {
     /** Check the detector panels are not the same */
     bool operator!=(const DetectorBase &detector) const {
       return !(*this == detector);
+    }
+
+    /** Get a list of names */
+    flex_string get_names() const {
+      flex_string s(panel_list_.size());
+      for (std::size_t i = 0; i < panel_list_.size(); ++i) {
+        s[i] = panel_list_[i].get_name();
+      }
+      return s;
     }
 
     /** Get an array of d matrices from the panel list */
@@ -283,6 +293,18 @@ namespace dxtbx { namespace model {
     void set_type(std::string type) {
       DXTBX_ASSERT(DetectorBase::panel_list_.size() == 1);
       DetectorBase::panel_list_[0].set_type(type);
+    }
+
+    /** Get the first panel name */
+    std::string get_name() const {
+      DXTBX_ASSERT(DetectorBase::panel_list_.size() == 1);
+      return DetectorBase::panel_list_[0].get_name();
+    }
+
+    /** Set the first panel name */
+    void set_name(std::string name) {
+      DXTBX_ASSERT(DetectorBase::panel_list_.size() == 1);
+      DetectorBase::panel_list_[0].set_name(name);
     }
 
     /** Get the first panel fast axis */
