@@ -41,6 +41,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     class_ <GoniometerBase> ("GoniometerBase");
 
     class_ <Goniometer, bases <GoniometerBase> > ("Goniometer")
+      .def(init<const Goniometer&>())
       .def(init <vec3 <double> > ((
           arg("rotation_axis"))))
       .def(init <vec3 <double>,

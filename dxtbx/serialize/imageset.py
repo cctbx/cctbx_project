@@ -104,20 +104,27 @@ def imagesweep_from_dict(d):
     # Get the template (required)
     template = str(d['template'])
 
-    # Get the scan
-    scan = scan.from_dict(d.get('scan'))
-
     # If the scan isn't set, find all available files
-    if scan is None:
+    scan_dict = d.get('scan')
+    if scan_dict is None:
         image_range = None
     else:
-        image_range = scan.get_image_range()
+        image_range = scan_dict.get('image_range')
 
     # Construct the sweep
     sweep = ImageSetFactory.from_template(template, image_range)[0]
-    sweep.set_beam(beam.from_dict(d.get('beam')))
-    sweep.set_goniometer(goniometer.from_dict(d.get('goniometer')))
-    sweep.set_detector(detector.from_dict(d.get('detector')))
+
+    # Get the existing models as dictionaries
+    beam_dict = beam.to_dict(sweep.get_beam())
+    gonio_dict = goniometer.to_dict(sweep.get_goniometer())
+    detector_dict = detector.to_dict(sweep.get_detector())
+    scan_dict = scan.to_dict(sweep.get_scan())
+
+    # Set the models with the exisiting models as templates
+    sweep.set_beam(beam.from_dict(d.get('beam'), beam_dict))
+    sweep.set_goniometer(goniometer.from_dict(d.get('goniometer'), gonio_dict))
+    sweep.set_detector(detector.from_dict(d.get('detector'), detector_dict))
+#    sweep.set_scan(scan.from_dict(d.get('scan'), scan_dict))
 
     # Return the sweep
     return sweep

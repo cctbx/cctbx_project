@@ -65,6 +65,8 @@ namespace dxtbx { namespace model { namespace boost_python {
           arg("panel")))
       .def("num_panels",
         &Detector::num_panels)
+      .def("get_names",
+        &Detector::get_names)
       .def("get_d_matrices",
         &Detector::get_d_matrices)
       .def("get_D_matrices",
@@ -97,6 +99,7 @@ namespace dxtbx { namespace model { namespace boost_python {
 
     // Export the detector class
     class_ <Detector, bases<DetectorBase> >("Detector")
+      .def(init<const Detector&>())
       .def(init<const Panel&>((
         arg("panel"))))
       .def(init<const Detector::panel_list_type&>((
@@ -104,7 +107,11 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("get_type",
         &Detector::get_type)
       .def("set_type",
-        &Detector::set_type)    
+        &Detector::set_type)   
+      .def("get_name",
+        &Detector::get_name)
+      .def("set_name",
+        &Detector::set_name)   
       .def("get_fast_axis",
         &Detector::get_fast_axis)
       .def("get_slow_axis",

@@ -25,11 +25,12 @@ def to_dict(gonio):
         ('rotation_axis', gonio.get_rotation_axis()),
         ('fixed_rotation', gonio.get_fixed_rotation())])
 
-def from_dict(d):
+def from_dict(d, t=None):
     ''' Convert the dictionary to a goniometer model
 
     Params:
         d The dictionary of parameters
+        t The template dictionary to use
 
     Returns:
         The goniometer model
@@ -39,7 +40,10 @@ def from_dict(d):
 
     # If None, return None
     if d == None:
-        return None
+        if t == None: return None
+        else: return from_dict(t, None)
+    elif t != None:
+        d = dict(t.items() + d.items())
 
     # Create the model from the dictionary
     return Goniometer(tuple(d['rotation_axis']),

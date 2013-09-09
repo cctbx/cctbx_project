@@ -90,7 +90,7 @@ def tst_beam_plane_intersection():
               (distance * matrix.col(normal).normalize()))
 
     # Create a detector object
-    panel = Panel("", fast_axis, slow_axis, origin, pixel_size,
+    panel = Panel("", "", fast_axis, slow_axis, origin, pixel_size,
                   image_size, (0, 0))
 
     # Create the intersection object
@@ -169,7 +169,7 @@ def tst_plane_to_lab_transform():
               (distance * matrix.col(normal).normalize()))
 
     # Create a detector object
-    panel = Panel("", fast_axis, slow_axis, origin, pixel_size,
+    panel = Panel("", "", fast_axis, slow_axis, origin, pixel_size,
                  image_size, (0, 0))
 
     # Create the intersection object
@@ -229,7 +229,7 @@ def tst_forward_and_reverse_transform():
               (distance * matrix.col(normal).normalize()))
 
     # Create a detector object
-    panel = Panel("", fast_axis, slow_axis, origin, pixel_size,
+    panel = Panel("", "", fast_axis, slow_axis, origin, pixel_size,
                  image_size, (0, 0))
 
     # Create the intersection object and transform object

@@ -65,6 +65,7 @@ namespace dxtbx { namespace model {
     /** The default constructor */
     Panel()
       : type_("Unknown"),
+        name_("Panel"),
         d_(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
         D_(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
         pixel_size_(0.0, 0.0),
@@ -78,6 +79,7 @@ namespace dxtbx { namespace model {
     /**
     * Initialise the detector panel.
     * @param type The type of the detector panel
+    * @param name The name of the detector panel
     * @param fast_axis The fast axis of the detector. The vector is normalized.
     * @param slow_axis The slow axis of the detector. The vector is normalized.
     * @param normal The detector normal. The given vector is normalized.
@@ -88,16 +90,18 @@ namespace dxtbx { namespace model {
     * @param distance The distance from the detector to the crystal origin
     */
     Panel(std::string type,
-        vec3 <double> fast_axis,
-        vec3 <double> slow_axis,
-        vec3 <double> origin,
-        vec2 <double> pixel_size,
-        vec2 <std::size_t> image_size,
-        vec2 <double> trusted_range)
+          std::string name,
+          vec3 <double> fast_axis,
+          vec3 <double> slow_axis,
+          vec3 <double> origin,
+          vec2 <double> pixel_size,
+          vec2 <std::size_t> image_size,
+          vec2 <double> trusted_range)
       : convert_coord_(new SimplePxMmStrategy()) {
       DXTBX_ASSERT(fast_axis.length() > 0);
       DXTBX_ASSERT(slow_axis.length() > 0);
       type_ = type;
+      name_ = name;
       d_ = create_d_matrix(fast_axis.normalize(),
         slow_axis.normalize(), origin);
       D_ = d_.inverse();
@@ -112,6 +116,7 @@ namespace dxtbx { namespace model {
     /**
     * Initialise the detector panel.
     * @param type The type of the detector panel
+    * @param name The name of the detector panel
     * @param fast_axis The fast axis of the detector. The vector is normalized.
     * @param slow_axis The slow axis of the detector. The vector is normalized.
     * @param normal The detector normal. The given vector is normalized.
@@ -123,17 +128,19 @@ namespace dxtbx { namespace model {
     * @param px_mm The pixel to millimeter strategy
     */
     Panel(std::string type,
-        vec3 <double> fast_axis,
-        vec3 <double> slow_axis,
-        vec3 <double> origin,
-        vec2 <double> pixel_size,
-        vec2 <std::size_t> image_size,
-        vec2 <double> trusted_range,
-        shared_ptr<PxMmStrategy> px_mm)
+          std::string name,
+          vec3 <double> fast_axis,
+          vec3 <double> slow_axis,
+          vec3 <double> origin,
+          vec2 <double> pixel_size,
+          vec2 <std::size_t> image_size,
+          vec2 <double> trusted_range,
+          shared_ptr<PxMmStrategy> px_mm)
       : convert_coord_(px_mm) {
       DXTBX_ASSERT(fast_axis.length() > 0);
       DXTBX_ASSERT(slow_axis.length() > 0);
       type_ = type;
+      name_ = name;
       d_ = create_d_matrix(fast_axis.normalize(),
         slow_axis.normalize(), origin);
       D_ = d_.inverse();
@@ -156,6 +163,16 @@ namespace dxtbx { namespace model {
     /** Set the detector panel type */
     void set_type(std::string type) {
       type_ = type;
+    }
+
+    /** Get the sensor name */
+    std::string get_name() const {
+      return name_;
+    }
+
+    /** Set the sensor name */
+    void set_name(std::string name) {
+      name_ = name;
     }
 
     /** Get the fast axis */
@@ -418,7 +435,9 @@ namespace dxtbx { namespace model {
     /** Check the detector axis basis vectors are (almost) the same */
     bool operator==(const Panel &panel) const {
       double eps = 1.0e-3;
-      return std::abs(angle_safe(get_fast_axis(), panel.get_fast_axis())) < eps
+      return get_type() == panel.get_type()
+          && get_name() == panel.get_name()
+          && std::abs(angle_safe(get_fast_axis(), panel.get_fast_axis())) < eps
           && std::abs(angle_safe(get_slow_axis(), panel.get_slow_axis())) < eps
           && std::abs(angle_safe(get_origin(), panel.get_origin())) < eps
           && image_size_ == panel.image_size_;
@@ -449,6 +468,7 @@ namespace dxtbx { namespace model {
     }
 
     std::string type_;
+    std::string name_;
     mat3<double> d_;
     mat3<double> D_;
     vec2 <double> pixel_size_;
@@ -468,6 +488,7 @@ namespace dxtbx { namespace model {
   std::ostream& operator<< (std::ostream &os, const Panel &p) {
     os << "Panel:\n";
     os << "    type:          " << p.get_type() << "\n";
+    os << "    name:          " << p.get_name() << "\n";
     os << "    fast axis:     " << p.get_fast_axis().const_ref() << "\n";
     os << "    slow axis:     " << p.get_slow_axis().const_ref() << "\n";
     os << "    origin:        " << p.get_origin().const_ref() << "\n";

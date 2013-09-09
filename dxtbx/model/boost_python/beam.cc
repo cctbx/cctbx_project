@@ -114,6 +114,7 @@ namespace dxtbx { namespace model { namespace boost_python {
 
     // Export Beam : BeamBase
     class_ <Beam, bases <BeamBase> > ("Beam")
+      .def(init<const Beam&>())
       .def(init <vec3 <double>,
                  double> ((
           arg("direction"), 
