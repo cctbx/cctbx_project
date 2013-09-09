@@ -21,6 +21,9 @@ def to_dict(beam):
 
     '''
     from collections import OrderedDict
+    if beam == None:
+        return None
+
     return OrderedDict([
         ('direction', beam.get_direction()),
         ('wavelength', beam.get_wavelength()),

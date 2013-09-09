@@ -10,6 +10,36 @@ from __future__ import division
 #  This code is distributed under the BSD license, a copy of which is
 #  included in the root directory of this package.
 
+
+class NullSweep(object):
+    ''' A class to facilitate reading in without access to images. '''
+    template = None
+    beam = None
+    detector = None
+    goniometer = None
+    scan = None
+    def __init__(self, template):
+        self.template = template
+    def get_template(self):
+        return self.template
+    def get_beam(self):
+        return self.beam
+    def set_beam(self, beam):
+        self.beam = beam
+    def get_detector(self):
+        return self.detector
+    def set_detector(self, detector):
+        self.detector = detector
+    def get_goniometer(self):
+        return self.goniometer
+    def set_goniometer(self, goniometer):
+        self.goniometer = goniometer
+    def get_scan(self):
+        return self.scan
+    def set_scan(self, scan):
+        self.scan = scan
+
+
 def filename_to_absolute(filename):
     ''' Convert filenames to absolute form. '''
     import os
@@ -77,6 +107,8 @@ def imageset_to_dict(imageset):
         return imagesweep_to_dict(imageset)
     elif isinstance(imageset, ImageSet):
         return basic_imageset_to_dict(imageset)
+    elif isinstance(imageset, NullSweep):
+        return imagesweep_to_dict(imageset)
     else:
         raise TypeError("Unknown ImageSet Type")
 
@@ -89,9 +121,13 @@ def basic_imageset_from_dict(d):
     filenames = map(str, d['filenames'])
     imageset = ImageSetFactory.new(filenames)[0]
 
+    # Get the existing models as dictionaries
+    beam_dict = beam.to_dict(sweep.get_beam())
+    detector_dict = detector.to_dict(sweep.get_detector())
+
     # Set models
-    imageset.set_beam(beam.from_dict(d.get('beam')))
-    imageset.set_detector(detector.from_dict(d.get('detector')))
+    imageset.set_beam(beam.from_dict(d.get('beam'), beam_dict))
+    imageset.set_detector(detector.from_dict(d.get('detector'), detector_dict))
 
     # Return the imageset
     return imageset
@@ -112,7 +148,11 @@ def imagesweep_from_dict(d):
         image_range = scan_dict.get('image_range')
 
     # Construct the sweep
-    sweep = ImageSetFactory.from_template(template, image_range)[0]
+    try:
+        sweep = ImageSetFactory.from_template(template, image_range)[0]
+    except Exception:
+        sweep = NullSweep(template)
+        sweep.set_scan(scan.from_dict(d.get('scan')))
 
     # Get the existing models as dictionaries
     beam_dict = beam.to_dict(sweep.get_beam())
