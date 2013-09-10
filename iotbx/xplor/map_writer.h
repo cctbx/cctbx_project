@@ -37,7 +37,8 @@ map_writer(
   std::string const& file_name,
   cctbx::uctbx::unit_cell const& unit_cell,
   scitbx::af::const_ref<double, scitbx::af::flex_grid<> > const& data,
-  const scitbx::af::tiny<unsigned,3> &whole_unit_cell_size);
+  const scitbx::af::tiny<unsigned,3> &whole_unit_cell_size,
+  const std::string &remark="");
 
 }}
 

@@ -35,12 +35,10 @@ void map_reader::read(std::istream &f, bool header_only)
   std::getline(f, line);
   boost::algorithm::trim(line);
   int ntitle=std::atoi(line.substr(0, line.find_first_of('!')).c_str());
-  std::list<std::string> title_lines;
-  IOTBX_ASSERT( ntitle>0 );
   while( ntitle-- )
   {
     std::getline(f,line);
-    title_lines.push_back(line);
+    this->title_lines.push_back(line);
   }
   std::getline(f,line);
   std::list<int> values;
@@ -81,7 +79,6 @@ void map_reader::read(std::istream &cin, std::size_t n_header_lines,
   IOTBX_ASSERT(grid.nd() == 3);
   IOTBX_ASSERT(grid.all().all_gt(0));
   for (std::size_t i=0;i<n_header_lines;i++) {
-    // std::getline(cin, line);
     cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
   }
   std::string line;

@@ -6,6 +6,7 @@
 #include <fstream>
 #include <cstdlib>
 #include <cstdio>
+#include <iomanip>
 
 namespace iotbx { namespace xplor {
 
@@ -66,27 +67,29 @@ write_head(
   return fh;
 }
 
-static FILE*
-write_head(
-  std::string const& file_name,
+static std::ostream & write_head(std::ostream &text_stream,
   cctbx::uctbx::unit_cell const& unit_cell,
   const scitbx::af::int3 &n,
   const scitbx::af::int3 &first,
-  const scitbx::af::int3 &last)
+  const scitbx::af::int3 &last,
+  const std::string &remark)
 {
-  FILE* fh = fopen(file_name.c_str(), "wb");
-  CCTBX_ASSERT(fh != 0);
-  fprintf(fh, "\n%8d !NTITLE\n", 1);
-  fprintf(fh, "%-264s\n", " REMARKS iotbx::xplor");
-  fprintf(fh, " %7d %7d %7d %7d %7d %7d %7d %7d %7d\n", n[0], first[0], last[0],
-      n[1], first[1], last[1], n[2], first[2], last[2]);
-  for(std::size_t i=0;i<6;i++) {
-    fprintf(fh, "%s",
-      format_e<12>("%12.5E", unit_cell.parameters()[i]).s);
-  }
-  fprintf(fh, "\n");
-  fprintf(fh, "ZYX\n");
-  return fh;
+  int ntitle = remark.empty()?1:2;
+  text_stream << '\n' << std::setw(8) << ntitle << " !NTITLE\n";
+  text_stream << std::setw(264) << std::left << " REMARKS iotbx::xplor" << '\n';
+  if( !remark.empty() )
+    text_stream << std::setw(264) << (" REMARKS "+remark).c_str() << '\n';
+  text_stream << std::right;
+  for(short j=0; j<3; ++j)
+    text_stream
+      << ' ' << std::setw(7) << n[j]
+      << ' ' << std::setw(7) << first[j]
+      << ' ' << std::setw(7) << last[j];
+  text_stream << '\n';
+  for(std::size_t i=0;i<6;i++)
+    text_stream << format_e<12>("%12.5E", unit_cell.parameters()[i]).s;
+  text_stream << "\nZYX\n";
+  return text_stream;
 }
 
 static void
@@ -100,6 +103,16 @@ write_tail(
     format_e<12>("%12.4E", average).s,
     format_e<12>("%12.4E", standard_deviation).s);
   fclose(fh);
+}
+
+static void write_tail(std::ostream &text_stream, double average,
+  double standard_deviation)
+{
+  text_stream
+    << "   -9999\n"
+    << format_e<12>("%12.4E", average).s
+    << format_e<12>("%12.4E", standard_deviation).s
+    << '\n';
 }
 
 void
@@ -137,12 +150,12 @@ map_writer_box(
   write_tail(fh, average, standard_deviation);
 }
 
-void
-map_writer(
-  std::string const& file_name,
+//! @todo: code duplication
+void map_writer(std::ostream &text_stream,
   cctbx::uctbx::unit_cell const& unit_cell,
   af::const_ref<double, af::flex_grid<> > const& data,
-  const scitbx::af::tiny<unsigned,3> &whole_unit_cell_size)
+  const scitbx::af::tiny<unsigned,3> &whole_unit_cell_size,
+  const std::string &remark)
 {
   IOTBX_ASSERT(data.accessor().nd() == 3);
   IOTBX_ASSERT(data.accessor().all().all_gt(0));
@@ -150,28 +163,28 @@ map_writer(
   af::int3 first( af::adapt(data.accessor().origin()) ),
     last( af::adapt(data.accessor().last()) );
   last -= 1; // open range -> close range
-  FILE* fh=write_head(file_name, unit_cell, whole_unit_cell_size, first, last);
+  write_head(text_stream, unit_cell, whole_unit_cell_size, first, last, remark);
   af::const_ref<double, af::c_grid<3> > data_ref(data.begin(),
     af::c_grid<3>(af::adapt(data.accessor().all())));
   double mean=0., esd=0.;
   for(std::size_t iz=0;iz<data_ref.accessor()[2];iz++) {
-    fprintf(fh, "%8lu\n", static_cast<unsigned long>(iz));
+    text_stream << std::setw(8) << static_cast<unsigned long>(iz) << '\n';
     int i_fld = 0;
     for(std::size_t iy=0;iy<data_ref.accessor()[1];iy++) {
       for(std::size_t ix=0;ix<data_ref.accessor()[0];ix++) {
         double value = data_ref(ix,iy,iz);
         mean += value;
         esd += value*value;
-        fprintf(fh, "%s", format_e<12>("%12.5E", value).s);
+        text_stream << format_e<12>("%12.5E", value).s;
         i_fld++;
         if (i_fld == 6) {
-          fprintf(fh, "\n");
+          text_stream << '\n';
           i_fld = 0;
         }
       }
     }
     if (i_fld > 0) {
-      fprintf(fh, "\n");
+      text_stream << '\n';
     }
   }
   std::size_t n = data_ref.accessor().size_1d();
@@ -180,7 +193,17 @@ map_writer(
   esd = esd / n - mean*mean;
   IOTBX_ASSERT( esd>=0. );
   esd = std::sqrt(esd);
-  write_tail(fh, mean, esd);
+  write_tail(text_stream, mean, esd);
+}
+
+void map_writer(std::string const& file_name,
+  cctbx::uctbx::unit_cell const& unit_cell,
+  af::const_ref<double, af::flex_grid<> > const& data,
+  const scitbx::af::tiny<unsigned,3> &whole_unit_cell_size,
+  const std::string &remark)
+{
+  std::ofstream file(file_name.c_str());
+  map_writer(file, unit_cell, data, whole_unit_cell_size, remark);
 }
 
 void

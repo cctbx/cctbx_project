@@ -237,8 +237,9 @@ void asymmetric_map::save(const std::string &file_name,
     throw error("unsupported file format");
   af::const_ref<double, af::flex_grid<> > flex_data(data_.begin(),
     data_.accessor().as_flex_grid());
+  std::string remark = "SPACE GROUP HALL: " + this->hall_symbol();
   iotbx::xplor::map_writer(file_name, unit_cell, flex_data,
-    this->unit_cell_grid_size());
+    this->unit_cell_grid_size(), remark);
 }
 
 }}
