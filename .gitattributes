@@ -1729,7 +1729,6 @@ mmtbx/regression/tst_rigid_bond_test.py -text
 mmtbx/regression/tst_ringer.py -text
 mmtbx/regression/tst_sort_hetatms.py -text
 mmtbx/regression/tst_validate_utils.py svneol=native#text/x-python
-mmtbx/regression/tst_validate_waters.py -text
 mmtbx/regression/tst_validation_summary.py -text
 mmtbx/resolve_resources.py -text
 mmtbx/rotamer/graphics.py -text
@@ -1791,8 +1790,11 @@ mmtbx/validation/cbetadev.py svneol=native#text/x-python
 mmtbx/validation/clashscore.py svneol=native#text/x-python
 mmtbx/validation/convert_lists.py -text
 mmtbx/validation/datasets.py -text
+mmtbx/validation/experimental.py svneol=native#text/x-python
 mmtbx/validation/ligands.py -text
 mmtbx/validation/ramalyze.py svneol=native#text/x-python
+mmtbx/validation/regression/__init__.py svneol=native#text/x-python
+mmtbx/validation/regression/tst_waters.py svneol=native#text/x-python
 mmtbx/validation/rna_validate.py svneol=native#text/x-python
 mmtbx/validation/rotalyze.py svneol=native#text/x-python
 mmtbx/validation/sequence.py -text
