@@ -306,12 +306,13 @@ refinement.output.title = Test refinement run
   names = i.search_phil_text("CIF")
   assert (names == ['refinement.output.write_model_cif_file',
                     'refinement.ncs.simple_ncs_from_pdb.max_rmsd_user',
-                    'refinement.output.write_reflection_cif_file',])
+                    'refinement.output.write_reflection_cif_file',
+                    'refinement.input.monomers.file_name',])
   assert (i.get_input_files() == [
     ('protein.pdb', 'Input model', 'refinement.input.pdb.file_name'),
     ('ligand.pdb', 'Input model', 'refinement.input.pdb.file_name'),
     ('data.mtz', 'Reflections file', 'refinement.input.xray_data.file_name'),
-    ('ligand.cif', 'Restraints', 'refinement.input.monomers.file_name')])
+    ('ligand.cif', 'Restraints (CIF)', 'refinement.input.monomers.file_name')])
   assert (i.get_run_title() == "Test refinement run")
   #
   # .style processing
