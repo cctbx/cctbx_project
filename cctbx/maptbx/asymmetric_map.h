@@ -1,13 +1,14 @@
 #ifndef CCTBX_MAPTBX_ASYMMETRIC_MAP_H
 #define CCTBX_MAPTBX_ASYMMETRIC_MAP_H
 
-#include <boost/timer/timer.hpp>
 #include <scitbx/array_family/accessors/c_interval_grid.h>
 #include <cctbx/sgtbx/space_group_type.h>
 #include <scitbx/array_family/accessors/c_grid_padded.h>
 #include <cctbx/sgtbx/direct_space_asu/proto/asymmetric_unit.h>
 #include <scitbx/array_family/loops.h>
 #include <scitbx/fftpack/real_to_complex_3d.h>
+
+//! @todo move grid_symop to cctbx/sgtbx
 #include <mmtbx/masks/grid_symop.h>
 
 namespace cctbx { namespace maptbx

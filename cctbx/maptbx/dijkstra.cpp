@@ -1,15 +1,15 @@
 // UNDER CONSTRUCTION
 
-#include <boost/graph/connected_components.hpp>
-#include <cctbx/error.h>
 #include "skeletons.h"
-
+#include <boost/graph/connected_components.hpp>
+#include <boost/graph/adjacency_list.hpp>
+#include <cctbx/error.h>
 
 namespace cctbx { namespace maptbx
 {
 
-
-//typedef boost::adjacency_list<boost::vecS,boost::vecS,boost::undirectedS> graph_t;
+typedef boost::adjacency_list<boost::vecS,boost::vecS,boost::undirectedS>
+  graph_t;
 
 std::pair<size_t,std::vector<int> > skeleton_components(const joins_t &joins,
   std::size_t nv)

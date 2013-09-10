@@ -114,6 +114,7 @@ cctbx/geometry_restraints/tst_proxy_registry.py svneol=native#text/x-python
 cctbx/maptbx/SConscript -text
 cctbx/maptbx/asymmetric_map.cpp svneol=native#text/plain
 cctbx/maptbx/asymmetric_map.h svneol=native#text/plain
+cctbx/maptbx/blobs_cmd.cpp svneol=native#text/plain
 cctbx/maptbx/boost_python/grid_indices_around_sites.cpp svneol=native#text/plain
 cctbx/maptbx/boost_python/time_grid_indices_around_sites.py svneol=native#text/x-python
 cctbx/maptbx/dijkstra.cpp svneol=native#text/plain
