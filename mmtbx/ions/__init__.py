@@ -108,6 +108,15 @@ water
     .input_size = 80
     .help = Maximum water occupancy
     .short_caption = Max. expected occupancy
+  min_b_iso = 1.0
+    .type = float
+    .input_size = 80
+    .help = Minimum water isotropic B-factor
+    .short_caption = Min. expected B-factor
+  fp_max = 1.0
+    .type = float
+  fpp_max = 0
+    .type = float
   max_stddev_b_iso = 5
     .type = float
     .input_size = 80
@@ -2190,9 +2199,9 @@ class AtomProperties (object) :
     if ((self.peak_2fofc < params.min_2fofc_level) or
         (self.peak_fofc < -2.0)) :
       return WATER_POOR
-    if (self.fpp is not None) and (self.fpp > 0) :
+    if (self.fpp is not None) and (self.fpp > params.fpp_max) :
       return HEAVY_ION
-    if (self.fp is not None) and (self.fp > 0.5) :
+    if (self.fp is not None) and (self.fp > params.fp_max) :
       return HEAVY_ION
     if (self.peak_anom > params.max_anom_level) :
       inaccuracies.add(self.ANOM_PEAK)
@@ -2204,7 +2213,7 @@ class AtomProperties (object) :
       inaccuracies.add(self.HIGH_OCC)
       atom_type = HEAVY_ION
     # very low B-factors automatically trigger a check
-    if (self.atom.b < 1) :
+    if (self.atom.b < params.min_b_iso) :
       inaccuracies.add(self.LOW_B)
       atom_type = HEAVY_ION
     elif (self.b_stddev_hoh is not None) and (self.b_stddev_hoh > 0) :
