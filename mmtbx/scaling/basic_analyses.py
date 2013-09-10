@@ -16,6 +16,7 @@ class basic_analyses(object):
                phil_object,
                out=None,
                out_plot=None, miller_calc=None,
+               original_intensities=None,
                verbose=0):
     if out is None:
       out=sys.stdout
@@ -64,9 +65,13 @@ class basic_analyses(object):
     # first report on I over sigma
     miller_array_new = miller_array
     self.data_strength = None
-    if miller_array.sigmas() is not None:
+    miller_array_intensities = miller_array
+    if (original_intensities is not None) :
+      assert original_intensities.is_xray_intensity_array()
+      miller_array_intensities = original_intensities
+    if miller_array_intensities.sigmas() is not None:
       data_strength=data_statistics.i_sigi_completeness_stats(
-        miller_array,
+        miller_array_intensities,
         isigi_cut = phil_object.scaling.input.parameters.misc_twin_parameters.twin_test_cuts.isigi_cut,
         completeness_cut = phil_object.scaling.input.parameters.misc_twin_parameters.twin_test_cuts.completeness_cut)
       data_strength.show(out)

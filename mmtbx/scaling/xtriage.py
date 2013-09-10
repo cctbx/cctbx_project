@@ -160,7 +160,7 @@ input {
       {
        n_bins = 10
         .type = int
-        .short_caption = Number of bins
+        .short_caption = Number of bins for merging
        skip_merging = False
         .type = bool
         .expert_level = 1
@@ -410,6 +410,7 @@ class xtriage_analyses(object):
                parameters   = None,
                text_out     = None,
                plot_out     = None,
+               original_intensities = None,
                unmerged_obs = None):
     self.miller_obs  = miller_obs   # array of observed data, should be intensity or amplitude
     self.miller_calc = miller_calc  # array if calculated data, need to be given
@@ -776,8 +777,10 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
       miller_array.indices() != (0,0,0))
 
     original_is_intensity_array = False
+    original_intensities = None
     if (miller_array.is_xray_intensity_array()):
       original_is_intensity_array = True
+      original_intensities = miller_array.deep_copy()
       miller_array = miller_array.enforce_positive_amplitudes()
     elif (miller_array.is_complex_array()):
       miller_array = abs(miller_array)
@@ -798,6 +801,14 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
         indices=miller_array.indices(),
         data=miller_array.data(),
         sigmas=None ).set_observation_type( miller_array )
+    if (original_intensities is not None) :
+      if (not original_intensities.sigmas_are_sensible()) :
+        original_intensities = original_intensities.customized_copy(
+          indices=original_intensities.indices(),
+          data=original_intensities.data(),
+          sigmas=None ).set_observation_type( original_intensities )
+      original_intensities = original_intensities.eliminate_sys_absent(
+        integral_only=True, log=log)
 
     miller_array = miller_array.eliminate_sys_absent(
       integral_only=True, log=log)
@@ -938,6 +949,7 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
         parameters   = params,
         text_out     = log,
         plot_out     = string_buffer,
+        original_intensities = original_intensities,
         unmerged_obs = unmerged_array)
 
     if params.scaling.input.optional.hklout is not None:
