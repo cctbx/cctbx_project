@@ -7,9 +7,7 @@
 
 #include <boost/algorithm/cxx11/all_of.hpp>
 #include <boost/algorithm/cxx11/any_of.hpp>
-
 #include <cctbx/error.h>
-
 // iostream is included by this one
 #include <cctbx/sgtbx/direct_space_asu/proto/asymmetric_unit.h>
 

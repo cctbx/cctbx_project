@@ -4,8 +4,6 @@
 #include <set>
 #include <vector>
 
-#include <boost/graph/adjacency_list.hpp>
-
 #include <scitbx/array_family/accessors/c_grid_padded.h>
 #include <scitbx/array_family/accessors/c_grid_padded_periodic.h>
 #include <scitbx/array_family/tiny_types.h>
@@ -72,8 +70,6 @@ class shortest_paths
 public:
   std::vector<std::size_t> predecessors, distances;
 };
-
-typedef boost::adjacency_list<boost::vecS,boost::vecS,boost::undirectedS> graph_t;
 
 std::vector<std::size_t> mask_components(marks_t &mask,
   const std::vector<int> &components);

@@ -1,4 +1,4 @@
-#include <boost/timer/timer.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 #include <cctbx/maptbx/structure_factors.h>
 #include <scitbx/array_family/tiny_algebra.h>
@@ -8,13 +8,45 @@
 namespace cctbx { namespace maptbx
 {
 
+#if 1
+namespace { namespace detail {
+class cpu_timer
+{
+public:
+
+  cpu_timer() : start_(boost::posix_time::microsec_clock::local_time()) {}
+
+  void format(std::ostream &stream)
+  {
+    boost::posix_time::ptime t=boost::posix_time::microsec_clock::local_time();
+    boost::posix_time::time_duration tdif = t-start_;
+    stream << tdif.total_microseconds()*1.e-6 << "s wall";
+  }
+
+  std::string format()
+  {
+    std::ostringstream stream;
+    this->format(stream);
+    return stream.str();
+  }
+
+private:
+  boost::posix_time::ptime start_;
+};
+
+}}
+using detail::cpu_timer;
+#else
+using boost::timer::cpu_timer;
+#endif
+
 scitbx::af::shared< std::complex<double > > asymmetric_map::structure_factors(
   scitbx::af::const_ref< cctbx::miller::index<> > indices) const
 {
   typedef scitbx::af::c_grid_padded<3> grid_t;
   typedef std::complex<double> cmplx;
   scitbx::fftpack::real_to_complex_3d<double> fft(this->fft_grid().focus());
-  boost::timer::cpu_timer timer;
+  cpu_timer timer;
   auto fftmap = this->map_for_fft();
   this->map_for_fft_times_ = timer.format();
   CCTBX_ASSERT( fftmap.accessor().all().all_eq(fft.m_real()) );
@@ -70,7 +102,7 @@ asymmetric_map::fft_map_t asymmetric_map::map_for_fft() const
   // CCTBX_ASSERT( is_asu_inside_cell ); No: 48 fails
   // CCTBX_ASSERT( has_enclosed_box ); No: 99
   scitbx::int3 padded_grid_size( result.accessor().all() );
-  boost::timer::cpu_timer timer;
+  cpu_timer timer;
   if( has_enclosed_box && is_asu_inside_cell )
   {
     auto result_ref = result.ref();
@@ -151,7 +183,7 @@ void asymmetric_map::copy_to_asu_box(const scitbx::int3 &map_size,
     && ibox_max.as_tiny().all_le(grid);
   ibox_max += scitbx::int3(1,1,1); // open range: [box_min,box_max)
   data_.resize(asu_grid_t(ibox_min, ibox_max), 0.); //! @todo optimize
-  boost::timer::cpu_timer timer;
+  cpu_timer timer;
   scitbx::int3 padded_grid_size = padded_map_size;
   CCTBX_ASSERT( padded_grid_size.as_tiny().all_ge(grid) );
   if( has_enclosed_box && is_asu_inside_cell )
