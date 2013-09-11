@@ -36,6 +36,10 @@ def get_master_phil():
         time_limit = 120
         .type = int
         .help = '''Time limit (sec) for Reduce optimization'''
+
+        b_factor_cutoff = None
+        .type = int
+        .help = '''B factor cutoff for use with MolProbity'''
   }
 
     """)
@@ -117,6 +121,7 @@ Example:
         keep_hydrogens=keep_hydrogens,
         nuclear=nuclear,
         time_limit=time_limit,
+        b_factor_cutoff=self.params.clashscore.b_factor_cutoff,
         verbose=self.params.clashscore.verbose)
     if not quiet :
       self.print_clashlist(out)
@@ -133,6 +138,7 @@ Example:
         nuclear=False,
         force_unique_chain_ids=False,
         time_limit=120,
+        b_factor_cutoff=None,
         verbose=False) :
     if (not libtbx.env.has_module(name="probe")):
       print "Probe could not be detected on your system.  Please make sure Probe is in your path."
@@ -142,8 +148,8 @@ Example:
     if(pdb_io is not None):
       hierarchy = pdb_io.construct_hierarchy()
 
-    self.clashscore = []
     self.clash_dict = {}
+    self.clash_dict_b_cutoff = {}
     self.list_dict = {}
 
     h_count = 0
@@ -195,13 +201,15 @@ Example:
                                      nuclear=nuclear,
                                      time_limit=time_limit,
                                      largest_occupancy=largest_occupancy,
+                                     b_factor_cutoff=b_factor_cutoff,
                                      verbose=verbose)
       self.pdb_hierarchy = pdb.hierarchy.\
         input(pdb_string=pcm.h_pdb_string).hierarchy
-      self.clashscore.append(pcm.clashscore)
       self.clash_dict[m.id]=pcm.clashscore
+      self.clash_dict_b_cutoff[m.id]=pcm.clashscore_b_cutoff
       self.list_dict[m.id]=pcm.bad_clashes
     self.clashscore=pcm.clashscore
+    self.clashscore_b_cutoff=pcm.clashscore_b_cutoff
     self.bad_clashes=pcm.bad_clashes
     self.probe_unformatted =pcm.probe_unformatted
     return self.clash_dict, self.list_dict
@@ -214,14 +222,23 @@ Example:
   def print_clashscore(self, out=sys.stdout):
     if out is None :
       out = sys.stdout
-    for k in self.clash_dict.keys():
+    for k in sorted(self.clash_dict.keys()):
       if k is '':
         print >> out, "clashscore = %f" % self.clash_dict[k]
+        if self.clash_dict_b_cutoff[k] is not None:
+          print >> out, "clashscore (B factor cutoff = %d) = %f" % \
+            (self.params.clashscore.b_factor_cutoff,
+             self.clash_dict_b_cutoff[k])
       else:
         print >> out, "MODEL%s clashscore = %f" % (k, self.clash_dict[k])
+        if self.clash_dict_b_cutoff[k] is not None:
+          print >> out, "MODEL%s clashscore (B factor cutoff = %d) = %f" % \
+            (k,
+             self.params.clashscore.b_factor_cutoff,
+             self.clash_dict_b_cutoff[k])
 
   def print_clashlist(self, out=sys.stdout):
-    for k in self.list_dict.keys():
+    for k in sorted(self.list_dict.keys()):
       if k is '':
         print >> out, "Bad Clashes >= 0.4 Angstrom:"
         print >> out, self.list_dict[k]
@@ -243,15 +260,19 @@ class probe_clashscore_manager(object):
                nuclear=False,
                time_limit=120,
                largest_occupancy=10,
+               b_factor_cutoff=None,
                verbose=False):
     assert (libtbx.env.has_module(name="reduce") and
             libtbx.env.has_module(name="probe"))
 
+    self.b_factor_cutoff = b_factor_cutoff
     ogt = 10
+    blt = self.b_factor_cutoff
     if largest_occupancy < ogt:
       ogt = largest_occupancy
 
     self.trim = "phenix.reduce -quiet -trim -"
+    self.probe_atom_b_factor = None
     if not nuclear:
       self.build = "phenix.reduce -oh -his -flip -pen9999" +\
                    " -keep -allalt -limit%d -" % time_limit
@@ -260,6 +281,10 @@ class probe_clashscore_manager(object):
           (ogt, ogt)
       self.probe_atom_txt = \
         'phenix.probe -q -mc -het -dumpatominfo "ogt%d not water" -' % ogt
+      if blt is not None:
+        self.probe_atom_b_factor = \
+          'phenix.probe -q -mc -het -dumpatominfo "blt%d ogt%d not water" -' % \
+            (blt, ogt)
     else: #use nuclear distances
       self.build = "phenix.reduce -oh -his -flip -pen9999" +\
                    " -keep -allalt -limit%d -nuc -" % time_limit
@@ -269,6 +294,10 @@ class probe_clashscore_manager(object):
       self.probe_atom_txt = \
         'phenix.probe -q -mc -het -dumpatominfo -nuclear' +\
           ' "ogt%d not water" -' % ogt
+      if blt is not None:
+        self.probe_atom_b_factor = \
+          'phenix.probe -q -mc -het -dumpatominfo -nuclear' +\
+            ' "blt%d ogt%d not water" -' % (blt, ogt)
 
     if not keep_hydrogens:
       h_pdb_string = self.run_reduce(pdb_string)
@@ -299,6 +328,7 @@ class probe_clashscore_manager(object):
   def run_probe_clashscore(self, pdb_string):
     clash_hash={}
     hbond_hash={}
+    b_factor_hash={}
     clashscore = None
     probe_out = easy_run.fully_buffered(self.probe_txt,
       stdin_lines=pdb_string)
@@ -310,23 +340,25 @@ class probe_clashscore_manager(object):
     for line in probe_unformatted:
       name, pat, type, srcAtom, targAtom, min_gap, gap, \
       kissEdge2BullsEye, dot2BE, dot2SC, spike, score, stype, \
-      ttype, x, y, z, sbVal, tBval = line.split(":")
+      ttype, x, y, z, sBval, tBval = line.split(":")
       if (cmp(srcAtom,targAtom) < 0):
         key = srcAtom+targAtom
       else:
         key = targAtom+srcAtom
       if (type == "so" or type == "bo"):
         if (float(gap) <= -0.4):
-          try:
+          if clash_hash.get(key) is not None:
             if (float(gap) < clash_hash[key]):
               clash_hash[key] = float(gap)
-          except Exception:
+              b_factor_hash[key] = max(float(sBval), float(tBval))
+          else:
             clash_hash[key] = float(gap)
+            b_factor_hash[key] = max(float(sBval), float(tBval))
       elif (type == "hb"):
-        try:
+        if hbond_hash.get(key) is not None:
           if (float(gap) < hbond_hash[key]):
             hbond_hash[key] = float(gap)
-        except Exception:
+        else:
           hbond_hash[key] = float(gap)
     clashes = len(clash_hash)
 
@@ -335,6 +367,14 @@ class probe_clashscore_manager(object):
         clashes=clashes-1
         clash_hash[k]="Hbonded"
     bad_clashes = ''
+
+    if self.b_factor_cutoff is not None:
+      clashes_b_cutoff = 0
+      for k in clash_hash.keys():
+        if clash_hash[k] == "Hbonded":
+          continue
+        if b_factor_hash[k] < self.b_factor_cutoff:
+          clashes_b_cutoff += 1
 
     #sort the output
     temp = []
@@ -357,10 +397,22 @@ class probe_clashscore_manager(object):
     natoms = 0
     for line in probe_info :
       dump, natoms = line.split(":")
+    natoms_b_cutoff = None
+    if self.probe_atom_b_factor is not None:
+      probe_info_b_factor = easy_run.fully_buffered(self.probe_atom_b_factor,
+        stdin_lines=pdb_string).raise_if_errors().stdout_lines
+      for line in probe_info_b_factor :
+        dump_b, natoms_b_cutoff = line.split(":")
 
     if int(natoms) == 0:
       clashscore = 0.0
     else:
       clashscore = (clashes*1000)/float(natoms)
+    clashscore_b_cutoff = None
+    if natoms_b_cutoff is not None and int(natoms_b_cutoff) == 0:
+      clashscore_b_cutoff = 0.0
+    elif natoms_b_cutoff is not None:
+      clashscore_b_cutoff = (clashes_b_cutoff*1000)/float(natoms_b_cutoff)
     self.clashscore = clashscore
+    self.clashscore_b_cutoff = clashscore_b_cutoff
     self.bad_clashes = bad_clashes
