@@ -49,34 +49,27 @@ namespace scattering {
                       const scitbx::af::const_ref<double>&,
                       const cctbx::xray::scattering_type_registry&,
                       const bool&);
-    void reorganize_xyz(const scitbx::af::const_ref<scitbx::vec3<double> >&);
-    void transfer_xyz();
+    void set_xyz(const scitbx::af::const_ref<scitbx::vec3<double> >&);
     void clear_xyz();
-    void copy_solvent_weights(const scitbx::af::const_ref<double>&);
-    void transfer_solvent_weights();
+    void set_solvent_weights(const scitbx::af::const_ref<double>&);
     void clear_solvent_weights();
-    void reorganize_hkl(const scitbx::af::const_ref<scitbx::vec3<double> >&);
-    void transfer_hkl();
+    void set_hkl(const scitbx::af::const_ref<scitbx::vec3<double> >&);
     void clear_hkl();
-    void copy_q(const scitbx::af::const_ref<double>&);
-    void transfer_q();
+    void set_q(const scitbx::af::const_ref<double>&);
     void clear_q();
-    void copy_lattice(const scitbx::af::const_ref<double>&,
-                      const scitbx::af::const_ref<double>&);
-    void transfer_lattice();
+    void set_lattice(const scitbx::af::const_ref<double>&,
+                     const scitbx::af::const_ref<double>&);
     void clear_weights();
     void clear_lattice();
-    void reorganize_rotations_translations
+    void set_rotations_translations
       (const scitbx::af::const_ref<double>&,
        const scitbx::af::const_ref<scitbx::vec3<double> >&);
-    void transfer_rotations_translations();
     void clear_rotations_translations();
-    void convert_scattering_types(const scitbx::af::const_ref<std::string>&,
+    void set_scattering_types(const scitbx::af::const_ref<std::string>&,
                                   const cctbx::xray::scattering_type_registry&);
-    void transfer_scattering_types();
     void clear_scattering_types();
-    void convert_scattering_type_registry(const cctbx::xray::scattering_type_registry&);
-    void transfer_scattering_type_registry(const bool&);
+    void set_scattering_type_registry(const cctbx::xray::scattering_type_registry&,
+                                      const bool&);
     void clear_scattering_type_registry();
     void allocate_amplitudes();
     void reset_amplitudes();
@@ -89,20 +82,8 @@ namespace scattering {
     void run_collect_solvent_saxs_kernel(const double&,const double&);
     void sum_over_lattice();
 
-  private:
+  protected:
     // functions for reorganizing data
-    void reorganize_coordinates
-      (const scitbx::af::const_ref<scitbx::vec3<double> >&,
-       const scitbx::af::const_ref<double>&);
-    void reorganize_h(const scitbx::af::const_ref<scitbx::vec3<double> >&);
-    void reorganize_q(const scitbx::af::const_ref<double>&,
-                      const scitbx::af::const_ref<double>&,
-                      const scitbx::af::const_ref<double>&);
-    void reorganize_rt(const scitbx::af::const_ref<double>&,
-                       const scitbx::af::const_ref<scitbx::vec3<double> >&);
-    void convert_scatterers(const scitbx::af::const_ref<std::string>&,
-                            const cctbx::xray::scattering_type_registry&,
-                            const bool&);
     void clear_arrays();
 
     // xyz parameters
@@ -112,6 +93,7 @@ namespace scattering {
     fType * h_xyz, * d_xyz;
 
     // solvent weight parameters
+    int n_solvent;
     fType * h_solvent, * d_solvent;
 
     // reciprocal space parameters
@@ -129,7 +111,7 @@ namespace scattering {
     fType * h_weights, * d_weights;
 
     // scatterer parameters
-    int * h_scattering_type, * d_scattering_type;
+    int n_scatterers, * h_scattering_type, * d_scattering_type;
     int n_types;
     int n_terms;
     int f_size;
