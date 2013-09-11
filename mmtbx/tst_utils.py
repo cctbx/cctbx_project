@@ -1282,6 +1282,121 @@ END
         print gfd, list(gc[i])
         assert approx_equal(gc[i], gfd, 1.e-5)
 
+def exercise_d_data_target_d_atomic_params2():
+  import iotbx.pdb
+  import mmtbx.f_model
+  from scitbx.array_family import flex
+  good = """
+CRYST1   26.771   27.605   16.145  90.00  90.00  90.00 P 1
+ATOM      1  N   ASP A   1      21.771  22.605   5.434  1.00 10.00           N
+ATOM      2  CA  ASP A   1      20.399  22.215   5.000  1.00 10.00           C
+ATOM      3  C   ASP A   1      19.546  21.744   6.168  1.00 10.00           C
+ATOM      4  O   ASP A   1      19.997  20.958   7.001  1.00 10.00           O
+ATOM      5  N   VAL A   2      18.313  22.233   6.229  1.00 10.00           N
+ATOM      6  CA  VAL A   2      17.402  21.833   7.287  1.00 10.00           C
+ATOM      7  C   VAL A   2      16.896  20.436   6.954  1.00 10.00           C
+ATOM      8  O   VAL A   2      16.413  20.188   5.850  1.00 10.00           O
+ATOM      9  N   GLN A   3      17.009  19.531   7.918  1.00 10.00           N
+ATOM     10  CA  GLN A   3      16.590  18.147   7.740  1.00 10.00           C
+ATOM     11  C   GLN A   3      15.154  17.904   8.207  1.00 10.00           C
+ATOM     12  O   GLN A   3      14.813  18.175   9.356  1.00 10.00           O
+ATOM     13  N   MET A   4      14.318  17.383   7.310  1.00 10.00           N
+ATOM     14  CA  MET A   4      12.921  17.091   7.630  1.00 10.00           C
+ATOM     15  C   MET A   4      12.750  15.585   7.849  1.00 10.00           C
+ATOM     16  O   MET A   4      13.057  14.784   6.965  1.00 10.00           O
+TER
+ATOM     17  N   THR B   5      14.260  17.201  11.025  1.00 10.00           N
+ATOM     18  CA  THR B   5      14.076  15.783  11.355  1.00 10.00           C
+ATOM     19  C   THR B   5      12.612  15.405  11.550  1.00 10.00           C
+ATOM     20  O   THR B   5      11.958  15.902  12.463  1.00 10.00           O
+ATOM     21  N   GLN B   6      12.104  14.518  10.697  1.00 10.00           N
+ATOM     22  CA  GLN B   6      10.712  14.084  10.797  1.00 10.00           C
+ATOM     23  C   GLN B   6      10.571  12.704  11.424  1.00 10.00           C
+ATOM     24  O   GLN B   6      11.336  11.787  11.118  1.00 10.00           O
+ATOM     25  N   THR B   7       9.565  12.570  12.283  1.00 10.00           N
+ATOM     26  CA  THR B   7       9.266  11.322  12.973  1.00 10.00           C
+ATOM     27  C   THR B   7       7.756  11.127  12.915  1.00 10.00           C
+ATOM     28  O   THR B   7       7.000  12.070  13.145  1.00 10.00           O
+ATOM     29  N   PRO B   8       7.291   9.907  12.609  1.00 10.00           N
+ATOM     30  CA  PRO B   8       8.060   8.698  12.310  1.00 10.00           C
+ATOM     31  C   PRO B   8       8.406   8.619  10.827  1.00 10.00           C
+ATOM     32  O   PRO B   8       8.058   9.514  10.054  1.00 10.00           O
+ATOM     33  N   LEU B   9       9.093   7.553  10.427  1.00 10.00           N
+ATOM     34  CA  LEU B   9       9.459   7.385   9.023  1.00 10.00           C
+ATOM     35  C   LEU B   9       8.232   7.000   8.213  1.00 10.00           C
+ATOM     36  O   LEU B   9       8.026   7.506   7.113  1.00 10.00           O
+TER
+  """
+  bad = """
+CRYST1   26.771   27.605   16.145  90.00  90.00  90.00 P 1
+ATOM      1  N   ASP A   1      21.771  22.605   5.434  1.00 10.00           N
+ATOM      2  CA  ASP A   1      20.399  22.215   5.000  1.00 10.00           C
+ATOM      3  C   ASP A   1      19.546  21.744   6.168  1.00 10.00           C
+ATOM      4  O   ASP A   1      19.997  20.958   7.001  1.00 10.00           O
+ATOM      5  N   VAL A   2      18.313  22.233   6.229  1.00 10.00           N
+ATOM      6  CA  VAL A   2      17.402  21.833   7.287  1.00 10.00           C
+ATOM      7  C   VAL A   2      16.896  20.436   6.954  1.00 10.00           C
+ATOM      8  O   VAL A   2      16.413  20.188   5.850  1.00 10.00           O
+ATOM      9  N   GLN A   3      17.009  19.531   7.918  1.00 10.00           N
+ATOM     10  CA  GLN A   3      16.590  18.147   7.740  1.00 10.00           C
+ATOM     11  C   GLN A   3      15.154  17.904   8.207  1.00 10.00           C
+ATOM     12  O   GLN A   3      14.813  18.175   9.356  1.00 10.00           O
+ATOM     13  N   MET A   4      14.318  17.383   7.310  1.00 10.00           N
+ATOM     14  CA  MET A   4      12.921  17.091   7.630  1.00 10.00           C
+ATOM     15  C   MET A   4      12.750  15.585   7.849  1.00 10.00           C
+ATOM     16  O   MET A   4      13.057  14.784   6.965  1.00 10.00           O
+TER
+ATOM     17  N   THR B   5      14.260  17.201  11.025  1.00 10.00           N
+ATOM     18  CA  THR B   5      14.076  15.783  11.355  1.00 10.00           C
+ATOM     19  C   THR B   5      12.612  15.405  11.550  1.00 10.00           C
+ATOM     20  O   THR B   5      11.958  15.902  12.463  1.00 10.00           O
+ATOM     21  N   GLN B   6      12.104  14.518  10.697  0.90 10.00           N
+ATOM     22  CA  GLN B   6      10.712  14.084  10.797  0.90 10.00           C
+ATOM     23  C   GLN B   6      10.571  12.704  11.424  0.90 10.00           C
+ATOM     24  O   GLN B   6      11.336  11.787  11.118  0.90 10.00           O
+ATOM     25  N   THR B   7       9.565  12.570  12.283  1.00 10.00           N
+ATOM     26  CA  THR B   7       9.266  11.322  12.973  1.00 10.00           C
+ATOM     27  C   THR B   7       7.756  11.127  12.915  1.00 10.00           C
+ATOM     28  O   THR B   7       7.000  12.070  13.145  1.00 10.00           O
+ATOM     29  N   PRO B   8       7.291   9.907  12.609  1.00 10.00           N
+ATOM     30  CA  PRO B   8       8.060   8.698  12.310  1.00 10.00           C
+ATOM     31  C   PRO B   8       8.406   8.619  10.827  1.00 10.00           C
+ATOM     32  O   PRO B   8       8.058   9.514  10.054  1.00 10.00           O
+ATOM     33  N   LEU B   9       9.093   7.553  10.427  1.10 10.00           N
+ATOM     34  CA  LEU B   9       9.459   7.385   9.023  1.10 10.00           C
+ATOM     35  C   LEU B   9       8.232   7.000   8.213  1.10 10.00           C
+ATOM     36  O   LEU B   9       8.026   7.506   7.113  1.10 10.00           O
+TER
+  """
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=good)
+  hierarchy = pdb_inp.construct_hierarchy()
+  hierarchy.atoms().reset_i_seq()
+  xrs = pdb_inp.xray_structure_simple()
+  xrs.scattering_type_registry(table = "wk1995")
+  f_obs = abs(xrs.structure_factors(d_min=1,
+    algorithm="direct").f_calc()).set_observation_type_xray_amplitude()
+  sfp = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract()
+  sfp.algorithm="direct"
+  #
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=bad)
+  xrs = pdb_inp.xray_structure_simple()
+  xrs.scattering_type_registry(table = "wk1995")
+  #
+  fmodel = mmtbx.f_model.manager(
+    f_obs                        = f_obs,
+    xray_structure               = xrs,
+    target_name                  = "ml",
+    sf_and_grads_accuracy_params = sfp)
+  alpha_beta = fmodel.alpha_beta()
+  tg = mmtbx.utils.experimental_data_target_and_gradients(
+    fmodel = fmodel,
+    alpha_beta=alpha_beta)
+  result = tg.group_occupancy_grads(
+    pdb_hierarchy       = hierarchy,
+    residues_per_window = 1)
+  for r in result:
+    print "chainID_resseqs: %s occupancy_grad: %-15.6f"%tuple(r)
+
 def exercise_get_atom_selections (verbose=False) :
   pdb_in = """\
 CRYST1   15.000   15.000   15.000  90.00  90.00  90.00 P 212121
@@ -1462,6 +1577,7 @@ def run():
   exercise_29(verbose=verbose)
   exercise_30(verbose=verbose)
   exercise_d_data_target_d_atomic_params()
+  exercise_d_data_target_d_atomic_params2()
   exercise_get_atom_selections(verbose=verbose)
   exercise_f_000()
   exercise_cmdline_load_pdb_and_data()
