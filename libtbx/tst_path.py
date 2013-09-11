@@ -120,12 +120,55 @@ def exercise_move_old_create_new_directory():
   assert sorted(os.listdir("tmp_mocnd")) == [
     "a", "a_001", "a_002", "a_024", "a_025", "a_23", "a_log", "b", "b1"]
 
+def exercise_cleanup () :
+  from libtbx.path import clean_out_directory
+  from cStringIO import StringIO
+  import shutil
+  import os
+  if os.path.isdir("tmp_libtbx_path_cleanup") :
+    shutil.rmtree("tmp_libtbx_path_cleanup")
+  os.mkdir("tmp_libtbx_path_cleanup")
+  os.chdir("tmp_libtbx_path_cleanup")
+  os.makedirs("AutoSol_run_1_/TEMP0")
+  os.makedirs("AutoBuild_run_2_/TEMP0")
+  os.makedirs("AutoBuild_run_2_/resolve_1.ccp4")
+  open("AutoBuild_run_2_/TEMP0/model.pdb", "w").write("END\n")
+  os.makedirs("Refine_3/.comm")
+  open("Refine_3/refine_3.geo", "w").write("\n")
+  open("Refine_3/refine_3.kin", "w").write("\n")
+  open("Refine_3/refine_3_2fofc.ccp4", "w").write("\n")
+  open("Refine_3/refine_3_fofc.xplor", "w").write("\n")
+  open("probe.txt", "w").write("\n")
+  os.mkdir("FFT_4")
+  open("FFT_4/refine_3_2fofc.ccp4", "w").write("\n")
+  c_o_d = clean_out_directory(".")
+  out = StringIO()
+  c_o_d.show(out=out)
+  assert (out.getvalue() == """\
+The following 3 directories will deleted:
+  ./AutoBuild_run_2_/TEMP0
+  ./AutoSol_run_1_/TEMP0
+  ./Refine_3/.comm
+The following 5 files will be deleted:
+  ./probe.txt
+  ./Refine_3/refine_3.geo
+  ./Refine_3/refine_3.kin
+  ./Refine_3/refine_3_2fofc.ccp4
+  ./Refine_3/refine_3_fofc.xplor
+0.0 KB of disk space will be freed.
+""")
+
 def run(args):
   assert len(args) == 0
   exercise_relpath()
   exercise_move_old_create_new_directory()
   from libtbx.path import random_new_directory_name
   assert len(random_new_directory_name()) == len("tmp_dir_00000000")
+  import os
+  if (os.name == "nt") : # FIXME
+    print "skipping directory cleanup test on Windows"
+  else :
+    exercise_cleanup()
   print "OK"
 
 if (__name__ == "__main__"):
