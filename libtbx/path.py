@@ -1,5 +1,8 @@
 from __future__ import division
+import locale
+import shutil
 import os
+import sys
 op = os.path
 
 def norm_join(*args):
@@ -377,3 +380,104 @@ class relocatable_path(path_mixin):
   def __eq__(self, other):
     return (    self._anchor == other._anchor
             and self.relocatable == other.relocatable)
+
+class clean_out_directory (object) :
+  """
+  Utility for cleaning out Phenix (etc.) project folders, which tend to
+  accumulate large amounts of temporary files and other large objects (CCP4
+  maps, .geo files, etc.) which we may not want to keep around forever.
+  """
+  def __init__ (self,
+      path_name,
+      delete_kin_files=True,
+      delete_geo_files=True,
+      delete_map_files=True,
+      delete_temp_dirs=True,
+      delete_probe_files=True) :
+    self.path_name = path_name
+    self.n_files = self.n_dirs = self.n_bytes = 0
+    self.file_paths = []
+    self.dir_paths = []
+    for dirname, dirnames, filenames in os.walk(path_name) :
+      base_dir = os.path.basename(dirname)
+      base_dir_name = base_dir.split("_")[0]
+      # phenix-specific stuff
+      if (base_dir_name in ["AutoSol","AutoBuild","AutoMR","LigandFit",
+                            "StructureComparison",]) :
+        if ("TEMP0" in dirnames) and delete_temp_dirs :
+          dirnames.remove("TEMP0")
+          full_path = os.path.join(dirname, "TEMP0")
+          self.delete_directory(full_path)
+      elif (base_dir_name in ["Refine"]) :
+        if (".comm" in dirnames) and delete_temp_dirs and delete_probe_files :
+          dirnames.remove(".comm")
+          full_path = os.path.join(dirname, ".comm")
+          self.delete_directory(full_path)
+      elif (base_dir_name in ["FFT"]) :
+        continue
+      for file_name in filenames :
+        full_path = os.path.join(dirname, file_name)
+        if ((file_name.endswith(".kin") and delete_kin_files) or
+            (file_name.endswith(".geo") and delete_geo_files) or
+            (file_name.endswith(".ccp4") and delete_map_files) or
+            (file_name.endswith(".xplor") and delete_map_files) or
+            (file_name == "probe.txt" and delete_probe_files)) :
+          self.delete_file(full_path)
+
+  def delete_file (self, file_name) :
+    if not os.path.isfile(file_name) : return
+    self.n_bytes += os.path.getsize(file_name)
+    self.file_paths.append(file_name)
+    self.n_files += 1
+
+  def delete_directory (self, dir_name) :
+    self.n_bytes += directory_size(dir_name)
+    self.dir_paths.append(dir_name)
+    self.n_dirs += 1
+
+  def run (self, out=sys.stdout) :
+    self.show(out=out)
+    print >> out, "Deleting all selected files and directories..."
+    for file_name in self.file_paths :
+      os.remove(file_name)
+    for dir_name in self.dir_paths :
+      shutil.rmtree(dir_name)
+
+  def get_freed_space (self) :
+    locale.setlocale(locale.LC_ALL, 'en_US')
+    n_kb = self.n_bytes / 1000
+    if (n_kb > 10000) :
+      return locale.format("%.1f", n_kb / 1000, grouping=True) + " MB"
+    else :
+      return locale.format("%.1f", n_kb, grouping=True) + " KB"
+
+  def show (self, out=sys.stdout) :
+    if (self.n_dirs > 0) :
+      print >> out, "The following %d directories will deleted:" % \
+        self.n_dirs
+      for dir_name in self.dir_paths :
+        print >> out, "  %s" % dir_name
+    if (self.n_files > 0) :
+      print >> out, "The following %d files will be deleted:" % \
+        self.n_files
+      for file_name in self.file_paths :
+        print >> out, "  %s" % file_name
+    if (self.n_bytes > 0) :
+      print >> out, "%s of disk space will be freed." % self.get_freed_space()
+
+# http://stackoverflow.com/questions/1392413/calculating-a-directory-size-using-python
+def directory_size(path):
+  total_size = 0
+  seen = set()
+  for dirpath, dirnames, filenames in os.walk(path):
+    for f in filenames:
+      fp = os.path.join(dirpath, f)
+      try:
+        stat = os.stat(fp)
+      except OSError:
+        continue
+      if stat.st_ino in seen:
+        continue
+      seen.add(stat.st_ino)
+      total_size += stat.st_size
+  return total_size  # size in bytes
