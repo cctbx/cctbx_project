@@ -13,6 +13,16 @@ namespace cudatbx {
     cudaSafeCall( cudaDeviceReset() );
   }
 
+  int calculate_padded_size(const int& size, const int& padding) {
+    int padded_size = int(std::floor(size/padding + 1.0)) * padding;
+    return padded_size;
+  }
+
+  int calculate_blocks_per_grid(const int& size, const int& threads_per_block) {
+    int blocks_per_grid = (size + threads_per_block - 1)/threads_per_block;
+    return blocks_per_grid;
+  }
+
   /* ==========================================================================
      Basic timer for CUDA using events, one stream only, no checks
 

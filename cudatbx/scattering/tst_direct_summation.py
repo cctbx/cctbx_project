@@ -91,7 +91,6 @@ def test_saxs():
   intensities.run_saxs_kernel()
   intensities.sum_over_lattice()
   intensities = intensities.get_sum()
-  intensities = intensities/float(len(t_x))
 
   assert(approx_equal(intensities[10].real,3584.9828125,out=None))
 

@@ -1,7 +1,7 @@
 #ifndef DIRECT_SUMMATION_CUH
 #define DIRECT_SUMMATION_CUH
 
-#include <cudatbx/cuda_base.cuh>
+#include <cudatbx/cuda_utilities.cuh>
 #include <cudatbx/math/reduction.cuh>
 #include <cudatbx/scattering/direct_summation.h>
 #include <cudatbx/scattering/form_factors.cuh>
@@ -24,8 +24,6 @@ namespace scattering {
   __device__ __constant__ fType two_pi = fType(2.0)*CUDART_PI_F;
   const int padded_size = 16;
   __device__ __constant__ int d_padded_size = padded_size;
-  __device__ __constant__ fType dc_c1;
-  __device__ __constant__ fType dc_c2;
 
   /* ==========================================================================
 
@@ -263,32 +261,26 @@ namespace scattering {
 
     int i = blockDim.x * blockIdx.x + threadIdx.x;
 
-    // copy lattice points into shared memory and expand for all q
     __shared__ floatType lx[threads_per_block];
     __shared__ floatType ly[threads_per_block];
     __shared__ floatType lz[threads_per_block];
-    int current_l, current_w;
-    floatType q_i;
-    for (int l=0; l<n_lattice; l += blockDim.x) {
-      current_l = l + threadIdx.x;
-      if (current_l < n_lattice) {
-        lx[threadIdx.x] = lattice[                     current_l];
-        ly[threadIdx.x] = lattice[  padded_n_lattice + current_l];
-        lz[threadIdx.x] = lattice[2*padded_n_lattice + current_l];
-      }
+
+    int current_l;
+    floatType q_j;
+    if (i < n_lattice) {
+      // copy lattice points into shared memory
+      lx[threadIdx.x] = lattice[                     i];
+      ly[threadIdx.x] = lattice[  padded_n_lattice + i];
+      lz[threadIdx.x] = lattice[2*padded_n_lattice + i];
       __syncthreads();
 
-      if (i < n_q) {
-        q_i = q[i];
-        for (int j=0; j<blockDim.x; j++) {
-          current_l = l + j;  // track lattice point
-          if (current_l < n_lattice) {
-            current_w = i*n_lattice + current_l;
-            workspace[                       current_w] = q_i * lx[j];
-            workspace[  padded_n_workspace + current_w] = q_i * ly[j];
-            workspace[2*padded_n_workspace + current_w] = q_i * lz[j];
-          }
-        }
+      // and expand for all q
+      for (int j=0; j<n_q; j++) {
+        current_l = j*n_lattice + i;
+        q_j = q[j];
+        workspace[                       current_l] = q_j * lx[threadIdx.x];
+        workspace[  padded_n_workspace + current_l] = q_j * ly[threadIdx.x];
+        workspace[2*padded_n_workspace + current_l] = q_j * lz[threadIdx.x];
       }
       __syncthreads();
     }
@@ -486,44 +478,18 @@ namespace scattering {
 
   template <typename floatType>
   __global__ void collect_solvent_saxs_kernel
-  (const int n_q, const int n_lattice, floatType* weights,
-   floatType* sf_real, floatType* sf_imag,
+  (const int n_q, const int n_lattice, const floatType c1, const floatType c2,
    floatType* workspace, const int padded_n_workspace) {
-    
-    int current_j, n_total;
+    int i = blockDim.x * blockIdx.x + threadIdx.x;
     floatType real_sum, imag_sum;
-    __shared__ floatType p_real[threads_per_block];
-    __shared__ floatType p_imag[threads_per_block];
-    __shared__ floatType x_real[threads_per_block];
-    __shared__ floatType x_imag[threads_per_block];
-    __shared__ floatType bl_real[threads_per_block];    
-    __shared__ floatType bl_imag[threads_per_block];
-
-    // sum up lattice points for each q
-    n_total = n_lattice*n_q;
-    for (int j=0; j<n_total; j += blockDim.x) {
-      // read real and imaginary parts into shared memory using all threads
-      current_j = j + threadIdx.x;
-
-      p_real[threadIdx.x] =  workspace[  padded_n_workspace + current_j];
-      p_imag[threadIdx.x] =  workspace[2*padded_n_workspace + current_j];
-      x_real[threadIdx.x] =  workspace[3*padded_n_workspace + current_j];
-      x_imag[threadIdx.x] =  workspace[4*padded_n_workspace + current_j];
-      bl_real[threadIdx.x] = workspace[5*padded_n_workspace + current_j];
-      bl_imag[threadIdx.x] = workspace[6*padded_n_workspace + current_j];        
-      __syncthreads();
-      
-      // sum parts using all threads
-      real_sum = p_real[threadIdx.x] + dc_c1 * x_real[threadIdx.x] +
-        dc_c2 * bl_real[threadIdx.x];
-      imag_sum = p_imag[threadIdx.x] + dc_c1 * x_imag[threadIdx.x] +
-        dc_c2 * bl_imag[threadIdx.x];
-      __syncthreads();
-
-      // store sum in global memory
-      if (current_j < n_total) {      
-        workspace[current_j] = real_sum * real_sum + imag_sum * imag_sum;
-      }
+    if (i < n_q*n_lattice) {
+      real_sum = workspace[ padded_n_workspace + i] +
+        c1 * workspace[3*padded_n_workspace + i] +
+        c2 * workspace[5*padded_n_workspace + i];
+      imag_sum = workspace[2*padded_n_workspace + i] +
+        c1 * workspace[4*padded_n_workspace + i] +
+        c2 * workspace[6*padded_n_workspace + i];
+      workspace[i] = real_sum * real_sum + imag_sum * imag_sum;
     }
   }
   
