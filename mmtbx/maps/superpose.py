@@ -150,6 +150,7 @@ class transform_maps (object) :
                 lsq_fit_obj,
                 output_files,
                 resolution_factor=0.25,
+                buffer=10.0,
                 auto_run=True,
                 format="ccp4") :
     adopt_init_args(self, locals())
@@ -169,6 +170,7 @@ class transform_maps (object) :
         unit_cell=self.unit_cell,
         lsq_fit_obj=self.lsq_fit_obj,
         pdb_hierarchy=self.pdb_hierarchy,
+        buffer=self.buffer,
         d_min=d_min,
         file_name=file_name,
         log=null_out(),
