@@ -461,12 +461,14 @@ namespace {
     wrap_flex_sym_mat3_double();
     wrap_flex_tiny_size_t_2();
 
-    c_grid_flex_conversions<bool, c_grid<2> >();
+    default_c_grid_flex_conversions<bool>();
     default_c_grid_flex_conversions<int>();
     default_c_grid_flex_conversions<long>();
     default_c_grid_flex_conversions<float>();
     default_c_grid_flex_conversions<double>();
     default_c_grid_flex_conversions<std::complex<double> >();
+    default_c_grid_flex_conversions< vec2<double> >();
+    default_c_grid_flex_conversions< vec3<double> >();
     def("tst_c_grid_flex_conversion", tst_c_grid_flex_conversion);
 
     ref_owning_shared_conversions<double>();
