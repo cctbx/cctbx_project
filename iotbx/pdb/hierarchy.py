@@ -716,6 +716,31 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     del sentinel
     return result
 
+  def chunk_selections(self, residues_per_chunk):
+    result = []
+    if(residues_per_chunk<1): return result
+    for model in self.models():
+      for chain in model.chains():
+        residue_range_sel = flex.size_t()
+        cntr = 0
+        for rg in chain.residue_groups():
+          i_seqs = rg.atoms().extract_i_seq()
+          last_added=True
+          if(cntr!=residues_per_chunk):
+            residue_range_sel.extend(i_seqs)
+            last_added=False
+          else:
+            result.append(residue_range_sel)
+            residue_range_sel = flex.size_t()
+            residue_range_sel.extend(i_seqs)
+            cntr = 0
+            last_added=False
+          cntr += 1
+        if(len(result)==0 or not last_added):
+          assert residue_range_sel.size()>0
+          result.append(residue_range_sel)
+    return result
+
   def distance_based_simple_two_way_bond_sets(self,
         fallback_expected_bond_length=1.4,
         fallback_search_max_distance=2.5) :

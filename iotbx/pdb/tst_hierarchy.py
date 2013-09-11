@@ -6262,6 +6262,127 @@ ATOM     29  NZ  LYS A   4       0.827  -4.892  34.541  1.00 36.05           N
   h.atoms().reset_i_seq()
   assert list(h.get_peptide_c_alpha_selection()) == [1, 11, 16, 22]
 
+def exercise_chunk_selections():
+  # multiple altlocs
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM      0  N   THR A   2      -3.791  -8.769  29.092  1.00 24.15           N
+ATOM      1  CA  THR A   2      -3.627  -7.675  28.090  1.00 25.97           C
+ATOM      2  C   THR A   2      -2.202  -7.127  28.152  1.00 24.18           C
+ATOM      3  O   THR A   2      -1.633  -6.984  29.233  1.00 24.71           O
+ATOM      4  CB  THR A   2      -4.627  -6.527  28.357  1.00 26.50           C
+ATOM      5  OG1 THR A   2      -5.961  -7.056  28.404  1.00 28.79           O
+ATOM      6  CG2 THR A   2      -4.548  -5.486  27.255  1.00 27.05           C
+ATOM      7  N   LYS A   3      -1.629  -6.832  26.988  1.00 24.44           N
+ATOM      8  C   LYS A   3      -0.196  -4.896  27.485  1.00 23.66           C
+ATOM      9  O   LYS A   3      -1.094  -4.084  27.265  1.00 23.75           O
+ATOM     10  CB  LYS A   3       0.199  -6.262  25.438  1.00 26.61           C
+ATOM     11  CA ALYS A   3      -0.266  -6.307  26.901  1.00 25.16           C
+ATOM     12  CG ALYS A   3       0.312  -7.619  24.754  0.50 27.88           C
+ATOM     13  CD ALYS A   3       1.436  -8.454  25.347  0.50 27.58           C
+ATOM     14  CE ALYS A   3       1.585  -9.783  24.621  0.50 28.69           C
+ATOM     15  NZ ALYS A   3       0.362 -10.624  24.732  0.50 28.63           N
+ATOM     16  CA BLYS A   3      -0.266  -6.307  26.901  1.00 25.16           C
+ATOM     17  CG BLYS A   3       0.201  -7.603  24.718  0.50 27.66           C
+ATOM     18  CD BLYS A   3       1.205  -8.570  25.325  0.50 27.30           C
+ATOM     19  CE BLYS A   3       1.213  -9.893  24.575  0.50 28.17           C
+ATOM     20  NZ BLYS A   3       2.149 -10.873  25.188  0.50 27.40           N
+ATOM     21  N   LYS A   4       0.873  -4.612  28.225  1.00 22.24           N
+ATOM     22  CA  LYS A   4       1.068  -3.295  28.826  1.00 21.81           C
+ATOM     23  C   LYS A   4       2.337  -2.642  28.295  1.00 19.26           C
+ATOM     24  O   LYS A   4       3.417  -3.243  28.310  1.00 18.66           O
+ATOM     25  CB  LYS A   4       1.156  -3.398  30.354  1.00 23.29           C
+ATOM     26  CG  LYS A   4      -0.170  -3.685  31.031  1.00 27.60           C
+ATOM     27  CD  LYS A   4      -0.049  -3.681  32.551  1.00 32.16           C
+ATOM     28  CE  LYS A   4       0.797  -4.842  33.052  1.00 33.04           C
+ATOM     29  NZ  LYS A   4       0.827  -4.892  34.541  1.00 36.05           N
+"""))
+  h = pdb_inp.construct_hierarchy()
+  h.atoms().reset_i_seq()
+  sites_cart = h.extract_xray_structure().sites_cart()
+  #
+  css = h.chunk_selections(residues_per_chunk=0)
+  assert len(css)==0
+  #
+  css = h.chunk_selections(residues_per_chunk=1)
+  assert list(css[0]) == [0, 1, 2, 3, 4, 5, 6]
+  assert list(css[1]) == [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+  assert list(css[2]) == [21, 22, 23, 24, 25, 26, 27, 28, 29]
+  assert len(css)==3
+  for cs in css:
+    assert approx_equal(sites_cart.select(cs),
+      h.select(cs).extract_xray_structure().sites_cart())
+  #
+  css = h.chunk_selections(residues_per_chunk=2)
+  assert list(css[0]) == [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19, 20]
+  assert list(css[1]) == [21, 22, 23, 24, 25, 26, 27, 28, 29]
+  assert len(css)==2
+  for cs in css:
+    assert approx_equal(sites_cart.select(cs),
+      h.select(cs).extract_xray_structure().sites_cart())
+  #
+  css = h.chunk_selections(residues_per_chunk=3)
+  assert list(css[0]) == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+    16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
+  assert len(css)==1
+  for cs in css:
+    assert approx_equal(sites_cart.select(cs),
+      h.select(cs).extract_xray_structure().sites_cart())
+  # multiple chains
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM      0  N   ASP A   1      49.347 -62.804  60.380  1.00 34.60           N
+ATOM      1  CA  ASP A   1      47.975 -63.194  59.946  1.00 33.86           C
+ATOM      2  C   ASP A   1      47.122 -63.665  61.114  1.00 34.02           C
+ATOM      3  O   ASP A   1      47.573 -64.451  61.947  1.00 32.23           O
+ATOM      4  N   VAL A   2      45.889 -63.176  61.175  1.00 31.94           N
+ATOM      5  CA  VAL A   2      44.978 -63.576  62.233  1.00 29.81           C
+ATOM      6  C   VAL A   2      44.472 -64.973  61.900  1.00 28.28           C
+ATOM      7  O   VAL A   2      43.989 -65.221  60.796  1.00 27.24           O
+ATOM      8  N   GLN A   3      44.585 -65.878  62.864  1.00 25.93           N
+ATOM      9  CA  GLN A   3      44.166 -67.262  62.686  1.00 24.46           C
+ATOM     10  C   GLN A   3      42.730 -67.505  63.153  1.00 23.33           C
+ATOM     11  O   GLN A   3      42.389 -67.234  64.302  1.00 20.10           O
+ATOM     12  N   MET A   4      41.894 -68.026  62.256  1.00 24.27           N
+ATOM     13  CA  MET A   4      40.497 -68.318  62.576  1.00 22.89           C
+ATOM     14  C   MET A   4      40.326 -69.824  62.795  1.00 21.48           C
+ATOM     15  O   MET A   4      40.633 -70.625  61.911  1.00 23.73           O
+TER
+ATOM     16  N   THR B   5      39.836 -70.208  63.971  1.00 20.55           N
+ATOM     17  CA  THR B   5      39.652 -71.626  64.301  1.00 20.64           C
+ATOM     18  C   THR B   5      38.188 -72.004  64.496  1.00 20.08           C
+ATOM     19  O   THR B   5      37.534 -71.507  65.409  1.00 20.87           O
+ATOM     20  N   GLN B   6      37.680 -72.891  63.643  1.00 21.97           N
+ATOM     21  CA  GLN B   6      36.288 -73.325  63.743  1.00 25.11           C
+ATOM     22  C   GLN B   6      36.147 -74.705  64.370  1.00 25.56           C
+ATOM     23  O   GLN B   6      36.912 -75.622  64.064  1.00 26.32           O
+ATOM     24  N   THR B   7      35.141 -74.839  65.229  1.00 27.28           N
+ATOM     25  CA  THR B   7      34.842 -76.087  65.919  1.00 29.94           C
+ATOM     26  C   THR B   7      33.332 -76.282  65.861  1.00 30.28           C
+ATOM     27  O   THR B   7      32.576 -75.339  66.091  1.00 30.65           O
+ATOM     28  N   PRO B   8      32.867 -77.502  65.555  1.00 29.43           N
+ATOM     29  CA  PRO B   8      33.636 -78.711  65.256  1.00 27.63           C
+ATOM     30  C   PRO B   8      33.982 -78.790  63.773  1.00 27.58           C
+ATOM     31  O   PRO B   8      33.634 -77.895  63.000  1.00 28.53           O
+ATOM     32  N   LEU B   9      34.669 -79.856  63.373  1.00 27.41           N
+ATOM     33  CA  LEU B   9      35.035 -80.024  61.969  1.00 25.92           C
+ATOM     34  C   LEU B   9      33.808 -80.409  61.159  1.00 23.43           C
+ATOM     35  O   LEU B   9      33.602 -79.903  60.059  1.00 22.17           O
+TER
+"""))
+  h = pdb_inp.construct_hierarchy()
+  h.atoms().reset_i_seq()
+  sites_cart = h.extract_xray_structure().sites_cart()
+  #
+  css = h.chunk_selections(residues_per_chunk=3)
+  for cs in css:
+    assert approx_equal(sites_cart.select(cs),
+      h.select(cs).extract_xray_structure().sites_cart())
+  #
+  assert list(css[0]) == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+  assert list(css[1]) == [12, 13, 14, 15]
+  assert list(css[2]) == [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]
+  assert list(css[3]) == [28, 29, 30, 31, 32, 33, 34, 35]
+  assert len(css)==4
+
 
 def exercise(args):
   comprehensive = "--comprehensive" in args
@@ -6277,6 +6398,8 @@ def exercise(args):
       prev = key
   phenix_regression_pdb_file_names = get_phenix_regression_pdb_file_names()
   while True:
+    exercise_chunk_selections()
+    STOP()
     exercise_get_peptide_c_alpha_selection()
     exercise_adopt_xray_structure()
     exercise_adopt_xray_structure2()
