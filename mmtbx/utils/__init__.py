@@ -3237,32 +3237,46 @@ class experimental_data_target_and_gradients(object):
       print >> log, fmt%(sites_cart[i][0], sites_cart[i][1], sites_cart[i][2],
         sc.occupancy,adptbx.u_as_b(sc.u_iso), go[i], gs[i][0],gs[i][1],gs[i][2])
 
-  def group_occupancy_grads(self, pdb_hierarchy, residues_per_window):
+  def group_occupancy_grads(
+        self,
+        pdb_hierarchy=None,
+        residues_per_window=None,
+        selections=None):
+    pair = [pdb_hierarchy, residues_per_window]
+    assert pair.count(None) in [0,2]
+    if(selections is None): assert pair.count(None)==0
+    else: assert pair.count(None)==2
+    if(pair.count(None)==0): assert selections is None
     result = []
-    assert_xray_structures_equal(
-      x1 = self.fmodel.xray_structure,
-      x2 = pdb_hierarchy.extract_xray_structure(
-        crystal_symmetry=self.fmodel.xray_structure.crystal_symmetry()),
-      sites = False,
-      adp = False,
-      occupancies = False,
-      elements = True,
-      scattering_types = False)
     occ_grads = self.grad_occ()
-    selections = pdb_hierarchy.chunk_selections(
-      residues_per_chunk=residues_per_window)
-    for sel in selections:
-      h = pdb_hierarchy.select(sel)
-      rgs = list(h.residue_groups())
-      assert len(rgs)>0
-      rg1 = rgs[0]
-      rg2 = rgs[len(rgs)-1]
-      chains = list(h.chains())
-      assert len(chains)==1
-      chain_id = chains[0].id
-      info_str = "_".join([i.strip() for i in [chain_id,rg1.resseq,rg2.resseq]])
-      group_occ_grad = flex.sum(occ_grads.select(sel))
-      result.append([info_str,group_occ_grad])
+    if(selections is None):
+      assert_xray_structures_equal(
+        x1 = self.fmodel.xray_structure,
+        x2 = pdb_hierarchy.extract_xray_structure(
+          crystal_symmetry=self.fmodel.xray_structure.crystal_symmetry()),
+        sites = False,
+        adp = False,
+        occupancies = False,
+        elements = True,
+        scattering_types = False)
+      selections = pdb_hierarchy.chunk_selections(
+        residues_per_chunk=residues_per_window)
+      for sel in selections:
+        h = pdb_hierarchy.select(sel)
+        rgs = list(h.residue_groups())
+        assert len(rgs)>0
+        rg1 = rgs[0]
+        rg2 = rgs[len(rgs)-1]
+        chains = list(h.chains())
+        assert len(chains)==1
+        chain_id = chains[0].id
+        info_str = "_".join([i.strip() for i in [chain_id,rg1.resseq,rg2.resseq]])
+        group_occ_grad = flex.sum(occ_grads.select(sel))
+        result.append([info_str,group_occ_grad])
+    else:
+      for sel in selections:
+        group_occ_grad = flex.sum(occ_grads.select(sel))
+        result.append([None,group_occ_grad])
     return result
 
 class states(object):
