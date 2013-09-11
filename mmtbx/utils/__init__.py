@@ -3237,6 +3237,34 @@ class experimental_data_target_and_gradients(object):
       print >> log, fmt%(sites_cart[i][0], sites_cart[i][1], sites_cart[i][2],
         sc.occupancy,adptbx.u_as_b(sc.u_iso), go[i], gs[i][0],gs[i][1],gs[i][2])
 
+  def group_occupancy_grads(self, pdb_hierarchy, residues_per_window):
+    result = []
+    assert_xray_structures_equal(
+      x1 = self.fmodel.xray_structure,
+      x2 = pdb_hierarchy.extract_xray_structure(
+        crystal_symmetry=self.fmodel.xray_structure.crystal_symmetry()),
+      sites = False,
+      adp = False,
+      occupancies = False,
+      elements = True,
+      scattering_types = False)
+    occ_grads = self.grad_occ()
+    selections = pdb_hierarchy.chunk_selections(
+      residues_per_chunk=residues_per_window)
+    for sel in selections:
+      h = pdb_hierarchy.select(sel)
+      rgs = list(h.residue_groups())
+      assert len(rgs)>0
+      rg1 = rgs[0]
+      rg2 = rgs[len(rgs)-1]
+      chains = list(h.chains())
+      assert len(chains)==1
+      chain_id = chains[0].id
+      info_str = "_".join([i.strip() for i in [chain_id,rg1.resseq,rg2.resseq]])
+      group_occ_grad = flex.sum(occ_grads.select(sel))
+      result.append([info_str,group_occ_grad])
+    return result
+
 class states(object):
   def __init__(self, xray_structure, pdb_hierarchy):
     adopt_init_args(self, locals())
