@@ -127,8 +127,13 @@ class Test(object):
         from dxtbx.serialize.helpers import tuple_almost_equal
         import libtbx.load_env
         import os
-        path = libtbx.env.dist_path('dxtbx')
-        filename = os.path.join(path, "tests", "sweep.json")
+        try:
+            path = libtbx.env.dist_path('dials_regression')
+        except Exception:
+            print "No dials_regression directory found"
+            return
+
+        filename = os.path.join(path, "centroid_test_data", "test_sweep.json")
         sweep = load.imageset(filename)
         b = sweep.get_beam()
         d = sweep.get_detector()
@@ -161,8 +166,13 @@ class Test(object):
         from dxtbx.serialize.helpers import tuple_almost_equal
         import libtbx.load_env
         import os
-        path = libtbx.env.dist_path('dxtbx')
-        filename = os.path.join(path, "tests", "null_sweep.json")
+        try:
+            path = libtbx.env.dist_path('dials_regression')
+        except Exception:
+            print "No dials_regression directory found"
+            return
+
+        filename = os.path.join(path, "centroid_test_data", "null_sweep.json")
         sweep = load.imageset(filename)
         b = sweep.get_beam()
         d = sweep.get_detector()
