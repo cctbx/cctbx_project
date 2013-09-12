@@ -131,7 +131,6 @@ def find_and_build_ions (
       initial_b_iso = params.initial_b_iso
       if (initial_b_iso is Auto) :
         initial_b_iso = manager.guess_b_iso_real(i_seq)
-      print model.xray_structure.scatterers()[i_seq].label, model.pdb_hierarchy().atoms()[i_seq].id_str()
       modified_atom = model.convert_atom(
         i_seq=i_seq,
         scattering_type=final_choice.scattering_type(),
