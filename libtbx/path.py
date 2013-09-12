@@ -455,12 +455,12 @@ class clean_out_directory (object) :
     if (self.n_dirs > 0) :
       print >> out, "The following %d directories will deleted:" % \
         self.n_dirs
-      for dir_name in self.dir_paths :
+      for dir_name in sorted(self.dir_paths) :
         print >> out, "  %s" % dir_name
     if (self.n_files > 0) :
       print >> out, "The following %d files will be deleted:" % \
         self.n_files
-      for file_name in self.file_paths :
+      for file_name in sorted(self.file_paths) :
         print >> out, "  %s" % file_name
     if (self.n_bytes > 0) :
       print >> out, "%s of disk space will be freed." % self.get_freed_space()
