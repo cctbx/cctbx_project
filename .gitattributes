@@ -1789,7 +1789,9 @@ mmtbx/validation/experimental.py svneol=native#text/x-python
 mmtbx/validation/ligands.py -text
 mmtbx/validation/ramalyze.py svneol=native#text/x-python
 mmtbx/validation/regression/__init__.py svneol=native#text/x-python
+mmtbx/validation/regression/tst_restraints.py svneol=native#text/x-python
 mmtbx/validation/regression/tst_waters.py svneol=native#text/x-python
+mmtbx/validation/restraints.py svneol=native#text/x-python
 mmtbx/validation/rna_validate.py svneol=native#text/x-python
 mmtbx/validation/rotalyze.py svneol=native#text/x-python
 mmtbx/validation/sequence.py -text
