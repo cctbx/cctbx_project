@@ -150,13 +150,13 @@ The following 3 directories will deleted:
   ./AutoSol_run_1_/TEMP0
   ./Refine_3/.comm
 The following 5 files will be deleted:
-  ./probe.txt
   ./Refine_3/refine_3.geo
   ./Refine_3/refine_3.kin
   ./Refine_3/refine_3_2fofc.ccp4
   ./Refine_3/refine_3_fofc.xplor
+  ./probe.txt
 0.0 KB of disk space will be freed.
-""")
+"""), out.getvalue()
 
 def run(args):
   assert len(args) == 0
