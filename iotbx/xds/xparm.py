@@ -35,29 +35,26 @@ class reader(object):
     # Check file contains 11 lines and 42 tokens
     with open(filename, 'r') as file_handle:
       tokens = []
-      old_style = True
+      version = 1
       for count, line in enumerate(file_handle):
         line_tokens = line.split()
         if count == 0:
-          if len(line_tokens) == 1 and line_tokens[0] == 'XPARM.XDS':
-              old_style=False
-        if old_style:
+          if len(line_tokens) > 0 and line_tokens[0] == 'XPARM.XDS':
+              version = 2
+        if version == 1:
           if count+1 > 11:
             return None
-        else:
+        elif version == 2:
           if count+1 > 14:
             return None
         tokens.extend(line_tokens)
 
-      if old_style:
+      if version == 1:
         if count+1 != 11 or len(tokens) != 42:
           return None
 
     # Is a (G)XPARM.XDS file
-    if old_style:
-      return 1
-    else:
-      return 2
+    return version
 
   @staticmethod
   def is_xparm_file(filename, check_filename = True):
