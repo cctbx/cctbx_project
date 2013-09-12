@@ -18,6 +18,15 @@ class Test(object):
     assert handle.find_version(filename) == 1
     handle.read_file(filename)
 
+    print 'OK'
+
+    filename = os.path.join(iotbx_dir, 'xds', 'tests', 'NEW_XPARM.XDS')
+    handle = xparm.reader()
+    assert handle.find_version(filename) == 2
+    handle.read_file(filename)
+
+    print 'OK'
+
     f = open_tmp_file(suffix='XPARM.XDS', mode='wb')
     f.close()
     writer = xparm.writer(
