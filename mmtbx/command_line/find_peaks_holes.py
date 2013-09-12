@@ -346,7 +346,7 @@ def find_peaks_holes (
   anom_map_coeffs = None
   if (fmodel.f_obs().anomalous_flag()) :
     make_header("Anomalous difference map peaks", out=out)
-    anom_map_type = "anomalous"
+    anom_map_type = "anom_residual"
     if ((use_phaser_if_available) and (libtbx.env.has_module("phaser")) and
         (not fmodel.twin)) :
       import mmtbx.map_tools
