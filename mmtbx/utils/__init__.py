@@ -1009,7 +1009,8 @@ class process_pdb_file_srv(object):
 
   def process_pdb_files(self, pdb_file_names = None, raw_records = None,
                         stop_if_duplicate_labels = True,
-                        for_dihedral_reference = False):
+                        for_dihedral_reference = False,
+                        allow_missing_symmetry=False):
     assert [pdb_file_names, raw_records].count(None) == 1
     if(self.cif_objects is not None):
       self._process_monomer_cif_files()
@@ -1017,11 +1018,13 @@ class process_pdb_file_srv(object):
       pdb_file_names           = pdb_file_names,
       raw_records              = raw_records,
       stop_if_duplicate_labels = stop_if_duplicate_labels,
-      for_dihedral_reference   = for_dihedral_reference)
+      for_dihedral_reference   = for_dihedral_reference,
+      allow_missing_symmetry            = allow_missing_symmetry)
 
   def _process_pdb_file(self, pdb_file_names, raw_records,
                         stop_if_duplicate_labels,
-                        for_dihedral_reference=False):
+                        for_dihedral_reference=False,
+                        allow_missing_symmetry=False):
     if(raw_records is None):
       pdb_combined = combine_unique_pdb_files(file_names=pdb_file_names)
       pdb_combined.report_non_unique(out=self.log)
@@ -1056,7 +1059,8 @@ class process_pdb_file_srv(object):
       force_symmetry           = True,
       log                      = self.log,
       use_neutron_distances    = self.use_neutron_distances,
-      for_dihedral_reference   = for_dihedral_reference)
+      for_dihedral_reference   = for_dihedral_reference,
+      substitute_non_crystallographic_unit_cell_if_necessary=allow_missing_symmetry)
     processed_pdb_file.xray_structure(show_summary=True)
     if self.stop_for_unknowns == False:
       ignore_unknown_nonbonded_energy_types=True # only ignore if specified
@@ -2610,6 +2614,8 @@ class cmdline_load_pdb_and_data (object) :
       force_non_anomalous=False,
       usage_string=None) :
     from iotbx import file_reader
+    if isinstance(master_phil, str) :
+      master_phil = iotbx.phil.parse(master_phil)
     if (usage_string is not None) :
       if (len(args) == 0) or ("--help" in args) :
         raise Usage("""%s\n\nFull parameters:\n%s""" % (usage_string,
@@ -2716,9 +2722,11 @@ class cmdline_load_pdb_and_data (object) :
       self.processed_pdb_file, self.pdb_inp = \
         processed_pdb_files_srv.process_pdb_files(
           raw_records = pdb_raw_records,
-          stop_if_duplicate_labels = False)
+          stop_if_duplicate_labels = False,
+          allow_missing_symmetry=(use_symmetry is None) and (not require_data))
       self.geometry = self.processed_pdb_file.geometry_restraints_manager(
         show_energies=False)
+      assert (self.geometry is not None)
       self.xray_structure = self.processed_pdb_file.xray_structure()
       chain_proxies = self.processed_pdb_file.all_chain_proxies
       self.pdb_hierarchy = chain_proxies.pdb_hierarchy
