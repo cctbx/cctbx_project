@@ -173,6 +173,7 @@ class pixel_viewer_3d (wx_viewer.wxGLWindow) :
       y=self.y_center,
       boxsize=40,
       mag=1)
+    if (wx_image is None) : return
     glPolygonMode(GL_FRONT, GL_FILL)
     scale_factor = self.scale_factor
     for y_, row in enumerate(values) :

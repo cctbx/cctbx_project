@@ -343,6 +343,7 @@ class image (screen_params) :
     """
     import wx
     x0, y0, w, h = self.get_zoom_box(x, y, boxsize, mag)
+    if (x0 < 0) or (y0 < 0) : return None
     assert (w == h)
     img = self._wx_img.GetSubImage((x0, y0, w, h))
     return img.Scale(boxsize, boxsize, wx.IMAGE_QUALITY_NORMAL)
