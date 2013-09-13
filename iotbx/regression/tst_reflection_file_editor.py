@@ -10,9 +10,10 @@ from libtbx.test_utils import Exception_expected, approx_equal
 from libtbx.utils import Sorry, null_out
 import warnings
 import os.path
+import sys
 
 # this will run without phenix_regression
-def exercise_basic () :
+def exercise_basic (verbose=False) :
   symm = crystal.symmetry(
     space_group_info=sgtbx.space_group_info("P212121"),
     unit_cell=uctbx.unit_cell((6,7,8,90,90,90)))
@@ -52,8 +53,11 @@ mtz_file {
   }
 }""")
   params = master_phil.fetch(source=new_phil).extract()
+  log = sys.stdout
+  if (not verbose) :
+    log = null_out()
   def run_and_reload (params, file_name) :
-    p = reflection_file_editor.process_arrays(params, log=null_out())
+    p = reflection_file_editor.process_arrays(params, log=log)
     p.finish()
     mtz_in = file_reader.any_file(file_name)
     miller_arrays = mtz_in.file_object.as_miller_arrays()
@@ -205,6 +209,34 @@ mtz_file {
     assert ("number of output labels" in str(e))
   else :
     raise Exception_expected
+  # use column_root_label instead
+  params = master_phil.fetch(source=new_phil).extract()
+  params.mtz_file.miller_array[0].column_root_label = "I_tst"
+  params.mtz_file.miller_array[1].column_root_label = "FREE"
+  miller_arrays = run_and_reload(params, "tst1.mtz")
+  assert (miller_arrays[0].info().label_string() ==
+          "I_tst(+),SIGI_tst(+),I_tst(-),SIGI_tst(-)")
+  assert (miller_arrays[1].info().label_string() == "FREE")
+  # incorrect root label
+  params.mtz_file.miller_array[0].column_root_label = "asdf"
+  try :
+    miller_arrays = run_and_reload(params, "tst1.mtz")
+  except Sorry, s :
+    assert ("inconsistent" in str(s))
+  else :
+    raise Exception_expected
+  params.mtz_file.miller_array[0].column_root_label = "F_tst"
+  try :
+    miller_arrays = run_and_reload(params, "tst1.mtz")
+  except Sorry, s :
+    assert ("inconsistent" in str(s))
+  else :
+    raise Exception_expected
+  # same root label, but now with compatible array type
+  params.mtz_file.miller_array[0].output_as = "amplitudes"
+  miller_arrays = run_and_reload(params, "tst1.mtz")
+  assert (miller_arrays[0].info().label_string() ==
+          "F_tst(+),SIGF_tst(+),F_tst(-),SIGF_tst(-)")
   # resolution filter
   params = master_phil.fetch(source=new_phil).extract()
   params.mtz_file.d_min = 2.0
@@ -637,7 +669,7 @@ def exercise_command_line () :
 
 if __name__ == "__main__" :
   with warnings.catch_warnings(record=True) as w:
-    exercise_basic()
+    exercise_basic(verbose=("--verbose" in sys.argv))
     assert (len(w) == 5)
     exercise_command_line()
   print "OK"
