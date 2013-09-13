@@ -116,6 +116,14 @@ mtz_file
               necessarily correspond to the original array name.  (See caveat \
               in Phenix manual about Scalepack files.)
       .style = fixed
+    column_root_label = None
+      .type = str
+      .optional = True
+      .short_caption = Base column label
+      .help = If specified, this is applied to all columns in the output \
+        array with default prefixes and suffixes.  Overrides the \
+        output_labels parameter.
+      .input_size = 200
     d_min = None
       .type = float
       .short_caption = High resolution
@@ -387,8 +395,10 @@ class process_arrays (object) :
         array_params.d_min = None
       output_array = None # this will eventually be the final processed array
       output_labels = array_params.output_labels
-      if (output_labels is None) :
+      if (output_labels is None) and (array_params.column_root_label is None) :
         raise Sorry("Missing output labels for %s!" % array_name)
+      if (array_params.column_root_label is not None) :
+        output_labels = None
       info = miller_array.info()
       if not None in [array_params.scale_factor, array_params.scale_max] :
         raise Sorry("The parameters scale_factor and scale_max are " +
@@ -410,45 +420,45 @@ class process_arrays (object) :
       # OUTPUT LABELS SANITY CHECK
       labels_base = re.sub(",merged$", "", array_params.labels)
       input_labels = labels_base.split(",")
-      if miller_array.anomalous_flag() :
-        if (array_params.anomalous_data == "merged") :
-          if (labels_base in special_labels) :
-            if (len(output_labels) != 2) :
-              raise Sorry(("There are too many output labels for the array "+
+      if (output_labels is not None) :
+        if (miller_array.anomalous_flag()) :
+          if (array_params.anomalous_data == "merged") :
+            if (labels_base in special_labels) :
+              if (len(output_labels) != 2) :
+                raise Sorry(("There are too many output labels for the array "+
+                  "%s, which is being converted to non-anomalous data. "+
+                  "Labels such as I,SIGI are appropriate, or F,SIGF if you "+
+                  "are converting the array to amplitudes.  (Current output "+
+                  "labels: %s)") % (array_name, ",".join(output_labels)))
+            elif (len(output_labels) == len(input_labels)) :
+              raise Sorry(("There are too many output labels for the array "
                 "%s, which is being converted to non-anomalous data. "+
-                "Labels such as I,SIGI are appropriate, or F,SIGF if you are "+
-                "converting the array to amplitudes.  (Current output labels: "+
-                "%s)") % (array_name, ",".join(output_labels)))
-          elif (len(output_labels) == len(input_labels)) :
-            raise Sorry(("There are too many output labels for the array "
-              "%s, which is being converted to non-anomalous data. "+
-              "The total number of columns will be halved in the output "+
-              "array, and the labels should not have trailing (+) or (-).") %
+                "The total number of columns will be halved in the output "+
+                "array, and the labels should not have trailing (+) or (-).") %
+                array_name)
+          elif (labels_base in special_labels) and (len(output_labels) != 4) :
+            raise Sorry(("There are not enough output labels for the array "+
+              "%s. For Scalepack or d*TREK files containing anomalous "+
+              "data, you must specify exactly four column labels (e.g. "+
+              "I(+),SIGI(+),I(-),SIGI(-), or F(+),SIGF(+),F(-),SIGF(-) "+
+              "if you are converting the array to amplitudes).") %
               array_name)
-        elif (labels_base in special_labels) and (len(output_labels) != 4) :
-          raise Sorry(("There are not enough output labels for the array "+
-            "%s. For Scalepack or d*TREK files containing anomalous "+
-            "data, you must specify exactly four column labels (e.g. "+
-            "I(+),SIGI(+),I(-),SIGI(-), or F(+),SIGF(+),F(-),SIGF(-) "+
-            "if you are converting the array to amplitudes).") %
-            array_name)
-      elif (array_params.anomalous_data == "anomalous") :
-        if (len(output_labels) != (len(input_labels) * 2)) :
-          raise Sorry(("There are not enough output labels for the array "
-            "%s, which is being converted to anomalous data. "+
-            "The total number of columns will be doubled in the output "+
-            "array, and the labels should be repeated with '(+)' and '(-)'.") %
-            array_name)
-
-      if (miller_array.is_xray_reconstructed_amplitude_array()) :
-        # FIXME this needs to be handled better - but it should at least catch
-        # files from CCP4 data processing
-        if ((len(output_labels) != 5) and
-            (not array_params.anomalous_data == "merged")) :
-          raise Sorry(("The array in %s with labels %s will be output as "+
-            "amplitudes and anomalous differences with sigmas, plus ISYM. "+
-            "Five columns will be written, but %d labels were specified.") %
-            (file_name, array_params.labels, len(output_labels)))
+        elif (array_params.anomalous_data == "anomalous") :
+          if (len(output_labels) != (len(input_labels) * 2)) :
+            raise Sorry(("There are not enough output labels for the array "
+              "%s, which is being converted to anomalous data. "+
+              "The total number of columns will be doubled in the output "+
+              "array, and the labels should be repeated with '(+)' and "+
+              "'(-)'.") % array_name)
+        if (miller_array.is_xray_reconstructed_amplitude_array()) :
+          # FIXME this needs to be handled better - but it should at least
+          # catch files from CCP4 data processing
+          if ((len(output_labels) != 5) and
+              (not array_params.anomalous_data == "merged")) :
+            raise Sorry(("The array in %s with labels %s will be output as "+
+              "amplitudes and anomalous differences with sigmas, plus ISYM. "+
+              "Five columns will be written, but %d labels were specified.") %
+              (file_name, array_params.labels, len(output_labels)))
 
       #-----------------------------------------------------------------
       # APPLY SYMMETRY
@@ -518,7 +528,8 @@ class process_arrays (object) :
         print >> log, "  Truncated size: %d" % new_array.data().size()
         if new_array.sigmas() is not None :
           print >> log, "          sigmas: %d" % new_array.sigmas().size()
-      if new_array.anomalous_flag() and array_params.anomalous_data == "merged" :
+      if (new_array.anomalous_flag() and
+          array_params.anomalous_data == "merged") :
         print >> log, ("Converting array %s from anomalous to non-anomalous." %
                        array_name)
         if (not new_array.is_xray_intensity_array()) :
@@ -647,7 +658,9 @@ class process_arrays (object) :
           output_array.set_observation_type_xray_amplitude()
           if (array_types[i] is not None) :
             array_types[i] = re.sub("J", "F", array_types[i])
-          if output_labels[0].upper().startswith("I") :
+          start_label = None
+          if ((output_labels is not None) and
+              (output_labels[0].upper().startswith("I"))) :
             raise Sorry(("The output labels for the array %s:%s (%s) are not "+
               "suitable for amplitudes; please change them to something "+
               "with an 'F', or leave this array as intensities") %
@@ -658,7 +671,11 @@ class process_arrays (object) :
           output_array.set_observation_type_xray_intensity()
           if (array_types[i] is not None) :
             array_types[i] = re.sub("F", "J", array_types[i])
-          if output_labels[0].upper().startswith("F") :
+          if ((output_labels is not None) and
+              array_params.column_root_label.upper().startswith("F")) :
+              raise Sorry("The root label '%s' is not appropriate for "+
+                "amplitudes." % array_params.column_root_label)
+          elif output_labels[0].upper().startswith("F") :
             raise Sorry(("The output labels for the array %s:%s (%s) are not "+
               "suitable for intensities; please change them to something "+
               "with an 'I', or leave this array as amplitudes.") %
@@ -682,14 +699,39 @@ class process_arrays (object) :
         for hkl in params.mtz_file.exclude_reflection :
           output_array = output_array.delete_index(hkl)
 
+      # check column_root_label
+      if (array_params.column_root_label is not None) :
+        root_label = array_params.column_root_label.upper()
+        if (output_array.is_xray_intensity_array()) :
+          if (not root_label.startswith("I")) :
+            raise Sorry(("The specified base column label for the array '%s' "+
+              "is inconsistent with the output array type (intensities). "+
+              "Please use 'I' (either case) as the first character in the "+
+              "label.") % (array_name))
+        elif (output_array.is_xray_amplitude_array()) :
+          if (not root_label.startswith("F")) :
+            raise Sorry(("The specified base column label for the array '%s' "+
+              "is inconsistent with the output array type (amplitudes). "+
+              "Please use 'F' (either case) as the first character in the "+
+              "label.") % (array_name))
+        else :
+          if (root_label == "I") or (root_label == "F") :
+            raise Sorry(("You have specified the base column label '%s' "+
+              "for the array '%s', which is neither intensities nor "+
+              "amplitudes; the base labels 'I' and 'F' are reserverd "+
+              "for these array data types .") %
+              (array_params.column_root_label, array_name))
+
       #-----------------------------------------------------------------
       # OUTPUT
       assert isinstance(output_array, cctbx.miller.array)
-      fake_label = 2 * string.uppercase[i]
+      default_label = array_params.column_root_label
+      if (output_labels is not None) :
+        default_label = 2 * string.uppercase[i]
       column_types = None
+      import iotbx.mtz
+      default_types = iotbx.mtz.default_column_types(output_array)
       if (array_types[i] is not None) :
-        import iotbx.mtz
-        default_types = iotbx.mtz.default_column_types(output_array)
         if len(default_types) == len(array_types[i]) :
           print >> log, "Recovering original column types %s" % array_types[i]
           column_types = array_types[i]
@@ -700,7 +742,8 @@ class process_arrays (object) :
           "this is probably a bug; please contact bugs@phenix-online.org "+
           "with a description of the problem.")
       if is_rfree_array(new_array, info) :
-        r_free_arrays.append((new_array, info, output_labels, file_name))
+        r_free_arrays.append((new_array, info, output_labels,
+          array_params.column_root_label, file_name))
       else :
         if DEBUG :
           print >> log, "  Final size:    %d" % output_array.data().size()
@@ -708,12 +751,21 @@ class process_arrays (object) :
             print >> log, "      sigmas:    %d" % output_array.sigmas().size()
         self.add_array_to_mtz_dataset(
           output_array=output_array,
-          fake_label=fake_label,
+          default_label=default_label,
           column_types=column_types,
           out=log)
-        for label in output_labels :
-          labels.append(label)
-          label_files.append(file_name)
+        if (output_labels is not None) :
+          for label in output_labels :
+            labels.append(label)
+            label_files.append(file_name)
+        else :
+          n_cols = len(default_types)
+          if (output_array.anomalous_flag() and
+              not output_array.is_xray_reconstructed_amplitude_array()) :
+            n_cols *= 2
+          for k in range(n_cols) :
+            labels.append(None)
+            label_files.append(file_name)
         self.final_arrays.append(output_array)
       i += 1
 
@@ -741,7 +793,8 @@ class process_arrays (object) :
       elif (combined_set is not None) :
         self.check_and_warn_about_incomplete_r_free_flags(combined_set)
       i = 0
-      for (new_array, info, output_labels, file_name) in r_free_arrays :
+      for (new_array, info, output_labels, root_label, file_name) in \
+          r_free_arrays :
         # XXX this is important for guessing the right flag when dealing
         # with CCP4-style files, primarily when the flag values are not
         # very evenly distributed
@@ -779,7 +832,7 @@ class process_arrays (object) :
           r_free_flags = r_free_flags.merge_equivalents().array()
         if (r_free_flags.anomalous_flag()) :
           r_free_flags = r_free_flags.average_bijvoet_mates()
-          if (len(output_labels) != 1) :
+          if (output_labels is not None) and (len(output_labels) != 1) :
             assert (not combined_set.anomalous_flag())
             # XXX can't do this operation on a miller set - will expand the
             # r-free flags later
@@ -814,15 +867,25 @@ class process_arrays (object) :
           output_array = export_r_free_flags(
             miller_array=output_array,
             test_flag_value=True)
-        fake_label = "A" + string.uppercase[i+1]
+        default_label = root_label
+        if (default_label is None) :
+          default_label = "A" + string.uppercase[i+1]
         self.add_array_to_mtz_dataset(
           output_array=output_array,
-          fake_label=fake_label,
+          default_label=default_label,
           column_types="I",
           out=log)
-        for label in output_labels :
-          labels.append(label)
-          label_files.append(file_name)
+        if (output_labels is not None) :
+          for label in output_labels :
+            labels.append(label)
+            label_files.append(file_name)
+        else :
+          if (output_array.anomalous_flag()) :
+            labels.extend([None,None])
+            label_files.extend([file_name,file_name])
+          else :
+            labels.append(None)
+            label_files.append(file_name)
         self.final_arrays.append(output_array)
         i += 1
 
@@ -869,10 +932,10 @@ class process_arrays (object) :
           output_array = output_array.delete_index(hkl)
       self.add_array_to_mtz_dataset(
         output_array=output_array,
-        fake_label="ZZ",
+        default_label=r_free_params.new_label,
         column_types="I",
         out=log)
-      labels.append(r_free_params.new_label)
+      labels.append(None)
       label_files.append("(new array)")
       self.created_r_free = True
 
@@ -891,7 +954,7 @@ class process_arrays (object) :
     used = dict([ (label, 0) for label in labels ])
     invalid_chars = re.compile("[^A-Za-z0-9_\-+\(\)]")
     for column in self.mtz_object.columns() :
-      if column.label() != labels[i] :
+      if (labels[i] is not None) and (column.label() != labels[i]) :
         label = labels[i]
         original_label = label
         if invalid_chars.search(label) is not None :
@@ -923,8 +986,8 @@ class process_arrays (object) :
           used[original_label] += 1
       i += 1
 
-  def add_array_to_mtz_dataset (self, output_array, fake_label, column_types,
-      out=sys.stdout) :
+  def add_array_to_mtz_dataset (self, output_array, default_label,
+      column_types, out=sys.stdout) :
     # apply change of basis here
     if (self.params.mtz_file.crystal_symmetry.change_of_basis is not None) :
       from iotbx.reflection_file_converter import apply_change_of_basis
@@ -938,12 +1001,12 @@ class process_arrays (object) :
       output_array = output_array.eliminate_sys_absent()
     if self.mtz_dataset is None :
       self.mtz_dataset = output_array.as_mtz_dataset(
-        column_root_label=fake_label,
+        column_root_label=default_label,
         column_types=column_types)
     else :
      self.mtz_dataset.add_miller_array(
         miller_array=output_array,
-        column_root_label=fake_label,
+        column_root_label=default_label,
         column_types=column_types)
 
   def show (self, out=sys.stdout) :
