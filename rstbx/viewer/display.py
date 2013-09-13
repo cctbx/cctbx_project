@@ -222,6 +222,8 @@ class XrayView (wx.Panel) :
       #self.OnRecordMouse(event)
 
   def OnLeftDrag (self, event) :
+    # XXX some weirdness happens if the drag didn't start inside the panel...
+    if (self.xmouse is None) : return
     if (self._img is not None) :
       if (self.shift_was_down) :
         self.OnMiddleDrag(event)
@@ -401,10 +403,12 @@ class ZoomView (XrayView) :
 
   def OnPaint (self, event) :
     dc = wx.AutoBufferedPaintDCFactory(self)
-    if (not None in [self._img, self.x_center, self.y_center]) :
+    if ((not None in [self._img, self.x_center, self.y_center]) and
+        (self.x_center >= 0) and (self.y_center >= 0)) :
       w, h = self.GetSize()
       wx_image = self._img.get_zoomed_bitmap(self.x_center, self.y_center,
         boxsize=w, mag=self.zoom_level)
+      if (wx_image is None) : return
       bitmap = wx_image.ConvertToBitmap()
       dc.DrawBitmap(bitmap, 0, 0)
       if (self.flag_show_intensities) :
