@@ -12,7 +12,7 @@ class FormatBruker(Format):
     KEYNAME:xxxxxxxx
     ...in other words a 7-upper case character (or space) keyname followed by
     a colon, starting at the beginning of every fifth chunk.
-    Here we'll take a series of 12 of these in the first 1024 characters
+    Here we will take a series of 12 of these in the first 1024 characters
     as a positive fingerprint of Bruker format.
     '''
 
