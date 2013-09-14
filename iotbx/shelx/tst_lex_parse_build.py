@@ -489,10 +489,8 @@ def exercise_restraint_parsing():
     l_cs = shelx.crystal_symmetry_parser(stream, builder)
     l_afix = shelx.afix_parser(l_cs.filtered_commands(), builder)
     l_xs = shelx.atom_parser(l_afix.filtered_commands(), builder)
-    l_restraints = shelx.restraint_parser(
-      l_xs.filtered_commands(), builder)
+    l_restraints = shelx.restraint_parser(l_xs.filtered_commands(), builder)
     l_restraints.parse()
-    builder = l_restraints.builder
     assert isinstance(builder.restraints_manager,
                       smtbx.refinement.restraints.manager)
     return builder.proxies()

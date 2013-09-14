@@ -287,26 +287,19 @@ class variable_decoder(object):
 class atom_parser(parser, variable_decoder):
   """ A parser pulling out the scatterer info from a command stream """
 
-  overall_scale=None
-  scatterer_label_to_index = {}
-  residue_number_to_class_mapping = {}
-  residue_class_to_number_mappings = {}
-
   def __init__(self, command_stream, builder=None, strictly_shelxl=True):
     parser.__init__(self, command_stream, builder)
     self.free_variable = None
     self.strictly_shelxl = strictly_shelxl
-    self.scatterer_label_to_index.clear()
-    self.residue_class_to_number_mappings.clear()
-    self.residue_number_to_class_mapping.clear()
 
   def filtered_commands(self):
     self.label_for_sfac = None
+    overall_scale = None
     scatterer_index = 0
     conformer_index = 0
     sym_excl_index = 0
     part_sof = None
-    current_residue = None
+    current_residue = (None, None)
     for command, line in self.command_stream:
       self.line = line
       cmd, args = command[0], command[-1]
@@ -318,8 +311,8 @@ class atom_parser(parser, variable_decoder):
         self.label_for_sfac = ('*',) + args # (a) working around
                                             #     ShelXL 1-based indexing
       elif cmd == 'FVAR':
-        if self.overall_scale is None:
-          self.overall_scale = args[0]
+        if overall_scale is None:
+          overall_scale = args[0]
           self.free_variable = args # (b) ShelXL indexes into the whole array
         else:
           # ShelXL allows for more than one FVAR instruction
@@ -337,27 +330,21 @@ class atom_parser(parser, variable_decoder):
         elif part_number < 0: sym_excl_index = abs(part_number)
       elif cmd == "RESI":
         current_residue = args
-        self.residue_number_to_class_mapping.setdefault(args[0], args[1])
-        self.residue_class_to_number_mappings.setdefault(args[1], [])
-        self.residue_class_to_number_mappings[args[1]].append(args[0])
+        self.builder.add_residue(*current_residue)
       elif cmd == '__ATOM__':
         if self.label_for_sfac is None:
           raise shelx_error("missing sfac", self.line)
         scatterer, behaviour_of_variable = self.lex_scatterer(
           args, scatterer_index)
-        name = args[0]
-        if current_residue is None:
-          self.scatterer_label_to_index.setdefault(
-          (None, name.lower()), scatterer_index)
-        else:
-          self.scatterer_label_to_index.setdefault(
-            (current_residue[0], name.lower()), scatterer_index)
+        residue_number, residue_class = current_residue
         if (conformer_index or sym_excl_index) and part_sof:
           scatterer.occupancy, behaviour_of_variable[3] = part_sof
         self.builder.add_scatterer(scatterer, behaviour_of_variable,
                                    occupancy_includes_symmetry_factor=True,
                                    conformer_index=conformer_index,
-                                   sym_excl_index=sym_excl_index)
+                                   sym_excl_index=sym_excl_index,
+                                   residue_number=residue_number,
+                                   residue_class=residue_class)
         scatterer_index += 1
       elif cmd == '__Q_PEAK__':
         assert not self.strictly_shelxl,\
@@ -474,7 +461,7 @@ class afix_parser(parser):
         yield command, line
 
 
-class restraint_parser(atom_parser):
+class restraint_parser(parser):
   """ It must be after an atom parser """
 
   restraint_types = {
@@ -511,31 +498,33 @@ class restraint_parser(atom_parser):
       self.cached_restraints.setdefault(cmd, OrderedDict())
     self.cached_restraints[cmd].setdefault(line, (cmd_residue, args))
 
+  def i_seqs_from_atoms(self, atoms, residue_number):
+    i_seqs = []
+    for atom in atoms:
+      if atom.name == 'LAST':
+        # XXX need better way to handle > and < ranges
+        i_seqs.extend(
+          xrange(i_seqs[-1] + 1,
+                 max(self.builder.index_of_scatterer_named.values()) + 1))
+        continue
+      atom_resnum = atom.residue_number
+      if atom.plus_minus is not None:
+        assert atom.residue_number is None
+        if atom.plus_minus == '+':
+          atom_resnum = residue_number + 1
+        else:
+          atom_resnum = residue_number - 1
+      if atom_resnum is None:
+        atom_resnum = residue_number
+      try:
+        i_seq = self.builder.index_of_scatterer_named[(atom_resnum,
+                                                       atom.name.lower())]
+      except KeyError:
+        return None
+      i_seqs.append(i_seq)
+    return i_seqs
+
   def parse_restraints(self):
-    def i_seqs_from_atoms(atoms, residue_number):
-      i_seqs = []
-      for atom in atoms:
-        if atom.name == 'LAST':
-          # XXX need better way to handle > and < ranges
-          i_seqs.extend(range(
-            i_seqs[-1]+1, sorted(self.scatterer_label_to_index.values())[-1]+1))
-          continue
-        atom_resnum = atom.residue_number
-        if atom.plus_minus is not None:
-          assert atom.residue_number is None
-          if atom.plus_minus == '+':
-            atom_resnum = residue_number + 1
-          else:
-            atom_resnum = residue_number - 1
-        if atom_resnum is None:
-          atom_resnum = residue_number
-        i_seq = self.scatterer_label_to_index.get(
-          (atom_resnum, atom.name.lower()))
-        if i_seq is None:
-          return None
-        assert i_seq is not None
-        i_seqs.append(i_seq)
-      return i_seqs
     for cmd, restraints in sorted(self.cached_restraints.items()):
       for line, args in restraints.iteritems():
         cmd_residue = args[0]
@@ -546,9 +535,9 @@ class restraint_parser(atom_parser):
           if tok == tokens.residue_number_tok:
             residues = [cmd_residue[1]]
           elif tok == tokens.residue_class_tok:
-            residues = self.residue_class_to_number_mappings[cmd_residue[1]]
+            residues = self.builder.residue_numbers_having_class[cmd_residue[1]]
           elif tok == tokens.all_residues_tok:
-            residues = self.residue_number_to_class_mapping.keys()
+            residues = self.builder.residue_class_of_residue_number.keys()
         args = args[1]
         floats = []
         atoms = []
@@ -567,7 +556,7 @@ class restraint_parser(atom_parser):
               elements.append(arg)
         for residue_number in residues:
           try:
-            i_seqs = i_seqs_from_atoms(atoms, residue_number)
+            i_seqs = self.i_seqs_from_atoms(atoms, residue_number)
             if i_seqs is None: continue
             restraint_type = self.restraint_types.get(cmd)
             if cmd in ('DFIX','DANG'):
@@ -585,7 +574,8 @@ class restraint_parser(atom_parser):
                 atom_pair = atoms[i*2:(i+1)*2]
                 i_seq_pair = i_seqs[i*2:(i+1)*2]
                 sym_ops = [
-                  self.symmetry_operations.get(atom.symmetry) for atom in atom_pair]
+                  self.symmetry_operations.get(atom.symmetry)
+                  for atom in atom_pair]
                 self.builder.process_restraint(restraint_type,
                                                distance_ideal=distance_ideal,
                                                weight=weight,
@@ -603,7 +593,8 @@ class restraint_parser(atom_parser):
                 atom_pair = atoms[i*2:(i+1)*2]
                 i_seq_pairs.append(i_seqs[i*2:(i+1)*2])
                 sym_ops.append(
-                  [self.symmetry_operations.get(atom.symmetry) for atom in atom_pair])
+                  [self.symmetry_operations.get(atom.symmetry)
+                   for atom in atom_pair])
               weights = [1/(sigma**2)]*len(i_seq_pairs)
               self.builder.process_restraint(restraint_type,
                                              weights=weights,
