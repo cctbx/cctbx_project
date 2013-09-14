@@ -300,6 +300,7 @@ class atom_parser(parser, variable_decoder):
     sym_excl_index = 0
     part_sof = None
     current_residue = (None, None)
+    line_of_scatterer_named = {}
     builder = self.builder
     for command, line in self.command_stream:
       self.line = line
@@ -338,6 +339,15 @@ class atom_parser(parser, variable_decoder):
         scatterer, behaviour_of_variable = self.lex_scatterer(
           args, scatterer_index)
         residue_number, residue_class = current_residue
+        name = scatterer.label.upper()
+        line_1 = line_of_scatterer_named.get((residue_number, name))
+        if line_1 is not None:
+          raise shelx_error("Residue #%i has two scatterers named %s, "
+                            "(with perhaps a difference in letter case)"
+                            "defined at lines %i and %i"
+                            % (residue_number, name, line, line_1),
+                            line=None)
+        line_of_scatterer_named[(residue_number, name)] = line
         if (conformer_index or sym_excl_index) and part_sof:
           scatterer.occupancy, behaviour_of_variable[3] = part_sof
         builder.add_scatterer(scatterer, behaviour_of_variable,
