@@ -11,11 +11,18 @@ class u_iso_proportional_to_pivot_u_eq(object):
 
   __slots__ = ('u_iso_scatterer_idx', 'u_eq_scatterer_idx', 'multiplier')
 
-  def __init__(self, *args, **kwds):
-    for attr, value in itertools.chain(
-      itertools.izip(self.__slots__, args), kwds.iteritems()
-      ):
-      setattr(self, attr, value)
+  def __init__(self, u_iso_scatterer_idx, u_eq_scatterer_idx, multiplier):
+    self.u_iso_scatterer_idx = u_iso_scatterer_idx
+    self.u_eq_scatterer_idx = u_eq_scatterer_idx
+    self.multiplier = multiplier
+
+  def __eq__(self, other):
+    """ For debugging purposes mostly as it is not needed by the
+        constraint framework.
+    """
+    return (self.u_iso_scatterer_idx == other.u_iso_scatterer_idx
+            and self.u_eq_scatterer_idx == other.u_eq_scatterer_idx
+            and self.multiplier == other.multiplier)
 
   @property
   def constrained_parameters(self):

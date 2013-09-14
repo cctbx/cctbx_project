@@ -34,3 +34,12 @@ class any(object):
     return "%s(\n%s)" % (self.__class__.__name__,
                        '\n'.join(["  %s=%r" % (a,v)
                                  for (a,v) in self.__dict__.iteritems()]))
+
+  def __eq__(self, other):
+    """ For debugging purposes mostly as it is not needed by the
+        constraint framework.
+    """
+    if type(self) != type(other): return False
+    for attr, val in self.__dict__.iteritems():
+      if getattr(other, attr) != val: return False
+    return True
