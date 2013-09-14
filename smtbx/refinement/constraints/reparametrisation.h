@@ -548,7 +548,12 @@ public:
 
 
 /// Occupancy of a scatterer
-class asu_occupancy_parameter : public scalar_parameter,
+/**
+ * We need to virtually inherit from scalar_parameter so that
+ * it can be multiply inherited, with one inheritance
+ * path going through this class.
+ */
+class asu_occupancy_parameter : public virtual scalar_parameter,
                                 public virtual single_asu_scatterer_parameter
 {
 public:

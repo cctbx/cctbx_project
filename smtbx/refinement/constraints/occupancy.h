@@ -2,8 +2,44 @@
 #define SMTBX_REFINEMENT_CONSTRAINTS_OCCUPANCY_H
 
 #include <smtbx/refinement/constraints/reparametrisation.h>
+#include <smtbx/refinement/constraints/affine.h>
 
 namespace smtbx { namespace refinement { namespace constraints {
+
+/** A specialisation of `affine_scalar_parameter` for the occupancy of
+ *  a scatterer in the a.s.u.
+ */
+class affine_asu_occupancy_parameter : public affine_scalar_parameter,
+                                       public virtual asu_occupancy_parameter
+
+{
+public:
+  affine_asu_occupancy_parameter(scalar_parameter *u_0, double a_0,
+                                 double b,
+                                 scatterer_type *scatterer)
+  : parameter(1),
+    single_asu_scatterer_parameter(scatterer),
+    affine_scalar_parameter(u_0, a_0, b)
+  {}
+
+  affine_asu_occupancy_parameter(scalar_parameter *u_0, double a_0,
+                                 scalar_parameter *u_1, double a_1,
+                                 double b,
+                                 scatterer_type *scatterer)
+  : parameter(2),
+    single_asu_scatterer_parameter(scatterer),
+    affine_scalar_parameter(u_0, a_0, u_1, a_1, b)
+  {}
+
+  affine_asu_occupancy_parameter(af::const_ref<scalar_parameter *> const &u,
+                                 af::const_ref<double> const &a,
+                                 double b,
+                                 scatterer_type *scatterer)
+  : parameter(u.size()),
+    single_asu_scatterer_parameter(scatterer),
+    affine_scalar_parameter(u, a, b)
+  {}
+};
 
 /** occupancy of one site depends on the occupancy of the other site
  */
