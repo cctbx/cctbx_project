@@ -7,6 +7,35 @@
 namespace smtbx { namespace refinement { namespace constraints {
   namespace boost_python {
 
+    struct affine_asu_occupancy_parameter_wrapper {
+      typedef affine_asu_occupancy_parameter wt;
+
+      static void wrap() {
+        using namespace boost::python;
+        class_<wt,
+               bases<affine_scalar_parameter, asu_parameter>,
+               std::auto_ptr<wt> >("affine_asu_occupancy_parameter", no_init)
+          .def(init<scalar_parameter *, double, double,
+                    wt::scatterer_type *>
+               ((arg("dependee"), arg("a"), arg("b"), arg("scatterer"))))
+          .def(init<scalar_parameter *, double,
+                    scalar_parameter *, double,
+                    double,
+                    wt::scatterer_type *>
+             ((arg("dependee_0"), arg("a_0"),
+               arg("dependee_1"), arg("a_1"),
+               arg("b"),
+               arg("scatterer"))))
+          .def(init<af::const_ref<scalar_parameter *> const &,
+                    af::const_ref<double> const &, double,
+                    wt::scatterer_type *>
+               ((arg("dependees"), arg("a"), arg("b"), arg("scatterer"))))
+            ;
+        implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      }
+    };
+
+
     struct dependent_occu_wrapper  {
       typedef dependent_occupancy wt;
 
@@ -33,6 +62,7 @@ namespace smtbx { namespace refinement { namespace constraints {
     };
 
     void wrap_occupancy() {
+      affine_asu_occupancy_parameter_wrapper::wrap();
       dependent_occu_wrapper::wrap();
     }
 

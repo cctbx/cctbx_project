@@ -348,7 +348,77 @@ def exercise_u_iso_proportional_to_pivot_u_iso():
     assert w[-1].message.conflicts == set(((2, 'U'),))
 
 
+def exercise_affine_occupancy_parameter():
+  xs = xray.structure(
+    crystal_symmetry=crystal.symmetry(unit_cell=(), space_group_symbol='hall: P 1'),
+    scatterers=flex.xray_scatterer((
+      xray.scatterer('C0', occupancy=1),
+      xray.scatterer('C1', occupancy=1),
+      xray.scatterer('C2', occupancy=1),
+      xray.scatterer('C3', occupancy=1),
+    )))
+  sc = xs.scatterers()
+  sc.flags_set_grad_occupancy(flex.size_t_range(4))
+
+  # Two occupancies adding up to 1 (most common case of disorder)
+  r = constraints.ext.reparametrisation(xs.unit_cell())
+  occ_1 = r.add(constraints.independent_occupancy_parameter, sc[1])
+  occ_3 = r.add(constraints.affine_asu_occupancy_parameter,
+                dependee=occ_1, a=-1, b=1, scatterer=sc[3])
+  r.finalise()
+  r.linearise()
+  assert approx_equal(occ_1.value, 1)
+  assert approx_equal(occ_3.value, 0)
+  jt0 = sparse.matrix(1, 2,
+                     [ {0:1},   # 1st col = derivatives of occ_1
+                       {0:-1},   # 2nd col = derivatives of occ_3
+                     ])
+  assert sparse.approx_equal(tolerance=1e-15)(r.jacobian_transpose, jt0)
+
+  # Example illustrating the instruction SUMP in SHELX 97 manual (p. 7-26)
+  # We disregard the issue of the special position which is orthogonal to the
+  # point we want to test here.
+  xs = xray.structure(
+    crystal_symmetry=crystal.symmetry(unit_cell=(), space_group_symbol='hall: P 1'),
+    scatterers=flex.xray_scatterer((
+      xray.scatterer('Na+', occupancy=1),
+      xray.scatterer('Ca2+', occupancy=1),
+      xray.scatterer('Al3+', occupancy=0.35),
+      xray.scatterer('K+', occupancy=0.15),
+    )))
+  sc = xs.scatterers()
+  sc.flags_set_grad_occupancy(flex.size_t_range(4))
+
+  # The constraints are:
+  # fully occupied: occ(Na+) + occ(Ca2+) + occ(Al3+) + occ(K+) = 1
+  # average charge +2: occ(Na+) + 2 occ(Ca2+) + 3 occ(Al3+) + occ(K+) = +2
+  # This can be solved as:
+  # occ(Na+)  = occ(Al3+) - occ(K+)
+  # occ(Ca2+) = 1 - 2 occ(Al3+)
+  r = constraints.ext.reparametrisation(xs.unit_cell())
+  occ_Al = r.add(constraints.independent_occupancy_parameter, sc[2])
+  occ_K  = r.add(constraints.independent_occupancy_parameter, sc[3])
+  occ_Na = r.add(constraints.affine_asu_occupancy_parameter,
+                 occ_Al, 1, occ_K, -1, 0, scatterer=sc[0])
+  occ_Ca = r.add(constraints.affine_asu_occupancy_parameter,
+                 occ_Al, -2, 1, scatterer=sc[1])
+  r.finalise()
+  r.linearise()
+  assert approx_equal(occ_Na.value, 0.2)
+  assert approx_equal(occ_Ca.value, 0.3)
+  assert approx_equal(occ_Al.value, 0.35)
+  assert approx_equal(occ_K.value, 0.15)
+  jt0 = sparse.matrix(2, 4,
+                     [
+                       {0:1},         # diff occ(Al3+)
+                       {1:1} ,        # diff occ(K+)
+                       {0:1, 1:-1},   # diff occ(Na+)
+                       {0:-2},        # diff occ(Ca2+)
+                     ])
+  assert sparse.approx_equal(tolerance=1e-15)(r.jacobian_transpose, jt0)
+
 def exercise(verbose):
+  exercise_affine_occupancy_parameter()
   exercise_u_iso_proportional_to_pivot_u_eq()
   exercise_u_iso_proportional_to_pivot_u_iso()
   terminal_linear_ch_site_test_case(with_special_position_pivot=False).run()
