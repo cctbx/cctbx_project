@@ -7,7 +7,6 @@ from cctbx import crystal
 from cctbx import xray
 from cctbx import sgtbx
 from cctbx import adp_restraints, geometry_restraints
-import iotbx.constrained_parameters
 
 import libtbx.load_env
 if (libtbx.env.has_module(name="smtbx")):
@@ -60,7 +59,7 @@ class crystal_structure_builder(crystal_symmetry_builder):
         crystal_symmetry=self.crystal_symmetry,
         min_distance_sym_equiv=self.min_distance_sym_equiv))
 
-  def add_scatterer(self, scatterer, behaviour_of_variable,
+  def add_scatterer(self, scatterer, is_refined,
                     occupancy_includes_symmetry_factor,
                     conformer_index=None,
                     sym_excl_index=None):
@@ -69,18 +68,17 @@ class crystal_structure_builder(crystal_symmetry_builder):
         if the corresponding variables have been found to be refined
         by the parser using this builder.
     """
-    _ = iotbx.constrained_parameters
     if self.set_grad_flags:
       f = scatterer.flags
-      if behaviour_of_variable[0:3].count(_.constant_parameter) != 3:
+      if all(is_refined[0:3]):
         f.set_grad_site(True)
-      if behaviour_of_variable[3] != _.constant_parameter:
+      if is_refined[3]:
         f.set_grad_occupancy(True)
       if f.use_u_iso():
-        if behaviour_of_variable[4] != _.constant_parameter:
+        if is_refined[4]:
           f.set_grad_u_iso(True)
       else:
-        if behaviour_of_variable[-6:].count(_.constant_parameter) != 6:
+        if all(is_refined[-6:]):
           f.set_grad_u_aniso(True)
     self.structure.add_scatterer(scatterer)
 
