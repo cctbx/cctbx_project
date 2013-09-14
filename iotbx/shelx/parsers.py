@@ -285,7 +285,15 @@ class variable_decoder(object):
     return values[0], behaviours[0]
 
 class atom_parser(parser, variable_decoder):
-  """ A parser pulling out the scatterer info from a command stream """
+  """ A parser pulling out the scatterer info from a command stream.
+
+      Since the SHELX format intertwine parameter values with some of the
+      constrained on them, this parser does also handle those constraints,
+      specifically constrained occupancies and u_iso bound to the u_eq of
+      another scatterer. The parser tests whether the builder passed at
+      construction time handles those constraints, and if it does not so,
+      they get ignored.
+  """
 
   def __init__(self, command_stream, builder=None, strictly_shelxl=True):
     parser.__init__(self, command_stream, builder)
