@@ -7,7 +7,6 @@ import smtbx.refinement.constraints.geometrical.all
 from iotbx.builders import \
      crystal_structure_builder, \
      restrained_crystal_structure_builder
-import iotbx.constrained_parameters
 
 
 class constrained_crystal_structure_builder(crystal_structure_builder):
