@@ -458,3 +458,32 @@ def print_message_in_box (message, **kwds) :
   for line in line_breaker(message, box.get_best_text_width()) :
     print >> box, line
   del box
+
+
+class find_matching_closing_symbol(object):
+  """ This functor deals with a pair of symbol, an opening symbol and a closing one,
+      the archetypical example being parentheses. Given the position of an opening
+      symbol, it returns the position of the matching closing symbol, or -1 if it does not
+      exist.
+  """
+
+  def __init__(self, opening, closing):
+    """ Initialise the functor to work with the given pair. Each of `opening` and `closing`
+        may be several character long.
+    """
+    import re
+    self.opening, self.closing = opening, closing
+    self._regex = re.compile("(%s)|(%s)" % (re.escape(opening), re.escape(closing)))
+
+  def __call__(self, string, pos):
+    """ An opening symbol shall start at position `pos` of the given `string`.
+    """
+    level = 1
+    delta = (None, +1, -1)
+    for m in self._regex.finditer(string, pos + len(self.opening)):
+      if not m:
+        return -1
+      level += delta[m.lastindex]
+      if level == 0:
+        return m.start()
+    return -1

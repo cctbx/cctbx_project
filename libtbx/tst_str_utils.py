@@ -234,9 +234,26 @@ Clashscore:            10.9"""
   ********************************
 """)
 
+def exercise_matching_nested_pairs():
+  from libtbx.str_utils import find_matching_closing_symbol
+  f = find_matching_closing_symbol('(',')')
+
+  s = '... ( ... ( ... ) ...'
+  p = s.find('(')
+  q = f(s, p)
+  assert q == -1
+  p1 = s.find('(', p+1)
+  q1 = f(s, p1)
+  assert q1 == s.rfind(')')
+
+  s = ' ( ( ) ( ( ( ) ) ) ) ) '
+  p = f(s, 1)
+  assert p == 19
+
 def run(args):
   assert len(args) == 0
   exercise()
+  exercise_matching_nested_pairs()
   print "OK"
 
 if (__name__ == "__main__"):
