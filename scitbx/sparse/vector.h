@@ -454,28 +454,6 @@ public:
     return element_reference(*this, i);
   }
 
-  /// Dense row vector times sparse vector
-  friend value_type operator*(dense_vector_const_ref const &u,
-                              vector const &v)
-  {
-    v.compact();
-    value_type result = 0;
-    for (const_iterator pv=v.begin(); pv != v.end(); ++pv) {
-      index_type i = pv.index();
-      value_type u_i = u[i];
-      value_type v_i = *pv;
-      result += u_i * v_i;
-    }
-    return result;
-  }
-
-  /// sparse vector times dense column vector
-  friend value_type operator*(vector const &u,
-                              dense_vector_const_ref const &v)
-  {
-    return v*u;
-  }
-
   /// The dense vector corresponding to this
   af::shared<T> as_dense_vector() const {
     af::shared<T> result(size(), 0.);
@@ -493,24 +471,88 @@ public:
     return v;
   }
 
-  /// vector^T * diagonal matrix * vector
-  static
-  value_type weighted_dot(vector const &u,
-                          af::const_ref<value_type> const &w,
-                          vector const &v)
-  {
-    return weighted_dot_op(u, w, v).result;
+  /// Reductions
+  //@{
+
+  /// Sum of op(u[i], v[i]) for all indices i, where u is this object
+  template <class OperatorType>
+  value_type
+  sum_of_multiplicative_binary_op(OperatorType op, vector const &v) const {
+    SCITBX_ASSERT(size() == v.size())( size() )( v.size() );
+    vector const &u = *this;
+    u.compact();
+    v.compact();
+    value_type result = 0;
+    for(const_iterator p=u.begin(), q=v.begin();;) {
+      if(p == u.end() or q == v.end()) break;
+      std::size_t i=p.index(), j=q.index();
+      if      (i < j) p++;
+      else if (i > j) q++;
+      else            result += op(i, *p++, *q++);
+    }
+    return result;
   }
 
-  /// vector^T * symmetric * vector
-  static
-  value_type quadratic_form(vector const &u,
-                            af::const_ref<value_type,
-                                          af::packed_u_accessor> const &a,
-                            vector const &v)
+private:
+  struct weighted_multiplies {
+    af::const_ref<value_type> a;
+    weighted_multiplies(af::const_ref<value_type> const &a) : a(a) {}
+    value_type operator()(std::size_t i, value_type u, value_type v) {
+      return a[i]*u*v;
+    }
+  };
+
+public:
+  /// vector^T * [diagonal matrix] * vector
+  value_type weighted_dot(af::const_ref<value_type> const &w,
+                          vector const &v) const
   {
-    SCITBX_ASSERT(u.size() == v.size());
-    SCITBX_ASSERT(u.size() == a.accessor().n);
+    return sum_of_multiplicative_binary_op(weighted_multiplies(w), v);
+  }
+
+private:
+  struct multiplies {
+    value_type operator()(std::size_t i, value_type u, value_type v) {
+      return u*v;
+    }
+  };
+
+public:
+  /// Canonical scalar product
+  value_type operator*(vector const &v) const {
+    return sum_of_multiplicative_binary_op(multiplies(), v);
+  }
+
+  /// Scalar product of a dense vector and a sparse vector
+  friend value_type operator*(dense_vector_const_ref const &u,
+                              vector const &v)
+  {
+    v.compact();
+    value_type result = 0;
+    for (const_iterator pv=v.begin(); pv != v.end(); ++pv) {
+      index_type i = pv.index();
+      value_type u_i = u[i];
+      value_type v_i = *pv;
+      result += u_i * v_i;
+    }
+    return result;
+  }
+
+  /// Scalar product of a sparse vector and a dense vector
+  friend value_type operator*(vector const &u,
+                              dense_vector_const_ref const &v)
+  {
+    return v*u;
+  }
+
+  /// vector^T * [dense symmetric matrix] * vector
+  value_type quadratic_form(af::const_ref<value_type,
+                                          af::packed_u_accessor> const &a,
+                            vector const &v) const
+  {
+    SCITBX_ASSERT(size() == v.size());
+    SCITBX_ASSERT(size() == a.accessor().n);
+    vector const &u = *this;
     u.compact();
     v.compact();
     value_type result = 0;
@@ -524,13 +566,12 @@ public:
     return result;
   }
 
-  /// vector^T * symmetric * same vector
-  static
+  /// vector^T * [dense symmetric matrix] * same vector
   value_type quadratic_form(af::const_ref<value_type,
-                                          af::packed_u_accessor> const &a,
-                            vector const &v)
+                                          af::packed_u_accessor> const &a) const
   {
-    SCITBX_ASSERT(v.size() == a.accessor().n);
+    SCITBX_ASSERT(size() == a.accessor().n);
+    vector const &v = *this;
     v.compact();
     value_type result = 0;
     for (const_iterator p=v.begin(); p != v.end(); ++p) {
@@ -546,20 +587,51 @@ public:
     return result;
   }
 
-  /// Linear algebra
+  //@}
+
+  /// Euclidean vector space operations
   //@{
-  friend value_type operator*(vector const &u, vector const &v) {
-    return dot_product(u, v).result;
+
+  /// Augmented assignment u[i] = op(u[i], v[i]) for all indices i,
+  /// where u is this object
+  template <class OperatorType>
+  vector additive_op(OperatorType op, vector const &v) const {
+    SCITBX_ASSERT(size() == v.size())( size() )( v.size() );
+    vector const &u = *this;
+    u.compact();
+    v.compact();
+    vector w(u.size());
+    for(const_iterator p=u.begin(), q=v.begin();;) {
+      if (p == u.end()) {
+        for(; q != v.end(); ++q) w[q.index()] = op(0, *q);
+        break;
+      }
+      else if (q == v.end()) {
+        for(; p != u.end(); ++p) w[p.index()] = *p;
+        break;
+      }
+      std::size_t i=p.index(), j=q.index();
+      if      (i < j) w[i] = *p++;
+      else if (i > j) w[j] = op(0, *q++);
+      else            w[i] = op(*p++, *q++);
+    }
+    return w;
   }
 
-  friend
-  vector operator+(vector const &u, vector const &v) {
-    return vector_op_vector< std::plus<T> >(u, v).result;
+  vector &operator+=(vector const &v) {
+    return *this = *this + v;
   }
 
-  friend
-  vector operator-(vector const &u, vector const &v) {
-    return vector_op_vector< std::minus<T> >(u, v).result;
+  vector &operator-=(vector const &v) {
+    return *this = *this - v;
+  }
+
+  vector operator+(vector const &v) const {
+    return additive_op(std::plus<T>(), v);
+  }
+
+  vector operator-(vector const &v) const {
+    return additive_op(std::minus<T>(), v);
   }
 
   vector operator-() const {
@@ -610,84 +682,6 @@ public:
   }
 
 private:
-  template <class Heir>
-  struct vector_op_vector_core
-  {
-    void loop(vector const &u, vector const &v)
-    {
-      SCITBX_ASSERT(u.size() == v.size())( u.size() )( v.size() );
-      u.compact();
-      v.compact();
-      Heir &self = static_cast<Heir &>(*this);
-      for(const_iterator p=u.begin(), q=v.begin();;) {
-        if (p == u.end()) {
-          for(; q != v.end(); ++q) self(q.index(), 0, *q);
-          break;
-        }
-        else if (q == v.end()) {
-          for(; p != u.end(); ++p) self(p.index(), *p, 0);
-          break;
-        }
-        std::size_t i=p.index(), j=q.index();
-        if      (i < j) self(i, *p++, 0);
-        else if (i > j) self(j, 0, *q++);
-        else            self(i, *p++, *q++);
-      }
-    }
-  };
-
-  template <class OperatorType>
-  struct vector_op_vector
-  : vector_op_vector_core<vector_op_vector< OperatorType> >
-  {
-    vector result;
-    OperatorType op;
-
-    vector_op_vector(vector const &u, vector const &v)
-    : result(u.size())
-    {
-      this->loop(u, v);
-      result.set_compact(true); // by construction
-    }
-
-    void operator()(index_type i, value_type x, value_type y) {
-      result[i] = op(x, y);
-    }
-  };
-
-  struct dot_product : vector_op_vector_core<dot_product>
-  {
-    value_type result;
-
-    dot_product(vector const &u, vector const &v)
-    : result(0)
-    {
-      this->loop(u,v);
-    }
-
-    void operator()(index_type i, value_type x, value_type y) {
-      result += x*y;
-    }
-  };
-
-  struct weighted_dot_op : vector_op_vector_core<weighted_dot_op>
-  {
-    value_type result;
-    af::const_ref<value_type> const &w;
-
-    weighted_dot_op(vector const &u,
-                          af::const_ref<value_type> const &w,
-                          vector const &v)
-    : w(w), result(0)
-    {
-      this->loop(u,v);
-    }
-
-    void operator()(index_type i, value_type x, value_type y) {
-      result += w[i]*x*y;
-    }
-  };
-
   template <typename VectorType, class PermutationType>
   friend struct permuted;
 };
@@ -739,7 +733,7 @@ T weighted_dot(vector<T, ContainerType> const &u,
                af::const_ref<T> const &w,
                vector<T, ContainerType> const &v)
 {
-  return vector<T, ContainerType>::weighted_dot(u, w, v);
+  return u.weighted_dot(w, v);
 }
 
 /// vector^T * symmetric matrix * vector
@@ -750,7 +744,7 @@ T quadratic_form(vector<T, ContainerType> const &u,
                                af::packed_u_accessor> const &a,
                  vector<T, ContainerType> const &v)
 {
-  return vector<T, ContainerType>::quadratic_form(u, a, v);
+  return u.quadratic_form(a, v);
 }
 
 
@@ -761,7 +755,7 @@ T quadratic_form(af::const_ref<T,
                                af::packed_u_accessor> const &a,
                  vector<T, ContainerType> const &v)
 {
-  return vector<T, ContainerType>::quadratic_form(a, v);
+  return v.quadratic_form(a);
 }
 
 }}
