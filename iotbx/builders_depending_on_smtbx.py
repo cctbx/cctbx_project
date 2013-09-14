@@ -16,18 +16,19 @@ class constrained_crystal_structure_builder(crystal_structure_builder):
     self.constraints = []
     self.temperature_in_celsius = None
 
-  def add_scatterer(self, scatterer, behaviour_of_variable, *args, **kwds):
-    _ = iotbx.constrained_parameters
-    crystal_structure_builder.add_scatterer(
-      self, scatterer, behaviour_of_variable, *args, **kwds)
-    if (scatterer.flags.use_u_iso()):
-      b = behaviour_of_variable[4]
-      if isinstance(b, tuple) and b[0] == _.constant_times_u_eq:
-        self.constraints.append(
-          constraints.adp.u_iso_proportional_to_pivot_u_eq(
-            u_eq_scatterer_idx=b[2],
-            u_iso_scatterer_idx=len(self.structure.scatterers()) - 1,
-            multiplier=b[1]))
+  def add_u_iso_proportional_to_pivot_u_eq(self,
+                                           u_iso_scatterer_index,
+                                           u_eq_scatterer_index,
+                                           multiplier):
+    sc = self.structure.scatterers()
+    sc_eq = sc[u_eq_scatterer_index]
+    sc_iso = sc[u_iso_scatterer_index]
+    if sc_iso.flags.use_u_iso():
+      self.constraints.append(
+        constraints.adp.u_iso_proportional_to_pivot_u_eq(
+          u_eq_scatterer_idx=u_eq_scatterer_index,
+          u_iso_scatterer_idx=u_iso_scatterer_index,
+          multiplier=multiplier))
 
   def make_geometrical_constraint_type(self, constraint_name):
     return getattr(constraints.geometrical.all, constraint_name)
