@@ -16,7 +16,9 @@ namespace boost_adaptbx { namespace tuple_conversion {
 namespace detail {
 
 /* I don't support get_pytype here because it leads to an infinite tower
-of recursive calls ending up in a crash. The reason is unknown but I don't have the courage to dig into the dark magic of Boost.Python to elucidate it.
+of recursive calls ending up in a crash. The reason is unknown
+but I don't have the courage to dig into the dark magic of Boost.Python
+to elucidate it.
 
 Luc Bourhis
 */
