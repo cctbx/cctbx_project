@@ -3,6 +3,29 @@ import smtbx.refinement.constraints as _
 from smtbx.refinement.constraints import InvalidConstraint
 import itertools
 
+class occupancy_pair_affine_constraint(object):
+  """ Constraint a0 occ0 + a1 occ1 == b """
+
+  def __init__(self, scatterer_indices, linear_form):
+    self.scatterer_indices = scatterer_indices
+    self.linear_form = linear_form
+
+  @property
+  def constrained_parameters(self):
+    return ((self.scatterer_indices[1], 'occupancy'),)
+
+  def add_to(self, reparametrisation):
+    sc = reparametrisation.structure.scatterers()
+    (a0, a1), b = self.linear_form
+    i0, i1 = self.scatterer_indices
+    occ0 = reparametrisation.add_new_occupancy_parameter(i0)
+    param = reparametrisation.add(_.affine_asu_occupancy_parameter,
+                                  dependee=occ0, a=-a0/a1, b=b/a1,
+                                  scatterer=sc[i1])
+    reparametrisation.asu_scatterer_parameters[i1].occupancy = param
+    reparametrisation.shared_occupancies[i1] = occ0
+
+
 class dependent_occupancy(object):
   """ occupancy of a site depend on the occupancy of the other site
   """

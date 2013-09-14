@@ -292,6 +292,12 @@ class atom_parser(parser, variable_decoder):
     self.free_variable = None
     self.strictly_shelxl = strictly_shelxl
     try:
+      self.builder.add_occupancy_pair_affine_constraint
+      flag = True
+    except AttributeError:
+      flag = False
+    self.builder_does_occupancy_pair_affine_constraint = flag
+    try:
       self.builder.add_u_iso_proportional_to_pivot_u_eq
       flag = True
     except AttributeError:
@@ -307,7 +313,11 @@ class atom_parser(parser, variable_decoder):
     part_sof = None
     current_residue = (None, None)
     line_of_scatterer_named = {}
+    in_the_midst_of_atom_list = False
+    idx_assigned_by_builder_to_free_var_idx = {}
     builder = self.builder
+    if self.builder_does_occupancy_pair_affine_constraint:
+      self.occupancies_depending_on_free_variable = {}
     for command, line in self.command_stream:
       self.line = line
       cmd, args = command[0], command[-1]
@@ -340,8 +350,11 @@ class atom_parser(parser, variable_decoder):
         current_residue = args
         self.builder.add_residue(*current_residue)
       elif cmd == '__ATOM__':
-        if self.label_for_sfac is None:
-          raise shelx_error("missing sfac", self.line)
+        if not in_the_midst_of_atom_list:
+          if self.label_for_sfac is None:
+            raise shelx_error("An instruction SFAC needs to appear before "
+                              "this point in the file,", self.line)
+          in_the_midst_of_atom_list = True
         scatterer, behaviour_of_variable = self.lex_scatterer(
           args, scatterer_index)
         residue_number, residue_class = current_residue
@@ -357,11 +370,19 @@ class atom_parser(parser, variable_decoder):
         if (conformer_index or sym_excl_index) and part_sof:
           scatterer.occupancy, behaviour_of_variable[3] = part_sof
         builder.add_scatterer(scatterer, behaviour_of_variable,
-                                   occupancy_includes_symmetry_factor=True,
-                                   conformer_index=conformer_index,
-                                   sym_excl_index=sym_excl_index,
-                                   residue_number=residue_number,
-                                   residue_class=residue_class)
+                              occupancy_includes_symmetry_factor=True,
+                              conformer_index=conformer_index,
+                              sym_excl_index=sym_excl_index,
+                              residue_number=residue_number,
+                              residue_class=residue_class)
+        # As the builder accepted the scatterer, we assume that it called
+        # scatterer.apply_symmetry so that scatterer.multiplicity and dependents
+        # are correctly set. Hence our fetching the scatterer from the builder
+        # instead of using the pre-existing local variable.
+        scatterer = builder.structure.scatterers()[-1]
+        self.process_possible_constrained_occupancy(scatterer_index,
+                                                    scatterer,
+                                                    behaviour_of_variable[3])
         self.process_possible_u_iso_constraints(scatterer_index,
                                                 behaviour_of_variable[4])
         scatterer_index += 1
@@ -372,6 +393,7 @@ class atom_parser(parser, variable_decoder):
                                                height = args[-1])
       else:
         yield command, line
+    self.process_occupancies_depending_on_free_variable()
 
   def process_possible_u_iso_constraints(self,
                                          u_iso_scatterer_idx,
@@ -386,6 +408,49 @@ class atom_parser(parser, variable_decoder):
           u_iso_scatterer_idx,
           u_eq_scatterer_idx,
           coeff)
+
+  def process_possible_constrained_occupancy(self,
+                                             scatterer_index,
+                                             scatterer,
+                                             occupancy_behaviour):
+    if self.builder_does_occupancy_pair_affine_constraint:
+      try:
+        kind, coeff, free_var_idx = occupancy_behaviour
+      except (TypeError, ValueError):
+        pass
+      else:
+        if not self.free_variable:
+          raise shelx_error("An instruction FVAR needs to appear before "
+                            "this point in the file,", self.line)
+        coeff /= scatterer.weight_without_occupancy()
+        r_coeff = scitbx.math.continued_fraction.from_real(
+          coeff, eps=1e-5).as_rational()
+        coeff = round(r_coeff.numerator()/r_coeff.denominator(), ndigits=5)
+        if kind == constant_times_independent_scalar_parameter:
+          self.occupancies_depending_on_free_variable.setdefault(
+            free_var_idx, []).append((coeff, 0, scatterer_index))
+        elif kind == constant_times_independent_scalar_parameter_minus_1:
+          self.occupancies_depending_on_free_variable.setdefault(
+            free_var_idx, []).append((coeff, -1, scatterer_index))
+
+
+  def process_occupancies_depending_on_free_variable(self):
+    if not self.builder_does_occupancy_pair_affine_constraint: return
+
+    for free_var_idx, affine_occupancies \
+        in self.occupancies_depending_on_free_variable.iteritems():
+      if len(affine_occupancies) == 1:
+        # useless reparametrisation: we keep the occupancy as an independent
+        # parameter
+        continue
+      else:
+        for i in xrange(len(affine_occupancies) - 1):
+          (a, b, i), (a1, b1, i1) = affine_occupancies[i:i+2]
+          # occ(i) = a(u + b) and occ(i+1) = a'(u + b')
+          # where u is the free variable of index free_var_idx
+          self.builder.add_occupancy_pair_affine_constraint(
+            scatterer_indices=(i, i1),
+            linear_form=((1/a, -1/a1), b - b1))
 
   def lex_scatterer(self, args, scatterer_index):
     name = args[0]
