@@ -52,6 +52,9 @@ class crystal_structure_builder(crystal_symmetry_builder):
     self.conformer_indices = None
     self.sym_excl_indices = None
     self.electron_density_peaks = []
+    self.index_of_scatterer_named = {}
+    self.residue_class_of_residue_number = {}
+    self.residue_numbers_having_class = {}
 
   def make_structure(self):
     self.structure = xray.structure(
@@ -59,10 +62,18 @@ class crystal_structure_builder(crystal_symmetry_builder):
         crystal_symmetry=self.crystal_symmetry,
         min_distance_sym_equiv=self.min_distance_sym_equiv))
 
+  def add_residue(self, residue_number, residue_class):
+    self.residue_class_of_residue_number[residue_number] = residue_class
+    self.residue_numbers_having_class.setdefault(
+      residue_class, []).append(residue_number)
+
+
   def add_scatterer(self, scatterer, is_refined,
                     occupancy_includes_symmetry_factor,
                     conformer_index=None,
-                    sym_excl_index=None):
+                    sym_excl_index=None,
+                    residue_number=None,
+                    residue_class=None):
     """ If the parameter set_grad_flags passed to the constructor was True,
         the scatterer.flags.grad_xxx() will be set to True
         if the corresponding variables have been found to be refined
@@ -81,6 +92,7 @@ class crystal_structure_builder(crystal_symmetry_builder):
         if all(is_refined[-6:]):
           f.set_grad_u_aniso(True)
     self.structure.add_scatterer(scatterer)
+    scatterer_index = len(self.structure.scatterers()) - 1
 
     if occupancy_includes_symmetry_factor:
       sc = self.structure.scatterers()[-1]
@@ -95,6 +107,9 @@ class crystal_structure_builder(crystal_symmetry_builder):
     if sym_excl_index is not None:
       if self.sym_excl_indices is None: self.sym_excl_indices = flex.size_t()
       self.sym_excl_indices.append(sym_excl_index)
+    self.index_of_scatterer_named[
+      (residue_number, scatterer.label.lower())] = scatterer_index
+
 
   def add_electron_density_peak(self, site, height):
     self.electron_density_peaks.append(electron_density_peak(site, height))
