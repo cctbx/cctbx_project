@@ -39,7 +39,7 @@ def smtbx_refinement_model_from(cls, ins_or_res=None, hkl=None):
     elif ins_exists: ins_or_res = ins
   elif hkl is None:
     root, _ = os.path.splitext(ins_or_res)
-    hkl = "%.hkl" % root
+    hkl = "%s.hkl" % root
     assert os.path.isfile(hkl)
 
   builder = iotbx.builders.mixin_builder_class(
