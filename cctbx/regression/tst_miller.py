@@ -2190,6 +2190,21 @@ def exercise_randomize_amplitude_and_phase():
     assert approx_equal(r[0], v/100., 0.01)
     assert approx_equal(r[1], v, 1)
 
+def exercise_permute () :
+  xrs = random_structure.xray_structure(
+    space_group_info=sgtbx.space_group_info(number=1),
+    elements=["C"]*300)
+  fc = xrs.structure_factors(d_min=1.0).f_calc()
+  fc_perm = fc.permute_d_range(d_max=1.1, d_min=0)
+  fc_other = fc.resolution_filter(d_min=1.1)
+  fc_high = fc.resolution_filter(d_max=1.1)
+  fc_perm_high = fc_perm.resolution_filter(d_max=1.1)
+  fc_perm_other = fc_perm.resolution_filter(d_min=1.1)#00001)
+  assert fc.data().size() == fc_perm.data().size()
+  assert fc.indices().all_eq(fc_perm.indices())
+  assert fc_other.data().all_eq(fc_perm_other.data())
+  assert not fc_high.data().all_eq(fc_perm_high.data())
+
 def run(args):
   exercise_randomize_amplitude_and_phase()
   exercise_hoppe_gassmann_modification()
@@ -2226,6 +2241,7 @@ def run(args):
   exercise_fft_map()
   exercise_map_correlation()
   exercise_merge_equivalents_special_cases()
+  exercise_permute()
   debug_utils.parse_options_loop_space_groups(args, run_call_back)
   print "OK"
 

@@ -3906,39 +3906,39 @@ class array(set):
 
   def remove_cone(self, fraction_percent, vertex=(0,0,0), axis_point_1=(0,0,0),
         axis_point_2=(0,0,1), negate=False):
-     # single cone equation:
-     # cos(half_opening_angle)*|R - VERTEX|*|AXIS| = (R-VERTEX,AXIS)
-     # where R is any point on cone surface
-     # double-cone requires AXIS*(-1)
-     import scitbx.matrix
-     fm = self.unit_cell().fractionalization_matrix()
-     fm = scitbx.matrix.sqr(fm)
-     fm = fm.transpose()
-     axis = flex.double(
-       fm * list(flex.double(axis_point_2)-flex.double(axis_point_1)))
-     axis_length = math.sqrt(axis.dot(axis))
-     vertex = flex.double(vertex)
-     opening_angles = flex.double()
-     for point in self.indices():
-       point_minus_vertex = (flex.double(point)-vertex)
-       point_minus_vertex = flex.double(fm * list(point_minus_vertex))
-       point_minus_vertex_length = math.sqrt(
-         point_minus_vertex.dot(point_minus_vertex))
-       numerator = point_minus_vertex.dot(axis)
-       denominator = point_minus_vertex_length*axis_length
-       opening_angle_deg_for_point = 0
-       if(point_minus_vertex_length>0):
-         assert denominator != 0
-         ratio = numerator / denominator
-         if(abs(1.-abs(ratio))<1.e-3): ratio = 1.0
-         opening_angle_deg_for_point = 180/math.pi * math.acos(ratio)
-       opening_angles.append(opening_angle_deg_for_point)
-     # smaller than 1 step will make selection accuracy higher
-     for oa in range(1,180):
-       sel = opening_angles<=oa
-       if(100.*sel.count(True)/sel.size() > fraction_percent): break
-     if(negate): return self.select(selection = sel)
-     return self.select(selection = ~sel)
+    # single cone equation:
+    # cos(half_opening_angle)*|R - VERTEX|*|AXIS| = (R-VERTEX,AXIS)
+    # where R is any point on cone surface
+    # double-cone requires AXIS*(-1)
+    import scitbx.matrix
+    fm = self.unit_cell().fractionalization_matrix()
+    fm = scitbx.matrix.sqr(fm)
+    fm = fm.transpose()
+    axis = flex.double(
+      fm * list(flex.double(axis_point_2)-flex.double(axis_point_1)))
+    axis_length = math.sqrt(axis.dot(axis))
+    vertex = flex.double(vertex)
+    opening_angles = flex.double()
+    for point in self.indices():
+      point_minus_vertex = (flex.double(point)-vertex)
+      point_minus_vertex = flex.double(fm * list(point_minus_vertex))
+      point_minus_vertex_length = math.sqrt(
+        point_minus_vertex.dot(point_minus_vertex))
+      numerator = point_minus_vertex.dot(axis)
+      denominator = point_minus_vertex_length*axis_length
+      opening_angle_deg_for_point = 0
+      if(point_minus_vertex_length>0):
+        assert denominator != 0
+        ratio = numerator / denominator
+        if(abs(1.-abs(ratio))<1.e-3): ratio = 1.0
+        opening_angle_deg_for_point = 180/math.pi * math.acos(ratio)
+      opening_angles.append(opening_angle_deg_for_point)
+    # smaller than 1 step will make selection accuracy higher
+    for oa in range(1,180):
+      sel = opening_angles<=oa
+      if(100.*sel.count(True)/sel.size() > fraction_percent): break
+    if(negate): return self.select(selection = sel)
+    return self.select(selection = ~sel)
 
   def ellipsoidal_resolutions_and_indices_by_sigma(self, sigma_cutoff=3):
     if(self.sigmas() is None): return None
@@ -4012,6 +4012,26 @@ class array(set):
       if(r<=1): selection[i_mi] = True
       #if(r>1 and data[i_mi]/sigmas[i_mi]<sigma_cutoff): selection[i_mi] = False
     return self.select(selection=selection)
+
+  def permute_d_range (self, d_max, d_min) :
+    """
+    Randomly shuffle reflections within a given resolution range.  Used for
+    control refinements to validate the information content of a dataset.
+    """
+    d_spacings = self.d_spacings().data()
+    all_isel = flex.bool(d_spacings.size(), True).iselection()
+    range_selection = (d_spacings <= d_max) & (d_spacings >= d_min)
+    range_isel = range_selection.iselection()
+    perm = flex.random_permutation(range_isel.size())
+    range_isel_permuted = range_isel.select(perm)
+    all_isel.set_selected(range_selection, range_isel_permuted)
+    data = self.data().select(all_isel)
+    sigmas = None
+    if (self.sigmas() is not None) :
+      sigmas = self.sigmas().select(all_isel)
+    return self.customized_copy(data=data, sigmas=sigmas)
+
+# END array class
 
 class crystal_symmetry_is_compatible_with_symmetry_from_file:
 
