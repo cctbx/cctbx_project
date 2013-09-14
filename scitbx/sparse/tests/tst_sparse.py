@@ -123,6 +123,9 @@ def exercise_vector():
     w2 = 3*v + 2*u
     assert sparse_approx_equal(w1, w2)
     assert approx_equal(list(w1.as_dense_vector()), w, eps=1e-15)
+  u = sparse.vector(3, {1:2})
+  v = u/2
+  assert v == sparse.vector(3, {1:1})
 
 def exercise_matrix():
   a = sparse.matrix(10,7)
