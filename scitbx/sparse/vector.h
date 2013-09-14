@@ -484,7 +484,7 @@ public:
     v.compact();
     value_type result = 0;
     for(const_iterator p=u.begin(), q=v.begin();;) {
-      if(p == u.end() or q == v.end()) break;
+      if(p == u.end() || q == v.end()) break;
       std::size_t i=p.index(), j=q.index();
       if      (i < j) p++;
       else if (i > j) q++;
