@@ -105,10 +105,11 @@ def exercise_vector():
   assert u*v == 14
 
   sparse_approx_equal = sparse.approx_equal(tolerance=1e-15)
+
   def linear_combination_trial_vectors():
     u = sparse.vector(8, {1: 1.1, 3: 1.3})
     v = sparse.vector(8, {0: 2.0, 2: 2.2, 3: 2.3, 4: 2.4})
-    w = [ 6., 2.2, 6.6, 9.5, 7.2, 0, 0, 0 ]
+    w = list(-2*u.as_dense_vector() + 3*v.as_dense_vector())
     yield u, v, w
     random_vectors = scitbx.random.variate(
       sparse.vector_distribution(
@@ -116,13 +117,20 @@ def exercise_vector():
         elements=scitbx.random.uniform_distribution(min=-2, max=2)))
     u = random_vectors.next()
     v = random_vectors.next()
-    w = list(2*u.as_dense_vector() + 3*v.as_dense_vector())
+    w = list(-2*u.as_dense_vector() + 3*v.as_dense_vector())
     yield u, v, w
   for u, v, w in itertools.islice(linear_combination_trial_vectors(), 50):
-    w1 = 2*u + 3*v
-    w2 = 3*v + 2*u
+    w1 = -2*u + 3*v
+    w2 =  3*v - 2*u
     assert sparse_approx_equal(w1, w2)
     assert approx_equal(list(w1.as_dense_vector()), w, eps=1e-15)
+    w1 += 2*u
+    w1 /= 3
+    assert sparse_approx_equal(w1, v)
+    w2 -= 3*v
+    w2 /= -2
+    assert sparse_approx_equal(w2, u)
+
   u = sparse.vector(3, {1:2})
   v = u/2
   assert v == sparse.vector(3, {1:1})
