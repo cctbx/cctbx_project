@@ -3,6 +3,7 @@ from __future__ import division
 from smtbx.refinement import constraints, least_squares
 import smtbx.refinement.constraints.adp
 import smtbx.refinement.constraints.geometrical.all
+import smtbx.refinement.constraints.occupancy
 
 from iotbx.builders import \
      crystal_structure_builder, \
@@ -15,6 +16,17 @@ class constrained_crystal_structure_builder(crystal_structure_builder):
     super(constrained_crystal_structure_builder, self).__init__(*args, **kwds)
     self.constraints = []
     self.temperature_in_celsius = None
+
+  def add_occupancy_pair_affine_constraint(self, scatterer_indices, linear_form):
+    """ Add a constraint on the occupancies of a pair of scatterers that is
+        affine, i.e. linear_form shall be ((a0, a1), b) and then
+           a0*occ0 + a1*occ1 = b
+        where (occ0, occ1) are the occupancies of the scatterers whose indices
+        are given in `scatterer_indices`.
+    """
+    self.constraints.append(
+      constraints.occupancy.occupancy_pair_affine_constraint(scatterer_indices,
+                                                             linear_form))
 
   def add_u_iso_proportional_to_pivot_u_eq(self,
                                            u_iso_scatterer_index,
