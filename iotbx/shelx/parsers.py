@@ -378,7 +378,7 @@ class atom_parser(parser, variable_decoder):
     site = values[0:3]
     occ = values[3]
     scattering_type = eltbx.xray_scattering.get_standard_label(
-      self.label_for_sfac[n], # works thank to (a)
+      self.label_for_sfac[n], # works thank to (a) above
       exact=True)
     scatterer = xray.scatterer(
       label           = name,
