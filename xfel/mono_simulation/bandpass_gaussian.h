@@ -266,8 +266,6 @@ namespace parameter {
       double s1_length = s1.length();
       SCITBX_ASSERT (s0_length > 0.);
       SCITBX_ASSERT (s1_length > 0.);
-      scitbx::vec3<double> hi_E_part_r_part_distance = s0;//initialize only; values not used
-      scitbx::vec3<double> lo_E_part_r_part_distance = s1;
       scitbx::vec3<double> mean_position_part_r_part_distance = s1;
       scitbx::vec3<double> mean_position_part_r_part_half_mos = s1;
 
