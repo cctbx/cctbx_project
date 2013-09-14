@@ -300,11 +300,12 @@ class atom_parser(parser, variable_decoder):
     sym_excl_index = 0
     part_sof = None
     current_residue = (None, None)
+    builder = self.builder
     for command, line in self.command_stream:
       self.line = line
       cmd, args = command[0], command[-1]
       if cmd == 'SFAC':
-        self.builder.make_structure()
+        builder.make_structure()
         if len(args) == 15 and isinstance(args[1], float):
           raise NotImplementedError(
             '''SFAC label a1 b1 a2 b2 a3 b3 a4 b4 c f' f" mu r wt''')
@@ -339,7 +340,7 @@ class atom_parser(parser, variable_decoder):
         residue_number, residue_class = current_residue
         if (conformer_index or sym_excl_index) and part_sof:
           scatterer.occupancy, behaviour_of_variable[3] = part_sof
-        self.builder.add_scatterer(scatterer, behaviour_of_variable,
+        builder.add_scatterer(scatterer, behaviour_of_variable,
                                    occupancy_includes_symmetry_factor=True,
                                    conformer_index=conformer_index,
                                    sym_excl_index=sym_excl_index,
@@ -349,7 +350,7 @@ class atom_parser(parser, variable_decoder):
       elif cmd == '__Q_PEAK__':
         assert not self.strictly_shelxl,\
                "Q-peaks amidst atoms in strict ShelXL model"
-        self.builder.add_electron_density_peak(site = args[2:5],
+        builder.add_electron_density_peak(site = args[2:5],
                                                height = args[-1])
       else:
         yield command, line
