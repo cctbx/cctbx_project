@@ -291,6 +291,12 @@ class atom_parser(parser, variable_decoder):
     parser.__init__(self, command_stream, builder)
     self.free_variable = None
     self.strictly_shelxl = strictly_shelxl
+    try:
+      self.builder.add_u_iso_proportional_to_pivot_u_eq
+      flag = True
+    except AttributeError:
+      flag = False
+    self.builder_does_u_iso_proportional_to_pivot_u_eq = flag
 
   def filtered_commands(self):
     self.label_for_sfac = None
@@ -356,6 +362,8 @@ class atom_parser(parser, variable_decoder):
                                    sym_excl_index=sym_excl_index,
                                    residue_number=residue_number,
                                    residue_class=residue_class)
+        self.process_possible_u_iso_constraints(scatterer_index,
+                                                behaviour_of_variable[4])
         scatterer_index += 1
       elif cmd == '__Q_PEAK__':
         assert not self.strictly_shelxl,\
@@ -364,6 +372,20 @@ class atom_parser(parser, variable_decoder):
                                                height = args[-1])
       else:
         yield command, line
+
+  def process_possible_u_iso_constraints(self,
+                                         u_iso_scatterer_idx,
+                                         u_iso_behaviour):
+    if self.builder_does_u_iso_proportional_to_pivot_u_eq:
+      try:
+        kind, coeff, u_eq_scatterer_idx = u_iso_behaviour
+      except (TypeError, ValueError):
+        pass
+      else:
+        self.builder.add_u_iso_proportional_to_pivot_u_eq(
+          u_iso_scatterer_idx,
+          u_eq_scatterer_idx,
+          coeff)
 
   def lex_scatterer(self, args, scatterer_index):
     name = args[0]
