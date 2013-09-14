@@ -205,7 +205,7 @@ class covariance_matrix_and_annotations(object):
     self._2_n_minus_1 = 2*len(self.annotations)-1 # precompute for efficiency
 
   def __call__(self, i, j):
-    return self.matrix[i*0.5*(self._2_n_minus_1-i)+j]
+    return self.matrix[i*(self._2_n_minus_1-i)//2 + j]
 
   def variance_of(self, annotation):
     i = self.annotations.index(annotation)
