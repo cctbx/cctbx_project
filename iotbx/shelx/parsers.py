@@ -232,7 +232,7 @@ def decode_variables(
       raise_parameter_error()
     if m <= -2:
       # p*(fv_{-m} - 1)
-      m = -m-1 # indexing thanks to (b) above
+      m = -m-1 # indexing thanks to (b) below
       values.append( p*(free_variable[m] - 1) )
       behaviours.append(
         (constant_times_independent_scalar_parameter_minus_1, p, m))
@@ -255,7 +255,7 @@ def decode_variables(
       behaviours.append(constant_parameter)
     elif m >= 2:
       # p*fv_m
-      m = m-1 # indexing thanks to (b) above
+      m = m-1 # indexing thanks to (b) below
       values.append(p*free_variable[m])
       behaviours.append(
         (constant_times_independent_scalar_parameter, p, m))
