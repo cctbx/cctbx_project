@@ -82,6 +82,14 @@ struct vector_wrapper
     return element_iterator(self.begin(), self.end());
   }
 
+  static wt &inplace_div(wt &self, value_type a) {
+    return self /= a;
+  }
+
+  static wt div(wt const &self, value_type a) {
+    return self / a;
+  }
+
   static void wrap(char const *name) {
     using namespace boost::python;
 
@@ -112,9 +120,20 @@ struct vector_wrapper
       .def(self * typename wt::dense_vector_const_ref())
       .def(-self)
       .def(self *= T())
-      .def(self /= T())
       .def(T() * self)
       .def(self * T())
+      // this does not work if
+      //     from __future__ import division
+      // is used in the Python code because because it produces __div__
+      // and __idiv__ whereas with that "future" Python binds / and /=
+      // to __truediv__ and __itruediv__ respectively. Boost Python could be
+      // fixed to produce both kinds of division magic methods.
+      //.def(self /= T())
+      //.def(self / T())
+      // hence the need for this explicit code:
+      .def("__itruediv__", inplace_div, return_self<>())
+      .def("__truediv__", div)
+      // end
       .def(self + self)
       .def(self - self)
       .def(self * self)
