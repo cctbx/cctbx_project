@@ -58,7 +58,7 @@ def fetch_pdb_data (
   return os.path.abspath(pdb_file), os.path.abspath(mtz_file)
 
 def find_data_arrays (mtz_file, log=None, merge_anomalous=False,
-    crystal_symmetry=None) :
+    preferred_labels=None, crystal_symmetry=None) :
   """
   Guess an appropriate data array to use for refinement, plus optional
   Hendrickson-Lattman coefficients and R-free flags if present.
@@ -83,6 +83,16 @@ def find_data_arrays (mtz_file, log=None, merge_anomalous=False,
   if (len(data_arrays) == 0) :
     raise Sorry("No data arrays found in %s." % mtz_file)
   data = data_arrays[0]
+  if (preferred_labels is not None) :
+    for array in data_arrays :
+      array_labels = array.info().label_string()
+      if (array_label== preferred_labels) :
+        data = array
+        break
+    else :
+      raise Sorry("Can't find label string '%s'!" % preferred_labels)
+  else :
+    print >> log, "Defaulting to using %s" % data.info().label_string()
   hl_arrays = hkl_server.get_experimental_phases(
     file_name               = None,
     labels                  = None,
