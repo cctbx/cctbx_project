@@ -235,7 +235,7 @@ Examples:
       f_obs               = data_and_flags.f_obs,
       r_free_flags        = r_free_flags)
     broadcast(m="R-factors, reflection counts and scales", log=log)
-    fmodel.show(log=log)
+    fmodel.show(log=log, show_header=False)
     # compute map coefficients
     e_map_obj = fmodel.electron_density_map(update_f_part1=True)
     coeffs_1 = e_map_obj.map_coefficients(
@@ -247,13 +247,12 @@ Examples:
       fill_missing = params.map_2.fill_missing_reflections,
       isotropize   = params.map_2.isotropize)
     # compute cc
-    overall_cc, results, rawresults = simple(
+    results = simple(
       fmodel        = fmodel,
       pdb_hierarchy = pdbo.pdb_hierarchy,
       params        = params,
       show_results  = True,
       log           = log)
-    return overall_cc, rawresults
 
 def simple(fmodel, pdb_hierarchy, params=None, log=None, show_results=False):
   if(params is None): params =master_params().extract()
@@ -298,7 +297,7 @@ def simple(fmodel, pdb_hierarchy, params=None, log=None, show_results=False):
       hydrogen_atom_radius = atom_radius
     else:
       hydrogen_atom_radius = 1
-  results, rawresults = compute(
+  results = compute(
     pdb_hierarchy        = pdb_hierarchy,
     unit_cell            = fmodel.xray_structure.unit_cell(),
     fft_n_real           = map_1.focus(),
@@ -311,7 +310,7 @@ def simple(fmodel, pdb_hierarchy, params=None, log=None, show_results=False):
     hydrogen_atom_radius = hydrogen_atom_radius)
   if(show_results):
     show(log=log, results=results, params=params, detail=detail)
-  return overall_cc, results, rawresults
+  return results
 
 def show(log, results, params, detail):
   print >> log
@@ -339,7 +338,6 @@ def compute(pdb_hierarchy,
             hydrogen_atom_radius):
   assert detail in ["atom", "residue"]
   results = []
-  rawresults = []
   for chain in pdb_hierarchy.chains():
     for residue_group in chain.residue_groups():
       for conformer in residue_group.conformers():
@@ -387,14 +385,6 @@ def compute(pdb_hierarchy,
                   occupancy   = atom.occ,
                   n_atoms     = 1)
                 results.append(result)
-                rawresults.append((chain.id,
-                                   atom.serial_as_int(),
-                                   cc,
-                                   atom.occ,
-                                   atom.b
-                                  )
-                )
-
           if(detail == "residue"):
             sel = maptbx.grid_indices_around_sites(
               unit_cell  = unit_cell,
@@ -415,15 +405,7 @@ def compute(pdb_hierarchy,
               occupancy   = flex.mean(r_occ),
               n_atoms     = r_sites_cart.size())
             results.append(result)
-            rawresults.append((chain.id,
-                               residue_group.resseq_as_int(),
-                               cc,
-                               flex.mean(r_occ),
-                               flex.mean(r_b)
-                               )
-            )
-
-  return results, rawresults
+  return results
 
 def set_detail_level_and_radius(detail, atom_radius, d_min):
   assert detail in ["atom","residue","automatic"]
