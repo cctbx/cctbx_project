@@ -921,7 +921,10 @@ class set(crystal.symmetry):
     ol = o.lone_set(s)
     d_new = s.data().concatenate(ol.data())
     i_new = s.indices().concatenate(ol.indices())
-    return self.customized_copy(data = d_new, indices = i_new)
+    sigmas_new = None
+    if(s.sigmas() is not None):
+      sigmas_new = s.sigmas().concatenate(ol.sigmas())
+    return self.customized_copy(data = d_new, indices = i_new, sigmas = sigmas_new)
 
   def complete_with_bin_average(self, reflections_per_bin=100):
     assert isinstance(self.data(), flex.double)
