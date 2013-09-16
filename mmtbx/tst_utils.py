@@ -1396,6 +1396,11 @@ TER
     residues_per_window = 1)
   for r in result:
     print "chainID_resseqs: %s occupancy_grad: %-15.6f"%tuple(r)
+  # get group gradients using custom selections
+  selections = [flex.size_t([0,1,2,3]), flex.size_t([4,5,6,7,8])]
+  result = tg.group_occupancy_grads(selections = selections)
+  for i, r in enumerate(result):
+    print "selection#: %s occupancy_grad: %-15.6f"%(str(i), r[1])
 
 def exercise_get_atom_selections (verbose=False) :
   pdb_in = """\
