@@ -305,17 +305,27 @@ template <typename DataType>
 void reset(
        af::ref<DataType, af::c_grid<3> > map_data,
        DataType substitute_value,
-       DataType less_than_threshold)
+       DataType less_than_threshold,
+       DataType greater_than_threshold,
+       bool use_and)
 {
   int nx = map_data.accessor()[0];
   int ny = map_data.accessor()[1];
   int nz = map_data.accessor()[2];
-  double rho_max = af::max(map_data);
   for(int i = 0; i < nx; i++) {
     for(int j = 0; j < ny; j++) {
       for(int k = 0; k < nz; k++) {
          double rho = map_data(i,j,k);
-         if(rho<less_than_threshold) map_data(i,j,k) = substitute_value;
+         if(use_and) {
+           if(rho<less_than_threshold && rho>greater_than_threshold) {
+             map_data(i,j,k) = substitute_value;
+           }
+         }
+         else {
+           if(rho<less_than_threshold || rho>greater_than_threshold) {
+             map_data(i,j,k) = substitute_value;
+           }
+         }
   }}}
 }
 

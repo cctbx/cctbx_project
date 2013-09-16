@@ -315,10 +315,14 @@ namespace {
       (void(*)
         (af::ref<double, af::c_grid<3> >,
          double,
-         double)) reset, (
+         double,
+         double,
+         bool)) reset, (
       arg("data"),
       arg("substitute_value"),
-      arg("less_than_threshold")));
+      arg("less_than_threshold"),
+      arg("greater_than_threshold"),
+      arg("use_and")));
 
     def("intersection",
       (void(*)
