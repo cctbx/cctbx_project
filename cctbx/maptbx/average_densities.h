@@ -236,27 +236,31 @@ public:
     for (int i = 0; i < nx1; i++) {
       for (int j = 0; j < ny1; j++) {
         for (int k = 0; k < nz1; k++) {
-          double m2 = (map_2(i,j,k)-min2)*(2)/(max2-min2)-1;
-          double m1 = (map_1(i,j,k)-min1)*(2)/(max1-min1)-1;
-          map_2_new(i,j,k)=m2;
-          map_1_new(i,j,k)=m1;
-          mean1 = mean1 + m1;
-          mean2 = mean2 + m2;
+          // do not shift to be between 0 and 1: operate on map as
+          //double m2 = (map_2(i,j,k)-min2)*(2)/(max2-min2)-1;
+          //double m1 = (map_1(i,j,k)-min1)*(2)/(max1-min1)-1;
+          //map_2_new(i,j,k)=m2;
+          //map_1_new(i,j,k)=m1;
+          //mean1 = mean1 + m1;
+          //mean2 = mean2 + m2;
+          map_2_new(i,j,k)=map_2(i,j,k);
+          map_1_new(i,j,k)=map_1(i,j,k);
         }
       }
     }
-    CCTBX_ASSERT(std::abs(af::max(map_1_new.ref())-af::max(map_2_new.ref()))<1e-6);
-    CCTBX_ASSERT(std::abs(af::min(map_1_new.ref())-af::min(map_2_new.ref()))<1e-6);
-    mean1 = mean1/map_1.size();
-    mean2 = mean2/map_1.size();
-    for (int i = 0; i < nx1; i++) {
-      for (int j = 0; j < ny1; j++) {
-        for (int k = 0; k < nz1; k++) {
-          map_2_new(i,j,k)=map_2_new(i,j,k) - mean2;
-          map_1_new(i,j,k)=map_1_new(i,j,k) - mean1;
-        }
-      }
-    }
+    // do not subtract mean
+    //CCTBX_ASSERT(std::abs(af::max(map_1_new.ref())-af::max(map_2_new.ref()))<1e-6);
+    //CCTBX_ASSERT(std::abs(af::min(map_1_new.ref())-af::min(map_2_new.ref()))<1e-6);
+    //mean1 = mean1/map_1.size();
+    //mean2 = mean2/map_1.size();
+    //for (int i = 0; i < nx1; i++) {
+    //  for (int j = 0; j < ny1; j++) {
+    //    for (int k = 0; k < nz1; k++) {
+    //      map_2_new(i,j,k)=map_2_new(i,j,k) - mean2;
+    //      map_1_new(i,j,k)=map_1_new(i,j,k) - mean1;
+    //    }
+    //  }
+    //}
     int n_bins = 3000;
     max1 = af::max(map_1_new.ref());
     min1 = af::min(map_1_new.ref());
@@ -266,13 +270,18 @@ public:
     double end   = std::max(max1,max2);
     histogram hist1 = histogram(map_1_new.ref(), n_bins, start, end);
     histogram hist2 = histogram(map_2_new.ref(), n_bins, start, end);
-    h1 = hist1.v_values();
-    h2 = hist2.v_values();
+    h1 = hist1.c_values();
+    h2 = hist2.c_values();
     sigs = hist1.arguments();
     double bin_width = hist1.bin_width();
+    // can use mean of two or one of the two:
+    //for (int i = 0; i < h1.size(); i++) {
+    //  h12.push_back((h1[i]+h2[i])/2);
+    //}
     for (int i = 0; i < h1.size(); i++) {
-      h12.push_back((h1[i]+h2[i])/2);
+      h12.push_back(h2[i]);
     }
+
     map_mod(map_1_new.ref(), map_2_new.ref(), h1.ref(), h2.ref(), sigs.ref(),
       h12.ref(), bin_width, start);
   }
