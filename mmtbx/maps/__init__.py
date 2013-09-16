@@ -563,27 +563,19 @@ class kick(object):
       crystal_gridding = None,
       map_type         = "2mFo-DFc",
       number_of_kicks  = 100,
-      delta_fofc_outliers_threshold = 20,
-      resolution_factor = 0.25,
-      update_r_free_flags= True,
+      number_of_macro_cycles = 10,
+      delta_fofc_outliers_threshold = 10,
+      resolution_factor  = 0.25,
       use_complete_with  = True,
-      use_intersection   = True,
-      shake_f_calc = True,
-      shake_f_mask = True,
-      shake_f_model= True,
-      shake_f_map  = True):
+      shake_completeness = True,
+      shake_f_model      = False,
+      shake_f_map        = True):
     self.map_type = map_type
-    self.update_r_free_flags = update_r_free_flags
     self.delta_fofc_outliers_threshold = delta_fofc_outliers_threshold
-    self.mean_phase_error = None
     self.use_complete_with = use_complete_with
     self.map_type = map_type
     self.number_of_kicks = number_of_kicks
     assert self.number_of_kicks > 0
-    self.shake_f_calc  = shake_f_calc
-    self.shake_f_mask  = shake_f_mask
-    self.shake_f_model = shake_f_model
-    self.shake_f_map   = shake_f_map
     if(crystal_gridding is None):
       crystal_gridding = fmodel.f_obs().crystal_gridding(
         d_min                   = fmodel.f_obs().d_min(),
@@ -594,7 +586,7 @@ class kick(object):
         max_prime               = 5,
         assert_shannon_sampling = True)
     fmodel = self.convert_to_non_anomalous(fmodel=fmodel)
-    # starting map coefficients and sigma-scaled map
+    from libtbx.test_utils import approx_equal
     self.complete_set = fmodel.electron_density_map(
       update_f_part1=False).map_coefficients(
         map_type     = self.map_type,
@@ -607,64 +599,87 @@ class kick(object):
     self.map_data_orig = fft_map.real_map_unpadded()
     if(self.use_complete_with):
       self.outlier_substitutes = self.get_outlier_substitutes(fmodel = fmodel)
-    self.fmodel_dc = fmodel.deep_copy()
-    self.f_calc   = self.fmodel_dc.f_calc()
-    self.f_mask   = self.fmodel_dc.f_masks()[0]
-    self.f_model  = self.fmodel_dc.f_model_no_scales()
-    k_isotropic   = self.fmodel_dc.k_isotropic()
-    k_anisotropic = self.fmodel_dc.k_anisotropic()
-    self.fmodel_dc2 = mmtbx.f_model.manager(
-      f_obs         = fmodel.f_obs(),
-      r_free_flags  = fmodel.r_free_flags(),
-      k_isotropic   = k_isotropic,
-      k_anisotropic = k_anisotropic,
-      f_calc        = self.f_model,
-      f_mask        = self.f_mask.customized_copy(data = self.f_mask.data()*0))
+    # result map initialization
     map_data = None
-    for opt in [("f_calc", 5,self.shake_f_calc),
-                ("f_mask", 5,self.shake_f_mask),
-                ("f_model",10,self.shake_f_model),
-                ("f_map",  10,self.shake_f_map)]:
-      array, number_of_trials, run_status = opt
-      if(not run_status): continue
-      for it in xrange(number_of_trials):
-        print "%7s: step %2d out of %2d" % (array, it, number_of_trials)
-        complete_set = self.alter_complete_set_with_delta_fofc_outliers()
-        mc = self.shake(complete_set=complete_set, array=array)
+    # utility function
+    def compute_map_and_combine(map_coeffs, crystal_gridding, map_data):
+      fft_map = miller.fft_map(
+        crystal_gridding     = crystal_gridding,
+        fourier_coefficients = map_coeffs)
+      fft_map.apply_sigma_scaling()
+      m = fft_map.real_map_unpadded()
+      if(map_data is None): map_data = m
+      else:
+        for i in [0,0.1,0.2,0.3,0.4,0.5]:
+          maptbx.intersection(
+            map_data_1 = m,
+            map_data_2 = map_data,
+            threshold  = i)
+        map_data = (m+map_data)/2
+      return map_data
+    # shake Fmap
+    if(shake_f_map):
+      for it in xrange(number_of_macro_cycles):
+        print it
+        for option in [1,2,3]:
+          complete_set = self.alter_complete_set_with_delta_fofc_outliers(
+            option=option)
+          mc = self.call_run_kick_loop(map_coeffs=complete_set)
+          if(shake_completeness):
+            mc = mc.select(flex.random_bool(mc.size(), 0.95))
+          map_data = compute_map_and_combine(
+            map_coeffs       = mc,
+            crystal_gridding = crystal_gridding,
+            map_data         = map_data)
+    # shake Fmodel
+    if(shake_f_model):
+      f_model = fmodel.f_model_no_scales()
+      zero = fmodel.f_calc().customized_copy(data = fmodel.f_calc().data()*0)
+      fmodel_dc  = mmtbx.f_model.manager(
+        f_obs         = fmodel.f_obs(),
+        r_free_flags  = fmodel.r_free_flags(),
+        k_isotropic   = fmodel.k_isotropic(),
+        k_anisotropic = fmodel.k_anisotropic(),
+        f_calc        = fmodel.f_model_no_scales(),
+        f_part1       = fmodel.f_part1(),
+        f_part2       = fmodel.f_part2(),
+        f_mask        = zero)
+      assert approx_equal(fmodel.r_work(), fmodel_dc.r_work())
+      def get_mc(fm):
+       return fm.electron_density_map(
+         update_f_part1=False).map_coefficients(
+           map_type     = self.map_type,
+           isotropize   = True,
+           fill_missing = False)
+      for it in xrange(number_of_macro_cycles*3):
+        print it
+        f_model_kick = self.call_run_kick_loop(map_coeffs=f_model)
+        fmodel_dc = self.recreate_r_free_flags(fmodel = fmodel_dc)
+        fmodel_dc.update(f_calc = f_model_kick)
+        mc = get_mc(fm=fmodel_dc)
         if(self.use_complete_with):
-          s = flex.random_bool(mc.size(), 0.8)
+          s = flex.random_bool(mc.size(), 0.9)
           mc = mc.select(s)
-          mc = mc.complete_with(complete_set, scale=True)
-          if(1): # XXX option to explore
-            sel = flex.random_bool(mc.size(), 0.99)
-            mc = mc.select(sel)
-        fft_map = miller.fft_map(
-          crystal_gridding     = crystal_gridding,
-          fourier_coefficients = mc)
-        fft_map.apply_sigma_scaling()
-        m = fft_map.real_map_unpadded()
-        if(map_data is None): map_data = m
-        else:
-          # critical to do both
-          if(use_intersection):
-            for i in [0,0.1,0.2,0.3,0.4,0.5]:
-              maptbx.intersection(
-                map_data_1 = m,
-                map_data_2 = map_data,
-                threshold  = i)
-          map_data = (m+map_data)/2
-    if(use_intersection):
-      for i in xrange(3):
-        maptbx.map_box_average(
-          map_data   = map_data,
-          cutoff     = 0.5,
-          index_span = 1)
-    self.map_data2 = map_data.deep_copy()
-    if(use_intersection):
-      # Very powerful in combination with NO HP modification.
-      sd = map_data.sample_standard_deviation()
-      map_data = map_data/sd
-      maptbx.reset(data=map_data, substitute_value=0.0, less_than_threshold=0.0)
+          mc = mc.complete_with(self.complete_set, scale=True)
+        if(shake_completeness):
+          mc = mc.select(flex.random_bool(mc.size(), 0.95))
+        map_data = compute_map_and_combine(
+          map_coeffs       = mc,
+          crystal_gridding = crystal_gridding,
+          map_data         = map_data)
+    # average low map values
+    for i in xrange(3):
+      maptbx.map_box_average(
+        map_data   = map_data,
+        cutoff     = 0.5,
+        index_span = 1)
+    # set to zero negative map values
+    maptbx.reset(
+      data=map_data,
+      substitute_value=0.0,
+      less_than_threshold=0.0,
+      greater_than_threshold=-9999,
+      use_and=True)
     sd = map_data.sample_standard_deviation()
     map_data = map_data/sd
     self.map_data = map_data
@@ -674,60 +689,24 @@ class kick(object):
       anomalous_flag = False,
       use_sg         = False)
 
-  def shake(self, complete_set, array):
-    assert array in ["f_mask", "f_calc", "f_model", "f_map", None]
-    def get_mc(fm):
-      return fm.electron_density_map(
-        update_f_part1=False).map_coefficients(
-          map_type     = self.map_type,
-          isotropize   = True,
-          fill_missing = False)
-    if(self.shake_f_calc and array == "f_calc"):
-      self.mean_phase_error=[0,10,30,40,60]
-      f_calc_kick = self.call_run_kick_loop(map_coeffs=self.f_calc)
-      fm = self.recreate_r_free_flags(fmodel = self.fmodel_dc)
-      fm.update(f_calc = f_calc_kick)
-      mc = get_mc(fm=fm)
-    elif(self.shake_f_mask and array == "f_mask"):
-      self.mean_phase_error=[0,10,30,40,60]
-      f_mask_kick = self.call_run_kick_loop(map_coeffs=self.f_mask)
-      fm = self.recreate_r_free_flags(fmodel = self.fmodel_dc)
-      fm.update(f_mask=f_mask_kick)
-      mc = get_mc(fm=fm)
-    elif(self.shake_f_model and array == "f_model"):
-      self.mean_phase_error=[0,5,10]
-      f_model_kick = self.call_run_kick_loop(map_coeffs=self.f_model)
-      fm = self.recreate_r_free_flags(fmodel = self.fmodel_dc2)
-      fm.update(f_calc = f_model_kick)
-      mc = get_mc(fm=fm)
-    elif(self.shake_f_map and array == "f_map"):
-      self.mean_phase_error=[0,5,10]
-      mc = self.call_run_kick_loop(map_coeffs=complete_set)
-    else:
-      mc = complete_set
-    return mc
-
-  def alter_complete_set_with_delta_fofc_outliers(self):
-    if(self.use_complete_with):
-      rc = random.choice([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9])
-      s = flex.random_bool(self.outlier_substitutes.outlier_ma.data().size(),rc)
-      outl = self.outlier_substitutes.outlier_ma.select(s)
-      complete_set2_, dummy = self.complete_set.lone_sets(outl)
-      C = random.choice([0,1,2])
-      if(C==0):
-        complete_set = complete_set2_.complete_with(
-          other=self.outlier_substitutes.outlier_substitute1, scale=True)
-      elif(C==1):
-        complete_set = complete_set2_.complete_with(
-          other=self.outlier_substitutes.outlier_substitute2, scale=True)
-      else:
-        complete_set = self.complete_set
-    else:
+  def alter_complete_set_with_delta_fofc_outliers(self, option):
+    assert option in [1,2,3]
+    rc = random.choice([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9])
+    s = flex.random_bool(self.outlier_substitutes.outlier_ma.data().size(),rc)
+    outl = self.outlier_substitutes.outlier_ma.select(s)
+    complete_set2_, dummy = self.complete_set.lone_sets(outl)
+    if(option==1):
+      complete_set = complete_set2_.complete_with(
+        other=self.outlier_substitutes.outlier_substitute1, scale=True)
+    elif(option==2):
+      complete_set = complete_set2_.complete_with(
+        other=self.outlier_substitutes.outlier_substitute2, scale=True)
+    elif(option==3):
       complete_set = self.complete_set
+    else: assert 0
     return complete_set
 
   def recreate_r_free_flags(self, fmodel):
-    if(not self.update_r_free_flags): return fmodel
     rc = random.choice([0.05,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1])
     r_free_flags = flex.random_bool(fmodel.f_obs().indices().size(), rc)
     fmodel._r_free_flags._data = r_free_flags
@@ -742,8 +721,8 @@ class kick(object):
     f_obs_outliers = f_obs.select(SELR)
     SELR_ = ~SELR
     fmodel_dc = mmtbx.f_model.manager(
-      f_obs        = f_obs.select(SELR_),
-      r_free_flags = r_free_flags.select(SELR_),
+      f_obs          = f_obs.select(SELR_),
+      r_free_flags   = r_free_flags.select(SELR_),
       xray_structure = fmodel.xray_structure)
     fmodel_dc.update_all_scales(update_f_part1_for="map", map_neg_cutoff=0)
     self.complete_set_2 = fmodel_dc.electron_density_map(
@@ -760,11 +739,10 @@ class kick(object):
     outlier_substitute1, outlier_substitute2 = outlier_substitute1.common_sets(
       outlier_substitute2)
     assert outlier_substitute1.indices().all_eq(outlier_substitute2.indices())
-    assert f_obs_outliers.size() == outlier_substitute1.size()
     outlier_substitute2 = outlier_substitute2.phase_transfer(
       phase_source=outlier_substitute1)
     return group_args(
-      outlier_ma = f_obs_outliers,
+      outlier_ma          = f_obs_outliers,
       outlier_substitute1 = outlier_substitute1,
       outlier_substitute2 = outlier_substitute2)
 
@@ -789,13 +767,13 @@ class kick(object):
   def run_kick_loop(self, map_coeffs):
     map_coeff_data = None
     for kick in xrange(self.number_of_kicks):
-      rc, ar = random.choice([(0.1,0.05),(0.2,0.05),
-                              (0.3,0.04),(0.4,0.04),
-                              (0.5,0.03),(0.6,0.03),
-                              (0.7,0.02),(0.8,0.02),
-                              (0.9,0.01),(1.0,0.01)])
+      rc, ar, pr = random.choice([(0.1,0.05, 10),(0.2,0.05, 10),
+                                  (0.3,0.04, 10),(0.4,0.04, 10),
+                                  (0.5,0.03, 5),(0.6,0.03, 5),
+                                  (0.7,0.02, 5),(0.8,0.02, 5),
+                                  (0.9,0.01, 5),(1.0,0.01, 5)])
       sel = flex.random_bool(map_coeffs.size(), rc)
-      pr = random.choice(self.mean_phase_error)
+      pr = random.choice([0, pr])
       mc = map_coeffs.randomize_amplitude_and_phase(
         amplitude_error=ar, phase_error_deg=pr, selection=sel)
       if(map_coeff_data is None): map_coeff_data = mc.data()
@@ -803,52 +781,96 @@ class kick(object):
     return map_coeff_data/self.number_of_kicks
 
 def fem(ko, crystal_gridding, mc_orig, fmodel):
-  if(1): # logically seems better: why modify a maniulated (by FT) map!
-    map_data = ko.map_data.deep_copy()
-  else:
-    fft_map = miller.fft_map(
-      crystal_gridding     = crystal_gridding,
-      fourier_coefficients = ko.map_coefficients)
-    fft_map.apply_sigma_scaling()
-    map_data = fft_map.real_map_unpadded()
-  map_dataK = map_data.deep_copy()
-  if(0):
-    o = maptbx.volume_scale(map = map_data, n_bins = 10000)
-    fem = ko.complete_set.structure_factors_from_map(
-      map            = o.map_data(),
-      use_scale      = True,
-      anomalous_flag = False,
-      use_sg         = False)
-  else:
-    fem = maptbx.local_scale(
-      map_data         = map_data,
-      crystal_gridding = crystal_gridding,
-      crystal_symmetry = fmodel.f_obs().crystal_symmetry(),
-      miller_array     = ko.complete_set).map_coefficients
+  map_data = ko.map_data.deep_copy()
+  map_dataK1 = map_data.deep_copy()
+  #
+  fft_map = miller.fft_map(
+    crystal_gridding     = crystal_gridding,
+    fourier_coefficients = ko.map_coefficients)
+  fft_map.apply_sigma_scaling()
+  map_dataK2 = fft_map.real_map_unpadded()
+
   fft_map = miller.fft_map(
     crystal_gridding     = crystal_gridding,
     fourier_coefficients = mc_orig)
   fft_map.apply_sigma_scaling()
   map_orig = fft_map.real_map_unpadded()
+  # I think this is the same
+  if(1):
+    fem = maptbx.local_scale(
+      map_data         = map_data,
+      crystal_gridding = crystal_gridding,
+      crystal_symmetry = fmodel.f_obs().crystal_symmetry(),
+      miller_array     = ko.complete_set).map_coefficients
+    fft_map = miller.fft_map(
+      crystal_gridding     = crystal_gridding,
+      fourier_coefficients = fem)
+    fft_map.apply_sigma_scaling()
+    map_fem = fft_map.real_map_unpadded()
+  else:
+    map_fem = maptbx.volume_scale(map = map_data, n_bins = 10000).map_data()
+    fem = mc_orig.structure_factors_from_map(
+        map            = map_fem,
+        use_scale      = True,
+        anomalous_flag = False,
+        use_sg         = False)
+    fft_map = miller.fft_map(
+      crystal_gridding     = crystal_gridding,
+      fourier_coefficients = fem)
+    fft_map.apply_sigma_scaling()
+    map_fem = fft_map.real_map_unpadded()
+  #
+  maptbx.cut_by(kick=map_orig,   fem=map_fem, cut_by_threshold=0.5)
+  maptbx.cut_by(kick=map_dataK1, fem=map_fem, cut_by_threshold=0.25) # is necessary ?
+  maptbx.cut_by(kick=map_dataK2, fem=map_fem, cut_by_threshold=0.25) # is necessary ?
+  # Filter by residual map
+  diff_map_mc = fmodel.electron_density_map(
+    update_f_part1 = False).map_coefficients(
+      map_type     = "mFo-DFc",
+      isotropize   = True,
+      fill_missing = False)
+  fft_map = miller.fft_map(
+    crystal_gridding     = crystal_gridding,
+    fourier_coefficients = diff_map_mc)
+  fft_map.apply_sigma_scaling()
+  diff_map = fft_map.real_map_unpadded()
+  maptbx.reset(
+    data=diff_map,
+    substitute_value=1.0,
+    less_than_threshold=9999,
+    greater_than_threshold=-3,
+    use_and=True)
+  maptbx.reset(
+    data=diff_map,
+    substitute_value=0.0,
+    less_than_threshold=-3,
+    greater_than_threshold=-99999,
+    use_and=True)
+  map_fem1 = map_fem * diff_map
+  # B-factor sharpen
+  d_min = mc_orig.d_min()
+  if(d_min<1.5): b_sharp = 0
+  elif(d_min>1.5 and d_min<2): b_sharp = 10
+  else: b_sharp = 25
+  fem = fem.structure_factors_from_map(
+      map            = map_fem1,
+      use_scale      = True,
+      anomalous_flag = False,
+      use_sg         = False)
+  ss = 1./flex.pow2(fem.d_spacings().data()) / 4.
+  k_sharp = 1./flex.exp(-ss * b_sharp)
+  fem = fem.customized_copy(data = fem.data()*k_sharp)
   #
   fft_map = miller.fft_map(
     crystal_gridding     = crystal_gridding,
     fourier_coefficients = fem)
   fft_map.apply_sigma_scaling()
   map_fem = fft_map.real_map_unpadded()
-  cut_by_map = map_orig
-  if(0): cut_by_map = ko.map_data
-  maptbx.cut_by(kick=cut_by_map, fem=map_fem, cut_by_threshold=0.5)
-  maptbx.cut_by(kick=map_dataK, fem=map_fem, cut_by_threshold=0.25)
-  # these are alternatives to explore
-  #oo = maptbx.omit(crystal_gridding=crystal_gridding, fmodel=fmodel)
-  #maptbx.cut_by(kick=oo.map_result, fem=map_fem, cut_by_threshold=0.5)
-  #
-  #maptbx.cut_by(kick=map_orig, fem=map_fem)
-  #maptbx.cut_by(kick=ko.map_data, fem=map_fem)
-  #
-  #maptbx.cut_by(kick=map_orig, fem=map_fem)
-  #maptbx.cut_by(kick=map_dataK, fem=map_fem)
+  for i in [0,0.1,0.2,0.3,0.4,0.5]:
+    maptbx.intersection(
+      map_data_1 = map_fem1,
+      map_data_2 = map_fem,
+      threshold  = i)
   return ko.complete_set.structure_factors_from_map(
     map            = map_fem,
     use_scale      = True,
@@ -893,7 +915,7 @@ class omit(object):
     for s,e in zip(b.starts, b.ends):
       box = maptbx.copy(f_model_map_data, s, e)
       box.reshape(flex.grid(box.all()))
-      maptbx.reset(data=box, substitute_value=0.0, less_than_threshold=1.e+99)
+      maptbx.reset(data=box, substitute_value=0.0, less_than_threshold=1.e+99, logical_operator="or")
       tmp = f_model_map_data.deep_copy()
       maptbx.set_box(
         map_data_from = box,
