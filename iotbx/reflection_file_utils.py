@@ -813,9 +813,14 @@ def construct_output_file_name(input_file_names,
     user_file_name = os.path.basename(input_file_names[0])
   if (not user_file_name.lower().endswith(file_extension)):
     user_file_name += extension_seperator + file_extension
-  if (    os.path.isfile(user_file_name)
-      and os.path.samefile(user_file_name, input_file_names[0])):
-    user_file_name += extension_seperator + file_extension
+  if sys.platform == "win32":
+    if (os.path.isfile(user_file_name)
+        and user_file_name == input_file_names[0]):
+      user_file_name += extension_seperator + file_extension
+  else:
+    if (os.path.isfile(user_file_name)
+        and os.path.samefile(user_file_name, input_file_names[0])):
+      user_file_name += extension_seperator + file_extension
   return user_file_name
 
 def make_joined_set (miller_arrays) :
