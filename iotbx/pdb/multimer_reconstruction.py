@@ -6,8 +6,6 @@ from libtbx.utils import Sorry
 import string
 import math
 
-
-
 class multimer(object):
   '''
   Reconstruction of either the biological assembly or the crystallographic asymmetric unit
@@ -39,8 +37,6 @@ class multimer(object):
     pdb_obj = pdb.hierarchy.input(file_name=pdb_input_file_name)# read the pdb file hierarchy data
     pdb_obj_new = pdb_obj.hierarchy.deep_copy()                 # create a copy to be modified
     self.assembled_multimer = pdb_obj_new
-
-    # take care of potenitial input issues
 
     # Read the relevant transformation matrices
     if reconstruction_type == 'ba':
@@ -74,16 +70,21 @@ class multimer(object):
       nChains = len(model.chains())
       # get a dictionary for new chains naming
       new_chains_names = self._chains_names(TRASFORM_transform_number,nChains, unique_chain_names)
-      for iChain in range(nChains):     #instead of: for chain in model.chains():
+      for chain in model.chains():
         # iterating over the TRASFORM transform strating from 1 (not 0)
         # since TRASFORM_info[0] is a unit transformation
         for i_transform in range(TRASFORM_transform_number):
-          new_chain = model.chains()[iChain].detached_copy()
+          new_chain = chain.detached_copy()
           new_chain.id = new_chains_names[new_chain.id + str(i_transform+1)]
           sites = new_chain.atoms().extract_xyz()
-          new_sites = [tuple(TRASFORM[i_transform][0]*v + TRASFORM[i_transform][1])
-             for v in new_chain.atoms().extract_xyz()]
-          new_chain.atoms().set_xyz(flex.vec3_double(new_sites))
+          # convert the flex.vec3_double to matrix form.
+          s = matrix.rec(sites.as_double(),[sites.size(),3])
+          # creat translation copy for each site
+          t = matrix.rec(TRASFORM[i_transform][1].elems*sites.size(),[sites.size(),3])
+          # calculating new sites
+          new_sites = TRASFORM[i_transform][0]*s.transpose() + t.transpose()
+          new_sites = new_sites.transpose()
+          new_chain.atoms().set_xyz(flex.vec3_double(new_sites.as_list_of_lists()))
           # add a new chain to current model
           model.append_chain(new_chain)
 
@@ -168,10 +169,7 @@ class multimer(object):
     xyz = []
     for model in self.assembled_multimer.models():
       for chain in model.chains():
-        for res_group in chain.residue_groups():
-          for ag in res_group.atom_groups():
-            for atom in ag.atoms():
-              xyz.append(list(atom.xyz))        # get x,y,z coordinates
+        xyz.extend(list(chain.atoms().extract_xyz()))
     return xyz
 
 
@@ -184,12 +182,11 @@ class multimer(object):
     return 'the multimer attribute self.assembled_multimer is a pdb.hierarchy object that contains: \n' + \
            'a model in assembled_multimer.models()  \n' + \
            '   a chain in model.chains()  \n' + \
-           '      a residue_group in chain.residue_groups()  \n' + \
-           '         an atom_group in residue_group.atom_groups() \n' + \
-           '            an atom in atom_group.atoms() \n' + \
-           '            atom.xyz is a tuple with the atom coordinates: (x,y,z) \n' + \
+           '      the sites which are the coordinates of the atoms \n' + \
+           '      where  sites = chain.atoms().extract_xyz() ' + \
+           '      The atoms xyz coordinates are tuples (x,y,z) \n' + \
            ' \n' + \
-           'self.get_xyz() will return a list of x,y,z coordinates for each atoms in the resconstructed multimer'
+           'self.get_xyz() will return a list of x,y,z coordinates for each atoms in the resconstructed multimer \n'
 
 
   def write(self,*pdb_output_file_name):
