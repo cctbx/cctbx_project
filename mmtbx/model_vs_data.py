@@ -598,6 +598,8 @@ unmerged_labels = None
   .type = str
 n_bins = 20
   .type = int
+disable_elbow = False
+  .type = bool
 """
 
 def defaults(log, silent):
@@ -679,7 +681,8 @@ def run(args,
     pdb_file_names        = pdb_file_names,
     cif_objects           = processed_args.cif_objects,
     crystal_symmetry      = crystal_symmetry,
-    use_elbow             = show_geometry_statistics,
+    use_elbow             = \
+      show_geometry_statistics and not params.disable_elbow,
     use_neutron_distances = (params.scattering_table=="neutron"),
     log                   = log)
   mmtbx_pdb_file.set_ppf(stop_if_duplicate_labels = False)
