@@ -47,6 +47,8 @@ refine_anomalous = True
   .help = If True and the wavelength is specified, any newly placed ions will \
     have anomalous scattering factors refined.  This is \
     unlikely to affect R-factors but should flatten the anomalous LLG map.
+max_distance_between_like_charges = 3.5
+  .type = float
 """
 
 def find_and_build_ions (
@@ -112,10 +114,27 @@ def find_and_build_ions (
   for i_seq, final_choices in water_ion_candidates :
     if (len(final_choices) == 1) :
       for_building.append((i_seq, final_choices[0]))
+  skipped = []
   if (len(for_building) > 0) :
     make_sub_header("Adding %d ions to model" % len(for_building), out)
-    for i_seq, final_choice in for_building :
+    for k, (i_seq, final_choice) in enumerate(for_building) :
       atom = manager.pdb_atoms[i_seq]
+      skip = False
+      for other_i_seq, other_ion in for_building[:k] :
+        if (other_i_seq in skipped) : continue
+        if (((other_ion.charge > 0) and (final_choice.charge > 0)) or
+            ((other_ion.charge < 0) and (final_choice.charge < 0))) :
+          other_atom = manager.pdb_atoms[other_i_seq]
+          dxyz = atom.distance(other_atom)
+          if (dxyz < params.max_distance_between_like_charges) :
+            print >> out, \
+              "  %s (%s%+d) is only %.3fA from %s (%s%+d), skipping for now" %\
+              (atom.id_str(), final_choice.element, final_choice.charge, dxyz,
+               other_atom.id_str(), other_ion.element, other_ion.charge)
+            skipped.append(i_seq)
+            skip = True
+            break
+      if (skip) : continue
       print >> out, "  %s becomes %s%+d" % \
           (atom.id_str(), final_choice.element, final_choice.charge)
       refine_adp = params.refine_ion_adp

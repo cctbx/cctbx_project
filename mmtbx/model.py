@@ -1219,6 +1219,13 @@ class manager(object):
       atom.segid = segid
     scatterer = self.xray_structure.scatterers()[i_seq]
     scatterer.scattering_type = scattering_type
+    label = atom.id_str()
+    all_labels = [ s.label for s in self.xray_structure.scatterers() ]
+    while (label in all_labels) :
+      rg = atom.parent().parent()
+      resseq = rg.resseq_as_int()
+      rg.resseq = "%4d" % (resseq + 1)
+      label = atom.id_str()
     scatterer.label = atom.id_str()
     if (initial_occupancy is not None) :
       # XXX preserve partial occupancies on special positions
