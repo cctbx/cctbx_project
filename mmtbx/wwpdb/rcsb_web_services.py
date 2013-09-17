@@ -17,7 +17,7 @@ url_base = "http://www.rcsb.org/pdb/rest"
 url_search = url_base + "/search"
 
 def post_query (query_xml, xray_only=True, d_max=None, d_min=None,
-    protein_only=False, data_only=False) :
+    protein_only=False, data_only=False, identity_cutoff=None) :
   """Generate the full XML for a multi-part query with generic search options,
   starting from the basic query passed by another function, post it to the
   RCSB's web service, and return a list of matching PDB IDs."""
@@ -47,6 +47,11 @@ def post_query (query_xml, xray_only=True, d_max=None, d_min=None,
     queries.append(
       "<queryType>org.pdb.query.simple.ChainTypeQuery</queryType>\n" +
       "<containsProtein>Y</containsProtein>")
+  if (identity_cutoff is not None) :
+    assert (identity_cutoff > 0) and (identity_cutoff <= 100)
+    queries.append(
+      "<queryType>org.pdb.query.simple.HomologueReductionQuery</queryType>\n"+
+      "<identityCutoff>%d</identityCutoff>" % int(identity_cutoff))
   if (len(queries) == 0) :
     raise RuntimeError("No queries specified!")
   queries_string = ""

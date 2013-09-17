@@ -15,6 +15,8 @@ xray_only = True
   .type = bool
 data_only = False
   .type = bool
+identity_cutoff = None
+  .type = int
 quiet = False
   .type = bool
 """)
@@ -45,7 +47,8 @@ Full parameters:
     d_max=params.d_max,
     polymeric_type=params.polymeric_type,
     xray_only=params.xray_only,
-    data_only=params.data_only)
+    data_only=params.data_only,
+    identity_cutoff=params.identity_cutoff)
   pdb_ids = [ id.lower() for id in pdb_ids ]
   if (len(pdb_ids) == 0) :
     raise Sorry("No structures found matching the specified criteria.")
