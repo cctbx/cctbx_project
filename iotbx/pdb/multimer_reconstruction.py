@@ -22,6 +22,8 @@ class multimer(object):
 
   since chain names string length is limited to two, this process does not maintain any
   referance to the original chain names.
+  
+  @author: Youval Dar (LBL)
   '''
   def __init__(self,pdb_input_file_name,reconstruction_type):
     ''' (str) -> NoType
