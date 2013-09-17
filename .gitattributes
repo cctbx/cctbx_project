@@ -1375,6 +1375,7 @@ libtbx/queuing_system_utils/result.py -text
 libtbx/queuing_system_utils/scheduling.py -text
 libtbx/queuing_system_utils/scheduling_helpers.py -text
 libtbx/queuing_system_utils/sge_utils.py svneol=native#text/x-python
+libtbx/queuing_system_utils/socket_queue.py -text
 libtbx/queuing_system_utils/tst.py svneol=native#text/x-python
 libtbx/runtime_utils.py -text
 libtbx/simplexml.py -text
