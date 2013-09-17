@@ -952,6 +952,16 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
     if records.size() != 0 :
       return secondary_structure.annotation(records)
     return None
+  
+  def extract_LINK_records(self):
+    '''
+    Collect link records from PDB file
+    '''
+    result = []
+    for line in self.connectivity_annotation_section():
+      if (line.startswith('LINK') or line.startswith('link')):
+        result.append(line)
+    return result  
 
   def crystal_symmetry_from_cryst1(self):
     from iotbx.pdb import cryst1_interpretation
@@ -1044,7 +1054,7 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
     '''
     from libtbx import group_args
     source_info = self.extract_remark_iii_records(350)
-    result = []                         # the returned list of retoation and translation data
+    result = []                         # the returned list of rotation and translation data
     if source_info:                     # check if any BIOMT info is available
       # collecting the data from the remarks
       # Checking that we are collecting only data by verifying that the 3rd component contains "BIOMT"

@@ -4,7 +4,9 @@ from libtbx.test_utils import approx_equal
 from  iotbx.pdb.multimer_reconstruction import multimer
 import os
 
-
+'''
+@author: Youval Dar (LBL)
+'''
 
 
 #def exercise_mtrix(regression_pdb):
