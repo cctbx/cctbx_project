@@ -46,9 +46,9 @@ _lib_ligands.allowed_coordinating_atoms
 _lib_ligands.allowed_coordinating_residues
 _lib_ligands.allowed_geometries
 _lib_ligands.allowed_backbone_atoms
-NA  O,N       .                            octahedron,any                O
-MG  O,N,F     SER,THR,ASP,ASN,GLU,GLN,HIS  octahedron                    O
-K   O         .                            .                             O
+NA  O,N       .                            octahedron,any                O,OXT
+MG  O,N,F     SER,THR,ASP,ASN,GLU,GLN,HIS  octahedron                    O,OXT
+K   O         .                            .                             O,OXT
 CA  O         SER,THR,ASP,ASN,GLU,GLN,TYR  octahedron,pentagonal_bipyramid,any                O
 MN  O,N       SER,THR,ASP,GLU,ASN,GLN,HIS  .                             .
 FE  O,N,S     CYS,ASP,GLU,HIS,TYR          .                             .
@@ -56,7 +56,7 @@ CO  O,N       CYS,ASP,GLU,HIS              .                             .
 CU  O,N,S     CYS,MET,HIS                  tetrahedron,any               .
 NI  O,N,S     CYS,ASP,GLU,HIS              tetrahedron,any               .
 ZN  O,N,S     CYS,ASP,GLU,HIS              tetrahedron,octahedron,any    .
-CD  O,N,S,CL  .                            octahedron,any                .
+CD  O,N,S,CL  .                            octahedron,any                O,OXT
 #
 # Ion residue names and their corresponding elements and charges. When multiple
 # charges may be possible for a given element, put the line for the default

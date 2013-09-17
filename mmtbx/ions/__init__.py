@@ -98,7 +98,7 @@ water
     .input_size = 80
     .help = Maximum water mFo-DFc map value
     .short_caption = Max. expected mFo-DFc map value
-  max_anom_level = 2.5
+  max_anom_level = 3.0
     .type = float
     .input_size = 80
     .help = Maximum water anomalous map value
@@ -451,6 +451,7 @@ class Manager (object) :
     if self.fmodel is None:
       return
     def fft_map (map_coeffs, resolution_factor = 0.25):
+      print type(map_coeffs.data())
       return map_coeffs.fft_map(resolution_factor = resolution_factor,
         ).apply_sigma_scaling().real_map_unpadded()
     map_types = ["2mFo-DFc", "mFo-DFc"]
@@ -1254,7 +1255,8 @@ class Manager (object) :
               (((weight_ratio > 0.5) and (weight_ratio < 1.05)) or
                (atom_props.fp > 10)) and
               (not auto_candidates) and
-              (atom_props.is_compatible_site(ion_params))) :
+              (atom_props.is_compatible_site(ion_params,
+                ignore_valence=not self.get_strict_valence_flag()))) :
           n_total_coord_atoms = atom_props.number_of_atoms_within_radius(2.8)
           if (n_total_coord_atoms >= 3) :
             reasonable.append((ion_params, 0))
@@ -1729,7 +1731,8 @@ class AtomProperties (object) :
     return ((len(self.bad_coords[identity]) == 0) and
             (not self.BAD_COORD_RESIDUE in self.inaccuracies[identity]))
 
-  def is_compatible_site (self, ion_params, require_anom = True) :
+  def is_compatible_site (self, ion_params, require_anom = True,
+      ignore_valence=False) :
     """
     More minimal criteria for determining whether a site is chemically
     compatible, allowing for incomplete coordination shells.
@@ -1739,8 +1742,8 @@ class AtomProperties (object) :
                    (not require_anom)
     return (self.has_compatible_ligands(str(ion_params)) and
             (not self.TOO_MANY_COORD in inaccuracies) and
-            (not self.VERY_BAD_VALENCES in inaccuracies) and
-            (not self.BAD_COORD_RESIDUE in inaccuracies) and
+            (ignore_valence or (not self.VERY_BAD_VALENCES in inaccuracies))
+            and (not self.BAD_COORD_RESIDUE in inaccuracies) and
             (anom_allowed))
 
   def number_of_favored_ligand_residues (self, ion_params, distance = 3.0,
