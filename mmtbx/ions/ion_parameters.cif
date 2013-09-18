@@ -18,6 +18,10 @@ data_ions
 # proteins. II. Angles at the metal atom, additional weak metal-donor
 # interactions.  Acta Cryst. D56, 857-867.
 #
+# Rulisek, L. & Vondrasek, J. (1998).  Coordination geometries of selected
+# transition metal ions (Co2+, Ni2+, Cu2+, Zn2+, Cd2+, and Hg2+) in
+# metalloproteins.  J. Inorg. Biochem. 71, 115-127.
+#
 loop_
 _lib_elems.element
 _lib_elems.charge
@@ -46,17 +50,17 @@ _lib_ligands.allowed_coordinating_atoms
 _lib_ligands.allowed_coordinating_residues
 _lib_ligands.allowed_geometries
 _lib_ligands.allowed_backbone_atoms
-NA  O,N       .                            octahedron,any                O,OXT
-MG  O,N,F     SER,THR,ASP,ASN,GLU,GLN,HIS  octahedron                    O,OXT
+NA  O,N       .                            octahedral,any                O,OXT
+MG  O,N,F     SER,THR,ASP,ASN,GLU,GLN,HIS  octahedral                    O,OXT
 K   O         .                            .                             O,OXT
-CA  O         SER,THR,ASP,ASN,GLU,GLN,TYR  octahedron,pentagonal_bipyramid,any                O
+CA  O         SER,THR,ASP,ASN,GLU,GLN,TYR  octahedral,pentagonal_bipyramidal,any                O
 MN  O,N       SER,THR,ASP,GLU,ASN,GLN,HIS  .                             .
 FE  O,N,S     CYS,ASP,GLU,HIS,TYR          .                             .
-CO  O,N       CYS,ASP,GLU,HIS              .                             .
-CU  O,N,S     CYS,MET,HIS                  tetrahedron,any               .
-NI  O,N,S     CYS,ASP,GLU,HIS              tetrahedron,any               .
-ZN  O,N,S     CYS,ASP,GLU,HIS              tetrahedron,octahedron,any    .
-CD  O,N,S,CL  .                            octahedron,any                O,OXT
+CO  O,N       CYS,ASP,GLU,HIS              tetrahedral,octahedral        .
+CU  O,N,S     CYS,MET,HIS                  tetrahedral,square_planar,any .
+NI  O,N,S     CYS,ASP,GLU,HIS              tetrahedral,octahedral,any    .
+ZN  O,N,S     CYS,ASP,GLU,HIS              tetrahedral,octahedral,any    .
+CD  O,N,S,CL  .                            tetrahedral,octahedral,any    O,OXT
 #
 # Ion residue names and their corresponding elements and charges. When multiple
 # charges may be possible for a given element, put the line for the default

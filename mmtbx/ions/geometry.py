@@ -280,14 +280,14 @@ def _is_trigonal_prism(vectors, dev_cutoff = 15):
     return deviation, 6 - len(vectors)
 
 SUPPORTED_GEOMETRIES_OLD = OrderedDict([
-  ("tetrahedron", _is_tetrahedron),
-  ("trigonal_plane", _is_trigonal_plane),
-  ("square_plane", _is_square_plane),
-  ("square_pyramid", _is_square_pyramid),
-  ("octahedron", _is_octahedron),
-  ("trigonal_pyramid", _is_trigonal_pyramid),
-  ("trigonal_bipyramid", _is_trigonal_bipyramid),
-  ("pentagonal_bipyramid", _is_pentagonal_bipyramid),
+  ("tetrahedral", _is_tetrahedron),
+  ("trigonal_planar", _is_trigonal_plane),
+  ("square_planar", _is_square_plane),
+  ("square_pyramidal", _is_square_pyramid),
+  ("octahedral", _is_octahedron),
+  ("trigonal_pyramidal", _is_trigonal_pyramid),
+  ("trigonal_bipyramidal", _is_trigonal_bipyramid),
+  ("pentagonal_bipyramidal", _is_pentagonal_bipyramid),
   ("trigonal_prism", _is_trigonal_prism),
   ])
 
