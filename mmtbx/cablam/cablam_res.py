@@ -11,6 +11,9 @@ from __future__ import division
 #  step in construct_linked_residues() that skips adding them to the
 #  resdata/protein object. Will this be a problem for synthetic or other
 #  non-standard residues?
+#2013-09-17: changed formatting for id_with_resname to rg.atom.pdb_label_columns
+#  Tried to add handling for HETATOMS in __init__. May or may not fully work.
+
 
 import sys
 from mmtbx.cablam.cablam_math import veclen, vectorize
@@ -76,6 +79,7 @@ class linked_residue(object):
     return resid_string
 
   def id_with_resname(self):
+    # Formatted as: 'ALA A####I'
     resid_string = self.rg.atoms()[0].pdb_label_columns()[5:]
     return resid_string
 
@@ -145,7 +149,7 @@ class linked_residue(object):
     ############################################
     if self is otherres:
       return 0
-    if self.chain != otherres.chain:
+    if self.chain != otherres.chain:# or self.model != otherres.model:
       return None
     #guess which direction to look
     #  the "<=" and ">=" should let this look back or forward from within an
@@ -193,11 +197,13 @@ class linked_residue(object):
 
     #hierachy looping and data extraction
     for ag in rg.atom_groups():
+      #if not ag.is_protein(): Need sopmething like this that works
+      #  self.is_protein=True
       self.alts[ag.altloc] = {'alt':ag.altloc, 'resname':ag.resname}
       self.atomxyz[ag.altloc] = {}
       self.atomb[ag.altloc]   = {}
       for atom in ag.atoms():
-        if atom.hetero:
+        if atom.hetero and ag.resname.upper() != 'MSE':
            self.hetero=True
         for targetatom in targetatoms:
           if atom.name.strip() == targetatom:
