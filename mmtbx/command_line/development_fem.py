@@ -94,27 +94,21 @@ Calculate a "feature-enhanced" 2mFo-DFc map.
   fmodel.update_xray_structure(
     xray_structure = xrs,
     update_f_calc = True)
-  ###
-  fmodel.update_all_scales(update_f_part1_for="map", map_neg_cutoff=0)
+  #
+  fmodel.update_all_scales(update_f_part1_for="refinement")
   #
   ko = mmtbx.maps.kick(
     fmodel           = fmodel.deep_copy(),
     crystal_gridding = crystal_gridding)
-  mc_orig_for_fem = fmodel.electron_density_map(
-    update_f_part1 = True).map_coefficients(
-      map_type     = "2mFo-DFc",
-      isotropize   = True,
-      fill_missing = True)
   #### Compute FEM start
   fem = mmtbx.maps.fem(
     ko=ko,
     crystal_gridding=crystal_gridding,
-    mc_orig=mc_orig_for_fem,
     fmodel=fmodel)
   #### Compute FEM end
   mtz_dataset = mc_orig.as_mtz_dataset(column_root_label="2mFoDFc")
   mtz_dataset.add_miller_array(
-    miller_array=mc_orig_for_fem,
+    miller_array=ko.complete_set,
     column_root_label="2mFoDFc_FilSharp")
   mtz_dataset.add_miller_array(
     miller_array=ko.map_coefficients,
