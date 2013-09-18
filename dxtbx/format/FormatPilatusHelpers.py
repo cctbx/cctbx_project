@@ -11,7 +11,7 @@ from __future__ import division
 
 def pilatus_6M_mask():
     '''Hard coded mask regions for a Pilatus 6M instrument.'''
-
+    # FIX me, the paramters are listed here as f0, f1, s0, s1 but the prototype specifies f0, s0, f1, s1
     return [[488, 494, 1, 2527],
             [982, 988, 1, 2527],
             [1476, 1482, 1, 2527],
