@@ -42,6 +42,8 @@ from __future__ import division
   #checks for CA-only contours. Added find_partial_sec_struc and
   #find_whole_sec_struc to piece individual residue assignments together into
   #complete secondary structure elements. Added multicrit kinemage printing.
+#2013-09-17:
+#  Added support for threeten helices throughout.
 
 import os, sys
 import libtbx.phil.command_line #argument parsing
@@ -104,10 +106,22 @@ class cablam_validation():
     self.regular_alpha= None #percentile level in motif contour
     self.loose_beta   = None #percentile level in motif contour
     self.regular_beta = None #percentile level in motif contour
+    self.loose_threeten = None
+    self.regular_threeten = None
     if self.residue:
       self.rg = self.residue.rg #rg object from a source hierarchy
     else:
       self.rg = None
+
+#Class for holding percentile contour level values in residue object
+class motif_value():
+  def __init__(self):
+    self.loose_alpha = None
+    self.regular_alpha = None
+    self.loose_beta = None
+    self.regular_beta = None
+    self.loose_threeten = None
+    self.regular_threeten = None
 
 class motif_guess():
   def __init__(self):
@@ -115,11 +129,15 @@ class motif_guess():
     self.regular_alpha = False
     self.loose_beta = False
     self.regular_beta = False
+    self.loose_threeten = False
+    self.regular_threeten = False
 
 class motif_chunk():
   def print_record(self,writeto=sys.stdout):
     if self.motif_type == 'helix':
       self.print_helix_record(writeto=writeto)
+    elif self.motif_type == 'threeten':
+      self.print_threeten_record(writeto=writeto)
     elif self.motif_type == 'sheet':
       self.print_sheet_record(writeto=writeto)
     else:
@@ -134,6 +152,14 @@ class motif_chunk():
     if motif_len >= 3:
       #Note: the following code makes me hate HELIX record formatting
       writeto.write('HELIX  '+ '%3i' %helix_num +' '+ '%3i' %helix_num +' '+motif_start_id[:5]+' '+motif_start_id[5:]+' '+  motif_end_id[:5] +' '+motif_end_id[5:] +' 1                               '+'%5i'%motif_len+'\n')
+
+  def print_threeten_record(self,helix_num=1,writeto=sys.stdout):
+    motif_start_id = self.motif_start.id_with_resname()
+    motif_end_id = self.motif_end.id_with_resname()
+    motif_len = self.motif_end.resnum - self.motif_start.resnum + 1
+    if motif_len >= 1:
+      #Note: the following code makes me hate HELIX record formatting
+      writeto.write('HELIX  '+ '%3i' %helix_num +' '+ '%3i' %helix_num +' '+motif_start_id[:5]+' '+motif_start_id[5:]+' '+  motif_end_id[:5] +' '+motif_end_id[5:] +' 5                               '+'%5i'%motif_len+'\n')
 
   def print_sheet_record(self,sheet_id='U',strand_num=1,strand_count=1,strand_sense=0,writeto=sys.stdout):
     motif_start_id = self.motif_start.id_with_resname()
@@ -170,7 +196,7 @@ Options:
   give_full_kin=False      opens a phenix.king window with multicrit style
                              markup for the submitted structure. Also saves a
                              .pdb with HELIX and SHEET records and a .kin with
-                             other martkup to working dir
+                             other markup to working dir
   give_oneline=False       prints oneline-style output to screen. Supports
                              printing for multiple files
   help=False               prints this usage text, plus notes on data
@@ -309,7 +335,7 @@ def fetch_ca_expectations():
 #The return object is a dict keyed by secondary structure type:
 #  'loose_beta','regular_beta','loose_alpha','regular_alpha'
 def fetch_motifs():
-  motifs = ['loose_beta','regular_beta','loose_alpha','regular_alpha']
+  motifs = ['loose_beta','regular_beta','loose_alpha','regular_alpha','loose_threeten','regular_threeten']
   unpickled = {}
   for motif in motifs:
     picklefile = libtbx.env.find_in_repositories(
@@ -385,6 +411,8 @@ def helix_or_sheet(outliers, motifs):
       outlier.regular_alpha = contours['regular_alpha']
       outlier.loose_beta    = contours['loose_beta']
       outlier.regular_beta  = contours['regular_beta']
+      outlier.loose_threeten= contours['loose_threeten']
+      outlier.regular_threeten = contours['regular_threeten']
 
 #this single-residue level of the check is intentionally independent from the
 #  cablam_validation class in case getting contour levels for a single residue
@@ -413,6 +441,8 @@ def find_partial_sec_struc(resdata,ca_outliers={}):
   #reg_beta_cutoff    = 0.001 #0.1%
   reg_beta_cutoff = 0.0001 #this cutoff is a bit generous, beta needs
   #  forthcoming though-space relationships to work properly
+  loose_threeten_cutoff = 0.001
+  reg_threeten_cutoff = 0.001
 
   expectations = fetch_peptide_expectations()
   motifs = fetch_motifs()
@@ -426,13 +456,16 @@ def find_partial_sec_struc(resdata,ca_outliers={}):
   #Some alternative logic from earlier versions is included for reference and
   #  development
   for resid in resdata:
+    if resid not in allres:
+      #couldn't calculate all relevant data for the residue and cannot make
+      #further assessment
+      continue
     residue = resdata[resid]
     if resid in ca_outliers.keys():
       #if the residue is a ca outlier, it recieves no sec struc assignment
       #(residue.motif guess must be created for each residue, however)
       continue
-    if not residue.nextres or not residue.nextres.nextres or not residue.prevres or not residue.prevres.prevres:
-      continue
+
     #loose alpha
     if allres[resid].loose_alpha > loose_alpha_cutoff:
       try:
@@ -440,17 +473,7 @@ def find_partial_sec_struc(resdata,ca_outliers={}):
           residue.motif_guess.loose_alpha = True
       except KeyError:
         pass
-    #strong alpha
-    ###if allres[resid].regular_alpha > reg_alpha_yes:
-    ###  try:
-    ###    if allres[residue.nextres.resid].regular_alpha > reg_alpha_yes and allres[residue.prevres.resid].regular_alpha > reg_alpha_yes:
-    ###      residue.motif_guess.regular_alpha = True
-    ###    if allres[residue.nextres.resid].regular_alpha > reg_alpha_yes and residue.nextres.nextres and allres[residue.nextres.nextres.resid].regular_alpha > reg_alpha_yes:
-    ###      residue.motif_guess.regular_alpha = True
-    ###    if allres[residue.prevres.resid].regular_alpha > reg_alpha_yes and residue.prevres.prevres and allres[residue.prevres.prevres.resid].regular_alpha > reg_alpha_yes:
-    ###      residue.motif_guess.regular_alpha = True
-    ###  except KeyError:
-    ###    pass
+
     #loose beta
     if allres[resid].regular_beta > reg_beta_cutoff:
       try:
@@ -460,17 +483,14 @@ def find_partial_sec_struc(resdata,ca_outliers={}):
           residue.nextres.motif_guess.regular_beta = True
       except KeyError:
         pass
-    #strong beta
-    ###if allres[resid].regular_beta > reg_beta_yes:
-    ###  try:
-    ###    if allres[residue.nextres.resid].regular_beta > reg_beta_yes and allres[residue.prevres.resid].regular_beta > reg_beta_yes:
-    ###      residue.motif_guess.regular_beta = True
-    ###    if allres[residue.nextres.resid].regular_beta > reg_beta_yes and residue.nextres.nextres and allres[residue.nextres.nextres.resid].regular_beta > reg_beta_yes:
-    ###      residue.motif_guess.regular_beta = True
-    ###    if allres[residue.prevres.resid].regular_beta > reg_beta_yes and residue.prevres.prevres and allres[residue.prevres.prevres.resid].regular_beta > reg_beta_yes:
-    ###      residue.motif_guess.regular_beta = True
-    ###  except KeyError:
-    ###    pass
+
+    #loose 3-10
+    if (allres[resid].loose_threeten > loose_threeten_cutoff) and (allres[resid].loose_threeten > allres[resid].loose_alpha):
+      try:
+        if allres[residue.nextres.resid].loose_threeten > loose_threeten_cutoff or allres[residue.prevres.resid].loose_threeten > loose_threeten_cutoff:
+          residue.motif_guess.loose_threeten = True
+      except KeyError:
+        pass
 #-------------------------------------------------------------------------------
 #}}}
 
@@ -497,6 +517,25 @@ def find_whole_sec_struc(resdata):
         current_motif = None
     else:
       if current_motif: #reached end of motif
+        current_motif = None
+      else:
+        pass
+  #search for threeten
+  for resid in reskeys:
+    residue = resdata[resid]
+    if residue.motif_guess.loose_threeten:
+      if current_motif:
+        current_motif.motif_end = residue
+      else:
+        current_motif = motif_chunk()
+        motifs.append(current_motif)
+        current_motif.motif_type = 'threeten'
+        current_motif.motif_start = residue
+        current_motif.motif_end = residue
+      if not residue.nextres:
+        current_motif = None
+    else:
+      if current_motif:
         current_motif = None
       else:
         pass
@@ -648,12 +687,12 @@ def give_points(outliers, writeto=sys.stdout):
 def give_text(outliers, writeto=sys.stdout):
   #This prints a comma-separated line of data for each outlier residue
   #Intended for easy machine readability
-  writeto.write('\nresidue,contour_level,loose_alpha,regular_alpha,loose_beta,regular_beta')
+  writeto.write('\nresidue,contour_level,loose_alpha,regular_alpha,loose_beta,regular_beta,threeten')
   reskeys = outliers.keys()
   reskeys.sort()
   for resid in reskeys:
     outlier = outliers[resid]
-    outlist = [outlier.residue.id_with_resname(), '%.5f' %outlier.outlier_level, '%.5f' %outlier.loose_alpha, '%.5f' %outlier.regular_alpha, '%.5f' %outlier.loose_beta, '%.5f' %outlier.regular_beta]
+    outlist = [outlier.residue.id_with_resname(), '%.5f' %outlier.outlier_level, '%.5f' %outlier.loose_alpha, '%.5f' %outlier.regular_alpha, '%.5f' %outlier.loose_beta, '%.5f' %outlier.regular_beta, '%.5f' %outlier.loose_threeten]
     writeto.write('\n'+','.join(outlist))
   writeto.write('\n')
 #-------------------------------------------------------------------------------
@@ -716,7 +755,7 @@ def oneline(hierarchy, peptide_cutoff=0.05, peptide_bad_cutoff=0.01, ca_cutoff=0
     ca_outlier_percent = ca_outlier_count/residue_count*100
   except ZeroDivisionError:
     ca_outlier_percent = 0
-  writeto.write(pdbid+':'+str(residue_count)+':'+'%.1f'%peptide_outlier_percent+':'+'%.1f'%peptide_bad_outlier_percent+':'+'%.2f'%ca_outlier_percent+'\n')
+  writeto.write(pdbid.lower()+':'+str(residue_count)+':'+'%.1f'%peptide_outlier_percent+':'+'%.1f'%peptide_bad_outlier_percent+':'+'%.2f'%ca_outlier_percent+'\n')
 #-------------------------------------------------------------------------------
 #}}}
 
@@ -795,10 +834,10 @@ def run(args):
       fileset.append(os.path.join(dirpath,filename))
   elif os.path.isfile(params.pdb_infile):
     fileset = [params.pdb_infile]
-  if params.give_oneline:
-    oneline_header()
+  #if params.give_oneline:
+  #  oneline_header()
   for pdb_infile in fileset:
-    pdbid = os.path.basename(pdb_infile)
+    pdbid = os.path.splitext(os.path.basename(pdb_infile))[0]
     pdb_io = pdb.input(pdb_infile)
     hierarchy = pdb_io.construct_hierarchy()
 
@@ -833,3 +872,29 @@ if __name__ == "__main__":
   run(sys.argv[1:])
 #-------------------------------------------------------------------------------
 #}}}
+
+def stitch_beta(motifs): #pass in an iterable of motif_chunk class instances
+  strands = []
+  for motif in motifs:
+    if motif.motif_type == 'sheet':
+      strands.append(motif)
+    else: pass
+  for strand1 in strands:
+    for strand2 in strands:
+      strand1_dir = cablam_math.vectorize(strand1.motif_start.getatomxyz('CA'),strand1.motif_end.getatomxyz('CA'))
+      strand2_dir = cablam_math.vectorize(strand2.motif_start.getatomxyz('CA'),strand2.motif_end.getatomxyz('CA'))
+      strand_dot_product = cablam_math.dot(strand1_dir,strand2_dir)
+      if strand_dot_product < 0: #antiparallel
+        curres = strand1.motif_start
+        pass
+      elif strand_dot_product >0: #parallel
+        pass
+      pass
+      #check if parallel or antiparallel with dot product
+      #for residue in strand 1:
+      #for residue in strand 2:
+        #if close enough:
+        #walk in direction
+
+
+  return sheets

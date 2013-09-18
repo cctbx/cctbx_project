@@ -17,11 +17,13 @@ from __future__ import division
 #  CA_a) CO_d_in.  usage() help message added.
 #2012-12-04: Added cis_or_trans argument for selecting cis or non-cis peptides
 #  during printing. Default returns all residues.
+#2013-09-17: Major fingerprints rewrite to use new fingerprints objects/methods
+#  /storage.  See cablam_fingerprints.py and the fingerprints dir.
+#  add_probe_data now stores full 4-character pdb-style atom names
+#  New output: probe_mode=sequence will print amino acid sequence for motif
 #To do: Collect cis-peptides for analysis. Are they identifiable in cablamspace?
-#  Get contours for CA_d_in,CA_d_out,CA_a. Outliers in that space are dire and
-#  probably not addressible by cablam proper. Add clash filtering. 0.4 is
-#  sufficient clash to cull, mc-mc are the important contacts, at least for base
-#  cablam
+#  Add clash filtering. 0.4 is sufficient clash to cull, mc-mc are the important
+#  contacts, at least for base cablam
 
 import os, sys
 from iotbx import pdb  #contains the very useful hierarchy
@@ -29,7 +31,9 @@ from mmtbx.cablam import cablam_res #contains a data structure derived from
 #  hierarchy, but more suited to cablam's needs - specifically it can hold
 #  geometric and probe measures and can look forward and backward in sequence
 from mmtbx.cablam import cablam_math #contains geometric measure calculators
-from mmtbx.cablam import fingerprints #contains motif definitions
+#from mmtbx.cablam import fingerprints #contains motif definitions
+from mmtbx.cablam import cablam_fingerprints
+#import cablam_fingerprints
 #  Storage for motif definitions subject to change
 from libtbx import easy_run
 import libtbx.phil.command_line
@@ -90,7 +94,7 @@ cablam_training {
   probe_path = None
     .type = path
     .help = '''Stores path to dir of probed files, probe will be called for each file if this is not provided'''
-  probe_mode = *kin annote instance
+  probe_mode = *kin annote instance sequence
     .type = choice
     .help = '''=kin for dotlist kins (default) =annote for ball on model, =instance for vectorlist kins'''
   list_motifs = False
@@ -99,7 +103,7 @@ cablam_training {
 
   b_max = None
     .type = float
-    .help = '''Set a max b factor, residues containing a backbone atom with higher b will be pruned, rocommended: -b=30'''
+    .help = '''Set a max b factor, residues containing a backbone atom with higher b will be pruned, recommended: -b=30'''
   prune_alts = False
     .type = bool
     .help = '''Removes all residues with alternate conformations in relevant atoms'''
@@ -270,7 +274,7 @@ b_max=#.#
 
 prune_alts=True/False
   Prune and excludes from calculations all residues with alternate conformations
-  for backbone atoms. Note this may affect neiboring residues. Default is
+  for backbone atoms. Note this may affect neighboring residues. Default is
   prune_alts=False, which results in only the first alternate position for each
   residue being reported on.
 
@@ -440,7 +444,7 @@ def fails_cis_check(residue,cis_or_trans):
       omega = residue.measures['omega']
       if cis_or_trans == 'cis' and omega >= -60 and omega <= 60:
         doskip = False
-      if cis_or_trans == 'trans' and omega >= 120 and omega <= -120:
+      if cis_or_trans == 'trans' and omega >= 120 or omega <= -120:
         doskip = False
 
   return doskip
@@ -455,7 +459,7 @@ def make_probe_data(hierarchy):
   trim_command = "phenix.reduce -quiet -trim -"
   build_command = "phenix.reduce -oh -his -flip -pen9999 -keep -allalt -"
   #probe_command = "phenix.probe -u -condense -self -mc -NOVDWOUT -NOCLASHOUT MC -"
-  probe_command = "phenix.probe -u -condense -self -mc -NOVDWOUT -NOCLASHOUT PROTEIN -"
+  probe_command = "phenix.probe -u -condense -self -mc -NOVDWOUT -NOCLASHOUT ALL -"
 
   for i,m in enumerate(hierarchy.models()):
     #multi-model compatibility coming soon?
@@ -474,11 +478,11 @@ def make_probe_data(hierarchy):
   #print build_out.stdout_lines
   input_str = '\n'.join(build_out.stdout_lines)
   sys.stderr.write('  probing . . .\n')
-  probe_out = easy_run.fully_buffered(probe_command, stdin_lines=input_str).stdout_lines
+  probe_out = easy_run.fully_buffered(probe_command, stdin_lines=input_str)
   #print '\n'.join(probe_out)
 
-  return probe_out
-  return '\n'.join(probe_out)
+  #print '\n'.join(probe_out.stdout_lines)
+  return probe_out.stdout_lines
 
   #probe_return = ""
   #for i,m in enumerate(hierarchy.models()):
@@ -538,7 +542,7 @@ def add_probe_data(resdata, open_probe_file):
     srcIns =      srcAtom[6:7]#.strip()
     srcResname =  srcAtom[7:10].strip()
     if srcResname == 'HOH': continue #skip waters
-    srcAtomname = srcAtom[11:15].strip()
+    srcAtomname = srcAtom[11:15]#.strip()
     srcAlt =      srcAtom[15:16].strip()
 
     trgAtom = bnana[4]
@@ -547,46 +551,74 @@ def add_probe_data(resdata, open_probe_file):
     #going to count dots per bond as a measure of strength instead
     trgChain =    trgAtom[0:2].strip()
     trgNum =      int(trgAtom[2:6].strip())
+    trgNumStr =   trgAtom[2:6]
     trgIns =      trgAtom[6:7]#.strip()
     trgResname =  trgAtom[7:10].strip()
-    if trgResname == 'HOH': continue #skip waters
-    trgAtomname = trgAtom[11:15].strip()
+    #if trgResname == 'HOH': continue #skip waters
+    trgAtomname = trgAtom[11:15]#.strip()
     trgAlt =      trgAtom[15:16].strip()
 
     dotcount = bnana[5]
+    mingap = bnana[6]
 
     #new model for probe storage------------------------------------------------
-    srcResidue = resdata[' '.join(['', srcChain, '%04i' % srcNum, srcIns])]
-    trgResidue = resdata[' '.join(['', trgChain, '%04i' % trgNum, trgIns])]
-    recordkey = trgResidue.id_with_resname() + trgAtomname
-    record = group_args(residue=trgResidue, atom=trgAtomname, dotcount=dotcount, seqdist=srcResidue.seq_dist(trgResidue))
-    #print [trgResidue.id_with_resname(),trgAtomname,dotcount,srcResidue.seq_dist(trgResidue)]
+    # If targ is not in resdata then it is likely a water or hetgroup. However,
+    # we want to have a record of the hb info. In this case 'residue' in 'record'
+    # will be an object with chain, resnum, resname, and icode.
+    # If src is not in resdata then we arn't interested.
+    src_key = ' '.join(['', srcChain, '%04i' % srcNum, srcIns])
+    if src_key not in resdata.keys() : continue
+    srcResidue = resdata[src_key]
+    targ_key = ' '.join(['', trgChain, '%04i' % trgNum, trgIns])
+    if targ_key not in resdata.keys() :
+      continue
+      #print targ_key
+      #trgResidue = group_args(chain   = trgChain,
+      #                        resnum  = trgNum,
+      #                        resname = trgResname,
+      #                        icode   = trgIns)
+      #recordkey  =  trgResname +' '+trgChain + trgNumStr + trgIns + trgAtomname
+    else:
+      trgResidue = resdata[targ_key]
+      recordkey = trgResidue.id_with_resname() + trgAtomname
+    record = group_args(residue  = trgResidue,
+                        atom     = trgAtomname,
+                        dotcount = dotcount,
+                        mingap   = mingap,
+                        seqdist  = srcResidue.seq_dist(trgResidue))
     if srcAtomname not in srcResidue.probe.keys():
       srcResidue.probe[srcAtomname] = {}
+    #####srcResidue = resdata[' '.join(['', srcChain, '%04i' % srcNum, srcIns])]
+    #####trgResidue = resdata[' '.join(['', trgChain, '%04i' % trgNum, trgIns])]
+    #####recordkey = trgResidue.id_with_resname() + trgAtomname
+    #####record = group_args(residue=trgResidue, atom=trgAtomname, mingap=mingap, seqdist=srcResidue.seq_dist(trgResidue))
+    ######print [trgResidue.id_with_resname(),trgAtomname,dotcount,srcResidue.seq_dist(trgResidue)]
+    #####if srcAtomname not in srcResidue.probe.keys():
+    #####  srcResidue.probe[srcAtomname] = {}
     #probe keys first by the current residue's atom, then by the target
     #  residue's id and atom, id+atom is unique enough to handle bifurcations
     srcResidue.probe[srcAtomname][recordkey] = record
     #end new model for probe storage--------------------------------------------
 
     #reference: resid_string = ' '.join([modelid, chainid, '%04i' % resnum, icode])
-    if (srcAtomname == 'O' and trgAtomname == 'H') or (srcAtomname == 'H' and trgAtomname == 'O'):
-      srcResid_string = ' '.join(['', srcChain, '%04i' % srcNum, srcIns])
-      trgResid_string = ' '.join(['', trgChain, '%04i' % trgNum, trgIns])
-      #probe does not run itself on more than the first model, so the modelid
-      #  bit is a problem.  It's probably either '' or '1'
-      if (srcResid_string in reskeys) and (trgResid_string in reskeys):
-        srcResidue = resdata[srcResid_string]
-        trgResidue = resdata[trgResid_string]
-        #bondjump = str(int(trgNum) - int(srcNum))
-        #Probably don't need bondjump here anymore.
-        #  Probably will make a function in cablam_res to find it.
-
-        if srcAtomname == 'H' and trgResidue not in srcResidue.probeH:
-          srcResidue.probeH.append(trgResidue)
-        elif srcAtomname == 'O' and trgResidue not in srcResidue.probeO:
-          srcResidue.probeO.append(trgResidue)
-        else:
-          pass
+    ####if (srcAtomname == 'O' and trgAtomname == 'H') or (srcAtomname == 'H' and trgAtomname == 'O'):
+    ####  srcResid_string = ' '.join(['', srcChain, '%04i' % srcNum, srcIns])
+    ####  trgResid_string = ' '.join(['', trgChain, '%04i' % trgNum, trgIns])
+    ####  #probe does not run itself on more than the first model, so the modelid
+    ####  #  bit is a problem.  It's probably either '' or '1'
+    ####  if (srcResid_string in reskeys) and (trgResid_string in reskeys):
+    ####    srcResidue = resdata[srcResid_string]
+    ####    trgResidue = resdata[trgResid_string]
+    ####    #bondjump = str(int(trgNum) - int(srcNum))
+    ####    #Probably don't need bondjump here anymore.
+    ####    #  Probably will make a function in cablam_res to find it.
+    ####
+    ####    if srcAtomname == 'H' and trgResidue not in srcResidue.probeH:
+    ####      srcResidue.probeH.append(trgResidue)
+    ####    elif srcAtomname == 'O' and trgResidue not in srcResidue.probeO:
+    ####      srcResidue.probeO.append(trgResidue)
+    ####    else:
+    ####      pass
 #-------------------------------------------------------------------------------
 #}}}
 
@@ -714,7 +746,7 @@ def kin_print(protein, kinorder, skiplist=[], inclist=[], cis_or_trans='both', w
     elif fails_cis_check(protein[resid],cis_or_trans):
       pass
     else:
-      sys.stderr.write('\npass '+ protein[resid].alts['']['resname'])
+      #sys.stderr.write('\npass '+ protein[resid].alts['']['resname'])
       protein[resid].printtokin(kinorder, writeto)
 #-------------------------------------------------------------------------------
 #}}}
@@ -763,9 +795,10 @@ def kin_print_probe(resdata, kinorder, outfiles, skiplist=[], inclist=[]):
 def kin_print_probe_annote(resdata, motif_list, writeto=sys.stdout):
   reskeys = resdata.keys()
   reskeys.sort()
-  for motif_name in motif_list:
-    writeto.write('@group {'+motif_name+'}\n')
-    for label in fingerprints.fingerprints[motif_name].labellist:
+  motifs = cablam_fingerprints.fetch_fingerprints(motif_list)
+  for motif in motifs:
+    writeto.write('@group {'+motif.motif_name+'}\n')
+    for label in motif.residue_names.values():
       writeto.write('@balllist {'+label+'}\n')
       for resid in reskeys:
         residue = resdata[resid]
@@ -788,7 +821,9 @@ def kin_print_by_instance_header(motif_list, kinorder, kinranges):
     sys.stderr.write('\nExiting . . .\n')
     sys.exit()
   outfiles = {}
-  for motif_name in motif_list:
+  motifs = cablam_fingerprints.fetch_fingerprints(motif_list)
+  for motif in motifs:
+    motif_name = motif.motif_name
     outfiles[motif_name] = open(motif_name+'_instances.kin', 'w')
     outfiles[motif_name].write('@text\n')
     for arg in sys.argv:
@@ -804,28 +839,68 @@ def kin_print_by_instance_header(motif_list, kinorder, kinranges):
 def kin_print_by_instance(resdata, motif_list, kinorder, outfiles):
   reskeys = resdata.keys()
   reskeys.sort()
-  for motif_name in motif_list:
-    motif = fingerprints.fingerprints[motif_name]
+  motifs = cablam_fingerprints.fetch_fingerprints(motif_list)
+  for motif in motifs:
+    motif_name = motif.motif_name
+    label_keys = motif.residue_names.keys()
+    label_keys.sort()
+    labels = []
+    for label_key in label_keys:
+      labels.append(motif.residue_names[label_key])
     for resid in reskeys:
       residue = resdata[resid]
-      if motif.labellist[0] in residue.motifs:
+      if labels[0] in residue.motifs:
         #Each instance is a group so that they are animatable in the kinemage
         outfiles[motif_name].write(
           '@group {'+residue.pdbid.rstrip('.pdb')+' '+str(residue.resnum)+
           '} dominant animate\n@vectorlist {'+motif_name+
           '} dimension='+str(len(kinorder))+'\n')
         curres = residue
-        for label in motif.labellist:
+        for label in labels:
           outline = ['{'+curres.id_with_resname()+'_'+label+'}']
           for order in kinorder:
             try:
               outline.append(str(curres.measures[order]))
             except KeyError:
-              sys.stderr.write('KeyError in kin print by instance')
+              sys.stderr.write(curres.id_with_resname() + order + '\n')
+              sys.stderr.write('KeyError in kin print by instance\n')
               break
           else:
             outfiles[motif_name].write(' '.join(outline)+'\n')
+          if curres.nextres is None:
+            sys.stderr.write("problem at "+curres.id_with_resname()+'\n')
+            break
           curres = curres.nextres
+
+def res_seq_by_instance(resdata, motif_list):
+  reshash = {'GLY':'G','ALA':'A','VAL':'V','ILE':'I','LEU':'L','PHE':'F','TRP':'W','MET':'M','GLU':'E','GLN':'Q','ASP':'D','ASN':'N','SER':'S','THR':'T','TYR':'Y','HIS':'H','LYS':'K','PRO':'P','CYS':'C','ARG':'R','MSE':'M','CSO':'C','OCS':'C','CSX':'C','CME':'C','YCM':'C','MLY':'K'}
+  reskeys = resdata.keys()
+  reskeys.sort()
+  motifs = cablam_fingerprints.fetch_fingerprints(motif_list)
+  for motif in motifs:
+    label_keys = motif.residue_names.keys()
+    label_keys.sort()
+    labels = []
+    for label_key in label_keys:
+      labels.append(motif.residue_names[label_key])
+    for resid in reskeys:
+      residue = resdata[resid]
+      seq_string = []
+      if labels[0] in residue.motifs:
+        curres = residue
+        for label in labels:
+          if not curres:
+            break
+          resname = curres.id_with_resname()[0:3]
+          if resname in reshash:
+            resname = reshash[resname]
+          else:
+            resname = 'X'+resname
+          seq_string.append(resname)
+          curres = curres.nextres
+        else:
+          seq_string.append('\n')
+          sys.stdout.write(''.join(seq_string))
 #-------------------------------------------------------------------------------
 #}}}
 
@@ -872,8 +947,12 @@ def run(args):
 
   if params.list_motifs:
     sys.stdout.write('\n')
-    for motifname in fingerprints.fingerprints:
-      sys.stdout.write(motifname + '\n')
+    fileset = os.listdir(libtbx.env.find_in_repositories(
+      "cctbx_project/mmtbx/cablam/fingerprints"))
+    for filename in fileset:
+      if filename.endswith(".pickle"):
+        motifname = os.path.splitext(os.path.basename(filename))[0]
+        sys.stdout.write(motifname + '\n')
     sys.exit()
 
   if not params.file_or_dir:
@@ -973,7 +1052,7 @@ def run(args):
     if params.probe_path:
       probefilelist = os.listdir(params.probe_path)
     if params.probe_mode == 'kin':# or params.probe_mode == None:
-      outfiles = kin_print_probe_header(fingerprints.get_all_labels(motif_list),kinorder,kinranges)
+      outfiles = kin_print_probe_header(cablam_fingerprints.get_all_labels(motif_list),kinorder,kinranges)
     elif params.probe_mode == 'instance':
       outfiles = kin_print_by_instance_header(motif_list, kinorder, kinranges)
 
@@ -1002,6 +1081,8 @@ def run(args):
   #{{{ get file, start loop
   #-----------------------------------------------------------------------------
   for filename in fileset:
+    if not filename.endswith('.pdb'):
+      continue
     if dirpath: #must add the path if using the listed contents of a dir
       filename = os.path.join(dirpath,filename)
     else:
@@ -1086,8 +1167,9 @@ def run(args):
       add_probe_data(resdata,make_probe_data(hierarchy))
 
     if params.probe_motifs:
-      for motif_name in motif_list:
-        fingerprints.annote_motif_protein(resdata,motif_name,params.debug)
+      cablam_fingerprints.check_protein(resdata, motif_list)
+      #for motif_name in motif_list:
+      #  fingerprints.annote_motif_protein(resdata,motif_name,params.debug)
     #---------------------------------------------------------------------------
     #}}}
 
@@ -1105,6 +1187,8 @@ def run(args):
         outfile.close()
       elif params.probe_mode == 'instance':
         kin_print_by_instance(resdata, motif_list, kinorder, outfiles)
+      elif params.probe_mode == 'sequence':
+        res_seq_by_instance(resdata, motif_list)
       else:
         sys.stderr.write('\n\nUnrecognized probemode request\n\n')
         sys.exit()
