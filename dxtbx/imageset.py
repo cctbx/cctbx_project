@@ -30,7 +30,7 @@ class ReaderBase(object):
     def get_image_paths(self, indices=None):
         pass
 
-    def get_image_size(self):
+    def get_image_size(self, panel=0):
         pass
 
     def get_format(self, index=None):
@@ -153,9 +153,9 @@ class SingleFileReader(ReaderBase):
         else:
             return [filenames[i] for i in indices]
 
-    def get_image_size(self):
+    def get_image_size(self, panel=0):
         '''Get the image size from the detector.'''
-        return self._format.get_detector().get_image_size()
+        return self._format.get_detector()[panel].get_image_size()
 
     def get_format(self, index=None):
         '''Get the format instance'''
@@ -283,9 +283,9 @@ class MultiFileReader(ReaderBase):
         '''Get the format class.'''
         return self._state.format_class()
 
-    def get_image_size(self):
+    def get_image_size(self, panel=0):
         '''Get the image size.'''
-        return self.get_format().get_detector().get_image_size()
+        return self.get_format().get_detector()[panel].get_image_size()
 
     def get_path(self, index=None):
         '''Get the path the given index.'''
@@ -322,7 +322,18 @@ class MultiFileReader(ReaderBase):
 
     def read(self, index=None):
         '''Read the image frame at the given index.'''
-        return self.get_format(index).get_raw_data()
+
+        # Get the format instance and the number of panels
+        format_instance = self.get_format(index)
+        npanels = len(format_instance.get_detector())
+
+        # Return a flex array for single panels and a tuple of flex arrays
+        # for multiple panels
+        assert(npanels > 0)
+        if npanels == 1:
+            return format_instance.get_raw_data()
+        else:
+            return ([format_instance.get_raw_data(i) for i in range(npanels)])
 
     def get_format(self, index=None):
         '''Get the format at the given index.'''
@@ -453,9 +464,9 @@ class ImageSet(object):
         ''' Set the beam model.'''
         self.reader().set_beam(beam)
 
-    def get_image_size(self):
+    def get_image_size(self, index=0):
         ''' Get the image size. '''
-        return self.reader().get_image_size()
+        return self.reader().get_image_size(index)
 
     def get_detectorbase(self, index=None):
         ''' Get the detector base instance for the given index. '''
@@ -585,7 +596,7 @@ class ImageSweep(ImageSet):
 
         return self.reader().get_scan(index)
 
-    def to_array(self, item=None):
+    def to_array(self, item=None, panel=0):
         ''' Read all the files in the sweep and convert them into an array
         of the appropriate dimensions.
 
@@ -606,45 +617,47 @@ class ImageSweep(ImageSet):
 
         '''
         if item is None:
-            return self._to_array_all()
+            return self._to_array_all(panel)
         else:
-            return self._to_array_w_range(item)
+            return self._to_array_w_range(item, panel)
 
-    def _to_array_all(self):
+    def _to_array_all(self, panel=0):
         ''' Get the array from all the sweep elements. '''
 
         # FIXME this should be using flex arrays not numpy ones as we want
         # to be able to pass the data to cctbx C++ code...
 
         from scitbx.array_family import flex
-        from numpy import zeros, int32
 
         # Get the image dimensions
         size_z = len(self)
-        size_y = self.reader().get_image_size()[1]
-        size_x = self.reader().get_image_size()[0]
+        size_y = self.reader().get_image_size(panel)[1]
+        size_x = self.reader().get_image_size(panel)[0]
 
         # Check sizes are valid
         if size_z <= 0 or size_y <= 0 or size_x <= 0:
             raise RuntimeError("Invalid dimensions")
 
         # Allocate the array
-        array = zeros(shape=(size_z, size_y, size_x), dtype=int32)
+        array = flex.int(flex.grid(size_z, size_y, size_x))
 
         # Loop through all the images and set the image data
         for k, image in enumerate(self):
-            array[k,:,:] = image.as_numpy_array()
+            if not isinstance(image, tuple):
+                image = (image,)
+            im = image[panel]
+            im.reshape(flex.grid(1, *im.all()))
+            array[k:k+1,:,:] = im
 
         # Return the array
-        return flex.int(array)
+        return array
 
-    def _to_array_w_range(self, item):
+    def _to_array_w_range(self, item, panel=0):
         ''' Get the array from the user specified range. '''
         from scitbx.array_family import flex
-        from numpy import zeros, int32
 
         # Get the range from the given index item
-        z0, z1, y0, y1, x0, x1 = self._get_data_range(item)
+        z0, z1, y0, y1, x0, x1 = self._get_data_range(item, panel)
 
         # Get the image dimensions
         size_z = z1 - z0
@@ -656,17 +669,21 @@ class ImageSweep(ImageSet):
             raise RuntimeError("Invalid dimensions")
 
         # Allocate the array
-        array = zeros(shape=(size_z, size_y, size_x), dtype=int32)
+        array = flex.int(flex.grid(size_z, size_y, size_x))
 
         # Loop through all the images and set the image data
         for k, index in enumerate(self.indices()[z0:z1]):
             image = self.reader().read(index)
-            array[k,:,:] = image.as_numpy_array()[y0:y1, x0:x1]
+            if not isinstance(image, tuple):
+                image = (image,)
+            im = image[panel]
+            im.reshape(flex.grid(1, *im.all()))
+            array[k:k+1,:,:] = im[0:1, y0:y1, x0:x1]
 
         # Return the array
-        return flex.int(array)
+        return array
 
-    def _get_data_range(self, item):
+    def _get_data_range(self, item, panel=0):
         ''' Get the range from the user specified index item. '''
 
         # Ensure item is a tuple
@@ -675,18 +692,18 @@ class ImageSweep(ImageSet):
             # Just the range of images given
             if len(item) == 2:
                 z0, z1 = item
-                y0, y1 = (0, self.reader().get_image_size()[1])
-                x0, x1 = (0, self.reader().get_image_size()[0])
+                y0, y1 = (0, self.reader().get_image_size(panel)[1])
+                x0, x1 = (0, self.reader().get_image_size(panel)[0])
                 return self._truncate_range((z0, z1, y0, y1, x0, x1))
 
             # The range in each direction given
             elif len(item) == 6:
-                return self._truncate_range(item)
+                return self._truncate_range(item, panel)
 
         # Raise index error
         raise IndexError("bad index")
 
-    def _truncate_range(self, data_range):
+    def _truncate_range(self, data_range, panel=0):
         ''' Truncate the range to the size of available data. '''
 
         # Get items from range
@@ -694,7 +711,7 @@ class ImageSweep(ImageSet):
 
         # Get the number of frames and image size
         size_z = len(self)
-        size_x, size_y = self.reader().get_image_size()
+        size_x, size_y = self.reader().get_image_size(panel)
 
         # Ensure range is valid
         if z0 < 0: z0 = 0
