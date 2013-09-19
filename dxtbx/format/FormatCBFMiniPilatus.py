@@ -54,7 +54,6 @@ class FormatCBFMiniPilatus(FormatCBFMini):
         return
 
     def _start(self):
-
         FormatCBFMini._start(self)
         from iotbx.detectors.pilatus_minicbf import PilatusImage
         self.detectorbase = PilatusImage(self._image_file)
