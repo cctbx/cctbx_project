@@ -1,7 +1,6 @@
 from __future__ import division
 import smtbx.refinement.constraints as _
 from smtbx.refinement.constraints import InvalidConstraint
-import itertools
 from math import pi
 
 class u_iso_proportional_to_pivot_u_eq(object):

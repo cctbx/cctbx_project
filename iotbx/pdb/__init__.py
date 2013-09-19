@@ -952,7 +952,7 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
     if records.size() != 0 :
       return secondary_structure.annotation(records)
     return None
-  
+
   def extract_LINK_records(self):
     '''
     Collect link records from PDB file
@@ -961,7 +961,7 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
     for line in self.connectivity_annotation_section():
       if (line.startswith('LINK') or line.startswith('link')):
         result.append(line)
-    return result  
+    return result
 
   def crystal_symmetry_from_cryst1(self):
     from iotbx.pdb import cryst1_interpretation

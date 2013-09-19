@@ -826,8 +826,8 @@ def shelx_u_cif(unit_cell, u_star):
   return (" "*3).join([ "%.5f" % x for x in  u_cif ])
 
 def exercise_constrained_occupancies():
-  from smtbx.refinement.constraints.occupancy import (
-    occupancy_pair_affine_constraint,)
+  from smtbx.refinement.constraints.occupancy import \
+    occupancy_pair_affine_constraint
   builder = iotbx.builders.constrained_crystal_structure_builder()
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_thpp))
   l_cs = shelx.crystal_symmetry_parser(stream, builder)
