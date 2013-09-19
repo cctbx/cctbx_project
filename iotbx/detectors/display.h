@@ -92,6 +92,7 @@ inline int iround(double const& x)
 #define COLOR_GRAY 0
 #define COLOR_RAINBOW 1
 #define COLOR_HEAT 2
+#define COLOR_INVERT 3
 template <typename DataType = int>
 class FlexImage {
 
@@ -391,7 +392,7 @@ public:
         for (int k=0; k<export_size_uncut2; ++k) {
           if (data(j,k) == 1000){
             //ad hoc method to color inactive pixels red
-            if (color_scheme == COLOR_GRAY) {
+            if (color_scheme == COLOR_GRAY || color_scheme == COLOR_INVERT) {
               if (i==0) {channels(i,j,k) = 254;}
               else {channels(i,j,k) = 1;}
             } else { // or black, if displaying a rainbow or heatmap
@@ -400,7 +401,7 @@ public:
             continue;
           } else if (data(j,k) == 2000){
             //ad hoc method to color saturated pixels yellow
-            if (color_scheme == COLOR_GRAY) {
+            if (color_scheme == COLOR_GRAY || color_scheme == COLOR_INVERT) {
               if (i==0 || i==1) {channels(i,j,k) = 254;}
               else {channels(i,j,k) = 1;}
             } else if (color_scheme == COLOR_RAINBOW) {
@@ -417,6 +418,8 @@ public:
           }
           if (color_scheme == COLOR_GRAY) {
             channels(i,j,k) = data(j,k);
+          } else if (color_scheme == COLOR_INVERT) {
+            channels(i,j,k) = 255. - data(j,k);
           } else if (color_scheme == COLOR_RAINBOW) { // rainbow
             double h = 255 * std::pow(((double) data(j,k)) / 255., 0.5);
             scitbx::vec3<double> rgb = hsv2rgb(h, 1.0, 1.0);
