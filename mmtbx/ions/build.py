@@ -69,6 +69,7 @@ def find_and_build_ions (
   import mmtbx.ions
   from cctbx.eltbx import sasaki
   from cctbx import crystal
+  from cctbx import adptbx
   from cctbx import xray
   from scitbx.array_family import flex
   import scitbx.lbfgs
@@ -76,8 +77,18 @@ def find_and_build_ions (
   fmodel = fmodels.fmodel_xray()
   anomalous_flag = fmodel.f_obs().anomalous_flag()
   if (out is None) : out = sys.stdout
+  model.xray_structure = fmodel.xray_structure
+  model.xray_structure.tidy_us()
   pdb_hierarchy = model.pdb_hierarchy(sync_with_xray_structure=True)
-  pdb_hierarchy.atoms().reset_i_seq()
+  pdb_atoms = pdb_hierarchy.atoms()
+  pdb_atoms.reset_i_seq()
+  # FIXME why does B for anisotropic waters end up negative?
+  u_iso = model.xray_structure.extract_u_iso_or_u_equiv()
+  for i_seq, atom in enumerate(pdb_atoms) :
+    labels = atom.fetch_labels()
+    if (labels.resname == "HOH") and (atom.b < 0) :
+      assert (u_iso[i_seq] >= 0)
+      atom.b = adptbx.u_as_b(u_iso[i_seq])
   if (manager is None) :
     manager = mmtbx.ions.create_manager(
       pdb_hierarchy=pdb_hierarchy,

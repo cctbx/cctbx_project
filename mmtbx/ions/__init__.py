@@ -321,21 +321,26 @@ class Manager (object) :
       if ((params.use_phaser) and (libtbx.env.has_module("phaser"))) :
         print >> log, "  Running Phaser substructure completion..."
         t1 = time.time()
-        self.phaser_substructure = find_anomalous_scatterers(
+        #open("tmp1.pdb", "w").write(pdb_hierarchy.as_pdb_string(xray_structure))
+        phaser_result = find_anomalous_scatterers(
           fmodel = fmodel,
           pdb_hierarchy = pdb_hierarchy,
           wavelength = wavelength,
           verbose = verbose,
           log = log,
-          n_cycles = params.phaser.llgc_ncycles).atoms()
+          n_cycles = params.phaser.llgc_ncycles)
         t2 = time.time()
         print >> log, "    time: %.1fs" % (t2-t1)
-        if (len(self.phaser_substructure) == 0) :
-          print >> log, "  No anomalous scatterers found!"
+        if (phaser_result is None) :
+          print >> log, "  ERROR: Phaser substructure completion failed!"
         else :
-          print >> log, "  %d anomalous scatterers found" % \
-            len(self.phaser_substructure)
-          self.analyze_substructure(log = log, verbose = True)
+          self.phaser_substructure = phaser_result.atoms()
+          if (len(self.phaser_substructure) == 0) :
+            print >> log, "  No anomalous scatterers found!"
+          else :
+            print >> log, "  %d anomalous scatterers found" % \
+              len(self.phaser_substructure)
+            self.analyze_substructure(log = log, verbose = True)
       else :
         self.flag_refine_substructure = True
         self.refine_anomalous_substructure(log = log)
