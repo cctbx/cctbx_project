@@ -794,12 +794,13 @@ class ImageSetFactory(object):
     ''' Factory to create imagesets and sweeps. '''
 
     @staticmethod
-    def new(filenames, check_headers=False):
+    def new(filenames, check_headers=False, ignore_unknown=False):
         ''' Create an imageset or sweep
 
         Params:
             filenames A list of filenames
             check_headers Check the headers to ensure all images are valid
+            ignore_unknown Ignore unknown formats
 
         Returns:
             A list of imagesets
@@ -820,8 +821,17 @@ class ImageSetFactory(object):
         # For each file list denoting an image set, create the imageset
         # and return as a list of imagesets. N.B sweeps and image sets are
         # returned in the same list.
-        return [ImageSetFactory._create_imageset_or_sweep(
-            filelist, check_headers) for filelist in filelist_per_imageset]
+        imagesetlist = []
+        for filelist in filelist_per_imageset:
+            try:
+                imagesetlist.append(ImageSetFactory._create_imageset_or_sweep(
+                    filelist, check_headers))
+            except Exception, e:
+                if not ignore_unknown:
+                    raise e
+
+        # Return the imageset list
+        return imagesetlist
 
     @staticmethod
     def from_template(template, image_range=None, check_headers=False):
