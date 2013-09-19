@@ -400,7 +400,7 @@ class SettingsPanel (wx.Panel) :
     txt11 = wx.StaticText(self, -1, "Color scheme:")
     grid.Add(txt11, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self.color_ctrl = wx.Choice(self, -1,
-      choices=["grayscale","rainbow","heatmap"])
+      choices=["grayscale","rainbow","heatmap","invert"])
     self.color_ctrl.SetSelection(0)
     grid.Add(self.color_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self._sizer.Fit(self)
