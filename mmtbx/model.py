@@ -1410,3 +1410,20 @@ class manager(object):
     if(selection_aniso is not None):
       self.xray_structure.scatterers().flags_set_grad_u_aniso(
         iselection = selection_aniso.iselection())
+
+  def update_anomalous_groups (self, out=sys.stdout) :
+    if ((self.anomalous_scatterer_groups is not None) and
+        (len(self.anomalous_scatterer_groups) > 0)) :
+      modified = False
+      sel_cache = self._pdb_hierarchy.atom_selection_cache()
+      for i_group, group in enumerate(self.anomalous_scatterer_groups) :
+        if (group.update_from_selection) :
+          isel = sel_cache.selection(group.selection_string).iselection()
+          assert (len(isel) == len(group.iselection))
+          if (not isel.all_eq(group.iselection)) :
+            print >> out, "Updating %d atom(s) in anomalous group %d" % \
+              (len(isel), i_group+1)
+            print >> out, "  selection string: %s" % group.selection_string
+            group.iselection = isel
+            modified = True
+      return modified
