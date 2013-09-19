@@ -184,12 +184,14 @@ class anomalous_scatterer_group:
         f_prime,
         f_double_prime,
         refine,
-        selection_string=None):
+        selection_string=None,
+        update_from_selection=False):
     self.iselection = iselection
     self.f_prime = f_prime
     self.f_double_prime = f_double_prime
     self.refine_f_prime = False
     self.refine_f_double_prime = False
+    self.update_from_selection = update_from_selection
     for refine_item in refine:
       assert refine_item in ["f_prime", "f_double_prime"]
       if (refine_item == "f_prime"):
