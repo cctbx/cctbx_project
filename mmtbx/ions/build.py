@@ -97,6 +97,7 @@ def find_and_build_ions (
       connectivity=connectivity,
       log=out)
     manager.update_maps()
+  model.update_anomalous_groups(out=out)
   make_sub_header("Analyzing water molecules", out=out)
   manager.show_current_scattering_statistics(out=out)
   elements = params.elements
@@ -177,7 +178,8 @@ def find_and_build_ions (
           f_prime=scatterer.fp,
           f_double_prime=scatterer.fdp,
           refine=["f_prime","f_double_prime"],
-          selection_string=get_single_atom_selection_string(modified_atom))
+          selection_string=get_single_atom_selection_string(modified_atom),
+          update_from_selection=True)
         anomalous_groups.append(group)
       modified_iselection.append(i_seq)
   if (len(modified_iselection) > 0) :

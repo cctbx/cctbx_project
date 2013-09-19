@@ -451,7 +451,6 @@ class Manager (object) :
     if self.fmodel is None:
       return
     def fft_map (map_coeffs, resolution_factor = 0.25):
-      print type(map_coeffs.data())
       return map_coeffs.fft_map(resolution_factor = resolution_factor,
         ).apply_sigma_scaling().real_map_unpadded()
     map_types = ["2mFo-DFc", "mFo-DFc"]

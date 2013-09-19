@@ -225,6 +225,7 @@ def exercise_4():
 def exercise_convert_atom() :
   from iotbx.pdb import hierarchy
   from cctbx import crystal
+  from cctbx.xray import anomalous_scatterer_group
   coords = [ (2.12, 0., 0.), (0., 2.12, 0.), (0, 0, 2.12), (0,0,0),
              (-2.12, 0, 0), (0, -2.12, 0), (0, 0, -2.12) ]
   root = hierarchy.root()
@@ -273,12 +274,24 @@ def exercise_convert_atom() :
     residue_name="MG",
     initial_occupancy=0.99,
     chain_id='X')
+  mol.anomalous_scatterer_groups = [
+    anomalous_scatterer_group(
+      iselection=flex.size_t([4]),
+      f_prime=0,
+      f_double_prime=0,
+      refine=["f_prime","f_double_prime"],
+      selection_string="element MG",
+      update_from_selection=True), ]
   mol.geometry_minimization(nonbonded=True)
   # if the nonbonded type is set correctly, the nonbonded restraints should
   # not push the
   for atom in mol.pdb_hierarchy(sync_with_xray_structure=True).atoms() :
     xyz_max = max([ abs(n) for n in atom.xyz])
     assert (xyz_max < 2.5)
+  mol = mol.select(flex.size_t([1,2,3,4,5,6]))
+  assert mol.update_anomalous_groups(out=null_out())
+  isel = mol.anomalous_scatterer_groups[0].iselection
+  assert list(isel) == [3]
 
 pdb_file_exercise_h_counts="""
 CRYST1    8.228   11.366   10.991  90.00  90.00  90.00 P 1
