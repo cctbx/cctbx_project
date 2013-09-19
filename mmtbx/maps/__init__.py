@@ -13,7 +13,6 @@ import random
 from mmtbx import map_tools
 from cctbx import miller
 from cctbx import maptbx
-from libtbx import group_args
 
 map_coeff_params_base_str = """\
   map_coefficients

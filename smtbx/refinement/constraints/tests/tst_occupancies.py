@@ -1,7 +1,7 @@
+from __future__ import division
 import os
 import smtbx.refinement
 from libtbx.test_utils import approx_equal
-from math import sqrt
 
 def exercise_simple_disorder():
   working_dir = os.path.dirname(__file__)
