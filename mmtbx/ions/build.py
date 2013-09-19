@@ -112,7 +112,7 @@ def find_and_build_ions (
   default_b_iso = manager.get_initial_b_iso()
   # Build in the identified ions
   for_building = []
-  for i_seq, final_choices in water_ion_candidates :
+  for i_seq, final_choices, two_fofc in water_ion_candidates :
     if (len(final_choices) == 1) :
       for_building.append((i_seq, final_choices[0]))
   skipped = []

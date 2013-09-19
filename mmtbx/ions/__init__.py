@@ -1346,9 +1346,11 @@ class Manager (object) :
           out = out)
         if (water_props is not None) :
           water_props.show_summary(out = out, debug = debug)
+          map_stats = self.map_stats(water_i_seq)
           if ((water_props.final_choice is not None) and
               (not water_props.no_final)) :
-            ions.append((water_i_seq, [water_props.final_choice]))
+            ions.append((water_i_seq, [water_props.final_choice],
+              map_stats.two_fofc))
         t2 = time.time()
         #print "%s: %.3fs" % (self.pdb_atoms[water_i_seq].id_str(), t2-t1)
     else :
@@ -1369,9 +1371,10 @@ class Manager (object) :
         if (result_str is not None) :
           print >> out, result_str
         if final_choice is not None :
-          ions.append((water_i_seq, [final_choice]))
+          map_stats = self.map_stats(water_i_seq)
+          ions.append((water_i_seq, [final_choice], map_stats.two_fofc))
 
-    return ions
+    return sorted(ions, lambda a, b: cmp(b[2], a[2]))
 
   def validate_ion (self, i_seq, out = sys.stdout, debug = True):
     """
