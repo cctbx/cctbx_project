@@ -333,7 +333,7 @@ class MultiFileReader(ReaderBase):
         if npanels == 1:
             return format_instance.get_raw_data()
         else:
-            return ([format_instance.get_raw_data(i) for i in range(npanels)])
+            return tuple([format_instance.get_raw_data(i) for i in range(npanels)])
 
     def get_format(self, index=None):
         '''Get the format at the given index.'''
