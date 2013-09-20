@@ -111,3 +111,16 @@ class real(object):
 
   def numerical_rank(self, delta):
     return self._svd.numerical_rank(delta)
+
+def inverse_via_svd(a,is_singular_threshold=1e-16):
+  svd_obj = real(a.deep_copy(),True,True,1e-16)
+  u = svd_obj.u
+  v = svd_obj.v
+  sigma = svd_obj.sigma
+  selection = flex.bool( sigma < flex.max( sigma )*is_singular_threshold  ).iselection()
+  inv_sigma = sigma.deep_copy()
+  inv_sigma.set_selected(selection,1.0)
+  inv_sigma =  1.0/inv_sigma
+  inv_sigma.set_selected(selection,0.0)
+  ia = scitbx.linalg.reconstruct_svd(v,u,inv_sigma) #.matrix_transpose(), inv_sigma)
+  return(ia, sigma)
