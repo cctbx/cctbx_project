@@ -226,7 +226,47 @@ def exercise_singular_matrix():
                              accumulate_u=True, accumulate_v=True)
   assert svd.numerical_rank(svd.sigma[0]*tol) == n-2
 
+def exercise_inverse():
+
+  #standard 2x2 matrix
+  a = flex.double( flex.grid(2,2), 0.0 )
+  a[(0,0)] = 1
+  a[(0,1)] = 2
+  a[(1,0)] = 3
+  a[(1,1)] = 4
+  result,sigma = scitbx.linalg.svd.inverse_via_svd(a)
+  assert approx_equal(result[(0,0)],-2.0,eps=1e-6)
+  assert approx_equal(result[(0,1)], 1.0,eps=1e-6)
+  assert approx_equal(result[(1,0)], 1.5,eps=1e-6)
+  assert approx_equal(result[(1,1)],-0.5,eps=1e-6)
+  uu = a.matrix_multiply(result)
+
+  for ii in range(10):
+    n = 30
+    # random matrix
+    a = flex.double( flex.grid(n,n),0 )
+    for aa in range(n):
+      for bb in range(aa,n):
+        tmp = random.random()
+        a[(aa,bb)]=tmp
+        a[(bb,aa)]=tmp
+
+    result,sigma = scitbx.linalg.svd.inverse_via_svd(a.deep_copy(), 1e-6)
+    uu = a.matrix_multiply(result)
+    for aa in range(n):
+      for bb in range(n):
+        tmp=0
+        if aa==bb: tmp=1.0
+        assert approx_equal( uu[(aa,bb)], tmp,1e-3 )
+
+
+
+
+
+
+
 def run(show_progress, exercise_tntbx, full_coverage):
+  exercise_inverse()
   exercise_svd_basic()
   exercise_singular_matrix()
   exercise_densely_distributed_singular_values(show_progress=show_progress,
