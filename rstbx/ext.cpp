@@ -211,6 +211,7 @@ namespace boost_python { namespace {
       .def("setMaxcell",&dps_core::setMaxcell)
       .def("setXyzData",&dps_core::setXyzData)
       .def("getXyzSize",&dps_core::getXyzSize)
+      .def("getXyzData",&dps_core::getXyzData)
       .def("fft_result",fft_result)
       .def("setSolutions",&dps_core::setSolutions)
       .def("getSolutions",&dps_core::getSolutions)
