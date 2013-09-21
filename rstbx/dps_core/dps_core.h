@@ -49,6 +49,7 @@ class dps_core {
   void setMaxcell(const double &);
   void setXyzData(pointlistmm inputdata){ xyzdata = inputdata; }
   int getXyzSize() const {return xyzdata.size();}
+  inline pointlistmm getXyzData() const {return xyzdata;}
   fftptr fft_factory(const Direction&) const;
   void setSolutions(af::shared<Direction>);
   af::shared<Direction> getSolutions() const;
