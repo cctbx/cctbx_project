@@ -29,7 +29,7 @@ class restraint (atoms) :
     if (self.n_atoms is not None) :
       assert (len(self.atoms_info) == self.n_atoms)
     if (self.score is None) :
-      self.score = abs(self.delta) / self.sigma
+      self.score = abs(self.delta / self.sigma)
 
   @staticmethod
   def header () :
@@ -55,6 +55,14 @@ class restraint (atoms) :
   def __cmp__ (self, other) :
     return cmp(other.score, self.score)
 
+  def kinemage_key (self) :
+    atom0 = self.atoms_info[0]
+    atom_names = [ a.name.strip().lower() for a in self.atoms_info ]
+    kin_key = "%1s%3s%2s%4s%1s %s" % (self.get_altloc(),
+      atom0.resname.lower(), atom0.chain_id, atom0.resseq, atom0.icode,
+      "-".join(atom_names))
+    return kin_key
+
 class bond (restraint) :
   n_atoms = 2
   __bond_attr__ = [
@@ -71,16 +79,113 @@ class bond (restraint) :
   def formate_values (self) :
     return "%5.3f  %6.2f  %6.3f  %6.3f  %6.2e  %8.2e  %4.1f*sigma" % \
       (self.target, self.model, self.delta, self.sigma, self.slack,
-       self.residual, self.score)
+       self.residual, abs(self.score))
+
+  def as_kinemage (self) :
+    """
+    Represent the bond outlier as a kinemage spring.
+    """
+    from mmtbx.kinemage import kin_vec
+    from scitbx import matrix
+    kin_text = ""
+    bond_key = self.kinemage_key()
+    num_sigmas = - self.delta / self.sigma
+    if (num_sigmas < 0) :
+      color = "blue"
+    else:
+      color = "red"
+    sites = self.sites_cart()
+    a = matrix.col(sites[0])
+    b = matrix.col(sites[1])
+    c = matrix.col( (1,0,0) )
+    normal = ((a-b).cross(c-b).normalize())*0.2
+    current = a+normal
+    new = tuple(current)
+    kin_text += \
+      "@vectorlist {%s %.3f sigma} color= %s width= 3 master= {length dev}\n"\
+                % (bond_key, num_sigmas, color)
+    bond_key_long = "%s %.3f sigma" % (bond_key, num_sigmas)
+    kin_text += kin_vec(bond_key_long,sites[0],bond_key_long,new)
+    angle = 36
+    dev = num_sigmas
+    if dev > 10.0:
+      dev = 10.0
+    if dev < -10.0:
+      dev = -10.0
+    if dev <= 0.0:
+      angle += 1.5*abs(dev)
+    elif dev > 0.0:
+      angle -= 1.5*dev
+    i = 0
+    n = 60
+    axis = b-a
+    step = axis*(1.0/n)
+    r = axis.axis_and_angle_as_r3_rotation_matrix(angle=angle, deg=True)
+    while i < n:
+      next = (r*(current-b) +b)
+      next = next + step
+      kin_text += kin_vec(bond_key_long,tuple(current),bond_key_long,
+        tuple(next))
+      current = next
+      i += 1
+    kin_text += kin_vec(bond_key_long,tuple(current),bond_key_long,sites[1])
+    return kin_text
 
 class angle (restraint) :
   n_atoms = 3
 
+  def as_kinemage (self) :
+    """
+    Represent the angle outlier as a kinemage 'fan'.
+    """
+    from mmtbx.kinemage import kin_vec
+    from scitbx import matrix
+    kin_text = ""
+    atom0 = self.atoms_info[0]
+    angle_key = self.kinemage_key()
+    num_sigmas = - self.delta / self.sigma
+    angle_key_full = "%s %.3f sigma" % (angle_key, num_sigmas)
+    if (num_sigmas < 0) :
+      color = "blue"
+    else:
+      color = "red"
+    sites = self.sites_cart()
+    delta = self.delta
+    a = matrix.col(sites[0])
+    b = matrix.col(sites[1])
+    c = matrix.col(sites[2])
+    normal = (a-b).cross(c-b).normalize()
+    r = normal.axis_and_angle_as_r3_rotation_matrix(angle=delta, deg=True)
+    new_c = tuple( (r*(c-b)) +b)
+    kin_text += "@vectorlist {%s} color= %s width= 4 master= {angle dev}\n" \
+                 % (angle_key_full, color)
+    kin_text += kin_vec(angle_key_full,sites[0],angle_key_full,sites[1])
+    kin_text += kin_vec(angle_key_full,sites[1],angle_key_full,new_c)
+    r = normal.axis_and_angle_as_r3_rotation_matrix(angle=(delta*.75), deg=True)
+    new_c = tuple( (r*(c-b)) +b)
+    kin_text += "@vectorlist {%s} color= %s width= 3 master= {angle dev}\n" \
+                 % (angle_key_full, color)
+    kin_text += kin_vec(angle_key_full,sites[1],angle_key,new_c)
+    r = normal.axis_and_angle_as_r3_rotation_matrix(angle=(delta*.5), deg=True)
+    new_c = tuple( (r*(c-b)) +b)
+    kin_text += "@vectorlist {%s} color= %s width= 2 master= {angle dev}\n" \
+                 % (angle_key_full, color)
+    kin_text += kin_vec(angle_key_full,sites[1],angle_key,new_c)
+    r = normal.axis_and_angle_as_r3_rotation_matrix(angle=(delta*.25), deg=True)
+    new_c = tuple( (r*(c-b)) +b)
+    kin_text += "@vectorlist {%s} color= %s width= 1 master= {angle dev}\n" \
+                % (angle_key_full, color)
+    kin_text += kin_vec(angle_key_full,sites[1],angle_key,new_c)
+    return kin_text
+
 class dihedral (restraint) :
   n_atoms = 4
+  def as_kinemage (self) :
+    return None
 
 class chirality (restraint) :
-  pass
+  def as_kinemage (self) :
+    return None
 
 class planarity (restraint) :
   __slots__ = atoms.__slots__ + [
@@ -98,12 +203,16 @@ class planarity (restraint) :
     return "%10.3f  %10.3f  %10.2f  %4.1f*sigma" % (self.rms_deltas,
       self.delta_max, self.residual, self.score)
 
+  def as_kinemage (self) :
+    return None
+
 class restraint_validation (validation) :
   """
   Base class for collecting information about all restraints of a certain
   type, including overall statistics and individual outliers.
   """
   restraint_type = None
+  kinemage_header = None
   __restraints_attr__ = [
     "min",
     "max",
@@ -182,9 +291,22 @@ class restraint_validation (validation) :
       print >> out, prefix + "Max. delta:  %7.3f" % self.max
       print >> out, prefix + "Mean delta:  %7.3f" % self.mean
 
+  def as_kinemage (self) :
+    header = self.kinemage_header
+    if (header is not None) :
+      kin_blocks = []
+      for result in self.results :
+        if (result.is_outlier()) :
+          outlier_kin_txt = result.as_kinemage()
+          if (outlier_kin_txt is not None) :
+            kin_blocks.append(outlier_kin_txt)
+      return header + "\n".join(kin_blocks)
+    return None
+
 class bonds (restraint_validation) :
   restraint_type = "bond"
   restraint_label = "Bond length"
+  kinemage_header = "@subgroup {length devs} dominant\n"
   def get_result_class (self) : return bond
 
   def get_outliers (self, proxies, unit_cell, sites_cart, pdb_atoms,
@@ -218,6 +340,7 @@ class bonds (restraint_validation) :
 class angles (restraint_validation) :
   restraint_type = "angle"
   restraint_label = "Bond angle"
+  kinemage_header = "@subgroup {geom devs} dominant\n"
   def get_result_class (self) : return angle
 
   def get_outliers (self, proxies, unit_cell, sites_cart, pdb_atoms,
@@ -442,3 +565,7 @@ class combined (slots_getstate_setstate) :
 
   def get_bonds_angles_rmsds (self) :
     return (self.bonds.mean, self.angles.mean)
+
+  def as_kinemage (self) :
+    kin_txt = "%s\n%s" % (self.bonds.as_kinemage(), self.angles.as_kinemage())
+    return kin_txt

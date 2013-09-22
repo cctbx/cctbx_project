@@ -1,9 +1,6 @@
-from __future__ import division
 
-from libtbx.utils import Sorry
-from libtbx import object_oriented_patterns as oop
-from libtbx import adopt_init_args
-import os
+from __future__ import division
+from iotbx.data_plots import simple_matplotlib_plot
 
 class rotarama_plot_mixin (object) :
   extent = [0, 360, 0, 360]
@@ -77,49 +74,14 @@ class rotamer_plot_mixin (rotarama_plot_mixin) :
     axes.set_yticks(list(y_marks))
     axes.grid(True, color="0.75")
 
-class simple_plot (object) :
-  def __init__ (self,
-                figure_size=(8,8),
-                font_size=12,
-                title_font_size=12,
-                facecolor='white',
-                transparent=False) :
-    adopt_init_args(self, locals())
-    try :
-      import matplotlib
-      import matplotlib.figure
-      from matplotlib.backends.backend_agg import FigureCanvasAgg
-    except ImportError, e :
-      print e
-      raise Sorry("Plotting requires that matplotlib be installed.")
-    self.figure = matplotlib.figure.Figure(figure_size, 72, linewidth=0,
-      facecolor=facecolor)
-    if transparent :
-      self.figure.figurePatch.set_alpha(0.0)
-    self.canvas = FigureCanvasAgg(self.figure)
-    #self.canvas.toolbar = oop.null()
-    #self.figmgr = FigureManager(self.canvas, 1, self)
-
-  def save_image (self, file_name) :
-    assert (file_name is not None) and (file_name != "")
-    base, ext = os.path.splitext(file_name)
-    if (ext == ".pdf") :
-      self.figure.savefig(file_name, orientation="landscape", format="pdf")
-    elif (ext == ".ps") :
-      self.figure.savefig(file_name, orientation="landscape", format="ps")
-    elif (ext == ".png") :
-      self.figure.savefig(file_name, format="png")
-    else :
-      raise RuntimeError("Extension %s not supported" % s)
-
-class ramachandran_plot (simple_plot, ramachandran_plot_mixin) :
+class ramachandran_plot (simple_matplotlib_plot, ramachandran_plot_mixin) :
   def __init__ (self, *args, **kwds) :
-    simple_plot.__init__(self, *args, **kwds)
+    simple_matplotlib_plot.__init__(self, *args, **kwds)
     ramachandran_plot_mixin.__init__(self, *args, **kwds)
 
-class rotamer_plot (simple_plot, rotamer_plot_mixin) :
+class rotamer_plot (simple_matplotlib_plot, rotamer_plot_mixin) :
   def __init__ (self, *args, **kwds) :
-    simple_plot.__init__(self, *args, **kwds)
+    simple_matplotlib_plot.__init__(self, *args, **kwds)
     rotamer_plot_mixin.__init__(self, *args, **kwds)
 
 def get_residue_ramachandran_data (ramalyze_data,

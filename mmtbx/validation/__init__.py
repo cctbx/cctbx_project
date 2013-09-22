@@ -127,6 +127,10 @@ class residue (entity) :
       base += " segid='%4s'" % self.segid
     return base
 
+  def resseq_as_int (self) :
+    from iotbx.pdb import hybrid_36
+    return hybrid_36.hy36decode(len(self.resseq), self.resseq)
+
   def residue_id (self, ignore_altloc=False) :
     return self.id_str(ignore_altloc=ignore_altloc)
 
@@ -176,6 +180,19 @@ class atoms (entity) :
 
   def is_single_residue_object (self) :
     return False
+
+  def get_altloc (self) :
+    consensus_altloc = ''
+    for atom in self.atoms_info :
+      if (atom.altloc.strip() != '') :
+        if (consensus_altloc == '') :
+          consensus_altloc = atom.altloc
+        else :
+          assert (atom.altloc == consensus_altloc)
+    return consensus_altloc
+
+  def sites_cart (self) :
+    return [ a.xyz for a in self.atoms_info ]
 
 class atom (entity) :
   """
@@ -343,6 +360,9 @@ class validation (slots_getstate_setstate) :
         if (not outliers_only) or (result.is_outlier()) :
           print >> out, prefix + str(result)
     self.show_summary(out=out, prefix=prefix)
+
+  def as_kinemage (self) :
+    return None
 
 molprobity_cmdline_phil_str = """
   model = None
