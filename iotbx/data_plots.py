@@ -1,7 +1,10 @@
 from __future__ import division
-from cctbx.array_family import flex
 from libtbx import adopt_init_args
-import string, re, math
+from libtbx.utils import Sorry
+import string
+import os.path
+import math
+import re
 
 class plot_data(object):
   def __init__(self,
@@ -513,5 +516,45 @@ def import_ccp4i_logfile (file_name=None, log_lines=None) :
     t.import_loggraph(loggraph)
     tables.append(t)
   return tables
+
+class simple_matplotlib_plot (object) :
+  """
+  Class for writing a Matplotlib plot to a static image file without a GUI.
+  This should be subclassed and combined with whatever mixin is used to
+  actually responsible for the plotting.
+  """
+  def __init__ (self,
+                figure_size=(8,8),
+                font_size=12,
+                title_font_size=12,
+                facecolor='white',
+                transparent=False) :
+    adopt_init_args(self, locals())
+    try :
+      import matplotlib
+      import matplotlib.figure
+      from matplotlib.backends.backend_agg import FigureCanvasAgg
+    except ImportError, e :
+      print e
+      raise Sorry("Plotting requires that matplotlib be installed.")
+    self.figure = matplotlib.figure.Figure(figure_size, 72, linewidth=0,
+      facecolor=facecolor)
+    if transparent :
+      self.figure.figurePatch.set_alpha(0.0)
+    self.canvas = FigureCanvasAgg(self.figure)
+    #self.canvas.toolbar = oop.null()
+    #self.figmgr = FigureManager(self.canvas, 1, self)
+
+  def save_image (self, file_name) :
+    assert (file_name is not None) and (file_name != "")
+    base, ext = os.path.splitext(file_name)
+    if (ext == ".pdf") :
+      self.figure.savefig(file_name, orientation="landscape", format="pdf")
+    elif (ext == ".ps") :
+      self.figure.savefig(file_name, orientation="landscape", format="ps")
+    elif (ext == ".png") :
+      self.figure.savefig(file_name, format="png")
+    else :
+      raise RuntimeError("Extension %s not supported" % s)
 
 #---end
