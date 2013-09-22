@@ -1805,6 +1805,8 @@ mmtbx/validation/convert_lists.py -text
 mmtbx/validation/datasets.py -text
 mmtbx/validation/experimental.py svneol=native#text/x-python
 mmtbx/validation/ligands.py -text
+mmtbx/validation/molprobity/__init__.py -text
+mmtbx/validation/molprobity/nqh_minimize.py -text
 mmtbx/validation/ramalyze.py svneol=native#text/x-python
 mmtbx/validation/regression/__init__.py svneol=native#text/x-python
 mmtbx/validation/regression/tst_restraints.py svneol=native#text/x-python
