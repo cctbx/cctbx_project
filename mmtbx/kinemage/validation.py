@@ -7,6 +7,7 @@ from mmtbx.validation.rotalyze import rotalyze
 from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.validation.cbetadev import cbetadev
 from mmtbx.validation.rna_validate import rna_validate
+from mmtbx.kinemage import kin_vec
 from iotbx.pdb import common_residue_names_get_class
 from libtbx import easy_run
 from scitbx import matrix
@@ -68,6 +69,7 @@ def get_angle_outliers(angle_proxies, chain, sites_cart, hierarchy):
     if abs(num_sigmas) >= 4.0:
       angle_key = altloc+res[0:3].lower()+res[3:]+' '+atom1.lower()+ \
                   '-'+atom2.lower()+'-'+atom3.lower()
+      print angle_key, num_sigmas
       kin = add_fan(sites=restraint.sites,
                     delta=restraint.delta,
                     num_sigmas=num_sigmas,
@@ -96,6 +98,7 @@ def get_bond_outliers(bond_proxies, chain, sites_cart, hierarchy):
     if abs(num_sigmas) >= 4.0:
       bond_key = altloc+res[0:3].lower()+res[3:]+\
                  ' '+atom1.lower()+'-'+atom2.lower()
+      print bond_key, num_sigmas
       kin = add_spring(sites=restraint.sites,
                        num_sigmas=num_sigmas,
                        bond_key=bond_key)
@@ -191,43 +194,6 @@ def get_residue_bonds(residue):
   for bond in ml.bond_list:
     bonds.append([bond.atom_id_1, bond.atom_id_2])
   return bonds
-
-def kin_vec(start_key, start_xyz, end_key, end_xyz, width=None):
-  start_altloc = start_key[4:5]
-  if start_altloc == ' ':
-    start_altloc_txt = ""
-  else:
-    start_altloc_txt = " '%s'" % start_altloc
-  end_altloc = end_key[4:5]
-  if end_altloc == ' ':
-    end_altloc_txt = ""
-  else:
-    end_altloc_txt = " '%s'" % end_altloc
-  if width is None:
-    return "{%s} P%s %.3f %.3f %.3f {%s} L%s %.3f %.3f %.3f\n" % (
-           start_key,
-           start_altloc_txt,
-           start_xyz[0],
-           start_xyz[1],
-           start_xyz[2],
-           end_key,
-           end_altloc_txt,
-           end_xyz[0],
-           end_xyz[1],
-           end_xyz[2])
-  else:
-    return "{%s} P%s %.3f %.3f %.3f {%s} L%s width%d %.3f %.3f %.3f\n" % (
-           start_key,
-           start_altloc_txt,
-           start_xyz[0],
-           start_xyz[1],
-           start_xyz[2],
-           end_key,
-           end_altloc_txt,
-           width,
-           end_xyz[0],
-           end_xyz[1],
-           end_xyz[2])
 
 def make_probe_dots(hierarchy, keep_hydrogens=False):
   probe = \
