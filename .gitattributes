@@ -1489,6 +1489,7 @@ mmtbx/command_line/model_vs_data.py -text
 mmtbx/command_line/model_vs_sequence.py -text
 mmtbx/command_line/mon_lib_cif_triage.py svneol=native#text/x-python
 mmtbx/command_line/mtz2map.py -text
+mmtbx/command_line/nqh_minimize.py -text
 mmtbx/command_line/pdb_atom_selection.py svneol=native#text/x-python
 mmtbx/command_line/pdb_view_ad_hoc.py svneol=native#text/x-python
 mmtbx/command_line/pdbtools.py -text

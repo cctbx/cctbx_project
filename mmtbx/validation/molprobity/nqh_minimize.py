@@ -1,7 +1,8 @@
 
 from __future__ import division
-import sys, os
+import os
 from mmtbx.command_line import geometry_minimization
+from libtbx.utils import Usage
 from cStringIO import StringIO
 
 def parse_user_mods(filename):
@@ -34,6 +35,9 @@ def finalize_coords(filename, outfile, updated_coords):
 
 def run(args):
   #log = StringIO()
+  if len(args) != 3:
+    raise Usage(
+      "mmtbx.nqh_minimize input.pdb output.pdb temp_dir_path")
   filename = args[0]
   outfile = args[1]
   temp_dir = args[2]
@@ -107,6 +111,3 @@ def run(args):
     filename=filename,
     outfile=outfile,
     updated_coords=updated_coords)
-
-if __name__ == '__main__' :
-  run(sys.argv[1:])
