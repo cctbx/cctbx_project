@@ -7,6 +7,8 @@ from iotbx_pdb_ext import *
 
 import iotbx.pdb.records
 import iotbx.pdb.hierarchy
+from scitbx import matrix
+from libtbx.test_utils import approx_equal
 
 from iotbx.pdb.atom_name_interpretation import \
   interpreters as protein_atom_name_interpreters
@@ -1024,8 +1026,8 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
           "Improper set of PDB SCALE records%s" % source_info)
     return self._scale_matrix
 
-  def process_BIOMT_records(self):
-    '''
+  def process_BIOMT_records(self,error_handle=True,eps=1e-6):
+    '''(pdb_data,boolean,float) -> group of lists
     extract REMARK 350 BIOMT information, information that provides rotation matrices
     and translation  data, required for generating  a complete multimer from the asymmetric unit.
 
@@ -1043,6 +1045,15 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
     and the second component, with the 3 numbers is the translation information
     x is the serial number of the operation
 
+    Arguments:
+    error_handle -- True: will stop execution on improper retation matrices
+                    False: will continue execution but will replace the values in the
+                           rotation matrix with [0,0,0,0,0,0,0,0,0]
+    eps -- Rounding accuracy for avoiding numerical issue when when testing proper rotation
+
+    error_handle can be use if one does not want a 'Sorry' to be raised. The program will continue to execute
+    but all coordinates of the bad rotation matrix will zero out
+
     for x=2 the transformation_data will be
     [[0.559048,-0.789435,0.253492,0.722264,0.313528,-0.616470,0.407186,0.527724,0.745457][0.30000,0.00100,0.05000]]
 
@@ -1051,6 +1062,7 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
       pdb_inp.process_BIOMT_records()[1].coordinates_present # True when transformatin included in pdb file
       pdb_inp.process_BIOMT_records()[1].serial_number       # is an integer
 
+    @author: Youval Dar (2013)
     '''
     from libtbx import group_args
     source_info = self.extract_remark_iii_records(350)
@@ -1070,20 +1082,40 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
         raise RuntimeError("Missing record sets in PDB BIOMAT records \n" + \
                            "Actual number of BIOMT matrices: {} \n".format(len(biomt_data)/3.0) + \
                            "expected according to serial number: {} \n".format(temp))
-
       for i in range(len(biomt_data)//3):
         # i is the group number in biomt_data
         # Each group composed from 3 data sets.
         j = 3*i;
         rotation_data = biomt_data[j][1:4] + biomt_data[j+1][1:4] + biomt_data[j+2][1:4]
         tansation_data = [biomt_data[j][-1], biomt_data[j+1][-1], biomt_data[j+2][-1]]
+        # Test rotation matrix
+        if self._test_matrix(rotation_data,eps=eps):
+          if error_handle:
+            raise Sorry('Rotation matrices are not proper! ')
+          else:
+            rotation_data = [0,0,0,0,0,0,0,0,0]
+        # see how it is done on the MTRIX records
         result.append(group_args(
           values=[rotation_data,tansation_data],
           coordinates_present=(i == 0),         # Only the first transformation included in pdb file
           serial_number=i + 1))
     return result
 
-  def process_mtrix_records(self):
+  def process_mtrix_records(self,error_handle=True,eps=1e-6):
+    '''
+    Read MTRIX records from a pdb file
+
+    Arguments:
+    error_handle -- True: will stop execution on improper retation matrices
+                    False: will continue execution but will replace the values in the
+                           rotation matrix with [0,0,0,0,0,0,0,0,0]
+    eps -- Rounding accuracy for avoiding numerical issue when when testing proper rotation
+
+    error_handle can be use if one does not want a 'Sorry' to be raised. The program will continue to execute
+    but all coordinates of the bad rotation matrix will zero out
+
+    @edited: Youval Dar (2013)
+    '''
     source_info = self.source_info()
     if (len(source_info) > 0): source_info = " (%s)" % source_info
     storage = {}
@@ -1107,6 +1139,12 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
     result = []
     for serial_number in sorted(storage.keys()):
       values, done, present = storage[serial_number]
+      # Test rotation matrices
+      if self._test_matrix(values[0],eps=eps):
+        if error_handle:
+          raise Sorry('Rotation matrices are not proper! ')
+        else:
+          values[0] = [0,0,0,0,0,0,0,0,0]
       if (sorted(done) != [1,2,3] or len(set(present)) != 1):
         raise RuntimeError(
           "Improper set of PDB MTRIX records%s" % source_info)
@@ -1115,6 +1153,32 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
         coordinates_present=present[0],
         serial_number=serial_number))
     return result
+
+  def _test_matrix(self,s,eps=1e-6):
+    ''' (list) -> boolean
+    Test if a matrix is a proper rotation
+    Should have the properties:
+    1)R_inverse = R_transpose
+    2)Det(R) = 1
+        R = matrix.sqr(rotation_data)
+        t1 = R*R.transpose()
+        t2 = R.transpose()*R
+
+    Arguments:
+    s -- a list of 9 float numbers
+    eps -- Rounding accuracy for avoiding numerical issue when when testing proper rotation
+
+    >>> test_matrix()
+    True
+    >>> test_matrix()
+    False
+
+    @author: Youval Dar (2013)
+    '''
+    R = matrix.sqr(s)
+    t1 = R*R.transpose()
+    t2 = matrix.identity(3)
+    return not approx_equal(R.determinant(),1,eps=eps) or not approx_equal(t1,t2,eps=eps)
 
   def get_r_rfree_sigma(self, file_name=None):
     from iotbx.pdb import extract_rfactors_resolutions_sigma
