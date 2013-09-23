@@ -25,13 +25,19 @@ class multimer(object):
 
   @author: Youval Dar (LBL)
   '''
-  def __init__(self,pdb_input_file_name,reconstruction_type):
+  def __init__(self,pdb_input_file_name,reconstruction_type,error_handle=True,eps=1e-4):
     ''' (str) -> NoType
     Arguments:
     pdb_input_file_name -- the name of the pdb file we want to process. a string such as 'pdb_file_name.pdb'
-    reconstruction_type -- 'ba' or 'cau'.
+    reconstruction_type -- 'ba' or 'cau'
                            'ba': biological assembly
                            'cau': crystallographic asymmetric unit
+    error_handle -- True: will stop execution on improper retation matrices
+                    False: will continue execution but will replace the values in the
+                           rotation matrix with [0,0,0,0,0,0,0,0,0]
+    eps -- Rounding accuracy for avoiding numerical issue when when testing proper rotation
+
+    @author: Youval Dar (2013)
     '''
     # Read and process the pdb file
     self.pdb_input_file_name = pdb_input_file_name              # store input file name
@@ -43,7 +49,7 @@ class multimer(object):
     # Read the relevant transformation matrices
     if reconstruction_type == 'ba':
       # Read BIOMT info
-      TRASFORM_info = pdb_inp.process_BIOMT_records()
+      TRASFORM_info = pdb_inp.process_BIOMT_records(error_handle=error_handle,eps=eps)
       self.transform_type = 'biological_assembly'
     elif reconstruction_type == 'cau':
       # Read MTRIX info
@@ -203,9 +209,9 @@ class multimer(object):
 
     >>> v = multimer('name.pdb','ba')
     >>> v.write('new_name.pdb')
-    should write a file 'new_name.pdb' to the current directory
+    Write a file 'new_name.pdb' to the current directory
     >>> v.write(v.pdb_input_file_name)
-    should write a file 'copy_name.pdb' to the current directory
+    Write a file 'copy_name.pdb' to the current directory
     '''
     if len(pdb_output_file_name) == 0:
       pdb_output_file_name = self.pdb_input_file_name
