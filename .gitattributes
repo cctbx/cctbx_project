@@ -1053,6 +1053,7 @@ iotbx/cif/tests/tst_restraints.py -text
 iotbx/cif/tests/tst_ucif_examples_compilation.py -text
 iotbx/cns/crystal_symmetry_utils.py svneol=native#text/x-python
 iotbx/command_line/bioassembly_reconstruction.py -text
+iotbx/command_line/biomt_reconstruction.py -text
 iotbx/command_line/blast_pdb.py -text
 iotbx/command_line/build_phil_cache.py -text
 iotbx/command_line/cbf_read.py svneol=native#text/x-python
