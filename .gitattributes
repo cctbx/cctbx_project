@@ -1066,6 +1066,7 @@ iotbx/command_line/file_reader.py -text
 iotbx/command_line/french_wilson.py svneol=native#text/x-python
 iotbx/command_line/isomorphous_difference_patterson.py -text
 iotbx/command_line/merging_statistics.py -text
+iotbx/command_line/mtrix_reconstruction.py -text
 iotbx/command_line/mtz_as_cif.py -text
 iotbx/command_line/patterson_map.py -text
 iotbx/command_line/pdb.b_factor_stats.py svneol=native#text/x-python
