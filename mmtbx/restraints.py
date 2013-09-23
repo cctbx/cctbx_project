@@ -12,11 +12,15 @@ class manager(object):
         geometry=None,
         ncs_groups=None,
         torsion_ncs_groups=None,
-        normalization=False):
+        normalization=False,
+        use_amber=False,
+        amber_mdgx_structs=None) :
     self.geometry = geometry
     self.ncs_groups = ncs_groups
     self.torsion_ncs_groups = torsion_ncs_groups
     self.normalization = normalization
+    self.use_amber = use_amber
+    self.amber_mdgx_structs = amber_mdgx_structs
 
   def select(self, selection):
     if (self.geometry is None):
@@ -60,16 +64,41 @@ class manager(object):
     if (self.geometry is None):
       result.geometry = None
     else:
-      result.geometry = self.geometry.energies_sites(
-        sites_cart=sites_cart,
-        flags=geometry_flags,
-        external_energy_function=external_energy_function,
-        custom_nonbonded_function=custom_nonbonded_function,
-        compute_gradients=compute_gradients,
-        gradients=result.gradients,
-        disable_asu_cache=disable_asu_cache,
-        normalization=False)
-      result += result.geometry
+      if (self.use_amber) :
+        geometry_energy = self.geometry.energies_sites(
+          sites_cart=sites_cart,
+          flags=geometry_flags,
+          external_energy_function=external_energy_function,
+          custom_nonbonded_function=custom_nonbonded_function,
+          compute_gradients=False,
+          gradients=None,
+          disable_asu_cache=disable_asu_cache,
+          normalization=False)
+        ##################################################################
+        #                                                                #
+        # AMBER CALL - Amber force field gradients and target            #
+        #                                                                #
+        ##################################################################
+        import amber_adaptbx
+        amber_geometry_manager = amber_adaptbx.geometry_manager(
+          sites_cart=sites_cart,
+          number_of_restraints=geometry_energy.number_of_restraints,
+          gradients_factory=flex.vec3_double,
+          mdgx_structs=self.amber_mdgx_structs)
+        result.geometry = amber_geometry_manager.energies_sites(
+          compute_gradients=compute_gradients)
+        result += result.geometry
+      else :
+        result.geometry = self.geometry.energies_sites(
+          sites_cart=sites_cart,
+          flags=geometry_flags,
+          external_energy_function=external_energy_function,
+          custom_nonbonded_function=custom_nonbonded_function,
+          compute_gradients=compute_gradients,
+          gradients=result.gradients,
+          disable_asu_cache=disable_asu_cache,
+          normalization=False)
+        result += result.geometry
     if (self.ncs_groups is None):
       result.ncs_groups = None
     else:
