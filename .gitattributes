@@ -1810,6 +1810,7 @@ mmtbx/validation/molprobity/__init__.py -text
 mmtbx/validation/molprobity/nqh_minimize.py -text
 mmtbx/validation/ramalyze.py svneol=native#text/x-python
 mmtbx/validation/regression/__init__.py svneol=native#text/x-python
+mmtbx/validation/regression/tst_nqh_minimize.py -text
 mmtbx/validation/regression/tst_restraints.py svneol=native#text/x-python
 mmtbx/validation/regression/tst_waters.py svneol=native#text/x-python
 mmtbx/validation/restraints.py svneol=native#text/x-python
