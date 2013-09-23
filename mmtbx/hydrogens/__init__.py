@@ -12,6 +12,8 @@ refine = individual riding *Auto
           other atoms, useful at very high resolutions only)
   .short_caption = Hydrogen refinement model
   .expert_level=1
+force_riding_adp = None
+  .type = bool
 optimize_scattering_contribution = True
   .type = bool
 contribute_to_f_calc = True

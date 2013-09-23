@@ -1,9 +1,6 @@
 
 from __future__ import division
-import libtbx.phil
 import libtbx.load_env
-from libtbx.utils import Sorry
-import sys
 import os
 
 external_energy_params_str = ""
