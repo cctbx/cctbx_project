@@ -64,37 +64,38 @@ class multimer(object):
     # convert TRASFORM object to a list of matrices
     TRASFORM = self._convert_lists_to_matrices(TRASFORM_info)
     TRASFORM_transform_number = len(TRASFORM)
-    # number of chains in hierachy (more than the actual chains in the model)
-    chains_number = pdb_obj.hierarchy.overall_counts().n_chains
-
-    # apply the transformation
-    for model in pdb_obj_new.models():
-      # The information on a chain in a PDB file does not have to be continuous.
-      # Every time the chain name changes in the pdb file, a new chain is added to the model,
-      # even if the chain ID already exist.
-      # so there model.chains() might containe several chains that have the same chain ID
-      # collect the unique chain names
-      unique_chain_names = {x.id for x in model.chains()}
-      nChains = len(model.chains())
-      # get a dictionary for new chains naming
-      new_chains_names = self._chains_names(TRASFORM_transform_number,nChains, unique_chain_names)
-      for chain in model.chains():
-        # iterating over the TRASFORM transform strating from 1 (not 0)
-        # since TRASFORM_info[0] is a unit transformation
-        for i_transform in range(TRASFORM_transform_number):
-          new_chain = chain.detached_copy()
-          new_chain.id = new_chains_names[new_chain.id + str(i_transform+1)]
-          sites = new_chain.atoms().extract_xyz()
-          # convert the flex.vec3_double to matrix form.
-          s = matrix.rec(sites.as_double(),[sites.size(),3])
-          # creat translation copy for each site
-          t = matrix.rec(TRASFORM[i_transform][1].elems*sites.size(),[sites.size(),3])
-          # calculating new sites
-          new_sites = TRASFORM[i_transform][0]*s.transpose() + t.transpose()
-          new_sites = new_sites.transpose()
-          new_chain.atoms().set_xyz(flex.vec3_double(new_sites.as_list_of_lists()))
-          # add a new chain to current model
-          model.append_chain(new_chain)
+    self.number_of_transforms = TRASFORM_transform_number
+    if TRASFORM_transform_number > 0:
+      # number of chains in hierachy (more than the actual chains in the model)
+      chains_number = pdb_obj.hierarchy.overall_counts().n_chains
+      # apply the transformation
+      for model in pdb_obj_new.models():
+        # The information on a chain in a PDB file does not have to be continuous.
+        # Every time the chain name changes in the pdb file, a new chain is added to the model,
+        # even if the chain ID already exist.
+        # so there model.chains() might containe several chains that have the same chain ID
+        # collect the unique chain names
+        unique_chain_names = {x.id for x in model.chains()}
+        nChains = len(model.chains())
+        # get a dictionary for new chains naming
+        new_chains_names = self._chains_names(TRASFORM_transform_number,nChains, unique_chain_names)
+        for chain in model.chains():
+          # iterating over the TRASFORM transform strating from 1 (not 0)
+          # since TRASFORM_info[0] is a unit transformation
+          for i_transform in range(TRASFORM_transform_number):
+            new_chain = chain.detached_copy()
+            new_chain.id = new_chains_names[new_chain.id + str(i_transform+1)]
+            sites = new_chain.atoms().extract_xyz()
+            # convert the flex.vec3_double to matrix form.
+            s = matrix.rec(sites.as_double(),[sites.size(),3])
+            # creat translation copy for each site
+            t = matrix.rec(TRASFORM[i_transform][1].elems*sites.size(),[sites.size(),3])
+            # calculating new sites
+            new_sites = TRASFORM[i_transform][0]*s.transpose() + t.transpose()
+            new_sites = new_sites.transpose()
+            new_chain.atoms().set_xyz(flex.vec3_double(new_sites.as_list_of_lists()))
+            # add a new chain to current model
+            model.append_chain(new_chain)
 
   def _convert_lists_to_matrices(self, TRASFORM_info):
     ''' (object contianing lists) -> list of scitbx matrices and vectors
