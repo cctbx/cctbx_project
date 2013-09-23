@@ -58,6 +58,7 @@ including TLS contribution if present.""")
   from mmtbx.monomer_library import pdb_interpretation
   processed_pdb_file = pdb_interpretation.run(
     args=[params.adp_statistics.pdb_file] + params.adp_statistics.cif_file,
+    substitute_non_crystallographic_unit_cell_if_necessary=True,
     log=out)
   geometry = processed_pdb_file.geometry_restraints_manager(show_energies=True)
   restraints_manager = mmtbx.restraints.manager(
