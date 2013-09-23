@@ -118,6 +118,7 @@ tst_list = (
   "$D/ligands/tst_xtal_screens.py",
   "$D/regression/tst_mtz2map.py",
   "$D/validation/regression/tst_waters.py",
+  "$D/validation/regression/tst_nqh_minimize.py"
   )
 
 def run():
