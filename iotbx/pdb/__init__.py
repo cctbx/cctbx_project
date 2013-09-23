@@ -1026,7 +1026,7 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
           "Improper set of PDB SCALE records%s" % source_info)
     return self._scale_matrix
 
-  def process_BIOMT_records(self,error_handle=True,eps=1e-6):
+  def process_BIOMT_records(self,error_handle=True,eps=1e-4):
     '''(pdb_data,boolean,float) -> group of lists
     extract REMARK 350 BIOMT information, information that provides rotation matrices
     and translation  data, required for generating  a complete multimer from the asymmetric unit.
@@ -1101,7 +1101,7 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
           serial_number=i + 1))
     return result
 
-  def process_mtrix_records(self,error_handle=True,eps=1e-6):
+  def process_mtrix_records(self,error_handle=True,eps=1e-4):
     '''
     Read MTRIX records from a pdb file
 
