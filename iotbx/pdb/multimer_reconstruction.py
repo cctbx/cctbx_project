@@ -86,14 +86,9 @@ class multimer(object):
             new_chain = chain.detached_copy()
             new_chain.id = new_chains_names[new_chain.id + str(i_transform+1)]
             sites = new_chain.atoms().extract_xyz()
-            # convert the flex.vec3_double to matrix form.
-            s = matrix.rec(sites.as_double(),[sites.size(),3])
-            # creat translation copy for each site
-            t = matrix.rec(TRASFORM[i_transform][1].elems*sites.size(),[sites.size(),3])
             # calculating new sites
-            new_sites = TRASFORM[i_transform][0]*s.transpose() + t.transpose()
-            new_sites = new_sites.transpose()
-            new_chain.atoms().set_xyz(flex.vec3_double(new_sites.as_list_of_lists()))
+            new_sites = TRASFORM[i_transform][0].elems*sites + tuple(TRASFORM[i_transform][1])
+            new_chain.atoms().set_xyz(new_sites)
             # add a new chain to current model
             model.append_chain(new_chain)
 
