@@ -13,7 +13,7 @@ def exercise_cbetadev():
   if (regression_pdb is None):
     print "Skipping exercise_cbetadev(): input pdb (pdb1jxt.ent) not available"
     return
-  from phenix_dev.validation import cbetadev
+  from mmtbx.validation import cbetadev
   from iotbx import file_reader
   pdb_in = file_reader.any_file(file_name=regression_pdb)
   hierarchy = pdb_in.file_object.construct_hierarchy()
@@ -114,7 +114,7 @@ SUMMARY: 6 C-beta deviations >= 0.25 Angstrom (Goal: 0)
 """)
 
   # Auxilary function: extract_atoms_from_residue_group
-  from phenix_dev.validation.cbetadev import extract_atoms_from_residue_group
+  from mmtbx.validation.cbetadev import extract_atoms_from_residue_group
   from iotbx import pdb
   pdb_1 = pdb.input(source_info=None, lines="""\
 ATOM   1185  N  ASER A 146      24.734  37.097  16.303  0.50 16.64           N
