@@ -1,6 +1,7 @@
 from __future__ import division
 
 from wxtbx.phil_controls import intctrl, floatctrl, symop, strctrl, ints, choice
+from wxtbx.utils import std_sizer_flags
 from libtbx.utils import Abort
 import wx
 
@@ -192,6 +193,84 @@ def get_rt_matrix (parent=None) :
     raise Abort()
   return rt
 
+class HTTPProxyDialog (wx.Dialog) :
+  def __init__ (self, *args, **kwds) :
+    wx.Dialog.__init__(self, *args, **kwds)
+    szr = wx.BoxSizer(wx.VERTICAL)
+    self.SetSizer(szr)
+    szr2 = wx.BoxSizer(wx.VERTICAL)
+    szr.Add(szr2, 0, wx.ALL|wx.ALIGN_CENTER, 10)
+    txt = wx.StaticText(parent=self,
+      label="Please enter the information required by your HTTP proxy.  The "+
+        "authentication information may not be needed at all sites.",
+      size=(400,-1))
+    txt.Wrap(400)
+    szr2.Add(txt)
+    grid = wx.FlexGridSizer(cols=2)
+    szr2.Add(grid)
+    grid.Add(wx.StaticText(self, label="HTTP proxy server:"), 0,
+      std_sizer_flags, 5)
+    self.server_ctrl = strctrl.StrCtrl(parent=self, size=(300,-1),
+      name="HTTP proxy server")
+    self.server_ctrl.SetOptional(False)
+    grid.Add(self.server_ctrl, 0, std_sizer_flags, 5)
+    grid.Add(wx.StaticText(self, label="Proxy port:"), 0, std_sizer_flags, 5)
+    self.port_ctrl = intctrl.IntCtrl(parent=self, size=(100,-1),
+      name="Proxy port")
+    self.port_ctrl.SetOptional(False)
+    grid.Add(self.port_ctrl, 0, std_sizer_flags, 5)
+    grid.Add(wx.StaticText(self, label="User name:"), 0, std_sizer_flags, 5)
+    self.user_ctrl = strctrl.StrCtrl(parent=self, size=(100,-1),
+      name="User name")
+    self.user_ctrl.SetOptional(False)
+    grid.Add(self.user_ctrl, 0, std_sizer_flags, 5)
+    grid.Add(wx.StaticText(self, label="Password:"), 0, std_sizer_flags, 5)
+    self.password_ctrl = strctrl.StrCtrl(parent=self, size=(200,-1),
+      name="Password", style=wx.TE_PASSWORD)
+    self.password_ctrl.SetOptional(False)
+    grid.Add(self.password_ctrl, 0, std_sizer_flags, 5)
+    ok_btn = wx.Button(self, wx.ID_OK)
+    cancel_btn = wx.Button(self, wx.ID_CANCEL)
+    btn_szr = wx.StdDialogButtonSizer()
+    btn_szr.Add(cancel_btn, 0, wx.ALL, 5)
+    btn_szr.Add(ok_btn, 0, wx.ALL, 5)
+    ok_btn.SetDefault()
+    btn_szr.Realize()
+    szr.Add(btn_szr, 0, wx.ALL|wx.ALIGN_RIGHT, 5)
+    szr.Layout()
+    self.Fit()
+    self.Centre(wx.BOTH)
+
+  def SetProxyServer (self, server) :
+    self.server_ctrl.SetValue(server)
+
+  def SetProxyUser (self, user) :
+    self.user_ctrl.SetValue(user)
+
+  def SetProxyPort (self, port) :
+    assert isinstance(port, int)
+    self.port_ctrl.SetValue(port)
+
+  def GetProxyServer (self) :
+    return self.server_ctrl.GetPhilValue()
+
+  def GetProxyPort (self) :
+    return self.port_ctrl.GetPhilValue()
+
+  def GetProxyPassword (self) :
+    return self.password_ctrl.GetPhilValue()
+
+  def GetProxyUser (self) :
+    return self.user_ctrl.GetPhilValue()
+
+  def InstallProxy (self) :
+    import libtbx.utils
+    libtbx.utils.install_urllib_http_proxy(
+      server=self.GetProxyServer(),
+      port=self.GetProxyPort(),
+      user=self.GetProxyUser(),
+      password=self.GetProxyPassword())
+
 if (__name__ == "__main__") :
   app = wx.App(0)
   value1 = get_float_value(
@@ -218,3 +297,6 @@ if (__name__ == "__main__") :
     title="Rotation/translation operator")
   if (dlg.ShowModal() == wx.ID_OK) :
     rt = dlg.GetMatrix()
+  dlg = HTTPProxyDialog(None, title="HTTP proxy authentication")
+  if (dlg.ShowModal() == wx.ID_OK) :
+    dlg.InstallProxy()
