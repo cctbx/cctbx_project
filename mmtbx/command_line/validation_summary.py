@@ -46,7 +46,6 @@ header_stat_labels = [
 verbose_stats = [
   "rota_txt",
   "rama_txt",
-  "cbeta_txt",
   "clash_txt",
 ]
 
@@ -101,9 +100,8 @@ class summary (slots_getstate_setstate) :
     clash_out = cStringIO.StringIO()
     cs.print_clashlist(out=clash_out)
     clash_txt = clash_out.getvalue()
-    cbeta = cbetadev.cbetadev()
-    cbeta_txt, cbeta_summ, cbeta_list = cbeta.analyze_pdb(
-      hierarchy=pdb_hierarchy,
+    cbeta_obj = cbetadev.cbetadev(
+      pdb_hierarchy=pdb_hierarchy,
       outliers_only=True)
     self.mpscore = None
     if (not None in [self.rota_out, self.rama_fav, self.clashscore]) :
@@ -113,11 +111,10 @@ class summary (slots_getstate_setstate) :
         rota_out=self.rota_out,
         rama_fav=self.rama_fav)
     # TODO leave self.cbeta_out as None if not protein
-    self.cbeta_out = len(cbeta_list)
+    self.cbeta_out = cbeta_obj.get_outlier_count()
     if (verbose) :
       self.rama_txt = ramalyze.header + "\n" + rama_txt
       self.rota_txt = rotalyze.header + "\n" + rota_txt
-      self.cbeta_txt = cbeta_txt
       self.clash_txt = clash_txt
     self.r_work = None
     self.r_free = None
@@ -149,10 +146,6 @@ class summary (slots_getstate_setstate) :
       if (self.rota_txt is not None) and (self.rota_out > 0) :
         make_sub_header("Sidechain rotamers", out=out)
         print >> out, self.rota_txt
-        print >> out, ""
-      if (self.cbeta_txt is not None) and (self.cbeta_out > 0) :
-        make_sub_header("C-beta deviations", out=out)
-        print >> out, self.cbeta_txt
         print >> out, ""
       if (self.clash_txt is not None) and (self.clashscore > 0) :
         make_sub_header("All-atom contacts", out=out)

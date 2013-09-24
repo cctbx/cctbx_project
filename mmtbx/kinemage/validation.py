@@ -219,58 +219,12 @@ def make_probe_dots(hierarchy, keep_hydrogens=False):
       probe_return += line+'\n'
   return probe_return
 
-def cbeta_dev(chain, pdbID, deviations, ideal):
+def cbeta_dev (outliers, chain_id=None) :
   cbeta_out = "@subgroup {CB dev} dominant\n"
   cbeta_out += "@balllist {CB dev Ball} color= gold radius= 0.0020   master= {Cbeta dev}\n"
-  outlier_list = []
-  angle_dict = {}
-  deviation_dict = {}
-  for outlier in deviations.splitlines():
-    if outlier.startswith('pdb:alt:res'):
-      continue
-    PDBfileStr,altchar,res,sub,resnum,dev,dihedralNABB,occ,segid,last = outlier.split(':')
-    key = '%s%5s %s' % \
-             (sub.strip(),
-             resnum,
-             altchar+res.upper())
-    outlier_list.append(key)
-    angle_dict[key] = float(dihedralNABB)
-    deviation_dict[key] = float(dev)
-  for residue_group in chain.residue_groups():
-    for atom_group in residue_group.atom_groups():
-      altloc = atom_group.altloc
-      if len(altloc) < 1:
-        altloc = " "
-      check_key = '%s%5s %s' % \
-                    (chain.id,
-                     residue_group.resid(),
-                     altloc+atom_group.resname.strip())
-      if check_key not in outlier_list:
-        continue
-      for atom in atom_group.atoms():
-        if atom.name == ' CB ':
-          altloc = atom_group.altloc
-          if len(altloc) < 1:
-            altloc = " "
-          chainid = chain.id
-          if len(chainid) == 1:
-            chainid = " "+chainid
-          ideal_key = altloc+atom_group.resname.lower()+ \
-                      chainid+residue_group.resid()
-          ideal_xyz = ideal[ideal_key]
-          key = "%s %s %s%s  %.3f %.2f" % (
-              atom.name.lower(),
-              atom_group.resname.lower(),
-              chain.id,
-              residue_group.resid(),
-              deviation_dict[check_key],
-              angle_dict[check_key])
-          cbeta_out += '{%s} r=%.3f magenta  %.3f, %.3f, %.3f\n' % (
-              key,
-              deviation_dict[check_key],
-              ideal_xyz[0],
-              ideal_xyz[1],
-              ideal_xyz[2])
+  for outlier in outliers :
+    if (chain_id is None) or (chain_id == outlier.chain_id) :
+      cbeta_out += outlier.as_kinemage() + "\n"
   if len(cbeta_out.splitlines()) == 2:
     cbeta_out = ""
   return cbeta_out
@@ -863,9 +817,9 @@ def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False):
   initiated_chains = []
   rt = rotalyze()
   rot_outliers, output_list = rt.analyze_pdb(hierarchy=hierarchy, outliers_only=True)
-  cb =cbetadev()
-  deviations, summary, output_list = cb.analyze_pdb(hierarchy=hierarchy,
-                                                           outliers_only=True)
+  cb = cbetadev(
+    pdb_hierarchy=hierarchy,
+    outliers_only=True)
   rm = ramalyze()
   ram_outliers, output_list = rm.analyze_pdb(hierarchy=hierarchy,
                                              outliers_only=True)
@@ -882,8 +836,9 @@ def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False):
                               i_seq_name_hash=i_seq_name_hash,
                               pdbID=pdbID,
                               index=counter)
-      kin_out += rotamer_outliers(chain=chain, pdbID=pdbID, rot_outliers=rot_outliers)
-      kin_out += rama_outliers(chain=chain, pdbID=pdbID, ram_outliers=ram_outliers)
+      if (chain.is_protein()) :
+        kin_out += rotamer_outliers(chain=chain, pdbID=pdbID, rot_outliers=rot_outliers)
+        kin_out += rama_outliers(chain=chain, pdbID=pdbID, ram_outliers=ram_outliers)
       kin_out += get_angle_outliers(angle_proxies=angle_proxies,
                                     chain=chain,
                                     sites_cart=sites_cart,
@@ -892,10 +847,9 @@ def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False):
                                    chain=chain,
                                    sites_cart=sites_cart,
                                    hierarchy=hierarchy)
-      kin_out += cbeta_dev(chain=chain,
-                           pdbID=pdbID,
-                           deviations=deviations,
-                           ideal=cb.get_beta_ideal())
+      if (chain.is_protein()) :
+        kin_out += cbeta_dev(chain_id=chain.id,
+          outliers=cb.results)
       kin_out += pperp_outliers(hierarchy=hierarchy,
                                 chain=chain)
       counter += 1

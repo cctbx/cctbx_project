@@ -333,19 +333,6 @@ def build_element_hash(pdb_hierarchy):
     i_seq_element_hash[atom.i_seq]=atom.element
   return i_seq_element_hash
 
-def build_cbetadev_hash(pdb_hierarchy):
-  cb = cbetadev()
-  cbetadev_hash = dict()
-  cbeta_out = cb.analyze_pdb(hierarchy=pdb_hierarchy)
-  for line in cbeta_out[0].splitlines():
-    temp = line.split(':')
-    dev = temp[5]
-    if dev == "dev":
-      continue
-    key = temp[1].upper()+temp[2].upper()+temp[3]+temp[4].rstrip()
-    cbetadev_hash[key] = dev
-  return cbetadev_hash
-
 def build_chain_hash(pdb_hierarchy):
   chain_hash = dict()
   for chain in pdb_hierarchy.chains():

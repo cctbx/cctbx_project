@@ -1,126 +1,61 @@
+
 from __future__ import division
-import iotbx.phil
+from mmtbx.validation import residue, validation
 from scitbx.matrix import col, dihedral_angle, rotate_point_around_axis
-from libtbx.utils import Usage
-from mmtbx.validation import utils
-import os
 import sys
 
-def get_master_phil():
-  return iotbx.phil.parse(
-    input_string="""
-      cbetadev {
-        pdb = None
-        .type = path
-        .help = '''Enter a PDB file name'''
+class cbeta (residue) :
+  """
+  Result class for protein C-beta deviation analysis (phenix.cbetadev).
+  """
+  __cbeta_attr__ = [
+    "deviation",
+    "dihedral_NABB",
+    "ideal_xyz",
+  ]
+  __slots__ = residue.__slots__ + __cbeta_attr__
 
-        outliers_only = False
-        .type = bool
-        .help = '''Only print outliers'''
+  @staticmethod
+  def header () :
+    return "%-20s  %5s" % ("Residue", "Dev.")
 
-        verbose = True
-        .type = bool
-        .help = '''Verbose'''
-  }
+  def as_string (self) :
+    return "%-20s  %5.2f" % (self.id_str(), self.deviation)
 
-    """)
+  # Backwards compatibility
+  def format_old (self) :
+    return "%s:%s:%2s:%4s%1s:%7.3f:%7.2f:%7.2f:%s:" % (self.altloc,
+      self.resname.lower(), self.chain_id, self.resseq, self.icode,
+      self.deviation, self.dihedral_NABB, self.occupancy, self.altloc)
 
-class cbetadev(object):
-  #flag routines-----------------------------------------------------------------------------------
-  def usage(self):
-    return """
-phenix.cbetadev file.pdb [params.eff] [options ...]
+  def as_kinemage (self) :
+    key = "cb %3s%2s%4s%1s  %.3f %.2f" % (self.resname.lower(),
+      self.chain_id, self.resseq, self.icode, self.deviation,
+      self.dihedral_NABB)
+    return "{%s} r=%.3f magenta  %.3f, %.3f, %.3f\n" % (key,
+      self.deviation, self.ideal_xyz[0], self.ideal_xyz[1], self.ideal_xyz[2])
 
-Options:
+class cbetadev (validation) :
+  __slots__ = validation.__slots__ + ["beta_ideal"]
+  program_description = "Analyze protein sidechain C-beta deviation"
+  output_header = "pdb:alt:res:chainID:resnum:dev:dihedralNABB:Occ:ALT:"
 
-  pdb=input_file        input PDB file
-  outliers_only=False   only print outliers
-  verbose=True          verbose text output
+  def get_result_class (self) : return cbeta
 
-Example:
-
-  phenix.cbetadev pdb=1ubq.pdb outliers_only=True
-
-"""
-  def get_summary_and_header(self,command_name):
-    header="\n"
-    header+="\n#                       "+str(command_name)
-    header+="\n#"
-    header+="\n# Analyze protein sidechain C-beta deviation"
-    header+="\n# type phenix."+str(command_name)+": --help for help"
-
-    summary= "phenix.%s [options] mypdb.pdb" % command_name
-    return summary,header
-  #------------------------------------------------------------------------------------------------
-
-  #{{{ run
-  def run(self, args, out=sys.stdout, quiet=False):
-    if (len(args) == 0 or "--help" in args or "--h" in args or "-h" in args):
-      raise Usage(self.usage())
-    master_phil = get_master_phil()
-    import iotbx.utils
-    input_objects = iotbx.utils.process_command_line_inputs(
-      args=args,
-      master_phil=master_phil,
-      input_types=("pdb",))
-    work_phil = master_phil.fetch(sources=input_objects["phil"])
-    work_params = work_phil.extract()
-    if len(input_objects["pdb"]) != 1:
-      summary, header = self.get_summary_and_header("cbetadev")
-      raise Usage(summary)
-    file_obj = input_objects["pdb"][0]
-    filename = file_obj.file_name
-
-    command_name = "cbetadev"
-    summary,header=self.get_summary_and_header(command_name)
-    if not quiet: print >>out, header
-
-    #TO DO: make useful help section
-    #if help : #or (params and params.cbetadev.verbose):
-    #  print >> out, summary
-      #print "Values of all params:"
-      #master_params.format(python_object=params).show(out=out)
-
-    self.params=work_params # makes params available to whole class
-
-    log=out
-    if (log is None): log = sys.stdout
-    if self.params.cbetadev.verbose :
-      print >> out, 'filename', filename
-    if filename and os.path.exists(filename):
-      pdb_io = iotbx.pdb.input(filename)
-    else:
-      print "Please enter a file name"
-      return
-    output_text, summary_line, output_list = self.analyze_pdb(
-                                               filename=filename,
-                                               pdb_io=pdb_io,
-                                               outliers_only=self.params.cbetadev.outliers_only)
-    if not quiet :
-      print >> out, output_text
-      print >> out, summary_line
-    return output_list
-  #}}}
-
-  #{{{ analyze_pdb
-  def analyze_pdb(self, filename=None, pdb_io=None, hierarchy=None,
-                  outliers_only=False):
+  def __init__ (self, pdb_hierarchy,
+      outliers_only=False,
+      out=sys.stdout,
+      collect_ideal=False,
+      quiet=False) :
+    validation.__init__(self)
+    self.beta_ideal = {}
     relevant_atom_names = {
       " CA ": None, " N  ": None, " C  ": None, " CB ": None} # FUTURE: set
-    analysis = 'pdb:alt:res:chainID:resnum:dev:dihedralNABB:Occ:ALT:\n'
     output_list = []
-    cbetadev_ctr = 0
-    self.num_outliers = 0
-    self.expected_outliers = 0
-    self.outliers = ''
-    self.summary = ''
-    self.beta_ideal = {}
-    assert [pdb_io, hierarchy].count(None) == 1
-    if(pdb_io is not None):
-      hierarchy = pdb_io.construct_hierarchy()
+    from mmtbx.validation import utils
     use_segids = utils.use_segids_in_place_of_chainids(
-                   hierarchy=hierarchy)
-    for model in hierarchy.models():
+      hierarchy=pdb_hierarchy)
+    for model in pdb_hierarchy.models():
       for chain in model.chains():
         if use_segids:
           chain_id = utils.get_segid_as_chainid(chain=chain)
@@ -149,64 +84,62 @@ Example:
                 if (dev is None) : continue
                 if(dev >=0.25 or outliers_only==False):
                   if(dev >=0.25):
-                    cbetadev_ctr+=1
-                    self.num_outliers+=1
-                  PDBfileStr = ""
-                  if(filename is not None):
-                    PDBfileStr = os.path.basename(filename)[:-4]
+                    self.n_outliers+=1
                   if (is_alt_conf):
-                    altchar = cf.altloc.lower()
+                    altchar = cf.altloc
                   else:
                     altchar = " "
                   res=residue.resname.lower()
                   sub=chain.id
                   if(len(sub)==1):
                     sub=" "+sub
-                  resnum=residue.resid()
                   resCB = relevant_atoms[" CB "]
-                  occ = resCB.occ
-                  analysis += '%s :%s:%s:%s:%5s:%7.3f:%7.2f:%7.2f:%s:\n' % \
-                    (PDBfileStr,altchar,res,sub,resnum,dev,dihedralNABB,occ,
-                     altchar)
-                  if (dev >= 0.25):
-                    self.outliers += \
-                      '%s :%s:%s:%s:%5s:%7.3f:%7.2f:%7.2f:%s:\n' % \
-                      (PDBfileStr,altchar,res,sub,resnum,dev,dihedralNABB,occ,
-                       altchar)
-                  key = altchar+res+sub+resnum
-                  self.beta_ideal[key] = betaxyz
-                  output_list.append([PDBfileStr,
-                                      altchar,
-                                      res,
-                                      sub,
-                                      resnum[0:4],
-                                      resnum[4:],
-                                      dev,
-                                      dihedralNABB,
-                                      occ,
-                                      altchar,
-                                      resCB.xyz])
-    summary = 'SUMMARY: %d C-beta Deviation >= 0.25 Angstrom (Goal: 0)' % \
-      (cbetadev_ctr)
-    self.summary = 'SUMMARY: %d C-beta Deviation >= 0.25 Angstrom (Goal: 0)' %\
-      (cbetadev_ctr)
-    self.analysis = analysis.rstrip()
-    return self.analysis, summary, output_list
+                  result = cbeta(
+                    chain_id=chain.id,
+                    resname=residue.resname,
+                    resseq=residue.resseq,
+                    icode=residue.icode,
+                    altloc=altchar,
+                    xyz=resCB.xyz,
+                    occupancy=resCB.occ,
+                    deviation=dev,
+                    dihedral_NABB=dihedralNABB,
+                    ideal_xyz=betaxyz,
+                    outlier=(dev >= 0.25))
+                  self.results.append(result)
+                  key = result.id_str()
+                  if (collect_ideal) :
+                    self.beta_ideal[key] = betaxyz
+
+  def show_old_output (self, out, verbose=False, prefix="pdb") :
+    if (verbose) :
+      print >> out, self.output_header
+    for result in self.results :
+      print >> out, prefix + " :" + result.format_old()
+    if (verbose) :
+      self.show_summary(out)
+
+  def show_summary (self, out, prefix="") :
+    print >> out, prefix + \
+      'SUMMARY: %d C-beta deviations >= 0.25 Angstrom (Goal: 0)' % \
+      self.n_outliers
 
   def get_outlier_count(self):
-    return self.num_outliers
+    return self.n_outliers
 
   def get_expected_count(self):
-    return self.expected_outliers
-
-  def get_outliers(self):
-    return self.outliers
-
-  def get_summary(self):
-    return self.summary
+    return 0
 
   def get_beta_ideal(self):
     return self.beta_ideal
+
+  def as_kinemage (self) :
+    cbeta_out = "@subgroup {CB dev} dominant\n"
+    cbeta_out += "@balllist {CB dev Ball} color= gold radius= 0.0020   master= {Cbeta dev}\n"
+    for result in self.results :
+      if result.is_outlier() :
+        cbeta_out += result.as_kinemage() + "\n"
+    return cbeta_out
 
 class calculate_ideal_and_deviation (object) :
   __slots__ = ["deviation", "ideal", "dihedral"]
