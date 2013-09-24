@@ -1,9 +1,5 @@
 #!/usr/bin/env python
 # FormatStill.py
-#   Copyright (C) 2013 Diamond Light Source, Aaron Brewster, Graeme Winter
-#
-#   This code is distributed under the BSD license, a copy of which is
-#   included in the root directory of this package.
 #
 # Root class for still shots.  A still shot has no goniomter and no
 # scan in their model, as these constructs are not meaningful.
