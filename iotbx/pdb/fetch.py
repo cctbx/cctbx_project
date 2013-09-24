@@ -21,6 +21,7 @@
 from __future__ import division
 from libtbx.utils import Sorry, null_out
 from libtbx import smart_open
+import libtbx.utils
 import libtbx.load_env
 from cStringIO import StringIO
 import urllib2
@@ -118,7 +119,7 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
     if (url is None) : # TODO PDBe equivalent doesn't exist?
       url = "http://www.rcsb.org/pdb/download/downloadFile.do?fileFormat=FASTA&compression=NO&structureId=%s" % id
     try :
-      data = urllib2.urlopen(url)
+      data = libtbx.utils.urlopen(url)
     except urllib2.HTTPError, e :
       if e.getcode() == 404 :
         raise RuntimeError("Couldn't download sequence for %s." % id)
@@ -128,7 +129,7 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
     if (url is None) :
       url = url_base + sf_prefix + id + sf_ext
     try :
-      data = urllib2.urlopen(url)
+      data = libtbx.utils.urlopen(url)
     except urllib2.HTTPError, e :
       if e.getcode() == 404 :
         raise RuntimeError("Couldn't download structure factors for %s." % id)
@@ -141,7 +142,7 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
       else :
         url = url_base + id + "." + format
     try :
-      data = urllib2.urlopen(url)
+      data = libtbx.utils.urlopen(url)
     except urllib2.HTTPError, e :
       if e.getcode() == 404 :
         raise RuntimeError("Couldn't download model for %s." % id)
@@ -215,7 +216,7 @@ def get_chemical_components_cif (code, return_none_if_already_present=False) :
   if (chem_comp_cif is None) :
     url = "http://www.rcsb.org/pdb/files/ligand/%s.cif" % code
     try :
-      data = urllib2.urlopen(url)
+      data = libtbx.utils.urlopen(url)
     except urllib2.HTTPError, e :
       if e.getcode() == 404 :
         raise RuntimeError("Couldn't download sequence for %s." % id)

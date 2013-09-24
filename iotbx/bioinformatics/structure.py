@@ -2,6 +2,7 @@
 from __future__ import division
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
+import libtbx.utils
 import cStringIO
 import urllib
 import time
@@ -31,6 +32,7 @@ def get_ncbi_pdb_blast (sequence, file_name=None, blast_type="blastp",
     from Bio.Blast import NCBIWWW
   except ImportError :
     raise Sorry("You need to have BioPython installed to use this function.")
+  # FIXME will this use the HTTP proxy if defined?
   blast = NCBIWWW.qblast(blast_type, "pdb", sequence, expect=expect)
   blast_out = blast.read()
   if (file_name is not None) :
@@ -130,7 +132,7 @@ def get_ebi_pdb_wublast (sequence, email, file_name=None, blast_type="blastp",
   """
   assert (email is not None)
   url = "http://www.ebi.ac.uk/Tools/services/rest/wublast/run/"
-  params = urllib.urlencode({
+  params = urllib2.urlencode({
     'sequence': sequence,
     'program' : program,
     'email'   : email,
@@ -138,17 +140,17 @@ def get_ebi_pdb_wublast (sequence, email, file_name=None, blast_type="blastp",
     'database': 'pdb',
     'stype'   : 'protein',
   })
-  job_id = urllib.urlopen(url, params).read()
+  job_id = libtbx.utils.urlopen(url, params).read()
   while (True) :
     time.sleep(1)
     url = "http://www.ebi.ac.uk/Tools/services/rest/wublast/status/%s" % job_id
-    status = urllib.urlopen(url).read()
+    status = libtbx.utils.urlopen(url).read()
     if (status == "RUNNING") :
       continue
     elif (status == "FINISHED") :
       url = "http://www.ebi.ac.uk/Tools/services/rest/wublast/result/%s/xml" %\
         job_id
-      result = urllib.urlopen(url).read()
+      result = libtbx.utils.urlopen(url).read()
       return result
     elif (status == "ERROR") :
       raise RuntimeError("The EBI server reported an error.")
