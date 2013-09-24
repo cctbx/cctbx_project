@@ -1,6 +1,7 @@
 from __future__ import division
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
+from libtbx.utils import null_out
 import sys, math, mmtbx
 from cctbx import geometry_restraints
 from mmtbx.tls import tools
@@ -121,9 +122,6 @@ class geometry(object):
       self.rotalyze_obj = rotalyze()
       self.rotalyze_obj.analyze_pdb(hierarchy = pdb_hierarchy,
         outliers_only = False)[1]
-      self.cbetadev_obj = cbetadev()
-      self.cbetadev_obj.analyze_pdb(hierarchy = pdb_hierarchy,
-        outliers_only = False)
       self.clashscore_obj = clashscore()
       self.clashscore_obj.analyze_clashes(hierarchy = pdb_hierarchy)
       self.clashscore = self.clashscore_obj.get_clashscore()
@@ -131,7 +129,11 @@ class geometry(object):
       self.ramachandran_allowed  = self.ramalyze_obj.get_allowed_count_and_fraction()[1]*100.
       self.ramachandran_favored  = self.ramalyze_obj.get_favored_count_and_fraction()[1]*100.
       self.rotamer_outliers = self.rotalyze_obj.get_outliers_count_and_fraction()[1]*100.
-      self.c_beta_dev = self.cbetadev_obj.get_outlier_count()
+      cbetadev_obj = cbetadev(
+        pdb_hierarchy=pdb_hierarchy,
+        outliers_only=True,
+        out=null_out())
+      self.c_beta_dev = cbetadev_obj.get_outlier_count()
       self.mpscore = molprobity_score(
         clashscore=self.clashscore,
         rota_out=self.rotamer_outliers,

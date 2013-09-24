@@ -241,7 +241,7 @@ def molprobity_stats(model_statistics_geometry, resname_classes):
       ramalyze_allowed  = msg.ramalyze_obj.get_allowed_count_and_fraction(),
       ramalyze_favored  = msg.ramalyze_obj.get_favored_count_and_fraction(),
       rotalyze          = msg.rotalyze_obj.get_outliers_count_and_fraction(),
-      cbetadev          = msg.cbetadev_obj.get_outlier_count(),
+      cbetadev          = msg.c_beta_dev,
       clashscore        = msg.clashscore_obj.get_clashscore(),
       mpscore           = msg.mpscore)
   else: return None

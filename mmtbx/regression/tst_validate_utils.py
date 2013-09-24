@@ -2,8 +2,6 @@ from __future__ import division
 #(jEdit options) :folding=explicit:collapseFolds=1:
 from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.validation.rotalyze import rotalyze
-from mmtbx.validation.cbetadev import cbetadev, \
-  extract_atoms_from_residue_group
 from mmtbx.validation.clashscore import clashscore
 from mmtbx.validation.rna_validate import rna_validate
 from mmtbx.rotamer.rotamer_eval import find_rotarama_data_dir
@@ -45,131 +43,6 @@ def exercise_clashscore():
   clash_out = 'clashscore = %f' % score['']
   assert not show_diff(clash_out, "clashscore = 37.974684")
 #}}}
-
-#{{{ exercise_cbetadev
-def exercise_cbetadev():
-  regression_pdb = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/pdb/pdb1jxt.ent",
-    test=os.path.isfile)
-  if (regression_pdb is None):
-    print "Skipping exercise_regression(): input pdb (pdb1jxt.ent) not available"
-    return
-  pdb_io = pdb.input(file_name=regression_pdb)
-
-  r = cbetadev()
-  output, summary, output_list = cbetadev.analyze_pdb(r,filename=regression_pdb,
-                                                      pdb_io=pdb_io,
-                                                      outliers_only=True)
-  assert not show_diff(output, """\
-pdb:alt:res:chainID:resnum:dev:dihedralNABB:Occ:ALT:
-pdb1jxt :a:ile: A:   7 :  0.260: -46.47:   0.45:a:
-pdb1jxt :b:val: A:   8 :  0.258:  80.92:   0.30:b:
-pdb1jxt :c:val: A:   8 :  0.641: -53.98:   0.20:c:
-pdb1jxt :b:thr: A:  30 :  0.812: -76.98:   0.30:b:
-pdb1jxt :b:thr: A:  39 :  0.924:  56.41:   0.30:b:
-pdb1jxt :b:asp: A:  43 :  0.500:   7.56:   0.25:b:""")
-
-  output, summary, output_list = cbetadev.analyze_pdb(r,filename=regression_pdb,
-                                                      pdb_io=pdb_io,
-                                                      outliers_only=False)
-  assert not show_diff(output, """\
-pdb:alt:res:chainID:resnum:dev:dihedralNABB:Occ:ALT:
-pdb1jxt : :thr: A:   1 :  0.102:  11.27:   1.00: :
-pdb1jxt :a:thr: A:   2 :  0.022: -49.31:   0.67:a:
-pdb1jxt : :cys: A:   3 :  0.038: 103.68:   1.00: :
-pdb1jxt : :cys: A:   4 :  0.047:-120.73:   1.00: :
-pdb1jxt : :pro: A:   5 :  0.069:-121.41:   1.00: :
-pdb1jxt : :ser: A:   6 :  0.052: 112.87:   1.00: :
-pdb1jxt :a:ile: A:   7 :  0.260: -46.47:   0.45:a:
-pdb1jxt :b:ile: A:   7 :  0.153: 122.97:   0.55:b:
-pdb1jxt :a:val: A:   8 :  0.184:-155.36:   0.50:a:
-pdb1jxt :b:val: A:   8 :  0.258:  80.92:   0.30:b:
-pdb1jxt :c:val: A:   8 :  0.641: -53.98:   0.20:c:
-pdb1jxt : :ala: A:   9 :  0.061: -82.84:   1.00: :
-pdb1jxt :a:arg: A:  10 :  0.023: 172.25:   1.00:a:
-pdb1jxt : :ser: A:  11 :  0.028:-129.11:   1.00: :
-pdb1jxt :a:asn: A:  12 :  0.021: -80.80:   0.50:a:
-pdb1jxt :b:asn: A:  12 :  0.199:  50.01:   0.50:b:
-pdb1jxt :a:phe: A:  13 :  0.067: -37.32:   0.65:a:
-pdb1jxt :b:phe: A:  13 :  0.138:  19.24:   0.35:b:
-pdb1jxt : :asn: A:  14 :  0.065: -96.35:   1.00: :
-pdb1jxt : :val: A:  15 :  0.138: -96.63:   1.00: :
-pdb1jxt : :cys: A:  16 :  0.102: -28.64:   1.00: :
-pdb1jxt : :arg: A:  17 :  0.053:-106.79:   1.00: :
-pdb1jxt : :leu: A:  18 :  0.053:-141.51:   1.00: :
-pdb1jxt : :pro: A:  19 :  0.065:-146.95:   1.00: :
-pdb1jxt : :thr: A:  21 :  0.086:  53.80:   1.00: :
-pdb1jxt :a:pro: A:  22 :  0.092: -83.39:   0.55:a:
-pdb1jxt :a:glu: A:  23 :  0.014:-179.53:   0.50:a:
-pdb1jxt :b:glu: A:  23 :  0.050:-179.78:   0.50:b:
-pdb1jxt : :ala: A:  24 :  0.056: -88.96:   1.00: :
-pdb1jxt : :leu: A:  25 :  0.084:-106.42:   1.00: :
-pdb1jxt : :cys: A:  26 :  0.074: -94.70:   1.00: :
-pdb1jxt : :ala: A:  27 :  0.056: -62.15:   1.00: :
-pdb1jxt : :thr: A:  28 :  0.056:-114.82:   1.00: :
-pdb1jxt :a:tyr: A:  29 :  0.068:   0.22:   0.65:a:
-pdb1jxt :a:thr: A:  30 :  0.180: 103.27:   0.70:a:
-pdb1jxt :b:thr: A:  30 :  0.812: -76.98:   0.30:b:
-pdb1jxt : :cys: A:  32 :  0.029: -84.07:   1.00: :
-pdb1jxt : :ile: A:  33 :  0.048:-119.17:   1.00: :
-pdb1jxt : :ile: A:  34 :  0.045:  99.02:   1.00: :
-pdb1jxt : :ile: A:  35 :  0.052:-128.24:   1.00: :
-pdb1jxt : :pro: A:  36 :  0.084:-142.29:   1.00: :
-pdb1jxt : :ala: A:  38 :  0.039:  50.01:   1.00: :
-pdb1jxt :a:thr: A:  39 :  0.093: -96.63:   0.70:a:
-pdb1jxt :b:thr: A:  39 :  0.924:  56.41:   0.30:b:
-pdb1jxt : :cys: A:  40 :  0.013:-144.11:   1.00: :
-pdb1jxt : :pro: A:  41 :  0.039: -97.09:   1.00: :
-pdb1jxt :a:asp: A:  43 :  0.130:-146.91:   0.75:a:
-pdb1jxt :b:asp: A:  43 :  0.500:   7.56:   0.25:b:
-pdb1jxt : :tyr: A:  44 :  0.085:-143.63:   1.00: :
-pdb1jxt : :ala: A:  45 :  0.055:  33.32:   1.00: :
-pdb1jxt : :asn: A:  46 :  0.066: -50.46:   1.00: :""")
-#}}}
-
-  # Auxilary function: extract_atoms_from_residue_group
-  pdb_1 = pdb.input(source_info=None, lines="""\
-ATOM   1185  N  ASER A 146      24.734  37.097  16.303  0.50 16.64           N
-ATOM   1186  N  BSER A 146      24.758  37.100  16.337  0.50 16.79           N
-ATOM   1187  CA ASER A 146      24.173  37.500  17.591  0.50 16.63           C
-ATOM   1188  CA BSER A 146      24.237  37.427  17.662  0.50 16.87           C
-ATOM   1189  C  ASER A 146      22.765  36.938  17.768  0.50 15.77           C
-ATOM   1190  C  BSER A 146      22.792  36.945  17.783  0.50 15.94           C
-ATOM   1191  O  ASER A 146      22.052  36.688  16.781  0.50 14.91           O
-ATOM   1192  O  BSER A 146      22.091  36.741  16.779  0.50 15.17           O
-ATOM   1193  CB ASER A 146      24.118  39.035  17.649  0.50 16.93           C
-ATOM   1194  CB BSER A 146      24.321  38.940  17.904  0.50 17.48           C
-ATOM   1195  OG ASER A 146      23.183  39.485  18.611  0.50 17.56           O
-ATOM   1196  OG BSER A 146      23.468  39.645  17.028  0.50 18.32           O  """).construct_hierarchy()
-  pdb_2 = pdb.input(source_info=None, lines="""\
-ATOM   1185  N   SER A 146      24.734  37.097  16.303  0.50 16.64           N
-ATOM   1187  CA  SER A 146      24.173  37.500  17.591  0.50 16.63           C
-ATOM   1189  C   SER A 146      22.765  36.938  17.768  0.50 15.77           C
-ATOM   1191  O   SER A 146      22.052  36.688  16.781  0.50 14.91           O
-ATOM   1193  CB ASER A 146      24.118  39.035  17.649  0.50 16.93           C
-ATOM   1194  CB BSER A 146      24.321  38.940  17.904  0.50 17.48           C
-ATOM   1195  OG ASER A 146      23.183  39.485  18.611  0.50 17.56           O
-ATOM   1196  OG BSER A 146      23.468  39.645  17.028  0.50 18.32           O  """).construct_hierarchy()
-  pdb_3 = pdb.input(source_info=None, lines="""\
-ATOM   1185  N   SER A 146      24.734  37.097  16.303  0.50 16.64           N
-ATOM   1187  CA  SER A 146      24.173  37.500  17.591  0.50 16.63           C
-ATOM   1189  C   SER A 146      22.765  36.938  17.768  0.50 15.77           C
-ATOM   1191  O   SER A 146      22.052  36.688  16.781  0.50 14.91           O
-ATOM   1193  CB  SER A 146      24.118  39.035  17.649  0.50 16.93           C
-ATOM   1195  OG ASER A 146      23.183  39.485  18.611  0.50 17.56           O
-ATOM   1196  OG BSER A 146      23.468  39.645  17.028  0.50 18.32           O  """).construct_hierarchy()
-  rg1 = pdb_1.only_model().only_chain().only_residue_group()
-  rg2 = pdb_2.only_model().only_chain().only_residue_group()
-  rg3 = pdb_3.only_model().only_chain().only_residue_group()
-  all_relevant_atoms_1 = extract_atoms_from_residue_group(rg1)
-  all_relevant_atoms_2 = extract_atoms_from_residue_group(rg2)
-  all_relevant_atoms_3 = extract_atoms_from_residue_group(rg3)
-  keys_1 = [ sorted([ k for k in a.keys() ]) for a in all_relevant_atoms_1 ]
-  keys_2 = [ sorted([ k for k in a.keys() ]) for a in all_relevant_atoms_2 ]
-  keys_3 = [ sorted([ k for k in a.keys() ]) for a in all_relevant_atoms_3 ]
-  assert keys_1 == [[' C  ',' CA ',' CB ',' N  '],[' C  ',' CA ',' CB ',' N  ']]
-  assert keys_2 == [[' C  ',' CA ',' CB ',' N  '],[' C  ',' CA ',' CB ',' N  ']]
-  assert keys_3 == [[' C  ', ' CA ', ' CB ', ' N  ']]
 
 #{{{ exercise_ramalyze
 def exercise_ramalyze():
@@ -477,7 +350,6 @@ ATOM   2563  HG  SER A 263     -37.560 -21.925 105.312  1.00 32.20           H
 
 def run():
   verbose = "--verbose" in sys.argv[1:]
-  exercise_cbetadev()
   if (not libtbx.env.has_module(name="phenix")):
     print \
       "Skipping exercise_rna_validate():" \
