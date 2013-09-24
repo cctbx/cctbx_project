@@ -434,6 +434,7 @@ dxtbx/format/FormatSMVRigaku.py -text
 dxtbx/format/FormatSMVRigakuA200.py -text
 dxtbx/format/FormatSMVRigakuSaturn.py -text
 dxtbx/format/FormatSMVRigakuSaturnSN07400090.py -text
+dxtbx/format/FormatStill.py -text
 dxtbx/format/FormatTIFF.py -text
 dxtbx/format/FormatTIFFHelpers.py -text
 dxtbx/format/FormatTIFFRayonix.py -text
