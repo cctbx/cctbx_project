@@ -1218,3 +1218,44 @@ def greek_time(secs):
       break
     secs*=1000
   return secs, greek
+
+libtbx_urllib_proxy = None
+
+def install_urllib_http_proxy (server, port=80, user=None, password=None) :
+  global libtbx_urllib_proxy
+  import urllib2
+  if (user is None) :
+    proxy = urllib2.ProxyHandler({'http': '%s:%d' % (server, port) })
+    opener = urllib2.build_opener(proxy)
+  else :
+    proxy = urllib2.ProxyHandler({
+      'http': 'http://%s:%s@%s:%d' % (user, password, server, port),
+    })
+    auth = urllib2.HTTPBasicAuthHandler()
+    opener = urllib2.build_opener(proxy, auth, urllib2.HTTPHandler)
+  libtbx_urllib_proxy = proxy
+  urllib2.install_opener(opener)
+  print "Installed urllib2 proxy at %s:%d" % (server, port)
+  return proxy
+
+def urlopen (*args, **kwds) :
+  """
+  Substitute for urllib2.urlopen, with automatic HTTP proxy configuration
+  if specific environment variables are defined.
+  """
+  if ("CCTBX_HTTP_PROXY" in os.environ) and (libtbx_urllib_proxy is None) :
+    server = os.environ["CCTBX_HTTP_PROXY_SERVER"]
+    port = os.environ.get("CCTBX_HTTP_PROXY_PORT", 80)
+    user = os.environ.get("CCTBX_HTTP_PROXY_USER", None)
+    passwd = os.environ.get("CCTBX_HTTP_PROXY_PASSWORD", None)
+    if (user is not None) and (password is None) :
+      raise Sorry("You have defined a user name for the HTTP proxy, but "+
+        "no password was specified.  Please set the environment variable "+
+        "CCTBX_HTTP_PROXY_PASSWORD.")
+    install_urllib_http_proxy(
+      server=server,
+      port=port,
+      user=user,
+      password=password)
+  import urllib2
+  return urllib2.urlopen(*args, **kwds)
