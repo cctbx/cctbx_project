@@ -108,6 +108,7 @@ class cablam_validation():
     self.regular_beta = None #percentile level in motif contour
     self.loose_threeten = None
     self.regular_threeten = None
+    self.suggestion = ""
     if self.residue:
       self.rg = self.residue.rg #rg object from a source hierarchy
     else:
@@ -403,6 +404,9 @@ def find_ca_outliers(resdata,expectations,cutoff=0.005):
 #-------------------------------------------------------------------------------
 #Labels individual residues as alpha or beta
 def helix_or_sheet(outliers, motifs):
+  alpha_cutoff = 0.001
+  beta_cutoff = 0.0001
+  threeten_cutoff = 0.001
   for outlier in outliers.values():
     residue = outlier.residue
     contours = helix_or_sheet_res(residue, motifs)
@@ -786,6 +790,29 @@ def analyze_pdb_ca(hierarchy, outlier_cutoff=0.005, pdbid='pdbid'):
   outliers = find_ca_outliers(resdata, ca_expectations, cutoff=outlier_cutoff)
   helix_or_sheet(outliers, motifs)
 
+  return outliers
+
+def analyze_pdb_gui(hierarchy, pdbid='pdbid'):
+  outlier_cutoff = 0.05
+  ca_outlier_cutoff = 0.005
+  resdata=setup(hierarchy,pdbid)
+  peptide_expectations = fetch_peptide_expectations()
+  ca_expectations = fetch_ca_expectations()
+  motifs = fetch_motifs()
+
+  outliers = find_peptide_outliers(resdata, peptide_expectations, cutoff=outlier_cutoff)
+  ca_outliers = find_ca_outliers(resdata, ca_expectations, cutoff=ca_outlier_cutoff)
+  helix_or_sheet(outliers,motifs)
+  find_partial_sec_struc(resdata,ca_outliers=ca_outliers)
+  for outlier in outliers.values():
+    if outlier.residue.motif_guess.regular_beta:
+      outlier.suggestion = 'try Beta Strand'
+    elif outlier.residue.motif_guess.loose_threeten:
+      outlier.suggestion = 'try ThreeTen'
+    elif outlier.residue.motif_guess.loose_alpha:
+      outlier.suggestion = 'try Alpha Helix'
+    else:
+      pass #suggestion = ''
   return outliers
 #-------------------------------------------------------------------------------
 #}}}

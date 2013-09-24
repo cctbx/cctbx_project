@@ -182,6 +182,7 @@ class linked_residue(object):
     self.model = modelid
     self.chain = chainid
     self.resnum = int(rg.resseq.strip())
+    #self.resseq = rg.resid[:-1]
     self.icode = rg.icode
     self.resid = cablam_key(self.model, self.chain, self.resnum, self.icode)
     self.hetero = False #marks whether this is a HETATOM
