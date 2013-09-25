@@ -1068,8 +1068,8 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
     source_info = self.extract_remark_iii_records(350)
     result = []                         # the returned list of rotation and translation data
     if source_info:                     # check if any BIOMT info is available
-      # collecting the data from the remarks
-      # Checking that we are collecting only data by verifying that the 3rd component contains "BIOMT"
+      # collecting the data from the remarks. Checking that we are collecting only data
+      # and not part of the remarks header by verifying that the 3rd component contains "BIOMT"
       # and that the length of that component is 6
       biomt_data = [map(float,x.split()[3:]) for x in source_info if (x.split()[2].find('BIOMT') > -1)
                     and (len(x.split()[2]) == 6)]
@@ -1087,16 +1087,16 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
         # Each group composed from 3 data sets.
         j = 3*i;
         rotation_data = biomt_data[j][1:4] + biomt_data[j+1][1:4] + biomt_data[j+2][1:4]
-        tansation_data = [biomt_data[j][-1], biomt_data[j+1][-1], biomt_data[j+2][-1]]
+        translation_data = [biomt_data[j][-1], biomt_data[j+1][-1], biomt_data[j+2][-1]]
         # Test rotation matrix
         if self._test_matrix(rotation_data,eps=eps):
           if error_handle:
             raise Sorry('Rotation matrices are not proper! ')
           else:
             rotation_data = [0,0,0,0,0,0,0,0,0]
-        # see how it is done on the MTRIX records
+        # done following the format in the MTRIX records
         result.append(group_args(
-          values=[rotation_data,tansation_data],
+          values = [rotation_data,translation_data],
           coordinates_present=(i == 0),         # Only the first transformation included in pdb file
           serial_number=i + 1))
     return result
