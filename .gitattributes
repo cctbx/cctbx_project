@@ -1507,6 +1507,7 @@ mmtbx/command_line/rna_validate.py svneol=native#text/x-python
 mmtbx/command_line/rotalyze.py -text
 mmtbx/command_line/search_pdb_symmetry.py -text
 mmtbx/command_line/secondary_structure_restraints.py -text
+mmtbx/command_line/select_best_starting_model.py -text
 mmtbx/command_line/show_r_factors_by_shell.py -text
 mmtbx/command_line/show_suspicious_residues.py -text
 mmtbx/command_line/simulate_low_res_data.py -text
@@ -1693,6 +1694,7 @@ mmtbx/refinement/real_space/tst_individual_sites_1.py -text
 mmtbx/refinement/real_space/tst_monitor.py -text
 mmtbx/refinement/real_space/tst_rigid_body.py -text
 mmtbx/refinement/refinement_flags.py -text
+mmtbx/refinement/select_best_starting_model.py -text
 mmtbx/refinement/tardy.py svneol=native#text/x-python
 mmtbx/refinement/targets.py -text
 mmtbx/refinement/tst_fit_rotamers.py svneol=native#text/x-python
@@ -1700,6 +1702,7 @@ mmtbx/refinement/tst_misc.py -text
 mmtbx/refinement/tst_real_space_simple.py -text
 mmtbx/refinement/tst_refinement_flags.py -text
 mmtbx/refinement/tst_rigid_body_groups_from_pdb_chains.py -text
+mmtbx/refinement/tst_select_best_starting_model.py -text
 mmtbx/refinement/tst_tardy_comprehensive.py svneol=native#text/x-python
 mmtbx/refinement/tst_tardy_eval.py svneol=native#text/x-python
 mmtbx/refinement/tst_tardy_pdb.py svneol=native#text/x-python
