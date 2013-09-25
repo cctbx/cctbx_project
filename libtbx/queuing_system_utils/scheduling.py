@@ -235,11 +235,8 @@ class RunningState(object):
       job.status = PostprocessingState( job = self.job )
 
     else:
-      job.status = ValueState(
-        value = result.Error(
-          exception =RuntimeError( "exit code = %s" % exit_code ),
-          ),
-        )
+      err = getattr( self.job, "err", RuntimeError( "exit code = %s" % exit_code ) )
+      job.status = ValueState( value = result.Error( exception = err ) )
 
 
   def perform_postprocessing(self, job):

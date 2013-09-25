@@ -203,8 +203,15 @@ class Job(object):
     if stdout:
       print stdout
 
-    if stderr:
+    if stderr and self.qinterface.display_stderr:
       print stderr
+
+    if self.qinterface.save_error:
+      if self.exitcode != 0:
+        self.err = RuntimeError( stderr )
+
+      else:
+        self.err = None
 
     self.status.cleanup()
 
@@ -233,6 +240,8 @@ target( *args, **kwargs )
     root,
     executable = "libtbx.python",
     script = SCRIPT,
+    save_error = False,
+    display_stderr = True,
     ):
 
     self.submitter = submitter
@@ -242,6 +251,9 @@ target( *args, **kwargs )
 
     self.executable = executable
     self.script = script
+
+    self.save_error = save_error
+    self.display_stderr = display_stderr
 
 
   def Job(self, target, args = (), kwargs = {}):

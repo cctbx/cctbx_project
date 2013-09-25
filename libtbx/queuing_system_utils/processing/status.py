@@ -153,7 +153,11 @@ echo exit_status $? 1>&2
     else:
       exit_code = 0
 
-    return ( self.get_stdout(), "", exit_code )
+    if exit_code != 0:
+      return ( "", self.get_stdout(), exit_code )
+
+    else:
+      return ( self.get_stdout(), "", exit_code )
 
 
 class AccountingStrategy(Asynchronous):
