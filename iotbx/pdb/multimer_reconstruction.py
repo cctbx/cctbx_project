@@ -87,7 +87,7 @@ class multimer(object):
             new_chain.id = new_chains_names[new_chain.id + str(i_transform+1)]
             sites = new_chain.atoms().extract_xyz()
             # calculating new sites
-            new_sites = TRASFORM[i_transform][0].elems*sites + tuple(TRASFORM[i_transform][1])
+            new_sites = TRASFORM[i_transform].r.elems*sites + tuple(TRASFORM[i_transform].t)
             new_chain.atoms().set_xyz(new_sites)
             # add a new chain to current model
             model.append_chain(new_chain)
@@ -95,7 +95,8 @@ class multimer(object):
   def _convert_lists_to_matrices(self, TRASFORM_info):
     ''' (object contianing lists) -> list of scitbx matrices and vectors
 
-    Convert the rotation and translation information from lists to matrices and vectors
+    Convert the rotation and translation information from lists to rotation and
+    translation components of matrix.rt object.
 
     Argumnets:
     TRASFORM_info -- a object of lists containing the BIOMT/MTRIX transformation information obtained
@@ -104,19 +105,19 @@ class multimer(object):
     TRASFORM_info[0].values = [[1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0], [0.0, 0.0, 0.0]]
 
     Returns:
-    TRASFORM_matrices_list -- a list of matrices and vectors
-    [[rotation matrix 1,translation vector 1], [rotation matrix 2,translation vector 2],...]
+    TRASFORM_matrices_list -- a list of matrix.rt objects
 
-    >>> TRASFORM_matrices_list[0][0]
-    matrix([[ 1.,  0.,  0.],
-        [ 0.,  1.,  0.],
-        [ 0.,  0.,  1.]])
+    >>> TRASFORM_matrices_list.r[0]
+    matrix.rec(elems=(1,0,0,0,1,0,0,0,1), n=(3,3))
+
+    >>> TRASFORM_matrices_list.r[0]
+    matrix.rec(elems=(0,0,0), n=(3,1))
+
     >>> len(TRASFORM_matrices_list) == len(TRASFORM_info)
     True
     '''
     # TRASFORM_info.coordinates_present=True is transformation already included in pdb file
-    TRASFORM_matrices_list = [[matrix.sqr(x.values[0]), matrix.col(x.values[1])]
-                              for x in TRASFORM_info if not x.coordinates_present]
+    TRASFORM_matrices_list = [matrix.rt(x.values) for x in TRASFORM_info if not x.coordinates_present]
     return TRASFORM_matrices_list
 
   def _chains_names(self, TRASFORM_transform_numbers,nChains, unique_chain_names):
