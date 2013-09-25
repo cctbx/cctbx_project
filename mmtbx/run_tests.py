@@ -119,7 +119,8 @@ tst_list = (
   "$D/regression/tst_mtz2map.py",
   "$D/validation/regression/tst_cbetadev.py",
   "$D/validation/regression/tst_waters.py",
-  "$D/validation/regression/tst_nqh_minimize.py"
+  "$D/validation/regression/tst_nqh_minimize.py",
+  "$D/refinement/tst_select_best_starting_model.py",
   )
 
 def run():
