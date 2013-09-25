@@ -2,7 +2,6 @@ from __future__ import division
 from libtbx.utils import format_exception, Sorry
 from libtbx import Auto
 from iotbx.pdb import common_residue_names_get_class
-from mmtbx.validation.cbetadev import cbetadev
 from mmtbx.geometry_restraints import c_beta
 from iotbx.pdb import amino_acid_codes, input
 from cctbx.array_family import flex
