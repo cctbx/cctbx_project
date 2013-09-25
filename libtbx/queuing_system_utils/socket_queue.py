@@ -82,7 +82,7 @@ class Manager(object):
   def __getstate__(self):
 
     result = self.__dict__.copy()
-    result[ "address" ] = self.manager._address
+    result[ "address" ] = self.manager.address
     result[ "authkey" ] = str( self.manager._authkey )
     del result[ "manager" ]
     del result[ "multiqueue" ]
@@ -103,7 +103,7 @@ class Manager(object):
 
 
   @classmethod
-  def Server(cls, port, keylength = 16):
+  def Server(cls, port = 0, keylength = 16):
 
     from multiprocessing.managers import BaseManager
 
