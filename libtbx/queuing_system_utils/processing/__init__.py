@@ -280,6 +280,8 @@ def SGE(
   include = None,
   poller = None,
   handler = None,
+  save_error = False,
+  display_stderr = True,
   ):
 
   command = process_command_line( command = command, default = [ "qsub" ] )
@@ -316,6 +318,8 @@ def SGE(
     input = input,
     include = include,
     root = name,
+    save_error = save_error,
+    display_stderr = display_stderr,
     )
 
 
@@ -327,6 +331,8 @@ def LSF(
   include = None,
   poller = None,
   handler = None,
+  save_error = False,
+  display_stderr = True,
   ):
 
   command = process_command_line( command = command, default = [ "bsub" ] )
@@ -358,6 +364,8 @@ def LSF(
     input = input,
     include = include,
     root = name,
+    save_error = save_error,
+    display_stderr = display_stderr,
     )
 
 
@@ -369,6 +377,8 @@ def PBS(
   include = None,
   poller = None,
   handler = None,
+  save_error = False,
+  display_stderr = True,
   ):
 
   command = process_command_line( command = command, default = [ "qsub" ] )
@@ -400,6 +410,8 @@ def PBS(
     input = input,
     include = include,
     root = name,
+    save_error = save_error,
+    display_stderr = display_stderr,
     )
 
 
@@ -411,6 +423,8 @@ def Condor(
   include = None,
   poller = None,
   handler = None,
+  save_error = False,
+  display_stderr = True,
   ):
 
   command = process_command_line( command = command, default = [ "condor_submit" ] )
@@ -442,6 +456,8 @@ def Condor(
     input = input,
     include = include,
     root = name,
+    save_error = save_error,
+    display_stderr = display_stderr,
     )
 
 
