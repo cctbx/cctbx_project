@@ -16,7 +16,7 @@ from scitbx import stl
 import scitbx.stl.set
 import scitbx.stl.vector
 import libtbx
-from libtbx.utils import Keep
+from libtbx.utils import Keep, Sorry
 import sys
 
 import scitbx.cubicle_neighbors
@@ -38,6 +38,7 @@ class symmetry(object):
         space_group=None,
         correct_rhombohedral_setting_if_necessary=False,
         assert_is_compatible_unit_cell=True,
+        raise_sorry_if_incompatible_unit_cell=False,
         force_compatible_unit_cell=True):
     """Initialises a new crystal.symmetry class object from different input data. Only one of space_group, space_group_info and space_group_symbol may be used.
 
@@ -89,8 +90,14 @@ class symmetry(object):
             if (ls.endswith(" :H")):
               self._space_group_info = sgi.primitive_setting()
       if (assert_is_compatible_unit_cell):
-        assert self.is_compatible_unit_cell(), \
-          "Space group is incompatible with unit cell parameters."
+        if (raise_sorry_if_incompatible_unit_cell) :
+          if (not self.is_compatible_unit_cell()) :
+            raise Sorry(("The space group '%s' is incompatible with unit cell "+
+              "parameters %s.") % (str(self._space_group_info),
+              str(self._unit_cell.parameters())))
+        else :
+          assert self.is_compatible_unit_cell(), \
+            "Space group is incompatible with unit cell parameters."
       if (force_compatible_unit_cell):
         self._unit_cell = self.space_group().average_unit_cell(
           self._unit_cell)
@@ -99,10 +106,13 @@ class symmetry(object):
     self._unit_cell = other._unit_cell
     self._space_group_info = other._space_group_info
 
-  def customized_copy(self, unit_cell=Keep, space_group_info=Keep):
+  def customized_copy(self, unit_cell=Keep, space_group_info=Keep,
+      raise_sorry_if_incompatible_unit_cell=False):
     if (unit_cell is Keep): unit_cell = self._unit_cell
     if (space_group_info is Keep): space_group_info = self._space_group_info
-    return symmetry(unit_cell=unit_cell, space_group_info=space_group_info)
+    return symmetry(unit_cell=unit_cell, space_group_info=space_group_info,
+      raise_sorry_if_incompatible_unit_cell=\
+        raise_sorry_if_incompatible_unit_cell)
 
   def unit_cell(self):
     return self._unit_cell
