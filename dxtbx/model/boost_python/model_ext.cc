@@ -19,6 +19,7 @@ namespace dxtbx { namespace model { namespace boost_python {
   void export_goniometer();
   void export_kappa_goniometer();
   void export_panel();
+  void export_panel2();
   void export_detector();
   void export_scan();
   void export_scan_helpers();
@@ -31,6 +32,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     export_goniometer();
     export_kappa_goniometer();
     export_panel();
+    export_panel2();
     export_detector();
     export_scan();
     export_scan_helpers();
