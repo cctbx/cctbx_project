@@ -48,6 +48,7 @@ def run (args=(), params=None, out=None) :
     out = sys.stdout
   validate_params(params)
   from iotbx import reflection_file_editor
+  from iotbx import reflection_file_utils
   from iotbx import file_reader
   data_in = file_reader.any_file(params.import_data.data_file,
     force_type="hkl")
@@ -74,7 +75,7 @@ def run (args=(), params=None, out=None) :
     if (not array.is_unique_set_under_symmetry()) :
       array = array.merge_equivalents().array()
     new_arrays.append(array)
-  complete_set = reflection_file_editor.make_joined_set(
+  complete_set = reflection_file_utils.make_joined_set(
     new_arrays).complete_set()
   if (not have_r_free) :
     if (params.import_data.flags_file is not None) :
