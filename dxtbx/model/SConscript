@@ -8,6 +8,7 @@ sources = [
     'boost_python/goniometer.cc',
     'boost_python/kappa_goniometer.cc',
     'boost_python/panel.cc',
+    'boost_python/panel2.cc',
     'boost_python/detector.cc',
     'boost_python/scan.cc',
     'boost_python/scan_helpers.cc',
