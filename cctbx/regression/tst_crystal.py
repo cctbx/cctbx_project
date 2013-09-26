@@ -7,6 +7,7 @@ from cctbx.development import debug_utils
 from cctbx.array_family import flex
 from scitbx import matrix
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
+from libtbx.utils import Sorry
 from cStringIO import StringIO
 import sys
 
@@ -25,6 +26,11 @@ def exercise_symmetry():
   assert xs.is_compatible_unit_cell()
   try: xs = crystal.symmetry((3,4,5), "P 4 2 2")
   except Exception: pass
+  else: raise Exception_expected
+  try:
+    xs = crystal.symmetry((3,4,5), "P 4 2 2",
+      raise_sorry_if_incompatible_unit_cell=True)
+  except Sorry: pass
   else: raise Exception_expected
   xs = crystal.symmetry(
     (3,4,5), "P 4 2 2", assert_is_compatible_unit_cell=False,
