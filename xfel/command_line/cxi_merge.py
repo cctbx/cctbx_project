@@ -424,9 +424,13 @@ class scaling_manager (intensity_data) :
   def _scale_all_parallel (self, file_names) :
     import multiprocessing
     import libtbx.introspection
-    from xfel.cxi.merging_database import manager
-    #from xfel.cxi.merging_database_fs import manager
-    #from xfel.cxi.merging_database_sqlite3 import manager
+
+    if self.params.backend == 'MySQL':
+      from xfel.cxi.merging_database import manager
+    elif self.params.backend == 'SQLite':
+      from xfel.cxi.merging_database_sqlite3 import manager
+    else:
+      from xfel.cxi.merging_database_fs import manager
 
     nproc = self.params.nproc
     if (nproc is None) or (nproc is Auto) :

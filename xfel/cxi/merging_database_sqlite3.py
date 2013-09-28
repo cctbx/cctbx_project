@@ -56,7 +56,7 @@ class manager:
     self._db_results_queue = mgr.JoinableQueue()
     self._semaphore = mgr.Semaphore()
 
-    self._db = sqlite3.connect('%s.sqlite' % self.params.mysql.runtag)
+    self._db = sqlite3.connect('%s.sqlite' % self.params.runtag)
     multiprocessing.Process(
         target=_execute,
         args=(self._db_commands_queue,
@@ -67,14 +67,14 @@ class manager:
 
   def initialize_db(self, indices):
     cursor = self._db.cursor()
-    for table in self.merging_schema_tables(self.params.mysql.runtag):
+    for table in self.merging_schema_tables(self.params.runtag):
       cursor.execute("DROP TABLE IF EXISTS %s;"%table[0])
       cursor.execute("CREATE TABLE %s " %
                      table[0] + table[1].replace("\n", " ") + " ;")
 
     # Beware of SQL injection vulnerability (here and elsewhere).
     cursor.executemany("INSERT INTO %s_miller VALUES (NULL, ?, ?, ?)" %
-                       self.params.mysql.runtag, indices)
+                       self.params.runtag, indices)
 
     self._db.commit()
 
@@ -102,7 +102,7 @@ class manager:
   def insert_frame(self, **kwargs):
     # Explicitly add the auto-increment column for SQLite.
     (sql, parameters) = self._insert(
-        table='%s_frame' % self.params.mysql.runtag,
+        table='%s_frame' % self.params.runtag,
         frame_id_1_base=None,
         **kwargs)
 
@@ -124,7 +124,7 @@ class manager:
 
   def insert_observation(self, **kwargs):
     (sql, parameters) = self._insert(
-        table='%s_observation' % self.params.mysql.runtag,
+        table='%s_observation' % self.params.runtag,
         **kwargs)
 
     self._db_commands_queue.put((sql, parameters, None))
@@ -149,7 +149,7 @@ class manager:
 
     cursor = self._db.cursor()
     millers = dict(merged_asu_hkl=flex.miller_index())
-    cursor.execute("SELECT h,k,l FROM %s_miller ORDER BY hkl_id_1_base"%self.params.mysql.runtag)
+    cursor.execute("SELECT h,k,l FROM %s_miller ORDER BY hkl_id_1_base"%self.params.runtag)
     for item in cursor.fetchall():
       millers["merged_asu_hkl"].append((item[0],item[1],item[2]))
     return millers
@@ -157,7 +157,7 @@ class manager:
 
   def read_observations(self):
     cursor = self._db.cursor()
-    cursor.execute("SELECT hkl_id_0_base,i,sigi,frame_id_0_base,original_h,original_k,original_l FROM %s_observation" % self.params.mysql.runtag)
+    cursor.execute("SELECT hkl_id_0_base,i,sigi,frame_id_0_base,original_h,original_k,original_l FROM %s_observation" % self.params.runtag)
     ALL = cursor.fetchall()
 
     return dict(hkl_id = flex.int([a[0] for a in ALL]), #as MySQL indices are 1-based
@@ -177,7 +177,7 @@ class manager:
     frame_id_1_base,wavelength,c_c,slope,offset,res_ori_1,res_ori_2,res_ori_3,
     res_ori_4,res_ori_5,res_ori_6,res_ori_7,res_ori_8,res_ori_9,
     unique_file_name
-    FROM %s_frame"""%self.params.mysql.runtag)
+    FROM %s_frame"""%self.params.runtag)
     ALL = cursor.fetchall()
     from cctbx.crystal_orientation import crystal_orientation
     orientations = [crystal_orientation(
