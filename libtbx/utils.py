@@ -1229,7 +1229,7 @@ def install_urllib_http_proxy (server, port=80, user=None, password=None) :
     opener = urllib2.build_opener(proxy)
   else :
     proxy = urllib2.ProxyHandler({
-      'http': 'http://%s:%s@%s:%d' % (user, password, server, port),
+      'http': 'http://%s:%s@%s:%s' % (user, password, server, port),
     })
     auth = urllib2.HTTPBasicAuthHandler()
     opener = urllib2.build_opener(proxy, auth, urllib2.HTTPHandler)

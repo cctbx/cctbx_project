@@ -9,8 +9,8 @@ pipelines.
 """
 
 from __future__ import division
+import libtbx.utils
 from xml.dom.minidom import parseString
-import urllib
 import sys
 
 url_base = "http://www.rcsb.org/pdb/rest"
@@ -72,7 +72,7 @@ def post_query (query_xml, xray_only=True, d_max=None, d_min=None,
 </orgPdbCompositeQuery>
 """ % (queries_string)
   parsed = parseString(query_str)
-  result = urllib.urlopen(url_search, query_str).read()
+  result = libtbx.utils.urlopen(url_search, query_str).read()
   return result.splitlines()
 
 def sequence_search (sequence, **kwds) :
@@ -116,7 +116,7 @@ def get_custom_report_table (pdb_ids, columns, log=sys.stdout,
   url = url_base + "pdbids=%s" % ",".join(pdb_ids)
   all_columns = ["structureId"] + columns
   url += "&customReportColumns=%s" % ",".join(all_columns)
-  result = urllib.urlopen(url).read()
+  result = libtbx.utils.urlopen(url).read()
   # The RCSB's custom report follows this format (using the high-resolution
   # limit as an example):
   #
