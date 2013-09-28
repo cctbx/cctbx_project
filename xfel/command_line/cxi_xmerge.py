@@ -32,15 +32,12 @@ class xscaling_manager (scaling_manager) :
   def scale_all (self) :
     t1 = time.time()
 
-    if self.params.mysql.runtag is None:
-      self.read_all()
-    else:
-      self.read_all_mysql()
-      self.millers = self.millers_mysql
-      self.frames = self.frames_mysql
-      self._frames = self._frames_mysql
-      self.observations = self.observations_mysql
-      self._observations = self._observations_mysql
+    self.read_all_mysql()
+    self.millers = self.millers_mysql
+    self.frames = self.frames_mysql
+    self._frames = self._frames_mysql
+    self.observations = self.observations_mysql
+    self._observations = self._observations_mysql
     if self.params.model is None:
       self.n_accepted = len(self.frames["cc"])
       self.n_low_corr = 0
@@ -65,9 +62,13 @@ class xscaling_manager (scaling_manager) :
 
   def read_all_mysql(self):
     print "reading observations from MySQL database"
-    from xfel.cxi.merging_database import manager
-    #from xfel.cxi.merging_database_fs import manager
-    #from xfel.cxi.merging_database_sqlite3 import manager
+
+    if self.params == 'MySQL':
+      from xfel.cxi.merging_database import manager
+    elif self.params == 'SQLite':
+      from xfel.cxi.merging_database_sqlite3 import manager
+    else:
+      from xfel.cxi.merging_database_fs import manager
 
     CART = manager(self.params)
     self.millers_mysql = CART.read_indices()
@@ -104,6 +105,8 @@ class xscaling_manager (scaling_manager) :
     CART.join()
 
   def read_all(self):
+    # XXX Should not be used any more--migrate C++ into
+    # cxi/merging_database_fs.py?
     print "reading observations from flat-file database"
     self.frames = dict( frame_id=flex.int(),
                         wavelength=flex.double(),
