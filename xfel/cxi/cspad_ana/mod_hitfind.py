@@ -46,10 +46,16 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     parameters, except @p address are optional, and hence need not be
     defined in pyana.cfg.
 
-    @param address      Address string XXX Que?!
+    @param address      Full data source address of the DAQ device
     @param dispatch     Function to call
-    @param out_dirname  Directory portion of output image
-    @param out_basename Filename prefix of output image
+    @param integration_dirname
+                        Directory portion of output integration file
+                        pathname
+    @param integration_basename
+                        Filename prefix of output integration file
+                        pathname
+    @param out_dirname  Directory portion of output image pathname
+    @param out_basename Filename prefix of output image pathname
     @param roi          Region of interest for thresholding, on the
                         form fast_low:fast_high,slow_low:slow_high
     @param threshold    Minimum value in region of interest to pass
@@ -321,6 +327,8 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       work.display_with_callback(horizons_phil.indexing.data)
 
     elif (self.m_dispatch == "write_dict"):
+      self.logger.warning(
+        "event(): deprecated dispatch 'write_dict', use mod_dump instead")
       if (self.m_out_dirname  is not None or
           self.m_out_basename is not None):
         cspad_tbx.dwritef(d, self.m_out_dirname, self.m_out_basename)
