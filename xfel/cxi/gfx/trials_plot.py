@@ -68,7 +68,12 @@ class Run (object):
     return max(self.bragg_times)
 
   def cull_braggs(self, count):
-    if count <= 0:
+    if count == 0:
+      window = 0
+    else:
+      window = len(self.bragg_times)/count
+
+    if count <= 0 or window < 1:
       self.culled_braggs = self.braggs
       self.culled_bragg_times = self.bragg_times
       self.culled_distances = self.distances
@@ -82,15 +87,14 @@ class Run (object):
     self.culled_sifoils = flex.double()
     self.culled_wavelengths = flex.double()
 
-    window = int(len(self.bragg_times)/count)
     for i in range(count):
-      value = self.braggs[i*window]
-      time = self.bragg_times[i*window]
-      dist = self.distances[i*window]
-      sifo = self.sifoils[i*window]
-      wave = self.wavelengths[i*window]
-      for j in range(window):
-        idx = (i*window)+j
+      value = self.braggs[int(i*window)]
+      time = self.bragg_times[int(i*window)]
+      dist = self.distances[int(i*window)]
+      sifo = self.sifoils[int(i*window)]
+      wave = self.wavelengths[int(i*window)]
+      for j in range(int(window)):
+        idx = (int(i*window))+j
         if self.braggs[idx] > value:
           value = self.braggs[idx]
           time = self.bragg_times[idx]
