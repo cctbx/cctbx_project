@@ -1370,6 +1370,7 @@ libtbx/pyplot.py svneol=native#text/x-python
 libtbx/pythonpath/deep_thought.py svneol=native#text/x-python
 libtbx/queuing_system_utils/__init__.py svneol=native#text/x-python
 libtbx/queuing_system_utils/communication.py -text
+libtbx/queuing_system_utils/file_queue.py -text
 libtbx/queuing_system_utils/generic.py -text
 libtbx/queuing_system_utils/looping.py -text
 libtbx/queuing_system_utils/lsf.py -text
