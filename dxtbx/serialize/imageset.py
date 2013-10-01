@@ -121,8 +121,8 @@ def basic_imageset_from_dict(d):
     imageset = ImageSetFactory.new(filenames)[0]
 
     # Get the existing models as dictionaries
-    beam_dict = beam.to_dict(sweep.get_beam())
-    detector_dict = detector.to_dict(sweep.get_detector())
+    beam_dict = beam.to_dict(imageset.get_beam())
+    detector_dict = detector.to_dict(imageset.get_detector())
 
     # Set models
     imageset.set_beam(beam.from_dict(d.get('beam'), beam_dict))
@@ -187,7 +187,7 @@ def imageset_from_dict(d):
         raise ValueError("\"__id__\" does not equal \"imageset\"")
 
     if "filenames" in d:
-        return imageset_from_dict(d)
+        return basic_imageset_from_dict(d)
     elif "template" in d:
         return imagesweep_from_dict(d)
     else:
