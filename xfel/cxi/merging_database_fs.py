@@ -115,9 +115,11 @@ class manager:
   def initialize_db(self, indices):
     from os import remove
 
-    remove(self.params.output.prefix + '_frame.db')
-    remove(self.params.output.prefix + '_miller.db')
-    remove(self.params.output.prefix + '_observation.db')
+    for suffix in '_frame.db', '_miller.db', '_observation.db':
+      try:
+        remove(self.params.output.prefix + suffix)
+      except OSError, e:
+        pass # deliberate - file does not exist
 
     self._db_commands_queue.put(('miller', (1, 2, 3), indices, None))
 
