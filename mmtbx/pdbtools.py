@@ -640,6 +640,21 @@ def remove_alt_confs (hierarchy) :
   new_occ = flex.double(atoms.size(), 1.0)
   atoms.set_occ(new_occ)
 
+def convert_semet_to_met (pdb_hierarchy, xray_structure) :
+  n_mse = 0
+  scatterers = xray_structure.scatterers()
+  for i_seq, atom in enumerate(pdb_hierarchy.atoms()) :
+    if (atom.name.strip() == "SE") and (atom.element.upper() == "SE") :
+      atom_group = atom.parent()
+      if (atom_group.resname == "MSE") :
+        n_mse += 1
+        atom_group.resname = "MET"
+        atom.name = " SD "
+        atom.element = " S"
+        scatterer = scatterers[i_seq]
+        scatterer.scattering_type = 'S'
+  return n_mse
+
 def renumber_residues(pdb_hierarchy, atom_selection=None, log=None):
   if (log is None) : log = null_out()
   selected_i_seqs = None
@@ -809,16 +824,8 @@ def run(args, command_name="phenix.pdbtools", out=sys.stdout,
       atom.segid = "    "
 ### convert MSE to MET
   if (params.modify.convert_semet_to_met) :
-    scatterers = xray_structure.scatterers()
-    for i_seq, atom in enumerate(pdb_hierarchy.atoms()) :
-      if (atom.name.strip() == "SE") and (atom.element.upper() == "SE") :
-        atom_group = atom.parent()
-        if (atom_group.resname == "MSE") :
-          atom_group.resname = "MET"
-          atom.name = " SD "
-          atom.element = " S"
-          scatterer = scatterers[i_seq]
-          scatterer.scattering_type = 'S'
+    convert_semet_to_met(pdb_hierarchy=pdb_hierarchy,
+      xray_structure=xray_structure)
 ### set atomic charge
   if (params.modify.set_charge.charge_selection is not None) :
     set_atomic_charge(
