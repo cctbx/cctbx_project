@@ -9,7 +9,7 @@ to avoid changing the frame of reference when running molecular replacement.
 from __future__ import division
 from libtbx.str_utils import make_sub_header
 from libtbx import slots_getstate_setstate
-from libtbx.utils import null_out
+from libtbx.utils import null_out, Sorry
 from libtbx import easy_mp
 import libtbx.phil
 import sys
@@ -268,3 +268,155 @@ class select_model (object) :
       r_free_flags=self.r_free_flags,
       rigid_body_refine=self.params.rigid_body_refine,
       skip_twin_detection=self.skip_twin_detection)
+
+strip_model_params = """
+  remove_waters = True
+    .type = bool
+  remove_hydrogens = True
+    .type = bool
+  remove_alt_confs = True
+    .type = bool
+  convert_semet_to_met = True
+    .type = bool
+  convert_to_isotropic = True
+    .type = bool
+  reset_occupancies = True
+    .type = bool
+  remove_ligands = False
+    .type = bool
+  reset_hetatm_flag = False
+    .type = bool
+"""
+
+def strip_model (
+    pdb_hierarchy=None,
+    xray_structure=None,
+    file_name=None,
+    params=None,
+    remove_waters=True,
+    remove_hydrogens=True,
+    remove_alt_confs=True,
+    convert_semet_to_met=True,
+    convert_to_isotropic=True,
+    reset_occupancies=True,
+    remove_ligands=False,
+    reset_hetatm_flag=False,
+    preserve_remarks=False,
+    preserve_symmetry=True,
+    output_file=None,
+    log=None) :
+  """
+  Utility for removing extraneous records from a model intended for use in
+  molecular replacement, etc., including waters, alternate conformations,
+  and other features specific to a particular dataset.
+  """
+  if (params is not None) :
+    remove_waters = params.remove_waters
+    remove_hydrogens = params.remove_hydrogens
+    remove_alt_confs = params.remove_alt_confs
+    convert_semet_to_met = params.convert_semet_to_met
+    convert_to_isotropic = params.convert_to_isotropic
+    reset_occupancies = params.reset_occupancies
+    remove_ligands = params.remove_ligands
+    reset_hetatm_flag = params.reset_hetatm_flag
+  if (log is None) :
+    log = null_out()
+  make_sub_header("Processing input model", out=log)
+  from mmtbx import pdbtools
+  remarks = None
+  if (file_name is not None) :
+    print >> log, "Reading model from %s" % file_name
+    assert ([pdb_hierarchy, xray_structure] == [None, None])
+    from iotbx import file_reader
+    pdb_in = file_reader.any_file(file_name, force_type="pdb",
+      raise_sorry_if_errors=True)
+    pdb_in.check_file_type("pdb")
+    remarks = pdb_in.file_object.remark_section()
+    pdb_hierarchy = pdb_in.file_object.construct_hierarchy()
+    xray_structure = pdb_in.file_object.xray_structure_simple()
+  else :
+    # XXX work with copies, not the original structure
+    pdb_hierarchy = pdb_hierarchy.deep_copy()
+    xray_structure = xray_structure.deep_copy_scatterers()
+  pdb_hierarchy.atoms().reset_i_seq()
+  if (len(pdb_hierarchy.models()) > 1) :
+    raise Sorry("Multiple models not supported.")
+  if (remove_hydrogens) :
+    sele = ~(xray_structure.hd_selection())
+    n_hd = sele.count(False)
+    if (n_hd > 0) :
+      pdb_hierarchy = pdb_hierarchy.select(sele)
+      xray_structure = xray_structure.select(sele)
+      print >> log, "  removed %d hydrogens" % n_hd
+      pdb_hierarchy.atoms().reset_i_seq()
+  if (remove_waters) :
+    sele = pdb_hierarchy.atom_selection_cache().selection("not (resname HOH)")
+    n_wat = sele.count(False)
+    if (n_wat > 0) :
+      pdb_hierarchy = pdb_hierarchy.select(sele)
+      xray_structure = xray_structure.select(sele)
+      print >> log, "  removed %d waters" % n_wat
+      pdb_hierarchy.atoms().reset_i_seq()
+  assert_identical_id_str = True
+  if (remove_alt_confs) :
+    n_atoms_start = xray_structure.scatterers().size()
+    pdbtools.remove_alt_confs(pdb_hierarchy)
+    i_seqs = pdb_hierarchy.atoms().extract_i_seq()
+    n_atoms_end = i_seqs.size()
+    if (n_atoms_end != n_atoms_start) :
+      print >> log, "  removed %d atoms in alternate conformations" % \
+        (n_atoms_end - n_atoms_start)
+      assert_identical_id_str = False
+    xray_structure = xray_structure.select(i_seqs)
+    pdb_hierarchy.atoms().reset_i_seq()
+  if (convert_semet_to_met) :
+    # XXX need to start from a copy here because the atom-parent relationship
+    # seems to be messed up otherwise.  this is probably a bug.
+    pdb_hierarchy = pdb_hierarchy.deep_copy()
+    n_mse = pdbtools.convert_semet_to_met(
+      pdb_hierarchy=pdb_hierarchy,
+      xray_structure=xray_structure)
+    if (n_mse > 0) :
+      print >> log, "  removed %d selenomethionine (MSE) residues" % n_mse
+      assert_identical_id_str = False
+      open("tmp1.pdb", "w").write(pdb_hierarchy.as_pdb_string())
+      sel = pdb_hierarchy.atom_selection_cache().selection
+      assert sel("resname MSE").count(True) == 0
+  if (convert_to_isotropic) :
+    xray_structure.convert_to_isotropic()
+    pdb_hierarchy.adopt_xray_structure(xray_structure,
+      assert_identical_id_str=assert_identical_id_str)
+    print >> log, "  converted all atoms to isotropic B-factors"
+  if (reset_occupancies) :
+    assert (remove_alt_confs)
+    xray_structure.adjust_occupancy(occ_max=1.0, occ_min=1.0)
+    pdb_hierarchy.adopt_xray_structure(xray_structure,
+      assert_identical_id_str=assert_identical_id_str)
+    print >> log, "  reset occupancy to 1.0 for all atoms"
+  if (reset_hetatm_flag) :
+    for atom in pdb_hierarchy.atoms() :
+      atom.hetero = False
+  if (remove_ligands) :
+    pdb_hierarchy.atoms().reset_i_seq()
+    model = pdb_hierarchy.only_model()
+    for chain in model.chains() :
+      if (not chain.is_protein()) and (not chain.is_na()) :
+        print >> log, "  removing %d ligand atoms in chain '%s'" % \
+          (len(chain.atoms()), chain.id)
+        model.remove_chain(chain)
+    i_seqs = pdb_hierarchy.atoms().extract_i_seq()
+    xray_structure = xray_structure.select(i_seqs)
+    pdb_hierarchy.atoms().reset_i_seq()
+  assert xray_structure.scatterers().size() == pdb_hierarchy.atoms().size()
+  if (output_file is not None) :
+    f = open(output_file, "w")
+    if (preserve_remarks) and (remarks is not None) :
+      f.write("\n".join(remarks))
+      f.write("\n")
+    symm = None
+    if (preserve_symmetry) :
+      symm = xray_structure
+    f.write(pdb_hierarchy.as_pdb_string(crystal_symmetry=symm))
+    f.close()
+    print >> log, "  wrote model to %s" % output_file
+  return pdb_hierarchy, xray_structure
