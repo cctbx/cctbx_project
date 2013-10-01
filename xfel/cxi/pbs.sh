@@ -19,9 +19,9 @@ cleanup_and_exit() {
 }
 trap "cleanup_and_exit 1" HUP INT QUIT TERM
 
-args=`getopt c:o:p:q:r:st:x: $*`
+args=`getopt c:i:o:p:q:r:st:x: $*`
 if test $? -ne 0; then
-    echo "Usage: pbs.sh -c config -r run-num [-o output] [-p num-cpu] [-q queue] [-t trial] [-x exp]" > /dev/stderr
+    echo "Usage: pbs.sh -c config -r run-num [-i input] [-o output] [-p num-cpu] [-q queue] [-t trial] [-x exp]" > /dev/stderr
     cleanup_and_exit 1
 fi
 
@@ -38,10 +38,20 @@ while test ${#} -ge 0; do
             shift
             ;;
 
+        -i)
+            xtc=`readlink -fn "${2}"`
+            if test ! -d "${xtc}" 2> /dev/null; then
+                echo "${xtc} does not exist or is not a directory" > /dev/stderr
+                cleanup_and_exit 1
+            fi
+            shift
+            shift
+            ;;
+
         -o)
             out=`readlink -fn "${2}"`
             if test -e "${out}" -a ! -d "${out}" 2> /dev/null; then
-                echo "output exists but is not a directory" > /dev/stderr
+                echo "${out} exists but is not a directory" > /dev/stderr
                 cleanup_and_exit 1
             fi
             test -d "${out}" 2> /dev/null || \
@@ -128,16 +138,20 @@ fi
 test -n "${EXP}" -a -z "${exp}" && exp="${EXP}"
 exp=`find "/global/project/projectdirs/lcls/CXI" -maxdepth 1 -noleaf \
     -name "${exp}"`
-if ! test -d "${exp}" 2> /dev/null; then
-    echo "Could not find experiment subdirectory for ${exp}" > /dev/stderr
-    cleanup_and_exit 1
+if test -n "${exp}"; then
+    if ! test -d "${exp}" 2> /dev/null; then
+        echo "Could not find experiment subdirectory for ${exp}" > /dev/stderr
+        cleanup_and_exit 1
+    fi
 fi
 
-# Construct an absolute path to the directory with the XTC files as
-# well as a sorted list of unique, comma-separated stream numbers for
-# ${run}.  Explicitly consider streams being transferred from the DAQ
-# (*.xtc.inprogress), but not failed transfers (*.xtc.inprogress.*).
-xtc="${exp}/xtc"
+# Unless specified on the command line, set up the directory with the
+# XTC files (i.e. the input directory) as a absolute path to a
+# subdirectory of the experiment's directory.  Construct a sorted list
+# of unique stream numbers for ${run}.  Explicitly consider streams
+# being transferred from the DAQ (*.xtc.inprogress), but not failed
+# transfers (*.xtc.inprogress.*).
+test -z "${xtc}" && xtc="${exp}/xtc"
 streams=`ls "${xtc}"/e*-r${run}-s*-c*.xtc                         \
             "${xtc}"/e*-r${run}-s*-c*.xtc.inprogress 2> /dev/null \
     | sed -e "s:.*-s\([[:digit:]]\+\)-c.*:\1:"                    \
@@ -174,9 +188,7 @@ test -z "${queue}" && queue="regular"
 # Unless specified on the command line, set up the output directory as
 # a subdirectory named "results" within the experiment's scratch
 # space.
-if test -z "${out}"; then
-    out="${exp}/scratch/results"
-fi
+test -z "${out}" && out="${exp}/scratch/results"
 out="${out}/r${run}"
 
 # All actual output will be written to a subdirectory for the run,
