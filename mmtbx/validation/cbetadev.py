@@ -141,6 +141,14 @@ class cbetadev (validation) :
         cbeta_out += result.as_kinemage() + "\n"
     return cbeta_out
 
+  def as_coot_data (self) :
+    data = []
+    for result in self.results :
+      if result.is_outlier() :
+        data.append((result.chain_id, result.resid, result.resname,
+          result.altloc, result.deviation, result.xyz))
+    return data
+
 class calculate_ideal_and_deviation (object) :
   __slots__ = ["deviation", "ideal", "dihedral"]
   def __init__ (self, relevant_atoms, resname) :
