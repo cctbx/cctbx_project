@@ -131,6 +131,10 @@ class residue (entity) :
     from iotbx.pdb import hybrid_36
     return hybrid_36.hy36decode(len(self.resseq), self.resseq)
 
+  @property
+  def resid (self) :
+    return "%4s%1s" % (self.resname, self.icode)
+
   def residue_id (self, ignore_altloc=False) :
     return self.id_str(ignore_altloc=ignore_altloc)
 
@@ -363,6 +367,9 @@ class validation (slots_getstate_setstate) :
 
   def as_kinemage (self) :
     return None
+
+  def as_coot_data (self) :
+    raise NotImplementedError()
 
 molprobity_cmdline_phil_str = """
   model = None

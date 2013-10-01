@@ -86,8 +86,10 @@ class coot_molprobity_todo_list_gui (coot_extension_gui) :
   else :
     data_types = dict([ (s, []) for s in ["rama","rota","cbeta","probe"] ])
 
-  def __init__ (self, data_file) :
-    data = load_pkl(data_file)
+  def __init__ (self, data_file=None, data=None) :
+    assert ([data, data_file].count(None) == 1)
+    if (data is None) :
+      data = load_pkl(data_file)
     if not self.confirm_data(data) :
       return
     coot_extension_gui.__init__(self, "MolProbity to-do list")
