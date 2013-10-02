@@ -51,8 +51,13 @@ tls_master_params = iotbx.phil.parse("""\
     .type = float
   run_finite_differences_test = False
     .type = bool
+    .help = Test with finite differences instead of gradients.  FOR \
+      DEVELOPMENT PURPOSES ONLY.
+    .expert_level = 3
   eps                         = 1.e-6
     .type = float
+    .help = Finite difference setting.
+    .expert_level = 3
   min_tls_group_size = 5
     .type = int
     .help = min number of atoms allowed per TLS group
