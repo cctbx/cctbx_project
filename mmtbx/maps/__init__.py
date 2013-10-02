@@ -585,18 +585,18 @@ class kick(object):
         assert_shannon_sampling = True)
     fmodel = self.convert_to_non_anomalous(fmodel=fmodel)
     from libtbx.test_utils import approx_equal
-    self.complete_set = fmodel.electron_density_map(
-      update_f_part1=False).map_coefficients(
-        map_type     = self.map_type,
-        isotropize   = True,
-        fill_missing = True)
-    self.partial_set = fmodel.electron_density_map(
-      update_f_part1=False).map_coefficients(
+    self.complete_set = map_tools.electron_density_map(
+      fmodel=fmodel).map_coefficients(
+        map_type            = self.map_type,
+        isotropize          = True,
+        fill_missing        = True,
+        fill_missing_method = "resolve_dm")
+    self.partial_set = map_tools.electron_density_map(
+      fmodel=fmodel).map_coefficients(
         map_type     = self.map_type,
         isotropize   = True,
         fill_missing = False)
     self.missing = self.complete_set.lone_set(self.partial_set)
-    print "self.missing:", self.missing.data().size()
     # initialize result map
     map_data = None
     # utility function
@@ -620,11 +620,13 @@ class kick(object):
       print "shake map coefficients cycles:"
       for it in xrange(macro_cycles):
         print "  %d"%it
-        sel = flex.random_bool(self.missing.data().size(), 0.5)
-        missing = self.missing.select(sel)
-        missing = missing.randomize_amplitude_and_phase(
-          amplitude_error=0.1,
-          phase_error_deg=60)
+        if(0): # may need do this if filling mode is f_model
+          sel = flex.random_bool(self.missing.data().size(), 0.5)
+          missing = self.missing.select(sel)
+          missing = missing.randomize_amplitude_and_phase(
+            amplitude_error=0.1,
+            phase_error_deg=60)
+        else: missing = self.missing
         mc = self.call_run_kick_loop(map_coeffs=self.partial_set)
         mc = mc.complete_with(other=missing, scale=True)
         if(shake_completeness):
@@ -660,11 +662,13 @@ class kick(object):
         fmodel_dc = self.recreate_r_free_flags(fmodel = fmodel_dc)
         fmodel_dc.update(f_calc = f_model_kick)
         mc = get_mc(fm=fmodel_dc)
-        sel = flex.random_bool(self.missing.data().size(), 0.5)
-        missing = self.missing.select(sel)
-        missing = missing.randomize_amplitude_and_phase(
-          amplitude_error=0.1,
-          phase_error_deg=60)
+        if(0): # may need do this if filling mode is f_model
+          sel = flex.random_bool(self.missing.data().size(), 0.5)
+          missing = self.missing.select(sel)
+          missing = missing.randomize_amplitude_and_phase(
+            amplitude_error=0.1,
+            phase_error_deg=60)
+        else: missing = self.missing
         mc = mc.complete_with(missing, scale=True)
         if(shake_completeness):
           mc = mc.select(flex.random_bool(mc.size(), 0.9))
@@ -672,7 +676,15 @@ class kick(object):
           map_coeffs       = mc,
           crystal_gridding = crystal_gridding,
           map_data         = map_data)
-    # average low map values
+    if(self.complete_set.d_min()>2.8):
+      # XXX resolution cutoff is a work-around to compensate for
+      # XXX remove_single_node_peaks being not smart
+      for cutoff in [0.5,0.6,0.7,0.8,0.9,1.0]:
+        maptbx.remove_single_node_peaks(
+          map_data   = map_data,
+          cutoff     = cutoff,
+          index_span = 2)
+    #
     for i in xrange(3):
       maptbx.map_box_average(
         map_data   = map_data,
@@ -685,6 +697,7 @@ class kick(object):
       less_than_threshold=0.0,
       greater_than_threshold=-9999,
       use_and=True)
+    #
     sd = map_data.sample_standard_deviation()
     map_data = map_data/sd
     self.map_data = map_data
@@ -745,7 +758,7 @@ def fem(ko, crystal_gridding, fmodel):
     fourier_coefficients = ko.map_coefficients)
   fft_map.apply_sigma_scaling()
   map_dataK2 = fft_map.real_map_unpadded()
-
+  #
   fft_map = miller.fft_map(
     crystal_gridding     = crystal_gridding,
     fourier_coefficients = mc_orig)
@@ -802,7 +815,7 @@ def fem(ko, crystal_gridding, fmodel):
       map_data_1 = fs_filter_map,
       map_data_2 = map_fem,
       threshold  = i)
-  maptbx.cut_by(kick=fs_filter_map,   fem=map_fem, cut_by_threshold=1)
+  maptbx.cut_by(kick=fs_filter_map, fem=map_fem, cut_by_threshold=1)
   # Filter by residual map
   diff_map_mc = fmodel.electron_density_map(
     update_f_part1 = False).map_coefficients(
@@ -863,7 +876,7 @@ def fem(ko, crystal_gridding, fmodel):
       fourier_coefficients = fem)
     fft_map.apply_sigma_scaling()
     map_fem = fft_map.real_map_unpadded()
-
+    #
     for i in [0,0.1,0.2,0.3,0.4,0.5]:
       maptbx.intersection(
         map_data_1 = map_fem1,
@@ -871,6 +884,12 @@ def fem(ko, crystal_gridding, fmodel):
         threshold  = i)
   else:
     map_fem = map_fem1
+  # Sharpen by applying unsharp mask
+  if(fem.d_min()>2): loop = [1,2]
+  else: loop = [1]
+  for i in loop:
+    maptbx.sharpen(map_data=map_fem, index_span=2, n_averages=2)
+  #
   return ko.complete_set.structure_factors_from_map(
     map            = map_fem,
     use_scale      = True,

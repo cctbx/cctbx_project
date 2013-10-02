@@ -108,12 +108,6 @@ Calculate a "feature-enhanced" 2mFo-DFc map.
   #### Compute FEM end
   mtz_dataset = mc_orig.as_mtz_dataset(column_root_label="2mFoDFc")
   mtz_dataset.add_miller_array(
-    miller_array=ko.complete_set,
-    column_root_label="2mFoDFc_FilSharp")
-  mtz_dataset.add_miller_array(
-    miller_array=ko.map_coefficients,
-    column_root_label="KICK")
-  mtz_dataset.add_miller_array(
     miller_array=fem,
     column_root_label=params.output.column_root_label)
   mtz_object = mtz_dataset.mtz_object()

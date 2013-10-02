@@ -190,10 +190,12 @@ public:
             double rho_n = rho_min + index*bin_width;
             rho_new = v_values_[index] +
               (v_values_[index+1]-v_values_[index]) * (rho-rho_n)/bin_width;
+            if(rho_new<0) rho_new = v_values_[index];
           }
           else {
             rho_new = v_values_[index];
           }
+          CCTBX_ASSERT(rho_new>=0);
           map_new(i,j,k) = rho_new;
         }
       }
