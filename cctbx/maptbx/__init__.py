@@ -895,7 +895,6 @@ class local_scale(object):
       box_size_step = 10)
     # Loop over boxes, fill map_result with one box at a time
     self.map_result = flex.double(flex.grid(b.n_real))
-    ref_box = None
     for s,e in zip(b.starts, b.ends):
       box = copy(map_data, s, e)
       box.reshape(flex.grid(box.all()))
