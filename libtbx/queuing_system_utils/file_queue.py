@@ -76,9 +76,15 @@ def temp_name(prefix, suffix, folder):
   return fname
 
 
-def _lock(fobj):
+def _lock(fobj, timeout):
 
-  fcntl.lockf( fobj.fileno(), fcntl.LOCK_EX )
+  while True:
+    try:
+      fcntl.lockf( fobj.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB )
+      break
+
+    except IOError:
+      timeout()
 
 
 def _unlock(fobj):
@@ -104,11 +110,18 @@ class Queue(object):
       pickle.dump( 0, foff )
 
 
-  def put(self, value):
+  def put(self, value, block = True, timeout = None):
+
+    tobj = get_timeout_object(
+      block = block,
+      timeout = timeout,
+      waittime = self.waittime,
+      )
 
     with open( self._put_file, "r+b" ) as fput:
+      _lock( fput, tobj )
+
       try:
-        _lock( fput )
         fput.seek( 0, os.SEEK_END )
         pickle.dump( value, fput )
         fput.flush()
@@ -117,7 +130,7 @@ class Queue(object):
         _unlock( fput )
 
 
-  def get_next_item(self, offset, block, timeout):
+  def get_next_item(self, offset, timeout):
 
     with open( self._get_file, "r+b" ) as fget:
       fget.seek( offset, os.SEEK_SET )
@@ -127,28 +140,26 @@ class Queue(object):
         offset = fget.tell()
 
       except EOFError:
-        tobj = get_timeout_object(
-          block = block,
-          timeout = timeout,
-          waittime = self.waittime,
-          )
-
         while os.path.getsize( self._put_file ) == 0:
-          tobj()
+          timeout()
 
         fget.seek( 0, os.SEEK_SET )
-        value = self.read_one_and_transfer_remanining_put_contents( fget = fget )
+        value = self.read_one_and_transfer_remanining_put_contents(
+          fget = fget,
+          timeout = timeout,
+          )
         fget.truncate()
         offset = 0
 
     return ( value, offset )
 
 
-  def read_one_and_transfer_remanining_put_contents(self, fget):
+  def read_one_and_transfer_remanining_put_contents(self, fget, timeout):
 
     with open( self._put_file, "r+b" ) as fput:
+      _lock( fput, timeout )
+
       try:
-        _lock( fput )
         value = pickle.load( fput )
         chunksize = 1024
 
@@ -171,16 +182,18 @@ class Queue(object):
 
   def get(self, block = True, timeout = None):
 
-    with open( self._offset_file, "r+b" ) as foff:
-      try:
-        _lock( foff )
-        offset = pickle.load( foff )
-        ( value, offset ) = self.get_next_item(
-          offset = offset,
-          block = block,
-          timeout = timeout,
-          )
+    tobj = get_timeout_object(
+      block = block,
+      timeout = timeout,
+      waittime = self.waittime,
+      )
 
+    with open( self._offset_file, "r+b" ) as foff:
+      _lock( foff, tobj )
+
+      try:
+        offset = pickle.load( foff )
+        ( value, offset ) = self.get_next_item( offset = offset, timeout = tobj )
         foff.seek( 0 )
         pickle.dump( offset, foff )
         foff.truncate()
