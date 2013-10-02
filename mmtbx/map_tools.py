@@ -115,6 +115,7 @@ class electron_density_map(object):
                        centrics_pre_scale = 1.0,
                        exclude_free_r_reflections=False,
                        fill_missing=False,
+                       fill_missing_method="f_model",
                        ncs_average=False,
                        isotropize=True,
                        sharp=False,
@@ -203,7 +204,10 @@ class electron_density_map(object):
     if(fill_missing):
       if(coeffs.anomalous_flag()):
         coeffs = coeffs.average_bijvoet_mates()
-      coeffs = fill_missing_f_obs(coeffs, self.fmodel)
+      coeffs = fill_missing_f_obs(
+        coeffs = coeffs,
+        fmodel = self.fmodel,
+        method = fill_missing_method)
     if(sharp):
       ss = 1./flex.pow2(coeffs.d_spacings().data()) / 4.
       from cctbx import adptbx
@@ -245,6 +249,57 @@ class electron_density_map(object):
         crystal_gridding     = other_fft_map,
         fourier_coefficients = map_coefficients)
 
+def resolve_dm_map(
+      fmodel,
+      map_coeffs,
+      pdb_inp,
+      use_model_hl,
+      fill,
+      input_text=None):
+  """
+  Compute Resolve DM map
+  """
+  from solve_resolve.resolve_python import density_modify_in_memory
+  sol_cont = mmtbx.utils.f_000(
+    xray_structure = fmodel.xray_structure).solvent_fraction-0.1
+  hl_model = None
+  if(use_model_hl):
+    hl_model = miller.set(crystal_symmetry=fmodel.f_obs().crystal_symmetry(),
+      indices = fmodel.f_obs().indices(),
+      anomalous_flag=False).array(
+        data=fmodel.f_model_phases_as_hl_coefficients(
+          map_calculation_helper=None))
+  f_obs = fmodel.f_obs()
+  if(fill):
+    data = f_obs.data()
+    sigmas = f_obs.sigmas()
+    complete_set = f_obs.complete_set()
+    n_missing =  complete_set.indices().size() - f_obs.indices().size()
+    complete_set = complete_set.array(
+      data = flex.double(complete_set.indices().size(), 0.01),
+      sigmas = flex.double(complete_set.indices().size(), -1.0))
+    f_obs = f_obs.complete_with(other=complete_set)
+    assert f_obs.data().size()==f_obs.indices().size()==f_obs.sigmas().size()
+  if pdb_inp:
+    denmod_with_model=True
+  else:
+    denmod_with_model=False
+  cmn=density_modify_in_memory.run(
+    fp_sigfp            = f_obs.deep_copy(),
+    hendrickson_lattman = hl_model,
+    map_coeffs_start    = map_coeffs,
+    solvent_content     = sol_cont,
+    mask_cycles         = 5,
+    minor_cycles        = 10,
+    pdb_inp             = pdb_inp,
+    denmod_with_model   = denmod_with_model,
+    verbose             = False,
+    input_text          = input_text,
+    out                 = null_out())
+  result = cmn.map_coeffs_out_as_miller_array
+  assert f_obs.indices().size()==result.indices().size()
+  return result
+
 def fill_missing_f_obs_1(coeffs, fmodel):
   cs = fmodel.f_obs().average_bijvoet_mates().complete_set(
     d_min = fmodel.f_obs().d_min())
@@ -260,16 +315,32 @@ def fill_missing_f_obs_1(coeffs, fmodel):
 def fill_missing_f_obs_2(coeffs, fmodel):
   scale_to = fmodel.f_obs().average_bijvoet_mates()
   dsf = coeffs.double_step_filtration(
-    vol_cutoff_plus_percent=10.0,
-    vol_cutoff_minus_percent=10.0,
+    vol_cutoff_plus_percent=5.0,
+    vol_cutoff_minus_percent=5.0,
     scale_to=scale_to)
   return coeffs.complete_with(other = dsf, scale=True)
 
-def fill_missing_f_obs(coeffs, fmodel):
-  if(fmodel.xray_structure is not None):
+def fill_missing_f_obs_3(coeffs, fmodel):
+  mc_dm_filled = resolve_dm_map(
+    fmodel       = fmodel,
+    map_coeffs   = coeffs,
+    pdb_inp      = None,
+    use_model_hl = True,
+    fill         = True)
+  return coeffs.complete_with(other = mc_dm_filled, scale=True)
+
+def fill_missing_f_obs(coeffs, fmodel, method):
+  assert method in ["resolve_dm", "dsf", "f_model", None, False]
+  if(method == "f_model"):
     return fill_missing_f_obs_1(coeffs=coeffs, fmodel=fmodel)
-  else:
+  elif(method == "dsf"):
     return fill_missing_f_obs_2(coeffs=coeffs, fmodel=fmodel)
+  elif(method == "resolve_dm"):
+    return fill_missing_f_obs_3(coeffs=coeffs, fmodel=fmodel)
+  elif(method in [None, False]):
+    return coeffs
+  else:
+    raise RuntimeError("Invalid arg of fill_missing_f_obs: method:"%(method))
 
 def sharp_evaluation_target(sites_frac, map_coeffs, resolution_factor = 0.25):
   fft_map = map_coeffs.fft_map(resolution_factor=resolution_factor)

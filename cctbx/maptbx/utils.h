@@ -9,6 +9,8 @@
 #include <scitbx/math/modulo.h>
 #include <scitbx/array_family/sort.h>
 
+#include <cctbx/maptbx/eight_point_interpolation.h> //indirect import?
+
 namespace cctbx { namespace maptbx {
 
   //! Miller index element corresponding to 1-dimensional array index.
@@ -111,7 +113,6 @@ void hoppe_gassman_modification2(af::ref<DataType, af::c_grid<3> > map_data,
     }}}}
   }
 }
-
 
 template <typename DataType>
 void hoppe_gassman_modification(af::ref<DataType, af::c_grid<3> > map_data,
@@ -429,6 +430,36 @@ kuwahara_filter(
 
 template <typename DataType>
 void
+remove_single_node_peaks(
+  af::ref<DataType, af::c_grid<3> > map_data,
+  DataType const& cutoff,
+  int const& index_span)
+{
+  int nx = map_data.accessor()[0];
+  int ny = map_data.accessor()[1];
+  int nz = map_data.accessor()[2];
+  for (int lx = 0; lx < nx; lx++) {
+    for (int ly = 0; ly < ny; ly++) {
+      for (int lz = 0; lz < nz; lz++) {
+          int counter = 0;
+          for (int i = lx-index_span; i <= lx+index_span; i=i+2) {
+            for (int j = ly-index_span; j <= ly+index_span; j=j+2) {
+              for (int k = lz-index_span; k <= lz+index_span; k=k+2) {
+                if(i!=lx || j!=ly || k!=lz) {
+                  int mx = scitbx::math::mod_positive(i, nx);
+                  int my = scitbx::math::mod_positive(j, ny);
+                  int mz = scitbx::math::mod_positive(k, nz);
+                  if(map_data(mx,my,mz)< cutoff) counter += 1;
+                }
+          }}}
+          if(counter == 26) {
+            map_data(lx,ly,lz) = 0;
+          }
+  }}}
+}
+
+template <typename DataType>
+void
 map_box_average(
   af::ref<DataType, af::c_grid<3> > map_data,
   cctbx::uctbx::unit_cell const& unit_cell,
@@ -491,6 +522,35 @@ map_box_average(
           }}}
           map_data(lx,ly,lz) = rho / counter;
   }}}}
+}
+
+template <typename DataType>
+void
+sharpen(
+  af::ref<DataType, af::c_grid<3> > map_data,
+  int const& index_span,
+  int const& n_averages)
+{
+  af::c_grid<3> a = map_data.accessor();
+  af::versa<double, af::c_grid<3> > result_map(a,
+    af::init_functor_null<DataType>());
+  af::ref<DataType, af::c_grid<3> > result_map_ref = result_map.ref();
+  // copy
+  for(int i = 0; i < a[0]; i++) {
+    for(int j = 0; j < a[1]; j++) {
+      for(int k = 0; k < a[2]; k++) {
+         result_map_ref(i,j,k) = map_data(i,j,k);
+  }}}
+  // blur
+  for(int i = 0; i < n_averages; i++) {
+    map_box_average(result_map_ref, 9999., index_span);
+  }
+  //sharpen
+  for(int i = 0; i < a[0]; i++) {
+    for(int j = 0; j < a[1]; j++) {
+      for(int k = 0; k < a[2]; k++) {
+        map_data(i,j,k) = std::max(0., map_data(i,j,k)-result_map_ref(i,j,k));
+  }}}
 }
 
 }} // namespace cctbx::maptbx

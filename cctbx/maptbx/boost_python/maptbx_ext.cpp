@@ -228,6 +228,15 @@ namespace {
       arg("map_data"),
       arg("index_span")));
 
+    def("remove_single_node_peaks",
+      (void(*)
+        (af::ref<double, af::c_grid<3> >,
+         double const&,
+         int const&)) remove_single_node_peaks, (
+      arg("map_data"),
+      arg("cutoff"),
+      arg("index_span")));
+
     def("map_box_average",
       (void(*)
         (af::ref<double, af::c_grid<3> >,
@@ -236,6 +245,15 @@ namespace {
       arg("map_data"),
       arg("cutoff"),
       arg("index_span")));
+
+    def("sharpen",
+      (void(*)
+        (af::ref<double, af::c_grid<3> >,
+         int const&,
+         int const&)) sharpen, (
+      arg("map_data"),
+      arg("index_span"),
+      arg("n_averages")));
 
     def("map_box_average",
       (void(*)
@@ -259,7 +277,7 @@ namespace {
       (void(*)
         (af::ref<double, af::c_grid<3> >,
          double,
-         int)) hoppe_gassman_modification, (
+         int)) hoppe_gassman_modification2, (
       arg("data"),
       arg("mean_scale"),
       arg("n_iterations")));
