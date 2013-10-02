@@ -179,6 +179,11 @@ class installer (object) :
     return open(install_log, "w")
 
   def patch_src (self, src_file, target, replace_with, output_file=None) :
+    if isinstance(target, str) :
+      assert isinstance(replace_with, str)
+      target = [ target ]
+      replace_with = [ replace_with ]
+    assert len(target) == len(replace_with)
     in_file = src_file
     if (output_file is None) :
       in_file += ".dist"
@@ -188,7 +193,9 @@ class installer (object) :
       output_file = src_file
     src_out = open(output_file, "w")
     for line in src_in.readlines() :
-      src_out.write(line.replace(target, replace_with))
+      for target_str, replacement_str in zip(target, replace_with) :
+        line = line.replace(target_str, replacement_str)
+      src_out.write(line)
     src_in.close()
     src_out.close()
 
@@ -601,8 +608,9 @@ class installer (object) :
       print >> out, "  patching setup.cfg"
       self.patch_src(src_file="setup.cfg.template",
                      output_file="setup.cfg",
-                     target="#backend = Agg",
-                     replace_with="backend = WXAgg")
+                     target=("#backend = Agg", "#basedirlist = /usr"),
+                     replace_with=("backend = WXAgg",
+                      "basedirlist = /usr, %s" % self.base_dir))
       return True
     self.build_python_module_simple(
       pkg_url=BASE_CCI_PKG_URL,
