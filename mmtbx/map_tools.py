@@ -6,6 +6,7 @@ import libtbx.phil
 from libtbx.utils import null_out
 from libtbx import adopt_init_args
 import mmtbx
+import libtbx
 
 class fo_fc_scales(object):
   def __init__(self,
@@ -321,6 +322,7 @@ def fill_missing_f_obs_2(coeffs, fmodel):
   return coeffs.complete_with(other = dsf, scale=True)
 
 def fill_missing_f_obs_3(coeffs, fmodel):
+  if(not libtbx.env.has_module("solve_resolve")): return coeffs
   mc_dm_filled = resolve_dm_map(
     fmodel       = fmodel,
     map_coeffs   = coeffs,
