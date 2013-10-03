@@ -63,9 +63,9 @@ class xscaling_manager (scaling_manager) :
   def read_all_mysql(self):
     print "reading observations from MySQL database"
 
-    if self.params == 'MySQL':
+    if self.params.backend == 'MySQL':
       from xfel.cxi.merging_database import manager
-    elif self.params == 'SQLite':
+    elif self.params.backend == 'SQLite':
       from xfel.cxi.merging_database_sqlite3 import manager
     else:
       from xfel.cxi.merging_database_fs import manager
