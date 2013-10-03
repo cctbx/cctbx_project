@@ -152,15 +152,15 @@ def run_cc(params,output):
        if this_label.find("fobs")>=0:
          print >>output, this_label,array.observation_type()
          uniform.append(array.as_intensity_array())
-         continue
+         break
        if this_label.find("imean")>=0:
          print >>output, this_label,array.observation_type()
          uniform.append(array.as_intensity_array())
-         continue
+         break
        if this_label.find(params.scaling.mtz_column_F)==0:
          print >>output, this_label,array.observation_type()
          uniform.append(array.as_intensity_array())
-         continue
+         break
 
   d_max_min = uniform[1].d_max_min()
   for x in [0,1,2,3]:
