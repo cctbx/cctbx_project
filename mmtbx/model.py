@@ -1044,6 +1044,7 @@ class manager(object):
       nonbonded_types=nonbonded_types,
       i_seq_start=i_seq,
       chain_id=chain_id,
+      refine_adp=refine_adp,
       refine_occupancies=refine_occupancies)
 
   def append_single_atoms(self,
@@ -1051,12 +1052,14 @@ class manager(object):
       atom_names,
       residue_names,
       nonbonded_types,
+      refine_adp,
       refine_occupancies=None,
       nonbonded_charges=None,
       segids=None,
       i_seq_start = 0,
       chain_id     = " ",
       reset_labels=False) :
+    assert refine_adp in ["isotropic", "anisotropic"]
     ms = self.xray_structure.scatterers().size() #
     number_of_new_atoms = new_xray_structure.scatterers().size()
     self.xray_structure = \
@@ -1073,14 +1076,20 @@ class manager(object):
     if(self.refinement_flags.torsion_angles):
       ssites_tors = flex.bool(new_xray_structure.scatterers().size(), True)
     else: ssites_tors = None
-    nxrs_ui = new_xray_structure.use_u_iso()
-    if(self.refinement_flags.adp_individual_iso or nxrs_ui.count(True)>0):
-      sadp_iso = nxrs_ui
-    else: sadp_iso = None
-    nxrs_ua = new_xray_structure.use_u_aniso()
-    if(self.refinement_flags.adp_individual_aniso or nxrs_ua.count(True)>0):
-      sadp_aniso = nxrs_ua
-    else: sadp_aniso = None
+    #
+    sadp_iso, sadp_aniso = None, None
+    if (refine_adp=="isotropic"):
+      nxrs_ui = new_xray_structure.use_u_iso()
+      if(self.refinement_flags.adp_individual_iso or nxrs_ui.count(True)>0):
+        sadp_iso = nxrs_ui
+        sadp_aniso = flex.bool(sadp_iso.size(), False)
+      else: sadp_iso = None
+    if(refine_adp=="anisotropic"):
+      nxrs_ua = new_xray_structure.use_u_aniso()
+      if(self.refinement_flags.adp_individual_aniso or nxrs_ua.count(True)>0):
+        sadp_aniso = nxrs_ua
+        sadp_iso = flex.bool(sadp_aniso.size(), False)
+      else: sadp_aniso = None
     self.refinement_flags.inflate(
       sites_individual       = ssites,
       sites_torsion_angles   = ssites_tors,
