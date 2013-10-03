@@ -7,14 +7,16 @@ import sys
 import math
 
 def run (params) :
-  if params.model[-4:]==".mtz": # assume *.mtz has Iobs and was created in previous step from mark1 algorithm
+  if params.model[-4:]==".mtz": # assume *.mtz has IMEAN and was created in previous step from mark1 algorithm
     from iotbx import mtz
     data_SR = mtz.object(params.model)
     for array in data_SR.as_miller_arrays():
        this_label = array.info().label_string().lower()
        if this_label.find("iobs")>=0:
          return array.as_intensity_array()
-    raise Exception("mtz did not contain expected label Iobs")
+       if this_label.find("imean")>=0:
+         return array.as_intensity_array()
+    raise Exception("mtz did not contain expected label Iobs or IMEAN")
 
   pdb_in = file_reader.any_file(params.model, force_type="pdb")
   pdb_in.assert_file_type("pdb")
