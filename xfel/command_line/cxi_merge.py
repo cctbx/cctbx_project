@@ -767,12 +767,12 @@ class scaling_manager (intensity_data) :
       else:
         N_acceptable_bins = max(acceptable_nested_bin_sequences) + 1
         imposed_res_filter = float(bin_results[N_acceptable_bins-1].d_range.split()[2])
-        observations = observations.resolution_filter(d_min =
-          imposed_res_filter
-          )
-        observations_original_index = observations_original_index.resolution_filter(d_min =
-          imposed_res_filter
-          )
+        imposed_res_sel = observations.resolution_filter_selection(
+          d_min=imposed_res_filter)
+        observations = observations.select(
+          imposed_res_sel)
+        observations_original_index = observations_original_index.select(
+          imposed_res_sel)
         print "New resolution filter at %7.2f"%imposed_res_filter,file_name
       print "N acceptable bins",N_acceptable_bins
       print "Old n_obs: %d, new n_obs: %d"%(N_obs_pre_filter,observations.size())
