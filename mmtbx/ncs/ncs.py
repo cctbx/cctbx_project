@@ -2,6 +2,7 @@ from __future__ import division
 #! /usr/bin/env python
 import sys, os, string
 from libtbx.utils import Sorry
+import scitbx.rigid_body
  # hierarchy:  there can be any number of ncs groups.
  #   each group has a set of NCS operators and centers and may apply
  #      to a part of the structure.
@@ -844,55 +845,12 @@ MATCHING 11.0
 
 """
 
-############### euler routine ######################
-  # 2013-09-26 copied from P. Afonine routine of same name
-def euler(phi, psi, the, convention):
-  if(convention == "zyz"):
-     result = rb_mat_zyz(the=the, psi=psi, phi=phi)
-  else:
-     raise Sorry("\nOnly zyz allowed in this implementation\n")
-  return result
-
-class rb_mat_zyz(object):
-
-   def __init__(self, the, psi, phi):
-     import math
-     the = the * math.pi/180
-     psi = psi * math.pi/180
-     phi = phi * math.pi/180
-     self.c_psi = math.cos(psi)
-     self.c_the = math.cos(the)
-     self.c_phi = math.cos(phi)
-     self.s_psi = math.sin(psi)
-     self.s_the = math.sin(the)
-     self.s_phi = math.sin(phi)
-
-   def rot_mat(self):
-     c_psi = self.c_psi
-     c_the = self.c_the
-     c_phi = self.c_phi
-     s_psi = self.s_psi
-     s_the = self.s_the
-     s_phi = self.s_phi
-     r11 =  c_the*c_psi*c_phi - s_the*s_phi
-     r12 = -c_the*c_psi*s_phi - s_the*c_phi
-     r13 =  c_the*s_psi
-     r21 =  s_the*c_psi*c_phi + c_the*s_phi
-     r22 = -s_the*c_psi*s_phi + c_the*c_phi
-     r23 =  s_the*s_psi
-     r31 = -s_psi*c_phi
-     r32 =  s_psi*s_phi
-     r33 =  c_psi
-     from scitbx import matrix
-     rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
-     return rm
-############### end euler routine ######################
 def euler_frac_to_rot_trans(euler_values,frac,unit_cell):
     # TT get RT in cctbx form from euler angles and fractional translation as
     #   used in phaser. Note: Specific for phaser EULER FRAC
 
     from scitbx.math import euler_angles_as_matrix, euler_angles
-    ncs_rota_matr_inv=euler(
+    ncs_rota_matr_inv=scitbx.rigid_body.euler(
       euler_values[2],euler_values[1],euler_values[0],"zyz").rot_mat()
     ncs_rota_matr=ncs_rota_matr_inv.inverse()
 
