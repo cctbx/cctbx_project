@@ -649,7 +649,9 @@ class kick(object):
         f_part1       = fmodel.f_part1(),
         f_part2       = fmodel.f_part2(),
         f_mask        = zero)
-      assert approx_equal(fmodel.r_work(), fmodel_dc.r_work())
+      r1 = fmodel.r_work()
+      r2 = fmodel_dc.r_work()
+      assert approx_equal(r1, r2, 1.e-4), [r1, r2]
       def get_mc(fm):
        return fm.electron_density_map(
          update_f_part1=False).map_coefficients(
@@ -888,7 +890,7 @@ def fem(ko, crystal_gridding, fmodel):
   if(fem.d_min()>2): loop = [1,2]
   else: loop = [1]
   for i in loop:
-    maptbx.sharpen(map_data=map_fem, index_span=2, n_averages=2)
+    maptbx.sharpen(map_data=map_fem, index_span=1, n_averages=2)
   #
   return ko.complete_set.structure_factors_from_map(
     map            = map_fem,
