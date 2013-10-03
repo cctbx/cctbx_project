@@ -11,9 +11,9 @@
 
 from __future__ import division
 
-from dxtbx.format.FormatSMVADSCSN import FormatSMVADSCSN
+from dxtbx.format.FormatSMVADSCNoDateStamp import FormatSMVADSCNoDateStamp
 
-class FormatSMVADSCSN457(FormatSMVADSCSN):
+class FormatSMVADSCSN457(FormatSMVADSCNoDateStamp):
     '''A class for reading SMV format ADSC images, and correctly constructing
     a model for the experiment from this, for instrument number 457.'''
 
@@ -23,7 +23,7 @@ class FormatSMVADSCSN457(FormatSMVADSCSN):
 
         # check this is detector serial number 457
 
-        size, header = FormatSMVADSCSN.get_smv_header(image_file)
+        size, header = FormatSMVADSCNoDateStamp.get_smv_header(image_file)
 
         if int(header['DETECTOR_SN']) != 457:
             return False
@@ -36,7 +36,7 @@ class FormatSMVADSCSN457(FormatSMVADSCSN):
 
         assert(self.understand(image_file))
 
-        FormatSMVADSCSN.__init__(self, image_file)
+        FormatSMVADSCNoDateStamp.__init__(self, image_file)
 
         return
 
@@ -44,7 +44,7 @@ class FormatSMVADSCSN457(FormatSMVADSCSN):
         '''Return a model for a simple single-axis goniometer. This should
         probably be checked against the image header.'''
 
-        return self._goniometer_factory.known_axis((-1, 0, 0))
+        return self._goniometer_factory.single_axis_reverse()
 
     def _scan(self):
         '''Return the scan information for this image. There may be
