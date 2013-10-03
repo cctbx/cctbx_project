@@ -444,7 +444,7 @@ dxtbx/format/FormatTIFF.py -text
 dxtbx/format/FormatTIFFHelpers.py -text
 dxtbx/format/FormatTIFFRayonix.py -text
 dxtbx/format/FormatTIFFRayonixESRF.py -text
-dxtbx/format/FormatTIFFRayonixSpring8BL32XU.py -text
+dxtbx/format/FormatTIFFRayonixSPring8BL32XU.py -text
 dxtbx/format/FormatXPARM.py -text
 dxtbx/format/Registry.py -text
 dxtbx/format/RegistryHelpers.py -text
