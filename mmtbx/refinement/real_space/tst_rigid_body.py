@@ -14,6 +14,7 @@ import cctbx.geometry_restraints
 import cctbx.geometry_restraints.flags
 from cctbx import adp_restraints # import dependency
 import mmtbx.utils
+import scitbx.rigid_body
 
 
 pdb_str = """\
@@ -59,7 +60,7 @@ def exercise(d_min = 2.0, resolution_factor = 0.1):
   mtz_object = mtz_dataset.mtz_object()
   mtz_object.write(file_name = "answer.mtz")
   #
-  rot_obj = mmtbx.refinement.rigid_body.rb_mat_zyz(phi = 20, psi = 30, the = 40)
+  rot_obj = scitbx.rigid_body.rb_mat_zyz(phi = 20, psi = 30, the = 40)
   xrs_poor = xrs_answer.deep_copy_scatterers()
   xrs_poor.apply_rigid_body_shift(
     rot = rot_obj.rot_mat().as_mat3(), trans = [1,2,3])
