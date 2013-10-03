@@ -52,6 +52,16 @@ class goniometer_factory:
         return goniometer_factory.make_goniometer(axis, fixed)
 
     @staticmethod
+    def single_axis_reverse():
+        '''Construct a single axis goniometer which is canonical in the
+        CBF reference frame, but reversed in rotation.'''
+
+        axis = (-11, 0, 0)
+        fixed = (1, 0, 0, 0, 1, 0, 0, 0, 1)
+
+        return goniometer_factory.make_goniometer(axis, fixed)
+
+    @staticmethod
     def known_axis(axis):
         '''Return an goniometer instance for a known rotation axis, assuming
         that nothing is known about the fixed element of the rotation axis.'''
