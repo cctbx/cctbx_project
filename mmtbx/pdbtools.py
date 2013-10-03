@@ -21,6 +21,7 @@ from libtbx import runtime_utils
 import scitbx.matrix
 import cStringIO
 import os, sys
+import scitbx.rigid_body
 
 
 modify_params_str = """\
@@ -478,13 +479,15 @@ class modify(object):
         text = "Rigid body shift",
         selection = selection)
       if (euler_angle_convention == "zyz"):
-        rot_obj = rigid_body.rb_mat_zyz(phi = rot[0],
-                                          psi = rot[1],
-                                          the = rot[2])
+        rot_obj = scitbx.rigid_body.rb_mat_zyz(
+          phi = rot[0],
+          psi = rot[1],
+          the = rot[2])
       else:
-        rot_obj = rigid_body.rb_mat_xyz(phi = rot[0],
-                                    psi = rot[1],
-                                    the = rot[2])
+        rot_obj = scitbx.rigid_body.rb_mat_xyz(
+          phi = rot[0],
+          psi = rot[1],
+          the = rot[2])
       self.xray_structure.apply_rigid_body_shift(
         rot       = rot_obj.rot_mat().as_mat3(),
         trans     = trans,

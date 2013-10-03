@@ -11,106 +11,9 @@ import copy
 from libtbx.utils import Sorry, null_out
 from libtbx.utils import user_plus_sys_time
 from libtbx.math_utils import iround
+import scitbx.rigid_body
 
 time_rigid_body_total = 0.0
-
-def euler(phi, psi, the, convention):
-  if(convention == "zyz"):
-     result = rb_mat_zyz(the=the, psi=psi, phi=phi)
-  elif(convention == "xyz"):
-     result = rb_mat_xyz(the=the, psi=psi, phi=phi)
-  else:
-     raise Sorry("\nWrong rotation convention\n")
-  return result
-
-class rb_mat_zyz(object):
-
-   def __init__(self, the, psi, phi):
-     the = the * math.pi/180
-     psi = psi * math.pi/180
-     phi = phi * math.pi/180
-     self.c_psi = math.cos(psi)
-     self.c_the = math.cos(the)
-     self.c_phi = math.cos(phi)
-     self.s_psi = math.sin(psi)
-     self.s_the = math.sin(the)
-     self.s_phi = math.sin(phi)
-
-   def rot_mat(self):
-     c_psi = self.c_psi
-     c_the = self.c_the
-     c_phi = self.c_phi
-     s_psi = self.s_psi
-     s_the = self.s_the
-     s_phi = self.s_phi
-     r11 =  c_the*c_psi*c_phi - s_the*s_phi
-     r12 = -c_the*c_psi*s_phi - s_the*c_phi
-     r13 =  c_the*s_psi
-     r21 =  s_the*c_psi*c_phi + c_the*s_phi
-     r22 = -s_the*c_psi*s_phi + c_the*c_phi
-     r23 =  s_the*s_psi
-     r31 = -s_psi*c_phi
-     r32 =  s_psi*s_phi
-     r33 =  c_psi
-     rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
-     return rm
-
-   def r_the(self):
-     c_psi = self.c_psi
-     c_the = self.c_the
-     c_phi = self.c_phi
-     s_psi = self.s_psi
-     s_the = self.s_the
-     s_phi = self.s_phi
-     r11 = -s_the*c_psi*c_phi - c_the*s_phi
-     r12 =  s_the*c_psi*s_phi - c_the*c_phi
-     r13 = -s_the*s_psi
-     r21 =  c_the*c_psi*c_phi - s_the*s_phi
-     r22 = -c_the*c_psi*s_phi - s_the*c_phi
-     r23 =  c_the*s_psi
-     r31 = 0.0
-     r32 = 0.0
-     r33 = 0.0
-     rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
-     return rm
-
-   def r_psi(self):
-     c_psi = self.c_psi
-     c_the = self.c_the
-     c_phi = self.c_phi
-     s_psi = self.s_psi
-     s_the = self.s_the
-     s_phi = self.s_phi
-     r11 = -c_the*s_psi*c_phi
-     r12 =  c_the*s_psi*s_phi
-     r13 =  c_the*c_psi
-     r21 = -s_the*s_psi*c_phi
-     r22 =  s_the*s_psi*s_phi
-     r23 =  s_the*c_psi
-     r31 = -c_psi*c_phi
-     r32 =  c_psi*s_phi
-     r33 = -s_psi
-     rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
-     return rm
-
-   def r_phi(self):
-     c_psi = self.c_psi
-     c_the = self.c_the
-     c_phi = self.c_phi
-     s_psi = self.s_psi
-     s_the = self.s_the
-     s_phi = self.s_phi
-     r11 = -c_the*c_psi*s_phi - s_the*c_phi
-     r12 = -c_the*c_psi*c_phi + s_the*s_phi
-     r13 =  0.0
-     r21 = -s_the*c_psi*s_phi + c_the*c_phi
-     r22 = -s_the*c_psi*c_phi - c_the*s_phi
-     r23 =  0.0
-     r31 =  s_psi*s_phi
-     r32 =  s_psi*c_phi
-     r33 =  0.0
-     rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
-     return rm
 
 class rigid_body_shift_accumulator(object):
 
@@ -148,95 +51,6 @@ class rigid_body_shift_accumulator(object):
        translations=self.translations)
      print >> out, "|"+"-"*77+"|"
      print >> out
-
-class rb_mat_xyz(object):
-
-   def __init__(self, phi, psi, the):
-     phi = phi * math.pi/180
-     psi = psi * math.pi/180
-     the = the * math.pi/180
-     self.c_psi = math.cos(psi)
-     self.c_phi = math.cos(phi)
-     self.c_the = math.cos(the)
-     self.s_psi = math.sin(psi)
-     self.s_phi = math.sin(phi)
-     self.s_the = math.sin(the)
-
-   def rot_mat(self):
-     c_psi = self.c_psi
-     c_the = self.c_the
-     c_phi = self.c_phi
-     s_psi = self.s_psi
-     s_the = self.s_the
-     s_phi = self.s_phi
-     r11 =  c_psi*c_phi
-     r12 = -c_psi*s_phi
-     r13 =  s_psi
-     r21 =  c_the*s_phi + s_the*s_psi*c_phi
-     r22 =  c_the*c_phi - s_the*s_psi*s_phi
-     r23 = -s_the*c_psi
-     r31 =  s_the*s_phi - c_the*s_psi*c_phi
-     r32 =  s_the*c_phi + c_the*s_psi*s_phi
-     r33 =  c_the*c_psi
-     rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
-     return rm
-
-   def r_phi(self):
-     c_psi = self.c_psi
-     c_the = self.c_the
-     c_phi = self.c_phi
-     s_psi = self.s_psi
-     s_the = self.s_the
-     s_phi = self.s_phi
-     r11 = -c_psi*s_phi
-     r12 = -c_psi*c_phi
-     r13 =  0.0
-     r21 =  c_the*c_phi - s_the*s_psi*s_phi
-     r22 = -c_the*s_phi - s_the*s_psi*c_phi
-     r23 =  0.0
-     r31 =  s_the*c_phi + c_the*s_psi*s_phi
-     r32 = -s_the*s_phi + c_the*s_psi*c_phi
-     r33 =  0.0
-     rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
-     return rm
-
-   def r_psi(self):
-     c_psi = self.c_psi
-     c_the = self.c_the
-     c_phi = self.c_phi
-     s_psi = self.s_psi
-     s_the = self.s_the
-     s_phi = self.s_phi
-     r11 = -s_psi*c_phi
-     r12 =  s_psi*s_phi
-     r13 =  c_psi
-     r21 =  s_the*c_psi*c_phi
-     r22 = -s_the*c_psi*s_phi
-     r23 =  s_the*s_psi
-     r31 = -c_the*c_psi*c_phi
-     r32 =  c_the*c_psi*s_phi
-     r33 = -c_the*s_psi
-     rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
-     return rm
-
-   def r_the(self):
-     c_psi = self.c_psi
-     c_the = self.c_the
-     c_phi = self.c_phi
-     s_psi = self.s_psi
-     s_the = self.s_the
-     s_phi = self.s_phi
-     r11 =  0.0
-     r12 =  0.0
-     r13 =  0.0
-     r21 = -s_the*s_phi+c_the*s_psi*c_phi
-     r22 = -s_the*c_phi-c_the*s_psi*s_phi
-     r23 = -c_the*c_psi
-     r31 =  c_the*s_phi+s_the*s_psi*c_phi
-     r32 =  c_the*c_phi-s_the*s_psi*s_phi
-     r33 = -s_the*c_psi
-     rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
-     return rm
 
 multiple_zones_params_str = """\
   min_number_of_reflections = 200
@@ -537,10 +351,11 @@ class manager(object):
             for i in xrange(len(selections)):
                 self.total_rotation[i] += flex.double(minimized.r_min[i])
                 self.total_translation[i] += flex.double(minimized.t_min[i])
-                rot_obj = euler(phi        = minimized.r_min[i][0],
-                                psi        = minimized.r_min[i][1],
-                                the        = minimized.r_min[i][2],
-                                convention = params.euler_angle_convention)
+                rot_obj = scitbx.rigid_body.euler(
+                  phi        = minimized.r_min[i][0],
+                  psi        = minimized.r_min[i][1],
+                  the        = minimized.r_min[i][2],
+                  convention = params.euler_angle_convention)
                 rotation_matrices.append(rot_obj.rot_mat())
                 translation_vectors.append(minimized.t_min[i])
             new_xrs = apply_transformation(
@@ -719,10 +534,11 @@ class rigid_body_minimizer(object):
     translation_vectors = []
     rot_objs = []
     for i in xrange(self.n_groups):
-        rot_obj = euler(phi        = self.r_min[i][0],
-                        psi        = self.r_min[i][1],
-                        the        = self.r_min[i][2],
-                        convention = self.euler_angle_convention)
+        rot_obj = scitbx.rigid_body.euler(
+          phi        = self.r_min[i][0],
+          psi        = self.r_min[i][1],
+          the        = self.r_min[i][2],
+          convention = self.euler_angle_convention)
         rotation_matrices.append(rot_obj.rot_mat())
         translation_vectors.append(self.t_min[i])
         rot_objs.append(rot_obj)
