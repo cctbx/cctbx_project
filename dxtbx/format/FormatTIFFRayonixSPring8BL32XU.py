@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# FormatTIFFRayonixSpring8BL32XU.py
+# FormatTIFFRayonixSPring8BL32XU.py
 #   Copyright (C) 2013 Diamond Light Source, Graeme Winter
 #
 #   This code is distributed under the BSD license, a copy of which is
@@ -12,10 +12,10 @@ import struct
 
 from dxtbx.format.FormatTIFFRayonix import FormatTIFFRayonix
 
-class FormatTIFFRayonixSpring8BL32XU(FormatTIFFRayonix):
+class FormatTIFFRayonixSPring8BL32XU(FormatTIFFRayonix):
     '''A class for reading TIFF format Rayonix images, and correctly
     constructing a model for the experiment from this, for beamline
-    Spring8/BL32XU with a reversed phi axis.'''
+    SPring8/BL32XU with a reversed phi axis.'''
 
     @staticmethod
     def understand(image_file):
@@ -26,9 +26,6 @@ class FormatTIFFRayonixSpring8BL32XU(FormatTIFFRayonix):
 
         width, height, depth, order, bytes = FormatTIFFRayonix.get_tiff_header(
             image_file)
-
-        # ESRF instruments (with the beam centre in mm not in pixels) appear
-        # to not have the detector serial number in the comments block.
 
         serial_number = -1
 
@@ -87,31 +84,8 @@ class FormatTIFFRayonixSpring8BL32XU(FormatTIFFRayonix):
 
         starts, ends, offset, width = self._get_rayonix_scan_angles()
 
-        # not testing as this the CLS images are not properly structured...
-        # and also don't have a serial number in (FAIL)
-
         return self._goniometer_factory.single_axis_reverse()
 
-
-    ####################################################################
-    #                                                                  #
-    # Helper methods to get all of the values out of the TIFF header   #
-    # - separated out to assist with code clarity                      #
-    #                                                                  #
-    ####################################################################
-
-    def _get_rayonix_beam_xy(self):
-        '''Get the beam x, y positions which are defined in the standard
-        to be in pixels. X and Y are not defined by the documentation, so
-        taking as a given that these are horizontal and vertical. N.B.
-        the documentation states that the horizontal direction is fast.'''
-
-        beam_x, beam_y = struct.unpack(
-            self._ii, self._tiff_header_bytes[1668:1676])[:2]
-        pixel_x, pixel_y = struct.unpack(
-            self._ii, self._tiff_header_bytes[1796:1804])[:2]
-
-        return beam_x * 1000 / pixel_x, beam_y * 1000 / pixel_y
 
 if __name__ == '__main__':
 
