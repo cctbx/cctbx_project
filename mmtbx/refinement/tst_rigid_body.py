@@ -13,6 +13,7 @@ import mmtbx.utils
 import iotbx.pdb
 from scitbx import matrix
 import mmtbx.command_line.fmodel
+import scitbx.rigid_body
 
 random.seed(0)
 flex.set_random_seed(0)
@@ -33,7 +34,7 @@ def test_matrices_zyz():
                      math.sin(c),  math.cos(c), 0,
                                0,            0, 1))
     r_zyz_1 = (r1*r2*r3)
-    r_zyz_2 = mmtbx.refinement.rigid_body.euler(phi = cc, psi = bb, the = aa,
+    r_zyz_2 = scitbx.rigid_body.euler(phi = cc, psi = bb, the = aa,
       convention = "zyz").rot_mat()
     r_zyz_3 = matrix.sqr((
       math.cos(a)*math.cos(b)*math.cos(c)-math.sin(a)*math.sin(c),-math.cos(a)*math.cos(b)*math.sin(c)-math.sin(a)*math.cos(c), math.cos(a)*math.sin(b),
@@ -44,7 +45,7 @@ def test_matrices_zyz():
 
 def test_1(fmodel, convention, phi = 0.0, psi = 0.0, the = 0.0,
            trans = [0.5,0.7,0.9]):
-  rot_obj = mmtbx.refinement.rigid_body.euler(
+  rot_obj = scitbx.rigid_body.euler(
     phi = phi, psi = psi, the = the, convention = convention)
   size = fmodel.xray_structure.scatterers().size()
   fmodel.xray_structure.apply_rigid_body_shift(
@@ -66,7 +67,7 @@ def test_1(fmodel, convention, phi = 0.0, psi = 0.0, the = 0.0,
 
 def test_2(fmodel, convention, phi = 0.0, psi = 0.0, the = 0.0,
            trans = [0.0,0.0,0.0]):
-  rot_obj = mmtbx.refinement.rigid_body.euler(
+  rot_obj = scitbx.rigid_body.euler(
     phi = phi, psi = psi, the = the, convention = convention)
   size = fmodel.xray_structure.scatterers().size()
   fmodel.xray_structure.apply_rigid_body_shift(
@@ -87,7 +88,7 @@ def test_2(fmodel, convention, phi = 0.0, psi = 0.0, the = 0.0,
   assert approx_equal(fmodel.r_work(), 0.0)
 
 def test_3(fmodel, convention, phi = 1, psi = 2, the = 3, trans = [0,0,0]):
-  rot_obj = mmtbx.refinement.rigid_body.euler(
+  rot_obj = scitbx.rigid_body.euler(
     phi = phi, psi = psi, the = the, convention = convention)
   size = fmodel.xray_structure.scatterers().size()
   fmodel.xray_structure.apply_rigid_body_shift(
@@ -112,7 +113,7 @@ def test_3(fmodel, convention, phi = 1, psi = 2, the = 3, trans = [0,0,0]):
   assert approx_equal(fmodel.r_work(), 0.0)
 
 def test_4(fmodel, convention, phi =1, psi =2, the =3, trans =[0.5,1.0,1.5]):
-  rot_obj = mmtbx.refinement.rigid_body.euler(
+  rot_obj = scitbx.rigid_body.euler(
     phi = phi, psi = psi, the = the, convention = convention)
   size = fmodel.xray_structure.scatterers().size()
   fmodel.xray_structure.apply_rigid_body_shift(
@@ -146,9 +147,9 @@ def test_5(fmodel, convention):
        sel1.append(False)
        sel2.append(True)
   selections = [sel1.iselection(), sel2.iselection()]
-  rot_obj_1 = mmtbx.refinement.rigid_body.euler(
+  rot_obj_1 = scitbx.rigid_body.euler(
     phi = 1, psi = 2, the = 3, convention = convention)
-  rot_obj_2 = mmtbx.refinement.rigid_body.euler(
+  rot_obj_2 = scitbx.rigid_body.euler(
     phi = 3, psi = 2, the = 1, convention = convention)
   fmodel.xray_structure.apply_rigid_body_shift(
     rot = rot_obj_1.rot_mat(),
@@ -234,7 +235,7 @@ def finite_differences_test():
     scatterers = fmodel.xray_structure.scatterers(),
     site       = True)
   for convention in ["zyz","xyz"]:
-      rot_obj = mmtbx.refinement.rigid_body.euler(
+      rot_obj = scitbx.rigid_body.euler(
         phi = 0, psi = 0, the = 0, convention = convention)
       size = fmodel.xray_structure.scatterers().size()
       selections = [flex.bool(size, True).iselection()]
@@ -287,10 +288,10 @@ def fd_rotation(fmodel, e, convention):
       xrs2 = fmodel.xray_structure.deep_copy_scatterers()
       fm = fmodel.deep_copy()
       #
-      rot_obj = mmtbx.refinement.rigid_body.euler(phi = shift[0],
-                                                  psi = shift[1],
-                                                  the = shift[2],
-                                                  convention = convention)
+      rot_obj = scitbx.rigid_body.euler(phi = shift[0],
+                                        psi = shift[1],
+                                        the = shift[2],
+                                        convention = convention)
       selections = [flex.bool(xrs1.scatterers().size(), True)]
       xrs_g1_1 = mmtbx.refinement.rigid_body.apply_transformation(
                          xray_structure      = xrs1,
@@ -298,10 +299,10 @@ def fd_rotation(fmodel, e, convention):
                          translation_vectors = [(0.0,0.0,0.0)],
                          selections          = selections)
       #
-      rot_obj = mmtbx.refinement.rigid_body.euler(phi = -shift[0],
-                                                  psi = -shift[1],
-                                                  the = -shift[2],
-                                                  convention = convention)
+      rot_obj = scitbx.rigid_body.euler(phi = -shift[0],
+                                        psi = -shift[1],
+                                        the = -shift[2],
+                                        convention = convention)
       selections = [flex.bool(xrs1.scatterers().size(), True)]
       xrs_g1_2 = mmtbx.refinement.rigid_body.apply_transformation(
                          xray_structure      = xrs2,
