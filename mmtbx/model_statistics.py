@@ -834,14 +834,21 @@ class info(object):
                      fmodel_n          = None,
                      refinement_params = None,
                      ignore_hd         = True,
-                     use_molprobity    = True):
+                     use_molprobity    = True,
+                     ncs_manager       = None):
     ref_par = refinement_params
+    if ncs_manager == None and model != None:
+      if model.restraints_manager != None:
+        if model.restraints_manager.geometry != None:
+          if model.restraints_manager.geometry.\
+               generic_restraints_manager != None:
+            ncs_manager = model.restraints_manager.geometry.\
+              generic_restraints_manager.ncs_manager
     self.model = mmtbx.model_statistics.model(
       model = model,
       ignore_hd = ignore_hd,
       use_molprobity = use_molprobity,
-      ncs_manager = model.restraints_manager.geometry.\
-                      generic_restraints_manager.ncs_manager)
+      ncs_manager = ncs_manager)
     self.data_x, self.data_n = None, None
     if(fmodel_x is not None):
       self.data_x = fmodel_x.info(
