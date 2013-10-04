@@ -1,12 +1,9 @@
 from __future__ import division
 import cctbx.geometry_restraints
-#from mmtbx.validation.rotalyze import rotalyze
-from mmtbx.validation import rotalyze
-#from mmtbx.validation.ramalyze import ramalyze
-from mmtbx.validation import ramalyze
+from mmtbx.validation.rotalyze import rotalyze
+from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.validation import analyze_peptides
 from mmtbx.rotamer.sidechain_angles import SidechainAngles
-from mmtbx.rotamer import rotamer_eval
 from mmtbx.refinement import fit_rotamers
 from cctbx.array_family import flex
 import iotbx.phil
@@ -124,9 +121,6 @@ class torsion_ncs(object):
     self.ncs_dihedral_proxies = ncs_dihedral_proxies
     self.ncs_groups = ncs_groups
     self.alignments = alignments
-    self.sa = SidechainAngles(False)
-    self.rotamer_id = rotamer_eval.RotamerID()
-    self.rotamer_evaluator = rotamer_eval.RotamerEval()
 
     #sanity check
     if pdb_hierarchy is not None:
@@ -265,7 +259,7 @@ class torsion_ncs(object):
     self.sa = SidechainAngles(False)
     self.sidechain_angle_hash = self.build_sidechain_angle_hash()
     self.rotamer_search_manager = None
-    self.r = rotalyze.rotalyze(pdb_hierarchy=pdb_hierarchy)
+    self.r = rotalyze()
     self.unit_cell = None
     sites_cart = pdb_hierarchy.atoms().extract_xyz()
     if self.selection is None:
@@ -485,7 +479,7 @@ class torsion_ncs(object):
         print >> self.log, "Initializing torsion NCS restraints..."
       else:
         print >> self.log, "Verifying torsion NCS restraints..."
-      self.rama = ramalyze.ramalyze(pdb_hierarchy=pdb_hierarchy)
+      self.rama = ramalyze()
       self.generate_dihedral_ncs_restraints(
         sites_cart=sites_cart,
         pdb_hierarchy=pdb_hierarchy,
@@ -572,22 +566,17 @@ class torsion_ncs(object):
     self.current_chi_restraints = {}
     model_hash, model_score, all_rotamers, model_chis = \
       self.get_rotamer_data(pdb_hierarchy=pdb_hierarchy)
-    #current_rotamers = self.r.current_rotamers
-    self.current_rotamers = {}
-    for rot in self.r.results:
-      self.current_rotamers[rot.id_str()] = rot.rotamer_name
+    current_rotamers = self.r.current_rotamers
     for key in self.ncs_match_hash.keys():
-      search_key = key[4:11]+key[0:4] # SEGIDs?
-      rotamer = self.current_rotamers.get(search_key)
+      rotamer = current_rotamers.get(key)
       if rotamer is not None:
-        split_rotamer = rotalyze.split_rotamer_names(rotamer=rotamer)
+        split_rotamer = self.r.split_rotamer_names(rotamer=rotamer)
         self.current_chi_restraints[key] = split_rotamer
       key_list = self.ncs_match_hash.get(key)
       for key2 in key_list:
-        search_key2 = key2[4:11]+key2[0:4] # SEGIDs?
-        rotamer = self.current_rotamers.get(search_key2)
+        rotamer = current_rotamers.get(key2)
         if rotamer is not None:
-          split_rotamer = rotalyze.split_rotamer_names(rotamer=rotamer)
+          split_rotamer = self.r.split_rotamer_names(rotamer=rotamer)
           self.current_chi_restraints[key2] = split_rotamer
 
   def generate_dihedral_ncs_restraints(
@@ -604,17 +593,15 @@ class torsion_ncs(object):
     #                                         fmodel=self.fmodel)
     model_hash, model_score, all_rotamers, model_chis = \
       self.get_rotamer_data(pdb_hierarchy=pdb_hierarchy)
-    #rama_outliers = None
-    #rama_outlier_list = []
+    rama_outliers = None
+    rama_outlier_list = []
     omega_outlier_list = []
     if self.filter_phi_psi_outliers:
-      rama_outlier_list = \
+      rama_outliers = \
         self.get_ramachandran_outliers(pdb_hierarchy)
-      #rama_outliers = \
-      #  self.get_ramachandran_outliers(pdb_hierarchy)
-      #for outlier in rama_outliers.splitlines():
-      #  temp = outlier.split(':')
-      #  rama_outlier_list.append(temp[0])
+      for outlier in rama_outliers.splitlines():
+        temp = outlier.split(':')
+        rama_outlier_list.append(temp[0])
       omega_outlier_list = \
         self.get_omega_outliers(pdb_hierarchy)
     torsion_counter = 0
@@ -662,7 +649,7 @@ class torsion_ncs(object):
                        dp=dp,
                        name_hash=self.name_hash,
                        phi_psi=True)
-          key = angle_id[4:11]+angle_id[0:4] #segid?
+          key = angle_id[4:6].strip()+angle_id[6:10]+' '+angle_id[0:4]
           if key in rama_outlier_list:
             rama_out = True
         is_rama_outlier.append(rama_out)
@@ -993,11 +980,9 @@ class torsion_ncs(object):
       self.ncs_dihedral_proxies
 
   def get_ramachandran_outliers(self, pdb_hierarchy):
-    rama_outliers = []
-    self.rama = ramalyze.ramalyze(pdb_hierarchy=pdb_hierarchy,
-                                  outliers_only=True)
-    for r in self.rama.results:
-      rama_outliers.append(r.id_str())
+    rama_outliers, output_list = \
+      self.rama.analyze_pdb(hierarchy=pdb_hierarchy,
+                            outliers_only=True)
     return rama_outliers
 
   def get_omega_outliers(self, pdb_hierarchy):
@@ -1006,22 +991,25 @@ class torsion_ncs(object):
     return omega_outliers
 
   def get_rotamer_data(self, pdb_hierarchy):
-    self.r = rotalyze.rotalyze(pdb_hierarchy=pdb_hierarchy)
+    rot_list_model, coot_model = \
+      self.r.analyze_pdb(hierarchy=pdb_hierarchy)
+    #print rot_list_model
     model_hash = {}
     model_score = {}
     all_rotamers = {}
     model_chis = {}
-    for rot in self.r.results:
-      model_hash[rot.id_str()] = rot.rotamer_name
-      model_score[rot.id_str()] = rot.score
+    for line in rot_list_model.splitlines():
+      res, occ, rotamericity, chi1, chi2, chi3, chi4, name = line.split(':')
+      model_hash[res]=name
+      model_score[res]=rotamericity
     for key in self.res_match_master.keys():
-      res_key = key[4:10]+' '+key[0:4]
+      res_key = key[5:10]+' '+key[0:4]
       all_rotamers[res_key] = []
       model_rot = model_hash.get(res_key)
       if model_rot is not None and model_rot != "OUTLIER":
         all_rotamers[res_key].append(model_rot)
       for match_res in self.res_match_master[key]:
-        j_key = match_res[4:10]+' '+match_res[0:4]
+        j_key = match_res[5:10]+' '+match_res[0:4]
         j_rot = model_hash.get(j_key)
         if j_rot is not None and j_rot != "OUTLIER":
           if j_rot not in all_rotamers[res_key]:
@@ -1031,22 +1019,16 @@ class torsion_ncs(object):
       for chain in model.chains():
         for residue_group in chain.residue_groups():
             all_dict = \
-              rotalyze.construct_complete_sidechain(residue_group)
+              self.r.construct_complete_sidechain(residue_group)
             for atom_group in residue_group.atom_groups():
               #try:
                 atom_dict = all_dict.get(atom_group.altloc)
                 chis = \
-                  self.sa.measureChiAngles(atom_group, atom_dict)
+                  self.r.sa.measureChiAngles(atom_group, atom_dict)
                 if chis is not None:
-                  key = utils.id_str(
-                          chain_id=chain.id,
-                          resseq=residue_group.resseq,
-                          resname=atom_group.resname,
-                          icode=residue_group.icode,
-                          altloc=atom_group.altloc)
-                  #key = '%s%5s %s' % (
-                  #    chain.id, residue_group.resid(),
-                  #    atom_group.altloc+atom_group.resname)
+                  key = '%s%5s %s' % (
+                      chain.id, residue_group.resid(),
+                      atom_group.altloc+atom_group.resname)
                   model_chis[key] = chis
     return model_hash, model_score, all_rotamers, model_chis
 
@@ -1087,13 +1069,13 @@ class torsion_ncs(object):
     rotamer_targets = {}
 
     for key in self.res_match_master.keys():
-      res_key = key[4:11]+key[0:4]
+      res_key = key[5:10]+' '+key[0:4]
       model_rot = model_hash.get(res_key)
       if model_rot == "OUTLIER":
         rotamer = None
         score = 0.0
         for match_res in self.res_match_master[key]:
-          j_key = match_res[4:11]+match_res[0:4]
+          j_key = match_res[5:10]+' '+match_res[0:4]
           j_rot = model_hash.get(j_key)
           j_score = model_score.get(j_key)
           if j_rot is not None and j_score is not None:
@@ -1119,32 +1101,23 @@ class torsion_ncs(object):
           continue
         for residue_group in chain.residue_groups():
           all_dict = \
-            rotalyze.construct_complete_sidechain(residue_group)
+            self.r.construct_complete_sidechain(residue_group)
           for atom_group in residue_group.atom_groups():
             if atom_group.resname in ["PRO", "GLY"]:
               continue
-            key = utils.id_str(
-                    chain_id=chain.id,
-                    resseq=residue_group.resseq,
-                    resname=atom_group.resname,
-                    icode=residue_group.icode,
-                    altloc=atom_group.altloc)
-            #key = '%s%5s %s' % (
-            #          chain.id, residue_group.resid(),
-            #          atom_group.altloc+atom_group.resname)
+            key = '%s%5s %s' % (
+                      chain.id, residue_group.resid(),
+                      atom_group.altloc+atom_group.resname)
             if key in fix_list.keys():
-              model_rot, m_chis, value = rotalyze.evaluate_rotamer(
-                atom_group=atom_group,
-                sidechain_angles=self.sa,
-                rotamer_evaluator=self.rotamer_evaluator,
-                rotamer_id=self.rotamer_id,
-                all_dict=all_dict,
-                sites_cart=sites_cart_moving)
+              model_rot, m_chis, value = self.r.evaluate_rotamer(
+                  atom_group=atom_group,
+                  all_dict=all_dict,
+                  sites_cart=sites_cart_moving)
               residue_name = key[-3:]
               cur_rotamer = rotamer_targets[key]
-              r_chis = self.sa.get_rotamer_angles(
-                         residue_name=residue_name,
-                         rotamer_name=cur_rotamer)
+              r_chis = self.r.sa.get_rotamer_angles(
+                             residue_name=residue_name,
+                             rotamer_name=cur_rotamer)
               if m_chis is not None and r_chis is not None:
                 status = self.rotamer_search_manager.search(
                   atom_group=atom_group,
@@ -1184,7 +1157,7 @@ class torsion_ncs(object):
         if not utils.is_protein_chain(chain=chain):
           continue
         for residue_group in chain.residue_groups():
-          all_dict = rotalyze.construct_complete_sidechain(residue_group)
+          all_dict = self.r.construct_complete_sidechain(residue_group)
           for atom_group in residue_group.atom_groups():
             if atom_group.resname in ["PRO", "GLY"]:
               continue
@@ -1236,6 +1209,8 @@ class torsion_ncs(object):
     make_sub_header(
       "Checking NCS rotamer consistency",
       out=log)
+    rot_list_model, coot_model = \
+      self.r.analyze_pdb(hierarchy=pdb_hierarchy)
 
     self.rotamer_search_manager.prepare_map(fmodel=fmodel)
 
@@ -1284,30 +1259,21 @@ class torsion_ncs(object):
         if not utils.is_protein_chain(chain=chain):
           continue
         for residue_group in chain.residue_groups():
-          all_dict = rotalyze.construct_complete_sidechain(residue_group)
+          all_dict = self.r.construct_complete_sidechain(residue_group)
           for atom_group in residue_group.atom_groups():
             if atom_group.resname in ["PRO", "GLY"]:
               continue
-            key = utils.id_str(
-                    chain_id=chain.id,
-                    resseq=residue_group.resseq,
-                    resname=atom_group.resname,
-                    icode=residue_group.icode,
-                    altloc=atom_group.altloc)
-            #key = '%s%5s %s' % (
-            #          chain.id, residue_group.resid(),
-            #          atom_group.altloc+atom_group.resname)
+            key = '%s%5s %s' % (
+                      chain.id, residue_group.resid(),
+                      atom_group.altloc+atom_group.resname)
             if key in all_rotamers:
               if (len(all_rotamers[key]) >= 2):
                 cc_key = atom_group.atoms()[0].pdb_label_columns()[4:]+\
                   atom_group.atoms()[0].segid
                 if cc_key not in cc_candidate_list:
                   continue
-                model_rot, m_chis, value = rotalyze.evaluate_rotamer(
+                model_rot, m_chis, value = self.r.evaluate_rotamer(
                   atom_group=atom_group,
-                  sidechain_angles=self.sa,
-                  rotamer_evaluator=self.rotamer_evaluator,
-                  rotamer_id=self.rotamer_id,
                   all_dict=all_dict,
                   sites_cart=sites_cart_moving)
                 residue_name = key[-3:]
@@ -1323,7 +1289,7 @@ class torsion_ncs(object):
                 for cur_rotamer in all_rotamers.get(key):
                   if cur_rotamer == model_rot:
                     continue
-                  r_chis = self.sa.get_rotamer_angles(
+                  r_chis = self.r.sa.get_rotamer_angles(
                              residue_name=residue_name,
                              rotamer_name=cur_rotamer)
                   if m_chis is not None and r_chis is not None:
@@ -1340,22 +1306,19 @@ class torsion_ncs(object):
                       current_best = cur_rotamer
                       atom_dict = all_dict.get(atom_group.altloc)
                       m_chis = \
-                        self.sa.measureChiAngles(atom_group,
-                                                 atom_dict,
-                                                 sites_cart_moving)
+                        self.r.sa.measureChiAngles(atom_group,
+                                                   atom_dict,
+                                                   sites_cart_moving)
                 if current_best != model_rot:
                   print >> self.log, "Set %s to %s rotamer" % \
                     (key,
                      current_best)
                   self.last_round_rotamer_changes += 1
                 else:
-                  rotamer, chis, value = rotalyze.evaluate_rotamer(
-                    atom_group=atom_group,
-                    sidechain_angles=self.sa,
-                    rotamer_evaluator=self.rotamer_evaluator,
-                    rotamer_id=self.rotamer_id,
-                    all_dict=all_dict,
-                    sites_cart=sites_cart_moving)
+                  rotamer, chis, value = self.r.evaluate_rotamer(
+                      atom_group=atom_group,
+                      all_dict=all_dict,
+                      sites_cart=sites_cart_moving)
                   assert rotamer == model_rot
 
   def process_ncs_restraint_groups(self, model, processed_pdb_file):

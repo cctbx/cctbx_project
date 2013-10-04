@@ -179,35 +179,33 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
   for rdp in reference_dihedral_proxies:
     assert rdp.limit == work_params.reference_model.limit
 
-  r1 = rotalyze(pdb_hierarchy=pdb_hierarchy, outliers_only=False)
-  out1 = cStringIO.StringIO()
-  r1.show_old_output(out=out1)
-  r2 = rotalyze(pdb_hierarchy=ref_pdb_hierarchy, outliers_only=False)
-  out2 = cStringIO.StringIO()
-  r2.show_old_output(out=out2)
+  r = rotalyze()
+  rot_list_model, coot_model = \
+    r.analyze_pdb(
+      hierarchy=pdb_hierarchy)
+  rot_list_reference, coot_reference = \
+    r.analyze_pdb(
+      hierarchy=ref_pdb_hierarchy)
 
-  assert out1.getvalue() == """\
+  assert rot_list_model == """\
 C 236  ASN:1.00:1.2:227.3:80.2:::t30
-C 237  LEU:1.00:0.0:209.6:357.2:::OUTLIER
-"""
+C 237  LEU:1.00:0.0:209.6:357.2:::OUTLIER"""
 
-  assert out2.getvalue() == """\
+  assert rot_list_reference == """\
 C 236  ASN:1.00:41.4:203.2:43.6:::t30
-C 237  LEU:1.00:52.8:179.1:57.3:::tp
-"""
+C 237  LEU:1.00:52.8:179.1:57.3:::tp"""
 
   xray_structure = pdb_hierarchy.extract_xray_structure()
   rm.set_rotamer_to_reference(
     xray_structure=xray_structure,
     quiet=True)
   pdb_hierarchy.adopt_xray_structure(xray_structure)
-  r2 = rotalyze(pdb_hierarchy=pdb_hierarchy, outliers_only=False)
-  out3 = cStringIO.StringIO()
-  r2.show_old_output(out=out3)
-  assert out3.getvalue() == """\
+  rot_list_model, coot_model = \
+    r.analyze_pdb(
+      hierarchy=pdb_hierarchy)
+  assert rot_list_model == """\
 C 236  ASN:1.00:1.2:227.3:80.2:::t30
-C 237  LEU:1.00:52.8:179.1:57.3:::tp
-"""
+C 237  LEU:1.00:52.8:179.1:57.3:::tp"""
 
   match_map = rm.match_map['ref1']
   assert match_map == \

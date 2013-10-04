@@ -45,6 +45,8 @@ class manager(object):
     from mmtbx.validation.rotalyze import rotalyze
     self.r = rotalyze()
     #TO-DO - make rotalyze code more modular
+    rot_list_model, coot_model = \
+      self.r.analyze_pdb(hierarchy=pdb_hierarchy)
     self.target_map_data = None
     self.residual_map_data = None
 
