@@ -1,10 +1,12 @@
 from __future__ import division
-from iotbx import pdb
-from scitbx import matrix
+from iotbx import crystal_symmetry_from_any
 from scitbx.array_family import flex
 from libtbx.utils import Sorry
+from scitbx import matrix
+from iotbx import pdb
 import string
 import math
+import os
 
 class multimer(object):
   '''
@@ -23,7 +25,7 @@ class multimer(object):
   since chain names string length is limited to two, this process does not maintain any
   referance to the original chain names.
 
-  @author: Youval Dar (LBL)
+  @author: Youval Dar (LBL )
   '''
   def __init__(self,pdb_input_file_name,reconstruction_type,error_handle=True,eps=1e-4):
     ''' (str) -> NoType
@@ -53,7 +55,7 @@ class multimer(object):
       self.transform_type = 'biological_assembly'
     elif reconstruction_type == 'cau':
       # Read MTRIX info
-      TRASFORM_info = pdb_inp.process_mtrix_records()
+      TRASFORM_info = pdb_inp.process_mtrix_records(error_handle=error_handle,eps=eps)
       self.transform_type = 'crystall_asymmetric_unit'
     else:
       raise Sorry('Worg reconstruction type is given \n' + \
@@ -194,7 +196,7 @@ class multimer(object):
            'self.get_xyz() will return a list of x,y,z coordinates for each atoms in the resconstructed multimer \n'
 
 
-  def write(self,*pdb_output_file_name):
+  def write(self,pdb_output_file_name=''):
     ''' (string) -> text file
     Writes the modified protein, with the added chains, obtained by the BIOMT/MTRIX
     reconstruction, to a text file in a pdb format.
@@ -210,14 +212,19 @@ class multimer(object):
     >>> v.write(v.pdb_input_file_name)
     Write a file 'copy_name.pdb' to the current directory
     '''
-    if len(pdb_output_file_name) == 0:
-      pdb_output_file_name = self.pdb_input_file_name
+    #input_file_name = self.pdb_input_file_name.split('/')
+    input_file_name = os.path.basename(self.pdb_input_file_name)
+
+    if pdb_output_file_name == '':
+      pdb_output_file_name = input_file_name
     # Aviod writing over the original file
-    if self.pdb_input_file_name == pdb_output_file_name:
+    if pdb_output_file_name == input_file_name:
       # if file name of output is the same as the input, add 'copy_' in front of the name
-      self.pdb_output_file_name = self.transform_type + '_' +pdb_output_file_name
+      self.pdb_output_file_name = self.transform_type + '_' + input_file_name
     else:
       self.pdb_output_file_name = pdb_output_file_name
-
+    # we need to add crystal symmetry to the new file since it is
+    # sometimes needed when calulating the R-work factor (r_factor_calc.py)
+    crystal_symmetry = crystal_symmetry_from_any.extract_from(self.pdb_input_file_name)
     # using the pdb hierarchy pdb file writing method
-    self.assembled_multimer.write_pdb_file(file_name=self.pdb_output_file_name)
+    self.assembled_multimer.write_pdb_file(file_name=self.pdb_output_file_name,crystal_symmetry=crystal_symmetry)
