@@ -404,9 +404,9 @@ class manager(manager_mixin):
     self.max_number_of_bins = max_number_of_bins
     self.n_resolution_bins_output = n_resolution_bins_output
     if(mask_params is not None):
-       self.mask_params = mask_params
+      self.mask_params = mask_params
     else:
-       self.mask_params = mmtbx.masks.mask_master_params.extract()
+      self.mask_params = mmtbx.masks.mask_master_params.extract()
     self.mask_manager = mask_manager
     if(self.mask_manager is None):
       self.mask_manager = masks.manager(
