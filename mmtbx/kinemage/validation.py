@@ -69,6 +69,7 @@ def get_angle_outliers(angle_proxies, chain, sites_cart, hierarchy):
     if abs(num_sigmas) >= 4.0:
       angle_key = altloc+res[0:3].lower()+res[3:]+' '+atom1.lower()+ \
                   '-'+atom2.lower()+'-'+atom3.lower()
+      print angle_key, num_sigmas
       kin = add_fan(sites=restraint.sites,
                     delta=restraint.delta,
                     num_sigmas=num_sigmas,
@@ -296,9 +297,61 @@ def rama_outliers(chain, pdbID, ram_outliers):
   ram_out = "@subgroup {Rama outliers} master= {Rama outliers}\n"
   ram_out += "@vectorlist {bad Rama Ca} width= 4 color= green\n"
   outlier_list = []
-  for outlier in ram_outliers.results :
-    if outlier.chain_id == chain.id :
-      ram_out += outlier.as_kinemage()
+  for outlier in ram_outliers.splitlines():
+    outlier_list.append(outlier.split(':')[0])
+  #prev_CA_xyz = None
+  #cur_CA_xyz = None
+  #next_CA_xyz = None
+  CA_xyz_dict = {}
+  CA_key_dict = {}
+  for residue_group in chain.residue_groups():
+    for atom_group in residue_group.atom_groups():
+      for atom in atom_group.atoms():
+        if atom.name == ' CA ':
+          CA_xyz_dict[residue_group.resseq_as_int()] = atom.xyz
+          key = "%s%5s %s%s" % (
+                     chain.id,
+                     residue_group.resid(),
+                     atom_group.altloc,
+                     atom_group.resname)
+          CA_key_dict[residue_group.resseq_as_int()] = key
+
+  for residue_group in chain.residue_groups():
+    for atom_group in residue_group.atom_groups():
+      check_key = "%s%5s %s%s" % (
+                     chain.id,
+                     residue_group.resid(),
+                     atom_group.altloc,
+                     atom_group.resname)
+      #print check_key
+      if check_key in outlier_list:
+        try:
+          prev_xyz = CA_xyz_dict[residue_group.resseq_as_int()-1]
+          next_xyz = CA_xyz_dict[residue_group.resseq_as_int()+1]
+          prev_key = CA_key_dict[residue_group.resseq_as_int()-1]
+          next_key = CA_key_dict[residue_group.resseq_as_int()+1]
+          cur_xyz = CA_xyz_dict[residue_group.resseq_as_int()]
+          mid1 = midpoint(p1=prev_xyz, p2=cur_xyz)
+          mid2 = midpoint(p1=cur_xyz, p2=next_xyz)
+        except Exception:
+          continue
+        ram_out += "{%s CA}P %.3f %.3f %.3f\n" % (
+                     prev_key,
+                     mid1[0],
+                     mid1[1],
+                     mid1[2])
+        ram_out += "{%s CA} %.3f %.3f %.3f\n" % (
+                     check_key,
+                     cur_xyz[0],
+                     cur_xyz[1],
+                     cur_xyz[2])
+        ram_out += "{%s CA} %.3f %.3f %.3f\n" % (
+                     next_key,
+                     mid2[0],
+                     mid2[1],
+                     mid2[2])
+
+  #print outlier_list
   return ram_out
 
 def rotamer_outliers(chain, pdbID, rot_outliers):
@@ -306,26 +359,30 @@ def rotamer_outliers(chain, pdbID, rot_outliers):
   rot_out = "@subgroup {Rota outliers} dominant\n"
   rot_out += "@vectorlist {chain %s} color= gold  master= {Rota outliers}\n" % chain.id
   outlier_list = []
-  for outlier in rot_outliers.results :
-    if (not outlier.is_outlier()) : continue
-    outlier_list.append(outlier.atom_group_id_str())
+  for outlier in rot_outliers.splitlines():
+    outlier_list.append(outlier.split(':')[0])
   for residue_group in chain.residue_groups():
-    for atom_group in residue_group.atom_groups() :
-      check_key = atom_group.id_str()
-      if (check_key in outlier_list) :
+    for conformer in residue_group.conformers():
+      for residue in conformer.residues():
+        check_key = '%s%5s %s' % \
+                    (chain.id,
+                     residue_group.resid(),
+                     conformer.altloc+residue.resname.strip())
+        if check_key not in outlier_list:
+          continue
         key_hash = {}
         xyz_hash = {}
-        for atom in atom_group.atoms():
+        for atom in residue.atoms():
           key = "%s %s %s%s  B%.2f %s" % (
               atom.name.lower(),
-              atom_group.resname.lower(),
+              residue.resname.lower(),
               chain.id,
-              residue_group.resid(),
+              residue.resid(),
               atom.b,
               pdbID)
           key_hash[atom.name.strip()] = key
           xyz_hash[atom.name.strip()] = atom.xyz
-        bonds = get_bond_pairs(code=atom_group.resname)
+        bonds = get_bond_pairs(code=residue.resname)
         for bond in bonds:
           if bond[0] in mc_atoms or bond[1] in mc_atoms:
             continue
@@ -758,11 +815,14 @@ def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False):
     kin_out += altid_controls
   kin_out += "@group {%s} dominant animate\n" % pdbID
   initiated_chains = []
-  rot_outliers = rotalyze(pdb_hierarchy=hierarchy, outliers_only=True)
+  rt = rotalyze()
+  rot_outliers, output_list = rt.analyze_pdb(hierarchy=hierarchy, outliers_only=True)
   cb = cbetadev(
     pdb_hierarchy=hierarchy,
     outliers_only=True)
-  rama = ramalyze(pdb_hierarchy=hierarchy, outliers_only=True)
+  rm = ramalyze()
+  ram_outliers, output_list = rm.analyze_pdb(hierarchy=hierarchy,
+                                             outliers_only=True)
   counter = 0
   for model in hierarchy.models():
     for chain in model.chains():
@@ -777,10 +837,8 @@ def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False):
                               pdbID=pdbID,
                               index=counter)
       if (chain.is_protein()) :
-        kin_out += rotamer_outliers(chain=chain, pdbID=pdbID,
-          rot_outliers=rot_outliers)
-        kin_out += rama_outliers(chain=chain, pdbID=pdbID, ram_outliers=rama)
-      # TODO use central methods in mmtbx.validation.restraints
+        kin_out += rotamer_outliers(chain=chain, pdbID=pdbID, rot_outliers=rot_outliers)
+        kin_out += rama_outliers(chain=chain, pdbID=pdbID, ram_outliers=ram_outliers)
       kin_out += get_angle_outliers(angle_proxies=angle_proxies,
                                     chain=chain,
                                     sites_cart=sites_cart,

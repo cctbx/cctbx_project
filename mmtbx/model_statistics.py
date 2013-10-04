@@ -116,21 +116,24 @@ class geometry(object):
       from mmtbx.validation.cbetadev import cbetadev
       from mmtbx.validation.clashscore import clashscore
       from mmtbx.validation.utils import molprobity_score
-      self.ramalyze_obj = ramalyze(pdb_hierarchy = pdb_hierarchy,
+      self.ramalyze_obj = ramalyze()
+      self.ramalyze_obj.analyze_pdb(hierarchy = pdb_hierarchy,
         outliers_only = False)
-      self.ramachandran_outliers = self.ramalyze_obj.percent_outliers
-      self.ramachandran_allowed  = self.ramalyze_obj.percent_allowed
-      self.ramachandran_favored  = self.ramalyze_obj.percent_favored
-      self.rotalyze_obj = rotalyze(pdb_hierarchy = pdb_hierarchy,
-        outliers_only = False)
-      self.rotamer_outliers = self.rotalyze_obj.percent_outliers
+      self.rotalyze_obj = rotalyze()
+      self.rotalyze_obj.analyze_pdb(hierarchy = pdb_hierarchy,
+        outliers_only = False)[1]
+      self.clashscore_obj = clashscore()
+      self.clashscore_obj.analyze_clashes(hierarchy = pdb_hierarchy)
+      self.clashscore = self.clashscore_obj.get_clashscore()
+      self.ramachandran_outliers = self.ramalyze_obj.get_outliers_count_and_fraction()[1]*100.
+      self.ramachandran_allowed  = self.ramalyze_obj.get_allowed_count_and_fraction()[1]*100.
+      self.ramachandran_favored  = self.ramalyze_obj.get_favored_count_and_fraction()[1]*100.
+      self.rotamer_outliers = self.rotalyze_obj.get_outliers_count_and_fraction()[1]*100.
       cbetadev_obj = cbetadev(
         pdb_hierarchy=pdb_hierarchy,
         outliers_only=True,
         out=null_out())
       self.c_beta_dev = cbetadev_obj.get_outlier_count()
-      self.clashscore = clashscore(
-        pdb_hierarchy=pdb_hierarchy).get_clashscore()
       self.mpscore = molprobity_score(
         clashscore=self.clashscore,
         rota_out=self.rotamer_outliers,

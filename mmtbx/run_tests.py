@@ -117,14 +117,9 @@ tst_list = (
   "$D/regression/tst_dynamics_cli.py",
   "$D/ligands/tst_xtal_screens.py",
   "$D/regression/tst_mtz2map.py",
+  "$D/validation/regression/tst_cbetadev.py",
   "$D/validation/regression/tst_waters.py",
   "$D/validation/regression/tst_nqh_minimize.py",
-  "$D/validation/regression/tst_rotalyze.py",
-  "$D/validation/regression/tst_ramalyze.py",
-  "$D/validation/regression/tst_cbetadev.py",
-  "$D/validation/regression/tst_clashscore.py",
-  "$D/validation/regression/tst_restraints.py",
-  "$D/validation/regression/tst_molprobity.py",
   "$D/refinement/tst_select_best_starting_model.py",
   )
 

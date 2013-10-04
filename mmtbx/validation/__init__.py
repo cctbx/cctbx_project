@@ -131,6 +131,7 @@ class residue (entity) :
     from iotbx.pdb import hybrid_36
     return hybrid_36.hy36decode(len(self.resseq), self.resseq)
 
+  @property
   def resid (self) :
     return "%4s%1s" % (self.resname, self.icode)
 
@@ -153,10 +154,6 @@ class residue (entity) :
             (self.resseq == other.resseq) and
             (self.icode == other.icode) and
             (self.segid == other.segid))
-
-  def atom_group_id_str (self) :
-    return "%1s%3s%2s%4s%1s" % (self.altloc, self.resname, self.chain_id,
-      self.resseq, self.icode)
 
   def residue_group_id_str (self) :
     return "%2s%4s%1s" % (self.chain_id, self.resseq, self.icode)
@@ -246,10 +243,6 @@ class atom (entity) :
   def residue_group_id_str (self) :
     return "%2s%4s%1s" % (self.chain_id, self.resseq, self.icode)
 
-  def atom_group_id_str (self) :
-    return "%1s%3s%2s%4s%1s" % (self.altloc, self.resname, self.chain_id,
-      self.resseq, self.icode)
-
   def is_single_residue_object (self) :
     return True
 
@@ -300,10 +293,6 @@ class atom_info (slots_getstate_setstate) :
   def residue_group_id_str (self) :
     return "%2s%4s%1s" % (self.chain_id, self.resseq, self.icode)
 
-  def atom_group_id_str (self) :
-    return "%1s%3s%2s%4s%1s" % (self.altloc, self.resname, self.chain_id,
-      self.resseq, self.icode)
-
 #-----------------------------------------------------------------------
 # SPECIFIC RESULTS
 # FIXME move these to specific modules
@@ -345,11 +334,6 @@ class validation (slots_getstate_setstate) :
       assert fraction <= 1.0
       return self.n_outliers, fraction
     return 0, 0.
-
-  @property
-  def percent_outliers (self) :
-    n_outliers, frac_outliers = self.get_outliers_count_and_fraction()
-    return frac_outliers * 100.
 
   def get_outliers_goal (self) :
     raise NotImplementedError()

@@ -145,7 +145,7 @@ class cbetadev (validation) :
     data = []
     for result in self.results :
       if result.is_outlier() :
-        data.append((result.chain_id, result.resid(), result.resname,
+        data.append((result.chain_id, result.resid, result.resname,
           result.altloc, result.deviation, result.xyz))
     return data
 
@@ -302,3 +302,11 @@ def extract_atoms_from_residue_group (residue_group) :
           if (atom.name in expected_names) :
             relevant_atoms[atom.name] = atom
         if (len(relevant_atoms) == 0) : continue
+        for atom_name in main_conf.keys() :
+          if (not atom_name in relevant_atoms) :
+            relevant_atoms[atom_name] = main_conf[atom_name]
+        if (len(relevant_atoms) != 0) :
+          all_relevant_atoms.append(relevant_atoms)
+    if (len(main_conf) == 4) :
+      all_relevant_atoms.insert(0, main_conf)
+    return all_relevant_atoms
