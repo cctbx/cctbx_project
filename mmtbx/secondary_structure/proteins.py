@@ -464,8 +464,8 @@ def create_sheet_hydrogen_bond_proxies (
                 sigma=sheet_params.restraint_sigma,
                 slack=sheet_params.restraint_slack,
                 log=log)
-            i += 2; i = min(i, len_prev_residues)
-            j -= 2; j = max(0, j)
+            i += 2;
+            j -= 2;
         else :
           print >> log, "  WARNING: strand direction not defined!"
           print >> log, "    previous: %s" % prev_strand
