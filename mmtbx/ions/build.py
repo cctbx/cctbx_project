@@ -296,6 +296,7 @@ def clean_up_ions (fmodel, model, params, log=None, verbose=True) :
     chain_id=params.ion_chain_id,
     segids=[ "ION" for atom in ion_atoms ],
     refine_occupancies=params.refine_ion_occupancies,
+    refine_adp="isotropic",
     reset_labels=True)
   n_sites_end = new_model.xray_structure.scatterers().size()
   new_hierarchy = new_model.pdb_hierarchy()
