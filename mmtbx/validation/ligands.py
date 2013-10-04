@@ -1,5 +1,6 @@
 
 from __future__ import division
+from libtbx.math_utils import percentile_based_spread
 from libtbx import slots_getstate_setstate
 from libtbx.utils import Sorry
 from libtbx import str_utils
@@ -52,7 +53,6 @@ def compare_ligands (ligand_code,
     pdb_2 = file_reader.any_file(pdb_file_2, force_type="pdb")
     pdb_2.check_file_type("pdb")
     hierarchy_2 = pdb_2.file_object.construct_hierarchy()
-  rmsds = []
   # XXX should this use residues or atom_groups?
   ligands_1 = extract_ligand_residue(hierarchy_1, ligand_code)
   ligands_2 = extract_ligand_residue(hierarchy_2, ligand_code)
@@ -61,8 +61,9 @@ def compare_ligands (ligand_code,
   print >> out, "%d copies in 1st model, %d copies in 2nd model" % \
     (len(ligands_1), len(ligands_2))
   rmsds = []
+  pbss = []
   for ligand_1 in ligands_1 :
-    rmsds_curr = compare_ligands_impl(
+    rmsds_curr, pbss_curr = compare_ligands_impl(
       ligand=ligand_1,
       reference_ligands=ligands_2,
       verbose=verbose,
@@ -71,7 +72,8 @@ def compare_ligands (ligand_code,
       quiet=False,
       out=out)
     rmsds.append(rmsds_curr)
-  return rmsds
+    pbss.append(pbss_curr)
+  return rmsds, pbss
 
 def compare_ligands_impl (ligand,
     reference_ligands,
@@ -100,6 +102,7 @@ def compare_ligands_impl (ligand,
     if (dxyz < max_distance_between_centers_of_mass) :
       matching.append(ligand_2)
   rmsds = []
+  pbss = []
   for ligand_2 in matching :
     atoms_2 = ligand_2.atoms()
     isel_1 = flex.size_t()
@@ -143,24 +146,26 @@ def compare_ligands_impl (ligand,
     sites_1 = sites_1.select(isel_1)
     sites_2 = ligand_2.atoms().extract_xyz().select(isel_2)
     rmsd = sites_1.rms_difference(sites_2)
+    pbs = percentile_based_spread((sites_2 - sites_1).norms())
     if (not quiet) :
       print >> out, "  '%s' matches '%s': atoms=%d rmsd=%.3f" % (
         ligand.id_str(), ligand_2.id_str(), sites_1.size(), rmsd)
     rmsds.append(rmsd)
+    pbss.append(pbs)
     if (verbose) and (not quiet) :
       atoms = ligand.atoms()
       dxyz = (sites_2 - sites_1).norms()
       for i_seq, j_seq in zip(isel_1, isel_2) :
         print >> out, "    %s: dxyz=%.2f" % (atoms_1[i_seq].id_str(),
           dxyz[i_seq])
-  return rmsds
+  return rmsds, pbss
 
 class ligand_validation (slots_getstate_setstate) :
   __slots__ = [
     "cc", "two_fofc_min", "two_fofc_max", "two_fofc_mean", "fofc_min",
     "fofc_max", "fofc_mean", "n_below_two_fofc_cutoff", "n_below_fofc_cutoff",
-    "b_iso_mean", "occupancy_mean", "rmsds", "id_str", "atom_selection",
-    "xyz_center",
+    "b_iso_mean", "occupancy_mean", "rmsds", "pbss", "id_str",
+    "atom_selection", "xyz_center",
   ]
   def __init__ (self,
       ligand,
@@ -211,9 +216,9 @@ class ligand_validation (slots_getstate_setstate) :
     occ = xray_structure.scatterers().extract_occupancies().select(
       self.atom_selection)
     self.occupancy_mean = flex.mean(occ)
-    self.rmsds = None
+    self.rmsds = self.pbss = None
     if (reference_ligands is not None) and (len(reference_ligands) > 0) :
-      self.rmsds = compare_ligands_impl(ligand=ligand,
+      self.rmsds, self.pbss = compare_ligands_impl(ligand=ligand,
         reference_ligands=reference_ligands,
         max_distance_between_centers_of_mass=8.0,
         raise_sorry_if_no_matching_atoms=False,
@@ -234,7 +239,10 @@ Number of non-H atoms = %d   Mean B_iso = %.2f   Mean occ. = %.2f
       rmsd_formatted = ", ".join([ "%.3f" % r for r in self.rmsds ])
       if (len(self.rmsds) == 0) :
         rmsd_formatted = "[none found]"
-      print >> box, "RMSD to reference ligand: %s" % rmsd_formatted
+      print >> box, "RMSD to reference ligand(s): %s" % rmsd_formatted
+      if (len(self.pbss) > 0) :
+        pbs_formatted = ", ".join([ "%.3f" % s for s in self.pbss ])
+        print >> box, "    percentile-based spread: %s" % pbs_formatted
     self._show_warnings(box)
     del box
 
