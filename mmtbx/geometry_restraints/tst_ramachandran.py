@@ -185,12 +185,12 @@ END
     pdb_in = iotbx.pdb.input(source_info="peptide",
       lines=flex.split_lines(peptide))
     o = benchmark_structure(pdb_in, verbose)
-    phi0, psi0 = o.rama_list0[0][4:6]
-    phi1, psi1 = o.rama_list1[0][4:6]
-    phi2, psi2 = o.rama_list2[0][4:6]
-    r0 = float(o.rama_list0[0][3])
-    r1 = float(o.rama_list1[0][3])
-    r2 = float(o.rama_list2[0][3])
+    phi0, psi0 = o.r0.results[0].phi, o.r0.results[0].psi
+    phi1, psi1 = o.r1.results[0[.phi, o.r1.results[0].psi
+    phi2, psi2 = o.r2.results[0[.phi, o.r2.results[0].psi
+    r0 = o.r0.score
+    r1 = o.r1.score
+    r2 = o.r2.score
     if verbose :
       print "peptide %d" % (i+1)
       print " before: rmsd_bonds=%-6.4f rmsd_angles=%-6.3f" % (o.b0,o.a0)
@@ -214,19 +214,13 @@ def exercise_lbfgs_big (verbose=False) :
     show_results(o, "3mhk")
 
 def show_results (o, structure_name) :
-  r0 = [ row[-3] for row in o.rama_list0 ].count("OUTLIER") / len(o.rama_list0)
-  r1 = [ row[-3] for row in o.rama_list1 ].count("OUTLIER") / len(o.rama_list1)
-  r2 = [ row[-3] for row in o.rama_list2 ].count("OUTLIER") / len(o.rama_list2)
-  rr0 = [ row[-3] for row in o.rama_list0 ].count("Favored") / len(o.rama_list0)
-  rr1 = [ row[-3] for row in o.rama_list1 ].count("Favored") / len(o.rama_list1)
-  rr2 = [ row[-3] for row in o.rama_list2 ].count("Favored") / len(o.rama_list2)
   print structure_name
   print " before: bonds=%-6.4f angles=%-6.3f outliers=%.1f%% favored=%.1f%%"\
-    % (o.b0,o.a0,r0*100,rr0*100)
+    % (o.b0, o.a0, o.r0.percent_outliers, o.r0.percent_favored)
   print " simple: bonds=%-6.4f angles=%-6.3f outliers=%.1f%% favored=%.1f%%"\
-    % (o.b1,o.a1,r1*100,rr1*100)
+    % (o.b1, o.a1, o.r1.percent_outliers, o.r1.percent_favored)
   print " + Rama: bonds=%-6.4f angles=%-6.3f outliers=%.1f%% favored=%.1f%%"\
-    % (o.b2,o.a2,r2*100,rr2*100)
+    % (o.b2, o.a2, o.r2.percent_outliers, o.r2.percent_favored)
   print ""
 
 def benchmark_structure (pdb_in, verbose=False, w=1.0) :
@@ -241,7 +235,7 @@ def benchmark_structure (pdb_in, verbose=False, w=1.0) :
     log=StringIO())
   log = StringIO()
   pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-  rama0, rama_list0 = ramalyze().analyze_pdb(hierarchy=pdb_hierarchy)
+  r0 = ramalyze(pdb_hierarchy=pdb_hierarchy, outliers_only=False)
   atoms = pdb_hierarchy.atoms()
   sites_cart_1 = atoms.extract_xyz().deep_copy()
   sites_cart_2 = sites_cart_1.deep_copy()
@@ -261,7 +255,7 @@ def benchmark_structure (pdb_in, verbose=False, w=1.0) :
   a1 = lbfgs.rmsd_angles
   b1 = lbfgs.rmsd_bonds
   atoms.set_xyz(sites_cart_1)
-  rama1, rama_list1 = ramalyze().analyze_pdb(hierarchy=pdb_hierarchy)
+  r1 = ramalyze(pdb_hierarchy=pdb_hierarchy, outliers_only=False)
   params = ramachandran.master_phil.fetch().extract()
   rama_lookup = ramachandran.lookup_manager(params)
   restraints_helper = mmtbx.geometry_restraints.manager(
@@ -277,17 +271,17 @@ def benchmark_structure (pdb_in, verbose=False, w=1.0) :
   a2 = lbfgs.rmsd_angles
   b2 = lbfgs.rmsd_bonds
   atoms.set_xyz(sites_cart_2)
-  rama2, rama_list2 = ramalyze().analyze_pdb(hierarchy=pdb_hierarchy)
+  r2 = ramalyze(pdb_hierarchy=pdb_hierarchy, outliers_only=False)
   return group_args(
     a0=a0,
     a1=a1,
     a2=a2,
     b0=b0,
     b1=b1,
-    b2=b2,
-    rama_list0=rama_list0,
-    rama_list1=rama_list1,
-    rama_list2=rama_list2)
+    b2=b2
+    r0=r0,
+    r1=r1,
+    r2=r2)
 
 def exercise_other () :
   file_name = libtbx.env.find_in_repositories(

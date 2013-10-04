@@ -3,7 +3,7 @@ import mmtbx.alignment
 from iotbx.pdb import amino_acid_codes
 from libtbx import group_args
 import cctbx.geometry_restraints
-from mmtbx.validation.rotalyze import rotalyze
+from mmtbx.validation import rotalyze
 from mmtbx.utils import rotatable_bonds
 from mmtbx.rotamer.sidechain_angles import *
 import mmtbx.monomer_library
@@ -605,46 +605,46 @@ class reference_model(object):
     make_sub_header(
       "Correcting rotamer outliers to match reference model",
       out=log)
-    r = rotalyze()
     sa = SidechainAngles(False)
     mon_lib_srv = mmtbx.monomer_library.server.server()
-    rot_list_model, coot_model = r.analyze_pdb(hierarchy=pdb_hierarchy)
+    r = rotalyze.rotalyze(pdb_hierarchy=pdb_hierarchy)
     rot_list_reference = {}
     coot_reference = {}
     for key in pdb_hierarchy_ref.keys():
       hierarchy = pdb_hierarchy_ref[key]
-      rot_list_reference[key], coot_reference[key] = \
-        r.analyze_pdb(hierarchy=hierarchy)
+      rot_list_reference[key] = \
+        rotalyze.rotalyze(pdb_hierarchy=hierarchy)
     model_hash = {}
     model_chis = {}
     reference_hash = {}
     reference_chis = {}
     model_outliers = 0
-    for line in rot_list_model.splitlines():
-      res, occ, rotamericity, chi1, chi2, chi3, chi4, name = line.split(':')
-      model_hash[res]=name
-      if name == "OUTLIER":
+    for rot in r.results:
+      model_hash[rot.id_str()] = rot.rotamer_name
+      if rot.rotamer_name == "OUTLIER":
         model_outliers += 1
 
     for key in rot_list_reference.keys():
       reference_hash[key] = {}
-      for line in rot_list_reference[key].splitlines():
-        res, occ, rotamericity, chi1, chi2, chi3, chi4, name = line.split(':')
-        reference_hash[key][res]=name
+      for rot in rot_list_reference[key].results:
+        reference_hash[key][rot.id_str()] = rot.rotamer_name
 
     print >> log, "** evaluating rotamers for working model **"
     for model in pdb_hierarchy.models():
       for chain in model.chains():
         for residue_group in chain.residue_groups():
-            all_dict = r.construct_complete_sidechain(residue_group)
+            all_dict = rotalyze.construct_complete_sidechain(residue_group)
             for atom_group in residue_group.atom_groups():
               try:
                 atom_dict = all_dict.get(atom_group.altloc)
                 chis = sa.measureChiAngles(atom_group, atom_dict)
                 if chis is not None:
-                  key = '%s%5s %s' % (
-                      chain.id, residue_group.resid(),
-                      atom_group.altloc+atom_group.resname)
+                  key = utils.id_str(
+                          chain_id=chain.id,
+                          resseq=residue_group.resseq,
+                          resname=atom_group.resname,
+                          icode=residue_group.icode,
+                          altloc=atom_group.altloc)
                   model_chis[key] = chis
               except Exception:
                 print >> log, \
@@ -664,15 +664,18 @@ class reference_model(object):
       for model in hierarchy.models():
         for chain in model.chains():
           for residue_group in chain.residue_groups():
-              all_dict = r.construct_complete_sidechain(residue_group)
+              all_dict = rotalyze.construct_complete_sidechain(residue_group)
               for atom_group in residue_group.atom_groups():
                 try:
                   atom_dict = all_dict.get(atom_group.altloc)
                   chis = sa.measureChiAngles(atom_group, atom_dict)
                   if chis is not None:
-                    key = '%s%5s %s' % (
-                        chain.id, residue_group.resid(),
-                        atom_group.altloc+atom_group.resname)
+                    key = utils.id_str(
+                            chain_id=chain.id,
+                            resseq=residue_group.resseq,
+                            resname=atom_group.resname,
+                            icode=residue_group.icode,
+                            altloc=atom_group.altloc)
                     reference_chis[file][key] = chis
                 except Exception:
                   print >> log, \
@@ -694,9 +697,12 @@ class reference_model(object):
             for residue in conformer.residues():
               if residue.resname == "PRO":
                 continue
-              key = '%s%5s %s' % (
-                        chain.id, residue_group.resid(),
-                        conformer.altloc+residue.resname)
+              key = utils.id_str(
+                      chain_id=chain.id,
+                      resseq=residue_group.resseq,
+                      resname=residue_group.atom_groups()[0].resname,
+                      icode=residue_group.icode,
+                      altloc=conformer.altloc)
               if len(chain.id) == 1:
                 chain_id = " "+chain.id
               else:
