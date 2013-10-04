@@ -41,7 +41,7 @@ ligand fitting tools in Phenix.""")
   if (params.ligand_code is None) :
     raise Sorry("Must specify ligand ID (ligand_code=LIG)")
   from mmtbx.validation import ligands
-  rmsds = ligands.compare_ligands(
+  rmsds, pbss = ligands.compare_ligands(
     ligand_code=params.ligand_code,
     pdb_file_1=params.pdb_file[0],
     pdb_file_2=params.pdb_file[1],
