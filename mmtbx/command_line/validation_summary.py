@@ -1,4 +1,6 @@
 
+# TODO remove and replace with new molprobity module
+
 """
 Convenience tool for collecting validation statistics with minimal overhead.
 """
@@ -6,7 +8,6 @@ Convenience tool for collecting validation statistics with minimal overhead.
 from __future__ import division
 from libtbx import slots_getstate_setstate, Auto
 from libtbx.utils import Sorry, Usage
-from libtbx.str_utils import make_sub_header
 from libtbx import str_utils
 from libtbx import easy_mp
 import cStringIO
@@ -43,11 +44,6 @@ header_stat_labels = [
   "RMS(bonds)",
   "RMS(angles)",
 ]
-verbose_stats = [
-  "rota_txt",
-  "rama_txt",
-  "clash_txt",
-]
 
 class summary (slots_getstate_setstate) :
   """
@@ -57,10 +53,10 @@ class summary (slots_getstate_setstate) :
   substitute for full validation.
   """
 
-  __slots__ = molprobity_stats + header_stats + verbose_stats
+  __slots__ = molprobity_stats + header_stats
 
   def __init__ (self, pdb_hierarchy=None, pdb_file=None, sites_cart=None,
-      keep_hydrogens=False, verbose=False) :
+      keep_hydrogens=False) :
     if (pdb_hierarchy is None) :
       assert (pdb_file is not None)
       from iotbx import file_reader
@@ -74,32 +70,23 @@ class summary (slots_getstate_setstate) :
       setattr(self, attr, None)
     from mmtbx.validation import ramalyze, rotalyze, cbetadev, clashscore
     log = cStringIO.StringIO()
-    rama = ramalyze.ramalyze()
-    rama_txt, todo_list = rama.analyze_pdb(hierarchy=pdb_hierarchy,
+    rama = ramalyze.ramalyze(pdb_hierarchy=pdb_hierarchy,
       outliers_only=True)
-    if (rama.numtotal > 0) :
-      rama_out_count, rama_out_percent = rama.get_outliers_count_and_fraction()
-      rama_fav_count, rama_fav_percent = rama.get_favored_count_and_fraction()
-      self.rama_fav = rama_fav_percent * 100.0
-      self.rama_out = rama_out_percent * 100.0
+    if (rama.n_total > 0) :
+      self.rama_fav = rama.percent_favored
+      self.rama_out = rama.percent_outliers
     else :
       self.rama_fav = None
       self.rama_out = None
-    rota = rotalyze.rotalyze()
-    rota_txt, todo_list = rota.analyze_pdb(hierarchy=pdb_hierarchy,
+    rota = rotalyze.rotalyze(pdb_hierarchy=pdb_hierarchy,
       outliers_only=True)
-    if (rota.numtotal > 0) :
-      rota_count, rota_perc = rota.get_outliers_count_and_fraction()
-      self.rota_out = rota_perc * 100.0
+    if (rota.n_total > 0) :
+      self.rota_out = rota.percent_outliers
     else :
       self.rota_out = None
-    cs = clashscore.clashscore()
-    clash_dict, clash_list = cs.analyze_clashes(hierarchy=pdb_hierarchy,
+    cs = clashscore.clashscore(pdb_hierarchy=pdb_hierarchy,
       keep_hydrogens=keep_hydrogens)
-    self.clashscore = clash_dict['']
-    clash_out = cStringIO.StringIO()
-    cs.print_clashlist(out=clash_out)
-    clash_txt = clash_out.getvalue()
+    self.clashscore = cs.get_clashscore()
     cbeta_obj = cbetadev.cbetadev(
       pdb_hierarchy=pdb_hierarchy,
       outliers_only=True)
@@ -112,10 +99,6 @@ class summary (slots_getstate_setstate) :
         rama_fav=self.rama_fav)
     # TODO leave self.cbeta_out as None if not protein
     self.cbeta_out = cbeta_obj.get_outlier_count()
-    if (verbose) :
-      self.rama_txt = ramalyze.header + "\n" + rama_txt
-      self.rota_txt = rotalyze.header + "\n" + rota_txt
-      self.clash_txt = clash_txt
     self.r_work = None
     self.r_free = None
     self.rms_bonds = None
@@ -137,21 +120,7 @@ class summary (slots_getstate_setstate) :
           self.rms_angles = float(fields[-1])
           break
 
-  def show (self, out=sys.stdout, prefix="  ", verbose=False) :
-    if (verbose) :
-      if (self.rama_txt is not None) and (self.rama_out > 0) :
-        make_sub_header("Ramachandran plot", out=out)
-        print >> out, self.rama_txt
-        print >> out, ""
-      if (self.rota_txt is not None) and (self.rota_out > 0) :
-        make_sub_header("Sidechain rotamers", out=out)
-        print >> out, self.rota_txt
-        print >> out, ""
-      if (self.clash_txt is not None) and (self.clashscore > 0) :
-        make_sub_header("All-atom contacts", out=out)
-        print >> out, self.clash_txt
-        print >> out, ""
-      make_sub_header("Summary", out=out)
+  def show (self, out=sys.stdout, prefix="  ") :
     def fs (format, value) :
       return str_utils.format_value(format, value, replace_none_with=("(none)"))
     print >> out, "%sRamachandran outliers = %s %%" % (prefix,
@@ -213,7 +182,7 @@ class ensemble (slots_getstate_setstate) :
         array.append(getattr(s, name))
       setattr(self, name, array)
 
-  def show (self, out=None, prefix="", verbose=None) :
+  def show (self, out=None, prefix="") :
     if (out is None) :
       out = sys.stdout
     def min_max_mean (array) :
@@ -254,7 +223,6 @@ for evaluating the output of refinement tests; general users are advised to
 run phenix.model_vs_data or the validation GUI.)
 """)
   parser = optparse.OptionParser()
-  parser.add_option("--verbose", dest="verbose", action="store_true")
   options, args = parser.parse_args(args)
   pdb_file = args[0]
   if (not os.path.isfile(pdb_file)) :
@@ -266,14 +234,14 @@ run phenix.model_vs_data or the validation GUI.)
   s = None
   extra = ""
   if (len(xrs) == 1) :
-    s = summary(pdb_file=pdb_file, verbose=options.verbose)
+    s = summary(pdb_file=pdb_file)
   else :
     s = ensemble(pdb_hierarchy=hierarchy,
       n_models=len(xrs))
     extra = " (%d models)" % len(xrs)
   print >> out, ""
   print >> out, "Validation summary for %s%s:" % (pdb_file, extra)
-  s.show(out=out, prefix="  ", verbose=options.verbose)
+  s.show(out=out, prefix="  ")
   print >> out, ""
   return s
 

@@ -1,172 +1,95 @@
+
 from __future__ import division
-import libtbx.load_env
-import sys, os, string
-from libtbx.utils import Usage
-from mmtbx import utils
-
-try:
-  from iotbx import pdb
-except ImportError, e:
-  print "iotbx not loaded"
-  sys.exit()
-
-import iotbx.phil
+from mmtbx.validation import validation, atoms, atom_info
 from libtbx import easy_run
+import libtbx.load_env
+import string
+import sys
 
-def get_master_phil():
-  return iotbx.phil.parse(
-    input_string="""
-      clashscore {
-        pdb = None
-        .type = path
-        .help = '''Enter a PDB file name'''
+class clash (atoms) :
+  __clash_attr__ = [
+    "overlap",
+    "probe_type",
+    "max_b_factor",
+  ]
+  __slots__ = atoms.__slots__ + __clash_attr__
 
-        verbose = False
-        .type = bool
-        .help = '''Verbose'''
+  @staticmethod
+  def header () :
+    return "%-20s %-20s  %7s" % ("Atom 1", "Atom 2", "Overlap")
 
-        keep_hydrogens = True
-        .type = bool
-        .help = '''Keep hydrogens in input file'''
+  def id_str (self, spacer=" ") :
+    return "%s%s%s" % (self.atoms_info[0].id_str(), spacer,
+      self.atoms_info[1].id_str())
 
-        nuclear = False
-        .type = bool
-        .help = '''Use nuclear hydrogen positions'''
+  def id_str_no_atom_name (self) :
+    return "%s %s" % (self.atoms_info[0].id_str()[0:11],
+      self.atoms_info[1].id_str()[0:11])
 
-        time_limit = 120
-        .type = int
-        .help = '''Time limit (sec) for Reduce optimization'''
+  def format_old (self) :
+    return "%s :%.3f" % (self.id_str(), self.overlap)
 
-        b_factor_cutoff = None
-        .type = int
-        .help = '''B factor cutoff for use with MolProbity'''
-  }
+  def as_string (self) :
+    return "%-20s %-20s  %7.3f" % (self.atoms_info[0].id_str(),
+      self.atoms_info[1].id_str(), self.overlap)
 
-    """)
+  def __cmp__ (self, other) : # sort in descending order
+    return cmp(self.overlap, other.overlap)
 
-class clashscore(object):
-  #flag routines-----------------------------------------------------------------------------------
-  def usage(self):
-    return """
-phenix.clashscore file.pdb [params.eff] [options ...]
+class clashscore(validation):
+  __slots__ = validation.__slots__ + [
+    "clashscore",
+    "clashscore_b_cutoff",
+    "clash_dict",
+    "clash_dict_b_cutoff",
+    "list_dict",
+    "b_factor_cutoff",
+    "probe_file",
+  ]
+  program_description = "Analyze clashscore for protein model"
 
-Options:
+  def get_result_class (self) : return clash
 
-  pdb=input_file        input PDB file
-  keep_hydrogens=True   keep input hydrogen files (otherwise regenerate)
-  nuclear=False         use nuclear x-H distances and vdW radii
-  verbose=True          verbose text output
-
-Example:
-
-  phenix.clashscore pdb=1ubq.pdb keep_hydrogens=True
-
-"""
-  def get_summary_and_header(self,command_name):
-    header="\n"
-    header+="\n#                       "+str(command_name)
-    header+="\n#"
-    header+="\n# Analyze clashscore for protein model"
-    header+="\n# type phenix."+str(command_name)+": --help for help\n"
-
-    summary= "phenix.%s [options] mypdb.pdb" % command_name
-    return summary,header
-  #------------------------------------------------------------------------------------------------
-
-  #{{{ run
-  def run(self, args, out=sys.stdout, quiet=False):
-    if (len(args) == 0 or "--help" in args or "--h" in args or "-h" in args):
-      raise Usage(self.usage())
-    master_phil = get_master_phil()
-    import iotbx.utils
-    input_objects = iotbx.utils.process_command_line_inputs(
-      args=args,
-      master_phil=master_phil,
-      input_types=("pdb",))
-    work_phil = master_phil.fetch(sources=input_objects["phil"])
-    work_params = work_phil.extract()
-    if len(input_objects["pdb"]) != 1:
-      summary, header = self.get_summary_and_header("clashscore")
-      raise Usage(summary)
-    file_obj = input_objects["pdb"][0]
-    filename = file_obj.file_name
-
-    command_name = "clashscore"
-    summary,header=self.get_summary_and_header(command_name)
-    if not quiet: print >>out, header
-
-    #TO DO: make this a useful help section
-    #if help or (params and params.clashscore.verbose):
-    #  print >> out, summary
-    #  pass
-      #print "Values of all params:"
-      #master_params.format(python_object=params).show(out=out)
-
-    self.params=work_params # makes params available to whole class
-
-    log=out
-    if (log is None): log = sys.stdout
-    if self.params.clashscore.verbose :
-      print >> log, 'filename', filename
-    if filename and os.path.exists(filename):
-      pdb_io = pdb.input(filename)
-      pass
-    else:
-      print >> log, "Please enter a file name"
-      return
-    keep_hydrogens = self.params.clashscore.keep_hydrogens
-    nuclear = self.params.clashscore.nuclear
-    time_limit = self.params.clashscore.time_limit
-    clashscore, bad_clashes = self.analyze_clashes(pdb_io=pdb_io,
-        keep_hydrogens=keep_hydrogens,
-        nuclear=nuclear,
-        time_limit=time_limit,
-        b_factor_cutoff=self.params.clashscore.b_factor_cutoff,
-        verbose=self.params.clashscore.verbose)
-    if not quiet :
-      self.print_clashlist(out)
-      self.print_clashscore(out)
-    return clashscore
-  #}}}
-
-  #{{{ analyze_clashes
-  def analyze_clashes(
-        self,
-        pdb_io=None,
-        hierarchy=None,
-        keep_hydrogens=True,
-        nuclear=False,
-        force_unique_chain_ids=False,
-        time_limit=120,
-        b_factor_cutoff=None,
-        verbose=False) :
-    if (not libtbx.env.has_module(name="probe")):
-      print "Probe could not be detected on your system.  Please make sure Probe is in your path."
-      print "Probe is available at http://kinemage.biochem.duke.edu/"
-      sys.exit()
-    assert [pdb_io, hierarchy].count(None) == 1
-    if(pdb_io is not None):
-      hierarchy = pdb_io.construct_hierarchy()
-
+  def __init__ (self,
+      pdb_hierarchy,
+      keep_hydrogens=True,
+      nuclear=False,
+      force_unique_chain_ids=False,
+      time_limit=120,
+      b_factor_cutoff=None,
+      save_probe_unformatted_file=None,
+      save_modified_hierarchy=False,
+      verbose=False,
+      out=sys.stdout) :
+    validation.__init__(self)
+    self.b_factor_cutoff = b_factor_cutoff
+    self.clashscore = None
+    self.clashscore_b_cutoff = None
     self.clash_dict = {}
     self.clash_dict_b_cutoff = {}
     self.list_dict = {}
-
-    h_count = 0
-
+    self.probe_file = None
+    if (not libtbx.env.has_module(name="probe")):
+      raise RuntimeError(
+        "Probe could not be detected on your system.  Please make sure "+
+        "Probe is in your path.\nProbe is available at "+
+        "http://kinemage.biochem.duke.edu/")
     if verbose:
       if not nuclear:
         print "\nUsing electron cloud x-H distances and vdW radii"
       else:
         print "\nUsing nuclear cloud x-H distances and vdW radii"
-
-    for i,m in enumerate(hierarchy.models()):
+    import iotbx.pdb.hierarchy
+    from scitbx.array_family import flex
+    n_models = len(pdb_hierarchy.models())
+    for i_mod, model in enumerate(pdb_hierarchy.models()):
       r = iotbx.pdb.hierarchy.root()
-      mdc = m.detached_copy()
+      mdc = model.detached_copy()
       r.append_model(mdc)
       tmp_r = r
       # removed old style SEGID handling for compatibility with Probe
       # 130622 - JJH
+      #from mmtbx import utils
       #bare_chains = \
       #  utils.find_bare_chains_with_segids(pdb_hierarchy=r)
       #if bare_chains:
@@ -195,63 +118,82 @@ Example:
             print "\nNo H/D atoms detected - forcing hydrogen addition!\n"
           keep_hydrogens = False
       input_str = tmp_r.as_pdb_string()
-      largest_occupancy = self.get_largest_occupancy(atoms=tmp_r.atoms())
-      pcm = probe_clashscore_manager(pdb_string=input_str,
-                                     keep_hydrogens=keep_hydrogens,
-                                     nuclear=nuclear,
-                                     time_limit=time_limit,
-                                     largest_occupancy=largest_occupancy,
-                                     b_factor_cutoff=b_factor_cutoff,
-                                     verbose=verbose)
-      self.pdb_hierarchy = pdb.hierarchy.\
-        input(pdb_string=pcm.h_pdb_string).hierarchy
-      self.clash_dict[m.id]=pcm.clashscore
-      self.clash_dict_b_cutoff[m.id]=pcm.clashscore_b_cutoff
-      self.list_dict[m.id]=pcm.bad_clashes
-    self.clashscore=pcm.clashscore
-    self.clashscore_b_cutoff=pcm.clashscore_b_cutoff
-    self.bad_clashes=pcm.bad_clashes
-    self.probe_unformatted =pcm.probe_unformatted
-    return self.clash_dict, self.list_dict
-  #}}}
+      occ_max = flex.max(tmp_r.atoms().extract_occ())
+      pcm = probe_clashscore_manager(
+        pdb_string=input_str,
+        keep_hydrogens=keep_hydrogens,
+        nuclear=nuclear,
+        time_limit=time_limit,
+        largest_occupancy=occ_max,
+        b_factor_cutoff=b_factor_cutoff,
+        verbose=verbose)
+      if (save_modified_hierarchy) :
+        self.pdb_hierarchy = pdb.hierarchy.\
+          input(pdb_string=pcm.h_pdb_string).hierarchy
+      self.clash_dict[model.id] = pcm.clashscore
+      self.clash_dict_b_cutoff[model.id] = pcm.clashscore_b_cutoff
+      self.list_dict[model.id] = pcm.bad_clashes
+      if (n_models == 1) :
+        self.results = pcm.bad_clashes
+        self.clashscore = pcm.clashscore
+        self.clashscore_b_cutoff = pcm.clashscore_b_cutoff
+      if (save_probe_unformatted_file is not None) and (n_models == 1) :
+        open(save_probe_unformatted_file, "w").write(pcm.probe_unformatted)
+        self.probe_file = save_probe_unformatted_file
 
-  #{{{ get_functions
   def get_clashscore(self):
     return self.clashscore
 
-  def print_clashscore(self, out=sys.stdout):
-    if out is None :
-      out = sys.stdout
-    for k in sorted(self.clash_dict.keys()):
-      if k is '':
-        print >> out, "clashscore = %f" % self.clash_dict[k]
-        if self.clash_dict_b_cutoff[k] is not None:
-          print >> out, "clashscore (B factor cutoff = %d) = %f" % \
-            (self.params.clashscore.b_factor_cutoff,
-             self.clash_dict_b_cutoff[k])
-      else:
-        print >> out, "MODEL%s clashscore = %f" % (k, self.clash_dict[k])
+  def get_clashscore_b_cutoff(self):
+    return self.clashscore_b_cutoff
+
+  def show_old_output (self, out=sys.stdout, verbose=False) :
+    self.print_clashlist_old(out=out)
+    self.show_summary(out=out)
+
+  def show_summary (self, out=sys.stdout, prefix="") :
+    if (len(self.clash_dict) == 1) :
+      print >> out, prefix + "clashscore = %.2f" % self.clash_dict['']
+      if self.clash_dict_b_cutoff[''] is not None:
+        print >> out, "clashscore (B factor cutoff = %d) = %f" % \
+          (self.b_factor_cutoff,
+           self.clash_dict_b_cutoff[''])
+    else:
+      for k in sorted(self.clash_dict.keys()) :
+        print >> out, prefix + "MODEL %s clashscore = %.2f" % (k,
+          self.clash_dict[k])
         if self.clash_dict_b_cutoff[k] is not None:
           print >> out, "MODEL%s clashscore (B factor cutoff = %d) = %f" % \
-            (k,
-             self.params.clashscore.b_factor_cutoff,
-             self.clash_dict_b_cutoff[k])
+            (k, self.b_factor_cutoff, self.clash_dict_b_cutoff[k])
 
-  def print_clashlist(self, out=sys.stdout):
-    for k in sorted(self.list_dict.keys()):
-      if k is '':
+  def print_clashlist_old (self, out=sys.stdout):
+    for k in self.list_dict.keys():
+      if k == '':
         print >> out, "Bad Clashes >= 0.4 Angstrom:"
-        print >> out, self.list_dict[k]
+        for result in self.list_dict[k] :
+          print >> out, result.format_old()
       else:
         print >> out, "Bad Clashes >= 0.4 Angstrom MODEL%s" % k
-        print >> out, self.list_dict[k]
+        for result in self.list_dict[k] :
+          print >> out, result.format_old()
 
-  def get_largest_occupancy(self, atoms):
-    largest_occupancy = 0.0
-    for atom in atoms:
-      if atom.occ > largest_occupancy:
-        largest_occupancy = float(atom.occ)
-    return int(largest_occupancy * 100)
+  def show (self, out=sys.stdout, prefix="", outliers_only=None, verbose=None) :
+    if (len(self.clash_dict) == 1) :
+      for result in self.list_dict[''] :
+        print >> out, prefix + str(result)
+    else :
+      for k in self.list_dict.keys():
+        for result in self.list_dict[k] :
+          print >> out, prefix + str(result)
+    self.show_summary(out=out, prefix=prefix)
+
+  def as_coot_data (self) :
+    data = []
+    for result in self.results :
+      if result.is_outlier() :
+        data.append((result.atoms_info[0].id_str(),
+          result.atoms_info[1].id_str(), result.xyz))
+    return data
 
 class probe_clashscore_manager(object):
   def __init__(self,
@@ -326,9 +268,8 @@ class probe_clashscore_manager(object):
   #  self.run_probe_clashscore(pdb_string)
 
   def run_probe_clashscore(self, pdb_string):
-    clash_hash={}
-    hbond_hash={}
-    b_factor_hash={}
+    clash_hash = {}
+    hbond_hash = {}
     clashscore = None
     probe_out = easy_run.fully_buffered(self.probe_txt,
       stdin_lines=pdb_string)
@@ -336,83 +277,95 @@ class probe_clashscore_manager(object):
       raise RuntimeError("Probe crashed - dumping stderr:\n%s" %
         "\n".join(probe_out.stderr_lines))
     probe_unformatted = probe_out.stdout_lines
-    self.probe_unformatted = probe_unformatted
+    self.probe_unformatted = "\n".join(probe_unformatted)
     for line in probe_unformatted:
       name, pat, type, srcAtom, targAtom, min_gap, gap, \
       kissEdge2BullsEye, dot2BE, dot2SC, spike, score, stype, \
       ttype, x, y, z, sBval, tBval = line.split(":")
+      atom1 = decode_atom_string(srcAtom)
+      atom2 = decode_atom_string(targAtom)
       if (cmp(srcAtom,targAtom) < 0):
-        key = srcAtom+targAtom
+        atoms = [ atom1, atom2 ]
       else:
-        key = targAtom+srcAtom
+        atoms = [ atom2, atom1 ]
+      gap = float(gap)
+      x, y, z = float(x), float(y), float(z)
+      clash_obj = clash(
+        atoms_info=atoms,
+        overlap=gap,
+        probe_type=type,
+        outlier=abs(gap) > 0.4,
+        max_b_factor=max(float(sBval), float(tBval)),
+        xyz=(x,y,z))
+      key = clash_obj
       if (type == "so" or type == "bo"):
-        if (float(gap) <= -0.4):
-          if clash_hash.get(key) is not None:
-            if (float(gap) < clash_hash[key]):
-              clash_hash[key] = float(gap)
-              b_factor_hash[key] = max(float(sBval), float(tBval))
-          else:
-            clash_hash[key] = float(gap)
-            b_factor_hash[key] = max(float(sBval), float(tBval))
+        if (gap <= -0.4):
+          if (key in clash_hash) :
+            if (gap < clash_hash[key].overlap):
+              clash_hash[key] = clash_obj
+          else :
+            clash_hash[key] = clash_obj
       elif (type == "hb"):
-        if hbond_hash.get(key) is not None:
-          if (float(gap) < hbond_hash[key]):
-            hbond_hash[key] = float(gap)
-        else:
-          hbond_hash[key] = float(gap)
-    clashes = len(clash_hash)
-
-    for k in clash_hash.keys():
-      if k in hbond_hash:
-        clashes=clashes-1
-        clash_hash[k]="Hbonded"
-    bad_clashes = ''
-
-    if self.b_factor_cutoff is not None:
-      clashes_b_cutoff = 0
-      for k in clash_hash.keys():
-        if clash_hash[k] == "Hbonded":
-          continue
-        if b_factor_hash[k] < self.b_factor_cutoff:
-          clashes_b_cutoff += 1
+        if (key in hbond_hash) :
+          if (gap < hbond_hash[key].overlap):
+            hbond_hash[key] = clash_obj
+        else :
+          hbond_hash[key] = clash_obj
 
     #sort the output
     temp = []
     for k in clash_hash.keys():
       if not k in hbond_hash:
-        temp.append(k)
-    def get_clash(k):
-      return clash_hash[k]
-    temp_sorted = sorted(temp, key=get_clash)
+        temp.append(clash_hash[k])
+    self.n_clashes = len(temp)
+    if self.b_factor_cutoff is not None:
+      clashes_b_cutoff = 0
+      for clash_obj in temp:
+        if clash_obj.max_b_factor < self.b_factor_cutoff:
+          clashes_b_cutoff += 1
+      self.n_clashes_b_cutoff = clashes_b_cutoff
     used = []
-    for k in temp_sorted:
-      test_key = k[0:11]+k[16:27]
+    self.bad_clashes = []
+    for clash_obj in sorted(temp) :
+      test_key = clash_obj.id_str_no_atom_name()
       if test_key not in used:
-        bad_clashes += k+':'+str(clash_hash[k])+'\n'
         used.append(test_key)
+        self.bad_clashes.append(clash_obj)
     probe_info = easy_run.fully_buffered(self.probe_atom_txt,
       stdin_lines=pdb_string).raise_if_errors().stdout_lines
     if (len(probe_info) == 0) :
       raise RuntimeError("Empty PROBE output.")
-    natoms = 0
+    self.n_atoms = 0
     for line in probe_info :
-      dump, natoms = line.split(":")
-    natoms_b_cutoff = None
+      dump, n_atoms = line.split(":")
+    self.n_atoms = int(n_atoms)
+    self.natoms_b_cutoff = None
     if self.probe_atom_b_factor is not None:
       probe_info_b_factor = easy_run.fully_buffered(self.probe_atom_b_factor,
         stdin_lines=pdb_string).raise_if_errors().stdout_lines
       for line in probe_info_b_factor :
         dump_b, natoms_b_cutoff = line.split(":")
-
-    if int(natoms) == 0:
+      self.natoms_b_cutoff = int(natoms_b_cutoff)
+    if self.n_atoms == 0:
       clashscore = 0.0
     else:
-      clashscore = (clashes*1000)/float(natoms)
-    clashscore_b_cutoff = None
-    if natoms_b_cutoff is not None and int(natoms_b_cutoff) == 0:
-      clashscore_b_cutoff = 0.0
-    elif natoms_b_cutoff is not None:
-      clashscore_b_cutoff = (clashes_b_cutoff*1000)/float(natoms_b_cutoff)
+      clashscore = (self.n_clashes * 1000) / self.n_atoms
     self.clashscore = clashscore
+    clashscore_b_cutoff = None
+    if self.natoms_b_cutoff is not None and self.natoms_b_cutoff == 0:
+      clashscore_b_cutoff = 0.0
+    elif self.natoms_b_cutoff is not None:
+      clashscore_b_cutoff = \
+        (self.n_clashes_b_cutoff*1000) / self.natoms_b_cutoff
     self.clashscore_b_cutoff = clashscore_b_cutoff
-    self.bad_clashes = bad_clashes
+
+def decode_atom_string (atom_str) :
+  # Example:
+  # ' A  49 LEU HD11B'
+  return atom_info(
+    chain_id=atom_str[0:2],
+    resseq=atom_str[2:6],
+    icode=atom_str[6],
+    resname=atom_str[7:10],
+    altloc=atom_str[15],
+    name=atom_str[11:15])
