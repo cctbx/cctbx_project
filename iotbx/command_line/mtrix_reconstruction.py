@@ -18,11 +18,11 @@ def mtrix_reconstruction(args, command_name="phenix.pdb.mtrix_reconstruction"):
   args: a string containing the pdb file name, 'file_name.pdb' and an optional output file name
         if no file name is given, the output file will have the name 'cryst_asym_unit_file_name.pdb'
 
-  >>> phenix.pdb.mtrix_reconstruction 'input_file_name.pdb'
+  >>> phenix.pdb.mtrix_reconstruction input_file_name.pdb
   mtrix-assembly reconstructed pdb file was added to your current directory
   /path/cryst_asym_unit_input_file_name.pdb
 
-   >>> phenix.pdb.mtrix_reconstruction 'input_file_name.pdb' 'output_file_name.pdb'
+   >>> phenix.pdb.mtrix_reconstruction input_file_name.pdb 'output_file_name.pdb
   mtrix-assembly reconstructed pdb file was added to your current directory
   /path/output_file_name.pdb
 
@@ -30,7 +30,7 @@ def mtrix_reconstruction(args, command_name="phenix.pdb.mtrix_reconstruction"):
   '''
   if (len(args) == 0):
     raise Sorry('No input filename is given. Please provide a pdb file name. \n' + \
-                '>>> phenix.pdb.mtrix_reconstruction "input_file_name.pdb"')
+                '>>> phenix.pdb.mtrix_reconstruction input_file_name.pdb')
   elif ('--help' in args) or ('-h' in args):
     print help(mtrix_reconstruction)
   elif (len(args) > 2):
@@ -45,6 +45,8 @@ def mtrix_reconstruction(args, command_name="phenix.pdb.mtrix_reconstruction"):
       if len(args) == 2:
         # output file name given
         m.write(args[1])
+        print 'mtrix-assembly reconstructed pdb file was added to your current directory'
+        print os.getcwd() + '/' + m.pdb_output_file_name
       else:
         # output file name not given
         m.write()
