@@ -1,6 +1,6 @@
 
 from __future__ import division
-import phenix_dev.validation.cbetadev
+import mmtbx.validation.cbetadev
 import iotbx.phil
 from libtbx.utils import Usage
 import os.path
@@ -22,7 +22,7 @@ def run (args, out=sys.stdout, quiet=False) :
     raise Usage(usage_string)
   pdb_in = cmdline.get_file(params.model, force_type="pdb")
   hierarchy = pdb_in.file_object.construct_hierarchy()
-  result = phenix_dev.validation.cbetadev.cbetadev(
+  result = mmtbx.validation.cbetadev.cbetadev(
     pdb_hierarchy=hierarchy,
     outliers_only=params.outliers_only,
     out=out,
