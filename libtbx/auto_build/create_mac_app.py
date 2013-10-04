@@ -5,7 +5,9 @@
 from __future__ import division
 try :
   import libtbx.load_env
-except ImportError, e :
+# can be either ImportError or SyntaxError, depending on whether we're using
+# the bundled Python version or something more ancient
+except Exception, e :
   libtbx_env = None
 else :
   libtbx_env = libtbx.env
