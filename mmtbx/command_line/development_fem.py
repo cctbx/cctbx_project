@@ -62,14 +62,6 @@ Calculate a "feature-enhanced" 2mFo-DFc map.
   r_free_flags = cmdline.r_free_flags
   manage_random_seed(random_seed=params.random_seed)
   cs=f_obs.crystal_symmetry()
-  crystal_gridding = f_obs.crystal_gridding(
-    d_min                   = f_obs.d_min(),
-    resolution_factor       = 0.25,
-    grid_step               = None,
-    symmetry_flags          = None,
-    mandatory_factors       = None,
-    max_prime               = 5,
-    assert_shannon_sampling = True)
   fmodel = mmtbx.f_model.manager(
     f_obs = f_obs,
     r_free_flags = r_free_flags,
@@ -97,14 +89,8 @@ Calculate a "feature-enhanced" 2mFo-DFc map.
   #
   fmodel.update_all_scales(update_f_part1_for="refinement")
   #
-  ko = mmtbx.maps.kick(
-    fmodel           = fmodel.deep_copy(),
-    crystal_gridding = crystal_gridding)
   #### Compute FEM start
-  fem = mmtbx.maps.fem(
-    ko=ko,
-    crystal_gridding=crystal_gridding,
-    fmodel=fmodel)
+  fem = mmtbx.maps.fem(fmodel=fmodel)
   #### Compute FEM end
   mtz_dataset = mc_orig.as_mtz_dataset(column_root_label="2mFoDFc")
   mtz_dataset.add_miller_array(

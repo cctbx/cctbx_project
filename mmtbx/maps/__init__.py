@@ -554,6 +554,30 @@ class compute_map_coefficients(object):
       return True
     return False
 
+def b_factor_sharpening_by_map_kurtosis_maximization(map_coeffs, show=True):
+  ss = 1./flex.pow2(map_coeffs.d_spacings().data()) / 4.
+  b_sharp_best = None
+  kurt = -999
+  for b_sharp in range(-100,100,5):
+    k_sharp = 1./flex.exp(-ss * b_sharp)
+    map_coeffs_ = map_coeffs.deep_copy().customized_copy(
+      data = map_coeffs.data()*k_sharp)
+    fft_map = map_coeffs_.fft_map(resolution_factor = 0.25)
+    fft_map.apply_sigma_scaling()
+    map_data = fft_map.real_map_unpadded()
+    o = maptbx.more_statistics(map_data)
+    kurt_ = o.kurtosis()
+    if(kurt_ > kurt):
+      kurt = kurt_
+      b_sharp_best = b_sharp
+    if(show):
+      print "b_sharp: %6.1f skewness: %6.4f kurtosis: %6.4f"%(b_sharp,
+        o.skewness(), o.kurtosis())
+  if(show): print "Best sharpening B-factor:", b_sharp_best
+  k_sharp = 1./flex.exp(-ss * b_sharp_best)
+  return map_coeffs.customized_copy(data = map_coeffs.data()*k_sharp)
+
+
 class kick(object):
   """
   Note 1: Assume Fmodel has correct scaling already (all f_parts etc).
@@ -563,6 +587,7 @@ class kick(object):
   def __init__(
       self,
       fmodel,
+      mask_data          = None,
       crystal_gridding   = None,
       map_type           = "2mFo-DFc",
       number_of_kicks    = 10,
@@ -570,7 +595,8 @@ class kick(object):
       resolution_factor  = 0.25,
       shake_completeness = True,
       shake_f_model      = True,
-      shake_f_map        = True):
+      shake_f_map        = True,
+      fill_mode          = "resolve_dm"):
     self.map_type = map_type
     self.number_of_kicks = number_of_kicks
     assert self.number_of_kicks > 0
@@ -590,7 +616,7 @@ class kick(object):
         map_type            = self.map_type,
         isotropize          = True,
         fill_missing        = True,
-        fill_missing_method = "resolve_dm")
+        fill_missing_method = fill_mode)
     self.partial_set = map_tools.electron_density_map(
       fmodel=fmodel).map_coefficients(
         map_type     = self.map_type,
@@ -606,6 +632,12 @@ class kick(object):
         fourier_coefficients = map_coeffs)
       fft_map.apply_sigma_scaling()
       m = fft_map.real_map_unpadded()
+      if(mask_data is not None):
+        maptbx.remove_single_node_peaks(
+          map_data   = m,
+          mask_data  = mask_data,
+          cutoff     = 1,
+          index_span = 2)
       if(map_data is None): map_data = m
       else:
         for i in [0,0.1,0.2,0.3,0.4,0.5]:
@@ -678,14 +710,13 @@ class kick(object):
           map_coeffs       = mc,
           crystal_gridding = crystal_gridding,
           map_data         = map_data)
-    if(self.complete_set.d_min()>2.8):
-      # XXX resolution cutoff is a work-around to compensate for
-      # XXX remove_single_node_peaks being not smart
-      for cutoff in [0.5,0.6,0.7,0.8,0.9,1.0]:
-        maptbx.remove_single_node_peaks(
-          map_data   = map_data,
-          cutoff     = cutoff,
-          index_span = 2)
+    # XXX see what it does to waters
+    if(mask_data is not None):
+      maptbx.remove_single_node_peaks(
+        map_data   = map_data,
+        mask_data  = mask_data,
+        cutoff     = 1,
+        index_span = 2)
     #
     for i in xrange(3):
       maptbx.map_box_average(
@@ -749,86 +780,116 @@ class kick(object):
       else:                       map_coeff_data = map_coeff_data + mc.data()
     return map_coeff_data/self.number_of_kicks
 
-def fem(ko, crystal_gridding, fmodel):
+def fem(fmodel):
+  #### embedded helper functions
+  # map calculation helper
+  class map_calculator(object):
+    def __init__(self, crystal_gridding):
+      self.crystal_gridding = crystal_gridding
+    def get_map(self, map_coeffs):
+      fft_map = miller.fft_map(
+        crystal_gridding     = self.crystal_gridding,
+        fourier_coefficients = map_coeffs)
+      fft_map.apply_sigma_scaling()
+      return fft_map.real_map_unpadded()
+  # sf from map calculation helper
+  def sffm(miller_array, map_data):
+    return miller_array.structure_factors_from_map(
+      map            = map_data,
+      use_scale      = True,
+      anomalous_flag = False,
+      use_sg         = False)
+  def get_mask_data(xrs, d_min):
+    from cctbx.masks import vdw_radii_from_xray_structure
+    atom_radii = vdw_radii_from_xray_structure(xray_structure = xrs)
+    mp = mmtbx.masks.mask_master_params.extract()
+    asu_mask = mmtbx.masks.atom_mask(
+      unit_cell                = xrs.unit_cell(),
+      group                    = xrs.space_group(),
+      resolution               = d_min,
+      grid_step_factor         = mp.grid_step_factor, # =4, not 1/4. !
+      solvent_radius           = mp.solvent_radius,
+      shrink_truncation_radius = mp.shrink_truncation_radius)
+    asu_mask.compute(xrs.sites_frac(), atom_radii)
+    mask_data = asu_mask.mask_data_whole_uc()
+    mask_data = mask_data / xrs.space_group().order_z()
+    #
+    xrs_p1 = xrs.expand_to_p1(sites_mod_positive=True)
+    atom_radii = vdw_radii_from_xray_structure(xray_structure = xrs_p1)
+    asu_mask = mmtbx.masks.atom_mask(
+      unit_cell                = xrs_p1.unit_cell(),
+      space_group              = xrs_p1.space_group(),
+      gridding_n_real          = mask_data.focus(),
+      solvent_radius           = mp.solvent_radius,
+      shrink_truncation_radius = mp.shrink_truncation_radius)
+    asu_mask.compute(xrs_p1.sites_frac(), atom_radii)
+    mask_data = asu_mask.mask_data_whole_uc()
+    if(0): # we do not need it for Fmask
+      print "xrs_p1.space_group().order_z():", xrs_p1.space_group().order_z()
+      mask_data = mask_data / xrs_p1.space_group().order_z()
+    return mask_data
+  ### end embedded functions
+  mask_data = get_mask_data(
+    xrs   = fmodel.xray_structure,
+    d_min = fmodel.f_obs().d_min())
+  crystal_gridding = maptbx.crystal_gridding(
+    unit_cell             = fmodel.xray_structure.unit_cell(),
+    space_group_info      = fmodel.f_obs().space_group_info(),
+    pre_determined_n_real = mask_data.focus())
+  #
+  map_calc = map_calculator(crystal_gridding = crystal_gridding)
+  #
+  ko = mmtbx.maps.kick(
+    fmodel           = fmodel.deep_copy(),
+    mask_data        = mask_data,
+    crystal_gridding = crystal_gridding,
+    fill_mode        = "resolve_dm")
+
   mc_orig = ko.complete_set
   print "starting FEM..."
-  map_data = ko.map_data.deep_copy()
+  map_data   = ko.map_data.deep_copy()
   map_dataK1 = map_data.deep_copy()
+  map_dataK2 = map_calc.get_map(ko.map_coefficients)
+  map_orig   = map_calc.get_map(mc_orig)
   #
-  fft_map = miller.fft_map(
-    crystal_gridding     = crystal_gridding,
-    fourier_coefficients = ko.map_coefficients)
-  fft_map.apply_sigma_scaling()
-  map_dataK2 = fft_map.real_map_unpadded()
-  #
-  fft_map = miller.fft_map(
-    crystal_gridding     = crystal_gridding,
-    fourier_coefficients = mc_orig)
-  fft_map.apply_sigma_scaling()
-  map_orig = fft_map.real_map_unpadded()
   # I think this is the same
   if(1):
     fem = maptbx.local_scale(
       map_data         = map_data,
       crystal_gridding = crystal_gridding,
       crystal_symmetry = fmodel.f_obs().crystal_symmetry(),
-      miller_array     = ko.complete_set).map_coefficients
-    fft_map = miller.fft_map(
-      crystal_gridding     = crystal_gridding,
-      fourier_coefficients = fem)
-    fft_map.apply_sigma_scaling()
-    map_fem = fft_map.real_map_unpadded()
+      miller_array     = mc_orig).map_coefficients
   else:
     map_fem = maptbx.volume_scale(map = map_data, n_bins = 10000).map_data()
-    fem = mc_orig.structure_factors_from_map(
-        map            = map_fem,
-        use_scale      = True,
-        anomalous_flag = False,
-        use_sg         = False)
-    fft_map = miller.fft_map(
-      crystal_gridding     = crystal_gridding,
-      fourier_coefficients = fem)
-    fft_map.apply_sigma_scaling()
-    map_fem = fft_map.real_map_unpadded()
+    fem = sffm(miller_array=mc_orig, map_data=map_fem)
+  map_fem = map_calc.get_map(fem)
   #
   maptbx.cut_by(kick=map_orig,   fem=map_fem, cut_by_threshold=0.5)
   maptbx.cut_by(kick=map_dataK1, fem=map_fem, cut_by_threshold=0.25) # is necessary ?
   maptbx.cut_by(kick=map_dataK2, fem=map_fem, cut_by_threshold=0.25) # is necessary ?
+  del map_orig, map_dataK1, map_dataK2
   # fileter by Fc fileld map:
-  fft_map = miller.fft_map(
-    crystal_gridding     = crystal_gridding,
-    fourier_coefficients = ko.complete_set)
-  fft_map.apply_sigma_scaling()
-  fs_filter_map = fft_map.real_map_unpadded()
-
+  fs_filter_map = map_calc.get_map(mc_orig)
   tmp = maptbx.local_scale(
     map_data         = fs_filter_map,
     crystal_gridding = crystal_gridding,
     crystal_symmetry = fmodel.f_obs().crystal_symmetry(),
-    miller_array     = ko.complete_set).map_coefficients
-  fft_map = miller.fft_map(
-    crystal_gridding     = crystal_gridding,
-    fourier_coefficients = tmp)
-  fft_map.apply_sigma_scaling()
-  fs_filter_map = fft_map.real_map_unpadded()
-
+    miller_array     = mc_orig).map_coefficients
+  fs_filter_map = map_calc.get_map(tmp)
   for i in [0,0.1,0.2,0.3,0.4,0.5]:
     maptbx.intersection(
       map_data_1 = fs_filter_map,
       map_data_2 = map_fem,
       threshold  = i)
   maptbx.cut_by(kick=fs_filter_map, fem=map_fem, cut_by_threshold=1)
+  del fs_filter_map
   # Filter by residual map
   diff_map_mc = fmodel.electron_density_map(
     update_f_part1 = False).map_coefficients(
       map_type     = "mFo-DFc",
       isotropize   = True,
       fill_missing = False)
-  fft_map = miller.fft_map(
-    crystal_gridding     = crystal_gridding,
-    fourier_coefficients = diff_map_mc)
-  fft_map.apply_sigma_scaling()
-  diff_map = fft_map.real_map_unpadded()
+  diff_map = map_calc.get_map(diff_map_mc)
   maptbx.reset(
     data=diff_map,
     substitute_value=1.0,
@@ -842,42 +903,13 @@ def fem(ko, crystal_gridding, fmodel):
     greater_than_threshold=-99999,
     use_and=True)
   map_fem1 = map_fem * diff_map
+  del map_fem, diff_map
   # B-factor sharpen
   d_min = mc_orig.d_min()
   if(d_min>1.5):
-    fem = fem.structure_factors_from_map(
-        map            = map_fem1,
-        use_scale      = True,
-        anomalous_flag = False,
-        use_sg         = False)
-    ss = 1./flex.pow2(fem.d_spacings().data()) / 4.
-    b_sharp_best = None
-    kurt = -999
-    for b_sharp in range(-100,100,5):
-      k_sharp = 1./flex.exp(-ss * b_sharp)
-      fem_ = fem.deep_copy().customized_copy(data = fem.data()*k_sharp)
-      #
-      fft_map = miller.fft_map(
-        crystal_gridding     = crystal_gridding,
-        fourier_coefficients = fem_)
-      fft_map.apply_sigma_scaling()
-      map_fem = fft_map.real_map_unpadded()
-      o = maptbx.more_statistics(map_fem)
-      kurt_ = o.kurtosis()
-      if(kurt_ > kurt):
-        kurt = kurt_
-        b_sharp_best = b_sharp
-      print "b_sharp: %6.1f skewness: %6.4f kurtosis: %6.4f"%(b_sharp,
-        o.skewness(), o.kurtosis())
-    print "Best sharpening B-factor:", b_sharp_best
-    k_sharp = 1./flex.exp(-ss * b_sharp_best)
-    fem = fem.deep_copy().customized_copy(data = fem.data()*k_sharp)
-    #
-    fft_map = miller.fft_map(
-      crystal_gridding     = crystal_gridding,
-      fourier_coefficients = fem)
-    fft_map.apply_sigma_scaling()
-    map_fem = fft_map.real_map_unpadded()
+    fem = sffm(miller_array=mc_orig, map_data=map_fem1)
+    fem = b_factor_sharpening_by_map_kurtosis_maximization(map_coeffs=fem)
+    map_fem = map_calc.get_map(fem)
     #
     for i in [0,0.1,0.2,0.3,0.4,0.5]:
       maptbx.intersection(
@@ -887,16 +919,12 @@ def fem(ko, crystal_gridding, fmodel):
   else:
     map_fem = map_fem1
   # Sharpen by applying unsharp mask
-  if(fem.d_min()>2): loop = [1,2]
+  if(fem.d_min()>2): loop = [1,]
   else: loop = [1]
   for i in loop:
     maptbx.sharpen(map_data=map_fem, index_span=1, n_averages=2)
   #
-  return ko.complete_set.structure_factors_from_map(
-    map            = map_fem,
-    use_scale      = True,
-    anomalous_flag = False,
-    use_sg         = False)
+  return sffm(miller_array=mc_orig, map_data=map_fem)
 
 class omit(object):
   def __init__(
