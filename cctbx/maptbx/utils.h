@@ -432,6 +432,7 @@ template <typename DataType>
 void
 remove_single_node_peaks(
   af::ref<DataType, af::c_grid<3> > map_data,
+  af::ref<DataType, af::c_grid_padded<3> > mask_data,
   DataType const& cutoff,
   int const& index_span)
 {
@@ -441,6 +442,7 @@ remove_single_node_peaks(
   for (int lx = 0; lx < nx; lx++) {
     for (int ly = 0; ly < ny; ly++) {
       for (int lz = 0; lz < nz; lz++) {
+          if(mask_data(lx,ly,lz)==0) continue;
           int counter = 0;
           for (int i = lx-index_span; i <= lx+index_span; i=i+2) {
             for (int j = ly-index_span; j <= ly+index_span; j=j+2) {

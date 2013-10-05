@@ -231,9 +231,11 @@ namespace {
     def("remove_single_node_peaks",
       (void(*)
         (af::ref<double, af::c_grid<3> >,
+         af::ref<double, af::c_grid_padded<3> >,
          double const&,
          int const&)) remove_single_node_peaks, (
       arg("map_data"),
+      arg("mask_data"),
       arg("cutoff"),
       arg("index_span")));
 
