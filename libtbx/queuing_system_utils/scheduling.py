@@ -1519,15 +1519,11 @@ class SubmissionOrder(Ordering):
 
   def next(self):
 
-    if not self.submitteds:
-      raise StopIteration
-
-    first = self.submitteds.popleft()
-
-    while first not in self.result_for:
+    while not self.submitteds or self.submitteds[0] not in self.result_for:
       ( identifier, result ) = self.parallel_for.next( orderer = self )
       self.result_for[ identifier ] = result
 
+    first = self.submitteds.popleft()
     result = self.result_for[ first ]
     del self.result_for[ first ]
     return ( ( first.target, first.args, first.kwargs ), result )
