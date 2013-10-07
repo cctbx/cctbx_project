@@ -187,10 +187,10 @@ class ExecutionUnit(object):
   def start(self, target, args, kwargs):
 
     job = self.factory(
-        target = self.processor.prepare( target = target ),
-        args = args,
-        kwargs = kwargs,
-        )
+      target = self.processor.prepare( target = target ),
+      args = args,
+      kwargs = kwargs,
+      )
     job.start()
     return job
 
@@ -208,6 +208,146 @@ class ExecutionUnit(object):
   def __str__(self):
 
     return "%s(id = %s)" % ( self.__class__.__name__, id( self ) )
+
+
+class WorkerProcess(object):
+  """
+  A class that runs a worker process
+
+  This is implemented as a class so that it could be customised.
+
+  I.e. time-to-live, etc
+  """
+
+  def __init__(self, inqueue, outqueue):
+
+    self.inqueue = inqueue
+    self.outqueue = outqueue
+
+
+  def __call__(self):
+
+    # Check-in
+    self.outqueue.put( None )
+
+    while True:
+      data = self.inqueue.get()
+
+      # Sentinel
+      if not data:
+        self.outqueue.put( None )
+        break
+
+      assert len( data ) == 3
+      ( target, args, kwargs ) = data
+      result = target( *args, **kwargs )
+      self.outqueue.put( result )
+
+
+class TerminatedException(Exception):
+  """
+  Exception class signalling that process has died
+  """
+
+
+class Worker(object):
+  """
+  An existing process that runs jobs
+  """
+
+  def __init__(self, process, inqueue, outqueue):
+
+    self.process = process
+    self.inqueue = inqueue
+    self.outqueue = outqueue
+    self.connected = False
+
+
+  def connect(self):
+
+    assert not self.connected
+
+    if self.functional():
+      result = self.inqueue.get( block = False )
+      assert result is None
+
+    self.connected = True
+
+
+  def functional(self):
+
+    return self.process.is_alive()
+
+
+  def start(self, target, args, kwargs):
+
+    self.outqueue.put( ( target, args, kwargs ) )
+    return PoolJob( worker = self )
+
+
+  def finalize(self, job):
+
+    job.join()
+    assert job.exitcode == 0
+
+    return job.result
+
+
+  def reset(self):
+
+    pass
+
+
+  def __str__(self):
+
+    return "%s(id = %s)" % ( self.__class__.__name__, id( self ) )
+
+
+class PoolJob(object):
+  """
+  A job that is dispatched to a worker
+  """
+
+  def __init__(self, worker):
+
+    self.worker = worker
+    self.result = None
+    self.exitcode = None
+
+
+  def poll(self, block):
+
+    if self.exitcode is None:
+      if self.worker.functional():
+        from Queue import Empty
+
+        try:
+          self.result = self.worker.inqueue.get( block = False )
+          self.exitcode = 0
+
+        except Empty:
+          return True
+
+        except Exception, e:
+          self.result = result.Error( exception = e )
+          self.exitcode = 1
+          self.err = e
+
+      else:
+        self.exitcode = 1
+        self.err = TerminatedException( "%s terminated" % self.worker )
+
+    return False
+
+
+  def is_alive(self):
+
+    return self.poll( block = False )
+
+
+  def join(self):
+
+    self.poll( block = True )
 
 
 class RunningState(object):
@@ -303,7 +443,7 @@ class PostprocessingState(object):
 
 class ValueState(object):
   """
-  A job that either exited with an error or failed postprocessing
+  A job that either finished, exited with an error or failed postprocessing
   """
 
   def __init__(self, value):
@@ -497,6 +637,123 @@ class UnlimitedCached(object):
     return unit
 
 
+class PoolMaintenance(object):
+  """
+  Methods to create/destroy workers
+  """
+
+  def __init__(self, job_factory, queue_create, queue_teardown, grace = 10):
+
+    self.job_factory = job_factory
+    self.queue_create = queue_create
+    self.queue_teardown = queue_teardown
+    self.grace = grace
+
+
+  def create(self):
+
+    q1 = self.queue_create()
+    q2 = self.queue_create()
+    process = self.job_factory(
+      target = WorkerProcess( inqueue = q1, outqueue = q2 ),
+      )
+    process.start()
+    return Worker( process = process, inqueue = q2, outqueue = q1 )
+
+
+  def destroy(self, worker):
+
+    if worker.process.is_alive():
+      worker.outqueue.put( None )
+
+      from Queue import Empty
+
+      try:
+        worker.inqueue.get( timeout = self.grace )
+
+      except Empty:
+        pass
+
+    worker.process.join()
+    self.queue_teardown( worker.inqueue )
+    self.queue_teardown( worker.outqueue )
+
+
+class SimplePool(object):
+  """
+  A pool of workers
+  """
+
+  def __init__(self, maintenance, count):
+
+    self.maintenance = maintenance
+    self.functional = set()
+
+    self.initializing = deque()
+
+    for i in range( count ):
+      self.initializing.append( self.maintenance.create() )
+
+    self.poll()
+
+
+  def __del__(self):
+
+    self.shutdown()
+
+
+  def shutdown(self):
+
+    while self.functional:
+      worker = self.functional.pop()
+      self.maintenance.destroy( worker = worker )
+
+    while self.initializing:
+      worker = self.initializing.pop()
+      self.maintenance.destroy( worker = worker )
+
+
+  def poll(self):
+
+    deads = [ j for j in self.functional if not j.functional() ]
+
+    for j in deads:
+      print "Restarting dead process"
+      self.functional.remove( j )
+      self.initializing.append( self.maintenance.create() )
+
+    from Queue import Empty
+
+    for i in range( len( self.initializing ) ):
+      w = self.initializing.popleft()
+
+      try:
+        w.connect()
+
+      except Empty:
+        self.initializing.append( w )
+
+      else:
+        self.functional.add( w )
+
+
+  def empty(self):
+
+    self.poll()
+    return not bool( self.functional )
+
+
+  def put(self, unit):
+
+    self.functional.add( unit )
+    self.poll()
+
+
+  def get(self):
+
+    return self.functional.pop()
+
+
 class Scheduler(object):
   """
   Pure scheduler
@@ -583,6 +840,12 @@ class Scheduler(object):
 
     while identifier not in self.completed_jobs and not self.is_empty():
       self.poll()
+      time.sleep( self.polling_interval )
+
+
+  def wait_for_availability(self):
+
+    while self.is_full():
       time.sleep( self.polling_interval )
 
 
@@ -987,7 +1250,7 @@ class NoPooler(object):
   """
 
   @classmethod
-  def pack(cls, calcsiter, manager, orderer):
+  def pack(cls, calcsiter, manager):
 
     ( target, args, kwargs ) = calcsiter.next() # raise StopIteration
     identifier = manager.submit(
@@ -995,7 +1258,7 @@ class NoPooler(object):
       args = args,
       kwargs = kwargs,
       )
-    orderer.job_submitted( identifier = identifier )
+    return [ identifier ]
 
 
   @classmethod
@@ -1079,7 +1342,7 @@ class Pooler(object):
     self.size = size
 
 
-  def pack(self, calcsiter, manager, orderer):
+  def pack(self, calcsiter, manager):
 
     identifiers = [
       Identifier( target = target, args = args, kwargs = kwargs )
@@ -1096,8 +1359,7 @@ class Pooler(object):
       kwargs = {},
       )
 
-    for identifier in identifiers:
-      orderer.job_submitted( identifier = identifier )
+    return identifiers
 
 
   def unpack(self, result, resiter):
@@ -1139,20 +1401,27 @@ class ParallelForIterator(object):
 
     while not self.manager.is_full():
       try:
-        self.pooler.pack(
+        identifiers = self.pooler.pack(
           calcsiter = self.calcsiter,
           manager = self.manager,
-          orderer = orderer,
           )
 
       except StopIteration:
         self.suspend()
         break
 
+      for identifier in identifiers:
+        orderer.job_submitted( identifier = identifier )
+
 
   def _terminating(self, orderer):
 
     pass
+
+
+  def wait_for_availability(self):
+
+    self.manager.wait_for_availability()
 
 
   def next(self, orderer):
@@ -1185,6 +1454,8 @@ class Ordering(object):
   def __init__(self, parallel_for):
 
     self.parallel_for = parallel_for
+    self.parallel_for.wait_for_availability()
+    self.parallel_for.process( orderer = self )
 
 
   def __del__(self):
@@ -1211,7 +1482,6 @@ class FinishingOrder(Ordering):
   def __init__(self, parallel_for):
 
     super( FinishingOrder, self ).__init__( parallel_for = parallel_for )
-    self.parallel_for.process( orderer = self )
 
 
   def job_submitted(self, identifier):
@@ -1232,10 +1502,9 @@ class SubmissionOrder(Ordering):
 
   def __init__(self, parallel_for):
 
-    super( SubmissionOrder, self ).__init__( parallel_for = parallel_for )
     self.submitteds = deque()
     self.result_for = {}
-    self.parallel_for.process( orderer = self )
+    super( SubmissionOrder, self ).__init__( parallel_for = parallel_for )
 
 
   def job_submitted(self, identifier):
