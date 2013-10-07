@@ -663,6 +663,13 @@ class PoolMaintenance(object):
 
   def destroy(self, worker):
 
+    worker.process.join()
+    self.queue_teardown( worker.inqueue )
+    self.queue_teardown( worker.outqueue )
+
+
+  def shutdown(self, worker):
+
     if worker.process.is_alive():
       worker.outqueue.put( None )
 
@@ -674,9 +681,7 @@ class PoolMaintenance(object):
       except Empty:
         pass
 
-    worker.process.join()
-    self.queue_teardown( worker.inqueue )
-    self.queue_teardown( worker.outqueue )
+    self.destroy( worker = worker )
 
 
 class SimplePool(object):
@@ -706,11 +711,11 @@ class SimplePool(object):
 
     while self.functional:
       worker = self.functional.pop()
-      self.maintenance.destroy( worker = worker )
+      self.maintenance.shutdown( worker = worker )
 
     while self.initializing:
       worker = self.initializing.pop()
-      self.maintenance.destroy( worker = worker )
+      self.maintenance.shutdown( worker = worker )
 
 
   def poll(self):
@@ -718,8 +723,8 @@ class SimplePool(object):
     deads = [ j for j in self.functional if not j.functional() ]
 
     for j in deads:
-      print "Restarting dead process"
       self.functional.remove( j )
+      self.maintenance.destroy( worker = j )
       self.initializing.append( self.maintenance.create() )
 
     from Queue import Empty
