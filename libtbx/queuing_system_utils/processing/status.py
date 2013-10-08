@@ -68,6 +68,11 @@ class Synchronous(JobStatus):
     return self.process.poll() is not None
 
 
+  def terminate(self):
+
+    self.process.terminate()
+
+
   def results(self):
 
     assert self.is_finished()
@@ -92,7 +97,7 @@ class Asynchronous(JobStatus):
   Handler for asynchronous jobs
   """
 
-  def __init__(self, jobid, poller, outfile, errfile, additional):
+  def __init__(self, jobid, poller, outfile, errfile, additional, qdel):
 
     super( Asynchronous, self ).__init__(
       outfile = outfile,
@@ -101,6 +106,7 @@ class Asynchronous(JobStatus):
       )
     self.jobid = jobid
     self.poller = poller
+    self.qdel = qdel
 
     # Allow poller to update without actual refresh
     self.poller.new_job_submitted( jobid = self.jobid )
@@ -115,6 +121,16 @@ class Asynchronous(JobStatus):
       result = True
 
     return result
+
+
+  def terminate(self):
+
+    process = subprocess.Popen(
+      self.qdel + [ self.jobid ],
+      stdout = subprocess.PIPE,
+      stderr = subprocess.PIPE
+      )
+    ( out, err ) = process.communicate()
 
 
   @classmethod

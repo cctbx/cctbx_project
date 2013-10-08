@@ -83,7 +83,7 @@ class AsynchronousCmdLine(Submission):
   Submits jobs asynchronously
   """
 
-  def __init__(self, cmds, name, out, err, extract, poller, handler):
+  def __init__(self, cmds, qdel, name, out, err, extract, poller, handler):
 
     super( AsynchronousCmdLine, self ).__init__(
       cmds = cmds,
@@ -91,6 +91,7 @@ class AsynchronousCmdLine(Submission):
       out = out,
       err = err,
       )
+    self.qdel = qdel
     self.extract = extract
     self.poller = poller
     self.handler = handler
@@ -113,6 +114,7 @@ class AsynchronousCmdLine(Submission):
       outfile = outfile,
       errfile = errfile,
       additional = cleanup,
+      qdel = self.qdel,
       )
 
 
@@ -121,6 +123,7 @@ class AsynchronousCmdLine(Submission):
 
     return cls(
       cmds = command + [ "-S", "/bin/sh", "-cwd", "-terse" ],
+      qdel = [ "qdel" ],
       name = "-N",
       out = "-o",
       err = "-e",
@@ -137,6 +140,7 @@ class AsynchronousCmdLine(Submission):
 
     return cls(
       cmds = command,
+      qdel = [ "bkill" ],
       name = "-J",
       out = "-o",
       err = "-e",
@@ -153,6 +157,7 @@ class AsynchronousCmdLine(Submission):
 
     return cls(
       cmds = command + [ "-d", "." ],
+      qdel = [ "qdel" ],
       name = "-N",
       out = "-o",
       err = "-e",
@@ -198,9 +203,10 @@ Notification = Never
 Queue
 """
 
-  def __init__(self, cmds, script, extract, poller, handler):
+  def __init__(self, cmds, qdel, script, extract, poller, handler):
 
     self.cmds = cmds
+    self.qdel = qdel
     self.script = script
     self.extract = extract
     self.poller = poller
@@ -244,6 +250,7 @@ Queue
       errfile = errfile,
       logfile = logfile,
       additional = cleanup + [ scriptfile ],
+      qdel = self.qdel,
       )
 
   @classmethod
@@ -253,6 +260,7 @@ Queue
 
     return cls(
       cmds = command,
+      qdel = [ "condor_rm" ],
       script = script,
       extract = cls.condor_jobid_extract,
       poller = poller,
