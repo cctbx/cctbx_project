@@ -216,6 +216,11 @@ class Job(object):
     self.status.cleanup()
 
 
+  def terminate(self):
+
+    self.status.terminate()
+
+
   def __str__(self):
 
     return "%s(name = '%s')" % ( self.__class__.__name__, self.name )
