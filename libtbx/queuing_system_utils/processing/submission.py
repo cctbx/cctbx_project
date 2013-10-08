@@ -127,7 +127,7 @@ class AsynchronousCmdLine(Submission):
       name = "-N",
       out = "-o",
       err = "-e",
-      extract = cls.generic_jobid_extract,
+      extract = generic_jobid_extract,
       poller = poller,
       handler = handler,
       )
@@ -144,7 +144,7 @@ class AsynchronousCmdLine(Submission):
       name = "-J",
       out = "-o",
       err = "-e",
-      extract = cls.lsf_jobid_extract,
+      extract = lsf_jobid_extract,
       poller = poller,
       handler = status.StdStreamStrategy,
       )
@@ -161,27 +161,10 @@ class AsynchronousCmdLine(Submission):
       name = "-N",
       out = "-o",
       err = "-e",
-      extract = cls.generic_jobid_extract,
+      extract = generic_jobid_extract,
       poller = poller,
       handler = status.StdStreamStrategy,
       )
-
-
-  @staticmethod
-  def lsf_jobid_extract(output):
-
-    match = LSF_JOBID_EXTRACT_REGEX().search( output )
-
-    if not match:
-      raise RuntimeError, "Unexpected response from queuing system"
-
-    return match.group(1)
-
-
-  @staticmethod
-  def generic_jobid_extract(output):
-
-    return output.strip()
 
 
 class AsynchronousScript(object):
@@ -262,21 +245,10 @@ Queue
       cmds = command,
       qdel = [ "condor_rm" ],
       script = script,
-      extract = cls.condor_jobid_extract,
+      extract = condor_jobid_extract,
       poller = poller,
       handler = status.LogfileStrategy,
       )
-
-
-  @staticmethod
-  def condor_jobid_extract(output):
-
-    match = CONDOR_JOBID_EXTRACT_REGEX().search( output )
-
-    if not match:
-      raise RuntimeError, "Unexpected response from queuing system"
-
-    return match.group(1)
 
 
 # Helpers
@@ -294,6 +266,32 @@ def execute(args):
     raise RuntimeError, "Error: '%s': %s" % ( " ".join( args ), e )
 
   return process
+
+
+def lsf_jobid_extract(output):
+
+  match = LSF_JOBID_EXTRACT_REGEX().search( output )
+
+  if not match:
+    raise RuntimeError, "Unexpected response from queuing system"
+
+  return match.group(1)
+
+
+def generic_jobid_extract(output):
+
+  return output.strip()
+
+
+def condor_jobid_extract(output):
+
+  match = CONDOR_JOBID_EXTRACT_REGEX().search( output )
+
+  if not match:
+    raise RuntimeError, "Unexpected response from queuing system"
+
+  return match.group(1)
+
 
 # Regex caching
 from libtbx.queuing_system_utils.processing import util
