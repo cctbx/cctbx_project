@@ -23,6 +23,8 @@ master_phil = libtbx.phil.parse("""
     .type = str
   n_bins = 0
     .type = int
+  verbose = True
+    .type = bool
 """)
 # Array of handedness possibilities.  Input 0 for no subpixel
 # metrology correction
@@ -49,7 +51,14 @@ h_theta = 1
 h_x = 2
 h_y = 3
 
-def run (args) :
+def run (args, source_data = None) :
+  from xfel.detector_formats import reverse_timestamp
+  from xfel.detector_formats import detector_format_version as detector_format_function
+  from spotfinder.applications.xfel import cxi_phil
+  from iotbx.detectors.npy import NpyImage
+  import os
+  from iotbx.detectors.npy import NpyImage
+
   user_phil = []
   # TODO: replace this stuff with iotbx.phil.process_command_line_with_files
   # as soon as I can safely modify it
@@ -65,35 +74,55 @@ def run (args) :
       except RuntimeError, e :
         raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
   params = master_phil.fetch(sources=user_phil).extract()
-  if params.file_path is None or not os.path.isfile(params.file_path) :
+  if params.file_path is None or not os.path.isfile(params.file_path) and source_data is None:
     master_phil.show()
     raise Usage("file_path must be defined (either file_path=XXX, or the path alone).")
   assert params.handedness is not None
   assert params.xfel_target is not None
   assert params.n_bins is not None
+  assert params.verbose is not None
 
-  from iotbx.detectors.npy import NpyImage
-  img = NpyImage(params.file_path)
+  if source_data is None:
+    from libtbx import easy_pickle
+    source_data = easy_pickle.load(params.file_path)
 
-  from xfel.phil_preferences import load_cxi_phil
-  horizons_phil = load_cxi_phil(params.xfel_target)
+  if not "DETECTOR_ADDRESS" in source_data:
+    # legacy format; try to guess the address
+    LCLS_detector_address = 'CxiDs1-0|Cspad-0'
+    if "DISTANCE" in source_data and source_data["DISTANCE"] > 1000:
+      # downstream CS-PAD detector station of CXI instrument
+      LCLS_detector_address = 'CxiDsd-0|Cspad-0'
+  else:
+    LCLS_detector_address = source_data["DETECTOR_ADDRESS"]
+  timesec = reverse_timestamp( source_data["TIMESTAMP"] )[0]
+  version_lookup = detector_format_function(LCLS_detector_address,timesec)
+  args = [
+          "distl.detector_format_version=%s"%version_lookup,
+          "viewer.powder_arcs.show=False",
+          "viewer.powder_arcs.code=3n9c",
+         ]
 
+  horizons_phil = cxi_phil.cxi_versioned_extract(args).persist.commands
+
+  img = NpyImage(params.file_path, source_data)
   img.readHeader(horizons_phil)
   img.translate_tiles(horizons_phil)
-  img.show_header()
+  if params.verbose:
+    img.show_header()
 
   the_tiles = img.get_tile_manager(horizons_phil).effective_tiling_as_flex_int(
         reapply_peripheral_margin=False,encode_inactive_as_zeroes=True)
   assert len(the_tiles) == 256
 
   if params.beam_x is None or params.beam_y is None or img.image_size_fast is None or img.image_size_slow is None:
-    img.initialize_viewer_properties(horizons_phil)
+    img.initialize_viewer_properties(horizons_phil,params.verbose)
 
   if params.beam_x is None:
     params.beam_x = img.get_beam_center_pixels_fast_slow()[0]
   if params.beam_y is None:
     params.beam_y = img.get_beam_center_pixels_fast_slow()[1]
-  print "I think the beam center is (%s,%s)"%(params.beam_x, params.beam_y)
+  if params.verbose:
+    print "I think the beam center is (%s,%s)"%(params.beam_x, params.beam_y)
 
   bc = (params.beam_x,params.beam_y)
 
@@ -118,11 +147,13 @@ def run (args) :
   results = []
   for i in range(params.n_bins): results.append([])
 
-  sys.stdout.write("Generating average...tile:")
-  sys.stdout.flush()
-  for tile in xrange(64):
-    sys.stdout.write(" %d"%tile)
+  if params.verbose:
+    sys.stdout.write("Generating average...tile:")
     sys.stdout.flush()
+  for tile in xrange(64):
+    if params.verbose:
+      sys.stdout.write(" %d"%tile)
+      sys.stdout.flush()
 
     x1,y1,x2,y2 = get_tile_coords(the_tiles,tile)
     tcx, tcy = get_tile_center(the_tiles, tile)
@@ -137,25 +168,41 @@ def run (args) :
           twotheta = math.atan(d_in_mm/img.distance)*180/math.pi
           results[int(math.floor(twotheta*params.n_bins/extent_two_theta))].append(val)
 
-  print " Finishing..."
+  if params.verbose:
+    print " Finishing..."
 
   xvals = np.ndarray((len(results),),float)
+  max_twotheta = float('-inf')
+  max_result   = float('-inf')
+
   for i in range(len(results)):
-    stddev = np.std(results[i])
-    results[i] = np.mean(results[i])
+    if len(results[i]) > 0:
+      stddev = np.std(results[i])
+      results[i] = np.mean(results[i])
+    else:
+      stddev = 0
+      results[i] = 0
+
     twotheta = i * extent_two_theta/params.n_bins
     xvals[i] = twotheta
 
-    if "%.3f"%results[i] != "nan":
+    if params.verbose and "%.3f"%results[i] != "nan":
      #print "%.3f %.3f"%     (twotheta,results[i])        #.xy  format for Rex.cell.
       print "%.3f %.3f %.3f"%(twotheta,results[i],stddev) #.xye format for GSASII
      #print "%.3f %.3f %.3f"%(twotheta,results[i],ds[i])  # include calculated d spacings
+    if results[i] > max_result:
+      max_twotheta = twotheta
+      max_result = results[i]
 
-  from pylab import scatter, show, xlabel, ylabel
-  scatter(xvals,results)
-  xlabel("2 theta")
-  ylabel("Avg ADUs")
-  show()
+  print "Maximum 2theta for %s, TS %s: %f, value: %f"%(params.file_path, source_data['TIMESTAMP'], max_twotheta, max_result)
+
+
+  if params.verbose:
+    from pylab import scatter, show, xlabel, ylabel
+    scatter(xvals,results)
+    xlabel("2 theta")
+    ylabel("Avg ADUs")
+    show()
 
 
 def get_tile_id(tiles, x, y):

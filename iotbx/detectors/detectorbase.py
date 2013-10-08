@@ -239,13 +239,14 @@ DETECTOR_SN=%(DETECTOR_SN)d;
     print >> out, "Wavelength: %f Ang."%self.wavelength
 
   # code developed for the image viewer. phil_parameters is a scope extract
-  def initialize_viewer_properties(self,phil_parameters):
+  def initialize_viewer_properties(self,phil_parameters,verbose=True):
 
     self._invert_beam_center = False
     from iotbx.detectors.context.config_detector import \
       beam_center_convention_from_image_object
     bc = beam_center_convention_from_image_object(self,phil_parameters)
-    print "beam center convention: %d" % bc
+    if verbose:
+      print "beam center convention: %d" % bc
     # FIXME what about 2-4 & 6-7?
     if (bc == 0) :
       self._invert_beam_center = True
