@@ -250,39 +250,126 @@ class TerminatedException(Exception):
   """
 
 
+class WorkerMaintenance(object):
+  """
+  Methods to create/destroy workers
+  """
+
+  def __init__(self, job_factory, queue_create, queue_teardown, grace = 10):
+
+    self.job_factory = job_factory
+    self.queue_create = queue_create
+    self.queue_teardown = queue_teardown
+    self.grace = grace
+
+
+  def create(self):
+
+    q1 = self.queue_create()
+    q2 = self.queue_create()
+    process = self.job_factory(
+      target = WorkerProcess( inqueue = q1, outqueue = q2 ),
+      )
+    process.start()
+    return ( process, q2, q1 )
+
+
+  def connect(self, process, inqueue):
+
+    if process.is_alive():
+      result = inqueue.get( block = False )
+      assert result is None
+
+
+  def functional(self, process):
+
+    return process.is_alive()
+
+
+  def cleanup(self, process, inqueue, outqueue):
+
+    process.join()
+    self.queue_teardown( inqueue )
+    self.queue_teardown( outqueue )
+
+
+  def shutdown(self, process, inqueue, outqueue):
+
+    if process.is_alive():
+      outqueue.put( None )
+
+      from Queue import Empty
+
+      try:
+        inqueue.get( timeout = self.grace )
+
+      except Empty:
+        process.terminate()
+
+    self.cleanup( process = process, inqueue = inqueue, outqueue = outqueue )
+
+
 class Worker(object):
   """
   An existing process that runs jobs
   """
 
-  def __init__(self, process, inqueue, outqueue):
+  def __init__(self, maintenance, priority = 0):
 
-    self.process = process
-    self.inqueue = inqueue
-    self.outqueue = outqueue
+    self.maintenance = maintenance
+    self.priority = priority
+    self.startup()
+
+
+  def startup(self):
+
+    ( self.process, self.inqueue, self.outqueue ) = self.maintenance.create()
     self.connected = False
 
 
   def connect(self):
 
     assert not self.connected
-
-    if self.functional():
-      result = self.inqueue.get( block = False )
-      assert result is None
-
+    self.maintenance.connect( process = self.process, inqueue = self.inqueue )
     self.connected = True
+
+
+  def shutdown(self):
+
+    self.maintenance.shutdown(
+      process = self.process,
+      inqueue = self.inqueue,
+      outqueue = self.outqueue,
+      )
+
+
+  def restart(self):
+
+    self.shutdown()
+    self.startup()
 
 
   def functional(self):
 
-    return self.process.is_alive()
+    return self.maintenance.functional( process = self.process )
 
 
   def start(self, target, args, kwargs):
 
     self.outqueue.put( ( target, args, kwargs ) )
     return PoolJob( worker = self )
+
+
+  def get(self, block):
+
+    if not self.functional():
+      self.restart()
+      raise TerminatedException, "Worker died"
+
+    if not self.connected:
+      self.connect()
+
+    return self.inqueue.get( block = block )
 
 
   def finalize(self, job):
@@ -318,24 +405,19 @@ class PoolJob(object):
   def poll(self, block):
 
     if self.exitcode is None:
-      if self.worker.functional():
-        from Queue import Empty
+      from Queue import Empty
 
-        try:
-          self.result = self.worker.inqueue.get( block = False )
-          self.exitcode = 0
+      try:
+        self.result = self.worker.get( block = block )
+        self.exitcode = 0
 
-        except Empty:
-          return True
+      except Empty:
+        return True
 
-        except Exception, e:
-          self.result = result.Error( exception = e )
-          self.exitcode = 1
-          self.err = e
-
-      else:
+      except Exception, e:
+        self.result = result.Error( exception = e )
         self.exitcode = 1
-        self.err = TerminatedException( "%s terminated" % self.worker )
+        self.err = e
 
     return False
 
@@ -635,128 +717,6 @@ class UnlimitedCached(object):
       unit = self.factory()
 
     return unit
-
-
-class PoolMaintenance(object):
-  """
-  Methods to create/destroy workers
-  """
-
-  def __init__(self, job_factory, queue_create, queue_teardown, grace = 10):
-
-    self.job_factory = job_factory
-    self.queue_create = queue_create
-    self.queue_teardown = queue_teardown
-    self.grace = grace
-
-
-  def create(self):
-
-    q1 = self.queue_create()
-    q2 = self.queue_create()
-    process = self.job_factory(
-      target = WorkerProcess( inqueue = q1, outqueue = q2 ),
-      )
-    process.start()
-    return Worker( process = process, inqueue = q2, outqueue = q1 )
-
-
-  def destroy(self, worker):
-
-    worker.process.join()
-    self.queue_teardown( worker.inqueue )
-    self.queue_teardown( worker.outqueue )
-
-
-  def shutdown(self, worker):
-
-    if worker.process.is_alive():
-      worker.outqueue.put( None )
-
-      from Queue import Empty
-
-      try:
-        worker.inqueue.get( timeout = self.grace )
-
-      except Empty:
-        pass
-
-    self.destroy( worker = worker )
-
-
-class SimplePool(object):
-  """
-  A pool of workers
-  """
-
-  def __init__(self, maintenance, count):
-
-    self.maintenance = maintenance
-    self.functional = set()
-
-    self.initializing = deque()
-
-    for i in range( count ):
-      self.initializing.append( self.maintenance.create() )
-
-    self.poll()
-
-
-  def __del__(self):
-
-    self.shutdown()
-
-
-  def shutdown(self):
-
-    while self.functional:
-      worker = self.functional.pop()
-      self.maintenance.shutdown( worker = worker )
-
-    while self.initializing:
-      worker = self.initializing.pop()
-      self.maintenance.shutdown( worker = worker )
-
-
-  def poll(self):
-
-    deads = [ j for j in self.functional if not j.functional() ]
-
-    for j in deads:
-      self.functional.remove( j )
-      self.maintenance.destroy( worker = j )
-      self.initializing.append( self.maintenance.create() )
-
-    from Queue import Empty
-
-    for i in range( len( self.initializing ) ):
-      w = self.initializing.popleft()
-
-      try:
-        w.connect()
-
-      except Empty:
-        self.initializing.append( w )
-
-      else:
-        self.functional.add( w )
-
-
-  def empty(self):
-
-    self.poll()
-    return not bool( self.functional )
-
-
-  def put(self, unit):
-
-    self.functional.add( unit )
-    self.poll()
-
-
-  def get(self):
-
-    return self.functional.pop()
 
 
 class Scheduler(object):
