@@ -213,10 +213,6 @@ class ExecutionUnit(object):
 class WorkerProcess(object):
   """
   A class that runs a worker process
-
-  This is implemented as a class so that it could be customised.
-
-  I.e. time-to-live, etc
   """
 
   def __init__(self, inqueue, outqueue):
@@ -357,19 +353,24 @@ class Worker(object):
   def start(self, target, args, kwargs):
 
     self.outqueue.put( ( target, args, kwargs ) )
-    return PoolJob( worker = self )
+    return WorkerJob( worker = self )
 
 
   def get(self, block):
 
-    if not self.functional():
-      self.restart()
-      raise TerminatedException, "Worker died"
-
     if not self.connected:
       self.connect()
 
-    return self.inqueue.get( block = block )
+    try:
+      return self.inqueue.get( block = block )
+
+    except Exception:
+      if not self.functional():
+        self.restart()
+        raise TerminatedException, "Worker died"
+
+      else:
+        raise
 
 
   def finalize(self, job):
@@ -390,7 +391,7 @@ class Worker(object):
     return "%s(id = %s)" % ( self.__class__.__name__, id( self ) )
 
 
-class PoolJob(object):
+class WorkerJob(object):
   """
   A job that is dispatched to a worker
   """
