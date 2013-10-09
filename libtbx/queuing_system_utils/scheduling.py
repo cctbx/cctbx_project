@@ -215,29 +215,23 @@ class WorkerProcess(object):
   A class that runs a worker process
   """
 
-  def __init__(self, inqueue, outqueue):
-
-    self.inqueue = inqueue
-    self.outqueue = outqueue
-
-
-  def __call__(self):
+  def __call__(self, inqueue, outqueue):
 
     # Check-in
-    self.outqueue.put( None )
+    outqueue.put( None )
 
     while True:
-      data = self.inqueue.get()
+      data = inqueue.get()
 
       # Sentinel
       if not data:
-        self.outqueue.put( None )
+        outqueue.put( None )
         break
 
       assert len( data ) == 3
       ( target, args, kwargs ) = data
       result = target( *args, **kwargs )
-      self.outqueue.put( result )
+      outqueue.put( result )
 
 
 class TerminatedException(Exception):
@@ -259,14 +253,21 @@ class WorkerMaintenance(object):
     self.grace = grace
 
 
-  def create(self):
+  def launch(self, executor, inqueue, outqueue):
+
+    process = self.job_factory(
+      target = executor,
+      kwargs = { "inqueue": inqueue, "outqueue": outqueue },
+      )
+    process.start()
+    return process
+
+
+  def create(self, executor):
 
     q1 = self.queue_create()
     q2 = self.queue_create()
-    process = self.job_factory(
-      target = WorkerProcess( inqueue = q1, outqueue = q2 ),
-      )
-    process.start()
+    process = self.launch( executor = executor, inqueue = q1, outqueue = q2 )
     return ( process, q2, q1 )
 
 
@@ -319,7 +320,9 @@ class Worker(object):
 
   def startup(self):
 
-    ( self.process, self.inqueue, self.outqueue ) = self.maintenance.create()
+    ( self.process, self.inqueue, self.outqueue ) = self.maintenance.create(
+      executor = WorkerProcess()
+      )
     self.connected = False
 
 
@@ -809,12 +812,6 @@ class Scheduler(object):
       time.sleep( self.polling_interval )
 
 
-  def wait_for_availability(self):
-
-    while self.is_full():
-      time.sleep( self.polling_interval )
-
-
   def result_for(self, identifier):
 
     self.wait_for( identifier = identifier )
@@ -1175,6 +1172,223 @@ class MainthreadManager(object):
       self.completed_results.append( job.get() )
 
 
+# Pool implementation
+"""
+Process queue Pool interface
+
+Pools offer lower control over execution, as it is not possible to know the
+state of individual workers
+
+Pool properties:
+  known_jobs
+  completed_jobs
+  completed_results
+
+  job_count
+
+Pool iterators:
+  results
+
+Pool methods:
+  submit(target, args = (), kwargs = {}):
+  is_empty():
+  is_full():
+  wait():
+  join():
+  poll():
+  shutdown():
+"""
+
+class PoolProcess(object):
+  """
+  A class that runs a worker of a pool
+  """
+
+  def __call__(self, inqueue, outqueue):
+
+    while True:
+      data = inqueue.get()
+
+      # Sentinel
+      if not data:
+        break
+
+      assert len( data ) == 4
+      ( identifier, target, args, kwargs ) = data
+      result = target( *args, **kwargs )
+      outqueue.put( ( identifier, result ) )
+
+
+class ProcessPool(object):
+  """
+  Process pool
+  """
+
+  def __init__(self, maintenance, count, waittime = 0.01, grace = 2):
+
+    self.maintenance = maintenance
+    self.identifier_for = {}
+    self.completed_results = deque()
+
+    self.inqueue = self.maintenance.queue_create()
+    self.outqueue = self.maintenance.queue_create()
+
+    self.processes = set( [ self.create_new_process() for i in range( count ) ] )
+    self.dead = 0
+    self.grace = grace
+    self.waittime = waittime
+
+
+  @property
+  def job_count(self):
+
+    return max( len( self.identifier_for ) - self.dead, 0 )
+
+
+  @property
+  def completed_jobs(self):
+
+    return [ result.identifier for result in self.completed_results ]
+
+
+  @property
+  def known_jobs(self):
+
+    return self.identifier_for.values() + self.completed_jobs
+
+
+  @property
+  def results(self):
+
+    while self.known_jobs:
+      self.wait()
+      yield self.completed_results.popleft()
+
+
+  def submit(self, target, args = (), kwargs = {}):
+
+    identifier = Identifier( target = target, args = args, kwargs = kwargs )
+    self.outqueue.put( ( id( identifier ), target, args, kwargs ) )
+    self.identifier_for[ id( identifier ) ] = identifier
+    return identifier
+
+
+  def is_empty(self):
+
+    return not self.identifier_for
+
+
+  def is_full(self):
+
+    return self.job_count == len( self.processes )
+
+
+  def wait(self):
+
+    while not self.completed_results and not self.is_empty():
+      self.poll()
+      time.sleep( self.waittime )
+
+
+  def poll(self):
+
+    self.manage_workers()
+
+    if self.identifier_for:
+      if self.job_count == 0:
+        for identifier in self.identifier_for.keys():
+          iden = self.identifier_for[ identifier ]
+          res = Result(
+            identifier = self.identifier_for[ identifier ],
+            value = result.Error( exception = TerminatedException( "Worker died" ) ),
+            )
+          self.completed_results.append( res )
+          del self.identifier_for[ identifier ]
+
+        self.dead = 0
+
+      else:
+        self.process_next()
+
+
+  def join(self):
+
+    while not self.is_empty():
+      self.poll()
+      time.sleep( self.polling_interval )
+
+
+  def shutdown(self):
+
+    for p in self.processes:
+      self.outqueue.put( None )
+
+    for p in self.processes:
+      self.kill_worker( process = p )
+
+    self.processes = set()
+
+    self.maintenance.queue_teardown( self.inqueue )
+    self.maintenance.queue_teardown( self.outqueue )
+
+
+  # Internal methods
+  def process_next(self):
+
+    from Queue import Empty
+
+    try:
+      ( identifier, value ) = self.inqueue.get( block = False )
+
+    except Empty:
+      return
+
+    else:
+      res = Result(
+        identifier = self.identifier_for[ identifier ],
+        value = result.Success( value = value ),
+        )
+      self.completed_results.append( res )
+      del self.identifier_for[ identifier ]
+
+
+  def manage_workers(self):
+
+    dead = [ p for p in self.processes if not p.is_alive() ]
+    self.dead += len( dead )
+
+    for p in dead:
+      self.processes.remove( p )
+      p.join()
+      self.processes.add( self.create_new_process() )
+
+
+  def create_new_process(self):
+
+    return self.maintenance.launch(
+      executor = PoolProcess(),
+      inqueue = self.outqueue,
+      outqueue = self.inqueue
+      )
+
+
+  def kill_worker(self, process):
+
+    ttl = self.grace
+
+    while 0 < ttl:
+      if not process.is_alive():
+        break
+
+      time.sleep( self.waittime )
+      ttl -= self.waittime
+
+    else:
+      process.terminate()
+
+    process.join()
+
+
 # Parallel execution iterator
 class RechargeableIterator(object):
   """
@@ -1385,11 +1599,6 @@ class ParallelForIterator(object):
     pass
 
 
-  def wait_for_availability(self):
-
-    self.manager.wait_for_availability()
-
-
   def next(self, orderer):
 
     if not self.resiter.has_next():
@@ -1420,7 +1629,6 @@ class Ordering(object):
   def __init__(self, parallel_for):
 
     self.parallel_for = parallel_for
-    self.parallel_for.wait_for_availability()
     self.parallel_for.process( orderer = self )
 
 
