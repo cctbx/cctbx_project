@@ -195,23 +195,38 @@ def run(args):
     raise Usage("If rescale_with_average_cell=True, you must also specify "+
       "set_average_unit_cell=True.")
 
-  # Verify that the externally supplied scaling reference defines a
-  # suitable column of intensities.  Exit early with error if it does
-  # not.
+  # Verify that the externally supplied isomorphous reference defines
+  # a suitable column of intensities, and exit with error if it does
+  # not.  Then warn if it is necessary to generate Bijvoet mates; see
+  # also cxi/cxi_cc.py.
   data_SR = mtz.object(work_params.scaling.mtz_file)
-  obs_labels = [array.info().label_string().lower().split(',')[0]
-                for array in data_SR.as_miller_arrays()
-                if array.observation_type() is not None]
-  known_labels = ['fobs', 'imean']
-  if not any(i in j
-             for i in known_labels for j in obs_labels) and \
-     not any(l.find(work_params.scaling.mtz_column_F.lower()) == 0
-             for l in obs_labels):
+  array_SR = None
+  obs_labels = []
+  for array in data_SR.as_miller_arrays():
+    this_label = array.info().label_string().lower()
+    if array.observation_type() is not None:
+      obs_labels.append(this_label.split(',')[0])
+    if this_label.find("fobs")>=0:
+      array_SR = array.as_intensity_array()
+      break
+    if this_label.find("imean")>=0:
+      array_SR = array.as_intensity_array()
+      break
+    if this_label.find(work_params.scaling.mtz_column_F)==0:
+      array_SR = array.as_intensity_array()
+      break
+
+  if array_SR is None:
+    known_labels = ['fobs', 'imean', work_params.scaling.mtz_column_F]
     raise Usage(work_params.scaling.mtz_file +
                 " does not contain any observations labelled [" +
-                ", ".join(known_labels + [work_params.scaling.mtz_column_F]) +
+                ", ".join(known_labels) +
                 "].  Please set scaling.mtz_column_F to one of [" +
                 ",".join(obs_labels) + "].")
+  elif not work_params.merge_anomalous and not array_SR.anomalous_flag():
+    print "Warning: Preserving anomalous contributors, but %s has " \
+      "anomalous contributors merged.  Generating identical Bijvoet " \
+      "mates." % work_params.scaling.mtz_file
 
   # Read Nat's reference model from an MTZ file.  XXX The observation
   # type is given as F, not I--should they be squared?  Check with Nat!
