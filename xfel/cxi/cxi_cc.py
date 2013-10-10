@@ -162,6 +162,11 @@ def run_cc(params,output):
          uniform.append(array.as_intensity_array())
          break
 
+  # If necesssary, generate Bijvoet mates for the isomorphous
+  # reference.
+  if not params.merge_anomalous and not uniform[0].anomalous_flag():
+      uniform[0] = uniform[0].generate_bijvoet_mates()
+
   d_max_min = uniform[1].d_max_min()
   for x in [0,1,2,3]:
     print >>output, uniform[x].size()
