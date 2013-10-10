@@ -140,7 +140,8 @@ class residue_properties_list (object) :
   def __init__ (self, columns, column_types, rows, box,
       default_size=(380,200)) :
     assert len(columns) == (len(column_types) - 1)
-    assert len(rows) == 0 or len(rows[0]) == len(column_types)
+    if (len(rows) > 0) and (len(rows[0]) != len(column_types)) :
+      raise RuntimeError("Wrong number of rows:\n%s" % str(rows[0]))
     import gtk
     self.liststore = gtk.ListStore(*column_types)
     self.listmodel = gtk.TreeModelSort(self.liststore)
@@ -177,7 +178,7 @@ class residue_properties_list (object) :
       row = model[tree_iter]
       xyz = row[-1]
       if isinstance(xyz, tuple) and len(xyz) == 3 :
-        set_rotation_centre(x, y, z)
+        set_rotation_centre(*xyz)
         set_zoom(30)
         graphics_draw()
 
