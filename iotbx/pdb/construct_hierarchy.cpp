@@ -8,19 +8,22 @@ namespace iotbx { namespace pdb {
 
   namespace {
 
-    void
+    unsigned
     append_residue_group(
       const detail::input_atom_labels* iall,
       hierarchy::atom* atoms,
       hierarchy::chain& chain,
       bool link_to_previous,
       std::map<str4, std::vector<unsigned> >& altloc_resname_indices,
-      bool residue_group_post_processing)
+      bool residue_group_post_processing,
+      unsigned i_seq_start=0,
+      bool set_atom_i_seq=false)
     {
       hierarchy::residue_group rg(
         iall->resseq_small().elems,
         iall->icode_small().elems,
         link_to_previous);
+      std::size_t i_seq_current = i_seq_start;
       chain.append_residue_group(rg);
       unsigned n_ag = static_cast<unsigned>(altloc_resname_indices.size());
       rg.pre_allocate_atom_groups(n_ag);
@@ -47,6 +50,10 @@ namespace iotbx { namespace pdb {
         typedef std::vector<unsigned>::const_iterator i_it;
         i_it i_end = ari->second.end();
         for(i_it i=ari->second.begin();i!=i_end;i++) {
+          if (set_atom_i_seq) {
+            atoms[*i].data->i_seq = i_seq_current;
+            i_seq_current++;
+          }
           ag.append_atom(atoms[*i]);
         }
       }
@@ -54,13 +61,15 @@ namespace iotbx { namespace pdb {
       if (residue_group_post_processing) {
         rg.edit_blank_altloc();
       }
+      return i_seq_current;
     }
 
   } // namespace <anonymous>
 
   hierarchy::root
   input::construct_hierarchy(
-    bool residue_group_post_processing)
+    bool residue_group_post_processing,
+    bool set_atom_i_seq)
   {
     af::const_ref<std::string>
       model_ids = model_ids_.const_ref();
@@ -77,6 +86,7 @@ namespace iotbx { namespace pdb {
     const detail::input_atom_labels* iall = input_atom_labels_list_.begin();
     hierarchy::atom* atoms = atoms_.begin();
     unsigned next_chain_range_begin = 0;
+    unsigned i_seq_start = 0;
     for(unsigned i_model=0;i_model<model_ids.size();i_model++) {
       hierarchy::model model(model_ids[i_model].c_str());
       result.append_model(model);
@@ -124,13 +134,15 @@ namespace iotbx { namespace pdb {
               }
             }
             if (is_boundary) {
-              append_residue_group(
+              i_seq_start = append_residue_group(
                 iall+rg_start,
                 atoms+rg_start,
                 chain,
                 link_to_previous,
                 altloc_resname_indices,
-                residue_group_post_processing);
+                residue_group_post_processing,
+                i_seq_start,
+                set_atom_i_seq);
               rg_start = i_atom;
               link_to_previous = !is_first_after_break;
               open_resname_run_has_blank_altloc = false;
@@ -152,13 +164,15 @@ namespace iotbx { namespace pdb {
             i_atom-rg_start);
         }
         if (prev_resid != 0) {
-          append_residue_group(
+          i_seq_start = append_residue_group(
             iall+rg_start,
             atoms+rg_start,
             chain,
             link_to_previous,
             altloc_resname_indices,
-            residue_group_post_processing);
+            residue_group_post_processing,
+            i_seq_start,
+            set_atom_i_seq);
         }
         if (residue_group_post_processing) {
           chain

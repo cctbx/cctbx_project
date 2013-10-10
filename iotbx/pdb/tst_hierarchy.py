@@ -2828,6 +2828,42 @@ residue groups with multiple resnames using same altloc: 2
   ... 1 remaining instance not shown""")
   else: raise Exception_expected
 
+def exercise_set_i_seq  () :
+  pdb_str = """\
+HEADER    HYDROLASE                               19-JUL-05   2BWX
+ATOM   2038  N   CYS A 249      68.746  44.381  71.143  0.70 21.04           N
+ATOM   2039  CA  CYS A 249      68.957  43.022  71.606  0.70 21.28           C
+ATOM   2040  C   CYS A 249      70.359  42.507  71.362  0.70 19.80           C
+ATOM   2041  O   CYS A 249      71.055  42.917  70.439  0.70 19.80           O
+ATOM   2042  CB ACYS A 249      67.945  42.064  70.987  0.40 24.99           C
+ATOM   2043  CB BCYS A 249      67.928  42.101  70.948  0.30 23.34           C
+ATOM   2044  SG ACYS A 249      66.261  42.472  71.389  0.40 27.94           S
+ATOM   2045  SG BCYS A 249      67.977  40.404  71.507  0.30 26.46           S
+HETATM 2046  N  CCSO A 249      68.746  44.381  71.143  0.30 21.04           N
+HETATM 2047  CA CCSO A 249      68.957  43.022  71.606  0.30 21.28           C
+HETATM 2048  CB CCSO A 249      67.945  42.064  70.987  0.30 24.99           C
+HETATM 2049  SG CCSO A 249      66.261  42.472  71.389  0.30 27.94           S
+HETATM 2050  C  CCSO A 249      70.359  42.507  71.362  0.30 19.80           C
+HETATM 2051  O  CCSO A 249      71.055  42.917  70.439  0.30 19.80           O
+HETATM 2052  OD CCSO A 249      66.275  42.201  72.870  0.30 23.67           O
+TER
+HETATM    1  O  AHOH B   1       0.000   0.000   0.000  1.0  20.0            O
+HETATM    2  O  BHOH B   1       0.500   0.000   0.000  1.0  20.0            O
+HETATM    3  O   HOH B   2       4.000   0.000   0.000  1.0  20.0            O
+"""
+  pdb_in = pdb.input(source_info=None, lines=flex.split_lines(pdb_str))
+  assert pdb_in.atoms().extract_i_seq().all_eq(0)
+  hierarchy = pdb_in.construct_hierarchy()
+  pdb_atoms_1 = hierarchy.atoms()
+  assert pdb_atoms_1.extract_i_seq().all_eq(0)
+  pdb_atoms_1.reset_i_seq()
+  pdb_in = pdb.input(source_info=None, lines=flex.split_lines(pdb_str))
+  hierarchy = pdb_in.construct_hierarchy(set_atom_i_seq=True)
+  pdb_atoms_2 = hierarchy.atoms()
+  i_seqs_2 = pdb_atoms_2.extract_i_seq()
+  assert not i_seqs_2.all_eq(0)
+  assert i_seqs_2.all_eq(pdb_atoms_1.extract_i_seq())
+
 def exercise_convenience_generators():
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 MODEL        1
@@ -6399,7 +6435,7 @@ def exercise(args):
   phenix_regression_pdb_file_names = get_phenix_regression_pdb_file_names()
   while True:
     exercise_chunk_selections()
-    STOP()
+    exercise_set_i_seq()
     exercise_get_peptide_c_alpha_selection()
     exercise_adopt_xray_structure()
     exercise_adopt_xray_structure2()
