@@ -195,6 +195,11 @@ def run(args):
     raise Usage("If rescale_with_average_cell=True, you must also specify "+
       "set_average_unit_cell=True.")
 
+  log = open("%s_%s.log" % (work_params.output.prefix,work_params.scaling.algorithm), "w")
+  out = multi_out()
+  out.register("log", log, atexit_send_to=None)
+  out.register("stdout", sys.stdout)
+
   # Verify that the externally supplied isomorphous reference defines
   # a suitable column of intensities, and exit with error if it does
   # not.  Then warn if it is necessary to generate Bijvoet mates; see
@@ -224,16 +229,12 @@ def run(args):
                 "].  Please set scaling.mtz_column_F to one of [" +
                 ",".join(obs_labels) + "].")
   elif not work_params.merge_anomalous and not array_SR.anomalous_flag():
-    print "Warning: Preserving anomalous contributors, but %s has " \
-      "anomalous contributors merged.  Generating identical Bijvoet " \
+    print >> out, "Warning: Preserving anomalous contributors, but %s " \
+      "has anomalous contributors merged.  Generating identical Bijvoet " \
       "mates." % work_params.scaling.mtz_file
 
   # Read Nat's reference model from an MTZ file.  XXX The observation
   # type is given as F, not I--should they be squared?  Check with Nat!
-  log = open("%s_%s.log" % (work_params.output.prefix,work_params.scaling.algorithm), "w")
-  out = multi_out()
-  out.register("log", log, atexit_send_to=None)
-  out.register("stdout", sys.stdout)
   print >> out, "I model"
   if work_params.model is not None:
     from xfel.cxi.merging.general_fcalc import run
