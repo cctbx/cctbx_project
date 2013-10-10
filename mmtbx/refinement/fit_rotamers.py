@@ -124,13 +124,8 @@ class select_map(object):
 
   def initialize_rotamers (self) :
     # XXX initialize classes needed for rotamer check
-    self.sa, self.r, self.rot = [None]*3
-    from mmtbx.rotamer.sidechain_angles import SidechainAngles
-    from mmtbx.rotamer import rotamer_eval
-    from mmtbx.validation.rotalyze import rotalyze
-    self.sa = SidechainAngles(False)
-    self.r = rotamer_eval.RotamerEval()
-    self.rot = rotalyze()
+    from mmtbx.validation import rotalyze
+    self.rot = rotalyze.residue_evaluator()
 
   def select(self, sites_cart, atom_radius=2.0):
     return maptbx.grid_indices_around_sites(
@@ -153,10 +148,7 @@ class select_map(object):
   def is_refinement_needed(self, residue_group, residue, cc_limit, ignore_hd):
     result = False
     if([self.sa, self.r, self.rot].count(None)==0):
-      all_dict = self.rot.construct_complete_sidechain(
-        residue_group = residue_group)
-      is_outlier, value = self.rot.evaluate_residue(residue_group, self.sa,
-        self.r, all_dict)
+      is_outlier, value = self.rot.evaluate_residue(residue_group)
       if(is_outlier): return True
     for atom in residue.atoms():
       if(not atom.element.strip().lower() in ["h","d"]):

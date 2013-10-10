@@ -223,10 +223,6 @@ class mvd(object):
 def molprobity_stats(model_statistics_geometry, resname_classes):
   result = None
   need_ramachandran = False
-  ramalyze_obj = None
-  rotalyze_obj = None
-  cbetadev_obj = None
-  clashscore_obj = None
   rc = resname_classes
   n_residues = 0
   for k in rc.keys():
@@ -234,7 +230,7 @@ def molprobity_stats(model_statistics_geometry, resname_classes):
       need_ramachandran = True
       n_residues = int(rc[k])
       break
-  if(need_ramachandran):
+  if(need_ramachandran): # FIXME no clashscore for nucleic acids???
     msg = model_statistics_geometry
     return group_args(
       ramalyze_outliers = msg.ramalyze_obj.get_outliers_count_and_fraction(),
@@ -242,7 +238,7 @@ def molprobity_stats(model_statistics_geometry, resname_classes):
       ramalyze_favored  = msg.ramalyze_obj.get_favored_count_and_fraction(),
       rotalyze          = msg.rotalyze_obj.get_outliers_count_and_fraction(),
       cbetadev          = msg.c_beta_dev,
-      clashscore        = msg.clashscore_obj.get_clashscore(),
+      clashscore        = msg.clashscore,
       mpscore           = msg.mpscore)
   else: return None
 

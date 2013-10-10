@@ -1623,7 +1623,7 @@ def setup_scattering_dictionaries(scattering_table,
                                   all_chain_proxies = None):
   xray_scattering_dict, neutron_scattering_dict = [None,]*2
   if(log is not None):
-    print_statistics.make_header("Scattering factors", out = log)
+    str_utils.make_header("Scattering factors", out = log)
   known_scattering_tables = [
     "n_gaussian", "wk1995", "it1992", "electron", "neutron"]
   if(not (scattering_table in known_scattering_tables)):
@@ -2638,6 +2638,7 @@ class cmdline_load_pdb_and_data (object) :
     self.cif_objects = []
     if ("--quiet" in args) or ("quiet=True" in args) :
       out = null_out()
+    str_utils.make_header("Collecting inputs", out=out)
     cmdline = iotbx.phil.process_command_line_with_files(
       args=args,
       master_phil=master_phil,
@@ -2707,7 +2708,7 @@ class cmdline_load_pdb_and_data (object) :
       if (pdb_interp_params is None) :
         pdb_interp_params = \
           mmtbx.monomer_library.pdb_interpretation.master_params.extract()
-      str_utils.make_header("Processing PDB file(s)", out=out)
+      str_utils.make_sub_header("Processing PDB file(s)", out=out)
       pdb_combined = combine_unique_pdb_files(
         file_names=params.input.pdb.file_name)
       pdb_combined.report_non_unique(out=out)

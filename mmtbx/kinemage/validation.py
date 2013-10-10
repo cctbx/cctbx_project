@@ -69,12 +69,55 @@ def get_angle_outliers(angle_proxies, chain, sites_cart, hierarchy):
     if abs(num_sigmas) >= 4.0:
       angle_key = altloc+res[0:3].lower()+res[3:]+' '+atom1.lower()+ \
                   '-'+atom2.lower()+'-'+atom3.lower()
-      print angle_key, num_sigmas
       kin = add_fan(sites=restraint.sites,
                     delta=restraint.delta,
                     num_sigmas=num_sigmas,
                     angle_key=angle_key)
       kin_text += kin
+  return kin_text
+
+def angle_outlier_as_kinemage (self) :
+  """
+  Represent the angle outlier as a kinemage 'fan'.
+  """
+  from mmtbx.kinemage import kin_vec
+  from scitbx import matrix
+  kin_text = ""
+  atom0 = self.atoms_info[0]
+  angle_key = self.kinemage_key()
+  num_sigmas = - self.delta / self.sigma
+  angle_key_full = "%s %.3f sigma" % (angle_key, num_sigmas)
+  if (num_sigmas < 0) :
+    color = "blue"
+  else:
+    color = "red"
+  sites = self.sites_cart()
+  delta = self.delta
+  a = matrix.col(sites[0])
+  b = matrix.col(sites[1])
+  c = matrix.col(sites[2])
+  normal = (a-b).cross(c-b).normalize()
+  r = normal.axis_and_angle_as_r3_rotation_matrix(angle=delta, deg=True)
+  new_c = tuple( (r*(c-b)) +b)
+  kin_text += "@vectorlist {%s} color= %s width= 4 master= {angle dev}\n" \
+               % (angle_key_full, color)
+  kin_text += kin_vec(angle_key_full,sites[0],angle_key_full,sites[1])
+  kin_text += kin_vec(angle_key_full,sites[1],angle_key_full,new_c)
+  r = normal.axis_and_angle_as_r3_rotation_matrix(angle=(delta*.75), deg=True)
+  new_c = tuple( (r*(c-b)) +b)
+  kin_text += "@vectorlist {%s} color= %s width= 3 master= {angle dev}\n" \
+               % (angle_key_full, color)
+  kin_text += kin_vec(angle_key_full,sites[1],angle_key,new_c)
+  r = normal.axis_and_angle_as_r3_rotation_matrix(angle=(delta*.5), deg=True)
+  new_c = tuple( (r*(c-b)) +b)
+  kin_text += "@vectorlist {%s} color= %s width= 2 master= {angle dev}\n" \
+               % (angle_key_full, color)
+  kin_text += kin_vec(angle_key_full,sites[1],angle_key,new_c)
+  r = normal.axis_and_angle_as_r3_rotation_matrix(angle=(delta*.25), deg=True)
+  new_c = tuple( (r*(c-b)) +b)
+  kin_text += "@vectorlist {%s} color= %s width= 1 master= {angle dev}\n" \
+              % (angle_key_full, color)
+  kin_text += kin_vec(angle_key_full,sites[1],angle_key,new_c)
   return kin_text
 
 def get_bond_outliers(bond_proxies, chain, sites_cart, hierarchy):
@@ -98,13 +141,63 @@ def get_bond_outliers(bond_proxies, chain, sites_cart, hierarchy):
     if abs(num_sigmas) >= 4.0:
       bond_key = altloc+res[0:3].lower()+res[3:]+\
                  ' '+atom1.lower()+'-'+atom2.lower()
-      print bond_key, num_sigmas
       kin = add_spring(sites=restraint.sites,
                        num_sigmas=num_sigmas,
                        bond_key=bond_key)
       kin_text += kin
   return kin_text
 
+def bond_outlier_as_kinemage (self) :
+  """
+  Represent the bond outlier as a kinemage spring.
+  """
+  from mmtbx.kinemage import kin_vec
+  from scitbx import matrix
+  kin_text = ""
+  bond_key = self.kinemage_key()
+  num_sigmas = - self.delta / self.sigma
+  if (num_sigmas < 0) :
+    color = "blue"
+  else:
+    color = "red"
+  sites = self.sites_cart()
+  a = matrix.col(sites[0])
+  b = matrix.col(sites[1])
+  c = matrix.col( (1,0,0) )
+  normal = ((a-b).cross(c-b).normalize())*0.2
+  current = a+normal
+  new = tuple(current)
+  kin_text += \
+    "@vectorlist {%s %.3f sigma} color= %s width= 3 master= {length dev}\n"\
+              % (bond_key, num_sigmas, color)
+  bond_key_long = "%s %.3f sigma" % (bond_key, num_sigmas)
+  kin_text += kin_vec(bond_key_long,sites[0],bond_key_long,new)
+  angle = 36
+  dev = num_sigmas
+  if dev > 10.0:
+    dev = 10.0
+  if dev < -10.0:
+    dev = -10.0
+  if dev <= 0.0:
+    angle += 1.5*abs(dev)
+  elif dev > 0.0:
+    angle -= 1.5*dev
+  i = 0
+  n = 60
+  axis = b-a
+  step = axis*(1.0/n)
+  r = axis.axis_and_angle_as_r3_rotation_matrix(angle=angle, deg=True)
+  while i < n:
+    next = (r*(current-b) +b)
+    next = next + step
+    kin_text += kin_vec(bond_key_long,tuple(current),bond_key_long,
+      tuple(next))
+    current = next
+    i += 1
+  kin_text += kin_vec(bond_key_long,tuple(current),bond_key_long,sites[1])
+  return kin_text
+
+# TODO deprecated, remove
 def add_fan(sites, delta, num_sigmas, angle_key):
   kin_text = ""
   angle_key_full = "%s %.3f sigma" % (angle_key, num_sigmas)
@@ -143,6 +236,7 @@ def add_fan(sites, delta, num_sigmas, angle_key):
 
   return kin_text
 
+# TODO deprecated, remove
 def add_spring(sites, num_sigmas, bond_key):
   kin_text = ""
   if num_sigmas < 0:
@@ -297,61 +391,10 @@ def rama_outliers(chain, pdbID, ram_outliers):
   ram_out = "@subgroup {Rama outliers} master= {Rama outliers}\n"
   ram_out += "@vectorlist {bad Rama Ca} width= 4 color= green\n"
   outlier_list = []
-  for outlier in ram_outliers.splitlines():
-    outlier_list.append(outlier.split(':')[0])
-  #prev_CA_xyz = None
-  #cur_CA_xyz = None
-  #next_CA_xyz = None
-  CA_xyz_dict = {}
-  CA_key_dict = {}
-  for residue_group in chain.residue_groups():
-    for atom_group in residue_group.atom_groups():
-      for atom in atom_group.atoms():
-        if atom.name == ' CA ':
-          CA_xyz_dict[residue_group.resseq_as_int()] = atom.xyz
-          key = "%s%5s %s%s" % (
-                     chain.id,
-                     residue_group.resid(),
-                     atom_group.altloc,
-                     atom_group.resname)
-          CA_key_dict[residue_group.resseq_as_int()] = key
-
-  for residue_group in chain.residue_groups():
-    for atom_group in residue_group.atom_groups():
-      check_key = "%s%5s %s%s" % (
-                     chain.id,
-                     residue_group.resid(),
-                     atom_group.altloc,
-                     atom_group.resname)
-      #print check_key
-      if check_key in outlier_list:
-        try:
-          prev_xyz = CA_xyz_dict[residue_group.resseq_as_int()-1]
-          next_xyz = CA_xyz_dict[residue_group.resseq_as_int()+1]
-          prev_key = CA_key_dict[residue_group.resseq_as_int()-1]
-          next_key = CA_key_dict[residue_group.resseq_as_int()+1]
-          cur_xyz = CA_xyz_dict[residue_group.resseq_as_int()]
-          mid1 = midpoint(p1=prev_xyz, p2=cur_xyz)
-          mid2 = midpoint(p1=cur_xyz, p2=next_xyz)
-        except Exception:
-          continue
-        ram_out += "{%s CA}P %.3f %.3f %.3f\n" % (
-                     prev_key,
-                     mid1[0],
-                     mid1[1],
-                     mid1[2])
-        ram_out += "{%s CA} %.3f %.3f %.3f\n" % (
-                     check_key,
-                     cur_xyz[0],
-                     cur_xyz[1],
-                     cur_xyz[2])
-        ram_out += "{%s CA} %.3f %.3f %.3f\n" % (
-                     next_key,
-                     mid2[0],
-                     mid2[1],
-                     mid2[2])
-
-  #print outlier_list
+  for outlier in ram_outliers.results :
+    if (not outlier.is_outlier()) : continue
+    if outlier.chain_id == chain.id :
+      ram_out += outlier.as_kinemage()
   return ram_out
 
 def rotamer_outliers(chain, pdbID, rot_outliers):
@@ -359,30 +402,26 @@ def rotamer_outliers(chain, pdbID, rot_outliers):
   rot_out = "@subgroup {Rota outliers} dominant\n"
   rot_out += "@vectorlist {chain %s} color= gold  master= {Rota outliers}\n" % chain.id
   outlier_list = []
-  for outlier in rot_outliers.splitlines():
-    outlier_list.append(outlier.split(':')[0])
+  for outlier in rot_outliers.results :
+    if (not outlier.is_outlier()) : continue
+    outlier_list.append(outlier.atom_group_id_str())
   for residue_group in chain.residue_groups():
-    for conformer in residue_group.conformers():
-      for residue in conformer.residues():
-        check_key = '%s%5s %s' % \
-                    (chain.id,
-                     residue_group.resid(),
-                     conformer.altloc+residue.resname.strip())
-        if check_key not in outlier_list:
-          continue
+    for atom_group in residue_group.atom_groups() :
+      check_key = atom_group.id_str()
+      if (check_key in outlier_list) :
         key_hash = {}
         xyz_hash = {}
-        for atom in residue.atoms():
+        for atom in atom_group.atoms():
           key = "%s %s %s%s  B%.2f %s" % (
               atom.name.lower(),
-              residue.resname.lower(),
+              atom_group.resname.lower(),
               chain.id,
-              residue.resid(),
+              residue_group.resid(),
               atom.b,
               pdbID)
           key_hash[atom.name.strip()] = key
           xyz_hash[atom.name.strip()] = atom.xyz
-        bonds = get_bond_pairs(code=residue.resname)
+        bonds = get_bond_pairs(code=atom_group.resname)
         for bond in bonds:
           if bond[0] in mc_atoms or bond[1] in mc_atoms:
             continue
@@ -815,14 +854,11 @@ def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False):
     kin_out += altid_controls
   kin_out += "@group {%s} dominant animate\n" % pdbID
   initiated_chains = []
-  rt = rotalyze()
-  rot_outliers, output_list = rt.analyze_pdb(hierarchy=hierarchy, outliers_only=True)
+  rot_outliers = rotalyze(pdb_hierarchy=hierarchy, outliers_only=True)
   cb = cbetadev(
     pdb_hierarchy=hierarchy,
     outliers_only=True)
-  rm = ramalyze()
-  ram_outliers, output_list = rm.analyze_pdb(hierarchy=hierarchy,
-                                             outliers_only=True)
+  rama = ramalyze(pdb_hierarchy=hierarchy, outliers_only=True)
   counter = 0
   for model in hierarchy.models():
     for chain in model.chains():
@@ -837,8 +873,10 @@ def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False):
                               pdbID=pdbID,
                               index=counter)
       if (chain.is_protein()) :
-        kin_out += rotamer_outliers(chain=chain, pdbID=pdbID, rot_outliers=rot_outliers)
-        kin_out += rama_outliers(chain=chain, pdbID=pdbID, ram_outliers=ram_outliers)
+        kin_out += rotamer_outliers(chain=chain, pdbID=pdbID,
+          rot_outliers=rot_outliers)
+        kin_out += rama_outliers(chain=chain, pdbID=pdbID, ram_outliers=rama)
+      # TODO use central methods in mmtbx.validation.restraints
       kin_out += get_angle_outliers(angle_proxies=angle_proxies,
                                     chain=chain,
                                     sites_cart=sites_cart,
@@ -936,3 +974,64 @@ def run(args):
                           pdbID=pdbID,
                           keep_hydrogens=work_params.kinemage.keep_hydrogens)
   return outfile
+
+def export_molprobity_result_as_kinemage (
+    result,
+    pdb_hierarchy,
+    geometry,
+    probe_file,
+    keep_hydrogens=False,
+    pdbID="PDB") :
+  assert (result.restraints is not None)
+  i_seq_name_hash = build_name_hash(pdb_hierarchy=pdb_hierarchy)
+  sites_cart = pdb_hierarchy.atoms().extract_xyz()
+  flags = geometry_restraints.flags.flags(default=True)
+  angle_proxies = geometry.angle_proxies
+  pair_proxies = geometry.pair_proxies(flags=flags,
+                                       sites_cart=sites_cart)
+  bond_proxies = pair_proxies.bond_proxies
+  quick_bond_hash = {}
+  for bp in bond_proxies.simple:
+    if (i_seq_name_hash[bp.i_seqs[0]][9:14] ==
+        i_seq_name_hash[bp.i_seqs[1]][9:14]):
+      if quick_bond_hash.get(bp.i_seqs[0]) is None:
+        quick_bond_hash[bp.i_seqs[0]] = []
+      quick_bond_hash[bp.i_seqs[0]].append(bp.i_seqs[1])
+  kin_out = get_default_header()
+  altid_controls = get_altid_controls(hierarchy=pdb_hierarchy)
+  if altid_controls != "":
+    kin_out += altid_controls
+  kin_out += "@group {%s} dominant animate\n" % pdbID
+  initiated_chains = []
+  counter = 0
+  for model in pdb_hierarchy.models():
+    for chain in model.chains():
+      if chain.id not in initiated_chains:
+        kin_out += "@subgroup {%s} dominant master= {chain %s}\n" % (
+                  pdbID,
+                  chain.id)
+        initiated_chains.append(chain.id)
+      kin_out += get_kin_lots(chain=chain,
+                              bond_hash=quick_bond_hash,
+                              i_seq_name_hash=i_seq_name_hash,
+                              pdbID=pdbID,
+                              index=counter)
+      if (chain.is_protein()) :
+        assert (not None in [result.rotalyze, result.ramalyze])
+        kin_out += rotamer_outliers(chain=chain,
+          pdbID=pdbID,
+          rot_outliers=result.rotalyze)
+        kin_out += rama_outliers(chain=chain,
+          pdbID=pdbID,
+          ram_outliers=result.ramalyze)
+      kin_out += result.restraints.as_kinemage(chain_id=chain.id)
+      if (chain.is_protein()) :
+        assert (result.cbetadev is not None)
+        kin_out += result.cbetadev.as_kinemage(chain_id=chain.id)
+      kin_out += pperp_outliers(hierarchy=pdb_hierarchy,
+                                chain=chain)
+      counter += 1
+  kin_out += make_probe_dots(hierarchy=pdb_hierarchy,
+    keep_hydrogens=keep_hydrogens)
+  kin_out += get_footer()
+  return kin_out

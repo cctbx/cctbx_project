@@ -82,101 +82,15 @@ class bond (restraint) :
        self.residual, abs(self.score))
 
   def as_kinemage (self) :
-    """
-    Represent the bond outlier as a kinemage spring.
-    """
-    from mmtbx.kinemage import kin_vec
-    from scitbx import matrix
-    kin_text = ""
-    bond_key = self.kinemage_key()
-    num_sigmas = - self.delta / self.sigma
-    if (num_sigmas < 0) :
-      color = "blue"
-    else:
-      color = "red"
-    sites = self.sites_cart()
-    a = matrix.col(sites[0])
-    b = matrix.col(sites[1])
-    c = matrix.col( (1,0,0) )
-    normal = ((a-b).cross(c-b).normalize())*0.2
-    current = a+normal
-    new = tuple(current)
-    kin_text += \
-      "@vectorlist {%s %.3f sigma} color= %s width= 3 master= {length dev}\n"\
-                % (bond_key, num_sigmas, color)
-    bond_key_long = "%s %.3f sigma" % (bond_key, num_sigmas)
-    kin_text += kin_vec(bond_key_long,sites[0],bond_key_long,new)
-    angle = 36
-    dev = num_sigmas
-    if dev > 10.0:
-      dev = 10.0
-    if dev < -10.0:
-      dev = -10.0
-    if dev <= 0.0:
-      angle += 1.5*abs(dev)
-    elif dev > 0.0:
-      angle -= 1.5*dev
-    i = 0
-    n = 60
-    axis = b-a
-    step = axis*(1.0/n)
-    r = axis.axis_and_angle_as_r3_rotation_matrix(angle=angle, deg=True)
-    while i < n:
-      next = (r*(current-b) +b)
-      next = next + step
-      kin_text += kin_vec(bond_key_long,tuple(current),bond_key_long,
-        tuple(next))
-      current = next
-      i += 1
-    kin_text += kin_vec(bond_key_long,tuple(current),bond_key_long,sites[1])
-    return kin_text
+    from mmtbx.kinemage.validation import bond_outlier_as_kinemage
+    return bond_outlier_as_kinemage(self)
 
 class angle (restraint) :
   n_atoms = 3
 
   def as_kinemage (self) :
-    """
-    Represent the angle outlier as a kinemage 'fan'.
-    """
-    from mmtbx.kinemage import kin_vec
-    from scitbx import matrix
-    kin_text = ""
-    atom0 = self.atoms_info[0]
-    angle_key = self.kinemage_key()
-    num_sigmas = - self.delta / self.sigma
-    angle_key_full = "%s %.3f sigma" % (angle_key, num_sigmas)
-    if (num_sigmas < 0) :
-      color = "blue"
-    else:
-      color = "red"
-    sites = self.sites_cart()
-    delta = self.delta
-    a = matrix.col(sites[0])
-    b = matrix.col(sites[1])
-    c = matrix.col(sites[2])
-    normal = (a-b).cross(c-b).normalize()
-    r = normal.axis_and_angle_as_r3_rotation_matrix(angle=delta, deg=True)
-    new_c = tuple( (r*(c-b)) +b)
-    kin_text += "@vectorlist {%s} color= %s width= 4 master= {angle dev}\n" \
-                 % (angle_key_full, color)
-    kin_text += kin_vec(angle_key_full,sites[0],angle_key_full,sites[1])
-    kin_text += kin_vec(angle_key_full,sites[1],angle_key_full,new_c)
-    r = normal.axis_and_angle_as_r3_rotation_matrix(angle=(delta*.75), deg=True)
-    new_c = tuple( (r*(c-b)) +b)
-    kin_text += "@vectorlist {%s} color= %s width= 3 master= {angle dev}\n" \
-                 % (angle_key_full, color)
-    kin_text += kin_vec(angle_key_full,sites[1],angle_key,new_c)
-    r = normal.axis_and_angle_as_r3_rotation_matrix(angle=(delta*.5), deg=True)
-    new_c = tuple( (r*(c-b)) +b)
-    kin_text += "@vectorlist {%s} color= %s width= 2 master= {angle dev}\n" \
-                 % (angle_key_full, color)
-    kin_text += kin_vec(angle_key_full,sites[1],angle_key,new_c)
-    r = normal.axis_and_angle_as_r3_rotation_matrix(angle=(delta*.25), deg=True)
-    new_c = tuple( (r*(c-b)) +b)
-    kin_text += "@vectorlist {%s} color= %s width= 1 master= {angle dev}\n" \
-                % (angle_key_full, color)
-    kin_text += kin_vec(angle_key_full,sites[1],angle_key,new_c)
-    return kin_text
+    from mmtbx.kinemage.validation import angle_outlier_as_kinemage
+    return angle_outlier_as_kinemage(self)
 
 class dihedral (restraint) :
   n_atoms = 4
@@ -291,12 +205,12 @@ class restraint_validation (validation) :
       print >> out, prefix + "Max. delta:  %7.3f" % self.max
       print >> out, prefix + "Mean delta:  %7.3f" % self.mean
 
-  def as_kinemage (self) :
+  def as_kinemage (self, chain_id=None) :
     header = self.kinemage_header
     if (header is not None) :
       kin_blocks = []
       for result in self.results :
-        if (result.is_outlier()) :
+        if (result.is_outlier()) and (result.is_in_chain(chain_id)) :
           outlier_kin_txt = result.as_kinemage()
           if (outlier_kin_txt is not None) :
             kin_blocks.append(outlier_kin_txt)
@@ -566,6 +480,8 @@ class combined (slots_getstate_setstate) :
   def get_bonds_angles_rmsds (self) :
     return (self.bonds.mean, self.angles.mean)
 
-  def as_kinemage (self) :
-    kin_txt = "%s\n%s" % (self.bonds.as_kinemage(), self.angles.as_kinemage())
+  def as_kinemage (self, chain_id=None) :
+    kin_txt = self.angles.as_kinemage(chain_id=chain_id)
+    kin_txt += "\n"
+    kin_txt += self.bonds.as_kinemage(chain_id=chain_id)
     return kin_txt
