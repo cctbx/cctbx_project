@@ -1,5 +1,6 @@
 
 from __future__ import division
+from libtbx.utils import null_out
 
 def exercise_anomalous_maps_misc () :
   from mmtbx.regression.make_fake_anomalous_data import generate_cd_cl_inputs
@@ -42,6 +43,31 @@ def exercise_anomalous_maps_misc () :
     map_type="2mFo-DFc",
     exclude_free_r_reflections=True)
 
+def exercise_omit_atom_selection () :
+  # combine an omit selection with a CCP4 map selection - this used to crash
+  from mmtbx.regression.make_fake_anomalous_data import generate_calcium_inputs
+  import mmtbx.command_line.maps
+  mtz_file, pdb_file = generate_calcium_inputs(
+    file_base="tst_mmtbx_maps_misc2")
+  open("tst_mmtbx_maps_misc2.eff", "w").write("""\
+    maps {
+      map {
+        map_type = 2mFo-DFc
+        format = xplor *ccp4
+        file_name = tst_mmtbx_maps_misc2.ccp4
+        region = *selection cell
+        atom_selection = "resname HOH"
+      }
+    }""")
+  mmtbx.command_line.maps.run(args=[
+    mtz_file,
+    pdb_file,
+    "tst_mmtbx_maps_misc2.eff",
+    "omit.selection=\"resname TRP\"",
+    "prefix=tst_mmtbx_maps_misc2",
+  ], log=null_out())
+
 if (__name__ == "__main__") :
   exercise_anomalous_maps_misc()
+  exercise_omit_atom_selection()
   print "OK"

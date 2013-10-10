@@ -279,9 +279,7 @@ def run (args, log = sys.stdout, use_output_directory=True,
     test_flag_value=None
   print >> log, "-"*79
   print >> log, "\nInput model file:", params.maps.input.pdb_file_name
-  pdb_hierarchy = pdb_inp.construct_hierarchy()
-  pdb_atoms = pdb_hierarchy.atoms()
-  pdb_atoms.reset_i_seq()
+  pdb_hierarchy = pdb_inp.construct_hierarchy(set_atom_i_seq=True)
   atom_selection_manager = pdb_hierarchy.atom_selection_cache()
   xray_structure = pdb_inp.xray_structure_simple(
     crystal_symmetry = crystal_symmetry)
@@ -289,7 +287,10 @@ def run (args, log = sys.stdout, use_output_directory=True,
   if(params.maps.omit.selection is not None):
     omit_selection = atom_selection_manager.selection(
       string = params.maps.omit.selection)
-    xray_structure = xray_structure.select(selection = ~omit_selection)
+    keep_selection = ~omit_selection
+    xray_structure = xray_structure.select(selection = keep_selection)
+    pdb_hierarchy = pdb_hierarchy.select(keep_selection)
+    atom_selection_manager = pdb_hierarchy.atom_selection_cache()
   #
   mmtbx.utils.setup_scattering_dictionaries(
     scattering_table = params.maps.scattering_table,
