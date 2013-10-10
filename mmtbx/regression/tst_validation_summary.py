@@ -27,9 +27,6 @@ def exercise () :
   summary.show(out=out_1)
   sss.show(out=out_2)
   assert out_1.getvalue() == out_2.getvalue()
-  out3 = StringIO()
-  summary = validation_summary.run(args=[regression_pdb, "--verbose"],
-    out=out3)
   pdb_in = file_reader.any_file(regression_pdb)
   hierarchy = pdb_in.file_object.construct_hierarchy()
   new_hierarchy = iotbx.pdb.hierarchy.root()

@@ -1,257 +1,122 @@
+
 from __future__ import division
-# (jEdit options) :folding=explicit:collapseFolds=1:
+from mmtbx.validation import residue, validation, atom
+from mmtbx.validation import graphics
+from iotbx import data_plots
+from libtbx import slots_getstate_setstate
+import sys
 
-#{{{ coot_script_header
-coot_script_header = """
-def molprobity_fascinating_clusters_things_gui(window_name, sorting_option, cluster_list):
+# XXX Use these constants internally, never strings!
+RAMA_GENERAL = 0
+RAMA_GLYCINE = 1
+RAMA_CISPRO = 2
+RAMA_TRANSPRO = 3
+RAMA_PREPRO = 4
+RAMA_ILE_VAL = 5
 
-    ncluster_max = 75
+RAMALYZE_OUTLIER = 0
+RAMALYZE_ALLOWED = 1
+RAMALYZE_FAVORED = 2
+RAMALYZE_ANY = 3
+RAMALYZE_NOT_FAVORED = 4
 
-    # a callback function
-    def callback_recentre(widget, x, y, z):
-        set_rotation_centre(x, y, z)
+res_types = ["general", "glycine", "cis-proline", "trans-proline",
+             "pre-proline", "isoleucine or valine"]
+res_type_labels = ["General", "Gly", "cis-Pro", "trans-Pro", "pre-Pro",
+                   "Ile/Val"]
+res_type_plot_labels = ["all non-Pro/Gly residues", "Glycine", "cis-Proline",
+  "trans-Proline", "pre-Proline residues", "Ile or Val"]
+rama_types = ["OUTLIER", "Allowed", "Favored", "Any", "Allowed/Outlier"]
+rama_type_labels = ["Outlier", "Allowed", "Favored", "Any", "Allowed/Outlier"]
 
-    # utility function
-    def add_feature_buttons(feature_list, cluster_vbox):
-        frame = gtk.Frame("Ramachandran Outliers")
-        vbox = gtk.VBox(False, 0)
-        cluster_vbox.pack_start(frame, False, False, 2)
-        frame.add(vbox)
+class c_alpha (slots_getstate_setstate) :
+  """Container class used in the generation of kinemages."""
+  __slots__ = ['id_str', 'xyz']
+  def __init__ (self, id_str, xyz) :
+    self.id_str = id_str
+    self.xyz = xyz
 
-        # add buttons to vbox for each feature
-        #
-        for feature in feature_list:
-            # print "feature: ", feature
-            button = gtk.Button(feature[0])
-            button.connect("clicked",
-                           callback_recentre,
-                           feature[4],
-                           feature[5],
-                           feature[6])
-            vbox.pack_start(button, False, False, 1)
+class ramachandran (residue) :
+  """
+  Result class for protein backbone Ramachandran analysis (phenix.ramalyze).
+  """
+  __rama_attr__ = [
+    "res_type",
+    "rama_type",
+    "score",
+    "phi",
+    "psi",
+    "c_alphas",
+  ]
+  __slots__ = residue.__slots__ + __rama_attr__
 
-    # main body
-    window = gtk.Window(gtk.WINDOW_TOPLEVEL)
-    scrolled_win = gtk.ScrolledWindow()
-    outside_vbox = gtk.VBox(False, 2)
-    inside_vbox = gtk.VBox(False, 0)
+  @staticmethod
+  def header () :
+    return "%-20s %-12s %10s %6s %-20s" % ("Residue", "Type", "Region", "Score",
+      "Phi/Psi")
 
-    print "Maximum number of clusters displayed:  ", ncluster_max
+  def residue_type (self) :
+    return res_type_labels[self.res_type]
 
-    window.set_default_size(300, 200)
-    window.set_title(window_name)
-    inside_vbox.set_border_width(2)
-    window.add(outside_vbox)
-    outside_vbox.pack_start(scrolled_win, True, True, 0) # expand fill padding
-    scrolled_win.add_with_viewport(inside_vbox)
-    scrolled_win.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_ALWAYS)
+  def ramalyze_type (self) :
+    return rama_types[self.rama_type]
 
-    count = 0
+  def as_string (self) :
+    return "%-20s %-12s %10s %6.2f %10s" % (self.id_str(), self.residue_type(),
+      self.ramalyze_type(), self.score,
+      ",".join([ "%.1f" % x for x in [self.phi, self.psi] ]))
 
-    for cluster_info in cluster_list:
+  # Backwards compatibility
+  def id_str_old (self) :
+    return "%s%4s%1s %1s%s" % (self.chain_id, self.resseq, self.icode,
+      self.altloc, self.resname)
 
-        if (count == ncluster_max):
-            break
-        else:
-            frame = gtk.Frame()
-            vbox = gtk.VBox(False, 2)
+  def format_old (self) :
+    return "%s:%.2f:%.2f:%.2f:%s:%s" % (self.id_str_old(), self.score,
+      self.phi, self.psi, self.ramalyze_type(),
+      res_types[self.res_type].capitalize())
 
-            frame.set_border_width(6)
-            frame.add(vbox)
-            inside_vbox.pack_start(frame, False, False, 10)
+  def as_kinemage (self) :
+    assert self.is_outlier()
+    ram_out = "{%s CA}P %s\n" % (self.c_alphas[0].id_str, "%.3f %.3f %.3f" %
+      self.c_alphas[0].xyz)
+    ram_out += "{%s CA} %s\n" % (self.c_alphas[1].id_str, "%.3f %.3f %.3f" %
+      self.c_alphas[1].xyz)
+    ram_out += "{%s CA} %s\n" % (self.c_alphas[2].id_str, "%.3f %.3f %.3f" %
+      self.c_alphas[2].xyz)
+    return ram_out
 
-            # now we have a list of individual features:
-            features = cluster_info[0]
-            if (len(features) > 0):
-                add_feature_buttons(features, vbox)
+class ramalyze (validation) :
+  __slots__ = validation.__slots__ + ["out_percent", "fav_percent",
+    "n_allowed", "n_favored", "n_type", ]
+  program_description = "Analyze protein backbone ramachandran"
+  output_header = "residue:score%:phi:psi:evaluation:type"
 
-    outside_vbox.set_border_width(2)
-    ok_button = gtk.Button("  Close  ")
-    outside_vbox.pack_end(ok_button, False, False, 0)
-    ok_button.connect("clicked", lambda x: window.destroy())
-    window.show_all()
+  def get_result_class (self) : return ramachandran
 
-molprobity_fascinating_clusters_things_gui(
-    "MolProbity Multi-Chart",
-    [],
-    [[
-      [
-"""
-#}}}
-
-import sys, os
-from mmtbx.validation import utils
-import mmtbx.rotamer
-from mmtbx.rotamer import ramachandran_eval
-from mmtbx.rotamer import graphics
-import libtbx.phil
-from libtbx.utils import Usage
-
-def get_master_phil():
-  return libtbx.phil.parse(
-    input_string="""
-    ramalyze {
-      pdb = None
-        .type = path
-        .help = '''Enter a PDB file name'''
-
-      outliers_only = False
-      .type = bool
-      .help = '''Only print Ramachandran outliers'''
-
-      verbose = True
-      .type = bool
-      .help = '''Verbose'''
-
-      plot = False
-        .type = bool
-        .help = Create graphics of plots (if Matplotlib is installed)
-}
-""")
-
-header = """residue:score%:phi:psi:evaluation:type"""
-
-class ramalyze(object):
-
-  #{{{ flag routines
-  #flag routines-----------------------------------------------------------------------------------
-  def usage(self):
-    return """
-phenix.ramalyze file.pdb [params.eff] [options ...]
-
-Options:
-
-  pdb=input_file        input PDB file
-  outliers_only=False   only print outliers
-  verbose=False         verbose text output
-  plot=False            Create graphics of plots (if Matplotlib is installed)
-
-Example:
-
-  phenix.ramalyze pdb=1ubq.pdb outliers_only=True
-
-"""
-  def get_summary_and_header(self,command_name):
-    header="\n"
-    header+="\n#                       "+str(command_name)
-    header+="\n#"
-    header+="\n# Analyze protein backbone ramachandran"
-    header+="\n# type phenix."+str(command_name)+": --help for help"
-
-    summary= "phenix.%s mypdb.pdb" % command_name
-    return summary,header
-
-
-  #------------------------------------------------------------------------------------------------
-  #}}}
-
-  #{{{ run
-  def run(self, args, out=sys.stdout, quiet=False):
-    if (len(args) == 0 or "--help" in args or "--h" in args or "-h" in args):
-      raise Usage(self.usage())
-    master_phil = get_master_phil()
-    import iotbx.utils
-    args = list(args)
-    for i, arg in enumerate(args) :
-      if (arg == "--plot") :
-        args[i] = "ramalyze.plot=True"
-    input_objects = iotbx.utils.process_command_line_inputs(
-      args=args,
-      master_phil=master_phil,
-      input_types=("pdb",))
-    work_phil = master_phil.fetch(sources=input_objects["phil"])
-    work_params = work_phil.extract()
-    if len(input_objects["pdb"]) != 1:
-      summary, header = self.get_summary_and_header("ramalyze")
-      raise Usage(summary)
-    file_obj = input_objects["pdb"][0]
-    filename = file_obj.file_name
-
-    command_name = "ramalyze"
-    summary,header=self.get_summary_and_header(command_name)
-    if not quiet: print >>out, header
-
-    #TO DO:  make this a working help section
-    #if help or (params and params.ramalyze.verbose):
-    #  pass
-      # XXX: disabled for GUI
-      #print "Values of all params:"
-      #master_params.format(python_object=params).show(out=out)
-
-    self.params=work_params # makes params available to whole class
-
-    log=out
-    if (log is None): log = sys.stdout
-    if filename and os.path.exists(filename):
-      try:
-        import iotbx.pdb
-      except ImportError:
-        print "iotbx not loaded"
-        return None, None
-      pdb_io = iotbx.pdb.input(filename)
-    else:
-      print "Please enter a file name"
-      return None, None
-
-    output_text, output_list = self.analyze_pdb(pdb_io,
-      outliers_only=self.params.ramalyze.outliers_only)
-    out_count, out_percent = self.get_outliers_count_and_fraction()
-    fav_count, fav_percent = self.get_favored_count_and_fraction()
-    if self.params.ramalyze.verbose:
-      print >> out, "residue:score%:phi:psi:evaluation:type"
-      print >> out, output_text
-      print >> out, 'SUMMARY: %.2f%% outliers (Goal: %s)' % \
-        (out_percent*100, self.get_outliers_goal())
-      print >> out, 'SUMMARY: %.2f%% favored (Goal: %s)' % \
-        (fav_percent*100, self.get_favored_goal())
-    todo_list = self.coot_todo(output_list)
-    self.out_percent = out_percent * 100.0
-    self.fav_percent = fav_percent * 100.0
-    if (self.params.ramalyze.plot) :
-      print >> out, ""
-      print >> out, "Creating images of plots..."
-      base_name = os.path.basename(filename)
-      file_base = os.path.splitext(base_name)[0]
-      for pos in ["general", "glycine", "cis-proline", "trans-proline",
-                  "pre-proline", "isoleucine or valine"] :
-        stats = utils.get_rotarama_data(
-          pos_type=pos,
-          convert_to_numpy_array=True)
-        plot_file_name = file_base + "_rama_%s.png" % pos
-        graphics.draw_ramachandran_plot(
-          ramalyze_data=output_list,
-          rotarama_data=stats,
-          position_type=pos,
-          file_name=plot_file_name)
-        print >> out, "  wrote %s" % plot_file_name
-    return output_list, todo_list
-  #}}}
-
-  #{{{ analyze_pdb
-  def analyze_pdb(self, pdb_io=None, hierarchy=None, outliers_only=None):
-    assert [pdb_io, hierarchy].count(None) == 1
-    if(pdb_io is not None):
-      hierarchy = pdb_io.construct_hierarchy()
+  def __init__ (self,
+      pdb_hierarchy,
+      outliers_only=False,
+      show_errors=False,
+      out=sys.stdout,
+      quiet=False) :
+    validation.__init__(self)
+    self.n_allowed = 0
+    self.n_favored = 0
+    self.n_type = [ 0 ] * 6
+    from mmtbx.validation import utils
+    import mmtbx.rotamer
+    from mmtbx.rotamer import ramachandran_eval
     use_segids = utils.use_segids_in_place_of_chainids(
-                   hierarchy=hierarchy)
+      hierarchy=pdb_hierarchy)
     analysis = ""
     output_list = []
-    self.numoutliers = 0
-    self.numallowed = 0
-    self.numfavored = 0
-    self.numgen = 0
-    self.numgly = 0
-    self.numcispro = 0
-    self.numtranspro = 0
-    self.numprepro = 0
-    self.numileval = 0
-    self.numtotal = 0
     r = ramachandran_eval.RamachandranEval()
     prev_rezes, next_rezes = None, None
     prev_resid = None
     cur_resseq = None
     next_resseq = None
-    for model in hierarchy.models():
+    for model in pdb_hierarchy.models():
       for chain in model.chains():
         if use_segids:
           chain_id = utils.get_segid_as_chainid(chain=chain)
@@ -268,7 +133,7 @@ Example:
           if cur_resseq is not None:
             prev_rezes = rezes
             prev_resseq = cur_resseq
-          rezes = self.construct_complete_residues(residues[i])
+          rezes = construct_complete_residues(residues[i])
           cur_resseq = residue_group.resseq_as_int()
           cur_icode = residue_group.icode.strip()
           if (i > 0):
@@ -287,7 +152,7 @@ Example:
             elif residue_group.resseq_as_int() != \
                (residues[i+1].resseq_as_int())-1:
               continue
-            next_rezes = self.construct_complete_residues(residues[i+1])
+            next_rezes = construct_complete_residues(residues[i+1])
             next_resid = residues[i+1].resseq_as_int()
           else:
             next_rezes = None
@@ -306,303 +171,364 @@ Example:
               if (next_atom_list is None):
                 next_keys = sorted(next_rezes.keys())
                 next_atom_list = next_rezes.get(next_keys[0])
-            phi = self.get_phi(prev_atom_list, atom_list)
-            psi = self.get_psi(atom_list, next_atom_list)
-            coords = self.get_center(atom_group)
+            phi = get_phi(prev_atom_list, atom_list)
+            psi = get_psi(atom_list, next_atom_list)
+            coords = get_center(atom_group)
             if (phi is not None and psi is not None):
-              resType = None
-              self.numtotal += 1
+              res_type = RAMA_GENERAL
+              self.n_total += 1
               if (atom_group.resname[0:3] == "GLY"):
-                resType = "glycine"
-                self.numgly += 1
+                res_type = RAMA_GLYCINE
               elif (atom_group.resname[0:3] == "PRO"):
-                is_cis = self.is_cis_peptide(prev_atom_list, atom_list)
+                is_cis = is_cis_peptide(prev_atom_list, atom_list)
                 if is_cis:
-                  resType = "cis-proline"
-                  self.numcispro += 1
+                  res_type = RAMA_CISPRO
                 else:
-                  resType = "trans-proline"
-                  self.numtranspro += 1
-              elif (self.isPrePro(residues, i)):
-                resType = "pre-proline"
-                self.numprepro += 1
+                  res_type = RAMA_TRANSPRO
+              elif (isPrePro(residues, i)):
+                res_type = RAMA_PREPRO
               elif (atom_group.resname[0:3] == "ILE" or \
                     atom_group.resname[0:3] == "VAL"):
-                resType = "isoleucine or valine"
-                self.numileval += 1
-              else:
-                resType = "general"
-                self.numgen += 1
+                res_type = RAMA_ILE_VAL
+              self.n_type[res_type] += 1
+              value = r.evaluate(res_types[res_type], [phi, psi])
+              ramaType = self.evaluateScore(res_type, value)
+              is_outlier = isOutlier(res_type, value)
+              c_alphas = None
+              # XXX only save kinemage data for outliers
+              if is_outlier :
+                c_alphas = []
+                for atoms in [prev_atom_list, atom_list, next_atom_list] :
+                  for a in atoms :
+                    if (a.name.strip() == "CA") :
+                      a_ = atom(pdb_atom=a)
+                      c_alphas.append(c_alpha(
+                        id_str=a_.atom_group_id_str(),
+                        xyz=a_.xyz))
+                assert (len(c_alphas) == 3)
+              result = ramachandran(
+                chain_id=chain_id,
+                resseq=residue_group.resseq,
+                icode=residue_group.icode,
+                resname=atom_group.resname,
+                altloc=atom_group.altloc,
+                segid=None, # XXX ???
+                phi=phi,
+                psi=psi,
+                rama_type=ramaType,
+                res_type=res_type,
+                score=value*100,
+                outlier=is_outlier,
+                xyz=coords,
+                c_alphas=c_alphas)
+              if (not outliers_only or is_outlier) :
+                self.results.append(result)
+    out_count, out_percent = self.get_outliers_count_and_fraction()
+    fav_count, fav_percent = self.get_favored_count_and_fraction()
+    self.out_percent = out_percent * 100.0
+    self.fav_percent = fav_percent * 100.0
 
-              value = r.evaluate(resType, [phi, psi])
-              ramaType = self.evaluateScore(resType, value)
-              if (not outliers_only or self.isOutlier(resType, value)):
-                analysis += '%s%5s %s%s:%.2f:%.2f:%.2f:%s:%s\n' % \
-                  (chain_id,
-                   residue_group.resid(),atom_group.altloc,
-                   atom_group.resname,
-                   value*100,
-                   phi,
-                   psi,
-                   ramaType,
-                   resType.capitalize())
+  def write_plots (self, plot_file_base, out) :
+    from mmtbx.validation import utils
+    print >> out, ""
+    print >> out, "Creating images of plots..."
+    for pos in range(6) :
+      stats = utils.get_rotarama_data(
+        pos_type=res_types[pos],
+        convert_to_numpy_array=True)
+      file_label = res_type_labels[pos].replace("/", "_")
+      plot_file_name = plot_file_base + "_rama_%s.png" % file_label
+      points, coords = self.get_plot_data(position_type=pos)
+      draw_ramachandran_plot(
+        points=points,
+        rotarama_data=stats,
+        position_type=pos,
+        title=format_ramachandran_plot_title(position_type, '*'),
+        file_name=plot_file_name)
+      print >> out, "  wrote %s" % plot_file_name
 
-                output_list.append([chain_id,
-                                    residue_group.resid(),
-                                    atom_group.altloc+atom_group.resname,
-                                    value*100,
-                                    phi,
-                                    psi,
-                                    ramaType,
-                                    resType.capitalize(),
-                                    coords])
-    return analysis.rstrip(), output_list
-  #}}}
+  def display_wx_plots (self, parent=None,
+      title="MolProbity - Ramachandran plots") :
+    import wxtbx.plots.molprobity
+    frame = wxtbx.plots.molprobity.ramalyze_frame(
+      parent=parent, title=title, validation=self)
+    frame.Show()
 
-  #{{{ coot_todo
-  def coot_todo(self, output_list):
-    #print coot_script_header
-    text=coot_script_header
-    for chain_id,resnum,resname,rama_value,phi,psi,ramaType,resType,coords in output_list:
-       if (coords is not None):
-         button='       ["Ramachandran Outlier at %s%s %s (%.2f)", 0, 1, 0, %f, %f, %f],\n' % \
-           (chain_id, resnum, resname, rama_value, coords[0], coords[1], coords[2])
-         #print button
-         text+=button
-    text+="      ]\n"
-    text+="     ]\n"
-    text+="    ])\n"
-    #print text
-    return text
-  #}}}
+  def show_summary (self, out=sys.stdout, prefix="") :
+    print >> out, prefix + 'SUMMARY: %.2f%% outliers (Goal: %s)' % \
+      (self.out_percent, self.get_outliers_goal())
+    print >> out, prefix + 'SUMMARY: %.2f%% favored (Goal: %s)' % \
+      (self.fav_percent, self.get_favored_goal())
 
-  #{{{ get_matching_atom_group
-  def get_matching_atom_group(self, residue_group, altloc):
-    match = None
-    if (residue_group != None):
-      for ag in residue_group.atom_groups():
-        if (ag.altloc == "" and match == None): match = ag
-        if (ag.altloc == altloc): match = ag
-    return match
-  #}}}
+  def get_plot_data (self, position_type=RAMA_GENERAL, residue_name="*",
+      point_type=RAMALYZE_ANY) :
+    assert isinstance(position_type, int) and (0 <= position_type <= 5), \
+      position_type
+    points, coords = [], []
+    for i, residue in enumerate(self.results) :
+      if ((residue.res_type == position_type) and
+          ((residue_name == '*') or (residue_name == residue.resname))) :
+        if ((point_type == RAMALYZE_ANY) or
+            (point_type == residue.rama_type) or
+            ((residue.rama_type in [RAMALYZE_ALLOWED,RAMALYZE_OUTLIER]) and
+             (point_type == RAMALYZE_NOT_FAVORED))) :
+          points.append((residue.phi, residue.psi, residue.simple_id(),
+            residue.is_outlier()))
+          coords.append(residue.xyz)
+    return (points, coords)
 
-  #{{{ get_phi
-  def get_phi(self, prev_atoms, atoms):
-    prevC, resN, resCA, resC = None, None, None, None;
-    if (prev_atoms is not None):
-      for atom in prev_atoms:
-        if (atom.name == " C  "): prevC = atom
-    if (atoms is not None):
-      for atom in atoms:
-        if (atom.name == " N  "): resN = atom
-        if (atom.name == " CA "): resCA = atom
-        if (atom.name == " C  "): resC = atom
-    if (prevC is not None and resN is not None and resCA is not None and resC is not None):
-      return mmtbx.rotamer.phi_from_atoms(prevC, resN, resCA, resC)
-  #}}}
-
-  #{{{ get_psi
-  def get_psi(self, atoms, next_atoms):
-    resN, resCA, resC, nextN = None, None, None, None
-    if (next_atoms is not None):
-      for atom in next_atoms:
-        if (atom.name == " N  "): nextN = atom
-    if (atoms is not None):
-      for atom in atoms:
-        if (atom.name == " N  "): resN = atom
-        if (atom.name == " CA "): resCA = atom
-        if (atom.name == " C  "): resC = atom
-    if (nextN is not None and resN is not None and resCA is not None and resC is not None):
-      return mmtbx.rotamer.psi_from_atoms(resN, resCA, resC, nextN)
-  #}}}
-
-  #{{{ get_omega
-  def get_omega(self, prev_atoms, atoms):
-    prevCA, prevC, thisN, thisCA = None, None, None, None
-    if (prev_atoms is not None):
-      for atom in prev_atoms:
-        if (atom.name == " CA "): prevCA = atom
-        if (atom.name == " C  "): prevC = atom
-    if (atoms is not None):
-      for atom in atoms:
-        if (atom.name == " N  "): thisN = atom
-        if (atom.name == " CA "): thisCA = atom
-    if (prevCA is not None and prevC is not None and thisN is not None and thisCA is not None):
-      return mmtbx.rotamer.omega_from_atoms(prevCA, prevC, thisN, thisCA)
-
-  #{{{is_cis_peptide
-  def is_cis_peptide(self, prev_atoms, atoms):
-    omega = self.get_omega(prev_atoms, atoms)
-    if(omega > -30 and omega < 30):
-      return True
-    else:
-      return False
-
-  #{{{ construct_complete_residues
-  def construct_complete_residues(self, res_group):
-    if (res_group is not None):
-      complete_dict = {}
-      nit, ca, co, oxy = None, None, None, None
-      atom_groups = res_group.atom_groups()
-      reordered = []
-      # XXX always process blank-altloc atom group first
-      for ag in atom_groups :
-        if (ag.altloc == '') :
-          reordered.insert(0, ag)
-        else :
-          reordered.append(ag)
-      for ag in reordered :
-        changed = False
-        for atom in ag.atoms():
-          if (atom.name == " N  "): nit = atom
-          if (atom.name == " CA "): ca = atom
-          if (atom.name == " C  "): co = atom
-          if (atom.name == " O  "): oxy = atom
-          if (atom.name in [" N  ", " CA ", " C  ", " O  "]) :
-            changed = True
-        if (not None in [nit, ca, co, oxy]) and (changed) :
-          # complete residue backbone found
-          complete_dict[ag.altloc] = [nit, ca, co, oxy]
-      if len(complete_dict) > 0:
-        return complete_dict
-    return None
-  #}}}
-
-  #{{{ get_center
-  def get_center(self, ag):
-    coords = None
-
-    for atom in ag.atoms():
-      if (atom.name == " CA "):
-        coords = atom.xyz
-    return coords
-  #}}}
-
-  #{{{ isPrePro
-  def isPrePro(self, residues, i):
-    if (i < 0 or i >= len(residues) - 1): return False
-    else:
-      next = residues[i+1]
-      for ag in next.atom_groups():
-        if (ag.resname[0:3] == "PRO"): return True
-    return False
-  #}}}
-
-  #{{{ isOutlier
-  def isOutlier(self, resType, value):
-    if (resType == "general"):
-      if (value < 0.0005): return True
-      else: return False
-    elif (resType == "cis-proline"):
-      if (value < 0.0020): return True
-      else: return False
-    else:
-      if (value < 0.0010): return True
-      else: return False
-  #}}}
-
-  #{{{ evaluateScore
   def evaluateScore(self, resType, value):
     if (value >= 0.02):
-      self.numfavored += 1
-      return "Favored"
-    if (resType == "general"):
+      self.n_favored += 1
+      return RAMALYZE_FAVORED
+    if (resType == RAMA_GENERAL):
       if (value >= 0.0005):
-        self.numallowed += 1
-        return "Allowed"
+        self.n_allowed += 1
+        return RAMALYZE_ALLOWED
       else:
-        self.numoutliers += 1
-        return "OUTLIER"
-    elif (resType == "cis-proline"):
+        self.n_outliers += 1
+        return RAMALYZE_OUTLIER
+    elif (resType == RAMA_CISPRO):
       if (value >=0.0020):
-        self.numallowed += 1
-        return "Allowed"
+        self.n_allowed += 1
+        return RAMALYZE_ALLOWED
       else:
-        self.numoutliers += 1
-        return "OUTLIER"
+        self.n_outliers += 1
+        return RAMALYZE_OUTLIER
     else:
       if (value >= 0.0010):
-        self.numallowed += 1
-        return "Allowed"
+        self.n_allowed += 1
+        return RAMALYZE_ALLOWED
       else:
-        self.numoutliers += 1
-        return "OUTLIER"
-  #}}}
-
-  #{{{ get functions
-  def get_outliers_count_and_fraction(self):
-    if (self.numtotal != 0):
-      fraction = float(self.numoutliers)/self.numtotal
-      assert fraction <= 1.0
-      return self.numoutliers, fraction
-    return 0, 0.
+        self.n_outliers += 1
+        return RAMALYZE_OUTLIER
 
   def get_outliers_goal(self):
     return "< 0.2%"
 
+  def _get_count_and_fraction (self, res_type) :
+    if (self.n_total != 0) :
+      count = self.n_type[res_type]
+      fraction = float(count) / self.n_total
+      return count, fraction
+    return 0, 0.
+
+  @property
+  def percent_favored (self) :
+    n_favored, frac_favored = self.get_favored_count_and_fraction()
+    return frac_favored * 100.
+
+  @property
+  def percent_allowed (self) :
+    n_allowed, frac_allowed = self.get_allowed_count_and_fraction()
+    return frac_allowed * 100.
+
   def get_allowed_count_and_fraction(self):
-    if (self.numtotal != 0):
-      fraction = float(self.numallowed)/self.numtotal
-      assert fraction <= 1.0
-      return self.numallowed, fraction
+    if (self.n_total != 0) :
+      fraction = self.n_allowed / self.n_total
+      return self.n_allowed, fraction
     return 0, 0.
 
   def get_allowed_goal(self):
     return "> 99.8%"
 
   def get_favored_count_and_fraction(self):
-    if (self.numtotal != 0):
-      fraction = float(self.numfavored)/self.numtotal
-      assert fraction <= 1.0
-      return self.numfavored, fraction
+    if (self.n_total != 0) :
+      fraction = self.n_favored / self.n_total
+      return self.n_favored, fraction
     return 0, 0.
 
   def get_favored_goal(self):
     return "> 98%"
 
   def get_general_count_and_fraction(self):
-    if (self.numtotal != 0):
-      fraction = (float(self.numgen)/self.numtotal)
-      assert fraction <= 1.0
-      return self.numgen, fraction
-    return 0, 0.
+    return self._get_count_and_fraction(RAMA_GENERAL)
 
   def get_gly_count_and_fraction(self):
-    if (self.numtotal != 0):
-      fraction = (float(self.numgly)/self.numtotal)
-      assert fraction <= 1.0
-      return self.numgly, fraction
-    return 0, 0.
+    return self._get_count_and_fraction(RAMA_GLYCINE)
 
   def get_cis_pro_count_and_fraction(self):
-    if (self.numtotal != 0):
-      fraction = (float(self.numcispro)/self.numtotal)
-      assert fraction <= 1.0
-      return self.numcispro, fraction
-    return 0, 0.
+    return self._get_count_and_fraction(RAMA_CISPRO)
 
   def get_trans_pro_count_and_fraction(self):
-    if (self.numtotal != 0):
-      fraction = (float(self.numtranspro)/self.numtotal)
-      assert fraction <= 1.0
-      return self.numtranspro, fraction
-    return 0, 0.
+    return self._get_count_and_fraction(RAMA_TRANSPRO)
 
   def get_prepro_count_and_fraction(self):
-    if (self.numtotal != 0):
-      fraction = (float(self.numprepro)/self.numtotal)
-      assert fraction <= 1.0
-      return self.numprepro, fraction
-    return 0, 0.
+    return self._get_count_and_fraction(RAMA_PREPRO)
 
   def get_ileval_count_and_fraction(self):
-    if (self.numtotal != 0):
-      fraction = (float(self.numileval)/self.numtotal)
-      assert fraction <= 1.0
-      return self.numileval, fraction
-    return 0, 0.
+    return self._get_count_and_fraction(RAMA_ILE_VAL)
 
   def get_phi_psi_residues_count(self):
-    # n.b. this function returns the number of residues that have a valid phi/psi pair.
-    return self.numtotal
-  #}}}
+    return self.n_total
+
+  def as_kinemage (self) :
+    ram_out = "@subgroup {Rama outliers} master= {Rama outliers}\n"
+    ram_out += "@vectorlist {bad Rama Ca} width= 4 color= green\n"
+    for rama in self.results :
+      if rama.is_outlier() :
+        ram_out += rama.as_kinemage()
+    return ram_out
+
+  def as_coot_data (self) :
+    data = []
+    for result in self.results :
+      if result.is_outlier() :
+        data.append((result.chain_id, result.resid, result.resname,
+          result.score, result.xyz))
+    return data
+
+def get_matching_atom_group(residue_group, altloc):
+  match = None
+  if (residue_group != None):
+    for ag in residue_group.atom_groups():
+      if (ag.altloc == "" and match == None): match = ag
+      if (ag.altloc == altloc): match = ag
+  return match
+
+def get_phi(prev_atoms, atoms):
+  import mmtbx.rotamer
+  prevC, resN, resCA, resC = None, None, None, None;
+  if (prev_atoms is not None):
+    for atom in prev_atoms:
+      if (atom.name == " C  "): prevC = atom
+  if (atoms is not None):
+    for atom in atoms:
+      if (atom.name == " N  "): resN = atom
+      if (atom.name == " CA "): resCA = atom
+      if (atom.name == " C  "): resC = atom
+  if (prevC is not None and resN is not None and resCA is not None and resC is not None):
+    return mmtbx.rotamer.phi_from_atoms(prevC, resN, resCA, resC)
+
+def get_psi(atoms, next_atoms):
+  import mmtbx.rotamer
+  resN, resCA, resC, nextN = None, None, None, None
+  if (next_atoms is not None):
+    for atom in next_atoms:
+      if (atom.name == " N  "): nextN = atom
+  if (atoms is not None):
+    for atom in atoms:
+      if (atom.name == " N  "): resN = atom
+      if (atom.name == " CA "): resCA = atom
+      if (atom.name == " C  "): resC = atom
+  if (nextN is not None and resN is not None and resCA is not None and resC is not None):
+    return mmtbx.rotamer.psi_from_atoms(resN, resCA, resC, nextN)
+
+def get_omega(prev_atoms, atoms):
+  import mmtbx.rotamer
+  prevCA, prevC, thisN, thisCA = None, None, None, None
+  if (prev_atoms is not None):
+    for atom in prev_atoms:
+      if (atom.name == " CA "): prevCA = atom
+      if (atom.name == " C  "): prevC = atom
+  if (atoms is not None):
+    for atom in atoms:
+      if (atom.name == " N  "): thisN = atom
+      if (atom.name == " CA "): thisCA = atom
+  if (prevCA is not None and prevC is not None and thisN is not None and thisCA is not None):
+    return mmtbx.rotamer.omega_from_atoms(prevCA, prevC, thisN, thisCA)
+
+def is_cis_peptide(prev_atoms, atoms):
+  omega = get_omega(prev_atoms, atoms)
+  if(omega > -30 and omega < 30):
+    return True
+  else:
+    return False
+
+def construct_complete_residues(res_group):
+  if (res_group is not None):
+    complete_dict = {}
+    nit, ca, co, oxy = None, None, None, None
+    atom_groups = res_group.atom_groups()
+    reordered = []
+    # XXX always process blank-altloc atom group first
+    for ag in atom_groups :
+      if (ag.altloc == '') :
+        reordered.insert(0, ag)
+      else :
+        reordered.append(ag)
+    for ag in reordered :
+      changed = False
+      for atom in ag.atoms():
+        if (atom.name == " N  "): nit = atom
+        if (atom.name == " CA "): ca = atom
+        if (atom.name == " C  "): co = atom
+        if (atom.name == " O  "): oxy = atom
+        if (atom.name in [" N  ", " CA ", " C  ", " O  "]) :
+          changed = True
+      if (not None in [nit, ca, co, oxy]) and (changed) :
+        # complete residue backbone found
+        complete_dict[ag.altloc] = [nit, ca, co, oxy]
+    if len(complete_dict) > 0:
+      return complete_dict
+  return None
+
+def get_center(ag):
+  coords = None
+  for atom in ag.atoms():
+    if (atom.name == " CA "):
+      coords = atom.xyz
+  return coords
+
+def isPrePro(residues, i):
+  if (i < 0 or i >= len(residues) - 1): return False
+  else:
+    next = residues[i+1]
+    for ag in next.atom_groups():
+      if (ag.resname[0:3] == "PRO"): return True
+  return False
+
+def isOutlier (resType, value) :
+  if (resType == RAMA_GENERAL):
+    if (value < 0.0005): return True
+    else: return False
+  elif (resType == RAMA_CISPRO):
+    if (value < 0.0020): return True
+    else: return False
+  else:
+    if (value < 0.0010): return True
+    else: return False
+
+#-----------------------------------------------------------------------
+# GRAPHICS OUTPUT
+def format_ramachandran_plot_title (position_type, residue_type) :
+  if (residue_type == '*') :
+    title = "Ramachandran plot for " + res_type_plot_labels[position_type]
+  else :
+    title = "Ramachandran plot for " + residue_type
+  return title
+
+class ramachandran_plot_mixin (graphics.rotarama_plot_mixin) :
+  extent = [-179,179,-179,179]
+  def set_labels (self, y_marks=()) :
+    axes = self.plot.get_axes()
+    axes.set_xlabel("Phi")
+    axes.set_xticks([-120,-60,0,60,120])
+    axes.set_ylabel("Psi")
+    axes.set_yticks([-120,-60,0,60,120])
+
+class ramachandran_plot (data_plots.simple_matplotlib_plot,
+                         ramachandran_plot_mixin) :
+  def __init__ (self, *args, **kwds) :
+    data_plots.simple_matplotlib_plot.__init__(self, *args, **kwds)
+    ramachandran_plot_mixin.__init__(self, *args, **kwds)
+
+def draw_ramachandran_plot (points,
+                            rotarama_data,
+                            position_type,
+                            title,
+                            file_name,
+                            show_labels=True) :
+  p = ramachandran_plot()
+  # XXX where do these numbers come from?
+  if position_type == RAMA_GENERAL :
+    contours = [0.1495, 0.376]
+  else :
+    contours = [0.2115, 0.376]
+  p.draw_plot(
+    stats=rotarama_data,
+    title=title,
+    points=points,
+    colormap="Blues",
+    contours=contours)
+  p.save_image(file_name)

@@ -133,12 +133,13 @@ class cbetadev (validation) :
   def get_beta_ideal(self):
     return self.beta_ideal
 
-  def as_kinemage (self) :
+  def as_kinemage (self, chain_id=None) :
     cbeta_out = "@subgroup {CB dev} dominant\n"
     cbeta_out += "@balllist {CB dev Ball} color= gold radius= 0.0020   master= {Cbeta dev}\n"
     for result in self.results :
       if result.is_outlier() :
-        cbeta_out += result.as_kinemage() + "\n"
+        if (chain_id is None) or (chain_id == result.chain_id) :
+          cbeta_out += result.as_kinemage() + "\n"
     return cbeta_out
 
   def as_coot_data (self) :

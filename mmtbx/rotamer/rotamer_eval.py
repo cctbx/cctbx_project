@@ -265,25 +265,25 @@ class RotamerID:
   names = {}
 
   def __init__(self):
-    self.names = {}
-    source_dir = self.find_source_dir()
-    #f = PropertyFile()
-    # can't use f.properties to read in rotamer_names.props
-    # some of the rotamer names aren't unique, so they get dropped as keys!
-    rota_names_list = self.process(os.path.join(source_dir, "rotamer_names.props"))
-    for line in rota_names_list:
-      split_line = line.split("=")
-      aa_name = split_line[0].strip()
-      ranges = split_line[1].strip().strip("\"")
-      name_split = aa_name.split(" ")
-      aa = name_split[0]
-      rot_name = name_split[1]
-      rot = NamedRot(aa, rot_name, ranges)
-      rotList = []
-      if aa in self.names:
-        rotList = self.names[aa]
-      rotList.append(rot)
-      self.names[aa] = rotList
+    if (len(self.names) == 0) :
+      source_dir = self.find_source_dir()
+      #f = PropertyFile()
+      # can't use f.properties to read in rotamer_names.props
+      # some of the rotamer names aren't unique, so they get dropped as keys!
+      rota_names_list = self.process(os.path.join(source_dir, "rotamer_names.props"))
+      for line in rota_names_list:
+        split_line = line.split("=")
+        aa_name = split_line[0].strip()
+        ranges = split_line[1].strip().strip("\"")
+        name_split = aa_name.split(" ")
+        aa = name_split[0]
+        rot_name = name_split[1]
+        rot = NamedRot(aa, rot_name, ranges)
+        rotList = []
+        if aa in self.names:
+          rotList = self.names[aa]
+        rotList.append(rot)
+        self.names[aa] = rotList
 
   def identify(self, aa_name, chis):
     aa_name = aa_name.lower()
@@ -368,6 +368,7 @@ class NamedRot:
     return True
 #}}}
 
+########################################################################
 def exercise(args):
   if (find_rotarama_data_dir(optional=True) is None):
     print "Skipping exercise(): rotarama_data directory not available"

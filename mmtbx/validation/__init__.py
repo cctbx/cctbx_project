@@ -133,7 +133,7 @@ class residue (entity) :
 
   @property
   def resid (self) :
-    return "%4s%1s" % (self.resname, self.icode)
+    return "%4s%1s" % (self.resseq, self.icode)
 
   def residue_id (self, ignore_altloc=False) :
     return self.id_str(ignore_altloc=ignore_altloc)
@@ -154,6 +154,10 @@ class residue (entity) :
             (self.resseq == other.resseq) and
             (self.icode == other.icode) and
             (self.segid == other.segid))
+
+  def atom_group_id_str (self) :
+    return "%1s%3s%2s%4s%1s" % (self.altloc, self.resname, self.chain_id,
+      self.resseq, self.icode)
 
   def residue_group_id_str (self) :
     return "%2s%4s%1s" % (self.chain_id, self.resseq, self.icode)
@@ -198,21 +202,29 @@ class atoms (entity) :
   def sites_cart (self) :
     return [ a.xyz for a in self.atoms_info ]
 
-class atom (entity) :
+  def is_in_chain (self, chain_id) :
+    if (chain_id == None) :
+      return True
+    for a in self.atoms_info :
+      if (a.chain_id == chain_id) :
+        return True
+    return False
+
+class atom_base (slots_getstate_setstate) :
   """
-  Base class for validation results for a single atom.  This is distinct from
-  the atom_info class above, which is used to track individual atoms within
-  a multi-atom validation result.
+  Container for metadata for a single atom, in the context of validation
+  results involving multiple atoms.  Intended to be used as-is inside various
+  atoms classes.
   """
-  __atom_attr__ = __residue_attr__ + [
+  __atom_attr__ = [
     "name",
-    "element",
-    "b_iso",
+    "element", # XXX is this necessary?
+    "xyz",
+    "symop",
     "occupancy",
-    "i_seq", # XXX is this necessary?
-    # XXX do we need u_aniso too?  anything else?
   ]
-  __slots__ = entity.__slots__ + __atom_attr__
+  __atom_slots__ = __residue_attr__ + __atom_attr__
+  # XXX __slots__ should be left empty here
 
   def __init__ (self, **kwds) :
     pdb_atom = kwds.get("pdb_atom", None)
@@ -236,38 +248,27 @@ class atom (entity) :
       self.b_iso = pdb_atom.b
       self.element = pdb_atom.element
 
+  def __cmp__ (self, other) :
+    return cmp(self.id_str(), other.id_str())
+
   def __eq__ (self, other) :
-    assert type(self) == type(other), type(other)
+    assert isinstance(other, atom_base), type(other)
     return self.id_str() == other.id_str()
 
   def residue_group_id_str (self) :
     return "%2s%4s%1s" % (self.chain_id, self.resseq, self.icode)
 
-  def is_single_residue_object (self) :
-    return True
+  def atom_group_id_str (self) :
+    return "%1s%3s%2s%4s%1s" % (self.altloc, self.resname, self.chain_id,
+      self.resseq, self.icode)
 
-#-----------------------------------------------------------------------
-# Generic utility classes
-class atom_info (slots_getstate_setstate) :
+class atom_info (atom_base) :
   """
   Container for metadata for a single atom, in the context of validation
   results involving multiple atoms.  Intended to be used as-is inside various
   atoms classes.
   """
-  __atom_attr__ = [
-    "name",
-    "element", # XXX is this necessary?
-    "xyz",
-    "symop",
-    "occupancy",
-  ]
-  __slots__ = __residue_attr__ + __atom_attr__
-
-  def __init__ (self, **kwds) :
-    for name in kwds.keys() :
-      assert (name in self.__slots__), name
-    for name in self.__slots__ :
-      setattr(self, name, kwds.get(name, None))
+  __slots__ = atom_base.__atom_slots__ + ["symop"]
 
   def id_str (self, ignore_altloc=True) :
     base = "%2s%4s%1s" % (self.chain_id, self.resseq, self.icode)
@@ -280,18 +281,16 @@ class atom_info (slots_getstate_setstate) :
       base += " segid='%4s'" % self.segid
     return base
 
-  def __str__ (self) :
-    raise NotImplementedError() # FIXME
+class atom (atom_base, entity) :
+  """
+  Base class for validation results for a single atom.  This is distinct from
+  the atom_info class above, which is used to track individual atoms within
+  a multi-atom validation result.
+  """
+  __slots__ = entity.__slots__ + atom_base.__atom_slots__
 
-  def __eq__ (self, other) :
-    assert type(self) == type(other), type(other)
-    return self.id_str() == other.id_str()
-
-  def __cmp__ (self, other) :
-    return cmp(self.id_str(), other.id_str())
-
-  def residue_group_id_str (self) :
-    return "%2s%4s%1s" % (self.chain_id, self.resseq, self.icode)
+  def is_single_residue_object (self) :
+    return True
 
 #-----------------------------------------------------------------------
 # SPECIFIC RESULTS
@@ -312,9 +311,6 @@ class rna_suite (residue) : # TODO
 #  pass
 
 # XXX others?
-class water (atom) : # TODO
-  pass
-
 class residue_bfactor (residue) : # TODO
   pass
 
@@ -334,6 +330,11 @@ class validation (slots_getstate_setstate) :
       assert fraction <= 1.0
       return self.n_outliers, fraction
     return 0, 0.
+
+  @property
+  def percent_outliers (self) :
+    n_outliers, frac_outliers = self.get_outliers_count_and_fraction()
+    return frac_outliers * 100.
 
   def get_outliers_goal (self) :
     raise NotImplementedError()

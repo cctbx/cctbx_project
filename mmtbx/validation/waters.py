@@ -1,6 +1,6 @@
 
 from __future__ import division
-from mmtbx.validation import atom, validation
+from mmtbx.validation import atom, atom_info, validation
 from mmtbx.validation import experimental
 from libtbx.str_utils import format_value
 import sys
@@ -14,6 +14,7 @@ class water (atom) :
   __slots__ = atom.__slots__ + experimental.__real_space_attr__ + [
     "anom",
     "nearest_contact",
+    "nearest_atom",
     "n_hbonds",
   ]
 
@@ -60,6 +61,7 @@ class waters (validation) :
     validation.__init__(self)
     from mmtbx.real_space_correlation import extract_map_stats_for_single_atoms
     from cctbx import adptbx
+    from scitbx.matrix import col
     self.n_bad = 0
     self.n_heavy = 0
     pdb_atoms = pdb_hierarchy.atoms()
@@ -72,6 +74,7 @@ class waters (validation) :
     u_isos = xray_structure.extract_u_iso_or_u_equiv()
     occupancies = xray_structure.scatterers().extract_occupancies()
     sites_cart = xray_structure.sites_cart()
+    sites_frac = xray_structure.sites_frac()
     sel_cache = pdb_hierarchy.atom_selection_cache()
     water_sel = sel_cache.selection("resname HOH and name O")
     map_stats = extract_map_stats_for_single_atoms(
@@ -82,13 +85,33 @@ class waters (validation) :
     waters = []
     for i_seq, atom in enumerate(pdb_atoms) :
       if (water_sel[i_seq]) :
+        rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq, 0).inverse()
         self.n_total += 1
         asu_dict = asu_table[i_seq]
+        nearest_atom = nearest_contact = None
+        for j_seq, j_sym_groups in asu_dict.items() :
+          atom_j = pdb_atoms[j_seq]
+          site_j = sites_frac[j_seq]
+          # Filter out hydrogens
+          if atom_j.element.upper().strip() in ["H", "D"]:
+            continue
+          for j_sym_group in j_sym_groups:
+            rt_mx = rt_mx_i_inv.multiply(asu_mappings.get_rt_mx(j_seq,
+              j_sym_group[0]))
+            site_ji = rt_mx * site_j
+            site_ji_cart = xray_structure.unit_cell().orthogonalize(site_ji)
+            vec_i = col(atom.xyz)
+            vec_ji = col(site_ji_cart)
+            dxyz = abs(vec_i - vec_ji)
+            if (nearest_contact is None) or (dxyz < nearest_contact) :
+              nearest_contact = dxyz
+              nearest_atom = atom_info(pdb_atom=atom_j, symop=rt_mx)
         w = water(
           pdb_atom=atom,
           b_iso=adptbx.u_as_b(u_isos[i_seq]),
           occupancy=occupancies[i_seq],
-          nearest_contact=None, #nearest_contact,
+          nearest_contact=nearest_contact,
+          nearest_atom=nearest_atom,
           score=map_stats.two_fofc_ccs[i_seq],
           two_fofc=map_stats.two_fofc_values[i_seq],
           fofc=map_stats.fofc_values[i_seq],

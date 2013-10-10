@@ -6,6 +6,7 @@ from mmtbx.utils import rotatable_bonds
 import mmtbx.torsion_restraints.utils as torsion_utils
 from scitbx.matrix import rotate_point_around_axis
 import mmtbx.monomer_library.server
+from mmtbx.validation import rotalyze
 
 class manager(object):
 
@@ -42,11 +43,11 @@ class manager(object):
     self.name_hash = name_hash
     if self.name_hash is None:
       self.name_hash = build_name_hash(pdb_hierarchy)
-    from mmtbx.validation.rotalyze import rotalyze
-    self.r = rotalyze()
-    #TO-DO - make rotalyze code more modular
-    rot_list_model, coot_model = \
-      self.r.analyze_pdb(hierarchy=pdb_hierarchy)
+    from mmtbx.rotamer.sidechain_angles import SidechainAngles
+    from mmtbx.rotamer import rotamer_eval
+    self.sa = SidechainAngles(False)
+    self.rotamer_id = rotamer_eval.RotamerID()
+    self.rotamer_evaluator = rotamer_eval.RotamerEval()
     self.target_map_data = None
     self.residual_map_data = None
 
@@ -171,8 +172,11 @@ class manager(object):
     #***** TEST *****
     sites_cart_moving.set_selected(
       residue_iselection, sites_cart_residue)
-    cur_rotamer, cur_chis, cur_value = self.r.evaluate_rotamer(
+    cur_rotamer, cur_chis, cur_value = rotalyze.evaluate_rotamer(
       atom_group=atom_group,
+      sidechain_angles=self.sa,
+      rotamer_evaluator=self.rotamer_evaluator,
+      rotamer_id=self.rotamer_id,
       all_dict=all_dict,
       sites_cart=sites_cart_moving)
     assert rotamer == cur_rotamer
@@ -222,8 +226,11 @@ class manager(object):
     sites_cart_moving.set_selected(
         residue_iselection, residue_sites_best)
     xray_structure.set_sites_cart(sites_cart_moving)
-    cur_rotamer, cur_chis, cur_value = self.r.evaluate_rotamer(
+    cur_rotamer, cur_chis, cur_value = rotalyze.evaluate_rotamer(
       atom_group=atom_group,
+      sidechain_angles=self.sa,
+      rotamer_evaluator=self.rotamer_evaluator,
+      rotamer_id=self.rotamer_id,
       all_dict=all_dict,
       sites_cart=sites_cart_moving)
     rotamer_match = (cur_rotamer == rotamer)
