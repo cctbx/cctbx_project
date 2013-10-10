@@ -397,7 +397,8 @@ namespace detail {
       //! not const because atom parents are modified.
       hierarchy::root
       construct_hierarchy(
-        bool residue_group_post_processing=true);
+        bool residue_group_post_processing=true,
+        bool set_atom_i_seq=false);
 
     protected:
       std::string source_info_;
