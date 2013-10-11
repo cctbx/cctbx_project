@@ -152,8 +152,19 @@ class crystallographic_ls(
       return self.goof()
     return math.sqrt(self.chi_sq_data_and_restraints)
 
-  def wR2(self):
-    return math.sqrt(2*self.objective_data_only)
+  def wR2(self, cutoff_factor=None):
+    if cutoff_factor is None:
+      return math.sqrt(2*self.objective_data_only)
+    fo_sq = self.observations.fo_sq
+    strong = fo_sq.data() >= cutoff_factor*fo_sq.sigmas()
+    fo_sq = fo_sq.select(strong)
+    fc_sq = self.fc_sq.select(strong)
+    wght = self.weights.select(strong)
+    fc_sq = fc_sq.data()
+    fo_sq = fo_sq.data()
+    fc_sq *= self.scale_factor()
+    wR2 = flex.sum(wght*flex.pow2((fo_sq-fc_sq)))/flex.sum(wght*flex.pow2(fo_sq))
+    return math.sqrt(wR2)
 
   def r1_factor(self, cutoff_factor=None):
     fo_sq = self.observations.fo_sq
