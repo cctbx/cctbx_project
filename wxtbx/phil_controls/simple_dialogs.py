@@ -1,7 +1,7 @@
 from __future__ import division
 
 from wxtbx.phil_controls import intctrl, floatctrl, symop, strctrl, ints, choice
-from wxtbx.utils import std_sizer_flags
+from wxtbx.utils import std_sizer_flags, add_ok_cancel_buttons
 from libtbx.utils import Abort
 import wx
 
@@ -32,14 +32,7 @@ class SimpleInputDialog (wx.Dialog) :
     input_szr.Add(label_txt, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self.phil_ctrl = self.CreatePhilControl(value)
     input_szr.Add(self.phil_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-    ok_btn = wx.Button(self, wx.ID_OK)
-    cancel_btn = wx.Button(self, wx.ID_CANCEL)
-    btn_szr = wx.StdDialogButtonSizer()
-    btn_szr.Add(cancel_btn, 0, wx.ALL, 5)
-    btn_szr.Add(ok_btn, 0, wx.ALL, 5)
-    ok_btn.SetDefault()
-    btn_szr.Realize()
-    self.sizer.Add(btn_szr, 0, wx.ALL|wx.ALIGN_RIGHT, 5)
+    add_ok_cancel_buttons(self, self.sizer)
     self.Fit()
     self.Centre(wx.BOTH)
 
@@ -164,14 +157,7 @@ class RTDialog (wx.Dialog) :
       ctrl.SetOptional(False)
       grid.Add(ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
       self._t_ctrls.append(ctrl)
-    ok_btn = wx.Button(self, wx.ID_OK)
-    cancel_btn = wx.Button(self, wx.ID_CANCEL)
-    btn_szr = wx.StdDialogButtonSizer()
-    btn_szr.Add(cancel_btn, 0, wx.ALL, 5)
-    btn_szr.Add(ok_btn, 0, wx.ALL, 5)
-    ok_btn.SetDefault()
-    btn_szr.Realize()
-    szr.Add(btn_szr, 0, wx.ALL|wx.ALIGN_RIGHT, 5)
+    add_ok_cancel_buttons(self, szr)
     self.Fit()
     self.Centre(wx.BOTH)
 
@@ -229,14 +215,7 @@ class HTTPProxyDialog (wx.Dialog) :
       name="Password", style=wx.TE_PASSWORD)
     self.password_ctrl.SetOptional(False)
     grid.Add(self.password_ctrl, 0, std_sizer_flags, 5)
-    ok_btn = wx.Button(self, wx.ID_OK)
-    cancel_btn = wx.Button(self, wx.ID_CANCEL)
-    btn_szr = wx.StdDialogButtonSizer()
-    btn_szr.Add(cancel_btn, 0, wx.ALL, 5)
-    btn_szr.Add(ok_btn, 0, wx.ALL, 5)
-    ok_btn.SetDefault()
-    btn_szr.Realize()
-    szr.Add(btn_szr, 0, wx.ALL|wx.ALIGN_RIGHT, 5)
+    add_ok_cancel_buttons(self, szr)
     szr.Layout()
     self.Fit()
     self.Centre(wx.BOTH)
