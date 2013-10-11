@@ -98,7 +98,7 @@ def exercise () :
   out = StringIO()
   mtz2map.run([pdb_file, "tst_mmtbx_mtz2map_map_coeffs.mtz",
     "r_free_flags.remove=True"], log=out)
-  assert (out.getvalue().count("removing 1130 R-free flagged reflections")==4)
+  assert (out.getvalue().count("R-free flagged reflections")==4)
   print "OK"
 
 if (__name__ == "__main__") :
