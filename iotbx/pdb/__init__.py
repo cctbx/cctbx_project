@@ -741,6 +741,7 @@ class pdb_input_mixin(object):
         anisou=True,
         siguij=True,
         cstringio=None,
+        link_records=Auto,
         return_cstringio=Auto):
     if (cstringio is None):
       cstringio = StringIO()
@@ -748,6 +749,11 @@ class pdb_input_mixin(object):
         return_cstringio = False
     elif (return_cstringio is Auto):
       return_cstringio = True
+    if 0:
+      if (link_records is Auto):
+        print >> cstringio, format_link_records(self.get_link_records())
+      elif (link_records is not None):
+        print >> cstringio, format_link_records(link_records)
     if (crystal_symmetry is Auto):
       crystal_symmetry = self.crystal_symmetry()
     if (cryst1_z is Auto):
@@ -1314,6 +1320,16 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
           bonds[i_seq].append(serial_ref_hash[j_seq_str.strip()])
     return bonds
 
+  def get_link_records(self):
+    for atom1 in self.atoms_with_labels():
+      if not atom1.hetero: continue
+      for atom2 in self.atoms_with_labels():
+        if not atom2.hetero: continue
+        if atom1.resname==atom2.resname: continue
+        yield atom1, atom2, "1555", "1555"
+        break
+      break
+
 class rewrite_normalized(object):
 
   def __init__(self,
@@ -1590,6 +1606,53 @@ def format_cryst1_and_scale_records(
     result += "\n" + format_scale_records(
       fractionalization_matrix=scale_fractionalization_matrix,
       u=scale_u)
+  return result
+
+def format_link_records(link_list):
+  """
+COLUMNS         DATA TYPE      FIELD           DEFINITION
+-----------------------------------------------------------------------------
+ 1 -  6         Record name    "LINK  "
+13 - 16         Atom           name1           Atom name.
+17              Character      altLoc1         Alternate location indicator.
+18 - 20         Residue name   resName1        Residue  name.
+22              Character      chainID1        Chain identifier.
+23 - 26         Integer        resSeq1         Residue sequence number.
+27              AChar          iCode1          Insertion code.
+43 - 46         Atom           name2           Atom name.
+47              Character      altLoc2         Alternate location indicator.
+48 - 50         Residue name   resName2        Residue name.
+52              Character      chainID2        Chain identifier.
+53 - 56         Integer        resSeq2         Residue sequence number.
+57              AChar          iCode2          Insertion code.
+60 - 65         SymOP          sym1            Symmetry operator atom 1.
+67 - 72         SymOP          sym2            Symmetry operator atom 2.
+74 - 78         Real(5.2)      Length          Link distance
+"""
+  test = """
+         1         2         3         4         5         6         7         8
+12345678901234567890123456789012345678901234567890123456789012345678901234567890
+LINK         O   GLY A  49                NA    NA A6001     1555   1555  2.98  
+"""
+  def _format_link_atom(atom):
+    result = "%4s%s%-3s %s%4s%s" % (atom.name,
+                                   atom.altloc,
+                                   atom.resname,
+                                   atom.chain_id,
+                                   atom.resseq,
+                                   atom.icode,
+                                   )
+    return result
+  result = ""
+  for atom1, atom2, sym_op1, sym_op2 in link_list:
+    result += "LINK        "
+    result += _format_link_atom(atom1)
+    result += " "*15
+    result += _format_link_atom(atom2)
+    result += " "
+    result += "   1555"
+    result += "   1555"
+    result += " %5.2f" % 2.9
   return result
 
 class read_scale_record(object):

@@ -522,6 +522,12 @@ class loop(DictMixin):
     for key, value in columns.iteritems():
       self.add_column(key, value)
 
+  def update_column(self, key, values):
+    if self.size() != 0:
+      assert len(values) == self.size()
+    self[key] = values
+    self.keys_lower[key.lower()] = key
+
   def delete_row(self, index):
     assert index < self.n_rows()
     for column in self._columns.values():

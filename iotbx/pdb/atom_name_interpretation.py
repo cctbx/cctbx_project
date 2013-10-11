@@ -98,6 +98,17 @@ class matched_atom_names(object):
     self.expected = expected
     self.unexpected = unexpected
 
+  def __repr__(self):
+    outl = "\n%s" % self.__class__.__name__
+    for attr in ["atom_names",
+                 "expected",
+                 "unexpected",
+                 ]:
+      outl += "\n  %s" % attr
+      for name in getattr(self, attr, []):
+        outl += " %s" % name
+    return outl
+
   def expected_patterns_with_multiple_matches(self):
     result = {}
     for expected_pattern,names in self.expected.items():
