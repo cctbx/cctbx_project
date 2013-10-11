@@ -113,3 +113,15 @@ def bold_text (parent, label) :
   return txt
 
 std_sizer_flags = wx.ALL|wx.ALIGN_CENTER_VERTICAL
+
+def add_ok_cancel_buttons (self, sizer) :
+  assert isinstance(self, wx.Dialog)
+  ok_btn = wx.Button(self, wx.ID_OK)
+  cancel_btn = wx.Button(self, wx.ID_CANCEL)
+  btn_szr = wx.StdDialogButtonSizer()
+  btn_szr.Add(cancel_btn, 0, wx.ALL, 5)
+  btn_szr.Add(ok_btn, 0, wx.ALL, 5)
+  ok_btn.SetDefault()
+  btn_szr.Realize()
+  sizer.Add(btn_szr, 0, wx.ALL|wx.ALIGN_RIGHT, 5)
+  return ok_btn, cancel_btn
