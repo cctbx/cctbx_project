@@ -246,6 +246,7 @@ ATOM    123  CB  ALA A  98      -1.627   2.343  20.021  1.00 20.00           C
   pdb_hierarchy.atoms().reset_i_seq()
   m = manager(pdb_hierarchy=pdb_hierarchy,
     sec_str_from_pdb_file=None)
+  m.params.input.use_ksdssp = False
   m.find_automatically(log=null_out())
   m.params.h_bond_restraints.remove_outliers = False
   hbond_params = hbond.master_phil.extract()
