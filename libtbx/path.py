@@ -413,7 +413,7 @@ class clean_out_directory (object) :
           dirnames.remove(".comm")
           full_path = os.path.join(dirname, ".comm")
           self.delete_directory(full_path)
-      elif (base_dir_name in ["FFT"]) :
+      elif (base_dir_name in ["FFT", "SuperposeMaps"]) :
         continue
       for file_name in filenames :
         full_path = os.path.join(dirname, file_name)
@@ -434,6 +434,10 @@ class clean_out_directory (object) :
     self.n_bytes += directory_size(dir_name)
     self.dir_paths.append(dir_name)
     self.n_dirs += 1
+
+  @property
+  def n_total (self) :
+    return self.n_dirs + self.n_files
 
   def run (self, out=sys.stdout) :
     self.show(out=out)
