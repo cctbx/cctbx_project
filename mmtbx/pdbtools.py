@@ -750,6 +750,12 @@ def run(args, command_name="phenix.pdbtools", out=sys.stdout,
     raise Sorry("Cannot extract xray_structure.")
 ### show_geometry_statistics and exit
   if(params.model_statistics):
+    use_molprobity = True
+    rotarama_dir = libtbx.env.find_in_repositories(
+      relative_path="chem_data/rotarama_data",
+      test=os.path.isdir)
+    if (rotarama_dir is None) or (not libtbx.env.has_module("probe")) :
+      use_molprobity = False
     utils.print_header("Geometry statistics", out = log)
     geometry = command_line_interpreter.processed_pdb_file.\
       geometry_restraints_manager(show_energies = True,
@@ -763,7 +769,7 @@ def run(args, command_name="phenix.pdbtools", out=sys.stdout,
       pdb_hierarchy      = pdb_hierarchy,
       hd_selection       = xray_structure.hd_selection(),
       ignore_hd          = command_line_interpreter.command_line.options.ignore_hydrogens,
-      molprobity_scores  = True,
+      molprobity_scores  = use_molprobity,
       restraints_manager = restraints_manager)
     mso.show(out = log)
     print >> log
