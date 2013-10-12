@@ -26,7 +26,7 @@ class CSPadDetector(GenericDetector):
     elif attr=='pixel_size':
       # Return (square) pixel size in mm.
       assert self._pixel_size[0] == self._pixel_size[1]
-      return self._pixel_size[0] / 1e3
+      return self._pixel_size[0] * 1e3
     elif attr=='pulse_length' : return self._metrology_params.pulse_length
     elif attr=='sequence_number' : return self._metrology_params.sequence_number
     elif attr=='timestamp' : return self._metrology_params.timestamp
