@@ -237,10 +237,17 @@ class image (screen_params) :
 
     self._raw = img
     print img.show_header()
+
+    detector = self._raw.get_detector()
+    image_size = detector.get_image_size()
     self.set_image_size(
-      w=self._raw.size2,
-      h=self._raw.size1)
-    self.set_detector_resolution(self._raw.pixel_size)
+      w=image_size[0],
+      h=image_size[1])
+
+    pixel_size = detector.get_pixel_size()
+    assert pixel_size[0] == pixel_size[1]
+    self.set_detector_resolution(pixel_size[0])
+
     from spotfinder.command_line.signal_strength import master_params
     params = master_params.extract()
     self._raw.initialize_viewer_properties(params)
@@ -267,10 +274,20 @@ class image (screen_params) :
                          brightness=100,
                          color_scheme=0,
                          binning=1) :
-    fi = self._raw.get_flex_image(
+    # XXX See also rstbx.slip_viewer.tile_generation._get_flex_image()
+    typehash = str(self._raw.get_raw_data().__class__)
+    if typehash.find('int') >= 0:
+      from iotbx.detectors import FlexImage
+    elif typehash.find('double') >= 0:
+      from iotbx.detectors import FlexImage_d as FlexImage
+
+    fi = FlexImage(
       binning=binning,
-      brightness=brightness / 100.,
-    )
+      brightness=brightness / 100,
+      rawdata=self._raw.get_raw_data(),
+      saturation=int(round(self._raw.get_detector().get_trusted_range()[1])),
+      vendortype=self._raw.__class__.__name__)
+
     #from scitbx.array_family import flex
     #print flex.max(self._raw.linearintdata), flex.min(self._raw.linearintdata)
     fi.setWindow(0.0, 0.0, 1)
@@ -426,15 +443,17 @@ class image (screen_params) :
     if (self._beam_center is not None) :
       center_x, center_y = self._beam_center
     else:
-      center_x, center_y = self._raw.get_beam_center_mm()
+      center_x, center_y = self._raw.get_detector().get_beam_centre(
+        self._raw.get_beam().get_s0())
     return center_x, center_y
 
   def get_beam_center (self) :
     center_x, center_y = self.get_beam_center_mm()
-    return self._raw.detector_coords_as_image_coords(center_x, center_y)
+    (x, y) = self._raw.get_detector().millimeter_to_pixel((center_x, center_y))
+    return (int(x), int(y))
 
   def get_detector_distance (self) :
-    dist = self._raw.distance
+    dist = self._raw.get_detector().get_distance()
     twotheta = self.get_detector_2theta()
     if (twotheta == 0.0) :
       return dist
@@ -442,56 +461,32 @@ class image (screen_params) :
       return dist / math.cos(twotheta)
 
   def get_detector_2theta (self) :
-    two_theta = self._raw.twotheta
-    return two_theta * pi_over_180
+    from scitbx.matrix import col
+
+    n = col(self._raw.get_detector().get_normal())
+    s0 = col(self._raw.get_beam().get_unit_s0())
+
+    return s0.angle(n, deg=False)
 
   def get_wavelength (self) :
-    return self._raw.wavelength
+    return self._raw.get_beam().get_wavelength()
 
   def get_point_info (self, x, y) :
     """
     Determine the intensity, resolution, and array indices of a pixel.
     Arguments are in image pixel coordinates (starting from 1,1).
     """
-    from spotfinder import core_toolbox
-    x_point, y_point = self._raw.image_coords_as_detector_coords(x, y)
-    x0, y0 = self._raw.detector_coords_as_image_coords(x_point, y_point)
-    center_x, center_y = self.get_beam_center_mm()
-    dist = self.get_detector_distance()
-    two_theta = self.get_detector_2theta()
-    wavelength = self.get_wavelength()
-    """
-    calc = core_toolbox.resolution_on_image(
-                xbeam_mm = center_x,
-                ybeam_mm = center_y,
-                distance_mm = self._raw.distance,
-                wavelength_ang = wavelength,
-                twotheta_rad = two_theta)
-    d_min = calc.resolution_at_point(x_point, y_point)
-    """ # future generalization
+    wavelength = self._raw.get_beam().get_wavelength()
+    d_min = self._raw.get_detector().get_resolution_at_pixel(
+      self._raw.get_beam().get_s0(), wavelength, (x, y))
 
-    if (dist > 0) :
-      scattering_angle = rstbx.utils.get_scattering_angle(
-        x=x_point,
-        y=y_point,
-        center_x=center_x,
-        center_y=center_y,
-        distance=dist,
-        detector_two_theta=two_theta,
-        distance_is_corrected=True)
-      if (scattering_angle == 0.0) :
-        d_min = None
-      else :
-        d_min = wavelength / (2 * math.sin(scattering_angle / 2))
-    else:
-      d_min = None
     slow, fast = self.image_coords_as_array_coords(x, y)
-    try :
-      intensity = self._raw.linearintdata[slow, fast]
-    except IndexError :
-      return None
-    else :
-      return point_info(slow, fast, intensity, d_min)
+
+    intensity = None
+    if self._raw.get_detector().is_coord_valid((fast, slow)):
+      intensity = self._raw.get_raw_data()[(fast, slow)]
+    return point_info(slow, fast, intensity, d_min)
+
 
   def line_between_points (self, x1, y1, x2, y2, n_values=100) :
     """

@@ -22,6 +22,27 @@ import rstbx.utils
            ... provide cache invalidation DONE
            ... give mechanism to change brightness; color scheme
 '''
+
+def _get_flex_image(
+    data, vendortype, binning=1, brightness=1.0, saturation=65535.0):
+  # This is a combination of the get_data_type() and get_flex_image()
+  # functions from iotbx.detectors.detectorbase. XXX This may turn out
+  # to be generally useful (see
+  # e.g. rstbx.viewer.create_flex_image()), but where to place it?
+  typehash = str(data.__class__)
+  if typehash.find('int') >= 0:
+    from iotbx.detectors import FlexImage
+  elif typehash.find('double') >= 0:
+    from iotbx.detectors import FlexImage_d as FlexImage
+
+  return FlexImage(
+    binning=binning,
+    brightness=brightness,
+    rawdata=data,
+    saturation=int(round(saturation)),
+    vendortype=vendortype)
+
+
 class _Tiles(object):
     # maximum number of tiles held in each level cache
     MaxTileList = 512
@@ -61,12 +82,33 @@ class _Tiles(object):
             metrology_matrices is not None):
             self.raw_image.apply_metrology_from_matrices(metrology_matrices)
 
-        self.flex_image = self.raw_image.get_flex_image(
+        if self.raw_image.implements_metrology_matrices():
+          # XXX Special-case read of new-style images until multitile
+          # images are fully supported in dxtbx.
+          self.flex_image = self.raw_image.get_flex_image(
             brightness=self.current_brightness / 100)
+        else:
+          self.flex_image = _get_flex_image(
+            brightness=self.current_brightness / 100,
+            data=self.raw_image.get_raw_data(),
+            saturation=self.raw_image.get_detector().get_trusted_range()[1],
+            vendortype=self.raw_image.__class__.__name__)
+
         self.flex_image.adjust(color_scheme=self.current_color_scheme)
 
     def update_brightness(self,b,color_scheme=0):
-        self.flex_image= self.raw_image.get_flex_image(brightness=b/100.)
+        if self.raw_image.implements_metrology_matrices():
+          # XXX Special-case read of new-style images until multitile
+          # images are fully supported in dxtbx.
+          self.flex_image = self.raw_image.get_flex_image(
+            brightness=b / 100)
+        else:
+          self.flex_image = _get_flex_image(
+            brightness=b / 100,
+            data=self.raw_image.get_raw_data(),
+            saturation=self.raw_image.get_detector().get_trusted_range()[1],
+            vendortype=self.raw_image.__class__.__name__ )
+
         self.update_color_scheme(color_scheme)
         self.current_brightness = b
 
@@ -223,17 +265,27 @@ class _Tiles(object):
       # input latitude and longitude in degrees (conceptually)
       # output fast and slow picture coordinates in units of detector pixels
       # slow is pointing down (x).  fast is pointing right (y).
+
+      (size2, size1) = self.raw_image.get_detector().get_image_size()
+      if self.raw_image.__class__.__name__.find('FormatPYmultitile') >= 0:
+        # XXX Special-case until multitile detectors fully supported.
+        (size2, size1) = (size1, size2)
+
       return \
-        (float(self.raw_image.size2)/2.) - \
-        (self.center_x_lon - float(longitude)),  \
-        (float(self.raw_image.size1)/2.) - \
-        (float(latitude) - self.center_y_lat)
+        (size2/2.) - (self.center_x_lon - longitude),  \
+        (size1/2.) - (latitude - self.center_y_lat)
 
     def picture_fast_slow_to_lon_lat(self,pic_fast_pixel,pic_slow_pixel):
       # inverse of the preceding function
+
+      (size1, size2) = self.raw_image.get_detector().get_image_size()
+      if self.raw_image.__class__.__name__.find('FormatPYmultitile') >= 0:
+        # XXX Special-case until multitile detectors fully supported.
+        (size2, size1) = (size1, size2)
+
       return \
-        (float(self.raw_image.size2)/2.) - self.center_x_lon - pic_fast_pixel, \
-        (float(self.raw_image.size1)/2.) + self.center_y_lat - pic_slow_pixel
+        (size2/2.) - self.center_x_lon - pic_fast_pixel, \
+        (size1/2.) + self.center_y_lat - pic_slow_pixel
 
     def picture_fast_slow_to_map_relative(self,pic_fast_pixel,pic_slow_pixel):
       #return up/down, left/right map relative coords for pyslip layers
@@ -331,33 +383,42 @@ class _Tiles(object):
         Determine the resolution of a pixel.
         Arguments are in image pixel coordinates (starting from 1,1).
         """
-        x_point, y_point = self.raw_image.image_coords_as_detector_coords(x, y,readout)
-        x0, y0 = self.raw_image.detector_coords_as_image_coords(x_point, y_point)
-        center_x, center_y = self.raw_image.get_beam_center_mm()
-        dist = self.get_detector_distance()
-        two_theta = self.get_detector_2theta()
-        wavelength = self.raw_image.wavelength
 
-        if (dist > 0) :
+        d_min = None
+        if self.raw_image.implements_metrology_matrices():
+          # XXX Special-case read of new-style images until
+          # multitile images are fully supported in dxtbx.
+          x_point, y_point = self.raw_image.image_coords_as_detector_coords(
+            x, y,readout)
+          center_x, center_y = self.raw_image.get_beam_center_mm()
+          dist = self.get_detector_distance()
+          two_theta = self.get_detector_2theta()
+          wavelength = self.raw_image.wavelength
+
+          dist = self.get_detector_distance()
+          two_theta = self.get_detector_2theta()
+          wavelength = self.raw_image.get_beam().get_wavelength()
+
+          if dist > 0:
             scattering_angle = rstbx.utils.get_scattering_angle(
-                x=x_point,
-                y=y_point,
-                center_x=center_x,
-                center_y=center_y,
-                distance=dist,
-                detector_two_theta=two_theta,
-                distance_is_corrected=True)
-            if (scattering_angle == 0.0) :
-                d_min = None
-            else :
-                d_min = wavelength / (2 * math.sin(scattering_angle / 2))
+              x=x_point,
+              y=y_point,
+              center_x=center_x,
+              center_y=center_y,
+              distance=dist,
+              detector_two_theta=two_theta,
+              distance_is_corrected=True)
+            if scattering_angle != 0.0:
+              d_min = wavelength / (2 * math.sin(scattering_angle / 2))
         else:
-            d_min = None
+          beam = self.raw_image.get_beam()
+          d_min = self.raw_image.get_detector().get_resolution_at_pixel(
+            beam.get_unit_s0(), beam.get_wavelength(), (x, y))
 
         return d_min
 
     def get_detector_distance (self) :
-        dist = self.raw_image.distance
+        dist = self.raw_image.get_detector().get_distance()
         twotheta = self.get_detector_2theta()
         if (twotheta == 0.0) :
             return dist
@@ -365,8 +426,9 @@ class _Tiles(object):
             return dist / math.cos(twotheta)
 
     def get_detector_2theta (self) :
-        try:
-            two_theta = self.raw_image.twotheta
-            return two_theta * (math.pi / 180)
-        except AttributeError:
-            return 0
+        from scitbx.matrix import col
+
+        n = col(self.raw_image.get_detector().get_normal())
+        s0 = col(self.raw_image.get_beam().get_unit_s0())
+
+        return s0.angle(n, deg=False)
