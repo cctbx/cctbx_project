@@ -17,8 +17,6 @@ from wxtbx import bitmaps
 
 class chooser_wrapper:
   def __init__(self, image_set, index):
-    from dxtbx.imageset import ImageSet
-    isinstance(image_set, ImageSet)
     self.image_set = image_set
     self.path = os.path.basename(image_set.paths()[index])
     self.index = index
@@ -170,7 +168,6 @@ class XrayFrame (AppFrame,XFBaseClass) :
     """The load_image() function displays the image from @p
     file_name_or_data.  The chooser is updated appropriately.
     """
-    from iotbx.detectors.detectorbase import DetectorImageBase
 
     try:
       img = rv_image(file_name_or_data.get_detectorbase())
@@ -199,7 +196,10 @@ class XrayFrame (AppFrame,XFBaseClass) :
     self.update_statusbar() # XXX Not always working?
     self.Layout()
 
-    beam_pixel_fast,beam_pixel_slow = self.pyslip.tiles.raw_image.get_beam_center_pixels_fast_slow()
+    detector = self.pyslip.tiles.raw_image.get_detector()
+    (beam_pixel_fast, beam_pixel_slow) = detector.millimeter_to_pixel(
+      detector.get_beam_centre(
+        self.pyslip.tiles.raw_image.get_beam().get_s0()))
 
     self.beam_center_cross_data = [
       ((self.pyslip.tiles.picture_fast_slow_to_map_relative(beam_pixel_fast+3.,beam_pixel_slow),

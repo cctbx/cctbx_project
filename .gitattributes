@@ -2003,7 +2003,6 @@ rstbx/simulation/sim_utils.py -text
 rstbx/simulation/sim_xfel1.h -text
 rstbx/simulation/tst_xfel1_simple.py -text
 rstbx/slip_viewer/__init__.py -text
-rstbx/slip_viewer/slip_display.py -text
 rstbx/slip_viewer/slip_viewer_image_factory.py -text
 rstbx/symmetry/__init__.py -text
 rstbx/symmetry/constraints/SConscript -text
@@ -2015,7 +2014,6 @@ rstbx/symmetry/constraints/parameter_reduction.py -text
 rstbx/symmetry/sgtbx_adaptor.py -text
 rstbx/symmetry/subgroup.py -text
 rstbx/utils.py -text
-rstbx/viewer/__init__.py -text
 rstbx/viewer/calibration.py -text
 rstbx/viewer/calibration_frame.py -text
 rstbx/viewer/controls.py -text

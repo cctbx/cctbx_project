@@ -1539,7 +1539,18 @@ class AppFrame(wx.Frame):
                     posn_str += " Readout: " + coords_str +"."
                 elif (coords[2] >= 0):
                     posn_str += " Readout %d: %s." % (coords[2], coords_str)
-                possible_intensity = self.pyslip.tiles.raw_image.get_pixel_intensity(coords)
+
+                possible_intensity = None
+                if self.pyslip.tiles.raw_image.implements_metrology_matrices():
+                    # XXX Special-case read of new-style images until
+                    # multitile images are fully supported in dxtbx.
+                    possible_intensity = self.pyslip.tiles.raw_image.get_pixel_intensity(coords)
+                else:
+                    fi = self.pyslip.tiles.raw_image
+                    ic = (int(coords[0]), int(coords[1]))
+                    if fi.get_detector().is_coord_valid(ic):
+                        possible_intensity = fi.get_raw_data()[ic]
+
                 if possible_intensity is not None:
                     if possible_intensity == 0:
                       format_str = " I=%6.4f"
