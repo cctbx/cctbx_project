@@ -52,7 +52,7 @@ class _(boost.python.injector,ext.crystal_orientation):
     #convenience function to transform the orientation matrix to the reduced cell
     from cctbx.uctbx import fast_minimum_reduction
     from scitbx import matrix
-    uc = UC.unit_cell()
+    uc = self.unit_cell()
     R = fast_minimum_reduction(uc)
     rinverse = matrix.sqr( R.r_inv() )
     return self.change_basis(rinverse.transpose().inverse().elems)
