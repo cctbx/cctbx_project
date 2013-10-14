@@ -274,6 +274,7 @@ def find_and_build_ions (
 def clean_up_ions (fmodel, model, params, log=None, verbose=True) :
   if (log is None) :
     log = null_out()
+  import mmtbx.ions.utils
   ion_selection = model.pdb_hierarchy().atom_selection_cache().selection(
     "segid ION")
   ion_iselection = ion_selection.iselection()
@@ -285,14 +286,19 @@ def clean_up_ions (fmodel, model, params, log=None, verbose=True) :
   ion_model = model.select(ion_selection)
   ion_pdb_hierarchy = ion_model.pdb_hierarchy(sync_with_xray_structure=True)
   ion_atoms = ion_pdb_hierarchy.atoms()
+  ion_xrs = ion_model.xray_structure
+  perm = mmtbx.ions.utils.sort_atoms_permutation(
+    pdb_atoms=ion_pdb_hierarchy.atoms(),
+    xray_structure=ion_model.xray_structure)
   nonbonded_types = ion_model.restraints_manager.geometry.nonbonded_types
   nonbonded_charges = ion_model.restraints_manager.geometry.nonbonded_charges
+  ion_atoms = ion_atoms.select(perm)
   new_model.append_single_atoms(
-    new_xray_structure=ion_model.xray_structure,
+    new_xray_structure=ion_xrs.select(perm),
     atom_names=[ atom.name for atom in ion_atoms ],
     residue_names=[ atom.fetch_labels().resname for atom in ion_atoms ],
-    nonbonded_types=nonbonded_types,
-    nonbonded_charges=nonbonded_charges,
+    nonbonded_types=nonbonded_types.select(perm),
+    nonbonded_charges=nonbonded_charges.select(perm),
     chain_id=params.ion_chain_id,
     segids=[ "ION" for atom in ion_atoms ],
     refine_occupancies=params.refine_ion_occupancies,

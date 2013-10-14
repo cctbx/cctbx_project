@@ -38,3 +38,24 @@ def anonymize_ions (hierarchy, log=sys.stdout) :
                 atom.b)
               n_converted += 1
   return hierarchy, n_converted
+
+def sort_atoms_permutation (pdb_atoms, xray_structure) :
+  assert (pdb_atoms.size() == xray_structure.scatterers().size())
+  from scitbx.array_family import flex
+  pdb_atoms.reset_i_seq()
+  atoms_sorted = sorted(pdb_atoms, cmp_atom)
+  sele = flex.size_t([ atom.i_seq for atom in atoms_sorted ])
+  return sele
+
+# compare mass, then occupancy, then B_iso
+def cmp_atom (a, b) :
+  from cctbx.eltbx import sasaki
+  mass_a = sasaki.table(a.element.strip().upper()).atomic_number()
+  mass_b = sasaki.table(b.element.strip().upper()).atomic_number()
+  if (mass_a == mass_b) :
+    if (a.occ == b.occ) :
+      return cmp(b.b, a.b)
+    else :
+      return cmp(b.occ, a.occ)
+  else :
+    return cmp(mass_b, mass_a)
