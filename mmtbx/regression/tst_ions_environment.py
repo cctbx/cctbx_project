@@ -121,8 +121,6 @@ def exercise () :
         print "Should be:", expected_environment
         sys.exit()
 
-    os.remove(model + ".pdb")
-
   print "OK"
 
 if __name__ == "__main__":
