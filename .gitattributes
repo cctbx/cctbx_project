@@ -413,7 +413,6 @@ dxtbx/format/FormatCBFMini.py -text
 dxtbx/format/FormatCBFMiniPilatus.py -text
 dxtbx/format/FormatCBFMiniPilatusHelpers.py -text
 dxtbx/format/FormatDIP2030b.py -text
-dxtbx/format/FormatEDFALS733.py -text
 dxtbx/format/FormatHDF5.py -text
 dxtbx/format/FormatHDF5Dectris.py -text
 dxtbx/format/FormatMAR.py -text

@@ -53,6 +53,7 @@ class FormatEDFALS733(Format):
                           self.detectorbase.parameters["PIXEL_SIZE"]),
             image_size = (self.detectorbase.parameters["SIZE1"],
                           self.detectorbase.parameters["SIZE2"]),
+            trusted_range = (0, self.detectorbase.saturation),
             mask = [])  # a list of dead rectangles
 
     def _beam(self):
