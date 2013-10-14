@@ -1628,6 +1628,7 @@ mmtbx/ions/environment.py -text
 mmtbx/ions/geometry.py -text
 mmtbx/ions/ion_parameters.cif -text
 mmtbx/ions/parameters.py -text
+mmtbx/ions/tst_utils.py svneol=native#text/x-python
 mmtbx/ions/utils.py svneol=native#text/x-python
 mmtbx/kinemage/__init__.py -text
 mmtbx/kinemage/validation.py -text
