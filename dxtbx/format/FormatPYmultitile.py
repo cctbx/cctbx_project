@@ -1,3 +1,7 @@
+# -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
+#
+# $Id$
+
 from __future__ import division
 
 from dxtbx.format.FormatPY import FormatPY
@@ -64,18 +68,27 @@ class FormatPYmultitile(FormatPY):
     def _beam(self):
         '''Return a simple model for the beam.'''
 
-        return self._beam_factory.simple(self.detectorbase.wavelength)
+        return self._beam_factory.simple(
+          self.detectorbase._metrology_params.wavelength)
 
     def _scan(self):
         '''Return the scan information for this image.'''
 
+        from calendar import timegm
+        from time import strptime
+
+        # Convert textual ISO 8601 timestamp in UTC to
+        # millisecond-precision Unix epoch.
+        str_min = self.detectorbase._metrology_params.timestamp[:16] + 'UTC'
+        str_sec = self.detectorbase._metrology_params.timestamp[17:]
+        epoch = timegm(strptime(str_min, '%Y-%m-%dT%H:%M%Z')) + float(str_sec)
+
         return self._scan_factory.make_scan(
-          image_range = (1,1),
-          # femtosecond X-ray pulse, set this to a dummy argument
-          exposure_time = 1.,
-          oscillation = (0.0,0.0),
-          epochs = {1:0.}  # Later see if we can actually get the millisecond time stamp in here
-          )
+            image_range=(1, 1),
+            exposure_time=1e-15 * \
+            self.detectorbase._metrology_params.pulse_length,
+            oscillation=(0, 0),
+            epochs={1: epoch})
 
 if __name__ == '__main__':
 
