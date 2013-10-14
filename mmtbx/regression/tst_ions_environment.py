@@ -76,7 +76,7 @@ def exercise () :
   for model, expected_environments in models.items():
     pdb_path = libtbx.env.find_in_repositories(
       relative_path = os.path.join(
-        "phenix_regression", "mmtbx", "geometry", model + ".pdb"),
+        "phenix_regression", "mmtbx", "ions", model + ".pdb"),
       test = os.path.isfile
       )
 
