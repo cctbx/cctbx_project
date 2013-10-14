@@ -4,13 +4,13 @@ from __future__ import division
 import os
 import sys
 
+from collections import OrderedDict
+
 import libtbx
-from mmtbx.command_line import fetch_pdb
 from mmtbx.ions.geometry import find_coordination_geometry
 from mmtbx import ions
-from iotbx import file_reader
-from cctbx.eltbx import chemical_elements
-from collections import OrderedDict
+import mmtbx.monomer_library.pdb_interpretation
+from mmtbx import monomer_library
 
 def exercise () :
   if not libtbx.env.has_module("phenix_regression"):
@@ -48,12 +48,29 @@ def exercise () :
         "phenix_regression", "mmtbx", "ions", model + ".pdb"),
         test = os.path.isfile
       )
-    pdb_in = file_reader.any_file(pdb_path).file_object
+
+    mon_lib_srv = monomer_library.server.server()
+    ener_lib = monomer_library.server.ener_lib()
+    processed_pdb_file = monomer_library.pdb_interpretation.process(
+      mon_lib_srv = mon_lib_srv,
+      ener_lib = ener_lib,
+      file_name = pdb_path,
+      raw_records = None,
+      force_symmetry = True,
+      log = libtbx.utils.null_out()
+      )
+
+    geometry = \
+      processed_pdb_file.geometry_restraints_manager(show_energies = False)
+    xray_structure = processed_pdb_file.xray_structure()
+    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+    connectivity = geometry.shell_sym_tables[0].full_simple_connectivity()
+
     manager = ions.Manager(
       fmodel = None,
-      pdb_hierarchy = pdb_in.construct_hierarchy(),
-      xray_structure = pdb_in.xray_structure_simple(),
-      connectivity = pdb_in.extract_connectivity())
+      pdb_hierarchy = pdb_hierarchy,
+      xray_structure = xray_structure,
+      connectivity = connectivity)
 
     elements = set(ions.DEFAULT_IONS + ions.TRANSITION_METALS)
     elements.difference_update(["CL"])
