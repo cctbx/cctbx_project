@@ -232,10 +232,14 @@ def get_closest_atoms(atom_group1,
   for i, atom1 in enumerate(atom_group1.atoms()):
     if ignore_hydrogens:
       if atom1.element.strip() in ad_hoc_non_linking_elements: continue
+    altloc1 = atom1.parent().altloc.strip()
     for j, atom2 in enumerate(atom_group2.atoms()):
       if ignore_hydrogens:
         if atom2.element.strip() in ad_hoc_non_linking_elements: continue
       #if i>=j: continue
+      altloc2 = atom2.parent().altloc.strip()
+      if altloc1 and altloc2:
+        if altloc1!=altloc2: continue
       d2 = get_distance2(atom1, atom2)
       if d2<min_d2:
         min_atom1 = atom1
