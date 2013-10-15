@@ -273,12 +273,20 @@ class manager(object):
       if(self.adp_individual_iso is None):
         assert size_all is not None
         self.adp_individual_iso = flex.bool(size_all, False)
+      # inflate existing iso flags if present
+      elif (self.adp_individual_iso.size() < size_all) :
+        n_new = size_all - self.adp_individual_iso.size()
+        self.adp_individual_iso.extend(flex.bool(n_new, False))
       self.adp_individual_iso.extend(adp_individual_iso)
     if(adp_individual_aniso is not None):
       assert self.is_bool(adp_individual_aniso)
       if(self.adp_individual_aniso is None):
         assert size_all is not None
         self.adp_individual_aniso = flex.bool(size_all, False)
+      # inflate existing aniso flags if present
+      elif (self.adp_individual_aniso.size() < size_all) :
+        n_new = size_all - self.adp_individual_aniso.size()
+        self.adp_individual_aniso.extend(flex.bool(n_new, False))
       self.adp_individual_aniso.extend(adp_individual_aniso)
     if(sites_rigid_body is not None):
       assert hasattr(sites_rigid_body, 'count')
