@@ -26,6 +26,8 @@ class lbfgs(object):
                      correct_special_position_tolerance = 1.0,
                      iso_restraints           = None,
                      h_params                 = None,
+                     qblib_params             = None,
+                     macro                    = None,
                      u_min                    = adptbx.b_as_u(-5.0),
                      u_max                    = adptbx.b_as_u(1000.0),
                      collect_monitor          = True):
@@ -41,6 +43,15 @@ class lbfgs(object):
         xray_structure = self.xray_structure,
         update_f_calc  = True)
     self.weights = None
+# QBLIB INSERT
+    self.qblib_params = qblib_params
+    if(self.qblib_params is not None and self.qblib_params.qblib):
+        self.macro = macro
+        self.qblib_cycle_count = 0
+        self.tmp_XYZ = None
+        self.XYZ_diff_curr=None
+        self.XYZ_diff_prev=None
+# QBLIB END
     self.correct_special_position_tolerance = correct_special_position_tolerance
     if(refine_xyz and target_weights is not None):
       self.weights = target_weights.xyz_weights_result
@@ -130,6 +141,40 @@ class lbfgs(object):
       self.stereochemistry_residuals = \
         self.model.restraints_manager_energies_sites(
           compute_gradients = compute_gradients)
+# QBLIB INSERT
+      if(self.qblib_params is not None and self.qblib_params.qblib):
+        from qbpy import qb_refinement
+        self.qblib_cycle_count +=1
+        if(self.tmp_XYZ is not None):
+          diff,max_diff,max_elem = qb_refinement.array_difference(
+            self.tmp_XYZ,
+            self.model.xray_structure.sites_cart(),
+            )
+          if(self.XYZ_diff_curr is not None):
+            self.XYZ_diff_prev=self.XYZ_diff_curr
+            self.XYZ_diff_curr=max_elem
+          else:
+            self.XYZ_diff_curr=max_elem
+            self.tmp_XYZ = self.model.xray_structure.sites_cart()
+        else:
+          self.tmp_XYZ = self.model.xray_structure.sites_cart()
+        if (self.macro != self.qblib_params.macro_cycle_to_skip):
+          qblib_call = qb_refinement.QBblib_call_manager(
+            hierarchy = self.model.pdb_hierarchy(),
+            xray_structure=self.model.xray_structure,
+            geometry_residuals = self.stereochemistry_residuals,
+            qblib_params=self.qblib_params,
+            diff_curr=self.XYZ_diff_curr,
+            macro=self.macro,
+            micro=self.qblib_cycle_count,
+            )
+          qblib_call.run()
+          if(qblib_call.QBStatus):
+            qblib_g=qblib_call.result_QBlib.gradients
+            qblib_f=qblib_call.result_QBlib.target
+            self.stereochemistry_residuals.gradients=qblib_g
+            self.stereochemistry_residuals.target=qblib_f
+# QBLIB END
       er = self.stereochemistry_residuals.target
       self.f += er * self.weights.w
       if(compute_gradients):

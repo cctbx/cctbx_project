@@ -20,3 +20,13 @@ if (amber_installed) :
       include scope amber_adaptbx.master_phil_str
     }
 """
+
+qb_installed = os.environ.get("QBHOME", False)
+if (qb_installed) :
+  external_energy_params_str += """
+    qbio
+      .short_caption = QuantumBio refinement plugin
+    {
+      include scope qbpy.qb_params.qblib_master_params
+    }
+"""
