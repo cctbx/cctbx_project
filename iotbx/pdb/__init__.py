@@ -1053,8 +1053,8 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
 
     Arguments:
     error_handle -- True: will stop execution on improper retation matrices
-                    False: will continue execution but will replace the values in the
-                           rotation matrix with [0,0,0,0,0,0,0,0,0]
+                    False: will continue execution
+
     eps -- Rounding accuracy for avoiding numerical issue when when testing proper rotation
 
     error_handle can be use if one does not want a 'Sorry' to be raised. The program will continue to execute
@@ -1098,8 +1098,9 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
         if self._test_matrix(rotation_data,eps=eps):
           if error_handle:
             raise Sorry('Rotation matrices are not proper! ')
-          else:
-            rotation_data = [0,0,0,0,0,0,0,0,0]
+          #else:
+            #print Sorry('Rotation matrices are not proper! ')
+
         # done following the format in the MTRIX records
         result.append(group_args(
           values = [rotation_data,translation_data],
@@ -1150,7 +1151,7 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
         if error_handle:
           raise Sorry('Rotation matrices are not proper! ')
         else:
-          values[0] = [0,0,0,0,0,0,0,0,0]
+          print Sorry('Rotation matrices are not proper! ')
       if (sorted(done) != [1,2,3] or len(set(present)) != 1):
         raise RuntimeError(
           "Improper set of PDB MTRIX records%s" % source_info)
@@ -1632,7 +1633,7 @@ COLUMNS         DATA TYPE      FIELD           DEFINITION
   test = """
          1         2         3         4         5         6         7         8
 12345678901234567890123456789012345678901234567890123456789012345678901234567890
-LINK         O   GLY A  49                NA    NA A6001     1555   1555  2.98  
+LINK         O   GLY A  49                NA    NA A6001     1555   1555  2.98
 """
   def _format_link_atom(atom):
     result = "%4s%s%-3s %s%4s%s" % (atom.name,
