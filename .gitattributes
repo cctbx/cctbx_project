@@ -296,6 +296,7 @@ cootbx/interactive_edit.py -text
 cootbx/ligand_checklist.py -text
 cootbx/simple_zoom_list.py -text
 cootbx/validation_lists.py -text
+cootbx/view_refinement.py -text
 cootbx/watch_file.py -text
 cootbx/xmlrpc_server.py -text
 crys3d/__init__.py -text
