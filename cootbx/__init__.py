@@ -34,43 +34,35 @@ def create_refinement_view_script (
   print >> f, "import coot"
   print >> f, "import os"
   write_disable_nomenclature_errors(f)
+  load_script = libtbx.env.find_in_repositories(
+    relative_path="cctbx_project/cootbx/view_refinement.py",
+    test=os.path.isfile)
+  assert (load_script is not None)
+  concatenate_python_script(out=f, file_name=load_script)
   zoom_ligand_script = libtbx.env.find_in_repositories(
     relative_path="cctbx_project/cootbx/simple_zoom_list.py",
     test=os.path.isfile)
-  if (zoom_ligand_script is not None) :
-    concatenate_python_script(out=f, file_name=zoom_ligand_script)
-    if (bad_ligand_list is not None) and (len(bad_ligand_list) > 0) :
-      print >> f, """draw_simple_zoom_list("""
-      print >> f, """  title="Residues in suspicious density","""
-      print >> f, """  items=%s)""" % str(bad_ligand_list)
-    if (placed_ligand_list is not None) :
-      print >> f, """draw_simple_zoom_list("""
-      print >> f, """  title="Placed ligands","""
-      print >> f, """  items=%s)""" % str(placed_ligand_list)
+  concatenate_python_script(out=f, file_name=zoom_ligand_script)
   if (work_dir is not None) :
-    print >> f, """os.chdir("%s")""" % work_dir
     pdb_file_name = os.path.basename(pdb_file_name)
     mtz_file_name = os.path.basename(mtz_file_name)
-  print >> f, """read_pdb("%s")""" % pdb_file_name
-  if (show_symmetry) :
-    print >> f, """set_show_symmetry_master(True)"""
+  f.write("""load_refinement(\n""")
+  f.write("""pdb_file="%s",\n""" % pdb_file_name)
+  f.write("""map_file="%s",\n""" % mtz_file_name)
+  f.write("""show_symmetry=%s,\n""" % show_symmetry)
+  f.write("""have_anom_map=%s,\n""" % have_anom_map)
+  f.write("""have_residual_map=%s,\n""" % have_residual_map)
+  if (work_dir is not None) :
+    f.write("""work_dir="%s",\n""" % work_dir)
   if (peaks_file_name is not None) :
-    print >> f, """imol = read_pdb("%s")""" % peaks_file_name
-    print >> f, """set_mol_displayed(imol, False)"""
-  print >> f, """auto_read_make_and_draw_maps("%s")""" % mtz_file_name
-  if (have_anom_map) :
-    print >> f, """imol = make_and_draw_map("%s","ANOM","PHANOM","",0,0)""" % \
-      mtz_file_name
-    print >> f, """set_contour_level_in_sigma(imol, 3.0)"""
-    if (have_residual_map) :
-      print >> f, """set_map_colour(imol, 0.0, 1.0, 1.0)""" # cyan
-      print >> f, """set_map_displayed(imol, False)"""
-    else :
-      print >> f, """set_map_colour(imol, 1.0, 1.0, 0.0)""" # yellow
-  if (have_residual_map) :
-    print >> f, \
-      """imol = make_and_draw_map("%s","ANOMDIFF","PHANOMDIFF","",0,1)""" % \
-      mtz_file_name
-    print >> f, """set_contour_level_in_sigma(imol, 3.0)"""
-    print >> f, """set_map_colour(imol, 1.0, 1.0, 0.0)""" # yellow
+    f.write("""peaks_file="%s",\n""" % peaks_file_name)
+  f.write(")\n")
+  if (bad_ligand_list is not None) and (len(bad_ligand_list) > 0) :
+    print >> f, """draw_simple_zoom_list("""
+    print >> f, """  title="Residues in suspicious density","""
+    print >> f, """  items=%s)""" % str(bad_ligand_list)
+  if (placed_ligand_list is not None) :
+    print >> f, """draw_simple_zoom_list("""
+    print >> f, """  title="Placed ligands","""
+    print >> f, """  items=%s)""" % str(placed_ligand_list)
   f.close()
