@@ -239,14 +239,17 @@ class image (screen_params) :
     print img.show_header()
 
     detector = self._raw.get_detector()
-    image_size = detector.get_image_size()
-    self.set_image_size(
-      w=image_size[0],
-      h=image_size[1])
+    if detector.num_panels() == 1:
+      # Image size and pixel size only make sense for monolithic
+      # detectors.
+      image_size = detector.get_image_size()
+      self.set_image_size(
+        w=image_size[0],
+        h=image_size[1])
 
-    pixel_size = detector.get_pixel_size()
-    assert pixel_size[0] == pixel_size[1]
-    self.set_detector_resolution(pixel_size[0])
+      pixel_size = detector.get_pixel_size()
+      assert pixel_size[0] == pixel_size[1]
+      self.set_detector_resolution(pixel_size[0])
 
     from spotfinder.command_line.signal_strength import master_params
     params = master_params.extract()
