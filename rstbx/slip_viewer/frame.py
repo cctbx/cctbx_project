@@ -197,38 +197,41 @@ class XrayFrame (AppFrame,XFBaseClass) :
     self.Layout()
 
     detector = self.pyslip.tiles.raw_image.get_detector()
-    (beam_pixel_fast, beam_pixel_slow) = detector.millimeter_to_pixel(
-      detector.get_beam_centre(
-        self.pyslip.tiles.raw_image.get_beam().get_s0()))
+    if detector.num_panels() == 1:
+      # XXX Disable display of the beam center cross for multitile
+      # detectors until the dxtbx interface is clear.
+      (beam_pixel_fast, beam_pixel_slow) = detector.millimeter_to_pixel(
+        detector.get_beam_centre(
+          self.pyslip.tiles.raw_image.get_beam().get_s0()))
 
-    self.beam_center_cross_data = [
-      ((self.pyslip.tiles.picture_fast_slow_to_map_relative(beam_pixel_fast+3.,beam_pixel_slow),
-        self.pyslip.tiles.picture_fast_slow_to_map_relative(beam_pixel_fast-3.,beam_pixel_slow)),
-        {'width': 2, 'color': '#0000FFA0', 'closed': False}),
-      ((self.pyslip.tiles.picture_fast_slow_to_map_relative(beam_pixel_fast,beam_pixel_slow+3.),
-        self.pyslip.tiles.picture_fast_slow_to_map_relative(beam_pixel_fast,beam_pixel_slow-3.)),
-        {'width': 2, 'color': '#0000FFA0', 'closed': False})
+      self.beam_center_cross_data = [
+        ((self.pyslip.tiles.picture_fast_slow_to_map_relative(
+            beam_pixel_fast + 3., beam_pixel_slow),
+          self.pyslip.tiles.picture_fast_slow_to_map_relative(
+            beam_pixel_fast - 3., beam_pixel_slow)),
+         {'width': 2, 'color': '#0000FFA0', 'closed': False}),
+        ((self.pyslip.tiles.picture_fast_slow_to_map_relative(
+            beam_pixel_fast, beam_pixel_slow + 3.),
+          self.pyslip.tiles.picture_fast_slow_to_map_relative(
+            beam_pixel_fast, beam_pixel_slow - 3.)),
+         {'width': 2, 'color': '#0000FFA0', 'closed': False})
                              ]
-    # Unconditionally delete beam_layer and
-    # spotfinder_layer--update_settings() will add them back if
-    # appropriate.  This also creates the self.*_layer variables.
-    if (hasattr(self, "beam_layer") and
-        self.beam_layer is not None):
+    # Unconditionally delete extra layers--update_settings() will add
+    # them back if appropriate.  This also creates the self.*_layer
+    # variables.
+    if hasattr(self, 'beam_layer') and self.beam_layer is not None:
       self.pyslip.DeleteLayer(self.beam_layer)
     self.beam_layer = None
 
-    if (hasattr(self, "spotfinder_layer") and
-        self.spotfinder_layer is not None):
+    if hasattr(self, 'spotfinder_layer') and self.spotfinder_layer is not None:
       self.pyslip.DeleteLayer(self.spotfinder_layer)
     self.spotfinder_layer = None
 
-    if (hasattr(self, "tile_layer") and
-        self.tile_layer is not None):
+    if hasattr(self, 'tile_layer') and self.tile_layer is not None:
       self.pyslip.DeleteLayer(self.tile_layer)
     self.tile_layer = None
 
-    if (hasattr(self, "tile_text_layer") and
-        self.tile_text_layer is not None):
+    if hasattr(self, 'tile_text_layer') and self.tile_text_layer is not None:
       self.pyslip.DeleteLayer(self.tile_text_layer)
     self.tile_text_layer = None
 
@@ -266,34 +269,34 @@ class XrayFrame (AppFrame,XFBaseClass) :
       self.pyslip.tiles.update_brightness(new_brightness,new_color_scheme)
       self.pyslip.Update()#triggers redraw
 
-    if (self.settings.show_beam_center):
-      if (self.beam_layer is None):
+    if self.settings.show_beam_center:
+      if self.beam_layer is None and hasattr(self, 'beam_center_cross_data'):
         self.beam_layer = self.pyslip.AddPolygonLayer(
           self.beam_center_cross_data, name="<beam_layer>",
           show_levels=[-2, -1, 0, 1, 2, 3, 4, 5])
-    elif (self.beam_layer is not None):
+    elif self.beam_layer is not None:
       self.pyslip.DeleteLayer(self.beam_layer)
       self.beam_layer = None
 
-    if (self.settings.show_spotfinder_spots):
-      if (self.spotfinder_layer is None):
+    if self.settings.show_spotfinder_spots:
+      if self.spotfinder_layer is None:
         tdata = self.pyslip.tiles.get_spotfinder_data(self.params)
         self.spotfinder_layer = self.pyslip.AddPointLayer(
           tdata, color="green", name="<spotfinder_layer>",
           radius=2,
           renderer = frame.pyslip.LightweightDrawPointLayer,
           show_levels=[-2, -1, 0, 1, 2, 3, 4, 5])
-    elif (self.spotfinder_layer is not None):
+    elif self.spotfinder_layer is not None:
       self.pyslip.DeleteLayer(self.spotfinder_layer)
       self.spotfinder_layer = None
 
-    if (self.settings.show_effective_tiling):
-      if (self.tile_layer is None):
+    if self.settings.show_effective_tiling:
+      if self.tile_layer is None:
         tdata, ttdata = self.pyslip.tiles.get_effective_tiling_data(self.params)
         self.tile_layer = self.pyslip.AddPolygonLayer(
           tdata, name="<tiling_layer>",
           show_levels=[-2, -1, 0, 1, 2, 3, 4, 5])
-      if (self.tile_text_layer is None):
+      if self.tile_text_layer is None:
         self.tile_text_layer = self.pyslip.AddTextLayer(
           ttdata, name="<tiling_text_layer>",
           show_levels=[-2, -1, 0, 1, 2, 3, 4, 5],

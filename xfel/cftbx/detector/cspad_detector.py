@@ -35,6 +35,12 @@ class CSPadDetector(GenericDetector):
     else: raise AttributeError(attr)
 
   def readHeader(self):
+    # XXX The functionality provided by this function has largely been
+    # replicated in
+    # rstbx.slip_viewer.tile_generation._get_flex_image_multitile().
+    # However, several code paths still depend on the member variables
+    # created here.
+
     from xfel.cftbx.detector.metrology import metrology_as_transformation_matrices
 
     d = easy_pickle.load(self.filename)
@@ -107,6 +113,11 @@ class CSPadDetector(GenericDetector):
 
 
   def get_flex_image(self, brightness, **kwargs):
+    # This functionality has migrated to
+    # rstbx.slip_viewer.tile_generation._get_flex_image_multitile().
+    raise DeprecationWarning(
+      "xfel.cftbx.cspad_detector.get_flex_image() is deprecated")
+
     # no kwargs supported at present
 
     from xfel.cftbx.detector.metrology import get_projection_matrix
