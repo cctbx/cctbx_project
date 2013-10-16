@@ -374,14 +374,14 @@ def _pentagonal_pyramid():
 def _pentagonal_bipyramid():
   return _bipyramid(_pentagon())
 
-def _ring_miss_1():
+def _square_pyramid_bidentate_miss_1():
   return _concatenate(
     _square_plane(),
     col([sqrt(2) / 2, sqrt(2) / 2, -1]),
     col([-sqrt(2) / 2, -sqrt(2) / 2, -1]),
     )
 
-def _ring_miss_2():
+def _square_pyramid_bidentate_miss_2():
   return [
     col([0, 1, 0]),
     col([0, -1, 0]),
@@ -391,7 +391,7 @@ def _ring_miss_2():
     col([-sqrt(2) / 2, -sqrt(2) / 2, -1]),
     ]
 
-def _ring_miss_3():
+def _square_pyramid_bidentate_miss_3():
   return [
     col([0, 1, 0]),
     col([0, -1, 0]),
@@ -401,9 +401,16 @@ def _ring_miss_3():
     col([-sqrt(2) / 2, -sqrt(2) / 2, -1]),
     ]
 
-def _ring_pop():
+def _square_pyramid_bidentate():
   return _concatenate(
     _square_pyramid(),
+    col([sqrt(2) / 2, sqrt(2) / 2, -1]),
+    col([-sqrt(2) / 2, -sqrt(2) / 2, -1])
+    )
+
+def _pentagonal_pyramid_bidentate():
+  return _concatenate(
+    _pentagonal_pyramid(),
     col([sqrt(2) / 2, sqrt(2) / 2, -1]),
     col([-sqrt(2) / 2, -sqrt(2) / 2, -1])
     )
@@ -450,14 +457,17 @@ SUPPORTED_GEOMETRIES = OrderedDict([
     ("octahedron", _octahedron, 15),
     ("trigonal_prism", _trigonal_prism, 15),
     ("pentagonal_pyramid", _pentagonal_pyramid, 15),
-    ("ring_miss", _ring_miss_1, 15),
-    ("ring_miss", _ring_miss_2, 15),
-    ("ring_miss", _ring_miss_3, 15),
+    ("square_pyramid_bidentate_miss", _square_pyramid_bidentate_miss_1, 15),
+    ("square_pyramid_bidentate_miss", _square_pyramid_bidentate_miss_2, 15),
+    ("square_pyramid_bidentate_miss", _square_pyramid_bidentate_miss_3, 15),
     ]),
   (7, [
     ("pentagonal_bipyramid", _pentagonal_bipyramid, 15),
-    ("ring_pop", _ring_pop, 15), # better name, please.
+    ("square_pyramid_bidentate", _square_pyramid_bidentate, 15),
     ]),
+  (8, [
+    ("pentagonal_pyramid_bidentate", _pentagonal_pyramid_bidentate, 15),
+  ])
   ])
 
 SUPPORTED_GEOMETRY_NAMES = \
@@ -505,7 +515,7 @@ def find_coordination_geometry(nearby_atoms, minimizer_method = False,
 
   Returns
   -------
-  list of tuples of string, float
+  list of tuples of str, float
       A list of found geometries. Each tuple contains the name of the geometry
       in string form followed by the deviation from ideal angles.
 
