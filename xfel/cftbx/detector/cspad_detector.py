@@ -115,8 +115,9 @@ class CSPadDetector(GenericDetector):
   def get_flex_image(self, brightness, **kwargs):
     # This functionality has migrated to
     # rstbx.slip_viewer.tile_generation._get_flex_image_multitile().
-    raise DeprecationWarning(
-      "xfel.cftbx.cspad_detector.get_flex_image() is deprecated")
+    # XXX Still used by iotbx/command_line/detector_image_as_png.py
+    #raise DeprecationWarning(
+    #  "xfel.cftbx.cspad_detector.get_flex_image() is deprecated")
 
     # no kwargs supported at present
 
