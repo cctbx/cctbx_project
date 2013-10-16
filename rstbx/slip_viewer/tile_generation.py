@@ -43,6 +43,107 @@ def _get_flex_image(
     vendortype=vendortype)
 
 
+def _get_flex_image_multitile(metrology_params, tiles, brightness=1.0):
+  # From xfel.cftbx.cspad_detector.readHeader() and
+  # xfel.cftbx.cspad_detector.get_flex_image().  XXX Is it possible to
+  # merge this with _get_flex_image() above?
+
+  from math import ceil
+
+  from iotbx.detectors import generic_flex_image
+  from scitbx.array_family import flex
+  from scitbx.matrix import col, rec, sqr
+  from xfel.cftbx.detector.metrology import \
+    get_projection_matrix, metrology_as_transformation_matrices
+
+  # Derive the transformation matrices from the phil-metrology.
+  matrices = metrology_as_transformation_matrices(metrology_params)
+
+  # Assert that there are transformation matrices for each ASIC.
+  # Determine next multiple of eight of the largest ASIC (tile) size.
+  # Set img_size to the focus of the padded rawdata.
+  for (key, asic) in tiles.iteritems():
+    if 'asic_focus' not in locals():
+      asic_focus = asic.focus()
+    else:
+      asic_focus = (max(asic_focus[0], asic.focus()[0]),
+                    max(asic_focus[1], asic.focus()[1]))
+    assert key in matrices # XXX This should go away in dxtbx!
+
+  asic_padded = (8 * int(ceil(asic_focus[0] / 8)),
+                 8 * int(ceil(asic_focus[1] / 8)))
+  img_size = (len(tiles) * asic_padded[0], asic_padded[1])
+
+  # Assert that all saturated values are equal and not None.  XXX This
+  # should go away in dxtbx.
+  for p in metrology_params.detector.panel:
+    for s in p.sensor:
+      for a in s.asic:
+        if 'saturation' not in locals():
+          saturation = a.saturation
+        else:
+          # XXX real-valued equality!  See
+          # cctbx_project/scitbx/math/approx_equal.h
+          assert saturation == a.saturation
+  assert 'saturation' in locals() and saturation is not None
+
+  # Create rawdata and my_flex_image before populating it.
+  rawdata = flex.double(flex.grid(img_size[0], img_size[1]))
+  my_flex_image = generic_flex_image(
+    rawdata=rawdata,
+    size1_readout=asic_focus[0],
+    size2_readout=asic_focus[1],
+    brightness=brightness,
+    saturation=saturation)
+
+  # XXX Add ASIC:s in order?  If a point is contained in two ASIC:s
+  # simultaneously, it will be assigned to the ASIC defined first.
+  # XXX Use a Z-buffer instead?
+  nmemb = 0
+  for key, asic in tiles.iteritems():
+
+    # Retrieve the metadata for the ASIC from the phil object.
+    # Determine the pixel size for the ASIC, as pixel sizes need not
+    # be identical.
+    p = metrology_params.detector.panel[key[1]]
+    s = p.sensor[key[2]]
+    a = s.asic[key[3]]
+    pixel_size = a.pixel_size
+
+    # E maps picture coordinates onto metric Cartesian coordinates,
+    # i.e. [row, column, 1 ] -> [x, y, z, 1].  Both frames share the
+    # same origin, but the first coordinate of the screen coordinate
+    # system increases downwards, while the second increases towards
+    # the right.  XXX Is this orthographic projection the only one
+    # that makes any sense?
+    E = rec(elems=[0, +pixel_size[1], 0,
+                   -pixel_size[0], 0, 0,
+                   0, 0, 0,
+                   0, 0, 1],
+            n=[4, 3])
+
+    # P: [x, y, z, 1] -> [row, column, 1].  Note that asic_focus needs
+    # to be flipped.
+    Pf = get_projection_matrix(pixel_size, (asic_focus[1], asic_focus[0]))[0]
+
+    rawdata.matrix_paste_block_in_place(
+      block=asic,
+      i_row=nmemb * asic_padded[0],
+      i_column=0)
+    nmemb += 1
+
+    # key is guaranteed to exist in matrices as per previous
+    # assertion.  Last row of matrices[key][0] is always [0, 0, 0, 1].
+    T = Pf * matrices[key][0] * E
+    R = sqr([T(0, 0), T(0, 1),
+             T(1, 0), T(1, 1)])
+    t = col([T(0, 2), T(1, 2)])
+
+    my_flex_image.add_transformation_and_translation(R, t)
+  my_flex_image.followup_brightness_scale()
+  return my_flex_image
+
+
 class _Tiles(object):
     # maximum number of tiles held in each level cache
     MaxTileList = 512
@@ -85,8 +186,10 @@ class _Tiles(object):
         if self.raw_image.implements_metrology_matrices():
           # XXX Special-case read of new-style images until multitile
           # images are fully supported in dxtbx.
-          self.flex_image = self.raw_image.get_flex_image(
-            brightness=self.current_brightness / 100)
+          self.flex_image = _get_flex_image_multitile(
+            brightness=self.current_brightness / 100,
+            metrology_params=self.raw_image._metrology_params,
+            tiles=self.raw_image._tiles)
         else:
           self.flex_image = _get_flex_image(
             brightness=self.current_brightness / 100,
@@ -100,8 +203,10 @@ class _Tiles(object):
         if self.raw_image.implements_metrology_matrices():
           # XXX Special-case read of new-style images until multitile
           # images are fully supported in dxtbx.
-          self.flex_image = self.raw_image.get_flex_image(
-            brightness=b / 100)
+          self.flex_image = _get_flex_image_multitile(
+            brightness=b / 100,
+            metrology_params=self.raw_image._metrology_params,
+            tiles=self.raw_image._tiles)
         else:
           self.flex_image = _get_flex_image(
             brightness=b / 100,
@@ -266,10 +371,12 @@ class _Tiles(object):
       # output fast and slow picture coordinates in units of detector pixels
       # slow is pointing down (x).  fast is pointing right (y).
 
-      (size2, size1) = self.raw_image.get_detector().get_image_size()
-      if self.raw_image.__class__.__name__.find('FormatPYmultitile') >= 0:
+      detector = self.raw_image.get_detector()
+      if detector.num_panels() == 1:
+        (size2, size1) = detector.get_image_size()
+      else:
         # XXX Special-case until multitile detectors fully supported.
-        (size2, size1) = (size1, size2)
+        (size1, size2) = (self.flex_image.size1(), self.flex_image.size2())
 
       return \
         (size2/2.) - (self.center_x_lon - longitude),  \
@@ -278,10 +385,12 @@ class _Tiles(object):
     def picture_fast_slow_to_lon_lat(self,pic_fast_pixel,pic_slow_pixel):
       # inverse of the preceding function
 
-      (size1, size2) = self.raw_image.get_detector().get_image_size()
-      if self.raw_image.__class__.__name__.find('FormatPYmultitile') >= 0:
+      detector = self.raw_image.get_detector()
+      if detector.num_panels() == 1:
+        (size1, size2) = detector.get_image_size()
+      else:
         # XXX Special-case until multitile detectors fully supported.
-        (size2, size1) = (size1, size2)
+        (size1, size2) = (self.flex_image.size1(), self.flex_image.size2())
 
       return \
         (size2/2.) - self.center_x_lon - pic_fast_pixel, \
@@ -418,7 +527,13 @@ class _Tiles(object):
         return d_min
 
     def get_detector_distance (self) :
-        dist = self.raw_image.get_detector().get_distance()
+        detector = self.raw_image.get_detector()
+        if detector.num_panels() == 1:
+          dist = detector.get_distance()
+        else:
+          # XXX Special-case until multitile detectors fully
+          # supported.
+          dist = self.raw_image.distance
         twotheta = self.get_detector_2theta()
         if (twotheta == 0.0) :
             return dist
@@ -428,7 +543,17 @@ class _Tiles(object):
     def get_detector_2theta (self) :
         from scitbx.matrix import col
 
-        n = col(self.raw_image.get_detector().get_normal())
-        s0 = col(self.raw_image.get_beam().get_unit_s0())
+        detector = self.raw_image.get_detector()
+        if detector.num_panels() == 1:
+          n = col(detector.get_normal())
+          s0 = col(self.raw_image.get_beam().get_unit_s0())
+          two_theta = s0.angle(n, deg=False)
+        else:
+          # XXX Special-case until multitile detectors fully
+          # supported.
+          try:
+            two_theta = self.raw_image.twotheta * math.pi / 180
+          except AttributeError:
+            two_theta = 0
 
-        return s0.angle(n, deg=False)
+        return two_theta
