@@ -590,17 +590,18 @@ def exercise_remove_first_n_atoms_fraction(pdb_dir, verbose):
 
 def exercise_convert_semet_to_met () :
   open("tmp_semet.pdb", "w").write("""\
-ATOM    507  N   MSE A 106      53.211  45.681  34.889  1.00  1.05           N
-ATOM    508  CA  MSE A 106      51.827  45.381  35.207  1.00  1.35           C
-ATOM    509  C   MSE A 106      50.937  45.462  33.968  1.00  3.57           C
-ATOM    510  O   MSE A 106      49.956  44.737  33.860  1.00  4.67           O
-ATOM    511  CB  MSE A 106      51.318  46.310  36.304  1.00  1.07           C
-ATOM    512  CG  MSE A 106      49.833  46.180  36.603  1.00  1.06           C
-ATOM    513 SE   MSE A 106      49.249  47.284  38.129  0.82 10.02          Se
-ATOM    514  CE  MSE A 106      50.851  47.140  39.206  1.00  1.19           C
+HETATM  507  N   MSE A 106      53.211  45.681  34.889  1.00  1.05           N
+HETATM  508  CA  MSE A 106      51.827  45.381  35.207  1.00  1.35           C
+HETATM  509  C   MSE A 106      50.937  45.462  33.968  1.00  3.57           C
+HETATM  510  O   MSE A 106      49.956  44.737  33.860  1.00  4.67           O
+HETATM  511  CB  MSE A 106      51.318  46.310  36.304  1.00  1.07           C
+HETATM  512  CG  MSE A 106      49.833  46.180  36.603  1.00  1.06           C
+HETATM  513 SE   MSE A 106      49.249  47.284  38.129  0.82 10.02          Se
+HETATM  514  CE  MSE A 106      50.851  47.140  39.206  1.00  1.19           C
 """)
   cmd = "phenix.pdbtools tmp_semet.pdb convert_semet_to_met=True"
   run_command(command=cmd, verbose=False)
+  assert (not "HETATM" in open("tmp_semet.pdb_modified.pdb").read())
   pdb_inp = iotbx.pdb.hierarchy.input(file_name="tmp_semet.pdb_modified.pdb")
   found_sd = False
   for atom in pdb_inp.hierarchy.atoms() :
