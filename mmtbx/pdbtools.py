@@ -656,6 +656,8 @@ def convert_semet_to_met (pdb_hierarchy, xray_structure) :
         atom.element = " S"
         scatterer = scatterers[i_seq]
         scatterer.scattering_type = 'S'
+        for ag_atom in atom_group.atoms() :
+          ag_atom.hetero = False
   return n_mse
 
 def renumber_residues(pdb_hierarchy, atom_selection=None, log=None):
