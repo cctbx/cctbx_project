@@ -27,9 +27,10 @@ typedef af::shared<cctbx::miller::index<> >  hkllistmm;   //memory management
     Fourier Analysis.  J. Appl. Cryst. (1997) 30, 1036-1040.
  */
 class dps_core {
- protected:
+ public:
   double granularity; //! number of bins between lattice planes (n in Rossmann)
   double amax;        //! max cell in Angstroms
+ protected:
   pointlistmm xyzdata;//! original spots, reciprocal orthogonal coords xyz,
                       //!   expressed in inverse Angstroms
   af::shared<Direction> hemisphere_solutions;
