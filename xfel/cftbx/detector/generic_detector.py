@@ -28,7 +28,6 @@ class GenericDetector(object):
   def read(self): pass
 
   def supports_quadrant_calibration(self): return False
-  def implements_metrology_matrices(self): return False
 
   def get_flex_image(self,brightness,**kwargs):
     # no kwargs supported at present

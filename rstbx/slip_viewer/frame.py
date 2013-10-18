@@ -197,7 +197,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
     self.Layout()
 
     detector = self.pyslip.tiles.raw_image.get_detector()
-    if detector.num_panels() == 1:
+    if len(detector) == 1:
       # XXX Disable display of the beam center cross for multitile
       # detectors until the dxtbx interface is clear.
       (beam_pixel_fast, beam_pixel_slow) = detector.millimeter_to_pixel(

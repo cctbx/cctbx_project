@@ -98,7 +98,6 @@ class CSPadDetector(GenericDetector):
     pass
 
   def supports_quadrant_calibration(self): return True
-  def implements_metrology_matrices(self): return True
 
   def apply_metrology_from_matrices(self, matrices):
     """The apply_metrology_from_matrices() function replaces the
