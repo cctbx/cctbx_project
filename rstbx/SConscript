@@ -31,6 +31,7 @@ builder(
   source=["dps_core/dps_core.cpp",
           "dps_core/directional_fft.cpp",
           "dps_core/direction.cpp",
+          "indexing_api/indexing_api.cpp",
           "diffraction/ewald_sphere.cpp",
           "diffraction/partial_spot_position_partial_H.cpp"
   ])
@@ -60,3 +61,4 @@ if (not env_etc.no_boost_python):
   SConscript("bpcx/SConscript")
   SConscript("bandpass/SConscript")
   SConscript("symmetry/constraints/SConscript")
+  SConscript("indexing_api/SConscript")
