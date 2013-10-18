@@ -74,9 +74,7 @@ def directional_show(direction,message):
     direction.real,180*direction.psi/math.pi, 180.*direction.phi/math.pi,
     direction.kmax, direction.kval,direction.kval2,direction.kval3)
 
-class dps_core(ext.dps_core):
-  def __init__(self):
-    ext.dps_core.__init__(self)
+class dps_core_base:
 
   def combos(self,basis=10):
     """All interesting combinations of the directional candidates.
@@ -94,10 +92,18 @@ class dps_core(ext.dps_core):
     comb.sort(combocmp)
     return comb
 
-  def getOrientation(self):
-    return Orientation(ext.dps_core.getOrientation(self))
-
   def niggli(self, cutoff = 25.):
     from rstbx.dps_core.zuoreduction import rwgk_niggli as support_niggli
     ni = support_niggli(self.getOrientation(),cutoff=cutoff) # orientation of reduced cell
     self.setOrientation(ni)
+
+# Might need boost python injector to inject the combos and niggli methods into the C++ class
+# (instead of double inheritance)?
+class dps_core(ext.dps_core):#,dps_core_base):
+
+  def __init__(self):
+    ext.dps_core.__init__(self)
+
+  def getOrientation(self):
+    return Orientation(ext.dps_core.getOrientation(self))
+

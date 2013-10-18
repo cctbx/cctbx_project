@@ -228,6 +228,9 @@ namespace boost_python { namespace {
       .def("hklobserved",
 (hkllistmm (dps_core::*)(const pointlistmm&)const) &dps_core::hklobserved)
       .def("observed",&dps_core::observed)
+      .def_readonly("granularity",&dps_core::granularity)
+      .def_readonly("amax",&dps_core::amax)
+
     ;
 
     class_<Direction>("Direction", init<const point &>())
@@ -246,6 +249,18 @@ namespace boost_python { namespace {
       .add_property("dvec",make_getter(&Direction::dvec, rbv()))
       .add_property("real",make_getter(&Direction::uc_length, rbv()))
       .def("is_nearly_collinear",&Direction::is_nearly_collinear)
+   ;
+    class_<Directional_FFT>("Directional_FFT", no_init)
+      .def(init<const Direction&, const af::shared<scitbx::vec3<double> >&,
+                const double&, const double&,
+                const sztype&>((arg("angle"),arg("xyzdata"),
+                                arg("granularity"),arg("amax"),
+                                arg("F0_cutoff"))))
+      .def_readonly("pmin",&Directional_FFT::pmin)
+      .def_readonly("delta_p",&Directional_FFT::delta_p)
+      .def_readonly("fft_result",&Directional_FFT::fft_result)
+      .def("kval",&Directional_FFT::kval)
+      .def("kmax",&Directional_FFT::kmax)
    ;
 
     class_<SimpleSamplerTool >("SimpleSamplerTool", init<const double &>())
