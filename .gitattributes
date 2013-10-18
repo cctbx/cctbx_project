@@ -1967,6 +1967,15 @@ rstbx/indexing/si_brief.dat -text
 rstbx/indexing/si_synthetic.dat -text
 rstbx/indexing/tst_auto_monoscan.py -text
 rstbx/indexing/tst_dataset1.py -text
+rstbx/indexing_api/SConscript -text
+rstbx/indexing_api/__init__.py -text
+rstbx/indexing_api/basis_choice.py -text
+rstbx/indexing_api/ext.cpp -text
+rstbx/indexing_api/indexing_api.cpp -text
+rstbx/indexing_api/indexing_api.h -text
+rstbx/indexing_api/lattice.py -text
+rstbx/indexing_api/sampling.py -text
+rstbx/indexing_api/tools.py -text
 rstbx/libtbx_config -text
 rstbx/new_horizons/__init__.py -text
 rstbx/new_horizons/index.py -text
