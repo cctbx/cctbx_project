@@ -29,6 +29,7 @@ def _get_flex_image(
   # functions from iotbx.detectors.detectorbase.  XXX This may turn
   # out to be generally useful (see
   # e.g. rstbx.viewer.create_flex_image()), but where to place it?
+  # dxtbx Format class?
   typehash = str(data.__class__)
   if typehash.find('int') >= 0:
     from iotbx.detectors import FlexImage
@@ -46,7 +47,8 @@ def _get_flex_image(
 def _get_flex_image_multipanel(panels, raw_data, brightness=1.0):
   # From xfel.cftbx.cspad_detector.readHeader() and
   # xfel.cftbx.cspad_detector.get_flex_image().  XXX Is it possible to
-  # merge this with _get_flex_image() above?
+  # merge this with _get_flex_image() above?  XXX Move to dxtbx Format
+  # class (or a superclass for multipanel images)?
 
   from math import ceil
 
@@ -202,7 +204,8 @@ class _Tiles(object):
           self.flex_image = _get_flex_image_multipanel(
             brightness=self.current_brightness / 100,
             panels=self.raw_image.get_detector(),
-            raw_data=self.raw_image.get_raw_data())
+            raw_data=[self.raw_image.get_raw_data(i)
+                      for i in range(len(self.raw_image.get_detector()))])
         else:
           self.flex_image = _get_flex_image(
             brightness=self.current_brightness / 100,
@@ -219,7 +222,8 @@ class _Tiles(object):
           self.flex_image = _get_flex_image_multipanel(
             brightness=b / 100,
             panels=self.raw_image.get_detector(),
-            raw_data=self.raw_image.get_raw_data())
+            raw_data=[self.raw_image.get_raw_data(i)
+                      for i in range(len(self.raw_image.get_detector()))])
         else:
           self.flex_image = _get_flex_image(
             brightness=b / 100,
@@ -513,9 +517,6 @@ class _Tiles(object):
           x_point, y_point = self.raw_image.image_coords_as_detector_coords(
             x, y,readout)
           center_x, center_y = self.raw_image.get_beam_center_mm()
-          dist = self.get_detector_distance()
-          two_theta = self.get_detector_2theta()
-          wavelength = self.raw_image.wavelength
 
           dist = self.get_detector_distance()
           two_theta = self.get_detector_2theta()
