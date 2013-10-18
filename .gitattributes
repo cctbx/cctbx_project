@@ -2363,6 +2363,7 @@ smtbx/refinement/constraints/boost_python/direction.cpp -text
 smtbx/refinement/constraints/direction.h -text
 smtbx/refinement/constraints/parameter[!!-~]hierarchy.graffle -text svneol=unset#unset
 smtbx/refinement/constraints/tests/__init__.py -text
+smtbx/refinement/constraints/tests/sucrose_p1.res -text
 smtbx/refinement/constraints/tests/sump-shelx-occupancies-example.nb -text
 smtbx/refinement/constraints/tests/thpp.hkl -text
 smtbx/refinement/constraints/tests/thpp.res -text
