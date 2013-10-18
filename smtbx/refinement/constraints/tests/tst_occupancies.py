@@ -5,7 +5,7 @@ from libtbx.test_utils import approx_equal
 
 def exercise_simple_disorder():
   working_dir = os.path.dirname(__file__)
-  ins = os.path.join(working_dir, 'thpp.ins')
+  ins = os.path.join(working_dir, 'thpp.res')
   model = smtbx.refinement.model.from_shelx(ins)
   ls = model.least_squares()
   assert str(ls.reparametrisation).strip() == """\
