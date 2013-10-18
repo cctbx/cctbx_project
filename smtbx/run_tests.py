@@ -18,6 +18,7 @@ tst_list = (
     "$B/refinement/constraints/tests/tst_geometrical_hydrogens",
     "$B/refinement/constraints/tests/tst_special_position",
     "$D/refinement/constraints/tests/tst_reparametrisation.py",
+    "$D/refinement/constraints/tests/tst_occupancies.py",
     ["$D/refinement/constraints/tests/tst_constrained_structure.py",
      '--normal_eqns_solving_method=naive'],
     ["$D/refinement/constraints/tests/tst_constrained_structure.py",
