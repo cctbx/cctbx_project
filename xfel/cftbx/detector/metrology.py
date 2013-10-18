@@ -130,7 +130,7 @@ detector {
           .type = ints(size=2)
           .optional = False
           .help = "Number of pixels in a horizontal row (width), and a
-                   vertical column of the ASIC (height)."
+                   vertical column (height) of the ASIC."
       }
     }
   }
@@ -144,6 +144,9 @@ def _average_transformation(matrices, keys):
   matrices with keys matching @p keys.  The function returns a
   two-tuple of the average rotation in quaternion representation and
   the average translation.
+
+  XXX Alternative: use average of normals, weighted by element size,
+  to determine average orientation.
   """
 
   from scitbx.array_family import flex
@@ -155,14 +158,14 @@ def _average_transformation(matrices, keys):
   nmemb = 0
   for key in keys:
     T = matrices[key][1]
-    sum_R += flex.double([T(0, 0), T(0, 1), T(0, 2),
+    sum_R += flex.double((T(0, 0), T(0, 1), T(0, 2),
                           T(1, 0), T(1, 1), T(1, 2),
-                          T(2, 0), T(2, 1), T(2, 2)])
-    sum_t += flex.double([T(0, 3), T(1, 3), T(2, 3)])
+                          T(2, 0), T(2, 1), T(2, 2)))
+    sum_t += flex.double((T(0, 3), T(1, 3), T(2, 3)))
     nmemb += 1
   if nmemb == 0:
     # Return zero-rotation and zero-translation.
-    return (matrix.col([1, 0, 0, 0]), matrix.zeros((3, 1)))
+    return (matrix.col((1, 0, 0, 0)), matrix.zeros((3, 1)))
 
   # Calculate average rotation matrix as U * V^T where sum_R = U * S *
   # V^T and S diagonal (Curtis et al. (1993) 377-385 XXX proper
@@ -237,51 +240,6 @@ def get_projection_matrix(dim_pixel, dim_readout):
            0, 0, 0, 1),
     n=(3, 4))
   return (Pf, Pb)
-
-
-def metrology_as_dxtbx_vectors(params):
-  """The metrology_as_dxtbx_vectors() functions converts a pure Python
-  object extracted from a metrology Phil object to a dictionary of
-  DXTBX-style transformation vectors.  Only ASIC:s are considered,
-  since DXTBX metrology is not concerned with hierarchies
-
-  The DXTBX-style metrology description consists of three vectors for
-  each ASIC.  The first vector locates the (0, 0)-pixel in the
-  laboratory frame. The second and third vectors give the locations of
-  the pixels immediately next to (0, 0) in the fast and slow
-  directions, respectively.  All vectors are in units of mm.
-
-  @param params Pure Python object, extracted from a metrology Phil
-                object
-  @return       Dictionary of DXTBX-style metrology description
-  """
-
-  d = params.detector
-  Tb_d = _transform(matrix.col(d.orientation),
-                    matrix.col(d.translation))[1]
-  vectors = {}
-  for p in d.panel:
-    Tb_p = Tb_d * _transform(matrix.col(p.orientation).normalize(),
-                             matrix.col(p.translation))[1]
-
-    for s in p.sensor:
-      Tb_s = Tb_p * _transform(matrix.col(s.orientation).normalize(),
-                               matrix.col(s.translation))[1]
-
-      for a in s.asic:
-        Tb_a = Tb_s * _transform(matrix.col(a.orientation).normalize(),
-                                 matrix.col(a.translation))[1]
-        Pb = get_projection_matrix(a.pixel_size, a.dimension)[1]
-
-        v_00 = Tb_a * Pb * matrix.col((0, 0, 1))
-        v_01 = Tb_a * Pb * matrix.col((0, 1, 1))
-        v_10 = Tb_a * Pb * matrix.col((1, 0, 1))
-
-        vectors[(d.serial, p.serial, s.serial, a.serial)] = (
-          matrix.col((t * 1e3).elems[0:3])
-          for t in [v_00, v_01 - v_00, v_10 - v_00])
-
-  return vectors
 
 
 def metrology_as_transformation_matrices(params):
