@@ -403,6 +403,8 @@ HETATM   4   O  KHOH     6      16.545  29.521  64.086  1.00 19.76
   isel = sel_cache.iselection
   assert list(isel("water")) == [1,2,6,7]
   #
+  assert list(isel("bfactor < 20")) == [5,6,7]
+  assert list(isel("name CA and bfactor = 20.19")) == [3,4]
 
 def run():
   exercise_selection()
