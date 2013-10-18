@@ -306,6 +306,19 @@ class cache(slots_getstate_setstate):
         atoms.extract_tmp_as_size_t() == 1).iselection()
     return [self.single_atom_residue]
 
+  def get_bfactor (self, op, value) :
+    assert (op in [">", "<", "="])
+    atoms = self.root.atoms()
+    b_iso = atoms.extract_b()
+    selection = None
+    if (op == ">") :
+      selection = b_iso > value
+    elif (op == "<") :
+      selection = b_iso < value
+    elif (op == "=") :
+      selection = b_iso == value
+    return [ selection.iselection() ]
+
   def union(self, iselections):
     return flex.union(
       size=self.n_seq,
@@ -374,6 +387,9 @@ class cache(slots_getstate_setstate):
 
   def sel_water(self):
     return self.union(iselections=self.get_water())
+
+  def sel_bfactor (self, op, value) :
+    return self.union(iselections=self.get_bfactor(op, value))
 
   def selection_tokenizer(self, string, contiguous_word_characters=None):
     return selection_tokenizer(string, contiguous_word_characters)
@@ -520,6 +536,19 @@ class cache(slots_getstate_setstate):
           result_stack.append(self.sel_single_atom_residue())
         elif (lword == "water"):
           result_stack.append(self.sel_water())
+        elif (lword == "bfactor") :
+          op = word_iterator.pop_argument(word.value).value
+          if (not op in [">", "<", "="]) :
+            raise_syntax_error()
+          else :
+            arg_next = word_iterator.try_pop()
+            lnext = arg_next.value
+            try :
+              val = float(lnext)
+            except ValueError :
+              raise_syntax_error()
+            else :
+              result_stack.append(self.sel_bfactor(op, val))
         elif (callback is not None):
           if (not callback(
                     word=word,
