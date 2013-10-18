@@ -5,6 +5,7 @@ import math
 from scitbx.math import superpose
 from scitbx import matrix
 from scitbx.array_family import flex
+import itertools
 
 class rigid_pivoted_rotatable_group(object):
   """ a set of atoms (rigid body) rides on a pivot atom and rotates around
