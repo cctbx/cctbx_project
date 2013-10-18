@@ -71,7 +71,8 @@ tst_list = (
   "$D/xds/tests/tst_xparm.py",
   "$D/xds/tests/tst_xds_inp.py",
   "$D/xds/tests/tst_integrate_hkl.py",
-  "$D/xds/tests/tst_spots_xds.py"
+  "$D/xds/tests/tst_spots_xds.py",
+  "$D/regression/tst_pdb_as_cif.py",
   )
 
 def run():

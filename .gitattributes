@@ -1224,6 +1224,7 @@ iotbx/regression/tst_map_tools.py -text
 iotbx/regression/tst_merging_statistics.py -text
 iotbx/regression/tst_mtz_as_cif.py -text
 iotbx/regression/tst_patterson.py -text
+iotbx/regression/tst_pdb_as_cif.py -text
 iotbx/regression/tst_pdb_as_fasta.py -text
 iotbx/regression/tst_reflection_file_editor.py -text
 iotbx/regression/tst_reindex.py -text
