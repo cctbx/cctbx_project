@@ -442,9 +442,9 @@ def fails_cis_check(residue,cis_or_trans):
       doskip = True
     else:
       omega = residue.measures['omega']
-      if cis_or_trans == 'cis' and omega >= -60 and omega <= 60:
+      if cis_or_trans == 'cis' and (omega >= -60 and omega <= 60):
         doskip = False
-      if cis_or_trans == 'trans' and omega >= 120 or omega <= -120:
+      if cis_or_trans == 'trans' and (omega >= 120 or omega <= -120):
         doskip = False
 
   return doskip
