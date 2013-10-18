@@ -43,7 +43,7 @@ def _get_flex_image(
     vendortype=vendortype)
 
 
-def _get_flex_image_multitile(panels, raw_data, brightness=1.0):
+def _get_flex_image_multipanel(panels, raw_data, brightness=1.0):
   # From xfel.cftbx.cspad_detector.readHeader() and
   # xfel.cftbx.cspad_detector.get_flex_image().  XXX Is it possible to
   # merge this with _get_flex_image() above?
@@ -51,52 +51,51 @@ def _get_flex_image_multitile(panels, raw_data, brightness=1.0):
   from math import ceil
 
   from iotbx.detectors import generic_flex_image
+  from libtbx.test_utils import approx_equal
   from scitbx.array_family import flex
   from scitbx.matrix import col, rec, sqr
   from xfel.cftbx.detector.metrology import get_projection_matrix
 
   assert len(panels) == len(raw_data)
 
-  # Determine next multiple of eight of the largest ASIC (tile) size.
-  # Set img_size to the focus of the padded rawdata.
-  for asic in raw_data:
-    if 'asic_focus' not in locals():
-      asic_focus = asic.focus()
+  # Determine next multiple of eight of the largest panel size.
+  for data in raw_data:
+    if 'data_max_focus' not in locals():
+      data_max_focus = data.focus()
     else:
-      asic_focus = (max(asic_focus[0], asic.focus()[0]),
-                    max(asic_focus[1], asic.focus()[1]))
-  asic_padded = (8 * int(ceil(asic_focus[0] / 8)),
-                 8 * int(ceil(asic_focus[1] / 8)))
-  img_size = (len(panels) * asic_padded[0], asic_padded[1])
+      data_max_focus = (max(data_max_focus[0], data.focus()[0]),
+                        max(data_max_focus[1], data.focus()[1]))
+  data_padded = (8 * int(ceil(data_max_focus[0] / 8)),
+                 8 * int(ceil(data_max_focus[1] / 8)))
 
-  # Assert that all saturated values are equal and not None.  XXX This
-  # should go away in dxtbx.
+  # Assert that all saturated values are equal and not None.  While
+  # dxtbx records a separated trusted_range for each panel,
+  # generic_flex_image supports only accepts a single common value for
+  # the saturation.
   for panel in panels:
     if 'saturation' not in locals():
       saturation = panel.get_trusted_range()[1]
     else:
-      # XXX real-valued equality!  See
-      # cctbx_project/scitbx/math/approx_equal.h
-      assert saturation == panel.get_trusted_range()[1]
+      assert approx_equal(saturation, panel.get_trusted_range()[1])
   assert 'saturation' in locals() and saturation is not None
 
   # Create rawdata and my_flex_image before populating it.
-  rawdata = flex.double(flex.grid(img_size[0], img_size[1]))
+  rawdata = flex.double(
+    flex.grid(len(panels) * data_padded[0], data_padded[1]))
   my_flex_image = generic_flex_image(
     rawdata=rawdata,
-    size1_readout=asic_focus[0],
-    size2_readout=asic_focus[1],
+    size1_readout=data_max_focus[0],
+    size2_readout=data_max_focus[1],
     brightness=brightness,
     saturation=saturation)
 
-  # XXX Add ASIC:s in order?  If a point is contained in two ASIC:s
-  # simultaneously, it will be assigned to the ASIC defined first.
-  # XXX Use a Z-buffer instead?
+  # XXX If a point is contained in two panels simultaneously, it will
+  # be assigned to the panel defined first.  XXX Use a Z-buffer
+  # instead?
   for i in range(len(panels)):
-    asic = raw_data[i]
-
-    # Determine the pixel size for the ASIC (in meters), as pixel
+    # Determine the pixel size for the panel (in meters), as pixel
     # sizes need not be identical.
+    data = raw_data[i]
     panel = panels[i]
     pixel_size = (panel.get_pixel_size()[0] * 1e-3,
                   panel.get_pixel_size()[1] * 1e-3)
@@ -108,8 +107,8 @@ def _get_flex_image_multitile(panels, raw_data, brightness=1.0):
     slow = col(panel.get_slow_axis())
     origin = col(panel.get_origin()) * 1e-3
     center = origin \
-             + (asic.focus()[0] - 1) / 2 * pixel_size[0] * slow \
-             + (asic.focus()[1] - 1) / 2 * pixel_size[1] * fast
+             + (data.focus()[0] - 1) / 2 * pixel_size[1] * slow \
+             + (data.focus()[1] - 1) / 2 * pixel_size[0] * fast
     normal = slow.cross(fast).normalize()
 
     # Determine rotational and translational components of the
@@ -136,13 +135,15 @@ def _get_flex_image_multitile(panels, raw_data, brightness=1.0):
                    0, 0, 1],
             n=[4, 3])
 
-    # P: [x, y, z, 1] -> [row, column, 1].  Note that asic_focus needs
-    # to be flipped.
-    Pf = get_projection_matrix(pixel_size, (asic_focus[1], asic_focus[0]))[0]
+    # P: [x, y, z, 1] -> [row, column, 1].  Note that data.focus()
+    # needs to be flipped to give (horizontal, vertical) size,
+    # i.e. (width, height).
+    Pf = get_projection_matrix(
+      pixel_size, (data.focus()[1], data.focus()[0]))[0]
 
     rawdata.matrix_paste_block_in_place(
-      block=asic,
-      i_row=i * asic_padded[0],
+      block=data,
+      i_row=i * data_padded[0],
       i_column=0)
 
     # Last row of T is always [0, 0, 0, 1].
@@ -198,7 +199,7 @@ class _Tiles(object):
         if self.raw_image.implements_metrology_matrices():
           # XXX Special-case read of new-style images until multitile
           # images are fully supported in dxtbx.
-          self.flex_image = _get_flex_image_multitile(
+          self.flex_image = _get_flex_image_multipanel(
             brightness=self.current_brightness / 100,
             panels=self.raw_image.get_detector(),
             raw_data=self.raw_image.get_raw_data())
@@ -215,7 +216,7 @@ class _Tiles(object):
         if self.raw_image.implements_metrology_matrices():
           # XXX Special-case read of new-style images until multitile
           # images are fully supported in dxtbx.
-          self.flex_image = _get_flex_image_multitile(
+          self.flex_image = _get_flex_image_multipanel(
             brightness=b / 100,
             panels=self.raw_image.get_detector(),
             raw_data=self.raw_image.get_raw_data())
