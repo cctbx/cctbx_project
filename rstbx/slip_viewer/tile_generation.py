@@ -144,7 +144,7 @@ def _get_flex_image_multipanel(panels, raw_data, brightness=1.0):
       pixel_size, (data.focus()[1], data.focus()[0]))[0]
 
     rawdata.matrix_paste_block_in_place(
-      block=data,
+      block=data.as_double(),
       i_row=i * data_padded[0],
       i_column=0)
 
@@ -194,29 +194,30 @@ class _Tiles(object):
         # image (yet), the metrology has to be applied here, and not
         # in frame.py.
 
-        if (self.raw_image.implements_metrology_matrices() and
-            metrology_matrices is not None):
-            self.raw_image.apply_metrology_from_matrices(metrology_matrices)
+        detector = self.raw_image.get_detector()
 
-        if self.raw_image.implements_metrology_matrices():
+        if len(detector) > 1 and metrology_matrices is not None:
+          self.raw_image.apply_metrology_from_matrices(metrology_matrices)
+
+        if len(detector) > 1:
           # XXX Special-case read of new-style images until multitile
           # images are fully supported in dxtbx.
           self.flex_image = _get_flex_image_multipanel(
             brightness=self.current_brightness / 100,
-            panels=self.raw_image.get_detector(),
+            panels=detector,
             raw_data=[self.raw_image.get_raw_data(i)
                       for i in range(len(self.raw_image.get_detector()))])
         else:
           self.flex_image = _get_flex_image(
             brightness=self.current_brightness / 100,
             data=self.raw_image.get_raw_data(),
-            saturation=self.raw_image.get_detector().get_trusted_range()[1],
+            saturation=self.raw_image.get_detector()[0].get_trusted_range()[1],
             vendortype=self.raw_image.__class__.__name__)
 
         self.flex_image.adjust(color_scheme=self.current_color_scheme)
 
     def update_brightness(self,b,color_scheme=0):
-        if self.raw_image.implements_metrology_matrices():
+        if len(self.raw_image.get_detector()) > 1:
           # XXX Special-case read of new-style images until multitile
           # images are fully supported in dxtbx.
           self.flex_image = _get_flex_image_multipanel(
@@ -228,7 +229,7 @@ class _Tiles(object):
           self.flex_image = _get_flex_image(
             brightness=b / 100,
             data=self.raw_image.get_raw_data(),
-            saturation=self.raw_image.get_detector().get_trusted_range()[1],
+            saturation=self.raw_image.get_detector()[0].get_trusted_range()[1],
             vendortype=self.raw_image.__class__.__name__ )
 
         self.update_color_scheme(color_scheme)
@@ -336,13 +337,14 @@ class _Tiles(object):
 
     def get_initial_instrument_centering_within_picture_as_lon_lat(self):
       import sys
+      detector = self.raw_image.get_detector()
       if sys.platform.lower().find("linux") >= 0:
-        if self.raw_image.__class__.__name__.find('FormatPYmultitile') >= 0:
+        if len(detector) > 1:
           return 0.,0.
         else:
           return self.center_x_lon-self.extent[0], self.center_y_lat-self.extent[3]
       else:
-        if self.raw_image.__class__.__name__.find('FormatPYmultitile') >= 0:
+        if len(detector) > 1:
           return self.extent[0], self.extent[3]
         else:
           return self.center_x_lon, self.center_y_lat
@@ -389,7 +391,7 @@ class _Tiles(object):
       # slow is pointing down (x).  fast is pointing right (y).
 
       detector = self.raw_image.get_detector()
-      if detector.num_panels() == 1:
+      if len(detector) == 1:
         (size2, size1) = detector.get_image_size()
       else:
         # XXX Special-case until multitile detectors fully supported.
@@ -511,7 +513,8 @@ class _Tiles(object):
         """
 
         d_min = None
-        if self.raw_image.implements_metrology_matrices():
+        detector = self.raw_image.get_detector()
+        if len(detector) > 1:
           # XXX Special-case read of new-style images until
           # multitile images are fully supported in dxtbx.
           x_point, y_point = self.raw_image.image_coords_as_detector_coords(
@@ -542,7 +545,7 @@ class _Tiles(object):
 
     def get_detector_distance (self) :
         detector = self.raw_image.get_detector()
-        if detector.num_panels() == 1:
+        if len(detector) == 1:
           dist = detector.get_distance()
         else:
           # XXX Special-case until multitile detectors fully
@@ -558,7 +561,7 @@ class _Tiles(object):
         from scitbx.matrix import col
 
         detector = self.raw_image.get_detector()
-        if detector.num_panels() == 1:
+        if len(detector) == 1:
           n = col(detector.get_normal())
           s0 = col(self.raw_image.get_beam().get_unit_s0())
           two_theta = s0.angle(n, deg=False)
