@@ -20,20 +20,8 @@ def load_cxi_phil(path, args=[]):
   master_phil = phil.parse(input_string=iotbx_defs + libtbx_defs,
                            process_includes=True)
 
-  # Temporarily set the working directory to the directory of the
-  # input file.  This emulates cpp(1)-like behaviour of "include"
-  # statements, except relative paths of any nested includes will be
-  # expanded with respect to this directory as well.
-  cwd = os.getcwd()
-  (head, tail) = os.path.split(path)
-  if os.path.isdir(head):
-    os.chdir(head)
-
-  stream = open(tail)
   horizons_phil = master_phil.fetch(
-    sources=[phil.parse(stream.read(), process_includes=True)])
-  stream.close()
-  os.chdir(cwd)
+    sources=[phil.parse(file_name=path, process_includes=True)])
 
   argument_interpreter = argument_interpreter(
     master_phil=master_phil

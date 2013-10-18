@@ -2623,4 +2623,3 @@ xfel/mono_simulation/ext.cpp -text
 xfel/mono_simulation/mono_treatment.py -text
 xfel/mono_simulation/parameters.h -text
 xfel/mono_simulation/vector_collection.h -text
-xfel/phil_preferences.py -text
