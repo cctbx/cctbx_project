@@ -17,8 +17,33 @@ from libtbx.str_utils import make_header, make_sub_header, format_value
 from libtbx import slots_getstate_setstate
 from libtbx.utils import null_out
 import libtbx.load_env
+import libtbx.phil
 import os.path
 import sys
+
+master_phil_str = """
+clashscore = True
+  .type = bool
+ramalyze = True
+  .type = bool
+rotalyze = True
+  .type = bool
+cbetadev = True
+  .type = bool
+model_stats = True
+  .type = bool
+restraints = True
+  .type = bool
+rfactors = True
+  .type = bool
+real_space = True
+  .type = bool
+waters = True
+  .type = bool
+"""
+
+def molprobity_flags () :
+  return libtbx.phil.parse(master_phil_str).extract()
 
 class molprobity (slots_getstate_setstate) :
   """
@@ -51,6 +76,7 @@ class molprobity (slots_getstate_setstate) :
       xray_structure=None,
       fmodel=None,
       geometry_restraints_manager=None,
+      flags=None,
       header_info=None,
       unmerged_data=None,
       keep_hydrogens=True,
@@ -62,34 +88,41 @@ class molprobity (slots_getstate_setstate) :
     for name in self.__slots__ :
       setattr(self, name, None)
     self.header_info = header_info
+    if (flags is None) :
+      flags = molprobity_flags()
     if pdb_hierarchy.contains_protein() :
-      self.ramalyze = ramalyze.ramalyze(
+      if (flags.ramalyze) :
+        self.ramalyze = ramalyze.ramalyze(
+          pdb_hierarchy=pdb_hierarchy,
+          outliers_only=False,
+          out=null_out(),
+          quiet=True)
+      if (flags.rotalyze) :
+        self.rotalyze = rotalyze.rotalyze(
+          pdb_hierarchy=pdb_hierarchy,
+          outliers_only=False,
+          out=null_out(),
+          quiet=True)
+      if (flags.cbetadev) :
+        self.cbetadev = cbetadev.cbetadev(
+          pdb_hierarchy=pdb_hierarchy,
+          outliers_only=True,
+          out=null_out(),
+          quiet=True)
+    if (flags.clashscore) :
+      self.clashscore = clashscore.clashscore(
         pdb_hierarchy=pdb_hierarchy,
-        outliers_only=False,
+        save_probe_unformatted_file=save_probe_unformatted_file,
+        nuclear=nuclear,
+        keep_hydrogens=keep_hydrogens,
         out=null_out(),
-        quiet=True)
-      self.rotalyze = rotalyze.rotalyze(
+        verbose=False)
+    if (flags.model_stats) :
+      self.model_stats = model_properties.model_statistics(
         pdb_hierarchy=pdb_hierarchy,
-        outliers_only=False,
-        out=null_out(),
-        quiet=True)
-      self.cbetadev = cbetadev.cbetadev(
-        pdb_hierarchy=pdb_hierarchy,
-        outliers_only=True,
-        out=null_out(),
-        quiet=True)
-    self.clashscore = clashscore.clashscore(
-      pdb_hierarchy=pdb_hierarchy,
-      save_probe_unformatted_file=save_probe_unformatted_file,
-      nuclear=nuclear,
-      keep_hydrogens=keep_hydrogens,
-      out=null_out(),
-      verbose=False)
-    self.model_stats = model_properties.model_statistics(
-      pdb_hierarchy=pdb_hierarchy,
-      xray_structure=xray_structure,
-      ignore_hd=(not nuclear))
-    if (geometry_restraints_manager is not None) :
+        xray_structure=xray_structure,
+        ignore_hd=(not nuclear))
+    if (geometry_restraints_manager is not None) and (flags.restraints) :
       assert (xray_structure is not None)
       self.restraints = restraints.combined(
         pdb_hierarchy=pdb_hierarchy,
@@ -97,20 +130,24 @@ class molprobity (slots_getstate_setstate) :
         geometry_restraints_manager=geometry_restraints_manager,
         ignore_hd=(not nuclear))
     if (fmodel is not None) :
-      self.data_stats = experimental.data_statistics(fmodel)
-      self.waters = waters.waters(
-        pdb_hierarchy=pdb_hierarchy,
-        xray_structure=xray_structure,
-        fmodel=fmodel,
-        collect_all=False)
-      self.real_space = experimental.real_space(
-        fmodel=fmodel,
-        pdb_hierarchy=pdb_hierarchy,
-        cc_min=min_cc_two_fofc)
+      if (flags.rfactors) :
+        self.data_stats = experimental.data_statistics(fmodel)
+      if (flags.waters) :
+        self.waters = waters.waters(
+          pdb_hierarchy=pdb_hierarchy,
+          xray_structure=xray_structure,
+          fmodel=fmodel,
+          collect_all=False)
+      if (flags.real_space) :
+        self.real_space = experimental.real_space(
+          fmodel=fmodel,
+          pdb_hierarchy=pdb_hierarchy,
+          cc_min=min_cc_two_fofc)
     self._multi_criterion = multi_criterion_view(pdb_hierarchy)
 
   def molprobity_score (self) :
-    if (self.ramalyze is None) : return None
+    if (None in [self.ramalyze, self.rotalyze, self.clashscore]) :
+      return None
     from mmtbx.validation import utils
     return utils.molprobity_score(
       clashscore=self.clashscore.get_clashscore(),
@@ -143,8 +180,9 @@ class molprobity (slots_getstate_setstate) :
     if (self.cbetadev is not None) :
       make_sub_header("C-beta deviations", out=out)
       self.cbetadev.show(out=out, prefix="  ", outliers_only=outliers_only)
-    make_sub_header("Bad clashes", out=out)
-    self.clashscore.show(out=out, prefix="  ")
+    if (self.clashscore is not None) :
+      make_sub_header("Bad clashes", out=out)
+      self.clashscore.show(out=out, prefix="  ")
     make_header("Summary", out=out)
     self.show_summary(out=out, prefix="  ")
 
@@ -165,8 +203,9 @@ class molprobity (slots_getstate_setstate) :
     if (self.cbetadev is not None) :
       print >> out, "%sC-beta deviations     = %s" % (prefix,
         fs("%6d", self.cbetadev.n_outliers))
-    print >> out, "%sClashscore            = %6.2f" % (prefix,
-      self.clashscore.get_clashscore())
+    if (self.clashscore is not None) :
+      print >> out, "%sClashscore            = %6.2f" % (prefix,
+        self.clashscore.get_clashscore())
     mpscore = self.molprobity_score()
     if (mpscore is not None) :
       print >> out, "%sMolprobity score      = %6.2f" % (prefix, mpscore)
