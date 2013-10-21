@@ -155,6 +155,7 @@ class RotamerEval:
         # convert existing weak references to strong references
         self.aaTables[aa] = ndt_weakref()
     rotamer_data_dir = find_rotarama_data_dir()
+    no_update = os.path.exists(os.path.join(rotamer_data_dir, "NO_UPDATE"))
     target_db = open_rotarama_dlite(rotarama_data_dir=rotamer_data_dir)
     for aa, aafile in aminoAcids.items():
       if (self.aaTables.get(aa) is not None): continue
@@ -164,7 +165,8 @@ class RotamerEval:
                     source_path=data_file,
                     target_path=pickle_file,
                     path_prefix=rotamer_data_dir)
-      if pair_info.needs_update:
+      if (((pair_info.needs_update) and (not no_update)) or not
+          os.path.exists(os.path.join(rotamer_data_dir, pickle_file)))  :
         raise Sorry(
           "chem_data/rotarama_data/*.pickle files are missing or out of date.\n"
           "  Please run\n"
