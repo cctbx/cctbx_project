@@ -3,6 +3,8 @@ import boost.python
 boost.python.import_ext("rstbx_indexing_api_ext")
 from rstbx_indexing_api_ext import *
 import rstbx_indexing_api_ext as ext
+from rstbx.array_family import flex
+from scitbx.matrix import col
 
 class _(boost.python.injector, ext.dps_extended):
 
@@ -18,7 +20,6 @@ class _(boost.python.injector, ext.dps_extended):
     assert axis.length() == 1.0
 
   def set_detector(self,input_detector):
-    from scitbx.matrix import col
     self.origin = col(input_detector.get_origin())
     self.d1 = col(input_detector.get_fast_axis())
     self.d2 = col(input_detector.get_slow_axis())
@@ -38,7 +39,25 @@ class _(boost.python.injector, ext.dps_extended):
     self.d1 = d1 # detector fast axis
     self.d2 = d2 # detector slow axis
 
-  #def raw_spot_input_to_reciprocal_space( # to be implemented
+  @staticmethod
+  def raw_spot_positions_mm_to_reciprocal_space( raw_spot_input, # as vec3_double
+      detector, inverse_wave, beam, axis): # beam, axis as scitbx.matrix.col
+    reciprocal_space_vectors = flex.vec3_double()
+    origin = col(detector.get_origin())
+    d1     = col(detector.get_fast_axis())
+    d2     = col(detector.get_slow_axis())
+
+    # tile surface to laboratory transformation
+    for n in xrange(len(raw_spot_input)):
+      lab_direct = origin + d1 * raw_spot_input[n][0] + d2 * raw_spot_input[n][1]
+
+    # laboratory direct to reciprocal space xyz transformation
+      lab_recip = (lab_direct.normalize() * inverse_wave) - beam
+
+      reciprocal_space_vectors.append ( lab_recip.rotate_around_origin(
+        axis=axis, angle=raw_spot_input[n][2], deg=True)
+        )
+    return reciprocal_space_vectors
 
   def model_likelihood(self,separation_mm):
     TOLERANCE = 0.5
@@ -57,7 +76,6 @@ class _(boost.python.injector, ext.dps_extended):
     # step 1.  Deduce fractional HKL values from the XyzData.  start with x = A* h
     #          solve for h:  h = (A*^-1) x
     Astarinv = Astar.inverse()
-    from cctbx.array_family import flex
     Hint = flex.vec3_double()
     for x in xyz:
       H = Astarinv * x

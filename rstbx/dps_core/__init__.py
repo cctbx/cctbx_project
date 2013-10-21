@@ -100,5 +100,3 @@ class _(boost.python.injector, ext.dps_core):
 # Boost python injector (not double inheritance) is required so that classes that inherit ext.dps_core
 #   will be able to both execute the injected methods (combos and niggli) as well as the
 #   ext.dps_core C++ class methods
-
-

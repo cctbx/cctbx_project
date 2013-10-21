@@ -26,13 +26,17 @@ struct dps_extended: public rstbx::dps_core {
   dps_extended(const dps_extended&){} // copy constructor (gives
     //a duplicate engine with parameters but no data)
 
+
+  // XXX rename these methods (like "set/get raw_input_positions_mm")
   void setData(const pointlist &);
   inline pointlistmm getData(){return rawdata;}
 
+  // XXX not used now, but use this for tweaking of the basis set
   Direction refine_direction(const Direction& candidate,
                              const double& current_grid,
                              const double& target_grid) const;
 
+  // both of these unused?  XXX deprecate???
   double high()const;          //high-resolution limit defined by the provided rawdata
   double model_likelihood(double)const;//same as above except the random residual (mm)
                             //is replaced by the input of choice, usually the
