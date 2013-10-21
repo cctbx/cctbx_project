@@ -79,7 +79,8 @@ def exercise_mmdb_cryst1_interpretation(sgi_hall, pdb_str):
     return # unknown mmdb problem 2010-10-31
   print >> open("tmp.pdb", "w"), pdb_str
   mgr = ccp4io_adaptbx.mmdb.Manager()
-  mgr.ReadPDBASCII(fileName="tmp.pdb", gzipMode=0)
+  mgr.ReadPDBASCII(fileName="tmp.pdb",
+    gzipMode=ccp4io_adaptbx.mmdb.IO_GZ_MODE.GZM_NONE)
   if (mgr.isSpaceGroup() == 0):
     print "MMDB does not recognize space group symbol:"
     print pdb_str
