@@ -1,6 +1,5 @@
 from __future__ import division
 from iotbx import crystal_symmetry_from_any
-from scitbx.array_family import flex
 from libtbx.utils import Sorry
 from scitbx import matrix
 from iotbx import pdb

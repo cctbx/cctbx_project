@@ -849,7 +849,6 @@ def euler_frac_to_rot_trans(euler_values,frac,unit_cell):
     # TT get RT in cctbx form from euler angles and fractional translation as
     #   used in phaser. Note: Specific for phaser EULER FRAC
 
-    from scitbx.math import euler_angles_as_matrix, euler_angles
     ncs_rota_matr_inv=scitbx.rigid_body.euler(
       euler_values[2],euler_values[1],euler_values[0],"zyz").rot_mat()
     ncs_rota_matr=ncs_rota_matr_inv.inverse()

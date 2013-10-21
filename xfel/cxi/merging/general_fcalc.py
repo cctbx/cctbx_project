@@ -9,7 +9,7 @@ import math
 def run (params) :
   # assume *.mtz has Iobs or IMEAN and was created in previous step
   # from mark1 algorithm
-  if params.model[-4:]==".mtz": 
+  if params.model[-4:]==".mtz":
     from iotbx import mtz
     data_SR = mtz.object(params.model)
     for array in data_SR.as_miller_arrays():

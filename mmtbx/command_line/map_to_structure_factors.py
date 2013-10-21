@@ -76,7 +76,6 @@ def run(args, log=None):
     if(str(e) == "cctbx Error: Miller index not in structure factor map."):
       msg = "Too high resolution requested. Try running with larger d_min."
       raise Sorry(msg)
-  except: raise
   #
   mtz_dataset = f_obs_cmpl.as_mtz_dataset(column_root_label="Fobs_cmpl")
   mtz_dataset.add_miller_array(
