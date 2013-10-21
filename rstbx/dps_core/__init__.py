@@ -74,7 +74,7 @@ def directional_show(direction,message):
     direction.real,180*direction.psi/math.pi, 180.*direction.phi/math.pi,
     direction.kmax, direction.kval,direction.kval2,direction.kval3)
 
-class dps_core_base:
+class _(boost.python.injector, ext.dps_core):
 
   def combos(self,basis=10):
     """All interesting combinations of the directional candidates.
@@ -97,13 +97,8 @@ class dps_core_base:
     ni = support_niggli(self.getOrientation(),cutoff=cutoff) # orientation of reduced cell
     self.setOrientation(ni)
 
-# Might need boost python injector to inject the combos and niggli methods into the C++ class
-# (instead of double inheritance)?
-class dps_core(ext.dps_core):#,dps_core_base):
+# Boost python injector (not double inheritance) is required so that classes that inherit ext.dps_core
+#   will be able to both execute the injected methods (combos and niggli) as well as the
+#   ext.dps_core C++ class methods
 
-  def __init__(self):
-    ext.dps_core.__init__(self)
-
-  def getOrientation(self):
-    return Orientation(ext.dps_core.getOrientation(self))
 

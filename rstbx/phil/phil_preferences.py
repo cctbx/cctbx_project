@@ -48,6 +48,9 @@ indexing {
     .type = float
     .help = Cutoff value for the <Z-score> over integrated signal from the model lattice.
     .help = Used for choosing the most accurate combination of candidate basis vectors.
+  devel_algorithm = None
+    .type = str
+    .help = for development only, turn on whatever testing behavior
 }
 
 integration {
