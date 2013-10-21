@@ -6,7 +6,6 @@ from __future__ import division
 
 import math
 import wx
-import rstbx.utils
 
 ######
 # Base class for a tile object - handles access to tiles.
@@ -517,28 +516,22 @@ class _Tiles(object):
         if len(detector) > 1:
           # XXX Special-case read of new-style images until
           # multitile images are fully supported in dxtbx.
-          x_point, y_point = self.raw_image.image_coords_as_detector_coords(
-            x, y,readout)
-          center_x, center_y = self.raw_image.get_beam_center_mm()
+          if readout is None:
+            return None
 
-          dist = self.get_detector_distance()
-          two_theta = self.get_detector_2theta()
-          wavelength = self.raw_image.get_beam().get_wavelength()
+          panel = detector[int(readout)]
 
-          if dist > 0:
-            scattering_angle = rstbx.utils.get_scattering_angle(
-              x=x_point,
-              y=y_point,
-              center_x=center_x,
-              center_y=center_y,
-              distance=dist,
-              detector_two_theta=two_theta,
-              distance_is_corrected=True)
-            if scattering_angle != 0.0:
-              d_min = wavelength / (2 * math.sin(scattering_angle / 2))
+          beam = self.raw_image.get_beam().get_unit_s0()
+
+          from dxtbx.model import Panel2
+          if isinstance(panel, Panel2): # waiting to synchronize dxtbx interfaces
+            d_min = panel.get_resolution_at_pixel(beam, (x, y))
+          else:
+            wavelength = self.raw_image.get_beam().get_wavelength()
+            d_min = panel.get_resolution_at_pixel(beam, wavelength, (x, y))
         else:
           beam = self.raw_image.get_beam()
-          d_min = self.raw_image.get_detector().get_resolution_at_pixel(
+          d_min = detector.get_resolution_at_pixel(
             beam.get_unit_s0(), beam.get_wavelength(), (x, y))
 
         return d_min
