@@ -1532,13 +1532,18 @@ class AppFrame(wx.Frame):
                            LonLatPrecision, fast_picture))
             coords = self.pyslip.tiles.get_flex_pixel_coordinates(lon,lat)
             if (len(coords) >= 2):
+                if len(coords) == 3:
+                    readout = int(round(coords[2]))
+                else:
+                    readout = -1
+
                 coords_str = ("slow=%.*f / fast=%.*f pixels"
                               % (LonLatPrecision, coords[0],
                                  LonLatPrecision, coords[1]))
                 if (len(coords) == 2):
                     posn_str += " Readout: " + coords_str +"."
-                elif (coords[2] >= 0):
-                    posn_str += " Readout %d: %s." % (coords[2], coords_str)
+                elif (readout >= 0):
+                    posn_str += " Readout %d: %s." % (readout, coords_str)
 
                 possible_intensity = None
                 fi = self.pyslip.tiles.raw_image
@@ -1546,9 +1551,10 @@ class AppFrame(wx.Frame):
                 ifs = (int(coords[1]), int(coords[0])) # int fast slow
                 isf = (int(coords[0]), int(coords[1])) # int slow fast
                 if len(detector) > 1:
-                    panel = detector[int(coords[2])]
-                    if panel.is_coord_valid(ifs):
-                        possible_intensity = fi.get_raw_data(int(coords[2]))[isf]
+                    if readout > 0:
+                        panel = detector[readout]
+                        if panel.is_coord_valid(ifs):
+                            possible_intensity = fi.get_raw_data(readout)[isf]
                 else:
                     if detector.is_coord_valid(ifs):
                         possible_intensity = fi.get_raw_data()[isf]
@@ -1562,8 +1568,8 @@ class AppFrame(wx.Frame):
                       format_str = " I=%%6.%df"%(max(0,5-yaya))
                     posn_str += format_str%possible_intensity
 
-                if (len(coords) > 2 and coords[2] >=0): # indicates it's a tiled image
-                    reso = self.pyslip.tiles.get_resolution(coords[1], coords[0], coords[2])
+                if (len(coords) > 2 and readout >= 0): # indicates it's a tiled image in a valid region
+                    reso = self.pyslip.tiles.get_resolution(coords[1], coords[0], readout)
                 else:
                     reso = self.pyslip.tiles.get_resolution(coords[1], coords[0])
 

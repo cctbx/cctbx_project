@@ -519,7 +519,7 @@ class _Tiles(object):
           if readout is None:
             return None
 
-          panel = detector[int(readout)]
+          panel = detector[readout]
 
           beam = self.raw_image.get_beam().get_unit_s0()
 
