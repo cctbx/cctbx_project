@@ -67,9 +67,9 @@ class installer (object) :
       help="Build in debugging mode", default=False)
     parser.add_option("--no-download", dest="no_download", action="store_true",
       help="Use only local packages (no downloads)", default=False)
-    parser.add_option("--python-shared", dest="python_shared",
+    parser.add_option("--python-static", dest="python_static",
       action="store_true", default=False,
-      help="Compile Python shared library (Linux only)")
+      help="Compile Python as static executable and library (Linux only)")
     options, args = parser.parse_args(args)
     # basic setup
     self.tmp_dir = options.tmp_dir
@@ -104,7 +104,6 @@ class installer (object) :
     else :
       pass # TODO ???
     assert os.path.exists(self.python_exe), self.python_exe
-    self.update_paths()
     if (not options.basic) :
       for env_var in ["BLAS","ATLAS","LAPACK"] :
         os.environ[env_var] = "None"
@@ -257,12 +256,13 @@ class installer (object) :
         self.base_dir, log=log)
     else :
       configure_args = ["--prefix=\"%s\"" % self.base_dir,]
-      if (self.options.python_shared) :
+      if (not self.options.python_static) :
         configure_args.append("--enable-shared")
       self.configure_and_build(config_args=configure_args, log=log)
     log.close()
     self.python_exe = os.path.abspath(
       os.path.join(self.base_dir, "bin", "python"))
+    self.update_paths()
     # just an arbitrary import (with .so)
     self.verify_python_module("Python", "socket")
     self.print_sep()
