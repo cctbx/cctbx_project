@@ -3,11 +3,42 @@ import boost.python
 boost.python.import_ext("rstbx_indexing_api_ext")
 from rstbx_indexing_api_ext import *
 import rstbx_indexing_api_ext as ext
-from rstbx.dps_core import dps_core_base
 
-class dps_extended(ext.dps_extended, dps_core_base):
-  def __init__(self):
-    ext.dps_extended.__init__(self)
+class _(boost.python.injector, ext.dps_extended):
+
+  def set_beam_vector(self,beam):
+    self.beam = beam
+    self.beam_vector = beam # will be deprecated soon XXX
+    self.inv_wave = self.beam.length() # will be deprecated soon XXX
+    self.wavelength_set = 1./self.inv_wave
+
+  def set_rotation_axis(self,axis):
+    self.rotation_vector = axis
+    self.axis = axis # will be deprecated soon XXX
+    assert axis.length() == 1.0
+
+  def set_detector(self,input_detector):
+    from scitbx.matrix import col
+    self.origin = col(input_detector.get_origin())
+    self.d1 = col(input_detector.get_fast_axis())
+    self.d2 = col(input_detector.get_slow_axis())
+    self.detector = input_detector
+
+  def set_detector_position(self,origin,d1,d2): # optional, alternate form
+    from dxtbx.model.detector import detector_factory
+    self.detector = detector_factory.make_detector(
+      stype = "indexing",
+      fast_axis = d1,
+      slow_axis = d2,
+      origin = origin,
+      pixel_size = (1.0,1.0),  #not actually using pixels for indexing
+      image_size = (100,100),  #not using pixels
+      )
+    self.origin = origin
+    self.d1 = d1 # detector fast axis
+    self.d2 = d2 # detector slow axis
+
+  #def raw_spot_input_to_reciprocal_space( # to be implemented
 
   def model_likelihood(self,separation_mm):
     TOLERANCE = 0.5
@@ -56,15 +87,3 @@ class dps_extended(ext.dps_extended, dps_core_base):
           fraction_properly_predicted += 1./ self.raw_spot_input.size()
     print "fraction properly predicted",fraction_properly_predicted,"with spot sep (mm)",separation_mm
     return fraction_properly_predicted
-
-  def set_detector(self,d1,d2,origin):
-    from dxtbx.model.detector import detector_factory
-    self.detector = detector_factory.make_detector(
-      stype = "indexing",
-      fast_axis = d1,
-      slow_axis = d2,
-      origin = origin,
-      pixel_size = (1.0,1.0),  #not actually using pixels for indexing
-      image_size = (100,100),  #not using pixels
-      )
-    print "dps_extended set detector"
