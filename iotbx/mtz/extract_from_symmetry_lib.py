@@ -4,7 +4,7 @@ import libtbx.load_env
 import os.path as op
 
 if (libtbx.env.has_module("ccp4io")):
-  for _ in ["lib/libccp4/data", "lib/data"]:
+  for _ in ["libccp4/data", "data"]:
     ccp4io_lib_data = libtbx.env.under_dist(
       module_name="ccp4io", path=_)
     if (op.isdir(ccp4io_lib_data)):
