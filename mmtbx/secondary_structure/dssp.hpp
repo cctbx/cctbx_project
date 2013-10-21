@@ -129,6 +129,10 @@ namespace mmtbx { namespace secondary_structure { namespace dssp {
     if (! have_cO) {
       return boost::optional<double>();
     }
+    double rCN = (cO_xyz - N_xyz).length_sq();
+    if (rCN > 49.0) {
+      return boost::optional<double>();
+    }
     // now calculate the hydrogen position
     hN_xyz = get_n_h_position(N, nh_bond_length);
     if (! hN_xyz) {

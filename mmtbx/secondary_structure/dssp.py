@@ -35,7 +35,7 @@ pymol_script = None
   .type = path
 """)
 
-turn_start = 0 # XXX see comment below
+TURN_START = 0 # XXX see comment below
 
 class hbond (object) :
   def __init__ (self, residue1, residue2, energy) : # atom_group objects
@@ -119,6 +119,9 @@ class bridge (object) :
           j_res = hbond2.i_res + 1
       self.i_res = min(i_res, j_res)
       self.j_res = max(i_res, j_res)
+
+  def contains_hbond (self, hbond) :
+    return (hbond == self.hbond1) or (hbond == self.hbond2)
 
   def invert (self) :
     return bridge(
@@ -233,7 +236,9 @@ class ladder (object) :
     min_i_res = sys.maxint
     # XXX this is incorrect - it is not picking the first possible H-bond
     for hbond in hbonds :
-      if (hbond.is_in_ladder(i_res_start,i_res_end,j_res_start,j_res_end)) :
+      if (self.bridges[0].contains_hbond(hbond) or
+          self.bridges[-1].contains_hbond(hbond) or
+          hbond.is_in_ladder(i_res_start,i_res_end,j_res_start,j_res_end)) :
         if ((hbond.i_res < min_i_res) and (hbond.i_res >= i_res_start) and
             (hbond.i_res <= i_res_end)) : # O atom
           start_hbond = hbond
@@ -453,11 +458,17 @@ class dssp (object) :
       turns.append(current_turn)
     if (self.params.verbosity >= 1) :
       print >> self.log, "%d basic turns" % len(turns)
+      if (self.params.verbosity >= 2) :
+        for turn in turns :
+          print >> self.log, "TURN:"
+          for hb in turn :
+            hb.show(out=self.log, prefix="  ")
     helices = []
     helix_classes = { 4:1, 5:3, 3:5 } # alpha, 3_10, pi
     ignore_previous = False
     prev_turn = None
     for k, turn in enumerate(turns) :
+      turn_start = TURN_START
       n_turn = turn[0].get_n_turn()
       if (len(turn) < 2) : #and (n_turn != 3) :
         prev_turn = None # ignore when processing next turn
@@ -466,11 +477,18 @@ class dssp (object) :
         # XXX if previous turn overlaps with this one (and was not discarded),
         # skip to next.  I'm not actually sure this is correct...
         last_hbond_prev_turn = prev_turn[-1]
-        first_hbond_curr_turn = turn[0]
+        first_hbond_curr_turn = turn[turn_start]
         if ((first_hbond_curr_turn.is_same_chain(last_hbond_prev_turn)) and
             (first_hbond_curr_turn.i_res < last_hbond_prev_turn.j_res)) :
+          turn_start += 1
+          while (turn_start < len(turn)) :
+            if (turn[turn_start].i_res <= last_hbond_prev_turn.j_res) :
+              turn_start += 1
+            else :
+              break
           prev_turn = None
-          continue
+          if (turn_start == len(turn)) or (len(turn[turn_start:]) < 4) :
+            continue
       # XXX in Kabsch & Sander, the helix officially starts at the
       # second turn.  This appears to be consistent with ksdssp, but not with
       # the HELIX records in the PDB.  I am inclined to follow the latter
@@ -548,7 +566,6 @@ class dssp (object) :
               if (u == v) :
                 continue
               elif (other_i_res in other_strand) :
-                #print i_res, u, other_i_res, v
                 linked.add(v)
                 break
       #assert (len(linked) in [1,2])
@@ -576,7 +593,7 @@ class dssp (object) :
       n_left = 0
       while (u < len(connections)) :
         linked = connections[u]
-        if (len(linked) == 1) or (start_on_next_strand) :
+        if (len(linked) == 1) or (start_on_next_strand and len(linked) != 0) :
           L = ladder()
           strand = strands[u]
           max_connecting_strand_length = 0
@@ -653,7 +670,9 @@ class dssp (object) :
           hbonds=self.hbonds,
           pdb_labels=self.pdb_labels,
           is_last_strand=(next_ladder is None))
-        if (register is None) : break
+        if (register is None) :
+          #L.show(self.log)
+          break
         current_sheet.add_strand(next_strand)
         current_sheet.add_registration(register)
     return sheets
