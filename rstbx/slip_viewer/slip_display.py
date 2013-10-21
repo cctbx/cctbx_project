@@ -1543,15 +1543,15 @@ class AppFrame(wx.Frame):
                 possible_intensity = None
                 fi = self.pyslip.tiles.raw_image
                 detector = fi.get_detector()
-                ic = (int(coords[0]), int(coords[1]))
+                ifs = (int(coords[1]), int(coords[0])) # int fast slow
+                isf = (int(coords[0]), int(coords[1])) # int slow fast
                 if len(detector) > 1:
-                    for i, panel in enumerate(detector):
-                        if panel.is_coord_valid(ic):
-                            possible_intensity = fi.get_raw_data(i)[ic]
-                            break
+                    panel = detector[int(coords[2])]
+                    if panel.is_coord_valid(ifs):
+                        possible_intensity = fi.get_raw_data(int(coords[2]))[isf]
                 else:
-                    if detector.is_coord_valid(ic):
-                        possible_intensity = fi.get_raw_data()[ic]
+                    if detector.is_coord_valid(ifs):
+                        possible_intensity = fi.get_raw_data()[isf]
 
                 if possible_intensity is not None:
                     if possible_intensity == 0:
@@ -1563,9 +1563,8 @@ class AppFrame(wx.Frame):
                     posn_str += format_str%possible_intensity
 
                 if (len(coords) > 2 and coords[2] >=0): # indicates it's a tiled image
-                    reso = self.pyslip.tiles.get_resolution(coords[0], coords[1], coords[2])
+                    reso = self.pyslip.tiles.get_resolution(coords[1], coords[0], coords[2])
                 else:
-                    #note, the coords are backwards here:
                     reso = self.pyslip.tiles.get_resolution(coords[1], coords[0])
 
                 if reso is not None:
