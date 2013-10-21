@@ -420,6 +420,9 @@ def validate_map_params (params) :
           " least one previously defined label.  You may output multiple sets "+
           "of coefficients with the same map type, but the column labels must "+
           "be unique.") % (f, phi))
+      elif (None in [f, phi]) :
+        raise Sorry("Please specify both MTZ column labels for map_type '%s'."%
+          map_coeffs.map_type)
       labels.extend([f,phi])
   if (hasattr(params, "map")) :
     for map in params.map :
