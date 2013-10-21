@@ -227,12 +227,12 @@ class same_group(object):
   @property
   def constrained_parameters(self):
     result = ()
-    for g in itertools.islice(groups, 1):
+    for g in itertools.islice(self.groups, 1):
       for i in g:
         if self.fix_xyz:
-          result += (i, 'site')
+          result += ((i, 'site'),)
         if self.fix_u:
-          result += (i, 'U')
+          result += ((i, 'U'),)
     return result
 
   def add_to(self, reparametrisation):
