@@ -13,20 +13,9 @@ class _(boost.python.injector, dps_extended):
   def get_beam_vector_score(self,trial_beam,unique):
     trial_beam = matrix.col(trial_beam)
     nh = min ( self.getSolutions().size(), 20) # extended API
-    reciprocal_space_vectors = flex.vec3_double()
 
-    # tile surface to laboratory transformation
-    for n in xrange(len(self.raw_spot_input)): # deprecate record
-      lab_direct = \
-      self.origin + self.d1 * self.raw_spot_input[n][0] + \
-                    self.d2 * self.raw_spot_input[n][1]    # deprecate record
-
-    # laboratory direct to reciprocal space xyz transformation
-      lab_recip = (lab_direct.normalize() * self.inv_wave) - trial_beam
-
-      reciprocal_space_vectors.append ( lab_recip.rotate_around_origin(
-        axis=self.axis, angle=self.raw_spot_input[n][2], deg=True) # deprecate record
-        )
+    reciprocal_space_vectors = self.raw_spot_positions_mm_to_reciprocal_space(
+      self.raw_spot_input, self.detector, self.inv_wave, trial_beam, self.axis)
 
     solutions = self.getSolutions() #extended API
     sum_score = 0.0
@@ -61,28 +50,10 @@ class _(boost.python.injector, dps_extended):
     # deprecated D = dps_extended()
     # deprecated self.set_detector(self.detector)
     self.setMaxcell(self.max_cell) # extended API
-    reciprocal_space_vectors = flex.vec3_double()
+    reciprocal_space_vectors = self.raw_spot_positions_mm_to_reciprocal_space(
+      self.raw_spot_input, self.detector, self.inv_wave, self.beam, self.axis)
 
-    # tile surface to laboratory transformation
-    for n in xrange(len(raw_spot_input)):
-      lab_direct = \
-      self.origin + self.d1 * raw_spot_input[n][0] + \
-                    self.d2 * raw_spot_input[n][1]
-
-    # laboratory direct to reciprocal space xyz transformation
-      lab_recip = (lab_direct.normalize() * self.inv_wave) - self.beam
-
-      reciprocal_space_vectors.append ( lab_recip.rotate_around_origin(
-        axis=self.axis, angle=raw_spot_input[n][2], deg=True)
-        )
-      # XXX revisit this.  Why is the angle positive or negative?
     self.setXyzData(reciprocal_space_vectors) # extended API
-    # deprecated D.raw_spot_input = raw_spot_input #ersatz until we can refactor this
-    # deprecated D.rotation_vector = self.axis #same comment
-    # deprecated D.wavelength_set = 1./self.inv_wave #same comment
-    # deprecated D.beam_vector = self.beam
-    # XXX refactoring strategy:  The DPS_primitive_lattice class renamed to primitive_indexing
-    #  then: it inherits directly from dps_extended; is-a rather than has-a
 
     hemisphere_shortcut(ai = self, # extended API
         characteristic_sampling = self.recommended_grid_sampling_rad,
@@ -125,33 +96,7 @@ class _(boost.python.injector, dps_extended):
                                         tolerance=1e-7)
           selfOO.x = selfOO.optimizer.get_solution()
 
-
         def target(selfOO, vector):
-          newvec = matrix.col(self.beam) + vector[0]*0.0002*beamr1 + vector[1]*0.0002*beamr2
-          normal = newvec.normalize() * self.inv_wave
-          return -self.get_beam_vector_score(normal,unique) # extended API
-
-      from scitbx.examples.minimizer_comparisons import derivative
-      class test_cma_es(object):
-        def __init__(selfOO,l=0):
-          selfOO.m = flex.double( [4,4] )
-          selfOO.s = flex.double( [2,2])
-          selfOO.l = l
-          selfOO.fcount = 0
-          from cma_es import cma_es_interface
-          selfOO.minimizer = cma_es_interface.cma_es_driver( 2, selfOO.m, selfOO.s, selfOO.my_function, selfOO.l )
-          print "CMA-ES ITERATIONS", selfOO.minimizer.count, selfOO.fcount,"SOLUTION",  list(selfOO.minimizer.x_final), selfOO.my_function( selfOO.minimizer.x_final )
-
-          selfOO.x = selfOO.minimizer.x_final.deep_copy()
-
-
-        def compute_functional_and_gradients(selfOO):
-          f = selfOO.my_function(selfOO.x)
-          g = derivative(selfOO.x, selfOO.my_function,h=1e-4)
-          return f, g
-
-        def my_function(selfOO,vector):
-          print "CMA-ES",list(vector)
           newvec = matrix.col(self.beam) + vector[0]*0.0002*beamr1 + vector[1]*0.0002*beamr2
           normal = newvec.normalize() * self.inv_wave
           return -self.get_beam_vector_score(normal,unique) # extended API
@@ -190,41 +135,32 @@ class _(boost.python.injector, dps_extended):
 
       #show_plot(2 * grid + 1, scores)
 
-    try:
-      from rstbx.indexing_api.basis_choice import SelectBasisMetaprocedure as SBM
-      pd = {}
-      M = SBM(input_index_engine = self,input_dictionary = pd, horizon_phil = self.horizon_phil) # extended API
 
-    except Exception,e:
-      print e
-      import traceback
-      traceback.print_exc()
+    from rstbx.indexing_api.basis_choice import SelectBasisMetaprocedure as SBM
+    pd = {}
+    M = SBM(input_index_engine = self,input_dictionary = pd, horizon_phil = self.horizon_phil) # extended API
+
     print "Finished SELECT BASIS with solution M",M
-    if 1:#try:
 
-      from rstbx.dps_core.lepage import iotbx_converter
-      L = iotbx_converter(self.getOrientation().unit_cell().minimum_cell(),5.0) # extended API
-      supergroup = L[0]
+    from rstbx.dps_core.lepage import iotbx_converter
+    L = iotbx_converter(self.getOrientation().unit_cell().minimum_cell(),5.0) # extended API
+    supergroup = L[0]
 
-      triclinic = self.getOrientation().unit_cell() # extended API
+    triclinic = self.getOrientation().unit_cell() # extended API
 
-      cb_op = supergroup['cb_op_inp_best'].c().as_double_array()[0:9]
-      orient = self.getOrientation() # extended API
-      orient_best = orient.change_basis(matrix.sqr(cb_op).transpose())
-      constrain_orient = orient_best.constrain(supergroup['system'])
-      self.setOrientation(constrain_orient) # extended API
+    cb_op = supergroup['cb_op_inp_best'].c().as_double_array()[0:9]
+    orient = self.getOrientation() # extended API
+    orient_best = orient.change_basis(matrix.sqr(cb_op).transpose())
+    constrain_orient = orient_best.constrain(supergroup['system'])
+    self.setOrientation(constrain_orient) # extended API
 
-      if True:
-        for subgroup in L:
-          print subgroup.short_digest()
-        print "\ntriclinic cell=%s volume(A^3)=%.3f"%(triclinic,triclinic.volume())
-        print "\nafter symmetrizing to %s:"%supergroup.reference_lookup_symbol()
-        #M.show_rms()
-      return L
-    if 0:#except Exception,e:
-      print e
-      import traceback
-      traceback.print_exc()
+    if True:
+      for subgroup in L:
+        print subgroup.short_digest()
+      print "\ntriclinic cell=%s volume(A^3)=%.3f"%(triclinic,triclinic.volume())
+      print "\nafter symmetrizing to %s:"%supergroup.reference_lookup_symbol()
+      #M.show_rms()
+    return L
 
 class DPS_primitive_lattice(dps_extended):
   def __init__(self, max_cell, recommended_grid_sampling_rad, horizon_phil):
