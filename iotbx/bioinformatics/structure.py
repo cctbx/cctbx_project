@@ -4,7 +4,7 @@ from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 import libtbx.utils
 import cStringIO
-import urllib
+import urllib2
 import time
 import os
 

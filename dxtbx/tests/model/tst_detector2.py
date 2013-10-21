@@ -1,4 +1,5 @@
 
+from __future__ import division
 from dxtbx.model.detector2 import Detector2, Detector3
 
 class Test:
