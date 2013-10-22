@@ -59,3 +59,18 @@ def cmp_atom (a, b) :
       return cmp(b.occ, a.occ)
   else :
     return cmp(mass_b, mass_a)
+
+def collect_ions (pdb_hierarchy) :
+  from cctbx.eltbx import chemical_elements
+  elements = chemical_elements.proper_upper_list()
+  ions = []
+  for model in pdb_hierarchy.models() :
+    for chain in model.chains() :
+      for residue_group in chain.residue_groups() :
+        for atom_group in residue_group.atom_groups() :
+          if (atom_group.resname.strip() in elements) :
+            atoms = atom_group.atoms()
+            assert (len(atoms) == 1)
+            for atom in atoms:
+              ions.append(atom)
+  return ions
