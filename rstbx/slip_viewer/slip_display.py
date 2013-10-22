@@ -1551,7 +1551,7 @@ class AppFrame(wx.Frame):
                 ifs = (int(coords[1]), int(coords[0])) # int fast slow
                 isf = (int(coords[0]), int(coords[1])) # int slow fast
                 if len(detector) > 1:
-                    if readout > 0:
+                    if readout >= 0:
                         panel = detector[readout]
                         if panel.is_coord_valid(ifs):
                             possible_intensity = fi.get_raw_data(readout)[isf]
