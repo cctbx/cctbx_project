@@ -4,8 +4,10 @@ This module provides tools for examining a set of vectors and find the geometry
 that best fits from a set of built in shapes.
 """
 from __future__ import division
-from collections import OrderedDict
+
+from collections import OrderedDict, Iterable
 from math import sqrt
+
 from scitbx.matrix import col
 
 def _bond_angles(vectors):
@@ -216,8 +218,11 @@ def _is_pentagonal_bipyramid(vectors, dev_cutoff = 15):
   # Determine which two vectors define the axial angles
   axials = []
   for v1 in vectors:
-    v_angles = [v1.angle(v2, deg = True) for v2 in vectors
-                if v2 != v1]
+    v_angles = []
+    for v2 in vectors:
+      if v2 != v1:
+        v_angles.append(v1.angle(v2, deg = True))
+
     a_180s = len([i for i in v_angles if abs(i - 180) < 20])
     a_90s = len([i for i in v_angles if abs(i - 90) < 20])
 
@@ -318,6 +323,17 @@ def _square_plane():
     ]
 
 def _concatenate(*args):
+  """
+  Reduces a list of a mixture of elements and lists down to a single list.
+
+  Parameters
+  ----------
+  args :
+
+  Returns
+  -------
+  list
+  """
   lst = []
   for arg in args:
     if isinstance(arg, list):
@@ -325,8 +341,6 @@ def _concatenate(*args):
         lst.append(elem)
     else:
       lst.append(arg)
-  # lst = [i for arg in args for i in arg]
-  # return rec(lst, n = (len(lst) // 3, 3))
   return lst
 
 def _pyramid(base):
@@ -354,7 +368,17 @@ def _trigonal_prism():
     )
 
 def _pentagon():
-  # Taken from http://mathworld.wolfram.com/Pentagon.html
+  """
+  Returns a list of vectors in the shape of a planar pentagon.
+
+  Returns
+  -------
+  list of scitbx.matrix.col
+
+  See Also
+  --------
+  http://mathworld.wolfram.com/Pentagon.html
+  """
   c_1 = (sqrt(5) - 1) / 4
   c_2 = (sqrt(5) + 1) / 4
   s_1 = sqrt(10 + 2 * sqrt(5)) / 4
@@ -412,7 +436,86 @@ def _pentagonal_pyramid_bidentate():
   return _concatenate(
     _pentagonal_pyramid(),
     col([sqrt(2) / 2, sqrt(2) / 2, -1]),
-    col([-sqrt(2) / 2, -sqrt(2) / 2, -1])
+    col([-sqrt(2) / 2, -sqrt(2) / 2, -1]),
+    )
+
+def _pentagonal_bibidentate_miss_1():
+  """
+  A planar pentagon with bidentate atoms coordinating directly above and
+  below. One atom from the plane is missing in this case.
+  """
+  return _concatenate(
+    col([sqrt(2) / 2, sqrt(2) / 2, 1]),
+    col([-sqrt(2) / 2, -sqrt(2) / 2, 1]),
+    col([sqrt(2) / 2, sqrt(2) / 2, -1]),
+    col([-sqrt(2) / 2, -sqrt(2) / 2, -1]),
+    *_pentagon()[:-1]
+    )
+
+def _pentagonal_bibidentate_miss_2():
+  """
+  A planar pentagon with bidentate atoms coordinating directly above and
+  below. One atom from the plane is missing in this case.
+  """
+  return _concatenate(
+    col([sqrt(2) / 2, sqrt(2) / 2, 1]),
+    col([-sqrt(2) / 2, -sqrt(2) / 2, 1]),
+    col([sqrt(2) / 2, sqrt(2) / 2, -1]),
+    col([-sqrt(2) / 2, -sqrt(2) / 2, -1]),
+    *_pentagon()[1:]
+    )
+
+def _pentagonal_bibidentate_miss_3():
+  """
+  A planar pentagon with bidentate atoms coordinating directly above and
+  below. One atom from the plane is missing in this case.
+  """
+  pentagon = _pentagon()
+  return _concatenate(
+    col([sqrt(2) / 2, sqrt(2) / 2, 1]),
+    col([-sqrt(2) / 2, -sqrt(2) / 2, 1]),
+    col([sqrt(2) / 2, sqrt(2) / 2, -1]),
+    col([-sqrt(2) / 2, -sqrt(2) / 2, -1]),
+    pentagon[0],
+    pentagon[1],
+    pentagon[3],
+    pentagon[4],
+    )
+
+def _pentagonal_bibidentate_miss_4():
+  """
+  A planar pentagon with bidentate atoms coordinating directly above and
+  below. One atom from a bidentate coordinator is missing in this case.
+  """
+  return _concatenate(
+    _pentagon(),
+    col([sqrt(2) / 2, sqrt(2) / 2, 1]),
+    col([-sqrt(2) / 2, -sqrt(2) / 2, 1]),
+    col([-sqrt(2) / 2, -sqrt(2) / 2, -1]),
+    )
+
+def _pentagonal_bibidentate_miss_5():
+  """
+  A planar pentagon with bidentate atoms coordinating directly above and
+  below. One atom from a bidentate coordinator is missing in this case.
+  """
+  return _concatenate(
+    _pentagon(),
+    col([sqrt(2) / 2, sqrt(2) / 2, 1]),
+    col([-sqrt(2) / 2, -sqrt(2) / 2, 1]),
+    col([sqrt(2) / 2, sqrt(2) / 2, -1]),
+    )
+
+def _pentagonal_bibidentate():
+  """
+  A planar pentagon with bidentate atoms coordinating directly above and below.
+  """
+  return _concatenate(
+    _pentagon(),
+    col([sqrt(2) / 2, sqrt(2) / 2, 1]),
+    col([-sqrt(2) / 2, -sqrt(2) / 2, 1]),
+    col([sqrt(2) / 2, sqrt(2) / 2, -1]),
+    col([-sqrt(2) / 2, -sqrt(2) / 2, -1]),
     )
 
 def _see_saw():
@@ -457,9 +560,9 @@ SUPPORTED_GEOMETRIES = OrderedDict([
     ("octahedron", _octahedron, 15),
     ("trigonal_prism", _trigonal_prism, 15),
     ("pentagonal_pyramid", _pentagonal_pyramid, 15),
-    ("square_pyramid_bidentate_miss", _square_pyramid_bidentate_miss_1, 15),
-    ("square_pyramid_bidentate_miss", _square_pyramid_bidentate_miss_2, 15),
-    ("square_pyramid_bidentate_miss", _square_pyramid_bidentate_miss_3, 15),
+    ("square_pyramid_bidentate_miss", [_square_pyramid_bidentate_miss_1,
+                                       _square_pyramid_bidentate_miss_2,
+                                       _square_pyramid_bidentate_miss_3], 15),
     ]),
   (7, [
     ("pentagonal_bipyramid", _pentagonal_bipyramid, 15),
@@ -467,7 +570,13 @@ SUPPORTED_GEOMETRIES = OrderedDict([
     ]),
   (8, [
     ("pentagonal_pyramid_bidentate", _pentagonal_pyramid_bidentate, 15),
-  ])
+    ("pentagonal_bibidentate_miss", [_pentagonal_bibidentate_miss_1,
+                                     _pentagonal_bibidentate_miss_2,
+                                     _pentagonal_bibidentate_miss_3], 15),
+  ]),
+  (9, [
+    ("pentagonal_bibidentate", _pentagonal_bibidentate, 15),
+  ]),
   ])
 
 SUPPORTED_GEOMETRY_NAMES = \
@@ -527,12 +636,18 @@ def find_coordination_geometry(nearby_atoms, minimizer_method = False,
 
   # Filter out overlapping atoms, we just want an idea of the coordinating
   # geometry, even if it is two different atoms are occupying the same spot.
-  nearby_atoms = [atom for index, atom in enumerate(nearby_atoms)
-                  if not [other for other in nearby_atoms[index + 1:]
-                          if atom.distance_from(other) < 0.5]]
+  non_overlapping = []
+  for index, contact in enumerate(nearby_atoms):
+    if all(contact.distance_from(other) > 0.5
+           for other in nearby_atoms[index + 1:]):
+      non_overlapping.append(contact)
 
-  filtered = [contact.vector for contact in nearby_atoms
-              if contact.distance() < cutoff]
+  # Filter out contacts > cutoff away
+  filtered = []
+  for contact in non_overlapping:
+    if contact.distance() < cutoff:
+      filtered.append(contact.vector)
+
   geometries = []
   if minimizer_method:
     n_vectors = len(filtered)
@@ -541,8 +656,11 @@ def find_coordination_geometry(nearby_atoms, minimizer_method = False,
       return geometries
 
     for name, func, rmsa_cutoff in SUPPORTED_GEOMETRIES[n_vectors]:
-      rmsa = _angles_deviation(filtered, func())
-      # print name, rmsa
+      if isinstance(func, Iterable):
+        rmsa = min(_angles_deviation(filtered, i()) for i in func)
+      else:
+        rmsa = _angles_deviation(filtered, func())
+
       if rmsa < rmsa_cutoff:
         geometries.append((name, rmsa))
 
