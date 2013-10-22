@@ -71,6 +71,9 @@ def exercise () :
               Counter(O = 6, Amide = 1, Carboxy = 3, HOH = 1, Backbone = 1),
               Counter(N = 1, O = 4, X2N = 1, Carboxy = 3, HOH = 1),
               Counter(O = 6, Amide = 1, Carboxy = 3, HOH = 1, Backbone = 1)]),
+    ("1q8h", [Counter(O = 7, Carboxy = 6, HOH = 1),
+              Counter(O = 7, Carboxy = 4, HOH = 3),
+              Counter(O = 8, Carboxy = 6, HOH = 2)]),
   ])
 
   for model, expected_environments in models.items():
@@ -110,8 +113,8 @@ def exercise () :
              if atom.fetch_labels().resname.strip().upper() in elements]
     assert len(metals) == len(expected_environments)
 
-    for index, metal, expected_environment in zip(xrange(100), metals,
-                                                   expected_environments):
+    for index, metal, expected_environment in \
+      zip(xrange(len(metals)), metals, expected_environments):
       contacts = manager.find_nearby_atoms(metal, filter_by_two_fofc = False)
       environments = Counter([env for contact in contacts
                               for env in get_environments(contact, manager)])
