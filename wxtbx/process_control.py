@@ -1,14 +1,15 @@
-from __future__ import division
 
 # TODO more comprehensive tests
 
+from __future__ import division
 from __future__ import absolute_import # XXX is this necessary?
 from wx.lib.agw import pyprogress
 import wx
 from libtbx import thread_utils
 from libtbx import runtime_utils
-from libtbx.utils import Sorry, Abort
+from libtbx.utils import Sorry, Abort, download_progress
 import threading
+import locale
 
 JOB_START_ID = wx.NewId()
 LOG_UPDATE_ID = wx.NewId()
@@ -19,6 +20,7 @@ JOB_COMPLETE_ID = wx.NewId()
 JOB_PAUSE_ID = wx.NewId()
 JOB_RESUME_ID = wx.NewId()
 DOWNLOAD_COMPLETE_ID = wx.NewId()
+DOWNLOAD_INCREMENT_ID = wx.NewId()
 
 class SubprocessEvent (wx.PyEvent) :
   event_id = None
@@ -55,6 +57,9 @@ class JobResumeEvent (SubprocessEvent) :
 
 class DownloadCompleteEvent (SubprocessEvent) :
   event_id = DOWNLOAD_COMPLETE_ID
+
+class DownloadIncrementEvent (SubprocessEvent) :
+  event_id = DOWNLOAD_INCREMENT_ID
 
 def setup_stdout_logging_event (window, OnPrint) :
   window.Connect(-1, -1, LOG_UPDATE_ID, OnPrint)
@@ -254,6 +259,76 @@ class download_file_basic (object) :
       wx.MessageBox(message="Error downloading file: %s" % event.data[1],
         caption="Download error", style=wx.ICON_ERROR)
     self.t.join()
+
+class DownloadProgressDialog (wx.ProgressDialog, download_progress) :
+  """
+  Dialog for displaying download progress.  The actual download (not
+  implemented here) should be run in a separate thread, with a reasonable
+  chunk size, and call download_progress.increment() as each new chunk is
+  downloaded.
+  """
+  def __init__ (self, parent, title, message) :
+    download_progress.__init__(self)
+    wx.ProgressDialog.__init__(self, parent=parent, title=title,
+      message=message, style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT,
+      maximum=100)
+    self.Connect(-1, -1, DOWNLOAD_INCREMENT_ID, self.OnIncrement)
+    self.Connect(-1, -1, DOWNLOAD_COMPLETE_ID, self.OnComplete)
+    self._continue = True
+
+  def show_progress (self) :
+    if (not self._continue) :
+      return False
+    locale.setlocale(locale.LC_ALL, 'en_US')
+    pct = self.percent_finished()
+    msg = "%s/%s KB downloaded" % (
+      locale.format("%d", self.n_kb_elapsed, grouping=True),
+      locale.format("%d", self.n_kb_total, grouping=True))
+    evt = DownloadIncrementEvent(data=(pct, msg))
+    wx.PostEvent(self, evt)
+    return self._continue
+
+  def OnIncrement (self, event) :
+    (cont, skip) = self.Update(value=event.data[0], newmsg=event.data[1])
+    self._continue = cont
+
+  def OnComplete (self, event) :
+    self.Close()
+    wx.CallAfter(self.Destroy)
+
+  def complete (self) :
+    evt = DownloadCompleteEvent(data=None)
+    wx.PostEvent(self, evt)
+
+class BackgroundDownloadDialog (pyprogress.PyProgress, download_progress) :
+  """
+  Placeholder for downloads which block the child thread; will pulse
+  continuously but not show changing status.
+  """
+  def __init__ (self, parent, title, message) :
+    download_progress.__init__(self)
+    pyprogress.PyProgress.__init__(self, parent, -1, title, message,
+      agwStyle=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT)
+    self.SetGaugeProportion(0.15)
+    self.SetGaugeSteps(100)
+    self.SetGaugeBackground(wx.Colour(235, 235, 235))
+    self.SetFirstGradientColour(wx.Colour(235,235,235))
+    self.SetSecondGradientColour(wx.Colour(120, 200, 255))
+    self.Connect(-1, -1, DOWNLOAD_COMPLETE_ID, self.OnComplete)
+    self._continue = True
+
+  def show_progress (self) :
+    if (not self._continue) :
+      return False
+    return self._continue
+
+  def OnComplete (self, event) :
+    self.Close()
+    wx.CallAfter(self.Destroy)
+
+  def complete (self) :
+    evt = DownloadCompleteEvent(data=None)
+    wx.PostEvent(self, evt)
 
 def run_function_as_thread_in_dialog (parent, thread_function, title, message) :
   dlg = ThreadProgressDialog(None, title, message)
