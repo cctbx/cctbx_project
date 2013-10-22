@@ -1288,6 +1288,7 @@ class download_progress (object) :
   def show_progress (self) :
     self.log.write("\r%d/%d KB downloaded" % (self.n_kb_elapsed,
       self.n_kb_total))
+    self.log.flush()
     return True
 
   def percent_finished (self) :
@@ -1339,7 +1340,7 @@ class download_target (object) :
     if (log is None) :
       log = null_out()
     if (progress_meter is None) :
-      progress_meter = download_progress(n_kb_total=n_kb_total, log=log)
+      progress_meter = download_progress(log=log)
     from libtbx import easy_run
     import urllib2
     if (not self.use_curl) :
