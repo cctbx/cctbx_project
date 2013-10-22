@@ -269,8 +269,10 @@ class DownloadProgressDialog (wx.ProgressDialog, download_progress) :
   """
   def __init__ (self, parent, title, message) :
     download_progress.__init__(self)
-    wx.ProgressDialog.__init__(self, parent=parent, title=title,
-      message=message, style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT,
+    wx.ProgressDialog.__init__(self, parent=parent,
+      title=title,
+      message=message,
+      style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_AUTO_HIDE,
       maximum=100)
     self.Connect(-1, -1, DOWNLOAD_INCREMENT_ID, self.OnIncrement)
     self.Connect(-1, -1, DOWNLOAD_COMPLETE_ID, self.OnComplete)
@@ -293,8 +295,9 @@ class DownloadProgressDialog (wx.ProgressDialog, download_progress) :
     self._continue = cont
 
   def OnComplete (self, event) :
+    self.Hide()
     self.Close()
-    wx.CallAfter(self.Destroy)
+    # FIXME destroying the dialog crashes wxPython 2.9.5/osx-coocoa
 
   def complete (self) :
     evt = DownloadCompleteEvent(data=None)
@@ -308,7 +311,7 @@ class BackgroundDownloadDialog (pyprogress.PyProgress, download_progress) :
   def __init__ (self, parent, title, message) :
     download_progress.__init__(self)
     pyprogress.PyProgress.__init__(self, parent, -1, title, message,
-      agwStyle=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT)
+      agwStyle=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_AUTO_HIDE)
     self.SetGaugeProportion(0.15)
     self.SetGaugeSteps(100)
     self.SetGaugeBackground(wx.Colour(235, 235, 235))
@@ -323,8 +326,8 @@ class BackgroundDownloadDialog (pyprogress.PyProgress, download_progress) :
     return self._continue
 
   def OnComplete (self, event) :
+    self.Hide()
     self.Close()
-    wx.CallAfter(self.Destroy)
 
   def complete (self) :
     evt = DownloadCompleteEvent(data=None)
