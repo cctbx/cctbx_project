@@ -88,7 +88,7 @@ class FormatPYmultitile(FormatPY):
       Tb_d = _transform(
           col(d.orientation).normalize(),
           col(d.translation) +
-          col((0, 0, self._metrology_params.distance * 1e-3)))[1]
+          col((0, 0, -self._metrology_params.distance * 1e-3)))[1]
 
       panels = []
       self._raw_data = []
