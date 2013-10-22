@@ -593,37 +593,34 @@ class Manager (object) :
     for j_seq, j_sym_groups in asu_dict.items():
       site_j = self.sites_frac[j_seq]
       atom_j = self.pdb_atoms[j_seq]
-
       # Filter out hydrogens
       if atom_j.element.upper().strip() in ["H", "D"]:
         continue
-
       # Filter out alternate conformations of this atom
       if same_atom_different_altloc(atom_i, atom_j):
         continue
-
       # Gather up contacts with all symmetric copies
       for j_sym_group in j_sym_groups:
-        rt_mx = rt_mx_i_inv.multiply(asu_mappings.get_rt_mx(j_seq,
-          j_sym_group[0]))
-        site_ji = rt_mx * site_j
-        site_ji_cart = self.unit_cell.orthogonalize(site_ji)
-        vec_i = col(site_i_cart)
-        vec_ji = col(site_ji_cart)
-        assert abs(vec_i - vec_ji) < far_distance_cutoff + 0.5
-        contact = atom_contact(
-          atom = atom_j,
-          vector = vec_i - vec_ji,
-          site_cart = site_ji_cart,
-          rt_mx = rt_mx,
-          server = self.server)
-        # XXX I have no idea why the built-in handling of special positions
-        # doesn't catch this for us
-        if (j_seq == i_seq) and (not rt_mx.is_unit_mx()) :
-          continue
-        if contact.distance() < near_distance_cutoff:
-          continue
-        contacts.append(contact)
+        for j_sym_id in j_sym_group :
+          rt_mx = rt_mx_i_inv.multiply(asu_mappings.get_rt_mx(j_seq, j_sym_id))
+          site_ji = rt_mx * site_j
+          site_ji_cart = self.unit_cell.orthogonalize(site_ji)
+          vec_i = col(site_i_cart)
+          vec_ji = col(site_ji_cart)
+          assert abs(vec_i - vec_ji) < far_distance_cutoff + 0.5
+          contact = atom_contact(
+            atom = atom_j,
+            vector = vec_i - vec_ji,
+            site_cart = site_ji_cart,
+            rt_mx = rt_mx,
+            server = self.server)
+          # XXX I have no idea why the built-in handling of special positions
+          # doesn't catch this for us
+          if (j_seq == i_seq) and (not rt_mx.is_unit_mx()) :
+            continue
+          if contact.distance() < near_distance_cutoff:
+            continue
+          contacts.append(contact)
 
     # Filter out carbons that are judged to be "contacts", but are actually
     # just bonded to genuine coordinating atoms.  This is basically just a
@@ -632,35 +629,29 @@ class Manager (object) :
     if filter_by_bonding and self.connectivity:
       filtered = []
       all_i_seqs = [contact.atom_i_seq() for contact in contacts]
-
       for contact in contacts:
         # oxygen is always allowed, other elements may not be
         if contact.element not in ["C", "P", "S", "N"]:
           filtered.append(contact)
           continue
-
         # Remove atoms within 1.9 A contact distance
         if any(other_contact != contact and
                contact.distance_from(other_contact) < 1.9 and
                contact.distance() > other_contact.distance()
                for other_contact in contacts):
           continue
-
         # Examine the mode connectivity to catch more closely bonded atoms
         bonded_j_seqs = []
         for j_seq in self.connectivity[contact.atom_i_seq()]:
           if (j_seq in all_i_seqs) :
             bonded_j_seqs.append(j_seq)
-
         for j_seq in bonded_j_seqs:
           other_contact = contacts[all_i_seqs.index(j_seq)]
-
           if other_contact.element in ["N", "O", "S"] and \
             abs(other_contact) < abs(contact):
             break
         else:
           filtered.append(contact)
-
       contacts = filtered
 
     # Discard waters in poor density
@@ -673,7 +664,6 @@ class Manager (object) :
             continue
         filtered.append(contact)
       contacts = filtered
-
     return contacts
 
   def guess_b_iso_real (self, i_seq) :
@@ -751,7 +741,6 @@ class Manager (object) :
     site_cart, and and other_atoms, the rest of the atoms within
     distance_cutoff of site_cart.
     """
-
     site_frac = self.unit_cell.fractionalize(site_cart = site_cart)
     sites_frac = flex.vec3_double([site_frac])
     asu_mappings = self.xray_structure.asu_mappings(buffer_thickness =
@@ -762,10 +751,8 @@ class Manager (object) :
       asu_mappings = asu_mappings,
       distance_cutoff = distance_cutoff)
     n_xray = self.xray_structure.scatterers().size()
-
     same_atoms = []
     other_atoms = []
-
     # Iterate through all interacting pairs of atoms in the structure
     # within distance_cutoff of each other
     for pair in pair_generator:
@@ -774,28 +761,23 @@ class Manager (object) :
       if (pair.i_seq < n_xray and pair.j_seq < n_xray) or \
         (pair.i_seq >= n_xray and pair.j_seq >= n_xray):
         continue
-
       rt_mx_i = asu_mappings.get_rt_mx_i(pair)
       rt_mx_j = asu_mappings.get_rt_mx_j(pair)
       rt_mx_ji = rt_mx_i.inverse().multiply(rt_mx_j)
       new_site_frac = rt_mx_ji * site_frac
       new_site_cart = self.unit_cell.orthogonalize(site_frac = new_site_frac)
       atom_seq = pair.i_seq if pair.i_seq < n_xray else pair.j_seq
-
       site_info = group_args(
         i_seq = atom_seq,
         rt_mx = rt_mx_ji,
         new_site_cart = new_site_cart,
         distance = sqrt(pair.dist_sq))
-
       if site_info.distance < distance_cutoff_same_site:
         same_atoms.append(site_info)
       else:
         other_atoms.append(site_info)
-
     same_atoms.sort(key = lambda x: x.distance)
     other_atoms.sort(key = lambda x: x.distance)
-
     return same_atoms, other_atoms
 
   def analyze_substructure (self, log = None, verbose = True) :
@@ -819,7 +801,6 @@ class Manager (object) :
           i_seqs[site_info.i_seq].append(site_info)
         else:
           i_seqs[site_info.i_seq] = [site_info]
-
       # If we are picking from multiple of the same i_seq, select the closest
       for val in i_seqs.values():
         # Prefer unit operators
@@ -828,7 +809,6 @@ class Manager (object) :
             if not site_info.rt_mx.is_unit_mx():
               val.remove(site_info)
         val.sort(key = lambda x: x.distance)
-
       return [i[0] for i in i_seqs.values()]
 
     make_sub_header("Analyzing Phaser anomalous substructure", out = log)
@@ -836,8 +816,8 @@ class Manager (object) :
       print >> log, ax_atom_id(atom)
       same_atoms, other_atoms = self.find_atoms_near_site(
         atom.xyz,
-        distance_cutoff = self.params.phaser.distance_cutoff,
-        distance_cutoff_same_site = self.params.phaser.distance_cutoff_same_site)
+        distance_cutoff=self.params.phaser.distance_cutoff,
+        distance_cutoff_same_site=self.params.phaser.distance_cutoff_same_site)
 
       same_atoms, other_atoms = \
         _filter_site_infos(same_atoms), _filter_site_infos(other_atoms)
