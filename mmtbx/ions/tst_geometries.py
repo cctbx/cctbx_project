@@ -70,6 +70,9 @@ def exercise () :
               ["square_pyramid_bidentate_miss"],
               ["square_pyramid"],
               ["square_pyramid_bidentate_miss"]]),
+    ("1q8h", [["trigonal_prism"],
+              ["square_pyramid_bidentate"],
+              ["square_pyramid_bidentate_miss"]]),
   ])
 
   for model, geometries in models.items():
@@ -109,13 +112,14 @@ def exercise () :
              if atom.fetch_labels().resname.strip().upper() in elements]
     assert len(metals) == len(geometries)
 
-    for metal, expected_geometry in zip(metals, geometries):
+    for index, metal, expected_geometry in \
+      zip(xrange(len(metals)), metals, geometries):
       contacts = manager.find_nearby_atoms(metal, filter_by_two_fofc = False)
       found = find_coordination_geometry(contacts, minimizer_method = True)
       geometry_names = [i[0] for i in found]
 
       if geometry_names != expected_geometry:
-        print "Problem detecting geometries in", model,
+        print "Problem detecting geometries in", model, index
         print manager.pdb_atoms[metal].id_str()
         print "Found geometries:", geometry_names
         print "Should be:", expected_geometry
