@@ -1219,6 +1219,10 @@ def greek_time(secs):
     secs*=1000
   return secs, greek
 
+###########################
+# URL retrieval functions #
+###########################
+
 libtbx_urllib_proxy = None
 
 def install_urllib_http_proxy (server, port=80, user=None, password=None) :
@@ -1259,3 +1263,114 @@ def urlopen (*args, **kwds) :
       password=password)
   import urllib2
   return urllib2.urlopen(*args, **kwds)
+
+class download_progress (object) :
+  """
+  Simple proxy for displaying download status - here with methods for
+  writing to the console, but can be subclassed and used for graphical display.
+  """
+  def __init__ (self, log=None, n_kb_total=None) :
+    if (log is None) :
+      log = null_out()
+    self.log = log
+    self.n_kb_total = n_kb_total
+    self.n_kb_elapsed = 0
+
+  def set_total_size (self, n_kb_total) :
+    self.n_kb_total = n_kb_total
+    self.n_kb_elapsed = 0
+
+  def increment (self, n_kb) :
+    assert (self.n_kb_total is not None)
+    self.n_kb_elapsed += n_kb
+    return self.show_progress()
+
+  def show_progress (self) :
+    self.log.write("\r%d/%d KB downloaded" % (self.n_kb_elapsed,
+      self.n_kb_total))
+    return True
+
+  def percent_finished (self) :
+    assert (self.n_kb_total is not None)
+    return 100 * min(1.0, self.n_kb_elapsed / self.n_kb_total)
+
+  def complete (self) :
+    self.log.write("\rDownload complete")
+
+  def run_continuously (self) :
+    """
+    Placeholder for cases where the download is not being run asynchronously.
+    """
+    pass
+
+class download_target (object) :
+  """
+  Flexible callable object for retrieving a file from a URL, with optional
+  HTTPS authentication.  Designed to be runnable in a separate thread with
+  graphical progress update.
+
+  Note that in some circumstances SSL support may be missing from the socket
+  module, in which case we use 'curl' to download securely.  (This will not
+  work on Windows, obviously.)
+  """
+  def __init__ (self,
+      url,
+      file_name,
+      use_curl=None, # SSL only
+      user=None, # SSL only
+      password=None, # SSL only
+      base_url=None) :  # SSL only
+    self.url = url
+    self.file_name = file_name
+    self.use_curl = use_curl
+    self.user = user
+    self.password = password
+    self.base_url = base_url
+    if (not None in [self.user, self.password]) :
+      assert (self.base_url is not None)
+      import socket
+      if ((not self.use_curl) and (hasattr(socket, "ssl")) and
+          (hasattr(socket.ssl, "__call__"))) :
+        self.use_curl = False
+      else :
+        self.use_curl = True
+
+  def __call__ (self, log=None, progress_meter=None) :
+    if (log is None) :
+      log = null_out()
+    if (progress_meter is None) :
+      progress_meter = download_progress(n_kb_total=n_kb_total, log=log)
+    from libtbx import easy_run
+    import urllib2
+    if (not self.use_curl) :
+      if (not None in [self.user, self.password]) :
+        passman = urllib2.HTTPPasswordMgrWithDefaultRealm()
+        passman.add_password(None, self.base_url, params.user, params.password)
+        authhandler = urllib2.HTTPBasicAuthHandler(passman)
+        opener = urllib2.build_opener(authhandler)
+        urllib2.install_opener(opener)
+      req = urllib2.urlopen(self.url)
+      info = req.info()
+      n_kb_total = int(info['Content-length']) / 1024
+      progress_meter.set_total_size(n_kb_total)
+      # TODO adjust chunk size automatically based on download speed
+      n_kb_chunk = getattr(self, "n_kb_chunk", 512)
+      chunksize = n_kb_chunk * 1024
+      with open(self.file_name, 'wb') as fp:
+        while True:
+          chunk = req.read(chunksize)
+          if not chunk: break
+          if not progress_meter.increment(n_kb_chunk) :
+            return None
+          fp.write(chunk)
+      progress_meter.complete()
+    else :
+      progress_meter.run_continuously()
+      if (not None in [self.user, self.password]) :
+        curl_args = "--user %s:%s" % (self.user, self.password)
+      rc = easy_run.call("curl %s \"%s\" -o %s" % (curl_args, self.url,
+        self.file_name))
+      progress_meter.complete()
+      if (rc != 0) :
+        raise RuntimeError("curl exited with code %d" % rc)
+    return op.abspath(self.file_name)
