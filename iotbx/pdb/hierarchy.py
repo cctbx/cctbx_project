@@ -921,8 +921,8 @@ class _(boost.python.injector, ext.chain, __hash_eq_mixin):
       #for atom_group in residue_group.atom_groups():
       atom_group = residue_group.atom_groups()[0]
       rnpani = residue_name_plus_atom_names_interpreter(
-      residue_name=atom_group.resname,
-      atom_names=[atom.name for atom in atom_group.atoms()])
+        residue_name=atom_group.resname,
+        atom_names=[atom.name for atom in atom_group.atoms()])
       rn = rnpani.work_residue_name
       rn_seq.append(rn)
       if (rn is None):
@@ -1014,21 +1014,31 @@ class _(boost.python.injector, ext.chain, __hash_eq_mixin):
       resnames.append(residue_group.unique_resnames()[0])
     return resnames
 
-  def is_protein (self, min_content=0.8) :
+  def is_protein (self, min_content=0.8, ignore_water=True) :
     rn_seq, residue_classes = self.get_residue_names_and_classes()
     n_aa = residue_classes["common_amino_acid"]
     n_na = residue_classes["common_rna_dna"]
-    if ((n_aa > n_na) and ((n_aa / len(rn_seq)) >= min_content)) :
+    if (ignore_water) :
+      while rn_seq.count("HOH") > 0 :
+        rn_seq.remove("HOH")
+    if (len(rn_seq) == 0) :
+      return False
+    elif ((n_aa > n_na) and ((n_aa / len(rn_seq)) >= min_content)) :
       return True
     elif (rn_seq == (["UNK"] * len(rn_seq))) :
       return True
     return False
 
-  def is_na (self, min_content=0.8) :
+  def is_na (self, min_content=0.8, ignore_water=True) :
     rn_seq, residue_classes = self.get_residue_names_and_classes()
     n_aa = residue_classes["common_amino_acid"]
     n_na = residue_classes["common_rna_dna"]
-    if ((n_na > n_aa) and ((n_na / len(rn_seq)) >= min_content)) :
+    if (ignore_water) :
+      while rn_seq.count("HOH") > 0 :
+        rn_seq.remove("HOH")
+    if (len(rn_seq) == 0) :
+      return False
+    elif ((n_na > n_aa) and ((n_na / len(rn_seq)) >= min_content)) :
       return True
     return False
 
