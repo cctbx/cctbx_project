@@ -1,5 +1,8 @@
+# -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
+#
+# $Id$
+
 from __future__ import division
-# -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8; -*-
 
 import os, sys, copy
 from iotbx.detectors.npy import NpyImage
@@ -12,7 +15,11 @@ parameters=empty()
 def ImageFactory(filename):
   global parameters
   if type(filename)==type("") and os.path.isfile(filename):
-    I = NpyImage(filename)
+    from dxtbx.format.FormatPYunspecified import FormatPYunspecified
+
+    assert FormatPYunspecified.understand(filename)
+    I = FormatPYunspecified(filename).get_detectorbase()
+
   else:
     print "This is not a file; assume the data are in the defined dictionary format"
     I = NpyImage(filename, source_data=parameters.horizons_phil.indexing.data)
