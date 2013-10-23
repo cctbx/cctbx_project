@@ -33,6 +33,8 @@ verbosity = 0
   .type = int
 pymol_script = None
   .type = path
+atom_output = False
+  .type = bool
 """)
 
 TURN_START = 0 # XXX see comment below
@@ -77,7 +79,9 @@ class hbond (object) :
                       self.residue2.parent().resid(), "N")
     return "dist (%s), (%s)" % (sel1, sel2)
 
-  def is_in_ladder (self, i_res_start, i_res_end, j_res_start, j_res_end) :
+  def is_in_ladder (self, L) :
+    if (L is None) : return False
+    i_res_start, i_res_end, j_res_start, j_res_end = L.get_residue_range()
     if (((self.i_res >= i_res_start) and (self.i_res <= i_res_end) and
          (self.j_res >= j_res_start) and (self.j_res <= j_res_end)) or
         ((self.i_res >= j_res_start) and (self.i_res <= j_res_end) and
@@ -225,35 +229,62 @@ class ladder (object) :
       sense=self.direction)
     return strand
 
-  def get_strand_register (self, hbonds, pdb_labels, is_last_strand=False) :
-    from iotbx.pdb import secondary_structure
+  def get_residue_range (self) :
     i_res_start = min(self.bridges[0].i_res, self.bridges[-1].i_res)
     i_res_end = max(self.bridges[0].i_res, self.bridges[-1].i_res)
     j_res_start = min(self.bridges[0].j_res, self.bridges[-1].j_res)
     j_res_end = max(self.bridges[0].j_res, self.bridges[-1].j_res)
+    return (i_res_start, i_res_end, j_res_start, j_res_end)
+
+  def get_strand_register (self, hbonds, pdb_labels, prev_ladder=None,
+      is_last_strand=False) :
+    from iotbx.pdb import secondary_structure
+    (i_res_start, i_res_end, j_res_start, j_res_end) = self.get_residue_range()
     start_hbond = None
     start_on_n = False
     min_i_res = sys.maxint
+    #print i_res_start, i_res_end, j_res_start, j_res_end
     # XXX this is incorrect - it is not picking the first possible H-bond
     for hbond in hbonds :
       if (self.bridges[0].contains_hbond(hbond) or
           self.bridges[-1].contains_hbond(hbond) or
-          hbond.is_in_ladder(i_res_start,i_res_end,j_res_start,j_res_end)) :
+          hbond.is_in_ladder(self)) :
+        #hbond.show()
         if ((hbond.i_res < min_i_res) and (hbond.i_res >= i_res_start) and
             (hbond.i_res <= i_res_end)) : # O atom
+        #if (hbond.i_res < min_i_res) :
           start_hbond = hbond
           min_i_res = hbond.i_res
           start_on_n = False
         if ((hbond.j_res <= min_i_res) and (hbond.j_res >= i_res_start) and
             (hbond.j_res <= i_res_end)) : # N atom (takes precedence)
+        #if (hbond.j_res < min_i_res) :
           start_hbond = hbond
           min_i_res = hbond.j_res
           start_on_n = True
+    if (start_hbond is None) and (prev_ladder is not None) :
+      for hbond in hbonds :
+        if (hbond.is_in_ladder(prev_ladder)) :
+          if ((hbond.i_res < min_i_res) and (hbond.i_res >= i_res_start) and
+              (hbond.i_res <= i_res_end)) : # O atom
+        #if (hbond.i_res < min_i_res) :
+            start_hbond = hbond
+            min_i_res = hbond.i_res
+            start_on_n = False
+          if ((hbond.j_res <= min_i_res) and (hbond.j_res >= i_res_start) and
+              (hbond.j_res <= i_res_end)) : # N atom (takes precedence)
+        #if (hbond.j_res < min_i_res) :
+            start_hbond = hbond
+            min_i_res = hbond.j_res
+            start_on_n = True
     if (start_hbond is None) :
       out = cStringIO.StringIO()
       self.show(out=out)
       return None
       raise RuntimeError("Can't find start of H-bonding:\n%s" % out.getvalue())
+    #print "FINAL:"
+    #start_hbond.show()
+    #print ""
     if (start_on_n) :
       curr_atom = " N  "
       prev_atom = " O  "
@@ -569,9 +600,11 @@ class dssp (object) :
                 linked.add(v)
                 break
       #assert (len(linked) in [1,2])
-      # FIXME why does this happen?  maybe bifurcated sheets?
       if (len(linked) > 0) :
         n_connected += 1
+        if (len(linked) > 2) :
+          # XXX does this need to be the difference from 2?
+          n_connected += 1
       connections.append(linked)
     # now sort the bridges into ladders based on the strand connections
     all_sheet_ladders = []
@@ -640,14 +673,15 @@ class dssp (object) :
         start_on_next_strand = True
         u = 0
       n_left_last = n_left
+    #print connections
     # convert collections of ladders into SHEET objects
     sheets = []
     for k, ladders in enumerate(all_sheet_ladders) :
+      sheet_id = k+1
       if (self.params.verbosity >= 2) :
-        print >> self.log, "SHEET:"
+        print >> self.log, "SHEET %d:" % sheet_id
         for L in ladders :
           L.show(self.log, prefix="  ")
-      sheet_id = k+1
       current_sheet = secondary_structure.pdb_sheet(
         sheet_id=sheet_id,
         n_strands=len(ladders)+1,
@@ -657,6 +691,7 @@ class dssp (object) :
       current_sheet.add_strand(first_strand)
       current_sheet.add_registration(None)
       sheets.append(current_sheet)
+      prev_ladder = None
       for i_ladder, L in enumerate(ladders) :
         next_ladder = None
         if (i_ladder < len(ladders) - 1) :
@@ -669,9 +704,13 @@ class dssp (object) :
         register = L.get_strand_register(
           hbonds=self.hbonds,
           pdb_labels=self.pdb_labels,
+          prev_ladder=prev_ladder,
           is_last_strand=(next_ladder is None))
+        prev_ladder = L
         if (register is None) :
-          #L.show(self.log)
+          if (self.params.verbosity >= 1) :
+            print >> self.log, "missing register:"
+            L.show(self.log)
           break
         current_sheet.add_strand(next_strand)
         current_sheet.add_registration(register)

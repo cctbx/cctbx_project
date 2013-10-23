@@ -203,7 +203,10 @@ SHEET    5   1 5 ASP A  74  LEU A  77  1  N  ASP A  74   O  VAL A  52""")
     result = easy_run.fully_buffered("mmtbx.dssp \"%s\"" % pdb_file_1
       ).raise_if_errors()
     # XXX interestingly, this appears to be more accurate than the output of
-    # ksdssp, which finds an alpha helix from 111 to 116
+    # ksdssp, which finds an alpha helix from 111 to 116.  both the PDB and
+    # ksdssp have 131-137 as a continuous strand, but residue 135 actually
+    # breaks the hydrogen bonding pattern, and the hydrogen bonds cannot be
+    # accurately recovered from those annotations.
     assert ("\n".join(result.stdout_lines) == """\
 HELIX   10  10 PRO    105  VAL    109  5                                   5
 HELIX   13  13 ALA    113  LEU    117  5                                   5
@@ -221,7 +224,9 @@ SHEET    3   4 5 GLU    77  ILE    83 -1  N  GLN    82   O  MET    94
 SHEET    4   4 5 GLU   122  ILE   128 -1  N  GLN   127   O  GLU    77
 SHEET    5   4 5 ARG   131  ILE   134 -1  N  LYS   133   O  TRP   126
 SHEET    1   5 2 VAL    90  MET    94  0
-SHEET    2   5 2 THR   101  PRO   105 -1  N  VAL   104   O  ILE    91""")
+SHEET    2   5 2 THR   101  PRO   105 -1  N  VAL   104   O  ILE    91
+SHEET    1   6 2 VAL   123  GLU   124  0
+SHEET    2   6 2 ARG   136  VAL   137 -1  N  ARG   136   O  GLU   124""")
     # beta barrel
     pdb_file_2 = os.path.join(examples_dir, "porin-twin", "porin.pdb")
     result = easy_run.fully_buffered("mmtbx.dssp \"%s\"" % pdb_file_2
@@ -250,6 +255,7 @@ SHEET   16   117 THR   279  ASP   288 -1  N  ARG   286   O  LYS   266
 SHEET   17   117 TYR     7  VAL    15 -1  N  TYR    14   O  ALA   281""")
   else :
     print "WARNING: phenix_examples not available, some tests skipped"
+  # TODO add 1lfh test
   print "OK"
 
 if (__name__ == "__main__") :
