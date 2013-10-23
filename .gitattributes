@@ -1639,6 +1639,7 @@ mmtbx/ions/tst_pick_approx_zn.py -text
 mmtbx/ions/tst_pick_ca.py -text
 mmtbx/ions/tst_pick_k.py -text
 mmtbx/ions/tst_pick_mg.py -text
+mmtbx/ions/tst_pickle.py -text
 mmtbx/ions/tst_symmetry_axis.py svneol=native#text/x-python
 mmtbx/ions/tst_utils.py svneol=native#text/x-python
 mmtbx/ions/tst_validate_ca.py -text
