@@ -21,7 +21,8 @@ def exercise():
   null_out = sys.stdout
 
   cmdline = mmtbx.utils.cmdline_load_pdb_and_data(
-    args = [pdb_file, mtz_file, "wavelength={}".format(wavelength)],
+    args = [pdb_file, mtz_file, "wavelength={}".format(wavelength),
+            "use_phaser=False"],
     master_phil = master_phil,
     out = null_out,
     process_pdb_file = True,
