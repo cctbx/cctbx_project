@@ -43,6 +43,17 @@ namespace dxtbx { namespace model { namespace boost_python {
     return d[i];
   }
 
+  scitbx::af::shared<vec3<double> >
+  get_lab_coord(const Detector &detector,
+                scitbx::af::flex<vec2<double> >::type const& xy)
+  {
+    scitbx::af::shared<vec3<double> > result((scitbx::af::reserve(xy.size())));
+    for(std::size_t i=0;i<xy.size();i++) {
+      result.push_back(detector.get_lab_coord(xy[i]));
+    }
+    return result;
+  }
+
   void export_detector() 
   {
     using namespace boost::python;
@@ -149,6 +160,8 @@ namespace dxtbx { namespace model { namespace boost_python {
         &Detector::add_mask)
       .def("get_lab_coord",
         &Detector::get_lab_coord)
+      .def("get_lab_coord",
+        get_lab_coord)
       .def("get_pixel_lab_coord",
         &Detector::get_pixel_lab_coord)
       .def("get_image_size_mm",

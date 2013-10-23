@@ -26,6 +26,17 @@ namespace dxtbx { namespace model { namespace boost_python {
     return os.str();
   }
 
+  scitbx::af::shared<vec3<double> >
+  get_lab_coord(const Panel &panel,
+                scitbx::af::flex<vec2<double> >::type const& xy)
+  {
+    scitbx::af::shared<vec3<double> > result((scitbx::af::reserve(xy.size())));
+    for(std::size_t i=0;i<xy.size();i++) {
+      result.push_back(panel.get_lab_coord(xy[i]));
+    }
+    return result;
+  }
+
   struct PanelPickleSuite : boost::python::pickle_suite {
     static
     boost::python::tuple getinitargs(const Panel &obj) {
@@ -128,6 +139,8 @@ namespace dxtbx { namespace model { namespace boost_python {
         &Panel::add_mask)
       .def("get_lab_coord",
         &Panel::get_lab_coord)
+      .def("get_lab_coord",
+        get_lab_coord)
       .def("get_pixel_lab_coord",
         &Panel::get_pixel_lab_coord)
       .def("get_image_size_mm",
