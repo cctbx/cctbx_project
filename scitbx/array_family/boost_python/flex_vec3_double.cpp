@@ -139,6 +139,39 @@ namespace {
     return result;
   }
 
+  af::shared<vec3<double> >
+  round(
+    af::const_ref<vec3<double> > const& a,
+    int n_digits)
+  {
+    af::shared<vec3<double> > result((af::reserve(a.size())));
+    for (std::size_t i=0; i<a.size(); i++) {
+      vec3<double> const& src = a[i];
+      vec3<double> result_i;
+      for (std::size_t j=0; j<3; j++) {
+        result_i[j] = math::round(src[j], n_digits);
+      }
+      result.push_back(result_i);
+    }
+    return result;
+  }
+
+  af::shared<vec3<int> >
+  iround(
+    af::const_ref<vec3<double> > const& a)
+  {
+    af::shared<vec3<int> > result((af::reserve(a.size())));
+    for (std::size_t i=0; i<a.size(); i++) {
+      vec3<double> const& src = a[i];
+      vec3<int> result_i;
+      for (std::size_t j=0; j<3; j++) {
+        result_i[j] = math::iround(src[j]);
+      }
+      result.push_back(result_i);
+    }
+    return result;
+  }
+
   vec3<double>
   mean_weighted_a_a(
     af::const_ref<vec3<double> > const& self,
@@ -411,6 +444,8 @@ namespace boost_python {
       .def("__truediv__", div_a_as)
       .def("__mul__", mul_a_mat3)
       .def("__rmul__", rmul_a_mat3)
+      .def("round", round)
+      .def("iround", iround)
       .def("dot", dot_a_s)
       .def("dot", dot_a_a)
       .def("dot", dot_a)

@@ -1687,7 +1687,27 @@ def exercise_flex_vec3_double():
   v = flex.vec3_double([(6,2,-8), (-4,9,2)])
   assert a.add_selected(indices=i, values=v) is a
   assert approx_equal(a, [(7,4,-3), (-2,3,4), (-1,13,5)])
-
+  #
+  a = flex.vec3_double([(1,2,3), (-4,-5,6)])
+  assert approx_equal(a.round(0), a)
+  assert approx_equal(a.round(1), a)
+  assert approx_equal(a.iround(), a)
+  assert isinstance(a.iround(), flex.vec3_int)
+  b = flex.vec3_double([(1.1,2.2,3.3), (-9.9,9.9,10.5), (0.02,0.49999, 0.501)])
+  assert approx_equal(b.iround(), [(1, 2, 3), (-10, 10, 11), (0, 0, 1)])
+  assert approx_equal(b.round(0), b.iround())
+  assert approx_equal(b.round(1),
+                      [(1.1, 2.2, 3.3), (-9.9, 9.9, 10.5), (0.0, 0.5, 0.5)],
+                      eps=1e-15)
+  assert approx_equal(b.round(2),
+                      [(1.1, 2.2, 3.3), (-9.9, 9.9, 10.5), (0.02, 0.5, 0.5)],
+                      eps=1e-15)
+  assert approx_equal(b.round(3),
+                      [(1.1, 2.2, 3.3), (-9.9, 9.9, 10.5), (0.02, 0.5, 0.501)],
+                      eps=1e-15)
+  assert approx_equal(b.round(5), b, eps=1e-15)
+  
+  
 def exercise_flex_vec2_double():
   #flex.exercise_triple(flex.vec2_double, as_double=True)
   a = flex.vec2_double(((1,2), (-2,3), (3,4)))
