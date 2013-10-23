@@ -4,7 +4,6 @@ from __future__ import division
 
 import os
 from pickle import loads, dumps
-import sys
 
 import libtbx
 from mmtbx.command_line.water_screen import master_phil
@@ -15,10 +14,9 @@ from mmtbx.regression.make_fake_anomalous_data import generate_zinc_inputs
 import mmtbx.utils
 
 def exercise():
-  wavelength = 0
+  wavelength = 1.025
   mtz_file, pdb_file = generate_zinc_inputs(anonymize = False)
   null_out = libtbx.utils.null_out()
-  null_out = sys.stdout
 
   cmdline = mmtbx.utils.cmdline_load_pdb_and_data(
     args = [pdb_file, mtz_file, "wavelength={}".format(wavelength),
@@ -53,7 +51,12 @@ def exercise():
   os.remove(pdb_file)
   os.remove(mtz_file)
 
-  manager = loads(dumps(manager))
+  manager.validate_ions(
+    out = null_out
+    )
+
+  for atom_prop in manager.atoms_to_props.values():
+    atom_prop = loads(dumps(atom_prop))
 
   print "OK"
 
