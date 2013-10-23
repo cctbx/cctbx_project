@@ -156,7 +156,7 @@ namespace dxtbx { namespace model {
     /** Set the direction and wavelength from s0 */
     void set_s0(vec3<double> s0) {
       DXTBX_ASSERT(s0.length() > 0);
-      direction_ = s0.normalize();
+      direction_ = -s0.normalize();
       wavelength_ = 1.0 / s0.length();
     }
 
