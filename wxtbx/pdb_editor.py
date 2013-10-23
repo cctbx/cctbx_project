@@ -436,6 +436,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       labels_and_actions.extend([
           ("Toggle ATOM/HETATM...", self.OnSetAtomType),
           ("Reset element field...", self.OnResetElement),
+          ("Set altloc...", self.OnSetAltlocOther),
       ])
       self.ShowMenu(labels_and_actions, source_window)
     else :
@@ -543,7 +544,9 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       labels_and_actions.append(
         ("Delete alternate conformers", self.OnDeleteAltConfs))
     else :
-      labels_and_actions.append(("Set occupancy...", self.OnSetOccupancy))
+      labels_and_actions.extend([
+        ("Set altloc...", self.OnSetAltlocOther),
+        ("Set occupancy...", self.OnSetOccupancy)])
     model = chain.parent()
     if (len(model.chains()) > 1) :
       labels_and_actions.append(
@@ -632,7 +635,12 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
 
   # atom_group
   def OnSetAltloc (self, event) :
-    item, atom_group = self.GetSelectedObject('atom_group')
+    """
+    Change the altloc ID of an atom group.  This actually checks whether a
+    split residue is having a blank altloc set, unlike the alternate function
+    for arbitrary selections below.
+    """
+    item, atom_group = self.GetSelectedObject()
     new_altloc = self.GetNewAltloc(atom_group.altloc)
     assert (new_altloc is None) or (len(new_altloc) in [0,1])
     if (new_altloc != atom_group.altloc) :
@@ -856,6 +864,52 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
         self._ApplyToAtoms(item, pdb_object, apply_segid)
 
   # all
+  def OnSetAltlocOther (self, event) :
+    """
+    Set the altloc for an arbitrary collection of atoms, not just an atom
+    group.
+    """
+    items = self.GetSelections()
+    new_altloc = None
+    for item in items :
+      pdb_object = self.GetItemPyData(item)
+      if (type(pdb_object).__name__ in ["residue_group", "chain"]) :
+        if (len(pdb_object.conformers()) > 1) :
+          raise Sorry("One or more residues in the selection contain "+
+            "alternate conformers; you may only set the altloc identifier "+
+            "for a single conformer at a time.")
+      elif (type(pdb_object).__name__ == "atom") :
+        atom_group = pdb_object.parent()
+        ag_item = self.FindItem(atom_group)
+        if (not ag_item in items) :
+          raise Sorry(("You have selected the atom '%s' to have its altloc "
+            "identifier changed, but not the parent atom group.  Because the "+
+            "altloc ID is an atom group property, you must set it for the "+
+            "entire atom group, not individual atoms.") % pdb_object.id_str())
+    new_altloc = self.GetNewAltloc("")
+    modified = []
+    for item in items :
+      pdb_object = self.GetItemPyData(item)
+      if (type(pdb_object) == 'atom_group') :
+        pdb_object.altloc = new_altloc
+        modified.append(pdb_object.memory_id())
+        self.SetItemText(item, format_atom_group(pdb_object))
+      else:
+        atoms = []
+        if (type(pdb_object) == 'atom') :
+          atoms = [ pdb_object]
+        else :
+          atoms = pdb_object.atoms()
+        for atom in atoms :
+          atom_group = atom.parent()
+          if (not atom_group.memory_id() in modified) :
+            atom_group.altloc = new_altloc
+            modified.append(atom_group.memory_id())
+            ag_item = self.FindItem(atom_group)
+            self.SetItemText(ag_item, format_atom_group(atom_group))
+    self.PushState("set altloc to %s" % new_altloc)
+
+  # all
   def OnMoveSites (self, event) :
     items = self.GetSelections()
     rt = simple_dialogs.get_rt_matrix(self)
@@ -1011,9 +1065,9 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
           item2 = self.FindItem(atom_group)
           assert (item2 is not None)
           self.DeleteChildren(item2)
-          self.DeleteItem(item2)
+          self.Delete(item2)
         self.SetItemText(child, format_residue_group(residue_group))
-      child, cookie = self.GetNextchild(item, cookie)
+      child, cookie = self.GetNextChild(item, cookie)
     self._hierarchy.atoms().reset_i_seq()
     self.PushState("deleted %d atoms with alternate conformations" %
       n_alt_atoms)
