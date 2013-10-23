@@ -5825,8 +5825,27 @@ ATOM     22  CA  UNK A   6       0.384   1.888   3.199  1.00 10.53           C
 ATOM     31  CA  UNK A   7       3.270   2.361   5.640  1.00 11.39           C
 ATOM     40  CA  UNK A   8       6.831   2.310   4.318  1.00 12.30           C
 ATOM     48  CA  UNK A   9       9.159   2.144   7.299  1.00 15.18           C
+HETATM   48  O   HOH A  10       0.000  20.000   7.299  1.00 15.18           O
+HETATM   48  O   HOH A  11       2.000  16.000   7.299  1.00 15.18           O
+HETATM   48  O   HOH A  12       4.000  12.000   7.299  1.00 15.18           O
+HETATM   48  O   HOH A  13       6.000   8.000   7.299  1.00 15.18           O
+HETATM   48  O   HOH A  14       8.000   4.000   7.299  1.00 15.18           O
+HETATM   48  O   HOH A  15      10.000   0.000   7.299  1.00 15.18           O
 """).construct_hierarchy()
   assert pdb_hierarchy.only_model().only_chain().is_protein()
+  assert not pdb_hierarchy.only_model().only_chain().is_protein(
+    ignore_water=False)
+  pdb_hierarchy = pdb.input(source_info=None, lines="""\
+HETATM   48  O   HOH A  10       0.000  20.000   7.299  1.00 15.18           O
+HETATM   48  O   HOH A  11       2.000  16.000   7.299  1.00 15.18           O
+HETATM   48  O   HOH A  12       4.000  12.000   7.299  1.00 15.18           O
+HETATM   48  O   HOH A  13       6.000   8.000   7.299  1.00 15.18           O
+HETATM   48  O   HOH A  14       8.000   4.000   7.299  1.00 15.18           O
+HETATM   48  O   HOH A  15      10.000   0.000   7.299  1.00 15.18           O
+""").construct_hierarchy()
+  assert not pdb_hierarchy.only_model().only_chain().is_protein()
+  assert not pdb_hierarchy.only_model().only_chain().is_protein(
+    ignore_water=False)
   pdb_hierarchy = pdb.input(source_info=None, lines="""\
 ATOM      2  CA  GLY A  -2      -9.052   4.207   4.651  1.00 16.57           C
 ATOM      6  CA  ASN A  -1      -6.522   2.038   2.831  1.00 14.10           C
@@ -5839,7 +5858,6 @@ ATOM     48  CA  TYR A   6       9.159   2.144   7.299  1.00 15.18           C
   main_conf = pdb_hierarchy.models()[0].chains()[0].conformers()[0]
   assert main_conf.as_sequence() == ['G', 'N', 'N', 'Q', 'Q', 'N', 'Y']
   assert main_conf.as_padded_sequence() == "GNNQXXQNY"
-  # duplicate of tests above but for chain methods
   chain = pdb_hierarchy.models()[0].chains()[0]
   assert chain.as_sequence() == ['G', 'N', 'N', 'Q', 'Q', 'N', 'Y']
   assert chain.as_padded_sequence() == "GNNQXXQNY"
