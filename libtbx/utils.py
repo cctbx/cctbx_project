@@ -1343,6 +1343,7 @@ class download_target (object) :
       progress_meter = download_progress(log=log)
     from libtbx import easy_run
     import urllib2
+    file_name = self.file_name # return value
     if (not self.use_curl) :
       if (not None in [self.user, self.password]) :
         passman = urllib2.HTTPPasswordMgrWithDefaultRealm()
@@ -1357,13 +1358,15 @@ class download_target (object) :
       # TODO adjust chunk size automatically based on download speed
       n_kb_chunk = getattr(self, "n_kb_chunk", 512)
       chunksize = n_kb_chunk * 1024
-      with open(self.file_name, 'wb') as fp:
-        while True:
-          chunk = req.read(chunksize)
-          if not chunk: break
-          if not progress_meter.increment(n_kb_chunk) :
-            return None
-          fp.write(chunk)
+      fp = open(self.file_name, 'wb')
+      while True:
+        chunk = req.read(chunksize)
+        if not chunk: break
+        if not progress_meter.increment(n_kb_chunk) :
+          file_name = None
+          break
+        fp.write(chunk)
+      fp.close()
       progress_meter.complete()
     else :
       progress_meter.run_continuously()
@@ -1374,4 +1377,6 @@ class download_target (object) :
       progress_meter.complete()
       if (rc != 0) :
         raise RuntimeError("curl exited with code %d" % rc)
+    if (file_name is None) :
+      return None
     return op.abspath(self.file_name)
