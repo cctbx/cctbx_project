@@ -28,6 +28,8 @@ def run (args, out=sys.stdout) :
     params=params,
     out=out,
     log=sys.stderr)
+  if (params.atom_output) :
+    out.write(pdb_hierarchy.as_pdb_string(crystal_symmetry=xray_structure))
   t2 = time.time()
   #print "runtime: %.3fs" % (t2-t1)
   return SS
