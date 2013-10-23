@@ -67,7 +67,7 @@ def exercise():
       new_atom_props.atom.segid.strip().upper()
     assert atom_props.resname == new_atom_props.resname
     assert atom_props.b_iso == new_atom_props.b_iso
-    assert atom_props.occ == new_atom_props.occ
+    assert atom_props.atom.occ == new_atom_props.atom.occ
     assert atom_props.d_min == new_atom_props.d_min
     assert atom_props.wavelength == new_atom_props.wavelength
     assert len(atom_props.nearby_atoms) == len(new_atom_props.nearby_atoms)
