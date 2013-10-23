@@ -1706,8 +1706,25 @@ def exercise_flex_vec3_double():
                       [(1.1, 2.2, 3.3), (-9.9, 9.9, 10.5), (0.02, 0.5, 0.501)],
                       eps=1e-15)
   assert approx_equal(b.round(5), b, eps=1e-15)
-  
-  
+  #
+  a = flex.vec3_double([(1,2,5), (-2,3,4), (3,4,3)])
+  assert approx_equal(a, a.rotate_around_origin((1,1,1), 2*math.pi))
+  assert approx_equal(
+    a, a.rotate_around_origin((1,1,1), flex.double(3, 2*math.pi)))
+  import random
+  for i in range(100):
+    axis = matrix.col([random.randint(-5, 5) for j in range(3)])
+    angle = random.uniform(0, 2*math.pi)
+    expected = [matrix.col(point).rotate_around_origin(axis, angle)
+                for point in a]
+    assert approx_equal(a.rotate_around_origin(axis, angle), expected)
+    angles = flex.double([random.uniform(0, 2*math.pi)
+                                 for j in range(100)])
+    expected = [matrix.col(a[j]).rotate_around_origin(axis, angles[j])
+                for j in range(len(a))]
+    assert approx_equal(a.rotate_around_origin(axis, angles), expected)
+
+
 def exercise_flex_vec2_double():
   #flex.exercise_triple(flex.vec2_double, as_double=True)
   a = flex.vec2_double(((1,2), (-2,3), (3,4)))

@@ -94,6 +94,36 @@ namespace {
     return boost::python::make_tuple(result[0], result[1], result[2]);
   }
 
+  af::shared<vec3<double> >
+  rotate_around_origin(
+    flex<vec3<double> >::type const& a,
+    vec3<double> const& direction,
+    double const& angle)
+  {
+    vec3<double> unit = direction.normalize();
+    af::shared<vec3<double> > result((af::reserve(a.size())));
+    for(std::size_t i=0;i<a.size();i++) {
+      result.push_back(a[i].unit_rotate_around_origin(
+        unit, angle));
+    }
+    return result;
+  }
+
+  af::shared<vec3<double> >
+  rotate_around_origin(
+    flex<vec3<double> >::type const& a,
+    vec3<double> const& direction,
+    flex<double>::type const& angles)
+  {
+    vec3<double> unit = direction.normalize();
+    af::shared<vec3<double> > result((af::reserve(a.size())));
+    for(std::size_t i=0;i<a.size();i++) {
+      result.push_back(a[i].unit_rotate_around_origin(
+        unit, angles[i]));
+    }
+    return result;
+  }
+  
   flex_double
   as_double(flex<vec3<double> >::type const& a)
   {
@@ -416,6 +446,16 @@ namespace boost_python {
       .def("part_names", part_names)
       .staticmethod("part_names")
       .def("parts", parts)
+      .def("rotate_around_origin",
+        (af::shared<vec3<double> >(*)(
+          flex<vec3<double> >::type const&,
+          vec3<double> const&,
+          double const&)) rotate_around_origin)
+      .def("rotate_around_origin",
+        (af::shared<vec3<double> >(*)(
+          flex<vec3<double> >::type const&,
+          vec3<double> const&,
+          flex<double>::type const&)) rotate_around_origin)
       .def("as_double", as_double)
       .def("add_selected",
         (object(*)(
