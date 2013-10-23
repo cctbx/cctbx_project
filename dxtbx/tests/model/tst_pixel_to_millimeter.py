@@ -35,6 +35,10 @@ class Test(object):
             xy = random_coord()
             self.tst_single(xy)
 
+        from scitbx.array_family import flex
+        xy = flex.vec2_double([random_coord() for i in range(100)])
+        self.tst_array(xy)
+
         # Test passed
         print 'OK'
 
@@ -51,6 +55,16 @@ class Test(object):
         # Check the values
         assert(abs(xy_corr_gold - xy_corr) < 1e-7)
         assert(abs(xy_corr_inv - xy) < 1e-3)
+
+    def tst_array(self, xy):
+        from libtbx.test_utils import approx_equal
+        xy_corr = self.detector.get_lab_coord(xy)
+        xy_corr_panel = self.detector[0].get_lab_coord(xy)
+        xy_corr_gold = [self.detector.get_lab_coord(xy_single)
+                        for xy_single in xy]
+        assert approx_equal(xy_corr, xy_corr_gold)
+        assert approx_equal(xy_corr_panel, xy_corr_gold)
+
 
     def correct_gold(self, xy):
         from scitbx import matrix
