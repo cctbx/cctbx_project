@@ -54,7 +54,7 @@ class _(boost.python.injector, dps_extended):
 
     self.panelID = panel_addresses
     reciprocal_space_vectors = self.raw_spot_positions_mm_to_reciprocal_space(
-      self.raw_spot_input, self.detector, self.inv_wave, self.beam, self.axis,
+      self.raw_spot_input, self.detector, self.inv_wave, self.S0_vector, self.axis,
       self.panelID)
 
     self.setXyzData(reciprocal_space_vectors) # extended API
@@ -64,25 +64,23 @@ class _(boost.python.injector, dps_extended):
         max_cell = self.max_cell
       )
 
-    scope_check = "Central"
-    if scope_check is not None:
+  def optimize_S0_local_scope(self):
+      """Local scope: find the optimal S0 vector closest to the input S0 vector
+         (local minimum, simple minimization)"""
 
       ############  Implement a direct beam check right here #########################
-      #score = self.get_beam_vector_score(self.beam) # extended API
       unique=0
       solutions = self.getSolutions() # extended API
 
-      #print solutions[unique].dvec
-      #print self.beam
       # construct two vectors that are perpendicular to the beam.  Gives a basis for refining beam
-      beamr0 = self.beam.cross(self.axis).normalize()
-      beamr1 = beamr0.cross(self.beam).normalize()
-      beamr2 = beamr1.cross(self.beam).normalize()
+      beamr0 = self.S0_vector.cross(self.axis).normalize()
+      beamr1 = beamr0.cross(self.S0_vector).normalize()
+      beamr2 = beamr1.cross(self.S0_vector).normalize()
 
-      assert approx_equal(self.beam.dot(beamr1), 0.)
-      assert approx_equal(self.beam.dot(beamr2), 0.)
+      assert approx_equal(self.S0_vector.dot(beamr1), 0.)
+      assert approx_equal(self.S0_vector.dot(beamr2), 0.)
       assert approx_equal(beamr2.dot(beamr1), 0.)
-      # so the orthonormal vectors are self.beam, beamr1 and beamr2
+      # so the orthonormal vectors are self.S0_vector, beamr1 and beamr2
 
       grid = 10
 
@@ -101,24 +99,24 @@ class _(boost.python.injector, dps_extended):
           selfOO.x = selfOO.optimizer.get_solution()
 
         def target(selfOO, vector):
-          newvec = matrix.col(self.beam) + vector[0]*0.0002*beamr1 + vector[1]*0.0002*beamr2
+          newvec = matrix.col(self.S0_vector) + vector[0]*0.0002*beamr1 + vector[1]*0.0002*beamr2
           normal = newvec.normalize() * self.inv_wave
           return -self.get_beam_vector_score(normal,unique) # extended API
 
       MIN = test_simplex_method()
       #MIN = test_cma_es()
       print "MINIMUM=",list(MIN.x)
-      newvec = matrix.col(self.beam) + MIN.x[0]*0.0002*beamr1 + MIN.x[1]*0.0002*beamr2
-      normal = newvec.normalize() * self.inv_wave
-      self.new_beam = normal
-      print "old beam",list(self.beam.elems)
-      print "new beam",list(normal.elems)
+      newvec = matrix.col(self.S0_vector) + MIN.x[0]*0.0002*beamr1 + MIN.x[1]*0.0002*beamr2
+      new_S0_vector = newvec.normalize() * self.inv_wave
+
+      print "old S0:",list(self.S0_vector.elems)
+      print "new S0",list(new_S0_vector.elems)
 
       scores = flex.double()
       for x in xrange(-grid,grid+1):
        break # skip the grid search
        for y in xrange(-grid,grid+1):
-        ref = matrix.col(self.beam)
+        ref = matrix.col(self.S0_vector)
         newvec = ref + x*0.0002*beamr1 + y*0.0002*beamr2
         normal = newvec.normalize() * self.inv_wave
         scores.append( self.get_beam_vector_score(normal,unique) ) # extended API
@@ -138,8 +136,10 @@ class _(boost.python.injector, dps_extended):
         plt.show()
 
       #show_plot(2 * grid + 1, scores)
+      return new_S0_vector
 
-
+  def get_basis_general(self):
+    """side-effect: sets orientation matrix"""
     from rstbx.indexing_api.basis_choice import SelectBasisMetaprocedure as SBM
     pd = {}
     M = SBM(input_index_engine = self,input_dictionary = pd, horizon_phil = self.horizon_phil) # extended API
