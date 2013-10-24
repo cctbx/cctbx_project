@@ -427,10 +427,15 @@ def rotamer_outliers(chain, pdbID, rot_outliers):
             continue
           elif bond[0].startswith('H') or bond[1].startswith('H'):
             continue
+          if (key_hash.get(bond[0]) == None or
+              key_hash.get(bond[1]) == None or
+              xyz_hash.get(bond[0]) == None or
+              xyz_hash.get(bond[1]) == None):
+            continue
           rot_out += kin_vec(key_hash[bond[0]],
-                           xyz_hash[bond[0]],
-                           key_hash[bond[1]],
-                           xyz_hash[bond[1]])
+                             xyz_hash[bond[0]],
+                             key_hash[bond[1]],
+                             xyz_hash[bond[1]])
   if len(rot_out.splitlines()) == 2:
     rot_out = ""
   return rot_out
