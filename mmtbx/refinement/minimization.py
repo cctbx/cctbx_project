@@ -9,6 +9,7 @@ import sys
 from libtbx.utils import user_plus_sys_time
 from cctbx import adptbx
 from libtbx.str_utils import format_value
+from libtbx.utils import Sorry
 
 class lbfgs(object):
 
@@ -50,7 +51,6 @@ class lbfgs(object):
         self.qblib_cycle_count = 0
         self.tmp_XYZ = None
         self.XYZ_diff_curr=None
-        self.XYZ_diff_prev=None
 # QBLIB END
     self.correct_special_position_tolerance = correct_special_position_tolerance
     if(refine_xyz and target_weights is not None):
@@ -98,6 +98,11 @@ class lbfgs(object):
       self.monitor.collect(iter = self.minimizer.iter(),
                            nfun = self.minimizer.nfun())
     self.fmodels.create_target_functors()
+# QBLIB INSERT
+    if(self.qblib_params is not None and self.qblib_params.qblib):
+       print >>self.qblib_params.qblib_log,'{:-^80}'.format("")
+       print >>self.qblib_params.qblib_log
+# QBLIB END
 
   def apply_shifts(self):
     if(self.refine_adp):
@@ -151,11 +156,11 @@ class lbfgs(object):
             self.model.xray_structure.sites_cart(),
             )
           if(self.XYZ_diff_curr is not None):
-            self.XYZ_diff_prev=self.XYZ_diff_curr
             self.XYZ_diff_curr=max_elem
           else:
             self.XYZ_diff_curr=max_elem
-            self.tmp_XYZ = self.model.xray_structure.sites_cart()
+          if(max_elem>=self.qblib_params.skip_divcon_threshold):
+               self.tmp_XYZ = self.model.xray_structure.sites_cart()
         else:
           self.tmp_XYZ = self.model.xray_structure.sites_cart()
         if (self.macro != self.qblib_params.macro_cycle_to_skip):
@@ -168,7 +173,14 @@ class lbfgs(object):
             macro=self.macro,
             micro=self.qblib_cycle_count,
             )
-          qblib_call.run()
+          try:
+            qblib_call.run()
+          except Exception, e:
+            if e.__class__.__name__=="QB_none_fatal_error":
+              raise Sorry(e.message)
+            else:
+              raise e
+            
           if(qblib_call.QBStatus):
             qblib_g=qblib_call.result_QBlib.gradients
             qblib_f=qblib_call.result_QBlib.target
