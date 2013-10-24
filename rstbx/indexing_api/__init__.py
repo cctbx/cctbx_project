@@ -8,16 +8,14 @@ from scitbx.matrix import col
 
 class _(boost.python.injector, ext.dps_extended):
 
-  def set_beam_vector(self,beam):  # currently self.beam is treated as the direction from sample to detector, but
-                                   # this should be redone so it is sample to source.  S0  = -beam
-    self.beam = beam
-    self.beam_vector = beam # will be deprecated soon XXX
-    self.inv_wave = self.beam.length() # will be deprecated soon XXX
-    self.wavelength_set = 1./self.inv_wave
+  def set_beam_vector(self,beam):
+    # input vector "beam" points from crystal to source.
+    # S0 = -beam
+    self.S0_vector = -beam
+    self.inv_wave = self.S0_vector.length() # will be deprecated soon XXX
 
   def set_rotation_axis(self,axis):
-    self.rotation_vector = axis
-    self.axis = axis # will be deprecated soon XXX
+    self.axis = axis
     assert axis.length() == 1.0
 
   def set_detector(self,input_detector):
@@ -33,50 +31,29 @@ class _(boost.python.injector, ext.dps_extended):
       pixel_size = (1.0,1.0),  #not actually using pixels for indexing
       image_size = (100,100),  #not using pixels
       )
-  @staticmethod
-  def multicase(raw_spot_input,detector,inverse_wave,beam,axis,panelID):
-    reciprocal_space_vectors = flex.vec3_double()
-    origin = [col(d.get_origin()) for d in detector]
-    d1     = [col(d.get_fast_axis()) for d in detector]
-    d2     = [col(d.get_slow_axis()) for d in detector]
-
-    # tile surface to laboratory transformation
-    for n in xrange(len(raw_spot_input)):
-      pid = panelID[n]
-      lab_direct = origin[pid] + d1[pid] * raw_spot_input[n][0] + d2[pid] * raw_spot_input[n][1]
-
-    # laboratory direct to reciprocal space xyz transformation
-      lab_recip = (lab_direct.normalize() * inverse_wave) - beam
-
-      reciprocal_space_vectors.append ( lab_recip.rotate_around_origin(
-        axis=axis, angle=raw_spot_input[n][2], deg=True)
-        )
-    return reciprocal_space_vectors
 
   @staticmethod
   def raw_spot_positions_mm_to_reciprocal_space( raw_spot_input, # as vec3_double
       detector, inverse_wave, beam, axis, # beam, axis as scitbx.matrix.col
       panelID=None
       ):
-    if panelID is not None:
-      return ext.dps_extended.multicase(raw_spot_input,detector,inverse_wave,beam,axis,panelID)
+    if panelID is None:
+      panelID = flex.int(len(raw_spot_input),0)
 
     """Assumptions:
     1) the raw_spot_input is in the same units of measure as the origin vector (mm).
-       they are not given in physical length, not pixel units
+       they are given in physical length, not pixel units
     2) the raw_spot centers of mass are given with the same corner/center convention
        as the origin vector.  E.g., spotfinder assumes that the mm scale starts in
        the middle of the lower-corner pixel.
     """
 
     reciprocal_space_vectors = flex.vec3_double()
-    origin = col(detector.get_origin())
-    d1     = col(detector.get_fast_axis())
-    d2     = col(detector.get_slow_axis())
 
     # tile surface to laboratory transformation
     for n in xrange(len(raw_spot_input)):
-      lab_direct = origin + d1 * raw_spot_input[n][0] + d2 * raw_spot_input[n][1]
+      pid = panelID[n]
+      lab_direct = col(detector[pid].get_lab_coord(raw_spot_input[n][0:2]))
 
     # laboratory direct to reciprocal space xyz transformation
       lab_recip = (lab_direct.normalize() * inverse_wave) - beam
@@ -111,7 +88,7 @@ class _(boost.python.injector, ext.dps_extended):
     xyz_miller = flex.vec3_double()
     from rstbx.diffraction import rotation_angles
     ra = rotation_angles(limiting_resolution=1.0,orientation = Astar,
-                         wavelength = self.wavelength_set, axial_direction = self.rotation_vector)
+                         wavelength = 1./self.inv_wave, axial_direction = self.axis)
     for ij,hkl in enumerate(Hint):
       xyz_miller.append( Astar * hkl ) # figure out how to do this efficiently on vector data
       if ra(hkl):
@@ -121,9 +98,9 @@ class _(boost.python.injector, ext.dps_extended):
         min_diff = min(rotational_diffs)
         min_index = rotational_diffs.index(min_diff)
         omega = omegas[min_index]
-        rot_mat = self.rotation_vector.axis_and_angle_as_r3_rotation_matrix(omega)
+        rot_mat = self.axis.axis_and_angle_as_r3_rotation_matrix(omega)
 
-        Svec = (rot_mat * Astar) * hkl + self.beam_vector
+        Svec = (rot_mat * Astar) * hkl + self.S0_vector
 #        print panel.get_ray_intersection(Svec), self.raw_spot_input[ij]
         if self.panelID is not None: panel = self.detector[ self.panelID[ij] ]
         calc = matrix.col(panel.get_ray_intersection(Svec))
