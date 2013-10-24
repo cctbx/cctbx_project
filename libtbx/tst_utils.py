@@ -290,6 +290,12 @@ def exercise_dir_utils () :
     assert "Dropbox directory" in str(w[-1].message)
   if (dir_created) :
     os.rmdir("Dropbox")
+  host_info = utils.host_and_user()
+  assert not utils.allow_delete_directory(host_info.homedir)
+  target_dir = os.path.join(host_info.homedir, "Downloads")
+  assert not utils.allow_delete_directory(target_dir)
+  target_dir = os.path.join(host_info.homedir, "data", "lysozyme")
+  assert utils.allow_delete_directory(target_dir)
 
 def run(args):
   assert len(args) == 0

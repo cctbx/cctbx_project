@@ -693,6 +693,30 @@ class host_and_user:
     self.sge_info.show(out=out, prefix=prefix)
     self.pbs_info.show(out=out, prefix=prefix)
 
+def allow_delete_directory (target_dir) :
+  """
+  Check for specified reserved directories which are standard on many systems;
+  these should never be deleted as part of any program.
+  """
+  homedir = host_and_user().homedir
+  safe_dirs = [
+    homedir,
+    os.path.join(homedir, "Documents"),
+    os.path.join(homedir, "Desktop"),
+    os.path.join(homedir, "Downloads"),
+    os.path.join(homedir, "Library"),
+    os.path.join(homedir, "Movies"),
+    os.path.join(homedir, "data"),
+    "/",
+    "/home",
+    "/Users",
+  ]
+  target_dir = os.path.abspath(target_dir)
+  for safe_dir in safe_dirs :
+    if (target_dir == safe_dir) :
+      return False
+  return True
+
 def _indentor_write_loop(write_method, indent, incomplete_line, lines):
   for line in lines:
     if (len(line) == 0):
