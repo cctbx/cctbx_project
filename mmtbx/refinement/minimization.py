@@ -180,7 +180,7 @@ class lbfgs(object):
               raise Sorry(e.message)
             else:
               raise e
-            
+
           if(qblib_call.QBStatus):
             qblib_g=qblib_call.result_QBlib.gradients
             qblib_f=qblib_call.result_QBlib.target
