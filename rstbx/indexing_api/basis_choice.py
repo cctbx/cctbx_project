@@ -12,7 +12,7 @@ class FewSpots(exceptions.Exception): pass
 unphysical_cell_cutoff_macromolecular_regime = 100. # Angstrom^3
 
 class HandleCombo(HandleComboBase):
-  def __init__(self,ai,combo,horizon_phil):
+  def __init__(self,ai,combo):
     HandleComboBase.__init__(self,ai,combo,unphysical_cell_cutoff_macromolecular_regime)
 
   def handle_absences(self):
@@ -22,7 +22,7 @@ class HandleCombo(HandleComboBase):
         self.ai.setOrientation(newmat)
         self.ai.niggli()
 
-def select_best_combo_of(ai,horizon_phil,better_than=0.36,candidates=20,basis=15,spot_sep=0.4,opt_inputs=None):
+def select_best_combo_of(ai,better_than=0.36,candidates=20,basis=15,spot_sep=0.4,opt_inputs=None):
   """Take the first few candidates of ai.combos().  Search for all combos
      with hkl obs-calc better than a certain fraction limit, then
      handle absences, and return the best one"""
@@ -50,7 +50,7 @@ def select_best_combo_of(ai,horizon_phil,better_than=0.36,candidates=20,basis=15
   for combo in C:
     #print "COMBO: (%d,%d,%d)"%(combo[0],combo[1],combo[2])
     try:
-      HC = HandleCombo(ai,combo,horizon_phil)
+      HC = HandleCombo(ai,combo)
 
       dev = ai.rmsdev()
       print "dev",dev
@@ -187,7 +187,7 @@ class SelectBasisMetaprocedure:
       return
 
     #initial search
-    all_sol = select_best_combo_of(input_index_engine,horizon_phil,
+    all_sol = select_best_combo_of(input_index_engine,
                                       better_than=0.36,
                                       candidates=25,
                                       opt_inputs=(self.input_dictionary,opt_rawframes))
@@ -205,5 +205,5 @@ class SelectBasisMetaprocedure:
   def evaluate_combo(self,best_combo):
     increase_mosaicity(self.input_dictionary,self.input_index_engine,verbose=0)
     #print "best combo",best_combo
-    HC = HandleCombo(self.input_index_engine,best_combo['combo'],self.horizon_phil)
+    HC = HandleCombo(self.input_index_engine,best_combo['combo'])
     HC.handle_absences()
