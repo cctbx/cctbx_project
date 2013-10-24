@@ -1975,6 +1975,7 @@ rstbx/indexing_api/SConscript -text
 rstbx/indexing_api/__init__.py -text
 rstbx/indexing_api/basis_choice.py -text
 rstbx/indexing_api/ext.cpp -text
+rstbx/indexing_api/force_cell.py -text
 rstbx/indexing_api/indexing_api.cpp -text
 rstbx/indexing_api/indexing_api.h -text
 rstbx/indexing_api/lattice.py -text

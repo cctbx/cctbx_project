@@ -156,11 +156,11 @@ def increase_mosaicity(pd,ai,verbose=1):
 # 3) no rejection of second lattice
 # 4) no check against the raw data for likelihood
 # 5)  doesn't allow opt_inputs
-# 6) target cell not allowed at present
+# 6) target cell not allowed at present (FIXED)
 # 7) no quick refinement of Direction vectors; requires laborious reindexing at present
 # 8) no analytical approximation of fringe functions; could use LBFGS if this could be achieved
-# 9) tied to refinement of beam vector instead of d0 origin vector
-# 10) current supports single panel only!!!
+# 9) tied to refinement of beam vector instead of d0 origin vector (FIXED)
+# 10) current supports single panel only (FIXED)
 
 class SelectBasisMetaprocedure:
   def __init__(self,input_index_engine,input_dictionary,horizon_phil,
@@ -169,9 +169,21 @@ class SelectBasisMetaprocedure:
     from libtbx import adopt_init_args
     adopt_init_args(self,locals())
 
-    if opt_target and self.horizon_phil.target_cell!=None:
-      from labelit.diffraction.prior_cell.force_cell import force_cell
-      best = force_cell(self.input_index_engine,self.horizon_phil.target_cell)
+    if self.horizon_phil.target_cell!=None:
+
+      # change target to primitive centering type
+      from cctbx import crystal
+      input_symmetry = crystal.symmetry(
+        unit_cell=self.horizon_phil.target_cell,
+        space_group_symbol="Hall: %s 1" % self.horizon_phil.target_cell_centring_type)
+      from cctbx.sgtbx.lattice_symmetry import metric_subgroups
+      groups = metric_subgroups(input_symmetry, 0.0,
+        enforce_max_delta_for_generated_two_folds=True)
+      #groups.show()
+      primitive_target_cell = groups.result_groups[-1]["best_subsym"].unit_cell()
+
+      from rstbx.indexing_api.force_cell import force_cell
+      best = force_cell(self.input_index_engine,primitive_target_cell)
       try:
         #print "Best score %.1f, triangle %12s"%(best["score"],str(best["triangle"])),best["orientation"].unit_cell()
         self.input_index_engine.setOrientation(best["orientation"])
