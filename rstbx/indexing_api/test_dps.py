@@ -80,8 +80,9 @@ def test_dps_single_panel_labelit_input_optimal_origin(process_dictionary,data,p
 """
 Still to do:
 1) Implement origin refinement instead of S0 (DONE)
-2) Implement target cell
+2) Implement target cell (DONE)
 3) Implement outlier rejection
 4) Implement full-parameter refinement
 5) Figure out how to evaluate the scoring function analytically & use 2nd-derivative LBFGS
+6) Implement quick-refinement of direction vectors as in labelit
 """
