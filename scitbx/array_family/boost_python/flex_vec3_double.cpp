@@ -100,6 +100,7 @@ namespace {
     vec3<double> const& direction,
     double const& angle)
   {
+    SCITBX_ASSERT(direction.length() > 0)(direction.length());
     vec3<double> unit = direction.normalize();
     af::shared<vec3<double> > result((af::reserve(a.size())));
     for(std::size_t i=0;i<a.size();i++) {
@@ -115,6 +116,7 @@ namespace {
     vec3<double> const& direction,
     flex<double>::type const& angles)
   {
+    SCITBX_ASSERT(direction.length() > 0)(direction.length());
     vec3<double> unit = direction.normalize();
     af::shared<vec3<double> > result((af::reserve(a.size())));
     for(std::size_t i=0;i<a.size();i++) {
@@ -123,7 +125,7 @@ namespace {
     }
     return result;
   }
-  
+
   flex_double
   as_double(flex<vec3<double> >::type const& a)
   {
