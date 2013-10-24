@@ -15,7 +15,8 @@ class _(boost.python.injector, dps_extended):
     nh = min ( self.getSolutions().size(), 20) # extended API
 
     reciprocal_space_vectors = self.raw_spot_positions_mm_to_reciprocal_space(
-      self.raw_spot_input, self.detector, self.inv_wave, trial_beam, self.axis)
+      self.raw_spot_input, self.detector, self.inv_wave, trial_beam, self.axis,
+      self.panelID)
 
     solutions = self.getSolutions() #extended API
     sum_score = 0.0
@@ -42,16 +43,19 @@ class _(boost.python.injector, dps_extended):
       #  print t, kmax, dfft.pmin, dfft.delta_p, Tkmax,(2*math.pi*kmax*kbeam/(2*ff.size()-1))
     return sum_score
 
-  def index(self,raw_spot_input=None):
+  def index(self,raw_spot_input=None,panel_addresses=None):
     assert raw_spot_input is not None
     self.raw_spot_input = raw_spot_input # deprecate record
     # must be x, y, phi in degrees, as a vec3_double
-
-    # deprecated D = dps_extended()
-    # deprecated self.set_detector(self.detector)
     self.setMaxcell(self.max_cell) # extended API
+
+    if len(self.detector) > 1:
+      assert len(raw_spot_input) == len(panel_addresses)
+
+    self.panelID = panel_addresses
     reciprocal_space_vectors = self.raw_spot_positions_mm_to_reciprocal_space(
-      self.raw_spot_input, self.detector, self.inv_wave, self.beam, self.axis)
+      self.raw_spot_input, self.detector, self.inv_wave, self.beam, self.axis,
+      self.panelID)
 
     self.setXyzData(reciprocal_space_vectors) # extended API
 
