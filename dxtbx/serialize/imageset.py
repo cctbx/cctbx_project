@@ -37,6 +37,20 @@ class NullSweep(object):
         return self.scan
     def set_scan(self, scan):
         self.scan = scan
+    def get_array_range(self):
+        assert self.scan is not None
+        return self.scan.get_array_range()    
+    def __getitem__(self, item):
+        import dxtbx.model.scan
+        assert isinstance(item, slice)
+        sweep = NullSweep(self.template)
+        scan = dxtbx.model.scan.Scan(self.get_scan())
+        scan.set_image_range((item.start+1, item.stop))
+        sweep.set_scan(scan)
+        sweep.set_detector(self.get_detector())
+        sweep.set_goniometer(self.get_goniometer())
+        sweep.set_beam(self.get_beam())
+        return sweep
 
 
 def filename_to_absolute(filename):
