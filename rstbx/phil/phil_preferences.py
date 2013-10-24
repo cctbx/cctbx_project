@@ -147,6 +147,17 @@ viewer {
       .help = "Specify spacegroup for the unit cell"
   }
 }
+
+
+target_cell=None
+  .type=unit_cell
+  .multiple=False
+  .help="Imperative unit cell applied at the level of DPS algorithm basis selection."
+target_cell_centring_type= *P C I R F
+  .type=choice
+  .multiple=False
+  .help="Centring symbol for the target cell"
+
 """
 
 class EffectiveParamGenerator:
