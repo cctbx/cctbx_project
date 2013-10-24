@@ -1714,6 +1714,7 @@ def exercise_flex_vec3_double():
   import random
   for i in range(100):
     axis = matrix.col([random.randint(-5, 5) for j in range(3)])
+    if axis.length() == 0: continue
     angle = random.uniform(0, 2*math.pi)
     expected = [matrix.col(point).rotate_around_origin(axis, angle)
                 for point in a]
@@ -1723,6 +1724,13 @@ def exercise_flex_vec3_double():
     expected = [matrix.col(a[j]).rotate_around_origin(axis, angles[j])
                 for j in range(len(a))]
     assert approx_equal(a.rotate_around_origin(axis, angles), expected)
+  axis = matrix.col([0,0,0])
+  try: a.rotate_around_origin(axis, angle)
+  except RuntimeError: pass
+  else: raise Exception_expected
+  try: a.rotate_around_origin(axis, angles)
+  except RuntimeError: pass
+  else: raise Exception_expected
 
 
 def exercise_flex_vec2_double():
