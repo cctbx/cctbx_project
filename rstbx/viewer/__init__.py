@@ -236,7 +236,9 @@ class image (screen_params) :
       img = file_name # assume it's already been read
 
     self._raw = img
-    print img.show_header()
+    try:
+      img.show_header()
+    except Exception: pass # intentional
 
     detector = self._raw.get_detector()
     if len(detector) == 1:
@@ -252,9 +254,12 @@ class image (screen_params) :
       assert pixel_size[0] == pixel_size[1] == pstest[0] == pstest[1]
     self.set_detector_resolution(pixel_size[0])
 
-    from spotfinder.command_line.signal_strength import master_params
-    params = master_params.extract()
-    self._raw.initialize_viewer_properties(params)
+    try:
+      from spotfinder.command_line.signal_strength import master_params
+      params = master_params.extract()
+      self._raw.initialize_viewer_properties(params)
+    except Exception: pass # intentional
+
     self._beam_center = None
     self._integration = None
     self._spots = None

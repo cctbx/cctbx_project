@@ -184,9 +184,9 @@ class _Tiles(object):
         if type(file_name_or_data) is type(""):
           from iotbx.detectors import ImageFactory
           self.raw_image = ImageFactory(file_name_or_data)
+          self.raw_image.read()
         else:
           self.raw_image = file_name_or_data._raw
-        self.raw_image.read()
         #print "SETTING NEW IMAGE",self.raw_image.filename
 
         # XXX Since there doesn't seem to be a good way to refresh the
