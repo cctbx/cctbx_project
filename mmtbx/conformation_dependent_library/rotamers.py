@@ -1,4 +1,6 @@
-import os, sys
+
+from __future__ import division
+import sys
 import time
 
 from mmtbx.conformation_dependent_library.rdl_database import rdl_database
@@ -10,7 +12,7 @@ def generate_rotamer_data(pdb_hierarchy,
                           ):
   r = rotalyze.rotalyze(pdb_hierarchy=pdb_hierarchy)
   for rot in r.results:
-    if exclude_outliers and rot.outlier: continue    
+    if exclude_outliers and rot.outlier: continue
     yield (rot.resname,
            rot.id_str(),
            rot.chain_id,
@@ -107,4 +109,3 @@ def adjust_rotomer_restraints(pdb_hierarchy,
   print >> log, "    Number of angles RDL adjusted : %d" % count
   print >> log, "    Time to adjust                : %0.3f" % (time.time()-t0)
   return i_seqs_restraints, i_seqs_restraints_reversal
-    

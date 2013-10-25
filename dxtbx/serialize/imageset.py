@@ -39,7 +39,7 @@ class NullSweep(object):
         self.scan = scan
     def get_array_range(self):
         assert self.scan is not None
-        return self.scan.get_array_range()    
+        return self.scan.get_array_range()
     def __getitem__(self, item):
         import dxtbx.model.scan
         assert isinstance(item, slice)
