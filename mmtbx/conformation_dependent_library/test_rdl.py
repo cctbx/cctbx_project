@@ -1,5 +1,5 @@
 from __future__ import division
-import os, sys
+import sys
 import time
 
 from mmtbx.conformation_dependent_library import rotamers as rdl
@@ -55,4 +55,3 @@ def run(filename):
 
 if __name__=="__main__":
   run(sys.argv[1])
-  

@@ -8,8 +8,6 @@ from pickle import loads, dumps
 import libtbx
 from mmtbx.command_line.water_screen import master_phil
 from mmtbx import ions
-import mmtbx.monomer_library.pdb_interpretation
-from mmtbx import monomer_library
 from mmtbx.regression.make_fake_anomalous_data import generate_zinc_inputs
 import mmtbx.utils
 
