@@ -65,7 +65,8 @@ class NpyImage(DetectorImageBase):
       SI = cspad_data['image'].astype(numpy.int32)
       SI = flex.int(SI)
       self.bin_safe_set_data(SI)
-    elif version_control in ["CXI 3.2","CXI 4.1","CXI 5.1","CXI 6.1","CXI 7.1","CXI 7.d","XPP 7.1","XPP 7.marccd"]:
+    elif version_control in ["CXI 3.2","CXI 4.1","CXI 5.1","CXI 6.1","CXI 7.1","CXI 7.d","XPP 7.1","XPP 7.marccd",
+                             "CXI 8.1","CXI 8.d","XPP 8.1","XPP 8.marccd"]:
       self.parameters['ACTIVE_AREAS']         = cspad_data.get('ACTIVE_AREAS', None)
       self.parameters['BEAM_CENTER_X']        = cspad_data['BEAM_CENTER_X']
       self.parameters['BEAM_CENTER_Y']        = cspad_data['BEAM_CENTER_Y']
@@ -100,7 +101,8 @@ class NpyImage(DetectorImageBase):
          self.parameters["DISTANCE"]=0.0
       self.bin_safe_set_data(cspad_data['DATA'])
 
-    if version_control in ["CXI 4.1","CXI 5.1","CXI 6.1","CXI 7.1","CXI 7.d","XPP 7.1","XPP 7.marccd"]:
+    if version_control in ["CXI 4.1","CXI 5.1","CXI 6.1","CXI 7.1","CXI 7.d","XPP 7.1","XPP 7.marccd",
+                           "CXI 8.1","CXI 8.d","XPP 8.1","XPP 8.marccd"]:
       if horizons_phil.distl.tile_translations==None and \
          horizons_phil.distl.detector_tiling is not None:
           horizons_phil.distl.tile_translations = [0]*(len(horizons_phil.distl.detector_tiling)/2)

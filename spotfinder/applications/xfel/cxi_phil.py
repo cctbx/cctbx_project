@@ -228,5 +228,32 @@ def cxi_versioned_extract(*args):
     working_extract.distl.tile_translations = [0, 0]
     return working_extract
 
+  elif cxi_version in ["CXI 8.1"]:
+    working_extract = working_phil.command_extractor
+    corrected_auxiliary_translations = [
+       2,  1,  1,  1,  1,  2,  0,  2,  3,  0,
+       0,  0,  4,  1,  3,  1,  1, -2,  2, -1,
+      -1, -1,  1, -1, -1, -2, -1, -1, -1,  0,
+      -1,  1, -2,  0,  0,  1,  0,  0,  1,  1,
+      -1,  1, -2,  1, -1,  0, -1,  1, -1,  1,
+      -1,  1, -2,  1, -1,  1,  1,  1,  0,  2,
+      -1,  1,  0,  1,  0,  1,  0,  1,  0,  0,
+       0,  1, -1,  0,  0,  1,  0, -1, -1,  1,
+      -1,  0, -1,  1, -1,  0, -2,  0,  0,  1,
+       0,  1, -1,  0,  1,  0,  2, -1,  2, -1,
+       1,  0,  0,  0,  1, -1,  1, -2,  2, -2,
+       2, -2,  0, -1,  1, -1,  2,  1,  0,  0,
+       0,  0,  0, -2,  1,  1,  1,  0]
+
+    from scitbx.array_family import flex
+    total_tile_translations = flex.int(corrected_auxiliary_translations)
+
+    TT = list(total_tile_translations)
+    working_extract.distl.tile_translations = TT
+
+    # Order: UL x, UL y, UR x, UR y, LL x, LL y, LR x, LR y
+    working_extract.distl.quad_translations = [-22,-4,-14,11,0,8,2,-5]
+    return working_extract
+
   else:
     return working_phil.command_extractor

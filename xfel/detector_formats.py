@@ -77,4 +77,15 @@ def detector_format_version(address, time):
     elif address == 'XppGon-0|marccd-0':
       return 'XPP 7.marccd'
 
+  elif time < timegm(strptime('2014-03-31, 02:00 UTC', f)):
+    # LCLS run 8: until Mar 31, 2014
+    if address == 'CxiDs1-0|Cspad-0':
+      return 'CXI 8.1'
+    elif address == 'CxiDsd-0|Cspad-0':
+      return 'CXI 8.d'
+    elif address == 'XppGon-0|Cspad-0':
+      return 'XPP 8.1'
+    elif address == 'XppGon-0|marccd-0':
+      return 'XPP 8.marccd'
+
   return None
