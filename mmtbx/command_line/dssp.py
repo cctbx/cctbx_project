@@ -31,7 +31,8 @@ def run (args, out=sys.stdout) :
   if (params.atom_output) :
     out.write(pdb_hierarchy.as_pdb_string(crystal_symmetry=xray_structure))
   t2 = time.time()
-  #print "runtime: %.3fs" % (t2-t1)
+  if (params.verbosity >= 1) :
+    print >> sys.stderr, "total DSSP runtime: %.3fs" % (t2-t1)
   return SS
 
 if (__name__ == "__main__") :

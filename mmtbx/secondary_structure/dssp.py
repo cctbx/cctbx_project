@@ -1,8 +1,5 @@
 
-# FIXME: bifurcated sheets are just not handled at all right now
-# FIXME: make sheet extraction much faster?  This would require moving the
-# hbond and bridge classes to C++ (with accompanying scitbx.array_family
-# types), which may be overkill.
+# FIXME bifurcated sheets need more testing and optimization
 # TODO: incorporate angle-dependence?
 # TODO: test on entire PDB
 #
@@ -46,6 +43,7 @@ class hbond (object) :
     self.j_res = residue2.atoms()[0].tmp
     self._i_res_offset = self.i_res + 2
     self._j_res_offset = self.j_res - 2
+    self._helix_flag = False
     self.within_chain = (residue1.parent().parent() ==
                          residue2.parent().parent())
 
@@ -66,6 +64,12 @@ class hbond (object) :
       if (n_turn > 2) and (n_turn < 6) :
         return n_turn
     return None
+
+  def set_helical (self, flag=True) :
+    self._helix_flag = flag
+
+  def is_helical (self) :
+    return self._helix_flag
 
   def is_same_chain (self, other) :
     if (other is None) : return False
@@ -243,22 +247,17 @@ class ladder (object) :
     start_hbond = None
     start_on_n = False
     min_i_res = sys.maxint
-    #print i_res_start, i_res_end, j_res_start, j_res_end
-    # XXX this is incorrect - it is not picking the first possible H-bond
     for hbond in hbonds :
       if (self.bridges[0].contains_hbond(hbond) or
           self.bridges[-1].contains_hbond(hbond) or
           hbond.is_in_ladder(self)) :
-        #hbond.show()
         if ((hbond.i_res < min_i_res) and (hbond.i_res >= i_res_start) and
             (hbond.i_res <= i_res_end)) : # O atom
-        #if (hbond.i_res < min_i_res) :
           start_hbond = hbond
           min_i_res = hbond.i_res
           start_on_n = False
         if ((hbond.j_res <= min_i_res) and (hbond.j_res >= i_res_start) and
             (hbond.j_res <= i_res_end)) : # N atom (takes precedence)
-        #if (hbond.j_res < min_i_res) :
           start_hbond = hbond
           min_i_res = hbond.j_res
           start_on_n = True
@@ -267,24 +266,18 @@ class ladder (object) :
         if (hbond.is_in_ladder(prev_ladder)) :
           if ((hbond.i_res < min_i_res) and (hbond.i_res >= i_res_start) and
               (hbond.i_res <= i_res_end)) : # O atom
-        #if (hbond.i_res < min_i_res) :
             start_hbond = hbond
             min_i_res = hbond.i_res
             start_on_n = False
           if ((hbond.j_res <= min_i_res) and (hbond.j_res >= i_res_start) and
               (hbond.j_res <= i_res_end)) : # N atom (takes precedence)
-        #if (hbond.j_res < min_i_res) :
             start_hbond = hbond
             min_i_res = hbond.j_res
             start_on_n = True
     if (start_hbond is None) :
       out = cStringIO.StringIO()
       self.show(out=out)
-      return None
       raise RuntimeError("Can't find start of H-bonding:\n%s" % out.getvalue())
-    #print "FINAL:"
-    #start_hbond.show()
-    #print ""
     if (start_on_n) :
       curr_atom = " N  "
       prev_atom = " O  "
@@ -295,7 +288,6 @@ class ladder (object) :
       prev_atom = " N  "
       curr_res = pdb_labels[start_hbond.j_res]
       prev_res = pdb_labels[start_hbond.i_res]
-    #start_hbond.show()
     return secondary_structure.pdb_strand_register(
       cur_atom=curr_atom,
       cur_resname=curr_res.resname,
@@ -325,6 +317,7 @@ class dssp (object) :
           params=None,
           out=None,
           log=None) :
+    t0 = time.time()
     if (out is None) : out = sys.stdout
     if (log is None) : log = null_out()
     if (params is None) : params = master_phil.extract()
@@ -363,6 +356,8 @@ class dssp (object) :
     # now iterate over backbone O atoms and look for H-bonds
     # XXX this loop takes up most of the runtime
     t1 = time.time()
+    if (self.params.verbosity >= 1) :
+      print >> log, "Time to initialize: %.3fs" % (t1-t0)
     t_process = 0
     t_find = 0
     for chain in pdb_hierarchy.only_model().chains() :
@@ -487,13 +482,12 @@ class dssp (object) :
         prev_hbond = hb
     if (len(current_turn) > 0) :
       turns.append(current_turn)
-    if (self.params.verbosity >= 1) :
+    if (self.params.verbosity >= 2) :
       print >> self.log, "%d basic turns" % len(turns)
-      if (self.params.verbosity >= 2) :
-        for turn in turns :
-          print >> self.log, "TURN:"
-          for hb in turn :
-            hb.show(out=self.log, prefix="  ")
+      for turn in turns :
+        print >> self.log, "TURN:"
+        for hb in turn :
+          hb.show(out=self.log, prefix="  ")
     helices = []
     helix_classes = { 4:1, 5:3, 3:5 } # alpha, 3_10, pi
     ignore_previous = False
@@ -520,6 +514,8 @@ class dssp (object) :
           prev_turn = None
           if (turn_start == len(turn)) or (len(turn[turn_start:]) < 4) :
             continue
+      for hb in turn :
+        hb.set_helical()
       # XXX in Kabsch & Sander, the helix officially starts at the
       # second turn.  This appears to be consistent with ksdssp, but not with
       # the HELIX records in the PDB.  I am inclined to follow the latter
@@ -546,18 +542,30 @@ class dssp (object) :
         print >> self._pml, hb.as_pymol_cmd()
     return helices
 
-  def find_sheets (self) : # FIXME very slow!
+  def find_sheets (self) :
     from iotbx.pdb import secondary_structure
     i_max = len(self.hbonds) - 1
     # first collect bridges
-    # XXX this is the slow step
+    # FIXME this is still an O(N^2) loop - in practice it is not so terrible
+    # for mostly-alpha structures, but it could probably be made faster
     bridges = []
+    t1 = time.time()
     for k, hbond1 in enumerate(self.hbonds) :
+      if hbond1.is_helical() : continue
+      n_bridges = 0
       for hbond2 in self.hbonds[k+1:] :
+        if hbond2.is_helical() : continue
         is_bridge = hbond1.is_bridge(hbond2)
         if (is_bridge != 0) :
           B = bridge(hbond1, hbond2, is_bridge)
           bridges.append(B)
+          n_bridges += 1
+          if (n_bridges == 2) :
+            break
+        #  break
+    t2 = time.time()
+    if (self.params.verbosity >= 1) :
+      print >> self.log, "Time to find bridges: %.3fs" % (t2-t1)
     bridges.sort(lambda a,b: cmp(a.i_res, b.i_res))
     if (self.params.verbosity >= 2) :
       for B in bridges :
