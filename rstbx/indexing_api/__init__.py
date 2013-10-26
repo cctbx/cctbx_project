@@ -5,6 +5,7 @@ from rstbx_indexing_api_ext import *
 import rstbx_indexing_api_ext as ext
 from rstbx.array_family import flex
 from scitbx.matrix import col
+from rstbx_ext import * # gets us SpotClass
 
 class _(boost.python.injector, ext.dps_extended):
 
@@ -110,3 +111,57 @@ class _(boost.python.injector, ext.dps_extended):
           fraction_properly_predicted += 1./ self.raw_spot_input.size()
     print "fraction properly predicted",fraction_properly_predicted,"with spot sep (mm)",separation_mm
     return fraction_properly_predicted
+
+  def get_predicted_spot_positions(self): #similar to above function; above can be refactored
+    panel = self.detector[0]
+    from scitbx import matrix
+    Astar = matrix.sqr(self.getOrientation().reciprocal_matrix())
+    # must have set the basis in order to generate Astar matrix.  How to assert this has been done???
+
+    import math
+    xyz = self.getXyzData()
+    if self.OK_to_reset_saga_spot_status:
+      self.spot_status = [SpotClass.GOOD]*len(xyz)
+    self.assigned_hkl= [(0,0,0)]*len(xyz)
+
+    # step 1.  Deduce fractional HKL values from the XyzData.  start with x = A* h
+    #          solve for h:  h = (A*^-1) x
+    Astarinv = Astar.inverse()
+    Hint = flex.vec3_double()
+    results = flex.vec3_double()
+    for x in xyz:
+      H = Astarinv * x
+      Hint.append((round(H[0],0), round(H[1],0), round(H[2],0)))
+    xyz_miller = flex.vec3_double()
+    from rstbx.diffraction import rotation_angles
+    ra = rotation_angles(limiting_resolution=1.0,orientation = Astar,
+                         wavelength = 1./self.inv_wave, axial_direction = self.axis)
+    for ij,hkl in enumerate(Hint):
+      xyz_miller.append( Astar * hkl ) # figure out how to do this efficiently on vector data
+      if ra(hkl):
+        omegas = ra.get_intersection_angles()
+        rotational_diffs = [ abs((-omegas[omegaidx] * 180./math.pi)-self.raw_spot_input[ij][2])
+                             for omegaidx in [0,1] ]
+        min_diff = min(rotational_diffs)
+        min_index = rotational_diffs.index(min_diff)
+        omega = omegas[min_index]
+        rot_mat = self.axis.axis_and_angle_as_r3_rotation_matrix(omega)
+
+        Svec = (rot_mat * Astar) * hkl + self.S0_vector
+        if self.panelID is not None: panel = self.detector[ self.panelID[ij] ]
+        xy = panel.get_ray_intersection(Svec)
+        results.append((xy[0],xy[1],0.0))
+        self.assigned_hkl[ij]=hkl
+      else:
+        results.append((0.0,0.0,0.0))
+        self.spot_status[ij]=SpotClass.NONE
+    return results
+
+  def get_status(self,idx):
+    return self.spot_status[idx]
+  def set_status(self,idx,status):
+    self.spot_status[idx]=status
+  def get_hkl(self,idx):
+    return self.assigned_hkl[idx]
+  def set_outliers_marked(self):
+    self.OK_to_reset_saga_spot_status = False
