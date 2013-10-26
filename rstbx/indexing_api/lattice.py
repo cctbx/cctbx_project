@@ -259,3 +259,4 @@ class DPS_primitive_lattice(dps_extended):
     from libtbx import adopt_init_args
     adopt_init_args(self,locals())
     dps_extended.__init__(self)
+    self.OK_to_reset_saga_spot_status = True
