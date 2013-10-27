@@ -30,7 +30,7 @@ class OutlierPlotPDF:
     self.R.c.drawText(block_text)
     self.R.c.showPage()
 
-def main_go(index_engine,process_dictionary,opt_frames=None,verbose=False,phil_set=None):
+def main_go(index_engine,verbose=False,phil_set=None):
     # first round of minimization
     if phil_set.indexing.outlier_detection.pdf is not None:
       phil_set.__inject__("writer",OutlierPlotPDF(phil_set.indexing.outlier_detection.pdf))
@@ -57,7 +57,7 @@ def main_go(index_engine,process_dictionary,opt_frames=None,verbose=False,phil_s
       od.make_graphs(canvas=phil_set.writer.R.c,left_margin=4.5)
       phil_set.writer.R.c.showPage()
       phil_set.writer.R.c.save()
-    process_dictionary['outlier_detection'] = od
+
     # estimate unit cell error
 
     if phil_set.indexing.outlier_detection.switch==True:
@@ -82,8 +82,7 @@ def main_go(index_engine,process_dictionary,opt_frames=None,verbose=False,phil_s
       # do some 12G parameter refinement here
       print "Reindexed OK"
 """Migration process:
-   2) Migrate phil parameters for outlier detection to cctbx (DONE)
-   3) rid of dependency on process_dictionary and opt_ choices
+   3) rid of dependency on process_dictionary and opt_ choices (DONE)
    4) get rid of saga spot status.  Use return values exclusively.
    5) then implement efficiency by pushing to C++ the raw_spor_positions_mm_to_recip_space_xyz
    save 12 out of 36 seconds.

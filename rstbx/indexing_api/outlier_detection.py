@@ -106,16 +106,14 @@ class find_outliers:
     self.verbose = verbose
     self.update(horizon_phil,ai=ai)
 
-
-
-  def update(self,horizon_phil,ai=None,mark_outliers=True,verbose=True):
+  def update(self,horizon_phil,ai=None,mark_outliers=True,verbose=False):
 
     # update spot positions
     self.observed_spots = ai.raw_spot_input
     self.predicted_spots = ai.get_predicted_spot_positions()
     assert(len(self.observed_spots) == len(self.predicted_spots))
 
-    if horizon_phil.distl.bins.verbose:
+    if horizon_phil.indexing.outlier_detection.verbose:
       classes=[str(ai.get_status(i)) for i in xrange(len(self.observed_spots))]
       class_types = set(classes)
       class_counts = dict([[item,classes.count(item)] for item in class_types])
@@ -299,7 +297,7 @@ class find_outliers:
           o_inliers.append((self.dr[i],self.x[i]))
         else:
           o_outliers.append((self.dr[i],self.x[i]))
-    if horizon_phil.distl.bins.verbose:
+    if horizon_phil.indexing.outlier_detection.verbose:
       o_outliers_for_severity = []
       for i in xrange(radius_outlier_index, len(self.dr)):
         o_outliers_for_severity.append((self.dr[i],self.x[i]))
@@ -365,7 +363,7 @@ class find_outliers:
     if self.verbose:print 'Old GOOD =', len(self.dr),\
           'OUTLIER =', count_outlier,\
           'New GOOD =', count_good
-    if horizon_phil.distl.bins.verbose and mark_outliers==True:
+    if horizon_phil.indexing.outlier_detection.verbose and mark_outliers==True:
       print "\nOf the remaining %d spots, %.1f%% were lattice outliers, leaving %d well-fit spots"%(
        len(self.dr),100.*count_outlier/len(self.dr), count_good )
       if count_outlier==0:return
