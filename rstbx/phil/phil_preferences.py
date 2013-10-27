@@ -51,6 +51,25 @@ indexing {
   devel_algorithm = None
     .type = str
     .help = for development only, turn on whatever testing behavior
+
+  outlier_detection {
+    allow = True
+      .type = bool
+      .multiple=False
+      .help="Algorithm (Sauter&Poon[2010] J Appl Cryst 43:611) provides superior positional fit with noisy data."
+    switch=False
+      .type=bool
+      .multiple=False
+      .help="Switch to the outlying spots to detect a second lattice. False==first lattice; True==second lattice"
+    verbose=False
+      .type=bool
+      .multiple=False
+      .help="Verbose output."
+    pdf=None
+      .type=str
+      .multiple=False
+      .help="Output file name for making graphs of |dr| vs spot number and dy vs dx."
+  }
 }
 
 integration {

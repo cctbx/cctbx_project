@@ -32,8 +32,8 @@ class OutlierPlotPDF:
 
 def main_go(index_engine,process_dictionary,opt_frames=None,verbose=False,phil_set=None):
     # first round of minimization
-    print "IN MAIN GO"
-    phil_set.__inject__("writer",OutlierPlotPDF("test.pdf"))
+    if phil_set.indexing.outlier_detection.pdf is not None:
+      phil_set.__inject__("writer",OutlierPlotPDF(phil_set.indexing.outlier_detection.pdf))
 
     # do some 12G parameter refinement here
 
@@ -43,7 +43,7 @@ def main_go(index_engine,process_dictionary,opt_frames=None,verbose=False,phil_s
     # outlier detection
     od = outlier_detection.find_outliers(ai=index_engine,verbose=verbose,
                                          horizon_phil=phil_set)
-    if phil_set.outlier_make_graphs==True:
+    if phil_set.indexing.outlier_detection.pdf is not None:
       od.make_graphs(canvas=phil_set.writer.R.c,left_margin=0.5)
 
     # do some 12G parameter refinement here
@@ -53,14 +53,15 @@ def main_go(index_engine,process_dictionary,opt_frames=None,verbose=False,phil_s
 
     # update outlier graphs
     od.update(phil_set,ai=index_engine,mark_outliers=False)
-    if phil_set.outlier_make_graphs==True:
+    if phil_set.indexing.outlier_detection.pdf is not None:
       od.make_graphs(canvas=phil_set.writer.R.c,left_margin=4.5)
       phil_set.writer.R.c.showPage()
       phil_set.writer.R.c.save()
     process_dictionary['outlier_detection'] = od
     # estimate unit cell error
 
-    if phil_set.outlier_detection_switch==True:
+    if phil_set.indexing.outlier_detection.switch==True:
+      # placeholder implementation XXX return to this later
       raw_spot_input = flex.vec3_double()
       assert len(process_dictionary['indexing'])==len(index_engine.get_observed_spot_positions(False))
       aipos = index_engine.get_observed_spot_positions(False)
@@ -81,8 +82,7 @@ def main_go(index_engine,process_dictionary,opt_frames=None,verbose=False,phil_s
       # do some 12G parameter refinement here
       print "Reindexed OK"
 """Migration process:
-   1) Get rid of labelit dependency on Graph (DONE)
-   2) Migrate phil parameters for outlier detection to cctbx
+   2) Migrate phil parameters for outlier detection to cctbx (DONE)
    3) rid of dependency on process_dictionary and opt_ choices
    4) get rid of saga spot status.  Use return values exclusively.
    5) then implement efficiency by pushing to C++ the raw_spor_positions_mm_to_recip_space_xyz
