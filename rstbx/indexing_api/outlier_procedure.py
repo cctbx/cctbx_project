@@ -46,13 +46,14 @@ def main_go(index_engine,verbose=False,phil_set=None):
     if phil_set.indexing.outlier_detection.pdf is not None:
       od.make_graphs(canvas=phil_set.writer.R.c,left_margin=0.5)
 
-    # do some 12G parameter refinement here
+    # do some 12G parameter refinement here, using the od.cache_status flags
 
     if verbose: print "-After outlier rejection, triclinic rmsd %.3f on %d spots"%(
       index_engine.residual(), index_engine.count_GOOD())
 
     # update outlier graphs
-    od.update(phil_set,ai=index_engine,mark_outliers=False)
+    od.update(phil_set,ai=index_engine,status_with_marked_outliers=od.cache_status)
+
     if phil_set.indexing.outlier_detection.pdf is not None:
       od.make_graphs(canvas=phil_set.writer.R.c,left_margin=4.5)
       phil_set.writer.R.c.showPage()
@@ -83,7 +84,7 @@ def main_go(index_engine,verbose=False,phil_set=None):
       print "Reindexed OK"
 """Migration process:
    3) rid of dependency on process_dictionary and opt_ choices (DONE)
-   4) get rid of saga spot status.  Use return values exclusively.
+   4) get rid of saga spot status.  Use return values exclusively. (DONE)
    5) then implement efficiency by pushing to C++ the raw_spor_positions_mm_to_recip_space_xyz
    save 12 out of 36 seconds.
 """

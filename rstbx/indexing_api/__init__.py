@@ -112,16 +112,19 @@ class _(boost.python.injector, ext.dps_extended):
     print "fraction properly predicted",fraction_properly_predicted,"with spot sep (mm)",separation_mm
     return fraction_properly_predicted
 
-  def get_predicted_spot_positions(self): #similar to above function; above can be refactored
+  def get_predicted_spot_positions_and_status(self, old_status=None): #similar to above function; above can be refactored
     panel = self.detector[0]
     from scitbx import matrix
     Astar = matrix.sqr(self.getOrientation().reciprocal_matrix())
     # must have set the basis in order to generate Astar matrix.  How to assert this has been done???
 
-    import math
+    import math,copy
     xyz = self.getXyzData()
-    if self.OK_to_reset_saga_spot_status:
-      self.spot_status = [SpotClass.GOOD]*len(xyz)
+    if old_status is None:
+      spot_status = [SpotClass.GOOD]*len(xyz)
+    else:
+      assert len(old_status)==len(xyz)
+      spot_status = copy.copy( old_status ) # valid way of copying enums w/o reference
     self.assigned_hkl= [(0,0,0)]*len(xyz)
 
     # step 1.  Deduce fractional HKL values from the XyzData.  start with x = A* h
@@ -154,14 +157,8 @@ class _(boost.python.injector, ext.dps_extended):
         self.assigned_hkl[ij]=hkl
       else:
         results.append((0.0,0.0,0.0))
-        self.spot_status[ij]=SpotClass.NONE
-    return results
+        spot_status[ij]=SpotClass.NONE
+    return results,spot_status
 
-  def get_status(self,idx):
-    return self.spot_status[idx]
-  def set_status(self,idx,status):
-    self.spot_status[idx]=status
   def get_hkl(self,idx):
     return self.assigned_hkl[idx]
-  def set_outliers_marked(self):
-    self.OK_to_reset_saga_spot_status = False

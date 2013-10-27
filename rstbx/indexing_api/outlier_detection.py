@@ -104,17 +104,20 @@ class find_outliers:
     self.plot_cdf_data = None
     self.plot_pdf_data = None
     self.verbose = verbose
-    self.update(horizon_phil,ai=ai)
+    self.cache_status = self.update(horizon_phil,ai=ai,status_with_marked_outliers=None)
 
-  def update(self,horizon_phil,ai=None,mark_outliers=True,verbose=False):
+  def update(self,horizon_phil,ai,status_with_marked_outliers,verbose=False):
+    # first time through: status with marked outliers is None; no input information
+    # second time through after re-refinement: status is a list of SpotClass instances
 
     # update spot positions
     self.observed_spots = ai.raw_spot_input
-    self.predicted_spots = ai.get_predicted_spot_positions()
+    self.predicted_spots,current_status = ai.get_predicted_spot_positions_and_status( old_status = status_with_marked_outliers )
+
     assert(len(self.observed_spots) == len(self.predicted_spots))
 
     if horizon_phil.indexing.outlier_detection.verbose:
-      classes=[str(ai.get_status(i)) for i in xrange(len(self.observed_spots))]
+      classes=[str(current_status[i]) for i in xrange(len(self.observed_spots))]
       class_types = set(classes)
       class_counts = dict([[item,classes.count(item)] for item in class_types])
       flex_counts = flex.int(class_counts.values())
@@ -122,8 +125,8 @@ class find_outliers:
       #for pair in class_counts.items():
       #  print "%10s %6d"%pair
       #print "%10s %6d"%("TOTAL",len(self.observed_spots))
-      if mark_outliers==True:
-        # mark_outliers==True is shorthand for identifying the first run through
+      if status_with_marked_outliers == None:
+        # status_with_marked_outliers==None is shorthand for identifying the first run through
         print """After indexing on a subset of %d spots (from all images), %d were reclassified as
       either lying on the spindle, or potential overlapped spots or ice rings."""%(
       len(self.observed_spots),len(self.observed_spots)-class_counts["GOOD"])
@@ -135,7 +138,7 @@ class find_outliers:
     if (self.good is not None):
       match = 0
       for i in xrange(len(self.observed_spots)):
-        if ((ai.get_status(i) == SpotClass.GOOD) and self.good[i]):
+        if ((current_status[i] == SpotClass.GOOD) and self.good[i]):
           match = match + 1
       if self.verbose:print "Number of GOOD spots matched with previous model =",match
 
@@ -156,9 +159,9 @@ class find_outliers:
     # separate GOOD spots
     spotclasses = {SpotClass.GOOD:0,SpotClass.SPINDLE:0,SpotClass.OVERLAP:0,SpotClass.ICE:0,SpotClass.OUTLIER:0,SpotClass.NONE:0}
     for key in sorted(self.sorted_observed_spots.keys()):
-      spotclass = ai.get_status(self.sorted_observed_spots[key])
+      spotclass = current_status[self.sorted_observed_spots[key]]
       spotclasses[spotclass]+=1
-      if (ai.get_status(self.sorted_observed_spots[key]) == SpotClass.GOOD):
+      if (current_status[self.sorted_observed_spots[key]] == SpotClass.GOOD):
         self.dr.append(key)
       else:
         self.not_good_dr.append(key)
@@ -323,7 +326,7 @@ class find_outliers:
     }
     for key in self.not_good_dr:
       i = self.sorted_observed_spots[key]
-      status = ai.get_status(i)
+      status = current_status[i]
       if (not ((self.dx[i] > 1.0) or (self.dx[i] < -1.0) or
                (self.dy[i] > 1.0) or (self.dy[i] < -1.0))):
         statuskey = [k for k in self.framework.keys() if self.framework[k]["status"]==status][0]
@@ -335,17 +338,15 @@ class find_outliers:
     self.plot_pdf_data = [ho,hr]
 
     # mark outliers
-    if (mark_outliers):
+    if (status_with_marked_outliers is None): #i.e., first time through the update() method
       if (radius_outlier_index < len(self.dr)):
-        ai.set_outliers_marked()
         for i in xrange(radius_outlier_index,len(self.dr)):
-          ai.set_status(self.sorted_observed_spots[self.dr[i]],
-                        SpotClass.OUTLIER)
+          current_status[self.sorted_observed_spots[self.dr[i]]] = SpotClass.OUTLIER
 
     # reset good spots
     self.good = [False for i in xrange(len(self.observed_spots))]
     for i in xrange(len(self.observed_spots)):
-      if (ai.get_status(i) == SpotClass.GOOD):
+      if (current_status[i] == SpotClass.GOOD):
         self.good[i] = True
 
     # store Miller indices
@@ -356,14 +357,14 @@ class find_outliers:
     count_outlier = 0
     count_good = 0
     for i in xrange(len(self.observed_spots)):
-      if (ai.get_status(i) == SpotClass.OUTLIER):
+      if (current_status[i] == SpotClass.OUTLIER):
         count_outlier = count_outlier + 1
-      elif (ai.get_status(i) == SpotClass.GOOD):
+      elif (current_status[i] == SpotClass.GOOD):
         count_good = count_good + 1
     if self.verbose:print 'Old GOOD =', len(self.dr),\
           'OUTLIER =', count_outlier,\
           'New GOOD =', count_good
-    if horizon_phil.indexing.outlier_detection.verbose and mark_outliers==True:
+    if horizon_phil.indexing.outlier_detection.verbose and status_with_marked_outliers is None:
       print "\nOf the remaining %d spots, %.1f%% were lattice outliers, leaving %d well-fit spots"%(
        len(self.dr),100.*count_outlier/len(self.dr), count_good )
       if count_outlier==0:return
@@ -380,7 +381,7 @@ class find_outliers:
         severity += ((delta_r - expected_delta_r) / sd)
       severity *= delta_spread
       print "The outlier severity is %.2f sigma [defined in J Appl Cryst (2010) 43, p.611 sec. 4].\n"%severity
-
+    return current_status
 
 
   # make plots
