@@ -120,7 +120,7 @@ def test_out(process_dictionary,data,phil_set):
     L = DPS2.get_basis_general()
 
     from rstbx.indexing_api.outlier_procedure import main_go
-    main_go(index_engine=DPS2, process_dictionary=process_dictionary, phil_set=phil_set)
+    main_go(index_engine=DPS2, phil_set=phil_set)
 
     print "Finishing"
     exit()
