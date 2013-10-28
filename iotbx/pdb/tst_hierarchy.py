@@ -5261,6 +5261,9 @@ ENDMDL
   assert awl.model_id == "SKDI"
   assert not awl.is_first_in_chain
   assert not awl.is_first_after_break
+  awl_pkl = cPickle.dumps(awl)
+  awl_unpkl = cPickle.loads(awl_pkl)
+  assert not show_diff(awl.format_atom_record(), awl_unpkl.format_atom_record())
 
 def exercise_transfer_chains_from_other():
   atoms_x = """\

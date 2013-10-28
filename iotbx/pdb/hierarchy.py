@@ -1342,6 +1342,24 @@ class _(boost.python.injector, ext.residue):
       translate_cns_dna_rna_residue_names=translate_cns_dna_rna_residue_names,
       return_mon_lib_dna_name=return_mon_lib_dna_name)
 
+class _(boost.python.injector, ext.atom_with_labels):
+  def __getstate__ (self) :
+    labels_dict = {}
+    for attr in [ "xyz", "sigxyz", "occ", "sigocc", "b", "sigb", "uij",
+                  "siguij", "hetero", "serial", "name", "segid", "element",
+                  "charge", "model_id", "chain_id", "resseq", "icode",
+                  "altloc", "resname", ] :
+      labels_dict[attr] = getattr(self, attr, None)
+    return labels_dict
+
+  def __setstate__ (self, state) :
+    from iotbx.pdb import make_atom_with_labels
+    state = dict(state)
+    make_atom_with_labels(self, **state)
+
+  def fetch_labels (self) :
+    return self
+
 class input_hierarchy_pair(object):
 
   def __init__(self, input, hierarchy=None):

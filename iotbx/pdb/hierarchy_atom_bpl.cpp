@@ -445,6 +445,7 @@ namespace {
             arg("resname"),
             arg("is_first_in_chain"),
             arg("is_first_after_break"))))
+        .enable_pickling()
         .def("detached_copy", &w_t::detached_copy)
         .add_property("model_id",
           make_function(get_model_id), make_function(set_model_id))
