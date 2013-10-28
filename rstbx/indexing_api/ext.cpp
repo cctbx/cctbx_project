@@ -23,4 +23,5 @@ BOOST_PYTHON_MODULE(rstbx_indexing_api_ext)
            arg("target_grid")))
    ;
 
+   def("raw_spot_positions_mm_to_reciprocal_space_xyz",raw_spot_positions_mm_to_reciprocal_space_xyz);
 }
