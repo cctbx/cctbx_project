@@ -274,7 +274,9 @@ def run (args=None, params=None, out=sys.stdout) :
     if (pdb_symm is None) :
       pdb_symm = f_obs
     else :
-      if (not pdb_symm.is_similar_symmetry(f_obs)) :
+      if (f_obs.crystal_symmetry() is None) :
+        f_obs = f_obs.customized_copy(crystal_symmetry=pdb_symm)
+      elif (not pdb_symm.is_similar_symmetry(f_obs)) :
         show_symmetry_error(
           file1="PDB file",
           file2="data file",
