@@ -169,6 +169,7 @@ class merging_stats (object) :
     assert (array.sigmas() is not None)
     array = array.eliminate_sys_absent()
     array = array.customized_copy(anomalous_flag=anomalous).map_to_asu()
+    array = array.sort("packed_indices")
     non_negative_sel = array.sigmas() >= 0
     self.n_neg_sigmas = non_negative_sel.count(False)
     array = array.select(non_negative_sel)
