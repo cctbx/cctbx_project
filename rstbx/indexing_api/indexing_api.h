@@ -8,6 +8,7 @@
 #include <cctbx/crystal_orientation.h>
 #include <rstbx/dps_core/dps_core.h>
 #include <annlib_adaptbx/ann_adaptor.h>
+#include <dxtbx/model/detector.h>
 
 namespace af = scitbx::af;
 namespace rstbx {
@@ -41,9 +42,13 @@ struct dps_extended: public rstbx::dps_core {
   double model_likelihood(double)const;//same as above except the random residual (mm)
                             //is replaced by the input of choice, usually the
                             //closest spot-to-spot separation.
-
-
 };
+
+af::shared< scitbx::vec3<double> > raw_spot_positions_mm_to_reciprocal_space_xyz(
+  pointlist,
+  dxtbx::model::Detector const&, double const&,
+  scitbx::vec3<double> const& , scitbx::vec3<double> const&
+);
 
 } //namespace
 

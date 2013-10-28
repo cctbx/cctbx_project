@@ -38,7 +38,12 @@ class _(boost.python.injector, ext.dps_extended):
       detector, inverse_wave, beam, axis, # beam, axis as scitbx.matrix.col
       panelID=None
       ):
+
     if panelID is None:
+      from dxtbx_model_ext import Detector
+      detector_interface = Detector(detector)
+      return raw_spot_positions_mm_to_reciprocal_space_xyz (
+        raw_spot_input, detector_interface, inverse_wave, beam, axis )
       panelID = flex.int(len(raw_spot_input),0)
 
     """Assumptions:
