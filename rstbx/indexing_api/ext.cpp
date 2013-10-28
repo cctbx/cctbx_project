@@ -23,5 +23,15 @@ BOOST_PYTHON_MODULE(rstbx_indexing_api_ext)
            arg("target_grid")))
    ;
 
-   def("raw_spot_positions_mm_to_reciprocal_space_xyz",raw_spot_positions_mm_to_reciprocal_space_xyz);
+   def("raw_spot_positions_mm_to_reciprocal_space_xyz",
+     ( scitbx::af::shared< scitbx::vec3<double> > (*) (
+       rstbx::pointlist,dxtbx::model::Detector const&, double const&,
+       scitbx::vec3<double> const& , scitbx::vec3<double> const&) )
+     raw_spot_positions_mm_to_reciprocal_space_xyz);
+   def("raw_spot_positions_mm_to_reciprocal_space_xyz",
+     ( scitbx::af::shared< scitbx::vec3<double> > (*) (
+       rstbx::pointlist,dxtbx::model::Detector const&, double const&,
+       scitbx::vec3<double> const& , scitbx::vec3<double> const&, scitbx::af::shared<int>) )
+     raw_spot_positions_mm_to_reciprocal_space_xyz);
+
 }

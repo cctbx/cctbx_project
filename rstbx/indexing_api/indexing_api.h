@@ -49,6 +49,11 @@ af::shared< scitbx::vec3<double> > raw_spot_positions_mm_to_reciprocal_space_xyz
   dxtbx::model::Detector const&, double const&,
   scitbx::vec3<double> const& , scitbx::vec3<double> const&
 );
+af::shared< scitbx::vec3<double> > raw_spot_positions_mm_to_reciprocal_space_xyz(
+  pointlist,
+  dxtbx::model::Detector const&, double const&,
+  scitbx::vec3<double> const& , scitbx::vec3<double> const&, af::shared<int>
+);
 
 } //namespace
 
