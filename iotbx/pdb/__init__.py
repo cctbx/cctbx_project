@@ -1709,6 +1709,7 @@ def encode_serial_number(width, value):
   raise RuntimeError("serial number value must be str or int.")
 
 def make_atom_with_labels(
+      result=None,
       xyz=None,
       sigxyz=None,
       occ=None,
@@ -1729,7 +1730,10 @@ def make_atom_with_labels(
       icode=None,
       altloc=None,
       resname=None):
-  result = hierarchy.atom_with_labels()
+  if (result is None) :
+    result = hierarchy.atom_with_labels()
+  else :
+    assert type(result).__name__ == 'atom_with_labels'
   if (xyz is not None): result.xyz = xyz
   if (sigxyz is not None): result.sigxyz = sigxyz
   if (occ is not None): result.occ = occ
