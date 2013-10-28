@@ -199,9 +199,11 @@ class atom_contact (slots_getstate_setstate) :
   are simply wrappers for frequently called operations on the atom object, but
   symmetry-aware.
   """
-  __slots__ = ["atom", "vector", "site_cart", "rt_mx", "server"]
+  __slots__ = ["atom", "vector", "site_cart", "rt_mx", "server",
+    "is_carboxy_terminus"]
   def __init__ (self, atom, vector, site_cart, rt_mx, server) :
-    self.atom = atom
+    self.atom = atom.fetch_labels()
+    self.is_carboxy_terminus = is_carboxy_terminus(atom)
     self.vector = vector
     self.site_cart = site_cart
     self.rt_mx = rt_mx
@@ -1648,8 +1650,8 @@ class AtomProperties (object) :
 
   def __init__(self, i_seq, manager):
     self.i_seq = i_seq
-    self.atom = manager.pdb_atoms[i_seq]
-    self.resname = self.atom.parent().resname.strip().upper()
+    self.atom = manager.pdb_atoms[i_seq].fetch_labels()
+    self.resname = self.atom.resname.strip().upper()
     self.d_min = manager.fmodel.f_obs().d_min()
     self.anomalous_flag = manager.fmodel.f_obs().anomalous_flag()
     self.strict_valence = manager.get_strict_valence_flag()
@@ -1901,7 +1903,7 @@ class AtomProperties (object) :
           if ((other_name in ["C","N","O","CA","H","HA"]) and
               ((ion_params.allowed_backbone_atoms is None) or
                (not other_name in ion_params.allowed_backbone_atoms))) :
-            if (other_name == "O") and (is_carboxy_terminus(contact.atom)) :
+            if (other_name == "O") and (contact.is_carboxy_terminus) :
               pass # C-terminal carboxyl group is allowed
             else :
               self.bad_coords[identity].append(contact)
