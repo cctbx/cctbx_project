@@ -29,7 +29,7 @@ def load_refinement (
     set_mol_displayed(imol, False)
   auto_read_make_and_draw_maps(map_file)
   if (have_anom_map) :
-    imol = make_and_draw_map("%s","ANOM","PHANOM","",0,0)
+    imol = make_and_draw_map(map_file,"ANOM","PHANOM","",0,0)
     set_contour_level_in_sigma(imol, 3.0)
     if (have_residual_map) :
       set_map_colour(imol, 0.0, 1.0, 1.0)
@@ -37,6 +37,6 @@ def load_refinement (
     else :
       set_map_colour(imol, 1.0, 1.0, 0.0)
   if (have_residual_map) :
-    imol = make_and_draw_map("%s","ANOMDIFF","PHANOMDIFF","",0,1)
+    imol = make_and_draw_map(map_file,"ANOMDIFF","PHANOMDIFF","",0,1)
     set_contour_level_in_sigma(imol, 3.0)
     set_map_colour(imol, 1.0, 1.0, 0.0)
