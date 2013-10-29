@@ -1,9 +1,0 @@
-
-Import('env')
-
-sources = [
-    'boost_python/flex_panel.cc',
-    'boost_python/flex_ext.cc']
-
-env.SharedLibrary(target='#/lib/dxtbx_array_family_flex_ext', source=sources)
-
