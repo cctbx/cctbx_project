@@ -21,8 +21,8 @@
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/tiny_types.h>
 #include <scitbx/array_family/shared.h>
+#include <dxtbx/model/panel.h>
 #include <dxtbx/error.h>
-#include "panel.h"
 
 namespace dxtbx { namespace model {
 

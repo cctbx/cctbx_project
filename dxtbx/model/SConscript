@@ -10,6 +10,7 @@ sources = [
     'boost_python/panel.cc',
     'boost_python/panel2.cc',
     'boost_python/detector.cc',
+    'boost_python/detector2.cc',
     'boost_python/scan.cc',
     'boost_python/scan_helpers.cc',
     'boost_python/parallax_correction.cc',

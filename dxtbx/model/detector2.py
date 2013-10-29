@@ -10,7 +10,8 @@
 #
 
 from __future__ import division
-from dxtbx_model_ext import PanelBase, Panel2
+from dxtbx_model_ext import PanelBase, Panel2, DetectorBase2
+from dxtbx.array_family import flex
 
 class PanelGroup(PanelBase):
     ''' A class providing an iterface to a group of panels.
@@ -271,8 +272,9 @@ class PanelGroup3(PanelBase):
             A new panel
 
         '''
-        assert(panel.parent() is None)
-        panel.parent(self)
+        assert(isinstance(panel, Panel2))
+        assert(not hasattr(panel, "parent") or panel.parent is None)
+        panel.parent = self
         panel.set_parent_frame(
             self.get_fast_axis(),
             self.get_slow_axis(),
@@ -371,11 +373,14 @@ class PanelGroupRoot(PanelGroup3):
                     queue.append(child)
 
 
-class Detector3(object):
+class Detector4(object):
 
     def __init__(self):
         self._root = PanelGroupRoot()
         self._panels = []
+
+    def as_flex_panel(self):
+        return flex.panel(self._panels)
 
     def hierarchy(self):
         return self._root
@@ -408,6 +413,23 @@ class Detector3(object):
     def __eq__(self, other):
         ''' Check that this is equal to another group. '''
         return self._root == other._root and self._panels == other._panels
+
+    def __ne__(self, other):
+        ''' Check that this is not equal to another group. '''
+        return not self.__eq__(other)
+
+class Detector3(DetectorBase2):
+
+    def __init__(self):
+        super(Detector3, self).__init__()
+        self._root = PanelGroupRoot()
+
+    def hierarchy(self):
+        return self._root
+
+    def __eq__(self, rhs):
+        ''' Check that this is equal to another group. '''
+        return self._root == rhs._root and super(Detector3, self).__eq__(rhs)
 
     def __ne__(self, other):
         ''' Check that this is not equal to another group. '''

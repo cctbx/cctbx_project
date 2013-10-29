@@ -10,6 +10,10 @@
  */
 #include <boost/python.hpp>
 #include <boost/python/def.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/ptr_container/ptr_vector.hpp>
+#include <boost/make_shared.hpp>
+#include <boost/iterator/indirect_iterator.hpp>
 #include <scitbx/vec2.h>
 #include <scitbx/vec3.h>
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
@@ -25,11 +29,10 @@ namespace dials { namespace af { namespace boost_python {
   using namespace scitbx::af::boost_python;
 
   using dxtbx::model::Panel2;
-  
+ 
+    
   void export_flex_panel()
   {
-    scitbx::af::boost_python::flex_wrapper <
-        Panel2, return_internal_reference<> >::plain("panel");
   }
 
 }}} // namespace dials::af::boost_python
