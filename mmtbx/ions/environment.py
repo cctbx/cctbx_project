@@ -29,6 +29,9 @@ chem_sulfur = 14
 
 class Environment (object):
   def __init__(self, contacts, manager):
+    # XXX: This constructor needs a better API...should we just take the i_seq
+    # and generate all other information (Including the list of contacts) from
+    # that and the manager?
     self.chemistry_env = self._get_chemical_environment(contacts, manager)
     # from mmtbx.ions import geometry
     # self.geometry = geometry.find_coordination_geometry(contacts, minimizer_method = True)
