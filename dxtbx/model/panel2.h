@@ -284,6 +284,7 @@ namespace dxtbx { namespace model {
      * vector) without immediately failing.
      */
     void update_global_frame() {
+
       // Construct the parent orientation matrix
       mat3<double> parent_orientation(
         parent_fast_axis_[0], parent_slow_axis_[0], parent_normal_[0],
@@ -531,6 +532,7 @@ namespace dxtbx { namespace model {
     // Pixel to millimeter function
     shared_ptr<PxMmStrategy> convert_coord_;
   };
+
 
 }} // namespace dxtbx::model
 
