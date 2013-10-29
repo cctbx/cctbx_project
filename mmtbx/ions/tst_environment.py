@@ -7,10 +7,15 @@ import sys
 from collections import OrderedDict, Counter
 
 import libtbx
-from mmtbx.ions.environment import get_environments
+from mmtbx.ions.environment import Environment
 from mmtbx import ions
 import mmtbx.monomer_library.pdb_interpretation
 from mmtbx import monomer_library
+
+from mmtbx.ions.environment import chem_carboxy, chem_amide, chem_backbone, \
+     chem_water, chem_sulfate, chem_phosphate, chem_disulfide, \
+     chem_nitrogen_primary, chem_nitrogen_secondary, chem_nitrogen_tertiary, \
+     chem_chlorine, chem_oxygen, chem_nitrogen, chem_sulfur
 
 def exercise () :
   if not libtbx.env.has_module("phenix_regression"):
@@ -18,62 +23,134 @@ def exercise () :
     return
 
   models = OrderedDict([
-    ("3rva", [Counter(O = 6, Carboxy = 4, HOH = 2),
-              Counter(N = 1, O = 4, X2N = 1, Carboxy = 3, HOH = 1),
-              Counter(N = 4, XN = 1, X2N = 3, Backbone = 3)]),
-    ("1mjh", [Counter(O = 6, HOH = 3, PO = 3),
-              Counter(O = 6, HOH = 3, PO = 3)]),
-    ("4e1h", [Counter(O = 6, Carboxy = 4),
-              Counter(O = 6, Carboxy = 3),
-              Counter(O = 6, Carboxy = 3)]),
-    ("2xuz", [Counter(O = 6)]),
-    ("3zli", [Counter(N = 2, O = 4, X2N = 2, Carboxy = 1, HOH = 1),
-              Counter(S = 4),
-              Counter(N = 2, O = 4, X2N = 2, Carboxy = 1, HOH = 1),
-              Counter(S = 4)]),
-    ("3e0f", [Counter(N = 2, O = 4, X2N = 2, Carboxy = 2, PO = 2),
-              Counter(N = 2, O = 2, X2N = 2, Carboxy = 1, PO = 1),
-              Counter(N = 2, O = 3, X2N = 2, Carboxy = 2, PO = 1)]),
-    ("3dkq", [Counter(N = 4, O = 1, X2N = 4, Carboxy = 1),
-              Counter(N = 2, O = 1, X2N = 2, Carboxy = 1),
-              Counter(N = 4, O = 1, X2N = 4, Carboxy = 1)]),
-    ("2o8q", [Counter(N = 3, O = 3, X2N = 3, HOH = 3),
-              Counter(N = 3, O = 3, X2N = 3, HOH = 3)]),
-    ("1tgg", [Counter(O = 5, CL = 1, Carboxy = 4, HOH = 1),
-              Counter(O = 3, CL = 2, Carboxy = 3),
-              Counter(O = 4, CL = 2, Carboxy = 4)]),
-    ("3zu8", [Counter(O = 7, Carboxy = 3, HOH = 1, Backbone = 2),
-              Counter(N = 4, O = 1, XN = 1, X2N = 3, Carboxy = 1,
-                      Backbone = 3)]),
-    ("1ofs", [Counter(N = 1, O = 4, X2N = 1, Carboxy = 3, HOH = 1),
-              Counter(O = 7, Amide = 1, Carboxy = 3, HOH = 2, Backbone = 1),
-              Counter(N = 1, O = 5, X2N = 1, Carboxy = 3, HOH = 2),
-              Counter(O = 7, Amide = 1, Carboxy = 3, HOH = 2, Backbone = 1)]),
-    ("3ul2", [Counter(O = 7, Amide = 1, Carboxy = 3, HOH = 2, Backbone = 1),
-              Counter(N = 1, O = 5, X2N = 1, Carboxy = 3, HOH = 2),
-              Counter(O = 7, Amide = 1, Carboxy = 3, Backbone = 1, HOH = 2),
-              Counter(N = 1, O = 5, X2N = 1, Carboxy = 3, HOH = 2),
-              Counter(O = 7, Amide = 1, Carboxy = 3, HOH = 2, Backbone = 1),
-              Counter(N = 1, O = 5, X2N = 1, Carboxy = 3, HOH = 2),
-              Counter(O = 7, Amide = 1, Carboxy = 3, HOH = 2, Backbone = 1),
-              Counter(N = 1, O = 5, X2N = 1, Carboxy = 3, HOH = 2)]),
-    ("3snm", [Counter(O = 5, Amide = 1, Carboxy = 3, Backbone = 1),
-              Counter(N = 1, O = 3, X2N = 1, Carboxy = 3)]),
-    ("3qlq", [Counter(O = 7, Amide = 1, Carboxy = 3, HOH = 2, Backbone = 1),
-              Counter(N = 1, O = 5, X2N = 1, Carboxy = 3, HOH = 2),
-              Counter(N = 1, O = 5, X2N = 1, Carboxy = 3, HOH = 2),
-              Counter(O = 7, Amide = 1, Carboxy = 3, HOH = 2, Backbone = 1),
-              Counter(N = 1, O = 5, X2N = 1, Carboxy = 3, HOH = 2),
-              Counter(O = 7, Amide = 1, Carboxy = 3, HOH = 2, Backbone = 1),
-              Counter(O = 7, Amide = 1, Carboxy = 3, HOH = 2, Backbone = 1),
-              Counter(N = 1, O = 5, X2N = 1, Carboxy = 3, HOH = 2)]),
-    ("2gdf", [Counter(N = 1, O = 4, X2N = 1, Carboxy = 3, HOH = 1),
-              Counter(O = 6, Amide = 1, Carboxy = 3, HOH = 1, Backbone = 1),
-              Counter(N = 1, O = 4, X2N = 1, Carboxy = 3, HOH = 1),
-              Counter(O = 6, Amide = 1, Carboxy = 3, HOH = 1, Backbone = 1)]),
-    ("1q8h", [Counter(O = 7, Carboxy = 6, HOH = 1),
-              Counter(O = 7, Carboxy = 4, HOH = 3),
-              Counter(O = 8, Carboxy = 6, HOH = 2)]),
+    ("3rva", [
+      Counter({chem_oxygen: 6, chem_carboxy: 4, chem_water: 2}),
+      Counter({chem_nitrogen: 1, chem_oxygen: 4, chem_nitrogen_secondary: 1,
+               chem_carboxy: 3, chem_water: 1}),
+      Counter({chem_nitrogen: 4, chem_nitrogen_primary: 1,
+               chem_nitrogen_secondary: 3, chem_backbone: 3}),
+      ]),
+    ("1mjh", [
+      Counter({chem_oxygen: 6, chem_water: 3, chem_phosphate: 3}),
+      Counter({chem_oxygen: 6, chem_water: 3, chem_phosphate: 3}),
+      ]),
+    ("4e1h", [
+      Counter({chem_oxygen: 6, chem_carboxy: 4}),
+      Counter({chem_oxygen: 6, chem_carboxy: 3}),
+      Counter({chem_oxygen: 6, chem_carboxy: 3}),
+      ]),
+    ("2xuz", [
+      Counter({chem_oxygen: 6}),
+      ]),
+    ("3zli", [
+      Counter({chem_nitrogen: 2, chem_oxygen: 4, chem_nitrogen_secondary: 2,
+               chem_carboxy: 1, chem_water: 1}),
+      Counter({chem_sulfur: 4}),
+      Counter({chem_nitrogen: 2, chem_oxygen: 4, chem_nitrogen_secondary: 2,
+               chem_carboxy: 1, chem_water: 1}),
+      Counter({chem_sulfur: 4}),
+      ]),
+    ("3e0f", [
+      Counter({chem_nitrogen: 2, chem_oxygen: 4, chem_nitrogen_secondary: 2,
+               chem_carboxy: 2, chem_phosphate: 2}),
+      Counter({chem_nitrogen: 2, chem_oxygen: 2, chem_nitrogen_secondary: 2,
+               chem_carboxy: 1, chem_phosphate: 1}),
+      Counter({chem_nitrogen: 2, chem_oxygen: 3, chem_nitrogen_secondary: 2,
+               chem_carboxy: 2, chem_phosphate: 1}),
+      ]),
+    ("3dkq", [
+      Counter({chem_nitrogen: 4, chem_oxygen: 1, chem_nitrogen_secondary: 4,
+               chem_carboxy: 1}),
+      Counter({chem_nitrogen: 2, chem_oxygen: 1, chem_nitrogen_secondary: 2,
+               chem_carboxy: 1}),
+      Counter({chem_nitrogen: 4, chem_oxygen: 1, chem_nitrogen_secondary: 4,
+               chem_carboxy: 1}),
+      ]),
+    ("2o8q", [
+      Counter({chem_nitrogen: 3, chem_oxygen: 3, chem_nitrogen_secondary: 3,
+               chem_water: 3}),
+      Counter({chem_nitrogen: 3, chem_oxygen: 3, chem_nitrogen_secondary: 3,
+               chem_water: 3}),
+      ]),
+    ("1tgg", [
+      Counter({chem_oxygen: 5, chem_chlorine: 1, chem_carboxy: 4,
+               chem_water: 1}),
+      Counter({chem_oxygen: 3, chem_chlorine: 2, chem_carboxy: 3}),
+      Counter({chem_oxygen: 4, chem_chlorine: 2, chem_carboxy: 4}),
+      ]),
+    ("3zu8", [
+      Counter({chem_oxygen: 7, chem_carboxy: 3, chem_water: 1,
+                      chem_backbone: 2}),
+      Counter({chem_nitrogen: 4, chem_oxygen: 1, chem_nitrogen_primary: 1,
+               chem_nitrogen_secondary: 3, chem_carboxy: 1, chem_backbone: 3}),
+      ]),
+    ("1ofs", [
+      Counter({chem_nitrogen: 1, chem_oxygen: 4, chem_nitrogen_secondary: 1,
+               chem_carboxy: 3, chem_water: 1}),
+      Counter({chem_oxygen: 7, chem_amide: 1, chem_carboxy: 3, chem_water: 2,
+               chem_backbone: 1}),
+      Counter({chem_nitrogen: 1, chem_oxygen: 5, chem_nitrogen_secondary: 1,
+               chem_carboxy: 3, chem_water: 2}),
+      Counter({chem_oxygen: 7, chem_amide: 1, chem_carboxy: 3, chem_water: 2,
+               chem_backbone: 1}),
+      ]),
+    ("3ul2", [
+      Counter({chem_oxygen: 7, chem_amide: 1, chem_carboxy: 3, chem_water: 2,
+               chem_backbone: 1}),
+      Counter({chem_nitrogen: 1, chem_oxygen: 5, chem_nitrogen_secondary: 1,
+               chem_carboxy: 3, chem_water: 2}),
+      Counter({chem_oxygen: 7, chem_amide: 1, chem_carboxy: 3, chem_backbone: 1,
+               chem_water: 2}),
+      Counter({chem_nitrogen: 1, chem_oxygen: 5, chem_nitrogen_secondary: 1,
+               chem_carboxy: 3, chem_water: 2}),
+      Counter({chem_oxygen: 7, chem_amide: 1, chem_carboxy: 3, chem_water: 2,
+               chem_backbone: 1}),
+      Counter({chem_nitrogen: 1, chem_oxygen: 5, chem_nitrogen_secondary: 1,
+               chem_carboxy: 3, chem_water: 2}),
+      Counter({chem_oxygen: 7, chem_amide: 1, chem_carboxy: 3, chem_water: 2,
+               chem_backbone: 1}),
+      Counter({chem_nitrogen: 1, chem_oxygen: 5, chem_nitrogen_secondary: 1,
+               chem_carboxy: 3, chem_water: 2}),
+      ]),
+    ("3snm", [
+      Counter({chem_oxygen: 5, chem_amide: 1, chem_carboxy: 3,
+               chem_backbone: 1}),
+      Counter({chem_nitrogen: 1, chem_oxygen: 3, chem_nitrogen_secondary: 1,
+               chem_carboxy: 3}),
+      ]),
+    ("3qlq", [
+      Counter({chem_oxygen: 7, chem_amide: 1, chem_carboxy: 3, chem_water: 2,
+               chem_backbone: 1}),
+      Counter({chem_nitrogen: 1, chem_oxygen: 5, chem_nitrogen_secondary: 1,
+               chem_carboxy: 3, chem_water: 2}),
+      Counter({chem_nitrogen: 1, chem_oxygen: 5, chem_nitrogen_secondary: 1,
+               chem_carboxy: 3, chem_water: 2}),
+      Counter({chem_oxygen: 7, chem_amide: 1, chem_carboxy: 3, chem_water: 2,
+               chem_backbone: 1}),
+      Counter({chem_nitrogen: 1, chem_oxygen: 5, chem_nitrogen_secondary: 1,
+               chem_carboxy: 3, chem_water: 2}),
+      Counter({chem_oxygen: 7, chem_amide: 1, chem_carboxy: 3, chem_water: 2,
+               chem_backbone: 1}),
+      Counter({chem_oxygen: 7, chem_amide: 1, chem_carboxy: 3, chem_water: 2,
+               chem_backbone: 1}),
+      Counter({chem_nitrogen: 1, chem_oxygen: 5, chem_nitrogen_secondary: 1,
+               chem_carboxy: 3, chem_water: 2}),
+      ]),
+    ("2gdf", [
+      Counter({chem_nitrogen: 1, chem_oxygen: 4, chem_nitrogen_secondary: 1,
+               chem_carboxy: 3, chem_water: 1}),
+      Counter({chem_oxygen: 6, chem_amide: 1, chem_carboxy: 3, chem_water: 1,
+               chem_backbone: 1}),
+      Counter({chem_nitrogen: 1, chem_oxygen: 4, chem_nitrogen_secondary: 1,
+               chem_carboxy: 3, chem_water: 1}),
+      Counter({chem_oxygen: 6, chem_amide: 1, chem_carboxy: 3, chem_water: 1,
+               chem_backbone: 1}),
+      ]),
+    ("1q8h", [
+      Counter({chem_oxygen: 7, chem_carboxy: 6, chem_water: 1}),
+      Counter({chem_oxygen: 7, chem_carboxy: 4, chem_water: 3}),
+      Counter({chem_oxygen: 8, chem_carboxy: 6, chem_water: 2}),
+      ]),
   ])
 
   for model, expected_environments in models.items():
@@ -116,11 +193,10 @@ def exercise () :
     for index, metal, expected_environment in \
       zip(xrange(len(metals)), metals, expected_environments):
       contacts = manager.find_nearby_atoms(metal, filter_by_two_fofc = False)
-      environments = Counter([env for contact in contacts
-                              for env in get_environments(contact, manager)])
-      if environments != expected_environment:
+      chem_env = Environment(contacts, manager).chemistry_env
+      if chem_env != expected_environment:
         print "Problem detecting environments in", model, index
-        print "Found environments:", environments
+        print "Found environments:", chem_env
         print "Should be:", expected_environment
         sys.exit()
 
