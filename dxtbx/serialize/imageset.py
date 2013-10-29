@@ -44,7 +44,12 @@ class NullSweep(object):
         import dxtbx.model.scan
         assert isinstance(item, slice)
         sweep = NullSweep(self.template)
-        scan = dxtbx.model.scan.Scan(self.get_scan())
+        #scan = dxtbx.model.scan.Scan(self.get_scan())
+        scan = dxtbx.model.scan.Scan(
+            self.scan.get_image_range(),
+            self.scan.get_oscillation(),
+            self.scan.get_exposure_time(),
+            self.scan.get_epochs().deep_copy())
         scan.set_image_range((item.start+1, item.stop))
         sweep.set_scan(scan)
         sweep.set_detector(self.get_detector())
