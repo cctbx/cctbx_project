@@ -113,7 +113,7 @@ rstbx::indexing_api::raw_spot_positions_mm_to_reciprocal_space_xyz(
   for (int n = 0; n != raw_spot_input.size(); ++n) {
     // tile surface to laboratory transformation
     scitbx::vec2<double> raw_spot(raw_spot_input[n][0],raw_spot_input[n][1]);
-    scitbx::vec3<double> lab_direct = detector.get_lab_coord(raw_spot);
+    scitbx::vec3<double> lab_direct = detector[0].get_lab_coord(raw_spot);
 
     // laboratory direct to reciprocal space xyz transformation
     scitbx::vec3<double> lab_recip = (lab_direct.normalize() * inverse_wave) - S0_vector;
