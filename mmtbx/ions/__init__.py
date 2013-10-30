@@ -16,10 +16,10 @@ from cctbx import crystal, adptbx
 from cctbx.eltbx import sasaki, henke
 from scitbx.matrix import col, distance_from_plane
 from scitbx.array_family import flex
-from libtbx import group_args, adopt_init_args, Auto, slots_getstate_setstate
+from libtbx import group_args, adopt_init_args, Auto, slots_getstate_setstate, \
+     easy_mp
 from libtbx.str_utils import make_sub_header, format_value, framed_output
 from libtbx.utils import null_out, Sorry
-from libtbx import easy_mp
 import libtbx.phil
 import libtbx.load_env
 from math import sqrt
@@ -199,15 +199,16 @@ class atom_contact (slots_getstate_setstate) :
   are simply wrappers for frequently called operations on the atom object, but
   symmetry-aware.
   """
-  __slots__ = ["atom", "vector", "site_cart", "rt_mx", "server",
-    "is_carboxy_terminus"]
+  __slots__ = ["atom", "vector", "site_cart", "rt_mx", "is_carboxy_terminus",
+               "occ", "element", "charge"]
   def __init__ (self, atom, vector, site_cart, rt_mx, server) :
     self.atom = atom.fetch_labels()
     self.is_carboxy_terminus = is_carboxy_terminus(atom)
     self.vector = vector
     self.site_cart = site_cart
     self.rt_mx = rt_mx
-    self.server = server
+    self.element = server.get_element(atom)
+    self.charge = server.get_charge(atom)
 
   def distance (self) :
     """Actual distance from target atom"""
@@ -228,14 +229,6 @@ class atom_contact (slots_getstate_setstate) :
 
   def resname (self) :
     return self.atom.fetch_labels().resname.strip().upper()
-
-  @property
-  def element (self) :
-    return self.server.get_element(self.atom)
-
-  @property
-  def charge (self) :
-    return self.server.get_charge(self.atom)
 
   @property
   def occ (self) :
@@ -389,6 +382,7 @@ class Manager (object) :
     self.sites_cart = self.xray_structure.sites_cart()
     self.connectivity = connectivity
     self.pdb_atoms = pdb_hierarchy.atoms()
+    assert not self.pdb_atoms.extract_i_seq().all_eq(0)
     self.unit_cell = xray_structure.unit_cell()
     self.use_fdp = flex.bool(xray_structure.scatterers().size(), False)
     self.ax_chain = None
@@ -2240,7 +2234,6 @@ class AtomProperties (object) :
           if (atom_type < LIGHT_ION) :
             atom_type = LIGHT_ION
     return atom_type
-
 
 def find_anomalous_scatterers (*args, **kwds) :
   """
