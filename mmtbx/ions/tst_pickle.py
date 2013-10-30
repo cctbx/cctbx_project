@@ -58,10 +58,14 @@ def exercise():
 
   for atom_props in manager.atoms_to_props.values():
     env = environment.Environment(
-      atom_props.i_seq, atom_props.nearby_atoms, fo_map, manager)
+      atom_props.i_seq, atom_props.nearby_atoms, manager, fo_map = fo_map)
     new_env = loads(dumps(env))
     for attr in dir(env):
-      if not attr.startswith("_"):
+      if attr == "atom":
+        # The two won't be directly comparable, but we will trust atom_labels is
+        # tested fully in its own module
+        assert env.atom.id_str() == new_env.atom.id_str()
+      elif not attr.startswith("_"):
         assert getattr(env, attr) == getattr(new_env, attr)
 
   del fo_map
