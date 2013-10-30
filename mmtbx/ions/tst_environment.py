@@ -193,10 +193,11 @@ def exercise () :
     for index, metal, expected_environment in \
       zip(xrange(len(metals)), metals, expected_environments):
       contacts = manager.find_nearby_atoms(metal, filter_by_two_fofc = False)
-      chem_env = Environment(contacts, manager).chemistry_env
-      if chem_env != expected_environment:
-        print "Problem detecting environments in", model, index
-        print "Found environments:", chem_env
+      env = Environment(metal, contacts, manager, geometry = False,
+                        electron_density = False, anomalous = False)
+      if env.chemistry != expected_environment:
+        print "Problem detecting chemistry environment in", model, index
+        print "Found:    ", env.chemistry
         print "Should be:", expected_environment
         sys.exit()
 
