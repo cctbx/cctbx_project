@@ -15,11 +15,217 @@ from __future__ import division
 import math
 import pycbf
 from scitbx import matrix
-from dxtbx_model_ext import Panel, Detector, SimplePxMmStrategy, \
-    ParallaxCorrectedPxMmStrategy
-
+from dxtbx_model_ext import Panel, PanelBase, DetectorBase
+from dxtbx_model_ext import SimplePxMmStrategy, ParallaxCorrectedPxMmStrategy
 from detector_helpers import detector_helper_sensors
 from detector_helpers import find_undefined_value
+
+class PanelGroup(PanelBase):
+    ''' A class providing an iterface to a group of panels.
+
+    This class is the basis for the construction of a detector hierarchy. The
+    class inherits from PanelBase which has a C++ implementation providing
+    the methods to manipulate the virtual detector plane. This class holds
+    a reference to a list of children and allows for propagating the panel
+    coordinate frames through the hierarchy.
+
+    '''
+    def __init__(self, parent=None):
+        ''' Initialise the list of children to an empty list. '''
+        PanelBase.__init__(self)
+        self._parent = parent
+        self._children = []
+
+    def set_parent_frame(self, fast_axis, slow_axis, origin):
+        ''' Set the parent frame.
+
+        Set's it's own parent plane and then, after updating it's global
+        frame, propagates the frame down to it's children.
+
+        Params:
+            fast_axis The fast axis of the virtual detector plane
+            slow_axis The slow axis of the virtual detector plane
+            origin The origin vector to the virtual detector plane
+
+        '''
+        PanelBase.set_parent_frame(self, fast_axis, slow_axis, origin)
+        for child in self:
+            child.set_parent_frame(
+                self.get_fast_axis(),
+                self.get_slow_axis(),
+                self.get_origin())
+
+    def set_local_frame(self, fast_axis, slow_axis, origin):
+        ''' Set the local frame.
+
+        Set's it's own local plane and then, after updating it's global
+        frame, propagates the frame down to it's children.
+
+        Params:
+            fast_axis The fast axis of the virtual detector plane
+            slow_axis The slow axis of the virtual detector plane
+            origin The origin vector to the virtual detector plane
+
+        '''
+        PanelBase.set_local_frame(self, fast_axis, slow_axis, origin)
+        for child in self:
+            child.set_parent_frame(
+                self.get_fast_axis(),
+                self.get_slow_axis(),
+                self.get_origin())
+
+    def add_group(self):
+        ''' Add a new group to this group.
+
+        Returns:
+            A new panel group
+
+        '''
+        group = PanelGroup(self)
+        group.set_parent_frame(
+            self.get_fast_axis(),
+            self.get_slow_axis(),
+            self.get_origin())
+        self._children.append(group)
+        return group
+
+    def add_panel(self, panel):
+        ''' Add a new panel to this group.
+
+        Returns:
+            A new panel
+
+        '''
+        assert(isinstance(panel, Panel))
+        assert(not hasattr(panel, "parent") or panel.parent is None)
+        assert(panel in self.root()._container)
+        panel.parent = self
+        panel.set_parent_frame(
+            self.get_fast_axis(),
+            self.get_slow_axis(),
+            self.get_origin())
+        self._children.append(panel)
+        return panel
+
+    def __getitem__(self, index):
+        ''' Get the child at the given index.
+
+        Params:
+            index The index of the child to get.
+
+        '''
+        return self._children[index]
+
+    def remove(self, item):
+        ''' Remove a child from the tree. '''
+        return self._children.remove(item)
+
+    def index(self, item):
+        ''' Get the index of a child. '''
+        return self._children.index(item)
+
+    def parent(self):
+        ''' Return the parent. '''
+        return self._parent
+
+    def root(self):
+        ''' Return the root. '''
+        if self._parent:
+            return self._parent.root()
+        return self
+
+    def children(self):
+        ''' Return an iterator to the list children. '''
+        return iter(self._children)
+
+    def reverse(self):
+        ''' Return a reverse iterator to the list of children. '''
+        return reversed(self._children)
+
+    def __iter__(self):
+        ''' Iterate through the children. '''
+        return self.children()
+
+    def __len__(self):
+        ''' Get the length of the list of children. '''
+        return len(self._children)
+
+    def __eq__(self, other):
+        ''' Check that this is equal to another group. '''
+        if PanelBase.__eq__(self, other):
+            if len(self) != len(other):
+                return False
+            return all(a == b for a, b in zip(self, other))
+        else:
+            return False
+
+    def __ne__(self, other):
+        ''' Check that this is not equal to another group. '''
+        return not self.__eq__(other)
+
+
+class PanelGroupRoot(PanelGroup):
+    ''' The top level Detector model.
+
+    This class is derived from the panel group class but provides some
+    additional convenience methods for navigating the panel hierarchy.
+
+    '''
+    def __init__(self, container):
+        super(PanelGroupRoot, self).__init__()
+        self._container = container
+
+    def iter_panels(self):
+        ''' Iterate through just the panels depth-first. '''
+        for obj in self.iter_preorder():
+            if isinstance(obj, Panel):
+                yield obj
+
+    def iter_preorder(self):
+        ''' Iterate through the groups and panels depth-first. '''
+        stack = [self]
+        while (len(stack) > 0):
+            node = stack.pop()
+            yield node
+            if isinstance(node, PanelGroup):
+                for child in node.reverse():
+                    stack.append(child)
+
+    def iter_levelorder(self):
+        ''' Iterate through the groups and panels depth-first. '''
+        from collections import deque
+        queue = deque([self])
+        while (len(queue) > 0):
+            node = queue.popleft()
+            yield node
+            if isinstance(node, PanelGroup):
+                for child in node:
+                    queue.append(child)
+
+
+class Detector(DetectorBase):
+    ''' The detector class. '''
+    def __init__(self, panel=None):
+        ''' Construct the detector. '''
+        if panel == None:
+            super(Detector, self).__init__()
+        else:
+            super(Detector, self).__init__(panel)
+        self._root = PanelGroupRoot(self)
+
+    def hierarchy(self):
+        ''' Return the hierarchy. '''
+        return self._root
+
+    def __eq__(self, rhs):
+        ''' Check that this is equal to another group. '''
+        if not isinstance(rhs, Detector):
+            return False
+        return self._root == rhs._root and super(Detector, self).__eq__(rhs)
+
+    def __ne__(self, other):
+        ''' Check that this is not equal to another group. '''
+        return not self.__eq__(other)
 
 
 class detector_factory:
@@ -42,18 +248,22 @@ class detector_factory:
             px_mm = ParallaxCorrectedPxMmStrategy(0.252500934883)
         else:
             px_mm = SimplePxMmStrategy()
-
-        d = Detector(Panel(
-            str(stype),
-            str(name),
-            tuple(map(float, fast_axis)),
-            tuple(map(float, slow_axis)),
-            tuple(map(float, origin)),
-            tuple(map(float, pixel_size)),
-            tuple(map(int, image_size)),
-            tuple(map(float, trusted_range)),
-            px_mm))
-
+        try:
+            d = Detector()
+            p = d.add_panel()
+            p.set_type(str(stype))
+            p.set_name(str(name))
+            p.set_local_frame(
+                tuple(map(float, fast_axis)),
+                tuple(map(float, slow_axis)),
+                tuple(map(float, origin)))
+            p.set_pixel_size(tuple(map(float, pixel_size)))
+            p.set_image_size(tuple(map(int, image_size)))
+            p.set_trusted_range(tuple(map(float, trusted_range)))
+            p.set_px_mm_strategy(px_mm)
+        except Exception, e:
+            print e
+            raise e
         return d
 
     @staticmethod
@@ -89,7 +299,7 @@ class detector_factory:
         detector = detector_factory.make_detector(
             detector_factory.sensor(sensor),
             fast, slow, origin, pixel_size, image_size, trusted_range)
-        detector.mask = mask
+        detector[0].mask = mask
         return detector
 
     @staticmethod

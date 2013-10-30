@@ -18,11 +18,12 @@ class Test(object):
         import dxtbx
         models = dxtbx.load(filename)
         self.detector = models.get_detector()
+        assert(len(self.detector) == 1)
         self.attlen = 0.252500934883
-        self.distance = self.detector.get_distance()
-        self.origin = self.detector.get_ray_intersection(
-            self.detector.get_normal())[1]
-        self.pixel_size = self.detector.get_pixel_size()
+        self.distance = self.detector[0].get_distance()
+        self.origin = self.detector[0].get_ray_intersection(
+            self.detector[0].get_normal())[1]
+        self.pixel_size = self.detector[0].get_pixel_size()
 
     def run(self):
         from random import uniform
@@ -58,9 +59,9 @@ class Test(object):
 
     def tst_array(self, xy):
         from libtbx.test_utils import approx_equal
-        xy_corr = self.detector.get_lab_coord(xy)
+        xy_corr = self.detector[0].get_lab_coord(xy)
         xy_corr_panel = self.detector[0].get_lab_coord(xy)
-        xy_corr_gold = [self.detector.get_lab_coord(xy_single)
+        xy_corr_gold = [self.detector[0].get_lab_coord(xy_single)
                         for xy_single in xy]
         assert approx_equal(xy_corr, xy_corr_gold)
         assert approx_equal(xy_corr_panel, xy_corr_gold)
@@ -68,9 +69,9 @@ class Test(object):
 
     def correct_gold(self, xy):
         from scitbx import matrix
-        s1 = matrix.col(self.detector.get_lab_coord(xy))
+        s1 = matrix.col(self.detector[0].get_lab_coord(xy))
         lab = self.attlen * s1 / s1.length()
-        d = self.detector.get_d_matrix()
+        d = self.detector[0].get_d_matrix()
         d0 = matrix.col((d[0], d[3], d[6]))
         d1 = matrix.col((d[1], d[4], d[7]))
         mm0 = d0.dot(lab) / d0.length()

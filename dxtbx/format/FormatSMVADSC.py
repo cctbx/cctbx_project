@@ -129,8 +129,9 @@ class FormatSMVADSC(FormatSMV):
         from boost.python import streambuf
         from dxtbx import read_uint16, read_uint16_bs, is_big_endian
         from scitbx.array_family import flex
-
-        size = self.get_detector().get_image_size()
+        assert(len(self.get_detector()) == 1)
+        panel = self.get_detector()[0]
+        size = panel.get_image_size()
         f = FormatSMVADSC.open_file(self._image_file, 'rb')
         f.read(self._header_size)
 
@@ -144,7 +145,7 @@ class FormatSMVADSC(FormatSMV):
         else:
             raw_data = read_uint16_bs(streambuf(f), int(size[0] * size[1]))
 
-        image_size = self.get_detector().get_image_size()
+        image_size = panel.get_image_size()
         raw_data.reshape(flex.grid(image_size[1], image_size[0]))
 
         return raw_data
