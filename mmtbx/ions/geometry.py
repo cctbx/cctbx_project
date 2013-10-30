@@ -540,6 +540,7 @@ def _three_legs():
     col([0, 0, 1]),
     ]
 
+# XXX: Do we want to represent this differently? Use enums or classes instead?
 SUPPORTED_GEOMETRIES = OrderedDict([
   (3, [
     ("three_legs", _three_legs, 15),

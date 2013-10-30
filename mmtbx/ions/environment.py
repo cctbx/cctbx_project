@@ -31,14 +31,21 @@ chem_nitrogen = 13
 chem_sulfur = 14
 
 class Environment (object):
-  def __init__(self, i_seq, contacts, fo_map, manager,
-               chemistry = True, geometry = True,
-               electron_density = True, anomalous = True):
+  def __init__(self, i_seq, contacts, manager, fo_map = None, chemistry = True,
+               geometry = True, anomalous = True):
     # XXX: API Questions, should each of these be enable-able? Or should we just
     # collect what information we can when it is there (i.e. electron_density
     # when fo_map is not None)
     #
     # Additionally, should we pass contacts? Or just gather that on the fly?
+    # Should we store the geometry / chemical environment? Or generate those on
+    # the fly / cache too?
+    self.atom = manager.pdb_atoms[i_seq].fetch_labels()
+    # XXX: Is this slow to fetch? Useful to have it on hand for classification
+    # when the reference to manager is lost / destroyed
+    self.d_min = manager.fmodel.f_obs().d_min()
+    self.wavelength = manager.wavelength
+
     if chemistry:
       self.chemistry = self._get_chemical_environment(contacts, manager)
     else:
@@ -50,18 +57,16 @@ class Environment (object):
     else:
       geometry = None
 
-    if electron_density:
+    if fo_map is not None:
       self.electron_density = _fit_gaussian(
-        manager, manager.pdb_atoms[i_seq].xyz, fo_map)
+        manager, self.atom.xyz, fo_map)
     else:
-      self.electron_density = None
+      self.electron_density = None, None
 
     if anomalous:
       self.fp, self.fpp = manager.get_fp(i_seq), manager.get_fpp(i_seq)
-      self.wavelength = manager.wavelength
     else:
       self.fp, self.fpp = None, None
-      self.wavelength = manager.wavelength
 
     # We can either store the contacts or generate a list of valences for all of
     # the atom types we want to test. I'm choosing the former because it's more
