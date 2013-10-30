@@ -1556,7 +1556,7 @@ class AppFrame(wx.Frame):
                         if panel.is_coord_valid(ifs):
                             possible_intensity = fi.get_raw_data(readout)[isf]
                 else:
-                    if detector.is_coord_valid(ifs):
+                    if detector[0].is_coord_valid(ifs):
                         possible_intensity = fi.get_raw_data()[isf]
 
                 if possible_intensity is not None:

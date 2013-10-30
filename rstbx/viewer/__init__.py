@@ -243,7 +243,7 @@ class image (screen_params) :
     detector = self._raw.get_detector()
     if len(detector) == 1:
       # Image size only makes sense for monolithic detectors.
-      image_size = detector.get_image_size()
+      image_size = detector[0].get_image_size()
       self.set_image_size(
         w=image_size[0],
         h=image_size[1])

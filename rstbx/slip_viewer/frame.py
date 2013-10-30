@@ -200,8 +200,8 @@ class XrayFrame (AppFrame,XFBaseClass) :
     if len(detector) == 1:
       # XXX Disable display of the beam center cross for multitile
       # detectors until the dxtbx interface is clear.
-      (beam_pixel_fast, beam_pixel_slow) = detector.millimeter_to_pixel(
-        detector.get_beam_centre(
+      (beam_pixel_fast, beam_pixel_slow) = detector[0].millimeter_to_pixel(
+        detector[0].get_beam_centre(
           self.pyslip.tiles.raw_image.get_beam().get_s0()))
 
       self.beam_center_cross_data = [
