@@ -9,9 +9,8 @@ from collections import Counter
 from math import pi, cos, sin
 
 from iotbx.pdb import common_residue_names_get_class as get_class
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, xfrange
 from mmtbx import ions
-from mmtbx.ions import frange
 from scitbx.array_family import flex
 from scitbx.math import gaussian_fit_1d_analytical
 
@@ -32,12 +31,14 @@ chem_nitrogen = 13
 chem_sulfur = 14
 
 class Environment (object):
-  def __init__(self, i_seq, contacts, manager,
+  def __init__(self, i_seq, contacts, fo_map, manager,
                chemistry = True, geometry = True,
                electron_density = True, anomalous = True):
-    # XXX: This constructor needs a better API...should we just take the i_seq
-    # and generate all other information (Including the list of contacts) from
-    # that and the manager?
+    # XXX: API Questions, should each of these be enable-able? Or should we just
+    # collect what information we can when it is there (i.e. electron_density
+    # when fo_map is not None)
+    #
+    # Additionally, should we pass contacts? Or just gather that on the fly?
     if chemistry:
       self.chemistry = self._get_chemical_environment(contacts, manager)
     else:
@@ -50,7 +51,6 @@ class Environment (object):
       geometry = None
 
     if electron_density:
-      fo_map = None
       self.electron_density = _fit_gaussian(
         manager, manager.pdb_atoms[i_seq].xyz, fo_map)
     else:
@@ -227,9 +227,9 @@ def _get_points_within_radius(point, radius, radius_step = 0.2,
 
   points = [point]
   radiuses = [0]
-  for r in frange(radius_step, radius, radius_step):
-    for theta in frange(-pi, pi, angle_step):
-      for phi in frange(-pi, pi, angle_step):
+  for r in xfrange(radius_step, radius, radius_step):
+    for theta in xfrange(-pi, pi, angle_step):
+      for phi in xfrange(-pi, pi, angle_step):
         x = r * cos(theta) * sin(phi) + point[0]
         y = r * sin(theta) * sin(phi) + point[1]
         z = r * cos(phi) + point[2]

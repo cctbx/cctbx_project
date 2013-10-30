@@ -200,7 +200,7 @@ class atom_contact (slots_getstate_setstate) :
   symmetry-aware.
   """
   __slots__ = ["atom", "vector", "site_cart", "rt_mx", "is_carboxy_terminus",
-               "occ", "element", "charge"]
+               "element", "charge"]
   def __init__ (self, atom, vector, site_cart, rt_mx, server) :
     self.atom = atom.fetch_labels()
     self.is_carboxy_terminus = is_carboxy_terminus(atom)
