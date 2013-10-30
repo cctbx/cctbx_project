@@ -12,9 +12,9 @@
 #define DXTBX_MODEL_DETECTOR_H
 
 #include <string>
-#include <boost/geometry.hpp>
-#include <boost/geometry/geometries/point.hpp>
-#include <boost/geometry/geometries/polygon.hpp>
+//#include <boost/geometry.hpp>
+//#include <boost/geometry/geometries/point.hpp>
+//#include <boost/geometry/geometries/polygon.hpp>
 #include <scitbx/vec2.h>
 #include <scitbx/vec3.h>
 #include <scitbx/mat3.h>
@@ -162,16 +162,16 @@ namespace dxtbx { namespace model {
     }
 
     /** Check if any panels intersect */
-    bool do_panels_intersect() const {
-      for (std::size_t j = 0; j < panel_list_->size()-1; ++j) {
-        for (std::size_t i = j+1; i < panel_list_->size(); ++i) {
-          if (panels_intersect((*panel_list_)[j], (*panel_list_)[i])) {
-            return true;
-          }
-        }
-      }
-      return false;
-    }
+//    bool do_panels_intersect() const {
+//      for (std::size_t j = 0; j < panel_list_->size()-1; ++j) {
+//        for (std::size_t i = j+1; i < panel_list_->size(); ++i) {
+//          if (panels_intersect((*panel_list_)[j], (*panel_list_)[i])) {
+//            return true;
+//          }
+//        }
+//      }
+//      return false;
+//    }
 
   protected:
 
@@ -181,49 +181,49 @@ namespace dxtbx { namespace model {
      * @param b The second detector
      * @returns True/False do the detector planes intersect?
      */
-    static bool
-    panels_intersect(const Panel &a, const Panel &b) {
+//    static bool
+//    panels_intersect(const Panel &a, const Panel &b) {
 
-      using namespace boost::geometry;
+//      using namespace boost::geometry;
 
-      typedef boost::geometry::model::point <double, 3, cs::cartesian> point;
-      typedef boost::geometry::model::polygon <point> polygon;
+//      typedef boost::geometry::model::point <double, 3, cs::cartesian> point;
+//      typedef boost::geometry::model::polygon <point> polygon;
 
-      // Get coordinates for panel a
-      std::size_t aw = a.get_image_size()[0];
-      std::size_t ah = a.get_image_size()[1];
-      vec3<double> a00 = a.get_pixel_lab_coord(vec2<double>(0, 0));
-      vec3<double> a01 = a.get_pixel_lab_coord(vec2<double>(aw, 0));
-      vec3<double> a10 = a.get_pixel_lab_coord(vec2<double>(0, ah));
-      vec3<double> a11 = a.get_pixel_lab_coord(vec2<double>(aw, ah));
+//      // Get coordinates for panel a
+//      std::size_t aw = a.get_image_size()[0];
+//      std::size_t ah = a.get_image_size()[1];
+//      vec3<double> a00 = a.get_pixel_lab_coord(vec2<double>(0, 0));
+//      vec3<double> a01 = a.get_pixel_lab_coord(vec2<double>(aw, 0));
+//      vec3<double> a10 = a.get_pixel_lab_coord(vec2<double>(0, ah));
+//      vec3<double> a11 = a.get_pixel_lab_coord(vec2<double>(aw, ah));
 
-      // Get coordinates for panel a
-      std::size_t bw = b.get_image_size()[0];
-      std::size_t bh = b.get_image_size()[1];
-      vec3<double> b00 = b.get_pixel_lab_coord(vec2<double>(0, 0));
-      vec3<double> b01 = b.get_pixel_lab_coord(vec2<double>(bw, 0));
-      vec3<double> b10 = b.get_pixel_lab_coord(vec2<double>(0, bh));
-      vec3<double> b11 = b.get_pixel_lab_coord(vec2<double>(bw, bh));
+//      // Get coordinates for panel a
+//      std::size_t bw = b.get_image_size()[0];
+//      std::size_t bh = b.get_image_size()[1];
+//      vec3<double> b00 = b.get_pixel_lab_coord(vec2<double>(0, 0));
+//      vec3<double> b01 = b.get_pixel_lab_coord(vec2<double>(bw, 0));
+//      vec3<double> b10 = b.get_pixel_lab_coord(vec2<double>(0, bh));
+//      vec3<double> b11 = b.get_pixel_lab_coord(vec2<double>(bw, bh));
 
-      // Create a polygon for the panel a plane
-      polygon poly_a;
-      append(poly_a, point(a00[0], a00[1], a00[2]));
-      append(poly_a, point(a01[0], a01[1], a01[2]));
-      append(poly_a, point(a11[0], a11[1], a11[2]));
-      append(poly_a, point(a10[0], a10[1], a10[2]));
-      append(poly_a, point(a00[0], a00[1], a00[2]));
+//      // Create a polygon for the panel a plane
+//      polygon poly_a;
+//      append(poly_a, point(a00[0], a00[1], a00[2]));
+//      append(poly_a, point(a01[0], a01[1], a01[2]));
+//      append(poly_a, point(a11[0], a11[1], a11[2]));
+//      append(poly_a, point(a10[0], a10[1], a10[2]));
+//      append(poly_a, point(a00[0], a00[1], a00[2]));
 
-      // Create a polygon for the panel b plane
-      polygon poly_b;
-      append(poly_b, point(b00[0], b00[1], b00[2]));
-      append(poly_b, point(b01[0], b01[1], b01[2]));
-      append(poly_b, point(b11[0], b11[1], b11[2]));
-      append(poly_b, point(b10[0], b10[1], b10[2]));
-      append(poly_b, point(b00[0], b00[1], b00[2]));
+//      // Create a polygon for the panel b plane
+//      polygon poly_b;
+//      append(poly_b, point(b00[0], b00[1], b00[2]));
+//      append(poly_b, point(b01[0], b01[1], b01[2]));
+//      append(poly_b, point(b11[0], b11[1], b11[2]));
+//      append(poly_b, point(b10[0], b10[1], b10[2]));
+//      append(poly_b, point(b00[0], b00[1], b00[2]));
 
-      // Check if the polygons intersect
-      return intersects(poly_a, poly_b);
-    }
+//      // Check if the polygons intersect
+//      return intersects(poly_a, poly_b);
+//    }
 
     boost::shared_ptr<panel_list_type> panel_list_;
   };

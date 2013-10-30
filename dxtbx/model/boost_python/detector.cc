@@ -69,8 +69,8 @@ namespace dxtbx { namespace model { namespace boost_python {
         &Detector::get_max_resolution, (arg("s0")))
       .def("get_ray_intersection",
         &Detector::get_ray_intersection, (arg("s1")))
-      .def("do_panels_intersect",
-        &Detector::do_panels_intersect)
+      //.def("do_panels_intersect",
+      //  &Detector::do_panels_intersect)
       .def("get_names", &get_names);
       
     boost_adaptbx::std_pair_conversions::to_and_from_tuple<int, vec2<double> >();
