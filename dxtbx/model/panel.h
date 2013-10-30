@@ -14,32 +14,25 @@
 #include <string>
 #include <iostream>
 #include <boost/shared_ptr.hpp>
+#include <boost/optional.hpp>
 #include <scitbx/vec2.h>
 #include <scitbx/vec3.h>
 #include <scitbx/mat3.h>
-#include <scitbx/array_family/flex_types.h>
-#include <scitbx/array_family/tiny_types.h>
 #include <scitbx/array_family/shared.h>
+#include <scitbx/array_family/tiny_types.h>
 #include <scitbx/array_family/ref_reductions.h>
-#include <scitbx/array_family/simple_io.h>
-#include <scitbx/array_family/simple_tiny_io.h>
-#include <dxtbx/error.h>
 #include <dxtbx/model/pixel_to_millimeter.h>
-#include "model_helpers.h"
+#include <dxtbx/model/model_helpers.h>
+#include <dxtbx/error.h>
 
 namespace dxtbx { namespace model {
 
-  using boost::shared_ptr;
   using scitbx::vec2;
   using scitbx::vec3;
   using scitbx::mat3;
   using scitbx::af::int4;
   using scitbx::af::double4;
-  using scitbx::af::double6;
-
-  // int4 array type
-  typedef scitbx::af::flex<int4>::type flex_int4;
-  typedef scitbx::af::shared<int4> shared_int4;
+  using boost::shared_ptr;
 
   /** Get the coordinate of a ray intersecting with the detector */
   inline
@@ -49,46 +42,362 @@ namespace dxtbx { namespace model {
     return vec2<double>(v[0] / v[2], v[1] / v[2]);
   }
 
+  /** Get the coordinate of a ray intersecting with the detector */
+  inline
+  vec2<double> bidirectional_plane_ray_intersection(
+      mat3<double> D, vec3<double> s1) {
+    vec3 <double> v = D * s1;
+    DXTBX_ASSERT(v[2] != 0);
+    return vec2<double>(v[0] / v[2], v[1] / v[2]);
+  }
+
   /** Get world coordinate of plane xy */
   inline
   vec3<double> plane_world_coordinate(mat3<double> d, vec2<double> xy) {
     return d * vec3<double>(xy[0], xy[1], 1.0);
   }
 
+
   /**
-   * A class representing a detector panel. A detector can have multiple
-   * panels which are each represented by this class.
+   * A class to manage the panel virtual detector frame. This class holds
+   * information about the local frame and the parent frame against which
+   * the local frame is defined.
    */
-  class Panel {
+  class PanelFrame {
   public:
 
-    /** The default constructor */
-    Panel()
-      : type_("Unknown"),
-        name_("Panel"),
-        d_(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
-        D_(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
-        pixel_size_(0.0, 0.0),
-        image_size_(0, 0),
-        trusted_range_(0, 0),
-        normal_(0.0, 0.0, 0.0),
-        normal_origin_(0.0, 0.0),
-        distance_(0.0),
-        convert_coord_(new SimplePxMmStrategy()) {}
+    /**
+     * Initialise the local and parent frames along x, y with a zero origin
+     * vector. The d matrix will not be invertable and so calling the
+     * get_D_matrix() method at this stage will result in an exception.
+     */
+    PanelFrame()
+      : local_origin_    (0.0, 0.0, 0.0),
+        local_fast_axis_ (1.0, 0.0, 0.0),
+        local_slow_axis_ (0.0, 1.0, 0.0),
+        local_normal_    (0.0, 0.0, 1.0),
+        parent_origin_   (0.0, 0.0, 0.0),
+        parent_fast_axis_(1.0, 0.0, 0.0),
+        parent_slow_axis_(0.0, 1.0, 0.0),
+        parent_normal_   (0.0, 0.0, 1.0) {
+      update_global_frame();
+    }
+
+    virtual ~PanelFrame() {}
 
     /**
-    * Initialise the detector panel.
-    * @param type The type of the detector panel
-    * @param name The name of the detector panel
-    * @param fast_axis The fast axis of the detector. The vector is normalized.
-    * @param slow_axis The slow axis of the detector. The vector is normalized.
-    * @param normal The detector normal. The given vector is normalized.
-    * @param origin The detector origin
-    * @param pixel_size The size of the individual pixels
-    * @param image_size The size of the detector panel (in pixels)
-    * @param trusted_range The trusted range of the detector pixel values.
-    * @param distance The distance from the detector to the crystal origin
-    */
+     * Set the local frame. Normalize the d1 and d2 axes and update the
+     * global frame with this new information.
+     * @param d1 The fast axis
+     * @param d2 The slow axis
+     * @param d0 The origin vector.
+     */
+    void set_local_frame(const vec3<double> &d1,
+                         const vec3<double> &d2,
+                         const vec3<double> &d0) {
+      const double EPS = 1e-7;
+      DXTBX_ASSERT(d1.length() > 0);
+      DXTBX_ASSERT(d2.length() > 0);
+      DXTBX_ASSERT((double)(d1 * d2) < EPS);
+      local_origin_ = d0;
+      local_fast_axis_ = d1.normalize();
+      local_slow_axis_ = d2.normalize();
+      local_normal_ = local_fast_axis_.cross(local_slow_axis_);
+      update_global_frame();
+    }
+
+    /**
+     * Set the parent frame. Normalize the d1 and d2 axes and update the
+     * global frame with this new information.
+     * @param d1 The fast axis
+     * @param d2 The slow axis
+     * @param d0 The origin vector.
+     */
+    void set_parent_frame(const vec3<double> &d1,
+                          const vec3<double> &d2,
+                          const vec3<double> &d0) {
+      const double EPS = 1e-7;
+      DXTBX_ASSERT(d1.length() > 0);
+      DXTBX_ASSERT(d2.length() > 0);
+      DXTBX_ASSERT((double)(d1 * d2) < EPS);
+      parent_origin_ = d0;
+      parent_fast_axis_ = d1.normalize();
+      parent_slow_axis_ = d2.normalize();
+      parent_normal_ = parent_fast_axis_.cross(parent_slow_axis_);
+      update_global_frame();
+    }
+
+    /** @return The local d matrix  */
+    mat3<double> get_local_d_matrix() const {
+      return mat3<double>(
+        local_fast_axis_[0], local_slow_axis_[0], local_origin_[0],
+        local_fast_axis_[1], local_slow_axis_[1], local_origin_[1],
+        local_fast_axis_[2], local_slow_axis_[2], local_origin_[2]);
+    }
+
+    /** @return The parent d matrix */
+    mat3<double> get_parent_d_matrix() const {
+      return mat3<double>(
+        parent_fast_axis_[0], parent_slow_axis_[0], parent_origin_[0],
+        parent_fast_axis_[1], parent_slow_axis_[1], parent_origin_[1],
+        parent_fast_axis_[2], parent_slow_axis_[2], parent_origin_[2]);
+    }
+
+    /** @returns The local origin vector. */
+    vec3<double> get_local_origin() const {
+      return local_origin_;
+    }
+
+    /** @returns The local fast axis vector. */
+    vec3<double> get_local_fast_axis() const {
+      return local_fast_axis_;
+    }
+
+    /** @returns The local slow axis vector. */
+    vec3<double> get_local_slow_axis() const {
+      return local_slow_axis_;
+    }
+
+    /** @returns The parent origin vector. */
+    vec3<double> get_parent_origin() const {
+      return parent_origin_;
+    }
+
+    /** @returns The parent fast axis vector. */
+    vec3<double> get_parent_fast_axis() const {
+      return parent_fast_axis_;
+    }
+
+    /** @returns The parent slow axis vector. */
+    vec3<double> get_parent_slow_axis() const {
+      return parent_slow_axis_;
+    }
+
+    /** @return The d matrix */
+    mat3<double> get_d_matrix() const {
+      return d_;
+    }
+
+    /** @return The D (inverted d) matrix */
+    mat3<double> get_D_matrix() const {
+      DXTBX_ASSERT(D_);
+      return D_.get();
+    }
+
+    /** @returns The origin vector. */
+    vec3<double> get_origin() const {
+      return vec3<double>(d_[2], d_[5], d_[8]);
+    }
+
+    /** @returns The fast axis vector. */
+    vec3<double> get_fast_axis() const {
+      return vec3<double>(d_[0], d_[3], d_[6]);
+    }
+
+    /** @returns The slow axis vector. */
+    vec3<double> get_slow_axis() const {
+      return vec3<double>(d_[1], d_[4], d_[7]);
+    }
+
+    /** @returns The normal to the virtual plane. */
+    vec3<double> get_normal() const {
+      return normal_;
+    }
+
+    /**
+     * @returns The point on the plane where normal goes through the lab origin.
+     */
+    vec2<double> get_normal_origin() const {
+      return normal_origin_;
+    }
+
+    /** @returns The distance from the lab origin to the plane. */
+    double get_distance() const {
+      return distance_;
+    }
+
+    /**
+     * @param s0 The incident beam vector.
+     * @returns The point of intersection of the beam with the plane.
+     */
+    vec2<double> get_beam_centre(vec3<double> s0) const {
+      return get_ray_intersection(s0);
+    }
+
+    /**
+     * @param s0 The incident beam vector.
+     * @returns The point of intersection of the beam with the plane.
+     */
+    vec3<double> get_beam_centre_lab(vec3<double> s0) const {
+      return get_lab_coord(get_ray_intersection(s0));
+    }
+
+    /**
+     * @param xy The mm coordinate on the plane.
+     * @returns The lab coordinate.
+     */
+    vec3<double> get_lab_coord(vec2<double> xy) const {
+      return d_ * vec3<double>(xy[0], xy[1], 1.0);
+    }
+
+    /**
+     * @param s1 The ray vector.
+     * @returns the coordinate of a ray intersecting with the detector
+     */
+    vec2<double> get_ray_intersection(vec3<double> s1) const {
+      DXTBX_ASSERT(D_);
+      vec3 <double> v = D_.get() * s1;
+      DXTBX_ASSERT(v[2] > 0);
+      return vec2<double>(v[0] / v[2], v[1] / v[2]);
+    }
+
+    /**
+     * @param s1 The ray vector.
+     * @returns the coordinate of a ray intersecting with the detector
+     */
+    vec2<double> get_bidirectional_ray_intersection(vec3<double> s1) const {
+      DXTBX_ASSERT(D_);
+      vec3 <double> v = D_.get() * s1;
+      DXTBX_ASSERT(v[2] != 0);
+      return vec2<double>(v[0] / v[2], v[1] / v[2]);
+    }
+
+    /** @returns True/False This and the other frame are the same */
+    bool operator==(const PanelFrame &other) const {
+      double eps = 1.0e-3;
+      return get_fast_axis().const_ref().all_approx_equal(
+              other.get_fast_axis().const_ref(), eps)
+          && get_slow_axis().const_ref().all_approx_equal(
+              other.get_slow_axis().const_ref(), eps)
+          && get_origin().const_ref().all_approx_equal(
+              other.get_origin().const_ref(), eps);
+    }
+
+    /** @returns True/False This and the other frame are different */
+    bool operator!=(const PanelFrame &other) const {
+      return *this != other;
+    }
+
+  protected:
+
+    /**
+     * Update the global frame. Construct a matrix of the parent orientation
+     * and multiply the origin, fast and slow vectors of the local frame
+     * to get a new d matrix. The parent origin is then added to the
+     * local origin. Try to invert the d matrix. If this fails then set the
+     * D matrix to None. If the D matrix is accessed when the inversion fails,
+     * an exception will be thrown. This means that the panel frame can be
+     * constructed with an invalid frame (for example a zero length origin
+     * vector) without immediately failing.
+     */
+    void update_global_frame() {
+
+      // Construct the parent orientation matrix
+      mat3<double> parent_orientation(
+        parent_fast_axis_[0], parent_slow_axis_[0], parent_normal_[0],
+        parent_fast_axis_[1], parent_slow_axis_[1], parent_normal_[1],
+        parent_fast_axis_[2], parent_slow_axis_[2], parent_normal_[2]);
+
+      // Calculate the d matrix
+      d_ = parent_orientation * get_local_d_matrix();
+      d_[2] += parent_origin_[0];
+      d_[5] += parent_origin_[1];
+      d_[8] += parent_origin_[2];
+
+      // Update the D matrix
+      try {
+        D_ = d_.inverse();
+      } catch(scitbx::error) {
+        D_ = boost::none;
+      }
+
+      // Get the normal etc
+      normal_ = get_fast_axis().cross(get_slow_axis());
+      distance_ = get_origin() * get_normal();
+      try {
+        normal_origin_ = get_bidirectional_ray_intersection(get_normal());
+      } catch(dxtbx::error) {
+        normal_origin_ = vec2<double>(0, 0);
+      }
+    }
+
+    vec3<double> local_origin_;
+    vec3<double> local_fast_axis_;
+    vec3<double> local_slow_axis_;
+    vec3<double> local_normal_;
+    vec3<double> parent_origin_;
+    vec3<double> parent_fast_axis_;
+    vec3<double> parent_slow_axis_;
+    vec3<double> parent_normal_;
+    mat3<double> d_;
+    boost::optional< mat3<double> > D_;
+    vec3<double> normal_;
+    double distance_;
+    vec2<double> normal_origin_;
+  };
+
+
+  /**
+   * A panel base class. Specifies everything except pixel related stuff.
+   */
+  class PanelBase : public PanelFrame {
+  public:
+
+    virtual ~PanelBase() {}
+
+    /** @returns The name of the panel */
+    std::string get_name() const {
+      return name_;
+    }
+
+    /** @param The name of the panel */
+    void set_name(const std::string &name) {
+      name_ = name;
+    }
+
+    /** @returns The type of the panel */
+    std::string get_type() const {
+      return type_;
+    }
+
+    /** @param The type of the panel */
+    void set_type(const std::string &type) {
+      type_ = type;
+    }
+
+    /** @returns True/False this is the same as the other */
+    bool operator==(const PanelBase &other) const {
+      return PanelFrame::operator==(other)
+          && name_ == other.name_
+          && type_ == other.type_;
+    }
+
+    /** @returns True/False this is not the same as the other */
+    bool operator!=(const PanelBase &other) const {
+      return *this != other;
+    }
+
+  protected:
+
+    std::string type_;
+    std::string name_;
+  };
+
+
+  /**
+   * A panel class.
+   */
+  class Panel : public PanelBase {
+  public:
+
+    /** Construct the panel with the simple px->mm strategy */
+    Panel()
+      : pixel_size_(0.0, 0.0),
+        image_size_(0, 0),
+        trusted_range_(0.0, 0.0),
+        convert_coord_(new SimplePxMmStrategy()) {}
+
+    /** Construct with data but no px/mm strategy */
     Panel(std::string type,
           std::string name,
           vec3 <double> fast_axis,
@@ -97,36 +406,16 @@ namespace dxtbx { namespace model {
           vec2 <double> pixel_size,
           vec2 <std::size_t> image_size,
           vec2 <double> trusted_range)
-      : convert_coord_(new SimplePxMmStrategy()) {
-      DXTBX_ASSERT(fast_axis.length() > 0);
-      DXTBX_ASSERT(slow_axis.length() > 0);
-      type_ = type;
-      name_ = name;
-      d_ = create_d_matrix(fast_axis.normalize(),
-        slow_axis.normalize(), origin);
-      D_ = d_.inverse();
-      pixel_size_ = pixel_size;
-      image_size_ = image_size;
-      trusted_range_ = trusted_range;
-
-      // Update the normal etc
-      update_normal();
+      : pixel_size_(pixel_size),
+        image_size_(image_size),
+        trusted_range_(trusted_range),
+        convert_coord_(new SimplePxMmStrategy()) {
+      set_type(type);
+      set_name(name);
+      set_local_frame(fast_axis, slow_axis, origin);
     }
 
-    /**
-    * Initialise the detector panel.
-    * @param type The type of the detector panel
-    * @param name The name of the detector panel
-    * @param fast_axis The fast axis of the detector. The vector is normalized.
-    * @param slow_axis The slow axis of the detector. The vector is normalized.
-    * @param normal The detector normal. The given vector is normalized.
-    * @param origin The detector origin
-    * @param pixel_size The size of the individual pixels
-    * @param image_size The size of the detector panel (in pixels)
-    * @param trusted_range The trusted range of the detector pixel values.
-    * @param distance The distance from the detector to the crystal origin
-    * @param px_mm The pixel to millimeter strategy
-    */
+    /** Construct with data with px/mm strategy */
     Panel(std::string type,
           std::string name,
           vec3 <double> fast_axis,
@@ -135,65 +424,17 @@ namespace dxtbx { namespace model {
           vec2 <double> pixel_size,
           vec2 <std::size_t> image_size,
           vec2 <double> trusted_range,
-          shared_ptr<PxMmStrategy> px_mm)
-      : convert_coord_(px_mm) {
-      DXTBX_ASSERT(fast_axis.length() > 0);
-      DXTBX_ASSERT(slow_axis.length() > 0);
-      type_ = type;
-      name_ = name;
-      d_ = create_d_matrix(fast_axis.normalize(),
-        slow_axis.normalize(), origin);
-      D_ = d_.inverse();
-      pixel_size_ = pixel_size;
-      image_size_ = image_size;
-      trusted_range_ = trusted_range;
-
-      // Update the normal etc
-      update_normal();
+          shared_ptr<PxMmStrategy> convert_coord)
+      : pixel_size_(pixel_size),
+        image_size_(image_size),
+        trusted_range_(trusted_range),
+        convert_coord_(convert_coord) {
+      set_type(type);
+      set_name(name);
+      set_local_frame(fast_axis, slow_axis, origin);
     }
 
-    /** Virtual destructor */
     virtual ~Panel() {}
-
-    /** Get the sensor type */
-    std::string get_type() const {
-      return type_;
-    }
-
-    /** Set the detector panel type */
-    void set_type(std::string type) {
-      type_ = type;
-    }
-
-    /** Get the sensor name */
-    std::string get_name() const {
-      return name_;
-    }
-
-    /** Set the sensor name */
-    void set_name(std::string name) {
-      name_ = name;
-    }
-
-    /** Get the fast axis */
-    vec3 <double> get_fast_axis() const {
-      return vec3<double>(d_[0], d_[3], d_[6]);
-    }
-
-    /** Get the slow axis */
-    vec3 <double> get_slow_axis() const {
-      return vec3<double>(d_[1], d_[4], d_[7]);
-    }
-
-    /** Get the pixel origin */
-    vec3 <double> get_origin() const {
-      return vec3<double>(d_[2], d_[5], d_[8]);
-    }
-
-    /** Get the normal */
-    vec3 <double> get_normal() const {
-      return normal_;
-    }
 
     /** Get the pixel size */
     vec2 <double> get_pixel_size() const {
@@ -225,54 +466,32 @@ namespace dxtbx { namespace model {
       trusted_range_ = trusted_range;
     }
 
+    /** Get the pixel to millimetre strategy */
+    shared_ptr<PxMmStrategy> get_px_mm_strategy() const {
+      return convert_coord_;
+    }
+
+    /** Set the pixel to millimetre strategy */
+    void set_px_mm_strategy(shared_ptr<PxMmStrategy> strategy) {
+      convert_coord_ = strategy;
+    }
+
     /** Get the mask array */
-    shared_int4 get_mask() const {
-      return mask_;
+    scitbx::af::shared<int4> get_mask() const {
+      scitbx::af::shared<int4> result;
+      std::copy(mask_.begin(), mask_.end(), std::back_inserter(result));
+      return result;
     }
 
     /** Set the mask */
-    void set_mask(const shared_int4 &mask) {
-      mask_ = mask;
+    void set_mask(const scitbx::af::const_ref<int4> &mask) {
+      mask_.resize(0);
+      std::copy(mask.begin(), mask.end(), mask_.begin());
     }
 
     /** Add an element to the mask */
     void add_mask(int f0, int s0, int f1, int s1) {
       mask_.push_back(int4(f0, f1, s0, s1));
-    }
-
-    /** Get the matrix of the detector coordinate system */
-    mat3 <double> get_d_matrix() const {
-      return d_;
-    }
-
-    /** Get the inverse d matrix */
-    mat3 <double> get_D_matrix() const {
-      return D_;
-    }
-
-    /** Set the origin, fast axis and slow axis */
-    void set_frame(vec3<double> fast_axis, vec3<double> slow_axis,
-        vec3<double> origin) {
-      DXTBX_ASSERT(fast_axis.length() > 0);
-      DXTBX_ASSERT(slow_axis.length() > 0);
-      d_ = create_d_matrix(
-        fast_axis.normalize(),
-        slow_axis.normalize(),
-        origin);
-      D_ = d_.inverse();
-
-      // Update the normal etc
-      update_normal();
-    }
-
-    /** Get the distance from the sample to the detector plane */
-    double get_distance() const {
-      return distance_;
-    }
-
-    /** Get the origin of the normal. */
-    vec2<double> get_normal_origin() const {
-      return normal_origin_;
     }
 
     /** Get the image size in millimeters */
@@ -298,103 +517,13 @@ namespace dxtbx { namespace model {
           && (0 <= xy[1] && xy[1] < size[1]);
     }
 
+    vec2<double> get_normal_origin_px() const {
+      return get_bidirectional_ray_intersection_px(get_normal());
+    }
+
     /** Get the beam centre in mm in the detector basis */
-    vec2<double> get_beam_centre(vec3<double> s0) const {
-      return get_ray_intersection(s0);
-    }
-
-    /** Get the beam centre in lab coordinates */
-    vec3<double> get_beam_centre_lab(vec3<double> s0) const {
-      return get_lab_coord(get_ray_intersection(s0));
-    }
-
-    /**
-     * Get the resolution at a given pixel.
-     * @param beam The beam parameters
-     * @param xy The pixel coordinate
-     * @returns The resolution at that point.
-     */
-    double get_resolution_at_pixel(vec3<double> s0, double wavelength,
-        vec2<double> xy) const {
-
-      // Get lab coordinates of detector corners
-      vec3<double> xyz = get_pixel_lab_coord(xy);
-
-      // Calculate the point at which the beam intersects with the detector
-      vec3<double> beam_centre = get_beam_centre_lab(s0);
-
-      // Calculate the angle to the point
-      double sintheta = sin(0.5 * angle_safe(beam_centre, xyz));
-      DXTBX_ASSERT(sintheta != 0);
-
-      // Return d = lambda / (2sin(theta))
-      return wavelength / (2.0 * sintheta);
-    }
-
-    /**
-     * Get the maximum resolution of the detector (i.e. look at each corner
-     * and find the maximum resolution.)
-     * @param beam The beam parameters
-     * @returns The maximum resolution at the detector corners.
-     */
-    double
-    get_max_resolution_at_corners(vec3<double> s0, double wavelength) const {
-
-      // Get lab coordinates of detector corners
-      int fast = image_size_[0], slow = image_size_[1];
-      vec3<double> xyz00 = get_origin();
-      vec3<double> xyz01 = get_pixel_lab_coord(vec2<double>(0, slow));
-      vec3<double> xyz10 = get_pixel_lab_coord(vec2<double>(fast, 0));
-      vec3<double> xyz11 = get_pixel_lab_coord(vec2<double>(fast, slow));
-
-      // Calculate the point at which the beam intersects with the detector
-      vec3<double> beam_centre = get_beam_centre_lab(s0);
-
-      // Calculate half the maximum angle to the corners
-      double sintheta = sin(0.5 * scitbx::af::max(double4(
-        angle_safe(beam_centre, xyz00), angle_safe(beam_centre, xyz01),
-        angle_safe(beam_centre, xyz10), angle_safe(beam_centre, xyz11))));
-      DXTBX_ASSERT(sintheta != 0);
-
-      // Return d = lambda / (2sin(theta))
-      return wavelength / (2.0 * sintheta);
-    }
-
-    /**
-     * Get the maximum resolution of a full circle on the detector. Get the
-     * beam centre in pixels. Then find the coordinates on the edges making
-     * a cross-hair with the beam centre. Calculate the resolution at these
-     * corners and choose the minimum angle.
-     * @param beam The beam parameters
-     * @returns The maximum resolution at the detector corners.
-     */
-    double
-    get_max_resolution_elipse(vec3<double> s0, double wavelength) const {
-
-      // Get beam centre in pixels and get the coordinates with the centre
-      // as a crosshair
-      int fast = image_size_[0], slow = image_size_[1];
-      vec2<double> c = millimeter_to_pixel(get_beam_centre(s0));
-      vec3<double> xyz0c = get_pixel_lab_coord(vec2<double>(0.0, c[1]));
-      vec3<double> xyz1c = get_pixel_lab_coord(vec2<double>(fast, c[1]));
-      vec3<double> xyzc0 = get_pixel_lab_coord(vec2<double>(c[0], 0.0));
-      vec3<double> xyzc1 = get_pixel_lab_coord(vec2<double>(c[0], slow));
-
-      // Calculate the point at which the beam intersects with the detector
-      vec3<double> beam_centre = get_beam_centre_lab(s0);
-
-      // Calculate half the minimum angle to the sides around the beam centre
-      double sintheta = sin(0.5 * scitbx::af::min(double4(
-        angle_safe(beam_centre, xyz0c), angle_safe(beam_centre, xyzc0),
-        angle_safe(beam_centre, xyz1c), angle_safe(beam_centre, xyzc1))));
-
-      // Return d = lambda / (2sin(theta))
-      return wavelength / (2.0 * sintheta);
-    }
-
-    /** Get the detector point (in mm) in lab coordinates */
-    vec3<double> get_lab_coord(vec2<double> xy) const {
-      return d_ * vec3<double>(xy[0], xy[1], 1.0);
+    vec2<double> get_beam_centre_px(vec3<double> s0) const {
+      return get_ray_intersection_px(s0);
     }
 
     /** Get the detector point (in mm) in lab coordinates */
@@ -403,23 +532,14 @@ namespace dxtbx { namespace model {
       return get_lab_coord(xy_mm);
     }
 
-    /** Get the coordinate of a ray intersecting with the detector */
-    vec2<double> get_ray_intersection(vec3<double> s1) const {
-      vec3 <double> v = D_ * s1;
-      DXTBX_ASSERT(v[2] > 0);
-      return vec2<double>(v[0] / v[2], v[1] / v[2]);
-    }
-
-    /** Get the coordinate of a ray intersecting with the detector */
-    vec2<double> get_bidirectional_ray_intersection(vec3<double> s1) const {
-      vec3 <double> v = D_ * s1;
-      DXTBX_ASSERT(v[2] != 0);
-      return vec2<double>(v[0] / v[2], v[1] / v[2]);
-    }
-
     /** Get the ray intersection in pixel coordinates */
     vec2<double> get_ray_intersection_px(vec3<double> s1) const {
       return millimeter_to_pixel(get_ray_intersection(s1));
+    }
+
+    /** Get the ray intersection in pixel coordinates */
+    vec2<double> get_bidirectional_ray_intersection_px(vec3<double> s1) const {
+      return millimeter_to_pixel(get_bidirectional_ray_intersection(s1));
     }
 
     /** Map coordinates in mm to pixels */
@@ -432,72 +552,82 @@ namespace dxtbx { namespace model {
       return convert_coord_->to_millimeter(*this, xy);
     }
 
-    /** Check the detector axis basis vectors are (almost) the same */
-    bool operator==(const Panel &panel) const {
-      double eps = 1.0e-3;
-      return get_type() == panel.get_type()
-          && get_name() == panel.get_name()
-          && std::abs(angle_safe(get_fast_axis(), panel.get_fast_axis())) < eps
-          && std::abs(angle_safe(get_slow_axis(), panel.get_slow_axis())) < eps
-          && std::abs(angle_safe(get_origin(), panel.get_origin())) < eps
-          && image_size_ == panel.image_size_;
+    /**
+     * Get the resolution at a given pixel.
+     * @param s0 The incident beam vector
+     * @param xy The pixel coordinate
+     * @returns The resolution at that point.
+     */
+    double get_resolution_at_pixel(vec3<double> s0, vec2<double> xy) const {
+      DXTBX_ASSERT(s0.length() > 0);
+      vec3<double> xyz = get_pixel_lab_coord(xy);
+      vec3<double> beam_centre = get_beam_centre_lab(s0);
+      double sintheta = sin(0.5 * angle_safe(beam_centre, xyz));
+      DXTBX_ASSERT(sintheta != 0);
+      return 1.0 / (2.0 * s0.length() * sintheta);
     }
 
-    /** Check the detector axis basis vectors are not (almost) the same */
-    bool operator!=(const Panel &detector) const {
-      return !(*this == detector);
+    /**
+     * Get the maximum resolution of the detector (i.e. look at each corner
+     * and find the maximum resolution.)
+     * @param beam The beam parameters
+     * @returns The maximum resolution at the detector corners.
+     */
+    double
+    get_max_resolution_at_corners(vec3<double> s0) const {
+      int fast = image_size_[0], slow = image_size_[1];
+      return scitbx::af::min(double4(
+        get_resolution_at_pixel(s0, vec2<double>(0, 0)),
+        get_resolution_at_pixel(s0, vec2<double>(0, slow)),
+        get_resolution_at_pixel(s0, vec2<double>(fast, 0)),
+        get_resolution_at_pixel(s0, vec2<double>(fast, slow))));
     }
 
-    friend std::ostream& operator<< (std::ostream& , const Panel&);
+    /**
+     * Get the maximum resolution of a full circle on the detector. Get the
+     * beam centre in pixels. Then find the coordinates on the edges making
+     * a cross-hair with the beam centre. Calculate the resolution at these
+     * corners and choose the minimum angle.
+     * @param beam The beam parameters
+     * @returns The maximum resolution at the detector corners.
+     */
+    double
+    get_max_resolution_ellipse(vec3<double> s0) const {
+      int fast = image_size_[0], slow = image_size_[1];
+      vec2<double> c = get_beam_centre_px(s0);
+      return scitbx::af::max(double4(
+        get_resolution_at_pixel(s0, vec2<double>(0, c[1])),
+        get_resolution_at_pixel(s0, vec2<double>(fast, c[1])),
+        get_resolution_at_pixel(s0, vec2<double>(c[0], 0)),
+        get_resolution_at_pixel(s0, vec2<double>(c[0], slow))));
+    }
+
+    /** @returns True/False this is the same as the other */
+    bool operator==(const Panel &other) const {
+      return PanelBase::operator==(other)
+          && image_size_ == other.image_size_
+          && pixel_size_.const_ref().all_approx_equal(
+              other.pixel_size_.const_ref(), 1e-6)
+          && trusted_range_.const_ref().all_approx_equal(
+              other.trusted_range_.const_ref(), 1e-6);
+    }
+
+    /** @returns True/False this is not the same as the other */
+    bool operator!=(const Panel &other) const {
+      return !(*this == other);
+    }
 
   protected:
-
-    static mat3<double> create_d_matrix(vec3<double> fast_axis,
-        vec3<double> slow_axis, vec3<double> origin) {
-      return mat3 <double> (
-        fast_axis[0], slow_axis[0], origin[0],
-        fast_axis[1], slow_axis[1], origin[1],
-        fast_axis[2], slow_axis[2], origin[2]);
-    }
-
-    /** Update the normal properties. */
-    void update_normal() {
-      normal_ = get_fast_axis().cross(get_slow_axis());
-      normal_origin_ = get_bidirectional_ray_intersection(get_normal());
-      distance_ = get_origin() * get_normal();
-    }
-
-    std::string type_;
-    std::string name_;
-    mat3<double> d_;
-    mat3<double> D_;
     vec2 <double> pixel_size_;
     vec2 <std::size_t> image_size_;
     vec2 <double> trusted_range_;
-    shared_int4 mask_;
-    vec3<double> normal_;
-    vec2<double> normal_origin_;
-    double distance_;
+
+    scitbx::af::shared<int4> mask_;
 
     // Pixel to millimeter function
     shared_ptr<PxMmStrategy> convert_coord_;
   };
 
-  /** Print the panel information to the ostream */
-  inline
-  std::ostream& operator<< (std::ostream &os, const Panel &p) {
-    os << "Panel:\n";
-    os << "    type:          " << p.get_type() << "\n";
-    os << "    name:          " << p.get_name() << "\n";
-    os << "    fast axis:     " << p.get_fast_axis().const_ref() << "\n";
-    os << "    slow axis:     " << p.get_slow_axis().const_ref() << "\n";
-    os << "    origin:        " << p.get_origin().const_ref() << "\n";
-    os << "    normal:        " << p.get_normal().const_ref() << "\n";
-    os << "    pixel size:    " << p.get_pixel_size().const_ref() << "\n";
-    os << "    image size:    " << p.get_image_size().const_ref() << "\n";
-    os << "    trusted range: " << p.get_trusted_range().const_ref() << "\n";
-    return os;
-  }
 
 }} // namespace dxtbx::model
 

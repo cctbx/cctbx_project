@@ -280,12 +280,12 @@ class FormatTIFFRayonix(FormatTIFF):
         from boost.python import streambuf
         from dxtbx import read_uint16
         from scitbx.array_family import flex
-
-        size = self.get_detector().get_image_size()
+        assert(len(self.get_detector()) == 1)
+        size = self.get_detector()[0].get_image_size()
         f = FormatTIFF.open_file(self._image_file)
         f.read(self._header_size)
         raw_data = read_uint16(streambuf(f), int(size[0] * size[1]))
-        image_size = self.get_detector().get_image_size()
+        image_size = self.get_detector()[0].get_image_size()
         raw_data.reshape(flex.grid(image_size[1], image_size[0]))
 
         return raw_data

@@ -69,7 +69,7 @@ class ReaderBase(object):
         for i in range(len(curr_detector)):
 
             # Override the geometry in the detector
-            curr_detector[i].set_frame(
+            curr_detector[i].set_local_frame(
                 detector[i].get_fast_axis(),
                 detector[i].get_slow_axis(),
                 detector[i].get_origin())

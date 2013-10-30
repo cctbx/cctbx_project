@@ -87,7 +87,8 @@ def from_dict(d, t=None):
         The detector model
 
     '''
-    from dxtbx.model import Detector, PanelList
+    from dxtbx.model import Detector
+    from dxtbx.array_family import flex
 
     # If None, return None
     if d == None:
@@ -97,4 +98,4 @@ def from_dict(d, t=None):
         t = [None] * len(d)
 
     # Create the model from the dictionary
-    return Detector(PanelList([panel_from_dict(p, pt) for p, pt in zip(d, t)]))
+    return Detector(flex.panel([panel_from_dict(p, pt) for p, pt in zip(d, t)]))

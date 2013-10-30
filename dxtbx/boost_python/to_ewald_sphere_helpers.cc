@@ -40,11 +40,14 @@ namespace dxtbx { namespace boost_python {
         gonio_(gonio),
         scan_(scan) {}
     
-    flex_vec3_double operator()(int frame) {
+    flex_vec3_double operator()(int frame, std::size_t panel) {
+
+      // Check panel
+      DXTBX_ASSERT(panel < detector_.size());
 
       // Get size and create array
-      std::size_t slow_size = detector_.get_image_size()[1];
-      std::size_t fast_size = detector_.get_image_size()[0];
+      std::size_t slow_size = detector_[0].get_image_size()[1];
+      std::size_t fast_size = detector_[0].get_image_size()[0];
       flex_vec3_double x(flex_grid<>(slow_size, fast_size));
       
       // Get rotation angle
@@ -53,7 +56,7 @@ namespace dxtbx { namespace boost_python {
       // Get coordinate for each pixel
       for (std::size_t j = 0; j < slow_size; ++j) {
         for (std::size_t i = 0; i < fast_size; ++i) {
-          vec3<double> s1 = detector_.get_pixel_lab_coord(vec2<double>(i, j));
+          vec3<double> s1 = detector_[panel].get_pixel_lab_coord(vec2<double>(i, j));
           x(j, i) = s1.normalize().unit_rotate_around_origin(
             gonio_.get_rotation_axis(), phi) / beam_.get_wavelength();
         }

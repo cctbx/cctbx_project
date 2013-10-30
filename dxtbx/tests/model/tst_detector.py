@@ -70,8 +70,8 @@ def tst_parallax_correction(detector):
         uniform(-1000, 1000))
     for i in range(10000):
         mm = random_coord()
-        px = detector.millimeter_to_pixel(mm)
-        mm2 = detector.pixel_to_millimeter(px)
+        px = detector[0].millimeter_to_pixel(mm)
+        mm2 = detector[0].pixel_to_millimeter(px)
         assert(abs(matrix.col(mm) - matrix.col(mm2)) < 1e-3)
 
     print 'OK'

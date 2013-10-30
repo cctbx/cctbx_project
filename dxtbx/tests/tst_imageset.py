@@ -699,9 +699,10 @@ class TestImageSweep(object):
         detector = sweep.get_detector()
 
         # Modify the geometry
+        assert(len(detector) == 1)
         beam.set_direction((1, 0, 0))
         gonio.set_rotation_axis((0, 1, 0))
-        detector.set_frame((1, 0, 0), (0, 1, 0), (0, 0, 1))
+        detector[0].set_local_frame((1, 0, 0), (0, 1, 0), (0, 0, 1))
 
         # Override sweep models
         sweep.set_beam(beam)

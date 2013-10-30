@@ -18,13 +18,43 @@ if (not env_etc.no_boost_python and hasattr(env_etc, "boost_adaptbx_include")):
       env_etc.dxtbx_include])
   env.Append(
 	LIBS=env_etc.libm + [ 
-	"scitbx_boost_python"])
+	  "scitbx_boost_python"])
+    
+  if env_etc.clang_version:
+    wd = ["-Wno-unused-function"]
+    env.Append(CCFLAGS=wd)
 
   env.SharedLibrary(
     target="#lib/dxtbx_ext",
     source=[
       "boost_python/to_ewald_sphere_helpers.cc",
       "boost_python/ext.cpp"])
-    
-  env.SConscript('model/SConscript', exports={ 'env' : env })
-  env.SConscript('array_family/SConscript', exports={ 'env' : env })
+
+  pixel_to_millimetre = env.SharedLibrary(
+    target="#/lib/libdxtbx_model_pixel_to_millimeter",
+    source=['model/pixel_to_millimeter.cc'])
+
+  model = env.SharedLibrary(
+    LIBS=['dxtbx_model_pixel_to_millimeter'],
+    target='#/lib/dxtbx_model_ext', 
+    source=[
+      'model/boost_python/beam.cc',
+      'model/boost_python/goniometer.cc',
+      'model/boost_python/kappa_goniometer.cc',
+      'model/boost_python/panel.cc',
+      'model/boost_python/detector.cc',
+      'model/boost_python/scan.cc',
+      'model/boost_python/scan_helpers.cc',
+      'model/boost_python/parallax_correction.cc',
+      'model/boost_python/pixel_to_millimeter.cc',
+      'model/boost_python/model_ext.cc'])
+      
+  array_family = env.SharedLibrary(
+    LIBS=['dxtbx_model_pixel_to_millimeter'],  
+    target='#/lib/dxtbx_array_family_flex_ext', 
+    source=[
+      'array_family/boost_python/flex_panel.cc',
+      'array_family/boost_python/flex_ext.cc']) 
+      
+  env.Depends(model, pixel_to_millimetre)
+  env.Depends(array_family, pixel_to_millimetre) 
