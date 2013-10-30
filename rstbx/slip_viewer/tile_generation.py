@@ -391,7 +391,7 @@ class _Tiles(object):
 
       detector = self.raw_image.get_detector()
       if len(detector) == 1:
-        (size2, size1) = detector.get_image_size()
+        (size2, size1) = detector[0].get_image_size()
       else:
         # XXX Special-case until multitile detectors fully supported.
         (size1, size2) = (self.flex_image.size1(), self.flex_image.size2())
@@ -531,15 +531,15 @@ class _Tiles(object):
             d_min = panel.get_resolution_at_pixel(beam, wavelength, (x, y))
         else:
           beam = self.raw_image.get_beam()
-          d_min = detector.get_resolution_at_pixel(
-            beam.get_unit_s0(), beam.get_wavelength(), (x, y))
+          d_min = detector[0].get_resolution_at_pixel(
+            beam.get_s0(), (x, y))
 
         return d_min
 
     def get_detector_distance (self) :
         detector = self.raw_image.get_detector()
         if len(detector) == 1:
-          dist = detector.get_distance()
+          dist = detector[0].get_distance()
         else:
           # XXX Special-case until multitile detectors fully
           # supported.
@@ -555,7 +555,7 @@ class _Tiles(object):
 
         detector = self.raw_image.get_detector()
         if len(detector) == 1:
-          n = col(detector.get_normal())
+          n = col(detector[0].get_normal())
           s0 = col(self.raw_image.get_beam().get_unit_s0())
           two_theta = s0.angle(n, deg=False)
         else:
