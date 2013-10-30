@@ -30,8 +30,10 @@ if (not env_etc.no_boost_python and hasattr(env_etc, "boost_adaptbx_include")):
       "boost_python/to_ewald_sphere_helpers.cc",
       "boost_python/ext.cpp"])
 
-  pixel_to_millimetre = env.SharedLibrary(
-    target="#/lib/libdxtbx_model_pixel_to_millimeter",
+  if (env_etc.static_libraries): builder = env.StaticLibrary
+  else:                          builder = env.SharedLibrary
+  pixel_to_millimetre = builder(
+    target="#/lib/dxtbx_model_pixel_to_millimeter",
     source=['model/pixel_to_millimeter.cc'])
 
   model = env.SharedLibrary(
