@@ -386,6 +386,8 @@ dox/tutorial/chapterI.tex -text
 dxtbx/SConscript -text
 dxtbx/__init__.py -text
 dxtbx/array_family/__init__.py -text
+dxtbx/array_family/boost_python/flex_ext.cc -text
+dxtbx/array_family/boost_python/flex_panel.cc -text
 dxtbx/array_family/flex.py -text
 dxtbx/boost_python/ext.cpp -text
 dxtbx/boost_python/to_ewald_sphere_helpers.cc -text
