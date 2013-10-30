@@ -7,12 +7,6 @@ backend = FS *MySQL SQLite
   .help = "Back end database; FS for flat-file ASCII data storage,
            MySQL and SQLite for the respective proper database
            backends."
-runtag = None
-  .type = str
-  .help = "Identifier is for this run, dumps old data when applicable
-           and writes new tables.  Signifies database to use when
-           backend = MySQL and database file when backend = SQLite,
-           and irrelevant when backend = FS."
 mysql {
   # MySQL database v5.1 data store.
   # mysql -u root -p # Steps to be taken by the database administrator
@@ -31,6 +25,10 @@ mysql {
   port = 3306
     .type = int
     .help = port number for connecting on this host
+  runtag = None
+    .type = str
+    .help = "Identifier is for this run, signifies database to use.
+             Dumps old data when applicable and writes new tables."
   user = None
     .type = str
     .help = mysql username provided by the database administrator
@@ -70,13 +68,14 @@ class manager:
     cursor.execute("SHOW TABLES from %s;"%self.params.mysql.database)
     all_tables = cursor.fetchall()
 
-    new_tables = self.merging_schema_tables(self.params.runtag)
+    # Beware of SQL injection vulnerability (here and elsewhere).
+    new_tables = self.merging_schema_tables(self.params.mysql.runtag)
     for table in new_tables:
       cursor.execute("DROP TABLE IF EXISTS %s;"%table[0])
       cursor.execute("CREATE TABLE %s "%table[0]+table[1].replace("\n"," ")+" ;")
     import cStringIO
     query = cStringIO.StringIO()
-    query.write("INSERT INTO %s_miller (h,k,l) VALUES "%self.params.runtag)
+    query.write("INSERT INTO %s_miller (h,k,l) VALUES "%self.params.mysql.runtag)
     firstcomma = ""
     for item in indices:
       query.write(firstcomma); firstcomma=","
@@ -110,7 +109,7 @@ class manager:
     cursor = db.cursor()
 
     (sql, parameters) = self._insert(
-      table='%s_frame' % self.params.runtag,
+      table='%s_frame' % self.params.mysql.runtag,
       **kwargs)
 
     cursor.execute(sql, parameters[0])
@@ -129,7 +128,7 @@ class manager:
     query = cStringIO.StringIO()
     query.write("""INSERT INTO %s_observation
     (hkl_id_0_base,i,sigi,detector_x,detector_y,frame_id_0_base,overload_flag,original_h,original_k,original_l)
-    VALUES """%self.params.runtag)
+    VALUES """%self.params.mysql.runtag)
     firstcomma = ""
     for i in range(len(kwargs['hkl_id_0_base'])):
       query.write(firstcomma); firstcomma=","
@@ -156,7 +155,7 @@ class manager:
     cursor = db.cursor()
     from cctbx.array_family import flex
     millers = dict(merged_asu_hkl=flex.miller_index())
-    cursor.execute("SELECT h,k,l FROM %s_miller ORDER BY hkl_id_1_base"%self.params.runtag)
+    cursor.execute("SELECT h,k,l FROM %s_miller ORDER BY hkl_id_1_base"%self.params.mysql.runtag)
     for item in cursor.fetchall():
       millers["merged_asu_hkl"].append((item[0],item[1],item[2]))
     return millers
@@ -164,7 +163,7 @@ class manager:
   def read_observations(self):
     db = self.connection()
     cursor = db.cursor()
-    cursor.execute("SELECT hkl_id_0_base,i,sigi,frame_id_0_base,original_h,original_k,original_l FROM %s_observation"%self.params.runtag)
+    cursor.execute("SELECT hkl_id_0_base,i,sigi,frame_id_0_base,original_h,original_k,original_l FROM %s_observation"%self.params.mysql.runtag)
     ALL = cursor.fetchall()
 
     return dict(hkl_id = flex.int([a[0] for a in ALL]), #as MySQL indices are 1-based
@@ -184,7 +183,7 @@ class manager:
     frame_id_1_base,wavelength,c_c,slope,offset,res_ori_1,res_ori_2,res_ori_3,
     res_ori_4,res_ori_5,res_ori_6,res_ori_7,res_ori_8,res_ori_9,
     unique_file_name
-    FROM %s_frame"""%self.params.runtag)
+    FROM %s_frame"""%self.params.mysql.runtag)
     ALL = cursor.fetchall()
     from cctbx.crystal_orientation import crystal_orientation
     orientations = [crystal_orientation(
