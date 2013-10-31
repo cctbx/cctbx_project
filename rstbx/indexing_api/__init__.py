@@ -63,7 +63,6 @@ class _(boost.python.injector, ext.dps_extended):
       ):
 
     if panelID is None:
-      print "type of detector",type(detector)
       from dxtbx.model import Detector
       #detector_interface = Detector(detector)
       detector_interface = detector
