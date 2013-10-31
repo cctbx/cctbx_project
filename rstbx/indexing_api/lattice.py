@@ -157,9 +157,10 @@ class _(boost.python.injector, dps_extended):
 
   def get_origin_offset_score(self,trial_origin_offset):
     trial_detector = dps_extended.get_new_detector(self.detector,trial_origin_offset)
-    from dxtbx.array_family import flex
+    import dxtbx.array_family.flex
     from dxtbx.model import Detector
-    new_trial_detector = Detector(flex.panel(trial_detector))
+    new_trial_detector = Detector(dxtbx.array_family.flex.panel(
+      trial_detector))
     reciprocal_space_vectors = self.raw_spot_positions_mm_to_reciprocal_space(
       self.raw_spot_input, new_trial_detector, self.inv_wave, self.S0_vector, self.axis,
       self.panelID)
@@ -224,8 +225,12 @@ class _(boost.python.injector, dps_extended):
           plt.show()
 
         show_plot(2 * grid + 1, scores)
-
-      return dps_extended.get_new_detector(self.detector,trial_origin_offset)
+      
+      import dxtbx.array_family.flex
+      from dxtbx.model import Detector
+      
+      return Detector(dxtbx.array_family.flex.panel(
+          dps_extended.get_new_detector(self.detector, trial_origin_offset)))
 
   def get_basis_general(self):
     """
