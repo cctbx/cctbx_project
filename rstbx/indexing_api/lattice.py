@@ -149,7 +149,7 @@ class _(boost.python.injector, dps_extended):
     new_panels = []
     for panel in old_detector:
       new_panel = copy.deepcopy(panel)
-      new_panel.set_frame(fast_axis=panel.get_fast_axis(),
+      new_panel.set_local_frame(fast_axis=panel.get_fast_axis(),
                           slow_axis=panel.get_slow_axis(),
                           origin=matrix.col(panel.get_origin()) + origin_offset)
       new_panels.append(new_panel)
@@ -157,8 +157,11 @@ class _(boost.python.injector, dps_extended):
 
   def get_origin_offset_score(self,trial_origin_offset):
     trial_detector = dps_extended.get_new_detector(self.detector,trial_origin_offset)
+    from dxtbx.array_family import flex
+    from dxtbx.model import Detector
+    new_trial_detector = Detector(flex.panel(trial_detector))
     reciprocal_space_vectors = self.raw_spot_positions_mm_to_reciprocal_space(
-      self.raw_spot_input, trial_detector, self.inv_wave, self.S0_vector, self.axis,
+      self.raw_spot_input, new_trial_detector, self.inv_wave, self.S0_vector, self.axis,
       self.panelID)
 
     return self.sum_score_detail(reciprocal_space_vectors)
@@ -227,6 +230,22 @@ class _(boost.python.injector, dps_extended):
       return dps_extended.get_new_detector(self.detector,trial_origin_offset)
 
   def get_basis_general(self):
+    """
+    In this function, self requires the following abstract interface:
+       n_candidates() = number of candidate basis solutions presented
+       __getitem__(i) = return the ith candidate basis vector of type rstbx_ext.Direction
+       setOrientation(orientation) where orientation is a cctbx.crystal_orientation object.
+          must represent the primitive setting.
+       getOrientation()
+       niggli() adjusts the stored orientation to the niggli setting
+       getMosaicity() = mosaicity in degrees, from labelit, will be removed from interface
+       hklobserved()
+       combos()
+       rmsdev()
+       model_likelihood()
+
+    """
+
     """side-effect: sets orientation matrix"""
     from rstbx.indexing_api.basis_choice import SelectBasisMetaprocedure as SBM
     pd = {}
@@ -245,6 +264,7 @@ class _(boost.python.injector, dps_extended):
     orient_best = orient.change_basis(matrix.sqr(cb_op).transpose())
     constrain_orient = orient_best.constrain(supergroup['system'])
     self.setOrientation(constrain_orient) # extended API
+    L[-1]["orient"] = orient
 
     if True:
       for subgroup in L:
@@ -259,3 +279,12 @@ class DPS_primitive_lattice(dps_extended):
     from libtbx import adopt_init_args
     adopt_init_args(self,locals())
     dps_extended.__init__(self)
+
+#start here.
+#0) rationalize the L class
+#) fully document.  Have a map from here to there.  Implement Richard's fix
+#P) figure out where the ".constrain()" code is
+#X) symmetry
+#1) encapsulate the parameter refinement
+#2) encapsulate the outlier rejection.  Do not pass the autoindexengine to it
+#3) encapsulate the get_basis_general command so it takes the canonical objects. not autoindexengine.
