@@ -513,26 +513,15 @@ class _Tiles(object):
 
         d_min = None
         detector = self.raw_image.get_detector()
+        beam = self.raw_image.get_beam().get_s0()
         if len(detector) > 1:
-          # XXX Special-case read of new-style images until
-          # multitile images are fully supported in dxtbx.
           if readout is None:
             return None
 
           panel = detector[readout]
-
-          beam = self.raw_image.get_beam().get_unit_s0()
-
-          from dxtbx.model import Panel2
-          if isinstance(panel, Panel2): # waiting to synchronize dxtbx interfaces
-            d_min = panel.get_resolution_at_pixel(beam, (x, y))
-          else:
-            wavelength = self.raw_image.get_beam().get_wavelength()
-            d_min = panel.get_resolution_at_pixel(beam, wavelength, (x, y))
+          d_min = panel.get_resolution_at_pixel(beam, (x, y))
         else:
-          beam = self.raw_image.get_beam()
-          d_min = detector[0].get_resolution_at_pixel(
-            beam.get_s0(), (x, y))
+          d_min = detector[0].get_resolution_at_pixel(beam, (x, y))
 
         return d_min
 

@@ -74,7 +74,7 @@ class FormatPYmultitile(FormatPY):
     xfel.cftbx.detector.metrology.metrology_as_dxtbx_vectors().
     '''
 
-    from dxtbx_model_ext import Detector, Panel, SimplePxMmStrategy
+    from dxtbx.model import Detector, SimplePxMmStrategy
     from scitbx.matrix import col
 
     # XXX Introduces dependency on cctbx.xfel!  Should probably be
@@ -90,8 +90,9 @@ class FormatPYmultitile(FormatPY):
       col(d.translation) +
       col((0, 0, -self._metrology_params.distance * 1e-3)))[1]
 
-    panels = []
     self._raw_data = []
+    detector = Detector()
+
     for p in d.panel:
       Tb_p = Tb_d * _transform(
         col(p.orientation).normalize(),
@@ -125,20 +126,20 @@ class FormatPYmultitile(FormatPY):
           # negative, and this is currently not reflected by
           # trusted_range.
           key = (d.serial, p.serial, s.serial, a.serial)
-          panels.append(Panel(
-            type='PAD',
-            name='%d:%d:%d:%d' % key,
-            fast_axis=[t * 1e3 for t in fast.elems[0:3]],
-            slow_axis=[t * 1e3 for t in slow.elems[0:3]],
-            origin=[t * 1e3 for t in origin.elems[0:3]],
-            pixel_size=[t * 1e3 for t in a.pixel_size],
-            image_size=a.dimension,
-            trusted_range=(0, a.saturation)))
+
+          panel = detector.add_panel()
+          panel.set_type("PAD")
+          panel.set_name('%d:%d:%d:%d' % key)
+          panel.set_local_frame(
+            [t * 1e3 for t in fast.elems[0:3]],
+            [t * 1e3 for t in slow.elems[0:3]],
+            [t * 1e3 for t in origin.elems[0:3]])
+
+          panel.set_pixel_size([t * 1e3 for t in a.pixel_size])
+          panel.set_image_size(a.dimension)
+          panel.set_trusted_range((0, a.saturation))
 
           self._raw_data.append(self._tiles[key])
-
-    detector = Detector(panels)
-    detector.mask = [] # a list of dead rectangles
 
     return detector
 
