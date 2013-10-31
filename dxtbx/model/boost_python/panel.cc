@@ -19,6 +19,7 @@
 
 namespace dxtbx { namespace model { namespace boost_python {
 
+  static
   scitbx::af::shared<vec3<double> >
   get_lab_coord_multiple(const Panel &panel,
                 scitbx::af::flex<vec2<double> >::type const& xy) {
@@ -27,6 +28,11 @@ namespace dxtbx { namespace model { namespace boost_python {
       result.push_back(panel.get_lab_coord(xy[i]));
     }
     return result;
+  }
+
+  static
+  Panel panel_deepcopy(const Panel &panel, boost::python::object dict) {
+    return Panel(panel);  
   }
 
   void export_panel() 
@@ -156,7 +162,9 @@ namespace dxtbx { namespace model { namespace boost_python {
         &Panel::get_max_resolution_at_corners)
       .def("get_max_resolution_ellipse", &Panel::get_max_resolution_ellipse)
       .def("__eq__", &Panel::operator==)
-      .def("__ne__", &Panel::operator!=);
+      .def("__ne__", &Panel::operator!=)
+      .def("__deepcopy__", &panel_deepcopy)
+      .def("__copy__", &panel_deepcopy);
   }
 
 }}} // namespace dxtbx::model::boost_python
