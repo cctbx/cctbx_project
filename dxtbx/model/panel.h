@@ -634,13 +634,13 @@ namespace dxtbx { namespace model {
   /** Print panel information */
   inline
   std::ostream& operator<<(std::ostream &os, const Panel &p) {
-    os << "Panel:\n";
-    os << "  pixel_size: \n" << p.get_pixel_size().const_ref();
-    os << "  image_size: \n" << p.get_image_size().const_ref();
-    os << "  trusted_range: \n" << p.get_trusted_range().const_ref();
-    os << "  fast_axis: \n" << p.get_fast_axis().const_ref();
-    os << "  slow_axis: \n" << p.get_slow_axis().const_ref();
-    os << "  origin: \n" << p.get_origin().const_ref();
+    os << "Panel:" << std::endl;
+    os << "  pixel_size:" << p.get_pixel_size().const_ref() << std::endl;
+    os << "  image_size: " << p.get_image_size().const_ref() << std::endl;
+    os << "  trusted_range: " << p.get_trusted_range().const_ref() << std::endl;
+    os << "  fast_axis: " << p.get_fast_axis().const_ref() << std::endl;
+    os << "  slow_axis: " << p.get_slow_axis().const_ref() << std::endl;
+    os << "  origin: " << p.get_origin().const_ref() << std::endl;
     return os;
   }
 
