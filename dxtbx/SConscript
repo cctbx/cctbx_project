@@ -50,7 +50,6 @@ if (not env_etc.no_boost_python and hasattr(env_etc, "boost_adaptbx_include")):
       'model/boost_python/model_ext.cc'])
       
   array_family = env.SharedLibrary(
-    LIBS=['dxtbx_model_pixel_to_millimeter'],  
     target='#/lib/dxtbx_array_family_flex_ext', 
     source=[
       'array_family/boost_python/flex_panel.cc',
