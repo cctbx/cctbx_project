@@ -70,6 +70,10 @@ indexing {
       .multiple=False
       .help="Output file name for making graphs of |dr| vs spot number and dy vs dx."
   }
+  improve_local_scope = *origin_offset S0_vector
+    .type = choice
+    .help = improve 'beam position' according to Sauter et al (2004).  Local minimum only
+    .help = specifies which parameter to optimize.
 }
 
 integration {
