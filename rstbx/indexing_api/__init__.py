@@ -1,5 +1,6 @@
 from __future__ import division
 import boost.python
+import rstbx.dps_core # import dependency
 boost.python.import_ext("rstbx_indexing_api_ext")
 from rstbx_indexing_api_ext import *
 import rstbx_indexing_api_ext as ext
@@ -34,14 +35,38 @@ class _(boost.python.injector, ext.dps_extended):
       )
 
   @staticmethod
+  def raw_spot_positions_mm_to_S1_vector( raw_spot_input, # as vec3_double
+      detector, inverse_wave,
+      panelID=None
+      ):
+
+    if panelID is None:
+      panelID = flex.int(len(raw_spot_input),0)
+
+    reciprocal_space_vectors = flex.vec3_double()
+
+    # tile surface to laboratory transformation
+    for n in xrange(len(raw_spot_input)):
+      pid = panelID[n]
+      lab_direct = col(detector[pid].get_lab_coord(raw_spot_input[n][0:2]))
+
+    # laboratory direct to reciprocal space xyz transformation
+      lab_recip = (lab_direct.normalize() * inverse_wave)
+
+      reciprocal_space_vectors.append ( lab_recip )
+    return reciprocal_space_vectors
+
+  @staticmethod
   def raw_spot_positions_mm_to_reciprocal_space( raw_spot_input, # as vec3_double
       detector, inverse_wave, beam, axis, # beam, axis as scitbx.matrix.col
       panelID=None
       ):
 
     if panelID is None:
-      from dxtbx_model_ext import Detector
-      detector_interface = Detector(detector)
+      print "type of detector",type(detector)
+      from dxtbx.model import Detector
+      #detector_interface = Detector(detector)
+      detector_interface = detector
       return raw_spot_positions_mm_to_reciprocal_space_xyz (
         raw_spot_input, detector_interface, inverse_wave, beam, axis )
       panelID = flex.int(len(raw_spot_input),0)
