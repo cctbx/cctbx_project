@@ -225,8 +225,20 @@ namespace dxtbx { namespace model {
 //      return intersects(poly_a, poly_b);
 //    }
 
+    friend std::ostream& operator<<(std::ostream &os, const Detector &d);
+
     boost::shared_ptr<panel_list_type> panel_list_;
   };
+
+  /** Print detector information */
+  inline
+  std::ostream& operator<<(std::ostream &os, const Detector &d) {
+    os << "Detector:\n";
+    for (std::size_t i = 0; i < d.size(); ++i) {
+      os << d[i];
+    }
+    return os;
+  }
 
 }} // namespace dxtbx::model
 

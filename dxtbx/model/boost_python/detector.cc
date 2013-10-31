@@ -21,6 +21,12 @@
 
 namespace dxtbx { namespace model { namespace boost_python {
 
+  std::string detector_to_string(const Detector &detector) {
+    std::stringstream ss;
+    ss << detector;
+    return ss.str();
+  }
+
   static
   void detector_set_item(Detector &d, std::size_t i, const Panel &v) {
     d[i] = v;
@@ -71,7 +77,8 @@ namespace dxtbx { namespace model { namespace boost_python {
         &Detector::get_ray_intersection, (arg("s1")))
       //.def("do_panels_intersect",
       //  &Detector::do_panels_intersect)
-      .def("get_names", &get_names);
+      .def("get_names", &get_names)
+      .def("__str__", &detector_to_string);
       
     boost_adaptbx::std_pair_conversions::to_and_from_tuple<int, vec2<double> >();
   }

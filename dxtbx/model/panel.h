@@ -19,6 +19,7 @@
 #include <scitbx/vec3.h>
 #include <scitbx/mat3.h>
 #include <scitbx/array_family/shared.h>
+#include <scitbx/array_family/simple_io.h>
 #include <scitbx/array_family/tiny_types.h>
 #include <scitbx/array_family/ref_reductions.h>
 #include <dxtbx/model/pixel_to_millimeter.h>
@@ -617,6 +618,8 @@ namespace dxtbx { namespace model {
       return !(*this == other);
     }
 
+    friend std::ostream& operator<<(std::ostream &os, const Panel &p);
+
   protected:
     vec2 <double> pixel_size_;
     vec2 <std::size_t> image_size_;
@@ -628,6 +631,18 @@ namespace dxtbx { namespace model {
     shared_ptr<PxMmStrategy> convert_coord_;
   };
 
+  /** Print panel information */
+  inline
+  std::ostream& operator<<(std::ostream &os, const Panel &p) {
+    os << "Panel:\n";
+    os << "  pixel_size: \n" << p.get_pixel_size().const_ref();
+    os << "  image_size: \n" << p.get_image_size().const_ref();
+    os << "  trusted_range: \n" << p.get_trusted_range().const_ref();
+    os << "  fast_axis: \n" << p.get_fast_axis().const_ref();
+    os << "  slow_axis: \n" << p.get_slow_axis().const_ref();
+    os << "  origin: \n" << p.get_origin().const_ref();
+    return os;
+  }
 
 }} // namespace dxtbx::model
 
