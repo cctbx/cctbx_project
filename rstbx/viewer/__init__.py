@@ -294,7 +294,7 @@ class image (screen_params) :
       binning=binning,
       brightness=brightness / 100,
       rawdata=self._raw.get_raw_data(),
-      saturation=int(round(self._raw.get_detector().get_trusted_range()[1])),
+      saturation=int(round(self._raw.get_detector()[0].get_trusted_range()[1])),
       vendortype=self._raw.__class__.__name__)
 
     #from scitbx.array_family import flex
@@ -452,13 +452,13 @@ class image (screen_params) :
     if (self._beam_center is not None) :
       center_x, center_y = self._beam_center
     else:
-      center_x, center_y = self._raw.get_detector().get_beam_centre(
+      center_x, center_y = self._raw.get_detector()[0].get_beam_centre(
         self._raw.get_beam().get_s0())
     return center_x, center_y
 
   def get_beam_center (self) :
     center_x, center_y = self.get_beam_center_mm()
-    (x, y) = self._raw.get_detector().millimeter_to_pixel((center_x, center_y))
+    (x, y) = self._raw.get_detector()[0].millimeter_to_pixel((center_x, center_y))
     return (int(x), int(y))
 
   def get_detector_distance (self) :
@@ -486,13 +486,13 @@ class image (screen_params) :
     Arguments are in image pixel coordinates (starting from 1,1).
     """
     wavelength = self._raw.get_beam().get_wavelength()
-    d_min = self._raw.get_detector().get_resolution_at_pixel(
-      self._raw.get_beam().get_s0(), wavelength, (x, y))
+    d_min = self._raw.get_detector()[0].get_resolution_at_pixel(
+      self._raw.get_beam().get_s0(), (x, y))
 
     slow, fast = self.image_coords_as_array_coords(x, y)
 
     intensity = None
-    if self._raw.get_detector().is_coord_valid((fast, slow)):
+    if self._raw.get_detector()[0].is_coord_valid((fast, slow)):
       intensity = self._raw.get_raw_data()[(fast, slow)]
     return point_info(slow, fast, intensity, d_min)
 
