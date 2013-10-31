@@ -19,6 +19,12 @@
 
 namespace dxtbx { namespace model { namespace boost_python {
 
+  std::string panel_to_string(const Panel &panel) {
+    std::stringstream ss;
+    ss << panel;
+    return ss.str();
+  }
+
   static
   scitbx::af::shared<vec3<double> >
   get_lab_coord_multiple(const Panel &panel,
@@ -164,7 +170,8 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("__eq__", &Panel::operator==)
       .def("__ne__", &Panel::operator!=)
       .def("__deepcopy__", &panel_deepcopy)
-      .def("__copy__", &panel_deepcopy);
+      .def("__copy__", &panel_deepcopy)
+      .def("__str__", &panel_to_string);
   }
 
 }}} // namespace dxtbx::model::boost_python
