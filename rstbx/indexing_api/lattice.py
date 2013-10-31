@@ -202,8 +202,6 @@ class _(boost.python.injector, dps_extended):
       MIN = test_simplex_method()
       trial_origin_offset =  MIN.x[0]*0.2*beamr1 + MIN.x[1]*0.2*beamr2
 
-      print "new origin_offset",list(trial_origin_offset.elems)
-
       plot = False
       if plot:
         scores = flex.double()
