@@ -11,8 +11,10 @@ from math import pi, cos, sin
 from iotbx.pdb import common_residue_names_get_class as get_class
 from libtbx.utils import Sorry, xfrange
 from mmtbx import ions
+from mmtbx.ions.parameters import MetalParameters, server
 from scitbx.array_family import flex
 from scitbx.math import gaussian_fit_1d_analytical
+from scitbx.matrix import col
 
 # Enums for the chemical environments supported by this module
 chem_carboxy = 1
@@ -29,6 +31,8 @@ chem_chlorine = 11
 chem_oxygen = 12
 chem_nitrogen = 13
 chem_sulfur = 14
+
+METAL_SERVER = server()
 
 class Environment (object):
   def __init__(self, i_seq, contacts, manager, fo_map = None, chemistry = True,
@@ -73,6 +77,38 @@ class Environment (object):
     # flexible down the road and contacts is pickable anyways.
     self.contacts = contacts
     # self.valences = None
+
+  def _get_valence(self, element, charge = None):
+    """
+    Calculates the BVS and VECSUM for a given element / charge identity.
+
+    Parameters
+    ----------
+    element: str
+        The element identity to calculate valences for.
+    charge: int, optional
+        The charge to calculate valences for.
+
+    Returns
+    -------
+    float
+        BVS
+    float
+        VECSUM
+
+    Notes
+    -----
+    .. [1] Müller, P., Köpke, S. & Sheldrick, G. M. Is the bond-valence method
+           able to identify metal atoms in protein structures? Acta
+           Crystallogr. D. Biol. Crystallogr. 59, 32–7 (2003).
+    """
+    if charge is None:
+      charge = METAL_SERVER.get_charge(element)
+    ion_params = MetalParameters(element = element, charge = charge)
+    vectors = METAL_SERVER.calculate_valences(ion_params, self.contacts)
+    bvs = sum([abs(i) for i in vectors])
+    vecsum = abs(sum(vectors, col((0, 0, 0))))
+    return bvs, vecsum
 
   def _get_chemical_environment(self, contacts, manager):
     """
