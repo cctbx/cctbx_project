@@ -79,10 +79,11 @@ def collect_ions (pdb_hierarchy) :
 
 # TODO add test
 def compare_ions (hierarchy, reference_hierarchy, reference_xrs,
-    distance_cutoff=2.0, log=None, ignore_elements=(), only_elements=()) :
+    distance_cutoff=2.0, log=None, ignore_elements=(), only_elements=(),
+    sel_str_base="segid ION") :
   if (log is None) : log = null_out()
   sel_cache = hierarchy.atom_selection_cache()
-  sel_str = "segid ION"
+  sel_str = sel_str_base
   if (len(only_elements) > 0) :
     sel_str += " and (%s)" % " or ".join(
       [ "element %s" % e for e in only_elements ])
