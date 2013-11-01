@@ -1,5 +1,7 @@
 
 from __future__ import division
+from libtbx.utils import null_out
+from math import sqrt
 import sys
 
 def anonymize_ions (hierarchy, log=sys.stdout) :
@@ -74,3 +76,78 @@ def collect_ions (pdb_hierarchy) :
             for atom in atoms:
               ions.append(atom)
   return ions
+
+# TODO add test
+def compare_ions (hierarchy, reference_hierarchy, reference_xrs,
+    distance_cutoff=2.0, log=None, ignore_elements=(), only_elements=()) :
+  if (log is None) : log = null_out()
+  sel_cache = hierarchy.atom_selection_cache()
+  sel_str = "segid ION"
+  if (len(only_elements) > 0) :
+    sel_str += " and (%s)" % " or ".join(
+      [ "element %s" % e for e in only_elements ])
+  elif (len(ignore_elements) > 0) :
+    sel_str += " and not (%s)" % " or ".join(
+      [ "element %s" % e for e in ignore_elements ])
+  ion_isel = sel_cache.selection(sel_str).iselection()
+  if (len(ion_isel) == 0) :
+    return [], []
+  from cctbx import crystal
+  pdb_atoms = hierarchy.atoms()
+  pdb_atoms.reset_i_seq()
+  ions = pdb_atoms.select(ion_isel)
+  asu_mappings = reference_xrs.asu_mappings(
+    buffer_thickness=distance_cutoff+0.1)
+  unit_cell = reference_xrs.unit_cell()
+  sites_cart = ions.extract_xyz()
+  sites_frac = unit_cell.fractionalize(sites_cart=sites_cart)
+  asu_mappings.process_sites_frac(sites_frac,
+    min_distance_sym_equiv = reference_xrs.min_distance_sym_equiv())
+  pair_generator = crystal.neighbors_fast_pair_generator(
+    asu_mappings = asu_mappings,
+    distance_cutoff = distance_cutoff)
+  reference_atoms = reference_hierarchy.atoms()
+  n_xray = reference_xrs.scatterers().size()
+  ion_ref_i_seqs = []
+  for k in range(len(ions)) :
+    ion_ref_i_seqs.append([])
+  for pair in pair_generator:
+    if ((pair.i_seq < n_xray and pair.j_seq < n_xray) or
+        (pair.i_seq >= n_xray and pair.j_seq >= n_xray)) :
+      continue
+    if (pair.i_seq < n_xray) :
+      ion_seq, ref_seq = pair.j_seq, pair.i_seq
+    else :
+      ion_seq, ref_seq = pair.i_seq, pair.j_seq
+    site_frac = sites_frac[ion_seq - n_xray]
+    dxyz = sqrt(pair.dist_sq)
+    j_seq = ion_seq - n_xray
+    ion_ref_i_seqs[j_seq].append(ref_seq)
+  # FIXME better filtering needed - right now we risk double-counting ions in
+  # the reference model, although I haven't found a case of this yet
+  matched = []
+  missing = []
+  for i_seq, ref_i_seqs in enumerate(ion_ref_i_seqs) :
+    ion = ions[i_seq]
+    if (len(ref_i_seqs) == 0) :
+      print >> log, "No match for %s" % ion.id_str()
+      missing.append(ion.id_str())
+    else :
+      ref_ions = []
+      for i_seq in ref_i_seqs :
+        ref_atom = reference_atoms[i_seq]
+        if (ion.element.upper() == ref_atom.element.upper()) :
+          ref_ions.append(ref_atom.id_str())
+      if (len(ref_ions) >= 1) :
+        matched.append(ion.id_str())
+        if (len(ref_ions) > 1) :
+          print >> log, "Multiple matches for %s:" % ion.id_str()
+          for ref_ion in ref_ions :
+            print >> log, "  %s" % ref_ion
+        else :
+          print >> log, "Ion %s matches %s" % (ion.id_str(),
+            ref_ions[0])
+      else :
+        print >> log, "No match for %s" % ion.id_str()
+        missing.append(ion.id_str())
+  return matched, missing
