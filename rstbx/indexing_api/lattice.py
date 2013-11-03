@@ -180,8 +180,6 @@ class _(boost.python.injector, dps_extended):
       assert approx_equal(beamr2.dot(beamr1), 0.)
       # so the orthonormal vectors are self.S0_vector, beamr1 and beamr2
 
-      grid = 10
-
       # DO A SIMPLEX MINIMIZATION
       from scitbx.simplex import simplex_opt
       class test_simplex_method(object):
@@ -202,33 +200,40 @@ class _(boost.python.injector, dps_extended):
 
       MIN = test_simplex_method()
       trial_origin_offset =  MIN.x[0]*0.2*beamr1 + MIN.x[1]*0.2*beamr2
+      print "The Origin Offset best score is",self.get_origin_offset_score(trial_origin_offset)
 
-      plot = False
-      if plot:
+      if self.horizon_phil.indexing.plot_search_scope:
+        scope = self.horizon_phil.indexing.mm_search_scope
+        plot_px_sz = self.detector[0].get_pixel_size()[0]
+        grid = max(1,int(scope/plot_px_sz))
         scores = flex.double()
-        for x in xrange(-grid,grid+1):
-         for y in xrange(-grid,grid+1):
-          new_origin_offset = x*0.2*beamr1 + y*0.2*beamr2
+        for y in xrange(-grid,grid+1):
+         for x in xrange(-grid,grid+1):
+          new_origin_offset = x*plot_px_sz*beamr1 + y*plot_px_sz*beamr2
           scores.append( self.get_origin_offset_score(new_origin_offset) )
 
-        def show_plot(grid,excursi):
-          excursi.reshape(flex.grid(grid, grid))
+        def show_plot(widegrid,excursi):
+          excursi.reshape(flex.grid(widegrid, widegrid))
 
+          def igrid(x): return x - (widegrid//2)
           from matplotlib import pyplot as plt
           plt.figure()
-          CS = plt.contour([i*0.2 for i in xrange(grid)],[i*0.2 for i in xrange(grid)], excursi.as_numpy_array())
+          CS = plt.contour([igrid(i)*plot_px_sz for i in xrange(widegrid)],
+                           [igrid(i)*plot_px_sz for i in xrange(widegrid)], excursi.as_numpy_array())
           plt.clabel(CS, inline=1, fontsize=10, fmt="%6.3f")
-          plt.title("Score as to beam likelihood")
-          plt.scatter([0.1*(grid-1)],[0.1*(grid-1)],color='g',marker='o')
-          plt.scatter([0.1*(grid-1)+0.2*MIN.x[0]] , [0.1*(grid-1)+0.2*MIN.x[1]],color='r',marker='*')
+          plt.title("Wide scope search for detector origin offset")
+          plt.scatter([0.0],[0.0],color='g',marker='o')
+          plt.scatter([0.2*MIN.x[0]] , [0.2*MIN.x[1]],color='r',marker='*')
           plt.axes().set_aspect("equal")
+          plt.xlabel("offset (mm) along beamr1 vector")
+          plt.ylabel("offset (mm) along beamr2 vector")
           plt.show()
 
-        show_plot(2 * grid + 1, scores)
-      
+        show_plot(widegrid = 2 * grid + 1, excursi = scores)
+
       import dxtbx.array_family.flex
       from dxtbx.model import Detector
-      
+
       return Detector(dxtbx.array_family.flex.panel(
           dps_extended.get_new_detector(self.detector, trial_origin_offset)))
 

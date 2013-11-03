@@ -70,6 +70,12 @@ indexing {
       .multiple=False
       .help="Output file name for making graphs of |dr| vs spot number and dy vs dx."
   }
+  plot_search_scope = False
+    .type = bool
+    .help = improvement of the model, plot target function of origin offset or S0
+  mm_search_scope = 4.0
+    .type = float
+    .help = global radius of origin_offset search, used for plotting the search scope
   improve_local_scope = *origin_offset S0_vector
     .type = choice
     .help = improve 'beam position' according to Sauter et al (2004).  Local minimum only
