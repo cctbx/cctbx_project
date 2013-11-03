@@ -28,6 +28,16 @@ class _(boost.python.injector, dps_extended):
       NN = neighbor_analysis(reciprocal_space_vectors)
       self.max_cell = NN.max_cell
 
+    if self.recommended_grid_sampling_rad is None:
+      rossmann_suggestion = 0.029 # radians; value used in Stellar (1997)
+      norms = reciprocal_space_vectors.norms()
+      naive_obs_highest_resolution = 1./flex.max(norms)
+      characteristic_grid = naive_obs_highest_resolution / self.max_cell
+      # purely heuristic for now, figure out details later
+      new_suggestion = 2. * characteristic_grid
+      self.recommended_grid_sampling_rad = min(rossmann_suggestion,
+                                               new_suggestion)
+
     self.setMaxcell(self.max_cell)
 
     self.setXyzData(reciprocal_space_vectors) # extended API
