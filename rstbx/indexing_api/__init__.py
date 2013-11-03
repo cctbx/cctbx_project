@@ -23,7 +23,9 @@ class _(boost.python.injector, ext.dps_extended):
   def set_detector(self,input_detector):
     self.detector = input_detector
 
-  def set_detector_position(self,origin,d1,d2): # optional, alternate form
+  def set_detecXXXtor_position(self,origin,d1,d2): # optional, alternate form
+    # Deprecate this because it turns out we actually use pixel size
+    # for plotting the beam search scope.  It gives us a useful length scale.
     from dxtbx.model.detector import detector_factory
     self.detector = detector_factory.make_detector(
       stype = "indexing",

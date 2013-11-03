@@ -53,6 +53,18 @@ def test_dps_single_panel_labelit_input_optimal_origin(process_dictionary,data,p
     assert detector_d2.length() == 1.0
     assert detector_d1.dot(detector_d2) == 0.0
 
+    from dxtbx.model.detector import detector_factory
+    detector = detector_factory.make_detector(
+      stype = "indexing",
+      fast_axis = detector_d1,
+      slow_axis = detector_d2,
+      origin = detector_origin,
+      pixel_size = (float(process_dictionary['pixel_size']),
+                    float(process_dictionary['pixel_size'])),
+      image_size = (int(process_dictionary['size1']),
+                    int(process_dictionary['size2']))
+      )
+
     beam_vector = sample_to_beamspot.normalize() * (
                   1./float(process_dictionary['wavelength']))
     rot_axis = col(process_dictionary["endstation"].rot_axi) - col((0.0,0.0,0.0)) # coerce to float type
@@ -62,10 +74,10 @@ def test_dps_single_panel_labelit_input_optimal_origin(process_dictionary,data,p
           horizon_phil = phil_set)
     DPS.set_beam_vector(beam = -beam_vector)
     DPS.set_rotation_axis(axis = rot_axis)
-    DPS.set_detector_position(origin = detector_origin, d1 = detector_d1, d2 = detector_d2)
+    DPS.set_detector(detector)
 
     DPS.index(raw_spot_input = data)
-    L = DPS.get_basis_general() # can skip this first time around
+    #L = DPS.get_basis_general() # can skip this first time around
     new_detector = DPS.optimize_origin_offset_local_scope()
 
     DPS2= DPS_primitive_lattice(max_cell = float(process_dictionary['ref_maxcel']),
@@ -77,7 +89,7 @@ def test_dps_single_panel_labelit_input_optimal_origin(process_dictionary,data,p
     DPS2.index(raw_spot_input = data)
     L = DPS2.get_basis_general()
 
-    new_conforming_data = DPS2.get_outlier_rejected_subset()
+    #new_conforming_data = DPS2.get_outlier_rejected_subset()
 
 def test_out(process_dictionary,data,phil_set):
     from rstbx.indexing_api.lattice import DPS_primitive_lattice
