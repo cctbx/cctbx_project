@@ -14,7 +14,6 @@ class _(boost.python.injector, dps_extended):
     assert raw_spot_input is not None
     self.raw_spot_input = raw_spot_input # deprecate record
     # must be x, y, phi in degrees, as a vec3_double
-    self.setMaxcell(self.max_cell) # extended API
 
     if len(self.detector) > 1:
       assert len(raw_spot_input) == len(panel_addresses)
@@ -23,6 +22,13 @@ class _(boost.python.injector, dps_extended):
     reciprocal_space_vectors = self.raw_spot_positions_mm_to_reciprocal_space(
       self.raw_spot_input, self.detector, self.inv_wave, self.S0_vector, self.axis,
       self.panelID)
+
+    if self.max_cell is None:
+      from rstbx.indexing_api.nearest_neighbor import neighbor_analysis
+      NN = neighbor_analysis(reciprocal_space_vectors)
+      self.max_cell = NN.max_cell
+
+    self.setMaxcell(self.max_cell)
 
     self.setXyzData(reciprocal_space_vectors) # extended API
 

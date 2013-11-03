@@ -1974,6 +1974,7 @@ rstbx/indexing_api/force_cell.py -text
 rstbx/indexing_api/indexing_api.cpp -text
 rstbx/indexing_api/indexing_api.h -text
 rstbx/indexing_api/lattice.py -text
+rstbx/indexing_api/nearest_neighbor.py -text
 rstbx/indexing_api/outlier_detection.py -text
 rstbx/indexing_api/outlier_procedure.py -text
 rstbx/indexing_api/sampling.py -text
