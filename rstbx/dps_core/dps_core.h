@@ -53,6 +53,7 @@ class dps_core {
   inline pointlistmm getXyzData() const {return xyzdata;}
   fftptr fft_factory(const Direction&) const;
   void setSolutions(af::shared<Direction>);
+  void set_presorted_solutions(af::shared<Direction>);
   af::shared<Direction> getSolutions() const;
   inline int n_candidates() const { return hemisphere_solutions.size(); }
   inline Direction candidate(const int &i) const {

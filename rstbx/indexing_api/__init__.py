@@ -124,6 +124,7 @@ class _(boost.python.injector, ext.dps_extended):
       Hint.append((round(H[0],0), round(H[1],0), round(H[2],0)))
     xyz_miller = flex.vec3_double()
     from rstbx.diffraction import rotation_angles
+    # XXX limiting shell of 1.0 angstroms probably needs to be changed/ removed.  How?
     ra = rotation_angles(limiting_resolution=1.0,orientation = Astar,
                          wavelength = 1./self.inv_wave, axial_direction = self.axis)
     for ij,hkl in enumerate(Hint):
@@ -145,7 +146,7 @@ class _(boost.python.injector, ext.dps_extended):
 #        print (calc-pred).length(), separation_mm * TOLERANCE
         if ((calc-pred).length() < separation_mm * TOLERANCE):
           fraction_properly_predicted += 1./ self.raw_spot_input.size()
-    print "fraction properly predicted",fraction_properly_predicted,"with spot sep (mm)",separation_mm
+    #print "fraction properly predicted",fraction_properly_predicted,"with spot sep (mm)",separation_mm
     return fraction_properly_predicted
 
   def get_predicted_spot_positions_and_status(self, old_status=None): #similar to above function; above can be refactored

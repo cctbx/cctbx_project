@@ -62,6 +62,31 @@ pd::dps_core::setSolutions(af::shared<pd::Direction> nwsoln){
     hemisphere_solutions.pop_back();}
 }
 
+void
+pd::dps_core::set_presorted_solutions(af::shared<pd::Direction> nwsoln){
+  typedef af::shared<pd::Direction>::iterator Ran;
+
+  hemisphere_solutions = nwsoln;
+  //sztype is unsigned, so return now if array size is zero, otherwise
+  // get a segmentation fault
+  if (hemisphere_solutions.size()==0) {return;}
+
+  //pop out solutions that are linearly dependent
+  for (sztype i = hemisphere_solutions.size()-1; i>0; --i) {
+    for (sztype j = 0; j<i; ++j) {
+      if (hemisphere_solutions[i].is_nearly_collinear(hemisphere_solutions[j])){
+        hemisphere_solutions[i].kval=-10.0; //mark for later removal
+        break;
+      }
+    }
+  }
+
+  Ran first = hemisphere_solutions.begin(); Ran last=hemisphere_solutions.end();
+  std::sort<Ran,kvalcmp>(first,last,kvalcmp());
+  while (hemisphere_solutions[hemisphere_solutions.size()-1].kval==-10.0) {
+    hemisphere_solutions.pop_back();}
+}
+
 af::shared<pd::Direction>
 pd::dps_core::getSolutions() const {return hemisphere_solutions;}
 
