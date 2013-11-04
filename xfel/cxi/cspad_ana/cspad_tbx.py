@@ -252,22 +252,37 @@ def CsPad2x2Image(data, config, sections):
   return (det)
 
 
-def CsPadDetector(data3d, config, sections, right = True):
+def CsPadDetector(address, evt, env, sections, right=True):
   """The CsPadDetector() function assembles a two-dimensional image
   from the Ds1 detector readout in @p data3d and the calibration
   information in @p sections.  XXX General question: do
   variable/function names make sense?
 
-  @param data3d   Detector readout from XTC stream
-  @param config   XXX
+  @param address  Address string XXX Que?!
+  @param evt      Event data object, a configure object
+  @param env      Environment object
   @param sections XXX Directory with calibration information
   @param right    @c True to restrict rotations to right angles
   @return         Assembled detector image
   """
 
-  # For consistency, one could/should verify that len(data3d) is equal
+  from pypdsdata.xtc import TypeId
+
+  device = address_split(address)[2]
+  if device is None or device != 'Cspad':
+    return None
+
+  # Get a current configure object for the detector, see
+  # cspad_tbx.getConfig().
+  config = env.getConfig(TypeId.Type.Id_CspadConfig, address)
+  if config is None:
+    return None
+
+  # For consistency, one could/should verify that len(quads) is equal
   # to len(sections).
-  assert (len(data3d) == len(sections))
+  quads = evt.getCsPadQuads(address, env)
+  if quads is None or len(quads) != len(sections):
+    return None
 
   # This is from Mikhail S. Dubrovin's
   # HDF5Explorer/src/ConfigCSpad.py, which uses a detector size of
@@ -278,39 +293,38 @@ def CsPadDetector(data3d, config, sections, right = True):
   # Start out with a blank image of the detector.  This assumes that
   # the type of the first section in the first quadrant is identical
   # to the type of all the other sections.
-  det  = numpy.zeros((2 * Section.q_size[0] + extra_space[0],
-                      2 * Section.q_size[1] + extra_space[1]),
-                     dtype = data3d[0].data()[0].dtype)
-  mask = map(config.sections, xrange(4))
+  det = numpy.zeros((2 * Section.q_size[0] + extra_space[0],
+                     2 * Section.q_size[1] + extra_space[1]),
+                    dtype=quads[0].data()[0].dtype)
 
-  for q in xrange(len(data3d)):
-    q_data = data3d[q].data()
-    q_idx  = data3d[q].quad()
+  for quad in quads:
+    q_data = quad.data()
+    q_idx = quad.quad()
+    q_mask = config.sections(q_idx)
 
-    # For consistency, one could/should verify that len(q_data) is
-    # equal to len(sections[q_idx]).
-    assert (len(q_data) == len(sections[q_idx]))
-    for s in xrange(len(q_data)):
-      if (s not in mask[q_idx]):
-        continue
-
-      # Rotate the section from the XTC-stream by -90 degrees to match
-      # the "standing up" convention used by the calibration data, and
-      # insert a 3-pixel gap between the ASIC:s.  This assumes that
-      # the horizontal dimension of the unrotated section is even.
-      asics  = numpy.vsplit(numpy.rot90(q_data[s], -1), 2)
-      gap    = numpy.zeros((3, 185), dtype = q_data[s].dtype)
+    # For consistency, assert that there is data for each unmasked
+    # section.
+    assert len(q_data) == len(q_mask)
+    for (s_data, s_idx) in zip(q_data, q_mask):
+      # Rotate the section from the XTC-stream by -90 degrees to
+      # conform to the "standing up" convention used by the
+      # calibration data, and insert a 3-pixel gap between the ASIC:s.
+      # This requires the horizontal dimension of the unrotated
+      # section to be even.
+      assert s_data.shape[1] % 2 == 0
+      asics = numpy.vsplit(numpy.rot90(s_data, -1), 2)
+      gap = numpy.zeros((3, s_data.shape[0]), dtype=s_data.dtype)
       s_data = numpy.vstack((asics[0], gap, asics[1]))
 
       # Place the section in the detector image, either by forcing
-      # rotation by right angles or by interpolating.
-      angle  = sections[q_idx][s].angle
-      center = sections[q_idx][s].center
-      if (right):
+      # rotation to right angles or by interpolating.
+      angle = sections[q_idx][s_idx].angle
+      center = sections[q_idx][s_idx].center
+      if right:
         rplace(det, s_data, angle, center)
       else:
         iplace(det, s_data, angle, center)
-  return (det)
+  return det
 
 
 def CsPadElement(data3d, qn, config):
@@ -998,7 +1012,7 @@ def image(address, config, evt, env, sections=None):
   named evt_image()?
 
   @param address  Address string XXX Que?!
-  @param config   XXX
+  @param config   XXX This should go--get up-to-date object on the fly!
   @param evt      Event data object, a configure object
   @param env      Environment object
   @param sections XXX
@@ -1023,7 +1037,7 @@ def image(address, config, evt, env, sections=None):
     quads = evt.getCsPadQuads(address, env)
     if quads is not None:
       if sections is not None:
-        return CsPadDetector(quads, config, sections)
+        return CsPadDetector(address, evt, env, sections)
       else:
         # XXX This is obsolete code, provided for backwards
         # compatibility with the days before detector metrology was
@@ -1107,9 +1121,9 @@ def image_central2(address, config, evt, env):
 
 
 def image_xpp(address, evt, env, aa):
-  """Assemble the uint16 detector image.  XXX Documentation! XXX Would
-  be nice to get rid of the constant string names.  XXX Better named
-  evt_image()?
+  """Assemble the uint16 detector image, see also
+  cspad_tbx.CsPadDetector().  XXX Documentation! XXX Would be nice to
+  get rid of the constant string names.  XXX Better named evt_image()?
 
   @param address Address string XXX Que?!
   @param evt     Event data object, a configure object
@@ -1129,14 +1143,11 @@ def image_xpp(address, evt, env, aa):
   if config is None:
     return None
 
+  # For consistency, one could/should verify that len(quads) is equal
+  # to len(sections).
   quads = evt.getCsPadQuads(address, env)
-  if quads is None:
+  if quads is None or len(quads) != len(aa) // (8 * 2 * 4):
     return None
-
-  # What follows is is really cspad_tbx.CsPadDetector().  For
-  # consistency, one could/should verify that len(quads) is equal to
-  # len(sections).
-  assert len(quads) == len(aa) // (8 * 2 * 4)
 
   # Start out with a blank image of the detector.  Mikhail
   # S. Dubrovin's HDF5Explorer/src/ConfigCSpad.py uses a detector
@@ -1144,42 +1155,40 @@ def image_xpp(address, evt, env, aa):
   # first section in the first quadrant is identical to the type of
   # all the other sections.
   det = numpy.zeros((1765, 1765), dtype=quads[0].data()[0].dtype)
-  mask = map(config.sections, range(4))
 
-  for q in range(len(quads)):
-    q_data = quads[q].data()
-    q_idx = quads[q].quad()
+  for quad in quads:
+    q_data = quad.data()
+    q_idx = quad.quad()
+    q_mask = config.sections(q_idx)
 
     # For consistency, one could/should verify that len(q_data) is
     # equal to len(sections[q_idx]).
-    assert len(q_data) == len(aa) // (4 * 2 * 4)
-    for s in range(len(q_data)):
-      if s not in mask[q_idx]:
-        continue
-
+    assert len(q_data) == len(q_mask)
+    for (s_data, s_idx) in zip(q_data, q_mask):
       # Rotate the "lying down" sensor readout from the XTC stream by
-      # an integer multiples of 90 degrees to match the orientation on
+      # an integer multiple of 90 degrees to match the orientation on
       # the detector.  This assumes that the horizontal dimension of
       # the unrotated sensor is even.  Note that the XPP CSPAD is
       # rotated by 180 degrees with respect to the optical metrology
       # measurements.
-      if   q_idx == 0 and s in [2, 3, 6, 7] or \
-           q_idx == 1 and s in [0, 1]       or \
-           q_idx == 3 and s in [4, 5]:
-        asics = numpy.hsplit(numpy.rot90(q_data[s], 0 + 2), 2)
+      assert s_data.shape[1] % 2 == 0
+      if   q_idx == 0 and s_idx in [2, 3, 6, 7] or \
+           q_idx == 1 and s_idx in [0, 1]       or \
+           q_idx == 3 and s_idx in [4, 5]:
+        asics = numpy.hsplit(numpy.rot90(s_data, 0 + 2), 2)
         asics.reverse()
-      elif q_idx == 0 and s in [0, 1]       or \
-           q_idx == 2 and s in [4, 5]       or \
-           q_idx == 3 and s in [2, 3, 6, 7]:
-        asics = numpy.vsplit(numpy.rot90(q_data[s], 1 + 2), 2)
-      elif q_idx == 1 and s in [4, 5]       or \
-           q_idx == 2 and s in [2, 3, 6, 7] or \
-           q_idx == 3 and s in [0, 1]:
-        asics = numpy.hsplit(numpy.rot90(q_data[s], 2 + 2), 2)
-      elif q_idx == 0 and s in [4, 5]       or \
-           q_idx == 1 and s in [2, 3, 6, 7] or \
-           q_idx == 2 and s in [0, 1]:
-        asics = numpy.vsplit(numpy.rot90(q_data[s], 3 + 2), 2)
+      elif q_idx == 0 and s_idx in [0, 1]       or \
+           q_idx == 2 and s_idx in [4, 5]       or \
+           q_idx == 3 and s_idx in [2, 3, 6, 7]:
+        asics = numpy.vsplit(numpy.rot90(s_data, 1 + 2), 2)
+      elif q_idx == 1 and s_idx in [4, 5]       or \
+           q_idx == 2 and s_idx in [2, 3, 6, 7] or \
+           q_idx == 3 and s_idx in [0, 1]:
+        asics = numpy.hsplit(numpy.rot90(s_data, 2 + 2), 2)
+      elif q_idx == 0 and s_idx in [4, 5]       or \
+           q_idx == 1 and s_idx in [2, 3, 6, 7] or \
+           q_idx == 2 and s_idx in [0, 1]:
+        asics = numpy.vsplit(numpy.rot90(s_data, 3 + 2), 2)
         asics.reverse()
       else:
         # NOTREACHED
@@ -1187,10 +1196,10 @@ def image_xpp(address, evt, env, aa):
 
       # Use the active areas to place the two ASICS on the
       # destination detector image.
-      for a in range(len(asics)):
-        aa_idx = q_idx * (8 * 2 * 4) + s * (2 * 4) + a * 4
+      for a_idx in range(len(asics)):
+        aa_idx = q_idx * (8 * 2 * 4) + s_idx * (2 * 4) + a_idx * 4
         det[aa[aa_idx + 0]:aa[aa_idx + 2],
-            aa[aa_idx + 1]:aa[aa_idx + 3]] = asics[a]
+            aa[aa_idx + 1]:aa[aa_idx + 3]] = asics[a_idx]
 
   return det
 
