@@ -31,6 +31,23 @@ class fake_config(object):
   def sections(self, i):
     return list(range(8))
 
+class fake_env(object):
+  # XXX Not tested!
+
+  def __init__(self, config):
+    self._config = config
+
+  def getConfig(self, Id, address):
+    return self._config
+
+class fake_evt(object):
+  # XXX Not tested!
+
+  def __init__(self, data3d):
+    self._data3d = data3d
+
+  def getCsPadQuads(self, address, env):
+    return self._data3d
 
 
 def run(args):
@@ -63,7 +80,6 @@ def run(args):
 
 def convert_detector(raw_data):
   # https://confluence.slac.stanford.edu/display/PCDS/CSPad+metrology+and+calibration+files%2C+links
-  config = fake_config()
   calib_dir = "/reg/d/ana11/cxi/data/CSPAD-metrology/run4/CxiDs1.0:Cspad.0"
   sections = parse_calib.calib2sections(calib_dir)
   data3d = []
@@ -81,7 +97,9 @@ def convert_detector(raw_data):
     quad_data = numpy.dstack(quad_asics)
     quad_data = numpy.rollaxis(quad_data, 2,0)
     data3d.append(fake_cspad_ElementV2(quad_data, i_quad))
-  return cspad_tbx.CsPadDetector(data3d, config, sections)
+  env = fake_env(fake_config())
+  evt = fake_evt(data3d)
+  return cspad_tbx.CsPadDetector('CxiDs1-0|Cspad-0', evt, env, sections)
 
 
 def convert_2x2(data):
