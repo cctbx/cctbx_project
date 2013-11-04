@@ -375,7 +375,7 @@ namespace dxtbx { namespace model {
 
     /** @returns True/False this is not the same as the other */
     bool operator!=(const PanelBase &other) const {
-      return *this != other;
+      return !(*this == other);
     }
 
   protected:
