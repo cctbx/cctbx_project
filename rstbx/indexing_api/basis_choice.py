@@ -53,7 +53,6 @@ def select_best_combo_of(ai,better_than=0.36,candidates=20,basis=15,spot_sep=0.4
       HC = HandleCombo(ai,combo)
 
       dev = ai.rmsdev()
-      print "dev",dev
       if dev < better_than:
         HC.handle_absences()
 
@@ -207,7 +206,8 @@ class SelectBasisMetaprocedure:
     best_combo = all_sol.best_combo()
     if best_combo!=None:
       self.evaluate_combo(best_combo)
-      if self.horizon_phil.codecamp.maxcell != None: return
+      # XXX revisit the question of codecamp maxcell and whether this test should be functional
+      #if self.horizon_phil.codecamp.maxcell != None: return
       if opt_rawframes == None or best_combo['lattice_likelihood'] > 3.0:
         return # quick abort to test out indexing 10/16/13
 

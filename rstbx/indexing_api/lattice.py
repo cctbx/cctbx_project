@@ -216,7 +216,7 @@ class _(boost.python.injector, dps_extended):
 
       MIN = test_simplex_method()
       trial_origin_offset =  MIN.x[0]*0.2*beamr1 + MIN.x[1]*0.2*beamr2
-      print "The Origin Offset best score is",self.get_origin_offset_score(trial_origin_offset)
+      #print "The Origin Offset best score is",self.get_origin_offset_score(trial_origin_offset)
 
       if self.horizon_phil.indexing.plot_search_scope:
         scope = self.horizon_phil.indexing.mm_search_scope
@@ -300,6 +300,12 @@ class _(boost.python.injector, dps_extended):
 
 class DPS_primitive_lattice(dps_extended):
   def __init__(self, max_cell, recommended_grid_sampling_rad, horizon_phil):
+    from libtbx import adopt_init_args
+    adopt_init_args(self,locals())
+    dps_extended.__init__(self)
+
+class basis_choice_adapter(dps_extended):
+  def __init__(self):
     from libtbx import adopt_init_args
     adopt_init_args(self,locals())
     dps_extended.__init__(self)

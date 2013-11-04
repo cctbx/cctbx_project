@@ -13,9 +13,11 @@ pd::Direction::Direction(const double & psi, const double & phi):
                std::cos(psi));
 }
 
-pd::Direction::Direction(const point & dvec):
-  dvec(dvec) {
+pd::Direction::Direction(const point & inputdvec):
+  dvec(inputdvec) {
   initialize();
+  uc_length = dvec.length();
+  dvec = dvec.normalize();
   phi = std::atan2(dvec[1],dvec[0]); //formulae only valid for unit vectors
   psi = std::acos(dvec[2]);          //formulae only valid for unit vectors
 }

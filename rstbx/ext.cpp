@@ -214,6 +214,7 @@ namespace boost_python { namespace {
       .def("getXyzData",&dps_core::getXyzData)
       .def("fft_result",fft_result)
       .def("setSolutions",&dps_core::setSolutions)
+      .def("set_presorted_solutions",&dps_core::set_presorted_solutions)
       .def("getSolutions",&dps_core::getSolutions)
       .def("n_candidates",&dps_core::n_candidates)
       .def("__getitem__",&dps_core::candidate)
@@ -236,7 +237,8 @@ namespace boost_python { namespace {
     class_<Direction>("Direction", init<const point &>())
       .def(init<const double &, const double &>((arg("psi"),arg("phi"))))
       .def_readonly("kmax",&Direction::kmax)
-      .def_readonly("kval",&Direction::kval)
+      .add_property("kval",make_getter(&Direction::kval, rbv()),
+                           make_setter(&Direction::kval, dcp()))
       .def_readonly("kval0",&Direction::kval0)
       .def_readonly("kval2",&Direction::kval2)
       .def_readonly("kval3",&Direction::kval3)
