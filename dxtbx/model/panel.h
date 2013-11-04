@@ -276,7 +276,7 @@ namespace dxtbx { namespace model {
 
     /** @returns True/False This and the other frame are different */
     bool operator!=(const PanelFrame &other) const {
-      return *this != other;
+      return !(*this == other);
     }
 
   protected:
