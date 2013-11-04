@@ -195,7 +195,6 @@ class crystal_symmetry_as_cif_block(object):
 
 class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
 
-
   def __init__(self, xray_structure, covariance_matrix=None,
                cell_covariance_matrix=None):
     crystal_symmetry_as_cif_block.__init__(
@@ -219,42 +218,47 @@ class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
       '_atom_site_U_iso_or_equiv', '_atom_site_adp_type',
       '_atom_site_occupancy'))
     for i_seq, sc in enumerate(scatterers):
+      site = occu = u_iso_or_equiv = None
       # site
-      if covariance_matrix is not None and sc.flags.grad_site():
-        site = []
-        for i in range(3):
-          idx = param_map[i_seq].site
-          if idx > -1:
-            var = covariance_diagonal[idx+i]
-          else: var = 0
-          if var > 0:
-            site.append(format_float_with_su(sc.site[i], math.sqrt(var)))
-          else: site.append(fmt % sc.site[i])
-      else:
+      if covariance_matrix is not None:
+        params = param_map[i_seq]
+        if sc.flags.grad_site() and params.site >= 0:
+          site = []
+          for i in range(3):
+            site.append(format_float_with_su(sc.site[i],
+              math.sqrt(covariance_diagonal[params.site+i])))
+        #occupancy
+        if sc.flags.grad_occupancy() and params.occupancy >= 0:
+          occu = format_float_with_su(sc.occupancy,
+            math.sqrt(covariance_diagonal[params.occupancy]))
+        #Uiso/eq
+        if sc.flags.grad_u_iso() or sc.flags.grad_u_aniso():
+          if sc.flags.grad_u_iso():
+            u_iso_or_equiv = format_float_with_su(
+              sc.u_iso, math.sqrt(covariance.variance_for_u_iso(
+                i_seq, covariance_matrix, param_map)))
+          else:
+            cov = covariance.extract_covariance_matrix_for_u_aniso(
+              i_seq, covariance_matrix, param_map).matrix_packed_u_as_symmetric()
+            var = (u_star_to_u_iso_linear_form * matrix.sqr(cov)
+                   ).dot(u_star_to_u_iso_linear_form)
+            u_iso_or_equiv = format_float_with_su(
+              sc.u_iso_or_equiv(uc), math.sqrt(var))
+
+      if site is None:
         site = [fmt % sc.site[i] for i in range(3)]
-      # u_eq
-      if (covariance_matrix is not None and
-          (sc.flags.grad_u_iso() or sc.flags.grad_u_aniso())):
-        if sc.flags.grad_u_iso():
-          u_iso_or_equiv = format_float_with_su(
-            sc.u_iso, math.sqrt(covariance.variance_for_u_iso(
-              i_seq, covariance_matrix, param_map)))
-        else:
-          cov = covariance.extract_covariance_matrix_for_u_aniso(
-            i_seq, covariance_matrix, param_map).matrix_packed_u_as_symmetric()
-          var = (u_star_to_u_iso_linear_form * matrix.sqr(cov)
-                 ).dot(u_star_to_u_iso_linear_form)
-          u_iso_or_equiv = format_float_with_su(
-            sc.u_iso_or_equiv(uc), math.sqrt(var))
-      else:
+      if occu is None:
+        occu = fmt % sc.occupancy
+      if u_iso_or_equiv is None:
         u_iso_or_equiv = fmt % sc.u_iso_or_equiv(uc)
+
       if sc.flags.use_u_aniso():
         adp_type = 'Uani'
       else:
         adp_type = 'Uiso'
       atom_site_loop.add_row((
         sc.label, sc.scattering_type, site[0], site[1], site[2], u_iso_or_equiv,
-        adp_type, fmt%sc.occupancy))
+        adp_type, occu))
     self.cif_block.add_loop(atom_site_loop)
 
     # _atom_site_aniso_* loop
