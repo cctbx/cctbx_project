@@ -252,7 +252,7 @@ def CsPad2x2Image(data, config, sections):
   return (det)
 
 
-def CsPadDetector(address, evt, env, sections, right=True):
+def CsPadDetector(address, evt, env, sections, right = True, swap = False):
   """The CsPadDetector() function assembles a two-dimensional image
   from the Ds1 detector readout in @p data3d and the calibration
   information in @p sections.  XXX General question: do
@@ -296,6 +296,11 @@ def CsPadDetector(address, evt, env, sections, right=True):
   det = numpy.zeros((2 * Section.q_size[0] + extra_space[0],
                      2 * Section.q_size[1] + extra_space[1]),
                     dtype=quads[0].data()[0].dtype)
+
+  ### need to swap the quadrants for data collected mid=October 2013
+  if swap:
+    assert len(quads) == 4
+    quads = [quads[0],quads[1],quads[3],quads[2]]
 
   for quad in quads:
     q_data = quad.data()
@@ -1037,7 +1042,10 @@ def image(address, config, evt, env, sections=None):
     quads = evt.getCsPadQuads(address, env)
     if quads is not None:
       if sections is not None:
-        return CsPadDetector(address, evt, env, sections)
+        ### need to swap the quadrants for data collected mid October, 2013
+        evttime = time.gmtime(evt_time(evt)[0])
+        swap = evttime.tm_year == 2013 and evttime.tm_mon == 10 and evttime.tm_mday >= 20 and evttime.tm_mday <= 25
+        return CsPadDetector(address, evt, env, sections, swap = swap)
       else:
         # XXX This is obsolete code, provided for backwards
         # compatibility with the days before detector metrology was
