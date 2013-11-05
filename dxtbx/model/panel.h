@@ -479,7 +479,7 @@ namespace dxtbx { namespace model {
 
     /** Get the mask array */
     scitbx::af::shared<int4> get_mask() const {
-      scitbx::af::shared<int4> result;
+      scitbx::af::shared<int4> result((scitbx::af::reserve(mask_.size())));
       std::copy(mask_.begin(), mask_.end(), std::back_inserter(result));
       return result;
     }
