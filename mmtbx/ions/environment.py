@@ -17,68 +17,66 @@ from scitbx.math import gaussian_fit_1d_analytical
 from scitbx.matrix import col
 
 # Enums for the chemical environments supported by this module
-chem_carboxy = 1
-chem_amide = 2
-chem_backbone = 3
-chem_water = 4
-chem_sulfate = 5
-chem_phosphate = 6
-chem_disulfide = 7
-chem_nitrogen_primary = 8
-chem_nitrogen_secondary = 9
-chem_nitrogen_tertiary = 10
-chem_chlorine = 11
-chem_oxygen = 12
-chem_nitrogen = 13
-chem_sulfur = 14
+N_SUPPORTED_ENVIRONMENTS = 14
+chem_carboxy, \
+  chem_amide, \
+  chem_backbone, \
+  chem_water, \
+  chem_sulfate, \
+  chem_phosphate, \
+  chem_disulfide, \
+  chem_nitrogen_primary, \
+  chem_nitrogen_secondary, \
+  chem_nitrogen_tertiary, \
+  chem_chlorine, \
+  chem_oxygen, \
+  chem_nitrogen, \
+  chem_sulfur = range(N_SUPPORTED_ENVIRONMENTS)
 
 METAL_SERVER = server()
 
-class Environment (object):
-  def __init__(self, i_seq, contacts, manager, fo_map = None, chemistry = True,
-               geometry = True, anomalous = True):
-    # XXX: API Questions, should each of these be enable-able? Or should we just
-    # collect what information we can when it is there (i.e. electron_density
-    # when fo_map is not None)
-    #
-    # Additionally, should we pass contacts? Or just gather that on the fly?
-    # Should we store the geometry / chemical environment? Or generate those on
-    # the fly / cache too?
-    self.atom = manager.pdb_atoms[i_seq].fetch_labels()
-    # XXX: Is this slow to fetch? Useful to have it on hand for classification
-    # when the reference to manager is lost / destroyed
+class ScatteringEnvironment (object):
+  def __init__(self, i_seq, manager, fo_map):
+    atom = manager.pdb_atoms[i_seq]
     self.d_min = manager.fmodel.f_obs().d_min()
     self.wavelength = manager.wavelength
+    self.fp, self.fpp = manager.get_fp(i_seq), manager.get_fpp(i_seq)
+    self.electron_density = _fit_gaussian(manager, atom.xyz, fo_map)
+    self.b_iso = manager.get_b_iso(i_seq)
+    self.occ = atom.occ
 
-    if chemistry:
-      self.chemistry = self._get_chemical_environment(contacts, manager)
-    else:
-      self.chemistry = None
+class ChemicalEnvironment (object):
+  def __init__(self, i_seq, contacts, manager):
+    self.atom = manager.pdb_atoms[i_seq].fetch_labels()
 
-    if geometry:
-      self.geometry = ions.geometry.find_coordination_geometry(
-        contacts, minimizer_method = True)
-    else:
-      geometry = None
+    self.contacts = contacts
+    self.contacts_no_alts = []
 
-    if fo_map is not None:
-      self.electron_density = _fit_gaussian(
-        manager, self.atom.xyz, fo_map)
-    else:
-      self.electron_density = None, None
+    # Filter down the list of contacts so it doesn't include alt locs
+    for index, contact in enumerate(contacts):
+      if contact.element in ["H", "D"]:
+        continue
 
-    if anomalous:
-      self.fp, self.fpp = manager.get_fp(i_seq), manager.get_fpp(i_seq)
-    else:
-      self.fp, self.fpp = None, None
+      no_alt_loc = True
+      for other_contact in contacts[index + 1:]:
+        if ions.same_atom_different_altloc(contact.atom, other_contact.atom) and \
+          contact.rt_mx == other_contact.rt_mx:
+          no_alt_loc = False
+          break
+      if no_alt_loc:
+        self.contacts_no_alts.append(contact)
+
+    self.chemistry = self._get_chemical_environment(
+      self.contacts_no_alts, manager)
+    self.geometry = ions.geometry.find_coordination_geometry(
+      self.contacts_no_alts, minimizer_method = True)
 
     # We can either store the contacts or generate a list of valences for all of
     # the atom types we want to test. I'm choosing the former because it's more
     # flexible down the road and contacts is pickable anyways.
-    self.contacts = contacts
     # self.valences = None
 
-  def _get_valence(self, element, charge = None):
+  def get_valence(self, element, charge = None):
     """
     Calculates the BVS and VECSUM for a given element / charge identity.
 
@@ -168,19 +166,7 @@ class Environment (object):
 
     chem_env = Counter()
 
-    # Filter down the list of contacts so it doesn't include alt locs
-    non_alt_locs = []
-    for index, contact in enumerate(contacts):
-      no_alt_loc = True
-      for other_contact in contacts[index + 1:]:
-        if ions.same_atom_different_altloc(contact.atom, other_contact.atom) and \
-          contact.rt_mx == other_contact.rt_mx:
-          no_alt_loc = False
-          break
-      if no_alt_loc:
-        non_alt_locs.append(contact)
-
-    for contact in non_alt_locs:
+    for contact in contacts:
       # Add any of our included elements
       element = contact.element
       i_seq = contact.atom.i_seq
