@@ -22,8 +22,6 @@ namespace dxtbx { namespace af { namespace boost_python {
 
   BOOST_PYTHON_MODULE(dxtbx_array_family_flex_ext)
   {
-    scitbx::af::boost_python::flex_wrapper <int4>::plain("flex_int4");  
-  
     export_flex_panel();
   }
 
