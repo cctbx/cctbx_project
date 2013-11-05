@@ -47,6 +47,7 @@ namespace {
     ;
     shared_wrapper<mat3<int> >::wrap("mat3_int");
     shared_wrapper<tiny<int, 3> >::wrap("tiny_int_3");
+    shared_wrapper<tiny<int, 4> >::wrap("tiny_int_4");
     shared_wrapper<tiny<int, 2> >::wrap("tiny_int_2");
       // used by scitbx.iso_surface
   }
