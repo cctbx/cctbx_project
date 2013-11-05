@@ -7,7 +7,7 @@ import sys
 from collections import OrderedDict, Counter
 
 import libtbx
-from mmtbx.ions.environment import Environment
+from mmtbx.ions.environment import ChemicalEnvironment
 from mmtbx import ions
 import mmtbx.monomer_library.pdb_interpretation
 from mmtbx import monomer_library
@@ -192,9 +192,11 @@ def exercise () :
 
     for index, metal, expected_environment in \
       zip(xrange(len(metals)), metals, expected_environments):
-      contacts = manager.find_nearby_atoms(metal, filter_by_two_fofc = False)
-      env = Environment(metal, contacts, manager, geometry = False,
-                        anomalous = False)
+      env = ChemicalEnvironment(
+        metal,
+        manager.find_nearby_atoms(metal, filter_by_two_fofc = False),
+        manager
+        )
       if env.chemistry != expected_environment:
         print "Problem detecting chemistry environment in", model, index
         print "Found:    ", env.chemistry
