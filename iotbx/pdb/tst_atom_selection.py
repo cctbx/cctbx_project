@@ -393,11 +393,11 @@ END
 ATOM      5  CA  SER     1       9.242  30.200  62.974  1.00 46.62
 ATOM     11  O   HOH     2      12.548  28.316  63.532  1.00 30.20
 ATOM     21  O   WAT C   3J     13.947  29.997  64.680  1.00 22.94           O
-ATOM     22  CA  NON     3J     14.902  31.100  64.827  1.00 20.19
+ATOM     22  CA  NON     3J     14.902  31.100  64.827  0.50 20.19
 ATOM     42  CA  PRO     5      14.902  31.100  64.827  1.00 20.19
 ATOM     44  O   PRO     5      16.545  29.521  64.086  1.00 19.76
-HETATM   45  O  ZHOH     6      16.545  29.521  64.086  1.00 19.76
-HETATM   4   O  KHOH     6      16.545  29.521  64.086  1.00 19.76
+HETATM   45  O  ZHOH     6      16.545  29.521  64.086  0.00 19.76
+HETATM   4   O  KHOH     6      16.545  29.521  64.086  0.00 19.76
 """)).construct_hierarchy()
   sel_cache = hierarchy.atom_selection_cache()
   isel = sel_cache.iselection
@@ -405,6 +405,9 @@ HETATM   4   O  KHOH     6      16.545  29.521  64.086  1.00 19.76
   #
   assert list(isel("bfactor < 20")) == [5,6,7]
   assert list(isel("name CA and bfactor = 20.19")) == [3,4]
+  assert list(isel("occupancy > 0")) == [0,1,2,3,4,5]
+  assert list(isel("occupancy < 1")) == [3,6,7]
+  assert list(isel("occupancy = 0")) == [6,7]
 
 def run():
   exercise_selection()
