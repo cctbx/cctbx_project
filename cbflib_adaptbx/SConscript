@@ -25,7 +25,7 @@ if (env_etc.compiler == "win32_cl"):
     "/DCBF_NO_REGEX",
     "/Dmalloc=malloc", # work around problem in bison-generated cbf_stx.c
     "/Dfree=free"])
-elif (env_etc.compiler.endswith("_mingw")):
+else :
   env.Append(CCFLAGS=["-DCBF_NO_REGEX"])
 
 prefix = "#"+os.path.basename(env_etc.cbflib_dist)
@@ -48,6 +48,7 @@ env.StaticLibrary(target='#lib/cbf',
     "src/cbf_context.c",
     "src/cbf_file.c",
     "src/cbf_lex.c",
+    "src/cbf_nibble_offset.c",
     "src/cbf_packed.c",
     "src/cbf_predictor.c",
     "src/cbf_read_binary.c",
