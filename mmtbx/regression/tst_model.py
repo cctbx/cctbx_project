@@ -365,6 +365,23 @@ def exercise_h_counts():
   assert approx_equal(hc.hrot_fraction_of_total , 13.02, 0.01)
   model.show_h_counts()
 
+def exercise_5():
+  pdb_str = """
+CRYST1   98.237   98.237   87.605  90.00  90.00 120.00 P 31 2 1     18
+HETATM 2731  O  AHOH A 380      19.567  26.060  41.021  0.50 32.01           O
+ANISOU 2731  O  AHOH A 380     4916   4203   3042    782    151  -1380       O
+HETATM 2732  O  BHOH A 380      19.179  25.528  38.229  0.50 20.88           O
+ANISOU 2732  O  BHOH A 380     3169   2234   2532   1183    675   -168       O
+"""
+  of = open("exercise_5.pdb", "w")
+  print >> of, pdb_str
+  of.close()
+  import mmtbx.utils
+  model = mmtbx.utils.model_simple(pdb_file_names=["exercise_5.pdb"],
+    scattering_table="n_gaussian")
+  result = model.extract_water_residue_groups()
+  assert len(result)==1
+
 def run():
   exercise()
   exercise_2()
@@ -372,6 +389,7 @@ def run():
   exercise_4()
   exercise_convert_atom()
   exercise_h_counts()
+  exercise_5()
   print format_cpu_times()
 
 if (__name__ == "__main__"):
