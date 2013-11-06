@@ -23,19 +23,6 @@ class _(boost.python.injector, ext.dps_extended):
   def set_detector(self,input_detector):
     self.detector = input_detector
 
-  def set_detecXXXtor_position(self,origin,d1,d2): # optional, alternate form
-    # Deprecate this because it turns out we actually use pixel size
-    # for plotting the beam search scope.  It gives us a useful length scale.
-    from dxtbx.model.detector import detector_factory
-    self.detector = detector_factory.make_detector(
-      stype = "indexing",
-      fast_axis = d1,
-      slow_axis = d2,
-      origin = origin,
-      pixel_size = (1.0,1.0),  #not actually using pixels for indexing
-      image_size = (100,100),  #not using pixels
-      )
-
   @staticmethod
   def raw_spot_positions_mm_to_S1_vector( raw_spot_input, # as vec3_double
       detector, inverse_wave,

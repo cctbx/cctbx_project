@@ -120,7 +120,7 @@ rstbx::indexing_api::raw_spot_positions_mm_to_reciprocal_space_xyz(
 
       // raw_spot_input[n][2] MUST be given in degrees.
     reciprocal_space_vectors.push_back( lab_recip.rotate_around_origin(
-      axis, raw_spot_input[n][2] * scitbx::constants::pi_180) );
+      axis, -raw_spot_input[n][2] * scitbx::constants::pi_180) );
   }
   return reciprocal_space_vectors;
 
@@ -151,7 +151,7 @@ rstbx::indexing_api::raw_spot_positions_mm_to_reciprocal_space_xyz(
 
       // raw_spot_input[n][2] MUST be given in degrees.
     reciprocal_space_vectors.push_back( lab_recip.rotate_around_origin(
-      axis, raw_spot_input[n][2] * scitbx::constants::pi_180) );
+      axis, -raw_spot_input[n][2] * scitbx::constants::pi_180) );
   }
   return reciprocal_space_vectors;
 
