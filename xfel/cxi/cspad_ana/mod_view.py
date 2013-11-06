@@ -22,58 +22,105 @@ import thread
 import threading
 import time
 
-from iotbx.detectors.detectorbase import DetectorImageBase
+from dxtbx.format.FormatPYunspecified import FormatPYunspecified
+from iotbx.detectors.npy import NpyImage
 from rstbx.viewer.frame import XrayFrame
 from xfel.cxi.cspad_ana import common_mode, cspad_tbx
 
 
-class _ImgDict(DetectorImageBase):
-  """Minimal detector class for in-memory dictionary representation of
-  images.
+class _Format(FormatPYunspecified):
+  """Minimal Format class for in-memory dxtbx representation of
+  FormatPYunspecified images.
   """
 
-  def __init__(self, data, parameters):
-    """self.vendortype is required to guess the beam centre
-    convention.
+  def __init__(self, **kwargs):
+    """The _Format constructor builds a dxtbx Format instance from the
+    supplied keyworded arguments.  It should be equivalent to the
+    FormatPYunspecified constructor.
     """
 
-    super(_ImgDict, self).__init__('')
-    self.parameters = parameters
-    self.vendortype = 'npy_raw'
-    self.bin_safe_set_data(data)
+    from copy import deepcopy
 
+    from dxtbx.model.beam import Beam, beam_factory
+    from dxtbx.model.detector import Detector, detector_factory
+    from dxtbx.model.goniometer import Goniometer, goniometer_factory
+    from dxtbx.model.scan import Scan, scan_factory
 
-  def readHeader(self):
-    pass
+    from spotfinder.applications.xfel import cxi_phil
+    from xfel.detector_formats import detector_format_version
 
+    class _ImgDict(NpyImage):
+      """Minimal iotbx detector class for in-memory dictionary
+      representation of NpyImage images.
+      """
 
-  def read(self):
-    pass
+      def __init__(self, data, parameters):
+        """self.vendortype is required to guess the beam centre convention.
+        """
 
+        super(_ImgDict, self).__init__('')
+        self.parameters = parameters
+        self.vendortype = 'npy_raw'
+        self.bin_safe_set_data(data)
 
-def _image_factory(img_dict):
-  """The ImageFactory() function splits @p img_dict into a parameter
-  dictionary suitable for iotbx.detectors.DetectorImageBase, and a
-  separate image data object.  The function relies on constants from
-  cspad_tbx.  See also iotbx.detectors.NpyImage.
-  """
+      def readHeader(self):
+        pass
 
-  parameters = dict(
-    BEAM_CENTER_X=img_dict['PIXEL_SIZE'] * img_dict['BEAM_CENTER'][0],
-    BEAM_CENTER_Y=img_dict['PIXEL_SIZE'] * img_dict['BEAM_CENTER'][1],
-    CCD_IMAGE_SATURATION=img_dict['SATURATED_VALUE'],
-    DISTANCE=img_dict['DISTANCE'],
-    OSC_RANGE=0,
-    OSC_START=0,
-    PIXEL_SIZE=img_dict['PIXEL_SIZE'],
-    SATURATED_VALUE=img_dict['SATURATED_VALUE'],
-    SIZE1=img_dict['DATA'].focus()[0],
-    SIZE2=img_dict['DATA'].focus()[1],
-    WAVELENGTH=img_dict['WAVELENGTH'])
-  return _ImgDict(img_dict['DATA'], parameters)
+      def read(self):
+        pass
 
-from iotbx import detectors
-detectors.ImageFactory = _image_factory
+    # From Format.__init__().
+    self._goniometer_factory = goniometer_factory
+    self._detector_factory = detector_factory
+    self._beam_factory = beam_factory
+    self._scan_factory = scan_factory
+
+    # From FormatPYunspecified._start().  Split the keyworded
+    # arguments into a parameter dictionary suitable for
+    # iotbx.detectors.npy.NpyImage and a separate image data object.
+    parameters = dict(
+      BEAM_CENTER_X=kwargs['PIXEL_SIZE'] * kwargs['BEAM_CENTER'][0],
+      BEAM_CENTER_Y=kwargs['PIXEL_SIZE'] * kwargs['BEAM_CENTER'][1],
+      CCD_IMAGE_SATURATION=kwargs['SATURATED_VALUE'],
+      DISTANCE=kwargs['DISTANCE'],
+      OSC_RANGE=0,
+      OSC_START=0,
+      PIXEL_SIZE=kwargs['PIXEL_SIZE'],
+      SATURATED_VALUE=kwargs['SATURATED_VALUE'],
+      SIZE1=kwargs['DATA'].focus()[0],
+      SIZE2=kwargs['DATA'].focus()[1],
+      WAVELENGTH=kwargs['WAVELENGTH'])
+    self.detectorbase = _ImgDict(kwargs['DATA'], parameters)
+
+    version_lookup = detector_format_version(
+      kwargs['DETECTOR_ADDRESS'],
+      kwargs['TIME_TUPLE'][0])
+    params = cxi_phil.cxi_versioned_extract(
+      "distl.detector_format_version=" + version_lookup)
+
+    # Necessary to keep the phil parameters for subsequent calls to
+    # get_tile_manager().
+    horizons_phil = params.persist.commands
+
+    self.detectorbase.translate_tiles(horizons_phil)
+    self.detectorbase.horizons_phil_cache = deepcopy(horizons_phil)
+
+    # From Format.setup().
+    goniometer_instance = self._goniometer()
+    assert(isinstance(goniometer_instance, Goniometer))
+    self._goniometer_instance = goniometer_instance
+
+    detector_instance = self._detector()
+    assert(isinstance(detector_instance, Detector))
+    self._detector_instance = detector_instance
+
+    beam_instance = self._beam()
+    assert(isinstance(beam_instance, Beam))
+    self._beam_instance = beam_instance
+
+    scan_instance = self._scan()
+    assert(isinstance(scan_instance, Scan))
+    self._scan_instance = scan_instance
 
 
 class _XrayFrameThread(threading.Thread):
@@ -255,7 +302,7 @@ def _xray_frame_process(queue, linger=True, wait=None):
       # if the viewer process exits during this call.  XXX This may be
       # dangerous!
       try:
-        send_data(rstbx.viewer.image(payload[0]), payload[1])
+        send_data(rstbx.viewer.image(_Format(**payload[0])), payload[1])
       except Exception:
         pass
     except Queue.Empty:
@@ -407,11 +454,17 @@ class mod_view(common_mode.common_mode_correction):
       # it a new image, and ensure not to hang if the viewer process
       # exits.  Because of multithreading/multiprocessing semantics,
       # self._queue.empty() is unreliable.
+      #
+      # XXX Could in principle construct the Format object here, but
+      # that will not not work until all the components of a Format
+      # instance are pickleable.
       img_obj = (dict(BEAM_CENTER=beam_center,
                       DATA=self.img_sum / self.nvalid,
+                      DETECTOR_ADDRESS=self.address,
                       DISTANCE=distance,
                       PIXEL_SIZE=pixel_size,
                       SATURATED_VALUE=saturated_value,
+                      TIME_TUPLE=cspad_tbx.evt_time(evt),
                       WAVELENGTH=self.wavelength),
                  title)
 
@@ -442,4 +495,5 @@ class mod_view(common_mode.common_mode_correction):
       self._queue.put(None)
     except Exception:
       pass
+    self.logger.info("endjob(): end of stream")
     self._proc.join()
