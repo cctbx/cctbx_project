@@ -417,7 +417,7 @@ class manager(object):
               o_found = 0
               for e in elements:
                 if(e.strip().upper() == 'O'): o_found += 1
-              if(o_found != 1):
+              if(o_found == 0):
                 print >> self.log
                 for a in r.atoms():
                   print >> self.log, a.format_atom_record()
