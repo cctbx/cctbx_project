@@ -1191,7 +1191,7 @@ class Manager (object) :
     # If we can't find anything reasonable, relax our constraints...
     # Look for something that is a compatible ligand, an apparent fpp,
     # and compatible geometries
-    if (len(reasonable) == 0) :
+    if (len(reasonable) == 0) and (not self.params.require_valence) :
       compatible = [params for params in filtered_candidates
                     if atom_props.has_compatible_ligands(str(params))]
       for ion_params in compatible :
