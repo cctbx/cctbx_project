@@ -360,6 +360,8 @@ class reference_model(object):
           if ref_chain is not None:
             if len(ref_chain)==1:
               ref_chain = ' '+ref_chain
+            elif len(ref_chain)==0:
+              ref_chain = '  '
             key = \
               re.sub(r"(.{5}\D{3})(.{2})(.{4})",r"\1"+ref_chain+r"\3",key)
           if offset != 0:
