@@ -2,6 +2,10 @@
 """
 A script to open a model and its data and dump out all information about its
 ions sites to a pickle file.
+
+Run this module with:
+
+phenix.python -m mmtbx.ions.svm.dump_sites [args]
 """
 from __future__ import division
 
