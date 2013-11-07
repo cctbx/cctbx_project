@@ -64,7 +64,7 @@ def address_split(address):
   already exists somewhere in pyana.  XXX Return dictionary or some
   such instead?
 
-  @param address Address string XXX Que?!
+  @param address Full data source address of the DAQ device
   @return        Four-tuple of detector name, detector ID, device, and
                  device ID
   """
@@ -258,7 +258,7 @@ def CsPadDetector(address, evt, env, sections, right=True):
   information in @p sections.  XXX General question: do
   variable/function names make sense?
 
-  @param address  Address string XXX Que?!
+  @param address  Full data source address of the DAQ device
   @param evt      Event data object, a configure object
   @param env      Environment object
   @param sections XXX Directory with calibration information
@@ -589,7 +589,7 @@ def env_detz(address, env):
   far away as possible from the sample, and values decrease as the
   detector is moved towards the sample.
 
-  @param address Address string XXX Que?!
+  @param address Full data source address of the DAQ device
   @param env     Environment object
   @return        Detector z-position, in mm
   """
@@ -600,6 +600,12 @@ def env_detz(address, env):
       return None
     elif detector == 'CxiDs1':
       pv = env.epicsStore().value('CXI:DS1:MMS:06.RBV')
+      if pv is None:
+        # Even though potentially unsafe, fall back on the commanded
+        # value if the corresponding read-back value cannot be read.
+        # According to Sébastien Boutet, this particular motor has not
+        # caused any problem in the past.
+        pv = env.epicsStore().value('CXI:DS1:MMS:06')
     elif detector == 'CxiDsd':
       # XXX Note inconsistency in naming: Dsd vs Ds2!
       pv = env.epicsStore().value('CXI:DS2:MMS:06.RBV')
@@ -624,8 +630,8 @@ def env_distance(address, env, offset):
   Sébastien Boutet the offset should be stable to within ±0.5 mm
   during a normal experiment.
 
+  @param address Full data source address of the DAQ device
   @param env     Environment object
-  @param address Address string XXX Que?!
   @param offset  Detector-sample offset in mm, corresponding to
                  longest detector-sample distance
   @return        Detector-sample distance, in mm
@@ -777,7 +783,7 @@ def evt_repetition_rate(evt, address='*'):
   https://confluence.slac.stanford.edu/display/PCDS/EVR+Event+Codes
 
   @param evt     Event data object, a configure object
-  @param address XXX
+  @param address Data source address of the DAQ device
   @return        Integer repetition rate, in Hz
   """
 
@@ -1017,7 +1023,7 @@ def image(address, config, evt, env, sections=None):
   Would be nice to get rid of the constant string names.  XXX Better
   named evt_image()?
 
-  @param address  Address string XXX Que?!
+  @param address  Full data source address of the DAQ device
   @param config   XXX This should go--get up-to-date object on the fly!
   @param evt      Event data object, a configure object
   @param env      Environment object
@@ -1081,7 +1087,7 @@ def image_central(address, config, evt, env):
   arrays from the sections closest to the detector centre for each
   quadrant.
 
-  @param address Address string XXX Que?!
+  @param address Full data source address of the DAQ device
   @param config  XXX
   @param evt     Event data object, a configure object
   @param env     Environment object
@@ -1131,7 +1137,7 @@ def image_xpp(address, evt, env, aa):
   cspad_tbx.CsPadDetector().  XXX Documentation! XXX Would be nice to
   get rid of the constant string names.  XXX Better named evt_image()?
 
-  @param address Address string XXX Que?!
+  @param address Full data source address of the DAQ device
   @param evt     Event data object, a configure object
   @param env     Environment object
   @param aa      Active areas, in lieue of full metrology object
