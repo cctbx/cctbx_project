@@ -42,6 +42,7 @@ def run(args):
   if ((work_params.run_numbers is None and work_params.outdir_template is None) or
       (work_params.outdir_template is None) or
       (work_params.bravais_setting_id is None)) :
+    from libtbx.utils import Usage
     raise Usage("cxi.plotcv "
                 "run_numbers=16,17,18,19,20,21,22,23,24,25,26,27,71,72,73 "
                 "outdir_template=/reg/data/ana11/cxi/cxi49812/scratch/april_2012/r%%04d/042/stdout "
