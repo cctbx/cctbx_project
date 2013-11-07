@@ -61,6 +61,12 @@ class mutable(slots_getstate_setstate):
   def __init__(O, value):
     O.value = value
 
+class slots_getstate_setstate_default_initializer (slots_getstate_setstate) :
+  def __init__ (self, **kwds) :
+    kwds = dict(kwds)
+    for key in kwds :
+      setattr(self, key, kwds.get(key, None))
+
 class unpicklable(object):
 
   def raise_error(O):

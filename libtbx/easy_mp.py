@@ -448,7 +448,7 @@ def parallel_map (
   from libtbx.queuing_system_utils import scheduling
   from libtbx.queuing_system_utils import processing
   assert ((method in ["multiprocessing", "threading"]) or
-          (method in processing.INTERFACE_FOR.keys()))
+          (method in processing.INTERFACE_FOR.keys())), method
   assert (callback is None) or (hasattr(callback, "__call__"))
   results = []
   # if we aren't actually going to run multiple processes or use a queuing
