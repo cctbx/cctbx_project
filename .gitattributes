@@ -1628,6 +1628,7 @@ mmtbx/ions/geometry.py -text
 mmtbx/ions/ion_parameters.cif -text
 mmtbx/ions/parameters.py -text
 mmtbx/ions/svm/__init__.py -text
+mmtbx/ions/svm/dump_sites.py -text
 mmtbx/ions/svm/tst_vector.py -text
 mmtbx/ions/tst_environment.py -text
 mmtbx/ions/tst_geometries.py -text
