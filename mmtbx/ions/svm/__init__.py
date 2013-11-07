@@ -18,10 +18,8 @@ from mmtbx import ions
 from mmtbx.ions.environment import N_SUPPORTED_ENVIRONMENTS
 from mmtbx.ions.geometry import SUPPORTED_GEOMETRY_NAMES, \
      find_coordination_geometry
-from mmtbx.ions.parameters import MetalParameters
-from mmtbx.ions.parameters import server as ions_server
+from mmtbx.ions.parameters import MetalParameters, get_server
 
-METAL_SERVER = None
 ALLOWED_IONS = [ions.WATER_RES_NAMES[0]] + ["MN", "ZN", "FE", "NI", "CA"]
 
 def ion_class(chem_env):
@@ -42,7 +40,7 @@ def ion_class(chem_env):
     return chem_env.atom.segid.strip().upper()
   return chem_env.atom.resname.strip().upper()
 
-def ion_vector(chem_env, scatter_env, server = None):
+def ion_vector(chem_env, scatter_env):
   """
   Creates a vector containing all of the useful properties contained
   within ion. Merges together the vectors from ion_*_vector().
@@ -54,8 +52,6 @@ def ion_vector(chem_env, scatter_env, server = None):
   scatter_env: mmtbx.ions.environment.ScatteringEnvironment, optional
       An object containing information about the scattering environment at a
       site.
-  server: mmtbx.ions.parameters.server, optional
-      A server used to find charges of elements.
 
   Returns
   -------
@@ -71,17 +67,12 @@ def ion_vector(chem_env, scatter_env, server = None):
   ion_valence_vector()
   ion_anomalous_vector()
   """
-  if server is None:
-    global METAL_SERVER
-    if METAL_SERVER is None:
-      METAL_SERVER = ions_server()
-    server = METAL_SERVER
   return np.concatenate((
     ion_model_vector(scatter_env),
     ion_electron_density_vector(scatter_env),
     ion_geometry_vector(chem_env),
     ion_nearby_atoms_vector(chem_env),
-    ion_valence_vector(chem_env, server = server),
+    ion_valence_vector(chem_env),
     ion_anomalous_vector(scatter_env),
     ))
 
@@ -209,9 +200,10 @@ def ion_nearby_atoms_vector(chem_env, environments = None):
   if environments is None:
     environments = range(N_SUPPORTED_ENVIRONMENTS)
 
-  return np.fromiter((chem_env.chemistry[i] for i in environments), dtype = float)
+  return np.fromiter((chem_env.chemistry[i] for i in environments),
+                     dtype = float)
 
-def ion_valence_vector(chem_env, elements = None, server = None):
+def ion_valence_vector(chem_env, elements = None):
   """
   Calculate the BVS and VECSUM values for a variety of ion identities.
 
@@ -222,8 +214,6 @@ def ion_valence_vector(chem_env, elements = None, server = None):
   elements: list of str, optional
       A list of elements to compare the experimental BVS and VECSUM
       against. If unset, takes the list from mmtbx.ions.ALLOWED_IONS.
-  server: mmtbx.ions.parameters.server, optional
-      A server used to find charges of elements.
 
   Returns
   -------
@@ -231,15 +221,11 @@ def ion_valence_vector(chem_env, elements = None, server = None):
       A vector containing quantitative properties for classification.
   """
 
-  if server is None:
-    global METAL_SERVER
-    if METAL_SERVER is None:
-      METAL_SERVER = ions_server()
-    server = METAL_SERVER
   if elements is None:
     elements = [i for i in ALLOWED_IONS if i not in ions.WATER_RES_NAMES]
 
   ret = []
+  server = get_server()
 
   for element in elements:
     ret.append(chem_env.get_valence(
