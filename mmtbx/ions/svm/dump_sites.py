@@ -3,13 +3,11 @@
 A script to open a model and its data and dump out all information about its
 ions sites to a pickle file.
 """
-from __future__ import division, print_function
+from __future__ import division
 
 import os
 from cPickle import dump
 import sys
-
-from ion_utils import iterate_sites
 
 from cctbx.eltbx import sasaki
 from iotbx.file_reader import any_file
@@ -18,7 +16,8 @@ from libtbx.utils import Usage
 from libtbx.phil import parse
 from mmtbx import ions
 from mmtbx.ions.environment import ChemicalEnvironment, ScatteringEnvironment
-from mmtbx.ions.parameters import server
+from mmtbx.ions.parameters import get_server
+from mmtbx.ions.svm.utils import iterate_sites
 from mmtbx.utils import cmdline_load_pdb_and_data
 
 master_phil = parse("""
@@ -34,9 +33,7 @@ nproc = Auto
   .type = int
 """, process_includes = True)
 
-METAL_SERVER = server()
-
-def _main(args, out = sys.stdout):
+def main(args, out = sys.stdout):
   if len(args) == 0 or "--help" in args:
     raise Usage("""\
 mmtbx.dump_sites model.pdb data.mtz [options ...]
@@ -63,9 +60,8 @@ Full parameters:
       force_type="pdb")
     wavelength = pdb_in.file_object.extract_wavelength()
     if wavelength is not None:
-      print("", file = out)
-      print("Using wavelength = {} from PDB header".format(wavelength),
-            file = out)
+      print >> out, ""
+      print >> out, "Using wavelength = {} from PDB header".format(wavelength)
       params.wavelength = wavelength
 
   if params.wavelength is not None:
@@ -93,7 +89,7 @@ Full parameters:
   sites = dump_sites(manager)
 
   out_name = os.path.splitext(params.input.pdb.file_name[0])[0] + "_sites.pkl"
-  print("Dumping to", out_name)
+  print >> out, "Dumping to", out_name
 
   with open(out_name, "w") as f:
     dump(sites, f)
@@ -132,4 +128,4 @@ def dump_sites (manager):
   return properties
 
 if __name__ == "__main__":
-  _main(sys.argv[1:])
+  main(sys.argv[1:])
