@@ -29,6 +29,8 @@ def exercise():
 
   os.remove(pdb_file)
   os.remove(mtz_file)
+  os.remove(sites_path)
+  os.remove(os.path.splitext(pdb_file)[0] + "_fmodel.eff")
 
   print "OK"
 
