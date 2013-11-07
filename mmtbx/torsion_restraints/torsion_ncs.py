@@ -903,9 +903,11 @@ class torsion_ncs(object):
           is_proline = False
           chi_matching = True
           if len(rotamer_state) > 0:
-            if rotamer_state[i][0] in ['OUTLIER', 'Cg_exo', 'Cg_endo']:
+            if rotamer_state[i][0] in ['UNCLASSIFIED', 'OUTLIER',
+                                       'Cg_exo', 'Cg_endo']:
               nonstandard_chi = True
-            elif rotamer_state[j][0] in ['OUTLIER', 'Cg_exo', 'Cg_endo']:
+            elif rotamer_state[j][0] in ['UNCLASSIFIED', 'OUTLIER',
+                                         'Cg_exo', 'Cg_endo']:
               nonstandard_chi = True
             if rotamer_state[i][0] in ['Cg_exo', 'Cg_endo'] or \
                rotamer_state[j][0] in ['Cg_exo', 'Cg_endo']:
