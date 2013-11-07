@@ -133,6 +133,9 @@ class rotalyze (validation) :
                   kwargs['outlier'] = False
                   kwargs['rotamer_name'] = rotamer_id.identify(resname,
                     wrap_chis)
+                  #deal with unclassified rotamers
+                  if kwargs['rotamer_name'] == '':
+                    kwargs['rotamer_name'] = "UNCLASSIFIED"
                 while (len(wrap_chis) < 4) :
                   wrap_chis.append(None)
                 kwargs['chi_angles'] = wrap_chis
@@ -207,7 +210,7 @@ def evaluate_rotamer(
 def split_rotamer_names(rotamer):
   split_rotamer = []
   multi = ""
-  if rotamer in ['OUTLIER', 'Cg_exo', 'Cg_endo']:
+  if rotamer in ['UNCLASSIFIED', 'OUTLIER', 'Cg_exo', 'Cg_endo']:
     split_rotamer.append(rotamer)
     return split_rotamer
   for i, c in enumerate(rotamer):
