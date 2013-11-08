@@ -3,84 +3,13 @@ from libtbx.phil.command_line import argument_interpreter as model_argument_inte
 from libtbx.utils import Sorry
 from spotfinder.command_line.signal_strength import additional_spotfinder_phil_defs # implicit import
 
-libtbx_defs = """\
-
-include scope spotfinder.command_line.signal_strength.master_params
-spotfinder = *distl speck
-  .type=choice
-  .help = "Choose among spotfinder implementations [distl|speck]"
-
-speckfinder {
-
-  dark_stddev = ""
-    .type = str
-    .help = Mandatory dark standard deviation image for gain correction.
-  dark_adu_scale = 100
-    .type = int
-    .help = "Mandatory scale at which dark was calculated; must be >1 on account of integer rounding."
-}
-
+libtbx_misc_defs = """
 predictions_file = ""
     .type = str
     .help = File has xds parameters for spot predictions in XDS XPARAM format.
 
 parallel = 0
   .type = int
-
-indexing {
-  data = None
-    .type=str
-    .multiple=True
-    .help="Relative or absolute path names for raw image files to be indexed"
-  indexing_pickle = None
-    .type=str
-    .help = "pickle file name for integration results subsequent to indexing."
-  completeness_pickle = None
-    .type=str
-    .help = "pickle file name for HKL, I, SIGI, XY."
-  open_wx_viewer = False
-    .type = bool
-  verbose_cv = False
-    .type = bool
-    .help = "screen printout of the obs vs predicted spot correction vectors,"
-    .help = "for empriical repositioning of the detector tiles."
-  lattice_model_scoring_cutoff = 2.0
-    .type = float
-    .help = Cutoff value for the <Z-score> over integrated signal from the model lattice.
-    .help = Used for choosing the most accurate combination of candidate basis vectors.
-  devel_algorithm = None
-    .type = str
-    .help = for development only, turn on whatever testing behavior
-
-  outlier_detection {
-    allow = True
-      .type = bool
-      .multiple=False
-      .help="Algorithm (Sauter&Poon[2010] J Appl Cryst 43:611) provides superior positional fit with noisy data."
-    switch=False
-      .type=bool
-      .multiple=False
-      .help="Switch to the outlying spots to detect a second lattice. False==first lattice; True==second lattice"
-    verbose=False
-      .type=bool
-      .multiple=False
-      .help="Verbose output."
-    pdf=None
-      .type=str
-      .multiple=False
-      .help="Output file name for making graphs of |dr| vs spot number and dy vs dx."
-  }
-  plot_search_scope = False
-    .type = bool
-    .help = improvement of the model, plot target function of origin offset or S0
-  mm_search_scope = 4.0
-    .type = float
-    .help = global radius of origin_offset search, used for plotting the search scope
-  improve_local_scope = *origin_offset S0_vector
-    .type = choice
-    .help = improve 'beam position' according to Sauter et al (2004).  Local minimum only
-    .help = specifies which parameter to optimize.
-}
 
 integration {
   file_template = None
@@ -139,8 +68,79 @@ integration {
     .help = pixels set to this value will be ignored during integration
 }
 """
+indexing_defs = """
+include scope spotfinder.command_line.signal_strength.master_params
+spotfinder = *distl speck
+  .type=choice
+  .help = "Choose among spotfinder implementations [distl|speck]"
 
-iotbx_defs = """
+speckfinder {
+
+  dark_stddev = ""
+    .type = str
+    .help = Mandatory dark standard deviation image for gain correction.
+  dark_adu_scale = 100
+    .type = int
+    .help = "Mandatory scale at which dark was calculated; must be >1 on account of integer rounding."
+}
+
+indexing {
+  data = None
+    .type=str
+    .multiple=True
+    .help="Relative or absolute path names for raw image files to be indexed"
+  indexing_pickle = None
+    .type=str
+    .help = "pickle file name for integration results subsequent to indexing."
+  completeness_pickle = None
+    .type=str
+    .help = "pickle file name for HKL, I, SIGI, XY."
+  open_wx_viewer = False
+    .type = bool
+  verbose_cv = False
+    .type = bool
+    .help = "screen printout of the obs vs predicted spot correction vectors,"
+    .help = "for empriical repositioning of the detector tiles."
+  lattice_model_scoring_cutoff = 2.0
+    .type = float
+    .help = Cutoff value for the <Z-score> over integrated signal from the model lattice.
+    .help = Used for choosing the most accurate combination of candidate basis vectors.
+  devel_algorithm = None
+    .type = str
+    .help = for development only, turn on whatever testing behavior
+
+  outlier_detection {
+    allow = True
+      .type = bool
+      .multiple=False
+      .help="Algorithm (Sauter&Poon[2010] J Appl Cryst 43:611) provides superior positional fit with noisy data."
+    switch=False
+      .type=bool
+      .multiple=False
+      .help="Switch to the outlying spots to detect a second lattice. False==first lattice; True==second lattice"
+    verbose=False
+      .type=bool
+      .multiple=False
+      .help="Verbose output."
+    pdf=None
+      .type=str
+      .multiple=False
+      .help="Output file name for making graphs of |dr| vs spot number and dy vs dx."
+  }
+  plot_search_scope = False
+    .type = bool
+    .help = improvement of the model, plot target function of origin offset or S0
+  mm_search_scope = 4.0
+    .type = float
+    .help = global radius of origin_offset search, used for plotting the search scope
+  improve_local_scope = *origin_offset S0_vector
+    .type = choice
+    .help = improve 'beam position' according to Sauter et al (2004).  Local minimum only
+    .help = specifies which parameter to optimize.
+}
+"""
+
+iotbx_defs_viewer = """
 viewer {
   powder_arcs{
     show = False
@@ -176,8 +176,8 @@ viewer {
       .help = "Specify spacegroup for the unit cell"
   }
 }
-
-
+"""
+iotbx_defs_target = """
 target_cell=None
   .type=unit_cell
   .multiple=False
@@ -188,6 +188,9 @@ target_cell_centring_type= *P C I R F
   .help="Centring symbol for the target cell"
 
 """
+libtbx_defs = indexing_defs + libtbx_misc_defs
+iotbx_defs = iotbx_defs_viewer + iotbx_defs_target
+indexing_api_defs = indexing_defs + iotbx_defs_target
 
 class EffectiveParamGenerator:
   def __init__(self,libtbx_defs,iotbx_defs):
