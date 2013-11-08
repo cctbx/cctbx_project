@@ -2579,6 +2579,7 @@ input {
 def cmdline_input_phil () :
   return iotbx.phil.parse(cmdline_input_phil_str)
 
+# XXX DEPRECATE, replaced by mmtbx.command_line (__init__.py)
 class cmdline_load_pdb_and_data (object) :
   """
   Wrapper for simple command-line programs which require both model and data.
