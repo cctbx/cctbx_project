@@ -258,19 +258,19 @@ def cxi_versioned_extract(*args):
   elif cxi_version in ["CXI 8.1"]: # developed against "run 4 optical metrology"
     working_extract = working_phil.command_extractor
     corrected_auxiliary_translations = [
-       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0]
+      -1,  3,  2,  2, -1, -1,  1, -1,  0,  1,
+      -1,  2, -1,  2, -1,  3,  2,  2,  2,  2,
+       0,  2,  0,  2,  1,  1,  3, -1,  3,  4,
+       3,  2,  1,  0,  1, -3, -1,  0, -2, -3,
+       0,  1,  1,  0,  1,  2,  2,  2,  2, -1,
+       3, -1,  4,  1,  4,  1,  2, -4,  1, -5,
+       2, -5,  0, -5,  2, -2, -1, -2,  1,  1,
+      -2,  1,  0, -3,  0, -3,  1, -4,  1, -5,
+      -2, -1, -2, -2, -2, -1, -2, -1, -2, -1,
+      -4,  1, -3, -2, -4,  1, -1, -2,  0,  1,
+       2, -1,  2,  2, -1,  1, -2,  0, -2, -1,
+      -2, -2, -3,  2, -5,  3, -5,  3, -5,  3,
+      -1,  3,  0,  4, -1,  4,  1,  4]
 
     from scitbx.array_family import flex
     total_tile_translations = flex.int(corrected_auxiliary_translations)
@@ -279,7 +279,7 @@ def cxi_versioned_extract(*args):
     working_extract.distl.tile_translations = TT
 
     # Order: UL x, UL y, UR x, UR y, LL x, LL y, LR x, LR y
-    working_extract.distl.quad_translations = [-10,5,0,5,-18,-2,-8,-6]
+    working_extract.distl.quad_translations = [-14,7,-4,7,-22,0,-12,-4]
     return working_extract
 
   else:
