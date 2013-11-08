@@ -453,6 +453,11 @@ def parallel_map (
   results = []
   # if we aren't actually going to run multiple processes or use a queuing
   # system, just loop over all arguments and skip the rest of the setup.
+  if (processes in [Auto, None]) :
+    if (not method in ["threading", "multiprocessing"]) :
+      processes = min(256, len(iterable)) # FIXME what should the minimum be?
+    else :
+      processes = get_processes(processes)
   if (processes == 1) and (method in ["threading", "multiprocessing"]) :
     for args in iterable :
       result = func(args)
@@ -509,4 +514,3 @@ def parallel_map (
     if (callback is not None) :
       callback(result)
   return results
-
