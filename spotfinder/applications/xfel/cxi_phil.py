@@ -279,7 +279,14 @@ def cxi_versioned_extract(*args):
     working_extract.distl.tile_translations = TT
 
     # Order: UL x, UL y, UR x, UR y, LL x, LL y, LR x, LR y
+    # Note, these numbers are valid for the CSPAD detector at roughly 100 mm distance
     working_extract.distl.quad_translations = [-14,7,-4,7,-22,0,-12,-4]
+
+    # Due to a slight angle in the rail, if the detector is at the back of its
+    # stage, around 548 mm, use these numbers instead.  They represent a change
+    # of beam center due to a small translation at that distance
+    #working_extract.distl.quad_translations = [-10,5,0,5,-18,-2,-8,-6]
+
     return working_extract
 
   else:
