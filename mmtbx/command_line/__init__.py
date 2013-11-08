@@ -221,6 +221,7 @@ class load_model_and_data (object) :
         else :
           phases_in = file_reader.any_file(phases_file)
           phases_in.check_file_type("hkl")
+        phases_in.file_server.err = out # redirect error output
         point_group = use_symmetry.space_group().build_derived_point_group()
         hl_coeffs = mmtbx.utils.determine_experimental_phases(
           reflection_file_server = phases_in.file_server,
