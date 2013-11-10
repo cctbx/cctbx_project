@@ -49,6 +49,9 @@ class mod_dump_bitmap(common_mode.common_mode_correction):
     self._format = cspad_tbx.getOptString(format)
     self._ext = self._format.lower()
     self._logger = logging.getLogger(self.__class__.__name__)
+    if (not os.path.isdir(self._dirname)):
+      os.makedirs(self._dirname)
+
 
   def event(self, evt, env):
     """The event() function is called for every L1Accept transition.  It
