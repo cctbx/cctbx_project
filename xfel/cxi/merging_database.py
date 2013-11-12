@@ -122,28 +122,19 @@ class manager:
     db = self.connection()
     cursor = db.cursor()
 
-    # For MySQLdb, executemany() is six times slower than the single
-    # big command below.
-    import cStringIO
-    query = cStringIO.StringIO()
-    query.write("""INSERT INTO `%s_observation`
-    (hkl_id_0_base,i,sigi,detector_x,detector_y,frame_id_0_base,overload_flag,original_h,original_k,original_l)
-    VALUES """%self.params.mysql.runtag)
-    firstcomma = ""
-    for i in range(len(kwargs['hkl_id_0_base'])):
-      query.write(firstcomma); firstcomma=","
-      query.write("('%7d','%18.8f','%18.8f','%8.2f','%8.2f','%7d','%d','%d','%d','%d')"%(
-        kwargs['hkl_id_0_base'][i],
-        kwargs['i'][i],
-        kwargs['sigi'][i],
-        kwargs['detector_x'][i],
-        kwargs['detector_y'][i],
-        kwargs['frame_id_0_base'][i],
-        kwargs['overload_flag'][i],
-        kwargs['original_h'][i],
-        kwargs['original_k'][i],
-        kwargs['original_l'][i]))
-    cursor.execute(query.getvalue())
+    # For MySQLdb executemany() is six times slower than a single big
+    # execute() unless the "values" keyword is given in lowercase
+    # (http://sourceforge.net/p/mysql-python/bugs/305).
+    #
+    # See also merging_database_sqlite3._insert()
+    query = ("INSERT INTO `%s_observation` (" % self.params.mysql.runtag) \
+            + ", ".join(kwargs.keys()) + ") values (" \
+            + ", ".join(["%s"] * len(kwargs.keys())) + ")"
+    try:
+      parameters = zip(*kwargs.values())
+    except TypeError:
+      parameters = [kwargs.values()]
+    cursor.executemany(query, parameters)
 
 
   def join(self):
@@ -201,10 +192,10 @@ class manager:
     return [("`"+runtag+"_observation`","""
             (
               hkl_id_0_base INT,
-              i DOUBLE(18,8) NOT NULL,
-              sigi DOUBLE(18,8) NOT NULL,
-              detector_x DOUBLE(8,2) NOT NULL,
-              detector_y DOUBLE(8,2) NOT NULL,
+              i DOUBLE NOT NULL,
+              sigi DOUBLE NOT NULL,
+              detector_x DOUBLE NOT NULL,
+              detector_y DOUBLE NOT NULL,
               frame_id_0_base INT,
               overload_flag INTEGER,
               original_h INT NOT NULL,
@@ -215,29 +206,29 @@ class manager:
             ("`"+runtag+"_frame`","""
             (
               frame_id_1_base INT UNSIGNED AUTO_INCREMENT NOT NULL PRIMARY KEY,
-              wavelength DOUBLE(14,8) NOT NULL,
-              beam_x DOUBLE(14,8) NOT NULL,
-              beam_y DOUBLE(14,8) NOT NULL,
-              distance DOUBLE(14,8) NOT NULL,
-              c_c DOUBLE(10,7) NOT NULL,
-              slope DOUBLE(11,8) NOT NULL,
-              offset DOUBLE(10,2) NOT NULL,
-              res_ori_1 DOUBLE(14,8) NOT NULL,
-              res_ori_2 DOUBLE(14,8) NOT NULL,
-              res_ori_3 DOUBLE(14,8) NOT NULL,
-              res_ori_4 DOUBLE(14,8) NOT NULL,
-              res_ori_5 DOUBLE(14,8) NOT NULL,
-              res_ori_6 DOUBLE(14,8) NOT NULL,
-              res_ori_7 DOUBLE(14,8) NOT NULL,
-              res_ori_8 DOUBLE(14,8) NOT NULL,
-              res_ori_9 DOUBLE(14,8) NOT NULL,
-              rotation100_rad DOUBLE(10,7),
-              rotation010_rad DOUBLE(10,7),
-              rotation001_rad DOUBLE(10,7),
-              half_mosaicity_deg DOUBLE(10,7),
-              wave_HE_ang DOUBLE(14,8),
-              wave_LE_ang DOUBLE(14,8),
-              domain_size_ang DOUBLE(10,2),
+              wavelength DOUBLE NOT NULL,
+              beam_x DOUBLE NOT NULL,
+              beam_y DOUBLE NOT NULL,
+              distance DOUBLE NOT NULL,
+              c_c DOUBLE NOT NULL,
+              slope DOUBLE NOT NULL,
+              offset DOUBLE NOT NULL,
+              res_ori_1 DOUBLE NOT NULL,
+              res_ori_2 DOUBLE NOT NULL,
+              res_ori_3 DOUBLE NOT NULL,
+              res_ori_4 DOUBLE NOT NULL,
+              res_ori_5 DOUBLE NOT NULL,
+              res_ori_6 DOUBLE NOT NULL,
+              res_ori_7 DOUBLE NOT NULL,
+              res_ori_8 DOUBLE NOT NULL,
+              res_ori_9 DOUBLE NOT NULL,
+              rotation100_rad DOUBLE,
+              rotation010_rad DOUBLE,
+              rotation001_rad DOUBLE,
+              half_mosaicity_deg DOUBLE,
+              wave_HE_ang DOUBLE,
+              wave_LE_ang DOUBLE,
+              domain_size_ang DOUBLE,
               unique_file_name MEDIUMTEXT
               ) AUTO_INCREMENT = 1
             """
@@ -255,19 +246,19 @@ class manager:
     return [("`"+runtag+"_spotfinder`","""
             (
               frame_id INT, itile INT,
-              beam1x DOUBLE(10,2) NOT NULL,
-              beam1y DOUBLE(10,2) NOT NULL,
-              beamrx DOUBLE(10,2) NOT NULL,
-              beamry DOUBLE(10,2) NOT NULL,
-              spotfx DOUBLE(10,2) NOT NULL,
-              spotfy DOUBLE(10,2) NOT NULL,
-              spotcx DOUBLE(10,2) NOT NULL,
-              spotcy DOUBLE(10,2) NOT NULL,
+              beam1x DOUBLE NOT NULL,
+              beam1y DOUBLE NOT NULL,
+              beamrx DOUBLE NOT NULL,
+              beamry DOUBLE NOT NULL,
+              spotfx DOUBLE NOT NULL,
+              spotfy DOUBLE NOT NULL,
+              spotcx DOUBLE NOT NULL,
+              spotcy DOUBLE NOT NULL,
               h INT NOT NULL,
               k INT NOT NULL,
               l INT NOT NULL,
-              radialpx DOUBLE(6,3) NOT NULL DEFAULT 0.0,
-              azimutpx DOUBLE(6,3) NOT NULL DEFAULT 0.0
+              radialpx DOUBLE NOT NULL DEFAULT 0.0,
+              azimutpx DOUBLE NOT NULL DEFAULT 0.0
             )
             """),
               ]
