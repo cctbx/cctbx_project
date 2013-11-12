@@ -75,7 +75,7 @@ class manager:
       cursor.execute("CREATE TABLE %s "%table[0]+table[1].replace("\n"," ")+" ;")
     import cStringIO
     query = cStringIO.StringIO()
-    query.write("INSERT INTO %s_miller (h,k,l) VALUES "%self.params.mysql.runtag)
+    query.write("INSERT INTO `%s_miller` (h,k,l) VALUES "%self.params.mysql.runtag)
     firstcomma = ""
     for item in indices:
       query.write(firstcomma); firstcomma=","
@@ -109,7 +109,7 @@ class manager:
     cursor = db.cursor()
 
     (sql, parameters) = self._insert(
-      table='%s_frame' % self.params.mysql.runtag,
+      table='`%s_frame`' % self.params.mysql.runtag,
       **kwargs)
 
     cursor.execute(sql, parameters[0])
@@ -126,7 +126,7 @@ class manager:
     # big command below.
     import cStringIO
     query = cStringIO.StringIO()
-    query.write("""INSERT INTO %s_observation
+    query.write("""INSERT INTO `%s_observation`
     (hkl_id_0_base,i,sigi,detector_x,detector_y,frame_id_0_base,overload_flag,original_h,original_k,original_l)
     VALUES """%self.params.mysql.runtag)
     firstcomma = ""
@@ -155,7 +155,7 @@ class manager:
     cursor = db.cursor()
     from cctbx.array_family import flex
     millers = dict(merged_asu_hkl=flex.miller_index())
-    cursor.execute("SELECT h,k,l FROM %s_miller ORDER BY hkl_id_1_base"%self.params.mysql.runtag)
+    cursor.execute("SELECT h,k,l FROM `%s_miller` ORDER BY hkl_id_1_base"%self.params.mysql.runtag)
     for item in cursor.fetchall():
       millers["merged_asu_hkl"].append((item[0],item[1],item[2]))
     return millers
@@ -163,7 +163,7 @@ class manager:
   def read_observations(self):
     db = self.connection()
     cursor = db.cursor()
-    cursor.execute("SELECT hkl_id_0_base,i,sigi,frame_id_0_base,original_h,original_k,original_l FROM %s_observation"%self.params.mysql.runtag)
+    cursor.execute("SELECT hkl_id_0_base,i,sigi,frame_id_0_base,original_h,original_k,original_l FROM `%s_observation`"%self.params.mysql.runtag)
     ALL = cursor.fetchall()
 
     return dict(hkl_id = flex.int([a[0] for a in ALL]), #as MySQL indices are 1-based
@@ -183,7 +183,7 @@ class manager:
     frame_id_1_base,wavelength,c_c,slope,offset,res_ori_1,res_ori_2,res_ori_3,
     res_ori_4,res_ori_5,res_ori_6,res_ori_7,res_ori_8,res_ori_9,
     unique_file_name
-    FROM %s_frame"""%self.params.mysql.runtag)
+    FROM `%s_frame`"""%self.params.mysql.runtag)
     ALL = cursor.fetchall()
     from cctbx.crystal_orientation import crystal_orientation
     orientations = [crystal_orientation(
@@ -198,7 +198,7 @@ class manager:
                 unit_cell = [CO.unit_cell() for CO in orientations] )
 
   def merging_schema_tables(self,runtag):
-    return [(runtag+"_observation","""
+    return [("`"+runtag+"_observation`","""
             (
               hkl_id_0_base INT,
               i DOUBLE(18,8) NOT NULL,
@@ -212,7 +212,7 @@ class manager:
               original_l INT NOT NULL
             )
             """),
-            (runtag+"_frame","""
+            ("`"+runtag+"_frame`","""
             (
               frame_id_1_base INT UNSIGNED AUTO_INCREMENT NOT NULL PRIMARY KEY,
               wavelength DOUBLE(14,8) NOT NULL,
@@ -242,7 +242,7 @@ class manager:
               ) AUTO_INCREMENT = 1
             """
             ),
-            (runtag+"_miller","""(
+            ("`"+runtag+"_miller`","""(
               hkl_id_1_base INT AUTO_INCREMENT PRIMARY KEY,
               h INT NOT NULL,
               k INT NOT NULL,
@@ -252,7 +252,7 @@ class manager:
             ),
               ]
   def positional_refinement_schema_tables(self,runtag):
-    return [(runtag+"_spotfinder","""
+    return [("`"+runtag+"_spotfinder`","""
             (
               frame_id INT, itile INT,
               beam1x DOUBLE(10,2) NOT NULL,
