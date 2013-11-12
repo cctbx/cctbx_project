@@ -11,7 +11,10 @@ mmtbx.ions.geometry
 from __future__ import division
 
 from collections import Iterable
+import errno
 import numpy as np
+import os
+from cPickle import load
 
 from cctbx.eltbx import sasaki
 from mmtbx import ions
@@ -21,6 +24,15 @@ from mmtbx.ions.geometry import SUPPORTED_GEOMETRY_NAMES, \
 from mmtbx.ions.parameters import MetalParameters, get_server
 
 ALLOWED_IONS = [ions.WATER_RES_NAMES[0]] + ["MN", "ZN", "FE", "NI", "CA"]
+
+CACHE_DIR = os.path.join(os.path.split(__file__)[0], "cache")
+try:
+  with open(os.path.join(CACHE_DIR, "ion_classifier.pkl")) as f:
+    CLASSIFIER = load(f)
+except IOError as err:
+  CLASSIFIER = None
+  if err.errno != errno.ENOENT:
+    raise err
 
 def ion_class(chem_env):
   """
@@ -278,6 +290,35 @@ def ion_anomalous_vector(scatter_env, elements = None, ratios = True):
       scatter_env.wavelength, scatter_env.fpp, scatter_env.fp
       ])
   return ret
+
+def predict_ion(vector):
+  """
+  Uses the trained classifier to predict the ions that most likely fit a given
+  list of features about the site.
+
+  Parameters
+  ----------
+  vectors: np.array of float
+      A list of features about a site as returned by ion_vector.
+
+  Returns
+  -------
+  list of tuple of str, float or None
+      Returns a list of classes and the probability associated with each or None
+      if the trained classifier cannot be loaded.
+
+  See Also
+  --------
+  sklearn.svm
+  """
+  if CLASSIFIER is None:
+    return None
+
+  probs = CLASSIFIER.predict_proba(vector)
+  lst = zip(CLASSIFIER.classes_, probs)
+  lst.sort(key = lambda x: -x[-1])
+
+  return lst
 
 def _flatten_list(lst):
   """

@@ -1,25 +1,28 @@
  # -*- coding: utf-8; py-indent-offset: 2 -*-
-
 from __future__ import division
 
 import os
 
 import libtbx
 from mmtbx.command_line.water_screen import master_phil
-from mmtbx import ions
 from mmtbx.ions.environment import ChemicalEnvironment, ScatteringEnvironment
-from mmtbx.ions.svm import ion_class, ion_vector
+from mmtbx import ions
+from mmtbx.ions.svm import ion_class, ion_vector, predict_ion, CLASSIFIER
 from mmtbx.regression.make_fake_anomalous_data import generate_zinc_inputs
 import mmtbx.utils
 
-def exercise():
+def exercise () :
+  if CLASSIFIER is None:
+    print "Skipping {}".format(os.path.split(__file__)[1])
+    return
+
   wavelength = 1.025
   mtz_file, pdb_file = generate_zinc_inputs(anonymize = False)
   null_out = libtbx.utils.null_out()
 
   cmdline = mmtbx.utils.cmdline_load_pdb_and_data(
     args = [pdb_file, mtz_file, "wavelength={}".format(wavelength),
-            "use_phaser=False"],
+            "use_phaser=True"],
     master_phil = master_phil,
     out = null_out,
     process_pdb_file = True,
@@ -67,12 +70,12 @@ def exercise():
       )
     vector = ion_vector(chem_env, scatter_env)
     resname = ion_class(chem_env)
-    assert vector is not None
+    prediction = predict_ion(vector)
     assert resname != ""
+    assert resname == prediction[0][0]
 
   del fo_map
 
   print "OK"
-
 if __name__ == "__main__":
   exercise()
