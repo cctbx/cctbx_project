@@ -145,4 +145,17 @@ Still to do:
 4) Implement full-parameter refinement
 5) Figure out how to evaluate the scoring function analytically & use 2nd-derivative LBFGS
 6) Implement quick-refinement of direction vectors as in labelit
+
+Nov. 4:
+1) Refine the parameters--triclinic
+2) Outlier rejection-essentially done; some refactoring needed.
+2b) Rationalize iotbx converter.  Where is the .constrain() applied? Role for dials.crystal models vs. cctbx.crystal symmetry?
+3) Refine again & return list of all settings with LABELIT-style output
+4) Input can be either cctbx.spotfinder or dials.spotfinder
+4b) Document the phil parameters that impinge on my API
+5) json output and web-service
+6) profile the code as to what is rate limiting
+7) multipanel, refined as single block
+8) support for Aaron's detector Format
+9) multipanel with other parameterizations like quadrant & sensor
 """
