@@ -4,6 +4,9 @@ from __future__ import division
 
 import os
 
+# We must make sure to import sklearn before boost python
+import sklearn.svm
+
 import libtbx
 from mmtbx.command_line.water_screen import master_phil
 from mmtbx import ions
@@ -29,6 +32,7 @@ def exercise():
 
   os.remove(pdb_file)
   os.remove(mtz_file)
+  os.remove(os.path.splitext(pdb_file)[0] + "_fmodel.eff")
 
   cmdline.xray_structure.set_inelastic_form_factors(
     photon = cmdline.params.wavelength,
