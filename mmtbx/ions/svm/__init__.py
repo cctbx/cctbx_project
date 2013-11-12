@@ -17,22 +17,27 @@ import os
 from cPickle import load
 
 from cctbx.eltbx import sasaki
+import libtbx
 from mmtbx import ions
 from mmtbx.ions.environment import N_SUPPORTED_ENVIRONMENTS
 from mmtbx.ions.geometry import SUPPORTED_GEOMETRY_NAMES, \
      find_coordination_geometry
 from mmtbx.ions.parameters import MetalParameters, get_server
 
-ALLOWED_IONS = [ions.WATER_RES_NAMES[0]] + ["MN", "ZN", "FE", "NI", "CA"]
+CLASSIFIER_PATH = libtbx.env.find_in_repositories(
+  relative_path = "chem_data/classifiers/ions_svm.pkl",
+  test = os.path.isfile
+  )
 
-CACHE_DIR = os.path.join(os.path.split(__file__)[0], "cache")
 try:
-  with open(os.path.join(CACHE_DIR, "ion_classifier.pkl")) as f:
+  with open(CLASSIFIER_PATH) as f:
     CLASSIFIER = load(f)
 except IOError as err:
   CLASSIFIER = None
   if err.errno != errno.ENOENT:
     raise err
+
+ALLOWED_IONS = [ions.WATER_RES_NAMES[0]] + ["MN", "ZN", "FE", "NI", "CA"]
 
 def ion_class(chem_env):
   """
@@ -291,7 +296,7 @@ def ion_anomalous_vector(scatter_env, elements = None, ratios = True):
       ])
   return ret
 
-def predict_ion(vector):
+def predict_ion(vector, elements = None):
   """
   Uses the trained classifier to predict the ions that most likely fit a given
   list of features about the site.
@@ -300,6 +305,9 @@ def predict_ion(vector):
   ----------
   vectors: np.array of float
       A list of features about a site as returned by ion_vector.
+  elements: list of str
+     A list of elements to include within the prediction. Must be a subset of
+     CLASSIFIER.classes_
 
   Returns
   -------
@@ -314,9 +322,22 @@ def predict_ion(vector):
   if CLASSIFIER is None:
     return None
 
-  probs = CLASSIFIER.predict_proba(vector)
+  probs = CLASSIFIER.predict_proba(vector)[0]
   lst = zip(CLASSIFIER.classes_, probs)
   lst.sort(key = lambda x: -x[-1])
+
+  if elements is not None:
+    # Filter out elements the caller does not care about
+    classes, probs = [], []
+    for element, prob in lst:
+      if element in elements or element in ions.WATER_RES_NAMES:
+        classes.append(element)
+        probs.append(prob)
+
+    # Re-normalize the probabilities
+    total = sum(probs)
+    probs = [i / total for i in probs]
+    lst = zip(classes, probs)
 
   return lst
 
