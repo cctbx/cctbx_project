@@ -11,6 +11,13 @@ import os
 # Acta Crystallographica Section B Structural Science,
 # 41(4), 244-247. doi:10.1107/S0108768185002063
 
+METAL_SERVER = None
+def get_server():
+  global METAL_SERVER
+  if METAL_SERVER is None:
+    METAL_SERVER = server()
+  return METAL_SERVER
+
 def cif_param_as_list (param) :
   if (param == ".") : return None
   return param.split(",")
