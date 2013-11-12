@@ -243,7 +243,7 @@ class ramalyze (validation) :
         points=points,
         rotarama_data=stats,
         position_type=pos,
-        title=format_ramachandran_plot_title(position_type, '*'),
+        title=format_ramachandran_plot_title(pos, '*'),
         file_name=plot_file_name)
       print >> out, "  wrote %s" % plot_file_name
 
