@@ -104,16 +104,25 @@ class find_outliers:
     self.plot_cdf_data = None
     self.plot_pdf_data = None
     self.verbose = verbose
-    self.cache_status = self.update(horizon_phil,ai=ai,status_with_marked_outliers=None)
+    self.cache_status = self.update(horizon_phil,ai,status_with_marked_outliers=None)
 
   def update(self,horizon_phil,ai,status_with_marked_outliers,verbose=False):
     # first time through: status with marked outliers is None; no input information
     # second time through after re-refinement: status is a list of SpotClass instances
+    first_time_through = status_with_marked_outliers is None
 
     # update spot positions
     self.observed_spots = ai.raw_spot_input
-    self.predicted_spots,current_status = ai.get_predicted_spot_positions_and_status( old_status = status_with_marked_outliers )
+    self.predicted_spots,current_status = ai.get_predicted_spot_positions_and_status(
+                                          old_status = status_with_marked_outliers )
 
+    # store Miller indices
+    self.hkl = [0 for i in xrange(len(self.observed_spots))]
+    for i in xrange(len(self.observed_spots)):
+      self.hkl[i] = ai.get_hkl(i)
+    return self.update_detail(horizon_phil,current_status,first_time_through,verbose)
+
+  def update_detail(self,horizon_phil,current_status,first_time_through,verbose):
     assert(len(self.observed_spots) == len(self.predicted_spots))
 
     if horizon_phil.indexing.outlier_detection.verbose:
@@ -338,7 +347,7 @@ class find_outliers:
     self.plot_pdf_data = [ho,hr]
 
     # mark outliers
-    if (status_with_marked_outliers is None): #i.e., first time through the update() method
+    if (first_time_through): #i.e., first time through the update() method
       if (radius_outlier_index < len(self.dr)):
         for i in xrange(radius_outlier_index,len(self.dr)):
           current_status[self.sorted_observed_spots[self.dr[i]]] = SpotClass.OUTLIER
@@ -348,11 +357,6 @@ class find_outliers:
     for i in xrange(len(self.observed_spots)):
       if (current_status[i] == SpotClass.GOOD):
         self.good[i] = True
-
-    # store Miller indices
-    self.hkl = [0 for i in xrange(len(self.observed_spots))]
-    for i in xrange(len(self.observed_spots)):
-      self.hkl[i] = ai.get_hkl(i)
 
     count_outlier = 0
     count_good = 0
@@ -520,3 +524,34 @@ class find_outliers:
     renderPDF.draw(d_dxdy,canvas,plot_dxdy_pos[0],plot_dxdy_pos[1])
     renderPDF.draw(d_cdf,canvas,plot_cdf_pos[0],plot_cdf_pos[1])
     renderPDF.draw(d_pdf,canvas,plot_pdf_pos[0],plot_pdf_pos[1])
+
+class find_outliers_from_matches(find_outliers):
+  """Specifically rewritten ('RRR') to take dials refinery reflection manager matches.
+     May have to be refactored again depending on what input list is finally chosen."""
+
+  def get_new_status(self, old_status = None ):
+    if old_status == None:
+      return ( [SpotClass.GOOD] * len(self.predicted_spots) )
+    else:
+      return old_status
+
+  def get_cache_status(self):
+    value = flex.bool()
+    for status in self.cache_status:
+      value.append( status==SpotClass.GOOD )
+    return value
+
+  def update(self,horizon_phil,matches,status_with_marked_outliers,verbose=False):
+    # first time through: status with marked outliers is None; no input information
+    # second time through after re-refinement: status is a list of SpotClass instances
+    first_time_through = status_with_marked_outliers is None
+
+    # update spot positions
+    self.observed_spots = flex.vec2_double([(m.Xo,m.Yo) for m in matches])
+    self.predicted_spots = flex.vec2_double([(m.Xc,m.Yc) for m in matches])
+
+    # store Miller indices
+    self.hkl = [m.H for m in matches]
+
+    current_status = self.get_new_status( old_status = status_with_marked_outliers )
+    return self.update_detail(horizon_phil,current_status,first_time_through,verbose)
