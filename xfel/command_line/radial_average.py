@@ -78,7 +78,6 @@ def run (args, source_data = None) :
     master_phil.show()
     raise Usage("file_path must be defined (either file_path=XXX, or the path alone).")
   assert params.handedness is not None
-  assert params.xfel_target is not None
   assert params.n_bins is not None
   assert params.verbose is not None
 
