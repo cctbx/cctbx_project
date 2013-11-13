@@ -265,6 +265,7 @@ Number of non-H atoms = %d   Mean B_iso = %.2f   Mean occ. = %.2f
     if (warnings) :
       self._show_warnings(out=out, prefix=" "*8)
 
+# TODO refactor to avoid having 3 maps in memory
 def validate_ligands (
     pdb_hierarchy,
     fmodel,
