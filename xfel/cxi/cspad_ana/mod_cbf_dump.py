@@ -12,7 +12,7 @@ __version__ = "$Revision: 18310 $"
 
 from xfel.cxi.cspad_ana import common_mode
 from xfel.cxi.cspad_ana import cspad_tbx
-from xfel.cftbx.detector.write_cspad_cbf import write_cspad_cbf
+from xfel.cftbx.detector.cspad_cbf_tbx import write_cspad_cbf
 from parse_calib import calib2sections
 import os
 

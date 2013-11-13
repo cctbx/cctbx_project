@@ -2590,8 +2590,8 @@ xfel/SConscript -text
 xfel/__init__.py -text
 xfel/cftbx/__init__.py -text
 xfel/cftbx/detector/__init__.py -text
+xfel/cftbx/detector/cspad_cbf_tbx.py -text
 xfel/cftbx/detector/generic_detector.py -text
-xfel/cftbx/detector/write_cspad_cbf.py -text
 xfel/command_line/__init__.py -text
 xfel/command_line/auto_submit.py -text
 xfel/command_line/convert_gain_map.py -text

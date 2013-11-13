@@ -1,7 +1,7 @@
 from __future__ import division
 #-*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
-# $Id: write_cspad_cbf.py
+# $Id: cspad_cbf_tbx.py
 #
 
 import pycbf, os
