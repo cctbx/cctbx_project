@@ -843,7 +843,7 @@ def evt_time(evt=None):
   shots are taken at 8.3 ms intervals.
 
   @param evt Event data object, a configure object
-  @return    Tuple of the time in seconds and milliseconds
+  @return    Unix time as a tuple of seconds and milliseconds
   """
 
   if evt is None:
