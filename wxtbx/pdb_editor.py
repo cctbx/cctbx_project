@@ -116,6 +116,9 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     self._hierarchy = None
     self._hierarchy_start = None
     self._i_state = 0
+    self._crystal_symmetry = None
+    self._space_group = None
+    self._unit_cell = None
 
   def PushState (self, action="edit", set_changes_flag=True) :
     del self._hierarchy_stack[self._i_state+1:]
@@ -139,6 +142,14 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     self._hierarchy_start = pdb_hierarchy
     self.PushState("starting model", set_changes_flag=False)
     self.PopulateTree(pdb_hierarchy)
+
+  def SetCrystalSymmetry (self, crystal_symmetry) :
+    self._crystal_symmetry = crystal_symmetry
+    if (crystal_symmetry is not None) :
+      self._unit_cell = crystal_symmetry.unit_cell()
+      self._space_group = crystal_symmetry.space_group()
+    else :
+      self._unit_cell = self._space_group = None
 
   def SetState (self) :
     #print "SetState(): n_states:", len(self._hierarchy_stack)
@@ -429,6 +440,10 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
           ("Delete object(s)...", self.OnDeleteObject),
           ("Apply rotation/translation...", self.OnMoveSites),
         ])
+        if (self._crystal_symmetry is not None) :
+          labels_and_actions.extend([
+            ("Apply symmetry operator...", self.OnApplySymop),
+          ])
       if (object_types == ["residue_group"]) :
         labels_and_actions.extend([
           ("Renumber residues...", self.OnRenumberResidues),
@@ -480,6 +495,10 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       ("Toggle ATOM/HETATM...", self.OnSetAtomType),
       ("Reset element field...", self.OnResetElement),
     ]
+    if (self._crystal_symmetry is not None) :
+      labels_and_actions.extend([
+        ("Apply symmetry operator...", self.OnApplySymop),
+      ])
     self.ShowMenu(labels_and_actions, source_window)
 
   def ShowAtomGroupMenu (self, atom_group, source_window) :
@@ -502,6 +521,10 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     labels_and_actions.append([
       ("Separate atoms...", self.OnSeparateAtoms),
     ])
+    if (self._crystal_symmetry is not None) :
+      labels_and_actions.extend([
+        ("Apply symmetry operator...", self.OnApplySymop),
+      ])
     self.ShowMenu(labels_and_actions, source_window)
 
   def ShowResidueGroupMenu (self, residue_group, source_window) :
@@ -524,6 +547,10 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     labels_and_actions.append([
       ("Separate atoms...", self.OnSeparateAtoms),
     ])
+    if (self._crystal_symmetry is not None) :
+      labels_and_actions.extend([
+        ("Apply symmetry operator...", self.OnApplySymop),
+      ])
     self.ShowMenu(labels_and_actions, source_window)
 
   def ShowChainMenu (self, chain, source_window) :
@@ -551,6 +578,10 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
     if (len(model.chains()) > 1) :
       labels_and_actions.append(
         ("Merge with other chain...", self.OnMergeChain))
+    if (self._crystal_symmetry is not None) :
+      labels_and_actions.extend([
+        ("Apply symmetry operator...", self.OnApplySymop),
+      ])
     self.ShowMenu(labels_and_actions, source_window)
 
   def ShowModelMenu (self, model, source_window) :
@@ -911,24 +942,79 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
 
   # all
   def OnMoveSites (self, event) :
+    style = 0
+    if (self._crystal_symmetry is not None) :
+      if (self._crystal_symmetry.unit_cell() is not None) :
+        style = simple_dialogs.RT_DIALOG_ENABLE_FRACTIONAL
+    dlg = simple_dialogs.RTDialog(
+      parent=self,
+      title="Rotation/translation operator",
+      wxtbxStyle=style)
+    rt = None
+    fractional = False
+    if (dlg.ShowModal() == wx.ID_OK) :
+      rt = dlg.GetMatrix()
+      fractional = dlg.IsFractional()
+    wx.CallAfter(dlg.Destroy)
+    if (rt is None) :
+      raise Abort()
+    self.ApplyTransformation(rt, fractional=fractional)
+    self.PushState("moved sites")
+
+  # all
+  def OnApplySymop (self, event) :
+    if (self._space_group is None) :
+      raise Sorry("No space group defined.")
+    space_group = self._crystal_symmetry.space_group()
+    space_group_info = space_group.info()
+    dlg = simple_dialogs.SymopChoiceDialog(
+      parent=self,
+      title="Apply symmetry operator",
+      label="Valid symmetry operators",
+      caption="Please select a symmetry operator from the list of choices "+
+        "supported for space group '%s'" % str(space_group_info))
+    dlg.SetSpaceGroup(space_group)
+    if (dlg.ShowModal() == wx.ID_OK) :
+      smx = dlg.GetValue()
+    wx.CallAfter(dlg.Destroy)
+    if (smx is None) :
+      raise Abort()
+    from scitbx import matrix
+    r = smx.r().as_double()
+    t = smx.t().as_double()
+    rt = matrix.rt((r,t))
+    self.ApplyTransformation(rt, fractional=True)
+    self.PushState("applied symop '%s'" % str(smx))
+
+  def ApplyTransformation (self, rt, fractional=False) :
     items = self.GetSelections()
-    rt = simple_dialogs.get_rt_matrix(self)
+    unit_cell = None
+    if (fractional) :
+      unit_cell = self._crystal_symmetry.unit_cell()
+      assert (unit_cell is not None)
     for item in items :
       pdb_object = self.GetItemPyData(item)
       pdb_type = type(pdb_object).__name__
       if (pdb_type == 'atom') :
         from scitbx.array_family import flex
         sites = flex.vec3_double([pdb_object.xyz])
+        if (fractional) :
+          sites = unit_cell.fractionalize(sites_cart=sites)
         sites = rt.r.elems * sites + rt.t.elems
+        if (fractional) :
+          sites = unit_cell.orthogonalize(sites_frac=sites)
         pdb_object.xyz = sites[0]
         self.SetItemText(item, format_atom(pdb_object))
       else :
         atoms = pdb_object.atoms()
         sites = atoms.extract_xyz()
+        if (fractional) :
+          sites = unit_cell.fractionalize(sites_cart=sites)
         sites = rt.r.elems * sites + rt.t.elems
+        if (fractional) :
+          sites = unit_cell.orthogonalize(sites_frac=sites)
         atoms.set_xyz(sites)
         self.PropagateAtomChanges(item)
-      self.PushState("moved sites")
 
   # all
   def OnResetElement (self, event) :
@@ -1857,6 +1943,7 @@ class PDBTreeFrame (wx.Frame) :
     atoms.reset_i_seq()
     atoms.set_chemical_element_simple_if_necessary()
     self._tree.SetHierarchy(hierarchy)
+    self._tree.SetCrystalSymmetry(self._crystal_symmetry)
     self._path_field.SetValue(os.path.abspath(f.file_name))
     self._tree.SetFocus()
     self.Refresh()
