@@ -1290,8 +1290,8 @@ def exercise_scale_factor():
     d_min=2)
   f_c = miller_set.array(
     data=flex.polar(
-      flex.random_double(miller_set.size(), 10)*10-5,
-      flex.random_double(miller_set.size(), 10)*10-5))
+      flex.random_double(miller_set.size(), 100),
+      flex.random_double(miller_set.size(), 2*math.pi)))
   f_o = f_c.as_amplitude_array()
   f_sq_o = f_c.as_intensity_array()
   # first with no scale factor
