@@ -264,19 +264,19 @@ namespace dxtbx { namespace model {
     }
 
     /** @returns True/False This and the other frame are the same */
-    bool operator==(const PanelFrame &other) const {
+    bool operator==(const PanelFrame &rhs) const {
       double eps = 1.0e-3;
-      return get_fast_axis().const_ref().all_approx_equal(
-              other.get_fast_axis().const_ref(), eps)
-          && get_slow_axis().const_ref().all_approx_equal(
-              other.get_slow_axis().const_ref(), eps)
-          && get_origin().const_ref().all_approx_equal(
-              other.get_origin().const_ref(), eps);
+      return local_origin_.const_ref().all_approx_equal(rhs.local_origin_.const_ref(), eps)
+          && local_slow_axis_.const_ref().all_approx_equal(rhs.local_slow_axis_.const_ref(), eps)
+          && local_fast_axis_.const_ref().all_approx_equal(rhs.local_fast_axis_.const_ref(), eps)
+          && parent_origin_.const_ref().all_approx_equal(rhs.parent_origin_.const_ref(), eps)
+          && parent_slow_axis_.const_ref().all_approx_equal(rhs.parent_slow_axis_.const_ref(), eps)
+          && parent_fast_axis_.const_ref().all_approx_equal(rhs.parent_fast_axis_.const_ref(), eps);
     }
 
     /** @returns True/False This and the other frame are different */
-    bool operator!=(const PanelFrame &other) const {
-      return !(*this == other);
+    bool operator!=(const PanelFrame &rhs) const {
+      return !(*this == rhs);
     }
 
   protected:
@@ -604,18 +604,16 @@ namespace dxtbx { namespace model {
     }
 
     /** @returns True/False this is the same as the other */
-    bool operator==(const Panel &other) const {
-      return PanelBase::operator==(other)
-          && image_size_ == other.image_size_
-          && pixel_size_.const_ref().all_approx_equal(
-              other.pixel_size_.const_ref(), 1e-6)
-          && trusted_range_.const_ref().all_approx_equal(
-              other.trusted_range_.const_ref(), 1e-6);
+    bool operator==(const Panel &rhs) const {
+      return PanelBase::operator==(rhs)
+          && image_size_ == rhs.image_size_
+          && pixel_size_.const_ref().all_approx_equal(rhs.pixel_size_.const_ref(), 1e-6)
+          && trusted_range_.const_ref().all_approx_equal(rhs.trusted_range_.const_ref(), 1e-6);
     }
 
     /** @returns True/False this is not the same as the other */
-    bool operator!=(const Panel &other) const {
-      return !(*this == other);
+    bool operator!=(const Panel &rhs) const {
+      return !(*this == rhs);
     }
 
     friend std::ostream& operator<<(std::ostream &os, const Panel &p);

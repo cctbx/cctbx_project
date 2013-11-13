@@ -121,7 +121,8 @@ namespace dxtbx { namespace model {
     /** Check rotation axes are (almost) the same */
     bool operator==(const Goniometer &b) {
       double eps = 1.0e-6;
-      return std::abs(angle_safe(rotation_axis_, b.rotation_axis_)) <= eps;
+      return std::abs(angle_safe(rotation_axis_, b.rotation_axis_)) <= eps
+          && fixed_rotation_.const_ref().all_approx_equal(b.fixed_rotation_.const_ref(), eps);
     }
 
     /** Check rotation axes are not (almost) the same */

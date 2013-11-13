@@ -157,13 +157,13 @@ namespace dxtbx { namespace model {
     }
 
     /** Check the scans are the same */
-    bool operator==(const Scan &scan) const {
+    bool operator==(const Scan &rhs) const {
       double eps = 1.0e-6;
-      double d_angle = std::abs(oscillation_[0] - scan.oscillation_[0]);
-      double d_range = std::abs(oscillation_[1] - scan.oscillation_[1]);
-      double d_expos = std::abs(exposure_time_ - scan.exposure_time_);
-      return image_range_ == scan.image_range_ &&
-             d_angle <= eps && d_range <= eps && d_expos <= eps;
+      return image_range_ == rhs.image_range_
+          && std::abs(oscillation_[0] - rhs.oscillation_[0]) < eps
+          && std::abs(oscillation_[1] - rhs.oscillation_[1]) < eps
+          && std::abs(exposure_time_ - rhs.exposure_time_) < eps
+          && epochs_.const_ref().all_approx_equal(rhs.epochs_.const_ref(), eps);
     }
 
     /** Check the scans are not the same */

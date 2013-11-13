@@ -202,20 +202,19 @@ namespace dxtbx { namespace model {
     }
 
     /** Check wavlength and direction are (almost) same */
-    bool operator==(const Beam &beam) {
+    bool operator==(const Beam &rhs) {
       double eps = 1.0e-6;
-      double d_direction =  std::abs(angle_safe(direction_, beam.direction_));
-      double d_wavelength = std::abs(wavelength_ - beam.wavelength_);
-      double d_divergence = std::abs(divergence_ - beam.divergence_);
-      double d_sigma_divergence = std::abs(
-          sigma_divergence_ - beam.sigma_divergence_);
-      return (d_direction <= eps && d_wavelength <= eps &&
-              d_divergence <= eps && d_sigma_divergence <= eps);
+      return std::abs(angle_safe(direction_, rhs.direction_)) <= eps
+          && std::abs(wavelength_ - rhs.wavelength_) <= eps
+          && std::abs(divergence_ - rhs.divergence_) <= eps
+          && std::abs(sigma_divergence_ - rhs.sigma_divergence_) <= eps
+          && std::abs(angle_safe(polarization_normal_, rhs.polarization_normal_)) <= eps
+          && std::abs(polarization_fraction_ - rhs.polarization_fraction_) <= eps;
     }
 
     /** Check wavelength and direction are not (almost) equal. */
-    bool operator!=(const Beam &beam) {
-      return !(*this == beam);
+    bool operator!=(const Beam &rhs) {
+      return !(*this == rhs);
     }
 
     friend std::ostream& operator<<(std::ostream &os, const Beam &b);
