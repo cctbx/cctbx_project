@@ -2,12 +2,19 @@ from __future__ import division
 import time
 
 def reverse_timestamp(timestamp):
-  """Reverse the function xfel.cxi.cspad_ana.cspad_tbx.evt_timestamp().
-  From the timestamp, return the tuple of (Unix time sec, milliseconds)
+  """Reverse of the xfel.cxi.cspad_ana.cspad_tbx.evt_timestamp()
+  function.  From a string representation of a timestamp, @p
+  timestamp, return the Unix time as a tuple of seconds and
+  milliseconds.
+
+  @param timestamp Human-readable ISO 8601 timestamp in string
+                   representation
+  @return          Tuple of the Unix time in seconds and milliseconds
   """
-  tokens = timestamp.split(".")
-  gmtime_tuple = time.strptime(tokens[0],"%Y-%m-%dT%H:%MZ%S")
-  return (time.mktime(gmtime_tuple), tokens[1])
+
+  tokens = timestamp.split('.')
+  gmtime_tuple = time.strptime(tokens[0], '%Y-%m-%dT%H:%MZ%S')
+  return (time.mktime(gmtime_tuple), float(tokens[1]))
 
 def detector_format_version(address, time):
   """The detector_format_version() function returns a format version
