@@ -36,10 +36,15 @@ class FormatCBF(Format):
         fin = FormatCBF.open_file(image_file, 'rb')
 
         header = fin.read(1024)
-
+        # FIXME this is grim as it is searching over longer and longer
+        # files
         while not '--CIF-BINARY-FORMAT-SECTION--' in header:
-            header += fin.read(1024)
-
+            add = fin.read(1024)
+            if add:
+                header += add
+            else:
+                raise RuntimeError, \
+                    'eof reached before --CIF-BINARY-FORMAT-SECTION--'
         return header.split('--CIF-BINARY-FORMAT-SECTION--')[0]
 
     def __init__(self, image_file):
