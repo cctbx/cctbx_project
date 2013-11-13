@@ -45,6 +45,10 @@ waters = True
 def molprobity_flags () :
   return libtbx.phil.parse(master_phil_str).extract()
 
+class dummy_validation (object) :
+  def __getattr__ (self, name) :
+    return None
+
 class molprobity (slots_getstate_setstate) :
   """
   Comprehensive validation.  At a minimum this performs the standard MolProbity
@@ -58,11 +62,12 @@ class molprobity (slots_getstate_setstate) :
     "ramalyze",
     "rotalyze",
     "cbetadev",
-    "clashscore",
+    "clashes",
     "restraints",
     "missing_atoms",
     "data_stats",
     "real_space",
+    "crystal_symmetry",
     #"real_space_atoms",
     "model_stats",
     "waters",
@@ -84,9 +89,14 @@ class molprobity (slots_getstate_setstate) :
       save_probe_unformatted_file=None,
       show_hydrogen_outliers=False,
       min_cc_two_fofc=0.8,
+      n_bins_data=10,
+      crystal_symmetry=None,
       outliers_only=True) :
     for name in self.__slots__ :
       setattr(self, name, None)
+    self.crystal_symmetry = crystal_symmetry
+    if (crystal_symmetry is None) and (fmodel is not None) :
+      self.crystal_symmetry = fmodel.f_obs().crystal_symmetry()
     self.header_info = header_info
     if (flags is None) :
       flags = molprobity_flags()
@@ -110,7 +120,7 @@ class molprobity (slots_getstate_setstate) :
           out=null_out(),
           quiet=True)
     if (flags.clashscore) :
-      self.clashscore = clashscore.clashscore(
+      self.clashes = clashscore.clashscore(
         pdb_hierarchy=pdb_hierarchy,
         save_probe_unformatted_file=save_probe_unformatted_file,
         nuclear=nuclear,
@@ -146,15 +156,15 @@ class molprobity (slots_getstate_setstate) :
     self._multi_criterion = multi_criterion_view(pdb_hierarchy)
 
   def molprobity_score (self) :
-    if (None in [self.ramalyze, self.rotalyze, self.clashscore]) :
+    if (None in [self.ramalyze, self.rotalyze, self.clashes]) :
       return None
     from mmtbx.validation import utils
     return utils.molprobity_score(
-      clashscore=self.clashscore.get_clashscore(),
+      clashscore=self.clashes.get_clashscore(),
       rota_out=self.rotalyze.out_percent,
       rama_fav=self.ramalyze.fav_percent)
 
-  def show (self, out=sys.stdout, outliers_only=True) :
+  def show (self, out=sys.stdout, outliers_only=True, suppress_summary=False) :
     """
     Comprehensive output with individual outlier lists, plus summary.
     """
@@ -180,11 +190,12 @@ class molprobity (slots_getstate_setstate) :
     if (self.cbetadev is not None) :
       make_sub_header("C-beta deviations", out=out)
       self.cbetadev.show(out=out, prefix="  ", outliers_only=outliers_only)
-    if (self.clashscore is not None) :
+    if (self.clashes is not None) :
       make_sub_header("Bad clashes", out=out)
-      self.clashscore.show(out=out, prefix="  ")
-    make_header("Summary", out=out)
-    self.show_summary(out=out, prefix="  ")
+      self.clashes.show(out=out, prefix="  ")
+    if (not suppress_summary) :
+      make_header("Summary", out=out)
+      self.show_summary(out=out, prefix="  ")
 
   def show_summary (self, out=sys.stdout, prefix="") :
     """
@@ -203,9 +214,9 @@ class molprobity (slots_getstate_setstate) :
     if (self.cbetadev is not None) :
       print >> out, "%sC-beta deviations     = %s" % (prefix,
         fs("%6d", self.cbetadev.n_outliers))
-    if (self.clashscore is not None) :
+    if (self.clashes is not None) :
       print >> out, "%sClashscore            = %6.2f" % (prefix,
-        self.clashscore.get_clashscore())
+        self.clashes.get_clashscore())
     mpscore = self.molprobity_score()
     if (mpscore is not None) :
       print >> out, "%sMolprobity score      = %6.2f" % (prefix, mpscore)
@@ -225,8 +236,95 @@ class molprobity (slots_getstate_setstate) :
   def as_mmcif_records (self) : # TODO
     raise NotImplementedError()
 
-  def as_table1 (self) : # TODO
+  def r_work (self, outer_shell=False) :
+    if (outer_shell) :
+      return getattr(self.data_stats, "r_work_outer", None)
+    else :
+      return getattr(self.data_stats, "r_work",
+        getattr(self.header_info, "r_work", None))
+
+  def r_free (self, outer_shell=False) :
+    if (outer_shell) :
+      return getattr(self.data_stats, "r_free_outer", None)
+    else :
+      return getattr(self.data_stats, "r_free",
+        getattr(self.header_info, "r_free", None))
+
+  def d_max_min (self, outer_shell=False) :
+    if (self.data_stats is not None) :
+      if (outer_shell) :
+        return self.data_stats.d_max_outer, self.data_stats.d_min_outer
+      else :
+        return self.data_stats.d_max, self.data_stats.d_min
+
+  def rms_bonds (self) :
+    if (self.restraints is not None) :
+      rms_bonds, rms_angles = self.restraints.get_bonds_angles_rmsds()
+      return rms_bonds
+
+  def rms_angles (self) :
+    if (self.restraints is not None) :
+      rms_bonds, rms_angles = self.restraints.get_bonds_angles_rmsds()
+      return rms_angles
+
+  def rama_favored (self) :
+    return getattr(self.ramalyze, "fav_percent", None)
+
+  def rama_outliers (self) :
+    return getattr(self.ramalyze, "out_percent", None)
+
+  def rota_outliers (self) :
+    return getattr(self.rotalyze, "out_percent", None)
+
+  def cbeta_outliers (self) :
+    return getattr(self.cbetadev, "n_outliers", None)
+
+  def clashscore (self) :
+    return getattr(self.clashes, "get_clashscore", lambda: None)()
+
+  def space_group (self) :
+    return getattr(self.crystal_symmetry, "space_group", lambda: None)()
+
+  def unit_cell (self) :
+    return getattr(self.crystal_symmetry, "unit_cell", lambda: None)()
+
+  def as_mmcif_records (self) : # TODO
     raise NotImplementedError()
+
+  def as_table1 (self, label=None) :
+    import iotbx.table_one
+    outer_shell = None
+    data_stats = self.data_stats
+    if (data_stats is None) :
+      data_stats = dummy_validation()
+    if (self.data_stats is not None) :
+      r_work_outer
+    unmerged_data = dummy_validation() # TODO
+    return iotbx.table_one.column(
+      label=label,
+      wavelength=None, # TODO
+      space_group=self.space_group(),
+      unit_cell=self.unit_cell(),
+      # data properties
+      d_max_min=self.d_max_min(),
+      r_work=self.r_work(),
+      r_free=self.r_free(),
+      n_refl_all=unmerged_data.n_refl_all,
+      multiplicity=unmerged_data.multiplicity,
+      completeness=data_stats.completeness,
+      i_over_sigma=unmerged_data.i_over_sigma,
+      wilson_b=unmerged_data.wilson_b,
+      r_sym=unmerged_data.r_sym,
+      r_meas=unmerged_data.r_meas,
+      cc_one_half=unmerged_data.cc_one_half,
+      cc_start=unmerged_data.cc_star,
+      # model properties
+      bond_rmsd=self.rms_bonds(),
+      angle_rmsd=self.rms_angles(),
+      rama_favored=self.rama_favored(),
+      rama_outliers=self.rama_outliers(),
+      clashscore=self.clashscore(),
+      )
 
   def as_multi_criterion_view (self) :
     if (not self._multi_criterion.is_populated) :
@@ -240,8 +338,8 @@ class molprobity (slots_getstate_setstate) :
         self._multi_criterion.process_outliers(self.rotalyze.results)
       if (self.cbetadev is not None) :
         self._multi_criterion.process_outliers(self.cbetadev.results)
-      if (self.clashscore is not None) :
-        self._multi_criterion.process_outliers(self.clashscore.results)
+      if (self.clashes is not None) :
+        self._multi_criterion.process_outliers(self.clashes.results)
     return self._multi_criterion
 
   def display_wx_plots (self) :
@@ -270,11 +368,11 @@ class molprobity (slots_getstate_setstate) :
       f.write("data['rota'] = %s\n" % self.rotalyze.as_coot_data())
     if (self.cbetadev is not None) :
       f.write("data['cbeta'] = %s\n" % self.cbetadev.as_coot_data())
-    if (self.clashscore is not None) :
-      f.write("data['probe'] = %s\n" % self.clashscore.as_coot_data())
-      if (self.clashscore.probe_file is not None) :
+    if (self.clashes is not None) :
+      f.write("data['probe'] = %s\n" % self.clashes.as_coot_data())
+      if (self.clashes.probe_file is not None) :
         f.write("handle_read_draw_probe_dots_unformatted(\"%s\", 0, 0)\n" %
-          self.clashscore.probe_file)
+          self.clashes.probe_file)
         f.write("show_probe_dots(True, True)\n")
     f.write("gui = coot_molprobity_todo_list_gui(data=data)\n")
     f.close()

@@ -65,7 +65,7 @@ Run comprehensive MolProbity validation plus R-factor calculation (if data
 supplied).
 """
 
-def run (args, out=sys.stdout) :
+def run (args, out=sys.stdout, return_model_fmodel_objects=False) :
   rotarama_dir = libtbx.env.find_in_repositories(
     relative_path="chem_data/rotarama_data",
     test=os.path.isdir)
@@ -108,6 +108,7 @@ def run (args, out=sys.stdout) :
     pdb_hierarchy=cmdline.pdb_hierarchy,
     xray_structure=cmdline.xray_structure,
     fmodel=fmodel,
+    crystal_symmetry=cmdline.crystal_symmetry,
     geometry_restraints_manager=cmdline.geometry,
     header_info=header_info,
     keep_hydrogens=params.molprobity.keep_hydrogens,
@@ -162,6 +163,8 @@ def run (args, out=sys.stdout) :
       app = wxtbx.app.CCTBXApp(0)
       result.display_wx_plots()
       app.MainLoop()
+  if (return_model_fmodel_objects) :
+    return result, cmdline.pdb_hierarchy, cmdline.fmodel
   return result
 
 if (__name__ == "__main__") :

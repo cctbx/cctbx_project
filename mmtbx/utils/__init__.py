@@ -2696,6 +2696,7 @@ class cmdline_load_pdb_and_data (object) :
     use_symmetry = combine_model_and_data_symmetry(
       model_symmetry=pdb_symm,
       data_symmetry=hkl_symm)
+    self.crystal_symmetry = use_symmetry
     if (use_symmetry is not None) and (self.f_obs is not None) :
       self.f_obs = self.f_obs.customized_copy(
         crystal_symmetry=use_symmetry).eliminate_sys_absent().set_info(

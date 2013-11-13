@@ -46,7 +46,7 @@ class data_statistics (slots_getstate_setstate) :
     "completeness_outer",
     "n_refl_outer",
   ]
-  def __init__ (self, fmodel) :
+  def __init__ (self, fmodel, n_bins=10) :
     f_obs = fmodel.f_obs().deep_copy()
     f_obs.setup_binner(n_bins=10)
     self.d_max = f_obs.d_max_min()[0]
@@ -58,7 +58,7 @@ class data_statistics (slots_getstate_setstate) :
     self.twin_law = fmodel.twin_law
     self.wilson_b = fmodel.wilson_b()
     # outer shell
-    d_max_min_outer = f_obs.binner().bin_d_range(10)
+    d_max_min_outer = f_obs.binner().bin_d_range(n_bins)
     self.d_max_outer = d_max_min_outer[0]
     self.d_min_outer = d_max_min_outer[1]
     self.r_free_outer = fmodel.r_free(d_max=self.d_max_outer,
