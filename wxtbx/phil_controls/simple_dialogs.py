@@ -69,6 +69,11 @@ class SymopDialog (SimpleInputDialog) :
       parent=self,
       value=value)
 
+class SymopChoiceDialog (SimpleInputDialog) :
+  def CreatePhilControl (self, value) :
+    return symop.SymopChoiceCtrl(
+      parent=self)
+
 class IntegersDialog (SimpleInputDialog) :
   def CreatePhilControl (self, value) :
     return ints.IntsCtrl(
@@ -113,6 +118,7 @@ def get_miller_index (**kwds) :
     return tuple(result)
   return result
 
+RT_DIALOG_ENABLE_FRACTIONAL = 1
 class RTDialog (wx.Dialog) :
   def __init__ (self, *args, **kwds) :
     kwds = dict(kwds)
@@ -120,6 +126,7 @@ class RTDialog (wx.Dialog) :
     style |= wx.CAPTION|wx.CLOSE_BOX|wx.RAISED_BORDER| \
       wx.WS_EX_VALIDATE_RECURSIVELY
     kwds['style'] = style
+    extra_style = kwds.pop("wxtbxStyle", 0)
     wx.Dialog.__init__(self, *args, **kwds)
     szr = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(szr)
@@ -157,6 +164,10 @@ class RTDialog (wx.Dialog) :
       ctrl.SetOptional(False)
       grid.Add(ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
       self._t_ctrls.append(ctrl)
+    self.frac_box = None
+    if (extra_style & RT_DIALOG_ENABLE_FRACTIONAL) :
+      self.frac_box = wx.CheckBox(self, -1, "Use fractional coordinates")
+      szr.Add(self.frac_box, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     add_ok_cancel_buttons(self, szr)
     self.Fit()
     self.Centre(wx.BOTH)
@@ -167,10 +178,19 @@ class RTDialog (wx.Dialog) :
     t = [ c.GetPhilValue() for c in self._t_ctrls ]
     return matrix.rt((r,t))
 
-def get_rt_matrix (parent=None) :
+  def IsFractional (self) :
+    if (self.frac_box is not None) :
+      return self.frac_box.GetValue()
+    return False
+
+def get_rt_matrix (parent=None, enable_fractional=False) :
+  style = 0
+  if (enable_fractional) :
+    style = RT_DIALOG_ENABLE_FRACTIONAL
   dlg = RTDialog(
     parent=parent,
-    title="Rotation/translation operator")
+    title="Rotation/translation operator",
+    wxtbxStyle=style)
   rt = None
   if (dlg.ShowModal() == wx.ID_OK) :
     rt = dlg.GetMatrix()
@@ -273,7 +293,8 @@ if (__name__ == "__main__") :
   print get_phil_value_from_dialog(dlg)
   dlg = RTDialog(
     parent=None,
-    title="Rotation/translation operator")
+    title="Rotation/translation operator",
+    wxtbxStyle=RT_DIALOG_ENABLE_FRACTIONAL)
   if (dlg.ShowModal() == wx.ID_OK) :
     rt = dlg.GetMatrix()
   dlg = HTTPProxyDialog(None, title="HTTP proxy authentication")
