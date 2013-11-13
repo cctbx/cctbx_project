@@ -60,6 +60,9 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("add_panel",
         (Panel&(Detector::*)(const Panel&))&Detector::add_panel,
         return_internal_reference<>())
+      .def("add_panel_by_pointer",
+        (void(Detector::*)(Panel*))&Detector::add_panel,
+        with_custodian_and_ward<1,2>())
       .def("__len__",
         &Detector::size)
       .def("__setitem__",
@@ -78,7 +81,8 @@ namespace dxtbx { namespace model { namespace boost_python {
       //.def("do_panels_intersect",
       //  &Detector::do_panels_intersect)
       .def("get_names", &get_names)
-      .def("__str__", &detector_to_string);
+      .def("__str__", &detector_to_string)
+      .enable_pickling();
       
     boost_adaptbx::std_pair_conversions::to_and_from_tuple<int, vec2<double> >();
   }

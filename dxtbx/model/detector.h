@@ -81,6 +81,11 @@ namespace dxtbx { namespace model {
     }
 
     /** Add a panel to the list of panels */
+    void add_panel(Panel *panel) {
+      panel_list_->push_back(panel);
+    }
+
+    /** Add a panel to the list of panels */
     panel_type& add_panel(const Panel &panel) {
       panel_list_->push_back(new Panel(panel));
       return panel_list_->back();

@@ -40,6 +40,104 @@ namespace dxtbx { namespace model { namespace boost_python {
   Panel panel_deepcopy(const Panel &panel, boost::python::object dict) {
     return Panel(panel);  
   }
+  
+  struct PanelBasePickleSuite : boost::python::pickle_suite {
+
+    static
+    boost::python::tuple getstate(boost::python::object obj) {
+      using namespace boost::python;
+
+      unsigned int version = 1;
+      const PanelBase &p = extract<const PanelBase&>(obj)();
+      return make_tuple(
+        version,
+        obj.attr("__dict__"),     
+        p.get_name(),
+        p.get_type(),
+        p.get_local_fast_axis(),
+        p.get_local_slow_axis(),
+        p.get_local_origin(),
+        p.get_parent_fast_axis(),
+        p.get_parent_slow_axis(),
+        p.get_parent_origin());
+    }
+    
+    static
+    void setstate(boost::python::object obj, boost::python::tuple state) {
+      using namespace boost::python;
+
+      DXTBX_ASSERT(len(state) == 10);
+      unsigned int version = extract<unsigned int>(state[0]);
+      DXTBX_ASSERT(version == 1);
+      extract<dict>(obj.attr("__dict__"))().update(state[1]);
+      PanelBase &p = extract<PanelBase&>(obj)();
+      p.set_name(extract<std::string>(state[2]));
+      p.set_type(extract<std::string>(state[3]));
+      p.set_local_frame(
+        extract< vec3<double> >(state[4]),
+        extract< vec3<double> >(state[5]),
+        extract< vec3<double> >(state[6]));
+      p.set_parent_frame(
+        extract< vec3<double> >(state[7]),
+        extract< vec3<double> >(state[8]),
+        extract< vec3<double> >(state[9]));
+    }
+    
+    static bool getstate_manages_dict() { return true; }
+  };  
+
+  struct PanelPickleSuite : boost::python::pickle_suite {
+
+    static
+    boost::python::tuple getstate(boost::python::object obj) {
+      using namespace boost::python;
+
+      unsigned int version = 1;
+      const Panel &p = extract<const Panel&>(obj)();
+      return make_tuple(
+        version,
+        obj.attr("__dict__"),     
+        p.get_name(),
+        p.get_type(),
+        p.get_local_fast_axis(),
+        p.get_local_slow_axis(),
+        p.get_local_origin(),
+        p.get_parent_fast_axis(),
+        p.get_parent_slow_axis(),
+        p.get_parent_origin(),
+        p.get_pixel_size(),
+        p.get_image_size(),
+        p.get_trusted_range(),
+        p.get_px_mm_strategy());
+    }
+    
+    static
+    void setstate(boost::python::object obj, boost::python::tuple state) {
+      using namespace boost::python;
+
+      DXTBX_ASSERT(len(state) == 14);
+      unsigned int version = extract<unsigned int>(state[0]);
+      DXTBX_ASSERT(version == 1);
+      extract<dict>(obj.attr("__dict__"))().update(state[1]);
+      Panel &p = extract<Panel&>(obj)();
+      p.set_name(extract<std::string>(state[2]));
+      p.set_type(extract<std::string>(state[3]));
+      p.set_local_frame(
+        extract< vec3<double> >(state[4]),
+        extract< vec3<double> >(state[5]),
+        extract< vec3<double> >(state[6]));
+      p.set_parent_frame(
+        extract< vec3<double> >(state[7]),
+        extract< vec3<double> >(state[8]),
+        extract< vec3<double> >(state[9]));
+      p.set_pixel_size(extract< vec2<double> >(state[10]));
+      p.set_image_size(extract< vec2<std::size_t> >(state[11]));
+      p.set_trusted_range(extract< vec2<double> >(state[12]));
+      p.set_px_mm_strategy(extract< shared_ptr<PxMmStrategy> >(state[13]));
+    }
+    
+    static bool getstate_manages_dict() { return true; }
+  }; 
 
   void export_panel() 
   {
@@ -103,7 +201,8 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("get_type", &PanelBase::get_type)
       .def("set_type", &PanelBase::set_type)
       .def("__eq__", &PanelBase::operator==)
-      .def("__ne__", &PanelBase::operator!=);
+      .def("__ne__", &PanelBase::operator!=)
+      .def_pickle(PanelBasePickleSuite());
       
     class_<Panel, bases<PanelBase> >("Panel")
       .def(init<std::string,
@@ -171,7 +270,8 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("__ne__", &Panel::operator!=)
       .def("__deepcopy__", &panel_deepcopy)
       .def("__copy__", &panel_deepcopy)
-      .def("__str__", &panel_to_string);
+      .def("__str__", &panel_to_string)
+      .def_pickle(PanelPickleSuite());
   }
 
 }}} // namespace dxtbx::model::boost_python

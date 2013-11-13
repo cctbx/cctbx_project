@@ -205,6 +205,9 @@ namespace dxtbx { namespace model {
       return image_range_[0] >= scan.image_range_[0];
     }
 
+    /**
+     * Append the rhs scan onto the current scan
+     */
     Scan& operator+=(const Scan &rhs) {
       double eps = 1e-6;
       DXTBX_ASSERT(image_range_[1] + 1 == rhs.image_range_[0]);

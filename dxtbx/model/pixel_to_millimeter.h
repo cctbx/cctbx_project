@@ -76,6 +76,10 @@ namespace dxtbx { namespace model {
     /** Virtual desctructor */
     virtual ~ParallaxCorrectedPxMmStrategy() {}
 
+    double attenuation_length() const {
+      return la_;
+    }
+
     virtual vec2<double> to_millimeter(const Panel &panel,
         vec2<double> xy) const;
 

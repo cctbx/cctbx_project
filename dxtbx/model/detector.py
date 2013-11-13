@@ -171,7 +171,7 @@ class PanelGroupRoot(PanelGroup):
     additional convenience methods for navigating the panel hierarchy.
 
     '''
-    def __init__(self, container):
+    def __init__(self, container=None):
         super(PanelGroupRoot, self).__init__()
         self._container = container
 
@@ -201,6 +201,24 @@ class PanelGroupRoot(PanelGroup):
             if isinstance(node, PanelGroup):
                 for child in node:
                     queue.append(child)
+
+
+
+def detectorbase_getstate(self):
+    version = 1
+    return (version, self.__dict__, [p for p in self])
+
+def detectorbase_setstate(self, state):
+    assert(len(state) == 3)
+    assert(state[0] == 1)
+    self.__dict__.update(state[1])
+    for p in state[2]:
+        self.add_panel_by_pointer(p)
+
+
+DetectorBase.__getstate__ = detectorbase_getstate
+DetectorBase.__setstate__ = detectorbase_setstate
+DetectorBase.__getstate_manages_dict__ = 1
 
 
 class Detector(DetectorBase):
