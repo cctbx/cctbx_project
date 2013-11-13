@@ -73,6 +73,7 @@ def work_xscan_factory():
         pass
 
     xscans.sort()
+
     sum(xscans[1:], xscans[0])
 
     a = scan_factory.add(xscans[:10])

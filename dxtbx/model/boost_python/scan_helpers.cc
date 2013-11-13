@@ -52,10 +52,10 @@ namespace dxtbx { namespace model { namespace boost_python {
       deg ? deg_as_rad(angle) : angle));
   }
 
-  static flex_double 
+  static scitbx::af::shared<double>
   get_mod2pi_angles_in_range_wrapper(vec2 <double> range, double angle, 
       bool deg) {
-    flex_double result = get_mod2pi_angles_in_range(
+    scitbx::af::shared<double> result = get_mod2pi_angles_in_range(
       deg ? deg_as_rad(range) : range,
       deg ? deg_as_rad(angle) : angle);    
     if (deg) {

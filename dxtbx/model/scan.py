@@ -23,26 +23,29 @@ class scan_factory:
     in a set of common circumstances.'''
 
     @staticmethod
-    def make_scan(image_range, exposure_time, oscillation, epochs, deg=True):
+    def make_scan(image_range, exposure_times, oscillation, epochs, deg=True):
         from scitbx.array_family import flex
+
+        if not isinstance(exposure_times, list):
+            exposure_times = [exposure_times]
 
         epoch_list = [epochs[j] for j in sorted(epochs)]
 
         return Scan(
             tuple(map(int, image_range)),
             tuple(map(float, oscillation)),
-            float(exposure_time),
+            flex.double(list(map(float, exposure_times))),
             flex.double(list(map(int, epoch_list))),
             deg)
 
     @staticmethod
-    def single(filename, format, exposure_time, osc_start, osc_width, epoch):
+    def single(filename, format, exposure_times, osc_start, osc_width, epoch):
         '''Construct an scan instance for a single image.'''
 
         index = scan_helper_image_files.image_to_index(filename)
 
         return scan_factory.make_scan(
-                    (index, index), exposure_time, (osc_start, osc_width),
+                    (index, index), exposure_times, (osc_start, osc_width),
                     {index:epoch})
 
     @staticmethod
@@ -76,7 +79,6 @@ class scan_factory:
     def add(scans):
         '''Sum a list of scans wrapping the sligtly clumsy idiomatic method:
         sum(scans[1:], scans[0]).'''
-
         return sum(scans[1:], scans[0])
 
     @staticmethod
