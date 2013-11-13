@@ -53,7 +53,7 @@ def tst_goniometer():
 
 def tst_scan():
     '''Test pickling the scan data object.'''
-    obj1 = Scan((1, 2), (1, 1), 0.0)
+    obj1 = Scan((1, 2), (1, 1))
     obj2 = pickle_then_unpickle(obj1)
     assert(obj1 == obj2)
     print "OK"

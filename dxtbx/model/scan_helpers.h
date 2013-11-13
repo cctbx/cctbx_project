@@ -14,14 +14,13 @@
 #include <cmath>
 #include <scitbx/constants.h>
 #include <scitbx/vec2.h>
-#include <scitbx/array_family/flex_types.h>
+#include <scitbx/array_family/shared.h>
 #include <dxtbx/error.h>
 
 namespace dxtbx { namespace model {
 
   using std::floor;
   using scitbx::vec2;
-  using scitbx::af::flex_double;
   using scitbx::constants::two_pi;
 
   /** Convert the angle mod 2PI */
@@ -75,8 +74,8 @@ namespace dxtbx { namespace model {
    * @returns An array of angles, a, where a = a + n2pi.
    */
   inline
-  flex_double get_mod2pi_angles_in_range(vec2 <double> range, double angle) {
-    flex_double result;
+  scitbx::af::shared<double> get_mod2pi_angles_in_range(vec2 <double> range, double angle) {
+    scitbx::af::shared<double> result;
     vec2 <double> angle_range = get_range_of_mod2pi_angles(range, angle);
     int n_angles = 1 + (int)floor((angle_range[1] - angle_range[0]) / two_pi);
     if (n_angles > 0) {

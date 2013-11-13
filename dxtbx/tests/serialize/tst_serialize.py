@@ -96,21 +96,21 @@ class Test(object):
         from dxtbx.serialize import scan
         from dxtbx.model import Scan
         from scitbx.array_family import flex
-        s1 = Scan((1, 3), (1.0, 0.2), 0.1, flex.double([0.1, 0.2, 0.3]))
+        s1 = Scan((1, 3), (1.0, 0.2), flex.double([0.1, 0.1, 0.1]), flex.double([0.1, 0.2, 0.3]))
         d = scan.to_dict(s1)
         s2 = scan.from_dict(d)
         assert(d['image_range'] == (1, 3))
         assert(d['oscillation'] == (1.0, 0.2))
-        assert(d['exposure_time'] == 0.1)
+        assert(d['exposure_time'] == [0.1, 0.1, 0.1])
         assert(d['epochs'] == [0.1, 0.2, 0.3])
         assert(s1 == s2)
 
         # Test with a template and partial dictionary
-        d2 = { 'exposure_time' : 0.2 }
+        d2 = { 'exposure_time' : [0.2, 0.2, 0.2] }
         s3 = scan.from_dict(d2, d)
         assert(s3.get_image_range() == (1, 3))
         assert(s3.get_oscillation() == (1.0, 0.2))
-        assert(s3.get_exposure_time() == 0.2)
+        assert(list(s3.get_exposure_times()) == [0.2, 0.2, 0.2])
         assert(list(s3.get_epochs()) == [0.1, 0.2, 0.3])
         assert(s2 != s3)
 
@@ -158,7 +158,7 @@ class Test(object):
             (1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0)))
         assert(tuple_almost_equal(s.get_image_range(), (1, 3)))
         assert(tuple_almost_equal(s.get_oscillation(), (0.0, 0.2)))
-        assert(abs(s.get_exposure_time() - 0.2) < eps)
+        assert(abs(s.get_exposure_times()[0] - 0.2) < eps)
 
         print 'OK'
 
@@ -198,7 +198,7 @@ class Test(object):
             (1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0)))
         assert(tuple_almost_equal(s.get_image_range(), (1, 3)))
         assert(tuple_almost_equal(s.get_oscillation(), (0.0, 0.2)))
-        assert(abs(s.get_exposure_time() - 0.2) < eps)
+        assert(abs(s.get_exposure_times()[0] - 0.2) < eps)
         print 'OK'
 
 
