@@ -786,6 +786,60 @@ class TestImageSetFactory(object):
         print 'OK'
 
 
+class TestPickleImageset(object):
+
+    def __init__(self):
+        import libtbx.load_env
+        import os
+
+        try:
+            dials_regression = libtbx.env.dist_path('dials_regression')
+        except KeyError, e:
+            print 'FAIL: dials_regression not configured'
+            return
+
+        path = os.path.join(dials_regression, 'centroid_test_data')
+
+        # Non-sequential Filenames and image indices
+        filenames = []
+        image_indices = range(1, 10)
+        for i in image_indices:
+            filenames.append(os.path.join(path, 'centroid_000{0}.cbf'.format(i)))
+
+        from dxtbx.imageset import ImageSetFactory, ImageSweep
+        self.sweep = ImageSetFactory.new(filenames)[0]
+
+    def pickle_then_unpickle(self, obj):
+        '''Pickle to a temp file then un-pickle.'''
+        import pickle
+        import tempfile
+
+        # Create a tmp file
+        temp = tempfile.TemporaryFile()
+
+        # Pickle the object
+        pickle.dump(obj, temp)
+
+        # Read the object
+        temp.flush()
+        temp.seek(0)
+        return pickle.load(temp)
+
+    def run(self):
+
+        # Read the 5th image
+        image = self.sweep[4]
+
+        sweep2 = self.pickle_then_unpickle(self.sweep)
+
+        assert(self.sweep.get_template() == sweep2.get_template())
+        assert(self.sweep.get_array_range() == sweep2.get_array_range())
+        assert(self.sweep.get_beam() == sweep2.get_beam())
+        assert(self.sweep.get_goniometer() == sweep2.get_goniometer())
+        assert(self.sweep.get_scan() == sweep2.get_scan())
+        assert(self.sweep.reader().get_path() == sweep2.reader().get_path())
+        assert(self.sweep == sweep2)
+
 class TestRunner(object):
 
     def __init__(self):
@@ -817,6 +871,8 @@ class TestRunner(object):
         test = TestImageSetFactory()
         test.run()
 
+        test = TestPickleImageset()
+        test.run()
 
 if __name__ == '__main__':
     runner = TestRunner()
