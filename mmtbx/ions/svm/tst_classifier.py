@@ -72,9 +72,9 @@ def exercise () :
     scatter_env = ScatteringEnvironment(
       atom_props.i_seq, manager, fo_map
       )
-    vector = ion_vector(chem_env, scatter_env)
     resname = ion_class(chem_env)
-    prediction = predict_ion(vector, elements = ["ZN", "MG", "CA"])
+    prediction = predict_ion(chem_env, scatter_env,
+                             elements = ["ZN", "MN", "CA"])
     assert resname != ""
     assert resname == prediction[0][0]
 
