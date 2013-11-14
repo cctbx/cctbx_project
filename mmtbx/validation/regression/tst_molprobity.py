@@ -8,6 +8,10 @@ from cStringIO import StringIO
 import os
 
 def exercise_molprobity () :
+  if (not libtbx.env.has_module(name="probe")):
+    print "Skipping exercise_molprobity(): probe not configured"
+    return
+
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/3ifk.pdb",
     test=os.path.isfile)
