@@ -49,7 +49,7 @@ namespace dxtbx { namespace model { namespace boost_python {
 
       unsigned int version = 1;
       const PanelBase &p = extract<const PanelBase&>(obj)();
-      return make_tuple(
+      return boost::python::make_tuple(
         version,
         obj.attr("__dict__"),     
         p.get_name(),
@@ -94,7 +94,7 @@ namespace dxtbx { namespace model { namespace boost_python {
 
       unsigned int version = 1;
       const Panel &p = extract<const Panel&>(obj)();
-      return make_tuple(
+      return boost::python::make_tuple(
         version,
         obj.attr("__dict__"),     
         p.get_name(),
