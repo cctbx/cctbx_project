@@ -33,6 +33,18 @@ class ImageRecord(object):
         self.template = rhs.template
         self.index = rhs.index
 
+    def __eq__(self, rhs):
+        return (self.mtime == rhs.mtime and
+                self.beam == rhs.beam and
+                self.detector == rhs.detector and
+                self.goniometer == rhs.goniometer and
+                self.scan == rhs.scan and
+                self.template == rhs.template and
+                self.index == rhs.index)
+
+    def __ne__(self, rhs):
+        return not self.__eq__(rhs)
+
 
 class DataBlock(object):
     ''' High level container for blocks of sweeps and imagesets. '''
@@ -193,6 +205,19 @@ class DataBlock(object):
             mtime=getmtime(filename),
             beam=b, detector=d, goniometer=g, scan=s,
             template=template, index=index)
+
+    def __len__(self):
+        ''' The number of images. '''
+        return len(self._images)
+
+    def __eq__(self, rhs):
+        ''' Check if two blocks are the same. '''
+        return (self._format_class == rhs._format_class
+                and self._images == rhs._images)
+
+    def __ne__(self, rhs):
+        ''' Check if two blocks are not equal. '''
+        return not self.__eq__(rhs)
 
     def __getstate__(self):
         ''' Return the dict for pickling. '''
