@@ -48,6 +48,82 @@ namespace dxtbx { namespace model { namespace boost_python {
     }
   };
 
+  static
+  boost::python::dict to_dict(const Scan &obj) {
+    boost::python::dict result;
+    result["image_range"] = obj.get_image_range();
+    result["oscillation"] = obj.get_oscillation();
+    result["exposure_time"] = boost::python::list(obj.get_exposure_times());
+    result["epochs"] = boost::python::list(obj.get_epochs());
+    return result;
+  }
+
+  static
+  scitbx::af::shared<double> make_exposure_times(
+    std::size_t num, boost::python::list obj) {
+    scitbx::af::shared<double> result((scitbx::af::reserve(num)));
+    std::size_t nl = boost::python::len(obj);
+    DXTBX_ASSERT(num > 0 && nl <= num);
+    if (nl == 0) {
+      result.push_back(0.0);
+      nl = 1;
+    } else {
+      for (std::size_t i = 0; i < nl; ++i) {
+        result.push_back(boost::python::extract<double>(obj[i]));
+      }
+    }
+    for (std::size_t i = nl; i < num; ++i) {
+      result.push_back(result.back());
+    }
+    return result;
+  }
+
+  static
+  scitbx::af::shared<double> make_epochs(
+    std::size_t num, boost::python::list obj) {
+    scitbx::af::shared<double> result((scitbx::af::reserve(num)));
+    std::size_t nl = boost::python::len(obj);
+    DXTBX_ASSERT(num > 0 && nl <= num);
+    if (nl == 0) {
+      for (std::size_t i = 0; i < num; ++i) {
+        result.push_back(0.0);
+      }
+    } else if (nl == 1) {
+      for (std::size_t i = 0; i < num; ++i) {
+        result.push_back(boost::python::extract<double>(obj[0]));
+      }      
+    } else if (nl < num) {
+      for (std::size_t i = 0; i < nl; ++i) {
+        result.push_back(boost::python::extract<double>(obj[i]));
+      }
+      double e0 = result.back();
+      double de = e0 - result[result.size()-2];
+      for (std::size_t i = nl; i < num; ++i) {
+        result.push_back(e0 + (i+1) * de);
+      }
+    } else {
+      for (std::size_t i = 0; i < num; ++i) {
+        result.push_back(boost::python::extract<double>(obj[i]));
+      }
+    }
+    return result;
+  }
+
+  static 
+  Scan* make_from_dict(boost::python::dict obj) {
+    vec2<int> ir = boost::python::extract< vec2<int> >(obj["image_range"]);
+    vec2<double> osc = boost::python::extract< vec2<double> >(obj["oscillation"]);
+    DXTBX_ASSERT(ir[1] >= ir[0]);
+    std::size_t num = ir[1] - ir[0] + 1;
+    return new Scan(ir, osc,
+      make_exposure_times(num, 
+        boost::python::extract<boost::python::list>(
+          obj.get("exposure_time", boost::python::list()))),
+      make_epochs(num, 
+        boost::python::extract<boost::python::list>(
+          obj.get("epochs", boost::python::list()))));
+  }
+
   static Scan* make_scan(vec2 <int> image_range, vec2 <double> oscillation, bool deg) {
     Scan *scan = NULL;
     if (deg) {
@@ -242,6 +318,11 @@ namespace dxtbx { namespace model { namespace boost_python {
           arg("exposure_times"),
           arg("epochs"),          
           arg("deg") = true)))
+      .def("__init__",
+          make_constructor(
+          &make_from_dict, 
+          default_call_policies(), (
+	          arg("dictionary"))))              
       .def("get_image_range",  
         &Scan::get_image_range)
       .def("set_image_range",
@@ -320,6 +401,7 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def(self + self)
       .def("__len__", &Scan::get_num_images)
       .def("__str__", &scan_to_string)
+      .def("to_dict", &to_dict)
       .def_pickle(ScanPickleSuite());
   }
 
