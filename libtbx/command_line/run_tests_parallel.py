@@ -20,15 +20,13 @@ shuffle = False
   .type = bool
 quiet = False
   .type = bool
+auto_run_dir = False
+  .type = bool
 """)
 
 def run (args) :
   if (len(args) == 0) :
     raise Usage("""libtbx.run_tests_parallel [module=NAME] [directory=path]""")
-  cwd = os.getcwd()
-  cwd_files = os.listdir(cwd)
-  if (len(cwd_files) > 0) :
-    raise Sorry("Please run this program in an empty directory.")
   user_phil = []
   for arg in args :
     if os.path.isdir(arg) :
@@ -40,7 +38,20 @@ def run (args) :
         raise Sorry("Unrecognized argument '%s'" % arg)
       else :
         user_phil.append(arg_phil)
+
   params = master_phil.fetch(sources=user_phil).extract()
+
+  if params.auto_run_dir:
+    import tempfile
+    run_dir = tempfile.mkdtemp(suffix='', prefix='cctbxtst')
+    print 'Running tests in %s' % run_dir
+    os.chdir(run_dir)
+  else:
+    cwd = os.getcwd()
+    cwd_files = os.listdir(cwd)
+    if (len(cwd_files) > 0) :
+      raise Sorry("Please run this program in an empty directory.")
+
   if (len(params.directory) == 0) and (len(params.module) == 0) :
     raise Sorry("Please specify modules and/or directories to test.")
   all_tests = []
