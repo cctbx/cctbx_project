@@ -4,6 +4,7 @@ from iotbx import pdb
 from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
 from libtbx.easy_pickle import loads, dumps
+import libtbx.load_env
 import time
 import os
 
@@ -51,6 +52,10 @@ END
 """
 
 def exercise_clashscore ():
+  if (not libtbx.env.has_module(name="probe")):
+    print "Skipping exercise_clashscore(): probe not configured"
+    return
+
   pdb_io = pdb.input(source_info=None, lines=pdb_str_1)
   pdb_hierarchy = pdb_io.construct_hierarchy()
   cs = clashscore.clashscore(pdb_hierarchy=pdb_hierarchy, out=null_out())
