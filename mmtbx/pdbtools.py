@@ -875,6 +875,7 @@ def run(args, command_name="phenix.pdbtools", out=sys.stdout,
     remove_alt_confs(hierarchy = pdb_hierarchy)
     pdb_atoms = pdb_hierarchy.atoms()
     xray_structure = xray_structure.select(pdb_atoms.extract_i_seq())
+    xray_structure.set_occupancies(1.0)
     print >> log, "All occupancies reset to 1.0."
   if (params.modify.move_waters_last) :
     utils.print_header("Moving waters to end of model", out=log)
