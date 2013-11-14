@@ -241,6 +241,27 @@ class MultiFileState(object):
         '''Check if the format object is valid.'''
         return format_instance.understand(format_instance.get_image_file())
 
+    def __getstate__(self):
+        ''' Save the current image and format class for pickling. '''
+        if self._current_format_instance is not None:
+            current_filename = self._current_format_instance.get_image_file()
+        else:
+            current_filename = None
+        return { 'format_class' : self._format_class,
+                 'current_filename' : current_filename }
+
+    def __setstate__(self, state):
+        ''' Set the format class and load the image. '''
+        self._format_class = state['format_class']
+        self._current_format_instance = None
+        if state['current_filename'] is not None:
+            self.load_file(state['current_filename'])
+
+
+class NullFormatChecker(object):
+    def __call__(self, fmt):
+        return True
+
 
 class MultiFileReader(ReaderBase):
     '''A multi file reader class implementing the ReaderBase interface.'''
@@ -265,7 +286,7 @@ class MultiFileReader(ReaderBase):
         if formatchecker != None:
             self._is_format_valid = formatchecker
         else:
-            self._is_format_valid = lambda fmt: True
+            self._is_format_valid = NullFormatChecker()
 
     def __cmp__(self, other):
         '''Compare the reader by format class and filename list.'''
@@ -980,6 +1001,77 @@ class ImageSetFactory(object):
         # Check the sweep is valid
         if check_headers and not sweep.is_valid():
             raise RuntimeError('Invalid sweep of images')
+
+        # Return the sweep
+        return sweep
+
+
+    @staticmethod
+    def make_imageset(filenames, format_class=None):
+        '''Create an image set'''
+        from dxtbx.format.Registry import Registry
+
+        # Get the format object
+        if format_class == None:
+            format_class = Registry.find(filenames[0])
+
+        # Create the image set object
+        from format.FormatMultiImage import FormatMultiImage
+        if issubclass(format_class, FormatMultiImage):
+            assert len(filenames) == 1
+            format_instance = format_class(filenames[0])
+            image_set = ImageSet(SingleFileReader(format_instance))
+        else:
+            image_set = ImageSet(MultiFileReader(format_class, filenames))
+
+        # Return the image set
+        return image_set
+
+    @staticmethod
+    def make_sweep(template, indices, format_class=None):
+        '''Create a sweep'''
+        import os
+        from dxtbx.format.Registry import Registry
+
+        indices = sorted(indices)
+
+        # Get the template format
+        count = template.count('#')
+        if count > 0:
+            pfx = template.split('#')[0]
+            sfx = template.split('#')[-1]
+            template_format = '%s%%0%dd%s' % (pfx, template.count('#'), sfx)
+            filenames = [template_format % index for index in indices]
+        else:
+            filenames = [template]
+
+        # Sort the filenames
+        filenames = sorted(filenames)
+
+        # Get the format object
+        if format_class is None:
+            format_class = Registry.find(filenames[0])
+
+        # Get the first image and our understanding
+        first_image = filenames[0]
+
+        # Get the directory and first filename and set the template format
+        directory, first_image_name = os.path.split(first_image)
+        first_image_number = indices[0]
+
+        # Get the template format
+        pfx = template.split('#')[0]
+        sfx = template.split('#')[-1]
+        template_format = '%s%%0%dd%s' % (pfx, template.count('#'), sfx)
+
+        # Set the image range
+        array_range = (min(indices) - 1, max(indices))
+
+        # Create the sweep file list
+        filenames = SweepFileList(template_format, array_range)
+
+        # Create the sweep object
+        sweep = ImageSweep(MultiFileReader(format_class, filenames))
 
         # Return the sweep
         return sweep
