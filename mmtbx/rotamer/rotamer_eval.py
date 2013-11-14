@@ -215,6 +215,8 @@ class RotamerEval:
       resname = residue.resname.lower().strip()
     if resname == 'gly':
       return None
+    elif resname == 'mse':
+      resname = 'met'
     atom_dict = self.get_atom_dict(residue)
     try:
       chis = self.sidechain_angles.measureChiAngles(
@@ -233,7 +235,9 @@ class RotamerEval:
     if(rotamer_name == "EXCEPTION"):
       assert value is None
       return rotamer_name
-    if rotamer_name == "" or (value < 0.01):
+    if rotamer_name == "" and (value >= 0.1):
+      return "UNCLASSIFIED"
+    elif (value < 0.01):
       return "OUTLIER"
     else:
       return rotamer_name

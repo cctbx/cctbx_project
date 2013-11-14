@@ -117,7 +117,10 @@ class rotalyze (validation) :
             if (chis is not None):
               if None in chis:
                 continue
-              value = rotamer_evaluator.evaluate(resname.lower().strip(), chis)
+              cur_res = resname.lower().strip()
+              if cur_res == 'mse':
+                cur_res = 'met'
+              value = rotamer_evaluator.evaluate(cur_res, chis)
               if value is not None:
                 self.n_total += 1
                 kwargs['score'] = value * 100
