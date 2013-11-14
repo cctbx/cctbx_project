@@ -39,6 +39,30 @@ namespace dxtbx { namespace model { namespace boost_python {
         obj.get_polarization_fraction());
     }
   };
+  
+  static
+  boost::python::dict to_dict(const Beam &obj) {
+    boost::python::dict result;
+    result["direction"] = obj.get_direction();
+    result["wavelength"] = obj.get_wavelength();
+    result["divergence"] = obj.get_divergence();
+    result["sigma_divergence"] = obj.get_sigma_divergence();
+    result["polarization_normal"] = obj.get_polarization_normal();
+    result["polarization_fraction"] = obj.get_polarization_fraction();
+    return result;        
+  }
+
+  static 
+  Beam* make_from_dict(boost::python::dict obj) {
+    return new Beam(
+      boost::python::extract< vec3<double> >(obj["direction"]),
+      boost::python::extract< double >(obj["wavelength"]),
+      boost::python::extract< double >(obj.get("divergence", 0.0)),
+      boost::python::extract< double >(obj.get("sigma_divergence", 0.0)),
+      boost::python::extract< vec3<double> >(
+        obj.get("polarization_normal", vec3<double>(0.0, 1.0, 0.0))),
+      boost::python::extract< double >(obj.get("polarization_fraction", 0.999)));
+  }
 
   static Beam* make_beam(vec3<double> sample_to_source, double wavelength,
                          double divergence, double sigma_divergence, bool deg) {
@@ -152,7 +176,12 @@ namespace dxtbx { namespace model { namespace boost_python {
 	          arg("sigma_divergence"),
             arg("polarization_normal"),
             arg("polarization_fraction"),
-            arg("deg") = true)))          
+            arg("deg") = true))) 
+      .def("__init__",
+          make_constructor(
+          &make_from_dict, 
+          default_call_policies(), (
+	          arg("dictionary"))))              
       .def("get_direction", 
         &Beam::get_direction)
       .def("set_direction",
@@ -194,6 +223,7 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("__eq__", &Beam::operator==)
       .def("__ne__", &Beam::operator!=)
       .def("__str__", &beam_to_string)
+      .def("to_dict", &to_dict)
       .def_pickle(BeamPickleSuite());
   }
 
