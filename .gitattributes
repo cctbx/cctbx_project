@@ -2550,6 +2550,7 @@ wxtbx/info_panels.py -text
 wxtbx/layout.py -text
 wxtbx/listeditor.py -text
 wxtbx/metallicbutton.py -text
+wxtbx/misc_dialogs.py -text
 wxtbx/monitor.py -text
 wxtbx/mtz_dump.py -text
 wxtbx/path_dialogs.py -text
