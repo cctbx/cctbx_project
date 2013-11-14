@@ -454,14 +454,17 @@ def compute_xplor_maps(
     atom_selection_manager=None,
     file_name_prefix=None,
     file_name_base=None,
-    post_processing_callback=None) :
+    post_processing_callback=None,
+    pdb_hierarchy=None) :
   assert ((post_processing_callback is None) or
           (hasattr(post_processing_callback, "__call__")))
   output_files = []
   for mp in params:
     if(mp.map_type is not None):
-      coeffs = map_coefficients_from_fmodel(fmodel = fmodel, params = mp,
-        post_processing_callback=post_processing_callback)
+      coeffs = map_coefficients_from_fmodel(fmodel = fmodel,
+        params = mp,
+        post_processing_callback=post_processing_callback,
+        pdb_hierarchy=pdb_hierarchy)
       if (coeffs is None) :
         raise Sorry("Couldn't generate map type '%s'." % mp.map_type)
       if(mp.file_name is None):
