@@ -20,7 +20,7 @@ shuffle = False
   .type = bool
 quiet = False
   .type = bool
-auto_run_dir = False
+run_in_tmp_dir = False
   .type = bool
 """)
 
@@ -41,7 +41,7 @@ def run (args) :
 
   params = master_phil.fetch(sources=user_phil).extract()
 
-  if params.auto_run_dir:
+  if params.run_in_tmp_dir:
     import tempfile
     run_dir = tempfile.mkdtemp(suffix='', prefix='cctbxtst')
     print 'Running tests in %s' % run_dir
