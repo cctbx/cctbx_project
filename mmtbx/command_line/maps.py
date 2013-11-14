@@ -340,7 +340,8 @@ def run (args, log = sys.stdout, use_output_directory=True,
     params                 = params.maps.map,
     atom_selection_manager = atom_selection_manager,
     file_name_prefix       = None,
-    file_name_base         = file_name_base)
+    file_name_base         = file_name_base,
+    pdb_hierarchy          = pdb_hierarchy)
   cmo = mmtbx.maps.compute_map_coefficients(
     fmodel = fmodel,
     params = params.maps.map_coefficients,
