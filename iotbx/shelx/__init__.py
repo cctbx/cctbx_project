@@ -27,14 +27,8 @@ def smtbx_refinement_model_from(cls, ins_or_res=None, hkl=None,
   from iotbx.reflection_file_reader import any_reflection_file
   import iotbx.builders
 
-  # not hkl => fo_sq
-  assert hkl is not None or fo_sq is not None
-  # fo_sq => not hkl
-  assert fo_sq is None or hkl is None
-  # not ins-or-res => hkl
-  assert ins_or_res is not None or hkl is not None
-
   if ins_or_res is None:
+    assert hkl is not None
     root, _ = os.path.splitext(hkl)
     ins = "%s.ins" % root
     res = "%s.res" % root
@@ -43,14 +37,6 @@ def smtbx_refinement_model_from(cls, ins_or_res=None, hkl=None,
     assert ins_exists or res_exists
     if res_exists: ins_or_res = res
     elif ins_exists: ins_or_res = ins
-  elif hkl is None:
-    if fo_sq is None:
-      root, _ = os.path.splitext(ins_or_res)
-      hkl = "%s.hkl" % root
-      assert os.path.isfile(hkl)
-      fo_sq = any_reflection_file("%s=hklf4" % hkl)\
-             .as_miller_arrays(crystal_symmetry=builder.structure)[0]\
-             .merge_equivalents().array()
 
   builder = iotbx.builders.mixin_builder_class(
     "smtbx_builder",
@@ -65,6 +51,19 @@ def smtbx_refinement_model_from(cls, ins_or_res=None, hkl=None,
   stream = restraint_parser(stream.filtered_commands(), builder)
   stream = instruction_parser(stream.filtered_commands(), builder)
   stream.parse()
+
+  if fo_sq is None:
+    if hkl is None:
+      assert ins_or_res is not None
+      root, _ = os.path.splitext(ins_or_res)
+      hkl = "%s.hkl" % root
+    assert os.path.isfile(hkl)
+    fo_sq = any_reflection_file("%s=hklf4" % hkl)\
+           .as_miller_arrays(crystal_symmetry=builder.structure)[0]\
+           .merge_equivalents().array()
+  else:
+    assert hkl is None
+
 
   return cls(fo_sq.as_xray_observations(),
              builder.structure,
