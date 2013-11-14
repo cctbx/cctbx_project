@@ -1010,6 +1010,7 @@ def parse_metrology(path):
   import re
 
   det = 'XppDs1' # XXX Correct detector name?  XXX This is a kludge!
+#  det = 'CxiDs1'
 
   # Regular expressions for the four kinds of lines that may appear in
   # the metrology definition (XXX measurement file?).  As an
@@ -1054,6 +1055,10 @@ def parse_metrology(path):
   stream.close()
 
   # More error checking and resolve out-of-order definitions.
+  l_diff = []
+  s_diff = []
+  l_len = []
+  s_len = []
   for (q, s) in quadrants.iteritems():
     # Sort the sensor vertices and ensure every sensor has four
     # vertices.
@@ -1092,12 +1097,44 @@ def parse_metrology(path):
         else:
           quadrants[q][i] = (v[0], v[1], v[2], v[3])
 
+    # Compute absolute difference between long sides and short sides.
+    for i in range(len(vertices)):
+      v = vertices[i]
+
+      l = ((v[1] - v[0]).length(), (v[3] - v[2]).length())
+      s = ((v[2] - v[1]).length(), (v[0] - v[3]).length())
+      if l[0] + l[1] < s[0] + s[1]:
+        (l, s) = (s, l)
+
+      l_len.extend(l)
+      s_len.extend(s)
+
+      l_diff.append(abs(l[0] - l[1]))
+      s_diff.append(abs(s[0] - s[1]))
+
+  l_diff_stat = flex.mean_and_variance(flex.double(l_diff))
+  s_diff_stat = flex.mean_and_variance(flex.double(s_diff))
+  print "Difference between opposing long  sides: " \
+    "%.3f+/-%.3f [%.3f, %.3f] (N = %d)" % (
+      l_diff_stat.mean(),
+      l_diff_stat.unweighted_sample_standard_deviation(),
+      min(l_diff),
+      max(l_diff),
+      len(l_diff))
+  print "Difference between opposing short sides: " \
+    "%.3f+/-%.3f [%.3f, %.3f] (N = %d)" % (
+      s_diff_stat.mean(),
+      s_diff_stat.unweighted_sample_standard_deviation(),
+      min(s_diff),
+      max(s_diff),
+      len(s_diff))
+
 
   # Get side length distribution parameters with outlier rejection,
   # set SIDE_MAX_SIGMA = float('inf') (in um) to skip iteration.  For
   # stability, stop iterating once no more changes.  XXX What
   # percentage does five sigma correspond to again?
-  SIDE_MAX_SIGMA = 10
+  SIDE_MAX_SIGMA = float('inf')
   (l_mu, l_sigma, l_N, s_mu, s_sigma, s_N) = _find_long_short(quadrants)
   while l_sigma > SIDE_MAX_SIGMA or s_sigma > SIDE_MAX_SIGMA:
     (l_N_old, s_N_old) = (l_N, s_N)
@@ -1107,10 +1144,10 @@ def parse_metrology(path):
       quadrants, l_int, s_int)
     if l_N >= l_N_old and s_N >= s_N_old:
       break
-  print \
-      "Long  side: %.3f+/-%.3f (N = %d)\n" \
-      "Short side: %.3f+/-%.3f (N = %d)" % \
-      (l_mu, l_sigma, l_N, s_mu, s_sigma, s_N)
+  print "Long  side: %.3f+/-%.3f [%.3f, %.3f] (N = %d)" % \
+    (l_mu, l_sigma, min(l_len), max(l_len), l_N)
+  print "Short side: %.3f+/-%.3f [%.3f, %.3f] (N = %d)" % \
+    (s_mu, s_sigma, min(s_len), max(s_len), s_N)
 
   # XXX Would really expect this to be (2 * 194 + 3) / 185 = 2.11, but
   # it ain't.  Hart et al. (2012) says this should be 20.9 mm by 43.5 mm
