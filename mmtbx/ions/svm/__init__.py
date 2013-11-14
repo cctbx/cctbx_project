@@ -23,6 +23,7 @@ from cPickle import load
 
 from cctbx.eltbx import sasaki
 import libtbx
+from libtbx.utils import Sorry
 from mmtbx import ions
 from mmtbx.ions.environment import N_SUPPORTED_ENVIRONMENTS
 from mmtbx.ions.geometry import SUPPORTED_GEOMETRY_NAMES, \
@@ -245,7 +246,6 @@ def ion_valence_vector(chem_env, elements = None):
 
   if elements is None:
     elements = [i for i in ALLOWED_IONS if i not in ions.WATER_RES_NAMES]
-
   ret = []
   server = get_server()
 
@@ -301,18 +301,23 @@ def ion_anomalous_vector(scatter_env, elements = None, ratios = True):
       ])
   return ret
 
-def predict_ion(vector, elements = None):
+def predict_ion(chem_env, scatter_env, elements = None):
   """
   Uses the trained classifier to predict the ions that most likely fit a given
   list of features about the site.
 
   Parameters
   ----------
-  vectors: np.array of float
-      A list of features about a site as returned by ion_vector.
+  chem_env: mmtbx.ions.environment.ChemicalEnvironment
+      A object containing information about the chemical environment at a site.
+  scatter_env: mmtbx.ions.environment.ScatteringEnvironment, optional
+      An object containing information about the scattering environment at a
+      site.
   elements: list of str
      A list of elements to include within the prediction. Must be a subset of
      CLASSIFIER.classes_
+  anomalous: bool, optional
+     Indicates whether to use the ion classifier trained with anomalous data.
 
   Returns
   -------
@@ -327,11 +332,17 @@ def predict_ion(vector, elements = None):
   if CLASSIFIER is None:
     return None
 
+  vector = ion_vector(chem_env, scatter_env)
   probs = CLASSIFIER.predict_proba(vector)[0]
   lst = zip(CLASSIFIER.classes_, probs)
   lst.sort(key = lambda x: -x[-1])
 
   if elements is not None:
+    for element in elements:
+      if element not in CLASSIFIER.classes_:
+        print CLASSIFIER.classes_
+        raise Sorry("Unsupported element '{}'".format(element))
+
     # Filter out elements the caller does not care about
     classes, probs = [], []
     for element, prob in lst:
