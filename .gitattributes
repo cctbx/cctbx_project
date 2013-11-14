@@ -544,6 +544,7 @@ dxtbx/tests/test_beam.py -text
 dxtbx/tests/test_detector.py -text
 dxtbx/tests/test_goniometer.py -text
 dxtbx/tests/test_scan.py -text
+dxtbx/tests/tst_datablock.py -text
 dxtbx/tests/tst_dxtbx.py -text
 dxtbx/tests/tst_imageset.py -text
 fable/SConscript -text

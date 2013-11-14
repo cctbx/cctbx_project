@@ -32,7 +32,11 @@ namespace dxtbx { namespace model { namespace boost_python {
     boost::python::tuple getinitargs(const Beam &obj) {
       return boost::python::make_tuple(
         obj.get_direction(),
-        obj.get_wavelength());
+        obj.get_wavelength(),
+        obj.get_divergence(),
+        obj.get_sigma_divergence(),
+        obj.get_polarization_normal(),
+        obj.get_polarization_fraction());
     }
   };
 
