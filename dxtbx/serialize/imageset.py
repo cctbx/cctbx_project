@@ -48,7 +48,7 @@ class NullSweep(object):
         scan = dxtbx.model.scan.Scan(
             self.scan.get_image_range(),
             self.scan.get_oscillation(),
-            self.scan.get_exposure_time(),
+            self.scan.get_exposure_times(),
             self.scan.get_epochs().deep_copy())
         scan.set_image_range((item.start+1, item.stop))
         sweep.set_scan(scan)
