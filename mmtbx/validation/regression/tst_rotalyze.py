@@ -185,6 +185,34 @@ ATOM   2561  HB2 SER A 263     -36.754 -20.747 103.661  1.00 30.87           H
 ATOM   2562  HB3 SER A 263     -37.641 -21.960 103.132  1.00 30.87           H
 ATOM   2563  HG  SER A 263     -37.560 -21.925 105.312  1.00 32.20           H
 """
+
+  pdb_str2 = """
+ATOM    453  N   PRO A  47       8.633   6.370   5.022  1.00 13.79           N
+ATOM    454  CA  PRO A  47       7.915   7.571   5.496  1.00 14.61           C
+ATOM    455  C   PRO A  47       7.612   7.481   6.994  1.00 15.06           C
+ATOM    456  O   PRO A  47       7.289   6.377   7.439  1.00 14.39           O
+ATOM    457  CB  PRO A  47       6.639   7.559   4.651  1.00 16.24           C
+ATOM    458  CG  PRO A  47       7.089   6.901   3.338  1.00 15.52           C
+ATOM    459  CD  PRO A  47       7.990   5.773   3.833  1.00 14.40           C
+ATOM    460  N   MSE A  48       7.754   8.528   7.779  1.00 15.13           N
+ATOM    461  CA  MSE A  48       7.482   8.456   9.201  1.00 16.17           C
+ATOM    462  C   MSE A  48       6.040   8.750   9.517  1.00 15.23           C
+ATOM    463  O   MSE A  48       5.417   9.418   8.735  1.00 14.77           O
+ATOM    464  CB  MSE A  48       8.165   9.538  10.023  1.00 19.62           C
+ATOM    465  CG  MSE A  48       9.630   9.466  10.238  1.00 21.70           C
+ATOM    466 SE   MSE A  48      10.022  10.161  12.050  0.70 37.95          SE
+ATOM    467  CE  MSE A  48      11.268   8.720  12.235  1.00 28.72           C
+ATOM    468  N   LYS A  49       5.519   8.291  10.645  1.00 13.93           N
+ATOM    469  CA  LYS A  49       4.167   8.624  11.045  1.00 13.79           C
+ATOM    470  C   LYS A  49       4.022  10.138  11.202  1.00 14.66           C
+ATOM    471  O   LYS A  49       5.011  10.853  11.351  1.00 15.69           O
+ATOM    472  CB  LYS A  49       3.797   7.915  12.349  1.00 13.33           C
+ATOM    473  CG  LYS A  49       3.593   6.416  12.204  1.00 14.35           C
+ATOM    474  CD  LYS A  49       2.121   6.071  12.044  1.00 16.45           C
+ATOM    475  CE  LYS A  49       1.571   5.402  13.292  1.00 18.19           C
+ATOM    476  NZ  LYS A  49       0.899   4.110  12.980  1.00 19.97           N
+"""
+
   pdb_io = pdb.input(source_info=None, lines=pdb_str)
   hierarchy = pdb_io.construct_hierarchy()
   try :
@@ -193,6 +221,26 @@ ATOM   2563  HG  SER A 263     -37.560 -21.925 105.312  1.00 32.20           H
     assert ("GLY A 262" in str(e))
   else :
     raise Exception_expected
+
+  pdb_io = pdb.input(source_info=None, lines=pdb_str2)
+  hierarchy = pdb_io.construct_hierarchy()
+  r = rotalyze.rotalyze(pdb_hierarchy=hierarchy)
+  out = StringIO()
+  r.show_old_output(out=out, verbose=False)
+  output = out.getvalue().strip()
+  assert output == """A  47  PRO:1.00:96.6:329.3::::Cg_exo
+A  48  MSE:0.70:2.0:287.6:214.8:138.3::mtt
+A  49  LYS:1.00:0.0:288.6:263.2:251.7:233.0:OUTLIER"""
+
+  from mmtbx.rotamer.rotamer_eval import RotamerEval
+  rotamer_manager = RotamerEval()
+  results = []
+  for model in hierarchy.models():
+    for chain in model.chains():
+      for residue in chain.residues():
+        cur_rot = rotamer_manager.evaluate_residue(residue)
+        results.append(cur_rot)
+  assert results == ['Cg_exo', 'mtt', 'OUTLIER']
   print "OK"
 
 if (__name__ == "__main__") :
