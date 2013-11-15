@@ -182,8 +182,9 @@ def process_input_files(inputs, params, log):
     log                       = log,
     cif_objects               = cif_objects,
     use_neutron_distances     = params.use_neutron_distances,
-    mon_lib_srv               = monomer_library.server.server(),
-    ener_lib                  = monomer_library.server.ener_lib())
+    #mon_lib_srv               = monomer_library.server.server(),
+    #ener_lib                  = monomer_library.server.ener_lib(),
+    )
   processed_pdb_file, junk = processed_pdb_files_srv.\
     process_pdb_files(pdb_file_names = pdb_file_names) # XXX remove junk
   return processed_pdb_file

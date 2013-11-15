@@ -1002,7 +1002,10 @@ class process_pdb_file_srv(object):
     self.use_neutron_distances     = use_neutron_distances
     if(mon_lib_srv is None): self.mon_lib_srv = monomer_library.server.server()
     else: self.mon_lib_srv = mon_lib_srv
-    if(ener_lib is None): self.ener_lib = monomer_library.server.ener_lib()
+    if(ener_lib is None):
+      self.ener_lib = monomer_library.server.ener_lib(
+        use_neutron_distances=use_neutron_distances,
+        )
     else: self.ener_lib = ener_lib
     if(self.log is None): self.log = sys.stdout
     if(self.log == False): self.log = None
