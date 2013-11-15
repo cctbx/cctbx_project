@@ -408,7 +408,7 @@ namespace iotbx { namespace mtz {
     std::complex<double>
     polar_deg(double ampl, double phi)
     {
-      return std::polar(ampl, phi*scitbx::constants::pi_180);
+      return ampl * scitbx::math::unit_complex(phi*scitbx::constants::pi_180);
     }
   }
 

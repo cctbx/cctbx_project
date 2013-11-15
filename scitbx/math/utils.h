@@ -4,6 +4,7 @@
 #include <cmath>
 #include <algorithm>
 #include <limits>
+#include <complex>
 
 namespace scitbx { namespace math {
 
@@ -146,6 +147,12 @@ namespace scitbx { namespace math {
 
   inline std::pair<int, double> divmod(double x, double y) {
     return remainder_and_quotient<double, int>::divmod(x,y);
+  }
+
+  // Returns a complex number with magnitude equal to 1, and phase theta
+  template<typename FloatType>
+  std::complex<FloatType> unit_complex(FloatType const& theta){
+    return std::complex<FloatType>(std::cos(theta), std::sin(theta));
   }
 
 
