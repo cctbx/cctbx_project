@@ -234,7 +234,7 @@ namespace dxtbx { namespace model {
   std::ostream& operator<<(std::ostream &os, const Beam &b) {
     os << "Beam:\n";
     os << "    wavelength: " << b.get_wavelength() << "\n";
-    os << "    direction : " << b.get_direction().const_ref() << "\n";
+    os << "    sample to source direction : " << b.get_direction().const_ref() << "\n";
     os << "    divergence: " << b.get_divergence() << "\n";
     os << "    sigma divergence: " << b.get_sigma_divergence() << "\n";
     os << "    polarization normal: " <<
