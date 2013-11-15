@@ -196,10 +196,14 @@ def run(args):
     import libtbx.load_env
     import os
     op = os.path
-    mtz_file_names.append(libtbx.env.find_in_repositories(
-      relative_path="phenix_regression/reflection_files/dano.mtz",
-      test=op.isfile,
-      optional=False))
+    have_regression = libtbx.env.has_module("phenix_regression")
+    if have_regression:
+      mtz_file_names.append(libtbx.env.find_in_repositories(
+        relative_path="phenix_regression/reflection_files/dano.mtz",
+        test=op.isfile,
+        optional=False))
+    else:
+      print 'Skipping tests on dano.mtz: no phenix_regression'
   for mtz_file_name in mtz_file_names:
     recycle_dano_mtz(mtz_file_name)
   for missing in [None, "+", "-"]:
