@@ -474,6 +474,7 @@ dxtbx/model/boost_python/parallax_correction.cc -text
 dxtbx/model/boost_python/pixel_to_millimeter.cc -text
 dxtbx/model/boost_python/scan.cc -text
 dxtbx/model/boost_python/scan_helpers.cc -text
+dxtbx/model/boost_python/to_from_dict.h -text
 dxtbx/model/detector.h -text
 dxtbx/model/detector.py -text
 dxtbx/model/detector_helpers.py -text

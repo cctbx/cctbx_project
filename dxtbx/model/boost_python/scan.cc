@@ -17,6 +17,7 @@
 #include <scitbx/constants.h>
 #include <dxtbx/model/scan.h>
 #include <boost/operators.hpp>
+#include <dxtbx/model/boost_python/to_from_dict.h>
 
 namespace dxtbx { namespace model { namespace boost_python {
 
@@ -48,8 +49,8 @@ namespace dxtbx { namespace model { namespace boost_python {
     }
   };
 
-  static
-  boost::python::dict to_dict(const Scan &obj) {
+  template <>
+  boost::python::dict to_dict<Scan>(const Scan &obj) {
     boost::python::dict result;
     result["image_range"] = obj.get_image_range();
     result["oscillation"] = obj.get_oscillation();
@@ -58,7 +59,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     return result;
   }
 
-  static
+  inline
   scitbx::af::shared<double> make_exposure_times(
     std::size_t num, boost::python::list obj) {
     scitbx::af::shared<double> result((scitbx::af::reserve(num)));
@@ -78,7 +79,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     return result;
   }
 
-  static
+  inline
   scitbx::af::shared<double> make_epochs(
     std::size_t num, boost::python::list obj) {
     scitbx::af::shared<double> result((scitbx::af::reserve(num)));
@@ -109,8 +110,8 @@ namespace dxtbx { namespace model { namespace boost_python {
     return result;
   }
 
-  static 
-  Scan* make_from_dict(boost::python::dict obj) {
+  template <> 
+  Scan* from_dict<Scan>(boost::python::dict obj) {
     vec2<int> ir = boost::python::extract< vec2<int> >(obj["image_range"]);
     vec2<double> osc = boost::python::extract< vec2<double> >(obj["oscillation"]);
     DXTBX_ASSERT(ir[1] >= ir[0]);
@@ -318,11 +319,6 @@ namespace dxtbx { namespace model { namespace boost_python {
           arg("exposure_times"),
           arg("epochs"),          
           arg("deg") = true)))
-      .def("__init__",
-          make_constructor(
-          &make_from_dict, 
-          default_call_policies(), (
-	          arg("dictionary"))))              
       .def("get_image_range",  
         &Scan::get_image_range)
       .def("set_image_range",
@@ -401,7 +397,10 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def(self + self)
       .def("__len__", &Scan::get_num_images)
       .def("__str__", &scan_to_string)
-      .def("to_dict", &to_dict)
+      .def("to_dict", &to_dict<Scan>)
+      .def("from_dict", &from_dict<Scan>, 
+        return_value_policy<manage_new_object>())
+      .staticmethod("from_dict")
       .def_pickle(ScanPickleSuite());
   }
 

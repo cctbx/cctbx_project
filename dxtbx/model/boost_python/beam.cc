@@ -14,6 +14,7 @@
 #include <sstream>
 #include <scitbx/constants.h>
 #include <dxtbx/model/beam.h>
+#include <dxtbx/model/boost_python/to_from_dict.h>
 
 namespace dxtbx { namespace model { namespace boost_python {
 
@@ -40,8 +41,8 @@ namespace dxtbx { namespace model { namespace boost_python {
     }
   };
   
-  static
-  boost::python::dict to_dict(const Beam &obj) {
+  template <>
+  boost::python::dict to_dict<Beam>(const Beam &obj) {
     boost::python::dict result;
     result["direction"] = obj.get_direction();
     result["wavelength"] = obj.get_wavelength();
@@ -52,8 +53,8 @@ namespace dxtbx { namespace model { namespace boost_python {
     return result;        
   }
 
-  static 
-  Beam* make_from_dict(boost::python::dict obj) {
+  template <>
+  Beam* from_dict<Beam>(boost::python::dict obj) {
     return new Beam(
       boost::python::extract< vec3<double> >(obj["direction"]),
       boost::python::extract< double >(obj["wavelength"]),
@@ -63,7 +64,7 @@ namespace dxtbx { namespace model { namespace boost_python {
         obj.get("polarization_normal", vec3<double>(0.0, 1.0, 0.0))),
       boost::python::extract< double >(obj.get("polarization_fraction", 0.999)));
   }
-
+  
   static Beam* make_beam(vec3<double> sample_to_source, double wavelength,
                          double divergence, double sigma_divergence, bool deg) {
     Beam *beam = NULL;
@@ -177,11 +178,6 @@ namespace dxtbx { namespace model { namespace boost_python {
             arg("polarization_normal"),
             arg("polarization_fraction"),
             arg("deg") = true))) 
-      .def("__init__",
-          make_constructor(
-          &make_from_dict, 
-          default_call_policies(), (
-	          arg("dictionary"))))              
       .def("get_direction", 
         &Beam::get_direction)
       .def("set_direction",
@@ -223,7 +219,10 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("__eq__", &Beam::operator==)
       .def("__ne__", &Beam::operator!=)
       .def("__str__", &beam_to_string)
-      .def("to_dict", &to_dict)
+      .def("to_dict", &to_dict<Beam>)
+      .def("from_dict", &from_dict<Beam>, 
+        return_value_policy<manage_new_object>())
+      .staticmethod("from_dict")
       .def_pickle(BeamPickleSuite());
   }
 

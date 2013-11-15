@@ -107,6 +107,12 @@ namespace dxtbx { namespace model {
       return (*panel_list_)[index];
     }
 
+    /** Return a reference to a panel */
+    panel_type* at(std::size_t index) {
+      DXTBX_ASSERT(index < size());
+      return &(*panel_list_)[index];
+    }
+
     /** Return a const reference to a panel */
     const panel_type& operator[](std::size_t index) const {
       DXTBX_ASSERT(index < size());

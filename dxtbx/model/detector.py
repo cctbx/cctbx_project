@@ -163,6 +163,24 @@ class PanelGroup(PanelBase):
         ''' Check that this is not equal to another group. '''
         return not self.__eq__(other)
 
+    def to_dict(self):
+        ''' Convert the panel group to a dictionary. '''
+        d = PanelBase.to_dict(self)
+        children = []
+        for c in self._children:
+          if isinstance(c, Panel):
+              idx = None
+              for i, p in enumerate(self.root()._container):
+                  if c.is_(p):
+                      idx = i
+                      break
+              assert(idx is not None)
+              children.append({ "panel" : idx })
+          else:
+              children.append(c.to_dict())
+        d['children'] = children
+        return d
+
 
 class PanelGroupRoot(PanelGroup):
     ''' The top level Detector model.
@@ -244,6 +262,12 @@ class Detector(DetectorBase):
     def __ne__(self, other):
         ''' Check that this is not equal to another group. '''
         return not self.__eq__(other)
+
+    def to_dict(self):
+        ''' Return the class as a dictionary. '''
+        d = DetectorBase.to_dict(self)
+        d['hierarchy'] = self._root.to_dict()
+        return d
 
 
 class detector_factory:
