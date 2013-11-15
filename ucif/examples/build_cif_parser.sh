@@ -4,7 +4,7 @@ fi
 if [ ! -n "$LIBTBX_ANTLR3" ]; then
   LIBTBX_ANTLR3="$LIBTBX_UCIF/antlr3"
 fi
-gcc -c -I$LIBTBX_ANTLR3/include/ -I$LIBTBX_ANTLR3 \
+gcc -c -I$LIBTBX_ANTLR3/include/ -I$LIBTBX_ANTLR3 -Wno-tautological-compare \
   "$LIBTBX_ANTLR3/src/antlr3baserecognizer.c"\
   "$LIBTBX_ANTLR3/src/antlr3basetree.c"\
   "$LIBTBX_ANTLR3/src/antlr3basetreeadaptor.c"\
@@ -30,6 +30,7 @@ gcc -c -I$LIBTBX_ANTLR3/include/ -I$LIBTBX_ANTLR3 \
   "$LIBTBX_ANTLR3/src/antlr3treeparser.c"
 
 g++ -o cif_parser -I $LIBTBX_ANTLR3/include/ -I$LIBTBX_ANTLR3 -I$LIBTBX_UCIF/../ \
+-Wno-parentheses-equality \
 $LIBTBX_UCIF/examples/main.cpp $LIBTBX_UCIF/cifLexer.cpp \
 $LIBTBX_UCIF/cifParser.cpp   \
 antlr3baserecognizer.o       \
