@@ -1001,16 +1001,15 @@ def _fit_plane(vertices):
 
 
 
-def parse_metrology(path):
+def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old_style_diff_path = None):
   """Measurement file has all units in micrometers.  The coordinate
   system is right-handed XXX verify this.  The origin is at the lower,
   left corner of sensor 1.  XXX Are quadrants still 0, 1, 2, 3 in
   counter-clockwise order beginning at top left corner?"""
 
-  import re
+  assert detector in ['CxiDs1', 'XppDs1']
 
-  det = 'XppDs1' # XXX Correct detector name?  XXX This is a kludge!
-#  det = 'CxiDs1'
+  import re
 
   # Regular expressions for the four kinds of lines that may appear in
   # the metrology definition (XXX measurement file?).  As an
@@ -1085,10 +1084,10 @@ def parse_metrology(path):
     # question: should this be done or not?  Should probably require
     # the input to be correctly ordered.  In either case, must ensure
     # first vertex starts a long side.
-    if det == 'CxiDs1': # XXX This applies to the CXI rear detector as well!
+    if detector == 'CxiDs1': # XXX This applies to the CXI rear detector as well!
       quadrants[q] = _order_sensors(vertices)
 
-    elif det == 'XppDs1': # XXX Correct detector name?
+    elif detector == 'XppDs1':
       quadrants[q] = {}
       for i in range(len(vertices)):
         v = vertices[i]
@@ -1200,6 +1199,9 @@ def parse_metrology(path):
       (l_mu, l_sigma, l_N, s_mu, s_sigma, s_N)
 
 
+  if old_style_diff_path is None:
+    return quadrants_lsq
+
   ##################################
   # METROLOGY REFINEMENT ENDS HERE #
   ##################################
@@ -1210,7 +1212,7 @@ def parse_metrology(path):
   # row).  This takes care of quadrant rotations, and projects into
   # 2D-space.
   quadrants_trans = {}
-  if det == 'CxiDs1': # XXX This applies to the CXI rear detector as well!
+  if detector == 'CxiDs1': # XXX This applies to the CXI rear detector as well!
     for (q, sensors) in quadrants_lsq.iteritems():
       quadrants_trans[q] = {}
 
@@ -1248,7 +1250,7 @@ def parse_metrology(path):
         # NOTREACHED
         raise RuntimeError(
           "Detector does not have exactly four quadrants")
-  elif det == 'XppDs1': # XXX Correct detector name?
+  elif detector == 'XppDs1':
 
     # The XPP CSPAD has fixed quadrants.  For 2013-01-24 measurement,
     # they are all defined in a common coordinate system.
@@ -1273,15 +1275,11 @@ def parse_metrology(path):
                                  for v in quadrants_lsq[q][s]]
   else:
     raise RuntimeError(
-      "Unknown convention '%s'" % det)
-
-
-
+      "Unknown convention '%s'" % detector)
 
   # Read old-style metrology.
   from xfel.cxi.cspad_ana.parse_calib import calib2sections
-#  calib_dir = '/global/homes/h/hattne/projects/phenix-src/cxi_xdr_xes/cftbx/metrology/CSPad/run4/CxiDs1.0:Cspad.0'
-  calib_dir = '/reg/neh/home1/hattne/projects/phenix-src/cxi_xdr_xes/cftbx/metrology/CSPad/run4/CxiDs1.0:Cspad.0'
+  calib_dir = old_style_diff_path
 
   sections = calib2sections(calib_dir)
 
@@ -1290,7 +1288,6 @@ def parse_metrology(path):
   # Now working with (slow, fast) in 2D.  Enforce right angles and
   # integer pixel positions.  Temporary thingy: output the vertices in
   # Q0 convention to stdout.  Scale factor (micrometers per pixel).
-  plot = True
   if plot:
     import matplotlib.pyplot as plt
     from matplotlib.patches import Polygon
@@ -1316,7 +1313,7 @@ def parse_metrology(path):
     offset = (0, 0)
     c = sections[q][1].corners_asic()[0]
 
-    if det == 'CxiDs1': # XXX Kludge galore!
+    if detector == 'CxiDs1':
       if q == 0:
         offset = (c[2] + 2, c[3] + 3)
       elif q == 1:
@@ -1388,7 +1385,7 @@ def parse_metrology(path):
       # According to Henrik Lemke, the XPP detector is actually
       # rotated by 180 degrees with respect to the optical metrology
       # measurements.
-      if det == 'XppDs1': # XXX Correct detector name?
+      if detector == 'XppDs1':
         l *= -1
         for i in range(len(vertices)):
           vertices[i] *= -1
@@ -1594,9 +1591,10 @@ def parse_metrology(path):
 
   print "new active areas", len(aa_new), aa_new
 
-  return
+  return quadrants_trans
 
 
 # phenix.python flatfile.py 2011-08-10-Metrology.txt
 if __name__ == '__main__':
-  parse_metrology(sys.argv[1])
+  #parse_metrology(sys.argv[1],old_style_diff_path='/global/homes/h/hattne/projects/phenix-src/cxi_xdr_xes/cftbx/metrology/CSPad/run4/CxiDs1.0:Cspad.0')
+  parse_metrology(sys.argv[1],old_style_diff_path='/reg/neh/home1/hattne/projects/phenix-src/cxi_xdr_xes/cftbx/metrology/CSPad/run4/CxiDs1.0:Cspad.0')

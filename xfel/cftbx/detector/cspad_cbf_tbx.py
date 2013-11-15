@@ -5,6 +5,10 @@ from __future__ import division
 #
 
 import pycbf, os
+from scitbx import matrix
+
+# need to define this here since it not defined in SLAC's metrology definitions
+sensor_dimension = ((194*2)+3,185)
 
 class cbf_wrapper(pycbf.cbf_handle_struct):
   """ Wrapper class that provids convience functions for working with cbflib"""
@@ -30,61 +34,280 @@ class cbf_wrapper(pycbf.cbf_handle_struct):
       except Exception:
         break
 
-  def add_frame_shift(self, name, parent, params, axis_settings, equipment_component):
+  def add_frame_shift(self, basis, axis_settings):
     """Add an axis representing a frame shift (a rotation axis with an offset)"""
-    angle, axis = angle_and_axis(params)
+    angle, axis = angle_and_axis(basis)
 
     if angle == 0:
       axis = (0,0,1)
 
-    self.add_row([name,"rotation","detector",parent,
+    self.add_row([basis.axis_name,"rotation","detector",basis.depends_on,
                   str(axis[0]),str(axis[1]),str(axis[2]),
-                  str(params.translation[0]*1000),
-                  str(params.translation[1]*1000),
-                  str(params.translation[2]*1000),
-                  equipment_component])
+                  str(basis.translation[0]*1000),
+                  str(basis.translation[1]*1000),
+                  str(basis.translation[2]*1000),
+                  basis.equipment_component])
 
-    axis_settings.append([name, "FRAME1", str(angle), "0"])
+    axis_settings.append([basis.axis_name, "FRAME1", str(angle), "0"])
 
-def get_tile_metrology(detector, key):
-  """ Searches a metrology phil object for an asic that matches the given key.
-  @param  detector  metrology phil object
-  @param  key       4-tuple in the form (detector, panel, sensor, key)"""
-  kdetector,kpanel,ksensor,kasic = key
-
-  assert kdetector == detector.serial
-
-  for panel in detector.panel:
-    if panel.serial == kpanel:
-      for sensor in panel.sensor:
-        if sensor.serial == ksensor:
-          for asic in sensor.asic:
-            if asic.serial == kasic:
-              return asic
-
-  return None
-
-from scitbx import matrix
-
-def angle_and_axis(params):
+def angle_and_axis(basis):
   """Normalize a quarternion and return the angle and axis
   @param params metrology object"""
-  q = matrix.col(params.orientation).normalize()
+  q = matrix.col(basis.orientation).normalize()
   return q.unit_quaternion_as_axis_and_angle(deg=True)
 
-def write_cspad_cbf(tiles, metro, timestamp, destpath):
+def center(coords):
+  """ Returns the average of a list of vectors
+  @param coords List of vectors to return the center of
+  """
+  for c in coords:
+    if 'avg' not in locals():
+      avg = c
+    else:
+      avg += c
+  return avg / len(coords)
 
-  # the metrology object contains translations and rotations for each asic
+class basis(object):
+  """ Bucket for detector element information """
+  def __init__(self, orientation, translation):
+    self.orientation = orientation
+    self.translation = translation
+
+  def as_homogenous_transformation(self):
+    """ Returns this basis change as a 4x4 transformation matrix in homogenous coordinates"""
+    r3 = self.orientation.normalize().unit_quaternion_as_r3_rotation_matrix()
+    return matrix.sqr((r3[0],r3[1],r3[2],self.translation[0],
+                       r3[3],r3[4],r3[5],self.translation[1],
+                       r3[6],r3[7],r3[8],self.translation[2],
+                       0,0,0,1))
+
+def read_optical_metrology_from_flat_file(path, detector, pixel_size, sensor_dimension, asic_gap = 3, plot = False, old_style_diff_path = None):
+  """ Read a flat optical metrology file from LCLS and apply some corrections.  Partly adapted from xfel.metrology.flatfile
+  @param path to the file to read
+  @param detector Choice of CxiDs1 and XppDs1.  Affect how the quadrants are laid out (rotated manually or in absolute coordinates, respectively)
+  @param pixel_size Tuple of the size of each pixel in mm
+  @param sensor_dimension: the size of each sensor in pixels
+  @param asic_gap: the pixel gap between the two asics on each pixel
+  @param plot: if True, will plot the read and corrected metrology
+  @param old_style_diff_path: if set to an old-style calibration directory, will print out and plot some comparisons between the metrology in this
+  file and the metrology in the given directory
+  @return dictionary of tuples in the form of (detector id), (detector id,quadrant id), (detector id,quadrant id,sensor id), and
+  (detector id,quadrant id,sensor id,asic_id), mapping the levels of the hierarchy to basis objects
+  """
+  assert detector in ['CxiDs1', 'XppDs1']
+
+  from xfel.metrology.flatfile import parse_metrology
+  quadrants = parse_metrology(path, detector, plot, old_style_diff_path)
+
+  # rotate sensors 6 and 7 180 degrees
+  for q_id, sensor in quadrants.iteritems():
+    six = sensor[6]
+    svn = sensor[7]
+    assert len(six) == 4 and len(svn) == 4
+    sensor[6] = [six[2],six[3],six[0],six[1]]
+    sensor[7] = [svn[2],svn[3],svn[0],svn[1]]
+    quadrants[q_id] = sensor
+
+  quadrants_trans = {}
+  if detector == "CxiDs1":
+    # apply transformations: bring to order (slow, fast) <=> (column,
+     # row).  This takes care of quadrant rotations
+    for (q, sensors) in quadrants.iteritems():
+      quadrants_trans[q] = {}
+
+      q_apa = q
+
+      if q == 0:
+        # Q0:
+        #   x -> -slow
+        #   y -> -fast
+        for (s, vertices) in sensors.iteritems():
+          quadrants_trans[q][s] = [matrix.col((-v[0]/1000, -v[1]/1000, v[2]/1000))
+                                   for v in quadrants[q_apa][s]]
+      elif q == 1:
+        # Q1:
+        #   x -> +fast
+        #   y -> -slow
+        for (s, vertices) in sensors.iteritems():
+          quadrants_trans[q][s] = [matrix.col((-v[1]/1000, +v[0]/1000, v[2]/1000))
+                                   for v in quadrants[q_apa][s]]
+      elif q == 2:
+        # Q2:
+        #   x -> +slow
+        #   y -> +fast
+        for (s, vertices) in sensors.iteritems():
+          quadrants_trans[q][s] = [matrix.col((+v[0]/1000, +v[1]/1000, v[2]/1000))
+                                   for v in quadrants[q_apa][s]]
+      elif q == 3:
+        # Q3:
+        #   x -> -fast
+        #   y -> +slow
+        for (s, vertices) in sensors.iteritems():
+          quadrants_trans[q][s] = [matrix.col((+v[1]/1000, -v[0]/1000, v[2]/1000))
+                                   for v in quadrants[q_apa][s]]
+      else:
+        # NOTREACHED
+        raise RuntimeError(
+          "Detector does not have exactly four quadrants")
+  else:
+    assert detector == "XppDs1"
+    # The XPP CSPAD has fixed quadrants.  For 2013-01-24 measurement,
+    # they are all defined in a common coordinate system.
+    #
+    #   x -> +fast
+    #   y -> -slow
+    #
+    # Fix the origin to the center of mass of sensor 1 in the four
+    # quadrants.
+    o = matrix.col((0, 0, 0))
+    N = 0
+    for (q, sensors) in quadrants.iteritems():
+      o += center(sensors[1])
+      N += 1
+    o /= N
+
+    for (q, sensors) in quadrants.iteritems():
+      quadrants_trans[q] = {}
+      for (s, vertices) in sensors.iteritems():
+        quadrants_trans[q][s] = [matrix.col(((-v[1] - (-o[1]))/1000, (+v[0] - (+o[0]))/1000, v[2]/1000))
+                                     for v in quadrants[q][s]]
+
+
+  if plot:
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Polygon
+    fig = plt.figure()
+    ax = fig.add_subplot(111, aspect='equal')
+
+    a = []; b = []; c = []; d = []
+
+    for q_id, q in quadrants_trans.iteritems():
+      for s_id, s in q.iteritems():
+        sensor = ((s[0][0], s[0][1]),
+                  (s[1][0], s[1][1]),
+                  (s[2][0], s[2][1]),
+                  (s[3][0], s[3][1]))
+        ax.add_patch(Polygon(sensor, closed=True, color='green', fill=False, hatch='/'))
+
+        a.append(s[0]); b.append(s[1]); c.append(s[2]); d.append(s[3])
+
+    ax.set_xlim((-100, 100))
+    ax.set_ylim((-100, 100))
+    plt.scatter([v[0] for v in a], [v[1] for v in a], c = 'black')
+    for i, v in enumerate(a):
+        ax.annotate(i, (v[0],v[1]))
+    plt.scatter([v[0] for v in b], [v[1] for v in b], c = 'yellow')
+    #plt.scatter([v[0] for v in c], [v[1] for v in c], c = 'yellow')
+    plt.scatter([v[0] for v in d], [v[1] for v in d], c = 'yellow')
+    plt.show()
+
+  null_ori = matrix.col((0,0,1)).axis_and_angle_as_unit_quaternion(0, deg=True)
+  metro = { (0,): basis(null_ori, matrix.col((0,0,0))) }
+
+  # assume a standard sensor position on its side
+  v1 = matrix.col((-pixel_size*sensor_dimension[0]/2,
+                     pixel_size * sensor_dimension[1],
+                    0))
+
+  for q_id, q in quadrants_trans.iteritems():
+    # calculate the center of the quadrant
+    q_c = matrix.col((0,0,0))
+    for s_id, s in q.iteritems():
+      q_c += center(s)
+    q_c /= len(q)
+
+    metro[(0,q_id)] = basis(null_ori,q_c)
+
+    for s_id, s in q.iteritems():
+      s_c = center(s) # center of sensor in reference to origin of detector
+      s_c -= q_c      # center of sensor in reference to origin of quadrant
+
+      v2 = s[0]       # zero corner of sensor in reference to origin of detector
+      v2 -= q_c       # zero corner of sensor in reference to origin of quadrant
+      v2 -= s_c       # zero corner of sensor in reference to origin of sensor
+
+      rotation_axis = v1.cross(v2)
+      angle = v1.angle(v2, deg=True)
+
+      metro[(0,q_id,s_id)] = basis(rotation_axis.axis_and_angle_as_unit_quaternion(angle, deg=True),s_c)
+
+      w = pixel_size * (sensor_dimension[0]/2 + asic_gap/2)
+      metro[(0,q_id,s_id,0)] = basis(null_ori,matrix.col((-w,0,0)))
+      metro[(0,q_id,s_id,1)] = basis(null_ori,matrix.col((+w,0,0)))
+
+  return metro
+
+def metro_phil_to_basis_dict(metro):
+  """ Maps a phil object from xfel.cftbx.detector.metrology2phil to a dictionary of tuples and basis objects, in the same form
+  as the above read_optical_metrology_from_flat_file
+  @param metro unextracted phil scope object that contains translations and rotations for each asic """
   for o in metro.objects:
-      if o.is_scope:
-        #one of the subkeys of the root object will be the detector phil. it will be the only one not extracted.
-        detector_phil = o.extract()
-        break
-  metro = metro.extract()
+    if o.is_scope:
+      #one of the subkeys of the root object will be the detector phil. it will be the only one not extracted.
+      detector_phil = o.extract()
+      break
+  #metro = metro.extract() # not needed
 
-  cbf=cbf_wrapper()
+  bd = {(detector_phil.serial,): basis(detector_phil.orientation,detector_phil.translation) }
+  for p in detector_phil.panel:
+    bd[(detector_phil.serial,p.serial)] = basis(p.orientation,p.translation)
+    for s in p.sensor:
+      bd[(detector_phil.serial,p.serial,s.serial)] = basis(s.orientation,s.translation)
+      for a in s.asic:
+        bd[(detector_phil.serial,p.serial,s.serial,a.serial)] = basis(a.orientation,a.translation)
+
+  return bd
+
+def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, distance):
+  assert metro_style in ['calibdir','flatfile']
+  if metro_style == 'calibdir':
+    metro = metro_phil_to_basis_dict(metro)
+
+  # set up the metrology dictionary to include axis names, pixel sizes, and so forth
+  try:
+    from xfel.cxi.cspad_ana.cspad_tbx import dynamic_range as dr
+    from xfel.cxi.cspad_ana.cspad_tbx import pixel_size as ps
+    dynamic_range = dr
+    pixel_size = ps
+  except ImportError:
+    dynamic_range = 2**14 - 1
+    pixel_size = 110e-3
+
+  dserial = None
+  dname = None
+  detector_axes_names = [] # save these for later
+  for key in sorted(metro):
+    basis = metro[key]
+    if len(key) == 1:
+      assert dserial is None # only one detector allowed for now
+      dserial = key[0]
+
+      dname = "AXIS_D%d"%dserial #XXX check if DS1 is here
+      for a in ["_X","_Y","_Z","_R"]: detector_axes_names.append(dname+a)
+      basis.equipment_component = "detector_arm"
+      basis.depends_on = dname+"_X"
+    elif len(key) == 2:
+      detector_axes_names.append("FS_D%dQ%d"%key)
+      basis.equipment_component = "detector_quadrant"
+      basis.depends_on = dname+"_R"
+    elif len(key) == 3:
+      detector_axes_names.append("FS_D%dQ%dS%d"%(key))
+      basis.equipment_component = "detector_sensor"
+      basis.depends_on = "FS_D%dQ%d"%key[0:2]
+    elif len(key) == 4:
+      detector_axes_names.append("FS_D%dQ%dS%dA%d"%(key))
+      basis.equipment_component = "detector_asic"
+      basis.depends_on = "FS_D%dQ%dS%d"%key[0:3]
+      basis.pixel_size = (pixel_size,pixel_size)
+      basis.dimension = tiles[key].focus()
+      basis.saturation = dynamic_range
+    else:
+      assert False # shouldn't be reached as it would indicate more than four levels of hierarchy for this detector
+    basis.axis_name = detector_axes_names[-1]
+
 
   # the data block is the root cbf node
+  cbf=cbf_wrapper()
   cbf.new_datablock(os.path.splitext(os.path.basename(destpath))[0])
 
   # Each category listed here is preceded by the imageCIF description taken from here:
@@ -114,23 +337,12 @@ def write_cspad_cbf(tiles, metro, timestamp, destpath):
    intensities. Items may be looped to identify and assign weights
    to distinct wavelength components from a polychromatic beam."""
   cbf.add_category("diffrn_radiation_wavelength", ["id","wavelength","wt"])
-  cbf.add_row(["WAVELENGTH1","%f"%metro.wavelength,"1.0"])
+  cbf.add_row(["WAVELENGTH1","%f"%wavelength,"1.0"])
 
   """Data items in the DIFFRN_DETECTOR category describe the
    detector used to measure the scattered radiation, including
    any analyser and post-sample collimation."""
   cbf.add_category("diffrn_detector", ["diffrn_id","id","type","details","number_of_axes"])
-  # figure out how many axes are in this detector
-  dname = "AXIS_D%d"%detector_phil.serial #XXX check if DS1 is here
-  detector_axes_names = [dname+a for a in ["_X","_Y","_Z","_R"]]
-
-  for p in detector_phil.panel:
-    detector_axes_names.append("FS_D%dQ%d"%(detector_phil.serial,p.serial))
-    for s in p.sensor:
-      detector_axes_names.append("FS_D%dQ%dS%d"%(detector_phil.serial,p.serial,s.serial))
-      for a in s.asic:
-        detector_axes_names.append("FS_D%dQ%dS%dA%d"%(detector_phil.serial,p.serial,s.serial,a.serial))
-
   cbf.add_row(["DS1","CSPAD_FRONT","CS PAD",".",str(len(detector_axes_names))])
 
   """Data items in the DIFFRN_DETECTOR_AXIS category associate
@@ -210,38 +422,31 @@ def write_cspad_cbf(tiles, metro, timestamp, destpath):
   axis_settings.append(["AXIS_GRAVITY","FRAME1","0","0"])
   axis_settings.append([dname+"_X"    ,"FRAME1","0","0"])
   axis_settings.append([dname+"_Y"    ,"FRAME1","0","0"])
-  axis_settings.append([dname+"_Z"    ,"FRAME1","0",str(-metro.distance)])
+  axis_settings.append([dname+"_Z"    ,"FRAME1","0",str(-distance)])
 
-  cbf.add_frame_shift(dname+"_R",dname+"_X",detector_phil,axis_settings, "detector_arm")
-  axis_names.append(dname+"_R")
+  for key in sorted(metro):
+    basis = metro[key]
+    assert len(key) > 0 and len(key) <= 4
 
-  dname = "D%d"%detector_phil.serial
+    cbf.add_frame_shift(basis, axis_settings)
+    axis_names.append(basis.axis_name)
 
-  for panel_phil in detector_phil.panel:
-    pname = dname+"Q%d"%panel_phil.serial
-    cbf.add_frame_shift("FS_"+pname,"AXIS_"+dname+"_R",panel_phil,axis_settings, "detector_quadrant")
-    axis_names.append("FS_"+pname)
-    for sensor_phil in panel_phil.sensor:
-      sname = pname+"S%d"%sensor_phil.serial
-      cbf.add_frame_shift("FS_"+sname,"FS_"+pname,sensor_phil,axis_settings, "detector_sensor")
-      axis_names.append("FS_"+sname)
-      for asic_phil in sensor_phil.asic:
-        aname = sname+"A%d"%asic_phil.serial
-        cbf.add_frame_shift("FS_"+aname,"FS_"+sname,asic_phil,axis_settings, "detector_asic")
-        axis_names.append("FS_"+aname)
+    if len(key) == 4:
 
-        dim_pixel = asic_phil.pixel_size
-        dim_readout = asic_phil.dimension
+      dim_pixel = basis.pixel_size
+      dim_readout = basis.dimension
 
-        # Add the two vectors for each asic that describe the fast and slow dirctions pixels should be laid out in real space
-        offset_fast = -dim_pixel[0]*1e3*((dim_readout[0] - 1) / 2)
-        offset_slow = +dim_pixel[1]*1e3*((dim_readout[1] - 1) / 2)
+      # Add the two vectors for each asic that describe the fast and slow directions pixels should be laid out in real space
+      offset_fast = -dim_pixel[0]*((dim_readout[1] - 1) / 2)
+      offset_slow = +dim_pixel[1]*((dim_readout[0] - 1) / 2)
 
-        cbf.add_row(["AXIS_"+ aname + "_F", "translation","detector","FS_"  + aname      ,"1","0","0","%f"%offset_fast,"%f"%offset_slow,"0.0", "detector_asic"])
-        cbf.add_row(["AXIS_"+ aname + "_S", "translation","detector","AXIS_"+ aname +"_F","0","-1","0","0","0","0.0", "detector_asic"])
-        axis_names.append("AXIS_"+ aname + "_F"); axis_names.append("AXIS_"+ aname + "_S")
-        axis_settings.append(["AXIS_"+ aname + "_F","FRAME1","0","0"])
-        axis_settings.append(["AXIS_"+ aname + "_S","FRAME1","0","0"])
+      aname = "D%dQ%dS%dA%d"%key
+
+      cbf.add_row(["AXIS_"+ aname + "_F", "translation","detector",basis.axis_name    ,"1", "0","0","%f"%offset_fast,"%f"%offset_slow,"0.0", "detector_asic"])
+      cbf.add_row(["AXIS_"+ aname + "_S", "translation","detector","AXIS_"+aname +"_F","0","-1","0","0","0","0.0", "detector_asic"])
+      axis_names.append("AXIS_"+ aname + "_F"); axis_names.append("AXIS_"+ aname + "_S")
+      axis_settings.append(["AXIS_"+ aname + "_F","FRAME1","0","0"])
+      axis_settings.append(["AXIS_"+ aname + "_S","FRAME1","0","0"])
 
   """Data items in the DIFFRN_SCAN_AXIS category describe the settings of
      axes for particular scans.  Unspecified axes are assumed to be at
@@ -274,10 +479,8 @@ def write_cspad_cbf(tiles, metro, timestamp, destpath):
      ARRAY_STRUCTURE_LIST category."""
   cbf.add_category("array_structure_list_axis",["axis_set_id","axis_id","displacement","displacement_increment"])
   for tilename,tilekey in zip(tilestrs,tilekeys):
-    tm = get_tile_metrology(detector_phil,tilekey)
-
-    cbf.add_row(["AXIS_"+tilename+"_F","AXIS_"+tilename+"_F","0.0","%f"%(tm.pixel_size[0]*1000)])
-    cbf.add_row(["AXIS_"+tilename+"_S","AXIS_"+tilename+"_S","0.0","%f"%(tm.pixel_size[1]*1000)])
+    cbf.add_row(["AXIS_"+tilename+"_F","AXIS_"+tilename+"_F","0.0","%f"%(metro[tilekey].pixel_size[0])])
+    cbf.add_row(["AXIS_"+tilename+"_S","AXIS_"+tilename+"_S","0.0","%f"%(metro[tilekey].pixel_size[1])])
 
   """ Data items in the ARRAY_INTENSITIES category record the
    information required to recover the intensity data from
@@ -285,8 +488,7 @@ def write_cspad_cbf(tiles, metro, timestamp, destpath):
   # More detail here: http://www.iucr.org/__data/iucr/cifdic_html/2/cif_img.dic/Carray_intensities.html
   cbf.add_category("array_intensities",["array_id","binary_id","linearity","gain","gain_esd","overload","undefined_value"])
   for i, (tilename, tilekey) in enumerate(zip(tilestrs,tilekeys)):
-    tm = get_tile_metrology(detector_phil,tilekey)
-    cbf.add_row(["ARRAY_"+ tilename,str(i+1),"linear","1.0","0.1",str(tm.saturation),"0.0"])
+    cbf.add_row(["ARRAY_"+ tilename,str(i+1),"linear","1.0","0.1",str(metro[tilekey].saturation),"0.0"])
 
   """ Data items in the ARRAY_STRUCTURE category record the organization and
      encoding of array data in the ARRAY_DATA category."""
