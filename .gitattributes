@@ -459,6 +459,7 @@ dxtbx/format/doc/adding_new_formats.txt -text
 dxtbx/format/tests/TestFormat.py -text
 dxtbx/format/tests/TestRegistry.py -text
 dxtbx/imageset.py -text
+dxtbx/imageset2.py -text
 dxtbx/libtbx_config -text
 dxtbx/license.txt -text
 dxtbx/model/__init__.py -text

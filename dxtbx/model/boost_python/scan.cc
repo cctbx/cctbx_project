@@ -234,25 +234,25 @@ namespace dxtbx { namespace model { namespace boost_python {
   Scan getitem_single(const Scan &scan, int index) 
   {
     // Check index
-    DXTBX_ASSERT(scan.get_image_range()[0] <= index && 
-      index <= scan.get_image_range()[1]);
-
+    DXTBX_ASSERT(index >= 0 and index < scan.get_num_images());
+    int image_index = scan.get_image_range()[0] + index;
+    
     // Create the new epoch array
     scitbx::af::shared<double> new_epochs(1);
-    new_epochs[0] = scan.get_image_epoch(index);
+    new_epochs[0] = scan.get_image_epoch(image_index );
     scitbx::af::shared<double> new_exposure_times(1);
-    new_exposure_times[0] = scan.get_image_exposure_time(index);
+    new_exposure_times[0] = scan.get_image_exposure_time(image_index );
 
     // Return scan
-    return Scan(vec2<int>(index, index), 
-      scan.get_image_oscillation(index),
+    return Scan(vec2<int>(image_index, image_index), 
+      scan.get_image_oscillation(image_index ),
       new_exposure_times, new_epochs);
   }
   
   static
   Scan getitem_slice(const Scan &scan, const slice index)
   {
-    vec2<int> image_range = scan.get_image_range();
+    vec2<int> array_range = scan.get_array_range();
 
     // Ensure no step
     DXTBX_ASSERT(index.step() == object());
@@ -260,38 +260,41 @@ namespace dxtbx { namespace model { namespace boost_python {
     // Get start index
     int start = 0, stop = 0;
     if (index.start() == object()) {
-      start = image_range[0];
+      start = 0;
     } else {
       start = extract<int>(index.start());
     }
     
     // Get stop index
     if (index.stop() == object()) {
-      stop = image_range[1];
+      stop = scan.get_num_images();
     } else {
       stop = extract<int>(index.stop());
     }
 
     // Check ranges
-    DXTBX_ASSERT(start >= image_range[0]);
-    DXTBX_ASSERT(stop <= image_range[1]);
-    DXTBX_ASSERT(start <= stop);
+    DXTBX_ASSERT(start >= 0);
+    DXTBX_ASSERT(stop <= scan.get_num_images());
+    DXTBX_ASSERT(start < stop);
 
     // Create the new epoch array
-    scitbx::af::shared<double> new_epochs(stop - start + 1);
+    int first_image_index = scan.get_image_range()[0] + start;
+    int last_image_index = scan.get_image_range()[0] + stop - 1;
+    scitbx::af::shared<double> new_epochs(stop - start);
     for (std::size_t i = 0; i < new_epochs.size(); ++i) {
-      new_epochs[i] = scan.get_image_epoch(i + start);
+      new_epochs[i] = scan.get_image_epoch(first_image_index + i);
     }
 
     // Create the new epoch array
-    scitbx::af::shared<double> new_exposure_times(stop - start + 1);
+    scitbx::af::shared<double> new_exposure_times(stop - start);
     for (std::size_t i = 0; i < new_exposure_times.size(); ++i) {
-      new_exposure_times[i] = scan.get_image_exposure_time(i + start);
+      new_exposure_times[i] = scan.get_image_exposure_time(first_image_index + i);
     }
 
     // Create the new scan object
-    return Scan(vec2<int>(start, stop), 
-      scan.get_image_oscillation(start), 
+    return Scan(
+      vec2<int>(first_image_index, last_image_index), 
+      scan.get_image_oscillation(first_image_index), 
       new_exposure_times, new_epochs);
   }  
   

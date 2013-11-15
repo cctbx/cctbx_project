@@ -90,13 +90,13 @@ class DataBlock(object):
 
     def extract_all(self):
         ''' Extract all the images as an image set. '''
-        from dxtbx.imageset import ImageSetFactory
+        from dxtbx.imageset2 import ImageSetFactory
         return ImageSetFactory.make_imageset(
             self._images.keys(), self._format_class)
 
     def extract_stills(self):
         ''' Extract all the still images as an image set. '''
-        from dxtbx.imageset import ImageSetFactory
+        from dxtbx.imageset2 import ImageSetFactory
         stills = [f for f, i in self._images.iteritems() if i.template is None]
         if len(stills) == 0:
             return None
@@ -104,7 +104,7 @@ class DataBlock(object):
 
     def extract_sweeps(self):
         ''' Extract all the sweeps from the block. '''
-        from dxtbx.imageset import ImageSetFactory
+        from dxtbx.imageset2 import ImageSetFactory
         from itertools import groupby
         sweeps = []
 
@@ -119,7 +119,13 @@ class DataBlock(object):
                 assert(templates.count(templates[0]) == len(templates))
                 assert(all(j == i+1 for i, j in zip(indices[:-1], indices[1:])))
                 sweep = ImageSetFactory.make_sweep(
-                    templates[0], indices, self._format_class)
+                    templates[0],
+                    indices,
+                    self._format_class,
+                    records[0].beam,
+                    records[0].detector,
+                    records[0].goniometer,
+                    records[0].scan)
                 sweeps.append(sweep)
 
         # Return the list of sweeps
@@ -265,3 +271,40 @@ class DataBlockFactory(object):
 
         # Create the datablock
         return DataBlock(filenames)
+
+
+if __name__ == '__main__':
+
+    import sys
+
+    # Get the data blocks from the input files
+    # We've set verbose to print out files as they're tested.
+    datablock_list = DataBlockFactory.from_filenames(sys.argv[1:], verbose=True)
+
+    # Loop through the data blocks
+    for i, datablock in enumerate(datablock_list):
+
+        # Extract any stills
+        imageset = datablock.extract_stills()
+        if imageset == None:
+            num_stills = 0
+        else:
+            num_stills = len(imageset)
+
+        # Extract any sweeps
+        sweeps = datablock.extract_sweeps()
+
+        print "DataBlock %d" % i
+        print "  num images: %d" % len(datablock)
+        print "  num stills: %d" % num_stills
+        print "  num sweeps: %d" % len(sweeps)
+
+        # Loop through all the sweeps
+        for j, sweep in enumerate(sweeps):
+            print ""
+            print "Sweep %d" % j
+            print "  length %d" % len(sweep)
+            print sweep.get_beam()
+            print sweep.get_goniometer()
+            print sweep.get_detector()
+            print sweep.get_scan()
