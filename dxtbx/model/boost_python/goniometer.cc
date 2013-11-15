@@ -16,6 +16,7 @@
 #include <sstream>
 #include <dxtbx/model/goniometer.h>
 #include <dxtbx/model/kappa_goniometer.h>
+#include <dxtbx/model/boost_python/to_from_dict.h>
 
 namespace dxtbx { namespace model { namespace boost_python {
 
@@ -35,17 +36,17 @@ namespace dxtbx { namespace model { namespace boost_python {
         obj.get_fixed_rotation());
     }
   };
-  
-  static
-  boost::python::dict to_dict(const Goniometer &obj) {
+
+  template <>
+  boost::python::dict to_dict<Goniometer>(const Goniometer &obj) {
     boost::python::dict result;
     result["rotation_axis"] = obj.get_rotation_axis();
     result["fixed_rotation"] = obj.get_fixed_rotation();
     return result;
   }
   
-  static 
-  Goniometer* make_from_dict(boost::python::dict obj) {
+  template <>
+  Goniometer* from_dict<Goniometer>(boost::python::dict obj) {
     return new Goniometer(
       boost::python::extract< vec3<double> >(obj["rotation_axis"]),
       boost::python::extract< mat3<double> >(obj.get("fixed_rotation", 
@@ -64,11 +65,6 @@ namespace dxtbx { namespace model { namespace boost_python {
                  mat3 <double> > ((
           arg("rotation_axis"), 
           arg("fixed_rotation_matrix"))))
-      .def("__init__",
-          make_constructor(
-          &make_from_dict, 
-          default_call_policies(), (
-	          arg("dictionary"))))           
       .def("get_rotation_axis",  
         &Goniometer::get_rotation_axis)
       .def("set_rotation_axis",
@@ -80,7 +76,10 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("__eq__", &Goniometer::operator==)
       .def("__ne__", &Goniometer::operator!=)
       .def("__str__", &goniometer_to_string)
-      .def("to_dict", &to_dict)
+      .def("to_dict", &to_dict<Goniometer>)
+      .def("from_dict", &from_dict<Goniometer>, 
+        return_value_policy<manage_new_object>())
+      .staticmethod("from_dict")
       .def_pickle(GoniometerPickleSuite());
   }
 

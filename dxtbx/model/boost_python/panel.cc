@@ -16,6 +16,7 @@
 #include <boost_adaptbx/std_pair_conversion.h>
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <dxtbx/model/panel.h>
+#include <dxtbx/model/boost_python/to_from_dict.h>
 
 namespace dxtbx { namespace model { namespace boost_python {
 
@@ -39,6 +40,11 @@ namespace dxtbx { namespace model { namespace boost_python {
   static
   Panel panel_deepcopy(const Panel &panel, boost::python::object dict) {
     return Panel(panel);  
+  }
+  
+  static 
+  bool panel_is(const Panel *lhs, const Panel *rhs) {
+    return lhs == rhs;
   }
   
   struct PanelBasePickleSuite : boost::python::pickle_suite {
@@ -85,45 +91,6 @@ namespace dxtbx { namespace model { namespace boost_python {
     
     static bool getstate_manages_dict() { return true; }
   };  
-  
-  
-  static
-  boost::python::dict panelbase_to_dict(const PanelBase &obj) {
-    boost::python::dict result;
-    result["name"] = obj.get_name();
-    result["type"] = obj.get_type();
-    result["local_fast_axis"] = obj.get_local_fast_axis();
-    result["local_slow_axis"] = obj.get_local_slow_axis();
-    result["local_origin"] = obj.get_local_origin();
-    result["parent_fast_axis"] = obj.get_parent_fast_axis();
-    result["parent_slow_axis"] = obj.get_parent_slow_axis();
-    result["parent_origin"] = obj.get_parent_origin();
-    return result;
-  }
-  
-  static
-  PanelBase* make_panelbase_from_dict(boost::python::dict obj) {
-    PanelBase *result = new PanelBase();
-    result->set_name(boost::python::extract<std::string>(obj["name"]));
-    result->set_type(boost::python::extract<std::string>(obj["type"]));
-    if (obj.has_key("local_fast_axis") &&
-        obj.has_key("local_slow_axis") &&
-        obj.has_key("local_origin")) {
-      result->set_local_frame(
-        boost::python::extract< vec3<double> >(obj["local_fast_axis"]),
-        boost::python::extract< vec3<double> >(obj["local_slow_axis"]),
-        boost::python::extract< vec3<double> >(obj["local_origin"]));
-    }
-    if (obj.has_key("parent_fast_axis") &&
-        obj.has_key("parent_slow_axis") &&
-        obj.has_key("parent_origin")) {
-      result->set_parent_frame(
-        boost::python::extract< vec3<double> >(obj["parent_fast_axis"]),
-        boost::python::extract< vec3<double> >(obj["parent_slow_axis"]),
-        boost::python::extract< vec3<double> >(obj["parent_origin"]));
-    }
-    return result;
-  }
 
   struct PanelPickleSuite : boost::python::pickle_suite {
 
@@ -178,8 +145,46 @@ namespace dxtbx { namespace model { namespace boost_python {
     static bool getstate_manages_dict() { return true; }
   }; 
 
-  static
-  boost::python::dict panel_to_dict(const Panel &obj) {
+  template <>
+  boost::python::dict to_dict<PanelBase>(const PanelBase &obj) {
+    boost::python::dict result;
+    result["name"] = obj.get_name();
+    result["type"] = obj.get_type();
+    result["local_fast_axis"] = obj.get_local_fast_axis();
+    result["local_slow_axis"] = obj.get_local_slow_axis();
+    result["local_origin"] = obj.get_local_origin();
+    result["parent_fast_axis"] = obj.get_parent_fast_axis();
+    result["parent_slow_axis"] = obj.get_parent_slow_axis();
+    result["parent_origin"] = obj.get_parent_origin();
+    return result;
+  }
+  
+  template <>
+  PanelBase* from_dict<PanelBase>(boost::python::dict obj) {
+    PanelBase *result = new PanelBase();
+    result->set_name(boost::python::extract<std::string>(obj["name"]));
+    result->set_type(boost::python::extract<std::string>(obj["type"]));
+    if (obj.has_key("local_fast_axis") &&
+        obj.has_key("local_slow_axis") &&
+        obj.has_key("local_origin")) {
+      result->set_local_frame(
+        boost::python::extract< vec3<double> >(obj["local_fast_axis"]),
+        boost::python::extract< vec3<double> >(obj["local_slow_axis"]),
+        boost::python::extract< vec3<double> >(obj["local_origin"]));
+    }
+    if (obj.has_key("parent_fast_axis") &&
+        obj.has_key("parent_slow_axis") &&
+        obj.has_key("parent_origin")) {
+      result->set_parent_frame(
+        boost::python::extract< vec3<double> >(obj["parent_fast_axis"]),
+        boost::python::extract< vec3<double> >(obj["parent_slow_axis"]),
+        boost::python::extract< vec3<double> >(obj["parent_origin"]));
+    }
+    return result;
+  }
+  
+  template <>
+  boost::python::dict to_dict<Panel>(const Panel &obj) {
     boost::python::dict result;
     result["name"] = obj.get_name();
     result["type"] = obj.get_type();
@@ -192,12 +197,11 @@ namespace dxtbx { namespace model { namespace boost_python {
     result["image_size"] = obj.get_image_size();
     result["pixel_size"] = obj.get_pixel_size();
     result["trusted_range"] = obj.get_trusted_range();
-    result["px_mm_strategy"] = obj.get_px_mm_strategy();
     return result;
   }
   
-  static
-  Panel* make_panel_from_dict(boost::python::dict obj) {
+  template <>
+  Panel* from_dict<Panel>(boost::python::dict obj) {
     Panel *result = new Panel();
     result->set_name(boost::python::extract<std::string>(obj["name"]));
     result->set_type(boost::python::extract<std::string>(obj["type"]));
@@ -223,12 +227,7 @@ namespace dxtbx { namespace model { namespace boost_python {
       boost::python::extract< vec2<double> >(obj["pixel_size"]));
     result->set_trusted_range(
       boost::python::extract< vec2<double> >(obj["trusted_range"]));
-    
-    if (obj.has_key("px_mm_strategy")) {
-      result->set_px_mm_strategy(
-        boost::python::extract< shared_ptr<PxMmStrategy> >(
-          obj["px_mm_strategy"]));
-    }
+
     return result;
   }
 
@@ -289,18 +288,16 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("__ne__", &PanelFrame::operator!=);
           
     class_<PanelBase, bases<PanelFrame> >("PanelBase")
-      .def("__init__",
-          make_constructor(
-          &make_panelbase_from_dict, 
-          default_call_policies(), (
-	          arg("dictionary"))))    
       .def("get_name", &PanelBase::get_name)
       .def("set_name", &PanelBase::set_name)
       .def("get_type", &PanelBase::get_type)
       .def("set_type", &PanelBase::set_type)
       .def("__eq__", &PanelBase::operator==)
       .def("__ne__", &PanelBase::operator!=)
-      .def("to_dict", &panelbase_to_dict)
+      .def("to_dict", &to_dict<PanelBase>)
+      .def("from_dict", &from_dict<PanelBase>, 
+        return_value_policy<manage_new_object>())
+      .staticmethod("from_dict")
       .def_pickle(PanelBasePickleSuite());
       
     class_<Panel, bases<PanelBase> >("Panel")
@@ -338,11 +335,6 @@ namespace dxtbx { namespace model { namespace boost_python {
         arg("image_size"),
         arg("trusted_range"),
         arg("px_mm"))))
-      .def("__init__",
-          make_constructor(
-          &make_panel_from_dict, 
-          default_call_policies(), (
-	          arg("dictionary"))))           
       .def("get_pixel_size", &Panel::get_pixel_size)
       .def("set_pixel_size", &Panel::set_pixel_size)
       .def("get_image_size", &Panel::get_image_size)
@@ -375,7 +367,11 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("__deepcopy__", &panel_deepcopy)
       .def("__copy__", &panel_deepcopy)
       .def("__str__", &panel_to_string)
-      .def("to_dict", &panel_to_dict)
+      .def("to_dict", &to_dict<Panel>)
+      .def("from_dict", &from_dict<Panel>, 
+        return_value_policy<manage_new_object>())
+      .staticmethod("from_dict")
+      .def("is_", &panel_is)
       .def_pickle(PanelPickleSuite());
   }
 
