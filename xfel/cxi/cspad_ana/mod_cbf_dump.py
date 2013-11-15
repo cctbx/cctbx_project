@@ -99,9 +99,7 @@ class mod_cbf_dump(common_mode.common_mode_correction):
 
     args = [
       "beam_center=(%f,%f)"%(beam_center_x, beam_center_y),
-      "distance = %f"%       distance,
       "timestamp=%s"%        self.timestamp,
-      "wavelength=%f"%       self.wavelength
       ]
 
     for arg in args:
@@ -111,4 +109,4 @@ class mod_cbf_dump(common_mode.common_mode_correction):
     t = self.timestamp
     s = t[0:4] + t[5:7] + t[8:10] + t[11:13] + t[14:16] + t[17:19] + t[20:23]
 
-    write_cspad_cbf(tiles, metro, self.timestamp, os.path.join(self._dirname, self._basename + s + ".cbf"))
+    write_cspad_cbf(tiles, metro, self.timestamp, os.path.join(self._dirname, self._basename + s + ".cbf"), self.wavelength, distance)
