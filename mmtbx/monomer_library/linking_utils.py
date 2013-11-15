@@ -59,6 +59,9 @@ class empty:
       outl += "  %s : %s\n" % (attr, getattr(self, attr))
     return outl
 
+def _write_warning_line(s):
+  print " !!! %-76s !!!" % s
+
 def get_distance2(atom1, atom2):
   d2 = (atom1.xyz[0]-atom2.xyz[0])**2
   d2 += (atom1.xyz[1]-atom2.xyz[1])**2
