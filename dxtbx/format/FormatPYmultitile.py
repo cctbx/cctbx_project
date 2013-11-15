@@ -174,7 +174,7 @@ class FormatPYmultitile(FormatPY):
 
     return self._scan_factory.make_scan(
       image_range=(1, 1),
-      exposure_time=1e-15 * self._metrology_params.pulse_length,
+      exposure_times=[1e-15 * self._metrology_params.pulse_length],
       oscillation=(0, 0),
       epochs={1: epoch})
 
