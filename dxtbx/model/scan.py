@@ -29,6 +29,15 @@ class scan_factory:
         if not isinstance(exposure_times, list):
             num_images = image_range[1] - image_range[0] + 1
             exposure_times = [exposure_times for i in range(num_images)]
+        else:
+            num_images = image_range[1] - image_range[0] + 1
+            num_exp = len(exposure_times)
+            if num_exp != num_images:
+                if (num_exp == 0):
+                    exposure_times = [0 for i in range(num_images)]
+                else:
+                    exposure_times = exposure_times.extend(
+                      [exposure_times[-1] for i in range(num_images - num_exp)])
 
         epoch_list = [epochs[j] for j in sorted(epochs)]
 
