@@ -27,7 +27,8 @@ class scan_factory:
         from scitbx.array_family import flex
 
         if not isinstance(exposure_times, list):
-            exposure_times = [exposure_times]
+            num_images = image_range[1] - image_range[0] + 1
+            exposure_times = [exposure_times for i in range(num_images)]
 
         epoch_list = [epochs[j] for j in sorted(epochs)]
 
