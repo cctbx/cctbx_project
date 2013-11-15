@@ -76,11 +76,13 @@ namespace scitbx { namespace af { namespace boost_python {
         rho.size(), init_functor_null<std::complex<FloatType> >());
       if (deg) {
         for(std::size_t i=0;i<rho.size();i++) {
+          SCITBX_ASSERT(rho[i] >= 0)(rho[i]);
           result[i] = std::polar(rho[i], theta[i] * constants::pi_180);
         }
       }
       else {
         for(std::size_t i=0;i<rho.size();i++) {
+          SCITBX_ASSERT(rho[i] >= 0)(rho[i]);
           result[i] = std::polar(rho[i], theta[i]);
         }
       }
@@ -140,6 +142,7 @@ namespace scitbx { namespace af { namespace boost_python {
       shared_plain<std::complex<FloatType> > result(
       rho.size(), init_functor_null<std::complex<FloatType> >());
       for(std::size_t i=0;i<rho.size();i++) {
+        SCITBX_ASSERT(rho[i] >= 0)(rho[i]);
         result[i] = std::polar(rho[i], std::arg(theta[i]));
       }
       return versa<std::complex<FloatType>, flex_grid<> >(
@@ -171,6 +174,7 @@ namespace scitbx { namespace af { namespace boost_python {
       shared_plain<std::complex<FloatType> > result(
         theta.size(), init_functor_null<std::complex<FloatType> >());
       for(std::size_t i=0;i<theta.size();i++) {
+        SCITBX_ASSERT(rho >= 0)(rho);
         result[i] = std::polar(rho, theta[i]);
       }
       return versa<std::complex<FloatType>, flex_grid<> >(
@@ -185,6 +189,7 @@ namespace scitbx { namespace af { namespace boost_python {
       shared_plain<std::complex<FloatType> > result(
         rho.size(), init_functor_null<std::complex<FloatType> >());
       for(std::size_t i=0;i<rho.size();i++) {
+        SCITBX_ASSERT(rho[i] >= 0)(rho[i]);
         result[i] = std::polar(rho[i], theta);
       }
       return versa<std::complex<FloatType>, flex_grid<> >(

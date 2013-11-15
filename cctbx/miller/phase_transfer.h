@@ -2,6 +2,7 @@
 #define CCTBX_MILLER_PHASE_TRANSFER_H
 
 #include <cctbx/sgtbx/space_group.h>
+#include <scitbx/math/utils.h>
 
 namespace cctbx { namespace miller {
 
@@ -37,10 +38,8 @@ namespace cctbx { namespace miller {
         const&
 #endif
         h = miller_indices[i];
-        result.push_back(std::polar(
-          amplitude_source[i],
-          space_group.phase_restriction(h)
-            .nearest_valid_phase(std::arg(p))));
+        result.push_back(amplitude_source[i] * scitbx::math::unit_complex(
+          space_group.phase_restriction(h).nearest_valid_phase(std::arg(p))));
       }
     }
     return result;
@@ -63,10 +62,9 @@ namespace cctbx { namespace miller {
     for(std::size_t i=0;i<miller_indices.size();i++) {
       FloatType p = phase_source[i];
       if (deg) p *= scitbx::constants::pi_180;
-      result.push_back(std::polar(
-        amplitude_source[i],
-        space_group.phase_restriction(miller_indices[i])
-          .nearest_valid_phase(p)));
+      result.push_back(amplitude_source[i] * scitbx::math::unit_complex(
+        space_group.phase_restriction(
+          miller_indices[i]).nearest_valid_phase(p)));
     }
     return result;
   }

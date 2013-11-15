@@ -4429,7 +4429,8 @@ def patterson_map(crystal_gridding, f_patt, f_000=None,
   if (origin_peak_removal):
     i_patt.setup_binner(auto_binning=True)
     i_patt = i_patt.remove_patterson_origin_peak()
-  i_patt = array(i_patt, data=flex.polar(i_patt.data(), 0))
+  i_patt = array(
+    i_patt, data=i_patt.data() * flex.complex_double(i_patt.data().size(), 1))
   if (f_000 is not None):
     f_000 = f_000 * f_000
   return fft_map(crystal_gridding, i_patt, f_000)
