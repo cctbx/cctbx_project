@@ -1805,48 +1805,31 @@ def exercise_phase_integrals(space_group_info):
     if miller_set.space_group() == sgtbx.space_group_info( "P-1" ).group():
       assert mean_entropy > 0.99
 
-
-
-
-
 def exercise_map_correlation():
-  xs = crystal.symmetry((3,4,5), "P 2 2 2")
-  mi = flex.miller_index(((1,-2,3), (1,-5,4)))
-
-  data = flex.double((1,2))
-  a = miller.array(miller.set(xs, mi), data)
-  ph = flex.double((10,20))
-  x = a.phase_transfer(ph, deg=True)
-
-  data = flex.double((1,2))
-  a = miller.array(miller.set(xs, mi), data)
-  ph = flex.double((10,20))
-  y = a.phase_transfer(ph, deg=True)
-  assert approx_equal(x.map_correlation(y), 1.0)
-
-  data = flex.double((1,2))
-  a = miller.array(miller.set(xs, mi), data)
-  ph = flex.double((10+180,20+180))
-  y = a.phase_transfer(ph, deg=True)
-  assert approx_equal(x.map_correlation(y), -1.0)
-
-  data = flex.double((1,2))
-  a = miller.array(miller.set(xs, mi), data)
-  ph = flex.double((10+90,20+90))
-  y = a.phase_transfer(ph, deg=True)
-  assert approx_equal(x.map_correlation(y), 0.0)
-
-  data = flex.double((-1,-2))
-  a = miller.array(miller.set(xs, mi), data)
-  ph = flex.double((10+90,20+90))
-  y = a.phase_transfer(ph, deg=True)
-  assert approx_equal(x.map_correlation(y), 0.0)
-
-  data = flex.double((-1,-2))
-  a = miller.array(miller.set(xs, mi), data)
-  ph = flex.double((10+45,20+45))
-  y = a.phase_transfer(ph, deg=True)
-  assert approx_equal(x.map_correlation(y), -1./math.sqrt(2.0))
+  xrs1 = random_structure.xray_structure(
+    space_group_info=sgtbx.space_group_info(number=1),
+    elements=["C"]*2)
+  xrs2 = xrs1.deep_copy_scatterers()
+  xrs2.shift_sites_in_place(shift_length=0.3)
+  cg = maptbx.crystal_gridding(
+    unit_cell         = xrs1.unit_cell(),
+    space_group_info  = xrs1.space_group_info(),
+    d_min             = 0.5,
+    resolution_factor = 0.1)
+  fc1 = xrs1.structure_factors(d_min=1, algorithm="direct").f_calc()
+  fc2 = fc1.structure_factors_from_scatterers(xray_structure=xrs2,
+    algorithm="direct").f_calc()
+  cc1 = fc1.map_correlation(other=fc2)
+  fft_map = miller.fft_map(
+    crystal_gridding     = cg,
+    fourier_coefficients = fc1)
+  m1 = fft_map.real_map_unpadded()
+  fft_map = miller.fft_map(
+    crystal_gridding     = cg,
+    fourier_coefficients = fc2)
+  m2 = fft_map.real_map_unpadded()
+  cc2 = flex.linear_correlation(m1.as_1d(), m2.as_1d()).coefficient()
+  assert approx_equal(cc1, cc2)
 
 def exercise_concatenate():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")
