@@ -31,6 +31,7 @@ tst_list = (
   "$D/regression/tst_alignment.py",
   ["$D/regression/tst_fmodel_fd.py", "P31"],
   "$D/ncs/tst_restraints.py",
+  "$D/ncs/tst_restraints_2.py",
   ["$D/ncs/ncs.py", "exercise"],
   "$D/regression/tst_adp_restraints.py",
   "$D/scaling/tst_scaling.py",
