@@ -2204,6 +2204,12 @@ class manager(manager_mixin):
     time_foms += timer.elapsed()
     return result
 
+  def fom(self):
+    r = self.figures_of_merit()
+    return miller.array(
+      miller_set = self.f_obs(),
+      data       = r)
+
   def figures_of_merit_work(self):
     fom = self.figures_of_merit()
     if(self.r_free_flags().data().count(True) > 0):
@@ -2529,22 +2535,6 @@ class manager(manager_mixin):
       mtz_object.add_history(lines=mtz_history_buffer)
       out.close()
       mtz_object.write(file_name=file_name)
-
-  def estimate_f000(self) :
-    assert (self.xray_structure is not None)
-    # XXX no account for solvent, and other scales
-    miller_set = miller.set(
-      crystal_symmetry=self.xray_structure,
-      indices=self.f_obs().indices().deep_copy(),
-      anomalous_flag=False)
-    indices = miller_set.indices()
-    indices.insert(0, (0,0,0))
-    f_calc = miller_set.structure_factors_from_scatterers(
-      xray_structure=self.xray_structure,
-      algorithm=self.sfg_params.algorithm).f_calc()
-    f_calc_000 = f_calc.data()[0].real
-    assert (f_calc.data()[0].imag)<1.e-6
-    return f_calc_000
 
 def kb_range(x_max, x_min, step):
   x_range = []
