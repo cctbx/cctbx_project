@@ -234,7 +234,7 @@ namespace dxtbx { namespace model { namespace boost_python {
   Scan getitem_single(const Scan &scan, int index) 
   {
     // Check index
-    DXTBX_ASSERT(index >= 0 and index < scan.get_num_images());
+    DXTBX_ASSERT((index >= 0) && (index < scan.get_num_images()));
     int image_index = scan.get_image_range()[0] + index;
     
     // Create the new epoch array
