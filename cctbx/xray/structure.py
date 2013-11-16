@@ -718,7 +718,7 @@ class structure(crystal.special_position_settings):
     frac = self.unit_cell().fractionalize
     orth = self.unit_cell().orthogonalize
     if (mersenne_twister is None):
-      mersenne_twister = flex.mersenne_twister
+      mersenne_twister = flex.mersenne_twister(seed=0)
     col = matrix.col
     for i_sc,sc in enumerate(self._scatterers):
       site_frac = col(sc.site)
