@@ -50,7 +50,7 @@ _lib_ligands.allowed_coordinating_atoms
 _lib_ligands.allowed_coordinating_residues
 _lib_ligands.allowed_geometries
 _lib_ligands.allowed_backbone_atoms
-NA  O,N       .                            octahedral,any                O,OXT
+NA  O,N       .                            octahedral,square_pyramidal,any                O,OXT
 MG  O,N,F     SER,THR,ASP,ASN,GLU,GLN,HIS  octahedral                    O,OXT
 K   O         .                            .                             O,OXT
 CA  O         SER,THR,ASP,ASN,GLU,GLN,TYR  octahedral,pentagonal_bipyramidal,any                O
