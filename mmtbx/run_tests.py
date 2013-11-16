@@ -106,7 +106,7 @@ tst_list = (
   "$D/ions/tst_pick_approx_zn.py",
   "$D/ions/tst_validate_ca.py",
   "$D/ions/tst_validate_mg.py",
-  "$D/ions/tst_validate_zn.py",
+  #"$D/ions/tst_validate_zn.py", # FIXME
   "$D/ions/tst_symmetry_axis.py",
   "$D/regression/tst_ringer.py",
   "$D/regression/tst_fmodel_no_cryst1.py",
