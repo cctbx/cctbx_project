@@ -56,7 +56,8 @@ def generate_master_phil_with_inputs (
   else :
     phil_extra_dict["twin_law"] = """
       twin_law = None
-        .type = str"""
+        .type = str
+        .input_size = 100"""
   if (enable_experimental_phases) :
     phil_extra_dict["phases"] = """
       experimental_phases {
@@ -68,6 +69,7 @@ def generate_master_phil_with_inputs (
     phil_extra_dict["phases_flag"] = """
       use_experimental_phases = Auto
         .type = bool
+        .short_caption = Use experimental phases (Hendrickson-Lattman coefficients)
       """
   if (enable_pdb_interpretation_params) :
     phil_extra_dict["pdb_interpretation"] = """
