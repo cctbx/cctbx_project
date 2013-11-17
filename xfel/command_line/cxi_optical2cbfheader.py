@@ -47,15 +47,9 @@ if (__name__ == "__main__") :
 
   print params.metrology_file, params.detector
 
-  try:
-    from xfel.cxi.cspad_ana.cspad_tbx import pixel_size as ps
-    from xfel.cftbx.detector.cspad_cbf_tbx import sensor_dimension as dim
-    pixel_size = ps
-    sensor_dimension = dim
-  except ImportError:
-    pixel_size = 110e-3
-    sensor_dimension = ((194*2)+3,185)
+  from xfel.cxi.cspad_ana.cspad_tbx import pixel_size
+  from xfel.cftbx.detector.cspad_cbf_tbx import asic_dimension, asic_gap
 
   quadrants = read_optical_metrology_from_flat_file(params.metrology_file, params.detector,
-                                                    pixel_size,sensor_dimension,
+                                                    pixel_size,asic_dimension,asic_gap,
                                                     plot=params.plot,old_style_diff_path=params.old_style_diff_path)
