@@ -557,6 +557,12 @@ class multi_criterion_view (slots_getstate_setstate) :
           else :
             print >> log, "missing residue group '%s'" % id_str
 
+  def get_residue_group_data (self, residue_group) :
+    residue_validation = self.residues.get(residue_group.id_str(), None)
+    if (residue_validation is None) :
+      raise RuntimeError("Can't find residue '%s'" % residue_group.id_str())
+    return residue_validation.outliers
+
   def data (self) :
     return sorted(self.residues.values())
 
