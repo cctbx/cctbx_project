@@ -142,7 +142,6 @@ def t_1(xray_structure, d_min=3.5):
                 assert a.data().all_approx_equal(1.0, 1.e-9)
                 assert b.data().all_approx_equal(0.0, 1.e-9)
                 assert approx_equal(fmodel.model_error_ml(), 0)
-                if(xrs is not None): assert (fmodel.estimate_f000() > 0.0)
                 #
                 # update k_isotropic, k_anisotorpic, resolution_filter
                 #
