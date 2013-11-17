@@ -7,8 +7,9 @@ from __future__ import division
 import pycbf, os
 from scitbx import matrix
 
-# need to define this here since it not defined in SLAC's metrology definitions
-sensor_dimension = ((194*2)+3,185)
+# need to define these here since it not defined in SLAC's metrology definitions
+asic_dimension = (194,185)
+asic_gap = 3
 
 class cbf_wrapper(pycbf.cbf_handle_struct):
   """ Wrapper class that provids convience functions for working with cbflib"""
@@ -43,9 +44,9 @@ class cbf_wrapper(pycbf.cbf_handle_struct):
 
     self.add_row([basis.axis_name,"rotation","detector",basis.depends_on,
                   str(axis[0]),str(axis[1]),str(axis[2]),
-                  str(basis.translation[0]*1000),
-                  str(basis.translation[1]*1000),
-                  str(basis.translation[2]*1000),
+                  str(basis.translation[0]),
+                  str(basis.translation[1]),
+                  str(basis.translation[2]),
                   basis.equipment_component])
 
     axis_settings.append([basis.axis_name, "FRAME1", str(angle), "0"])
@@ -81,12 +82,12 @@ class basis(object):
                        r3[6],r3[7],r3[8],self.translation[2],
                        0,0,0,1))
 
-def read_optical_metrology_from_flat_file(path, detector, pixel_size, sensor_dimension, asic_gap = 3, plot = False, old_style_diff_path = None):
+def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimension, asic_gap, plot = False, old_style_diff_path = None):
   """ Read a flat optical metrology file from LCLS and apply some corrections.  Partly adapted from xfel.metrology.flatfile
   @param path to the file to read
   @param detector Choice of CxiDs1 and XppDs1.  Affect how the quadrants are laid out (rotated manually or in absolute coordinates, respectively)
   @param pixel_size Tuple of the size of each pixel in mm
-  @param sensor_dimension: the size of each sensor in pixels
+  @param asic_dimension: the size of each sensor in pixels
   @param asic_gap: the pixel gap between the two asics on each pixel
   @param plot: if True, will plot the read and corrected metrology
   @param old_style_diff_path: if set to an old-style calibration directory, will print out and plot some comparisons between the metrology in this
@@ -122,28 +123,28 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, sensor_dim
         #   x -> -slow
         #   y -> -fast
         for (s, vertices) in sensors.iteritems():
-          quadrants_trans[q][s] = [matrix.col((-v[0]/1000, -v[1]/1000, v[2]/1000))
+          quadrants_trans[q][s] = [matrix.col((-v[1]/1000, +v[0]/1000, v[2]/1000))
                                    for v in quadrants[q_apa][s]]
       elif q == 1:
         # Q1:
         #   x -> +fast
         #   y -> -slow
         for (s, vertices) in sensors.iteritems():
-          quadrants_trans[q][s] = [matrix.col((-v[1]/1000, +v[0]/1000, v[2]/1000))
+          quadrants_trans[q][s] = [matrix.col((+v[0]/1000, +v[1]/1000, v[2]/1000))
                                    for v in quadrants[q_apa][s]]
       elif q == 2:
         # Q2:
         #   x -> +slow
         #   y -> +fast
         for (s, vertices) in sensors.iteritems():
-          quadrants_trans[q][s] = [matrix.col((+v[0]/1000, +v[1]/1000, v[2]/1000))
+          quadrants_trans[q][s] = [matrix.col((+v[1]/1000, -v[0]/1000, v[2]/1000))
                                    for v in quadrants[q_apa][s]]
       elif q == 3:
         # Q3:
         #   x -> -fast
         #   y -> +slow
         for (s, vertices) in sensors.iteritems():
-          quadrants_trans[q][s] = [matrix.col((+v[1]/1000, -v[0]/1000, v[2]/1000))
+          quadrants_trans[q][s] = [matrix.col((-v[0]/1000, -v[1]/1000, v[2]/1000))
                                    for v in quadrants[q_apa][s]]
       else:
         # NOTREACHED
@@ -179,14 +180,20 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, sensor_dim
     fig = plt.figure()
     ax = fig.add_subplot(111, aspect='equal')
 
-    a = []; b = []; c = []; d = []
+    a = []; b = []; c = []; d = []; cents = []
 
     for q_id, q in quadrants_trans.iteritems():
+      q_c = matrix.col((0,0,0))
+      for s_id, s in q.iteritems():
+        q_c += center(s)
+      q_c /= len(q)
+      cents.append(q_c)
       for s_id, s in q.iteritems():
         sensor = ((s[0][0], s[0][1]),
                   (s[1][0], s[1][1]),
                   (s[2][0], s[2][1]),
                   (s[3][0], s[3][1]))
+        cents.append(center([matrix.col(v) for v in sensor]))
         ax.add_patch(Polygon(sensor, closed=True, color='green', fill=False, hatch='/'))
 
         a.append(s[0]); b.append(s[1]); c.append(s[2]); d.append(s[3])
@@ -195,19 +202,15 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, sensor_dim
     ax.set_ylim((-100, 100))
     plt.scatter([v[0] for v in a], [v[1] for v in a], c = 'black')
     for i, v in enumerate(a):
-        ax.annotate(i, (v[0],v[1]))
+        ax.annotate(i*2, (v[0],v[1]))
     plt.scatter([v[0] for v in b], [v[1] for v in b], c = 'yellow')
     #plt.scatter([v[0] for v in c], [v[1] for v in c], c = 'yellow')
     plt.scatter([v[0] for v in d], [v[1] for v in d], c = 'yellow')
+    plt.scatter([v[0] for v in cents], [v[1] for v in cents], c = 'red')
     plt.show()
 
   null_ori = matrix.col((0,0,1)).axis_and_angle_as_unit_quaternion(0, deg=True)
   metro = { (0,): basis(null_ori, matrix.col((0,0,0))) }
-
-  # assume a standard sensor position on its side
-  v1 = matrix.col((-pixel_size*sensor_dimension[0]/2,
-                     pixel_size * sensor_dimension[1],
-                    0))
 
   for q_id, q in quadrants_trans.iteritems():
     # calculate the center of the quadrant
@@ -219,19 +222,21 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, sensor_dim
     metro[(0,q_id)] = basis(null_ori,q_c)
 
     for s_id, s in q.iteritems():
-      s_c = center(s) # center of sensor in reference to origin of detector
-      s_c -= q_c      # center of sensor in reference to origin of quadrant
+      sensorcenter_wrt_detector = center(s)
+      sensorcenter_wrt_quadrant = sensorcenter_wrt_detector - q_c
 
-      v2 = s[0]       # zero corner of sensor in reference to origin of detector
-      v2 -= q_c       # zero corner of sensor in reference to origin of quadrant
-      v2 -= s_c       # zero corner of sensor in reference to origin of sensor
+      # change of basis from a sensor in the plane of the detector, lying on its side, to oriented
+      # as it should be, relative to the frame of the detector
+      v1 = (s[1] - s[0]).normalize() # +x
+      v2 = (s[0] - s[3]).normalize() # -y
+      v3 = (v1.cross(v2)).normalize()
+      rotation = matrix.sqr((v1[0],v2[0],v3[0],
+                             v1[1],v2[1],v3[1],
+                             v1[2],v2[2],v3[2]))
 
-      rotation_axis = v1.cross(v2)
-      angle = v1.angle(v2, deg=True)
+      metro[(0,q_id,s_id)] = basis(rotation.r3_rotation_matrix_as_unit_quaternion(),sensorcenter_wrt_quadrant)
 
-      metro[(0,q_id,s_id)] = basis(rotation_axis.axis_and_angle_as_unit_quaternion(angle, deg=True),s_c)
-
-      w = pixel_size * (sensor_dimension[0]/2 + asic_gap/2)
+      w = pixel_size * (asic_dimension[0]/2 + asic_gap/2)
       metro[(0,q_id,s_id,0)] = basis(null_ori,matrix.col((-w,0,0)))
       metro[(0,q_id,s_id,1)] = basis(null_ori,matrix.col((+w,0,0)))
 
@@ -248,13 +253,17 @@ def metro_phil_to_basis_dict(metro):
       break
   #metro = metro.extract() # not needed
 
-  bd = {(detector_phil.serial,): basis(detector_phil.orientation,detector_phil.translation) }
+  bd = {(detector_phil.serial,): basis(matrix.col(detector_phil.orientation),
+                                       matrix.col(detector_phil.translation)*1000) }
   for p in detector_phil.panel:
-    bd[(detector_phil.serial,p.serial)] = basis(p.orientation,p.translation)
+    bd[(detector_phil.serial,p.serial)] = basis(matrix.col(p.orientation),
+                                                matrix.col(p.translation)*1000)
     for s in p.sensor:
-      bd[(detector_phil.serial,p.serial,s.serial)] = basis(s.orientation,s.translation)
+      bd[(detector_phil.serial,p.serial,s.serial)] = basis(matrix.col(s.orientation),
+                                                           matrix.col(s.translation)*1000)
       for a in s.asic:
-        bd[(detector_phil.serial,p.serial,s.serial,a.serial)] = basis(a.orientation,a.translation)
+        bd[(detector_phil.serial,p.serial,s.serial,a.serial)] = basis(matrix.col(a.orientation),
+                                                                      matrix.col(a.translation)*1000)
 
   return bd
 

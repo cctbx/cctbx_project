@@ -1591,7 +1591,7 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
 
   print "new active areas", len(aa_new), aa_new
 
-  return quadrants_trans
+  return quadrants_lsq
 
 
 # phenix.python flatfile.py 2011-08-10-Metrology.txt
