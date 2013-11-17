@@ -85,6 +85,7 @@ def exercise_atom():
   assert a.tmp == 0
   a.tmp = 3
   assert a.tmp == 3
+  assert a.chain() is None
   #
   a = (pdb.hierarchy.atom()
     .set_name(new_name="NaMe")
@@ -545,6 +546,15 @@ def exercise_atom_group():
   ag.insert_atom(i=4, atom=a)
   assert ag.find_atom_index(atom=a) == 4
   assert [a.name for a in ag.atoms()] == ["0", "n", "", "x", "y"]
+  for a in ag.atoms() : a.occ = 1.0
+  assert ag.occupancy() == 1.0
+  ag.atoms()[0].occ = 0.5
+  assert ag.occupancy() == 0.9
+  try :
+    ag.occupancy(raise_error_if_non_uniform=True)
+  except ValueError :
+    pass
+  else: raise Exception_expected
   #
   try: pdb.hierarchy.atom_group(altloc="ab")
   except (ValueError, RuntimeError), e:
@@ -836,6 +846,7 @@ TER
   ag =  pdb.hierarchy.atom_group(altloc="b", resname="q")
   rg.append_atom_group(atom_group=ag)
   ag.append_atom(pdb.hierarchy.atom().set_name("m"))
+  assert ag.only_atom().chain() == c
   rg = pdb.hierarchy.residue_group(
     resseq="u", icode="l", link_to_previous=False)
   c.append_residue_group(residue_group=rg)
