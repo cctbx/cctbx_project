@@ -1059,11 +1059,44 @@ class _(boost.python.injector, ext.atom_group, __hash_eq_mixin):
 
   # FIXME suppress_segid has no effect here
   def id_str (self, suppress_segid=None) :
-    chain = self.parent().parent()
-    resid = self.parent().resid()
-    return "%1s%3s%2s%5s" % (self.altloc, self.resname, chain.id, resid)
+    chain_id = ""
+    resid = ""
+    rg = self.parent()
+    if (rg is not None) :
+      resid = rg.resid()
+      chain = rg.parent()
+      if (chain is not None) :
+        chain_id = chain.id
+    return "%1s%3s%2s%5s" % (self.altloc, self.resname, chain_id, resid)
+
+  def occupancy (self, raise_error_if_non_uniform=False) :
+    """
+    Calculate the mean occupancy for atoms in this group, with option of
+    raising ValueError if they differ.
+    """
+    atom_occupancies = self.atoms().extract_occ()
+    assert (len(atom_occupancies) > 0)
+    min_max_mean = atom_occupancies.min_max_mean()
+    if (min_max_mean.min != min_max_mean.max) :
+      if (raise_error_if_non_uniform) :
+        raise ValueError(("Non-uniform occupancies for atom group %s "+
+          "(range: %.2f - %.2f).") % (self.id_str(), min_max_mean.min,
+          min_max_mean.max))
+    return min_max_mean.mean
 
 class _(boost.python.injector, ext.atom, __hash_eq_mixin):
+
+  def chain (self) :
+    """
+    Convenience method for fetching the chain object associated with this
+    atom (or None of not defined).
+    """
+    ag = self.parent()
+    if (ag is not None) :
+      rg = ag.parent()
+      if (rg is not None) :
+        return rg.parent()
+    return None
 
   def is_in_same_conformer_as(self, other):
     ag_i = self.parent(optional=False)
