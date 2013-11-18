@@ -86,7 +86,7 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
   """ Read a flat optical metrology file from LCLS and apply some corrections.  Partly adapted from xfel.metrology.flatfile
   @param path to the file to read
   @param detector Choice of CxiDs1 and XppDs1.  Affect how the quadrants are laid out (rotated manually or in absolute coordinates, respectively)
-  @param pixel_size Tuple of the size of each pixel in mm
+  @param pixel_size Size of each pixel in mm
   @param asic_dimension: the size of each sensor in pixels
   @param asic_gap: the pixel gap between the two asics on each pixel
   @param plot: if True, will plot the read and corrected metrology
