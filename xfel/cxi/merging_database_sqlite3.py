@@ -36,9 +36,8 @@ def _execute(db_commands_queue, db_results_queue, db, semaphore):
   # Mark the terminating None command as done.
   db_commands_queue.task_done()
 
-  # Commit all the processed commands and join the commands queue.
+  # Commit all the processed commands.
   db.commit()
-  db_commands_queue.join()
   semaphore.release()
 
 
