@@ -44,6 +44,9 @@ def exercise_extract_header_misc () :
   assert (approx_equal(wavelength, 1.8927))
   exptl_method = cif_in.get_experiment_type()
   assert (exptl_method == 'X-RAY DIFFRACTION')
+  r_rfree_sigma = cif_in.get_r_rfree_sigma(cif_file)
+  r_rfree_sigma.show()
+  
 
 def run():
   exercise_extract_f_model_core_constants()
