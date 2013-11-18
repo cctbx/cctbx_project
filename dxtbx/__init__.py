@@ -23,4 +23,3 @@ def load(filename):
   from dxtbx.format.Registry import Registry
   format_instance = Registry.find(filename)
   return format_instance(filename)
-

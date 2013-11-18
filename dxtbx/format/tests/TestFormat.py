@@ -14,14 +14,14 @@ from Toolkit.ImageFormat.Format import Format
 from Toolkit.ImageFormat.FormatCBF import FormatCBF
 
 def workout(args):
-    for arg in args:
-        if Format.is_bz2(arg):
-            print 'bzip2 %s' % arg
-        if Format.is_gzip(arg):
-            print 'gzip %s' % arg
+  for arg in args:
+    if Format.is_bz2(arg):
+      print 'bzip2 %s' % arg
+    if Format.is_gzip(arg):
+      print 'gzip %s' % arg
 
-    if FormatCBF.understand(arg):
-        print FormatCBF.get_cbf_header(arg)
+  if FormatCBF.understand(arg):
+    print FormatCBF.get_cbf_header(arg)
 
 if __name__ == '__main__':
-    workout(sys.argv[1:])
+  workout(sys.argv[1:])

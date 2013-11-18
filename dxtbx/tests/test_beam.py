@@ -11,18 +11,18 @@ from __future__ import division
 from dxtbx.model.beam import beam_factory
 
 def test_beam():
-    '''A test class for the beam class.'''
+  '''A test class for the beam class.'''
 
-    import libtbx.load_env
-    import os
+  import libtbx.load_env
+  import os
 
-    dxtbx_dir = libtbx.env.dist_path('dxtbx')
+  dxtbx_dir = libtbx.env.dist_path('dxtbx')
 
-    image = os.path.join(dxtbx_dir, 'tests', 'phi_scan_001.cbf')
-    cbf = beam_factory.imgCIF(image)
+  image = os.path.join(dxtbx_dir, 'tests', 'phi_scan_001.cbf')
+  cbf = beam_factory.imgCIF(image)
 
-    print 'OK'
+  print 'OK'
 
 if __name__ == '__main__':
 
-    test_beam()
+  test_beam()

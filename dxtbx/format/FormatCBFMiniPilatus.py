@@ -17,130 +17,130 @@ from dxtbx.format.FormatPilatusHelpers import determine_pilatus_mask
 from dxtbx.model import ParallaxCorrectedPxMmStrategy
 
 class FormatCBFMiniPilatus(FormatCBFMini):
-    '''A class for reading mini CBF format Pilatus images, and correctly
-    constructing a model for the experiment from this.'''
+  '''A class for reading mini CBF format Pilatus images, and correctly
+  constructing a model for the experiment from this.'''
 
-    @staticmethod
-    def understand(image_file):
-        '''Check to see if this looks like an Pilatus mini CBF format image,
-        i.e. we can make sense of it.'''
+  @staticmethod
+  def understand(image_file):
+    '''Check to see if this looks like an Pilatus mini CBF format image,
+    i.e. we can make sense of it.'''
 
-        header = FormatCBFMini.get_cbf_header(image_file)
+    header = FormatCBFMini.get_cbf_header(image_file)
 
-        for record in header.split('\n'):
-            if '_array_data.header_convention' in record and \
-                   'PILATUS' in record:
-                return True
-            if '_array_data.header_convention' in record and \
-                   'SLS' in record:
-                return True
-            if '_array_data.header_convention' in record and \
-                   '?' in record:
-                return True
-            if '# Detector' in record and \
-                   'PILATUS' in record:  #CBFlib v0.8.0 allowed
-                return True
+    for record in header.split('\n'):
+      if '_array_data.header_convention' in record and \
+             'PILATUS' in record:
+        return True
+      if '_array_data.header_convention' in record and \
+             'SLS' in record:
+        return True
+      if '_array_data.header_convention' in record and \
+             '?' in record:
+        return True
+      if '# Detector' in record and \
+             'PILATUS' in record:  #CBFlib v0.8.0 allowed
+        return True
 
-        return False
+    return False
 
-    def __init__(self, image_file):
-        '''Initialise the image structure from the given file, including a
-        proper model of the experiment.'''
+  def __init__(self, image_file):
+    '''Initialise the image structure from the given file, including a
+    proper model of the experiment.'''
 
-        assert(self.understand(image_file))
+    assert(self.understand(image_file))
 
-        FormatCBFMini.__init__(self, image_file)
+    FormatCBFMini.__init__(self, image_file)
 
-        return
+    return
 
-    def _start(self):
-        FormatCBFMini._start(self)
-        from iotbx.detectors.pilatus_minicbf import PilatusImage
-        self.detectorbase = PilatusImage(self._image_file)
-        self.detectorbase.readHeader()
+  def _start(self):
+    FormatCBFMini._start(self)
+    from iotbx.detectors.pilatus_minicbf import PilatusImage
+    self.detectorbase = PilatusImage(self._image_file)
+    self.detectorbase.readHeader()
 
-    def _goniometer(self):
-        '''Return a model for a simple single-axis goniometer. This should
-        probably be checked against the image header, though for miniCBF
-        there are limited options for this.'''
+  def _goniometer(self):
+    '''Return a model for a simple single-axis goniometer. This should
+    probably be checked against the image header, though for miniCBF
+    there are limited options for this.'''
 
-        if 'Phi' in self._cif_header_dictionary:
-            phi_value = float(self._cif_header_dictionary['Phi'].split()[0])
-            # NKS remove assertion that phi == 0 so those data can be processed
-            # assert( phi_value == 0.0)
+    if 'Phi' in self._cif_header_dictionary:
+      phi_value = float(self._cif_header_dictionary['Phi'].split()[0])
+      # NKS remove assertion that phi == 0 so those data can be processed
+      # assert( phi_value == 0.0)
 
-        return self._goniometer_factory.single_axis()
+    return self._goniometer_factory.single_axis()
 
-    def _detector(self):
-        '''Return a model for a simple detector, presuming no one has
-        one of these on a two-theta stage. Assert that the beam centre is
-        provided in the Mosflm coordinate frame.'''
+  def _detector(self):
+    '''Return a model for a simple detector, presuming no one has
+    one of these on a two-theta stage. Assert that the beam centre is
+    provided in the Mosflm coordinate frame.'''
 
-        distance = float(
-            self._cif_header_dictionary['Detector_distance'].split()[0])
+    distance = float(
+        self._cif_header_dictionary['Detector_distance'].split()[0])
 
-        beam_xy = self._cif_header_dictionary['Beam_xy'].replace(
-            '(', '').replace(')', '').replace(',', '').split()[:2]
+    beam_xy = self._cif_header_dictionary['Beam_xy'].replace(
+        '(', '').replace(')', '').replace(',', '').split()[:2]
 
-        beam_x, beam_y = map(float, beam_xy)
+    beam_x, beam_y = map(float, beam_xy)
 
-        pixel_xy = self._cif_header_dictionary['Pixel_size'].replace(
-            'm', '').replace('x', '').split()
+    pixel_xy = self._cif_header_dictionary['Pixel_size'].replace(
+        'm', '').replace('x', '').split()
 
-        pixel_x, pixel_y = map(float, pixel_xy)
+    pixel_x, pixel_y = map(float, pixel_xy)
 
-        nx = int(
-            self._cif_header_dictionary['X-Binary-Size-Fastest-Dimension'])
-        ny = int(
-            self._cif_header_dictionary['X-Binary-Size-Second-Dimension'])
+    nx = int(
+        self._cif_header_dictionary['X-Binary-Size-Fastest-Dimension'])
+    ny = int(
+        self._cif_header_dictionary['X-Binary-Size-Second-Dimension'])
 
-        overload = int(
-            self._cif_header_dictionary['Count_cutoff'].split()[0])
-        underload = -1
+    overload = int(
+        self._cif_header_dictionary['Count_cutoff'].split()[0])
+    underload = -1
 
-        detector = self._detector_factory.simple(
-            'PAD', distance * 1000.0, (beam_x * pixel_x * 1000.0,
-                                       beam_y * pixel_y * 1000.0), '+x', '-y',
-            (1000 * pixel_x, 1000 * pixel_y),
-            (nx, ny), (underload, overload), [],
-            ParallaxCorrectedPxMmStrategy(0.252500934883))
+    detector = self._detector_factory.simple(
+        'PAD', distance * 1000.0, (beam_x * pixel_x * 1000.0,
+                                   beam_y * pixel_y * 1000.0), '+x', '-y',
+        (1000 * pixel_x, 1000 * pixel_y),
+        (nx, ny), (underload, overload), [],
+        ParallaxCorrectedPxMmStrategy(0.252500934883))
 
-        for f0, s0, f1, s1 in determine_pilatus_mask(detector):
-            detector[0].add_mask(f0, s0, f1, s1)
+    for f0, s0, f1, s1 in determine_pilatus_mask(detector):
+      detector[0].add_mask(f0, s0, f1, s1)
 
-        return detector
+    return detector
 
-    def _beam(self):
-        '''Return a simple model for the beam.'''
+  def _beam(self):
+    '''Return a simple model for the beam.'''
 
-        wavelength = float(
-            self._cif_header_dictionary['Wavelength'].split()[0])
+    wavelength = float(
+        self._cif_header_dictionary['Wavelength'].split()[0])
 
-        return self._beam_factory.simple(wavelength)
+    return self._beam_factory.simple(wavelength)
 
-    def _scan(self):
-        '''Return the scan information for this image.'''
+  def _scan(self):
+    '''Return the scan information for this image.'''
 
-        format = self._scan_factory.format('CBF')
+    format = self._scan_factory.format('CBF')
 
-        exposure_time = float(
-            self._cif_header_dictionary['Exposure_period'].split()[0])
+    exposure_time = float(
+        self._cif_header_dictionary['Exposure_period'].split()[0])
 
-        osc_start = float(
-            self._cif_header_dictionary['Start_angle'].split()[0])
-        osc_range = float(
-            self._cif_header_dictionary['Angle_increment'].split()[0])
+    osc_start = float(
+        self._cif_header_dictionary['Start_angle'].split()[0])
+    osc_range = float(
+        self._cif_header_dictionary['Angle_increment'].split()[0])
 
-        timestamp = get_pilatus_timestamp(
-            self._cif_header_dictionary['timestamp'])
+    timestamp = get_pilatus_timestamp(
+        self._cif_header_dictionary['timestamp'])
 
-        return self._scan_factory.single(
-            self._image_file, format, exposure_time,
-            osc_start, osc_range, timestamp)
+    return self._scan_factory.single(
+        self._image_file, format, exposure_time,
+        osc_start, osc_range, timestamp)
 
 if __name__ == '__main__':
 
-    import sys
+  import sys
 
-    for arg in sys.argv[1:]:
-        print FormatCBFMiniPilatus.understand(arg)
+  for arg in sys.argv[1:]:
+    print FormatCBFMiniPilatus.understand(arg)

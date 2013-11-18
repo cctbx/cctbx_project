@@ -16,15 +16,15 @@ from dxtbx.serialize import xds
 
 
 def run(file_names):
-    if len(file_names) == 1 and file_names[0].endswith('json'):
-        from dxtbx.serialize import load
-        sweep = load.imageset(file_names[0])
-    else:
-        from dxtbx.imageset import ImageSetFactory
-        sweep = ImageSetFactory.new(file_names)[0]
-    xsx = xds.to_xds(sweep)
-    xsx.XDS_INP()
+  if len(file_names) == 1 and file_names[0].endswith('json'):
+    from dxtbx.serialize import load
+    sweep = load.imageset(file_names[0])
+  else:
+    from dxtbx.imageset import ImageSetFactory
+    sweep = ImageSetFactory.new(file_names)[0]
+  xsx = xds.to_xds(sweep)
+  xsx.XDS_INP()
 
 
 if __name__ == '__main__':
-    run(sys.argv[1:])
+  run(sys.argv[1:])
