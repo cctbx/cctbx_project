@@ -1145,6 +1145,7 @@ iotbx/examples/pdb_truncate_to_ala/v1_loop_over_atoms.py svneol=native#text/x-py
 iotbx/examples/pdb_truncate_to_ala/v2_simple.py svneol=native#text/x-python
 iotbx/examples/pdb_truncate_to_ala/v3_better.py svneol=native#text/x-python
 iotbx/examples/pdb_truncate_to_ala/v4_with_bells_and_whistles.py svneol=native#text/x-python
+iotbx/examples/pdbx_mmcif_tutorial.py -text
 iotbx/examples/tst_mtz_free_flipper.py svneol=native#text/x-python
 iotbx/file_reader.py svneol=native#text/x-python
 iotbx/fullprof/__init__.py -text
