@@ -12,17 +12,17 @@ import time
 
 def get_pilatus_timestamp(timestamp_string):
 
-    timestamp, milliseconds = timestamp_string.split('.')
+  timestamp, milliseconds = timestamp_string.split('.')
 
-    for format in ['%Y-%b-%dT%H:%M:%S',
-                   '%Y-%m-%dT%H:%M:%S',
-                   '%Y/%b/%d %H:%M:%S']:
+  for format in ['%Y-%b-%dT%H:%M:%S',
+                 '%Y-%m-%dT%H:%M:%S',
+                 '%Y/%b/%d %H:%M:%S']:
 
-        try:
-            struct_time = time.strptime(timestamp, format)
-            return time.mktime(struct_time) + float('0.' + milliseconds)
+    try:
+      struct_time = time.strptime(timestamp, format)
+      return time.mktime(struct_time) + float('0.' + milliseconds)
 
-        except: # intentional
-            pass
+    except: # intentional
+      pass
 
-    raise RuntimeError, 'timestamp %s not recognised' % timestamp
+  raise RuntimeError, 'timestamp %s not recognised' % timestamp

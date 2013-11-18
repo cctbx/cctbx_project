@@ -11,47 +11,47 @@ from __future__ import division
 #  included in the root directory of this package.
 
 def to_dict(beam):
-    ''' Convert the beam model to a dictionary
+  ''' Convert the beam model to a dictionary
 
-    Params:
-        beam The beam model
+  Params:
+      beam The beam model
 
-    Returns:
-        A dictionary of the parameters
+  Returns:
+      A dictionary of the parameters
 
-    '''
-    from collections import OrderedDict
-    if beam == None:
-        return None
+  '''
+  from collections import OrderedDict
+  if beam == None:
+    return None
 
-    return OrderedDict([
-        ('direction', beam.get_direction()),
-        ('wavelength', beam.get_wavelength()),
-        ('divergence', beam.get_divergence()),
-        ('sigma_divergence', beam.get_sigma_divergence())])
+  return OrderedDict([
+      ('direction', beam.get_direction()),
+      ('wavelength', beam.get_wavelength()),
+      ('divergence', beam.get_divergence()),
+      ('sigma_divergence', beam.get_sigma_divergence())])
 
 def from_dict(d, t=None):
-    ''' Convert the dictionary to a beam model
+  ''' Convert the dictionary to a beam model
 
-    Params:
-        d The dictionary of parameters
-        t The template dictionary to use
+  Params:
+      d The dictionary of parameters
+      t The template dictionary to use
 
-    Returns:
-        The beam model
+  Returns:
+      The beam model
 
-    '''
-    from dxtbx.model import Beam
+  '''
+  from dxtbx.model import Beam
 
-    # If None, return None
-    if d == None:
-        if t == None: return None
-        else: return from_dict(t, None)
-    elif t != None:
-        d = dict(t.items() + d.items())
+  # If None, return None
+  if d == None:
+    if t == None: return None
+    else: return from_dict(t, None)
+  elif t != None:
+    d = dict(t.items() + d.items())
 
-    # Create the model from the dictionary
-    return Beam(tuple(d['direction']),
-                float(d['wavelength']),
-                float(d['divergence']),
-                float(d['sigma_divergence']))
+  # Create the model from the dictionary
+  return Beam(tuple(d['direction']),
+              float(d['wavelength']),
+              float(d['divergence']),
+              float(d['sigma_divergence']))

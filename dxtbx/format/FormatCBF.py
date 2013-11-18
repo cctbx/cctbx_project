@@ -13,77 +13,77 @@ from __future__ import division
 from dxtbx.format.Format import Format
 
 class FormatCBF(Format):
-    '''An image reading class for CBF format images i.e. those from Dectris
-    amongst others. This is just a first base class which will be used to
-    determine whether this is really a CBF file.'''
+  '''An image reading class for CBF format images i.e. those from Dectris
+  amongst others. This is just a first base class which will be used to
+  determine whether this is really a CBF file.'''
 
-    @staticmethod
-    def understand(image_file):
-        '''Check to see if this looks like an CBF format image, i.e. we can
-        make sense of it.'''
+  @staticmethod
+  def understand(image_file):
+    '''Check to see if this looks like an CBF format image, i.e. we can
+    make sense of it.'''
 
-        if '###CBF' in FormatCBF.open_file(image_file, 'rb').read(6):
-            return True
+    if '###CBF' in FormatCBF.open_file(image_file, 'rb').read(6):
+      return True
 
-        return False
+    return False
 
-    @staticmethod
-    def get_cbf_header(image_file):
-        '''Obtain the text section of the header, which is assumed to be
-        everything before --CIF-BINARY-FORMAT-SECTION-- - N.B. for reasons
-        of simplicity will read the file in 1k chunks.'''
+  @staticmethod
+  def get_cbf_header(image_file):
+    '''Obtain the text section of the header, which is assumed to be
+    everything before --CIF-BINARY-FORMAT-SECTION-- - N.B. for reasons
+    of simplicity will read the file in 1k chunks.'''
 
-        fin = FormatCBF.open_file(image_file, 'rb')
+    fin = FormatCBF.open_file(image_file, 'rb')
 
-        header = fin.read(1024)
-        # FIXME this is grim as it is searching over longer and longer
-        # files
-        while not '--CIF-BINARY-FORMAT-SECTION--' in header:
-            add = fin.read(1024)
-            if add:
-                header += add
-            else:
-                raise RuntimeError, \
-                    'eof reached before --CIF-BINARY-FORMAT-SECTION--'
-        return header.split('--CIF-BINARY-FORMAT-SECTION--')[0]
+    header = fin.read(1024)
+    # FIXME this is grim as it is searching over longer and longer
+    # files
+    while not '--CIF-BINARY-FORMAT-SECTION--' in header:
+      add = fin.read(1024)
+      if add:
+        header += add
+      else:
+        raise RuntimeError, \
+            'eof reached before --CIF-BINARY-FORMAT-SECTION--'
+    return header.split('--CIF-BINARY-FORMAT-SECTION--')[0]
 
-    def __init__(self, image_file):
-        '''Initialise the image structure from the given file.'''
+  def __init__(self, image_file):
+    '''Initialise the image structure from the given file.'''
 
-        assert(self.understand(image_file))
+    assert(self.understand(image_file))
 
-        Format.__init__(self, image_file)
+    Format.__init__(self, image_file)
 
-        return
+    return
 
-    def _start(self):
-        '''Open the image file, read the image header, copy it into memory
-        for future inspection.'''
+  def _start(self):
+    '''Open the image file, read the image header, copy it into memory
+    for future inspection.'''
 
-        Format._start(self)
+    Format._start(self)
 
-        self._cif_header = FormatCBF.get_cbf_header(self._image_file)
+    self._cif_header = FormatCBF.get_cbf_header(self._image_file)
 
-        self._mime_header = ''
+    self._mime_header = ''
 
-        in_binary_format_section = False
+    in_binary_format_section = False
 
-        for record in FormatCBF.open_file(self._image_file, 'rb'):
-            if '--CIF-BINARY-FORMAT-SECTION--' in record:
-                in_binary_format_section = True
-            elif in_binary_format_section and record[0] == 'X':
-                self._mime_header += record
-            if in_binary_format_section and len(record.strip()) == 0:
-                # http://sourceforge.net/apps/trac/cbflib/wiki/ARRAY_DATA%20Category
-                #    In an imgCIF file, the encoded binary data begins after
-                #    the empty line terminating the header.
-                break
+    for record in FormatCBF.open_file(self._image_file, 'rb'):
+      if '--CIF-BINARY-FORMAT-SECTION--' in record:
+        in_binary_format_section = True
+      elif in_binary_format_section and record[0] == 'X':
+        self._mime_header += record
+      if in_binary_format_section and len(record.strip()) == 0:
+        # http://sourceforge.net/apps/trac/cbflib/wiki/ARRAY_DATA%20Category
+        #    In an imgCIF file, the encoded binary data begins after
+        #    the empty line terminating the header.
+        break
 
-        return
+    return
 
 if __name__ == '__main__':
 
-    import sys
+  import sys
 
-    for arg in sys.argv[1:]:
-        print FormatCBF.understand(arg)
+  for arg in sys.argv[1:]:
+    print FormatCBF.understand(arg)

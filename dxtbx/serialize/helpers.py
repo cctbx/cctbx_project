@@ -11,5 +11,5 @@
 from __future__ import division
 
 def tuple_almost_equal(a, b, eps=1e-7):
-    ''' Check if the tuples are equal. '''
-    return reduce(lambda a,b: a and b, map(lambda a,b: abs(a - b) < eps, a, b))
+  ''' Check if the tuples are equal. '''
+  return reduce(lambda a,b: a and b, map(lambda a,b: abs(a - b) < eps, a, b))

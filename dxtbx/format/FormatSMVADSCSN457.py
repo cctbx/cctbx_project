@@ -14,55 +14,55 @@ from __future__ import division
 from dxtbx.format.FormatSMVADSCNoDateStamp import FormatSMVADSCNoDateStamp
 
 class FormatSMVADSCSN457(FormatSMVADSCNoDateStamp):
-    '''A class for reading SMV format ADSC images, and correctly constructing
-    a model for the experiment from this, for instrument number 457.'''
+  '''A class for reading SMV format ADSC images, and correctly constructing
+  a model for the experiment from this, for instrument number 457.'''
 
-    @staticmethod
-    def understand(image_file):
-        '''Check to see if this is ADSC SN 457.'''
+  @staticmethod
+  def understand(image_file):
+    '''Check to see if this is ADSC SN 457.'''
 
-        # check this is detector serial number 457
+    # check this is detector serial number 457
 
-        size, header = FormatSMVADSCNoDateStamp.get_smv_header(image_file)
+    size, header = FormatSMVADSCNoDateStamp.get_smv_header(image_file)
 
-        if int(header['DETECTOR_SN']) != 457:
-            return False
+    if int(header['DETECTOR_SN']) != 457:
+      return False
 
-        return True
+    return True
 
-    def __init__(self, image_file):
-        '''Initialise the image structure from the given file, including a
-        proper model of the experiment.'''
+  def __init__(self, image_file):
+    '''Initialise the image structure from the given file, including a
+    proper model of the experiment.'''
 
-        assert(self.understand(image_file))
+    assert(self.understand(image_file))
 
-        FormatSMVADSCNoDateStamp.__init__(self, image_file)
+    FormatSMVADSCNoDateStamp.__init__(self, image_file)
 
-        return
+    return
 
-    def _goniometer(self):
-        '''Return a model for a simple single-axis goniometer. This should
-        probably be checked against the image header.'''
+  def _goniometer(self):
+    '''Return a model for a simple single-axis goniometer. This should
+    probably be checked against the image header.'''
 
-        return self._goniometer_factory.single_axis_reverse()
+    return self._goniometer_factory.single_axis_reverse()
 
-    def _scan(self):
-        '''Return the scan information for this image. There may be
-        no timestamps in there...'''
+  def _scan(self):
+    '''Return the scan information for this image. There may be
+    no timestamps in there...'''
 
-        format = self._scan_factory.format('SMV')
-        exposure_time = float(self._header_dictionary['TIME'])
-        epoch = 0
-        osc_start = float(self._header_dictionary['OSC_START'])
-        osc_range = float(self._header_dictionary['OSC_RANGE'])
+    format = self._scan_factory.format('SMV')
+    exposure_time = float(self._header_dictionary['TIME'])
+    epoch = 0
+    osc_start = float(self._header_dictionary['OSC_START'])
+    osc_range = float(self._header_dictionary['OSC_RANGE'])
 
-        return self._scan_factory.single(
-            self._image_file, format, exposure_time,
-            osc_start, osc_range, epoch)
+    return self._scan_factory.single(
+        self._image_file, format, exposure_time,
+        osc_start, osc_range, epoch)
 
 if __name__ == '__main__':
 
-    import sys
+  import sys
 
-    for arg in sys.argv[1:]:
-        print FormatSMVADSC.understand(arg)
+  for arg in sys.argv[1:]:
+    print FormatSMVADSC.understand(arg)
