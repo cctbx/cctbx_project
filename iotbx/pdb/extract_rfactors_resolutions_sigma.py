@@ -115,7 +115,7 @@ class get_r_rfree_sigma(object):
 
   def show(self, log = None):
     if(log is None): log = sys.stdout
-    print >> self.log, self.formatted_string()
+    print >> log, self.formatted_string()
 
 def extract_remark_2_and_3_records(file_name, file_lines=None):
   result = []

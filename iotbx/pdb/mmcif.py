@@ -1,4 +1,5 @@
 from __future__ import division
+import sys
 from cctbx.array_family import flex
 from cctbx import crystal
 from libtbx.containers import OrderedDict, OrderedSet
@@ -6,6 +7,7 @@ from libtbx import dict_with_default_0
 from libtbx import group_args
 from libtbx.table_utils import wrap_always
 from libtbx.utils import null_out, Sorry
+from libtbx.str_utils import format_value
 import iotbx.pdb
 from iotbx.pdb import hierarchy
 from iotbx.pdb import hy36encode, hy36decode
@@ -563,7 +565,7 @@ class _cif_get_r_rfree_sigma_object(object):
 
   def show(self, log = None):
     if(log is None): log = sys.stdout
-    print >> self.log, self.formatted_string()
+    print >> log, self.formatted_string()
 
 
 def extract_f_model_core_constants(cif_block):
