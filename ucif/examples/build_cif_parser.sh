@@ -4,7 +4,7 @@ fi
 if [ ! -n "$LIBTBX_ANTLR3" ]; then
   LIBTBX_ANTLR3="$LIBTBX_UCIF/antlr3"
 fi
-gcc -c -I$LIBTBX_ANTLR3/include/ -I$LIBTBX_ANTLR3 -Wno-tautological-compare \
+gcc -c -I$LIBTBX_ANTLR3/include/ -I$LIBTBX_ANTLR3 \
   "$LIBTBX_ANTLR3/src/antlr3baserecognizer.c"\
   "$LIBTBX_ANTLR3/src/antlr3basetree.c"\
   "$LIBTBX_ANTLR3/src/antlr3basetreeadaptor.c"\
