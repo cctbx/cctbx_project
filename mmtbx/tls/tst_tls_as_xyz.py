@@ -64,6 +64,44 @@ def exercise_11():
   print "  S:\n", S
   tls_as_xyz.decompose_tls(T=T, L=L, S=S)
 
+def exercise_12():
+  # getTLS_test012.mes
+  T = matrix.sym(sym_mat3=[0.01, 0.16, 0.64, 0, 0, 0])
+  L = matrix.sym(sym_mat3=[0.04177019, 0.06664596, 0.03158385,
+                           -0.01602484, 0.00009317, -0.03242236])
+  S = matrix.sqr([0,0,0,0,0,0,0,0,0])
+  print_step("Input (getTLS_test012.mes):")
+  print "  T:\n", T
+  print "  L:\n", L
+  print "  S:\n", S
+  tls_as_xyz.decompose_tls(T=T, L=L, S=S)
+
+def exercise_13():
+  # getTLS_test013.mes
+  T = matrix.sym(sym_mat3=[0.18685097, 0.45522982, 0.16791928,
+                           -0.13412423, 0.03046584, -0.25211182])
+  L = matrix.sym(sym_mat3=[0.04177019, 0.06664596, 0.03158385,
+                           -0.01602484, 0.00009317, -0.03242236])
+  S = matrix.sqr([0,0,0,0,0,0,0,0,0])
+  print_step("Input (getTLS_test013.mes):")
+  print "  T:\n", T
+  print "  L:\n", L
+  print "  S:\n", S
+  tls_as_xyz.decompose_tls(T=T, L=L, S=S)
+
+def exercise_14():
+  # getTLS_test014.mes
+  T = matrix.sym(sym_mat3=[0.11, 0.35, 0.35,
+                           -0.05, -0.05, -0.29])
+  L = matrix.sym(sym_mat3=[0.04177019, 0.06664596, 0.03158385,
+                           -0.01602484, 0.00009317, -0.03242236])
+  S = matrix.sqr([0,0,0,0,0,0,0,0,0])
+  print_step("Input (getTLS_test014.mes):")
+  print "  T:\n", T
+  print "  L:\n", L
+  print "  S:\n", S
+  tls_as_xyz.decompose_tls(T=T, L=L, S=S)
+
 
 if (__name__ == "__main__"):
   exercise_01()
@@ -71,3 +109,6 @@ if (__name__ == "__main__"):
   exercise_03()
   exercise_04()
   exercise_11()
+  exercise_12()
+  exercise_13()
+  exercise_14()
