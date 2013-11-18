@@ -94,18 +94,14 @@ class DataBlock(object):
     return ImageSetFactory.make_imageset(
         self._images.keys(), self._format_class)
 
-  def extract_stills(self):
-    ''' Extract all the still images as an image set. '''
-    from dxtbx.imageset2 import ImageSetFactory
-    stills = [f for f, i in self._images.iteritems() if i.template is None]
-    if len(stills) == 0:
-      return None
-    return ImageSetFactory.make_imageset(stills, self._format_class)
-
   def extract_sweeps(self):
     ''' Extract all the sweeps from the block. '''
     from dxtbx.imageset2 import ImageSetFactory
     from itertools import groupby
+    from dxtbx.format.FormatStill import FormatStill
+
+    # Check we're not using stills
+    assert(not issubclass(self._format_class, FormatStill))
     sweeps = []
 
     # Get consecutive groups of scans (which should correspond to sweeps)
@@ -118,6 +114,7 @@ class DataBlock(object):
         assert(templates[0] is not None and len(indices) > 0)
         assert(templates.count(templates[0]) == len(templates))
         assert(all(j == i+1 for i, j in zip(indices[:-1], indices[1:])))
+        print records[0].scan, indices
         sweep = ImageSetFactory.make_sweep(
             templates[0],
             indices,
@@ -284,19 +281,11 @@ if __name__ == '__main__':
   # Loop through the data blocks
   for i, datablock in enumerate(datablock_list):
 
-    # Extract any stills
-    imageset = datablock.extract_stills()
-    if imageset == None:
-      num_stills = 0
-    else:
-      num_stills = len(imageset)
-
     # Extract any sweeps
     sweeps = datablock.extract_sweeps()
 
     print "DataBlock %d" % i
     print "  num images: %d" % len(datablock)
-    print "  num stills: %d" % num_stills
     print "  num sweeps: %d" % len(sweeps)
 
     # Loop through all the sweeps
