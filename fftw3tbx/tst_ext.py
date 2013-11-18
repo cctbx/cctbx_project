@@ -13,9 +13,8 @@ except ImportError: maptbx = None
 def exercise_complex_to_complex():
   print "complex_to_complex"
   for n in xrange(1,256+1):
-    dp = flex.polar(
-      flex.random_double(size=n)*2-1,
-      flex.random_double(size=n)*2-1)
+    dp = (flex.random_double(size=n)*2-1) * flex.polar(
+      1, flex.random_double(size=n)*2-1)
     dw = dp.deep_copy()
     fft = fftpack.complex_to_complex(n)
     fftw3tbx.complex_to_complex_in_place(data=dw, exp_sign=-1)
@@ -27,9 +26,8 @@ def exercise_complex_to_complex():
   for n,n_repeats in [(1200,500), (9600,250)]:
     print "  factors of %d:" % n, list(fftpack.complex_to_complex(n).factors())
     print "  repeats:", n_repeats
-    d0 = flex.polar(
-      flex.random_double(size=n)*2-1,
-      flex.random_double(size=n)*2-1)
+    d0 = (flex.random_double(size=n)*2-1) * flex.polar(
+      1, flex.random_double(size=n)*2-1)
     #
     t0 = time.time()
     for i_trial in xrange(n_repeats):
@@ -58,9 +56,8 @@ def exercise_complex_to_complex_3d():
     print "  dimensions:", n_complex
     print "  repeats:", n_repeats
     np = n_complex[0]*n_complex[1]*n_complex[2]
-    d0 = flex.polar(
-      flex.random_double(size=np)*2-1,
-      flex.random_double(size=np)*2-1)
+    d0 = (flex.random_double(size=np)*2-1) * flex.polar(
+      1, flex.random_double(size=np)*2-1)
     d0.reshape(flex.grid(n_complex))
     #
     t0 = time.time()
