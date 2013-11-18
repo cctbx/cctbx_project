@@ -69,7 +69,7 @@ def step_a(T,L,S):
     S_p = S_p,
     p   = p)
 
-def step_b(T_p, L_p, S_p):
+def step_b(T_p, L_p, S_p, eps = 1.e-6):
   """
   Diagonalize L'.
   """
@@ -91,6 +91,10 @@ def step_b(T_p, L_p, S_p):
   print "  l_y:\n", l_y
   print "  l_z:\n", l_z
   assert approx_equal(l_x.cross(l_y), l_z)
+  tmp = l_x.cross(l_y) - l_z
+  if(abs(tmp[0])>eps or abs(tmp[1])>eps or abs(tmp[2])>eps):
+    print "  inverting l_z..."
+    l_z = -1. * l_z
   Rd = matrix.sqr([l_x[0], l_y[0], l_z[0],
                    l_x[1], l_y[1], l_z[1],
                    l_x[2], l_y[2], l_z[2]])
@@ -189,7 +193,7 @@ def step_g(T_tp, e_o, S_t):
   print "  T_t:\n", T_t
   return T_t
 
-def step_h(T_t, b_o):
+def step_h(T_t, b_o, eps=1.e-6):
   """
   Getting the direction of uncorrelated translations.
   """
@@ -206,6 +210,10 @@ def step_h(T_t, b_o):
   t_x = t_w
   t_y = t_v
   t_z = t_u
+  tmp = t_x.cross(t_y) - t_z
+  if(abs(tmp[0])>eps or abs(tmp[1])>eps or abs(tmp[2])>eps):
+    print "  inverting t_z..."
+    t_z = -1. * t_z
   print "  lam_u,lam_v,lam_w:", lam_u,lam_v,lam_w
   print "  t_u:\n", t_u
   print "  t_v:\n", t_v
@@ -224,14 +232,9 @@ def step_h(T_t, b_o):
   T_T = matrix.sym(sym_mat3=[lam_w, lam_v, lam_u, 0,0,0])
   print "  T_T:\n", T_T
   #
-  T_P = Rt.transpose() * T_t * Rt
-  print "  T_P = Rt.transpose() * T_t * Rt:\n", T_P
-  T_P = Rt * T_t * Rt.transpose()
-  print "  T_P = Rt * T_t * Rt.transpose():\n", T_P
+  T_T_ = Rt.transpose() * T_p * Rt
+  print "  T_T_ = Rt.transpose() * T_p * Rt:\n", T_T_
   #
-  #print t_x.cross(t_y) == -1*t_z
-  # XXX MUST HAVE assert approx_equal(t_x.cross(t_y), t_z)
-  ####
   return group_args(
     lam_u = lam_u,
     lam_v = lam_v,
