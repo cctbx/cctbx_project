@@ -1225,6 +1225,7 @@ iotbx/regression/tst_mtz_as_cif.py -text
 iotbx/regression/tst_patterson.py -text
 iotbx/regression/tst_pdb_as_cif.py -text
 iotbx/regression/tst_pdb_as_fasta.py -text
+iotbx/regression/tst_pdbx_mmcif_tutorial.py -text
 iotbx/regression/tst_reflection_file_editor.py -text
 iotbx/regression/tst_reindex.py -text
 iotbx/regression/tst_simple_map_coefficients.py -text

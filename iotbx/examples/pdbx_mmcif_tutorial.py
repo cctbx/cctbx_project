@@ -6,18 +6,26 @@ from __future__ import division
 # See also:
 #   http://cctbx.sourceforge.net/iotbx_cif
 #
+import os
+
 
 def run(args):
   if len(args) == 0:
     args = ["1hbb"]
 
-  for pdb_id in args:
-
-    # download pdbx/mmcif file from the PDB
-    mirror = "pdbe"
+  for arg in args:
     import iotbx.pdb.fetch
-    mmcif_file = iotbx.pdb.fetch.get_pdb(
-      pdb_id, data_type="pdb", mirror=mirror, log=sys.stdout, format="cif")
+
+    if os.path.isfile(arg):
+      mmcif_file = arg
+      pdb_id = os.path.splitext(os.path.basename(mmcif_file))[0]
+      iotbx.pdb.fetch.validate_pdb_id(pdb_id)
+    else:
+      # download pdbx/mmcif file from the PDB
+      pdb_id = arg
+      mirror = "pdbe"
+      mmcif_file = iotbx.pdb.fetch.get_pdb(
+        pdb_id, data_type="pdb", mirror=mirror, log=sys.stdout, format="cif")
 
     # read the cif file and get an iotbx.cif object
     import iotbx.cif
@@ -71,12 +79,20 @@ def run(args):
     # extract atom sites
     atoms = hierarchy.atoms()
     sites_cart = atoms.extract_xyz()
+    print
+    for i in range(10):
+      print atoms[i].id_str(), atoms[i].xyz
+    print
 
     # read some sequence information
     entity_poly_entity_id = cif_block["_entity_poly.entity_id"]
+    if isinstance(entity_poly_entity_id, basestring):
+      entity_poly_entity_id = [entity_poly_entity_id]
     entity_id = cif_block["_entity.id"]
     entity_pdbx_description = cif_block["_entity.pdbx_description"]
     entity_poly_one_letter_code = cif_block["_entity_poly.pdbx_seq_one_letter_code"]
+    if isinstance(entity_poly_one_letter_code, basestring):
+      entity_poly_one_letter_code = [entity_poly_one_letter_code]
 
     from cctbx.array_family import flex
     for i in range(len(entity_poly_one_letter_code)):
