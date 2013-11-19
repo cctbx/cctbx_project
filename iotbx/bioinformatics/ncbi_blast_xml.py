@@ -57,12 +57,12 @@ class Result(object):
       return 0
 
     return len( self.root.iterations[-1].hits )
-  
+
 
 _alternatives = frozenset( "-" )
 
 def substitute_underscore(data):
-    
+
   return "".join( "_" if c in _alternatives else c for c in data )
 
 
@@ -196,4 +196,3 @@ BUILDER = Single(
   )
 
 parse = Parser( tag = "BlastOutput", builder = BUILDER, restype = Result, cElementTree = True )
-
