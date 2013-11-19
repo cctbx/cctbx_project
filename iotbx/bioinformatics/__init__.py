@@ -1183,6 +1183,35 @@ def any_alignment_file (file_name) :
       return aln
   raise RuntimeError("Not a recognizeable sequence alignment format!")
 
+
+def any_alignment_string(data, extension = None):
+
+  tried = None
+
+  if extension == ".hhr":
+    return hhalign_parser( output = data )
+
+  elif extension is not None:
+    parser = alignment_parser_for_extension( extension = extension )
+    aln = parser( text = data )[0]
+    tried = parser
+
+    if aln and aln.multiplicity() != 0:
+      return aln
+
+  for parser in [pir_alignment_parse, clustal_alignment_parse,
+                 fasta_alignment_parse, ali_alignment_parse] :
+    if parser is tried:
+      continue
+
+    aln = parser( text = data)[0]
+
+    if aln and aln.multiplicity() != 0:
+      return aln
+
+  raise RuntimeError("Not a recognizeable sequence alignment format!")
+
+
 class homology_search_hit(object):
   """
   A hit from a homology search

@@ -1040,7 +1040,17 @@ gltbx/wx_viewer_example.py -text
 gltbx/wx_viewer_leapmotion.py -text
 gltbx/wx_viewers_images.py -text
 iotbx/bioinformatics/__init__.py -text
+iotbx/bioinformatics/alignment_as_hsearch.py -text
+iotbx/bioinformatics/ebi_wu_blast_xml.py -text
+iotbx/bioinformatics/ncbi_blast_xml.py -text
 iotbx/bioinformatics/structure.py -text
+iotbx/bioinformatics/test/alignment.pir -text
+iotbx/bioinformatics/test/ebi_blast.xml.gz -text svneol=unset#application/x-gzip
+iotbx/bioinformatics/test/ncbi_blast.xml.gz -text svneol=unset#application/x-gzip
+iotbx/bioinformatics/test/tst_alignment_as_hsearch.py -text
+iotbx/bioinformatics/test/tst_ebi_wu_blast_xml.py -text
+iotbx/bioinformatics/test/tst_ncbi_blast_xml.py -text
+iotbx/bioinformatics/xmlbuild.py -text
 iotbx/ccp4_map/SConscript -text
 iotbx/ccp4_map/__init__.py svneol=native#text/x-python
 iotbx/ccp4_map/ext.cpp svneol=native#text/plain
