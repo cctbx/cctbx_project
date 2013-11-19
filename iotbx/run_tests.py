@@ -53,6 +53,7 @@ tst_list = (
   "$D/detectors/tst_detectors.py",
   "$D/xplor/tst_xplormap.py",
   ["$D/tst_phases.py", "P31"],
+  "$D/regression/tst_pdbx_mmcif_tutorial.py",
   "$D/regression/tst_lattice_symmetry.py",
   ["$D/regression/tst_reflection_statistics.py", "Fdd2 P31m"],
   "$D/tst_data_plots.py",
