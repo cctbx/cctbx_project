@@ -27,8 +27,6 @@ class GenericDetector(object):
 
   def read(self): pass
 
-  def supports_quadrant_calibration(self): return False
-
   def get_flex_image(self,brightness,**kwargs):
     # no kwargs supported at present
     rawdata = flex.random_double(200*250)

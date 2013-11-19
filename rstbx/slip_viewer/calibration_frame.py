@@ -5,6 +5,7 @@
 from __future__ import division
 
 import wx
+from scitbx.matrix import col
 
 
 class SBSettingsFrame(wx.MiniFrame):
@@ -41,8 +42,9 @@ class SBSettingsPanel(wx.Panel):
     from wx.lib.agw.floatspin import EVT_FLOATSPIN, FloatSpin
 
     img = self.GetParent().GetParent().pyslip.tiles.raw_image
+    d = img.get_detector()
     for serial in xrange(4):
-      fast, slow = img.get_panel_fast_slow(serial)
+      fast, slow = d.hierarchy()[serial].get_origin()[0:2]
       name_quadrant = ["Q0", "Q1", "Q2", "Q3"][serial]
       box = wx.BoxSizer(wx.HORIZONTAL)
 
@@ -169,27 +171,31 @@ class SBSettingsPanel(wx.Panel):
     # Update the frame's effective metrology parameters.
     frame = self.GetParent().GetParent()
     img = frame.pyslip.tiles.raw_image
-    if (name == "Q0_fast_ctrl"):
-      frame.metrology_matrices = img.displace_panel_fast_slow(0, delta, 0)
-    elif (name == "Q0_slow_ctrl"):
-      frame.metrology_matrices = img.displace_panel_fast_slow(0, 0, delta)
-    elif (name == "Q1_fast_ctrl"):
-      frame.metrology_matrices = img.displace_panel_fast_slow(1, delta, 0)
-    elif (name == "Q1_slow_ctrl"):
-      frame.metrology_matrices = img.displace_panel_fast_slow(1, 0, delta)
-    elif (name == "Q2_fast_ctrl"):
-      frame.metrology_matrices = img.displace_panel_fast_slow(2, delta, 0)
-    elif (name == "Q2_slow_ctrl"):
-      frame.metrology_matrices = img.displace_panel_fast_slow(2, 0, delta)
-    elif (name == "Q3_fast_ctrl"):
-      frame.metrology_matrices = img.displace_panel_fast_slow(3, delta, 0)
-    elif (name == "Q3_slow_ctrl"):
-      frame.metrology_matrices = img.displace_panel_fast_slow(3, 0, delta)
+
+    quads = img.get_detector().hierarchy()
+
+    if   (name == "Q0_fast_ctrl"): quad, delta = (quads[0], col((delta,0,0)))
+    elif (name == "Q0_slow_ctrl"): quad, delta = (quads[0], col((0,delta,0)))
+    elif (name == "Q1_fast_ctrl"): quad, delta = (quads[1], col((delta,0,0)))
+    elif (name == "Q1_slow_ctrl"): quad, delta = (quads[1], col((0,delta,0)))
+    elif (name == "Q2_fast_ctrl"): quad, delta = (quads[2], col((delta,0,0)))
+    elif (name == "Q2_slow_ctrl"): quad, delta = (quads[2], col((0,delta,0)))
+    elif (name == "Q3_fast_ctrl"): quad, delta = (quads[3], col((delta,0,0)))
+    elif (name == "Q3_slow_ctrl"): quad, delta = (quads[3], col((0,delta,0)))
+    else:
+      raise RuntimeError("Unknown control name " + name)
+
+    ldm = quad.get_local_d_matrix()
+    fast = (ldm[0],ldm[3],ldm[6])
+    slow = (ldm[1],ldm[4],ldm[7])
+
+    orig = col((ldm[2],ldm[5],ldm[8])) + delta
+
+    quad.set_local_frame(fast,slow,orig)
 
     # Update the view, trigger redraw.
     tiles = frame.pyslip.tiles
-    tiles.flex_image = frame.pyslip.tiles.raw_image.get_flex_image(
-      brightness=tiles.current_brightness / 100)
+    tiles.set_image(tiles.raw_image)
     tiles.flex_image.adjust(color_scheme=tiles.current_color_scheme)
 
     tiles.reset_the_cache()
