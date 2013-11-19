@@ -546,7 +546,8 @@ mtz_file {
   array2.set_observation_type_xray_amplitude()
   flags2 = array2.generate_r_free_flags(
     use_lattice_symmetry=True).average_bijvoet_mates()
-  mtz2 = array2.as_mtz_dataset(column_root_label="F-obs")
+  mtz2 = array2.as_mtz_dataset(column_root_label="F-obs",
+    wavelength=1.54)
   mtz2.add_miller_array(flags2, column_root_label="R-free-flags")
   mtz2.mtz_object().write("tst_data8.mtz")
   assert (array2.indices().size() == 352)
@@ -572,6 +573,77 @@ mtz_file {
   params.mtz_file.crystal_symmetry.eliminate_sys_absent = False
   miller_arrays = run_and_reload(params, "tst8.mtz")
   assert (miller_arrays[0].indices().size() == 352)
+  # wavelength
+  assert approx_equal(miller_arrays[0].info().wavelength, 1.54)
+  params.mtz_file.wavelength = 1.116
+  params.mtz_file.output_file = "tst9.mtz"
+  miller_arrays = run_and_reload(params, "tst9.mtz")
+  assert approx_equal(miller_arrays[0].info().wavelength, 1.116)
+  # second MTZ file with wavelength set by default to 1.0 (and ignored)
+  mtz3 = array2.average_bijvoet_mates().as_mtz_dataset(
+    column_root_label="F-obs_2",
+    wavelength=None)
+  mtz3.add_miller_array(flags2, column_root_label="R-free-flags")
+  mtz3.mtz_object().write("tst_data9.mtz")
+  new_phil = libtbx.phil.parse("""
+mtz_file {
+  output_file = tst9.mtz
+  crystal_symmetry.space_group = P212121
+  crystal_symmetry.unit_cell = 6,7,8,90,90,90
+  miller_array {
+    file_name = tst_data8.mtz
+    labels = F-obs(+),SIGF-obs(+),F-obs(-),SIGF-obs(-)
+    output_labels = F-obs(+) SIGF-obs(+) F-obs(-) SIGF-obs(-)
+  }
+  miller_array {
+    file_name = tst_data9.mtz
+    labels = F-obs_2,SIGF-obs_2
+    output_labels = F-obs_2 SIGF-obs_2
+  }
+  miller_array {
+    file_name = tst_data8.mtz
+    labels = R-free-flags
+    output_labels = R-free-flags
+  }
+}""")
+  params = master_phil.fetch(source=new_phil).extract()
+  miller_arrays = run_and_reload(params, "tst9.mtz")
+  assert approx_equal(miller_arrays[0].info().wavelength, 1.54)
+  # now try two MTZ files with wavelengths not equal to 1.0
+  mtz3 = array2.average_bijvoet_mates().as_mtz_dataset(
+    column_root_label="F-obs_2",
+    wavelength=1.116)
+  mtz3.add_miller_array(flags2, column_root_label="R-free-flags")
+  mtz3.mtz_object().write("tst_data9.mtz")
+  try :
+    miller_arrays = run_and_reload(params, "tst9.mtz")
+  except Sorry, s :
+    assert (str(s) == """Multiple wavelengths present in input experimental data arrays: 1.116, 1.54.  Please specify the wavelength parameter explicitly.""")
+  else :
+    raise Exception_expected
+  params.mtz_file.wavelength = 1.54
+  miller_arrays = run_and_reload(params, "tst9.mtz")
+  assert approx_equal(miller_arrays[0].info().wavelength, 1.54)
+  # Make sure wavelengths from non-experimental data arrays are ignored
+  new_phil = libtbx.phil.parse("""
+mtz_file {
+  output_file = tst9.mtz
+  crystal_symmetry.space_group = P212121
+  crystal_symmetry.unit_cell = 6,7,8,90,90,90
+  miller_array {
+    file_name = tst_data8.mtz
+    labels = F-obs(+),SIGF-obs(+),F-obs(-),SIGF-obs(-)
+    output_labels = F-obs(+) SIGF-obs(+) F-obs(-) SIGF-obs(-)
+  }
+  miller_array {
+    file_name = tst_data9.mtz
+    labels = R-free-flags
+    output_labels = R-free-flags
+  }
+}""")
+  params = master_phil.fetch(source=new_phil).extract()
+  miller_arrays = run_and_reload(params, "tst9.mtz")
+  assert approx_equal(miller_arrays[0].info().wavelength, 1.54)
 
 ########################################################################
 # this requires data in phenix_regression
@@ -667,9 +739,33 @@ def exercise_command_line () :
   assert (mtz_in.file_server.miller_arrays[0].info().labels ==
           ['F_INFL(+)', 'S_INFL(+)', 'F_INFL(-)', 'S_INFL(-)'])
 
+# this mainly just tests recycling of wavelength
+def exercise_xds_input () :
+  xds_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/reflection_files/xds_correct_unmerged.hkl",
+    test=os.path.isfile)
+  if (xds_file is None) :
+    print "phenix_regression not available, skipping exercise_xds_input"
+    return False
+  xds_in = file_reader.any_file(xds_file)
+  wl = xds_in.file_server.miller_arrays[0].info().wavelength
+  p = reflection_file_editor.run(
+    args=[xds_file, "output_file=xds.mtz",],
+    out=null_out())
+  mtz_in = file_reader.any_file("xds.mtz")
+  wl2 = mtz_in.file_server.miller_arrays[0].info().wavelength
+  assert approx_equal(wl, wl2)
+  p = reflection_file_editor.run(
+    args=[xds_file, "output_file=xds.mtz", "wavelength=0.9792",],
+    out=null_out())
+  mtz_in = file_reader.any_file("xds.mtz")
+  wl2 = mtz_in.file_server.miller_arrays[0].info().wavelength
+  assert approx_equal(wl2, 0.9792)
+
 if __name__ == "__main__" :
   with warnings.catch_warnings(record=True) as w:
     exercise_basic(verbose=("--verbose" in sys.argv))
-    assert (len(w) == 5)
+    assert (len(w) == 6)
     exercise_command_line()
+    exercise_xds_input()
   print "OK"
