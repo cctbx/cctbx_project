@@ -77,6 +77,10 @@ mtz_file
     .type = float
     .short_caption = High resolution
     .style = bold renderer:draw_hkltools_resolution_widget
+  wavelength = None
+    .type = float
+    .short_caption = Wavelenth
+    .style = bold
   output_file = None
     .type = path
     .short_caption = Output file
@@ -321,6 +325,37 @@ class process_arrays (object) :
     have_r_free_array = False
     self.final_arrays = []
     self.mtz_dataset = None
+    self.wavelength = params.mtz_file.wavelength
+    if (self.wavelength is None) :
+      file_wavelengths = {}
+      for miller_array in miller_arrays :
+        if (not is_experimental_data_array(miller_array)) : continue
+        info = miller_array.info()
+        if (info is not None) :
+          if (not info.source in file_wavelengths) :
+            if (info.wavelength is not None) :
+              try :
+                file_wavelengths[info.source] = float(info.wavelength)
+              except ValueError, e :
+                print >> log, "Warning: bad wavelength '%s'" % info.wavelength
+      all_wavelengths = set([ w for f, w in file_wavelengths.iteritems() ])
+      if (len(all_wavelengths) == 1) :
+        self.wavelength = all_wavelengths.pop()
+      elif (len(all_wavelengths) > 1) :
+        filtered_wavelengths = set([])
+        # MTZ files typically have the wavelength set to 1.0 if it was not
+        # previously specified, so we ignore these.
+        for file_name, wavelength in file_wavelengths.iteritems() :
+          if (file_name.endswith(".mtz") and wavelength in [0.0, 1.0]) :
+            continue
+          filtered_wavelengths.add(wavelength)
+        if (len(filtered_wavelengths) == 1) :
+          self.wavelength = filtered_wavelengths.pop()
+        elif (len(filtered_wavelengths) > 1) :
+          raise Sorry(("Multiple wavelengths present in input experimental "+
+            "data arrays: %s.  Please specify the wavelength parameter "+
+            "explicitly.") %
+            ", ".join([ "%g"%x for x in sorted(list(filtered_wavelengths)) ]))
 
     #-------------------------------------------------------------------
     # SYMMETRY SETUP
@@ -412,9 +447,7 @@ class process_arrays (object) :
         if miller_array.sigmas() is not None :
           print >> log, "         sigmas:  %d" % miller_array.sigmas().size()
 
-      is_experimental_data = (miller_array.is_xray_amplitude_array() or
-        miller_array.is_xray_intensity_array() or
-        miller_array.is_xray_reconstructed_amplitude_array())
+      is_experimental_data = is_experimental_data_array(miller_array)
 
       #-----------------------------------------------------------------
       # OUTPUT LABELS SANITY CHECK
@@ -1002,7 +1035,8 @@ class process_arrays (object) :
     if self.mtz_dataset is None :
       self.mtz_dataset = output_array.as_mtz_dataset(
         column_root_label=default_label,
-        column_types=column_types)
+        column_types=column_types,
+        wavelength=self.wavelength)
     else :
      self.mtz_dataset.add_miller_array(
         miller_array=output_array,
@@ -1065,6 +1099,11 @@ def get_best_resolution (miller_arrays, input_symm=None) :
     except Exception, e :
       pass
   return (best_d_max, best_d_min)
+
+def is_experimental_data_array (miller_array) :
+  return (miller_array.is_xray_amplitude_array() or
+          miller_array.is_xray_intensity_array() or
+          miller_array.is_xray_reconstructed_amplitude_array())
 
 def is_rfree_array (miller_array, array_info) :
   from iotbx import reflection_file_utils

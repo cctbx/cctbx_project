@@ -28,6 +28,7 @@ class reader(object):
     self.miller_index_columns = [None, None, None]
     self.iobs_column = None
     self.sigma_iobs_column = None
+    self.wavelength = None
     for line in f:
       if (line.startswith("!SPACE_GROUP_NUMBER=")):
         self.space_group_number = int(get_rhs(line))
@@ -46,6 +47,8 @@ class reader(object):
         self.iobs_column = self.column_index(line)
       elif (line.startswith("!ITEM_SIGMA(IOBS)=")):
         self.sigma_iobs_column = self.column_index(line)
+      elif (line.startswith("!X-RAY_WAVELENGTH=")) :
+        self.wavelength = float(get_rhs(line))
       elif (line.startswith("!END_OF_HEADER")):
         break
     assert self.unit_cell is not None
@@ -101,7 +104,8 @@ class reader(object):
       sigmas=self.sigma_iobs)
       .set_info(base_array_info.customized_copy(
         labels=["iobs", "sigma_iobs"],
-        crystal_symmetry_from_file=crystal_symmetry_from_file))
+        crystal_symmetry_from_file=crystal_symmetry_from_file,
+        wavelength=self.wavelength))
       .set_observation_type_xray_intensity())
 
   def as_miller_arrays(self,

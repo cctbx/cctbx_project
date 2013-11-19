@@ -38,6 +38,9 @@ french_wilson {
   sigma_iobs_rejection_criterion = None
     .type=float
     .short_caption = Sigma(Iobs) rejection criterion
+  wavelength = None
+    .type = float
+    .help = Optional, defaults to value defined in input file (if any)
 }
 """, process_includes=True)
 
@@ -97,6 +100,13 @@ def run (args, out=sys.stdout) :
     r_free_flags = None
   if (i_obs is None) :
     raise Sorry("Couldn't find intensities!")
+  wavelength = params.wavelength
+  if (wavelength is None) :
+    info = i_obs.info()
+    if (info is not None) :
+      wavelength = info.wavelength
+      if (wavelength is not None) :
+        print >> out, "Using wavelength=%g from input file" % wavelength
   sigma_iobs_rejection_criterion = work_params.french_wilson.\
     sigma_iobs_rejection_criterion
   if (not i_obs.is_unique_set_under_symmetry()) :
@@ -114,7 +124,8 @@ def run (args, out=sys.stdout) :
   else:
     output_file = params.output_file
   mtz_dataset = i_obs.as_mtz_dataset(
-    column_root_label = "I")
+    column_root_label = "I",
+    wavelength = wavelength)
   mtz_dataset.add_miller_array(
     miller_array      = f_obs,
     column_root_label = "F")
