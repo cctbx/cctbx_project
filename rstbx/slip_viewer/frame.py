@@ -201,24 +201,25 @@ class XrayFrame (AppFrame,XFBaseClass) :
     self.Layout()
 
     detector = self.pyslip.tiles.raw_image.get_detector()
-    if len(detector) == 1:
-      # XXX Disable display of the beam center cross for multitile
-      # detectors until the dxtbx interface is clear.
-      (beam_pixel_fast, beam_pixel_slow) = detector[0].millimeter_to_pixel(
-        detector[0].get_beam_centre(
-          self.pyslip.tiles.raw_image.get_beam().get_s0()))
+    beam     = self.pyslip.tiles.raw_image.get_beam()
+    if len(detector) > 1:
+      beam_pixel_fast, beam_pixel_slow = detector[0].millimeter_to_pixel(  # FIXME assumes all detector elements use the same
+        detector.hierarchy().get_beam_centre(beam.get_s0()))               # millimeter-to-pixel convention
+    else:
+      beam_pixel_fast, beam_pixel_slow = detector[0].millimeter_to_pixel(
+        detector[0].get_beam_centre(beam.get_s0()))
 
-      self.beam_center_cross_data = [
-        ((self.pyslip.tiles.picture_fast_slow_to_map_relative(
-            beam_pixel_fast + 3., beam_pixel_slow),
-          self.pyslip.tiles.picture_fast_slow_to_map_relative(
-            beam_pixel_fast - 3., beam_pixel_slow)),
-         {'width': 2, 'color': '#0000FFA0', 'closed': False}),
-        ((self.pyslip.tiles.picture_fast_slow_to_map_relative(
-            beam_pixel_fast, beam_pixel_slow + 3.),
-          self.pyslip.tiles.picture_fast_slow_to_map_relative(
-            beam_pixel_fast, beam_pixel_slow - 3.)),
-         {'width': 2, 'color': '#0000FFA0', 'closed': False})
+    self.beam_center_cross_data = [
+      ((self.pyslip.tiles.picture_fast_slow_to_map_relative(
+          beam_pixel_fast + 3., beam_pixel_slow),
+        self.pyslip.tiles.picture_fast_slow_to_map_relative(
+          beam_pixel_fast - 3., beam_pixel_slow)),
+       {'width': 2, 'color': '#0000FFA0', 'closed': False}),
+      ((self.pyslip.tiles.picture_fast_slow_to_map_relative(
+          beam_pixel_fast, beam_pixel_slow + 3.),
+        self.pyslip.tiles.picture_fast_slow_to_map_relative(
+          beam_pixel_fast, beam_pixel_slow - 3.)),
+       {'width': 2, 'color': '#0000FFA0', 'closed': False})
                              ]
     # Unconditionally delete extra layers--update_settings() will add
     # them back if appropriate.  This also creates the self.*_layer
