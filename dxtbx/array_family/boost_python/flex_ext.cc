@@ -17,7 +17,7 @@ namespace dxtbx { namespace af { namespace boost_python {
 
   using namespace boost::python;
   using scitbx::af::int4;
-  
+
   void export_flex_panel();
 
   BOOST_PYTHON_MODULE(dxtbx_array_family_flex_ext)

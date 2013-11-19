@@ -40,7 +40,7 @@ namespace dxtbx { namespace model { namespace boost_python {
         obj.get_polarization_fraction());
     }
   };
-  
+
   template <>
   boost::python::dict to_dict<Beam>(const Beam &obj) {
     boost::python::dict result;
@@ -50,7 +50,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     result["sigma_divergence"] = obj.get_sigma_divergence();
     result["polarization_normal"] = obj.get_polarization_normal();
     result["polarization_fraction"] = obj.get_polarization_fraction();
-    return result;        
+    return result;
   }
 
   template <>
@@ -64,54 +64,54 @@ namespace dxtbx { namespace model { namespace boost_python {
         obj.get("polarization_normal", vec3<double>(0.0, 1.0, 0.0))),
       boost::python::extract< double >(obj.get("polarization_fraction", 0.999)));
   }
-  
+
   static Beam* make_beam(vec3<double> sample_to_source, double wavelength,
                          double divergence, double sigma_divergence, bool deg) {
     Beam *beam = NULL;
     if (deg) {
-      beam = new Beam(sample_to_source, wavelength, 
-                      deg_as_rad(divergence), 
+      beam = new Beam(sample_to_source, wavelength,
+                      deg_as_rad(divergence),
                       deg_as_rad(sigma_divergence));
     } else {
-      beam = new Beam(sample_to_source, wavelength, 
+      beam = new Beam(sample_to_source, wavelength,
                       divergence, sigma_divergence);
     }
     return beam;
   }
 
-  static Beam* make_beam_w_s0(vec3<double> s0, double divergence, 
+  static Beam* make_beam_w_s0(vec3<double> s0, double divergence,
                               double sigma_divergence, bool deg) {
     Beam *beam = NULL;
     if (deg) {
-      beam = new Beam(s0, deg_as_rad(divergence), 
+      beam = new Beam(s0, deg_as_rad(divergence),
                       deg_as_rad(sigma_divergence));
     } else {
       beam = new Beam(s0, divergence, sigma_divergence);
     }
     return beam;
   }
-   
-  static Beam* make_beam_w_all(vec3<double> sample_to_source, 
-			       double wavelength,
-			       double divergence, double sigma_divergence, 
-			       vec3<double> polarization_normal, 
-			       double polarization_fraction, bool deg) {
+
+  static Beam* make_beam_w_all(vec3<double> sample_to_source,
+                               double wavelength,
+                               double divergence, double sigma_divergence,
+                               vec3<double> polarization_normal,
+                               double polarization_fraction, bool deg) {
     Beam *beam = NULL;
     if (deg) {
-      beam = new Beam(sample_to_source, wavelength, 
-                      deg_as_rad(divergence), 
+      beam = new Beam(sample_to_source, wavelength,
+                      deg_as_rad(divergence),
                       deg_as_rad(sigma_divergence),
                       polarization_normal,
                       polarization_fraction);
     } else {
-      beam = new Beam(sample_to_source, wavelength, 
+      beam = new Beam(sample_to_source, wavelength,
                       divergence, sigma_divergence,
                       polarization_normal,
                       polarization_fraction);
     }
     return beam;
   }
-    
+
   static
   double get_divergence(const Beam &beam, bool deg) {
     double divergence = beam.get_divergence();
@@ -130,7 +130,7 @@ namespace dxtbx { namespace model { namespace boost_python {
   }
 
   static
-  void set_sigma_divergence(Beam &beam, double sigma_divergence, 
+  void set_sigma_divergence(Beam &beam, double sigma_divergence,
                             bool deg) {
     beam.set_sigma_divergence(
       deg ? deg_as_rad(sigma_divergence) : sigma_divergence);
@@ -146,22 +146,22 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def(init<const Beam&>())
       .def(init <vec3 <double>,
                  double> ((
-          arg("direction"), 
+          arg("direction"),
           arg("wavelength"))))
       .def(init <vec3 <double> > ((
           arg("s0"))))
       .def("__init__",
           make_constructor(
-          &make_beam, 
+          &make_beam,
           default_call_policies(), (
             arg("direction"),
             arg("wavelength"),
             arg("divergence"),
             arg("sigma_divergence"),
-            arg("deg") = true)))          
+            arg("deg") = true)))
       .def("__init__",
           make_constructor(
-          &make_beam_w_s0, 
+          &make_beam_w_s0,
           default_call_policies(), (
             arg("s0"),
             arg("divergence"),
@@ -169,20 +169,20 @@ namespace dxtbx { namespace model { namespace boost_python {
             arg("deg") = true)))
       .def("__init__",
           make_constructor(
-          &make_beam_w_all, 
+          &make_beam_w_all,
           default_call_policies(), (
-	          arg("direction"),
-	          arg("wavelength"),
-	          arg("divergence"),
-	          arg("sigma_divergence"),
+                  arg("direction"),
+                  arg("wavelength"),
+                  arg("divergence"),
+                  arg("sigma_divergence"),
             arg("polarization_normal"),
             arg("polarization_fraction"),
-            arg("deg") = true))) 
-      .def("get_direction", 
+            arg("deg") = true)))
+      .def("get_direction",
         &Beam::get_direction)
       .def("set_direction",
         &Beam::set_direction)
-      .def("get_wavelength", 
+      .def("get_wavelength",
         &Beam::get_wavelength)
       .def("set_wavelength",
         &Beam::set_wavelength)
@@ -215,12 +215,12 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("get_polarization_fraction",
         &Beam::get_polarization_fraction)
       .def("set_polarization_fraction",
-        &Beam::set_polarization_fraction)          
+        &Beam::set_polarization_fraction)
       .def("__eq__", &Beam::operator==)
       .def("__ne__", &Beam::operator!=)
       .def("__str__", &beam_to_string)
       .def("to_dict", &to_dict<Beam>)
-      .def("from_dict", &from_dict<Beam>, 
+      .def("from_dict", &from_dict<Beam>,
         return_value_policy<manage_new_object>())
       .staticmethod("from_dict")
       .def_pickle(BeamPickleSuite());

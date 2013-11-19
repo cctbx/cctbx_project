@@ -17,10 +17,10 @@ namespace dxtbx { namespace af { namespace boost_python {
 
   using namespace boost::python;
   using dxtbx::model::Panel;
-  
+
   void export_flex_panel()
   {
-    scitbx::af::boost_python::flex_wrapper <Panel, 
+    scitbx::af::boost_python::flex_wrapper <Panel,
       return_internal_reference<> >::plain("panel");
   }
 

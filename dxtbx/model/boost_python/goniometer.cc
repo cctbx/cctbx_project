@@ -44,16 +44,16 @@ namespace dxtbx { namespace model { namespace boost_python {
     result["fixed_rotation"] = obj.get_fixed_rotation();
     return result;
   }
-  
+
   template <>
   Goniometer* from_dict<Goniometer>(boost::python::dict obj) {
     return new Goniometer(
       boost::python::extract< vec3<double> >(obj["rotation_axis"]),
-      boost::python::extract< mat3<double> >(obj.get("fixed_rotation", 
+      boost::python::extract< mat3<double> >(obj.get("fixed_rotation",
         mat3<double>(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0))));
   }
 
-  void export_goniometer() 
+  void export_goniometer()
   {
     class_ <GoniometerBase> ("GoniometerBase");
 
@@ -63,13 +63,13 @@ namespace dxtbx { namespace model { namespace boost_python {
           arg("rotation_axis"))))
       .def(init <vec3 <double>,
                  mat3 <double> > ((
-          arg("rotation_axis"), 
+          arg("rotation_axis"),
           arg("fixed_rotation_matrix"))))
-      .def("get_rotation_axis",  
+      .def("get_rotation_axis",
         &Goniometer::get_rotation_axis)
       .def("set_rotation_axis",
         &Goniometer::set_rotation_axis)
-      .def("get_fixed_rotation",  
+      .def("get_fixed_rotation",
         &Goniometer::get_fixed_rotation)
       .def("set_fixed_rotation",
         &Goniometer::set_fixed_rotation)
@@ -77,7 +77,7 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("__ne__", &Goniometer::operator!=)
       .def("__str__", &goniometer_to_string)
       .def("to_dict", &to_dict<Goniometer>)
-      .def("from_dict", &from_dict<Goniometer>, 
+      .def("from_dict", &from_dict<Goniometer>,
         return_value_policy<manage_new_object>())
       .staticmethod("from_dict")
       .def_pickle(GoniometerPickleSuite());
