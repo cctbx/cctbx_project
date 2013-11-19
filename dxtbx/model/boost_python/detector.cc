@@ -37,7 +37,7 @@ namespace dxtbx { namespace model { namespace boost_python {
   Panel* detector_get_item(Detector &d, std::size_t i) {
     return d.at(i);
   }
-  
+
   static
   scitbx::af::shared<std::string> get_names(const Detector &d) {
     scitbx::af::shared<std::string> result(d.size());
@@ -45,8 +45,8 @@ namespace dxtbx { namespace model { namespace boost_python {
       result[i] = d[i].get_name();
     }
     return result;
-  } 
-  
+  }
+
   template <>
   boost::python::dict to_dict<Detector>(const Detector &obj) {
     boost::python::dict result;
@@ -57,11 +57,11 @@ namespace dxtbx { namespace model { namespace boost_python {
     result["panels"] = panels;
     return result;
   }
-  
+
   template <>
   Detector* from_dict<Detector>(boost::python::dict obj) {
     Detector *result = new Detector();
-    boost::python::list panels = 
+    boost::python::list panels =
       boost::python::extract<boost::python::list>(obj["panels"]);
     for (std::size_t i = 0; i < boost::python::len(panels); ++i) {
       result->add_panel(from_dict<Panel>(
@@ -70,10 +70,10 @@ namespace dxtbx { namespace model { namespace boost_python {
     return result;
   }
 
-  void export_detector() 
+  void export_detector()
   {
     using namespace boost::python;
-      
+
     // Export a Detector base class
     class_ <Detector> ("DetectorBase")
       .def(init<const Panel&>())
@@ -91,10 +91,10 @@ namespace dxtbx { namespace model { namespace boost_python {
         &Detector::size)
       .def("__setitem__",
         &detector_set_item)
-      .def("__getitem__", 
-        &detector_get_item, 
-        return_internal_reference<>())        
-      .def("__iter__", 
+      .def("__getitem__",
+        &detector_get_item,
+        return_internal_reference<>())
+      .def("__iter__",
         iterator<Detector, return_internal_reference<> >())
       .def("__eq__", &Detector::operator==)
       .def("__ne__", &Detector::operator!=)
@@ -107,11 +107,11 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("get_names", &get_names)
       .def("__str__", &detector_to_string)
       .def("to_dict", &to_dict<Detector>)
-      .def("from_dict", &from_dict<Detector>, 
+      .def("from_dict", &from_dict<Detector>,
         return_value_policy<manage_new_object>())
       .staticmethod("from_dict")
       .enable_pickling();
-   
+
     boost_adaptbx::std_pair_conversions::to_and_from_tuple<int, vec2<double> >();
   }
 

@@ -92,7 +92,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     } else if (nl == 1) {
       for (std::size_t i = 0; i < num; ++i) {
         result.push_back(boost::python::extract<double>(obj[0]));
-      }      
+      }
     } else if (nl < num) {
       for (std::size_t i = 0; i < nl; ++i) {
         result.push_back(boost::python::extract<double>(obj[i]));
@@ -110,17 +110,17 @@ namespace dxtbx { namespace model { namespace boost_python {
     return result;
   }
 
-  template <> 
+  template <>
   Scan* from_dict<Scan>(boost::python::dict obj) {
     vec2<int> ir = boost::python::extract< vec2<int> >(obj["image_range"]);
     vec2<double> osc = boost::python::extract< vec2<double> >(obj["oscillation"]);
     DXTBX_ASSERT(ir[1] >= ir[0]);
     std::size_t num = ir[1] - ir[0] + 1;
     return new Scan(ir, osc,
-      make_exposure_times(num, 
+      make_exposure_times(num,
         boost::python::extract<boost::python::list>(
           obj.get("exposure_time", boost::python::list()))),
-      make_epochs(num, 
+      make_epochs(num,
         boost::python::extract<boost::python::list>(
           obj.get("epochs", boost::python::list()))));
   }
@@ -128,9 +128,9 @@ namespace dxtbx { namespace model { namespace boost_python {
   static Scan* make_scan(vec2 <int> image_range, vec2 <double> oscillation, bool deg) {
     Scan *scan = NULL;
     if (deg) {
-      scan = new Scan(image_range, 
+      scan = new Scan(image_range,
         vec2 <double> (
-          deg_as_rad(oscillation[0]), 
+          deg_as_rad(oscillation[0]),
           deg_as_rad(oscillation[1])));
     } else {
       scan = new Scan(image_range, oscillation);
@@ -138,31 +138,31 @@ namespace dxtbx { namespace model { namespace boost_python {
     return scan;
   }
 
-  static Scan* make_scan_w_epoch(vec2 <int> image_range, 
-      vec2 <double> oscillation, 
-      const scitbx::af::shared<double> &exposure_times, 
+  static Scan* make_scan_w_epoch(vec2 <int> image_range,
+      vec2 <double> oscillation,
+      const scitbx::af::shared<double> &exposure_times,
       const scitbx::af::shared<double> &epochs, bool deg) {
     Scan *scan = NULL;
     if (deg) {
-      scan = new Scan(image_range, 
+      scan = new Scan(image_range,
         vec2 <double> (
-          deg_as_rad(oscillation[0]), 
-          deg_as_rad(oscillation[1])), 
+          deg_as_rad(oscillation[0]),
+          deg_as_rad(oscillation[1])),
         exposure_times, epochs);
     } else {
       scan = new Scan(image_range, oscillation, exposure_times, epochs);
     }
     return scan;
   }
-  
- 
+
+
   static
   vec2<double> get_oscillation_range(const Scan &scan, bool deg) {
     vec2<double> range = scan.get_oscillation_range();
     return deg ? rad_as_deg(range) : range;
   }
 
-  static  
+  static
   vec2<double> get_oscillation(const Scan &scan, bool deg) {
     vec2<double> oscillation = scan.get_oscillation();
     return deg ? rad_as_deg(oscillation) : oscillation;
@@ -177,66 +177,66 @@ namespace dxtbx { namespace model { namespace boost_python {
     scan.set_oscillation(oscillation);
   }
 
-   static  
-  vec2<double> get_image_oscillation(const Scan &scan, int image, 
+   static
+  vec2<double> get_image_oscillation(const Scan &scan, int image,
       bool deg) {
     vec2<double> oscillation = scan.get_image_oscillation(image);
     return deg ? rad_as_deg(oscillation) : oscillation;
   }
 
-  
-  static 
+
+  static
   bool is_angle_valid(const Scan &scan, double angle, bool deg) {
     return scan.is_angle_valid(deg ? deg_as_rad(angle) : angle);
   }
 
-  static 
-  double get_angle_from_image_index(const Scan &scan, double index, 
+  static
+  double get_angle_from_image_index(const Scan &scan, double index,
       bool deg) {
     double angle = scan.get_angle_from_image_index(index);
     return deg ? rad_as_deg(angle) : angle;
   }
 
-  static 
-  double get_angle_from_array_index(const Scan &scan, double index, 
+  static
+  double get_angle_from_array_index(const Scan &scan, double index,
       bool deg) {
     double angle = scan.get_angle_from_array_index(index);
     return deg ? rad_as_deg(angle) : angle;
   }
 
-  static 
-  double get_image_index_from_angle(const Scan &scan, double angle, 
+  static
+  double get_image_index_from_angle(const Scan &scan, double angle,
       bool deg) {
     return scan.get_image_index_from_angle(deg ? deg_as_rad(angle) : angle);
   }
 
-  static 
+  static
   double get_array_index_from_angle(const Scan &scan, double angle,
       bool deg) {
     return scan.get_array_index_from_angle(
       deg ? deg_as_rad(angle) : angle);
   }
 
-  static 
-  scitbx::af::shared<double> get_image_indices_with_angle(const Scan &scan, double angle, 
+  static
+  scitbx::af::shared<double> get_image_indices_with_angle(const Scan &scan, double angle,
       bool deg) {
     return scan.get_image_indices_with_angle(deg ? deg_as_rad(angle) : angle);
   }
-  
-  static 
-  scitbx::af::shared<double> get_array_indices_with_angle(const Scan &scan, 
+
+  static
+  scitbx::af::shared<double> get_array_indices_with_angle(const Scan &scan,
       double angle, bool deg) {
     return scan.get_array_indices_with_angle(
       deg ? deg_as_rad(angle) : angle);
-  }  
-  
-  static 
-  Scan getitem_single(const Scan &scan, int index) 
+  }
+
+  static
+  Scan getitem_single(const Scan &scan, int index)
   {
     // Check index
     DXTBX_ASSERT((index >= 0) && (index < scan.get_num_images()));
     int image_index = scan.get_image_range()[0] + index;
-    
+
     // Create the new epoch array
     scitbx::af::shared<double> new_epochs(1);
     new_epochs[0] = scan.get_image_epoch(image_index );
@@ -244,17 +244,17 @@ namespace dxtbx { namespace model { namespace boost_python {
     new_exposure_times[0] = scan.get_image_exposure_time(image_index );
 
     // Return scan
-    return Scan(vec2<int>(image_index, image_index), 
+    return Scan(vec2<int>(image_index, image_index),
       scan.get_image_oscillation(image_index ),
       new_exposure_times, new_epochs);
   }
-  
+
   static
   Scan getitem_slice(const Scan &scan, const slice index)
   {
     // Ensure no step
     DXTBX_ASSERT(index.step() == object());
-    
+
     // Get start index
     int start = 0, stop = 0;
     if (index.start() == object()) {
@@ -262,7 +262,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     } else {
       start = extract<int>(index.start());
     }
-    
+
     // Get stop index
     if (index.stop() == object()) {
       stop = scan.get_num_images();
@@ -291,11 +291,11 @@ namespace dxtbx { namespace model { namespace boost_python {
 
     // Create the new scan object
     return Scan(
-      vec2<int>(first_image_index, last_image_index), 
-      scan.get_image_oscillation(first_image_index), 
+      vec2<int>(first_image_index, last_image_index),
+      scan.get_image_oscillation(first_image_index),
       new_exposure_times, new_epochs);
-  }  
-  
+  }
+
   void export_scan()
   {
     // Export ScanBase
@@ -306,27 +306,27 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def(init<const Scan&>())
       .def("__init__",
           make_constructor(
-          &make_scan, 
+          &make_scan,
           default_call_policies(), (
           arg("image_range"),
           arg("oscillation"),
           arg("deg") = true)))
       .def("__init__",
           make_constructor(
-          &make_scan_w_epoch, 
+          &make_scan_w_epoch,
           default_call_policies(), (
           arg("image_range"),
           arg("oscillation"),
           arg("exposure_times"),
-          arg("epochs"),          
+          arg("epochs"),
           arg("deg") = true)))
-      .def("get_image_range",  
+      .def("get_image_range",
         &Scan::get_image_range)
       .def("set_image_range",
         &Scan::set_image_range)
-      .def("get_array_range",  
+      .def("get_array_range",
         &Scan::get_array_range)
-      .def("get_oscillation",  
+      .def("get_oscillation",
         &get_oscillation, (
           arg("deg") = true))
       .def("set_oscillation",
@@ -351,7 +351,7 @@ namespace dxtbx { namespace model { namespace boost_python {
           arg("index")))
       .def("get_oscillation_range",
         &get_oscillation_range, (
-          arg("deg") = true))          
+          arg("deg") = true))
       .def("is_angle_valid",
         &is_angle_valid, (
           arg("angle"),
@@ -369,7 +369,7 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("get_angle_from_array_index",
         &get_angle_from_array_index, (
           arg("index"),
-          arg("deg") = true))          
+          arg("deg") = true))
       .def("get_image_index_from_angle",
         &get_image_index_from_angle, (
           arg("angle"),
@@ -399,7 +399,7 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("__len__", &Scan::get_num_images)
       .def("__str__", &scan_to_string)
       .def("to_dict", &to_dict<Scan>)
-      .def("from_dict", &from_dict<Scan>, 
+      .def("from_dict", &from_dict<Scan>,
         return_value_policy<manage_new_object>())
       .staticmethod("from_dict")
       .def_pickle(ScanPickleSuite());

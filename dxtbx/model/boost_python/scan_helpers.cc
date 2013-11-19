@@ -35,17 +35,17 @@ namespace dxtbx { namespace model { namespace boost_python {
     angles[1] = rad_as_deg(angles[1]);
     return angles;
   }
-  
-  static 
-  bool is_angle_in_range_wrapper(vec2<double> range, double angle, 
+
+  static
+  bool is_angle_in_range_wrapper(vec2<double> range, double angle,
       bool deg) {
     return is_angle_in_range(
       deg ? deg_as_rad(range) : range,
       deg ? deg_as_rad(angle) : angle);
   }
 
-  static vec2 <double> 
-  get_range_of_mod2pi_angles_wrapper(vec2<double> range, double angle, 
+  static vec2 <double>
+  get_range_of_mod2pi_angles_wrapper(vec2<double> range, double angle,
       bool deg) {
     return rad_as_deg(get_range_of_mod2pi_angles(
       deg ? deg_as_rad(range) : range,
@@ -53,11 +53,11 @@ namespace dxtbx { namespace model { namespace boost_python {
   }
 
   static scitbx::af::shared<double>
-  get_mod2pi_angles_in_range_wrapper(vec2 <double> range, double angle, 
+  get_mod2pi_angles_in_range_wrapper(vec2 <double> range, double angle,
       bool deg) {
     scitbx::af::shared<double> result = get_mod2pi_angles_in_range(
       deg ? deg_as_rad(range) : range,
-      deg ? deg_as_rad(angle) : angle);    
+      deg ? deg_as_rad(angle) : angle);
     if (deg) {
       for (std::size_t i = 0; i < result.size(); ++i) {
         result[i] = rad_as_deg(result[i]);
@@ -65,7 +65,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     }
     return result;
   }
-  
+
   void export_scan_helpers()
   {
     def("is_angle_in_range", &is_angle_in_range_wrapper, (

@@ -28,9 +28,9 @@ namespace dxtbx { namespace model { namespace boost_python {
   }
 
   static boost::shared_ptr<KappaGoniometer> make_kappa_goniometer(
-      double alpha, double omega, double kappa, double phi, 
+      double alpha, double omega, double kappa, double phi,
       std::string direction_str, std::string scan_axis_str)
-  {  
+  {
     KappaGoniometer::Direction direction = KappaGoniometer::NoDirection;
     boost::algorithm::to_lower(direction_str);
     if (direction_str == "+y") {
@@ -74,11 +74,11 @@ namespace dxtbx { namespace model { namespace boost_python {
       .export_values();
 
     class_ <KappaGoniometer, bases <Goniometer> > ("KappaGoniometer")
-      .def(init <double, 
-                 double, 
-                 double, 
-                 double, 
-                 KappaGoniometer::Direction, 
+      .def(init <double,
+                 double,
+                 double,
+                 double,
+                 KappaGoniometer::Direction,
                  KappaGoniometer::ScanAxis> ((
           arg("alpha"),
           arg("omega"),

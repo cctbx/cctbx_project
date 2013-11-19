@@ -71,14 +71,14 @@ namespace dxtbx { namespace model {
         epochs_(epochs) {
       DXTBX_ASSERT(num_images_ >= 0);
       if (exposure_times_.size() == 1 && num_images_ > 1) {
-	// assume same exposure time for all images - there is
-	// probably a better way of coding this...
-	scitbx::af::shared<double> expanded_exposure_times;
-	expanded_exposure_times.reserve(num_images_);
-	for (int j = 0; j < num_images_; j++) {
-	  expanded_exposure_times.push_back(exposure_times[0]);
-	  exposure_times_ = expanded_exposure_times;
-	}
+        // assume same exposure time for all images - there is
+        // probably a better way of coding this...
+        scitbx::af::shared<double> expanded_exposure_times;
+        expanded_exposure_times.reserve(num_images_);
+        for (int j = 0; j < num_images_; j++) {
+          expanded_exposure_times.push_back(exposure_times[0]);
+          exposure_times_ = expanded_exposure_times;
+        }
       }
       DXTBX_ASSERT(exposure_times_.size() == num_images_);
       DXTBX_ASSERT(epochs_.size() == num_images_);
