@@ -252,8 +252,6 @@ namespace dxtbx { namespace model { namespace boost_python {
   static
   Scan getitem_slice(const Scan &scan, const slice index)
   {
-    vec2<int> array_range = scan.get_array_range();
-
     // Ensure no step
     DXTBX_ASSERT(index.step() == object());
     
