@@ -79,7 +79,7 @@ mtz_file
     .style = bold renderer:draw_hkltools_resolution_widget
   wavelength = None
     .type = float
-    .short_caption = Wavelenth
+    .short_caption = Wavelength
     .style = bold
   output_file = None
     .type = path
