@@ -186,7 +186,10 @@ class _Tiles(object):
           self.raw_image = ImageFactory(file_name_or_data)
           self.raw_image.read()
         else:
-          self.raw_image = file_name_or_data._raw
+          try:
+            self.raw_image = file_name_or_data._raw
+          except AttributeError:
+            self.raw_image = file_name_or_data
         #print "SETTING NEW IMAGE",self.raw_image.filename
 
         # XXX Since there doesn't seem to be a good way to refresh the

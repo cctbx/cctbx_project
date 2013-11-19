@@ -519,7 +519,7 @@ def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, 
     cbf.add_row(["ARRAY_" + tilestrs[i],str(i+1)])
 
     binary_id = i+1
-    data = tiles[tilekey].copy_to_byte_str()
+    data = tiles[tilekey].as_double().copy_to_byte_str()
     elsize = 8
     elements = len(tiles[tilekey])
     byteorder = "little_endian"

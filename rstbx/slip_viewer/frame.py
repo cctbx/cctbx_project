@@ -138,6 +138,10 @@ class XrayFrame (AppFrame,XFBaseClass) :
     item = actions_menu.Append(self._id_ring, " ")
     self.Bind(wx.EVT_MENU, self.OnRing, source=item)
 
+  def has_four_quadrants(self):
+    d = self.pyslip.tiles.raw_image.get_detector()
+    return len(d) > 1 and len(d.hierarchy()) == 4
+
   def add_file_name_or_data (self, file_name_or_data) :
       """The add_file_name_or_data() function appends @p
       file_name_or_data to the image chooser, unless it is already
@@ -242,7 +246,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
     # when switching between different kinds of images.  XXX Centering
     # is broken when switching between different kinds of images.
     if (self._calibration_frame and
-        not self.pyslip.tiles.raw_image.supports_quadrant_calibration()):
+        not self.has_four_quadrants()):
       self.OnCalibration(None)
 
   def get_key (self, file_name_or_data) :
@@ -345,7 +349,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
     # the corresponding menu item.  Toggle the menu item text
     # depending on the state of the tool.
 
-    if self.pyslip.tiles.raw_image.supports_quadrant_calibration():
+    if self.has_four_quadrants():
       event.Enable(True)
       if self._calibration_frame:
         event.SetText("Hide quadrant calibration")
