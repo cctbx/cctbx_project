@@ -80,6 +80,9 @@ class SBSettingsPanel(wx.Panel):
 
 
   def OnRestoreMetrology(self, event):
+    print "Not implemented"
+    return
+
     dialog = wx.FileDialog(
       self,
       defaultDir="",
@@ -137,6 +140,8 @@ class SBSettingsPanel(wx.Panel):
 
 
   def OnSaveMetrology(self, event):
+    import pycbf
+
     dialog = wx.FileDialog(
       self,
       defaultDir="",
@@ -146,17 +151,20 @@ class SBSettingsPanel(wx.Panel):
     if dialog.ShowModal() == wx.ID_OK:
       path = dialog.GetPath()
       if (path != "") :
-        from xfel.cftbx.detector.metrology import master_phil
-
-        # Round-trip the metrology string for pretty-printing.
+        # The detector object of the format instance is adjusted when the quadrant calibration
+        # arrows are clicked.  Sync those adjustments to the cbf handle and write the file.
         frame = self.GetParent().GetParent()
         img = frame.pyslip.tiles.raw_image
-        metrology_params = master_phil.format(
-          python_object=img.transformation_matrices_as_metrology().extract())
-        stream = open(path, "w")
-        stream.write(metrology_params.as_str())
-        stream.close()
-        print "Dumped pickled metrology to", path
+
+        img.sync_detector_to_cbf()
+        cbf = img._cbf_handle
+        cbf.find_category("array_data")
+        cbf.remove_category()
+
+        cbf.write_widefile(path,pycbf.CBF,\
+              pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K,0)
+
+        print "Saved cbf header to", path
 
 
   def OnUpdateQuad(self, event):
