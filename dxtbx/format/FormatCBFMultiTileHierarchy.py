@@ -56,11 +56,6 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
     the handle somewhere safe.'''
     FormatCBFMultiTile._start(self)
 
-  def _goniometer(self):
-    '''Not sensible for still shot data'''
-
-    return None
-
   def _get_change_of_basis(self, axis_id):
     """ Get the 4x4 homogenous coordinate matrix for a given axis.  Assumes
     the cbf handle has been intialized
@@ -226,11 +221,6 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
     '''Return a working beam instance.'''
 
     return self._beam_factory.imgCIF_H(self._cbf_handle)
-
-  def _scan(self):
-    '''Not sensible for still shot data'''
-
-    return None
 
   def get_raw_data(self, index=None):
     if self._raw_data is None:

@@ -37,3 +37,14 @@ class FormatStill(Format):
       self._end()
 
     return
+
+  def _goniometer(self):
+    '''Not sensible for still shot data'''
+
+    return None
+
+
+  def _scan(self):
+    '''Not sensible for still shot data'''
+
+    return None
