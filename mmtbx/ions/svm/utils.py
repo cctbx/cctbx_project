@@ -2,6 +2,7 @@
 """
 Utility functions used within this module.
 """
+from __future__ import division
 
 def iterate_sites(pdb_hierarchy, split_sites = False, res_filter = None):
   """
