@@ -23,6 +23,12 @@ def exercise () :
     return
 
   models = OrderedDict([
+    ("2qng", [
+      Counter({chem_oxygen: 7, chem_carboxy: 2, chem_water: 2,
+               chem_backbone: 3}),
+      Counter({chem_oxygen: 6, chem_carboxy: 3, chem_water: 1,
+               chem_backbone: 2}),
+      ]),
     ("3rva", [
       Counter({chem_oxygen: 6, chem_carboxy: 4, chem_water: 2}),
       Counter({chem_nitrogen: 1, chem_oxygen: 4, chem_nitrogen_secondary: 1,
