@@ -25,7 +25,7 @@ class mod_cbf_dump(common_mode.common_mode_correction):
                address,
                out_dirname,
                out_basename,
-               calib_dir=None,
+               metrology=None,
                **kwds):
     """The mod_cbf_dump class constructor stores the parameters passed from
     the pyana configuration file in instance variables.
@@ -33,14 +33,16 @@ class mod_cbf_dump(common_mode.common_mode_correction):
     @param address      Full data source address of the DAQ device
     @param out_dirname  Directory portion of output image pathname
     @param out_basename Filename prefix of output image pathname
-    @param calib_dir    Directory with calibration information
+    @param metrology    Directory with calibration information or cbf file
+                        (header only or full file) from which to apply metrology
+                        information
     """
 
-    super(mod_cbf_dump, self).__init__(address=address, calib_dir=calib_dir, **kwds)
+    super(mod_cbf_dump, self).__init__(address=address, **kwds)
 
     self._basename = cspad_tbx.getOptString(out_basename)
     self._dirname = cspad_tbx.getOptString(out_dirname)
-    self._calib_dir = cspad_tbx.getOptString(calib_dir)
+    self._metrology = cspad_tbx.getOptString(metrology)
 
 
   def event(self, evt, env):
@@ -77,7 +79,7 @@ class mod_cbf_dump(common_mode.common_mode_correction):
     tiles = {}
     data = self.cspad_img
 
-    sections = calib2sections(cspad_tbx.getOptString(self._calib_dir))
+    sections = calib2sections(cspad_tbx.getOptString(self._metrology))
     for p in xrange(len(sections)):
       for s in xrange(len(sections[p])):
 
@@ -95,7 +97,7 @@ class mod_cbf_dump(common_mode.common_mode_correction):
 
     from xfel.cftbx.detector.metrology2phil import metrology2phil
     from iotbx import phil
-    metro = metrology2phil(self._calib_dir,False)
+    metro = metrology2phil(self._metrology,False)
 
     args = [
       "beam_center=(%f,%f)"%(beam_center_x, beam_center_y),
@@ -109,4 +111,4 @@ class mod_cbf_dump(common_mode.common_mode_correction):
     t = self.timestamp
     s = t[0:4] + t[5:7] + t[8:10] + t[11:13] + t[14:16] + t[17:19] + t[20:23]
 
-    write_cspad_cbf(tiles, metro, self.timestamp, os.path.join(self._dirname, self._basename + s + ".cbf"), self.wavelength, distance)
+    write_cspad_cbf(tiles, metro, 'calibdir', self.timestamp, os.path.join(self._dirname, self._basename + s + ".cbf"), self.wavelength, distance)
