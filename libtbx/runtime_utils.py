@@ -208,7 +208,10 @@ class detached_process_server (detached_base) :
     info = host_and_user()
     assert (info.pid is not None)
     f = open(self.start_file, "w")
-    f.write("%s %d" % (info.get_host_name(), info.pid))
+    host_name = info.get_host_name()
+    if (host_name is None) and (sys.platform == "darwin") :
+      host_name = os.uname()[1]
+    f.write("%s %d" % (host_name, info.pid))
     f.close()
 
   def callback_stdout (self, data) :
