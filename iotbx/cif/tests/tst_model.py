@@ -84,10 +84,10 @@ def exercise_cif_model():
   assert "_a" in block1
   assert "_b" in block1
   assert list(block.get_looped_item("_loop_a")) == ['6', '4', '2']
-  try: block.get_looped_item("_tag")
+  try: block.get_looped_item("_tag", value_error=ValueError)
   except ValueError: pass
   else: raise Exception_expected
-  assert block.get_looped_item("_tag", value_error=None) is None
+  assert list(block.get_looped_item("_tag", value_error=None)) == ['2']
   try: block.get_looped_item("_none_existent")
   except KeyError: pass
   else: raise Exception_expected
