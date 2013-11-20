@@ -18,6 +18,8 @@ def exercise () :
     return
 
   models = OrderedDict([
+    ("2qng", [["pentagonal_bipyramid"],
+              ["octahedron"]]),
     ("3rva", [["square_pyramid_bidentate_miss"],
               ["trigonal_bipyramid"],
               ["square_plane"]]),
