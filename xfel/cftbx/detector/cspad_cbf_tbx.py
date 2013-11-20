@@ -267,7 +267,7 @@ def metro_phil_to_basis_dict(metro):
 
   return bd
 
-def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, distance):
+def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, distance, verbose = True):
   assert metro_style in ['calibdir','flatfile']
   if metro_style == 'calibdir':
     metro = metro_phil_to_basis_dict(metro)
@@ -510,11 +510,12 @@ def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, 
      encoding of array data in the ARRAY_DATA category."""
   cbf.add_category("array_data",["array_id","binary_id","data"])
 
+  if verbose:
+    print "Compressing tiles...",
+
   for i, tilekey in enumerate(tilekeys):
     detector, quadrant, sensor, asic = tilekey
     focus = tiles[tilekey].focus()
-
-    print i, "Compressing tile D %s Q %s S %s A %s"%tilekey
 
     cbf.add_row(["ARRAY_" + tilestrs[i],str(i+1)])
 
@@ -543,3 +544,6 @@ def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, 
 
   cbf.write_widefile(destpath,pycbf.CBF,\
       pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K,0)
+
+  if verbose:
+    print "%s written"%destpath
