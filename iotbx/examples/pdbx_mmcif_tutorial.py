@@ -95,7 +95,7 @@ def run(args):
     for i in range(len(entity_poly_one_letter_code)):
       idx = flex.first_index(entity_id, entity_poly_entity_id[i])
       print entity_id[idx], entity_pdbx_description[i],
-      "".join(entity_poly_one_letter_code[i].split())
+      print "".join(entity_poly_one_letter_code[i].split())
 
 
 if __name__ == '__main__':
