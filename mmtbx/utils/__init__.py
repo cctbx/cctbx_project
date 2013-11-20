@@ -166,7 +166,7 @@ data_and_flags_str_part2 = """\
     .type=int
     .help = This value is usually selected automatically - do not change \
       unless you really know what you're doing!
-    .style = bold noauto
+    .style = noauto
     .expert_level = 0
   ignore_r_free_flags = False
     .type=bool

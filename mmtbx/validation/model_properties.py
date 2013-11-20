@@ -52,7 +52,7 @@ class model_statistics (slots_getstate_setstate) :
           if (total_occ != 1) and (total_occ != 0) :
             xyz = residue_group.atoms().extract_xyz().mean()
             outlier = residue_occupancy(
-              chain=chain.id,
+              chain_id=chain.id,
               resseq=residue_group.resseq,
               icode=residue_group.icode,
               resname=atom_groups[0].resname,
