@@ -141,7 +141,7 @@ BUILDER = Single(
                         Attribute( attribute = "number", name = "number", conversion = int ),
                         Attribute( attribute = "name", name = "name" ),
                         Attribute( attribute = "type", name = "type" ),
-                        Attribute( attribute = "created", name = "created" ),
+                        AttributeWithDefault( attribute = "created", name = "created", default = "" ),
                         ]
                       ),
                     ),
@@ -251,6 +251,6 @@ parse = Parser(
   tag = ebi_qualified( tag = "EBIApplicationResult" ),
   builder = BUILDER,
   restype = Result,
-  cElementTree = False,
+  cElementTree = True,
   )
 

@@ -43,7 +43,7 @@ class Text(object):
     child = elem.find( self.tag )
 
     if child is None:
-      raise RuntimeError, "Missing %s tag" % self.tag
+      raise RuntimeError, "Element '%s' has no child '%s'" % (elem.tag, self.tag )
 
     setattr( node, self.attribute, self.conversion( child.text ) )
 
@@ -91,7 +91,10 @@ class Attribute(object):
     res = elem.get( self.name )
 
     if res is None:
-      raise RuntimeError, "Missing %s attribute" % self.name
+      raise RuntimeError, "Element '%s' has no attribute '%s'" % (
+        elem.tag,
+        self.name,
+        )
 
     setattr( node, self.attribute, self.conversion( res ) )
 
@@ -169,7 +172,10 @@ class Single(object):
         setattr( node, attribute, child )
 
     if unseen:
-      raise RuntimeError, "Missing tags: %s" % ", ".join( unseen )
+      raise RuntimeError, "Missing children for element '%s': %s" % (
+        endtag,
+        ", ".join( "'%s'" % t for t in unseen ),
+        )
 
     return node
 
