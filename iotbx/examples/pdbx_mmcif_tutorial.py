@@ -36,11 +36,11 @@ def run(args):
     print "PDB id:", cif_block["_entry.id"]
     # get a looped item from cif_block
     print "Authors:"
-    for author in cif_block["_citation_author.name"]:
+    for author in cif_block.get_looped_item("_citation_author.name"):
       print author
     print
     print "Molecular Entities:"
-    for pdbx_entity in cif_block["_entity.pdbx_description"]:
+    for pdbx_entity in cif_block.get_looped_item("_entity.pdbx_description"):
       print pdbx_entity
     print
 
@@ -85,19 +85,17 @@ def run(args):
     print
 
     # read some sequence information
-    entity_poly_entity_id = cif_block["_entity_poly.entity_id"]
-    if isinstance(entity_poly_entity_id, basestring):
-      entity_poly_entity_id = [entity_poly_entity_id]
-    entity_id = cif_block["_entity.id"]
-    entity_pdbx_description = cif_block["_entity.pdbx_description"]
-    entity_poly_one_letter_code = cif_block["_entity_poly.pdbx_seq_one_letter_code"]
-    if isinstance(entity_poly_one_letter_code, basestring):
-      entity_poly_one_letter_code = [entity_poly_one_letter_code]
+    entity_poly_entity_id = cif_block.get_looped_item("_entity_poly.entity_id")
+    entity_id = cif_block.get_looped_item("_entity.id")
+    entity_pdbx_description = cif_block.get_looped_item("_entity.pdbx_description")
+    entity_poly_one_letter_code = cif_block.get_looped_item(
+      "_entity_poly.pdbx_seq_one_letter_code")
 
     from cctbx.array_family import flex
     for i in range(len(entity_poly_one_letter_code)):
       idx = flex.first_index(entity_id, entity_poly_entity_id[i])
-      print entity_id[idx], entity_pdbx_description[i], "".join(entity_poly_one_letter_code[i].split())
+      print entity_id[idx], entity_pdbx_description[i],
+      "".join(entity_poly_one_letter_code[i].split())
 
 
 if __name__ == '__main__':
