@@ -323,6 +323,12 @@ class server (object) :
       files.append(os.path.abspath(file_name))
     return files
 
+  def convert_all_map_coefficients (self, **kwds) :
+    for map_coeffs in self.map_coeffs :
+      labels = map_coeffs.info().label_string()
+      map_file = self.convert_complex_map(labels, **kwds)
+      yield map_file, labels
+
   def get_pdb_file (self, file_name) :
     pdb_in, mtime = self._pdb_cache.get(file_name, (None, 0))
     if (pdb_in is None) or (os.path.getmtime(file_name) > mtime) :
