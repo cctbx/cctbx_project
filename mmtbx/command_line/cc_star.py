@@ -289,6 +289,7 @@ def run (args=None, params=None, out=sys.stdout) :
     # creating the fmodel manager
     if (f_obs.anomalous_flag()) :
       f_obs = f_obs.average_bijvoet_mates()
+    f_obs = f_obs.eliminate_sys_absent()
     f_obs, r_free_flags = f_obs.common_sets(other=r_free_flags)
     fmodel = fmodel_simple(
       update_f_part1_for="refinement",

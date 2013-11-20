@@ -61,10 +61,7 @@ def generate_master_phil_with_inputs (
   if (enable_experimental_phases) :
     phil_extra_dict["phases"] = """
       experimental_phases {
-        file_name = None
-          .type = path
-        labels = None
-          .type = str
+        include scope mmtbx.utils.experimental_phases_params_str
       }"""
     phil_extra_dict["phases_flag"] = """
       use_experimental_phases = Auto
