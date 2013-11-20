@@ -416,7 +416,8 @@ def parallel_map (
     qsub_command=None,
     asynchronous=False,
     callback=None,
-    preserve_order=True) :
+    preserve_order=True,
+    preserve_exception_message=False) :
   """
   Generic parallel map() implementation for a variety of platforms, including
   the multiprocessing module and supported queuing systems, via the module
@@ -439,6 +440,7 @@ def parallel_map (
   :param method: parallelization method (multiprocessing|threading|sge|lsf|pbs)
   :param qsub_command: command to submit queue jobs (optional)
   :param asynchronous: run queue jobs asynchronously
+  :param preserve_exception_message: keeps original exception message
   :returns: a list of result objects
   """
   if (params is not None) :
@@ -448,7 +450,7 @@ def parallel_map (
   from libtbx.queuing_system_utils import scheduling
   from libtbx.queuing_system_utils import processing
   assert ((method in ["multiprocessing", "threading"]) or
-          (method in processing.INTERFACE_FOR.keys())), method
+          (method in processing.INTERFACE_FOR)), method
   assert (callback is None) or (hasattr(callback, "__call__"))
   results = []
   # if we aren't actually going to run multiple processes or use a queuing
@@ -458,6 +460,7 @@ def parallel_map (
       processes = min(256, len(iterable)) # FIXME what should the minimum be?
     else :
       processes = get_processes(processes)
+
   if (processes == 1) and (method in ["threading", "multiprocessing"]) :
     for args in iterable :
       result = func(args)
@@ -465,11 +468,17 @@ def parallel_map (
         callback(result)
       results.append(result)
     return results
-  units = []
+
   factory, queue_factory = None, None
   if (method == "multiprocessing") :
     import multiprocessing
-    factory = multiprocessing.Process
+
+    if (preserve_exception_message):
+      from libtbx.queuing_system_utils import scheduling_helpers
+      factory = scheduling_helpers.Process
+
+    else:
+      factory = multiprocessing.Process
     # XXX this is essential - using multiprocessing.Queue will not work for
     # large result objects.  explanation here:
     #   http://bugs.python.org/issue8426
@@ -477,29 +486,33 @@ def parallel_map (
     # the Queue will circumvent the problem.
     mp_manager = multiprocessing.Manager()
     queue_factory = mp_manager.Queue
+
   elif (method == "threading") :
-    import threading
+    from libtbx.queuing_system_utils import scheduling_helpers
     import Queue
-    factory = threading.Thread
+    factory = scheduling_helpers.Thread
     queue_factory = Queue.Queue
-  for i_proc in range(processes) :
-    queue = None
-    factory_tmp = factory
-    if (factory_tmp is None) :
-      qhandler_function, evaluator = processing.INTERFACE_FOR[method]
-      qhandler = qhandler_function(
-        command=qsub_command,
-        asynchronous=asynchronous)
-      factory_tmp = qhandler.Job
-      queue = processing.Queue(identifier="parallel_map")
-    else :
-      queue = queue_factory()
-    assert (not None in [factory_tmp, queue])
-    unit = scheduling.ExecutionUnit(
-      factory=factory_tmp,
-      processor=scheduling.RetrieveProcessor(queue=queue))
-    units.append(unit)
+
+  else: # no other choice as per assertion above
+    qhandler_function, evaluator = processing.INTERFACE_FOR[method]
+    qhandler = qhandler_function(
+      command=qsub_command,
+      asynchronous=asynchronous,
+      save_error = preserve_exception_message,
+      display_stderr = not preserve_exception_message,
+      )
+    factory = qhandler.Job
+    queue_factory = lambda: processing.Queue(identifier="parallel_map")
+
+  units = [
+    scheduling.ExecutionUnit(
+      factory=factory,
+      processor=scheduling.RetrieveProcessor(queue=queue_factory())
+      )
+    for i in range(processes)
+    ]
   manager = scheduling.Manager(units=units)
+
   if preserve_order:
     orderer = scheduling.SubmissionOrder
   else:

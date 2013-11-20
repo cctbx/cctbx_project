@@ -16,8 +16,8 @@ class Thread(threading.Thread):
       super( Thread, self ).run()
 
     except Exception, e:
-      import traceback
-      print traceback.format_exc()
+      #import traceback
+      #print traceback.format_exc()
       self.exitcode = 1
       self.err = e
 
@@ -68,6 +68,7 @@ class Process(multiprocessing.Process):
 
     self.stderr.seek( 0 )
     stderr = self.stderr.read()
+    self.stderr.close()
     self.stderr = None
 
     if self.display_stderr:
