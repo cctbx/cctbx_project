@@ -142,6 +142,7 @@ struct camera {
     int divsteps = 0;
     double hdivrange2;
     double vdivrange2;
+    if ( hdivrange==0 || vdivrange==0 ) {return 1;} // guessed value; work around an apparent optimizer bug
     for(double hdiv=-hdivrange/2;hdiv<=hdivrange/2+1e-11;hdiv+=hdivstep){
     for(double vdiv=-vdivrange/2;vdiv<=vdivrange/2+1e-11;vdiv+=vdivstep){
     //   printf("%d divergence steps %g %g\n",divsteps,hdiv,vdiv);
@@ -152,7 +153,7 @@ struct camera {
         hdivrange2 = hdivrange*hdivrange; //
         vdivrange2 = vdivrange*vdivrange; //
         if( (hdiv*hdiv/hdivrange2 +
-             vdiv*vdiv/vdivrange2)*4.0 > 1.0 ) continue;
+             vdiv*vdiv/vdivrange2)*4.0 > 1.0 ) {continue;}
       }
       ++divsteps;
     }
