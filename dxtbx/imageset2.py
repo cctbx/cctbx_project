@@ -540,9 +540,7 @@ class ImageSweep(ImageSet):
     '''
     ImageSet.__init__(self, reader, indices)
     if scan is not None:
-      array_range = scan.get_array_range()
-      assert(array_range[0] == self._indices[0] and
-             array_range[1] == self._indices[-1]+1)
+      assert(scan.get_num_images() == (self._indices[-1] - self._indices[0] + 1))
     self._beam = beam
     self._goniometer = goniometer
     self._detector = detector
