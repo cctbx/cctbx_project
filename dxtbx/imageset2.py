@@ -1065,6 +1065,8 @@ class ImageSetFactory(object):
 
     # Set the image range
     array_range = (min(indices) - 1, max(indices))
+    if scan is not None:
+      assert(array_range == scan.get_array_range())
 
     # Create the sweep file list
     filenames = SweepFileList(template_format, array_range)
