@@ -285,6 +285,7 @@ if __name__ == '__main__':
 
     print "-" * 80
     print "DataBlock %d" % i
+    print "  format: %s" % str(datablock.format_class())
     print "  num images: %d" % len(datablock)
     print "  num sweeps: %d" % len(sweeps)
 
