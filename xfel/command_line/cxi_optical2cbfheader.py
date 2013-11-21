@@ -9,11 +9,13 @@ import sys, os
 import libtbx.phil
 from libtbx.utils import Usage
 from xfel.cftbx.detector.cspad_cbf_tbx import read_optical_metrology_from_flat_file
+from xfel.cftbx.detector.cspad_cbf_tbx import asic_dimension, asic_gap, write_cspad_cbf
 
 master_phil = libtbx.phil.parse("""
 metrology_file = None
   .type = str
   .help = File with optical metrology information posistioning quadrants and sensors
+  .optional = False
 detector = *CxiDs1 XppDs1
   .type = choice
   .optional = False
@@ -25,6 +27,10 @@ plot = False
 old_style_diff_path = None
   .type = str
   .help = path to old style metrology directory to compare with the given metrology file
+out = None
+  .type = str
+  .help = Output file name
+  .optional = False
 """)
 
 if (__name__ == "__main__") :
@@ -44,12 +50,15 @@ if (__name__ == "__main__") :
     raise Usage("metrology_file must be defined (either metrology_file=XXX, or the file path alone).")
   assert params.detector is not None
   assert params.plot is not None
+  assert params.out is not None
 
   print params.metrology_file, params.detector
 
   from xfel.cxi.cspad_ana.cspad_tbx import pixel_size
-  from xfel.cftbx.detector.cspad_cbf_tbx import asic_dimension, asic_gap
 
-  quadrants = read_optical_metrology_from_flat_file(params.metrology_file, params.detector,
-                                                    pixel_size,asic_dimension,asic_gap,
-                                                    plot=params.plot,old_style_diff_path=params.old_style_diff_path)
+  metro = read_optical_metrology_from_flat_file(params.metrology_file, params.detector,
+                                                pixel_size,asic_dimension,asic_gap,
+                                                plot=params.plot,old_style_diff_path=params.old_style_diff_path)
+
+  write_cspad_cbf(None, metro, 'cbf', None, params.out, None, 0, header_only=True)
+

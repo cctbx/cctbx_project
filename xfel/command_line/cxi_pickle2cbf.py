@@ -102,12 +102,20 @@ if (__name__ == "__main__") :
       metro = metro.fetch(sources=[iotbx.phil.parse(arg)])
   else:
     assert os.path.isfile(params.new_metrology)
-    metro_style = "flatfile"
+    ext = os.path.splitext(params.new_metrology)[1].lower()
+    if ext in ['.def','.cbf']:
+      metro_style = "cbf"
 
-    from xfel.cftbx.detector.cspad_cbf_tbx import read_optical_metrology_from_flat_file, asic_dimension, asic_gap
+      from xfel.cftbx.detector.cspad_cbf_tbx import cbf_file_to_basis_dict
+      metro = cbf_file_to_basis_dict(params.new_metrology)
 
-    metro = read_optical_metrology_from_flat_file(params.new_metrology, params.detector, img['PIXEL_SIZE'],
-                                                  asic_dimension, asic_gap, plot=params.plot)
+    else:
+      metro_style = "flatfile"
+
+      from xfel.cftbx.detector.cspad_cbf_tbx import read_optical_metrology_from_flat_file, asic_dimension, asic_gap
+
+      metro = read_optical_metrology_from_flat_file(params.new_metrology, params.detector, img['PIXEL_SIZE'],
+                                                    asic_dimension, asic_gap, plot=params.plot)
 
   # Write the cbf file
   destpath = os.path.splitext(params.pickle_file)[0] + ".cbf"

@@ -308,7 +308,7 @@ def metro_phil_to_basis_dict(metro):
 
   return bd
 
-def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, distance, verbose = True):
+def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, distance, verbose = True, header_only = False):
   assert metro_style in ['calibdir','flatfile','cbf']
   if metro_style == 'calibdir':
     metro = metro_phil_to_basis_dict(metro)
@@ -349,7 +349,10 @@ def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, 
       basis.equipment_component = "detector_asic"
       basis.depends_on = "FS_D%dQ%dS%d"%key[0:3]
       basis.pixel_size = (pixel_size,pixel_size)
-      basis.dimension = tiles[key].focus()
+      if tiles is None:
+        basis.dimension = asic_dimension
+      else:
+        basis.dimension = tuple(reversed(tiles[key].focus()))
       basis.saturation = dynamic_range
     else:
       assert False # shouldn't be reached as it would indicate more than four levels of hierarchy for this detector
@@ -379,15 +382,17 @@ def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, 
 
    Post-sample treatment of the beam is described by data
    items in the DIFFRN_DETECTOR category."""
-  cbf.add_category("diffrn_radiation", ["diffrn_id","wavelength_id","probe"])
-  cbf.add_row(["DS1","WAVELENGTH1","x-ray"])
+  if not header_only:
+    cbf.add_category("diffrn_radiation", ["diffrn_id","wavelength_id","probe"])
+    cbf.add_row(["DS1","WAVELENGTH1","x-ray"])
 
   """ Data items in the DIFFRN_RADIATION_WAVELENGTH category describe
    the wavelength of the radiation used in measuring the diffraction
    intensities. Items may be looped to identify and assign weights
    to distinct wavelength components from a polychromatic beam."""
-  cbf.add_category("diffrn_radiation_wavelength", ["id","wavelength","wt"])
-  cbf.add_row(["WAVELENGTH1","%f"%wavelength,"1.0"])
+  if not header_only:
+    cbf.add_category("diffrn_radiation_wavelength", ["id","wavelength","wt"])
+    cbf.add_row(["WAVELENGTH1","%f"%wavelength,"1.0"])
 
   """Data items in the DIFFRN_DETECTOR category describe the
    detector used to measure the scattered radiation, including
@@ -403,7 +408,7 @@ def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, 
     cbf.add_row(["CSPAD_FRONT",name])
 
   tilestrs = []
-  tilekeys = sorted(tiles)
+  tilekeys = sorted([key for key in metro if len(key) == 4])
 
   # create a series of strings representing each asic.  Q here is for quadrant instead of panel.
   for tilekey in tilekeys:
@@ -428,18 +433,21 @@ def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, 
    about the device used to orient and/or position the crystal
    during data measurement and the manner in which the
    diffraction data were measured."""
-  cbf.add_category("diffrn_measurement",["diffrn_id","id","number_of_axes","method","details"])
-  cbf.add_row(["DS1","INJECTION","0","electrospray","crystals injected by electrospray"])
+  if not header_only:
+    cbf.add_category("diffrn_measurement",["diffrn_id","id","number_of_axes","method","details"])
+    cbf.add_row(["DS1","INJECTION","0","electrospray","crystals injected by electrospray"])
 
   """ Data items in the DIFFRN_SCAN category describe the parameters of one
      or more scans, relating axis positions to frames."""
-  cbf.add_category("diffrn_scan",["id","frame_id_start","frame_id_end","frames"])
-  cbf.add_row(["SCAN1","FRAME1","FRAME1","1"])
+  if not header_only:
+    cbf.add_category("diffrn_scan",["id","frame_id_start","frame_id_end","frames"])
+    cbf.add_row(["SCAN1","FRAME1","FRAME1","1"])
 
   """Data items in the DIFFRN_SCAN_FRAME category describe
    the relationships of particular frames to scans."""
-  cbf.add_category("diffrn_scan_frame",["frame_id","frame_number","integration_time","scan_id","date"])
-  cbf.add_row(["FRAME1","1","0.0","SCAN1",timestamp])
+  if not header_only:
+    cbf.add_category("diffrn_scan_frame",["frame_id","frame_number","integration_time","scan_id","date"])
+    cbf.add_row(["FRAME1","1","0.0","SCAN1",timestamp])
 
   """Data items in the AXIS category record the information required
      to describe the various goniometer, detector, source and other
@@ -519,9 +527,9 @@ def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, 
      The relationship to physical axes may be given."""
   cbf.add_category("array_structure_list",["array_id","index","dimension","precedence","direction","axis_set_id"])
   for tilename,tilekey in zip(tilestrs,tilekeys):
-    data = tiles[tilekey]
-    cbf.add_row(["ARRAY_"+tilename,"1","%d"%data.focus()[1],"1","increasing","AXIS_"+tilename+"_F"])
-    cbf.add_row(["ARRAY_"+tilename,"2","%d"%data.focus()[0],"2","increasing","AXIS_"+tilename+"_S"])
+    b = metro[tilekey]
+    cbf.add_row(["ARRAY_"+tilename,"1","%d"%b.dimension[0],"1","increasing","AXIS_"+tilename+"_F"])
+    cbf.add_row(["ARRAY_"+tilename,"2","%d"%b.dimension[1],"2","increasing","AXIS_"+tilename+"_S"])
 
   """Data items in the ARRAY_STRUCTURE_LIST_AXIS category describe
      the physical settings of sets of axes for the centres of pixels that
@@ -532,56 +540,58 @@ def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, 
     cbf.add_row(["AXIS_"+tilename+"_F","AXIS_"+tilename+"_F","0.0","%f"%(metro[tilekey].pixel_size[0])])
     cbf.add_row(["AXIS_"+tilename+"_S","AXIS_"+tilename+"_S","0.0","%f"%(metro[tilekey].pixel_size[1])])
 
-  """ Data items in the ARRAY_INTENSITIES category record the
-   information required to recover the intensity data from
-   the set of data values stored in the ARRAY_DATA category."""
-  # More detail here: http://www.iucr.org/__data/iucr/cifdic_html/2/cif_img.dic/Carray_intensities.html
-  cbf.add_category("array_intensities",["array_id","binary_id","linearity","gain","gain_esd","overload","undefined_value"])
-  for i, (tilename, tilekey) in enumerate(zip(tilestrs,tilekeys)):
-    cbf.add_row(["ARRAY_"+ tilename,str(i+1),"linear","1.0","0.1",str(metro[tilekey].saturation),"0.0"])
+  # rest of these involve the binary data
+  if not header_only:
 
-  """ Data items in the ARRAY_STRUCTURE category record the organization and
-     encoding of array data in the ARRAY_DATA category."""
-  cbf.add_category("array_structure",["id","encoding_type","compression_type","byte_order"])
+    """ Data items in the ARRAY_INTENSITIES category record the
+     information required to recover the intensity data from
+     the set of data values stored in the ARRAY_DATA category."""
+    # More detail here: http://www.iucr.org/__data/iucr/cifdic_html/2/cif_img.dic/Carray_intensities.html
+    cbf.add_category("array_intensities",["array_id","binary_id","linearity","gain","gain_esd","overload","undefined_value"])
+    for i, (tilename, tilekey) in enumerate(zip(tilestrs,tilekeys)):
+      cbf.add_row(["ARRAY_"+ tilename,str(i+1),"linear","1.0","0.1",str(metro[tilekey].saturation),"0.0"])
 
-  for tilename in tilestrs:
-    cbf.add_row(["ARRAY_"+tilename,"signed 64-bit real IEEE","canonical","little_endian"])
+    """ Data items in the ARRAY_STRUCTURE category record the organization and
+       encoding of array data in the ARRAY_DATA category."""
+    cbf.add_category("array_structure",["id","encoding_type","compression_type","byte_order"])
 
-  """ Data items in the ARRAY_STRUCTURE category record the organization and
-     encoding of array data in the ARRAY_DATA category."""
-  cbf.add_category("array_data",["array_id","binary_id","data"])
+    for tilename in tilestrs:
+      cbf.add_row(["ARRAY_"+tilename,"signed 64-bit real IEEE","canonical","little_endian"])
 
-  if verbose:
-    print "Compressing tiles...",
+    """ Data items in the ARRAY_STRUCTURE category record the organization and
+       encoding of array data in the ARRAY_DATA category."""
+    cbf.add_category("array_data",["array_id","binary_id","data"])
 
-  for i, tilekey in enumerate(tilekeys):
-    detector, quadrant, sensor, asic = tilekey
-    focus = tiles[tilekey].focus()
+    if verbose:
+      print "Compressing tiles...",
 
-    cbf.add_row(["ARRAY_" + tilestrs[i],str(i+1)])
+    for i, tilekey in enumerate(tilekeys):
+      detector, quadrant, sensor, asic = tilekey
+      focus = tiles[tilekey].focus()
 
-    binary_id = i+1
-    data = tiles[tilekey].as_double().copy_to_byte_str()
-    elsize = 8
-    elements = len(tiles[tilekey])
-    byteorder = "little_endian"
-    dimfast = focus[1]
-    dimmid = focus[0]
-    dimslow = 1
-    padding = 0
+      cbf.add_row(["ARRAY_" + tilestrs[i],str(i+1)])
 
-    cbf.set_realarray_wdims_fs(\
-      pycbf.CBF_CANONICAL,
-      binary_id,
-      data,
-      elsize,
-      elements,
-      byteorder,
-      dimfast,
-      dimmid,
-      dimslow,
-      padding)
+      binary_id = i+1
+      data = tiles[tilekey].as_double().copy_to_byte_str()
+      elsize = 8
+      elements = len(tiles[tilekey])
+      byteorder = "little_endian"
+      dimfast = focus[1]
+      dimmid = focus[0]
+      dimslow = 1
+      padding = 0
 
+      cbf.set_realarray_wdims_fs(\
+        pycbf.CBF_CANONICAL,
+        binary_id,
+        data,
+        elsize,
+        elements,
+        byteorder,
+        dimfast,
+        dimmid,
+        dimslow,
+        padding)
 
   cbf.write_widefile(destpath,pycbf.CBF,\
       pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K,0)
