@@ -178,11 +178,27 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
       pixel = (cbf_detector.get_inferred_pixel_size(1),
                cbf_detector.get_inferred_pixel_size(2))
 
-      size = tuple(reversed(cbf.get_image_size(i))) #FIXME shouldn't have to swap here
-
       axis0 = cbf_detector.get_detector_surface_axes(0)
       axis1 = cbf_detector.get_detector_surface_axes(1)
       assert cbf.get_axis_depends_on(axis0) == axis1
+
+      try:
+        size = tuple(cbf.get_image_size(i))
+      except Exception, e:
+        if "CBF_NOTFOUND" in e.message:
+          # no array data in the file, it's probably just a cbf header.  Get the image size elsewhere
+          size = [0,0]
+          cbf.find_category("array_structure_list")
+          for axis in [axis0, axis1]:
+            cbf.find_column("axis_set_id")
+            cbf.find_row(axis)
+            cbf.find_column("precedence")
+            idx = int(cbf.get_value()) - 1
+            cbf.find_column("dimension")
+            size[idx] = int(cbf.get_value())
+          assert size[0] != 0 and size[1] != 0
+        else:
+          raise e
 
       parent, cob = self._get_cummulative_change_of_basis(axis0)
 
@@ -190,9 +206,8 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
 
       p = pg.add_panel(d.add_panel())
 
-      #FIXME shouldn't have to swap here
-      fast = cbf.get_axis_vector(axis1)
-      slow = cbf.get_axis_vector(axis0)
+      fast = cbf.get_axis_vector(axis0)
+      slow = cbf.get_axis_vector(axis1)
       origin = (cob * col((0,0,0,1)))[0:3]
 
       p.set_local_frame(fast, slow, origin)
