@@ -279,7 +279,32 @@ def cbf_file_to_basis_dict(path):
     for s, sensor in enumerate(quad):
       metro[(d,q,s)] = basis(panelgroup=sensor)
       for a, asic in enumerate(sensor):
-        metro[(d,q,s,a)] = basis(panelgroup=asic)
+        # at the asic level, need to subtract off the d0 vector so this asic's basis does not include
+        # the shift from the asic center to the asic corner.  Also need to flip the Y back around
+        # to be consistent with how it was originally stored
+        d_mat = asic.get_local_d_matrix()
+        fast = matrix.col((d_mat[0],d_mat[3],d_mat[6])).normalize()
+        slow = matrix.col((d_mat[1],d_mat[4],d_mat[7])).normalize()
+        orig = matrix.col((d_mat[2],d_mat[5],d_mat[8]))
+
+        v3 = fast.cross(slow).normalize()
+
+        r3 = matrix.sqr((fast[0],slow[0],v3[0],
+                         fast[1],slow[1],v3[1],
+                         fast[2],slow[2],v3[2]))
+
+        transform = matrix.sqr((1, 0, 0,
+                                0,-1, 0,
+                                0, 0,-1))
+
+        pix_size = asic.get_pixel_size()
+        img_size = asic.get_image_size()
+
+        offset = matrix.col((-pix_size[1]*(img_size[1]-1)/2,
+                             +pix_size[0]*(img_size[0]-1)/2,0))
+
+        metro[(d,q,s,a)] = basis(orientation=(r3*transform).r3_rotation_matrix_as_unit_quaternion(),
+                                 translation=orig-offset)
 
   return metro
 
