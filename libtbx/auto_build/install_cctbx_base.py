@@ -548,7 +548,10 @@ class installer (object) :
     else :
       config_opts.extend(["--enable-optimize", "--disable-debugreport"])
     if (cocoa) :
-      config_opts.extend(["--with-osx_cocoa", "--enable-monolithic"])
+      config_opts.extend(["--with-osx_cocoa", "--enable-monolithic",
+        "--with-macosx-version-min=10.6"])
+      os.environ["CXXFLAGS"] = \
+        "-DMAC_OS_X_VERSION_MIN_REQUIRED=MAC_OS_X_VERSION_10_6"
     elif (self.flag_is_mac) :
       config_opts.extend(["--with-mac", "--enable-monolithic"])
     elif (self.flag_is_linux) :
