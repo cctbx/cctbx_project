@@ -126,13 +126,22 @@ if (__name__ == "__main__") :
 
         src_cbf.select_row(j)
         src_cbf.find_column(key)
+
+        # don't overwrite detector distance
+        if category == "diffrn_scan_frame_axis" and src_cbf.get_value() == "AXIS_D0_Z":
+          continue
+
         dst_cbf.find_column(key)
         dst_cbf.find_row(src_cbf.get_value())
 
         for i in xrange(src_cbf.count_columns()):
           src_cbf.select_column(i)
           dst_cbf.find_column(src_cbf.column_name())
-          dst_cbf.set_value(src_cbf.get_value())
+
+          if src_cbf.get_value() == '.' or src_cbf.get_typeofvalue() == "null":
+            dst_cbf.set_typeofvalue("null")
+          else:
+            dst_cbf.set_value(src_cbf.get_value())
 
     print "writing cbf...",
 
