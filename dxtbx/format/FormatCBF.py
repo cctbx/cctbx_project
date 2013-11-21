@@ -43,8 +43,7 @@ class FormatCBF(Format):
       if add:
         header += add
       else:
-        raise RuntimeError, \
-            'eof reached before --CIF-BINARY-FORMAT-SECTION--'
+        break
     return header.split('--CIF-BINARY-FORMAT-SECTION--')[0]
 
   def __init__(self, image_file):
