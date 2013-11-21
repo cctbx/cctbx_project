@@ -70,9 +70,28 @@ def center(coords):
 
 class basis(object):
   """ Bucket for detector element information """
-  def __init__(self, orientation, translation):
-    self.orientation = orientation
-    self.translation = translation
+  def __init__(self, orientation = None, translation = None, panelgroup = None):
+    if orientation is None or translation is None:
+      assert orientation is None and translation is None
+
+      d_mat = panelgroup.get_local_d_matrix()
+      fast = matrix.col((d_mat[0],d_mat[3],d_mat[6])).normalize()
+      slow = matrix.col((d_mat[1],d_mat[4],d_mat[7])).normalize()
+      orig = matrix.col((d_mat[2],d_mat[5],d_mat[8]))
+
+      v3 = fast.cross(slow).normalize()
+
+      r3 = matrix.sqr((fast[0],slow[0],v3[0],
+                       fast[1],slow[1],v3[1],
+                       fast[2],slow[2],v3[2]))
+
+      self.orientation = r3.r3_rotation_matrix_as_unit_quaternion()
+      self.translation = orig
+
+    else:
+      assert panelgroup is None
+      self.orientation = orientation
+      self.translation = translation
 
   def as_homogenous_transformation(self):
     """ Returns this basis change as a 4x4 transformation matrix in homogenous coordinates"""
@@ -242,6 +261,28 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
 
   return metro
 
+def cbf_file_to_basis_dict(path):
+  """ Maps a cbf file to a dictionary of tuples and basis objects, in the same form as the above
+  read_optical_metrology_from_flat_file
+  @param path cbf file path """
+  from dxtbx.format.Registry import Registry
+  reader = Registry.find(path)
+  instance = reader(path)
+  root = instance.get_detector().hierarchy()
+
+  d = 0 # only allow one detector for now
+  metro = {(d,):basis(panelgroup=root)}
+  metro[(d,)].translation = matrix.col((0,0,0))
+
+  for q, quad in enumerate(root):
+    metro[(d,q)] = basis(panelgroup=quad)
+    for s, sensor in enumerate(quad):
+      metro[(d,q,s)] = basis(panelgroup=sensor)
+      for a, asic in enumerate(sensor):
+        metro[(d,q,s,a)] = basis(panelgroup=asic)
+
+  return metro
+
 def metro_phil_to_basis_dict(metro):
   """ Maps a phil object from xfel.cftbx.detector.metrology2phil to a dictionary of tuples and basis objects, in the same form
   as the above read_optical_metrology_from_flat_file
@@ -268,7 +309,7 @@ def metro_phil_to_basis_dict(metro):
   return bd
 
 def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, distance, verbose = True):
-  assert metro_style in ['calibdir','flatfile']
+  assert metro_style in ['calibdir','flatfile','cbf']
   if metro_style == 'calibdir':
     metro = metro_phil_to_basis_dict(metro)
 
@@ -451,8 +492,8 @@ def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, 
 
       aname = "D%dQ%dS%dA%d"%key
 
-      cbf.add_row(["AXIS_"+ aname + "_F", "translation","detector",basis.axis_name    ,"1", "0","0","%f"%offset_fast,"%f"%offset_slow,"0.0", "detector_asic"])
-      cbf.add_row(["AXIS_"+ aname + "_S", "translation","detector","AXIS_"+aname +"_F","0","-1","0","0","0","0.0", "detector_asic"])
+      cbf.add_row(["AXIS_"+ aname + "_S", "translation","detector",basis.axis_name    ,"0", "-1","0","%f"%offset_fast,"%f"%offset_slow,"0.0", "detector_asic"])
+      cbf.add_row(["AXIS_"+ aname + "_F", "translation","detector","AXIS_"+aname +"_S","1","0","0","0","0","0.0", "detector_asic"])
       axis_names.append("AXIS_"+ aname + "_F"); axis_names.append("AXIS_"+ aname + "_S")
       axis_settings.append(["AXIS_"+ aname + "_F","FRAME1","0","0"])
       axis_settings.append(["AXIS_"+ aname + "_S","FRAME1","0","0"])
@@ -479,8 +520,8 @@ def write_cspad_cbf(tiles, metro, metro_style, timestamp, destpath, wavelength, 
   cbf.add_category("array_structure_list",["array_id","index","dimension","precedence","direction","axis_set_id"])
   for tilename,tilekey in zip(tilestrs,tilekeys):
     data = tiles[tilekey]
-    cbf.add_row(["ARRAY_"+tilename,"1","%d"%data.focus()[1],"2","increasing","AXIS_"+tilename+"_F"])
-    cbf.add_row(["ARRAY_"+tilename,"2","%d"%data.focus()[0],"1","increasing","AXIS_"+tilename+"_S"])
+    cbf.add_row(["ARRAY_"+tilename,"1","%d"%data.focus()[1],"1","increasing","AXIS_"+tilename+"_F"])
+    cbf.add_row(["ARRAY_"+tilename,"2","%d"%data.focus()[0],"2","increasing","AXIS_"+tilename+"_S"])
 
   """Data items in the ARRAY_STRUCTURE_LIST_AXIS category describe
      the physical settings of sets of axes for the centres of pixels that
