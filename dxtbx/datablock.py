@@ -114,7 +114,6 @@ class DataBlock(object):
         assert(templates[0] is not None and len(indices) > 0)
         assert(templates.count(templates[0]) == len(templates))
         assert(all(j == i+1 for i, j in zip(indices[:-1], indices[1:])))
-        print records[0].scan, indices
         sweep = ImageSetFactory.make_sweep(
             templates[0],
             indices,
@@ -276,7 +275,7 @@ if __name__ == '__main__':
 
   # Get the data blocks from the input files
   # We've set verbose to print out files as they're tested.
-  datablock_list = DataBlockFactory.from_filenames(sys.argv[1:], verbose=True)
+  datablock_list = DataBlockFactory.from_filenames(sys.argv[1:], verbose=False)
 
   # Loop through the data blocks
   for i, datablock in enumerate(datablock_list):
@@ -284,6 +283,7 @@ if __name__ == '__main__':
     # Extract any sweeps
     sweeps = datablock.extract_sweeps()
 
+    print "-" * 80
     print "DataBlock %d" % i
     print "  num images: %d" % len(datablock)
     print "  num sweeps: %d" % len(sweeps)
