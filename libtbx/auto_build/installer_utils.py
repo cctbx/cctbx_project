@@ -2,6 +2,7 @@
 from __future__ import division
 import warnings
 import time
+import stat
 import re
 import os
 import sys
@@ -85,6 +86,9 @@ def detect_osx_version () :
 def copy_file (src_path, dest_path) :
   assert os.path.isfile(src_path)
   open(dest_path, "wb").write(open(src_path, "rb").read())
+  if os.access(src_path, os.X_OK) :
+    mode = os.stat(dest_path).st_mode
+    os.chmod(dest_path, mode | stat.S_IXUSR)
 
 # shutil.copytree replacement - circumvents this bug:
 # http://bugs.python.org/issue14662
