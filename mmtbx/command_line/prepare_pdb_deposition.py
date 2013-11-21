@@ -87,38 +87,50 @@ def run(args, out=None):
     cif_block.update(result.as_cif_block())
 
   cif_model[block_name].update(cif_block)
-
-  category_order = [
-    '_cell',
-    '_space_group',
-    '_space_group_symop',
-    '_symmetry',
-    '_reflns',
-    '_reflns_shell',
-    '_refine',
-    '_refine_ls_restr',
-    '_refine_ls_shell',
-    '_entity',
-    '_entity_poly',
-    '_entity_poly_seq',
-    '_atom_type',
-    '_atom_site',
-  ]
-
-  def category_sort_function(key):
-    key_category = key.split('.')[0]
-    try:
-      return category_order.index(key_category)
-    except ValueError, e:
-      # any categories we don't know about will end up at the end of the file
-      return key_category
-
   cif_model[block_name].sort(key=category_sort_function)
   print >> out, "Writing updated CIF file:"
   print >> out, "  " + params.output.cif_file
   with open(params.output.cif_file, "wb") as f:
     print >> f, cif_model
   return
+
+
+# This defines the order that categories will appear in the CIF file
+category_order = [
+  '_cell',
+  '_space_group',
+  '_space_group_symop',
+  '_symmetry',
+  '_computing',
+  '_software',
+  '_citation',
+  '_reflns',
+  '_reflns_shell',
+  '_refine',
+  '_refine_ls_restr',
+  '_refine_ls_shell',
+  '_pdbx_refine_tls',
+  '_pdbx_refine_tls_group',
+  '_struct_ncs_oper',
+  '_struct_ncs_dom',
+  '_struct_ncs_dom_lim',
+  '_struct_ncs_ens',
+  '_struct_ncs_ens_gen',
+  '_entity',
+  '_entity_poly',
+  '_entity_poly_seq',
+  '_atom_type',
+  '_atom_site',
+]
+
+
+def category_sort_function(key):
+  key_category = key.split('.')[0]
+  try:
+    return category_order.index(key_category)
+  except ValueError, e:
+    # any categories we don't know about will end up at the end of the file
+    return key_category
 
 
 if __name__ == '__main__':
