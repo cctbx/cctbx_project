@@ -62,13 +62,13 @@ def run (args, out=sys.stdout) :
   app_name = program_name
   if (options.app_name is not None) :
     app_name = options.app_name
-  bin_dir = "py2app_tmp"
+  py2app_bin_dir = "py2app_tmp"
   if (options.alias_build) :
-    bin_dir = "py2app_bin"
-  if (os.path.isdir(bin_dir)) :
-    shutil.rmtree(bin_dir)
-  os.mkdir(bin_dir)
-  os.chdir(bin_dir)
+    py2app_bin_dir = "py2app_bin"
+  if (os.path.isdir(py2app_bin_dir)) :
+    shutil.rmtree(py2app_bin_dir)
+  os.mkdir(py2app_bin_dir)
+  os.chdir(py2app_bin_dir)
   f = open("%s.py" % app_name, "w")
   f.write("""
 import os
