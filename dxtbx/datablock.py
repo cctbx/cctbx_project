@@ -94,6 +94,12 @@ class DataBlock(object):
     return ImageSetFactory.make_imageset(
         self._images.keys(), self._format_class)
 
+  def extract_stills(self):
+    ''' Extract all the stills as an image set. '''
+    from dxtbx.imageset2 import ImageSetFactory
+    stills = [k for k, r in self._images.iteritems() if r.template == None]
+    return ImageSetFactory.make_imageset(stills, self._format_class)
+
   def extract_sweeps(self):
     ''' Extract all the sweeps from the block. '''
     from dxtbx.imageset2 import ImageSetFactory
@@ -111,18 +117,19 @@ class DataBlock(object):
       if scan is not None and len(records) > 0:
         templates = [r.template for r in records]
         indices = [r.index for r in records]
-        assert(templates[0] is not None and len(indices) > 0)
-        assert(templates.count(templates[0]) == len(templates))
-        assert(all(j == i+1 for i, j in zip(indices[:-1], indices[1:])))
-        sweep = ImageSetFactory.make_sweep(
-            templates[0],
-            indices,
-            self._format_class,
-            records[0].beam,
-            records[0].detector,
-            records[0].goniometer,
-            records[0].scan)
-        sweeps.append(sweep)
+        if templates[0] is not None:
+          assert(len(indices) > 0)
+          assert(templates.count(templates[0]) == len(templates))
+          assert(all(j == i+1 for i, j in zip(indices[:-1], indices[1:])))
+          sweep = ImageSetFactory.make_sweep(
+              templates[0],
+              indices,
+              self._format_class,
+              records[0].beam,
+              records[0].detector,
+              records[0].goniometer,
+              records[0].scan)
+          sweeps.append(sweep)
 
     # Return the list of sweeps
     return sweeps
@@ -182,7 +189,7 @@ class DataBlock(object):
     except Exception: s = None
 
     # Get the template and index if possible
-    if s is not None:
+    if s is not None and abs(s.get_oscillation()[1]) > 0.0:
       template, index = template_regex(filename)
     else:
       template, index = None, None
@@ -275,19 +282,21 @@ if __name__ == '__main__':
 
   # Get the data blocks from the input files
   # We've set verbose to print out files as they're tested.
-  datablock_list = DataBlockFactory.from_filenames(sys.argv[1:], verbose=False)
+  datablock_list = DataBlockFactory.from_filenames(sys.argv[1:], verbose=True)
 
   # Loop through the data blocks
   for i, datablock in enumerate(datablock_list):
 
     # Extract any sweeps
     sweeps = datablock.extract_sweeps()
+    stills = datablock.extract_stills()
 
     print "-" * 80
     print "DataBlock %d" % i
     print "  format: %s" % str(datablock.format_class())
     print "  num images: %d" % len(datablock)
     print "  num sweeps: %d" % len(sweeps)
+    print "  num stills: %d" % len(stills)
 
     # Loop through all the sweeps
     for j, sweep in enumerate(sweeps):
