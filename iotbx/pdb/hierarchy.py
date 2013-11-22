@@ -1051,6 +1051,13 @@ class _(boost.python.injector, ext.residue_group, __hash_eq_mixin):
   def only_atom(self):
     return self.only_atom_group().only_atom()
 
+  def id_str (self) :
+    chain_id = ""
+    chain = self.parent()
+    if (chain is not None) :
+      chain_id = chain.id
+    return "%2s%4s%1s" % (chain_id, self.resseq, self.icode)
+
 class _(boost.python.injector, ext.atom_group, __hash_eq_mixin):
 
   def only_atom(self):

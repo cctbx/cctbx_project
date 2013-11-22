@@ -735,6 +735,10 @@ def exercise_residue_group():
   assert list(rg.unique_resnames()) == ["RN", "RN1"]
   rga("A", "RN2")
   assert list(rg.unique_resnames()) == ["RN", "RN1", "RN2"]
+  rg = pdb.hierarchy.residue_group(resseq="  30", icode="I")
+  rgc = pdb.hierarchy.chain(id="A")
+  rgc.append_residue_group(rg)
+  assert (rg.id_str() == " A  30I")
 
 def exercise_chain():
   c = pdb.hierarchy.chain()
