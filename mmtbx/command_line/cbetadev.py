@@ -1,3 +1,4 @@
+# LIBTBX_SET_DISPATCHER_NAME phenix.cbetadev
 
 from __future__ import division
 import mmtbx.validation.cbetadev
