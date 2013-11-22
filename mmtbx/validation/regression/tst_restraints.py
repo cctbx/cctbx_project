@@ -6,10 +6,10 @@ from cStringIO import StringIO
 
 def run_validation (pdb_file, ignore_hd=True) :
   from mmtbx.validation import restraints
-  import mmtbx.utils
-  cmdline = mmtbx.utils.cmdline_load_pdb_and_data(
+  import mmtbx.command_line
+  cmdline = mmtbx.command_line.load_model_and_data(
     args=[pdb_file],
-    master_phil=mmtbx.utils.cmdline_input_phil_str,
+    master_phil=mmtbx.command_line.generic_simple_input_phil(),
     process_pdb_file=True,
     require_data=False,
     out=null_out())

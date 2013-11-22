@@ -377,6 +377,47 @@ class molprobity (slots_getstate_setstate) :
     f.write("gui = coot_molprobity_todo_list_gui(data=data)\n")
     f.close()
 
+  #---------------------------------------------------------------------
+  # Phenix GUI hooks
+  def get_gui_table_data (self, analysis_name, include_zoom=False) :
+    analysis = getattr(self, analysis_name)
+    if (analysis is not None) :
+      return analysis.as_gui_table_data(include_zoom=include_zoom)
+    return []
+
+  def get_ramalyze_table_data (self, **kwds) :
+    return self.get_gui_table_data("ramalyze", **kwds)
+
+  def get_rotalyze_table_data (self, include_zoom=False) :
+    return self.get_gui_table_data("rotalyze", **kwds)
+
+  def get_cbetadev_table_data (self, include_zoom=False) :
+    return self.get_gui_table_data("cbetadev", **kwds)
+
+  def get_clashscore_table_data (self, include_zoom=False) :
+    return self.get_gui_table_data("clashscore", **kwds)
+
+  #---------------------------------------------------------------------
+  # POLYGON stuff
+  def get_polygon_statistics (self, stat_names) :
+    stats = {}
+    for name in stat_names :
+      val = None
+      if (name == "r_work") : val = self.r_work()
+      elif (name == "r_free") : val = self.r_free()
+      elif (name == "wilson_b") : pass
+      elif (name == "rama_favored") : val = self.rama_favored()
+      elif (name == "rama_outliers") : val =  self.rama_outliers()
+      elif (name == "rotamer_outliers") : val = self.rota_outliers()
+      elif (name == "clashscore") : val = self.clashscore()
+      elif (name == "bond_rmsd") : val = self.rms_bonds()
+      elif (name == "angle_rmsd") : val = self.rms_angles()
+      elif (name == "adp_mean_all") : pass
+      stats[name] = val
+    return stats
+
+########################################################################
+
 class pdb_header_info (slots_getstate_setstate) :
   """
   Container for information extracted from the PDB header (if available).

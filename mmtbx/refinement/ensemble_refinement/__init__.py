@@ -4,6 +4,7 @@ import mmtbx.solvent.ensemble_ordered_solvent as ensemble_ordered_solvent
 from mmtbx.refinement.ensemble_refinement import ensemble_utils
 from mmtbx.dynamics import ensemble_cd
 import mmtbx.tls.tools as tls_tools
+import mmtbx.command_line
 import mmtbx.utils
 import mmtbx.model
 import mmtbx.maps
@@ -46,8 +47,10 @@ ensemble_refinement.ensemble_ordered_solvent.find_peaks.map_next_to_model.use_hy
 
 # the extra fetch() at the end with the customized parameters gives us the
 # actual master phil object
-master_params = iotbx.phil.parse("""\
-include scope mmtbx.utils.cmdline_input_phil_str
+input_phil = mmtbx.command_line.generate_master_phil_with_inputs(
+  phil_string="",
+  as_phil_string=True)
+master_params = iotbx.phil.parse(input_phil + """
 ensemble_refinement {
   cartesian_dynamics
     .style = menu_item auto_align box
@@ -1682,7 +1685,7 @@ def run(args, command_name = "phenix.ensemble_refinement", log=None,
       attributes_level=command_line.attributes_level,
       out=log)
     return
-  inputs = mmtbx.utils.cmdline_load_pdb_and_data(
+  inputs = mmtbx.command_line.load_model_and_data(
     update_f_part1_for="refinement",
     args=command_line.args,
     master_phil=master_params,
@@ -2069,4 +2072,4 @@ def validate_params (params) :
     raise Sorry("You must specify a fraction of atoms to use for TLS fitting.")
   elif (len(params.input.xray_data.labels[0].split(",")) > 2) :
     raise Sorry("Anomalous data are not allowed in this program.")
-  return mmtbx.utils.validate_input_params(params)
+  return mmtbx.command_line.validate_input_params(params)

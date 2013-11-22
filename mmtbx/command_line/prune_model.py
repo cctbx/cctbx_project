@@ -1,12 +1,10 @@
-from __future__ import division
 
 # TODO trim sidechains one atom at a time
 
-import libtbx.phil
+from __future__ import division
 from libtbx.str_utils import make_header
-from libtbx.utils import Usage, multi_out
+from libtbx.utils import multi_out
 from libtbx import group_args
-from cStringIO import StringIO
 import os
 import sys
 
@@ -55,8 +53,11 @@ model_prune_master_phil = """
       nearby density.
 """
 
-master_phil = libtbx.phil.parse("""
-include scope mmtbx.utils.cmdline_input_phil_str
+def get_master_phil () :
+  from mmtbx.command_line import generate_master_phil_with_inputs
+  return generate_master_phil_with_inputs(
+    enable_automatic_twin_detection=True,
+    phil_string="""
 prune {
   %s
 }
@@ -64,7 +65,7 @@ output {
   file_name = None
     .type = path
 }
-""" % model_prune_master_phil, process_includes=True)
+""" % model_prune_master_phil)
 
 def id_str (chain, residue_group, atom_group) :
   return "%3s %s%4s%s" % (atom_group.resname, chain.id, residue_group.resseq,
@@ -355,7 +356,7 @@ def run_post_refinement (
     out=None) :
   if (out is None) : out = sys.stdout
   if (params is None) :
-    params = master_phil.fetch().extract().prune
+    params = get_master_phil().fetch().extract().prune
   from iotbx import file_reader
   pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
   pdb_in.assert_file_type("pdb")
@@ -402,26 +403,19 @@ def run_post_refinement (
 
 def run (args, out=None) :
   if (out is None) : out = sys.stdout
-  if (len(args) == 0) :
-    phil_out = StringIO()
-    master_phil.show(out=phil_out, attributes_level=1)
-    raise Usage("""\
+  usage_string = """\
 mmtbx.prune_model model.pdb data.mtz [options...]
 
 Filters protein residues based on CC to 2mFo-DFc map and absolute
 (sigma-scaled) values in 2mFo-DFc and mFo-DFc maps.  For fast automatic
 correction of MR solutions after initial refinement (ideally with rotamer
 correction) to remove spurious loops and sidechains.
-
-Full parameters:
-%s
-""" % phil_out.getvalue())
-  from mmtbx.utils import cmdline_load_pdb_and_data
-  import iotbx.pdb
-  cmdline = cmdline_load_pdb_and_data(
-    update_f_part1_for="map",
+"""
+  from mmtbx.command_line import load_model_and_data
+  cmdline = load_model_and_data(
     args=args,
-    master_phil=master_phil,
+    master_phil=get_master_phil(),
+    update_f_part1_for="map",
     out=out,
     process_pdb_file=False,
     create_fmodel=True)
@@ -447,10 +441,9 @@ Full parameters:
     pdb_hierarchy=cmdline.pdb_hierarchy,
     params=params.prune).process_residues(out=out2)
   f = open(params.output.file_name, "w")
-  cryst1 = iotbx.pdb.format_cryst1_record(fmodel.xray_structure)
   f.write("REMARK edited by mmtbx.prune_model\n")
-  f.write("%s\n" % cryst1)
-  f.write(cmdline.pdb_hierarchy.as_pdb_string())
+  f.write(cmdline.pdb_hierarchy.as_pdb_string(
+    crystal_symmetry=fmodel.xray_structure))
   f.close()
   log.close()
   print >> out, "Wrote %s" % params.output.file_name

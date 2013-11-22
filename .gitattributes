@@ -1485,7 +1485,6 @@ mmtbx/command_line/distance_difference.py -text
 mmtbx/command_line/dssp.py -text
 mmtbx/command_line/dynamics.py -text
 mmtbx/command_line/estimate_bijvoet_ratio.py -text
-mmtbx/command_line/estimate_resolution_cutoff.py -text
 mmtbx/command_line/extend_sidechains.py -text
 mmtbx/command_line/fake_f_obs.py -text
 mmtbx/command_line/fetch_pdb.py -text
@@ -1761,7 +1760,6 @@ mmtbx/regression/tst_altloc_chain_break.py -text
 mmtbx/regression/tst_anomalous_substructure.py -text
 mmtbx/regression/tst_b_factor_statistics.py -text
 mmtbx/regression/tst_cablam.py -text
-mmtbx/regression/tst_combine_symmetry.py svneol=native#text/x-python
 mmtbx/regression/tst_command_line_input.py svneol=native#text/x-python
 mmtbx/regression/tst_compare_ligands.py -text
 mmtbx/regression/tst_dssp.py -text
@@ -1782,6 +1780,7 @@ mmtbx/regression/tst_mtz2map.py -text
 mmtbx/regression/tst_pdbtools.py -text
 mmtbx/regression/tst_prune_model.py -text
 mmtbx/regression/tst_real_space_correlation.py -text
+mmtbx/regression/tst_refine_anomalous_substructure.py svneol=native#text/x-python
 mmtbx/regression/tst_rigid_bond_test.py -text
 mmtbx/regression/tst_ringer.py -text
 mmtbx/regression/tst_sort_hetatms.py -text

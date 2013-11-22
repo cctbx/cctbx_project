@@ -128,6 +128,7 @@ tst_list = (
   "$D/validation/regression/tst_rna_validate.py",
   "$D/validation/regression/tst_molprobity.py",
   "$D/refinement/tst_select_best_starting_model.py",
+  "$D/regression/tst_refine_anomalous_substructure.py",
   "$D/regression/tst_command_line_input.py",
   )
 

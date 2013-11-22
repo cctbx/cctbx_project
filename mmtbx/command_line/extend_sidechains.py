@@ -1,6 +1,5 @@
 
 from __future__ import division
-import iotbx.phil
 from libtbx.utils import null_out
 import os.path
 import sys
@@ -13,20 +12,20 @@ output_map_coeffs = None
   .type = path
 """
 
-master_phil = iotbx.phil.parse("""
-include scope mmtbx.utils.cmdline_input_phil_str
-%s
-""" % extend_master_phil, process_includes=True)
+def get_master_phil () :
+  from mmtbx.command_line import generate_master_phil_with_inputs
+  return generate_master_phil_with_inputs(phil_string=extend_master_phil,
+    enable_automatic_twin_detection=True)
 
 def run (args, out=sys.stdout, verbose=True) :
   import mmtbx.building.extend_sidechains
-  import mmtbx.utils
+  import mmtbx.command_line
   input_out = out
   if (not verbose) :
     input_out = null_out()
-  cmdline = mmtbx.utils.cmdline_load_pdb_and_data(
+  cmdline = mmtbx.command_line.load_model_and_data(
     args=args,
-    master_phil=master_phil,
+    master_phil=get_master_phil(),
     process_pdb_file=False,
     out=input_out,
     usage_string="""\

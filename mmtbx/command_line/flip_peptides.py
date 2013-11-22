@@ -1,5 +1,5 @@
-from __future__ import division
 
+from __future__ import division
 import sys, os
 
 #-----------------------------------------------------------------------
@@ -11,18 +11,17 @@ def run (args, out=sys.stdout) :
     print "Warning: this is not intended for general use."
     raise Usage("mmtbx.flip_peptides [model.pdb] [data.mtz] [params ...]")
   from mmtbx.refinement import flip_peptides, print_statistics
-  from mmtbx import utils
-  import iotbx.phil
-  master_phil = iotbx.phil.parse("""
-    %s
-    flip_peptides {
-      include scope mmtbx.refinement.flip_peptides.master_params_str
-    }
-  """ % utils.cmdline_input_phil_str, process_includes=True)
-  cmdline = utils.cmdline_load_pdb_and_data(
+  import mmtbx.command_line
+  master_phil = mmtbx.command_line.generate_master_phil_with_inputs(
+    enable_automatic_twin_detection=True,
+    phil_string="""
+      flip_peptides {
+        include scope mmtbx.refinement.flip_peptides.master_params_str
+      }""")
+  cmdline = mmtbx.command_line.load_model_and_data(
     args=args,
     master_phil=master_phil,
-    update_f_part1_for=None,
+    update_f_part1_for="refinement",
     out=out)
   print >> out, ""
   print_statistics.make_header("Analyzing peptide bonds", out=out)

@@ -1,14 +1,13 @@
 
 from __future__ import division
-from libtbx.utils import Usage, Sorry
-import libtbx.phil
+from libtbx.utils import Sorry
 import sys
 
 def run (args, out=sys.stdout) :
   from mmtbx.refinement import anomalous_scatterer_groups
-  import mmtbx.utils
-  master_phil = libtbx.phil.parse("""
-include scope mmtbx.utils.cmdline_input_phil_str
+  import mmtbx.command_line
+  master_phil = mmtbx.command_line.generate_master_phil_with_inputs(
+    phil_string="""
 map_type = *anom_residual llg
   .type = choice
 exclude_waters = False
@@ -25,24 +24,23 @@ refine = *f_prime *f_double_prime
   .type = choice(multi=True)
 reset_water_u_iso = True
   .type = bool
-""", process_includes=True)
-  if (len(args) == 0) or ("--help" in args) :
-    raise Usage("""\
+""",
+    enable_automatic_twin_detection=True)
+  usage_string = """\
 mmtbx.refine_anomalous_substructure model.pdb data.mtz [options]
 
 Iterative identification of anomalously scattering atoms in the anomalous
 residual map (simple or Phaser LLG), followed by refinement of the anomalous
 scattering coefficients.  Intended as a diagnostic/development tool only!
-
-Full options:
-%s""" % master_phil.as_str(prefix="  "))
-  cmdline = mmtbx.utils.cmdline_load_pdb_and_data(
+"""
+  cmdline = mmtbx.command_line.load_model_and_data(
     update_f_part1_for="refinement",
     args=args,
     master_phil=master_phil,
     out=out,
     process_pdb_file=False,
-    prefer_anomalous=True)
+    prefer_anomalous=True,
+    usage_string=usage_string)
   fmodel = cmdline.fmodel
   if (not fmodel.f_obs().anomalous_flag()) :
     raise Sorry("Anomalous data required.")

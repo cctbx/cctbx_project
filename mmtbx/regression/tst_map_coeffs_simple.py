@@ -1,6 +1,6 @@
 
 from __future__ import division
-from libtbx.utils import null_out
+from cStringIO import StringIO
 import os
 
 def exercise () :
@@ -9,9 +9,11 @@ def exercise () :
   from iotbx import file_reader
   mtz_file, pdb_file = generate_cd_cl_inputs(
     file_base="tst_map_coeffs_simple")
-  args = [mtz_file, pdb_file, "map_type=anom_residual", "wavelength=1.116",
+  args = [mtz_file, pdb_file, "map_type=anom_residual",
           "skip_twin_detection=True"]
-  compute_map_coefficients.run(args=args, out=null_out())
+  out = StringIO()
+  compute_map_coefficients.run(args=args, out=out)
+  assert """Using wavelength = 1.116 from PDB header""" in out.getvalue()
   assert os.path.isfile("tst_map_coeffs_simple_anom_residual.mtz")
   mtz_in = file_reader.any_file("tst_map_coeffs_simple_anom_residual.mtz")
   assert (mtz_in.file_server.miller_arrays[0].info().label_string() ==

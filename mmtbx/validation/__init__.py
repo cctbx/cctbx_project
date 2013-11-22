@@ -372,6 +372,9 @@ class validation (slots_getstate_setstate) :
   def as_coot_data (self) :
     raise NotImplementedError()
 
+  def as_gui_table_data (self) :
+    return []
+
 molprobity_cmdline_phil_str = """
   model = None
       .type = path

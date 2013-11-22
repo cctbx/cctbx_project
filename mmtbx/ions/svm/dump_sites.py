@@ -22,59 +22,40 @@ from mmtbx import ions
 from mmtbx.ions.environment import ChemicalEnvironment, ScatteringEnvironment
 from mmtbx.ions.parameters import get_server
 from mmtbx.ions.svm.utils import iterate_sites
-from mmtbx.utils import cmdline_load_pdb_and_data
+import mmtbx.command_line
 
-master_phil = parse("""
-include scope mmtbx.utils.cmdline_input_phil_str
+def master_phil () :
+  return mmtbx.command_line.generate_master_phil_with_inputs(
+    enable_automatic_twin_detection=True,
+    phil_string="""
 include scope mmtbx.ions.ion_master_phil
 debug = True
   .type = bool
 elements = Auto
   .type = str
-wavelength = None
-  .type = float
 nproc = Auto
   .type = int
-""", process_includes = True)
+""")
 
 def main(args, out = sys.stdout):
-  if len(args) == 0 or "--help" in args:
-    raise Usage("""\
+  usage_string = """\
 mmtbx.dump_sites model.pdb data.mtz [options ...]
 
 Utility to dump information about the properties of water and ion sites in a
 model. This properties include local environment, electron density maps, and
 atomic properties.
-
-Full parameters:
-{}
-""".format(master_phil.as_str(prefix=" ")))
-
-  cmdline = cmdline_load_pdb_and_data(
+"""
+  cmdline = mmtbx.command_line.load_model_and_data(
     args = args,
-    master_phil = master_phil,
+    master_phil = master_phil(),
     out = out,
     process_pdb_file = True,
     create_fmodel = True,
-    prefer_anomalous = True)
+    prefer_anomalous = True,
+    set_wavelength_from_model_header=True,
+    set_inelastic_form_factors="sasaki",
+    usage_string=usage_string)
   params = cmdline.params
-
-  if params.wavelength is None:
-    pdb_in = any_file(params.input.pdb.file_name[0],
-      force_type="pdb")
-    wavelength = pdb_in.file_object.extract_wavelength()
-    if wavelength is not None:
-      print >> out, ""
-      print >> out, "Using wavelength = {} from PDB header".format(wavelength)
-      params.wavelength = wavelength
-
-  if params.wavelength is not None:
-    cmdline.xray_structure.set_inelastic_form_factors(
-      photon = params.wavelength,
-      table="sasaki")
-    cmdline.fmodel.update_xray_structure(
-      cmdline.xray_structure,
-      update_f_calc = True)
 
   make_header("Inspecting sites", out = out)
 
