@@ -49,6 +49,7 @@ ensemble_refinement.ensemble_ordered_solvent.find_peaks.map_next_to_model.use_hy
 # actual master phil object
 input_phil = mmtbx.command_line.generate_master_phil_with_inputs(
   phil_string="",
+  enable_experimental_phases=True,
   as_phil_string=True)
 master_params = iotbx.phil.parse(input_phil + """
 ensemble_refinement {
@@ -139,7 +140,7 @@ ensemble_refinement {
     .type = bool
     .help = 'Set all atoms aoccupancy to 1.0'
     .short_caption = Reset occupancies to 1.0
-  target_name = *ml ls_wunit_k1_fixed ls_wunit_k1
+  target_name = *ml mlhl ls_wunit_k1_fixed ls_wunit_k1
     .type = choice
     .short_caption = Refinement target
     .help = 'Choices for refinement target'
@@ -319,7 +320,7 @@ class run_ensemble_refinement(object):
     adopt_init_args(self, locals())
 #    self.params = params.extract().ensemble_refinement
 
-    if self.params.target_name == 'ml':
+    if self.params.target_name in ['ml', 'mlhl'] :
       self.fix_scale = False
     else:
       self.fix_scale = True
@@ -337,7 +338,10 @@ class run_ensemble_refinement(object):
     self.cmremove = True
     self.cdp = self.params.cartesian_dynamics
     self.bsp = mmtbx.bulk_solvent.bulk_solvent_and_scaling.master_params.extract()
-    self.bsp.target = self.params.target_name
+    if (self.params.target_name == 'mlhl') :
+      self.bsp.target = 'ml'
+    else :
+      self.bsp.target = self.params.target_name
     if self.params.tx == None:
       print >> log, "\nAutomatically set Tx (parameter not defined)"
       print >> log, "Tx          :  2(1/dmin)**2"
@@ -429,7 +433,7 @@ class run_ensemble_refinement(object):
       free_reflections_per_bin = 100,
       max_number_of_bins       = 999).show_rfactors_targets_in_bins(out = self.log)
 
-    if self.params.target_name == 'ml':
+    if self.params.target_name in ['ml', 'mlhl'] :
       #Must be called before reseting ADPs
       if self.params.scale_wrt_n_calc_start:
         make_header("Calculate Ncalc and restrain to scale kn", out = self.log)
@@ -487,7 +491,7 @@ class run_ensemble_refinement(object):
 
     #Initial sigmaa array, required for ML target function
     #Set eobs and ecalc normalization factors in Fmodel, required for ML
-    if self.params.target_name == 'ml':
+    if self.params.target_name in ['ml', 'mlhl'] :
       self.sigmaa_array = self.fmodel_running.sigmaa().sigmaa().data()
       self.best_r_free = self.fmodel_running.r_free()
       self.fmodel_running.set_sigmaa = self.sigmaa_array
@@ -508,7 +512,7 @@ class run_ensemble_refinement(object):
         print >> self.log, "Geo grad  : ", self.er_data.geo_grad_rms
         print >> self.log, "Wx        : ", self.wxray
 
-      if self.fmodel_running.target_name == 'ml':
+      if self.fmodel_running.target_name in ['ml', 'mlhl'] :
         if self.macro_cycle < self.equilibrium_macro_cycles:
           if self.params.scale_wrt_n_calc_start and self.macro_cycle%self.n_mc_per_ncalc_update == 0:
             self.update_normalisation_factors()
@@ -648,7 +652,7 @@ class run_ensemble_refinement(object):
           f_mask = current_f_mask_update)
 
       #ML params update
-      if self.params.target_name == 'ml':
+      if self.params.target_name in ['ml', 'mlhl'] :
         if self.macro_cycle < self.equilibrium_macro_cycles:
           if self.fmodel_running.r_free() < (self.best_r_free - self.params.update_sigmaa_rfree):
             self.update_sigmaa()
@@ -1538,7 +1542,7 @@ class run_ensemble_refinement(object):
   def print_ml_stats(self):
     if self.fmodel_running.set_sigmaa is not None:
       self.run_time_stats_dict.update({'Sigma_a':self.fmodel_running.set_sigmaa})
-    if self.params.target_name == 'ml':
+    if self.params.target_name in ['ml', 'mlhl'] :
       self.run_time_stats_dict.update({'Alpha':self.fmodel_running.alpha_beta()[0].data()})
       self.run_time_stats_dict.update({'Beta':self.fmodel_running.alpha_beta()[1].data()})
     if self.fmodel_running.n_obs is not None:
@@ -1893,13 +1897,21 @@ def run(args, command_name = "phenix.ensemble_refinement", log=None,
     bulk_solvent_correction    = True,
     anisotropic_scaling        = True,
     log                        = log)
+  hl_coeffs = inputs.hl_coeffs
+  if (hl_coeffs is not None) and (params.input.use_experimental_phases) :
+    print >> log, "Using MLHL target with experimental phases"
+    er_params.target_name = "mlhl"
+    hl_coeffs = hl_coeffs.common_set(other=fmodel.f_obs())
+  else :
+    hl_coeffs = None
   # XXX is this intentional?
   fmodel = mmtbx.f_model.manager(
     mask_params                  = er_params.mask,
     xray_structure               = model.xray_structure,
     f_obs                        = fmodel.f_obs(),
     r_free_flags                 = fmodel.r_free_flags(),
-    target_name                  = er_params.target_name)
+    target_name                  = er_params.target_name,
+    abcd                         = hl_coeffs)
   hd_sel = model.xray_structure.hd_selection()
   model.xray_structure.set_occupancies(
         value     = 1.0,
